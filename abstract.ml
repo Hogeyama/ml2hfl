@@ -123,6 +123,7 @@ let weakest cond ds p =
             let fv = fixp fvp in
               List.filter (fun (p, _) -> subset (ss (get_fv2(*???*) p)) fv) ds
           in
+          let nds = List.map (fun (p, b) -> Not p, Not b) ds in
 
           let f pbs =
             List.map
