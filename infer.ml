@@ -86,7 +86,7 @@ let replace_tinfo ti term =
       MyUnit(_) -> MyUnit(ti)
     | MyFail(_) -> MyFail(ti)
     | MyVar(x,_) -> MyVar(x,ti)
-    | MyApp(t1,t2,ti) -> MyApp(t1,t2,ti)
+    | MyApp(t1,t2,ti) -> MyApp(t1,t2,ti) (*???*)
     | MyTerm(t,_) -> MyTerm(t,ti)
 
 let tinfomap = ref []
@@ -107,7 +107,7 @@ let register_tinfo f (tinfo: tinfo) =
     r := tinfo::tys
 
 let branchtab = ref []
-let register_branch b counter =
+(*let register_branch b counter =
   let r = 
         try List.assoc counter !branchtab
         with Not_found ->
@@ -116,7 +116,19 @@ let register_branch b counter =
            r1)
   in
   let trace = !r in
-    r := trace@[b]
+    r := trace@[b]*)
+
+let register_branches trace counter =
+  let r = 
+        try List.assoc counter !branchtab
+        with Not_found ->
+          let r1 = ref [] in
+          (branchtab := (counter, r1)::!branchtab;
+           r1)
+  in
+  let traces = !r in
+    r := traces@[trace]
+
 
 let rec tinfolist2ty typ tinfolist =
   List.fold_left 
@@ -223,54 +235,47 @@ let rec mk_appterm h terms =
 exception Unsupported of Syntax.t
 exception Undefined of ident
 
-let rec process_term term trace env counter =
-  if trace=[] then
-    (MyFail(new_tinfo()), trace)
-  else
-    process_term_sub term trace env counter
-and process_term_sub term trace env counter =
+let rec process_term trace term traces env pcounter =
   match term with
-      Unit -> (MyUnit(new_tinfo()), trace)
+      Unit -> let _ = register_branches trace pcounter in [MyUnit(new_tinfo()), trace, traces]
     | If(t1,t2,t3,t4) ->
-        ( match trace with
-              [] -> assert false
-            | true::trace' -> 
-                (register_branch true (counter-1);
-                 process_term t2 trace' env counter)
-            | false::trace' -> 
-                (register_branch false (counter-1);
-                 process_term t3 trace' env counter)
-        )
-    | App(Fail,_) -> (MyFail(new_tinfo()), trace)
+        let tts, tfs = List.partition (function [] -> assert false | true::_ -> true | false::_ -> false) traces in
+        let tts = List.map List.tl tts in
+        let tfs = List.map List.tl tfs in
+        (if tts = [] then [] else (process_term (trace @ [true ]) t2 tts env pcounter)) @
+        (if tfs = [] then [] else (process_term (trace @ [false]) t3 tfs env pcounter))
+    | App(Fail,_) -> let _ = register_branches trace pcounter in [MyFail(new_tinfo()), trace, traces]
     | Var(x) -> 
+        let _ = register_branches trace pcounter in
         (try
            let myt = List.assoc x env in
-             (myt, trace)
+             [myt, trace, traces]
          with Not_found ->
            let tinfo = new_tinfo() in
            let h = MyVar(x, tinfo) in
            let _ = register_tinfo x tinfo in
-             (h, trace))
+             [h, trace, traces])
     | App(Var x, ts) ->
+        let _ = register_branches trace pcounter in
         let myts = List.map (fun t -> process_aterm env t) ts in
           (try
              let myt = List.assoc x env in
-               (mk_appterm myt myts, trace)
+               [mk_appterm myt myts, trace, traces]
            with Not_found ->
              let tinfo = new_tinfo() in
              let h = MyVar(x, tinfo) in
              let _ = register_tinfo x tinfo in
-               (mk_appterm h myts, trace))
-    | BinOp(_) -> (MyTerm(term, new_tinfo()), trace)
-    | NInt _ -> (MyTerm(term, new_tinfo()), trace)
-    | Int _ ->  (MyTerm(term, new_tinfo()), trace)
-    | True -> (MyUnit(new_tinfo()), trace) (*???*)
-    | False -> (MyUnit(new_tinfo()), trace) (*???*)
-    | Not(_) -> (MyTerm(term, new_tinfo()), trace) (*???*)
-    | App(t, []) -> process_term t trace env counter
+               [mk_appterm h myts, trace, traces])
+    | BinOp(_) -> let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces]
+    | NInt _ -> let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces]
+    | Int _ ->  let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces]
+    | True -> let _ = register_branches trace pcounter in [MyUnit(new_tinfo()), trace, traces] (*???*)
+    | False -> let _ = register_branches trace pcounter in [MyUnit(new_tinfo()), trace, traces] (*???*)
+    | Not(_) -> let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces] (*???*)
+    | App(t, []) -> process_term trace t traces env pcounter
     | _ -> (print_term term; print_string2 "\n"; raise (Unsupported term))
 and process_aterm env t =
-  let (t1,_) = process_term_sub t [] env 0 in t1
+  let [t1,_,_] = process_term [] t [] env 0 in t1
           
 let rec process_args term =
    match term with
@@ -278,7 +283,7 @@ let rec process_args term =
         let r = new_tinfo() in
         let tinfo2 = get_tinfo t2 in
         let _ = add_to_tinfo (ETindirect(r)) tinfo2 in
-        let t2' = replace_tinfo r t2 in
+        let t2' = replace_tinfo r t2 in (*???*)
         let t1' = process_args t1 in
           MyApp(t1',t2',tinfo)
     | _ -> term
@@ -305,43 +310,55 @@ let rec decompose_redex term =
          (f, ts@[t2])
   | _ -> raise (Decomp term)
 
-let pc = ref (-1);;
+(*let pc = ref (-1);;*)
 
-let rec eval_term t defs trace counter =
-  let _ = (pc := counter) in
+let incr_counter =
+  let r = ref (-1) in
+  (fun () -> r := !r + 1; !r)
+
+
+let trace2id = ref []
+
+let rec eval_term t defs traces pcounter =
+  (*let _ = (pc := counter) in*)
+  
   match t with
-    MyUnit(tinfo) -> (add_to_tinfo (ETunit(counter))  tinfo)
-(**  | If(t1,t2,t3,t4) ->
-       (  match trace with
-           true::trace' -> eval_term t2 defs trace' counter
-        | false::trace' -> eval_term t3 defs trace' counter
-         )
-**)
-  | MyFail(tinfo) -> (add_to_tinfo (ETunit(counter)) tinfo)
+    MyUnit(tinfo) | MyFail(tinfo) ->
+      let counter = incr_counter () in
+      trace2id := ((pcounter, []), counter)::!trace2id;
+      add_to_tinfo (ETunit(counter)) tinfo
   | MyVar(f,tinfo) ->
       let (vars,body) = 
          try List.assoc f defs 
          with Not_found -> raise (Undefined(f))
       in
       let env = [] in
-      let (t2,trace') = process_term body trace env counter in
-      let t3 = process_args t2 in
-      let _ = process_head t3 (ETunit(counter)) in
-         eval_term t3 defs trace' (counter+1)
+      List.iter
+        (fun (t2, trace, traces') ->
+          let counter = incr_counter () in
+          trace2id := ((pcounter, trace), counter)::!trace2id;
+          let t3 = process_args t2 in
+          process_head t3 (ETunit(counter));
+          eval_term t3 defs traces' counter)
+        (process_term [] body traces env pcounter)
   | MyApp(t1, t2, tinfo) ->
       let (f, ts) = decompose_redex t in
       let (vars,body) = 
          try List.assoc f defs 
          with Not_found -> raise (Undefined(f)) in
       let env = List.combine vars ts in
-      let (t2,trace') = process_term body trace env counter in
-      let t3 = process_args t2 in
-      let _ = process_head t3 (ETunit(counter)) in
-         eval_term t3 defs trace' (counter+1)
+      List.iter
+        (fun (t2, trace, traces') ->
+          let counter = incr_counter () in
+          trace2id := ((pcounter, trace), counter)::!trace2id;
+          let t3 = process_args t2 in
+          process_head t3 (ETunit(counter));
+          eval_term t3 defs traces' counter)
+        (process_term [] body traces env pcounter)
   | MyTerm _ -> assert false
 
 
-(** from types to refinement tyep templates **)
+(** from types to refinement type templates **)
 type pred = Pred of pid * Syntax.t list 
 type rty = RTunit of int | RTint of (Syntax.t -> pred) | RTbool of (Syntax.t -> pred)
         | RTifun of (Syntax.t -> pred) * (Syntax.t -> rty) | RTbfun of (Syntax.t -> pred) * (Syntax.t-> rty)
@@ -529,15 +546,17 @@ let print_constraint c =
 
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
-let rec chk_term rtenv term rty trace =
- let id = id_of_rty(rty) in
+let rec chk_term rtenv term id trace traces =
   match term with
     Unit -> 
+       let rty = RTunit(try List.assoc (id, trace) !trace2id with Not_found -> assert false) in
        (match rty with 
              RTunit(_) -> []
            | _ -> raise (Fatal "chk_term: () cannot be used as a non-unit type")
         )
   | App(Var x, ts) ->
+     let rty = RTunit(try List.assoc (id, trace) !trace2id with Not_found -> assert false) in
+     let id = id_of_rty(rty) in
      (try
        let rtyl = try List.assoc x rtenv with Not_found -> [] in
        let rty1 = pick_rty id rtyl in
@@ -548,73 +567,23 @@ let rec chk_term rtenv term rty trace =
        PickRty -> [Cfalse])
   | App(Fail, _) -> [Cfalse]
   | If(t1,t2,t3,_) ->
-      if trace = [] then
-        [Cfalse]
-      else
-      let t1', (t0,trace') = 
-           match trace with
-                true::trace' -> t1, (t2, trace')
-              | false::trace' -> Not t1, (t3, trace')
-              | _ -> raise (Fatal "ch_term: trace information is missing")
-      in
-        let c = chk_term rtenv t0 rty trace' in
-           [Cimp([Cterm(t1')], c)]
-  | Var x -> chk_term rtenv (App(Var x, [])) rty trace
+      let tts, tfs = List.partition (function [] -> raise (Fatal "ch_term: trace information is missing") | true::_ -> true | false::_ -> false) traces in
+      let tts = List.map List.tl tts in
+      let tfs = List.map List.tl tfs in
+      let c1 = if tts = [] then [] else [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [true]) tts)] in
+      let c2 = if tfs = [] then [] else [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [false]) tfs)] in
+        c1 @ c2
+  | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
   | Fail -> [Cfalse]
   | True | False -> (*???*)
+       let rty = RTunit(try List.assoc (id, trace) !trace2id with Not_found -> assert false) in
        (match rty with 
              RTbool(_) -> []
            | _ -> raise (Fatal "chk_term: () cannot be used as a non-boolean type")
         )
   | Not(t) -> (*???*)
-      chk_term rtenv t rty trace
-  | App(t, []) -> chk_term rtenv t rty trace
-  | _ -> (print_term term; print_string2 "\n"; raise (Unsupported term))
-
-and chk_term2 rtenv term rty trace =
- let id = id_of_rty(rty) in
-  match term with
-    Unit -> 
-       (match rty with 
-             RTunit(_) -> []
-           | _ -> raise (Fatal "chk_term: () cannot be used as a non-unit type")
-        )
-  | App(Var x, ts) ->
-     (try
-       let rtyl = try List.assoc x rtenv with Not_found -> [] in
-       let rty1 = pick_rty id rtyl in
-       let (c1,rty2)= chk_args rtenv rty1 ts in
-       let c2 = subty rty2 rty in
-          c1@c2
-     with
-       PickRty -> [Cfalse])
-  | App(Fail, _) -> [Cfalse]
-  | If(t1,t2,t3,_) ->
-      if trace = [] then
-        [Cfalse]
-      else
-      let t1', (t0,trace') = 
-           match trace with
-                true::trace' -> t1, (t2, trace')
-              | false::trace' -> Not t1, (t3, trace')
-              | _ -> raise (Fatal "ch_term: trace information is missing")
-      in
-        if id+1 = !pc then (** the last branch condtion should be false **)
-           [Cimp([Cterm(t1')], [Cfalse])]
-        else (** we make sure that the branch condition is true, and check the rest of the trace **)
-           let c = chk_term2 rtenv t0 rty trace' in
-             merge_and_unify compare [Cterm(t1')] c
-          
-  | Var x -> chk_term2 rtenv (App(Var x, [])) rty trace
-  | Fail -> [Cfalse]
-  | True | False -> (*???*)
-       (match rty with 
-             RTbool(_) -> []
-           | _ -> raise (Fatal "chk_term: () cannot be used as a non-boolean type")
-        )
-  | Not(t) -> (*???*)
-      chk_term rtenv t rty trace
-  | App(t, []) -> chk_term2 rtenv t rty trace
+      chk_term rtenv t id trace traces
+  | App(t, []) -> chk_term rtenv t id trace traces
   | _ -> (print_term term; print_string2 "\n"; raise (Unsupported term))
 
 and chk_args rtenv rty terms =
@@ -636,9 +605,40 @@ and chk_args rtenv rty terms =
                 (c1@c2, rty3)
          | _ -> raise (Fatal "chk_args: non-function type")
 
+and chk_term_rty rtenv term rty =
+ let id = id_of_rty(rty) in
+  match term with
+    Unit -> 
+       (match rty with 
+             RTunit(_) -> []
+           | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-unit type")
+        )
+  | App(Var x, ts) ->
+     (try
+       let rtyl = try List.assoc x rtenv with Not_found -> [] in
+       let rty1 = pick_rty id rtyl in
+       let (c1,rty2)= chk_args rtenv rty1 ts in
+       let c2 = subty rty2 rty in
+          c1@c2
+     with
+       PickRty -> [Cfalse])
+  | App(Fail, _) -> [Cfalse]
+  | If(t1,t2,t3,_) -> assert false
+  | Var x -> chk_term_rty rtenv (App(Var x, [])) rty
+  | Fail -> [Cfalse]
+  | True | False -> (*???*)
+       (match rty with 
+             RTbool(_) -> []
+           | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-boolean type")
+        )
+  | Not(t) -> (*???*)
+      chk_term_rty rtenv t rty
+  | App(t, []) -> chk_term_rty rtenv t rty
+  | _ -> (print_term term; print_string2 "\n"; raise (Unsupported term))
+
 and chk_term_rtyl rtenv term rtyl =
   List.fold_left (fun c -> fun rty ->
-     (chk_term rtenv term rty [])@c) [] rtyl 
+     (chk_term_rty rtenv term rty)@c) [] rtyl 
 
 let rec mk_venv vars rty =
   match vars with
@@ -681,12 +681,10 @@ let cgen_flag = ref true (** this should be set to false if we want to propagate
 let chk_def_rty vars body rty rtenv =
   let (venv1, id) = mk_venv vars rty in
   let rtenv' = venv1@rtenv in
-  let trace = try let r = List.assoc id !branchtab in !r with 
+  let traces = try let r = List.assoc id !branchtab in !r with 
                Not_found -> []
   in
-  let c = if !cgen_flag then
-               chk_term rtenv' body (RTunit(id+1)) trace 
-          else chk_term2 rtenv' body (RTunit(id+1)) trace in
+  let c = chk_term rtenv' body id [] traces in
   let assumption = getc_from_env venv1 in
     [Cimp(assumption, c)]
 
@@ -810,8 +808,8 @@ let interpolate ids c1 c2 =
   let t =
     try
       Wrapper.interpolation ts1 ts2
-    with Assert_failure _ ->
-      if !Flag.use_nint
+    with Wrapper.Satisfiable ->
+      if not !Flag.use_nint
       then
         let bv = list_diff (List.flatten (List.map get_fv ts1)) ids in
         let ts2 = [subst_term (List.map (fun id -> id, new_var ()) bv) (Not (term_of c2))] in
@@ -894,6 +892,16 @@ let rec elim ids c =
   with Not_found ->
     c
 
+let get_lhs c =
+  List.flatten
+  (List.map
+    (function Cimp(c', _) ->
+      List.map
+       (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
+		     (List.filter (function Cpred(_) -> true | _ -> false) c')
+   	| _ -> assert false)
+   	c)
+
 let solve_constr c =
   let eqs ids terms =
     let xs = List.combine ids terms in
@@ -903,7 +911,7 @@ let solve_constr c =
   in
   let rec subst_ac lbs ac =
     match ac with
-	Cpred(Pred(pid, terms)) ->
+       	Cpred(Pred(pid, terms)) ->
           let ids, c = get_lb pid terms lbs in
           let fv = Util.uniq (Util.diff (fv c) ids) in
             substc (List.combine ids terms) (substc (List.map (fun id -> id, new_var ()) fv) c)
@@ -951,17 +959,8 @@ let solve_constr c =
     lbs
   in
 
-  let rec aux c solution =
-    let lhs = List.flatten
-      (List.map
-	 (function
-	      Cimp(c', _) ->
-		List.map
-		  (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
-		  (List.filter (function Cpred(_) -> true | _ -> false) c')
-	    | _ -> assert false)
-	 c)
-    in
+  let rec solve_aux c solution =
+    let lhs = get_lhs c in
     let c1, c2 = List.partition
       (fun ac -> match ac with
            Cimp(_, c') ->
@@ -969,7 +968,9 @@ let solve_constr c =
                   [Cfalse] -> true
                 | [Cpred(Pred(pid, _))] -> List.mem_assoc pid solution && not (List.mem pid lhs)
                 | _ -> assert false)
-         | _ -> assert false) c in
+         | _ -> assert false)
+      c
+    in
       (*
         let _ = print_string2 "\nhoge: "; print_constraint c1 in
       *)
@@ -979,62 +980,66 @@ let solve_constr c =
               [] -> []
             | (pid, (ids, t))::sol' ->
                 let sol1, sol2 = List.partition (fun (pid', _) -> pid = pid') sol' in
-		let t =
-		  List.fold_left
-		    (fun t (_, (ids', t')) ->
-                       let t' = subst_term (List.combine ids' (List.map (fun id -> Var(id)) ids)) t' in
-			 (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) BinOp(And, t, t'))
-		    t sol1 in
+																let t =
+																  List.fold_left
+																    (fun t (_, (ids', t')) ->
+														        let t' = subst_term (List.combine ids' (List.map (fun id -> Var(id)) ids)) t' in
+												    					 (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) BinOp(And, t, t'))
+																    t sol1
+                in
                   (pid, (ids, t))::(merge_solution sol2)
         in
-          assert (c2 = []);
+          assert (c2 = []); (* call filter_constr before solve_constr *)
           merge_solution solution
       else
-        let solve_ac ac =
-          match ac with
-              Cimp(c, [cc]) ->
-                let cub =
-                  match cc with
-                      Cfalse -> [Cfalse]
-                    | Cpred(Pred(pid, terms)) ->
-			let ts = List.filter (fun (pid', _) -> pid = pid') solution in
-			let t =
-			  List.fold_left
-			    (fun t (_, (ids, t')) ->
-			       BinOp(And, t,
-				     subst_term (List.combine ids terms) t'))
-			    True ts in
-			  [Cterm t]
-                in
-                let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) c in
-                let cub = [Cimp(c2, cub)] in
-                let rec aux' cub sol = function
-                    [] -> sol
-                  | (Cpred(Pred(pid', terms')))::c ->
-                      let ids', lb = get_lb pid' terms' lbs in
-                      let sub, eqs = eqs ids' terms' in
-                      let ub = substc sub [Cimp(eqs @ (subst_constr lbs c), cub)] in
-                      let _ =
-                        if Flag.debug then
-                          begin
-                            print_pname pid';
-                            print_string2 "(";
-                            print_terms terms';
-                            print_string2 ")";
-                            print_string2 "\n"
-                          end
-                      in
-                      let t = interpolate ids' lb ub in
-                      let sol = (pid', (ids', t))::sol in
-                      let cub = [Cimp([Cterm(subst_term (List.combine ids' terms') t)], cub)] in
-                        aux' cub sol c
-                in
-                  aux' cub [] c1
-            | _ -> print_ac ac; assert false
+        let solution' = solution @
+          (List.flatten
+          (List.map
+		          (fun ac -> match ac with
+		              Cimp(c, [cc]) ->
+		                let cub =
+		                  match cc with
+		                      Cfalse -> [Cfalse]
+		                    | Cpred(Pred(pid, terms)) ->
+																										let ts = List.filter (fun (pid', _) -> pid = pid') solution in
+																										let t =
+																										  List.fold_left
+																										    (fun t (_, (ids, t')) ->
+																										       BinOp(And, t,
+																											     subst_term (List.combine ids terms) t'))
+																										    True ts in
+																										  [Cterm t]
+		                in
+		                let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) c in
+		                let cub = [Cimp(c2, cub)] in
+		                let rec solve_aux' cub sol = function
+		                    [] -> sol
+		                  | (Cpred(Pred(pid', terms')))::c ->
+		                      let ids', lb = get_lb pid' terms' lbs in
+		                      let sub, eqs = eqs ids' terms' in
+		                      let ub = substc sub [Cimp(eqs @ (subst_constr lbs c), cub)] in
+		                      let _ =
+		                        if Flag.debug then
+		                          begin
+		                            print_pname pid';
+		                            print_string2 "(";
+		                            print_terms terms';
+		                            print_string2 ")";
+		                            print_string2 "\n"
+		                          end
+		                      in
+		                      let t = interpolate ids' lb ub in
+		                      let sol = (pid', (ids', t))::sol in
+		                      let cub = [Cimp([Cterm(subst_term (List.combine ids' terms') t)], cub)] in
+		                        solve_aux' cub sol c
+		                in
+		                  solve_aux' cub [] c1
+		            | _ -> print_ac ac; assert false)
+          c1))
         in
-          aux c2 (solution @ (List.flatten (List.map solve_ac c1)))
+          solve_aux c2 solution'
   in
-  let sol = aux c [] in
+  let sol = solve_aux c [] in
     List.map (fun (pid,(ids,t)) -> pid, (ids, Wrapper.simplify_bool_exp t)) sol
 
 let add_pred pred c =
@@ -1057,36 +1062,21 @@ let add_pred pred c =
   in
     List.map aux c
 
-
 let filter_constr c =
   let c1, c2 = List.partition
     (fun ac -> match ac with
-         Cimp(_, c') ->
-           (match c' with
-                [Cfalse] -> true
-              | [Cpred(Pred(pid, _))] -> false
-              | _ -> assert false)
+         Cimp(_, [Cfalse]) -> true
+       | Cimp(_, [Cpred(Pred(pid, _))]) -> false
        | _ -> assert false) c
   in
   let rec aux c1 c2 =
-    let lhs = List.flatten
-      (List.map
-      	 (function
-	         Cimp(c', _) ->
-        		  List.map
-         		  (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
-		           (List.filter (function Cpred(_) -> true | _ -> false) c')
-   	    | _ -> assert false)
-   	  c1)
-    in
+    let lhs = get_lhs c1 in
     let c21, c22 = List.partition
       (fun ac -> match ac with
-           Cimp(_, c') ->
-             (match c' with
-                  [Cfalse] -> assert false
-                | [Cpred(Pred(pid, _))] -> List.mem pid lhs
-                | _ -> assert false)
-         | _ -> assert false) c2
+           Cimp(_, [Cpred(Pred(pid, _))]) ->
+             List.mem pid lhs
+         | _ -> assert false)
+      c2
     in
     if c21 = [] then
       c1
@@ -1096,9 +1086,10 @@ let filter_constr c =
   aux c1 c2
 
 
-let test s defs trace pred = 
+let test s defs traces = 
   branchtab := [];
   tinfomap := [];
+  trace2id := [];
   current_pid := 0;
 
   let _ = if Flag.debug then print_string2 "\n Program: \n" in
@@ -1107,8 +1098,9 @@ let test s defs trace pred =
   let ti = new_tinfo() in
   let _ = register_tinfo s ti in
   let et = MyVar(s, ti) in
-  let _ = process_head et (ETunit(0)) in
-    (eval_term et defs trace 1;
+  let counter = incr_counter () in
+  let _ = process_head et (ETunit(counter)) in
+    (eval_term et defs traces counter;
      let te = mk_atenv() in
      let _ = if Flag.debug then print_atenv te in
      let rte = atenv2rtenv te in
@@ -1126,16 +1118,6 @@ let test s defs trace pred =
      let _ = if Flag.debug then print_string2 "\nNormalized constraints:\n" in
      let _ = if Flag.debug then print_constraint c'' in
      let _ = if Flag.debug then print_string2 "\n" in
-     let c'' =
-       if !Flag.add_pred
-       then
-         let c'' = add_pred pred c'' in
-         let _ = if Flag.debug then print_string2 "\nConstraints with a predicate for free variables:\n" in
-         let _ = if Flag.debug then print_constraint c'' in
-         let _ = if Flag.debug then print_string2 "\n" in
-           c''
-       else c''
-     in
        (*
          let c''' = simplify_constr c'' in
          let _ = print_string2 "\nSimplified constraints:\n" in

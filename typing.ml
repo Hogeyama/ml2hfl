@@ -68,7 +68,7 @@ let rec infer env t =
     | Var x ->
         let typ =
           try
-            snd (List.find (fun (x', _) -> x.id = x'.id) env)
+            snd (List.find (fun (x', _) -> x.id = x'.id) env) (*???*)
           with Not_found ->
             if Flag.debug
             then Format.printf "@.not found: %a@." (print_term_fm ML false) (Var x); assert false in
@@ -120,7 +120,11 @@ let rec infer env t =
         let t2', typ2 = infer env2 t2 in
           unify typ_f (List.fold_right (fun typ1 typ2 -> TFun((dummy,typ1), typ2)) typs typ1);
           Letrec(f', xs', t1', t2'), typ2
-    | BinOp(Eq as op, t1, t2)
+    | BinOp(Eq as op, t1, t2) ->
+        let t1', typ1 = infer env t1 in
+        let t2', typ2 = infer env t2 in
+          unify typ1 typ2;
+          BinOp(op, t1', t2'), TBool
     | BinOp(Lt as op, t1, t2)
     | BinOp(Gt as op, t1, t2)
     | BinOp(Leq as op, t1, t2)

@@ -411,3 +411,30 @@ let rec check ce ce_used defs constr t =
 
 
 let check ce defs t = check ce [] defs True t
+
+
+
+let rec check ce defs constr t =
+  match t,ce with
+      Var x, _ -> check ce defs constr (App(Var x, []))
+    | App(Fail, _), [] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          ()
+    | App(Var x, ts), _ ->
+        let _,t' = List.assoc x defs in
+        let xs = get_args x.typ in
+        let t'' = List.fold_right2 subst xs ts t' in
+          check ce defs constr t''
+    | If(t1, t2, _, _), true::ce' ->
+        let constr' = BinOp(And, t1, constr) in
+        check ce' defs constr' t2
+    | If(t1, _, t3, _), false::ce' ->
+        let constr' = BinOp(And, Not t1, constr) in
+        check ce' defs constr' t3
+    | _ -> assert false
+
+
+
+let check ce defs t = check ce defs True t

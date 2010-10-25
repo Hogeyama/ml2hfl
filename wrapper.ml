@@ -119,6 +119,7 @@ let close_cvc3 () =
   match Unix.close_process (!cvc3in, !cvc3out) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
+
 let check pre p =
   let cin = !cvc3in in
   let cout = !cvc3out in
@@ -132,15 +133,35 @@ let check pre p =
       (fun () -> flush cout)
   in
 *)
-  let fv = uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
+  let fv =
+				let rec uniq = function
+				    [] -> []
+				  | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
+    in
+    uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
+
+(*
+  let env = List.map (fun v -> Typing.new_var v) fv in
+  let p::pre, _  = List.split (List.map (fun p -> Typing.infer env p) (p::pre)) in
+  let fv = List.map fst env in
+*)
+
+(*
+List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
+*)
+(*
+  let p::pre = List.map simplify (p::pre) in
+  let p::pre = List.map Typing.match_arg (p::pre) in
+*)
+
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term CVC3 p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term CVC3 p ^ ";" in
+(*
+  let _ = Format.fprintf Format.std_formatter "a:%s@." (types^assertion^query) in
+*)
   let _ = Format.fprintf fm "PUSH; %s POP;" (types^assertion^query^"\n") in
   let _ = Format.pp_print_flush fm () in
-(*
-  let _ = Format.fprintf Format.std_formatter "%s@." (types^assertion^query) in
-*)
   let s = input_line cin in
 (*
   let _ = Format.fprintf Format.std_formatter "%s@." s in
@@ -178,11 +199,25 @@ let check pre p =
 
 
 let checksat p =
+  let cin = !cvc3in in
+  let cout = !cvc3out in
+  let fm = Format.formatter_of_out_channel cout in
+
   let fv = get_fv2 p in
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ ";" in
-  let command = "RESULT=$(echo '"^types^query^"' | "^Flag.cvc3^"); test $RESULT = \"Satisfiable.\"" in
+
+  let () = Format.fprintf fm "PUSH; %s%s\n POP;@?" types query in
+  let _ = Format.pp_print_flush fm () in
+  let s = input_line cin in
+  let result = s = "Satisfiable." in
+  result
+(*  let () = close_out cout in*)
+
+(*
+  let command = "RESULT=$(echo 'PUSH; "^types^query^" POP;' | "^Flag.cvc3^"); test $RESULT = \"Satisfiable.\"" in
     Sys.command command = 0
+*)
 
 let rec rename_ident = function
     Unit -> Unit
@@ -238,13 +273,17 @@ let rec rename_ident = function
 
 
 let get_solution p =
-  let cin,cout = Unix.open_process Flag.cvc3 in
+failwith "HNIlpo";
+  let cin = !cvc3in in
+  let cout = !cvc3out in
+(*  let cin,cout = Unix.open_process Flag.cvc3 in*)
   let fm = Format.formatter_of_out_channel cout in
+
   let fv = get_fv2 p in
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ "; COUNTERMODEL;" in
-  let () = Format.fprintf fm "%s%s@?" types query in
-  let () = close_out cout in
+  let () = Format.fprintf fm "PUSH; %s%s POP;@?" types query in
+(*  let () = close_out cout in*)
   let () = ignore (input_line cin); ignore (input_line cin); ignore (input_line cin) in
   let rec aux cin =
     try
@@ -258,28 +297,28 @@ let get_solution p =
     with End_of_file -> []
   in
   let ts = aux cin in
+(*
   let () = close_in cin in
   let () =
     match Unix.close_process (cin, cout) with
         Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
   in
+*)
     ts
-
-
-
 
 let rec simplify = function
     CsisatAst.Leq(CsisatAst.Constant n, CsisatAst.Coeff(m,e)) ->
       if m > 0.
       then CsisatAst.Leq(CsisatAst.Constant (ceil (n/.m)), e)
       else CsisatAst.Leq(e, CsisatAst.Constant (floor (n/.m)))
-  | CsisatAst.Eq(CsisatAst.Constant 0., CsisatAst.Coeff(m,e)) ->
+  | CsisatAst.Eq(CsisatAst.Constant 0., CsisatAst.Coeff(m,e)) -> (*unsound if m=0*)
       CsisatAst.Eq(CsisatAst.Constant 0., e)
   | CsisatAst.And es -> CsisatAst.And (List.map simplify es)
   | CsisatAst.Or es -> CsisatAst.Or (List.map simplify es)
   | CsisatAst.Not e -> CsisatAst.Not (simplify e)
   | p -> p
 
+exception Satisfiable
 
 let interpolation ts1 ts2 =
   let bool_theory =
@@ -300,14 +339,20 @@ let interpolation ts1 ts2 =
 
   let pred = try
       CsisatInterpolate.interpolate_with_proof t1' t2'
-    with CsisatAst.SAT_FORMULA(pred) ->
-       if Flag.debug then print_string ("\n" ^ (CsisatAstUtil.print_pred pred) ^ "\n"); assert false
+    with CsisatAst.SAT_FORMULA(pred) -> begin
+       if Flag.debug then print_string ("\n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");
+       raise Satisfiable
+    end
   in
   let pred' = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff pred) in
-(*
-  print_string ("\n" ^ (CsisatAstUtil.print_pred pred') ^ "\n");
-*)
+  if Flag.print_interpolant then
+    print_string ((CsisatAstUtil.print_pred pred') ^ "\n\n")
+  else ();
   let pred'' = from_pred pred' in
+  (if Flag.debug then begin
+    ()(*assert (check ts1 pred'' &&
+            check [pred''] (Not (List.fold_left (fun t p -> BinOp(And, t, p)) (List.hd ts2) (List.tl ts2))))*)
+  end);
     pred''
 
 
@@ -507,7 +552,7 @@ let rec simplify_bool_exp t =
           BinOp(op, simplify_bool_exp t1, simplify_bool_exp t2)
     | BinOp(_, (True|False), (True|False)) -> t
     | BinOp(Eq, Int 0, BinOp(Mult, Int n, t))
-    | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) ->
+    | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) -> (*unsound if n=0?*)
         BinOp(Eq, t, Int 0)
     | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
         let d = gcd_arith_exp [t1;t2] in

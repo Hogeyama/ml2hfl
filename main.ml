@@ -34,7 +34,9 @@ let print_info () =
   Format.pp_print_flush Format.std_formatter ()
 
 
-let rec cegar t1 t2 ce_prev =
+let rec cegar initial t1 ce_prev =
+  Wrapper.open_cvc3 ();
+
   let () = if Flag.print_type then Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n" !Flag.cegar_loop (Syntax.print_term_fm_break Syntax.ML true) t1 in
   let n = Syntax.get_counter () in
 
@@ -62,42 +64,24 @@ let rec cegar t1 t2 ce_prev =
           try
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
             let tmp = get_time () in
-            let t'',t1',t2' =
-              if Some ce = ce_prev
+            let t'' =
+              if ce_prev <> [] && ce = List.hd ce_prev
               then
-                match t2 with
-                    None -> raise CannotDiscoverPredicate
-                  | Some t2 ->
-                      let t1' = Syntax.copy_pred t1 t2 in
-                      let defs,t = Syntax.lift t1' in
-                      let pred,ce' = Feasibility.check ce defs t in
-                      let t1'' = Refine.refine ce' defs t t1' pred in
-                        t1'', t2, None
+                raise CannotDiscoverPredicate
               else
-                let defs,t' = Syntax.lift t1 in
-                let pred,ce' = Feasibility.check ce defs t' in
-                let () = if Flag.debug then Format.printf "ce:%d, ce':%d" (List.length ce) (List.length ce') in
-                let t'' = Refine.refine ce' defs t' t1 pred in
-                  t'', t1, t2
-            in
-            let t1'',t2'' =
-              if t'' = t1'
-              then
-                match t2' with
-                    None -> raise CannotDiscoverPredicate
-                  | Some t2 ->
-                      let t1' = Syntax.copy_pred t1' t2 in
-                      let defs,t = Syntax.lift t1' in
-                      let pred,ce' = Feasibility.check ce defs t in
-                      let t1'' = Refine.refine ce' defs t t1' pred in
-                        t1'', None
-              else t'', t2'
+                let defs,t' = Syntax.lift (if !Flag.merge_counterexample then initial else t1) in
+                let () = Feasibility.check ce defs t' in
+                let () = if Flag.debug then Format.printf "ce:%d" (List.length ce) in
+                Refine.refine (if !Flag.merge_counterexample then ce::ce_prev else [ce]) defs t' t1
             in
               add_time tmp Flag.time_cegar;
               if Flag.print_progress then print_msg "DONE!\n";
               Syntax.set_counter n;
               incr Flag.cegar_loop;
-              cegar t1'' t2'' (Some ce)
+
+              Wrapper.close_cvc3 ();
+
+              cegar initial t'' (ce::ce_prev)
           with
               Syntax.Feasible p -> t1, Some (ce,p)
             | Syntax.Infeasible -> t1, None
@@ -151,7 +135,7 @@ let main in_channel =
   let cps' = Syntax.eta_expand cps' in
 *)
 
-  let cps1 =
+  let cps =
     let defs, t = Syntax.lift cps' in
 (*
       Typing.typing_defs defs t;
@@ -164,18 +148,8 @@ let main in_channel =
              Syntax.Let(f,xs,t',t))
         defs t
   in
-  let cps2 =
-    let defs, t = Syntax.lift2 cps' in
-      List.fold_right
-        (fun (f, (xs, t')) t ->
-           if List.exists (fun id -> List.mem_assoc id defs) (Syntax.get_fv t') then
-             Syntax.Letrec(f,xs,t',t)
-           else
-             Syntax.Let(f,xs,t',t))
-        defs t
-  in
 
-  let t_result, result = cegar cps1 (Some cps2) None in
+  let t_result, result = cegar cps cps [] in
     match result with
         None -> print_msg "\nSafe!\n\n"
       | Some (ce,p) ->
@@ -205,7 +179,7 @@ let () =
     try
       let cin = try open_in Sys.argv.(1) with Invalid_argument "index out of bounds" -> stdin in
         if Flag.web then open_log ();
-        Wrapper.open_cvc3 ();
+(*        Wrapper.open_cvc3 ();*)
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main cin;

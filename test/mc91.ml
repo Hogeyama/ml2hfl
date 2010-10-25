@@ -3,7 +3,7 @@ let rec m x =
   then x - 10
   else m (m (x + 11))
 in
-  if n <= 101
+  if n <= 99
   then assert (m n = 91)
   else ()
 

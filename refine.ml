@@ -1059,7 +1059,7 @@ let rec add_preds rte sol = function
   | Fail -> Fail
   | Label _ -> assert false
 
-let refine ce defs t t0 pred =
+let refine ces defs t t0 =
   (*
     let () = Format.printf "%a@." (print_term_fm ML true) t in
   *)
@@ -1079,26 +1079,8 @@ let refine ce defs t t0 pred =
 
   let s = {id = 0; origin = "Main"; typ = TUnit} in
   let defs1 = (s,([], t'))::defs' in
-  let rte, sol =
-    try
-      Flag.use_nint := false;
-      Infer.cgen_flag := true;
-      Infer.test s defs1 ce pred
-    with Infer.Untypable ->
-      try
-        if Flag.debug then Format.printf "\n\ncgen_flag := false\n\n@.";
-        Infer.cgen_flag := false;
-        Flag.add_pred := true;
-        Infer.test s defs1 ce pred
-      with Infer.Untypable ->
-          begin
-            Flag.use_nint := true;
-            Infer.cgen_flag := true;
-            Infer.test s defs1 ce pred
-          end
-  in
-  let t0 = add_preds rte sol t0 in
-    t0
+  let rte, sol = Infer.test s defs1 ces in
+  add_preds rte sol t0
 
 (*
   let () = Format.printf "AAA@." in

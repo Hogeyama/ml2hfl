@@ -3,8 +3,10 @@ let log_dir = "/home/ryosuke/web/cegar/log/"
 let trecs = "./trecs"
 let cvc3 = "./cvc3"
 
+let merge_counterexample = ref false
+
 let wp_depth = ref 0
-let wp_max_num = ref 5
+let wp_max_num = ref 3
 
 let use_unknown = ref false
 let use_old_partition = ref false
@@ -24,7 +26,7 @@ let print_type = true
 let print_hors = false
 let print_trecs_output = true
 let print_trace = false
-let print_interpolant = false
+let print_interpolant = true
 let print_progress = false
 
 let time_abstraction = ref 0.
@@ -42,7 +44,6 @@ let web = false
 let debug = true
 
 
-let add_pred = ref false
 let use_nint = ref false
 let use_subterm = false
 let use_neg_pred = true

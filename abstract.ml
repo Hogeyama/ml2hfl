@@ -84,7 +84,8 @@ let mapi f xs =
     aux 1 xs
 
 let weakest cond ds p =
-  let nds = List.map (fun (p, b) -> Not p, Not b) ds in
+  (*‚±‚ê‚Íprogress‚µ‚È‚­‚È‚é mc91.ml if n <= 100 ...
+    let nds = List.map (fun (p, b) -> Not p, Not b) ds in
     try
       let b = List.assoc p ds in
         b, Not b
@@ -93,7 +94,7 @@ let weakest cond ds p =
         match List.assoc p nds with
             Not b -> Not b, b
           | _ -> assert false
-      with _ ->
+      with _ ->*)
         if check cond [] p then (*???*)
           True, False
         else if check cond [] (Not p) then (*???*)
@@ -268,13 +269,14 @@ let rec coerce cond xbss pbs typ1 typ2 t =
       TUnit,TUnit -> t
     | TBool,TBool -> t
     | TFun((x1,TInt ps1),typ12), TFun((x2,TInt ps2),typ22) ->
-        let xs,xbss',pbs' = abst_arg x1 ([],xbss,pbs) in
+        let xs,xbss',pbs' = abst_arg x2 ([],xbss,pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
-        let ts = List.map (fun p -> abst cond' pbs' (inst_var (Var x1) p)) ps2 in
-        let t' = coerce cond' xbss pbs' typ12 typ22 (App(t, ts)) in
+        let ts = List.map (fun p -> abst cond' pbs' (inst_var (Var x2(*???*)) p)) ps1 in
+        let t' = coerce cond' xbss(*???*) pbs' typ12 typ22 (App(t, ts)) in
           List.fold_right (fun x t -> Fun(x, t)) xs t'
     | TFun((x1,typ11),typ12), TFun((x2,typ21),typ22) ->
         let x = new_var' "x" in
+(*x‚ÍŠÖ”‚¾‚©‚çdepend‚Å‚«‚È‚¢H*)
           Fun(x, coerce cond xbss pbs typ12 typ22 (App(t, [coerce cond xbss pbs typ21 typ11 (Var x)])))
     | TUnknown,_ -> t
     | _,TUnknown -> t
@@ -326,7 +328,7 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
         in
           aux ttyps
       in
-        [coerce cond xbss pbs typ typ' (App(Var f, ts'))]
+        [coerce cond xbss pbs typ' typ (App(Var f, ts'))]
   | BinOp(op, t1, t2) as t, typ ->
       begin
         match op with
