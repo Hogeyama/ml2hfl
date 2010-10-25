@@ -126,3 +126,22 @@ let rec gcd m n =
   else if n = 0 then m
   else gcd n (m mod n)
 
+
+(* graph *)
+let save_as_dot filename vertices edges =
+  let oc = open_out filename in 
+  let ocf =
+    Format.make_formatter
+      (output oc)
+      (fun () -> flush oc) in
+  Format.fprintf ocf "@[<v>digraph flow {@ ";
+  List.iter
+    (fun (vertex, attribute) ->
+      Format.fprintf ocf "  \"%s\" %s@ " vertex attribute)
+    vertices;
+  List.iter
+    (fun (vertex1, vertex2, attribute) ->
+      Format.fprintf ocf "  \"%s\" -> \"%s\" %s@ " vertex1 vertex2 attribute)
+    edges;
+  Format.fprintf ocf "}@]@?";
+  close_out oc

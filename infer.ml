@@ -548,15 +548,10 @@ let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
   match term with
-    Unit -> 
-       let rty = RTunit(try List.assoc (id, trace) !trace2id with Not_found -> assert false) in
-       (match rty with 
-             RTunit(_) -> []
-           | _ -> raise (Fatal "chk_term: () cannot be used as a non-unit type")
-        )
+    Unit -> []
   | App(Var x, ts) ->
-     let rty = RTunit(try List.assoc (id, trace) !trace2id with Not_found -> assert false) in
-     let id = id_of_rty(rty) in
+     let id = try List.assoc (id, trace) !trace2id with Not_found -> assert false in
+     let rty = RTunit(id) in
      (try
        let rtyl = try List.assoc x rtenv with Not_found -> [] in
        let rty1 = pick_rty id rtyl in
@@ -575,12 +570,7 @@ let rec chk_term rtenv term id trace traces =
         c1 @ c2
   | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
   | Fail -> [Cfalse]
-  | True | False -> (*???*)
-       let rty = RTunit(try List.assoc (id, trace) !trace2id with Not_found -> assert false) in
-       (match rty with 
-             RTbool(_) -> []
-           | _ -> raise (Fatal "chk_term: () cannot be used as a non-boolean type")
-        )
+  | True | False -> assert false
   | Not(t) -> (*???*)
       chk_term rtenv t id trace traces
   | App(t, []) -> chk_term rtenv t id trace traces
@@ -782,6 +772,25 @@ and normalize_ac ac =
 
 
 
+let save_as_dot filename cs =
+  let es = Util.uniq (List.concat (List.map
+    (fun ac ->
+      match ac with
+        Cimp(c1, c2) ->
+          let lhs = List.map
+            (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
+            (List.filter (function Cpred(_) -> true | _ -> false) c1)
+          in
+          (match c2 with
+               [Cfalse] -> List.map (fun pid -> "P" ^ string_of_int pid, "bot", "") lhs
+             | [Cpred(Pred(pid2, _))] -> List.map (fun pid1 -> "P" ^ string_of_int pid1, "P" ^ string_of_int pid2, "") lhs
+             | _ -> assert false)
+       | _ -> assert false)
+    cs))
+  in
+  let vs = Util.uniq (List.concat (List.map (fun (x, y, _) -> [x, y]) es)) in
+  Util.save_as_dot filename vs es
+
 let rec term_of c =
   List.fold_left 
   (fun t -> fun ac ->
@@ -898,9 +907,9 @@ let get_lhs c =
     (function Cimp(c', _) ->
       List.map
        (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
-		     (List.filter (function Cpred(_) -> true | _ -> false) c')
-   	| _ -> assert false)
-   	c)
+       (List.filter (function Cpred(_) -> true | _ -> false) c')
+    | _ -> assert false)
+    c)
 
 let solve_constr c =
   let eqs ids terms =
@@ -911,7 +920,7 @@ let solve_constr c =
   in
   let rec subst_ac lbs ac =
     match ac with
-       	Cpred(Pred(pid, terms)) ->
+        Cpred(Pred(pid, terms)) ->
           let ids, c = get_lb pid terms lbs in
           let fv = Util.uniq (Util.diff (fv c) ids) in
             substc (List.combine ids terms) (substc (List.map (fun id -> id, new_var ()) fv) c)
@@ -980,61 +989,69 @@ let solve_constr c =
               [] -> []
             | (pid, (ids, t))::sol' ->
                 let sol1, sol2 = List.partition (fun (pid', _) -> pid = pid') sol' in
-																let t =
-																  List.fold_left
-																    (fun t (_, (ids', t')) ->
-														        let t' = subst_term (List.combine ids' (List.map (fun id -> Var(id)) ids)) t' in
-												    					 (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) BinOp(And, t, t'))
-																    t sol1
+                let t = List.fold_left
+                  (fun t (_, (ids', t')) ->
+                    let t' = subst_term (List.combine ids' (List.map (fun id -> Var(id)) ids)) t' in
+                    (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) BinOp(And, t, t'))
+                  t sol1
                 in
                   (pid, (ids, t))::(merge_solution sol2)
         in
-          assert (c2 = []); (* call filter_constr before solve_constr *)
-          merge_solution solution
+          if c2 <> [] then begin
+            print_string2 "c1:\n";
+            print_constraint c1;
+            print_string2 "\n";
+            print_string2 "c2:\n";
+            print_constraint c2;
+            print_string2 "\n";
+            save_as_dot "constraints_error.dot" c2;
+            assert false (* call filter_constr before solve_constr *)
+          end else
+            merge_solution solution
       else
         let solution' = solution @
           (List.flatten
           (List.map
-		          (fun ac -> match ac with
-		              Cimp(c, [cc]) ->
-		                let cub =
-		                  match cc with
-		                      Cfalse -> [Cfalse]
-		                    | Cpred(Pred(pid, terms)) ->
-																										let ts = List.filter (fun (pid', _) -> pid = pid') solution in
-																										let t =
-																										  List.fold_left
-																										    (fun t (_, (ids, t')) ->
-																										       BinOp(And, t,
-																											     subst_term (List.combine ids terms) t'))
-																										    True ts in
-																										  [Cterm t]
-		                in
-		                let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) c in
-		                let cub = [Cimp(c2, cub)] in
-		                let rec solve_aux' cub sol = function
-		                    [] -> sol
-		                  | (Cpred(Pred(pid', terms')))::c ->
-		                      let ids', lb = get_lb pid' terms' lbs in
-		                      let sub, eqs = eqs ids' terms' in
-		                      let ub = substc sub [Cimp(eqs @ (subst_constr lbs c), cub)] in
-		                      let _ =
-		                        if Flag.debug then
-		                          begin
-		                            print_pname pid';
-		                            print_string2 "(";
-		                            print_terms terms';
-		                            print_string2 ")";
-		                            print_string2 "\n"
-		                          end
-		                      in
-		                      let t = interpolate ids' lb ub in
-		                      let sol = (pid', (ids', t))::sol in
-		                      let cub = [Cimp([Cterm(subst_term (List.combine ids' terms') t)], cub)] in
-		                        solve_aux' cub sol c
-		                in
-		                  solve_aux' cub [] c1
-		            | _ -> print_ac ac; assert false)
+            (fun ac -> match ac with
+                Cimp(c, [cc]) ->
+                  let cub =
+                    match cc with
+                        Cfalse -> [Cfalse]
+                      | Cpred(Pred(pid, terms)) ->
+                          let ts = List.filter (fun (pid', _) -> pid = pid') solution in
+                          let t =
+                            List.fold_left
+                              (fun t (_, (ids, t')) ->
+                                 BinOp(And, t,
+                                subst_term (List.combine ids terms) t'))
+                              True ts in
+                            [Cterm t]
+                  in
+                  let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) c in
+                  let cub = [Cimp(c2, cub)] in
+                  let rec solve_aux' cub sol = function
+                      [] -> sol
+                    | (Cpred(Pred(pid', terms')))::c ->
+                        let ids', lb = get_lb pid' terms' lbs in
+                        let sub, eqs = eqs ids' terms' in
+                        let ub = substc sub [Cimp(eqs @ (subst_constr lbs c), cub)] in
+                        let _ =
+                          if Flag.debug then
+                            begin
+                              print_pname pid';
+                              print_string2 "(";
+                              print_terms terms';
+                              print_string2 ")";
+                              print_string2 "\n"
+                            end
+                        in
+                        let t = interpolate ids' lb ub in
+                        let sol = (pid', (ids', t))::sol in
+                        let cub = [Cimp([Cterm(subst_term (List.combine ids' terms') t)], cub)] in
+                          solve_aux' cub sol c
+                  in
+                    solve_aux' cub [] c1
+              | _ -> print_ac ac; assert false)
           c1))
         in
           solve_aux c2 solution'
@@ -1086,6 +1103,7 @@ let filter_constr c =
   aux c1 c2
 
 
+
 let test s defs traces = 
   branchtab := [];
   tinfomap := [];
@@ -1118,6 +1136,7 @@ let test s defs traces =
      let _ = if Flag.debug then print_string2 "\nNormalized constraints:\n" in
      let _ = if Flag.debug then print_constraint c'' in
      let _ = if Flag.debug then print_string2 "\n" in
+     let _ = if Flag.debug then save_as_dot "constraints.dot" c'' in
        (*
          let c''' = simplify_constr c'' in
          let _ = print_string2 "\nSimplified constraints:\n" in
