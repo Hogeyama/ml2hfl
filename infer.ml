@@ -956,8 +956,8 @@ let solve_constr c =
   in
   let lbs = compute_lbs c [] in
 
-  let _ = if Flag.debug then print_string2 "\nLower bounds:\n" in
-  let _ = if Flag.debug then List.iter
+  let _ = if Flag.debug && Flag.print_lower_bound then print_string2 "\nLower bounds:\n" in
+  let _ = if Flag.debug && Flag.print_lower_bound then List.iter
     (fun (pid, (ids, c)) ->
        print_pname pid;
        print_string2 "(";
@@ -1120,22 +1120,22 @@ let test s defs traces =
   let _ = process_head et (ETunit(counter)) in
     (eval_term et defs traces counter;
      let te = mk_atenv() in
-     let _ = if Flag.debug then print_atenv te in
+     let _ = if Flag.debug && Flag.print_constraints then print_atenv te in
      let rte = atenv2rtenv te in
-     let _ = if Flag.debug then print_string2 "\nType templates:\n" in
-     let _ = if Flag.debug then print_rtenv rte in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nType templates:\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_rtenv rte in
      let c = gen_constr defs rte in
-     let _ = if Flag.debug then print_string2 "\nConstraints:\n" in
-     let _ = if Flag.debug then print_constraint c in
-     let _ = if Flag.debug then print_string2 "\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nConstraints:\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_constraint c in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
      let c' = reduce_constr c in
-     let _ = if Flag.debug then print_string2 "\nReduced constraints:\n" in
-     let _ = if Flag.debug then print_constraint c' in
-     let _ = if Flag.debug then print_string2 "\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nReduced constraints:\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_constraint c' in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
      let c'' = normalize_constr c' in
-     let _ = if Flag.debug then print_string2 "\nNormalized constraints:\n" in
-     let _ = if Flag.debug then print_constraint c'' in
-     let _ = if Flag.debug then print_string2 "\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nNormalized constraints:\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_constraint c'' in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
      let _ = if Flag.debug then save_as_dot "constraints.dot" c'' in
        (*
          let c''' = simplify_constr c'' in

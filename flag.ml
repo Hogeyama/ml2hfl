@@ -28,6 +28,8 @@ let print_trecs_output = true
 let print_trace = false
 let print_interpolant = true
 let print_progress = false
+let print_constraints = true
+let print_lower_bound = true
 
 let time_abstraction = ref 0.
 let time_mc = ref 0.
