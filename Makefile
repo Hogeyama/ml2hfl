@@ -1,5 +1,6 @@
 
 CSISAT = ./csisat-read-only
+OCAML-SOURCE = ../ocaml-3.11.2
 
 SOURCES = flag.ml util.ml utilities.ml automata.ml syntax.ml parser.mly lexer.mll wrapper.ml alpha.ml typing.ml CPS.ml \
 	  abstract.ml lift.ml check.ml feasibility.ml infer.ml refine.ml main.ml
@@ -28,3 +29,8 @@ clean-all:
 	-rm -rf *.output
 	-rm -rf *.annot
 	-rm -rf *.a *.cma *.cmxa
+
+ocaml:
+	cd $(OCAML-SOURCE); ./configure
+	cd $(OCAML-SOURCE); make world
+	cd $(OCAML-SOURCE); make opt

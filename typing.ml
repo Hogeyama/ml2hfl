@@ -1,6 +1,10 @@
 
 open Syntax
 
+
+exception CannotUnify
+
+
 let new_tvar () = TVar (ref None)
 let new_var x =
   let typ = new_tvar () in
@@ -43,7 +47,8 @@ Format.printf "%a,%a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten ty
     | typ, TVar({contents = None} as r) -> r := Some typ
     | _ ->
         if Flag.debug
-        then Format.printf "%a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2); failwith "Cannot unify!"
+        then Format.printf "%a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2);
+        raise CannotUnify
 
 
 let dummy = new_var' "dummy"

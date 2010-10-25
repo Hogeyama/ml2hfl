@@ -1,36 +1,27 @@
 
 open Util
 
+exception TimeOut
+exception LongInput
+exception IllegalInput
+exception CannotDiscoverPredicate
+
 let log_filename = ref ""
 let log_cout = ref stdout
 let log_fm = ref Format.std_formatter
 
 let open_log () =
-  if Flag.web
-  then
-    begin
-      log_filename := Filename.basename (Filename.temp_file "log" ".ml");
-      log_cout := open_out ("/home/ryosuke/web/cegar/log/" ^ !log_filename);
-      log_fm := Format.formatter_of_out_channel !log_cout
-    end
+  log_filename := Filename.basename (Filename.temp_file "log" ".ml");
+  log_cout := open_out (Flag.log_dir ^ !log_filename);
+  log_fm := Format.formatter_of_out_channel !log_cout
 let close_log () =
-  if Flag.web
-  then close_out !log_cout
+  close_out !log_cout
 
 let write_log_string s =
-  if Flag.web
-  then
-    begin
-      Format.fprintf !log_fm "%s\n\n" s;
-      flush !log_cout
-    end
+  Format.fprintf !log_fm "%s\n@." s
 let write_log_term t =
-  if Flag.web
-  then
-    begin
-      Syntax.print_term_fm_break Syntax.ML false !log_fm t;
-      flush !log_cout
-    end
+  Syntax.print_term_fm_break Syntax.ML false !log_fm t;
+  flush !log_cout
 
 
 let print_info () =
@@ -56,15 +47,11 @@ let rec cegar t1 t2 ce_prev =
   let () = if Flag.print_abst_eager then Format.printf "Abstracted Program:@.%a" (Syntax.print_term_fm Syntax.ML false) t_abst in
   let () = Format.pp_print_flush Format.std_formatter () in
 
-  (*  Format.printf "start\n";*)
-
   let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in
   let tmp = get_time() in
   let result = Check.model_check t_abst in
   let () = add_time tmp Flag.time_mc in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
-
-    (*  Format.printf "end\n";*)
 
     match result with
         None -> t1, None
@@ -79,9 +66,7 @@ let rec cegar t1 t2 ce_prev =
               if Some ce = ce_prev
               then
                 match t2 with
-                    None ->
-                      Format.printf "Verification failed (cannot discover the necessary predicates).\n";
-                      exit 1
+                    None -> raise CannotDiscoverPredicate
                   | Some t2 ->
                       let t1' = Syntax.copy_pred t1 t2 in
                       let defs,t = Syntax.lift t1' in
@@ -99,9 +84,7 @@ let rec cegar t1 t2 ce_prev =
               if t'' = t1'
               then
                 match t2' with
-                    None ->
-                      Format.printf "Verification failed (cannot discover the necessary predicates).\n";
-                      exit 1
+                    None -> raise CannotDiscoverPredicate
                   | Some t2 ->
                       let t1' = Syntax.copy_pred t1' t2 in
                       let defs,t = Syntax.lift t1' in
@@ -130,45 +113,33 @@ let print_ce ce t =
       Syntax.True -> print_msg "-then->\n"
     | Syntax.False -> print_msg "-else->\n"
     | Syntax.Var x ->
-        if
+        begin
           try
-            String.sub x.Syntax.origin (String.length x.Syntax.origin - String.length str) (String.length str) = str
-      with
-          Invalid_argument "String.sub" -> false
-    then
-      begin
-        Format.printf "%s -->\n" (String.sub x.Syntax.origin 0 (String.length x.Syntax.origin - String.length str))
-      end
-    else ()
+            if String.sub x.Syntax.origin (String.length x.Syntax.origin - String.length str) (String.length str) = str
+            then Format.printf "%s -->\n" (String.sub x.Syntax.origin 0 (String.length x.Syntax.origin - String.length str))
+          with
+              Invalid_argument "String.sub" -> ()
+        end
     | _ -> assert false
   in
-  let () = List.iter print_var_bool trace in
-  let () = Format.printf "error" in
+    List.iter print_var_bool trace;
+    Format.printf "error";
     Format.printf "\n\n"
 
 
 let main in_channel =
   let input_string = String.create Flag.max_input_size in
   let n = input in_channel input_string 0 Flag.max_input_size in
-  let () =
-    if n = Flag.max_input_size
-    then
-      begin
-        Format.printf "Input is too long.\n";
-        exit 1
-      end
-  in
+  let () = if n = Flag.max_input_size then raise LongInput in
   let input_string = String.sub input_string 0 n in
-  let () = write_log_string input_string in
+  let () = if Flag.web then write_log_string input_string in
   let parsed =
     try
       Parser.file Lexer.token (Lexing.from_string input_string)
-    with _ ->
-      Format.printf "Illegal input.\n";
-      exit 1
+    with _ -> raise IllegalInput
   in
   let free_variables,alpha = Alpha.alpha parsed in
-  let () = write_log_term alpha in
+  let () = if Flag.web then write_log_term alpha in
   let () = if Flag.print_source then Format.printf "Source Program:@.%a\n" (Syntax.print_term_fm_break Syntax.ML false) alpha else () in
   let cps = (*Syntax.eval*) (CPS.trans alpha) in
   let () = if Flag.print_cps then Format.printf "CPS-converted Program:@.%a\n" (Syntax.print_term_fm_break Syntax.ML false) cps in
@@ -207,8 +178,7 @@ let main in_channel =
 
   let t_result, result = cegar cps1 (Some cps2) None in
     match result with
-        None ->
-          print_msg "\nSafe!\n\n"
+        None -> print_msg "\nSafe!\n\n"
       | Some (ce,p) ->
           let is_free t =
             let fv = Syntax.get_fv t in
@@ -229,33 +199,23 @@ let main in_channel =
 
 
 
-let _ = 
+let () = 
   if !Sys.interactive
   then ()
   else
-    let cin =
-      try
-        open_in Sys.argv.(1)
-      with
-          Invalid_argument "index out of bounds" -> stdin
-    in
-    let handle_alarm signal =
-      Format.printf "Verification failed (time out).\n";
-      exit 1
-    in
-      begin
-        open_log ();
+    try
+      let cin = try open_in Sys.argv.(1) with Invalid_argument "index out of bounds" -> stdin in
+        if Flag.web then open_log ();
         Wrapper.open_cvc3 ();
-        Sys.set_signal Sys.sigalrm (Sys.Signal_handle handle_alarm);
+        Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main cin;
         print_info ();
         Wrapper.close_cvc3 ();
-        close_log ()
-      end
-
-
-
-
-
-
+        if Flag.web then close_log ()
+    with
+        Typing.CannotUnify -> Format.printf "Cannot unify.@."; exit 1
+      | IllegalInput -> Format.printf "Illegal input.@."; exit 1
+      | LongInput -> Format.printf "Input is too long.@."; exit 1
+      | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
+      | CannotDiscoverPredicate -> Format.printf "Verification failed (cannot discover necessary predicates).@."; exit 1

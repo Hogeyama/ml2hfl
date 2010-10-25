@@ -1,4 +1,5 @@
 
+let log_dir = "/home/ryosuke/web/cegar/log/"
 let trecs = "./trecs"
 let cvc3 = "./cvc3"
 

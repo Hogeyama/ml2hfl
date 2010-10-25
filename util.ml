@@ -93,9 +93,7 @@ let is_uppercase c =
 
 
 
-let print_msg s =
-  Format.pp_print_string Format.std_formatter s;
-  Format.pp_print_flush Format.std_formatter ()
+let print_msg s = Format.printf "%s@." s
 
 
 
