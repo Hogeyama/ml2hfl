@@ -1034,7 +1034,8 @@ let solve_constr c =
         in
           aux c2 (solution @ (List.flatten (List.map solve_ac c1)))
   in
-    aux c []
+  let sol = aux c [] in
+    List.map (fun (pid,(ids,t)) -> pid, (ids, Wrapper.simplify_bool_exp t)) sol
 
 let add_pred pred c =
   let rec fv c = List.flatten (List.map fv_ac c)

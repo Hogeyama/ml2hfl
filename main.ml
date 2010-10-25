@@ -147,16 +147,15 @@ let main in_channel =
   let cps' = Syntax.trans cps in
 
   let cps' = Typing.typing cps' in
-
-  (*
-    let cps' = Syntax.eta_expand cps' in
-  *)
+(*
+  let cps' = Syntax.eta_expand cps' in
+*)
 
   let cps1 =
     let defs, t = Syntax.lift cps' in
-      (*
-        Typing.typing_defs defs t;
-      *)
+(*
+      Typing.typing_defs defs t;
+*)
       List.fold_right
         (fun (f, (xs, t')) t ->
            if List.exists (fun id -> List.mem_assoc id defs) (Syntax.get_fv t') then

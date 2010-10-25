@@ -1,8 +1,7 @@
-let rec gib f n =
-  if n<2 then f n else
-    ((gib f) (n-1)) + ((gib f) (n-2))
+let rec gib a b n =
+  if n=0 then a
+  else if n=1 then b
+  else gib a b (n-1) + gib a b (n-2)
 in
-let f x = x in
-  if ((gib f) 10) < 50
-  then fail ()
-  else ()
+  assert (gib 0 1 n >= 0)
+

@@ -122,9 +122,7 @@ let rec last = function
 
 
 let rec gcd m n =
-  if n = 0
-  then m
-  else
-    if m <= n then gcd m (n mod m)
-    else gcd n (m mod n)
+  if m < n then gcd n m
+  else if n = 0 then m
+  else gcd n (m mod n)
 
