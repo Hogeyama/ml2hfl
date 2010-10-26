@@ -157,10 +157,9 @@ List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term CVC3 p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term CVC3 p ^ ";" in
-(*
-  let _ = Format.fprintf Format.std_formatter "a:%s@." (types^assertion^query) in
-*)
-  let _ = Format.fprintf fm "PUSH; %s POP;" (types^assertion^query^"\n") in
+  let q = "PUSH;"^types^assertion^query^"\nPOP;" in
+  let _ = if Flag.debug then Format.fprintf Format.std_formatter "check: %s@." q in
+  let _ = Format.fprintf fm "%s" q in
   let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
 (*
@@ -203,15 +202,33 @@ let checksat p =
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
 
-  let fv = get_fv2 p in
+  let fv =
+				let rec uniq = function
+				    [] -> []
+				  | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
+    in
+    uniq (get_fv2 p) in
+
+  let env = List.map (fun v -> Typing.new_var v) fv in
+  let p, _  = Typing.infer env p in
+  let fv = List.map fst env in
+
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ ";" in
 
-  let () = Format.fprintf fm "PUSH; %s%s\n POP;@?" types query in
+  let q = "PUSH;"^types^query^"\nPOP;" in
+  let _ = if Flag.debug then Format.fprintf Format.std_formatter "checksat: %s@." q in
+
+  let () = Format.fprintf fm "%s@?" q in
   let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
-  let result = s = "Satisfiable." in
-  result
+  if s = "CVC> Satisfiable." then
+    true
+  else if s = "CVC> Unsatisfiable." then
+    false
+  else begin
+    Format.printf "CVC3 reported an error@."; assert false
+  end
 (*  let () = close_out cout in*)
 
 (*
@@ -273,7 +290,7 @@ let rec rename_ident = function
 
 
 let get_solution p =
-failwith "HNIlpo";
+  failwith "fix bug in get_solution";
   let cin = !cvc3in in
   let cout = !cvc3out in
 (*  let cin,cout = Unix.open_process Flag.cvc3 in*)
@@ -282,7 +299,8 @@ failwith "HNIlpo";
   let fv = get_fv2 p in
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ "; COUNTERMODEL;" in
-  let () = Format.fprintf fm "PUSH; %s%s POP;@?" types query in
+  let () = Format.fprintf fm "PUSH; %s%s\n POP;@?" types query in
+  let _ = Format.pp_print_flush fm () in
 (*  let () = close_out cout in*)
   let () = ignore (input_line cin); ignore (input_line cin); ignore (input_line cin) in
   let rec aux cin =

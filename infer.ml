@@ -1121,11 +1121,6 @@ let filter_backward c =
 
 let filter_forward c =
   let lbs = compute_lbs c [] in
-  let c1, c2 = List.partition
-    (fun ac -> match ac with
-         Cimp(c', _) -> get_pid c' = []
-       | _ -> assert false) c
-  in
   let rec aux c1 c2 =
     let rhs = List.concat (List.map (function Cimp(_, [Cpred(Pred(pid, _))]) -> [pid] | _ -> []) c1) in
     let c21, c22 = List.partition
@@ -1138,9 +1133,17 @@ let filter_forward c =
     if c21 = [] then
       c1
     else
-      aux (c1 @ c21) c22
+      aux (c1 @ (List.map
+        (function Cimp(c, [Cpred(Pred(pid, terms))]) ->
+          let lb = term_of (snd (List.assoc pid lbs)) in
+          if Wrapper.checksat lb then
+            Cimp(c, [Cpred(Pred(pid, terms))])
+          else
+let _ = print_term lb; print_string2 "\n" in
+            Cimp(c, [Cfalse])
+        | ac -> ac) c21)) c22
   in
-  let c' = aux c1 c2 in
+  let c' = aux [] c in
   (if Flag.debug then Format.printf "filter_forward: %d -> %d@." (List.length c) (List.length c'));
   c'
 
@@ -1185,7 +1188,11 @@ let test s defs traces =
          let _ = print_string2 "\n" in
        *)
 
-     let c''' = filter_forward (filter_backward c'') in
+     let c''' = (if !Flag.filter_forward then filter_forward else fun x -> x) (filter_backward c'') in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
+     let _ = if Flag.debug && Flag.print_constraints then print_constraint c''' in
+     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
+     let _ = if Flag.debug then save_as_dot "constraints_filtered.dot" c''' in
      let sol = solve_constr c''' in
      let _ = if Flag.debug then print_string2 "\nSolutions:\n" in
      let _ =
@@ -1201,7 +1208,7 @@ let test s defs traces =
               print_string2 "\n")
            sol in
      let _ =
-       if Flag.debug then
+       if false && Flag.debug then
          List.iter
            (fun ac ->
               if Wrapper.check [] (term_of_ac (subst_sol_ac sol ac))

@@ -4,7 +4,8 @@ let trecs = "./trecs"
 let cvc3 = "./cvc3"
 
 let merge_counterexample = ref true
-let split_free_var = ref true
+let split_free_var = ref false
+let filter_forward = ref true
 
 let wp_depth = ref 0
 let wp_max_num = ref 3
