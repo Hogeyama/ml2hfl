@@ -78,9 +78,9 @@ let rec cegar initial t1 ce_prev =
               if Flag.print_progress then print_msg "DONE!\n";
               Syntax.set_counter n;
               incr Flag.cegar_loop;
-
+(* ???
               Wrapper.close_cvc3 ();
-
+*)
               cegar initial t'' (ce::ce_prev)
           with
               Syntax.Feasible p -> t1, Some (ce,p)

@@ -84,7 +84,7 @@ let mapi f xs =
     aux 1 xs
 
 let weakest cond ds p =
-  (*‚±‚ê‚Íprogress‚µ‚È‚­‚È‚é mc91.ml if n <= 100 ...
+  (*This breaks progress mc91.ml if n <= 100 ...
     let nds = List.map (fun (p, b) -> Not p, Not b) ds in
     try
       let b = List.assoc p ds in
@@ -231,6 +231,69 @@ let weakest cond ds p =
 
 
 
+let list_of_set = PredSet.elements
+let list_of_setset setset = PredSetSet.fold (fun set xs -> PredSet.elements set :: xs) setset []
+let rec contradict_aux cond pbsetset1 pbsetset2 p =
+  let pbss1 = list_of_setset pbsetset1 in
+  let pbss2 = list_of_setset pbsetset2 in
+  if PredSetSet.is_empty pbsetset1
+  then
+    pbsetset2
+  else
+    let checkset pbset =
+      let ps = List.map fst (PredSet.elements pbset) in
+        Wrapper.check (cond @@ ps) p
+    in
+    let aux pbset =
+      let pbs = list_of_set pbset in
+      let f p pbsetset =
+        let pbset' = PredSet.remove p pbset in
+          if checkset pbset'
+          then PredSetSet.add pbset' pbsetset
+          else pbsetset
+      in
+        PredSet.fold f pbset PredSetSet.empty
+    in
+    let aux2 pbset (pbsetset1,pbsetset2) =
+      let pbs = list_of_set pbset in
+  let pbss1 = list_of_setset pbsetset1 in
+  let pbss2 = list_of_setset pbsetset2 in
+      let pbsetset = aux pbset in
+  let pbss = list_of_setset pbsetset in
+        if PredSetSet.is_empty pbsetset
+        then pbsetset1, PredSetSet.add pbset pbsetset2
+        else PredSetSet.union pbsetset pbsetset1, pbsetset2
+    in
+    let pbsetset1', pbsetset2' = PredSetSet.fold aux2 pbsetset1 (PredSetSet.empty,pbsetset2) in
+      contradict_aux cond pbsetset1' pbsetset2' p
+let contradict cond pbs =
+  let p = False in
+  let conj pbset =
+    let pbs = PredSet.elements pbset in
+      match pbs with
+        [] -> True
+      | (_,b)::pbs ->
+          List.fold_left (fun t (_,b) -> BinOp(And, t, b)) b pbs
+  in
+  let make_dnf pbsetset =
+    let pbsets = PredSetSet.elements pbsetset in
+      match pbsets with
+        [] -> False
+      | pbset::pbsets' -> List.fold_left (fun t pbset -> BinOp(Or, t, conj pbset)) (conj pbset) pbsets'
+  in
+  let f pbset pb = PredSet.add pb pbset in
+  let pbset = List.fold_left f PredSet.empty pbs in
+  let pbsetset = PredSetSet.singleton pbset in
+  let ps,_ = List.split pbs in
+    if Wrapper.check (cond@@ps) p
+    then
+      let pbsetset' = contradict_aux cond pbsetset PredSetSet.empty p in
+        make_dnf pbsetset'
+    else False
+
+
+
+
 
 
 let abst cond pbs p =
@@ -266,8 +329,10 @@ let abst_arg x (xs,xbss,pbs) =
 
 let rec coerce cond xbss pbs typ1 typ2 t =
   match typ1,typ2 with
-      TUnit,TUnit -> t
-    | TBool,TBool -> t
+      TUnit,TUnit ->
+        let p = contradict cond pbs in
+        let bot = new_var' "bot" in
+          If(p, Label(true, Letrec(bot, [], Var bot, Var bot)), t, Unknown)
     | TFun((x1,TInt ps1),typ12), TFun((x2,TInt ps2),typ22) ->
         let xs,xbss',pbs' = abst_arg x2 ([],xbss,pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
@@ -276,7 +341,7 @@ let rec coerce cond xbss pbs typ1 typ2 t =
           List.fold_right (fun x t -> Fun(x, t)) xs t'
     | TFun((x1,typ11),typ12), TFun((x2,typ21),typ22) ->
         let x = new_var' "x" in
-(*x‚ÍŠÖ”‚¾‚©‚çdepend‚Å‚«‚È‚¢H*)
+(*x cannot be depended because x is function? *)
           Fun(x, coerce cond xbss pbs typ12 typ22 (App(t, [coerce cond xbss pbs typ21 typ11 (Var x)])))
     | TUnknown,_ -> t
     | _,TUnknown -> t
@@ -602,7 +667,7 @@ let rec trans_eager2 c = function
           trans_eager2 c' t
       in
         c [List.fold_left aux c' ts []]
-  | If(t1, (Label _ as t2), (Label _ as t3), t4) ->
+  | If(t1, (Label _ as t2), t3, t4) ->
       let x = new_var' "b" in
       let f = new_var' "f" in
       let t1' = trans_eager_bool2 f t1 in
