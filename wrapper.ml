@@ -140,11 +140,11 @@ let check pre p =
     in
     uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
 
-(*
+(**)
   let env = List.map (fun v -> Typing.new_var v) fv in
   let p::pre, _  = List.split (List.map (fun p -> Typing.infer env p) (p::pre)) in
   let fv = List.map fst env in
-*)
+(**)
 
 (*
 List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;

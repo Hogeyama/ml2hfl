@@ -771,16 +771,16 @@ and normalize_ac ac =
   | Cfalse -> [ac]
 
 
+let get_pid c = List.map
+  (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
+  (List.filter (function Cpred(_) -> true | _ -> false) c)
 
 let save_as_dot filename cs =
   let es = Util.uniq (List.concat (List.map
     (fun ac ->
       match ac with
         Cimp(c1, c2) ->
-          let lhs = List.map
-            (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
-            (List.filter (function Cpred(_) -> true | _ -> false) c1)
-          in
+          let lhs = get_pid c1 in
           (match c2 with
                [Cfalse] -> List.map (fun pid -> "P" ^ string_of_int pid, "bot", "") lhs
              | [Cpred(Pred(pid2, _))] -> List.map (fun pid1 -> "P" ^ string_of_int pid1, "P" ^ string_of_int pid2, "") lhs
@@ -908,52 +908,53 @@ let get_lhs c =
       List.map
        (function Cpred(Pred(pid, _)) -> pid | _ -> assert false)
        (List.filter (function Cpred(_) -> true | _ -> false) c')
-    | _ -> assert false)
+    | _ -> print_constraint c; print_string2 "\n"; assert false)
     c)
 
+let eqs ids terms =
+  let xs = List.combine ids terms in
+  let xs1, xs2 = List.partition (fun (_, term) -> match term with Var(id) -> true | _ -> false) xs in
+    List.map (fun (id, Var(id')) -> id', Var(id)) xs1,
+  List.map (fun (id, term) -> Cterm(BinOp(Eq, Var(id), term))) xs 
+
+let rec subst_ac lbs ac =
+  match ac with
+      Cpred(Pred(pid, terms)) ->
+        let ids, c = get_lb pid terms lbs in
+        let fv = Util.uniq (Util.diff (fv c) ids) in
+          substc (List.combine ids terms) (substc (List.map (fun id -> id, new_var ()) fv) c)
+            (*if pos then [Cimp(eqs ids terms, c)] else (eqs ids terms) @ c*)
+    | Csub(rty1,rty2) -> assert false
+    | Cterm t -> [Cterm t]
+    | Cimp(c1,c2) -> [Cimp(List.flatten (List.map (fun ac -> subst_ac lbs ac) c1),
+                           List.flatten (List.map (fun ac -> subst_ac lbs ac) c2))]
+    | Cfalse -> [Cfalse]
+
+let subst_constr lbs c = Util.uniq (List.flatten (List.map (fun ac -> subst_ac lbs ac) c))
+
+let rec compute_lbs c lbs =
+  let c1, c2 = List.partition
+    (fun ac -> match ac with
+         Cimp(c1', c2') ->
+           (match c2' with
+                [Cpred _] ->
+                  List.for_all (function Cpred(Pred(pid, terms)) -> List.mem_assoc pid lbs | _ -> true) c1'
+              | _ -> false)
+       | _ -> assert false) c in
+    if c1 = [] then
+      lbs
+    else
+      let compute_lb ac =
+        match ac with
+            Cimp(cl, [Cpred(Pred(pid, terms))]) ->
+              let ids = List.map (fun _ -> let Var(id) = new_var () in id) terms in
+              let sub, eqs = eqs ids terms in
+                pid, (ids, elim ids (substc sub ((subst_constr lbs cl) @ eqs)))
+          | _ -> assert false
+      in
+        compute_lbs c2 (lbs @ (List.map compute_lb c1))
+
 let solve_constr c =
-  let eqs ids terms =
-    let xs = List.combine ids terms in
-    let xs1, xs2 = List.partition (fun (_, term) -> match term with Var(id) -> true | _ -> false) xs in
-      List.map (fun (id, Var(id')) -> id', Var(id)) xs1,
-    List.map (fun (id, term) -> Cterm(BinOp(Eq, Var(id), term))) xs 
-  in
-  let rec subst_ac lbs ac =
-    match ac with
-        Cpred(Pred(pid, terms)) ->
-          let ids, c = get_lb pid terms lbs in
-          let fv = Util.uniq (Util.diff (fv c) ids) in
-            substc (List.combine ids terms) (substc (List.map (fun id -> id, new_var ()) fv) c)
-              (*if pos then [Cimp(eqs ids terms, c)] else (eqs ids terms) @ c*)
-      | Csub(rty1,rty2) -> assert false
-      | Cterm t -> [Cterm t]
-      | Cimp(c1,c2) -> [Cimp(List.flatten (List.map (fun ac -> subst_ac lbs ac) c1),
-                             List.flatten (List.map (fun ac -> subst_ac lbs ac) c2))]
-      | Cfalse -> [Cfalse]
-  in
-  let subst_constr lbs c = Util.uniq (List.flatten (List.map (fun ac -> subst_ac lbs ac) c)) in
-  let rec compute_lbs c lbs =
-    let c1, c2 = List.partition
-      (fun ac -> match ac with
-           Cimp(c1', c2') ->
-             (match c2' with
-                  [Cpred _] ->
-                    List.for_all (function Cpred(Pred(pid, terms)) -> List.mem_assoc pid lbs | _ -> true) c1'
-                | _ -> false)
-         | _ -> assert false) c in
-      if c1 = [] then
-        lbs
-      else
-        let compute_lb ac =
-          match ac with
-              Cimp(cl, [Cpred(Pred(pid, terms))]) ->
-                let ids = List.map (fun _ -> let Var(id) = new_var () in id) terms in
-                let sub, eqs = eqs ids terms in
-                  pid, (ids, elim ids (substc sub ((subst_constr lbs cl) @ eqs)))
-            | _ -> assert false
-        in
-          compute_lbs c2 (lbs @ (List.map compute_lb c1))
-  in
   let lbs = compute_lbs c [] in
 
   let _ = if Flag.debug && Flag.print_lower_bound then print_string2 "\nLower bounds:\n" in
@@ -1022,8 +1023,7 @@ let solve_constr c =
                           let t =
                             List.fold_left
                               (fun t (_, (ids, t')) ->
-                                 BinOp(And, t,
-                                subst_term (List.combine ids terms) t'))
+                                 BinOp(And, t, subst_term (List.combine ids terms) t'))
                               True ts in
                             [Cterm t]
                   in
@@ -1045,7 +1045,22 @@ let solve_constr c =
                               print_string2 "\n"
                             end
                         in
-                        let t = interpolate ids' lb ub in
+                        let t =
+                          if not !Flag.split_free_var then
+                            interpolate ids' lb ub
+                          else
+                            let tmp = !Flag.use_nint in
+                            let _ = Flag.use_nint := true in
+                            let t1 = interpolate [] lb (substc (List.map (fun id -> id, new_var ()) ids') [Cimp(lb, ub)]) in
+                            let _ = Flag.use_nint := tmp in
+              let _ = if true(*t1 <> True*) then
+                let _ = print_string2 "hoge: " in
+                let _ = print_term t1 in
+                print_string2 "\n"
+              in
+                            let t2 = interpolate ids' lb [Cimp([Cterm(t1)], ub)] in
+                            BinOp(And, t1, t2)
+                        in
                         let sol = (pid', (ids', t))::sol in
                         let cub = [Cimp([Cterm(subst_term (List.combine ids' terms') t)], cub)] in
                           solve_aux' cub sol c
@@ -1079,7 +1094,7 @@ let add_pred pred c =
   in
     List.map aux c
 
-let filter_constr c =
+let filter_backward c =
   let c1, c2 = List.partition
     (fun ac -> match ac with
          Cimp(_, [Cfalse]) -> true
@@ -1100,8 +1115,34 @@ let filter_constr c =
     else
       aux (c1 @ c21) c22
   in
-  aux c1 c2
+  let c' = aux c1 c2 in
+  (if Flag.debug then Format.printf "filter_backward: %d -> %d@." (List.length c) (List.length c'));
+  c'
 
+let filter_forward c =
+  let lbs = compute_lbs c [] in
+  let c1, c2 = List.partition
+    (fun ac -> match ac with
+         Cimp(c', _) -> get_pid c' = []
+       | _ -> assert false) c
+  in
+  let rec aux c1 c2 =
+    let rhs = List.concat (List.map (function Cimp(_, [Cpred(Pred(pid, _))]) -> [pid] | _ -> []) c1) in
+    let c21, c22 = List.partition
+      (fun ac -> match ac with
+           Cimp(c', _) ->
+             List.for_all (fun pid -> List.mem pid rhs) (get_pid c')
+         | _ -> assert false)
+      c2
+    in
+    if c21 = [] then
+      c1
+    else
+      aux (c1 @ c21) c22
+  in
+  let c' = aux c1 c2 in
+  (if Flag.debug then Format.printf "filter_forward: %d -> %d@." (List.length c) (List.length c'));
+  c'
 
 
 let test s defs traces = 
@@ -1140,11 +1181,11 @@ let test s defs traces =
        (*
          let c''' = simplify_constr c'' in
          let _ = print_string2 "\nSimplified constraints:\n" in
-         let _ = print_constraint c'' in
+         let _ = print_constraint c''' in
          let _ = print_string2 "\n" in
        *)
 
-     let c''' = filter_constr c'' in
+     let c''' = filter_forward (filter_backward c'') in
      let sol = solve_constr c''' in
      let _ = if Flag.debug then print_string2 "\nSolutions:\n" in
      let _ =

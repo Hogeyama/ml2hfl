@@ -656,153 +656,152 @@ let rec canonize = function
 
 let part_eval t =
   let is_apply xs = function
-  Var x -> xs = [x]
+      Var x -> xs = [x]
     | App(t, ts) ->
-      let rec aux xs ts =
-        match xs,ts with
-          [], [] -> true
-        | x::xs',t::ts' -> Var x = t && aux xs' ts'
-        | _ -> false
-      in
-        aux xs (t::ts)
+        let rec aux xs ts =
+          match xs,ts with
+              [], [] -> true
+            | x::xs',t::ts' -> Var x = t && aux xs' ts'
+            | _ -> false
+        in
+          aux xs (t::ts)
     | _ -> false
   in
   let is_alias xs = function
-  Var x ->
-    if xs = []
-    then Some x
-    else None
-    | App(Var f, ts) ->
-      let rec aux xs ts =
-        match xs,ts with
-          [], [] -> true
-        | x::xs',t::ts' -> Var x = t && aux xs' ts'
-        | _ -> false
-      in
-        if aux xs ts
-        then Some f
+      Var x ->
+        if xs = []
+        then Some x
         else None
+    | App(Var f, ts) ->
+        let rec aux xs ts =
+          match xs,ts with
+              [], [] -> true
+            | x::xs',t::ts' -> Var x = t && aux xs' ts'
+            | _ -> false
+        in
+          if aux xs ts
+          then Some f
+          else None
     | _ -> None
   in
   let rec aux apply = function
-  Unit -> Unit
+      Unit -> Unit
     | True -> True
     | False -> False
     | Int n -> Int n
     | NInt x -> NInt x
     | Var x ->
-      if List.mem_assoc x apply
-      then
-        let xs, t1 = List.assoc x apply in
-          Let(x, xs, t1, Var x)
-      else Var x
+        if List.mem_assoc x apply
+        then
+          let xs, t1 = List.assoc x apply in
+            Let(x, xs, t1, Var x)
+        else Var x
     | Fun(x, t) ->
-      let t' = aux apply t in
-        Fun(x, t')
+        let t' = aux apply t in
+          Fun(x, t')
     | App(Var f, ts) ->
-      if List.mem_assoc f apply
-      then
-        match ts with
-          [] ->
-            let xs, t1 = List.assoc f apply in
-              Let(f, xs, t1, Var f)
-        | [t] -> t
-        | t::ts' -> App(t, ts')
-      else
-        let ts' = List.map (aux apply) ts in
-          App(Var f, ts')
-    | App(Fun(x,t), ts) ->
-      if is_apply [x] t
-      then
-        match ts with
-          [] -> Fun(x,t)
-        | [t] -> t
-        | t::ts' -> App(t, ts')
-      else
-        begin
+        if List.mem_assoc f apply
+        then
           match ts with
-            [True|False] ->
-              aux apply (subst x (List.hd ts) t)
-          | _ ->
-            let t' = aux apply t in
-            let ts' = List.map (aux apply) ts in
-              App(Fun(x,t'), ts')
-        end
+              [] ->
+                let xs, t1 = List.assoc f apply in
+                Let(f, xs, t1, Var f)
+            | [t] -> t
+            | t::ts' -> App(t, ts')
+        else
+          let ts' = List.map (aux apply) ts in
+            App(Var f, ts')
+    | App(Fun(x,t), ts) ->
+        if is_apply [x] t
+        then
+          match ts with
+              [] -> Fun(x,t)
+            | [t] -> t
+            | t::ts' -> App(t, ts')
+        else
+          begin
+            match ts with
+                [True|False] ->
+                  aux apply (subst x (List.hd ts) t)
+              | _ ->
+                  let t' = aux apply t in
+                  let ts' = List.map (aux apply) ts in
+                    App(Fun(x,t'), ts')
+          end
     | App(t, ts) ->
-      let t' = aux apply t in
-      let ts' = List.map (aux apply) ts in
-        App(t', ts')
+        let t' = aux apply t in
+        let ts' = List.map (aux apply) ts in
+          App(t', ts')
     | If(True, t2, _, _) ->
-      let t2' = aux apply t2 in
-        t2'
+        let t2' = aux apply t2 in
+          t2'
     | If(False, _, t3, _) ->
-      let t3' = aux apply t3 in
-        t3'
+        let t3' = aux apply t3 in
+          t3'
     | If(Unknown, _, _, t4) ->
-      let t4' = aux apply t4 in
-        t4'
+        let t4' = aux apply t4 in
+          t4'
     | If(Not t1, t2, t3, t4) ->
-      let t1' = aux apply t1 in
-      let t2' = aux apply t2 in
-      let t3' = aux apply t3 in
-      let t4' = aux apply t4 in
-        If(t1', t3', t2', t4')
-    | If(t1, t2, t3, t4) ->
-      if t2 = t3
-      then t2
-      else
         let t1' = aux apply t1 in
         let t2' = aux apply t2 in
         let t3' = aux apply t3 in
         let t4' = aux apply t4 in
-          If(t1', t2', t3', t4')
+          If(t1', t3', t2', t4')
+    | If(t1, t2, t3, t4) ->
+        if t2 = t3
+        then t2
+        else
+          let t1' = aux apply t1 in
+          let t2' = aux apply t2 in
+          let t3' = aux apply t3 in
+          let t4' = aux apply t4 in
+            If(t1', t2', t3', t4')
     | Branch(t1, t2) ->
-      let t1' = aux apply t1 in
-      let t2' = aux apply t2 in
-        Branch(t1', t2')
+        let t1' = aux apply t1 in
+        let t2' = aux apply t2 in
+          Branch(t1', t2')
     | Let(f, xs, t1, t2) ->
-      if is_apply xs t1
-      then
-        let t2' = aux apply t2 in
-          aux ((f,(xs,t1))::apply) t2'
-      else
-        begin
-          match is_alias xs t1 with
-            None ->  let t1' = aux apply t1 in
-                     let t2' = aux apply t2 in
-                       Let(f, xs, t1', t2')
-          | Some x ->
-            let t2' = aux apply t2 in
-              subst f (Var x) t2'
-        end
+        if is_apply xs t1
+        then
+          let t2' = aux apply t2 in
+            aux ((f,(xs,t1))::apply) t2'
+        else
+          begin
+            match is_alias xs t1 with
+                None ->  let t1' = aux apply t1 in
+                let t2' = aux apply t2 in
+                  Let(f, xs, t1', t2')
+              | Some x ->
+                  let t2' = aux apply t2 in
+                    subst f (Var x) t2'
+          end
     | Letrec(f, xs, t1, t2) ->
-      if is_apply xs t1
-      then
-        let t2' = aux apply t2 in
-          aux ((f,(xs,t1))::apply) t2'
-      else
-        begin
-          match is_alias xs t1 with
-            Some x when not (List.mem f (get_fv t1)) ->
-              let t2' = aux apply t2 in
-                subst f (Var x) t2'
-          | _ ->
-            let t1' = aux apply t1 in
-            let t2' = aux apply t2 in
-              Letrec(f, xs, t1', t2')
-        end
+        if is_apply xs t1
+        then
+          let t2' = aux apply t2 in
+            aux ((f,(xs,t1))::apply) t2'
+        else
+          begin
+            match is_alias xs t1 with
+                None ->  let t1' = aux apply t1 in
+                let t2' = aux apply t2 in
+                  Letrec(f, xs, t1', t2')
+              | Some x ->
+                  let t2' = aux apply t2 in
+                    subst f (Var x) t2'
+          end
     | BinOp(op, t1, t2) ->
-      let t1' = aux apply t1 in
-      let t2' = aux apply t2 in
-        BinOp(op, t1', t2')
+        let t1' = aux apply t1 in
+        let t2' = aux apply t2 in
+          BinOp(op, t1', t2')
     | Not t ->
-      let t' = aux apply t in
-        Not t'
+        let t' = aux apply t in
+          Not t'
     | Fail -> Fail
     | Unknown -> Unknown
     | Label(b, t) ->
-      let t' = aux apply t in
-        Label(b, t')
+        let t' = aux apply t in
+          Label(b, t')
   in
   let t' = aux [] t in
   let t'' = simplify t' in
