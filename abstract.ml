@@ -333,6 +333,8 @@ let rec coerce cond xbss pbs typ1 typ2 t =
         let p = contradict cond pbs in
         let bot = new_var' "bot" in
           If(p, Label(true, Letrec(bot, [], Var bot, Var bot)), t, Unknown)
+    | TBool, TBool ->
+        t
     | TFun((x1,TInt ps1),typ12), TFun((x2,TInt ps2),typ22) ->
         let xs,xbss',pbs' = abst_arg x2 ([],xbss,pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
@@ -345,7 +347,7 @@ let rec coerce cond xbss pbs typ1 typ2 t =
           Fun(x, coerce cond xbss pbs typ12 typ22 (App(t, [coerce cond xbss pbs typ21 typ11 (Var x)])))
     | TUnknown,_ -> t
     | _,TUnknown -> t
-    | _ -> assert false
+    | _,_ -> Format.printf "coerce:%a,%a@." (Syntax.print_typ Syntax.ML) typ1 (Syntax.print_typ Syntax.ML) typ2; assert false
 
 let rec abstract cond xbss pbs = function
     Unit, TUnit -> [Unit]

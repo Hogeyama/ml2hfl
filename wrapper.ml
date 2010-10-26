@@ -158,7 +158,7 @@ List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term CVC3 p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term CVC3 p ^ ";" in
   let q = "PUSH;"^types^assertion^query^"\nPOP;" in
-  let _ = if Flag.debug then Format.fprintf Format.std_formatter "check: %s@." q in
+  let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "check: %s@." q in
   let _ = Format.fprintf fm "%s" q in
   let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
@@ -217,7 +217,7 @@ let checksat p =
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ ";" in
 
   let q = "PUSH;"^types^query^"\nPOP;" in
-  let _ = if Flag.debug then Format.fprintf Format.std_formatter "checksat: %s@." q in
+  let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "checksat: %s@." q in
 
   let () = Format.fprintf fm "%s@?" q in
   let _ = Format.pp_print_flush fm () in
@@ -290,18 +290,37 @@ let rec rename_ident = function
 
 
 let get_solution p =
-  failwith "fix bug in get_solution";
+(*
   let cin = !cvc3in in
   let cout = !cvc3out in
-(*  let cin,cout = Unix.open_process Flag.cvc3 in*)
+*)
+(**)
+  let cin,cout = Unix.open_process Flag.cvc3 in
+(**)
   let fm = Format.formatter_of_out_channel cout in
 
-  let fv = get_fv2 p in
+  let fv =
+				let rec uniq = function
+				    [] -> []
+				  | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
+    in
+    uniq (get_fv2 p) in
+
+  let env = List.map (fun v -> Typing.new_var v) fv in
+  let p, _  = Typing.infer env p in
+  let fv = List.map fst env in
+
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ "; COUNTERMODEL;" in
-  let () = Format.fprintf fm "PUSH; %s%s\n POP;@?" types query in
+
+  let q = "PUSH;"^types^query^"\nPOP;" in
+  let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "get_solution: %s@." q in
+
+  let () = Format.fprintf fm "%s@?" q in
   let _ = Format.pp_print_flush fm () in
-(*  let () = close_out cout in*)
+(**)
+  let () = close_out cout in
+(**)
   let () = ignore (input_line cin); ignore (input_line cin); ignore (input_line cin) in
   let rec aux cin =
     try
@@ -315,13 +334,13 @@ let get_solution p =
     with End_of_file -> []
   in
   let ts = aux cin in
-(*
+(**)
   let () = close_in cin in
   let () =
     match Unix.close_process (cin, cout) with
         Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
   in
-*)
+(**)
     ts
 
 let rec simplify = function
@@ -350,10 +369,10 @@ let interpolation ts1 ts2 =
   let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
   let t1' = simplify t1 in
   let t2' = simplify t2 in
-  let () = if Flag.debug then Format.printf "t1: %s\n" (CsisatAstUtil.print_pred t1) in
-  let () = if Flag.debug then Format.printf "t2: %s\n" (CsisatAstUtil.print_pred t2) in
-  let () = if Flag.debug then Format.printf "t1': %s\n" (CsisatAstUtil.print_pred t1') in
-  let () = if Flag.debug then Format.printf "t2': %s\n" (CsisatAstUtil.print_pred t2') in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "t1: %s@." (CsisatAstUtil.print_pred t1) in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "t2: %s@." (CsisatAstUtil.print_pred t2) in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "t1': %s@." (CsisatAstUtil.print_pred t1') in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "t2': %s@." (CsisatAstUtil.print_pred t2') in
 
   let pred = try
       CsisatInterpolate.interpolate_with_proof t1' t2'
@@ -364,7 +383,7 @@ let interpolation ts1 ts2 =
   in
   let pred' = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff pred) in
   if Flag.print_interpolant then
-    print_string ((CsisatAstUtil.print_pred pred') ^ "\n\n")
+    print_string ((CsisatAstUtil.print_pred pred') ^ "@.@.")
   else ();
   let pred'' = from_pred pred' in
   (if Flag.debug then begin

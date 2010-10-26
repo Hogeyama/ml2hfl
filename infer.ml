@@ -1154,9 +1154,9 @@ let test s defs traces =
   trace2id := [];
   current_pid := 0;
 
-  let _ = if Flag.debug then print_string2 "\n Program: \n" in
+(*  let _ = if Flag.debug then print_string2 "\n Program: \n" in
   let _ = if Flag.debug then print_defs defs in
-  let _ = if Flag.debug then print_string2 "\n" in
+  let _ = if Flag.debug then print_string2 "\n" in*)
   let ti = new_tinfo() in
   let _ = register_tinfo s ti in
   let et = MyVar(s, ti) in
@@ -1188,7 +1188,7 @@ let test s defs traces =
          let _ = print_string2 "\n" in
        *)
 
-     let c''' = (if !Flag.filter_forward then filter_forward else fun x -> x) (filter_backward c'') in
+     let c''' = filter_backward ((if !Flag.filter_forward then filter_forward else fun x -> x) (filter_backward c'')) in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c''' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in

@@ -20,18 +20,19 @@ let nondet = ref false (* eager evaluation for branch *)
 let check_fun_arg_typ = false
 
 (* display or not *)
-let print_source = true
-let print_cps = true
+let print_source = false
+let print_cps = false
 let print_abst = true
 let print_abst_eager = false
 let print_type = true
 let print_hors = false
 let print_trecs_output = true
 let print_trace = false
-let print_interpolant = true
+let print_interpolant = false
 let print_progress = false
 let print_constraints = true
 let print_lower_bound = true
+let print_cvc3 = false
 
 let time_abstraction = ref 0.
 let time_mc = ref 0.
