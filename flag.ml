@@ -20,7 +20,7 @@ let nondet = ref false (* eager evaluation for branch *)
 let check_fun_arg_typ = false
 
 (* display or not *)
-let print_source = false
+let print_source = true
 let print_cps = false
 let print_abst = true
 let print_abst_eager = false

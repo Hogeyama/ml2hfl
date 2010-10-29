@@ -45,11 +45,11 @@ Format.printf "%a,%a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten ty
     | typ, TVar{contents = Some(typ')} -> unify typ typ'*)
     | TVar({contents = None} as r), typ
     | typ, TVar({contents = None} as r) -> r := Some typ
-    | _ ->
-        if Flag.debug
-        then Format.printf "%a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2);
+    | _ -> begin
+        (if Flag.debug
+        then Format.printf "unification error: %a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2));
         raise CannotUnify
-
+    end
 
 let dummy = new_var' "dummy"
 (*let dummy () = fst (new_var (new_var' "dummy"))*)

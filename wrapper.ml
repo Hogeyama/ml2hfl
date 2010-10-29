@@ -343,19 +343,6 @@ let get_solution p =
 (**)
     ts
 
-
-
-let isTInt = function
-    TInt _ -> true
-  | _ -> false
-
-
-let equiv cond t1 t2 =
-  check (t1::cond) t2 && check (t2::cond) t1
-
-
-
-(*
 let rec simplify = function
     CsisatAst.Leq(CsisatAst.Constant n, CsisatAst.Coeff(m,e)) ->
       if m > 0.
@@ -367,90 +354,6 @@ let rec simplify = function
   | CsisatAst.Or es -> CsisatAst.Or (List.map simplify es)
   | CsisatAst.Not e -> CsisatAst.Not (simplify e)
   | p -> p
-*)
-
-let rec gcd_arith_exp prev curr =
-  if List.sort compare prev = List.sort compare curr
-  then
-    let aux = function
-        Int n -> abs n
-      | BinOp(Mult, Int n, t)
-      | BinOp(Mult, t, Int n) -> abs n
-      | _ -> 1
-    in
-      List.fold_left gcd 0 (List.rev_map aux curr)
-  else
-    let aux = function
-        BinOp((Add|Sub), t1, t2) -> [t1; t2]
-      | t -> [t]
-    in
-      gcd_arith_exp curr (rev_map_flatten aux curr)
-let gcd_arith_exp ts = gcd_arith_exp [] ts
-
-
-let rec div_arith_exp n = function
-    Int m -> assert (m mod n = 0); Int (m/n)
-  | BinOp(Add, t1, t2) ->
-      let t1' = div_arith_exp n t1 in
-      let t2' = div_arith_exp n t2 in
-        BinOp(Add, t1', t2')
-  | BinOp(Mult, Int m, t)
-  | BinOp(Mult, t, Int m) ->
-      assert (m mod n = 0);
-      BinOp(Mult, Int (m/n), t)
-  | _ -> assert false
-let div_arith_exp n t =
-  if n = 1
-  then t
-  else div_arith_exp n t
-
-
-let rec simplify_bool_exp precise t =
-  match t with
-      True
-    | False
-    | Var _ -> t
-    | BinOp(And|Or as op, t1, t2) ->
-        if precise && equiv [] t t1 then simplify_bool_exp precise t1
-        else if precise && equiv [] t t2 then simplify_bool_exp precise t2
-        else
-          BinOp(op, simplify_bool_exp precise t1, simplify_bool_exp precise t2)
-    | BinOp(_, (True|False), _) -> t
-    | BinOp(_, _, (True|False)) -> t
-    | BinOp(Eq, Int 0, BinOp(Mult, Int n, t))
-    | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) -> (*unsound if n=0?*)
-        BinOp(Eq, t, Int 0)
-    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
-        let d = gcd_arith_exp [t1;t2] in
-          if d = 0
-          then BinOp(op, t1, t2)
-          else
-            let t1' = div_arith_exp d t1 in
-            let t2' = div_arith_exp d t2 in
-              BinOp(op, t1', t2')
-    | Not t -> Not (simplify_bool_exp precise t)
-    | _ -> assert false
-
-
-
-
-
-let rec replace_contradiction = function
-    True -> True
-  | False -> False
-  | BinOp((Eq|Lt|Gt|Leq|Geq), _, _) as t ->
-      if check [t] False
-      then False
-      else t
-  | BinOp(And|Or as op, t1, t2) ->
-      let t1' = replace_contradiction t1 in
-      let t2' = replace_contradiction t2 in
-        BinOp(op, t1', t2')
-  | Not t ->
-      let t' = replace_contradiction t in
-        Not t'
-  | _ -> assert false
-
 
 exception Satisfiable
 
@@ -460,25 +363,27 @@ let interpolation ts1 ts2 =
     CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "tru"]), CsisatAst.Variable "fls");
     CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "fls"]), CsisatAst.Variable "tru")]
   in
-  let ts1' = List.map (simplify_bool_exp false) ts1 in
-  let ts2' = List.map (simplify_bool_exp false) ts2 in
-  let ts1'' = List.map to_pred ts1' in
-  let ts2'' = List.map to_pred ts2' in
-  let t1 = CsisatAstUtil.simplify (CsisatAst.And (bool_theory@@ts1'')) in
-  let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2'') in
-  let () = if Flag.debug && Flag.print_interpolant then Format.printf "t1: %s@." (CsisatAstUtil.print_pred t1) in
-  let () = if Flag.debug && Flag.print_interpolant then Format.printf "t2: %s@." (CsisatAstUtil.print_pred t2) in
+  let ts1' = List.map to_pred ts1 in
+  let ts2' = List.map to_pred ts2 in
+  let t1 = CsisatAstUtil.simplify (CsisatAst.And (bool_theory@@ts1')) in
+  let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
+  let t1' = simplify t1 in
+  let t2' = simplify t2 in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t1: %s@." (CsisatAstUtil.print_pred t1) in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2) in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t1': %s@." (CsisatAstUtil.print_pred t1') in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t2': %s@." (CsisatAstUtil.print_pred t2') in
 
   let pred = try
-      CsisatInterpolate.interpolate_with_proof t1 t2
+      CsisatInterpolate.interpolate_with_proof t1' t2'
     with CsisatAst.SAT_FORMULA(pred) -> begin
-       if Flag.debug then print_string ("\n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");
+       (*if Flag.debug then print_string ("satisfiable: \n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");*)
        raise Satisfiable
     end
   in
   let pred' = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff pred) in
-  if Flag.print_interpolant then
-    print_string ((CsisatAstUtil.print_pred pred') ^ "@.@.")
+  if Flag.debug && Flag.print_interpolant then
+    Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
   else ();
   let pred'' = from_pred pred' in
   (if Flag.debug then begin
@@ -488,10 +393,18 @@ let interpolation ts1 ts2 =
     pred''
 
 
+let iff t1 t2 = BinOp(Or, BinOp(And,t1,t2), BinOp(And,Not t1,Not t2))
 
 
 
 
+let isTInt = function
+    TInt _ -> true
+  | _ -> false
+
+
+let equiv cond t1 t2 =
+  check (t1::cond) t2 && check (t2::cond) t1
 
 
 
@@ -629,9 +542,99 @@ let rec remove_type = function
         If(t1', t2', t3')
 *)
 
+let rec gcd_arith_exp prev curr =
+  if List.sort compare prev = List.sort compare curr
+  then
+    let aux = function
+        Int n -> abs n
+      | BinOp(Mult, Int n, t)
+      | BinOp(Mult, t, Int n) -> abs n
+      | _ -> 1
+    in
+      List.fold_left gcd 0 (List.rev_map aux curr)
+  else
+    let aux = function
+        BinOp((Add|Sub), t1, t2) -> [t1; t2]
+      | t -> [t]
+    in
+      gcd_arith_exp curr (rev_map_flatten aux curr)
+let gcd_arith_exp ts = gcd_arith_exp [] ts
 
 
+let rec div_arith_exp n = function
+    Int m -> assert (m mod n = 0); Int (m/n)
+  | BinOp(Add, t1, t2) ->
+      let t1' = div_arith_exp n t1 in
+      let t2' = div_arith_exp n t2 in
+        BinOp(Add, t1', t2')
+  | BinOp(Mult, Int m, t)
+  | BinOp(Mult, t, Int m) ->
+      assert (m mod n = 0);
+      BinOp(Mult, Int (m/n), t)
+  | _ -> assert false
+let div_arith_exp n t =
+  if n = 1
+  then t
+  else div_arith_exp n t
 
+
+let rec simplify_bool_exp t =
+  match t with
+      True
+    | False
+    | Var _ -> t
+    | BinOp(And|Or as op, t1, t2) ->
+        if equiv [] t t1 then simplify_bool_exp t1
+        else if equiv [] t t2 then simplify_bool_exp t2
+        else
+          BinOp(op, simplify_bool_exp t1, simplify_bool_exp t2)
+    | BinOp(_, (True|False), _) -> t
+    | BinOp(_, _, (True|False)) -> t
+    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
+      let t1' = simplify_exp t1 in
+      let t2' = simplify_exp t2 in
+      BinOp(op, t1', t2')
+(*
+    | BinOp(Eq, Int 0, BinOp(Mult, Int n, t))
+    | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) -> (*unsound if n=0?*)
+        BinOp(Eq, t, Int 0)
+    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
+        let d = gcd_arith_exp [t1;t2] in
+        let t1' = div_arith_exp d t1 in
+        let t2' = div_arith_exp d t2 in
+          BinOp(op, t1', t2')
+*)
+    | Not t -> Not (simplify_bool_exp t)
+    | _ -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
+and simplify_exp t =
+  match t with
+    Var _ -> t
+  | Int _ -> t
+  | NInt _ -> t
+  | BinOp(Add, t1, t2) ->
+      let t1' = simplify_exp t1 in
+      let t2' = simplify_exp t2 in
+      (match t1', t2' with
+        Int(n), Int(m) -> Int(n+m)
+      | Int(0), t | t, Int(0) -> t
+      | _, _ -> BinOp(Add, t1', t2'))
+  | BinOp(Sub, t1, t2) ->
+      let t1' = simplify_exp t1 in
+      let t2' = simplify_exp t2 in
+      (match t1', t2' with
+        Int(n), Int(m) -> Int(n-m)
+      | Int(0), _ -> BinOp(Mult, Int(-1), t2')
+      | t, Int(0) -> t
+      | _, _ -> BinOp(Sub, t1', t2'))
+  | BinOp(Mult, t1, t2) ->
+      let t1' = simplify_exp t1 in
+      let t2' = simplify_exp t2 in
+      (match t1', t2' with
+        Int(n), Int(m) -> Int(n * m)
+      | Int(0), t | t, Int(0) -> Int(0)
+      | Int(1), t | t, Int(1) -> t
+      | _, _ -> BinOp(Mult, t1', t2'))
+  | _ -> simplify_bool_exp t
 
 
 

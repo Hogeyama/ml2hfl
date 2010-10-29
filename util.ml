@@ -145,3 +145,10 @@ let save_as_dot filename vertices edges =
     edges;
   Format.fprintf ocf "}@]@?";
   close_out oc
+
+let rec classify eqrel xs =
+ match xs with
+   [] -> []
+ | x::xs' ->
+     let t, f = List.partition (fun x' -> eqrel x x') xs' in
+     (x::t)::(classify eqrel f)

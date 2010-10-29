@@ -136,7 +136,7 @@ let main in_channel =
 *)
 
   let cps =
-    let defs, t = Syntax.lift cps' in
+    let defs, t = Syntax.lift2 cps' in
 (*
       Typing.typing_defs defs t;
 *)

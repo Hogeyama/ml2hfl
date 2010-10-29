@@ -197,7 +197,7 @@ let trans c t =
   let t' =
     try
       Typing.typing (trans1 c t)
-    with _ ->
+    with Typing.CannotUnify ->
       Typing.typing (trans0 c t)
   in
   let t'' = inlining !funs [] t' in
