@@ -199,6 +199,31 @@ let rec subst_type x t = function
 
 
 
+let rec get_nint = function
+    Unit -> []
+  | True -> []
+  | False -> []
+  | Unknown -> []
+  | Int n -> []
+  | NInt x -> [x]
+  | Var x -> []
+  | App(t, ts) -> get_nint t @@@ (rev_map_flatten get_nint ts)
+  | If(t1, t2, t3, t4) -> get_nint t1 @@@ get_nint t2 @@@ get_nint t3 @@@ get_nint t4
+  | Branch(t1, t2) -> get_nint t1 @@@ get_nint t2
+  | Let(f, xs, t1, t2) ->
+      let fv_t1 = diff (get_nint t1) xs in
+      let fv_t2 = diff (get_nint t2) [f] in
+        fv_t1 @@@ fv_t2
+  | Letrec(f, xs, t1, t2) ->
+      let fv_t1 = diff (get_nint t1) (f::xs) in
+      let fv_t2 = diff (get_nint t2) [f] in
+        fv_t1 @@@ fv_t2
+  | BinOp(op, t1, t2) -> get_nint t1 @@@ get_nint t2
+  | Not t -> get_nint t
+  | Fail -> []
+  | Fun(x,t) -> diff (get_nint t) [x]
+  | Label(_,t) -> get_nint t
+
 let rec get_fv = function
     Unit -> []
   | True -> []
@@ -449,6 +474,12 @@ let rec simplify = function
   | Label(b,t) ->
       let t' = simplify t in
         Label(b, t')
+
+let imply t1 t2 = BinOp(Or, Not t1, t2)
+let and_list ts = match ts with
+  [] -> True
+| [t] -> t
+| t::ts -> List.fold_left (fun t1 t2 -> BinOp(And, t1, t2)) t ts
 
 let rec lift_aux xs = function
     Unit -> [], Unit

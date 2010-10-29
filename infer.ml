@@ -811,21 +811,21 @@ and term_of_ac ac =
 
 let interpolate ids c1 c2 =
   let ts1 = terms_of c1 in
-  let get_fv' = if !Flag.use_nint then get_fv else get_fv2 in
+  let get_fv' = (*if !Flag.use_nint then*) get_fv (*else get_fv2*) in
   let bv = list_diff (List.flatten (List.map get_fv' ts1)) ids in
   let ts2 = [subst_term (List.map (fun id -> id, new_var ()) bv) (Not (term_of c2))] in
   let t =
     try
       Wrapper.interpolation ts1 ts2
     with Wrapper.Satisfiable ->
-      if not !Flag.use_nint
+      (*if not !Flag.use_nint
       then
         let bv = list_diff (List.flatten (List.map get_fv ts1)) ids in
         let ts2 = [subst_term (List.map (fun id -> id, new_var ()) bv) (Not (term_of c2))] in
           try
             Wrapper.interpolation ts1 ts2
           with Assert_failure _ -> raise Untypable
-      else raise Untypable
+      else*) raise Untypable
   in
     (*  print_term t;*)
     t
@@ -918,11 +918,9 @@ let rec subst_ac lbs ac =
         let eqs = List.concat (List.map2 (fun id term -> if Var(id) = term then [] else [Var(id), term]) ids terms) in
         try
           let cond, eqs', terms' = List.assoc pid lbs in
-          List.map
-            (fun t -> Cterm(t))
-            (cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) (eqs @ eqs')) @ (List.map2 (fun id term -> BinOp(Eq, Var(id), term)) ids terms'))
+          and_list (cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) (eqs @ eqs')) @ (List.map2 (fun id term -> BinOp(Eq, Var(id), term)) ids terms'))
         with Not_found ->
-          [Cterm(False)]
+          False
       end
 (*
         let ids, c = get_lb pid terms lbs in
@@ -931,12 +929,13 @@ let rec subst_ac lbs ac =
             (*if pos then [Cimp(eqs ids terms, c)] else (eqs ids terms) @ c*)
 *)
     | Csub(rty1,rty2) -> assert false
-    | Cterm t -> [Cterm t]
-    | Cimp(c1,c2) -> [Cimp(List.flatten (List.map (fun ac -> subst_ac lbs ac) c1),
-                           List.flatten (List.map (fun ac -> subst_ac lbs ac) c2))]
-    | Cfalse -> [Cfalse]
+    | Cterm t -> t
+    | Cimp(c1,c2) -> assert false
+                   (*imply (and_list (Util.uniq (List.map (fun ac -> subst_ac lbs ac) c1)))
+                           (and_list (Util.uniq (List.map (fun ac -> subst_ac lbs ac) c2)))*)
+    | Cfalse -> False
 
-let subst_constr lbs c = Util.uniq (List.flatten (List.map (fun ac -> subst_ac lbs ac) c))
+(*let subst_constr lbs c = Util.uniq (List.concat (List.map (fun ac -> subst_ac lbs ac) c))*)
 
 let rec compute_lbs c lbs =
   let c1, c2 = List.partition
@@ -1072,18 +1071,13 @@ let solve_constr c =
                 Cimp(c, [cc]) ->
                   let cub =
                     match cc with
-                        Cfalse -> [Cfalse]
+                        Cfalse -> False
                       | Cpred(Pred(pid, terms)) ->
                           let ts = List.filter (fun (pid', _) -> pid = pid') solution in
-                          let t =
-                            List.fold_left
-                              (fun t (_, (ids, t')) ->
-                                 BinOp(And, t, subst_term (List.combine ids terms) t'))
-                              True ts in
-                            [Cterm t]
+                            and_list (List.map (fun (_, (ids, t)) -> subst_term (List.combine ids terms) t) ts)
                   in
                   let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) c in
-                  let cub = [Cimp(c2, cub)] in
+                  let cub = List.fold_right (function (Cterm(t)) -> fun cub -> imply t cub) c2 cub in
                   let rec solve_aux' cub sol = function
                       [] -> sol
                     | (Cpred(Pred(pid', terms')))::c ->
@@ -1109,15 +1103,8 @@ let solve_constr c =
             print_constraint lb;
             print_string2 "\n";
 *)
-
-                        let ub = [Cimp((List.map (fun (t1, t2) -> Cterm(BinOp(Eq, t1, t2))) eqs) @ (subst_constr lbs c), cub)] in
-
-(*
-            print_string2 "ub:";
-            print_constraint ub;
-            print_string2 "\n";
-*)
-
+                        let dubs = List.map (fun ac -> subst_ac lbs ac) c in
+                        let cub = imply (and_list (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs)) cub in
 (*
                         let ids', lb = get_lb pid' terms' lbs in
                         let sub, eqs = eqs ids' terms' in
@@ -1137,15 +1124,29 @@ let solve_constr c =
                         in
 (**)
                         let t =
-                          if not !Flag.split_free_var then
-                            interpolate ids' lb ub
-                          else
+                          (*if not !Flag.split_free_var then*)
+                            let rename_nint t =
+                              subst_term (List.map (fun id -> id, new_var ()) (get_nint t)) t
+                            in
+                            try
+                              let dubs = List.map rename_nint dubs in
+                              let cub = rename_nint cub in
+		                            let ub = [Cimp(List.map (fun t -> Cterm(t)) dubs, [Cterm(cub)])] in
+                              interpolate ids' lb ub
+                            with Untypable ->
+                              try
+                                let ub = [Cterm(rename_nint (imply (and_list dubs) cub))] in
+                                interpolate ids' lb ub
+                              with Untypable ->
+  		                            let ub = [Cimp(List.map (fun t -> Cterm(t)) dubs, [Cterm(cub)])] in
+                                interpolate ids' lb ub
+                          (*else
                             try
                               let tmp = !Flag.use_nint in
                               let _ = Flag.use_nint := true in
                               let t1 = interpolate [] lb (substc (List.map (fun id -> id, new_var ()) ids') [Cimp(lb, ub)]) in
                               let _ = Flag.use_nint := tmp in
-              let _ = if Flag.debug && true(*t1 <> True*) then
+              let _ = if Flag.debug && t1 <> True then
                 let _ = print_string2 "hoge: " in
                 let _ = print_term t1 in
                 print_string2 "\n"
@@ -1153,11 +1154,10 @@ let solve_constr c =
                               let t2 = interpolate ids' lb [Cimp([Cterm(t1)], ub)] in
                               BinOp(And, t1, t2)
                             with Untypable ->
-                              interpolate ids' lb ub
+                              interpolate ids' lb ub*)
                         in
                         let sol = (pid', (ids', t))::sol in
-                        let cub = [Cimp([Cterm(subst_term (List.combine ids' terms') t)], cub)] in
-                          solve_aux' cub sol c
+                          solve_aux' (imply (subst_term (List.combine ids' terms') t) cub) sol c
                   in
                     solve_aux' cub [] c1
               | _ -> print_ac ac; assert false)
