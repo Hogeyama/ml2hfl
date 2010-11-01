@@ -193,22 +193,72 @@ let rec inlining funs defs = function
     
 
 
-let trans c t =
-  let t' =
-    try
-      Typing.typing (trans1 c t)
-    with Typing.CannotUnify ->
-      Typing.typing (trans0 c t)
-  in
-  let t'' = inlining !funs [] t' in
-    remove_unused t''
+let rec replace_part_app = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | Var x -> Var x
+  | Fun _ -> assert false
+  | App(f, ts) ->
+      let f' = replace_part_app f in
+      let ts' = List.map replace_part_app ts in
+      let typ = Typing.get_typ (App(f, ts)) in
+      let args = get_args typ in
+        begin
+        match args with
+            [] -> App(f', ts')
+          | _ ->
+            let g = new_var' "f" in
+            let ts'' = List.map (fun x -> Var x) args in
+              Let(g, args, App(f', ts'@ts''), Var g)
+        end
+  | If(t1, t2, t3, t4) ->
+      let t1' = replace_part_app t1 in
+      let t2' = replace_part_app t2 in
+      let t3' = replace_part_app t3 in
+      let t4' = replace_part_app t4 in
+        If(t1', t2', t3', t4')
+  | Branch(t1, t2) ->
+      let t1' = replace_part_app t1 in
+      let t2' = replace_part_app t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let t1' = replace_part_app t1 in
+      let t2' = replace_part_app t2 in
+        Let(f, xs, t1', t2')
+  | Letrec(f, xs, t1, t2) ->
+      let t1' = replace_part_app t1 in
+      let t2' = replace_part_app t2 in
+        Letrec(f, xs, t1', t2')
+  | BinOp(op, t1, t2) ->
+      let t1' = replace_part_app t1 in
+      let t2' = replace_part_app t2 in
+        BinOp(op, t1', t2')
+  | Not t ->
+      let t' = replace_part_app t in
+        Not t'
+  | Fail -> Fail
+  | Label(b,t) ->
+      let t' = replace_part_app t in
+        Label(b, t')
 
 
 
 let trans t =
-  let t' = trans (fun x -> x) t in
-  let t'' = part_eval t' in
-    t''
+  let t1 = Typing.typing t in
+  let t2 = replace_part_app t1 in
+  let t3 =
+    try
+      Typing.typing (trans1 (fun x -> x) t2)
+    with Typing.CannotUnify -> assert false
+  in
+  let t4 = inlining !funs [] t3 in
+  let t5 = remove_unused t4 in
+  let t6 = part_eval t5 in
+    t6
 
 
 

@@ -220,6 +220,8 @@ let rec simplify = function
 let rec match_arg_typ typ xs =
   match flatten typ,xs with
       TUnit,[] -> TUnit
+    | TInt ps,[] -> TInt ps
+    | TBool,[] -> TBool
     | TFun(_,_),[] -> typ
     | TFun(_,typ2),x::xs' ->
         let typ2' = match_arg_typ typ2 xs' in
@@ -345,4 +347,34 @@ Format.printf "<%a:%a>@." (print_term_fm ML false) (Var f') (print_typ ML) (flat
 
 
 
+let rec get_typ = function
+    Unit -> TUnit
+  | True -> TBool
+  | False -> TBool
+  | Unknown -> TBool
+  | Int n -> TInt []
+  | NInt x -> x.typ
+  | Var x -> x.typ
+  | Fun(x, t) -> TFun ((x,x.typ), get_typ t)
+  | App(f, ts) ->
+      let rec aux typ ts =
+        match typ,ts with
+            _,[] -> typ
+          | TFun(_,typ2), t::ts' -> aux typ2 ts'
+          | _ -> assert false
+      in
+        aux (get_typ f) ts
+  | If(_, t2, _, _) ->
+      get_typ t2
+  | Branch(t1, _) ->
+      get_typ t1
+  | Let(_, _, _, t2) ->
+      get_typ t2
+  | Letrec(_, _, _, t2) ->
+      get_typ t2
+  | BinOp((Eq|Lt|Gt|Leq|Geq|And|Or), _, _) -> TBool
+  | BinOp((Add|Sub|Mult), _, _) -> TInt []
+  | Not _ -> TBool
+  | Fail -> TFun((dummy,TUnit), TUnit)
+  | Label(_,t) -> get_typ t
 
