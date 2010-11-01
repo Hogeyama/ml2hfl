@@ -327,14 +327,19 @@ let abst_arg x (xs,xbss,pbs) =
     | _ -> x::xs, xbss, pbs
 
 
+
+let filter_fail cond pbs t =
+  let p = contradict cond pbs in
+  let bot = new_var' "bot" in
+    If(p, Label(true, Letrec(bot, [], Var bot, Var bot)), t, Unknown)
+
+
+
+
 let rec coerce cond xbss pbs typ1 typ2 t =
   match typ1,typ2 with
-      TUnit,TUnit ->
-        let p = contradict cond pbs in
-        let bot = new_var' "bot" in
-          If(p, Label(true, Letrec(bot, [], Var bot, Var bot)), t, Unknown)
-    | TBool, TBool ->
-        t
+      TUnit,TUnit -> filter_fail cond pbs t
+    | TBool, TBool -> t
     | TFun((x1,TInt ps1),typ12), TFun((x2,TInt ps2),typ22) ->
         let xs,xbss',pbs' = abst_arg x2 ([],xbss,pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
@@ -429,13 +434,13 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
   | Let(f, xs, t1, t2), typ ->
       let xs',xbss',pbs' = List.fold_right abst_arg xs ([],xbss,pbs) in
       let () = assert (List.length (get_args f.typ) = List.length xs) in
-      let t1' = hd (abstract cond xbss' pbs' (t1,TUnit)) in
+      let t1' = filter_fail cond pbs' (hd (abstract cond xbss' pbs' (t1,TUnit))) in
       let t2' = hd (abstract cond xbss pbs (t2,typ)) in
         [Let(f, xs', t1', t2')]
   | Letrec(f, xs, t1, t2), typ ->
       let xs',xbss',pbs' = List.fold_right abst_arg xs ([],xbss,pbs) in
       let () = assert (List.length (get_args f.typ) = List.length xs) in
-      let t1' = hd (abstract cond xbss' pbs' (t1,TUnit)) in
+      let t1' = filter_fail cond pbs' (hd (abstract cond xbss' pbs' (t1,TUnit))) in
       let t2' = hd (abstract cond xbss pbs (t2,typ)) in
         [Letrec(f, xs', t1', t2')]
   | Not t, _ ->
