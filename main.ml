@@ -69,9 +69,10 @@ let rec cegar initial t1 ce_prev =
               then
                 raise CannotDiscoverPredicate
               else
-                let defs,t' = Syntax.lift (if !Flag.merge_counterexample then initial else t1) in
+                let defs,t' = Syntax.lift t1 in
                 let () = Feasibility.check ce defs t' in
                 let () = if Flag.debug then Format.printf "ce:%d" (List.length ce) in
+                let t1 = if !Flag.merge_counterexample then initial else t1 in
                 Refine.refine (if !Flag.merge_counterexample then ce::ce_prev else [ce]) defs t' t1
             in
               add_time tmp Flag.time_cegar;

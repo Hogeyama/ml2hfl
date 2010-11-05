@@ -158,6 +158,10 @@ let model_check t =
       model_check_aux (funs,spec)
     with Assert_failure(s,_,_) when s <> "" ->
       assert false
+    | End_of_file -> begin
+      printf "TRecS failed@.";
+      assert false
+    end
 
 
 

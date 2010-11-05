@@ -905,11 +905,14 @@ let get_lhs c =
     | _ -> print_constraint c; print_string2 "\n"; assert false)
     c)
 
+
+(*
 let eqs ids terms =
   let xs = List.combine ids terms in
   let xs1, xs2 = List.partition (fun (_, term) -> match term with Var(id) -> true | _ -> false) xs in
     List.map (fun (id, Var(id')) -> id', Var(id)) xs1,
   List.map (fun (id, term) -> Cterm(BinOp(Eq, Var(id), term))) xs 
+*)
 
 let rec subst_ac lbs ac =
   match ac with
@@ -1046,7 +1049,12 @@ let solve_constr c =
                 let sol1, sol2 = List.partition (fun (pid', _) -> pid = pid') sol' in
                 let t = List.fold_left
                   (fun t (_, (ids', t')) ->
+(*
+                    let t' = imply (and_list (List.map2 (fun id1 id2 -> BinOp(Eq, Var(id1), Var(id2))) ids' ids)) t' in
+*)
+(**)
                     let t' = subst_term (List.combine ids' (List.map (fun id -> Var(id)) ids)) t' in
+(**)
                     (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) BinOp(And, t, t'))
                   t sol1
                 in
@@ -1094,15 +1102,6 @@ let solve_constr c =
                             [Cterm(False)]
                         in
 
-(*
-            print_string2 "ids:";
-            print_terms (List.map (fun id -> Var(id)) ids');
-            print_string2 "\n";
-
-            print_string2 "lb:";
-            print_constraint lb;
-            print_string2 "\n";
-*)
                         let dubs = List.map (fun ac -> subst_ac lbs ac) c in
                         let cub = imply (and_list (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs)) cub in
 (*
@@ -1123,6 +1122,15 @@ let solve_constr c =
                             end
                         in
 (**)
+(**)
+            print_constraint [ac];
+            print_string2 "ids:";
+            print_terms (List.map (fun id -> Var(id)) ids');
+            print_string2 "\n";
+            print_string2 "lb:";
+            print_constraint lb;
+            print_string2 "\n";
+(**)
                         let t =
                           (*if not !Flag.split_free_var then*)
                             let rename_nint t =
@@ -1132,12 +1140,24 @@ let solve_constr c =
                               let dubs = List.map rename_nint dubs in
                               let cub = rename_nint cub in
 		                            let ub = [Cimp(List.map (fun t -> Cterm(t)) dubs, [Cterm(cub)])] in
+List.iter2 (fun cc (Cpred(Pred(pid, terms))) -> 
+            print_pname pid;
+            print_string2 "(";
+            print_terms terms;
+            print_string2 ")";
+            print_string2 ":\n";
+            print_constraint [Cterm(cc)];
+
+) dubs c;
+            print_string2 "ub:";
+            print_constraint ub;
+            print_string2 "\n";
                               interpolate ids' lb ub
                             with Untypable ->
-                              try
+                              (*try
                                 let ub = [Cterm(rename_nint (imply (and_list dubs) cub))] in
                                 interpolate ids' lb ub
-                              with Untypable ->
+                              with Untypable ->*)
   		                            let ub = [Cimp(List.map (fun t -> Cterm(t)) dubs, [Cterm(cub)])] in
                                 interpolate ids' lb ub
                           (*else
@@ -1157,6 +1177,9 @@ let solve_constr c =
                               interpolate ids' lb ub*)
                         in
                         let sol = (pid', (ids', t))::sol in
+(*
+                          solve_aux' (imply (and_list (t::(List.map2 (fun id term -> BinOp(Eq, Var(id), term)) ids' terms'))) cub) sol c
+*)
                           solve_aux' (imply (subst_term (List.combine ids' terms') t) cub) sol c
                   in
                     solve_aux' cub [] c1
@@ -1284,7 +1307,7 @@ let test s defs traces =
 (*     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nNormalized constraints:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c'' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in*)
-     let _ = if Flag.debug then save_as_dot "constraints.dot" c'' in
+     let _ = if Flag.debug then save_as_dot ("constraints" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c'' in
        (*
          let c''' = simplify_constr c'' in
          let _ = print_string2 "\nSimplified constraints:\n" in
@@ -1292,11 +1315,11 @@ let test s defs traces =
          let _ = print_string2 "\n" in
        *)
 
-     let c''' = filter_backward ((if !Flag.filter_forward then filter_forward else fun x -> x) (filter_backward c'')) in
+     let c''' = List.rev (Util.uniq (filter_backward ((if !Flag.filter_forward then filter_forward else fun x -> x) (filter_backward c'')))) in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c''' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
-     let _ = if Flag.debug then save_as_dot "constraints_filtered.dot" c''' in
+     let _ = if Flag.debug then save_as_dot ("constraints_filtered" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c''' in
      let sol = solve_constr c''' in
      let _ = if Flag.debug then print_string2 "\nSolutions:\n" in
      let _ =

@@ -3,7 +3,7 @@ let log_dir = "/home/ryosuke/web/cegar/log/"
 let trecs = "./trecs"
 let cvc3 = "./cvc3"
 
-let merge_counterexample = ref true
+let merge_counterexample = ref false
 let split_free_var = ref false
 let filter_forward = ref true
 
