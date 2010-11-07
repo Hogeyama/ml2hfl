@@ -592,7 +592,7 @@ let rec lift2_aux xs = function
   | Letrec(f,ys,t1,t2) ->
       let fv = xs in
       let ys' = fv @ ys in
-      let typ = List.fold_right (fun x typ -> TFun((x,x.typ),typ)) ys TUnit in
+      let typ = List.fold_right (fun x typ -> TFun((x,x.typ),typ)) ys' TUnit in
       let f' = {f with typ=typ} in
       let f'' = List.fold_left (fun t x -> app2app t [Var x]) (Var f') fv in
       let defs1,t1' = lift2_aux ys' (subst f f'' t1) in
