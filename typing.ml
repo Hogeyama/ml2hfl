@@ -16,7 +16,7 @@ let (@@) = List.rev_append
 
 let rec flatten typ =
   match typ with
-      TFun((x,typ1), typ2) -> TFun((x,flatten typ1), flatten typ2)
+      TFun((x,typ1), typ2) -> TFun((x,flatten typ1), flatten typ2) (*???*)
     | TVar{contents = None} -> TUnknown
     | TVar{contents = Some typ'} -> flatten typ'
     | _ -> typ
@@ -26,10 +26,15 @@ let rec flatten2 typ =
       TVar{contents = Some typ'} -> flatten2 typ'
     | _ -> typ
 
+let rec occurs r typ =
+  match flatten2 typ with
+    TFun((_,typ1), typ2) -> occurs r typ1 || occurs r typ2
+  | TVar({contents = None} as r') -> r == r'
+  | _ -> false
 
 let rec unify typ1 typ2 =
 (*
-Format.printf "%a,%a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2);
+Format.printf "unify %a %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2);
 *)
   match flatten2 typ1, flatten2 typ2 with
       TUnit, TUnit
@@ -39,12 +44,19 @@ Format.printf "%a,%a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten ty
         unify typ11 typ21;
         unify typ12 typ22
     | TVar r1, TVar r2 when r1 == r2 -> ()
-(*    | TVar{contents = None}, TVar{contents = Some typ'} -> unify typ1 typ'
+(*
+    | TVar{contents = None}, TVar{contents = Some typ'} -> unify typ1 typ'
     | TVar{contents = Some typ'}, TVar{contents = None} -> unify typ' typ2
     | TVar{contents = Some(typ')}, typ
-    | typ, TVar{contents = Some(typ')} -> unify typ typ'*)
+    | typ, TVar{contents = Some(typ')} -> unify typ typ'
+*)
     | TVar({contents = None} as r), typ
-    | typ, TVar({contents = None} as r) -> r := Some typ
+    | typ, TVar({contents = None} as r) ->
+        if occurs r typ then
+          (Format.printf "%a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2);
+          raise CannotUnify)
+        else
+          r := Some typ
     | _ -> begin
         (if Flag.debug
         then Format.printf "unification error: %a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2));
@@ -55,7 +67,7 @@ let dummy = new_var' "dummy"
 (*let dummy () = fst (new_var (new_var' "dummy"))*)
 
 let rec infer env t = 
-  (*Format.printf ":%a:@." (print_term_fm ML false) t;*)
+  (*Format.printf "inferring %a@." (print_term_fm ML false) t;*)
   match t with
       Unit -> Unit, TUnit
     | True -> True, TBool

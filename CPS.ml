@@ -251,9 +251,12 @@ let trans t =
   let t1 = Typing.typing t in
   let t2 = replace_part_app t1 in
   let t3 =
+    let tm = trans1 (fun x -> x) t2 in
     try
-      Typing.typing (trans1 (fun x -> x) t2)
-    with Typing.CannotUnify -> assert false
+      Typing.typing tm
+    with Typing.CannotUnify ->
+      (Format.printf "Typing error:@.  %a@." Syntax.pp_print_term tm;
+      assert false)
   in
   let t4 = inlining !funs [] t3 in
   let t5 = remove_unused t4 in

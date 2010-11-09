@@ -151,7 +151,7 @@ let weakest cond ds p =
                            ss (get_fv2(*???*) p))
                         pbs)
                  in
-                   if Util.inter fvp fvs = [] then
+                   if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten (fun t -> ss (get_fv2 t)) cond) fvs = [] then
                      false
                    else
                      check cond pbs p)
@@ -167,7 +167,7 @@ let weakest cond ds p =
                            ss (get_fv2(*???*) p))
                         pbs)
                  in
-                   if Util.inter fvp fvs = [] then
+                   if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten (fun t -> ss (get_fv2 t)) cond) fvs = [] then
                      false
                    else
                      check cond pbs (Not p))

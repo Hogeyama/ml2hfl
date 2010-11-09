@@ -971,7 +971,12 @@ let rec compute_lbs c lbs =
             (if Flag.debug then
              (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
               let tmp = Util.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
-              List.iter (fun l -> assert (List.length (Util.uniq (List.map snd l)) = 1)) tmp);
+              List.iter (fun l ->
+                let tmp = Util.uniq (List.map snd l) in
+                if List.length tmp <> 1 then
+                  let _ = List.iter (fun t -> Format.printf "%a@." Syntax.pp_print_term t) tmp in
+                  assert false)
+                tmp);
             let eqs1, eqs2 = List.partition (function (Var(_), _) -> true | _ -> false) eqs in
             let sub = List.map (fun (Var(id), t) -> id, t) eqs1 in
             let cond = Util.uniq ((List.map (function Cterm(t) -> subst_term sub t) c2) @ (List.concat conds)) in
