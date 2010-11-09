@@ -193,7 +193,7 @@ let rec inlining funs defs = function
     
 
 
-let rec replace_part_app = function
+let rec match_arg arg_num = function
     Unit -> Unit
   | True -> True
   | False -> False
@@ -202,9 +202,36 @@ let rec replace_part_app = function
   | NInt x -> NInt x
   | Var x -> Var x
   | Fun _ -> assert false
+  | App(Var f, ts) ->
+      let m = List.length ts in
+      let n = try List.assoc f arg_num with Not_found -> m in
+        if n < m
+        then
+          let rec take xs n =
+            match xs,n with
+                _,0 -> [], xs
+              | [],_ -> [], []
+              | x::xs',_ ->
+                  let xs1,xs2 = take xs' (n-1) in
+                    x::xs1, xs2
+          in
+          let ts1,ts2 = take ts n in
+            match_arg arg_num (App(App(Var f, ts1), ts2))
+        else
+          let ts' = List.map (match_arg arg_num) ts in
+          let typ = Typing.get_typ (App(Var f, ts)) in
+          let args = tabulate (n-m) (fun _ -> new_var' "x") in
+            begin
+              match args with
+                  [] -> App(Var f, ts')
+                | _ ->
+                  let g = new_var' "f" in
+                  let ts'' = List.map (fun x -> Var x) args in
+                    Let(g, args, App(Var f, ts'@ts''), Var g)
+            end
   | App(f, ts) ->
-      let f' = replace_part_app f in
-      let ts' = List.map replace_part_app ts in
+      let f' = match_arg arg_num f in
+      let ts' = List.map (match_arg arg_num) ts in
       let typ = Typing.get_typ (App(f, ts)) in
       let args = get_args typ in
         begin
@@ -216,40 +243,42 @@ let rec replace_part_app = function
               Let(g, args, App(f', ts'@ts''), Var g)
         end
   | If(t1, t2, t3, t4) ->
-      let t1' = replace_part_app t1 in
-      let t2' = replace_part_app t2 in
-      let t3' = replace_part_app t3 in
-      let t4' = replace_part_app t4 in
+      let t1' = match_arg arg_num t1 in
+      let t2' = match_arg arg_num t2 in
+      let t3' = match_arg arg_num t3 in
+      let t4' = match_arg arg_num t4 in
         If(t1', t2', t3', t4')
   | Branch(t1, t2) ->
-      let t1' = replace_part_app t1 in
-      let t2' = replace_part_app t2 in
+      let t1' = match_arg arg_num t1 in
+      let t2' = match_arg arg_num t2 in
         Branch(t1', t2')
   | Let(f, xs, t1, t2) ->
-      let t1' = replace_part_app t1 in
-      let t2' = replace_part_app t2 in
+      let arg_num' = (f,List.length xs)::arg_num in
+      let t1' = match_arg arg_num t1 in
+      let t2' = match_arg arg_num' t2 in
         Let(f, xs, t1', t2')
   | Letrec(f, xs, t1, t2) ->
-      let t1' = replace_part_app t1 in
-      let t2' = replace_part_app t2 in
+      let arg_num' = (f,List.length xs)::arg_num in
+      let t1' = match_arg arg_num' t1 in
+      let t2' = match_arg arg_num' t2 in
         Letrec(f, xs, t1', t2')
   | BinOp(op, t1, t2) ->
-      let t1' = replace_part_app t1 in
-      let t2' = replace_part_app t2 in
+      let t1' = match_arg arg_num t1 in
+      let t2' = match_arg arg_num t2 in
         BinOp(op, t1', t2')
   | Not t ->
-      let t' = replace_part_app t in
+      let t' = match_arg arg_num t in
         Not t'
   | Fail -> Fail
   | Label(b,t) ->
-      let t' = replace_part_app t in
+      let t' = match_arg arg_num t in
         Label(b, t')
 
 
 
 let trans t =
   let t1 = Typing.typing t in
-  let t2 = replace_part_app t1 in
+  let t2 = match_arg [] t1 in
   let t3 =
     let tm = trans1 (fun x -> x) t2 in
     try
