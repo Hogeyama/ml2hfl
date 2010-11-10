@@ -47,8 +47,11 @@ let rec to_exp = function
   | Var x -> CsisatAst.Variable (x.origin ^ "_" ^ string_of_int x.id)
   | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
   | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
-  | BinOp(Mult, Int n, t2) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
-  | t -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
+  | BinOp(Mult, Int n, t2) | BinOp(Mult, t2, Int n) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
+  | BinOp(Mult, t1, t2) ->
+      (let t = BinOp(Mult, t1, t2) in
+      Format.printf "Nonlinear expression not supported: %a@." (print_term_fm ML true) t; assert false)
+  | t -> (Format.printf "@.%a@." (print_term_fm ML true) t; assert false)
 let rec to_pred = function
     True -> CsisatAst.True
   | False -> CsisatAst.False

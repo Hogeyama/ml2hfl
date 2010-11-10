@@ -9,4 +9,4 @@ let rec inc3 m src i =
      inc3 m src (i+1)
    end
 in
- if n>0 then inc3 n (make_array n) i else ()
+ if n>0 then inc3 n (make_array n) 0 else ()

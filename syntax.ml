@@ -1255,6 +1255,9 @@ and print_term syntax pri typ fm = function
             | Letrec _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a@]@;in@;%a@]%s" s1 s_rec p_ids () (print_term syntax p typ) t1 (print_term syntax p typ) t2 s2
             | _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a @]@;@[<v 2>in@;@]@[<hov>%a@]@]%s" s1 s_rec p_ids () (print_term syntax p typ) t1 (print_term syntax p typ) t2 s2
         end
+  | BinOp(Mult, t1, t2) when (syntax = CVC3 && (match t1 with Int(_) -> false | _ -> (match t2 with Int(_) -> false | _ -> true))) ->
+      (let t = BinOp(Mult, t1, t2) in
+       Format.printf "Nonlinear expression not supported: %a@." (print_term ML 0 true) t; assert false)
   | BinOp(op, t1, t2) ->
       let is_bool = function
           Var x -> x.typ = TBool
