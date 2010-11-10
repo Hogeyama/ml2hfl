@@ -384,7 +384,7 @@ let rec div_arith_exp n = function
   | BinOp(Mult, t, Int m) ->
       assert (m mod n = 0);
       BinOp(Mult, Int (m/n), t)
-  | _ -> assert false
+  | t -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
 let div_arith_exp n t =
   if n = 1
   then t
@@ -407,6 +407,8 @@ let rec simplify_bool_exp precise t =
     | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) -> (*unsound if n=0?*)
         BinOp(Eq, t, Int 0)
     | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
+        let t1 = simplify_exp t1 in
+        let t2 = simplify_exp t2 in
         let d = gcd_arith_exp [t1;t2] in
           if d = 0
           then BinOp(op, t1, t2)

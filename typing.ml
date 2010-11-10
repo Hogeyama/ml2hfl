@@ -53,7 +53,7 @@ Format.printf "unify %a %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flat
     | TVar({contents = None} as r), typ
     | typ, TVar({contents = None} as r) ->
         if occurs r typ then
-          (Format.printf "%a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2);
+          (Format.printf "occurs check failure: %a, %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flatten typ2);
           raise CannotUnify)
         else
           r := Some typ
@@ -114,6 +114,7 @@ let rec infer env t =
           Branch(t1', t2'), typ1
             (*assert false*)
     | Let(f, xs, t1, t2) ->
+(if Flag.debug then Format.printf "typing %a@." (print_term_fm ML false) (Var f));
         let f', typ_f = new_var f in
         let xs', typs = List.split (List.map new_var xs) in
         let env1 = (List.combine xs' typs) @@ env in
@@ -123,6 +124,7 @@ let rec infer env t =
           unify typ_f (List.fold_right (fun typ1 typ2 -> TFun((dummy,typ1), typ2)) typs typ1);
           Let(f', xs', t1', t2'), typ2
     | Letrec(f, xs, t1, t2) ->
+(if Flag.debug then Format.printf "typing %a@." (print_term_fm ML false) (Var f));
         let f', typ_f = new_var f in
         let xs', typs = List.split (List.map new_var xs) in
 
