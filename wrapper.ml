@@ -480,7 +480,41 @@ let interpolation ts1 ts2 =
       CsisatInterpolate.interpolate_with_proof t1 t2
     with CsisatAst.SAT_FORMULA(pred) -> begin
        (*if Flag.debug then print_string ("satisfiable: \n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");*)
-       raise Satisfiable
+      if checksat (List.fold_left (fun t1 t2 -> BinOp(And,t1,t2)) True (ts1@@ts2))
+      then raise Satisfiable
+      else
+        let rec trans t =
+          match t with
+              True
+            | False
+            | Var _ -> t
+            | BinOp(And|Or as op, t1, t2) ->
+                let t1' = trans t1 in
+                let t2' = trans t2 in
+                  BinOp(op, t1', t2')
+            | BinOp(_, (True|False), _) -> t
+            | BinOp(_, _, (True|False)) -> t
+            | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
+                BinOp(op, t1, t2)
+            | Not(BinOp(Eq, t1, t2)) ->
+                BinOp(Or, BinOp(Leq, t1, BinOp(Sub, t2, Int 1)), BinOp(Leq, BinOp(Add, t2, Int 1), t1))
+            | Not t -> Not (trans t)
+            | _ -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
+        in
+        let ts1' = List.map (fun t -> to_pred (simplify_bool_exp false (trans t))) ts1 in
+        let ts2' = List.map (fun t -> to_pred (simplify_bool_exp false (trans t))) ts2 in
+        let t1 = CsisatAstUtil.simplify (CsisatAst.And (bool_theory@@ts1')) in
+        let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
+        let () = if Flag.debug && Flag.print_interpolant
+                 then Format.printf "  t1: %s@." (CsisatAstUtil.print_pred t1)
+        in
+        let () = if Flag.debug && Flag.print_interpolant
+                 then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2)
+        in
+          try
+            CsisatInterpolate.interpolate_with_proof t1 t2
+          with
+              CsisatAst.SAT_FORMULA(pred) -> raise Satisfiable
     end
   in
   let pred' = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff pred) in
