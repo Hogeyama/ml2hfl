@@ -485,7 +485,7 @@ let interpolation ts1 ts2 =
       CsisatInterpolate.interpolate_with_proof t1 t2
     with CsisatAst.SAT_FORMULA(pred) -> begin
        (*if Flag.debug then print_string ("satisfiable: \n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");*)
-      if checksat (List.fold_left (fun t1 t2 -> BinOp(And,t1,t2)) True (ts1@@ts2))
+      if not Flag.check_sat || checksat (List.fold_left (fun t1 t2 -> BinOp(And,t1,t2)) True (ts1@@ts2))
       then raise Satisfiable
       else
         let rec trans t =
