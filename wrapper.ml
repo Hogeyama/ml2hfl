@@ -406,6 +406,8 @@ let rec simplify_bool_exp precise t =
           BinOp(op, simplify_bool_exp precise t1, simplify_bool_exp precise t2)
     | BinOp(_, (True|False), _) -> t
     | BinOp(_, _, (True|False)) -> t
+    | BinOp(Eq, BinOp(op1, t11, t12), BinOp(op2, t21, t22)) when op1 = op2 && t12 = t22 ->
+        simplify_bool_exp precise (BinOp(Eq, t11, t21))
     | BinOp(Eq, Int 0, BinOp(Mult, Int n, t))
     | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) -> (*unsound if n=0?*)
         BinOp(Eq, t, Int 0)

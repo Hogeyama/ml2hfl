@@ -177,6 +177,55 @@ let rec subst x t = function
       let t1' = subst x t t1 in
         Label(b, t1')
 
+let rec subst_int n t = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int m -> if n = m then t else BinOp(Add, t, Int (m - n))
+  | NInt y -> NInt y
+  | Var y -> Var y
+  | Fun(y, t1) -> Fun(y, subst_int n t t1)
+  | App(t1, ts) ->
+      let t1' = subst_int n t t1 in
+      let ts' = List.map (subst_int n t) ts in
+        begin
+          match t1' with
+              App(t, ts) -> App(t, ts@ts')
+            | _ -> App(t1', ts')
+        end
+  | If(t1, t2, t3, t4) ->
+      let t1' = subst_int n t t1 in
+      let t2' = subst_int n t t2 in
+      let t3' = subst_int n t t3 in
+      let t4' = subst_int n t t4 in
+        If(t1', t2', t3', t4')
+  | Branch(t1, t2) ->
+      let t1' = subst_int n t t1 in
+      let t2' = subst_int n t t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let t1' = subst_int n t t1 in
+      let t2' = subst_int n t t2 in
+        Let(f, xs, t1', t2')
+  | Letrec(f, xs, t1, t2) ->
+      let t1' = subst_int n t t1 in
+      let t2' = subst_int n t t2 in
+        Letrec(f, xs, t1', t2')
+  | BinOp(Mult, t1, t2) -> (* non-linear expressions not supported *)
+      BinOp(Mult, t1, t2)
+  | BinOp(op, t1, t2) ->
+      let t1' = subst_int n t t1 in
+      let t2' = subst_int n t t2 in
+        BinOp(op, t1', t2')
+  | Not t1 ->
+      let t1' = subst_int n t t1 in
+        Not t1'
+  | Fail -> Fail
+  | Label(b, t1) ->
+      let t1' = subst_int n t t1 in
+        Label(b, t1')
+
 let subst_term sub term =
   let ids, terms = List.split sub in
   List.fold_right2 subst ids terms term
@@ -223,6 +272,28 @@ let rec get_nint = function
   | Fail -> []
   | Fun(x,t) -> diff (get_nint t) [x]
   | Label(_,t) -> get_nint t
+
+let rec get_int = function
+    Unit -> []
+  | True -> []
+  | False -> []
+  | Unknown -> []
+  | Int n -> [n]
+  | NInt x -> []
+  | Var x -> []
+  | App(t, ts) -> get_int t @@@ (rev_map_flatten get_int ts)
+  | If(t1, t2, t3, t4) -> get_int t1 @@@ get_int t2 @@@ get_int t3 @@@ get_int t4
+  | Branch(t1, t2) -> get_int t1 @@@ get_int t2
+  | Let(_, _, t1, t2) ->
+      (get_int t1) @@@ (get_int t2)
+  | Letrec(_, _, t1, t2) ->
+      (get_int t1) @@@ (get_int t2)
+  | BinOp(Mult, t1, t2) -> [] (* non-linear expressions not supported *)
+  | BinOp(_, t1, t2) -> get_int t1 @@@ get_int t2
+  | Not t -> get_int t
+  | Fail -> []
+  | Fun(_,t) -> get_int t
+  | Label(_,t) -> get_int t
 
 let rec get_fv = function
     Unit -> []
