@@ -280,10 +280,49 @@ let rec match_arg arg_num b = function
 
 
 
+let rec app2letapp = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | Var x -> Var x
+  | Fun _ -> assert false
+  | App(f, ts) ->
+      let xs = tabulate (List.length ts) (fun _ -> new_var' "x") in
+        List.fold_right2 (fun x t t' -> Let(x,[],t,t')) xs ts (App(f, List.map (fun x -> Var x) xs))
+  | If(t1, t2, t3, t4) ->
+      let t1' = app2letapp t1 in
+      let t2' = app2letapp t2 in
+      let t3' = app2letapp t3 in
+      let t4' = app2letapp t4 in
+        If(t1', t2', t3', t4')
+  | Branch(t1, t2) ->
+      let t1' = app2letapp t1 in
+      let t2' = app2letapp t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let t1' = app2letapp t1 in
+      let t2' = app2letapp t2 in
+        Let(f, xs, t1', t2')
+  | Letrec(f, xs, t1, t2) ->
+      let t1' = app2letapp t1 in
+      let t2' = app2letapp t2 in
+        Letrec(f, xs, t1', t2')
+  | BinOp(op, t1, t2) ->
+      let t1' = app2letapp t1 in
+      let t2' = app2letapp t2 in
+        BinOp(op, t1', t2')
+  | Not t -> Not (app2letapp t)
+  | Fail -> Fail
+  | Label(b,t) -> Label(b,app2letapp t)
+
+
+
 let trans t =
   let t1 = Typing.typing t in
-  let t2 = match_arg [] true t1 in
-  let () = Format.printf "Matched:@.%a@." Syntax.pp_print_term t2 in
+  let t2 = match_arg [] true (app2letapp t1) in
   let t3 =
     let tm = trans1 (fun x -> x) t2 in
     try
