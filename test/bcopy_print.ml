@@ -21,8 +21,8 @@ let f m src des =
   in
     if c0 = 0
     then
-      let array = bcopy n src des c0 in
-        print_array n array c0
+      let array = bcopy m src des c0 in
+        print_array m array c0
     else ()
 in
 let array1 = make_array n in
