@@ -865,19 +865,22 @@ and subst_ac sub ac =
   | Cimp(c1,c2) -> Cimp(substc sub c1, substc sub c2)
   | Cfalse -> Cfalse
 
-let rec subst_sol sol c =
-  List.map (subst_sol_ac sol) c
-and subst_sol_ac sol ac =
+let rec subst_sol pids sol c =
+  List.map (subst_sol_ac pids sol) c
+and subst_sol_ac pids sol ac =
   match ac with
     Cpred(Pred(pid, terms)) ->
-      (try
-        let (ids, t) = List.assoc pid sol in
-        Cterm(subst_term (List.combine ids terms) t)
-      with Not_found ->
-        Cterm(True))
+      if List.mem pid pids then
+        Cfalse
+      else
+		      (try
+		        let (ids, t) = List.assoc pid sol in
+		        Cterm(subst_term (List.combine ids terms) t)
+		      with Not_found ->
+		        Cterm(True))
   | Csub(rty1,rty2) -> assert false
   | Cterm(term) -> Cterm(term)
-  | Cimp(c1,c2) -> Cimp(subst_sol sol c1, subst_sol sol c2)
+  | Cimp(c1,c2) -> Cimp(subst_sol pids sol c1, subst_sol pids sol c2)
   | Cfalse -> Cfalse
 
 let rec fv c = List.flatten (List.map fv_ac c)
@@ -1341,6 +1344,7 @@ let filter_backward c =
 
 let filter_forward c =
   let lbs = compute_lbs c [] in
+  let pids = ref [] in
   let rec aux c1 c2 =
     let rhs = List.concat (List.map (function Cimp(_, [Cpred(Pred(pid, _))]) -> [pid] | _ -> []) c1) in
     let c21, c22 = List.partition
@@ -1351,7 +1355,9 @@ let filter_forward c =
       c2
     in
     if c21 = [] then
-      c1
+      let pids = (List.concat (List.map (function Cimp(_, [Cpred(Pred(pid, _))]) -> [pid] | _ -> []) c22)) @ !pids in
+      let _ = List.iter (fun pid -> Format.printf "P%d has a solution \"false\"@." pid) (List.rev pids) in
+      c1, pids
     else
       aux (c1 @ (List.map
         (function Cimp(c, [Cpred(Pred(pid, terms))]) ->
@@ -1370,12 +1376,12 @@ let filter_forward c =
 (*
 let _ = print_term cond; print_string2 "\n" in
 *)
-            Cimp(c, [Cfalse])
+            let _ = pids := pid::!pids in Cimp(c, [Cfalse])
         | ac -> ac) c21)) c22
   in
-  let c' = aux [] c in
+  let c', pids = aux [] c in
   (if Flag.debug then Format.printf "filter_forward: %d -> %d@." (List.length c) (List.length c'));
-  c'
+  c', pids
 
 
 let test s defs traces = 
@@ -1416,11 +1422,11 @@ let test s defs traces =
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
 *)
      let c'' = normalize_constr c' in
-(*
+(**)
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nNormalized constraints:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c'' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
-*)
+(**)
      let _ = if Flag.debug then save_as_dot ("constraints" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c'' in
 (*
      let c''' = simplify_constr c'' in
@@ -1428,7 +1434,8 @@ let test s defs traces =
      let _ = print_constraint c''' in
      let _ = print_string2 "\n" in
 *)
-     let c''' = List.rev (Util.uniq (filter_backward ((if !Flag.filter_forward then filter_forward else fun x -> x) (filter_backward c'')))) in
+     let c''', pids = (if !Flag.filter_forward then filter_forward else (fun x -> x, [])) (filter_backward c'') in
+     let c''' = List.rev (Util.uniq (filter_backward c''')) in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c''' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
@@ -1448,10 +1455,10 @@ let test s defs traces =
               print_string2 "\n")
            sol in
      let _ =
-       if false && Flag.debug then
+       if Flag.debug then
          List.iter
            (fun ac ->
-              if Wrapper.check [] (term_of_ac (subst_sol_ac sol ac))
+              if Wrapper.check [] (term_of_ac (subst_sol_ac pids sol ac))
               then ()
               else begin
                 print_string2 "wrong solution for:";
