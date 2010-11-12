@@ -4,7 +4,7 @@ let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
 let cvc3 = "./cvc3"
 
-let merge_counterexample = ref false
+let merge_counterexample = ref true
 let split_free_var = ref false
 let filter_forward = ref true
 
@@ -27,9 +27,9 @@ let print_abst = true
 let print_abst_eager = false
 let print_type = true
 let print_hors = false
-let print_trecs_output = true
+let print_trecs_output = false
 let print_trace = false
-let print_interpolant = false
+let print_interpolant = true
 let print_progress = false
 let print_constraints = true
 let print_lower_bound = true
@@ -51,7 +51,7 @@ let debug = true
 
 
 let use_nint = ref false
-let use_subterm = false
+let use_subterm = true
 let use_neg_pred = true
 let use_part_eval = true
 let check_sat = true

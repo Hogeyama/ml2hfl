@@ -152,3 +152,11 @@ let rec classify eqrel xs =
  | x::xs' ->
      let t, f = List.partition (fun x' -> eqrel x x') xs' in
      (x::t)::(classify eqrel f)
+
+let rec filterwo p xs =
+  let rec aux xs1 xs2 =
+    match xs2 with
+      [] -> []
+    | x::xs -> if p x (xs1 @ xs) then x::(aux (x::xs1) xs) else aux (x::xs1) xs
+  in aux [] xs
+

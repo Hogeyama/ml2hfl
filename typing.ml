@@ -114,7 +114,9 @@ let rec infer env t =
           Branch(t1', t2'), typ1
             (*assert false*)
     | Let(f, xs, t1, t2) ->
+(*
 (if Flag.debug then Format.printf "typing %a@." (print_term_fm ML false) (Var f));
+*)
         let f', typ_f = new_var f in
         let xs', typs = List.split (List.map new_var xs) in
         let env1 = (List.combine xs' typs) @@ env in
@@ -124,7 +126,9 @@ let rec infer env t =
           unify typ_f (List.fold_right (fun typ1 typ2 -> TFun((dummy,typ1), typ2)) typs typ1);
           Let(f', xs', t1', t2'), typ2
     | Letrec(f, xs, t1, t2) ->
+(*
 (if Flag.debug then Format.printf "typing %a@." (print_term_fm ML false) (Var f));
+*)
         let f', typ_f = new_var f in
         let xs', typs = List.split (List.map new_var xs) in
 

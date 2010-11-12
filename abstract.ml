@@ -716,7 +716,7 @@ let trans_eager2 = trans_eager2 hd
 let abstract t =
   let t1 = hd (abstract [] [] [] (t,TUnit)) in
   let t2 = if Flag.use_part_eval then part_eval t1 else t1 in
-  let () = if Flag.print_abst then Format.printf "Abstracted Program:@.%a" (Syntax.print_term_fm Syntax.ML false) t2 in
+  let () = if Flag.print_abst then Format.printf "Abstracted Program:@.%a@.@." (Syntax.print_term_fm Syntax.ML false) t2 in
   let t3 = if !Flag.use_unknown then trans_eager t2 else trans_eager2 t2 in
   let t4 = (*part_eval*) t3 in
     t4

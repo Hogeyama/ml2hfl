@@ -46,7 +46,7 @@ let rec cegar initial t1 ce_prev =
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
 
-  let () = if Flag.print_abst_eager then Format.printf "Abstracted Program:@.%a" (Syntax.print_term_fm Syntax.ML false) t_abst in
+  let () = if Flag.print_abst_eager then Format.printf "Abstracted Program:@.%a@.@." (Syntax.print_term_fm Syntax.ML false) t_abst in
   let () = Format.pp_print_flush Format.std_formatter () in
 
   let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in
@@ -58,9 +58,9 @@ let rec cegar initial t1 ce_prev =
     match result with
         None -> t1, None
       | Some ce ->
-          let () = print_msg "Spurious counter-example:\n" in
+          let () = print_msg "Spurious counter-example:" in
           let () = List.iter (fun b -> if b then print_msg "then --> " else print_msg "else --> ") ce in
-          let () = print_msg "fail\n\n" in
+          let () = print_msg "fail\n" in
           try
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
             let tmp = get_time () in
@@ -71,7 +71,7 @@ let rec cegar initial t1 ce_prev =
               else
                 let defs,t' = Syntax.lift t1 in
                 let () = Feasibility.check ce defs t' in
-                let () = if Flag.debug then Format.printf "ce:%d" (List.length ce) in
+                let () = if false && Flag.debug then Format.printf "The length of counterexample: %d@.@." (List.length ce) in
                 let t1 = if !Flag.merge_counterexample then initial else t1 in
                 Refine.refine (if !Flag.merge_counterexample then ce::ce_prev else [ce]) defs t' t1
             in

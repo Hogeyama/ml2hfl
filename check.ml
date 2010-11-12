@@ -140,7 +140,7 @@ let model_check_aux (funs,spec) =
     then
       let () =
         if Flag.print_trecs_output
-        then printf "%s\n" s2
+        then printf "TRecS output: %s@.@." s2
       in
       let ce = parse_trace s2 in
       let ce' = List.flatten (List.map (function LabNode(b),_ -> [b] | _ -> []) ce) in
