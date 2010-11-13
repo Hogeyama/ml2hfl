@@ -969,7 +969,9 @@ let rec add_preds_typ sol typ1 typ2 =
 	        then ps
 	        else ((*Format.printf "adding %a@." (print_term_fm ML true) p;*) p::ps)
               in
-                List.fold_left aux ps (if Flag.use_subterm then get_subterm p else [p])
+              let p' = Syntax.normalize_bool_exp p in
+              let () = assert (true || Wrapper.equiv [] p p') in
+                List.fold_left aux ps (if Flag.use_subterm then get_subterm p' else [p'])
 	    in
 	      TInt ps
           with Not_found -> (*assert false*)

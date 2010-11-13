@@ -1343,7 +1343,7 @@ and print_term syntax pri typ fm = function
             let s1,s2 = paren pri p in
               fprintf fm "%s%a <=> %a%s" s1 (print_term syntax p typ) t1 (print_term syntax p typ) t2 s2
           else
-            let p = 5 in
+            let p = match op with Add|Sub|Mult -> 6 | _ -> 5 in
             let s1,s2 = paren pri p in
               fprintf fm "%s%a %a %a%s" s1 (print_term syntax p typ) t1 (print_binop syntax t1 t2) op (print_term syntax p typ) t2 s2
         end
@@ -1584,3 +1584,113 @@ let rec copy_pred_aux t1 t2 =
     | _ -> t2
 
 let copy_pred = copy_pred_aux
+
+
+
+let rec normalize_bool_exp = function
+    True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Var x -> Var x
+  | BinOp(Or|And as op, t1, t2) ->
+      let t1' = normalize_bool_exp t1 in
+      let t2' = normalize_bool_exp t2 in
+        BinOp(op, t1', t2')
+  | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
+      let neg xs = List.map (fun (x,n) -> x,-n) xs in
+      let rec decomp = function
+          Int n -> [None, n]
+        | Var x -> [Some (Var x), 1]
+        | NInt x -> [Some (NInt x), 1]
+        | BinOp(Add, t1, t2) ->
+            decomp t1 @@ decomp t2
+        | BinOp(Sub, t1, t2) ->
+            decomp t1 @@ neg (decomp t2)
+        | BinOp(Mult, t1, t2) ->
+            let xns1 = decomp t1 in
+            let xns2 = decomp t2 in
+            let reduce xns = List.fold_left (fun acc (_,n) -> acc+n) 0 xns in
+            let aux (x,_) = x <> None in
+              match List.exists aux xns1, List.exists aux xns2 with
+                  true, true ->
+                    Format.printf "Nonlinear expression not supported: %a@." pp_print_term (BinOp(op,t1,t2));
+                    assert false
+                | false, true ->
+                    let k = reduce xns1 in
+                      List.rev_map (fun (x,n) -> x,n*k) xns2
+                | true, false ->
+                    let k = reduce xns2 in
+                      List.rev_map (fun (x,n) -> x,n*k) xns1
+                | false, false ->
+                    [None, reduce xns1 + reduce xns2]
+      in
+      let xns1 = decomp t1 in
+      let xns2 = decomp t2 in
+      let compare (x1,_) (x2,_) =
+        let aux = function
+            None -> max_int
+          | Some (Var x) -> x.id
+          | Some (NInt n) -> n.id
+          | _ -> assert false
+        in
+          compare (aux x1) (aux x2)
+      in
+      let xns = List.sort compare (xns1 @@ (neg xns2)) in
+      let rec aux = function
+          [] -> []
+        | (x,n)::xns ->
+            let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
+            let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
+              (x,n') :: aux xns2
+      in
+      let xns' = aux xns in
+      let xns'' = List.filter (fun (x,n) -> n<>0) xns' in
+      let aux = function
+          None,n -> Int n
+        | Some x,n ->
+            if n=1
+            then x
+            else BinOp(Mult, Int n, x)
+      in
+        begin
+          match xns'' with
+              [] -> assert false
+            | (x,n)::xns ->
+                let t1,xns',op' =
+                  if n<0
+                  then
+                    let op' =
+                      match op with
+                          Eq -> Eq
+                        | Lt -> Gt
+                        | Gt -> Lt
+                        | Leq -> Geq
+                        | Geq -> Leq
+                    in
+                      aux (x,-n), xns, op'
+                  else
+                    aux (x,n), neg xns, op
+                in
+                let ts = List.map aux xns' in
+                let t2 =
+                  match ts with
+                      [] -> Int 0
+                    | t::ts' -> List.fold_left (fun t2 t -> BinOp(Add, t2, t)) t ts'
+                in
+                  BinOp(op', t1, t2)
+        end
+  | Not t -> Not (normalize_bool_exp t)
+  | Unit
+  | Int _
+  | NInt _
+  | Fun _
+  | App _
+  | If _
+  | Branch _
+  | Let _
+  | Letrec _
+  | BinOp((Add|Sub|Mult), _, _)
+  | Fail
+  | Label _ -> assert false
+
+    
