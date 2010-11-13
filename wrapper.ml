@@ -457,11 +457,11 @@ and simplify_exp t =
 
 
 let rec simplify = function
-    CsisatAst.Leq(CsisatAst.Constant n, CsisatAst.Coeff(m,e)) ->
+    (*CsisatAst.Leq(CsisatAst.Constant n, CsisatAst.Coeff(m,e)) ->
       if m > 0.
       then CsisatAst.Leq(CsisatAst.Constant (ceil (n/.m)), e)
       else CsisatAst.Leq(e, CsisatAst.Constant (floor (n/.m)))
-  | CsisatAst.Eq(CsisatAst.Constant 0., CsisatAst.Coeff(m,e)) -> (*unsound if m=0*)
+  |*) CsisatAst.Eq(CsisatAst.Constant 0., CsisatAst.Coeff(m,e)) -> (*unsound if m=0*)
       CsisatAst.Eq(CsisatAst.Constant 0., e)
   | CsisatAst.And es -> CsisatAst.And (List.map simplify es)
   | CsisatAst.Or es -> CsisatAst.Or (List.map simplify es)
@@ -528,7 +528,20 @@ let interpolation ts1 ts2 =
   if Flag.debug && Flag.print_interpolant then
     Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
   else ();
-  let pred'' = from_pred pred' in
+  let pred'' =
+    match from_pred (CsisatAstUtil.dnf pred') with
+      BinOp(Or, _, _) as p ->
+        let rec f = function
+          BinOp(Or, t1, t2) ->
+            f t1 @ f t2
+        | t -> [t]
+        in
+        let disj = f p in
+        (try
+          List.find (fun p -> check ts1 p) disj
+        with Not_found -> p)
+    | p -> p
+  in
   (if Flag.debug then begin
     ()(*assert (check ts1 pred'' &&
             check [pred''] (Not (List.fold_left (fun t p -> BinOp(And, t, p)) (List.hd ts2) (List.tl ts2))))*)

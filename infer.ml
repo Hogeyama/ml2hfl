@@ -873,11 +873,11 @@ and subst_sol_ac pids sol ac =
       if List.mem pid pids then
         Cfalse
       else
-		      (try
-		        let (ids, t) = List.assoc pid sol in
-		        Cterm(subst_term (List.combine ids terms) t)
-		      with Not_found ->
-		        Cterm(True))
+        (try
+          let (ids, t) = List.assoc pid sol in
+          Cterm(subst_term (List.combine ids terms) t)
+        with Not_found ->
+          Cterm(True))
   | Csub(rty1,rty2) -> assert false
   | Cterm(term) -> Cterm(term)
   | Cimp(c1,c2) -> Cimp(subst_sol pids sol c1, subst_sol pids sol c2)
@@ -1044,15 +1044,15 @@ let solve_constr c =
   let _ = if Flag.debug && Flag.print_lower_bound then
     print_string2 "\nLower bounds:\n";
     List.iter
-		    (fun (pid, (cond, eqs, terms)) ->
-		       print_pname pid;
-		       print_string2 "(";
-		       print_terms terms;
-		       print_string2 ") = ";
-		       print_terms (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs);
-		       print_string2 ": ";
-		       print_terms cond;
-		       print_string2 "\n")
+      (fun (pid, (cond, eqs, terms)) ->
+         print_pname pid;
+         print_string2 "(";
+         print_terms terms;
+         print_string2 ") = ";
+         print_terms (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs);
+         print_string2 ": ";
+         print_terms cond;
+         print_string2 "\n")
       lbs;
 (*
     (fun (pid, (ids, c)) ->
@@ -1188,10 +1188,10 @@ let solve_constr c =
                               print_terms terms';
                               print_string2 ")";
                               print_string2 ":\n";
-																		            print_constraint [ac];
-																		            print_string2 "\nids:";
-																		            print_terms (List.map (fun id -> Var(id)) ids');
-																		            print_string2 "\n";
+                              print_constraint [ac];
+                              print_string2 "\nids:";
+                              print_terms (List.map (fun id -> Var(id)) ids');
+                              print_string2 "\n";
                             end
                         in
                         let t =
@@ -1200,37 +1200,37 @@ let solve_constr c =
                               subst_term (List.map (fun id -> id, new_var ()) (get_nint t)) t
                             in
                             try
-		                            let _lbs = Util.filterwo
-		                              (function (BinOp(Eq, t, Var(id))) | (BinOp(Eq, t, NInt(id))) ->
-		                                (fun ts ->
-		                                  List.mem id (ids' @ Util.rev_map_flatten get_fv2 (t::ts)))
-		                              | _ -> fun _ -> true) _lbs
-		                            in
+                              let _lbs = Util.filterwo
+                                (function (BinOp(Eq, t, Var(id))) | (BinOp(Eq, t, NInt(id))) ->
+                                  (fun ts ->
+                                    List.mem id (ids' @ Util.rev_map_flatten get_fv2 (t::ts)))
+                                | _ -> fun _ -> true) _lbs
+                              in
                               let lb = [Cterm(and_list _lbs)] in
                               let dubs = List.map rename_nint dubs in
                               let nubs' = List.map rename_nint nubs' in
-		                            let ub = [Cimp(List.map (fun t -> Cterm(t)) (dubs @ nubs'), List.map (fun t -> Cterm(t)) ubs)] in
+                              let ub = [Cimp(List.map (fun t -> Cterm(t)) (dubs @ nubs'), List.map (fun t -> Cterm(t)) ubs)] in
                               let ti = interpolate ids' lb ub in
                               let _ =
                                 if Flag.debug(* && Flag.print_interpolant*) then begin
-																																		List.iter2
-																																    (fun t (Cpred(Pred(pid, terms))) -> 
-																		  														    print_pname pid;
-																																      print_string2 "(";
-																		  														    print_terms terms;
-  																																    print_string2 ")";
-  																																    print_string2 ":\n";
-																			  													    print_constraint [Cterm(t)];
-																		  														    print_string2 "\n")
-																		  														  dubs c;
-								    										            print_string2 "lb: ";
-				    														            print_constraint lb;
-    																		            print_string2 "\n";
-																		                print_string2 "ub: ";
-																		                print_constraint ub;
-																		                print_string2 "\nsolution: ";
-																		                print_term ti;
-																		                print_string2 "\n\n"
+                                  List.iter2
+                                    (fun t (Cpred(Pred(pid, terms))) -> 
+                                      print_pname pid;
+                                      print_string2 "(";
+                                      print_terms terms;
+                                      print_string2 ")";
+                                      print_string2 ":\n";
+                                      print_constraint [Cterm(t)];
+                                      print_string2 "\n")
+                                    dubs c;
+                                  print_string2 "lb: ";
+                                  print_constraint lb;
+                                  print_string2 "\n";
+                                  print_string2 "ub: ";
+                                  print_constraint ub;
+                                  print_string2 "\nsolution: ";
+                                  print_term ti;
+                                  print_string2 "\n\n"
                                 end
                               in
                               ti
@@ -1240,31 +1240,31 @@ let solve_constr c =
                                 interpolate ids' lb ub
                               with Untypable ->*)
                                 let lb = [Cterm(and_list _lbs)] in
-  		                            let ub = [Cimp(List.map (fun t -> Cterm(t)) (dubs @ nubs'), List.map (fun t -> Cterm(t)) ubs)] in
+                                let ub = [Cimp(List.map (fun t -> Cterm(t)) (dubs @ nubs'), List.map (fun t -> Cterm(t)) ubs)] in
                                 let ti = interpolate ids' lb ub in
-		                              let _ =
-		                                if Flag.debug(* && Flag.print_interpolant*) then begin
-																																				List.iter2
-																																		    (fun t (Cpred(Pred(pid, terms))) -> 
-																				  														    print_pname pid;
-																																		      print_string2 "(";
-																				  														    print_terms terms;
-		  																																    print_string2 ")";
-		  																																    print_string2 ":\n";
-  																			  													    print_constraint [Cterm(t)];
-																				  														    print_string2 "\n")
-																				  														  dubs c;
-												      						            print_string2 "lb: ";
-						      												            print_constraint lb;
-      																		            print_string2 "\n";
-																				                print_string2 "ub: ";
-																				                print_constraint ub;
-																				                print_string2 "\nsolution: ";
-																				                print_term ti;
-																				                print_string2 "\n\n"
-		                                end
-		                              in
-		                              ti
+                                let _ =
+                                  if Flag.debug(* && Flag.print_interpolant*) then begin
+                                    List.iter2
+                                      (fun t (Cpred(Pred(pid, terms))) -> 
+                                        print_pname pid;
+                                        print_string2 "(";
+                                        print_terms terms;
+                                        print_string2 ")";
+                                        print_string2 ":\n";
+                                        print_constraint [Cterm(t)];
+                                        print_string2 "\n")
+                                      dubs c;
+                                    print_string2 "lb: ";
+                                    print_constraint lb;
+                                    print_string2 "\n";
+                                    print_string2 "ub: ";
+                                    print_constraint ub;
+                                    print_string2 "\nsolution: ";
+                                    print_term ti;
+                                    print_string2 "\n\n"
+                                  end
+                                in
+                                ti
                           (*else
                             try
                               let tmp = !Flag.use_nint in
