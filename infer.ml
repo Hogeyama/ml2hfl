@@ -852,7 +852,7 @@ let interpolate ids c1 c2 =
       else*) raise Untypable
   in
     (*  print_term t;*)
-    if Wrapper.equiv [] t True then True else t
+    if Wrapper.check [] t then True else t
 
 let rec substc sub c =
   List.filter

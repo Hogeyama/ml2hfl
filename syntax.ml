@@ -1596,6 +1596,8 @@ let rec normalize_bool_exp = function
       let t1' = normalize_bool_exp t1 in
       let t2' = normalize_bool_exp t2 in
         BinOp(op, t1', t2')
+  | BinOp(Eq, (True|False), _)
+  | BinOp(Eq, _, (True|False)) as t -> t
   | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
       let neg xs = List.map (fun (x,n) -> x,-n) xs in
       let rec decomp = function
