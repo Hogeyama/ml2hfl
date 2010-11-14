@@ -1611,18 +1611,21 @@ let rec normalize_bool_exp = function
             let xns2 = decomp t2 in
             let reduce xns = List.fold_left (fun acc (_,n) -> acc+n) 0 xns in
             let aux (x,_) = x <> None in
-              match List.exists aux xns1, List.exists aux xns2 with
-                  true, true ->
-                    Format.printf "Nonlinear expression not supported: %a@." pp_print_term (BinOp(op,t1,t2));
-                    assert false
-                | false, true ->
-                    let k = reduce xns1 in
-                      List.rev_map (fun (x,n) -> x,n*k) xns2
-                | true, false ->
-                    let k = reduce xns2 in
-                      List.rev_map (fun (x,n) -> x,n*k) xns1
-                | false, false ->
-                    [None, reduce xns1 + reduce xns2]
+              begin
+                match List.exists aux xns1, List.exists aux xns2 with
+                    true, true ->
+                      Format.printf "Nonlinear expression not supported: %a@." pp_print_term (BinOp(op,t1,t2));
+                      assert false
+                  | false, true ->
+                      let k = reduce xns1 in
+                        List.rev_map (fun (x,n) -> x,n*k) xns2
+                  | true, false ->
+                      let k = reduce xns2 in
+                        List.rev_map (fun (x,n) -> x,n*k) xns1
+                  | false, false ->
+                      [None, reduce xns1 + reduce xns2]
+              end
+        | _ -> assert false
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in
@@ -1645,40 +1648,52 @@ let rec normalize_bool_exp = function
       in
       let xns' = aux xns in
       let xns'' = List.filter (fun (x,n) -> n<>0) xns' in
-      let aux = function
-          None,n -> Int n
-        | Some x,n ->
-            if n=1
-            then x
-            else BinOp(Mult, Int n, x)
-      in
-        begin
-          match xns'' with
-              [] -> assert false
-            | (x,n)::xns ->
-                let t1,xns',op' =
-                  if n<0
-                  then
-                    let op' =
-                      match op with
+      let op',t1',t2' =
+        match xns'' with
+                [] -> assert false
+          | (x,n)::xns ->
+            let aux = function
+                None,n -> Int n
+              | Some x,n -> if n=1 then x else BinOp(Mult, Int n, x)
+            in
+            let t1,xns',op' =
+              if n<0
+              then
+                let op' =
+                  match op with
                           Eq -> Eq
-                        | Lt -> Gt
-                        | Gt -> Lt
-                        | Leq -> Geq
-                        | Geq -> Leq
-                    in
-                      aux (x,-n), xns, op'
-                  else
-                    aux (x,n), neg xns, op
+                    | Lt -> Gt
+                    | Gt -> Lt
+                    | Leq -> Geq
+                    | Geq -> Leq
+                    | _ -> assert false
                 in
-                let ts = List.map aux xns' in
-                let t2 =
-                  match ts with
+                  aux (x,-n), xns, op'
+              else
+                aux (x,n), neg xns, op
+            in
+            let ts = List.map aux xns' in
+            let t2 =
+              match ts with
                       [] -> Int 0
-                    | t::ts' -> List.fold_left (fun t2 t -> BinOp(Add, t2, t)) t ts'
-                in
-                  BinOp(op', t1, t2)
-        end
+                | t::ts' ->
+                  List.fold_left (fun t2 t -> BinOp(Add, t2, t)) t ts'
+            in
+              op', t1, t2
+      in
+      let rec simplify = function
+          BinOp(Add, t1, BinOp(Mult, Int n, t2)) when n < 0 ->
+            let t1' = simplify t1 in
+              BinOp(Sub, t1', BinOp(Mult, Int (-n), t2))
+        | BinOp(Add, t1, Int n) when n < 0 ->
+            let t1' = simplify t1 in
+              BinOp(Sub, t1', Int (-n))
+        | BinOp(Add, t1, t2) ->
+            let t1' = simplify t1 in
+              BinOp(Add, t1', t2)
+        | t -> t
+      in
+        BinOp(op', t1', simplify t2')
   | Not t -> Not (normalize_bool_exp t)
   | Unit
   | Int _

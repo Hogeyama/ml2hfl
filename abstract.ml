@@ -231,11 +231,7 @@ let weakest cond ds p =
 
 
 
-let list_of_set = PredSet.elements
-let list_of_setset setset = PredSetSet.fold (fun set xs -> PredSet.elements set :: xs) setset []
 let rec contradict_aux cond pbsetset1 pbsetset2 p =
-  let pbss1 = list_of_setset pbsetset1 in
-  let pbss2 = list_of_setset pbsetset2 in
   if PredSetSet.is_empty pbsetset1
   then
     pbsetset2
@@ -245,7 +241,6 @@ let rec contradict_aux cond pbsetset1 pbsetset2 p =
         Wrapper.check (cond @@ ps) p
     in
     let aux pbset =
-      let pbs = list_of_set pbset in
       let f p pbsetset =
         let pbset' = PredSet.remove p pbset in
           if checkset pbset'
@@ -255,11 +250,7 @@ let rec contradict_aux cond pbsetset1 pbsetset2 p =
         PredSet.fold f pbset PredSetSet.empty
     in
     let aux2 pbset (pbsetset1,pbsetset2) =
-      let pbs = list_of_set pbset in
-  let pbss1 = list_of_setset pbsetset1 in
-  let pbss2 = list_of_setset pbsetset2 in
       let pbsetset = aux pbset in
-  let pbss = list_of_setset pbsetset in
         if PredSetSet.is_empty pbsetset
         then pbsetset1, PredSetSet.add pbset pbsetset2
         else PredSetSet.union pbsetset pbsetset1, pbsetset2
@@ -297,6 +288,7 @@ let contradict cond pbs =
 
 
 let abst cond pbs p =
+  let () = Format.printf "ABST %a: %a@." pp_print_typ (TInt (List.sort compare (List.map fst pbs))) pp_print_term p in
   let tru, fls = weakest cond pbs p in
     if tru = Not fls || Not tru = fls then tru
     else If(tru, True, If(fls, False, Unknown, Unknown), Unknown)
@@ -318,13 +310,13 @@ let inst_var t p =
 
 
 
-let abst_arg x (xs,xbss,pbs) =
+let abst_arg x (xs,pbs) =
   match x.typ with
       TInt ps ->
         let xs' = List.map (fun _ -> {(new_var' "b") with typ=TAbsBool}) ps in
         let pbs' = List.map2 (fun p b -> inst_var (Var x) p, Var b) ps xs' in
-          xs'@xs, (x,xs')::xbss, pbs'@pbs
-    | _ -> x::xs, xbss, pbs
+          xs'@xs, pbs'@pbs
+    | _ -> x::xs, pbs
 
 
 
@@ -336,25 +328,25 @@ let filter_fail cond pbs t =
 
 
 
-let rec coerce cond xbss pbs typ1 typ2 t =
+let rec coerce cond pbs typ1 typ2 t =
   match typ1,typ2 with
       TUnit,TUnit -> filter_fail cond pbs t
     | TBool, TBool -> t
     | TFun((x1,TInt ps1),typ12), TFun((x2,TInt ps2),typ22) ->
-        let xs,xbss',pbs' = abst_arg x2 ([],xbss,pbs) in
+        let xs,pbs' = abst_arg x2 ([],pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
         let ts = List.map (fun p -> abst cond' pbs' (inst_var (Var x2(*???*)) p)) ps1 in
-        let t' = coerce cond' xbss(*???*) pbs' typ12 typ22 (App(t, ts)) in
+        let t' = coerce cond' pbs' typ12 typ22 (App(t, ts)) in
           List.fold_right (fun x t -> Fun(x, t)) xs t'
     | TFun((x1,typ11),typ12), TFun((x2,typ21),typ22) ->
         let x = new_var' "x" in
 (*x cannot be depended because x is function? *)
-          Fun(x, coerce cond xbss pbs typ12 typ22 (App(t, [coerce cond xbss pbs typ21 typ11 (Var x)])))
+          Fun(x, coerce cond pbs typ12 typ22 (App(t, [coerce cond pbs typ21 typ11 (Var x)])))
     | TUnknown,_ -> t
     | _,TUnknown -> t
     | _,_ -> Format.printf "coerce:%a,%a@." (Syntax.print_typ Syntax.ML) typ1 (Syntax.print_typ Syntax.ML) typ2; assert false
 
-let rec abstract cond xbss pbs = function
+let rec abstract cond pbs = function
     Unit, TUnit -> [Unit]
   | True, TBool -> [True]
   | False, TBool -> [False]
@@ -372,12 +364,12 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
 (*List.iter (Syntax.print_term_break Syntax.ML false) at;*)
       at
   | Var x, typ when Wrapper.congruent cond x.typ typ -> [Var x]
-  | Var x, typ -> abstract cond xbss pbs (App(Var x, []), typ)
+  | Var x, typ -> abstract cond pbs (App(Var x, []), typ)
   | Fun _, _ -> assert false
   | App(Let(f, xs, t1, t2), ts), typ ->
-      abstract cond xbss pbs (Let(f, xs, t1, App(t2, ts)), typ)
+      abstract cond pbs (Let(f, xs, t1, App(t2, ts)), typ)
   | App(App(t, ts1), ts2), typ ->
-      abstract cond xbss pbs (App(t, ts1 @ ts2), typ)
+      abstract cond pbs (App(t, ts1 @ ts2), typ)
   | App(Fail, _), _ -> [App(Fail, [Unit])]
   | App(Var f, ts), typ ->
       let ttyps,typ' =
@@ -395,12 +387,12 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
         let rec aux = function
             [] -> []
           | (t,typ)::ttyps ->
-              let t' = abstract cond xbss pbs (t,typ) in
+              let t' = abstract cond pbs (t,typ) in
                 t' @ aux ttyps
         in
           aux ttyps
       in
-        [coerce cond xbss pbs typ' typ (App(Var f, ts'))]
+        [coerce cond pbs typ' typ (App(Var f, ts'))]
   | BinOp(op, t1, t2) as t, typ ->
       begin
         match op with
@@ -421,33 +413,33 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
       let x2 = new_var' "x" in
       let cond2 = add_to_cond t1 cond in
       let cond3 = add_to_cond (Not t1) cond in
-      let t1' = hd (abstract cond xbss pbs (t1,TBool)) in
-      let t2' = hd (abstract cond2 xbss pbs (t2,typ)) in
-      let t3' = hd (abstract cond3 xbss pbs (t3,typ)) in
+      let t1' = hd (abstract cond pbs (t1,TBool)) in
+      let t2' = hd (abstract cond2 pbs (t2,typ)) in
+      let t3' = hd (abstract cond3 pbs (t3,typ)) in
       let t2'' = Label(true, Var x1) in
       let t3'' = Label(false, Var x2) in
         [Let(x1,[],t2',Let(x2,[],t3',If(t1', t2'', t3'', Branch(t2'', t3''))))]
   | Branch(t1, t2), typ ->
-      let t1' = hd (abstract cond xbss pbs (t1,typ)) in
-      let t2' = hd (abstract cond xbss pbs (t2,typ)) in
+      let t1' = hd (abstract cond pbs (t1,typ)) in
+      let t2' = hd (abstract cond pbs (t2,typ)) in
         [Branch(t1', t2')]
   | Let(f, xs, t1, t2), typ ->
-      let xs',xbss',pbs' = List.fold_right abst_arg xs ([],xbss,pbs) in
+      let xs',pbs' = List.fold_right abst_arg xs ([],pbs) in
       let () = assert (List.length (get_args f.typ) = List.length xs) in
-      let t1' = filter_fail cond pbs' (hd (abstract cond xbss' pbs' (t1,TUnit))) in
-      let t2' = hd (abstract cond xbss pbs (t2,typ)) in
+      let t1' = filter_fail cond pbs' (hd (abstract cond pbs' (t1,TUnit))) in
+      let t2' = hd (abstract cond pbs (t2,typ)) in
         [Let(f, xs', t1', t2')]
   | Letrec(f, xs, t1, t2), typ ->
-      let xs',xbss',pbs' = List.fold_right abst_arg xs ([],xbss,pbs) in
+      let xs',pbs' = List.fold_right abst_arg xs ([],pbs) in
       let () = assert (List.length (get_args f.typ) = List.length xs) in
-      let t1' = filter_fail cond pbs' (hd (abstract cond xbss' pbs' (t1,TUnit))) in
-      let t2' = hd (abstract cond xbss pbs (t2,typ)) in
+      let t1' = filter_fail cond pbs' (hd (abstract cond pbs' (t1,TUnit))) in
+      let t2' = hd (abstract cond pbs (t2,typ)) in
         [Letrec(f, xs', t1', t2')]
   | Not t, _ ->
-      let t' = hd (abstract cond xbss pbs (t,TBool)) in
+      let t' = hd (abstract cond pbs (t,TBool)) in
         [Not t']
   | Fail, _ -> [Fail]
-  | App(t, []), typ -> abstract cond xbss pbs (t, typ)
+  | App(t, []), typ -> abstract cond pbs (t, typ)
   | t, typ -> (Format.printf "Abstract.abstract:@.%a:%a@." (Syntax.print_term_fm Syntax.ML false) t (Syntax.print_typ Syntax.ML) typ; assert false)
 
 
@@ -714,7 +706,7 @@ let trans_eager2 = trans_eager2 hd
 
 
 let abstract t =
-  let t1 = hd (abstract [] [] [] (t,TUnit)) in
+  let t1 = hd (abstract [] [] (t,TUnit)) in
   let t2 = if Flag.use_part_eval then part_eval t1 else t1 in
   let () = if Flag.print_abst then Format.printf "Abstracted Program:@.%a@.@." (Syntax.print_term_fm Syntax.ML false) t2 in
   let t3 = if !Flag.use_unknown then trans_eager t2 else trans_eager2 t2 in

@@ -275,7 +275,9 @@ let rec process_term trace term traces env pcounter =
     | App(t, []) -> process_term trace t traces env pcounter
     | _ -> (print_term term; print_string2 "\n"; raise (Unsupported term))
 and process_aterm env t =
-  let [t1,_,_] = process_term [] t [] env 0 in t1
+  match process_term [] t [] env 0 with
+      [t1,_,_] -> t1
+    | _ -> assert false
           
 let rec process_args term =
    match term with
@@ -407,7 +409,8 @@ let new_var() =
    (current_vid := !current_vid + 1;
     Var({id=vid; origin="x"; typ=TUnit})) (** type is a dummy **)
 *)
-let new_var() = Var({id=new_int (); origin="x"; typ=TUnit})
+let new_id() = {id=new_int (); origin="x"; typ=TUnit}
+let new_var() = Var(new_id())
 let dummy_var = 
   Var({id=0; origin="x"; typ=TUnit})
 
@@ -823,6 +826,7 @@ let int_gen ts =
         [] -> ts
       | (BinOp(Eq, t, Int(n)))::ts -> 
           (BinOp(Eq, t, Int(n))) :: List.map (subst_int n t) (ts @ ts2)
+      | _ -> assert false
 
 let interpolate ids c1 c2 =
   let ts1 = terms_of c1 in
@@ -914,7 +918,7 @@ let get_lb pid terms lbs =
   try
     List.assoc pid lbs
   with Not_found ->
-    List.map (fun _ -> let Var(id) = new_var () in id) terms,
+    List.map (fun _ -> new_int ()) terms,
     [Cfalse]
 
 
@@ -996,7 +1000,8 @@ let rec compute_lbs c lbs =
             let conds, eqss = List.split (List.map
               (function Cpred(Pred(pid', terms')) ->
                 let cond, eqs, terms'' = List.assoc pid' lbs in
-                cond, eqs @ (List.combine terms' terms''))
+                cond, eqs @ (List.combine terms' terms'')
+                | _ -> assert false)
               c1)
             in
             let eqs = Util.uniq (List.concat eqss) in
@@ -1010,8 +1015,8 @@ let rec compute_lbs c lbs =
                   assert false)
                 tmp);
             let eqs1, eqs2 = List.partition (function (Var(_), _) -> true | _ -> false) eqs in
-            let sub = List.map (fun (Var(id), t) -> id, t) eqs1 in
-            let cond = Util.uniq ((List.map (function Cterm(t) -> subst_term sub t) c2) @
+            let sub = List.map (function (Var(id), t) -> id, t | _ -> assert false) eqs1 in
+            let cond = Util.uniq ((List.map (function Cterm(t) -> subst_term sub t | _ -> assert false) c2) @
                                   (List.concat conds)) in
             let eqs2 = List.map (fun (t1, t2) -> subst_term sub t1, t2) eqs2 in
             let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
@@ -1146,7 +1151,7 @@ let solve_constr c =
                           (fun ids -> function
                             Var(id) when not (List.mem id ids) -> ids @ [id]
                           | _ ->
-                            let Var(id) = new_var () in ids @ [id])
+                            let id = new_id () in ids @ [id])
                           [] terms'
                         in
                         let _ = if Flag.debug then
@@ -1214,14 +1219,16 @@ let solve_constr c =
                               let _ =
                                 if Flag.debug(* && Flag.print_interpolant*) then begin
                                   List.iter2
-                                    (fun t (Cpred(Pred(pid, terms))) -> 
-                                      print_pname pid;
-                                      print_string2 "(";
-                                      print_terms terms;
-                                      print_string2 ")";
-                                      print_string2 ":\n";
-                                      print_constraint [Cterm(t)];
-                                      print_string2 "\n")
+                                    (fun t c ->
+                                      match c with Cpred(Pred(pid, terms)) ->
+                                        print_pname pid;
+                                        print_string2 "(";
+                                        print_terms terms;
+                                        print_string2 ")";
+                                        print_string2 ":\n";
+                                        print_constraint [Cterm(t)];
+                                        print_string2 "\n"
+                                        | _ -> assert false)
                                     dubs c;
                                   print_string2 "lb: ";
                                   print_constraint lb;
@@ -1245,14 +1252,17 @@ let solve_constr c =
                                 let _ =
                                   if Flag.debug(* && Flag.print_interpolant*) then begin
                                     List.iter2
-                                      (fun t (Cpred(Pred(pid, terms))) -> 
-                                        print_pname pid;
-                                        print_string2 "(";
-                                        print_terms terms;
-                                        print_string2 ")";
-                                        print_string2 ":\n";
-                                        print_constraint [Cterm(t)];
-                                        print_string2 "\n")
+                                      (fun t c ->
+                                        match c with
+                                            Cpred(Pred(pid, terms)) ->
+                                              print_pname pid;
+                                              print_string2 "(";
+                                              print_terms terms;
+                                              print_string2 ")";
+                                              print_string2 ":\n";
+                                              print_constraint [Cterm(t)];
+                                              print_string2 "\n"
+                                          | _ -> assert false)
                                       dubs c;
                                     print_string2 "lb: ";
                                     print_constraint lb;
@@ -1287,6 +1297,7 @@ let solve_constr c =
 *)
                         let nubs = Util.uniq ((subst_term (List.combine ids' terms') t)::nubs) in
                           solve_aux' nubs sol c
+                    | _ -> assert false
                   in
                     solve_aux' nubs [] c1
               | _ -> print_ac ac; assert false)

@@ -145,7 +145,9 @@ let check pre p =
 
 (**)
   let env = List.map (fun v -> Typing.new_var v) fv in
-  let p::pre, _  = List.split (List.map (fun p -> Typing.infer env p) (p::pre)) in
+  let aux p = fst (Typing.infer env p) in
+  let p = aux p in
+  let pre = List.map aux pre in
   let fv = List.map fst env in
 (**)
 
