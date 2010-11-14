@@ -288,7 +288,6 @@ let contradict cond pbs =
 
 
 let abst cond pbs p =
-  let () = Format.printf "ABST %a: %a@." pp_print_typ (TInt (List.sort compare (List.map fst pbs))) pp_print_term p in
   let tru, fls = weakest cond pbs p in
     if tru = Not fls || Not tru = fls then tru
     else If(tru, True, If(fls, False, Unknown, Unknown), Unknown)
