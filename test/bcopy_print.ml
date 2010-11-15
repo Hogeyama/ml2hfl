@@ -27,6 +27,6 @@ let f m src des =
 in
 let array1 = make_array n in
 let array2 = make_array n in
-  if n>0 && i=0
+  if n>0
   then f n array1 array2
   else ()

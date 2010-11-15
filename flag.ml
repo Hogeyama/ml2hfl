@@ -51,7 +51,7 @@ let debug = true
 
 
 let use_nint = ref false
-let use_subterm = true
+let use_subterm = false
 let use_neg_pred = true
 let use_part_eval = true
 let check_sat = true
