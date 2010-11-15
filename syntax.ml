@@ -1343,7 +1343,7 @@ and print_term syntax pri typ fm = function
             let s1,s2 = paren pri p in
               fprintf fm "%s%a <=> %a%s" s1 (print_term syntax p typ) t1 (print_term syntax p typ) t2 s2
           else
-            let p = match op with Add|Sub|Mult -> 6 | _ -> 5 in
+            let p = match op with Add|Sub|Mult -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
             let s1,s2 = paren pri p in
               fprintf fm "%s%a %a %a%s" s1 (print_term syntax p typ) t1 (print_binop syntax t1 t2) op (print_term syntax p typ) t2 s2
         end
@@ -1710,4 +1710,4 @@ let rec normalize_bool_exp = function
   | Fail
   | Label _ -> assert false
 
-    
+let normalize_bool_exp t = t    
