@@ -1710,4 +1710,4 @@ let rec normalize_bool_exp = function
   | Fail
   | Label _ -> assert false
 
-let normalize_bool_exp t = t    
+
