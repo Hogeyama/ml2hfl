@@ -95,6 +95,7 @@ let rec add_nint t x =
     let x2 = new_var' x.origin in
     let f = new_var' "f" in
       free := x2::!free;
+      (*Let(x, [], NInt x2, t)*)
       Let(x, [], App(Let(f, [x1], Var x1, Var f), [NInt x2]), t)
   in
   match t with

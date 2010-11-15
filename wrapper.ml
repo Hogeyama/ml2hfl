@@ -411,18 +411,67 @@ let rec simplify_bool_exp precise t =
     | BinOp(Eq, BinOp(op1, t11, t12), BinOp(op2, t21, t22)) when op1 = op2 && t12 = t22 ->
         simplify_bool_exp precise (BinOp(Eq, t11, t21))
     | BinOp(Eq, Int 0, BinOp(Mult, Int n, t))
-    | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) -> (*unsound if n=0?*)
-        BinOp(Eq, t, Int 0)
+    | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) ->
+        if n = 0 then
+          True
+        else
+          BinOp(Eq, t, Int 0)
+    | BinOp(Lt, Int 0, BinOp(Mult, Int n, t))
+    | BinOp(Gt, BinOp(Mult, Int n, t), Int 0) ->
+        if n > 0 then
+          BinOp(Lt, Int 0, t)
+        else if n < 0 then
+          BinOp(Lt, t, Int 0)
+        else
+          False
+    | BinOp(Lt, BinOp(Mult, Int n, t), Int 0)
+    | BinOp(Gt, Int 0, BinOp(Mult, Int n, t)) ->
+        if n > 0 then
+          BinOp(Lt, t, Int 0)
+        else if n < 0 then
+          BinOp(Lt, Int 0, t)
+        else
+          False
+    | BinOp(Leq, Int 0, BinOp(Mult, Int n, t))
+    | BinOp(Geq, BinOp(Mult, Int n, t), Int 0) ->
+        if n > 0 then
+          BinOp(Leq, Int 0, t)
+        else if n < 0 then
+          BinOp(Leq, t, Int 0)
+        else
+          True
+    | BinOp(Leq, BinOp(Mult, Int n, t), Int 0)
+    | BinOp(Geq, Int 0, BinOp(Mult, Int n, t)) ->
+        if n > 0 then
+          BinOp(Leq, t, Int 0)
+        else if n < 0 then
+          BinOp(Leq, Int 0, t)
+        else
+          True
+    | BinOp(Eq, Int n, Int m) ->
+        if n = m then True else False
+    | BinOp(Lt, Int n, Int m) ->
+        if n < m then True else False
+    | BinOp(Gt, Int n, Int m) ->
+        if n > m then True else False
+    | BinOp(Leq, Int n, Int m) ->
+        if n <= m then True else False
+    | BinOp(Geq, Int n, Int m) ->
+        if n >= m then True else False
     | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
+(*
         let t1 = simplify_exp t1 in
         let t2 = simplify_exp t2 in
+*)
         let d = gcd_arith_exp [t1;t2] in
           if d = 0
-          then BinOp(op, t1, t2)
+          then BinOp(op, simplify_exp t1, simplify_exp t2)
           else
             let t1' = div_arith_exp d t1 in
             let t2' = div_arith_exp d t2 in
-              BinOp(op, t1', t2')
+              BinOp(op, simplify_exp t1', simplify_exp t2')
+    | Not True -> False
+    | Not False -> True
     | Not t -> Not (simplify_bool_exp precise t)
     | _ -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
 and simplify_exp t =
@@ -531,7 +580,7 @@ let interpolation ts1 ts2 =
     Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
   else ();
   let pred'' =
-    match from_pred (CsisatAstUtil.dnf pred') with
+    match Syntax.normalize_bool_exp (simplify_bool_exp false (from_pred (CsisatAstUtil.dnf pred'))) with
       BinOp(Or, _, _) as p ->
         let rec f = function
           BinOp(Or, t1, t2) ->

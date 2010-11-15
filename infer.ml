@@ -235,18 +235,24 @@ let rec mk_appterm h terms =
 exception Unsupported of Syntax.t
 exception Undefined of ident
 
+let invalid_counter = -10
+
 let rec process_term trace term traces env pcounter =
   match term with
-      Unit -> let _ = register_branches trace pcounter in [MyUnit(new_tinfo()), trace, traces]
+      Unit ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyUnit(new_tinfo()), trace, traces]
     | If(t1,t2,t3,t4) ->
         let tts, tfs = List.partition (function [] -> assert false | true::_ -> true | false::_ -> false) traces in
         let tts = List.map List.tl tts in
         let tfs = List.map List.tl tfs in
         (if tts = [] then [] else (process_term (trace @ [true ]) t2 tts env pcounter)) @
         (if tfs = [] then [] else (process_term (trace @ [false]) t3 tfs env pcounter))
-    | App(Fail,_) -> let _ = register_branches trace pcounter in [MyFail(new_tinfo()), trace, traces]
+    | App(Fail,_) ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyFail(new_tinfo()), trace, traces]
     | Var(x) -> 
-        let _ = register_branches trace pcounter in
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         (try
            let myt = List.assoc x env in
              [myt, trace, traces]
@@ -256,7 +262,7 @@ let rec process_term trace term traces env pcounter =
            let _ = register_tinfo x tinfo in
              [h, trace, traces])
     | App(Var x, ts) ->
-        let _ = register_branches trace pcounter in
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         let myts = List.map (fun t -> process_aterm env t) ts in
           (try
              let myt = List.assoc x env in
@@ -266,16 +272,28 @@ let rec process_term trace term traces env pcounter =
              let h = MyVar(x, tinfo) in
              let _ = register_tinfo x tinfo in
                [mk_appterm h myts, trace, traces])
-    | BinOp(_) -> let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces]
-    | NInt _ -> let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces]
-    | Int _ ->  let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces]
-    | True -> let _ = register_branches trace pcounter in [MyUnit(new_tinfo()), trace, traces] (*???*)
-    | False -> let _ = register_branches trace pcounter in [MyUnit(new_tinfo()), trace, traces] (*???*)
-    | Not(_) -> let _ = register_branches trace pcounter in [MyTerm(term, new_tinfo()), trace, traces] (*???*)
+    | BinOp(_) ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyTerm(term, new_tinfo()), trace, traces]
+    | NInt _ ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyTerm(term, new_tinfo()), trace, traces]
+    | Int _ ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyTerm(term, new_tinfo()), trace, traces]
+    | True ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyUnit(new_tinfo()), trace, traces] (*???*)
+    | False ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyUnit(new_tinfo()), trace, traces] (*???*)
+    | Not(_) ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyTerm(term, new_tinfo()), trace, traces] (*???*)
     | App(t, []) -> process_term trace t traces env pcounter
     | _ -> (print_term term; print_string2 "\n"; raise (Unsupported term))
 and process_aterm env t =
-  match process_term [] t [] env 0 with
+  match process_term [] t [] env invalid_counter with
       [t1,_,_] -> t1
     | _ -> assert false
           
@@ -550,6 +568,8 @@ let print_constraint c =
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
+  List.iter (fun trace -> List.iter (fun b -> if b then print_string2 "t" else print_string2 "f") trace; print_string2 ".\n") traces;
+  print_string2 "\n";
   match term with
     Unit -> []
   | App(Var x, ts) ->
@@ -565,7 +585,7 @@ let rec chk_term rtenv term id trace traces =
        PickRty -> [Cfalse])
   | App(Fail, _) -> [Cfalse]
   | If(t1,t2,t3,_) ->
-      let tts, tfs = List.partition (function [] -> raise (Fatal "ch_term: trace information is missing") | true::_ -> true | false::_ -> false) traces in
+      let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | true::_ -> true | false::_ -> false) traces in
       let tts = List.map List.tl tts in
       let tfs = List.map List.tl tfs in
       let c1 = if tts = [] then [] else [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [true]) tts)] in
@@ -674,18 +694,21 @@ let cgen_flag = ref true (** this should be set to false if we want to propagate
 let chk_def_rty vars body rty rtenv =
   let (venv1, id) = mk_venv vars rty in
   let rtenv' = venv1@rtenv in
-  let traces = try let r = List.assoc id !branchtab in !r with 
-               Not_found -> []
+  let traces =
+    try
+      let r = List.assoc id !branchtab in !r
+    with Not_found ->
+      []
   in
   let c = chk_term rtenv' body id [] traces in
   let assumption = getc_from_env venv1 in
     [Cimp(assumption, c)]
 
 let chk_def vars body rtyl rtenv =
-  List.fold_left 
- (fun c-> fun rty -> (chk_def_rty vars body rty rtenv)@c)
-  []
-  rtyl
+  List.fold_left
+    (fun c-> fun rty -> (chk_def_rty vars body rty rtenv) @ c)
+    []
+    rtyl
 
 let rec gen_constr defs rtenv =
   match defs with
@@ -813,7 +836,7 @@ and term_of_ac ac =
   | Cfalse -> False
 
 let int_gen ts =
-  let ints = List.filter (fun x -> x <> 0) (Util.rev_map_flatten get_int ts) in
+  let ints = (*List.filter (fun x -> x <> 0)*) (Util.rev_map_flatten get_int ts) in
   Format.printf "ints: ";
   List.iter (fun int -> Format.printf "%d," int) ints;
   Format.printf "@.";
@@ -1004,7 +1027,7 @@ let rec compute_lbs c lbs =
                 | _ -> assert false)
               c1)
             in
-            let eqs = Util.uniq (List.concat eqss) in
+            let eqs = Util.uniq (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
             (if Flag.debug then
              (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
               let tmp = Util.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
@@ -1016,9 +1039,11 @@ let rec compute_lbs c lbs =
                 tmp);
             let eqs1, eqs2 = List.partition (function (Var(_), _) -> true | _ -> false) eqs in
             let sub = List.map (function (Var(id), t) -> id, t | _ -> assert false) eqs1 in
-            let cond = Util.uniq ((List.map (function Cterm(t) -> subst_term sub t | _ -> assert false) c2) @
-                                  (List.concat conds)) in
+            let cond = (List.map (function Cterm(t) -> subst_term sub t | _ -> assert false) c2) @
+                       (List.concat conds) in
+            let cond = Util.uniq (List.filter (fun t -> t <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
             let eqs2 = List.map (fun (t1, t2) -> subst_term sub t1, t2) eqs2 in
+            let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
             let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
             let terms = List.map (subst_term sub) terms in
             let terms = List.map Wrapper.simplify_exp terms in 
@@ -1166,6 +1191,9 @@ let solve_constr c =
                             let cond, eqs', terms = List.assoc pid' lbs in
                             let ts = List.map2 (fun id t -> BinOp(Eq, Var(id), t)) ids' terms in
                             let ts = cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs') @ ts in
+(* this slows down verification of mult.ml, zip_unzip.ml, zip_map.ml but necessary for zip_map.ml?
+                            let ts = if Flag.gen_int then int_gen ts else ts in
+*)
                             ts
                           with Not_found ->
                             [False]
@@ -1173,8 +1201,8 @@ let solve_constr c =
 
                         let dubs = List.map
                           (fun ac ->
-                            (*without this recursive.ml could not be verified*)
                             let ts = Util.uniq (subst_ac lbs ac) in
+                            (*without this recursive.ml could not be verified*)
                             and_list ts)
                           c
                         in
