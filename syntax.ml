@@ -34,6 +34,7 @@ and t =
   | Not of t
   | Fail
   | Label of bool * t
+  | Event of string
 
 type syntax = ML | TRecS | CVC3 | CSIsat
 
@@ -117,6 +118,7 @@ let rec trans = function
   | Label(b,t) ->
       let t' = trans t in
         Label(b,t')
+  | Event s -> Event s
 
 
 
@@ -1451,6 +1453,8 @@ and print_term syntax pri typ fm = function
           | _ -> "l_else"
       in
         fprintf fm "%s%s %a%s" s1 s (print_term syntax p typ) t s2
+  | Event s ->
+      fprintf fm "{%s}" s
 
 
 let string_of_ident x =
