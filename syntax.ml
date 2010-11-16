@@ -243,7 +243,80 @@ let rec subst_type x t = function
         TFun((y',typ1'),typ2')
   | TUnknown -> TUnknown
 
+let rec subst_orig x t = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt y ->
+      if x.origin = y.origin then t else NInt y
+  | Var y ->
+      if x.origin = y.origin then t else Var y
+  | Fun(y, t1) ->
+      let t1' = if x.origin = y.origin then t1 else subst_orig x t t1 in
+        Fun(y, t1')
+  | App(t1, ts) ->
+      let t1' = subst_orig x t t1 in
+      let ts' = List.map (subst_orig x t) ts in
+        begin
+          match t1' with
+              App(t, ts) -> App(t, ts@ts')
+            | _ -> App(t1', ts')
+        end
+  | If(t1, t2, t3, t4) ->
+      let t1' = subst_orig x t t1 in
+      let t2' = subst_orig x t t2 in
+      let t3' = subst_orig x t t3 in
+      let t4' = subst_orig x t t4 in
+        If(t1', t2', t3', t4')
+  | Branch(t1, t2) ->
+      let t1' = subst_orig x t t1 in
+      let t2' = subst_orig x t t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let t1' = subst_orig x t t1 in
+      let t2' = if f.origin = x.origin then t2 else subst_orig x t t2 in
+        Let(f, xs, t1', t2')
+  | Letrec(f, xs, t1, t2) ->
+      let t1' = if f.origin = x.origin then t1 else subst_orig x t t1 in
+      let t2' = if f.origin = x.origin then t2 else subst_orig x t t2 in
+        Letrec(f, xs, t1', t2')
+  | BinOp(op, t1, t2) ->
+      let t1' = subst_orig x t t1 in
+      let t2' = subst_orig x t t2 in
+        BinOp(op, t1', t2')
+  | Not t1 ->
+      let t1' = subst_orig x t t1 in
+        Not t1'
+  | Fail -> Fail
+  | Label(b, t1) ->
+      let t1' = subst_orig x t t1 in
+        Label(b, t1')
 
+let rec subst_type_orig x t = function
+    TUnit -> TUnit
+  | TAbsBool -> TAbsBool
+  | TBool -> TBool
+  | TInt ts -> TInt (List.map (subst_orig x t) ts)
+  | TVar _ -> assert false
+  | TFun((y,typ1),typ2) ->
+      let typ1' = subst_type_orig x t typ1 in
+      let typ2' = subst_type_orig x t typ2 in
+      let y' = {y with typ = typ1'} in
+        TFun((y',typ1'),typ2')
+  | TUnknown -> TUnknown
+
+let rec fff = function
+    TUnit -> TUnit
+  | TAbsBool -> TAbsBool
+  | TBool -> TBool
+  | TInt ts -> TInt ts
+  | TVar _ -> assert false
+  | TFun((x,typ1),typ2) ->
+      let x' = new_var_id x in
+      TFun(({x' with typ = typ1}, typ1), subst_type_orig x (Var x') typ2)
+  | TUnknown -> TUnknown
 
 
 

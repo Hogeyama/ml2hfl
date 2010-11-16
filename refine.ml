@@ -941,11 +941,11 @@ let rec get_subterm = function
 
 
 let rec add_preds_typ sol typ1 typ2 =
-  (*
-    Format.printf "%a and " (print_typ ML) typ1;
-    Infer.print_rty typ2;
-    Format.printf "@.";
-  *)
+(*
+  Format.printf "%a and " (print_typ ML) typ1;
+  Infer.print_rty typ2;
+  Format.printf "@.";
+*)
   match typ1, typ2 with
       TUnit, Infer.RTunit _ -> TUnit
     | TAbsBool, Infer.RTbool _ -> TAbsBool
@@ -1020,9 +1020,9 @@ let rec add_preds rte sol = function
       let t2' = add_preds rte sol t2 in
         Branch(t1', t2')
   | Let(f, xs, t1, t2) ->
-
-(*Format.printf "%a," (print_term_fm ML true) (Var f);*)
-
+(*
+      Format.printf "%a," (print_term_fm ML true) (Var f);
+*)
       let typ = List.fold_left (add_preds_typ sol) f.typ
         (try snd (List.find (fun (f', _) -> f'.id = f.id) rte) with Not_found ->
           [](*List.iter (fun (f, _) -> Format.printf "%a," (print_term_fm ML true) (Var f)) rte;
@@ -1036,9 +1036,9 @@ let rec add_preds rte sol = function
       let t2'' = subst f (Var f') t2' in
         Let(f', xs', t1'', t2'')
   | Letrec(f, xs, t1, t2) ->
-
-(*Format.printf "%a," (print_term_fm ML true) (Var f);*)
-
+(*
+      Format.printf "%a," (print_term_fm ML true) (Var f);
+*)
       let typ = List.fold_left (add_preds_typ sol) f.typ
         (try snd (List.find (fun (f', _) -> f'.id = f.id) rte) with Not_found ->
           [](*List.iter (fun (f, _) -> Format.printf "%a," (print_term_fm ML true) (Var f)) rte;
@@ -1061,23 +1061,74 @@ let rec add_preds rte sol = function
   | Fail -> Fail
   | Label _ -> assert false
 
-let refine ces defs t t0 =
-  (*
-    let () = Format.printf "%a@." (print_term_fm ML true) t in
-  *)
-  (*
-    let defs,t = lift t0 in
-  *)
-  (*
-    let () = Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs) in
-  *)
+let rec remove_preds_typ typ =
+  match typ with
+      TUnit -> TUnit
+    | TAbsBool -> TAbsBool
+    | TBool -> TBool
+    | TInt _ -> TInt []
+    | TVar _ -> assert false
+    | TFun((x,typ1),typ2) ->
+        TFun(({x with typ = remove_preds_typ x.typ},remove_preds_typ typ1), remove_preds_typ typ2)
+    | TUnknown -> TUnknown
+
+let rec remove_preds = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | Var x -> Var({x with typ = remove_preds_typ x.typ})
+  | Fun _ -> assert false
+  | App(t, ts) ->
+      let t' = remove_preds t in
+      let ts' = List.map remove_preds ts in
+        App(t', ts')
+  | If(t1, t2, t3, _) ->
+      let t1' = remove_preds t1 in
+      let t2' = remove_preds t2 in
+      let t3' = remove_preds t3 in
+        If(t1', t2', t3', Unit)
+  | Branch(t1, t2) ->
+      let t1' = remove_preds t1 in
+      let t2' = remove_preds t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let f' = {f with typ = remove_preds_typ f.typ} in
+      let xs' = List.map (fun x -> {x with typ = remove_preds_typ x.typ}) xs in
+      let t1' = remove_preds t1 in
+      let t2' = remove_preds t2 in
+        Let(f', xs', t1', t2')
+  | Letrec(f, xs, t1, t2) ->
+      let f' = {f with typ = remove_preds_typ f.typ} in
+      let xs' = List.map (fun x -> {x with typ = remove_preds_typ x.typ}) xs in
+      let t1' = remove_preds t1 in
+      let t2' = remove_preds t2 in
+        Letrec(f', xs', t1', t2')
+  | BinOp(op, t1, t2) ->
+      let t1' = remove_preds t1 in
+      let t2' = remove_preds t2 in
+        BinOp(op, t1', t2')
+  | Not t ->
+      let t' = remove_preds t in
+        Not t'
+  | Fail -> Fail
+  | Label _ -> assert false
+
+let refine ces t0 =
+(*
+  let () = Format.printf "%a@." (print_term_fm ML true) t in
+*)
+  let defs,t = lift t0 in
+(*
+  let () = Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs) in
+*)
   let map,_,defs',t' = rename defs t in
-    (*
-      let scmap = get_scmap (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
-    *)
-    (*
-      let () = Format.printf "\n\n%a\n\n@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
-    *)
+(*
+  let scmap = get_scmap (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
+  let () = Format.printf "\n\n%a\n\n@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
+*)
 
   let s = {id = 0; origin = "Main"; typ = TUnit} in
   let defs1 = (s,([], t'))::defs' in
@@ -1106,3 +1157,109 @@ let refine ces defs t t0 =
     add_preds pred_map t0
 *)
 
+
+
+let rec add_preds_typ_ typ1 typ2 =
+(*
+  Format.printf "%a and %a@." (print_typ ML) typ1 (print_typ ML) typ2;
+*)
+  match typ1, typ2 with
+      TUnit, TUnit -> TUnit
+    | TAbsBool, TAbsBool -> TAbsBool
+    | TBool, TBool -> TBool
+    | TInt _, _ -> assert false
+    | TVar _, _ -> assert false
+    | TFun((x,TInt ps),rtyp1), TFun((y,TInt qs),rtyp2) ->
+        let rtyp2 = subst_type y (Var x) rtyp2 in
+        let typ =
+          try
+            let ps =
+              let aux ps p =
+                if List.exists (Wrapper.equiv [] p) ps ||
+                  List.exists (Wrapper.equiv [] (Not p)) ps ||
+                  Wrapper.equiv [] p True || Wrapper.equiv [] p False
+                then ps
+                else ((*Format.printf "adding %a@." (print_term_fm ML true) p;*) p::ps)
+              in
+              List.fold_left (fun ps p -> aux ps ((*Syntax.normalize_bool_exp*) p)) ps qs
+            in
+            TInt ps
+          with Not_found -> (*assert false*)
+            TInt ps
+        in
+        let rtyp = add_preds_typ_ rtyp1 rtyp2 in
+          TFun(({x with typ = typ}, typ), rtyp)
+    | TFun((x,typ1),rtyp1), TFun((y,typ2),rtyp2) ->
+        let rtyp2 = subst_type y (Var x) rtyp2 in
+        let typ = add_preds_typ_ typ1 typ2 in
+        let rtyp = add_preds_typ_ rtyp1 rtyp2 in
+          TFun(({x with typ = typ}, typ), rtyp)
+
+    | TUnknown, _ -> TUnknown
+    | _, _ ->
+        Format.printf "%a and %a" (print_typ ML) typ1 (print_typ ML) typ2;
+        assert false
+
+let rec add_preds_ typedefs = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | Var x ->
+      let typ = 
+        try add_preds_typ_ x.typ (snd (List.find (fun (x', _) -> x'.id = x.id) typedefs))
+        with Not_found ->
+          x.typ
+      in
+      Var({x with typ = typ})
+  | Fun _ -> assert false
+  | App(t, ts) ->
+      let t' = add_preds_ typedefs t in
+      let ts' = List.map (add_preds_ typedefs) ts in
+        App(t', ts')
+  | If(t1, t2, t3, _) ->
+      let t1' = add_preds_ typedefs t1 in
+      let t2' = add_preds_ typedefs t2 in
+      let t3' = add_preds_ typedefs t3 in
+        If(t1', t2', t3', Unit)
+  | Branch(t1, t2) ->
+      let t1' = add_preds_ typedefs t1 in
+      let t2' = add_preds_ typedefs t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let typ = 
+        try add_preds_typ_ f.typ (snd (List.find (fun (f', _) -> f'.id = f.id) typedefs))
+        with Not_found ->
+          f.typ
+      in
+      let f' = {f with typ = typ} in
+      let xs' = get_args typ in
+      let t1' = add_preds_ typedefs t1 in
+      let t2' = add_preds_ typedefs t2 in
+      let t1'' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t1' in
+      let t2'' = subst f (Var f') t2' in
+        Let(f', xs', t1'', t2'')
+  | Letrec(f, xs, t1, t2) ->
+      let typ = 
+        try add_preds_typ_ f.typ (snd (List.find (fun (f', _) -> f'.id = f.id) typedefs))
+        with Not_found ->
+          f.typ
+      in
+      let f' = {f with typ = typ} in
+      let xs' = get_args typ in
+      let t1' = add_preds_ typedefs t1 in
+      let t2' = add_preds_ typedefs t2 in
+      let t1'' = List.fold_right2 subst (f::xs) (List.map (fun x -> Var x) (f'::xs')) t1' in
+      let t2'' = subst f (Var f') t2' in
+        Letrec(f', xs', t1'', t2'')
+  | BinOp(op, t1, t2) ->
+      let t1' = add_preds_ typedefs t1 in
+      let t2' = add_preds_ typedefs t2 in
+        BinOp(op, t1', t2')
+  | Not t ->
+      let t' = add_preds_ typedefs t in
+        Not t'
+  | Fail -> Fail
+  | Label _ -> assert false

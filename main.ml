@@ -34,9 +34,7 @@ let print_info () =
   Format.pp_print_flush Format.std_formatter ()
 
 
-let rec cegar initial t1 ce_prev =
-  Wrapper.open_cvc3 ();
-
+let rec cegar tdefs t1 ce_prev =
   let () = if Flag.print_type then Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n" !Flag.cegar_loop (Syntax.print_term_fm_break Syntax.ML true) t1 in
   let n = Syntax.get_counter () in
 
@@ -69,11 +67,18 @@ let rec cegar initial t1 ce_prev =
               then
                 raise CannotDiscoverPredicate
               else
-                let defs,t' = Syntax.lift t1 in
-                let () = Feasibility.check ce defs t' in
                 let () = if false && Flag.debug then Format.printf "The length of counterexample: %d@.@." (List.length ce) in
-                let t1 = if !Flag.merge_counterexample then initial else t1 in
-                Refine.refine (if !Flag.merge_counterexample then ce::ce_prev else [ce]) defs t' t1
+                let t1 =
+                  if !Flag.merge_counterexample then
+                    Refine.add_preds_ tdefs (Refine.remove_preds t1)
+                  else
+                    t1
+                in
+                try
+                  Refine.refine (if !Flag.merge_counterexample then ce::ce_prev else [ce]) t1
+                with Infer.Untypable ->
+                  let defs,t' = Syntax.lift t1 in
+                  Feasibility.check ce defs t'; assert false
             in
               add_time tmp Flag.time_cegar;
               if Flag.print_progress then print_msg "DONE!\n";
@@ -81,8 +86,9 @@ let rec cegar initial t1 ce_prev =
               incr Flag.cegar_loop;
 
               Wrapper.close_cvc3 ();
+              Wrapper.open_cvc3 ();
 
-              cegar initial t'' (ce::ce_prev)
+              cegar tdefs t'' (ce::ce_prev)
           with
               Syntax.Feasible p -> t1, Some (ce,p)
             | Syntax.Infeasible -> t1, None
@@ -111,16 +117,19 @@ let print_ce ce t =
     Format.printf "error";
     Format.printf "\n\n"
 
-
-let main in_channel =
+let main filename in_channel =
   let input_string = String.create Flag.max_input_size in
   let n = input in_channel input_string 0 Flag.max_input_size in
   let () = if n = Flag.max_input_size then raise LongInput in
   let input_string = String.sub input_string 0 n in
+
   let () = if Flag.web then write_log_string input_string in
-  let parsed =
+  let tdefs, parsed =
     try
-      Parser.file Lexer.token (Lexing.from_string input_string)
+      let lb = Lexing.from_string input_string in
+      let _ = lb.Lexing.lex_curr_p <-
+        { Lexing.pos_fname = Filename.basename filename; Lexing.pos_lnum = 1; Lexing.pos_cnum = 0; Lexing.pos_bol = 0 } in
+      Parser.file Lexer.token lb
     with _ -> raise IllegalInput
   in
   let free_variables,alpha = Alpha.alpha parsed in
@@ -150,7 +159,9 @@ let main in_channel =
         defs t
   in
 
-  let t_result, result = cegar cps cps [] in
+  let tdefs = List.map (fun (x, t) -> x, Syntax.fff t) tdefs in
+  let cps = Refine.add_preds_ tdefs cps in
+  let t_result, result = cegar tdefs cps [] in
     match result with
         None -> print_msg "\nSafe!\n\n"
       | Some (ce,p) ->
@@ -180,10 +191,10 @@ let () =
     try
       let cin = try open_in Sys.argv.(1) with Invalid_argument "index out of bounds" -> stdin in
         if Flag.web then open_log ();
-(*        Wrapper.open_cvc3 ();*)
+        Wrapper.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
-        main cin;
+        main Sys.argv.(1) cin;
         print_info ();
         Wrapper.close_cvc3 ();
         if Flag.web then close_log ()

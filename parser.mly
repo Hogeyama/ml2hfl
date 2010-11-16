@@ -1,5 +1,14 @@
 %{
 open Syntax
+
+let print_error_information () =
+  let st = Parsing.symbol_start_pos () in
+  let en = Parsing.symbol_end_pos () in
+  print_string ("File \"" ^ st.Lexing.pos_fname);
+  Format.printf "\", line %d" st.Lexing.pos_lnum;
+  Format.printf ", characters %d-%d:\n"
+    (st.Lexing.pos_cnum - st.Lexing.pos_bol)
+    (en.Lexing.pos_cnum - en.Lexing.pos_bol)
 %}
 
 %token EOF
@@ -8,6 +17,10 @@ open Syntax
 %token <string> STRING
 %token LPAREN
 %token RPAREN
+%token LCURLY
+%token RCURLY
+%token LSQUAR
+%token RSQUAR
 %token DOT
 %token BEGIN
 %token END
@@ -20,9 +33,15 @@ open Syntax
 %token LBRACKET
 %token RBRACKET
 %token SEMI
+%token COLON
+%token COMMA
+%token PERIOD
 %token IF
 %token THEN
 %token ELSE
+%token TUNIT
+%token TBOOL
+%token TINT
 %token TRUE
 %token FALSE
 %token EQUAL
@@ -45,7 +64,8 @@ open Syntax
 /* priority : low -> high */
 %left prec_if
 %left prec_app
-%nonassoc FUN ARROW
+%nonassoc FUN
+%right ARROW
 %left prec_fun
 %nonassoc prec_let
 %left SEMI
@@ -56,14 +76,17 @@ open Syntax
 %left prec_add
 %nonassoc IDENT INT TRUE FALSE UNKNOWN QUESTION LPAREN RPAREN BEGIN END LET IN FAIL ASSERT
 
-%type <Syntax.t> file
+%type <(Syntax.ident * Syntax.typ) list * Syntax.t> file
 %start file
 
 %%
 
 file:
-  exp EOF
-  { $1 }
+  typedefs exp EOF
+  { $1, $2 }
+| error
+    { print_error_information ();
+      raise (Failure "Syntax error") }
 
 simple_exp:
 | LPAREN exp RPAREN
@@ -160,4 +183,41 @@ id_list:
 | id { [$1] }
 | id id_list { $1::$2 }
 
+typedefs:
+  { [] }
+| id COLON typ SEMI typedefs
+  { ($1, $3)::$5 }
+| LPAREN id COMMA INT RPAREN COLON typ SEMI typedefs
+  { ({$2 with id = $4}, $7)::$9 }
+
+typ:
+  LPAREN typ RPAREN
+  { $2 }
+| TUNIT
+  { TUnit }
+| TBOOL
+  { TBool }
+| TINT
+  { TInt([]) }
+| LCURLY id COLON simple_exp RCURLY
+  { TInt([]) }
+| TINT LSQUAR pred_list RSQUAR
+  { TInt($3) }
+| id COLON typ ARROW typ
+  { TFun(($1, $3), $5) }
+| typ ARROW typ
+  { TFun((new_var "v", $1), $3) }
+
+pred_list:
+  { [] }
+| id PERIOD exp
+  { [subst_orig $1 (Var abst_var) $3] }
+| id PERIOD exp COMMA pred_list_aux
+  { (subst_orig $1 (Var abst_var) $3)::$5 }
+
+pred_list_aux:
+  id PERIOD exp
+  { [subst_orig $1 (Var abst_var) $3] }
+| id PERIOD exp COMMA pred_list_aux
+  { (subst_orig $1 (Var abst_var) $3)::$5 }
 

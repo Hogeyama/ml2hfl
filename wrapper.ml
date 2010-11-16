@@ -332,7 +332,7 @@ let get_solution p =
       let s = input_line cin in
       let s' = String.sub s 7 (String.length s - 8) in
         try
-          let t = Parser.file Lexer.token (Lexing.from_string s') in
+          let [], t = Parser.file Lexer.token (Lexing.from_string s') in
           let t' = rename_ident t in
             t' :: aux cin
         with _ -> aux cin
@@ -415,37 +415,37 @@ let rec simplify_bool_exp precise t =
         if n = 0 then
           True
         else
-          BinOp(Eq, t, Int 0)
+          BinOp(Eq, simplify_exp t, Int 0)
     | BinOp(Lt, Int 0, BinOp(Mult, Int n, t))
     | BinOp(Gt, BinOp(Mult, Int n, t), Int 0) ->
         if n > 0 then
-          BinOp(Lt, Int 0, t)
+          BinOp(Lt, Int 0, simplify_exp t)
         else if n < 0 then
-          BinOp(Lt, t, Int 0)
+          BinOp(Lt, simplify_exp t, Int 0)
         else
           False
     | BinOp(Lt, BinOp(Mult, Int n, t), Int 0)
     | BinOp(Gt, Int 0, BinOp(Mult, Int n, t)) ->
         if n > 0 then
-          BinOp(Lt, t, Int 0)
+          BinOp(Lt, simplify_exp t, Int 0)
         else if n < 0 then
-          BinOp(Lt, Int 0, t)
+          BinOp(Lt, Int 0, simplify_exp t)
         else
           False
     | BinOp(Leq, Int 0, BinOp(Mult, Int n, t))
     | BinOp(Geq, BinOp(Mult, Int n, t), Int 0) ->
         if n > 0 then
-          BinOp(Leq, Int 0, t)
+          BinOp(Leq, Int 0, simplify_exp t)
         else if n < 0 then
-          BinOp(Leq, t, Int 0)
+          BinOp(Leq, simplify_exp t, Int 0)
         else
           True
     | BinOp(Leq, BinOp(Mult, Int n, t), Int 0)
     | BinOp(Geq, Int 0, BinOp(Mult, Int n, t)) ->
         if n > 0 then
-          BinOp(Leq, t, Int 0)
+          BinOp(Leq, simplify_exp t, Int 0)
         else if n < 0 then
-          BinOp(Leq, Int 0, t)
+          BinOp(Leq, Int 0, simplify_exp t)
         else
           True
     | BinOp(Eq, Int n, Int m) ->
@@ -472,6 +472,14 @@ let rec simplify_bool_exp precise t =
               BinOp(op, simplify_exp t1', simplify_exp t2')
     | Not True -> False
     | Not False -> True
+    | Not(BinOp(Lt, t1, t2)) ->
+        BinOp(Geq, simplify_exp t1, simplify_exp t2)
+    | Not(BinOp(Gt, t1, t2)) ->
+        BinOp(Leq, simplify_exp t1, simplify_exp t2)
+    | Not(BinOp(Leq, t1, t2)) ->
+        BinOp(Gt, simplify_exp t1, simplify_exp t2)
+    | Not(BinOp(Geq, t1, t2)) ->
+        BinOp(Lt, simplify_exp t1, simplify_exp t2)
     | Not t -> Not (simplify_bool_exp precise t)
     | _ -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
 and simplify_exp t =
@@ -508,11 +516,11 @@ and simplify_exp t =
 
 
 let rec simplify = function
-    (*CsisatAst.Leq(CsisatAst.Constant n, CsisatAst.Coeff(m,e)) ->
+    CsisatAst.Leq(CsisatAst.Constant n, CsisatAst.Coeff(m,e)) ->
       if m > 0.
       then CsisatAst.Leq(CsisatAst.Constant (ceil (n/.m)), e)
       else CsisatAst.Leq(e, CsisatAst.Constant (floor (n/.m)))
-  |*) CsisatAst.Eq(CsisatAst.Constant 0., CsisatAst.Coeff(m,e)) -> (*unsound if m=0*)
+  | CsisatAst.Eq(CsisatAst.Constant 0., CsisatAst.Coeff(m,e)) -> (*unsound if m=0*)
       CsisatAst.Eq(CsisatAst.Constant 0., e)
   | CsisatAst.And es -> CsisatAst.And (List.map simplify es)
   | CsisatAst.Or es -> CsisatAst.Or (List.map simplify es)

@@ -507,8 +507,8 @@ and print_rtyl rtyl =
 let print_rtenv rtenv =
   List.iter 
   (fun (f,ty) ->
-     (print_ident f; print_string2 ":\n ";
-      List.iter (fun rty -> print_rty rty; print_string2 "\n") ty))
+     (print_ident f; print_string2 ":\n";
+      List.iter (fun rty -> print_string2 " "; print_rty rty; print_string2 "\n") ty))
   rtenv
 
 let atenv2rtenv atenv =
@@ -568,8 +568,10 @@ let print_constraint c =
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
+(*
   List.iter (fun trace -> List.iter (fun b -> if b then print_string2 "t" else print_string2 "f") trace; print_string2 ".\n") traces;
   print_string2 "\n";
+*)
   match term with
     Unit -> []
   | App(Var x, ts) ->
@@ -970,6 +972,10 @@ let rec subst_ac lbs ac =
         try
           let cond, eqs, terms' = List.assoc pid lbs in
           let ts = List.map2 (fun t1 t2 -> Wrapper.simplify_bool_exp false (BinOp(Eq, t1, t2))) terms terms' in
+(*
+          let ts_cond = if Flag.gen_int then int_gen (ts @ cond) else ts @ cond in
+          ts_cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs)
+*)
           let ts = if Flag.gen_int then int_gen ts else ts in
           cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs) @ ts
         with Not_found ->
@@ -1192,8 +1198,10 @@ let solve_constr c =
                             let ts = List.map2 (fun id t -> BinOp(Eq, Var(id), t)) ids' terms in
                             let ts = cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs') @ ts in
 (* this slows down verification of mult.ml, zip_unzip.ml, zip_map.ml but necessary for zip_map.ml?
-                            let ts = if Flag.gen_int then int_gen ts else ts in
+normalization remedies the above problem?
 *)
+                            let ts = if Flag.gen_int then int_gen ts else ts in
+(**)
                             ts
                           with Not_found ->
                             [False]
