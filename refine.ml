@@ -8,7 +8,6 @@ open Syntax
 
 let new_tvar () = TVar (ref None)
 
-
 let rec expand t = function
     TFun((x,typ1),typ2) ->
       expand (app2app t [Var x]) typ2
@@ -46,12 +45,12 @@ let reduce_trace ps scope =
 
 
 
-
+(*
 let rec get_scmap_typ scope = function
   | TUnit -> []
   | TAbsBool -> []
   | TBool -> []
-  | TInt ps -> []
+  | TInt _ -> []
   | TVar _ -> assert false
   | TFun((x,TInt ps),typ2) ->
       let scope' = x::scope in
@@ -62,7 +61,6 @@ let rec get_scmap_typ scope = function
       let scmap2 = get_scmap_typ scope typ2 in
         scmap1@@scmap2
   | TUnknown -> []
-
 
 
 let rec get_scmap scope = function
@@ -220,6 +218,7 @@ let get_head' t =
   match get_head t with
       Var f -> f
     | _ -> assert false
+*)
 
 (*
 let rec infer_template env trace tenv =
@@ -461,7 +460,7 @@ let refine ce t =
 
 
 
-
+(*
 type dag = Top of (t * t list * dag ref list) | Node of ((ident * int * ident * t list) * t list * dag ref list)
 
 let solve_constr constr =
@@ -617,6 +616,7 @@ let solve_constr constr =
   in
   let () = Format.printf "WWW@." in
     solve dag
+*)
 
 
 
@@ -665,12 +665,12 @@ let rec rename_map map =
         let t' = rename_map map t in
           Label(b,t')
 
-
 let rec rename_typ = function
     TUnit -> [], TUnit
   | TBool -> [], TBool
   | TAbsBool -> [], TAbsBool
   | TInt _ -> [], TInt []
+  | TRInt p -> [], TRInt p
   | TVar _ -> assert false
   | TFun((x,typ1),typ2) ->
       let map1,typ1' = rename_typ typ1 in
@@ -698,7 +698,7 @@ let rename defs t =
 
 
 
-
+(*
 let rec get_branch b = function
     Let(f,xs,t1,t2) ->
       let t_g,t_b = get_branch b t2 in
@@ -902,7 +902,6 @@ let get_constr ce defs t =
 
 
 
-
 let add_preds map t =
   let xs = List.map fst map in
   let map' =
@@ -925,6 +924,10 @@ let add_preds map t =
       List.map aux xs
   in
     replace_vars map' t
+*)
+
+
+
 
 
 let rec get_subterm = function
@@ -950,7 +953,8 @@ let rec add_preds_typ sol typ1 typ2 =
       TUnit, Infer.RTunit _ -> TUnit
     | TAbsBool, Infer.RTbool _ -> TAbsBool
     | TBool, Infer.RTbool _ -> TBool
-    | TInt ps, _ -> (*TInt ps*)assert false
+    | TInt _, _ -> assert false
+    | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
     | TFun((x,TInt ps),rtyp1), Infer.RTifun(pred, rtyp2) ->
         let Infer.Pred(pid, terms) = pred (Var abst_var) in
@@ -979,6 +983,9 @@ let rec add_preds_typ sol typ1 typ2 =
         in
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (Var x)) in
           TFun(({x with typ = typ}, typ), rtyp)
+    | TFun((x,TRInt p),rtyp1), Infer.RTifun(pred, rtyp2) ->
+        let rtyp = add_preds_typ sol rtyp1 (rtyp2 (Var x)) in
+          TFun((x, TRInt p), rtyp)
     | TFun((x,typ),rtyp1), Infer.RTbfun(_, rtyp2) ->
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (Var x)) in
           TFun((x, typ), rtyp)
@@ -1067,6 +1074,7 @@ let rec remove_preds_typ typ =
     | TAbsBool -> TAbsBool
     | TBool -> TBool
     | TInt _ -> TInt []
+    | TRInt p -> TRInt p
     | TVar _ -> assert false
     | TFun((x,typ1),typ2) ->
         TFun(({x with typ = remove_preds_typ x.typ},remove_preds_typ typ1), remove_preds_typ typ2)
@@ -1168,6 +1176,7 @@ let rec add_preds_typ_ typ1 typ2 =
     | TAbsBool, TAbsBool -> TAbsBool
     | TBool, TBool -> TBool
     | TInt _, _ -> assert false
+    | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
     | TFun((x,TInt ps),rtyp1), TFun((y,TInt qs),rtyp2) ->
         let rtyp2 = subst_type y (Var x) rtyp2 in
@@ -1189,12 +1198,20 @@ let rec add_preds_typ_ typ1 typ2 =
         in
         let rtyp = add_preds_typ_ rtyp1 rtyp2 in
           TFun(({x with typ = typ}, typ), rtyp)
+    | TFun((x,TInt _),rtyp1), TFun((y,TRInt p),rtyp2) ->
+        let rtyp2 = subst_type y (Var x) rtyp2 in
+        let rtyp = add_preds_typ_ rtyp1 rtyp2 in
+          TFun((x, TRInt p), rtyp)
+    | TFun((x,TRInt p),rtyp1), TFun((y,TInt _),rtyp2)
+    | TFun((x,TRInt p),rtyp1), TFun((y,TRInt _),rtyp2) ->
+        let rtyp2 = subst_type y (Var x) rtyp2 in
+        let rtyp = add_preds_typ_ rtyp1 rtyp2 in
+          TFun((x, TRInt p), rtyp)
     | TFun((x,typ1),rtyp1), TFun((y,typ2),rtyp2) ->
         let rtyp2 = subst_type y (Var x) rtyp2 in
         let typ = add_preds_typ_ typ1 typ2 in
         let rtyp = add_preds_typ_ rtyp1 rtyp2 in
           TFun(({x with typ = typ}, typ), rtyp)
-
     | TUnknown, _ -> TUnknown
     | _, _ ->
         Format.printf "%a and %a" (print_typ ML) typ1 (print_typ ML) typ2;

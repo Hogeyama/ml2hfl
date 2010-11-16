@@ -7,6 +7,7 @@ type typ =
   | TBool
   | TAbsBool
   | TInt of t list
+  | TRInt of t
   | TVar of typ option ref
   | TFun of (ident*typ) * typ
   | TUnknown
@@ -235,6 +236,7 @@ let rec subst_type x t = function
   | TAbsBool -> TAbsBool
   | TBool -> TBool
   | TInt ts -> TInt (List.map (subst x t) ts)
+  | TRInt t' -> TRInt (subst x t t')
   | TVar _ -> assert false
   | TFun((y,typ1),typ2) ->
       let typ1' = subst_type x t typ1 in
@@ -299,6 +301,7 @@ let rec subst_type_orig x t = function
   | TAbsBool -> TAbsBool
   | TBool -> TBool
   | TInt ts -> TInt (List.map (subst_orig x t) ts)
+  | TRInt t' -> TRInt (subst_orig x t t')
   | TVar _ -> assert false
   | TFun((y,typ1),typ2) ->
       let typ1' = subst_type_orig x t typ1 in
@@ -312,6 +315,7 @@ let rec fff = function
   | TAbsBool -> TAbsBool
   | TBool -> TBool
   | TInt ts -> TInt ts
+  | TRInt t -> TRInt t
   | TVar _ -> assert false
   | TFun((x,typ1),typ2) ->
       let x' = new_var_id x in
@@ -1211,6 +1215,7 @@ let rec occurs x = function
     | TUnknown
     | TVar _ -> false
     | TInt ts -> List.exists (fun y -> x.id = y.id) (List.concat (List.map get_fv ts))
+    | TRInt t -> List.exists (fun y -> x.id = y.id) (get_fv t)
     | TFun((_,t1),t2) -> occurs x t1 || occurs x t2
 
 let rec print_typ syntax fm = function
@@ -1221,10 +1226,12 @@ let rec print_typ syntax fm = function
       if ps = []
       then fprintf fm "int"
       else fprintf fm "int[%a]" print_preds ps
+  | TRInt p ->
+      fprintf fm "{ %a | %a }" print_id abst_var print_preds [p]
   | TVar _ -> fprintf fm "!!!"
   | TFun((x,typ1), typ2) ->
       assert (not Flag.check_fun_arg_typ || x.typ = typ1);
-      if (match x.typ with TInt _ -> true | _ -> false) (*&& occurs x typ2*)
+      if (match x.typ with TInt _ -> true | TRInt _ -> true | _ -> false) (*&& occurs x typ2*)
       then fprintf fm "(%a -> %a)" print_id_typ x (print_typ syntax) typ2
       else fprintf fm "(%a -> %a)" (print_typ syntax) typ1 (print_typ syntax) typ2
   | TUnknown -> fprintf fm "???"

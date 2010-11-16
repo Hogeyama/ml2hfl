@@ -199,8 +199,8 @@ typ:
   { TBool }
 | TINT
   { TInt([]) }
-| LCURLY id COLON simple_exp RCURLY
-  { TInt([]) }
+| LCURLY id CHOICE exp RCURLY
+  { TRInt(subst_orig $2 (Var abst_var) $4) }
 | TINT LSQUAR pred_list RSQUAR
   { TInt($3) }
 | id COLON typ ARROW typ
