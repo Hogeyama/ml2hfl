@@ -38,7 +38,7 @@ and t =
 
 type syntax = ML | TRecS | CVC3 | CSIsat
 
-type node = BrNode | LabNode of bool | FailNode
+type node = BrNode | LabNode of bool | FailNode | EventNode of string
 
 
 exception Feasible of t
@@ -179,6 +179,7 @@ let rec subst x t = function
   | Label(b, t1) ->
       let t1' = subst x t t1 in
         Label(b, t1')
+  | Event s -> Event s
 
 let rec subst_int n t = function
     Unit -> Unit
@@ -398,6 +399,7 @@ let rec get_fv = function
   | Fail -> []
   | Fun(x,t) -> diff (get_fv t) [x]
   | Label(_,t) -> get_fv t
+  | Event s -> []
 
 
 let rec get_fv2 = function
@@ -424,6 +426,7 @@ let rec get_fv2 = function
   | Fail -> []
   | Fun(x,t) -> diff (get_fv2 t) [x]
   | Label(_,t) -> get_fv2 t
+  | Event s -> []
 
 
 
@@ -624,6 +627,7 @@ let rec simplify = function
   | Label(b,t) ->
       let t' = simplify t in
         Label(b, t')
+  | Event s -> Event s
 
 let imply t1 t2 = BinOp(Or, Not t1, t2)
 let and_list ts = match ts with
@@ -694,6 +698,7 @@ let rec lift_aux xs = function
   | Label(b,t) ->
       let defs,t' = lift_aux xs t in
         defs, Label(b,t')
+  | Event s -> [], Event s
 let lift t = lift_aux [](*(get_fv2 t)*) t
 
 let rec lift2_aux xs = function
@@ -759,6 +764,7 @@ let rec lift2_aux xs = function
   | Label(b,t) ->
       let defs,t' = lift2_aux xs t in
         defs, Label(b,t')
+  | Event s -> [], Event s
 let lift2 t = lift2_aux [](*(get_fv2 t)*) t
 
 let rec canonize = function
@@ -866,7 +872,7 @@ let part_eval t =
     | _ -> None
   in
   let rec aux apply = function
-  Unit -> Unit
+      Unit -> Unit
     | True -> True
     | False -> False
     | Int n -> Int n
@@ -984,6 +990,7 @@ let part_eval t =
     | Label(b, t) ->
       let t' = aux apply t in
         Label(b, t')
+    | Event s -> Event s
   in
   let t' = aux [] t in
   let t'' = simplify t' in
@@ -1202,6 +1209,7 @@ let rec remove_unused = function
         Not t'
   | Fail -> Fail
   | Label _ -> assert false
+  | Event s -> Event s
 
 
 
@@ -1454,7 +1462,9 @@ and print_term syntax pri typ fm = function
       in
         fprintf fm "%s%s %a%s" s1 s (print_term syntax p typ) t s2
   | Event s ->
-      fprintf fm "{%s}" s
+      match syntax with
+          TRecS -> fprintf fm "%s" s
+        | _ -> fprintf fm "{%s}" s
 
 
 let string_of_ident x =
@@ -1655,6 +1665,7 @@ let rec normalize = function
   | Label(b, t) ->
       let t' = normalize t in
         Label(b, t')
+  | Event s -> Event s
 
 
 
