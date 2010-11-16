@@ -137,6 +137,7 @@ let rec trans1 c = function
         trans1 c' t
   | Fail -> c (Fail)
   | Unknown -> c Unknown
+  | Event s -> c (Event s)
   | t -> (Format.printf "%a@." (Syntax.print_term_fm Syntax.ML false) t; assert false)
 
 
@@ -163,6 +164,7 @@ let rec inlining funs defs = function
           List.fold_right2 subst xs ts t
       else App(Var f, ts)
   | App(Fail, ts) -> App(Fail, ts)
+  | App(Event s, ts) -> App(Event s, ts)
   | App _ -> assert false
   | If(t1, t2, t3, t4) ->
       let t2' = inlining funs defs t2 in
@@ -277,6 +279,7 @@ let rec match_arg arg_num b = function
   | Label(b,t) ->
       let t' = match_arg arg_num true t in
         Label(b, t')
+  | Event s -> Event s
 
 
 
@@ -319,14 +322,60 @@ let rec app2letapp = function
   | Label(b,t) -> Label(b,app2letapp t)
 
 
+let rec normalize = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | Var x -> Var x
+  | Fun _ -> assert false
+  | App(Event s, [t1;t2]) ->
+      let t1' = normalize t1 in
+      let t2' = normalize t2 in
+        App(Event s, [App(t2', [t1'])])
+  | App(Event s, _) -> assert false
+  | App(f, ts) ->
+      let ts' = List.map normalize ts in
+      let f' = normalize f in
+        App(f', ts')
+  | If(t1, t2, t3, t4) ->
+      let t1' = normalize t1 in
+      let t2' = normalize t2 in
+      let t3' = normalize t3 in
+      let t4' = normalize t4 in
+        If(t1', t2', t3', t4')
+  | Branch(t1, t2) ->
+      let t1' = normalize t1 in
+      let t2' = normalize t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let t1' = normalize t1 in
+      let t2' = normalize t2 in
+        Let(f, xs, t1', t2')
+  | Letrec(f, xs, t1, t2) ->
+      let t1' = normalize t1 in
+      let t2' = normalize t2 in
+        Letrec(f, xs, t1', t2')
+  | BinOp(op, t1, t2) ->
+      let t1' = normalize t1 in
+      let t2' = normalize t2 in
+        BinOp(op, t1', t2')
+  | Not t -> Not (normalize t)
+  | Fail -> Fail
+  | Label(b,t) -> Label(b,normalize t)
+  | Event s -> assert false
+
+
 
 let trans t =
-  let t1 = Typing.typing t in
+  let t1 = Typing.typing false t in
   let t2 = match_arg [] true (app2letapp t1) in
   let t3 =
-    let tm = trans1 (fun x -> x) t2 in
+    let tm = normalize (trans1 (fun x -> x) t2) in
     try
-      Typing.typing tm
+      Typing.typing true tm
     with Typing.CannotUnify ->
       (Format.printf "Typing error:@.  %a@." Syntax.pp_print_term tm;
       assert false)

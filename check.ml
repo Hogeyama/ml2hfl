@@ -35,7 +35,7 @@ let cps2hors t =
   let defs'' = List.map (fun (x,xs,t) -> (x,xs,part_eval t)) defs' in*)
   let defs, t0 = lift t in
 
-  let defs, t0 = Typing.typing_defs defs t0 in
+  let defs, t0 = Typing.typing_defs true defs t0 in
   let defs = List.map (fun (x, (xs, t)) ->
     let n = (List.length (get_args x.typ)) - (List.length xs) in
 (*
@@ -61,7 +61,12 @@ print_string "\n";
 *)
 
   let spec = [(0, "br", [0;0]); (0, "then", [0]); (0, "else", [0]); (0, "unit", [])] in
-    defs'', spec
+  let spec' =
+    match !Flag.mode with
+        Flag.Reachability -> spec
+      | Flag.FileAccess -> (0, "open", [1])::(1, "close", [0])::spec
+  in
+    defs'', spec'
 
 
 
@@ -73,7 +78,7 @@ let node_of_string s =
     | "fail" -> FailNode
     | "then" -> LabNode true
     | "else" -> LabNode false
-    | _ -> print_string s; assert false
+    | s -> EventNode s
 
 let get_pair s =
   let n1 = String.index s ',' in
@@ -143,7 +148,7 @@ let model_check_aux (funs,spec) =
         then printf "TRecS output: %s@.@." s2
       in
       let ce = parse_trace s2 in
-      let ce' = List.flatten (List.map (function LabNode(b),_ -> [b] | _ -> []) ce) in
+      let ce' = List.flatten (List.map (function (BrNode,_) -> [] | t -> [fst t]) ce) in
         Some ce'
     else
       begin

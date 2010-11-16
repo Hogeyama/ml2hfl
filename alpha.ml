@@ -85,6 +85,7 @@ let rec alpha map = function
         Not t'
   | Label _ -> assert false
   | Fail -> Fail
+  | Event s -> Event s
 
 
 

@@ -178,8 +178,8 @@ let rec infer env t =
         (*assert false*)
         let t', typ = infer env t in
           Label(b, t'), typ
-
-
+    | Event s ->
+        Event s, TFun((dummy,TUnit), TUnit)
 
 
 
@@ -233,6 +233,7 @@ let rec simplify = function
       let t' = simplify t in
         Label(b, t')
   | Fail -> Fail
+  | Event s -> Event s
 
 
 let rec match_arg_typ typ xs =
@@ -317,17 +318,18 @@ let rec match_arg = function
       (*assert false*)
       let t' = match_arg t in
         Label(b, t')
+  | Event s -> Event s
 
 
 
-let typing t0 =
+let typing cps t0 =
   let t1, typ = infer [] t0 in
   let () = unify typ TUnit in
   let t2 = simplify t1 in
     match_arg t2
 
 
-let typing_defs defs t0 =
+let typing_defs cps defs t0 =
 (*
   let () = Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t0 defs) in
 *)
@@ -395,4 +397,5 @@ let rec get_typ = function
   | Not _ -> TBool
   | Fail -> TFun((dummy,TUnit), TUnit)
   | Label(_,t) -> get_typ t
+  | Event s -> TFun((dummy,TUnit), TUnit)
 

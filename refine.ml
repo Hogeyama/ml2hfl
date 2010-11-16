@@ -664,6 +664,7 @@ let rec rename_map map =
     | Label(b,t) ->
         let t' = rename_map map t in
           Label(b,t')
+    | Event s -> Event s
 
 let rec rename_typ = function
     TUnit -> [], TUnit
@@ -1280,3 +1281,4 @@ let rec add_preds_ typedefs = function
         Not t'
   | Fail -> Fail
   | Label _ -> assert false
+  | Event s -> Event s

@@ -118,6 +118,9 @@ simple_exp:
       App(Fun(x, Var x), [NInt (new_var "n")])
   }
 */
+| LCURLY IDENT RCURLY
+  { Event $2 }
+
 
 
 exp:

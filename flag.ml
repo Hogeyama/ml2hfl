@@ -56,3 +56,7 @@ let use_neg_pred = true
 let use_part_eval = true
 let check_sat = true
 let gen_int = true
+
+type mode = Reachability | FileAccess
+
+let mode = ref FileAccess

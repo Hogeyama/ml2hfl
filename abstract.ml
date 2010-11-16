@@ -370,6 +370,9 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
   | App(App(t, ts1), ts2), typ ->
       abstract cond pbs (App(t, ts1 @ ts2), typ)
   | App(Fail, _), _ -> [App(Fail, [Unit])]
+  | App(Event s, [t1]), _ ->
+      let t1' = abstract cond pbs (t1,TUnit) in
+        [App(Event s, t1')]
   | App(Var f, ts), typ ->
       let ttyps,typ' =
         let rec aux = function
@@ -438,6 +441,7 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
       let t' = hd (abstract cond pbs (t,TBool)) in
         [Not t']
   | Fail, _ -> [Fail]
+  | Event s, _ -> [Event s]
   | App(t, []), typ -> abstract cond pbs (t, typ)
   | t, typ -> (Format.printf "Abstract.abstract:@.%a:%a@." (Syntax.print_term_fm Syntax.ML false) t (Syntax.print_typ Syntax.ML) typ; assert false)
 
@@ -696,6 +700,7 @@ let rec trans_eager2 c = function
   | Label(b, t) ->
       let t' = trans_eager2 hd t in
         c [Label(b, t')]
+  | Event s -> c [Event s]
 let trans_eager2 = trans_eager2 hd
 
 

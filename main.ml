@@ -57,8 +57,15 @@ let rec cegar tdefs t1 ce_prev =
         None -> t1, None
       | Some ce ->
           let () = print_msg "Spurious counter-example:" in
-          let () = List.iter (fun b -> if b then print_msg "then --> " else print_msg "else --> ") ce in
-          let () = print_msg "fail\n" in
+          let string_of_node = function
+              Syntax.BrNode -> assert false
+            | Syntax.LabNode true -> "then"
+            | Syntax.LabNode false -> "else"
+            | Syntax.FailNode -> "fail"
+            | Syntax.EventNode s -> s
+          in
+          let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
+          let () = print_msg ".\n" in
           try
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
             let tmp = get_time () in
@@ -74,6 +81,16 @@ let rec cegar tdefs t1 ce_prev =
                   else
                     t1
                 in
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
+                let ce_prev = [] in
+                let ce = [true] in
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
                 try
                   Refine.refine (if !Flag.merge_counterexample then ce::ce_prev else [ce]) t1
                 with Infer.Untypable ->
@@ -98,7 +115,7 @@ let print_ce ce t =
   let str = Flag.string_for_result in
   let t' = Syntax.add_string str t in
   let t'' = CPS.trans t' in
-  let t''' = Typing.typing t'' in
+  let t''' = Typing.typing true t'' in
   let trace = Syntax.get_trace ce t''' in
   let print_var_bool = function
       Syntax.True -> print_msg "-then->\n"
@@ -140,7 +157,7 @@ let main filename in_channel =
 
   let cps' = Syntax.trans cps in
 
-  let cps' = Typing.typing cps' in
+  let cps' = Typing.typing true cps' in
 (*
   let cps' = Syntax.eta_expand cps' in
 *)
@@ -180,6 +197,15 @@ let main filename in_channel =
             print_msg "Error trace:\n";
             List.iter aux ts';
             if List.length ts' <> 0 then print_msg "\n";
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
+                let ce = [true] in
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
+(***********************************************************)
             print_ce ce alpha
 
 
