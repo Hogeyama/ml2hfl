@@ -432,6 +432,11 @@ let rec check ce defs constr t =
           raise (Feasible constr)
         else
           ()
+    | Unit,[FailNode] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          ()
     | Var x, _ -> check ce defs constr (App(Var x, []))
     | App(Fail, _), [FailNode] ->
         if Wrapper.checksat constr then
@@ -465,3 +470,65 @@ let rec check ce defs constr t =
 
 
 let check ce defs t = check ce defs True t
+
+
+
+let rec get_prefix ce ce_prefix defs constr t =
+  match t,ce with
+    | Unit,[] -> (*???*)
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          ce_prefix
+    | Unit,[EventNode "unit"] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          List.rev ce_prefix
+    | Unit,[FailNode] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          List.rev ce_prefix
+    | Var x, _ -> get_prefix ce ce_prefix defs constr (App(Var x, []))
+    | App(Fail, _), [FailNode] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          List.rev ce_prefix
+    | App(Event s, _), FailNode::_ ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          List.rev ce_prefix
+    | App(Event s, [t]), EventNode s'::ce' when s=s' ->
+        get_prefix ce' (EventNode s'::ce_prefix) defs constr t
+    | App(Var x, ts), _ ->
+        let _,t' = List.assoc x defs in
+        let xs = get_args x.typ in
+        let t'' = List.fold_right2 subst xs ts t' in
+          get_prefix ce ce_prefix defs constr t''
+    | If(t1, t2, _, _), LabNode(true)::ce' ->
+        let constr' = BinOp(And, t1, constr) in
+        let ce_prefix' = LabNode(true)::ce_prefix in
+          if Wrapper.checksat constr'
+          then get_prefix ce' ce_prefix' defs constr' t2
+          else List.rev ce_prefix'
+    | If(t1, _, t3, _), LabNode(false)::ce' ->
+        let constr' = BinOp(And, Not t1, constr) in
+        let ce_prefix' = LabNode(false)::ce_prefix in
+          if Wrapper.checksat constr'
+          then get_prefix ce' ce_prefix' defs constr' t3
+          else List.rev ce_prefix'
+    | _ ->
+        Format.printf "feasibility.ml:@.%a@." (print_term_fm ML false) t;
+        let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
+        let () = print_msg ".\n" in
+        assert false
+
+
+
+let get_prefix ce defs t = get_prefix ce [] defs True t
+
+
+

@@ -61,6 +61,12 @@ let rec cegar tdefs t1 ce_prev =
           let () = List.iter (fun node -> print_msg (Syntax.string_of_node node ^ " --> ")) ce in
           let () = print_msg ".\n" in
           try
+            let ce' =
+              let defs,t = Syntax.lift t1 in
+                Feasibility.get_prefix ce defs t
+            in
+            let () = Format.printf "ce:%d ce':%d@." (List.length ce) (List.length ce') in
+            let ce = ce' in
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
             let tmp = get_time () in
             let t'' =
@@ -85,9 +91,6 @@ let rec cegar tdefs t1 ce_prev =
               if Flag.print_progress then print_msg "DONE!\n";
               Syntax.set_counter n;
               incr Flag.cegar_loop;
-
-              Wrapper.close_cvc3 ();
-              Wrapper.open_cvc3 ();
 
               cegar tdefs t'' (ce::ce_prev)
           with
