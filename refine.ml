@@ -1125,7 +1125,7 @@ let rec remove_preds = function
   | Fail -> Fail
   | Label _ -> assert false
 
-let refine ces t0 =
+let refine tdefs ces t0 =
 (*
   let () = Format.printf "%a@." (print_term_fm ML true) t in
 *)
@@ -1141,7 +1141,7 @@ let refine ces t0 =
 
   let s = {id = 0; origin = "Main"; typ = TUnit} in
   let defs1 = (s,([], t'))::defs' in
-  let rte, sol = Infer.test s defs1 ces in
+  let rte, sol = Infer.test tdefs s defs1 ces in
   add_preds rte sol t0
 
 (*
@@ -1200,14 +1200,16 @@ let rec add_preds_typ_ typ1 typ2 =
         let rtyp = add_preds_typ_ rtyp1 rtyp2 in
           TFun(({x with typ = typ}, typ), rtyp)
     | TFun((x,TInt _),rtyp1), TFun((y,TRInt p),rtyp2) ->
+        let typ = TRInt p in
         let rtyp2 = subst_type y (Var x) rtyp2 in
         let rtyp = add_preds_typ_ rtyp1 rtyp2 in
-          TFun((x, TRInt p), rtyp)
+          TFun(({x with typ = typ}, typ), rtyp)
     | TFun((x,TRInt p),rtyp1), TFun((y,TInt _),rtyp2)
     | TFun((x,TRInt p),rtyp1), TFun((y,TRInt _),rtyp2) ->
+        let typ = TRInt p in
         let rtyp2 = subst_type y (Var x) rtyp2 in
         let rtyp = add_preds_typ_ rtyp1 rtyp2 in
-          TFun((x, TRInt p), rtyp)
+          TFun(({x with typ = typ}, typ), rtyp)
     | TFun((x,typ1),rtyp1), TFun((y,typ2),rtyp2) ->
         let rtyp2 = subst_type y (Var x) rtyp2 in
         let typ = add_preds_typ_ typ1 typ2 in

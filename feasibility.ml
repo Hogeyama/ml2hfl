@@ -2,6 +2,7 @@
 open Util
 open Syntax
 
+(*
 let rec get_scmap_typ scope = function
   | TUnit -> []
   | TAbsBool -> []
@@ -183,7 +184,7 @@ let check ce t =
       Format.printf "@.@.";
     *)
     match t with
-	Unit -> ce, cond, Unit, env
+        Unit -> ce, cond, Unit, env
       | True -> ce, cond, True, env
       | False -> ce, cond, False, env
       | Unknown -> ce, cond, Unknown, env
@@ -195,7 +196,7 @@ let check ce t =
             (*		  | App(Fail, _) ->
                           if ce = [FailNode,0] then [], cond, Fail, env else assert false*)
       | App(t, ts) ->
-	  let ce', cond', t', env' = aux env ce cond t in
+          let ce', cond', t', env' = aux env ce cond t in
           let ce', cond', ts', env' =
             List.fold_left (fun (ce, cond, ts, env) t ->
                               let ce', cond', t', env' = aux env ce cond t in ce', cond', t'::ts, env') (ce', cond', [], env') ts in
@@ -204,10 +205,10 @@ let check ce t =
               if ce' = [] then [], cond, Fail, env else assert false
             else
               let ids, t =
-		match t' with
-		    Var f -> (try List.assoc f env' with Not_found -> Format.printf "Feasibility.check:@.%a@." (print_term_fm ML false) t'; assert false)
-                  | Fun(id, t) -> [id], t
-		  | _ -> Format.printf "Feasibility.check:@.%a@." (print_term_fm ML false) t'; assert false
+                match t' with
+                  Var f -> (try List.assoc f env' with Not_found -> Format.printf "Feasibility.check:@.%a@." (print_term_fm ML false) t'; assert false)
+                | Fun(id, t) -> [id], t
+                | _ -> Format.printf "Feasibility.check:@.%a@." (print_term_fm ML false) t'; assert false
               in
                 if List.length ids = List.length ts then
 		  let rec cut_at n ls =
@@ -411,7 +412,7 @@ let rec check ce ce_used defs constr t =
 
 
 let check ce defs t = check ce [] defs True t
-
+*)
 
 
 let rec check ce defs constr t =

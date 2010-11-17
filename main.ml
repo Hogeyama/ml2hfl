@@ -4,6 +4,7 @@ open Util
 exception TimeOut
 exception LongInput
 exception IllegalInput
+exception NoProgress
 exception CannotDiscoverPredicate
 
 let log_filename = ref ""
@@ -72,7 +73,7 @@ let rec cegar tdefs t1 ce_prev =
             let t'' =
               if ce_prev <> [] && ce = List.hd ce_prev
               then
-                raise CannotDiscoverPredicate
+                raise NoProgress
               else
                 let () = if false && Flag.debug then Format.printf "The length of counterexample: %d@.@." (List.length ce) in
                 let t1 =
@@ -92,10 +93,10 @@ let rec cegar tdefs t1 ce_prev =
 (***********************************************************)
 (***********************************************************)
                 try
-                  Refine.refine (if !Flag.merge_counterexample then ce::ce_prev else [ce]) t1
+                  Refine.refine tdefs (if !Flag.merge_counterexample then ce::ce_prev else [ce]) t1
                 with Infer.Untypable ->
                   let defs,t' = Syntax.lift t1 in
-                  Feasibility.check ce defs t'; assert false
+                  Feasibility.check ce defs t'; raise Syntax.Infeasible
             in
               add_time tmp Flag.time_cegar;
               if Flag.print_progress then print_msg "DONE!\n";
@@ -108,7 +109,7 @@ let rec cegar tdefs t1 ce_prev =
               cegar tdefs t'' (ce::ce_prev)
           with
               Syntax.Feasible p -> t1, Some (ce,p)
-            | Syntax.Infeasible -> t1, None
+            | Syntax.Infeasible -> raise CannotDiscoverPredicate(*t1, None*)
 
 
 let print_ce ce t =
@@ -229,4 +230,5 @@ let () =
       | IllegalInput -> Format.printf "Illegal input.@."; exit 1
       | LongInput -> Format.printf "Input is too long.@."; exit 1
       | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
-      | CannotDiscoverPredicate -> Format.printf "Verification failed (cannot discover necessary predicates).@."; exit 1
+      | NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
+      | CannotDiscoverPredicate -> Format.printf "Verification failed (new predicate not found).@."; exit 1

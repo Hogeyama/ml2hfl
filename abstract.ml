@@ -84,6 +84,14 @@ let mapi f xs =
     aux 1 xs
 
 let weakest cond ds p =
+(*
+print_string "\n";
+List.iter (Syntax.print_term_break Syntax.ML false) (cond);
+print_string ":";
+List.iter (fun (p , b) -> Syntax.print_term_break Syntax.ML false p) (ds);
+print_string "=>";
+Syntax.print_term_break Syntax.ML false p;
+*)
   (*This breaks progress mc91.ml if n <= 100 ...
     let nds = List.map (fun (p, b) -> Not p, Not b) ds in
     try
@@ -322,7 +330,7 @@ let abst_arg x (xs,pbs) =
 let filter_fail cond pbs t =
   let p = contradict cond pbs in
   let bot = new_var' "bot" in
-    If(p, Label(true, Letrec(bot, [], Var bot, Var bot)), t, Unknown)
+    If(p, Letrec(bot, [], Var bot, Var bot), t, Unit)
 
 
 
@@ -334,9 +342,25 @@ let rec coerce cond pbs typ1 typ2 t =
     | TFun((x1,TInt ps1),typ12), TFun((x2,TInt ps2),typ22) ->
         let xs,pbs' = abst_arg x2 ([],pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
-        let ts = List.map (fun p -> abst cond' pbs' (inst_var (Var x2(*???*)) p)) ps1 in
+        let ts = List.map (fun p -> abst cond' pbs' (inst_var (Var x2) p)) ps1 in
         let t' = coerce cond' pbs' typ12 typ22 (App(t, ts)) in
           List.fold_right (fun x t -> Fun(x, t)) xs t'
+
+    | TFun((x1,TRInt p),typ12), TFun((x2,TInt ps2),typ22) ->
+        let xs,pbs' = abst_arg x2 ([],pbs) in
+        let cond' = BinOp(Eq, Var x1, Var x2)::cond in
+        let t' = coerce cond' pbs' typ12 typ22 t in
+   					let f = new_var' "f" in
+   					let x = new_var' "x" in
+								let tru,_ = weakest cond' pbs' (inst_var (Var x2) p) in
+        let t'' = If(tru, t', App(Fail, [Unit; Let(f, [x], Var x, Var f)]), Unit) in
+          List.fold_right (fun x t -> Fun(x, t)) xs t''
+
+    | TFun((x1,TInt ps1),typ12), TFun((x2,TRInt p),typ22) ->
+        let cond' = (inst_var (Var x2) p)::BinOp(Eq, Var x1, Var x2)::cond in
+        let ts = List.map (fun p -> abst cond' pbs (inst_var (Var x2) p)) ps1 in
+        coerce cond' pbs typ12 typ22 (App(t, ts))
+
     | TFun((x1,typ11),typ12), TFun((x2,typ21),typ22) ->
         let x = new_var' "x" in
 (*x cannot be depended because x is function? *)
@@ -350,6 +374,7 @@ let rec abstract cond pbs = function
   | True, TBool -> [True]
   | False, TBool -> [False]
   | Unknown, TBool -> [Unknown]
+  | t, (TRInt p) -> []
   | t, (TInt _ as typ) ->
 (*
 let ps = List.map (fun p -> inst_var t p) (get_preds typ) in
@@ -385,6 +410,14 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
         in
           aux (ts, f.typ)
       in
+      let ps =
+		      Util.rev_flatten_map
+		        (fun (t, typ) ->
+		          match typ with
+		            TRInt(p) -> [inst_var t p]
+		          | _ -> [])
+		        ttyps
+      in
       let ts' =
         let rec aux = function
             [] -> []
@@ -394,7 +427,10 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
         in
           aux ttyps
       in
-        [coerce cond pbs typ' typ (App(Var f, ts'))]
+   					let f' = new_var' "f" in
+   					let x = new_var' "x" in
+								let tru,_ = weakest cond pbs (and_list ps) in
+        [If(tru, coerce cond pbs typ' typ (App(Var f, ts')), App(Fail, [Unit; Let(f', [x], Var x, Var f')]), Unit)]
   | BinOp(op, t1, t2) as t, typ ->
       begin
         match op with
@@ -420,7 +456,7 @@ List.iter (fun (p, t) -> Syntax.print_term_break Syntax.ML false p) pbs;
       let t3' = hd (abstract cond3 pbs (t3,typ)) in
       let t2'' = Label(true, Var x1) in
       let t3'' = Label(false, Var x2) in
-        [Let(x1,[],t2',Let(x2,[],t3',If(t1', t2'', t3'', Branch(t2'', t3''))))]
+        [Let(x1,[],t2',Let(x2,[],t3',If(t1', t2'', t3'', Unit)))]
   | Branch(t1, t2), typ ->
       let t1' = hd (abstract cond pbs (t1,typ)) in
       let t2' = hd (abstract cond pbs (t2,typ)) in
@@ -586,7 +622,7 @@ let rec trans_eager c = function
           List.fold_left aux c' ts
       in
         c'' []
-  | If(t1, (Label _ as t2), (Label _ as t3), t4) ->
+  | If(t1, Label(_, t2), Label(_, t3), t4) ->
       let x = new_var' "b" in
       let f = new_var' "f" in
       let t1' = trans_eager_bool f t1 in
@@ -651,7 +687,7 @@ let rec trans_eager_bool2 f = function
       let t3' = trans_eager_bool2 f t3 in
       let t4' = trans_eager_bool2 f t4 in
         Let(f', [x], If(Var x, t2', t3', t4'), t1')
-  | _ -> assert false
+  | t -> Syntax.print_term Syntax.ML false t; assert false
 let rec trans_eager2 c = function
     Unit -> c [Unit]
   | True -> c [True]
@@ -669,14 +705,13 @@ let rec trans_eager2 c = function
           trans_eager2 c' t
       in
         c [List.fold_left aux c' ts []]
-  | If(t1, (Label _ as t2), t3, t4) ->
+  | If(t1, t2, t3, Unit) ->
       let x = new_var' "b" in
       let f = new_var' "f" in
       let t1' = trans_eager_bool2 f t1 in
       let t2' = trans_eager2 hd t2 in
       let t3' = trans_eager2 hd t3 in
-      let t4' = trans_eager2 hd t4 in
-        c [Let(f, [x], If(Var x, t2', t3', t4'), t1')]
+        c [Let(f, [x], If(Var x, t2', t3', Unit), t1')]
   | Branch(t1, t2) ->
       let t1' = trans_eager2 hd t1 in
       let t2' = trans_eager2 hd t2 in

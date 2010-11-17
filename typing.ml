@@ -40,6 +40,7 @@ Format.printf "unify %a %a@." (print_typ ML) (flatten typ1) (print_typ ML) (flat
       TUnit, TUnit
     | TBool, TBool
     | TInt _, TInt _ -> ()
+    | TRInt _, TRInt _ -> ()
     | TFun((_,typ11), typ12), TFun((_,typ21), typ22) ->
         unify typ11 typ21;
         unify typ12 typ22
@@ -183,6 +184,8 @@ let rec infer env t =
 
 
 
+
+
 let simplify_id x = {x with typ = flatten x.typ}
 
 let rec simplify = function
@@ -240,6 +243,7 @@ let rec match_arg_typ typ xs =
   match flatten typ,xs with
       TUnit,[] -> TUnit
     | TInt ps,[] -> TInt ps
+    | TRInt p,[] -> TRInt p
     | TBool,[] -> TBool
     | TFun(_,_),[] -> typ
     | TFun(_,typ2),x::xs' ->
@@ -253,7 +257,8 @@ let new_var_typ x =
       TUnit -> TUnit
     | TAbsBool -> TAbsBool
     | TBool -> TBool
-    | TInt n -> TInt n
+    | TInt ps -> TInt ps
+    | TRInt p -> TRInt p
     | TVar _ -> assert false
     | TFun((_,typ1),typ2) ->
         let typ1' = aux typ1 in

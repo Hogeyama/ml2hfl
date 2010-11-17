@@ -145,6 +145,7 @@ and tinfo2ty typ tinfo =
      if ty1=[] then
          match typ with
             TInt _ -> [ATint(0)]
+          | TRInt _ -> [ATint(0)]
           | TBool -> [ATbool(0)]
           | _ -> ty1
      else ty1
@@ -243,6 +244,9 @@ let rec process_term trace term traces env pcounter =
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         [MyUnit(new_tinfo()), trace, traces]
     | If(t1,t2,t3,t4) ->
+        if List.mem [] traces then
+          []
+        else
         let tts, tfs = List.partition (function [] -> assert false | true::_ -> true | false::_ -> false) traces in
         let tts = List.map List.tl tts in
         let tfs = List.map List.tl tfs in
@@ -812,7 +816,7 @@ let save_as_dot filename cs =
           (match c2 with
                [Cfalse] -> List.map (fun pid -> "P" ^ string_of_int pid, "bot", "") lhs
              | [Cpred(Pred(pid2, _))] -> List.map (fun pid1 -> "P" ^ string_of_int pid1, "P" ^ string_of_int pid2, "") lhs
-             | _ -> assert false)
+             | _ -> print_constraint c2; assert false)
        | _ -> assert false)
     cs))
   in
@@ -910,6 +914,21 @@ and subst_sol_ac pids sol ac =
   | Csub(rty1,rty2) -> assert false
   | Cterm(term) -> Cterm(term)
   | Cimp(c1,c2) -> Cimp(subst_sol pids sol c1, subst_sol pids sol c2)
+  | Cfalse -> Cfalse
+
+let rec subst_sol_ sol c =
+  List.map (subst_sol_ac_ sol) c
+and subst_sol_ac_ sol ac =
+  match ac with
+    Cpred(Pred(pid, terms)) ->
+      (try
+        let (ids, t) = List.assoc pid sol in
+        Cterm(subst_term (List.combine ids terms) t)
+      with Not_found ->
+        Cpred(Pred(pid, terms)))
+  | Csub(rty1,rty2) -> assert false
+  | Cterm(term) -> Cterm(term)
+  | Cimp(c1,c2) -> Cimp(subst_sol_ sol c1, subst_sol_ sol c2)
   | Cfalse -> Cfalse
 
 let rec fv c = List.flatten (List.map fv_ac c)
@@ -1431,7 +1450,31 @@ let _ = print_term cond; print_string2 "\n" in
   c', pids
 
 
-let test s defs traces = 
+let rec get_sol typ1 typ2 =
+  match typ1, typ2 with
+      TUnit, RTunit _ -> []
+    | TAbsBool, RTbool _ -> []
+    | TBool, RTbool _ -> []
+    | TInt _, _ -> assert false
+    | TRInt _, _ -> assert false
+    | TVar _, _ -> assert false
+    | TFun((x,TInt ps),rtyp1), RTifun(pred, rtyp2) ->
+        get_sol rtyp1 (rtyp2 (Var x))
+    | TFun((x,TRInt p),rtyp1), RTifun(pred, rtyp2) ->
+        let Pred(pid, terms) = pred (Var abst_var) in
+        [pid, (List.map (function Var(id) -> id | _ -> assert false) terms, p)]
+    | TFun((x,typ),rtyp1), RTbfun(_, rtyp2) ->
+        get_sol rtyp1 (rtyp2 (Var x))
+    | TFun((x,typ),rtyp1), RTfun(typs, rtyp2) ->
+        (Util.rev_flatten_map (fun typ' -> get_sol typ typ') typs) @
+        (get_sol rtyp1 rtyp2)
+    | TUnknown, _ -> []
+    | _, _ ->
+        Format.printf "%a and " (print_typ ML) typ1;
+        print_rty typ2;
+        assert false
+
+let test tdefs s defs traces = 
   branchtab := [];
   tinfomap := [];
   trace2id := [];
@@ -1468,6 +1511,27 @@ let test s defs traces =
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
 *)
+(**)
+     let sol = Util.rev_flatten_map
+       (fun (x, rtys) ->
+         try
+           let _, ty = List.find (fun (y, ty) -> x.id = y.id) tdefs in
+           Util.rev_flatten_map (get_sol ty) rtys
+         with Not_found -> [])
+       rte
+     in
+     let _ = List.iter
+       (fun (pid, (ids, t)) ->
+          print_pname pid;
+          print_string2 "(";
+          print_terms (List.map (fun id -> Var(id)) ids);
+          print_string2 ") = ";
+          print_term t;
+          print_string2 "\n")
+       sol
+     in
+     let c' = subst_sol_ sol c' in
+(**)
      let c'' = normalize_constr c' in
 (**)
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nNormalized constraints:\n" in
