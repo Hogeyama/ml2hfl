@@ -432,11 +432,6 @@ let rec check ce defs constr t =
           raise (Feasible constr)
         else
           ()
-    | Unit,[FailNode] ->
-        if Wrapper.checksat constr then
-          raise (Feasible constr)
-        else
-          ()
     | Var x, _ -> check ce defs constr (App(Var x, []))
     | App(Fail, _), [FailNode] ->
         if Wrapper.checksat constr then
@@ -455,6 +450,18 @@ let rec check ce defs constr t =
         let xs = get_args x.typ in
         let t'' = List.fold_right2 subst xs ts t' in
           check ce defs constr t''
+    | If(t1, _, _, _), [EventNode "then_fail"] ->
+        let constr' = BinOp(And, t1, constr) in
+        if Wrapper.checksat constr' then
+          raise (Feasible constr')
+        else
+          ()
+    | If(t1, _, _, _), [EventNode "else_fail"] ->
+        let constr' = BinOp(And, Not t1, constr) in
+        if Wrapper.checksat constr' then
+          raise (Feasible constr')
+        else
+          ()
     | If(t1, t2, _, _), LabNode(true)::ce' ->
         let constr' = BinOp(And, t1, constr) in
         check ce' defs constr' t2

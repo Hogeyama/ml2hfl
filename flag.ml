@@ -50,6 +50,7 @@ let web = false
 let debug = true
 
 
+let use_prefix_trace = false
 let use_nint = ref false
 let use_subterm = false
 let use_neg_pred = true

@@ -149,11 +149,7 @@ let model_check_aux (funs,spec) =
       in
       let ce = parse_trace s2 in
       let ce' = List.flatten (List.map (function (BrNode,_) -> [] | t -> [fst t]) ce) in
-      let rec aux a = function
-        [t] -> a @ [FailNode]
-      | t::ce -> aux (a @ [t]) ce
-      in
-        Some (aux [] ce')
+        Some ce'
     else
       begin
         assert (String.sub s1 (String.length s1 - 3) 3 = " : ");

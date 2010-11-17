@@ -259,14 +259,22 @@ let rec process_term trace term traces env pcounter =
         else
           assert false
     | If(t1,t2,t3,t4) ->
-        if List.mem [] traces then
-          [] (*???*)
+		      if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
+		        let trace = trace @ [EventNode("then_fail")] in
+		        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+		        [MyFail(new_tinfo()), trace, traces]
+		      else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
+		        let trace = trace @ [EventNode("else_fail")] in
+		        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+		        [MyFail(new_tinfo()), trace, traces]
+        else if List.mem [] traces then (*???*)
+          []
         else
-        let tts, tfs = List.partition (function [] -> assert false | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
-        let tts = List.map List.tl tts in
-        let tfs = List.map List.tl tfs in
-        (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
-        (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
+		        let tts, tfs = List.partition (function [] -> assert false | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
+		        let tts = List.map List.tl tts in
+		        let tfs = List.map List.tl tfs in
+		        (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
+		        (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
     | App(Fail,_) ->
         let trace = trace @ [FailNode] in
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
@@ -641,12 +649,17 @@ let rec chk_term rtenv term id trace traces =
       else
         assert false
   | If(t1,t2,t3,_) ->
-      let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
-      let tts = List.map List.tl tts in
-      let tfs = List.map List.tl tfs in
-      let c1 = if tts = [] then [] else [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)] in
-      let c2 = if tfs = [] then [] else [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)] in
-        c1 @ c2
+      if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
+        [Cimp([Cterm(t1)], [Cfalse])]
+      else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
+        [Cimp([Cterm(Not t1)], [Cfalse])]
+      else
+		      let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
+		      let tts = List.map List.tl tts in
+		      let tfs = List.map List.tl tfs in
+		      let c1 = if tts = [] then [] else [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)] in
+		      let c2 = if tfs = [] then [] else [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)] in
+		        c1 @ c2
   | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
   | Fail -> assert false(*[Cfalse]*)
   | True | False -> assert false
