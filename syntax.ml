@@ -1474,6 +1474,12 @@ let string_of_term syntax t =
   print_term syntax 0 false str_formatter t;
   flush_str_formatter ()
 
+let string_of_node = function
+    BrNode -> assert false
+  | LabNode true -> "then"
+  | LabNode false -> "else"
+  | FailNode -> "fail"
+  | EventNode s -> s
 
 
 
@@ -1574,7 +1580,7 @@ let rec eta_expand = function
 let rec get_trace ce env trace t =
   match t,ce with
       Var x, _ -> get_trace ce env trace (App(Var x, []))
-    | App(Fail, _), [] -> List.rev trace
+    | App(Fail, _), [FailNode] -> List.rev trace
     | App(Var x, ts), _ ->
         let b,t' = List.assoc x env in
         let xs = get_args x.typ in
@@ -1601,13 +1607,17 @@ let rec get_trace ce env trace t =
         let t2' = subst f (Var f') t2 in
         let env' = (f',(true,t1'))::env in
           get_trace ce env' trace t2'
-    | If(t1, t2, _, _), true::ce' ->
+    | If(t1, t2, _, _), LabNode(true)::ce' ->
         let trace' = True::trace in
           get_trace ce' env trace' t2
-    | If(t1, _, t3, _), false::ce' ->
+    | If(t1, _, t3, _), LabNode(false)::ce' ->
         let trace' = False::trace in
           get_trace ce' env trace' t3
-    | _ -> assert false
+    | _ ->
+        Format.printf "syntax.ml:@.%a@." (print_term_fm ML false) t;
+        let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
+        let () = print_msg ".\n" in
+        assert false
 
 let get_trace ce t = get_trace ce [] [] t
 

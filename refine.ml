@@ -1068,6 +1068,8 @@ let rec add_preds rte sol = function
         Not t'
   | Fail -> Fail
   | Label _ -> assert false
+  | Event s -> Event s
+  | t -> Format.printf "%a@." (print_term_fm ML true) t; assert false
 
 let rec remove_preds_typ typ =
   match typ with

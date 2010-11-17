@@ -58,14 +58,7 @@ let rec cegar tdefs t1 ce_prev =
         None -> t1, None
       | Some ce ->
           let () = print_msg "Spurious counter-example:" in
-          let string_of_node = function
-              Syntax.BrNode -> assert false
-            | Syntax.LabNode true -> "then"
-            | Syntax.LabNode false -> "else"
-            | Syntax.FailNode -> "fail"
-            | Syntax.EventNode s -> s
-          in
-          let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
+          let () = List.iter (fun node -> print_msg (Syntax.string_of_node node ^ " --> ")) ce in
           let () = print_msg ".\n" in
           try
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
@@ -82,16 +75,6 @@ let rec cegar tdefs t1 ce_prev =
                   else
                     t1
                 in
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
-                let ce_prev = [] in
-                let ce = [true] in
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
                 try
                   Refine.refine tdefs (if !Flag.merge_counterexample then ce::ce_prev else [ce]) t1
                 with Infer.Untypable ->
@@ -198,15 +181,6 @@ let main filename in_channel =
             print_msg "Error trace:\n";
             List.iter aux ts';
             if List.length ts' <> 0 then print_msg "\n";
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
-                let ce = [true] in
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
-(***********************************************************)
             print_ce ce alpha
 
 

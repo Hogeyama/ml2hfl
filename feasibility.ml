@@ -418,7 +418,7 @@ let check ce defs t = check ce [] defs True t
 let rec check ce defs constr t =
   match t,ce with
       Var x, _ -> check ce defs constr (App(Var x, []))
-    | App(Fail, _), [] ->
+    | App(Fail, _), [FailNode] ->
         if Wrapper.checksat constr then
           raise (Feasible constr)
         else
@@ -428,13 +428,17 @@ let rec check ce defs constr t =
         let xs = get_args x.typ in
         let t'' = List.fold_right2 subst xs ts t' in
           check ce defs constr t''
-    | If(t1, t2, _, _), true::ce' ->
+    | If(t1, t2, _, _), LabNode(true)::ce' ->
         let constr' = BinOp(And, t1, constr) in
         check ce' defs constr' t2
-    | If(t1, _, t3, _), false::ce' ->
+    | If(t1, _, t3, _), LabNode(false)::ce' ->
         let constr' = BinOp(And, Not t1, constr) in
         check ce' defs constr' t3
-    | _ -> assert false
+    | _ ->
+        Format.printf "feasibility.ml:@.%a@." (print_term_fm ML false) t;
+        let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
+        let () = print_msg ".\n" in
+        assert false
 
 
 
