@@ -239,13 +239,28 @@ exception Undefined of ident
 let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
+(*
+  print_string2 "term:\n ";
+  print_term term;
+  print_string2 "\ntraces:\n";
+  List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
+  print_string2 "\n";
+*)
   match term with
       Unit ->
-        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyUnit(new_tinfo()), trace, traces]
+        if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
+          let trace = trace @ [EventNode "unit"] in
+          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+          [MyUnit(new_tinfo()), trace, traces]
+        else if List.for_all (function [FailNode] -> true | _ -> false) traces then
+          let trace = trace @ [FailNode] in
+          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+          [MyFail(new_tinfo()), trace, traces]
+        else
+          assert false
     | If(t1,t2,t3,t4) ->
         if List.mem [] traces then
-          []
+          [] (*???*)
         else
         let tts, tfs = List.partition (function [] -> assert false | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
         let tts = List.map List.tl tts in
@@ -253,12 +268,18 @@ let rec process_term trace term traces env pcounter =
         (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
         (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
     | App(Fail,_) ->
+        let trace = trace @ [FailNode] in
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         [MyFail(new_tinfo()), trace, traces]
     | App(Event(s), [t]) ->
-        let _ = if pcounter <> invalid_counter && List.for_all (fun trace -> trace = []) traces then register_branches trace pcounter in
-        let traces' = List.map (function (EventNode(s'))::ns -> assert (s = s'); ns) traces in
-        process_term (trace @ [EventNode(s)]) t traces' env pcounter
+      if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
+		      let traces' = List.map List.tl traces in
+          process_term (trace @ [EventNode(s)]) t traces' env pcounter
+      else if List.for_all (function [FailNode] -> true | _ -> false) traces then
+        let trace = trace @ [FailNode] in
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+        [MyFail(new_tinfo()), trace, traces]
+      else assert false
     | Var(x) -> 
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         (try
@@ -351,7 +372,7 @@ let rec eval_term t defs traces pcounter =
   (*let _ = (pc := counter) in*)
 (*
   print_string2 "\ntraces:\n";
-  List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n)) trace; print_string2 ".\n") traces;
+  List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
 *)
   match t with
@@ -584,11 +605,17 @@ let rec chk_term rtenv term id trace traces =
   print_string2 "term:\n ";
   print_term term;
   print_string2 "\ntraces:\n";
-  List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n)) trace; print_string2 ".\n") traces;
+  List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
 *)
   match term with
-    Unit -> []
+    Unit ->
+      if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
+        []
+      else if List.for_all (function [FailNode] -> true | _ -> false) traces then
+        [Cfalse]
+      else
+        assert false
   | App(Var x, ts) ->
      let id = try List.assoc (id, trace) !trace2id with Not_found -> assert false in
      let rty = RTunit(id) in
@@ -601,18 +628,18 @@ let rec chk_term rtenv term id trace traces =
      with
        PickRty -> [Cfalse])
   | App(Fail, _) ->
-      List.iter (function [(*FailNode*)] -> () | _ -> assert false) traces;
-      [Cfalse]
-  | App(Event(s), [t]) ->
-      let traces' = List.map
-        (function EventNode(s')::ns -> assert (s = s'); ns
-        | _ -> assert false)
-        traces
-      in
-      if List.for_all (fun trace -> trace = []) traces' then
+      if List.for_all (function [FailNode] -> true | _ -> false) traces then
         [Cfalse]
       else
-        chk_term rtenv t id (trace @ [EventNode(s)]) traces'
+        assert false
+  | App(Event(s), [t]) ->
+      if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
+		      let traces' = List.map List.tl traces in
+		        chk_term rtenv t id (trace @ [EventNode(s)]) traces'
+      else if List.for_all (function [FailNode] -> true | _ -> false) traces then
+        [Cfalse]
+      else
+        assert false
   | If(t1,t2,t3,_) ->
       let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
       let tts = List.map List.tl tts in
@@ -621,7 +648,7 @@ let rec chk_term rtenv term id trace traces =
       let c2 = if tfs = [] then [] else [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)] in
         c1 @ c2
   | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
-  | Fail -> [Cfalse]
+  | Fail -> assert false(*[Cfalse]*)
   | True | False -> assert false
   | Not(t) -> (*???*)
       chk_term rtenv t id trace traces

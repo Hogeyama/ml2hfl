@@ -417,7 +417,7 @@ let check ce defs t = check ce [] defs True t
 
 let rec check ce defs constr t =
   match t,ce with
-    | Unit,[] ->
+    | Unit,[] -> (*???*)
         if Wrapper.checksat constr then
           raise (Feasible constr)
         else
@@ -429,6 +429,11 @@ let rec check ce defs constr t =
           ()
     | Var x, _ -> check ce defs constr (App(Var x, []))
     | App(Fail, _), [FailNode] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          ()
+    | App(Event s, _), FailNode::_ ->
         if Wrapper.checksat constr then
           raise (Feasible constr)
         else
