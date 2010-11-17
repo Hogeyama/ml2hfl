@@ -422,6 +422,11 @@ let rec check ce defs constr t =
           raise (Feasible constr)
         else
           ()
+    | Unit, [FailNode] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          ()
     | Unit,[EventNode "unit"] ->
         if Wrapper.checksat constr then
           raise (Feasible constr)
@@ -433,7 +438,7 @@ let rec check ce defs constr t =
           raise (Feasible constr)
         else
           ()
-    | App(Event s, _), FailNode::_ ->
+    | App(Event s, _), [FailNode] ->
         if Wrapper.checksat constr then
           raise (Feasible constr)
         else
