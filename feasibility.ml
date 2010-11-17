@@ -417,12 +417,24 @@ let check ce defs t = check ce [] defs True t
 
 let rec check ce defs constr t =
   match t,ce with
-      Var x, _ -> check ce defs constr (App(Var x, []))
+    | Unit,[] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          ()
+    | Unit,[EventNode "unit"] ->
+        if Wrapper.checksat constr then
+          raise (Feasible constr)
+        else
+          ()
+    | Var x, _ -> check ce defs constr (App(Var x, []))
     | App(Fail, _), [FailNode] ->
         if Wrapper.checksat constr then
           raise (Feasible constr)
         else
           ()
+    | App(Event s, [t]), EventNode s'::ce' when s=s' ->
+        check ce' defs constr t
     | App(Var x, ts), _ ->
         let _,t' = List.assoc x defs in
         let xs = get_args x.typ in
