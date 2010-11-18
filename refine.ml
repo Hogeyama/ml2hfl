@@ -1143,8 +1143,25 @@ let refine tdefs ces t0 =
 
   let s = {id = 0; origin = "Main"; typ = TUnit} in
   let defs1 = (s,([], t'))::defs' in
-  let rte, sol = Infer.test tdefs s defs1 ces in
-  add_preds rte sol t0
+  let rte, sol = Infer.test tdefs s defs1 ces None in
+  if Flag.use_dor && List.exists (fun (_, (_, t)) -> get_nint t <> []) sol then begin
+    assert (not !Flag.merge_counterexample);
+    let _ = Infer.cgen_flag := false in
+    let [ce] = ces in
+    let defs,t = lift t0 in
+    let pred, ce = Feasibility.check_int ce defs t in
+				let rec aux a = function
+				  [Syntax.LabNode true] -> a @ [Syntax.EventNode "then_fail"]
+				| [Syntax.LabNode false] -> a @ [Syntax.EventNode "else_fail"]
+    | [t] -> a @ [t]
+				| t::ce -> aux (a @ [t]) ce
+				in
+		  let ce = aux [] ce in
+    let rte, sol = Infer.test tdefs s defs1 [ce] (Some pred) in
+    let _ = Infer.cgen_flag := true in
+    add_preds rte sol t0
+  end else
+    add_preds rte sol t0
 
 (*
   let () = Format.printf "AAA@." in

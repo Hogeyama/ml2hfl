@@ -4,6 +4,8 @@ open Utilities;;
 
 exception Untypable
 
+let cgen_flag = ref true (** this should be set to false if we want to propagate conditions on free variables eagerly **)
+
 let print_prog t defs =
    Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs);;
 
@@ -657,8 +659,18 @@ let rec chk_term rtenv term id trace traces =
 		      let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
 		      let tts = List.map List.tl tts in
 		      let tfs = List.map List.tl tfs in
-		      let c1 = if tts = [] then [] else [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)] in
-		      let c2 = if tfs = [] then [] else [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)] in
+		      let c1 = if tts = [] then [] else
+          if !cgen_flag then
+            [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)]
+          else
+            (Cterm(t1)) :: (chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)
+        in
+		      let c2 = if tfs = [] then [] else
+          if !cgen_flag then
+            [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)]
+          else
+            (Cterm(Not t1)) :: (chk_term rtenv t3 id (trace @ [LabNode(false)]) tts)
+        in
 		        c1 @ c2
   | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
   | Fail -> assert false(*[Cfalse]*)
@@ -757,8 +769,6 @@ let getc_from_env env =
        merge_and_unify compare
          (getc_from_rtyl v rtyl) c)
      [] env
-
-let cgen_flag = ref true (** this should be set to false if we want to propagate conditions on free variables eagerly **)
 
 let chk_def_rty vars body rty rtenv =
   let (venv1, id) = mk_venv vars rty in
@@ -924,7 +934,11 @@ let interpolate ids c1 c2 =
   let ts1 = terms_of c1 in
   let get_fv' = (*if !Flag.use_nint then*) get_fv (*else get_fv2*) in
   let bv = list_diff (List.flatten (List.map get_fv' ts1)) ids in
-  let ts2 = [Not (term_of c2)] in
+  let tmp = Not (term_of c2) in
+  if not (Wrapper.checksat tmp) then
+    True
+  else
+  let ts2 = [tmp] in
 (*
   let ts1 = if Flag.gen_int then int_gen ts1 else ts1 in
   let ts2 = if Flag.gen_int then int_gen ts2 else ts2 in
@@ -1180,9 +1194,8 @@ let rec solve_aux' lbs ac ubs nubs sol = function
           let ts = cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs') @ ts in
 (* this slows down verification of mult.ml, zip_unzip.ml, zip_map.ml but necessary for zip_map.ml?
 normalization remedies the above problem?
-*)
           let ts = if Flag.gen_int then int_gen ts else ts in
-(**)
+*)
           ts
         with Not_found ->
           [False]
@@ -1530,7 +1543,7 @@ let rec get_sol typ1 typ2 =
         print_rty typ2;
         assert false
 
-let test tdefs s defs traces = 
+let test tdefs s defs traces pred = 
   branchtab := [];
   tinfomap := [];
   trace2id := [];
@@ -1595,6 +1608,15 @@ let test tdefs s defs traces =
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
 (**)
      let _ = if Flag.debug then save_as_dot ("constraints" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c'' in
+
+     let c'' =
+       if not !cgen_flag then
+		       let Some(pred) = pred in
+		       add_pred pred c''
+       else
+         c''
+     in
+
 (*
      let c''' = simplify_constr c'' in
      let _ = print_string2 "\nSimplified constraints:\n" in

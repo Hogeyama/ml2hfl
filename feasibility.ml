@@ -416,6 +416,9 @@ let check ce defs t = check ce [] defs True t
 
 
 let rec check ce defs constr t =
+(*
+  Format.printf "constraint: %a@." (print_term_fm ML false) constr;
+*)
   match t,ce with
     | Unit,[] -> (*???*)
         if Wrapper.checksat constr then
@@ -539,3 +542,29 @@ let get_prefix ce defs t = get_prefix ce [] defs True t
 
 
 
+let rec check_int ce ce_used defs constr t =
+  match t,ce with
+      Var x, _ -> check_int ce ce_used defs constr (App(Var x, []))
+    | App(Fail, _), [] -> raise (Feasible constr)
+    | App(Var x, ts), _ ->
+        let _,t' = List.assoc x defs in
+        let xs = get_args x.typ in
+        let t'' = List.fold_right2 subst xs ts t' in
+          check_int ce ce_used defs constr t''
+    | If(t1, t2, _, _), LabNode(true)::ce' ->
+        let constr' = BinOp(And, t1, constr) in
+        let ce_used' = ce_used@[LabNode(true)] in
+          if Wrapper.checksat constr'
+          then check_int ce' ce_used' defs constr' t2
+          else Wrapper.interpolation [constr] [t1], ce_used'
+    | If(t1, _, t3, _), LabNode(false)::ce' ->
+        let constr' = BinOp(And, Not t1, constr) in
+        let ce_used' = ce_used@[LabNode(false)] in
+          if Wrapper.checksat constr'
+          then check_int ce' ce_used' defs constr' t3
+          else Wrapper.interpolation [constr] [Not t1], ce_used'
+    | _ -> assert false
+
+
+
+let check_int ce defs t = check_int ce [] defs True t
