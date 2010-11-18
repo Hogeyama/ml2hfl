@@ -64,7 +64,36 @@ print_string "\n";
   let spec' =
     match !Flag.mode with
         Flag.Reachability -> spec
-      | Flag.FileAccess -> spec@((1, "then", [1])::(1, "else", [1])::(1, "br", [1;1])::(0, "open", [1])::(1, "close", [0])::[])
+      | Flag.FileAccess ->
+[0, "br", [0; 0];
+1, "br", [1; 1];
+2, "br", [2; 2];
+3, "br", [3; 3];
+0, "newr", [1];
+1, "read", [1];
+1, "close", [4];
+0, "neww", [2];
+2, "write", [2];
+2, "close", [4];
+2, "newr", [3];
+1, "neww", [3];
+3, "read", [3];
+3, "write", [3];
+3, "close", [3];
+4, "unit", [];
+0, "unit", [];
+3, "unit", [];
+0, "then", [0];
+0, "else", [0];
+1, "then", [1];
+1, "else", [1];
+2, "then", [2];
+2, "else", [2];
+3, "then", [3];
+3, "else", [3];
+4, "then", [4];
+4, "else", [4];]
+
   in
     defs'', spec'
 
