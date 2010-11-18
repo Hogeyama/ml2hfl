@@ -19,11 +19,8 @@ let f m src des =
       (print_int (des i);
        print_array m array (i + 1))
   in
-    if c0 = 0
-    then
-      let array = bcopy m src des c0 in
-        print_array m array c0
-    else ()
+    let array = bcopy m src des 0 in
+      print_array m array 0
 in
 let array1 = make_array n in
 let array2 = make_array n in
