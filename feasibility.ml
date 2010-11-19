@@ -551,6 +551,18 @@ let rec check_int ce ce_used defs constr t =
         let xs = get_args x.typ in
         let t'' = List.fold_right2 subst xs ts t' in
           check_int ce ce_used defs constr t''
+    | If(t1, _, _, _), [EventNode "then_fail"] ->
+        let constr' = BinOp(And, t1, constr) in
+        let ce_used' = ce_used@[LabNode(true)] in
+        if Wrapper.checksat constr'
+        then raise (Feasible constr)
+        else Wrapper.interpolation [constr] [t1](*???*), ce_used'
+    | If(t1, _, _, _), [EventNode "else_fail"] ->
+        let constr' = BinOp(And, Not t1, constr) in
+        let ce_used' = ce_used@[LabNode(false)] in
+        if Wrapper.checksat constr'
+        then raise (Feasible constr)
+        else Wrapper.interpolation [constr] [Not t1](*???*), ce_used'
     | If(t1, t2, _, _), LabNode(true)::ce' ->
         let constr' = BinOp(And, t1, constr) in
         let ce_used' = ce_used@[LabNode(true)] in
@@ -563,7 +575,11 @@ let rec check_int ce ce_used defs constr t =
           if Wrapper.checksat constr'
           then check_int ce' ce_used' defs constr' t3
           else Wrapper.interpolation [constr] [Not t1](*???*), ce_used'
-    | _ -> assert false
+    | _ ->
+        Format.printf "feasibility.ml:@.%a@." (print_term_fm ML false) t;
+        let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
+        let () = print_msg ".\n" in
+        assert false
 
 
 
