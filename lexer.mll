@@ -33,6 +33,7 @@ rule token = parse
 | '-' { MINUS }
 | '*' { TIMES }
 | '|' { CHOICE }
+| "type" { TYPE }
 | "unit" { TUNIT }
 | "bool" { TBOOL }
 | "int" { TINT }

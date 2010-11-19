@@ -556,13 +556,13 @@ let rec check_int ce ce_used defs constr t =
         let ce_used' = ce_used@[LabNode(true)] in
           if Wrapper.checksat constr'
           then check_int ce' ce_used' defs constr' t2
-          else Wrapper.interpolation [constr] [t1], ce_used'
+          else Wrapper.interpolation [constr] [t1](*???*), ce_used'
     | If(t1, _, t3, _), LabNode(false)::ce' ->
         let constr' = BinOp(And, Not t1, constr) in
         let ce_used' = ce_used@[LabNode(false)] in
           if Wrapper.checksat constr'
           then check_int ce' ce_used' defs constr' t3
-          else Wrapper.interpolation [constr] [Not t1], ce_used'
+          else Wrapper.interpolation [constr] [Not t1](*???*), ce_used'
     | _ -> assert false
 
 

@@ -72,6 +72,21 @@ type aty = ATunit of int | ATfun of aty list * aty | ATint of int | ATbool of in
 type myterm = MyUnit of tinfo | MyFail of tinfo | MyVar of ident * tinfo
             | MyApp of myterm * myterm * tinfo | MyTerm of Syntax.t * tinfo
 
+let rec print_myterm t =
+  match t with
+      MyUnit(_) ->
+        Format.printf "()"
+    | MyFail(_) -> 
+        Format.printf "fail"
+    | MyVar(id,_) ->
+        print_ident id
+    | MyApp(t1,t2,_) ->
+        print_myterm t1;
+        print_string2 " ";
+        print_myterm t2
+    | MyTerm(t,_) ->
+        print_term t
+
 let new_tinfo() =
   ref []
 
@@ -241,13 +256,15 @@ exception Undefined of ident
 let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
-(*
+(**)
+  print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
+  print_string2 "process_term:\n";
   print_string2 "term:\n ";
   print_term term;
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-*)
+(**)
   match term with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
@@ -291,16 +308,22 @@ let rec process_term trace term traces env pcounter =
         [MyFail(new_tinfo()), trace, traces]
       else assert false
     | Var(x) -> 
-        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        (try
-           let myt = List.assoc x env in
-             [myt, trace, traces]
-         with Not_found ->
-           let tinfo = new_tinfo() in
-           let h = MyVar(x, tinfo) in
-           let _ = register_tinfo x tinfo in
-             [h, trace, traces])
+        if x.typ = TUnit && List.for_all (function [FailNode] -> true | _ -> false) traces then
+          let trace = trace @ [FailNode] in
+          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+          [MyFail(new_tinfo()), trace, traces]
+        else
+		        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+		        (try
+		           let myt = List.assoc x env in
+		             [myt, trace, traces]
+		         with Not_found ->
+		           let tinfo = new_tinfo() in
+		           let h = MyVar(x, tinfo) in
+		           let _ = register_tinfo x tinfo in
+		             [h, trace, traces])
     | App(Var x, ts) ->
+        assert (ts <> []);
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         let myts = List.map (fun t -> process_aterm env t) ts in
           (try
@@ -322,10 +345,10 @@ let rec process_term trace term traces env pcounter =
         [MyTerm(term, new_tinfo()), trace, traces]
     | True ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyUnit(new_tinfo()), trace, traces] (*???*)
+        [MyTerm(term, new_tinfo()), trace, traces] (*???*)
     | False ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyUnit(new_tinfo()), trace, traces] (*???*)
+        [MyTerm(term, new_tinfo()), trace, traces] (*???*)
     | Not(_) ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         [MyTerm(term, new_tinfo()), trace, traces] (*???*)
@@ -380,16 +403,23 @@ let trace2id = ref []
 
 let rec eval_term t defs traces pcounter =
   (*let _ = (pc := counter) in*)
-(*
+(**)
+  print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
+  print_string2 "eval_term:\n";
+  print_string2 "term:\n";
+  print_myterm t;
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-*)
+(**)
   match t with
     MyUnit(tinfo) | MyFail(tinfo) ->
-      let counter = incr_counter () in
-      trace2id := ((pcounter, []), counter)::!trace2id;
-      add_to_tinfo (ETunit(counter)) tinfo
+      if List.for_all (function [FailNode] | [EventNode "then_fail"] | [EventNode "else_fail"] -> true | _ -> false) traces then
+		      let counter = incr_counter () in
+		      trace2id := ((pcounter, []), counter)::!trace2id;
+		      add_to_tinfo (ETunit(counter)) tinfo
+      else
+        assert false
   | MyVar(f,tinfo) ->
       let (vars,body) = 
          try List.assoc f defs 
@@ -611,13 +641,14 @@ let print_constraint c =
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
-(*
-  print_string2 "term:\n ";
+(**)
+  print_string2 ("id: " ^ (string_of_int id) ^ "\n");
+  print_string2 "term:\n";
   print_term term;
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-*)
+(**)
   match term with
     Unit ->
       if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
@@ -627,16 +658,19 @@ let rec chk_term rtenv term id trace traces =
       else
         assert false
   | App(Var x, ts) ->
-     let id = try List.assoc (id, trace) !trace2id with Not_found -> assert false in
-     let rty = RTunit(id) in
-     (try
-       let rtyl = try List.assoc x rtenv with Not_found -> [] in
-       let rty1 = pick_rty id rtyl in
-       let (c1,rty2)= chk_args rtenv rty1 ts in
-       let c2 = subty rty2 rty in
-          c1@c2
-     with
-       PickRty -> [Cfalse])
+	     if List.for_all (function [FailNode] -> true | _ -> false) traces then
+	        [Cfalse]
+      else
+			     let id = try List.assoc (id, trace) !trace2id with Not_found -> assert false in
+			     let rty = RTunit(id) in
+			     (try
+			       let rtyl = try List.assoc x rtenv with Not_found -> [] in
+			       let rty1 = pick_rty id rtyl in
+			       let (c1,rty2)= chk_args rtenv rty1 ts in
+			       let c2 = subty rty2 rty in
+			          c1@c2
+			     with
+			       PickRty -> [Cfalse])
   | App(Fail, _) ->
       if List.for_all (function [FailNode] -> true | _ -> false) traces then
         [Cfalse]

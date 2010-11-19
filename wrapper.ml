@@ -332,6 +332,9 @@ let get_solution p =
       let s = input_line cin in
       let s' = String.sub s 7 (String.length s - 8) in
         try
+(*
+Format.printf "%s@." s';
+*)
           let [], t = Parser.file Lexer.token (Lexing.from_string s') in
           let t' = rename_ident t in
             t' :: aux cin

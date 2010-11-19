@@ -39,6 +39,7 @@ let print_error_information () =
 %token IF
 %token THEN
 %token ELSE
+%token TYPE
 %token TUNIT
 %token TBOOL
 %token TINT
@@ -188,10 +189,10 @@ id_list:
 
 typedefs:
   { [] }
-| id COLON typ SEMI typedefs
-  { ($1, $3)::$5 }
-| LPAREN id COMMA INT RPAREN COLON typ SEMI typedefs
-  { ({$2 with id = $4}, $7)::$9 }
+| TYPE id COLON typ SEMI typedefs
+  { ($2, $4)::$6 }
+| TYPE LPAREN id COMMA INT RPAREN COLON typ SEMI typedefs
+  { ({$3 with id = $5}, $8)::$10 }
 
 typ:
   LPAREN typ RPAREN

@@ -129,21 +129,23 @@ let print_ce ce t =
   let t''' = Typing.typing true t'' in
   let trace = Syntax.get_trace ce t''' in
   let print_var_bool = function
-      Syntax.True -> print_msg "-then->\n"
-    | Syntax.False -> print_msg "-else->\n"
+      Syntax.True -> print_msg "-then->"
+    | Syntax.False -> print_msg "-else->"
     | Syntax.Var x ->
         begin
           try
             if String.sub x.Syntax.origin (String.length x.Syntax.origin - String.length str) (String.length str) = str
-            then Format.printf "%s -->\n" (String.sub x.Syntax.origin 0 (String.length x.Syntax.origin - String.length str))
+            then Format.printf "%s -->@." (String.sub x.Syntax.origin 0 (String.length x.Syntax.origin - String.length str))
           with
               Invalid_argument "String.sub" -> ()
         end
+    | Syntax.Event(s) ->
+        print_msg ("-" ^ s ^ "->")
     | _ -> assert false
   in
     List.iter print_var_bool trace;
-    Format.printf "error";
-    Format.printf "\n\n"
+    print_msg "error";
+    print_msg ""
 
 let main filename in_channel =
   let input_string = String.create Flag.max_input_size in

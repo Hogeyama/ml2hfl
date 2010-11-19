@@ -1154,6 +1154,8 @@ let rec add_string str = function
   | Label(b,t) ->
       let t' = add_string str t in
         Label(b, t')
+  | Event s -> Event s
+  | _ -> assert false
 
 
 
@@ -1210,6 +1212,7 @@ let rec remove_unused = function
   | Fail -> Fail
   | Label _ -> assert false
   | Event s -> Event s
+  | _ -> assert false
 
 
 
@@ -1581,21 +1584,31 @@ let rec get_trace ce env trace t =
   match t,ce with
       Var x, _ -> get_trace ce env trace (App(Var x, []))
     | App(Fail, _), [FailNode] -> List.rev trace
+    | App(Event(s), [t]), [FailNode] -> List.rev trace
+    | App(Event(s), [t]), EventNode(s')::ce' when s = s' ->
+        let trace' = Event(s)::trace in
+        get_trace ce' env trace' t
     | App(Var x, ts), _ ->
-        let b,t' = List.assoc x env in
-        let xs = get_args x.typ in
-        let xs' = List.map (fun x -> {(new_var' x.origin) with typ = x.typ}) xs in
-        let t'' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t' in
-        let trace' = if b then (Var x)::trace else trace in
-        let env' =
-          let aux env x t =
-            match x.typ with
-                TFun _ -> (x, (false,expand t x.typ))::env
-              | _ -> env
-          in
-            List.fold_left2 aux env xs' ts
-        in
-          get_trace ce env' trace' t''
+        (try
+		        let b,t' = List.assoc x env in
+		        let xs = get_args x.typ in
+		        let xs' = List.map (fun x -> {(new_var' x.origin) with typ = x.typ}) xs in
+		        let t'' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t' in
+		        let trace' = if b then (Var x)::trace else trace in
+		        let env' =
+		          let aux env x t =
+		            match x.typ with
+		                TFun _ -> (x, (false,expand t x.typ))::env
+		              | _ -> env
+		          in
+		            List.fold_left2 aux env xs' ts
+		        in
+		          get_trace ce env' trace' t''
+        with Not_found -> List.rev trace(*assert false*))
+    | App(Let(f, xs, t1, t2), ts), _ ->
+        get_trace ce env trace (Let(f, xs, t1, App(t2, ts)))
+    | App(Letrec(f, xs, t1, t2), ts), _ ->
+        get_trace ce env trace (Letrec(f, xs, t1, App(t2, ts)))
     | Let(f, xs, t1, t2), _ ->
         let f' = {(new_var' f.origin) with typ = f.typ} in
         let t2' = subst f (Var f') t2 in
