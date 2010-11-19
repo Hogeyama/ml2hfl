@@ -1583,6 +1583,7 @@ let rec eta_expand = function
 let rec get_trace ce env trace t =
   match t,ce with
       Var x, _ -> get_trace ce env trace (App(Var x, []))
+    | Unit, [FailNode] -> List.rev trace
     | App(Fail, _), [FailNode] -> List.rev trace
     | App(Event(s), [t]), [FailNode] -> List.rev trace
     | App(Event(s), [t]), EventNode(s')::ce' when s = s' ->
