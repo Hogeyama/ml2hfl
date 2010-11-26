@@ -5,7 +5,7 @@ open Util
 
 let funs = ref []
 
-(*
+
 let rec trans0 c = function
     Unit -> c Unit
   | True -> c True
@@ -77,55 +77,8 @@ let rec trans0 c = function
   | Fail -> c (Fail)
   | Unknown -> c Unknown
   | _ -> assert false
-*)
 
-let rec match_arg arg_num b = function
-    App(Var f, ts) when b ->
-      begin
-        try
-          let m = List.length ts in
-          let n = List.assoc f arg_num in
-            if n < m
-            then
-              let rec take xs n =
-                match xs,n with
-                    _,0 -> [], xs
-                  | [],_ -> [], []
-                  | x::xs',_ ->
-                      let xs1,xs2 = take xs' (n-1) in
-                        x::xs1, xs2
-              in
-              let ts1,ts2 = take ts n in
-                App(App(Var f, ts1), ts2)
-            else
-              let args = tabulate (n-m) (fun _ -> new_var' "x") in
-                begin
-                  match args with
-                      [] -> App(Var f, ts)
-                    | _ ->
-                      let g = new_var' "f" in
-                      let ts' = List.map (fun x -> Var x) args in
-                        Let(g, args, App(Var f, ts@ts'), Var g)
-                end
-        with Not_found ->
-          match_arg arg_num false (App(Var f,ts))
-      end
-  | App(f, ts) ->
-      let typ = Typing.get_typ (App(f, ts)) in
-      let args = get_args typ in
-        begin
-          match args with
-              [] -> App(f, ts)
-            | _ ->
-              let g = new_var' "f" in
-              let ts' = List.map (fun x -> Var x) args in
-                Let(g, args, App(f, ts@ts'), Var g)
-        end
-  | _ -> assert false
-
-
-
-let rec trans1 arg_num b c = function
+let rec trans1 c = function
     Unit -> c Unit
   | True -> c True
   | False -> c False
@@ -135,55 +88,53 @@ let rec trans1 arg_num b c = function
   | Fun(x, t) ->
       let f = new_var' "f" in
         funs := f::!funs;
-        trans1 arg_num b c (Let(f, [x], t, Var f))
-  | App(t1, ts) as t ->
-      if b
-      then
-        let k = new_var' "x" in
-        let r = new_var' "x" in
-        let c1 x = app2app x [Var k] in
-        let cc = List.fold_right (fun t cc -> fun x -> trans1 arg_num b (fun y -> cc (app2app x [y])) t) ts c1 in
-          funs := k::!funs;
-          Let(k, [r], c (Var r), trans1 arg_num b cc t1)
-      else
-        trans1 arg_num true c (match_arg arg_num true t)
+        trans1 c (Let(f, [x], t, Var f))
+  | App(t1, ts) ->
+      let k = new_var' "x" in
+      let r = new_var' "x" in
+      let c1 x = app2app x [Var k] in
+      let cc = List.fold_right (fun t cc -> fun x -> trans1 (fun y -> cc (app2app x [y])) t) ts c1 in
+        funs := k::!funs;
+        Let(k, [r], c (Var r), trans1 cc t1)
   | If(t1, t2, t3, _) ->
       let k = new_var' "x" in
       let x = new_var' "x" in
-      let t2' = trans1 arg_num b (fun y -> App(Var k, [y])) t2 in
-      let t3' = trans1 arg_num b (fun y -> App(Var k, [y])) t3 in
+      let t2' = trans1 (fun y -> App(Var k, [y])) t2 in
+      let t3' = trans1 (fun y -> App(Var k, [y])) t3 in
       let c' y = Let(k, [x], c (Var x), If(y, t2', t3', Unit)) in
         funs := k::!funs;
-        trans1 arg_num b c' t1
+        trans1 c' t1
   | Let(f, xs, t1, t2) ->
-      let arg_num' = (f,List.length xs)::arg_num in
-        if xs = []
-        then
-          let c' t = trans1 arg_num' b c (subst f t t2) in
-            trans1 arg_num' b c' t1
-        else
-          let k = new_var' "x" in
-          let t1' = trans1 arg_num' b (fun y -> App(Var k, [y])) t1 in
-          let t2' = trans1 arg_num' b c t2 in
-            Let(f, xs@[k], t1', t2')
+      begin
+        match xs with
+            [] ->
+              let c' t = trans1 c (subst f t t2) in
+                trans1 c' t1
+          | _::_ ->
+              let k = new_var' "x" in
+              let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
+              let t2' = trans1 c t2 in
+                Let(f, xs@[k], t1', t2')
+      end
   | Letrec(f, xs, t1, t2) ->
-      let arg_num' = (f,List.length xs)::arg_num in
-        if xs = []
-        then
-          let c' t = trans1 arg_num' b c (subst f t t2) in
-            trans1 arg_num' b c' t1
-        else
-          let k = new_var' "x" in
-          let t1' = trans1 arg_num' b (fun y -> App(Var k, [y])) t1 in
-          let t2' = trans1 arg_num' b c t2 in
-            Letrec(f, xs@[k], t1', t2')
+      begin
+        match xs with
+            [] ->
+              let c' t = trans1 c (subst f t t2) in
+                trans1 c' t1
+          | _::_ ->
+              let k = new_var' "x" in
+              let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
+              let t2' = trans1 c t2 in
+                Letrec(f, xs@[k], t1', t2')
+      end
   | BinOp(op, t1, t2) ->
       let c1 t1' t2' = c (BinOp(op, t1', t2')) in
-      let c2 y1 = trans1 arg_num b (fun y2 -> c1 y1 y2) t2 in
-        trans1 arg_num b c2 t1
+      let c2 y1 = trans1 (fun y2 -> c1 y1 y2) t2 in
+        trans1 c2 t1
   | Not t ->
       let c' t1 = c (Not t1) in
-        trans1 arg_num b c' t
+        trans1 c' t
   | Fail -> c (Fail)
   | Unknown -> c Unknown
   | Event s -> c (Event s)
@@ -243,6 +194,92 @@ let rec inlining funs defs = function
   | Label _ -> assert false
     
 
+
+let rec match_arg arg_num b = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | Var x -> Var x
+  | Fun _ -> assert false
+  | App(Var f, ts) when b ->
+      begin
+        try
+          let m = List.length ts in
+          let n = List.assoc f arg_num in
+            if n < m
+            then
+              let rec take xs n =
+                match xs,n with
+                    _,0 -> [], xs
+                  | [],_ -> [], []
+                  | x::xs',_ ->
+                      let xs1,xs2 = take xs' (n-1) in
+                        x::xs1, xs2
+              in
+              let ts1,ts2 = take ts n in
+                match_arg arg_num true (App(App(Var f, ts1), ts2))
+            else
+              let ts' = List.map (match_arg arg_num true) ts in
+              let args = tabulate (n-m) (fun _ -> new_var' "x") in
+                begin
+                  match args with
+                      [] -> App(Var f, ts')
+                    | _ ->
+                      let g = new_var' "f" in
+                      let ts'' = List.map (fun x -> Var x) args in
+                        Let(g, args, App(Var f, ts'@ts''), Var g)
+                end
+        with Not_found ->
+          match_arg arg_num false (App(Var f,ts))
+      end
+  | App(f, ts) ->
+      let f' = match_arg arg_num true f in
+      let ts' = List.map (match_arg arg_num true) ts in
+      let typ = Typing.get_typ (App(f, ts)) in
+      let args = get_args typ in
+        begin
+        match args with
+            [] -> App(f', ts')
+          | _ ->
+            let g = new_var' "f" in
+            let ts'' = List.map (fun x -> Var x) args in
+              Let(g, args, App(f', ts'@ts''), Var g)
+        end
+  | If(t1, t2, t3, t4) ->
+      let t1' = match_arg arg_num true t1 in
+      let t2' = match_arg arg_num true t2 in
+      let t3' = match_arg arg_num true t3 in
+      let t4' = match_arg arg_num true t4 in
+        If(t1', t2', t3', t4')
+  | Branch(t1, t2) ->
+      let t1' = match_arg arg_num true t1 in
+      let t2' = match_arg arg_num true t2 in
+        Branch(t1', t2')
+  | Let(f, xs, t1, t2) ->
+      let arg_num' = (f,List.length xs)::arg_num in
+      let t1' = match_arg arg_num true t1 in
+      let t2' = match_arg arg_num' true t2 in
+        Let(f, xs, t1', t2')
+  | Letrec(f, xs, t1, t2) ->
+      let arg_num' = (f,List.length xs)::arg_num in
+      let t1' = match_arg arg_num' true t1 in
+      let t2' = match_arg arg_num' true t2 in
+        Letrec(f, xs, t1', t2')
+  | BinOp(op, t1, t2) ->
+      let t1' = match_arg arg_num true t1 in
+      let t2' = match_arg arg_num true t2 in
+        BinOp(op, t1', t2')
+  | Not t ->
+      let t' = match_arg arg_num true t in
+        Not t'
+  | Fail -> Fail
+  | Label(b,t) ->
+      let t' = match_arg arg_num true t in
+        Label(b, t')
+  | Event s -> Event s
 
 
 
@@ -334,9 +371,9 @@ let rec normalize = function
 
 let trans t =
   let t1 = Typing.typing false t in
-  let t2 = app2letapp t1 in
+  let t2 = match_arg [] true (app2letapp t1) in
   let t3 =
-    let tm = normalize (trans1 [] false (fun x -> x) t2) in
+    let tm = normalize (trans1 (fun x -> x) t2) in
     try
       Typing.typing true tm
     with Typing.CannotUnify ->
