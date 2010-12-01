@@ -192,6 +192,7 @@ let rec inlining funs defs = function
         Not t'
   | Fail -> Fail
   | Label _ -> assert false
+  | Event s -> Event s
     
 
 
@@ -320,6 +321,7 @@ let rec app2letapp = function
   | Not t -> Not (app2letapp t)
   | Fail -> Fail
   | Label(b,t) -> Label(b,app2letapp t)
+  | Event s -> Event s
 
 
 let rec normalize = function

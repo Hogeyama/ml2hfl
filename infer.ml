@@ -256,7 +256,7 @@ exception Undefined of ident
 let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
-(**)
+  (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "process_term:\n";
   print_string2 "term:\n ";
@@ -264,64 +264,64 @@ let rec process_term trace term traces env pcounter =
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-(**)
+  (**)
   match term with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
           let trace = trace @ [EventNode "unit"] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-          [MyUnit(new_tinfo()), trace, traces]
+            [MyUnit(new_tinfo()), trace, traces]
         else if List.for_all (function [FailNode] -> true | _ -> false) traces then
           let trace = trace @ [FailNode] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-          [MyFail(new_tinfo()), trace, traces]
+            [MyFail(new_tinfo()), trace, traces]
         else
           assert false
     | If(t1,t2,t3,t4) ->
-		      if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
-		        let trace = trace @ [EventNode("then_fail")] in
-		        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-		        [MyFail(new_tinfo()), trace, traces]
-		      else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
-		        let trace = trace @ [EventNode("else_fail")] in
-		        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-		        [MyFail(new_tinfo()), trace, traces]
+	if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
+	  let trace = trace @ [EventNode("then_fail")] in
+	  let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+	    [MyFail(new_tinfo()), trace, traces]
+	else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
+	  let trace = trace @ [EventNode("else_fail")] in
+	  let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+	    [MyFail(new_tinfo()), trace, traces]
         else if List.mem [] traces then (*???*)
           []
         else
-		        let tts, tfs = List.partition (function [] -> assert false | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
-		        let tts = List.map List.tl tts in
-		        let tfs = List.map List.tl tfs in
-		        (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
-		        (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
+	  let tts, tfs = List.partition (function LabNode(true)::_ -> true | LabNode(false)::_ -> false | _ -> assert false) traces in
+	  let tts = List.map List.tl tts in
+	  let tfs = List.map List.tl tfs in
+	    (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
+	      (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
     | App(Fail,_) ->
         let trace = trace @ [FailNode] in
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyFail(new_tinfo()), trace, traces]
+          [MyFail(new_tinfo()), trace, traces]
     | App(Event(s), [t]) ->
-      if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
-		      let traces' = List.map List.tl traces in
-          process_term (trace @ [EventNode(s)]) t traces' env pcounter
-      else if List.for_all (function [FailNode] -> true | _ -> false) traces then
-        let trace = trace @ [FailNode] in
-        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyFail(new_tinfo()), trace, traces]
-      else assert false
+        if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
+	  let traces' = List.map List.tl traces in
+            process_term (trace @ [EventNode(s)]) t traces' env pcounter
+        else if List.for_all (function [FailNode] -> true | _ -> false) traces then
+          let trace = trace @ [FailNode] in
+          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+            [MyFail(new_tinfo()), trace, traces]
+        else assert false
     | Var(x) -> 
         if x.typ = TUnit && List.for_all (function [FailNode] -> true | _ -> false) traces then
           let trace = trace @ [FailNode] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-          [MyFail(new_tinfo()), trace, traces]
+            [MyFail(new_tinfo()), trace, traces]
         else
-		        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-		        (try
-		           let myt = List.assoc x env in
-		             [myt, trace, traces]
-		         with Not_found ->
-		           let tinfo = new_tinfo() in
-		           let h = MyVar(x, tinfo) in
-		           let _ = register_tinfo x tinfo in
-		             [h, trace, traces])
+	  let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+	    (try
+	       let myt = List.assoc x env in
+		 [myt, trace, traces]
+	     with Not_found ->
+	       let tinfo = new_tinfo() in
+	       let h = MyVar(x, tinfo) in
+	       let _ = register_tinfo x tinfo in
+		 [h, trace, traces])
     | App(Var x, ts) ->
         assert (ts <> []);
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
@@ -336,22 +336,22 @@ let rec process_term trace term traces env pcounter =
                [mk_appterm h myts, trace, traces])
     | BinOp(_) ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyTerm(term, new_tinfo()), trace, traces]
+          [MyTerm(term, new_tinfo()), trace, traces]
     | NInt _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyTerm(term, new_tinfo()), trace, traces]
+          [MyTerm(term, new_tinfo()), trace, traces]
     | Int _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyTerm(term, new_tinfo()), trace, traces]
+          [MyTerm(term, new_tinfo()), trace, traces]
     | True ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyTerm(term, new_tinfo()), trace, traces] (*???*)
+          [MyTerm(term, new_tinfo()), trace, traces] (*???*)
     | False ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyTerm(term, new_tinfo()), trace, traces] (*???*)
+          [MyTerm(term, new_tinfo()), trace, traces] (*???*)
     | Not(_) ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-        [MyTerm(term, new_tinfo()), trace, traces] (*???*)
+          [MyTerm(term, new_tinfo()), trace, traces] (*???*)
     | App(t, []) -> process_term trace t traces env pcounter
     | _ -> (print_string2 "process_term\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
 and process_aterm env t =
@@ -690,7 +690,7 @@ let rec chk_term rtenv term id trace traces =
       else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
         [Cimp([Cterm(Not t1)], [Cfalse])]
       else
-		      let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false) traces in
+		      let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false | _ -> assert false) traces in
 		      let tts = List.map List.tl tts in
 		      let tfs = List.map List.tl tfs in
 		      let c1 = if tts = [] then [] else
@@ -1583,11 +1583,11 @@ let test tdefs s defs traces pred =
   trace2id := [];
   current_pid := 0;
 
-(*
-  let _ = if Flag.debug then print_string2 "\n Program: \n" in
-  let _ = if Flag.debug then print_defs defs in
-  let _ = if Flag.debug then print_string2 "\n" in
-*)
+  (*
+    let _ = if Flag.debug then print_string2 "\n Program: \n" in
+    let _ = if Flag.debug then print_defs defs in
+    let _ = if Flag.debug then print_string2 "\n" in
+  *)
   let ti = new_tinfo() in
   let _ = register_tinfo s ti in
   let et = MyVar(s, ti) in
@@ -1595,32 +1595,32 @@ let test tdefs s defs traces pred =
   let _ = process_head et (ETunit(counter)) in
     (eval_term et defs traces counter;
      let te = mk_atenv() in
-(*
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "ML Types:\n" in
-     let _ = if Flag.debug && Flag.print_constraints then print_atenv te in
-*)
+       (*
+         let _ = if Flag.debug && Flag.print_constraints then print_string2 "ML Types:\n" in
+         let _ = if Flag.debug && Flag.print_constraints then print_atenv te in
+       *)
      let rte = atenv2rtenv te in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "Type templates:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_rtenv rte in
      let c = gen_constr defs rte in
-(*
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nConstraints:\n" in
-     let _ = if Flag.debug && Flag.print_constraints then print_constraint c in
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
-*)
+       (*
+         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nConstraints:\n" in
+         let _ = if Flag.debug && Flag.print_constraints then print_constraint c in
+         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
+       *)
      let c' = reduce_constr c in
-(*
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nReduced constraints:\n" in
-     let _ = if Flag.debug && Flag.print_constraints then print_constraint c' in
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
-*)
-(**)
+       (*
+         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nReduced constraints:\n" in
+         let _ = if Flag.debug && Flag.print_constraints then print_constraint c' in
+         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
+       *)
+       (**)
      let sol = Util.rev_flatten_map
        (fun (x, rtys) ->
-         try
-           let _, ty = List.find (fun (y, ty) -> x.id = y.id) tdefs in
-           Util.rev_flatten_map (get_sol ty) rtys
-         with Not_found -> [])
+          try
+            let _, ty = List.find (fun (y, ty) -> x.id = y.id) tdefs in
+              Util.rev_flatten_map (get_sol ty) rtys
+          with Not_found -> [])
        rte
      in
      let _ = List.iter
@@ -1634,29 +1634,30 @@ let test tdefs s defs traces pred =
        sol
      in
      let c' = subst_sol_ sol c' in
-(**)
+       (**)
      let c'' = normalize_constr c' in
-(**)
+       (**)
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nNormalized constraints:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c'' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
-(**)
+       (**)
      let _ = if Flag.debug then save_as_dot ("constraints" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c'' in
 
      let c'' =
        if not !cgen_flag then
-		       let Some(pred) = pred in
-		       add_pred pred c''
+         match pred with
+             None -> assert false
+           | Some pred -> add_pred pred c''
        else
          c''
      in
 
-(*
-     let c''' = simplify_constr c'' in
-     let _ = print_string2 "\nSimplified constraints:\n" in
-     let _ = print_constraint c''' in
-     let _ = print_string2 "\n" in
-*)
+     (*
+       let c''' = simplify_constr c'' in
+       let _ = print_string2 "\nSimplified constraints:\n" in
+       let _ = print_constraint c''' in
+       let _ = print_string2 "\n" in
+     *)
      let c''', pids = (if !Flag.filter_forward then filter_forward else (fun x -> x, [])) (filter_backward c'') in
      let c''' = List.rev (Util.uniq (filter_backward c''')) in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
@@ -1674,7 +1675,7 @@ let test tdefs s defs traces pred =
               print_string2 "(";
               print_terms (List.map (fun id -> Var(id)) ids);
               print_string2 ") = ";
-              print_term t;
+              print_term (Syntax.merge_geq_leq (Syntax.normalize_bool_exp t));
               print_string2 "\n")
            sol in
      let _ =

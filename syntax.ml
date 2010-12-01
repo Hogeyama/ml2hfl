@@ -229,6 +229,7 @@ let rec subst_int n t = function
   | Label(b, t1) ->
       let t1' = subst_int n t t1 in
         Label(b, t1')
+  | Event s -> Event s
 
 let subst_term sub term =
   let ids, terms = List.split sub in
@@ -298,6 +299,7 @@ let rec subst_orig x t = function
   | Label(b, t1) ->
       let t1' = subst_orig x t t1 in
         Label(b, t1')
+  | Event s -> Event s
 
 let rec subst_type_orig x t = function
     TUnit -> TUnit
@@ -352,6 +354,7 @@ let rec get_nint = function
   | Fail -> []
   | Fun(x,t) -> diff (get_nint t) [x]
   | Label(_,t) -> get_nint t
+  | Event _ -> []
 
 let rec get_int = function
     Unit -> []
@@ -374,6 +377,7 @@ let rec get_int = function
   | Fail -> []
   | Fun(_,t) -> get_int t
   | Label(_,t) -> get_int t
+  | Event s -> []
 
 let rec get_fv = function
     Unit -> []
@@ -538,6 +542,7 @@ let rec eval = function
       Fun(x, eval t)
   | Label(b,t) ->
       Label(b, eval t)
+  | Event s -> Event s
 
 
 (*let rec eta = function
@@ -826,6 +831,7 @@ let rec canonize = function
   | Label(b,t) ->
       let t' = canonize t in
         Label(b, t')
+  | Event s -> Event s
 
 
 
@@ -1076,6 +1082,7 @@ let part_eval2 t =
     | Label(b, t) ->
         let t' = aux t in
           Label(b, t')
+    | Event s -> Event s
   in
   let t' = aux t in
   let t'' = simplify t' in
@@ -1155,7 +1162,6 @@ let rec add_string str = function
       let t' = add_string str t in
         Label(b, t')
   | Event s -> Event s
-  | _ -> assert false
 
 
 
@@ -1212,7 +1218,6 @@ let rec remove_unused = function
   | Fail -> Fail
   | Label _ -> assert false
   | Event s -> Event s
-  | _ -> assert false
 
 
 
@@ -1827,6 +1832,83 @@ let rec normalize_bool_exp = function
   | Letrec _
   | BinOp((Add|Sub|Mult), _, _)
   | Fail
-  | Label _ -> assert false
+  | Label _
+  | Event _ -> assert false
 
 
+
+let rec get_and_list = function
+    True -> [True]
+  | False -> [False]
+  | Unknown -> [Unknown]
+  | Var x -> [Var x]
+  | BinOp(And, t1, t2) -> get_and_list t1 @@ get_and_list t2
+  | BinOp(op, t1, t2) -> [BinOp(op, t1, t2)]
+  | Not t -> [Not t]
+  | Unit
+  | Int _
+  | NInt _
+  | Fun _
+  | App _
+  | If _
+  | Branch _
+  | Let _
+  | Letrec _
+  | Fail
+  | Label _
+  | Event _ -> assert false
+
+let rec merge_geq_leq = function
+    True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Var x -> Var x
+  | BinOp(And, t1, t2) ->
+      let ts = get_and_list (BinOp(And, t1, t2)) in
+      let is_dual t1 t2 = match t1,t2 with
+          BinOp(op1,t11,t12), BinOp(op2,t21,t22) when t11=t21 && t12=t22 -> op1=Leq && op2=Geq || op1=Geq && op2=Leq
+        | _ -> false
+      in
+      let get_eq = function
+          BinOp(Leq,t1,t2) -> BinOp(Eq,t1,t2)
+        | BinOp(Geq,t1,t2) -> BinOp(Eq,t1,t2)
+        | _ -> assert false
+      in
+      let rec aux = function
+          [] -> []
+        | t::ts ->
+            if List.exists (is_dual t) ts
+            then
+              let t' = get_eq t in
+              let ts' = List.filter (fun t' -> not (is_dual t t')) ts in
+                t' :: aux ts'
+            else
+              t :: aux ts
+      in
+      let ts' = aux ts in
+        begin
+          match ts' with
+              [] -> assert false
+            | [t] -> t
+            | t::ts -> List.fold_left (fun t1 t2 -> BinOp(And,t1,t2)) t ts
+        end
+  | BinOp(Or, t1, t2) ->
+      let t1' = merge_geq_leq t1 in
+      let t2' = merge_geq_leq t2 in
+        BinOp(Or, t1', t2')
+  | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
+  | Not t -> Not (merge_geq_leq t)
+  | Unit
+  | Int _
+  | NInt _
+  | Fun _
+  | App _
+  | If _
+  | Branch _
+  | Let _
+  | Letrec _
+  | BinOp((Add|Sub|Mult), _, _)
+  | Fail
+  | Label _
+  | Event _ as t -> Format.printf "%a@." pp_print_term t; assert false
+    

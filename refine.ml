@@ -974,7 +974,7 @@ let rec add_preds_typ sol typ1 typ2 =
 	        then ps
 	        else ((*Format.printf "adding %a@." (print_term_fm ML true) p;*) p::ps)
               in
-              let p' = Syntax.normalize_bool_exp p in
+              let p' = Syntax.merge_geq_leq (Syntax.normalize_bool_exp p) in
               let () = assert (false || Wrapper.equiv [] p p') in
                 List.fold_left aux ps (if Flag.use_subterm then get_subterm p' else [p'])
 	    in
@@ -1069,7 +1069,6 @@ let rec add_preds rte sol = function
   | Fail -> Fail
   | Label _ -> assert false
   | Event s -> Event s
-  | t -> Format.printf "%a@." (print_term_fm ML true) t; assert false
 
 let rec remove_preds_typ typ =
   match typ with
@@ -1126,42 +1125,44 @@ let rec remove_preds = function
         Not t'
   | Fail -> Fail
   | Label _ -> assert false
+  | Event s -> Event s
 
 let refine tdefs ces t0 =
-(*
-  let () = Format.printf "%a@." (print_term_fm ML true) t in
-*)
+  (*
+    let () = Format.printf "%a@." (print_term_fm ML true) t in
+  *)
   let defs,t = lift t0 in
-(*
-  let () = Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs) in
-*)
+    (*
+      let () = Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs) in
+    *)
   let map,_,defs',t' = rename defs t in
-(*
-  let scmap = get_scmap (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
-  let () = Format.printf "\n\n%a\n\n@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
-*)
+    (*
+      let scmap = get_scmap (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
+      let () = Format.printf "\n\n%a\n\n@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
+    *)
 
   let s = {id = 0; origin = "Main"; typ = TUnit} in
   let defs1 = (s,([], t'))::defs' in
   let rte, sol = Infer.test tdefs s defs1 ces None in
-  if Flag.use_dor && List.exists (fun (_, (_, t)) -> get_nint t <> []) sol then begin
-    assert (not !Flag.merge_counterexample);
-    let _ = Infer.cgen_flag := false in
-    let [ce] = ces in
-    let defs,t = lift t0 in
-    let pred, ce = Feasibility.check_int ce defs t in
-				let rec aux a = function
-				  [Syntax.LabNode true] -> a @ [Syntax.EventNode "then_fail"]
-				| [Syntax.LabNode false] -> a @ [Syntax.EventNode "else_fail"]
-    | [t] -> a @ [t]
-				| t::ce -> aux (a @ [t]) ce
-				in
-		  let ce = aux [] ce in
-    let rte, sol = Infer.test tdefs s defs1 [ce] (Some pred) in
-    let _ = Infer.cgen_flag := true in
-    add_preds rte sol t0
-  end else
-    add_preds rte sol t0
+    if Flag.use_dor && List.exists (fun (_, (_, t)) -> get_nint t <> []) sol then begin
+      assert (not !Flag.merge_counterexample);
+      let _ = Infer.cgen_flag := false in
+      let ce = match ces with [ce] -> ce | _ -> assert false in
+      let defs,t = lift t0 in
+      let pred, ce = Feasibility.check_int ce defs t in
+      let rec aux a = function
+          [] -> assert false
+        | [Syntax.LabNode true] -> a @ [Syntax.EventNode "then_fail"]
+        | [Syntax.LabNode false] -> a @ [Syntax.EventNode "else_fail"]
+        | [t] -> a @ [t]
+        | t::ce -> aux (a @ [t]) ce
+      in
+      let ce = aux [] ce in
+      let rte, sol = Infer.test tdefs s defs1 [ce] (Some pred) in
+      let _ = Infer.cgen_flag := true in
+        add_preds rte sol t0
+    end else
+      add_preds rte sol t0
 
 (*
   let () = Format.printf "AAA@." in

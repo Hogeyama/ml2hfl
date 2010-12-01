@@ -86,6 +86,7 @@ let rec abstract non_terms = function
   | Label(b,t) ->
       let map, t' = abstract non_terms t in
         map, Label(b,t')
+  | Event s -> [], Event s
 
 let abstract = abstract []
 
@@ -134,6 +135,7 @@ let rec remove = function
   | Label(b,t) ->
       let t',def = remove t in
         Label(b,t'), def
+  | Event s -> Event s, []
 
 let lift t =
   let map, t' = abstract t in

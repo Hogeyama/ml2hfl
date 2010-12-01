@@ -559,6 +559,7 @@ let rec eager_unknown = function
   | Label(b, t) ->
       let t' = eager_unknown t in
         Label(b, t')
+  | Event s -> Event s
 
 
 
@@ -652,6 +653,7 @@ let rec trans_eager c = function
   | Label(b, t) ->
       let t' = trans_eager hd t in
         c [Label(b, t')]
+  | Event s -> assert false
 let trans_eager = trans_eager hd
 
 

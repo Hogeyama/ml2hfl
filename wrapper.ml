@@ -289,6 +289,7 @@ let rec rename_ident = function
       let t' = rename_ident t in
         Label(b, t')
   | Fail -> Fail
+  | Event s -> Event s
 
 
 
@@ -335,7 +336,8 @@ let get_solution p =
 (*
 Format.printf "%s@." s';
 *)
-          let [], t = Parser.file Lexer.token (Lexing.from_string s') in
+          let ts, t = Parser.file Lexer.token (Lexing.from_string s') in
+          let () = assert (ts = []) in
           let t' = rename_ident t in
             t' :: aux cin
         with _ -> aux cin
@@ -660,6 +662,7 @@ let rec rename_type map = function
       let x'' = {x' with typ = typ1'} in
         TFun((x'',typ1'),typ2')
   | TUnknown -> TUnknown
+  | _ -> assert false
 
 
 let rec congruent cond typ1 typ2 =

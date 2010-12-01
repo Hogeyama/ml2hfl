@@ -182,6 +182,7 @@ let rec add_nint t x =
         Not t'
   | Label _ -> assert false
   | Fail -> Fail
+  | Event s -> Event s
 
 
 
