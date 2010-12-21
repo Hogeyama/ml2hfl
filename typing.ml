@@ -101,44 +101,38 @@ let rec infer env t =
         let typ' = List.fold_right (fun t1 t2 -> TFun((dummy,t1), t2)) typs typ in
           unify typ1 typ';
           App(t', ts'), typ
-    | If(t1, t2, t3, _) ->
+    | If(t1, t2, t3) ->
         let t1', typ1 = infer env t1 in
         let t2', typ2 = infer env t2 in
         let t3', typ3 = infer env t3 in
           unify typ1 TBool;
           unify typ2 typ3;
-          If(t1', t2', t3', Unit), typ2
+          If(t1', t2', t3'), typ2
     | Branch(t1, t2) ->
         let t1', typ1 = infer env t1 in
         let t2', typ2 = infer env t2 in
           unify typ1 typ2;
           Branch(t1', t2'), typ1
-            (*assert false*)
-    | Let(f, xs, t1, t2) ->
-(*
-(if Flag.debug then Format.printf "typing %a@." (print_term_fm ML false) (Var f));
-*)
-        let f', typ_f = new_var f in
-        let xs', typs = List.split (List.map new_var xs) in
-        let env1 = (List.combine xs' typs) @@ env in
-        let env2 = (f', typ_f) :: env in
-        let t1', typ1 = infer env1 t1 in
-        let t2', typ2 = infer env2 t2 in
-          unify typ_f (List.fold_right (fun typ1 typ2 -> TFun((dummy,typ1), typ2)) typs typ1);
-          Let(f', xs', t1', t2'), typ2
-    | Letrec(f, xs, t1, t2) ->
-(*
-(if Flag.debug then Format.printf "typing %a@." (print_term_fm ML false) (Var f));
-*)
-        let f', typ_f = new_var f in
-        let xs', typs = List.split (List.map new_var xs) in
-
-        let env2 = (f', typ_f) :: env in
-        let env1 = (List.combine xs' typs) @@ env2 in
-        let t1', typ1 = infer env1 t1 in
-        let t2', typ2 = infer env2 t2 in
-          unify typ_f (List.fold_right (fun typ1 typ2 -> TFun((dummy,typ1), typ2)) typs typ1);
-          Letrec(f', xs', t1', t2'), typ2
+    | Let(flag, f, xs, t1, t2) ->
+        if flag = Nonrecursive
+        then
+          let f', typ_f = new_var f in
+          let xs', typs = List.split (List.map new_var xs) in
+          let env1 = (List.combine xs' typs) @@ env in
+          let env2 = (f', typ_f) :: env in
+          let t1', typ1 = infer env1 t1 in
+          let t2', typ2 = infer env2 t2 in
+            unify typ_f (List.fold_right (fun typ1 typ2 -> TFun((dummy,typ1), typ2)) typs typ1);
+            Let(flag, f', xs', t1', t2'), typ2
+        else
+          let f', typ_f = new_var f in
+          let xs', typs = List.split (List.map new_var xs) in
+          let env2 = (f', typ_f) :: env in
+          let env1 = (List.combine xs' typs) @@ env2 in
+          let t1', typ1 = infer env1 t1 in
+          let t2', typ2 = infer env2 t2 in
+            unify typ_f (List.fold_right (fun typ1 typ2 -> TFun((dummy,typ1), typ2)) typs typ1);
+            Let(flag, f', xs', t1', t2'), typ2
     | BinOp(Eq as op, t1, t2) ->
         let t1', typ1 = infer env t1 in
         let t2', typ2 = infer env t2 in
@@ -204,27 +198,25 @@ let rec simplify = function
       let t' = simplify t in
       let ts' = List.map simplify ts in
         App(t', ts')
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let t1' = simplify t1 in
       let t2' = simplify t2 in
       let t3' = simplify t3 in
-        If(t1', t2', t3', Unit)
+        If(t1', t2', t3')
   | Branch(t1, t2) -> (*assert false*)
       let t1' = simplify t1 in
       let t2' = simplify t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
-      let f' = simplify_id f in
-      let xs' = List.map simplify_id xs in
+  | Let(flag, f, xs, t1, t2) ->
       let t1' = simplify t1 in
       let t2' = simplify t2 in
-        Let(f', xs', t1', t2')
-  | Letrec(f, xs, t1, t2) ->
-      let f' = simplify_id f in
-      let xs' = List.map simplify_id xs in
-      let t1' = simplify t1 in
-      let t2' = simplify t2 in
-        Letrec(f', xs', t1', t2')
+        Let(flag, simplify_id f, List.map simplify_id xs, t1', t2')      
+(*
+  | Let(flag, bindings, t) ->
+      let bindings' = List.map (fun (f,xs,t) -> simplify_id f, List.map simplify_id xs, simplify t) bindings in
+      let t' = simplify t in
+        Let(flag, bindings', t')
+*)
   | BinOp (op, t1, t2) ->
       let t1' = simplify t1 in
       let t2' = simplify t2 in
@@ -284,33 +276,35 @@ let rec match_arg = function
       let t' = match_arg t in
       let ts' = List.map match_arg ts in
         App(t', ts')
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let t1' = match_arg t1 in
       let t2' = match_arg t2 in
       let t3' = match_arg t3 in
-        If(t1', t2', t3', Unit)
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = match_arg t1 in
       let t2' = match_arg t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
-      let xs' = List.map new_var_typ xs in
-      let typ = match_arg_typ f.typ xs' in
-      let f' = {f with typ = typ} in
-      let t1' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t1 in
-      let t2' = subst f (Var f') t2 in
-      let t1'' = match_arg t1' in
-      let t2'' = match_arg t2' in
-        Let(f', xs', t1'', t2'')
-  | Letrec(f, xs, t1, t2) ->
-      let xs' = List.map new_var_typ xs in
-      let typ = match_arg_typ f.typ xs' in
-      let f' = {f with typ = typ} in
-      let t1' = List.fold_right2 subst (f::xs) (List.map (fun x -> Var x) (f'::xs')) t1 in
-      let t2' = subst f (Var f') t2 in
-      let t1'' = match_arg t1' in
-      let t2'' = match_arg t2' in
-        Letrec(f', xs', t1'', t2'')
+  | Let(flag, f, xs, t1, t2) ->
+      if flag = Nonrecursive
+      then
+        let xs' = List.map new_var_typ xs in
+        let typ = match_arg_typ f.typ xs' in
+        let f' = {f with typ = typ} in
+        let t1' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t1 in
+        let t2' = subst f (Var f') t2 in
+        let t1'' = match_arg t1' in
+        let t2'' = match_arg t2' in
+          Let(flag, f', xs', t1'', t2'')
+      else
+        let xs' = List.map new_var_typ xs in
+        let typ = match_arg_typ f.typ xs' in
+        let f' = {f with typ = typ} in
+        let t1' = List.fold_right2 subst (f::xs) (List.map (fun x -> Var x) (f'::xs')) t1 in
+        let t2' = subst f (Var f') t2 in
+        let t1'' = match_arg t1' in
+        let t2'' = match_arg t2' in
+          Let(flag, f', xs', t1'', t2'')
   | BinOp(op, t1, t2) ->
       let t1' = match_arg t1 in
       let t2' = match_arg t2 in
@@ -344,30 +338,30 @@ let typing_defs cps defs t0 =
   let t0', typ = infer env t0 in
   let () = unify typ TUnit in
   let defs =
-		  List.map2
-		    (fun (_, (xs, t)) (f', _) ->
-		      let xs', typs = List.split (List.map new_var xs) in
+    List.map2
+      (fun (_, (xs, t)) (f', _) ->
+         let xs', typs = List.split (List.map new_var xs) in
 (*
 Format.printf "a: %a@." (print_term_fm ML false) t;
 *)
-		      let t', typ = infer
-          ((List.combine xs' typs) @@ env)
-          (subst_term (fsub @ (List.map2 (fun id id' -> id, Var(id')) xs xs')) t) in
+         let t', typ = infer
+           ((List.combine xs' typs) @@ env)
+           (subst_term (fsub @ (List.map2 (fun id id' -> id, Var(id')) xs xs')) t) in
 (*
 Format.printf "<%a:%a>@." (print_term_fm ML false) t' (print_typ ML) (flatten typ);
 Format.printf "<%a:%a>@." (print_term_fm ML false) (Var f') (print_typ ML) (flatten f'.typ);
 *)
-        let ft =  List.fold_right (fun x typ -> TFun((x,x.typ), typ)) xs' typ in
+         let ft =  List.fold_right (fun x typ -> TFun((x,x.typ), typ)) xs' typ in
 (*
 List.iter (fun (f, t) -> Format.printf "%a:%a@." (print_term_fm ML false) (Var f) (print_typ ML) (flatten t)) env;
 Format.printf "<%a:%a>@." (print_term_fm ML false) (Var f') (print_typ ML) (flatten ft);
 *)
-		      unify f'.typ ft;
-		      f', (xs', t'))
-		    defs env
+           unify f'.typ ft;
+           f', (xs', t'))
+      defs env
   in
-  List.map (fun (f, (xs, t)) -> simplify_id f, (List.map simplify_id xs, match_arg (simplify t))) defs,
-  match_arg (simplify t0')
+    List.map (fun (f, (xs, t)) -> simplify_id f, (List.map simplify_id xs, match_arg (simplify t))) defs,
+    match_arg (simplify t0')
 
 
 
@@ -389,14 +383,9 @@ let rec get_typ = function
           | _ -> assert false
       in
         aux (get_typ f) ts
-  | If(_, t2, _, _) ->
-      get_typ t2
-  | Branch(t1, _) ->
-      get_typ t1
-  | Let(_, _, _, t2) ->
-      get_typ t2
-  | Letrec(_, _, _, t2) ->
-      get_typ t2
+  | If(_, t2, _) -> get_typ t2
+  | Branch(t1, _) -> get_typ t1
+  | Let(_, _, _, _, t2) -> get_typ t2
   | BinOp((Eq|Lt|Gt|Leq|Geq|And|Or), _, _) -> TBool
   | BinOp((Add|Sub|Mult), _, _) -> TInt []
   | Not _ -> TBool

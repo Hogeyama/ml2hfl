@@ -7,17 +7,26 @@ exception Untypable
 let cgen_flag = ref true (** this should be set to false if we want to propagate conditions on free variables eagerly **)
 
 let print_prog t defs =
-   Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs);;
+  Format.printf "Not implemented"; assert false
+(*
+  Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs);;
+*)
 
 let print_defs defs =
-   Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) Syntax.Unit defs);;
+  Format.printf "Not implemented"; assert false
+(*
+  Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) Syntax.Unit defs);;
+*)
 
 let print_defs2 defs =
-   Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,xs,t) -> Letrec(f,xs,t,acc)) Syntax.Unit defs);;
+  Format.printf "Not implemented"; assert false
+(*
+  Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,xs,t) -> Letrec(f,xs,t,acc)) Syntax.Unit defs);;
+*)
+
 let print_string2 s = Format.printf "%s" s
 
-let print_ident x =
-   (Format.printf "%a" print_id x; flush stdout)
+let print_ident x = Format.printf "%a@?" print_id x
 
 
 let print_term t =
@@ -277,30 +286,30 @@ let rec process_term trace term traces env pcounter =
             [MyFail(new_tinfo()), trace, traces]
         else
           assert false
-    | If(t1,t2,t3,t4) ->
-	if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
-	  let trace = trace @ [EventNode("then_fail")] in
-	  let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-	    [MyFail(new_tinfo()), trace, traces]
-	else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
-	  let trace = trace @ [EventNode("else_fail")] in
-	  let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-	    [MyFail(new_tinfo()), trace, traces]
+    | If(t1,t2,t3) ->
+        if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
+          let trace = trace @ [EventNode("then_fail")] in
+          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+            [MyFail(new_tinfo()), trace, traces]
+        else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
+          let trace = trace @ [EventNode("else_fail")] in
+          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+            [MyFail(new_tinfo()), trace, traces]
         else if List.mem [] traces then (*???*)
           []
         else
-	  let tts, tfs = List.partition (function LabNode(true)::_ -> true | LabNode(false)::_ -> false | _ -> assert false) traces in
-	  let tts = List.map List.tl tts in
-	  let tfs = List.map List.tl tfs in
-	    (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
-	      (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
+          let tts, tfs = List.partition (function LabNode(true)::_ -> true | LabNode(false)::_ -> false | _ -> assert false) traces in
+          let tts = List.map List.tl tts in
+          let tfs = List.map List.tl tfs in
+            (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
+              (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
     | App(Fail,_) ->
         let trace = trace @ [FailNode] in
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyFail(new_tinfo()), trace, traces]
     | App(Event(s), [t]) ->
         if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
-	  let traces' = List.map List.tl traces in
+          let traces' = List.map List.tl traces in
             process_term (trace @ [EventNode(s)]) t traces' env pcounter
         else if List.for_all (function [FailNode] -> true | _ -> false) traces then
           let trace = trace @ [FailNode] in
@@ -313,15 +322,15 @@ let rec process_term trace term traces env pcounter =
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
             [MyFail(new_tinfo()), trace, traces]
         else
-	  let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-	    (try
-	       let myt = List.assoc x env in
-		 [myt, trace, traces]
-	     with Not_found ->
-	       let tinfo = new_tinfo() in
-	       let h = MyVar(x, tinfo) in
-	       let _ = register_tinfo x tinfo in
-		 [h, trace, traces])
+          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+            (try
+               let myt = List.assoc x env in
+                 [myt, trace, traces]
+             with Not_found ->
+               let tinfo = new_tinfo() in
+               let h = MyVar(x, tinfo) in
+               let _ = register_tinfo x tinfo in
+                 [h, trace, traces])
     | App(Var x, ts) ->
         assert (ts <> []);
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
@@ -415,9 +424,9 @@ let rec eval_term t defs traces pcounter =
   match t with
     MyUnit(tinfo) | MyFail(tinfo) ->
       if List.for_all (function [FailNode] | [EventNode "then_fail"] | [EventNode "else_fail"] -> true | _ -> false) traces then
-		      let counter = incr_counter () in
-		      trace2id := ((pcounter, []), counter)::!trace2id;
-		      add_to_tinfo (ETunit(counter)) tinfo
+                      let counter = incr_counter () in
+                      trace2id := ((pcounter, []), counter)::!trace2id;
+                      add_to_tinfo (ETunit(counter)) tinfo
       else
         assert false
   | MyVar(f,tinfo) ->
@@ -500,10 +509,10 @@ let new_var() =
    (current_vid := !current_vid + 1;
     Var({id=vid; origin="x"; typ=TUnit})) (** type is a dummy **)
 *)
-let new_id() = {id=new_int (); origin="x"; typ=TUnit}
+let new_id() = {id=new_int (); name="x"; typ=TUnit}
 let new_var() = Var(new_id())
 let dummy_var = 
-  Var({id=0; origin="x"; typ=TUnit})
+  Var({id=0; name="x"; typ=TUnit})
 
 let print_var x =
   match x with Var(id) -> print_ident id
@@ -641,132 +650,132 @@ let print_constraint c =
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
-(**)
+  (**)
   print_string2 ("id: " ^ (string_of_int id) ^ "\n");
   print_string2 "term:\n";
   print_term term;
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-(**)
+  (**)
   match term with
-    Unit ->
-      if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
-        []
-      else if List.for_all (function [FailNode] -> true | _ -> false) traces then
-        [Cfalse]
-      else
-        assert false
-  | App(Var x, ts) ->
-	     if List.for_all (function [FailNode] -> true | _ -> false) traces then
-	        [Cfalse]
-      else
-			     let id = try List.assoc (id, trace) !trace2id with Not_found -> assert false in
-			     let rty = RTunit(id) in
-			     (try
-			       let rtyl = try List.assoc x rtenv with Not_found -> [] in
-			       let rty1 = pick_rty id rtyl in
-			       let (c1,rty2)= chk_args rtenv rty1 ts in
-			       let c2 = subty rty2 rty in
-			          c1@c2
-			     with
-			       PickRty -> [Cfalse])
-  | App(Fail, _) ->
-      if List.for_all (function [FailNode] -> true | _ -> false) traces then
-        [Cfalse]
-      else
-        assert false
-  | App(Event(s), [t]) ->
-      if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
-		      let traces' = List.map List.tl traces in
-		        chk_term rtenv t id (trace @ [EventNode(s)]) traces'
-      else if List.for_all (function [FailNode] -> true | _ -> false) traces then
-        [Cfalse]
-      else
-        assert false
-  | If(t1,t2,t3,_) ->
-      if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
-        [Cimp([Cterm(t1)], [Cfalse])]
-      else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
-        [Cimp([Cterm(Not t1)], [Cfalse])]
-      else
-		      let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false | _ -> assert false) traces in
-		      let tts = List.map List.tl tts in
-		      let tfs = List.map List.tl tfs in
-		      let c1 = if tts = [] then [] else
-          if !cgen_flag then
-            [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)]
-          else
-            (Cterm(t1)) :: (chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)
-        in
-		      let c2 = if tfs = [] then [] else
-          if !cgen_flag then
-            [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)]
-          else
-            (Cterm(Not t1)) :: (chk_term rtenv t3 id (trace @ [LabNode(false)]) tts)
-        in
-		        c1 @ c2
-  | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
-  | Fail -> assert false(*[Cfalse]*)
-  | True | False -> assert false
-  | Not(t) -> (*???*)
-      chk_term rtenv t id trace traces
-  | App(t, []) -> chk_term rtenv t id trace traces
-  | _ -> (print_string2 "chk_term\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
+      Unit ->
+        if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
+          []
+        else if List.for_all (function [FailNode] -> true | _ -> false) traces then
+          [Cfalse]
+        else
+          assert false
+    | App(Var x, ts) ->
+        if List.for_all (function [FailNode] -> true | _ -> false) traces then
+          [Cfalse]
+        else
+          let id = try List.assoc (id, trace) !trace2id with Not_found -> assert false in
+          let rty = RTunit(id) in
+            (try
+               let rtyl = try List.assoc x rtenv with Not_found -> [] in
+               let rty1 = pick_rty id rtyl in
+               let (c1,rty2)= chk_args rtenv rty1 ts in
+               let c2 = subty rty2 rty in
+                 c1@c2
+             with
+                 PickRty -> [Cfalse])
+    | App(Fail, _) ->
+        if List.for_all (function [FailNode] -> true | _ -> false) traces then
+          [Cfalse]
+        else
+          assert false
+    | App(Event(s), [t]) ->
+        if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
+          let traces' = List.map List.tl traces in
+            chk_term rtenv t id (trace @ [EventNode(s)]) traces'
+        else if List.for_all (function [FailNode] -> true | _ -> false) traces then
+          [Cfalse]
+        else
+          assert false
+    | If(t1,t2,t3) ->
+        if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
+          [Cimp([Cterm(t1)], [Cfalse])]
+        else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
+          [Cimp([Cterm(Not t1)], [Cfalse])]
+        else
+          let tts, tfs = List.partition (function [] -> raise (Fatal "chk_term: trace information is missing") | LabNode(true)::_ -> true | LabNode(false)::_ -> false | _ -> assert false) traces in
+          let tts = List.map List.tl tts in
+          let tfs = List.map List.tl tfs in
+          let c1 = if tts = [] then [] else
+            if !cgen_flag then
+              [Cimp([Cterm(t1)], chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)]
+            else
+              (Cterm(t1)) :: (chk_term rtenv t2 id (trace @ [LabNode(true)]) tts)
+          in
+          let c2 = if tfs = [] then [] else
+            if !cgen_flag then
+              [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)]
+            else
+              (Cterm(Not t1)) :: (chk_term rtenv t3 id (trace @ [LabNode(false)]) tts)
+          in
+            c1 @ c2
+    | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
+    | Fail -> assert false(*[Cfalse]*)
+    | True | False -> assert false
+    | Not(t) -> (*???*)
+        chk_term rtenv t id trace traces
+    | App(t, []) -> chk_term rtenv t id trace traces
+    | _ -> (print_string2 "chk_term\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
 
 and chk_args rtenv rty terms =
   match terms with
-    [] -> ([], rty)
-  | term::terms' ->
-       match rty with
+      [] -> ([], rty)
+    | term::terms' ->
+        match rty with
             RTifun(f, g) ->
-             let (pred, rty2) = (f term, g term) in
-             let (c1, rty3) = chk_args rtenv rty2 terms' in
+              let (pred, rty2) = (f term, g term) in
+              let (c1, rty3) = chk_args rtenv rty2 terms' in
                 (Cpred(pred)::c1, rty3)
-         | RTbfun(f, g) ->
-             let (pred, rty2) = (f term, g term) in
-             let (c1, rty3) = chk_args rtenv rty2 terms' in
+          | RTbfun(f, g) ->
+              let (pred, rty2) = (f term, g term) in
+              let (c1, rty3) = chk_args rtenv rty2 terms' in
                 (Cpred(pred)::c1, rty3)
-         | RTfun(rtyl1,rty2) ->
-             let c1 = chk_term_rtyl rtenv term rtyl1 in
-             let (c2, rty3) = chk_args rtenv rty2 terms' in
+          | RTfun(rtyl1,rty2) ->
+              let c1 = chk_term_rtyl rtenv term rtyl1 in
+              let (c2, rty3) = chk_args rtenv rty2 terms' in
                 (c1@c2, rty3)
-         | _ -> raise (Fatal "chk_args: non-function type")
+          | _ -> raise (Fatal "chk_args: non-function type")
 
 and chk_term_rty rtenv term rty =
- let id = id_of_rty(rty) in
-  match term with
-    Unit -> 
-       (match rty with 
-             RTunit(_) -> []
-           | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-unit type")
-        )
-  | App(Var x, ts) ->
-     (try
-       let rtyl = try List.assoc x rtenv with Not_found -> [] in
-       let rty1 = pick_rty id rtyl in
-       let (c1,rty2)= chk_args rtenv rty1 ts in
-       let c2 = subty rty2 rty in
-          c1@c2
-     with
-       PickRty -> [Cfalse])
-  | App(Fail, _) -> [Cfalse]
-  | If(t1,t2,t3,_) -> assert false
-  | Var x -> chk_term_rty rtenv (App(Var x, [])) rty
-  | Fail -> [Cfalse]
-  | True | False -> (*???*)
-       (match rty with 
-             RTbool(_) -> []
-           | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-boolean type")
-        )
-  | Not(t) -> (*???*)
-      chk_term_rty rtenv t rty
-  | App(t, []) -> chk_term_rty rtenv t rty
-  | _ -> (print_string2 "chk_term_rty\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
+  let id = id_of_rty(rty) in
+    match term with
+        Unit -> 
+          (match rty with 
+               RTunit(_) -> []
+             | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-unit type")
+          )
+      | App(Var x, ts) ->
+          (try
+             let rtyl = try List.assoc x rtenv with Not_found -> [] in
+             let rty1 = pick_rty id rtyl in
+             let (c1,rty2)= chk_args rtenv rty1 ts in
+             let c2 = subty rty2 rty in
+               c1@c2
+           with
+               PickRty -> [Cfalse])
+      | App(Fail, _) -> [Cfalse]
+      | If(t1,t2,t3) -> assert false
+      | Var x -> chk_term_rty rtenv (App(Var x, [])) rty
+      | Fail -> [Cfalse]
+      | True | False -> (*???*)
+          (match rty with 
+               RTbool(_) -> []
+             | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-boolean type")
+          )
+      | Not(t) -> (*???*)
+          chk_term_rty rtenv t rty
+      | App(t, []) -> chk_term_rty rtenv t rty
+      | _ -> (print_string2 "chk_term_rty\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
 
 and chk_term_rtyl rtenv term rtyl =
   List.fold_left (fun c -> fun rty ->
-     (chk_term_rty rtenv term rty)@c) [] rtyl 
+                    (chk_term_rty rtenv term rty)@c) [] rtyl 
 
 let rec mk_venv vars rty =
   match vars with
@@ -941,7 +950,7 @@ and term_of_ac ac =
   match ac with
     Cpred _ -> assert false
   | Csub(rty1,rty2) -> assert false
-  | Cterm t -> canonize (simplify t)
+  | Cterm t -> canonize ((*simplify*) t)
   | Cimp(c1,c2) ->
       let t1 = term_of c1 in
       let t2 = term_of c2 in
@@ -1137,72 +1146,64 @@ let rec subst_ac lbs ac =
 
 let rec compute_lbs c lbs =
   let c1, c2 = List.partition
-    (fun ac -> match ac with
-         Cimp(c1', c2') ->
-           (match c2' with
-                [Cpred _] ->
-                  List.for_all
-                    (function Cpred(Pred(pid, _)) ->
-                      List.mem_assoc pid lbs
-                    | _ -> true)
-                    c1'
-              | _ -> false)
+    (function Cimp(c1', [Cpred _]) ->
+       List.for_all (function Cpred(Pred(pid, _)) -> List.mem_assoc pid lbs | _ -> true) c1'
+       | Cimp _ -> false
        | _ -> assert false) c
   in
-  if c1 = [] then
-    lbs
-  else
-    let compute_lb ac =
-      match ac with
+    if c1 = [] then
+      lbs
+    else
+      let compute_lb = function
           Cimp(cl, [Cpred(Pred(pid, terms))]) ->
             let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) cl in
             let conds, eqss = List.split (List.map
-              (function Cpred(Pred(pid', terms')) ->
-                let cond, eqs, terms'' = List.assoc pid' lbs in
-                cond, eqs @ (List.combine terms' terms'')
-                | _ -> assert false)
-              c1)
+                                            (function Cpred(Pred(pid', terms')) ->
+                                               let cond, eqs, terms'' = List.assoc pid' lbs in
+                                                 cond, eqs @ (List.combine terms' terms'')
+                                               | _ -> assert false)
+                                            c1)
             in
             let eqs = Util.uniq (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
-            (if Flag.debug then
-             (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
-              let tmp = Util.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
-              List.iter (fun l ->
-                let tmp = Util.uniq (List.map snd l) in
-                if List.length tmp <> 1 then
-                  let _ = List.iter (fun t -> Format.printf "%a@." Syntax.pp_print_term t) tmp in
-                  assert false)
-                tmp);
-            let eqs1, eqs2 = List.partition (function (Var(_), _) -> true | _ -> false) eqs in
-            let sub = List.map (function (Var(id), t) -> id, t | _ -> assert false) eqs1 in
-            let cond = (List.map (function Cterm(t) -> subst_term sub t | _ -> assert false) c2) @
-                       (List.concat conds) in
-            let cond = Util.uniq (List.filter (fun t -> t <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
-            let eqs2 = List.map (fun (t1, t2) -> subst_term sub t1, t2) eqs2 in
-            let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
-            let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
-            let terms = List.map (subst_term sub) terms in
-            let terms = List.map Wrapper.simplify_exp terms in 
-            pid, (cond, eqs2, terms)
-(*
-            let rec elim ids c =
-              try
-                let c1, c2 = List.partition (function Cterm(BinOp(Eq, Var(id), term)) -> not (List.mem id (ids @ get_fv term)) | _ -> false) c in
-                  if c1 = []
-                  then c2
-                  else
+              (if Flag.debug then
+                 (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
+                 let tmp = Util.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
+                   List.iter (fun l ->
+                                let tmp = Util.uniq (List.map snd l) in
+                                  if List.length tmp <> 1 then
+                                    let _ = List.iter (fun t -> Format.printf "%a@." Syntax.pp_print_term t) tmp in
+                                      assert false)
+                     tmp);
+              let eqs1, eqs2 = List.partition (function (Var(_), _) -> true | _ -> false) eqs in
+              let sub = List.map (function (Var(id), t) -> id, t | _ -> assert false) eqs1 in
+              let cond = (List.map (function Cterm(t) -> subst_term sub t | _ -> assert false) c2) @
+                (List.concat conds) in
+              let cond = Util.uniq (List.filter (fun t -> t <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
+              let eqs2 = List.map (fun (t1, t2) -> subst_term sub t1, t2) eqs2 in
+              let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
+              let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
+              let terms = List.map (subst_term sub) terms in
+              let terms = List.map Wrapper.simplify_exp terms in 
+                pid, (cond, eqs2, terms)
+                  (*
+                    let rec elim ids c =
+                    try
+                    let c1, c2 = List.partition (function Cterm(BinOp(Eq, Var(id), term)) -> not (List.mem id (ids @ get_fv term)) | _ -> false) c in
+                    if c1 = []
+                    then c2
+                    else
                     match c1 with
-                        (Cterm(BinOp(Eq, Var(id), term)))::c1 -> elim ids (substc [id, term] (c1 @ c2))
-                      | _ -> assert false
-              with Not_found ->
-                c
-            in
-            let sub, eqs = eqs ids terms in
-              pid, (ids, elim ids (Util.uniq (substc sub ((subst_constr lbs cl) @ eqs))))
-*)
+                    (Cterm(BinOp(Eq, Var(id), term)))::c1 -> elim ids (substc [id, term] (c1 @ c2))
+                    | _ -> assert false
+                    with Not_found ->
+                    c
+                    in
+                    let sub, eqs = eqs ids terms in
+                    pid, (ids, elim ids (Util.uniq (substc sub ((subst_constr lbs cl) @ eqs))))
+                  *)
         | _ -> assert false
-    in
-      compute_lbs c2 (lbs @ (List.map compute_lb c1))
+      in
+        compute_lbs c2 (lbs @ (List.map compute_lb c1))
 
 let rec solve_aux' lbs ac ubs nubs sol = function
     [] -> sol

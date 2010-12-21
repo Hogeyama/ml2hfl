@@ -3,7 +3,6 @@ open Util
 
 exception TimeOut
 exception LongInput
-exception IllegalInput
 exception NoProgress
 exception CannotDiscoverPredicate
 
@@ -123,21 +122,18 @@ let rec cegar tdefs t1 ce_prev =
                 Syntax.Feasible p -> t1, Some (ce,p)
               | Syntax.Infeasible -> raise CannotDiscoverPredicate(*t1, None*)
 
-
+(*
 let print_ce ce t =
-  let str = Flag.string_for_result in
-  let t' = Syntax.add_string str t in
-  let t'' = CPS.trans t' in
-  let t''' = Typing.typing true t'' in
-  let trace = Syntax.get_trace ce t''' in
+  let t' = CPS.trans t in
+  let trace = Syntax.get_trace ce t' in
   let print_var_bool = function
       Syntax.True -> print_msg "-then->"
     | Syntax.False -> print_msg "-else->"
     | Syntax.Var x ->
         begin
           try
-            if String.sub x.Syntax.origin (String.length x.Syntax.origin - String.length str) (String.length str) = str
-            then Format.printf "%s -->@." (String.sub x.Syntax.origin 0 (String.length x.Syntax.origin - String.length str))
+            if String.sub x.Syntax.name (String.length x.Syntax.name - String.length str) (String.length str) = str
+            then Format.printf "%s -->@." (String.sub x.Syntax.name 0 (String.length x.Syntax.name - String.length str))
           with
               Invalid_argument "String.sub" -> ()
         end
@@ -148,6 +144,7 @@ let print_ce ce t =
     List.iter print_var_bool trace;
     print_msg "error";
     print_msg ""
+*)
 
 let main filename in_channel =
   let input_string = String.create Flag.max_input_size in
@@ -157,37 +154,33 @@ let main filename in_channel =
 
   let () = if Flag.web then write_log_string input_string in
   let tdefs, parsed =
-    try
-      let lb = Lexing.from_string input_string in
-      let _ = lb.Lexing.lex_curr_p <-
-        { Lexing.pos_fname = Filename.basename filename; Lexing.pos_lnum = 1; Lexing.pos_cnum = 0; Lexing.pos_bol = 0 } in
-      Parser.file Lexer.token lb
-    with _ -> raise IllegalInput
+    let lb = Lexing.from_string input_string in
+    let _ = lb.Lexing.lex_curr_p <-
+      {Lexing.pos_fname = Filename.basename filename;
+       Lexing.pos_lnum = 1;
+       Lexing.pos_cnum = 0;
+       Lexing.pos_bol = 0}
+    in
+      [], Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
-  let free_variables,alpha = Alpha.alpha parsed in
-  let () = if Flag.web then write_log_term alpha in
-  let () = if Flag.print_source then Format.printf "Source Program:@.%a\n" (Syntax.print_term_fm_break Syntax.ML false) alpha else () in
-  let cps = (*Syntax.eval*) (CPS.trans alpha) in
-  let () = if Flag.print_cps then Format.printf "CPS-converted Program:@.%a\n" (Syntax.print_term_fm_break Syntax.ML false) cps in
-
-  let cps' = Syntax.trans cps in
-
-  let cps' = Typing.typing true cps' in
-(*
-  let cps' = Syntax.eta_expand cps' in
-*)
-
+  let alpha = Alpha.alpha parsed in
+  let typed = Typing.typing false alpha in
+  let typed = Syntax.set_target typed in
+  let () = if Flag.web then write_log_term typed in
+  let () = if Flag.print_source then Format.printf "Source Program:@.%a\n@." Syntax.pp_print_term typed in
+  let cps = CPS.trans typed in
+  let () = if Flag.print_cps then Format.printf "CPS-converted Program:@.%a\n@." Syntax.pp_print_term cps in
   let cps =
-    let defs, t = Syntax.lift2 cps' in
-(*
-      Typing.typing_defs defs t;
-*)
+    let defs, t = Syntax.lift2 cps in
+      (* Typing.typing_defs defs t; *)
       List.fold_right
         (fun (f, (xs, t')) t ->
-           if List.exists (fun id -> List.mem_assoc id defs) (Syntax.get_fv t') then
-             Syntax.Letrec(f,xs,t',t)
-           else
-             Syntax.Let(f,xs,t',t))
+           let flag =
+             if List.exists (fun id -> List.mem_assoc id defs) (Syntax.get_fv t')
+             then Syntax.Recursive
+             else Syntax.Nonrecursive
+           in
+             Syntax.Let(flag, f,xs,t', t))
         defs t
   in
 
@@ -197,22 +190,12 @@ let main filename in_channel =
     match result with
         None -> print_msg "\nSafe!\n\n"
       | Some (ce,p) ->
-          let is_free t =
-            let fv = Syntax.get_fv t in
-            let ids = List.map (fun x -> x.Syntax.id) free_variables in
-              List.for_all (fun x -> List.mem x.Syntax.id ids) fv
-          in
-          let ts = Wrapper.get_solution p in
-          let ts' = List.filter is_free ts in
-          let aux t =
-            Syntax.print_term Syntax.ML false t;
-            print_msg "; "
-          in
-            print_msg "Unsafe!\n\n";
-            print_msg "Error trace:\n";
-            List.iter aux ts';
-            if List.length ts' <> 0 then print_msg "\n";
-            print_ce ce alpha
+          let sol = Wrapper.get_solution p in
+            print_msg "Unsafe!\n";
+            print_msg "Error trace:";
+            List.iter (fun t -> Format.printf "%s; " t) sol;
+            if List.length sol <> 0 then Format.printf "@.";
+            Syntax.print_ce ce typed
 
 
 
@@ -220,8 +203,9 @@ let () =
   if !Sys.interactive
   then ()
   else
-    try
-      let cin = try open_in Sys.argv.(1) with Invalid_argument "index out of bounds" -> stdin in
+    let filename = if Array.length Sys.argv >= 2 then Sys.argv.(1) else "-" in
+    let cin = if filename = "-" then stdin else open_in filename in
+      try
         if Flag.web then open_log ();
         Wrapper.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
@@ -230,10 +214,11 @@ let () =
         print_info ();
         Wrapper.close_cvc3 ();
         if Flag.web then close_log ()
-    with
-        Typing.CannotUnify -> Format.printf "Cannot unify.@."; exit 1
-      | IllegalInput -> Format.printf "Illegal input.@."; exit 1
-      | LongInput -> Format.printf "Input is too long.@."; exit 1
-      | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
-      | NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
-      | CannotDiscoverPredicate -> Format.printf "Verification failed (new predicate not found).@."; exit 1
+      with
+          Typing.CannotUnify -> Format.printf "Cannot unify.@."; exit 1
+        | Parsing.Parse_error _ -> Format.printf "Parse error.@."; exit 1
+        | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
+        | LongInput -> Format.printf "Input is too long.@."; exit 1
+        | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
+        | NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
+        | CannotDiscoverPredicate -> Format.printf "Verification failed (new predicate not found).@."; exit 1

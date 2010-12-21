@@ -16,25 +16,27 @@ let rec trans0 c = function
   | Fun(x, t) ->
       let f = new_var' "f" in
         funs := f::!funs;
-        trans0 c (Let(f, [x], t, Var f))
+        trans0 c (Let(Nonrecursive, f, [x], t, Var f))
   | App(t1, []) -> assert false
   | App(t1, [t2]) ->
       let k = new_var' "k" in
       let r = new_var' "r" in
-      let c1 y x = Let(k, [r], c (Var r), App(x, [y; Var k])) in
+      let c1 y x = Let(Nonrecursive, k, [r], c (Var r), App(x, [y; Var k])) in
       let c2 y = trans0 (c1 y) t1 in
         funs := k::!funs;
         trans0 c2 t2
   | App(t1, t2::ts) ->
       trans0 c (App(App(t1,[t2]),ts))
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let k = new_var' "k" in
       let x = new_var' "x" in
       let t2' = trans0 (fun y -> App(Var k, [y])) t2 in
       let t3' = trans0 (fun y -> App(Var k, [y])) t3 in
-      let c' y = Let(k, [x], c (Var x), If(y, t2', t3', Unit)) in
+      let c' y = Let(Nonrecursive, k, [x], c (Var x), If(y, t2', t3')) in
         funs := k::!funs;
         trans0 c' t1
+  | Let _ -> Format.printf "Not implemented"; assert false
+(*
   | Let(f, xs, t1, t2) ->
       begin
         match xs with
@@ -67,6 +69,7 @@ let rec trans0 c = function
                 funs := g::!funs;
                 trans0 c (Letrec(f, [x], Let(g, xs', t1, Var g), t2))
       end
+*)
   | BinOp(op, t1, t2) ->
       let c1 t1' t2' = c (BinOp(op, t1', t2')) in
       let c2 y1 = trans0 (fun y2 -> c1 y1 y2) t2 in
@@ -88,45 +91,45 @@ let rec trans1 c = function
   | Fun(x, t) ->
       let f = new_var' "f" in
         funs := f::!funs;
-        trans1 c (Let(f, [x], t, Var f))
+        trans1 c (Let(Nonrecursive, f, [x], t, Var f))
   | App(t1, ts) ->
       let k = new_var' "x" in
       let r = new_var' "x" in
       let c1 x = app2app x [Var k] in
       let cc = List.fold_right (fun t cc -> fun x -> trans1 (fun y -> cc (app2app x [y])) t) ts c1 in
         funs := k::!funs;
-        Let(k, [r], c (Var r), trans1 cc t1)
-  | If(t1, t2, t3, _) ->
+        Let(Nonrecursive, k, [r], c (Var r), trans1 cc t1)
+  | If(t1, t2, t3) ->
       let k = new_var' "x" in
       let x = new_var' "x" in
       let t2' = trans1 (fun y -> App(Var k, [y])) t2 in
       let t3' = trans1 (fun y -> App(Var k, [y])) t3 in
-      let c' y = Let(k, [x], c (Var x), If(y, t2', t3', Unit)) in
+      let c' y = Let(Nonrecursive, k, [x], c (Var x), If(y, t2', t3')) in
         funs := k::!funs;
         trans1 c' t1
-  | Let(f, xs, t1, t2) ->
+  | Let(flag, f, xs, t1, t2) ->
       begin
-        match xs with
-            [] ->
-              let c' t = trans1 c (subst f t t2) in
-                trans1 c' t1
-          | _::_ ->
-              let k = new_var' "x" in
-              let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
-              let t2' = trans1 c t2 in
-                Let(f, xs@[k], t1', t2')
-      end
-  | Letrec(f, xs, t1, t2) ->
-      begin
-        match xs with
-            [] ->
-              let c' t = trans1 c (subst f t t2) in
-                trans1 c' t1
-          | _::_ ->
-              let k = new_var' "x" in
-              let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
-              let t2' = trans1 c t2 in
-                Letrec(f, xs@[k], t1', t2')
+        if flag = Nonrecursive
+        then
+          match xs with
+              [] ->
+                let c' t = trans1 c (subst f t t2) in
+                  trans1 c' t1
+            | _::_ ->
+                let k = new_var' "x" in
+                let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
+                let t2' = trans1 c t2 in
+                  Let(flag, f, xs@[k], t1', t2')
+        else
+          match xs with
+              [] ->
+                let c' t = trans1 c (subst f t t2) in
+                  trans1 c' t1
+            | _::_ ->
+                let k = new_var' "x" in
+                let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
+                let t2' = trans1 c t2 in
+                  Let(flag, f, xs@[k], t1', t2')
       end
   | BinOp(op, t1, t2) ->
       let c1 t1' t2' = c (BinOp(op, t1', t2')) in
@@ -166,23 +169,24 @@ let rec inlining funs defs = function
   | App(Fail, ts) -> App(Fail, ts)
   | App(Event s, ts) -> App(Event s, ts)
   | App _ -> assert false
-  | If(t1, t2, t3, t4) ->
+  | If(t1, t2, t3) ->
       let t2' = inlining funs defs t2 in
       let t3' = inlining funs defs t3 in
-      let t4' = inlining funs defs t4 in
-        If(t1, t2', t3', t4')
+        If(t1, t2', t3')
   | Branch(t1, t2) ->
       let t1' = inlining funs defs t1 in
       let t2' = inlining funs defs t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
-      let t1' = inlining funs defs t1 in
-      let t2' = inlining funs ((f,(xs,t1'))::defs) t2 in
-        Let(f, xs, t1', t2')
-  | Letrec(f, xs, t1, t2) ->
-      let t1' = inlining funs defs t1 in
-      let t2' = inlining funs defs t2 in
-        Letrec(f, xs, t1', t2')
+  | Let(flag, f, xs, t1, t2) ->
+      if flag = Nonrecursive
+      then
+        let t1' = inlining funs defs t1 in
+        let t2' = inlining funs ((f,(xs,t1'))::defs) t2 in
+          Let(flag, f, xs, t1', t2')
+      else
+        let t1' = inlining funs defs t1 in
+        let t2' = inlining funs defs t2 in
+          Let(flag, f, xs, t1', t2')
   | BinOp(op, t1, t2) ->
       let t1' = inlining funs defs t1 in
       let t2' = inlining funs defs t2 in
@@ -231,7 +235,7 @@ let rec match_arg arg_num b = function
                     | _ ->
                       let g = new_var' "f" in
                       let ts'' = List.map (fun x -> Var x) args in
-                        Let(g, args, App(Var f, ts'@ts''), Var g)
+                        Let(Nonrecursive, g, args, App(Var f, ts'@ts''), Var g)
                 end
         with Not_found ->
           match_arg arg_num false (App(Var f,ts))
@@ -247,28 +251,29 @@ let rec match_arg arg_num b = function
           | _ ->
             let g = new_var' "f" in
             let ts'' = List.map (fun x -> Var x) args in
-              Let(g, args, App(f', ts'@ts''), Var g)
+              Let(Nonrecursive, g, args, App(f', ts'@ts''), Var g)
         end
-  | If(t1, t2, t3, t4) ->
+  | If(t1, t2, t3) ->
       let t1' = match_arg arg_num true t1 in
       let t2' = match_arg arg_num true t2 in
       let t3' = match_arg arg_num true t3 in
-      let t4' = match_arg arg_num true t4 in
-        If(t1', t2', t3', t4')
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = match_arg arg_num true t1 in
       let t2' = match_arg arg_num true t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
-      let arg_num' = (f,List.length xs)::arg_num in
-      let t1' = match_arg arg_num true t1 in
-      let t2' = match_arg arg_num' true t2 in
-        Let(f, xs, t1', t2')
-  | Letrec(f, xs, t1, t2) ->
-      let arg_num' = (f,List.length xs)::arg_num in
-      let t1' = match_arg arg_num' true t1 in
-      let t2' = match_arg arg_num' true t2 in
-        Letrec(f, xs, t1', t2')
+  | Let(flag, f, xs, t1, t2) ->
+      if flag = Nonrecursive
+      then
+        let arg_num' = (f,List.length xs)::arg_num in
+        let t1' = match_arg arg_num true t1 in
+        let t2' = match_arg arg_num' true t2 in
+          Let(flag, f, xs, t1', t2')
+      else
+        let arg_num' = (f,List.length xs)::arg_num in
+        let t1' = match_arg arg_num' true t1 in
+        let t2' = match_arg arg_num' true t2 in
+          Let(flag, f, xs, t1', t2')
   | BinOp(op, t1, t2) ->
       let t1' = match_arg arg_num true t1 in
       let t2' = match_arg arg_num true t2 in
@@ -295,25 +300,26 @@ let rec app2letapp = function
   | Fun _ -> assert false
   | App(f, ts) ->
       let xs = tabulate (List.length ts) (fun _ -> new_var' "x") in
-        List.fold_right2 (fun x t t' -> Let(x,[],t,t')) xs ts (App(f, List.map (fun x -> Var x) xs))
-  | If(t1, t2, t3, t4) ->
+        List.fold_right2 (fun x t t' -> Let(Nonrecursive,x,[],t,t')) xs ts (App(f, List.map (fun x -> Var x) xs))
+  | If(t1, t2, t3) ->
       let t1' = app2letapp t1 in
       let t2' = app2letapp t2 in
       let t3' = app2letapp t3 in
-      let t4' = app2letapp t4 in
-        If(t1', t2', t3', t4')
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = app2letapp t1 in
       let t2' = app2letapp t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
+  | Let(flag, f, xs, t1, t2) ->
       let t1' = app2letapp t1 in
       let t2' = app2letapp t2 in
-        Let(f, xs, t1', t2')
-  | Letrec(f, xs, t1, t2) ->
-      let t1' = app2letapp t1 in
-      let t2' = app2letapp t2 in
-        Letrec(f, xs, t1', t2')
+        Let(flag, f, xs, t1', t2')
+(*
+  | Let(flag, bindings, t) ->
+      let bindings' = List.map (fun (f,xs,t) -> f,xs,app2letapp t) bindings in
+      let t' = app2letapp t in
+        Let(flag, bindings', t')
+*)
   | BinOp(op, t1, t2) ->
       let t1' = app2letapp t1 in
       let t2' = app2letapp t2 in
@@ -333,6 +339,8 @@ let rec normalize = function
   | NInt x -> NInt x
   | Var x -> Var x
   | Fun _ -> assert false
+  | App(Fail, [t1;t2]) -> App(Fail, [normalize t1])
+  | App(Fail, _) -> assert false
   | App(Event s, [t1;t2]) ->
       let t1' = normalize t1 in
       let t2' = normalize t2 in
@@ -342,24 +350,25 @@ let rec normalize = function
       let ts' = List.map normalize ts in
       let f' = normalize f in
         App(f', ts')
-  | If(t1, t2, t3, t4) ->
+  | If(t1, t2, t3) ->
       let t1' = normalize t1 in
       let t2' = normalize t2 in
       let t3' = normalize t3 in
-      let t4' = normalize t4 in
-        If(t1', t2', t3', t4')
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = normalize t1 in
       let t2' = normalize t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
+  | Let(flag, f, xs, t1, t2) ->
       let t1' = normalize t1 in
       let t2' = normalize t2 in
-        Let(f, xs, t1', t2')
-  | Letrec(f, xs, t1, t2) ->
-      let t1' = normalize t1 in
-      let t2' = normalize t2 in
-        Letrec(f, xs, t1', t2')
+        Let(flag, f, xs, t1', t2')
+(*
+  | Let(flag, bindings, t) ->
+      let bindings' = List.map (fun (f,xs,t) -> f,xs,normalize t) bindings in
+      let t' = normalize t in
+        Let(flag, bindings', t')
+*)
   | BinOp(op, t1, t2) ->
       let t1' = normalize t1 in
       let t2' = normalize t2 in

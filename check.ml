@@ -11,92 +11,135 @@ open Syntax
 
 
 
-let order xs x1 x2 =
-  let rec aux xs =
-    match xs with
-        x::xs' when x=x1 ->
-          if List.mem x2 xs
-          then 1
-          else -1
-      | _::xs' -> aux xs'
-      | _ -> assert false
-  in
-    if x1 = x2
-    then 0
-    else aux xs
+let rec flatten_app_if = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | Var x -> Var x
+  | Fun(x, t) -> Fun(x, t)
+  | App(If(t1,t2,t3), ts) ->
+      let t1' = flatten_app_if t1 in
+      let t2' = flatten_app_if (app2app t2 ts) in
+      let t3' = flatten_app_if (app2app t3 ts) in
+        If(t1', t2', t3')
+  | App(Branch(t1,t2), ts) ->
+      let t1' = flatten_app_if (app2app t1 ts) in
+      let t2' = flatten_app_if (app2app t2 ts) in
+        Branch(t1', t2')
+  | App(t, ts) ->
+      let t' = flatten_app_if t in
+      let ts' = List.map flatten_app_if ts in
+        App(t', ts')
+  | If(t1, t2, t3) ->
+      let t1' = flatten_app_if t1 in
+      let t2' = flatten_app_if t2 in
+      let t3' = flatten_app_if t3 in
+        If(t1', t2', t3')
+  | Branch(t1, t2) ->
+      let t1' = flatten_app_if t1 in
+      let t2' = flatten_app_if t2 in
+        Branch(t1', t2')
+  | Let(flag, f, xs, t1, t2) ->
+      let t1' = flatten_app_if t1 in
+      let t2' = flatten_app_if t2 in
+        Let(flag, f, xs, t1', t2')
+(*
+  | Let(flag, bindings, t) ->
+      let bindings' = List.map (fun (f,xs,t) -> f,xs,flatten_app_if t) bindings in
+      let t' = flatten_app_if t in
+        Let(flag, bindings', t')
+*)
+  | BinOp(op, t1, t2) ->
+      let t1' = flatten_app_if t1 in
+      let t2' = flatten_app_if t2 in
+        BinOp(op, t1', t2')
+  | Not t ->
+      let t' = flatten_app_if t in
+        Not t'
+  | Fail -> Fail
+  | Label(b, t) ->
+      let t' = flatten_app_if t in
+        Label(b, t')
+  | Event s -> Event s
+
 
 
 
 
 let cps2hors t =
   let s = new_var' "S" in
-  (*let _,(t0,defs) = Lift.lift t in
-  let defs' = (s,[],t0)::defs in
-  let defs'' = List.map (fun (x,xs,t) -> (x,xs,part_eval t)) defs' in*)
+    (*let _,(t0,defs) = Lift.lift t in
+      let defs' = (s,[],t0)::defs in
+      let defs'' = List.map (fun (x,xs,t) -> (x,xs,part_eval t)) defs' in*)
   let defs, t0 = lift t in
 
   let defs, t0 = Typing.typing_defs true defs t0 in
   let defs = List.map (fun (x, (xs, t)) ->
-    let n = (List.length (get_args x.typ)) - (List.length xs) in
-(*
-Syntax.print_term_break Syntax.ML false (Var x);
-print_int (List.length (get_args x.typ));
-print_int (List.length xs);
-print_string "\n";
-*)
-    let ds = tabulate n (fun _ -> new_var' "d") in
-    x, (xs @ ds, if ds = [] then t else App(t, List.map (fun id -> Var(id)) ds))) defs in
+                         let n = (List.length (get_args x.typ)) - (List.length xs) in
+                           (*
+                             Syntax.print_term_break Syntax.ML false (Var x);
+                             print_int (List.length (get_args x.typ));
+                             print_int (List.length xs);
+                             print_string "\n";
+                           *)
+                         let ds = tabulate n (fun _ -> new_var' "d") in
+                           x, (xs @ ds, if ds = [] then t else App(t, List.map (fun id -> Var(id)) ds))) defs in
   let defs' = (s,([],t0))::defs in
   let nonterms = List.map (fun (f, _) -> f) defs' in
-  let sub = List.map (fun x -> x, Var {x with origin=String.capitalize x.origin}) nonterms in
+  let sub = List.map (fun x -> x, Var {x with name=String.capitalize x.name}) nonterms in
   let defs'' = List.map (fun (x, (xs, t)) -> (match List.assoc x sub with Var x -> x, xs, subst_term sub (part_eval t) | _ -> assert false)) defs' in
 
-  let defs'' = List.map (fun (f,xs,t) -> f,xs,normalize t) defs'' in
+  let defs'' = List.map (fun (f,xs,t) -> f,xs,flatten_app_if t) defs'' in
 
-(*
-  Syntax.print_term Syntax.ML false t;
-  let t' =  List.fold_right (fun (f, xs, t') t -> Syntax.Letrec(f,xs,t',t)) defs'' (Var s) in
-  Syntax.print_term Syntax.ML false t';
-  Typing.typing t';
-*)
+  (*
+    Syntax.print_term Syntax.ML false t;
+    let t' =  List.fold_right (fun (f, xs, t') t -> Syntax.Letrec(f,xs,t',t)) defs'' (Var s) in
+    Syntax.print_term Syntax.ML false t';
+    Typing.typing t';
+  *)
 
-  let spec = [(0, "br", [0;0]); (0, "then", [0]); (0, "else", [0]); (0, "unit", [])] in
-  let spec' =
+  let spec =
     match !Flag.mode with
-        Flag.Reachability -> spec
+        Flag.Reachability ->
+          [(0, "br", [0;0]);
+           (0, "then", [0]);
+           (0, "else", [0]);
+           (0, "unit", [])]
       | Flag.FileAccess ->
-[0, "br", [0; 0];
-1, "br", [1; 1];
-2, "br", [2; 2];
-3, "br", [3; 3];
-4, "br", [4; 4];
-0, "newr", [1];
-1, "read", [1];
-1, "close", [4];
-0, "neww", [2];
-2, "write", [2];
-2, "close", [4];
-2, "newr", [3];
-1, "neww", [3];
-3, "read", [3];
-3, "write", [3];
-3, "close", [3];
-4, "unit", [];
-0, "unit", [];
-3, "unit", [];
-0, "then", [0];
-0, "else", [0];
-1, "then", [1];
-1, "else", [1];
-2, "then", [2];
-2, "else", [2];
-3, "then", [3];
-3, "else", [3];
-4, "then", [4];
-4, "else", [4];]
-
+          [0, "br", [0; 0];
+           1, "br", [1; 1];
+           2, "br", [2; 2];
+           3, "br", [3; 3];
+           4, "br", [4; 4];
+           0, "newr", [1];
+           1, "read", [1];
+           1, "close", [4];
+           0, "neww", [2];
+           2, "write", [2];
+           2, "close", [4];
+           2, "newr", [3];
+           1, "neww", [3];
+           3, "read", [3];
+           3, "write", [3];
+           3, "close", [3];
+           4, "unit", [];
+           0, "unit", [];
+           3, "unit", [];
+           0, "then", [0];
+           0, "else", [0];
+           1, "then", [1];
+           1, "else", [1];
+           2, "then", [2];
+           2, "else", [2];
+           3, "then", [3];
+           3, "else", [3];
+           4, "then", [4];
+           4, "else", [4];]
   in
-    defs'', spec'
+    defs'', spec
 
 
 

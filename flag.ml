@@ -1,4 +1,5 @@
 
+let ocaml_lib = ["./ocaml-3.11.2/stdlib/"]
 let log_dir = "/home/ryosuke/web/cegar/log/"
 let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
@@ -42,7 +43,6 @@ let time_interpolant = ref 0.
 
 let cegar_loop = ref 0
 let time_limit = 0
-let string_for_result = "__ce__"
 let max_input_size = 65536
 
 

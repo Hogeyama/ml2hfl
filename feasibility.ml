@@ -453,22 +453,22 @@ let rec check ce defs constr t =
         let xs = get_args x.typ in
         let t'' = List.fold_right2 subst xs ts t' in
           check ce defs constr t''
-    | If(t1, _, _, _), [EventNode "then_fail"] ->
+    | If(t1, _, _), [EventNode "then_fail"] ->
         let constr' = BinOp(And, t1, constr) in
         if Wrapper.checksat constr' then
           raise (Feasible constr')
         else
           ()
-    | If(t1, _, _, _), [EventNode "else_fail"] ->
+    | If(t1, _, _), [EventNode "else_fail"] ->
         let constr' = BinOp(And, Not t1, constr) in
         if Wrapper.checksat constr' then
           raise (Feasible constr')
         else
           ()
-    | If(t1, t2, _, _), LabNode(true)::ce' ->
+    | If(t1, t2, _), LabNode(true)::ce' ->
         let constr' = BinOp(And, t1, constr) in
         check ce' defs constr' t2
-    | If(t1, _, t3, _), LabNode(false)::ce' ->
+    | If(t1, _, t3), LabNode(false)::ce' ->
         let constr' = BinOp(And, Not t1, constr) in
         check ce' defs constr' t3
     | _ ->
@@ -518,13 +518,13 @@ let rec get_prefix ce ce_prefix defs constr t =
         let xs = get_args x.typ in
         let t'' = List.fold_right2 subst xs ts t' in
           get_prefix ce ce_prefix defs constr t''
-    | If(t1, t2, _, _), LabNode(true)::ce' ->
+    | If(t1, t2, _), LabNode(true)::ce' ->
         let constr' = BinOp(And, t1, constr) in
         let ce_prefix' = LabNode(true)::ce_prefix in
           if Wrapper.checksat constr'
           then get_prefix ce' ce_prefix' defs constr' t2
           else List.rev ce_prefix'
-    | If(t1, _, t3, _), LabNode(false)::ce' ->
+    | If(t1, _, t3), LabNode(false)::ce' ->
         let constr' = BinOp(And, Not t1, constr) in
         let ce_prefix' = LabNode(false)::ce_prefix in
           if Wrapper.checksat constr'
@@ -551,25 +551,25 @@ let rec check_int ce ce_used defs constr t =
         let xs = get_args x.typ in
         let t'' = List.fold_right2 subst xs ts t' in
           check_int ce ce_used defs constr t''
-    | If(t1, _, _, _), [EventNode "then_fail"] ->
+    | If(t1, _, _), [EventNode "then_fail"] ->
         let constr' = BinOp(And, t1, constr) in
         let ce_used' = ce_used@[LabNode(true)] in
         if Wrapper.checksat constr'
         then raise (Feasible constr)
         else Wrapper.interpolation [constr] [t1](*???*), ce_used'
-    | If(t1, _, _, _), [EventNode "else_fail"] ->
+    | If(t1, _, _), [EventNode "else_fail"] ->
         let constr' = BinOp(And, Not t1, constr) in
         let ce_used' = ce_used@[LabNode(false)] in
         if Wrapper.checksat constr'
         then raise (Feasible constr)
         else Wrapper.interpolation [constr] [Not t1](*???*), ce_used'
-    | If(t1, t2, _, _), LabNode(true)::ce' ->
+    | If(t1, t2, _), LabNode(true)::ce' ->
         let constr' = BinOp(And, t1, constr) in
         let ce_used' = ce_used@[LabNode(true)] in
           if Wrapper.checksat constr'
           then check_int ce' ce_used' defs constr' t2
           else Wrapper.interpolation [constr] [t1](*???*), ce_used'
-    | If(t1, _, t3, _), LabNode(false)::ce' ->
+    | If(t1, _, t3), LabNode(false)::ce' ->
         let constr' = BinOp(And, Not t1, constr) in
         let ce_used' = ce_used@[LabNode(false)] in
           if Wrapper.checksat constr'

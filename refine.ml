@@ -641,18 +641,16 @@ let rec rename_map map =
         let t' = rename_map map t in
         let ts' = List.map (rename_map map) ts in
           App(t', ts')
-    | If(t1,t2,t3,t4) ->
+    | If(t1,t2,t3) ->
         let t1' = rename_map map t1 in
         let t2' = rename_map map t2 in
         let t3' = rename_map map t3 in
-        let t4' = rename_map map t4 in
-          If(t1', t2', t3', t4')
+          If(t1', t2', t3')
     | Branch(t1,t2) ->
         let t1' = rename_map map t1 in
         let t2' = rename_map map t2 in
           Branch(t1', t2')
-    | Let _
-    | Letrec _ -> assert false
+    | Let _ -> assert false
     | BinOp(op,t1,t2) ->
         let t1' = rename_map map t1 in
         let t2' = rename_map map t2 in
@@ -1018,16 +1016,16 @@ let rec add_preds rte sol = function
       let t' = add_preds rte sol t in
       let ts' = List.map (add_preds rte sol) ts in
         App(t', ts')
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let t1' = add_preds rte sol t1 in
       let t2' = add_preds rte sol t2 in
       let t3' = add_preds rte sol t3 in
-        If(t1', t2', t3', Unit)
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = add_preds rte sol t1 in
       let t2' = add_preds rte sol t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
+  | Let(Nonrecursive, f, xs, t1, t2) ->
 (*
       Format.printf "%a," (print_term_fm ML true) (Var f);
 *)
@@ -1035,15 +1033,14 @@ let rec add_preds rte sol = function
         (try snd (List.find (fun (f', _) -> f'.id = f.id) rte) with Not_found ->
           [](*List.iter (fun (f, _) -> Format.printf "%a," (print_term_fm ML true) (Var f)) rte;
           Format.printf "%a@." (print_term_fm ML true) (Var f); assert false*)) in
-
       let f' = {f with typ = typ} in
       let xs' = get_args typ in
       let t1' = add_preds rte sol t1 in
       let t2' = add_preds rte sol t2 in
       let t1'' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t1' in
       let t2'' = subst f (Var f') t2' in
-        Let(f', xs', t1'', t2'')
-  | Letrec(f, xs, t1, t2) ->
+        Let(Nonrecursive, f', xs', t1'', t2'')
+  | Let(Recursive, f, xs, t1, t2) ->
 (*
       Format.printf "%a," (print_term_fm ML true) (Var f);
 *)
@@ -1051,14 +1048,13 @@ let rec add_preds rte sol = function
         (try snd (List.find (fun (f', _) -> f'.id = f.id) rte) with Not_found ->
           [](*List.iter (fun (f, _) -> Format.printf "%a," (print_term_fm ML true) (Var f)) rte;
           Format.printf "%a@." (print_term_fm ML true) (Var f); assert false*)) in
-
       let f' = {f with typ = typ} in
       let xs' = get_args typ in
       let t1' = add_preds rte sol t1 in
       let t2' = add_preds rte sol t2 in
       let t1'' = List.fold_right2 subst (f::xs) (List.map (fun x -> Var x) (f'::xs')) t1' in
       let t2'' = subst f (Var f') t2' in
-        Letrec(f', xs', t1'', t2'')
+        Let(Recursive, f', xs', t1'', t2'')
   | BinOp(op, t1, t2) ->
       let t1' = add_preds rte sol t1 in
       let t2' = add_preds rte sol t2 in
@@ -1095,15 +1091,17 @@ let rec remove_preds = function
       let t' = remove_preds t in
       let ts' = List.map remove_preds ts in
         App(t', ts')
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let t1' = remove_preds t1 in
       let t2' = remove_preds t2 in
       let t3' = remove_preds t3 in
-        If(t1', t2', t3', Unit)
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = remove_preds t1 in
       let t2' = remove_preds t2 in
         Branch(t1', t2')
+  | Let _ -> Format.printf "Not implemented"; assert false
+(*
   | Let(f, xs, t1, t2) ->
       let f' = {f with typ = remove_preds_typ f.typ} in
       let xs' = List.map (fun x -> {x with typ = remove_preds_typ x.typ}) xs in
@@ -1116,6 +1114,7 @@ let rec remove_preds = function
       let t1' = remove_preds t1 in
       let t2' = remove_preds t2 in
         Letrec(f', xs', t1', t2')
+*)
   | BinOp(op, t1, t2) ->
       let t1' = remove_preds t1 in
       let t2' = remove_preds t2 in
@@ -1141,7 +1140,7 @@ let refine tdefs ces t0 =
       let () = Format.printf "\n\n%a\n\n@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
     *)
 
-  let s = {id = 0; origin = "Main"; typ = TUnit} in
+  let s = {id = 0; name = "Main"; typ = TUnit} in
   let defs1 = (s,([], t'))::defs' in
   let rte, sol = Infer.test tdefs s defs1 ces None in
     if Flag.use_dor && List.exists (fun (_, (_, t)) -> get_nint t <> []) sol then begin
@@ -1253,47 +1252,49 @@ let rec add_preds_ typedefs = function
         with Not_found ->
           x.typ
       in
-      Var({x with typ = typ})
+        Var({x with typ = typ})
   | Fun _ -> assert false
   | App(t, ts) ->
       let t' = add_preds_ typedefs t in
       let ts' = List.map (add_preds_ typedefs) ts in
         App(t', ts')
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let t1' = add_preds_ typedefs t1 in
       let t2' = add_preds_ typedefs t2 in
       let t3' = add_preds_ typedefs t3 in
-        If(t1', t2', t3', Unit)
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = add_preds_ typedefs t1 in
       let t2' = add_preds_ typedefs t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
-      let typ = 
-        try add_preds_typ_ f.typ (snd (List.find (fun (f', _) -> f'.id = f.id) typedefs))
-        with Not_found ->
-          f.typ
-      in
-      let f' = {f with typ = typ} in
-      let xs' = get_args typ in
-      let t1' = add_preds_ typedefs t1 in
-      let t2' = add_preds_ typedefs t2 in
-      let t1'' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t1' in
-      let t2'' = subst f (Var f') t2' in
-        Let(f', xs', t1'', t2'')
-  | Letrec(f, xs, t1, t2) ->
-      let typ = 
-        try add_preds_typ_ f.typ (snd (List.find (fun (f', _) -> f'.id = f.id) typedefs))
-        with Not_found ->
-          f.typ
-      in
-      let f' = {f with typ = typ} in
-      let xs' = get_args typ in
-      let t1' = add_preds_ typedefs t1 in
-      let t2' = add_preds_ typedefs t2 in
-      let t1'' = List.fold_right2 subst (f::xs) (List.map (fun x -> Var x) (f'::xs')) t1' in
-      let t2'' = subst f (Var f') t2' in
-        Letrec(f', xs', t1'', t2'')
+  | Let(flag, f, xs, t1, t2) ->
+      if flag = Nonrecursive
+      then
+        let typ = 
+          try add_preds_typ_ f.typ (snd (List.find (fun (f', _) -> f'.id = f.id) typedefs))
+          with Not_found ->
+            f.typ
+        in
+        let f' = {f with typ = typ} in
+        let xs' = get_args typ in
+        let t1' = add_preds_ typedefs t1 in
+        let t2' = add_preds_ typedefs t2 in
+        let t1'' = List.fold_right2 subst xs (List.map (fun x -> Var x) xs') t1' in
+        let t2'' = subst f (Var f') t2' in
+          Let(flag, f', xs', t1'', t2'')
+      else
+        let typ = 
+          try add_preds_typ_ f.typ (snd (List.find (fun (f', _) -> f'.id = f.id) typedefs))
+          with Not_found ->
+            f.typ
+        in
+        let f' = {f with typ = typ} in
+        let xs' = get_args typ in
+        let t1' = add_preds_ typedefs t1 in
+        let t2' = add_preds_ typedefs t2 in
+        let t1'' = List.fold_right2 subst (f::xs) (List.map (fun x -> Var x) (f'::xs')) t1' in
+        let t2'' = subst f (Var f') t2' in
+          Let(flag, f', xs', t1'', t2'')
   | BinOp(op, t1, t2) ->
       let t1' = add_preds_ typedefs t1 in
       let t2' = add_preds_ typedefs t2 in

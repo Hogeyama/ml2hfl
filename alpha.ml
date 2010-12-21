@@ -9,7 +9,7 @@ let new_id x =
 
 
 
-let free_map : (ident*ident) list ref = ref []
+let free_map : (string*ident) list ref = ref []
 let free : ident list ref = ref []
 
 
@@ -26,56 +26,58 @@ let rec alpha map = function
   | Var x ->
       begin
         try
-          Var (List.assoc x map)
+          Var (List.assoc x.name map)
         with Not_found ->
           try
-            Var (List.assoc x !free_map)
+            Var (List.assoc x.name !free_map)
           with Not_found ->
             let x' = new_id x in
-              free_map := (x,x')::!free_map;
+              free_map := (x.name,x')::!free_map;
               Var x'
       end
   | Fun(x, t) ->
       let x' = new_id x in
-      let t' = alpha ((x,x')::map) t in
+      let t' = alpha ((x.name,x')::map) t in
         Fun(x', t')
   | App(t, ts) ->
       let t' = alpha map t in
       let ts' = List.map (alpha map) ts in
         App(t', ts')
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let t1' = alpha map t1 in
       let t2' = alpha map t2 in
       let t3' = alpha map t3 in
-        If(t1', t2', t3', Unit)
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = alpha map t1 in
       let t2' = alpha map t2 in
         Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
-      let f' = new_id f in
-      let map', xs' =
-        let g y (map, ys) =
-          let y' = new_id y in
-            ((y,y')::map, y'::ys)
+  | Let(flag, f, xs, t1, t2) ->
+      if flag = Nonrecursive
+      then
+        let f' = new_id f in
+        let map', xs' =
+          let g y (map, ys) =
+            let y' = new_id y in
+              ((y.name,y')::map, y'::ys)
+          in
+            List.fold_right g xs (map,[])
         in
-          List.fold_right g xs (map,[])
-      in
-      let t1' = alpha map' t1 in
-      let t2' = alpha ((f,f')::map) t2 in
-        Let(f', xs', t1', t2')
-  | Letrec(f, xs, t1, t2) ->
-      let f' = new_id f in
-      let map', xs' =
-        let g y (map, ys) =
-          let y' = new_id y in
-            ((y,y')::map, y'::ys)
+        let t1' = alpha map' t1 in
+        let t2' = alpha ((f.name,f')::map) t2 in
+          Let(flag, f', xs', t1', t2')
+      else
+        let f' = new_id f in
+        let map', xs' =
+          let g y (map, ys) =
+            let y' = new_id y in
+              ((y.name,y')::map, y'::ys)
+          in
+            List.fold_right g xs (map,[])
         in
-          List.fold_right g xs (map,[])
-      in
-      let t1' = alpha ((f,f')::map') t1 in
-      let t2' = alpha ((f,f')::map) t2 in
-        Letrec(f', xs', t1', t2')
+        let t1' = alpha ((f.name,f')::map') t1 in
+        let t2' = alpha ((f.name,f')::map) t2 in
+          Let(flag, f', xs', t1', t2')
   | BinOp(op, t1, t2) ->
       let t1' = alpha map t1 in
       let t2' = alpha map t2 in
@@ -90,6 +92,7 @@ let rec alpha map = function
 
 
 
+(*
 let rec add_nint t x =
   let aux t =
     let x1 = new_var' x.origin in
@@ -183,31 +186,16 @@ let rec add_nint t x =
   | Label _ -> assert false
   | Fail -> Fail
   | Event s -> Event s
-
+*)
 
 
 let add_assert t =
   let f = new_var "assert" in
   let x = new_var "b" in
-    Let(f, [x], If(Var x, Unit, App(Fail, [Unit]), Unit), t)
+    Let(Nonrecursive, f, [x], If(Var x, Unit, App(Fail, [Unit])), t)
 
 let alpha t =
   let t' = add_assert t in
-  let t'' = alpha [] t' in
-  let fv = List.map snd !free_map in
-  let t''' = List.fold_left add_nint t'' fv in
-    !free, t'''
-
-
-
-
-
-
-
-
-
-
-
-
+    alpha [] t'
 
 

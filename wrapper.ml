@@ -43,8 +43,8 @@ let rec to_exp = function
     True -> CsisatAst.Variable "tru"
   | False -> CsisatAst.Variable "fls"
   | Int n -> CsisatAst.Constant (float_of_int n)
-  | NInt x -> CsisatAst.Variable ("_" ^ x.origin ^ "_" ^ string_of_int x.id)
-  | Var x -> CsisatAst.Variable (x.origin ^ "_" ^ string_of_int x.id)
+  | NInt x -> CsisatAst.Variable ("_" ^ x.name ^ "_" ^ string_of_int x.id)
+  | Var x -> CsisatAst.Variable (x.name ^ "_" ^ string_of_int x.id)
   | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
   | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
   | BinOp(Mult, Int n, t2) | BinOp(Mult, t2, Int n) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
@@ -73,9 +73,9 @@ let to_pred t = CsisatAstUtil.integer_heuristic (to_pred t)
 let parse_ident s =
   let len = String.length s in
   let n = String.rindex s '_' in
-  let origin = String.sub s 0 n in
+  let name = String.sub s 0 n in
   let id = int_of_string (String.sub s (n+1) (len-n-1)) in
-    {id=id; origin=origin; typ=TUnknown}
+    {id=id; name=name; typ=TUnknown}
 
 
 let rec from_exp = function
@@ -126,39 +126,38 @@ let close_cvc3 () =
 let check pre p =
   let cin = !cvc3in in
   let cout = !cvc3out in
-(**)
+    (**)
   let fm = Format.formatter_of_out_channel cout in
-(**)
-(*
-  let fm =
-    Format.make_formatter
+    (**)
+    (*
+      let fm =
+      Format.make_formatter
       (output cout)
       (fun () -> flush cout)
-  in
-*)
+      in
+    *)
   let fv =
-				let rec uniq = function
-				    [] -> []
-				  | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
+    let rec uniq = function
+	[] -> []
+      | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
     in
-    uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
+      uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
 
-(**)
+  (**)
   let env = List.map (fun v -> Typing.new_var v) fv in
   let aux p = fst (Typing.infer env p) in
   let p = aux p in
   let pre = List.map aux pre in
   let fv = List.map fst env in
-(**)
+    (**)
 
-(*
-List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
-*)
-(*
-  let p::pre = List.map simplify (p::pre) in
-  let p::pre = List.map Typing.match_arg (p::pre) in
-*)
-
+  (*
+    List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
+  *)
+  (*
+    let p::pre = List.map simplify (p::pre) in
+    let p::pre = List.map Typing.match_arg (p::pre) in
+  *)
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term CVC3 p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term CVC3 p ^ ";" in
@@ -167,14 +166,9 @@ List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
   let _ = Format.fprintf fm "%s" q in
   let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
-(*
-  let _ = Format.fprintf Format.std_formatter "%s@." s in
-  (if s = "CVC> Valid." then
-    Format.fprintf Format.std_formatter "ok@."
-  else
-    Format.fprintf Format.std_formatter "ng@.");
-*)
-  s = "CVC> Valid."
+  let r = Str.string_match (Str.regexp ".*Valid") s 0 in
+    assert (r || Str.string_match (Str.regexp ".*Invalid") s 0);
+    r
 
 (*
 let check pre p =
@@ -208,11 +202,11 @@ let checksat p =
   let fm = Format.formatter_of_out_channel cout in
 
   let fv =
-				let rec uniq = function
-				    [] -> []
-				  | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
+    let rec uniq = function
+	[] -> []
+      | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
     in
-    uniq (get_fv2 p) in
+      uniq (get_fv2 p) in
 
   let env = List.map (fun v -> Typing.new_var v) fv in
   let p, _  = Typing.infer env p in
@@ -227,13 +221,13 @@ let checksat p =
   let () = Format.fprintf fm "%s@?" q in
   let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
-  if s = "CVC> Satisfiable." then
-    true
-  else if s = "CVC> Unsatisfiable." then
-    false
-  else begin
-    Format.printf "CVC3 reported an error@."; assert false
-  end
+    if s = "CVC> Satisfiable." then
+      true
+    else if s = "CVC> Unsatisfiable." then
+      false
+    else begin
+      Format.printf "CVC3 reported an error@."; assert false
+    end
 (*  let () = close_out cout in*)
 
 (*
@@ -247,25 +241,27 @@ let rec rename_ident = function
   | False -> False
   | Unknown -> Unknown
   | Int n -> Int n
-  | NInt x -> NInt (parse_ident x.origin)
-  | Var x -> Var (parse_ident x.origin)
+  | NInt x -> NInt (parse_ident x.name)
+  | Var x -> Var (parse_ident x.name)
   | Fun(x, t) ->
-      let x' = parse_ident x.origin in
+      let x' = parse_ident x.name in
       let t' = rename_ident t in
         Fun(x', t')
   | App(t, ts) ->
       let t' = rename_ident t in
       let ts' = List.map (rename_ident) ts in
         App(t', ts')
-  | If(t1, t2, t3, _) ->
+  | If(t1, t2, t3) ->
       let t1' = rename_ident t1 in
       let t2' = rename_ident t2 in
       let t3' = rename_ident t3 in
-        If(t1', t2', t3', Unit)
+        If(t1', t2', t3')
   | Branch(t1, t2) ->
       let t1' = rename_ident t1 in
       let t2' = rename_ident t2 in
         Branch(t1', t2')
+  | Let _ -> Format.printf "Not implemented"; assert false
+(*
   | Let(f, xs, t1, t2) ->
       let f' = parse_ident f.origin in
       let xs' = List.map (fun x -> parse_ident x.origin) xs in
@@ -278,6 +274,7 @@ let rec rename_ident = function
       let t1' = rename_ident t1 in
       let t2' = rename_ident t2 in
         Letrec(f', xs', t1', t2')
+*)
   | BinOp(op, t1, t2) ->
       let t1' = rename_ident t1 in
       let t2' = rename_ident t2 in
@@ -296,21 +293,21 @@ let rec rename_ident = function
 
 
 let get_solution p =
-(*
-  let cin = !cvc3in in
-  let cout = !cvc3out in
-*)
-(**)
+  (*
+    let cin = !cvc3in in
+    let cout = !cvc3out in
+  *)
+  (**)
   let cin,cout = Unix.open_process Flag.cvc3 in
-(**)
+    (**)
   let fm = Format.formatter_of_out_channel cout in
 
   let fv =
-				let rec uniq = function
-				    [] -> []
-				  | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
+    let rec uniq = function
+	[] -> []
+      | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
     in
-    uniq (get_fv2 p) in
+      uniq (get_fv2 p) in
 
   let env = List.map (fun v -> Typing.new_var v) fv in
   let p, _  = Typing.infer env p in
@@ -324,35 +321,29 @@ let get_solution p =
 
   let () = Format.fprintf fm "%s@?" q in
   let _ = Format.pp_print_flush fm () in
-(**)
+    (**)
   let () = close_out cout in
-(**)
+    (**)
   let () = ignore (input_line cin); ignore (input_line cin); ignore (input_line cin) in
   let rec aux cin =
     try
       let s = input_line cin in
-      let s' = String.sub s 7 (String.length s - 8) in
-        try
-(*
-Format.printf "%s@." s';
-*)
-          let ts, t = Parser.file Lexer.token (Lexing.from_string s') in
-          let () = assert (ts = []) in
-          let t' = rename_ident t in
-            t' :: aux cin
-        with _ -> aux cin
+      let pos_begin = String.index s '(' + 1 in
+      let pos_end = String.index s ')' in
+      let s' = String.sub s pos_begin (pos_end - pos_begin) in
+        s' :: aux cin
     with End_of_file -> []
   in
   let ts = aux cin in
-(**)
+    (**)
   let () = close_in cin in
   let () =
     match Unix.close_process (cin, cout) with
         Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
   in
-(**)
-    ts
-
+    (**)
+  let aux s = not (Str.string_match (Str.regexp ".*cvc3") s 0) in
+    List.filter aux ts
 
 
 let isTInt = function
@@ -519,7 +510,7 @@ and simplify_exp t =
 
 
 
-
+(*
 let rec simplify = function
     CsisatAst.Leq(CsisatAst.Constant n, CsisatAst.Coeff(m,e)) ->
       if m > 0.
@@ -531,6 +522,7 @@ let rec simplify = function
   | CsisatAst.Or es -> CsisatAst.Or (List.map simplify es)
   | CsisatAst.Not e -> CsisatAst.Not (simplify e)
   | p -> p
+*)
 
 exception Satisfiable
 
