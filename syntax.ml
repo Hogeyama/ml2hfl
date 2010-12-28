@@ -10,6 +10,7 @@ type typ =
   | TRInt of t
   | TVar of typ option ref
   | TFun of (ident*typ) * typ
+  | TList of typ
   | TUnknown
 
 and ident = {id:int; name:string; typ:typ}
@@ -31,9 +32,6 @@ and t =
   | If of t * t * t
   | Branch of t * t
 (*
-  | Match of t * (pat * t) list
-*)
-(*
   | Let of rec_flag * (ident * ident list * t) list * t
 *)
   | Let of rec_flag * ident * ident list * t * t
@@ -42,6 +40,9 @@ and t =
   | Fail
   | Label of bool * t
   | Event of string
+  | Nil
+  | Cons of t * t
+  | Match of t * ident * ident * t
 
 type syntax = ML | TRecS | CVC3 | CSIsat
 
@@ -454,7 +455,6 @@ let rec get_argvars = function
 let app2app t ts =
   match t,ts with
       _,[] -> t
-    | Var x,_ -> App(Var x, ts)
     | App(t', ts'),_ -> App(t', ts'@ts)
     | _ -> App(t, ts)
 
@@ -670,6 +670,8 @@ let rec fun2let = function
   | Fail -> Fail
   | Label(b, t) -> Label(b, fun2let t)
   | Event s -> Event s
+  | Nil -> Nil
+  | Cons(t1,t2) -> Cons(fun2let t1, fun2let t2)
     
 
 
@@ -1207,7 +1209,7 @@ let rec remove_unused = function
       let t2' = remove_unused t2 in
         Branch(t1', t2')
   | Let(flag, f, xs, t1, t2) ->
-      if List.mem f (get_fv t2)
+      if List.mem f (get_fv t2) || xs = []
       then
         let t1' = remove_unused t1 in
         let t2' = remove_unused t2 in
@@ -1873,13 +1875,26 @@ let set_target t =
     | Fun _ -> assert false
     | _ -> t
   in
-  let main = get_last_definition None t in
-    match main with
+  let rec get_base_typ = function
+      TFun(_,typ) -> get_base_typ typ
+    | typ -> typ
+  in
+    match get_last_definition None t with
         None -> assert false
       | Some f ->
           let xs = get_args f.typ in
             if List.for_all (fun x -> match x.typ with TInt _ -> true | _ -> false) xs
-            then replace_main (App(Var f, List.map (fun x -> NInt {x with id = -x.id}) xs)) t
+            then
+              let args = List.map (fun x -> NInt {x with id = -x.id}) xs in
+              let main = app2app (Var f) args in
+              let main' =
+                match get_base_typ f.typ with
+                    TUnit -> main
+                  | _ ->
+                      let u = new_var' "u" in
+                        Let(Nonrecursive, u, [], main, Unit)
+              in
+                replace_main main' t
             else failwith "The arguments of the main function have to be integers"
 
 

@@ -40,7 +40,7 @@ let rec cegar tdefs t1 ce_prev =
 
   let () = if Flag.print_progress then print_msg "\n(1) Abstracting ... " in
   let tmp = get_time() in
-  let t_abst = (*Syntax.part_eval*) (*Syntax.eval*) (Abstract.abstract t1) in
+  let t_abst = Abstract.abstract t1 in
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
 

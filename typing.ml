@@ -393,3 +393,13 @@ let rec get_typ = function
   | Label(_,t) -> get_typ t
   | Event s -> TFun((dummy,TUnit), TUnit)
 
+
+
+let type_checking b t =
+  try
+    ignore (typing b t)
+  with CannotUnify ->
+    Format.printf "Typing error:@.  %a@." Syntax.pp_print_term t;
+    assert false
+
+

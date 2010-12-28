@@ -26,6 +26,13 @@ let rec take xs n =
     | [],_ -> []
     | x::xs',_ -> x::(take xs' (n-1))
 
+let rec take2 xs n acc =
+  match xs,n with
+      _,0
+    | [],_ -> List.rev acc, xs
+    | x::xs',_ -> take2 xs' (n-1) (x::acc)
+let take2 xs n = take2 xs n []
+
 
 
 
