@@ -102,6 +102,7 @@ let rec app2binop = function
           | Var {id=_; name="+"; typ=_}, [t1;t2] -> BinOp(Add, app2binop t1, app2binop t2)
           | Var {id=_; name="-"; typ=_}, [t1;t2] -> BinOp(Sub, app2binop t1, app2binop t2)
           | Var {id=_; name="*"; typ=_}, [t1;t2] -> BinOp(Mult, app2binop t1, app2binop t2)
+          | Var {id=_; name="not"; typ=_}, [t] -> Not(app2binop t)
           | _ -> App(app2binop t, List.map app2binop ts)
       end
   | If(t1, t2, t3) -> If(app2binop t1, app2binop t2, app2binop t3)

@@ -321,14 +321,14 @@ let rec match_arg = function
 
 
 
-let typing cps t0 =
+let typing t0 =
   let t1, typ = infer [] t0 in
   let () = unify typ TUnit in
   let t2 = simplify t1 in
     match_arg t2
 
 
-let typing_defs cps defs t0 =
+let typing_defs defs t0 =
 (*
   let () = Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t0 defs) in
 *)
@@ -395,11 +395,9 @@ let rec get_typ = function
 
 
 
-let type_checking b t =
+let type_checking t =
   try
-    ignore (typing b t)
+    ignore (typing t)
   with CannotUnify ->
     Format.printf "Typing error:@.  %a@." Syntax.pp_print_term t;
     assert false
-
-

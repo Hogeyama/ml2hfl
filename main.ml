@@ -164,7 +164,7 @@ let main filename in_channel =
       [], Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
   let alpha = Alpha.alpha parsed in
-  let typed = Typing.typing false alpha in
+  let typed = Typing.typing alpha in
   let typed = Syntax.set_target typed in
   let () = if Flag.web then write_log_term typed in
   let () = if Flag.print_source then Format.printf "Source Program:@.%a\n@." Syntax.pp_print_term typed in

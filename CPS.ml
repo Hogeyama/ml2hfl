@@ -112,16 +112,24 @@ let rec set_tfun = function
   | _ -> ()
 
 let rec flatten = function
-    TVar{contents = Some typ} -> flatten typ
+    TVarCPS{contents = Some typ} -> flatten typ
   | typ -> typ
 
+let rec occurs r typ =
+  match flatten typ with
+      TFunCPS(_,typ1,typ2) -> occurs r typ1 || occurs r typ2
+    | TVarCPS({contents = None} as r') -> r == r'
+    | _ -> false
+
 let rec unify typ1 typ2 =
-  match typ1, typ2 with
+  match flatten typ1, flatten typ2 with
       TBaseCPS, TBaseCPS -> ()
-    | TVarCPS{contents = Some typ1}, typ2
-    | typ1, TVarCPS{contents = Some typ2} -> unify typ1 typ2
+    | TVarCPS r1, TVarCPS r2 when r1 == r2 -> ()
     | TVarCPS({contents = None} as r), typ
-    | typ, TVarCPS({contents = None} as r) -> r := Some typ
+    | typ, TVarCPS({contents = None} as r) ->
+        if occurs r typ
+        then raise Typing.CannotUnify
+        else r := Some typ
     | TFunCPS(b1,typ11,typ12), TFunCPS(b2,typ21,typ22) ->
         let b = max !b1 !b2 in
           b1 := b;
@@ -149,12 +157,8 @@ let rec infer_cont_pos env = function
       let typed1 = infer_cont_pos env t1 in
       let typeds = List.map (infer_cont_pos env) ts in
       let typ_result = new_tvar () in
-      let b = ref true in
-      let aux typed typ =
-        let typ = TFunCPS(ref !b,typed.typ_cps,typ) in
-          b := false; typ
-      in
-      let typ = List.fold_right aux typeds typ_result in
+      let aux typed (typ,b) = TFunCPS(ref b,typed.typ_cps,typ), false in
+      let typ,_ = List.fold_right aux typeds (typ_result,true) in
         unify typed1.typ_cps typ;
         {t_cps=AppCPS(typed1,typeds); typ_cps=typ_result}
   | If(t1, t2, t3) ->
@@ -210,149 +214,6 @@ let rec infer_cont_pos env = function
 
 
 let funs = ref []
-
-(*
-let rec trans0 c = function
-    Unit -> c Unit
-  | True -> c True
-  | False -> c False
-  | Int n -> c (Int n)
-  | NInt x -> c (NInt x)
-  | Var x -> c (Var x)
-  | Fun(x, t) ->
-      let f = new_var' "f" in
-        funs := f::!funs;
-        trans0 c (Let(Nonrecursive, f, [x], t, Var f))
-  | App(t1, []) -> assert false
-  | App(t1, [t2]) ->
-      let k = new_var' "k" in
-      let r = new_var' "r" in
-      let c1 y x = Let(Nonrecursive, k, [r], c (Var r), App(x, [y; Var k])) in
-      let c2 y = trans0 (c1 y) t1 in
-        funs := k::!funs;
-        trans0 c2 t2
-  | App(t1, t2::ts) ->
-      trans0 c (App(App(t1,[t2]),ts))
-  | If(t1, t2, t3) ->
-      let k = new_var' "k" in
-      let x = new_var' "x" in
-      let t2' = trans0 (fun y -> App(Var k, [y])) t2 in
-      let t3' = trans0 (fun y -> App(Var k, [y])) t3 in
-      let c' y = Let(Nonrecursive, k, [x], c (Var x), If(y, t2', t3')) in
-        funs := k::!funs;
-        trans0 c' t1
-  | Let _ -> Format.printf "Not implemented"; assert false
-(*
-  | Let(f, xs, t1, t2) ->
-      begin
-        match xs with
-            [] ->
-              let c' t = trans0 c (subst f t t2) in
-                trans0 c' t1
-          | _::[] ->
-              let k = new_var' "k" in
-              let t1' = trans0 (fun y -> App(Var k, [y])) t1 in
-              let t2' = trans0 c t2 in
-                Let(f, xs@[k], t1', t2')
-          | x::xs' ->
-              let g = new_var' "x" in
-                funs := g::!funs;
-                trans0 c (Let(f, [x], Let(g, xs', t1, Var g), t2))
-      end
-  | Letrec(f, xs, t1, t2) ->
-      begin
-        match xs with
-            [] ->
-              let c' t = trans0 c (subst f t t2) in
-                trans0 c' t1
-          | _::[] ->
-              let k = new_var' "k" in
-              let t1' = trans0 (fun y -> App(Var k, [y])) t1 in
-              let t2' = trans0 c t2 in
-                Letrec(f, xs@[k], t1', t2')
-          | x::xs' ->
-              let g = new_var' "x" in
-                funs := g::!funs;
-                trans0 c (Letrec(f, [x], Let(g, xs', t1, Var g), t2))
-      end
-*)
-  | BinOp(op, t1, t2) ->
-      let c1 t1' t2' = c (BinOp(op, t1', t2')) in
-      let c2 y1 = trans0 (fun y2 -> c1 y1 y2) t2 in
-        trans0 c2 t1
-  | Not t ->
-      let c' t1 = c (Not t1) in
-        trans0 c' t
-  | Fail -> c (Fail)
-  | Unknown -> c Unknown
-  | _ -> assert false
-*)
-
-(*
-let rec trans1 c = function
-    Unit -> c Unit
-  | True -> c True
-  | False -> c False
-  | Int n -> c (Int n)
-  | NInt x -> c (NInt x)
-  | Var x -> c (Var x)
-  | Fun(x, t) ->
-      let f = new_var' "f" in
-        funs := f::!funs;
-        trans1 c (Let(Nonrecursive, f, [x], t, Var f))
-  | App(t1, ts) ->
-      let k = new_var' "x" in
-      let r = new_var' "x" in
-      let c1 x = app2app x [Var k] in
-      let cc = List.fold_right (fun t cc -> fun x -> trans1 (fun y -> cc (app2app x [y])) t) ts c1 in
-        funs := k::!funs;
-        Let(Nonrecursive, k, [r], c (Var r), trans1 cc t1)
-  | If(t1, t2, t3) ->
-      let k = new_var' "x" in
-      let x = new_var' "x" in
-      let t2' = trans1 (fun y -> App(Var k, [y])) t2 in
-      let t3' = trans1 (fun y -> App(Var k, [y])) t3 in
-      let c' y = Let(Nonrecursive, k, [x], c (Var x), If(y, t2', t3')) in
-        funs := k::!funs;
-        trans1 c' t1
-  | Let(flag, f, xs, t1, t2) ->
-      begin
-        if flag = Nonrecursive
-        then
-          match xs with
-              [] ->
-                let c' t = trans1 c (subst f t t2) in
-                  trans1 c' t1
-            | _::_ ->
-                let k = new_var' "x" in
-                let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
-                let t2' = trans1 c t2 in
-                  Let(flag, f, xs@[k], t1', t2')
-        else
-          match xs with
-              [] ->
-                let c' t = trans1 c (subst f t t2) in
-                  trans1 c' t1
-            | _::_ ->
-                let k = new_var' "x" in
-                let t1' = trans1 (fun y -> App(Var k, [y])) t1 in
-                let t2' = trans1 c t2 in
-                  Let(flag, f, xs@[k], t1', t2')
-      end
-  | BinOp(op, t1, t2) ->
-      let c1 t1' t2' = c (BinOp(op, t1', t2')) in
-      let c2 y1 = trans1 (fun y2 -> c1 y1 y2) t2 in
-        trans1 c2 t1
-  | Not t ->
-      let c' t1 = c (Not t1) in
-        trans1 c' t
-  | Fail -> c (Fail)
-  | Unknown -> c Unknown
-  | Event s -> c (Event s)
-  | t -> (Format.printf "%a@." (Syntax.print_term_fm Syntax.ML false) t; assert false)
-*)
-
-
 
 
 
@@ -683,9 +544,9 @@ let rec normalize = function
 let trans t =
   let cps_pre = infer_cont_pos [] t in
   let cps = trans2 cps_pre in
-  let () = Typing.type_checking true cps in
+  let () = Typing.type_checking cps in
   let normalized = normalize cps in
-  let typed = Typing.typing true normalized in
+  let typed = Typing.typing normalized in
   let inlined = inlining !funs [] typed in
 (*
   let removed = remove_unused inlined in

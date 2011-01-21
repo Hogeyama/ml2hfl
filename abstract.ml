@@ -692,6 +692,11 @@ let rec trans_eager_bool2 f = function
       let t3' = trans_eager_bool2 f t3 in
         Let(Nonrecursive, f', [x], If(Var x, t2', t3'), t1')
   | t -> Syntax.print_term Syntax.ML false t; assert false
+
+let is_bool_const = function
+    True | False | Unknown -> true
+  | _ -> false
+
 let rec trans_eager2 c = function
     Unit -> c [Unit]
   | True -> c [True]
@@ -709,7 +714,8 @@ let rec trans_eager2 c = function
           trans_eager2 c' t
       in
         c [List.fold_left aux c' ts []]
-  | If(t1, t2, t3) when t2 <> True && t2 <> False ->
+  | If(t1, t2, t3) when not (is_bool_const t2) && not (is_bool_const t3) ->
+      let () = Format.printf "If: t2 = %a, t3 = %a@." pp_print_term t2 pp_print_term t3 in
       let x = new_var' "b" in
       let f = new_var' "f" in
       let t1' = trans_eager_bool2 f t1 in
