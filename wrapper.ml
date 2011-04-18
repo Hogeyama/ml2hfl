@@ -3,30 +3,16 @@ open Util
 open Syntax
 
 
-
-
+let cvc3in = ref stdin
+let cvc3out = ref stdout
 
 
 let rec string_of_typ = function
-    TInt _
-  | TUnknown -> "INT"(*???*)
+    TInt _ -> "INT"
   | TBool -> "BOOLEAN"
-  | TUnit -> "INT"(*???*)
-  | TVar({contents = None}) -> "INT"(*???*)
+  | TList _ -> "List"
   | TVar({contents = Some(typ)}) -> string_of_typ typ
-  | typ -> (Format.printf "%a@." (print_typ ML) typ; assert false)
-
-
-
-
-
-let rec parse_type acc typ =
-  match typ with
-      TFun(xtyp1, typ2) -> parse_type (xtyp1::acc) typ2
-    | _ -> List.rev acc, typ
-let parse_type = parse_type []
-
-
+  | typ -> (Format.printf "%a@." print_typ typ; assert false)
 
 
 let is_bool = function
@@ -51,6 +37,7 @@ let rec to_exp = function
   | BinOp(Mult, t1, t2) ->
       (let t = BinOp(Mult, t1, t2) in
       Format.printf "Nonlinear expression not supported: %a@." (print_term_fm ML true) t; assert false)
+  | Nil -> CsisatAst.Variable "nil"
   | t -> (Format.printf "@.%a@." (print_term_fm ML true) t; assert false)
 let rec to_pred = function
     True -> CsisatAst.True
@@ -77,15 +64,13 @@ let parse_ident s =
   let id = int_of_string (String.sub s (n+1) (len-n-1)) in
     {id=id; name=name; typ=TUnknown}
 
-
 let rec from_exp = function
     CsisatAst.Constant x -> Int (int_of_float x)
-  | CsisatAst.Variable x ->
-      if x = "tru" then True
-      else if x = "fls" then False
-      else if x.[0] = '_'
-      then NInt (parse_ident (String.sub x 1 (String.length x - 1)))
-      else Var (parse_ident x)
+  | CsisatAst.Variable "tru" -> True
+  | CsisatAst.Variable "fls" -> False
+  | CsisatAst.Variable "nil" -> Nil
+  | CsisatAst.Variable x when x.[0] = '_' -> NInt (parse_ident (String.sub x 1 (String.length x - 1)))
+  | CsisatAst.Variable x -> Var (parse_ident x)
   | CsisatAst.Sum[e1;e2] -> BinOp(Add, from_exp e1, from_exp e2)
   | CsisatAst.Sum(e::es) -> List.fold_left (fun e1 e2 -> BinOp(Add, e1, from_exp e2)) (from_exp e) es
   | CsisatAst.Coeff(x,e) -> BinOp(Mult, Int (int_of_float x), from_exp e)
@@ -110,17 +95,53 @@ let rec from_pred = function
 
 
 
-let cvc3in = ref stdin
-let cvc3out = ref stdout
-
 let open_cvc3 () =
-  let cin,cout = Unix.open_process (Flag.cvc3 ^ " +int") in
+  let cin,cout = Unix.open_process Flag.cvc3 in
   cvc3in := cin;
   cvc3out := cout
 
 let close_cvc3 () =
   match Unix.close_process (!cvc3in, !cvc3out) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+
+let set_datatype_cvc3 ?(cout = !cvc3out) t =
+  let id = ref 0 in
+  let fm = Format.formatter_of_out_channel cout in
+  let declss = get_decls t in
+  let print_kind fm = function
+      Variant ctypss ->
+        let rec aux fm = function
+            [] -> ()
+          | (c,typs)::ctypss ->
+              let bar = if ctypss = [] then "" else " | " in
+                if typs = []
+                then Format.fprintf fm "%s%s%a" c bar aux ctypss
+                else
+                  let rec aux' fm = function
+                      [] -> assert false
+                    | [typ] -> Format.fprintf fm "sel%d:%s" !id (string_of_typ typ); incr id
+                    | typ::typs -> Format.fprintf fm "%a,%a" aux' [typ] aux' typs
+                  in
+                    Format.fprintf fm "%s(%a)%s%a" c aux' typs bar aux ctypss
+        in
+          aux fm ctypss
+    | Record _ -> ()
+  in
+  let print_decls decls =
+    let rec aux fm = function
+        [] -> ()
+      | (x,kind)::decls ->
+          match kind with
+              Variant ctypss ->
+                let punc = if decls=[] then "" else "," in
+                  Format.fprintf fm "%s = %a%s %a"
+                    x print_kind kind punc aux decls
+            | Record _ -> ()
+    in
+      Format.fprintf fm "DATATYPE %a END;@?" aux decls
+  in
+    List.iter print_decls declss;
+    output_string cout "DATATYPE List = nil | cons (cdr: List) END;"
 
 
 let check pre p =
@@ -142,7 +163,7 @@ let check pre p =
       | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
     in
       uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
-
+(*
   (**)
   let env = List.map (fun v -> Typing.new_var v) fv in
   let aux p = fst (Typing.infer env p) in
@@ -150,7 +171,7 @@ let check pre p =
   let pre = List.map aux pre in
   let fv = List.map fst env in
     (**)
-
+*)
   (*
     List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
   *)
@@ -203,15 +224,18 @@ let checksat p =
 
   let fv =
     let rec uniq = function
-	[] -> []
-      | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
+        [] -> []
+      | x::xs ->
+          if List.exists (fun y -> x.id=y.id) xs || x.typ = TUnit
+          then uniq xs
+          else x::(uniq xs)
     in
       uniq (get_fv2 p) in
-
+(*
   let env = List.map (fun v -> Typing.new_var v) fv in
   let p, _  = Typing.infer env p in
   let fv = List.map fst env in
-
+*)
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ ";" in
 
@@ -221,9 +245,9 @@ let checksat p =
   let () = Format.fprintf fm "%s@?" q in
   let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
-    if s = "CVC> Satisfiable." then
+    if Str.string_match (Str.regexp ".*Satisfiable") s 0 then
       true
-    else if s = "CVC> Unsatisfiable." then
+    else if Str.string_match (Str.regexp ".*Unsatisfiable") s 0 then
       false
     else begin
       Format.printf "CVC3 reported an error@."; assert false
@@ -292,7 +316,8 @@ let rec rename_ident = function
 
 
 
-let get_solution p =
+
+let get_solution p t =
   (*
     let cin = !cvc3in in
     let cout = !cvc3out in
@@ -300,18 +325,14 @@ let get_solution p =
   (**)
   let cin,cout = Unix.open_process Flag.cvc3 in
     (**)
+  let () = set_datatype_cvc3 ~cout:cout t in
   let fm = Format.formatter_of_out_channel cout in
-
   let fv =
     let rec uniq = function
-	[] -> []
+	    [] -> []
       | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
     in
       uniq (get_fv2 p) in
-
-  let env = List.map (fun v -> Typing.new_var v) fv in
-  let p, _  = Typing.infer env p in
-  let fv = List.map fst env in
 
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ "; COUNTERMODEL;" in
@@ -324,14 +345,16 @@ let get_solution p =
     (**)
   let () = close_out cout in
     (**)
-  let () = ignore (input_line cin); ignore (input_line cin); ignore (input_line cin) in
   let rec aux cin =
     try
       let s = input_line cin in
-      let pos_begin = String.index s '(' + 1 in
-      let pos_end = String.index s ')' in
-      let s' = String.sub s pos_begin (pos_end - pos_begin) in
-        s' :: aux cin
+        if Str.string_match (Str.regexp ".*ASSERT") s 0
+        then
+          let pos_begin = String.index s '(' + 1 in
+          let pos_end = String.index s ')' in
+          let s' = String.sub s pos_begin (pos_end - pos_begin) in
+            s' :: aux cin
+        else aux cin
     with End_of_file -> []
   in
   let ts = aux cin in
@@ -342,7 +365,10 @@ let get_solution p =
         Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
   in
     (**)
-  let aux s = not (Str.string_match (Str.regexp ".*cvc3") s 0) in
+  let aux s =
+    not (Str.string_match (Str.regexp "cvc3") s 0) &&
+    not (Str.string_match (Str.regexp "_reach_") s 0)
+  in
     List.filter aux ts
 
 
@@ -454,7 +480,7 @@ let rec simplify_bool_exp precise t =
         if n <= m then True else False
     | BinOp(Geq, Int n, Int m) ->
         if n >= m then True else False
-    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
+    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) when (function TInt _|TRInt _->true | _->false) (Typing.get_typ t1) ->
 (*
         let t1 = simplify_exp t1 in
         let t2 = simplify_exp t2 in
@@ -466,6 +492,7 @@ let rec simplify_bool_exp precise t =
             let t1' = div_arith_exp d t1 in
             let t2' = div_arith_exp d t2 in
               BinOp(op, simplify_exp t1', simplify_exp t2')
+    | BinOp(Eq, t1, t2) -> BinOp(Eq, t1, t2)
     | Not True -> False
     | Not False -> True
     | Not(BinOp(Lt, t1, t2)) ->
@@ -506,6 +533,8 @@ and simplify_exp t =
       | Int(0), t | t, Int(0) -> Int(0)
       | Int(1), t | t, Int(1) -> t
       | _, _ -> BinOp(Mult, t1', t2'))
+  | Nil
+  | Cons _ -> t
   | _ -> simplify_bool_exp true t
 
 
@@ -538,6 +567,12 @@ let interpolation ts1 ts2 =
   let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
   let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t1: %s@." (CsisatAstUtil.print_pred t1) in
   let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2) in
+
+  let fv =
+    let aux acc = List.fold_left (fun acc t -> acc @@@ get_fv t) acc in
+      aux (aux [] ts1) ts2
+  in
+  let env = List.map (fun x -> x, Var x) fv in
 
   let pred = try
       CsisatInterpolate.interpolate_with_proof t1 t2
@@ -581,9 +616,10 @@ let interpolation ts1 ts2 =
     end
   in
   let pred' = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff pred) in
-  if Flag.debug && Flag.print_interpolant then
-    Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
-  else ();
+  let () =
+    if Flag.debug && Flag.print_interpolant then
+      Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
+  in
   let pred'' =
     match Syntax.normalize_bool_exp (simplify_bool_exp false (from_pred (CsisatAstUtil.dnf pred'))) with
       BinOp(Or, _, _) as p ->
@@ -598,11 +634,12 @@ let interpolation ts1 ts2 =
         with Not_found -> p)
     | p -> p
   in
+  let pred''' = subst_term env pred'' in
   (if Flag.debug then begin
-    ()(*assert (check ts1 pred'' &&
-            check [pred''] (Not (List.fold_left (fun t p -> BinOp(And, t, p)) (List.hd ts2) (List.tl ts2))))*)
+    ()(*assert (check ts1 pred''' &&
+            check [pred'''] (Not (List.fold_left (fun t p -> BinOp(And, t, p)) (List.hd ts2) (List.tl ts2))))*)
   end);
-    pred''
+    pred'''
 
 
 

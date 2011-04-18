@@ -1,69 +1,141 @@
-.PHONY: all all-nc clean-all ocaml test
 
-CSISAT = ./csisat-read-only
+.PHONY: all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc
+
+OCAMLC       = ocamlc
+OCAMLOPT     = ocamlopt
+OCAMLDEP     = ocamldep
+OCAMLLIB     = /usr/lib/ocaml
+OCAMLLEX     = ocamllex
+OCAMLYACC    = ocamlyacc
+
 OCAML_SOURCE = ocaml-3.11.2
-OSP_PATH = $(OCAML_SOURCE)/parsing
-OSU_PATH = $(OCAML_SOURCE)/utils
-OST_PATH = $(OCAML_SOURCE)/typing
-OSB_PATH = $(OCAML_SOURCE)/bytecomp
-OSD_PATH = $(OCAML_SOURCE)/driver
+CSISAT = csisat-read-only
 
-OCAML_SOURCES_UTILS = misc.ml warnings.ml config.ml clflags.ml tbl.ml consistbl.ml ccomp.ml
-OCAML_SOURCES_PARSING = asttypes.mli linenum.mli linenum.mll longident.mli parsetree.mli \
-	location.mli location.ml longident.ml printast.mli printast.ml \
-	syntaxerr.mli syntaxerr.ml parser.mly lexer.mli lexer.mll parse.mli parse.ml
-OCAML_SOURCES_TYPING = ident.ml path.ml primitive.ml types.ml btype.ml subst.ml predef.ml \
-	annot.mli datarepr.ml env.ml ctype.ml oprint.ml \
-	printtyp.ml typetexp.ml typedtree.ml includecore.ml stypes.ml parmatch.ml typecore.ml \
-	includeclass.ml typedecl.ml typeclass.ml mtype.ml includemod.ml typemod.ml \
-	unused_var.ml
-OCAML_SOURCES_BYTECOMP = lambda.ml printlambda.ml typeopt.ml switch.ml \
-	matching.ml translobj.ml translcore.ml translclass.ml translmod.ml \
-	opcodes.ml instruct.ml emitcode.ml printinstr.ml bytegen.ml simplif.ml
-OCAML_SOURCES_DRIVER = pparse.ml compile.ml
-SOURCES =  $(addprefix $(OSU_PATH)/,$(OCAML_SOURCES_UTILS)) \
-	$(addprefix $(OSP_PATH)/,$(OCAML_SOURCES_PARSING)) \
-	$(addprefix $(OST_PATH)/,$(OCAML_SOURCES_TYPING)) \
-	$(addprefix $(OSB_PATH)/,$(OCAML_SOURCES_BYTECOMP)) \
-	$(addprefix $(OSD_PATH)/,$(OCAML_SOURCES_DRIVER)) \
-	flag.ml util.ml utilities.ml automata.ml syntax.ml parser_wrapper.ml alpha.ml typing.ml \
-	wrapper.ml CPS.ml abstract.ml check.ml feasibility.ml infer.ml refine.ml main.ml
+CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
-LIBS = unix libcsisat str
-CLIBS = camlpico picosat camlglpk glpk
-INCDIRS = $(CSISAT)/lib $(CSISAT)/obj
-RESULT = mc
-OCAMLFLAGS= -dtypes
-YFLAGS = -v
-CFLAGS = -g
+INCLUDES = -I $(OCAML_SOURCE)/bytecomp \
+	-I $(OCAML_SOURCE)/driver \
+	-I $(OCAML_SOURCE)/parsing \
+	-I $(OCAML_SOURCE)/typing \
+	-I $(OCAML_SOURCE)/utils \
+	-I $(CSISAT)/lib \
+	-I $(CSISAT)/obj
+OCAMLFLAGS = -w p -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)'
+OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)'
 
-include OCamlMakefile
+DOC = doc
 
-all-dc:
-	make ocaml && make dc
+################################################################################
+# main target
 
-all-nc: 
-	make ocaml && make nc
+NAME = mochi
+
+all: .depend byte opt
+
+byte: $(NAME).byte
+opt: $(NAME).opt
+lib: ocaml csisat
+
+
+################################################################################
+# bytecode and native-code compilation
+
+CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
+	flag.cmo util.cmo utilities.cmo automata.cmo syntax.cmo \
+	parser_wrapper.cmo alpha.cmo typing.cmo wrapper.cmo CPS.cmo \
+	abstract.cmo check.cmo feasibility.cmo infer.cmo refine.cmo main.cmo
+CMX = $(CMO:.cmo=.cmx)
+CMA = str.cma unix.cma libcsisat.cma
+CMXA = $(CMA:.cma=.cmxa)
+
+
+OCAML_UTILS_CMO = misc.cmo warnings.cmo config.cmo clflags.cmo tbl.cmo consistbl.cmo ccomp.cmo
+OCAML_PARSING_CMO = linenum.cmo location.cmo longident.cmo printast.cmo \
+	syntaxerr.cmo parser.cmo lexer.cmo parse.cmo
+OCAML_TYPING_CMO = ident.cmo path.cmo primitive.cmo types.cmo btype.cmo subst.cmo predef.cmo \
+	datarepr.cmo env.cmo ctype.cmo oprint.cmo \
+	printtyp.cmo typetexp.cmo typedtree.cmo includecore.cmo stypes.cmo parmatch.cmo typecore.cmo \
+	includeclass.cmo typedecl.cmo typeclass.cmo mtype.cmo includemod.cmo typemod.cmo \
+	unused_var.cmo
+OCAML_BYTECOMP_CMO = lambda.cmo printlambda.cmo typeopt.cmo switch.cmo \
+	matching.cmo translobj.cmo translcore.cmo translclass.cmo translmod.cmo \
+	opcodes.cmo instruct.cmo emitcode.cmo printinstr.cmo bytegen.cmo simplif.cmo
+OCAML_DRIVER_CMO = pparse.cmo compile.cmo
+
+
+$(NAME).byte: $(CMO)
+	$(OCAMLC) $(OCAMLFLAGS) -o $@ $(CMA) $(CMO)
+
+$(NAME).opt: $(CMX)
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
+
+
+# Common rules
+.SUFFIXES: .ml .mli .cmo .cmi .cmx
+
+.ml.cmo:
+	$(OCAMLC) $(OCAMLFLAGS) -c $<
+
+.mli.cmi:
+	$(OCAMLC) $(OCAMLFLAGS) -c $<
+
+.ml.cmx:
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $<
+
+
+
+################################################################################
+# libraries
 
 ocaml:
-	cd $(OCAML_SOURCE) && ./configure && make world
+	cd $(OCAML_SOURCE); ./configure && make world opt world.opt opt.opt
 
-clean-all:
-	make clean
-	make SOURCES="$(RUNTIMESOURCES)" clean
-	-rm -rf *~
-	-rm -rf *.dot
-	-rm -rf *.output
-	-rm -rf *.annot
-	-rm -rf *.a *.cma *.cmxa
+csisat:
+	cd $(CSISAT); make
 
 
+################################################################################
+# documents
+
+MLI = $(wildcard *.mli)
+
+doc:
+	mkdir -p $(DOC)
+	ocamldoc -html -d $(DOC) $(MLI)
+	perl -pi -e 's/charset=iso-8859-1/charset=utf8/' $(DOC)/*.html
 
 
-TEST = bcopy_print.ml fact_exn.ml array_init2.ml file.ml map_map.ml ack.ml repeat_eqn.ml \
-	recursive.ml hors2.ml zip4.ml zip_unzip.ml zip_map2.ml inc.ml bcopy4.ml \
-	dotprod2.ml inc4.ml bcopy5.ml dotprod4.ml
+################################################################################
+# clean
 
-test:
-	ulimit -t 10; for i in $(TEST); do echo $$i; ./mc test/$$i | egrep '(Safe|Unsafe)'; echo;  done
+clean:
+	rm -f *.cm[iox] *.o *.a *.annot *~ .depend
+	rm -f $(NAME).byte $(NAME).opt
+
+clean-ocaml:
+	cd $(OCAML_SOURCE); make clean
+
+clean-csisat:
+	cd $(CSISAT); make clean
+
+clean-doc:
+	rm -rf doc
+
+clean-all: clean clean-doc clean-ocaml clean-csisat
+
+
+################################################################################
+# depend
+
+SRC = $(CMO:.cmo=.ml)
+
+.depend:
+	$(OCAMLDEP) $(INCLUDES) *.mli $(SRC) > .depend
+
+include .depend
+
 

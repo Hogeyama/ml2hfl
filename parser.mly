@@ -131,6 +131,9 @@ exp:
   { $2 }
 | FUN id ARROW exp %prec prec_fun
   { Fun($2, $4) }
+/*
+  { let f = new_var "f" in Let(Nonrecursive, f, $2, $4, Var f) }
+*/
 | MINUS exp
   { BinOp(Sub, Int 0, $2) }
 | exp exp_list %prec prec_app

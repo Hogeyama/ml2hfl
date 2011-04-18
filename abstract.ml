@@ -44,6 +44,7 @@ let add_to_cond t cond =
 
 let get_preds = function
     TInt ps -> ps
+  | TList(_,ps) -> ps
   | _ -> assert false
 
 
@@ -319,7 +320,8 @@ let inst_var t p =
 
 let abst_arg x (xs,pbs) =
   match x.typ with
-      TInt ps ->
+      TInt ps
+    | TList(_,ps) ->
         let xs' = List.map (fun _ -> {(new_var' "b") with typ=TAbsBool}) ps in
         let pbs' = List.map2 (fun p b -> inst_var (Var x) p, Var b) ps xs' in
           xs'@xs, pbs'@pbs
@@ -339,6 +341,14 @@ let rec coerce cond pbs typ1 typ2 t =
   match typ1,typ2 with
       TUnit,TUnit -> filter_fail cond pbs t
     | TBool, TBool -> t
+    | TVariant ctypss1, TVariant ctypss2 when ctypss1=ctypss2 -> t
+    | TFun((x1,TList(_,ps1)),typ12), TFun((x2,TList(_,ps2)),typ22) ->
+        let xs,pbs' = abst_arg x2 ([],pbs) in
+        let cond' = BinOp(Eq, Var x1, Var x2)::cond in
+        let ts = List.map (fun p -> abst cond' pbs' (inst_var (Var x2) p)) ps1 in
+        let t' = coerce cond' pbs' typ12 typ22 (App(t, ts)) in
+          List.fold_right (fun x t -> make_new_fun x t) xs t'
+
     | TFun((x1,TInt ps1),typ12), TFun((x2,TInt ps2),typ22) ->
         let xs,pbs' = abst_arg x2 ([],pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
@@ -350,24 +360,31 @@ let rec coerce cond pbs typ1 typ2 t =
         let xs,pbs' = abst_arg x2 ([],pbs) in
         let cond' = BinOp(Eq, Var x1, Var x2)::cond in
         let t' = coerce cond' pbs' typ12 typ22 t in
-                                        let f = new_var' "f" in
-                                        let x = new_var' "x" in
-                                                                let tru,_ = weakest cond' pbs' (inst_var (Var x2) p) in
+        let f = new_var' "f" in
+        let x = new_var' "x" in
+        let tru,_ = weakest cond' pbs' (inst_var (Var x2) p) in
         let t'' = If(tru, t', App(Fail, [Unit; Let(Nonrecursive, f, [x], Var x, Var f)])) in
           List.fold_right (fun x t -> make_new_fun x t) xs t''
 
     | TFun((x1,TInt ps1),typ12), TFun((x2,TRInt p),typ22) ->
         let cond' = (inst_var (Var x2) p)::BinOp(Eq, Var x1, Var x2)::cond in
         let ts = List.map (fun p -> abst cond' pbs (inst_var (Var x2) p)) ps1 in
-        coerce cond' pbs typ12 typ22 (App(t, ts))
+          coerce cond' pbs typ12 typ22 (App(t, ts))
 
     | TFun((x1,typ11),typ12), TFun((x2,typ21),typ22) ->
         let x = new_var' "x" in
-(* x cannot be depended because x is function? *)
+          (* x cannot be depended because x is function? *)
           make_new_fun x (coerce cond pbs typ12 typ22 (App(t, [coerce cond pbs typ21 typ11 (Var x)])))
     | TUnknown,_ -> t
     | _,TUnknown -> t
-    | _,_ -> Format.printf "coerce:%a,%a@." (Syntax.print_typ Syntax.ML) typ1 (Syntax.print_typ Syntax.ML) typ2; assert false
+    | _,_ -> Format.printf "coerce:%a,%a@." print_typ typ1 print_typ typ2; assert false
+
+let rec abstract_list = function
+    Var x -> Var x
+  | Nil -> Nil
+  | Cons(_,t2) -> BinOp(Add, Int 1, abstract_list t2)
+  | _ -> assert false
+
 
 let rec abstract cond pbs = function
     Unit, TUnit -> [Unit]
@@ -375,7 +392,7 @@ let rec abstract cond pbs = function
   | False, TBool -> [False]
   | Unknown, TBool -> [Unknown]
   | t, (TRInt p) -> []
-  | t, (TInt _ as typ) ->
+  | t, (TInt _ | TList _ as typ) ->
       (*
         let ps = List.map (fun p -> inst_var t p) (get_preds typ) in
         print_string "\n";
@@ -408,7 +425,7 @@ let rec abstract cond pbs = function
                 (t,typ1)::ttyps, typ
           | ts, typ ->
               Format.printf "Abstract.abstract:@.%n:%a:%a@."
-                (List.length ts) (Syntax.print_term_fm Syntax.ML false) (Var f) (print_typ ML) typ;
+                (List.length ts) (Syntax.print_term_fm Syntax.ML false) (Var f) print_typ typ;
               assert false
         in
           aux (ts, f.typ)
@@ -486,7 +503,22 @@ let rec abstract cond pbs = function
   | Fail, _ -> [Fail]
   | Event s, _ -> [Event s]
   | App(t, []), typ -> abstract cond pbs (t, typ)
-  | t, typ -> (Format.printf "Abstract.abstract:@.%a:%a@." (Syntax.print_term_fm Syntax.ML false) t (Syntax.print_typ Syntax.ML) typ; assert false)
+  | Match(t1,t2,x,y,t3), typ ->
+      let t1' = hd (abstract cond pbs (t1,TList(TUnknown,[BinOp(Eq,Var abst_var,Nil)]))) in
+      let t2' = hd (abstract cond pbs (t2,typ)) in
+      let t3' = hd (abstract cond pbs (t3,typ)) in
+        [If(t1', Label(true,t2'), Label(false,t3'))]
+  | Constr(c,ts), typ -> [Unit]
+  | Match_(_,pats), typ ->
+      let aux (pat,t1) (t2,c) =
+        let t1' = hd (abstract cond pbs (t1,typ)) in
+          Branch(LabelInt(c,t1'),t2), c-1
+      in
+      let t,_ = List.fold_right aux pats (Unit,List.length pats-1) in
+        [t]
+  | Type_decl(decls,t), typ ->
+      abstract cond pbs (t,typ)
+  | t, typ -> (Format.printf "Abstract.abstract:@.%a:%a@." (print_term_fm ML false) t print_typ typ; assert false)
 
 
 
@@ -747,12 +779,11 @@ let rec trans_eager2 c = function
   | Label(b, t) ->
       let t' = trans_eager2 hd t in
         c [Label(b, t')]
+  | LabelInt(n, t) ->
+      let t' = trans_eager2 hd t in
+        c [LabelInt(n, t')]
   | Event s -> c [Event s]
 let trans_eager2 = trans_eager2 hd
-
-
-
-
 
 
 

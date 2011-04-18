@@ -63,6 +63,7 @@ let rec flatten_app_if = function
   | Label(b, t) ->
       let t' = flatten_app_if t in
         Label(b, t')
+  | LabelInt(n, t) -> LabelInt(n, flatten_app_if t)
   | Event s -> Event s
 
 
@@ -70,12 +71,16 @@ let rec flatten_app_if = function
 
 
 let cps2hors t =
+  let label_n = max_label_num t in
   let s = new_var' "S" in
     (*let _,(t0,defs) = Lift.lift t in
       let defs' = (s,[],t0)::defs in
       let defs'' = List.map (fun (x,xs,t) -> (x,xs,part_eval t)) defs' in*)
   let defs, t0 = lift t in
-
+  let () =
+    let t' =  List.fold_right (fun (f, (xs, t')) t -> Syntax.Let(Nonrecursive,f,xs,t',t)) defs t0 in
+    Syntax.print_term Syntax.ML false t'
+  in
   let defs, t0 = Typing.typing_defs defs t0 in
   let defs = List.map (fun (x, (xs, t)) ->
                          let n = (List.length (get_args x.typ)) - (List.length xs) in
@@ -100,44 +105,50 @@ let cps2hors t =
     Syntax.print_term Syntax.ML false t';
     Typing.typing t';
   *)
+  let spec_br q =
+    let rec aux i spec =
+      if i < 0
+      then spec
+      else aux (i-1) ((q, "br" ^ string_of_int i, [q])::spec)
+    in
+      aux label_n []
+  in
 
   let spec =
     match !Flag.mode with
         Flag.Reachability ->
-          [(0, "br", [0;0]);
-           (0, "then", [0]);
-           (0, "else", [0]);
-           (0, "unit", [])]
+          (0, "br", [0;0])::
+          (0, "then", [0])::
+          (0, "else", [0])::
+          (0, "unit", [])::
+            spec_br 0
       | Flag.FileAccess ->
-          [0, "br", [0; 0];
-           1, "br", [1; 1];
-           2, "br", [2; 2];
-           3, "br", [3; 3];
-           4, "br", [4; 4];
-           0, "newr", [1];
-           1, "read", [1];
-           1, "close", [4];
-           0, "neww", [2];
-           2, "write", [2];
-           2, "close", [4];
-           2, "newr", [3];
-           1, "neww", [3];
-           3, "read", [3];
-           3, "write", [3];
-           3, "close", [3];
-           4, "unit", [];
-           0, "unit", [];
-           3, "unit", [];
-           0, "then", [0];
-           0, "else", [0];
-           1, "then", [1];
-           1, "else", [1];
-           2, "then", [2];
-           2, "else", [2];
-           3, "then", [3];
-           3, "else", [3];
-           4, "then", [4];
-           4, "else", [4];]
+          (0, "br", [0; 0])::
+          (1, "br", [1; 1])::
+          (2, "br", [2; 2])::
+          (3, "br", [3; 3])::
+          (0, "newr", [1])::
+          (1, "read", [1])::
+          (1, "close", [0])::
+          (0, "neww", [2])::
+          (2, "write", [2])::
+          (2, "close", [0])::
+          (2, "newr", [3])::
+          (1, "neww", [3])::
+          (3, "read", [3])::
+          (3, "write", [3])::
+          (3, "close", [3])::
+          (0, "unit", [])::
+          (3, "unit", [])::
+          (0, "then", [0])::
+          (0, "else", [0])::
+          (1, "then", [1])::
+          (1, "else", [1])::
+          (2, "then", [2])::
+          (2, "else", [2])::
+          (3, "then", [3])::
+          (3, "else", [3])::
+            (spec_br 0 @ spec_br 1 @ spec_br 2 @ spec_br 3)
   in
     defs'', spec
 
@@ -151,6 +162,9 @@ let node_of_string s =
     | "fail" -> FailNode
     | "then" -> LabNode true
     | "else" -> LabNode false
+    | s when String.sub s 0 2 = "br" ->
+        let len = String.length s in
+          PatNode (int_of_string (String.sub s 2 (len-2)))
     | s -> EventNode s
 
 let get_pair s =

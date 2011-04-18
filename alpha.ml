@@ -1,4 +1,5 @@
 
+open Util
 open Format
 open Syntax
 
@@ -13,6 +14,36 @@ let free_map : (string*ident) list ref = ref []
 let free : ident list ref = ref []
 
 
+let rec alpha_pat = function
+    PVar x ->
+      let x' = new_id x in
+        PVar x', [x.name,x']
+  | PConst c -> PConst c, []
+  | PTuple pats ->
+      let aux pat (pats,map) =
+        let pat',map' = alpha_pat pat in
+          pat'::pats, map'@@map
+      in
+      let pats',map = List.fold_right aux pats ([],[]) in
+        PTuple pats', map
+  | PConstruct(name,pats) ->
+      let aux pat (pats,map) =
+        let pat',map' = alpha_pat pat in
+          pat'::pats, map'@@map
+      in
+      let pats',map = List.fold_right aux pats ([],[]) in
+        PConstruct(name,pats'), map
+  | PRecord spats ->
+      let aux (s,pat) (spats,map) =
+        let pat',map' = alpha_pat pat in
+          (s,pat')::spats, map'@@map
+      in
+      let spats',map = List.fold_right aux spats ([],[]) in
+        PRecord spats', map
+  | POr(p1,p2) ->
+      let p1',map1 = alpha_pat p1 in
+      let p2',map2 = alpha_pat p2 in
+        POr(p1',p2'), map1@@map2
 
 let rec alpha map = function
     Unit -> Unit
@@ -88,105 +119,22 @@ let rec alpha map = function
   | Label _ -> assert false
   | Fail -> Fail
   | Event s -> Event s
-
-
-
-
-(*
-let rec add_nint t x =
-  let aux t =
-    let x1 = new_var' x.origin in
-    let x2 = new_var' x.origin in
-    let f = new_var' "tmp"(*????????????????????????*) in
-      free := x2::!free;
-      (*Let(x, [], NInt x2, t)*)
-      Let(x, [], App(Let(f, [x1], Var x1, Var f), [NInt x2]), t)
-  in
-  match t with
-    Unit
-  | True
-  | False
-  | Unknown
-  | Int _
-  | NInt _ -> assert false
-  | Var y ->
-      assert (x=y);
-      aux (Var x)
-  | Fun(y, t) ->
-      let t' = add_nint t x in
-        Fun(y, t')
-  | App(t, ts) ->
-      let aux2 t = List.mem x (get_fv t) in
-      let n = List.fold_left (fun n t -> if aux2 t then n+1 else n) 0 (t::ts) in
-        if n>1
-        then aux (App(t, ts))
-        else
-          let ts' = List.map (fun t -> if aux2 t then add_nint t x else t) (t::ts) in
-            assert (n=1);
-            App(List.hd ts', List.tl ts')
-  | If(t1, t2, t3, _) ->
-      let aux2 t = List.mem x (get_fv t) in
-      let n = List.fold_left (fun n t -> if aux2 t then n+1 else n) 0 [t1; t2; t3] in
-        if n>1
-        then aux (If(t1, t2, t3, Unit))
-        else
-          let aux3 t = if aux2 t then add_nint t x else t in
-          let t1' = aux3 t1 in
-          let t2' = aux3 t2 in
-          let t3' = aux3 t3 in
-            assert (n=1);
-            If(t1', t2', t3', Unit)
-  | Branch(t1, t2) ->
-      let aux2 t = List.mem x (get_fv t) in
-      let n = List.fold_left (fun n t -> if aux2 t then n+1 else n) 0 [t1; t2] in
-        if n>1
-        then aux (Branch(t1, t2))
-        else
-          let aux3 t = if aux2 t then add_nint t x else t in
-          let t1' = aux3 t1 in
-          let t2' = aux3 t2 in
-            assert (n=1);
-            Branch(t1', t2')
-  | Let(f, xs, t1, t2) ->
-      let aux2 t = List.mem x (get_fv t) in
-      let n = List.fold_left (fun n t -> if aux2 t then n+1 else n) 0 [t1; t2] in
-        if n>1
-        then aux (Let(f, xs, t1, t2))
-        else
-          let aux3 t = if aux2 t then add_nint t x else t in
-          let t1' = aux3 t1 in
-          let t2' = aux3 t2 in
-            assert (n=1);
-            Let(f, xs, t1', t2')
-  | Letrec(f, xs, t1, t2) ->
-      let aux2 t = List.mem x (get_fv t) in
-      let n = List.fold_left (fun n t -> if aux2 t then n+1 else n) 0 [t1; t2] in
-        if n>1
-        then aux (Letrec(f, xs, t1, t2))
-        else
-          let aux3 t = if aux2 t then add_nint t x else t in
-          let t1' = aux3 t1 in
-          let t2' = aux3 t2 in
-            assert (n=1);
-            Letrec(f, xs, t1', t2')
-  | BinOp(op, t1, t2) ->
-      let aux2 t = List.mem x (get_fv t) in
-      let n = List.fold_left (fun n t -> if aux2 t then n+1 else n) 0 [t1; t2] in
-        if n>1
-        then aux (BinOp(op, t1, t2))
-        else
-          let aux3 t = if aux2 t then add_nint t x else t in
-          let t1' = aux3 t1 in
-          let t2' = aux3 t2 in
-            assert (n=1);
-        BinOp(op, t1', t2')
-  | Not t ->
-      let t' = add_nint t x in
-        Not t'
-  | Label _ -> assert false
-  | Fail -> Fail
-  | Event s -> Event s
-*)
+  | Nil -> Nil
+  | Cons(t1,t2) -> Cons(alpha map t1, alpha map t2)
+  | Constr(s,ts) -> Constr(s, List.map (alpha map) ts)
+  | Match(t1,t2,x,y,t3) ->
+      let x' = new_id x in
+      let y' = new_id y in
+      let map' = (x.name,x')::(y.name,y')::map in
+        Match(alpha map t1, alpha map t2, x', y', alpha map' t3)
+  | Match_(t,pats) ->
+      let aux (pat,t) =
+        let pat',map' = alpha_pat pat in
+          pat', alpha (map'@@map) t
+      in
+        Match_(alpha map t, List.map aux pats)
+  | Type_decl(decls,t) ->
+      Type_decl(decls, alpha map t)
 
 
 let add_assert t =

@@ -37,7 +37,6 @@ let print_info () =
 let rec cegar tdefs t1 ce_prev =
   let () = if Flag.print_type then Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n" !Flag.cegar_loop (Syntax.print_term_fm_break Syntax.ML true) t1 in
   let n = Syntax.get_counter () in
-
   let () = if Flag.print_progress then print_msg "\n(1) Abstracting ... " in
   let tmp = get_time() in
   let t_abst = Abstract.abstract t1 in
@@ -80,6 +79,7 @@ let rec cegar tdefs t1 ce_prev =
                     [] -> assert false
                   | [Syntax.LabNode true] -> a @ [Syntax.EventNode "then_fail"]
                   | [Syntax.LabNode false] -> a @ [Syntax.EventNode "else_fail"]
+                  | [Syntax.PatNode i] -> a @ [Syntax.EventNode ("br" ^ string_of_int i ^ "_fail")]
                   | [t] -> a @ [t]
                   | t::ce -> aux (a @ [t]) ce
                 in
@@ -111,12 +111,11 @@ let rec cegar tdefs t1 ce_prev =
               in
                 add_time tmp Flag.time_cegar;
                 if Flag.print_progress then print_msg "DONE!\n";
-                Syntax.set_counter n;
                 incr Flag.cegar_loop;
                 (**)
                 Wrapper.close_cvc3 ();
                 Wrapper.open_cvc3 ();
-                (**)
+                Syntax.set_counter n;
                 cegar tdefs t'' (ce::ce_prev)
             with
                 Syntax.Feasible p -> t1, Some (ce,p)
@@ -186,11 +185,12 @@ let main filename in_channel =
 
   let tdefs = List.map (fun (x, t) -> x, Syntax.fff t) tdefs in
   let cps = Refine.add_preds_ tdefs cps in
+  let () = Wrapper.set_datatype_cvc3 cps in
   let t_result, result = cegar tdefs cps [] in
     match result with
         None -> print_msg "\nSafe!\n\n"
       | Some (ce,p) ->
-          let sol = Wrapper.get_solution p in
+          let sol = Wrapper.get_solution p t_result in
             print_msg "Unsafe!\n";
             print_msg "Error trace:";
             List.iter (fun t -> Format.printf "%s; " t) sol;

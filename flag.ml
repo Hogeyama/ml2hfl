@@ -3,7 +3,7 @@ let ocaml_lib = ["./ocaml-3.11.2/stdlib/"]
 let log_dir = "/home/ryosuke/web/cegar/log/"
 let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
-let cvc3 = "./cvc3"
+let cvc3 = "./cvc3 +int"
 
 let merge_counterexample = ref false
 let split_free_var = ref false
@@ -23,7 +23,7 @@ let check_fun_arg_typ = false
 
 (* display or not *)
 let print_source = true
-let print_cps = false
+let print_cps = true
 let print_abst = true
 let print_abst_eager = false
 let print_type = true
@@ -51,7 +51,7 @@ let debug = true
 
 
 let use_dor = true
-let use_prefix_trace = true
+let use_prefix_trace = false
 let use_nint = ref false
 let use_subterm = false
 let use_neg_pred = true
