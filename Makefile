@@ -1,15 +1,15 @@
 
 .PHONY: all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc
 
-OCAMLC       = ocamlc
-OCAMLOPT     = ocamlopt
-OCAMLDEP     = ocamldep
-OCAMLLIB     = /usr/lib/ocaml
-OCAMLLEX     = ocamllex
-OCAMLYACC    = ocamlyacc
-
 OCAML_SOURCE = ocaml-3.11.2
 CSISAT = csisat-read-only
+
+OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
+OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
+OCAMLDEP     = $(OCAML_SOURCE)/tools/ocamldep.opt
+OCAMLLIB     = $(OCAML_SOURCE)/stdlib
+OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
+OCAMLYACC    = $(OCAML_SOURCE)/yacc/ocamlyacc.opt
 
 CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
@@ -19,8 +19,11 @@ INCLUDES = -I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/typing \
 	-I $(OCAML_SOURCE)/utils \
 	-I $(CSISAT)/lib \
-	-I $(CSISAT)/obj
-OCAMLFLAGS = -w p -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)'
+	-I $(CSISAT)/obj \
+	-I $(OCAMLLIB) \
+	-I $(OCAML_SOURCE)/otherlibs/unix \
+	-I $(OCAML_SOURCE)/otherlibs/str
+OCAMLFLAGS = -w p -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib
 OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)'
 
 DOC = doc
@@ -30,7 +33,8 @@ DOC = doc
 
 NAME = mochi
 
-all: .depend byte opt
+main: .depend byte opt
+all: main lib
 
 byte: $(NAME).byte
 opt: $(NAME).opt
