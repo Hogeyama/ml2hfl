@@ -953,7 +953,7 @@ let trans_simpl = trans_simpl (fun x -> x)
 
 
 
-
+(*
 let trans t =
   let cps_pre = infer_cont_pos [] t in
   let () = if true then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
@@ -969,9 +969,9 @@ let trans t =
   let removed = remove_unused inlined in
 *)
     part_eval inlined
+*)
 
-
-let trans' t =
+let trans t =
   let cps = trans_simpl t in
   let () = if true then Format.printf "CPS:@.%a@." pp_print_term cps in
   let typed = Typing.typing cps in
