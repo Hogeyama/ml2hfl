@@ -29,8 +29,8 @@ let rec to_exp = function
     True -> CsisatAst.Variable "tru"
   | False -> CsisatAst.Variable "fls"
   | Int n -> CsisatAst.Constant (float_of_int n)
-  | NInt x -> CsisatAst.Variable ("_" ^ x.name ^ "_" ^ string_of_int x.id)
-  | Var x -> CsisatAst.Variable (x.name ^ "_" ^ string_of_int x.id)
+  | Var x | NInt x -> CsisatAst.Variable (x.name ^ "_" ^ string_of_int x.id)
+  | RandInt t -> assert false
   | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
   | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
   | BinOp(Mult, Int n, t2) | BinOp(Mult, t2, Int n) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
@@ -96,7 +96,7 @@ let rec from_pred = function
 
 
 let open_cvc3 () =
-  let cin,cout = Unix.open_process Flag.cvc3 in
+  let cin,cout = Unix.open_process (Flag.cvc3 ^ " +int") in
   cvc3in := cin;
   cvc3out := cout
 
@@ -109,7 +109,7 @@ let set_datatype_cvc3 ?(cout = !cvc3out) t =
   let fm = Format.formatter_of_out_channel cout in
   let declss = get_decls t in
   let print_kind fm = function
-      Variant ctypss ->
+      KVariant ctypss ->
         let rec aux fm = function
             [] -> ()
           | (c,typs)::ctypss ->
@@ -125,26 +125,29 @@ let set_datatype_cvc3 ?(cout = !cvc3out) t =
                     Format.fprintf fm "%s(%a)%s%a" c aux' typs bar aux ctypss
         in
           aux fm ctypss
-    | Record _ -> ()
+    | KRecord _ -> ()
   in
   let print_decls decls =
     let rec aux fm = function
         [] -> ()
-      | (x,kind)::decls ->
+      | (x,(_,kind))::decls ->
           match kind with
-              Variant ctypss ->
+              KVariant ctypss ->
                 let punc = if decls=[] then "" else "," in
                   Format.fprintf fm "%s = %a%s %a"
                     x print_kind kind punc aux decls
-            | Record _ -> ()
+            | KRecord _ -> ()
     in
       Format.fprintf fm "DATATYPE %a END;@?" aux decls
   in
-    List.iter print_decls declss;
+  let declss' = List.filter (List.exists (function (_,(_,KVariant _)) -> true | (_,(_,KRecord _)) -> false)) declss in
+    List.iter print_decls declss';
     output_string cout "DATATYPE List = nil | cons (cdr: List) END;"
 
 
 let check pre p =
+  let pre = List.map init_rand_int pre in
+  let p = init_rand_int p in
   let cin = !cvc3in in
   let cout = !cvc3out in
     (**)
@@ -218,6 +221,7 @@ let check pre p =
 
 
 let checksat p =
+  let p = init_rand_int p in
   let cin = !cvc3in in
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
@@ -243,7 +247,6 @@ let checksat p =
   let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "checksat: %s@." q in
 
   let () = Format.fprintf fm "%s@?" q in
-  let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
     if Str.string_match (Str.regexp ".*Satisfiable") s 0 then
       true
@@ -325,7 +328,9 @@ let get_solution p t =
   (**)
   let cin,cout = Unix.open_process Flag.cvc3 in
     (**)
+
   let () = set_datatype_cvc3 ~cout:cout t in
+
   let fm = Format.formatter_of_out_channel cout in
   let fv =
     let rec uniq = function
@@ -337,11 +342,11 @@ let get_solution p t =
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ "; COUNTERMODEL;" in
 
-  let q = "PUSH;"^types^query^"\nPOP;" in
-  let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "get_solution: %s@." q in
+  let q = types ^ query in
+  let _ = if Flag.debug && Flag.print_cvc3 then Format.printf "get_solution: %s@." q in
 
-  let () = Format.fprintf fm "%s@?" q in
-  let _ = Format.pp_print_flush fm () in
+  let () = Format.fprintf fm "%s@." q in
+
     (**)
   let () = close_out cout in
     (**)
@@ -492,7 +497,7 @@ let rec simplify_bool_exp precise t =
             let t1' = div_arith_exp d t1 in
             let t2' = div_arith_exp d t2 in
               BinOp(op, simplify_exp t1', simplify_exp t2')
-    | BinOp(Eq, t1, t2) -> BinOp(Eq, t1, t2)
+    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
     | Not True -> False
     | Not False -> True
     | Not(BinOp(Lt, t1, t2)) ->
@@ -510,6 +515,9 @@ and simplify_exp t =
     Var _ -> t
   | Int _ -> t
   | NInt _ -> t
+  | RandInt t ->
+      assert (t = None);
+      RandInt None
   | BinOp(Add, t1, t2) ->
       let t1' = simplify_exp t1 in
       let t2' = simplify_exp t2 in
@@ -556,6 +564,19 @@ let rec simplify = function
 exception Satisfiable
 
 let interpolation ts1 ts2 =
+  let ts1 = List.map init_rand_int ts1 in
+  let ts2 = List.map init_rand_int ts2 in
+
+
+
+  let () = List.iter (fun t -> Format.printf "%a; " (print_term_fm ML true) t) ts1 in
+  let () = Format.printf "@." in
+  let () = List.iter (fun t -> Format.printf "%a; " (print_term_fm ML true) t) ts2 in
+  let () = Format.printf "@." in
+
+
+
+
   let bool_theory =
     [CsisatAst.Not(CsisatAst.Eq(CsisatAst.Variable "tru", CsisatAst.Variable "fls"));
     CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "tru"]), CsisatAst.Variable "fls");
@@ -569,7 +590,7 @@ let interpolation ts1 ts2 =
   let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2) in
 
   let fv =
-    let aux acc = List.fold_left (fun acc t -> acc @@@ get_fv t) acc in
+    let aux acc = List.fold_left (fun acc t -> acc @@@ get_fv2 t) acc in
       aux (aux [] ts1) ts2
   in
   let env = List.map (fun x -> x, Var x) fv in

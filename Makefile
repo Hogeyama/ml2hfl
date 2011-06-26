@@ -1,7 +1,7 @@
 
-.PHONY: all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc
+.PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
 
-OCAML_SOURCE = ocaml-3.11.2
+OCAML_SOURCE = ocaml-3.12
 CSISAT = csisat-read-only
 
 OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
@@ -33,8 +33,8 @@ DOC = doc
 
 NAME = mochi
 
-main: .depend byte opt
-all: main lib
+main: byte opt
+all: lib depend main
 
 byte: $(NAME).byte
 opt: $(NAME).opt
@@ -50,7 +50,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
 	flag.cmo util.cmo utilities.cmo automata.cmo syntax.cmo \
-	parser_wrapper.cmo alpha.cmo typing.cmo wrapper.cmo CPS.cmo \
+	alpha.cmo typing.cmo wrapper.cmo CPS.cmo parser_wrapper.cmo \
 	abstract.cmo check.cmo feasibility.cmo infer.cmo refine.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma
@@ -117,7 +117,7 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[iox] *.o *.a *.annot *~ .depend
+	rm -f *.cm[iox] *.o *.a *.annot *~
 	rm -f $(NAME).byte $(NAME).opt
 
 clean-ocaml:
@@ -130,6 +130,16 @@ clean-doc:
 	rm -rf doc
 
 clean-all: clean clean-doc clean-ocaml clean-csisat
+	rm -f .depend
+
+
+################################################################################
+# test
+
+TEST=test_new/*.ml
+
+test: $(NAME).opt
+	for i in $(TEST); do echo $$i; (ulimit -t 120; ./$(NAME).opt $$i | egrep 'Safe|Unsafe'); done
 
 
 ################################################################################
@@ -137,9 +147,7 @@ clean-all: clean clean-doc clean-ocaml clean-csisat
 
 SRC = $(CMO:.cmo=.ml)
 
-.depend:
+depend::
 	$(OCAMLDEP) $(INCLUDES) *.mli $(SRC) > .depend
 
-include .depend
-
-
+-include .depend

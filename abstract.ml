@@ -406,6 +406,8 @@ let rec abstract cond pbs = function
         at
   | Var x, typ when Wrapper.congruent cond x.typ typ -> [Var x]
   | Var x, typ -> abstract cond pbs (App(Var x, []), typ)
+  | RandInt None, _ -> assert false
+  | RandInt (Some t), typ -> abstract cond pbs (t,TFun((dummy_var,TInt[]),typ))
   | Fun _, _ -> assert false
   | App(Let(Nonrecursive, f, xs, t1, t2), ts), typ ->
       abstract cond pbs (Let(Nonrecursive, f, xs, t1, App(t2, ts)), typ)
@@ -510,7 +512,7 @@ let rec abstract cond pbs = function
         [If(t1', Label(true,t2'), Label(false,t3'))]
   | Constr(c,ts), typ -> [Unit]
   | Match_(_,pats), typ ->
-      let aux (pat,t1) (t2,c) =
+      let aux (pat,cnd,t1) (t2,c) = (***)
         let t1' = hd (abstract cond pbs (t1,typ)) in
           Branch(LabelInt(c,t1'),t2), c-1
       in
@@ -735,6 +737,10 @@ let rec trans_eager2 c = function
   | False -> c [False]
   | Int n -> c [Int n]
   | NInt x -> c [NInt x]
+  | RandInt None -> assert false
+  | RandInt (Some t) ->
+      let t' = trans_eager2 hd t in
+        c [RandInt (Some t')]
   | Var x -> c [Var x]
   | Fun(x,t) ->
       let t' = trans_eager2 hd t in
@@ -802,11 +808,117 @@ let abstract t =
 
 
 
+let rec abstract_mutable = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | NInt x -> NInt x
+  | RandInt None -> RandInt None
+  | RandInt (Some t) -> RandInt (Some (abstract_mutable t))
+  | Var x -> Var x
+  | Fun(x, t) -> Fun(x, abstract_mutable t)
+  | App(t, ts) -> App(abstract_mutable t, List.map abstract_mutable ts)
+  | If(t1, t2, t3) -> If(abstract_mutable t1, abstract_mutable t2, abstract_mutable t3)
+  | Branch(t1, t2) -> Branch(abstract_mutable t1, abstract_mutable t2)
+  | Let(flag, f, xs, t1, t2) -> Let(flag, f, xs, abstract_mutable t1, abstract_mutable t2)
+  | BinOp(op, t1, t2) -> BinOp(op, abstract_mutable t1, abstract_mutable t2)
+  | Not t -> Not (abstract_mutable t)
+  | Fail -> Fail
+  | Label(b, t) -> Label(b, abstract_mutable t)
+  | Event s -> Event s
+  | Record(b,fields) -> Record(b, List.map (fun (f,(s,t)) -> f,(s,abstract_mutable t)) fields)
+  | Proj(n,i,s,Immutable,t) -> Proj(n, i, s, Immutable, abstract_mutable t)
+  | Proj(n,i,s,Mutable,t) ->
+      let u = new_var' "u" in
+        Let(Nonrecursive, u, [], abstract_mutable t, RandInt None)
+  | Nil -> Nil
+  | Cons(t1,t2) -> Cons(abstract_mutable t1, abstract_mutable t2)
+  | Constr(s,ts) -> Constr(s, List.map abstract_mutable ts)
+  | Match(t1,t2,x,y,t3) -> Match(abstract_mutable t1, abstract_mutable t2, x, y, abstract_mutable t3)
+  | Match_(t,pats) ->
+      let aux (pat,cond,t) = pat,apply_opt abstract_mutable cond, abstract_mutable t in
+        Match_(abstract_mutable t, List.map aux pats)
+  | Type_decl(decls,t) -> Type_decl(decls, abstract_mutable t)
+    
 
 
 
 
 
+let rec get_abst_val = function
+    TUnit -> Unit
+  | TBool -> BinOp(Eq, Int 0, RandInt None)
+  | TInt _ -> RandInt None
+  | TFun((x,typ1),typ2) ->
+      let typs = List.map (fun x -> x.typ) (get_args typ1) in
+      let ts = List.map get_abst_val typs in
+      let x' = new_var_id x in
+      let f = new_var' "f" in
+      let u = new_var' "u" in
+      let y = new_var' "y" in
+      let t = Let(Nonrecursive, y, [], get_abst_val typ2, Branch(Let(Nonrecursive, u, [], app2app (Var x') ts, Var y), Var y)) in
+        Let(Nonrecursive, f, [x'], t, Var f)
+  | TList(typ,_) ->
+      let f = new_var' "f" in
+      let u = new_var' "u" in
+      let t = If(get_abst_val TBool, Nil, Cons(get_abst_val typ, App(Var f, [Unit]))) in
+        Let(Recursive, f, [u], t, App(Var f, [Unit]))
+  | TRecord(b,typs) ->
+      let fields = List.map (fun (s,(f,typ)) -> s,(f,get_abst_val typ)) typs in
+        Record(b,fields)
+  | TVariant _ as typ ->
+      let stypss = Typing.get_constrs_from_type typ in
+      let aux (s,typs) = Constr(s, List.map get_abst_val typs) in
+        List.fold_left (fun t styps -> If(Unknown, t, aux styps)) (aux (List.hd stypss)) (List.tl stypss)
+  | TVar x -> assert false
+  | TConstr(s,true) -> assert false
+  | TConstr(s,false) -> RandValue(TConstr(s,false), None)
+  | TUnknown -> Unit
+  | typ -> print_typ Format.std_formatter typ; assert false
+let rec abst_ext_funs = function
+    Unit -> Unit
+  | True -> True
+  | False -> False
+  | Unknown -> Unknown
+  | Int n -> Int n
+  | Var x ->
+      if is_external x
+      then
+        let x' = new_var_id x in
+          Let(Nonrecursive, x', [], get_abst_val x.typ, Var x')
+      else Var x
+  | NInt x -> NInt x
+  | RandInt None -> RandInt None
+  | RandInt (Some t) -> RandInt (Some (abst_ext_funs t))
+  | RandValue(typ,None) -> RandValue(typ,None)
+  | RandValue(typ,Some t) -> RandValue(typ,Some (abst_ext_funs t))
+  | Fun(x,t) -> Fun(x, abst_ext_funs t)
+  | App(t, ts) -> App(abst_ext_funs t, List.map abst_ext_funs ts)
+  | If(t1, t2, t3) -> If(abst_ext_funs t1, abst_ext_funs t2, abst_ext_funs t3)
+  | Branch(t1, t2) -> Branch(abst_ext_funs t1, abst_ext_funs t2)
+  | Let(flag, f, xs, t1, t2) -> Let(flag, f, xs, abst_ext_funs t1, abst_ext_funs t2)
+  | BinOp(op, t1, t2) -> BinOp(op, abst_ext_funs t1, abst_ext_funs t2)
+  | Not t -> Not (abst_ext_funs t)
+  | Fail -> Fail
+  | Label(b, t) -> Label(b, abst_ext_funs t)
+  | Event s -> Event s
+  | Record(b,fields) -> Record(b, List.map (fun (f,(s,t)) -> f,(s,abst_ext_funs t)) fields)
+  | Proj(n,i,s,f,t) -> Proj(n,i,s,f,abst_ext_funs t)
+  | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,abst_ext_funs t1,abst_ext_funs t2)
+  | Nil -> Nil
+  | Cons(t1,t2) -> Cons(abst_ext_funs t1, abst_ext_funs t2)
+  | Constr(s,ts) -> Constr(s, List.map abst_ext_funs ts)
+  | Match(t1,t2,x,y,t3) -> Match(abst_ext_funs t1, abst_ext_funs t2, x, y, abst_ext_funs t3)
+  | Match_(t,pats) ->
+      let aux (pat,cond,t) = pat, apply_opt abst_ext_funs cond, abst_ext_funs t in
+        Match_(abst_ext_funs t, List.map aux pats)
+  | TryWith(t,pats) ->
+      let aux (pat,cond,t) = pat, apply_opt abst_ext_funs cond, abst_ext_funs t in
+        TryWith(abst_ext_funs t, List.map aux pats)
+  | Type_decl(decls,t) -> Type_decl(decls, abst_ext_funs t)
+  | Exception(exc,typs,t) -> Exception(exc, typs, abst_ext_funs t)
 
 
 

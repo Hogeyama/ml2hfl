@@ -49,6 +49,8 @@ let rec rename_map map = function
   | Unknown -> Unknown
   | Int n -> Int n
   | NInt x -> NInt x
+  | RandInt None -> RandInt None
+  | RandInt (Some t) -> RandInt (Some (rename_map map t))
   | Var x -> Var (assoc_exn x map x)
   | Fun(x,t) -> assert false
   | App(t,ts) ->
@@ -83,7 +85,7 @@ let rec rename_map map = function
       Match(rename_map map t1, rename_map map t2, x, y, rename_map map t3)
   | Constr(c,ts) -> Constr(c, List.map (rename_map map) ts)
   | Match_(t,pats) ->
-      Match_(rename_map map t, List.map (fun (pat,t) -> pat,rename_map map t) pats)
+      Match_(rename_map map t, List.map (fun (pat,cond,t) -> pat,apply_opt (rename_map map) cond,rename_map map t) pats)
   | Type_decl(decls,t) -> Type_decl(decls, rename_map map t)
 
 let rec rename_typ = function
@@ -101,7 +103,6 @@ let rec rename_typ = function
   | TList(typ,_) ->
       let map,typ' = rename_typ typ in
         map, TList(typ',[])
-  | TConstr _ -> assert false
   | TVariant ctypss ->
       let aux1 (c,typs) (map,ctypss) =
         let aux2 typ (map,typs) =
@@ -114,7 +115,7 @@ let rec rename_typ = function
       let map,ctypss' = List.fold_right aux1 ctypss ([],[]) in
         map, TVariant ctypss'
   | TRecord _ -> assert false
-  | TAbs s -> [], TAbs s
+  | TConstr(s,true) -> [], TConstr(s,true)
   | TUnknown -> [], TUnknown
 
 let rename defs t =
@@ -238,6 +239,8 @@ let rec add_preds rte sol = function
   | Unknown -> Unknown
   | Int n -> Int n
   | NInt x -> NInt x
+  | RandInt None -> RandInt None
+  | RandInt (Some t) -> RandInt (Some (add_preds rte sol t))
   | Var x ->
       (try 
         let typ = List.fold_left (add_preds_typ sol) x.typ
@@ -302,7 +305,9 @@ let rec add_preds rte sol = function
   | Cons(t1, t2) -> Cons(add_preds rte sol t1, add_preds rte sol t2)
   | Match(t1,t2,x,y,t3) -> assert false
   | Constr(c,ts) -> Constr(c, List.map (add_preds rte sol) ts)
-  | Match_(t,pats) -> Match_(add_preds rte sol t, List.map (fun (pat,t) -> pat, add_preds rte sol t) pats)
+  | Match_(t,pats) ->
+      let aux = (fun (pat,cond,t) -> pat, apply_opt (add_preds rte sol) cond, add_preds rte sol t) in
+        Match_(add_preds rte sol t, List.map aux pats)
   | Type_decl(decls,t) -> Type_decl(decls, add_preds rte sol t)
 
 let rec remove_preds_typ typ =
@@ -486,6 +491,8 @@ let rec add_preds_ typedefs = function
   | Unknown -> Unknown
   | Int n -> Int n
   | NInt x -> NInt x
+  | RandInt None -> RandInt None
+  | RandInt (Some t) -> RandInt (Some (add_preds_ typedefs t))
   | Var x ->
       let typ = 
         try add_preds_typ_ x.typ (snd (List.find (fun (x', _) -> x'.id = x.id) typedefs))
@@ -545,12 +552,14 @@ let rec add_preds_ typedefs = function
   | Fail -> Fail
   | Label _ -> assert false
   | Event s -> Event s
+  | Record(b,fields) -> Record(b, List.map (fun (f,(s,t)) -> f,(s,add_preds_ typedefs t)) fields)
+  | Proj(n,i,f,s,t) -> Proj(n,i,f,s,add_preds_ typedefs t)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(add_preds_ typedefs t1, add_preds_ typedefs t2)
   | Match(t1,t2,x,y,t3) -> Match(add_preds_ typedefs t1, add_preds_ typedefs t2, x, y, add_preds_ typedefs t3)
   | Constr(c,ts) -> Constr(c, List.map (add_preds_ typedefs) ts)
   | Match_(t,pats) ->
-      let aux (pat,t) = pat, add_preds_ typedefs t in
+      let aux (pat,cond,t) = pat, apply_opt (add_preds_ typedefs) cond, add_preds_ typedefs t in
         Match_(add_preds_ typedefs t, List.map aux pats)
   | Type_decl(decls,t) -> Type_decl(decls, add_preds_ typedefs t)
 

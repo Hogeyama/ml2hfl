@@ -1,9 +1,9 @@
 
-let ocaml_lib = ["./ocaml-3.11.2/stdlib/"]
+let ocaml_lib = ["./ocaml-3.12/stdlib/"]
 let log_dir = "/home/ryosuke/web/cegar/log/"
 let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
-let cvc3 = "./cvc3 +int"
+let cvc3 = "./cvc3"
 
 let merge_counterexample = ref false
 let split_free_var = ref false
@@ -19,7 +19,7 @@ let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
 
-let check_fun_arg_typ = false
+let check_fun_arg_typ = true
 
 (* display or not *)
 let print_source = true
@@ -46,7 +46,7 @@ let time_limit = 0
 let max_input_size = 65536
 
 
-let web = false
+let web = ref false
 let debug = true
 
 

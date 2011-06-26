@@ -10,22 +10,17 @@ let new_id x =
 
 
 
-let free_map : (string*ident) list ref = ref []
+let free_map : ((string*int)*ident) list ref = ref []
 let free : ident list ref = ref []
 
+
+let key x = x.name, x.id
 
 let rec alpha_pat = function
     PVar x ->
       let x' = new_id x in
-        PVar x', [x.name,x']
+        PVar x', [key x,x']
   | PConst c -> PConst c, []
-  | PTuple pats ->
-      let aux pat (pats,map) =
-        let pat',map' = alpha_pat pat in
-          pat'::pats, map'@@map
-      in
-      let pats',map = List.fold_right aux pats ([],[]) in
-        PTuple pats', map
   | PConstruct(name,pats) ->
       let aux pat (pats,map) =
         let pat',map' = alpha_pat pat in
@@ -33,13 +28,18 @@ let rec alpha_pat = function
       in
       let pats',map = List.fold_right aux pats ([],[]) in
         PConstruct(name,pats'), map
-  | PRecord spats ->
-      let aux (s,pat) (spats,map) =
+  | PNil -> PNil, []
+  | PCons(p1,p2) ->
+      let p1',map1 = alpha_pat p1 in
+      let p2',map2 = alpha_pat p2 in
+        PCons(p1',p2'), map1@@map2
+  | PRecord(b,pats) ->
+      let aux (i,(f,s,pat)) (pats,map) =
         let pat',map' = alpha_pat pat in
-          (s,pat')::spats, map'@@map
+          (i,(f,s,pat'))::pats, map'@@map
       in
-      let spats',map = List.fold_right aux spats ([],[]) in
-        PRecord spats', map
+      let pats',map = List.fold_right aux pats ([],[]) in
+        PRecord(b,pats'), map
   | POr(p1,p2) ->
       let p1',map1 = alpha_pat p1 in
       let p2',map2 = alpha_pat p2 in
@@ -54,21 +54,24 @@ let rec alpha map = function
   | NInt x ->
       let x' = new_id x in
         NInt x'
+  | RandInt None -> RandInt None
+  | RandInt (Some t) -> RandInt (Some (alpha map t))
+  | Var x when is_external x -> Var x
   | Var x ->
       begin
         try
-          Var (List.assoc x.name map)
+          Var{(List.assoc (key x) map) with typ=x.typ}
         with Not_found ->
           try
-            Var (List.assoc x.name !free_map)
+            Var (List.assoc (key x) !free_map)
           with Not_found ->
             let x' = new_id x in
-              free_map := (x.name,x')::!free_map;
+              free_map := (key x,x')::!free_map;
               Var x'
       end
   | Fun(x, t) ->
       let x' = new_id x in
-      let t' = alpha ((x.name,x')::map) t in
+      let t' = alpha ((key x,x')::map) t in
         Fun(x', t')
   | App(t, ts) ->
       let t' = alpha map t in
@@ -90,24 +93,24 @@ let rec alpha map = function
         let map', xs' =
           let g y (map, ys) =
             let y' = new_id y in
-              ((y.name,y')::map, y'::ys)
+              ((key y,y')::map, y'::ys)
           in
             List.fold_right g xs (map,[])
         in
         let t1' = alpha map' t1 in
-        let t2' = alpha ((f.name,f')::map) t2 in
+        let t2' = alpha ((key f,f')::map) t2 in
           Let(flag, f', xs', t1', t2')
       else
         let f' = new_id f in
         let map', xs' =
           let g y (map, ys) =
             let y' = new_id y in
-              ((y.name,y')::map, y'::ys)
+              ((key y,y')::map, y'::ys)
           in
             List.fold_right g xs (map,[])
         in
-        let t1' = alpha ((f.name,f')::map') t1 in
-        let t2' = alpha ((f.name,f')::map) t2 in
+        let t1' = alpha ((key f,f')::map') t1 in
+        let t2' = alpha ((key f,f')::map) t2 in
           Let(flag, f', xs', t1', t2')
   | BinOp(op, t1, t2) ->
       let t1' = alpha map t1 in
@@ -119,30 +122,42 @@ let rec alpha map = function
   | Label _ -> assert false
   | Fail -> Fail
   | Event s -> Event s
+  | Record(b,fields) -> Record(b, List.map (fun (s,(f,t)) -> s,(f,alpha map t)) fields)
+  | Proj(n,i,f,s,t) -> Proj(n,i,f,s,alpha map t)
+  | SetField(n,i,f,s,t1,t2) -> SetField(n,i,f,s,alpha map t1,alpha map t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(alpha map t1, alpha map t2)
   | Constr(s,ts) -> Constr(s, List.map (alpha map) ts)
   | Match(t1,t2,x,y,t3) ->
       let x' = new_id x in
       let y' = new_id y in
-      let map' = (x.name,x')::(y.name,y')::map in
+      let map' = (key x,x')::(key y,y')::map in
         Match(alpha map t1, alpha map t2, x', y', alpha map' t3)
   | Match_(t,pats) ->
-      let aux (pat,t) =
+      let aux (pat,cond,t) =
         let pat',map' = alpha_pat pat in
-          pat', alpha (map'@@map) t
+        let map'' = map'@@map in
+          pat', apply_opt (alpha map'') cond, alpha map'' t
       in
         Match_(alpha map t, List.map aux pats)
-  | Type_decl(decls,t) ->
-      Type_decl(decls, alpha map t)
+  | TryWith(t,pats) ->
+      let aux (pat,cond,t) =
+        let pat',map' = alpha_pat pat in
+        let map'' = map'@@map in
+          pat', apply_opt (alpha map'') cond, alpha map'' t
+      in
+        TryWith(alpha map t, List.map aux pats)
+  | Type_decl(decls,t) -> Type_decl(decls, alpha map t)
+  | Exception(exc,typs,t) -> Exception(exc,typs,alpha map t)
 
 
 let add_assert t =
-  let f = new_var "assert" in
-  let x = new_var "b" in
+  let x = {(new_var "b") with typ=TBool} in
+  let f = {(new_var "assert") with typ=TFun((x,TBool),TUnit)} in
     Let(Nonrecursive, f, [x], If(Var x, Unit, App(Fail, [Unit])), t)
 
 let alpha t =
+  let () = set_counter 1 in
   let t' = add_assert t in
     alpha [] t'
 

@@ -168,3 +168,18 @@ let rec filterwo p xs =
     | x::xs -> if p x (xs1 @ xs) then x::(aux (x::xs1) xs) else aux (x::xs1) xs
   in aux [] xs
 
+let is_int s = try ignore (int_of_string s); true with Failure "int_of_string" -> false
+
+let rec my_input ic s ofs len acc =
+  if len = 0
+  then acc
+  else
+    let r = input ic s ofs len in
+      if r > 0
+      then my_input ic s (ofs+r) (len-r) (acc+r)
+      else acc
+let my_input ic s ofs len = my_input ic s ofs len 0
+
+let apply_opt f = function
+    None -> None
+  | Some x -> Some (f x)

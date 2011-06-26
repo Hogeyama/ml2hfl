@@ -8,9 +8,8 @@ open Syntax
 let rec term_of_pattern = function
     PVar x -> Var x
   | PConst c -> c
-  | PTuple _ -> assert false
   | PConstruct(c,pats) -> Constr(c, List.map term_of_pattern pats)
-  | PRecord fields -> assert false
+  | PRecord(b,fields) -> assert false
   | POr(pat1,pat2) -> assert false
 
 
@@ -73,14 +72,21 @@ let rec check ce defs constr t =
         check ce' defs constr' t3
     | Match_(t1,pats), [EventNode s] when (Str.string_match (Str.regexp "br\\([0-9]+\\)_fail") s 0) ->
         let n = int_of_string (Str.matched_group 1 s) in
-        let pat,_ = List.nth pats n in
+        let pat,_,_ = List.nth pats n in
         let constr' = BinOp(And, BinOp(Eq, t1, term_of_pattern pat), constr) in
         if Wrapper.checksat constr' then
           raise (Feasible constr')
     | Match_(t1,pats), PatNode n::ce' ->
-        let pat,t2 = List.nth pats n in
+        let pat,cond,t2 = List.nth pats n in
         let constr' = BinOp(And, BinOp(Eq, t1, term_of_pattern pat), constr) in
-          check ce' defs constr' t2
+        let constr'' =
+          match cond with
+              None -> constr'
+            | Some cond -> BinOp(And, cond, constr')
+        in
+          check ce' defs constr'' t2
+    | RandInt _, ce ->
+        check ce defs constr (init_rand_int t)
     | _ ->
         Format.printf "feasibility.ml:@.%a@." (print_term_fm ML false) t;
         let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
@@ -155,11 +161,16 @@ let rec get_prefix ce ce_prefix defs constr t =
           then get_prefix ce' ce_prefix' defs constr' t3
           else List.rev ce_prefix'
     | Match_(t1,pats), PatNode(n)::ce' ->
-        let pat,t2 = List.nth pats n in
+        let pat,cond,t2 = List.nth pats n in
         let constr' = BinOp(And, BinOp(Eq, t1, term_of_pattern pat), constr) in
+        let constr'' =
+          match cond with
+              None -> constr'
+            | Some cond -> BinOp(And, cond, constr')
+        in
         let ce_prefix' = PatNode(n)::ce_prefix in
-          if Wrapper.checksat constr'
-          then get_prefix ce' ce_prefix' defs constr' t2
+          if Wrapper.checksat constr''
+          then get_prefix ce' ce_prefix' defs constr'' t2
           else List.rev ce_prefix'
     | _ ->
         Format.printf "feasibility.ml:@.%a@." (print_term_fm ML false) t;

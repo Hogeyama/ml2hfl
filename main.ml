@@ -35,7 +35,11 @@ let print_info () =
 
 
 let rec cegar tdefs t1 ce_prev =
-  let () = if Flag.print_type then Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n" !Flag.cegar_loop (Syntax.print_term_fm_break Syntax.ML true) t1 in
+  let () =
+    if Flag.print_type
+    then Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
+      !Flag.cegar_loop (Syntax.print_term_fm_break Syntax.ML true) t1
+  in
   let n = Syntax.get_counter () in
   let () = if Flag.print_progress then print_msg "\n(1) Abstracting ... " in
   let tmp = get_time() in
@@ -43,7 +47,10 @@ let rec cegar tdefs t1 ce_prev =
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
 
-  let () = if Flag.print_abst_eager then Format.printf "Abstracted Program:@.%a@.@." (Syntax.print_term_fm Syntax.ML false) t_abst in
+  let () =
+    if Flag.print_abst_eager
+    then Format.printf "Abstracted Program:@.%a@.@." (Syntax.print_term_fm Syntax.ML false) t_abst
+  in
   let () = Format.pp_print_flush Format.std_formatter () in
 
   let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in
@@ -84,10 +91,7 @@ let rec cegar tdefs t1 ce_prev =
                   | t::ce -> aux (a @ [t]) ce
                 in
                   aux [] ce'
-	      in
-                (*
-                  let () = Format.printf "ce:%d ce':%d@." (List.length ce) (List.length ce') in
-                *)
+	          in
               let ce = ce' in
               let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
               let tmp = get_time () in
@@ -96,7 +100,10 @@ let rec cegar tdefs t1 ce_prev =
                 then
                   raise NoProgress
                 else
-                  let () = if false && Flag.debug then Format.printf "The length of counterexample: %d@.@." (List.length ce) in
+                  let () =
+                    if false && Flag.debug
+                    then Format.printf "The length of counterexample: %d@.@." (List.length ce)
+                  in
                   let t1 =
                     if !Flag.merge_counterexample then
                       Refine.add_preds_ tdefs (Refine.remove_preds t1)
@@ -121,37 +128,17 @@ let rec cegar tdefs t1 ce_prev =
                 Syntax.Feasible p -> t1, Some (ce,p)
               | Syntax.Infeasible -> raise CannotDiscoverPredicate(*t1, None*)
 
-(*
-let print_ce ce t =
-  let t' = CPS.trans t in
-  let trace = Syntax.get_trace ce t' in
-  let print_var_bool = function
-      Syntax.True -> print_msg "-then->"
-    | Syntax.False -> print_msg "-else->"
-    | Syntax.Var x ->
-        begin
-          try
-            if String.sub x.Syntax.name (String.length x.Syntax.name - String.length str) (String.length str) = str
-            then Format.printf "%s -->@." (String.sub x.Syntax.name 0 (String.length x.Syntax.name - String.length str))
-          with
-              Invalid_argument "String.sub" -> ()
-        end
-    | Syntax.Event(s) ->
-        print_msg ("-" ^ s ^ "->")
-    | _ -> assert false
-  in
-    List.iter print_var_bool trace;
-    print_msg "error";
-    print_msg ""
-*)
+
 
 let main filename in_channel =
-  let input_string = String.create Flag.max_input_size in
-  let n = input in_channel input_string 0 Flag.max_input_size in
-  let () = if n = Flag.max_input_size then raise LongInput in
-  let input_string = String.sub input_string 0 n in
+  let input_string =
+    let s = String.create Flag.max_input_size in
+    let n = my_input in_channel s 0 Flag.max_input_size in
+      if n = Flag.max_input_size then raise LongInput;
+      String.sub s 0 n
+  in
 
-  let () = if Flag.web then write_log_string input_string in
+  let () = if !Flag.web then write_log_string input_string in
   let tdefs, parsed =
     let lb = Lexing.from_string input_string in
     let _ = lb.Lexing.lex_curr_p <-
@@ -162,12 +149,17 @@ let main filename in_channel =
     in
       [], Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
+  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) parsed in
   let alpha = Alpha.alpha parsed in
-  let typed = Typing.typing alpha in
-  let typed = Syntax.set_target typed in
-  let () = if Flag.web then write_log_term typed in
+  let () = if false then Format.printf "Alpha:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) alpha in
+  let copied = Typing.copy_poly_funs alpha in
+  let () = if true then Format.printf "Copied:@.%a\n@." Syntax.pp_print_term copied in
+  let typed = Syntax.set_target copied in
+  let () = if !Flag.web then write_log_term typed in
   let () = if Flag.print_source then Format.printf "Source Program:@.%a\n@." Syntax.pp_print_term typed in
-  let cps = CPS.trans typed in
+  let t_ext = Abstract.abst_ext_funs typed in
+  let abst = Abstract.abstract_mutable t_ext in
+  let cps = CPS.trans abst in
   let () = if Flag.print_cps then Format.printf "CPS-converted Program:@.%a\n@." Syntax.pp_print_term cps in
   let cps =
     let defs, t = Syntax.lift2 cps in
@@ -198,27 +190,42 @@ let main filename in_channel =
             Syntax.print_ce ce typed
 
 
+let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
+let spec =
+  ["-web", Arg.Set Flag.web, " Web mode";
+   "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
+   "<dir>  Add <dir> to the list of include directories";
+  ]
 
-let () = 
+
+let () =
   if !Sys.interactive
   then ()
   else
-    let filename = if Array.length Sys.argv >= 2 then Sys.argv.(1) else "-" in
-    let cin = if filename = "-" then stdin else open_in filename in
-      try
-        if Flag.web then open_log ();
+    try
+      let filename = ref "" in
+      let set_file name =
+        if !filename <> "" then (Arg.usage spec usage; exit 1);
+        filename := name
+      in
+      let () = Arg.parse spec set_file usage in
+      let cin = match !filename with ""|"-" -> stdin | _ -> open_in !filename in
+        if !Flag.web then open_log ();
         Wrapper.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main Sys.argv.(1) cin;
         print_info ();
         Wrapper.close_cvc3 ();
-        if Flag.web then close_log ()
-      with
-          Typing.CannotUnify -> Format.printf "Cannot unify.@."; exit 1
-        | Parsing.Parse_error _ -> Format.printf "Parse error.@."; exit 1
-        | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
-        | LongInput -> Format.printf "Input is too long.@."; exit 1
-        | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
-        | NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
-        | CannotDiscoverPredicate -> Format.printf "Verification failed (new predicate not found).@."; exit 1
+        if !Flag.web then close_log ()
+    with
+        Typing.CannotUnify -> Format.printf "Cannot unify.@."; exit 1
+      | Parsing.Parse_error _ -> Format.printf "Parse error.@."; exit 1
+      | LongInput -> Format.printf "Input is too long.@."; exit 1
+      | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
+      | NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
+      | CannotDiscoverPredicate -> Format.printf "Verification failed (new predicate not found).@."; exit 1
+      | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
+      | Typemod.Error(_,e) -> Format.printf "%a@." Typemod.report_error e; exit 1
+      | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1
+      | Typetexp.Error(_,e) -> Format.printf "%a@." Typetexp.report_error e; exit 1

@@ -318,7 +318,7 @@ let rec process_term trace term traces env pcounter =
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
             [MyFail(new_tinfo()), trace, traces]
         else assert false
-    | Var(x) -> 
+    | Var(x) ->
         if x.typ = TUnit && List.for_all (function [FailNode] -> true | _ -> false) traces then
           let trace = trace @ [FailNode] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
@@ -382,7 +382,7 @@ let rec process_term trace term traces env pcounter =
         else if List.mem [] traces then (*???*)
           []
         else
-          let tts, tfs = List.partition (function LabNode(true)::_ -> true | LabNode(false)::_ -> false | _ -> assert false) traces in
+          let tts, tfs = List.partition (function LabNode b::_ -> b | _ -> assert false) traces in
           let tts = List.map List.tl tts in
           let tfs = List.map List.tl tfs in
             (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
@@ -397,7 +397,7 @@ let rec process_term trace term traces env pcounter =
                     [MyFail(new_tinfo()), trace, traces]
               | _ when List.mem [] traces -> [] (*???*)
               | _ ->
-                  let aux (i,acc) (_,t) =
+                  let aux (i,acc) (_,cond,t) =
                     let tss = List.filter (function PatNode n::_ -> n=i | _ -> assert false) traces in
                     let tss' = List.map List.tl tss in
                     let acc' = if tss' = [] then [] else process_term (trace @ [PatNode i]) t tss' env pcounter in
@@ -408,6 +408,10 @@ let rec process_term trace term traces env pcounter =
     | Constr _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
+    | RandInt None ->
+        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
+          [MyTerm(term, new_tinfo()), trace, traces]
+    | RandInt (Some t) -> process_term trace (app2app t [RandInt None]) traces env pcounter
     | _ -> (print_string2 "process_term\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
 and process_aterm env t =
   match process_term [] t [] env invalid_counter with
@@ -494,7 +498,7 @@ let rec eval_term t defs traces pcounter =
                    process_head t3 (ETunit(counter));
                    eval_term t3 defs traces' counter)
             (process_term [] body traces env pcounter)
-    | MyApp(t1, t2, tinfo) ->
+    | MyApp _ ->
         let (f, ts) = decompose_redex t in
         let (vars,body) = 
           try List.assoc f defs 
@@ -803,7 +807,7 @@ let rec chk_term rtenv term id trace traces =
             match header with
                 EventNode _ when List.for_all ((=) [header]) traces -> [Cfalse] (***)
               | _ ->
-                  let aux (i,acc) (_,t) =
+                  let aux (i,acc) (_,cond,t) =
                     let tss = List.filter (function PatNode n::_ -> n=i | _ -> assert false) traces in
                     let tss' = List.map List.tl tss in
                     let acc' =
@@ -821,6 +825,8 @@ let rec chk_term rtenv term id trace traces =
     | Not(t) -> (*???*)
         chk_term rtenv t id trace traces
     | App(t, []) -> chk_term rtenv t id trace traces
+    | RandInt None -> assert false
+    | RandInt (Some t) -> chk_term rtenv (init_rand_int term) id trace traces
     | _ -> (print_string2 "chk_term\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
 
 and chk_args rtenv rty terms =
@@ -1120,7 +1126,8 @@ let interpolate ids c1 c2 =
           try
             Wrapper.interpolation ts1 ts2
           with Assert_failure _ -> raise Untypable
-      else*) raise Untypable
+      else*)
+      raise Untypable
   in
     (*  print_term t;*)
     if Wrapper.check [] t then True else t
