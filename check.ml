@@ -77,10 +77,12 @@ let cps2hors t =
       let defs' = (s,[],t0)::defs in
       let defs'' = List.map (fun (x,xs,t) -> (x,xs,part_eval t)) defs' in*)
   let defs, t0 = lift t in
+(*
   let () =
     let t' =  List.fold_right (fun (f, (xs, t')) t -> Syntax.Let(Nonrecursive,f,xs,t',t)) defs t0 in
     Syntax.print_term Syntax.ML false t'
   in
+*)
   let defs, t0 = Typing.typing_defs defs t0 in
   let defs = List.map (fun (x, (xs, t)) ->
                          let n = (List.length (get_args x.typ)) - (List.length xs) in

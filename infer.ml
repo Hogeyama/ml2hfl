@@ -267,7 +267,7 @@ exception Undefined of ident
 let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
-  (**)
+  (*
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "process_term:\n";
   print_string2 "term:\n ";
@@ -275,7 +275,7 @@ let rec process_term trace term traces env pcounter =
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-  (**)
+  *)
   match term with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
@@ -462,7 +462,7 @@ let trace2id = ref []
 
 let rec eval_term t defs traces pcounter =
   (*let _ = (pc := counter) in*)
-  (**)
+  (*
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "eval_term:\n";
   print_string2 "term:\n";
@@ -470,7 +470,7 @@ let rec eval_term t defs traces pcounter =
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-  (**)
+  *)
   match t with
       MyUnit(tinfo) | MyFail(tinfo) ->
         let check = function
@@ -730,14 +730,14 @@ let print_constraint c =
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
-  (**)
+  (*
   print_string2 ("id: " ^ (string_of_int id) ^ "\n");
   print_string2 "term:\n";
   print_term term;
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-  (**)
+  *)
   match term with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
@@ -1087,9 +1087,11 @@ and term_of_ac ac =
 
 let int_gen ts =
   let ints = (*List.filter (fun x -> x <> 0)*) (Util.rev_map_flatten get_int ts) in
+(*
   Format.printf "ints: ";
   List.iter (fun int -> Format.printf "%d," int) ints;
   Format.printf "@.";
+*)
   match ints with
     [] -> ts
   | int::ints ->
@@ -1347,10 +1349,10 @@ let rec solve_aux' lbs ac ubs nubs sol = function
       let _ = if Flag.debug then
         assert (List.length ids' = List.length (Util.uniq ids')) in
       let eqs = List.concat (List.map2 (fun id term -> if Var(id) = term then [] else [Var(id), term]) ids' terms') in
-      (if Flag.debug then
+      (if Flag.debug then begin
         print_string2 "eqs: ";
         List.iter (fun (t1, t2) -> print_term (BinOp(Eq, t1, t2)); print_string2 ", ") eqs;
-        print_string2 "\n");
+        print_string2 "\n" end);
       let _lbs =
         try
           let cond, eqs', terms = List.assoc pid' lbs in
@@ -1578,7 +1580,7 @@ let rec solve_aux lbs c solution =
 let solve_constr c =
   let lbs = compute_lbs c [] in
 
-  let _ = if Flag.debug && Flag.print_lower_bound then
+  let _ = if Flag.debug && Flag.print_lower_bound then begin
     print_string2 "\nLower bounds:\n";
     List.iter
       (fun (pid, (cond, eqs, terms)) ->
@@ -1592,6 +1594,7 @@ let solve_constr c =
          print_string2 "\n")
       lbs;
     print_string2 "@."
+    end
   in
   let sol = solve_aux lbs c [] in
     List.map (fun (pid,(ids,t)) -> pid, (ids, Wrapper.simplify_bool_exp true t)) sol

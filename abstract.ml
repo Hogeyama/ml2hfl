@@ -753,7 +753,9 @@ let rec trans_eager2 c = function
       in
         c [List.fold_left aux c' ts []]
   | If(t1, t2, t3) when not (is_bool_const t2) && not (is_bool_const t3) ->
+(*
       let () = Format.printf "If: t2 = %a, t3 = %a@." pp_print_term t2 pp_print_term t3 in
+*)
       let x = new_var' "b" in
       let f = new_var' "f" in
       let t1' = trans_eager_bool2 f t1 in
