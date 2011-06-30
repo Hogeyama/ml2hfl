@@ -25,6 +25,14 @@ let rec pr_list epr sep ppf xs =
         (fun ppf sep -> Format.fprintf ppf sep) sep
         (pr_list epr sep) xs'
 
+let rec find_map f xs =
+  match xs with
+    [] -> raise Not_found
+  | x::xs' ->
+      (match f x with
+        None -> find_map f xs'
+      | Some(y) -> y)
+
 (* graph *)
 let save_as_dot filename vertices edges =
   let oc = open_out filename in 

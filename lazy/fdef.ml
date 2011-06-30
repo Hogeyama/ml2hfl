@@ -1,7 +1,7 @@
 open ExtList
 
 (* args.length > 0, a.name=b.name=>a.args.length=b.args.length, guard is boolean expression without function calls *)
-type 'a t = { attr: 'a; name: 'a Id.t; args: 'a Id.t list; guard: 'a Term.t; body: 'a Term.t }
+type t = { attr: Attr.t; name: Id.t; args: Id.t list; guard: Term.t; body: Term.t }
 
 let pr ppf fdef =
   Format.fprintf ppf "%a %a when %a = %a"
@@ -9,3 +9,6 @@ let pr ppf fdef =
     (Util.pr_list Id.pr " ") fdef.args
     Term.pr fdef.guard
     Term.pr fdef.body
+
+let set_arity am fdef =
+  { fdef with body = Term.set_arity am fdef.body}
