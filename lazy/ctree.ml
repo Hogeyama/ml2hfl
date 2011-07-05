@@ -1,18 +1,26 @@
 open ExtList
 open ExtString
 
-type s = Call of (Term.s * int) * Term.t | Arg of Term.t | Ret of Term.t | Error
+type s =
+  Call of (Term.s * int) * Term.t
+| Arg of (Term.s * Term.t) list
+| Ret of Term.s * Term.t
+| Error
 type t = Node of int * Term.t * (s * t) list ref
 
-type u = Term of Term.t | Cnode of bool * (Term.s * int) * u list
+type u =
+  Sub of (Term.s * Term.t) list
+| Guard of Term.t
+| Cnode of bool * (Term.s * int) * u list
+| Nop
 
 let gen =
   let cnt = ref 0 in
   fun () -> cnt := !cnt + 1; !cnt
 
 let ret_args f uid arity = 
-  Term.Var([], Term.T(f, uid, arity)),
-  List.mapi (fun i _ -> Term.Var([], Term.T(f, uid, i))) (List.make arity ())
+  Term.make_var2 (Term.T(f, uid, arity)),
+  List.mapi (fun i _ -> Term.make_var2 (Term.T(f, uid, i))) (List.make arity ())
 
 let breadth_first = true
 
@@ -52,7 +60,7 @@ let expand_tree prog env wl =
                           faargs2
                       with Not_found ->
                         assert false),
-				              [Arg(Term.band (List.map (fun (farg, aarg) -> Term.eq farg aarg) faargs1)),
+				              [Arg(List.map (fun (Term.Var(_, farg), aarg) -> farg, aarg) faargs1),
 				              Node(uid, ctx tt, ref [])]
 		            | Term.Call(_, Term.Var(_, g), args) ->
                   (match g with
@@ -68,8 +76,8 @@ let expand_tree prog env wl =
                   | Term.T(_, _, _) ->
                       let f = try env g with Not_found -> assert false in
                       env, [Call((g, uid), Term.make_true), Node(gen (), ctx (Term.apply f args), ref [])])
-		            | Term.Ret(_, ret, t) ->
-		                env, [Ret(Term.eq ret t), Node(gen (), ctx ret, ref [])]
+		            | Term.Ret(_, Term.Var(a, ret), t) ->
+		                env, [Ret(ret, t), Node(gen (), ctx (Term.Var(a, ret)), ref [])]
             in
             let _ = cs := gns in
 										  env, if breadth_first then wl @ (List.map snd gns) else (List.map snd gns) @ wl
@@ -78,12 +86,15 @@ let expand_tree prog env wl =
 
 let node_name uid t = (String.of_int uid) ^ ": " ^ Term.string_of t
 
+let eq_xts xts = 
+  List.map (fun (x, t) -> Term.eq (Term.make_var2 x) t) xts
+
 let save_as_dot filename rt wl =
   let f s =
     match s with
-      Call(_, t)
-    | Arg(t)
-    | Ret(t) -> Term.string_of t
+      Call(_, t) -> Term.string_of t
+    | Arg(xts) -> Term.string_of (Term.band (eq_xts xts))
+    | Ret(x, t) -> Term.string_of (Term.eq (Term.make_var2 x) t)
     | Error -> ""
   in
   let rec traverse (s, l) (Node(uid, t, cs)) =
@@ -104,7 +115,8 @@ let save_as_dot filename rt wl =
   let vs = List.map
     (fun (x, _) ->
       try
-        List.find (fun (Node(uid, t, _)) -> x = node_name uid t) wl; (x, "[style = dashed]")
+        List.find (fun (Node(uid, t, _)) -> x = node_name uid t) wl;
+        (x, "[style = dashed]")
       with Not_found ->
         (x, ""))
     vs
@@ -119,52 +131,58 @@ let rec pr_path ppf p =
     match s with
       Call(_, t) ->
         Format.fprintf ppf "[@[<hov>%a.@," Term.pr t
-    | Arg(t) ->
-        Format.fprintf ppf "%a@," Term.pr t
-    | Ret(t) -> 
-        Format.fprintf ppf "%a@]]@," Term.pr t
+    | Arg(xts) ->
+        Format.fprintf ppf "%a@," Term.pr (Term.band (eq_xts xts))
+    | Ret(x, t) -> 
+        Format.fprintf ppf "%a@]]@," Term.pr (Term.eq (Term.make_var2 x) t)
     | Error ->
         Format.fprintf ppf "error"
   in
   Format.fprintf ppf "%a" (Util.pr_list pr "") p
 
 let tree_of_error_path p =
-  let rec f x ts trs p =
+  let rec f x g xts trs p =
 		  match p with
 		    [] ->
-        [], Cnode(true, x, Term(Term.band ts)::trs)
+        [], Cnode(true, x, Guard(g)::Sub(xts)::trs)
 	   | s::p ->
         (match s with
-				      Call(y, t) ->
-				        let p', tr = f y [t] [] p in
-            f x ts (tr::trs) p'
-				    | Arg(t) ->
-				        f x (t::ts) trs p
-				    | Ret(t) -> 
-				        p, Cnode(false, x, Term(Term.band (t::ts))::trs)
+				      Call(y, g') ->
+				        let p', tr = f y g' [] [] p in
+            f x g xts (tr::trs) p'
+				    | Arg(xts') ->
+				        f x g (xts' @ xts) trs p
+				    | Ret(y, t) -> 
+				        p, Cnode(false, x, Guard(g)::Sub((y, t)::xts)::trs)
 				    | Error ->
             let _ = assert (p = []) in
-            p, Cnode(true, x, Term(Term.band ts)::trs))
+            p, Cnode(true, x, Guard(g)::Sub(xts)::trs))
   in
   let Call(x, t)::p = p in
-  snd (f x [t] [] p)
+  snd (f x t [] [] p)
 
 let rec pr_tree ppf tr =
   match tr with
-    Term(t) ->
+    Sub(xts) ->
+      Format.fprintf ppf "%a" Term.pr (Term.band (eq_xts xts))
+  | Guard(t) ->
       Format.fprintf ppf "%a" Term.pr t
   | Cnode(b, x, trs) ->
       if b then
         Format.fprintf ppf "{@[<v>%a@]}" (Util.pr_list pr_tree ", @,") trs
       else
         Format.fprintf ppf "[@[<v>%a@]]" (Util.pr_list pr_tree ", @,") trs
+  | Nop ->
+      Format.fprintf ppf "nop"
 
 let rec leaf_of op tr =
   match tr with
-    Term(_) ->
+    Sub(_)
+  | Guard(_)
+  | Nop ->
       raise Not_found
   | Cnode(op', x, trs) ->
-      if op = op' && List.for_all (function (Term(_)) -> true | _ -> false) trs then
+      if op = op' && List.for_all (function Sub(_) | Guard(_) -> true | _ -> false) trs then
         (fun tr -> tr), tr
       else
         let res = Util.partition_map
@@ -182,7 +200,9 @@ let rec leaf_of op tr =
 let rec callers_of uid tr =
 		let rec f ctx tr =
 		  match tr with
-		    Term(_) ->
+		    Sub(_)
+		  | Guard(_)
+    | Nop ->
 		      raise Not_found
 		  | Cnode(op, (x, uid'), trs) ->
 		      if uid = uid' then
@@ -195,14 +215,26 @@ let rec callers_of uid tr =
   in
   f (fun tr -> tr) tr
 
-let rec term_of tr =
-  match tr with
-    Term(t) ->
-      t
-  | Cnode(_, _, trs) ->
-      Term.band (List.map term_of trs)
+let rec term_of (x, uid) tr =
+  let rec f tr =
+		  match tr with
+		    Sub(xts) ->
+		      xts, []
+		  | Guard(t) ->
+		      [], [t]
+		  | Cnode(_, _, trs) ->
+		      let xtss, tss = List.split (List.map f trs) in
+        List.concat xtss, List.concat tss
+		  | Nop ->
+		      [], []
+  in
+  let xts, ts = f tr in
+  let xts1, xts2 = List.partition (function (Term.T(x', uid', _), _) -> x = x' && uid = uid' | _ -> false) xts in
+  let t = Term.band (eq_xts xts1 @ ts) in
+  let sub x = List.assoc x xts2 in
+  Util.fixed_point (Term.subst sub) (fun t1 t2 -> Term.equiv t1 t2) t
 
-let do_widen = false
+let do_widen = true
 
 let rec infer sums eptr =
 (**)
@@ -211,56 +243,70 @@ let rec infer sums eptr =
   try
 				let ctx, tr = leaf_of true eptr in
 		  let y, uid = match tr with Cnode(true, (y, uid), _) -> Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Term.pr_var y uid; y, uid in
-				let t1 = term_of (ctx (Term(Term.make_true))) in
-				let t2 = Term.bnot (term_of tr) in
+				let t1 = term_of (y, uid) (ctx Nop) in
+				let t2 = term_of (y, uid) tr in
 				let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
 		  let interp = Term.interpolate t1 t2 in
 				let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
-		  infer (`Pre((y, uid), interp)::sums) (ctx (Term(Term.bnot (interp))))
+		  infer (`Pre((y, uid), interp)::sums) (ctx (Guard(Term.bnot (interp))))
   with Not_found ->
     try
 						let ctx, tr = leaf_of false eptr in
 				  let y, uid = match tr with Cnode(false, (y, uid), _) -> Format.printf "computing a postcondition of <%a:%d>:@.  @[<v>" Term.pr_var y uid; y, uid in
-						let t1 = term_of tr in
 
       let sub y uid x =
         match x with
 		        Term.V(_) ->
-		          Term.Var([], x)
+		          Term.make_var2 x
 		      | Term.T(y', uid', arg) ->
 		          if y = y' && uid = uid' then
-		            Term.Var([], Term.T(y', 0(*???*), arg))
+		            Term.make_var2 (Term.T(y', 0(*???*), arg))
 		          else
-		            Term.Var([], x)
+		            Term.make_var2 x
       in
       let sub_inv y uid x =
         match x with
 		        Term.V(_) ->
-		          Term.Var([], x)
+		          Term.make_var2 x
 		      | Term.T(y', uid', arg) ->
 		          if y = y' && uid' = 0 then
-		            Term.Var([], Term.T(y', uid, arg))
+		            Term.make_var2 (Term.T(y', uid, arg))
 		          else
-		            Term.Var([], x)
+		            Term.make_var2 x
       in
-      let ts =
-        (Term.subst (sub y uid) t1)::
+
+						let t1 = term_of (y, uid) tr in
+						let t2 = term_of (y, uid) (ctx Nop) in
+      let tts =
+        (Term.subst (sub y uid) t1, Term.subst (sub y uid) t2)::
         List.rev
           (List.map
-            (fun (_, (Cnode(_, (y, uid), _) as tr)) -> Term.subst (sub y uid) (term_of tr))
+            (fun (ctx, (Cnode(_, (y, uid), _) as tr)) ->
+              Term.subst (sub y uid) (term_of (y, uid) tr),
+              Term.subst (sub y uid) (term_of (y, uid) (ctx Nop)))
             (List.filter
               (fun (_, Cnode(_, (x, _), _)) -> x = y)
               (callers_of uid eptr)))
       in
-      let tts = snd (List.fold_left (fun (ts, tss) t -> t::ts, tss @ [t::ts]) ([], []) ts) in
-      let t1' = Term.subst (sub_inv y uid) (Term.widen (List.map Term.bor tts)) in
+      let _, _, tss1, tss2 = List.fold_left
+        (fun (ts1, ts2, tss1, tss2) (t1, t2) ->
+          t1::ts1, t2::ts2, tss1 @ [t1::ts1], tss2 @ [t2::ts2])
+        ([], [], [], [])
+        tts in
+      let t1' = Term.subst (sub_inv y uid) (Term.widen (List.map Term.bor tss1)) in
+      let t2' = Term.subst (sub_inv y uid) (Term.widen (List.map Term.bor tss2)) in
 
-						let t2 = Term.bnot (term_of (ctx (Term(Term.make_true)))) in
 				  let interp =
         try
           if do_widen then
-		    						let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1' Term.pr t2 in
-		          Term.interpolate t1' t2
+            try
+				    						let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1' Term.pr t2' in
+				          Term.interpolate t1' t2'
+            with Term.No_interpolant ->
+              if Term.equiv t2 t2' then
+                raise Term.No_interpolant
+              else
+                Term.interpolate t1' t2
           else
             raise Term.No_interpolant
         with Term.No_interpolant ->
@@ -271,6 +317,6 @@ let rec infer sums eptr =
             Term.interpolate t1 t2
       in
 						let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
-				  infer (`Post((y, uid), interp)::sums) (ctx (Term(interp)))
+				  infer (`Post((y, uid), interp)::sums) (ctx (Guard(interp)))
     with Not_found ->
       sums

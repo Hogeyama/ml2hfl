@@ -1,5 +1,9 @@
 open ExtList
 
+let rec fixed_point f eq x =
+  let x' = f x in
+  if eq x x' then x else fixed_point f eq x'
+
 let rec init xs =
  match xs with
    [x] -> []

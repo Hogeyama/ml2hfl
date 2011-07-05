@@ -85,6 +85,7 @@ let string_of t =
   Format.flush_str_formatter ()
 
 let make_var id = Var([], V(Id.make id))
+let make_var2 x = Var([], x)
 let make_int n = Const([], Const.Int(n))
 let make_unit = Const([], Const.Unit)
 let make_true = Const([], Const.True)
@@ -362,7 +363,7 @@ let rec iexp_of s =
     CsisatAst.Constant(f) ->
       make_int (int_of_float f)
   | CsisatAst.Variable(id) ->
-      Var([], var_of id)
+      make_var2 (var_of id)
 (*
   | CsisatAst.Application("true", []) ->
   | CsisatAst.Application("false", []) ->
@@ -395,7 +396,7 @@ let interpolate t1 t2 =
 (*
 Format.printf "%s@." (CsisatAstUtil.print_pred t1);
 *)
-  let t2 = CsisatAstUtil.simplify (csisat_of_bexp (bnot t2)) in
+  let t2 = CsisatAstUtil.simplify (csisat_of_bexp t2) in
 (*
 Format.printf "%s@." (CsisatAstUtil.print_pred t2);
 *)
@@ -453,7 +454,7 @@ let of_linconstr c =
       if n = 0 then
         t
       else
-		      let t' = if n = 1 then Var([], x) else mul (make_int n) (Var([], x)) in
+		      let t' = if n = 1 then make_var2 x else mul (make_int n) (make_var2 x) in
 				    match t with
 		        Const(_, Const.Int(m)) when m = 0 -> t'
 				    | _ -> add t t')
