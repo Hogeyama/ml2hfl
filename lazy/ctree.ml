@@ -306,6 +306,7 @@ let rec infer sums eptr =
               if Term.equiv t2 t2' then
                 raise Term.No_interpolant
               else
+          						let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1' Term.pr t2 in
                 Term.interpolate t1' t2
           else
             raise Term.No_interpolant
