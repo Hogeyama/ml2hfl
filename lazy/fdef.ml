@@ -10,5 +10,7 @@ let pr ppf fdef =
     Term.pr fdef.guard
     Term.pr fdef.body
 
+(*
 let set_arity am fdef =
   { fdef with body = Term.set_arity am fdef.body}
+*)

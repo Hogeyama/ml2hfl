@@ -5,6 +5,7 @@ type t =
 | False
 | And
 | Or
+| Imply
 | Not
 | Lt
 | Gt
@@ -29,6 +30,7 @@ let rec is_binary c =
   | Minus -> false
   | And
   | Or
+  | Imply
   | Lt
   | Gt
   | Leq
@@ -47,6 +49,7 @@ let rec pr ppf c =
   | False -> Format.fprintf ppf "false"
   | And -> Format.fprintf ppf "(&&)"
   | Or -> Format.fprintf ppf "(||)"
+  | Imply -> Format.fprintf ppf "(=>)"
   | Not -> Format.fprintf ppf "not"
   | Lt -> Format.fprintf ppf "(<)"
   | Gt -> Format.fprintf ppf "(>)"
@@ -60,6 +63,15 @@ let rec pr ppf c =
   | Mul -> Format.fprintf ppf "(*)"
   | Minus -> Format.fprintf ppf "-"
 
+let bnot_ibin c =
+  match c with
+    Lt -> Geq
+  | Gt -> Leq
+  | Leq -> Gt
+  | Geq -> Lt
+  | Eq -> Neq
+  | Neq -> Eq
+
 let rec pr_bin ppf c =
   match c with
     Event(_)
@@ -71,6 +83,7 @@ let rec pr_bin ppf c =
   | Minus -> assert false
   | And -> Format.fprintf ppf "&&"
   | Or -> Format.fprintf ppf "||"
+  | Imply -> Format.fprintf ppf "=>"
   | Lt -> Format.fprintf ppf "<"
   | Gt -> Format.fprintf ppf ">"
   | Leq -> Format.fprintf ppf "<="

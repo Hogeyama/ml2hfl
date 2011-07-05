@@ -7,6 +7,6 @@ let pr ppf id =
 
 let make id = id
 
-let get id = id
-
-let equal id1 id2 = id1 = id2
+let new_id =
+  let cnt = ref 0 in
+  fun () -> cnt := !cnt + 1; "$" ^ (string_of_int !cnt)
