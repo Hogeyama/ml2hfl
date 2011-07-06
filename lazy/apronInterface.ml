@@ -61,9 +61,9 @@ let of_linconstrs cs =
 
 let polyhedron_of env t =
   let tss = Term.dnf t in
-(**)
+(*
   List.iter (fun ts -> Format.printf "cj: @[<hv>%a@]@ " (Util.pr_list Term.pr ",@ ") ts) tss;
-(**)
+*)
   let abs =
 		  List.map
 		    (fun ts ->
@@ -71,9 +71,9 @@ let polyhedron_of env t =
 		      List.iteri
           (fun i t ->
             let ab = linconstr_of env t in
-(**)
+(*
             Format.printf "linconstr: %a@ " Apron.Lincons1.print ab;
-(**)
+*)
             Apron.Lincons1.array_set tab i ab)
           ts;
 						  Apron.Abstract1.of_lincons_array manpk env tab)
@@ -92,9 +92,9 @@ let widen ts =
   let fvs = List.map (fun x -> Apron.Var.of_string (Var.string_of x)) (List.unique (Util.concat_map Term.fvs ts)) in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
   let ts = List.map (fun t -> polyhedron_of env t) ts in
-(**)
+(*
   Format.printf "poly: @[<hv>%a@]@ " (Util.pr_list Apron.Abstract1.print ",@ ") ts;
-(**)
+*)
   let t::ts = ts in
   let ab = List.fold_left (fun t1 t2 -> widen2 t1 t2) t ts in
 (*

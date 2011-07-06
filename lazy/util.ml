@@ -28,11 +28,12 @@ let rec find_map f xs =
 let rec ctx_of xs i =
   match xs with
     [] -> assert false
-  | _::xs' ->
+  | x::xs' ->
       if i = 0 then
-        fun x -> x::xs
+        fun y -> y::xs'
       else if i > 0 then
-        ctx_of xs' (i - 1)
+        let ctx = ctx_of xs' (i - 1) in
+        fun y -> x::ctx y
       else
         assert false
 
