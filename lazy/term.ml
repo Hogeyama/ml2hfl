@@ -1,9 +1,8 @@
 open ExtList
 open ExtString
 
-type s = V of Id.t | T of s * int * int
 type t =
-  Var of Attr.t * s
+  Var of Attr.t * Var.t
 | Const of Attr.t * Const.t
 | App of Attr.t * t * t
 | Call of Attr.t * t * t list
@@ -18,19 +17,10 @@ let rec fun_args t =
   | _ ->
       t, []
 
-let rec pr_var ppf x =
-  match x with
-    V(id) ->
-      Format.fprintf ppf "%a" Id.pr id
-  | T(x, uid, arg) ->
-	     Format.fprintf ppf "<%a%s%s>" pr_var x
-	       (":" ^ String.of_int uid)
-	       (":" ^ String.of_int arg)
-
 let rec pr ppf t =
   match t with
     Var(_, x) ->
-      Format.fprintf ppf "%a" pr_var x
+      Format.fprintf ppf "%a" Var.pr x
       (*Format.fprintf ppf "%a%d" Id.pr id (try Attr.arity a with Not_found -> 0)*)
   | Const(_, c) ->
       Format.fprintf ppf "%a" Const.pr c
@@ -57,7 +47,7 @@ let rec pr ppf t =
 let rec pr2 ppf t =
   match t with
     Var(_, x) ->
-      Format.fprintf ppf "%a" pr_var x
+      Format.fprintf ppf "%a" Var.pr x
   | Const(_, c) ->
       Format.fprintf ppf "%a" Const.pr c
   | App(_, _, _) ->
@@ -84,7 +74,7 @@ let string_of t =
   Format.fprintf Format.str_formatter "%a" pr2 t;
   Format.flush_str_formatter ()
 
-let make_var id = Var([], V(Id.make id))
+let make_var id = Var([], Var.V(Id.make id))
 let make_var2 x = Var([], x)
 let make_int n = Const([], Const.Int(n))
 let make_unit = Const([], Const.Unit)
@@ -194,7 +184,7 @@ let rec redex_of env t =
               try
                 Type.arity (env f)
               with Not_found ->
-                (Format.printf "%a@." pr_var f; assert false)
+                (Format.printf "%a@." Var.pr f; assert false)
             in
 		          if List.length args >= ar then
 		  				      let args1, args2 = Util.split_at args ar in
@@ -254,38 +244,59 @@ and dnfn t =
       [[apply (Const(a, Const.bnot_ibin bop)) [t1; t2]]]
   | _ -> assert false
 
-let minus nxs = List.map (fun (n, x) -> -n, x) nxs
-let rec conv t =
-  let merge nxs =
-    let res = Util.classify (fun (_, x1) (_, x2) -> x1 = x2) nxs in
-    List.map
-      (function ((n, x)::nxs) ->
-        (List.fold_left (fun n1 n2 -> n1 + n2) n (List.map fst nxs), x)
-      | _ -> assert false)
-      res
+let term_of_arith nxs n =
+  let ts =
+		  (if n = 0 then [] else [make_int n]) @
+		  (List.filter_map (fun (n, x) -> if n = 0 then None else Some(mul (make_int n) (make_var2 x))) nxs)
   in
-  let f, args = fun_args t in
-  match f, args with
+  sum ts
+
+let rec arith_of t =
+  match fun_args t with
     Var(_, x), [] ->
       [1, x], 0
   | Const(_, Const.Int(n)), [] ->
       [], n
   | Const(_, Const.Add), [t1; t2] ->
-      let nxs1, n1 = conv t1 in
-      let nxs2, n2 = conv t2 in
-      merge (nxs1 @ nxs2), n1 + n2
+      let nxs1, n1 = arith_of t1 in
+      let nxs2, n2 = arith_of t2 in
+      Arith.canonize (nxs1 @ nxs2), n1 + n2
   | Const(_, Const.Sub), [t1; t2] ->
-      let nxs1, n1 = conv t1 in
-      let nxs2, n2 = conv t2 in
-      let nxs2, n2 =  minus nxs2, -n2 in
-      merge (nxs1 @ nxs2), n1 + n2
+      let nxs1, n1 = arith_of t1 in
+      let nxs2, n2 = arith_of t2 in
+      let nxs2, n2 =  Arith.minus nxs2, -n2 in
+      Arith.canonize (nxs1 @ nxs2), n1 + n2
   | Const(_, Const.Mul), [Const(_, Const.Int(m)); t]
   | Const(_, Const.Mul), [t; Const(_, Const.Int(m))] ->
-      let nxs, n = conv t in
-      List.map (fun (n, x) -> m * n, x) nxs, m * n
+      let nxs, n = arith_of t in
+      Arith.mul m nxs, m * n
   | Const(_, Const.Minus), [t] ->
-      let nxs, n = conv t in
-      minus nxs, -n
+      let nxs, n = arith_of t in
+      Arith.minus nxs, -n
+  | _ ->
+      invalid_arg "Term.arith_of"
+
+let int_rel_of t =
+		match fun_args t with
+    Const(_, c), [t1; t2] when Const.is_int_rel c ->
+      let nxs, n = arith_of (sub t1 t2) in
+      c, nxs, n
+  | _ -> invalid_arg "Term.int_rel_of"
+
+let rec simplify t =
+  try
+		  (match fun_args t with
+		    Const(_, Const.And), [t1; t2] ->
+						  (match int_rel_of t1, int_rel_of t2 with
+          (Const.Leq, nxs1, n1), (Const.Leq, nxs2, n2)
+        | (Const.Geq, nxs1, n1), (Const.Geq, nxs2, n2) ->
+            if Arith.equiv nxs1 (Arith.minus nxs2) && n1 = -n2 then
+              eq (term_of_arith nxs1 n1) (make_int 0)
+            else t
+        | _ -> t)
+		  | _ -> t)
+  with Invalid_argument _ ->
+    t
 
 
 (*
@@ -299,221 +310,5 @@ let rec set_arity am t =
 		| Error(a) -> Error(a)
 *)
 
-let csisat_true = CsisatAst.Application("true", [])
-let csisat_false = CsisatAst.Application("false", [])
-
-let rec string_of_var x =
-  match x with
-    V(id) -> id
-  | T(x, uid, arg) ->
-      string_of_var x ^ "_" ^ String.of_int uid ^ "_" ^ String.of_int arg
-
-let rec csisat_of_iexp t =
-  let f, args = fun_args t in
-  match f, args with
-    Var(_, x), [] -> CsisatAst.Variable(string_of_var x)
-  | Const(_, c), _ -> csisat_of_iexp_aux c args
-  | _ -> assert false
-and csisat_of_iexp_aux c args =
-  match c, args with
-    Const.Int(n), [] -> CsisatAst.Constant(float_of_int n)
-  | Const.Add, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([csisat_of_iexp t1; csisat_of_iexp t2]))
-  | Const.Sub, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([csisat_of_iexp t1; CsisatAst.Coeff(-1.0, csisat_of_iexp t2)]))
-  | Const.Mul, [Const(_, Const.Int(n)); t]
-  | Const.Mul, [t; Const(_, Const.Int(n))] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(float_of_int n, csisat_of_iexp t))
-  | Const.Minus, [t] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(-1.0, csisat_of_iexp t))
-
-let rec csisat_of_bexp t =
-  let f, args = fun_args t in
-  match f, args with
-    Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(string_of_var x), csisat_true)
-  | Const(_, c), _ -> csisat_of_bexp_aux c args
-  | _ -> assert false
-and csisat_of_bexp_aux c args =
-  match c, args with
-    Const.True, [] -> CsisatAst.True
-  | Const.False, [] -> CsisatAst.False
-  | Const.And, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.And([csisat_of_bexp t1; csisat_of_bexp t2]))
-  | Const.Or, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.Or([csisat_of_bexp t1; csisat_of_bexp t2]))
-  | Const.Imply, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.Or([CsisatAst.Not(csisat_of_bexp t1); csisat_of_bexp t2]))
-  | Const.Not, [t] -> CsisatAst.Not(csisat_of_bexp t)
-  | Const.Lt, [t1; t2] -> CsisatAst.Lt(csisat_of_iexp t1, csisat_of_iexp t2)
-  | Const.Gt, [t1; t2] -> CsisatAst.Lt(csisat_of_iexp t2, csisat_of_iexp t1)
-  | Const.Leq, [t1; t2] -> CsisatAst.Leq(csisat_of_iexp t1, csisat_of_iexp t2)
-  | Const.Geq, [t1; t2] -> CsisatAst.Leq(csisat_of_iexp t2, csisat_of_iexp t1)
-(*t1, t2 may be boolean*)
-  | Const.Eq, [t1; t2] -> CsisatAst.Eq(csisat_of_iexp t1, csisat_of_iexp t2)
-  | Const.Neq, [t1; t2] -> CsisatAst.Not(CsisatAst.Eq(csisat_of_iexp t1, csisat_of_iexp t2))
-  | _ -> assert false
-
-let var_of s =
-  let rec f x ss =
-    match ss with
-      [] -> x
-    | s1::s2::ss ->
-        f (T(x, int_of_string s1, int_of_string s2)) ss
-    | _ -> assert false
-  in
-  let s::ss = String.nsplit s "_" in
-  f (V(s)) ss
-
-
-let rec iexp_of s =
-  match s with
-    CsisatAst.Constant(f) ->
-      make_int (int_of_float f)
-  | CsisatAst.Variable(id) ->
-      make_var2 (var_of id)
-(*
-  | CsisatAst.Application("true", []) ->
-  | CsisatAst.Application("false", []) ->
-*)
-  | CsisatAst.Sum(ss) ->
-      sum (List.map iexp_of ss)
-  | CsisatAst.Coeff(f, s) ->
-      mul (make_int (int_of_float f)) (iexp_of s)
-  | _ -> assert false
-
-let rec bexp_of p =
-  match p with
-    CsisatAst.True -> make_true
-  | CsisatAst.False -> make_false
-  | CsisatAst.And(ps) -> band (List.map bexp_of ps)
-  | CsisatAst.Or(ps) -> bor (List.map bexp_of ps)
-  | CsisatAst.Not(p) -> bnot (bexp_of p)
-  | CsisatAst.Eq(s1, s2) -> eq (iexp_of s1) (iexp_of s2)
-  | CsisatAst.Lt(s1, s2) -> lt (iexp_of s1) (iexp_of s2)
-  | CsisatAst.Leq(s1, s2) -> leq (iexp_of s1) (iexp_of s2)
-  | _ -> assert false
-
-(*???*)
-let equiv t1 t2 = t1 = t2
-
-exception No_interpolant
-
-let interpolate t1 t2 =
-  let t1 = CsisatAstUtil.simplify (csisat_of_bexp t1) in
-(*
-Format.printf "%s@." (CsisatAstUtil.print_pred t1);
-*)
-  let t2 = CsisatAstUtil.simplify (csisat_of_bexp t2) in
-(*
-Format.printf "%s@." (CsisatAstUtil.print_pred t2);
-*)
-  let interp =
-    try
-      CsisatInterpolate.interpolate_with_proof t1 t2
-    with CsisatAst.SAT_FORMULA(_) ->
-      raise No_interpolant
-  in
-(*
-Format.printf "%s@." (CsisatAstUtil.print_pred interp);
-*)
-  let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
-  bexp_of (CsisatAstUtil.dnf interp)
-
-let manpk = Polka.manager_alloc_strict ()
-(*let maneq = Polka.manager_alloc_equalities ()*)
-
-
-let linconstr_of env t =
-  let f, [t1; t2] = fun_args t in
-  let nxs, n = conv (sub t1 t2) in
-  
-  let expr = Apron.Linexpr1.make env in
-  Apron.Linexpr1.set_array expr
-    (Array.of_list (List.map (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (string_of_var x)) nxs))
-    (Some ((Apron.Coeff.s_of_int n)));
-  let mexpr = Apron.Linexpr1.make env in
-  Apron.Linexpr1.set_array mexpr
-    (Array.of_list (List.map (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (string_of_var x)) (minus nxs)))
-    (Some ((Apron.Coeff.s_of_int n)));
-		match f with
-    Const(_, Const.Lt) -> Apron.Lincons1.make mexpr Apron.Lincons1.SUP
-  | Const(_, Const.Gt) -> Apron.Lincons1.make expr Apron.Lincons1.SUP
-  | Const(_, Const.Leq) -> Apron.Lincons1.make mexpr Apron.Lincons1.SUPEQ
-  | Const(_, Const.Geq) -> Apron.Lincons1.make expr Apron.Lincons1.SUPEQ
-  | Const(_, Const.Eq) -> Apron.Lincons1.make expr Apron.Lincons1.EQ
-  | Const(_, Const.Neq) -> Apron.Lincons1.make expr Apron.Lincons1.DISEQ
-  | _ -> assert false
-
-let int_of_coeff n =
-  if Apron.Coeff.is_scalar n then
-    match n with
-      Apron.Coeff.Scalar(s) -> int_of_string (Apron.Scalar.to_string s)
-    | _ -> assert false
-  else
-    assert false
-
-let of_linconstr c =
-  let nxs = ref [] in
-  Apron.Lincons1.iter (fun n x -> nxs := (int_of_coeff n, var_of (Apron.Var.to_string x))::!nxs) c;
-  let n = int_of_coeff (Apron.Lincons1.get_cst c) in
-  let t = List.fold_left
-    (fun t (n, x) ->
-      if n = 0 then
-        t
-      else
-		      let t' = if n = 1 then make_var2 x else mul (make_int n) (make_var2 x) in
-				    match t with
-		        Const(_, Const.Int(m)) when m = 0 -> t'
-				    | _ -> add t t')
-    (make_int n) !nxs
-  in
-  let zero = make_int 0 in
-  match Apron.Lincons1.get_typ c with
-    Apron.Lincons1.SUP -> gt t zero
-  | Apron.Lincons1.SUPEQ -> geq t zero
-  | Apron.Lincons1.EQ -> eq t zero
-  | Apron.Lincons1.DISEQ -> neq t zero
-let of_linconstrs cs =
-  band
-    (List.mapi
-      (fun i _ ->
-        of_linconstr (Apron.Lincons1.array_get cs i))
-      (List.make (Apron.Lincons1.array_length cs) ()))
-
-let polyhedron_of env t =
-  let tss = dnf t in
-(*
-  List.iter (fun ts -> Format.printf "cj: @[<hv>%a@]@ " (Util.pr_list pr ",@ ") ts) tss;
-*)
-  let abs =
-		  List.map
-		    (fun ts ->
-						  let tab = Apron.Lincons1.array_make env (List.length ts) in
-		      List.iteri
-          (fun i t ->
-            let ab = linconstr_of env t in
-(*
-            Format.printf "linconstr: %a@ " Apron.Lincons1.print ab;
-*)
-            Apron.Lincons1.array_set tab i ab)
-          ts;
-						  Apron.Abstract1.of_lincons_array manpk env tab)
-		    tss
-  in
-(*
-  Format.printf "poly': @[<hv>%a@]@ " (Util.pr_list Apron.Abstract1.print ",@ ") abs;
-*)
-  Apron.Abstract1.join_array manpk (Array.of_list abs)
-
-let widen2 t1 t2 = Apron.Abstract1.widening manpk t1 t2
-
-let widen ts =
-  Format.printf "@[<hov>widen_in: @[<hv>%a@]@ " (Util.pr_list pr ",@ ") ts;
-
-  let fvs = List.map (fun x -> Apron.Var.of_string (string_of_var x)) (List.unique (Util.concat_map fvs ts)) in
-  let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let ts = List.map (fun t -> polyhedron_of env t) ts in
-(*
-  Format.printf "poly: @[<hv>%a@]@ " (Util.pr_list Apron.Abstract1.print ",@ ") ts;
-*)
-  let t::ts = ts in
-  let ab = List.fold_left (fun t1 t2 -> widen2 t1 t2) t ts in
-(*
-  Format.printf "widen: @[%a@]@ " Apron.Abstract1.print ab;
-*)
-  let res = of_linconstrs (Apron.Abstract1.to_lincons_array manpk ab) in
-  Format.printf "widen_out: @[%a@]@]@ " pr res;
-  res
+(* up to attributes *)
+let equiv t1 t2 = t1 = t2(*ToDo*)

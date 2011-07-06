@@ -19,27 +19,25 @@ type t =
 | Mul
 | Minus
 
+let rec is_int_rel c =
+  match c with
+    Event(_)
+  | Unit
+  | True | False | And | Or | Imply | Not -> false
+  | Lt | Gt | Leq | Geq | Eq | Neq -> true
+  | Int(_) | Add | Sub | Mul | Minus -> false
+
 let rec is_binary c =
   match c with
     Event(_)
   | Unit
-  | True
-  | False
+  | True | False
   | Int(_) -> false
   | Not
   | Minus -> false
-  | And
-  | Or
-  | Imply
-  | Lt
-  | Gt
-  | Leq
-  | Geq
-  | Eq
-  | Neq
-  | Add
-  | Sub
-  | Mul -> true
+  | And | Or | Imply
+  | Lt | Gt | Leq | Geq | Eq | Neq
+  | Add | Sub | Mul -> true
 
 let rec pr ppf c =
   match c with

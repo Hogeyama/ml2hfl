@@ -61,15 +61,15 @@ let rec of_summary types sums =
 						    in
 				      let xs1 = List.map
 				        (function `Pre((_, uid), pre) ->
-				          pre, List.mapi (fun i arg -> merge (Term.T(x, uid, i)) arg) args,
-				          Term.make_true, merge (Term.T(x, uid, List.length args)) ret
+				          pre, List.mapi (fun i arg -> merge (Var.T(x, uid, i)) arg) args,
+				          Term.make_true, merge (Var.T(x, uid, List.length args)) ret
             | _ -> assert false)
 				        pres
           in
 				      let xs2 = List.map
 				        (function `Post((_, uid), post) ->
-				          Term.make_true, List.mapi (fun i arg -> merge (Term.T(x, uid, i)) arg) args,
-				          post, merge (Term.T(x, uid, List.length args)) ret
+				          Term.make_true, List.mapi (fun i arg -> merge (Var.T(x, uid, i)) arg) args,
+				          post, merge (Var.T(x, uid, List.length args)) ret
             | _ -> assert false)
 				        posts
           in
@@ -79,5 +79,5 @@ let rec of_summary types sums =
   in
   List.map
     (fun (f, uid) ->
-      (f, uid), refine (Term.V(f), uid) (List.assoc f types))
-    (List.unique (List.filter_map (function `Pre((Term.V(f), uid), _) | `Post((Term.V(f), uid), _) -> Some(f, uid) | _ -> None) sums))
+      (f, uid), refine (Var.V(f), uid) (List.assoc f types))
+    (List.unique (List.filter_map (function `Pre((Var.V(f), uid), _) | `Post((Var.V(f), uid), _) -> Some(f, uid) | _ -> None) sums))

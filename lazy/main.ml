@@ -59,10 +59,10 @@ let test1 () =
 *)
   Format.printf "%a" Prog.pr prog;
 (*
-  let arity = Prog.arities prog (Term.V(prog.Prog.main)) in
+  let arity = Prog.arities prog (Var.V(prog.Prog.main)) in
 *)
   let p = Ctree.gen () in
-  let ret, args = Ctree.ret_args (Term.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Term.V(prog.Prog.main)))) in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
   let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
 (*
   let init = Term.set_arity (Prog.arities prog) init in
@@ -87,7 +87,7 @@ let test2 () =
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   let p = Ctree.gen () in
-  let ret, args = Ctree.ret_args (Term.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Term.V(prog.Prog.main)))) in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
   let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
   let env _ = raise Not_found in
   let rt = Ctree.Node(p, init, ref []) in
@@ -113,10 +113,15 @@ let test3 () =
 *)
   Format.printf "%a" Prog.pr prog;
 (*
-  let arity = Prog.arities prog (Term.V(prog.Prog.main)) in
+  let arity = Prog.arities prog (Var.V(prog.Prog.main)) in
 *)
   let p = Ctree.gen () in
-  let ret, args = Ctree.ret_args (Term.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Term.V(prog.Prog.main)))) in
+  let ret, args =
+    Ctree.ret_args
+     (Var.V(prog.Prog.main))
+     p
+     (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main))))
+  in
   let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
 (*
   let init = Term.set_arity (Prog.arities prog) init in

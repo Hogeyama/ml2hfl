@@ -2,16 +2,16 @@ open ExtList
 open ExtString
 
 type s =
-  Call of (Term.s * int) * Term.t
-| Arg of (Term.s * Term.t) list
-| Ret of Term.s * Term.t
+  Call of (Var.t * int) * Term.t
+| Arg of (Var.t * Term.t) list
+| Ret of Var.t * Term.t
 | Error
 type t = Node of int * Term.t * (s * t) list ref
 
 type u =
-  Sub of (Term.s * Term.t) list
+  Sub of (Var.t * Term.t) list
 | Guard of Term.t
-| Cnode of bool * (Term.s * int) * u list
+| Cnode of bool * (Var.t * int) * u list
 | Nop
 
 let gen =
@@ -19,8 +19,8 @@ let gen =
   fun () -> cnt := !cnt + 1; !cnt
 
 let ret_args f uid arity = 
-  Term.make_var2 (Term.T(f, uid, arity)),
-  List.mapi (fun i _ -> Term.make_var2 (Term.T(f, uid, i))) (List.make arity ())
+  Term.make_var2 (Var.T(f, uid, arity)),
+  List.mapi (fun i _ -> Term.make_var2 (Var.T(f, uid, i))) (List.make arity ())
 
 let breadth_first = true
 
@@ -64,16 +64,16 @@ let expand_tree prog env wl =
 				              Node(uid, ctx tt, ref [])]
 		            | Term.Call(_, Term.Var(_, g), args) ->
                   (match g with
-                    Term.V(f) ->
+                    Var.V(f) ->
 										            let fdefs = Prog.fdefs_of prog f in
 																      env,
                       List.mapi
 																        (fun i fd ->
-										                let sub x = List.assoc x (List.combine (List.map (fun arg -> Term.V(arg)) fd.Fdef.args) args) in
+										                let sub x = List.assoc x (List.combine (List.map (fun arg -> Var.V(arg)) fd.Fdef.args) args) in
 																		  				  Call((g, uid), Term.subst sub fd.Fdef.guard),
 																				  		  Node(gen (), ctx (Term.subst sub fd.Fdef.body), ref []))
 										              fdefs
-                  | Term.T(_, _, _) ->
+                  | Var.T(_, _, _) ->
                       let f = try env g with Not_found -> assert false in
                       env, [Call((g, uid), Term.make_true), Node(gen (), ctx (Term.apply f args), ref [])])
 		            | Term.Ret(_, Term.Var(a, ret), t) ->
@@ -229,7 +229,7 @@ let rec term_of (x, uid) tr =
 		      [], []
   in
   let xts, ts = f tr in
-  let xts1, xts2 = List.partition (function (Term.T(x', uid', _), _) -> x = x' && uid = uid' | _ -> false) xts in
+  let xts1, xts2 = List.partition (function (Var.T(x', uid', _), _) -> x = x' && uid = uid' | _ -> false) xts in
   let t = Term.band (eq_xts xts1 @ ts) in
   let sub x = List.assoc x xts2 in
   Util.fixed_point (Term.subst sub) (fun t1 t2 -> Term.equiv t1 t2) t
@@ -242,35 +242,35 @@ let rec infer sums eptr =
 (**)
   try
 				let ctx, tr = leaf_of true eptr in
-		  let y, uid = match tr with Cnode(true, (y, uid), _) -> Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Term.pr_var y uid; y, uid in
+		  let y, uid = match tr with Cnode(true, (y, uid), _) -> Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr y uid; y, uid in
 				let t1 = term_of (y, uid) (ctx Nop) in
 				let t2 = term_of (y, uid) tr in
 				let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-		  let interp = Term.interpolate t1 t2 in
+		  let interp = CsisatInterface.interpolate t1 t2 in
 				let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
 		  infer (`Pre((y, uid), interp)::sums) (ctx (Guard(Term.bnot (interp))))
   with Not_found ->
     try
 						let ctx, tr = leaf_of false eptr in
-				  let y, uid = match tr with Cnode(false, (y, uid), _) -> Format.printf "computing a postcondition of <%a:%d>:@.  @[<v>" Term.pr_var y uid; y, uid in
+				  let y, uid = match tr with Cnode(false, (y, uid), _) -> Format.printf "computing a postcondition of <%a:%d>:@.  @[<v>" Var.pr y uid; y, uid in
 
       let sub y uid x =
         match x with
-		        Term.V(_) ->
+		        Var.V(_) ->
 		          Term.make_var2 x
-		      | Term.T(y', uid', arg) ->
+		      | Var.T(y', uid', arg) ->
 		          if y = y' && uid = uid' then
-		            Term.make_var2 (Term.T(y', 0(*???*), arg))
+		            Term.make_var2 (Var.T(y', 0(*???*), arg))
 		          else
 		            Term.make_var2 x
       in
       let sub_inv y uid x =
         match x with
-		        Term.V(_) ->
+		        Var.V(_) ->
 		          Term.make_var2 x
-		      | Term.T(y', uid', arg) ->
+		      | Var.T(y', uid', arg) ->
 		          if y = y' && uid' = 0 then
-		            Term.make_var2 (Term.T(y', uid, arg))
+		            Term.make_var2 (Var.T(y', uid, arg))
 		          else
 		            Term.make_var2 x
       in
@@ -293,29 +293,29 @@ let rec infer sums eptr =
           t1::ts1, t2::ts2, tss1 @ [t1::ts1], tss2 @ [t2::ts2])
         ([], [], [], [])
         tts in
-      let t1' = Term.subst (sub_inv y uid) (Term.widen (List.map Term.bor tss1)) in
-      let t2' = Term.subst (sub_inv y uid) (Term.widen (List.map Term.bor tss2)) in
+      let t1' = Term.subst (sub_inv y uid) (ApronInterface.widen (List.map Term.bor tss1)) in
+      let t2' = Term.subst (sub_inv y uid) (ApronInterface.widen (List.map Term.bor tss2)) in
 
 				  let interp =
         try
           if do_widen then
             try
 				    						let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1' Term.pr t2' in
-				          Term.interpolate t1' t2'
-            with Term.No_interpolant ->
+				          CsisatInterface.interpolate t1' t2'
+            with CsisatInterface.No_interpolant ->
               if Term.equiv t2 t2' then
-                raise Term.No_interpolant
+                raise CsisatInterface.No_interpolant
               else
           						let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1' Term.pr t2 in
-                Term.interpolate t1' t2
+                CsisatInterface.interpolate t1' t2
           else
-            raise Term.No_interpolant
-        with Term.No_interpolant ->
+            raise CsisatInterface.No_interpolant
+        with CsisatInterface.No_interpolant ->
           if do_widen && Term.equiv t1 t1' then
-            raise Term.No_interpolant
+            raise CsisatInterface.No_interpolant
           else
       						let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-            Term.interpolate t1 t2
+            CsisatInterface.interpolate t1 t2
       in
 						let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
 				  infer (`Post((y, uid), interp)::sums) (ctx (Guard(interp)))

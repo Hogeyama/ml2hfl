@@ -10,9 +10,9 @@ let fdefs_of prog id =
 
 let rec type_of prog x =
   match x with
-    Term.V(id) ->
+    Var.V(id) ->
       List.assoc id prog.types
-  | Term.T(x, _, arg) ->
+  | Var.T(x, _, arg) ->
       let rec f ty i =
         let _ = assert (i >= 0) in
         match ty, i with
@@ -24,7 +24,7 @@ let rec type_of prog x =
 
 (*
 let arities prog x =
-  List.length (List.find (fun fdef -> Term.V(fdef.Fdef.name) = x) prog.fdefs).Fdef.args
+  List.length (List.find (fun fdef -> Var.V(fdef.Fdef.name) = x) prog.fdefs).Fdef.args
 
 let set_arity am prog =
   { prog with fdefs = List.map (Fdef.set_arity am) prog.fdefs }
