@@ -49,9 +49,10 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
-	flag.cmo util.cmo utilities.cmo automata.cmo syntax.cmo \
-	alpha.cmo typing.cmo wrapper.cmo CPS.cmo parser_wrapper.cmo \
-	abstract.cmo check.cmo feasibility.cmo infer.cmo refine.cmo main.cmo
+	flag.cmo util.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
+	wrapper.cmo type_check.cmo CPS.cmo parser_wrapper.cmo \
+	abstract.cmo check.cmo feasibility.cmo infer.cmo refine.cmo \
+        CEGAR_const.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma
 CMXA = $(CMA:.cma=.cmxa)
@@ -103,6 +104,13 @@ csisat:
 
 
 ################################################################################
+# distribution
+
+dist:
+	tar czvf dist.tar.gz *.ml *.mli Makefile depend
+
+
+################################################################################
 # documents
 
 MLI = $(wildcard *.mli)
@@ -137,9 +145,10 @@ clean-all: clean clean-doc clean-ocaml clean-csisat
 # test
 
 TEST=test_new/*.ml
+LIMIT=120
 
 test: $(NAME).opt
-	for i in $(TEST); do echo $$i; (ulimit -t 120; ./$(NAME).opt $$i | egrep 'Safe|Unsafe'); done
+	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:'); echo; done
 
 
 ################################################################################
@@ -148,6 +157,7 @@ test: $(NAME).opt
 SRC = $(CMO:.cmo=.ml)
 
 depend::
-	$(OCAMLDEP) $(INCLUDES) *.mli $(SRC) > .depend
+	$(OCAMLDEP) $(INCLUDES) *.mli $(SRC) > depend
 
--include .depend
+-include depend
+

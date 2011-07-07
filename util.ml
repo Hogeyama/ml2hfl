@@ -4,9 +4,8 @@ let rec uniq_aux acc = function
     [] -> acc
   | x1::x2::xs when x1=x2 -> uniq_aux acc (x2::xs)
   | x::xs -> uniq_aux (x::acc) xs
-let uniq xs = uniq_aux [] (List.sort compare xs)
+let uniq compare xs = uniq_aux [] (List.sort compare xs)
 let uniq_sorted xs = uniq_aux [] xs
-
 
 
 let (@@) = List.rev_append
@@ -82,7 +81,7 @@ let assoc_exn k kts t =
 
 
 
-let uniq_flatten_map f xs = uniq (rev_map_flatten f xs)
+let uniq_flatten_map compare f xs = uniq compare (rev_map_flatten f xs)
 
 
 
@@ -183,3 +182,13 @@ let my_input ic s ofs len = my_input ic s ofs len 0
 let apply_opt f = function
     None -> None
   | Some x -> Some (f x)
+
+
+let rec print_list print punc last fm xs =
+  match xs with
+      [] -> ()
+    | [x] -> Format.fprintf fm "%a%s" print x (if last then punc else "")
+    | x::xs -> Format.fprintf fm "%a%s%a" print x punc (print_list print punc last) xs
+
+
+

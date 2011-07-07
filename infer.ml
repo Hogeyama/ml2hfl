@@ -1,4 +1,5 @@
 open Syntax;;
+open Type;;
 open Utilities;;
 (*#use "koba/utilities.ml";;*)
 
@@ -26,7 +27,7 @@ let print_defs2 defs =
 
 let print_string2 s = Format.printf "%s" s
 
-let print_ident x = Format.printf "%a@?" print_id x
+let print_ident x = Format.printf "%a@?" Id.print x
 
 
 let print_term t =
@@ -78,8 +79,8 @@ and ety = ETfun of tinfo * ety | ETunit of int | ETindirect of tinfo
 type aty = ATunit of int | ATfun of aty list * aty | ATint of int | ATbool of int | ATlist of int
  (** Integers added to ATint and ATbool will be used as an identifier of the predicate **)
 
-type myterm = MyUnit of tinfo | MyFail of tinfo | MyVar of ident * tinfo
-            | MyApp of myterm * myterm * tinfo | MyTerm of Syntax.t * tinfo
+type myterm = MyUnit of tinfo | MyFail of tinfo | MyVar of id * tinfo
+            | MyApp of myterm * myterm * tinfo | MyTerm of typed_term * tinfo
 
 let rec print_myterm t =
   match t with
@@ -121,7 +122,7 @@ let add_to_tinfo newinfo tinfo =
   let tys = !tinfo in
       tinfo := newinfo::tys
 
-let register_tinfo f (tinfo: tinfo) =
+let register_tinfo (f:id) (tinfo: tinfo) =
   let r = 
         try List.assoc f !tinfomap 
         with Not_found ->
@@ -180,7 +181,7 @@ and ety2ty typ ety =
   match ety with
     ETfun(tinfo',ety1) ->
        (match typ with
-           TFun((_,typ1),typ2) ->
+           TFun({Id.typ=typ1},typ2) ->
              let ty1 = tinfo2ty typ1 tinfo' in
              let ty2 = ety2ty typ2 ety1 in
                (match ty2 with
@@ -196,7 +197,7 @@ let rec tinfomap2atenv tinfomap =
     match tinfomap with
     [] -> []
   | (f,r)::tinfomap' ->
-      (f, tinfolist2ty f.typ !r)::(tinfomap2atenv tinfomap')
+      (f, tinfolist2ty (Id.typ f) !r)::(tinfomap2atenv tinfomap')
 
 type pid = int
 
@@ -261,13 +262,13 @@ let rec mk_appterm h terms =
       let t1 = MyApp(h, t, new_tinfo()) in
        mk_appterm t1 terms'
 
-exception Unsupported of Syntax.t
-exception Undefined of ident
+exception Unsupported of typed_term
+exception Undefined of id
 
 let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
-  (*
+  (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "process_term:\n";
   print_string2 "term:\n ";
@@ -275,8 +276,8 @@ let rec process_term trace term traces env pcounter =
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-  *)
-  match term with
+  (**)
+  match term.desc with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
           let trace = trace @ [EventNode "unit"] in
@@ -305,11 +306,11 @@ let rec process_term trace term traces env pcounter =
           let tfs = List.map List.tl tfs in
             (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
               (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
-    | App(Fail,_) ->
+    | App({desc=Fail},_) ->
         let trace = trace @ [FailNode] in
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyFail(new_tinfo()), trace, traces]
-    | App(Event(s), [t]) ->
+    | App({desc=Event(s)}, [t]) ->
         if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
           let traces' = List.map List.tl traces in
             process_term (trace @ [EventNode(s)]) t traces' env pcounter
@@ -319,7 +320,7 @@ let rec process_term trace term traces env pcounter =
             [MyFail(new_tinfo()), trace, traces]
         else assert false
     | Var(x) ->
-        if x.typ = TUnit && List.for_all (function [FailNode] -> true | _ -> false) traces then
+        if Id.typ x = TUnit && List.for_all (function [FailNode] -> true | _ -> false) traces then
           let trace = trace @ [FailNode] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
             [MyFail(new_tinfo()), trace, traces]
@@ -333,7 +334,7 @@ let rec process_term trace term traces env pcounter =
                let h = MyVar(x, tinfo) in
                let _ = register_tinfo x tinfo in
                  [h, trace, traces])
-    | App(Var x, ts) ->
+    | App({desc=Var x}, ts) ->
         assert (ts <> []);
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
         let myts = List.map (fun t -> process_aterm env t) ts in
@@ -411,7 +412,7 @@ let rec process_term trace term traces env pcounter =
     | RandInt None ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
-    | RandInt (Some t) -> process_term trace (app2app t [RandInt None]) traces env pcounter
+    | RandInt (Some t) -> process_term trace (app2app t [{desc=RandInt None;typ=TInt[]}]) traces env pcounter
     | _ -> (print_string2 "process_term\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
 and process_aterm env t =
   match process_term [] t [] env invalid_counter with
@@ -462,7 +463,7 @@ let trace2id = ref []
 
 let rec eval_term t defs traces pcounter =
   (*let _ = (pc := counter) in*)
-  (*
+  (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "eval_term:\n";
   print_string2 "term:\n";
@@ -470,7 +471,7 @@ let rec eval_term t defs traces pcounter =
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-  *)
+  (**)
   match t with
       MyUnit(tinfo) | MyFail(tinfo) ->
         let check = function
@@ -516,13 +517,13 @@ let rec eval_term t defs traces pcounter =
 
 
 (** from types to refinement type templates **)
-type pred = Pred of pid * Syntax.t list 
-type rty = RTunit of int | RTint of (Syntax.t -> pred) | RTbool of (Syntax.t -> pred)
-        | RTifun of (Syntax.t -> pred) * (Syntax.t -> rty) | RTbfun of (Syntax.t -> pred) * (Syntax.t-> rty)
+type pred = Pred of pid * Syntax.typed_term list 
+type rty = RTunit of int | RTint of (Syntax.typed_term -> pred) | RTbool of (Syntax.typed_term -> pred)
+        | RTifun of (Syntax.typed_term -> pred) * (Syntax.typed_term -> rty) | RTbfun of (Syntax.typed_term -> pred) * (Syntax.typed_term-> rty)
         | RTfun of rty list * rty
-        | RTlist of (Syntax.t -> pred) | RTlfun of (Syntax.t -> pred) * (Syntax.t -> rty)
+        | RTlist of (Syntax.typed_term -> pred) | RTlfun of (Syntax.typed_term -> pred) * (Syntax.typed_term -> rty)
 
-type ac = Cpred of pred | Csub of rty * rty | Cterm of Syntax.t | Cimp of ac list * ac list | Cfalse
+type ac = Cpred of pred | Csub of rty * rty | Cterm of Syntax.typed_term | Cimp of ac list * ac list | Cfalse
 
 let rec aty2rty aty vars =
   match aty with
@@ -569,13 +570,13 @@ let new_var() =
    (current_vid := !current_vid + 1;
     Var({id=vid; origin="x"; typ=TUnit})) (** type is a dummy **)
 *)
-let new_id() = {id=new_int (); name="x"; typ=TUnit}
-let new_var typ = Var({(new_id()) with typ=typ})
+let new_id() = {Id.id=Id.new_int (); Id.name="x"; Id.typ=TUnit}
+let new_var typ = make_var {(new_id()) with Id.typ=typ}
 let dummy_var = 
-  Var({id=0; name="x"; typ=TUnit})
+  {desc=Var({Id.id=0; Id.name="x"; Id.typ=TUnit}); typ=TUnit}
 
 let print_var x =
-  match x with Var(id) -> print_ident id
+  match x.desc with Var(id) -> print_ident id
     | _ -> assert false
 
 let print_pname pid =
@@ -730,15 +731,15 @@ let print_constraint c =
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
-  (*
+  (**)
   print_string2 ("id: " ^ (string_of_int id) ^ "\n");
   print_string2 "term:\n";
   print_term term;
   print_string2 "\ntraces:\n";
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
-  *)
-  match term with
+  (**)
+  match term.desc with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
           []
@@ -746,7 +747,7 @@ let rec chk_term rtenv term id trace traces =
           [Cfalse]
         else
           assert false
-    | App(Var x, ts) ->
+    | App({desc=Var x}, ts) ->
         if List.for_all (function [FailNode] -> true | _ -> false) traces then
           [Cfalse]
         else
@@ -760,12 +761,12 @@ let rec chk_term rtenv term id trace traces =
                  c1@c2
              with
                  PickRty -> [Cfalse])
-    | App(Fail, _) ->
+    | App({desc=Fail}, _) ->
         if List.for_all (function [FailNode] -> true | _ -> false) traces then
           [Cfalse]
         else
           assert false
-    | App(Event(s), [t]) ->
+    | App({desc=Event(s)}, [t]) ->
         if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
           let traces' = List.map List.tl traces in
             chk_term rtenv t id (trace @ [EventNode(s)]) traces'
@@ -777,7 +778,7 @@ let rec chk_term rtenv term id trace traces =
         if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
           [Cimp([Cterm(t1)], [Cfalse])]
         else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
-          [Cimp([Cterm(Not t1)], [Cfalse])]
+          [Cimp([Cterm({desc=Not t1;typ=TBool})], [Cfalse])]
         else
           let aux = function
               [] -> raise (Fatal "chk_term: trace information is missing")
@@ -796,9 +797,9 @@ let rec chk_term rtenv term id trace traces =
           in
           let c2 = if tfs = [] then [] else
             if !cgen_flag then
-              [Cimp([Cterm(Not t1)], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)]
+              [Cimp([Cterm({desc=Not t1;typ=TBool})], chk_term rtenv t3 id (trace @ [LabNode(false)]) tfs)]
             else
-              (Cterm(Not t1)) :: (chk_term rtenv t3 id (trace @ [LabNode(false)]) tts)
+              (Cterm({desc=Not t1;typ=TBool})) :: (chk_term rtenv t3 id (trace @ [LabNode(false)]) tts)
           in
             c1 @ c2
     | Match_(t,pats) ->
@@ -819,7 +820,7 @@ let rec chk_term rtenv term id trace traces =
                   in
                     snd (List.fold_left aux (0,[]) pats)
           end
-    | Var x -> chk_term rtenv (App(Var x, [])) id trace traces
+    | Var x -> chk_term rtenv ({desc=App({desc=Var x;typ=Id.typ x}, []);typ=Id.typ x}) id trace traces
     | Fail -> assert false(*[Cfalse]*)
     | True | False -> assert false
     | Not(t) -> (*???*)
@@ -854,13 +855,13 @@ and chk_args rtenv rty terms =
 
 and chk_term_rty rtenv term rty =
   let id = id_of_rty(rty) in
-    match term with
+    match term.desc with
         Unit -> 
           (match rty with 
                RTunit(_) -> []
              | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-unit type")
           )
-      | App(Var x, ts) ->
+      | App({desc=Var x}, ts) ->
           (try
              let rtyl = try List.assoc x rtenv with Not_found -> [] in
              let rty1 = pick_rty id rtyl in
@@ -869,9 +870,9 @@ and chk_term_rty rtenv term rty =
                c1@c2
            with
                PickRty -> [Cfalse])
-      | App(Fail, _) -> [Cfalse]
+      | App({desc=Fail}, _) -> [Cfalse]
       | If(t1,t2,t3) -> assert false
-      | Var x -> chk_term_rty rtenv (App(Var x, [])) rty
+      | Var x -> chk_term_rty rtenv ({desc=App({desc=Var x;typ=Id.typ x}, []);typ=Id.typ x}) rty
       | Fail -> [Cfalse]
       | True | False -> (*???*)
           (match rty with 
@@ -895,17 +896,17 @@ let rec mk_venv vars rty =
  | v::vars' ->
        (match rty with
             RTifun(f, g) ->
-             let rty2 = g (Var v) in
+             let rty2 = g ({desc=Var v;typ=Id.typ v}) in
              let (venv, id) = mk_venv vars' rty2 in
              let rty_v = RTint(f) in
                ((v,[rty_v])::venv, id)
          | RTbfun(f, g) ->
-             let rty2 = g (Var v) in
+             let rty2 = g ({desc=Var v;typ=Id.typ v}) in
              let (venv, id) = mk_venv vars' rty2 in
              let rty_v = RTbool(f) in
                ((v,[rty_v])::venv, id)
          | RTlfun(f, g) ->
-             let rty2 = g (Var v) in
+             let rty2 = g ({desc=Var v;typ=Id.typ v}) in
              let (venv, id) = mk_venv vars' rty2 in
              let rty_v = RTlist(f) in
                ((v,[rty_v])::venv, id)
@@ -917,9 +918,9 @@ let rec mk_venv vars rty =
 
 let getc_from_rtyl v rtyl =
   match rtyl with
-    [RTint(f)] -> [Cpred(f (Var v))]
-  | [RTbool(f)] -> [Cpred(f (Var v))]
-  | [RTlist(f)] -> [Cpred(f (Var v))]
+    [RTint(f)] -> [Cpred(f ({desc=Var v;typ=Id.typ v}))]
+  | [RTbool(f)] -> [Cpred(f ({desc=Var v;typ=Id.typ v}))]
+  | [RTlist(f)] -> [Cpred(f ({desc=Var v;typ=Id.typ v}))]
   | _ -> []
 
 let getc_from_env env =
@@ -1043,7 +1044,7 @@ and normalize_ac ac =
       let c1' = normalize_constr c1 in
       let c2' = normalize_constr c2 in
       let c = List.map (fun ac -> match ac with Cimp(c3, c4) -> Cimp(c1' @ c3, c4) | _ -> Cimp(c1', [ac])) c2' in
-        List.map (function Cimp(c3,[Cterm t]) -> Cimp(c3@[Cterm(Not t)], [Cfalse]) | ac -> ac) c
+        List.map (function Cimp(c3,[Cterm t]) -> Cimp(c3@[Cterm({desc=Not t;typ=TBool})], [Cfalse]) | ac -> ac) c
   | Cfalse -> [ac]
 
 
@@ -1052,7 +1053,7 @@ let get_pid c = List.map
   (List.filter (function Cpred(_) -> true | _ -> false) c)
 
 let save_as_dot filename cs =
-  let es = Util.uniq (List.concat (List.map
+  let es = Util.uniq compare (List.concat (List.map
     (fun ac ->
       match ac with
         Cimp(c1, c2) ->
@@ -1064,14 +1065,14 @@ let save_as_dot filename cs =
        | _ -> assert false)
     cs))
   in
-  let vs = Util.uniq (List.concat (List.map (fun (x, y, _) -> [x, y]) es)) in
+  let vs = Util.uniq compare (List.concat (List.map (fun (x, y, _) -> [x, y]) es)) in
   Util.save_as_dot filename vs es
 
 let rec term_of c =
   List.fold_left 
   (fun t -> fun ac ->
-     BinOp(And, t, term_of_ac ac))
-   True c
+     {desc=BinOp(And, t, term_of_ac ac);typ=TBool})
+   true_term c
 and terms_of c =
   List.map term_of_ac c
 and term_of_ac ac =
@@ -1082,41 +1083,39 @@ and term_of_ac ac =
   | Cimp(c1,c2) ->
       let t1 = term_of c1 in
       let t2 = term_of c2 in
-      BinOp(Or, Not t1, t2)
-  | Cfalse -> False
+      {desc=BinOp(Or, {desc=Not t1;typ=TBool}, t2);typ=TBool}
+  | Cfalse -> false_term
 
 let int_gen ts =
   let ints = (*List.filter (fun x -> x <> 0)*) (Util.rev_map_flatten get_int ts) in
-(*
   Format.printf "ints: ";
   List.iter (fun int -> Format.printf "%d," int) ints;
   Format.printf "@.";
-*)
   match ints with
     [] -> ts
   | int::ints ->
       let minint = List.fold_left (fun i1 i2 -> min i1 i2) int ints in
-      let ts1, ts2 = List.partition (function BinOp(Eq, t, Int(n)) -> minint = n | _ -> false) ts in
+      let ts1, ts2 = List.partition (function {desc=BinOp(Eq, t, {desc=Int(n)})} -> minint = n | _ -> false) ts in
       match ts1 with
         [] -> ts
-      | (BinOp(Eq, t, Int(n)))::ts -> 
-          (BinOp(Eq, t, Int(n))) :: List.map (subst_int n t) (ts @ ts2)
+      | ({desc=BinOp(Eq, t, {desc=Int(n)})} as tt)::ts -> 
+          tt :: List.map (subst_int n t) (ts @ ts2)
       | _ -> assert false
 
 let interpolate ids c1 c2 =
   let ts1 = terms_of c1 in
   let get_fv' = (*if !Flag.use_nint then*) get_fv (*else get_fv2*) in
   let bv = list_diff (List.flatten (List.map get_fv' ts1)) ids in
-  let tmp = Not (term_of c2) in
+  let tmp = {desc=Not (term_of c2);typ=TBool} in
   if not (Wrapper.checksat tmp) then
-    True
+    true_term
   else
   let ts2 = [tmp] in
 (*
   let ts1 = if Flag.gen_int then int_gen ts1 else ts1 in
   let ts2 = if Flag.gen_int then int_gen ts2 else ts2 in
 *)
-  let ts2 = List.map (subst_term (List.map (fun id -> id, new_var id.typ) bv)) ts2 in
+  let ts2 = List.map (subst_term (List.map (fun id -> id, new_var (Id.typ id)) bv)) ts2 in
   let t =
     try
       Wrapper.interpolation ts1 ts2
@@ -1132,13 +1131,13 @@ let interpolate ids c1 c2 =
       raise Untypable
   in
     (*  print_term t;*)
-    if Wrapper.check [] t then True else t
+    if Wrapper.check [] t then true_term else t
 
 let rec substc sub c =
   List.filter
     (fun ac ->
       match ac with
-        Cterm(BinOp(Eq, t1, t2)) -> t1 <> t2
+        Cterm({desc=BinOp(Eq, t1, t2);typ=TBool}) -> t1 <> t2
       | _ -> true)
     (List.map (subst_ac sub) c)
 and subst_ac sub ac =
@@ -1161,7 +1160,7 @@ and subst_sol_ac pids sol ac =
           let (ids, t) = List.assoc pid sol in
           Cterm(subst_term (List.combine ids terms) t)
         with Not_found ->
-          Cterm(True))
+          Cterm(true_term))
   | Csub(rty1,rty2) -> assert false
   | Cterm(term) -> Cterm(term)
   | Cimp(c1,c2) -> Cimp(subst_sol pids sol c1, subst_sol pids sol c2)
@@ -1213,7 +1212,7 @@ let get_lb pid terms lbs =
   try
     List.assoc pid lbs
   with Not_found ->
-    List.map (fun _ -> new_int ()) terms,
+    List.map (fun _ -> Id.new_int ()) terms,
     [Cfalse]
 
 
@@ -1241,15 +1240,15 @@ let rec subst_ac lbs ac =
       Cpred(Pred(pid, terms)) -> begin
         try
           let cond, eqs, terms' = List.assoc pid lbs in
-          let ts = List.map2 (fun t1 t2 -> Wrapper.simplify_bool_exp false (BinOp(Eq, t1, t2))) terms terms' in
+          let ts = List.map2 (fun t1 t2 -> Wrapper.simplify_bool_exp false {desc=BinOp(Eq, t1, t2);typ=TBool}) terms terms' in
 (*
           let ts_cond = if Flag.gen_int then int_gen (ts @ cond) else ts @ cond in
           ts_cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs)
 *)
           let ts = if Flag.gen_int then int_gen ts else ts in
-          cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs) @ ts
+          cond @ (List.map (fun (t1, t2) -> {desc=BinOp(Eq, t1, t2);typ=TBool}) eqs) @ ts
         with Not_found ->
-          [False]
+          [false_term]
       end
 (*
       Cpred(Pred(pid, terms)) -> begin
@@ -1271,7 +1270,7 @@ let rec subst_ac lbs ac =
     | Cimp(c1,c2) -> assert false
                    (*imply (and_list (Util.uniq (List.map (fun ac -> subst_ac lbs ac) c1)))
                            (and_list (Util.uniq (List.map (fun ac -> subst_ac lbs ac) c2)))*)
-    | Cfalse -> [False]
+    | Cfalse -> [false_term]
 
 (*let subst_constr lbs c = Util.uniq (List.concat (List.map (fun ac -> subst_ac lbs ac) c))*)
 
@@ -1295,21 +1294,21 @@ let rec compute_lbs c lbs =
                                                | _ -> assert false)
                                             c1)
             in
-            let eqs = Util.uniq (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
+            let eqs = Util.uniq compare (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
               (if Flag.debug then
                  (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
                  let tmp = Util.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
                    List.iter (fun l ->
-                                let tmp = Util.uniq (List.map snd l) in
+                                let tmp = Util.uniq compare (List.map snd l) in
                                   if List.length tmp <> 1 then
                                     let _ = List.iter (fun t -> Format.printf "%a@." Syntax.pp_print_term t) tmp in
                                       assert false)
                      tmp);
-              let eqs1, eqs2 = List.partition (function (Var(_), _) -> true | _ -> false) eqs in
-              let sub = List.map (function (Var(id), t) -> id, t | _ -> assert false) eqs1 in
+              let eqs1, eqs2 = List.partition (function ({desc=Var(_)}, _) -> true | _ -> false) eqs in
+              let sub = List.map (function ({desc=Var(id)}, t) -> id, t | _ -> assert false) eqs1 in
               let cond = (List.map (function Cterm(t) -> subst_term sub t | _ -> assert false) c2) @
                 (List.concat conds) in
-              let cond = Util.uniq (List.filter (fun t -> t <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
+              let cond = Util.uniq compare (List.filter (fun t -> t.desc <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
               let eqs2 = List.map (fun (t1, t2) -> subst_term sub t1, t2) eqs2 in
               let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
               let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
@@ -1341,40 +1340,40 @@ let rec solve_aux' lbs ac ubs nubs sol = function
   | (Cpred(Pred(pid', terms')))::c ->
       let ids' = List.fold_left
         (fun ids -> function
-          Var(id) when not (List.mem id ids) -> ids @ [id]
+          {desc=Var(id)} when not (List.mem id ids) -> ids @ [id]
         | t ->
-          let id = {(new_id ()) with typ = Typing.get_typ t} in ids @ [id])
+          let id = {(new_id ()) with Id.typ = t.typ} in ids @ [id])
         [] terms'
       in
       let _ = if Flag.debug then
-        assert (List.length ids' = List.length (Util.uniq ids')) in
-      let eqs = List.concat (List.map2 (fun id term -> if Var(id) = term then [] else [Var(id), term]) ids' terms') in
-      (if Flag.debug then begin
+        assert (List.length ids' = List.length (Util.uniq compare ids')) in
+      let eqs = List.concat (List.map2 (fun id term -> if Var(id) = term.desc then [] else [{desc=Var(id);typ=Id.typ id}, term]) ids' terms') in
+      (if Flag.debug then
         print_string2 "eqs: ";
-        List.iter (fun (t1, t2) -> print_term (BinOp(Eq, t1, t2)); print_string2 ", ") eqs;
-        print_string2 "\n" end);
-      let _lbs =
+        List.iter (fun (t1, t2) -> print_term {desc=BinOp(Eq, t1, t2);typ=TBool}; print_string2 ", ") eqs;
+        print_string2 "\n");
+      let (_lbs:typed_term list) =
         try
           let cond, eqs', terms = List.assoc pid' lbs in
-          let ts = List.map2 (fun id t -> BinOp(Eq, Var(id), t)) ids' terms in
-          let ts = cond @ (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs') @ ts in
+          let ts = List.map2 (fun id t -> {desc=BinOp(Eq, {desc=Var(id);typ=Id.typ id}, t);typ=TBool}) ids' terms in
+          let ts = cond @ (List.map (fun (t1, t2) -> {desc=BinOp(Eq, t1, t2);typ=TBool}) eqs') @ ts in
 (* this slows down verification of mult.ml, zip_unzip.ml, zip_map.ml but necessary for zip_map.ml?
 normalization remedies the above problem?
           let ts = if Flag.gen_int then int_gen ts else ts in
 *)
           ts
         with Not_found ->
-          [False]
+          [false_term]
       in
 
       let dubs = List.map
         (fun ac ->
-          let ts = Util.uniq (subst_ac lbs ac) in
+          let ts = Util.uniq compare (subst_ac lbs ac) in
           (*without this recursive.ml could not be verified*)
           and_list ts)
         c
       in
-      let nubs' = Util.uniq ((List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs) @ nubs) in
+      let nubs' = Util.uniq compare ((List.map (fun (t1, t2) -> {desc=BinOp(Eq, t1, t2);typ=TBool}) eqs) @ nubs) in
 (*
       let ids', lb = get_lb pid' terms' lbs in
       let sub, eqs = eqs ids' terms' in
@@ -1391,7 +1390,7 @@ normalization remedies the above problem?
             print_string2 ":\n";
             print_constraint [ac];
             print_string2 "\nids:";
-            print_terms (List.map (fun id -> Var(id)) ids');
+            print_terms (List.map make_var ids');
             print_string2 "\n";
           end
       in
@@ -1401,12 +1400,14 @@ normalization remedies the above problem?
             subst_term (List.map (fun id -> id, new_var (TInt[])) (get_nint t)) t
           in
           try
-            let _lbs = Util.filterwo
-              (function (BinOp(Eq, t, Var(id))) | (BinOp(Eq, t, NInt(id))) ->
-                (fun ts ->
-                  List.mem id (ids' @ Util.rev_map_flatten get_fv2 (t::ts)))
-              | _ -> fun _ -> true) _lbs
+            let aux t ts =
+              match t.desc with
+                  (BinOp(Eq, t, {desc=Var(id)}))
+                | (BinOp(Eq, t, {desc=NInt(id)})) ->
+                    List.mem id (ids' @ Util.rev_map_flatten get_fv2 (t::ts))
+                | _ -> true
             in
+            let _lbs = Util.filterwo aux _lbs in
             let lb = [Cterm(and_list _lbs)] in
             let dubs = List.map rename_nint dubs in
             let nubs' = List.map rename_nint nubs' in
@@ -1491,7 +1492,7 @@ in
 (*
         solve_aux' (imply (and_list (t::(List.map2 (fun id term -> BinOp(Eq, Var(id), term)) ids' terms'))) cub) sol c
 *)
-      let nubs = Util.uniq ((subst_term (List.combine ids' terms') t)::nubs) in
+      let nubs = Util.uniq compare ((subst_term (List.combine ids' terms') t)::nubs) in
         solve_aux' lbs ac ubs nubs sol c
   | _ -> assert false
 
@@ -1506,9 +1507,9 @@ let rec merge_solution sol =
             let t' = imply (and_list (List.map2 (fun id1 id2 -> BinOp(Eq, Var(id1), Var(id2))) ids' ids)) t' in
 *)
 (**)
-            let t' = subst_term (List.combine ids' (List.map (fun id -> Var(id)) ids)) t' in
+            let t' = subst_term (List.combine ids' (List.map make_var ids)) t' in
 (**)
-            (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) BinOp(And, t, t'))
+            (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) {desc=BinOp(And, t, t');typ=TBool})
           t sol1
         in
           (pid, (ids, t))::(merge_solution sol2)
@@ -1548,7 +1549,7 @@ let rec solve_aux lbs c solution =
               Cimp(c, [cc]) ->
                 let ubs =
                   match cc with
-                      Cfalse -> [False]
+                      Cfalse -> [false_term]
                     | Cpred(Pred(pid, terms)) ->
                         let ts = List.filter (fun (pid', _) -> pid = pid') solution in
                         List.map (fun (_, (ids, t)) -> subst_term (List.combine ids terms) t) ts
@@ -1566,9 +1567,9 @@ let rec solve_aux lbs c solution =
                             print_string2 ":\n"*));
                 let nubs = List.map (function (Cterm(t)) -> t | c -> print_constraint [c]; assert false) c2 in
                 let tmp = imply (and_list nubs) (and_list ubs) in
-                if Wrapper.equiv [] tmp True then
+                if Wrapper.equiv [] tmp true_term then
                   []
-                else if c1 = [] && Wrapper.equiv [] tmp False then
+                else if c1 = [] && Wrapper.equiv [] tmp false_term then
                   raise Untypable
                 else
                   solve_aux' lbs ac ubs nubs [] c1
@@ -1580,7 +1581,7 @@ let rec solve_aux lbs c solution =
 let solve_constr c =
   let lbs = compute_lbs c [] in
 
-  let _ = if Flag.debug && Flag.print_lower_bound then begin
+  let _ = if Flag.debug && Flag.print_lower_bound then
     print_string2 "\nLower bounds:\n";
     List.iter
       (fun (pid, (cond, eqs, terms)) ->
@@ -1588,13 +1589,12 @@ let solve_constr c =
          print_string2 "(";
          print_terms terms;
          print_string2 ") = ";
-         print_terms (List.map (fun (t1, t2) -> BinOp(Eq, t1, t2)) eqs);
+         print_terms (List.map (fun (t1, t2) -> {desc=BinOp(Eq, t1, t2);typ=TBool}) eqs);
          print_string2 ": ";
          print_terms cond;
          print_string2 "\n")
       lbs;
     print_string2 "@."
-    end
   in
   let sol = solve_aux lbs c [] in
     List.map (fun (pid,(ids,t)) -> pid, (ids, Wrapper.simplify_bool_exp true t)) sol
@@ -1612,7 +1612,7 @@ let add_pred pred c =
   let fv = get_fv2 pred in
   let aux = function
       Cimp(c1, c2) as ac ->
-        if List.exists (fun x -> List.exists (fun y -> x.id = y.id) fv) (fv_ac ac)
+        if List.exists (fun x -> List.exists (Id.same x) fv) (fv_ac ac)
         then Cimp(Cterm(pred)::c1, c2)
         else ac
     | _ -> assert false
@@ -1665,9 +1665,8 @@ let filter_forward c =
         (function Cimp(c, [Cpred(Pred(pid, terms))]) ->
           let cond = 
             List.fold_left 
-              (fun t1 -> fun t2 ->
-                BinOp(And, t1, t2))
-              True (let cond, _ , _ = List.assoc pid lbs in cond)
+              (fun t1 t2 -> {desc=BinOp(And, t1, t2);typ=TBool})
+              true_term (let cond, _ , _ = List.assoc pid lbs in cond)
           in
 (*
           let cond = term_of (snd (List.assoc pid lbs)) in
@@ -1694,14 +1693,15 @@ let rec get_sol typ1 typ2 =
     | TInt _, _ -> assert false
     | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
-    | TFun((x,TInt ps),rtyp1), RTifun(pred, rtyp2) ->
-        get_sol rtyp1 (rtyp2 (Var x))
-    | TFun((x,TRInt p),rtyp1), RTifun(pred, rtyp2) ->
-        let Pred(pid, terms) = pred (Var abst_var) in
-        [pid, (List.map (function Var(id) -> id | _ -> assert false) terms, p)]
-    | TFun((x,typ),rtyp1), RTbfun(_, rtyp2) ->
-        get_sol rtyp1 (rtyp2 (Var x))
-    | TFun((x,typ),rtyp1), RTfun(typs, rtyp2) ->
+    | TFun({Id.typ=TInt ps} as x,rtyp1), RTifun(pred, rtyp2) ->
+        get_sol rtyp1 (rtyp2 (make_var x))
+    | TFun({Id.typ=TRInt p},rtyp1), RTifun(pred, rtyp2) ->
+        let Pred(pid, terms) = pred (make_var abst_var) in
+        [pid, (List.map (function {desc=Var(id)} -> id | _ -> assert false) terms, p)]
+    | TFun(x,rtyp1), RTbfun(_, rtyp2) ->
+        get_sol rtyp1 (rtyp2 (make_var x))
+    | TFun(x,rtyp1), RTfun(typs, rtyp2) ->
+        let typ = Id.typ x in
         (Util.rev_flatten_map (fun typ' -> get_sol typ typ') typs) @
         (get_sol rtyp1 rtyp2)
     | TUnknown, _ -> []
@@ -1751,7 +1751,7 @@ let test tdefs s defs traces pred =
      let sol = Util.rev_flatten_map
        (fun (x, rtys) ->
           try
-            let _, ty = List.find (fun (y, ty) -> x.id = y.id) tdefs in
+            let _, ty = List.find (fun (y, ty) -> Id.same x y) tdefs in
               Util.rev_flatten_map (get_sol ty) rtys
           with Not_found -> [])
        rte
@@ -1760,7 +1760,7 @@ let test tdefs s defs traces pred =
        (fun (pid, (ids, t)) ->
           print_pname pid;
           print_string2 "(";
-          print_terms (List.map (fun id -> Var(id)) ids);
+          print_terms (List.map make_var ids);
           print_string2 ") = ";
           print_term t;
           print_string2 "\n")
@@ -1792,7 +1792,7 @@ let test tdefs s defs traces pred =
        let _ = print_string2 "\n" in
      *)
      let c''', pids = (if !Flag.filter_forward then filter_forward else (fun x -> x, [])) (filter_backward c'') in
-     let c''' = List.rev (Util.uniq (filter_backward c''')) in
+     let c''' = List.rev (Util.uniq compare (filter_backward c''')) in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
      let _ = if Flag.debug && Flag.print_constraints then print_constraint c''' in
      let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
@@ -1806,7 +1806,7 @@ let test tdefs s defs traces pred =
            (fun (pid, (ids, t)) ->
               print_pname pid;
               print_string2 "(";
-              print_terms (List.map (fun id -> Var(id)) ids);
+              print_terms (List.map make_var ids);
               print_string2 ") = ";
               print_term (Syntax.merge_geq_leq (Syntax.normalize_bool_exp t));
               print_string2 "\n")

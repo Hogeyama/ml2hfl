@@ -4,24 +4,24 @@
 exception Untypable
 
 type pid
-type pred = Pred of pid * Syntax.t list 
+type pred = Pred of pid * Syntax.typed_term list 
 type rty =
     RTunit of int
-  | RTint of (Syntax.t -> pred)
-  | RTbool of (Syntax.t -> pred)
-  | RTifun of (Syntax.t -> pred) * (Syntax.t -> rty)
-  | RTbfun of (Syntax.t -> pred) * (Syntax.t-> rty)
+  | RTint of (Syntax.typed_term -> pred)
+  | RTbool of (Syntax.typed_term -> pred)
+  | RTifun of (Syntax.typed_term -> pred) * (Syntax.typed_term -> rty)
+  | RTbfun of (Syntax.typed_term -> pred) * (Syntax.typed_term-> rty)
   | RTfun of rty list * rty
-  | RTlist of (Syntax.t -> pred)
-  | RTlfun of (Syntax.t -> pred) * (Syntax.t -> rty)
+  | RTlist of (Syntax.typed_term -> pred)
+  | RTlfun of (Syntax.typed_term -> pred) * (Syntax.typed_term -> rty)
 
 val cgen_flag : bool ref
 (** This should be set to [false] if we want to propagate conditions on free variables eagerly. *)
 
-val test : (Syntax.ident * Syntax.typ) list -> Syntax.ident ->
-  (Syntax.ident * (Syntax.ident list * Syntax.t)) list ->
-  Syntax.node list list -> Syntax.t option ->
-  (Syntax.ident * rty list) list * (pid * (Syntax.ident list * Syntax.t)) list
+val test : (Syntax.id * Syntax.typ) list -> Syntax.id ->
+  (Syntax.id * (Syntax.id list * Syntax.typed_term)) list ->
+  Syntax.node list list -> Syntax.typed_term option ->
+  (Syntax.id * rty list) list * (pid * (Syntax.id list * Syntax.typed_term)) list
 (** [test tdefs s defs traces pred] で反例 [traces] に対応するSHPに型を付ける．
     [tdefs] は入力プログラムに与えられた固定の依存型？
     [s] はプログラムのメイン．

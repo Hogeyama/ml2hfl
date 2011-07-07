@@ -3,6 +3,7 @@
 open Format
 open Util
 open Syntax
+open Type
 
 
 
@@ -10,7 +11,7 @@ open Syntax
 
 
 
-
+(*
 let rec flatten_app_if = function
     Unit -> Unit
   | True -> True
@@ -72,27 +73,21 @@ let rec flatten_app_if = function
 
 let cps2hors t =
   let label_n = max_label_num t in
-  let s = new_var' "S" in
+  let s = new_var' "S" TUnit in
     (*let _,(t0,defs) = Lift.lift t in
       let defs' = (s,[],t0)::defs in
       let defs'' = List.map (fun (x,xs,t) -> (x,xs,part_eval t)) defs' in*)
   let defs, t0 = lift t in
-(*
   let () =
     let t' =  List.fold_right (fun (f, (xs, t')) t -> Syntax.Let(Nonrecursive,f,xs,t',t)) defs t0 in
     Syntax.print_term Syntax.ML false t'
   in
-*)
-  let defs, t0 = Typing.typing_defs defs t0 in
+  let defs,t0 = Typing.typing_defs defs t0 in
   let defs = List.map (fun (x, (xs, t)) ->
-                         let n = (List.length (get_args x.typ)) - (List.length xs) in
-                           (*
-                             Syntax.print_term_break Syntax.ML false (Var x);
-                             print_int (List.length (get_args x.typ));
-                             print_int (List.length xs);
-                             print_string "\n";
-                           *)
-                         let ds = tabulate n (fun _ -> new_var' "d") in
+                         let typs = get_args x.typ in
+                         let len = List.length xs in
+                         let n = (List.length typs) - len in
+                         let ds = tabulate n (fun i -> new_var' "d" (List.nth typs (len+i)).typ) in
                            x, (xs @ ds, if ds = [] then t else App(t, List.map (fun id -> Var(id)) ds))) defs in
   let defs' = (s,([],t0))::defs in
   let nonterms = List.map (fun (f, _) -> f) defs' in
@@ -153,7 +148,7 @@ let cps2hors t =
             (spec_br 0 @ spec_br 1 @ spec_br 2 @ spec_br 3)
   in
     defs'', spec
-
+*)
 
 
 
@@ -192,7 +187,7 @@ let rec parse_trace s =
 let print_hors_to_file hors =
   let cout = open_out "log.hors" in
   let fm = formatter_of_out_channel cout in
-    Syntax.print_hors fm hors;
+    print_hors fm hors;
     pp_print_flush fm ();
     flush cout;
     close_out cout
@@ -245,17 +240,107 @@ let model_check_aux (funs,spec) =
         None
       end
 
-let model_check t =
-  let funs,spec = cps2hors t in
+
+
+
+
+
+
+let spec_br n q =
+  let rec aux i spec =
+    if i < 0
+    then spec
+    else aux (i-1) ((q, "br" ^ string_of_int i, [q])::spec)
+  in
+    aux n []
+
+
+
+let spec t =
+  let n = max_label_num t in
+  match !Flag.mode with
+      Flag.Reachability ->
+        (0, "br", [0;0])::
+          (0, "then", [0])::
+          (0, "else", [0])::
+          (0, "unit", [])::
+          spec_br n 0
+    | Flag.FileAccess ->
+        (0, "br", [0; 0])::
+          (1, "br", [1; 1])::
+          (2, "br", [2; 2])::
+          (3, "br", [3; 3])::
+          (0, "newr", [1])::
+          (1, "read", [1])::
+          (1, "close", [0])::
+          (0, "neww", [2])::
+          (2, "write", [2])::
+          (2, "close", [0])::
+          (2, "newr", [3])::
+          (1, "neww", [3])::
+          (3, "read", [3])::
+          (3, "write", [3])::
+          (3, "close", [3])::
+          (0, "unit", [])::
+          (3, "unit", [])::
+          (0, "then", [0])::
+          (0, "else", [0])::
+          (1, "then", [1])::
+          (1, "else", [1])::
+          (2, "then", [2])::
+          (2, "else", [2])::
+          (3, "then", [3])::
+          (3, "else", [3])::
+          (spec_br n 0 @ spec_br n 1 @ spec_br n 2 @ spec_br n 3)
+
+
+
+
+let capitalize defs =
+  let fs = List.map fst defs in
+  let map = List.map (fun f -> f, Id.make (Id.id f) (String.capitalize (Id.name f)) (Id.typ f)) fs in
+  let map_term = List.map (fun (f,f') -> f, {desc=Var f';typ=Id.typ f'}) map in
+  let aux (f,(xs,t)) = Id.assoc f map, (xs, subst_term map_term t) in
+    List.map aux defs
+
+
+
+
+
+let eta_expand (f,(xs,t)) =
+  let rec aux typs xs =
+    match typs,xs with
+        [],[] -> []
+      | typ::typs,[] -> Id.new_var "x" typ :: aux typs []
+      | _::typs,_::xs -> aux typs xs
+      | _ -> assert false
+  in
+  let ds = aux (get_argtyps (Id.typ f)) xs in
+    f, (xs@ds, app2app t (List.map make_var ds))
+
+
+let model_check (defs,t0) =
+(*
+  let print_fundef (f, (xs, t)) =
+    Format.printf "DEBUG: %a %a-> %a.\n" print_id f print_ids xs pp_print_term t
+  in
+  let () = List.iter print_fundef defs in
+  let () = Format.printf "DEBUG: %a@." pp_print_term t0 in
+*)
+  let defs = List.map eta_expand defs in
+  let () = List.iter (fun (f,(xs,t)) -> Format.printf "%a %a=> %a.\n" print_id_typ f print_ids xs (print_term' ML 0 false) t; Type_check.check t) defs in
+  let s = Id.new_var "S" TUnit in
+  let funs = (s,([],t0))::defs in
+  let funs = capitalize funs in
+  let t = List.fold_left (fun t2 (f,(xs,t1)) -> {desc=Let(Flag.Nonrecursive, f, xs, t1, t2);typ=t2.typ}) t0 defs in (* for max_label_num *)
+  let spec = spec t in
   let () = print_hors_to_file (funs,spec) in
     try
       model_check_aux (funs,spec)
-    with Assert_failure(s,_,_) when s <> "" ->
-      assert false
-    | End_of_file -> begin
-      printf "TRecS failed@.";
-      assert false
-    end
+    with
+        Assert_failure(s,_,_) when s <> "" -> assert false
+      | End_of_file -> (printf "\nTRecS failed@."; assert false)
+
 
 
 

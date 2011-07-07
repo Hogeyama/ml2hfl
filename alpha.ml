@@ -5,11 +5,6 @@ open Syntax
 
 
 
-let new_id x =
-  {x with id = new_int ()}
-
-
-
 let free_map : ((string*int)*ident) list ref = ref []
 let free : ident list ref = ref []
 
@@ -18,7 +13,7 @@ let key x = x.name, x.id
 
 let rec alpha_pat = function
     PVar x ->
-      let x' = new_id x in
+      let x' = new_var_id x in
         PVar x', [key x,x']
   | PConst c -> PConst c, []
   | PConstruct(name,pats) ->
@@ -52,7 +47,7 @@ let rec alpha map = function
   | Unknown -> Unknown
   | Int n -> Int n
   | NInt x ->
-      let x' = new_id x in
+      let x' = new_var_id x in
         NInt x'
   | RandInt None -> RandInt None
   | RandInt (Some t) -> RandInt (Some (alpha map t))
@@ -65,12 +60,12 @@ let rec alpha map = function
           try
             Var (List.assoc (key x) !free_map)
           with Not_found ->
-            let x' = new_id x in
+            let x' = new_var_id x in
               free_map := (key x,x')::!free_map;
               Var x'
       end
   | Fun(x, t) ->
-      let x' = new_id x in
+      let x' = new_var_id x in
       let t' = alpha ((key x,x')::map) t in
         Fun(x', t')
   | App(t, ts) ->
@@ -89,10 +84,10 @@ let rec alpha map = function
   | Let(flag, f, xs, t1, t2) ->
       if flag = Nonrecursive
       then
-        let f' = new_id f in
+        let f' = new_var_id f in
         let map', xs' =
           let g y (map, ys) =
-            let y' = new_id y in
+            let y' = new_var_id y in
               ((key y,y')::map, y'::ys)
           in
             List.fold_right g xs (map,[])
@@ -101,10 +96,10 @@ let rec alpha map = function
         let t2' = alpha ((key f,f')::map) t2 in
           Let(flag, f', xs', t1', t2')
       else
-        let f' = new_id f in
+        let f' = new_var_id f in
         let map', xs' =
           let g y (map, ys) =
-            let y' = new_id y in
+            let y' = new_var_id y in
               ((key y,y')::map, y'::ys)
           in
             List.fold_right g xs (map,[])
@@ -129,8 +124,8 @@ let rec alpha map = function
   | Cons(t1,t2) -> Cons(alpha map t1, alpha map t2)
   | Constr(s,ts) -> Constr(s, List.map (alpha map) ts)
   | Match(t1,t2,x,y,t3) ->
-      let x' = new_id x in
-      let y' = new_id y in
+      let x' = new_var_id x in
+      let y' = new_var_id y in
       let map' = (key x,x')::(key y,y')::map in
         Match(alpha map t1, alpha map t2, x', y', alpha map' t3)
   | Match_(t,pats) ->
@@ -151,14 +146,8 @@ let rec alpha map = function
   | Exception(exc,typs,t) -> Exception(exc,typs,alpha map t)
 
 
-let add_assert t =
-  let x = {(new_var "b") with typ=TBool} in
-  let f = {(new_var "assert") with typ=TFun((x,TBool),TUnit)} in
-    Let(Nonrecursive, f, [x], If(Var x, Unit, App(Fail, [Unit])), t)
-
 let alpha t =
-  let () = set_counter 1 in
-  let t' = add_assert t in
-    alpha [] t'
+  set_counter 1;
+  alpha [] t
 
 

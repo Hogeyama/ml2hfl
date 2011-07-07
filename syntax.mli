@@ -1,164 +1,137 @@
 
 (** *)
 
-type ident = {id:int; name:string; typ:typ}
-and label = Read | Write | Close
-and binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
-and rec_flag = Nonrecursive | Recursive
-and mutable_flag = Immutable | Mutable
-and t =
+type label = Read | Write | Close
+type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
+type typ = typed_term Type.t
+and id = typ Id.t
+and typed_term = {desc:term; typ:typ}
+and term =
     Unit
   | True
   | False
   | Unknown
   | Int of int
-  | NInt of ident
-  | RandInt of t option
-  | RandValue of typ * t option
-  | Var of ident
-  | Fun of ident * t
-  | App of t * t list
-  | If of t * t * t
-  | Branch of t * t
-  | Let of rec_flag * ident * ident list * t * t
-  | BinOp of binop * t * t
-  | Not of t
+  | NInt of id
+  | RandInt of typed_term option
+  | RandValue of typ * typed_term option
+  | Var of id
+  | Fun of id * typed_term
+  | App of typed_term * typed_term list
+  | If of typed_term * typed_term * typed_term
+  | Branch of typed_term * typed_term
+  | Let of Flag.rec_flag * id * id list * typed_term * typed_term
+  | BinOp of binop * typed_term * typed_term
+  | Not of typed_term
   | Fail
-  | Label of bool * t
-  | LabelInt of int * t
+  | Label of bool * typed_term
+  | LabelInt of int * typed_term
   | Event of string
-  | Record of bool * (string * (mutable_flag * t)) list (** 1st true denotes a tuple *)
-  | Proj of int option * int * string * mutable_flag * t
-  | SetField of int option * int * string * mutable_flag * t * t
+  | Record of bool * (string * (Flag.mutable_flag * typed_term)) list (** true denotes a tuple *)
+  | Proj of int option * int * string * Flag.mutable_flag * typed_term
+  | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
   | Nil
-  | Cons of t * t
-  | Constr of string * t list
-  | Match of t * t * ident * ident * t
-  | Match_ of t * (pattern * t option * t) list
-  | TryWith of t * (pattern * t option * t) list
-  | Type_decl of (string * (typ list * type_kind)) list * t
-  | Exception of string * typ list * t
-and pred = t
-and typ =
-    TUnit
-  | TBool
-  | TAbsBool
-  | TInt of pred list
-  | TRInt of pred
-  | TVar of typ option ref
-  | TFun of (ident*typ) * typ
-  | TList of typ * pred list
-  | TConstr of string * bool
-  | TVariant of (string * typ list) list
-  | TRecord of bool * (string * (mutable_flag * typ)) list
-  | TUnknown
+  | Cons of typed_term * typed_term
+  | Constr of string * typed_term list
+  | Match of typed_term * typed_term * id * id * typed_term
+  | Match_ of typed_term * (typed_pattern * typed_term option * typed_term) list
+  | TryWith of typed_term * (typed_pattern * typed_term option * typed_term) list
+
 and type_kind =
     KAbstract
   | KVariant of (string * typ list) list
-  | KRecord of (string * (mutable_flag * typ)) list
+  | KRecord of (string * (Flag.mutable_flag * typ)) list
+and pred = term
+and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =
-    PVar of ident
-  | PConst of t
-  | PConstruct of string * pattern list
+    PVar of id
+  | PConst of typed_term
+  | PConstruct of string * typed_pattern list
   | PNil
-  | PCons of pattern * pattern
-  | PRecord of bool * (int * (string * mutable_flag * pattern)) list
-  | POr of pattern * pattern
+  | PCons of typed_pattern * typed_pattern
+  | PRecord of bool * (int * (string * Flag.mutable_flag * typed_pattern)) list
+  | POr of typed_pattern * typed_pattern
 type syntax = ML | TRecS | CVC3 | CSIsat
 type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode of int
 
-type literal = Cond of t | Pred of (ident * int * ident * t list)
+type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
-exception Feasible of t
+exception Feasible of typed_term
 exception Infeasible
 
 
-val dummy_var : ident
-val abst_var : ident
-val abst_list_var : ident
+val dummy_var : id
+val abst_var : id
+val abst_list_var : id
+val unit_term : typed_term
+val fail_term : typed_term
+val true_term : typed_term
+val false_term : typed_term
+val event_term : string -> typed_term
 
-val new_int : unit -> int
-val get_counter : unit -> int
-val set_counter : int -> unit
-val new_var : string -> ident
-val new_var' : string -> ident
-val new_var_id : ident -> ident
-
-val subst : ident -> t -> t -> t
-val subst2 : ident -> t -> t -> t
-val subst_int : int -> t -> t -> t
-val subst_term : (ident * t) list -> t -> t
-val subst_type : ident -> t -> typ -> typ
-val subst_orig : ident -> t -> t -> t
-val subst_type_orig : ident -> t -> typ -> typ
+val make_var : id -> typed_term
+val subst : id -> typed_term -> typed_term -> typed_term
+val subst_int : int -> typed_term -> typed_term -> typed_term
+val subst_term : (id * typed_term) list -> typed_term -> typed_term
+val subst_type : id -> typed_term -> typ -> typ
 val fff : typ -> typ
-val get_nint : t -> ident list
-val get_int : t -> int list
-val get_fv : t -> ident list
-val get_fv2 : t -> ident list
-val get_args : typ -> ident list
-val get_argvars : typ -> ident list
-val app2app : t -> t list -> t
-val eval : t -> t
-val fun2let : t -> t
-val imply : t -> t -> t
-val and_list : t list -> t
-val lift : t -> (ident * (ident list * t)) list * t
-(** [lift t] で，[t] を lambda-lift する．*)
+val get_nint : typed_term -> id list
+val get_int : typed_term -> int list
+val get_fv : typed_term -> id list
+val get_fv2 : typed_term -> id list
+val get_args : typ -> id list
+val get_argvars : typ -> id list
+val get_argtyps : typ -> typ list
+val app2app : typed_term -> typed_term list -> typed_term
+val merge_let_fun : typed_term -> typed_term
+(** [let f ... = fun x -> t] や [let f ... = let g x = t in g] を [let f ... x = t] に *)
+val imply : typed_term -> typed_term -> typed_term
+val and_list : typed_term list -> typed_term
+val lift : typed_term -> (id * (id list * typed_term)) list * typed_term
+(** [lift t] で，[t] をlambda-lift する． *)
 
-val lift2 : t -> (ident * (ident list * t)) list * t
-(** [lift2 t] で，[t] をlambda-lift する．
-    [lift] とは違い，スコープに入っている変数を全て abstract する．
-*)
+val canonize : typed_term -> typed_term
+val part_eval : typed_term -> typed_term
+val add_string : string -> typed_term -> typed_term
+val remove_unused : typed_term -> typed_term
 
-val canonize : t -> t
-val part_eval : t -> t
-val expand : t -> typ -> t
-val add_string_to_var : string -> ident -> ident
-val add_string : string -> t -> t
-val remove_unused : t -> t
-val occurs : ident -> typ -> bool
+val eval : typed_term -> typed_term
+val eta_expand : typed_term -> typed_term
+val normalize_bool_exp : typed_term -> typed_term
+val get_and_list : typed_term -> typed_term list
+val merge_geq_leq : typed_term -> typed_term
+val set_target : typed_term -> typed_term
 
-val eta_expand : t -> t
-val normalize_bool_exp : t -> t
-val get_and_list : t -> t list
-val merge_geq_leq : t -> t
-val make_new_fun : ident -> t -> t
-val set_target : t -> t
-val is_value : t -> bool
-val assoc_id : ident -> (ident * 'a) list -> 'a
-
-val max_pat_num : t -> int
-val max_label_num : t -> int
-val get_decls : t -> (string * (typ list * type_kind)) list list
-val is_external : ident -> bool
-val init_rand_int : t -> t
-val is_value : t -> bool
-val print_ce : node list -> t -> unit
+val max_pat_num : typed_term -> int
+val max_label_num : typed_term -> int
+val is_external : id -> bool
+val init_rand_int : typed_term -> typed_term
+val print_ce : node list -> typed_term -> unit
+val copy_poly_funs : typed_term -> typed_term
 (** CPS と評価順序を合わせる必要あり *)
-val same_ident : ident -> ident -> bool
 
 (** {6 Printing} *)
 
 val print_typ : Format.formatter -> typ -> unit
-val print_preds : Format.formatter -> t list -> unit
-val print_id : Format.formatter -> ident -> unit
-val print_ids : Format.formatter -> ident list -> unit
-val print_id_typ : Format.formatter -> ident -> unit
-val print_ids_typ : Format.formatter -> ident list -> unit
-val print_termlist : syntax -> int -> bool -> Format.formatter -> t list -> unit
-val string_of_ident : ident -> string
-val string_of_term : syntax -> t -> string
+val print_ids : Format.formatter -> id list -> unit
+val print_id_typ : Format.formatter -> id -> unit
+val print_ids_typ : Format.formatter -> id list -> unit
+val print_termlist : syntax -> int -> bool -> Format.formatter -> typed_term list -> unit
+val string_of_ident : id -> string
+val string_of_term : syntax -> typed_term -> string
 val string_of_node : node -> string
-val print_hors : Format.formatter -> (ident * ident list * t) list * (int * string * int list) list -> unit
-val print_term_fm : syntax -> bool -> Format.formatter -> t -> unit
-val print_term : syntax -> bool -> t -> unit
-val print_term_fm_break : syntax -> bool -> Format.formatter -> t -> unit
-val print_term_break : syntax -> bool -> t -> unit
+val print_hors : Format.formatter -> (id * (id list * typed_term)) list * (int * string * int list) list -> unit
+val print_term_fm : syntax -> bool -> Format.formatter -> typed_term -> unit
+val print_term : syntax -> bool -> typed_term -> unit
+val print_term_fm_break : syntax -> bool -> Format.formatter -> typed_term -> unit
+val print_term_break : syntax -> bool -> typed_term -> unit
 val print_constr : Format.formatter -> literal -> unit
 val print_constr_list : Format.formatter -> literal list -> unit
 val pp_print_typ : Format.formatter -> typ -> unit
 (** Same as [print_typ] *)
 
-val pp_print_term : Format.formatter -> t -> unit
+val pp_print_term : Format.formatter -> typed_term -> unit
+val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
+
+val print_term' : syntax -> int -> bool -> Format.formatter -> typed_term -> unit
 

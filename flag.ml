@@ -5,6 +5,9 @@ let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
 let cvc3 = "./cvc3"
 
+type rec_flag = Nonrecursive | Recursive
+type mutable_flag = Immutable | Mutable
+
 let merge_counterexample = ref false
 let split_free_var = ref false
 let filter_forward = ref true
@@ -19,13 +22,13 @@ let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
 
-let check_fun_arg_typ = true
+let check_fun_arg_typ = false
 
 (* display or not *)
 let print_source = true
 let print_cps = true
 let print_abst = true
-let print_abst_eager = false
+let print_abst_eager = true
 let print_type = true
 let print_hors = false
 let print_trecs_output = false

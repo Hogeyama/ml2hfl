@@ -151,7 +151,7 @@ Format.printf "unify env %a %a@." (print_typ ML) (simplify_typ typ1) (print_typ 
         raise CannotUnify
     end
 
-let dummy = new_var' "dummy"
+let dummy = new_var' "dummy" TUnknown
 (*let dummy () = fst (new_var (new_var' "dummy"))*)
 
 let rec infer env t = 
@@ -180,7 +180,7 @@ let rec infer env t =
             find_var_typ (KeyVar(x.id,x.name)) env true
           with Not_found ->
             if not (is_external x)
-            then (Format.printf "%a@." print_id x; assert false);
+            then (Format.printf "\nNOT FOUND: %a@." print_id x; assert false);
             let rec new_tvars = function
                 TUnit -> TUnit
               | TBool -> TBool
@@ -563,7 +563,7 @@ let new_var_typ x =
     | TFun((_,typ1),typ2) ->
         let typ1' = aux typ1 in
         let typ2' = aux typ2 in
-        let x = {(new_var' "x") with typ = typ1'} in
+        let x = new_var' "x" typ1' in
           TFun((x,typ1'),typ2')
     | TList(typ,ps) -> TList(aux typ,ps)
     | TVariant ctypss ->
@@ -710,6 +710,10 @@ Format.printf "<%a:%a>@." (print_term_fm ML false) (Var f') (print_typ ML) (simp
     match_arg (simplify t0')
 
 
+let rec get_typ_pat = function
+    PVar x -> x.typ
+  | PRecord(b,pats) -> TRecord(b,List.map (fun (_,(s,f,p)) -> s,(f,get_typ_pat p)) pats)
+  | _ -> assert false
 
 let rec get_typ = function
     Unit -> TUnit
@@ -769,23 +773,25 @@ let is_list_term t =
 
 
 
-let rec same_type typ1 typ2 =
-  match typ1,typ2 with
-      TUnit,TUnit -> true
-    | TBool,TBool -> true
-    | TAbsBool,TAbsBool -> true
-    | TInt _,TInt _ -> true
-    | TRInt _,TRInt _ -> true
-    | TVar _, TVar _ -> true
-    | TFun((_,typ11),typ12),TFun((_,typ21),typ22) -> same_type typ11 typ21 && same_type typ12 typ22
-    | TList(typ1,_), TList(typ2,_) -> same_type typ1 typ2
-    | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
-    | TVariant stypss1,TVariant stypss2 ->
-        let aux (s1,typs1) (s2,typs2) = s1=s2 && List.for_all2 same_type typs1 typs2 in
-          List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
-    | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && same_type typ1 typ2) fields1 fields2
-    | TUnknown, TUnknown -> true
-    | _ -> false
+
+let rec set_var_unit = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> TAbsBool
+  | TInt ps -> TInt ps
+  | TRInt p -> TRInt p
+  | TFun((x,typ1), typ2) ->
+      let typ1' = set_var_unit typ1 in
+        TFun(({x with typ=typ1'},typ1'), set_var_unit typ2)
+  | TVar{contents = None} -> TUnit
+  | TVar{contents = Some typ'} -> set_var_unit typ'
+  | TList(typ,ps) -> TList(set_var_unit typ, ps)
+  | TConstr(c,b) -> TConstr(c,b)
+  | TRecord(b,typs) -> TRecord(b, List.map (fun (s,(f,typ)) -> s,(f,set_var_unit typ)) typs)
+  | TVariant ctypss -> TVariant (List.map (fun (s,typs) -> s, List.map set_var_unit typs) ctypss)
+  | TUnknown -> TUnknown
+
+
 
 
 let rec copy_poly_funs = function
@@ -810,23 +816,25 @@ let rec copy_poly_funs = function
             Nonrecursive -> List.filter (same_ident f) (get_fv t1' @@ get_fv t2')
           | Recursive -> List.filter (same_ident f) (get_fv t2')
       in
-        if List.length fs <= 1 || List.for_all (fun f -> same_type f.typ (List.hd fs).typ) (List.tl fs)
-          || match (List.hd fs).typ with TFun _ -> false | _ -> true
+        if fs = []
         then Let(flag, f, xs, t1', t2')
         else
-          let () = Format.printf "COPY: %s(%d)@." f.name (List.length fs) in
+          let fs =
+            if List.for_all (fun f -> same_type f.typ (List.hd fs).typ) (List.tl fs)
+            then [List.hd fs]
+            else fs
+          in
+          let n = List.length fs in
+          let () = if n >= 2 then Format.printf "COPY: %s(%d)@." f.name n in
           let aux t f =
-            let f' = new_var_id f in
-            let xs' = List.map new_var_id xs in
+            let f' = new_var' f.name (set_var_unit f.typ) in
+            let typs = get_argtyps f.typ in
+            let xs' = List.map2 (fun x typ -> {(new_var_id x) with typ=typ}) xs (take typs (List.length xs)) in
             let map = List.map2 (fun x x' -> x, Var x') xs xs' in
             let t1'' = subst_term map t1' in
-            let t1''' =
-              match flag with
-                  Nonrecursive -> t1''
-                | Recursive -> subst2 f (Var f') t1''
-            in
-            let t2'' = subst2 f (Var f') t in
-              Let(flag, f', xs', t1''', t2'')
+            let t1''' = subst f (Var f') t1'' in
+            let t' = subst f (Var f') t in
+              Let(flag, f', xs', t1''', t')
           in
             List.fold_left aux t2' fs
   | BinOp(op, t1, t2) -> BinOp(op, copy_poly_funs t1, copy_poly_funs t2)
@@ -845,5 +853,3 @@ let rec copy_poly_funs = function
   | TryWith(t,pats) -> TryWith(copy_poly_funs t, List.map (fun (pat,cond,t) -> pat,cond,copy_poly_funs t) pats)
   | Type_decl(decls,t) -> Type_decl(decls, copy_poly_funs t)
   | Exception(exc,typs,t) -> Exception(exc, typs, copy_poly_funs t)
-
-

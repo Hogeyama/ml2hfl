@@ -1,6 +1,7 @@
 
 open Util
 open Syntax
+open Type
 
 
 let cvc3in = ref stdin
@@ -15,36 +16,31 @@ let rec string_of_typ = function
   | typ -> (Format.printf "%a@." print_typ typ; assert false)
 
 
-let is_bool = function
-    Var x -> x.typ = TBool
-  | BinOp((And|Or), _, _) -> true
-  | Not _ -> true
-  | _ -> false
-
-
 let iff t1 t2 = CsisatAst.Not (CsisatAst.And [CsisatAst.Not (CsisatAst.And[t1; t2]); CsisatAst.Not (CsisatAst.And[CsisatAst.Not t1; CsisatAst.Not t2])])
 let iff t1 t2 = CsisatAst.Or [CsisatAst.And[t1; t2]; CsisatAst.And[CsisatAst.Not t1; CsisatAst.Not t2]]
 
-let rec to_exp = function
-    True -> CsisatAst.Variable "tru"
-  | False -> CsisatAst.Variable "fls"
-  | Int n -> CsisatAst.Constant (float_of_int n)
-  | Var x | NInt x -> CsisatAst.Variable (x.name ^ "_" ^ string_of_int x.id)
-  | RandInt t -> assert false
-  | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
-  | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
-  | BinOp(Mult, Int n, t2) | BinOp(Mult, t2, Int n) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
-  | BinOp(Mult, t1, t2) ->
-      (let t = BinOp(Mult, t1, t2) in
-      Format.printf "Nonlinear expression not supported: %a@." (print_term_fm ML true) t; assert false)
-  | Nil -> CsisatAst.Variable "nil"
-  | t -> (Format.printf "@.%a@." (print_term_fm ML true) t; assert false)
-let rec to_pred = function
+let rec to_exp t =
+  match t.desc with
+      True -> CsisatAst.Variable "tru"
+    | False -> CsisatAst.Variable "fls"
+    | Int n -> CsisatAst.Constant (float_of_int n)
+    | Var x | NInt x -> CsisatAst.Variable (Id.to_string x)
+    | RandInt t -> assert false
+    | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
+    | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
+    | BinOp(Mult, {desc=Int n}, t2) | BinOp(Mult, t2, {desc=Int n}) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
+    | BinOp(Mult, t1, t2) ->
+      Format.printf "Nonlinear expression not supported: %a@." pp_print_term t;
+      assert false
+    | Nil -> CsisatAst.Variable "nil"
+    | _ -> Format.printf "@.%a@." pp_print_term t; assert false
+let rec to_pred t =
+  match t.desc with
     True -> CsisatAst.True
   | False -> CsisatAst.False
-  | Var x -> CsisatAst.Eq (to_exp (Var x), CsisatAst.Variable "tru")
+  | Var x -> CsisatAst.Eq (to_exp t, CsisatAst.Variable "tru")
   | BinOp(Eq, t1, t2) ->
-      if is_bool t1
+      if t1.typ = TBool
       then iff (to_pred t1) (to_pred t2)
       else CsisatAst.Eq (to_exp t1, to_exp t2)
   | BinOp(Lt, t1, t2) -> CsisatAst.Lt (to_exp t1, to_exp t2)
@@ -62,31 +58,37 @@ let parse_ident s =
   let n = String.rindex s '_' in
   let name = String.sub s 0 n in
   let id = int_of_string (String.sub s (n+1) (len-n-1)) in
-    {id=id; name=name; typ=TUnknown}
+    Id.make id name TUnknown
 
-let rec from_exp = function
-    CsisatAst.Constant x -> Int (int_of_float x)
-  | CsisatAst.Variable "tru" -> True
-  | CsisatAst.Variable "fls" -> False
-  | CsisatAst.Variable "nil" -> Nil
+let rec from_exp map = function
+    CsisatAst.Constant x -> {desc=Int (int_of_float x); typ=TInt[]}
+  | CsisatAst.Variable "tru" -> {desc=True; typ=TBool}
+  | CsisatAst.Variable "fls" -> {desc=False; typ=TBool}
+  | CsisatAst.Variable "nil" -> assert false
+(*
   | CsisatAst.Variable x when x.[0] = '_' -> NInt (parse_ident (String.sub x 1 (String.length x - 1)))
-  | CsisatAst.Variable x -> Var (parse_ident x)
-  | CsisatAst.Sum[e1;e2] -> BinOp(Add, from_exp e1, from_exp e2)
-  | CsisatAst.Sum(e::es) -> List.fold_left (fun e1 e2 -> BinOp(Add, e1, from_exp e2)) (from_exp e) es
-  | CsisatAst.Coeff(x,e) -> BinOp(Mult, Int (int_of_float x), from_exp e)
+*)
+  | CsisatAst.Variable x ->
+      let x' = Id.assoc (parse_ident x) map in
+        {desc=Var x'; typ=Id.typ x'}
+  | CsisatAst.Sum[e1;e2] -> {desc=BinOp(Add, from_exp map e1, from_exp map e2); typ=TInt[]}
+  | CsisatAst.Sum(e::es) ->
+      let aux t e = {desc=BinOp(Add, t, from_exp map e); typ=TInt[]} in
+        List.fold_left aux (from_exp map e) es
+  | CsisatAst.Coeff(x,e) -> {desc=BinOp(Mult, {desc=Int(int_of_float x);typ=TInt[]}, from_exp map e); typ=TInt[]}
   | CsisatAst.Application _
   | CsisatAst.Sum _ -> assert false
-let rec from_pred = function
-    CsisatAst.True -> True
-  | CsisatAst.False -> False
+let rec from_pred map = function
+    CsisatAst.True -> {desc=True; typ=TBool}
+  | CsisatAst.False -> {desc=True; typ=TBool}
   | CsisatAst.And(p::ps) ->
-      List.fold_left (fun t p -> BinOp(And, from_pred p, t)) (from_pred p) ps
+      List.fold_left (fun t p -> {desc=BinOp(And, from_pred map p, t); typ=TBool}) (from_pred map p) ps
   | CsisatAst.Or(p::ps) ->
-      List.fold_left (fun t p -> BinOp(Or, from_pred p, t)) (from_pred p) ps
-  | CsisatAst.Not p -> Not (from_pred p)
-  | CsisatAst.Eq(p1, p2) -> BinOp(Eq, from_exp p1, from_exp p2)
-  | CsisatAst.Lt(p1, p2) -> BinOp(Lt, from_exp p1, from_exp p2)
-  | CsisatAst.Leq(p1, p2) -> BinOp(Leq, from_exp p1, from_exp p2)
+      List.fold_left (fun t p -> {desc=BinOp(Or, from_pred map p, t); typ=TBool}) (from_pred map p) ps
+  | CsisatAst.Not p -> {desc=Not (from_pred map p); typ=TBool}
+  | CsisatAst.Eq(e1, e2) -> {desc=BinOp(Eq, from_exp map e1, from_exp map e2); typ=TBool}
+  | CsisatAst.Lt(e1, e2) -> {desc=BinOp(Lt, from_exp map e1, from_exp map e2); typ=TBool}
+  | CsisatAst.Leq(e1, e2) -> {desc=BinOp(Leq, from_exp map e1, from_exp map e2); typ=TBool}
   | CsisatAst.And _
   | CsisatAst.Or _
   | CsisatAst.Atom _ -> assert false
@@ -104,7 +106,7 @@ let close_cvc3 () =
   match Unix.close_process (!cvc3in, !cvc3out) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
-let set_datatype_cvc3 ?(cout = !cvc3out) t =
+let set_datatype_cvc3 ?(cout = !cvc3out) t = ()(*
   let id = ref 0 in
   let fm = Format.formatter_of_out_channel cout in
   let declss = get_decls t in
@@ -143,6 +145,7 @@ let set_datatype_cvc3 ?(cout = !cvc3out) t =
   let declss' = List.filter (List.exists (function (_,(_,KVariant _)) -> true | (_,(_,KRecord _)) -> false)) declss in
     List.iter print_decls declss';
     output_string cout "DATATYPE List = nil | cons (cdr: List) END;"
+*)
 
 
 let check pre p =
@@ -153,36 +156,8 @@ let check pre p =
     (**)
   let fm = Format.formatter_of_out_channel cout in
     (**)
-    (*
-      let fm =
-      Format.make_formatter
-      (output cout)
-      (fun () -> flush cout)
-      in
-    *)
-  let fv =
-    let rec uniq = function
-	[] -> []
-      | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
-    in
-      uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
-(*
-  (**)
-  let env = List.map (fun v -> Typing.new_var v) fv in
-  let aux p = fst (Typing.infer env p) in
-  let p = aux p in
-  let pre = List.map aux pre in
-  let fv = List.map fst env in
-    (**)
-*)
-  (*
-    List.iter (Format.fprintf Format.std_formatter "%a:INT;" print_id) fv;
-  *)
-  (*
-    let p::pre = List.map simplify (p::pre) in
-    let p::pre = List.map Typing.match_arg (p::pre) in
-  *)
-  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
+  let fv = uniq Id.compare (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
+  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term CVC3 p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term CVC3 p ^ ";" in
   let q = "PUSH;"^types^assertion^query^"\nPOP;" in
@@ -191,8 +166,9 @@ let check pre p =
   let _ = Format.pp_print_flush fm () in
   let s = input_line cin in
   let r = Str.string_match (Str.regexp ".*Valid") s 0 in
-    assert (r || Str.string_match (Str.regexp ".*Invalid") s 0);
-    r
+    if not (r || Str.string_match (Str.regexp ".*Invalid") s 0)
+    then (print_string s; assert false)
+    else r
 
 (*
 let check pre p =
@@ -226,21 +202,13 @@ let checksat p =
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
 
-  let fv =
-    let rec uniq = function
-        [] -> []
-      | x::xs ->
-          if List.exists (fun y -> x.id=y.id) xs || x.typ = TUnit
-          then uniq xs
-          else x::(uniq xs)
-    in
-      uniq (get_fv2 p) in
+  let fv = uniq Id.compare (get_fv2 p) in
 (*
   let env = List.map (fun v -> Typing.new_var v) fv in
   let p, _  = Typing.infer env p in
   let fv = List.map fst env in
 *)
-  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
+  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ ";" in
 
   let q = "PUSH;"^types^query^"\nPOP;" in
@@ -262,6 +230,7 @@ let checksat p =
     Sys.command command = 0
 *)
 
+(*
 let rec rename_ident = function
     Unit -> Unit
   | True -> True
@@ -314,7 +283,7 @@ let rec rename_ident = function
         Label(b, t')
   | Fail -> Fail
   | Event s -> Event s
-
+*)
 
 
 
@@ -332,14 +301,9 @@ let get_solution p t =
   let () = set_datatype_cvc3 ~cout:cout t in
 
   let fm = Format.formatter_of_out_channel cout in
-  let fv =
-    let rec uniq = function
-	    [] -> []
-      | x::xs -> if List.exists (fun y -> x.id=y.id) xs then uniq xs else x::(uniq xs)
-    in
-      uniq (get_fv2 p) in
+  let fv = uniq compare (get_fv2 p) in
 
-  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ x.typ ^ "; ") "" fv in
+  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term CVC3 p ^ "; COUNTERMODEL;" in
 
   let q = types ^ query in
@@ -390,33 +354,39 @@ let equiv cond t1 t2 =
 let rec gcd_arith_exp prev curr =
   if List.sort compare prev = List.sort compare curr
   then
-    let aux = function
-        Int n -> abs n
-      | BinOp(Mult, Int n, t)
-      | BinOp(Mult, t, Int n) -> abs n
-      | _ -> 1
+    let aux t =
+      match t.desc with
+          Int n -> abs n
+        | BinOp(Mult, {desc=Int n}, t)
+        | BinOp(Mult, t, {desc=Int n}) -> abs n
+        | _ -> 1
     in
-      List.fold_left gcd 0 (List.rev_map aux curr)
+    List.fold_left gcd 0 (List.rev_map aux curr)
   else
-    let aux = function
-        BinOp((Add|Sub), t1, t2) -> [t1; t2]
-      | t -> [t]
+    let aux t =
+      match t with
+          {desc=BinOp((Add|Sub), t1, t2)} -> [t1; t2]
+        | _ -> [t]
     in
-      gcd_arith_exp curr (rev_map_flatten aux curr)
+    gcd_arith_exp curr (rev_map_flatten aux curr)
 let gcd_arith_exp ts = gcd_arith_exp [] ts
 
 
-let rec div_arith_exp n = function
-    Int m -> assert (m mod n = 0); Int (m/n)
-  | BinOp(Add, t1, t2) ->
-      let t1' = div_arith_exp n t1 in
-      let t2' = div_arith_exp n t2 in
+let rec div_arith_exp n t =
+  let desc =
+    match t.desc with
+        Int m -> assert (m mod n = 0); Int (m/n)
+      | BinOp(Add, t1, t2) ->
+        let t1' = div_arith_exp n t1 in
+        let t2' = div_arith_exp n t2 in
         BinOp(Add, t1', t2')
-  | BinOp(Mult, Int m, t)
-  | BinOp(Mult, t, Int m) ->
-      assert (m mod n = 0);
-      BinOp(Mult, Int (m/n), t)
-  | t -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
+      | BinOp(Mult, {desc=Int m}, t)
+      | BinOp(Mult, t, {desc=Int m}) ->
+        assert (m mod n = 0);
+        BinOp(Mult, {desc=Int(m/n);typ=TInt[]}, t)
+      | _ -> Format.printf "@.%a@." pp_print_term t; assert false
+  in
+  {desc=desc; typ=TInt[]}
 let div_arith_exp n t =
   if n = 1
   then t
@@ -424,126 +394,131 @@ let div_arith_exp n t =
 
 
 let rec simplify_bool_exp precise t =
-  match t with
-      True
-    | False
-    | Var _ -> t
-    | BinOp(And|Or as op, t1, t2) ->
-        if precise && equiv [] t t1 then simplify_bool_exp precise t1
-        else if precise && equiv [] t t2 then simplify_bool_exp precise t2
-        else
-          BinOp(op, simplify_bool_exp precise t1, simplify_bool_exp precise t2)
-    | BinOp(_, (True|False), _) -> t
-    | BinOp(_, _, (True|False)) -> t
-    | BinOp(Eq, BinOp(op1, t11, t12), BinOp(op2, t21, t22)) when op1 = op2 && t12 = t22 ->
-        simplify_bool_exp precise (BinOp(Eq, t11, t21))
-    | BinOp(Eq, Int 0, BinOp(Mult, Int n, t))
-    | BinOp(Eq, BinOp(Mult, Int n, t), Int 0) ->
-        if n = 0 then
-          True
-        else
-          BinOp(Eq, simplify_exp t, Int 0)
-    | BinOp(Lt, Int 0, BinOp(Mult, Int n, t))
-    | BinOp(Gt, BinOp(Mult, Int n, t), Int 0) ->
+  assert (t.typ = TBool);
+  let desc =
+    match t.desc with
+        True
+      | False
+      | Var _ -> t.desc
+      | BinOp(And|Or as op, t1, t2) ->
+        if precise && equiv [] t t1 then (simplify_bool_exp precise t1).desc
+        else if precise && equiv [] t t2 then (simplify_bool_exp precise t2).desc
+        else BinOp(op, simplify_bool_exp precise t1, simplify_bool_exp precise t2)
+      | BinOp(_, {desc=True|False}, _) -> t.desc
+      | BinOp(_, _, {desc=True|False}) -> t.desc
+      | BinOp(Eq, {desc=BinOp(op1, t11, t12)}, {desc=BinOp(op2, t21, t22)}) when op1 = op2 && t12 = t22 ->
+        (simplify_bool_exp precise {desc=BinOp(Eq, t11, t21);typ=TBool}).desc
+      | BinOp(Eq, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)})
+      | BinOp(Eq, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0}) ->
+        if n = 0
+        then True
+        else BinOp(Eq, simplify_exp t, {desc=Int 0;typ=TInt[]})
+      | BinOp(Lt, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)})
+      | BinOp(Gt, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0}) ->
         if n > 0 then
-          BinOp(Lt, Int 0, simplify_exp t)
+          BinOp(Lt, {desc=Int 0;typ=TInt[]}, simplify_exp t)
         else if n < 0 then
-          BinOp(Lt, simplify_exp t, Int 0)
+          BinOp(Lt, simplify_exp t, {desc=Int 0;typ=TInt[]})
         else
           False
-    | BinOp(Lt, BinOp(Mult, Int n, t), Int 0)
-    | BinOp(Gt, Int 0, BinOp(Mult, Int n, t)) ->
+      | BinOp(Lt, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0})
+      | BinOp(Gt, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)}) ->
         if n > 0 then
-          BinOp(Lt, simplify_exp t, Int 0)
+          BinOp(Lt, simplify_exp t, {desc=Int 0;typ=TInt[]})
         else if n < 0 then
-          BinOp(Lt, Int 0, simplify_exp t)
+          BinOp(Lt, {desc=Int 0;typ=TInt[]}, simplify_exp t)
         else
           False
-    | BinOp(Leq, Int 0, BinOp(Mult, Int n, t))
-    | BinOp(Geq, BinOp(Mult, Int n, t), Int 0) ->
+      | BinOp(Leq, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)})
+      | BinOp(Geq, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0}) ->
         if n > 0 then
-          BinOp(Leq, Int 0, simplify_exp t)
+          BinOp(Leq, {desc=Int 0;typ=TInt[]}, simplify_exp t)
         else if n < 0 then
-          BinOp(Leq, simplify_exp t, Int 0)
+          BinOp(Leq, simplify_exp t, {desc=Int 0;typ=TInt[]})
         else
           True
-    | BinOp(Leq, BinOp(Mult, Int n, t), Int 0)
-    | BinOp(Geq, Int 0, BinOp(Mult, Int n, t)) ->
+      | BinOp(Leq, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0})
+      | BinOp(Geq, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)}) ->
         if n > 0 then
-          BinOp(Leq, simplify_exp t, Int 0)
+          BinOp(Leq, simplify_exp t, {desc=Int 0;typ=TInt[]})
         else if n < 0 then
-          BinOp(Leq, Int 0, simplify_exp t)
+          BinOp(Leq, {desc=Int 0;typ=TInt[]}, simplify_exp t)
         else
           True
-    | BinOp(Eq, Int n, Int m) ->
+      | BinOp(Eq, {desc=Int n}, {desc=Int m}) ->
         if n = m then True else False
-    | BinOp(Lt, Int n, Int m) ->
+      | BinOp(Lt, {desc=Int n}, {desc=Int m}) ->
         if n < m then True else False
-    | BinOp(Gt, Int n, Int m) ->
+      | BinOp(Gt, {desc=Int n}, {desc=Int m}) ->
         if n > m then True else False
-    | BinOp(Leq, Int n, Int m) ->
+      | BinOp(Leq, {desc=Int n}, {desc=Int m}) ->
         if n <= m then True else False
-    | BinOp(Geq, Int n, Int m) ->
+      | BinOp(Geq, {desc=Int n}, {desc=Int m}) ->
         if n >= m then True else False
-    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) when (function TInt _|TRInt _->true | _->false) (Typing.get_typ t1) ->
-(*
-        let t1 = simplify_exp t1 in
-        let t2 = simplify_exp t2 in
-*)
+      | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) when (function TInt _|TRInt _->true | _->false) t1.typ ->
+        (*
+          let t1 = simplify_exp t1 in
+          let t2 = simplify_exp t2 in
+        *)
         let d = gcd_arith_exp [t1;t2] in
-          if d = 0
-          then BinOp(op, simplify_exp t1, simplify_exp t2)
-          else
-            let t1' = div_arith_exp d t1 in
-            let t2' = div_arith_exp d t2 in
-              BinOp(op, simplify_exp t1', simplify_exp t2')
-    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
-    | Not True -> False
-    | Not False -> True
-    | Not(BinOp(Lt, t1, t2)) ->
+        if d = 0
+        then BinOp(op, simplify_exp t1, simplify_exp t2)
+        else
+          let t1' = div_arith_exp d t1 in
+          let t2' = div_arith_exp d t2 in
+          BinOp(op, simplify_exp t1', simplify_exp t2')
+      | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
+      | Not {desc=True} -> False
+      | Not {desc=False} -> True
+      | Not{desc=BinOp(Lt, t1, t2)} ->
         BinOp(Geq, simplify_exp t1, simplify_exp t2)
-    | Not(BinOp(Gt, t1, t2)) ->
+      | Not{desc=BinOp(Gt, t1, t2)} ->
         BinOp(Leq, simplify_exp t1, simplify_exp t2)
-    | Not(BinOp(Leq, t1, t2)) ->
+      | Not{desc=BinOp(Leq, t1, t2)} ->
         BinOp(Gt, simplify_exp t1, simplify_exp t2)
-    | Not(BinOp(Geq, t1, t2)) ->
+      | Not{desc=BinOp(Geq, t1, t2)} ->
         BinOp(Lt, simplify_exp t1, simplify_exp t2)
-    | Not t -> Not (simplify_bool_exp precise t)
-    | _ -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
+      | Not t -> Not (simplify_bool_exp precise t)
+      | _ -> Format.printf "@.%a@." pp_print_term t; assert false
+  in
+  {desc=desc; typ=TBool}
 and simplify_exp t =
-  match t with
-    Var _ -> t
-  | Int _ -> t
-  | NInt _ -> t
-  | RandInt t ->
-      assert (t = None);
-      RandInt None
-  | BinOp(Add, t1, t2) ->
-      let t1' = simplify_exp t1 in
-      let t2' = simplify_exp t2 in
-      (match t1', t2' with
-        Int(n), Int(m) -> Int(n+m)
-      | Int(0), t | t, Int(0) -> t
-      | _, _ -> BinOp(Add, t1', t2'))
-  | BinOp(Sub, t1, t2) ->
-      let t1' = simplify_exp t1 in
-      let t2' = simplify_exp t2 in
-      (match t1', t2' with
-        Int(n), Int(m) -> Int(n-m)
-      | Int(0), _ -> BinOp(Mult, Int(-1), t2')
-      | t, Int(0) -> t
-      | _, _ -> BinOp(Sub, t1', t2'))
-  | BinOp(Mult, t1, t2) ->
-      let t1' = simplify_exp t1 in
-      let t2' = simplify_exp t2 in
-      (match t1', t2' with
-        Int(n), Int(m) -> Int(n * m)
-      | Int(0), t | t, Int(0) -> Int(0)
-      | Int(1), t | t, Int(1) -> t
-      | _, _ -> BinOp(Mult, t1', t2'))
-  | Nil
-  | Cons _ -> t
-  | _ -> simplify_bool_exp true t
+  let desc =
+    match t.desc with
+        Var _ -> t.desc
+      | Int _ -> t.desc
+      | NInt _ -> t.desc
+      | RandInt t ->
+        assert (t = None);
+        RandInt None
+      | BinOp(Add, t1, t2) ->
+        let t1' = simplify_exp t1 in
+        let t2' = simplify_exp t2 in
+        (match t1'.desc, t2'.desc with
+            Int(n), Int(m) -> Int(n+m)
+          | Int(0), t | t, Int(0) -> t
+          | _, _ -> BinOp(Add, t1', t2'))
+      | BinOp(Sub, t1, t2) ->
+        let t1' = simplify_exp t1 in
+        let t2' = simplify_exp t2 in
+        (match t1'.desc, t2'.desc with
+            Int(n), Int(m) -> Int(n-m)
+          | Int(0), _ -> BinOp(Mult, {desc=Int(-1);typ=TInt[]}, t2')
+          | t, Int(0) -> t
+          | _, _ -> BinOp(Sub, t1', t2'))
+      | BinOp(Mult, t1, t2) ->
+        let t1' = simplify_exp t1 in
+        let t2' = simplify_exp t2 in
+        (match t1'.desc, t2'.desc with
+            Int(n), Int(m) -> Int(n * m)
+          | Int(0), t | t, Int(0) -> Int(0)
+          | Int(1), t | t, Int(1) -> t
+          | _, _ -> BinOp(Mult, t1', t2'))
+      | Nil
+      | Cons _ -> t.desc
+      | _ -> (simplify_bool_exp true t).desc
+  in
+  {desc=desc; typ=t.typ}
 
 
 
@@ -579,8 +554,8 @@ let interpolation ts1 ts2 =
 
   let bool_theory =
     [CsisatAst.Not(CsisatAst.Eq(CsisatAst.Variable "tru", CsisatAst.Variable "fls"));
-    CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "tru"]), CsisatAst.Variable "fls");
-    CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "fls"]), CsisatAst.Variable "tru")]
+     CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "tru"]), CsisatAst.Variable "fls");
+     CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "fls"]), CsisatAst.Variable "tru")]
   in
   let ts1' = List.map (fun t -> to_pred (simplify_bool_exp false t)) ts1 in
   let ts2' = List.map (fun t -> to_pred (simplify_bool_exp false t)) ts2 in
@@ -593,48 +568,54 @@ let interpolation ts1 ts2 =
     let aux acc = List.fold_left (fun acc t -> acc @@@ get_fv2 t) acc in
       aux (aux [] ts1) ts2
   in
-  let env = List.map (fun x -> x, Var x) fv in
+  let env = List.combine fv fv in
 
   let pred = try
-      CsisatInterpolate.interpolate_with_proof t1 t2
-    with CsisatAst.SAT_FORMULA(pred) -> begin
-       (*if Flag.debug then print_string ("satisfiable: \n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");*)
-      if not Flag.check_sat || checksat (List.fold_left (fun t1 t2 -> BinOp(And,t1,t2)) True (ts1@@ts2))
-      then raise Satisfiable
-      else
-        let rec trans t =
-          match t with
+    CsisatInterpolate.interpolate_with_proof t1 t2
+  with CsisatAst.SAT_FORMULA(pred) -> begin
+    (*if Flag.debug then print_string ("satisfiable: \n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");*)
+    if not Flag.check_sat || checksat (List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TInt[]}) {desc=True;typ=TBool} (ts1@@ts2))
+    then raise Satisfiable
+    else
+      let rec trans t =
+        let desc =
+          match t.desc with
               True
             | False
-            | Var _ -> t
+            | Var _ -> t.desc
             | BinOp(And|Or as op, t1, t2) ->
                 let t1' = trans t1 in
                 let t2' = trans t2 in
                   BinOp(op, t1', t2')
-            | BinOp(_, (True|False), _) -> t
-            | BinOp(_, _, (True|False)) -> t
+            | BinOp(_, {desc=True|False}, _) -> t.desc
+            | BinOp(_, _, {desc=True|False}) -> t.desc
             | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
                 BinOp(op, t1, t2)
-            | Not(BinOp(Eq, t1, t2)) ->
-                BinOp(Or, BinOp(Leq, t1, BinOp(Sub, t2, Int 1)), BinOp(Leq, BinOp(Add, t2, Int 1), t1))
+            | Not{desc=BinOp(Eq, t1, t2)} ->
+                let n1 = {desc=Int 1; typ=TInt[]} in
+                let t1' = {desc=BinOp(Leq, t1, {desc=BinOp(Sub, t2, n1);typ=TInt[]}); typ=TBool} in
+                let t2' = {desc=BinOp(Leq, {desc=BinOp(Add, t2, n1);typ=TInt[]}, t1); typ=TBool} in
+                  BinOp(Or, t1', t2')
             | Not t -> Not (trans t)
             | _ -> Format.printf "@.%a@." (print_term_fm ML true) t; assert false
         in
-        let ts1' = List.map (fun t -> to_pred (simplify_bool_exp false (trans t))) ts1 in
-        let ts2' = List.map (fun t -> to_pred (simplify_bool_exp false (trans t))) ts2 in
-        let t1 = CsisatAstUtil.simplify (CsisatAst.And (bool_theory@@ts1')) in
-        let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
-        let () = if Flag.debug && Flag.print_interpolant
-                 then Format.printf "  t1: %s@." (CsisatAstUtil.print_pred t1)
-        in
-        let () = if Flag.debug && Flag.print_interpolant
-                 then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2)
-        in
-          try
-            CsisatInterpolate.interpolate_with_proof t1 t2
-          with
-              CsisatAst.SAT_FORMULA(pred) -> raise Satisfiable
-    end
+          {desc=desc; typ=t.typ}
+      in
+      let ts1' = List.map (fun t -> to_pred (simplify_bool_exp false (trans t))) ts1 in
+      let ts2' = List.map (fun t -> to_pred (simplify_bool_exp false (trans t))) ts2 in
+      let t1 = CsisatAstUtil.simplify (CsisatAst.And (bool_theory@@ts1')) in
+      let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
+      let () = if Flag.debug && Flag.print_interpolant
+      then Format.printf "  t1: %s@." (CsisatAstUtil.print_pred t1)
+      in
+      let () = if Flag.debug && Flag.print_interpolant
+      then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2)
+      in
+        try
+          CsisatInterpolate.interpolate_with_proof t1 t2
+        with
+            CsisatAst.SAT_FORMULA(pred) -> raise Satisfiable
+  end
   in
   let pred' = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff pred) in
   let () =
@@ -642,25 +623,24 @@ let interpolation ts1 ts2 =
       Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
   in
   let pred'' =
-    match Syntax.normalize_bool_exp (simplify_bool_exp false (from_pred (CsisatAstUtil.dnf pred'))) with
-      BinOp(Or, _, _) as p ->
-        let rec f = function
-          BinOp(Or, t1, t2) ->
-            f t1 @ f t2
-        | t -> [t]
-        in
-        let disj = f p in
-        (try
-          List.find (fun p -> check ts1 p) disj
-        with Not_found -> p)
-    | p -> p
+    match Syntax.normalize_bool_exp (simplify_bool_exp false (from_pred env (CsisatAstUtil.dnf pred'))) with
+        {desc=BinOp(Or, _, _)} as p ->
+          let rec f = function
+              {desc=BinOp(Or, t1, t2)} ->
+                f t1 @ f t2
+            | t -> [t]
+          in
+          let disj = f p in
+            (try
+               List.find (fun p -> check ts1 p) disj
+             with Not_found -> p)
+      | p -> p
   in
-  let pred''' = subst_term env pred'' in
-  (if Flag.debug then begin
-    ()(*assert (check ts1 pred''' &&
-            check [pred'''] (Not (List.fold_left (fun t p -> BinOp(And, t, p)) (List.hd ts2) (List.tl ts2))))*)
-  end);
-    pred'''
+    (if Flag.debug then begin
+       ()(*assert (check ts1 pred''' &&
+           check [pred'''] (Not (List.fold_left (fun t p -> BinOp(And, t, p)) (List.hd ts2) (List.tl ts2))))*)
+     end);
+    pred''
 
 
 
@@ -696,6 +676,8 @@ let rec type_of = function
   | Label(_,t) -> type_of t
 *)
 
+
+(*
 let rec rename_type map = function
     TUnit -> TUnit
   | TAbsBool -> TAbsBool
@@ -705,7 +687,7 @@ let rec rename_type map = function
   | TVar {contents = Some typ} ->
       let typ' = rename_type map typ in
         TVar {contents = Some typ'}
-  | TFun((x,typ1),typ2) ->
+  | TFun(x,typ) ->
       let typ1' = rename_type map typ1 in
       let typ2' = rename_type map typ2 in
       let x' = try List.assoc x map with Not_found -> x in
@@ -713,27 +695,31 @@ let rec rename_type map = function
         TFun((x'',typ1'),typ2')
   | TUnknown -> TUnknown
   | _ -> assert false
+*)
 
 
 let rec congruent cond typ1 typ2 =
   match typ1,typ2 with
       TUnit, TUnit -> true
     | TBool, TBool -> true
+    | TAbsBool, TAbsBool -> true
     | TInt ps1, TInt ps2 ->
         begin
           try
             List.fold_left2 (fun b p1 p2 -> b && equiv cond p1 p2) true ps1 ps2
           with Invalid_argument "List.fold_left2" -> false
         end
-    | TFun((x1,typ11),typ12), TFun((x2,typ21),typ22) ->
+    | TFun(x1,typ1), TFun(x2,typ2) ->
         let cond' =
-          match typ11 with
-              TInt _ -> BinOp(Eq, Var x1, Var x2)::cond
+          match Id.typ x1 with
+              TInt _ -> {desc=BinOp(Eq, {desc=Var x1;typ=Id.typ x1}, {desc=Var x2;typ=Id.typ x2});typ=TBool}::cond
             | _ -> cond
         in
-          congruent cond typ11 typ21 && congruent cond' typ12 typ22
+          congruent cond (Id.typ x1) (Id.typ x2) && congruent cond' typ1 typ2
     | TUnknown, _ -> true
     | _, TUnknown -> true
+    | TBottom, _ -> true
+    | _, TBottom -> true
     | TVar _, _ -> assert false
     | _, TVar _ -> assert false
     | _ -> false

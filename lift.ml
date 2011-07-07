@@ -141,3 +141,135 @@ let lift t =
   let map, t' = abstract t in
   let t'' = part_eval t' in
     map, remove t''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let rec lift_aux xs = function
+    Unit -> [], Unit
+  | True -> [], True
+  | False -> [], False
+  | Unknown -> [], Unknown
+  | Int n -> [], Int n
+  | NInt x -> [], NInt x
+  | RandInt None -> [], RandInt None
+  | RandInt (Some t) ->
+      let defs,t' = lift_aux xs t in
+        defs, RandInt (Some t')
+  | Var x -> [], Var x
+  | Fun _ -> Format.printf "Not implemented@."; assert false
+  | App(t, ts) ->
+      let defs,t' = lift_aux xs t in
+      let defss,ts' = List.split (List.map (lift_aux xs) ts) in
+        defs @ (List.flatten defss), App(t', ts')
+  | If(t1,t2,t3) ->
+      let defs1,t1' = lift_aux xs t1 in
+      let defs2,t2' = lift_aux xs t2 in
+      let defs3,t3' = lift_aux xs t3 in
+        defs1 @ defs2 @ defs3, If(t1',t2',t3')
+  | Branch(t1,t2) ->
+      let defs1,t1' = lift_aux xs t1 in
+      let defs2,t2' = lift_aux xs t2 in
+        defs1 @ defs2, Branch(t1',t2')
+  | Let(Nonrecursive,f,ys,t1,t2) ->
+      let fv = xs in
+      let ys' = fv @ ys in
+      let typ = List.fold_right (fun x typ -> TFun((x,x.typ),typ)) ys' TUnit in
+      let f' = {(new_var_id f) with typ=typ} in
+      let f'' = List.fold_left (fun t x -> app2app t [Var x]) (Var f') fv in
+      let defs1,t1' = lift_aux ys' t1 in
+      let defs2,t2' = lift_aux xs (subst f f'' t2) in
+        defs1 @ [(f',(ys',t1'))] @ defs2, t2'
+  | Let(Recursive,f,ys,t1,t2) ->
+      let fv = xs in
+      let ys' = fv @ ys in
+      let typ = List.fold_right (fun x typ -> TFun((x,x.typ),typ)) ys' TUnit in
+      let f' = {(new_var_id f) with typ=typ} in
+      let f'' = List.fold_left (fun t x -> app2app t [Var x]) (Var f') fv in
+      let defs1,t1' = lift_aux ys' (subst f f'' t1) in
+      let defs2,t2' = lift_aux xs (subst f f'' t2) in
+        defs1 @ [(f',(ys',t1'))] @ defs2, t2'
+  | BinOp(op,t1,t2) ->
+      let defs1,t1' = lift_aux xs t1 in
+      let defs2,t2' = lift_aux xs t2 in
+        defs1 @ defs2, BinOp(op,t1',t2')
+  | Not t ->
+      let defs,t' = lift_aux xs t in
+        defs, Not t'
+  | Fail -> [], Fail
+  | Label(b,t) ->
+      let defs,t' = lift_aux xs t in
+        defs, Label(b,t')
+  | Event s -> [], Event s
+  | Record(b,fields) ->
+      let aux (s,(f,t)) =
+        let defs,t' = lift_aux xs t in
+          defs, (s,(f,t'))
+      in
+      let defss,fields' = List.split (List.map aux fields) in
+        List.flatten defss, Record(b,fields')
+  | Proj(n,i,s,f,t) ->
+      let defs,t' = lift_aux xs t in
+        defs, Proj(n,i,s,f,t')
+  | Nil -> [], Nil
+  | Cons(t1,t2) ->
+      let defs1,t1' = lift_aux xs t1 in
+      let defs2,t2' = lift_aux xs t2 in
+        defs1 @ defs2, Cons(t1',t2')
+  | Match(t1,t2,x,y,t3) ->
+      let defs1,t1' = lift_aux xs t1 in
+      let defs2,t2' = lift_aux xs t2 in
+      let defs3,t3' = lift_aux xs t3 in
+        defs1 @ defs2 @ defs3, Match(t1',t2',x,y,t3')
+  | Constr(c,ts) ->
+      let defss,ts' = List.split (List.map (lift_aux xs) ts) in
+        List.flatten defss, Constr(c,ts')
+  | Match_(t,pats) ->
+      let defs,t' = lift_aux xs t in
+      let aux (pat,cond,t) (defs,pats) =
+        let xs' = get_vars_pat pat @@ xs in
+        let defs',cond' =
+          match cond with
+              None -> [], None
+            | Some t ->
+                let defs',t' = lift_aux xs' t in
+                  defs', Some t'
+        in
+        let defs'',t' = lift_aux xs' t in
+          defs''@defs'@defs, (pat,cond',t')::pats
+      in
+      let defs',pats' = List.fold_right aux pats (defs,[]) in
+        defs', Match_(t',pats')
+  | Type_decl(decls,t) ->
+      let defs,t' = lift_aux xs t in
+        defs, Type_decl(decls,t')
+let lift t = lift_aux [](*(get_fv2 t)*) t
+

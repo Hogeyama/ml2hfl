@@ -1,10 +1,11 @@
 
 open Syntax
+open Type
 open Util
 
-
+(*
 type typed_term = {t_cps:t_cps; typ_cps:typ_cps}
-and typed_ident = {id_cps:ident; id_typ:typ_cps}
+and typed_ident = {id_cps:Id.t; id_typ:typ_cps}
 and t_cps =
     UnitCPS
   | TrueCPS
@@ -48,9 +49,9 @@ and pattern_cps =
   | PConstructCPS of string * typed_pattern list
   | PRecordCPS of bool * (int * (string * mutable_flag * typed_pattern)) list
   | POrCPS of typed_pattern * typed_pattern
+*)
 
-
-
+(*
 let rec print_typ_cps fm = function
     TBaseCPS -> Format.fprintf fm "o"
   | TVarCPS {contents = None} -> Format.fprintf fm "?"
@@ -185,11 +186,11 @@ and print_t_cps fm = function
       in
         List.iter aux decls;
         print_typed_term fm t
+*)
 
 
 
-
-
+(*
 let rec find_var_typ x env =
   try
     match List.assoc x env with
@@ -199,12 +200,15 @@ let rec find_var_typ x env =
     if Flag.debug
     then Format.printf "@.not found: %s@." x;
     assert false
+*)
 
 
-
+(*
 let new_tvar () = TVarCPS (ref None)
 let new_var x = {id_cps=x; id_typ=new_tvar()}
+*)
 
+(*
 let rec set_tfun = function
     TBaseCPS -> assert false
   | TFunCPS(r, typ1, typ2) -> r := true
@@ -468,9 +472,9 @@ and infer_pattern_cont_pos env = function
         {pat_cps=POrCPS(pat1',pat2'); pat_typ=pat1'.pat_typ}, env2
 
 
-
+*)
 let funs = ref []
-
+(*
 
 let rec term_of_typed_term {t_cps=t} =
   match t with
@@ -515,8 +519,8 @@ let rec transform c {t_cps=t; typ_cps=typ} =
     | IntCPS n -> c (Int n)
     | NIntCPS x -> c (NInt x.id_cps)
     | RandIntCPS ->
-        let k = new_var' "k" in
-        let r = new_var' "r" in
+        let k = Id.new_var "k" TUnknown in
+        let r = Id.new_var "r" TUnknown in
           RandInt (Some (Let(Nonrecursive, k, [r], c (Var r), Var k)))
     | VarCPS x -> c (Var x.id_cps)
     | FunCPS(x, t) -> assert false
@@ -524,8 +528,8 @@ let rec transform c {t_cps=t; typ_cps=typ} =
         let n = get_arg_num t1.typ_cps in
           if n = List.length ts
           then
-            let k = new_var' "k" in
-            let r = new_var' "r" in
+            let k = Id.new_var "k" TUnknown in
+            let r = Id.new_var "r" TUnknown in
             let c1 x = app2app x [Var k] in
             let cc = List.fold_right (fun t cc -> fun x -> transform (fun y -> cc (app2app x [y])) t) ts c1 in
               funs := k::!funs;
@@ -535,16 +539,16 @@ let rec transform c {t_cps=t; typ_cps=typ} =
             let typ' = app_typ t1.typ_cps ts1 in
               transform c {t_cps=AppCPS({t_cps=AppCPS(t1,ts1);typ_cps=typ'},ts2); typ_cps=typ}
     | IfCPS(t1, t2, t3) ->
-        let k = new_var' "k" in
-        let x = new_var' "b" in
+        let k = Id.new_var "k" TUnknown in
+        let x = Id.new_var "b" TUnknown in
         let t2' = transform (fun y -> App(Var k, [y])) t2 in
         let t3' = transform (fun y -> App(Var k, [y])) t3 in
         let c' y = Let(Nonrecursive, k, [x], c (Var x), If(y, t2', t3')) in
           funs := k::!funs;
           transform c' t1
     | BranchCPS(t1, t2) ->
-        let k = new_var' "k" in
-        let x = new_var' "b" in
+        let k = Id.new_var "k" TUnknown in
+        let x = Id.new_var "b" TUnknown in
         let t1' = transform (fun y -> App(Var k, [y])) t1 in
         let t2' = transform (fun y -> App(Var k, [y])) t2 in
           funs := k::!funs;
@@ -558,7 +562,7 @@ let rec transform c {t_cps=t; typ_cps=typ} =
           let n = get_arg_num f.id_typ in
             if n = List.length xs
             then
-              let k = new_var' "k" in
+              let k = Id.new_var "k" TUnknown in
               let f' = f.id_cps in
               let xs' = List.map (fun x -> x.id_cps) xs in
               let t1' = transform (fun y -> App(Var k, [y])) t1 in
@@ -567,7 +571,7 @@ let rec transform c {t_cps=t; typ_cps=typ} =
             else
               let xs1,xs2 = take2 xs n in
               let typ_g = app_typ f.id_typ xs1 in
-              let g = {id_cps=new_var' f.id_cps.name; id_typ=typ_g} in
+              let g = {id_cps=Id.new_var f.id_cps.name TUnknown; id_typ=typ_g} in
               let t1' = {t_cps=LetCPS(Nonrecursive, g, xs2, t1, {t_cps=VarCPS g;typ_cps=typ_g}); typ_cps=typ_g} in
                 transform c {t_cps=LetCPS(flag,f,xs1,t1',t2); typ_cps=typ}
     | BinOpCPS(op, t1, t2) ->
@@ -582,8 +586,8 @@ let rec transform c {t_cps=t; typ_cps=typ} =
     | EventCPS s -> c (Event s)
     | RecordCPS(b,[]) -> c (Record(b,[]))
     | RecordCPS(b,fields) ->
-        let k = new_var' "k" in
-        let r = new_var' "r" in
+        let k = Id.new_var "k" TUnknown in
+        let r = Id.new_var "r" TUnknown in
         let aux t1 s f t2 =
           match t1 with
               Record(b,fields) -> Record(b, fields @ [s,(f,t2)])
@@ -603,8 +607,8 @@ let rec transform c {t_cps=t; typ_cps=typ} =
           transform c2 t1
     | ConstrCPS(cstr,[]) -> c (Constr(cstr,[]))
     | ConstrCPS(cstr,ts) ->
-        let k = new_var' "k" in
-        let r = new_var' "r" in
+        let k = Id.new_var "k" TUnknown in
+        let r = Id.new_var "r" TUnknown in
         let aux t1 t2 =
           match t1 with
               Constr(cstr,ts) -> Constr(cstr, ts @ [t2])
@@ -615,340 +619,426 @@ let rec transform c {t_cps=t; typ_cps=typ} =
           funs := k::!funs;
           Let(Nonrecursive, k, [r], c (Var r), transform cc {t_cps=ConstrCPS(cstr,[]);typ_cps=typ})
     | MatchCPS(t1,t2,x,y,t3) ->
-        let k = new_var' "k" in
-        let r = new_var' "x" in
+        let k = Id.new_var "k" TUnknown in
+        let r = Id.new_var "x" TUnknown in
         let t2' = transform (fun z -> App(Var k, [z])) t2 in
         let t3' = transform (fun z -> App(Var k, [z])) t3 in
         let c' z = Let(Nonrecursive, k, [r], c (Var r), Match(z, t2', x.id_cps, y.id_cps, t3')) in
           funs := k::!funs;
           transform c' t1
-    | Match_CPS(t,pats) ->
-        let k = new_var' "k" in
-        let x = new_var' "x" in
+    | Match_CPS(t,pats) -> assert false (*
+        let k = Id.new_var "k" TUnknown in
+        let x = Id.new_var "x" TUnknown in
         let aux (pat,cond,t) =
-          pattern_of_typed_pat pat, transform (fun y -> App(Var k, [y])) t; assert false
+          if true then assert false else
+          pattern_of_typed_pat pat, transform (fun y -> App(Var k, [y])) t
         in
         let pats' = List.map aux pats in
         let c' y = Let(Nonrecursive, k, [x], c (Var x), Match_(y, pats')) in
           funs := k::!funs;
-          transform c' t
+          transform c' t*)
     | Type_declCPS(decls,t) ->
         Type_decl(decls, transform c t)
     | t -> (Format.printf "%a@." print_t_cps t; assert false)
 let transform = transform (fun x -> x)
-
-
-
-
-
-
-
-
-
-let rec inlining funs defs = function
-    Unit -> Unit
-  | True -> True
-  | False -> False
-  | Unknown -> Unknown
-  | Int n -> Int n
-  | NInt x -> NInt x
-  | RandInt None -> RandInt None
-  | RandInt (Some t) -> RandInt (Some (inlining funs defs t))
-  | Var x -> Var x
-  | Fun _ -> assert false
-  | App(Var f, ts) ->
-      if List.exists (fun g -> f.id = g.id) funs && List.length (get_args f.typ) = List.length ts
-      then
-        let xs,t = assoc_id f defs in
-          List.fold_right2 subst xs ts t
-      else App(Var f, ts)
-  | App(Fail, ts) -> App(Fail, ts)
-  | App(Event s, ts) -> App(Event s, ts)
-  | App _ -> assert false
-  | If(t1, t2, t3) ->
-      let t2' = inlining funs defs t2 in
-      let t3' = inlining funs defs t3 in
-        If(t1, t2', t3')
-  | Branch(t1, t2) ->
-      let t1' = inlining funs defs t1 in
-      let t2' = inlining funs defs t2 in
-        Branch(t1', t2')
-  | Let(flag, f, xs, t1, t2) ->
-      if flag = Nonrecursive
-      then
-        let t1' = inlining funs defs t1 in
-        let t2' = inlining funs ((f,(xs,t1'))::defs) t2 in
-          Let(flag, f, xs, t1', t2')
-      else
-        let t1' = inlining funs defs t1 in
-        let t2' = inlining funs defs t2 in
-          Let(flag, f, xs, t1', t2')
-  | BinOp(op, t1, t2) ->
-      let t1' = inlining funs defs t1 in
-      let t2' = inlining funs defs t2 in
-        BinOp(op, t1', t2')
-  | Not t ->
-      let t' = inlining funs defs t in
-        Not t'
-  | Fail -> Fail
-  | Label _ -> assert false
-  | Event s -> Event s
-  | Nil -> Nil
-  | Cons(t1,t2) -> Cons(inlining funs defs t1, inlining funs defs t2)
-  | Match(t1,t2,x,y,t3) ->
-      Match(inlining funs defs t1, inlining funs defs t2, x, y, inlining funs defs t3)
-  | Constr(c,ts) -> Constr(c, List.map (inlining funs defs) ts)
-  | Match_(t,pats) ->
-      let aux (pat,cond,t) = pat, apply_opt (inlining funs defs) cond, inlining funs defs t in
-        Match_(inlining funs defs t, List.map aux pats)
-  | Type_decl(decls,t) -> Type_decl(decls, inlining funs defs t)
-
-
-let rec normalize = function
-    Unit -> Unit
-  | True -> True
-  | False -> False
-  | Unknown -> Unknown
-  | Int n -> Int n
-  | NInt x -> NInt x
-  | RandInt None -> RandInt None
-  | RandInt (Some t) -> RandInt (Some (normalize t))
-  | Var x -> Var x
-  | Fun _ -> assert false
-  | App(Fail, [t1;t2]) -> App(Fail, [normalize t1])
-  | App(Fail, _) -> assert false
-  | App(Event s, [t1;t2]) ->
-      let t1' = normalize t1 in
-      let t2' = normalize t2 in
-        App(Event s, [App(t2', [t1'])])
-  | App(Event s, _) -> assert false
-  | App(f, ts) ->
-      let ts' = List.map normalize ts in
-      let f' = normalize f in
-        App(f', ts')
-  | If(t1, t2, t3) ->
-      let t1' = normalize t1 in
-      let t2' = normalize t2 in
-      let t3' = normalize t3 in
-        If(t1', t2', t3')
-  | Branch(t1, t2) ->
-      let t1' = normalize t1 in
-      let t2' = normalize t2 in
-        Branch(t1', t2')
-  | Let(flag, f, xs, t1, t2) ->
-      let t1' = normalize t1 in
-      let t2' = normalize t2 in
-        Let(flag, f, xs, t1', t2')
-(*
-  | Let(flag, bindings, t) ->
-      let bindings' = List.map (fun (f,xs,t) -> f,xs,normalize t) bindings in
-      let t' = normalize t in
-        Let(flag, bindings', t')
 *)
-  | BinOp(op, t1, t2) ->
-      let t1' = normalize t1 in
-      let t2' = normalize t2 in
-        BinOp(op, t1', t2')
-  | Not t -> Not (normalize t)
-  | Fail -> Fail
-  | Label(b,t) -> Label(b,normalize t)
-  | Event s -> assert false
-  | Record(b,fields) -> Record(b, List.map (fun (s,(f,t)) -> s,(f,normalize t)) fields)
-  | Proj(n,i,s,f,t) -> Proj(n, i, s, f, normalize t)
-  | Nil -> Nil
-  | Cons(t1,t2) -> Cons(normalize t1, normalize t2)
-  | Match(t1,t2,x,y,t3) -> Match(normalize t1, normalize t2, x, y, normalize t3)
-  | Constr(c,ts) -> Constr(c, List.map normalize ts)
-  | Match_(t,pats) ->
-      let aux (pat,cond,t) = pat, apply_opt normalize cond, normalize t in
-        Match_(normalize t, List.map aux pats)
-  | Type_decl(decls,t) -> Type_decl(decls, normalize t)
 
 
 
 
-let rec extract_records env = function
-    Unit -> Unit
-  | True -> True
-  | False -> False
-  | Unknown -> Unknown
-  | Int n -> Int n
-  | NInt x -> NInt x
-  | RandInt None -> RandInt None
-  | RandInt (Some t) -> RandInt (Some (extract_records env t))
-  | Var x -> Var x
-  | Fun _ -> assert false
-  | App(f, ts) ->
-      let rec aux = function
-          Var x ->
-            begin
-              match x.typ with
-                  TRecord _ -> List.map (fun x -> Var x) (List.assoc x env)
-                | _ -> [Var x]
-            end
-        | Record(_,fields) -> List.flatten (List.map (fun (_,(_,t)) -> aux t) fields)
-        | t -> [extract_records env t]
+
+
+
+
+
+let rec inlining funs defs t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt x -> NInt x
+      | RandInt None -> RandInt None
+      | RandInt (Some t) -> RandInt (Some (inlining funs defs t))
+      | Var x -> Var x
+      | Fun _ -> assert false
+      | App({desc=Var f}, ts) ->
+          if List.exists (Id.same f) funs && List.length (get_args (Id.typ f)) = List.length ts
+          then
+            let xs,t = Id.assoc f defs in
+              (List.fold_right2 subst xs ts t).desc
+          else App({desc=Var f;typ=Id.typ f}, ts)
+      | App({desc=Fail}, ts) -> t.desc
+      | App({desc=Event s}, ts) -> t.desc
+      | App _ -> assert false
+      | If(t1, t2, t3) ->
+          let t2' = inlining funs defs t2 in
+          let t3' = inlining funs defs t3 in
+            If(t1, t2', t3')
+      | Branch(t1, t2) ->
+          let t1' = inlining funs defs t1 in
+          let t2' = inlining funs defs t2 in
+            Branch(t1', t2')
+      | Let(flag, f, xs, t1, t2) ->
+          if flag = Flag.Nonrecursive
+          then
+            let t1' = inlining funs defs t1 in
+            let t2' = inlining funs ((f,(xs,t1'))::defs) t2 in
+              Let(flag, f, xs, t1', t2')
+          else
+            let t1' = inlining funs defs t1 in
+            let t2' = inlining funs defs t2 in
+              Let(flag, f, xs, t1', t2')
+      | BinOp(op, t1, t2) ->
+          let t1' = inlining funs defs t1 in
+          let t2' = inlining funs defs t2 in
+            BinOp(op, t1', t2')
+      | Not t ->
+          let t' = inlining funs defs t in
+            Not t'
+      | Fail -> Fail
+      | Label _ -> assert false
+      | Event s -> Event s
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(inlining funs defs t1, inlining funs defs t2)
+      | Match(t1,t2,x,y,t3) ->
+          Match(inlining funs defs t1, inlining funs defs t2, x, y, inlining funs defs t3)
+      | Constr(c,ts) -> Constr(c, List.map (inlining funs defs) ts)
+      | Match_(t,pats) ->
+          let aux (pat,cond,t) = pat, apply_opt (inlining funs defs) cond, inlining funs defs t in
+            Match_(inlining funs defs t, List.map aux pats)
+  in
+    {desc=desc; typ=t.typ}
+
+
+let rec normalize t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt x -> NInt x
+      | RandInt None -> RandInt None
+      | RandInt (Some t) -> RandInt (Some (normalize t))
+      | Var x -> Var x
+      | Fun _ -> assert false
+      | App({desc=Fail;typ=typ}, [t1;t2]) -> App(fail_term, [normalize t1])
+      | App({desc=Fail}, _) -> assert false
+      | App({desc=Event s;typ=typ}, [t1;t2]) ->
+          let t1' = normalize t1 in
+          let t2' = normalize t2 in
+            App({desc=Event s;typ=typ}, [{desc=App(t2', [t1']);typ=TUnit}])
+      | App({desc=Event s}, _) -> assert false
+      | App(f, ts) ->
+          let ts' = List.map normalize ts in
+          let f' = normalize f in
+            App(f', ts')
+      | If(t1, t2, t3) ->
+          let t1' = normalize t1 in
+          let t2' = normalize t2 in
+          let t3' = normalize t3 in
+            If(t1', t2', t3')
+      | Branch(t1, t2) ->
+          let t1' = normalize t1 in
+          let t2' = normalize t2 in
+            Branch(t1', t2')
+      | Let(flag, f, xs, t1, t2) ->
+          let t1' = normalize t1 in
+          let t2' = normalize t2 in
+            Let(flag, f, xs, t1', t2')
+              (*
+                | Let(flag, bindings, t) ->
+                let bindings' = List.map (fun (f,xs,t) -> f,xs,normalize t) bindings in
+                let t' = normalize t in
+                Let(flag, bindings', t')
+              *)
+      | BinOp(op, t1, t2) ->
+          let t1' = normalize t1 in
+          let t2' = normalize t2 in
+            BinOp(op, t1', t2')
+      | Not t -> Not (normalize t)
+      | Fail -> Fail
+      | Label(b,t) -> Label(b,normalize t)
+      | Event s -> assert false
+      | Record(b,fields) -> Record(b, List.map (fun (s,(f,t)) -> s,(f,normalize t)) fields)
+      | Proj(n,i,s,f,t) -> Proj(n, i, s, f, normalize t)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(normalize t1, normalize t2)
+      | Match(t1,t2,x,y,t3) -> Match(normalize t1, normalize t2, x, y, normalize t3)
+      | Constr(c,ts) -> Constr(c, List.map normalize ts)
+      | Match_(t,pats) ->
+          let aux (pat,cond,t) = pat, apply_opt normalize cond, normalize t in
+            Match_(normalize t, List.map aux pats)
+  in
+    {desc=desc; typ=t.typ}
+
+
+
+
+let rec extract_records_typ = function
+    TUnit -> TUnit
+  | TAbsBool -> TAbsBool
+  | TBool -> TBool
+  | TInt ts -> TInt ts
+  | TRInt t -> TRInt t
+  | TVar x -> TVar x
+  | TFun({Id.typ=TRecord(_,typs)} as x,typ) ->
+      let typ = extract_records_typ typ in
+      let aux (s,(_,typ)) typ =
+        let x' = Id.new_var (Id.name x^"_"^s) typ in
+          TFun(x',typ)
       in
-        App(extract_records env f, List.flatten (List.map aux ts))
-  | If(t1, t2, t3) -> If(extract_records env t1, extract_records env t2, extract_records env t3)
-  | Branch(t1, t2) -> Branch(extract_records env t1, extract_records env t2)
-  | Let(flag, f, xs, t1, t2) ->
-      let aux x (xs,env) =
-        match x.typ with
-            TRecord(_,typs) ->
-              let xs' = List.map (fun (s,(f,_)) -> new_var' (x.name^"_"^s)) typs in
-                xs'@xs, (x,xs')::env
-          | _ -> x::xs, env
-      in
-      let xs',env' = List.fold_right aux xs ([],env) in
-      let t1' = extract_records env' t1 in
-      let t2' = extract_records env t2 in
-        Let(flag, f, xs', t1', t2')
-  | BinOp(op, t1, t2) -> BinOp(op, extract_records env t1, extract_records env t2)
-  | Not t -> Not (extract_records env t)
-  | Fail -> Fail
-  | Label(b,t) -> Label(b,extract_records env t)
-  | Event s -> Event s
-  | Record(b,fields) -> assert false
-  | Proj(_,i,_,_,Var x) -> Var (List.nth (List.assoc x env) i)
-  | Proj _ -> assert false
-  | Nil -> Nil
-  | Cons(t1,t2) -> Cons(extract_records env t1, extract_records env t2)
-  | Match(t1,t2,x,y,t3) -> Match(extract_records env t1, extract_records env t2, x, y, extract_records env t3)
-  | Constr(c,ts) -> Constr(c, List.map (extract_records env) ts)
-  | Match_(t,pats) ->
-      let aux (pat,cond,t) = pat, apply_opt (extract_records env) cond, extract_records env t in
-        Match_(extract_records env t, List.map aux pats)
-  | Type_decl(decls,t) -> Type_decl(decls, extract_records env t)
+        extract_records_typ (List.fold_right aux typs typ)
+  | TFun(y,typ) -> TFun(Id.set_typ y (extract_records_typ (Id.typ y)), extract_records_typ typ)
+  | TUnknown -> TUnknown
+  | TList(typ,ps) -> TList(extract_records_typ typ, ps)
+  | TRecord _ -> assert false
+
+let rec extract_records env t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt x -> NInt x
+      | RandInt None -> RandInt None
+      | RandInt (Some t) -> RandInt (Some (extract_records env t))
+      | Var x -> Var x
+      | Fun _ -> assert false
+      | App(f, ts) ->
+          let rec aux = function
+              {desc=Var x} ->
+                begin
+                  match Id.typ x with
+                      TRecord _ -> List.map (fun x -> {desc=Var x;typ=Id.typ x}) (Id.assoc x env)
+                    | _ -> [{desc=Var x;typ=Id.typ x}]
+                end
+            | {desc=Record(_,fields)} -> List.flatten (List.map (fun (_,(_,t)) -> aux t) fields)
+            | t -> [extract_records env t]
+          in
+            App(extract_records env f, List.flatten (List.map aux ts))
+      | If(t1, t2, t3) -> If(extract_records env t1, extract_records env t2, extract_records env t3)
+      | Branch(t1, t2) -> Branch(extract_records env t1, extract_records env t2)
+      | Let(flag, f, xs, t1, t2) ->
+          let aux x (xs,env) =
+            match Id.typ x with
+                TRecord(_,typs) ->
+                  assert (List.for_all (function _,(_,TRecord _) -> false | _ -> true) typs);
+                  let xs' = List.map (fun (s,(_,typ)) -> Id.new_var (Id.name x^"_"^s) typ) typs in
+                    xs'@xs, (x,xs')::env
+              | _ -> x::xs, env
+          in
+          let f' = Id.set_typ f (extract_records_typ (Id.typ f)) in
+          let xs',env' = List.fold_right aux xs ([],env) in
+          let t1' = extract_records env' t1 in
+          let t2' = extract_records env t2 in
+            Let(flag, f', xs', t1', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, extract_records env t1, extract_records env t2)
+      | Not t -> Not (extract_records env t)
+      | Fail -> Fail
+      | Label(b,t) -> Label(b,extract_records env t)
+      | Event s -> Event s
+      | Record(b,fields) -> assert false
+      | Proj(_,i,_,_,{desc=Var x}) -> Var (List.nth (Id.assoc x env) i)
+      | Proj _ -> assert false
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(extract_records env t1, extract_records env t2)
+      | Match(t1,t2,x,y,t3) -> Match(extract_records env t1, extract_records env t2, x, y, extract_records env t3)
+      | Constr(c,ts) -> Constr(c, List.map (extract_records env) ts)
+      | Match_(t,pats) ->
+          let aux (pat,cond,t) = pat, apply_opt (extract_records env) cond, extract_records env t in
+            Match_(extract_records env t, List.map aux pats)
+  in
+    {desc=desc; typ=t.typ}
 let extract_records t = extract_records [] t
 
 
 
+let rec trans_typ = function
+    TUnit -> TUnit
+  | TAbsBool -> TAbsBool
+  | TBool -> TBool
+  | TInt ts -> TInt ts
+  | TRInt t -> TRInt t
+  | TVar ({contents=None} as r) -> TVar r
+  | TVar {contents=Some typ} -> trans_typ typ
+  | TFun(y,typ) ->
+      let typ1' = trans_typ (Id.typ y) in
+      let typ2' = trans_typ typ in
+      let y' = Id.set_typ y typ1' in
+      let x = Id.new_var "x" typ2' in
+      let k = Id.new_var "k" (TFun(x,TUnit)) in
+        TFun(y',TFun(k,typ2'))
+  | TUnknown -> TUnknown
+  | TList(typ,ps) -> TList(trans_typ typ, ps)
+  | TRecord(b,typs) -> TRecord(b, List.map (fun (s,(f,typ)) -> s,(f,trans_typ typ)) typs)
 
+
+
+let rec trans_simpl_typ = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> TAbsBool
+  | TInt ps -> TInt ps
+  | TRInt p -> TRInt p
+  | TVar _ -> assert false
+  | TFun(x,typ) ->
+    let typ1 = trans_simpl_typ (Id.typ x) in
+    let typ2 = trans_simpl_typ typ in
+    let y = Id.new_var "x" typ2 in
+    let k = Id.new_var "k" (TFun(y,TUnit)) in
+      TFun(Id.set_typ x typ1, TFun(k,TUnit))
+  | TList _ -> assert false
+  | TConstr _ -> assert false
+  | TVariant _ -> assert false
+  | TRecord _ -> assert false
+  | TUnknown -> assert false
 
 let rec trans_simpl c t =
-  match t with
-    Unit -> c Unit
-  | True -> c True
-  | False -> c False
-  | Int n -> c (Int n)
-  | NInt x -> c (NInt x)
-  | RandInt None ->
-      let r = {(new_var' "r") with typ=TInt[]} in
-      let k = {(new_var' "k") with typ=TFun((r,r.typ),TUnit)} in
-        RandInt (Some (Let(Nonrecursive, k, [r], c (Var r), Var k)))
-  | RandInt _ -> assert false
-  | Var x -> c (Var x)
-  | Fun(x, t) -> assert false
-  | App(_, []) -> assert false
-  | App(t1, [t2]) ->
-      let typ = Typing.get_typ t in
-      let r = {(new_var' "r") with typ=typ} in
-      let k = {(new_var' "k") with typ=TFun((r,typ),TUnit)} in
-      let c1 x = app2app x [Var k] in
-      let c2 x = trans_simpl (fun y -> c1 (app2app x [y])) t2 in
-        funs := k::!funs;
-        Let(Nonrecursive, k, [r], c (Var r), trans_simpl c2 t1)
-  | App(t1, t2::ts) -> trans_simpl c (App(App(t1,[t2]), ts))
-  | If(t1, t2, t3) ->
-      let typ = Typing.get_typ t in
-      let x = {(new_var' "x") with typ=typ} in
-      let k = {(new_var' "k") with typ=TFun((x,typ),TUnit)} in
-      let t2' = trans_simpl (fun y -> App(Var k, [y])) t2 in
-      let t3' = trans_simpl (fun y -> App(Var k, [y])) t3 in
-      let c' y = Let(Nonrecursive, k, [x], c (Var x), If(y, t2', t3')) in
-        funs := k::!funs;
-        trans_simpl c' t1
-  | Branch(t1, t2) ->
-      let typ = Typing.get_typ t in
-      let x = {(new_var' "x") with typ=typ} in
-      let k = {(new_var' "k") with typ=TFun((x,typ),TUnit)} in
-      let t1' = trans_simpl (fun y -> App(Var k, [y])) t1 in
-      let t2' = trans_simpl (fun y -> App(Var k, [y])) t2 in
-        funs := k::!funs;
-        Let(Nonrecursive, k, [x], c (Var x), Branch(t1', t2'))
-  | Let(flag, x, [], t1, t2) ->
-      let c' t = subst x t (trans_simpl c t2) in
-        trans_simpl c' t1
-  | Let(flag, f, [x], t1, t2) ->
-      let typ = Typing.get_typ t1 in
-      let k = {(new_var' "k") with typ=TFun(({dummy_var with typ=typ},typ),TUnit)} in
-      let f' = {f with typ=TFun((x,x.typ),TFun((k,k.typ),TUnit))} in
-      let t1' = subst f (Var f') (trans_simpl (fun y -> App(Var k, [y])) t1) in
-      let t2' = subst f (Var f') (trans_simpl c t2) in
-        Let(flag, f', [x;k], t1', t2')
-  | Let(flag, f, x::xs, t1, t2) ->
-      let typ = match f.typ with TFun(_,typ) -> typ | _ -> assert false in
-      let g = {(new_var' f.name) with typ=typ} in
-      let t1' = Let(Nonrecursive, g, xs, t1, Var g) in
-        trans_simpl c (Let(flag,f,[x],t1',t2))
-  | BinOp(op, t1, t2) ->
-      let c1 t1' t2' = c (BinOp(op, t1', t2')) in
-      let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
-        trans_simpl c2 t1
-  | Not t ->
-      let c' t1 = c (Not t1) in
-        trans_simpl c' t
-  | Fail -> c (Fail)
-  | Unknown -> c Unknown
-  | Event s -> c (Event s)
-  | Record(b,[]) -> c (Record(b,[]))
-  | Record(b,fields) ->
-      let typ = Typing.get_typ t in
-      let r = {(new_var' "r") with typ=typ} in
-      let k = {(new_var' "k") with typ=TFun((r,typ),TUnit)} in
-      let aux t1 s f t2 =
-        match t1 with
-            Record(b,fields) -> Record(b, fields @ [s,(f,t2)])
-          | _ -> assert false
-      in
-      let c1 x = App(Var k, [x]) in
-      let cc = List.fold_right (fun (s,(f,t)) cc -> fun x -> trans_simpl (fun y -> cc (aux x s f y)) t) fields c1 in
-        funs := k::!funs;
-        Let(Nonrecursive, k, [r], c (Var r), trans_simpl cc (Record(b,[])))
-  | Proj(n,i,s,f,t) ->
-      let c' t1 = c (Proj(n,i,s,f,t1)) in
-        trans_simpl c' t
-  | Nil -> c Nil
-  | Cons(t1,t2) ->
-      let c1 t1' t2' = c (Cons(t1', t2')) in
-      let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
-        trans_simpl c2 t1
-  | Constr(cstr,[]) -> c (Constr(cstr,[]))
-  | Constr(cstr,ts) ->
-      let typ = Typing.get_typ t in
-      let r = {(new_var' "r") with typ=typ} in
-      let k = {(new_var' "k") with typ=TFun((r,typ),TUnit)} in
-      let aux t1 t2 =
-        match t1 with
-            Constr(cstr,ts) -> Constr(cstr, ts @ [t2])
-          | _ -> assert false
-      in
-      let c1 x = App(Var k, [x]) in
-      let cc = List.fold_right (fun t cc -> fun x -> trans_simpl (fun y -> cc (aux x y)) t) ts c1 in
-        funs := k::!funs;
-        Let(Nonrecursive, k, [r], c (Var r), trans_simpl cc (Constr(cstr,[])))
-  | Match(t1,t2,x,y,t3) ->
-      let k = new_var' "k" in
-      let r = new_var' "x" in
-      let t2' = trans_simpl (fun z -> App(Var k, [z])) t2 in
-      let t3' = trans_simpl (fun z -> App(Var k, [z])) t3 in
-      let c' z = Let(Nonrecursive, k, [r], c (Var r), Match(z, t2', x, y, t3')) in
-        funs := k::!funs;
-        trans_simpl c' t1
-  | Match_(t,pats) ->
-      let k = new_var' "k" in
-      let x = new_var' "x" in
-      let aux (pat,cond,t) =
-        pat, trans_simpl (fun y -> App(Var k, [y])) t; assert false
-      in
-      let pats' = List.map aux pats in
-      let c' y = Let(Nonrecursive, k, [x], c (Var x), Match_(y, pats')) in
-        funs := k::!funs;
-        trans_simpl c' t
-  | Type_decl(decls,t) ->
-      Type_decl(decls, trans_simpl c t)
-  | t -> (Format.printf "%a@." pp_print_term t; assert false)
+  match t.desc with
+      Unit -> c {desc=Unit;typ=t.typ}
+    | True -> c {desc=True;typ=t.typ}
+    | False -> c {desc=False;typ=t.typ}
+    | Int n -> c {desc=Int n;typ=t.typ}
+    | NInt x -> c {desc=NInt x;typ=t.typ}
+    | RandInt None ->
+        let r = Id.new_var "r" (TInt[]) in
+        let k = Id.new_var "k" (TFun(r,TUnit)) in
+        let t = {desc=Let(Flag.Nonrecursive, k, [r], c (make_var r), make_var k); typ=Id.typ k} in
+          {desc=RandInt (Some t); typ=TUnit}
+    | RandInt _ -> assert false
+    | Var x ->
+        let typ = trans_simpl_typ (Id.typ x) in
+          c {desc=Var (Id.set_typ x typ); typ=typ}
+    | Fun(x, t) -> assert false
+    | App(_, []) -> assert false
+    | App(t1, [t2]) ->
+        let r = Id.new_var "r" (trans_simpl_typ t.typ) in
+        let k = Id.new_var "k" (TFun(r,TUnit)) in
+        let c' x = trans_simpl (fun y -> app2app x [y; make_var  k]) t2 in
+        let t2' = trans_simpl c' t1 in
+          funs := k::!funs;
+          {desc=Let(Flag.Nonrecursive, k, [r], c (make_var r), t2'); typ=t2'.typ}
+    | App(t1, t2::ts) ->
+        let x,typ = match t1.typ with TFun(x,typ) -> x,typ | _ -> assert false in
+          trans_simpl c {desc=App({desc=App(t1,[t2]);typ=typ}, ts); typ=t.typ}
+    | If(t1, t2, t3) ->
+        let x = Id.new_var "x" t.typ in
+        let k = Id.new_var "k" (TFun(x,TUnit)) in
+        let c' y = {desc=App(make_var k, [y]); typ=TUnit} in
+        let t2' = trans_simpl c' t2 in
+        let t3' = trans_simpl c' t3 in
+        let typ = t2'.typ in
+        let c'' y = {desc=Let(Flag.Nonrecursive, k, [x], c {desc=Var x;typ=Id.typ x}, {desc=If(y, t2', t3');typ=typ}); typ=typ} in
+          funs := k::!funs;
+          trans_simpl c'' t1
+    | Branch(t1, t2) ->
+        let typ = t.typ in
+        let x = Id.new_var "x" typ in
+        let k = Id.new_var "k" (TFun(x,TUnit)) in
+        let c' y = {desc=App(make_var k, [y]); typ=t.typ} in
+        let t1' = trans_simpl c' t1 in
+        let t2' = trans_simpl c' t2 in
+        let typ = t1'.typ in
+          funs := k::!funs;
+          {desc=Let(Flag.Nonrecursive, k, [x], c (make_var x), {desc=Branch(t1', t2');typ=typ}); typ=typ}
+    | Let(Flag.Nonrecursive, x, [], t1, t2) ->
+        let c' t = subst x t (trans_simpl c t2) in
+          trans_simpl c' t1
+    | Let(Flag.Recursive, f, [], t1, t2) -> assert false
+    | Let(flag, f, [x], t1, t2) ->
+        let x_typ = trans_simpl_typ (Id.typ x) in
+        let x' = Id.set_typ x x_typ in
+        let y = Id.new_var "x" x_typ in
+        let k = Id.new_var "k" (TFun(y,TUnit)) in
+        let f' = Id.set_typ f (TFun(y,TFun(k,TUnit))) in
+        let c' y = {desc=App(make_var k, [y]);typ=TUnit} in
+        let t1' = subst f (make_var f') (trans_simpl c' t1) in
+        let t2' = subst f (make_var f') (trans_simpl c t2) in
+          {desc=Let(flag, f', [x';k], t1', t2'); typ=t2'.typ}
+    | Let(flag, f, x::xs, t1, t2) ->
+        let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
+        let g = Id.new_var (Id.name f) typ in
+        let t1' = {desc=Let(Flag.Nonrecursive, g, xs, t1, {desc=Var g;typ=typ}); typ=typ} in
+          trans_simpl c {desc=Let(flag,f,[x],t1',t2); typ=t.typ}
+    | BinOp(op, t1, t2) ->
+        let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=t.typ} in
+        let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
+          trans_simpl c2 t1
+    | Not t ->
+        let c' t1 = c {desc=Not t1;typ=t.typ} in
+          trans_simpl c' t
+    | Fail ->
+        let x,typ = match t.typ with TFun(x,typ) -> x, typ | _ -> assert false in
+        let u = Id.new_var "u" TUnit in
+        let k = Id.new_var "k" (TFun(u,TUnit)) in
+          c {desc=Fail;typ=TFun(x,TFun(k,TUnit))}
+    | Unknown -> c {desc=Unknown;typ=t.typ}
+    | Event s -> c {desc=Event s;typ=t.typ}
+    | Record(b,[]) -> c {desc=Record(b,[]);typ=t.typ}
+    | Record(b,fields) ->
+        let typ = t.typ in
+        let r = Id.new_var "r" typ in
+        let k = Id.new_var "k" (TFun(r,TUnit)) in
+        let aux t1 s f t2 =
+          match t1 with
+              {desc=Record(b,fields);typ=typ} -> {desc=Record(b, fields @ [s,(f,t2)]);typ=typ}
+            | _ -> assert false
+        in
+        let c1 x = {desc=App(make_var k, [x]); typ=TUnit} in
+        let cc = List.fold_right (fun (s,(f,t)) cc -> fun x -> trans_simpl (fun y -> cc (aux x s f y)) t) fields c1 in
+          funs := k::!funs;
+          {desc=Let(Flag.Nonrecursive, k, [r], c {desc=Var r;typ=Id.typ r}, trans_simpl cc {desc=Record(b,[]);typ=t.typ}); typ=TUnit}
+    | Proj(n,i,s,f,t) ->
+        let c' t1 = c {desc=Proj(n,i,s,f,t1);typ=t.typ} in
+          trans_simpl c' t
+    | Nil -> c {desc=Nil;typ=t.typ}
+    | Cons(t1,t2) ->
+        let c1 t1' t2' = c {desc=Cons(t1', t2');typ=t.typ} in
+        let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
+          trans_simpl c2 t1
+    | Constr(cstr,[]) -> c {desc=Constr(cstr,[]);typ=t.typ}
+    | Constr(cstr,ts) ->
+        let r = Id.new_var "r" t.typ in
+        let k = Id.new_var "k" (TFun(r,TUnit)) in
+        let aux t1 t2 =
+          match t1 with
+              {desc=Constr(cstr,ts);typ=typ} -> {desc=Constr(cstr, ts @ [t2]);typ=typ}
+            | _ -> assert false
+        in
+        let c1 x = {desc=App({desc=Var k;typ=Id.typ k}, [x]); typ=TUnit} in
+        let cc = List.fold_right (fun t cc -> fun x -> trans_simpl (fun y -> cc (aux x y)) t) ts c1 in
+          funs := k::!funs;
+          {desc=Let(Flag.Nonrecursive, k, [r], c {desc=Var r;typ=Id.typ r}, trans_simpl cc {desc=Constr(cstr,[]);typ=t.typ}); typ=TUnit}
+    | Match(t1,t2,x,y,t3) -> assert false
+        (*
+          let k = Id.new_var "k" in
+          let r = Id.new_var "x" in
+          let t2' = trans_simpl (fun z -> App(Var k, [z])) t2 in
+          let t3' = trans_simpl (fun z -> App(Var k, [z])) t3 in
+          let c' z = Let(Nonrecursive, k, [r], c (Var r), Match(z, t2', x, y, t3')) in
+          funs := k::!funs;
+          trans_simpl c' t1
+        *)
+    | Match_(t,pats) -> assert false
+        (*
+          let k = Id.new_var "k" in
+          let x = Id.new_var "x" in
+          let aux (pat,cond,t) =
+          pat, trans_simpl (fun y -> App(Var k, [y])) t; assert false
+          in
+          let pats' = List.map aux pats in
+          let c' y = Let(Nonrecursive, k, [x], c (Var x), Match_(y, pats')) in
+          funs := k::!funs;
+          trans_simpl c' t
+        *)
+    | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 let trans_simpl = trans_simpl (fun x -> x)
 
 
@@ -971,16 +1061,16 @@ let trans t =
     part_eval inlined
 *)
 
+
 let trans t =
   let cps = trans_simpl t in
   let () = if true then Format.printf "CPS:@.%a@." pp_print_term cps in
-  let typed = Typing.typing cps in
-  let () = if true then Format.printf "Typed CPS:@.%a@." pp_print_term typed in
-  let extracted = extract_records typed in
-  let () = if false then Format.printf "EXTRACTED:@.%a@." pp_print_term extracted in
+  let () = if true then Format.printf "CPS:@.%a@." (Syntax.print_term' Syntax.ML 0 false) cps in
+  let () = Type_check.check cps in
+  let extracted = extract_records cps in
+  let () = if true then Format.printf "EXTRACTED:@.%a@." pp_print_term extracted in
   let normalized = normalize extracted in
-  let typed = Typing.typing normalized in
-  let inlined = inlining !funs [] typed in
+  let inlined = inlining !funs [] normalized in
     part_eval inlined
 
 
