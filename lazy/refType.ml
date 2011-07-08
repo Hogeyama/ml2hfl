@@ -33,7 +33,7 @@ let rec pr ppf rty =
       let _ = assert (xs <> []) in
       Format.fprintf ppf "@[<hv>%a@]" (Util.pr_list pr_aux " /\\@ ") xs
 
-let rec of_summary types sums =
+let of_summaries types sums =
   let rec refine (x, uid) ty =
 		  let merge x ty =
 				  match ty with

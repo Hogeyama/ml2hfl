@@ -21,8 +21,8 @@ and csisat_of_iexp_aux c args =
 
 let rec csisat_of_bexp t =
   match fun_args t with
-    Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(Var.string_of x), csisat_true)
-  | Const(_, c), args -> csisat_of_bexp_aux c args
+    Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(Var.string_of x), csisat_true) (*???*)
+  | Const(_, c), args -> CsisatAstUtil.integer_heuristic (csisat_of_bexp_aux c args)
   | _ -> assert false
 and csisat_of_bexp_aux c args =
   match c, args with

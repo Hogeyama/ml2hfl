@@ -20,21 +20,21 @@ let rec loop old_eps prog env rt wl =
 				    let env, wl = Ctree.expand_tree prog env wl in
 				    loop eps prog env rt wl
 				  else if inp = "n" then
-		      let eptrs = List.map Ctree.tree_of_error_path eps in
+		      let eptrs = List.map Trace.of_error_path eps in
 		(*
 		      let _ = Format.printf "error path trees:@.  @[<v>%a@]@." (Util.pr_list Ctree.pr_tree "@,") eptrs in
 		*)
 		      let sumss = List.map
 				      (fun eptr ->
             Format.printf "@.";
-            Ctree.infer [] eptr)
+            Trace.summaries_of eptr)
 		        eptrs
 		      in
         List.iter
           (fun sums ->
-						      let rtys = RefType.of_summary prog.Prog.types sums in
+						      let rtys = RefType.of_summaries prog.Prog.types sums in
 						      let pr ppf ((f, uid), rty) = Format.fprintf ppf "<%a:%d>: %a" Id.pr f uid RefType.pr rty in
-						      Format.printf "inferred types:@.  @[<v>%a@]@." (Util.pr_list pr "@ ") rtys)
+						      Format.printf "function summaries:@.  @[<v>%a@]@." (Util.pr_list pr "@ ") rtys)
           sumss
 				  else
 				    loop eps prog env rt wl
@@ -130,4 +130,4 @@ let test3 () =
   let rt = Ctree.Node(p, init, ref []) in
   loop [] prog env rt [rt]
 
-let _ = test3 ()
+let _ = test2 ()
