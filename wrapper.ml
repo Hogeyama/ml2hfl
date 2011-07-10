@@ -1,94 +1,85 @@
 
 open Util
-open Syntax
-open Type
+open CEGAR_const
+open CEGAR_syntax
+open CEGAR_type
 
 
 let cvc3in = ref stdin
 let cvc3out = ref stdout
 
 
-let rec string_of_typ = function
-    TInt _ -> "INT"
-  | TBool -> "BOOLEAN"
-  | TList _ -> "List"
-  | TVar({contents = Some(typ)}) -> string_of_typ typ
-  | typ -> (Format.printf "%a@." print_typ typ; assert false)
+let rec is_bool env = function
+    Const True
+  | Const False
+  | App(App(Const And, _), _)
+  | App(App(Const Or, _), _)
+  | App(Const Not, _)
+  | App(App(Const Lt, _), _)
+  | App(App(Const Gt, _), _)
+  | App(App(Const Leq, _), _)
+  | App(App(Const Geq, _), _) -> true
+  | App(App(Const Eq, t1), t2) -> is_bool env t1
+  | _ -> false
 
 
-let iff t1 t2 = CsisatAst.Not (CsisatAst.And [CsisatAst.Not (CsisatAst.And[t1; t2]); CsisatAst.Not (CsisatAst.And[CsisatAst.Not t1; CsisatAst.Not t2])])
 let iff t1 t2 = CsisatAst.Or [CsisatAst.And[t1; t2]; CsisatAst.And[CsisatAst.Not t1; CsisatAst.Not t2]]
 
-let rec to_exp t =
-  match t.desc with
-      True -> CsisatAst.Variable "tru"
-    | False -> CsisatAst.Variable "fls"
-    | Int n -> CsisatAst.Constant (float_of_int n)
-    | Var x | NInt x -> CsisatAst.Variable (Id.to_string x)
-    | RandInt t -> assert false
-    | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
-    | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
-    | BinOp(Mult, {desc=Int n}, t2) | BinOp(Mult, t2, {desc=Int n}) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
-    | BinOp(Mult, t1, t2) ->
-      Format.printf "Nonlinear expression not supported: %a@." pp_print_term t;
+let rec to_exp = function
+    Const True -> CsisatAst.Variable "tru"
+  | Const False -> CsisatAst.Variable "fls"
+  | Const (Int n) -> CsisatAst.Constant (float_of_int n)
+  | Var x -> CsisatAst.Variable x
+  | App(App(Const Add, t1), t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
+  | App(App(Const Sub, t1), t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
+  | App(App(Const Mul, Const (Int n)), t2) | App(App(Const Mul, t2), Const (Int n)) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
+  | App(App(Const Mul, t1), t2) ->
+      Format.printf "Nonlinear expression not supported@.";
       assert false
-    | Nil -> CsisatAst.Variable "nil"
-    | _ -> Format.printf "@.%a@." pp_print_term t; assert false
-let rec to_pred t =
-  match t.desc with
-    True -> CsisatAst.True
-  | False -> CsisatAst.False
-  | Var x -> CsisatAst.Eq (to_exp t, CsisatAst.Variable "tru")
-  | BinOp(Eq, t1, t2) ->
-      if t1.typ = TBool
-      then iff (to_pred t1) (to_pred t2)
-      else CsisatAst.Eq (to_exp t1, to_exp t2)
-  | BinOp(Lt, t1, t2) -> CsisatAst.Lt (to_exp t1, to_exp t2)
-  | BinOp(Gt, t1, t2) -> CsisatAst.Lt (to_exp t2, to_exp t1)
-  | BinOp(Leq, t1, t2) -> CsisatAst.Leq (to_exp t1, to_exp t2)
-  | BinOp(Geq, t1, t2) -> CsisatAst.Leq (to_exp t2, to_exp t1)
-  | BinOp(And, t1, t2) -> CsisatAst.And [to_pred t2; to_pred t1]
-  | BinOp(Or, t1, t2) -> CsisatAst.Or [to_pred t2; to_pred t1]
-  | Not t -> CsisatAst.Not (to_pred t)
   | _ -> assert false
-let to_pred t = CsisatAstUtil.integer_heuristic (to_pred t)
-
-let parse_ident s =
-  let len = String.length s in
-  let n = String.rindex s '_' in
-  let name = String.sub s 0 n in
-  let id = int_of_string (String.sub s (n+1) (len-n-1)) in
-    Id.make id name TUnknown
+let rec to_pred env = function
+    Const True -> CsisatAst.True
+  | Const False -> CsisatAst.False
+  | Var x -> CsisatAst.Eq (to_exp (Var x), CsisatAst.Variable "tru")
+  | App(App(Const Eq, t1), t2) ->
+      if is_bool env t1
+      then iff (to_pred env t1) (to_pred env t2)
+      else CsisatAst.Eq (to_exp t1, to_exp t2)
+  | App(App(Const Lt, t1), t2) -> CsisatAst.Lt (to_exp t1, to_exp t2)
+  | App(App(Const Gt, t1), t2) -> CsisatAst.Lt (to_exp t2, to_exp t1)
+  | App(App(Const Leq, t1), t2) -> CsisatAst.Leq (to_exp t1, to_exp t2)
+  | App(App(Const Geq, t1), t2) -> CsisatAst.Leq (to_exp t2, to_exp t1)
+  | App(App(Const And, t1), t2) -> CsisatAst.And [to_pred env t2; to_pred env t1]
+  | App(App(Const Or, t1), t2) -> CsisatAst.Or [to_pred env t2; to_pred env t1]
+  | App(Const Not, t) -> CsisatAst.Not (to_pred env t)
+  | _ -> assert false
+let to_pred env t = CsisatAstUtil.integer_heuristic (to_pred env t)
 
 let rec from_exp map = function
-    CsisatAst.Constant x -> {desc=Int (int_of_float x); typ=TInt[]}
-  | CsisatAst.Variable "tru" -> {desc=True; typ=TBool}
-  | CsisatAst.Variable "fls" -> {desc=False; typ=TBool}
+    CsisatAst.Constant x -> Const (Int (int_of_float x))
+  | CsisatAst.Variable "tru" -> Const True
+  | CsisatAst.Variable "fls" -> Const False
   | CsisatAst.Variable "nil" -> assert false
 (*
   | CsisatAst.Variable x when x.[0] = '_' -> NInt (parse_ident (String.sub x 1 (String.length x - 1)))
 *)
-  | CsisatAst.Variable x ->
-      let x' = Id.assoc (parse_ident x) map in
-        {desc=Var x'; typ=Id.typ x'}
-  | CsisatAst.Sum[e1;e2] -> {desc=BinOp(Add, from_exp map e1, from_exp map e2); typ=TInt[]}
+  | CsisatAst.Variable x -> Var x
+  | CsisatAst.Sum[e1;e2] -> App(App(Const Add, from_exp map e1), from_exp map e2)
   | CsisatAst.Sum(e::es) ->
-      let aux t e = {desc=BinOp(Add, t, from_exp map e); typ=TInt[]} in
+      let aux t e = App(App(Const Add, t), from_exp map e) in
         List.fold_left aux (from_exp map e) es
-  | CsisatAst.Coeff(x,e) -> {desc=BinOp(Mult, {desc=Int(int_of_float x);typ=TInt[]}, from_exp map e); typ=TInt[]}
+  | CsisatAst.Coeff(x,e) -> App(App(Const Mul, Const (Int(int_of_float x))), from_exp map e)
   | CsisatAst.Application _
   | CsisatAst.Sum _ -> assert false
 let rec from_pred map = function
-    CsisatAst.True -> {desc=True; typ=TBool}
-  | CsisatAst.False -> {desc=True; typ=TBool}
-  | CsisatAst.And(p::ps) ->
-      List.fold_left (fun t p -> {desc=BinOp(And, from_pred map p, t); typ=TBool}) (from_pred map p) ps
-  | CsisatAst.Or(p::ps) ->
-      List.fold_left (fun t p -> {desc=BinOp(Or, from_pred map p, t); typ=TBool}) (from_pred map p) ps
-  | CsisatAst.Not p -> {desc=Not (from_pred map p); typ=TBool}
-  | CsisatAst.Eq(e1, e2) -> {desc=BinOp(Eq, from_exp map e1, from_exp map e2); typ=TBool}
-  | CsisatAst.Lt(e1, e2) -> {desc=BinOp(Lt, from_exp map e1, from_exp map e2); typ=TBool}
-  | CsisatAst.Leq(e1, e2) -> {desc=BinOp(Leq, from_exp map e1, from_exp map e2); typ=TBool}
+    CsisatAst.True -> Const True
+  | CsisatAst.False -> Const False
+  | CsisatAst.And(p::ps) -> List.fold_left (fun t p -> App(App(Const And, from_pred map p), t)) (from_pred map p) ps
+  | CsisatAst.Or(p::ps) -> List.fold_left (fun t p -> App(App(Const Or, from_pred map p), t)) (from_pred map p) ps
+  | CsisatAst.Not p -> App(Const Not, from_pred map p)
+  | CsisatAst.Eq(e1, e2) -> App(App(Const Eq, from_exp map e1), from_exp map e2)
+  | CsisatAst.Lt(e1, e2) -> App(App(Const Lt, from_exp map e1), from_exp map e2)
+  | CsisatAst.Leq(e1, e2) -> App(App(Const Leq, from_exp map e1), from_exp map e2)
   | CsisatAst.And _
   | CsisatAst.Or _
   | CsisatAst.Atom _ -> assert false
@@ -147,18 +138,21 @@ let set_datatype_cvc3 ?(cout = !cvc3out) t = ()(*
     output_string cout "DATATYPE List = nil | cons (cdr: List) END;"
 *)
 
+let string_of_typ env x =
+  match List.assoc x env with
+      TBase(TInt,_) -> "INT"
+    | TBase(TBool,_) -> "BOOL"
+    | _ -> assert false
 
-let check pre p =
-  let pre = List.map init_rand_int pre in
-  let p = init_rand_int p in
+(*
+let check pre p env =
   let cin = !cvc3in in
   let cout = !cvc3out in
     (**)
   let fm = Format.formatter_of_out_channel cout in
     (**)
-  let fv = uniq Id.compare (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
-  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
-  let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term CVC3 p) ^ "; ") "" pre in
+  let types = List.fold_left (fun str (x,typ) -> str ^ x ^ ":" ^ string_of_typ env x ^ "; ") "" env in
+  let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ string_of_term_cvc3 p ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term CVC3 p ^ ";" in
   let q = "PUSH;"^types^assertion^query^"\nPOP;" in
   let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "check: %s@." q in
@@ -169,7 +163,7 @@ let check pre p =
     if not (r || Str.string_match (Str.regexp ".*Invalid") s 0)
     then (print_string s; assert false)
     else r
-
+*)
 (*
 let check pre p =
   let fv = uniq (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
@@ -195,7 +189,7 @@ let check pre p =
 *)
 
 
-
+(*
 let checksat p =
   let p = init_rand_int p in
   let cin = !cvc3in in
@@ -228,6 +222,7 @@ let checksat p =
 (*
   let command = "RESULT=$(echo 'PUSH; "^types^query^" POP;' | "^Flag.cvc3^"); test $RESULT = \"Satisfiable.\"" in
     Sys.command command = 0
+*)
 *)
 
 (*
@@ -289,6 +284,8 @@ let rec rename_ident = function
 
 
 
+
+(*
 let get_solution p t =
   (*
     let cin = !cvc3in in
@@ -339,16 +336,11 @@ let get_solution p t =
     not (Str.string_match (Str.regexp "_reach_") s 0)
   in
     List.filter aux ts
-
-
+*)
+(*
 let isTInt = function
     TInt _ -> true
   | _ -> false
-
-
-let equiv cond t1 t2 =
-  check (t1::cond) t2 && check (t2::cond) t1
-
 
 
 let rec gcd_arith_exp prev curr =
@@ -519,7 +511,7 @@ and simplify_exp t =
       | _ -> (simplify_bool_exp true t).desc
   in
   {desc=desc; typ=t.typ}
-
+*)
 
 
 (*
@@ -538,6 +530,7 @@ let rec simplify = function
 
 exception Satisfiable
 
+(*
 let interpolation ts1 ts2 =
   let ts1 = List.map init_rand_int ts1 in
   let ts2 = List.map init_rand_int ts2 in
@@ -641,7 +634,7 @@ let interpolation ts1 ts2 =
            check [pred'''] (Not (List.fold_left (fun t p -> BinOp(And, t, p)) (List.hd ts2) (List.tl ts2))))*)
      end);
     pred''
-
+*)
 
 
 
@@ -698,6 +691,7 @@ let rec rename_type map = function
 *)
 
 
+(*
 let rec congruent cond typ1 typ2 =
   match typ1,typ2 with
       TUnit, TUnit -> true
@@ -723,7 +717,7 @@ let rec congruent cond typ1 typ2 =
     | TVar _, _ -> assert false
     | _, TVar _ -> assert false
     | _ -> false
-
+*)
 
 (*
 let rec rename_type2 map = function
@@ -799,3 +793,229 @@ let rec remove_type = function
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let rec is_bool env = function
+    Const True
+  | Const False
+  | App(App(Const And, _), _)
+  | App(App(Const Or, _), _)
+  | App(Const Not, _)
+  | App(App(Const Lt, _), _)
+  | App(App(Const Gt, _), _)
+  | App(App(Const Leq, _), _)
+  | App(App(Const Geq, _), _) -> true
+  | App(App(Const Eq, t1), t2) -> is_bool env t1
+  | Var x ->
+      begin
+        match List.assoc x env with
+            TBase(TBool,_) -> true
+          | _ -> false
+      end
+  | _ -> false
+
+let rec string_of_term env = function
+    Const True -> "TRUE"
+  | Const False -> "FALSE"
+  | Var x -> x
+  | App(App(Const And, t1), t2) -> "(" ^ string_of_term env t1 ^ "AND" ^ string_of_term env t2 ^ ")"
+  | App(App(Const Or, t1), t2) -> "(" ^ string_of_term env t1 ^ "OR" ^ string_of_term env t2 ^ ")"
+  | App(Const Not, t) -> "(NOT" ^ string_of_term env t ^ ")"
+  | App(App(Const Lt, t1), t2) -> "(" ^ string_of_term env t1 ^ "<" ^ string_of_term env t2 ^ ")"
+  | App(App(Const Gt, t1), t2) -> "(" ^ string_of_term env t1 ^ ">" ^ string_of_term env t2 ^ ")"
+  | App(App(Const Leq, t1), t2) -> "(" ^ string_of_term env t1 ^ "<=" ^ string_of_term env t2 ^ ")"
+  | App(App(Const Geq, t1), t2) -> "(" ^ string_of_term env t1 ^ ">=" ^ string_of_term env t2 ^ ")"
+  | App(App(Const Eq, t1), t2) ->
+      let s = if is_bool env t1 then "<=>" else "=" in
+        "(" ^ string_of_term env t1 ^ s ^ string_of_term env t2 ^ ")"
+  | App(App(Const Add, t1), t2) -> "(" ^ string_of_term env t1 ^ "+" ^ string_of_term env t2 ^ ")"
+  | App(App(Const Sub, t1), t2) -> "(" ^ string_of_term env t1 ^ "-" ^ string_of_term env t2 ^ ")"
+  | App(App(Const Mul, t1), t2) -> assert false
+  | _ -> assert false
+
+
+
+let check env pre p =
+  let cin = !cvc3in in
+  let cout = !cvc3out in
+    (**)
+  let fm = Format.formatter_of_out_channel cout in
+    (**)
+  let types = List.fold_left (fun str (x,typ) -> str ^ x ^ ":" ^ string_of_typ env x ^ "; ") "" env in
+  let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term env p) ^ "; ") "" pre in
+  let query = "QUERY " ^ string_of_term env p ^ ";" in
+  let q = "PUSH;"^types^assertion^query^"\nPOP;" in
+  let _ = Format.fprintf fm "%s@?" q in
+  let s = input_line cin in
+  let r = Str.string_match (Str.regexp ".*Valid") s 0 in
+    if not (r || Str.string_match (Str.regexp ".*Invalid") s 0)
+    then (print_string s; assert false)
+    else r
+
+
+
+let checksat env p =
+  let cin = !cvc3in in
+  let cout = !cvc3out in
+  let fm = Format.formatter_of_out_channel cout in
+
+  let types = List.fold_left (fun str (x,_) -> str ^ x ^ ":" ^ string_of_typ env x ^ "; ") "" env in
+  let query = "CHECKSAT " ^ string_of_term env p ^ ";" in
+
+  let q = "PUSH;"^types^query^"\nPOP;" in
+  let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "checksat: %s@." q in
+
+  let () = Format.fprintf fm "%s@?" q in
+  let s = input_line cin in
+    if Str.string_match (Str.regexp ".*Satisfiable") s 0 then
+      true
+    else if Str.string_match (Str.regexp ".*Unsatisfiable") s 0 then
+      false
+    else begin
+      Format.printf "CVC3 reported an error@."; assert false
+    end
+
+
+
+let equiv env cond t1 t2 =
+  check env (t1::cond) t2 && check env (t2::cond) t1
+
+
+
+let interpolation env ts1 ts2 =
+  let bool_theory =
+    [CsisatAst.Not(CsisatAst.Eq(CsisatAst.Variable "tru", CsisatAst.Variable "fls"));
+     CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "tru"]), CsisatAst.Variable "fls");
+     CsisatAst.Eq(CsisatAst.Application("neg", [CsisatAst.Variable "fls"]), CsisatAst.Variable "tru")]
+  in
+  let ts1' = List.map (to_pred env) ts1 in
+  let ts2' = List.map (to_pred env) ts2 in
+  let t1 = CsisatAstUtil.simplify (CsisatAst.And (bool_theory@@ts1')) in
+  let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t1: %s@." (CsisatAstUtil.print_pred t1) in
+  let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2) in
+
+  let pred = try
+    CsisatInterpolate.interpolate_with_proof t1 t2
+  with CsisatAst.SAT_FORMULA(pred) -> begin
+    (*if Flag.debug then print_string ("satisfiable: \n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");*)
+    if not Flag.check_sat || checksat env (List.fold_left make_and (Const True) (ts1@@ts2))
+    then raise Satisfiable
+    else
+      let ts1' = List.map (to_pred env) ts1 in
+      let ts2' = List.map (to_pred env) ts2 in
+      let t1 = CsisatAstUtil.simplify (CsisatAst.And (bool_theory@@ts1')) in
+      let t2 = CsisatAstUtil.simplify (CsisatAst.And ts2') in
+      let () = if Flag.debug && Flag.print_interpolant
+      then Format.printf "  t1: %s@." (CsisatAstUtil.print_pred t1)
+      in
+      let () = if Flag.debug && Flag.print_interpolant
+      then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2)
+      in
+        try
+          CsisatInterpolate.interpolate_with_proof t1 t2
+        with
+            CsisatAst.SAT_FORMULA(pred) -> raise Satisfiable
+  end
+  in
+  let pred' = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff pred) in
+  let () =
+    if Flag.debug && Flag.print_interpolant then
+      Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
+  in
+    from_pred env (CsisatAstUtil.dnf pred')
+
+
+
+let get_solution env p =
+  (**)
+  let cin,cout = Unix.open_process Flag.cvc3 in
+    (**)
+
+(*
+  let () = set_datatype_cvc3 ~cout:cout t in
+*)
+
+  let fm = Format.formatter_of_out_channel cout in
+
+  let types = List.fold_left (fun str (x,_) -> str ^ x ^ ":" ^ string_of_typ env x ^ "; ") "" env in
+  let query = "CHECKSAT " ^ string_of_term env p ^ "; COUNTERMODEL;" in
+
+  let q = types ^ query in
+  let _ = if Flag.debug && Flag.print_cvc3 then Format.printf "get_solution: %s@." q in
+
+  let () = Format.fprintf fm "%s@." q in
+
+    (**)
+  let () = close_out cout in
+    (**)
+  let rec aux cin =
+    try
+      let s = input_line cin in
+        if Str.string_match (Str.regexp ".*ASSERT") s 0
+        then
+          let pos_begin = String.index s '(' + 1 in
+          let pos_end = String.index s ')' in
+          let s' = String.sub s pos_begin (pos_end - pos_begin) in
+            s' :: aux cin
+        else aux cin
+    with End_of_file -> []
+  in
+  let ts = aux cin in
+    (**)
+  let () = close_in cin in
+  let () =
+    match Unix.close_process (cin, cout) with
+        Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
+  in
+    (**)
+  let aux s =
+    not (Str.string_match (Str.regexp "cvc3") s 0) &&
+    not (Str.string_match (Str.regexp "_reach_") s 0)
+  in
+    List.filter aux ts

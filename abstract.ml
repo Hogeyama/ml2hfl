@@ -49,16 +49,6 @@ let get_preds = function
 
 
 
-let make_conj pbs =
-  match pbs with
-      [] -> {desc=True; typ=TBool}
-    | (_,b)::pbs -> List.fold_left (fun t (_,b) -> {desc=BinOp(And, t, b);typ=TBool}) b pbs
-
-let make_dnf pbss =
-  match pbss with
-      [] -> {desc=False; typ=TBool}
-    | pbs::pbss' -> List.fold_left (fun t pbs -> {desc=BinOp(Or, t, make_conj pbs);typ=TBool}) (make_conj pbs) pbss'
-
 let check cond pbs p =
   let ps,_ = List.split pbs in
 
@@ -86,8 +76,8 @@ let mapi f xs =
 
 
 
-
-let weakest cond ds p =
+(*
+let weakest env cond ds p =
 (*
 print_string "\n";
 List.iter (Syntax.print_term_break Syntax.ML false) (cond);
@@ -107,9 +97,9 @@ Syntax.print_term_break Syntax.ML false p;
             Not b -> Not b, b
           | _ -> assert false
       with _ ->*)
-        if check cond [] p then (*???*)
+        if check env cond [] p then (*???*)
           true_term, false_term
-        else if check cond [] {desc=Not p;typ=TBool} then (*???*)
+        else if check env cond [] (make_not p) then (*???*)
           false_term, true_term
         else
           let ss ids = List.map Id.id ids in
@@ -292,7 +282,6 @@ let contradict cond pbs =
       let pbsetset' = contradict_aux cond pbsetset PredSetSet.empty false_term in
         make_dnf pbsetset'
     else false_term
-
 
 
 
@@ -545,6 +534,7 @@ let rec abstract cond pbs (t,typ) =
                                              let t,_ = List.fold_right aux pats (Unit,List.length pats-1) in
                                              [t]*)
       | _, typ -> (Format.printf "Abstract.abstract:@.%a:%a@." (print_term_fm ML false) t print_typ typ; assert false)
+*)
 
 
 
@@ -915,7 +905,7 @@ let rec lift = function
         defs, Type_decl(decls,t')
 *)
 
-
+(*
 let abstract t =
   let t1 = hd (abstract [] [] (t,TUnit)) in
   let () = if Flag.print_abst then Format.printf "Abstracted Program:@.%a@.@." (Syntax.print_term' Syntax.ML 0 false) t1 in
@@ -928,7 +918,7 @@ let abstract t =
   let () = if Flag.print_abst then Format.printf "trans_eager:@.%a@.@." pp_print_term t3 in
   let () = Type_check.check t3 in
     lift t3
-
+*)
 
 
 
@@ -1075,15 +1065,31 @@ open CEGAR_type
 
 
 
-let weakest cond ds p =
-  if check cond [] p then (*???*)
-    true_term, false_term
-  else if check cond [] {desc=Not p;typ=TBool} then (*???*)
-    false_term, true_term
+let check env cond pbs p =
+  let ps,_ = List.split pbs in
+    Wrapper.check env (cond@@ps) p
+
+let make_conj pbs =
+  match pbs with
+      [] -> Const True
+    | (_,b)::pbs -> List.fold_left (fun t (_,b) -> make_and t b) b pbs
+
+let make_dnf pbss =
+  match pbss with
+      [] -> Const False
+    | pbs::pbss' -> List.fold_left (fun t pbs -> make_or t (make_conj pbs)) (make_conj pbs) pbss'
+
+
+let weakest env (cond:CEGAR_syntax.t list) ds p =
+(*
+  if check env cond [] p then (*???*)
+    Const True, Const False
+  else if check env cond [] (make_not p) then (*???*)
+    Const False, Const True
   else
-    let ss ids = List.map Id.id ids in
-    let fvp = ss (Util.uniq compare (get_fv2(*???*) p)) in
-    let ts = cond @@ List.map fst ds in
+*)
+    let fvp = get_fv p in
+    let ts = ((cond @@ List.map fst ds):CEGAR_syntax.t list) in
     let ds =
       let rec fixp xs =
         let xs' =
@@ -1092,7 +1098,7 @@ let weakest cond ds p =
                (List.flatten
                   (List.map
                      (fun p ->
-                        let fv = ss (get_fv2(*???*) p) in
+                        let fv = get_fv p in
                           if Util.inter fv xs = []
                           then []
                           else fv)
@@ -1103,9 +1109,9 @@ let weakest cond ds p =
           else fixp xs'
       in
       let fv = fixp fvp in
-        List.filter (fun (p, _) -> subset (ss (get_fv2(*???*) p)) fv) ds
+        List.filter (fun (p, _) -> subset (get_fv p) fv) ds
     in
-    let nds = List.map (fun (p, b) -> {desc=Not p;typ=TBool}, {desc=Not b;typ=TBool}) ds in
+    let nds = List.map (fun (p, b) -> make_not p, make_not b) ds in
 
     let f pbs =
       List.map
@@ -1129,13 +1135,13 @@ let weakest cond ds p =
              List.flatten
                (List.map
                   (fun (p, _) ->
-                     ss (get_fv2(*???*) p))
+                     get_fv p)
                   pbs)
            in
-             if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten (fun t -> ss (get_fv2 t)) cond) fvs = [] then
+             if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten get_fv cond) fvs = [] then
                false
              else
-               check cond pbs p)
+               check env cond pbs p)
         pbss
       in
       let nxs, ys = List.partition
@@ -1145,13 +1151,13 @@ let weakest cond ds p =
              List.flatten
                (List.map
                   (fun (p, _) ->
-                     ss (get_fv2(*???*) p))
+                     get_fv p)
                   pbs)
            in
-             if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten (fun t -> ss (get_fv2 t)) cond) fvs = [] then
+             if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten get_fv cond) fvs = [] then
                false
              else
-               check cond pbs {desc=Not p;typ=TBool})
+               check env cond pbs (make_not p))
         pbss
       in
       let xs = Util.uniq compare (xs' @ xs) in
@@ -1205,75 +1211,103 @@ let weakest cond ds p =
     in
     let xs, nxs = loop [] [] [] pbss in
     let pbss = List.map f xs in
-    let pbss = List.filter (fun pbs -> not (check cond pbs false_term)) pbss in
+    let pbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) pbss in
     let npbss = List.map f nxs in
-    let npbss = List.filter (fun pbs -> not (check cond pbs false_term)) npbss in
+    let npbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) npbss in
       make_dnf pbss, make_dnf npbss
 
 
 
-let abst cond pbs p =
-  let tt, ff = weakest cond pbs p in
-    if tt = Not false_term || Not true_term = ff.desc
+let abst env cond pbs p =
+  let tt, ff = weakest env cond pbs p in
+    if tt = make_not (Const False) || make_not (Const True) = ff
     then Const True
-    else make_if tt (Const True) (make_if ff (Const False) (Const Unknown))
+    else make_temp_if tt (Const True) (make_temp_if ff (Const False) (Const Unknown))
 
 
 
-let abst_arg x ps = Util.mapi (fun i p -> p (Var x), App(Const (Proj i), Var x))) ps
+let assume env cond pbs t =
+  let _,ff = weakest env cond pbs t in
+    make_if ff loop_term t
+    
 
 
-let rec coerce cond pbs typ1 typ2 t =
+let abst_arg x ps = Util.mapi (fun i p -> p, App(Const (Proj i), Var x)) (ps (Var x))
+
+(*
+let filter_fail cond pbs t =
+  let p = contradict cond pbs in
+  let bot = Id.new_var "bot" TUnit in
+  let bot' = {desc=Var bot; typ=TUnit} in
+    {desc=If(p, {desc=Let(Flag.Recursive, bot, [], bot', bot');typ=t.typ}, t); typ=t.typ}
+*)
+
+
+let rec coerce env cond pts typ1 typ2 :          (string * string list * CEGAR_syntax.t * CEGAR_syntax.t) list *
+         string
+=
   match typ1,typ2 with
       TBase(_,ps1),TBase(_,ps2) ->
         let x = new_id "x" in
-        let pbs' = abst_arg x ps @@ pbs
-        let ts = List.map (fun p -> abst cond pbs' (p Var x2)) ps1 in
-        let t = List.fold_left (fun t1 t2 -> App(t1,t2)) (Const Tuple) ts in
-          (Fun(x, t)
-      TBase(TBUnit,ps1),TBase(TBUnit,ps2) -> filter_fail cond pbs t
-    | TBase(b1,ps1),TBase(b1,ps2) -> filter_fail cond pbs t
-    | TBool, TBool -> t
-    | TVariant ctypss1, TVariant ctypss2 when ctypss1=ctypss2 -> t
-    | TFun({Id.typ=TList(_,ps1)} as x1,typ12), TFun({Id.typ=TList(_,ps2)} as x2,typ22) ->
-        let xs,pbs' = abst_arg x2 ([],pbs) in
-        let cond' = {desc=BinOp(Eq, make_var x1, {desc=Var x2;typ=Id.typ x2});typ=TBool}::cond in
-        let ts = List.map (fun p -> abst cond' pbs' (inst_var {desc=Var x2;typ=Id.typ x2} p)) ps1 in
-        let t' = coerce cond' pbs' typ12 typ22 {desc=App(t, ts);typ=typ12} in
-          List.fold_right make_new_fun xs t'
-
-    | TFun({Id.typ=TInt ps1} as x1,typ12), TFun({Id.typ=TInt ps2} as x2,typ22) ->
-        let xs,pbs' = abst_arg x2 ([],pbs) in
-        let cond' = {desc=BinOp(Eq, make_var x1, make_var x2);typ=TBool}::cond in
-        let ts = List.map (fun p -> abst cond' pbs' (inst_var (make_var x2) p)) ps1 in
-        let t' = coerce cond' pbs' typ12 typ22 {desc=App(t, ts);typ=typ12} in
-          List.fold_right make_new_fun xs t'
-
-    | TFun({Id.typ=TRInt p} as x1,typ12), TFun({Id.typ=TInt ps2} as x2,typ22) ->
-        let xs,pbs' = abst_arg x2 ([],pbs) in
-        let cond' = {desc=BinOp(Eq, make_var x1, make_var x2);typ=TBool}::cond in
-        let t' = coerce cond' pbs' typ12 typ22 t in
-        let x = Id.new_var "x" TUnit in
-        let f = Id.new_var "f" (TFun(x,TUnit)) in
-        let tru,_ = weakest cond' pbs' (inst_var (make_var x2) p) in
-        let t'' = {desc=If(tru, t', {desc=App(fail_term, [unit_term]);typ=TBottom});typ=typ12} in
-          List.fold_right make_new_fun xs t''
-
-    | TFun({Id.typ=TInt ps1} as x1,typ12), TFun({Id.typ=TRInt p} as x2,typ22) ->
-        let cond' = (inst_var (make_var x2) p)::{desc=BinOp(Eq, make_var x1, make_var x2);typ=TBool}::cond in
-        let ts = List.map (fun p -> abst cond' pbs (inst_var (make_var x2) p)) ps1 in
-          coerce cond' pbs typ12 typ22 {desc=App(t, ts);typ=typ12}
-
-    | TFun(x1,typ12), TFun(x2,typ22) ->
-        let x = Id.new_var "x" (Id.typ x1) in
-          (* x cannot be depended because x is function? *)
-          make_new_fun x (coerce cond pbs typ12 typ22 {desc=App(t, [coerce cond pbs (Id.typ x2) (Id.typ x1) (make_var x)]);typ=typ12})
-    | TUnknown,_ -> t
-    | _,TUnknown -> t
-    | _,_ -> Format.printf "coerce:%a,%a@." print_typ typ1 print_typ typ2; assert false
+        let pts' = abst_arg x ps1 @@ pts in
+        let ts = List.map (abst env cond pts') (ps2 (Var x)) in
+        let t = List.fold_left (fun t1 t2 -> App(t1,t2)) (Const (Tuple (List.length ts))) ts in
+          make_fun [x] t
+    | TFun typ1, TFun typ2 ->
+        let f = new_id "f" in
+        let x = new_id "x" in
+        let typ11,typ12 = typ1 (Var x) in
+        let typ21,typ22 = typ2 (Var x) in
+        let defs1,f1 = coerce env cond pts typ12 typ22 in
+        let defs2,f2 = coerce env cond pts typ21 typ11 in
+        let defs,f' = make_fun [f;x] (App(Var f1, App(Var f, App(Var f2, Var x)))) in
+          defs@@defs1@@defs2, f'
+    | _ -> assert false
 
 
+let rec abstract_term env cond pbs t typ =
+  match t with
+      Const c ->
+        let defs,f = coerce env cond pbs (get_const_typ c) typ in
+          defs, App(Var f, t)
+    | Var x ->
+        let defs,f = coerce env cond pbs (List.assoc x env) typ in
+          defs, App(Var f, t)
+    | App(t1, t2) ->
+        let typ = get_typ env t1 in
+        let typ1,typ2 =
+          match typ with
+              TFun typ -> typ t2
+            | _ -> assert false
+        in
+        let defs1,t1' = abstract_term env cond pbs t typ in
+        let defs2,t2' = abstract_term env cond pbs t typ1 in
+        let defs,f = coerce env cond pbs typ2 typ in
+          defs@@defs1@@defs2, App(Var f, App(t1',t2'))
 
-let abstract_def (f,xs,t1,t2) =
 
-let abstract defs = rev_flatten_map abstract_def defs
+let abstract_def env (f,xs,t1,t2) =
+  let rec aux typ xs env =
+    match xs with
+        [] -> typ, env
+      | x::xs' ->
+          let typ1,typ2 =
+            match typ with
+                TFun typ -> typ (Var x)
+              | _ -> assert false
+          in
+          let env' =
+            match typ1 with
+                TBase _ -> (x,typ1)::env
+              | _ -> env
+          in
+            aux typ2 xs' env'
+  in
+  let typ,arg_env = aux (List.assoc f env) xs [] in
+  let pbs = rev_flatten_map (function (x,TBase(_,ps)) -> abst_arg x ps | _ -> assert false) arg_env in
+  let defs1,t1' = assume env [] pbs t1 in
+  let defs2,t2' = abstract_term arg_env [t1] pbs t2 typ in
+    (f, xs, t1', t2')::defs1@@defs2
+
+let abstract env (defs,main) =
+  rev_flatten_map (abstract_def env) defs, main

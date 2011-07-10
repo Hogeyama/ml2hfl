@@ -6,7 +6,7 @@
 - f:int[]->unit のとき，f fail が f にならないように（副作用のある式を消さないように）
 *)
 
-val abstract : Syntax.typed_term -> (Syntax.typed_term Type.t Id.t * (Syntax.typed_term Type.t Id.t list * Syntax.typed_term)) list * Syntax.typed_term
+val abstract : CEGAR_syntax.prog -> CEGAR_syntax.prog
 (** [abstract t] で [t] の述語抽象を求める．
     [t] は CPS かつ型付きでなければならない．
 *)

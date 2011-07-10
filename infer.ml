@@ -1,5 +1,6 @@
-open Syntax;;
-open Type;;
+open CEGAR_syntax
+open CEGAR_type
+open CEGAR_print
 open Utilities;;
 (*#use "koba/utilities.ml";;*)
 
@@ -31,7 +32,7 @@ let print_ident x = Format.printf "%a@?" Id.print x
 
 
 let print_term t =
-   Format.printf "%a" (print_term_fm ML true) t;;
+   Format.printf "%a" print_term t;;
 
 let print_termlist tl =
    List.iter (fun t -> Format.printf "%a\n" (print_term_fm ML true) t) tl;;
@@ -80,7 +81,7 @@ type aty = ATunit of int | ATfun of aty list * aty | ATint of int | ATbool of in
  (** Integers added to ATint and ATbool will be used as an identifier of the predicate **)
 
 type myterm = MyUnit of tinfo | MyFail of tinfo | MyVar of id * tinfo
-            | MyApp of myterm * myterm * tinfo | MyTerm of typed_term * tinfo
+            | MyApp of myterm * myterm * tinfo | MyTerm of CEGAR_syntax.t * tinfo
 
 let rec print_myterm t =
   match t with

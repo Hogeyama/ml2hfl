@@ -1,108 +1,51 @@
 
 open Util
-open Syntax
-open Type
+open CEGAR_const
+open CEGAR_syntax
+open CEGAR_type
+
+
+
+let rec check ce constr defs t k =
+  match t with
+    Const Fail -> assert (ce=[]); constr
+  | Const c -> k ce (Const c)
+  | Var x -> k ce (Var x)
+  | App(t1,t2) ->
+      check ce constr defs t2 (fun ce' t2' ->
+      check ce' constr defs t1 (fun ce'' t1' ->
+        let _,ts = decomp_app (App(t1',t2')) in
+        let f,xs,tf1,tf2 = List.nth defs (List.hd ce'') in
+          if List.length xs > List.length ts
+          then k ce'' (App(t1',t2'))
+          else
+            let ts1,ts2 = take2 ts (List.length xs) in
+            let aux = List.fold_right2 subst xs ts1 in
+            let tf1' = aux tf1 in
+            let tf2' = List.fold_left (fun t1 t2 -> App(t1,t2)) (aux tf2) ts2 in
+              check ce'' constr defs tf1' (fun ce''' tf1'' ->
+              check ce''' (make_and tf1'' constr) defs tf2' (fun _ -> assert false))))
+
+let check (env:(CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list) ce (defs,main) =
+  let rec aux = function
+      TFun typ ->
+        let x = new_id "x" in
+        let typ1,typ2 = typ (Var x) in
+          if is_base_typ typ1
+          then (x,typ1) :: aux typ2
+          else aux typ2
+    | typ -> []
+  in
+  let env = aux (List.assoc main env) in
+  let xs = List.map fst env in
+  let t = List.fold_left (fun t x -> App(t, Var x)) (Var main) xs in
+  let constr = check ce (Const True) defs t (fun _ -> assert false) in
+    Wrapper.checksat env constr, constr
 
 
 
 
-let rec term_of_pattern t =
-  match t.pat_desc with
-    PVar x -> make_var x
-  | PConst c -> c
-  | PConstruct(c,pats) -> {desc=Constr(c, List.map term_of_pattern pats); typ=t.pat_typ}
-  | PRecord(b,fields) -> assert false
-  | POr(pat1,pat2) -> assert false
-
-
-
-let rec check ce defs constr t =
 (*
-  Format.printf "constraint: %a@." (print_term_fm ML false) constr;
-*)
-  match t.desc,ce with
-    | Unit,[] -> (*???*)
-        if Wrapper.checksat constr then
-          raise (Feasible constr)
-        else
-          ()
-    | Unit, [FailNode] ->
-        if Wrapper.checksat constr then
-          raise (Feasible constr)
-        else
-          ()
-    | Unit,[EventNode "unit"] ->
-        if Wrapper.checksat constr then
-          raise (Feasible constr)
-        else
-          ()
-    | Var x, _ -> check ce defs constr {desc=App(t, []);typ=t.typ}
-    | App({desc=Fail}, _), [FailNode] ->
-        if Wrapper.checksat constr then
-          raise (Feasible constr)
-        else
-          ()
-    | App({desc=Event s}, _), [FailNode] ->
-        if Wrapper.checksat constr then
-          raise (Feasible constr)
-        else
-          ()
-    | App({desc=Event s}, [t]), EventNode s'::ce' when s=s' ->
-        check ce' defs constr t
-    | App({desc=Var x}, ts), _ ->
-        let _,t' = List.assoc x defs in
-        let xs = get_args (Id.typ x) in
-        let t'' = List.fold_right2 subst xs ts t' in
-          check ce defs constr t''
-    | If(t1, _, _), [EventNode "then_fail"] ->
-        let constr' = {desc=BinOp(And, t1, constr);typ=TBool} in
-        if Wrapper.checksat constr' then
-          raise (Feasible constr')
-        else
-          ()
-    | If(t1, _, _), [EventNode "else_fail"] ->
-        let constr' = {desc=BinOp(And, {desc=Not t1;typ=TBool}, constr);typ=TBool} in
-        if Wrapper.checksat constr' then
-          raise (Feasible constr')
-        else
-          ()
-    | If(t1, t2, _), LabNode(true)::ce' ->
-        let constr' = {desc=BinOp(And, t1, constr);typ=TBool} in
-        check ce' defs constr' t2
-    | If(t1, _, t3), LabNode(false)::ce' ->
-        let constr' = {desc=BinOp(And, {desc=Not t1;typ=TBool}, constr);typ=TBool} in
-        check ce' defs constr' t3
-    | Match_(t1,pats), [EventNode s] when (Str.string_match (Str.regexp "br\\([0-9]+\\)_fail") s 0) ->
-        let n = int_of_string (Str.matched_group 1 s) in
-        let pat,_,_ = List.nth pats n in
-        let constr' = {desc=BinOp(And, {desc=BinOp(Eq, t1, term_of_pattern pat);typ=TBool}, constr);typ=TBool} in
-        if Wrapper.checksat constr' then
-          raise (Feasible constr')
-    | Match_(t1,pats), PatNode n::ce' ->
-        let pat,cond,t2 = List.nth pats n in
-        let constr' = {desc=BinOp(And, {desc=BinOp(Eq, t1, term_of_pattern pat);typ=TBool}, constr);typ=TBool} in
-        let constr'' =
-          match cond with
-              None -> constr'
-            | Some cond -> {desc=BinOp(And, cond, constr');typ=TBool}
-        in
-          check ce' defs constr'' t2
-    | RandInt _, ce ->
-        check ce defs constr (init_rand_int t)
-    | _ ->
-        Format.printf "feasibility.ml:@.%a@." (print_term_fm ML false) t;
-        let () = List.iter (fun node -> print_msg (string_of_node node ^ " --> ")) ce in
-        let () = print_msg ".\n" in
-        assert false
-
-
-
-let check ce defs t = check ce defs {desc=True;typ=TBool} t
-
-
-
-
-
 let rec get_prefix ce ce_prefix defs constr t =
   match t.desc,ce with
     | Unit,[] -> (*???*)
@@ -183,9 +126,9 @@ let rec get_prefix ce ce_prefix defs constr t =
         assert false
 
 let get_prefix ce defs t = get_prefix ce [] defs true_term t
+*)
 
-
-
+(*
 let rec check_int ce ce_used defs constr t =
   match t.desc,ce with
       Var x, _ -> check_int ce ce_used defs constr {desc=App({desc=Var x;typ=Id.typ x}, []);typ=t.typ}
@@ -228,3 +171,4 @@ let rec check_int ce ce_used defs constr t =
 
 
 let check_int ce defs t = check_int ce [] defs true_term t
+*)
