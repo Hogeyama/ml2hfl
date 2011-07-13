@@ -273,6 +273,8 @@ let rec arith_of t =
   | Const(_, Const.Minus), [t] ->
       let nxs, n = arith_of t in
       Arith.minus nxs, -n
+  | Const(_, Const.Unit), [] ->
+      [], 0 (*????*)
   | _ ->
       invalid_arg "Term.arith_of"
 

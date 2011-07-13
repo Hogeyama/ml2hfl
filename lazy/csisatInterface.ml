@@ -18,6 +18,7 @@ and csisat_of_iexp_aux c args =
   | Const.Mul, [Const(_, Const.Int(n)); t]
   | Const.Mul, [t; Const(_, Const.Int(n))] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(float_of_int n, csisat_of_iexp t))
   | Const.Minus, [t] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(-1.0, csisat_of_iexp t))
+  | Const.Unit, [] -> CsisatAst.Constant(0.0) (*???*)
 
 let rec csisat_of_bexp t =
   match fun_args t with

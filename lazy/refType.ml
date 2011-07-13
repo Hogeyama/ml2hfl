@@ -33,6 +33,15 @@ let rec pr ppf rty =
       let _ = assert (xs <> []) in
       Format.fprintf ppf "@[<hv>%a@]" (Util.pr_list pr_aux " /\\@ ") xs
 
+let rec of_type ty =
+		match ty with
+		  Type.Unit -> Unit
+		| Type.Bool -> Bool
+		| Type.Int -> Int
+		| Type.Fun(_, _) ->
+	     let args, ret = Type.args_ret ty in
+      Fun([Term.make_true, List.map of_type args, Term.make_true, of_type ret])
+
 let of_summaries types sums =
   let rec refine (x, uid) ty =
 		  let merge x ty =
@@ -43,9 +52,16 @@ let of_summaries types sums =
 				  | Type.Fun(_, _) ->
 								  let tys = List.map
 								    (fun uid -> refine (x, uid) ty)
-								    (List.unique (List.filter_map (function `Pre((y, uid), _) | `Post((y, uid), _) -> if x = y then Some(uid) else None | _ -> None) sums))
+								    (List.unique
+              (List.filter_map
+                (function `Pre((y, uid), _) | `Post((y, uid), _) ->
+                  if x = y then Some(uid) else None | _ -> None)
+                sums))
 		        in
-		        Fun(Util.concat_map (function Fun(xs) -> xs | _ -> assert false) tys)
+          if tys = [] then
+  		        of_type ty
+          else
+  		        Fun(Util.concat_map (function Fun(xs) -> xs | _ -> assert false) tys)
 		  in
     let sums = List.filter (function `Pre((x', uid'), _) | `Post((x', uid'), _) -> x = x' && uid = uid') sums in
 		  match ty with
@@ -53,29 +69,24 @@ let of_summaries types sums =
 		  | Type.Bool -> Bool
 		  | Type.Int -> Int
 		  | Type.Fun(_, _) ->
-        try
+        try(*???*)
 		        let args, ret = Type.args_ret ty in
-						    let pres, posts = List.partition
-						      (function `Pre(_, _) -> true | `Post(_, _) -> false)
-				        sums
-						    in
-				      let xs1 = List.map
-				        (function `Pre((_, uid), pre) ->
-				          pre, List.mapi (fun i arg -> merge (Var.T(x, uid, i)) arg) args,
-				          Term.make_true, merge (Var.T(x, uid, List.length args)) ret
+				      Fun(List.map
+				        (function
+              `Pre((_, uid), pre) ->
+						          pre,
+                List.mapi (fun i arg -> merge (Var.T(x, uid, i)) arg) args,
+						          Term.make_true,
+                merge (Var.T(x, uid, List.length args)) ret
+				        | `Post((_, uid), post) ->
+						          Term.make_true,
+                List.mapi (fun i arg -> merge (Var.T(x, uid, i)) arg) args,
+						          post,
+                merge (Var.T(x, uid, List.length args)) ret
             | _ -> assert false)
-				        pres
-          in
-				      let xs2 = List.map
-				        (function `Post((_, uid), post) ->
-				          Term.make_true, List.mapi (fun i arg -> merge (Var.T(x, uid, i)) arg) args,
-				          post, merge (Var.T(x, uid, List.length args)) ret
-            | _ -> assert false)
-				        posts
-          in
-						    Fun(xs1 @ xs2)
+				        sums)
         with Not_found ->
-          Fun([])
+          assert false (*Fun([])*)
   in
   List.map
     (fun (f, uid) ->

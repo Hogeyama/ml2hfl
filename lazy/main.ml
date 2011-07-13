@@ -4,12 +4,12 @@ let rec loop old_eps prog env rt wl =
   if wl = [] then
     ()
   else
+    let _ = Ctree.save_as_dot "ctree.dot" rt wl in
     let eps = List.filter (fun p -> List.last p = Ctree.Error) (Ctree.paths_of rt) in
     if old_eps = eps then
 				    let env, wl = Ctree.expand_tree prog env wl in
 				    loop eps prog env rt wl
     else
-      let _ = Ctree.save_as_dot "ctree.dot" rt wl in
 				  let _ =
 				    Format.printf "error paths:@.";
 				    List.iter (fun ep -> Format.printf "  %a@." Ctree.pr_path ep) eps
@@ -39,6 +39,10 @@ let rec loop old_eps prog env rt wl =
 				  else
 				    loop eps prog env rt wl
 
+let init_env x =
+  let _ = Format.printf "%a not found@." Var.pr x in
+  assert false
+
 let test1 () =
   let arg1 = Term.apply (Term.make_var "sum") [Term.make_var "n"] in
   let arg2 = Term.make_var "n" in
@@ -67,9 +71,8 @@ let test1 () =
 (*
   let init = Term.set_arity (Prog.arities prog) init in
 *)
-  let env _ = raise Not_found in
   let rt = Ctree.Node(p, init, ref []) in
-  loop [] prog env rt [rt]
+  loop [] prog init_env rt [rt]
 
 let test2 () =
   let arg1 = Term.apply (Term.make_var "check") [Term.make_var "n"] in
@@ -89,9 +92,8 @@ let test2 () =
   let p = Ctree.gen () in
   let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
   let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
-  let env _ = raise Not_found in
   let rt = Ctree.Node(p, init, ref []) in
-  loop [] prog env rt [rt]
+  loop [] prog init_env rt [rt]
 
 let test3 () =
   let arg1 = Term.apply (Term.make_var "copy") [Term.apply (Term.make_var "copy") [Term.make_var "n"]] in
@@ -108,13 +110,7 @@ let test3 () =
                Prog.fdefs = [main; copy1; copy2; check1; check2];
                Prog.types = [Id.make "main", tymain; Id.make "copy", tycopy; Id.make "check", tycheck];
                Prog.main = main.Fdef.name } in
-(*
-  let prog = Prog.set_arity (Prog.arities prog) prog in
-*)
   Format.printf "%a" Prog.pr prog;
-(*
-  let arity = Prog.arities prog (Var.V(prog.Prog.main)) in
-*)
   let p = Ctree.gen () in
   let ret, args =
     Ctree.ret_args
@@ -123,11 +119,57 @@ let test3 () =
      (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main))))
   in
   let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
-(*
-  let init = Term.set_arity (Prog.arities prog) init in
-*)
-  let env _ = raise Not_found in
   let rt = Ctree.Node(p, init, ref []) in
-  loop [] prog env rt [rt]
+  loop [] prog init_env rt [rt]
 
-let _ = test2 ()
+let test4 () =
+  let arg1 = Term.apply (Term.make_var "h") [Term.make_var "n"] in
+  let arg2 = Term.apply (Term.make_var "h") [Term.make_var "n"] in
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "checkh") [arg1; arg2] } in
+  let checkh = { Fdef.attr = []; Fdef.name = Id.make "checkh"; Fdef.args = [Id.make "f"; Id.make "g"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "f") [Term.make_unit]; Term.apply (Term.make_var "g") [Term.make_unit]] } in
+  let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
+  let h = { Fdef.attr = []; Fdef.name = Id.make "h"; Fdef.args = [Id.make "x"; Id.make "un"]; guard = Term.make_true; Fdef.body = Term.make_var "x"} in
+  let tymain = Type.Fun(Type.Int, Type.Unit) in
+  let tycheckh = Type.Fun(Type.Fun(Type.Unit, Type.Int), Type.Fun(Type.Fun(Type.Unit, Type.Int), Type.Unit)) in
+  let tycheck = Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)) in
+  let tyh = Type.Fun(Type.Int, Type.Fun(Type.Unit, Type.Int)) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; checkh; check1; check2; h];
+               Prog.types = [Id.make "main", tymain; Id.make "checkh", tycheckh; Id.make "check", tycheck; Id.make "h", tyh];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  let p = Ctree.gen () in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
+  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
+  let rt = Ctree.Node(p, init, ref []) in
+  loop [] prog init_env rt [rt]
+
+let test5 () =
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "h") [Term.make_var "apply"; Term.make_var "check"; Term.make_var "n"] } in
+  let h = { Fdef.attr = []; Fdef.name = Id.make "h"; Fdef.args = [Id.make "f"; Id.make "g"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.apply (Term.make_var "g") [Term.make_var "x"]; Term.make_var "x"] } in
+  let apply = { Fdef.attr = []; Fdef.name = Id.make "apply"; Fdef.args = [Id.make "f"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
+  let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
+  let tymain = Type.Fun(Type.Int, Type.Unit) in
+  let tyh = Type.Fun
+    (Type.Fun
+      (Type.Fun(Type.Int, Type.Unit),
+      Type.Fun(Type.Int, Type.Unit)),
+    Type.Fun
+      (Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)),
+      Type.Fun(Type.Int, Type.Unit))) in
+  let tyapply = Type.Fun(Type.Fun(Type.Int, Type.Unit), Type.Fun(Type.Int, Type.Unit)) in
+  let tycheck = Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; h; apply; check1; check2];
+               Prog.types = [Id.make "main", tymain; Id.make "h", tyh; Id.make "apply", tyapply; Id.make "check", tycheck];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  let p = Ctree.gen () in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
+  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
+  let rt = Ctree.Node(p, init, ref []) in
+  loop [] prog init_env rt [rt]
+
+let _ = test5 ()

@@ -30,10 +30,10 @@ let rec ctx_of xs i =
     [] -> assert false
   | x::xs' ->
       if i = 0 then
-        fun y -> y::xs'
+        fun ys -> ys @ xs'
       else if i > 0 then
         let ctx = ctx_of xs' (i - 1) in
-        fun y -> x::ctx y
+        fun ys -> x::ctx ys
       else
         assert false
 

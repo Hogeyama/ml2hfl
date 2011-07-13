@@ -43,17 +43,18 @@ let expand_tree prog env wl =
                       | _ -> true)
 				                (List.combine fargs args)
                   in
+(*
+                  let pr ppf (t1, t2) = Format.fprintf ppf "%a: %a" Term.pr t1 Term.pr t2 in
+                  let _ = Format.printf "faargs2: %a@." (Util.pr_list pr ", ") faargs2 in
+*)
 						            (fun x ->
                     try
-                      env x
+                      Util.find_map
+                        (fun (Term.Var(_, y), aarg) ->
+                          if Var.equiv x y then aarg else raise Not_found)
+                        faargs2
                     with Not_found ->
-                      try
-                        Util.find_map
-                          (fun (Term.Var(_, y), aarg) ->
-                            if x = y then aarg else raise Not_found)
-                          faargs2
-                      with Not_found ->
-                        assert false),
+                      env x),
 				              [Arg(List.map (fun (Term.Var(_, farg), aarg) -> farg, aarg) faargs1),
 				              Node(uid, ctx tt, ref [])]
 		            | Term.Call(_, Term.Var(_, g), args) ->
