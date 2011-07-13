@@ -6,7 +6,10 @@ open Syntax
 open Type
 
 
+exception CannotRefute
 
+
+(*
 let new_tvar () = TVar (ref None)
 
 let rec expand t = function
@@ -435,9 +438,6 @@ let rec remove_preds t =
     {desc=desc; typ=t.typ}
 
 let refine tdefs ces t0 =
-  (*
-    let () = Format.printf "%a@." (print_term_fm ML true) t in
-  *)
   let defs,t = lift t0 in
   let defs,t =
     let rec aux = function
@@ -448,15 +448,7 @@ let refine tdefs ces t0 =
     in
       aux t0
   in
-    (*
-      let () = Format.printf "%a@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t defs) in
-    *)
-    print_defs Format.std_formatter defs;
   let map,_,defs',t' = rename defs t in
-    (*
-      let scmap = get_scmap (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
-      let () = Format.printf "\n\n%a\n\n@." (print_term_fm ML true) (List.fold_left (fun acc (f,(xs,t)) -> Letrec(f,xs,t,acc)) t' defs') in
-    *)
 
   let s = Id.new_var "Main" TUnit in
   let defs1 = (s,([], t'))::defs' in
@@ -487,27 +479,7 @@ let refine tdefs ces t0 =
     match_typ t
 
 
-(*
-  let () = Format.printf "AAA@." in
-  let constr,map2 = get_constr ce defs' t' in
-  let () = Format.printf "BBB@." in
-  let solution = solve_constr constr in
-  let () = Format.printf "CCCn@." in
-  let () = List.iter (fun (c,p) -> Format.printf "%a = [%a]@." print_constr (Pred c) (print_term_fm ML false) p) solution in
 
-  let pred_map =
-    let rev_map = List.map (fun (x,x') -> x',x) map in
-    let rev_map2 = List.map (fun (x,x') -> x',x) map2 in
-    let aux ((_,_,x,_),p) =
-      let x' = assoc_exn (assoc_exn x rev_map2 x) rev_map x in
-      let p' = List.fold_left (fun p (y,y') -> if x=y then subst y (Var abst_var) p else subst y (Var y') p) p rev_map2 in
-      let p'' = List.fold_left (fun p (y,y') -> if x=y then subst y (Var abst_var) p else subst y (Var y') p) p' rev_map in
-        x', p''
-    in
-      List.map aux solution
-  in
-    add_preds pred_map t0
-*)
 
 
 
@@ -642,3 +614,7 @@ let rec add_preds_ typedefs t =
   in
     {desc=desc; typ=t.typ}
 
+*)
+
+let refine ces prog =
+  prog

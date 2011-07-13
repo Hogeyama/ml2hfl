@@ -113,6 +113,7 @@ val copy_poly_funs : typed_term -> typed_term
 (** {6 Printing} *)
 
 val print_typ : Format.formatter -> typ -> unit
+val print_id : Format.formatter -> id -> unit
 val print_ids : Format.formatter -> id list -> unit
 val print_id_typ : Format.formatter -> id -> unit
 val print_ids_typ : Format.formatter -> id list -> unit

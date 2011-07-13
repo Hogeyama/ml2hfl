@@ -95,17 +95,20 @@ let main filename in_channel =
   let () = Wrapper.set_datatype_cvc3 cps in
   let t_result, result = CEGAR.cegar tdefs cps [] in
 *)
-  let target = parsed in
-  let t_result, result = CEGAR.cegar [] parsed [] in
+  let prog = CEGAR_syntax.trans_prog parsed in
+  let t_result, result = CEGAR.cegar prog [] in
     match result with
         None -> print_msg "\nSafe!\n\n"
       | Some (ce,p) ->
+            print_msg "Unsafe!\n"
+(*
           let sol = Wrapper.get_solution p t_result in
             print_msg "Unsafe!\n";
             print_msg "Error trace:";
             List.iter (fun t -> Format.printf "%s; " t) sol;
             if List.length sol <> 0 then Format.printf "@.";
-            Syntax.print_ce ce target
+            Syntax.print_ce ce parsed
+*)
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"

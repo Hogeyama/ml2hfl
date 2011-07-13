@@ -26,7 +26,7 @@ let rec check ce constr defs t k =
               check ce'' constr defs tf1' (fun ce''' tf1'' ->
               check ce''' (make_and tf1'' constr) defs tf2' (fun _ -> assert false))))
 
-let check (env:(CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list) ce (defs,main) =
+let check ce (env,defs,main) =
   let rec aux = function
       TFun typ ->
         let x = new_id "x" in

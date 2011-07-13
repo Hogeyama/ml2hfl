@@ -17,11 +17,9 @@ val get_prefix: Syntax.node list -> (Syntax.id * ('a * Syntax.typed_term)) list 
     [s] はプログラムのメイン．
 *)
 *)
-val check: (CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list ->
-           int list -> CEGAR_syntax.prog -> bool * CEGAR_syntax.t
+val check: int list -> CEGAR_syntax.prog -> bool * CEGAR_syntax.t
 
 (** [check ce defs s] で，反例 [ce] が実際にあり得るパスかどうかをチェックする．
-    実行可能なパスであった場合，例外 [Feasible] を投げる．
     [defs] は関数定義．
     [s] はプログラムのメイン．
 *)

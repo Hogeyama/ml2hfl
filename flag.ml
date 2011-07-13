@@ -4,6 +4,7 @@ let log_dir = "/home/ryosuke/web/cegar/log/"
 let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
 let cvc3 = "./cvc3"
+let trecs_log = "log.hors"
 
 type rec_flag = Nonrecursive | Recursive
 type mutable_flag = Immutable | Mutable
@@ -37,7 +38,7 @@ let print_interpolant = true
 let print_progress = false
 let print_constraints = true
 let print_lower_bound = true
-let print_cvc3 = false
+let print_cvc3 = true
 
 let time_abstraction = ref 0.
 let time_mc = ref 0.
