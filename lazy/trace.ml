@@ -53,11 +53,23 @@ let rec pr ppf tr =
 let rec ancestor_of (x, uid) (x', uid') =
   (x = x' && uid = uid') ||
   (match x' with
-    Var.T(x', uid', _) -> ancestor_of (x, uid) (x', uid')
-  | Var.V(_) -> false)
+    Var.V(_) -> false
+  | Var.T(x', uid', _) -> ancestor_of (x, uid) (x', uid'))
 
-(* find deepest top level function call *)
-let tlf_call_of tr =
+let rec sl_ancestor_of (x, uid) (x', uid') =
+  (x = x' && uid = uid') ||
+  (match x' with
+    Var.V(_)
+  | Var.T(Var.V(_), _, _) -> false
+  | Var.T(Var.T(x', uid', _), _, _) -> sl_ancestor_of (x, uid) (x', uid'))
+
+let rec is_pos x =
+  match x with
+    Var.V(_) -> true
+  | Var.T(x', _, _) -> not (is_pos x')
+
+(* return value satisfies p and does not contain a function call that satisfies p *)
+let call_of p tr =
 		let rec f ctx tr =
 		  match tr with
 		    Sub(_)
@@ -71,40 +83,13 @@ let tlf_call_of tr =
 		              tr)
 				        (Util.ctx_elem trs)
         with Not_found ->
-				      (match x with
-            Var.V(_) ->
-		            ctx, tr
-				      | Var.T(_, _, _) ->
-            raise Not_found))
+          if p op (x, uid) then ctx, tr else raise Not_found)
     | Grp(trs) ->
 		      Util.find_map
 				      (fun (ctx', tr) ->
 		          f (fun trs -> ctx [Grp(ctx' trs)])
 		            tr)
 				      (Util.ctx_elem trs)
-  in
-  f (fun trs -> if List.length trs = 1 then List.hd trs else Grp(trs)) tr
-
-(* tr does not call top-level function *)
-let open_param_call_of x uid tr =
-		let rec f ctx tr =
-		  match tr with
-		    Sub(_)
-		  | Guard(_) ->
-		      raise Not_found
-		  | Cnode(op, (x', uid'), trs) ->
-        (try
-		        Util.find_map
-				        (fun (ctx', tr) ->
-		            f (fun trs -> ctx [Cnode(op, (x', uid'), ctx' trs)])
-		              tr)
-				        (Util.ctx_elem trs)
-        with Not_found ->
-				      (if op && ancestor_of (x, uid) (x', uid') then
-            ctx, tr
-          else
-            raise Not_found))
-    | Grp(_) -> assert false
   in
   f (fun trs -> if List.length trs = 1 then List.hd trs else Grp(trs)) tr
 
@@ -151,8 +136,9 @@ let rec term_of (x, uid) tr =
   let xts, ts = f tr in
   let xts1, xts2 = List.partition
     (function (Var.T(x', uid', _), _) ->
-      ancestor_of (x, uid) (x', uid')
-    | (Var.V(_), _) -> false) xts in
+      true
+      (*ancestor_of (x, uid) (x', uid')*)
+    | (Var.V(_), _) -> assert false) xts in
   let t = Term.band (Ctree.eq_xts xts1 @ ts) in
   let sub x = List.assoc x xts2 in
   Util.fixed_point
@@ -163,86 +149,86 @@ let rec term_of (x, uid) tr =
 
 
 (* tr does not call top-level function *)
-let extract x uid tr =
+let extract (x, uid) tr =
   let rec f tr =
 		  match tr with
 		    Sub(_)
 		  | Guard(_) ->
 		      [tr], []
 		  | Cnode(op, (x', uid'), trs) ->
-        let trs1, trs2 = List.partition (function Sub(_) | Guard(_) -> false | Cnode(_, _, _) -> true | Grp(_) -> assert false) trs in
-        let trss1, trss2 = List.split (List.map f trs1) in
-        (* wrong*)if (x, uid) = (x', uid') then
-          List.concat trss1, trs2 @ List.concat trss2
-        else if ancestor_of (x, uid) (x', uid') then
-          trs2 @ List.concat trss1, List.concat trss2
+        let trsctx, trsfun =
+          List.partition
+            (function
+              Sub(_)
+            | Guard(_) -> false
+            | Cnode(_, _, _) -> true
+            | Grp(_) -> assert false)
+            trs
+        in
+        let trssctx, trssfun = List.split (List.map f trsctx) in
+        if sl_ancestor_of (x, uid) (x', uid') then
+          List.concat trssctx, trsfun @ List.concat trssfun
         else
-          [Cnode(op, (x', uid'), trs2 @ List.concat trss1)], List.concat trss2
+          [Cnode(op, (x', uid'), trsfun @ List.concat trssctx)], List.concat trssfun
     | Grp(_) -> assert false
   in
   f tr
 
+(*
 let x_uid_of (Cnode(_, (x, uid), _)) = (x, uid)
 let pre (Cnode(op, (_, _), _)) = op
+*)
 
-let summary_of ctx tr rec_callers =		
-  let (x, uid) = x_uid_of tr in
-  let pre = pre tr in
-  try
-    let ctx1, tr1 = open_param_call_of x uid tr in
-    let _ = if tr = tr1 then raise Not_found in
-    let (x', uid') = x_uid_of tr1 in
-		  let _ = Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr x' uid' in
-    let trs21, trs22 = extract x uid (ctx1 []) in
-    let tctx = term_of (x, uid) (Cnode(pre, (x, uid), trs22)) in
-    let tfun = term_of (x, uid) (ctx (tr1::trs21)) in
-    let interp =
-				  let t1, t2 = tctx, tfun in
-      let interp =
-						  try
-						  		let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-						    CsisatInterface.interpolate t1 t2
-						  with CsisatInterface.No_interpolant ->
-		        assert false
-      in
-  				let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
-      interp
-    in
-    let trs3, _  = extract x' uid' tr1 in
-    `Pre((x', uid'), interp), ctx [ctx1 (Guard(Term.bnot (interp))::trs3)]
-  with Not_found ->
-    let _ =
+let summary_of ctx (Cnode(pre, (x, uid), trs)) rec_callers =		
+  let _ =
+				if pre then
+				  Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr x uid
+				else
+				  Format.printf "computing a postcondition of <%a:%d>:@.  @[<v>" Var.pr x uid
+  in
+		let trsctx, trsfun =
+    List.partition
+      (function
+        Sub(_)
+      | Guard(_) -> false
+      | Cnode(_, _, _) -> true
+      | Grp(_) -> assert false)
+      trs
+  in
+  (* no need to split trsctx? *)
+		let tfun, tctx =
+    match x with
+      Var.V(_) ->
+								term_of (x, uid) (Grp(trsfun)),
+								term_of (x, uid) (ctx trsctx)
+    | Var.T(x', uid', _) ->
+								(* OK? *)
+								let p op (x, uid) = x = x' && uid = uid' in
+        let ctx', tr' = call_of p (ctx []) in
+								term_of (x', uid') (ctx'(trsfun)),
+								term_of (x', uid') tr'
+		in
+		let interp =
+				let t1, t2 =
 						if pre then
-				    Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr x uid
-				  else
-				    Format.printf "computing a postcondition of <%a:%d>:@.  @[<v>" Var.pr x uid
-    in
-    let trs11, trs12 = extract x uid tr in
-				let tfun, tctx =
-				  term_of (x, uid) (Cnode(pre, (x, uid), trs12)),
-				  term_of (x, uid) (ctx trs11)
+								tctx, tfun
+						else
+								tfun, tctx
 				in
-    let interp =
-				  let t1, t2 =
-				    if pre then
-				      tctx, tfun
-				    else
-				      tfun, tctx
-				  in
-      let interp =
-						  try
-						  		let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-						    CsisatInterface.interpolate t1 t2
-						  with CsisatInterface.No_interpolant ->
-		        assert false
-      in
-  				let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
-      interp
-    in
-		  if pre then
-		    `Pre((x, uid), interp), ctx (Guard(Term.bnot (interp))::trs11)
-		  else
-		    `Post((x, uid), interp), ctx (Guard(interp)::trs11)
+				let interp =
+						try
+								let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
+								CsisatInterface.interpolate t1 t2
+						with CsisatInterface.No_interpolant ->
+						  assert false
+				in
+				let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
+				interp
+		in
+		if pre then
+				`Pre((x, uid), interp), ctx (Guard(Term.bnot (interp))::trsctx)
+		else
+				`Post((x, uid), interp), ctx (Guard(interp)::trsctx)
 (*
 		let sub y uid x =
 		  match x with
@@ -326,7 +312,13 @@ let rec summaries_of eptr =
 		  let _ = Format.printf "error trace:@.  %a@." pr eptr in
 (**)
 		  try
-						let ctx, tr = tlf_call_of eptr in
+						(* top level or open function call *)
+						let p op (x, uid) =
+								match x with
+						    Var.V(_) -> true
+								| Var.T(_, _, _) -> op
+      in
+						let ctx, tr = call_of p eptr in
       let sum, eptr = summary_of ctx tr [](*(rec_callers_of eptr tr)*) in
 				  summaries_of_aux (sum::sums) eptr
 		  with Not_found ->
