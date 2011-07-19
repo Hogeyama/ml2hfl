@@ -226,7 +226,7 @@ let rec get_const_typ = function
   | True _ -> TBase(TBool, fun x -> [x])
   | False _ -> TBase(TBool, fun x -> [make_not x])
   | RandBool _ -> assert false
-  | RandInt _ -> assert false
+  | RandInt _ -> TFun(fun x -> TBase(TUnit,nil), TBase(TInt,nil))
   | And -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_and x y)])))
   | Or -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_or x y)])))
   | Not -> assert false

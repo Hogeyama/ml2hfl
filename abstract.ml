@@ -396,7 +396,7 @@ let rec is_base_term env = function
       assert (is_base_term env t1);
       assert (is_base_term env t2);
       true
-  | App(Const Not,t) -> assert (is_base_term env t); true
+  | App(Const (Not|RandInt),t) -> assert (is_base_term env t); true
   | App _ -> false
   | Let _ -> false
 

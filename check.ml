@@ -41,6 +41,7 @@ let print_const fm = function
   | True -> Format.fprintf fm "0"
   | False -> Format.fprintf fm "1"
   | If -> Format.fprintf fm "_case 2"
+  | Branch -> Format.fprintf fm "br"
 
 let print_var = Format.pp_print_string
 

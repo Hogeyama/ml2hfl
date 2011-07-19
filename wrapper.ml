@@ -193,6 +193,18 @@ let rec string_of_term env = function
   | _ -> assert false
 
 
+let rec init_rand_int = function
+    Const c -> [], Const c
+  | Var x -> [], Var x
+  | App(Const RandInt, _) ->
+      let x = new_id "n" in
+        [x,TBase(TInt,fun _ -> [])], Var x
+  | App(t1,t2) ->
+      let env1,t1' = init_rand_int t1 in
+      let env2,t2' = init_rand_int t2 in
+        env1@@env2, App(t1,t2)
+
+
 let string_of_env env =
   let aux str (x,typ) =
     match typ with
@@ -200,6 +212,7 @@ let string_of_env env =
       | _ -> str
   in
     List.fold_left aux "" env
+
 let check env pre p =
   let cin = !cvc3in in
   let cout = !cvc3out in
