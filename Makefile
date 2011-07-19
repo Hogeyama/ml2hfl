@@ -52,7 +52,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
 	flag.cmo util.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
         CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
-	type_check.cmo CPS.cmo parser_wrapper.cmo \
+	type_check.cmo typing.cmo CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo abstract.cmo check.cmo feasibility.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma

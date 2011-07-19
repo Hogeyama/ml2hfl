@@ -521,6 +521,6 @@ let from_use_file ast =
   in
   let t = List.fold_left aux {desc=Unit;typ=TUnit} defs in
   let t = merge_let_fun t in
-    t
+    set_target t
 
 

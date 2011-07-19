@@ -58,43 +58,6 @@ let main filename in_channel =
   in
   let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) parsed in
   let () = Type_check.check parsed in
-(*
-  let parsed = Syntax.set_target parsed in
-  let () = Type_check.check parsed in
-  let target = Syntax.copy_poly_funs parsed in
-  let () = if !Flag.web then write_log_term target in
-  let () = Type_check.check target in
-  let () = if Flag.print_source then Format.printf "Source Program:@.%a\n@." Syntax.pp_print_term target in
-  let t_ext = Abstract.abst_ext_funs target in
-  let () = Type_check.check t_ext in
-  let () = if true then Format.printf "AAA@." in
-  let abst = Abstract.abstract_mutable t_ext in
-  let () = Type_check.check abst in
-  let () = if true then Format.printf "AAA@." in
-  let cps = CPS.trans abst in
-  let () = if Flag.print_cps then Format.printf "CPS-converted Program:@.%a\n@." Syntax.pp_print_term cps in
-  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) cps in
-  let () = Type_check.check cps in
-  let cps =
-    let defs, t = Syntax.lift cps in
-      List.fold_right
-        (fun (f, (xs, t')) t ->
-           let flag =
-             if List.exists (fun id -> List.mem_assoc id defs) (Syntax.get_fv t')
-             then Flag.Recursive
-             else Flag.Nonrecursive
-           in
-             {Syntax.desc=Syntax.Let(flag, f,xs,t', t); Syntax.typ=t.Syntax.typ})
-        defs t
-  in
-
-  let () = if true then Format.printf "LIFTED:@.%a\n@." Syntax.pp_print_term cps in
-  let tdefs = List.map (fun (x, t) -> x, Syntax.fff t) tdefs in
-  let cps = Refine.add_preds_ tdefs cps in
-  let () = if true then Format.printf "LIFTED:@.%a\n@." Syntax.pp_print_term cps in
-  let () = Wrapper.set_datatype_cvc3 cps in
-  let t_result, result = CEGAR.cegar tdefs cps [] in
-*)
   let prog = CEGAR_syntax.trans_prog parsed in
   let t_result, result = CEGAR.cegar prog [] in
     match result with

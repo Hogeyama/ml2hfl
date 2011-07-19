@@ -38,7 +38,7 @@ let print_interpolant = true
 let print_progress = false
 let print_constraints = true
 let print_lower_bound = true
-let print_cvc3 = true
+let print_cvc3 = false
 
 let time_abstraction = ref 0.
 let time_mc = ref 0.
@@ -65,4 +65,4 @@ let gen_int = true
 
 type mode = Reachability | FileAccess
 
-let mode = ref FileAccess
+let mode = ref Reachability

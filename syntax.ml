@@ -2159,7 +2159,7 @@ let set_target t =
             match get_base_typ (Id.typ f) with
                 TUnit -> main.desc
               | _ ->
-                  let u = Id.new_var "u" (TVar (ref None)) in
+                  let u = Id.new_var "u" main.typ in
                     Let(Flag.Nonrecursive, u, [], main, {desc=Unit;typ=TUnit})
           in
             replace_main main' TUnit t

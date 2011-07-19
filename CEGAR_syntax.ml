@@ -4,6 +4,17 @@ open CEGAR_type
 open CEGAR_const
 
 let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
+let rename_id s =
+  let len = String.length s in
+  let n =
+    try
+      let i = String.rindex s '_' in
+      let n = String.sub s (i+1) (len-i-1) in
+      let _ = int_of_string n in
+        i
+    with _ -> len
+  in
+    String.sub s 0 n ^ "_" ^ string_of_int (Id.new_int ())
 
 type var = string
 
@@ -15,6 +26,7 @@ type const =
   | Unit
   | True
   | False
+  | RandInt
   | RandBool
   | And
   | Or
@@ -29,9 +41,9 @@ type const =
   | Sub
   | Mul
   | Tuple of int
-  | Proj of int (* 0-origin *)
-  | If (* for temporary use *)
-  | Branch (* for temporary use *)
+  | Proj of int * int (* 0-origin *)
+  | If (* for abstraction and model-checking *)
+  | Branch (* for for abstraction and model-checking *)
 
 
 
@@ -40,6 +52,7 @@ type t =
   | Var of var
   | App of t * t
   | Let of var * t * t (* for abstraction *)
+  | Fun of var * t (* for abstraction and CPS-trasformation *)
 
 type fun_def = var * var list * t * t
 
@@ -154,6 +167,7 @@ let rec trans_term xs env t =
     | Syntax.False -> [], Const False
     | Syntax.Unknown -> assert false
     | Syntax.Int n -> [], Const (Int n)
+    | Syntax.NInt _ -> [], App(Const RandInt, Const Unit)
     | Syntax.Var x ->
         let x' = trans_var x in
           [], Var x'
@@ -212,6 +226,7 @@ let rec get_const_typ = function
   | True _ -> TBase(TBool, fun x -> [x])
   | False _ -> TBase(TBool, fun x -> [make_not x])
   | RandBool _ -> assert false
+  | RandInt _ -> assert false
   | And -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_and x y)])))
   | Or -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_or x y)])))
   | Not -> assert false
@@ -260,9 +275,16 @@ let rec subst x t = function
   | Var y when x = y -> t
   | Var y -> Var y
   | App(t1,t2) -> App(subst x t t1, subst x t t2)
+  | Let(y,t1,t2) when x = y -> Let(y, subst x t t1, t2)
+  | Let(y,t1,t2) -> Let(y, subst x t t1, subst x t t2)
+  | Fun(y,t1) when x = y -> Fun(y,t1)
+  | Fun(y,t1) -> Fun(y, subst x t t1)
 
 let subst_map map t =
   List.fold_right (fun (x,t) t' -> subst x t t') map t
+
+let subst_def x t (f,xs,t1,t2) =
+  f, xs, subst x t t1, subst x t t2
 
 
 let map_defs f defs =
@@ -305,4 +327,48 @@ let rec occur_arg_pred x = function
 
 
 
+
+let rec lift_term xs = function
+    Const c -> [], Const c
+  | Var x -> [], Var x
+  | App(t1,t2) ->
+      let defs1,t1' = lift_term xs t1 in
+      let defs2,t2' = lift_term xs t2 in
+        defs1@@defs2, App(t1',t2')
+  | Let(f,t1,t2) ->
+      let f' = rename_id f in
+      let f'' = make_app (Var f') (List.map (fun x -> Var x) xs) in
+      let defs1,t1' = lift_term xs t1 in
+      let defs2,t2' = lift_term xs (subst f f'' t2) in
+        (f',xs,Const True,t1') :: defs1 @ defs2, t2'
+  | Fun(x,t) ->
+      let f = new_id "f" in
+      let x' = if List.mem x xs then rename_id x else x in
+      let t' = subst x (Var x') t in
+      let xs' = xs@[x'] in
+      let f' = make_app (Var f) (List.map (fun x -> Var x) xs) in
+      let defs,t' = lift_term xs' t' in
+        (f,xs',Const True,t')::defs, f'
+let lift_def (f,xs,t1,t2) =
+  let defs1,t1' = lift_term xs t1 in
+  let defs2,t2' = lift_term xs t2 in
+    (f, xs, t1', t2')::defs1@defs2
+let lift (_,defs,main) =
+  let defs = rev_flatten_map lift_def defs in
+    ([],defs,main)
+
+
+let rec get_env typ xs =
+  match typ,xs with
+      TFun typ, x::xs ->
+        let typ1,typ2 = typ (Var x) in
+          (x,typ1) :: get_env typ2 xs
+    | _ -> []
+
+    
+
+let rec pop_main (env,defs,main) =
+  let compare (f,_,_,_) (g,_,_,_) = compare (g = main) (f = main) in
+  let defs = List.sort compare defs in
+    env, defs, main
 

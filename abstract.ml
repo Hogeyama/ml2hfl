@@ -329,16 +329,24 @@ let abst env cond pbs p =
 
 
 
-let assume env cond pbs t =
-  let _,ff = weakest env cond pbs t in
-  let f = new_id "f" in
-  let x = new_id "b" in
-  let xs = get_fv t in
-  let def1 = f, x::xs, Var x, loop_term in
-  let def2 = f, x::xs, make_not (Var x), t in
-    [def1;def2], App(List.fold_left (fun t x -> App(t,Var x)) (Var f) xs, ff)
+let assume env cond pbs t1 t2 =
+  let _,ff = weakest env cond pbs t1 in
+    make_temp_if ff loop_term t2
 
-    
+
+(*
+let rec congruent env cond typ1 typ2 =
+  match typ1,typ2 with
+      TBase(b1,ps1), TBase(b2,ps2) ->
+        assert (b1=b2);
+        let x = new_id "x" in
+          List.for_all2 (equiv env cond) (ps1 (Var x)) (ps2 (Var x))
+    | TFun typ1, TFun typ2 ->
+        let x = new_id "x" in
+        let typ11,typ12 = typ1 (Var x) in
+        let typ21,typ22 = typ2 (Var x) in
+          congruent env cond typ11 typ21 && congruent env cond typ12 typ22
+*)
 
 
 let abst_arg x typ =
@@ -347,62 +355,81 @@ let abst_arg x typ =
         TBase(_,ps) -> ps (Var x)
       | _ -> []
   in
-    Util.mapi (fun i p -> p, App(Const (Proj i), Var x)) ps
+  let n = List.length ps in
+    Util.mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
 
-let rec coerce env cond pts typ1 typ2 =
+let rec coerce env cond pts typ1 typ2 t =
   match typ1,typ2 with
-      TBase(_,ps1),TBase(_,ps2) ->
+      TBase(TBottom,_), _ -> t
+    | TBase(_,ps1),TBase(_,ps2) ->
         let x = new_id "x" in
         let env' = (x,typ1)::env in
         let pts' = abst_arg x typ1 @@ pts in
         let ts = List.map (abst env' cond pts') (ps2 (Var x)) in
-        let t = List.fold_left (fun t1 t2 -> App(t1,t2)) (Const (Tuple (List.length ts))) ts in
-          make_fun [x] t
+          Let(x, t, make_app (Const (Tuple (List.length ts))) ts)
     | TFun typ1, TFun typ2 ->
-        let f = new_id "f" in
         let x = new_id "x" in
         let typ11,typ12 = typ1 (Var x) in
         let typ21,typ22 = typ2 (Var x) in
         let env' = (x,typ11)::env in
-        let defs1,f1 = coerce env' cond pts typ12 typ22 in
-        let defs2,f2 = coerce env' cond pts typ21 typ11 in
-        let defs,f' = make_fun [f;x] (App(Var f1, App(Var f, App(Var f2, Var x)))) in
-          defs@@defs1@@defs2, f'
-    | TBase(TBottom,_), _ ->
-        let x = new_id "x" in
-          make_fun [x] (Var x)
+        let t1 = coerce env' cond pts typ21 typ11 (Var x) in
+        let t2 = coerce env' cond pts typ12 typ22 (App(t, t1)) in
+          Fun(x, t2)
     | _ -> assert false
+(*
+let coerce env cond pts typ1 typ2 t =
+  if congruent env cond typ1 typ2
+  then 
+*)
 
+
+let rec is_base_term env = function
+    Const (Unit | True | False | Int _) -> true
+  | Const _ -> false
+  | Var x ->
+      begin
+        match List.assoc x env with
+            TBase _ -> true
+          | _ -> false
+      end
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|Eq|Add|Sub|Mul),t1),t2) ->
+      assert (is_base_term env t1);
+      assert (is_base_term env t2);
+      true
+  | App(Const Not,t) -> assert (is_base_term env t); true
+  | App _ -> false
+  | Let _ -> false
 
 let rec abstract_term env cond pbs t typ =
   match t with
-      Const c ->
-        let defs,f = coerce env cond pbs (get_const_typ c) typ in
-          defs, App(Var f, t)
-    | Var x ->
-        let defs,f = coerce env cond pbs (List.assoc x env) typ in
-          defs, App(Var f, t)
+      t when is_base_term env t ->
+        let typ' =
+          match get_typ env t with
+              TBase(b,_) -> TBase(b, fun x -> [make_eq x t])
+            | _ -> assert false
+        in
+          coerce env cond pbs typ' typ (App(Const (Tuple 1), Const True))
+    | Const c -> coerce env cond pbs (get_const_typ c) typ t
+    | Var x -> coerce env cond pbs (List.assoc x env) typ t
     | App(t1, t2) ->
         let typ' = get_typ env t1 in
-          Format.printf "%a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ';
         let typ1,typ2 =
           match typ' with
               TFun typ -> typ t2
             | TBase(TBottom,_) -> TBase(TBottom,fun _ -> []), TBase(TBottom,fun _ -> [])
             | _ -> assert false
         in
-        let defs1,t1' = abstract_term env cond pbs t1 typ' in
-        let defs2,t2' = abstract_term env cond pbs t2 typ1 in
+        let t1' = abstract_term env cond pbs t1 typ' in
+        let t2' = abstract_term env cond pbs t2 typ1 in
           Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.print_typ typ2 CEGAR_print.print_typ typ;
-        let defs,f = coerce env cond pbs typ2 typ in
-          defs@@defs1@@defs2, App(Var f, App(t1',t2'))
+          coerce env cond pbs typ2 typ (App(t1',t2'))
     | Let(x,t1,t2) ->
         let typ' = get_typ env t1 in
-        let defs1,t1' = abstract_term env cond pbs t1 typ' in
+        let t1' = abstract_term env cond pbs t1 typ' in
         let env' = (x,typ')::env in
         let pbs' = abst_arg x typ' in
-        let defs2,t2' = abstract_term env' cond pbs' t2 typ in
-          defs1@@defs2, Let(x,t1',t2')
+        let t2' = abstract_term env' cond pbs' t2 typ in
+          Let(x,t1',t2')
 
 
 let abstract_def env (f,xs,t1,t2) =
@@ -420,9 +447,9 @@ let abstract_def env (f,xs,t1,t2) =
   in
   let typ,env' = aux (List.assoc f env) xs env in
   let pbs = rev_flatten_map (fun (x,typ) -> abst_arg x typ) env' in
-  let defs1,t1' = assume env' [] pbs t1 in
-  let defs2,t2' = abstract_term env' [t1] pbs t2 typ in
-    (f, xs, t1', t2')::defs1@@defs2
+  let t2' = abstract_term env' [t1] pbs t2 typ in
+  let t = assume env' [] pbs t1 t2' in
+    (f, xs, Const True, t)
 
 
 
@@ -430,20 +457,27 @@ let abstract_def env (f,xs,t1,t2) =
 let rec make_arg_let = function
     Const c -> Const c
   | Var x -> Var x
-  | App(t1,t2) ->
-      let t1' = make_arg_let t1 in
-      let t2' = make_arg_let t2 in
-      let x = new_id "a" in
-        Let(x,t2',App(t1',Var x))
+  | App _ as t ->
+      let t',ts = decomp_app t in
+      let ts' = List.map make_arg_let ts in
+      let xs = List.map (fun _ -> new_id "a") ts in
+      let t'' = List.fold_left (fun t x -> App(t, Var x)) t' xs in
+        List.fold_left2 (fun t' x t -> Let(x, t, t')) t'' xs ts'
   | Let _ -> assert false
-let make_arg_let defs = List.map (apply_body_def make_arg_let) defs
+let rec reduce_let = function
+    Const c -> Const c
+  | Var x -> Var x
+  | App(t1,t2) -> App(reduce_let t1, reduce_let t2)
+  | Let(x,(Var _ | Const _ as t1),t2) -> subst x t1 (reduce_let t2)
+  | Let(x,t1,t2) -> Let(x, reduce_let t1, reduce_let t2)
+let make_arg_let defs = List.map (apply_body_def (fun t -> reduce_let(make_arg_let t))) defs
 
 
 
 let abstract (env,defs,main) =
-  let defs' = make_arg_let defs in
-  let defs'' = rev_flatten_map (abstract_def env) defs' in
-(*
-  let defs = extract_temp_if defs in
-*)
-    env, defs'', main
+  let defs = make_arg_let defs in
+Format.printf "MAKE_ARG_LET\n%a@." CEGAR_print.print_prog ([],defs,main);
+  let _ = Typing.infer (env,defs,main) in
+  let defs = List.map (abstract_def env) defs in
+  let defs = loop_def::defs in
+    [], defs, main

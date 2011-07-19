@@ -7,6 +7,7 @@ exception NoProgress
 exception CannotDiscoverPredicate
 
 let rec cegar prog ces =
+  let _ = Typing.infer prog in
   let n = Id.get_counter () in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog
@@ -15,6 +16,7 @@ let rec cegar prog ces =
   let tmp = get_time() in
   let abst = Abstract.abstract prog in
   let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog_typ abst in
+  let _ = Typing.infer abst in
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
 

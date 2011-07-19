@@ -1,17 +1,18 @@
 
 open CEGAR_syntax
+open CEGAR_type
 open Util
 
+
 let is_head_tuple t =
-  match fst (decomp_app t) with
-      Const (Tuple _) -> true
+  match decomp_app t with
+      Const (Tuple _), _::_ -> true
     | _ -> false
 
 let rec trans_const = function
-    Const (Int _ | Unit | True | False | Tuple 0 as c) -> Const c
+    Const (Int _ | Unit | True | False | If | Tuple 0 | Fail as c) -> Const c
   | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.print_const c; assert false
   | Var x -> Var x
-  | App(App(Const Fail, (Const Unit|Var _)), t2) -> Const Fail
   | App(App(Const (Event s), t1), t2) ->
       let t1' = trans_const t1 in
       let t2' = trans_const t2 in
@@ -31,42 +32,111 @@ let rec trans_const = function
       let n = match t' with Const (Tuple n) -> n | _ -> assert false in
       let ts1,ts2 = take2 ts' n in
         make_app (List.hd ts2) ((make_app t' ts1)::List.tl ts2)
-  | App(App(Const (Proj i), t1), t2) -> App(t2, App(Const (Proj i), t1))
+  | App(App(Const (Proj(n,i)), t1), t2) -> App(t2, App(Const (Proj(n,i)), t1))
   | App(t1,t2) -> App(trans_const t1, trans_const t2)
+  | Let(x,t1,t2) -> Let(x, trans_const t1, trans_const t2)
+  | Fun(x,t) -> Fun(x, trans_const t)
 
-let rec trans_simpl xs c = function
+let rec trans_simpl c = function
     Const x -> c (Const x)
   | Var x -> c (Var x)
   | App(App(App(Const If, t1), t2), t3) ->
-      let x = new_id "x" in
       let k = new_id "k" in
-      let c' y = [], App(Var k, y) in
-      let defs2,t2' = trans_simpl xs c' t2 in
-      let defs3,t3' = trans_simpl xs c' t3 in
-      let c'' y =
-        let defs,t = c (Var x) in
-          (k, [x], Const True, t)::defs, make_temp_if y t2' t3'
-      in
-      let defs1,t1' = trans_simpl xs c'' t1 in
-        defs1@@defs2@@defs3, t1'
+      let x = new_id "b" in
+      let t2' = trans_simpl (fun y -> App(Var k, y)) t2 in
+      let t3' = trans_simpl (fun y -> App(Var k, y)) t3 in
+      let c' y = Let(k, Fun(x, c (Var x)), make_temp_if y t2' t3') in
+        trans_simpl c' t1
   | App(t1, t2) ->
-      let r = new_id "r" in
       let k = new_id "k" in
-      let kk = List.fold_left (fun t x -> App(t, Var x)) (Var k) xs in
-      let c' x = trans_simpl xs (fun y -> [], App(App(x, y), kk)) t2 in
-      let defs1,t1' = c (Var r) in
-      let defs2,t2' = trans_simpl xs c' t1 in
-        (k, xs@[r], Const True, t1')::defs1@@defs2, t2'
-let trans_simpl_def (f,xs,t1,t2) =
-  let defs,t2' = trans_simpl xs (fun x -> [], x) t2 in
-  let t2'' = trans_const t2' in
-    (f,xs,t1,t2'')::defs
+      let r = new_id "r" in
+      let c' y = trans_simpl (fun x -> Let(k, Fun(r, c (Var r)), make_app x [y; Var k])) t1 in
+        trans_simpl c' t2
+  | Let(x,t1,t2) ->
+      let c' t = subst x t (trans_simpl c t2) in
+        trans_simpl c' t1
+  | Fun(x,t) ->
+      let k = new_id "k" in
+        c (Fun(x, Fun(k, trans_simpl (fun x -> App(Var k, x)) t)))
 
+let trans_simpl_def (f,xs,t1,t2) =
+  assert (xs = []);
+  let t2 = trans_simpl (fun x -> x) t2 in
+    Format.printf "TRANS: %a@." CEGAR_print.print_term t2;
+  let t2 = trans_const t2 in
+    (f, [], t1, t2)
+
+
+
+let hd x = assert (List.length x = 1); List.hd x
+
+let is_ttuple typ =
+  match decomp_tapp typ with
+      TBase(TTuple 0, _), _ -> true
+    | _ -> false
+
+let rec extract_tuple_var env x =
+  match List.assoc x env with
+      TBase(TTuple (0|1), _) -> [x]
+    | TApp _ as typ when is_ttuple typ ->
+        let typ,typs = decomp_tapp typ in
+        let n = match typ with TBase(TTuple n, _) -> n | _ -> assert false in
+          Array.to_list (Array.init n (fun i -> x ^ string_of_int i))
+    | _ -> [x]
+let rec extract_tuple_term env = function
+    Const (Tuple 0) -> [Const Unit]
+  | Const c -> [Const c]
+  | Var x -> List.map (fun x -> Var x) (extract_tuple_var env x)
+  | App(Const (Proj(_,i)), t2) when is_head_tuple t2 ->
+      assert false;
+      extract_tuple_term env (List.nth (snd (decomp_app t2)) i)
+  | App(Const (Proj(_,i)), Var x) ->
+      let xs = extract_tuple_var env x in
+        [Var (List.nth xs i)]
+  | App(t1,t2) when is_head_tuple t2 ->
+      let t',ts = decomp_app t2 in
+        [make_app t1 ts]
+  | App(t1,t2) ->
+      [make_app (hd (extract_tuple_term env t1)) (extract_tuple_term env t2)]
+(*
+  | Let(x,t1,t2) ->
+      let t1' = hd (extract_tuple_term env t1) in
+      let t2' = hd (extract_tuple_term env t2) in
+        [Let(x, t1', t2')]
+  | Fun(x,t) ->
+      let xs = extract_tuple_var env x in
+*)
+
+        
+let extract_tuple_def env (f,xs,t1,t2) =
+  let env' = get_env (List.assoc f env) xs @@ env in
+  let xs' = List.flatten (List.map (extract_tuple_var env') xs) in
+  let t1' = hd (extract_tuple_term env t1) in
+  let t2' = hd (extract_tuple_term env' t2) in
+    f, xs', t1', t2'
+let extract_tuple (env,defs,main) =
+  let defs = List.map (extract_tuple_def env) defs in
+  let () = Format.printf "EXTRACTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+    Typing.infer ([],defs,main)
+  
+
+
+let to_funs_def (f,xs,t1,t2) = f, [], t1, List.fold_right (fun x t-> Fun(x,t)) xs t2
+let to_funs defs = List.map to_funs_def defs
 
 
 let trans (env,defs,main) =
-  let defs' = rev_flatten_map trans_simpl_def defs in
-  env, defs', main
+  let _ = Typing.infer (env,defs,main) in
+  let defs = to_funs defs in
+  let _ = Typing.infer (env,defs,main) in
+  let defs = List.map trans_simpl_def defs in
+  let prog = env, defs, main in
+  let () = Format.printf "CPS:\n%a@." CEGAR_print.print_prog_ML prog in
+  let _ = Typing.infer prog in
+  let prog = lift prog in
+  let () = Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog prog in
+  let prog = Typing.infer prog in
+    extract_tuple prog
 
 
 
