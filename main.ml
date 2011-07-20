@@ -98,7 +98,7 @@ let () =
         Wrapper.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
-        main Sys.argv.(1) cin;
+        main !filename cin;
         print_info ();
         Wrapper.close_cvc3 ();
         if !Flag.web then close_log ()
