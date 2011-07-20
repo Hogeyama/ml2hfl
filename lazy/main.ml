@@ -75,30 +75,7 @@ let test1 () =
   loop [] prog init_env rt [rt]
 
 let test2 () =
-  let arg1 = Term.apply (Term.make_var "check") [Term.make_var "n"] in
-  let arg2 = Term.make_var "n" in
-  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "apply") [arg1; arg2] } in
-  let apply = { Fdef.attr = []; Fdef.name = Id.make "apply"; Fdef.args = [Id.make "f"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
-  let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
-  let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
-  let tymain = Type.Fun(Type.Int, Type.Unit) in
-  let tyapply = Type.Fun(Type.Fun(Type.Int, Type.Unit), Type.Fun(Type.Int, Type.Unit)) in
-  let tycheck = Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)) in
-  let prog = { Prog.attr = [];
-               Prog.fdefs = [main; apply; check1; check2];
-               Prog.types = [Id.make "main", tymain; Id.make "apply", tyapply; Id.make "check", tycheck];
-               Prog.main = main.Fdef.name } in
-  Format.printf "%a" Prog.pr prog;
-  let p = Ctree.gen () in
-  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
-  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
-  let rt = Ctree.Node(p, init, ref []) in
-  loop [] prog init_env rt [rt]
-
-let test3 () =
-  let arg1 = Term.apply (Term.make_var "copy") [Term.apply (Term.make_var "copy") [Term.make_var "n"]] in
-  let arg2 = Term.make_var "n" in
-  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [arg1; arg2] } in
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "copy") [Term.apply (Term.make_var "copy") [Term.make_var "n"]]; Term.make_var "n"] } in
   let copy1 = { Fdef.attr = []; Fdef.name = Id.make "copy"; Fdef.args = [Id.make "x"]; Fdef.guard = Term.eq (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.make_int 0 } in
   let copy2 = { Fdef.attr = []; Fdef.name = Id.make "copy"; Fdef.args = [Id.make "x"]; Fdef.guard = Term.neq (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.add (Term.make_int 1) (Term.apply (Term.make_var "copy") [Term.sub (Term.make_var "x") (Term.make_int 1)])} in
   let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
@@ -122,10 +99,27 @@ let test3 () =
   let rt = Ctree.Node(p, init, ref []) in
   loop [] prog init_env rt [rt]
 
+let test3 () =
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "check") [Term.make_var "n"]; Term.make_var "n"] } in
+  let apply = { Fdef.attr = []; Fdef.name = Id.make "apply"; Fdef.args = [Id.make "f"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
+  let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
+  let tymain = Type.Fun(Type.Int, Type.Unit) in
+  let tyapply = Type.Fun(Type.Fun(Type.Int, Type.Unit), Type.Fun(Type.Int, Type.Unit)) in
+  let tycheck = Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; apply; check1; check2];
+               Prog.types = [Id.make "main", tymain; Id.make "apply", tyapply; Id.make "check", tycheck];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  let p = Ctree.gen () in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
+  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
+  let rt = Ctree.Node(p, init, ref []) in
+  loop [] prog init_env rt [rt]
+
 let test4 () =
-  let arg1 = Term.apply (Term.make_var "h") [Term.make_var "n"] in
-  let arg2 = Term.apply (Term.make_var "h") [Term.make_var "n"] in
-  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "checkh") [arg1; arg2] } in
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "checkh") [Term.apply (Term.make_var "h") [Term.make_var "n"]; Term.apply (Term.make_var "h") [Term.make_var "n"]] } in
   let checkh = { Fdef.attr = []; Fdef.name = Id.make "checkh"; Fdef.args = [Id.make "f"; Id.make "g"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "f") [Term.make_unit]; Term.apply (Term.make_var "g") [Term.make_unit]] } in
   let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
   let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
@@ -172,4 +166,71 @@ let test5 () =
   let rt = Ctree.Node(p, init, ref []) in
   loop [] prog init_env rt [rt]
 
-let _ = test5 ()
+let test6 () =
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "h") [Term.make_var "apply"; Term.apply (Term.make_var "check") [Term.make_var "n"]; Term.make_var "n"] } in
+  let h = { Fdef.attr = []; Fdef.name = Id.make "h"; Fdef.args = [Id.make "f"; Id.make "g"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "g"; Term.make_var "x"] } in
+  let apply = { Fdef.attr = []; Fdef.name = Id.make "apply"; Fdef.args = [Id.make "f"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
+  let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
+  let tymain = Type.Fun(Type.Int, Type.Unit) in
+  let tyh = Type.Fun
+    (Type.Fun
+      (Type.Fun(Type.Int, Type.Unit),
+      Type.Fun(Type.Int, Type.Unit)),
+    Type.Fun
+      (Type.Fun(Type.Int, Type.Unit),
+      Type.Fun(Type.Int, Type.Unit))) in
+  let tyapply = Type.Fun(Type.Fun(Type.Int, Type.Unit), Type.Fun(Type.Int, Type.Unit)) in
+  let tycheck = Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; h; apply; check1; check2];
+               Prog.types = [Id.make "main", tymain; Id.make "h", tyh; Id.make "apply", tyapply; Id.make "check", tycheck];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  let p = Ctree.gen () in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
+  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
+  let rt = Ctree.Node(p, init, ref []) in
+  loop [] prog init_env rt [rt]
+
+let test7 () =
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "check") [Term.make_var "n"]]; Term.make_var "n"] } in
+  let apply = { Fdef.attr = []; Fdef.name = Id.make "apply"; Fdef.args = [Id.make "f"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
+  let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
+  let tymain = Type.Fun(Type.Int, Type.Unit) in
+  let tyapply = Type.Fun(Type.Fun(Type.Int, Type.Unit), Type.Fun(Type.Int, Type.Unit)) in
+  let tycheck = Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; apply; check1; check2];
+               Prog.types = [Id.make "main", tymain; Id.make "apply", tyapply; Id.make "check", tycheck];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  let p = Ctree.gen () in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
+  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
+  let rt = Ctree.Node(p, init, ref []) in
+  loop [] prog init_env rt [rt]
+
+let test8 () =
+  let main = { Fdef.attr = []; Fdef.name = Id.make "main"; Fdef.args = [Id.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "apply2") [Term.make_var "check"; Term.make_var "n"]; Term.make_var "n"] } in
+  let apply = { Fdef.attr = []; Fdef.name = Id.make "apply"; Fdef.args = [Id.make "f"; Id.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
+  let apply2 = { Fdef.attr = []; Fdef.name = Id.make "apply2"; Fdef.args = [Id.make "f"; Id.make "x"; Id.make "y"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"; Term.make_var "y"] } in
+  let check1 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Id.make "check"; Fdef.args = [Id.make "x1"; Id.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
+  let tymain = Type.Fun(Type.Int, Type.Unit) in
+  let tyapply = Type.Fun(Type.Fun(Type.Int, Type.Unit), Type.Fun(Type.Int, Type.Unit)) in
+  let tyapply2 = Type.Fun(Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)), Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit))) in
+  let tycheck = Type.Fun(Type.Int, Type.Fun(Type.Int, Type.Unit)) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; apply; apply2; check1; check2];
+               Prog.types = [Id.make "main", tymain; Id.make "apply", tyapply; Id.make "apply2", tyapply2; Id.make "check", tycheck];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  let p = Ctree.gen () in
+  let ret, args = Ctree.ret_args (Var.V(prog.Prog.main)) p (Type.arity (Prog.type_of prog (Var.V(prog.Prog.main)))) in
+  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
+  let rt = Ctree.Node(p, init, ref []) in
+  loop [] prog init_env rt [rt]
+
+let _ = test8 ()

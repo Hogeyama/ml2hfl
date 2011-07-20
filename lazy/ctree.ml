@@ -36,12 +36,13 @@ let expand_tree prog env wl =
 		                let Term.Var(a, f), args = Term.fun_args red in
 				              let ret, fargs = ret_args f uid (Type.arity (Prog.type_of prog f)) in
 				              let tt = Term.Ret([], ret, Term.Call([], Term.Var(a, f), fargs)) in
+                  let faargs = List.combine fargs args in
 				              let faargs1, faargs2 = List.partition
 				                (fun (Term.Var(_, x), _) ->
 				                  match Prog.type_of prog x with
                         Type.Fun(_, _) -> false
                       | _ -> true)
-				                (List.combine fargs args)
+				                faargs
                   in
 (*
                   let pr ppf (t1, t2) = Format.fprintf ppf "%a: %a" Term.pr t1 Term.pr t2 in
