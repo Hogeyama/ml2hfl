@@ -201,7 +201,7 @@ let elim_non_det (env,defs,main) =
 
 
 let model_check prog n =
-  let prog = CPS.trans prog in
+  let prog = CEGAR_CPS.trans prog in
   let () = Format.printf "CPS:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = elim_rand_bool prog in
   let () = Format.printf "ELIM:\n%a@." CEGAR_print.print_prog_typ prog in
