@@ -116,18 +116,18 @@ let model_check_aux ((env,defs,main),spec) =
 
 
 
-let rec elim_non_det = function
+let rec elim_rand_bool = function
     Const RandBool -> assert false
   | Const c -> Const c
   | Var x -> Var x
   | App(App(Const RandBool, (Const Unit|Var _)), t) ->
-      let t' = elim_non_det t in
+      let t' = elim_rand_bool t in
         App(App(Const Branch, App(t', Const True)), App(t', Const False))
-  | App(t1,t2) -> App(elim_non_det t1, elim_non_det t2)
+  | App(t1,t2) -> App(elim_rand_bool t1, elim_rand_bool t2)
   
-let elim_non_det (env,defs,main) =
+let elim_rand_bool (env,defs,main) =
   let aux (f,xs,t1,t2) =
-    f, xs, elim_non_det t1, elim_non_det t2
+    f, xs, elim_rand_bool t1, elim_rand_bool t2
   in
     env, List.map aux defs, main
 
@@ -183,13 +183,30 @@ let move_main (env,defs,main) =
     env, aux defs, main
 
 
+let elim_non_det (env,defs,main) =
+  let check f (g,_,_,_) = f = g in
+  let mem f defs = List.exists (check f) defs in
+  let rec aux = function
+      [] -> []
+    | (f,xs,t1,t2)::defs when mem f defs ->
+        let f' = rename_id f in
+        let defs1,defs2 = List.partition (check f) defs in
+        let defs1' = List.map (fun (f,xs,t1,t2) -> rename_id f,xs,t1,t2) defs1 in
+        let ts = List.map (fun x -> Var x) xs in
+        let t = List.fold_left (fun t (f,_,_,_) -> make_br (make_app (Var f) ts) t) (make_app (Var f') ts) defs1' in
+          (f,xs,Const True,t)::(f',xs,t1,t2)::defs1' @ aux defs2
+    | def::defs -> def :: aux defs
+  in
+    Typing.infer ([], aux defs, main)
+
 
 let model_check prog n =
   let prog = CPS.trans prog in
   let () = Format.printf "CPS:\n%a@." CEGAR_print.print_prog_typ prog in
-  let prog = elim_non_det prog in
+  let prog = elim_rand_bool prog in
   let () = Format.printf "ELIM:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = eta_expand prog in
+  let prog = elim_non_det prog in
   let prog = pop_main prog in
   let prog = capitalize prog in
   let spec = make_spec n in

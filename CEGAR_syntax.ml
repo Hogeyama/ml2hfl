@@ -71,7 +71,8 @@ let make_app t ts = List.fold_left (fun t1 t2 -> App(t1, t2)) t ts
 let make_fun xs t =
   let f = new_id "f" in
     [f, xs, Const True, t], f
-let make_temp_if t1 t2 t3 = make_app (Const If) [t1;t2;t3]
+let make_if t1 t2 t3 = make_app (Const If) [t1;t2;t3]
+let make_br t1 t2 = make_app (Const Branch) [t1;t2]
 let make_and t1 t2 = make_app (Const And) [t1; t2]
 let make_or t1 t2 = make_app (Const Or) [t1; t2]
 let make_not t = App(Const Not, t)
@@ -209,7 +210,7 @@ let trans_prog t =
 (*
   let t' = make_arg_let t in (* for eliminating side-effects from arguments *)
 *)
-  let defs,_ = Syntax.lift t in
+  let defs,t = Syntax.lift t in
   let main,_ = Util.last defs in
   let defs' = Util.rev_map_flatten trans_def defs in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,t2) -> (f,typ), (f,xs,t1,t2)) defs') in

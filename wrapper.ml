@@ -140,7 +140,8 @@ let set_datatype_cvc3 ?(cout = !cvc3out) t = ()(*
 
 let string_of_typ env x =
   match List.assoc x env with
-      TBase(TInt,_) -> "INT"
+      TBase(TUnit,_) -> "INT"
+    | TBase(TInt,_) -> "INT"
     | TBase(TBool,_) -> "BOOLEAN"
     | _ -> assert false
 

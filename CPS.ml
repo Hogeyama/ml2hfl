@@ -9,8 +9,18 @@ let is_head_tuple t =
       Const (Tuple _), _::_ -> true
     | _ -> false
 
+let and_var = "and_cps"
+let or_var = "or_cps"
+let not_var = "not_cps"
+let and_def = and_var, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Var "y")) (App(Var "k", Const False)))
+let or_def = or_var, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const True)) (App(Var "k", Var "y")))
+let not_def = not_var, ["x"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
+
 let rec trans_const = function
     Const (Int _ | Unit | True | False | If | Tuple 0 | Fail as c) -> Const c
+  | Const And -> Var and_var
+  | Const Or -> Var or_var
+  | Const Not -> Var not_var
   | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.print_const c; assert false
   | Var x -> Var x
   | App(App(Const (Event s), t1), t2) ->
@@ -20,12 +30,6 @@ let rec trans_const = function
   | App(App(Const RandBool, (Const Unit|Var _)), t2) ->
       let t2' = trans_const t2 in
         make_app (Const Branch) [App(t2', Const True); App(t2', Const False)]
-  | App(App(App(Const (And|Or|Lt|Gt|Leq|Geq|Eq|Add|Sub|Mul as c), t1), t2), t3) ->
-      let t1' = trans_const t1 in
-      let t2' = trans_const t2 in
-      let t3' = trans_const t3 in
-        App(t3', App(App(Const c, t1'), t2'))
-  | App(App(Const Not, t1), t2) -> App(t2, make_not t1)
   | App _ as t when is_head_tuple t ->
       let t',ts = decomp_app t in
       let ts' = List.map trans_const ts in
@@ -45,7 +49,7 @@ let rec trans_simpl c = function
       let x = new_id "b" in
       let t2' = trans_simpl (fun y -> App(Var k, y)) t2 in
       let t3' = trans_simpl (fun y -> App(Var k, y)) t3 in
-      let c' y = Let(k, Fun(x, c (Var x)), make_temp_if y t2' t3') in
+      let c' y = Let(k, Fun(x, c (Var x)), make_if y t2' t3') in
         trans_simpl c' t1
   | App(t1, t2) ->
       let k = new_id "k" in
@@ -130,6 +134,7 @@ let trans (env,defs,main) =
   let defs = to_funs defs in
   let _ = Typing.infer (env,defs,main) in
   let defs = List.map trans_simpl_def defs in
+  let defs = and_def::or_def::not_def::defs in
   let prog = env, defs, main in
   let () = Format.printf "CPS:\n%a@." CEGAR_print.print_prog_ML prog in
   let _ = Typing.infer prog in

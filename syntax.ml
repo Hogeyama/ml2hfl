@@ -2156,11 +2156,8 @@ let set_target t =
           let args = List.map aux xs in
           let main = app2app {desc=Var f;typ=Id.typ f} args in
           let main' =
-            match get_base_typ (Id.typ f) with
-                TUnit -> main.desc
-              | _ ->
-                  let u = Id.new_var "u" main.typ in
-                    Let(Flag.Nonrecursive, u, [], main, {desc=Unit;typ=TUnit})
+            let u = Id.new_var "u" main.typ in
+              Let(Flag.Nonrecursive, u, [], main, {desc=Unit;typ=TUnit})
           in
             replace_main main' TUnit t
 
