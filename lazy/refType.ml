@@ -35,21 +35,21 @@ let rec pr ppf rty =
 
 let rec of_type ty =
 		match ty with
-		  Type.Unit -> Unit
-		| Type.Bool -> Bool
-		| Type.Int -> Int
-		| Type.Fun(_, _) ->
-	     let args, ret = Type.args_ret ty in
+		  SimType.Unit -> Unit
+		| SimType.Bool -> Bool
+		| SimType.Int -> Int
+		| SimType.Fun(_, _) ->
+	     let args, ret = SimType.args_ret ty in
       Fun([Term.make_true, List.map of_type args, Term.make_true, of_type ret])
 
 let of_summaries types sums =
   let rec refine (x, uid) ty =
 		  let merge x ty =
 				  match ty with
-				    Type.Unit -> Unit
-				  | Type.Bool -> Bool
-				  | Type.Int -> Int
-				  | Type.Fun(_, _) ->
+				    SimType.Unit -> Unit
+				  | SimType.Bool -> Bool
+				  | SimType.Int -> Int
+				  | SimType.Fun(_, _) ->
 								  let tys = List.map
 								    (fun uid -> refine (x, uid) ty)
 								    (List.unique
@@ -65,12 +65,12 @@ let of_summaries types sums =
 		  in
     let sums = List.filter (function `Pre((x', uid'), _) | `Post((x', uid'), _) -> x = x' && uid = uid') sums in
 		  match ty with
-		    Type.Unit -> Unit
-		  | Type.Bool -> Bool
-		  | Type.Int -> Int
-		  | Type.Fun(_, _) ->
+		    SimType.Unit -> Unit
+		  | SimType.Bool -> Bool
+		  | SimType.Int -> Int
+		  | SimType.Fun(_, _) ->
         try(*???*)
-		        let args, ret = Type.args_ret ty in
+		        let args, ret = SimType.args_ret ty in
 				      Fun(List.map
 				        (function
               `Pre((_, uid), pre) ->

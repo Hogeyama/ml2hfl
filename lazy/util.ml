@@ -1,5 +1,11 @@
 open ExtList
 
+let rec prefix xs ys =
+  match xs, ys with
+    [], _ -> true
+  | x::xs', y::ys' -> x = y && prefix xs' ys'
+  | _, _ -> false
+
 let rec fixed_point f eq x =
   let x' = f x in
   if eq x x' then x else fixed_point f eq x'

@@ -1,6 +1,6 @@
 open ExtList
 
-type t = { attr: Attr.t; fdefs: Fdef.t list; types: (Id.t * Type.t) list; main: Id.t }
+type t = { attr: Attr.t; fdefs: Fdef.t list; types: (Idnt.t * SimType.t) list; main: Idnt.t }
 
 let pr ppf prog =
   Format.fprintf ppf "@[<v>%a@]@." (Util.pr_list Fdef.pr "@ ") prog.fdefs
@@ -16,8 +16,8 @@ let rec type_of prog x =
       let rec f ty i =
         let _ = assert (i >= 0) in
         match ty, i with
-          Type.Fun(ty, _), 0 -> ty
-        | Type.Fun(_, ty), _ -> f ty (i - 1)
+          SimType.Fun(ty, _), 0 -> ty
+        | SimType.Fun(_, ty), _ -> f ty (i - 1)
         | _, _ -> assert false
       in
       f (type_of prog x) arg

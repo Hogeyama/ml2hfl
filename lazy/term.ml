@@ -21,7 +21,7 @@ let rec pr ppf t =
   match t with
     Var(_, x) ->
       Format.fprintf ppf "%a" Var.pr x
-      (*Format.fprintf ppf "%a%d" Id.pr id (try Attr.arity a with Not_found -> 0)*)
+      (*Format.fprintf ppf "%a%d" Idnt.pr id (try Attr.arity a with Not_found -> 0)*)
   | Const(_, c) ->
       Format.fprintf ppf "%a" Const.pr c
   | App(_, _, _) ->
@@ -74,13 +74,13 @@ let string_of t =
   Format.fprintf Format.str_formatter "%a" pr2 t;
   Format.flush_str_formatter ()
 
-let make_var id = Var([], Var.V(Id.make id))
+let make_var id = Var([], Var.V(Idnt.make id))
 let make_var2 x = Var([], x)
 let make_int n = Const([], Const.Int(n))
 let make_unit = Const([], Const.Unit)
 let make_true = Const([], Const.True)
 let make_false = Const([], Const.False)
-let make_event id = Const([], Const.Event(Id.make id))
+let make_event id = Const([], Const.Event(Idnt.make id))
 
 let rec apply t ts =
   match ts with
@@ -182,7 +182,7 @@ let rec redex_of env t =
           with Not_found ->
 		          let ar =
               try
-                Type.arity (env f)
+                SimType.arity (env f)
               with Not_found ->
                 (Format.printf "%a@." Var.pr f; assert false)
             in

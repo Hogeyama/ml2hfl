@@ -1,12 +1,12 @@
 open ExtList
 open ExtString
 
-type t = V of Id.t | T of t * int * int
+type t = V of Idnt.t | T of t * int * int
 
 let rec pr ppf x =
   match x with
     V(id) ->
-      Format.fprintf ppf "%a" Id.pr id
+      Format.fprintf ppf "%a" Idnt.pr id
   | T(x, uid, arg) ->
 	     Format.fprintf ppf "<%a%s%s>" pr x
 	       (":" ^ String.of_int uid)

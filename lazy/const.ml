@@ -1,5 +1,5 @@
 type t =
-  Event of Id.t
+  Event of Idnt.t
 | Unit
 | True
 | False
@@ -41,7 +41,7 @@ let rec is_binary c =
 
 let rec pr ppf c =
   match c with
-    Event(id) -> Format.fprintf ppf "%a" Id.pr id
+    Event(id) -> Format.fprintf ppf "%a" Idnt.pr id
   | Unit -> Format.fprintf ppf "()"
   | True -> Format.fprintf ppf "true"
   | False -> Format.fprintf ppf "false"
