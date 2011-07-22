@@ -22,7 +22,8 @@ INCLUDES = -I $(OCAML_SOURCE)/bytecomp \
 	-I $(CSISAT)/obj \
 	-I $(OCAMLLIB) \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
-	-I $(OCAML_SOURCE)/otherlibs/str
+	-I $(OCAML_SOURCE)/otherlibs/str \
+	-I ./lazy
 OCAMLFLAGS = -w p -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib
 OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)'
 
@@ -50,8 +51,12 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
-	flag.cmo util.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
+	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
         CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
+ lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
+ lazy/util.cmo \
+ lazy/attr.cmo lazy/idnt.cmo lazy/simType.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/term.cmo \
+ predInterface.cmo \
 	type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo abstract.cmo check.cmo feasibility.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)

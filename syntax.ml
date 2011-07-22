@@ -1,6 +1,6 @@
 
 open Format
-open Util
+open Utilities
 open Type
 
 type label = Read | Write | Close

@@ -1,5 +1,5 @@
 
-open Util
+open Utilities
 open CEGAR_type
 open CEGAR_const
 
@@ -211,8 +211,8 @@ let trans_prog t =
   let t' = make_arg_let t in (* for eliminating side-effects from arguments *)
 *)
   let defs,t = Syntax.lift t in
-  let main,_ = Util.last defs in
-  let defs' = Util.rev_map_flatten trans_def defs in
+  let main,_ = last defs in
+  let defs' = rev_map_flatten trans_def defs in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,t2) -> (f,typ), (f,xs,t1,t2)) defs') in
     env, defs'', trans_var main
 

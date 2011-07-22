@@ -1,5 +1,5 @@
 
-open Util
+open Utilities
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_const
