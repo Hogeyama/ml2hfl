@@ -1,7 +1,7 @@
 
 open CEGAR_syntax
 open CEGAR_type
-open Util
+open Utilities
 
 
 let is_head_tuple t =

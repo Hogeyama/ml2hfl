@@ -1,5 +1,5 @@
 
-open Util
+open Utilities
 open Syntax
 
 let new_var b x =

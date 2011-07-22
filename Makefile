@@ -18,11 +18,13 @@ INCLUDES = -I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/parsing \
 	-I $(OCAML_SOURCE)/typing \
 	-I $(OCAML_SOURCE)/utils \
+ -I /usr/lib \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
 	-I $(OCAMLLIB) \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
 	-I $(OCAML_SOURCE)/otherlibs/str \
+	-I $(OCAML_SOURCE)/otherlibs/bigarray \
 	-I ./lazy
 OCAMLFLAGS = -w p -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib
 OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)'
@@ -56,11 +58,12 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
  lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
  lazy/util.cmo \
  lazy/attr.cmo lazy/idnt.cmo lazy/simType.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/term.cmo \
+ lazy/apronInterface.ml lazy/csisatInterface.ml lazy/fdef.ml lazy/prog.ml lazy/ctree.ml lazy/trace.ml lazy/refType.ml \
  predInterface.cmo \
 	type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo abstract.cmo check.cmo feasibility.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 

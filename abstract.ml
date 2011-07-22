@@ -1,5 +1,5 @@
 
-open Util
+open Utilities
 open Syntax
 open Type
 
@@ -196,13 +196,13 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
   let ds =
     let rec fixp xs =
       let xs' =
-        Util.uniq compare
+        uniq compare
           (xs @
              (List.flatten
                 (List.map
                    (fun p ->
                       let fv = get_fv p in
-                        if Util.inter fv xs = []
+                        if inter fv xs = []
                         then []
                         else fv)
                    ts)))
@@ -241,7 +241,7 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
                    get_fv p)
                 pbs)
          in
-           if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten get_fv cond) fvs = [] then
+           if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
              false
            else
              check env cond pbs p)
@@ -257,24 +257,24 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
                    get_fv p)
                 pbs)
          in
-           if Util.inter fvp fvs = [] && Util.inter (Util.rev_map_flatten get_fv cond) fvs = [] then
+           if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
              false
            else
              check env cond pbs (make_not p))
       pbss
     in
-    let xs = Util.uniq compare (xs' @ xs) in
-    let nxs = Util.uniq compare (nxs' @ nxs) in
-    let ys = Util.uniq compare (ys' @ ys) in
+    let xs = uniq compare (xs' @ xs) in
+    let nxs = uniq compare (nxs' @ nxs) in
+    let ys = uniq compare (ys' @ ys) in
     let ws = 
-      Util.uniq compare
+      uniq compare
         (List.flatten
            (List.map
               (fun y1 ->
                  List.map
                    (fun y2 ->
                       List.sort compare
-                        (Util.uniq compare (y1 @ y2)))
+                        (uniq compare (y1 @ y2)))
                    ys)
               ys))
     in
@@ -294,19 +294,19 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
     in
     let ws =
       if false then
-        Util.diff ws ys
+        diff ws ys
       else
-        List.filter (fun w -> not (List.exists (fun x -> Util.diff w x = []) ys)) ws
+        List.filter (fun w -> not (List.exists (fun x -> diff w x = []) ys)) ws
     in
     let ws = List.filter
-      (fun w -> not (List.exists (fun x -> Util.diff x w = []) xs) &&
-         not (List.exists (fun x -> Util.diff x w = []) nxs)) ws in
+      (fun w -> not (List.exists (fun x -> diff x w = []) xs) &&
+         not (List.exists (fun x -> diff x w = []) nxs)) ws in
     let ws =
       let rec aux xs =
         match xs with
             [] -> []
           | x::xs' ->
-              if List.exists (fun y -> Util.diff y x = []) xs' then aux xs' else x::(aux xs')
+              if List.exists (fun y -> diff y x = []) xs' then aux xs' else x::(aux xs')
       in
         aux ws
     in
@@ -356,7 +356,7 @@ let abst_arg x typ =
       | _ -> []
   in
   let n = List.length ps in
-    Util.mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
+    mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
 
 let rec coerce env cond pts typ1 typ2 t =
   match typ1,typ2 with

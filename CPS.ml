@@ -1,7 +1,7 @@
 
 open Syntax
 open Type
-open Util
+open Utilities
 
 let funs = ref []
 
