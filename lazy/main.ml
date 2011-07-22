@@ -12,12 +12,12 @@ let infer cexs prog =
   let rt = Ctree.Node((uid, []), init, ref []) in
 
   let strategy =
-    match 2 with
+    match 0 with
       0 -> Ctree.bf_strategy rt
     | 1 -> Ctree.df_strategy rt
     | 2 -> Ctree.cex_strategy cexs rt
   in
-  let eps = Ctree.auto prog rt strategy in
+  let eps = Ctree.manual prog rt strategy in
 		let eptrs = List.map Trace.of_error_path eps in
 (*
 		let _ = Format.printf "error path trees:@.  @[<v>%a@]@." (Util.pr_list pr_tree "@,") eptrs in
@@ -35,10 +35,8 @@ let infer cexs prog =
 						Format.printf "function summaries:@.  @[<v>%a@]@." (Util.pr_list pr "@ ") rtys)
     sumss
 
-let test1 () =
-  let arg1 = Term.apply (Term.make_var "sum") [Term.make_var "n"] in
-  let arg2 = Term.make_var "n" in
-  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [arg1; arg2] } in
+let test_sum () =
+  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "sum") [Term.make_var "n"]; Term.make_var "n"] } in
   let sum1 = { Fdef.attr = []; Fdef.name = Idnt.make "sum"; Fdef.args = [Idnt.make "x"]; Fdef.guard = Term.leq (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.make_int 0 } in
   let sum2 = { Fdef.attr = []; Fdef.name = Idnt.make "sum"; Fdef.args = [Idnt.make "x"]; Fdef.guard = Term.gt (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.add (Term.make_var "x") (Term.apply (Term.make_var "sum") [Term.sub (Term.make_var "x") (Term.make_int 1)])} in
   let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.geq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
@@ -49,6 +47,22 @@ let test1 () =
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; sum1; sum2; check1; check2];
                Prog.types = [Idnt.make "main", tymain; Idnt.make "sum", tysum; Idnt.make "check", tycheck];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  infer [] prog
+
+let test_sum_assert () =
+  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "assert") [Term.geq (Term.apply (Term.make_var "sum") [Term.make_var "n"]) (Term.make_var "n")] } in
+  let sum1 = { Fdef.attr = []; Fdef.name = Idnt.make "sum"; Fdef.args = [Idnt.make "x"]; Fdef.guard = Term.leq (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.make_int 0 } in
+  let sum2 = { Fdef.attr = []; Fdef.name = Idnt.make "sum"; Fdef.args = [Idnt.make "x"]; Fdef.guard = Term.gt (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.add (Term.make_var "x") (Term.apply (Term.make_var "sum") [Term.sub (Term.make_var "x") (Term.make_int 1)])} in
+  let assert1 = { Fdef.attr = []; Fdef.name = Idnt.make "assert"; Fdef.args = [Idnt.make "b"]; guard = Term.eq (Term.make_var "b") (Term.make_true); Fdef.body = Term.make_unit} in
+  let assert2 = { Fdef.attr = []; Fdef.name = Idnt.make "assert"; Fdef.args = [Idnt.make "b"]; guard = Term.eq (Term.make_var "b") (Term.make_false); Fdef.body = Term.make_event "fail"} in
+  let tymain = SimType.Fun(SimType.Int, SimType.Unit) in
+  let tysum = SimType.Fun(SimType.Int, SimType.Int) in
+  let tyassert = SimType.Fun(SimType.Bool, SimType.Unit) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; sum1; sum2; assert1; assert2];
+               Prog.types = [Idnt.make "main", tymain; Idnt.make "sum", tysum; Idnt.make "assert", tyassert];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   infer [] prog
@@ -180,4 +194,4 @@ let test8 () =
   Format.printf "%a" Prog.pr prog;
   infer [[0; 0; 0; 1]] prog
 
-let _ = test8 ()
+let _ = test_sum_assert ()

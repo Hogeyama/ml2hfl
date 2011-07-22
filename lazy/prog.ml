@@ -6,7 +6,12 @@ let pr ppf prog =
   Format.fprintf ppf "@[<v>%a@]@." (Util.pr_list Fdef.pr "@ ") prog.fdefs
 
 let fdefs_of prog id =
-  List.find_all (fun fdef -> fdef.Fdef.name = id) prog.fdefs
+  let res = List.find_all (fun fdef -> fdef.Fdef.name = id) prog.fdefs in
+  if res = [] then begin
+    Format.printf "function \"%a\" not defined@." Idnt.pr id;
+    assert false
+  end else
+    res
 
 let rec type_of prog x =
   match x with

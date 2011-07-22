@@ -109,7 +109,15 @@ let expand prog env (Node((uid, p), t, cs)) =
 		        let Term.Var(a, f), args = Term.fun_args red in
 				      let ret, fargs = ret_args f uid (SimType.arity (Prog.type_of prog f)) in
 				      let tt = Term.Ret([], ret, Term.Call([], Term.Var(a, f), fargs)) in
-          let faargs = List.combine fargs args in
+          let faargs =
+            try
+              List.combine fargs args
+            with _ -> begin
+              List.iter2
+                (fun farg arg -> Format.printf "%a = %a@." Term.pr farg Term.pr arg) fargs args;
+              assert false
+            end
+          in
 				      let faargs1, faargs2 = List.partition
 				        (fun (Term.Var(_, x), _) ->
 				          match Prog.type_of prog x with
@@ -138,7 +146,17 @@ let expand prog env (Node((uid, p), t, cs)) =
 														env,
               List.mapi
 																(fun i fd ->
-										        let sub x = List.assoc x (List.combine (List.map (fun arg -> Var.V(arg)) fd.Fdef.args) args) in
+                  let fargs = List.map (fun arg -> Var.V(arg)) fd.Fdef.args in
+								          let faargs =
+								            try
+								              List.combine fargs args
+								            with _ -> begin
+								              List.iter2
+								                (fun farg arg -> Format.printf "%a = %a@." Var.pr farg Term.pr arg) fargs args;
+								              assert false
+								            end
+								          in
+										        let sub x = List.assoc x faargs in
 																		Call((g, uid), Term.subst sub fd.Fdef.guard),
 																		Node((gen (), p @ [i]), ctx (Term.subst sub fd.Fdef.body), ref []))
 										      fdefs
