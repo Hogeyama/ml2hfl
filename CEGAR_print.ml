@@ -135,7 +135,7 @@ and print_prog_ML fm (env,defs,s) =
   Format.fprintf fm "let rec if_term b x y = if b then x else y@.";
   Format.fprintf fm "and br x y = if true then x else y@.";
   List.iter (print_fun_def_ML fm) defs;
-  Format.fprintf fm "Types:\n%a@." print_env env;
+  if env <> [] then Format.fprintf fm "Types:\n%a@." print_env env;
 
 
 

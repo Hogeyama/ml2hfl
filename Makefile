@@ -18,7 +18,7 @@ INCLUDES = -I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/parsing \
 	-I $(OCAML_SOURCE)/typing \
 	-I $(OCAML_SOURCE)/utils \
- -I /usr/lib \
+	-I /usr/local/lib \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
 	-I $(OCAMLLIB) \

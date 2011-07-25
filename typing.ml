@@ -66,6 +66,9 @@ let get_typ_const = function
   | False -> TBool
   | RandBool -> TFun(TUnit,TBool)
   | RandInt -> TFun(TUnit,TInt)
+  | Eq ->
+      let typ = new_tvar() in
+        TFun(typ,TFun(typ,TBool))
   | And -> TFun(TBool,TFun(TBool,TBool))
   | Or -> TFun(TBool,TFun(TBool,TBool))
   | Not -> TFun(TBool,TBool)

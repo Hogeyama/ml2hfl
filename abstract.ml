@@ -331,7 +331,8 @@ let abst env cond pbs p =
 
 let assume env cond pbs t1 t2 =
   let _,ff = weakest env cond pbs t1 in
-    make_if ff loop_term t2
+  let defs,t = make_loop () in
+    defs, make_if ff t t2
 
 
 (*
@@ -356,7 +357,7 @@ let abst_arg x typ =
       | _ -> []
   in
   let n = List.length ps in
-    mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
+    Utilities.mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
 
 let rec coerce env cond pts typ1 typ2 t =
   match typ1,typ2 with
@@ -448,8 +449,8 @@ let abstract_def env (f,xs,t1,t2) =
   let typ,env' = aux (List.assoc f env) xs env in
   let pbs = rev_flatten_map (fun (x,typ) -> abst_arg x typ) env' in
   let t2' = abstract_term env' [t1] pbs t2 typ in
-  let t = assume env' [] pbs t1 t2' in
-    (f, xs, Const True, t)
+  let defs,t = assume env' [] pbs t1 t2' in
+    (f, xs, Const True, t)::defs
 
 
 
@@ -478,6 +479,5 @@ let abstract (env,defs,main) =
   let defs = make_arg_let defs in
 Format.printf "MAKE_ARG_LET\n%a@." CEGAR_print.print_prog ([],defs,main);
   let _ = Typing.infer (env,defs,main) in
-  let defs = List.map (abstract_def env) defs in
-  let defs = loop_def::defs in
+  let defs = rev_flatten_map (abstract_def env) defs in
     [], defs, main

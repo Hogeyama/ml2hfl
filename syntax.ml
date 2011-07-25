@@ -41,6 +41,7 @@ and term =
   | Match_ of typed_term * (typed_pattern * typed_term option * typed_term) list
   | TryWith of typed_term * (typed_pattern * typed_term option * typed_term) list
 
+
 and type_kind =
     KAbstract
   | KVariant of (string * typ list) list
@@ -497,10 +498,10 @@ let rec app2app t ts =
   match t,ts with
     | t,[]_ -> t
     | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-      assert (Type.same (Id.typ x) t2.typ);
+      assert (Type.can_unify (Id.typ x) t2.typ);
       app2app {desc=App(t1,ts1@[t2]); typ=typ} ts2
     | {desc=t;typ=TFun(x,typ)}, t2::ts ->
-      assert (Type.same (Id.typ x) t2.typ);
+      assert (Type.can_unify (Id.typ x) t2.typ);
       app2app {desc=App({desc=t;typ=TFun(x,typ)},[t2]); typ=typ} ts
     | _ -> assert false
 
@@ -2156,7 +2157,7 @@ let set_target t =
           let args = List.map aux xs in
           let main = app2app {desc=Var f;typ=Id.typ f} args in
           let main' =
-            let u = Id.new_var "u" main.typ in
+            let u = Id.new_var "main" main.typ in
               Let(Flag.Nonrecursive, u, [], main, {desc=Unit;typ=TUnit})
           in
             replace_main main' TUnit t
@@ -2425,7 +2426,7 @@ let rec copy_poly_funs t =
             then Let(flag, f, xs, t1', t2')
             else
               let fs =
-                if List.for_all (fun f -> Type.same (Id.typ f) (Id.typ (List.hd fs))) (List.tl fs)
+                if List.for_all (fun f -> Type.can_unify (Id.typ f) (Id.typ (List.hd fs))) (List.tl fs)
                 then [List.hd fs]
                 else fs
               in

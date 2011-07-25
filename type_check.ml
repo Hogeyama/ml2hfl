@@ -5,12 +5,12 @@ open Type
 let var = Id.make (-1) "" (TUnknown:Syntax.typ)
 
 let check_var x typ =
-  if Type.same (Id.typ x) typ
+  if Type.can_unify (Id.typ x) typ
   then ()
   else (Format.printf "check_var: (%a:%a), %a@." Id.print x Syntax.print_typ (Id.typ x) Syntax.print_typ typ; assert false)
 
 let rec check t typ =
-  if not (Type.same t.typ typ)
+  if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@." (print_term' ML 0 false) t Syntax.print_typ typ; assert false);
   match t with
     {desc=Unit; typ=TUnit} -> ()
@@ -50,7 +50,7 @@ let rec check t typ =
         aux (xs, Id.typ f);
         check t2 typ'
   | {desc=BinOp(Eq,t1,t2); typ=TBool} ->
-      assert (Type.same t1.typ t2.typ);
+      assert (Type.can_unify t1.typ t2.typ);
       check t1 t1.typ;
       check t2 t2.typ;
   | {desc=BinOp((Lt|Gt|Leq|Geq),t1,t2); typ=TBool} ->

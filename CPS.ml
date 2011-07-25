@@ -292,16 +292,6 @@ let rec trans_simpl c t =
         let c'' y = {desc=Let(Flag.Nonrecursive, k, [x], c {desc=Var x;typ=Id.typ x}, {desc=If(y, t2', t3');typ=typ}); typ=typ} in
           funs := k::!funs;
           trans_simpl c'' t1
-    | Branch(t1, t2) ->
-        let typ = t.typ in
-        let x = Id.new_var "x" typ in
-        let k = Id.new_var "k" (TFun(x,TUnit)) in
-        let c' y = {desc=App(make_var k, [y]); typ=t.typ} in
-        let t1' = trans_simpl c' t1 in
-        let t2' = trans_simpl c' t2 in
-        let typ = t1'.typ in
-          funs := k::!funs;
-          {desc=Let(Flag.Nonrecursive, k, [x], c (make_var x), {desc=Branch(t1', t2');typ=typ}); typ=typ}
     | Let(Flag.Nonrecursive, x, [], t1, t2) ->
         let c' t = subst x t (trans_simpl c t2) in
           trans_simpl c' t1
@@ -335,63 +325,6 @@ let rec trans_simpl c t =
           c {desc=Fail;typ=TFun(x,TFun(k,TUnit))}
     | Unknown -> c {desc=Unknown;typ=t.typ}
     | Event s -> c {desc=Event s;typ=t.typ}
-    | Record(b,[]) -> c {desc=Record(b,[]);typ=t.typ}
-    | Record(b,fields) ->
-        let typ = t.typ in
-        let r = Id.new_var "r" typ in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-        let aux t1 s f t2 =
-          match t1 with
-              {desc=Record(b,fields);typ=typ} -> {desc=Record(b, fields @ [s,(f,t2)]);typ=typ}
-            | _ -> assert false
-        in
-        let c1 x = {desc=App(make_var k, [x]); typ=TUnit} in
-        let cc = List.fold_right (fun (s,(f,t)) cc -> fun x -> trans_simpl (fun y -> cc (aux x s f y)) t) fields c1 in
-          funs := k::!funs;
-          {desc=Let(Flag.Nonrecursive, k, [r], c {desc=Var r;typ=Id.typ r}, trans_simpl cc {desc=Record(b,[]);typ=t.typ}); typ=TUnit}
-    | Proj(n,i,s,f,t) ->
-        let c' t1 = c {desc=Proj(n,i,s,f,t1);typ=t.typ} in
-          trans_simpl c' t
-    | Nil -> c {desc=Nil;typ=t.typ}
-    | Cons(t1,t2) ->
-        let c1 t1' t2' = c {desc=Cons(t1', t2');typ=t.typ} in
-        let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
-          trans_simpl c2 t1
-    | Constr(cstr,[]) -> c {desc=Constr(cstr,[]);typ=t.typ}
-    | Constr(cstr,ts) ->
-        let r = Id.new_var "r" t.typ in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-        let aux t1 t2 =
-          match t1 with
-              {desc=Constr(cstr,ts);typ=typ} -> {desc=Constr(cstr, ts @ [t2]);typ=typ}
-            | _ -> assert false
-        in
-        let c1 x = {desc=App({desc=Var k;typ=Id.typ k}, [x]); typ=TUnit} in
-        let cc = List.fold_right (fun t cc -> fun x -> trans_simpl (fun y -> cc (aux x y)) t) ts c1 in
-          funs := k::!funs;
-          {desc=Let(Flag.Nonrecursive, k, [r], c {desc=Var r;typ=Id.typ r}, trans_simpl cc {desc=Constr(cstr,[]);typ=t.typ}); typ=TUnit}
-    | Match(t1,t2,x,y,t3) -> assert false
-        (*
-          let k = Id.new_var "k" in
-          let r = Id.new_var "x" in
-          let t2' = trans_simpl (fun z -> App(Var k, [z])) t2 in
-          let t3' = trans_simpl (fun z -> App(Var k, [z])) t3 in
-          let c' z = Let(Nonrecursive, k, [r], c (Var r), Match(z, t2', x, y, t3')) in
-          funs := k::!funs;
-          trans_simpl c' t1
-        *)
-    | Match_(t,pats) -> assert false
-        (*
-          let k = Id.new_var "k" in
-          let x = Id.new_var "x" in
-          let aux (pat,cond,t) =
-          pat, trans_simpl (fun y -> App(Var k, [y])) t; assert false
-          in
-          let pats' = List.map aux pats in
-          let c' y = Let(Nonrecursive, k, [x], c (Var x), Match_(y, pats')) in
-          funs := k::!funs;
-          trans_simpl c' t
-        *)
     | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 let trans_simpl = trans_simpl (fun x -> x)
 

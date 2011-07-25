@@ -46,7 +46,7 @@ let main filename in_channel =
   in
 
   let () = if !Flag.web then write_log_string input_string in
-  let tdefs, parsed =
+  let t =
     let lb = Lexing.from_string input_string in
     let _ = lb.Lexing.lex_curr_p <-
       {Lexing.pos_fname = Filename.basename filename;
@@ -54,11 +54,11 @@ let main filename in_channel =
        Lexing.pos_cnum = 0;
        Lexing.pos_bol = 0}
     in
-      [], Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
+      Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
-  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) parsed in
-  let () = Type_check.check parsed in
-  let prog = CEGAR_syntax.trans_prog parsed in
+  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
+  let t = Syntax.copy_poly_funs t in
+  let prog = CEGAR_syntax.trans_prog t in
   let t_result, result = CEGAR.cegar prog [] in
     match result with
         None -> print_msg "\nSafe!\n\n"

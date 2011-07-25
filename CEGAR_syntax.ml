@@ -1,7 +1,6 @@
 
 open Utilities
 open CEGAR_type
-open CEGAR_const
 
 let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
 let rename_id s =
@@ -54,9 +53,10 @@ type t =
   | Let of var * t * t (* for abstraction *)
   | Fun of var * t (* for abstraction and CPS-trasformation *)
 
+
 type fun_def = var * var list * t * t
 
-type prog = (var * t CEGAR_type.t ) list * fun_def list * var
+type prog = (var * t CEGAR_type.t) list * fun_def list * var
 
 
 
@@ -84,9 +84,9 @@ let make_eq t1 t2 = make_app (Const Eq) [t1; t2]
 let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
-let loop_var = "loop"
-let loop_def = loop_var, ["u"], Const True, App(Var loop_var, Const Unit)
-let loop_term = App(Var loop_var, Const Unit)
+let make_loop () =
+  let f = new_id "loop" in
+    [f, ["u"], Const True, App(Var f, Const Unit)], App(Var f, Const Unit)
 
 
 
@@ -239,7 +239,7 @@ let rec get_const_typ = function
   | Int n -> TBase(TInt, fun x -> [make_eq x (Const (Int n))])
   | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_add x y)])))
   | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_sub x y)])))
-  | Mul -> assert false
+  | Mul -> TFun(fun _ -> TBase(TInt,nil), TFun(fun _ -> TBase(TInt,nil), TBase(TInt,nil)))
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If _ -> assert false
