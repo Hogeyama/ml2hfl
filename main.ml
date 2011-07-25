@@ -58,7 +58,11 @@ let main filename in_channel =
   in
   let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
   let t = Syntax.copy_poly_funs t in
+  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
   let prog = CEGAR_syntax.trans_prog t in
+  let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
+    !Flag.cegar_loop CEGAR_print.print_prog_typ prog
+    in
   if true then
     PredInterface.verify prog
   else

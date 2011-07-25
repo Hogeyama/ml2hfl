@@ -137,7 +137,7 @@ let rec trans_typ = function
   | Type.TAbsBool -> assert false
   | Type.TInt _ -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false
-  | Type.TVar _  -> assert false
+  | Type.TVar _  -> TBase(TUnit, nil)
   | Type.TFun(x,typ) -> TFun(fun _ -> trans_typ (Id.typ x), trans_typ typ)
   | Type.TList _ -> assert false
   | Type.TConstr _ -> assert false
@@ -210,6 +210,7 @@ let trans_prog t =
 (*
   let t' = make_arg_let t in (* for eliminating side-effects from arguments *)
 *)
+  let t = Syntax.trans_let t in
   let defs,t = Syntax.lift t in
   let main,_ = last defs in
   let defs' = rev_map_flatten trans_def defs in

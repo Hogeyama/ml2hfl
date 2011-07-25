@@ -108,6 +108,7 @@ val init_rand_int : typed_term -> typed_term
 val print_ce : node list -> typed_term -> unit
 val copy_poly_funs : typed_term -> typed_term
 (** CPS と評価順序を合わせる必要あり *)
+val trans_let : typed_term -> typed_term
 
 (** {6 Printing} *)
 

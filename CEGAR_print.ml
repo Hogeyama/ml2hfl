@@ -14,6 +14,7 @@ and print_typ_base fm = function
   | TInt -> Format.fprintf fm "int"
   | TBottom -> Format.fprintf fm "bot"
   | TTuple n -> Format.fprintf fm "tuple"
+  | TEvent -> Format.fprintf fm "event"
 
 and print_typ fm = function
     TBase(b,ps) ->

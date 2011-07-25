@@ -23,10 +23,9 @@ let rec trans_const = function
   | Const Not -> Var not_var
   | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.print_const c; assert false
   | Var x -> Var x
-  | App(App(Const (Event s), t1), t2) ->
-      let t1' = trans_const t1 in
-      let t2' = trans_const t2 in
-        App(Const (Event s), App(t2', t1'))
+  | App(Const (Event s), t) ->
+      let t' = trans_const t in
+        App(Const (Event s), App(t', Const Unit))
   | App _ as t when is_head_tuple t ->
       let t',ts = decomp_app t in
       let ts' = List.map trans_const ts in
