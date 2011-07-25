@@ -55,7 +55,7 @@ let conv_prog (typs, fdefs, main) =
 
 let verify(* ces*) prog =
   let prog = conv_prog prog in
-  Format.printf "@[<v>BEGIN verification:@,  @[%a@]@,END verification@,@]" Prog.pr prog;
+  Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
   let uid = Ctree.gen () in
   let ret, args =
     Ctree.ret_args
@@ -87,4 +87,6 @@ let verify(* ces*) prog =
 						let rtys = RefType.of_summaries prog.Prog.types sums in
 						let pr ppf ((f, uid), rty) = Format.fprintf ppf "<%a:%d>: %a" Idnt.pr f uid RefType.pr rty in
 						Format.printf "function summaries:@.  @[<v>%a@]@." (Util.pr_list pr "@ ") rtys)
-    sumss
+    sumss;
+  Format.printf "END verification@,@]"
+

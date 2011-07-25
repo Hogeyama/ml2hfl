@@ -119,8 +119,8 @@ let expand prog env (Node((uid, p), t, cs)) =
             try
               List.combine fargs args
             with _ -> begin
-              List.iter2
-                (fun farg arg -> Format.printf "%a = %a@." Term.pr farg Term.pr arg) fargs args;
+								      Format.printf "formal args: %a@." (Util.pr_list Term.pr ", ") fargs;
+								      Format.printf "actual args: %a@." (Util.pr_list Term.pr ", ") args;
               assert false
             end
           in
@@ -157,8 +157,8 @@ let expand prog env (Node((uid, p), t, cs)) =
 								            try
 								              List.combine fargs args
 								            with _ -> begin
-								              List.iter2
-								                (fun farg arg -> Format.printf "%a = %a@." Var.pr farg Term.pr arg) fargs args;
+								              Format.printf "formal args: %a@." (Util.pr_list Var.pr ", ") fargs;
+								              Format.printf "actual args: %a@." (Util.pr_list Term.pr ", ") args;
 								              assert false
 								            end
 								          in
