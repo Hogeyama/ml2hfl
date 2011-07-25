@@ -211,6 +211,7 @@ let trans_prog t =
   let t' = make_arg_let t in (* for eliminating side-effects from arguments *)
 *)
   let t = Syntax.trans_let t in
+  let () = if true then Format.printf "trans_let :@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
   let defs,t = Syntax.lift t in
   let main,_ = last defs in
   let defs' = rev_map_flatten trans_def defs in

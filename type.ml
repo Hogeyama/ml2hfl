@@ -113,6 +113,7 @@ let rec print print_pred fm typ =
             then Format.fprintf fm "(%a)" aux typs
             else Format.fprintf fm "{%a}" aux typs
       | TConstr(s,_) -> Format.pp_print_string fm s
+      | TEvent -> Format.fprintf fm "event"
 
 and print_preds print_pred fm = function
     [] -> ()

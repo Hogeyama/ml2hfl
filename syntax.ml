@@ -2733,10 +2733,10 @@ let rec trans_let t =
           let x = Id.new_var "x" t1.typ in
           let k = Id.new_var "k" (TFun(x,t2.typ)) in
           let typ = List.fold_right (fun x typ2 -> TFun(x,typ2)) fv (TFun(k,t2.typ)) in
-          let k = Id.new_var "f" typ in
+          let g = Id.new_var "f" typ in
           let t1' = trans_let t1 in
           let t2' = trans_let t2 in
-            Let(Flag.Nonrecursive, f, fv@[k], {desc=App({desc=Var k;typ=Id.typ k}, [t1']);typ=t2.typ}, t2')
+            Let(Flag.Nonrecursive, g, fv@[k], {desc=App({desc=Var k;typ=Id.typ k}, [t1']);typ=t2.typ}, {desc=App({desc=Var g;typ=Id.typ g}, [{desc=Fun(f,t2');typ=TFun(f,t2.typ)}]);typ=t2.typ})
       | Let(Flag.Nonrecursive, f, xs, t1, t2) ->
           (trans_let {desc=Let(Flag.Nonrecursive, f, [], List.fold_right (fun x t -> {desc=Fun(x,t);typ=TFun(x,t.typ)}) xs t1, t2);typ=t.typ}).desc
       | Let(Flag.Recursive, f, xs, t1, t2) ->
