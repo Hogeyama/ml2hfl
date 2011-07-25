@@ -163,6 +163,8 @@ let rec redex_of env t =
 		match t with
     Const(a, Const.Event(id)) when id = "fail" ->
       (fun t -> t), Const(a, Const.Event(id))
+  | Const(a, Const.RandInt) ->
+      (fun t -> t), Const(a, Const.RandInt)
 		| App(_, _, _) ->
 				  let f, args = fun_args t in
       let rec r args1 args =

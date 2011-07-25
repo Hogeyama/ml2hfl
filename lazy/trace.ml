@@ -21,6 +21,8 @@ let of_error_path p =
 				        f x g (xts' @ xts) trs p
 				    | Ctree.Ret(y, t) ->
 				        p, Cnode(false, x, Guard(g)::Sub((y, t)::xts)::trs)
+				    | Ctree.Nop ->
+				        f x g xts trs p
 				    | Ctree.Error ->
             let _ = assert (p = []) in
             p, Cnode(true, x, Guard(g)::Sub(xts)::trs))

@@ -59,11 +59,15 @@ let main filename in_channel =
   let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
   let t = Syntax.copy_poly_funs t in
   let prog = CEGAR_syntax.trans_prog t in
-  let t_result, result = CEGAR.cegar prog [] in
-    match result with
-        None -> print_msg "\nSafe!\n\n"
-      | Some (ce,p) ->
-            print_msg "Unsafe!\n"
+  if true then
+    PredInterface.verify prog
+  else
+		  let t_result, result = CEGAR.cegar prog [] in
+		    match result with
+		        None -> print_msg "\nSafe!\n\n"
+		      | Some (ce,p) ->
+		            print_msg "Unsafe!\n"
+
 (*
           let sol = Wrapper.get_solution p t_result in
             print_msg "Unsafe!\n";

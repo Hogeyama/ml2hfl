@@ -14,6 +14,7 @@ type t =
 | Eq
 | Neq
 | Int of int
+| RandInt
 | Add
 | Sub
 | Mul
@@ -25,14 +26,14 @@ let rec is_int_rel c =
   | Unit
   | True | False | And | Or | Imply | Not -> false
   | Lt | Gt | Leq | Geq | Eq | Neq -> true
-  | Int(_) | Add | Sub | Mul | Minus -> false
+  | Int(_) | RandInt | Add | Sub | Mul | Minus -> false
 
 let rec is_binary c =
   match c with
     Event(_)
   | Unit
   | True | False
-  | Int(_) -> false
+  | Int(_) | RandInt -> false
   | Not
   | Minus -> false
   | And | Or | Imply
@@ -56,6 +57,7 @@ let rec pr ppf c =
   | Eq -> Format.fprintf ppf "(=)"
   | Neq -> Format.fprintf ppf "(<>)"
   | Int(n) -> Format.fprintf ppf "%d" n
+  | RandInt -> Format.fprintf ppf "rand_int()"
   | Add -> Format.fprintf ppf "(+)"
   | Sub -> Format.fprintf ppf "(-)"
   | Mul -> Format.fprintf ppf "(*)"
@@ -76,7 +78,8 @@ let rec pr_bin ppf c =
   | Unit
   | True
   | False
-  | Int(_) -> assert false
+  | Int(_)
+  | RandInt -> assert false
   | Not
   | Minus -> assert false
   | And -> Format.fprintf ppf "&&"

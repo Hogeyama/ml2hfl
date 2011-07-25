@@ -1,9 +1,11 @@
 open CEGAR_syntax
 open CEGAR_type
+open CEGAR_print
 
 let conv_const c =
   match c with
     Event(x) -> Const.Event(Idnt.make x)
+  | Fail -> Const.Event("fail")
   | Unit -> Const.Unit
   | True -> Const.True
   | False -> Const.False
@@ -16,9 +18,11 @@ let conv_const c =
   | Geq -> Const.Geq
   | Eq -> Const.Eq
   | Int(n) -> Const.Int(n)
+  | RandInt -> Const.RandInt
   | Add -> Const.Add
   | Sub -> Const.Sub
   | Mul -> Const.Mul
+  | _ -> Format.printf "%a@." print_const c; assert false
 
 let rec conv_term t =
   match t with
@@ -39,7 +43,7 @@ let rec conv_typ ty =
   | TBase(TInt, _) -> SimType.Int
   | TBase(TBool, _) -> SimType.Bool
   | TFun(tmp) ->
-      let ty1, ty2 = tmp [] in
+      let ty1, ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
 
 let conv_prog (typs, fdefs, main) =
@@ -48,8 +52,9 @@ let conv_prog (typs, fdefs, main) =
     Prog.types = List.map (fun (x, ty) -> Idnt.make x, conv_typ ty) typs;
     Prog.main = Idnt.make main }
 
-let refine ces prog =
+let verify(* ces*) prog =
   let prog = conv_prog prog in
+  Format.printf "@[<v>BEGIN verification:@,  @[%a@]@,END verification@,@]" Prog.pr prog;
   let uid = Ctree.gen () in
   let ret, args =
     Ctree.ret_args
@@ -61,10 +66,12 @@ let refine ces prog =
   let rt = Ctree.Node((uid, []), init, ref []) in
 
   let strategy =
-    match 2 with
+    match 0 with
       0 -> Ctree.bf_strategy rt
     | 1 -> Ctree.df_strategy rt
+(*
     | 2 -> Ctree.cex_strategy ces rt
+*)
   in
   let eps = Ctree.auto prog rt strategy in
 		let eptrs = List.map Trace.of_error_path eps in

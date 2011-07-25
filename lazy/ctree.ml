@@ -5,6 +5,7 @@ type s =
   Call of (Var.t * int) * Term.t
 | Arg of (Var.t * Term.t) list
 | Ret of Var.t * Term.t
+| Nop
 | Error
 type t = Node of (int * int list) * Term.t * (s * t) list ref
 
@@ -29,6 +30,7 @@ let save_as_dot filename rt wl =
       Call(_, t) -> Term.string_of t
     | Arg(xts) -> Term.string_of (Term.band (eq_xts xts))
     | Ret(x, t) -> Term.string_of (Term.eq (Term.make_var2 x) t)
+    | Nop -> ""
     | Error -> ""
   in
   let rec traverse (s, l) (Node((uid, _), t, cs)) =
@@ -69,6 +71,8 @@ let rec pr_path ppf p =
         Format.fprintf ppf "%a@," Term.pr (Term.band (eq_xts xts))
     | Ret(x, t) -> 
         Format.fprintf ppf "%a@]]@," Term.pr (Term.eq (Term.make_var2 x) t)
+    | Nop ->
+        Format.fprintf ppf "nop"
     | Error ->
         Format.fprintf ppf "error"
   in
@@ -104,6 +108,8 @@ let expand prog env (Node((uid, p), t, cs)) =
 		    match red with
         Term.Const(_, Const.Event(id)) when id = "fail" ->
           env, [Error, Node((gen (), p), Term.Error([]), ref [])]
+      | Term.Const(_, Const.RandInt) ->
+          env, [Nop, Node((gen (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
 		    | Term.App(_, _, _) ->
           let uid = gen () in
 		        let Term.Var(a, f), args = Term.fun_args red in
