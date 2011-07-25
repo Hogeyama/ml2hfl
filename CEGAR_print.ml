@@ -40,8 +40,8 @@ and print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a : %a@." print_var f print_typ typ) env
 
 and print_const fm = function
-    Event s -> Format.fprintf fm "event(%s)" s
-  | Label n -> Format.fprintf fm "label(%d)" n
+    Event s -> Format.fprintf fm "event_%s" s
+  | Label n -> Format.fprintf fm "label_%d" n
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
