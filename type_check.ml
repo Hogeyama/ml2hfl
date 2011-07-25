@@ -64,8 +64,6 @@ let rec check t typ =
       check t2 (TInt[])
   | {desc=Not t; typ=TBool} ->
       check t TBool
-  | {desc=Fail; typ=TFun(x,TBottom)} ->
-      check_var x TUnit
   | {desc=Label(_,t); typ=typ} ->
       check t typ
   | {desc=LabelInt(_,t); typ=typ} ->

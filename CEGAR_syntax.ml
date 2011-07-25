@@ -19,14 +19,12 @@ type var = string
 
 
 type const =
-    Fail
-  | Event of string
-  | Label of int
+    Event of string
+  | Label of int (* for abstraction *)
   | Unit
   | True
   | False
   | RandInt
-  | RandBool
   | And
   | Or
   | Not
@@ -131,12 +129,13 @@ let rec make_arg_let t =
 
 
 
+let nil _ = []
 
 let rec trans_typ = function
-    Type.TUnit -> TBase(TUnit, fun _ -> [])
+    Type.TUnit -> TBase(TUnit, nil)
   | Type.TBool -> TBase(TBool, fun x -> [x])
   | Type.TAbsBool -> assert false
-  | Type.TInt _ -> TBase(TInt, fun _ -> [])
+  | Type.TInt _ -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false
   | Type.TVar _  -> assert false
   | Type.TFun(x,typ) -> TFun(fun _ -> trans_typ (Id.typ x), trans_typ typ)
@@ -145,7 +144,7 @@ let rec trans_typ = function
   | Type.TVariant _ -> assert false
   | Type.TRecord _ -> assert false
   | Type.TUnknown -> assert false
-  | Type.TBottom -> TBase(TBottom, fun _ -> [])
+  | Type.TEvent -> TBase(TEvent,nil)
 
 let trans_var x = Id.to_string x
 
@@ -168,7 +167,8 @@ let rec trans_term xs env t =
     | Syntax.False -> [], Const False
     | Syntax.Unknown -> assert false
     | Syntax.Int n -> [], Const (Int n)
-    | Syntax.NInt _ -> [], App(Const RandInt, Const Unit)
+    | Syntax.NInt _ -> assert false
+    | Syntax.RandInt None -> [], Const RandInt
     | Syntax.Var x ->
         let x' = trans_var x in
           [], Var x'
@@ -196,7 +196,7 @@ let rec trans_term xs env t =
     | Syntax.Not t ->
         let defs,t' = trans_term xs env t in
           defs, App(Const Not, t')
-    | Syntax.Fail -> [], Const Fail
+    | Syntax.Fail -> [], Const (Event "fail")
     | Syntax.Fun _
     | Syntax.Event _ -> assert false
 
@@ -220,13 +220,11 @@ let trans_prog t =
 let nil = fun _ -> []
 
 let rec get_const_typ = function
-    Fail -> TBase(TBottom, nil)
-  | Event _ -> TBase(TUnit, nil)
+    Event _ -> TBase(TUnit, nil)
   | Label _ -> assert false
   | Unit _ -> TBase(TUnit, nil)
   | True _ -> TBase(TBool, fun x -> [x])
   | False _ -> TBase(TBool, fun x -> [make_not x])
-  | RandBool _ -> assert false
   | RandInt _ -> TFun(fun x -> TBase(TUnit,nil), TBase(TInt,nil))
   | And -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_and x y)])))
   | Or -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_or x y)])))

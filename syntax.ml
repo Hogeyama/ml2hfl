@@ -76,9 +76,6 @@ let abst_var = {Id.id=0; Id.name="v"; Id.typ=TInt[]}
 let abst_list_var = {Id.id=0; Id.name="v"; Id.typ=TList(TUnknown,[])}
 
 let unit_term = {desc=Unit; typ=TUnit}
-let fail_term =
-  let x = Id.new_var "u" TUnit in
-    {desc=Fail; typ=TFun(x,TBottom)}
 let true_term = {desc=True;typ=TBool}
 let false_term = {desc=False;typ=TBool}
 let event_term s =
@@ -2151,7 +2148,7 @@ let set_target t =
           let xs = get_args (Id.typ f) in
           let aux x =
             match Id.typ x with
-                TInt _ -> {desc=NInt x; typ=TInt[]}
+                TInt _ -> {desc=RandInt None; typ=TInt[]}
               | typ -> {desc=RandValue(typ, None); typ=typ}
           in
           let args = List.map aux xs in

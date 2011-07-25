@@ -8,7 +8,7 @@ open CEGAR_type
 
 let rec check ce constr defs t k =
   match t with
-    Const Fail -> assert (ce=[]); constr
+    Const (Event "fail") -> assert (ce=[]); constr
   | Const c -> k ce (Const c)
   | Var x -> k ce (Var x)
   | App(t1,t2) ->

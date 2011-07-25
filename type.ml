@@ -14,7 +14,7 @@ type 'a t =
   | TVariant of (string * 'a t list) list
   | TRecord of bool * (string * (Flag.mutable_flag * 'a t)) list
   | TUnknown
-  | TBottom
+  | TEvent
 
 (*
 type base =
@@ -47,8 +47,6 @@ let rec can_unify typ1 typ2 =
           List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
     | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && can_unify typ1 typ2) fields1 fields2
     | TUnknown, TUnknown -> true
-    | TBottom, _ -> true
-    | _, TBottom -> true
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
     | _ -> false
@@ -115,7 +113,6 @@ let rec print print_pred fm typ =
             then Format.fprintf fm "(%a)" aux typs
             else Format.fprintf fm "{%a}" aux typs
       | TConstr(s,_) -> Format.pp_print_string fm s
-      | TBottom -> Format.fprintf fm "_|_"
 
 and print_preds print_pred fm = function
     [] -> ()

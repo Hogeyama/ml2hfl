@@ -325,7 +325,7 @@ let abst env cond pbs p =
   let tt, ff = weakest env cond pbs p in
     if tt = make_not (Const False) || make_not (Const True) = ff
     then Const True
-    else make_if tt (Const True) (make_if ff (Const False) (App(Const RandBool, Const Unit)))
+    else make_if tt (Const True) (make_if ff (Const False) (make_app (Const Branch) [Const True; Const False]))
 
 
 

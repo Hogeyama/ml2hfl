@@ -34,8 +34,7 @@ let rec parse_trace s =
     | _ -> assert false
 
 let print_const fm = function
-    Fail -> Format.fprintf fm "fail"
-  | Event s -> Format.fprintf fm "%s" s
+    Event s -> Format.fprintf fm "event(%s)" s
   | Label n -> Format.fprintf fm "label(%d)" n
   | Unit -> Format.fprintf fm "unit"
   | True -> Format.fprintf fm "0"
@@ -116,22 +115,6 @@ let model_check_aux ((env,defs,main),spec) =
 
 
 
-let rec elim_rand_bool = function
-    Const RandBool -> assert false
-  | Const c -> Const c
-  | Var x -> Var x
-  | App(App(Const RandBool, (Const Unit|Var _)), t) ->
-      let t' = elim_rand_bool t in
-        App(App(Const Branch, App(t', Const True)), App(t', Const False))
-  | App(t1,t2) -> App(elim_rand_bool t1, elim_rand_bool t2)
-  
-let elim_rand_bool (env,defs,main) =
-  let aux (f,xs,t1,t2) =
-    f, xs, elim_rand_bool t1, elim_rand_bool t2
-  in
-    env, List.map aux defs, main
-
-
 let make_line_spec n q =
   let rec aux i spec =
     if i < 0
@@ -203,8 +186,6 @@ let elim_non_det (env,defs,main) =
 let model_check prog n =
   let prog = CEGAR_CPS.trans prog in
   let () = Format.printf "CPS:\n%a@." CEGAR_print.print_prog_typ prog in
-  let prog = elim_rand_bool prog in
-  let () = Format.printf "ELIM:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = eta_expand prog in
   let prog = elim_non_det prog in
   let prog = pop_main prog in

@@ -452,8 +452,10 @@ let rec from_expression x = match x with {exp_desc=exp_desc; exp_loc=_; exp_type
       | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
       | Texp_override _ -> unsupported "expression (override)"
       | Texp_letmodule _ -> unsupported "expression (module)"
-      | Texp_assert e -> If(from_expression e, unit_term, {desc=App(fail_term, [unit_term]);typ=TUnit})
-      | Texp_assertfalse _ ->
+      | Texp_assert e ->
+          let u = Id.new_var "u" TEvent in
+            If(from_expression e, unit_term, {desc=Let(Flag.Nonrecursive, u, [], {desc=Fail;typ=TEvent}, unit_term); typ=TUnit})
+      | Texp_assertfalse _ -> assert false;
         let x = Id.new_var "x" TUnit in
         App({desc=Fail;typ=TFun(x,TUnit)}, [{desc=Unit;typ=TUnit}])
       | Texp_lazy e -> assert false(*

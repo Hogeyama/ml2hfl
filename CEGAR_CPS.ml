@@ -17,7 +17,7 @@ let or_def = or_var, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k
 let not_def = not_var, ["x"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
 
 let rec trans_const = function
-    Const (Int _ | Unit | True | False | If | Tuple 0 | Fail as c) -> Const c
+    Const (Int _ | Unit | True | False | If | Tuple 0 as c) -> Const c
   | Const And -> Var and_var
   | Const Or -> Var or_var
   | Const Not -> Var not_var
@@ -27,9 +27,6 @@ let rec trans_const = function
       let t1' = trans_const t1 in
       let t2' = trans_const t2 in
         App(Const (Event s), App(t2', t1'))
-  | App(App(Const RandBool, (Const Unit|Var _)), t2) ->
-      let t2' = trans_const t2 in
-        make_app (Const Branch) [App(t2', Const True); App(t2', Const False)]
   | App _ as t when is_head_tuple t ->
       let t',ts = decomp_app t in
       let ts' = List.map trans_const ts in

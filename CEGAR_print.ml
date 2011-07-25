@@ -39,13 +39,11 @@ and print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a : %a@." print_var f print_typ typ) env
 
 and print_const fm = function
-    Fail -> Format.fprintf fm "fail"
-  | Event s -> Format.fprintf fm "event(%s)" s
+    Event s -> Format.fprintf fm "event(%s)" s
   | Label n -> Format.fprintf fm "label(%d)" n
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
-  | RandBool -> Format.fprintf fm "rand_bool"
   | RandInt -> Format.fprintf fm "rand_int"
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"
@@ -90,13 +88,11 @@ and print_prog_typ fm (env,defs,s) =
   Format.fprintf fm "Types:\n%a@." print_env env;
 
 and print_const_ML fm = function
-    Fail -> Format.fprintf fm "assert false"
   | Event s -> Format.fprintf fm "event(%s)" s
   | Label n -> Format.fprintf fm "label(%d)" n
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
-  | RandBool -> Format.fprintf fm "rand_bool"
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
   | Not -> Format.fprintf fm "(not)"

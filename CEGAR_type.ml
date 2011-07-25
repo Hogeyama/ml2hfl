@@ -8,6 +8,7 @@ type base =
   | TBottom
   | TList
   | TTuple of int
+  | TEvent
 
 type 'a t =
     TBase of base * ('a -> 'a list)

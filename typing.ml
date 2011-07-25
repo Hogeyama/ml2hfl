@@ -13,7 +13,7 @@ type typ =
   | TVar of typ option ref
   | TFun of typ * typ
   | TTuple of typ list
-  | TBottom
+  | TEvent
 
 let new_tvar () = TVar (ref None)
 
@@ -40,8 +40,6 @@ let rec unify typ1 typ2 =
     | typ, TVar({contents = None} as r) ->
         assert (not (occurs r typ));
         r := Some typ
-    | TBottom, _ -> ()
-    | _, TBottom -> ()
     | _ -> assert false
 
 
@@ -55,16 +53,13 @@ let rec trans_typ = function
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> CEGAR_type.TFun(fun _ -> trans_typ typ1,trans_typ typ2)
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
-  | TBottom -> TBase(CEGAR_type.TBool,fun _ -> [])
 
 let get_typ_const = function
-    Fail -> TBottom
-  | Event _ -> assert false
+  | Event _ -> TEvent
   | Label _ -> assert false
   | Unit -> TUnit
   | True -> TBool 
   | False -> TBool
-  | RandBool -> TFun(TUnit,TBool)
   | RandInt -> TFun(TUnit,TInt)
   | Eq ->
       let typ = new_tvar() in

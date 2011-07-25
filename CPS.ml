@@ -80,7 +80,7 @@ let rec normalize t =
       | RandInt (Some t) -> RandInt (Some (normalize t))
       | Var x -> Var x
       | Fun _ -> assert false
-      | App({desc=Fail;typ=typ}, [t1;t2]) -> App(fail_term, [normalize t1])
+      | App({desc=Fail;typ=typ}, [t1;t2]) -> assert false (*App(fail_term, [normalize t1])*)
       | App({desc=Fail}, _) -> assert false
       | App({desc=Event s;typ=typ}, [t1;t2]) ->
           let t1' = normalize t1 in

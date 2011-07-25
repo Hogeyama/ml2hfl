@@ -5,7 +5,6 @@ open CEGAR_print
 let conv_const c =
   match c with
     Event(x) -> Const.Event(Idnt.make x)
-  | Fail -> Const.Event("fail")
   | Unit -> Const.Unit
   | True -> Const.True
   | False -> Const.False
