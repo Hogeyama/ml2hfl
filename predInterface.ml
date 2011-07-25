@@ -41,9 +41,11 @@ let rec conv_typ ty =
     TBase(TUnit, _) -> SimType.Unit
   | TBase(TInt, _) -> SimType.Int
   | TBase(TBool, _) -> SimType.Bool
+  | TBase(TEvent, _) -> SimType.Unit
   | TFun(tmp) ->
       let ty1, ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
+  | _ -> (*Format.printf "%a@." print_ty ty;*) assert false
 
 let conv_prog (typs, fdefs, main) =
   { Prog.attr = [];
