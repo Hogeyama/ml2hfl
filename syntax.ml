@@ -796,6 +796,15 @@ let and_list ts = match ts with
   | t::ts -> List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TBool}) t ts
 
 
+(*
+let rec decomp_fun = function
+    {desc=Fun(x,t)} ->
+      let xs,t' = decomp_fun t in
+        x::xs, t'
+  | _ -> [], t
+*)
+
+
 let rec lift_aux xs t =
   let defs,desc =
     match t.desc with
@@ -812,7 +821,7 @@ let rec lift_aux xs t =
       | Var x -> [], Var x
       | Fun(x,t) ->
           let f = Id.new_var "f" t.typ in
-          let defs,t' = lift_aux xs {desc=Let(Flag.Nonrecursive,f,[],t,{desc=Var f;typ=t.typ});typ=t.typ} in
+          let defs,t' = lift_aux xs {desc=Let(Flag.Nonrecursive,f,[x],t,{desc=Var f;typ=t.typ});typ=t.typ} in
             defs,t'.desc
       | App(t, ts) ->
           let defs,t' = lift_aux xs t in
@@ -835,7 +844,8 @@ let rec lift_aux xs t =
           let f'' = List.fold_left (fun t x -> app2app t [make_var x]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' t1 in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
-            defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
+          let ys'',t1'' = if ys' = [] then [Id.new_var "u" TUnit], app2app t1' [unit_term] else ys', t1' in
+            defs1 @ [(f',(ys'',t1''))] @ defs2, t2'.desc
       | Let(Flag.Recursive,f,ys,t1,t2) ->
           let fv = xs in
           let ys' = fv @ ys in
@@ -844,7 +854,8 @@ let rec lift_aux xs t =
           let f'' = List.fold_left (fun t x -> app2app t [{desc=Var x;typ=Id.typ x}]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' (subst f f'' t1) in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
-            defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
+          let ys'',t1'' = if ys' = [] then [Id.new_var "u" TUnit], app2app t1' [unit_term] else ys', t1' in
+            defs1 @ [(f',(ys'',t1''))] @ defs2, t2'.desc
       | BinOp(op,t1,t2) ->
           let defs1,t1' = lift_aux xs t1 in
           let defs2,t2' = lift_aux xs t2 in
@@ -2736,9 +2747,11 @@ let rec trans_let t =
           let g = Id.new_var "f" typ in
           let t1' = trans_let t1 in
           let t2' = trans_let t2 in
-            Let(Flag.Nonrecursive, g, fv@[k], {desc=App({desc=Var k;typ=Id.typ k}, [t1']);typ=t2.typ}, {desc=App({desc=Var g;typ=Id.typ g}, [{desc=Fun(f,t2');typ=TFun(f,t2.typ)}]);typ=t2.typ})
+          let t1'' = {desc=App({desc=Var k;typ=Id.typ k}, [t1']);typ=t2.typ} in
+          let t2'' = {desc=App({desc=Var g;typ=Id.typ g}, [{desc=Fun(f,t2');typ=TFun(f,t2.typ)}]);typ=t2.typ} in
+            Let(Flag.Nonrecursive, g, fv@[k], t1'', t2'')
       | Let(Flag.Nonrecursive, f, xs, t1, t2) ->
-          (trans_let {desc=Let(Flag.Nonrecursive, f, [], List.fold_right (fun x t -> {desc=Fun(x,t);typ=TFun(x,t.typ)}) xs t1, t2);typ=t.typ}).desc
+          Let(Flag.Nonrecursive, f, xs, trans_let t1, trans_let t2)
       | Let(Flag.Recursive, f, xs, t1, t2) ->
           let t1' = trans_let t1 in
           let t2' = trans_let t2 in

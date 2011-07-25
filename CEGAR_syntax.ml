@@ -207,16 +207,14 @@ let trans_def (f,(xs,t)) =
     (trans_var f, trans_typ (Id.typ f), xs', Const True, t')::defs
 
 let trans_prog t =
-(*
-  let t' = make_arg_let t in (* for eliminating side-effects from arguments *)
-*)
   let t = Syntax.trans_let t in
   let () = if true then Format.printf "trans_let :@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
+  let main = new_id "main" in
   let defs,t = Syntax.lift t in
-  let main,_ = last defs in
-  let defs' = rev_map_flatten trans_def defs in
+  let defs_t,t' = trans_term [] [] t in
+  let defs' = (main,TBase(TUnit,fun _ -> []),["u"],Const True,t') :: defs_t @ rev_map_flatten trans_def defs in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,t2) -> (f,typ), (f,xs,t1,t2)) defs') in
-    env, defs'', trans_var main
+    env, defs'', main
 
 
 let nil = fun _ -> []
