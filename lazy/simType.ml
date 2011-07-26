@@ -16,3 +16,14 @@ let rec args_ret ty =
       ty1::args, ret
   | _ ->
       [], ty
+
+let rec pr ppf ty =
+  match ty with
+    Unit ->
+      Format.fprintf ppf "unit"
+  | Bool ->
+      Format.fprintf ppf "bool"
+  | Int ->
+      Format.fprintf ppf "int"
+  | Fun(ty1, ty2) ->
+      Format.fprintf ppf "%a -> %a" pr ty1 pr ty2

@@ -18,6 +18,7 @@ INCLUDES = -I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/parsing \
 	-I $(OCAML_SOURCE)/typing \
 	-I $(OCAML_SOURCE)/utils \
+	-I /usr/lib \
 	-I /usr/local/lib \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
@@ -59,7 +60,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
  lazy/util.cmo \
  lazy/attr.cmo lazy/idnt.cmo lazy/simType.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/term.cmo \
  lazy/apronInterface.ml lazy/csisatInterface.ml lazy/fdef.ml lazy/prog.ml lazy/ctree.ml lazy/trace.ml lazy/refType.ml \
- predInterface.cmo \
+ lazyInterface.cmo \
 	type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo abstract.cmo check.cmo feasibility.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)

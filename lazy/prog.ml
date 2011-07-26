@@ -16,14 +16,15 @@ let fdefs_of prog id =
 let rec type_of prog x =
   match x with
     Var.V(id) ->
-      List.assoc id prog.types
+      (try List.assoc id prog.types with Not_found -> assert false)
   | Var.T(x, _, arg) ->
       let rec f ty i =
         let _ = assert (i >= 0) in
         match ty, i with
           SimType.Fun(ty, _), 0 -> ty
         | SimType.Fun(_, ty), _ -> f ty (i - 1)
-        | _, _ -> assert false
+        | SimType.Unit, 0 | SimType.Bool, 0 | SimType.Int, 0 -> ty
+        | _, _ -> begin Format.printf "%a: %a, %d@." Var.pr x SimType.pr ty i; assert false end
       in
       f (type_of prog x) arg
 

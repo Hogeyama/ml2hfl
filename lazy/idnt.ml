@@ -9,4 +9,4 @@ let make id = id
 
 let new_id =
   let cnt = ref 0 in
-  fun () -> cnt := !cnt + 1; "$" ^ (string_of_int !cnt)
+  fun () -> cnt := !cnt + 1; "var" ^ (string_of_int !cnt)

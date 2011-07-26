@@ -74,7 +74,7 @@ let verify(* ces*) prog =
     | 2 -> Ctree.cex_strategy ces rt
 *)
   in
-  let eps = Ctree.auto prog rt strategy in
+  let eps = Ctree.manual prog rt strategy in
 		let eptrs = List.map Trace.of_error_path eps in
 		let sumss = List.map
 				(fun eptr ->

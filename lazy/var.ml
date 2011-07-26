@@ -14,11 +14,21 @@ let rec pr ppf x =
 
 let make id = V(id)
 
-let rec string_of x =
-  match x with
-    V(id) -> id
-  | T(x, uid, arg) ->
-      string_of x ^ "_" ^ String.of_int uid ^ "_" ^ String.of_int arg
+let header = "var"
+let separator = "-"
+
+let string_of x =
+  let rec f x =
+		  match x with
+		    V(id) ->
+						  (try
+						    let _ = String.find id separator in
+						    assert false
+						  with Invalid_string -> id)
+		  | T(x, uid, arg) ->
+		      f x ^ separator ^ String.of_int uid ^ separator ^ String.of_int arg
+  in
+  header ^ separator ^ f x
 
 let parse s =
   let rec f x ss =
@@ -28,7 +38,10 @@ let parse s =
         f (T(x, int_of_string s1, int_of_string s2)) ss
     | _ -> assert false
   in
-  let s::ss = String.nsplit s "_" in
-  f (V(s)) ss
+  if String.starts_with s header then
+		  let _::s::ss = String.nsplit s separator in
+		  f (V(s)) ss
+  else
+    V(s)
 
 let equiv x y = x = y

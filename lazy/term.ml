@@ -165,6 +165,9 @@ let rec redex_of env t =
       (fun t -> t), Const(a, Const.Event(id))
   | Const(a, Const.RandInt) ->
       (fun t -> t), Const(a, Const.RandInt)
+(*
+  | Var(_, _)
+*)
 		| App(_, _, _) ->
 				  let f, args = fun_args t in
       let rec r args1 args =
@@ -186,7 +189,8 @@ let rec redex_of env t =
               try
                 SimType.arity (env f)
               with Not_found ->
-                (Format.printf "%a@." Var.pr f; assert false)
+                raise Not_found (* f is not a function name *)
+                (*(Format.printf "%a@." Var.pr f; assert false)*)
             in
 		          if List.length args >= ar then
 		  				      let args1, args2 = Util.split_at args ar in

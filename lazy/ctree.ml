@@ -110,6 +110,9 @@ let expand prog env (Node((uid, p), t, cs)) =
           env, [Error, Node((gen (), p), Term.Error([]), ref [])]
       | Term.Const(_, Const.RandInt) ->
           env, [Nop, Node((gen (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
+(*
+		    | Term.Var(_, _)
+*)
 		    | Term.App(_, _, _) ->
           let uid = gen () in
 		        let Term.Var(a, f), args = Term.fun_args red in
@@ -171,6 +174,10 @@ let expand prog env (Node((uid, p), t, cs)) =
               env, [Call((g, uid), Term.make_true), Node((gen (), p), ctx (Term.apply f args), ref [])])
 		    | Term.Ret(_, Term.Var(a, ret), t) ->
 		        env, [Ret(ret, t), Node((gen (), p), ctx (Term.Var(a, ret)), ref [])]
+      | _ -> begin
+          Format.printf "%a@." Term.pr red;
+          assert false
+         end
     in
     let _ = cs := gns in
 				env, List.map snd gns

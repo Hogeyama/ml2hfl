@@ -63,7 +63,7 @@ let main filename in_channel =
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog
     in
   if true then
-    PredInterface.verify prog
+    LazyInterface.verify prog
   else
 		  let t_result, result = CEGAR.cegar prog [] in
 		    match result with
