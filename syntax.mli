@@ -87,7 +87,7 @@ val merge_let_fun : typed_term -> typed_term
 val imply : typed_term -> typed_term -> typed_term
 val and_list : typed_term list -> typed_term
 val lift : typed_term -> (id * (id list * typed_term)) list * typed_term
-(** [lift t] で，[t] をlambda-lift する． *)
+(** [lift t] で，[t] をlambda-lift する．the definitions of let expressions must be side-effect free *)
 
 val canonize : typed_term -> typed_term
 val part_eval : typed_term -> typed_term
@@ -109,6 +109,7 @@ val print_ce : node list -> typed_term -> unit
 val copy_poly_funs : typed_term -> typed_term
 (** CPS と評価順序を合わせる必要あり *)
 val trans_let : typed_term -> typed_term
+(** returns a term whose definitions of let expressions are side-effect free *)
 
 (** {6 Printing} *)
 

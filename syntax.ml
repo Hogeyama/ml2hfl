@@ -2721,7 +2721,7 @@ fprintf fm "(";(
 and print_termlist' syntax pri typ fm = List.iter (fun bd -> fprintf fm "@;%a" (print_term' syntax pri typ) bd)
 
 
-let rec trans_let fs t =
+let rec trans_let t =
   let desc =
     match t.desc with
         Unit -> Unit
@@ -2731,68 +2731,57 @@ let rec trans_let fs t =
       | Int n -> Int n
       | NInt y -> NInt y
       | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (trans_let fs t))
+      | RandInt (Some t) -> RandInt (Some (trans_let t))
       | Var y -> Var y
-      | Fun(y, t) -> Fun(y, trans_let fs t)
+      | Fun(y, t) -> Fun(y, trans_let t)
       | App(t1, ts) ->
-          let t1' = trans_let fs t1 in
-          let ts' = List.map (trans_let fs) ts in
+          let t1' = trans_let t1 in
+          let ts' = List.map trans_let ts in
             App(t1', ts')
       | If(t1, t2, t3) ->
-          let t1' = trans_let fs t1 in
-          let t2' = trans_let fs t2 in
-          let t3' = trans_let fs t3 in
+          let t1' = trans_let t1 in
+          let t2' = trans_let t2 in
+          let t3' = trans_let t3 in
             If(t1', t2', t3')
       | Branch(t1, t2) ->
-          let t1' = trans_let fs t1 in
-          let t2' = trans_let fs t2 in
+          let t1' = trans_let t1 in
+          let t2' = trans_let t2 in
             Branch(t1', t2')
       | Let(Flag.Nonrecursive, f, [], t1, t2) ->
-          let fv = diff (get_fv t1) fs in
-          let x = Id.new_var "x" t1.typ in
-          let k = Id.new_var "k" (TFun(x,t2.typ)) in
-          let typ = List.fold_right (fun x typ2 -> TFun(x,typ2)) fv (TFun(k,t2.typ)) in
-          let g = Id.new_var "f" typ in
-          let t1' = trans_let (f::fs) t1 in
-          let t2' = trans_let (f::fs) t2 in
-          let t1'' = {desc=App(make_var k, [t1']);typ=t2.typ} in
-          let t2'' = {desc=App(app2app (make_var g) (List.map make_var fv), [{desc=Fun(f,t2');typ=TFun(f,t2.typ)}]);typ=t2.typ} in
-            Let(Flag.Nonrecursive, g, fv@[k], t1'', t2'')
+          App({desc=Fun(f,trans_let t2);typ=TFun(f,t2.typ)}, [trans_let t1])
       | Let(Flag.Nonrecursive, f, xs, t1, t2) ->
-          Let(Flag.Nonrecursive, f, xs, trans_let (f::fs) t1, trans_let (f::fs) t2)
+          Let(Flag.Nonrecursive, f, xs, trans_let t1, trans_let t2)
       | Let(Flag.Recursive, f, xs, t1, t2) ->
-          let t1' = trans_let (f::fs) t1 in
-          let t2' = trans_let (f::fs) t2 in
+          let t1' = trans_let t1 in
+          let t2' = trans_let t2 in
             Let(Flag.Recursive, f, xs, t1', t2')
       | BinOp(op, t1, t2) ->
-          let t1' = trans_let fs t1 in
-          let t2' = trans_let fs t2 in
+          let t1' = trans_let t1 in
+          let t2' = trans_let t2 in
             BinOp(op, t1', t2')
       | Not t1 ->
-          let t1' = trans_let fs t1 in
+          let t1' = trans_let t1 in
             Not t1'
       | Fail -> Fail
       | Label(b, t1) ->
-          let t1' = trans_let fs t1 in
+          let t1' = trans_let t1 in
             Label(b, t1')
       | LabelInt(n, t1) ->
-          let t1' = trans_let fs t1 in
+          let t1' = trans_let t1 in
             LabelInt(n, t1')
       | Event s -> Event s
-      | Record(b,fields) ->  Record (b, List.map (fun (f,(s,t1)) -> f,(s,trans_let fs t1)) fields)
-      | Proj(n,i,s,f,t1) -> Proj(n,i,s,f,trans_let fs t1)
-      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans_let fs t1,trans_let fs t2)
+      | Record(b,fields) ->  Record (b, List.map (fun (f,(s,t1)) -> f,(s,trans_let t1)) fields)
+      | Proj(n,i,s,f,t1) -> Proj(n,i,s,f,trans_let t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans_let t1,trans_let t2)
       | Nil -> Nil
-      | Cons(t1,t2) -> Cons(trans_let fs t1, trans_let fs t2)
-      | Constr(s,ts) -> Constr(s, List.map (trans_let fs) ts)
-      | Match(t1,t2,y,z,t3) -> Match(trans_let fs t1, trans_let fs t2, y, z, trans_let fs t3)
+      | Cons(t1,t2) -> Cons(trans_let t1, trans_let t2)
+      | Constr(s,ts) -> Constr(s, List.map trans_let ts)
+      | Match(t1,t2,y,z,t3) -> Match(trans_let t1, trans_let t2, y, z, trans_let t3)
       | Match_(t1,pats) ->
-          let aux (pat,cond,t1) = pat, cond, trans_let fs t1 in
-            Match_(trans_let fs t1, List.map aux pats)
+          let aux (pat,cond,t1) = pat, cond, trans_let t1 in
+            Match_(trans_let t1, List.map aux pats)
       | TryWith(t1,pats) ->
-          let aux (pat,cond,t1) = pat, cond, trans_let fs t1 in
-            TryWith(trans_let fs t1, List.map aux pats)
+          let aux (pat,cond,t1) = pat, cond, trans_let t1 in
+            TryWith(trans_let t1, List.map aux pats)
   in
     {desc=desc; typ=t.typ}
-
-let trans_let t = trans_let [] t

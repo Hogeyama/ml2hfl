@@ -200,16 +200,19 @@ let rec manual prog rt strategy =
 						    Format.printf "error paths:@.";
 						    List.iter (fun ep -> Format.printf "  %a@." pr_path ep) eps
 						  in
-						  let _ = Format.printf "expand the computation tree ? (y/n): %!" in
-						  let inp = read_line () in
-						  if inp = "y" then
-						    let env, wl = expand prog env (strategy.next ()) in
-          let _ = strategy.update wl in
-						    loop eps env
-						  else if inp = "n" then
-		        eps
-						  else
-						    loop eps env
+        let rec lp () =
+								  let _ = Format.printf "expand the computation tree ? (y/n): %!" in
+								  let inp = read_line () in
+								  if inp = "y" then
+								    let env, wl = expand prog env (strategy.next ()) in
+		          let _ = strategy.update wl in
+								    loop eps env
+								  else if inp = "n" then
+				        eps
+								  else
+								    lp ()
+        in
+        lp ()
   in
   loop []
 				(fun x ->

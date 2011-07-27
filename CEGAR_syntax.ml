@@ -200,11 +200,47 @@ let rec trans_term xs env t =
     | Syntax.Fun _
     | Syntax.Event _ -> assert false
 
+let rec formula_of t =
+  match t.Syntax.desc with
+      Syntax.Unit -> Const Unit
+    | Syntax.True -> Const True
+    | Syntax.False -> Const False
+    | Syntax.Unknown -> assert false
+    | Syntax.Int n -> Const (Int n)
+    | Syntax.NInt _ -> assert false
+    | Syntax.RandInt None -> raise Not_found
+    | Syntax.Var x ->
+        let x' = trans_var x in
+          Var x'
+    | Syntax.App(t, ts) -> raise Not_found
+    | Syntax.If(t1, t2, t3) -> raise Not_found
+    | Syntax.Let _ -> assert false
+    | Syntax.BinOp(op, t1, t2) ->
+        let t1' = formula_of t1 in
+        let t2' = formula_of t2 in
+          App(App(trans_binop op, t1'), t2')
+    | Syntax.Not t ->
+        let t' = formula_of t in
+          App(Const Not, t')
+    | Syntax.Fail -> raise Not_found
+    | Syntax.Fun _
+    | Syntax.Event _ -> assert false
+
 let trans_def (f,(xs,t)) =
   let xs' = List.map trans_var xs in
   let env = List.map2 (fun x' x -> x', trans_typ (Id.typ x)) xs' xs in
-  let defs,t' = trans_term xs' env t in
-    (trans_var f, trans_typ (Id.typ f), xs', Const True, t')::defs
+  try
+		  (match t.Syntax.desc with
+		    Syntax.If(t1, t2, t3) ->
+		      let t1' = formula_of t1 in
+						  let defs2,t2' = trans_term xs' env t2 in
+						  let defs3,t3' = trans_term xs' env t3 in
+						    ((trans_var f, trans_typ (Id.typ f), xs', t1', t2')::defs2) @
+		        ((trans_var f, trans_typ (Id.typ f), xs', make_not t1', t3')::defs3)
+		  | _ -> raise Not_found)
+  with Not_found ->
+				let defs,t' = trans_term xs' env t in
+						(trans_var f, trans_typ (Id.typ f), xs', Const True, t')::defs
 
 let trans_prog t =
   let t = Syntax.trans_let t in
