@@ -1,17 +1,10 @@
 
-(** Predicate abstraction *)
-
-(** 
-古い実装では次の点でCPSに依存している
-- TRecSに渡すプログラムにタプルが入らないように
-- f:int[]->unit のとき，f fail が f にならないように（副作用のある式を消さないように）
-*)
-
-val abstract : CEGAR_syntax.prog -> CEGAR_syntax.prog
-(** [abstract t] で [t] の述語抽象を求める．
-    入力は、引数を評価しても fail しないものとする
-*)
+(** Abstraction for data types *)
 
 val abstract_mutable : Syntax.typed_term -> Syntax.typed_term
 
+(*
 val abst_ext_funs : Syntax.typed_term -> Syntax.typed_term
+*)
+
+val abstract_list : Syntax.typed_term -> Syntax.typed_term

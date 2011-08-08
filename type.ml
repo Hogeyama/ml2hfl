@@ -10,26 +10,18 @@ type 'a t =
   | TVar of 'a t option ref
   | TFun of ('a t Id.t) * 'a t
   | TList of 'a t * 'a list
+  | TPair of 'a t * 'a t
   | TConstr of string * bool
   | TVariant of (string * 'a t list) list
   | TRecord of bool * (string * (Flag.mutable_flag * 'a t)) list
   | TUnknown
-  | TEvent
+  | TAbs of ('a t -> 'a t)
 
-(*
-type base =
-    TBUnit
-  | TBInt
+let typ_event = TConstr("event", true)
+let typ_excep = TConstr("exn", true)
 
-type 'a t =
-    TBase of base * 'a
-(*
-  | TRInt of 'a
-*)
-  | TVar of Id.t
-  | TApp of 'a t * 'a t
-  | TFun of 'a -> 'a t * 'a t
-*)
+
+
 
 let rec can_unify typ1 typ2 =
   match typ1,typ2 with
@@ -113,10 +105,11 @@ let rec print print_pred fm typ =
             then Format.fprintf fm "(%a)" aux typs
             else Format.fprintf fm "{%a}" aux typs
       | TConstr(s,_) -> Format.pp_print_string fm s
-      | TEvent -> Format.fprintf fm "event"
 
 and print_preds print_pred fm = function
     [] -> ()
   | [x] -> print_pred fm x
   | x1::x2::xs -> Format.fprintf fm "%a;%a" print_pred x1 (print_preds print_pred) (x2::xs)
+
+
 

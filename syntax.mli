@@ -35,7 +35,11 @@ and term =
   | Constr of string * typed_term list
   | Match of typed_term * typed_term * id * id * typed_term
   | Match_ of typed_term * (typed_pattern * typed_term option * typed_term) list
-  | TryWith of typed_term * (typed_pattern * typed_term option * typed_term) list
+  | Raise of typed_term
+  | TryWith of typed_term * typed_term
+  | Pair of typed_term * typed_term
+  | Fst of typed_term
+  | Snd of typed_term
 
 and type_kind =
     KAbstract
@@ -63,12 +67,37 @@ exception Infeasible
 val dummy_var : id
 val abst_var : id
 val abst_list_var : id
+
 val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term
-val event_term : string -> typed_term
-
+val fail_term : typed_term
+val make_event : string -> typed_term
 val make_var : id -> typed_term
+val make_int : int -> typed_term
+val make_app : typed_term -> typed_term -> typed_term
+val make_loop : typ -> typed_term
+val make_fail : typ -> typed_term
+val make_let : id -> id list -> typed_term -> typed_term -> typed_term
+val make_letrec : id -> id list -> typed_term -> typed_term -> typed_term
+val make_let_f : Flag.rec_flag -> id -> id list -> typed_term -> typed_term -> typed_term
+val make_fun : id -> typed_term -> typed_term
+val make_not : typed_term -> typed_term
+val make_and : typed_term -> typed_term -> typed_term
+val make_add : typed_term -> typed_term -> typed_term
+val make_sub : typed_term -> typed_term -> typed_term
+val make_if : typed_term -> typed_term -> typed_term -> typed_term
+val make_eq : typed_term -> typed_term -> typed_term
+val make_lt : typed_term -> typed_term -> typed_term
+val make_gt : typed_term -> typed_term -> typed_term
+val make_leq : typed_term -> typed_term -> typed_term
+val make_geq : typed_term -> typed_term -> typed_term
+val make_fst : typed_term -> typed_term
+val make_snd : typed_term -> typed_term
+val make_pair : typed_term -> typed_term -> typed_term
+val make_nil : typ -> typed_term
+
+
 val subst : id -> typed_term -> typed_term -> typed_term
 val subst_int : int -> typed_term -> typed_term -> typed_term
 val subst_term : (id * typed_term) list -> typed_term -> typed_term
@@ -110,6 +139,7 @@ val copy_poly_funs : typed_term -> typed_term
 (** CPS と評価順序を合わせる必要あり *)
 val trans_let : typed_term -> typed_term
 (** returns a term whose definitions of let expressions are side-effect free *)
+val make_loop : typ -> typed_term
 
 (** {6 Printing} *)
 

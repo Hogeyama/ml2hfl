@@ -140,11 +140,11 @@ let rec trans_typ = function
   | Type.TVar _  -> TBase(TUnit, nil)
   | Type.TFun(x,typ) -> TFun(fun _ -> trans_typ (Id.typ x), trans_typ typ)
   | Type.TList _ -> assert false
+  | Type.TConstr("event",_) -> TBase(TEvent,nil)
   | Type.TConstr _ -> assert false
   | Type.TVariant _ -> assert false
   | Type.TRecord _ -> assert false
   | Type.TUnknown -> assert false
-  | Type.TEvent -> TBase(TEvent,nil)
 
 let trans_var x = Id.to_string x
 
@@ -169,6 +169,7 @@ let rec trans_term xs env t =
     | Syntax.Int n -> [], Const (Int n)
     | Syntax.NInt _ -> assert false
     | Syntax.RandInt None -> [], Const RandInt
+    | Syntax.RandInt _ -> assert false
     | Syntax.Var x ->
         let x' = trans_var x in
           [], Var x'

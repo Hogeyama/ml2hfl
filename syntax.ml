@@ -39,7 +39,11 @@ and term =
   | Constr of string * typed_term list
   | Match of typed_term * typed_term * id * id * typed_term
   | Match_ of typed_term * (typed_pattern * typed_term option * typed_term) list
-  | TryWith of typed_term * (typed_pattern * typed_term option * typed_term) list
+  | Raise of typed_term
+  | TryWith of typed_term * typed_term
+  | Pair of typed_term * typed_term
+  | Fst of typed_term
+  | Snd of typed_term
 
 
 and type_kind =
@@ -75,14 +79,82 @@ let dummy_var = {Id.id=0; Id.name=""; Id.typ=TInt[]}
 let abst_var = {Id.id=0; Id.name="v"; Id.typ=TInt[]}
 let abst_list_var = {Id.id=0; Id.name="v"; Id.typ=TList(TUnknown,[])}
 
+let rec app2app t ts =
+  match t,ts with
+    | t,[]_ -> t
+    | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
+      assert (Type.can_unify (Id.typ x) t2.typ);
+      app2app {desc=App(t1,ts1@[t2]); typ=typ} ts2
+    | {desc=t;typ=TFun(x,typ)}, t2::ts ->
+      assert (Type.can_unify (Id.typ x) t2.typ);
+      app2app {desc=App({desc=t;typ=TFun(x,typ)},[t2]); typ=typ} ts
+    | _ -> assert false
+
+
 let unit_term = {desc=Unit; typ=TUnit}
 let true_term = {desc=True;typ=TBool}
 let false_term = {desc=False;typ=TBool}
-let event_term s =
-  let x = Id.new_var "u" TUnit in
-    {desc=Event s;typ=TFun(x,TUnit)}
-
+let fail_term = {desc=Fail;typ=typ_event}
+let make_event s = {desc=Event s;typ=typ_event}
 let make_var x = {desc=Var x; typ=Id.typ x}
+let make_int n = {desc=Int n; typ=TInt[]}
+let make_app t1 t2 = app2app t1 [t2]
+let make_let f xs t1 t2 =
+  {desc=Let(Flag.Nonrecursive,f,xs,t1,t2); typ=t2.typ}
+let make_letrec f xs t1 t2 =
+  {desc=Let(Flag.Recursive,f,xs,t1,t2); typ=t2.typ}
+let make_let_f flag f xs t1 t2 =
+  {desc=Let(flag,f,xs,t1,t2); typ=t2.typ}
+let rec make_loop typ =
+  let u = Id.new_var "u" typ_event in
+  let f = Id.new_var "loop" (TFun(u,typ)) in
+  let t = make_app (make_var f) (make_var u) in
+    make_letrec f [u] t t
+let make_fail typ =
+  let u = Id.new_var "u" typ_event in
+    make_let u [] fail_term (make_loop typ)
+let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ)}
+let make_not t = {desc=Not t; typ=TBool}
+let make_and t1 t2 =
+  if t1 = true_term
+  then t2
+  else
+    if t2 = true_term
+    then t1
+    else {desc=BinOp(And, t1, t2); typ=TBool}
+let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt[]}
+let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt[]}
+let make_if t1 t2 t3 =
+  assert (t1.typ = TBool);
+  assert (t2.typ = t3.typ);
+  {desc=If(t1, t2, t3); typ=t2.typ}
+let make_eq t1 t2 =
+  assert (t1.typ = t2.typ);
+  {desc=BinOp(Eq, t1, t2); typ=TBool}
+let make_lt t1 t2 =
+  assert (Type.can_unify t1.typ (TInt[]));
+  assert (Type.can_unify t2.typ (TInt[]));
+  {desc=BinOp(Lt, t1, t2); typ=TBool}
+let make_gt t1 t2 =
+  assert (Type.can_unify t1.typ (TInt[]));
+  assert (Type.can_unify t2.typ (TInt[]));
+  {desc=BinOp(Gt, t1, t2); typ=TBool}
+let make_leq t1 t2 =
+  assert (Type.can_unify t1.typ (TInt[]));
+  assert (Type.can_unify t2.typ (TInt[]));
+  {desc=BinOp(Leq, t1, t2); typ=TBool}
+let make_geq t1 t2 =
+  assert (Type.can_unify t1.typ (TInt[]));
+  assert (Type.can_unify t2.typ (TInt[]));
+  {desc=BinOp(Geq, t1, t2); typ=TBool}
+let make_fst t =
+  let typ = match t.typ with TPair(typ,_) -> typ | _ -> assert false in
+    {desc=Fst t; typ=typ}
+let make_snd t =
+  let typ = match t.typ with TPair(_,typ) -> typ | _ -> assert false in
+    {desc=Snd t; typ=typ}
+let make_pair t1 t2 = {desc=Pair(t1,t2); typ=TPair(t1.typ,t2.typ)}
+let make_nil typ = {desc=Nil; typ=typ}
 
 
 (* [x |-> t], [t/x] *)
@@ -151,9 +223,8 @@ let rec subst x t t' =
       | Match_(t1,pats) ->
           let aux (pat,cond,t1) = pat, cond, subst x t t1 in
             Match_(subst x t t1, List.map aux pats)
-      | TryWith(t1,pats) ->
-          let aux (pat,cond,t1) = pat, cond, subst x t t1 in
-            TryWith(subst x t t1, List.map aux pats)
+      | Raise t1 -> Raise(subst x t t1)
+      | TryWith(t1,t2) -> TryWith(subst x t t1, subst x t t2)
   in
     {desc=desc; typ=t'.typ}
 
@@ -418,9 +489,7 @@ let rec get_fv vars t =
     | Match_(t,pats) ->
         let aux acc (_,_,t) = get_fv vars t @@@ acc in
           List.fold_left aux (get_fv vars t) pats
-    | TryWith(t,pats) ->
-        let aux acc (_,_,t) = get_fv vars t @@@ acc in
-          List.fold_left aux (get_fv vars t) pats
+    | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
 let get_fv = get_fv []
 
 let rec get_fv2 vars t =
@@ -491,16 +560,6 @@ let rec get_argtyps = function
     TFun(x,typ) -> Id.typ x :: get_argtyps typ
   | _ -> []
 
-let rec app2app t ts =
-  match t,ts with
-    | t,[]_ -> t
-    | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-      assert (Type.can_unify (Id.typ x) t2.typ);
-      app2app {desc=App(t1,ts1@[t2]); typ=typ} ts2
-    | {desc=t;typ=TFun(x,typ)}, t2::ts ->
-      assert (Type.can_unify (Id.typ x) t2.typ);
-      app2app {desc=App({desc=t;typ=TFun(x,typ)},[t2]); typ=typ} ts
-    | _ -> assert false
 
 
 (*
@@ -782,7 +841,8 @@ let rec merge_let_fun t =
       | Constr(s,ts) -> Constr(s, List.map merge_let_fun ts)
       | Match(t1,t2,x,y,t3) -> Match(merge_let_fun t1, merge_let_fun t2, x, y, merge_let_fun t3)
       | Match_(t,pats) -> Match_(merge_let_fun t, List.map (fun (pat,cond,t) -> pat,cond,merge_let_fun t) pats)
-      | TryWith(t,pats) -> TryWith(merge_let_fun t, List.map (fun (pat,cond,t) -> pat,cond,merge_let_fun t) pats)
+      | Raise t -> Raise (merge_let_fun t)
+      | TryWith(t1,t2) -> TryWith(merge_let_fun t1, merge_let_fun t2)
   in
     {desc=desc; typ=t.typ}
 
@@ -862,7 +922,6 @@ let rec lift_aux xs t =
           let f'' = List.fold_left (fun t x -> app2app t [{desc=Var x;typ=Id.typ x}]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' (subst f f'' t1) in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
-          let ys'',t1'' = if ys' = [] then [Id.new_var "u" TUnit], app2app t1' [unit_term] else ys', t1' in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
       | BinOp(op,t1,t2) ->
           let defs1,t1' = lift_aux xs t1 in
@@ -1687,17 +1746,24 @@ and print_term syntax pri typ fm t =
           fprintf fm "%smatch %a with@;" s1 (print_term syntax p typ) t;
           List.iter aux pats;
           pp_print_string fm s2
-    | TryWith(t,pats) ->
+    | Raise t ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+          fprintf fm "%sraise %a%s" s1 (print_term syntax 1 typ) t s2
+    | TryWith(t1,t2) ->
         let p = 1 in
         let s1,s2 = paren pri (p+1) in
-        let aux = function
-            (pat,None,t) -> fprintf fm "%a -> %a@;" print_pattern pat (print_term syntax p typ) t
-          | (pat,Some cond,t) -> fprintf fm "%a when %a -> %a@;"
-              print_pattern pat (print_term syntax p typ) cond (print_term syntax p typ) t
-        in
-          fprintf fm "%stry %a with@;" s1 (print_term syntax p typ) t;
-          List.iter aux pats;
-          pp_print_string fm s2
+          fprintf fm "%stry %a with@;%a%s" s1 (print_term syntax p typ) t1 (print_term syntax p typ) t2 s2
+    | Pair(t1,t2) ->
+        fprintf fm "(%a,%a)" (print_term syntax 2 typ) t1 (print_term syntax 2 typ) t2
+    | Fst t ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+          fprintf fm "%sfst %a%s" s1 (print_term syntax 1 typ) t s2
+    | Snd t ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+          fprintf fm "%ssnd %a%s" s1 (print_term syntax 1 typ) t s2
 
 
 and print_pattern fm pat =
@@ -1717,7 +1783,7 @@ and print_pattern fm pat =
           pp_print_string fm c;
           aux' pats
     | PNil -> fprintf fm "[]"
-    | PCons(p1,p2) -> fprintf fm "%a::%a" print_pattern p1 print_pattern p2
+    | PCons(p1,p2) -> fprintf fm "%a::%a" aux p1 aux p2
     | PRecord(true,pats) ->
         let aux' = function
             [] -> ()
@@ -2429,7 +2495,7 @@ let rec copy_poly_funs t =
       | RandInt None -> RandInt None
       | RandInt (Some t) -> RandInt (Some (copy_poly_funs t))
       | Var x -> Var x
-      | Fun(x, t) -> assert false
+      | Fun(x, t) -> Fun(x, copy_poly_funs t)
       | App(t, ts) -> App(copy_poly_funs t, List.map copy_poly_funs ts)
       | If(t1, t2, t3) -> If(copy_poly_funs t1, copy_poly_funs t2, copy_poly_funs t3)
       | Branch(t1, t2) -> Branch(copy_poly_funs t1, copy_poly_funs t2)
@@ -2475,7 +2541,8 @@ let rec copy_poly_funs t =
       | Constr(s,ts) -> Constr(s, List.map copy_poly_funs ts)
       | Match(t1,t2,x,y,t3) -> Match(copy_poly_funs t1, copy_poly_funs t2, x, y, copy_poly_funs t3)
       | Match_(t,pats) -> Match_(copy_poly_funs t, List.map (fun (pat,cond,t) -> pat,cond,copy_poly_funs t) pats)
-      | TryWith(t,pats) -> TryWith(copy_poly_funs t, List.map (fun (pat,cond,t) -> pat,cond,copy_poly_funs t) pats)
+      | Raise t -> Raise (copy_poly_funs t)
+      | TryWith(t1,t2) -> TryWith(copy_poly_funs t1, copy_poly_funs t2)
   in
     {desc=desc; typ=t.typ}
 
@@ -2706,17 +2773,14 @@ fprintf fm "(";(
           fprintf fm "%smatch %a with@;" s1 (print_term' syntax p typ) t;
           List.iter aux pats;
           pp_print_string fm s2
-    | TryWith(t,pats) ->
+    | Raise t ->
+        let p = 6 in
+        let s1,s2 = paren pri p in
+          fprintf fm "%sraise %a%s" s1 (print_term' syntax p typ) t s2
+    | TryWith(t1,t2) ->
         let p = 1 in
         let s1,s2 = paren pri (p+1) in
-        let aux = function
-            (pat,None,t) -> fprintf fm "%a -> %a@;" print_pattern pat (print_term' syntax p typ) t
-          | (pat,Some cond,t) -> fprintf fm "%a when %a -> %a@;"
-              print_pattern pat (print_term' syntax p typ) cond (print_term' syntax p typ) t
-        in
-          fprintf fm "%stry %a with@;" s1 (print_term' syntax p typ) t;
-          List.iter aux pats;
-          pp_print_string fm s2
+          fprintf fm "%stry %a with@;%a%s" s1 (print_term' syntax p typ) t1 (print_term' syntax p typ) t2 s2
 );fprintf fm ":%a)" print_typ t.typ
 and print_termlist' syntax pri typ fm = List.iter (fun bd -> fprintf fm "@;%a" (print_term' syntax pri typ) bd)
 
@@ -2780,8 +2844,9 @@ let rec trans_let t =
       | Match_(t1,pats) ->
           let aux (pat,cond,t1) = pat, cond, trans_let t1 in
             Match_(trans_let t1, List.map aux pats)
-      | TryWith(t1,pats) ->
-          let aux (pat,cond,t1) = pat, cond, trans_let t1 in
-            TryWith(trans_let t1, List.map aux pats)
+      | TryWith(t1,t2) -> TryWith(trans_let t1, trans_let t2)
   in
     {desc=desc; typ=t.typ}
+
+
+

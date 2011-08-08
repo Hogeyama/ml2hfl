@@ -58,19 +58,25 @@ let main filename in_channel =
   in
   let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
   let t = Syntax.copy_poly_funs t in
+  let () = Type_check.check t in
+  let t = CPS.trans t in
+  let () = if true then Format.printf "CPS:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
+  let () = Type_check.check t in
+  let t = Abstract.abstract_list t in
+  let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
+    assert false;
   let prog = CEGAR_syntax.trans_prog t in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog
-    in
-  if true then
-    LazyInterface.verify prog
-  else
-		  let t_result, result = CEGAR.cegar prog [] in
-		    match result with
-		        None -> print_msg "\nSafe!\n\n"
-		      | Some (ce,p) ->
-		            print_msg "Unsafe!\n"
-
+  in
+    if true then
+      LazyInterface.verify prog
+    else
+      let t_result, result = CEGAR.cegar prog [] in
+	match result with
+	    None -> print_msg "\nSafe!\n\n"
+	  | Some (ce,p) ->
+	      print_msg "Unsafe!\n"
 (*
           let sol = Wrapper.get_solution p t_result in
             print_msg "Unsafe!\n";

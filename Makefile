@@ -61,8 +61,8 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
  lazy/attr.cmo lazy/idnt.cmo lazy/simType.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/term.cmo \
  lazy/apronInterface.ml lazy/csisatInterface.ml lazy/fdef.ml lazy/prog.ml lazy/ctree.ml lazy/trace.ml lazy/refType.ml \
  lazyInterface.cmo \
-	type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	wrapper.cmo abstract.cmo check.cmo feasibility.cmo refine.cmo CEGAR.cmo main.cmo
+	type_decl.cmo type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
+	wrapper.cmo abstract.cmo CEGAR_abst.cmo check.cmo feasibility.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
@@ -117,7 +117,7 @@ csisat:
 # distribution
 
 dist:
-	tar czvf dist.tar.gz *.ml *.mli Makefile depend
+	tar czvf dist.tar.gz *.ml *.mli lazy/*.ml lazy/*.mli Makefile depend
 
 
 ################################################################################

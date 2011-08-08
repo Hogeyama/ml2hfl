@@ -17,7 +17,7 @@ let rec cegar prog ces =
   in
   let () = if Flag.print_progress then print_msg "\n(1) Abstracting ... " in
   let tmp = get_time() in
-  let abst = Abstract.abstract prog in
+  let abst = CEGAR_abst.abstract prog in
   let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog abst in
   let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog_ML abst in
   let _ = Typing.infer abst in
