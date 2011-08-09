@@ -15,10 +15,10 @@ let rec pr ppf rty =
       let pr_aux ppf (pre, rtys, post, ty) =
 				    (match pre with
           Term.Const(_, Const.True) ->
-		          Format.fprintf ppf "(@[<hv>%a@] ->\ "
+		          Format.fprintf ppf "(@[<hv>%a@] ->@ "
 						        (Util.pr_list pr " *@ ") rtys
         | _ ->
-		          Format.fprintf ppf "({@[<hov>@[<hv>%a@] |@ %a@]} ->\ "
+		          Format.fprintf ppf "({@[<hov>@[<hv>%a@] |@ %a@]} ->@ "
 						        (Util.pr_list pr " *@ ") rtys
 						        Term.pr pre);
 				    (match post with

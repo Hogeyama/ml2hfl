@@ -22,18 +22,16 @@ let infer cexs prog =
 (*
 		let _ = Format.printf "error path trees:@.  @[<v>%a@]@." (Util.pr_list pr_tree "@,") eptrs in
 *)
-		let sumss = List.map
+		let sums = Util.concat_map
 				(fun eptr ->
       Format.printf "@.";
       Trace.summaries_of eptr)
 		  eptrs
 		in
-  List.iter
-    (fun sums ->
-						let rtys = RefType.of_summaries prog.Prog.types sums in
-						let pr ppf ((f, uid), rty) = Format.fprintf ppf "<%a:%d>: %a" Idnt.pr f uid RefType.pr rty in
-						Format.printf "function summaries:@.  @[<v>%a@]@." (Util.pr_list pr "@ ") rtys)
-    sumss
+  let fcs = List.unique (Util.concat_map Trace.function_calls_of eptrs) in
+  let styenv = SizType.of_summaries (Prog.type_of prog) fcs sums in
+		let pr ppf (f, sty) = Format.fprintf ppf "%a: %a" Var.pr f SizType.pr (SizType.alpha sty) in
+		Format.printf "function summaries:@.  @[<v>%a@]@." (Util.pr_list pr "@ ") styenv
 
 let test_sum () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "sum") [Term.make_var "n"]; Term.make_var "n"] } in
@@ -67,7 +65,7 @@ let test_sum_assert () =
   Format.printf "%a" Prog.pr prog;
   infer [] prog
 
-let test2 () =
+let test_copy_copy () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "copy") [Term.apply (Term.make_var "copy") [Term.make_var "n"]]; Term.make_var "n"] } in
   let copy1 = { Fdef.attr = []; Fdef.name = Idnt.make "copy"; Fdef.args = [Idnt.make "x"]; Fdef.guard = Term.eq (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.make_int 0 } in
   let copy2 = { Fdef.attr = []; Fdef.name = Idnt.make "copy"; Fdef.args = [Idnt.make "x"]; Fdef.guard = Term.neq (Term.make_var "x") (Term.make_int 0); Fdef.body = Term.add (Term.make_int 1) (Term.apply (Term.make_var "copy") [Term.sub (Term.make_var "x") (Term.make_int 1)])} in
@@ -83,7 +81,7 @@ let test2 () =
   Format.printf "%a" Prog.pr prog;
   infer [] prog
 
-let test3 () =
+let test_apply () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "check") [Term.make_var "n"]; Term.make_var "n"] } in
   let apply = { Fdef.attr = []; Fdef.name = Idnt.make "apply"; Fdef.args = [Idnt.make "f"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
   let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
@@ -98,7 +96,24 @@ let test3 () =
   Format.printf "%a" Prog.pr prog;
   infer [] prog
 
-let test4 () =
+let test_bar_hoge () =
+  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "bar") [Term.apply (Term.make_var "hoge") [Term.make_var "n"]; Term.make_var "n"] } in
+  let bar = { Fdef.attr = []; Fdef.name = Idnt.make "bar"; Fdef.args = [Idnt.make "f"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"; Term.make_var "check"] } in
+  let hoge = { Fdef.attr = []; Fdef.name = Idnt.make "hoge"; Fdef.args = [Idnt.make "x"; Idnt.make "y"; Idnt.make "f"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"; Term.make_var "y"] } in
+  let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
+  let tymain = SimType.Fun(SimType.Int, SimType.Unit) in
+  let tybar = SimType.Fun(SimType.Fun(SimType.Int, SimType.Fun(SimType.Fun(SimType.Int, SimType.Fun(SimType.Int, SimType.Unit)), SimType.Unit)), SimType.Fun(SimType.Int, SimType.Unit)) in
+  let tyhoge = SimType.Fun(SimType.Int, SimType.Fun(SimType.Int, SimType.Fun(SimType.Fun(SimType.Int, SimType.Fun(SimType.Int, SimType.Unit)), SimType.Unit))) in
+  let tycheck = SimType.Fun(SimType.Int, SimType.Fun(SimType.Int, SimType.Unit)) in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; bar; hoge; check1; check2];
+               Prog.types = [Idnt.make "main", tymain; Idnt.make "bar", tybar; Idnt.make "hoge", tyhoge; Idnt.make "check", tycheck];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  infer [] prog
+
+let test_checkh () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "checkh") [Term.apply (Term.make_var "h") [Term.make_var "n"]; Term.apply (Term.make_var "h") [Term.make_var "n"]] } in
   let checkh = { Fdef.attr = []; Fdef.name = Idnt.make "checkh"; Fdef.args = [Idnt.make "f"; Idnt.make "g"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "f") [Term.make_unit]; Term.apply (Term.make_var "g") [Term.make_unit]] } in
   let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
@@ -115,14 +130,14 @@ let test4 () =
   Format.printf "%a" Prog.pr prog;
   infer [] prog
 
-let test5 () =
-  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "h") [Term.make_var "apply"; Term.make_var "check"; Term.make_var "n"] } in
-  let h = { Fdef.attr = []; Fdef.name = Idnt.make "h"; Fdef.args = [Idnt.make "f"; Idnt.make "g"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.apply (Term.make_var "g") [Term.make_var "x"]; Term.make_var "x"] } in
+let test_applyh () =
+  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "applyh") [Term.make_var "apply"; Term.make_var "check"; Term.make_var "n"] } in
+  let applyh = { Fdef.attr = []; Fdef.name = Idnt.make "applyh"; Fdef.args = [Idnt.make "f"; Idnt.make "g"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.apply (Term.make_var "g") [Term.make_var "x"]; Term.make_var "x"] } in
   let apply = { Fdef.attr = []; Fdef.name = Idnt.make "apply"; Fdef.args = [Idnt.make "f"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
   let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
   let check2 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
   let tymain = SimType.Fun(SimType.Int, SimType.Unit) in
-  let tyh = SimType.Fun
+  let tyapplyh = SimType.Fun
     (SimType.Fun
       (SimType.Fun(SimType.Int, SimType.Unit),
       SimType.Fun(SimType.Int, SimType.Unit)),
@@ -132,20 +147,20 @@ let test5 () =
   let tyapply = SimType.Fun(SimType.Fun(SimType.Int, SimType.Unit), SimType.Fun(SimType.Int, SimType.Unit)) in
   let tycheck = SimType.Fun(SimType.Int, SimType.Fun(SimType.Int, SimType.Unit)) in
   let prog = { Prog.attr = [];
-               Prog.fdefs = [main; h; apply; check1; check2];
-               Prog.types = [Idnt.make "main", tymain; Idnt.make "h", tyh; Idnt.make "apply", tyapply; Idnt.make "check", tycheck];
+               Prog.fdefs = [main; applyh; apply; check1; check2];
+               Prog.types = [Idnt.make "main", tymain; Idnt.make "applyh", tyapplyh; Idnt.make "apply", tyapply; Idnt.make "check", tycheck];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   infer [] prog
 
-let test6 () =
-  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "h") [Term.make_var "apply"; Term.apply (Term.make_var "check") [Term.make_var "n"]; Term.make_var "n"] } in
-  let h = { Fdef.attr = []; Fdef.name = Idnt.make "h"; Fdef.args = [Idnt.make "f"; Idnt.make "g"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "g"; Term.make_var "x"] } in
+let test_applyh2 () =
+  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "applyh") [Term.make_var "apply"; Term.apply (Term.make_var "check") [Term.make_var "n"]; Term.make_var "n"] } in
+  let applyh = { Fdef.attr = []; Fdef.name = Idnt.make "applyh"; Fdef.args = [Idnt.make "f"; Idnt.make "g"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "g"; Term.make_var "x"] } in
   let apply = { Fdef.attr = []; Fdef.name = Idnt.make "apply"; Fdef.args = [Idnt.make "f"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
   let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
   let check2 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.neq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_event "fail"} in
   let tymain = SimType.Fun(SimType.Int, SimType.Unit) in
-  let tyh = SimType.Fun
+  let tyapplyh = SimType.Fun
     (SimType.Fun
       (SimType.Fun(SimType.Int, SimType.Unit),
       SimType.Fun(SimType.Int, SimType.Unit)),
@@ -155,14 +170,14 @@ let test6 () =
   let tyapply = SimType.Fun(SimType.Fun(SimType.Int, SimType.Unit), SimType.Fun(SimType.Int, SimType.Unit)) in
   let tycheck = SimType.Fun(SimType.Int, SimType.Fun(SimType.Int, SimType.Unit)) in
   let prog = { Prog.attr = [];
-               Prog.fdefs = [main; h; apply; check1; check2];
-               Prog.types = [Idnt.make "main", tymain; Idnt.make "h", tyh; Idnt.make "apply", tyapply; Idnt.make "check", tycheck];
+               Prog.fdefs = [main; applyh; apply; check1; check2];
+               Prog.types = [Idnt.make "main", tymain; Idnt.make "applyh", tyapplyh; Idnt.make "apply", tyapply; Idnt.make "check", tycheck];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   infer [] prog
 
 
-let test7 () =
+let test_apply_apply () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "check") [Term.make_var "n"]]; Term.make_var "n"] } in
   let apply = { Fdef.attr = []; Fdef.name = Idnt.make "apply"; Fdef.args = [Idnt.make "f"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
   let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.eq (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.make_unit} in
@@ -177,7 +192,7 @@ let test7 () =
   Format.printf "%a" Prog.pr prog;
   infer [] prog
 
-let test8 () =
+let test_apply_apply2 () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "apply2") [Term.make_var "check"; Term.make_var "n"]; Term.make_var "n"] } in
   let apply = { Fdef.attr = []; Fdef.name = Idnt.make "apply"; Fdef.args = [Idnt.make "f"; Idnt.make "x"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"] } in
   let apply2 = { Fdef.attr = []; Fdef.name = Idnt.make "apply2"; Fdef.args = [Idnt.make "f"; Idnt.make "x"; Idnt.make "y"]; Fdef.guard = Term.make_true; Fdef.body = Term.apply (Term.make_var "f") [Term.make_var "x"; Term.make_var "y"] } in
@@ -194,4 +209,4 @@ let test8 () =
   Format.printf "%a" Prog.pr prog;
   infer [[0; 0; 0; 1]] prog
 
-let _ = test_sum_assert ()
+let _ = test_sum ()

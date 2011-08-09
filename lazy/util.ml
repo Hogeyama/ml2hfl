@@ -51,7 +51,9 @@ let rec concat_map f xs =
     [] ->
       []
   | x::xs' ->
-      (f x) @ (concat_map f xs')
+      let x = f x in
+      let xs' = concat_map f xs' in
+      x @ xs'
 
 let partition_map p ys =
   let rec aux ls rs xs =

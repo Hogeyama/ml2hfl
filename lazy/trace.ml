@@ -7,6 +7,17 @@ type t =
 | Cnode of bool * (Var.t * int) * t list
 | Grp of t list
 
+let rec function_calls_of tr =
+  match tr with
+    Sub(_) ->
+      []
+  | Guard(_) ->
+      []
+  | Cnode(_, (x, uid), trs) ->
+      (x, uid)::Util.concat_map function_calls_of trs
+  | Grp(trs) ->
+      Util.concat_map function_calls_of trs
+
 let of_error_path p =
   let rec f x g xts trs p =
 		  match p with
@@ -237,49 +248,53 @@ let summary_of ctx (Cnode(pre, (x, uid), trs)) rec_callers =
     | [Cnode(_, (x', uid'), _)] -> false, x', uid'
     | _ -> assert false
   in
-  let _ =
-				if pre then
-				  Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr x' uid'
-				else
-				  Format.printf "computing a postcondition of <%a:%d>:@.  @[<v>" Var.pr x' uid'
-  in
-		let tfun, tctx, trs' =
-    let (x, uid) = tlc_of (x, uid) in
-    if emp then
-						term_of (x, uid) (Grp(trs)),
-						term_of (x, uid) (ctx []),
-      []
-    else
-      let [Cnode(_, _, trs')], trs = List.partition (function Cnode(_, _, _) -> true | _ -> false) trs in
-      let _ = assert pre in
-						term_of (x, uid) (ctx trs'),
-						term_of (x, uid) (Grp(trs)),
-      trs'
-		in
-		let interp =
-				let t1, t2 =
+  if emp && match x' with Var.V(_) -> false | Var.T(_, _, _) -> true then
+    let _ = assert (is_pos x') in
+    [], ctx trs
+  else
+		  let _ =
 						if pre then
-								tctx, tfun
+						  Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr x' uid'
 						else
-								tfun, tctx
+						  Format.printf "computing a postcondition of <%a:%d>:@.  @[<v>" Var.pr x' uid'
+		  in
+				let tfun, tctx, trs' =
+		    let (x, uid) = tlc_of (x, uid) in
+		    if emp then
+								term_of (x, uid) (Grp(trs)),
+								term_of (x, uid) (ctx []),
+		      []
+		    else
+		      let [Cnode(_, _, trs')], trs = List.partition (function Cnode(_, _, _) -> true | _ -> false) trs in
+		      let _ = assert pre in
+								term_of (x, uid) (ctx trs'),
+								term_of (x, uid) (Grp(trs)),
+		      trs'
 				in
 				let interp =
-						try
-								let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-								CsisatInterface.interpolate t1 t2
-						with CsisatInterface.No_interpolant ->
-						  assert false
+						let t1, t2 =
+								if pre then
+										tctx, tfun
+								else
+										tfun, tctx
+						in
+						let interp =
+								try
+										let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
+										CsisatInterface.interpolate t1 t2
+								with CsisatInterface.No_interpolant ->
+								  assert false
+						in
+						let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
+						interp
 				in
-				let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
-				interp
-		in
-		if pre then
-    if emp then
-  				[`Pre((x', uid'), interp)], ctx [Guard(Term.bnot (interp))]
-    else
-      [`Pre((x, uid), Term.make_true); `Pre((x', uid'), interp)], ctx (Guard(interp)::trs')
-		else
-				[`Post((x', uid'), interp)], ctx [Guard(interp)]
+				if pre then
+		    if emp then
+		  				[`Pre((x', uid'), interp)], ctx [Guard(Term.bnot (interp))]
+		    else
+		      [`Pre((x, uid), Term.make_true); `Pre((x', uid'), interp)], ctx (Guard(interp)::trs')
+				else
+						[`Post((x', uid'), interp)], ctx [Guard(interp)]
 (*
 		let sub y uid x =
 		  match x with
