@@ -31,8 +31,8 @@ and term =
   | Label of bool * typed_term
   | LabelInt of int * typed_term
   | Event of string
-  | Record of bool * (string * (Flag.mutable_flag * typed_term)) list
-  | Proj of int option * int * string * Flag.mutable_flag * typed_term
+  | Record of (string * (Flag.mutable_flag * typed_term)) list
+  | Proj of int * string * Flag.mutable_flag * typed_term
   | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
@@ -44,6 +44,7 @@ and term =
   | Pair of typed_term * typed_term
   | Fst of typed_term
   | Snd of typed_term
+  | Variant of typed_term
 
 
 and type_kind =
@@ -60,7 +61,8 @@ and pattern =
   | PConstruct of string * typed_pattern list
   | PNil
   | PCons of typed_pattern * typed_pattern
-  | PRecord of bool * (int * (string * Flag.mutable_flag * typed_pattern)) list
+  | PPair of typed_pattern * typed_pattern
+  | PRecord of (int * (string * Flag.mutable_flag * typed_pattern)) list
   | POr of typed_pattern * typed_pattern
 
 type syntax = ML | TRecS | CVC3 | CSIsat
@@ -77,7 +79,7 @@ type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 let dummy_var = {Id.id=0; Id.name=""; Id.typ=TInt[]}
 let abst_var = {Id.id=0; Id.name="v"; Id.typ=TInt[]}
-let abst_list_var = {Id.id=0; Id.name="v"; Id.typ=TList(TUnknown,[])}
+let abst_list_var = {Id.id=0; Id.name="v"; Id.typ=TList TUnknown}
 
 let rec app2app t ts =
   match t,ts with
@@ -155,6 +157,13 @@ let make_snd t =
     {desc=Snd t; typ=typ}
 let make_pair t1 t2 = {desc=Pair(t1,t2); typ=TPair(t1.typ,t2.typ)}
 let make_nil typ = {desc=Nil; typ=typ}
+let make_variant t = {desc=Variant t; typ=TVariant t.typ}
+let make_match t1 pats = {desc=Match_(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats)}
+
+let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
+let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
+let make_pnil typ = {pat_desc=PNil; pat_typ=typ}
+let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
 
 
 (* [x |-> t], [t/x] *)
@@ -213,8 +222,8 @@ let rec subst x t t' =
           let t1' = subst x t t1 in
             LabelInt(n, t1')
       | Event s -> Event s
-      | Record(b,fields) ->  Record (b, List.map (fun (f,(s,t1)) -> f,(s,subst x t t1)) fields)
-      | Proj(n,i,s,f,t1) -> Proj(n,i,s,f,subst x t t1)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,subst x t t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,subst x t t1)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,subst x t t1,subst x t t2)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(subst x t t1, subst x t t2)
@@ -302,8 +311,10 @@ let rec subst_type x t = function
       let typ' = subst_type x t typ in
         TFun(y', typ')
   | TUnknown -> TUnknown
-  | TList(typ,ps) -> TList(subst_type x t typ, List.map (subst x t) ps)
+  | TList typ -> TList(subst_type x t typ)
+(*
   | TRecord(b,typs) -> TRecord(b, List.map (fun (s,(f,typ)) -> s,(f,subst_type x t typ)) typs)
+*)
 
 (*
 let rec subst_orig x t = function
@@ -479,8 +490,8 @@ let rec get_fv vars t =
     | Label(_,t) -> get_fv vars t
     | LabelInt(_,t) -> get_fv vars t
     | Event s -> []
-    | Record(_,fields) -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
-    | Proj(_,_,_,_,t) -> get_fv vars t
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
+    | Proj(_,_,_,t) -> get_fv vars t
     | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Nil -> []
     | Cons(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
@@ -541,7 +552,7 @@ let rec get_vars_pat pat =
       PVar x -> [x]
     | PConst _ -> []
     | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
-    | PRecord(b,pats) -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
+    | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
     | POr(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
 
 
@@ -833,8 +844,8 @@ let rec merge_let_fun t =
       | Fail -> Fail
       | Label(b, t) -> Label(b, merge_let_fun t)
       | Event s -> Event s
-      | Record(b,fields) -> Record(b, List.map (fun (f,(s,t)) -> f,(s,merge_let_fun t)) fields)
-      | Proj(n,i,s,f,t) -> Proj(n,i,s,f,merge_let_fun t)
+      | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,merge_let_fun t)) fields)
+      | Proj(i,s,f,t) -> Proj(i,s,f,merge_let_fun t)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,merge_let_fun t1,merge_let_fun t2)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(merge_let_fun t1, merge_let_fun t2)
@@ -935,16 +946,16 @@ let rec lift_aux xs t =
           let defs,t' = lift_aux xs t in
             defs, Label(b,t')
       | Event s -> [], Event s
-      | Record(b,fields) ->
+      | Record fields ->
           let aux (s,(f,t)) =
             let defs,t' = lift_aux xs t in
               defs, (s,(f,t'))
           in
           let defss,fields' = List.split (List.map aux fields) in
-            List.flatten defss, Record(b,fields')
-      | Proj(n,i,s,f,t) ->
+            List.flatten defss, Record fields'
+      | Proj(i,s,f,t) ->
           let defs,t' = lift_aux xs t in
-            defs, Proj(n,i,s,f,t')
+            defs, Proj(i,s,f,t')
       | Nil -> [], Nil
       | Cons(t1,t2) ->
           let defs1,t1' = lift_aux xs t1 in
@@ -1175,8 +1186,8 @@ let part_eval t =
         | Label(b, t) -> Label(b, aux apply t)
         | LabelInt(n, t) -> LabelInt(n, aux apply t)
         | Event s -> Event s
-        | Record(b,fields) -> Record(b, List.map (fun (s,(f,t)) -> s,(f,aux apply t)) fields)
-        | Proj(n, i,s,f,t) -> Proj(n, i, s, f, aux apply t)
+        | Record fields -> Record (List.map (fun (s,(f,t)) -> s,(f,aux apply t)) fields)
+        | Proj(i,s,f,t) -> Proj(i, s, f, aux apply t)
         | Nil -> Nil
         | Cons(t1,t2) -> Cons(aux apply t1, aux apply t2)
         | Match(t1,t2,x,y,t3) -> Match(aux apply t1, aux apply t2, x, y, aux apply t3)
@@ -1679,20 +1690,16 @@ and print_term syntax pri typ fm t =
               TRecS -> fprintf fm "%s" s
             | _ -> fprintf fm "{%s}" s
         end
-    | Record(b,fields) ->
+    | Record fields ->
         let rec aux fm = function
             [] -> ()
           | (s,(f,t))::fields ->
-              match b, fields=[] with
-                  true,true -> fprintf fm "%a" (print_term syntax 0 typ) t
-                | true,false -> fprintf fm "%a, %a" (print_term syntax 0 typ) t aux fields
-                | false,true -> fprintf fm "%s=%a" s (print_term syntax 0 typ) t
-                | false,false -> fprintf fm "%s=%a; %a" s (print_term syntax 0 typ) t aux fields
+              if fields=[]
+              then fprintf fm "%s=%a" s (print_term syntax 0 typ) t
+              else fprintf fm "%s=%a; %a" s (print_term syntax 0 typ) t aux fields
         in
-          if b
-          then fprintf fm "(%a)" aux fields
-          else fprintf fm "{%a}" aux fields
-    | Proj(_,_,s,_,t) -> fprintf fm "%a.%s" (print_term syntax 9 typ) t s
+          fprintf fm "{%a}" aux fields
+    | Proj(_,s,_,t) -> fprintf fm "%a.%s" (print_term syntax 9 typ) t s
     | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term syntax 9 typ) t1 s (print_term syntax 3 typ) t2
     | Nil ->
         let s =
@@ -1784,23 +1791,13 @@ and print_pattern fm pat =
           aux' pats
     | PNil -> fprintf fm "[]"
     | PCons(p1,p2) -> fprintf fm "%a::%a" aux p1 aux p2
-    | PRecord(true,pats) ->
+    | PRecord pats ->
         let aux' = function
             [] -> ()
           | [_,(_,_,pat)] -> fprintf fm "(%a)" aux pat
           | (_,(_,_,pat))::pats ->
               fprintf fm "(%a" aux pat;
               List.iter (fun (_,(_,_,pat)) -> fprintf fm ",%a" aux pat) pats;
-              pp_print_string fm ")"
-        in
-          aux' pats
-    | PRecord(false,pats) ->
-        let aux' = function
-            [] -> ()
-          | [_,(s,_,pat)] -> fprintf fm "(%s=%a)" s aux pat
-          | (_,(s,_,pat))::pats ->
-              fprintf fm "(%s=%a" s aux pat;
-              List.iter (fun (_,(s,_,pat)) -> fprintf fm ",%s=%a" s aux pat) pats;
               pp_print_string fm ")"
         in
           aux' pats
@@ -2313,10 +2310,10 @@ let rec eval_and_print_ce ce t =
     | Event s ->
         Format.printf "%s -->@." s;
         ce, {desc=Event s; typ=TUnknown}
-    | Record(b,fields) ->
+    | Record fields ->
         let ce' = List.fold_right (fun (_,(_,t)) ce -> fst (eval_and_print_ce ce t)) fields ce in
           ce', {desc=Unit; typ=TUnit}
-    | Proj(_,_,_,_,t) ->
+    | Proj(_,_,_,t) ->
         let ce',t' = eval_and_print_ce ce t in
           ce', {desc=Unit; typ=TUnit}
     | Nil -> ce, {desc=Unit; typ=TUnit}
@@ -2533,8 +2530,8 @@ let rec copy_poly_funs t =
       | Fail -> Fail
       | Label(b, t) -> Label(b, copy_poly_funs t)
       | Event s -> Event s
-      | Record(b,fields) -> Record(b, List.map (fun (f,(s,t)) -> f,(s,copy_poly_funs t)) fields)
-      | Proj(n,i,s,f,t) -> Proj(n,i,s,f,copy_poly_funs t)
+      | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,copy_poly_funs t)) fields)
+      | Proj(i,s,f,t) -> Proj(i,s,f,copy_poly_funs t)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,copy_poly_funs t1,copy_poly_funs t2)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(copy_poly_funs t1, copy_poly_funs t2)
@@ -2706,20 +2703,16 @@ fprintf fm "(";(
               TRecS -> fprintf fm "%s" s
             | _ -> fprintf fm "{%s}" s
         end
-    | Record(b,fields) ->
+    | Record fields ->
         let rec aux fm = function
             [] -> ()
           | (s,(f,t))::fields ->
-              match b, fields=[] with
-                  true,true -> fprintf fm "%a" (print_term' syntax 0 typ) t
-                | true,false -> fprintf fm "%a, %a" (print_term' syntax 0 typ) t aux fields
-                | false,true -> fprintf fm "%s=%a" s (print_term' syntax 0 typ) t
-                | false,false -> fprintf fm "%s=%a; %a" s (print_term' syntax 0 typ) t aux fields
+              if fields=[]
+              then fprintf fm "%s=%a" s (print_term' syntax 0 typ) t
+              else fprintf fm "%s=%a; %a" s (print_term' syntax 0 typ) t aux fields
         in
-          if b
-          then fprintf fm "(%a)" aux fields
-          else fprintf fm "{%a}" aux fields
-    | Proj(_,_,s,_,t) -> fprintf fm "%a.%s" (print_term' syntax 9 typ) t s
+          fprintf fm "{%a}" aux fields
+    | Proj(_,s,_,t) -> fprintf fm "%a.%s" (print_term' syntax 9 typ) t s
     | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term' syntax 9 typ) t1 s (print_term' syntax 3 typ) t2
     | Nil ->
         let s =
@@ -2812,7 +2805,7 @@ let rec trans_let t =
           let t2' = trans_let t2 in
             Branch(t1', t2')
       | Let(Flag.Nonrecursive, f, [], t1, t2) ->
-          App({desc=Fun(f,trans_let t2);typ=TFun(f,t2.typ)}, [trans_let t1])
+          App(make_fun f (trans_let t2), [trans_let t1])
       | Let(Flag.Nonrecursive, f, xs, t1, t2) ->
           Let(Flag.Nonrecursive, f, xs, trans_let t1, trans_let t2)
       | Let(Flag.Recursive, f, xs, t1, t2) ->
@@ -2834,8 +2827,8 @@ let rec trans_let t =
           let t1' = trans_let t1 in
             LabelInt(n, t1')
       | Event s -> Event s
-      | Record(b,fields) ->  Record (b, List.map (fun (f,(s,t1)) -> f,(s,trans_let t1)) fields)
-      | Proj(n,i,s,f,t1) -> Proj(n,i,s,f,trans_let t1)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,trans_let t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,trans_let t1)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans_let t1,trans_let t2)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(trans_let t1, trans_let t2)
@@ -2849,4 +2842,9 @@ let rec trans_let t =
     {desc=desc; typ=t.typ}
 
 
+
+let rec is_value t =
+  match t.desc with
+      Unit | True | False | Int _ | NInt _ | Var _ | Nil -> true
+    | _ -> false
 

@@ -27,8 +27,8 @@ and term =
   | Label of bool * typed_term
   | LabelInt of int * typed_term
   | Event of string
-  | Record of bool * (string * (Flag.mutable_flag * typed_term)) list (** true denotes a tuple *)
-  | Proj of int option * int * string * Flag.mutable_flag * typed_term
+  | Record of (string * (Flag.mutable_flag * typed_term)) list
+  | Proj of int * string * Flag.mutable_flag * typed_term
   | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
@@ -40,6 +40,7 @@ and term =
   | Pair of typed_term * typed_term
   | Fst of typed_term
   | Snd of typed_term
+  | Variant of typed_term (* for abstraction of datatype *)
 
 and type_kind =
     KAbstract
@@ -53,7 +54,8 @@ and pattern =
   | PConstruct of string * typed_pattern list
   | PNil
   | PCons of typed_pattern * typed_pattern
-  | PRecord of bool * (int * (string * Flag.mutable_flag * typed_pattern)) list
+  | PPair of typed_pattern * typed_pattern
+  | PRecord of (int * (string * Flag.mutable_flag * typed_pattern)) list
   | POr of typed_pattern * typed_pattern
 type syntax = ML | TRecS | CVC3 | CSIsat
 type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode of int
@@ -96,6 +98,13 @@ val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
 val make_pair : typed_term -> typed_term -> typed_term
 val make_nil : typ -> typed_term
+val make_variant : typed_term -> typed_term
+val make_match : typed_term -> (typed_pattern * typed_term option * typed_term) list -> typed_term
+val make_loop : typ -> typed_term
+val make_pvar : id -> typed_pattern
+val make_pconst : typed_term -> typed_pattern
+val make_pnil : typ -> typed_pattern
+val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 
 
 val subst : id -> typed_term -> typed_term -> typed_term
@@ -139,7 +148,7 @@ val copy_poly_funs : typed_term -> typed_term
 (** CPS と評価順序を合わせる必要あり *)
 val trans_let : typed_term -> typed_term
 (** returns a term whose definitions of let expressions are side-effect free *)
-val make_loop : typ -> typed_term
+val is_value : typed_term -> bool
 
 (** {6 Printing} *)
 

@@ -9,13 +9,12 @@ type 'a t =
   | TRInt of 'a
   | TVar of 'a t option ref
   | TFun of ('a t Id.t) * 'a t
-  | TList of 'a t * 'a list
+  | TList of 'a t
   | TPair of 'a t * 'a t
   | TConstr of string * bool
-  | TVariant of (string * 'a t list) list
-  | TRecord of bool * (string * (Flag.mutable_flag * 'a t)) list
   | TUnknown
   | TAbs of ('a t -> 'a t)
+  | TVariant of 'a t
 
 let typ_event = TConstr("event", true)
 let typ_excep = TConstr("exn", true)
@@ -32,12 +31,14 @@ let rec can_unify typ1 typ2 =
     | TInt _,TInt _ -> true
     | TRInt _,TRInt _ -> true
     | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
-    | TList(typ1,_), TList(typ2,_) -> can_unify typ1 typ2
+    | TList typ1, TList typ2 -> can_unify typ1 typ2
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
+(*
     | TVariant stypss1,TVariant stypss2 ->
         let aux (s1,typs1) (s2,typs2) = s1=s2 && List.for_all2 can_unify typs1 typs2 in
           List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
     | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && can_unify typ1 typ2) fields1 fields2
+*)
     | TUnknown, TUnknown -> true
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
@@ -73,10 +74,8 @@ let rec print print_pred fm typ =
                   then fprintf fm "(%a -> %a)" print_id_typ x print typ2
                   else*) Format.fprintf fm "(%a -> %a)" print (Id.typ x) print typ
       | TUnknown -> Format.fprintf fm "???"
-      | TList(typ,ps) ->
-          if ps = []
-          then Format.fprintf fm "%a list" print typ
-          else Format.fprintf fm "%a list[%a]" print typ print_preds ps
+      | TList typ -> Format.fprintf fm "%a list" print typ
+(*
       | TVariant ctypss ->
           let rec aux fm = function
               [] -> ()
@@ -104,6 +103,7 @@ let rec print print_pred fm typ =
             if b
             then Format.fprintf fm "(%a)" aux typs
             else Format.fprintf fm "{%a}" aux typs
+*)
       | TConstr(s,_) -> Format.pp_print_string fm s
 
 and print_preds print_pred fm = function

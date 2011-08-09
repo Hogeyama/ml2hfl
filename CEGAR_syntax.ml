@@ -142,8 +142,6 @@ let rec trans_typ = function
   | Type.TList _ -> assert false
   | Type.TConstr("event",_) -> TBase(TEvent,nil)
   | Type.TConstr _ -> assert false
-  | Type.TVariant _ -> assert false
-  | Type.TRecord _ -> assert false
   | Type.TUnknown -> assert false
 
 let trans_var x = Id.to_string x

@@ -38,20 +38,22 @@ let rec from_type_expr tenv venv typ =
           let venv2,typ2' = from_type_expr tenv venv1 typ2 in
           let x = Id.new_var "x" typ1' in
             venv2, TFun(x, typ2')
-      | Ttuple typs ->
-          let aux (c,env,typs) typ =
+      | Ttuple (typ1::typ2::typs) ->
+          let aux (env,typ_pair) typ =
             let env',typ' = from_type_expr tenv venv typ in
-              c+1, env', typs @ [string_of_int c,(Flag.Immutable,typ')]
+              env', TPair(typ',typ_pair)
           in
-          let _,env',typs = List.fold_left aux (0,venv,[]) typs in
-            env', TRecord(true,typs)
+          let venv,typ1' = from_type_expr tenv venv typ1 in
+          let venv,typ2' = from_type_expr tenv venv typ2 in
+            List.fold_left aux (venv,TPair(typ1',typ2')) typs
+      | Ttuple _ -> assert false
       | Tconstr(path, [], _) when Path.name path = "unit" -> venv, TUnit
       | Tconstr(path, [], _) when Path.name path = "bool" -> venv, TBool
       | Tconstr(path, [], _) when Path.name path = "int" -> venv, TInt []
       | Tconstr(path, [], _) when Path.name path = "string" -> venv, TInt []
       | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
           let env',typ' = from_type_expr tenv venv type_expr in
-            env', TList(typ', [])
+            env', TList typ'
       | Tconstr(path, _, m) ->
           let b =
             try match (Env.find_type path tenv).type_kind with
@@ -197,9 +199,11 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
       | Tpat_constant(Const_int32 n) -> unsupported "pattern match (int32 constant)"
       | Tpat_constant(Const_int64 n) -> unsupported "pattern match (int64 constant)"
       | Tpat_constant(Const_nativeint n) -> unsupported "pattern match (nativeint constant)"
-      | Tpat_tuple ps ->
-          let _,pats = List.fold_left (fun (c,pats) p -> c+1, pats @ [c, (string_of_int c, Flag.Immutable, from_pattern p)]) (0,[]) ps in
-            PRecord(true,pats)
+      | Tpat_tuple(p1::p2::ps) ->
+          let p1' = from_pattern p1 in
+          let p2' = from_pattern p2 in
+          let make_pair p1 p2 = {pat_desc=PPair(p1,p2); pat_typ=TPair(p1.pat_typ,p2.pat_typ)} in
+            (List.fold_left (fun p_pair p -> make_pair p_pair (from_pattern p)) (make_pair p1' p2') ps).pat_desc
       | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "()" -> PConst {desc=Unit;typ=typ'}
       | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "[]" -> PNil
       | Tpat_construct(cstr_desc, [p1;p2]) when get_constr_name cstr_desc typ env = "::" ->
@@ -244,7 +248,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
               List.iter aux2 typs;
               add_type_env (KeyTypeEntity name) (TRecord(false, typs));
             *)
-            PRecord(false, List.map aux1 pats)
+            PRecord (List.map aux1 pats)
       | Tpat_array _ -> unsupported "pattern match (array)"
       | Tpat_or(p1,p2,None) -> POr(from_pattern p1, from_pattern p2)
       | Tpat_or(_,_,Some _) -> unsupported "pattern match (or) where row = Some _"
@@ -274,19 +278,18 @@ let from_constant = function
 let rec get_bindings pat t =
   match pat.pat_desc, t.desc with
       PVar x, _ -> [x, t]
-    | PRecord(b,pats), Record(b',fields) ->
+    | PRecord(pats), Record(fields) ->
         let aux (i,(_,_,p)) =
           let _,(_,t) = List.nth fields i in
             get_bindings p t
         in
           List.flatten (List.map aux pats)
-    | PRecord(b,pats), Var x ->
-        let n = if b then Some (List.length pats) else None in
-        let aux (i,(s,f,p)) = get_bindings p {desc=Proj(n,i,s,f,{desc=Var x;typ=Id.typ x});typ=p.pat_typ} in
+    | PRecord pats, Var x ->
+        let aux (i,(s,f,p)) = get_bindings p {desc=Proj(i,s,f,{desc=Var x;typ=Id.typ x});typ=p.pat_typ} in
           List.flatten (List.map aux pats)
-    | PRecord(b,pats), _ ->
+    | PRecord pats, _ ->
         let x = Id.new_var "x" t.typ in
-          (x,t) :: get_bindings {pat_desc=PRecord(b,pats);pat_typ=pat.pat_typ} {desc=Var x;typ=Id.typ x}
+          (x,t) :: get_bindings {pat_desc=PRecord pats; pat_typ=pat.pat_typ} {desc=Var x;typ=Id.typ x}
     | _ -> assert false
 
 let rec from_expression x = match x with {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} ->
@@ -379,10 +382,11 @@ let rec from_expression x = match x with {exp_desc=exp_desc; exp_loc=_; exp_type
           let pes' = List.map aux pes in
           let pes'' = pes' @ [] in
             TryWith(from_expression e, make_fun x {desc=Match_(make_var x, pes''); typ=typ'})
-      | Texp_tuple es ->
-          let aux (c,fields) e = c+1, fields @ [string_of_int c, (Flag.Immutable, from_expression e)] in
-          let _,fields = List.fold_left aux (0,[]) es in
-            Record(true, fields)
+      | Texp_tuple(e1::e2::es) ->
+          let t1 = from_expression e1 in
+          let t2 = from_expression e2 in
+            (List.fold_left (fun t e -> make_pair t (from_expression e)) (make_pair t1 t2) es).desc
+      | Texp_tuple _ -> assert false
       | Texp_construct(desc,es) ->
           begin
             match get_constr_name desc typ env, es with
@@ -399,7 +403,7 @@ let rec from_expression x = match x with {exp_desc=exp_desc; exp_loc=_; exp_type
       | Texp_record(fields,None) ->
           let fields' = List.sort (fun (lbl1,_) (lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
           let fields'' = List.map (fun (label,e) -> get_label_name label env, (from_mutable_flag label.lbl_mut, from_expression e)) fields' in
-            Record(false, fields'')
+            Record fields''
       | Texp_record(fields,Some init) ->
           let labels = Array.to_list (fst (List.hd fields)).lbl_all in
           let r = Id.new_var "r" typ' in
@@ -409,13 +413,13 @@ let rec from_expression x = match x with {exp_desc=exp_desc; exp_loc=_; exp_type
               let flag = from_mutable_flag lbl.lbl_mut in
                 try
                   name, (flag, from_expression (List.assoc lbl fields))
-                with Not_found -> name, (flag, {desc=Proj(None, lbl.lbl_pos, name, flag, {desc=Var r;typ=Id.typ r});typ=from_type_expr env [] lbl.lbl_arg})
+                with Not_found -> name, (flag, {desc=Proj(lbl.lbl_pos, name, flag, {desc=Var r;typ=Id.typ r});typ=from_type_expr env [] lbl.lbl_arg})
             in
               List.map aux labels
           in
-            Let(Flag.Nonrecursive,r,[],from_expression init,{desc=Record(false,fields');typ=typ'})
+            Let(Flag.Nonrecursive,r,[],from_expression init,{desc=Record fields';typ=typ'})
       | Texp_field(e,label) ->
-          Proj(None, label.lbl_pos, get_label_name label env, from_mutable_flag label.lbl_mut, from_expression e)
+          Proj(label.lbl_pos, get_label_name label env, from_mutable_flag label.lbl_mut, from_expression e)
       | Texp_setfield(e1,label,e2) ->
           SetField(None, label.lbl_pos, get_label_name label env, from_mutable_flag label.lbl_mut, from_expression e1, from_expression e2)
       | Texp_array _ -> unsupported "expression (array)"

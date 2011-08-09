@@ -4,7 +4,7 @@ open Type
 open Utilities
 
 let funs = ref []
-
+(*
 let rec inlining funs defs t =
   let desc =
     match t.desc with
@@ -118,8 +118,8 @@ let rec normalize t =
       | Fail -> Fail
       | Label(b,t) -> Label(b,normalize t)
       | Event s -> assert false
-      | Record(b,fields) -> Record(b, List.map (fun (s,(f,t)) -> s,(f,normalize t)) fields)
-      | Proj(n,i,s,f,t) -> Proj(n, i, s, f, normalize t)
+      | Record fields -> Record (List.map (fun (s,(f,t)) -> s,(f,normalize t)) fields)
+      | Proj(i,s,f,t) -> Proj(i, s, f, normalize t)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(normalize t1, normalize t2)
       | Match(t1,t2,x,y,t3) -> Match(normalize t1, normalize t2, x, y, normalize t3)
@@ -140,6 +140,7 @@ let rec extract_records_typ = function
   | TInt ts -> TInt ts
   | TRInt t -> TRInt t
   | TVar x -> TVar x
+(*
   | TFun({Id.typ=TRecord(_,typs)} as x,typ) ->
       let typ = extract_records_typ typ in
       let aux (s,(_,typ)) typ =
@@ -147,10 +148,10 @@ let rec extract_records_typ = function
           TFun(x',typ)
       in
         extract_records_typ (List.fold_right aux typs typ)
+*)
   | TFun(y,typ) -> TFun(Id.set_typ y (extract_records_typ (Id.typ y)), extract_records_typ typ)
   | TUnknown -> TUnknown
   | TList(typ,ps) -> TList(extract_records_typ typ, ps)
-  | TRecord _ -> assert false
 
 let rec extract_records env t =
   let desc =
@@ -198,8 +199,8 @@ let rec extract_records env t =
       | Fail -> Fail
       | Label(b,t) -> Label(b,extract_records env t)
       | Event s -> Event s
-      | Record(b,fields) -> assert false
-      | Proj(_,i,_,_,{desc=Var x}) -> Var (List.nth (Id.assoc x env) i)
+      | Record fields -> assert false
+      | Proj(i,_,_,{desc=Var x}) -> Var (List.nth (Id.assoc x env) i)
       | Proj _ -> assert false
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(extract_records env t1, extract_records env t2)
@@ -211,7 +212,7 @@ let rec extract_records env t =
   in
     {desc=desc; typ=t.typ}
 let extract_records t = extract_records [] t
-
+*)
 
 
 let rec trans_simpl_typ = function
@@ -229,8 +230,6 @@ let rec trans_simpl_typ = function
       TFun(Id.set_typ x typ1, TFun(k,TUnit))
   | TList _ -> assert false
   | TConstr _ -> assert false
-  | TVariant _ -> assert false
-  | TRecord _ -> assert false
   | TUnknown -> assert false
 
 let trans_var x = Id.set_typ x (trans_simpl_typ (Id.typ x))
@@ -304,7 +303,7 @@ let rec trans_simpl c t =
 let trans_simpl = trans_simpl (fun x -> x)
 
 
-
+(*
 let trans t =
   let cps = trans_simpl t in
   let () = if true then Format.printf "CPS:@.%a@." pp_print_term cps in
@@ -315,6 +314,7 @@ let trans t =
   let normalized = normalize extracted in
   let inlined = inlining !funs [] normalized in
     part_eval inlined
+*)
 
 let trans t = trans_simpl t
 
@@ -353,8 +353,6 @@ let rec trans_exc_typ = function
       TFun(Id.set_typ x typ1, TFun(k,TFun(h,TUnit)))
   | TList _ -> assert false
   | TConstr(s,b) -> TConstr(s,b)
-  | TVariant _ -> assert false
-  | TRecord _ -> assert false
   | TUnknown -> assert false
 
 let trans_exc_var x = Id.set_typ x (trans_exc_typ (Id.typ x))
@@ -459,16 +457,5 @@ let trans_exc t =
     trans_exc (fun x -> x) ce t
 
 
-
-let trans t =
-  let cps = trans_exc t in
-  let () = if true then Format.printf "CPS:@.%a@." pp_print_term cps in
-  let () = if true then Format.printf "CPS:@.%a@." (Syntax.print_term' Syntax.ML 0 false) cps in
-  let () = Type_check.check cps in
-  let extracted = extract_records cps in
-  let () = if true then Format.printf "EXTRACTED:@.%a@." pp_print_term extracted in
-  let normalized = normalize extracted in
-  let inlined = inlining !funs [] normalized in
-    part_eval inlined
 
 let trans t = trans_exc t
