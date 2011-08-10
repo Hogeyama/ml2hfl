@@ -9,6 +9,9 @@ type t =
 | Ret of Attr.t * t * t
 | Error of Attr.t
 
+(* up to attributes *)
+let equiv t1 t2 = t1 = t2(*ToDo*)
+
 let rec fun_args t =
   match t with
     App(_, t1, t2) ->
@@ -74,13 +77,20 @@ let string_of t =
   Format.fprintf Format.str_formatter "%a" pr2 t;
   Format.flush_str_formatter ()
 
+let rec fvs t =
+  match t with
+    Var(_, x) -> [x]
+  | Const(_, _) -> []
+  | App(_, t1, t2) -> List.unique (fvs t1 @ fvs t2)
+  | _ -> assert false
+
 let make_var id = Var([], Var.V(Idnt.make id))
 let make_var2 x = Var([], x)
-let make_int n = Const([], Const.Int(n))
-let make_unit = Const([], Const.Unit)
-let make_true = Const([], Const.True)
-let make_false = Const([], Const.False)
-let make_event id = Const([], Const.Event(Idnt.make id))
+let tint n = Const([], Const.Int(n))
+let tunit = Const([], Const.Unit)
+let ttrue = Const([], Const.True)
+let tfalse = Const([], Const.False)
+let tevent id = Const([], Const.Event(Idnt.make id))
 
 let rec apply t ts =
   match ts with
@@ -89,38 +99,62 @@ let rec apply t ts =
   | t'::ts' ->
       apply (App([], t, t')) ts'
 
-let rec band ts =
-  match ts with
-    [] -> Const([], Const.True)
-  | [t] -> t
-  | (Const(_, Const.True))::ts' -> band ts'
-  | t::ts' ->
-      let t' = band ts' in
-      (match t' with
-        Const(_, Const.True) ->
-          t
-      | _ ->
-          apply (Const([], Const.And)) [t; t'])
-let rec bor ts =
-  match ts with
-    [] -> Const([], Const.False)
-  | [t] -> t
-  | (Const(_, Const.False))::ts' -> bor ts'
-  | t::ts' ->
-      let t' = bor ts' in
-      (match t' with
-        Const(_, Const.False) ->
-          t
-      | _ ->
-          apply (Const([], Const.Or)) [t; t'])
+let band ts =
+  let rec aux ts =
+    match ts with
+      [] -> Const([], Const.True)
+    | [t] -> t
+    | (Const(_, Const.True))::ts' -> aux ts'
+    | t::ts' ->
+        let t' = aux ts' in
+        (match t' with
+          Const(_, Const.True) ->
+            t
+        | _ ->
+            apply (Const([], Const.And)) [t; t'])
+  in
+  aux (List.unique ts)
+
+let bor ts =
+  let rec aux ts =
+    match ts with
+      [] -> Const([], Const.False)
+    | [t] -> t
+    | (Const(_, Const.False))::ts' -> aux ts'
+    | t::ts' ->
+        let t' = aux ts' in
+        (match t' with
+          Const(_, Const.False) ->
+            t
+        | _ ->
+            apply (Const([], Const.Or)) [t; t'])
+  in
+  aux (List.unique ts)
+
 let bnot t = apply (Const([], Const.Not)) [t]
 
-let imply t1 t2 = apply (Const([], Const.Imply)) [t1; t2]
+let imply t1 t2 =
+  if equiv t1 ttrue then
+    t2
+  else if equiv t1 tfalse then
+    ttrue
+  else if equiv t2 ttrue then
+    ttrue
+  else if equiv t2 tfalse then
+    bnot t1
+  else
+    apply (Const([], Const.Imply)) [t1; t2]
 
+let iff t1 t2 =
+  if equiv t1 t2 then
+    ttrue
+  else
+    apply (Const([], Const.Iff)) [t1; t2]
+    
 let add t1 t2 = apply (Const([], Const.Add)) [t1; t2]
 let rec sum ts =
   match ts with
-    [] -> make_int 0
+    [] -> tint 0
   | [t] -> t
   | (Const(_, Const.Int(0)))::ts' -> sum ts'
   | t::ts' ->
@@ -133,6 +167,7 @@ let rec sum ts =
 
 (*let sub t1 t2 = apply (Const([], Const.Add)) [t1; apply (Const([], Const.Minus)) [t2]]*)
 let sub t1 t2 = apply (Const([], Const.Sub)) [t1; t2]
+let minus t = apply (Const([], Const.Minus)) [t]
 let mul t1 t2 = apply (Const([], Const.Mul)) [t1; t2]
 let eq t1 t2 = apply (Const([], Const.Eq)) [t1; t2]
 (*let neq t1 t2 = apply (Const([], Const.Not)) [apply (Const([], Const.Eq)) [t1; t2]]*)
@@ -152,15 +187,25 @@ let rec subst sub t =
   | App(a, t1, t2) -> App(a, subst sub t1, subst sub t2)
   | _ -> assert false
 
-let rec fvs t =
-  match t with
-    Var(_, x) -> [x]
-  | Const(_, _) -> []
-  | App(_, t1, t2) -> List.unique (fvs t1 @ fvs t2)
-  | _ -> assert false
+let forall_imply condxss t =
+  List.fold_right
+    (fun (cond, xs) t ->
+      (*
+      let _ = Format.printf "cond: %a@.xs: %a@." pr cond (Util.pr_list Var.pr ", ") xs in
+      *)
+      match cond, xs, t with
+        App([], App([], Const([], Const.Eq), Var([], x)), t'), [y], _
+        when Var.equiv x y && not (List.mem x (fvs t')) ->
+          subst (fun z -> if Var.equiv z x then t' else raise Not_found) t
+      | _, [y], App([], App([], Const([], Const.Eq), t1), App([], App([], Const([], Const.Add), t2), Var([], x)))
+        when Var.equiv x y ->
+          (* is this sound for any case??? *)
+          subst (fun z -> if Var.equiv z x then sub t1 t2 else raise Not_found) cond
+      | _ -> (*forall xs*) imply cond t)
+    condxss t
 
 let rec redex_of env t =
-		match t with
+  match t with
     Const(a, Const.Event(id)) when id = "fail" ->
       (fun t -> t), Const(a, Const.Event(id))
   | Const(a, Const.RandInt) ->
@@ -168,8 +213,8 @@ let rec redex_of env t =
 (*
   | Var(_, _)
 *)
-		| App(_, _, _) ->
-				  let f, args = fun_args t in
+  | App(_, _, _) ->
+      let f, args = fun_args t in
       let rec r args1 args =
         match args with
           [] -> raise Not_found
@@ -179,35 +224,36 @@ let rec redex_of env t =
             with Not_found ->
               r (args1 @ [arg]) args2)
       in
-				  (match f with
-				    Var(attr, f) ->
+     (match f with
+        Var(attr, f) ->
           (try
             let args1, (ctx, red), args2 = r [] args in
             (fun t -> apply (Var(attr, f)) (args1 @ [ctx t] @ args2)), red
           with Not_found ->
-		          let ar =
+            let ar =
               try
                 SimType.arity (env f)
               with Not_found ->
                 raise Not_found (* f is not a function name *)
                 (*(Format.printf "%a@." Var.pr f; assert false)*)
             in
-		          if List.length args >= ar then
-		  				      let args1, args2 = Util.split_at args ar in
-		            (fun t -> apply t args2), apply (Var(attr, f)) args1
-		          else raise Not_found)
+            if List.length args >= ar then
+              let args1, args2 = Util.split_at args ar in
+              (fun t -> apply t args2), apply (Var(attr, f)) args1
+            else raise Not_found)
       | Const(attr, c) ->
           (try
             let args1, (ctx, red), args2 = r [] args in
             (fun t -> apply (Const(attr, c)) (args1 @ [ctx t] @ args2)), red
           with Not_found ->
-		          raise Not_found))
+            raise Not_found)
+      | _ -> assert false)
   | Call(a, f, args) ->
       (fun t -> t), Call(a, f, args)
   | Ret(a, ret, t) ->
       (try
-		      let ctx, red = redex_of env t in
-		      (fun t -> Ret(a, ret, ctx t)), red
+        let ctx, red = redex_of env t in
+        (fun t -> Ret(a, ret, ctx t)), red
       with Not_found ->
         (fun t -> t), Ret(a, ret, t))
   | _ -> raise Not_found
@@ -215,7 +261,7 @@ let rec redex_of env t =
 
 let rec dnf t =
   let f, args = fun_args t in
-		match f, args with
+  match f, args with
     Const(_, Const.True), [] ->
       [[]]
   | Const(_, Const.False), [] ->
@@ -233,7 +279,7 @@ let rec dnf t =
   | _ -> assert false
 and dnfn t =
   let f, args = fun_args t in
-		match f, args with
+  match f, args with
     Const(_, Const.True), [] ->
       []
   | Const(_, Const.False), [] ->
@@ -252,8 +298,8 @@ and dnfn t =
 
 let term_of_arith nxs n =
   let ts =
-		  (if n = 0 then [] else [make_int n]) @
-		  (List.filter_map (fun (n, x) -> if n = 0 then None else Some(mul (make_int n) (make_var2 x))) nxs)
+    (if n = 0 then [] else [tint n]) @
+    (List.filter_map (fun (n, x) -> if n = 0 then None else Some(mul (tint n) (make_var2 x))) nxs)
   in
   sum ts
 
@@ -283,9 +329,9 @@ let rec arith_of t =
       [], 0 (*????*)
   | _ ->
       invalid_arg "Term.arith_of"
-
+    
 let int_rel_of t =
-		match fun_args t with
+  match fun_args t with
     Const(_, c), [t1; t2] when Const.is_int_rel c ->
       let nxs, n = arith_of (sub t1 t2) in
       c, nxs, n
@@ -293,16 +339,16 @@ let int_rel_of t =
 
 let rec simplify t =
   try
-		  (match fun_args t with
-		    Const(_, Const.And), [t1; t2] ->
-						  (match int_rel_of t1, int_rel_of t2 with
+    (match fun_args t with
+      Const(_, Const.And), [t1; t2] ->
+        (match int_rel_of t1, int_rel_of t2 with
           (Const.Leq, nxs1, n1), (Const.Leq, nxs2, n2)
         | (Const.Geq, nxs1, n1), (Const.Geq, nxs2, n2) ->
             if Arith.equiv nxs1 (Arith.minus nxs2) && n1 = -n2 then
-              eq (term_of_arith nxs1 n1) (make_int 0)
+              eq (term_of_arith nxs1 n1) (tint 0)
             else t
         | _ -> t)
-		  | _ -> t)
+    | _ -> t)
   with Invalid_argument _ ->
     t
 
@@ -313,10 +359,7 @@ let rec set_arity am t =
     Var(a, x) -> (try let ar = am x in Var(Attr.Arity(ar)::a, x) with Not_found -> Var(a, x))
   | Const(a, c) -> Const(a, c)
   | App(a, t1, t2) -> App(a, set_arity am t1, set_arity am t2)
-		| Call(a, f, args) -> Call(a, set_arity am f, List.map (set_arity am) args)
-		| Ret(a, ret, t) -> Ret(a, set_arity am ret, set_arity am t)
-		| Error(a) -> Error(a)
+  | Call(a, f, args) -> Call(a, set_arity am f, List.map (set_arity am) args)
+  | Ret(a, ret, t) -> Ret(a, set_arity am ret, set_arity am t)
+  | Error(a) -> Error(a)
 *)
-
-(* up to attributes *)
-let equiv t1 t2 = t1 = t2(*ToDo*)

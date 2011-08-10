@@ -6,6 +6,7 @@ type t =
 | And
 | Or
 | Imply
+| Iff
 | Not
 | Lt
 | Gt
@@ -24,7 +25,7 @@ let rec is_int_rel c =
   match c with
     Event(_)
   | Unit
-  | True | False | And | Or | Imply | Not -> false
+  | True | False | And | Or | Imply | Iff | Not -> false
   | Lt | Gt | Leq | Geq | Eq | Neq -> true
   | Int(_) | RandInt | Add | Sub | Mul | Minus -> false
 
@@ -36,7 +37,7 @@ let rec is_binary c =
   | Int(_) | RandInt -> false
   | Not
   | Minus -> false
-  | And | Or | Imply
+  | And | Or | Imply | Iff
   | Lt | Gt | Leq | Geq | Eq | Neq
   | Add | Sub | Mul -> true
 
@@ -49,6 +50,7 @@ let rec pr ppf c =
   | And -> Format.fprintf ppf "(&&)"
   | Or -> Format.fprintf ppf "(||)"
   | Imply -> Format.fprintf ppf "(=>)"
+  | Iff -> Format.fprintf ppf "(<=>)"
   | Not -> Format.fprintf ppf "not"
   | Lt -> Format.fprintf ppf "(<)"
   | Gt -> Format.fprintf ppf "(>)"
@@ -71,6 +73,7 @@ let bnot_ibin c =
   | Geq -> Lt
   | Eq -> Neq
   | Neq -> Eq
+  | _ -> assert false
 
 let rec pr_bin ppf c =
   match c with
@@ -85,6 +88,7 @@ let rec pr_bin ppf c =
   | And -> Format.fprintf ppf "&&"
   | Or -> Format.fprintf ppf "||"
   | Imply -> Format.fprintf ppf "=>"
+  | Iff -> Format.fprintf ppf "<=>"
   | Lt -> Format.fprintf ppf "<"
   | Gt -> Format.fprintf ppf ">"
   | Leq -> Format.fprintf ppf "<="

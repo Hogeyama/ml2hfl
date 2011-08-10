@@ -12,7 +12,8 @@ let rec fixed_point f eq x =
 
 let rec init xs =
  match xs with
-   [x] -> []
+   [] -> assert false
+ | [x] -> []
  | x::xs' -> x::(init xs')
 
 (*
@@ -74,7 +75,8 @@ let rec split_at xs n =
     (match xs with
       x::xs' ->
         let xs1, xs2 = split_at xs' (n - 1) in
-        x::xs1, xs2)
+        x::xs1, xs2
+    | _ -> assert false)
   else
     assert false
 
@@ -84,6 +86,25 @@ let rec classify eqrel xs =
   | x::xs' ->
       let t, f = List.partition (fun x' -> eqrel x x') xs' in
       (x::t)::(classify eqrel f)
+
+let rec transpose_list xss =
+  if List.for_all (fun xs -> xs = []) xss then
+    []
+  else
+    let xs, xss = List.split (List.map (function x::xs -> x, xs | _ -> assert false ) xss) in
+    xs::transpose_list xss
+
+let multiply_list xss yss =
+  concat_map
+    (fun xs ->
+      List.map (fun ys -> xs @ ys) yss)
+    xss
+
+let multiply_list_list xsss =
+  List.fold_left
+    multiply_list
+    (List.hd xsss)
+    (List.tl xsss)
 
 let rec pr_list epr sep ppf xs =
   match xs with
