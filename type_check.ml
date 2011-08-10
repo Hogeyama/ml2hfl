@@ -12,7 +12,7 @@ let check_var x typ =
 
 let rec check t typ =
   if not (Type.can_unify t.typ typ)
-  then (Format.printf "check: %a, %a@." (print_term' ML 0 false) t Syntax.print_typ typ; assert false);
+  then (Format.printf "check: %a, %a@." (print_term' 0 false) t Syntax.print_typ typ; assert false);
   match t with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
@@ -128,7 +128,7 @@ let rec check t typ =
             | Match(t1,t2,y,z,t3) -> assert false
             | Match_(t1,pats) -> assert false
             | TryWith(t1,pats) -> assert false
-          *)          Format.printf "check: %a, %a@." (print_term' ML 0 false) t Syntax.print_typ t.typ; assert false
+          *)          Format.printf "check: %a, %a@." (print_term' 0 false) t Syntax.print_typ t.typ; assert false
 
 let check t = check t TUnit
 

@@ -66,3 +66,7 @@ let gen_int = true
 type mode = Reachability | FileAccess
 
 let mode = ref Reachability
+
+type refine = RefineSizedType | RefineDependentType
+
+let refine = RefineDependentType

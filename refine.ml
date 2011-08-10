@@ -52,5 +52,13 @@ let add_pred map env =
     List.map aux env
 
 
-let refine ces prog =
-  prog
+let refine ces (env,defs,main) =
+  let refine =
+    match Flag.refine with
+        Flag.RefineSizedType -> (fun _ -> assert false)
+      | Flag.RefineDependentType -> (fun _ -> assert false)
+  in
+  let map = refine ces (env,defs,main) in
+  let env' = add_pred map env in
+    env', defs, main
+

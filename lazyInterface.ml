@@ -1,3 +1,5 @@
+open ExtList
+
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
@@ -55,38 +57,49 @@ let conv_prog (typs, fdefs, main) =
 
 let verify(* ces*) prog =
   let prog = conv_prog prog in
-  Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
-  let uid = Ctree.gen () in
-  let ret, args =
-    Ctree.ret_args
-     (Var.V(prog.Prog.main))
-     uid
-     (SimType.arity (Prog.type_of prog (Var.V(prog.Prog.main))))
-  in
-  let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
-  let rt = Ctree.Node((uid, []), init, ref []) in
+    Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
+    let uid = Ctree.gen () in
+    let ret, args =
+      Ctree.ret_args
+        (Var.V(prog.Prog.main))
+        uid
+        (SimType.arity (Prog.type_of prog (Var.V(prog.Prog.main))))
+    in
+    let init = Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args)) in
+    let rt = Ctree.Node((uid, []), init, ref []) in
 
-  let strategy =
-    match 0 with
-      0 -> Ctree.bf_strategy rt
-    | 1 -> Ctree.df_strategy rt
-(*
-    | 2 -> Ctree.cex_strategy ces rt
-*)
-  in
-  let eps = Ctree.manual prog rt strategy in
-		let eptrs = List.map Trace.of_error_path eps in
-		let sumss = List.map
-				(fun eptr ->
-      Format.printf "@.";
-      Trace.summaries_of eptr)
-		  eptrs
-		in
-  List.iter
-    (fun sums ->
-						let rtys = RefType.of_summaries prog.Prog.types sums in
-						let pr ppf ((f, uid), rty) = Format.fprintf ppf "<%a:%d>: %a" Idnt.pr f uid RefType.pr rty in
-						Format.printf "function summaries:@.  @[<v>%a@]@." (Util.pr_list pr "@ ") rtys)
-    sumss;
-  Format.printf "END verification@,@]"
+    let strategy =
+      match 0 with
+          0 -> Ctree.bf_strategy rt
+        | 1 -> Ctree.df_strategy rt
+            (*
+              | 2 -> Ctree.cex_strategy ces rt
+            *)
+    in
+  (try
+    let rec loop i =
+      let eps = Ctree.manual prog rt strategy in
+      let eptrs = List.map Trace.of_error_path eps in
+    (*
+      let _ = Format.printf "error path trees:@.  @[<v>%a@]@." (Util.pr_list pr_tree "@,") eptrs in
+    *)
+      let sums = Util.concat_map
+        (fun eptr ->
+          Format.printf "@.";
+          Trace.summaries_of eptr)
+        eptrs
+      in
+      let fcs = List.unique (Util.concat_map Trace.function_calls_of eptrs) in
+      let env = SizType.of_summaries (Prog.type_of prog) fcs sums in
+      let _ = Format.printf "function summaries:@.  %a@." SizType.pr_fun_env env in
+      if true then
+        if SizType.check_prog env prog then
+          Format.printf "@.The program is safe@."
+        else
+          loop (i + 1)
+    in
+    loop 1
+  with Trace.FeasibleErrorTrace(eptr) ->
+   Format.printf "@.The program is unsafe@.Error trace: %a@." Trace.pr eptr);
+      Format.printf "END verification@,@]"
 

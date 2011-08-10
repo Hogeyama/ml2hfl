@@ -243,7 +243,7 @@ let trans_def (f,(xs,t)) =
 
 let trans_prog t =
   let t = Syntax.trans_let t in
-  let () = if true then Format.printf "trans_let :@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
+  let () = if true then Format.printf "trans_let :@.%a\n@." (Syntax.print_term_fm_break true) t in
   let main = new_id "main" in
   let defs,t = Syntax.lift t in
   let defs_t,t' = trans_term [] [] t in

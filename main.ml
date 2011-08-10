@@ -20,7 +20,7 @@ let close_log () =
 let write_log_string s =
   Format.fprintf !log_fm "%s\n@." s
 let write_log_term t =
-  Syntax.print_term_fm_break Syntax.ML false !log_fm t;
+  Syntax.print_term_fm_break false !log_fm t;
   flush !log_cout
 
 
@@ -56,15 +56,16 @@ let main filename in_channel =
     in
       Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
-  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
+  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break true) t in
+Format.printf "check: %a@." (Syntax.print_term' 0 false) t;
   let t = Syntax.copy_poly_funs t in
   let () = Type_check.check t in
+Format.printf "check: %a@." (Syntax.print_term' 0 false) t;
   let t = CPS.trans t in
-  let () = if true then Format.printf "CPS:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
+  let () = if true then Format.printf "CPS:@.%a\n@." (Syntax.print_term_fm_break true) t in
   let () = Type_check.check t in
   let t = Abstract.abstract_list t in
-  let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term_fm_break Syntax.ML true) t in
-    assert false;
+  let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term_fm_break true) t in
   let prog = CEGAR_syntax.trans_prog t in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog

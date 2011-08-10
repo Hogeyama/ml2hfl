@@ -57,7 +57,6 @@ and pattern =
   | PPair of typed_pattern * typed_pattern
   | PRecord of (int * (string * Flag.mutable_flag * typed_pattern)) list
   | POr of typed_pattern * typed_pattern
-type syntax = ML | TRecS | CVC3 | CSIsat
 type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode of int
 
 type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
@@ -157,15 +156,14 @@ val print_id : Format.formatter -> id -> unit
 val print_ids : Format.formatter -> id list -> unit
 val print_id_typ : Format.formatter -> id -> unit
 val print_ids_typ : Format.formatter -> id list -> unit
-val print_termlist : syntax -> int -> bool -> Format.formatter -> typed_term list -> unit
+val print_termlist : int -> bool -> Format.formatter -> typed_term list -> unit
 val string_of_ident : id -> string
-val string_of_term : syntax -> typed_term -> string
+val string_of_term : typed_term -> string
 val string_of_node : node -> string
-val print_hors : Format.formatter -> (id * (id list * typed_term)) list * (int * string * int list) list -> unit
-val print_term_fm : syntax -> bool -> Format.formatter -> typed_term -> unit
-val print_term : syntax -> bool -> typed_term -> unit
-val print_term_fm_break : syntax -> bool -> Format.formatter -> typed_term -> unit
-val print_term_break : syntax -> bool -> typed_term -> unit
+val print_term_fm : bool -> Format.formatter -> typed_term -> unit
+val print_term : bool -> typed_term -> unit
+val print_term_fm_break : bool -> Format.formatter -> typed_term -> unit
+val print_term_break : bool -> typed_term -> unit
 val print_constr : Format.formatter -> literal -> unit
 val print_constr_list : Format.formatter -> literal list -> unit
 val pp_print_typ : Format.formatter -> typ -> unit
@@ -174,5 +172,5 @@ val pp_print_typ : Format.formatter -> typ -> unit
 val pp_print_term : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 
-val print_term' : syntax -> int -> bool -> Format.formatter -> typed_term -> unit
+val print_term' : int -> bool -> Format.formatter -> typed_term -> unit
 

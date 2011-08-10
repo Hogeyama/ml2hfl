@@ -369,6 +369,7 @@ let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Flag.Immutable, t))::fields, i+1) ([],0) ts in
     {desc=Record fields; typ=TConstr("",false)}
 
+(*
 let rec abst_datatype' t =
   match t.desc with
       Constr(s,ts) ->
@@ -404,7 +405,6 @@ let rec abst_datatype' t =
                 else
                   let x = Id.new_var "x" (t'.typ) in
                     [x,t'], make_variant (make_var x)
-
 and abst_datatype t =
   let typ' = abst_datatype_typ t.typ in
   let desc =
@@ -464,3 +464,4 @@ let abstract_data_type t = abst_data_type t
 
 
 
+*)

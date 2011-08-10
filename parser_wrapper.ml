@@ -292,12 +292,13 @@ let rec get_bindings pat t =
           (x,t) :: get_bindings {pat_desc=PRecord pats; pat_typ=pat.pat_typ} {desc=Var x;typ=Id.typ x}
     | _ -> assert false
 
-let rec from_expression x = match x with {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} ->
+let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   add_type_env env typ;
   let typ' = from_type_expr env [] typ in
   let desc =
     match exp_desc with
-        Texp_ident(path, _) -> Var (Id.make (Path.binding_time path) (Path.name path) typ')
+        Texp_ident(path, _) ->
+          Var (Id.make (Path.binding_time path) (Path.name path) typ')
       | Texp_constant c -> from_constant c
       | Texp_let(rec_flag, [p,e1], e2) ->
           let flag = from_rec_flag rec_flag in
@@ -507,8 +508,8 @@ let from_use_file ast =
           in
             aux fs
         in
-        let map1 = List.map2 (fun f f' ->  f, {desc=Var f'; typ=Id.typ f'}) fs fs' in
-        let map2 = List.map2 (fun f f' ->  f', app2app {desc=Var f;typ=Id.typ f} (List.map (fun f -> {desc=Var f;typ=Id.typ f}) (aux f))) fs fs' in
+        let map1 = List.map2 (fun f f' ->  f, make_var f') fs fs' in
+        let map2 = List.map2 (fun f f' ->  f', app2app (make_var f) (List.map make_var (aux f))) fs fs' in
         let sbst t = subst_term map2 (subst_term map1 t) in
         let defs' = List.map (fun (f,t) -> f, List.fold_right (fun f t -> {desc=Fun(f,t);typ=TFun(f,t.typ)}) (aux f) (sbst t)) defs in
           List.fold_right (fun (f,t1) t2 -> {desc=Let(Flag.Recursive, f, [], t1, t2);typ=t2.typ}) defs' (sbst t)
