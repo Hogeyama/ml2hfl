@@ -23,6 +23,15 @@ let rec last xs =
  | x::xs' -> last xs'
 *)
 
+let rec diff xs ys =
+  match xs, ys with
+    [], [] | [],  _ |  _, [] -> xs
+  | x'::xs', ys ->
+      if List.mem x' ys then
+        diff xs' ys
+      else
+        x'::(diff xs' ys)
+
 let rec find_map f xs =
   match xs with
     [] -> raise Not_found

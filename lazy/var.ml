@@ -17,7 +17,7 @@ let make id = V(id)
 let new_var () = V(Idnt.new_id ())
 
 let header = "var"
-let separator = "-"
+let separator = "___" (*???*)(*"-"*)
 
 let string_of x =
   let rec f x =

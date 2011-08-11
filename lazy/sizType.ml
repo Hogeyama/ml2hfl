@@ -635,7 +635,8 @@ let check_fdef cenv fdef sty =
     let vc2 = subtype (*no need to take env?*) sty_ret (make ty_ret sty.cond) in
     let vc = Term.band [vc1; vc2] in
     let _ = Format.printf "@[<v>type checking@   cond: %a@   vc1: %a@   vc2: %a@ @]" Term.pr cond Term.pr vc1 Term.pr vc2 in
-    CsisatInterface.implies cond vc
+    Cvc3Interface.is_valid (Term.imply cond vc)
+    (*CsisatInterface.implies cond vc*)
   with Ill_typed ->
     false
 

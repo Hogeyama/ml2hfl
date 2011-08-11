@@ -221,4 +221,7 @@ let test_apply_apply2 () =
   Format.printf "%a" Prog.pr prog;
   infer [[0; 0; 0; 1]] prog
 
-let _ = test_sum ()
+let _ =
+  let _ = Cvc3Interface.open_cvc3 () in
+  let _ = test_sum () in
+  Cvc3Interface.close_cvc3 ()

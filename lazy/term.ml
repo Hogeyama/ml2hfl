@@ -8,6 +8,7 @@ type t =
 | Call of Attr.t * t * t list
 | Ret of Attr.t * t * t
 | Error of Attr.t
+| Forall of Attr.t * Var.t list * t
 
 (* up to attributes *)
 let equiv t1 t2 = t1 = t2(*ToDo*)
@@ -46,6 +47,8 @@ let rec pr ppf t =
       Format.fprintf ppf "Ret(@[<hov>%a,@ %a@])" pr ret pr t
   | Error(_) ->
       Format.fprintf ppf "Error"
+  | Forall(_, xs, t) ->
+      Format.fprintf ppf "Forall(%a, %a)" (Util.pr_list Var.pr ",") xs pr t
 
 let rec pr2 ppf t =
   match t with
@@ -82,6 +85,7 @@ let rec fvs t =
     Var(_, x) -> [x]
   | Const(_, _) -> []
   | App(_, t1, t2) -> List.unique (fvs t1 @ fvs t2)
+  | Forall(_, xs, t) -> Util.diff (fvs t) xs
   | _ -> assert false
 
 let make_var id = Var([], Var.V(Idnt.make id))
@@ -145,6 +149,9 @@ let imply t1 t2 =
   else
     apply (Const([], Const.Imply)) [t1; t2]
 
+let forall xs t =
+  Forall([], xs, t)
+
 let iff t1 t2 =
   if equiv t1 t2 then
     ttrue
@@ -185,6 +192,7 @@ let rec subst sub t =
     Var(a, x) -> (try sub x with Not_found -> Var(a, x))
   | Const(a, c) -> Const(a, c)
   | App(a, t1, t2) -> App(a, subst sub t1, subst sub t2)
+  | Forall(a, xs, t) -> Forall(a, xs, subst (fun x -> if List.mem x xs then raise Not_found else sub x) t)
   | _ -> assert false
 
 let forall_imply condxss t =
@@ -197,11 +205,13 @@ let forall_imply condxss t =
         App([], App([], Const([], Const.Eq), Var([], x)), t'), [y], _
         when Var.equiv x y && not (List.mem x (fvs t')) ->
           subst (fun z -> if Var.equiv z x then t' else raise Not_found) t
+      (*
       | _, [y], App([], App([], Const([], Const.Eq), t1), App([], App([], Const([], Const.Add), t2), Var([], x)))
         when Var.equiv x y ->
           (* is this sound for any case??? *)
           subst (fun z -> if Var.equiv z x then sub t1 t2 else raise Not_found) cond
-      | _ -> (*forall xs*) imply cond t)
+        *)
+      | _ -> forall xs (imply cond t))
     condxss t
 
 let rec redex_of env t =
@@ -260,8 +270,7 @@ let rec redex_of env t =
 
 
 let rec dnf t =
-  let f, args = fun_args t in
-  match f, args with
+  match fun_args t with
     Const(_, Const.True), [] ->
       [[]]
   | Const(_, Const.False), [] ->
@@ -278,8 +287,7 @@ let rec dnf t =
       [[t]]
   | _ -> assert false
 and dnfn t =
-  let f, args = fun_args t in
-  match f, args with
+  match fun_args t with
     Const(_, Const.True), [] ->
       []
   | Const(_, Const.False), [] ->
