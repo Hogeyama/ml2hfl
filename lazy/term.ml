@@ -6,9 +6,9 @@ type t =
 | Const of Attr.t * Const.t
 | App of Attr.t * t * t
 | Call of Attr.t * t * t list
-| Ret of Attr.t * t * t
+| Ret of Attr.t * t * t * SimType.t
 | Error of Attr.t
-| Forall of Attr.t * Var.t list * t
+| Forall of Attr.t * (Var.t * SimType.t) list * t
 
 (* up to attributes *)
 let equiv t1 t2 = t1 = t2(*ToDo*)
@@ -43,12 +43,12 @@ let rec pr ppf t =
           assert false)
   | Call(_, f, args) ->
       Format.fprintf ppf "Call(@[<hov>%a@])" (Util.pr_list pr ",@ ") (f::args)
-  | Ret(_, ret, t) ->
+  | Ret(_, ret, t, _) ->
       Format.fprintf ppf "Ret(@[<hov>%a,@ %a@])" pr ret pr t
   | Error(_) ->
       Format.fprintf ppf "Error"
-  | Forall(_, xs, t) ->
-      Format.fprintf ppf "Forall(%a, %a)" (Util.pr_list Var.pr ",") xs pr t
+  | Forall(_, env, t) ->
+      Format.fprintf ppf "Forall(%a, %a)" (Util.pr_list SimType.pr_bind ",") env pr t
 
 let rec pr2 ppf t =
   match t with
@@ -71,10 +71,12 @@ let rec pr2 ppf t =
           assert false)
   | Call(_, f, args) ->
       Format.fprintf ppf "Call(%a)" (Util.pr_list pr2 ", ") (f::args)
-  | Ret(_, ret, t) ->
+  | Ret(_, ret, t, _) ->
       Format.fprintf ppf "Ret(%a, %a)" pr2 ret pr2 t
   | Error(_) ->
       Format.fprintf ppf "Error"
+  | Forall(_, _, _) ->
+      assert false
 
 let string_of t =
   Format.fprintf Format.str_formatter "%a" pr2 t;
@@ -85,7 +87,7 @@ let rec fvs t =
     Var(_, x) -> [x]
   | Const(_, _) -> []
   | App(_, t1, t2) -> List.unique (fvs t1 @ fvs t2)
-  | Forall(_, xs, t) -> Util.diff (fvs t) xs
+  | Forall(_, env, t) -> Util.diff (fvs t) (List.map fst env)
   | _ -> assert false
 
 let make_var id = Var([], Var.V(Idnt.make id))
@@ -176,9 +178,23 @@ let rec sum ts =
 let sub t1 t2 = apply (Const([], Const.Sub)) [t1; t2]
 let minus t = apply (Const([], Const.Minus)) [t]
 let mul t1 t2 = apply (Const([], Const.Mul)) [t1; t2]
-let eq t1 t2 = apply (Const([], Const.Eq)) [t1; t2]
+let eqBool t1 t2 = apply (Const([], Const.EqBool)) [t1; t2]
+let neqBool t1 t2 = apply (Const([], Const.NeqBool)) [t1; t2]
+let eqInt t1 t2 = apply (Const([], Const.EqInt)) [t1; t2]
+let neqInt t1 t2 = apply (Const([], Const.NeqInt)) [t1; t2]
+let eqUnit t1 t2 = apply (Const([], Const.EqUnit)) [t1; t2]
+let neqUnit t1 t2 = apply (Const([], Const.NeqUnit)) [t1; t2]
+let eq_ty ty t1 t2 =
+  match ty with
+    SimType.Unit ->
+      eqUnit t1 t2
+  | SimType.Bool ->
+      eqBool t1 t2
+  | SimType.Int ->
+      eqInt t1 t2
+  | _ ->
+      assert false
 (*let neq t1 t2 = apply (Const([], Const.Not)) [apply (Const([], Const.Eq)) [t1; t2]]*)
-let neq t1 t2 = apply (Const([], Const.Neq)) [t1; t2]
 let lt t1 t2 = apply (Const([], Const.Lt)) [t1; t2]
 let gt t1 t2 = apply (Const([], Const.Gt)) [t1; t2]
 let leq t1 t2 = apply (Const([], Const.Leq)) [t1; t2]
@@ -192,18 +208,24 @@ let rec subst sub t =
     Var(a, x) -> (try sub x with Not_found -> Var(a, x))
   | Const(a, c) -> Const(a, c)
   | App(a, t1, t2) -> App(a, subst sub t1, subst sub t2)
-  | Forall(a, xs, t) -> Forall(a, xs, subst (fun x -> if List.mem x xs then raise Not_found else sub x) t)
+  | Forall(a, env, t) ->
+      let xs = List.map fst env in
+      Forall
+        (a, env,
+        subst
+          (fun x -> if List.mem x xs then raise Not_found else sub x)
+          t)
   | _ -> assert false
 
-let forall_imply condxss t =
+let forall_imply conds_envs t =
   List.fold_right
-    (fun (cond, xs) t ->
+    (fun (cond, env) t ->
       (*
       let _ = Format.printf "cond: %a@.xs: %a@." pr cond (Util.pr_list Var.pr ", ") xs in
       *)
-      match cond, xs, t with
-        App([], App([], Const([], Const.Eq), Var([], x)), t'), [y], _
-        when Var.equiv x y && not (List.mem x (fvs t')) ->
+      match cond, env, t with
+        App([], App([], Const([], c), Var([], x)), t'), [y, _], _
+        when (c = Const.EqBool || c = Const.EqInt) && Var.equiv x y && not (List.mem x (fvs t')) ->
           subst (fun z -> if Var.equiv z x then t' else raise Not_found) t
       (*
       | _, [y], App([], App([], Const([], Const.Eq), t1), App([], App([], Const([], Const.Add), t2), Var([], x)))
@@ -211,8 +233,8 @@ let forall_imply condxss t =
           (* is this sound for any case??? *)
           subst (fun z -> if Var.equiv z x then sub t1 t2 else raise Not_found) cond
         *)
-      | _ -> forall xs (imply cond t))
-    condxss t
+      | _ -> forall env (imply cond t))
+    conds_envs t
 
 let rec redex_of env t =
   match t with
@@ -260,12 +282,12 @@ let rec redex_of env t =
       | _ -> assert false)
   | Call(a, f, args) ->
       (fun t -> t), Call(a, f, args)
-  | Ret(a, ret, t) ->
+  | Ret(a, ret, t, ty) ->
       (try
         let ctx, red = redex_of env t in
-        (fun t -> Ret(a, ret, ctx t)), red
+        (fun t -> Ret(a, ret, ctx t, ty)), red
       with Not_found ->
-        (fun t -> t), Ret(a, ret, t))
+        (fun t -> t), Ret(a, ret, t, ty))
   | _ -> raise Not_found
 
 
@@ -353,7 +375,7 @@ let rec simplify t =
           (Const.Leq, nxs1, n1), (Const.Leq, nxs2, n2)
         | (Const.Geq, nxs1, n1), (Const.Geq, nxs2, n2) ->
             if Arith.equiv nxs1 (Arith.minus nxs2) && n1 = -n2 then
-              eq (term_of_arith nxs1 n1) (tint 0)
+              eqInt (term_of_arith nxs1 n1) (tint 0)
             else t
         | _ -> t)
     | _ -> t)

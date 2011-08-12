@@ -12,8 +12,12 @@ type t =
 | Gt
 | Leq
 | Geq
-| Eq
-| Neq
+| EqBool
+| EqInt
+| EqUnit
+| NeqBool
+| NeqInt
+| NeqUnit
 | Int of int
 | RandInt
 | Add
@@ -25,8 +29,8 @@ let rec is_int_rel c =
   match c with
     Event(_)
   | Unit
-  | True | False | And | Or | Imply | Iff | Not -> false
-  | Lt | Gt | Leq | Geq | Eq | Neq -> true
+  | True | False | And | Or | Imply | Iff | Not | EqBool | NeqBool | EqUnit | NeqUnit -> false
+  | Lt | Gt | Leq | Geq | EqInt | NeqInt -> true
   | Int(_) | RandInt | Add | Sub | Mul | Minus -> false
 
 let rec is_binary c =
@@ -38,7 +42,8 @@ let rec is_binary c =
   | Not
   | Minus -> false
   | And | Or | Imply | Iff
-  | Lt | Gt | Leq | Geq | Eq | Neq
+  | Lt | Gt | Leq | Geq | EqInt | NeqInt
+  | EqBool | NeqBool | EqUnit | NeqUnit
   | Add | Sub | Mul -> true
 
 let rec pr ppf c =
@@ -56,8 +61,8 @@ let rec pr ppf c =
   | Gt -> Format.fprintf ppf "(>)"
   | Leq -> Format.fprintf ppf "(<=)"
   | Geq -> Format.fprintf ppf "(>=)"
-  | Eq -> Format.fprintf ppf "(=)"
-  | Neq -> Format.fprintf ppf "(<>)"
+  | EqBool | EqInt | EqUnit -> Format.fprintf ppf "(=)"
+  | NeqBool | NeqInt | NeqUnit -> Format.fprintf ppf "(<>)"
   | Int(n) -> Format.fprintf ppf "%d" n
   | RandInt -> Format.fprintf ppf "rand_int()"
   | Add -> Format.fprintf ppf "(+)"
@@ -71,8 +76,8 @@ let bnot_ibin c =
   | Gt -> Leq
   | Leq -> Gt
   | Geq -> Lt
-  | Eq -> Neq
-  | Neq -> Eq
+  | EqInt -> NeqInt
+  | NeqInt -> EqInt
   | _ -> assert false
 
 let rec pr_bin ppf c =
@@ -93,8 +98,8 @@ let rec pr_bin ppf c =
   | Gt -> Format.fprintf ppf ">"
   | Leq -> Format.fprintf ppf "<="
   | Geq -> Format.fprintf ppf ">="
-  | Eq -> Format.fprintf ppf "="
-  | Neq -> Format.fprintf ppf "<>"
+  | EqBool | EqInt | EqUnit -> Format.fprintf ppf "="
+  | NeqBool | NeqInt | NeqUnit -> Format.fprintf ppf "<>"
   | Add -> Format.fprintf ppf "+"
   | Sub -> Format.fprintf ppf "-"
   | Mul -> Format.fprintf ppf "*"

@@ -2,7 +2,7 @@ open ExtList
 open ExtString
 
 type t =
-  Sub of (Var.t * Term.t) list
+  Sub of (Var.t * Term.t * SimType.t) list
 | Guard of Term.t
 | Cnode of bool * (Var.t * int) * t list
 | Grp of t list
@@ -19,24 +19,24 @@ let rec function_calls_of tr =
       Util.concat_map function_calls_of trs
 
 let of_error_path p =
-  let rec f x g xts trs p =
+  let rec f x g xttys trs p =
     match p with
       [] ->
-        [], Cnode(true, x, Guard(g)::Sub(xts)::trs)
+        [], Cnode(true, x, Guard(g)::Sub(xttys)::trs)
     | s::p ->
         (match s with
           Ctree.Call(y, g') ->
             let p', tr = f y g' [] [] p in
-            f x g xts (tr::trs) p'
-        | Ctree.Arg(xts') ->
-            f x g (xts' @ xts) trs p
-        | Ctree.Ret(y, t) ->
-            p, Cnode(false, x, Guard(g)::Sub((y, t)::xts)::trs)
+            f x g xttys (tr::trs) p'
+        | Ctree.Arg(xttys') ->
+            f x g (xttys' @ xttys) trs p
+        | Ctree.Ret(y, t, ty) ->
+            p, Cnode(false, x, Guard(g)::Sub((y, t, ty)::xttys)::trs)
         | Ctree.Nop ->
-            f x g xts trs p
+            f x g xttys trs p
         | Ctree.Error ->
             let _ = assert (p = []) in
-            p, Cnode(true, x, Guard(g)::Sub(xts)::trs))
+            p, Cnode(true, x, Guard(g)::Sub(xttys)::trs))
   in
   match p with
     Ctree.Call(x, t)::p -> snd (f x t [] [] p)
@@ -44,8 +44,8 @@ let of_error_path p =
 
 let rec pr ppf tr =
   match tr with
-    Sub(xts) ->
-      Format.fprintf ppf "%a" Term.pr (Term.band (Ctree.eq_xts xts))
+    Sub(xttys) ->
+      Format.fprintf ppf "%a" Term.pr (Term.band (List.map Ctree.eq_xtty xttys))
   | Guard(t) ->
       Format.fprintf ppf "%a" Term.pr t
   | Cnode(op, (x, uid), trs) ->
@@ -145,23 +145,25 @@ let rec_callers_of eptr = function
 let rec term_of (x, uid) tr =
   let rec f tr =
     match tr with
-      Sub(xts) ->
-        xts, []
+      Sub(xttys) ->
+        xttys, []
     | Guard(t) ->
         [], [t]
     | Cnode(_, _, trs)
     | Grp(trs) ->
-        let xtss, tss = List.split (List.map f trs) in
-        List.concat xtss, List.concat tss
+        let xttyss, tss = List.split (List.map f trs) in
+        List.concat xttyss, List.concat tss
   in
-  let xts, ts = f tr in
-  let xts1, xts2 = List.partition
-    (function (Var.T(x', uid', _), _) ->
+  let xttys, ts = f tr in
+  let xttys1, xttys2 = List.partition
+    (function (Var.T(x', uid', _), _, _) ->
       (*true*)
       ancestor_of (x, uid) (x', uid')
-    | (Var.V(_), _) -> assert false) xts in
-  let t = Term.band (Ctree.eq_xts xts1 @ ts) in
-  let sub x = List.assoc x xts2 in
+    | (Var.V(_), _, _) -> assert false)
+    xttys
+  in
+  let t = Term.band (List.map Ctree.eq_xtty xttys1 @ ts) in
+  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
   Util.fixed_point
     (fun t ->
       (*Format.printf "%a@." Term.pr t;*)

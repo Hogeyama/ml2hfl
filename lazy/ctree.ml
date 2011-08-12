@@ -3,8 +3,8 @@ open ExtString
 
 type s =
   Call of (Var.t * int) * Term.t
-| Arg of (Var.t * Term.t) list
-| Ret of Var.t * Term.t
+| Arg of (Var.t * Term.t * SimType.t) list
+| Ret of Var.t * Term.t * SimType.t
 | Nop
 | Error
 
@@ -22,15 +22,15 @@ let ret_args f uid arity =
 
 let node_name uid t = (String.of_int uid) ^ ": " ^ Term.string_of t
 
-let eq_xts xts = 
-  List.map (fun (x, t) -> Term.eq (Term.make_var2 x) t) xts
+let eq_xtty (x, t, ty) =
+  Term.eq_ty ty (Term.make_var2 x) t
 
 let save_as_dot filename rt wl =
   let f s =
     match s with
       Call(_, t) -> Term.string_of t
-    | Arg(xts) -> Term.string_of (Term.band (eq_xts xts))
-    | Ret(x, t) -> Term.string_of (Term.eq (Term.make_var2 x) t)
+    | Arg(xttys) -> Term.string_of (Term.band (List.map eq_xtty xttys))
+    | Ret(x, t, ty) -> Term.string_of (eq_xtty (x, t, ty))
     | Nop -> ""
     | Error -> ""
   in
@@ -67,10 +67,10 @@ let rec pr_path ppf p =
     match s with
       Call(_, t) ->
         Format.fprintf ppf "[@[<hov>%a.@," Term.pr t
-    | Arg(xts) ->
-        Format.fprintf ppf "%a@," Term.pr (Term.band (eq_xts xts))
-    | Ret(x, t) -> 
-        Format.fprintf ppf "%a@]]@," Term.pr (Term.eq (Term.make_var2 x) t)
+    | Arg(xttys) ->
+        Format.fprintf ppf "%a@," Term.pr (Term.band (List.map eq_xtty xttys))
+    | Ret(x, t, ty) -> 
+        Format.fprintf ppf "%a@]]@," Term.pr (eq_xtty (x, t, ty))
     | Nop ->
         Format.fprintf ppf "nop"
     | Error ->
@@ -117,8 +117,9 @@ let expand prog env (Node((uid, p), t, cs)) =
       | Term.App(_, _, _) ->
           let uid = gen () in
           let Term.Var(a, f), args = Term.fun_args red in
+          let argtys, retty = SimType.args_ret (Prog.type_of prog f) in
           let ret, fargs = ret_args f uid (SimType.arity (Prog.type_of prog f)) in
-          let tt = Term.Ret([], ret, Term.Call([], Term.Var(a, f), fargs)) in
+          let tt = Term.Ret([], ret, Term.Call([], Term.Var(a, f), fargs), retty) in
           let faargs =
             try
               List.combine fargs args
@@ -149,7 +150,12 @@ let expand prog env (Node((uid, p), t, cs)) =
                 faargs2
             with Not_found ->
               env x),
-          [Arg(List.map (function (Term.Var(_, farg), aarg) -> farg, aarg | _ -> assert false) faargs1),
+          [Arg
+            (List.map2
+              (function (Term.Var(_, farg), aarg) ->
+                fun argty -> farg, aarg, argty
+              | _ -> assert false)
+              faargs1 argtys),
           Node((uid, p), ctx tt, ref [])]
       | Term.Call(_, Term.Var(_, g), args) ->
           (match g with
@@ -175,8 +181,8 @@ let expand prog env (Node((uid, p), t, cs)) =
           | Var.T(_, _, _) ->
               let f = try env g with Not_found -> assert false in
               env, [Call((g, uid), Term.ttrue), Node((gen (), p), ctx (Term.apply f args), ref [])])
-      | Term.Ret(_, Term.Var(a, ret), t) ->
-          env, [Ret(ret, t), Node((gen (), p), ctx (Term.Var(a, ret)), ref [])]
+      | Term.Ret(_, Term.Var(a, ret), t, ty) ->
+          env, [Ret(ret, t, ty), Node((gen (), p), ctx (Term.Var(a, ret)), ref [])]
       | _ -> begin
           Format.printf "%a@." Term.pr red;
           assert false

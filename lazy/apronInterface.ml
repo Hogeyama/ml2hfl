@@ -4,6 +4,10 @@ open ExtString
 let manpk = Polka.manager_alloc_strict ()
 (*let maneq = Polka.manager_alloc_equalities ()*)
 
+(* encoding true->0, false->1, is it OK??? *)
+let tt = 0
+let ff = 1
+
 let linconstr_of env t =
   let c, nxs, n =
     try
@@ -11,9 +15,9 @@ let linconstr_of env t =
     with Invalid_argument(_) ->
       (match Term.fun_args t with
         Term.Const(_, Const.True), [] ->
-          Const.Eq, [], 0
+          Const.EqInt, [], tt
       | Term.Const(_, Const.False), [] ->
-          Const.Eq, [], 1
+          Const.EqInt, [], ff
       | _ -> assert false)
   in
   let expr = Apron.Linexpr1.make env in
@@ -35,8 +39,8 @@ let linconstr_of env t =
   | Const.Gt -> Apron.Lincons1.make expr Apron.Lincons1.SUP
   | Const.Leq -> Apron.Lincons1.make mexpr Apron.Lincons1.SUPEQ
   | Const.Geq -> Apron.Lincons1.make expr Apron.Lincons1.SUPEQ
-  | Const.Eq -> Apron.Lincons1.make expr Apron.Lincons1.EQ
-  | Const.Neq -> Apron.Lincons1.make expr Apron.Lincons1.DISEQ
+  | Const.EqInt -> Apron.Lincons1.make expr Apron.Lincons1.EQ
+  | Const.NeqInt -> Apron.Lincons1.make expr Apron.Lincons1.DISEQ
   | _ -> assert false
 
 let int_of_coeff n =
@@ -76,8 +80,8 @@ let of_linconstr c =
   match Apron.Lincons1.get_typ c with
     Apron.Lincons1.SUP -> Term.gt t zero
   | Apron.Lincons1.SUPEQ -> Term.geq t zero
-  | Apron.Lincons1.EQ -> Term.eq t zero
-  | Apron.Lincons1.DISEQ -> Term.neq t zero
+  | Apron.Lincons1.EQ -> Term.eqInt t zero
+  | Apron.Lincons1.DISEQ -> Term.neqInt t zero
   | _ -> assert false
 let of_linconstrs cs =
   Term.band

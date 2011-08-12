@@ -13,6 +13,7 @@ let close_cvc3 () =
   match Unix.close_process (!cvc3in, !cvc3out) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
+(* encoding unit as 0 *)
 let string_of_type ty =
   match ty with
     SimType.Unit -> "INT"
@@ -47,13 +48,18 @@ let rec string_of_term t =
       "(" ^ string_of_term t1 ^ " < " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.Gt), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " > " ^ string_of_term t2 ^ ")"
-  | Term.Const(_, Const.Eq), [t1; t2] ->
+  | Term.Const(_, Const.EqUnit), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " = " ^ string_of_term t2 ^ ")"
-    (*
+  | Term.Const(_, Const.NeqUnit), [t1; t2] ->
+      string_of_term (Term.bnot (Term.eqInt t1 t2))
+  | Term.Const(_, Const.EqBool), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " <=> " ^ string_of_term t2 ^ ")"
-       *)
-  | Term.Const(_, Const.Neq), [t1; t2] ->
-      string_of_term (Term.bnot (Term.eq t1 t2))
+  | Term.Const(_, Const.NeqBool), [t1; t2] ->
+      string_of_term (Term.bnot (Term.eqBool t1 t2))
+  | Term.Const(_, Const.EqInt), [t1; t2] ->
+      "(" ^ string_of_term t1 ^ " = " ^ string_of_term t2 ^ ")"
+  | Term.Const(_, Const.NeqInt), [t1; t2] ->
+      string_of_term (Term.bnot (Term.eqInt t1 t2))
   | Term.Const(_, Const.Unit), [] ->
       "0"(*"UNIT"*)
   | Term.Const(_, Const.True), [] ->
@@ -66,24 +72,83 @@ let rec string_of_term t =
       "(" ^ string_of_term t1 ^ " OR " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.Imply), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " => " ^ string_of_term t2 ^ ")"
-    (*???string_of_term (Term.bor [Term.bnot t1; t2])*)
   | Term.Const(_, Const.Iff), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " <=> " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.Not), [t] -> 
       "(NOT " ^ string_of_term t ^ ")"
-  | Term.Forall(_, xs, t), [] ->
-      let env = List.map (fun x -> x, SimType.Int) xs in
+  | Term.Forall(_, env, t), [] ->
       "(FORALL (" ^ string_of_env env ^ "): " ^ string_of_term t ^ ")"
   | _, _ ->
       let _ = Format.printf "%a@." Term.pr t in
       assert false
+
+let infer t ty =
+  let rec aux t ty =
+    match Term.fun_args t with
+      Term.Var(_, x), [] ->
+        [x, ty]
+    | Term.Const(_, Const.Unit), [] ->
+        let _ = assert (SimType.equiv ty SimType.Unit) in []
+    | Term.Const(_, Const.True), []
+    | Term.Const(_, Const.False), [] ->
+        let _ = assert (SimType.equiv ty SimType.Bool) in []
+    | Term.Const(_, Const.Int(n)), [] ->
+        let _ = assert (SimType.equiv ty SimType.Int) in []
+    | Term.Const(_, Const.Not), [t] ->
+        let _ = assert (SimType.equiv ty SimType.Bool) in
+        aux t SimType.Bool
+    | Term.Const(_, Const.Minus), [t] ->
+        let _ = assert (SimType.equiv ty SimType.Int) in
+        aux t SimType.Int
+    | Term.Const(_, Const.EqUnit), [t1; t2]
+    | Term.Const(_, Const.NeqUnit), [t1; t2] ->
+        let _ = assert (SimType.equiv ty SimType.Bool) in
+        aux t1 SimType.Unit @ aux t2 SimType.Unit
+    | Term.Const(_, Const.And), [t1; t2]
+    | Term.Const(_, Const.Or), [t1; t2]
+    | Term.Const(_, Const.Imply), [t1; t2]
+    | Term.Const(_, Const.Iff), [t1; t2]
+    | Term.Const(_, Const.EqBool), [t1; t2]
+    | Term.Const(_, Const.NeqBool), [t1; t2] ->
+        let _ = assert (SimType.equiv ty SimType.Bool) in
+        aux t1 SimType.Bool @ aux t2 SimType.Bool
+    | Term.Const(_, Const.Add), [t1; t2]
+    | Term.Const(_, Const.Sub), [t1; t2]
+    | Term.Const(_, Const.Mul), [t1; t2] ->
+        let _ = assert (SimType.equiv ty SimType.Int) in
+        aux t1 SimType.Int @ aux t2 SimType.Int
+    | Term.Const(_, Const.Leq), [t1; t2]
+    | Term.Const(_, Const.Geq), [t1; t2]
+    | Term.Const(_, Const.Lt), [t1; t2]
+    | Term.Const(_, Const.Gt), [t1; t2]
+    | Term.Const(_, Const.EqInt), [t1; t2]
+    | Term.Const(_, Const.NeqInt), [t1; t2] ->
+      let _ = assert (SimType.equiv ty SimType.Bool) in
+        aux t1 SimType.Int @ aux t2 SimType.Int
+    | Term.Forall(_, env, t), [] ->
+        let _ = assert (SimType.equiv ty SimType.Bool) in
+        let xs = List.map fst env in
+        List.filter (fun (x, _) -> not (List.mem x xs)) (aux t SimType.Bool)
+    | _, _ ->
+        let _ = Format.printf "%a@." Term.pr t in
+        assert false
+  in
+  List.map
+    (function (x, ty)::xtys ->
+      let _ = assert (List.for_all (fun (_, ty') -> SimType.equiv ty ty') xtys) in
+      x, ty
+    | _ -> assert false)
+    (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))  
 
 let is_valid t =
   let cin = !cvc3in in
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
 
-  let env = List.map (fun x -> x, SimType.Int) (Term.fvs t) in
+  let env =
+    infer t SimType.Bool
+    (*List.map (fun x -> x, SimType.Int) (Term.fvs t)*)
+  in
   let inp =
     "PUSH;" ^
     string_of_env env ^ ";" ^

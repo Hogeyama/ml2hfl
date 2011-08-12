@@ -65,13 +65,17 @@ let pr_fun_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_fun_bin
 let pr_var_bind ppf (x, ty) = Format.fprintf ppf "%a: %a" Var.pr x pr_shape ty
 let pr_var_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_var_bind "@ ") env
   
-let rec vars ty =
+let rec envs ty =
   match ty with
-    Unit(x) | Bool(x) | Int(x) ->
-      [x]
+    Unit(x) ->
+      [x, SimType.Unit]
+  | Bool(x) ->
+      [x, SimType.Bool]
+  | Int(x) ->
+      [x, SimType.Int]
   | Fun(xs) ->
       Util.concat_map
-        (fun (ty1, _, ty2) -> vars ty1 @ vars ty2)
+        (fun (ty1, _, ty2) -> envs ty1 @ envs ty2)
         xs
   
 let rec rename_shape sub ty =
@@ -272,7 +276,7 @@ let type_of_const c =
       assert false
   | Const.Unit ->
       let x = Var.new_var () in
-      make (Unit(x)) (Term.eq (Term.make_var2 x) (Term.tunit))
+      make (Unit(x)) (Term.eqUnit (Term.make_var2 x) (Term.tunit))
   | Const.True ->
       let x = Var.new_var () in
       make (Bool(x)) (Term.iff (Term.make_var2 x) (Term.ttrue))
@@ -341,23 +345,51 @@ let type_of_const c =
       make
         (Fun([Int(x1), Term.ttrue, Fun([Int(x2), Term.ttrue, Bool(x3)])]))
         (Term.iff (Term.make_var2 x3) (Term.geq (Term.make_var2 x1) (Term.make_var2 x2)))
-  | Const.Eq ->
+  | Const.EqBool ->
+      let x1 = Var.new_var () in
+      let x2 = Var.new_var () in
+      let x3 = Var.new_var () in
+      make
+        (Fun([Bool(x1), Term.ttrue, Fun([Bool(x2), Term.ttrue, Bool(x3)])]))
+        (Term.iff (Term.make_var2 x3) (Term.eqBool (Term.make_var2 x1) (Term.make_var2 x2)))
+  | Const.NeqBool ->
+      let x1 = Var.new_var () in
+      let x2 = Var.new_var () in
+      let x3 = Var.new_var () in
+      make
+        (Fun([Bool(x1), Term.ttrue, Fun([Bool(x2), Term.ttrue, Bool(x3)])]))
+        (Term.iff (Term.make_var2 x3) (Term.neqBool (Term.make_var2 x1) (Term.make_var2 x2)))
+  | Const.EqUnit ->
+      let x1 = Var.new_var () in
+      let x2 = Var.new_var () in
+      let x3 = Var.new_var () in
+      make
+        (Fun([Unit(x1), Term.ttrue, Fun([Unit(x2), Term.ttrue, Bool(x3)])]))
+        (Term.iff (Term.make_var2 x3) (Term.eqUnit (Term.make_var2 x1) (Term.make_var2 x2)))
+  | Const.NeqUnit ->
+      let x1 = Var.new_var () in
+      let x2 = Var.new_var () in
+      let x3 = Var.new_var () in
+      make
+        (Fun([Unit(x1), Term.ttrue, Fun([Unit(x2), Term.ttrue, Bool(x3)])]))
+        (Term.iff (Term.make_var2 x3) (Term.neqUnit (Term.make_var2 x1) (Term.make_var2 x2)))
+  | Const.EqInt ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (Fun([Int(x1), Term.ttrue, Fun([Int(x2), Term.ttrue, Bool(x3)])]))
-        (Term.iff (Term.make_var2 x3) (Term.eq (Term.make_var2 x1) (Term.make_var2 x2)))
-  | Const.Neq ->
+        (Term.iff (Term.make_var2 x3) (Term.eqInt (Term.make_var2 x1) (Term.make_var2 x2)))
+  | Const.NeqInt ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (Fun([Int(x1), Term.ttrue, Fun([Int(x2), Term.ttrue, Bool(x3)])]))
-        (Term.iff (Term.make_var2 x3) (Term.neq (Term.make_var2 x1) (Term.make_var2 x2)))
+        (Term.iff (Term.make_var2 x3) (Term.neqInt (Term.make_var2 x1) (Term.make_var2 x2)))
   | Const.Int(n) ->
       let x = Var.new_var () in
-      make (Int(x)) (Term.eq (Term.make_var2 x) (Term.tint n))
+      make (Int(x)) (Term.eqInt (Term.make_var2 x) (Term.tint n))
   | Const.RandInt ->
       let x = Var.new_var () in
       make (Int(x)) (Term.ttrue)
@@ -367,27 +399,27 @@ let type_of_const c =
       let x3 = Var.new_var () in
       make
         (Fun([Int(x1), Term.ttrue, Fun([Int(x2), Term.ttrue, Int(x3)])]))
-        (Term.eq (Term.make_var2 x3) (Term.add (Term.make_var2 x1) (Term.make_var2 x2)))
+        (Term.eqInt (Term.make_var2 x3) (Term.add (Term.make_var2 x1) (Term.make_var2 x2)))
   | Const.Sub ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (Fun([Int(x1), Term.ttrue, Fun([Int(x2), Term.ttrue, Int(x3)])]))
-        (Term.eq (Term.make_var2 x3) (Term.sub (Term.make_var2 x1) (Term.make_var2 x2)))
+        (Term.eqInt (Term.make_var2 x3) (Term.sub (Term.make_var2 x1) (Term.make_var2 x2)))
   | Const.Mul ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (Fun([Int(x1), Term.ttrue, Fun([Int(x2), Term.ttrue, Int(x3)])]))
-        (Term.eq (Term.make_var2 x3) (Term.mul (Term.make_var2 x1) (Term.make_var2 x2)))
+        (Term.eqInt (Term.make_var2 x3) (Term.mul (Term.make_var2 x1) (Term.make_var2 x2)))
   | Const.Minus ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       make
         (Fun([Int(x1), Term.ttrue, Int(x2)]))
-        (Term.eq (Term.make_var2 x2) (Term.minus (Term.make_var2 x1)))
+        (Term.eqInt (Term.make_var2 x2) (Term.minus (Term.make_var2 x1)))
     
 let rec subtype_same ty1 ty2 =
   match ty1, ty2 with
@@ -428,7 +460,9 @@ let rec canonize_fun cov subs0 (ty1, pre, ty1') (ty2, _, ty2') =
   let ty, subs = canonize_ag (not cov) (Util.multiply_list subs0 subs') ty1 ty2 in
   let pres =
     List.map
-      (fun sub -> Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) pre)
+      (fun sub0 ->
+         let sub = List.map (fun (x, t, _) -> x, t) sub0 in
+         Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) pre)
       (Util.multiply_list subs0 subs)
   in
   let pre = if cov then Term.bor pres else Term.band pres in
@@ -436,11 +470,12 @@ let rec canonize_fun cov subs0 (ty1, pre, ty1') (ty2, _, ty2') =
   Util.multiply_list subs subs'
 and canonize_ag cov subs0 ty1 ty2 =
   match ty1, ty2 with
-    Unit(x), Unit(y)
-  | Bool(x), Bool(y)
+    Unit(x), Unit(y) ->
+      ty2, [[x, y, SimType.Unit]]
+  | Bool(x), Bool(y) ->
+      ty2, [[x, y, SimType.Bool]]
   | Int(x), Int(y) ->
-      let sub = [x, y] in
-      ty2, [sub]
+      ty2, [[x, y, SimType.Int]]
   | Fun(xs), Fun(ys) ->
       let tmp = List.init (List.length ys) (fun i -> i) in
       let tmp = List.map (fun _ -> tmp) xs in
@@ -485,7 +520,8 @@ let subtype sty1 sty2 =
   let cond =
     Term.bor
       (List.map
-        (fun sub ->
+        (fun sub0 ->
+          let sub = List.map (fun (x, t, _) -> x, t) sub0 in
           Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) sty1.cond)
         subs)
   in
@@ -498,7 +534,8 @@ let subtype_ty sty1 ty2 =
   Term.band
     (subtype_same ty1 ty2::
     (List.map
-      (fun sub ->
+      (fun sub0 ->
+        let sub = List.map (fun (x, t, _) -> x, t) sub0 in
         Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) sty1.cond)
       subs))
 
@@ -513,7 +550,7 @@ let make_open ty =
         (fun sub ->
           Term.band
             (List.map
-              (fun (x, y) -> Term.eq (Term.make_var2 y) (Term.make_var2 x))
+              (fun (x, y, ty) -> Term.eq_ty ty (Term.make_var2 y) (Term.make_var2 x))
               sub))
         subs))
 
@@ -521,10 +558,10 @@ let apply sty0 stys =
   (*
   let _ = Format.printf "%a %a@ " pr sty0 (Util.pr_list pr " ") stys in
     *)
-  let rec aux condxss ty post stys =
+  let rec aux conds_envs ty post stys =
     match stys with
       [] ->
-        Term.ttrue, make ty (Term.forall_imply condxss post)
+        Term.ttrue, make ty (Term.forall_imply conds_envs post)
     | sty::stys ->
         match ty with
           Unit(_) | Bool(_) | Int(_) ->
@@ -534,11 +571,11 @@ let apply sty0 stys =
               List.split
                 (List.map
                   (fun (ty1, pre, ty2) ->
-                    let condxss = (subtype_ty sty ty1, vars ty1)::condxss in
-                    let pre', sty = aux condxss ty2 post stys in
+                    let conds_envs = (subtype_ty sty ty1, envs ty1)::conds_envs in
+                    let pre', sty = aux conds_envs ty2 post stys in
                     if is_base ty2 then
                       let _ = assert (Term.equiv pre' Term.ttrue) in
-                      Term.forall_imply condxss pre, sty
+                      Term.forall_imply conds_envs pre, sty
                     else
                       let _ = assert (Term.equiv pre Term.ttrue) in
                       pre', sty)
@@ -580,7 +617,7 @@ let rec infer_term cenv env t =
                 raise Ill_typed))
       | Term.Const(_, c) ->
           type_of_const c
-      | Term.App(_, _, _) | Term.Call(_, _, _) | Term.Ret(_, _, _) | Term.Error(_) ->
+      | Term.App(_, _, _) | Term.Call(_, _, _) | Term.Ret(_, _, _, _) | Term.Error(_) | Term.Forall(_, _, _) ->
           assert false
     in
     let vcs, stys = List.split (List.map (infer_term cenv env) args) in

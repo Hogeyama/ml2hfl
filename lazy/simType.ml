@@ -27,3 +27,7 @@ let rec pr ppf ty =
       Format.fprintf ppf "int"
   | Fun(ty1, ty2) ->
       Format.fprintf ppf "%a -> %a" pr ty1 pr ty2
+
+let pr_bind ppf (x, ty) = Format.fprintf ppf "%a: %a" Var.pr x pr ty
+
+let equiv ty1 ty2 = ty1 = ty2
