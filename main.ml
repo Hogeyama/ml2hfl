@@ -20,7 +20,7 @@ let close_log () =
 let write_log_string s =
   Format.fprintf !log_fm "%s\n@." s
 let write_log_term t =
-  Syntax.print_term_fm_break false !log_fm t;
+  Syntax.print_term false !log_fm t;
   flush !log_cout
 
 
@@ -56,28 +56,27 @@ let main filename in_channel =
     in
       Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
-  let () = if true then Format.printf "parsed:@.%a\n@." (Syntax.print_term_fm_break true) t in
-Format.printf "check: %a@." (Syntax.print_term' 0 false) t;
+  let () = if true then Format.printf "parsed:@.%a\n\n@." (Syntax.print_term true) t in
   let t = Syntax.copy_poly_funs t in
   let () = Type_check.check t in
-Format.printf "check: %a@." (Syntax.print_term' 0 false) t;
-  let t = CPS.trans t in
-  let () = if true then Format.printf "CPS:@.%a\n@." (Syntax.print_term_fm_break true) t in
-  let () = Type_check.check t in
   let t = Abstract.abstract_list t in
-  let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term_fm_break true) t in
+  let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term true) t in
+  let t = CPS.trans t in
+  let () = if true then Format.printf "CPS:@.%a\n\n@." Syntax.pp_print_term t in
+  let t = CPS.remove_pair t in
+  let () = if true then Format.printf "remove_pair:@.%a\n\n@." Syntax.pp_print_term t in
+  let () = Type_check.check t in
   let prog = CEGAR_syntax.trans_prog t in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog
   in
-    if true then
-      LazyInterface.verify prog
-    else
-      let t_result, result = CEGAR.cegar prog [] in
-	match result with
-	    None -> print_msg "\nSafe!\n\n"
-	  | Some (ce,p) ->
-	      print_msg "Unsafe!\n"
+    match !Flag.cegar with
+        Flag.CEGAR_SizedType -> LazyInterface.verify prog
+      | Flag.CEGAR_DependentType ->
+          let t_result, result = CEGAR.cegar prog [] in
+	    match result with
+	        None -> print_msg "\nSafe!\n\n"
+	      | Some (ce,p) -> print_msg "Unsafe!\n"
 (*
           let sol = Wrapper.get_solution p t_result in
             print_msg "Unsafe!\n";
@@ -110,10 +109,12 @@ let () =
       let cin = match !filename with ""|"-" -> stdin | _ -> open_in !filename in
         if !Flag.web then open_log ();
         Wrapper.open_cvc3 ();
+        Wrapper2.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main !filename cin;
         print_info ();
+        Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
         if !Flag.web then close_log ()
     with

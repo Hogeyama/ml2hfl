@@ -7,9 +7,6 @@ exception NoProgress
 exception CannotDiscoverPredicate
 
 let rec cegar prog ces =
-  let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
-    !Flag.cegar_loop CEGAR_print.print_prog_typ prog
-    in
   let _ = Typing.infer prog in
   let n = Id.get_counter () in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
@@ -19,7 +16,7 @@ let rec cegar prog ces =
   let tmp = get_time() in
   let abst = CEGAR_abst.abstract prog in
   let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog abst in
-  let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog_ML abst in
+  let () = if false then Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog_ML abst in
   let _ = Typing.infer abst in
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
@@ -38,18 +35,21 @@ let rec cegar prog ces =
       | Some ce, _ ->
           Format.printf "Spurious counter-example:\n%a@." (print_list Format.pp_print_int "; " false) ce;
           try
+            let ces' = ce::ces in
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
             let tmp = get_time () in
-            let prog' = Refine.refine ces prog in
+            let prog' = Refine.refine ces' prog in
               add_time tmp Flag.time_cegar;
               if Flag.print_progress then print_msg "DONE!\n";
               incr Flag.cegar_loop;
               (**)
+              Wrapper2.close_cvc3 ();
               Wrapper.close_cvc3 ();
               Wrapper.open_cvc3 ();
+              Wrapper2.open_cvc3 ();
               (**)
               Id.set_counter n;
-              cegar prog' (ce::ces)
+              cegar prog' ces'
           with Refine.CannotRefute ->
             let b,constr = Feasibility.check ce prog in
               if b

@@ -50,7 +50,6 @@ let rec abstract_mutable t =
       | Let(flag, f, xs, t1, t2) -> Let(flag, f, xs, abstract_mutable t1, abstract_mutable t2)
       | BinOp(op, t1, t2) -> BinOp(op, abstract_mutable t1, abstract_mutable t2)
       | Not t -> Not (abstract_mutable t)
-      | Fail -> Fail
       | Label(b, t) -> Label(b, abstract_mutable t)
       | Event s -> Event s
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,abstract_mutable t)) fields)
@@ -176,10 +175,13 @@ let rec abst_list_typ = function
   | TList typ -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt[])
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
+  | TBottom -> TBottom
+
+let abst_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
 let rec get_match_bind_cond t p =
   match p.pat_desc with
-      PVar x -> [x, t], true_term
+      PVar x -> [abst_var x, t], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false
     | PNil -> [], make_eq (make_snd t) (make_int 0)
@@ -202,7 +204,6 @@ let rec get_match_bind_cond t p =
           aux bind (make_and (make_leq (make_int len) (make_snd t)) cond) 0 ps
     | PRecord _ -> assert false
     | POr _ -> assert false
-          
 
 let rec abst_list t =
   let typ' = abst_list_typ t.typ in
@@ -213,8 +214,8 @@ let rec abst_list t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | Var x -> Var x
-      | NInt x -> NInt x
+      | Var x -> Var (abst_var x)
+      | NInt x -> NInt (abst_var x)
       | RandInt None -> RandInt None
       | RandInt (Some t) -> RandInt (Some (abst_list t))
       | RandValue(typ,None) -> RandValue(typ,None)
@@ -223,10 +224,9 @@ let rec abst_list t =
       | App(t, ts) -> App(abst_list t, List.map abst_list ts)
       | If(t1, t2, t3) -> If(abst_list t1, abst_list t2, abst_list t3)
       | Branch(t1, t2) -> Branch(abst_list t1, abst_list t2)
-      | Let(flag, f, xs, t1, t2) -> Let(flag, f, xs, abst_list t1, abst_list t2)
+      | Let(flag, f, xs, t1, t2) -> Let(flag, abst_var f, List.map abst_var xs, abst_list t1, abst_list t2)
       | BinOp(op, t1, t2) -> BinOp(op, abst_list t1, abst_list t2)
       | Not t -> Not (abst_list t)
-      | Fail -> Fail
       | Label(b, t) -> Label(b, abst_list t)
       | Event s -> Event s
       | Record _ -> assert false
@@ -260,9 +260,10 @@ let rec abst_list t =
             in
               make_if (make_and cond' t_cond) (add_bind (abst_list t)) t'
           in
-          let t_pats = List.fold_right aux pats (make_fail t.typ) in
+          let t_pats = List.fold_right aux pats (make_fail typ') in
             (make_let x [] (abst_list t1) t_pats).desc
       | TryWith(t1,t2) -> TryWith(t1,t2)
+      | Bottom -> Bottom
   in
     {desc=desc; typ=typ'}
     

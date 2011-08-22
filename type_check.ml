@@ -12,14 +12,13 @@ let check_var x typ =
 
 let rec check t typ =
   if not (Type.can_unify t.typ typ)
-  then (Format.printf "check: %a, %a@." (print_term' 0 false) t Syntax.print_typ typ; assert false);
+  then (Format.printf "check: %a, %a@." (print_term' false) t Syntax.print_typ typ; assert false);
   match t with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
     | {desc=(Int _ | NInt _ | RandInt None); typ=(TInt _ | TRInt _)} -> ()
     | {desc=RandInt (Some t); typ=typ'} ->
         check t (TFun(Id.set_typ var (TInt[]), typ'))
-    | {desc=Fail; typ=TConstr("event",_)} -> ()
     | {desc=Var x; typ=typ'} ->
         check_var x typ'
     | {desc=Fun(x,t); typ=TFun(y,typ')} ->
@@ -72,6 +71,17 @@ let rec check t typ =
         check t typ
     | {desc=Event _; typ=TFun(x,TUnit)} ->
         check_var x TUnit
+    | {desc=Pair(t1,t2); typ=TPair(typ1,typ2)} ->
+        check t1 typ1;
+        check t2 typ2
+    | {desc=Fst t; typ=typ} ->
+        let typ1 = match t.typ with TPair(typ1,_) -> typ1 | _ -> assert false in
+          assert (Type.can_unify typ typ1);
+          check t t.typ
+    | {desc=Snd t; typ=typ} ->
+        let typ2 = match t.typ with TPair(_,typ2) -> typ2 | _ -> assert false in
+          assert (Type.can_unify typ typ2);
+          check t t.typ
     | {desc=Record _} -> assert false
     | {desc=Proj _} -> assert false
     | {desc=SetField _} -> assert false
@@ -96,6 +106,8 @@ let rec check t typ =
         let e = Id.new_var "e" typ_excep in
           check t1 typ;
           check t2 (TFun(e,typ))
+    | {desc=Event _; typ=typ'} -> assert (typ' = typ_event)
+    | {desc=Bottom; typ=TBottom} -> ()
     | _ ->(*
             match t.desc with
             Unit -> assert false
@@ -128,7 +140,7 @@ let rec check t typ =
             | Match(t1,t2,y,z,t3) -> assert false
             | Match_(t1,pats) -> assert false
             | TryWith(t1,pats) -> assert false
-          *)          Format.printf "check: %a, %a@." (print_term' 0 false) t Syntax.print_typ t.typ; assert false
+          *)          Format.printf "check: %a, %a@." (print_term' false) t Syntax.print_typ t.typ; assert false
 
 let check t = check t TUnit
 

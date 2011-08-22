@@ -40,7 +40,7 @@ let check ce (env,defs,main) =
   let xs = List.map fst env in
   let t = List.fold_left (fun t x -> App(t, Var x)) (Var main) xs in
   let constr = check ce (Const True) defs t (fun _ -> assert false) in
-    Wrapper.checksat env constr, constr
+    Wrapper2.checksat env constr, constr
 
 
 

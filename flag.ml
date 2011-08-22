@@ -38,7 +38,7 @@ let print_interpolant = true
 let print_progress = false
 let print_constraints = true
 let print_lower_bound = true
-let print_cvc3 = false
+let print_cvc3 = true
 
 let time_abstraction = ref 0.
 let time_mc = ref 0.
@@ -68,5 +68,8 @@ type mode = Reachability | FileAccess
 let mode = ref Reachability
 
 type refine = RefineSizedType | RefineDependentType
+type cegar = CEGAR_SizedType | CEGAR_DependentType
 
-let refine = RefineDependentType
+let refine = ref RefineDependentType
+let cegar = ref CEGAR_DependentType
+

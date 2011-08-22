@@ -23,7 +23,6 @@ and term =
   | Let of Flag.rec_flag * id * id list * typed_term * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
-  | Fail
   | Label of bool * typed_term
   | LabelInt of int * typed_term
   | Event of string
@@ -41,6 +40,7 @@ and term =
   | Fst of typed_term
   | Snd of typed_term
   | Variant of typed_term (* for abstraction of datatype *)
+  | Bottom
 
 and type_kind =
     KAbstract
@@ -73,6 +73,7 @@ val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term
 val fail_term : typed_term
+val bottom_term : typed_term
 val make_event : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term
@@ -85,8 +86,10 @@ val make_let_f : Flag.rec_flag -> id -> id list -> typed_term -> typed_term -> t
 val make_fun : id -> typed_term -> typed_term
 val make_not : typed_term -> typed_term
 val make_and : typed_term -> typed_term -> typed_term
+val make_or : typed_term -> typed_term -> typed_term
 val make_add : typed_term -> typed_term -> typed_term
 val make_sub : typed_term -> typed_term -> typed_term
+val make_mul : typed_term -> typed_term -> typed_term
 val make_if : typed_term -> typed_term -> typed_term -> typed_term
 val make_eq : typed_term -> typed_term -> typed_term
 val make_lt : typed_term -> typed_term -> typed_term
@@ -160,10 +163,6 @@ val print_termlist : int -> bool -> Format.formatter -> typed_term list -> unit
 val string_of_ident : id -> string
 val string_of_term : typed_term -> string
 val string_of_node : node -> string
-val print_term_fm : bool -> Format.formatter -> typed_term -> unit
-val print_term : bool -> typed_term -> unit
-val print_term_fm_break : bool -> Format.formatter -> typed_term -> unit
-val print_term_break : bool -> typed_term -> unit
 val print_constr : Format.formatter -> literal -> unit
 val print_constr_list : Format.formatter -> literal list -> unit
 val pp_print_typ : Format.formatter -> typ -> unit
@@ -172,5 +171,6 @@ val pp_print_typ : Format.formatter -> typ -> unit
 val pp_print_term : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 
-val print_term' : int -> bool -> Format.formatter -> typed_term -> unit
+val print_term : bool -> Format.formatter -> typed_term -> unit
+val print_term' : bool -> Format.formatter -> typed_term -> unit
 

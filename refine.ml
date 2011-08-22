@@ -48,15 +48,19 @@ let rec merge_typ typ typ' =
       | TAbs _, _ -> assert false
       | TApp _, _ -> assert false
 let add_pred map env =
-  let aux (f,typ) = f, merge_typ typ (List.assoc f map) in
+  let aux (f,typ) =
+    try
+      f, merge_typ typ (List.assoc f map)
+    with Not_found -> f, typ
+  in
     List.map aux env
 
 
-let refine ces (env,defs,main) =
+let refine ces (env,defs,main) : prog =
   let refine =
-    match Flag.refine with
+    match !Flag.refine with
         Flag.RefineSizedType -> (fun _ -> assert false)
-      | Flag.RefineDependentType -> (fun _ -> assert false)
+      | Flag.RefineDependentType -> RefineDepTyp.infer
   in
   let map = refine ces (env,defs,main) in
   let env' = add_pred map env in

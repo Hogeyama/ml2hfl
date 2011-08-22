@@ -2,7 +2,7 @@ type 'a t = {id:int; name:string; typ:'a}
 
 let counter = ref 1
 
-let new_int () = incr counter; !counter
+let new_int () = incr counter; let n = !counter in if n = 187 then n else n
 let get_counter () = !counter
 let set_counter n = counter := n
 

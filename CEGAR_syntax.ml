@@ -14,6 +14,13 @@ let rename_id s =
     with _ -> len
   in
     String.sub s 0 n ^ "_" ^ string_of_int (Id.new_int ())
+let decomp_id s =
+  try
+    let len = String.length s in
+    let i = String.rindex s '_' in
+      String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
+  with _ -> s, 0
+
 
 type var = string
 
@@ -25,6 +32,7 @@ type const =
   | True
   | False
   | RandInt
+  | RandBool
   | And
   | Or
   | Not
@@ -40,7 +48,7 @@ type const =
   | Tuple of int
   | Proj of int * int (* 0-origin *)
   | If (* for abstraction and model-checking *)
-  | Branch (* for for abstraction and model-checking *)
+  | Bottom
 
 
 
@@ -69,8 +77,9 @@ let make_app t ts = List.fold_left (fun t1 t2 -> App(t1, t2)) t ts
 let make_fun xs t =
   let f = new_id "f" in
     [f, xs, Const True, t], f
+let make_fun_temp xs t = List.fold_right (fun x t -> Fun(x,t)) xs t
 let make_if t1 t2 t3 = make_app (Const If) [t1;t2;t3]
-let make_br t1 t2 = make_app (Const Branch) [t1;t2]
+let make_br t1 t2 = make_if (Const RandBool) t1 t2
 let make_and t1 t2 = make_app (Const And) [t1; t2]
 let make_or t1 t2 = make_app (Const Or) [t1; t2]
 let make_not t = App(Const Not, t)
@@ -90,6 +99,38 @@ let make_loop () =
 
 
 let apply_body_def f (g,xs,t1,t2) = g, xs, t1, f t2
+
+
+
+let rec subst x t = function
+    Const c -> Const c
+  | Var y when x = y -> t
+  | Var y -> Var y
+  | App(t1,t2) -> App(subst x t t1, subst x t t2)
+  | Let(y,t1,t2) when x = y -> Let(y, subst x t t1, t2)
+  | Let(y,t1,t2) -> Let(y, subst x t t1, subst x t t2)
+  | Fun(y,t1) when x = y -> Fun(y,t1)
+  | Fun(y,t1) -> Fun(y, subst x t t1)
+
+let subst_map map t =
+  List.fold_right (fun (x,t) t' -> subst x t t') map t
+
+let subst_def x t (f,xs,t1,t2) =
+  f, xs, subst x t t1, subst x t t2
+
+let rec subst_typ x t = function
+    TBase(b,ps) ->
+      (** ASSUME: y does not contain x **)
+      let ps' y = List.map (subst x t) (ps y) in
+        TBase(b, ps')
+  | TFun typ ->
+      let typ' y =
+        let typ1,typ2 = typ y in
+          subst_typ x t typ1, subst_typ x t typ2
+      in
+        TFun typ'
+  | _ -> assert false
+
 
 
 let rec make_arg_let t =
@@ -121,7 +162,6 @@ let rec make_arg_let t =
           let t2' = make_arg_let t2 in
             Syntax.BinOp(op, t1', t2')
       | Syntax.Not t -> Syntax.Not (make_arg_let t)
-      | Syntax.Fail -> Syntax.Fail
       | Syntax.Fun(x,t) -> assert false
       | Syntax.Event s -> assert false
   in
@@ -143,8 +183,29 @@ let rec trans_typ = function
   | Type.TConstr("event",_) -> TBase(TEvent,nil)
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
+  | Type.TPair _ -> assert false
+  | Type.TBottom _ -> TBase(TBottom, nil)
 
 let trans_var x = Id.to_string x
+
+let rec trans_typ' = function
+    Type.TUnit -> TBase(TUnit, nil)
+  | Type.TBool -> TBase(TBool, fun x -> [x])
+  | Type.TAbsBool -> assert false
+  | Type.TInt _ -> TBase(TInt, nil)
+  | Type.TRInt _  -> assert false
+  | Type.TVar _  -> TBase(TUnit, nil)
+  | Type.TFun(x,typ) ->
+      let x' = trans_var x in
+      let typ1 = trans_typ' (Id.typ x) in
+      let typ2 = trans_typ' typ in
+        TFun(fun y -> subst_typ x' y typ1, subst_typ x' y typ2)
+  | Type.TList _ -> assert false
+  | Type.TConstr("event",_) -> TBase(TEvent,nil)
+  | Type.TConstr _ -> assert false
+  | Type.TUnknown -> assert false
+  | Type.TPair _ -> assert false
+  | Type.TBottom _ -> TBase(TBottom, nil)
 
 let rec trans_binop = function
     Syntax.Eq -> Const Eq
@@ -167,7 +228,9 @@ let rec trans_term xs env t =
     | Syntax.Int n -> [], Const (Int n)
     | Syntax.NInt _ -> assert false
     | Syntax.RandInt None -> [], Const RandInt
-    | Syntax.RandInt _ -> assert false
+    | Syntax.RandInt(Some t) ->
+        let defs,t' = trans_term xs env t in
+          defs, App(t', Const RandInt)
     | Syntax.Var x ->
         let x' = trans_var x in
           [], Var x'
@@ -195,9 +258,9 @@ let rec trans_term xs env t =
     | Syntax.Not t ->
         let defs,t' = trans_term xs env t in
           defs, App(Const Not, t')
-    | Syntax.Fail -> [], Const (Event "fail")
-    | Syntax.Fun _
-    | Syntax.Event _ -> assert false
+    | Syntax.Fun _ -> assert false
+    | Syntax.Event s -> [], Const (Event s)
+    | Syntax.Bottom -> [], Const Bottom
 
 let rec formula_of t =
   match t.Syntax.desc with
@@ -221,7 +284,6 @@ let rec formula_of t =
     | Syntax.Not t ->
         let t' = formula_of t in
           App(Const Not, t')
-    | Syntax.Fail -> raise Not_found
     | Syntax.Fun _
     | Syntax.Event _ -> assert false
 
@@ -243,12 +305,19 @@ let trans_def (f,(xs,t)) =
 
 let trans_prog t =
   let t = Syntax.trans_let t in
-  let () = if true then Format.printf "trans_let :@.%a\n@." (Syntax.print_term_fm_break true) t in
+  let () = if false then Format.printf "trans_let :@.%a\n\n@." (Syntax.print_term true) t in
   let main = new_id "main" in
   let defs,t = Syntax.lift t in
   let defs_t,t' = trans_term [] [] t in
-  let typ = TFun(fun _ -> TBase(TUnit,fun _ -> []), TBase(TUnit,fun _ -> [])) in
-  let defs' = (main,typ,["u"],Const True,t') :: defs_t @ rev_map_flatten trans_def defs in
+  let defs' =
+    match !Flag.cegar with
+        Flag.CEGAR_SizedType ->
+          let typ = TFun(fun _ -> TBase(TUnit,fun _ -> []), TBase(TUnit,fun _ -> [])) in
+            (main,typ,["u"],Const True,t') :: defs_t @ rev_map_flatten trans_def defs
+      | Flag.CEGAR_DependentType ->
+          let typ = TBase(TUnit,fun _ -> []) in
+            (main,typ,[],Const True,t') :: defs_t @ rev_map_flatten trans_def defs
+  in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,t2) -> (f,typ), (f,xs,t1,t2)) defs') in
     env, defs'', main
 
@@ -256,27 +325,28 @@ let trans_prog t =
 let nil = fun _ -> []
 
 let rec get_const_typ = function
-    Event _ -> TBase(TUnit, nil)
-  | Label _ -> assert false
+    Event _ -> TBase(TEvent, nil)
+  | Label _ -> TFun(fun y -> TBase(TUnit,nil), TBase(TUnit,nil))
   | Unit _ -> TBase(TUnit, nil)
   | True _ -> TBase(TBool, fun x -> [x])
   | False _ -> TBase(TBool, fun x -> [make_not x])
-  | RandInt _ -> TFun(fun x -> TBase(TUnit,nil), TBase(TInt,nil))
-  | And -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_and x y)])))
-  | Or -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [make_eq b (make_or x y)])))
+  | RandInt _ -> TBase(TInt,nil)
+  | And -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [])))
+  | Or -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [])))
   | Not -> assert false
-  | Lt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [make_eq b (make_lt x y)])))
-  | Gt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [make_eq b (make_gt x y)])))
-  | Leq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [make_eq b (make_leq x y)])))
-  | Geq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [make_eq b (make_geq x y)])))
-  | Eq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [make_eq b (make_eq x y)])))
+  | Lt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
+  | Gt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
+  | Leq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
+  | Geq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
+  | Eq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
   | Int n -> TBase(TInt, fun x -> [make_eq x (Const (Int n))])
-  | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_add x y)])))
-  | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_sub x y)])))
+  | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [])))
+  | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [])))
   | Mul -> TFun(fun _ -> TBase(TInt,nil), TFun(fun _ -> TBase(TInt,nil), TBase(TInt,nil)))
   | Tuple _ -> assert false
   | Proj _ -> assert false
-  | If _ -> assert false
+  | If _ -> TFun(fun _ -> TBase(TUnit,nil), TFun(fun _ -> TBase(TUnit,nil), TFun(fun _ -> TBase(TUnit,nil), TBase(TUnit,nil))))
+  | Bottom -> TBase(TBottom, nil)
 
 
 let rec get_typ env = function
@@ -302,24 +372,15 @@ let rec decomp_app = function
       let t,ts = decomp_app t1 in
         t, ts@[t2]
   | t -> t, []
+let rec decomp_fun = function
+    Fun(x,t) ->
+      let xs,t = decomp_fun t in
+        x::xs, t
+  | t -> [], t
 
-
-
-let rec subst x t = function
-    Const c -> Const c
-  | Var y when x = y -> t
-  | Var y -> Var y
-  | App(t1,t2) -> App(subst x t t1, subst x t t2)
-  | Let(y,t1,t2) when x = y -> Let(y, subst x t t1, t2)
-  | Let(y,t1,t2) -> Let(y, subst x t t1, subst x t t2)
-  | Fun(y,t1) when x = y -> Fun(y,t1)
-  | Fun(y,t1) -> Fun(y, subst x t t1)
-
-let subst_map map t =
-  List.fold_right (fun (x,t) t' -> subst x t t') map t
-
-let subst_def x t (f,xs,t1,t2) =
-  f, xs, subst x t t1, subst x t t2
+let rec get_arg_num = function
+    TFun typ -> 1 + get_arg_num (snd (typ (Const Unit)))
+  | typ -> 0
 
 
 let map_defs f defs =
@@ -371,23 +432,30 @@ let rec lift_term xs = function
       let defs2,t2' = lift_term xs t2 in
         defs1@@defs2, App(t1',t2')
   | Let(f,t1,t2) ->
+      let ys,t1' = decomp_fun t1 in
+      let ys' = List.map (fun x -> if List.mem x xs then rename_id x else x) ys in
       let f' = rename_id f in
       let f'' = make_app (Var f') (List.map (fun x -> Var x) xs) in
-      let defs1,t1' = lift_term xs t1 in
+      let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' ys ys' in
+      let xs' = xs@ys' in
+      let defs1,t1''' = lift_term xs' t1'' in
       let defs2,t2' = lift_term xs (subst f f'' t2) in
-        (f',xs,Const True,t1') :: defs1 @ defs2, t2'
-  | Fun(x,t) ->
+        (f',xs@ys',Const True,t1''') :: defs1 @ defs2, t2'
+  | Fun _ as t ->
+      let ys,t' = decomp_fun t in
       let f = new_id "f" in
-      let x' = if List.mem x xs then rename_id x else x in
-      let t' = subst x (Var x') t in
-      let xs' = xs@[x'] in
+      let ys' = List.map (fun x -> if List.mem x xs then rename_id x else x) ys in
+      let t'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t' ys ys' in
+      let xs' = xs@ys' in
       let f' = make_app (Var f) (List.map (fun x -> Var x) xs) in
-      let defs,t' = lift_term xs' t' in
-        (f,xs',Const True,t')::defs, f'
+      let defs,t''' = lift_term xs' t'' in
+        (f,xs',Const True,t''')::defs, f'
 let lift_def (f,xs,t1,t2) =
+  let ys,t2' = decomp_fun t2 in
+  let xs' = xs@ys in
   let defs1,t1' = lift_term xs t1 in
-  let defs2,t2' = lift_term xs t2 in
-    (f, xs, t1', t2')::defs1@defs2
+  let defs2,t2'' = lift_term xs' t2' in
+    (f, xs', t1', t2'')::defs1@defs2
 let lift (_,defs,main) =
   let defs = rev_flatten_map lift_def defs in
     ([],defs,main)
@@ -406,4 +474,34 @@ let rec pop_main (env,defs,main) =
   let compare (f,_,_,_) (g,_,_,_) = compare (g = main) (f = main) in
   let defs = List.sort compare defs in
     env, defs, main
+
+
+
+
+let to_if_exp (env,defs,main) =
+  let merge = function
+      [f,xs,t1,t2] -> assert (t1 = Const True); f, xs, t1, t2
+    | [f1,xs1,t11,t12; f2,xs2,t21,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
+        f1, xs1, Const True, make_if t21 t22 t12
+    | [f1,xs1,t11,t12; f2,xs2,t21,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
+        f1, xs1, Const True, make_if t11 t12 t22
+    | _ -> assert false
+  in
+  let rec aux = function
+      [] -> []
+    | (f,xs,t1,t2)::defs ->
+        let defs1,defs2 = List.partition (fun (g,_,_,_) -> f = g) defs in
+        let def' = merge ((f,xs,t1,t2)::defs1) in
+          def' :: aux defs2
+  in
+    (env, aux defs, main)
+
+let of_if_exp (env,defs,main) =
+  let aux (f,xs,t1,t2) =
+    assert (t1 = Const True);
+    match t2 with
+        App(App(App(Const If, t1), t2), t3) -> [f,xs,t1,t2; f,xs,make_not t1,t3]
+      | _ -> [f,xs,t1,t2]
+  in
+    (env, rev_flatten_map aux defs, main)
 

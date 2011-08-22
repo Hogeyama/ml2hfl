@@ -2,12 +2,14 @@ open Utilities
 open CEGAR_const
 open CEGAR_syntax
 open CEGAR_type
+open CEGAR_print
 
 
 
 let check env cond pbs p =
+  List.iter (fun (f,typ) -> Format.printf "%s: %a@." f print_typ typ) env;
   let ps,_ = List.split pbs in
-    Wrapper.check env (cond@@ps) p
+    Wrapper2.check env (cond@@ps) p
 
 let make_conj pbs =
   match pbs with
@@ -164,29 +166,34 @@ let abst env cond pbs p =
   let tt, ff = weakest env cond pbs p in
     if tt = make_not (Const False) || make_not (Const True) = ff
     then Const True
-    else make_if tt (Const True) (make_if ff (Const False) (make_app (Const Branch) [Const True; Const False]))
+    else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
 
 let assume env cond pbs t1 t2 =
   let _,ff = weakest env cond pbs t1 in
-  let defs,t = make_loop () in
-    defs, make_if ff t t2
+    if ff = Const False
+    then t2
+    else make_if ff (Const Bottom) t2
 
-
-(*
+(* TODO: equiv *)
 let rec congruent env cond typ1 typ2 =
   match typ1,typ2 with
-      TBase(b1,ps1), TBase(b2,ps2) ->
+      TBase(TBottom,_), _ -> true
+    | TBase(b1,ps1), TBase(b2,ps2) ->
         assert (b1=b2);
         let x = new_id "x" in
+(*
           List.for_all2 (equiv env cond) (ps1 (Var x)) (ps2 (Var x))
+*)
+        let ps1' = ps1 (Var x) in
+        let ps2' = ps2 (Var x) in
+          List.length ps1' = List.length ps2' && List.for_all2 (=) ps1' ps2'
     | TFun typ1, TFun typ2 ->
         let x = new_id "x" in
         let typ11,typ12 = typ1 (Var x) in
         let typ21,typ22 = typ2 (Var x) in
           congruent env cond typ11 typ21 && congruent env cond typ12 typ22
-*)
 
 
 let abst_arg x typ =
@@ -200,7 +207,7 @@ let abst_arg x typ =
 
 let rec coerce env cond pts typ1 typ2 t =
   match typ1,typ2 with
-      TBase(TBottom,_), _ -> t
+      _ when congruent env cond typ1 typ2 -> t
     | TBase(_,ps1),TBase(_,ps2) ->
         let x = new_id "x" in
         let env' = (x,typ1)::env in
@@ -215,16 +222,13 @@ let rec coerce env cond pts typ1 typ2 t =
         let t1 = coerce env' cond pts typ21 typ11 (Var x) in
         let t2 = coerce env' cond pts typ12 typ22 (App(t, t1)) in
           Fun(x, t2)
-    | _ -> assert false
-(*
-let coerce env cond pts typ1 typ2 t =
-  if congruent env cond typ1 typ2
-  then 
-*)
+    | _ -> Format.printf "COERCE: %a, %a@." print_typ typ1 print_typ typ2; assert false
+
+
 
 
 let rec is_base_term env = function
-    Const (Unit | True | False | Int _) -> true
+    Const (Unit | True | False | Int _ | RandInt) -> true
   | Const _ -> false
   | Var x ->
       begin
@@ -236,13 +240,16 @@ let rec is_base_term env = function
       assert (is_base_term env t1);
       assert (is_base_term env t2);
       true
-  | App(Const (Not|RandInt),t) -> assert (is_base_term env t); true
+  | App(Const Not,t) -> assert (is_base_term env t); true
   | App _ -> false
   | Let _ -> false
 
 let rec abstract_term env cond pbs t typ =
   match t with
-      t when is_base_term env t ->
+      Const RandInt ->
+        let typ' = TBase(TInt, fun x -> []) in
+          coerce env cond pbs typ' typ (Const (Tuple 0))
+    | t when is_base_term env t ->
         let typ' =
           match get_typ env t with
               TBase(b,_) -> TBase(b, fun x -> [make_eq x t])
@@ -251,6 +258,7 @@ let rec abstract_term env cond pbs t typ =
           coerce env cond pbs typ' typ (App(Const (Tuple 1), Const True))
     | Const c -> coerce env cond pbs (get_const_typ c) typ t
     | Var x -> coerce env cond pbs (List.assoc x env) typ t
+    | App(Const (Label n), t) -> App(Const (Label n), abstract_term env cond pbs t typ)
     | App(t1, t2) ->
         let typ' = get_typ env t1 in
         let typ1,typ2 =
@@ -261,7 +269,7 @@ let rec abstract_term env cond pbs t typ =
         in
         let t1' = abstract_term env cond pbs t1 typ' in
         let t2' = abstract_term env cond pbs t2 typ1 in
-          Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.print_typ typ2 CEGAR_print.print_typ typ;
+          if false then Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.print_typ typ2 CEGAR_print.print_typ typ;
           coerce env cond pbs typ2 typ (App(t1',t2'))
     | Let(x,t1,t2) ->
         let typ' = get_typ env t1 in
@@ -288,8 +296,8 @@ let abstract_def env (f,xs,t1,t2) =
   let typ,env' = aux (List.assoc f env) xs env in
   let pbs = rev_flatten_map (fun (x,typ) -> abst_arg x typ) env' in
   let t2' = abstract_term env' [t1] pbs t2 typ in
-  let defs,t = assume env' [] pbs t1 t2' in
-    (f, xs, Const True, t)::defs
+  let t = assume env' [] pbs t1 t2' in
+    [f, xs, Const True, t]
 
 
 
@@ -314,9 +322,28 @@ let make_arg_let defs = List.map (apply_body_def (fun t -> reduce_let(make_arg_l
 
 
 
+let add_label_term = function
+    Const c -> Const c
+  | Var x -> Var x
+  | App(App(App(Const If, t1), t2), t3) ->
+      make_if t1 (App(Const (Label 0), t2)) (App(Const (Label 1), t3))
+  | App(t1,t2) -> App(t1,t2)
+
+let rec add_label prog =
+  let aux (env,defs,main) =
+    env, List.map (fun (f,xs,t1,t2) -> f,xs,t1,add_label_term t2) defs, main
+  in
+  let prog = to_if_exp prog in
+  let prog = aux prog in
+    of_if_exp prog
+    
+
+
+
 let abstract (env,defs,main) =
   let defs = make_arg_let defs in
-Format.printf "MAKE_ARG_LET\n%a@." CEGAR_print.print_prog ([],defs,main);
+  let () = if true then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
+  let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
     [], defs, main

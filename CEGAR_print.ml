@@ -45,6 +45,7 @@ and print_const fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
+  | RandBool -> Format.fprintf fm "rand_bool"
   | RandInt -> Format.fprintf fm "rand_int"
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"
@@ -61,7 +62,7 @@ and print_const fm = function
   | Tuple n -> Format.fprintf fm "(%d)" n
   | Proj(_,i) -> Format.fprintf fm "#%d" i
   | If -> Format.fprintf fm "if"
-  | Branch -> Format.fprintf fm "br"
+  | Bottom -> Format.fprintf fm "_|_"
 
 and print_term fm = function
     Const c -> print_const fm c
@@ -70,16 +71,20 @@ and print_term fm = function
       let t,ts = decomp_app t in
         Format.fprintf fm "(%a)" (print_list print_term " " false) (t::ts)
   | Let(x,t1,t2) ->
-      Format.fprintf fm "(let %a = %a in %a)" print_var x print_term t1 print_term t2
-  | Fun(x,t) ->
-      Format.fprintf fm "(fun %a -> %a)" print_var x print_term t
+      let xs,t1 = decomp_fun t1 in
+        Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " true) xs print_term t1 print_term t2
+  | Fun _ as t ->
+      let xs,t = decomp_fun t in
+        Format.fprintf fm "(fun %a -> %a)" (print_list print_var " " false) xs print_term t
 
 and print_fun_def fm (f,xs,t1,t2) =
   if t1 = Const True
-  then Format.fprintf fm "%a -> %a@." (print_list print_var " " false) (f::xs) print_term t2
+  then
+    let ys,t2 = decomp_fun t2 in
+      Format.fprintf fm "%a -> %a@." (print_list print_var " " false) (f::xs@ys) print_term t2
   else Format.fprintf fm "%a when %a -> %a@." (print_list print_var " " false) (f::xs) print_term t1 print_term t2
 
-and print_prog fm (env,defs,s) =
+and print_prog fm (_,defs,s) =
   Format.fprintf fm "Main: %a@." print_var s;
   List.iter (print_fun_def fm) defs
 
@@ -94,6 +99,8 @@ and print_const_ML fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
+  | RandBool -> Format.fprintf fm "rand_bool()"
+  | RandInt -> Format.fprintf fm "rand_int()"
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
   | Not -> Format.fprintf fm "(not)"
@@ -112,7 +119,6 @@ and print_const_ML fm = function
   | Proj(_,0) -> ()
   | Proj(_,i) -> Format.fprintf fm "#%d" i
   | If -> Format.fprintf fm "if_term"
-  | Branch -> Format.fprintf fm "br"
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
@@ -120,7 +126,9 @@ and print_term_ML fm = function
   | App _ as t ->
       let t,ts = decomp_app t in
         Format.fprintf fm "(%a)" (print_list print_term_ML " " false) (t::ts)
-  | Let(x,t1,t2) -> Format.fprintf fm "(let %a = %a in %a)" print_var x print_term_ML t1 print_term_ML t2
+  | Let(x,t1,t2) ->
+      let xs,t1 = decomp_fun t1 in
+        Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " true) xs print_term_ML t1 print_term_ML t2
   | Fun(x,t) -> Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
 
 and print_fun_def_ML fm (f,xs,t1,t2) =

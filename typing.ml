@@ -14,6 +14,18 @@ type typ =
   | TFun of typ * typ
   | TTuple of typ list
   | TEvent
+  | TBottom
+
+let rec print_typ fm = function
+    TUnit -> Format.fprintf fm "unit"
+  | TBool -> Format.fprintf fm "bool"
+  | TInt -> Format.fprintf fm "int"
+  | TVar{contents=Some typ} -> print_typ fm typ
+  | TVar{contents=None} -> Format.fprintf fm "?"
+  | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
+  | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * " false) typs
+  | TEvent _ -> Format.fprintf fm "event"
+  | TBottom -> Format.fprintf fm "bottom"
 
 let new_tvar () = TVar (ref None)
 
@@ -25,11 +37,18 @@ let rec occurs r = function
 
 let rec unify typ1 typ2 =
   match typ1, typ2 with
-      TVar{contents = Some typ1}, _ -> unify typ1 typ2
+      TBottom, _ -> ()
+    | _, TBottom -> ()
+    | TVar{contents = Some typ1}, _ -> unify typ1 typ2
     | _, TVar{contents = Some typ2} -> unify typ1 typ2
     | TUnit, TUnit -> ()
     | TBool, TBool -> ()
     | TInt, TInt -> ()
+    | TEvent, TEvent -> ()
+    | TEvent, typ
+    | typ, TEvent ->
+        let typ' = new_tvar () in
+        unify typ (TFun(typ',typ'))
     | TFun(typ11, typ12), TFun(typ21, typ22) ->
         unify typ11 typ21;
         unify typ12 typ22
@@ -40,7 +59,7 @@ let rec unify typ1 typ2 =
     | typ, TVar({contents = None} as r) ->
         assert (not (occurs r typ));
         r := Some typ
-    | _ -> assert false
+    | _ -> Format.printf "UNIFY: %a, %a@." print_typ typ1 print_typ typ2; assert false
 
 
 let nil = fun _ -> []
@@ -53,14 +72,19 @@ let rec trans_typ = function
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> CEGAR_type.TFun(fun _ -> trans_typ typ1,trans_typ typ2)
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
+  | TEvent -> CEGAR_type.TBase(CEGAR_type.TEvent,nil)
+  | TBottom -> CEGAR_type.TBase(CEGAR_type.TBottom,nil)
 
 let get_typ_const = function
   | Event _ -> TEvent
-  | Label _ -> assert false
+  | Label _ ->
+      let typ = new_tvar() in
+        TFun(typ,typ)
   | Unit -> TUnit
   | True -> TBool 
   | False -> TBool
-  | RandInt -> TFun(TUnit,TInt)
+  | RandBool -> TBool
+  | RandInt -> TInt
   | Eq ->
       let typ = new_tvar() in
         TFun(typ,TFun(typ,TBool))
@@ -78,15 +102,13 @@ let get_typ_const = function
   | If ->
       let typ = new_tvar () in
         TFun(TBool,TFun(typ,TFun(typ,typ)))
-  | Branch ->
-      let typ = new_tvar () in
-        TFun(typ,TFun(typ,typ))
   | Proj(n,i) ->
       let typs = Array.to_list (Array.init n (fun _ -> new_tvar())) in
         TFun(TTuple typs, List.nth typs i)
   | Tuple n ->
       let typs = Array.to_list (Array.init n (fun _ -> new_tvar())) in
         List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs (TTuple typs)
+  | Bottom -> TBottom
 
 let rec infer_term env = function
     Const c -> get_typ_const c
@@ -119,9 +141,23 @@ let infer_def env (f,xs,t1,t2) =
     unify typ1 TBool;
     unify typ typ'
 
+let unify_env env =
+  let rec aux = function
+      [] -> ()
+    | (f,typ)::env ->
+        let env1,env2 = List.partition (fun (g,_) -> f = g) env in
+        let () =
+          match env1 with
+              [] -> ()
+            | (_,typ)::env1' -> List.iter (fun (_,typ') -> unify typ typ') env1'
+        in
+          aux env2
+  in
+    aux env
 
 let infer (_,defs,main) =
   let env = List.map (fun (f,_,_,_) -> f, new_tvar ()) defs in
+  let () = unify_env env in
   let () = List.iter (infer_def env) defs in
   let env' = List.map (fun (f,typ) -> f, trans_typ typ) env in
     env', defs, main

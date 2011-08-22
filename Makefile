@@ -48,7 +48,7 @@ lib: ocaml csisat
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli alpha.mli automata.mli check.mli feasibility.mli refine.mli syntax.mli wrapper.mli
+MLI = CPS.mli abstract.mli alpha.mli automata.mli check.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
 CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
@@ -62,7 +62,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
  lazy/apronInterface.ml lazy/csisatInterface.ml lazy/fdef.ml lazy/prog.ml lazy/ctree.ml lazy/trace.ml lazy/sizType.ml \
  lazyInterface.cmo \
 	type_decl.cmo type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	wrapper.cmo abstract.cmo CEGAR_abst.cmo check.cmo feasibility.cmo refine.cmo CEGAR.cmo main.cmo
+	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst.cmo check.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)

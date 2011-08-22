@@ -11,7 +11,7 @@ type node = BrNode | FailNode | LineNode of int
 
 let parse_node = function
     "br" -> BrNode
-  | "fail" -> FailNode
+  | "event_fail" -> FailNode
   | s when s.[0] = 'l' -> LineNode (int_of_string (String.sub s 1 (String.length s - 1)))
   | _ -> assert false
       
@@ -34,19 +34,21 @@ let rec parse_trace s =
     | _ -> assert false
 
 let print_const fm = function
-    Event s -> Format.fprintf fm "event(%s)" s
-  | Label n -> Format.fprintf fm "label(%d)" n
+    Event s -> Format.fprintf fm "event_%s" s
+  | Label n -> Format.fprintf fm "l%d" n
   | Unit -> Format.fprintf fm "unit"
   | True -> Format.fprintf fm "0"
   | False -> Format.fprintf fm "1"
   | If -> Format.fprintf fm "_case 2"
-  | Branch -> Format.fprintf fm "br"
+  | Bottom -> Format.fprintf fm "Bottom"
 
 let print_var = Format.pp_print_string
 
 let rec print_term fm = function
     Const c -> print_const fm c
   | Var x -> print_var fm x
+  | App(App(App(Const If, Const RandBool), t2), t3) ->
+      Format.fprintf fm "br (%a) (%a)" print_term t2 print_term t3
   | App _ as t ->
       let t,ts = decomp_app t in
       let aux fm t =
@@ -156,7 +158,7 @@ let eta_expand ((env,defs,main) : prog) : prog=
   env, List.map (eta_expand_def env) defs, main
 
 
-
+(*
 let move_main (env,defs,main) =
   let rec aux acc = function
       [] -> List.rev acc
@@ -164,7 +166,7 @@ let move_main (env,defs,main) =
     | def::defs -> aux (def::acc) defs
   in
     env, aux defs, main
-
+*)
 
 let elim_non_det (env,defs,main) =
   let check f (g,_,_,_) = f = g in
@@ -183,18 +185,52 @@ let elim_non_det (env,defs,main) =
     Typing.infer ([], aux defs, main)
 
 
+let make_bottom (env,defs,main) =
+  let bottoms = ref [] in
+  let aux_def (f,xs,t1,t2) =
+    let env' = get_env (List.assoc f env) xs @@ env in
+    let rec aux_term : CEGAR_syntax.t * CEGAR_syntax.t CEGAR_type.t -> CEGAR_syntax.t = function
+        Const Bottom, typ ->
+          let n = get_arg_num typ in
+            let x = "Bottom" ^ string_of_int n in
+              bottoms := (x,n)::!bottoms;
+              Var x
+      | Const c, _ -> Const c
+      | Var x, _ -> Var x
+      | App(t1,t2), _ ->
+          let typ = get_typ env' t1 in
+          let typ' =
+            match typ with
+                TFun typ -> fst (typ (Const Unit))
+              | TBase(TEvent,_) -> TBase(TEvent,nil)
+              | _ -> assert false
+          in
+            App(aux_term (t1,typ), aux_term (t2,typ'))
+    in
+      f, xs, t1, aux_term (t2, get_typ env' t2)
+  in
+  let make (x,n) =
+    let xs = Array.to_list (Array.init n (fun _ -> "x")) in
+      x, xs, Const True, make_app (Var x) (List.map (fun x -> Var x) xs)
+  in
+  let defs' = List.map aux_def defs in
+  let bottom_defs = List.map make (uniq compare !bottoms) in
+    env, bottom_defs@@defs', main
+
+
 let model_check prog n =
-  let prog = CEGAR_CPS.trans prog in
-  let () = Format.printf "CPS:\n%a@." CEGAR_print.print_prog_typ prog in
+  let prog = CEGAR_CPS.trans' prog in
+  let () = if true then Format.printf "CPS:\n%a@." CEGAR_print.print_prog prog in
   let prog = eta_expand prog in
   let prog = elim_non_det prog in
+  let prog = make_bottom prog in
   let prog = pop_main prog in
   let prog = capitalize prog in
   let spec = make_spec n in
     try
       model_check_aux (prog,spec)
     with
-        Assert_failure(s,_,_) when s <> "" -> assert false
+        Assert_failure(s,_,_) as e when s <> "" -> raise e
       | End_of_file -> (printf "\nTRecS failed@."; assert false)
 
 

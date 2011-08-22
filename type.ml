@@ -15,16 +15,23 @@ type 'a t =
   | TUnknown
   | TAbs of ('a t -> 'a t)
   | TVariant of 'a t
+  | TBottom
 
 let typ_event = TConstr("event", true)
 let typ_excep = TConstr("exn", true)
 
 
-
+let rec decomp_tfun = function
+    TFun(x,typ) ->
+      let xs,typ = decomp_tfun typ in
+        x :: xs, typ
+  | typ -> [], typ
 
 let rec can_unify typ1 typ2 =
   match typ1,typ2 with
-      TVar{contents=Some typ1},typ2
+      TBottom, _ -> true
+    | _, TBottom -> true
+    | TVar{contents=Some typ1},typ2
     | typ1,TVar{contents=Some typ2} -> can_unify typ1 typ2
     | TUnit,TUnit -> true
     | (TBool|TAbsBool),(TBool|TAbsBool) -> true
@@ -32,6 +39,7 @@ let rec can_unify typ1 typ2 =
     | TRInt _,TRInt _ -> true
     | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
     | TList typ1, TList typ2 -> can_unify typ1 typ2
+    | TPair(typ11,typ12), TPair(typ21,typ22) -> can_unify typ11 typ21 && can_unify typ12 typ22
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
 (*
     | TVariant stypss1,TVariant stypss2 ->
@@ -75,6 +83,7 @@ let rec print print_pred fm typ =
                   else*) Format.fprintf fm "(%a -> %a)" print (Id.typ x) print typ
       | TUnknown -> Format.fprintf fm "???"
       | TList typ -> Format.fprintf fm "%a list" print typ
+      | TPair(typ1,typ2) -> Format.fprintf fm "(%a * %a)" print typ1 print typ2
 (*
       | TVariant ctypss ->
           let rec aux fm = function
@@ -105,6 +114,7 @@ let rec print print_pred fm typ =
             else Format.fprintf fm "{%a}" aux typs
 *)
       | TConstr(s,_) -> Format.pp_print_string fm s
+      | TBottom -> Format.fprintf fm "_|_"
 
 and print_preds print_pred fm = function
     [] -> ()

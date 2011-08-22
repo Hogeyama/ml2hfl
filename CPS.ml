@@ -216,23 +216,24 @@ let extract_records t = extract_records [] t
 
 
 let rec trans_simpl_typ = function
-    TUnit -> TUnit
-  | TBool -> TBool
-  | TAbsBool -> TAbsBool
-  | TInt ps -> TInt ps
-  | TRInt p -> TRInt p
-  | TVar _ -> assert false
   | TFun(x,typ) ->
     let typ1 = trans_simpl_typ (Id.typ x) in
     let typ2 = trans_simpl_typ typ in
     let y = Id.new_var "x" typ2 in
     let k = Id.new_var "k" (TFun(y,TUnit)) in
       TFun(Id.set_typ x typ1, TFun(k,TUnit))
-  | TList _ -> assert false
-  | TConstr _ -> assert false
+  | TPair(typ1,typ2) -> TPair(trans_simpl_typ typ1, trans_simpl_typ typ2)
+  | TVar _ -> assert false
   | TUnknown -> assert false
+  | TList _ -> assert false
+  | typ -> typ
 
 let trans_var x = Id.set_typ x (trans_simpl_typ (Id.typ x))
+
+let make_let' f xs t1 t2 =
+  match xs,t1.desc with
+      [r], App({desc=Var _} as k, [{desc=Var r'}]) when r = r' -> subst f k t2
+    | _ -> make_let f xs t1 t2
 
 let rec trans_simpl c t =
   match t.desc with
@@ -240,37 +241,40 @@ let rec trans_simpl c t =
     | True
     | False
     | Int _
-    | NInt _ -> c t
+    | NInt _
+    | Bottom -> c t
     | RandInt None ->
         let r = Id.new_var "r" (TInt[]) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
-        let t = make_let k [r] (c (make_var r)) (make_var k) in
+        let t = make_let' k [r] (c (make_var r)) (make_var k) in
           {desc=RandInt (Some t); typ=TUnit}
     | RandInt _ -> assert false
     | Var x -> c (make_var (trans_var x))
-    | Fun(x, t) -> assert false
+    | Fun(x, t) ->
+        let r = Id.new_var "r" (trans_simpl_typ t.typ) in
+        let k = Id.new_var "k" (TFun(r,TUnit)) in
+          c (make_fun x (make_fun k (trans_simpl (fun y -> make_app (make_var k) y) t)))
     | App(_, []) -> assert false
     | App(t1, [t2]) ->
         let r = Id.new_var "r" (trans_simpl_typ t.typ) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
-        let c' x = trans_simpl (fun y -> app2app x [y; make_var  k]) t2 in
+        let c' x = trans_simpl (fun y -> app2app x [y; make_var k]) t2 in
         let t2' = trans_simpl c' t1 in
-          funs := k::!funs;
-          make_let k [r] (c (make_var r)) t2'
+          make_let' k [r] (c (make_var r)) t2'
     | App(t1, t2::ts) ->
-        let x,typ = match t1.typ with TFun(x,typ) -> x,typ | _ -> assert false in
+        let typ = match t1.typ with TFun(_,typ) -> typ | _ -> assert false in
           trans_simpl c {desc=App({desc=App(t1,[t2]);typ=typ}, ts); typ=t.typ}
     | If(t1, t2, t3) ->
-        let x = Id.new_var "x" t.typ in
+        let x = Id.new_var "x" (trans_simpl_typ t.typ) in
         let k = Id.new_var "k" (TFun(x,TUnit)) in
-        let c' y = {desc=App(make_var k, [y]); typ=TUnit} in
+        let c' y = make_app (make_var k) y in
         let t2' = trans_simpl c' t2 in
         let t3' = trans_simpl c' t3 in
-        let c'' y = make_let k [x] (c (make_var x)) (make_if y t2' t3') in
-          funs := k::!funs;
+        let c'' y = make_let' k [x] (c (make_var x)) (make_if y t2' t3') in
           trans_simpl c'' t1
     | Let(Flag.Nonrecursive, x, [], t1, t2) ->
-        let c' t = subst x t (trans_simpl c t2) in
+        let x' = trans_var x in
+        let c' t = subst x' t (trans_simpl c t2) in
           trans_simpl c' t1
     | Let(Flag.Recursive, f, [], t1, t2) -> assert false
     | Let(flag, f, [x], t1, t2) ->
@@ -278,7 +282,7 @@ let rec trans_simpl c t =
         let r = Id.new_var "r" (trans_simpl_typ t1.typ) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
         let f' = trans_var f in
-        let c' y = {desc=App(make_var k, [y]);typ=TUnit} in
+        let c' y = make_app (make_var k) y in
         let t1' = trans_simpl c' t1 in
         let t2' = trans_simpl c t2 in
           make_let_f flag f' [x';k] t1' t2'
@@ -294,11 +298,20 @@ let rec trans_simpl c t =
     | Not t ->
         let c' t1 = c (make_not t1) in
           trans_simpl c' t
-    | Fail ->
-        let u = Id.new_var "u" typ_event in
-          make_let u [] fail_term (c fail_term)
     | Unknown -> c {desc=Unknown;typ=t.typ}
-    | Event s -> c (make_event s)
+    | Event s ->
+        let e = Id.new_var "e" typ_event in
+          make_let e [] (make_event s) (c unit_term)
+    | Pair(t1, t2) ->
+        let c1 t1' t2' = c (make_pair t1' t2') in
+        let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
+          trans_simpl c2 t1
+    | Fst t ->
+        let c' t1 = c (make_fst t1) in
+          trans_simpl c' t
+    | Snd t ->
+        let c' t1 = c (make_snd t1) in
+          trans_simpl c' t
     | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 let trans_simpl = trans_simpl (fun x -> x)
 
@@ -318,10 +331,15 @@ let trans t =
 
 let trans t = trans_simpl t
 
-
-
-
-
+(*
+let test =
+  let x = Id.new_var "x" (TVar(ref None)) in
+  let y = Id.new_var "y" (TVar(ref None)) in
+  let f = Id.new_var "f" (TVar(ref None)) in
+  let y = Id.new_var "y" (TVar(ref None)) in
+  let z = Id.new_var "z" (TVar(ref None)) in
+    make_let f [x] (make_pair (make_fun y (make_add (make_var x) (make_var y))) (make_var x)) unit_term
+*)
 
 
 
@@ -351,7 +369,7 @@ let rec trans_exc_typ = function
     let e = Id.new_var "e" typ_excep in
     let h = Id.new_var "h" (TFun(e,TUnit)) in
       TFun(Id.set_typ x typ1, TFun(k,TFun(h,TUnit)))
-  | TList _ -> assert false
+  | TList typ -> TList (trans_exc_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
 
@@ -419,11 +437,13 @@ let rec trans_exc ct ce t =
     | Not t ->
         let ct' t1 = ct (make_not t1) in
           trans_exc ct' ce t
-    | Fail ->
-        let u = Id.new_var "u" typ_excep in
-          make_let u [] fail_term (ct fail_term)
     | Unknown -> ct {desc=Unknown;typ=t.typ}
     | Event s -> ct (make_event s)
+    | Nil -> ct (make_nil (t.typ))
+    | Cons(t1, t2) ->
+        let ct1 t1' t2' = ct {desc=Cons(t1', t2'); typ=t.typ} in
+        let ct2 y1 = trans_exc (fun y2 -> ct1 y1 y2) ce t2 in
+          trans_exc ct2 ce t1
     | Constr(cstr,[]) -> ct {desc=Constr(cstr,[]);typ=t.typ}
     | Constr(cstr,t1::ts) ->
         let x = Id.new_var "x" t.typ in
@@ -457,5 +477,125 @@ let trans_exc t =
     trans_exc (fun x -> x) ce t
 
 
+type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
 
-let trans t = trans_exc t
+let root x =
+  match x with
+      Leaf t -> t
+    | Node _ -> assert false
+let rec flatten = function
+    Leaf f -> [f]
+  | Node(lhs,rhs) -> flatten lhs @ flatten rhs
+
+let rec map f path = function
+    Leaf t -> Leaf (f path t)
+  | Node(t1,t2) -> Node(map f (path@[1]) t1, map f (path@[2]) t2)
+let map f t = map f [] t
+
+let rec remove_pair_typ = function
+    TUnit -> Leaf TUnit
+  | TBool -> Leaf TBool
+  | TAbsBool -> Leaf TAbsBool
+  | TInt ps -> Leaf (TInt ps)
+  | TRInt p -> Leaf (TRInt p)
+  | TVar _ -> assert false
+  | TFun _ as typ ->
+      let xs,typ' = decomp_tfun typ in
+      let aux x =
+        let typs = remove_pair_typ (Id.typ x) in
+          match flatten typs with
+              [typ] -> [Id.set_typ x typ]
+            | typs' -> mapi (fun i typ -> Id.set_typ (Id.add_name x (string_of_int i)) typ) typs'
+      in
+      let xs' = List.flatten (List.map aux xs) in
+        Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
+  | TPair(typ1,typ2) -> Node(remove_pair_typ typ1, remove_pair_typ typ2)
+  | TList typ -> Leaf (TList(root (remove_pair_typ typ)))
+  | TConstr(s,b) -> Leaf (TConstr(s,b))
+  | TUnknown -> assert false
+  | TBottom -> Leaf TBottom
+
+let remove_pair_var x =
+  let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
+  let aux path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
+    map aux (remove_pair_typ (Id.typ x))
+
+let rec remove_pair t typ_opt =
+  let typ = match typ_opt with None -> t.typ | Some typ -> typ in
+  let typs = remove_pair_typ typ in
+    match t.desc with
+        Unit
+      | True
+      | False
+      | Int _
+      | NInt _
+      | RandInt None -> Leaf t
+      | RandInt (Some t) -> Leaf {desc=RandInt (Some (root (remove_pair t None))); typ=root typs}
+      | Bottom -> map (fun _ _ -> bottom_term) typs
+      | Var x -> map (fun _ x -> make_var x) (remove_pair_var x)
+      | Fun(x, t) ->
+          let xs = flatten (remove_pair_var x) in
+          let t' = root (remove_pair t None) in
+            Leaf (List.fold_right make_fun xs t')
+      | App(t, ts) ->
+          let typs = List.map (fun x -> Id.typ x) (get_args t.typ) in
+          let typs' = take typs (List.length ts) in
+          let t' = root (remove_pair t None) in
+          let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair t (Some typ))) ts typs') in
+            Leaf (app2app t' ts')
+      | If(t1, t2, t3) ->
+          let t1' = root (remove_pair t1 None) in
+          let t2' = root (remove_pair t2 None) in
+          let t3' = root (remove_pair t3 None) in
+            Leaf (make_if t1' t2' t3')
+      | Branch(t1, t2) ->
+          let t1' = root (remove_pair t1 None) in
+          let t2' = root (remove_pair t2 None) in
+            Leaf {desc=Branch(t1',t2'); typ=t1'.typ}
+      | Let(flag, f, xs, t1, t2) ->
+          let f' = root (remove_pair_var f) in
+          let xs' = List.flatten (List.map (fun x -> flatten (remove_pair_var x)) xs) in
+          let t1' = root (remove_pair t1 None) in
+          let t2' = root (remove_pair t2 None) in
+            Leaf (make_let_f flag f' xs' t1' t2')
+      | BinOp(op, t1, t2) ->
+          let t1' = root (remove_pair t1 None) in
+          let t2' = root (remove_pair t2 None) in
+            Leaf {desc=BinOp(op, t1', t2'); typ=root typs}
+      | Not t1 ->
+          let t1' = root (remove_pair t1 None) in
+            Leaf (make_not t1')
+      | Label(b, t1) ->
+          let t1' = root (remove_pair t1 None) in
+            Leaf {desc=Label(b, t1'); typ=root typs}
+      | LabelInt(n, t1) ->
+          let t1' = root (remove_pair t1 None) in
+            Leaf {desc=LabelInt(n, t1'); typ=root typs}
+      | Event s -> Leaf (make_event s)
+      | Record fields -> assert false
+      | Proj(i,s,f,t1) -> assert false
+      | SetField(n,i,s,f,t1,t2) -> assert false
+      | Nil -> assert false
+      | Cons(t1,t2) -> assert false
+      | Constr(s,ts) -> assert false
+      | Match(t1,t2,y,z,t3) -> assert false
+      | Match_(t1,pats) -> assert false
+      | TryWith(t1,t2) -> assert false
+      | Pair(t1,t2) -> Node(remove_pair t1 None, remove_pair t2 None)
+      | Fst t ->
+          let t' = 
+            match remove_pair t None with
+                Leaf _ -> assert false
+              | Node(t',_) -> t'
+          in
+            t'
+      | Snd t ->
+          let t' = 
+            match remove_pair t None with
+                Leaf _ -> assert false
+              | Node(_,t') -> t'
+          in
+            t'
+      | _ -> (Format.printf "%a@." pp_print_term t; assert false)
+
+let remove_pair t = root (remove_pair t None)
