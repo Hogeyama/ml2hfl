@@ -40,6 +40,8 @@ let rec can_unify typ1 typ2 =
     | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
     | TList typ1, TList typ2 -> can_unify typ1 typ2
     | TPair(typ11,typ12), TPair(typ21,typ22) -> can_unify typ11 typ21 && can_unify typ12 typ22
+    | TConstr("event",_), TFun _ -> true
+    | TFun _, TConstr("event",_) -> true
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
 (*
     | TVariant stypss1,TVariant stypss2 ->

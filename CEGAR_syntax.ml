@@ -78,7 +78,11 @@ let make_fun xs t =
   let f = new_id "f" in
     [f, xs, Const True, t], f
 let make_fun_temp xs t = List.fold_right (fun x t -> Fun(x,t)) xs t
-let make_if t1 t2 t3 = make_app (Const If) [t1;t2;t3]
+let make_if t1 t2 t3 =
+  match t1 with
+      Const True -> t2
+    | Const False -> t3
+    | _ -> make_app (Const If) [t1;t2;t3]
 let make_br t1 t2 = make_if (Const RandBool) t1 t2
 let make_and t1 t2 = make_app (Const And) [t1; t2]
 let make_or t1 t2 = make_app (Const Or) [t1; t2]
@@ -188,13 +192,18 @@ let rec trans_typ = function
 
 let trans_var x = Id.to_string x
 
-let rec trans_typ' = function
+let rec trans_typ' :Syntax.typ -> t CEGAR_type.t = function
     Type.TUnit -> TBase(TUnit, nil)
-  | Type.TBool -> TBase(TBool, fun x -> [x])
+  | Type.TBool -> assert false
   | Type.TAbsBool -> assert false
-  | Type.TInt _ -> TBase(TInt, nil)
+  | Type.TInt _ -> assert false
   | Type.TRInt _  -> assert false
-  | Type.TVar _  -> TBase(TUnit, nil)
+  | Type.TVar _  -> assert false
+  | Type.TFun({Id.typ=Type.TInt ps} as x,typ) ->
+      let x' = trans_var x in
+      let typ1 = TBase(TInt, fun z -> List.map (fun p -> subst "v_0" z (snd (trans_term [] [] p))) ps) in
+      let typ2 = trans_typ' typ in
+        TFun(fun y -> typ1, subst_typ x' y typ2)
   | Type.TFun(x,typ) ->
       let x' = trans_var x in
       let typ1 = trans_typ' (Id.typ x) in
@@ -207,7 +216,7 @@ let rec trans_typ' = function
   | Type.TPair _ -> assert false
   | Type.TBottom _ -> TBase(TBottom, nil)
 
-let rec trans_binop = function
+and trans_binop = function
     Syntax.Eq -> Const Eq
   | Syntax.Lt -> Const Lt
   | Syntax.Gt -> Const Gt
@@ -219,7 +228,7 @@ let rec trans_binop = function
   | Syntax.Sub -> Const Sub
   | Syntax.Mult -> Const Mul
 
-let rec trans_term xs env t =
+and trans_term xs env t =
   match t.Syntax.desc with
       Syntax.Unit -> [], Const Unit
     | Syntax.True -> [], Const True
@@ -323,22 +332,23 @@ let trans_prog t =
 
 
 let nil = fun _ -> []
+let typ_bool = TBase(TBool, fun x -> [x])
 
 let rec get_const_typ = function
     Event _ -> TBase(TEvent, nil)
   | Label _ -> TFun(fun y -> TBase(TUnit,nil), TBase(TUnit,nil))
   | Unit _ -> TBase(TUnit, nil)
-  | True _ -> TBase(TBool, fun x -> [x])
-  | False _ -> TBase(TBool, fun x -> [make_not x])
+  | True _ -> typ_bool
+  | False _ -> typ_bool
   | RandInt _ -> TBase(TInt,nil)
-  | And -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [])))
-  | Or -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), TBase(TBool,fun b -> [])))
+  | And -> TFun(fun x -> typ_bool, TFun(fun y -> typ_bool, typ_bool))
+  | Or -> TFun(fun x -> typ_bool, TFun(fun y -> typ_bool, typ_bool))
   | Not -> assert false
-  | Lt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
-  | Gt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
-  | Leq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
-  | Geq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
-  | Eq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TBool,fun b -> [])))
+  | Lt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
+  | Gt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
+  | Leq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
+  | Geq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
+  | Eq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
   | Int n -> TBase(TInt, fun x -> [make_eq x (Const (Int n))])
   | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [])))
   | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [])))
@@ -353,10 +363,11 @@ let rec get_typ env = function
     Const c -> get_const_typ c
   | Var x -> List.assoc x env
   | App(t1,t2) ->
-      let _,typ2 =
+      let typ2 =
         match get_typ env t1 with
-            TFun typ -> typ t2
-          | TBase(TBottom,_) -> TBase(TBottom,fun _ -> []), TBase(TBottom,fun _ -> [])
+            TFun typ -> snd (typ t2)
+          | TBase(TBottom,_) -> TBase(TBottom,fun _ -> [])
+          | TBase(TEvent,_) -> TBase(TUnit,fun _ -> [])
           | _ -> assert false
       in
         typ2

@@ -30,6 +30,7 @@ let rec check t typ =
           | t::ts, TFun(x,typ) ->
               check t (Id.typ x);
               aux (ts,typ)
+          | [_], typ when typ = typ_event -> ()
           | _ -> assert false
         in
         let typ'' = List.fold_right (fun t typ -> TFun(Id.set_typ var t.typ, typ)) ts typ' in

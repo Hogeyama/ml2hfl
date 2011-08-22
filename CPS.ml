@@ -300,8 +300,8 @@ let rec trans_simpl c t =
           trans_simpl c' t
     | Unknown -> c {desc=Unknown;typ=t.typ}
     | Event s ->
-        let e = Id.new_var "e" typ_event in
-          make_let e [] (make_event s) (c unit_term)
+        let u = Id.new_var "u" TUnit in
+          {desc=App({desc=Event s;typ=TFun(u,TUnit)}, [c unit_term]); typ=TUnit}
     | Pair(t1, t2) ->
         let c1 t1' t2' = c (make_pair t1' t2') in
         let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in

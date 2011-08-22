@@ -7,7 +7,6 @@ open CEGAR_print
 
 
 let check env cond pbs p =
-  List.iter (fun (f,typ) -> Format.printf "%s: %a@." f print_typ typ) env;
   let ps,_ = List.split pbs in
     Wrapper2.check env (cond@@ps) p
 
@@ -32,133 +31,138 @@ let mapi f xs =
 
 
 let weakest env (cond:CEGAR_syntax.t list) ds p =
-  let fvp = get_fv p in
-  let ts = ((cond @@ List.map fst ds):CEGAR_syntax.t list) in
-  let ds =
-    let rec fixp xs =
-      let xs' =
-        uniq compare
-          (xs @
-             (List.flatten
-                (List.map
-                   (fun p ->
-                      let fv = get_fv p in
-                        if inter fv xs = []
-                        then []
-                        else fv)
-                   ts)))
+  if check env cond [] p then (*???*)
+    Const True, Const False
+  else if check env cond [] (make_not p) then (*???*)
+    Const False, Const True
+  else
+    let fvp = get_fv p in
+    let ts = ((cond @@ List.map fst ds):CEGAR_syntax.t list) in
+    let ds =
+      let rec fixp xs =
+        let xs' =
+          uniq compare
+            (xs @
+               (List.flatten
+                  (List.map
+                     (fun p ->
+                        let fv = get_fv p in
+                          if inter fv xs = []
+                          then []
+                          else fv)
+                     ts)))
+        in
+          if List.length xs = List.length xs'
+          then xs
+          else fixp xs'
       in
-        if List.length xs = List.length xs'
-        then xs
-        else fixp xs'
+      let fv = fixp fvp in
+        List.filter (fun (p, _) -> subset (get_fv p) fv) ds
     in
-    let fv = fixp fvp in
-      List.filter (fun (p, _) -> subset (get_fv p) fv) ds
-  in
-  let nds = List.map (fun (p, b) -> make_not p, make_not b) ds in
+    let nds = List.map (fun (p, b) -> make_not p, make_not b) ds in
 
-  let f pbs =
-    List.map
-      (fun i ->
-         if i > 0 then
-           List.nth ds (i - 1)
-         else
-           List.nth nds (-i - 1))
-      pbs
-  in
-  let pbss =
-    if Flag.use_neg_pred
-    then mapi (fun i _ -> [i]) ds @ mapi (fun i _ -> [-i]) ds
-    else mapi (fun i _ -> [i]) ds
-  in
-  let rec loop xs' nxs' ys' pbss =
-    let xs, qs = List.partition
-      (fun pbs ->
-         let pbs = f pbs in
-         let fvs =
-           List.flatten
-             (List.map
-                (fun (p, _) ->
-                   get_fv p)
-                pbs)
-         in
-           if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
-             false
+    let f pbs =
+      List.map
+        (fun i ->
+           if i > 0 then
+             List.nth ds (i - 1)
            else
-             check env cond pbs p)
-      pbss
+             List.nth nds (-i - 1))
+        pbs
     in
-    let nxs, ys = List.partition
-      (fun pbs ->
-         let pbs = f pbs in
-         let fvs =
-           List.flatten
+    let pbss =
+      if Flag.use_neg_pred
+      then mapi (fun i _ -> [i]) ds @ mapi (fun i _ -> [-i]) ds
+      else mapi (fun i _ -> [i]) ds
+    in
+    let rec loop xs' nxs' ys' pbss =
+      let xs, qs = List.partition
+        (fun pbs ->
+           let pbs = f pbs in
+           let fvs =
+             List.flatten
+               (List.map
+                  (fun (p, _) ->
+                     get_fv p)
+                  pbs)
+           in
+             if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
+               false
+             else
+               check env cond pbs p)
+        pbss
+      in
+      let nxs, ys = List.partition
+        (fun pbs ->
+           let pbs = f pbs in
+           let fvs =
+             List.flatten
+               (List.map
+                  (fun (p, _) ->
+                     get_fv p)
+                  pbs)
+           in
+             if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
+               false
+             else
+               check env cond pbs (make_not p))
+        pbss
+      in
+      let xs = uniq compare (xs' @ xs) in
+      let nxs = uniq compare (nxs' @ nxs) in
+      let ys = uniq compare (ys' @ ys) in
+      let ws = 
+        uniq compare
+          (List.flatten
              (List.map
-                (fun (p, _) ->
-                   get_fv p)
-                pbs)
-         in
-           if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
-             false
-           else
-             check env cond pbs (make_not p))
-      pbss
-    in
-    let xs = uniq compare (xs' @ xs) in
-    let nxs = uniq compare (nxs' @ nxs) in
-    let ys = uniq compare (ys' @ ys) in
-    let ws = 
-      uniq compare
-        (List.flatten
-           (List.map
-              (fun y1 ->
-                 List.map
-                   (fun y2 ->
-                      List.sort compare
-                        (uniq compare (y1 @ y2)))
-                   ys)
-              ys))
-    in
-    let ws =
-      let ok w =
-        if List.length w > !Flag.wp_max_num then
-          false
+                (fun y1 ->
+                   List.map
+                     (fun y2 ->
+                        List.sort compare
+                          (uniq compare (y1 @ y2)))
+                     ys)
+                ys))
+      in
+      let ws =
+        let ok w =
+          if List.length w > !Flag.wp_max_num then
+            false
+          else
+            let rec ok w =
+              match w with
+                  [] -> true
+                | a::b -> not (List.mem (-a) b) && ok b
+            in
+              ok w
+        in
+          List.filter ok ws
+      in
+      let ws =
+        if false then
+          diff ws ys
         else
-          let rec ok w =
-            match w with
-                [] -> true
-              | a::b -> not (List.mem (-a) b) && ok b
-          in
-            ok w
+          List.filter (fun w -> not (List.exists (fun x -> diff w x = []) ys)) ws
       in
-        List.filter ok ws
-    in
-    let ws =
-      if false then
-        diff ws ys
-      else
-        List.filter (fun w -> not (List.exists (fun x -> diff w x = []) ys)) ws
-    in
-    let ws = List.filter
-      (fun w -> not (List.exists (fun x -> diff x w = []) xs) &&
-         not (List.exists (fun x -> diff x w = []) nxs)) ws in
-    let ws =
-      let rec aux xs =
-        match xs with
-            [] -> []
-          | x::xs' ->
-              if List.exists (fun y -> diff y x = []) xs' then aux xs' else x::(aux xs')
+      let ws = List.filter
+        (fun w -> not (List.exists (fun x -> diff x w = []) xs) &&
+           not (List.exists (fun x -> diff x w = []) nxs)) ws in
+      let ws =
+        let rec aux xs =
+          match xs with
+              [] -> []
+            | x::xs' ->
+                if List.exists (fun y -> diff y x = []) xs' then aux xs' else x::(aux xs')
+        in
+          aux ws
       in
-        aux ws
+        if ws = [] then xs, nxs else loop xs nxs ys ws
     in
-      if ws = [] then xs, nxs else loop xs nxs ys ws
-  in
-  let xs, nxs = loop [] [] [] pbss in
-  let pbss = List.map f xs in
-  let pbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) pbss in
-  let npbss = List.map f nxs in
-  let npbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) npbss in
-    make_dnf pbss, make_dnf npbss
+    let xs, nxs = loop [] [] [] pbss in
+    let pbss = List.map f xs in
+    let pbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) pbss in
+    let npbss = List.map f nxs in
+    let npbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) npbss in
+      make_dnf pbss, make_dnf npbss
 
 
 
@@ -258,6 +262,7 @@ let rec abstract_term env cond pbs t typ =
           coerce env cond pbs typ' typ (App(Const (Tuple 1), Const True))
     | Const c -> coerce env cond pbs (get_const_typ c) typ t
     | Var x -> coerce env cond pbs (List.assoc x env) typ t
+    | App(Const (Event s), t) -> App(Const (Event s), abstract_term env cond pbs t typ)
     | App(Const (Label n), t) -> App(Const (Label n), abstract_term env cond pbs t typ)
     | App(t1, t2) ->
         let typ' = get_typ env t1 in
@@ -323,11 +328,9 @@ let make_arg_let defs = List.map (apply_body_def (fun t -> reduce_let(make_arg_l
 
 
 let add_label_term = function
-    Const c -> Const c
-  | Var x -> Var x
-  | App(App(App(Const If, t1), t2), t3) ->
+    App(App(App(Const If, t1), t2), t3) ->
       make_if t1 (App(Const (Label 0), t2)) (App(Const (Label 1), t3))
-  | App(t1,t2) -> App(t1,t2)
+  | t -> t
 
 let rec add_label prog =
   let aux (env,defs,main) =
@@ -342,7 +345,7 @@ let rec add_label prog =
 
 let abstract (env,defs,main) =
   let defs = make_arg_let defs in
-  let () = if true then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
+  let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
   let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in

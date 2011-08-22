@@ -83,11 +83,14 @@ let rec app2app t ts =
   match t,ts with
     | t,[]_ -> t
     | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-      assert (Type.can_unify (Id.typ x) t2.typ);
-      app2app {desc=App(t1,ts1@[t2]); typ=typ} ts2
+        assert (Type.can_unify (Id.typ x) t2.typ);
+        app2app {desc=App(t1,ts1@[t2]); typ=typ} ts2
     | {desc=t;typ=TFun(x,typ)}, t2::ts ->
-      assert (Type.can_unify (Id.typ x) t2.typ);
-      app2app {desc=App({desc=t;typ=TFun(x,typ)},[t2]); typ=typ} ts
+        assert (Type.can_unify (Id.typ x) t2.typ);
+        app2app {desc=App({desc=t;typ=TFun(x,typ)},[t2]); typ=typ} ts
+    | {desc=t;typ=typ}, t2::ts ->
+        assert (typ = typ_event);
+        app2app {desc=App({desc=t;typ=typ_event},[t2]); typ=TUnit} ts
     | _ -> assert false
 
 
@@ -450,6 +453,7 @@ let rec get_nint t =
     | Event _ -> []
     | Nil -> []
     | Cons(t1,t2) -> get_nint t1 @@@ get_nint t2
+    | RandInt None -> []
 
 let rec get_int t =
   match t.desc with
@@ -472,6 +476,7 @@ let rec get_int t =
     | Event s -> []
     | Nil -> []
     | Cons(t1,t2) -> get_int t1 @@@ get_int t2
+    | RandInt None -> []
 
 let rec get_fv vars t =
   match t.desc with

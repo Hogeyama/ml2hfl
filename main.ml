@@ -67,9 +67,6 @@ let main filename in_channel =
   let () = if true then Format.printf "remove_pair:@.%a\n\n@." Syntax.pp_print_term t in
   let () = Type_check.check t in
   let prog = CEGAR_syntax.trans_prog t in
-  let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
-    !Flag.cegar_loop CEGAR_print.print_prog_typ prog
-  in
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->

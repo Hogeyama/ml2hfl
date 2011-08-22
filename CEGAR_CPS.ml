@@ -9,36 +9,43 @@ let is_head_tuple t =
       Const (Tuple _), _::_ -> true
     | _ -> false
 
-let and_var = "and_cps"
-let or_var = "or_cps"
-let not_var = "not_cps"
-let and_def = and_var, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Var "y")) (App(Var "k", Const False)))
-let or_def = or_var, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const True)) (App(Var "k", Var "y")))
-let not_def = not_var, ["x"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
+let and_cps = "and_cps"
+let or_cps = "or_cps"
+let not_cps = "not_cps"
+let and_def = and_cps, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Var "y")) (App(Var "k", Const False)))
+let or_def = or_cps, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const True)) (App(Var "k", Var "y")))
+let not_def = not_cps, ["x"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
 
 let rec trans_const = function
-    Const (Int _ | Unit | True | False | RandBool | If | Tuple 0 | Event _ | Bottom | Label _ as c) -> Const c
-  | Const And -> Var and_var
-  | Const Or -> Var or_var
-  | Const Not -> Var not_var
+    Const (Int _ | Unit | True | False | RandBool | If | Tuple _ | Event _ | Bottom | Label _ as c) -> Const c
+  | Const Not -> Var not_cps
   | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.print_const c; assert false
   | Var x -> Var x
 (*
   | App(App(Const (Label n), t1), t2) -> App(Const (Label n), App(t2, t1))
 *)
+(*
   | App _ as t when is_head_tuple t ->
       let t',ts = decomp_app t in
       let ts' = List.map trans_const ts in
       let n = match t' with Const (Tuple n) -> n | _ -> assert false in
-      let ts1,ts2 = take2 ts' n in
-        make_app (List.hd ts2) ((make_app t' ts1)::List.tl ts2)
+        if List.length ts' = n
+        then make_app t' ts'
+        else
+          let ts1,ts2 = take2 ts' n in
+            if ts2 = [] then (Format.printf "%a@." print_term t; assert false);
+            make_app (List.hd ts2) ((make_app t' ts1)::List.tl ts2)
+*)
   | App(App(Const (Proj(n,i)), t1), t2) -> App(trans_const t2, App(Const (Proj(n,i)), trans_const t1))
   | App(t1,t2) -> App(trans_const t1, trans_const t2)
   | Let(x,t1,t2) -> Let(x, trans_const t1, trans_const t2)
   | Fun(x,t) -> Fun(x, trans_const t)
 
 let rec trans_simpl c = function
-    Const (Event s) -> App(Const (Event s), c (Const Unit))
+    Const (Event s) ->
+      let r = new_id "r" in
+      let k = new_id "k" in
+        App(Const (Event s), c (make_fun_temp [r;k] (App(Var k, Var r))))
   | Const x -> c (Const x)
   | Var x -> c (Var x)
   | App(Const (Label n), t) -> App(Const (Label n), trans_simpl c t)
@@ -48,19 +55,50 @@ let rec trans_simpl c = function
       let t2' = trans_simpl (fun y -> App(Var k, y)) t2 in
       let t3' = trans_simpl (fun y -> App(Var k, y)) t3 in
       let c' y =
-        let tk = c (Var x) in
-          match tk with
-              App(Var k', Var x') when x = x' -> subst k (Var k') (make_if y t2' t3')
-            | _ -> Let(k, Fun(x, tk), make_if y t2' t3')
+        match c (Var x) with
+            App(Var k', Var x') when x = x' -> subst k (Var k') (make_if y t2' t3')
+          | tk -> Let(k, Fun(x, tk), make_if y t2' t3')
       in
         trans_simpl c' t1
+  | App(App(Const And, t1), t2) ->
+      let x = new_id "b" in
+      let c1 t1' t2' =
+        let k' =
+          match c (Var x) with
+              App(Var k', Var x') when x = x' -> Var k'
+            | tk -> Fun(x, tk)
+        in
+          make_app (Var and_cps) [t1';t2';k']
+      in
+      let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
+        trans_simpl c2 t1
+  | App(App(Const Or, t1), t2) ->
+      let x = new_id "b" in
+      let c1 t1' t2' =
+        let k' =
+          match c (Var x) with
+              App(Var k', Var x') when x = x' -> Var k'
+            | tk -> Fun(x, tk)
+        in
+          make_app (Var or_cps) [t1';t2';k']
+      in
+      let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
+        trans_simpl c2 t1
+  | App _ as t when is_head_tuple t ->
+      let t',ts = decomp_app t in
+      let n = match t' with Const (Tuple n) -> n | _ -> assert false in
+      let () = assert (List.length ts = n) in
+      let cc = List.fold_right (fun t cc -> fun x -> trans_simpl (fun y -> cc (App(x, y))) t) ts c in
+        trans_simpl cc (Const (Tuple n))
   | App(t1, t2) ->
       let r = new_id "r" in
       let c' y =
-        let tk = c (Var r) in
-          match tk with
-              App(Var k', Var r') when r = r' -> trans_simpl (fun x -> make_app x [y; Var k']) t1
-            | _ -> trans_simpl (fun x -> make_app x [y; Fun(r, tk)]) t1
+        let k' =
+          match c (Var r) with
+              App(Var k', Var r') when r = r' -> Var k'
+            | tk -> Fun(r, tk)
+        in
+          trans_simpl (fun x -> make_app x [y; k']) t1
       in
         trans_simpl c' t2
   | Let(x,t1,t2) ->
@@ -83,7 +121,7 @@ let hd x = assert (List.length x = 1); List.hd x
 
 let is_ttuple typ =
   match decomp_tapp typ with
-      TBase(TTuple 0, _), _ -> true
+      TBase(TTuple _, _), _ -> true
     | _ -> false
 
 let rec extract_tuple_var env x =
@@ -99,8 +137,10 @@ let rec extract_tuple_term env = function
   | Const c -> [Const c]
   | Var x -> List.map (fun x -> Var x) (extract_tuple_var env x)
   | App(Const (Proj(_,i)), t2) when is_head_tuple t2 ->
-      assert false;
-      extract_tuple_term env (List.nth (snd (decomp_app t2)) i)
+      let t,ts = decomp_app t2 in
+      let n = match t with Const (Tuple n) -> n | _ -> assert false in
+        assert (List.length ts = n);
+        extract_tuple_term env (List.nth (snd (decomp_app t2)) i)
   | App(Const (Proj(_,i)), Var x) ->
       let xs = extract_tuple_var env x in
         [Var (List.nth xs i)]
@@ -153,7 +193,7 @@ let trans' (env,defs,main) =
   let defs = List.map reduce_def defs in
   let defs = and_def::or_def::not_def::defs in
   let prog = env, defs, main in
-  let () = if true then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.print_prog prog in
   let _ = Typing.infer prog in
   let prog = lift prog in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog prog in
@@ -186,7 +226,7 @@ let trans' (env,defs,main) =
 
 
 
-
+(*
 type typed_term = {t_cps:t_cps; typ_cps:typ_cps}
 and typed_ident = {id_cps:var; id_typ:typ_cps}
 and t_cps =
@@ -473,3 +513,5 @@ let trans (_,defs,main) =
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog prog in
   let prog = Typing.infer prog in
     extract_tuple prog
+*)
+let trans _ = assert false

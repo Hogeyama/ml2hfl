@@ -113,7 +113,7 @@ let get_typ_const = function
 let rec infer_term env = function
     Const c -> get_typ_const c
   | Var x -> (try List.assoc x env with _ -> Format.printf "VAR: %s@." x; assert false)
-  | App(t1,t2) ->
+  | App(t1,t2) as t ->
       let typ1 = infer_term env t1 in
       let typ2 = infer_term env t2 in
       let typ = new_tvar () in
