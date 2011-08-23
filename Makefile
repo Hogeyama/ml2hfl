@@ -58,8 +58,8 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
         CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
  lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
  lazy/util.cmo \
- lazy/attr.cmo lazy/idnt.cmo lazy/simType.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/term.cmo \
- lazy/apronInterface.ml lazy/csisatInterface.ml lazy/fdef.ml lazy/prog.ml lazy/ctree.ml lazy/trace.ml lazy/sizType.ml \
+ lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/simType.cmo lazy/arith.cmo lazy/term.cmo \
+ lazy/apronInterface.cmo lazy/csisatInterface.cmo lazy/cvc3Interface.cmo lazy/fdef.cmo lazy/prog.cmo lazy/ctree.cmo lazy/trace.cmo lazy/sizType.cmo \
  lazyInterface.cmo \
 	type_decl.cmo type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst.cmo check.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo

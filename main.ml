@@ -57,6 +57,7 @@ let main filename in_channel =
       Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
   let () = if true then Format.printf "parsed:@.%a\n\n@." (Syntax.print_term true) t in
+(*
   let t = Syntax.copy_poly_funs t in
   let () = Type_check.check t in
   let t = Abstract.abstract_list t in
@@ -65,6 +66,7 @@ let main filename in_channel =
   let () = if true then Format.printf "CPS:@.%a\n\n@." Syntax.pp_print_term t in
   let t = CPS.remove_pair t in
   let () = if true then Format.printf "remove_pair:@.%a\n\n@." Syntax.pp_print_term t in
+*)
   let () = Type_check.check t in
   let prog = CEGAR_syntax.trans_prog t in
     match !Flag.cegar with

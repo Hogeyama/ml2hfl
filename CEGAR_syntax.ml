@@ -137,6 +137,30 @@ let rec subst_typ x t = function
 
 
 
+let rec arg_num = function
+    TBase _ -> 0
+  | TFun typ -> 1 + arg_num (snd (typ (Const Unit)))
+
+
+
+let rec pop_main (env,defs,main) =
+  let compare (f,_,_,_) (g,_,_,_) = compare (g = main, f) (f = main, g) in
+  let defs = List.sort compare defs in
+    env, defs, main
+
+
+
+
+let eta_expand_def env (f,xs,t1,t2) =
+  let d = arg_num (List.assoc f env) - List.length xs in
+  let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
+    f, xs@ys, t1, List.fold_left (fun t x -> App(t, Var x)) t2 ys
+
+let eta_expand ((env,defs,main) : prog) : prog=
+  env, List.map (eta_expand_def env) defs, main
+
+
+
 let rec make_arg_let t =
   let desc =
     match t.Syntax.desc with
@@ -194,7 +218,7 @@ let trans_var x = Id.to_string x
 
 let rec trans_typ' :Syntax.typ -> t CEGAR_type.t = function
     Type.TUnit -> TBase(TUnit, nil)
-  | Type.TBool -> assert false
+  | Type.TBool -> TBase(TBool, nil)
   | Type.TAbsBool -> assert false
   | Type.TInt _ -> assert false
   | Type.TRInt _  -> assert false
@@ -299,18 +323,18 @@ let rec formula_of t =
 let trans_def (f,(xs,t)) =
   let xs' = List.map trans_var xs in
   let env = List.map2 (fun x' x -> x', trans_typ (Id.typ x)) xs' xs in
-  try
-		  (match t.Syntax.desc with
-		    Syntax.If(t1, t2, t3) ->
-		      let t1' = formula_of t1 in
-						  let defs2,t2' = trans_term xs' env t2 in
-						  let defs3,t3' = trans_term xs' env t3 in
-						    ((trans_var f, trans_typ (Id.typ f), xs', t1', t2')::defs2) @
-		        ((trans_var f, trans_typ (Id.typ f), xs', make_not t1', t3')::defs3)
-		  | _ -> raise Not_found)
-  with Not_found ->
-				let defs,t' = trans_term xs' env t in
-						(trans_var f, trans_typ (Id.typ f), xs', Const True, t')::defs
+    try
+      (match t.Syntax.desc with
+	   Syntax.If(t1, t2, t3) ->
+	     let t1' = formula_of t1 in
+	     let defs2,t2' = trans_term xs' env t2 in
+	     let defs3,t3' = trans_term xs' env t3 in
+	       ((trans_var f, trans_typ (Id.typ f), xs', t1', t2')::defs2) @
+		 ((trans_var f, trans_typ (Id.typ f), xs', make_not t1', t3')::defs3)
+	 | _ -> raise Not_found)
+    with Not_found ->
+      let defs,t' = trans_term xs' env t in
+	(trans_var f, trans_typ (Id.typ f), xs', Const True, t')::defs
 
 let trans_prog t =
   let t = Syntax.trans_let t in
@@ -328,7 +352,7 @@ let trans_prog t =
             (main,typ,[],Const True,t') :: defs_t @ rev_map_flatten trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,t2) -> (f,typ), (f,xs,t1,t2)) defs') in
-    env, defs'', main
+    pop_main (eta_expand (env, defs'', main))
 
 
 let nil = fun _ -> []
@@ -480,14 +504,6 @@ let rec get_env typ xs =
     | _ -> []
 
     
-
-let rec pop_main (env,defs,main) =
-  let compare (f,_,_,_) (g,_,_,_) = compare (g = main) (f = main) in
-  let defs = List.sort compare defs in
-    env, defs, main
-
-
-
 
 let to_if_exp (env,defs,main) =
   let merge = function

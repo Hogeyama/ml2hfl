@@ -71,5 +71,5 @@ type refine = RefineSizedType | RefineDependentType
 type cegar = CEGAR_SizedType | CEGAR_DependentType
 
 let refine = ref RefineDependentType
-let cegar = ref CEGAR_DependentType
+let cegar = ref CEGAR_SizedType
 

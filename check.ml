@@ -145,19 +145,6 @@ let capitalize (env,defs,main) =
     env', defs', main'
 
 
-let rec arg_num = function
-    TBase _ -> 0
-  | TFun typ -> 1 + arg_num (snd (typ (Const Unit)))
-
-let eta_expand_def env (f,xs,t1,t2) =
-  let d = arg_num (List.assoc f env) - List.length xs in
-  let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
-    f, xs@ys, t1, List.fold_left (fun t x -> App(t, Var x)) t2 ys
-
-let eta_expand ((env,defs,main) : prog) : prog=
-  env, List.map (eta_expand_def env) defs, main
-
-
 (*
 let move_main (env,defs,main) =
   let rec aux acc = function

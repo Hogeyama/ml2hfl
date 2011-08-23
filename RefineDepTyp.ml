@@ -506,20 +506,8 @@ let rec eval_term t defs traces pcounter =
         let (f, ts) = decompose_redex t in
         let (vars,body) = 
           try List.assoc f defs 
-          with Not_found ->
-            let fs =
-              List.map fst (List.filter (fun (g,_) -> g.Id.name = f.Id.name) defs)
-            in
-            let () =
-              match fs with
-                  [] -> assert false
-                | f'::_ ->
-                    assert (f.Id.id = f'.Id.id);
-                    assert (f.Id.name = f'.Id.name);
-                    assert (f.Id.typ = f'.Id.typ);
-                    print_id Format.std_formatter f; assert false
-            in
-            raise (Undefined(f)) in
+          with Not_found -> raise (Undefined(f))
+        in
         let env = List.combine vars ts in
           List.iter
             (fun (t2, trace, traces') ->
