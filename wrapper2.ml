@@ -190,7 +190,7 @@ let rec string_of_term env = function
         "(" ^ string_of_term env t1 ^ s ^ string_of_term env t2 ^ ")"
   | App(App(Const Add, t1), t2) -> "(" ^ string_of_term env t1 ^ " + " ^ string_of_term env t2 ^ ")"
   | App(App(Const Sub, t1), t2) -> "(" ^ string_of_term env t1 ^ " - " ^ string_of_term env t2 ^ ")"
-  | App(App(Const Mul, t1), t2) -> assert false
+  | App(App(Const Mul, t1), t2) -> "(" ^ string_of_term env t1 ^ " * " ^ string_of_term env t2 ^ ")"
   | _ -> assert false
 
 

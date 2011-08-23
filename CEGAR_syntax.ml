@@ -350,9 +350,9 @@ let rec get_const_typ = function
   | Geq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
   | Eq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
   | Int n -> TBase(TInt, fun x -> [make_eq x (Const (Int n))])
-  | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [])))
-  | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [])))
-  | Mul -> TFun(fun _ -> TBase(TInt,nil), TFun(fun _ -> TBase(TInt,nil), TBase(TInt,nil)))
+  | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_add x y)])))
+  | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_sub x y)])))
+  | Mul -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_mul x y)])))
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If _ -> TFun(fun _ -> TBase(TUnit,nil), TFun(fun _ -> TBase(TUnit,nil), TFun(fun _ -> TBase(TUnit,nil), TBase(TUnit,nil))))
