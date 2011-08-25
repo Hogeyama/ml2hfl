@@ -4,8 +4,10 @@ open ExtString
 let cvc3in = ref stdin
 let cvc3out = ref stdout
 
+let cvc3 = "./cvc3"
+
 let open_cvc3 () =
-  let cin, cout = Unix.open_process (Flag.cvc3 ^ " +int") in
+  let cin, cout = Unix.open_process (cvc3 ^ " +int") in
   cvc3in := cin;
   cvc3out := cout
 

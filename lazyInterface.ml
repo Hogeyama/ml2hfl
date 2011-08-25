@@ -56,6 +56,7 @@ let conv_prog (typs, fdefs, main) =
     Prog.main = Idnt.make main }
 
 let verify(* ces*) prog =
+  let _ = Cvc3Interface.open_cvc3 () in
   let prog = conv_prog prog in
     Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
     let uid = Ctree.gen () in
@@ -77,7 +78,8 @@ let verify(* ces*) prog =
               | 2 -> Ctree.cex_strategy ces rt
             *)
     in
-      (try
+    let _ =
+      try
          let rec loop i =
            let eps = Ctree.manual prog rt strategy in
            let eptrs = List.map Trace.of_error_path eps in
@@ -101,6 +103,7 @@ let verify(* ces*) prog =
          in
            loop 1
        with Trace.FeasibleErrorTrace(eptr) ->
-         Format.printf "@.The program is unsafe@.Error trace: %a@." Trace.pr eptr);
-      Format.printf "END verification@,@]"
-
+         Format.printf "@.The program is unsafe@.Error trace: %a@." Trace.pr eptr
+  in
+  let _ = Format.printf "END verification@,@]" in
+  Cvc3Interface.close_cvc3 ()

@@ -192,7 +192,10 @@ let eq_ty ty t1 t2 =
       eqBool t1 t2
   | SimType.Int ->
       eqInt t1 t2
+  | SimType.Fun(_, _) ->
+      ttrue(*???*)
   | _ ->
+      let _ = Format.printf "%a@." SimType.pr ty in
       assert false
 (*let neq t1 t2 = apply (Const([], Const.Not)) [apply (Const([], Const.Eq)) [t1; t2]]*)
 let lt t1 t2 = apply (Const([], Const.Lt)) [t1; t2]

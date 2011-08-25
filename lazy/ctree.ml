@@ -155,7 +155,7 @@ let expand prog env (Node((uid, p), t, cs)) =
               (function (Term.Var(_, farg), aarg) ->
                 fun argty -> farg, aarg, argty
               | _ -> assert false)
-              faargs1 argtys),
+              faargs argtys),
           Node((uid, p), ctx tt, ref [])]
       | Term.Call(_, Term.Var(_, g), args) ->
           (match g with

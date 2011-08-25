@@ -20,7 +20,9 @@ and csisat_of_term_aux c args =
   | Const.Mul, [t; Const(_, Const.Int(n))] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(float_of_int n, csisat_of_term t))
   | Const.Minus, [t] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(-1.0, csisat_of_term t))
   | Const.Unit, [] -> csisat_unit
-  | _ -> Format.printf "%a" Const.pr c; assert false
+  | _ ->
+      let _ = Format.printf "%a %a@." Const.pr c (Util.pr_list Term.pr " ") args in
+      assert false
 
 let ih = ref true
 let rec csisat_of_formula t =
