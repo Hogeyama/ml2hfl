@@ -133,15 +133,16 @@ let alpha sty =
   let sub = sub_from_tys Var.new_var [sty.ty] in
   rename (fun x -> List.assoc x sub) sty.ty sty.cond
 
-(*
-let rec of_type ty =
-  match ty with
-    SimType.Unit -> Unit(Var.make (Idnt.new_id ()))
-  | SimType.Bool -> Bool(Var.make (Idnt.new_id ()))
-  | SimType.Int -> Int(Var.make (Idnt.new_id ()))
-  | SimType.Fun(ty1, ty2) ->
-      Fun([of_type ty1], Term.make_true, of_type ty2)
-*)
+let of_simple_type sty =
+		let rec aux sty =
+		  match sty with
+		    SimType.Unit -> Unit(Var.make (Idnt.new_id ()))
+		  | SimType.Bool -> Bool(Var.make (Idnt.new_id ()))
+		  | SimType.Int -> Int(Var.make (Idnt.new_id ()))
+		  | SimType.Fun(sty1, sty2) ->
+		      Fun([aux sty1, Term.ttrue, aux sty2])
+  in
+  make (aux sty) Term.ttrue
 
 let merge_tys tys =
   match tys with

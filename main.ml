@@ -109,10 +109,12 @@ let () =
         if !Flag.web then open_log ();
         Wrapper.open_cvc3 ();
         Wrapper2.open_cvc3 ();
+        Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main !filename cin;
         print_info ();
+        Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
         if !Flag.web then close_log ()

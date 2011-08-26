@@ -79,7 +79,10 @@ let rec string_of_term t =
   | Term.Const(_, Const.Not), [t] -> 
       "(NOT " ^ string_of_term t ^ ")"
   | Term.Forall(_, env, t), [] ->
-      "(FORALL (" ^ string_of_env env ^ "): " ^ string_of_term t ^ ")"
+      let benv, env = List.partition (function (_, SimType.Bool) -> true | _ -> false) env in
+      let fenv x t y = if x = y then t else raise Not_found in
+      let t = List.fold_left (fun t (x, _) -> Term.band [Term.subst (fenv x Term.ttrue) t; Term.subst (fenv x Term.tfalse) t]) t benv in
+      "(" ^ (if env = [] then "" else "FORALL (" ^ string_of_env env ^ "): ") ^ string_of_term t ^ ")"
   | _, _ ->
       let _ = Format.printf "%a@." Term.pr t in
       assert false
