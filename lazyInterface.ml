@@ -47,7 +47,9 @@ let rec conv_typ ty =
   | TFun(tmp) ->
       let ty1, ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
-  | _ -> (*Format.printf "%a@." print_ty ty;*) assert false
+  | _ ->
+      let _ = Format.printf "%a@." print_typ ty in
+      assert false
 
 let conv_prog (typs, fdefs, main) =
   { Prog.attr = [];
