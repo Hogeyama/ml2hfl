@@ -91,7 +91,6 @@ let rec app2app t ts =
     | {desc=t;typ=typ}, t2::ts ->
         assert (typ = typ_event);
         app2app {desc=App({desc=t;typ=typ_event},[t2]); typ=TUnit} ts
-    | _ -> assert false
 
 
 let unit_term = {desc=Unit; typ=TUnit}
@@ -2670,4 +2669,7 @@ let rec is_value t =
   match t.desc with
       Unit | True | False | Int _ | NInt _ | Var _ | Nil -> true
     | _ -> false
+
+
+
 

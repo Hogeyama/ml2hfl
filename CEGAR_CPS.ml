@@ -2,6 +2,7 @@
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
+open CEGAR_util
 open Utilities
 
 let is_head_tuple t =
@@ -98,9 +99,9 @@ let rec trans_simpl c = function
               App(Var k', Var r') when r = r' -> Var k'
             | tk -> Fun(r, tk)
         in
-          trans_simpl (fun x -> make_app x [y; k']) t1
+          trans_simpl (fun x -> make_app y [x; k']) t2
       in
-        trans_simpl c' t2
+        trans_simpl c' t1
   | Let(x,t1,t2) ->
       let c' t = subst x t (trans_simpl c t2) in
         trans_simpl c' t1
@@ -109,6 +110,7 @@ let rec trans_simpl c = function
         c (Fun(x, Fun(k, trans_simpl (fun x -> App(Var k, x)) t)))
 
 let trans_simpl_def (f,xs,t1,t2) =
+  if f =  "mult_70" then () else ();
   assert (xs = []);
   let t2 = trans_simpl (fun x -> x) t2 in
   if false then Format.printf "TRANS: %a@." CEGAR_print.print_term t2;
@@ -185,7 +187,7 @@ let rec reduce = function
   | Let(x,t1,t2) -> reduce (subst x t1 t2)
 let reduce_def (f,xs,t1,t2) = f,xs,t1,reduce t2
 
-let trans' (env,defs,main) =
+let trans' (env,defs,main) lift_opt =
   let _ = Typing.infer (env,defs,main) in
   let defs = to_funs defs in
   let _ = Typing.infer (env,defs,main) in
@@ -193,11 +195,10 @@ let trans' (env,defs,main) =
   let defs = List.map reduce_def defs in
   let defs = and_def::or_def::not_def::defs in
   let prog = env, defs, main in
-  let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.print_prog prog in
+  let () = if true then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.print_prog prog in
   let _ = Typing.infer prog in
-  let prog = lift prog in
+  let prog = if lift_opt then lift prog else lift2 prog in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog prog in
-  let prog = Typing.infer prog in
     extract_tuple prog
 
 

@@ -267,6 +267,7 @@ exception Undefined of id
 let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
+(*
   (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "process_term:\n";
@@ -276,6 +277,7 @@ let rec process_term trace term traces env pcounter =
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
   (**)
+*)
   match term.desc with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
@@ -466,6 +468,7 @@ let trace2id = ref []
 
 let rec eval_term t defs traces pcounter =
   (*let _ = (pc := counter) in*)
+(*
   (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "eval_term:\n";
@@ -475,6 +478,7 @@ let rec eval_term t defs traces pcounter =
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
   (**)
+*)
   match t with
       MyUnit(tinfo) | MyFail(tinfo) ->
         let check = function
@@ -735,6 +739,7 @@ let print_constraint c =
 let subty rty1 rty2 = [Csub(rty1,rty2)]
 
 let rec chk_term rtenv term id trace traces =
+(*
   (**)
   print_string2 ("id: " ^ (string_of_int id) ^ "\n");
   print_string2 "term:\n";
@@ -743,6 +748,7 @@ let rec chk_term rtenv term id trace traces =
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
   (**)
+*)
   match term.desc with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
@@ -1839,6 +1845,7 @@ let test tdefs s defs traces pred =
 module CS = CEGAR_syntax
 module CT = CEGAR_type
 module CP = CEGAR_print
+module CU = CEGAR_util
 
 let rec trans_typ = function
     CT.TBase(CT.TUnit,_) -> TUnit
@@ -1889,12 +1896,12 @@ let rec trans_term env = function
 let trans_env env = List.map (fun (x,typ) -> x, trans_typ typ) env
 
 let trans_def env_cegar env (f,xs,t1,t2) =
-  let env' = trans_env (CS.get_env (List.assoc f env_cegar) xs) in
+  let env' = trans_env (CU.get_env (List.assoc f env_cegar) xs) in
   let env'' = env' @@ env in
     trans_var env'' f, (List.map (trans_var env'') xs, trans_term env'' t2)
 
 let trans (env,defs,main) =
-  let _,defs,_ = CS.to_if_exp (env,defs,main) in
+  let _,defs,_ = CU.to_if_exp (env,defs,main) in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
     !Flag.cegar_loop CEGAR_print.print_prog (env,defs,main)
   in
@@ -1972,7 +1979,28 @@ let infer ces t =
     try
       let _,rty = List.find (fun (x, _) -> Id.same f x) rte in
       let typ = List.fold_left (add_preds_typ sol) (Id.typ f) rty in
-        [CS.trans_var f, CS.trans_typ' typ]
+        [CU.trans_var f, CU.trans_typ' typ]
+    with Not_found -> []
+  in
+    rev_flatten_map aux fs
+
+
+
+let infer_test ces t =
+  let aux = function
+      0 -> Syntax.LabNode true
+    | 1 -> Syntax.LabNode false
+    | n -> assert false
+  in
+  let ces = List.map (fun ce -> List.map aux ce @ [FailNode]) ces in
+  let defs,main = trans t in
+  let rte,sol = test [] main defs ces None in
+  let fs = List.map fst defs in
+  let aux f =
+    try
+      let _,rty = List.find (fun (x, _) -> Id.same f x) rte in
+      let typ = List.fold_left (add_preds_typ sol) (Id.typ f) rty in
+        [CU.trans_var f, CU.trans_typ' typ]
     with Not_found -> []
   in
     rev_flatten_map aux fs

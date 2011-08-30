@@ -1,6 +1,5 @@
 
 open Utilities
-open CEGAR_const
 open CEGAR_syntax
 open CEGAR_type
 
@@ -191,8 +190,7 @@ let rec string_of_term env = function
   | App(App(Const Add, t1), t2) -> "(" ^ string_of_term env t1 ^ " + " ^ string_of_term env t2 ^ ")"
   | App(App(Const Sub, t1), t2) -> "(" ^ string_of_term env t1 ^ " - " ^ string_of_term env t2 ^ ")"
   | App(App(Const Mul, t1), t2) -> "(" ^ string_of_term env t1 ^ " * " ^ string_of_term env t2 ^ ")"
-  | _ -> assert false
-
+  | t -> Format.printf "string_of_term: %a@." CEGAR_print.print_term t; assert false
 
 let rec init_rand_int = function
     Const c -> [], Const c

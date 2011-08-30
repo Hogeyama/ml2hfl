@@ -113,7 +113,7 @@ let get_typ_const = function
 let rec infer_term env = function
     Const c -> get_typ_const c
   | Var x -> (try List.assoc x env with _ -> Format.printf "VAR: %s@." x; assert false)
-  | App(t1,t2) as t ->
+  | App(t1,t2) ->
       let typ1 = infer_term env t1 in
       let typ2 = infer_term env t2 in
       let typ = new_tvar () in
@@ -141,25 +141,11 @@ let infer_def env (f,xs,t1,t2) =
     unify typ1 TBool;
     unify typ typ'
 
-let unify_env env =
-  let rec aux = function
-      [] -> ()
-    | (f,typ)::env ->
-        let env1,env2 = List.partition (fun (g,_) -> f = g) env in
-        let () =
-          match env1 with
-              [] -> ()
-            | (_,typ)::env1' -> List.iter (fun (_,typ') -> unify typ typ') env1'
-        in
-          aux env2
-  in
-    aux env
 
-let infer (_,defs,main) =
+let infer ((_,defs,main):prog) =
   let env = List.map (fun (f,_,_,_) -> f, new_tvar ()) defs in
-  let () = unify_env env in
   let () = List.iter (infer_def env) defs in
-  let env' = List.map (fun (f,typ) -> f, trans_typ typ) env in
+  let env' = List.map (fun (f,_) -> f, trans_typ (List.assoc f env)) env in
     env', defs, main
 
 

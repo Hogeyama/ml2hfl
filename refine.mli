@@ -3,6 +3,8 @@
 
 exception CannotRefute
 
+val add_pred : CEGAR_syntax.env -> CEGAR_syntax.env -> CEGAR_syntax.env
+
 val refine : int list list -> CEGAR_syntax.prog -> CEGAR_syntax.prog
 (** [refine traces t] で，反例のリスト [traces] を用いて [t] の述語発見を行う．
 *)

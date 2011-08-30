@@ -21,6 +21,10 @@ let is_base_typ = function
     TBase _ -> true
   | _ -> false
 
+let get_base = function
+    TBase(b, _) -> b
+  | _ -> assert false
+
 
 let make_tapp typ typs =
   List.fold_left (fun typ1 typ2 -> TApp(typ1,typ2)) typ typs

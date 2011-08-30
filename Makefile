@@ -6,6 +6,7 @@ CSISAT = csisat-read-only
 
 OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
 OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
+OCAMLMKTOP   = $(OCAML_SOURCE)/tools/ocamlmktop
 OCAMLDEP     = $(OCAML_SOURCE)/tools/ocamldep.opt
 OCAMLLIB     = $(OCAML_SOURCE)/stdlib
 OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
@@ -48,21 +49,21 @@ lib: ocaml csisat
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli alpha.mli automata.mli check.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
+MLI = CPS.mli abstract.mli alpha.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
 CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
-        CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
+        CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo CEGAR_util.cmo \
  lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
  lazy/util.cmo \
  lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/simType.cmo lazy/arith.cmo lazy/term.cmo \
  lazy/apronInterface.cmo lazy/csisatInterface.cmo lazy/cvc3Interface.cmo lazy/fdef.cmo lazy/prog.cmo lazy/ctree.cmo lazy/trace.cmo lazy/sizType.cmo lazy/verifier.cmo \
  lazyInterface.cmo \
-	type_decl.cmo type_check.cmo typing.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst.cmo check.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo
+	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
+	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo CEGAR_abst_CPS.cmo ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
@@ -106,8 +107,10 @@ $(NAME).opt: $(CMX)
 ################################################################################
 # libraries
 
-ocaml:
-	cd $(OCAML_SOURCE); ./configure && make world opt world.opt opt.opt
+$(OCAML_SOURCE)/Makefile:
+	cd $(OCAML_SOURCE); ./configure
+ocaml: $(OCAML_SOURCE)/Makefile
+	make world opt world.opt opt.opt
 
 csisat:
 	cd $(CSISAT); make
@@ -135,7 +138,7 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[iox] *.o *.a *.annot *~
+	rm -f *.cm[iox] *.o lazy/*.cm[iox] lazy/*.o *.a *.annot *~
 	rm -f $(NAME).byte $(NAME).opt
 
 clean-ocaml:

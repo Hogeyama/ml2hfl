@@ -2,7 +2,12 @@
 open Utilities
 open CEGAR_syntax
 open CEGAR_type
-open CEGAR_const
+
+let rec occur_arg_pred x = function
+    TBase(_,ps) -> List.mem x (rev_flatten_map get_fv (ps (Const Unit)))
+  | TFun typ ->
+      let typ1,typ2 = typ (Const Unit) in
+        occur_arg_pred x typ1 || occur_arg_pred x typ2
 
 let rec print_var = Format.pp_print_string
 

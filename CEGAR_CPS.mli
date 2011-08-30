@@ -1,6 +1,6 @@
 (** CPS-transformation for CEGAR-lang. *)
 
-val trans' : CEGAR_syntax.prog -> CEGAR_syntax.prog
+val trans' : CEGAR_syntax.prog -> bool -> CEGAR_syntax.prog
 val trans : CEGAR_syntax.prog -> CEGAR_syntax.prog
 (** [trans t] で [t] をCPS変換する．
     変換元の評価戦略は call-by-value．
