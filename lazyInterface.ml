@@ -17,7 +17,8 @@ let conv_const c =
   | Gt -> Const.Gt
   | Leq -> Const.Leq
   | Geq -> Const.Geq
-  | Eq -> Const.EqInt
+  | EqBool -> Const.EqBool
+  | EqInt -> Const.EqInt
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
   | Add -> Const.Add

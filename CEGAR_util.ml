@@ -69,7 +69,7 @@ let rec put_into_if_term = function
                 let t2' = put_into_if_term t2 in
                 let t3' = put_into_if_term t3 in
                 let ts'' = List.map put_into_if_term ts' in
-                make_if t1' (make_app t2' ts'') (make_app t3' ts'')
+                make_if t1' (put_into_if_term (make_app t2' ts'')) (put_into_if_term (make_app t3' ts''))
             | _ -> assert false
         else
           let ts' = List.map put_into_if_term ts in
@@ -188,7 +188,7 @@ let rec trans_typ' = function
   | Type.TBottom _ -> TBase(TBottom, nil)
 
 and trans_binop = function
-    Syntax.Eq -> Const Eq
+    Syntax.Eq -> assert false
   | Syntax.Lt -> Const Lt
   | Syntax.Gt -> Const Gt
   | Syntax.Leq -> Const Leq
@@ -231,6 +231,16 @@ and trans_term xs env t =
         let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
           def1::def2::defs1@defs2@defs3, t
     | Syntax.Let _ -> assert false
+    | Syntax.BinOp(Syntax.Eq, t1, t2) ->
+        let defs1,t1' = trans_term xs env t1 in
+        let defs2,t2' = trans_term xs env t2 in
+        let op =
+          match t.Syntax.typ with
+              Type.TUnit -> EqUnit
+            | Type.TBool -> EqBool
+            | Type.TInt _ -> EqInt
+        in
+          defs1@defs2, App(App(Const op, t1'), t2')
     | Syntax.BinOp(op, t1, t2) ->
         let defs1,t1' = trans_term xs env t1 in
         let defs2,t2' = trans_term xs env t2 in
@@ -319,11 +329,12 @@ let rec get_const_typ = function
   | Gt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
   | Leq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
   | Geq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
-  | Eq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
-  | Int n -> TBase(TInt, fun x -> [make_eq x (Const (Int n))])
-  | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_add x y)])))
-  | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_sub x y)])))
-  | Mul -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq r (make_mul x y)])))
+  | EqBool -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), typ_bool))
+  | EqInt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
+  | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
+  | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq_int r (make_add x y)])))
+  | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq_int r (make_sub x y)])))
+  | Mul -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If _ -> assert false
@@ -560,7 +571,7 @@ let eval_prog_cbn (env,defs,main) =
         let n1 = get_int_value (eval t1) in
         let n2 = get_int_value (eval t2) in
           Const (const_of_bool (n1 >= n2))
-    | App(App(Const Eq, t1), t2) ->
+    | App(App(Const EqInt, t1), t2) ->
         let n1 = get_int_value (eval t1) in
         let n2 = get_int_value (eval t2) in
           Const (const_of_bool (n1 > n2))
@@ -650,3 +661,10 @@ let eval_prog (env,defs,main) =
   in
     Format.printf "%a ->@." print_term t;
 *)
+
+
+let rec has_bottom = function
+    Var _ -> false
+  | Const Bottom -> true
+  | Const _ -> false
+  | App(t1, t2) -> has_bottom t1 || has_bottom t2

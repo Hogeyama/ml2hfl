@@ -85,9 +85,8 @@ let get_typ_const = function
   | False -> TBool
   | RandBool -> TBool
   | RandInt -> TInt
-  | Eq ->
-      let typ = new_tvar() in
-        TFun(typ,TFun(typ,TBool))
+  | EqInt -> TFun(TInt,TFun(TInt,TBool))
+  | EqBool -> TFun(TBool,TFun(TBool,TBool))
   | And -> TFun(TBool,TFun(TBool,TBool))
   | Or -> TFun(TBool,TFun(TBool,TBool))
   | Not -> TFun(TBool,TBool)
@@ -144,6 +143,7 @@ let infer_def env (f,xs,t1,t2) =
 
 let infer ((_,defs,main):prog) =
   let env = List.map (fun (f,_,_,_) -> f, new_tvar ()) defs in
+  let () = unify TUnit (List.assoc main env) in
   let () = List.iter (infer_def env) defs in
   let env' = List.map (fun (f,_) -> f, trans_typ (List.assoc f env)) env in
     env', defs, main

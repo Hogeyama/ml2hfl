@@ -58,7 +58,7 @@ let rec abstract_term env cond pbs t typ =
     | t when is_base_term env t ->
         let typ' =
           match get_typ env t with
-              TBase(b,_) -> TBase(b, fun x -> [make_eq x t])
+              TBase(b,_) -> TBase(b, fun x -> [make_eq_int x t])
             | _ -> assert false
         in
           coerce env cond pbs typ' typ (App(Const (Tuple 1), Const True))

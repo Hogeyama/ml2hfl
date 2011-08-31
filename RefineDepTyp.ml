@@ -1885,7 +1885,7 @@ let rec trans_term env = function
   | CS.App(CS.App(CS.Const CS.Gt, t1), t2) -> make_gt (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Leq, t1), t2) -> make_leq (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Geq, t1), t2) -> make_geq (trans_term env t1) (trans_term env t2)
-  | CS.App(CS.App(CS.Const CS.Eq, t1), t2) -> make_eq (trans_term env t1) (trans_term env t2)
+  | CS.App(CS.App(CS.Const (CS.EqInt|CS.EqBool), t1), t2) -> make_eq (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Add, t1), t2) -> make_add (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Sub, t1), t2) -> make_sub (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Mul, t1), t2) -> make_mul (trans_term env t1) (trans_term env t2)

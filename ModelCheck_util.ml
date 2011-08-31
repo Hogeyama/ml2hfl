@@ -41,7 +41,7 @@ let print_const fm = function
   | False -> Format.fprintf fm "1"
   | If -> Format.fprintf fm "_case 2"
   | Bottom -> Format.fprintf fm "Bottom"
-  | c -> Format.printf "%a@." CEGAR_print.print_term (Const c); assert false
+  | c -> Format.printf "print_const: %a@." CEGAR_print.print_term (Const c); assert false
 
 let print_var = Format.pp_print_string
 

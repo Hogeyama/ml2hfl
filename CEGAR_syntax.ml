@@ -43,7 +43,9 @@ type const =
   | Gt
   | Leq
   | Geq
-  | Eq
+  | EqUnit
+  | EqBool
+  | EqInt
   | Int of int
   | Add
   | Sub
@@ -89,7 +91,8 @@ let make_lt t1 t2 = make_app (Const Lt) [t1; t2]
 let make_gt t1 t2 = make_app (Const Gt) [t1; t2]
 let make_leq t1 t2 = make_app (Const Leq) [t1; t2]
 let make_geq t1 t2 = make_app (Const Geq) [t1; t2]
-let make_eq t1 t2 = make_app (Const Eq) [t1; t2]
+let make_eq_int t1 t2 = make_app (Const EqInt) [t1; t2]
+let make_eq_bool t1 t2 = make_app (Const EqBool) [t1; t2]
 let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]

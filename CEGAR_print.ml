@@ -59,7 +59,8 @@ and print_const fm = function
   | Gt -> Format.fprintf fm ">"
   | Leq -> Format.fprintf fm "<="
   | Geq -> Format.fprintf fm ">="
-  | Eq -> Format.fprintf fm "="
+  | EqInt -> Format.fprintf fm "="
+  | EqBool -> Format.fprintf fm "<=>"
   | Int n -> Format.fprintf fm "%d" n
   | Add -> Format.fprintf fm "+"
   | Sub -> Format.fprintf fm "-"
@@ -113,7 +114,8 @@ and print_const_ML fm = function
   | Gt -> Format.fprintf fm "(>)"
   | Leq -> Format.fprintf fm "(<=)"
   | Geq -> Format.fprintf fm "(>=)"
-  | Eq -> Format.fprintf fm "(=)"
+  | EqBool -> Format.fprintf fm "(=)"
+  | EqInt -> Format.fprintf fm "(=)"
   | Int n -> Format.fprintf fm "%d" n
   | Add -> Format.fprintf fm "(+)"
   | Sub -> Format.fprintf fm "(-)"

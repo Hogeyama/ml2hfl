@@ -85,7 +85,7 @@ let rec trans_eager_term env c t =
                 | t' -> Let(f, Fun(x, t'), trans_eager_bool f t)
             end
 
-      | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | Eq) -> assert false
+      | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | EqInt | EqBool) -> assert false
       | Const _
       | Var _ -> c t
       | Fun(x,t) -> c (Fun(x, trans_eager_term env id t))
@@ -128,25 +128,27 @@ let rec abstract_term_aux env cond pts t typ1 typ2 =
       _, TBase(TUnit,ps) when ps (Const Unit) = [] -> [t]
     | TBase _, TBase(_,ps2) ->
         List.map (abst env cond pts) (ps2 t)
-(*
+    | TBase(TBottom,_), TFun _ -> [t]
     | TFun _, TFun _ when congruent env cond typ1 typ2 -> [t]
-*)
     | TFun typ1, TFun typ2 ->
         let x = new_id "x" in
         let typ11,typ12 = typ1 (Var x) in
         let typ21,typ22 = typ2 (Var x) in
         let env' = (x,typ21)::env in
+          begin
           match typ11,typ21 with
               TBase(_,ps1), TBase(_,ps2) ->
                 let xs = abst_arg x typ21 in
                 let pts' = make_pts x typ21 @@ pts in
-                let ts = List.map (abst env' cond pts') (ps1 (Var x)) in
+                let ts = abstract_term_aux env' cond pts' (Var x) typ21 typ11 in
                 let t' = hd (abstract_term_aux env' cond pts' (make_app t ts) typ12 typ22) in
                   [make_fun_temp xs t']
             | TFun _, TFun _ ->
                 let x = new_id "f" in
                 let t' = App(t, hd (abstract_term_aux env' cond pts (Var x) typ21 typ11)) in
                   [Fun(x, hd (abstract_term_aux env' cond pts t' typ12 typ22))]
+          end
+    | _ -> Format.printf "abstract_term_aux: %a, %a@." print_typ typ1 print_typ typ2; assert false
 
 
 let rec abstract_term env cond pts t typ =
@@ -155,7 +157,7 @@ let rec abstract_term env cond pts t typ =
     | Const c -> abstract_term_aux env cond pts t (get_const_typ c) typ
     | App _ when is_base_term env t ->
         let base = get_base typ in
-          abstract_term_aux env cond pts t (TBase(base,fun x -> [make_eq x t])) typ
+          abstract_term_aux env cond pts t (TBase(base,fun x -> [make_eq_int x t])) typ
     | App(Const (Event s), t) -> [App(Const (Event s), hd (abstract_term env cond pts t typ))]
     | App(Const (Label n), t) -> [App(Const (Label n), hd (abstract_term env cond pts t typ))]
     | App _ ->
@@ -211,14 +213,14 @@ let abstract (env,defs,main) =
   let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
   let prog = Typing.infer ([], defs, main) in
-  let () = Format.printf "ABST:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = lift2 prog in
-  let () = Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = trans_eager prog in
-  let () = Format.printf "TRANS_EAGER:\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "TRANS_EAGER:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
-  let () = Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = lift2 prog in
     prog

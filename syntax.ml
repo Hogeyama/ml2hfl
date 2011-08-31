@@ -2322,6 +2322,7 @@ let rec init_rand_int t =
       | Constr(s,ts) -> Constr(s, List.map init_rand_int ts)
       | Match(t1,t2,x,y,t3) -> Match(init_rand_int t1, init_rand_int t2, x, y, init_rand_int t3)
       | Match_(t,pats) -> Match_(init_rand_int t, List.map (fun (pat,cond,t) -> pat,apply_opt init_rand_int cond,init_rand_int t) pats)
+      | Bottom -> Bottom
   in
     {desc=desc; typ=t.typ}
 

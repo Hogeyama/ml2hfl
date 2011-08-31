@@ -261,7 +261,8 @@ let rec abst_list t =
               make_if (make_and cond' t_cond) (add_bind (abst_list t)) t'
           in
           let t_pats = List.fold_right aux pats (make_fail typ') in
-            (make_let x [] (abst_list t1) t_pats).desc
+          let t_pats' = make_if (make_leq (make_int 0) (make_snd (make_var x))) t_pats bottom_term in
+            (make_let x [] (abst_list t1) t_pats').desc
       | TryWith(t1,t2) -> TryWith(t1,t2)
       | Bottom -> Bottom
   in

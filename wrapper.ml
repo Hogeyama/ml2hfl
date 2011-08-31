@@ -530,6 +530,7 @@ and simplify_exp t =
                | _, _ -> BinOp(Mult, t1', t2'))
       | Nil
       | Cons _ -> t.desc
+      | Bottom -> Bottom
       | _ -> (simplify_bool_exp true t).desc
   in
     {desc=desc; typ=t.typ}

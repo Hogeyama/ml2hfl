@@ -174,8 +174,13 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
 
 
 let abst env cond pbs p =
-  let tt, ff = weakest env cond pbs p in
-    make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
+  if has_bottom p
+  then Const Bottom
+  else
+    let tt, ff = weakest env cond pbs p in
+      if false (*Wrapper2.equiv env cond (make_not tt) ff*)
+      then make_if tt (Const True) (Const False)
+      else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
 
@@ -215,7 +220,7 @@ let rec is_base_term env = function
             TBase _ -> true
           | _ -> false
       end
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|Eq|Add|Sub|Mul),t1),t2) ->
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqInt|EqBool|Add|Sub|Mul),t1),t2) ->
       assert (is_base_term env t1);
       assert (is_base_term env t2);
       true

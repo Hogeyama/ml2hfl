@@ -8,20 +8,6 @@ let cvc3in = ref stdin
 let cvc3out = ref stdout
 
 
-let rec is_bool env = function
-    Const True
-  | Const False
-  | App(App(Const And, _), _)
-  | App(App(Const Or, _), _)
-  | App(Const Not, _)
-  | App(App(Const Lt, _), _)
-  | App(App(Const Gt, _), _)
-  | App(App(Const Leq, _), _)
-  | App(App(Const Geq, _), _) -> true
-  | App(App(Const Eq, t1), t2) -> is_bool env t1
-  | _ -> false
-
-
 let iff t1 t2 = CsisatAst.Or [CsisatAst.And[t1; t2]; CsisatAst.And[CsisatAst.Not t1; CsisatAst.Not t2]]
 
 let rec to_exp = function
@@ -40,10 +26,8 @@ let rec to_pred env = function
     Const True -> CsisatAst.True
   | Const False -> CsisatAst.False
   | Var x -> CsisatAst.Eq (to_exp (Var x), CsisatAst.Variable "tru")
-  | App(App(Const Eq, t1), t2) ->
-      if is_bool env t1
-      then iff (to_pred env t1) (to_pred env t2)
-      else CsisatAst.Eq (to_exp t1, to_exp t2)
+  | App(App(Const EqInt, t1), t2) -> CsisatAst.Eq (to_exp t1, to_exp t2)
+  | App(App(Const EqBool, t1), t2) -> iff (to_pred env t1) (to_pred env t2)
   | App(App(Const Lt, t1), t2) -> CsisatAst.Lt (to_exp t1, to_exp t2)
   | App(App(Const Gt, t1), t2) -> CsisatAst.Lt (to_exp t2, to_exp t1)
   | App(App(Const Leq, t1), t2) -> CsisatAst.Leq (to_exp t1, to_exp t2)
@@ -76,7 +60,7 @@ let rec from_pred map = function
   | CsisatAst.And(p::ps) -> List.fold_left (fun t p -> App(App(Const And, from_pred map p), t)) (from_pred map p) ps
   | CsisatAst.Or(p::ps) -> List.fold_left (fun t p -> App(App(Const Or, from_pred map p), t)) (from_pred map p) ps
   | CsisatAst.Not p -> App(Const Not, from_pred map p)
-  | CsisatAst.Eq(e1, e2) -> App(App(Const Eq, from_exp map e1), from_exp map e2)
+  | CsisatAst.Eq(e1, e2) -> App(App(Const EqInt, from_exp map e1), from_exp map e2)
   | CsisatAst.Lt(e1, e2) -> App(App(Const Lt, from_exp map e1), from_exp map e2)
   | CsisatAst.Leq(e1, e2) -> App(App(Const Leq, from_exp map e1), from_exp map e2)
   | CsisatAst.And _
@@ -153,25 +137,6 @@ exception Satisfiable
 
 
 
-let rec is_bool env = function
-    Const True
-  | Const False
-  | App(App(Const And, _), _)
-  | App(App(Const Or, _), _)
-  | App(Const Not, _)
-  | App(App(Const Lt, _), _)
-  | App(App(Const Gt, _), _)
-  | App(App(Const Leq, _), _)
-  | App(App(Const Geq, _), _) -> true
-  | App(App(Const Eq, t1), t2) -> is_bool env t1
-  | Var x ->
-      begin
-        match List.assoc x env with
-            TBase(TBool,_) -> true
-          | _ -> false
-      end
-  | _ -> false
-
 let rec string_of_term env = function
     Const True -> "TRUE"
   | Const False -> "FALSE"
@@ -184,9 +149,8 @@ let rec string_of_term env = function
   | App(App(Const Gt, t1), t2) -> "(" ^ string_of_term env t1 ^ " > " ^ string_of_term env t2 ^ ")"
   | App(App(Const Leq, t1), t2) -> "(" ^ string_of_term env t1 ^ " <= " ^ string_of_term env t2 ^ ")"
   | App(App(Const Geq, t1), t2) -> "(" ^ string_of_term env t1 ^ " >= " ^ string_of_term env t2 ^ ")"
-  | App(App(Const Eq, t1), t2) ->
-      let s = if is_bool env t1 then "<=>" else "=" in
-        "(" ^ string_of_term env t1 ^ s ^ string_of_term env t2 ^ ")"
+  | App(App(Const EqBool, t1), t2) -> "(" ^ string_of_term env t1 ^ "<=>" ^ string_of_term env t2 ^ ")"
+  | App(App(Const EqInt, t1), t2) ->  "(" ^ string_of_term env t1 ^ "=" ^ string_of_term env t2 ^ ")"
   | App(App(Const Add, t1), t2) -> "(" ^ string_of_term env t1 ^ " + " ^ string_of_term env t2 ^ ")"
   | App(App(Const Sub, t1), t2) -> "(" ^ string_of_term env t1 ^ " - " ^ string_of_term env t2 ^ ")"
   | App(App(Const Mul, t1), t2) -> "(" ^ string_of_term env t1 ^ " * " ^ string_of_term env t2 ^ ")"
