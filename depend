@@ -1,4 +1,5 @@
 CEGAR_CPS.cmi: CEGAR_syntax.cmo
+CEGAR_abst.cmi: CEGAR_syntax.cmo
 CPS.cmi: syntax.cmi
 abstract.cmi: syntax.cmi
 alpha.cmi: syntax.cmi
@@ -1020,10 +1021,10 @@ CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx ocaml-3.12/stdlib/list.cmx \
     flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 CEGAR_abst.cmo: utilities.cmo typing.cmo ocaml-3.12/stdlib/list.cmi \
     ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo
+    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst.cmi
 CEGAR_abst.cmx: utilities.cmx typing.cmx ocaml-3.12/stdlib/list.cmx \
     ocaml-3.12/stdlib/format.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx
+    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx CEGAR_abst.cmi
 CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo ocaml-3.12/stdlib/list.cmi \
     ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo
@@ -1069,7 +1070,7 @@ refine.cmx: utilities.cmx RefineDepTyp.cmx ocaml-3.12/stdlib/list.cmx \
 CEGAR.cmo: wrapper2.cmi wrapper.cmi utilities.cmo typing.cmo refine.cmi \
     ModelCheck_CPS.cmo ModelCheck.cmo ocaml-3.12/stdlib/list.cmi id.cmo \
     ocaml-3.12/stdlib/format.cmi flag.cmo feasibility.cmi CEGAR_syntax.cmo \
-    CEGAR_print.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo
+    CEGAR_print.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmi
 CEGAR.cmx: wrapper2.cmx wrapper.cmx utilities.cmx typing.cmx refine.cmx \
     ModelCheck_CPS.cmx ModelCheck.cmx ocaml-3.12/stdlib/list.cmx id.cmx \
     ocaml-3.12/stdlib/format.cmx flag.cmx feasibility.cmx CEGAR_syntax.cmx \
