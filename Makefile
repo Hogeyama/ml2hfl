@@ -110,7 +110,7 @@ $(NAME).opt: $(CMX)
 $(OCAML_SOURCE)/Makefile:
 	cd $(OCAML_SOURCE); ./configure
 ocaml: $(OCAML_SOURCE)/Makefile
-	make world opt world.opt opt.opt
+	cd $(OCAML_SOURCE); make world opt world.opt opt.opt
 
 csisat:
 	cd $(CSISAT); make
