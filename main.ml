@@ -91,6 +91,7 @@ let spec =
   ["-web", Arg.Set Flag.web, " Web mode";
    "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
    "<dir>  Add <dir> to the list of include directories";
+   "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Use sized type system for CEGAR";
   ]
 
 
