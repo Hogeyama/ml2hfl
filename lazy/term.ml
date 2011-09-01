@@ -105,6 +105,8 @@ let rec apply t ts =
   | t'::ts' ->
       apply (App([], t, t')) ts'
 
+let tfail = apply (tevent "fail") [tunit]
+
 let band ts =
   let rec aux ts =
     match ts with
@@ -241,9 +243,7 @@ let forall_imply conds_envs t =
 
 let rec redex_of env t =
   match t with
-    Const(a, Const.Event(id)) when id = "fail" ->
-      (fun t -> t), Const(a, Const.Event(id))
-  | Const(a, Const.RandInt) ->
+    Const(a, Const.RandInt) ->
       (fun t -> t), Const(a, Const.RandInt)
 (*
   | Var(_, _)
@@ -259,30 +259,32 @@ let rec redex_of env t =
             with Not_found ->
               r (args1 @ [arg]) args2)
       in
-     (match f with
-        Var(attr, f) ->
-          (try
-            let args1, (ctx, red), args2 = r [] args in
-            (fun t -> apply (Var(attr, f)) (args1 @ [ctx t] @ args2)), red
-          with Not_found ->
-            let ar =
-              try
-                SimType.arity (env f)
-              with Not_found ->
-                raise Not_found (* f is not a function name *)
-                (*(Format.printf "%a@." Var.pr f; assert false)*)
-            in
-            if List.length args >= ar then
-              let args1, args2 = Util.split_at args ar in
-              (fun t -> apply t args2), apply (Var(attr, f)) args1
-            else raise Not_found)
-      | Const(attr, c) ->
-          (try
-            let args1, (ctx, red), args2 = r [] args in
-            (fun t -> apply (Const(attr, c)) (args1 @ [ctx t] @ args2)), red
-          with Not_found ->
-            raise Not_found)
-      | _ -> assert false)
+      (try
+        let args1, (ctx, red), args2 = r [] args in
+        (fun t -> apply f (args1 @ [ctx t] @ args2)), red
+      with Not_found ->
+		      (match f with
+						    Const(_, Const.Event(id)) when id = "fail" ->
+            let ar = 1 in
+		          if List.length args >= ar then
+		            let args1, args2 = Util.split_at args ar in
+		            (fun t -> apply t args2), apply f args1
+		          else raise Not_found
+		      | Var(attr, ff) ->
+		          let ar =
+		            try
+		              SimType.arity (env ff)
+		            with Not_found ->
+		              raise Not_found (* ff is not a function name *)
+		              (*(Format.printf "%a@." Var.pr ff; assert false)*)
+		          in
+		          if List.length args >= ar then
+		            let args1, args2 = Util.split_at args ar in
+		            (fun t -> apply t args2), apply f args1
+		          else raise Not_found
+		      | Const(attr, c) ->
+		          raise Not_found
+		      | _ -> assert false))
   | Call(a, f, args) ->
       (fun t -> t), Call(a, f, args)
   | Ret(a, ret, t, ty) ->

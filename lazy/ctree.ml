@@ -107,7 +107,7 @@ let expand prog env (Node((uid, p), t, cs)) =
     let ctx, red = Term.redex_of (Prog.type_of prog) t in
     let env, gns =
       match red with
-        Term.Const(_, Const.Event(id)) when id = event_fail ->
+        Term.App(_, Term.Const(_, Const.Event(id)), (*Term.Const(_, Const.Unit)*)_) when id = event_fail ->
           env, [Error, Node((gen (), p), Term.Error([]), ref [])]
       | Term.Const(_, Const.RandInt) ->
           env, [Nop, Node((gen (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
@@ -116,7 +116,8 @@ let expand prog env (Node((uid, p), t, cs)) =
 *)
       | Term.App(_, _, _) ->
           let uid = gen () in
-          let Term.Var(a, f), args = Term.fun_args red in
+          let tmp, args = Term.fun_args red in
+          let a, f = match tmp with Term.Var(a, f) -> a, f | _ -> let _ = Format.printf "%a@." Term.pr red in assert false in
           let argtys, retty = SimType.args_ret (Prog.type_of prog f) in
           let ret, fargs = ret_args f uid (SimType.arity (Prog.type_of prog f)) in
           let tt = Term.Ret([], ret, Term.Call([], Term.Var(a, f), fargs), retty) in

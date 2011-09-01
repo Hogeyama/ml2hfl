@@ -24,6 +24,10 @@ let string_of_type ty =
   | SimType.Fun(_, _) -> assert false
 
 let string_of_env env =
+  String.concat "; "
+    (List.map (fun (x, ty) -> Var.string_of x ^ ":" ^ string_of_type ty) env)
+
+let string_of_env_comma env =
   String.concat ", "
     (List.map (fun (x, ty) -> Var.string_of x ^ ":" ^ string_of_type ty) env)
 
@@ -82,7 +86,7 @@ let rec string_of_term t =
       let benv, env = List.partition (function (_, SimType.Bool) -> true | _ -> false) env in
       let fenv x t y = if x = y then t else raise Not_found in
       let t = List.fold_left (fun t (x, _) -> Term.band [Term.subst (fenv x Term.ttrue) t; Term.subst (fenv x Term.tfalse) t]) t benv in
-      "(" ^ (if env = [] then "" else "FORALL (" ^ string_of_env env ^ "): ") ^ string_of_term t ^ ")"
+      "(" ^ (if env = [] then "" else "FORALL (" ^ string_of_env_comma env ^ "): ") ^ string_of_term t ^ ")"
   | _, _ ->
       let _ = Format.printf "%a@." Term.pr t in
       assert false

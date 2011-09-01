@@ -594,9 +594,14 @@ let rec infer_term cenv env t =
   match f with
     Term.Const(_, Const.Event(id)) ->
       if id = Ctree.event_fail then
-        let x = Var.new_var () in
-        let vc = Term.tfalse in
-        let sty = make (Unit(x))(*???*) Term.ttrue in 
+        let vc = Term.ttrue in
+        let x1 = Var.new_var () in
+        let x2 = Var.new_var () in
+        let sty =
+		        make
+		          (Fun([Unit(x1), Term.tfalse, Unit(x2)]))
+		          Term.ttrue
+        in
         let _ = Format.printf "@[<v>type inference of term: %a@   env: %a@   vc: %a@   type: %a@ @]" Term.pr t pr_var_env env Term.pr vc pr sty in
         vc, sty
       else

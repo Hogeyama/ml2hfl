@@ -38,7 +38,7 @@ let check_fun_arg_typ = false
 
 let mode = ref Reachability
 let refine = ref RefineDependentType
-let cegar = ref CEGAR_DependentType
+let cegar = ref CEGAR_SizedType
 
 
 
