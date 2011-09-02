@@ -1,5 +1,5 @@
 let make_array n i = n - i
-let rec array_max n i a m =
+let rec array_max (n:int) i (a:int->int) m =
   if i >= n then
     m
   else

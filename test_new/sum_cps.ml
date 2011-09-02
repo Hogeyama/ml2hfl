@@ -1,4 +1,4 @@
-let rec cps_sum n k =
+let rec cps_sum n k : unit =
   if n <= 0 then
     k 0
   else
