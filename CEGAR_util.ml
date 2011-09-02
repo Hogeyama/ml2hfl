@@ -235,16 +235,16 @@ and trans_term xs env t =
         let defs1,t1' = trans_term xs env t1 in
         let defs2,t2' = trans_term xs env t2 in
         let op =
-          match t.Syntax.typ with
+          match t1.Syntax.typ with
               Type.TUnit -> EqUnit
             | Type.TBool -> EqBool
             | Type.TInt _ -> EqInt
         in
-          defs1@defs2, App(App(Const op, t1'), t2')
+          defs1@defs2, make_app (Const op) [t1'; t2']
     | Syntax.BinOp(op, t1, t2) ->
         let defs1,t1' = trans_term xs env t1 in
         let defs2,t2' = trans_term xs env t2 in
-          defs1@defs2, App(App(trans_binop op, t1'), t2')
+          defs1@defs2, make_app (trans_binop op) [t1'; t2']
     | Syntax.Not t ->
         let defs,t' = trans_term xs env t in
           defs, App(Const Not, t')
@@ -267,6 +267,16 @@ let rec formula_of t =
     | Syntax.App(t, ts) -> raise Not_found
     | Syntax.If(t1, t2, t3) -> raise Not_found
     | Syntax.Let _ -> assert false
+    | Syntax.BinOp(Syntax.Eq, t1, t2) ->
+        let t1' = formula_of t1 in
+        let t2' = formula_of t2 in
+        let op =
+          match t1.Syntax.typ with
+              Type.TUnit -> EqUnit
+            | Type.TBool -> EqBool
+            | Type.TInt _ -> EqInt
+        in
+          make_app (Const op) [t1'; t2']
     | Syntax.BinOp(op, t1, t2) ->
         let t1' = formula_of t1 in
         let t2' = formula_of t2 in
