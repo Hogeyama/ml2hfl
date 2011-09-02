@@ -17,7 +17,6 @@ type 'a t =
   | TVariant of 'a t
   | TBottom
 
-let typ_event = TConstr("event", true)
 let typ_excep = TConstr("exn", true)
 
 

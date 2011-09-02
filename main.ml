@@ -65,8 +65,10 @@ let main filename in_channel =
       let () = Type_check.check t in
       let t = Abstract.abstract_list t in
       let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term true) t in
+      let t2 = CPS.trans_simpl t in
       let t = CPS.trans t in
       let () = if true then Format.printf "CPS:@.%a\n\n@." Syntax.pp_print_term t in
+      let () = if true then Format.printf "CPS_simpl:@.%a\n\n@." Syntax.pp_print_term t2 in
       let t = CPS.remove_pair t in
       let () = if true then Format.printf "remove_pair:@.%a\n\n@." Syntax.pp_print_term t in
         t

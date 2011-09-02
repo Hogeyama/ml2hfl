@@ -449,10 +449,10 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_letmodule _ -> unsupported "expression (module)"
       | Texp_assert e ->
           let u = Id.new_var "u" typ_event in
-            If(from_expression e, unit_term, make_let u [] fail_term unit_term)
+            If(from_expression e, unit_term, make_app fail_term unit_term)
       | Texp_assertfalse _ ->
           let u = Id.new_var "u" typ_event in
-            Let(Flag.Nonrecursive, u, [], fail_term, bottom_term)
+            Let(Flag.Nonrecursive, u, [], make_app fail_term unit_term, bottom_term)
       | Texp_lazy e -> assert false(*
                                      let u = Id.new_var "u" TUnit in
                                      Fun(u, from_expression e);

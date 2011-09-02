@@ -69,6 +69,8 @@ val dummy_var : id
 val abst_var : id
 val abst_list_var : id
 
+val typ_event : typ
+
 val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term

@@ -79,6 +79,8 @@ let dummy_var = {Id.id=0; Id.name=""; Id.typ=TInt[]}
 let abst_var = {Id.id=0; Id.name="v"; Id.typ=TInt[]}
 let abst_list_var = {Id.id=0; Id.name="v"; Id.typ=TList TUnknown}
 
+let typ_event = TFun(Id.new_var "" TUnit, TUnit)
+
 let rec app2app t ts =
   match t,ts with
     | t,[]_ -> t
@@ -91,7 +93,6 @@ let rec app2app t ts =
     | {desc=t;typ=typ}, t2::ts ->
         assert (typ = typ_event);
         app2app {desc=App({desc=t;typ=typ_event},[t2]); typ=TUnit} ts
-
 
 let unit_term = {desc=Unit; typ=TUnit}
 let true_term = {desc=True;typ=TBool}
