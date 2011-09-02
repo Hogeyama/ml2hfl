@@ -58,14 +58,20 @@ let main filename in_channel =
   in
   let () = if true then Format.printf "parsed:@.%a\n\n@." (Syntax.print_term true) t in
 
-  let t = Syntax.copy_poly_funs t in
-  let () = Type_check.check t in
-  let t = Abstract.abstract_list t in
-  let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term true) t in
-  let t = CPS.trans t in
-  let () = if true then Format.printf "CPS:@.%a\n\n@." Syntax.pp_print_term t in
-  let t = CPS.remove_pair t in
-  let () = if true then Format.printf "remove_pair:@.%a\n\n@." Syntax.pp_print_term t in
+  let t =
+    if !Flag.init_trans
+    then
+      let t = Syntax.copy_poly_funs t in
+      let () = Type_check.check t in
+      let t = Abstract.abstract_list t in
+      let () = if true then Format.printf "abst_list:@.%a\n@." (Syntax.print_term true) t in
+      let t = CPS.trans t in
+      let () = if true then Format.printf "CPS:@.%a\n\n@." Syntax.pp_print_term t in
+      let t = CPS.remove_pair t in
+      let () = if true then Format.printf "remove_pair:@.%a\n\n@." Syntax.pp_print_term t in
+        t
+    else t
+  in
 
   let () = Type_check.check t in
   let prog = CEGAR_util.trans_prog t in
@@ -88,10 +94,12 @@ let main filename in_channel =
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let spec =
-  ["-web", Arg.Set Flag.web, " Web mode";
+  ["-web", Arg.Set Flag.web, " web mode";
    "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
-   "<dir>  Add <dir> to the list of include directories";
-   "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Use sized type system for CEGAR";
+   "<dir>  add <dir> to the list of include directories";
+   "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " use sized type system for CEGAR";
+   "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " same as -st";
+   "-na", Arg.Clear Flag.init_trans, " do not abstract data";
   ]
 
 
