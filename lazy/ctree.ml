@@ -110,10 +110,10 @@ let expand prog env (Node((uid, p), t, cs)) =
         Term.App(_, Term.Const(_, Const.Event(id)), (*Term.Const(_, Const.Unit)*)_) when id = event_fail ->
           env, [Error, Node((gen (), p), Term.Error([]), ref [])]
       | Term.Const(_, Const.RandInt) ->
-          env, [Nop, Node((gen (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
 (*
-      | Term.Var(_, _)
+      | Term.App(_, Term.Const(_, Const.RandInt), (*Term.Const(_, Const.Unit)*)_) ->
 *)
+          env, [Nop, Node((gen (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
       | Term.App(_, _, _) ->
           let uid = gen () in
           let tmp, args = Term.fun_args red in

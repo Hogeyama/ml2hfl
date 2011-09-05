@@ -61,10 +61,15 @@ let rec pr ppf c =
   | Gt -> Format.fprintf ppf "(>)"
   | Leq -> Format.fprintf ppf "(<=)"
   | Geq -> Format.fprintf ppf "(>=)"
-  | EqBool | EqInt | EqUnit -> Format.fprintf ppf "(=)"
+  | EqUnit -> Format.fprintf ppf "(=u)"
+  | EqBool -> Format.fprintf ppf "(=b)"
+  | EqInt -> Format.fprintf ppf "(=i)"
+(*
+  | EqUnit | EqBool | EqInt -> Format.fprintf ppf "(=)"
+*)
   | NeqBool | NeqInt | NeqUnit -> Format.fprintf ppf "(<>)"
   | Int(n) -> Format.fprintf ppf "%d" n
-  | RandInt -> Format.fprintf ppf "rand_int()"
+  | RandInt -> Format.fprintf ppf "rand_int"
   | Add -> Format.fprintf ppf "(+)"
   | Sub -> Format.fprintf ppf "(-)"
   | Mul -> Format.fprintf ppf "(*)"
@@ -98,7 +103,12 @@ let rec pr_bin ppf c =
   | Gt -> Format.fprintf ppf ">"
   | Leq -> Format.fprintf ppf "<="
   | Geq -> Format.fprintf ppf ">="
-  | EqBool | EqInt | EqUnit -> Format.fprintf ppf "="
+  | EqUnit -> Format.fprintf ppf "=u"
+  | EqBool -> Format.fprintf ppf "=b"
+  | EqInt -> Format.fprintf ppf "=i"
+(*
+   | EqUnit| EqBool | EqInt -> Format.fprintf ppf "="
+*)
   | NeqBool | NeqInt | NeqUnit -> Format.fprintf ppf "<>"
   | Add -> Format.fprintf ppf "+"
   | Sub -> Format.fprintf ppf "-"

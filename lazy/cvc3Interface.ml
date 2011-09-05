@@ -6,7 +6,11 @@ let cvc3out = ref stdout
 
 let cvc3 = "./cvc3"
 
+(* necessary to avoid a redefinition of a variable *)
+let cnt = ref 0
+
 let open_cvc3 () =
+  let _ = cnt := 0 in
   let cin, cout = Unix.open_process (cvc3 ^ " +int") in
   cvc3in := cin;
   cvc3out := cout
@@ -23,18 +27,20 @@ let string_of_type ty =
   | SimType.Int -> "INT"
   | SimType.Fun(_, _) -> assert false
 
+let deco s = "cnt" ^ string_of_int !cnt ^ "_" ^ s
+
 let string_of_env env =
   String.concat "; "
-    (List.map (fun (x, ty) -> Var.string_of x ^ ":" ^ string_of_type ty) env)
+    (List.map (fun (x, ty) -> deco (Var.string_of x) ^ ":" ^ string_of_type ty) env)
 
 let string_of_env_comma env =
   String.concat ", "
-    (List.map (fun (x, ty) -> Var.string_of x ^ ":" ^ string_of_type ty) env)
+    (List.map (fun (x, ty) -> deco (Var.string_of x) ^ ":" ^ string_of_type ty) env)
 
 let rec string_of_term t =
   match Term.fun_args t with
     Term.Var(_, x), [] ->
-      Var.string_of x
+      deco (Var.string_of x)
   | Term.Const(_, Const.Int(n)), [] ->
       string_of_int n
   | Term.Const(_, Const.Add), [t1; t2] ->
@@ -152,6 +158,7 @@ let infer t ty =
 let is_valid t =
   let cin = !cvc3in in
   let cout = !cvc3out in
+  let _ = cnt := !cnt + 1 in
   let fm = Format.formatter_of_out_channel cout in
 
   let env =

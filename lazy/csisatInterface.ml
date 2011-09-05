@@ -70,22 +70,22 @@ and csisat_of_formula_aux c args =
 let rec term_of s =
   match s with
     CsisatAst.Constant(f) ->
-      tint (int_of_float f)
+      tint (int_of_float f), SimType.Int
   | CsisatAst.Variable(id) ->
-      make_var2 (Var.parse id)
+      make_var2 (Var.parse id), SimType.Int(*???*)
   | CsisatAst.Application(_, _) ->
       if s = csisat_unit then
-        tunit
+        tunit, SimType.Unit
       else if s = csisat_true then
-        ttrue
+        ttrue, SimType.Bool
       else if s = csisat_false then
-        tfalse
+        tfalse, SimType.Bool
       else
         assert false
   | CsisatAst.Sum(ss) ->
-      sum (List.map term_of ss)
+      sum (List.map (fun s -> let t, ty = term_of s in assert (ty = SimType.Int); t) ss), SimType.Int
   | CsisatAst.Coeff(f, s) ->
-      mul (tint (int_of_float f)) (term_of s)
+      mul (tint (int_of_float f)) (let t, ty = term_of s in assert (ty = SimType.Int); t), SimType.Int
 
 let rec formula_of p =
   match p with
@@ -94,9 +94,27 @@ let rec formula_of p =
   | CsisatAst.And(ps) -> band (List.map formula_of ps)
   | CsisatAst.Or(ps) -> bor (List.map formula_of ps)
   | CsisatAst.Not(p) -> bnot (formula_of p)
-  | CsisatAst.Eq(s1, s2) -> eqInt (term_of s1) (term_of s2)
-  | CsisatAst.Lt(s1, s2) -> lt (term_of s1) (term_of s2)
-  | CsisatAst.Leq(s1, s2) -> leq (term_of s1) (term_of s2)
+  | CsisatAst.Eq(s1, s2) ->
+      let t1, ty1 = term_of s1 in
+      let t2, ty2 = term_of s2 in
+      if ty1 = SimType.Unit ||(*???*) ty2 = SimType.Unit then
+        eqUnit t1 t2
+      else if ty1 = SimType.Bool ||(*???*) ty2 = SimType.Bool then
+        eqBool t1 t2
+      else if ty1 = SimType.Int && ty2 = SimType.Int then
+        eqInt t1 t2
+      else
+        assert false
+  | CsisatAst.Lt(s1, s2) ->
+      let t1, ty1 = term_of s1 in
+      let t2, ty2 = term_of s2 in
+      let _ = assert (ty1 = SimType.Int && ty2 = SimType.Int) in
+      lt t1 t2
+  | CsisatAst.Leq(s1, s2) ->
+      let t1, ty1 = term_of s1 in
+      let t2, ty2 = term_of s2 in
+      let _ = assert (ty1 = SimType.Int && ty2 = SimType.Int) in
+      leq t1 t2
   | _ -> assert false
 
 let satisfiable p =

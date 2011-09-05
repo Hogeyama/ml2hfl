@@ -273,7 +273,13 @@ let type_of_const c =
   Format.printf "%a@ " Const.pr c;
     *)
   match c with
-    Const.Event(id) ->
+    Const.Event(id) when id = Ctree.event_fail ->
+      let x1 = Var.new_var () in
+      let x2 = Var.new_var () in
+		    make
+		      (Fun([Unit(x1), Term.tfalse, Unit(x2)]))
+		      Term.ttrue
+  | Const.Event(_) ->
       assert false
   | Const.Unit ->
       let x = Var.new_var () in
@@ -393,7 +399,14 @@ let type_of_const c =
       make (Int(x)) (Term.eqInt (Term.make_var2 x) (Term.tint n))
   | Const.RandInt ->
       let x = Var.new_var () in
-      make (Int(x)) (Term.ttrue)
+      make (Int(x)) Term.ttrue
+(*
+      let x1 = Var.new_var () in
+      let x2 = Var.new_var () in
+      make
+        (Fun([Unit(x1), Term.ttrue, Int(x2)]))
+        Term.ttrue
+*)
   | Const.Add ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
@@ -514,6 +527,7 @@ and canonize_ag cov subs0 ty1 ty2 =
       let subs = List.concat subss in 
       Fun(zs), subs
   | _, _ ->
+      let _ = Format.printf "%a, %a" pr_shape ty1 pr_shape ty2 in
       assert false
   
 let subtype sty1 sty2 =
@@ -591,49 +605,33 @@ exception Ill_typed
 
 let rec infer_term cenv env t =
   let f, args = Term.fun_args t in
-  match f with
-    Term.Const(_, Const.Event(id)) ->
-      if id = Ctree.event_fail then
-        let vc = Term.ttrue in
-        let x1 = Var.new_var () in
-        let x2 = Var.new_var () in
-        let sty =
-		        make
-		          (Fun([Unit(x1), Term.tfalse, Unit(x2)]))
-		          Term.ttrue
-        in
-        let _ = Format.printf "@[<v>type inference of term: %a@   env: %a@   vc: %a@   type: %a@ @]" Term.pr t pr_var_env env Term.pr vc pr sty in
-        vc, sty
-      else
+  let sty_f =
+    match f with
+      Term.Var(_, x) ->
+        (try
+          List.assoc x cenv
+        with Not_found ->
+          make_open
+            (try
+              List.assoc x env
+            with Not_found ->
+              let _ = Format.printf "\"%a\" not found@ " Var.pr x in
+              let _ = Format.printf "function type env: %a@ " pr_fun_env cenv in
+              let _ = Format.printf "variable type env: %a@ " pr_var_env env in
+              raise Ill_typed))
+    | Term.Const(_, c) ->
+        type_of_const c
+    | Term.App(_, _, _) | Term.Call(_, _, _) | Term.Ret(_, _, _, _) | Term.Error(_) | Term.Forall(_, _, _) ->
         assert false
-  | _ ->
-    let sty_f =
-      match f with
-        Term.Var(_, x) ->
-          (try
-            List.assoc x cenv
-          with Not_found ->
-            make_open
-              (try
-                List.assoc x env
-              with Not_found ->
-                let _ = Format.printf "\"%a\" not found@ " Var.pr x in
-                let _ = Format.printf "function type env: %a@ " pr_fun_env cenv in
-                let _ = Format.printf "variable type env: %a@ " pr_var_env env in
-                raise Ill_typed))
-      | Term.Const(_, c) ->
-          type_of_const c
-      | Term.App(_, _, _) | Term.Call(_, _, _) | Term.Ret(_, _, _, _) | Term.Error(_) | Term.Forall(_, _, _) ->
-          assert false
-    in
-    let vcs, stys = List.split (List.map (infer_term cenv env) args) in
-    let vc, sty = apply (alpha sty_f) stys in
-    (*
-    let _ = Format.printf "sty_f: %a@ " pr sty_f in
-    *)
-    let vc = Term.band (vc::vcs) in
-    let _ = Format.printf "@[<v>type inference of term: %a@   env: %a@   vc: %a@   type: %a@ @]" Term.pr t pr_var_env env Term.pr vc pr sty in
-    vc, sty
+  in
+  let vcs, stys = List.split (List.map (infer_term cenv env) args) in
+  let vc, sty = apply (alpha sty_f) stys in
+  (*
+  let _ = Format.printf "sty_f: %a@ " pr sty_f in
+  *)
+  let vc = Term.band (vc::vcs) in
+  let _ = Format.printf "@[<v>type inference of term: %a@   env: %a@   vc: %a@   type: %a@ @]" Term.pr t pr_var_env env Term.pr vc pr sty in
+  vc, sty
 
 let check_fdef cenv fdef sty =
   let ty_args, pre, ty_ret =
