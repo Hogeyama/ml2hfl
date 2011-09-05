@@ -17,7 +17,6 @@ let check prog n =
   let prog = pop_main prog in
   let prog = capitalize prog in
   let spec = make_spec n in
-  let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog prog in
     try
       model_check_aux (prog,spec)
     with

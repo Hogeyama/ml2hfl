@@ -97,6 +97,9 @@ let rec put_into_term = function
   | Fun(x,t) -> Fun(x, put_into_term t)
   | Let(x,t1,t2) -> Let(x, put_into_term t1, put_into_term t2)
 
+
+
+
 let eta_expand_def env (f,xs,t1,t2) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
@@ -105,7 +108,6 @@ let eta_expand_def env (f,xs,t1,t2) =
 
 let eta_expand ((env,defs,main) : prog) : prog=
   env, List.map (eta_expand_def env) defs, main
-
 
 
 let rec make_arg_let t =
@@ -275,6 +277,8 @@ let rec formula_of t =
               Type.TUnit -> EqUnit
             | Type.TBool -> EqBool
             | Type.TInt _ -> EqInt
+            | Type.TBottom -> assert false
+            | _ -> assert false
         in
           make_app (Const op) [t1'; t2']
     | Syntax.BinOp(op, t1, t2) ->
@@ -490,7 +494,7 @@ let lift_def2 (f,xs,t1,t2) =
     (f, xs@ys, t1', t2'')::defs1@defs2
 let lift2 (_,defs,main) =
   let defs = rev_flatten_map lift_def2 defs in
-  let () = Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
     Typing.infer ([],defs,main)
 
 

@@ -5,7 +5,7 @@ open Type
 
 
 
-let rec print_typ t = Type.print (print_term 0 false) t
+let rec print_typ t = Type.print print_term t
 and print_ids fm = function
     [] -> ()
   | x::xs -> Format.fprintf fm "%a %a" Id.print x print_ids xs
@@ -42,21 +42,14 @@ and print_binop typ fm op =
     | Sub -> Format.fprintf fm "-"
     | Mult -> Format.fprintf fm "*"
 
-and print_term pri typ fm t =
+and print_term fm t =
   match t.desc with
       Unit -> Format.fprintf fm "unit"
     | True -> Format.fprintf fm "TRUE"
     | False -> Format.fprintf fm "FALSE"
     | Int n -> Format.fprintf fm "%d" n
     | NInt x -> print_id fm x
-    | RandInt None ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          Format.fprintf fm "%srand_int()%s" s1 s2
-    | RandInt (Some t) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          Format.fprintf fm "%srand_int %a%s" s1 (print_term p typ) t s2
+    | RandInt _ -> assert false
     | Var x -> print_id fm x
     | BinOp(Mult, t1, t2) when
         (match t1.desc with Int(_) -> false | _ -> (match t2.desc with Int(_) -> false | _ -> true)) ->
@@ -64,18 +57,9 @@ and print_term pri typ fm t =
           assert false
     | BinOp(op, t1, t2) ->
         if op = Eq && t1.typ = TBool
-        then
-          let p = 5 in
-          let s1,s2 = paren pri p in
-            Format.fprintf fm "%s%a <=> %a%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
-        else
-          let p = match op with Add|Sub|Mult -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
-          let s1,s2 = paren pri p in
-            Format.fprintf fm "%s%a %a %a%s" s1 (print_term p typ) t1 (print_binop t1.typ) op (print_term p typ) t2 s2
-    | Not t ->
-        let p = 6 in
-        let s1,s2 = paren pri p in
-          Format.fprintf fm "%sNOT %a%s" s1 (print_term p typ) t s2
+        then Format.fprintf fm "(%a <=> %a)" print_term t1 print_term t2
+        else Format.fprintf fm "(%a %a %a)" print_term t1 (print_binop t1.typ) op print_term t2
+    | Not t -> Format.fprintf fm "(NOT %a)" print_term t
 
 
 
@@ -84,7 +68,7 @@ let string_of_ident x =
   print_id Format.str_formatter x;
   Format.flush_str_formatter ()
 let string_of_term t =
-  print_term 0 false Format.str_formatter t;
+  print_term Format.str_formatter t;
   Format.flush_str_formatter ()
 
 
@@ -238,8 +222,10 @@ let close_cvc3 () =
 
 
 let check pre p =
+(*
   let pre = List.map init_rand_int pre in
   let p = init_rand_int p in
+*)
   let cin = !cvc3in in
   let cout = !cvc3out in
     (**)
@@ -265,7 +251,9 @@ let check pre p =
 
 
 let checksat p =
+(*
   let p = init_rand_int p in
+*)
   let cin = !cvc3in in
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
@@ -554,8 +542,10 @@ let rec simplify = function
 exception Satisfiable
 
 let interpolation ts1 ts2 =
+(*
   let ts1 = List.map init_rand_int ts1 in
   let ts2 = List.map init_rand_int ts2 in
+*)
 
 
 
@@ -585,7 +575,7 @@ let interpolation ts1 ts2 =
     CsisatInterpolate.interpolate_with_proof t1 t2
   with CsisatAst.SAT_FORMULA(pred) -> begin
     (*if Flag.debug then print_string ("satisfiable: \n" ^ (CsisatAstUtil.print_pred pred) ^ "\n");*)
-    if not Flag.check_sat || checksat (List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TInt[]}) {desc=True;typ=TBool} (ts1@@ts2))
+    if not Flag.check_sat || checksat (List.fold_left make_and true_term (ts1@@ts2))
     then raise Satisfiable
     else
       let rec trans t =

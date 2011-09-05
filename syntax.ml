@@ -2307,8 +2307,8 @@ let rec init_rand_int t =
       | Int n -> Int n
       | Var x -> Var x
       | NInt x -> NInt x
-      | RandInt None -> Var (Id.new_var "_r" (TInt[]))
-      | RandInt (Some t) -> (app2app t [{desc=Var (Id.new_var "_r" (TInt[])); typ=TInt[]}]).desc
+      | RandInt None -> NInt (Id.new_var "_r" (TInt[]))
+      | RandInt (Some t) -> assert false
       | Fun(x,t) -> Fun(x, init_rand_int t)
       | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
       | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)
@@ -2671,6 +2671,7 @@ let rec is_value t =
   match t.desc with
       Unit | True | False | Int _ | NInt _ | Var _ | Nil -> true
     | _ -> false
+
 
 
 

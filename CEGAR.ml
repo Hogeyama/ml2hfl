@@ -7,9 +7,6 @@ exception CannotDiscoverPredicate
 
 
 let rec cegar prog ces =
-  let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
-    !Flag.cegar_loop CEGAR_print.print_prog_typ prog
-  in
   let _ = Typing.infer prog in
   let n = Id.get_counter () in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
@@ -22,7 +19,7 @@ let rec cegar prog ces =
         Flag.RefineDependentType -> CEGAR_abst_CPS.abstract prog
       | Flag.RefineSizedType -> CEGAR_abst.abstract prog
   in
-  let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog_typ (Typing.infer abst) in
+  let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog abst in
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
   let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in

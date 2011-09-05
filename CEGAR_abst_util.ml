@@ -194,8 +194,10 @@ let assume env cond pbs t1 t2 =
 (* TODO: equiv *)
 let rec congruent env cond typ1 typ2 =
   match typ1,typ2 with
-      TBase(TBottom,_), _ -> true
+      TBase(TBottom,_), _
+    | _ ,TBase(TBottom,_) -> true
     | TBase(b1,ps1), TBase(b2,ps2) ->
+        if b1<>b2 then Format.printf "CONGRUENT: %a,%a@." print_typ typ1 print_typ typ2;
         assert (b1=b2);
         let x = new_id "x" in
 (*

@@ -835,8 +835,7 @@ let rec chk_term rtenv term id trace traces =
     | Not(t) -> (*???*)
         chk_term rtenv t id trace traces
     | App(t, []) -> chk_term rtenv t id trace traces
-    | RandInt None -> assert false
-    | RandInt (Some t) -> chk_term rtenv (init_rand_int term) id trace traces
+    | RandInt _ -> assert false
     | _ -> (print_string2 "chk_term\n"; print_term term; print_string2 "\n"; raise (Unsupported term))
 
 and chk_args rtenv rty terms =
@@ -1076,6 +1075,7 @@ let save_as_dot filename cs =
   in
   let vs = Utilities.uniq compare (List.concat (List.map (fun (x, y, _) -> [x, y]) es)) in
   Util.save_as_dot filename vs es
+let save_as_dot _ _ = ()
 
 let rec term_of c =
   List.fold_left 
@@ -1441,13 +1441,13 @@ normalization remedies the above problem?
                 print_string2 "\n";
                 print_string2 "ub: ";
                 print_constraint ub;
-                print_string2 "\nsolution: ";
+                print_string2 "\nsolution1: ";
                 print_term ti;
                 print_string2 "\n\n"
               end
             in
             ti
-          with Untypable ->
+          with Untypable -> raise Untypable;
             (*try
               let ub = [Cterm(rename_nint (imply (and_list dubs) cub))] in
               interpolate ids' lb ub
@@ -1475,7 +1475,7 @@ normalization remedies the above problem?
                   print_string2 "\n";
                   print_string2 "ub: ";
                   print_constraint ub;
-                  print_string2 "\nsolution: ";
+                  print_string2 "\nsolution2: ";
                   print_term ti;
                   print_string2 "\n\n"
                 end
