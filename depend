@@ -959,10 +959,12 @@ type_check.cmo: type_decl.cmo type.cmo syntax.cmi ocaml-3.12/stdlib/list.cmi \
     id.cmo ocaml-3.12/stdlib/format.cmi
 type_check.cmx: type_decl.cmx type.cmx syntax.cmx ocaml-3.12/stdlib/list.cmx \
     id.cmx ocaml-3.12/stdlib/format.cmx
-CPS.cmo: utilities.cmo type.cmo syntax.cmi ocaml-3.12/stdlib/list.cmi id.cmo \
-    ocaml-3.12/stdlib/format.cmi flag.cmo CPS.cmi
-CPS.cmx: utilities.cmx type.cmx syntax.cmx ocaml-3.12/stdlib/list.cmx id.cmx \
-    ocaml-3.12/stdlib/format.cmx flag.cmx CPS.cmi
+CPS.cmo: utilities.cmo typing.cmo type_check.cmo type.cmo syntax.cmi \
+    ocaml-3.12/stdlib/list.cmi id.cmo ocaml-3.12/stdlib/format.cmi flag.cmo \
+    CPS.cmi
+CPS.cmx: utilities.cmx typing.cmx type_check.cmx type.cmx syntax.cmx \
+    ocaml-3.12/stdlib/list.cmx id.cmx ocaml-3.12/stdlib/format.cmx flag.cmx \
+    CPS.cmi
 CEGAR_CPS.cmo: utilities.cmo typing.cmo ocaml-3.12/stdlib/list.cmi \
     ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo ocaml-3.12/stdlib/array.cmi \
@@ -1016,9 +1018,11 @@ abstract.cmo: utilities.cmo type.cmo syntax.cmi ocaml-3.12/stdlib/set.cmi \
 abstract.cmx: utilities.cmx type.cmx syntax.cmx ocaml-3.12/stdlib/set.cmx \
     ocaml-3.12/stdlib/list.cmx id.cmx flag.cmx abstract.cmi
 CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo ocaml-3.12/stdlib/list.cmi \
-    flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+    ocaml-3.12/stdlib/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_print.cmo
 CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx ocaml-3.12/stdlib/list.cmx \
-    flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+    ocaml-3.12/stdlib/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_print.cmx
 CEGAR_abst.cmo: utilities.cmo typing.cmo ocaml-3.12/stdlib/list.cmi \
     ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst.cmi

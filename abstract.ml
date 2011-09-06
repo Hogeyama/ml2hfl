@@ -175,7 +175,6 @@ let rec abst_list_typ = function
   | TList typ -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt[])
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
-  | TBottom -> TBottom
 
 let abst_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -234,7 +233,7 @@ let rec abst_list t =
       | SetField _ -> assert false
       | Nil ->
           let typ'' = match t.typ with TList typ -> abst_list_typ typ in
-            Pair(make_fun (Id.new_var "x" (TInt[])) (make_fail typ''), make_int 0)
+            Pair(make_fun (Id.new_var "x" (TInt[])) (make_bottom typ''), make_int 0)
       | Cons(t1,t2) ->
           let t1' = abst_list t1 in
           let t2' = abst_list t2 in
@@ -249,7 +248,13 @@ let rec abst_list t =
       | Constr(s,ts) -> assert false
       | Match(t1,t2,x,y,t3) -> assert false
       | Match_(t1,pats) ->
-          let x = Id.new_var "x" (abst_list_typ t1.typ) in
+          let x,bindx =
+            match t1.desc with
+                Var x -> Id.set_typ x (abst_list_typ t1.typ), fun t -> t
+              | _ ->
+                  let x = Id.new_var "xs" (abst_list_typ t1.typ) in
+                    x, fun t -> make_let x [] (abst_list t1) t
+          in
           let aux (p,cond,t) t' =
             let bind,cond' = get_match_bind_cond (make_var x) p in
             let add_bind t = List.fold_left (fun t' (x,t) -> make_let x [] t t') t bind in
@@ -260,9 +265,8 @@ let rec abst_list t =
             in
               make_if (make_and cond' t_cond) (add_bind (abst_list t)) t'
           in
-          let t_pats = List.fold_right aux pats (make_fail typ') in
-          let t_pats' = make_if (make_leq (make_int 0) (make_snd (make_var x))) t_pats bottom_term in
-            (make_let x [] (abst_list t1) t_pats').desc
+          let t_pats = List.fold_right aux pats (make_bottom typ') in
+            (bindx t_pats).desc
       | TryWith(t1,t2) -> TryWith(t1,t2)
       | Bottom -> Bottom
   in

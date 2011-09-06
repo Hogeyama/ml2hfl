@@ -17,7 +17,6 @@ and print_typ_base fm = function
     TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TBottom -> Format.fprintf fm "bot"
   | TTuple n -> Format.fprintf fm "tuple"
   | TEvent -> Format.fprintf fm "event"
 

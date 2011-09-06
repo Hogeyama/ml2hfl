@@ -13,9 +13,7 @@ exception CannotRefute
 
 let rec merge_typ typ typ' =
     match typ,typ' with
-        TBase(TBottom,_), typ
-      | typ, TBase(TBottom,_) -> typ
-      | TBase(b1,ps1),TBase(b2,ps2) ->
+        TBase(b1,ps1),TBase(b2,ps2) ->
           assert (b1 = b2);
           let x = new_id "x" in
           let ps = uniq compare (ps1 (Var x) @ ps2 (Var x)) in

@@ -386,3 +386,5 @@ let rec print_list print punc last fm xs =
 
 
 
+let get_opt_val = function None -> assert false | Some t -> t
+

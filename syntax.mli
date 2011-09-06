@@ -75,7 +75,7 @@ val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term
 val fail_term : typed_term
-val bottom_term : typed_term
+val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term

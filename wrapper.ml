@@ -719,8 +719,6 @@ let rec congruent cond typ1 typ2 =
           congruent cond (Id.typ x1) (Id.typ x2) && congruent cond' typ1 typ2
     | TUnknown, _ -> true
     | _, TUnknown -> true
-    | TBottom, _ -> true
-    | _, TBottom -> true
     | TVar _, _ -> assert false
     | _, TVar _ -> assert false
     | _ -> false

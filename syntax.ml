@@ -98,7 +98,7 @@ let unit_term = {desc=Unit; typ=TUnit}
 let true_term = {desc=True;typ=TBool}
 let false_term = {desc=False;typ=TBool}
 let fail_term = {desc=Event "fail";typ=typ_event}
-let bottom_term = {desc=Bottom;typ=TBottom}
+let make_bottom typ = {desc=Bottom;typ=typ}
 let make_event s = {desc=Event s;typ=typ_event}
 let make_var x = {desc=Var x; typ=Id.typ x}
 let make_int n = {desc=Int n; typ=TInt[]}
@@ -116,7 +116,7 @@ let rec make_loop typ =
     make_letrec f [u] t (make_app (make_var f) unit_term)
 let make_fail typ =
   let u = Id.new_var "u" typ_event in
-    make_let u [] fail_term bottom_term
+    make_let u [] fail_term (make_bottom typ)
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ)}
 let make_not t = {desc=Not t; typ=TBool}
 let make_and t1 t2 =

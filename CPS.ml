@@ -33,7 +33,7 @@ let rec trans_simpl c t =
     | False
     | Int _
     | NInt _ -> c t
-    | Bottom -> bottom_term
+    | Bottom -> make_bottom (trans_simpl_typ t.typ)
     | RandInt None ->
         let r = Id.new_var "r" (TInt[]) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
@@ -311,7 +311,6 @@ let rec remove_pair_typ = function
   | TList typ -> Leaf (TList(root (remove_pair_typ typ)))
   | TConstr(s,b) -> Leaf (TConstr(s,b))
   | TUnknown -> assert false
-  | TBottom -> Leaf TBottom
 
 let remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
@@ -329,7 +328,7 @@ let rec remove_pair t typ_opt =
       | NInt _
       | RandInt None -> Leaf t
       | RandInt (Some t) -> Leaf {desc=RandInt (Some (root (remove_pair t None))); typ=root typs}
-      | Bottom -> map (fun _ _ -> bottom_term) typs
+      | Bottom -> map (fun _ -> make_bottom) typs
       | Var x -> map (fun _ x -> make_var x) (remove_pair_var x)
       | Fun(x, t) ->
           let xs = flatten (remove_pair_var x) in
@@ -556,9 +555,7 @@ let rec occurs r typ =
 
 let rec unify typ1 typ2 =
   match typ1, typ2 with
-      TBaseCPS TBottom, typ
-    | typ, TBaseCPS TBottom -> typ
-    | TVarCPS({contents = Some typ} as r), typ'
+      TVarCPS({contents = Some typ} as r), typ'
     | typ, TVarCPS({contents = Some typ'} as r) ->
         let typ'' = unify typ typ' in
           r := Some (flatten typ'');
@@ -594,7 +591,7 @@ let rec infer_cont_pos env t =
     | False -> {t_cps=FalseCPS; typ_cps=TBaseCPS t.typ}
     | Unknown -> {t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ}
     | Int n -> {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ}
-    | Bottom -> {t_cps=BottomCPS; typ_cps=TBaseCPS TBottom}
+    | Bottom -> {t_cps=BottomCPS; typ_cps=TBaseCPS t.typ}
     | NInt x -> assert false
     | RandInt t' ->
         assert (t' = None);
@@ -718,13 +715,13 @@ let rec trans_typ = function
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ x.id_typ)
 
-let rec transform (c:Syntax.typed_term -> Syntax.typed_term) {t_cps=t; typ_cps=typ} =
+let rec transform c {t_cps=t; typ_cps=typ} =
   match t with
       UnitCPS -> c unit_term
     | TrueCPS -> c true_term
     | FalseCPS -> c false_term
     | IntCPS n -> c (make_int n)
-    | BottomCPS -> bottom_term
+    | BottomCPS -> make_bottom TUnit
     | RandIntCPS ->
         let r = Id.new_var "r" (TInt[]) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
@@ -819,7 +816,7 @@ let transform = transform (fun x -> x)
 
 let trans t =
   let cps_pre = infer_cont_pos [] t in
-  let () = if true then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
+  let () = if false then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
   let cps = transform cps_pre in
   let () = Type_check.check t in
     cps

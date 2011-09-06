@@ -70,7 +70,6 @@ let rec abstract_term env cond pbs t typ =
         let typ1,typ2 =
           match typ' with
               TFun typ -> typ t2
-            | TBase(TBottom,_) -> TBase(TBottom,fun _ -> []), TBase(TBottom,fun _ -> [])
             | _ -> assert false
         in
         let t1' = abstract_term env cond pbs t1 typ' in

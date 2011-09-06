@@ -5,7 +5,6 @@ type base =
     TUnit
   | TInt
   | TBool
-  | TBottom
   | TList
   | TTuple of int
   | TEvent

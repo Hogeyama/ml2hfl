@@ -14,7 +14,6 @@ type typ =
   | TFun of typ * typ
   | TTuple of typ list
   | TEvent
-  | TBottom
 
 let rec print_typ fm = function
     TUnit -> Format.fprintf fm "unit"
@@ -25,7 +24,6 @@ let rec print_typ fm = function
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
   | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * " false) typs
   | TEvent _ -> Format.fprintf fm "event"
-  | TBottom -> Format.fprintf fm "bottom"
 
 let new_tvar () = TVar (ref None)
 
@@ -37,9 +35,7 @@ let rec occurs r = function
 
 let rec unify typ1 typ2 =
   match typ1, typ2 with
-      TBottom, _ -> ()
-    | _, TBottom -> ()
-    | TVar{contents = Some typ1}, _ -> unify typ1 typ2
+      TVar{contents = Some typ1}, _ -> unify typ1 typ2
     | _, TVar{contents = Some typ2} -> unify typ1 typ2
     | TUnit, TUnit -> ()
     | TBool, TBool -> ()
@@ -73,7 +69,6 @@ let rec trans_typ = function
   | TFun(typ1,typ2) -> CEGAR_type.TFun(fun _ -> trans_typ typ1,trans_typ typ2)
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
   | TEvent -> CEGAR_type.TBase(CEGAR_type.TEvent,nil)
-  | TBottom -> CEGAR_type.TBase(CEGAR_type.TBottom,nil)
 
 let get_typ_const = function
   | Event _ -> TEvent
@@ -107,7 +102,7 @@ let get_typ_const = function
   | Tuple n ->
       let typs = Array.to_list (Array.init n (fun _ -> new_tvar())) in
         List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs (TTuple typs)
-  | Bottom -> TBottom
+  | Bottom -> new_tvar ()
 
 let rec infer_term env = function
     Const c -> get_typ_const c

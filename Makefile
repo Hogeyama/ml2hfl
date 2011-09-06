@@ -160,8 +160,10 @@ clean-all: clean clean-doc clean-ocaml clean-csisat
 TEST=test_new/*.ml
 LIMIT=120
 
-test: $(NAME).opt
+test: opt
 	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:'); echo; done
+test-byte: byte
+	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:'); echo; done
 
 
 ################################################################################

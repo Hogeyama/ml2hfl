@@ -161,7 +161,6 @@ let rec trans_typ = function
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
-  | Type.TBottom _ -> TBase(TBottom, nil)
 
 let trans_var x = Id.to_string x
 
@@ -187,7 +186,6 @@ let rec trans_typ' = function
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
-  | Type.TBottom _ -> TBase(TBottom, nil)
 
 and trans_binop = function
     Syntax.Eq -> assert false
@@ -277,7 +275,6 @@ let rec formula_of t =
               Type.TUnit -> EqUnit
             | Type.TBool -> EqBool
             | Type.TInt _ -> EqInt
-            | Type.TBottom -> assert false
             | _ -> assert false
         in
           make_app (Const op) [t1'; t2']
@@ -328,6 +325,9 @@ let trans_prog t =
 
 let nil = fun _ -> []
 
+exception TypeBottom
+
+
 let rec get_const_typ = function
     Event _ -> TBase(TEvent, nil)
   | Label _ -> TFun(fun y -> TBase(TUnit,nil), TBase(TUnit,nil))
@@ -352,18 +352,22 @@ let rec get_const_typ = function
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If _ -> assert false
-  | Bottom -> TBase(TBottom, nil)
+  | Bottom -> raise TypeBottom
 
 
 let rec get_typ env = function
     Const c -> get_const_typ c
   | Var x -> List.assoc x env
-  | App(App(App(Const If, _), t), _) -> get_typ env t
+  | App(App(App(Const If, _), t1), t2) ->
+      begin
+        try
+          get_typ env t1
+        with TypeBottom -> get_typ env t2
+      end
   | App(t1,t2) ->
       let typ2 =
         match get_typ env t1 with
             TFun typ -> snd (typ t2)
-          | TBase(TBottom,_) -> TBase(TBottom,fun _ -> [])
           | TBase(TEvent,_) -> TBase(TUnit,fun _ -> [])
           | _ -> assert false
       in

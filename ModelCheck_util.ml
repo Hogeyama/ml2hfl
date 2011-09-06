@@ -177,12 +177,15 @@ let make_bottom (env,defs,main) =
   let bottoms = ref [] in
   let aux_def (f,xs,t1,t2) =
     let env' = get_env (List.assoc f env) xs @@ env in
+    let make_bottom n =
+      let x = "Bottom" ^ string_of_int n in
+        bottoms := (x,n)::!bottoms;
+        Var x
+    in
     let rec aux_term = function
         Const Bottom, typ ->
           let n = get_arg_num typ in
-            let x = "Bottom" ^ string_of_int n in
-              bottoms := (x,n)::!bottoms;
-              Var x
+            make_bottom n
       | Const c, _ -> Const c
       | Var x, _ -> Var x
       | App(App(App(Const If, t1), t2), t3), typ ->
@@ -200,7 +203,12 @@ let make_bottom (env,defs,main) =
           in
             App(aux_term (t1,typ), aux_term (t2,typ'))
     in
-      f, xs, t1, aux_term (t2, get_typ env' t2)
+    let t2' =
+      try
+        aux_term (t2, get_typ env' t2)
+      with TypeBottom -> make_bottom 0
+    in
+      f, xs, t1, t2'
   in
   let make (x,n) =
     let xs = Array.to_list (Array.init n (fun _ -> "x")) in

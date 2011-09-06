@@ -108,7 +108,7 @@ let rec check t typ =
           check t1 typ;
           check t2 (TFun(e,typ))
     | {desc=Event _; typ=typ'} -> assert (typ' = typ_event)
-    | {desc=Bottom; typ=TBottom} -> ()
+    | {desc=Bottom} -> ()
     | _ ->(*
             match t.desc with
             Unit -> assert false

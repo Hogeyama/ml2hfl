@@ -70,8 +70,13 @@ let rec trans_eager_bool f = function
 
 let id x = x
 let rec trans_eager_term env c t =
-  let typ = get_typ env t in
-  let is_bool = match typ with TBase(TBool,_) -> true | _ -> false in
+  let is_bool =
+    try
+      match get_typ env t with
+          TBase(TBool,_) -> true
+        | _ -> false
+    with TypeBottom -> false
+  in
     match t with
         App(App(Const And, _), _)
       | App(App(Const Or, _), _)
@@ -128,7 +133,6 @@ let rec abstract_term_aux env cond pts t typ1 typ2 =
       _, TBase(TUnit,ps) when ps (Const Unit) = [] -> [t]
     | TBase _, TBase(_,ps2) ->
         List.map (abst env cond pts) (ps2 t)
-    | TBase(TBottom,_), TFun _ -> [t]
     | TFun _, TFun _ when congruent env cond typ1 typ2 -> [t]
     | TFun typ1, TFun typ2 ->
         let x = new_id "x" in
@@ -154,6 +158,7 @@ let rec abstract_term_aux env cond pts t typ1 typ2 =
 let rec abstract_term env cond pts t typ =
   match t with
       Var x -> abstract_term_aux env cond pts t (List.assoc x env) typ
+    | Const Bottom -> abstract_term_aux env cond pts t typ typ
     | Const c -> abstract_term_aux env cond pts t (get_const_typ c) typ
     | App _ when is_base_term env t ->
         let base = get_base typ in

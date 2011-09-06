@@ -15,7 +15,7 @@ type 'a t =
   | TUnknown
   | TAbs of ('a t -> 'a t)
   | TVariant of 'a t
-  | TBottom
+
 
 let typ_excep = TConstr("exn", true)
 
@@ -28,9 +28,7 @@ let rec decomp_tfun = function
 
 let rec can_unify typ1 typ2 =
   match typ1,typ2 with
-      TBottom, _ -> true
-    | _, TBottom -> true
-    | TVar{contents=Some typ1},typ2
+      TVar{contents=Some typ1},typ2
     | typ1,TVar{contents=Some typ2} -> can_unify typ1 typ2
     | TUnit,TUnit -> true
     | (TBool|TAbsBool),(TBool|TAbsBool) -> true
@@ -115,7 +113,6 @@ let rec print print_pred fm typ =
             else Format.fprintf fm "{%a}" aux typs
 *)
       | TConstr(s,_) -> Format.pp_print_string fm s
-      | TBottom -> Format.fprintf fm "_|_"
 
 and print_preds print_pred fm = function
     [] -> ()

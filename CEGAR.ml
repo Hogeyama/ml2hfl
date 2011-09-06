@@ -9,7 +9,7 @@ exception CannotDiscoverPredicate
 let rec cegar prog ces =
   let _ = Typing.infer prog in
   let n = Id.get_counter () in
-  let () = Format.printf "Program with abstraction types (CEGAR-cycle %d):@.%a\n"
+  let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a\n"
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog
   in
   let () = if Flag.print_progress then print_msg "\n(1) Abstracting ... " in
@@ -19,7 +19,7 @@ let rec cegar prog ces =
         Flag.RefineDependentType -> CEGAR_abst_CPS.abstract prog
       | Flag.RefineSizedType -> CEGAR_abst.abstract prog
   in
-  let () = Format.printf "Abstracted program:\n%a@." CEGAR_print.print_prog abst in
+  let () = Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
   let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in
@@ -37,7 +37,7 @@ let rec cegar prog ces =
         None,_ -> prog, None
       | Some ce, ce'::ces when ce = ce' -> raise NoProgress;
       | Some ce, _ ->
-          Format.printf "Spurious counter-example:\n%a\n@." (print_list Format.pp_print_int "; " false) ce;
+          Format.printf "Spurious counter-example::\n%a\n@." (print_list Format.pp_print_int "; " false) ce;
           try
             let ces' = ce::ces in
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in

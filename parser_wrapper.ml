@@ -364,15 +364,24 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                 | Var {Id.name="Pervasives.raise"}, [t] -> Raise(t)
                 | _ -> App(t, ts)
             end
-      | Texp_match(e,pes,Total) ->
+      | Texp_match(e,pes,tp) ->
           let t = from_expression e in
           let aux (p,e) = 
             match e.exp_desc with
                 Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
               | _ -> from_pattern p, None, from_expression e
           in
-            Match_(t, List.map aux pes)
-      | Texp_match _ -> unsupported "expression (match)"
+          let pts = List.map aux pes in
+          let pts' =
+            match tp with
+                Total -> pts
+              | Partial ->
+                  let p = {pat_desc=PVar(Id.new_var "u" t.typ); pat_typ=t.typ} in
+                  let u = Id.new_var "u" TUnit in
+                  let t = make_let u [] (make_app fail_term unit_term) (make_bottom typ') in
+                    pts@[p, None, t]
+          in
+            Match_(t, pts')
       | Texp_try(e,pes) ->
           let aux (p,e) = 
             match e.exp_desc with
@@ -447,17 +456,15 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
       | Texp_override _ -> unsupported "expression (override)"
       | Texp_letmodule _ -> unsupported "expression (module)"
-      | Texp_assert e ->
-          let u = Id.new_var "u" TUnit in
-            If(from_expression e, unit_term, make_app fail_term unit_term)
+      | Texp_assert e -> If(from_expression e, unit_term, make_app fail_term unit_term)
       | Texp_assertfalse _ ->
           let u = Id.new_var "u" TUnit in
-            Let(Flag.Nonrecursive, u, [], make_app fail_term unit_term, bottom_term)
+            (make_let u [] (make_app fail_term unit_term) (make_bottom typ')).desc
       | Texp_lazy e -> assert false
           (*
-                                     let u = Id.new_var "u" TUnit in
-                                     Fun(u, from_expression e);
-                                     from_expression e
+            let u = Id.new_var "u" TUnit in
+            Fun(u, from_expression e);
+            from_expression e
           *)
       | Texp_object _ -> unsupported "expression (class)"
   in

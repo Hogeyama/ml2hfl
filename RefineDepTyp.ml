@@ -1851,7 +1851,6 @@ let rec trans_typ = function
     CT.TBase(CT.TUnit,_) -> TUnit
   | CT.TBase(CT.TInt,_) -> TInt[]
   | CT.TBase(CT.TBool,_) -> TBool
-  | CT.TBase(CT.TBottom,_) -> TBottom
   | CT.TBase(CT.TEvent,_) -> typ_event
   | CT.TFun typ ->
       let typ1,typ2 = typ (CS.Const CS.Unit) in
@@ -1870,7 +1869,7 @@ let rec trans_term env = function
   | CS.Const CS.RandInt -> {desc=RandInt None; typ=TInt[]}
   | CS.Const CS.RandBool -> assert false
   | CS.Const (CS.Int n) -> make_int n
-  | CS.Const CS.Bottom -> bottom_term
+  | CS.Const CS.Bottom -> make_bottom TUnknown
   | CS.Var x ->
       let x' = (trans_var env x) in
       let x'' = make_var (trans_var env x) in
