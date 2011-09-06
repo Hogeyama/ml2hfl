@@ -160,8 +160,8 @@ let rec abst_ext_funs t =
 
 let make_tl n t =
   let x = Id.new_var "x" (TInt[]) in
-  let t1 = make_fun x (make_app (make_fst t) (make_sub (make_var x) (make_int n))) in
-  let t2 = make_add (make_snd t) (make_int n) in
+  let t1 = make_fun x (make_app (make_fst t) (make_add (make_var x) (make_int n))) in
+  let t2 = make_sub (make_snd t) (make_int n) in
     make_pair t1 t2
 
 let rec abst_list_typ = function
@@ -175,6 +175,7 @@ let rec abst_list_typ = function
   | TList typ -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt[])
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
+  | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
 
 let abst_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -203,6 +204,10 @@ let rec get_match_bind_cond t p =
           aux bind (make_and (make_leq (make_int len) (make_snd t)) cond) 0 ps
     | PRecord _ -> assert false
     | POr _ -> assert false
+    | PPair(p1,p2) ->
+        let bind1,cond1 = get_match_bind_cond (make_fst t) p1 in
+        let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
+          bind1@@bind2, make_and cond1 cond2
 
 let rec abst_list t =
   let typ' = abst_list_typ t.typ in
@@ -267,8 +272,11 @@ let rec abst_list t =
           in
           let t_pats = List.fold_right aux pats (make_bottom typ') in
             (bindx t_pats).desc
-      | TryWith(t1,t2) -> TryWith(t1,t2)
+      | TryWith(t1,t2) -> TryWith(abst_list t1, abst_list t2)
       | Bottom -> Bottom
+      | Pair(t1,t2) -> Pair(abst_list t1, abst_list t2)
+      | Fst t -> Fst (abst_list t)
+      | Snd t -> Snd (abst_list t)
   in
     {desc=desc; typ=typ'}
     

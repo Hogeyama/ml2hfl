@@ -19,7 +19,7 @@ let rec cegar prog ces =
         Flag.RefineDependentType -> CEGAR_abst_CPS.abstract prog
       | Flag.RefineSizedType -> CEGAR_abst.abstract prog
   in
-  let () = Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
+  let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
   let () = add_time tmp Flag.time_abstraction in
   let () = if Flag.print_progress then print_msg "DONE!\n" in
   let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in

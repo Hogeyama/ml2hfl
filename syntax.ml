@@ -515,8 +515,11 @@ let rec get_fv vars t =
     | Match_(t,pats) ->
         let aux acc (_,_,t) = get_fv vars t @@@ acc in
           List.fold_left aux (get_fv vars t) pats
-    | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
+    | TryWith(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Bottom -> []
+    | Pair(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
+    | Fst t -> get_fv vars t
+    | Snd t -> get_fv vars t
 let get_fv = get_fv []
 
 let rec get_fv2 vars t =
@@ -867,6 +870,9 @@ let rec merge_let_fun t =
       | Raise t -> Raise (merge_let_fun t)
       | TryWith(t1,t2) -> TryWith(merge_let_fun t1, merge_let_fun t2)
       | Bottom -> Bottom
+      | Pair(t1,t2) -> Pair(merge_let_fun t1, merge_let_fun t2)
+      | Fst t -> Fst (merge_let_fun t)
+      | Snd t -> Snd (merge_let_fun t)
   in
     {desc=desc; typ=t.typ}
 
@@ -1715,8 +1721,8 @@ and print_pattern fm pat =
                 pp_print_string fm ")"
           in
             aux' pats
-      | POr(pat1,pat2) ->
-          fprintf fm "(%a | %a)" aux pat1 aux pat2
+      | POr(pat1,pat2) -> fprintf fm "(%a | %a)" aux pat1 aux pat2
+      | PPair(pat1,pat2) -> fprintf fm "(%a, %a)" aux pat1 aux pat2
   in
     fprintf fm "| %a" aux pat
 
@@ -2419,6 +2425,9 @@ let rec copy_poly_funs t =
       | Raise t -> Raise (copy_poly_funs t)
       | TryWith(t1,t2) -> TryWith(copy_poly_funs t1, copy_poly_funs t2)
       | Bottom -> Bottom
+      | Pair(t1,t2) -> Pair(copy_poly_funs t1, copy_poly_funs t2)
+      | Fst t -> Fst (copy_poly_funs t)
+      | Snd t -> Snd (copy_poly_funs t)
   in
     {desc=desc; typ=t.typ}
 

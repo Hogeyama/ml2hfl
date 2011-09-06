@@ -46,7 +46,8 @@ let rec can_unify typ1 typ2 =
           List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
     | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && can_unify typ1 typ2) fields1 fields2
 *)
-    | TUnknown, TUnknown -> true
+    | TUnknown, _ -> true
+    | _, TUnknown -> true
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
     | _ -> false

@@ -285,11 +285,21 @@ let rec get_bindings pat t =
         in
           List.flatten (List.map aux pats)
     | PRecord pats, Var x ->
-        let aux (i,(s,f,p)) = get_bindings p {desc=Proj(i,s,f,{desc=Var x;typ=Id.typ x});typ=p.pat_typ} in
+        let aux (i,(s,f,p)) = get_bindings p {desc=Proj(i,s,f,make_var x);typ=p.pat_typ} in
           List.flatten (List.map aux pats)
     | PRecord pats, _ ->
         let x = Id.new_var "x" t.typ in
-          (x,t) :: get_bindings {pat_desc=PRecord pats; pat_typ=pat.pat_typ} {desc=Var x;typ=Id.typ x}
+          (x,t) :: get_bindings pat (make_var x)
+    | PPair(pat1,pat2), Var x ->
+        get_bindings pat1 (make_fst (make_var x)) @ get_bindings pat2 (make_snd (make_var x))
+    | PPair(pat1,pat2), _ ->
+        let x = Id.new_var "x" t.typ in
+          (x,t) :: get_bindings pat (make_var x)
+    | PConst _,_ -> assert false
+    | PConstruct _,_ -> assert false
+    | PNil,_ -> assert false
+    | PCons _,_ -> assert false
+    | POr _,_ -> assert false
     | _ -> assert false
 
 let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =

@@ -584,6 +584,17 @@ let rec unify typ1 typ2 =
     | typ1,typ2 -> Format.printf "typ1: %a@.typ2: %a@." print_typ_cps typ1 print_typ_cps typ2; assert false
 
 
+let rec trans_cont_pos_typ typ =
+  match typ with
+      TUnit
+    | TInt _
+    | TBool -> TBaseCPS typ
+    | TFun(x,typ2) ->
+        let typ1 = Id.typ x in
+          TFunCPS(ref false, trans_cont_pos_typ typ1, trans_cont_pos_typ typ2)
+    | TPair(typ1,typ2) -> TPairCPS(trans_cont_pos_typ typ1, trans_cont_pos_typ typ2)
+    | _ -> assert false
+
 let rec infer_cont_pos env t =
   match t.desc with
       Unit -> {t_cps=UnitCPS; typ_cps=TBaseCPS t.typ}
@@ -591,7 +602,7 @@ let rec infer_cont_pos env t =
     | False -> {t_cps=FalseCPS; typ_cps=TBaseCPS t.typ}
     | Unknown -> {t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ}
     | Int n -> {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ}
-    | Bottom -> {t_cps=BottomCPS; typ_cps=TBaseCPS t.typ}
+    | Bottom -> {t_cps=BottomCPS; typ_cps=trans_cont_pos_typ t.typ}
     | NInt x -> assert false
     | RandInt t' ->
         assert (t' = None);

@@ -52,11 +52,12 @@ let print_type = true
 let print_hors = false
 let print_trecs_output = false
 let print_trace = false
-let print_interpolant = true
+let print_interpolant = false
 let print_progress = false
-let print_constraints = true
-let print_lower_bound = true
+let print_constraints = false
+let print_lower_bound = false
 let print_cvc3 = false
+let print_refine_log = false
 
 
 (* variables for log *)

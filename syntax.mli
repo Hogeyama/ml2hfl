@@ -165,6 +165,7 @@ val print_termlist : int -> bool -> Format.formatter -> typed_term list -> unit
 val string_of_ident : id -> string
 val string_of_term : typed_term -> string
 val string_of_node : node -> string
+val print_pattern : Format.formatter -> typed_pattern -> unit
 val print_constr : Format.formatter -> literal -> unit
 val print_constr_list : Format.formatter -> literal list -> unit
 val pp_print_typ : Format.formatter -> typ -> unit
