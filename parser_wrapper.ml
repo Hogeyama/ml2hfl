@@ -372,6 +372,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                 | Var {Id.name="Pervasives.~-"}, [t] -> BinOp(Sub, {desc=Int 0;typ=TInt[]}, t)
                 | Var {Id.name="Pervasives.not"}, [t] -> Not(t)
                 | Var {Id.name="Pervasives.raise"}, [t] -> Raise(t)
+                | Var {Id.name="Random.int"}, [{desc=Int 0}] -> RandInt None
                 | _ -> App(t, ts)
             end
       | Texp_match(e,pes,tp) ->

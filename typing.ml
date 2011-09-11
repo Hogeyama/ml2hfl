@@ -80,6 +80,7 @@ let get_typ_const = function
   | False -> TBool
   | RandBool -> TBool
   | RandInt -> TInt
+  | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
   | EqBool -> TFun(TBool,TFun(TBool,TBool))
   | And -> TFun(TBool,TFun(TBool,TBool))

@@ -58,6 +58,7 @@ and print_const fm = function
   | Gt -> Format.fprintf fm ">"
   | Leq -> Format.fprintf fm "<="
   | Geq -> Format.fprintf fm ">="
+  | EqUnit -> Format.fprintf fm "="
   | EqInt -> Format.fprintf fm "="
   | EqBool -> Format.fprintf fm "<=>"
   | Int n -> Format.fprintf fm "%d" n
@@ -72,6 +73,8 @@ and print_const fm = function
 and print_term fm = function
     Const c -> print_const fm c
   | Var x -> print_var fm x
+  | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq) as op), t1), t2) ->
+      Format.fprintf fm "(%a %a %a)" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
         Format.fprintf fm "(%a)" (print_list print_term " " false) (t::ts)

@@ -43,6 +43,7 @@ all: lib depend main
 
 byte: $(NAME).byte
 opt: $(NAME).opt
+opt2: $(NAME)2.opt
 lib: ocaml csisat
 
 
@@ -64,9 +65,23 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
  lazyInterface.cmo \
 	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo CEGAR_abst_CPS.cmo ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo
+CMOSUB = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
+	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
+        CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo CEGAR_util.cmo \
+	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
+	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo \
+	CEGAR_abst_CPS.cmo ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo \
+	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main2.cmo
 CMX = $(CMO:.cmo=.cmx)
+CMXSUB = $(CMOSUB:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
+CMASUB = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
+CMXASUB = $(CMASUB:.cma=.cmxa)
 
 
 OCAML_UTILS_CMO = misc.cmo warnings.cmo config.cmo clflags.cmo tbl.cmo consistbl.cmo ccomp.cmo
@@ -88,6 +103,9 @@ $(NAME).byte: $(CMO)
 
 $(NAME).opt: $(CMX)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
+
+$(NAME)2.opt: $(CMXSUB)
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXASUB) $(CMXSUB)
 
 
 # Common rules
@@ -172,6 +190,8 @@ test-byte: byte
 SRC = $(CMO:.cmo=.ml)
 
 depend::
+	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC) > depend
+depend2::
 	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC) > depend
 
 -include depend

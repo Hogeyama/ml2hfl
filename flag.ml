@@ -16,7 +16,6 @@ type cegar = CEGAR_SizedType | CEGAR_DependentType
 
 
 (* method option *)
-let wp_depth = ref 0
 let wp_max_num = ref 3
 let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
@@ -53,7 +52,7 @@ let print_hors = false
 let print_trecs_output = false
 let print_trace = false
 let print_interpolant = false
-let print_progress = false
+let print_progress = true
 let print_constraints = false
 let print_lower_bound = false
 let print_cvc3 = false

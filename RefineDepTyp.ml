@@ -1074,7 +1074,7 @@ let save_as_dot filename cs =
     cs))
   in
   let vs = Utilities.uniq compare (List.concat (List.map (fun (x, y, _) -> [x, y]) es)) in
-  Util.save_as_dot filename vs es
+  Utilities.save_as_dot filename vs es
 let save_as_dot _ _ = ()
 
 let rec term_of c =
@@ -1270,18 +1270,18 @@ let rec subst_ac lbs ac =
           False
       end
         let ids, c = get_lb pid terms lbs in
-        let fv = Util.uniq (Util.diff (fv c) ids) in
+        let fv = Utilities.uniq (Utilities.diff (fv c) ids) in
           substc (List.combine ids terms) (substc (List.map (fun id -> id, new_var ()) fv) c)
             (*if pos then [Cimp(eqs ids terms, c)] else (eqs ids terms) @ c*)
 *)
     | Csub(rty1,rty2) -> assert false
     | Cterm t -> [t]
     | Cimp(c1,c2) -> assert false
-                   (*imply (and_list (Util.uniq (List.map (fun ac -> subst_ac lbs ac) c1)))
-                           (and_list (Util.uniq (List.map (fun ac -> subst_ac lbs ac) c2)))*)
+                   (*imply (and_list (Utilities.uniq (List.map (fun ac -> subst_ac lbs ac) c1)))
+                           (and_list (Utilities.uniq (List.map (fun ac -> subst_ac lbs ac) c2)))*)
     | Cfalse -> [false_term]
 
-(*let subst_constr lbs c = Util.uniq (List.concat (List.map (fun ac -> subst_ac lbs ac) c))*)
+(*let subst_constr lbs c = Utilities.uniq (List.concat (List.map (fun ac -> subst_ac lbs ac) c))*)
 
 let rec compute_lbs c lbs =
   let c1, c2 = List.partition
@@ -1306,7 +1306,7 @@ let rec compute_lbs c lbs =
             let eqs = Utilities.uniq compare (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
               (if Flag.debug then
                  (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
-                 let tmp = Util.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
+                 let tmp = Utilities.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
                    List.iter (fun l ->
                                 let tmp = Utilities.uniq compare (List.map snd l) in
                                   if List.length tmp <> 1 then
@@ -1338,7 +1338,7 @@ let rec compute_lbs c lbs =
                     c
                     in
                     let sub, eqs = eqs ids terms in
-                    pid, (ids, elim ids (Util.uniq (substc sub ((subst_constr lbs cl) @ eqs))))
+                    pid, (ids, elim ids (Utilities.uniq (substc sub ((subst_constr lbs cl) @ eqs))))
                   *)
         | _ -> assert false
       in
@@ -1888,7 +1888,7 @@ let rec trans_term env = function
   | CS.App(CS.App(CS.Const CS.Gt, t1), t2) -> make_gt (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Leq, t1), t2) -> make_leq (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Geq, t1), t2) -> make_geq (trans_term env t1) (trans_term env t2)
-  | CS.App(CS.App(CS.Const (CS.EqInt|CS.EqBool), t1), t2) -> make_eq (trans_term env t1) (trans_term env t2)
+  | CS.App(CS.App(CS.Const (CS.EqUnit|CS.EqInt|CS.EqBool), t1), t2) -> make_eq (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Add, t1), t2) -> make_add (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Sub, t1), t2) -> make_sub (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Mul, t1), t2) -> make_mul (trans_term env t1) (trans_term env t2)

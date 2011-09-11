@@ -149,6 +149,7 @@ let rec string_of_term env = function
   | App(App(Const Gt, t1), t2) -> "(" ^ string_of_term env t1 ^ " > " ^ string_of_term env t2 ^ ")"
   | App(App(Const Leq, t1), t2) -> "(" ^ string_of_term env t1 ^ " <= " ^ string_of_term env t2 ^ ")"
   | App(App(Const Geq, t1), t2) -> "(" ^ string_of_term env t1 ^ " >= " ^ string_of_term env t2 ^ ")"
+  | App(App(Const EqUnit, t1), t2) -> "(" ^ string_of_term env t1 ^ "=" ^ string_of_term env t2 ^ ")"
   | App(App(Const EqBool, t1), t2) -> "(" ^ string_of_term env t1 ^ "<=>" ^ string_of_term env t2 ^ ")"
   | App(App(Const EqInt, t1), t2) ->  "(" ^ string_of_term env t1 ^ "=" ^ string_of_term env t2 ^ ")"
   | App(App(Const Add, t1), t2) -> "(" ^ string_of_term env t1 ^ " + " ^ string_of_term env t2 ^ ")"
