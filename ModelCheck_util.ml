@@ -131,7 +131,7 @@ let make_spec n =
       Flag.Reachability ->
         (0, "br", [0;0])::
         (0, "unit", [])::
-        make_line_spec n 0
+        make_line_spec (n+2) 0
     | Flag.FileAccess -> assert false
 
 

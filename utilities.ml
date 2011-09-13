@@ -294,7 +294,7 @@ let is_uppercase c =
 
 
 
-let print_msg s = Format.printf "%s@." s
+let print_msg s = Format.printf "%s@?" s
 
 
 

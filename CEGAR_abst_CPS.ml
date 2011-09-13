@@ -215,7 +215,8 @@ let abstract_def env (f,xs,t1,t2) =
 
 
 let abstract (env,defs,main) =
-  let (env,defs,main) = add_label (env,defs,main) in
+  let (env,defs,main) = add_bool_label (env,defs,main) in
+  let (env,defs,main) = add_line_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
   let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in

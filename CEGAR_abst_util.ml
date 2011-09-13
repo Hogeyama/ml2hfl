@@ -257,19 +257,22 @@ let make_arg_let env defs =
 
 
 
-let add_label_term = function
+let add_bool_label_term = function
     App(App(App(Const If, t1), t2), t3) ->
       make_if t1 (App(Const (Label 0), t2)) (App(Const (Label 1), t3))
   | t -> t
 
-let rec add_label prog =
+let rec add_bool_label prog =
   let aux (env,defs,main) =
-    env, List.map (fun (f,xs,t1,t2) -> f,xs,t1,add_label_term t2) defs, main
+    env, List.map (fun (f,xs,t1,t2) -> f,xs,t1,add_bool_label_term t2) defs, main
   in
   let prog = to_if_exp prog in
   let prog = aux prog in
     of_if_exp prog
     
+let rec add_line_label (env,defs,main) =
+  env, mapi (fun i (f,xs,t1,t2) -> f,xs,t1,App(Const (Label(i+2)),t2)) defs, main
+
 
 
 

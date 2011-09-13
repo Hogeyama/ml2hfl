@@ -1967,11 +1967,11 @@ let rec add_preds_typ sol typ1 typ2 =
 
 let infer ces t =
   let aux = function
-      0 -> Syntax.LabNode true
-    | 1 -> Syntax.LabNode false
-    | n -> assert false
+      0 -> [Syntax.LabNode true]
+    | 1 -> [Syntax.LabNode false]
+    | n -> []
   in
-  let ces = List.map (fun ce -> List.map aux ce @ [FailNode]) ces in
+  let ces =  List.map (fun ce -> List.flatten (List.map aux ce) @ [FailNode]) ces in
   let defs,main = trans t in
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in

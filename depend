@@ -884,11 +884,13 @@ lazy/apronInterface.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
     ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
     ./lazy/const.cmx ocaml-3.12/stdlib/array.cmx ./lazy/arith.cmx
 lazy/csisatInterface.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/format.cmi \
-    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo
+    ./lazy/simType.cmo ocaml-3.12/stdlib/list.cmi \
+    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
+    ./lazy/const.cmo
 lazy/csisatInterface.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/format.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx
+    ./lazy/simType.cmx ocaml-3.12/stdlib/list.cmx \
+    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
+    ./lazy/const.cmx
 lazy/cvc3Interface.cmo: ./lazy/var.cmo ./lazy/util.cmo \
     ocaml-3.12/otherlibs/unix/unix.cmi ./lazy/term.cmo \
     ocaml-3.12/stdlib/string.cmi ocaml-3.12/otherlibs/str/str.cmi \
@@ -1059,14 +1061,14 @@ feasibility.cmo: wrapper2.cmi utilities.cmo ocaml-3.12/stdlib/list.cmi \
     CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo feasibility.cmi
 feasibility.cmx: wrapper2.cmx utilities.cmx ocaml-3.12/stdlib/list.cmx \
     CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx feasibility.cmi
-RefineDepTyp.cmo: wrapper.cmi utilities.cmo ./lazy/util.cmo typing.cmo \
-    type.cmo syntax.cmi ocaml-3.12/otherlibs/str/str.cmi \
-    ocaml-3.12/stdlib/list.cmi id.cmo ocaml-3.12/stdlib/format.cmi flag.cmo \
-    CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
-RefineDepTyp.cmx: wrapper.cmx utilities.cmx ./lazy/util.cmx typing.cmx \
-    type.cmx syntax.cmx ocaml-3.12/otherlibs/str/str.cmx \
-    ocaml-3.12/stdlib/list.cmx id.cmx ocaml-3.12/stdlib/format.cmx flag.cmx \
-    CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+RefineDepTyp.cmo: wrapper.cmi utilities.cmo typing.cmo type.cmo syntax.cmi \
+    ocaml-3.12/otherlibs/str/str.cmi ocaml-3.12/stdlib/list.cmi id.cmo \
+    ocaml-3.12/stdlib/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_print.cmo
+RefineDepTyp.cmx: wrapper.cmx utilities.cmx typing.cmx type.cmx syntax.cmx \
+    ocaml-3.12/otherlibs/str/str.cmx ocaml-3.12/stdlib/list.cmx id.cmx \
+    ocaml-3.12/stdlib/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_print.cmx
 refine.cmo: utilities.cmo RefineDepTyp.cmo ocaml-3.12/stdlib/list.cmi \
     flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo refine.cmi
 refine.cmx: utilities.cmx RefineDepTyp.cmx ocaml-3.12/stdlib/list.cmx \

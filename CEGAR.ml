@@ -31,7 +31,7 @@ let rec cegar prog ces =
       | Flag.RefineSizedType -> ModelCheck.check abst def_num
   in
   let () = add_time tmp Flag.time_mc in
-  let () = if Flag.print_progress then print_msg "DONE!\n" in
+  let () = if Flag.print_progress then print_msg "DONE!\n\n" in
 
     match result,ces with
         None,_ -> prog, None
