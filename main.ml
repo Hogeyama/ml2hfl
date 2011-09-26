@@ -77,7 +77,7 @@ let main filename in_channel =
   let () = Type_check.check t in
   let prog = CEGAR_util.trans_prog t in
     match !Flag.cegar with
-        Flag.CEGAR_SizedType -> assert false(*LazyInterface.verify prog*)
+        Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->
           let t_result, result = CEGAR.cegar prog [] in
 	    match result with
@@ -85,14 +85,7 @@ let main filename in_channel =
 	      | Some print ->
                   print_msg "\n\nUnsafe!\n\n";
             print ()
-(*
-          let sol = Wrapper.get_solution p t_result in
-            print_msg "Unsafe!\n";
-            print_msg "Error trace:";
-            List.iter (fun t -> Format.printf "%s; " t) sol;
-            if List.length sol <> 0 then Format.printf "@.";
-            Syntax.print_ce ce parsed
-*)
+
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
