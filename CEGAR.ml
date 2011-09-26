@@ -1,6 +1,7 @@
 
 open Utilities
 open CEGAR_syntax
+open CEGAR_util
 
 exception NoProgress
 exception CannotDiscoverPredicate
@@ -55,10 +56,16 @@ let rec cegar prog ces =
               Id.set_counter n;
               cegar prog' ces'
           with Refine.CannotRefute ->
-            let b,constr = Feasibility.check ce prog in
-              if b
-              then prog, Some (ce,constr)
-              else raise CannotDiscoverPredicate(*t1, None*)
+            match Feasibility.check ce prog with
+                Some (env, sol) ->
+                  let print () =
+                    let _,defs,main = prog in
+                     Format.printf "Inputs:@.";
+                    List.iter (fun t -> Format.printf "  %s;@." t) sol;
+                    print_ce_reduction ce defs main
+                  in
+                    prog, Some print
+              | None -> raise CannotDiscoverPredicate(*t1, None*)
 
 
 

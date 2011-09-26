@@ -536,7 +536,7 @@ let of_if_exp (env,defs,main) =
         App(App(App(Const If, t1), t2), t3) -> [f,xs,t1,t2; f,xs,make_not t1,t3]
       | _ -> [f,xs,t1,t2]
   in
-    (env, rev_flatten_map aux defs, main)
+    (env, flatten_map aux defs, main)
 
 
 
@@ -686,3 +686,44 @@ let rec has_bottom = function
   | Const Bottom -> true
   | Const _ -> false
   | App(t1, t2) -> has_bottom t1 || has_bottom t2
+
+
+let print_ce_reduction ce defs main =
+let rec print ce defs t k =
+  match t with
+    Const (Event "fail") -> assert (ce=[])
+  | Const RandInt ->
+      let x = new_id "r" in
+        k ce (Var x)
+  | Const c -> k ce (Const c)
+  | Var x -> k ce (Var x)
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
+      print ce defs t1 (fun ce1 t1' ->
+      print ce1 defs t2 (fun ce2 t2' ->
+        k ce2 (make_app (Const op) [t1';t2'])))
+  | App(t1,t2) ->
+      print ce defs t1 (fun ce1 t1' ->
+      print ce1 defs t2 (fun ce2 t2' ->
+        let t1'',ts = decomp_app (App(t1',t2')) in
+        let n = List.hd ce2 in
+        let ce2' = List.tl ce2 in
+        let _,xs,_,_ = List.find (fun (f,_,_,_) -> Var f = t1'') defs in
+          if List.length xs > List.length ts
+          then k ce2 (App(t1',t2'))
+          else
+            let f,xs,tf1,tf2 = List.nth defs n in
+              Format.printf "  %a ... -->@." print_term t1'';
+              assert (Var f = t1'');
+            let ts1,ts2 = take2 ts (List.length xs) in
+            assert (List.length xs = List.length ts);
+            assert (ts2 = []);
+            let aux = List.fold_right2 subst xs ts1 in
+            let tf2' = make_app (aux tf2) ts2 in
+              print ce2' defs tf2' k))
+in
+  let _,_,_,t = List.find (fun (f,_,_,_) -> f = main) defs in
+  let ce' = flatten_map (fun n -> if n>=2 then [n-2] else []) (List.tl ce) in
+    Format.printf "Error trace::@.";
+    Format.printf "  %a ... -->@." print_term (Var main);
+    print ce' defs t (fun _ -> assert false);
+    Format.printf "  FAIL!@.@."

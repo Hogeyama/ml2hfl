@@ -256,7 +256,7 @@ let rec fold_left2_neq f acc xs ys =
 
 let rev_map_flatten f xs = List.fold_left (fun acc x -> f x @@ acc) [] xs
 let rev_flatten_map = rev_map_flatten
-
+let flatten_map f xs = List.rev (rev_map_flatten f xs)
 
 
 let rev_flatten xs = rev_map_flatten (fun x -> x) xs

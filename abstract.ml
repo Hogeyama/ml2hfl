@@ -170,7 +170,7 @@ let rec abst_list_typ = function
   | TAbsBool -> assert false
   | TInt ps -> TInt ps
   | TRInt _ -> assert false
-  | TVar _ -> assert false
+  | TVar _ -> TInt[] (****)
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
   | TList typ -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt[])
   | TConstr(s,b) -> TConstr(s,b)

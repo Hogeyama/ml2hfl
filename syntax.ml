@@ -2120,6 +2120,7 @@ let set_target t =
                   let aux x =
                     match Id.typ x with
                         TInt _ -> {desc=RandInt None; typ=TInt[]}
+                      | typ -> {desc=RandInt None; typ=TInt[]}
                       | typ -> {desc=RandValue(typ, None); typ=typ}
                   in
                   let args = List.map aux xs in

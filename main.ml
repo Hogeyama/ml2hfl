@@ -77,12 +77,14 @@ let main filename in_channel =
   let () = Type_check.check t in
   let prog = CEGAR_util.trans_prog t in
     match !Flag.cegar with
-        Flag.CEGAR_SizedType -> LazyInterface.verify prog
+        Flag.CEGAR_SizedType -> assert false(*LazyInterface.verify prog*)
       | Flag.CEGAR_DependentType ->
           let t_result, result = CEGAR.cegar prog [] in
 	    match result with
 	        None -> print_msg "\nSafe!\n\n"
-	      | Some (ce,p) -> print_msg "Unsafe!\n"
+	      | Some print ->
+                  print_msg "\n\nUnsafe!\n\n";
+            print ()
 (*
           let sol = Wrapper.get_solution p t_result in
             print_msg "Unsafe!\n";
@@ -97,7 +99,7 @@ let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let spec =
   ["-web", Arg.Set Flag.web, " web mode";
    "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
-   "<dir>  add <dir> to the list of include directories";
+         "<dir>  add <dir> to the list of include directories";
    "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " use sized type system for CEGAR";
    "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " same as -st";
    "-na", Arg.Clear Flag.init_trans, " do not abstract data";

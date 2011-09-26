@@ -2,31 +2,44 @@
 open Utilities
 open CEGAR_syntax
 open CEGAR_type
+open CEGAR_print
 open CEGAR_util
 
 
-
-let rec check ce constr defs t k =
+let rec check ce constr env defs t k =
   match t with
-    Const (Event "fail") -> assert (ce=[]); constr
-  | Const c -> k ce (Const c)
-  | Var x -> k ce (Var x)
+    Const (Event "fail") -> assert (ce=[]); constr, env
+  | Const RandInt ->
+      let x = new_id "r" in
+        k ((x,TBase(TInt,fun _ -> []))::env) ce (Var x)
+  | Const c -> k env ce (Const c)
+  | Var x -> k env ce (Var x)
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
+      check ce constr env defs t1 (fun env ce1 t1' ->
+      check ce1 constr env defs t2 (fun env ce2 t2' ->
+        k env ce2 (make_app (Const op) [t1';t2'])))
   | App(t1,t2) ->
-      check ce constr defs t2 (fun ce' t2' ->
-      check ce' constr defs t1 (fun ce'' t1' ->
-        let _,ts = decomp_app (App(t1',t2')) in
-        let f,xs,tf1,tf2 = List.nth defs (List.hd ce'') in
+      check ce constr env defs t1 (fun env ce1 t1' ->
+      check ce1 constr env defs t2 (fun env ce2 t2' ->
+        let t1'',ts = decomp_app (App(t1',t2')) in
+        let n = List.hd ce2 in
+        let ce2' = List.tl ce2 in
+        let _,xs,_,_ = List.find (fun (f,_,_,_) -> Var f = t1'') defs in
           if List.length xs > List.length ts
-          then k ce'' (App(t1',t2'))
+          then k env ce2 (App(t1',t2'))
           else
+            let f,xs,tf1,tf2 = List.nth defs n in
+            assert (Var f = t1'');
             let ts1,ts2 = take2 ts (List.length xs) in
+            assert (List.length xs = List.length ts);
+            assert (ts2 = []);
             let aux = List.fold_right2 subst xs ts1 in
             let tf1' = aux tf1 in
-            let tf2' = List.fold_left (fun t1 t2 -> App(t1,t2)) (aux tf2) ts2 in
-              check ce'' constr defs tf1' (fun ce''' tf1'' ->
-              check ce''' (make_and tf1'' constr) defs tf2' (fun _ -> assert false))))
+            let tf2' = make_app (aux tf2) ts2 in
+              check ce2' (make_and tf1' constr) env defs tf2' k))
 
 let check ce (env,defs,main) =
+(*
   let rec aux = function
       TFun typ ->
         let x = new_id "x" in
@@ -37,10 +50,16 @@ let check ce (env,defs,main) =
     | typ -> []
   in
   let env = aux (List.assoc main env) in
-  let xs = List.map fst env in
-  let t = List.fold_left (fun t x -> App(t, Var x)) (Var main) xs in
-  let constr = check ce (Const True) defs t (fun _ -> assert false) in
-    Wrapper2.checksat env constr, constr
+  let xs = List.map (fun (x,_) -> Var x) env in
+  let () = assert (xs = []) in
+  let t = make_app (Var main) xs in
+*)
+  let ce' = flatten_map (fun n -> if n>=2 then [n-2] else []) (List.tl ce) in
+  let _,_,_,t = List.find (fun (f,_,_,_) -> f = main) defs in
+  let constr,env' = check ce' (Const True) [] defs t (fun _ -> assert false) in
+    if Wrapper2.checksat env' constr
+    then Some (env', Wrapper2.get_solution env' constr)
+    else None
 
 
 

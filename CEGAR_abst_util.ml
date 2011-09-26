@@ -271,7 +271,7 @@ let rec add_bool_label prog =
     of_if_exp prog
     
 let rec add_line_label (env,defs,main) =
-  env, mapi (fun i (f,xs,t1,t2) -> f,xs,t1,App(Const (Label(i+2)),t2)) defs, main
+  env, Utilities.mapi (fun i (f,xs,t1,t2) -> f,xs,t1,App(Const (Label(i+2)),t2)) defs, main
 
 
 

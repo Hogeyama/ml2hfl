@@ -82,7 +82,9 @@ let main filename in_channel =
           let t_result, result = CEGAR.cegar prog [] in
 	    match result with
 	        None -> print_msg "\nSafe!\n\n"
-	      | Some (ce,p) -> print_msg "Unsafe!\n"
+	      | Some print ->
+                  print_msg "\n\nUnsafe!\n\n";
+                  print ()
 (*
           let sol = Wrapper.get_solution p t_result in
             print_msg "Unsafe!\n";
