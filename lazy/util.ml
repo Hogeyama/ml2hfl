@@ -73,9 +73,18 @@ let partition_map p ys =
         (match p x with
           `L(y) -> aux (y::ls) rs xs'
         | `R(y) -> aux ls (y::rs) xs'
-        | _ -> failwith "Tools.partition_map")
+        | _ -> failwith "Util.partition_map")
   in
   aux [] [] (List.rev ys)
+
+let rec filter_map p xs =
+  match xs with
+    [] -> []
+  | x::xs' ->
+      (match p x with
+        Some(y) -> y::(filter_map p xs')
+      | None -> filter_map p xs'
+      | _ -> failwith "Util.filter_map")
 
 let rec split_at xs n =
   if n = 0 then

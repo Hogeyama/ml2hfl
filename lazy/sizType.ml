@@ -199,7 +199,7 @@ let make_fun tys pre ty =
 
 (* fcs is set *)
 let of_summaries env fcs sums =
-  let rec aux x =
+  let rec type_of x =
     match env x with
       SimType.Unit -> [Unit(x), Term.ttrue]
     | SimType.Bool -> [Bool(x), Term.ttrue]
@@ -210,13 +210,12 @@ let of_summaries env fcs sums =
           (fun uid ->
             let pres =
               List.unique
-                (fst
-                  (Util.partition_map
-                    (function
-                      `Pre(x_uid, pre) ->
-                        if x_uid = (x, uid) then `L(pre) else `R()
-                    | _ -> `R())
-                    sums))
+	               (Util.filter_map
+	                 (function
+	                   `Pre(x_uid, pre) ->
+	                     if x_uid = (x, uid) then Some(pre) else None
+	                 | _ -> None)
+	                 sums)
             in
             let pre =
               if Var.is_top x then
@@ -224,18 +223,20 @@ let of_summaries env fcs sums =
               else if Var.is_neg x then
                 if pres = [] then Term.ttrue else Term.bor pres
               else
+(*
+                let _ = Format.printf "%a:%a@." Var.pr x (Util.pr_list Term.pr ",") pres in
+*)
                 let _ = assert (pres = []) in
                 Term.ttrue
             in
             let posts =
               List.unique
-                (fst
-                  (Util.partition_map
-                    (function
-                      `Post(x_uid, post) ->
-                        if x_uid = (x, uid) then `L(post) else `R()
-                    | _ -> `R())
-                    sums))
+                (Util.filter_map
+                  (function
+                    `Post(x_uid, post) ->
+                      if x_uid = (x, uid) then Some(post) else None
+                  | _ -> None)
+                  sums)
             in
             let post =
               if Var.is_top x then
@@ -244,29 +245,36 @@ let of_summaries env fcs sums =
                 let _ = assert (posts = []) in
                 Term.ttrue
               in
-            let [retty, retcond] = aux (Var.T(x, uid, n)) in
+
+            let [retty, retcond] = type_of (Var.T(x, uid, n)) in
             let _ = assert (retcond = Term.ttrue) in
+
             make_fun
               (List.init n
                 (fun i ->
-                  let argtys, argconds = List.split (aux (Var.T(x, uid, i))) in
+                  let argtys, argconds = List.split (type_of (Var.T(x, uid, i))) in
                   let argty = merge_tys argtys in
                   let _ = assert (CsisatInterface.iff (Term.band argconds) Term.ttrue) in
                   argty))
               pre
               retty,
             post)
-          (List.filter_map (function (y, uid) -> if x = y then Some(uid) else None) fcs)
+          (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
   in
-  let tlfs = List.unique
+
+  let top_level_functions = List.unique
     (List.filter_map
       (fun (x, _) -> if Var.is_top x then Some(x) else None)
       fcs)
   in
   List.unique
     (Util.concat_map
-      (fun f -> List.map (fun (ty, cond) -> f, canonize (make ty cond)) (aux f))
-      tlfs)
+      (fun f ->
+        List.map
+          (fun (ty, cond) ->
+            f, canonize (make ty cond))
+          (type_of f))
+      top_level_functions)
 
 let type_of_const c =
   (*
@@ -444,13 +452,16 @@ let rec subtype_same ty1 ty2 =
   | Fun(xs), Fun(ys) ->
       let _ = assert (List.length xs = List.length ys) in
       Term.band
-        (List.map2
-          (fun (ty1, pre, ty2) (ty1', pre', ty2') ->
-            Term.band
-              [subtype_same ty1' ty1;
-              Term.imply pre' (Term.band [pre; subtype_same ty2 ty2'])])
-          xs
-          ys)
+        (try
+		        List.map2
+		          (fun (ty1, pre, ty2) (ty1', pre', ty2') ->
+		            Term.band
+		              [subtype_same ty1' ty1;
+		              Term.imply pre' (Term.band [pre; subtype_same ty2 ty2'])])
+		          xs
+		          ys
+				    with List.Different_list_size(_) ->
+				      assert false)
   | _, _ ->
       assert false
 
@@ -500,12 +511,15 @@ and canonize_ag cov subs0 ty1 ty2 =
             (fun ns ->
               let zs, subss =
                 List.split
-                  (List.map2
-                    (fun n x ->
-                      let y = List.nth ys n in
-                      canonize_fun cov subs0 x y)
-                    ns
-                    xs)
+                  (try
+		                  List.map2
+		                    (fun n x ->
+		                      let y = List.nth ys n in
+		                      canonize_fun cov subs0 x y)
+		                    ns
+		                    xs
+														    with List.Different_list_size(_) ->
+														      assert false)
               in
               let subs = List.concat subss in
               List.combine ns zs, subs)
@@ -656,10 +670,13 @@ let check_fdef cenv fdef sty =
   in
   assert (is_base ty_ret);
   let env =
-    List.map2
-      (fun x ty -> Var.V(x), ty)
-      fdef.Fdef.args
-      ty_args
+    try
+		    List.map2
+		      (fun x ty -> Var.V(x), ty)
+		      fdef.Fdef.args
+		      ty_args
+    with List.Different_list_size(_) ->
+      assert false
   in
   let guard =
     let _(*ttrue*), sty_guard = infer_term cenv env fdef.Fdef.guard in

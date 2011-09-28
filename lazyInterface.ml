@@ -3,6 +3,7 @@ open ExtList
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
+open CEGAR_util
 
 let conv_const c =
   match c with
@@ -63,3 +64,44 @@ let verify (*cexs*) prog =
   Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
   let _ = Verifier.verify [] prog in
   Format.printf "END verification@,@]"
+
+let conv_siz_type sty =
+(**)
+  let _ = Format.printf "%a@." SizType.pr sty in
+  TBase(TUnit, fun t -> [t])
+(**)
+(*
+  let rec aux ty post sub =
+		  match ty with
+		    Unit(x) ->
+        TBase(TUnit, fun t -> [subst_map ((x, t)::sub) (conv_term post)]),
+        sub
+    | Bool(x) ->
+        let sub = (x, t)::sub in
+        TBase(TBool, fun t -> [subst_map sub (conv_term post)]),
+        sub
+    | Int(x) ->
+        let sub = (x, t)::sub in
+        TBase(TInt, fun t -> [subst_map sub (conv_term post)]),
+        sub
+		  | Fun(xs) ->
+        List.map
+          (fun (ty1, pre, ty2) ->
+            let ty1', sub = aux ty1 pre sub in
+            TFun(ty1', aux ty2 post sub))
+          xs,
+        sub
+  in
+  aux sty.ty sty.cond []
+*)
+
+let infer ces prog =
+  let prog = conv_prog prog in
+  let env = Verifier.infer ces prog in
+  List.map
+    (fun (f, _) ->
+      try
+        f, conv_siz_type (List.assoc (Var.make f) env)
+      with Not_found ->
+        assert false)
+    prog.Prog.types

@@ -85,6 +85,14 @@ let main filename in_channel =
 	      | Some print ->
                   print_msg "\n\nUnsafe!\n\n";
             print ()
+(*
+          let sol = Wrapper.get_solution p t_result in
+            print_msg "Unsafe!\n";
+            print_msg "Error trace:";
+            List.iter (fun t -> Format.printf "%s; " t) sol;
+            if List.length sol <> 0 then Format.printf "@.";
+            Syntax.print_ce ce parsed
+*)
 
 
 

@@ -292,7 +292,7 @@ let summary_of ctx tr rec_callers =
           if emp then
             [`Pre((x', uid'), interp)], ctx [Guard(Term.bnot (interp))]
           else
-            [`Pre((x, uid), Term.ttrue); `Pre((x', uid'), interp)], ctx (Guard(interp)::trs')
+            [(*`Pre((x, uid), Term.ttrue);???*) `Pre((x', uid'), interp)], ctx (Guard(interp)::trs')
         else
           [`Post((x', uid'), interp)], ctx [Guard(interp)]
   | _ -> assert false

@@ -39,18 +39,18 @@ let add_pred map env =
 
 
 let refine ces (env,defs,main) : prog =
-  let refine =
+  let ces, refine =
     match !Flag.refine with
         Flag.RefineSizedType ->
           let ces' = List.map (fun ce -> List.flatten (List.map (fun n -> if n>=2 then [n-2] else []) ce)) ces in
-            assert false
+            ces', LazyInterface.infer
       | Flag.RefineDependentType ->
           let rec f ces prog =
             try
               RefineDepTyp.infer ces prog
             with RefineDepTyp.Untypable -> raise CannotRefute
           in
-            f
+            ces, f
   in
   let map = refine ces (env,defs,main) in
   let env' = add_pred map env in

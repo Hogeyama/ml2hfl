@@ -178,5 +178,5 @@ let test_apply_apply2 () =
 
 let _ =
   let _ = Cvc3Interface.open_cvc3 () in
-  let _ = test_sum () in
+  let _ = test_copy_copy () in
   Cvc3Interface.close_cvc3 ()

@@ -188,11 +188,12 @@ test-byte: byte
 # depend
 
 SRC = $(CMO:.cmo=.ml)
+SRCSUB = $(CMOSUB:.cmo=.ml)
 
 depend::
 	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC) > depend
 depend2::
-	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC) > depend
+	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRCSUB) > depend
 
 -include depend
 
