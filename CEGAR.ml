@@ -18,7 +18,7 @@ let rec cegar prog ces =
   let abst =
     match !Flag.refine with
         Flag.RefineDependentType -> CEGAR_abst_CPS.abstract prog
-      | Flag.RefineSizedType -> CEGAR_abst.abstract prog
+      | Flag.RefineSizedType -> CEGAR_abst_CPS.abstract prog
   in
   let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
   let () = add_time tmp Flag.time_abstraction in
