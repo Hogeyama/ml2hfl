@@ -1,6 +1,6 @@
 open ExtList
 
-let aux str cexs prog =
+let aux str cex prog =
   let uid = Ctree.gen () in
   let ty_main = Prog.type_of prog (Var.V(prog.Prog.main)) in
   let ret, args =
@@ -17,13 +17,13 @@ let aux str cexs prog =
     match str with
       0 -> Ctree.bf_strategy rt
     | 1 -> Ctree.df_strategy rt
-    | 2 -> Ctree.cex_strategy cexs rt
+    | 2 -> Ctree.cex_strategy cex rt
     | _ -> assert false
   in
   rt, strategy
 
 let infer_type prog rt strategy =
-  let eps = Ctree.manual prog rt strategy in
+  let eps, strategy = Ctree.expands false prog rt strategy in
   let eptrs = List.map Trace.of_error_path eps in
 (*
   let _ = Format.printf "error path trees:@.  @[<v>%a@]@." (Util.pr_list pr_tree "@,") eptrs in
@@ -56,8 +56,8 @@ let infer_type prog rt strategy =
   in
   env @ env'
 
-let verify cexs prog =
-  let rt, strategy = aux 0 cexs prog in
+let verify cex prog =
+  let rt, strategy = aux 0 cex prog in
   try
     let rec loop i =
       let env = infer_type prog rt strategy in
@@ -72,6 +72,11 @@ let verify cexs prog =
    Format.printf "@.The program is unsafe@.Error trace: %a@." Trace.pr eptr
 
 
-let infer cexs prog =
-  let rt, strategy = aux 2 cexs prog in
-  infer_type prog rt strategy
+let infer_abst_type cex prog =
+  let rt, strategy = aux 0 cex prog in
+  let env = infer_type prog rt strategy in
+  let env = List.map (fun (f, sty) -> f, RefType.of_sized_type sty) env in
+  let env = List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env in  
+  let env = List.map (fun ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys)) (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env) in
+  let _ = Format.printf "abstraction types:@.  %a@." AbsType.pr_env env in
+  env

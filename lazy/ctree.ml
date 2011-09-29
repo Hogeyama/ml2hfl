@@ -92,8 +92,8 @@ let df_strategy rt =
     next = (fun () -> match !wlr with [] -> raise Not_found | n::wl -> wlr := wl; n);
     update = (fun wl -> wlr := wl @ !wlr) }
 
-let cex_strategy ces rt =
-  let filt rts = List.filter (fun (Node((_, p), _, _)) -> List.exists (fun ce -> Util.prefix p ce) ces) rts in
+let cex_strategy cex rt =
+  let filt rts = List.filter (fun (Node((_, p), _, _)) -> Util.prefix p cex) rts in
   let wlr = ref (filt [rt]) in
   { is_end = (fun () -> !wlr = []);
     get = (fun () -> !wlr);
@@ -194,10 +194,10 @@ let expand prog env (Node((uid, p), t, cs)) =
   with Not_found -> (*no redex found*)
     env, []
 
-let rec manual prog rt strategy =
+let expands manual prog rt strategy =
   let rec loop old_eps env =
     if strategy.is_end () then
-      List.filter (fun p -> List.last p = Error) (paths_of rt)
+      List.filter (fun p -> List.last p = Error) (paths_of rt), strategy
     else
       let _ = save_as_dot "ctree.dot" rt (strategy.get ()) in
       let eps = List.filter (fun p -> List.last p = Error) (paths_of rt) in
@@ -214,31 +214,20 @@ let rec manual prog rt strategy =
           let _ = Format.printf "expand the computation tree ? (y/n): %!" in
           let inp = read_line () in
           if inp = "y" then
-            let env, wl = expand prog env (strategy.next ()) in
-            let _ = strategy.update wl in
-            loop eps env
+            true
           else if inp = "n" then
-            eps
+            false
           else
             lp ()
         in
-        lp ()
+        if manual && lp () then
+          let env, wl = expand prog env (strategy.next ()) in
+          let _ = strategy.update wl in
+          loop eps env
+        else
+          eps, strategy
   in
   loop []
     (fun x ->
       let _ = Format.printf "\"%a\" not found@." Var.pr x in
       assert false)
-
-let auto prog rt strategy =
-  let rec loop env =
-    if strategy.is_end () then
-      List.filter (fun p -> List.last p = Error) (paths_of rt)
-    else
-      let env, wl = expand prog env (strategy.next ()) in
-      let _ = strategy.update wl in
-      loop env
-  in
-  loop
-    (fun x ->
-      let _ = Format.printf "\"%a\" not found@." Var.pr x in
-     assert false)

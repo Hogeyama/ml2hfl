@@ -61,7 +61,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
  lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
  lazy/util.cmo \
  lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/simType.cmo lazy/arith.cmo lazy/term.cmo \
- lazy/apronInterface.cmo lazy/csisatInterface.cmo lazy/cvc3Interface.cmo lazy/fdef.cmo lazy/prog.cmo lazy/ctree.cmo lazy/trace.cmo lazy/sizType.cmo lazy/verifier.cmo \
+ lazy/apronInterface.cmo lazy/csisatInterface.cmo lazy/cvc3Interface.cmo lazy/fdef.cmo lazy/prog.cmo lazy/ctree.cmo lazy/trace.cmo lazy/sizType.cmo lazy/refType.cmo lazy/absType.cmo lazy/verifier.cmo \
  lazyInterface.cmo \
 	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo CEGAR_abst_CPS.cmo ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo

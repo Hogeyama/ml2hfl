@@ -33,6 +33,34 @@ let rec conv_term t =
   | Var(x) -> Term.make_var x
   | App(t1, t2) -> Term.apply (conv_term t1) [conv_term t2]
 
+let inv_const c =
+  match c with
+    Const.Event(x) -> Event(x)
+  | Const.Unit -> Unit
+  | Const.True -> True
+  | Const.False -> False
+  | Const.And -> And
+  | Const.Or -> Or
+  | Const.Not -> Not
+  | Const.Lt -> Lt
+  | Const.Gt -> Gt
+  | Const.Leq -> Leq
+  | Const.Geq -> Geq
+  | Const.EqBool -> EqBool
+  | Const.EqInt -> EqInt
+  | Const.Int(n) -> Int(n)
+  | Const.RandInt -> RandInt
+  | Const.Add -> Add
+  | Const.Sub -> Sub
+  | Const.Mul -> Mul
+  | _ -> Format.printf "%a@." Const.pr c; assert false
+
+let rec inv_term t =
+  match t with
+    Term.Const(_, c) -> Const(inv_const c)
+  | Term.Var(_, x) -> Var(Var.string_of x)
+  | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
+
 let conv_fdef (f, args, guard, body) =
   { Fdef.attr = [];
     Fdef.name = Idnt.make f;
@@ -65,39 +93,30 @@ let verify (*cexs*) prog =
   let _ = Verifier.verify [] prog in
   Format.printf "END verification@,@]"
 
-let conv_siz_type sty =
-(**)
-  let _ = Format.printf "%a@." SizType.pr sty in
-  TBase(TUnit, fun t -> [t])
-(**)
-(*
-  let rec aux ty post sub =
-		  match ty with
-		    Unit(x) ->
-        TBase(TUnit, fun t -> [subst_map ((x, t)::sub) (conv_term post)]),
-        sub
-    | Bool(x) ->
-        let sub = (x, t)::sub in
-        TBase(TBool, fun t -> [subst_map sub (conv_term post)]),
-        sub
-    | Int(x) ->
-        let sub = (x, t)::sub in
-        TBase(TInt, fun t -> [subst_map sub (conv_term post)]),
-        sub
-		  | Fun(xs) ->
-        List.map
-          (fun (ty1, pre, ty2) ->
-            let ty1', sub = aux ty1 pre sub in
-            TFun(ty1', aux ty2 post sub))
-          xs,
-        sub
-  in
-  aux sty.ty sty.cond []
-*)
+let rec inv_abst_type aty =
+		match aty with
+    AbsType.Base(AbsType.Unit, x, ts) ->
+      let x = Var.string_of x in
+      TBase(TUnit, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(AbsType.Bool, x, ts) ->
+      let x = Var.string_of x in
+      TBase(TBool, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(AbsType.Int, x, ts) ->
+      let x = Var.string_of x in
+      TBase(TInt, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Fun(x, aty1, aty2) ->
+      let x = Var.string_of x in
+      TFun(fun t -> inv_abst_type aty1, subst_typ x t (inv_abst_type aty2))
 
-let infer ces prog =
+
+let infer [cex] prog =
   let prog = conv_prog prog in
-  let env = Verifier.infer ces prog in
+  let env = Verifier.infer_abst_type cex prog in
+  List.map
+   (fun (f, rty) ->
+     match f with Var.V(id) -> id, inv_abst_type rty)
+   env
+(*
   List.map
     (fun (f, _) ->
       try
@@ -105,3 +124,4 @@ let infer ces prog =
       with Not_found ->
         assert false)
     prog.Prog.types
+*)

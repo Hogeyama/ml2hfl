@@ -46,7 +46,7 @@ let test_copy_copy () =
                Prog.types = [Idnt.make "main", tymain; Idnt.make "copy", tycopy; Idnt.make "check", tycheck];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
-  Verifier.verify [] prog
+  Verifier.infer_abst_type [1; 0; 1; 0; 1] prog
 
 let test_apply () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.ttrue; Fdef.body = Term.apply (Term.make_var "apply") [Term.apply (Term.make_var "check") [Term.make_var "n"]; Term.make_var "n"] } in
@@ -174,7 +174,7 @@ let test_apply_apply2 () =
                Prog.types = [Idnt.make "main", tymain; Idnt.make "apply", tyapply; Idnt.make "apply2", tyapply2; Idnt.make "check", tycheck];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
-  Verifier.verify [[0; 0; 0; 1]] prog
+  Verifier.verify [0; 0; 0; 1] prog
 
 let _ =
   let _ = Cvc3Interface.open_cvc3 () in
