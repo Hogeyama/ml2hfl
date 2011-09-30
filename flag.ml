@@ -39,6 +39,7 @@ let mode = ref Reachability
 let refine = ref RefineDependentType
 let cegar = ref CEGAR_DependentType
 let init_trans = ref true
+let cps_excep = ref false
 
 
 

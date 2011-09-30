@@ -73,7 +73,6 @@ let rec conv_typ ty =
     TBase(TUnit, _) -> SimType.Unit
   | TBase(TInt, _) -> SimType.Int
   | TBase(TBool, _) -> SimType.Bool
-  | TBase(TEvent, _) -> SimType.Fun(SimType.Unit, SimType.Unit)
   | TFun(tmp) ->
       let ty1, ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)

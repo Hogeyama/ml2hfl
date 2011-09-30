@@ -90,11 +90,10 @@ let rec check t typ =
     | {desc=Cons(t1,t2); typ=TList typ'} ->
         check t1 typ';
         check t2 typ
-    | {desc=Match _} -> assert false
     | {desc=Constr(s,ts)} ->
         assert (ts = []);
         assert (Type.can_unify t.typ (get_constr_typ s))
-    | {desc=Match_(t,pats); typ=typ'} ->
+    | {desc=Match(t,pats); typ=typ'} ->
         let aux (p,cond,t) =
           match cond with None -> () | Some cond -> check cond TBool;
           check t typ'
@@ -102,9 +101,9 @@ let rec check t typ =
           check t t.typ;
           List.iter aux pats
     | {desc=Raise t; typ=_} ->
-        check t typ_excep
+        check t !typ_excep
     | {desc=TryWith(t1,t2); typ=typ} ->
-        let e = Id.new_var "e" typ_excep in
+        let e = Id.new_var "e" !typ_excep in
           check t1 typ;
           check t2 (TFun(e,typ))
     | {desc=Event _; typ=typ'} -> assert (typ' = typ_event)
@@ -138,8 +137,7 @@ let rec check t typ =
             | Nil -> assert false
             | Cons(t1,t2) -> assert false
             | Constr(s,ts) -> assert false
-            | Match(t1,t2,y,z,t3) -> assert false
-            | Match_(t1,pats) -> assert false
+            | Match(t1,pats) -> assert false
             | TryWith(t1,pats) -> assert false
           *)          Format.printf "check: %a, %a@." (print_term' false) t Syntax.print_typ t.typ; assert false
 

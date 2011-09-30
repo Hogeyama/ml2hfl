@@ -31,6 +31,137 @@ let get_preds = function
 
 
 
+
+
+
+
+
+
+exception PolyTypeOccur
+
+let rec abst_recdata_typ = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> assert false
+  | TInt ps -> TInt ps
+  | TRInt _ -> assert false
+  | TVar _ -> raise PolyTypeOccur
+  | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
+  | TList typ -> TList (abst_recdata_typ typ)
+  | typ when typ = !typ_excep ->
+(*
+      let x = Id.new_var "path" (TList(TInt[])) in
+        TFun(x, TInt[])
+*)
+      TInt[]
+  | TConstr(s,_) -> assert false
+  | TUnknown -> assert false
+  | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
+
+let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
+
+let abst_label c = make_int (Type_decl.constr_pos c)
+
+let rec abst_recdata_pat p =
+  let typ = abst_recdata_typ p.pat_typ in
+  let desc,cond =
+    match p.pat_desc with
+        PVar x -> PVar x, []
+      | PConst t -> PConst t, []
+      | PConstruct(c,[]) ->
+(*
+          let x = Id.new_var "x" typ in
+          let cond = [make_eq (make_app (make_var x) [make_nil (TList(TInt[]))]) (abst_label c)] in
+            PVar x, cond
+*)
+          let x = Id.new_var "x" typ in
+            PVar x, [make_eq (make_var x) (abst_label c)]
+      | PConstruct(c,ps) -> assert false
+      | PNil -> PNil, []
+      | PCons(p1,p2) ->
+          let p1',cond1 = abst_recdata_pat p1 in
+          let p2',cond2 = abst_recdata_pat p2 in
+            PCons(p1',p2'), cond1@@cond2
+      | PRecord _ -> assert false
+      | POr _ -> assert false
+      | PPair(p1,p2) ->
+          let p1',cond1 = abst_recdata_pat p1 in
+          let p2',cond2 = abst_recdata_pat p2 in
+            PPair(p1',p2'), cond1@@cond2
+  in
+    {pat_desc=desc; pat_typ=typ}, cond
+
+let rec abst_recdata t =
+  let typ' = abst_recdata_typ t.typ in
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | Var x -> Var (abst_recdata_var x)
+      | NInt x -> NInt (abst_recdata_var x)
+      | RandInt None -> RandInt None
+      | RandInt (Some t) -> RandInt (Some (abst_recdata t))
+      | RandValue(typ,None) -> RandValue(typ,None)
+      | RandValue(typ,Some t) -> RandValue(typ,Some (abst_recdata t))
+      | Fun(x,t) -> Fun(abst_recdata_var x, abst_recdata t)
+      | App(t, ts) -> App(abst_recdata t, List.map abst_recdata ts)
+      | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
+      | Branch(t1, t2) -> Branch(abst_recdata t1, abst_recdata t2)
+      | Let(flag, f, xs, t1, t2) -> Let(flag, abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t1, abst_recdata t2)
+      | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
+      | Not t -> Not (abst_recdata t)
+      | Label(b, t) -> Label(b, abst_recdata t)
+      | Event s -> Event s
+      | Record _ -> assert false
+      | Proj _ -> assert false
+      | SetField _ -> assert false
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(abst_recdata t1, abst_recdata t2)
+      | Constr(c,[]) ->
+(*
+          let x = Id.new_var "path" (TList(TInt[])) in
+            Fun(x,  abst_label c)
+*)
+          (abst_label c).desc
+      | Constr(c,ts) -> assert false
+      | Match(t1,pats) ->
+          let aux (p,c,t) =
+            let make_and' t1 = function
+                None -> Some t1
+              | Some t2 -> Some (make_and t1 t2)
+            in
+            let p',cs = abst_recdata_pat p in
+              p', List.fold_right make_and' cs c, abst_recdata t
+          in
+          let pats' = List.map aux pats in
+            Match(abst_recdata t1, pats')
+      | Raise t -> Raise (abst_recdata t)
+      | TryWith(t1,t2) -> TryWith(abst_recdata t1, abst_recdata t2)
+      | Bottom -> Bottom
+      | Pair(t1,t2) -> Pair(abst_recdata t1, abst_recdata t2)
+      | Fst t -> Fst (abst_recdata t)
+      | Snd t -> Snd (abst_recdata t)
+  in
+    {desc=desc; typ=typ'}
+
+let abstract_recdata t =
+  let t' = abst_recdata t in
+    typ_excep := abst_recdata_typ !typ_excep;
+    t'
+  
+
+
+
+
+
+
+
+
+
+
 let rec abstract_mutable t =
   let desc =
     match t.desc with
@@ -60,10 +191,9 @@ let rec abstract_mutable t =
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abstract_mutable t1, abstract_mutable t2)
       | Constr(s,ts) -> Constr(s, List.map abstract_mutable ts)
-      | Match(t1,t2,x,y,t3) -> Match(abstract_mutable t1, abstract_mutable t2, x, y, abstract_mutable t3)
-      | Match_(t,pats) ->
+      | Match(t,pats) ->
           let aux (pat,cond,t) = pat,apply_opt abstract_mutable cond, abstract_mutable t in
-            Match_(abstract_mutable t, List.map aux pats)
+            Match(abstract_mutable t, List.map aux pats)
   in
     {desc=desc; typ=t.typ}
 
@@ -160,9 +290,12 @@ let rec abst_ext_funs t =
 
 let make_tl n t =
   let x = Id.new_var "x" (TInt[]) in
-  let t1 = make_fun x (make_app (make_fst t) (make_add (make_var x) (make_int n))) in
+  let t1 = make_fun x (make_app (make_fst t) [make_add (make_var x) (make_int n)]) in
   let t2 = make_sub (make_snd t) (make_int n) in
     make_pair t1 t2
+
+    
+
 
 let rec abst_list_typ = function
     TUnit -> TUnit
@@ -177,11 +310,11 @@ let rec abst_list_typ = function
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
 
-let abst_var x = Id.set_typ x (abst_list_typ (Id.typ x))
+let abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
 let rec get_match_bind_cond t p =
   match p.pat_desc with
-      PVar x -> [abst_var x, t], true_term
+      PVar x -> [abst_list_var x, t], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false
     | PNil -> [], make_eq (make_snd t) (make_int 0)
@@ -196,7 +329,7 @@ let rec get_match_bind_cond t p =
         let rec aux bind cond i = function
             [] -> bind, cond
           | p::ps ->
-              let bind',cond' = get_match_bind_cond (make_app (make_fst t) (make_int i)) p in
+              let bind',cond' = get_match_bind_cond (make_app (make_fst t) [make_int i]) p in
                 aux (bind'@@bind) (make_and cond' cond) (i+1) ps
         in
         let len = List.length ps in
@@ -218,17 +351,17 @@ let rec abst_list t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | Var x -> Var (abst_var x)
-      | NInt x -> NInt (abst_var x)
+      | Var x -> Var (abst_list_var x)
+      | NInt x -> NInt (abst_list_var x)
       | RandInt None -> RandInt None
       | RandInt (Some t) -> RandInt (Some (abst_list t))
       | RandValue(typ,None) -> RandValue(typ,None)
       | RandValue(typ,Some t) -> RandValue(typ,Some (abst_list t))
-      | Fun(x,t) -> Fun(x, abst_list t)
+      | Fun(x,t) -> Fun(abst_list_var x, abst_list t)
       | App(t, ts) -> App(abst_list t, List.map abst_list ts)
       | If(t1, t2, t3) -> If(abst_list t1, abst_list t2, abst_list t3)
       | Branch(t1, t2) -> Branch(abst_list t1, abst_list t2)
-      | Let(flag, f, xs, t1, t2) -> Let(flag, abst_var f, List.map abst_var xs, abst_list t1, abst_list t2)
+      | Let(flag, f, xs, t1, t2) -> Let(flag, abst_list_var f, List.map abst_list_var xs, abst_list t1, abst_list t2)
       | BinOp(op, t1, t2) -> BinOp(op, abst_list t1, abst_list t2)
       | Not t -> Not (abst_list t)
       | Label(b, t) -> Label(b, abst_list t)
@@ -246,13 +379,12 @@ let rec abst_list t =
           let xs = Id.new_var "xs" typ' in
           let t11 = make_eq (make_var i) (make_int 0) in
           let t12 = t1' in
-          let t13 = make_app (make_fst (make_var xs)) (make_sub (make_var i) (make_int 1)) in
+          let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
           let t1'' = make_fun i (make_if t11 t12 t13) in
           let t2'' = make_add (make_snd (make_var xs)) (make_int 1) in
             (make_let xs [] t2' (make_pair t1'' t2'')).desc
       | Constr(s,ts) -> assert false
-      | Match(t1,t2,x,y,t3) -> assert false
-      | Match_(t1,pats) ->
+      | Match(t1,pats) ->
           let x,bindx =
             match t1.desc with
                 Var x -> Id.set_typ x (abst_list_typ t1.typ), fun t -> t
@@ -272,6 +404,7 @@ let rec abst_list t =
           in
           let t_pats = List.fold_right aux pats (make_bottom typ') in
             (bindx t_pats).desc
+      | Raise t -> Raise (abst_list t)
       | TryWith(t1,t2) -> TryWith(abst_list t1, abst_list t2)
       | Bottom -> Bottom
       | Pair(t1,t2) -> Pair(abst_list t1, abst_list t2)
@@ -332,8 +465,7 @@ let rec encode_pair t =
       | Nil -> assert false
       | Cons(t1,t2) -> assert false
       | Constr(s,ts) -> assert false
-      | Match(t1,t2,x,y,t3) -> assert false
-      | Match_(t1,pats) -> assert false
+      | Match(t1,pats) -> assert false
       | TryWith(t,pats) -> assert false
       | Pair(t1,t2) -> {desc=
       | Fs
@@ -453,8 +585,7 @@ and abst_datatype t =
       | Record _ ->
           let bind,t' = abst_datatype' t in
             
-      | Match _ -> assert false
-      | Match_(t1,pats) ->
+      | Match(t1,pats) ->
           let x = Id.new_var "x" (abst_datatype_typ t1.typ) in
             assert false;
           let aux (p,cond,t) t' =

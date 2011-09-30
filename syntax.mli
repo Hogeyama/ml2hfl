@@ -32,8 +32,7 @@ and term =
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
-  | Match of typed_term * typed_term * id * id * typed_term
-  | Match_ of typed_term * (typed_pattern * typed_term option * typed_term) list
+  | Match of typed_term * (typed_pattern * typed_term option * typed_term) list
   | Raise of typed_term
   | TryWith of typed_term * typed_term
   | Pair of typed_term * typed_term
@@ -70,6 +69,7 @@ val abst_var : id
 val abst_list_var : id
 
 val typ_event : typ
+val typ_excep : typ ref
 
 val unit_term : typed_term
 val true_term : typed_term
@@ -79,7 +79,7 @@ val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term
-val make_app : typed_term -> typed_term -> typed_term
+val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term
 val make_let : id -> id list -> typed_term -> typed_term -> typed_term
@@ -93,6 +93,7 @@ val make_add : typed_term -> typed_term -> typed_term
 val make_sub : typed_term -> typed_term -> typed_term
 val make_mul : typed_term -> typed_term -> typed_term
 val make_if : typed_term -> typed_term -> typed_term -> typed_term
+val make_branch : typed_term -> typed_term -> typed_term
 val make_eq : typed_term -> typed_term -> typed_term
 val make_lt : typed_term -> typed_term -> typed_term
 val make_gt : typed_term -> typed_term -> typed_term
@@ -115,7 +116,6 @@ val subst : id -> typed_term -> typed_term -> typed_term
 val subst_int : int -> typed_term -> typed_term -> typed_term
 val subst_term : (id * typed_term) list -> typed_term -> typed_term
 val subst_type : id -> typed_term -> typ -> typ
-val fff : typ -> typ
 val get_nint : typed_term -> id list
 val get_int : typed_term -> int list
 val get_fv : typed_term -> id list
@@ -123,7 +123,6 @@ val get_fv2 : typed_term -> id list
 val get_args : typ -> id list
 val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
-val app2app : typed_term -> typed_term list -> typed_term
 val merge_let_fun : typed_term -> typed_term
 (** [let f ... = fun x -> t] や [let f ... = let g x = t in g] を [let f ... x = t] に *)
 val imply : typed_term -> typed_term -> typed_term
@@ -172,6 +171,7 @@ val pp_print_typ : Format.formatter -> typ -> unit
 (** Same as [print_typ] *)
 
 val pp_print_term : Format.formatter -> typed_term -> unit
+val pp_print_term_typ : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 
 val print_term : bool -> Format.formatter -> typed_term -> unit

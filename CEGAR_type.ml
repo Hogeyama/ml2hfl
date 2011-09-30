@@ -7,7 +7,6 @@ type base =
   | TBool
   | TList
   | TTuple of int
-  | TEvent
 
 type 'a t =
     TBase of base * ('a -> 'a list)
@@ -15,6 +14,8 @@ type 'a t =
   | TApp of 'a t * 'a t
   | TFun of ('a -> 'a t * 'a t)
 
+
+let typ_event = TFun(fun _ -> TBase(TUnit, fun _ -> []), TBase(TUnit, fun _ -> []))
 
 let is_base_typ = function
     TBase _ -> true

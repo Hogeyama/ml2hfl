@@ -63,10 +63,13 @@ let main filename in_channel =
     if !Flag.init_trans
     then
       let t = Syntax.copy_poly_funs t in
+      let () = if true then Format.printf "copy_poly::@.%a\n@." Syntax.pp_print_term_typ t in
       let () = Type_check.check t in
+      let t = Abstract.abstract_recdata t in
+      let () = if true then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term t in
       let t = Abstract.abstract_list t in
       let () = if true then Format.printf "abst_list::@.%a\n@." Syntax.pp_print_term t in
-      let t = CPS.trans t in
+      let t = if !Flag.cps_excep then CPS.trans_exc t else CPS.trans t in
       let () = if true then Format.printf "CPS::@.%a\n\n@." Syntax.pp_print_term t in
       let t = CPS.remove_pair t in
       let () = if true then Format.printf "remove_pair::@.%a\n\n@." Syntax.pp_print_term t in
@@ -103,6 +106,7 @@ let spec =
    "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " use sized type system for CEGAR";
    "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " same as -st";
    "-na", Arg.Clear Flag.init_trans, " do not abstract data";
+   "-exn", Arg.Set Flag.cps_excep, " CPS transformation for exception";
   ]
 
 

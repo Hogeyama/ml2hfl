@@ -26,7 +26,7 @@ val checksat : Syntax.typed_term -> bool
 val interpolation : Syntax.typed_term list -> Syntax.typed_term list -> Syntax.typed_term
 (** [interpolation ts1 ts2] で，[ts1],[ts2] それぞれの conjunction の interpolant を求める．*)
 
-val congruent : Syntax.typed_term list -> Syntax.typed_term Type.t -> Syntax.typed_term Type.t -> bool
+val congruent : Syntax.typed_term list -> Syntax.typ -> Syntax.typ -> bool
 (** [congruent cond typ1 typ2] で型（述語）の意味が同じかどうかを調べる *) 
 
 val get_solution : Syntax.typed_term -> Syntax.typed_term -> string list

@@ -278,7 +278,7 @@ let rec trans_exc ct ce t =
           trans_exc ct'' ce t1
     | Raise t -> trans_exc ce ce t
     | TryWith(t1,{desc=Fun(x,t2)}) ->
-        let ce' e = trans_exc ct ce t2 in
+        let ce' e = subst x e (trans_exc ct ce t2) in
           trans_exc ct ce' t1
     | Bottom -> make_bottom TUnit
     | _ -> (Format.printf "%a@." pp_print_term t; assert false)

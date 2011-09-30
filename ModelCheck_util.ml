@@ -198,7 +198,6 @@ let make_bottom (env,defs,main) =
           let typ' =
             match typ with
                 TFun typ -> fst (typ (Const Unit))
-              | TBase(TEvent,_) -> TBase(TEvent,nil)
               | _ -> assert false
           in
             App(aux_term (t1,typ), aux_term (t2,typ'))

@@ -43,7 +43,8 @@ all: lib depend main
 
 byte: $(NAME).byte
 opt: $(NAME).opt
-opt2: $(NAME)2.opt
+byte2: $(NAME).byte2
+opt2: $(NAME).opt2
 lib: ocaml csisat
 
 
@@ -104,7 +105,10 @@ $(NAME).byte: $(CMO)
 $(NAME).opt: $(CMX)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
 
-$(NAME)2.opt: $(CMXSUB)
+$(NAME).byte2: $(CMOSUB)
+	$(OCAMLC) $(OCAMLFLAGS) -o $@ $(CMASUB) $(CMOSUB)
+
+$(NAME).opt2: $(CMXSUB)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXASUB) $(CMXSUB)
 
 

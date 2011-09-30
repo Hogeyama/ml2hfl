@@ -1,6 +1,7 @@
 
 open Syntax
 open Type
+open Utilities
 
 type kind =
     TKVariant of (string * typ list) list
@@ -26,8 +27,14 @@ let add_exc_decl s typs =
 
 let get_constr_typ s =
   if in_exc_decls s
-  then typ_excep
+  then !typ_excep
   else assert false
+
+
+
+
+let assoc_typ s = List.assoc s !typ_decls
+let assoc_exc s = List.assoc s !exc_decls
 
 
 
@@ -44,3 +51,5 @@ let constr_pos s =
         len - i - 1
     else find (fun (s',_) -> s=s') 0 !typ_decls
 
+
+let rec get_exc_typs = uniq compare (rev_flatten_map snd !exc_decls)

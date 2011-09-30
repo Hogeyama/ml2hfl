@@ -17,9 +17,6 @@ type 'a t =
   | TVariant of 'a t
 
 
-let typ_excep = TConstr("exn", true)
-
-
 let rec decomp_tfun = function
     TFun(x,typ) ->
       let xs,typ = decomp_tfun typ in
@@ -121,4 +118,24 @@ and print_preds print_pred fm = function
   | x1::x2::xs -> Format.fprintf fm "%a;%a" print_pred x1 (print_preds print_pred) (x2::xs)
 
 
+
+
+let rec same_shape typ1 typ2 =
+  match typ1,typ2 with
+      TUnit,TUnit -> true
+    | TBool,TBool -> true
+    | TAbsBool,TAbsBool -> true
+    | TInt _,TInt _ -> true
+    | TRInt _, TRInt _ -> true
+    | TVar{contents=None}, TVar{contents=None} -> true
+    | TVar{contents=Some typ1},TVar{contents=Some typ2} -> same_shape typ1 typ2
+    | TFun(x1,typ1),TFun(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
+    | TList typ1,TList typ2 -> same_shape typ1 typ2
+    | TPair(typ11,typ12),TPair(typ21,typ22) -> same_shape typ11 typ21 && same_shape typ12 typ22
+    | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
+    | TUnknown, TUnknown -> true
+    | TAbs _, _ -> assert false
+    | _, TAbs _ -> assert false
+    | TVariant _,_ -> assert false
+    | _,TVariant _ -> assert false
 

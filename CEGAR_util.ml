@@ -157,7 +157,7 @@ let rec trans_typ = function
   | Type.TVar _  -> TBase(TUnit, nil)
   | Type.TFun(x,typ) -> TFun(fun _ -> trans_typ (Id.typ x), trans_typ typ)
   | Type.TList _ -> assert false
-  | Type.TConstr("event",_) -> TBase(TEvent,nil)
+  | Type.TConstr("event",_) -> assert false
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
@@ -182,7 +182,7 @@ let rec trans_typ' = function
       let typ2 = trans_typ' typ in
         TFun(fun y -> subst_typ x' y typ1, subst_typ x' y typ2)
   | Type.TList _ -> assert false
-  | Type.TConstr("event",_) -> TBase(TEvent,nil)
+  | Type.TConstr("event",_) -> assert false
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
@@ -329,7 +329,7 @@ exception TypeBottom
 
 
 let rec get_const_typ = function
-    Event _ -> TBase(TEvent, nil)
+    Event _ -> typ_event
   | Label _ -> TFun(fun y -> TBase(TUnit,nil), TBase(TUnit,nil))
   | Unit _ -> TBase(TUnit, nil)
   | True _ -> typ_bool
@@ -368,7 +368,6 @@ let rec get_typ env = function
       let typ2 =
         match get_typ env t1 with
             TFun typ -> snd (typ t2)
-          | TBase(TEvent,_) -> TBase(TUnit,fun _ -> [])
           | _ -> assert false
       in
         typ2

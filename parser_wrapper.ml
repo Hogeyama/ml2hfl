@@ -300,7 +300,7 @@ let rec get_bindings pat t =
     | PNil,_ -> assert false
     | PCons _,_ -> assert false
     | POr _,_ -> assert false
-    | _ -> assert false
+
 
 let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   add_type_env env typ;
@@ -345,7 +345,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                       | _ -> from_pattern p, None, from_expression e
                   in
                   let f = Id.new_var "f" (TFun(x,typ2)) in
-                    Let(Flag.Nonrecursive, f, [x], {desc=Match_({desc=Var x;typ=Id.typ x}, List.map aux pes);typ=typ2}, {desc=Var f;typ=typ'})
+                    Let(Flag.Nonrecursive, f, [x], {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pes);typ=typ2}, {desc=Var f;typ=typ'})
               | _ -> assert false
           end
       | Texp_apply(e, es) ->
@@ -389,20 +389,20 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
               | Partial ->
                   let p = {pat_desc=PVar(Id.new_var "u" t.typ); pat_typ=t.typ} in
                   let u = Id.new_var "u" TUnit in
-                  let t = make_let u [] (make_app fail_term unit_term) (make_bottom typ') in
+                  let t = make_let u [] (make_app fail_term [unit_term]) (make_bottom typ') in
                     pts@[p, None, t]
           in
-            Match_(t, pts')
+            Match(t, pts')
       | Texp_try(e,pes) ->
           let aux (p,e) = 
             match e.exp_desc with
                 Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
               | _ -> from_pattern p, None, from_expression e
           in
-          let x = Id.new_var "e" typ_excep in
+          let x = Id.new_var "e" !typ_excep in
           let pes' = List.map aux pes in
           let pes'' = pes' @ [] in
-            TryWith(from_expression e, make_fun x {desc=Match_(make_var x, pes''); typ=typ'})
+            TryWith(from_expression e, make_fun x {desc=Match(make_var x, pes''); typ=typ'})
       | Texp_tuple(e1::e2::es) ->
           let t1 = from_expression e1 in
           let t2 = from_expression e2 in
@@ -467,10 +467,10 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
       | Texp_override _ -> unsupported "expression (override)"
       | Texp_letmodule _ -> unsupported "expression (module)"
-      | Texp_assert e -> If(from_expression e, unit_term, make_app fail_term unit_term)
+      | Texp_assert e -> If(from_expression e, unit_term, make_app fail_term [unit_term])
       | Texp_assertfalse _ ->
           let u = Id.new_var "u" TUnit in
-            (make_let u [] (make_app fail_term unit_term) (make_bottom typ')).desc
+            (make_let u [] (make_app fail_term [unit_term]) (make_bottom typ')).desc
       | Texp_lazy e -> assert false
           (*
             let u = Id.new_var "u" TUnit in
@@ -529,7 +529,7 @@ let from_use_file ast =
             aux fs
         in
         let map1 = List.map2 (fun f f' ->  f, make_var f') fs fs' in
-        let map2 = List.map2 (fun f f' ->  f', app2app (make_var f) (List.map make_var (aux f))) fs fs' in
+        let map2 = List.map2 (fun f f' ->  f', make_app (make_var f) (List.map make_var (aux f))) fs fs' in
         let sbst t = subst_term map2 (subst_term map1 t) in
         let defs' = List.map (fun (f,t) -> f, List.fold_right (fun f t -> {desc=Fun(f,t);typ=TFun(f,t.typ)}) (aux f) (sbst t)) defs in
           List.fold_right (fun (f,t1) t2 -> {desc=Let(Flag.Recursive, f, [], t1, t2);typ=t2.typ}) defs' (sbst t)

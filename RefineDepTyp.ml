@@ -373,24 +373,7 @@ let rec process_term trace term traces env pcounter =
     | Cons _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
-    | Match(_,t2,_,_,t3) ->
-        if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
-          let trace = trace @ [EventNode("then_fail")] in
-          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-            [MyFail(new_tinfo()), trace, traces]
-        else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
-          let trace = trace @ [EventNode("else_fail")] in
-          let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-            [MyFail(new_tinfo()), trace, traces]
-        else if List.mem [] traces then (*???*)
-          []
-        else
-          let tts, tfs = List.partition (function LabNode b::_ -> b | _ -> assert false) traces in
-          let tts = List.map List.tl tts in
-          let tfs = List.map List.tl tfs in
-            (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
-              (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
-    | Match_(_,pats) ->
+    | Match(_,pats) ->
         let header = List.hd (List.hd traces) in
           begin
             match header with
@@ -414,7 +397,7 @@ let rec process_term trace term traces env pcounter =
     | RandInt None ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
-    | RandInt (Some t) -> process_term trace (app2app t [{desc=RandInt None;typ=TInt[]}]) traces env pcounter
+    | RandInt (Some t) -> process_term trace (make_app t [{desc=RandInt None;typ=TInt[]}]) traces env pcounter
     | Bottom ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
@@ -812,7 +795,7 @@ let rec chk_term rtenv term id trace traces =
               (Cterm({desc=Not t1;typ=TBool})) :: (chk_term rtenv t3 id (trace @ [LabNode(false)]) tts)
           in
             c1 @ c2
-    | Match_(t,pats) ->
+    | Match(t,pats) ->
         let header = List.hd (List.hd traces) in
           begin
             match header with
@@ -1855,7 +1838,6 @@ let rec trans_typ = function
     CT.TBase(CT.TUnit,_) -> TUnit
   | CT.TBase(CT.TInt,_) -> TInt[]
   | CT.TBase(CT.TBool,_) -> TBool
-  | CT.TBase(CT.TEvent,_) -> typ_event
   | CT.TFun typ ->
       let typ1,typ2 = typ (CS.Const CS.Unit) in
         TFun(Id.new_var "x" (trans_typ typ1), trans_typ typ2)
@@ -1892,7 +1874,7 @@ let rec trans_term env = function
   | CS.App(CS.App(CS.Const CS.Add, t1), t2) -> make_add (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Sub, t1), t2) -> make_sub (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Mul, t1), t2) -> make_mul (trans_term env t1) (trans_term env t2)
-  | CS.App(t1,t2)  -> make_app (trans_term env t1) (trans_term env t2)
+  | CS.App(t1,t2)  -> make_app (trans_term env t1) [trans_term env t2]
   | CS.Let _ -> assert false
   | t -> CP.print_term Format.std_formatter t; assert false
 

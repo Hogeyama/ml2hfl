@@ -13,7 +13,6 @@ type typ =
   | TVar of typ option ref
   | TFun of typ * typ
   | TTuple of typ list
-  | TEvent
 
 let rec print_typ fm = function
     TUnit -> Format.fprintf fm "unit"
@@ -23,7 +22,6 @@ let rec print_typ fm = function
   | TVar{contents=None} -> Format.fprintf fm "?"
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
   | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * " false) typs
-  | TEvent _ -> Format.fprintf fm "event"
 
 let new_tvar () = TVar (ref None)
 
@@ -40,14 +38,11 @@ let rec unify typ1 typ2 =
     | TUnit, TUnit -> ()
     | TBool, TBool -> ()
     | TInt, TInt -> ()
-    | TEvent, TEvent -> ()
-    | TEvent, typ
-    | typ, TEvent ->
-        let typ' = new_tvar () in
-        unify typ (TFun(typ',typ'))
     | TFun(typ11, typ12), TFun(typ21, typ22) ->
         unify typ11 typ21;
         unify typ12 typ22
+    | TTuple [], typ
+    | typ, TTuple [] -> unify TUnit typ
     | TTuple typs1, TTuple typs2 ->
         List.iter2 unify typs1 typs2
     | TVar r1, TVar r2 when r1 == r2 -> ()
@@ -68,10 +63,9 @@ let rec trans_typ = function
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> CEGAR_type.TFun(fun _ -> trans_typ typ1,trans_typ typ2)
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
-  | TEvent -> CEGAR_type.TBase(CEGAR_type.TEvent,nil)
 
 let get_typ_const = function
-  | Event _ -> TEvent
+  | Event _ -> TFun(TUnit,TUnit)
   | Label _ ->
       let typ = new_tvar() in
         TFun(typ,typ)
