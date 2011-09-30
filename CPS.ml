@@ -242,7 +242,9 @@ let rec trans_exc ct ce t =
     | Event s ->
         let u = Id.new_var "u" TUnit in
         let k = Id.new_var "k" (TFun(u,TUnit)) in
-        let t = make_fun u (make_fun k (make_app (make_var k) [make_var u])) in
+        let e = Id.new_var "e" !typ_excep in
+        let h = Id.new_var "h" (TFun(e,TUnit)) in
+        let t = make_fun u (make_fun k (make_fun h (make_app (make_var k) [make_var u]))) in
         let t' =
           match ct t with
               {desc=App(t', [{desc=Unit}; {desc=Var k}])} when t' = t -> make_app (make_var k) [unit_term]

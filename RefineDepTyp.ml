@@ -1887,7 +1887,6 @@ let trans_def env_cegar env (f,xs,t1,t2) =
 
 let trans (env,defs,main) =
   let _,defs,_ = CU.to_if_exp (env,defs,main) in
-  let env,defs,_ = Typing.infer (env,defs,main) in
   let env' = trans_env env in
     List.map (trans_def env env') defs, trans_var env' main
 
@@ -1967,7 +1966,7 @@ let infer ces t =
     rev_flatten_map aux fs
 
 
-
+(*
 let infer_test ces t =
   let aux = function
       0 -> Syntax.LabNode true
@@ -1986,5 +1985,5 @@ let infer_test ces t =
     with Not_found -> []
   in
     rev_flatten_map aux fs
-
+*)
 
