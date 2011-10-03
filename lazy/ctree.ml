@@ -10,22 +10,33 @@ type s =
 
 type t = Node of (int * int list) * Term.t * (s * t) list ref
 
-type u = { is_end: unit -> bool; get: unit -> t list; next: unit -> t; update: t list -> unit }
-
-let gen =
+(* generate id of a function call *)
+let gen_id =
   let cnt = ref 0 in
   fun () -> cnt := !cnt + 1; !cnt
 
 let ret_args f uid arity = 
   Term.make_var2 (Var.T(f, uid, arity)),
-  List.mapi (fun i _ -> Term.make_var2 (Var.T(f, uid, i))) (List.make arity ())
+  List.init arity (fun i -> Term.make_var2 (Var.T(f, uid, i)))
 
-let node_name uid t = (String.of_int uid) ^ ": " ^ Term.string_of t
+let init_ctree_of prog = 
+  let uid = gen_id () in
+  let ty_main = Prog.type_of prog (Var.V(prog.Prog.main)) in
+  let ret, args =
+    ret_args
+     (Var.V(prog.Prog.main))
+     uid
+     (SimType.arity ty_main)
+  in
+  let _, retty = SimType.args_ret ty_main in
+  Node((uid, []), Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args), retty), ref [])
+
 
 let eq_xtty (x, t, ty) =
   Term.eq_ty ty (Term.make_var2 x) t
 
 let save_as_dot filename rt wl =
+  let node_name uid t = (String.of_int uid) ^ ": " ^ Term.string_of t in
   let f s =
     match s with
       Call(_, t) -> Term.string_of t
@@ -62,6 +73,8 @@ let save_as_dot filename rt wl =
 let rec paths_of (Node(_, _, cs)) =
   Util.concat_map (fun (g, n) -> let ps = paths_of n in if ps = [] then [[g]] else List.map (fun p -> g::p) ps) !cs
 
+let error_paths_of rt = List.filter (fun p -> List.last p = Error) (paths_of rt)
+
 let rec pr_path ppf p =
   let pr ppf s =
     match s with
@@ -78,49 +91,35 @@ let rec pr_path ppf p =
   in
   Format.fprintf ppf "%a" (Util.pr_list pr "") p
 
-let bf_strategy rt =
-  let wlr = ref [rt] in
-  { is_end = (fun () -> !wlr = []);
-    get = (fun () -> !wlr);
-    next = (fun () -> match !wlr with [] -> raise Not_found | n::wl -> wlr := wl; n);
-    update = (fun wl -> wlr := !wlr @ wl) }
-
-let df_strategy rt =
-  let wlr = ref [rt] in
-  { is_end = (fun () -> !wlr = []);
-    get = (fun () -> !wlr);
-    next = (fun () -> match !wlr with [] -> raise Not_found | n::wl -> wlr := wl; n);
-    update = (fun wl -> wlr := wl @ !wlr) }
-
-let cex_strategy cex rt =
-  let filt rts = List.filter (fun (Node((_, p), _, _)) -> Util.prefix p cex) rts in
-  let wlr = ref (filt [rt]) in
-  { is_end = (fun () -> !wlr = []);
-    get = (fun () -> !wlr);
-    next = (fun () -> match !wlr with [] -> raise Not_found | n::wl -> wlr := wl; n);
-    update = (fun wl -> wlr := (filt wl) @ !wlr) }
-
 let event_fail = "fail"
-let expand prog env (Node((uid, p), t, cs)) =
-  let _ = assert (!cs = []) in
+let expand_node prog fenv (Node((uid, p), t, cs)) =
+  let _ =
+    if !cs <> [] then
+      let _ =  Format.printf "the node is already expanded@." in
+      assert false
+  in
   try
     let ctx, red = Term.redex_of (Prog.type_of prog) t in
-    let env, gns =
+    let fenv, gns =
       match red with
-        Term.App(_, Term.Const(_, Const.Event(id)), (*Term.Const(_, Const.Unit)*)_) when id = event_fail ->
-          env, [Error, Node((gen (), p), Term.Error([]), ref [])]
+        Term.App(_, Term.Const(_, Const.Event(id)), _(*???*)) when id = event_fail ->
+          fenv, [Error, Node((gen_id (), p), Term.Error([]), ref [])]
       | Term.Const(_, Const.RandInt) ->
 (*
       | Term.App(_, Term.Const(_, Const.RandInt), (*Term.Const(_, Const.Unit)*)_) ->
 *)
-          env, [Nop, Node((gen (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
+          fenv, [Nop, Node((gen_id (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
       | Term.App(_, _, _) ->
-          let uid = gen () in
-          let tmp, args = Term.fun_args red in
-          let a, f = match tmp with Term.Var(a, f) -> a, f | _ -> let _ = Format.printf "%a@." Term.pr red in assert false in
+          let func, args = Term.fun_args red in
+          let attr, f =
+            match func with
+              Term.Var(attr, f) -> attr, f
+            | _ -> let _ = Format.printf "%a cannot be applied@." Term.pr red in assert false
+          in
+          let uid = gen_id () in
           let argtys, retty = SimType.args_ret (Prog.type_of prog f) in
           let ret, fargs = ret_args f uid (SimType.arity (Prog.type_of prog f)) in
-          let tt = Term.Ret([], ret, Term.Call([], Term.Var(a, f), fargs), retty) in
+          let reduct = Term.Ret([], ret, Term.Call([], Term.Var(attr, f), fargs), retty) in
           let faargs =
             try
               List.combine fargs args
@@ -130,39 +129,37 @@ let expand prog env (Node((uid, p), t, cs)) =
               assert false
             end
           in
-          let faargs1, faargs2 = List.partition
-            (function (Term.Var(_, x), _) ->
-              (match Prog.type_of prog x with
-                SimType.Fun(_, _) -> false
-              | _ -> true)
-            | _ -> assert false)
+          let faargs_fun = List.filter
+            (function (Term.Var(_, x), _) -> not (Prog.is_base prog x) | _ -> assert false)
             faargs
           in
 (*
           let pr ppf (t1, t2) = Format.fprintf ppf "%a: %a" Term.pr t1 Term.pr t2 in
-          let _ = Format.printf "faargs2: %a@." (Util.pr_list pr ", ") faargs2 in
+          let _ = Format.printf "faargs_fun: %a@." (Util.pr_list pr ", ") faargs_fun in
 *)
-          (fun x ->
+          let fenv x =
             try
               Util.find_map
                 (function (Term.Var(_, y), aarg) ->
                   if Var.equiv x y then aarg else raise Not_found
                 | _ -> assert false)
-                faargs2
+                faargs_fun
             with Not_found ->
-              env x),
+              fenv x
+          in
+          fenv,
           [Arg
             (List.map2
               (function (Term.Var(_, farg), aarg) ->
                 fun argty -> farg, aarg, argty
               | _ -> assert false)
               faargs argtys),
-          Node((uid, p), ctx tt, ref [])]
+          Node((uid, p), ctx reduct, ref [])]
       | Term.Call(_, Term.Var(_, g), args) ->
           (match g with
             Var.V(f) ->
               let fdefs = Prog.fdefs_of prog f in
-              env,
+              fenv,
               List.mapi
                 (fun i fd ->
                   let fargs = List.map (fun arg -> Var.V(arg)) fd.Fdef.args in
@@ -177,57 +174,22 @@ let expand prog env (Node((uid, p), t, cs)) =
                   in
                   let sub x = List.assoc x faargs in
                   Call((g, uid), Term.subst sub fd.Fdef.guard),
-                  Node((gen (), p @ [i]), ctx (Term.subst sub fd.Fdef.body), ref []))
+                  Node((gen_id (), p @ [i]), ctx (Term.subst sub fd.Fdef.body), ref []))
                 fdefs
           | Var.T(_, _, _) ->
-              let f = try env g with Not_found -> assert false in
-              env, [Call((g, uid), Term.ttrue), Node((gen (), p), ctx (Term.apply f args), ref [])])
+              let f = try fenv g with Not_found -> assert false in
+              fenv, [Call((g, uid), Term.ttrue), Node((gen_id (), p), ctx (Term.apply f args), ref [])])
       | Term.Ret(_, Term.Var(a, ret), t, ty) ->
-          env, [Ret(ret, t, ty), Node((gen (), p), ctx (Term.Var(a, ret)), ref [])]
+          fenv, [Ret(ret, t, ty), Node((gen_id (), p), ctx (Term.Var(a, ret)), ref [])]
       | _ -> begin
           Format.printf "%a@." Term.pr red;
           assert false
          end
     in
     let _ = cs := gns in
-    env, List.map snd gns
+    fenv, List.map snd gns
   with Not_found -> (*no redex found*)
-    env, []
+    fenv, []
 
-let expands manual prog rt strategy =
-  let rec loop old_eps env =
-    if strategy.is_end () then
-      List.filter (fun p -> List.last p = Error) (paths_of rt), strategy
-    else
-      let _ = save_as_dot "ctree.dot" rt (strategy.get ()) in
-      let eps = List.filter (fun p -> List.last p = Error) (paths_of rt) in
-      if old_eps = eps then
-          let env, wl = expand prog env (strategy.next ()) in
-          let _ = strategy.update wl in
-          loop eps env
-      else
-        let _ =
-          Format.printf "error paths:@.";
-          List.iter (fun ep -> Format.printf "  %a@." pr_path ep) eps
-        in
-        let rec lp () =
-          let _ = Format.printf "expand the computation tree ? (y/n): %!" in
-          let inp = read_line () in
-          if inp = "y" then
-            true
-          else if inp = "n" then
-            false
-          else
-            lp ()
-        in
-        if manual && lp () then
-          let env, wl = expand prog env (strategy.next ()) in
-          let _ = strategy.update wl in
-          loop eps env
-        else
-          eps, strategy
-  in
-  loop []
-    (fun x ->
-      let _ = Format.printf "\"%a\" not found@." Var.pr x in
-      assert false)
+let find_node rt path = assert false
+

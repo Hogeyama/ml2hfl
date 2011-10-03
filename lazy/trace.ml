@@ -7,17 +7,6 @@ type t =
 | Cnode of bool * (Var.t * int) * t list
 | Grp of t list
 
-let rec function_calls_of tr =
-  match tr with
-    Sub(_) ->
-      []
-  | Guard(_) ->
-      []
-  | Cnode(_, (x, uid), trs) ->
-      (x, uid)::Util.concat_map function_calls_of trs
-  | Grp(trs) ->
-      Util.concat_map function_calls_of trs
-
 let of_error_path p =
   let rec f x g xttys trs p =
     match p with
@@ -63,6 +52,17 @@ let rec pr ppf tr =
           uid
   | Grp(trs) ->
       Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr ", @,") trs
+
+let rec function_calls_of tr =
+  match tr with
+    Sub(_) ->
+      []
+  | Guard(_) ->
+      []
+  | Cnode(_, (x, uid), trs) ->
+      (x, uid)::Util.concat_map function_calls_of trs
+  | Grp(trs) ->
+      Util.concat_map function_calls_of trs
 
 let rec tlc_of (x, uid) =
   match x with
@@ -114,33 +114,6 @@ let call_of p tr =
   in
   f (fun trs -> if List.length trs = 1 then List.hd trs else Grp(trs)) tr
 
-(*
-let rec callers_of uid tr =
-  let rec f ctx1 ctx2 tr =
-    match tr with
-      Sub(_)
-    | Guard(_) -> raise Not_found
-    | Cnode(op, (x, uid'), trs) ->
-        if uid = uid' then
-          []
-        else
-          ((fun tr -> ctx1 (ctx2 tr)), tr)(*???implicit args*)::
-          (Util.find_map
-            (fun (ctx', tr) ->
-              f (fun tr -> ctx1 (ctx2 tr))
-                (fun tr -> Cnode(op, (x, uid'), ctx' tr))
-                tr)
-            (Util.ctx_elem trs))
-  in
-  f (fun tr -> tr) (fun tr -> tr) tr
-
-let rec_callers_of eptr = function
-  Cnode(_, (y, uid), _) ->
-    List.filter
-      (fun (_, Cnode(_, (x, _), _)) -> x = y)
-      (callers_of uid eptr)
-| _ -> invalid_arg "Trace.rec_callers_of"
-*)
 
 let rec term_of (x, uid) tr =
   let rec f tr =
@@ -296,82 +269,6 @@ let summary_of ctx tr rec_callers =
         else
           [`Post((x', uid'), interp)], ctx [Guard(interp)]
   | _ -> assert false
-(*
-  let sub y uid x =
-    match x with
-      Var.V(_) ->
-        Term.make_var2 x
-    | Var.T(y', uid', arg) ->
-        if y = y' && uid = uid' then
-          Term.make_var2 (Var.T(y', 0(*???*), arg))
-        else
-          Term.make_var2 x
-  in
-  let sub_inv y uid x =
-    match x with
-      Var.V(_) ->
-        Term.make_var2 x
-    | Var.T(y', uid', arg) ->
-        if y = y' && uid' = 0 then
-          Term.make_var2 (Var.T(y', uid, arg))
-        else
-          Term.make_var2 x
-  in
-  let tts =
-    (Term.subst (sub y uid) tfun, Term.subst (sub y uid) tctx)::
-    List.rev
-      (List.map
-        (fun (ctx, (Cnode(_, (y, uid), _) as tr)) ->
-          Term.subst (sub y uid) (term_of (y, uid) tr),
-          Term.subst (sub y uid) (term_of (y, uid) (ctx [])))
-        rec_callers)
-  in
-  let _, _, tfunss, tctxss = List.fold_left
-    (fun (tfuns, tctxs, tfunss, tctxss) (tfun, tctx) ->
-      tfun::tfuns, tctx::tctxs, tfunss @ [tfun::tfuns], tctxss @ [tctx::tctxs])
-    ([], [], [], [])
-    tts in
-  let tfun' = Term.subst (sub_inv y uid) (ApronInterface.widen (List.map Term.bor tfunss)) in
-  let tctx' = Term.subst (sub_inv y uid) (ApronInterface.widen (List.map Term.bor tctxss)) in
-  
-  let t1, t2, t1', t2' =
-    if pre then
-      tctx, tfun, tctx', tfun'
-    else
-      tfun, tctx, tfun', tctx'
-  in
-  let interp =
-    try
-      (if Flag.enable_widening then
-        try
-          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1' Term.pr t2' in
-          CsisatInterface.interpolate t1' t2'
-        with CsisatInterface.No_interpolant ->
-          if pre then
-            if Term.equiv t1 t1' then
-              raise CsisatInterface.No_interpolant
-            else
-              let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2' in
-              CsisatInterface.interpolate t1 t2'
-          else
-            if Term.equiv t2 t2' then
-              raise CsisatInterface.No_interpolant
-            else
-              let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1' Term.pr t2 in
-              CsisatInterface.interpolate t1' t2
-      else
-        raise CsisatInterface.No_interpolant)
-    with CsisatInterface.No_interpolant ->
-      (try
-        if Flag.enable_widening && Term.equiv t1 t1' && Term.equiv t2 t2' then
-          raise CsisatInterface.No_interpolant
-        else
-          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-          CsisatInterface.interpolate t1 t2
-      with CsisatInterface.No_interpolant ->
-        assert false)
-  in
-*)
 
 exception FeasibleErrorTrace of t
 
@@ -407,3 +304,35 @@ let rec summaries_of eptr0 =
   let _ = Format.printf "error trace:@.  %a@." pr eptr in
 *)
   summaries_of_aux [] (flatten (fun op -> not op) eptr0)
+
+
+let infer_env prog eptrs =
+(*
+  let _ = Format.printf "error path trees:@.  @[<v>%a@]@." (Util.pr_list pr_tree "@,") eptrs in
+*)
+  let sums = Util.concat_map
+    (fun eptr ->
+      Format.printf "@.";
+      summaries_of eptr)
+    eptrs
+  in
+(*
+  let _ = List.iter (function `Pre((x, uid), pre) ->
+    Format.printf "Pre(%a,%d): %a@." Var.pr x uid Term.pr pre
+  | `Post((x, uid), post) ->
+    Format.printf "Post(%a,%d): %a@." Var.pr x uid Term.pr post) sums
+  in
+*)
+  let fcs = List.unique (Util.concat_map function_calls_of eptrs) in
+  let env = SizType.of_summaries (Prog.type_of prog) fcs sums in
+  let env' =
+    List.map
+      (fun (f, sty) ->
+        f, SizType.of_simple_type sty)
+      (List.find_all
+        (fun (f, sty) -> not (List.mem_assoc f env))
+        (List.map
+          (fun (f, sty) -> Var.make f, sty)
+          prog.Prog.types))
+  in
+  env @ env'

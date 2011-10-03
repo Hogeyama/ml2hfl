@@ -2,6 +2,12 @@ open ExtList
 
 type t = Unit | Bool | Int | Fun of t * t
 
+let tfun tys =
+  List.fold_right
+    (fun ty1 ty2 -> Fun(ty1, ty2))
+    (Util.init tys)
+    (Util.last tys)
+
 let rec arity ty =
   match ty with
     Unit

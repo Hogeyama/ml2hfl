@@ -1,6 +1,6 @@
 
 let ocaml_lib = ["./ocaml-3.12/stdlib/"]
-let log_dir = "/home/ryosuke/web/cegar/log/"
+let log_dir = "./log"
 let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
 let cvc3 = "./cvc3"
@@ -36,7 +36,7 @@ let use_old_partition = ref false
 let check_fun_arg_typ = false
 
 let mode = ref Reachability
-let refine = ref RefineDependentType
+let refine = ref RefineSizedType
 let cegar = ref CEGAR_DependentType
 let init_trans = ref true
 let cps_excep = ref false

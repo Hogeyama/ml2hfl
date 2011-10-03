@@ -16,12 +16,10 @@ let rec init xs =
  | [x] -> []
  | x::xs' -> x::(init xs')
 
-(*
 let rec last xs =
  match xs with
    [x] -> x
  | x::xs' -> last xs'
-*)
 
 let rec diff xs ys =
   match xs, ys with

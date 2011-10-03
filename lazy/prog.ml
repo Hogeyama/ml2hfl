@@ -13,6 +13,7 @@ let fdefs_of prog id =
   end else
     res
 
+(* support type look-up for structured variables *)
 let rec type_of prog x =
   match x with
     Var.V(id) ->
@@ -35,3 +36,9 @@ let arities prog x =
 let set_arity am prog =
   { prog with fdefs = List.map (Fdef.set_arity am) prog.fdefs }
 *)
+
+(* x is a structured variable *)
+let is_base prog x =
+  match type_of prog x with
+    SimType.Fun(_, _) -> false
+  | _ -> true

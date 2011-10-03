@@ -89,7 +89,7 @@ let conv_prog (typs, fdefs, main) =
 let verify (*cexs*) prog =
   let prog = conv_prog prog in
   Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
-  let _ = Verifier.verify [] prog in
+  let _ = Verifier.verify prog in
   Format.printf "END verification@,@]"
 
 let rec inv_abst_type aty =
