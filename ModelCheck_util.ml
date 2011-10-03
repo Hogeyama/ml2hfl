@@ -5,7 +5,7 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
-type node = BrNode | FailNode | LineNode of int
+type node = BrNode | FailNode | LineNode of int | EventNode of string
 
 
 
@@ -13,7 +13,7 @@ let parse_node = function
     "br" -> BrNode
   | "event_fail" -> FailNode
   | s when s.[0] = 'l' -> LineNode (int_of_string (String.sub s 1 (String.length s - 1)))
-  | _ -> assert false
+  | s -> EventNode s
       
 
 let get_pair s =
@@ -32,6 +32,12 @@ let rec parse_trace s =
       let node,n,s' = get_pair s in
         (node,n) :: parse_trace s'
     | _ -> assert false
+
+let print_node fm = function
+    BrNode -> Format.fprintf fm "br"
+  | FailNode -> Format.fprintf fm "fail"
+  | LineNode n -> Format.fprintf fm "#%d" n
+  | EventNode s -> Format.fprintf fm "%s" s
 
 let print_const fm = function
     Event s -> Format.fprintf fm "event_%s" s
@@ -107,6 +113,7 @@ let model_check_aux ((env,defs,main),spec) =
         then printf "TRecS output: %s@.@." s2
       in
       let ce = parse_trace s2 in
+      let () = if true then List.iter (fun (node,i) -> Format.printf "(%a,%d) " print_node node i) ce in
       let ce' = List.flatten (List.map (function (LineNode i,_) -> [i] | _ -> []) ce) in
         Some ce'
     else
@@ -126,13 +133,33 @@ let make_line_spec n q =
   in
     aux n []
 
+let make_file_spec () =
+  [0, "event_newr", [1];
+   1, "event_read", [1];
+   1, "event_close", [4];
+   0, "event_neww", [2];
+   2, "event_write", [2];
+   2, "event_close", [4];
+   2, "event_newr", [3];
+   1, "event_neww", [3];
+   3, "event_read", [3];
+   3, "event_write", [3];
+   3, "event_close", [3];]
+
+
+let make_base_spec n q = (q, "br", [q;q])::(q, "unit", [])::make_line_spec (n+2) q
+
 let make_spec n =
-  match !Flag.mode with
-      Flag.Reachability ->
-        (0, "br", [0;0])::
-        (0, "unit", [])::
-        make_line_spec (n+2) 0
-    | Flag.FileAccess -> assert false
+  let spec =
+    match !Flag.mode with
+        Flag.Reachability -> make_base_spec n 0
+      | Flag.FileAccess ->
+          let spec = make_file_spec () in
+          let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
+          let spec' = rev_flatten_map (fun i -> make_base_spec n i) (Array.to_list (Array.init qm (fun i -> i))) in
+            spec @@ spec'
+  in
+    List.sort compare spec
 
 
 let capitalize_var = String.capitalize

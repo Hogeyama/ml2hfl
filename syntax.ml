@@ -137,6 +137,7 @@ let make_or t1 t2 =
 let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt[]}
 let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt[]}
 let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt[]}
+let make_neg t = make_sub (make_int 0) t
 let make_if t1 t2 t3 =
   assert (Type.can_unify t1.typ TBool);
   assert (Type.can_unify t2.typ t3.typ);
@@ -147,6 +148,8 @@ let make_branch t2 t3 =
 let make_eq t1 t2 =
   assert (t1.typ = t2.typ);
   {desc=BinOp(Eq, t1, t2); typ=TBool}
+let make_neq t1 t2 =
+  make_not (make_eq t1 t2)
 let make_lt t1 t2 =
   assert (Type.can_unify t1.typ (TInt[]));
   assert (Type.can_unify t2.typ (TInt[]));

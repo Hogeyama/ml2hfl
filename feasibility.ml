@@ -18,16 +18,17 @@ let rec check ce constr env defs t k =
       check ce constr env defs t1 (fun env ce1 t1' ->
       check ce1 constr env defs t2 (fun env ce2 t2' ->
         k env ce2 (make_app (Const op) [t1';t2'])))
+  | App(Const (Event s), t) -> check ce constr env defs t k
   | App(t1,t2) ->
       check ce constr env defs t1 (fun env ce1 t1' ->
       check ce1 constr env defs t2 (fun env ce2 t2' ->
         let t1'',ts = decomp_app (App(t1',t2')) in
-        let n = List.hd ce2 in
-        let ce2' = List.tl ce2 in
         let _,xs,_,_ = List.find (fun (f,_,_,_) -> Var f = t1'') defs in
           if List.length xs > List.length ts
           then k env ce2 (App(t1',t2'))
           else
+            let n = List.hd ce2 in
+            let ce2' = List.tl ce2 in
             let f,xs,tf1,tf2 = List.nth defs n in
             assert (Var f = t1'');
             let ts1,ts2 = take2 ts (List.length xs) in

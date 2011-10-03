@@ -35,7 +35,7 @@ let use_unknown = ref false
 let use_old_partition = ref false
 let check_fun_arg_typ = false
 
-let mode = ref Reachability
+let mode = ref FileAccess
 let refine = ref RefineSizedType
 let cegar = ref CEGAR_DependentType
 let init_trans = ref true

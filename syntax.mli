@@ -92,9 +92,11 @@ val make_or : typed_term -> typed_term -> typed_term
 val make_add : typed_term -> typed_term -> typed_term
 val make_sub : typed_term -> typed_term -> typed_term
 val make_mul : typed_term -> typed_term -> typed_term
+val make_neg : typed_term -> typed_term
 val make_if : typed_term -> typed_term -> typed_term -> typed_term
 val make_branch : typed_term -> typed_term -> typed_term
 val make_eq : typed_term -> typed_term -> typed_term
+val make_neq : typed_term -> typed_term -> typed_term
 val make_lt : typed_term -> typed_term -> typed_term
 val make_gt : typed_term -> typed_term -> typed_term
 val make_leq : typed_term -> typed_term -> typed_term
