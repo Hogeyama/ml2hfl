@@ -42,7 +42,13 @@ let refine ces (env,defs,main) : prog =
   let ces, refine =
     match !Flag.refine with
         Flag.RefineSizedType ->
-          let ces' = List.map (fun ce -> List.flatten (List.map (fun n -> if n>=2 then [n-2] else []) ce)) ces in
+          let rec aux = function
+              n::ns when n >= 2 -> 0 :: aux ns
+            | n::_::ns when n <= 2 -> n :: aux ns
+            | [] -> []
+            | _ -> assert false
+          in
+          let ces' = List.map aux ces in
             ces', LazyInterface.infer
       | Flag.RefineDependentType ->
           let rec f ces prog =

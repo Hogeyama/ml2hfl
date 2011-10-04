@@ -56,12 +56,14 @@ let rec abstract_term env cond pbs t typ =
           coerce env cond pbs typ' typ (Const (Tuple 0))
     | Var x -> coerce env cond pbs (List.assoc x env) typ t
     | t when is_base_term env t ->
-        let typ' =
+        let typ',src =
           match get_typ env t with
-              TBase(b,_) -> TBase(b, fun x -> [make_eq_int x t])
+              TBase(TInt,_) -> TBase(TInt, fun x -> [make_eq_int x t]), App(Const (Tuple 1), Const True)
+            | TBase(TBool,_) -> TBase(TBool, fun x -> [make_eq_bool x t]), App(Const (Tuple 1), Const True)
+            | TBase(TUnit,_) -> TBase(TUnit, fun x -> []), Const (Tuple 0)
             | _ -> assert false
         in
-          coerce env cond pbs typ' typ (App(Const (Tuple 1), Const True))
+          coerce env cond pbs typ' typ src
     | Const c -> coerce env cond pbs (get_const_typ c) typ t
     | App(Const (Event s), t) -> App(Const (Event s), abstract_term env cond pbs t typ)
     | App(Const (Label n), t) -> App(Const (Label n), abstract_term env cond pbs t typ)
@@ -107,7 +109,7 @@ let abstract_def env (f,xs,t1,t2) =
 
 
 let abstract (env,defs,main) =
-  let defs = make_arg_let env defs in
+  let (env,defs,main) = make_arg_let (env,defs,main) in
   let (env,defs,main) = add_line_label (env,defs,main) in
   let (env,defs,main) = add_bool_label (env,defs,main) in
   let () = if true then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in

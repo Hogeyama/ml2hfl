@@ -252,8 +252,9 @@ let rec reduce_let env = function
           TBase _ as typ -> Let(x, reduce_let env t1, reduce_let ((x,typ)::env) t2)
         | TFun _ -> reduce_let env (subst x t1 t2)
         | _ -> assert false
-let make_arg_let env defs =
-  List.map (fun (f,xs,t1,t2) -> f, xs, t1, reduce_let (get_env (List.assoc f env) xs @@ env) (make_arg_let t2)) defs
+let make_arg_let (env,defs,main) =
+  let defs' = List.map (fun (f,xs,t1,t2) -> f, xs, t1, reduce_let (get_env (List.assoc f env) xs @@ env) (make_arg_let t2)) defs in
+    Typing.infer ([],defs',main)
 
 
 

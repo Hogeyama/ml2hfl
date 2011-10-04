@@ -314,10 +314,10 @@ let trans_prog t =
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
           let typ = TFun(fun _ -> TBase(TUnit,fun _ -> []), TBase(TUnit,fun _ -> [])) in
-            (main,typ,["u"],Const True,t') :: defs_t @ rev_map_flatten trans_def defs
+            (main,typ,["u"],Const True,t') :: defs_t @ flatten_map trans_def defs
       | Flag.CEGAR_DependentType ->
           let typ = TBase(TUnit,fun _ -> []) in
-            (main,typ,[],Const True,t') :: defs_t @ rev_map_flatten trans_def defs
+            (main,typ,[],Const True,t') :: defs_t @ flatten_map trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,t2) -> (f,typ), (f,xs,t1,t2)) defs') in
     pop_main (eta_expand (env, defs'', main))
