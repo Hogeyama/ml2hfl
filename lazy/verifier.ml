@@ -33,14 +33,10 @@ let infer_abst_type cex prog =
   let eps = Ctree.error_paths_of rt in
 		let eptrs = List.map Trace.of_error_path eps in
   let env = Trace.infer_env prog eptrs in
-  let env = List.map (fun (f, sty) -> f, RefType.of_sized_type sty) env in
-(*
   let _ = Format.printf "sized types:@.  %a@." SizType.pr_fun_env env in
-*)
-  let env = List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env in  
-(*
+  let env = List.map (fun (f, sty) -> f, RefType.of_sized_type sty) env in
   let _ = Format.printf "refinement types:@.  %a@." RefType.pr_env env in
-*)
+  let env = List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env in  
   let env = List.map (fun ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys)) (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env) in
   let _ = Format.printf "abstraction types:@.  %a@." AbsType.pr_env env in
   env

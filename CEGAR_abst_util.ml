@@ -230,31 +230,41 @@ let rec is_base_term env = function
 
 
 
-let rec make_arg_let = function
-    Const c -> Const c
-  | Var x -> Var x
-  | App(Const (Event s), t) -> App(Const (Event s), make_arg_let t)
+let rec make_arg_let_term = function
+    Const c -> [], Const c
+  | Var x -> [], Var x
+  | App(Const (Event s), t) ->
+      let bind,t' = make_arg_let_term t in
+        bind, App(Const (Event s), t')
   | App _ as t ->
       let t',ts = decomp_app t in
-      let ts' = List.map make_arg_let ts in
+      let aux t (bind,ts) =
+        let bind',t' = make_arg_let_term t in
+          bind'@bind, t'::ts
+      in
+      let bind,ts' = List.fold_right aux ts ([],[]) in
       let xs = List.map (fun _ -> new_id "a") ts in
       let t'' = List.fold_left (fun t x -> App(t, Var x)) t' xs in
-        List.fold_left2 (fun t' x t -> Let(x, t, t')) t'' xs ts'
+        bind @ List.combine xs ts', t''
   | Let _ -> assert false
+let make_arg_let_term t =
+  let bind,t' = make_arg_let_term t in
+    List.fold_right (fun (x,t) t' -> Let(x, t, t')) bind t'
 
 let rec reduce_let env = function
     Const c -> Const c
   | Var x -> Var x
   | App(t1,t2) -> App(reduce_let env t1, reduce_let env t2)
-  | Let(x,(Var _ | Const _ as t1),t2) -> reduce_let env (subst x t1 t2)
   | Let(x,t1,t2) ->
-      match get_typ env t1 with
-          TBase _ as typ -> Let(x, reduce_let env t1, reduce_let ((x,typ)::env) t2)
-        | TFun _ -> reduce_let env (subst x t1 t2)
+      match t1,get_typ env t1 with
+          Var _, _
+        | Const _, _
+        | _, TFun _ -> reduce_let env (subst x t1 t2)
+        | _, (TBase _ as typ) -> Let(x, reduce_let env t1, reduce_let ((x,typ)::env) t2)
         | _ -> assert false
 let make_arg_let (env,defs,main) =
-  let defs' = List.map (fun (f,xs,t1,t2) -> f, xs, t1, reduce_let (get_env (List.assoc f env) xs @@ env) (make_arg_let t2)) defs in
-    Typing.infer ([],defs',main)
+  let defs' = List.map (fun (f,xs,t1,t2) -> f, xs, t1, reduce_let (get_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)) defs in
+    (env,defs',main)
 
 
 
