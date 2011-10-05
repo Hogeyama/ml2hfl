@@ -1,2 +1,2 @@
-let enable_widening = false
+let enable_widening = true
 let debug = true

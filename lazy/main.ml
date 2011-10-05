@@ -157,9 +157,16 @@ let test_apply_apply2 () =
 let _ =
   let _ = Cvc3Interface.open_cvc3 () in
   let _ =
-		  match 0 with
-		    0 -> let _ = Verifier.infer_abst_type [0; 1; 0; 1; 0; 1] (test_copy_copy ()) in ()
-		  | 1 -> Verifier.verify (test_apply ())
-		  | 2 -> let _ = Verifier.infer_abst_type [0; 0; 0; 1] (test_apply_apply2 ()) in ()
+		  match 2 with
+		    0 -> let _ = Verifier.verify (test_sum ()) in ()
+		  | 1 -> let _ = Verifier.verify (test_sum_assert ()) in ()
+		  | 2 -> let _ = Verifier.infer_abst_type [0; 1; 0; 1; 0; 1] (test_copy_copy ()) in ()
+		  | 3 -> Verifier.verify (test_apply ())
+		  | 4 -> Verifier.verify (test_bar_hoge ())
+		  | 5 -> Verifier.verify (test_checkh ())
+		  | 6 -> Verifier.verify (test_applyh ())
+		  | 7 -> Verifier.verify (test_applyh2 ())
+		  | 8 -> Verifier.verify (test_apply_apply ())
+		  | 9 -> let _ = Verifier.infer_abst_type [0; 0; 0; 1] (test_apply_apply2 ()) in ()
   in
   Cvc3Interface.close_cvc3 ()

@@ -14,7 +14,7 @@ let set (Node(_, trs)) nd = Node(nd, trs)
 let zipper tr = Loc(tr, Top)
 let up (Loc(tr, p)) =
   match p with
-    Top -> assert false
+    Top -> raise Not_found
   | Path(up, nd, trs) -> Loc(Node(nd, tr::trs), up)
 let down (Loc(tr, p)) x =
   match tr with
@@ -153,6 +153,18 @@ let rec nodes_of_path p =
   | Path(up, nd, trs) ->
       nodes_of_path up @ [nd] @ Util.concat_map nodes_of_tree trs
 
+let rec rec_calls_of x_uid (Loc(tr, p) as loc) =
+  let trs, ps = 
+		  try
+				  rec_calls_of x_uid (up loc)
+		  with Not_found ->
+		    [], []
+  in
+		if (get tr).name = x_uid then
+		  tr::trs, p::ps
+		else
+		  trs, ps
+
 let summary_of (Loc(Node(nd, []), p) as loc) =  
   let x, uid = fst nd.name, snd nd.name in
 		let _ =
@@ -161,22 +173,87 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
 		  else
 		    Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr x uid
 		in
-  let tn = term_of_nodes (x, uid) [nd] in
-  let tp = term_of_nodes (x, uid) (nodes_of_path p) in
+  let trs, ps = rec_calls_of nd.name loc in
+
+  let sub (y, uid) x =
+    match x with
+      Var.V(_) ->
+        Term.make_var2 x
+    | Var.T(y', uid', arg) ->
+        if y = y' && uid = uid' then
+          Term.make_var2 (Var.T(y', 0(*???*), arg))
+        else
+          Term.make_var2 x
+  in
+  let tts, tps = List.split
+    (List.map2
+      (fun tr p ->
+        Term.subst (sub nd.name) (term_of_nodes nd.name (nodes_of_tree tr)),
+        Term.subst (sub nd.name) (term_of_nodes nd.name (nodes_of_path p)))
+      trs ps)
+  in
+  let sub_inv (y, uid) x =
+    match x with
+      Var.V(_) ->
+        Term.make_var2 x
+    | Var.T(y', uid', arg) ->
+        if y = y' && uid' = 0 then
+          Term.make_var2 (Var.T(y', uid, arg))
+        else
+          Term.make_var2 x
+  in
+  let hoge ts =
+		  let _, tss = List.fold_left
+		    (fun (ts, tss) t ->
+		      t::ts, tss @ [t::ts])
+		    ([], [])
+		    ts
+    in
+    tss
+  in
+  let tt = Term.subst (sub_inv nd.name) (List.hd tts) in
+  let tp = Term.subst (sub_inv nd.name) (List.hd tps) in
+  let ttw = Term.subst (sub_inv nd.name) (ApronInterface.widen (List.map Term.bor (hoge tts))) in
+  let tpw = Term.subst (sub_inv nd.name) (ApronInterface.widen (List.map Term.bor (hoge tps))) in
   let interp =
-    let t1, t2 =
+    let t1, t2, tw1, tw2 =
       if nd.closed then
-        tn, tp
+        tt, tp, ttw, tpw
       else
-        tp, tn
+        tp, tt, tpw, ttw
     in
-    let interp =
-      try
-        let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-        CsisatInterface.interpolate t1 t2
-      with CsisatInterface.No_interpolant ->
-        raise CsisatInterface.No_interpolant
-    in
+
+		  let interp =
+		    try
+		      (if Flag.enable_widening then
+		        try
+		          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr tw1 Term.pr tw2 in
+		          CsisatInterface.interpolate tw1 tw2
+		        with CsisatInterface.No_interpolant ->
+		          if nd.closed then
+		            if Term.equiv t2 tw2 then
+		              raise CsisatInterface.No_interpolant
+		            else
+		              let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr tw1 Term.pr t2 in
+		              CsisatInterface.interpolate tw1 t2
+		          else
+		            if Term.equiv t1 tw1 then
+		              raise CsisatInterface.No_interpolant
+		            else
+		              let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr tw2 in
+		              CsisatInterface.interpolate t1 tw2
+		      else
+		        raise CsisatInterface.No_interpolant)
+		    with CsisatInterface.No_interpolant ->
+		      (try
+		        if Flag.enable_widening && Term.equiv t1 tw1 && Term.equiv t2 tw2 then
+		          raise CsisatInterface.No_interpolant
+		        else
+		          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
+		          CsisatInterface.interpolate t1 t2
+		      with CsisatInterface.No_interpolant ->
+		        raise CsisatInterface.No_interpolant)
+		  in
     let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
     interp
   in

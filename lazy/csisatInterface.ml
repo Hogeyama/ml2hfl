@@ -47,7 +47,7 @@ and csisat_of_formula_aux c args =
   | Const.Gt, [t1; t2] -> CsisatAst.Lt(csisat_of_term t2, csisat_of_term t1)
   | Const.Leq, [t1; t2] -> CsisatAst.Leq(csisat_of_term t1, csisat_of_term t2)
   | Const.Geq, [t1; t2] -> CsisatAst.Leq(csisat_of_term t2, csisat_of_term t1)
-  | Const.EqInt, [t1; t2] ->
+  | Const.EqUnit, [t1; t2] ->
       CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2)
   | Const.EqBool, [t1; t2] ->
       let t1 = csisat_of_formula t1 in
@@ -56,7 +56,9 @@ and csisat_of_formula_aux c args =
         (CsisatAst.Or([
           CsisatAst.And([t1; t2]);
           CsisatAst.And([CsisatAst.Not(t1); CsisatAst.Not(t2)])]))
-  | Const.NeqInt, [t1; t2] ->
+  | Const.EqInt, [t1; t2] ->
+      CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2)
+  | Const.NeqUnit, [t1; t2] ->
       CsisatAst.Not(CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2))
   | Const.NeqBool, [t1; t2] ->
       let t1 = csisat_of_formula t1 in
@@ -65,7 +67,11 @@ and csisat_of_formula_aux c args =
         (CsisatAst.And([
           CsisatAst.Or([t1; t2]);
           CsisatAst.Or([CsisatAst.Not(t1); CsisatAst.Not(t2)])]))
-  | _ -> assert false
+  | Const.NeqInt, [t1; t2] ->
+      CsisatAst.Not(CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2))
+  | _ ->
+      let _ = Format.printf "%a@." Const.pr c in
+      assert false
 
 let rec term_of s =
   match s with
