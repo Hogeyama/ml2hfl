@@ -188,8 +188,8 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
   let tts, tps = List.split
     (List.map2
       (fun tr p ->
-        Term.subst (sub nd.name) (term_of_nodes nd.name (nodes_of_tree tr)),
-        Term.subst (sub nd.name) (term_of_nodes nd.name (nodes_of_path p)))
+        Term.simplify (Term.subst (sub (get tr).name) (term_of_nodes (get tr).name (nodes_of_tree tr))),
+        Term.simplify (Term.subst (sub (get tr).name) (term_of_nodes (get tr).name (nodes_of_path p))))
       trs ps)
   in
   let sub_inv (y, uid) x =

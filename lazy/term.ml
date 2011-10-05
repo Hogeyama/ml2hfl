@@ -378,19 +378,53 @@ let int_rel_of t =
   | _ -> invalid_arg "Term.int_rel_of"
 
 let rec simplify t =
-  try
-    (match fun_args t with
-      Const(_, Const.And), [t1; t2] ->
-        (match int_rel_of t1, int_rel_of t2 with
-          (Const.Leq, nxs1, n1), (Const.Leq, nxs2, n2)
-        | (Const.Geq, nxs1, n1), (Const.Geq, nxs2, n2) ->
-            if Arith.equiv nxs1 (Arith.minus nxs2) && n1 = -n2 then
-              eqInt (term_of_arith nxs1 n1) (tint 0)
-            else t
-        | _ -> t)
-    | _ -> t)
-  with Invalid_argument _ ->
-    t
+  match fun_args t with
+    Const(attr, Const.And), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      (try
+		      (match int_rel_of t1, int_rel_of t2 with
+		        (Const.Leq, nxs1, n1), (Const.Leq, nxs2, n2)
+		      | (Const.Geq, nxs1, n1), (Const.Geq, nxs2, n2) ->
+		          if Arith.equiv nxs1 (Arith.minus nxs2) && n1 = -n2 then
+		            eqInt (term_of_arith nxs1 n1) (tint 0)
+		          else t
+		      | _ -> apply (Const(attr, Const.And)) [t1; t2])
+						with Invalid_argument _ ->
+        (match t1, t2 with
+          Const(_, Const.True), _ -> t2
+        | _, Const(_, Const.True) -> t1
+        | _, _ ->
+  						    apply (Const(attr, Const.And)) [t1; t2]))
+  | Const(attr, Const.Add), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      (match t1, t2 with
+        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) ->
+          Const(attr, Const.Int(n1 + n2))
+      | _ -> apply (Const(attr, Const.Add)) [t1; t2])
+  | Const(attr, Const.Sub), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      (match t1, t2 with
+        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) ->
+          Const(attr, Const.Int(n1 - n2))
+      | _ -> apply (Const(attr, Const.Sub)) [t1; t2])
+  | Const(attr, c), [t1; t2] when c = Const.EqUnit || c = Const.EqBool || c = Const.EqInt ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      if t1 = t2 then
+        ttrue
+      else
+        apply (Const(attr, c)) [t1; t2]
+  | Const(attr, c), [t1; t2] when c = Const.NeqUnit || c = Const.NeqBool || c = Const.NeqInt ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      (match t1, t2 with
+        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) when n1 <> n2 ->
+          ttrue
+      | _ -> apply (Const(attr, c)) [t1; t2])
+  | _ -> t
 
 
 (*
