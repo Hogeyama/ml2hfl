@@ -153,14 +153,14 @@ let rec nodes_of_path p =
   | Path(up, nd, trs) ->
       nodes_of_path up @ [nd] @ Util.concat_map nodes_of_tree trs
 
-let rec rec_calls_of x_uid (Loc(tr, p) as loc) =
+let rec rec_calls_of x (Loc(tr, p) as loc) =
   let trs, ps = 
 		  try
-				  rec_calls_of x_uid (up loc)
+				  rec_calls_of x (up loc)
 		  with Not_found ->
 		    [], []
   in
-		if (get tr).name = x_uid then
+		if fst (get tr).name = x then
 		  tr::trs, p::ps
 		else
 		  trs, ps
@@ -173,7 +173,7 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
 		  else
 		    Format.printf "computing a precondition of <%a:%d>:@.  @[<v>" Var.pr x uid
 		in
-  let trs, ps = rec_calls_of nd.name loc in
+  let trs, ps = rec_calls_of (fst nd.name) loc in
 
   let sub (y, uid) x =
     match x with
