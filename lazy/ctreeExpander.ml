@@ -32,7 +32,7 @@ let expand_until_new_error_path_found prog rt strategy =
     if strategy.is_end () then
       ()
     else
-      let _ = if Flag.debug then Ctree.save_as_dot "ctree.dot" rt (strategy.get ()) in
+      let _ = if LazyFlag.debug then Ctree.save_as_dot "ctree.dot" rt (strategy.get ()) in
       let fenv, wl = Ctree.expand_node prog fenv (strategy.next ()) in
       let _ = strategy.update wl in
       let rec lp () =

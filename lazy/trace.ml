@@ -225,7 +225,7 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
 
 		  let interp =
 		    try
-		      (if Flag.enable_widening then
+		      (if LazyFlag.enable_widening then
 		        try
 		          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr tw1 Term.pr tw2 in
 		          CsisatInterface.interpolate tw1 tw2
@@ -246,7 +246,7 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
 		        raise CsisatInterface.No_interpolant)
 		    with CsisatInterface.No_interpolant ->
 		      (try
-		        if Flag.enable_widening && Term.equiv t1 tw1 && Term.equiv t2 tw2 then
+		        if LazyFlag.enable_widening && Term.equiv t1 tw1 && Term.equiv t2 tw2 then
 		          raise CsisatInterface.No_interpolant
 		        else
 		          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
