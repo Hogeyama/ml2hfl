@@ -39,17 +39,17 @@ let rec of_simple_type ty =
       Fun([Var.new_var(), of_simple_type ty1, of_simple_type ty2])
 
 let rec of_sized_type sty =(*???*)
-  match sty.SizType.ty with
-    SizType.Unit(x) -> Base(x, Unit, sty.SizType.cond)
-  | SizType.Bool(x) -> Base(x, Bool, sty.SizType.cond)
-  | SizType.Int(x) -> Base(x, Int, sty.SizType.cond)
+  match sty.SizType.shape with
+    SizType.Unit(x) -> Base(x, Unit, sty.SizType.post)
+  | SizType.Bool(x) -> Base(x, Bool, sty.SizType.post)
+  | SizType.Int(x) -> Base(x, Int, sty.SizType.post)
   | SizType.Fun(xs) ->
       Fun
         (List.map
-          (fun (ty1, pre, ty2) ->
+          (fun (ty1, ty2) ->
             (match ty1 with SizType.Unit(x) | SizType.Bool(x) | SizType.Int(x) -> x | _ -> Var.new_var()),
-            of_sized_type (SizType.make ty1 pre),
-            of_sized_type (SizType.make ty2 sty.SizType.cond))
+            of_sized_type (SizType.make ty1 Term.ttrue sty.SizType.pre),
+            of_sized_type (SizType.make ty2 Term.ttrue sty.SizType.post))
           xs)
 
 let rec subst sub rty =

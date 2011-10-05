@@ -8,6 +8,7 @@ type s =
 | Nop
 | Error
 
+(* ToDo: use record *)
 type t = Node of (int * int list) * Term.t * (s * t) list ref
 
 (* generate id of a function call *)
@@ -104,11 +105,8 @@ let expand_node prog fenv (Node((uid, p), t, cs)) =
       match red with
         Term.App(_, Term.Const(_, Const.Event(id)), _(*???*)) when id = event_fail ->
           fenv, [Error, Node((gen_id (), p), Term.Error([]), ref [])]
-      | Term.Const(_, Const.RandInt) ->
-(*
-      | Term.App(_, Term.Const(_, Const.RandInt), (*Term.Const(_, Const.Unit)*)_) ->
-*)
-          fenv, [Nop, Node((gen_id (), p), ctx (Term.make_var2 (Var.make (Idnt.new_id ()))), ref [])]
+      | Term.App(_, Term.Const(_, Const.RandInt), t(*???*)) ->
+          fenv, [Nop, Node((gen_id (), p), ctx (Term.apply t [Term.make_var2 (Var.make (Idnt.new_id ()))]), ref [])]
       | Term.App(_, _, _) ->
           let func, args = Term.fun_args red in
           let attr, f =

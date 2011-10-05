@@ -62,3 +62,8 @@ and is_neg x =
   match x with
     V(_) -> false
   | T(x', _, _) -> is_pos x'
+
+let rec fc_of x =
+  match x with
+    V(_) -> raise Not_found
+  | T(x', uid, _) -> try fc_of x' with Not_found -> x', uid

@@ -36,7 +36,7 @@ let use_old_partition = ref false
 let check_fun_arg_typ = false
 
 let mode = ref FileAccess
-let refine = ref RefineDependentType
+let refine = ref RefineSizedType
 let cegar = ref CEGAR_DependentType
 let init_trans = ref true
 let cps_excep = ref false

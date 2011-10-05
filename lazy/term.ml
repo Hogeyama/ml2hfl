@@ -243,9 +243,11 @@ let forall_imply conds_envs t =
 
 let rec redex_of env t =
   match t with
+(*
 				Const(a, Const.RandInt) ->
       (fun t -> t), Const(a, Const.RandInt)
-  | App(_, _, _) ->
+*)
+    App(_, _, _) ->
       let f, args = fun_args t in
       let rec r args1 args =
         match args with
@@ -267,14 +269,12 @@ let rec redex_of env t =
 		            let args1, args2 = Util.split_at args ar in
 		            (fun t -> apply t args2), apply f args1
 		          else raise Not_found
-(*
 						  | Const(_, Const.RandInt) ->
             let ar = 1 in
 		          if List.length args >= ar then
 		            let args1, args2 = Util.split_at args ar in
 		            (fun t -> apply t args2), apply f args1
 		          else raise Not_found
-*)
 		      | Var(attr, ff) ->
 		          let ar =
 		            try

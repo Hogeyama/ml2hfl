@@ -1,16 +1,33 @@
 open ExtList
 open ExtString
 
-(* for any Fun(t1, pre, t2), pre is true if t2 is not a base value *)
 (* only argument side can have intersection types *)
 type s =
   Unit of Var.t
 | Bool of Var.t
 | Int of Var.t
-| Fun of (s * Term.t * s) list
-and t = { ty: s; cond: Term.t }
+| Fun of (s * s) list
+and t = { shape: s; pre: Term.t; post: Term.t }
 
-let make ty cond = { ty = ty; cond = cond }
+let make shape pre post = { shape = shape; pre = pre; post = post }
+
+let of_simple_type sty =
+		let rec aux sty =
+		  match sty with
+		    SimType.Unit -> Unit(Var.make (Idnt.new_id ()))
+		  | SimType.Bool -> Bool(Var.make (Idnt.new_id ()))
+		  | SimType.Int -> Int(Var.make (Idnt.new_id ()))
+		  | SimType.Fun(sty1, sty2) ->
+		      Fun([aux sty1, aux sty2])
+  in
+  make (aux sty) Term.ttrue Term.ttrue
+
+let make_fun_shape tys ty =
+  let n = List.length tys in
+  List.fold_right
+    (fun ty retty -> Fun [ty, retty])
+    tys
+    ty
 
 let is_base ty =
   match ty with
@@ -26,7 +43,7 @@ let rec pr_shape ppf ty =
   | Int(x) ->
       Format.fprintf ppf "int[%a]" Var.pr x
   | Fun(xs) ->
-      let pr_aux ppf (ty1, pre, ty2) =
+      let pr_aux ppf (ty1, ty2) =
         let _ = Format.fprintf ppf "@[<hv>" in
         let _ =
           if is_base ty1 then
@@ -34,14 +51,7 @@ let rec pr_shape ppf ty =
           else
             Format.fprintf ppf "(%a) " pr_shape ty1
         in
-        let _ =
-          match pre with
-            Term.Const(_, Const.True) ->
-              Format.fprintf ppf "->@ "
-          | _ ->
-              Format.fprintf ppf "-{%a}->@ "
-                Term.pr pre
-        in
+        let _ = Format.fprintf ppf "->@ " in
         Format.fprintf ppf "%a@]" pr_shape ty2
       in
       let _ =
@@ -54,14 +64,139 @@ let rec pr_shape ppf ty =
       ()
 
 let rec pr ppf sty =
-  match sty.cond with
-    Term.Const(_, Const.True) ->
-      Format.fprintf ppf "%a" pr_shape sty.ty
-  | _ ->
-      Format.fprintf ppf "@[<hov>{%a |@ %a}@]" pr_shape sty.ty Term.pr sty.cond
+  match sty.pre, sty.post with
+    Term.Const(_, Const.True), Term.Const(_, Const.True) ->
+      Format.fprintf ppf "%a" pr_shape sty.shape
+  | _, _ ->
+      Format.fprintf ppf "<@[<hov>%a |@ %a |@ %a@]>" Term.pr sty.pre pr_shape sty.shape Term.pr sty.post
 
-let pr_fun_bind ppf (f, sty) = Format.fprintf ppf "%a: %a" Var.pr f pr sty
-let pr_fun_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_fun_bind "@ ") env
+let merge_shapes shs =
+  match shs with
+    Fun(_)::_ ->
+        Fun
+          (Util.concat_map
+            (function (Fun(xs)) -> xs | _ -> assert false)
+            shs)
+  | [ty] ->
+      ty
+  | [] -> Fun [](*???*)
+  | _ ->
+      let _ = Format.printf ":%a:@." (Util.pr_list pr_shape ":") shs in
+      assert false
+
+let pr_bind ppf (f, sty) = Format.fprintf ppf "%a: %a" Var.pr f pr sty
+let pr_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_bind "@ ") env
+
+let rec rename_shape sub ty =
+  match ty with
+    Unit(x) ->
+      Unit(try sub x with Not_found -> x)
+  | Bool(x) ->
+      Bool(try sub x with Not_found -> x)
+  | Int(x) ->
+      Int(try sub x with Not_found -> x)
+  | Fun(xs) ->
+      Fun
+        (List.map
+          (fun (ty1, ty2) ->
+            rename_shape sub ty1,
+            rename_shape sub ty2)
+          xs)
+
+let rename sub sty =
+  let subst x = Term.make_var2 (sub x) in
+  make
+    (rename_shape sub sty.shape)
+    (Term.subst subst sty.pre)
+    (Term.subst subst sty.post)
+
+let rec sub_from_tys new_var tys =
+  if tys = [] then
+    []
+  else
+		  match List.hd tys with
+		    Unit(_) ->
+		      let y = new_var () in
+		      List.map (function Unit(x) -> x, y | _ -> assert false) tys
+		  | Bool(_) ->
+		      let y = new_var () in
+		      List.map (function Bool(x) -> x, y | _ -> assert false) tys
+		  | Int(_) ->
+		      let y = new_var () in
+		      List.map (function Int(x)  -> x, y | _ -> assert false) tys
+		  | Fun(xs) ->
+		      let tys1, tys2 = List.split (List.map (fun (ty1, ty2) -> ty1, ty2) xs) in
+		      let sub1 = sub_from_tys new_var tys1 in
+		      let sub2 = sub_from_tys new_var tys2 in
+		      sub1 @ sub2
+
+let canonize sty =
+  let new_var =
+    let cnt = ref 0 in
+    fun () -> cnt := !cnt + 1; Var.V("v" ^ (string_of_int !cnt))
+  in
+  let sub = sub_from_tys new_var [sty.shape] in
+  rename (fun x -> List.assoc x sub) sty
+
+
+
+let shape_env_of env fcs =
+  let tlfcs =
+    List.unique
+		    (List.filter
+		      (fun (x, _) -> Var.is_top x)
+		      fcs)
+  in
+  let rec shape_of_x_uid (x, uid) =
+    match env x with
+      SimType.Unit -> Unit(x)
+    | SimType.Bool -> Bool(x)
+    | SimType.Int -> Int(x)
+    | SimType.Fun(_, _) as ty ->
+        let n = SimType.arity ty in
+        let ret = merge_shapes (shape_of (Var.T(x, uid, n))) in
+(*
+Format.printf "%a@." Var.pr (Var.T(x, uid, n));
+*)
+        make_fun_shape
+          (List.init n
+            (fun i ->
+              let args = shape_of (Var.T(x, uid, i)) in
+(*
+Format.printf "%a@." Var.pr (Var.T(x, uid, i));
+*)
+              merge_shapes args))
+          ret
+    | _ ->
+        let _ = Format.printf "%a:%d" Var.pr x uid in
+        assert false
+  and shape_of x =
+    match env x with
+      SimType.Unit -> [Unit(x)]
+    | SimType.Bool -> [Bool(x)]
+    | SimType.Int -> [Int(x)]
+    | SimType.Fun(_, _) as ty ->
+        let res =
+		        List.map
+		          (fun uid -> shape_of_x_uid (x, uid))
+		          (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
+        in
+        if res = [] then [(of_simple_type ty).shape] else res
+  in
+  List.map (fun x_uid -> x_uid, shape_of_x_uid x_uid) tlfcs
+
+let of_summaries senv sums =
+  List.map
+    (fun (x_uid, sh) ->
+      let pres = Util.filter_map (function `Pre(x_uid', t) when x_uid = x_uid' -> Some(t) | _ -> None) sums in
+      let posts = Util.filter_map (function `Post(x_uid', t) when x_uid = x_uid' -> Some(t) | _ -> None) sums in
+      fst x_uid, canonize (make sh (if pres = [] then (*???*)Term.ttrue else Term.band pres) (if posts = [] then (*???*)Term.ttrue else Term.bor posts)))
+    senv
+
+
+let check_prog env prog = assert false
+
+(*
 let pr_var_bind ppf (x, ty) = Format.fprintf ppf "%a: %a" Var.pr x pr_shape ty
 let pr_var_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_var_bind "@ ") env
   
@@ -77,83 +212,12 @@ let rec envs ty =
       Util.concat_map
         (fun (ty1, _, ty2) -> envs ty1 @ envs ty2)
         xs
-  
-let rec rename_shape sub ty =
-  match ty with
-    Unit(x) ->
-      Unit(try sub x with Not_found -> x)
-  | Bool(x) ->
-      Bool(try sub x with Not_found -> x)
-  | Int(x) ->
-      Int(try sub x with Not_found -> x)
-  | Fun(xs) ->
-      Fun
-        (List.map
-          (fun (ty1, pre, ty2) ->
-            rename_shape sub ty1,
-            Term.subst
-              (fun x -> Term.make_var2 (sub x))
-              pre,
-            rename_shape sub ty2)
-          xs)
 
-let rename sub ty cond =
-  { ty = rename_shape sub ty;
-    cond =
-      Term.subst
-        (fun x -> Term.make_var2 (sub x))
-        cond }
-
-let rec sub_from_tys new_var tys =
-  match List.hd tys with
-    Unit(_) ->
-      let y = new_var () in
-      List.map (function Unit(x) -> x, y | _ -> assert false) tys
-  | Bool(_) ->
-      let y = new_var () in
-      List.map (function Bool(x) -> x, y | _ -> assert false) tys
-  | Int(_) ->
-      let y = new_var () in
-      List.map (function Int(x)  -> x, y | _ -> assert false) tys
-  | Fun(xs) ->
-      let tys1, tys2 = List.split (List.map (fun (ty1, _, ty2) -> ty1, ty2) xs) in
-      let sub1 = sub_from_tys new_var tys1 in
-      let sub2 = sub_from_tys new_var tys2 in
-      sub1 @ sub2
-
-let canonize sty =
-  let new_var =
-    let cnt = ref 0 in
-    fun () -> cnt := !cnt + 1; Var.V("v" ^ (string_of_int !cnt))
-  in
-  let sub = sub_from_tys new_var [sty.ty] in
-  rename (fun x -> List.assoc x sub) sty.ty sty.cond
 
 let alpha sty =
-  let sub = sub_from_tys Var.new_var [sty.ty] in
-  rename (fun x -> List.assoc x sub) sty.ty sty.cond
+  let sub = sub_from_tys Var.new_var [sty.shape] in
+  rename (fun x -> List.assoc x sub) sty.shape sty.cond
 
-let of_simple_type sty =
-		let rec aux sty =
-		  match sty with
-		    SimType.Unit -> Unit(Var.make (Idnt.new_id ()))
-		  | SimType.Bool -> Bool(Var.make (Idnt.new_id ()))
-		  | SimType.Int -> Int(Var.make (Idnt.new_id ()))
-		  | SimType.Fun(sty1, sty2) ->
-		      Fun([aux sty1, Term.ttrue, aux sty2])
-  in
-  make (aux sty) Term.ttrue
-
-let merge_tys tys =
-  match tys with
-    Fun(_)::_ ->
-        Fun
-          (Util.concat_map
-            (function (Fun(xs)) -> xs | _ -> assert false)
-            tys)
-  | [ty] ->
-      ty
-  | _ -> assert false
 
 let merge stys =
   match stys with
@@ -163,7 +227,7 @@ let merge stys =
         List.split
           (List.map
             (fun sty ->
-              sty.ty, sty.cond)
+              sty.shape, sty.cond)
             stys)
       in
       let post = Term.band posts in
@@ -185,96 +249,6 @@ let merge_env env =
   List.map
     (fun f_stys -> fst (List.hd f_stys), merge (List.map snd f_stys))
     (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) env)
-
-let make_fun tys pre ty =
-  let n = List.length tys in
-  List.fold_right
-    (fun (i, ty) retty ->
-      Fun
-        [ty,
-        (if i = n - 1 then pre else Term.ttrue),
-        retty])
-    (List.mapi (fun i ty -> i, ty) tys)
-    ty
-
-(* fcs is set *)
-let of_summaries env fcs sums =
-  let rec type_of x =
-    match env x with
-      SimType.Unit -> [Unit(x), Term.ttrue]
-    | SimType.Bool -> [Bool(x), Term.ttrue]
-    | SimType.Int -> [Int(x), Term.ttrue]
-    | SimType.Fun(_, _) as ty ->
-        let n = SimType.arity ty in
-        List.map
-          (fun uid ->
-            let pres =
-              List.unique
-	               (Util.filter_map
-	                 (function
-	                   `Pre(x_uid, pre) ->
-	                     if x_uid = (x, uid) then Some(pre) else None
-	                 | _ -> None)
-	                 sums)
-            in
-            let pre =
-              if Var.is_top x then
-                Term.band pres
-              else if Var.is_neg x then
-                if pres = [] then Term.ttrue else Term.bor pres
-              else
-(*
-                let _ = Format.printf "%a:%a@." Var.pr x (Util.pr_list Term.pr ",") pres in
-*)
-                let _ = assert (pres = []) in
-                Term.ttrue
-            in
-            let posts =
-              List.unique
-                (Util.filter_map
-                  (function
-                    `Post(x_uid, post) ->
-                      if x_uid = (x, uid) then Some(post) else None
-                  | _ -> None)
-                  sums)
-            in
-            let post =
-              if Var.is_top x then
-                if posts = [] then Term.ttrue else Term.bor posts
-              else
-                let _ = assert (posts = []) in
-                Term.ttrue
-              in
-
-            let [retty, retcond] = type_of (Var.T(x, uid, n)) in
-            let _ = assert (retcond = Term.ttrue) in
-
-            make_fun
-              (List.init n
-                (fun i ->
-                  let argtys, argconds = List.split (type_of (Var.T(x, uid, i))) in
-                  let argty = merge_tys argtys in
-                  let _ = assert (CsisatInterface.iff (Term.band argconds) Term.ttrue) in
-                  argty))
-              pre
-              retty,
-            post)
-          (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
-  in
-
-  let top_level_functions = List.unique
-    (List.filter_map
-      (fun (x, _) -> if Var.is_top x then Some(x) else None)
-      fcs)
-  in
-  List.unique
-    (Util.concat_map
-      (fun f ->
-        List.map
-          (fun (ty, cond) ->
-            f, canonize (make ty cond))
-          (type_of f))
-      top_level_functions)
 
 let type_of_const c =
   (*
@@ -545,7 +519,7 @@ and canonize_ag cov subs0 ty1 ty2 =
       assert false
   
 let subtype sty1 sty2 =
-  let ty, subs = canonize_ag true [[]] sty1.ty sty2.ty in
+  let ty, subs = canonize_ag true [[]] sty1.shape sty2.shape in
   let cond =
     Term.bor
       (List.map
@@ -555,11 +529,11 @@ let subtype sty1 sty2 =
         subs)
   in
   Term.band
-    [subtype_same ty sty2.ty;
+    [subtype_same ty sty2.shape;
     Term.imply cond sty2.cond]
 
 let subtype_ty sty1 ty2 =
-  let ty1, subs = canonize_ag true [[]] sty1.ty ty2 in
+  let ty1, subs = canonize_ag true [[]] sty1.shape ty2 in
   Term.band
     (subtype_same ty1 ty2::
     (List.map
@@ -613,7 +587,7 @@ let apply sty0 stys =
             (*any element in tys is the same*)
             Term.bor pres, merge stys
   in
-  aux [] sty0.ty sty0.cond stys
+  aux [] sty0.shape sty0.cond stys
 
 exception Ill_typed
 
@@ -666,7 +640,7 @@ let check_fdef cenv fdef sty =
           [], Term.ttrue, ty
       | _ -> assert false
     in
-    args_pre_ret sty.ty
+    args_pre_ret sty.shape
   in
   assert (is_base ty_ret);
   let env =
@@ -680,7 +654,7 @@ let check_fdef cenv fdef sty =
   in
   let guard =
     let _(*ttrue*), sty_guard = infer_term cenv env fdef.Fdef.guard in
-    match sty_guard.ty with
+    match sty_guard.shape with
       Bool(x) -> Term.subst (fun y -> if Var.equiv x y then Term.ttrue else raise Not_found) sty_guard.cond
     | _ -> assert false
   in
@@ -734,3 +708,4 @@ let check_prog cand_env prog =
       id = prog.Prog.main (*&& sty is a subtype of a given type*)
     | _ -> assert false)
     env
+*)

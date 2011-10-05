@@ -156,9 +156,10 @@ let test_apply_apply2 () =
 
 let _ =
   let _ = Cvc3Interface.open_cvc3 () in
-  Verifier.infer_abst_type [0; 1; 0; 1; 0; 1] (test_copy_copy ());
-(*
-  Verifier.verify prog;
-  Verifier.infer_abst_type [0; 0; 0; 1] (test_apply_apply2 ());
-*)
+  let _ =
+		  match 0 with
+		    0 -> let _ = Verifier.infer_abst_type [0; 1; 0; 1; 0; 1] (test_copy_copy ()) in ()
+		  | 1 -> Verifier.verify (test_apply ())
+		  | 2 -> let _ = Verifier.infer_abst_type [0; 0; 0; 1] (test_apply_apply2 ()) in ()
+  in
   Cvc3Interface.close_cvc3 ()
