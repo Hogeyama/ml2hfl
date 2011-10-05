@@ -307,12 +307,12 @@ let rec process_term trace term traces env pcounter =
           let tfs = List.map List.tl tfs in
             (if tts = [] then [] else (process_term (trace @ [LabNode(true) ]) t2 tts env pcounter)) @
               (if tfs = [] then [] else (process_term (trace @ [LabNode(false)]) t3 tfs env pcounter))
-    | App({desc=Event "fail"},_)
-    | Event "fail" ->
+    | App({desc=Event("fail",false)},_)
+    | Event("fail",false) ->
         let trace = trace @ [FailNode] in
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyFail(new_tinfo()), trace, traces]
-    | App({desc=Event(s)}, [t]) ->
+    | App({desc=Event(s,false)}, [t]) ->
         if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
           let traces' = List.map List.tl traces in
             process_term (trace @ [EventNode(s)]) t traces' env pcounter
@@ -394,10 +394,9 @@ let rec process_term trace term traces env pcounter =
     | Constr _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
-    | RandInt None ->
+    | App({desc=RandInt false}, [{desc=Unit}]) ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
-    | RandInt (Some t) -> process_term trace (make_app t [{desc=RandInt None;typ=TInt[]}]) traces env pcounter
     | Bottom ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
@@ -754,12 +753,12 @@ let rec chk_term rtenv term id trace traces =
                  c1@c2
              with
                  PickRty -> [Cfalse])
-    | App({desc=Event"fail"}, _) ->
+    | App({desc=Event("fail",false)}, _) ->
         if List.for_all (function [FailNode] -> true | _ -> false) traces then
           [Cfalse]
         else
           assert false
-    | App({desc=Event(s)}, [t]) ->
+    | App({desc=Event(s,false)}, [t]) ->
         if List.for_all (function EventNode(s')::_ -> s = s' | _ -> false) traces then
           let traces' = List.map List.tl traces in
             chk_term rtenv t id (trace @ [EventNode(s)]) traces'
@@ -861,10 +860,10 @@ and chk_term_rty rtenv term rty =
                c1@c2
            with
                PickRty -> [Cfalse])
-      | App({desc=Event"fail"}, _) -> [Cfalse]
+      | App({desc=Event("fail",false)}, _) -> [Cfalse]
       | If(t1,t2,t3) -> assert false
       | Var x -> chk_term_rty rtenv ({desc=App({desc=Var x;typ=Id.typ x}, []);typ=Id.typ x}) rty
-      | Event"fail" -> [Cfalse]
+      | Event("fail",false) -> [Cfalse]
       | True | False -> (*???*)
           (match rty with 
                RTbool(_) -> []
@@ -1848,12 +1847,8 @@ let trans_var env x =
 
 let rec trans_term env = function
     CS.Const CS.Unit -> unit_term
-  | CS.Const (CS.Event s) -> make_event s
-  | CS.Const (CS.Label _) -> assert false
   | CS.Const CS.True -> true_term
   | CS.Const CS.False -> false_term
-  | CS.Const CS.RandInt -> {desc=RandInt None; typ=TInt[]}
-  | CS.Const CS.RandBool -> assert false
   | CS.Const (CS.Int n) -> make_int n
   | CS.Const CS.Bottom -> make_bottom TUnknown
   | CS.Var x ->
@@ -1862,6 +1857,10 @@ let rec trans_term env = function
         if x'.Id.id = 132
         then x''
         else x''
+  | CS.App(CS.Const (CS.Event s), CS.Var k) -> make_app (make_var (trans_var env k)) [make_app (make_event s) [unit_term]]
+  | CS.App(CS.Const (CS.Event s), CS.Var k) -> make_app (make_event_cps s) [unit_term; make_var (trans_var env k)]
+  | CS.App(CS.Const CS.RandInt, CS.Var k) -> make_app (make_var (trans_var env k)) [make_app randint_term [unit_term]]
+  | CS.App(CS.Const CS.RandInt, CS.Var k) -> make_app (make_randint_cps TUnit) [unit_term; make_var (trans_var env k)]
   | CS.App(CS.App(CS.App(CS.Const CS.If, t1), t2), t3) -> make_if (trans_term env t1) (trans_term env t2) (trans_term env t3)
   | CS.App(CS.App(CS.Const CS.And, t1), t2) -> make_and (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Or, t1), t2) -> make_or (trans_term env t1) (trans_term env t2)
@@ -1876,7 +1875,7 @@ let rec trans_term env = function
   | CS.App(CS.App(CS.Const CS.Mul, t1), t2) -> make_mul (trans_term env t1) (trans_term env t2)
   | CS.App(t1,t2)  -> make_app (trans_term env t1) [trans_term env t2]
   | CS.Let _ -> assert false
-  | t -> CP.print_term Format.std_formatter t; assert false
+  | t -> Format.printf "trans_term: %a@." CP.print_term t; assert false
 
 let trans_env env = List.map (fun (x,typ) -> x, trans_typ typ) env
 

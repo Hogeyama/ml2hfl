@@ -17,8 +17,8 @@ and term =
   | Unknown
   | Int of int
   | NInt of id
-  | RandInt of typed_term option
-  | RandValue of typ * typed_term option
+  | RandInt of bool
+  | RandValue of typ * bool
   | Var of id
   | Fun of id * typed_term
   | App of typed_term * typed_term list
@@ -29,7 +29,7 @@ and term =
   | Not of typed_term
   | Label of bool * typed_term
   | LabelInt of int * typed_term
-  | Event of string
+  | Event of string * bool
   | Record of (string * (Flag.mutable_flag * typed_term)) list
   | Proj of int * string * Flag.mutable_flag * typed_term
   | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
@@ -42,7 +42,6 @@ and term =
   | Pair of typed_term * typed_term
   | Fst of typed_term
   | Snd of typed_term
-  | Variant of typed_term
   | Bottom
 
 
@@ -79,16 +78,28 @@ let abst_var = {Id.id=0; Id.name="v"; Id.typ=TInt[]}
 let abst_list_var = {Id.id=0; Id.name="v"; Id.typ=TList TUnknown}
 
 let typ_event = TFun(Id.new_var "" TUnit, TUnit)
+let typ_event_cps =
+  let u = Id.new_var "" TUnit in
+  let r = Id.new_var "" TUnit in
+  let k = Id.new_var "" (TFun(r,TUnit)) in
+    TFun(u, TFun(k, TUnit))
 let typ_excep = ref (TConstr("exn",true))
 
 let unit_term = {desc=Unit; typ=TUnit}
 let true_term = {desc=True;typ=TBool}
 let false_term = {desc=False;typ=TBool}
-let fail_term = {desc=Event "fail";typ=typ_event}
+let fail_term = {desc=Event("fail",false);typ=typ_event}
+let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt[])}
 let make_bottom typ = {desc=Bottom;typ=typ}
-let make_event s = {desc=Event s;typ=typ_event}
+let make_event s = {desc=Event(s,false);typ=typ_event}
+let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
 let make_var x = {desc=Var x; typ=Id.typ x}
 let make_int n = {desc=Int n; typ=TInt[]}
+let make_randint_cps typ =
+  let u = Id.new_var "" TUnit in
+  let r = Id.new_var "" (TInt[]) in
+  let k = Id.new_var "" (TFun(r,typ)) in
+    {desc=RandInt true; typ=TFun(u,TFun(k,typ))}
 let rec make_app t ts =
   match t,ts with
     | t,[]_ -> t
@@ -98,9 +109,7 @@ let rec make_app t ts =
     | {desc=t;typ=TFun(x,typ)}, t2::ts ->
         assert (Type.can_unify (Id.typ x) t2.typ);
         make_app {desc=App({desc=t;typ=TFun(x,typ)},[t2]); typ=typ} ts
-    | {desc=t;typ=typ}, t2::ts ->
-        assert (typ = typ_event);
-        make_app {desc=App({desc=t;typ=typ_event},[t2]); typ=TUnit} ts
+    | _ -> assert false
 let make_let f xs t1 t2 =
   {desc=Let(Flag.Nonrecursive,f,xs,t1,t2); typ=t2.typ}
 let make_letrec f xs t1 t2 =
@@ -174,7 +183,6 @@ let make_snd t =
     {desc=Snd t; typ=typ}
 let make_pair t1 t2 = {desc=Pair(t1,t2); typ=TPair(t1.typ,t2.typ)}
 let make_nil typ = {desc=Nil; typ=typ}
-let make_variant t = {desc=Variant t; typ=TVariant t.typ}
 let make_match t1 pats = {desc=Match(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats)}
 
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
@@ -207,7 +215,7 @@ let rec get_nint t =
     | Event _ -> []
     | Nil -> []
     | Cons(t1,t2) -> get_nint t1 @@@ get_nint t2
-    | RandInt None -> []
+    | RandInt _ -> []
 
 let rec get_int t =
   match t.desc with
@@ -227,10 +235,10 @@ let rec get_int t =
     | Not t -> get_int t
     | Fun(_,t) -> get_int t
     | Label(_,t) -> get_int t
-    | Event s -> []
+    | Event _ -> []
     | Nil -> []
     | Cons(t1,t2) -> get_int t1 @@@ get_int t2
-    | RandInt None -> []
+    | RandInt _ -> []
 
 let rec get_fv vars t =
   match t.desc with
@@ -240,8 +248,7 @@ let rec get_fv vars t =
     | Unknown -> []
     | Int n -> []
     | NInt x -> []
-    | RandInt None -> []
-    | RandInt (Some t) -> get_fv vars t
+    | RandInt _ -> []
     | Var x -> if List.mem x vars then [] else [x]
     | App(t, ts) -> get_fv vars t @@@ (rev_map_flatten (get_fv vars) ts)
     | If(t1, t2, t3) -> get_fv vars t1 @@@ get_fv vars t2 @@@ get_fv vars t3
@@ -258,7 +265,7 @@ let rec get_fv vars t =
     | Fun(x,t) -> get_fv (x::vars) t
     | Label(_,t) -> get_fv vars t
     | LabelInt(_,t) -> get_fv vars t
-    | Event s -> []
+    | Event(s,_) -> []
     | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
     | Proj(_,_,_,t) -> get_fv vars t
     | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
@@ -283,8 +290,7 @@ let rec get_fv2 vars t =
     | Unknown -> []
     | Int n -> []
     | NInt x -> [x]
-    | RandInt None -> []
-    | RandInt (Some t) -> get_fv2 vars t
+    | RandInt _ -> []
     | Var x -> if List.mem x vars then [] else [x]
     | App(t, ts) -> get_fv2 vars t @@@ (rev_map_flatten (get_fv2 vars) ts)
     | If(t1, t2, t3) -> get_fv2 vars t1 @@@ get_fv2 vars t2 @@@ get_fv2 vars t3
@@ -308,7 +314,7 @@ let rec get_fv2 vars t =
     | Not t -> get_fv2 vars t
     | Fun(x,t) -> get_fv2 (x::vars) t
     | Label(_,t) -> get_fv2 vars t
-    | Event s -> []
+    | Event(s,_) -> []
     | Nil -> []
     | Cons(t1,t2) -> get_fv2 vars t1 @@@ get_fv2 vars t2
     | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv2 vars t @@@ acc) [] ts
@@ -359,8 +365,7 @@ let rec subst x t t' =
     | Int n -> t'
     | NInt y -> if Id.same x y then t else t'
     | Bottom -> t'
-    | RandInt None -> t'
-    | RandInt (Some t1) -> {desc=RandInt (Some (subst x t t1)); typ=t'.typ}
+    | RandInt _ -> t'
     | Var y -> if Id.same x y then t else t'
     | Fun(y, t1) ->
         let t1' = if Id.same x y then t1 else subst x t t1 in
@@ -399,7 +404,7 @@ let rec subst x t t' =
     | LabelInt(n, t1) ->
         let t1' = subst x t t1 in
           {desc=LabelInt(n, t1'); typ=t'.typ}
-    | Event s -> t'
+    | Event(s,_) -> t'
     | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst x t t1)) fields); typ=t'.typ}
     | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst x t t1); typ=t'.typ}
     | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst x t t1,subst x t t2); typ=t'.typ}
@@ -467,7 +472,7 @@ let rec subst_int n t t' =
       | Label(b, t1) ->
           let t1' = subst_int n t t1 in
             Label(b, t1')
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(subst_int n t t1, subst_int n t t2)
   in
@@ -568,7 +573,7 @@ let rec eval t =
           Fun(x, eval t)
       | Label(b,t) ->
           Label(b, eval t)
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
   in
     {desc=desc; typ=t.typ}
 
@@ -655,7 +660,7 @@ let rec simplify = function
   | Label(b,t) ->
       let t' = simplify t in
         Label(b, t')
-  | Event s -> Event s
+  | Event(s,None) -> Event(s,None)
 *)
 (*
 let simplify _ = Format.printf "Not implemented@."; assert false
@@ -672,8 +677,7 @@ let rec merge_let_fun t =
       | Unknown -> Unknown
       | Int n -> Int n
       | NInt x -> NInt x
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (merge_let_fun t))
+      | RandInt b -> RandInt b
       | Var x -> Var x
       | App(t, ts) -> App(merge_let_fun t, List.map merge_let_fun ts)
       | If(t1, t2, t3) -> If(merge_let_fun t1, merge_let_fun t2, merge_let_fun t3)
@@ -686,7 +690,7 @@ let rec merge_let_fun t =
       | BinOp(op, t1, t2) -> BinOp(op, merge_let_fun t1, merge_let_fun t2)
       | Not t -> Not (merge_let_fun t)
       | Label(b, t) -> Label(b, merge_let_fun t)
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,merge_let_fun t)) fields)
       | Proj(i,s,f,t) -> Proj(i,s,f,merge_let_fun t)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,merge_let_fun t1,merge_let_fun t2)
@@ -731,10 +735,7 @@ let rec lift_aux xs t =
       | Unknown -> [], Unknown
       | Int n -> [], Int n
       | NInt x -> [], NInt x
-      | RandInt None -> [], RandInt None
-      | RandInt (Some t) ->
-          let defs,t' = lift_aux xs t in
-            defs, RandInt (Some t')
+      | RandInt b -> [], RandInt b
       | Var x -> [], Var x
       | Fun(x,t1) ->
           let f = Id.new_var "f" t.typ in
@@ -790,7 +791,7 @@ let rec lift_aux xs t =
       | Label(b,t) ->
           let defs,t' = lift_aux xs t in
             defs, Label(b,t')
-      | Event s -> [], Event s
+      | Event(s,b) -> [], Event(s,b)
       | Record fields ->
           let aux (s,(f,t)) =
             let defs,t' = lift_aux xs t in
@@ -851,8 +852,7 @@ let rec canonize t =
       | Unknown -> Unknown
       | Int n -> Int n
       | NInt x -> NInt x
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (canonize t))
+      | RandInt b -> RandInt b
       | Var x -> Var x
       | App(t, ts) ->
           let t' = canonize t in
@@ -911,7 +911,7 @@ let rec canonize t =
       | Label(b,t) ->
           let t' = canonize t in
             Label(b, t')
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(canonize t1, canonize t2)
   in
@@ -970,8 +970,7 @@ let part_eval t =
         | False -> False
         | Int n -> Int n
         | NInt x -> NInt x
-        | RandInt None -> RandInt None
-        | RandInt (Some t) -> RandInt (Some (aux apply t))
+        | RandInt b -> RandInt b
         | Var x ->
             begin
               try
@@ -1033,7 +1032,7 @@ let part_eval t =
         | Unknown -> Unknown
         | Label(b, t) -> Label(b, aux apply t)
         | LabelInt(n, t) -> LabelInt(n, aux apply t)
-        | Event s -> Event s
+        | Event(s,b) -> Event(s,b)
         | Record fields -> Record (List.map (fun (s,(f,t)) -> s,(f,aux apply t)) fields)
         | Proj(i,s,f,t) -> Proj(i, s, f, aux apply t)
         | Nil -> Nil
@@ -1131,7 +1130,7 @@ let part_eval2 t =
     | Label(b, t) ->
         let t' = aux t in
           Label(b, t')
-    | Event s -> Event s
+    | Event(s,None) -> Event(s,None)
   in
   let t' = aux t in
   let t'' = simplify t' in
@@ -1208,7 +1207,7 @@ let rec add_string str t =
       | Label(b,t) ->
           let t' = add_string str t in
             Label(b, t')
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
   in
     {desc=desc; typ=t.typ}
 
@@ -1258,7 +1257,7 @@ let rec remove_unused t =
           let t' = remove_unused t in
             Not t'
       | Label _ -> assert false
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
   in
     {desc=desc; typ=t.typ}
 
@@ -1290,7 +1289,7 @@ let rec update_ident_uniq env = function
   | Not t -> update_ident_uniq env t
   | Fail -> ()
   | Label(b, t) -> update_ident_uniq env t
-  | Event s -> ()
+  | Event(s,None) -> ()
   | Record(b,fields) -> List.iter (fun (_,(_,t)) -> update_ident_uniq env t) fields
   | Proj(n,i,s,f,t) -> update_ident_uniq env t
   | Nil -> ()
@@ -1367,22 +1366,10 @@ and print_term pri typ fm t =
     | Unknown -> fprintf fm "***"
     | Int n -> fprintf fm "%d" n
     | NInt x -> fprintf fm "?%a?" print_id x
-    | RandInt None ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          fprintf fm "%srand_int()%s" s1 s2
-    | RandInt (Some t) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          fprintf fm "%srand_int %a%s" s1 (print_term p typ) t s2
-    | RandValue(typ',None) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          fprintf fm "%srand_val(%a)%s" s1 print_typ typ' s2
-    | RandValue(typ',Some t) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          fprintf fm "%srand_val(%a,%a)%s" s1 print_typ typ' (print_term p typ) t s2
+    | RandInt false -> fprintf fm "rand_int"
+    | RandInt true -> fprintf fm "rand_int_cps"
+    | RandValue(typ',false) -> fprintf fm "rand_val[%a]()" print_typ typ'
+    | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
     | Var x -> print_id fm x
     | Fun(x, t) ->
         let p = 2 in
@@ -1437,7 +1424,8 @@ and print_term pri typ fm t =
         let p = 8 in
         let s1,s2 = paren pri p in
           fprintf fm "%sbr%d %a%s" s1 n (print_term p typ) t s2
-    | Event s -> fprintf fm "{%s}" s
+    | Event(s,false) -> fprintf fm "{%s}" s
+    | Event(s,true) -> fprintf fm "{|%s|}" s
     | Record fields ->
         let rec aux fm = function
             [] -> ()
@@ -1912,30 +1900,24 @@ let set_target t =
       | Fun _ -> assert false
       | _ -> {desc=main; typ=typ}
   in
-  let rec get_base_typ = function
-      TFun(_,typ) -> get_base_typ typ
-    | typ -> typ
-  in
-    match get_last_definition None t with
-        None -> assert false
-      | Some f ->
-          let xs = get_args (Id.typ f) in
-            match xs, Id.typ f with
-                [], TUnit -> replace_main (Var f) TUnit t
-              | _ ->
-                  let aux x =
-                    match Id.typ x with
-                        TInt _ -> {desc=RandInt None; typ=TInt[]}
-                      | typ -> {desc=RandInt None; typ=TInt[]}
-                      | typ -> {desc=RandValue(typ, None); typ=typ}
-                  in
-                  let args = List.map aux xs in
-                  let main = make_app {desc=Var f;typ=Id.typ f} args in
-                  let main' =
-                    let u = Id.new_var "main" main.typ in
-                      Let(Flag.Nonrecursive, u, [], main, {desc=Unit;typ=TUnit})
-                  in
-                    replace_main main' TUnit t
+  let f = get_opt_val (get_last_definition None t) in
+  let xs = get_args (Id.typ f) in
+    match xs, Id.typ f with
+        [], TUnit -> replace_main (Var f) TUnit t
+      | _ ->
+          let aux x =
+            match Id.typ x with
+                TInt _ -> make_app randint_term [unit_term]
+              | typ -> make_app randint_term [unit_term]
+              | typ -> {desc=RandValue(typ, false); typ=typ}
+          in
+          let args = List.map aux xs in
+          let main = make_app {desc=Var f;typ=Id.typ f} args in
+          let main' =
+            let u = Id.new_var "main" main.typ in
+              Let(Flag.Nonrecursive, u, [], main, {desc=Unit;typ=TUnit})
+          in
+            replace_main main' TUnit t
 
 
 (* Unit is used as base values *)
@@ -1947,8 +1929,8 @@ let rec eval_and_print_ce ce t =
     | Unknown -> ce, {desc=Unit; typ=TUnit}
     | Int n -> ce, {desc=Unit; typ=TUnit}
     | NInt x -> ce, {desc=Unit; typ=TUnit}
-    | RandInt None -> ce, {desc=Unit; typ=TUnit}
-    | RandInt (Some t) -> eval_and_print_ce ce (make_app t [{desc=Unit;typ=TUnit}])
+    | RandInt false -> ce, {desc=Unit; typ=TUnit}
+    | RandInt true -> assert false(*eval_and_print_ce ce (make_app t [{desc=Unit;typ=TUnit}])*)
     | Var x -> assert false
     | Fun(x,t) -> ce, t
     | App(t1,[]) -> assert false
@@ -1958,8 +1940,8 @@ let rec eval_and_print_ce ce t =
           begin
             match t1'.desc with
                 Fun(x,t) -> eval_and_print_ce ce'' (subst x t2' t)
-              | Event "fail" -> ce'', {desc=Unit; typ=TUnit}
-              | Event s -> eval_and_print_ce ce'' t2'
+              | Event("fail",false) -> ce'', {desc=Unit; typ=TUnit}
+              | Event(s,false) -> eval_and_print_ce ce'' t2'
               | _ -> assert false
           end
     | App(t1,t2::ts) -> eval_and_print_ce ce {desc=App({desc=App(t1,[t2]);typ=TUnknown},ts);typ=t.typ}
@@ -1976,7 +1958,7 @@ let rec eval_and_print_ce ce t =
         let ce',t1' = eval_and_print_ce ce t1 in
           eval_and_print_ce ce' {desc=If(t1',t2,t3);typ=t.typ}
     | Let(flag,f,xs,t1,t2) ->
-        let t0 = {desc=App({desc=Event (Id.name f);typ=TUnknown}, [t1]);typ=t1.typ} in
+        let t0 = {desc=App({desc=Event(Id.name f,false);typ=TUnknown}, [t1]);typ=t1.typ} in
         let t1' = List.fold_right (fun x t -> {desc=Fun(x,t);typ=TFun(x,t.typ)}) xs t0 in
         let ce',t1'' = eval_and_print_ce ce t1' in
         let t1''' =
@@ -1999,9 +1981,9 @@ let rec eval_and_print_ce ce t =
                 Fun(f,t'') -> eval_and_print_ce ce' (subst f {desc=Label(b,t);typ=TUnknown} t'')
               | _ -> assert false
           end
-    | Event s ->
+    | Event(s,false) ->
         Format.printf "%s -->@." s;
-        ce, {desc=Event s; typ=TUnknown}
+        ce, {desc=Event(s,false); typ=TUnknown}
     | Record fields ->
         let ce' = List.fold_right (fun (_,(_,t)) ce -> fst (eval_and_print_ce ce t)) fields ce in
           ce', {desc=Unit; typ=TUnit}
@@ -2074,8 +2056,7 @@ let rec max_label_num t =
     | Unknown -> -1
     | Int _ -> -1
     | NInt _ -> -1
-    | RandInt None -> -1
-    | RandInt (Some t) -> max_label_num t
+    | RandInt _ -> -1
     | Var _ -> -1
     | Fun(_, t) -> max_label_num t
     | App(t, ts) ->
@@ -2117,8 +2098,7 @@ let rec init_rand_int t =
       | Int n -> Int n
       | Var x -> Var x
       | NInt x -> NInt x
-      | RandInt None -> NInt (Id.new_var "_r" (TInt[]))
-      | RandInt (Some t) -> assert false
+      | RandInt false -> NInt (Id.new_var "_r" (TInt[]))
       | Fun(x,t) -> Fun(x, init_rand_int t)
       | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
       | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)
@@ -2127,7 +2107,7 @@ let rec init_rand_int t =
       | BinOp(op, t1, t2) -> BinOp(op, init_rand_int t1, init_rand_int t2)
       | Not t -> Not (init_rand_int t)
       | Label(b,t) -> Label(b, init_rand_int t)
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(init_rand_int t1, init_rand_int t2)
       | Constr(s,ts) -> Constr(s, List.map init_rand_int ts)
@@ -2180,8 +2160,7 @@ let rec copy_poly_funs t =
       | Unknown -> Unknown
       | Int n -> Int n
       | NInt x -> NInt x
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (copy_poly_funs t))
+      | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, copy_poly_funs t)
       | App(t, ts) -> App(copy_poly_funs t, List.map copy_poly_funs ts)
@@ -2219,7 +2198,7 @@ let rec copy_poly_funs t =
       | BinOp(op, t1, t2) -> BinOp(op, copy_poly_funs t1, copy_poly_funs t2)
       | Not t -> Not (copy_poly_funs t)
       | Label(b, t) -> Label(b, copy_poly_funs t)
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,copy_poly_funs t)) fields)
       | Proj(i,s,f,t) -> Proj(i,s,f,copy_poly_funs t)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,copy_poly_funs t1,copy_poly_funs t2)
@@ -2267,22 +2246,16 @@ let rec print_term' pri typ fm t =
       | Unknown -> fprintf fm "***"
       | Int n -> fprintf fm "%d" n
       | NInt x -> fprintf fm "?%a?" print_id x
-      | RandInt None ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%srand_int()%s" s1 s2
-      | RandInt (Some t) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%srand_int %a%s" s1 (print_term' p typ) t s2
-      | RandValue(typ',None) ->
+      | RandInt false -> fprintf fm "rand_int"
+      | RandInt true -> fprintf fm "rand_int_cps"
+      | RandValue(typ',false) ->
           let p = 8 in
           let s1,s2 = paren pri p in
             fprintf fm "%srand_val(%a)%s" s1 print_typ typ' s2
-      | RandValue(typ',Some t) ->
+      | RandValue(typ',true) ->
           let p = 8 in
           let s1,s2 = paren pri p in
-            fprintf fm "%srand_val(%a,%a)%s" s1 print_typ typ' (print_term' p typ) t s2
+            fprintf fm "%srand_val(%a)%s" s1 print_typ typ' s2
       | Var x -> print_id_typ fm x
       | Fun(x, t) ->
           let p = 2 in
@@ -2335,7 +2308,7 @@ let rec print_term' pri typ fm t =
           let p = 8 in
           let s1,s2 = paren pri p in
             fprintf fm "%sbr%d %a%s" s1 n (print_term' p typ) t s2
-      | Event s -> fprintf fm "{%s}" s
+      | Event(s,b) -> fprintf fm "{%s}" s
       | Record fields ->
           let rec aux fm = function
               [] -> ()
@@ -2408,8 +2381,7 @@ let rec trans_let t =
       | Unknown -> Unknown
       | Int n -> Int n
       | NInt y -> NInt y
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (trans_let t))
+      | RandInt b -> RandInt b
       | Var y -> Var y
       | Fun(y, t) -> Fun(y, trans_let t)
       | App(t1, ts) ->
@@ -2446,7 +2418,7 @@ let rec trans_let t =
       | LabelInt(n, t1) ->
           let t1' = trans_let t1 in
             LabelInt(n, t1')
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,trans_let t1)) fields)
       | Proj(i,s,f,t1) -> Proj(i,s,f,trans_let t1)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans_let t1,trans_let t2)

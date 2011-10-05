@@ -16,9 +16,12 @@ let rec check t typ =
   match t with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
-    | {desc=(Int _ | NInt _ | RandInt None); typ=(TInt _ | TRInt _)} -> ()
-    | {desc=RandInt (Some t); typ=typ'} ->
-        check t (TFun(Id.set_typ var (TInt[]), typ'))
+    | {desc=(Int _ | NInt _); typ=(TInt _ | TRInt _)} -> ()
+    | {desc=RandInt false; typ=TFun(x,TInt[])} ->
+        check_var x TUnit
+    | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->
+        check_var x TUnit;
+        check_var k (TFun(Id.new_var "" (TInt[]), TUnit))
     | {desc=Var x; typ=typ'} ->
         check_var x typ'
     | {desc=Fun(x,t); typ=TFun(y,typ')} ->
@@ -70,8 +73,8 @@ let rec check t typ =
         check t typ
     | {desc=LabelInt(_,t); typ=typ} ->
         check t typ
-    | {desc=Event _; typ=TFun(x,TUnit)} ->
-        check_var x TUnit
+    | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event)
+    | {desc=Event(_,true); typ=typ'} -> assert (typ' = typ_event_cps)
     | {desc=Pair(t1,t2); typ=TPair(typ1,typ2)} ->
         check t1 typ1;
         check t2 typ2
@@ -106,7 +109,6 @@ let rec check t typ =
         let e = Id.new_var "e" !typ_excep in
           check t1 typ;
           check t2 (TFun(e,typ))
-    | {desc=Event _; typ=typ'} -> assert (typ' = typ_event)
     | {desc=Bottom} -> ()
     | _ ->(*
             match t.desc with

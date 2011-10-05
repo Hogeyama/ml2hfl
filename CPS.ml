@@ -27,90 +27,82 @@ let make_let' f xs t1 t2 =
     | _ -> make_let f xs t1 t2
 
 let rec trans_simpl c t =
-  match t.desc with
-      Unit
-    | True
-    | False
-    | Int _
-    | NInt _ -> c t
-    | Bottom -> make_bottom (trans_simpl_typ t.typ)
-    | RandInt None ->
+  let typ = trans_simpl_typ t.typ in
+    match t.desc with
+        Unit
+      | True
+      | False
+      | Int _
+      | NInt _ -> c t
+      | Bottom -> make_bottom typ
+      | RandInt false ->
         let r = Id.new_var "r" (TInt[]) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
         let t = make_let' k [r] (c (make_var r)) (make_var k) in
-          {desc=RandInt (Some t); typ=TUnit}
-    | RandInt _ -> assert false
-    | Var x -> c (make_var (trans_simpl_var x))
-    | Fun(x, t) ->
-        let r = Id.new_var "r" (trans_simpl_typ t.typ) in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-          c (make_fun x (make_fun k (trans_simpl (fun y -> make_app (make_var k) [y]) t)))
-    | App(_, []) -> assert false
-    | App(t1, [t2]) ->
-        let r = Id.new_var "r" (trans_simpl_typ t.typ) in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-        let c' x = trans_simpl (fun y -> make_app x [y; make_var k]) t2 in
-        let t2' = trans_simpl c' t1 in
-          make_let' k [r] (c (make_var r)) t2'
-    | App(t1, t2::ts) ->
-        let typ = match t1.typ with TFun(_,typ) -> typ | _ -> assert false in
-          trans_simpl c {desc=App({desc=App(t1,[t2]);typ=typ}, ts); typ=t.typ}
-    | If(t1, t2, t3) ->
-        let x = Id.new_var "x" (trans_simpl_typ t.typ) in
-        let k = Id.new_var "k" (TFun(x,TUnit)) in
-        let c' y = make_app (make_var k) [y] in
-        let t2' = trans_simpl c' t2 in
-        let t3' = trans_simpl c' t3 in
-        let c'' y = make_let' k [x] (c (make_var x)) (make_if y t2' t3') in
-          trans_simpl c'' t1
-    | Let(Flag.Nonrecursive, x, [], t1, t2) ->
-        let x' = trans_simpl_var x in
-        let c' t = subst x' t (trans_simpl c t2) in
-          trans_simpl c' t1
-    | Let(Flag.Recursive, f, [], t1, t2) -> assert false
-    | Let(flag, f, [x], t1, t2) ->
-        let x' = trans_simpl_var x in
-        let r = Id.new_var "r" (trans_simpl_typ t1.typ) in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-        let f' = trans_simpl_var f in
-        let c' y = make_app (make_var k) [y] in
-        let t1' = trans_simpl c' t1 in
-        let t2' = trans_simpl c t2 in
-          make_let_f flag f' [x';k] t1' t2'
-    | Let(flag, f, x::xs, t1, t2) ->
-        let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
-        let g = Id.new_var (Id.name f) typ in
-        let t1' = make_let g xs t1 (make_var g) in
-          trans_simpl c (make_let_f flag f [x] t1' t2)
-    | BinOp(op, t1, t2) ->
-        let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=t.typ} in
-        let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
-          trans_simpl c2 t1
-    | Not t ->
-        let c' t1 = c (make_not t1) in
-          trans_simpl c' t
-    | Unknown -> c {desc=Unknown;typ=t.typ}
-    | Event s ->
-        let u = Id.new_var "u" TUnit in
-        let k = Id.new_var "k" (TFun(u,TUnit)) in
-        let t = make_fun u (make_fun k (make_app (make_var k) [make_var u])) in
-        let t' =
-          match c t with
-              {desc=App(t', [{desc=Unit}; {desc=Var k}])} when t' = t -> make_app (make_var k) [unit_term]
-            | t' -> t'
-        in
-          make_app (make_event s) [t']
-    | Pair(t1, t2) ->
-        let c1 t1' t2' = c (make_pair t1' t2') in
-        let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
-          trans_simpl c2 t1
-    | Fst t ->
-        let c' t1 = c (make_fst t1) in
-          trans_simpl c' t
-    | Snd t ->
-        let c' t1 = c (make_snd t1) in
-          trans_simpl c' t
-    | _ -> (Format.printf "%a@." pp_print_term t; assert false)
+          make_app (make_randint_cps TUnit) [t]
+      | RandInt true -> assert false
+      | Var x -> c (make_var (trans_simpl_var x))
+      | Fun(x, t) ->
+          let r = Id.new_var "r" typ in
+          let k = Id.new_var "k" (TFun(r,TUnit)) in
+            c (make_fun x (make_fun k (trans_simpl (fun y -> make_app (make_var k) [y]) t)))
+      | App(_, []) -> assert false
+      | App(t1, [t2]) ->
+          let r = Id.new_var "r" (trans_simpl_typ t.typ) in
+          let k = Id.new_var "k" (TFun(r,TUnit)) in
+          let c' x = trans_simpl (fun y -> make_app x [y; make_var k]) t2 in
+          let t2' = trans_simpl c' t1 in
+            make_let' k [r] (c (make_var r)) t2'
+      | App(t1, t2::ts) ->
+          let typ = match t1.typ with TFun(_,typ) -> typ | _ -> assert false in
+            trans_simpl c {desc=App({desc=App(t1,[t2]);typ=typ}, ts); typ=t.typ}
+      | If(t1, t2, t3) ->
+          let x = Id.new_var "x" typ in
+          let k = Id.new_var "k" (TFun(x,TUnit)) in
+          let c' y = make_app (make_var k) [y] in
+          let t2' = trans_simpl c' t2 in
+          let t3' = trans_simpl c' t3 in
+          let c'' y = make_let' k [x] (c (make_var x)) (make_if y t2' t3') in
+            trans_simpl c'' t1
+      | Let(Flag.Nonrecursive, x, [], t1, t2) ->
+          let x' = trans_simpl_var x in
+          let c' t = subst x' t (trans_simpl c t2) in
+            trans_simpl c' t1
+      | Let(Flag.Recursive, f, [], t1, t2) -> assert false
+      | Let(flag, f, [x], t1, t2) ->
+          let x' = trans_simpl_var x in
+          let r = Id.new_var "r" typ in
+          let k = Id.new_var "k" (TFun(r,TUnit)) in
+          let f' = trans_simpl_var f in
+          let c' y = make_app (make_var k) [y] in
+          let t1' = trans_simpl c' t1 in
+          let t2' = trans_simpl c t2 in
+            make_let_f flag f' [x';k] t1' t2'
+      | Let(flag, f, x::xs, t1, t2) ->
+          let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
+          let g = Id.new_var (Id.name f) typ in
+          let t1' = make_let g xs t1 (make_var g) in
+            trans_simpl c (make_let_f flag f [x] t1' t2)
+      | BinOp(op, t1, t2) ->
+          let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=typ} in
+          let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
+            trans_simpl c2 t1
+      | Not t ->
+          let c' t1 = c (make_not t1) in
+            trans_simpl c' t
+      | Unknown -> c {desc=Unknown;typ=t.typ}
+      | Event(s,false) -> c (make_event_cps s)
+      | Pair(t1, t2) ->
+          let c1 t1' t2' = c (make_pair t1' t2') in
+          let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
+            trans_simpl c2 t1
+      | Fst t ->
+          let c' t1 = c (make_fst t1) in
+            trans_simpl c' t
+      | Snd t ->
+          let c' t1 = c (make_snd t1) in
+            trans_simpl c' t
+      | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 let trans_simpl = trans_simpl (fun x -> x)
 
 
@@ -171,10 +163,10 @@ let rec trans_exc ct ce t =
     | False
     | Int _
     | NInt _ -> ct t
-    | RandInt None ->
+    | RandInt false ->
         let r = Id.new_var "r" (TInt[]) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
-          make_let k [r] (ct (make_var r)) (make_app (make_var k) [{desc=RandInt None;typ=TInt[]}])
+          make_let k [r] (ct (make_var r)) (make_app (make_var k) [randint_term])
     | RandInt _ -> assert false
     | Var x -> ct (make_var (trans_exc_var x))
     | Fun(x, t) ->
@@ -239,18 +231,7 @@ let rec trans_exc ct ce t =
         let ct' t1 = ct (make_not t1) in
           trans_exc ct' ce t
     | Unknown -> ct {desc=Unknown;typ=t.typ}
-    | Event s ->
-        let u = Id.new_var "u" TUnit in
-        let k = Id.new_var "k" (TFun(u,TUnit)) in
-        let e = Id.new_var "e" !typ_excep in
-        let h = Id.new_var "h" (TFun(e,TUnit)) in
-        let t = make_fun u (make_fun k (make_fun h (make_app (make_var k) [make_var u]))) in
-        let t' =
-          match ct t with
-              {desc=App(t', [{desc=Unit}; {desc=Var k}])} when t' = t -> make_app (make_var k) [unit_term]
-            | t' -> t'
-        in
-          make_app (make_event s) [t']
+    | Event(s,false) -> ct (make_event_cps s)
     | Nil -> ct (make_nil (t.typ))
     | Cons(t1, t2) ->
         let ct1 t1' t2' = ct {desc=Cons(t1', t2'); typ=t.typ} in
@@ -341,8 +322,8 @@ let rec remove_pair t typ_opt =
       | False
       | Int _
       | NInt _
-      | RandInt None -> Leaf t
-      | RandInt (Some t) -> Leaf {desc=RandInt (Some (root (remove_pair t None))); typ=root typs}
+      | RandInt _
+      | Event _ -> Leaf t
       | Bottom -> map (fun _ -> make_bottom) typs
       | Var x -> map (fun _ x -> make_var x) (remove_pair_var x)
       | Fun(x, t) ->
@@ -383,7 +364,6 @@ let rec remove_pair t typ_opt =
       | LabelInt(n, t1) ->
           let t1' = root (remove_pair t1 None) in
             Leaf {desc=LabelInt(n, t1'); typ=root typs}
-      | Event s -> Leaf (make_event s)
       | Record fields -> assert false
       | Proj(i,s,f,t1) -> assert false
       | SetField(n,i,s,f,t1,t2) -> assert false
@@ -618,9 +598,7 @@ let rec infer_cont_pos env t =
     | Int n -> {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ}
     | Bottom -> {t_cps=BottomCPS; typ_cps=trans_cont_pos_typ t.typ}
     | NInt x -> assert false
-    | RandInt t' ->
-        assert (t' = None);
-        {t_cps=RandIntCPS; typ_cps=TBaseCPS t.typ}
+    | RandInt false -> {t_cps=RandIntCPS; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS (TInt[]))}
     | Var x ->
         let typ = try List.assoc (Id.to_string x) env with Not_found -> assert false in
           {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ}
@@ -673,8 +651,7 @@ let rec infer_cont_pos env t =
     | Label(b,t) ->
         let typed = infer_cont_pos env t in
           {t_cps=LabelCPS(b, typed); typ_cps=typed.typ_cps}
-    | Event s ->
-        {t_cps=EventCPS s; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS TUnit)}
+    | Event(s,false) -> {t_cps=EventCPS s; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS TUnit)}
     | Fst t ->
         let typed = infer_cont_pos env t in
         let typ1 = new_tvar() in
@@ -747,10 +724,7 @@ let rec transform c {t_cps=t; typ_cps=typ} =
     | FalseCPS -> c false_term
     | IntCPS n -> c (make_int n)
     | BottomCPS -> make_bottom TUnit
-    | RandIntCPS ->
-        let r = Id.new_var "r" (TInt[]) in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-          {desc=RandInt (Some (make_let k [r] (c (make_var r)) (make_var k))); typ=TUnit}
+    | RandIntCPS -> c (make_randint_cps TUnit)
     | VarCPS x -> c (make_var (trans_var x))
     | FunCPS(x, t) ->
         let r = Id.new_var "r" (trans_typ t.typ_cps) in
@@ -807,16 +781,7 @@ let rec transform c {t_cps=t; typ_cps=typ} =
         let c' t1 = c (make_not t1) in
           transform c' t
     | UnknownCPS -> assert false
-    | EventCPS s ->
-        let u = Id.new_var "u" TUnit in
-        let k = Id.new_var "k" (TFun(u,TUnit)) in
-        let t = make_fun u (make_fun k (make_app (make_var k) [make_var u])) in
-        let t' =
-          match c t with
-              {desc=App(t', [{desc=Unit}; {desc=Var k}])} when t' = t -> make_app (make_var k) [unit_term]
-            | t' -> t'
-        in
-          make_app (make_event s) [t']
+    | EventCPS s ->  c (make_event_cps s)
     | FstCPS t ->
         let c' t1 = c (make_fst t1) in
           transform c' t

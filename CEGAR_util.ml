@@ -104,7 +104,7 @@ let eta_expand_def env (f,xs,t1,t2) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
   let t2' = List.fold_left (fun t x -> App(t, Var x)) t2 ys in
-    f, xs@ys, t1, put_into_term t2'
+    f, xs@ys, t1, t2' (* put_into_term t2' *)
 
 let eta_expand ((env,defs,main) : prog) : prog=
   env, List.map (eta_expand_def env) defs, main
@@ -140,7 +140,7 @@ let rec make_arg_let t =
             Syntax.BinOp(op, t1', t2')
       | Syntax.Not t -> Syntax.Not (make_arg_let t)
       | Syntax.Fun(x,t) -> assert false
-      | Syntax.Event s -> assert false
+      | Syntax.Event _ -> assert false
   in
     {Syntax.desc=desc; Syntax.typ=t.Syntax.typ}
 
@@ -207,13 +207,29 @@ and trans_term xs env t =
     | Syntax.Unknown -> assert false
     | Syntax.Int n -> [], Const (Int n)
     | Syntax.NInt _ -> assert false
-    | Syntax.RandInt None -> [], Const RandInt
-    | Syntax.RandInt(Some t) ->
-        let defs,t' = trans_term xs env t in
-          defs, App(t', Const RandInt)
+    | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Unit}]) ->
+        let k = new_id "k" in
+          [k, TFun(fun _ -> typ_int,typ_int), ["n"], Const True, Var "n"], App(Const RandInt, Var k)
+    | Syntax.App({Syntax.desc=Syntax.RandInt true}, [t1;t2]) ->
+        assert (t1 = Syntax.unit_term);
+        let defs1,t1' = trans_term xs env t1 in
+        let defs2,t2' = trans_term xs env t2 in
+          defs1@defs2, App(Const RandInt, t2')
+    | Syntax.RandInt _ -> assert false
     | Syntax.Var x ->
         let x' = trans_var x in
           [], Var x'
+    | Syntax.App({Syntax.desc=Syntax.Event(s,false)}, [t]) ->
+        let k = new_id "k" in
+        let defs,t' = trans_term xs env t in
+        let xs = diff (get_fv t') (List.map fst env) in
+        let defs' = (k, TFun(fun _ -> typ_unit,typ_unit), xs@["u"], Const True, t')::defs in
+          defs', App(Const (Event s), make_app (Var k) (List.map (fun x -> Var x) xs))
+    | Syntax.App({Syntax.desc=Syntax.Event(s,true)}, [t1;t2]) ->
+        assert (t1 = Syntax.unit_term);
+        let defs1,t1' = trans_term xs env t1 in
+        let defs2,t2' = trans_term xs env t2 in
+          defs1@defs2, App(Const (Event s), t2')
     | Syntax.App(t, ts) ->
         let defs,t' = trans_term xs env t in
         let defss,ts' = List.split (List.map (trans_term xs env) ts) in
@@ -249,7 +265,7 @@ and trans_term xs env t =
         let defs,t' = trans_term xs env t in
           defs, App(Const Not, t')
     | Syntax.Fun _ -> assert false
-    | Syntax.Event s -> [], Const (Event s)
+    | Syntax.Event _ -> assert false
     | Syntax.Bottom -> [], Const Bottom
 
 let rec formula_of t =
@@ -260,7 +276,7 @@ let rec formula_of t =
     | Syntax.Unknown -> assert false
     | Syntax.Int n -> Const (Int n)
     | Syntax.NInt _ -> assert false
-    | Syntax.RandInt None -> raise Not_found
+    | Syntax.RandInt false -> raise Not_found
     | Syntax.Var x ->
         let x' = trans_var x in
           Var x'
@@ -330,11 +346,11 @@ exception TypeBottom
 
 let rec get_const_typ = function
     Event _ -> typ_event
-  | Label _ -> TFun(fun y -> TBase(TUnit,nil), TBase(TUnit,nil))
+  | Label _ -> assert false
   | Unit _ -> TBase(TUnit, nil)
   | True _ -> typ_bool
   | False _ -> typ_bool
-  | RandInt _ -> TBase(TInt,nil)
+  | RandInt _ -> assert false
   | RandBool _ -> TBase(TBool,nil)
   | And -> TFun(fun x -> typ_bool, TFun(fun y -> typ_bool, typ_bool))
   | Or -> TFun(fun x -> typ_bool, TFun(fun y -> typ_bool, typ_bool))
@@ -358,6 +374,11 @@ let rec get_const_typ = function
 let rec get_typ env = function
     Const c -> get_const_typ c
   | Var x -> List.assoc x env
+  | App(Const (Label _), t) -> get_typ env t
+  | App(Const RandInt, t) ->
+      let typ2 = match get_typ env t with TFun typ -> snd (typ (Var "")) | _ -> assert false in
+          Format.printf "get_typ: %a@." CEGAR_print.print_term t ;
+        typ2
   | App(App(App(Const If, _), t1), t2) ->
       begin
         try
@@ -365,11 +386,7 @@ let rec get_typ env = function
         with TypeBottom -> get_typ env t2
       end
   | App(t1,t2) ->
-      let typ2 =
-        match get_typ env t1 with
-            TFun typ -> snd (typ t2)
-          | _ -> assert false
-      in
+      let typ2 = match get_typ env t1 with TFun typ -> snd (typ t2) | _ -> assert false in
         typ2
   | Let(x,t1,t2) ->
       let typ = get_typ env t1 in

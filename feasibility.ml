@@ -7,8 +7,10 @@ open CEGAR_util
 
 
 let rec check ce constr env defs t k =
+  if false then Format.printf "check: %a@." print_term t;
   match t with
-    Const (Event "fail") -> assert (ce=[]); constr, env
+    App(Const (Event "fail"), t) ->
+      check ce constr env defs t (fun env ce' _ -> assert (ce'=[]); constr, env)
   | Const RandInt ->
       let x = new_id "r" in
         k ((x,TBase(TInt,fun _ -> []))::env) ce (Var x)
@@ -19,6 +21,10 @@ let rec check ce constr env defs t k =
       check ce1 constr env defs t2 (fun env ce2 t2' ->
         k env ce2 (make_app (Const op) [t1';t2'])))
   | App(Const (Event s), t) -> check ce constr env defs t k
+  | App(Const RandInt, t) ->
+      let r = new_id "r" in
+      let env' = (r,typ_int)::env in
+        check ce constr env' defs (App(t,Var r)) k
   | App(t1,t2) ->
       check ce constr env defs t1 (fun env ce1 t1' ->
       check ce1 constr env defs t2 (fun env ce2 t2' ->

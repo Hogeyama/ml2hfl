@@ -43,13 +43,20 @@ let rec trans_const = function
   | Fun(x,t) -> Fun(x, trans_const t)
 
 let rec trans_simpl c = function
-    Const (Event s) ->
-      let r = new_id "r" in
-      let k = new_id "k" in
-        App(Const (Event s), c (make_fun_temp [r;k] (App(Var k, Var r))))
-  | Const x -> c (Const x)
+    Const x -> c (Const x)
   | Var x -> c (Var x)
   | App(Const (Label n), t) -> App(Const (Label n), trans_simpl c t)
+  | App(Const (Event s), t) ->
+      let k = match t with Var x -> x | _ -> assert false in
+      let k' = new_id "k" in
+      let u = new_id "u" in
+      let x = new_id "u" in
+      let c' cc =
+        match c (Var x) with
+            App(Var k'', Var x') when x = x' -> cc (Var k'')
+          | tk -> Let(k', Fun(x, tk), cc (Var k'))
+      in
+        c' (fun t -> App(Const (Event s), Fun(u, make_app (Var k) [Var u; t])))
   | App(App(App(Const If, t1), t2), t3) ->
       let k = new_id "k" in
       let x = new_id "b" in
@@ -195,7 +202,7 @@ let trans' (env,defs,main) lift_opt =
   let defs = List.map reduce_def defs in
   let defs = and_def::or_def::not_def::defs in
   let prog = env, defs, main in
-  let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.print_prog prog in
+  let () = if true then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.print_prog prog in
   let _ = Typing.infer prog in
   let prog = if lift_opt then lift prog else lift2 prog in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog prog in

@@ -15,7 +15,11 @@ type 'a t =
   | TFun of ('a -> 'a t * 'a t)
 
 
-let typ_event = TFun(fun _ -> TBase(TUnit, fun _ -> []), TBase(TUnit, fun _ -> []))
+let typ_unit = TBase(TUnit, fun _ -> [])
+let typ_bool = TBase(TBool, fun x -> [x])
+let typ_int = TBase(TInt, fun _ -> [])
+let typ_event = TFun(fun _ -> TFun(fun _ -> typ_unit, typ_unit), typ_unit)
+let make_tfun typ1 typ2 = TFun(fun _ -> typ1, typ2)
 
 let is_base_typ = function
     TBase _ -> true

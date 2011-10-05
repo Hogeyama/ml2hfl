@@ -100,10 +100,6 @@ let make_loop () =
   let f = new_id "loop" in
     [f, ["u"], Const True, App(Var f, Const Unit)], App(Var f, Const Unit)
 
-let typ_unit = TBase(TUnit, fun _ -> [])
-let typ_bool = TBase(TBool, fun x -> [x])
-let typ_int = TBase(TInt, fun _ -> [])
-let make_tfun typ1 typ2 = TFun(fun _ -> typ1, typ2)
 
 
 let rec get_fv = function

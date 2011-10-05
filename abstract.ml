@@ -102,10 +102,8 @@ let rec abst_recdata t =
       | Int n -> Int n
       | Var x -> Var (abst_recdata_var x)
       | NInt x -> NInt (abst_recdata_var x)
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (abst_recdata t))
-      | RandValue(typ,None) -> RandValue(typ,None)
-      | RandValue(typ,Some t) -> RandValue(typ,Some (abst_recdata t))
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
       | Fun(x,t) -> Fun(abst_recdata_var x, abst_recdata t)
       | App(t, ts) -> App(abst_recdata t, List.map abst_recdata ts)
       | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
@@ -114,7 +112,7 @@ let rec abst_recdata t =
       | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
       | Not t -> Not (abst_recdata t)
       | Label(b, t) -> Label(b, abst_recdata t)
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Record _ -> assert false
       | Proj _ -> assert false
       | SetField _ -> assert false
@@ -171,8 +169,7 @@ let rec abstract_mutable t =
       | Unknown -> Unknown
       | Int n -> Int n
       | NInt x -> NInt x
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (abstract_mutable t))
+      | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, abstract_mutable t)
       | App(t, ts) -> App(abstract_mutable t, List.map abstract_mutable ts)
@@ -182,12 +179,12 @@ let rec abstract_mutable t =
       | BinOp(op, t1, t2) -> BinOp(op, abstract_mutable t1, abstract_mutable t2)
       | Not t -> Not (abstract_mutable t)
       | Label(b, t) -> Label(b, abstract_mutable t)
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,abstract_mutable t)) fields)
       | Proj(i,s,Flag.Immutable,t) -> Proj(i, s, Flag.Immutable, abstract_mutable t)
       | Proj(i,s,Flag.Mutable,t) ->
           let u = Id.new_var "u" t.typ in
-            Let(Flag.Nonrecursive, u, [], abstract_mutable t, {desc=RandInt None;typ=TInt[]})
+            Let(Flag.Nonrecursive, u, [], abstract_mutable t, randint_term)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abstract_mutable t1, abstract_mutable t2)
       | Constr(s,ts) -> Constr(s, List.map abstract_mutable ts)
@@ -353,10 +350,8 @@ let rec abst_list t =
       | Int n -> Int n
       | Var x -> Var (abst_list_var x)
       | NInt x -> NInt (abst_list_var x)
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (abst_list t))
-      | RandValue(typ,None) -> RandValue(typ,None)
-      | RandValue(typ,Some t) -> RandValue(typ,Some (abst_list t))
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
       | Fun(x,t) -> Fun(abst_list_var x, abst_list t)
       | App(t, ts) -> App(abst_list t, List.map abst_list ts)
       | If(t1, t2, t3) -> If(abst_list t1, abst_list t2, abst_list t3)
@@ -365,7 +360,7 @@ let rec abst_list t =
       | BinOp(op, t1, t2) -> BinOp(op, abst_list t1, abst_list t2)
       | Not t -> Not (abst_list t)
       | Label(b, t) -> Label(b, abst_list t)
-      | Event s -> Event s
+      | Event(s,b) -> Event(s,b)
       | Record _ -> assert false
       | Proj _ -> assert false
       | SetField _ -> assert false

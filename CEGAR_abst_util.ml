@@ -194,9 +194,7 @@ let assume env cond pbs t1 t2 =
 (* TODO: equiv *)
 let rec congruent env cond typ1 typ2 =
   match typ1,typ2 with
-      TBase(b1,ps1), TBase(b2,ps2) ->
-        if b1<>b2 then Format.printf "CONGRUENT: %a,%a@." print_typ typ1 print_typ typ2;
-        assert (b1=b2);
+      TBase(b1,ps1), TBase(b2,ps2) when b1=b2 ->
         let x = new_id "x" in
 (*
           List.for_all2 (equiv env cond) (ps1 (Var x)) (ps2 (Var x))
@@ -209,6 +207,7 @@ let rec congruent env cond typ1 typ2 =
         let typ11,typ12 = typ1 (Var x) in
         let typ21,typ22 = typ2 (Var x) in
           congruent env cond typ11 typ21 && congruent env cond typ12 typ22
+    | _ -> Format.printf "CONGRUENT: %a,%a@." print_typ typ1 print_typ typ2; assert false
 
 
 let rec is_base_term env = function

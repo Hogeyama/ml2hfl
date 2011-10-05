@@ -51,10 +51,7 @@ let coerce env cond pts typ1 typ2 =
 
 let rec abstract_term env cond pbs t typ =
   match t with
-      Const RandInt ->
-        let typ' = TBase(TInt, fun x -> []) in
-          coerce env cond pbs typ' typ (Const (Tuple 0))
-    | Var x -> coerce env cond pbs (List.assoc x env) typ t
+      Var x -> coerce env cond pbs (List.assoc x env) typ t
     | t when is_base_term env t ->
         let typ',src =
           match get_typ env t with
@@ -65,7 +62,8 @@ let rec abstract_term env cond pbs t typ =
         in
           coerce env cond pbs typ' typ src
     | Const c -> coerce env cond pbs (get_const_typ c) typ t
-    | App(Const (Event s), t) -> App(Const (Event s), abstract_term env cond pbs t typ)
+    | App(Const RandInt, t) -> App(abstract_term env cond pbs t (TFun(fun _ -> typ_int,typ)), Const (Tuple 0))
+    | App(Const (Event s), t) -> App(Const (Event s), abstract_term env cond pbs t (TFun(fun _ -> typ_unit,typ_unit)))
     | App(Const (Label n), t) -> App(Const (Label n), abstract_term env cond pbs t typ)
     | App(t1, t2) ->
         let typ' = get_typ env t1 in
@@ -116,4 +114,6 @@ let abstract (env,defs,main) =
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
   let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
-    Typing.infer ([], defs, main)
+  let prog = Typing.infer ([], defs, main) in
+  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog_typ prog in    
+    prog

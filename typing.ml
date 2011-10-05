@@ -65,7 +65,9 @@ let rec trans_typ = function
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
 
 let get_typ_const = function
-  | Event _ -> TFun(TUnit,TUnit)
+  | Event _ ->
+      let typ = new_tvar () in
+        TFun(TFun(TUnit,typ),typ)
   | Label _ ->
       let typ = new_tvar() in
         TFun(typ,typ)
@@ -73,7 +75,9 @@ let get_typ_const = function
   | True -> TBool 
   | False -> TBool
   | RandBool -> TBool
-  | RandInt -> TInt
+  | RandInt ->
+      let typ = new_tvar () in
+        TFun(TFun(TInt,typ),typ)
   | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
   | EqBool -> TFun(TBool,TFun(TBool,TBool))

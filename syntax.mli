@@ -13,8 +13,8 @@ and term =
   | Unknown
   | Int of int
   | NInt of id
-  | RandInt of typed_term option
-  | RandValue of typ * typed_term option
+  | RandInt of bool (** true denotes CPS-term *)
+  | RandValue of typ * bool (** true denotes CPS-term *)
   | Var of id
   | Fun of id * typed_term
   | App of typed_term * typed_term list
@@ -25,7 +25,7 @@ and term =
   | Not of typed_term
   | Label of bool * typed_term
   | LabelInt of int * typed_term
-  | Event of string
+  | Event of string * bool
   | Record of (string * (Flag.mutable_flag * typed_term)) list
   | Proj of int * string * Flag.mutable_flag * typed_term
   | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
@@ -38,7 +38,6 @@ and term =
   | Pair of typed_term * typed_term
   | Fst of typed_term
   | Snd of typed_term
-  | Variant of typed_term (* for abstraction of datatype *)
   | Bottom
 
 and type_kind =
@@ -69,16 +68,20 @@ val abst_var : id
 val abst_list_var : id
 
 val typ_event : typ
+val typ_event_cps : typ
 val typ_excep : typ ref
 
 val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term
 val fail_term : typed_term
+val randint_term : typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
+val make_event_cps : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term
+val make_randint_cps : typ -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term
@@ -105,7 +108,6 @@ val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
 val make_pair : typed_term -> typed_term -> typed_term
 val make_nil : typ -> typed_term
-val make_variant : typed_term -> typed_term
 val make_match : typed_term -> (typed_pattern * typed_term option * typed_term) list -> typed_term
 val make_loop : typ -> typed_term
 val make_pvar : id -> typed_pattern

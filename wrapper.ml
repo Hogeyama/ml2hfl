@@ -491,8 +491,8 @@ and simplify_exp t =
       | Int _ -> t.desc
       | NInt _ -> t.desc
       | RandInt t ->
-          assert (t = None);
-          RandInt None
+          assert (not t);
+          RandInt false
       | BinOp(Add, t1, t2) ->
           let t1' = simplify_exp t1 in
           let t2' = simplify_exp t2 in

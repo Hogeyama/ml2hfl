@@ -70,7 +70,7 @@ let rec trans_eager_bool f = function
 
 let id x = x
 let rec trans_eager_term env c t =
-  let is_bool =
+  let is_bool t =
     try
       match get_typ env t with
           TBase(TBool,_) -> true
@@ -81,7 +81,7 @@ let rec trans_eager_term env c t =
         App(App(Const And, _), _)
       | App(App(Const Or, _), _)
       | App(Const Not, _)
-      | App(App(App(Const If, _), _), _) when is_bool ->
+      | App(App(App(Const If, _), _), _) when is_bool t ->
           let x = new_id "b" in
           let f = new_id "f" in
             begin
@@ -89,7 +89,6 @@ let rec trans_eager_term env c t =
                   App(Var k, Var y) when x = y -> trans_eager_bool k t
                 | t' -> Let(f, Fun(x, t'), trans_eager_bool f t)
             end
-
       | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | EqInt | EqBool) -> assert false
       | Const _
       | Var _ -> c t
@@ -156,6 +155,7 @@ let rec abstract_term_aux env cond pts t typ1 typ2 =
 
 
 let rec abstract_term env cond pts t typ =
+  if true then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
   match t with
       Var x -> abstract_term_aux env cond pts t (List.assoc x env) typ
     | Const Bottom -> abstract_term_aux env cond pts t typ typ
@@ -163,7 +163,8 @@ let rec abstract_term env cond pts t typ =
     | App _ when is_base_term env t ->
         let base = get_base typ in
           abstract_term_aux env cond pts t (TBase(base,fun x -> [make_eq_int x t])) typ
-    | App(Const (Event s), t) -> [App(Const (Event s), hd (abstract_term env cond pts t typ))]
+    | App(Const RandInt, t) -> abstract_term env cond pts t (TFun(fun _ -> typ_int,typ))
+    | App(Const (Event s), t) -> [App(Const (Event s), hd (abstract_term env cond pts t (TFun(fun _ -> typ_unit,typ_unit))))]
     | App(Const (Label n), t) -> [App(Const (Label n), hd (abstract_term env cond pts t typ))]
     | App _ ->
         let t1,ts = decomp_app t in
@@ -219,7 +220,7 @@ let abstract (env,defs,main) =
   let (env,defs,main) = add_bool_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
+  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
   let prog = Typing.infer ([], defs, main) in
   let prog = lift2 prog in
   let () = if false then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in

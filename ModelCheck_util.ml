@@ -220,6 +220,7 @@ let make_bottom (env,defs,main) =
           let t2' = aux_term (t2,typ) in
           let t3' = aux_term (t3,typ) in
             App(App(App(Const If, t1'), t2'), t3')
+      | App(Const (Label n), t), typ -> App(Const (Label n), aux_term (t,typ))
       | App(t1,t2), _ ->
           let typ = get_typ env' t1 in
           let typ' =
