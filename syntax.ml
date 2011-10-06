@@ -2098,7 +2098,8 @@ let rec init_rand_int t =
       | Int n -> Int n
       | Var x -> Var x
       | NInt x -> NInt x
-      | RandInt false -> NInt (Id.new_var "_r" (TInt[]))
+      | RandInt false -> assert false
+      | App({desc=RandInt false},[{desc=Unit}]) -> NInt (Id.new_var "_r" (TInt[]))
       | Fun(x,t) -> Fun(x, init_rand_int t)
       | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
       | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)

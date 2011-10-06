@@ -267,7 +267,9 @@ exception Undefined of id
 let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
-(*
+
+  if true then
+    begin
   (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
   print_string2 "process_term:\n";
@@ -277,7 +279,8 @@ let rec process_term trace term traces env pcounter =
   List.iter (fun trace -> print_string2 " "; List.iter (fun n -> print_string2 (string_of_node n ^ ".")) trace; print_string2 ".\n") traces;
   print_string2 "\n";
   (**)
-*)
+    end;
+
   match term.desc with
       Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
@@ -291,12 +294,12 @@ let rec process_term trace term traces env pcounter =
         else
           assert false
     | If(_,t2,t3) ->
-        if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
-          let trace = trace @ [EventNode("then_fail")] in
+        if List.for_all (function [EventNode"then_fail"] -> true | _ -> false) traces then
+          let trace = trace @ [EventNode"then_fail"] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
             [MyFail(new_tinfo()), trace, traces]
-        else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
-          let trace = trace @ [EventNode("else_fail")] in
+        else if List.for_all (function [EventNode"else_fail"] -> true | _ -> false) traces then
+          let trace = trace @ [EventNode"else_fail"] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
             [MyFail(new_tinfo()), trace, traces]
         else if List.mem [] traces then (*???*)
@@ -320,7 +323,8 @@ let rec process_term trace term traces env pcounter =
           let trace = trace @ [FailNode] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
             [MyFail(new_tinfo()), trace, traces]
-        else assert false
+        else
+          assert false
     | Var(x) ->
         if Id.typ x = TUnit && List.for_all (function [FailNode] -> true | _ -> false) traces then
           let trace = trace @ [FailNode] in
@@ -463,6 +467,7 @@ let rec eval_term t defs traces pcounter =
 *)
   match t with
       MyUnit(tinfo) | MyFail(tinfo) ->
+(*
         let check = function
             [FailNode]
           | [EventNode "then_fail"]
@@ -471,6 +476,7 @@ let rec eval_term t defs traces pcounter =
           | _ -> assert false
         in
           List.iter check traces;
+*)
           let counter = incr_counter () in
             trace2id := ((pcounter, []), counter)::!trace2id;
             add_to_tinfo (ETunit(counter)) tinfo
@@ -767,9 +773,9 @@ let rec chk_term rtenv term id trace traces =
         else
           assert false
     | If(t1,t2,t3) ->
-        if List.for_all (function [EventNode("then_fail")] -> true | _ -> false) traces then
+        if List.for_all (function [EventNode"then_fail"] -> true | _ -> false) traces then
           [Cimp([Cterm(t1)], [Cfalse])]
-        else if List.for_all (function [EventNode("else_fail")] -> true | _ -> false) traces then
+        else if List.for_all (function [EventNode"else_fail"] -> true | _ -> false) traces then
           [Cimp([Cterm({desc=Not t1;typ=TBool})], [Cfalse])]
         else
           let aux = function
@@ -1851,16 +1857,9 @@ let rec trans_term env = function
   | CS.Const CS.False -> false_term
   | CS.Const (CS.Int n) -> make_int n
   | CS.Const CS.Bottom -> make_bottom TUnknown
-  | CS.Var x ->
-      let x' = (trans_var env x) in
-      let x'' = make_var (trans_var env x) in
-        if x'.Id.id = 132
-        then x''
-        else x''
-  | CS.App(CS.Const (CS.Event s), CS.Var k) -> make_app (make_var (trans_var env k)) [make_app (make_event s) [unit_term]]
-  | CS.App(CS.Const (CS.Event s), CS.Var k) -> make_app (make_event_cps s) [unit_term; make_var (trans_var env k)]
-  | CS.App(CS.Const CS.RandInt, CS.Var k) -> make_app (make_var (trans_var env k)) [make_app randint_term [unit_term]]
-  | CS.App(CS.Const CS.RandInt, CS.Var k) -> make_app (make_randint_cps TUnit) [unit_term; make_var (trans_var env k)]
+  | CS.Var x -> make_var (trans_var env x)
+  | CS.App(CS.Const (CS.Event s), t) -> make_app (make_event s) [make_app (trans_term env t) [unit_term]]
+  | CS.App(CS.Const CS.RandInt, t) -> make_app (trans_term env t) [make_app randint_term [unit_term]]
   | CS.App(CS.App(CS.App(CS.Const CS.If, t1), t2), t3) -> make_if (trans_term env t1) (trans_term env t2) (trans_term env t3)
   | CS.App(CS.App(CS.Const CS.And, t1), t2) -> make_and (trans_term env t1) (trans_term env t2)
   | CS.App(CS.App(CS.Const CS.Or, t1), t2) -> make_or (trans_term env t1) (trans_term env t2)
@@ -1947,11 +1946,13 @@ let rec add_preds_typ sol typ1 typ2 =
 
 let infer ces t =
   let aux = function
-      0 -> [Syntax.LabNode true]
-    | 1 -> [Syntax.LabNode false]
-    | n -> []
+      CS.BrNode b -> [Syntax.LabNode b]
+    | CS.LineNode n -> []
+    | CS.EventNode "fail" -> [Syntax.FailNode]
+    | CS.EventNode s -> [Syntax.EventNode s]
+    | _ -> assert false
   in
-  let ces =  List.map (fun ce -> List.flatten (List.map aux ce) @ [FailNode]) ces in
+  let ces =  List.map (fun ce -> flatten_map aux ce) ces in
   let defs,main = trans t in
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in
@@ -1965,24 +1966,5 @@ let infer ces t =
     rev_flatten_map aux fs
 
 
-(*
-let infer_test ces t =
-  let aux = function
-      0 -> Syntax.LabNode true
-    | 1 -> Syntax.LabNode false
-    | n -> assert false
-  in
-  let ces = List.map (fun ce -> List.map aux ce @ [FailNode]) ces in
-  let defs,main = trans t in
-  let rte,sol = test [] main defs ces None in
-  let fs = List.map fst defs in
-  let aux f =
-    try
-      let _,rty = List.find (fun (x, _) -> Id.same f x) rte in
-      let typ = List.fold_left (add_preds_typ sol) (Id.typ f) rty in
-        [CU.trans_var f, CU.trans_typ' typ]
-    with Not_found -> []
-  in
-    rev_flatten_map aux fs
-*)
+
 

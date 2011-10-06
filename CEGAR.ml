@@ -39,7 +39,7 @@ let rec cegar prog ces =
         None,_ -> prog, None
       | Some ce, ce'::ces when ce = ce' -> raise NoProgress;
       | Some ce, _ ->
-          Format.printf "Spurious counter-example::\n%a\n@." (print_list Format.pp_print_int "; " false) ce;
+          Format.printf "Spurious counter-example::\n%a\n@." CEGAR_print.print_ce ce;
           try
             let ces' = ce::ces in
             let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
@@ -58,7 +58,7 @@ let rec cegar prog ces =
               cegar prog' ces'
           with Refine.CannotRefute ->
             match Feasibility.check ce prog with
-                Some (env, sol) ->
+                Feasibility.Feasible (env, sol) ->
                   let print () =
                     let _,defs,main = prog in
                      Format.printf "Inputs:@.";
@@ -66,7 +66,7 @@ let rec cegar prog ces =
                     print_ce_reduction ce defs main
                   in
                     prog, Some print
-              | None -> raise CannotDiscoverPredicate(*t1, None*)
+              | Feasibility.Infeasible prefix -> raise CannotDiscoverPredicate(*t1, None*)
 
 
 

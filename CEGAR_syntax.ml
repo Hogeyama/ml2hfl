@@ -2,29 +2,6 @@
 open Utilities
 open CEGAR_type
 
-let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
-let rename_id s =
-  let len = String.length s in
-  let n =
-    try
-      let i = String.rindex s '_' in
-      let n = String.sub s (i+1) (len-i-1) in
-      let _ = int_of_string n in
-        i
-    with _ -> len
-  in
-    String.sub s 0 n ^ "_" ^ string_of_int (Id.new_int ())
-let decomp_id s =
-  try
-    let len = String.length s in
-    let i = String.rindex s '_' in
-      String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
-  with _ -> s, 0
-let add_name x s =
-  let name,n = decomp_id x in
-    name ^ s ^ if n <> 0 then string_of_int n else ""
-
-
 type var = string
 
 
@@ -65,10 +42,42 @@ type t =
   | Fun of var * t
 
 
+
+type ce_node = BrNode of bool | LineNode of int | EventNode of string
+type ce = ce_node list
+
+
+
 type fun_def = var * var list * t * t
 type typ = t CEGAR_type.t
 type env = (var * typ) list
 type prog = env * fun_def list * var
+
+
+
+
+let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
+let rename_id s =
+  let len = String.length s in
+  let n =
+    try
+      let i = String.rindex s '_' in
+      let n = String.sub s (i+1) (len-i-1) in
+      let _ = int_of_string n in
+        i
+    with _ -> len
+  in
+    String.sub s 0 n ^ "_" ^ string_of_int (Id.new_int ())
+let decomp_id s =
+  try
+    let len = String.length s in
+    let i = String.rindex s '_' in
+      String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
+  with _ -> s, 0
+let add_name x s =
+  let name,n = decomp_id x in
+    name ^ s ^ if n <> 0 then string_of_int n else ""
+
 
 
 

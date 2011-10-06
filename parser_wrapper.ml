@@ -51,12 +51,8 @@ let conv_primitive_app t ts typ =
     | Var {Id.name="Pervasives.not"}, [t] -> make_not t
     | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ}
     | Var {Id.name="Random.int"}, [{desc=Int 0}] -> make_app randint_term [unit_term]
-    | Var {Id.name="Pervasives.open_in"}, [{desc=Int _}] ->
-        let u = Id.new_var "u" TUnit in
-          make_app (make_event "newr") [make_fun u unit_term]
-    | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] ->
-        let u = Id.new_var "u" TUnit in
-          make_app (make_event "close") [make_fun u unit_term]
+    | Var {Id.name="Pervasives.open_in"}, [{desc=Int _}] -> make_app (make_event "newr") [unit_term]
+    | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
     | _ -> make_app t ts
 
 
@@ -490,7 +486,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             make_if (from_expression e) unit_term (make_app fail_term [unit_term])
       | Texp_assertfalse _ ->
           let u = Id.new_var "u" TUnit in
-            make_app fail_term [make_fun u (make_bottom typ')]
+            make_let u [] (make_app fail_term [unit_term]) (make_bottom typ')
       | Texp_lazy e -> assert false
           (*
             let u = Id.new_var "u" TUnit in

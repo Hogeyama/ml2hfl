@@ -1,6 +1,4 @@
 
-
-
 open Utilities
 open CEGAR_syntax
 open CEGAR_type
@@ -38,27 +36,23 @@ let add_pred map env =
     List.map aux env
 
 
-let refine ces (env,defs,main) : prog =
-  let ces, refine =
+let refine ces (env,defs,main) =
+  let map =
     match !Flag.refine with
         Flag.RefineSizedType ->
           let rec aux = function
-              n::ns when n >= 2 -> 0 :: aux ns
-            | n::_::ns when n <= 2 -> n :: aux ns
+              (LineNode _)::ce -> 0 :: aux ce
+            | (BrNode b)::(LineNode _)::ce -> (if b then 0 else 1) :: aux ce
+            | (EventNode _)::ce -> aux ce
             | [] -> []
             | _ -> assert false
           in
-          let ces' = List.map aux ces in
-            ces', LazyInterface.infer
+            LazyInterface.infer (List.map aux ces) (env,defs,main)
       | Flag.RefineDependentType ->
-          let rec f ces prog =
-            try
-              RefineDepTyp.infer ces prog
-            with RefineDepTyp.Untypable -> raise CannotRefute
-          in
-            ces, f
+          try
+            RefineDepTyp.infer ces (env,defs,main)
+          with RefineDepTyp.Untypable -> raise CannotRefute
   in
-  let map = refine ces (env,defs,main) in
   let env' = add_pred map env in
     env', defs, main
 

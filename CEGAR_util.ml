@@ -240,7 +240,7 @@ and trans_term xs env t =
         let defs3,t3' = trans_term xs env t3 in
         let f = new_id "f" in
         let x = new_id "b" in
-        let typs = TBase(TBool,fun x -> [x]) :: List.map (fun x -> List.assoc x env) xs in
+        let typs = typ_bool :: List.map (fun x -> List.assoc x env) xs in
         let typ = List.fold_right (fun typ1 typ2 -> TFun(fun _ -> typ1,typ2)) typs (trans_typ t2.Syntax.typ) in
         let def1 = f, typ, x::xs, Var x, t2' in
         let def2 = f, typ, x::xs, make_not (Var x), t3' in
@@ -707,38 +707,40 @@ let rec has_bottom = function
 let print_ce_reduction ce defs main =
 let rec print ce defs t k =
   match t with
-    Const (Event "fail") -> assert (ce=[])
-  | Const RandInt ->
-      let x = new_id "r" in
-        k ce (Var x)
-  | Const c -> k ce (Const c)
-  | Var x -> k ce (Var x)
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
-      print ce defs t1 (fun ce1 t1' ->
-      print ce1 defs t2 (fun ce2 t2' ->
-        k ce2 (make_app (Const op) [t1';t2'])))
-  | App(t1,t2) ->
-      print ce defs t1 (fun ce1 t1' ->
-      print ce1 defs t2 (fun ce2 t2' ->
-        let t1'',ts = decomp_app (App(t1',t2')) in
-        let n = List.hd ce2 in
-        let ce2' = List.tl ce2 in
-        let _,xs,_,_ = List.find (fun (f,_,_,_) -> Var f = t1'') defs in
-          if List.length xs > List.length ts
-          then k ce2 (App(t1',t2'))
-          else
-            let f,xs,tf1,tf2 = List.nth defs n in
-              Format.printf "  %a ... -->@." print_term t1'';
-              assert (Var f = t1'');
-            let ts1,ts2 = take2 ts (List.length xs) in
-            assert (List.length xs = List.length ts);
-            assert (ts2 = []);
-            let aux = List.fold_right2 subst xs ts1 in
-            let tf2' = make_app (aux tf2) ts2 in
-              print ce2' defs tf2' k))
+      Const (Event _) -> assert false
+    | Const RandInt -> assert false
+    | Const c -> k ce (Const c)
+    | Var x -> k ce (Var x)
+    | App(Const (Event "fail"), t) -> print ce defs t (fun ce' _ -> assert (ce'=[]))
+    | App(Const RandInt, t) ->
+        let r = new_id "r" in
+          print ce defs (App(t,Var r)) k
+    | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
+        print ce defs t1 (fun ce1 t1' ->
+        print ce1 defs t2 (fun ce2 t2' ->
+          k ce2 (make_app (Const op) [t1';t2'])))
+    | App(t1,t2) ->
+        print ce defs t1 (fun ce1 t1' ->
+        print ce1 defs t2 (fun ce2 t2' ->
+          let t1'',ts = decomp_app (App(t1',t2')) in
+          let n = List.hd ce2 in
+          let ce2' = List.tl ce2 in
+          let _,xs,_,_ = List.find (fun (f,_,_,_) -> Var f = t1'') defs in
+            if List.length xs > List.length ts
+            then k ce2 (App(t1',t2'))
+            else
+              let f,xs,tf1,tf2 = List.nth defs n in
+                Format.printf "  %a ... -->@." print_term t1'';
+                assert (Var f = t1'');
+                let ts1,ts2 = take2 ts (List.length xs) in
+                assert (List.length xs = List.length ts);
+                assert (ts2 = []);
+                let aux = List.fold_right2 subst xs ts1 in
+                let tf2' = make_app (aux tf2) ts2 in
+                  print ce2' defs tf2' k))
 in
   let _,_,_,t = List.find (fun (f,_,_,_) -> f = main) defs in
-  let ce' = flatten_map (fun n -> if n>=2 then [n-2] else []) (List.tl ce) in
+  let ce' = flatten_map (function LineNode n -> [n] | _ -> []) (List.tl ce) in
     Format.printf "Error trace::@.";
     Format.printf "  %a ... -->@." print_term (Var main);
     print ce' defs t (fun _ -> assert false);

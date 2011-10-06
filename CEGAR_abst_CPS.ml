@@ -155,7 +155,7 @@ let rec abstract_term_aux env cond pts t typ1 typ2 =
 
 
 let rec abstract_term env cond pts t typ =
-  if true then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
+  if false then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
   match t with
       Var x -> abstract_term_aux env cond pts t (List.assoc x env) typ
     | Const Bottom -> abstract_term_aux env cond pts t typ typ

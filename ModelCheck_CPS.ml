@@ -16,6 +16,7 @@ let check prog n =
   let prog = make_bottom prog in
   let prog = pop_main prog in
   let prog = capitalize prog in
+  let prog = trans_event prog in
   let spec = make_spec n in
     try
       model_check_aux (prog,spec)

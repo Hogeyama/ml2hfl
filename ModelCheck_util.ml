@@ -5,15 +5,17 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
-type node = BrNode | FailNode | LineNode of int | EventNode of string
+type node = UnitNode | BrNode | LineNode of int | EventNode of string
 
 
 
+let take s n = String.sub s n (String.length s - n)
 let parse_node = function
     "br" -> BrNode
-  | "event_fail" -> FailNode
-  | s when s.[0] = 'l' -> LineNode (int_of_string (String.sub s 1 (String.length s - 1)))
-  | s -> EventNode s
+  | "unit" -> UnitNode
+  | s when s.[0] = 'l' -> LineNode (int_of_string (take s 1))
+  | s when String.sub s 0 6 = "event_" -> EventNode (take s 6)
+  | _ -> assert false
       
 
 let get_pair s =
@@ -34,8 +36,8 @@ let rec parse_trace s =
     | _ -> assert false
 
 let print_node fm = function
-    BrNode -> Format.fprintf fm "br"
-  | FailNode -> Format.fprintf fm "fail"
+    UnitNode -> Format.fprintf fm "unit"
+  | BrNode -> Format.fprintf fm "br"
   | LineNode n -> Format.fprintf fm "#%d" n
   | EventNode s -> Format.fprintf fm "%s" s
 
@@ -91,40 +93,6 @@ let print_hors_to_file hors =
 
 
 
-let model_check_aux ((env,defs,main),spec) =
-  let cin,cout = Unix.open_process Flag.trecs in
-  let fm = formatter_of_out_channel cout in
-  let () = print_hors fm (defs, spec) in
-  let () = print_hors_to_file (defs, spec) in
-  let () = pp_print_flush fm () in
-  let () = close_out cout in
-  let s1 = ignore (input_line cin); ignore (input_line cin); input_line cin in
-  let s2 = ignore (input_line cin); input_line cin in
-  let _ = close_in cin in
-  let () = pp_print_flush std_formatter () in
-  let () =
-    match Unix.close_process (cin, cout) with
-        Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
-  in
-    if s1 = "The property is not satisfied."
-    then
-      let () =
-        if Flag.print_trecs_output
-        then printf "TRecS output: %s@.@." s2
-      in
-      let ce = parse_trace s2 in
-      let () = if true then List.iter (fun (node,i) -> Format.printf "(%a,%d) " print_node node i) ce in
-      let ce' = List.flatten (List.map (function (LineNode i,_) -> [i] | _ -> []) ce) in
-        Some ce'
-    else
-      begin
-        assert (String.sub s1 (String.length s1 - 3) 3 = " : ");
-        None
-      end
-
-
-
-
 let make_line_spec n q =
   let rec aux i spec =
     if i < 0
@@ -134,7 +102,8 @@ let make_line_spec n q =
     aux n []
 
 let make_file_spec () =
-  [0, "event_newr", [1];
+  [0, "unit", [];
+   0, "event_newr", [1];
    1, "event_read", [1];
    1, "event_close", [4];
    0, "event_neww", [2];
@@ -142,21 +111,23 @@ let make_file_spec () =
    2, "event_close", [4];
    2, "event_newr", [3];
    1, "event_neww", [3];
+   3, "unit", [];
    3, "event_read", [3];
    3, "event_write", [3];
-   3, "event_close", [3];]
+   3, "event_close", [3];
+   4, "unit", [];]
 
 
-let make_base_spec n q = (q, "br", [q;q])::(q, "unit", [])::make_line_spec (n+2) q
+let make_base_spec n q = (q, "br", [q;q])::make_line_spec (n+2) q
 
 let make_spec n =
   let spec =
     match !Flag.mode with
-        Flag.Reachability -> make_base_spec n 0
+        Flag.Reachability -> (0,"unit",[])::make_base_spec n 0
       | Flag.FileAccess ->
           let spec = make_file_spec () in
           let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
-          let spec' = rev_flatten_map (fun i -> make_base_spec n i) (Array.to_list (Array.init qm (fun i -> i))) in
+          let spec' = rev_flatten_map (fun i -> make_base_spec n i) (Array.to_list (Array.init (qm+1) (fun i -> i))) in
             spec @@ spec'
   in
     List.sort compare spec
@@ -267,5 +238,66 @@ let eta_expand_def env (f,xs,t1,t2) =
 
 let eta_expand ((env,defs,main) : prog) : prog=
   lift2 (env, List.map (eta_expand_def env) defs, main)
+
+
+
+
+
+let rec trans_event_term = function
+    Const c -> Const c
+  | Var x -> Var x
+  | App(Const (Event s), t) -> App(Const (Event s), App(trans_event_term t, Const Unit))
+  | App(t1, t2) -> App(trans_event_term t1, trans_event_term t2)
+
+let trans_event_def def = apply_body_def trans_event_term def
+
+let trans_event (env,defs,main) =
+  env, List.map trans_event_def defs, main
+
+
+
+
+let trans_ce ce =
+  let aux = function
+      UnitNode, 0 -> [CEGAR_syntax.EventNode "unit"]
+    | LineNode 0, _ -> [CEGAR_syntax.BrNode true]
+    | LineNode 1, _ -> [CEGAR_syntax.BrNode false]
+    | LineNode i, _ -> [CEGAR_syntax.LineNode (i-2)]
+    | EventNode s, _ -> [CEGAR_syntax.EventNode s]
+    | BrNode, _ -> []
+    | _ -> assert false
+  in
+    flatten_map aux ce
+
+
+let model_check_aux ((env,defs,main),spec) =
+  let cin,cout = Unix.open_process Flag.trecs in
+  let fm = formatter_of_out_channel cout in
+  let () = print_hors fm (defs, spec) in
+  let () = print_hors_to_file (defs, spec) in
+  let () = pp_print_flush fm () in
+  let () = close_out cout in
+  let s1 = ignore (input_line cin); ignore (input_line cin); input_line cin in
+  let s2 = ignore (input_line cin); input_line cin in
+  let _ = close_in cin in
+  let () = pp_print_flush std_formatter () in
+  let () =
+    match Unix.close_process (cin, cout) with
+        Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
+  in
+    if s1 = "The property is not satisfied."
+    then
+      let () =
+        if Flag.print_trecs_output
+        then printf "TRecS output: %s@.@." s2
+      in
+        Some (trans_ce (parse_trace s2))
+    else
+      begin
+        assert (String.sub s1 (String.length s1 - 3) 3 = " : ");
+        None
+      end
+
+
 
 
