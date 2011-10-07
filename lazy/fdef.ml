@@ -4,7 +4,7 @@ open ExtList
 type t = { attr: Attr.t; name: Idnt.t; args: Idnt.t list; guard: Term.t; body: Term.t }
 
 let pr ppf fdef =
-  Format.fprintf ppf "%a %a when %a = %a"
+  Format.fprintf ppf "%a %a | %a = %a"
     Idnt.pr fdef.name
     (Util.pr_list Idnt.pr " ") fdef.args
     Term.pr fdef.guard

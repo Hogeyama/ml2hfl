@@ -60,7 +60,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo CEGAR_util.cmo \
 	lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
-	lazy/util.cmo lazy/lazyFlag.cmo \
+	lazy/util.cmo lazy/flags.cmo \
 	lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/simType.cmo lazy/arith.cmo lazy/term.cmo \
 	lazy/apronInterface.cmo lazy/csisatInterface.cmo lazy/cvc3Interface.cmo lazy/fdef.cmo \
 	lazy/prog.cmo lazy/ctree.cmo lazy/ctreeExpander.cmo lazy/sizType.cmo lazy/trace.cmo lazy/refType.cmo \
