@@ -8,6 +8,8 @@ let rec occur_arg_pred x = function
   | TFun typ ->
       let typ1,typ2 = typ (Const Unit) in
         occur_arg_pred x typ1 || occur_arg_pred x typ2
+  | TAbs _ -> assert false
+  | TApp(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x typ2
 
 let rec print_var = Format.pp_print_string
 

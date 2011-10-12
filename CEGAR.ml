@@ -40,33 +40,49 @@ let rec cegar prog ces =
       | Some ce, ce'::ces when ce = ce' -> raise NoProgress;
       | Some ce, _ ->
           Format.printf "Spurious counter-example::\n%a\n@." CEGAR_print.print_ce ce;
-          try
-            let ces' = ce::ces in
-            let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
-            let tmp = get_time () in
-            let prog' = Refine.refine ces' prog in
-              add_time tmp Flag.time_cegar;
-              if Flag.print_progress then print_msg "DONE!\n";
-              incr Flag.cegar_loop;
-              (**)
-              Wrapper2.close_cvc3 ();
-              Wrapper.close_cvc3 ();
-              Wrapper.open_cvc3 ();
-              Wrapper2.open_cvc3 ();
-              (**)
-              Id.set_counter n;
-              cegar prog' ces'
-          with Refine.CannotRefute ->
+          let () = if Flag.print_progress then print_msg "\n(3) Checking CE and Discovering predicates ... " in
+          let tmp = get_time () in
             match Feasibility.check ce prog with
                 Feasibility.Feasible (env, sol) ->
                   let print () =
                     let _,defs,main = prog in
-                     Format.printf "Inputs:@.";
-                    List.iter (fun t -> Format.printf "  %s;@." t) sol;
-                    print_ce_reduction ce defs main
+                      Format.printf "Inputs:@.";
+                      List.iter (fun t -> Format.printf "  %s;@." t) sol;
+                      print_ce_reduction ce defs main
                   in
                     prog, Some print
-              | Feasibility.Infeasible prefix -> raise CannotDiscoverPredicate(*t1, None*)
+              | Feasibility.Infeasible prefix ->
+                  let ces' =
+                    if Flag.use_prefix_trace
+                    then
+                      let prefix' =
+                        match !Flag.refine with
+                            Flag.RefineDependentType ->
+                              let rec aux = function
+                                  [] -> []
+                                | [BrNode true; LineNode _] -> [EventNode "then_fail"]
+                                | [BrNode false; LineNode _] -> [EventNode "else_fail"]
+                                | n::ce -> n :: aux ce
+                              in
+                                aux prefix
+                          | _ -> prefix
+                      in
+                      let () = Format.printf "\nPrefix of spurious counter-example::\n%a\n@." CEGAR_print.print_ce prefix' in
+                        prefix'::ces
+                    else ce::ces
+                  in
+                  let prog' = Refine.refine ces' prog in
+                    add_time tmp Flag.time_cegar;
+                    if Flag.print_progress then print_msg "DONE!\n";
+                    incr Flag.cegar_loop;
+                    (**)
+                    Wrapper2.close_cvc3 ();
+                    Wrapper.close_cvc3 ();
+                    Wrapper.open_cvc3 ();
+                    Wrapper2.open_cvc3 ();
+                    (**)
+                    Id.set_counter n;
+                    cegar prog' ces'
 
 
 

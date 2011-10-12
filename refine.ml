@@ -55,4 +55,3 @@ let refine ces (env,defs,main) =
   in
   let env' = add_pred map env in
     env', defs, main
-

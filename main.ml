@@ -143,7 +143,7 @@ let () =
       | LongInput -> Format.printf "Input is too long.@."; exit 1
       | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
-      | CEGAR.CannotDiscoverPredicate -> Format.printf "Verification failed (new predicates not found).@."; exit 1
+      | Refine.CannotRefute -> Format.printf "Verification failed (new predicates not found).@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
       | Typemod.Error(_,e) -> Format.printf "%a@." Typemod.report_error e; exit 1
       | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1

@@ -21,7 +21,7 @@ let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
 let use_dor = true
-let use_prefix_trace = false
+let use_prefix_trace = true
 let use_nint = ref false
 let use_subterm = false
 let use_neg_pred = true
@@ -36,7 +36,7 @@ let use_old_partition = ref false
 let check_fun_arg_typ = false
 
 let mode = ref FileAccess
-let refine = ref RefineSizedType
+let refine = ref RefineDependentType
 let cegar = ref CEGAR_DependentType
 let init_trans = ref true
 let cps_excep = ref false

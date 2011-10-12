@@ -30,7 +30,7 @@ let rec pr ppf aty =
           Format.fprintf ppf "%a[@[<hov>%a@]]" pr_base bty (Util.pr_list pr_aux ",@,") ts)
   | Fun(x, aty1, aty2) ->
       let _ = Format.fprintf ppf "@[<hov>%a:" Var.pr x in
-      let _ = if is_base aty1 then Format.fprintf ppf "%a" pr aty1 else Format.fprintf ppf "(%a)" pr aty2 in
+      let _ = if is_base aty1 then Format.fprintf ppf "%a" pr aty1 else Format.fprintf ppf "(%a)" pr aty1 in
       Format.fprintf ppf "@ ->@ %a@]" pr aty2
 
 let pr_bind ppf (f, sty) = Format.fprintf ppf "%a: %a" Var.pr f pr sty
@@ -70,16 +70,68 @@ let merge atys =
   | aty::atys ->
       List.fold_left (fun aty1 aty2 -> merge2 aty1 aty2) aty atys
 
-let rec of_refinement_type rty =
-  match rty with
-    RefType.Base(x, RefType.Unit, t) -> Base(Unit, x, if t = Term.ttrue then [] else [t])
-  | RefType.Base(x, RefType.Bool, t) -> Base(Bool, x, if t = Term.ttrue then [] else [t])
-  | RefType.Base(x, RefType.Int, t) -> Base(Int, x, if t = Term.ttrue then [] else [t])
-  | RefType.Fun(xs) ->
-      let res = List.map (fun (x, rty1, rty2) -> x, (of_refinement_type rty1, of_refinement_type rty2)) xs in
-      let xs = List.map fst res in
-      let atys1 = List.map fst (List.map snd res) in
-      let atys2 = List.map snd (List.map snd res) in
-      let x = Var.new_var () in
-      let atys2 = List.map2 (fun y aty -> let sub z = if z = y then Term.make_var2 x else raise Not_found in subst sub aty) xs atys2 in
-      Fun(x, merge atys1, merge atys2)
+let of_sized_type f sty =
+  let base_name = function
+      SizType.Unit(x) -> x
+    | SizType.Bool(x) -> x
+    | SizType.Int(x) -> x
+    | _ -> assert false
+  in
+  let get_env_aux tys =
+    if SizType.is_base (List.hd tys)
+    then
+      let xs = List.map base_name tys in
+      let x = List.hd xs in
+        List.map (fun y -> x,y) xs
+    else []
+  in
+  let rec get_env sty =
+    match sty with
+        SizType.Unit _ -> []
+      | SizType.Bool _ -> []
+      | SizType.Int _ -> []
+      | SizType.Fun tts ->
+          let tys1,tys2 = List.split tts in
+          let env1 = get_env_aux tys1 in
+          let env2 = get_env_aux tys2 in
+            List.rev_append env1 env2
+  in
+  let rec trans env ps vars sty =
+    match sty with
+        SizType.Unit x
+      | SizType.Bool x
+      | SizType.Int x ->
+          let vars' = x::vars in
+          let ps1,ps2 = List.partition (fun p -> Utilities.subset (Term.fvs p) vars') ps in
+          let b =
+            match sty with
+                SizType.Unit _ -> Unit
+              | SizType.Bool _ -> Bool
+              | SizType.Int _ -> Int
+              | _ -> assert false
+          in
+            Base(b, x, ps1), ps2
+      | SizType.Fun tts when SizType.is_base (fst (List.hd tts)) ->
+          let sty1,sty2 = List.hd tts in
+          let x = base_name sty1 in
+          let vars' = x::vars in
+          let aty1,ps1 = trans env ps vars sty1 in
+          let aty2,ps2 = trans env ps1 vars' sty2 in
+            Fun(x, aty1, aty2), ps2
+      | SizType.Fun tts ->
+          let sty1,sty2 = List.hd tts in
+          let aty1,ps1 = trans env ps vars sty1 in
+          let aty2,ps2 = trans env ps1 vars sty2 in
+            Fun(Var.new_var (), aty1, aty2), ps2
+  in
+  let env = get_env sty.SizType.shape in
+  let subst = Term.subst (fun x -> Term.make_var2 (List.assoc x env)) in
+  let ps = [subst sty.SizType.pre; subst sty.SizType.post] in
+  let ps' = List.filter (function Term.Const(_, Const.True) -> false | _ -> true) ps in
+  let aty,ps'' = trans env ps' [] sty.SizType.shape in
+    if ps''<>[] then Format.printf "Cannot represent as abstraction type:@.";
+    List.iter (Format.printf "%a: %a@." Var.pr f Term.pr) ps'';
+    aty
+
+
+
