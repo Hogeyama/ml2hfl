@@ -114,12 +114,12 @@ let rec trans_eager_term env c t =
           let t1' = trans_eager_term env id t1 in
           let t2' = trans_eager_term env id t2 in
             c (Let(f, t1', t2'))
-let trans_eager_def env (f,xs,t1,t2) =
+let trans_eager_def env (f,xs,t1,e,t2) =
   let env' = get_env (List.assoc f env) xs @@ env in
     assert (t1 = Const True);
-    f, xs, t1, trans_eager_term env' id t2
+    f, xs, t1, e, trans_eager_term env' id t2
 
-let trans_eager (env,defs,main) =
+let trans_eager ((env,defs,main):prog) : prog =
   env, List.map (trans_eager_def env) defs, main
 
 
@@ -164,8 +164,6 @@ let rec abstract_term env cond pts t typ =
         let base = get_base typ in
           abstract_term_aux env cond pts t (TBase(base,fun x -> [make_eq_int x t])) typ
     | App(Const RandInt, t) -> abstract_term env cond pts t (TFun(fun _ -> typ_int,typ))
-    | App(Const (Event s), t) -> [App(Const (Event s), hd (abstract_term env cond pts t (TFun(fun _ -> typ_unit,typ_unit))))]
-    | App(Const (Label n), t) -> [App(Const (Label n), hd (abstract_term env cond pts t typ))]
     | App _ ->
         let t1,ts = decomp_app t in
         let rec aux ts typ =
@@ -194,7 +192,7 @@ let rec abstract_typ = function
   | _ -> assert false
 
 
-let abstract_def env (f,xs,t1,t2) =
+let abstract_def env (f,xs,t1,e,t2) =
   let rec decomp_typ typ xs =
     match xs with
         [] -> typ, []
@@ -208,19 +206,27 @@ let abstract_def env (f,xs,t1,t2) =
   let pts = List.flatten (List.map (fun (x,typ) -> make_pts x typ) env') in
   let xs' = List.flatten (List.map (fun (x,typ) -> abst_arg x typ) env') in
   let t2' = hd (abstract_term env'' [t1] pts t2 typ) in
-  let t = assume env'' [] pts t1 t2' in
-    [f, xs', Const True, t]
+  let ff = assume env' [] pts t1 in
+    if e <> [] && ff <> Const False
+    then
+      let g = new_id "f" in
+      let fv = get_fv t2' in
+        [g, fv, Const True, e, t2';
+         f, xs', Const True, [], make_if ff (Const Bottom) (make_app (Var g) (List.map (fun x -> Var x) fv))]
+    else
+      if ff = Const False
+      then [f, xs', Const True, e, t2']
+      else [f, xs', Const True, e, make_if ff (Const Bottom) t2']
 
 
 
 
 
-let abstract (env,defs,main) =
-  let (env,defs,main) = add_line_label (env,defs,main) in
-  let (env,defs,main) = add_bool_label (env,defs,main) in
+let abstract ((env,defs,main):prog) : prog =
+  let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
   let prog = Typing.infer ([], defs, main) in
   let prog = lift2 prog in
   let () = if false then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in

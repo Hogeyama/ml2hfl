@@ -65,12 +65,6 @@ let rec trans_typ = function
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
 
 let get_typ_const = function
-  | Event _ ->
-      let typ = new_tvar () in
-        TFun(TFun(TUnit,typ),typ)
-  | Label _ ->
-      let typ = new_tvar() in
-        TFun(typ,typ)
   | Unit -> TUnit
   | True -> TBool 
   | False -> TBool
@@ -124,7 +118,7 @@ let rec infer_term env = function
       let typ1 = infer_term env' t in
         TFun(typ_x,typ1)
 
-let infer_def env (f,xs,t1,t2) =
+let infer_def env (f,xs,t1,_,t2) =
   let typs = List.map (fun _ -> new_tvar()) xs in
   let env' = List.map2 (fun x typ -> x,typ) xs typs @ env in
   let typ1 = infer_term env' t1 in
@@ -135,8 +129,8 @@ let infer_def env (f,xs,t1,t2) =
     unify typ typ'
 
 
-let infer ((_,defs,main):prog) =
-  let env = List.map (fun (f,_,_,_) -> f, new_tvar ()) defs in
+let infer ((_,defs,main):prog) : prog =
+  let env = List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
   let () = unify TUnit (List.assoc main env) in
   let () = List.iter (infer_def env) defs in
   let env' = List.map (fun (f,_) -> f, trans_typ (List.assoc f env)) env in

@@ -57,7 +57,8 @@ let main filename in_channel =
       Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
   let () = if true then Format.printf "parsed::@.%a\n\n@." (Syntax.print_term true) t in
-
+  let t = if !Flag.cegar = Flag.CEGAR_DependentType then Syntax.set_target t else t in
+  let () = if true then Format.printf "set_target::@.%a\n\n@." (Syntax.print_term true) t in
   let () = Type_check.check t in
   let t =
     if !Flag.init_trans
@@ -89,15 +90,6 @@ let main filename in_channel =
 	      | Some print ->
                   print_msg "\n\nUnsafe!\n\n";
                   print ()
-(*
-          let sol = Wrapper.get_solution p t_result in
-            print_msg "Unsafe!\n";
-            print_msg "Error trace:";
-            List.iter (fun t -> Format.printf "%s; " t) sol;
-            if List.length sol <> 0 then Format.printf "@.";
-            Syntax.print_ce ce parsed
-*)
-
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"

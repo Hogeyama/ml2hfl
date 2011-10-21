@@ -6,8 +6,7 @@ type var = string
 
 
 type const =
-    Event of string
-  | Label of int (* for abstraction *)
+    Temp of string (* for temporary use *)
   | Unit
   | True
   | False
@@ -42,13 +41,14 @@ type t =
   | Fun of var * t
 
 
+type event = Event of string | Branch of int
 
 type ce_node = BrNode of bool | LineNode of int | EventNode of string
 type ce = ce_node list
 
 
 
-type fun_def = var * var list * t * t
+type fun_def = var * var list * t * event list * t
 type typ = t CEGAR_type.t
 type env = (var * typ) list
 type prog = env * fun_def list * var

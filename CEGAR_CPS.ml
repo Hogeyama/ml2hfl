@@ -13,12 +13,12 @@ let is_head_tuple t =
 let and_cps = "and_cps"
 let or_cps = "or_cps"
 let not_cps = "not_cps"
-let and_def = and_cps, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Var "y")) (App(Var "k", Const False)))
-let or_def = or_cps, ["x"; "y"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const True)) (App(Var "k", Var "y")))
-let not_def = not_cps, ["x"; "k"], Const True, (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
+let and_def = and_cps, ["x"; "y"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Var "y")) (App(Var "k", Const False)))
+let or_def = or_cps, ["x"; "y"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Const True)) (App(Var "k", Var "y")))
+let not_def = not_cps, ["x"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
 
 let rec trans_const = function
-    Const (Int _ | Unit | True | False | RandBool | If | Tuple _ | Event _ | Bottom | Label _ as c) -> Const c
+    Const (Int _ | Unit | True | False | RandBool | If | Tuple _ | Bottom as c) -> Const c
   | Const Not -> Var not_cps
   | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.print_const c; assert false
   | Var x -> Var x
@@ -45,18 +45,6 @@ let rec trans_const = function
 let rec trans_simpl c = function
     Const x -> c (Const x)
   | Var x -> c (Var x)
-  | App(Const (Label n), t) -> App(Const (Label n), trans_simpl c t)
-  | App(Const (Event s), t) ->
-      let k = match t with Var x -> x | _ -> assert false in
-      let k' = new_id "k" in
-      let u = new_id "u" in
-      let x = new_id "u" in
-      let c' cc =
-        match c (Var x) with
-            App(Var k'', Var x') when x = x' -> cc (Var k'')
-          | tk -> Let(k', Fun(x, tk), cc (Var k'))
-      in
-        c' (fun t -> App(Const (Event s), Fun(u, make_app (Var k) [Var u; t])))
   | App(App(App(Const If, t1), t2), t3) ->
       let k = new_id "k" in
       let x = new_id "b" in
@@ -116,13 +104,13 @@ let rec trans_simpl c = function
       let k = new_id "k" in
         c (Fun(x, Fun(k, trans_simpl (fun x -> App(Var k, x)) t)))
 
-let trans_simpl_def (f,xs,t1,t2) =
+let trans_simpl_def (f,xs,t1,e,t2) =
   if f =  "mult_70" then () else ();
   assert (xs = []);
   let t2 = trans_simpl (fun x -> x) t2 in
   if false then Format.printf "TRANS: %a@." CEGAR_print.print_term t2;
   let t2 = trans_const t2 in
-    (f, [], t1, t2)
+    (f, [], t1, e, t2)
 
 
 
@@ -168,20 +156,20 @@ let rec extract_tuple_term env = function
 *)
 
         
-let extract_tuple_def env (f,xs,t1,t2) =
+let extract_tuple_def env (f,xs,t1,e,t2) =
   let env' = get_env (List.assoc f env) xs @@ env in
   let xs' = List.flatten (List.map (extract_tuple_var env') xs) in
   let t1' = hd (extract_tuple_term env t1) in
   let t2' = hd (extract_tuple_term env' t2) in
-    f, xs', t1', t2'
-let extract_tuple (env,defs,main) =
+    f, xs', t1', e, t2'
+let extract_tuple ((env,defs,main):prog) : prog =
   let defs = List.map (extract_tuple_def env) defs in
   let () = if false then Format.printf "EXTRACTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
     Typing.infer ([],defs,main)
   
 
 
-let to_funs_def (f,xs,t1,t2) = f, [], t1, List.fold_right (fun x t-> Fun(x,t)) xs t2
+let to_funs_def (f,xs,t1,e,t2) = f, [], t1, e, List.fold_right (fun x t-> Fun(x,t)) xs t2
 let to_funs defs = List.map to_funs_def defs
 
 
@@ -192,9 +180,9 @@ let rec reduce = function
   | App(t1,t2) -> App(reduce t1, reduce t2)
   | Fun(x,t) -> Fun(x, reduce t)
   | Let(x,t1,t2) -> reduce (subst x t1 t2)
-let reduce_def (f,xs,t1,t2) = f,xs,t1,reduce t2
+let reduce_def ((f,xs,t1,e,t2):fun_def) : fun_def = f,xs,t1,e,reduce t2
 
-let trans' (env,defs,main) lift_opt =
+let trans ((env,defs,main):prog) lift_opt : prog =
   let _ = Typing.infer (env,defs,main) in
   let defs = to_funs defs in
   let _ = Typing.infer (env,defs,main) in
@@ -522,4 +510,4 @@ let trans (_,defs,main) =
   let prog = Typing.infer prog in
     extract_tuple prog
 *)
-let trans _ = assert false
+

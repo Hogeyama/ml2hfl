@@ -9,12 +9,12 @@ type node = UnitNode | BrNode | LineNode of int | EventNode of string
 
 
 
-let take s n = String.sub s n (String.length s - n)
+let take s n = snd (split_string s n)
 let parse_node = function
     "br" -> BrNode
   | "unit" -> UnitNode
   | s when s.[0] = 'l' -> LineNode (int_of_string (take s 1))
-  | s when String.sub s 0 6 = "event_" -> EventNode (take s 6)
+  | s when is_prefix_string "event_" s -> EventNode (take s 6)
   | _ -> assert false
       
 
@@ -42,8 +42,6 @@ let print_node fm = function
   | EventNode s -> Format.fprintf fm "%s" s
 
 let print_const fm = function
-    Event s -> Format.fprintf fm "event_%s" s
-  | Label n -> Format.fprintf fm "l%d" n
   | Unit -> Format.fprintf fm "unit"
   | True -> Format.fprintf fm "0"
   | False -> Format.fprintf fm "1"
@@ -67,9 +65,14 @@ let rec print_term fm = function
       in
         print_list aux " " false fm (t::ts)
 
-let rec print_fun_def fm (f,xs,t1,t2) =
-  assert (t1 = Const True);
-  Format.fprintf fm "%a -> %a.@." (print_list print_var " " false) (f::xs) print_term t2
+let rec print_fun_def fm (f,xs,t1,es,t2) =
+  let rec aux fm = function
+      [] -> print_term fm t2
+    | Event s::es -> Format.fprintf fm "event_%s (%a)" s aux es
+    | Branch n::es -> Format.fprintf fm "l%d (%a)" n aux es
+  in
+    assert (t1 = Const True);
+    Format.fprintf fm "%a -> %a.@." (print_list print_var " " false) (f::xs) aux es
 
 let print_hors fm (defs, spec) =
     fprintf fm "%%BEGING\n";
@@ -135,45 +138,35 @@ let make_spec n =
 
 let capitalize_var = String.capitalize
 
-let capitalize (env,defs,main) =
+let capitalize ((env,defs,main):prog) : prog =
   let env' = List.map (fun (f,typ) -> capitalize_var f, typ) env in
   let map = List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
-  let aux (f,xs,t1,t2) = capitalize_var f, xs, subst_map map t1, subst_map map t2 in
+  let aux (f,xs,t1,e,t2) = capitalize_var f, xs, subst_map map t1, e, subst_map map t2 in
   let defs' = List.map aux defs in
   let main' = capitalize_var main in
     env', defs', main'
 
 
-(*
-let move_main (env,defs,main) =
-  let rec aux acc = function
-      [] -> List.rev acc
-    | (f,xs,t1,t2)::defs when f = main -> aux (acc@[(f,xs,t1,t2)]) defs
-    | def::defs -> aux (def::acc) defs
-  in
-    env, aux defs, main
-*)
-
-let elim_non_det (env,defs,main) =
-  let check f (g,_,_,_) = f = g in
+let elim_non_det ((env,defs,main):prog) : prog =
+  let check f (g,_,_,_,_) = f = g in
   let mem f defs = List.exists (check f) defs in
-  let rec aux = function
+  let rec elim_non_det_def = function
       [] -> []
-    | (f,xs,t1,t2)::defs when mem f defs ->
+    | (f,xs,t1,e,t2)::defs when mem f defs ->
         let f' = rename_id f in
         let defs1,defs2 = List.partition (check f) defs in
-        let defs1' = List.map (fun (f,xs,t1,t2) -> rename_id f,xs,t1,t2) defs1 in
+        let defs1' = List.map (fun (f,xs,t1,e,t2) -> rename_id f,xs,t1,e,t2) defs1 in
         let ts = List.map (fun x -> Var x) xs in
-        let t = List.fold_left (fun t (f,_,_,_) -> make_br (make_app (Var f) ts) t) (make_app (Var f') ts) defs1' in
-          (f,xs,Const True,t)::(f',xs,t1,t2)::defs1' @ aux defs2
-    | def::defs -> def :: aux defs
+        let aux f = make_app (Var f) ts in
+        let t = List.fold_left (fun t (f,_,_,_,_) -> make_br (aux f) t) (aux f') defs1' in
+          (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
+    | def::defs -> def :: elim_non_det_def defs
   in
-    Typing.infer ([], aux defs, main)
+    Typing.infer ([], elim_non_det_def defs, main)
 
-
-let make_bottom (env,defs,main) =
+let make_bottom ((env,defs,main):prog) : prog =
   let bottoms = ref [] in
-  let aux_def (f,xs,t1,t2) =
+  let aux_def (f,xs,t1,e,t2) =
     let env' = get_env (List.assoc f env) xs @@ env in
     let make_bottom n =
       let x = "Bottom" ^ string_of_int n in
@@ -191,7 +184,6 @@ let make_bottom (env,defs,main) =
           let t2' = aux_term (t2,typ) in
           let t3' = aux_term (t3,typ) in
             App(App(App(Const If, t1'), t2'), t3')
-      | App(Const (Label n), t), typ -> App(Const (Label n), aux_term (t,typ))
       | App(t1,t2), _ ->
           let typ = get_typ env' t1 in
           let typ' =
@@ -206,11 +198,11 @@ let make_bottom (env,defs,main) =
         aux_term (t2, get_typ env' t2)
       with TypeBottom -> make_bottom 0
     in
-      f, xs, t1, t2'
+      f, xs, t1, e, t2'
   in
   let make (x,n) =
     let xs = Array.to_list (Array.init n (fun _ -> "x")) in
-      x, xs, Const True, make_app (Var x) (List.map (fun x -> Var x) xs)
+      x, xs, Const True, [], make_app (Var x) (List.map (fun x -> Var x) xs)
   in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (uniq compare !bottoms) in
@@ -229,12 +221,12 @@ let rec eta_expand_term env = function
   | App(t1, t2) -> App(eta_expand_term env t1, eta_expand_term env t2)
 
 
-let eta_expand_def env (f,xs,t1,t2) =
+let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
   let t2' = eta_expand_term (get_env (List.assoc f env) xs @@ env) t2 in
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
-    f, xs@ys, t1, put_into_term t2''
+    f, xs@ys, t1, e, t2''
 
 let eta_expand ((env,defs,main) : prog) : prog=
   lift2 (env, List.map (eta_expand_def env) defs, main)
@@ -243,34 +235,19 @@ let eta_expand ((env,defs,main) : prog) : prog=
 
 
 
-let rec trans_event_term = function
-    Const c -> Const c
-  | Var x -> Var x
-  | App(Const (Event s), t) -> App(Const (Event s), App(trans_event_term t, Const Unit))
-  | App(t1, t2) -> App(trans_event_term t1, trans_event_term t2)
-
-let trans_event_def def = apply_body_def trans_event_term def
-
-let trans_event (env,defs,main) =
-  env, List.map trans_event_def defs, main
-
-
-
 
 let trans_ce ce =
   let aux = function
       UnitNode, 0 -> [CEGAR_syntax.EventNode "unit"]
-    | LineNode 0, _ -> [CEGAR_syntax.BrNode true]
-    | LineNode 1, _ -> [CEGAR_syntax.BrNode false]
-    | LineNode i, _ -> [CEGAR_syntax.LineNode (i-2)]
-    | EventNode s, _ -> [CEGAR_syntax.EventNode s]
+    | LineNode i, _ -> [CEGAR_syntax.LineNode i]
     | BrNode, _ -> []
+    | EventNode s, _ -> [CEGAR_syntax.EventNode s]
     | _ -> assert false
   in
     flatten_map aux ce
 
 
-let model_check_aux ((env,defs,main),spec) =
+let model_check_aux (((env,defs,main):prog),spec) =
   let cin,cout = Unix.open_process Flag.trecs in
   let fm = formatter_of_out_channel cout in
   let () = print_hors fm (defs, spec) in

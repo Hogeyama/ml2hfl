@@ -1,5 +1,5 @@
 
-let ocaml_lib = ["./ocaml-3.12/stdlib/"]
+let ocaml_lib = ["/usr/lib/ocaml"]
 let log_dir = "./log"
 let trecs = "./trecs -d2 -p 1000 100"
 let trecs = "./trecs"
@@ -54,10 +54,10 @@ let print_trecs_output = false
 let print_trace = false
 let print_interpolant = false
 let print_progress = true
-let print_constraints = true
+let print_constraints = false
 let print_lower_bound = false
 let print_cvc3 = false
-let print_refine_log = true
+let print_refine_log = false
 
 
 (* variables for log *)

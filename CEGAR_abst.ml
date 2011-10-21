@@ -63,8 +63,6 @@ let rec abstract_term env cond pbs t typ =
           coerce env cond pbs typ' typ src
     | Const c -> coerce env cond pbs (get_const_typ c) typ t
     | App(Const RandInt, t) -> App(abstract_term env cond pbs t (TFun(fun _ -> typ_int,typ)), Const (Tuple 0))
-    | App(Const (Event s), t) -> App(Const (Event s), abstract_term env cond pbs t (TFun(fun _ -> typ_unit,typ_unit)))
-    | App(Const (Label n), t) -> App(Const (Label n), abstract_term env cond pbs t typ)
     | App(t1, t2) ->
         let typ' = get_typ env t1 in
         let typ1,typ2 =
@@ -84,7 +82,7 @@ let rec abstract_term env cond pbs t typ =
           Let(x,t1',t2')
 
 
-let abstract_def env (f,xs,t1,t2) =
+let abstract_def env (f,xs,t1,e,t2) =
   let rec aux typ xs env =
     match xs with
         [] -> typ, env
@@ -100,16 +98,23 @@ let abstract_def env (f,xs,t1,t2) =
   let typ,env' = aux (List.assoc f env) xs env in
   let pbs = rev_flatten_map (fun (x,typ) -> abst_arg x typ) env' in
   let t2' = abstract_term env' [t1] pbs t2 typ in
-  let t = assume env' [] pbs t1 t2' in
-    [f, xs, Const True, t]
+  let ff = assume env' [] pbs t1 in
+    if e <> [] && t1 <> Const True
+    then
+      let g = new_id "f" in
+      let fv = get_fv t2' in
+        [g,fv,Const True,e,t2'; f,xs,Const True,[],make_app (Var g) (List.map (fun x -> Var x) fv)]
+    else
+      if t1 = Const True
+      then [f, xs, Const True, e, t2']
+      else [f, xs, Const True, e, make_if ff (Const Bottom) t2']
 
 
 
 
-let abstract (env,defs,main) =
+let abstract ((env,defs,main):prog) : prog =
   let (env,defs,main) = make_arg_let (env,defs,main) in
-  let (env,defs,main) = add_line_label (env,defs,main) in
-  let (env,defs,main) = add_bool_label (env,defs,main) in
+  let (env,defs,main) = add_label (env,defs,main) in
   let () = if true then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in

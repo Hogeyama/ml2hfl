@@ -184,12 +184,10 @@ let abst env cond pbs p =
 
 
 
-let assume env cond pbs t1 t2 =
+let assume env cond pbs t1 =
   if t1 = Const True
-  then t2
-  else
-    let _,ff = weakest env cond pbs t1 in
-      make_if ff (Const Bottom) t2
+  then Const False
+  else snd (weakest env cond pbs t1)
 
 (* TODO: equiv *)
 let rec congruent env cond typ1 typ2 =
@@ -232,9 +230,6 @@ let rec is_base_term env = function
 let rec make_arg_let_term = function
     Const c -> [], Const c
   | Var x -> [], Var x
-  | App(Const (Event s), t) ->
-      let bind,t' = make_arg_let_term t in
-        bind, App(Const (Event s), t')
   | App _ as t ->
       let t',ts = decomp_app t in
       let aux t (bind,ts) =
@@ -261,27 +256,33 @@ let rec reduce_let env = function
         | _, TFun _ -> reduce_let env (subst x t1 t2)
         | _, (TBase _ as typ) -> Let(x, reduce_let env t1, reduce_let ((x,typ)::env) t2)
         | _ -> assert false
-let make_arg_let (env,defs,main) =
-  let defs' = List.map (fun (f,xs,t1,t2) -> f, xs, t1, reduce_let (get_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)) defs in
+
+let make_arg_let_def env (f,xs,t1,e,t2) =
+    f, xs, t1, e, reduce_let (get_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)
+
+let make_arg_let ((env,defs,main):prog) : prog =
+  let defs' = List.map (make_arg_let_def env) defs in
     (env,defs',main)
 
 
 
-let add_bool_label_term = function
-    App(App(App(Const If, t1), t2), t3) ->
-      make_if t1 (App(Const (Label 0), t2)) (App(Const (Label 1), t3))
-  | t -> t
-
-let rec add_bool_label prog =
-  let aux (env,defs,main) =
-    env, List.map (fun (f,xs,t1,t2) -> f,xs,t1,add_bool_label_term t2) defs, main
+let rec add_label ((env,defs,main):prog) : prog =
+  let merge = function
+      [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, (Branch 0)::e, t2]
+    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
+        [f1,xs1,t11,(Branch 1)::e1,t12; f2,xs2,t21,(Branch 0)::e2,t22]
+    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
+        [f1,xs1,t11,(Branch 0)::e1,t12; f2,xs2,t21,(Branch 1)::e2,t22]
+    | _ -> assert false
   in
-  let prog = to_if_exp prog in
-  let prog = aux prog in
-    of_if_exp prog
-    
-let rec add_line_label (env,defs,main) =
-  env, Utilities.mapi (fun i (f,xs,t1,t2) -> f,xs,t1,App(Const (Label(i+2)),t2)) defs, main
+  let rec aux = function
+      [] -> []
+    | (f,xs,t1,e,t2)::defs ->
+        let defs1,defs2 = List.partition (fun (g,_,_,_,_) -> f = g) defs in
+        let defs' = merge ((f,xs,t1,e,t2)::defs1) in
+          defs' @ aux defs2
+  in
+    (env, aux defs, main)
 
 
 

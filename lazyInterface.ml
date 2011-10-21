@@ -7,7 +7,6 @@ open CEGAR_util
 
 let conv_const c =
   match c with
-    Event(x) -> Const.Event(Idnt.make x)
   | Unit -> Const.Unit
   | True -> Const.True
   | False -> Const.False
@@ -35,7 +34,6 @@ let rec conv_term t =
 
 let inv_const c =
   match c with
-    Const.Event(x) -> Event(x)
   | Const.Unit -> Unit
   | Const.True -> True
   | Const.False -> False
@@ -61,7 +59,7 @@ let rec inv_term t =
   | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
 
-let conv_fdef (f, args, guard, body) =
+let conv_fdef (f, args, guard, _, body) =
   { Fdef.attr = [];
     Fdef.name = Idnt.make f;
     Fdef.args = List.map Idnt.make args;

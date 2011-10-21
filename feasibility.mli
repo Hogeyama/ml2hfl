@@ -24,6 +24,10 @@ val check: CEGAR_syntax.ce -> CEGAR_syntax.prog -> result
     [defs] は関数定義．
     [s] はプログラムのメイン．
 *)
+
+val trans_ce: CEGAR_syntax.ce -> CEGAR_syntax.prog -> bool list
+val print_ce_reduction: CEGAR_syntax.ce -> CEGAR_syntax.prog -> unit
+
 (*
 val check_int: Syntax.node list -> (Syntax.id * ('a * Syntax.typed_term)) list -> Syntax.typed_term -> Syntax.typed_term * Syntax.node list
 (** ??? *)

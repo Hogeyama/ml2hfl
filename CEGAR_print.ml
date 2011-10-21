@@ -45,8 +45,6 @@ and print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a : %a@." print_var f print_typ typ) env
 
 and print_const fm = function
-    Event s -> Format.fprintf fm "event_%s" s
-  | Label n -> Format.fprintf fm "label_%d" n
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
@@ -74,7 +72,7 @@ and print_const fm = function
 and print_term fm = function
     Const c -> print_const fm c
   | Var x -> print_var fm x
-  | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul) as op), t1), t2) ->
+  | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(%a %a %a)" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
@@ -86,14 +84,15 @@ and print_term fm = function
       let xs,t = decomp_fun t in
         Format.fprintf fm "(fun %a -> %a)" (print_list print_var " " false) xs print_term t
 
-and print_fun_def fm (f,xs,t1,t2) =
-  if t1 = Const True
-  then
-    let ys,t2 = decomp_fun t2 in
-      Format.fprintf fm "%a -> %a@." (print_list print_var " " false) (f::xs@ys) print_term t2
-  else Format.fprintf fm "%a when %a -> %a@." (print_list print_var " " false) (f::xs) print_term t1 print_term t2
+and print_fun_def fm ((f,xs,t1,es,t2):fun_def) =
+  let s = List.fold_left (fun s -> function (Event s) -> " {" ^ s ^ "} =>" | (Branch n) -> " l" ^ string_of_int n ^ " =>") "" es in
+    if t1 = Const True
+    then
+      let ys,t2 = decomp_fun t2 in
+        Format.fprintf fm "%a ->%s %a@." (print_list print_var " " false) (f::xs@ys) s print_term t2
+    else Format.fprintf fm "%a when %a ->%s %a@." (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
 
-and print_prog fm (_,defs,s) =
+and print_prog fm ((_,defs,s):prog) =
   Format.fprintf fm "Main: %a@." print_var s;
   List.iter (print_fun_def fm) defs
 
@@ -103,8 +102,6 @@ and print_prog_typ fm (env,defs,s) =
   Format.fprintf fm "Types:\n%a@." print_env env;
 
 and print_const_ML fm = function
-  | Event s -> Format.fprintf fm "event(%s)" s
-  | Label n -> Format.fprintf fm "label(%d)" n
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
@@ -141,10 +138,15 @@ and print_term_ML fm = function
         Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " true) xs print_term_ML t1 print_term_ML t2
   | Fun(x,t) -> Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
 
-and print_fun_def_ML fm (f,xs,t1,t2) =
-  if t1 = Const True
-  then Format.fprintf fm "and %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t2
-  else Format.fprintf fm "%a when %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t1 print_term_ML t2
+and print_fun_def_ML fm (f,xs,t1,e,t2) =
+  let s = 
+    match e with
+        None -> ""
+      | Some e -> " {" ^ e ^ "} =>"
+  in
+    if t1 = Const True
+    then Format.fprintf fm "and %a = %s %a@." (print_list print_var " " false) (f::xs) s print_term_ML t2
+    else Format.fprintf fm "%a when %a = %s %a@." (print_list print_var " " false) (f::xs) print_term_ML t1 s print_term_ML t2
 
 and print_prog_ML fm (env,defs,s) =
   Format.fprintf fm "let rec if_term b x y = if b then x else y@.";

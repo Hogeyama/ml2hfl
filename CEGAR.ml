@@ -8,8 +8,6 @@ exception CannotDiscoverPredicate
 
 
 let rec cegar prog ces =
-  let () = if true then Format.printf "CEGAR source program::\n%a@." CEGAR_print.print_prog_typ prog in
-  let _ = Typing.infer prog in
   let n = Id.get_counter () in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a\n"
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog
@@ -45,10 +43,9 @@ let rec cegar prog ces =
             match Feasibility.check ce prog with
                 Feasibility.Feasible (env, sol) ->
                   let print () =
-                    let _,defs,main = prog in
-                      Format.printf "Inputs:@.";
-                      List.iter (fun t -> Format.printf "  %s;@." t) sol;
-                      print_ce_reduction ce defs main
+                    Format.printf "Inputs:@.";
+                    List.iter (fun t -> Format.printf "  %s;@." t) sol;
+                    Feasibility.print_ce_reduction ce prog
                   in
                     prog, Some print
               | Feasibility.Infeasible prefix ->

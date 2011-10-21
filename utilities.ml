@@ -389,3 +389,9 @@ let rec print_list print punc last fm xs =
 let get_opt_val = function None -> assert false | Some t -> t
 
 
+let is_prefix_string pre s =
+  let n = String.length pre in
+    String.length s >= n && String.sub s 0 n = pre
+
+let split_string s n =
+  String.sub s 0 n, String.sub s n (String.length s - n)

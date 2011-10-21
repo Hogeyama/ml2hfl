@@ -36,7 +36,7 @@ let add_pred map env =
     List.map aux env
 
 
-let refine ces (env,defs,main) =
+let refine ces ((env,defs,main):prog) =
   let map =
     match !Flag.refine with
         Flag.RefineSizedType ->

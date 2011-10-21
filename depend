@@ -3,1135 +3,1117 @@ CEGAR_abst.cmi: CEGAR_syntax.cmo
 CPS.cmi: syntax.cmi
 abstract.cmi: syntax.cmi
 alpha.cmi: syntax.cmi
-automata.cmi: ocaml-3.12/stdlib/format.cmi
+automata.cmi: /usr/lib/ocaml/format.cmi
 check.cmi: CEGAR_syntax.cmo
-feasibility.cmi: CEGAR_type.cmo CEGAR_syntax.cmo
+feasibility.cmi: CEGAR_syntax.cmo
 infer.cmi: syntax.cmi
 refine.cmi: CEGAR_syntax.cmo
-syntax.cmi: type.cmo id.cmo ocaml-3.12/stdlib/format.cmi flag.cmo
+syntax.cmi: type.cmo id.cmo /usr/lib/ocaml/format.cmi flag.cmo
 wrapper.cmi: syntax.cmi
 wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
-ocaml-3.12/utils/misc.cmo: ocaml-3.12/stdlib/sys.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/hashtbl.cmi ocaml-3.12/stdlib/filename.cmi \
-    ocaml-3.12/utils/misc.cmi
-ocaml-3.12/utils/misc.cmx: ocaml-3.12/stdlib/sys.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/hashtbl.cmx ocaml-3.12/stdlib/filename.cmx \
-    ocaml-3.12/utils/misc.cmi
-ocaml-3.12/utils/warnings.cmo: ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/stdlib/printf.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/stdlib/char.cmi \
-    ocaml-3.12/stdlib/array.cmi ocaml-3.12/stdlib/arg.cmi \
-    ocaml-3.12/utils/warnings.cmi
-ocaml-3.12/utils/warnings.cmx: ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/stdlib/printf.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/stdlib/char.cmx \
-    ocaml-3.12/stdlib/array.cmx ocaml-3.12/stdlib/arg.cmx \
-    ocaml-3.12/utils/warnings.cmi
-ocaml-3.12/utils/config.cmo: ocaml-3.12/stdlib/sys.cmi \
-    ocaml-3.12/stdlib/printf.cmi ocaml-3.12/utils/config.cmi
-ocaml-3.12/utils/config.cmx: ocaml-3.12/stdlib/sys.cmx \
-    ocaml-3.12/stdlib/printf.cmx ocaml-3.12/utils/config.cmi
-ocaml-3.12/utils/clflags.cmo: ocaml-3.12/stdlib/filename.cmi \
-    ocaml-3.12/utils/config.cmi ocaml-3.12/utils/clflags.cmi
-ocaml-3.12/utils/clflags.cmx: ocaml-3.12/stdlib/filename.cmx \
-    ocaml-3.12/utils/config.cmx ocaml-3.12/utils/clflags.cmi
-ocaml-3.12/utils/tbl.cmo: ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/utils/tbl.cmi
-ocaml-3.12/utils/tbl.cmx: ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/utils/tbl.cmi
-ocaml-3.12/utils/consistbl.cmo: ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/hashtbl.cmi ocaml-3.12/stdlib/digest.cmi \
-    ocaml-3.12/utils/consistbl.cmi
-ocaml-3.12/utils/consistbl.cmx: ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/hashtbl.cmx ocaml-3.12/stdlib/digest.cmx \
-    ocaml-3.12/utils/consistbl.cmi
-ocaml-3.12/utils/ccomp.cmo: ocaml-3.12/stdlib/sys.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/printf.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/filename.cmi ocaml-3.12/utils/config.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/utils/ccomp.cmi
-ocaml-3.12/utils/ccomp.cmx: ocaml-3.12/stdlib/sys.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/printf.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/filename.cmx ocaml-3.12/utils/config.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/utils/ccomp.cmi
-ocaml-3.12/parsing/linenum.cmo: ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/stdlib/lexing.cmi \
-    ocaml-3.12/parsing/linenum.cmi
-ocaml-3.12/parsing/linenum.cmx: ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/stdlib/lexing.cmx \
-    ocaml-3.12/parsing/linenum.cmi
-ocaml-3.12/parsing/location.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/utils/terminfo.cmi ocaml-3.12/stdlib/sys.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/parsing.cmi \
-    ocaml-3.12/parsing/linenum.cmi ocaml-3.12/stdlib/lexing.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/parsing/location.cmi
-ocaml-3.12/parsing/location.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/utils/terminfo.cmx ocaml-3.12/stdlib/sys.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/parsing.cmx \
-    ocaml-3.12/parsing/linenum.cmx ocaml-3.12/stdlib/lexing.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/parsing/location.cmi
-ocaml-3.12/parsing/longident.cmo: ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/parsing/longident.cmi
-ocaml-3.12/parsing/longident.cmx: ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/parsing/longident.cmi
-ocaml-3.12/parsing/printast.cmo: ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/parsing/longident.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/lexing.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/stdlib/char.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/parsing/printast.cmi
-ocaml-3.12/parsing/printast.cmx: ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/parsing/longident.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/lexing.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/stdlib/char.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/parsing/printast.cmi
-ocaml-3.12/parsing/syntaxerr.cmo: ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/parsing/syntaxerr.cmi
-ocaml-3.12/parsing/syntaxerr.cmx: ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/parsing/syntaxerr.cmi
-ocaml-3.12/parsing/parser.cmo: ocaml-3.12/parsing/syntaxerr.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/parsing.cmi \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/stdlib/obj.cmi \
-    ocaml-3.12/stdlib/nativeint.cmi ocaml-3.12/parsing/longident.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/lexing.cmi ocaml-3.12/stdlib/int64.cmi \
-    ocaml-3.12/stdlib/int32.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/stdlib/char.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/parsing/parser.cmi
-ocaml-3.12/parsing/parser.cmx: ocaml-3.12/parsing/syntaxerr.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/parsing.cmx \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/stdlib/obj.cmx \
-    ocaml-3.12/stdlib/nativeint.cmx ocaml-3.12/parsing/longident.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/lexing.cmx ocaml-3.12/stdlib/int64.cmx \
-    ocaml-3.12/stdlib/int32.cmx ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/stdlib/char.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/parsing/parser.cmi
-ocaml-3.12/parsing/lexer.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/parsing/parser.cmi \
-    ocaml-3.12/stdlib/nativeint.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/lexing.cmi \
-    ocaml-3.12/stdlib/int64.cmi ocaml-3.12/stdlib/int32.cmi \
-    ocaml-3.12/stdlib/hashtbl.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/stdlib/char.cmi ocaml-3.12/stdlib/array.cmi \
-    ocaml-3.12/parsing/lexer.cmi
-ocaml-3.12/parsing/lexer.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/parsing/parser.cmx \
-    ocaml-3.12/stdlib/nativeint.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/lexing.cmx \
-    ocaml-3.12/stdlib/int64.cmx ocaml-3.12/stdlib/int32.cmx \
-    ocaml-3.12/stdlib/hashtbl.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/stdlib/char.cmx ocaml-3.12/stdlib/array.cmx \
-    ocaml-3.12/parsing/lexer.cmi
-ocaml-3.12/parsing/parse.cmo: ocaml-3.12/parsing/syntaxerr.cmi \
-    ocaml-3.12/stdlib/parsing.cmi ocaml-3.12/parsing/parser.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/parsing/lexer.cmi \
-    ocaml-3.12/parsing/parse.cmi
-ocaml-3.12/parsing/parse.cmx: ocaml-3.12/parsing/syntaxerr.cmx \
-    ocaml-3.12/stdlib/parsing.cmx ocaml-3.12/parsing/parser.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/parsing/lexer.cmx \
-    ocaml-3.12/parsing/parse.cmi
-ocaml-3.12/typing/ident.cmo: ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/typing/ident.cmi
-ocaml-3.12/typing/ident.cmx: ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/typing/ident.cmi
-ocaml-3.12/typing/path.cmo: ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/typing/path.cmi
-ocaml-3.12/typing/path.cmx: ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/typing/path.cmi
-ocaml-3.12/typing/primitive.cmo: ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/typing/primitive.cmi
-ocaml-3.12/typing/primitive.cmx: ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/typing/primitive.cmi
-ocaml-3.12/typing/types.cmo: ocaml-3.12/stdlib/set.cmi \
-    ocaml-3.12/typing/primitive.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/stdlib/map.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/types.cmi
-ocaml-3.12/typing/types.cmx: ocaml-3.12/stdlib/set.cmx \
-    ocaml-3.12/typing/primitive.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/stdlib/map.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/types.cmi
-ocaml-3.12/typing/btype.cmo: ocaml-3.12/stdlib/weak.cmi \
-    ocaml-3.12/typing/types.cmi ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/char.cmi \
-    ocaml-3.12/typing/btype.cmi
-ocaml-3.12/typing/btype.cmx: ocaml-3.12/stdlib/weak.cmx \
-    ocaml-3.12/typing/types.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/char.cmx \
-    ocaml-3.12/typing/btype.cmi
-ocaml-3.12/typing/subst.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/utils/tbl.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/typing/subst.cmi
-ocaml-3.12/typing/subst.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/utils/tbl.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/typing/subst.cmi
-ocaml-3.12/typing/predef.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/predef.cmi
-ocaml-3.12/typing/predef.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/predef.cmi
-ocaml-3.12/typing/datarepr.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/predef.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmi ocaml-3.12/typing/datarepr.cmi
-ocaml-3.12/typing/datarepr.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/predef.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmx ocaml-3.12/typing/datarepr.cmi
-ocaml-3.12/typing/env.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/utils/tbl.cmi ocaml-3.12/typing/subst.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/typing/predef.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/longident.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/lazy.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/stdlib/hashtbl.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/stdlib/digest.cmi ocaml-3.12/typing/datarepr.cmi \
-    ocaml-3.12/utils/consistbl.cmi ocaml-3.12/utils/config.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/annot.cmi \
-    ocaml-3.12/typing/env.cmi
-ocaml-3.12/typing/env.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/utils/tbl.cmx ocaml-3.12/typing/subst.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/typing/predef.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/longident.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/lazy.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/stdlib/hashtbl.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/stdlib/digest.cmx ocaml-3.12/typing/datarepr.cmx \
-    ocaml-3.12/utils/consistbl.cmx ocaml-3.12/utils/config.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/annot.cmi \
-    ocaml-3.12/typing/env.cmi
-ocaml-3.12/typing/ctype.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/subst.cmi ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/stdlib/sort.cmi ocaml-3.12/stdlib/set.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/stdlib/map.cmi ocaml-3.12/parsing/longident.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/lazy.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/typing/btype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/ctype.cmi
-ocaml-3.12/typing/ctype.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/subst.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/stdlib/sort.cmx ocaml-3.12/stdlib/set.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/stdlib/map.cmx ocaml-3.12/parsing/longident.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/lazy.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/typing/btype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/ctype.cmi
-ocaml-3.12/typing/oprint.cmo: ocaml-3.12/stdlib/sys.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/printf.cmi \
-    ocaml-3.12/typing/outcometree.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/oprint.cmi
-ocaml-3.12/typing/oprint.cmx: ocaml-3.12/stdlib/sys.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/printf.cmx \
-    ocaml-3.12/typing/outcometree.cmi ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/oprint.cmi
-ocaml-3.12/typing/printtyp.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/sort.cmi \
-    ocaml-3.12/typing/primitive.cmi ocaml-3.12/typing/predef.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/typing/outcometree.cmi \
-    ocaml-3.12/typing/oprint.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/longident.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/stdlib/char.cmi \
-    ocaml-3.12/typing/btype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/printtyp.cmi
-ocaml-3.12/typing/printtyp.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/sort.cmx \
-    ocaml-3.12/typing/primitive.cmx ocaml-3.12/typing/predef.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/typing/outcometree.cmi \
-    ocaml-3.12/typing/oprint.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/longident.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/stdlib/char.cmx \
-    ocaml-3.12/typing/btype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/printtyp.cmi
-ocaml-3.12/typing/typetexp.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/typing/types.cmi ocaml-3.12/utils/tbl.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/typing/printtyp.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/parsing/parsetree.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/parsing/longident.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/hashtbl.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/typetexp.cmi
-ocaml-3.12/typing/typetexp.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/typing/types.cmx ocaml-3.12/utils/tbl.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/typing/printtyp.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/parsing/parsetree.cmi \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/parsing/longident.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/hashtbl.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/typetexp.cmi
-ocaml-3.12/typing/typedtree.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/primitive.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/typedtree.cmi
-ocaml-3.12/typing/typedtree.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/primitive.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/typedtree.cmi
-ocaml-3.12/typing/includecore.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/typing/predef.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/typing/ctype.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/includecore.cmi
-ocaml-3.12/typing/includecore.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/typing/predef.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/typing/ctype.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/includecore.cmi
-ocaml-3.12/typing/stypes.cmo: ocaml-3.12/typing/typedtree.cmi \
-    ocaml-3.12/typing/printtyp.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/lexing.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/typing/stypes.cmi
-ocaml-3.12/typing/stypes.cmx: ocaml-3.12/typing/typedtree.cmx \
-    ocaml-3.12/typing/printtyp.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/lexing.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/typing/stypes.cmi
-ocaml-3.12/typing/parmatch.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/typing/types.cmi ocaml-3.12/typing/typedtree.cmi \
-    ocaml-3.12/typing/subst.cmi ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/stdlib/sort.cmi ocaml-3.12/typing/predef.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/stdlib/nativeint.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/int64.cmi \
-    ocaml-3.12/stdlib/int32.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/typing/datarepr.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/stdlib/char.cmi ocaml-3.12/stdlib/buffer.cmi \
-    ocaml-3.12/typing/btype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmi ocaml-3.12/typing/parmatch.cmi
-ocaml-3.12/typing/parmatch.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/typing/types.cmx ocaml-3.12/typing/typedtree.cmx \
-    ocaml-3.12/typing/subst.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/stdlib/sort.cmx ocaml-3.12/typing/predef.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/stdlib/nativeint.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/int64.cmx \
-    ocaml-3.12/stdlib/int32.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/typing/datarepr.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/stdlib/char.cmx ocaml-3.12/stdlib/buffer.cmx \
-    ocaml-3.12/typing/btype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmx ocaml-3.12/typing/parmatch.cmi
-ocaml-3.12/typing/typecore.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/typing/typetexp.cmi ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/typing/subst.cmi \
-    ocaml-3.12/typing/stypes.cmi ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/typing/printtyp.cmi ocaml-3.12/stdlib/printf.cmi \
-    ocaml-3.12/typing/primitive.cmi ocaml-3.12/typing/predef.cmi \
-    ocaml-3.12/stdlib/pervasives.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/typing/parmatch.cmi \
-    ocaml-3.12/typing/oprint.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/longident.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/stdlib/hashtbl.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/stdlib/array.cmi \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/typing/typecore.cmi
-ocaml-3.12/typing/typecore.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/typing/typetexp.cmx ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/typing/subst.cmx \
-    ocaml-3.12/typing/stypes.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/typing/printtyp.cmx ocaml-3.12/stdlib/printf.cmx \
-    ocaml-3.12/typing/primitive.cmx ocaml-3.12/typing/predef.cmx \
-    ocaml-3.12/stdlib/pervasives.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/typing/parmatch.cmx \
-    ocaml-3.12/typing/oprint.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/longident.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/stdlib/hashtbl.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/stdlib/array.cmx \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/typing/typecore.cmi
-ocaml-3.12/typing/includeclass.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/printtyp.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/typing/includeclass.cmi
-ocaml-3.12/typing/includeclass.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/printtyp.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/typing/includeclass.cmi
-ocaml-3.12/typing/typedecl.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/typing/typetexp.cmi ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/typing/subst.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/set.cmi \
-    ocaml-3.12/typing/printtyp.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/typing/predef.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/longident.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/typing/includecore.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/typing/ctype.cmi ocaml-3.12/utils/config.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/typedecl.cmi
-ocaml-3.12/typing/typedecl.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/typing/typetexp.cmx ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/typing/subst.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/set.cmx \
-    ocaml-3.12/typing/printtyp.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/typing/predef.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/longident.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/typing/includecore.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/typing/ctype.cmx ocaml-3.12/utils/config.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/typedecl.cmi
-ocaml-3.12/typing/typeclass.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/typing/typetexp.cmi ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/typing/typedecl.cmi \
-    ocaml-3.12/typing/typecore.cmi ocaml-3.12/typing/subst.cmi \
-    ocaml-3.12/typing/stypes.cmi ocaml-3.12/typing/printtyp.cmi \
-    ocaml-3.12/typing/predef.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/typing/parmatch.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/parsing/longident.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/lazy.cmi ocaml-3.12/typing/includeclass.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/typeclass.cmi
-ocaml-3.12/typing/typeclass.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/typing/typetexp.cmx ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/typing/typedecl.cmx \
-    ocaml-3.12/typing/typecore.cmx ocaml-3.12/typing/subst.cmx \
-    ocaml-3.12/typing/stypes.cmx ocaml-3.12/typing/printtyp.cmx \
-    ocaml-3.12/typing/predef.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/typing/parmatch.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/parsing/longident.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/lazy.cmx ocaml-3.12/typing/includeclass.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/typeclass.cmi
-ocaml-3.12/typing/mtype.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/subst.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/mtype.cmi
-ocaml-3.12/typing/mtype.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/subst.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/mtype.cmi
-ocaml-3.12/typing/includemod.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/utils/tbl.cmi \
-    ocaml-3.12/typing/subst.cmi ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/typing/printtyp.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/typing/mtype.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/typing/includecore.cmi \
-    ocaml-3.12/typing/includeclass.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/typing/ctype.cmi ocaml-3.12/typing/includemod.cmi
-ocaml-3.12/typing/includemod.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/utils/tbl.cmx \
-    ocaml-3.12/typing/subst.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/typing/printtyp.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/typing/mtype.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/typing/includecore.cmx \
-    ocaml-3.12/typing/includeclass.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/typing/ctype.cmx ocaml-3.12/typing/includemod.cmi
-ocaml-3.12/typing/typemod.cmo: ocaml-3.12/typing/typetexp.cmi \
-    ocaml-3.12/typing/types.cmi ocaml-3.12/typing/typedtree.cmi \
-    ocaml-3.12/typing/typedecl.cmi ocaml-3.12/typing/typecore.cmi \
-    ocaml-3.12/typing/typeclass.cmi ocaml-3.12/stdlib/sys.cmi \
-    ocaml-3.12/typing/subst.cmi ocaml-3.12/typing/stypes.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/set.cmi \
-    ocaml-3.12/typing/printtyp.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/typing/mtype.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/parsing/longident.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/typing/includemod.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/stdlib/filename.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/utils/config.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/typing/btype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/typing/typemod.cmi
-ocaml-3.12/typing/typemod.cmx: ocaml-3.12/typing/typetexp.cmx \
-    ocaml-3.12/typing/types.cmx ocaml-3.12/typing/typedtree.cmx \
-    ocaml-3.12/typing/typedecl.cmx ocaml-3.12/typing/typecore.cmx \
-    ocaml-3.12/typing/typeclass.cmx ocaml-3.12/stdlib/sys.cmx \
-    ocaml-3.12/typing/subst.cmx ocaml-3.12/typing/stypes.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/set.cmx \
-    ocaml-3.12/typing/printtyp.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/typing/mtype.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/parsing/longident.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/typing/includemod.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/stdlib/filename.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/utils/config.cmx ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/typing/btype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/typing/typemod.cmi
-ocaml-3.12/typing/unused_var.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/parsing/parsetree.cmi \
-    ocaml-3.12/parsing/longident.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/unused_var.cmi
-ocaml-3.12/typing/unused_var.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/parsing/parsetree.cmi \
-    ocaml-3.12/parsing/longident.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/typing/unused_var.cmi
-ocaml-3.12/bytecomp/lambda.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/stdlib/set.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/lambda.cmi
-ocaml-3.12/bytecomp/lambda.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/stdlib/set.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/lambda.cmi
-ocaml-3.12/bytecomp/printlambda.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/stdlib/printf.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/lexing.cmi ocaml-3.12/bytecomp/lambda.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/printlambda.cmi
-ocaml-3.12/bytecomp/printlambda.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/stdlib/printf.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/lexing.cmx ocaml-3.12/bytecomp/lambda.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/printlambda.cmi
-ocaml-3.12/bytecomp/typeopt.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/typing/predef.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/bytecomp/lambda.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/typing/ctype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/typeopt.cmi
-ocaml-3.12/bytecomp/typeopt.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/typing/predef.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/bytecomp/lambda.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/typing/ctype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/typeopt.cmi
-ocaml-3.12/bytecomp/switch.cmo: ocaml-3.12/stdlib/printf.cmi \
-    ocaml-3.12/stdlib/hashtbl.cmi ocaml-3.12/stdlib/array.cmi \
-    ocaml-3.12/bytecomp/switch.cmi
-ocaml-3.12/bytecomp/switch.cmx: ocaml-3.12/stdlib/printf.cmx \
-    ocaml-3.12/stdlib/hashtbl.cmx ocaml-3.12/stdlib/array.cmx \
-    ocaml-3.12/bytecomp/switch.cmi
-ocaml-3.12/bytecomp/matching.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/bytecomp/typeopt.cmi ocaml-3.12/typing/typedtree.cmi \
-    ocaml-3.12/bytecomp/switch.cmi ocaml-3.12/bytecomp/printlambda.cmi \
-    ocaml-3.12/stdlib/printf.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/typing/predef.cmi ocaml-3.12/stdlib/pervasives.cmi \
-    ocaml-3.12/typing/path.cmi ocaml-3.12/typing/parmatch.cmi \
-    ocaml-3.12/stdlib/obj.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/longident.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/lexing.cmi \
-    ocaml-3.12/stdlib/lazy.cmi ocaml-3.12/bytecomp/lambda.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/stdlib/char.cmi \
-    ocaml-3.12/typing/btype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmi ocaml-3.12/bytecomp/matching.cmi
-ocaml-3.12/bytecomp/matching.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/bytecomp/typeopt.cmx ocaml-3.12/typing/typedtree.cmx \
-    ocaml-3.12/bytecomp/switch.cmx ocaml-3.12/bytecomp/printlambda.cmx \
-    ocaml-3.12/stdlib/printf.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/typing/predef.cmx ocaml-3.12/stdlib/pervasives.cmx \
-    ocaml-3.12/typing/path.cmx ocaml-3.12/typing/parmatch.cmx \
-    ocaml-3.12/stdlib/obj.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/longident.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/lexing.cmx \
-    ocaml-3.12/stdlib/lazy.cmx ocaml-3.12/bytecomp/lambda.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/stdlib/char.cmx \
-    ocaml-3.12/typing/btype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmx ocaml-3.12/bytecomp/matching.cmi
-ocaml-3.12/bytecomp/translobj.cmo: ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/parsing/longident.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/bytecomp/lambda.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/typing/btype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/bytecomp/translobj.cmi
-ocaml-3.12/bytecomp/translobj.cmx: ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/parsing/longident.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/bytecomp/lambda.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/typing/btype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/bytecomp/translobj.cmi
-ocaml-3.12/bytecomp/translcore.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/bytecomp/typeopt.cmi ocaml-3.12/typing/typedtree.cmi \
-    ocaml-3.12/bytecomp/translobj.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/typing/predef.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/typing/parmatch.cmi ocaml-3.12/stdlib/obj.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/bytecomp/matching.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/lexing.cmi ocaml-3.12/bytecomp/lambda.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/utils/config.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/typing/btype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmi ocaml-3.12/bytecomp/translcore.cmi
-ocaml-3.12/bytecomp/translcore.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/bytecomp/typeopt.cmx ocaml-3.12/typing/typedtree.cmx \
-    ocaml-3.12/bytecomp/translobj.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/typing/predef.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/typing/parmatch.cmx ocaml-3.12/stdlib/obj.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/bytecomp/matching.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/lexing.cmx ocaml-3.12/bytecomp/lambda.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/utils/config.cmx ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/typing/btype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmx ocaml-3.12/bytecomp/translcore.cmi
-ocaml-3.12/bytecomp/translclass.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/bytecomp/typeopt.cmi ocaml-3.12/typing/typedtree.cmi \
-    ocaml-3.12/bytecomp/translobj.cmi ocaml-3.12/bytecomp/translcore.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/stdlib/obj.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/bytecomp/matching.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/bytecomp/lambda.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/stdlib/camlinternalOO.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/translclass.cmi
-ocaml-3.12/bytecomp/translclass.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/bytecomp/typeopt.cmx ocaml-3.12/typing/typedtree.cmx \
-    ocaml-3.12/bytecomp/translobj.cmx ocaml-3.12/bytecomp/translcore.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/stdlib/obj.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/bytecomp/matching.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/bytecomp/lambda.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/stdlib/camlinternalOO.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/bytecomp/translclass.cmi
-ocaml-3.12/bytecomp/translmod.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/bytecomp/translobj.cmi \
-    ocaml-3.12/bytecomp/translcore.cmi ocaml-3.12/bytecomp/translclass.cmi \
-    ocaml-3.12/typing/printtyp.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/typing/predef.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/typing/mtype.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/longident.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/lexing.cmi \
-    ocaml-3.12/bytecomp/lambda.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/typing/ctype.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmi ocaml-3.12/bytecomp/translmod.cmi
-ocaml-3.12/bytecomp/translmod.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/bytecomp/translobj.cmx \
-    ocaml-3.12/bytecomp/translcore.cmx ocaml-3.12/bytecomp/translclass.cmx \
-    ocaml-3.12/typing/printtyp.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/typing/predef.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/typing/mtype.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/longident.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/lexing.cmx \
-    ocaml-3.12/bytecomp/lambda.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/typing/ctype.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmx ocaml-3.12/bytecomp/translmod.cmi
-ocaml-3.12/bytecomp/opcodes.cmo:
-ocaml-3.12/bytecomp/opcodes.cmx:
-ocaml-3.12/bytecomp/instruct.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/subst.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/bytecomp/lambda.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/bytecomp/instruct.cmi
-ocaml-3.12/bytecomp/instruct.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/subst.cmx ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/bytecomp/lambda.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/bytecomp/instruct.cmi
-ocaml-3.12/bytecomp/emitcode.cmo: ocaml-3.12/bytecomp/translmod.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/bytecomp/opcodes.cmo ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/bytecomp/meta.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/bytecomp/lambda.cmi ocaml-3.12/bytecomp/instruct.cmi \
-    ocaml-3.12/typing/env.cmi ocaml-3.12/utils/config.cmi \
-    ocaml-3.12/bytecomp/cmo_format.cmi ocaml-3.12/utils/clflags.cmi \
-    ocaml-3.12/stdlib/char.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/stdlib/array.cmi \
-    ocaml-3.12/bytecomp/emitcode.cmi
-ocaml-3.12/bytecomp/emitcode.cmx: ocaml-3.12/bytecomp/translmod.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/bytecomp/opcodes.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/bytecomp/meta.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/bytecomp/lambda.cmx ocaml-3.12/bytecomp/instruct.cmx \
-    ocaml-3.12/typing/env.cmx ocaml-3.12/utils/config.cmx \
-    ocaml-3.12/bytecomp/cmo_format.cmi ocaml-3.12/utils/clflags.cmx \
-    ocaml-3.12/stdlib/char.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/stdlib/array.cmx \
-    ocaml-3.12/bytecomp/emitcode.cmi
-ocaml-3.12/bytecomp/printinstr.cmo: ocaml-3.12/bytecomp/printlambda.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/lexing.cmi ocaml-3.12/bytecomp/lambda.cmi \
-    ocaml-3.12/bytecomp/instruct.cmi ocaml-3.12/typing/ident.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/stdlib/array.cmi \
-    ocaml-3.12/bytecomp/printinstr.cmi
-ocaml-3.12/bytecomp/printinstr.cmx: ocaml-3.12/bytecomp/printlambda.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/lexing.cmx ocaml-3.12/bytecomp/lambda.cmx \
-    ocaml-3.12/bytecomp/instruct.cmx ocaml-3.12/typing/ident.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/stdlib/array.cmx \
-    ocaml-3.12/bytecomp/printinstr.cmi
-ocaml-3.12/bytecomp/bytegen.cmo: ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/bytecomp/switch.cmi ocaml-3.12/typing/subst.cmi \
-    ocaml-3.12/stdlib/stack.cmi ocaml-3.12/typing/primitive.cmi \
-    ocaml-3.12/utils/misc.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/bytecomp/lambda.cmi ocaml-3.12/bytecomp/instruct.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/utils/config.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmi ocaml-3.12/bytecomp/bytegen.cmi
-ocaml-3.12/bytecomp/bytegen.cmx: ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/bytecomp/switch.cmx ocaml-3.12/typing/subst.cmx \
-    ocaml-3.12/stdlib/stack.cmx ocaml-3.12/typing/primitive.cmx \
-    ocaml-3.12/utils/misc.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/bytecomp/lambda.cmx ocaml-3.12/bytecomp/instruct.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/utils/config.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/stdlib/array.cmx ocaml-3.12/bytecomp/bytegen.cmi
-ocaml-3.12/bytecomp/simplif.cmo: ocaml-3.12/typing/stypes.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/bytecomp/lambda.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/bytecomp/simplif.cmi
-ocaml-3.12/bytecomp/simplif.cmx: ocaml-3.12/typing/stypes.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/bytecomp/lambda.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/parsing/asttypes.cmi \
-    ocaml-3.12/typing/annot.cmi ocaml-3.12/bytecomp/simplif.cmi
-ocaml-3.12/driver/pparse.cmo: ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/stdlib/printf.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/lexing.cmi \
-    ocaml-3.12/stdlib/format.cmi ocaml-3.12/stdlib/filename.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/utils/ccomp.cmi \
-    ocaml-3.12/driver/pparse.cmi
-ocaml-3.12/driver/pparse.cmx: ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/stdlib/printf.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/lexing.cmx \
-    ocaml-3.12/stdlib/format.cmx ocaml-3.12/stdlib/filename.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/utils/ccomp.cmx \
-    ocaml-3.12/driver/pparse.cmi
-ocaml-3.12/driver/compile.cmo: ocaml-3.12/utils/warnings.cmi \
-    ocaml-3.12/typing/unused_var.cmi ocaml-3.12/typing/typemod.cmi \
-    ocaml-3.12/typing/typedtree.cmi ocaml-3.12/bytecomp/translmod.cmi \
-    ocaml-3.12/typing/stypes.cmi ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/bytecomp/simplif.cmi ocaml-3.12/typing/printtyp.cmi \
-    ocaml-3.12/bytecomp/printlambda.cmi ocaml-3.12/bytecomp/printinstr.cmi \
-    ocaml-3.12/parsing/printast.cmi ocaml-3.12/driver/pparse.cmi \
-    ocaml-3.12/parsing/parse.cmi ocaml-3.12/utils/misc.cmi \
-    ocaml-3.12/parsing/location.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/typing/ident.cmi ocaml-3.12/stdlib/format.cmi \
-    ocaml-3.12/stdlib/filename.cmi ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/bytecomp/emitcode.cmi ocaml-3.12/utils/config.cmi \
-    ocaml-3.12/utils/clflags.cmi ocaml-3.12/utils/ccomp.cmi \
-    ocaml-3.12/bytecomp/bytegen.cmi ocaml-3.12/driver/compile.cmi
-ocaml-3.12/driver/compile.cmx: ocaml-3.12/utils/warnings.cmx \
-    ocaml-3.12/typing/unused_var.cmx ocaml-3.12/typing/typemod.cmx \
-    ocaml-3.12/typing/typedtree.cmx ocaml-3.12/bytecomp/translmod.cmx \
-    ocaml-3.12/typing/stypes.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/bytecomp/simplif.cmx ocaml-3.12/typing/printtyp.cmx \
-    ocaml-3.12/bytecomp/printlambda.cmx ocaml-3.12/bytecomp/printinstr.cmx \
-    ocaml-3.12/parsing/printast.cmx ocaml-3.12/driver/pparse.cmx \
-    ocaml-3.12/parsing/parse.cmx ocaml-3.12/utils/misc.cmx \
-    ocaml-3.12/parsing/location.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/typing/ident.cmx ocaml-3.12/stdlib/format.cmx \
-    ocaml-3.12/stdlib/filename.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/bytecomp/emitcode.cmx ocaml-3.12/utils/config.cmx \
-    ocaml-3.12/utils/clflags.cmx ocaml-3.12/utils/ccomp.cmx \
-    ocaml-3.12/bytecomp/bytegen.cmx ocaml-3.12/driver/compile.cmi
+ocaml-3.12.0/utils/misc.cmo: /usr/lib/ocaml/sys.cmi /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/hashtbl.cmi \
+    /usr/lib/ocaml/filename.cmi ocaml-3.12.0/utils/misc.cmi
+ocaml-3.12.0/utils/misc.cmx: /usr/lib/ocaml/sys.cmx /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/hashtbl.cmx \
+    /usr/lib/ocaml/filename.cmx ocaml-3.12.0/utils/misc.cmi
+ocaml-3.12.0/utils/warnings.cmo: /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/printf.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi /usr/lib/ocaml/char.cmi \
+    /usr/lib/ocaml/array.cmi /usr/lib/ocaml/arg.cmi \
+    ocaml-3.12.0/utils/warnings.cmi
+ocaml-3.12.0/utils/warnings.cmx: /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/printf.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx /usr/lib/ocaml/char.cmx \
+    /usr/lib/ocaml/array.cmx /usr/lib/ocaml/arg.cmx \
+    ocaml-3.12.0/utils/warnings.cmi
+ocaml-3.12.0/utils/config.cmo: /usr/lib/ocaml/sys.cmi \
+    /usr/lib/ocaml/printf.cmi ocaml-3.12.0/utils/config.cmi
+ocaml-3.12.0/utils/config.cmx: /usr/lib/ocaml/sys.cmx \
+    /usr/lib/ocaml/printf.cmx ocaml-3.12.0/utils/config.cmi
+ocaml-3.12.0/utils/clflags.cmo: /usr/lib/ocaml/filename.cmi \
+    ocaml-3.12.0/utils/config.cmi ocaml-3.12.0/utils/clflags.cmi
+ocaml-3.12.0/utils/clflags.cmx: /usr/lib/ocaml/filename.cmx \
+    ocaml-3.12.0/utils/config.cmx ocaml-3.12.0/utils/clflags.cmi
+ocaml-3.12.0/utils/tbl.cmo: /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/utils/tbl.cmi
+ocaml-3.12.0/utils/tbl.cmx: /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/utils/tbl.cmi
+ocaml-3.12.0/utils/consistbl.cmo: /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/digest.cmi \
+    ocaml-3.12.0/utils/consistbl.cmi
+ocaml-3.12.0/utils/consistbl.cmx: /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/digest.cmx \
+    ocaml-3.12.0/utils/consistbl.cmi
+ocaml-3.12.0/utils/ccomp.cmo: /usr/lib/ocaml/sys.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/printf.cmi \
+    ocaml-3.12.0/utils/misc.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/filename.cmi ocaml-3.12.0/utils/config.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/utils/ccomp.cmi
+ocaml-3.12.0/utils/ccomp.cmx: /usr/lib/ocaml/sys.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/printf.cmx \
+    ocaml-3.12.0/utils/misc.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/filename.cmx ocaml-3.12.0/utils/config.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/utils/ccomp.cmi
+ocaml-3.12.0/parsing/linenum.cmo: /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/utils/misc.cmi /usr/lib/ocaml/lexing.cmi \
+    ocaml-3.12.0/parsing/linenum.cmi
+ocaml-3.12.0/parsing/linenum.cmx: /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/utils/misc.cmx /usr/lib/ocaml/lexing.cmx \
+    ocaml-3.12.0/parsing/linenum.cmi
+ocaml-3.12.0/parsing/location.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    ocaml-3.12.0/utils/terminfo.cmi /usr/lib/ocaml/sys.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/parsing.cmi \
+    ocaml-3.12.0/parsing/linenum.cmi /usr/lib/ocaml/lexing.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/parsing/location.cmi
+ocaml-3.12.0/parsing/location.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    ocaml-3.12.0/utils/terminfo.cmx /usr/lib/ocaml/sys.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/parsing.cmx \
+    ocaml-3.12.0/parsing/linenum.cmx /usr/lib/ocaml/lexing.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/parsing/location.cmi
+ocaml-3.12.0/parsing/longident.cmo: /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/utils/misc.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/parsing/longident.cmi
+ocaml-3.12.0/parsing/longident.cmx: /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/utils/misc.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/parsing/longident.cmi
+ocaml-3.12.0/parsing/printast.cmo: /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/longident.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lexing.cmi /usr/lib/ocaml/format.cmi \
+    /usr/lib/ocaml/char.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/parsing/printast.cmi
+ocaml-3.12.0/parsing/printast.cmx: /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/longident.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lexing.cmx /usr/lib/ocaml/format.cmx \
+    /usr/lib/ocaml/char.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/parsing/printast.cmi
+ocaml-3.12.0/parsing/syntaxerr.cmo: /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/parsing/syntaxerr.cmi
+ocaml-3.12.0/parsing/syntaxerr.cmx: /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/parsing/syntaxerr.cmi
+ocaml-3.12.0/parsing/parser.cmo: ocaml-3.12.0/parsing/syntaxerr.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/parsing.cmi \
+    ocaml-3.12.0/parsing/parsetree.cmi /usr/lib/ocaml/obj.cmi \
+    /usr/lib/ocaml/nativeint.cmi ocaml-3.12.0/parsing/longident.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lexing.cmi /usr/lib/ocaml/int64.cmi \
+    /usr/lib/ocaml/int32.cmi ocaml-3.12.0/utils/clflags.cmi \
+    /usr/lib/ocaml/char.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/parsing/parser.cmi
+ocaml-3.12.0/parsing/parser.cmx: ocaml-3.12.0/parsing/syntaxerr.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/parsing.cmx \
+    ocaml-3.12.0/parsing/parsetree.cmi /usr/lib/ocaml/obj.cmx \
+    /usr/lib/ocaml/nativeint.cmx ocaml-3.12.0/parsing/longident.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lexing.cmx /usr/lib/ocaml/int64.cmx \
+    /usr/lib/ocaml/int32.cmx ocaml-3.12.0/utils/clflags.cmx \
+    /usr/lib/ocaml/char.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/parsing/parser.cmi
+ocaml-3.12.0/parsing/lexer.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    /usr/lib/ocaml/string.cmi ocaml-3.12.0/parsing/parser.cmi \
+    /usr/lib/ocaml/nativeint.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/lexing.cmi \
+    /usr/lib/ocaml/int64.cmi /usr/lib/ocaml/int32.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi \
+    /usr/lib/ocaml/char.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/parsing/lexer.cmi
+ocaml-3.12.0/parsing/lexer.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    /usr/lib/ocaml/string.cmx ocaml-3.12.0/parsing/parser.cmx \
+    /usr/lib/ocaml/nativeint.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/lexing.cmx \
+    /usr/lib/ocaml/int64.cmx /usr/lib/ocaml/int32.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx \
+    /usr/lib/ocaml/char.cmx /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/parsing/lexer.cmi
+ocaml-3.12.0/parsing/parse.cmo: ocaml-3.12.0/parsing/syntaxerr.cmi \
+    /usr/lib/ocaml/parsing.cmi ocaml-3.12.0/parsing/parser.cmi \
+    ocaml-3.12.0/parsing/location.cmi ocaml-3.12.0/parsing/lexer.cmi \
+    ocaml-3.12.0/parsing/parse.cmi
+ocaml-3.12.0/parsing/parse.cmx: ocaml-3.12.0/parsing/syntaxerr.cmx \
+    /usr/lib/ocaml/parsing.cmx ocaml-3.12.0/parsing/parser.cmx \
+    ocaml-3.12.0/parsing/location.cmx ocaml-3.12.0/parsing/lexer.cmx \
+    ocaml-3.12.0/parsing/parse.cmi
+ocaml-3.12.0/typing/ident.cmo: /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/ident.cmi
+ocaml-3.12.0/typing/ident.cmx: /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/ident.cmi
+ocaml-3.12.0/typing/path.cmo: ocaml-3.12.0/typing/ident.cmi \
+    ocaml-3.12.0/typing/path.cmi
+ocaml-3.12.0/typing/path.cmx: ocaml-3.12.0/typing/ident.cmx \
+    ocaml-3.12.0/typing/path.cmi
+ocaml-3.12.0/typing/primitive.cmo: ocaml-3.12.0/utils/misc.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/primitive.cmi
+ocaml-3.12.0/typing/primitive.cmx: ocaml-3.12.0/utils/misc.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/primitive.cmi
+ocaml-3.12.0/typing/types.cmo: /usr/lib/ocaml/set.cmi \
+    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/utils/misc.cmi /usr/lib/ocaml/map.cmi \
+    ocaml-3.12.0/typing/ident.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/types.cmi
+ocaml-3.12.0/typing/types.cmx: /usr/lib/ocaml/set.cmx \
+    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/utils/misc.cmx /usr/lib/ocaml/map.cmx \
+    ocaml-3.12.0/typing/ident.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/types.cmi
+ocaml-3.12.0/typing/btype.cmo: /usr/lib/ocaml/weak.cmi \
+    ocaml-3.12.0/typing/types.cmi /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/utils/misc.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/char.cmi \
+    ocaml-3.12.0/typing/btype.cmi
+ocaml-3.12.0/typing/btype.cmx: /usr/lib/ocaml/weak.cmx \
+    ocaml-3.12.0/typing/types.cmx /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/utils/misc.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/char.cmx \
+    ocaml-3.12.0/typing/btype.cmi
+ocaml-3.12.0/typing/subst.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/utils/tbl.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/utils/misc.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/typing/ident.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/typing/subst.cmi
+ocaml-3.12.0/typing/subst.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/utils/tbl.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/utils/misc.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/typing/ident.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/typing/subst.cmi
+ocaml-3.12.0/typing/predef.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/path.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/typing/ident.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/predef.cmi
+ocaml-3.12.0/typing/predef.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/path.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/typing/ident.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/predef.cmi
+ocaml-3.12.0/typing/datarepr.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/predef.cmi ocaml-3.12.0/utils/misc.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    /usr/lib/ocaml/array.cmi ocaml-3.12.0/typing/datarepr.cmi
+ocaml-3.12.0/typing/datarepr.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/predef.cmx ocaml-3.12.0/utils/misc.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    /usr/lib/ocaml/array.cmx ocaml-3.12.0/typing/datarepr.cmi
+ocaml-3.12.0/typing/env.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/utils/tbl.cmi ocaml-3.12.0/typing/subst.cmi \
+    /usr/lib/ocaml/string.cmi ocaml-3.12.0/typing/predef.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/longident.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lazy.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi \
+    /usr/lib/ocaml/digest.cmi ocaml-3.12.0/typing/datarepr.cmi \
+    ocaml-3.12.0/utils/consistbl.cmi ocaml-3.12.0/utils/config.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/annot.cmi \
+    ocaml-3.12.0/typing/env.cmi
+ocaml-3.12.0/typing/env.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/utils/tbl.cmx ocaml-3.12.0/typing/subst.cmx \
+    /usr/lib/ocaml/string.cmx ocaml-3.12.0/typing/predef.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/longident.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lazy.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx \
+    /usr/lib/ocaml/digest.cmx ocaml-3.12.0/typing/datarepr.cmx \
+    ocaml-3.12.0/utils/consistbl.cmx ocaml-3.12.0/utils/config.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/annot.cmi \
+    ocaml-3.12.0/typing/env.cmi
+ocaml-3.12.0/typing/ctype.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/subst.cmi /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/sort.cmi /usr/lib/ocaml/set.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/utils/misc.cmi \
+    /usr/lib/ocaml/map.cmi ocaml-3.12.0/parsing/longident.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/lazy.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/hashtbl.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/utils/clflags.cmi \
+    ocaml-3.12.0/typing/btype.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/ctype.cmi
+ocaml-3.12.0/typing/ctype.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/subst.cmx /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/sort.cmx /usr/lib/ocaml/set.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/utils/misc.cmx \
+    /usr/lib/ocaml/map.cmx ocaml-3.12.0/parsing/longident.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/lazy.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/hashtbl.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/utils/clflags.cmx \
+    ocaml-3.12.0/typing/btype.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/ctype.cmi
+ocaml-3.12.0/typing/oprint.cmo: /usr/lib/ocaml/sys.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/printf.cmi \
+    /usr/lib/ocaml/outcometree.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/oprint.cmi
+ocaml-3.12.0/typing/oprint.cmx: /usr/lib/ocaml/sys.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/printf.cmx \
+    /usr/lib/ocaml/outcometree.cmi /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/oprint.cmi
+ocaml-3.12.0/typing/printtyp.cmo: ocaml-3.12.0/typing/types.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/sort.cmi \
+    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/predef.cmi \
+    ocaml-3.12.0/typing/path.cmi /usr/lib/ocaml/outcometree.cmi \
+    ocaml-3.12.0/typing/oprint.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/longident.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/utils/clflags.cmi /usr/lib/ocaml/char.cmi \
+    ocaml-3.12.0/typing/btype.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi
+ocaml-3.12.0/typing/printtyp.cmx: ocaml-3.12.0/typing/types.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/sort.cmx \
+    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/predef.cmx \
+    ocaml-3.12.0/typing/path.cmx /usr/lib/ocaml/outcometree.cmi \
+    ocaml-3.12.0/typing/oprint.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/longident.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/utils/clflags.cmx /usr/lib/ocaml/char.cmx \
+    ocaml-3.12.0/typing/btype.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi
+ocaml-3.12.0/typing/typetexp.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    ocaml-3.12.0/typing/types.cmi ocaml-3.12.0/utils/tbl.cmi \
+    /usr/lib/ocaml/string.cmi ocaml-3.12.0/typing/printtyp.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/parsing/parsetree.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/longident.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/typetexp.cmi
+ocaml-3.12.0/typing/typetexp.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    ocaml-3.12.0/typing/types.cmx ocaml-3.12.0/utils/tbl.cmx \
+    /usr/lib/ocaml/string.cmx ocaml-3.12.0/typing/printtyp.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/parsing/parsetree.cmi \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/longident.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/typetexp.cmi
+ocaml-3.12.0/typing/typedtree.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/ident.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi
+ocaml-3.12.0/typing/typedtree.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/ident.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi
+ocaml-3.12.0/typing/includecore.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/typing/predef.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/utils/misc.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/ctype.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/includecore.cmi
+ocaml-3.12.0/typing/includecore.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/typing/predef.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/utils/misc.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/ctype.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/includecore.cmi
+ocaml-3.12.0/typing/stypes.cmo: ocaml-3.12.0/typing/typedtree.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/lexing.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/utils/clflags.cmi \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/typing/stypes.cmi
+ocaml-3.12.0/typing/stypes.cmx: ocaml-3.12.0/typing/typedtree.cmx \
+    ocaml-3.12.0/typing/printtyp.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/lexing.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/utils/clflags.cmx \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/typing/stypes.cmi
+ocaml-3.12.0/typing/parmatch.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    ocaml-3.12.0/typing/types.cmi ocaml-3.12.0/typing/typedtree.cmi \
+    ocaml-3.12.0/typing/subst.cmi /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/sort.cmi ocaml-3.12.0/typing/predef.cmi \
+    ocaml-3.12.0/typing/path.cmi /usr/lib/ocaml/nativeint.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/int64.cmi /usr/lib/ocaml/int32.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/datarepr.cmi \
+    ocaml-3.12.0/typing/ctype.cmi /usr/lib/ocaml/char.cmi \
+    /usr/lib/ocaml/buffer.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/typing/parmatch.cmi
+ocaml-3.12.0/typing/parmatch.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    ocaml-3.12.0/typing/types.cmx ocaml-3.12.0/typing/typedtree.cmx \
+    ocaml-3.12.0/typing/subst.cmx /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/sort.cmx ocaml-3.12.0/typing/predef.cmx \
+    ocaml-3.12.0/typing/path.cmx /usr/lib/ocaml/nativeint.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/int64.cmx /usr/lib/ocaml/int32.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/datarepr.cmx \
+    ocaml-3.12.0/typing/ctype.cmx /usr/lib/ocaml/char.cmx \
+    /usr/lib/ocaml/buffer.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/typing/parmatch.cmi
+ocaml-3.12.0/typing/typecore.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    ocaml-3.12.0/typing/typetexp.cmi ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/typing/subst.cmi \
+    ocaml-3.12.0/typing/stypes.cmi /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi /usr/lib/ocaml/printf.cmi \
+    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/predef.cmi \
+    /usr/lib/ocaml/pervasives.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/typing/parmatch.cmi \
+    ocaml-3.12.0/typing/oprint.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/longident.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/typing/typecore.cmi
+ocaml-3.12.0/typing/typecore.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    ocaml-3.12.0/typing/typetexp.cmx ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/typing/subst.cmx \
+    ocaml-3.12.0/typing/stypes.cmx /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/typing/printtyp.cmx /usr/lib/ocaml/printf.cmx \
+    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/predef.cmx \
+    /usr/lib/ocaml/pervasives.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/typing/parmatch.cmx \
+    ocaml-3.12.0/typing/oprint.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/longident.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/typing/typecore.cmi
+ocaml-3.12.0/typing/includeclass.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/typing/includeclass.cmi
+ocaml-3.12.0/typing/includeclass.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/printtyp.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/typing/includeclass.cmi
+ocaml-3.12.0/typing/typedecl.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    ocaml-3.12.0/typing/typetexp.cmi ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/typing/subst.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/set.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/typing/predef.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/longident.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/includecore.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/hashtbl.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/typing/env.cmi \
+    ocaml-3.12.0/typing/ctype.cmi ocaml-3.12.0/utils/config.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/typedecl.cmi
+ocaml-3.12.0/typing/typedecl.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    ocaml-3.12.0/typing/typetexp.cmx ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/typing/subst.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/set.cmx \
+    ocaml-3.12.0/typing/printtyp.cmx ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/typing/predef.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/longident.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/includecore.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/hashtbl.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/typing/env.cmx \
+    ocaml-3.12.0/typing/ctype.cmx ocaml-3.12.0/utils/config.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/typedecl.cmi
+ocaml-3.12.0/typing/typeclass.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    ocaml-3.12.0/typing/typetexp.cmi ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/typing/typedecl.cmi \
+    ocaml-3.12.0/typing/typecore.cmi ocaml-3.12.0/typing/subst.cmi \
+    ocaml-3.12.0/typing/stypes.cmi ocaml-3.12.0/typing/printtyp.cmi \
+    ocaml-3.12.0/typing/predef.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/typing/parmatch.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/longident.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lazy.cmi ocaml-3.12.0/typing/includeclass.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/typeclass.cmi
+ocaml-3.12.0/typing/typeclass.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    ocaml-3.12.0/typing/typetexp.cmx ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/typing/typedecl.cmx \
+    ocaml-3.12.0/typing/typecore.cmx ocaml-3.12.0/typing/subst.cmx \
+    ocaml-3.12.0/typing/stypes.cmx ocaml-3.12.0/typing/printtyp.cmx \
+    ocaml-3.12.0/typing/predef.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/typing/parmatch.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/longident.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lazy.cmx ocaml-3.12.0/typing/includeclass.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/typeclass.cmi
+ocaml-3.12.0/typing/mtype.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/subst.cmi ocaml-3.12.0/typing/path.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/ident.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/mtype.cmi
+ocaml-3.12.0/typing/mtype.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/subst.cmx ocaml-3.12.0/typing/path.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/ident.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/mtype.cmi
+ocaml-3.12.0/typing/includemod.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/utils/tbl.cmi \
+    ocaml-3.12.0/typing/subst.cmi /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/typing/mtype.cmi ocaml-3.12.0/utils/misc.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/includecore.cmi \
+    ocaml-3.12.0/typing/includeclass.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/typing/env.cmi \
+    ocaml-3.12.0/typing/ctype.cmi ocaml-3.12.0/typing/includemod.cmi
+ocaml-3.12.0/typing/includemod.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/utils/tbl.cmx \
+    ocaml-3.12.0/typing/subst.cmx /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/typing/printtyp.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/typing/mtype.cmx ocaml-3.12.0/utils/misc.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/includecore.cmx \
+    ocaml-3.12.0/typing/includeclass.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/typing/env.cmx \
+    ocaml-3.12.0/typing/ctype.cmx ocaml-3.12.0/typing/includemod.cmi
+ocaml-3.12.0/typing/typemod.cmo: ocaml-3.12.0/typing/typetexp.cmi \
+    ocaml-3.12.0/typing/types.cmi ocaml-3.12.0/typing/typedtree.cmi \
+    ocaml-3.12.0/typing/typedecl.cmi ocaml-3.12.0/typing/typecore.cmi \
+    ocaml-3.12.0/typing/typeclass.cmi /usr/lib/ocaml/sys.cmi \
+    ocaml-3.12.0/typing/subst.cmi ocaml-3.12.0/typing/stypes.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/set.cmi \
+    ocaml-3.12.0/typing/printtyp.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/typing/mtype.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/longident.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/typing/includemod.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/format.cmi /usr/lib/ocaml/filename.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/utils/config.cmi ocaml-3.12.0/utils/clflags.cmi \
+    ocaml-3.12.0/typing/btype.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/typing/typemod.cmi
+ocaml-3.12.0/typing/typemod.cmx: ocaml-3.12.0/typing/typetexp.cmx \
+    ocaml-3.12.0/typing/types.cmx ocaml-3.12.0/typing/typedtree.cmx \
+    ocaml-3.12.0/typing/typedecl.cmx ocaml-3.12.0/typing/typecore.cmx \
+    ocaml-3.12.0/typing/typeclass.cmx /usr/lib/ocaml/sys.cmx \
+    ocaml-3.12.0/typing/subst.cmx ocaml-3.12.0/typing/stypes.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/set.cmx \
+    ocaml-3.12.0/typing/printtyp.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/typing/mtype.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/longident.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/typing/includemod.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/format.cmx /usr/lib/ocaml/filename.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/utils/config.cmx ocaml-3.12.0/utils/clflags.cmx \
+    ocaml-3.12.0/typing/btype.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/typing/typemod.cmi
+ocaml-3.12.0/typing/unused_var.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    /usr/lib/ocaml/string.cmi ocaml-3.12.0/parsing/parsetree.cmi \
+    ocaml-3.12.0/parsing/longident.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/hashtbl.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/unused_var.cmi
+ocaml-3.12.0/typing/unused_var.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    /usr/lib/ocaml/string.cmx ocaml-3.12.0/parsing/parsetree.cmi \
+    ocaml-3.12.0/parsing/longident.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/hashtbl.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/typing/unused_var.cmi
+ocaml-3.12.0/bytecomp/lambda.cmo: ocaml-3.12.0/typing/types.cmi \
+    /usr/lib/ocaml/set.cmi ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/typing/ident.cmi ocaml-3.12.0/typing/env.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/lambda.cmi
+ocaml-3.12.0/bytecomp/lambda.cmx: ocaml-3.12.0/typing/types.cmx \
+    /usr/lib/ocaml/set.cmx ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/typing/ident.cmx ocaml-3.12.0/typing/env.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/lambda.cmi
+ocaml-3.12.0/bytecomp/printlambda.cmo: ocaml-3.12.0/typing/types.cmi \
+    /usr/lib/ocaml/printf.cmi ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lexing.cmi ocaml-3.12.0/bytecomp/lambda.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/printlambda.cmi
+ocaml-3.12.0/bytecomp/printlambda.cmx: ocaml-3.12.0/typing/types.cmx \
+    /usr/lib/ocaml/printf.cmx ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lexing.cmx ocaml-3.12.0/bytecomp/lambda.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/printlambda.cmi
+ocaml-3.12.0/bytecomp/typeopt.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/typing/predef.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/utils/misc.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/bytecomp/lambda.cmi ocaml-3.12.0/typing/ident.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/typeopt.cmi
+ocaml-3.12.0/bytecomp/typeopt.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/typing/predef.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/utils/misc.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/bytecomp/lambda.cmx ocaml-3.12.0/typing/ident.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/typeopt.cmi
+ocaml-3.12.0/bytecomp/switch.cmo: /usr/lib/ocaml/printf.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/bytecomp/switch.cmi
+ocaml-3.12.0/bytecomp/switch.cmx: /usr/lib/ocaml/printf.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/bytecomp/switch.cmi
+ocaml-3.12.0/bytecomp/matching.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/bytecomp/typeopt.cmi ocaml-3.12.0/typing/typedtree.cmi \
+    ocaml-3.12.0/bytecomp/switch.cmi ocaml-3.12.0/bytecomp/printlambda.cmi \
+    /usr/lib/ocaml/printf.cmi ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/typing/predef.cmi /usr/lib/ocaml/pervasives.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/typing/parmatch.cmi \
+    /usr/lib/ocaml/obj.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/longident.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/lexing.cmi /usr/lib/ocaml/lazy.cmi \
+    ocaml-3.12.0/bytecomp/lambda.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/utils/clflags.cmi \
+    /usr/lib/ocaml/char.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/bytecomp/matching.cmi
+ocaml-3.12.0/bytecomp/matching.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/bytecomp/typeopt.cmx ocaml-3.12.0/typing/typedtree.cmx \
+    ocaml-3.12.0/bytecomp/switch.cmx ocaml-3.12.0/bytecomp/printlambda.cmx \
+    /usr/lib/ocaml/printf.cmx ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/typing/predef.cmx /usr/lib/ocaml/pervasives.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/typing/parmatch.cmx \
+    /usr/lib/ocaml/obj.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/longident.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/lexing.cmx /usr/lib/ocaml/lazy.cmx \
+    ocaml-3.12.0/bytecomp/lambda.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/utils/clflags.cmx \
+    /usr/lib/ocaml/char.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/bytecomp/matching.cmi
+ocaml-3.12.0/bytecomp/translobj.cmo: ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/longident.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/bytecomp/lambda.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/hashtbl.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/utils/clflags.cmi \
+    ocaml-3.12.0/typing/btype.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/bytecomp/translobj.cmi
+ocaml-3.12.0/bytecomp/translobj.cmx: ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/longident.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/bytecomp/lambda.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/hashtbl.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/utils/clflags.cmx \
+    ocaml-3.12.0/typing/btype.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    ocaml-3.12.0/bytecomp/translobj.cmi
+ocaml-3.12.0/bytecomp/translcore.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/bytecomp/typeopt.cmi ocaml-3.12.0/typing/typedtree.cmi \
+    ocaml-3.12.0/bytecomp/translobj.cmi ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/typing/predef.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/typing/parmatch.cmi /usr/lib/ocaml/obj.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/bytecomp/matching.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lexing.cmi ocaml-3.12.0/bytecomp/lambda.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/hashtbl.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/typing/env.cmi \
+    ocaml-3.12.0/utils/config.cmi ocaml-3.12.0/utils/clflags.cmi \
+    ocaml-3.12.0/typing/btype.cmi ocaml-3.12.0/parsing/asttypes.cmi \
+    /usr/lib/ocaml/array.cmi ocaml-3.12.0/bytecomp/translcore.cmi
+ocaml-3.12.0/bytecomp/translcore.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/bytecomp/typeopt.cmx ocaml-3.12.0/typing/typedtree.cmx \
+    ocaml-3.12.0/bytecomp/translobj.cmx ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/typing/predef.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/typing/parmatch.cmx /usr/lib/ocaml/obj.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/bytecomp/matching.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lexing.cmx ocaml-3.12.0/bytecomp/lambda.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/hashtbl.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/typing/env.cmx \
+    ocaml-3.12.0/utils/config.cmx ocaml-3.12.0/utils/clflags.cmx \
+    ocaml-3.12.0/typing/btype.cmx ocaml-3.12.0/parsing/asttypes.cmi \
+    /usr/lib/ocaml/array.cmx ocaml-3.12.0/bytecomp/translcore.cmi
+ocaml-3.12.0/bytecomp/translclass.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/bytecomp/typeopt.cmi ocaml-3.12.0/typing/typedtree.cmi \
+    ocaml-3.12.0/bytecomp/translobj.cmi ocaml-3.12.0/bytecomp/translcore.cmi \
+    /usr/lib/ocaml/string.cmi ocaml-3.12.0/typing/path.cmi \
+    /usr/lib/ocaml/obj.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/bytecomp/matching.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/bytecomp/lambda.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/utils/clflags.cmi \
+    /usr/lib/ocaml/camlinternalOO.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/translclass.cmi
+ocaml-3.12.0/bytecomp/translclass.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/bytecomp/typeopt.cmx ocaml-3.12.0/typing/typedtree.cmx \
+    ocaml-3.12.0/bytecomp/translobj.cmx ocaml-3.12.0/bytecomp/translcore.cmx \
+    /usr/lib/ocaml/string.cmx ocaml-3.12.0/typing/path.cmx \
+    /usr/lib/ocaml/obj.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/bytecomp/matching.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/bytecomp/lambda.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/utils/clflags.cmx \
+    /usr/lib/ocaml/camlinternalOO.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/translclass.cmi
+ocaml-3.12.0/bytecomp/translmod.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/bytecomp/translobj.cmi \
+    ocaml-3.12.0/bytecomp/translcore.cmi \
+    ocaml-3.12.0/bytecomp/translclass.cmi ocaml-3.12.0/typing/printtyp.cmi \
+    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/predef.cmi \
+    ocaml-3.12.0/typing/path.cmi ocaml-3.12.0/typing/mtype.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/longident.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lexing.cmi ocaml-3.12.0/bytecomp/lambda.cmi \
+    ocaml-3.12.0/typing/ident.cmi /usr/lib/ocaml/format.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/typing/ctype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/bytecomp/translmod.cmi
+ocaml-3.12.0/bytecomp/translmod.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/bytecomp/translobj.cmx \
+    ocaml-3.12.0/bytecomp/translcore.cmx \
+    ocaml-3.12.0/bytecomp/translclass.cmx ocaml-3.12.0/typing/printtyp.cmx \
+    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/predef.cmx \
+    ocaml-3.12.0/typing/path.cmx ocaml-3.12.0/typing/mtype.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/longident.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lexing.cmx ocaml-3.12.0/bytecomp/lambda.cmx \
+    ocaml-3.12.0/typing/ident.cmx /usr/lib/ocaml/format.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/typing/ctype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/bytecomp/translmod.cmi
+ocaml-3.12.0/bytecomp/opcodes.cmo:
+ocaml-3.12.0/bytecomp/opcodes.cmx:
+ocaml-3.12.0/bytecomp/instruct.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/subst.cmi ocaml-3.12.0/parsing/location.cmi \
+    ocaml-3.12.0/bytecomp/lambda.cmi ocaml-3.12.0/typing/ident.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/bytecomp/instruct.cmi
+ocaml-3.12.0/bytecomp/instruct.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/subst.cmx ocaml-3.12.0/parsing/location.cmx \
+    ocaml-3.12.0/bytecomp/lambda.cmx ocaml-3.12.0/typing/ident.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/bytecomp/instruct.cmi
+ocaml-3.12.0/bytecomp/emitcode.cmo: ocaml-3.12.0/bytecomp/translmod.cmi \
+    /usr/lib/ocaml/string.cmi ocaml-3.12.0/typing/primitive.cmi \
+    ocaml-3.12.0/bytecomp/opcodes.cmo ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/bytecomp/meta.cmi /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/bytecomp/lambda.cmi ocaml-3.12.0/bytecomp/instruct.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/utils/config.cmi \
+    ocaml-3.12.0/bytecomp/cmo_format.cmi ocaml-3.12.0/utils/clflags.cmi \
+    /usr/lib/ocaml/char.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/bytecomp/emitcode.cmi
+ocaml-3.12.0/bytecomp/emitcode.cmx: ocaml-3.12.0/bytecomp/translmod.cmx \
+    /usr/lib/ocaml/string.cmx ocaml-3.12.0/typing/primitive.cmx \
+    ocaml-3.12.0/bytecomp/opcodes.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/bytecomp/meta.cmx /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/bytecomp/lambda.cmx ocaml-3.12.0/bytecomp/instruct.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/utils/config.cmx \
+    ocaml-3.12.0/bytecomp/cmo_format.cmi ocaml-3.12.0/utils/clflags.cmx \
+    /usr/lib/ocaml/char.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/bytecomp/emitcode.cmi
+ocaml-3.12.0/bytecomp/printinstr.cmo: ocaml-3.12.0/bytecomp/printlambda.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/lexing.cmi ocaml-3.12.0/bytecomp/lambda.cmi \
+    ocaml-3.12.0/bytecomp/instruct.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/format.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/bytecomp/printinstr.cmi
+ocaml-3.12.0/bytecomp/printinstr.cmx: ocaml-3.12.0/bytecomp/printlambda.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/lexing.cmx ocaml-3.12.0/bytecomp/lambda.cmx \
+    ocaml-3.12.0/bytecomp/instruct.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/format.cmx /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/bytecomp/printinstr.cmi
+ocaml-3.12.0/bytecomp/bytegen.cmo: ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/bytecomp/switch.cmi ocaml-3.12.0/typing/subst.cmi \
+    ocaml-3.12.0/typing/stypes.cmi /usr/lib/ocaml/stack.cmi \
+    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/utils/misc.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/bytecomp/lambda.cmi \
+    ocaml-3.12.0/bytecomp/instruct.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/format.cmi ocaml-3.12.0/utils/config.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/bytecomp/bytegen.cmi
+ocaml-3.12.0/bytecomp/bytegen.cmx: ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/bytecomp/switch.cmx ocaml-3.12.0/typing/subst.cmx \
+    ocaml-3.12.0/typing/stypes.cmx /usr/lib/ocaml/stack.cmx \
+    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/utils/misc.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/bytecomp/lambda.cmx \
+    ocaml-3.12.0/bytecomp/instruct.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/format.cmx ocaml-3.12.0/utils/config.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx \
+    ocaml-3.12.0/typing/annot.cmi ocaml-3.12.0/bytecomp/bytegen.cmi
+ocaml-3.12.0/bytecomp/simplif.cmo: /usr/lib/ocaml/list.cmi \
+    ocaml-3.12.0/bytecomp/lambda.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/hashtbl.cmi ocaml-3.12.0/utils/clflags.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/simplif.cmi
+ocaml-3.12.0/bytecomp/simplif.cmx: /usr/lib/ocaml/list.cmx \
+    ocaml-3.12.0/bytecomp/lambda.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/hashtbl.cmx ocaml-3.12.0/utils/clflags.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi ocaml-3.12.0/bytecomp/simplif.cmi
+ocaml-3.12.0/driver/pparse.cmo: /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/printf.cmi ocaml-3.12.0/utils/misc.cmi \
+    ocaml-3.12.0/parsing/location.cmi /usr/lib/ocaml/lexing.cmi \
+    /usr/lib/ocaml/format.cmi /usr/lib/ocaml/filename.cmi \
+    ocaml-3.12.0/utils/clflags.cmi ocaml-3.12.0/utils/ccomp.cmi \
+    ocaml-3.12.0/driver/pparse.cmi
+ocaml-3.12.0/driver/pparse.cmx: /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/printf.cmx ocaml-3.12.0/utils/misc.cmx \
+    ocaml-3.12.0/parsing/location.cmx /usr/lib/ocaml/lexing.cmx \
+    /usr/lib/ocaml/format.cmx /usr/lib/ocaml/filename.cmx \
+    ocaml-3.12.0/utils/clflags.cmx ocaml-3.12.0/utils/ccomp.cmx \
+    ocaml-3.12.0/driver/pparse.cmi
+ocaml-3.12.0/driver/compile.cmo: ocaml-3.12.0/utils/warnings.cmi \
+    ocaml-3.12.0/typing/unused_var.cmi ocaml-3.12.0/typing/typemod.cmi \
+    ocaml-3.12.0/typing/typedtree.cmi ocaml-3.12.0/bytecomp/translmod.cmi \
+    ocaml-3.12.0/typing/stypes.cmi /usr/lib/ocaml/string.cmi \
+    ocaml-3.12.0/bytecomp/simplif.cmi ocaml-3.12.0/typing/printtyp.cmi \
+    ocaml-3.12.0/bytecomp/printlambda.cmi \
+    ocaml-3.12.0/bytecomp/printinstr.cmi ocaml-3.12.0/parsing/printast.cmi \
+    ocaml-3.12.0/driver/pparse.cmi ocaml-3.12.0/parsing/parse.cmi \
+    ocaml-3.12.0/utils/misc.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/ident.cmi \
+    /usr/lib/ocaml/format.cmi /usr/lib/ocaml/filename.cmi \
+    ocaml-3.12.0/typing/env.cmi ocaml-3.12.0/bytecomp/emitcode.cmi \
+    ocaml-3.12.0/utils/config.cmi ocaml-3.12.0/utils/clflags.cmi \
+    ocaml-3.12.0/utils/ccomp.cmi ocaml-3.12.0/bytecomp/bytegen.cmi \
+    ocaml-3.12.0/driver/compile.cmi
+ocaml-3.12.0/driver/compile.cmx: ocaml-3.12.0/utils/warnings.cmx \
+    ocaml-3.12.0/typing/unused_var.cmx ocaml-3.12.0/typing/typemod.cmx \
+    ocaml-3.12.0/typing/typedtree.cmx ocaml-3.12.0/bytecomp/translmod.cmx \
+    ocaml-3.12.0/typing/stypes.cmx /usr/lib/ocaml/string.cmx \
+    ocaml-3.12.0/bytecomp/simplif.cmx ocaml-3.12.0/typing/printtyp.cmx \
+    ocaml-3.12.0/bytecomp/printlambda.cmx \
+    ocaml-3.12.0/bytecomp/printinstr.cmx ocaml-3.12.0/parsing/printast.cmx \
+    ocaml-3.12.0/driver/pparse.cmx ocaml-3.12.0/parsing/parse.cmx \
+    ocaml-3.12.0/utils/misc.cmx ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/ident.cmx \
+    /usr/lib/ocaml/format.cmx /usr/lib/ocaml/filename.cmx \
+    ocaml-3.12.0/typing/env.cmx ocaml-3.12.0/bytecomp/emitcode.cmx \
+    ocaml-3.12.0/utils/config.cmx ocaml-3.12.0/utils/clflags.cmx \
+    ocaml-3.12.0/utils/ccomp.cmx ocaml-3.12.0/bytecomp/bytegen.cmx \
+    ocaml-3.12.0/driver/compile.cmi
 flag.cmo:
 flag.cmx:
-utilities.cmo: ocaml-3.12/otherlibs/unix/unix.cmi ocaml-3.12/stdlib/sys.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/hashtbl.cmi \
-    ocaml-3.12/stdlib/format.cmi
-utilities.cmx: ocaml-3.12/otherlibs/unix/unix.cmx ocaml-3.12/stdlib/sys.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/hashtbl.cmx \
-    ocaml-3.12/stdlib/format.cmx
-id.cmo: ocaml-3.12/stdlib/format.cmi
-id.cmx: ocaml-3.12/stdlib/format.cmx
-type.cmo: utilities.cmo id.cmo ocaml-3.12/stdlib/format.cmi flag.cmo
-type.cmx: utilities.cmx id.cmx ocaml-3.12/stdlib/format.cmx flag.cmx
-automata.cmo: ocaml-3.12/stdlib/format.cmi ocaml-3.12/stdlib/array.cmi \
-    automata.cmi
-automata.cmx: ocaml-3.12/stdlib/format.cmx ocaml-3.12/stdlib/array.cmx \
-    automata.cmi
-syntax.cmo: utilities.cmo type.cmo ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/stdlib/list.cmi id.cmo ocaml-3.12/stdlib/format.cmi flag.cmo \
+utilities.cmo: /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/sys.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi
+utilities.cmx: /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/sys.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx
+id.cmo: /usr/lib/ocaml/format.cmi
+id.cmx: /usr/lib/ocaml/format.cmx
+type.cmo: utilities.cmo id.cmo /usr/lib/ocaml/format.cmi flag.cmo
+type.cmx: utilities.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx
+automata.cmo: /usr/lib/ocaml/format.cmi /usr/lib/ocaml/array.cmi automata.cmi
+automata.cmx: /usr/lib/ocaml/format.cmx /usr/lib/ocaml/array.cmx automata.cmi
+syntax.cmo: utilities.cmo type.cmo /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
     syntax.cmi
-syntax.cmx: utilities.cmx type.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/stdlib/list.cmx id.cmx ocaml-3.12/stdlib/format.cmx flag.cmx \
+syntax.cmx: utilities.cmx type.cmx /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx \
     syntax.cmi
-CEGAR_type.cmo: ocaml-3.12/stdlib/list.cmi
-CEGAR_type.cmx: ocaml-3.12/stdlib/list.cmx
-CEGAR_syntax.cmo: utilities.cmo type.cmo ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/stdlib/list.cmi id.cmo CEGAR_type.cmo
-CEGAR_syntax.cmx: utilities.cmx type.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/stdlib/list.cmx id.cmx CEGAR_type.cmx
-CEGAR_print.cmo: utilities.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi CEGAR_type.cmo CEGAR_syntax.cmo
-CEGAR_print.cmx: utilities.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_type.cmx CEGAR_syntax.cmx
-typing.cmo: utilities.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi CEGAR_type.cmo CEGAR_syntax.cmo \
-    ocaml-3.12/stdlib/array.cmi
-typing.cmx: utilities.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    ocaml-3.12/stdlib/array.cmx
+CEGAR_type.cmo: /usr/lib/ocaml/list.cmi
+CEGAR_type.cmx: /usr/lib/ocaml/list.cmx
+CEGAR_syntax.cmo: utilities.cmo type.cmo /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/list.cmi id.cmo CEGAR_type.cmo
+CEGAR_syntax.cmx: utilities.cmx type.cmx /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/list.cmx id.cmx CEGAR_type.cmx
+CEGAR_print.cmo: utilities.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi CEGAR_type.cmo CEGAR_syntax.cmo
+CEGAR_print.cmx: utilities.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx CEGAR_type.cmx CEGAR_syntax.cmx
+typing.cmo: utilities.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
+    CEGAR_type.cmo CEGAR_syntax.cmo /usr/lib/ocaml/array.cmi
+typing.cmx: utilities.cmx /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx /usr/lib/ocaml/array.cmx
 CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo syntax.cmi \
-    ocaml-3.12/stdlib/random.cmi ocaml-3.12/stdlib/list.cmi id.cmo \
-    ocaml-3.12/stdlib/format.cmi flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo ocaml-3.12/stdlib/array.cmi
+    /usr/lib/ocaml/random.cmi /usr/lib/ocaml/list.cmi id.cmo \
+    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo /usr/lib/ocaml/array.cmi
 CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx syntax.cmx \
-    ocaml-3.12/stdlib/random.cmx ocaml-3.12/stdlib/list.cmx id.cmx \
-    ocaml-3.12/stdlib/format.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx ocaml-3.12/stdlib/array.cmx
-lazy/enum.cmo: ocaml-3.12/stdlib/obj.cmi lazy/enum.cmi
-lazy/enum.cmx: ocaml-3.12/stdlib/obj.cmx lazy/enum.cmi
-lazy/extList.cmo: ocaml-3.12/stdlib/obj.cmi ocaml-3.12/stdlib/list.cmi \
+    /usr/lib/ocaml/random.cmx /usr/lib/ocaml/list.cmx id.cmx \
+    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx /usr/lib/ocaml/array.cmx
+lazy/enum.cmo: /usr/lib/ocaml/obj.cmi lazy/enum.cmi
+lazy/enum.cmx: /usr/lib/ocaml/obj.cmx lazy/enum.cmi
+lazy/extList.cmo: /usr/lib/ocaml/obj.cmi /usr/lib/ocaml/list.cmi \
     ./lazy/enum.cmi lazy/extList.cmi
-lazy/extList.cmx: ocaml-3.12/stdlib/obj.cmx ocaml-3.12/stdlib/list.cmx \
+lazy/extList.cmx: /usr/lib/ocaml/obj.cmx /usr/lib/ocaml/list.cmx \
     ./lazy/enum.cmx lazy/extList.cmi
-lazy/extString.cmo: ocaml-3.12/stdlib/sys.cmi ocaml-3.12/stdlib/string.cmi \
-    ocaml-3.12/stdlib/list.cmi ./lazy/enum.cmi lazy/extString.cmi
-lazy/extString.cmx: ocaml-3.12/stdlib/sys.cmx ocaml-3.12/stdlib/string.cmx \
-    ocaml-3.12/stdlib/list.cmx ./lazy/enum.cmx lazy/extString.cmi
-lazy/util.cmo: ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/format.cmi \
+lazy/extString.cmo: /usr/lib/ocaml/sys.cmi /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/list.cmi ./lazy/enum.cmi lazy/extString.cmi
+lazy/extString.cmx: /usr/lib/ocaml/sys.cmx /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/list.cmx ./lazy/enum.cmx lazy/extString.cmi
+lazy/util.cmo: /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
     ./lazy/extList.cmi
-lazy/util.cmx: ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/format.cmx \
+lazy/util.cmx: /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
     ./lazy/extList.cmx
+lazy/flags.cmo:
+lazy/flags.cmx:
 lazy/attr.cmo:
 lazy/attr.cmx:
-lazy/idnt.cmo: ocaml-3.12/stdlib/format.cmi ./lazy/extList.cmi
-lazy/idnt.cmx: ocaml-3.12/stdlib/format.cmx ./lazy/extList.cmx
-lazy/const.cmo: ./lazy/idnt.cmo ocaml-3.12/stdlib/format.cmi
-lazy/const.cmx: ./lazy/idnt.cmx ocaml-3.12/stdlib/format.cmx
-lazy/var.cmo: ocaml-3.12/stdlib/string.cmi ./lazy/idnt.cmo \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi
-lazy/var.cmx: ocaml-3.12/stdlib/string.cmx ./lazy/idnt.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx
-lazy/simType.cmo: ./lazy/var.cmo ./lazy/util.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extList.cmi
-lazy/simType.cmx: ./lazy/var.cmx ./lazy/util.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extList.cmx
-lazy/arith.cmo: ./lazy/var.cmo ./lazy/util.cmo ocaml-3.12/stdlib/list.cmi \
+lazy/idnt.cmo: /usr/lib/ocaml/format.cmi ./lazy/extList.cmi
+lazy/idnt.cmx: /usr/lib/ocaml/format.cmx ./lazy/extList.cmx
+lazy/const.cmo: ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi
+lazy/const.cmx: ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx
+lazy/var.cmo: /usr/lib/ocaml/string.cmi ./lazy/idnt.cmo \
+    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi
+lazy/var.cmx: /usr/lib/ocaml/string.cmx ./lazy/idnt.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx
+lazy/simType.cmo: ./lazy/var.cmo ./lazy/util.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ./lazy/extList.cmi
+lazy/simType.cmx: ./lazy/var.cmx ./lazy/util.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extList.cmx
+lazy/arith.cmo: ./lazy/var.cmo ./lazy/util.cmo /usr/lib/ocaml/list.cmi \
     ./lazy/extString.cmi ./lazy/extList.cmi
-lazy/arith.cmx: ./lazy/var.cmx ./lazy/util.cmx ocaml-3.12/stdlib/list.cmx \
+lazy/arith.cmx: ./lazy/var.cmx ./lazy/util.cmx /usr/lib/ocaml/list.cmx \
     ./lazy/extString.cmx ./lazy/extList.cmx
 lazy/term.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/simType.cmo \
-    ocaml-3.12/stdlib/list.cmi ./lazy/idnt.cmo ocaml-3.12/stdlib/format.cmi \
+    /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi \
     ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo ./lazy/attr.cmo \
     ./lazy/arith.cmo
 lazy/term.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/simType.cmx \
-    ocaml-3.12/stdlib/list.cmx ./lazy/idnt.cmx ocaml-3.12/stdlib/format.cmx \
+    /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx \
     ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx ./lazy/attr.cmx \
     ./lazy/arith.cmx
 lazy/apronInterface.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    /usr/local/lib/polka.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
-    ./lazy/const.cmo ocaml-3.12/stdlib/array.cmi ./lazy/arith.cmo
+    /usr/local/lib/ocaml/3.12.0/apron/polka.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
+    ./lazy/const.cmo /usr/lib/ocaml/array.cmi ./lazy/arith.cmo
 lazy/apronInterface.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    /usr/local/lib/polka.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
-    ./lazy/const.cmx ocaml-3.12/stdlib/array.cmx ./lazy/arith.cmx
+    /usr/local/lib/ocaml/3.12.0/apron/polka.cmi /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
+    ./lazy/const.cmx /usr/lib/ocaml/array.cmx ./lazy/arith.cmx
 lazy/csisatInterface.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
-    ./lazy/const.cmo
+    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
+    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo
 lazy/csisatInterface.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
-    ./lazy/const.cmx
+    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
+    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx
 lazy/cvc3Interface.cmo: ./lazy/var.cmo ./lazy/util.cmo \
-    ocaml-3.12/otherlibs/unix/unix.cmi ./lazy/term.cmo \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/otherlibs/str/str.cmi \
-    ./lazy/simType.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
+    /usr/lib/ocaml/unix.cmi ./lazy/term.cmo /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/str.cmi ./lazy/simType.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
     ./lazy/const.cmo
 lazy/cvc3Interface.cmx: ./lazy/var.cmx ./lazy/util.cmx \
-    ocaml-3.12/otherlibs/unix/unix.cmx ./lazy/term.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/otherlibs/str/str.cmx \
-    ./lazy/simType.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
+    /usr/lib/ocaml/unix.cmi ./lazy/term.cmx /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/str.cmi ./lazy/simType.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
     ./lazy/const.cmx
 lazy/fdef.cmo: ./lazy/util.cmo ./lazy/term.cmo ./lazy/idnt.cmo \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extList.cmi ./lazy/attr.cmo
+    /usr/lib/ocaml/format.cmi ./lazy/extList.cmi ./lazy/attr.cmo
 lazy/fdef.cmx: ./lazy/util.cmx ./lazy/term.cmx ./lazy/idnt.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extList.cmx ./lazy/attr.cmx
+    /usr/lib/ocaml/format.cmx ./lazy/extList.cmx ./lazy/attr.cmx
 lazy/prog.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/simType.cmo \
-    ocaml-3.12/stdlib/list.cmi ./lazy/idnt.cmo ocaml-3.12/stdlib/format.cmi \
+    /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi \
     ./lazy/fdef.cmo ./lazy/extList.cmi ./lazy/attr.cmo
 lazy/prog.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/simType.cmx \
-    ocaml-3.12/stdlib/list.cmx ./lazy/idnt.cmx ocaml-3.12/stdlib/format.cmx \
+    /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx \
     ./lazy/fdef.cmx ./lazy/extList.cmx ./lazy/attr.cmx
 lazy/ctree.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ocaml-3.12/stdlib/string.cmi ./lazy/simType.cmo ./lazy/prog.cmo \
-    ocaml-3.12/stdlib/list.cmi ./lazy/idnt.cmo ocaml-3.12/stdlib/format.cmi \
+    /usr/lib/ocaml/string.cmi ./lazy/simType.cmo ./lazy/prog.cmo \
+    /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi \
     ./lazy/fdef.cmo ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo
 lazy/ctree.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ocaml-3.12/stdlib/string.cmx ./lazy/simType.cmx ./lazy/prog.cmx \
-    ocaml-3.12/stdlib/list.cmx ./lazy/idnt.cmx ocaml-3.12/stdlib/format.cmx \
+    /usr/lib/ocaml/string.cmx ./lazy/simType.cmx ./lazy/prog.cmx \
+    /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx \
     ./lazy/fdef.cmx ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx
 lazy/ctreeExpander.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ocaml-3.12/stdlib/list.cmi ./lazy/lazyFlag.cmo \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
-    ./lazy/ctree.cmo
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
+    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/ctree.cmo
 lazy/ctreeExpander.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ocaml-3.12/stdlib/list.cmx ./lazy/lazyFlag.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
-    ./lazy/ctree.cmx
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
+    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/ctree.cmx
 lazy/sizType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo ocaml-3.12/stdlib/list.cmi ./lazy/idnt.cmo \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
+    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo \
+    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
     ./lazy/const.cmo
 lazy/sizType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx ocaml-3.12/stdlib/list.cmx ./lazy/idnt.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
+    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
     ./lazy/const.cmx
 lazy/trace.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/sizType.cmo ./lazy/simType.cmo ./lazy/prog.cmo \
-    ocaml-3.12/stdlib/list.cmi ./lazy/lazyFlag.cmo \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
-    ./lazy/ctree.cmo ./lazy/csisatInterface.cmo ./lazy/apronInterface.cmo
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
+    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/ctree.cmo \
+    ./lazy/csisatInterface.cmo ./lazy/apronInterface.cmo
 lazy/trace.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
     ./lazy/sizType.cmx ./lazy/simType.cmx ./lazy/prog.cmx \
-    ocaml-3.12/stdlib/list.cmx ./lazy/lazyFlag.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
-    ./lazy/ctree.cmx ./lazy/csisatInterface.cmx ./lazy/apronInterface.cmx
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
+    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/ctree.cmx \
+    ./lazy/csisatInterface.cmx ./lazy/apronInterface.cmx
 lazy/refType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/sizType.cmo ./lazy/simType.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extList.cmi ./lazy/const.cmo
+    ./lazy/sizType.cmo ./lazy/simType.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ./lazy/extList.cmi ./lazy/const.cmo
 lazy/refType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/sizType.cmx ./lazy/simType.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extList.cmx ./lazy/const.cmx
-lazy/absType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/refType.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi ./lazy/extList.cmi
-lazy/absType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/refType.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx ./lazy/extList.cmx
-lazy/verifier.cmo: ./lazy/util.cmo ./lazy/trace.cmo \
-    ocaml-3.12/stdlib/string.cmi ./lazy/sizType.cmo ./lazy/refType.cmo \
-    ./lazy/prog.cmo ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/format.cmi \
-    ./lazy/extList.cmi ./lazy/ctreeExpander.cmo ./lazy/ctree.cmo \
-    ./lazy/absType.cmo
-lazy/verifier.cmx: ./lazy/util.cmx ./lazy/trace.cmx \
-    ocaml-3.12/stdlib/string.cmx ./lazy/sizType.cmx ./lazy/refType.cmx \
-    ./lazy/prog.cmx ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/format.cmx \
-    ./lazy/extList.cmx ./lazy/ctreeExpander.cmx ./lazy/ctree.cmx \
-    ./lazy/absType.cmx
+    ./lazy/sizType.cmx ./lazy/simType.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extList.cmx ./lazy/const.cmx
+lazy/absType.cmo: ./lazy/var.cmo utilities.cmo ./lazy/util.cmo \
+    ./lazy/term.cmo ./lazy/sizType.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ./lazy/extList.cmi ./lazy/const.cmo
+lazy/absType.cmx: ./lazy/var.cmx utilities.cmx ./lazy/util.cmx \
+    ./lazy/term.cmx ./lazy/sizType.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extList.cmx ./lazy/const.cmx
+lazy/verifier.cmo: ./lazy/util.cmo ./lazy/trace.cmo /usr/lib/ocaml/string.cmi \
+    ./lazy/sizType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi ./lazy/extList.cmi ./lazy/ctreeExpander.cmo \
+    ./lazy/ctree.cmo ./lazy/absType.cmo
+lazy/verifier.cmx: ./lazy/util.cmx ./lazy/trace.cmx /usr/lib/ocaml/string.cmx \
+    ./lazy/sizType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/extList.cmx ./lazy/ctreeExpander.cmx \
+    ./lazy/ctree.cmx ./lazy/absType.cmx
 lazyInterface.cmo: ./lazy/verifier.cmo ./lazy/var.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo ./lazy/prog.cmo ocaml-3.12/stdlib/list.cmi \
-    ./lazy/idnt.cmo ocaml-3.12/stdlib/format.cmi ./lazy/fdef.cmo \
+    ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
+    ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi ./lazy/fdef.cmo \
     ./lazy/extList.cmi ./lazy/const.cmo CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo ./lazy/absType.cmo
 lazyInterface.cmx: ./lazy/verifier.cmx ./lazy/var.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx ./lazy/prog.cmx ocaml-3.12/stdlib/list.cmx \
-    ./lazy/idnt.cmx ocaml-3.12/stdlib/format.cmx ./lazy/fdef.cmx \
+    ./lazy/simType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
+    ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx ./lazy/fdef.cmx \
     ./lazy/extList.cmx ./lazy/const.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx ./lazy/absType.cmx
-type_decl.cmo: utilities.cmo type.cmo syntax.cmi ocaml-3.12/stdlib/list.cmi \
+type_decl.cmo: utilities.cmo type.cmo syntax.cmi /usr/lib/ocaml/list.cmi \
     flag.cmo
-type_decl.cmx: utilities.cmx type.cmx syntax.cmx ocaml-3.12/stdlib/list.cmx \
+type_decl.cmx: utilities.cmx type.cmx syntax.cmx /usr/lib/ocaml/list.cmx \
     flag.cmx
-type_check.cmo: type_decl.cmo type.cmo syntax.cmi ocaml-3.12/stdlib/list.cmi \
-    id.cmo ocaml-3.12/stdlib/format.cmi
-type_check.cmx: type_decl.cmx type.cmx syntax.cmx ocaml-3.12/stdlib/list.cmx \
-    id.cmx ocaml-3.12/stdlib/format.cmx
+type_check.cmo: type_decl.cmo type.cmo syntax.cmi /usr/lib/ocaml/list.cmi \
+    id.cmo /usr/lib/ocaml/format.cmi
+type_check.cmx: type_decl.cmx type.cmx syntax.cmx /usr/lib/ocaml/list.cmx \
+    id.cmx /usr/lib/ocaml/format.cmx
 CPS.cmo: utilities.cmo typing.cmo type_check.cmo type.cmo syntax.cmi \
-    ocaml-3.12/stdlib/list.cmi id.cmo ocaml-3.12/stdlib/format.cmi flag.cmo \
-    CPS.cmi
+    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo CPS.cmi
 CPS.cmx: utilities.cmx typing.cmx type_check.cmx type.cmx syntax.cmx \
-    ocaml-3.12/stdlib/list.cmx id.cmx ocaml-3.12/stdlib/format.cmx flag.cmx \
-    CPS.cmi
-CEGAR_CPS.cmo: utilities.cmo typing.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo ocaml-3.12/stdlib/array.cmi \
-    CEGAR_CPS.cmi
-CEGAR_CPS.cmx: utilities.cmx typing.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx ocaml-3.12/stdlib/array.cmx \
-    CEGAR_CPS.cmi
-parser_wrapper.cmo: utilities.cmo ocaml-3.12/typing/types.cmi \
-    ocaml-3.12/typing/typemod.cmi ocaml-3.12/typing/typedtree.cmi \
-    type_decl.cmo type.cmo syntax.cmi ocaml-3.12/typing/subst.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/scanf.cmi \
-    ocaml-3.12/typing/primitive.cmi ocaml-3.12/typing/path.cmi \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/parsing/location.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/typing/ident.cmi id.cmo \
-    ocaml-3.12/stdlib/format.cmi flag.cmo ocaml-3.12/typing/env.cmi \
-    ocaml-3.12/stdlib/digest.cmi ocaml-3.12/typing/datarepr.cmi \
-    ocaml-3.12/typing/ctype.cmi ocaml-3.12/utils/config.cmi \
-    ocaml-3.12/driver/compile.cmi ocaml-3.12/typing/btype.cmi \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/stdlib/array.cmi
-parser_wrapper.cmx: utilities.cmx ocaml-3.12/typing/types.cmx \
-    ocaml-3.12/typing/typemod.cmx ocaml-3.12/typing/typedtree.cmx \
-    type_decl.cmx type.cmx syntax.cmx ocaml-3.12/typing/subst.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/scanf.cmx \
-    ocaml-3.12/typing/primitive.cmx ocaml-3.12/typing/path.cmx \
-    ocaml-3.12/parsing/parsetree.cmi ocaml-3.12/parsing/location.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/typing/ident.cmx id.cmx \
-    ocaml-3.12/stdlib/format.cmx flag.cmx ocaml-3.12/typing/env.cmx \
-    ocaml-3.12/stdlib/digest.cmx ocaml-3.12/typing/datarepr.cmx \
-    ocaml-3.12/typing/ctype.cmx ocaml-3.12/utils/config.cmx \
-    ocaml-3.12/driver/compile.cmx ocaml-3.12/typing/btype.cmx \
-    ocaml-3.12/parsing/asttypes.cmi ocaml-3.12/stdlib/array.cmx
-wrapper.cmo: utilities.cmo ocaml-3.12/otherlibs/unix/unix.cmi type.cmo \
-    syntax.cmi ocaml-3.12/stdlib/string.cmi ocaml-3.12/otherlibs/str/str.cmi \
-    ocaml-3.12/stdlib/list.cmi id.cmo ocaml-3.12/stdlib/format.cmi flag.cmo \
-    wrapper.cmi
-wrapper.cmx: utilities.cmx ocaml-3.12/otherlibs/unix/unix.cmx type.cmx \
-    syntax.cmx ocaml-3.12/stdlib/string.cmx ocaml-3.12/otherlibs/str/str.cmx \
-    ocaml-3.12/stdlib/list.cmx id.cmx ocaml-3.12/stdlib/format.cmx flag.cmx \
-    wrapper.cmi
-wrapper2.cmo: utilities.cmo ocaml-3.12/otherlibs/unix/unix.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/otherlibs/str/str.cmi \
-    ocaml-3.12/stdlib/list.cmi ocaml-3.12/stdlib/format.cmi flag.cmo \
-    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo wrapper2.cmi
-wrapper2.cmx: utilities.cmx ocaml-3.12/otherlibs/unix/unix.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/otherlibs/str/str.cmx \
-    ocaml-3.12/stdlib/list.cmx ocaml-3.12/stdlib/format.cmx flag.cmx \
-    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx wrapper2.cmi
+    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx CPS.cmi
+CEGAR_CPS.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo /usr/lib/ocaml/array.cmi CEGAR_CPS.cmi
+CEGAR_CPS.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx /usr/lib/ocaml/array.cmx CEGAR_CPS.cmi
+parser_wrapper.cmo: utilities.cmo ocaml-3.12.0/typing/types.cmi \
+    ocaml-3.12.0/typing/typemod.cmi ocaml-3.12.0/typing/typedtree.cmi \
+    type_decl.cmo type.cmo syntax.cmi ocaml-3.12.0/typing/subst.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/scanf.cmi \
+    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/path.cmi \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/location.cmi \
+    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/ident.cmi id.cmo \
+    /usr/lib/ocaml/format.cmi flag.cmo ocaml-3.12.0/typing/env.cmi \
+    /usr/lib/ocaml/digest.cmi ocaml-3.12.0/typing/datarepr.cmi \
+    ocaml-3.12.0/typing/ctype.cmi ocaml-3.12.0/utils/config.cmi \
+    ocaml-3.12.0/driver/compile.cmi ocaml-3.12.0/typing/btype.cmi \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi
+parser_wrapper.cmx: utilities.cmx ocaml-3.12.0/typing/types.cmx \
+    ocaml-3.12.0/typing/typemod.cmx ocaml-3.12.0/typing/typedtree.cmx \
+    type_decl.cmx type.cmx syntax.cmx ocaml-3.12.0/typing/subst.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/scanf.cmx \
+    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/path.cmx \
+    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/location.cmx \
+    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/ident.cmx id.cmx \
+    /usr/lib/ocaml/format.cmx flag.cmx ocaml-3.12.0/typing/env.cmx \
+    /usr/lib/ocaml/digest.cmx ocaml-3.12.0/typing/datarepr.cmx \
+    ocaml-3.12.0/typing/ctype.cmx ocaml-3.12.0/utils/config.cmx \
+    ocaml-3.12.0/driver/compile.cmx ocaml-3.12.0/typing/btype.cmx \
+    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx
+wrapper.cmo: utilities.cmo /usr/lib/ocaml/unix.cmi type.cmo syntax.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmi \
+    id.cmo /usr/lib/ocaml/format.cmi flag.cmo wrapper.cmi
+wrapper.cmx: utilities.cmx /usr/lib/ocaml/unix.cmi type.cmx syntax.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmx \
+    id.cmx /usr/lib/ocaml/format.cmx flag.cmx wrapper.cmi
+wrapper2.cmo: utilities.cmo /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmi \
+    /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
+    flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo wrapper2.cmi
+wrapper2.cmx: utilities.cmx /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmx \
+    /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
+    flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx wrapper2.cmi
 abstract.cmo: utilities.cmo type_decl.cmo type.cmo syntax.cmi \
-    ocaml-3.12/stdlib/set.cmi ocaml-3.12/stdlib/list.cmi id.cmo flag.cmo \
+    /usr/lib/ocaml/set.cmi /usr/lib/ocaml/list.cmi id.cmo flag.cmo \
     abstract.cmi
 abstract.cmx: utilities.cmx type_decl.cmx type.cmx syntax.cmx \
-    ocaml-3.12/stdlib/set.cmx ocaml-3.12/stdlib/list.cmx id.cmx flag.cmx \
+    /usr/lib/ocaml/set.cmx /usr/lib/ocaml/list.cmx id.cmx flag.cmx \
     abstract.cmi
-CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
+CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo
-CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
+CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx
-CEGAR_abst.cmo: utilities.cmo typing.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst.cmi
-CEGAR_abst.cmx: utilities.cmx typing.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx CEGAR_abst.cmi
-CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo
-CEGAR_abst_CPS.cmx: utilities.cmx typing.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx
-ModelCheck_util.cmo: utilities.cmo ocaml-3.12/otherlibs/unix/unix.cmi \
-    typing.cmo ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo automata.cmi ocaml-3.12/stdlib/array.cmi
-ModelCheck_util.cmx: utilities.cmx ocaml-3.12/otherlibs/unix/unix.cmx \
-    typing.cmx ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx automata.cmx ocaml-3.12/stdlib/array.cmx
-ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo \
-    ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_CPS.cmi
-ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_CPS.cmx
+CEGAR_abst.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst.cmi
+CEGAR_abst.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx CEGAR_abst_util.cmx CEGAR_abst.cmi
+CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo CEGAR_abst_util.cmo
+CEGAR_abst_CPS.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx CEGAR_abst_util.cmx
+ModelCheck_util.cmo: utilities.cmo /usr/lib/ocaml/unix.cmi typing.cmo \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_print.cmo automata.cmi /usr/lib/ocaml/array.cmi
+ModelCheck_util.cmx: utilities.cmx /usr/lib/ocaml/unix.cmi typing.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_print.cmx automata.cmx /usr/lib/ocaml/array.cmx
+ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo /usr/lib/ocaml/format.cmi \
+    CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
+    CEGAR_CPS.cmi
+ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx /usr/lib/ocaml/format.cmx \
+    CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx \
+    CEGAR_CPS.cmx
 ModelCheck_CPS.cmo: utilities.cmo ModelCheck_util.cmo \
-    ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo
+    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo
 ModelCheck_CPS.cmx: utilities.cmx ModelCheck_util.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx
-feasibility.cmo: wrapper2.cmi utilities.cmo ocaml-3.12/stdlib/list.cmi \
-    ocaml-3.12/stdlib/format.cmi CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo feasibility.cmi
-feasibility.cmx: wrapper2.cmx utilities.cmx ocaml-3.12/stdlib/list.cmx \
-    ocaml-3.12/stdlib/format.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx feasibility.cmi
+    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx
+feasibility.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo feasibility.cmi
+feasibility.cmx: wrapper2.cmx utilities.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx feasibility.cmi
 RefineDepTyp.cmo: wrapper.cmi utilities.cmo type.cmo syntax.cmi \
-    ocaml-3.12/otherlibs/str/str.cmi ocaml-3.12/stdlib/list.cmi id.cmo \
-    ocaml-3.12/stdlib/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo
+    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
+    CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
 RefineDepTyp.cmx: wrapper.cmx utilities.cmx type.cmx syntax.cmx \
-    ocaml-3.12/otherlibs/str/str.cmx ocaml-3.12/stdlib/list.cmx id.cmx \
-    ocaml-3.12/stdlib/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx
-refine.cmo: utilities.cmo RefineDepTyp.cmo ocaml-3.12/stdlib/list.cmi \
+    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx \
+    CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+refine.cmo: utilities.cmo RefineDepTyp.cmo /usr/lib/ocaml/list.cmi \
     lazyInterface.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     refine.cmi
-refine.cmx: utilities.cmx RefineDepTyp.cmx ocaml-3.12/stdlib/list.cmx \
+refine.cmx: utilities.cmx RefineDepTyp.cmx /usr/lib/ocaml/list.cmx \
     lazyInterface.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
     refine.cmi
 CEGAR.cmo: wrapper2.cmi wrapper.cmi utilities.cmo typing.cmo refine.cmi \
-    ModelCheck_CPS.cmo ModelCheck.cmo ocaml-3.12/stdlib/list.cmi id.cmo \
-    ocaml-3.12/stdlib/format.cmi flag.cmo feasibility.cmi CEGAR_util.cmo \
+    ModelCheck_CPS.cmo ModelCheck.cmo /usr/lib/ocaml/list.cmi id.cmo \
+    /usr/lib/ocaml/format.cmi flag.cmo feasibility.cmi CEGAR_util.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmi
 CEGAR.cmx: wrapper2.cmx wrapper.cmx utilities.cmx typing.cmx refine.cmx \
-    ModelCheck_CPS.cmx ModelCheck.cmx ocaml-3.12/stdlib/list.cmx id.cmx \
-    ocaml-3.12/stdlib/format.cmx flag.cmx feasibility.cmx CEGAR_util.cmx \
+    ModelCheck_CPS.cmx ModelCheck.cmx /usr/lib/ocaml/list.cmx id.cmx \
+    /usr/lib/ocaml/format.cmx flag.cmx feasibility.cmx CEGAR_util.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_CPS.cmx CEGAR_abst.cmx
-main.cmo: wrapper2.cmi wrapper.cmi utilities.cmo \
-    ocaml-3.12/otherlibs/unix/unix.cmi ocaml-3.12/typing/typetexp.cmi \
-    ocaml-3.12/typing/typemod.cmi ocaml-3.12/typing/typecore.cmi \
-    type_check.cmo ocaml-3.12/stdlib/sys.cmi syntax.cmi \
-    ocaml-3.12/stdlib/string.cmi ocaml-3.12/stdlib/parsing.cmi \
-    parser_wrapper.cmo ocaml-3.12/parsing/parser.cmi \
-    ocaml-3.12/stdlib/lexing.cmi ocaml-3.12/parsing/lexer.cmi \
-    lazyInterface.cmo ocaml-3.12/stdlib/format.cmi flag.cmo \
-    ocaml-3.12/stdlib/filename.cmi ocaml-3.12/typing/env.cmi \
-    ./lazy/cvc3Interface.cmo ocaml-3.12/utils/config.cmi CPS.cmi \
-    CEGAR_util.cmo CEGAR.cmo ocaml-3.12/stdlib/arg.cmi abstract.cmi
-main.cmx: wrapper2.cmx wrapper.cmx utilities.cmx \
-    ocaml-3.12/otherlibs/unix/unix.cmx ocaml-3.12/typing/typetexp.cmx \
-    ocaml-3.12/typing/typemod.cmx ocaml-3.12/typing/typecore.cmx \
-    type_check.cmx ocaml-3.12/stdlib/sys.cmx syntax.cmx \
-    ocaml-3.12/stdlib/string.cmx ocaml-3.12/stdlib/parsing.cmx \
-    parser_wrapper.cmx ocaml-3.12/parsing/parser.cmx \
-    ocaml-3.12/stdlib/lexing.cmx ocaml-3.12/parsing/lexer.cmx \
-    lazyInterface.cmx ocaml-3.12/stdlib/format.cmx flag.cmx \
-    ocaml-3.12/stdlib/filename.cmx ocaml-3.12/typing/env.cmx \
-    ./lazy/cvc3Interface.cmx ocaml-3.12/utils/config.cmx CPS.cmx \
-    CEGAR_util.cmx CEGAR.cmx ocaml-3.12/stdlib/arg.cmx abstract.cmx
+main.cmo: wrapper2.cmi wrapper.cmi utilities.cmo /usr/lib/ocaml/unix.cmi \
+    ocaml-3.12.0/typing/typetexp.cmi ocaml-3.12.0/typing/typemod.cmi \
+    ocaml-3.12.0/typing/typecore.cmi type_check.cmo /usr/lib/ocaml/sys.cmi \
+    syntax.cmi /usr/lib/ocaml/string.cmi refine.cmi \
+    /usr/lib/ocaml/parsing.cmi parser_wrapper.cmo \
+    ocaml-3.12.0/parsing/parser.cmi /usr/lib/ocaml/lexing.cmi \
+    ocaml-3.12.0/parsing/lexer.cmi lazyInterface.cmo \
+    /usr/lib/ocaml/format.cmi flag.cmo /usr/lib/ocaml/filename.cmi \
+    ocaml-3.12.0/typing/env.cmi ./lazy/cvc3Interface.cmo \
+    ocaml-3.12.0/utils/config.cmi CPS.cmi CEGAR_util.cmo CEGAR.cmo \
+    /usr/lib/ocaml/arg.cmi abstract.cmi
+main.cmx: wrapper2.cmx wrapper.cmx utilities.cmx /usr/lib/ocaml/unix.cmi \
+    ocaml-3.12.0/typing/typetexp.cmx ocaml-3.12.0/typing/typemod.cmx \
+    ocaml-3.12.0/typing/typecore.cmx type_check.cmx /usr/lib/ocaml/sys.cmx \
+    syntax.cmx /usr/lib/ocaml/string.cmx refine.cmx \
+    /usr/lib/ocaml/parsing.cmx parser_wrapper.cmx \
+    ocaml-3.12.0/parsing/parser.cmx /usr/lib/ocaml/lexing.cmx \
+    ocaml-3.12.0/parsing/lexer.cmx lazyInterface.cmx \
+    /usr/lib/ocaml/format.cmx flag.cmx /usr/lib/ocaml/filename.cmx \
+    ocaml-3.12.0/typing/env.cmx ./lazy/cvc3Interface.cmx \
+    ocaml-3.12.0/utils/config.cmx CPS.cmx CEGAR_util.cmx CEGAR.cmx \
+    /usr/lib/ocaml/arg.cmx abstract.cmx

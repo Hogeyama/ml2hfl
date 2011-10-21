@@ -268,7 +268,7 @@ let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
 
-  if true then
+  if false then
     begin
   (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
@@ -1839,6 +1839,26 @@ module CT = CEGAR_type
 module CP = CEGAR_print
 module CU = CEGAR_util
 
+let make_temp = List.fold_right (function (CS.Event s) -> fun t -> CS.App(CS.Const (CS.Temp s), t) | _ -> assert false)
+
+let to_if_exp (defs:CS.fun_def list) : CS.fun_def list =
+  let merge = function
+      [f,xs,t1,e,t2] -> assert (t1 = CS.Const CS.True); f, xs, t1, e, t2
+    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=CS.make_not t21 ->
+        f1, xs1, CS.Const CS.True, [], CS.make_if t21 (make_temp e2 t22) (make_temp e1 t12)
+    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && CS.make_not t11=t21 ->
+        f1, xs1, CS.Const CS.True, [], CS.make_if t11 (make_temp e1 t12) (make_temp e2 t22)
+    | _ -> assert false
+  in
+  let rec aux = function
+      [] -> []
+    | (f,xs,t1,e,t2)::defs ->
+        let defs1,defs2 = List.partition (fun (g,_,_,_,_) -> f = g) defs in
+        let def' = merge ((f,xs,t1,e,t2)::defs1) in
+          def' :: aux defs2
+  in
+    aux defs
+
 let rec trans_typ = function
     CT.TBase(CT.TUnit,_) -> TUnit
   | CT.TBase(CT.TInt,_) -> TInt[]
@@ -1857,8 +1877,8 @@ let rec trans_term env = function
   | CS.Const CS.False -> false_term
   | CS.Const (CS.Int n) -> make_int n
   | CS.Const CS.Bottom -> make_bottom TUnknown
+  | CS.Const (CS.Temp s) -> make_event s
   | CS.Var x -> make_var (trans_var env x)
-  | CS.App(CS.Const (CS.Event s), t) -> make_app (make_event s) [make_app (trans_term env t) [unit_term]]
   | CS.App(CS.Const CS.RandInt, t) -> make_app (trans_term env t) [make_app randint_term [unit_term]]
   | CS.App(CS.App(CS.App(CS.Const CS.If, t1), t2), t3) -> make_if (trans_term env t1) (trans_term env t2) (trans_term env t3)
   | CS.App(CS.App(CS.Const CS.And, t1), t2) -> make_and (trans_term env t1) (trans_term env t2)
@@ -1878,13 +1898,13 @@ let rec trans_term env = function
 
 let trans_env env = List.map (fun (x,typ) -> x, trans_typ typ) env
 
-let trans_def env_cegar env (f,xs,t1,t2) =
+let trans_def env_cegar env (f,xs,t1,_,t2) =
   let env' = trans_env (CU.get_env (List.assoc f env_cegar) xs) in
   let env'' = env' @@ env in
     trans_var env'' f, (List.map (trans_var env'') xs, trans_term env'' t2)
 
-let trans (env,defs,main) =
-  let _,defs,_ = CU.to_if_exp (env,defs,main) in
+let trans ((env,defs,main):CS.prog) =
+  let defs = to_if_exp defs in
   let env' = trans_env env in
     List.map (trans_def env env') defs, trans_var env' main
 
@@ -1944,16 +1964,9 @@ let rec add_preds_typ sol typ1 typ2 =
 
 
 
-let infer ces t =
-  let aux = function
-      CS.BrNode b -> [Syntax.LabNode b]
-    | CS.LineNode n -> []
-    | CS.EventNode "fail" -> [Syntax.FailNode]
-    | CS.EventNode s -> [Syntax.EventNode s]
-    | _ -> assert false
-  in
-  let ces =  List.map (fun ce -> flatten_map aux ce) ces in
-  let defs,main = trans t in
+let infer ces prog =
+  let ces =  List.map (fun ce -> List.map (fun b -> LabNode b) (Feasibility.trans_ce ce prog) @ [FailNode]) ces in
+  let defs,main = trans prog in
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in
   let aux f =
