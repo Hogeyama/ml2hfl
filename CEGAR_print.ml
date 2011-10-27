@@ -20,6 +20,7 @@ and print_typ_base fm = function
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
   | TTuple n -> Format.fprintf fm "tuple"
+  | TList _ -> assert false
 
 and print_typ fm = function
     TBase(b,ps) ->
@@ -40,6 +41,7 @@ and print_typ fm = function
   | TApp _ as typ ->
       let typ,typs = decomp_tapp typ in
         Format.fprintf fm "(%a)" (print_list print_typ " " false) (typ::typs)
+  | TAbs _ -> assert false
 
 and print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a : %a@." print_var f print_typ typ) env
@@ -68,6 +70,7 @@ and print_const fm = function
   | Proj(_,i) -> Format.fprintf fm "#%d" i
   | If -> Format.fprintf fm "if"
   | Bottom -> Format.fprintf fm "_|_"
+  | Temp _ -> assert false
 
 and print_term fm = function
     Const c -> print_const fm c
@@ -126,6 +129,9 @@ and print_const_ML fm = function
   | Proj(_,0) -> ()
   | Proj(_,i) -> Format.fprintf fm "#%d" i
   | If -> Format.fprintf fm "if_term"
+  | Temp _ -> assert false
+  | Bottom -> assert false
+  | EqUnit -> assert false
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c

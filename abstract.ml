@@ -108,7 +108,7 @@ let rec abst_recdata t =
       | App(t, ts) -> App(abst_recdata t, List.map abst_recdata ts)
       | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
       | Branch(t1, t2) -> Branch(abst_recdata t1, abst_recdata t2)
-      | Let(flag, f, xs, t1, t2) -> Let(flag, abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t1, abst_recdata t2)
+      | Let(flag, [f, xs, t1], t2) -> Let(flag, [abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t1], abst_recdata t2)
       | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
       | Not t -> Not (abst_recdata t)
       | Label(b, t) -> Label(b, abst_recdata t)
@@ -175,7 +175,9 @@ let rec abstract_mutable t =
       | App(t, ts) -> App(abstract_mutable t, List.map abstract_mutable ts)
       | If(t1, t2, t3) -> If(abstract_mutable t1, abstract_mutable t2, abstract_mutable t3)
       | Branch(t1, t2) -> Branch(abstract_mutable t1, abstract_mutable t2)
-      | Let(flag, f, xs, t1, t2) -> Let(flag, f, xs, abstract_mutable t1, abstract_mutable t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, abstract_mutable t) bindings in
+            Let(flag, bindings', abstract_mutable t2)
       | BinOp(op, t1, t2) -> BinOp(op, abstract_mutable t1, abstract_mutable t2)
       | Not t -> Not (abstract_mutable t)
       | Label(b, t) -> Label(b, abstract_mutable t)
@@ -184,7 +186,7 @@ let rec abstract_mutable t =
       | Proj(i,s,Flag.Immutable,t) -> Proj(i, s, Flag.Immutable, abstract_mutable t)
       | Proj(i,s,Flag.Mutable,t) ->
           let u = Id.new_var "u" t.typ in
-            Let(Flag.Nonrecursive, u, [], abstract_mutable t, randint_term)
+            Let(Flag.Nonrecursive, [u, [], abstract_mutable t], randint_term)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abstract_mutable t1, abstract_mutable t2)
       | Constr(s,ts) -> Constr(s, List.map abstract_mutable ts)
@@ -356,7 +358,9 @@ let rec abst_list t =
       | App(t, ts) -> App(abst_list t, List.map abst_list ts)
       | If(t1, t2, t3) -> If(abst_list t1, abst_list t2, abst_list t3)
       | Branch(t1, t2) -> Branch(abst_list t1, abst_list t2)
-      | Let(flag, f, xs, t1, t2) -> Let(flag, abst_list_var f, List.map abst_list_var xs, abst_list t1, abst_list t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> abst_list_var f, List.map abst_list_var xs, abst_list t) bindings in
+            Let(flag, bindings', abst_list t2)
       | BinOp(op, t1, t2) -> BinOp(op, abst_list t1, abst_list t2)
       | Not t -> Not (abst_list t)
       | Label(b, t) -> Label(b, abst_list t)
@@ -377,7 +381,7 @@ let rec abst_list t =
           let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
           let t1'' = make_fun i (make_if t11 t12 t13) in
           let t2'' = make_add (make_snd (make_var xs)) (make_int 1) in
-            (make_let xs [] t2' (make_pair t1'' t2'')).desc
+            (make_let [xs, [], t2'] (make_pair t1'' t2'')).desc
       | Constr(s,ts) -> assert false
       | Match(t1,pats) ->
           let x,bindx =
@@ -385,11 +389,11 @@ let rec abst_list t =
                 Var x -> Id.set_typ x (abst_list_typ t1.typ), fun t -> t
               | _ ->
                   let x = Id.new_var "xs" (abst_list_typ t1.typ) in
-                    x, fun t -> make_let x [] (abst_list t1) t
+                    x, fun t -> make_let [x, [], abst_list t1] t
           in
           let aux (p,cond,t) t' =
             let bind,cond' = get_match_bind_cond (make_var x) p in
-            let add_bind t = List.fold_left (fun t' (x,t) -> make_let x [] t t') t bind in
+            let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
             let t_cond =
               match cond with
                   None -> true_term

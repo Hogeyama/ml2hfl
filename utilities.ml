@@ -1,4 +1,5 @@
 exception Fatal of string
+exception Unsupported of string
 
 let table_create n = Hashtbl.create n;;
 let table_find tab x = Hashtbl.find tab x 

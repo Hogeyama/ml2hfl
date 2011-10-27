@@ -81,6 +81,7 @@ let rec print print_pred fm typ =
       | TUnknown -> Format.fprintf fm "???"
       | TList typ -> Format.fprintf fm "%a list" print typ
       | TPair(typ1,typ2) -> Format.fprintf fm "(%a * %a)" print typ1 print typ2
+      | TVariant _ -> assert false
 (*
       | TVariant ctypss ->
           let rec aux fm = function
@@ -111,6 +112,7 @@ let rec print print_pred fm typ =
             else Format.fprintf fm "{%a}" aux typs
 *)
       | TConstr(s,_) -> Format.pp_print_string fm s
+      | TAbs _ -> assert false
 
 and print_preds print_pred fm = function
     [] -> ()
@@ -138,4 +140,21 @@ let rec same_shape typ1 typ2 =
     | _, TAbs _ -> assert false
     | TVariant _,_ -> assert false
     | _,TVariant _ -> assert false
+    | _ -> assert false
 
+
+let rec is_poly_typ = function
+    TUnit -> false
+  | TBool -> false
+  | TAbsBool -> false
+  | TInt _ -> false
+  | TRInt _ -> false
+  | TVar{contents=None} -> true
+  | TVar{contents=Some typ} -> is_poly_typ typ
+  | TFun(x,typ) -> is_poly_typ (Id.typ x) || is_poly_typ typ
+  | TList typ -> is_poly_typ typ
+  | TPair(typ1,typ2) -> is_poly_typ typ1 || is_poly_typ typ2
+  | TConstr _ -> false
+  | TUnknown _ -> assert false
+  | TAbs _ -> assert false
+  | TVariant _ -> assert false

@@ -20,7 +20,7 @@ and term =
   | App of typed_term * typed_term list
   | If of typed_term * typed_term * typed_term
   | Branch of typed_term * typed_term
-  | Let of Flag.rec_flag * id * id list * typed_term * typed_term
+  | Let of Flag.rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
   | Label of bool * typed_term
@@ -85,9 +85,9 @@ val make_randint_cps : typ -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term
-val make_let : id -> id list -> typed_term -> typed_term -> typed_term
-val make_letrec : id -> id list -> typed_term -> typed_term -> typed_term
-val make_let_f : Flag.rec_flag -> id -> id list -> typed_term -> typed_term -> typed_term
+val make_let : (id * id list * typed_term) list -> typed_term -> typed_term
+val make_letrec : (id * id list * typed_term) list -> typed_term -> typed_term
+val make_let_f : Flag.rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
 val make_fun : id -> typed_term -> typed_term
 val make_not : typed_term -> typed_term
 val make_and : typed_term -> typed_term -> typed_term
@@ -150,9 +150,7 @@ val max_pat_num : typed_term -> int
 val max_label_num : typed_term -> int
 val is_external : id -> bool
 val init_rand_int : typed_term -> typed_term
-val print_ce : node list -> typed_term -> unit
 val copy_poly_funs : typed_term -> typed_term
-(** CPS と評価順序を合わせる必要あり *)
 val trans_let : typed_term -> typed_term
 (** returns a term whose definitions of let expressions are side-effect free *)
 val is_value : typed_term -> bool
@@ -175,9 +173,10 @@ val pp_print_typ : Format.formatter -> typ -> unit
 (** Same as [print_typ] *)
 
 val pp_print_term : Format.formatter -> typed_term -> unit
+val pp_print_term' : Format.formatter -> typed_term -> unit
 val pp_print_term_typ : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 
 val print_term : bool -> Format.formatter -> typed_term -> unit
-val print_term' : bool -> Format.formatter -> typed_term -> unit
+val print_term' : Format.formatter -> typed_term -> unit
 

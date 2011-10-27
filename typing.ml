@@ -96,6 +96,7 @@ let get_typ_const = function
       let typs = Array.to_list (Array.init n (fun _ -> new_tvar())) in
         List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs (TTuple typs)
   | Bottom -> new_tvar ()
+  | Temp _ -> assert false
 
 let rec infer_term env = function
     Const c -> get_typ_const c

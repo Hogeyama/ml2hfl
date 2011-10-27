@@ -24,7 +24,7 @@ let trans_simpl_var x = Id.set_typ x (trans_simpl_typ (Id.typ x))
 let make_let' f xs t1 t2 =
   match xs,t1.desc with
       [r], App({desc=Var _} as k, [{desc=Var r'}]) when r = r' -> subst f k t2
-    | _ -> make_let f xs t1 t2
+    | _ -> make_let [f, xs, t1] t2
 
 let rec trans_simpl c t =
   let typ = trans_simpl_typ t.typ in
@@ -64,6 +64,8 @@ let rec trans_simpl c t =
           let t3' = trans_simpl c' t3 in
           let c'' y = make_let' k [x] (c (make_var x)) (make_if y t2' t3') in
             trans_simpl c'' t1
+      | Let _ -> assert false
+(*
       | Let(Flag.Nonrecursive, x, [], t1, t2) ->
           let x' = trans_simpl_var x in
           let c' t = subst x' t (trans_simpl c t2) in
@@ -83,6 +85,7 @@ let rec trans_simpl c t =
           let g = Id.new_var (Id.name f) typ in
           let t1' = make_let g xs t1 (make_var g) in
             trans_simpl c (make_let_f flag f [x] t1' t2)
+*)
       | BinOp(op, t1, t2) ->
           let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=typ} in
           let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
@@ -153,6 +156,9 @@ let rec trans_exc_typ = function
   | TList typ -> TList (trans_exc_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
+  | TVariant _ -> assert false
+  | TAbs _ -> assert false
+  | TPair(typ1,typ2) -> TPair(trans_exc_typ typ1, trans_exc_typ typ2)
 
 let trans_exc_var x = Id.set_typ x (trans_exc_typ (Id.typ x))
 
@@ -166,7 +172,7 @@ let rec trans_exc ct ce t =
     | RandInt false ->
         let r = Id.new_var "r" (TInt[]) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
-          make_let k [r] (ct (make_var r)) (make_app (make_var k) [randint_term])
+          make_let [k, [r], ct (make_var r)] (make_app (make_var k) [randint_term])
     | RandInt _ -> assert false
     | Var x -> ct (make_var (trans_exc_var x))
     | Fun(x, t) ->
@@ -190,7 +196,7 @@ let rec trans_exc ct ce t =
         let h = Id.new_var "h" (TFun(e,TUnit)) in
         let ct' x = trans_exc (fun y -> make_app x [y; make_var  k; make_var h]) ce t2 in
         let t2' = trans_exc ct' ce t1 in
-          make_let k [r] (ct (make_var r)) (make_let h [e] (ce (make_var e)) t2')
+          make_let [k, [r], ct (make_var r)] (make_let [h, [e], ce (make_var e)] t2')
     | App(t1, t2::ts) ->
         let x,typ = match t1.typ with TFun(x,typ) -> x,typ | _ -> assert false in
           trans_exc ct ce {desc=App({desc=App(t1,[t2]);typ=typ}, ts); typ=t.typ}
@@ -200,13 +206,39 @@ let rec trans_exc ct ce t =
         let ct' y = make_app (make_var k) [y] in
         let t2' = trans_exc ct' ce t2 in
         let t3' = trans_exc ct' ce t3 in
-        let ct'' y = make_let k [x] (ct (make_var x)) (make_if y t2' t3') in
+        let ct'' y = make_let [k, [x], ct (make_var x)] (make_if y t2' t3') in
           trans_exc ct'' ce t1
-    | Let(Flag.Nonrecursive, x, [], t1, t2) ->
+(*
+    | Let(flag, bindings, t2) ->
+        let aux (f,xs,t1) t2 =
+          match flag,xs with
+              Flag.Nonrecursive, [] ->
+                let ct' t = subst x t (trans_exc ct ce t2) in
+                  trans_exc ct' ce t1
+            | Flag.Recursive, [] -> assert false
+            | _, [x] ->
+                let x' = trans_exc_var x in
+                let r = Id.new_var "r" (trans_exc_typ t1.typ) in
+                let k = Id.new_var "k" (TFun(r,TUnit)) in
+                let e = Id.new_var "e" !typ_excep in
+                let h = Id.new_var "h" (TFun(e,TUnit)) in
+                let f' = trans_exc_var f in
+                let ct' y = make_app (make_var k) [y] in
+                let ce' y = make_app (make_var h) [y] in
+                let t1' = trans_exc ct' ce' t1 in
+                let t2' = trans_exc ct ce t2 in
+                  make_let_f flag f' [x';k;h] t1' t2'
+            | _, x::xs ->
+                let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
+                let g = Id.new_var (Id.name f) typ in
+                let t1' = make_let g xs t1 (make_var g) in
+                  trans_exc ct ce (make_let_f flag [f, [x], t1'] t2)
+*)
+    | Let(Flag.Nonrecursive, [x, [], t1], t2) ->
         let ct' t = subst x t (trans_exc ct ce t2) in
           trans_exc ct' ce t1
-    | Let(Flag.Recursive, f, [], t1, t2) -> assert false
-    | Let(flag, f, [x], t1, t2) ->
+    | Let(Flag.Recursive, [f, [], t1], t2) -> assert false
+    | Let(flag, [f, [x], t1], t2) ->
         let x' = trans_exc_var x in
         let r = Id.new_var "r" (trans_exc_typ t1.typ) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
@@ -217,12 +249,12 @@ let rec trans_exc ct ce t =
         let ce' y = make_app (make_var h) [y] in
         let t1' = trans_exc ct' ce' t1 in
         let t2' = trans_exc ct ce t2 in
-          make_let_f flag f' [x';k;h] t1' t2'
-    | Let(flag, f, x::xs, t1, t2) ->
+          make_let_f flag [f', [x';k;h], t1'] t2'
+    | Let(flag, [f, x::xs, t1], t2) ->
         let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
         let g = Id.new_var (Id.name f) typ in
-        let t1' = make_let g xs t1 (make_var g) in
-          trans_exc ct ce (make_let_f flag f [x] t1' t2)
+        let t1' = make_let [g, xs, t1] (make_var g) in
+          trans_exc ct ce (make_let_f flag [f, [x], t1'] t2)
     | BinOp(op, t1, t2) ->
         let ct1 t1' t2' = ct {desc=BinOp(op, t1', t2'); typ=t.typ} in
         let ct2 y1 = trans_exc (fun y2 -> ct1 y1 y2) ce t2 in
@@ -248,7 +280,7 @@ let rec trans_exc ct ce t =
         in
         let ct1 x = make_app (make_var k) [{desc=Constr(cstr,[x]);typ=t.typ}] in
         let ct' = List.fold_right (fun t ct -> fun x -> trans_exc (fun y -> ct (aux x y)) ce t) ts ct1 in
-          make_let k [x] (ct (make_var x)) (trans_exc ct' ce t1)
+          make_let [k, [x], ct (make_var x)] (trans_exc ct' ce t1)
     | Match(t1,pats) ->
         let x = Id.new_var "x" t.typ in
         let k = Id.new_var "k" (TFun(x,TUnit)) in
@@ -257,17 +289,27 @@ let rec trans_exc ct ce t =
           pat, None, trans_exc ct' ce t
         in
         let pats' = List.map aux pats in
-        let ct'' y = make_let k [x] (ct (make_var x)) {desc=Match(y,pats');typ=TUnit} in
+        let ct'' y = make_let [k, [x], ct (make_var x)] {desc=Match(y,pats');typ=TUnit} in
           trans_exc ct'' ce t1
     | Raise t -> trans_exc ce ce t
     | TryWith(t1,{desc=Fun(x,t2)}) ->
         let ce' e = subst x e (trans_exc ct ce t2) in
           trans_exc ct ce' t1
     | Bottom -> make_bottom TUnit
+    | Pair(t1,t2) ->
+        let ct1 t1' t2' = ct (make_pair t1' t2') in
+        let ct2 y1 = trans_exc (fun y2 -> ct1 y1 y2) ce t2 in
+          trans_exc ct2 ce t1
+    | Fst t ->
+        let ct' t1 = ct (make_fst t1) in
+          trans_exc ct' ce t
+    | Snd t ->
+        let ct' t1 = ct (make_snd t1) in
+          trans_exc ct' ce t
     | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 let trans_exc t =
   let u = Id.new_var "u" typ_event in
-  let ce _ = make_let u [] fail_term unit_term in
+  let ce _ = make_let [u, [], fail_term] unit_term in
     trans_exc (fun x -> x) ce t
 
 
@@ -345,12 +387,13 @@ let rec remove_pair t typ_opt =
           let t1' = root (remove_pair t1 None) in
           let t2' = root (remove_pair t2 None) in
             Leaf {desc=Branch(t1',t2'); typ=t1'.typ}
-      | Let(flag, f, xs, t1, t2) ->
+      | Let(flag, [f, xs, t1], t2) ->
           let f' = root (remove_pair_var f) in
           let xs' = List.flatten (List.map (fun x -> flatten (remove_pair_var x)) xs) in
           let t1' = root (remove_pair t1 None) in
           let t2' = root (remove_pair t2 None) in
-            Leaf (make_let_f flag f' xs' t1' t2')
+            Leaf (make_let_f flag [f', xs', t1'] t2')
+      | Let _ -> assert false
       | BinOp(op, t1, t2) ->
           let t1' = root (remove_pair t1 None) in
           let t2' = root (remove_pair t2 None) in
@@ -391,6 +434,7 @@ let rec remove_pair t typ_opt =
 
 let remove_pair t =
   let t' = root (remove_pair t None) in
+Format.printf "%a@." pp_print_term' t';
   let () = Type_check.check t' in
     t'
 
@@ -453,7 +497,7 @@ and typ_cps =
 let rec print_typ_cps fm = function
     TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
   | TVarCPS {contents = None} -> Format.fprintf fm "?"
-  | TVarCPS {contents = Some typ} -> Format.fprintf fm "[%a]" print_typ_cps typ
+  | TVarCPS {contents = Some typ} -> Format.fprintf fm "%a" print_typ_cps typ
   | TFunCPS({contents=b},typ1,typ2) ->
       Format.fprintf fm "(%a %s %a)" print_typ_cps typ1 (if b then "=>" else "->") print_typ_cps typ2
   | TPairCPS(typ1,typ2) ->
@@ -600,7 +644,7 @@ let rec infer_cont_pos env t =
     | NInt x -> assert false
     | RandInt false -> {t_cps=RandIntCPS; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS (TInt[]))}
     | Var x ->
-        let typ = try List.assoc (Id.to_string x) env with Not_found -> assert false in
+        let typ = try List.assoc (Id.to_string x) env with Not_found -> Format.printf "%a@." print_id x; assert false in
           {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ}
     | Fun(x, t) ->
         let typ = new_tvar() in
@@ -622,7 +666,7 @@ let rec infer_cont_pos env t =
         let _ = unify typed1.typ_cps (TBaseCPS TBool) in
         let typ = unify typed2.typ_cps typed3.typ_cps in
           {t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typ}
-    | Let(flag, f, xs, t1, t2) ->
+    | Let(flag, [f, xs, t1], t2) ->
         let typ_f = new_tvar () in
         let f' = {id_cps=f; id_typ=typ_f} in
         let typ_args = List.map (fun _ -> new_tvar ()) xs in
@@ -670,7 +714,18 @@ let rec infer_cont_pos env t =
         let typed1 = infer_cont_pos env t1 in
         let typed2 = infer_cont_pos env t2 in
           {t_cps=PairCPS(typed1,typed2); typ_cps=TPairCPS(typed1.typ_cps,typed2.typ_cps)}
-
+    | TryWith (_, _) -> assert false
+    | Raise _ -> assert false
+    | Match (_, _) -> assert false
+    | Constr (_, _) -> assert false
+    | Cons (_, _) -> assert false
+    | SetField (_, _, _, _, _, _) -> assert false
+    | Proj (_, _, _, _) -> assert false
+    | Record _ -> assert false
+    | LabelInt (_, _) -> assert false
+    | Branch (_, _) -> assert false
+    | RandValue (_, _) -> assert false
+    | Nil -> assert false
 
 
 
@@ -714,6 +769,9 @@ let rec trans_typ = function
   | TVarCPS{contents=None} -> TUnit
   | TVarCPS{contents=Some typ} -> trans_typ typ
   | TUnknownCPS -> assert false
+let trans_typ typ =
+  let typ' = trans_typ typ in
+    Format.printf "%a ==> %a@." print_typ_cps typ print_typ typ'; typ'
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ x.id_typ)
 
@@ -727,9 +785,10 @@ let rec transform c {t_cps=t; typ_cps=typ} =
     | RandIntCPS -> c (make_randint_cps TUnit)
     | VarCPS x -> c (make_var (trans_var x))
     | FunCPS(x, t) ->
+        let x' = trans_var x in
         let r = Id.new_var "r" (trans_typ t.typ_cps) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
-          c (make_fun x.id_cps (make_fun k (transform (fun y -> make_app (make_var k) [y]) t)))
+          c (make_fun x' (make_fun k (transform (fun y -> make_app (make_var k) [y]) t)))
     | AppCPS(t1, ts) ->
         let n = get_arg_num t1.typ_cps in
           if n = List.length ts
@@ -766,7 +825,7 @@ let rec transform c {t_cps=t; typ_cps=typ} =
             let xs' = List.map trans_var xs in
             let t1' = transform (fun y -> make_app (make_var k) [y]) t1 in
             let t2' = transform c t2 in
-              make_let_f flag f' (xs'@[k]) t1' t2'
+              make_let_f flag [f', xs'@[k], t1'] t2'
           else
             let xs1,xs2 = take2 xs n in
             let typ_g = app_typ f.id_typ xs1 in
@@ -806,9 +865,9 @@ let transform = transform (fun x -> x)
 
 let trans t =
   let cps_pre = infer_cont_pos [] t in
-  let () = if false then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
+  let () = if true then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
   let cps = transform cps_pre in
-  let () = Type_check.check t in
+  let () = Type_check.check cps in
     cps
 
 

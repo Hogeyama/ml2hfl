@@ -12,7 +12,7 @@ let check_var x typ =
 
 let rec check t typ =
   if not (Type.can_unify t.typ typ)
-  then (Format.printf "check: %a, %a@." (print_term' false) t Syntax.print_typ typ; assert false);
+  then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
   match t with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
@@ -46,13 +46,13 @@ let rec check t typ =
     | {desc=Branch(t1,t2); typ=typ'} ->
         check t1 typ';
         check t2 typ'
-    | {desc=Let(flag, f, xs, t1, t2); typ=typ'} ->
-        let rec aux = function
-            x::xs,TFun(y,typ) -> check_var x (Id.typ y); aux (xs,typ)
-          | [],typ -> check t1 typ
+    | {desc=Let(flag, bindings, t2); typ=typ'} ->
+        let rec aux t = function
+            x::xs,TFun(y,typ) -> check_var x (Id.typ y); aux t (xs,typ)
+          | [],typ -> check t typ
           | _ -> assert false
         in
-          aux (xs, Id.typ f);
+          List.iter (fun (f,xs,t) -> aux t (xs, Id.typ f)) bindings;
           check t2 typ'
     | {desc=BinOp(Eq,t1,t2); typ=TBool} ->
         assert (Type.can_unify t1.typ t2.typ);
@@ -141,7 +141,7 @@ let rec check t typ =
             | Constr(s,ts) -> assert false
             | Match(t1,pats) -> assert false
             | TryWith(t1,pats) -> assert false
-          *)          Format.printf "check: %a, %a@." (print_term' false) t Syntax.print_typ t.typ; assert false
+          *)          Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
 let check t = check t TUnit
 

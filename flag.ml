@@ -15,13 +15,17 @@ type refine = RefineSizedType | RefineDependentType
 type cegar = CEGAR_SizedType | CEGAR_DependentType
 
 
+(* debug option *)
+let check_fun_arg_typ = false
+let check_typ = false
+
 (* method option *)
 let wp_max_num = ref 3
 let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
 let use_dor = true
-let use_prefix_trace = true
+let use_prefix_trace = false
 let use_nint = ref false
 let use_subterm = false
 let use_neg_pred = true
@@ -32,8 +36,6 @@ let merge_counterexample = ref false
 let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
-let use_old_partition = ref false
-let check_fun_arg_typ = false
 
 let mode = ref FileAccess
 let refine = ref RefineDependentType

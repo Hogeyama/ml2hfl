@@ -347,7 +347,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           let t1 = from_expression e1 in
           let t2 = from_expression e2 in
           let bindings = get_bindings p' t1 in
-            List.fold_right (fun (x,t') t -> {desc=Let(flag,x,[],t',t);typ=typ'}) bindings t2
+            List.fold_right (fun (x,t') t -> {desc=Let(flag,[x,[],t'],t);typ=typ'}) bindings t2
       | Texp_let _ -> unsupported "Texp_let"
           (*
             | Texp_let(rec_flag, pats, e) ->
@@ -362,8 +362,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                 Texp_when _,_ -> unsupported "???"
               | _,TFun({Id.typ=typ1},typ2) ->
                   let x' = from_ident x typ1 in
-                  let f = Id.new_var "f" (TFun(x',typ2)) in
-                    make_let f [x'] (from_expression e) (make_var f)
+                    make_fun x' (from_expression e)
               | _ -> assert false
           end
       | Texp_function(pes,Total) ->
@@ -378,7 +377,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
               | _ -> from_pattern p, None, from_expression e
           in
           let f = Id.new_var "f" typ' in
-            make_let f [x] {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pes);typ=typ2} (make_var f)
+            make_fun x {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pes);typ=typ2}
       | Texp_apply(e, es) ->
           let t = from_expression e in
           let aux = function
@@ -402,7 +401,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
               | Partial ->
                   let p = {pat_desc=PVar(Id.new_var "u" t.typ); pat_typ=t.typ} in
                   let u = Id.new_var "u" TUnit in
-                  let t = make_let u [] (make_app fail_term [unit_term]) (make_bottom typ') in
+                  let t = make_let [u, [], make_app fail_term [unit_term]] (make_bottom typ') in
                     pts@[p, None, t]
           in
             {desc=Match(t, pts'); typ=typ'}
@@ -452,7 +451,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             in
               List.map aux labels
           in
-            make_let r [] (from_expression init) {desc=Record fields';typ=typ'}
+            make_let [r, [], from_expression init] {desc=Record fields';typ=typ'}
       | Texp_field(e,label) ->
           {desc=Proj(label.lbl_pos, get_label_name label env, from_mutable_flag label.lbl_mut, from_expression e); typ=typ'}
       | Texp_setfield(e1,label,e2) ->
@@ -471,7 +470,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           let t1 = from_expression e1 in
           let t2 = from_expression e2 in
           let u = Id.new_var "u" t1.typ in
-            make_let u [] t1 t2
+            make_let [u, [], t1] t2
       | Texp_while _ -> unsupported "expression (while)"
       | Texp_for _ -> unsupported "expression (for)"
       | Texp_when _ -> unsupported "expression (when)"
@@ -481,12 +480,10 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
       | Texp_override _ -> unsupported "expression (override)"
       | Texp_letmodule _ -> unsupported "expression (module)"
-      | Texp_assert e ->
-          let u = Id.new_var "u" TUnit in
-            make_if (from_expression e) unit_term (make_app fail_term [unit_term])
+      | Texp_assert e -> make_if (from_expression e) unit_term (make_app fail_term [unit_term])
       | Texp_assertfalse _ ->
           let u = Id.new_var "u" TUnit in
-            make_let u [] (make_app fail_term [unit_term]) (make_bottom typ')
+            make_let [u, [], make_app fail_term [unit_term]] (make_bottom typ')
       | Texp_lazy e -> assert false
           (*
             let u = Id.new_var "u" TUnit in
@@ -531,7 +528,7 @@ let from_use_file ast =
   let _,defs = List.fold_left from_top_level_phrase (initial_env,[]) ast in
   let aux t = function
       Decl_let(Flag.Nonrecursive, defs) ->
-        List.fold_right (fun (f,t1) t2 -> {desc=Let(Flag.Nonrecursive, f, [], t1, t2); typ=t2.typ}) defs t
+        List.fold_right (fun (f,t1) t2 -> {desc=Let(Flag.Nonrecursive, [f, [], t1], t2); typ=t2.typ}) defs t
     | Decl_let(Flag.Recursive, defs) ->
         let fs = List.map fst defs in
         let fs' = List.map Id.new_var_id fs in
@@ -547,7 +544,7 @@ let from_use_file ast =
         let map2 = List.map2 (fun f f' ->  f', make_app (make_var f) (List.map make_var (aux f))) fs fs' in
         let sbst t = subst_term map2 (subst_term map1 t) in
         let defs' = List.map (fun (f,t) -> f, List.fold_right (fun f t -> {desc=Fun(f,t);typ=TFun(f,t.typ)}) (aux f) (sbst t)) defs in
-          List.fold_right (fun (f,t1) t2 -> {desc=Let(Flag.Recursive, f, [], t1, t2);typ=t2.typ}) defs' (sbst t)
+          List.fold_right (fun (f,t1) t2 -> make_letrec [f, [], t1] t2) defs' (sbst t)
     | Decl_type(typs) -> t(*Type_decl(typs,t)*)
     | Decl_exc(exc,typs) -> t(*Exception(exc,typs,t)*)
   in

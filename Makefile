@@ -1,34 +1,42 @@
 
 .PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
 
-OCAML_SOURCE = ocaml-3.12
+OCAML_SOURCE = ocaml-3.12.0
 CSISAT = csisat-read-only
 
-OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
-OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
-OCAMLMKTOP   = $(OCAML_SOURCE)/tools/ocamlmktop
-OCAMLDEP     = $(OCAML_SOURCE)/tools/ocamldep.opt
-OCAMLLIB     = $(OCAML_SOURCE)/stdlib
-OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
-OCAMLYACC    = $(OCAML_SOURCE)/yacc/ocamlyacc.opt
+# OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
+# OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
+# OCAMLMKTOP   = $(OCAML_SOURCE)/tools/ocamlmktop
+# OCAMLDEP     = $(OCAML_SOURCE)/tools/ocamldep.opt
+# OCAMLLIB     = $(OCAML_SOURCE)/stdlib
+# OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
+# OCAMLYACC    = $(OCAML_SOURCE)/yacc/ocamlyacc.opt
+OCAMLC       = ocamlc
+OCAMLOPT     = ocamlopt
+OCAMLMKTOP   = ocamlmktop
+OCAMLDEP     = ocamldep
+OCAMLLEX     = ocamllex
+OCAMLYACC    = ocamlyacc
 
 CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
-INCLUDES = -I $(OCAML_SOURCE)/bytecomp \
+INCLUDES = -I /usr/lib \
+	-I /usr/lib/ocaml \
+	-I /usr/local/lib/ocaml/3.12.0/gmp \
+	-I /usr/local/lib/ocaml/3.12.0/apron \
+	-I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/driver \
 	-I $(OCAML_SOURCE)/parsing \
 	-I $(OCAML_SOURCE)/typing \
 	-I $(OCAML_SOURCE)/utils \
-	-I /usr/lib \
-	-I /usr/local/lib \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
-	-I $(OCAMLLIB) \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray \
 	-I ./lazy
-OCAMLFLAGS = -w p -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib
+#	-I $(OCAMLLIB)
+OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib
 OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)'
 
 DOC = doc

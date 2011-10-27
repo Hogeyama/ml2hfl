@@ -45,6 +45,7 @@ let rec subst_typ x t = function
 let rec arg_num = function
     TBase _ -> 0
   | TFun typ -> 1 + arg_num (snd (typ (Const Unit)))
+  | _ -> assert false
 
 
 
@@ -108,17 +109,17 @@ let rec make_arg_let t =
           let f = Id.new_var "f" (t.Syntax.typ) in
           let xts = List.map (fun t -> Id.new_var "x" (t.Syntax.typ), t) ts in
           let t' = {Syntax.desc=Syntax.App(Syntax.make_var f, List.map (fun (x,_) -> Syntax.make_var x) xts); Syntax.typ=Type.TUnknown} in
-            (List.fold_left (fun t2 (x,t1) -> {Syntax.desc=Syntax.Let(Flag.Nonrecursive,x,[],t1,t2);Syntax.typ=t2.Syntax.typ}) t' ((f,t)::xts)).Syntax.desc
+            (List.fold_left (fun t2 (x,t1) -> Syntax.make_let [x,[],t1] t2) t' ((f,t)::xts)).Syntax.desc
       | Syntax.If(t1, t2, t3) ->
           let t1' = make_arg_let t1 in
           let t2' = make_arg_let t2 in
           let t3' = make_arg_let t3 in
             Syntax.If(t1',t2',t3')
       | Syntax.Branch(t1, t2) -> assert false
-      | Syntax.Let(flag,f,xs,t1,t2) -> 
-          let t1' = make_arg_let t1 in
+      | Syntax.Let(flag,bindings,t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, make_arg_let t) bindings in
           let t2' = make_arg_let t2 in
-            Syntax.Let(flag,f,xs,t1',t2')
+            Syntax.Let(flag,bindings',t2')
       | Syntax.BinOp(op, t1, t2) ->
           let t1' = make_arg_let t1 in
           let t2' = make_arg_let t2 in
@@ -126,6 +127,7 @@ let rec make_arg_let t =
       | Syntax.Not t -> Syntax.Not (make_arg_let t)
       | Syntax.Fun(x,t) -> assert false
       | Syntax.Event _ -> assert false
+      | _ -> assert false
   in
     {Syntax.desc=desc; Syntax.typ=t.Syntax.typ}
 
@@ -146,6 +148,7 @@ let rec trans_typ = function
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
+  | _ -> assert false
 
 let trans_var x = Id.to_string x
 
@@ -171,6 +174,7 @@ let rec trans_typ' = function
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
+  | _ -> assert false
 
 and trans_binop = function
     Syntax.Eq -> assert false
@@ -240,6 +244,7 @@ and trans_term xs env t =
               Type.TUnit -> EqUnit
             | Type.TBool -> EqBool
             | Type.TInt _ -> EqInt
+            | _ -> assert false
         in
           defs1@defs2, make_app (Const op) [t1'; t2']
     | Syntax.BinOp(op, t1, t2) ->
@@ -252,6 +257,7 @@ and trans_term xs env t =
     | Syntax.Fun _ -> assert false
     | Syntax.Event _ -> assert false
     | Syntax.Bottom -> [], Const Bottom
+    | _ -> assert false
 
 let rec formula_of t =
   match t.Syntax.desc with
@@ -288,6 +294,7 @@ let rec formula_of t =
           App(Const Not, t')
     | Syntax.Fun _
     | Syntax.Event _ -> assert false
+    | _ -> assert false
 
 let trans_def (f,(xs,t)) =
   let xs' = List.map trans_var xs in
@@ -362,6 +369,7 @@ let rec get_const_typ = function
   | Proj _ -> assert false
   | If _ -> assert false
   | Bottom -> raise TypeBottom
+  | _ -> assert false
 
 
 let rec get_typ env = function
@@ -425,6 +433,7 @@ let rec extract_temp_if = function
       let defs1,t1' = extract_temp_if t1 in
       let defs2,t2' = extract_temp_if t2 in
         defs1@@defs2, App(t1',t2')
+  | _ -> assert false
 let extract_temp_if defs = map_defs extract_temp_if defs
 
 
@@ -592,6 +601,7 @@ let eval_prog_cbn (env,defs,main) =
           match eval t1 with
               Const True -> t2
             | Const False -> t3
+            | _ -> assert false
         end
     | App(Fun(x,t1),t2) -> subst x t2 t1
     | App _ as t ->
@@ -666,5 +676,6 @@ let rec has_bottom = function
   | Const Bottom -> true
   | Const _ -> false
   | App(t1, t2) -> has_bottom t1 || has_bottom t2
+  | _ -> assert false
 
 
