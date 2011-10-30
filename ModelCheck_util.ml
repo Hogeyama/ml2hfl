@@ -9,89 +9,6 @@ type node = UnitNode | BrNode | LineNode of int | EventNode of string
 
 
 
-let take s n = snd (split_string s n)
-let parse_node = function
-    "br" -> BrNode
-  | "unit" -> UnitNode
-  | s when s.[0] = 'l' -> LineNode (int_of_string (take s 1))
-  | s when is_prefix_string "event_" s -> EventNode (take s 6)
-  | _ -> assert false
-      
-
-let get_pair s =
-  let n1 = String.index s ',' in
-  let n2 = String.index s ')' in
-  let node = parse_node (String.sub s 1 (n1-1)) in
-  let n = int_of_string (String.sub s (n1+1) (n2-n1-1)) in
-  let s' = String.sub s (n2+1) (String.length s-n2-1) in
-    node, n, s'
-
-let rec parse_trace s =
-  match s.[0] with
-      '.' -> []
-    | ' ' -> parse_trace (String.sub s 1 (String.length s - 1))
-    | '(' ->
-      let node,n,s' = get_pair s in
-        (node,n) :: parse_trace s'
-    | _ -> assert false
-
-let print_node fm = function
-    UnitNode -> Format.fprintf fm "unit"
-  | BrNode -> Format.fprintf fm "br"
-  | LineNode n -> Format.fprintf fm "#%d" n
-  | EventNode s -> Format.fprintf fm "%s" s
-
-let print_const fm = function
-  | Unit -> Format.fprintf fm "unit"
-  | True -> Format.fprintf fm "0"
-  | False -> Format.fprintf fm "1"
-  | If -> Format.fprintf fm "_case 2"
-  | Bottom -> Format.fprintf fm "Bottom"
-  | c -> Format.printf "print_const: %a@." CEGAR_print.print_term (Const c); assert false
-
-let print_var = Format.pp_print_string
-
-let rec print_term fm = function
-    Const c -> print_const fm c
-  | Var x -> print_var fm x
-  | App(App(App(Const If, Const RandBool), t2), t3) ->
-      Format.fprintf fm "br (%a) (%a)" print_term t2 print_term t3
-  | App _ as t ->
-      let t,ts = decomp_app t in
-      let aux fm t =
-        match t with
-            App _ -> Format.fprintf fm "(%a)" print_term t
-          | _ -> Format.fprintf fm "%a" print_term t
-      in
-        print_list aux " " false fm (t::ts)
-
-let rec print_fun_def fm (f,xs,t1,es,t2) =
-  let rec aux fm = function
-      [] -> print_term fm t2
-    | Event s::es -> Format.fprintf fm "event_%s (%a)" s aux es
-    | Branch n::es -> Format.fprintf fm "l%d (%a)" n aux es
-  in
-    assert (t1 = Const True);
-    Format.fprintf fm "%a -> %a.@." (print_list print_var " " false) (f::xs) aux es
-
-let print_hors fm (defs, spec) =
-    fprintf fm "%%BEGING\n";
-    List.iter (print_fun_def fm) defs;
-    fprintf fm "%%ENDG\n\n";
-    fprintf fm "%%BEGINA\n";
-    Automata.print_buchi fm spec;
-    fprintf fm "%%ENDA\n\n"
-
-
-
-
-let print_hors_to_file hors =
-  let cout = open_out Flag.trecs_log in
-  let fm = formatter_of_out_channel cout in
-    print_hors fm hors;
-    pp_print_flush fm ();
-    close_out cout
-
 
 
 
@@ -233,48 +150,24 @@ let eta_expand ((env,defs,main) : prog) : prog=
 
 
 
-
-
-
 let trans_ce ce =
-  let aux = function
-      UnitNode, 0 -> [CEGAR_syntax.EventNode "unit"]
-    | LineNode i, _ -> [CEGAR_syntax.LineNode i]
-    | BrNode, _ -> []
-    | EventNode s, _ -> [CEGAR_syntax.EventNode s]
-    | _ -> assert false
+  let take s n = snd (split_string s n) in
+  let aux (s,_) =
+    match s with
+        "unit" -> [CEGAR_syntax.EventNode "unit"]
+      | "br" -> []
+      | s when s.[0] = 'l' -> [CEGAR_syntax.LineNode (int_of_string (take s 1))]
+      | s when is_prefix_string "event_" s -> [CEGAR_syntax.EventNode (take s 6)]
+      | _ -> assert false
   in
     flatten_map aux ce
 
 
-let model_check_aux (((env,defs,main):prog),spec) =
-  let cin,cout = Unix.open_process Flag.trecs in
-  let fm = formatter_of_out_channel cout in
-  let () = print_hors fm (defs, spec) in
-  let () = print_hors_to_file (defs, spec) in
-  let () = pp_print_flush fm () in
-  let () = close_out cout in
-  let s1 = ignore (input_line cin); ignore (input_line cin); input_line cin in
-  let s2 = ignore (input_line cin); input_line cin in
-  let _ = close_in cin in
-  let () = pp_print_flush std_formatter () in
-  let () =
-    match Unix.close_process (cin, cout) with
-        Unix.WEXITED _ | Unix.WSIGNALED _ | Unix.WSTOPPED _ -> ()
-  in
-    if s1 = "The property is not satisfied."
-    then
-      let () =
-        if Flag.print_trecs_output
-        then printf "TRecS output: %s@.@." s2
-      in
-        Some (trans_ce (parse_trace s2))
-    else
-      begin
-        assert (String.sub s1 (String.length s1 - 3) 3 = " : ");
-        None
-      end
-
+let model_check_aux target =
+    match TrecsInterface.check target with
+        None -> None
+      | Some ce -> Some (trans_ce ce)
+        
 
 
 

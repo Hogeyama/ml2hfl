@@ -2,6 +2,7 @@
 .PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
 
 OCAML_SOURCE = ocaml-3.12.0
+TRECS = trecs-1.22
 CSISAT = csisat-read-only
 
 # OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
@@ -24,17 +25,18 @@ INCLUDES = -I /usr/lib \
 	-I /usr/lib/ocaml \
 	-I /usr/local/lib/ocaml/3.12.0/gmp \
 	-I /usr/local/lib/ocaml/3.12.0/apron \
+	-I $(CSISAT)/lib \
+	-I $(CSISAT)/obj \
 	-I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/driver \
 	-I $(OCAML_SOURCE)/parsing \
 	-I $(OCAML_SOURCE)/typing \
 	-I $(OCAML_SOURCE)/utils \
-	-I $(CSISAT)/lib \
-	-I $(CSISAT)/obj \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray \
-	-I ./lazy
+	-I ./lazy \
+	-I $(TRECS)
 #	-I $(OCAMLLIB)
 OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib
 OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)'
@@ -46,14 +48,14 @@ DOC = doc
 
 NAME = mochi
 
-main: byte opt
+main: opt
 all: lib depend main
 
 byte: $(NAME).byte
 opt: $(NAME).opt
 byte2: $(NAME).byte2
 opt2: $(NAME).opt2
-lib: ocaml csisat
+lib: ocaml csisat trecs
 
 
 ################################################################################
@@ -76,24 +78,11 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	lazyInterface.cmo \
 	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo CEGAR_abst_CPS.cmo \
+	trecs.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo
-CMOSUB = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
-	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
-        CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo CEGAR_util.cmo \
-	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo \
-	CEGAR_abst_CPS.cmo ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo \
-	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main2.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMXSUB = $(CMOSUB:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
-CMASUB = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
-CMXASUB = $(CMASUB:.cma=.cmxa)
 
 
 OCAML_UTILS_CMO = misc.cmo warnings.cmo config.cmo clflags.cmo tbl.cmo consistbl.cmo ccomp.cmo
@@ -116,11 +105,6 @@ $(NAME).byte: $(CMO)
 $(NAME).opt: $(CMX)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
 
-$(NAME).byte2: $(CMOSUB)
-	$(OCAMLC) $(OCAMLFLAGS) -o $@ $(CMASUB) $(CMOSUB)
-
-$(NAME).opt2: $(CMXSUB)
-	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXASUB) $(CMXSUB)
 
 
 # Common rules
@@ -147,6 +131,16 @@ ocaml: $(OCAML_SOURCE)/Makefile
 
 csisat:
 	cd $(CSISAT); make
+
+# TODO: refine & write rule for bytecode
+trecs:
+	cd $(TRECS) && ocamlyacc parser.mly
+	cd $(TRECS) && ocamllex lexer.mll
+#	cd $(TRECS) && ocamlc -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml main.ml
+	cd $(TRECS) && ocamlopt -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml
+#	cd $(TRECS) && ocamlc -pack -o trecs.cmo utilities.cmo syntax.cmo parser.cmo lexer.cmo grammar.cmo automaton.cmo conversion.cmo typing.cmo stype.cmo reduce.cmo generalize.cmo main.cmo
+	cd $(TRECS) && ocamlopt -pack -o ../trecs.cmx utilities.cmx syntax.cmx parser.cmx lexer.cmx grammar.cmx automaton.cmx conversion.cmx typing.cmx stype.cmx reduce.cmx generalize.cmx
+
 
 
 ################################################################################
@@ -180,6 +174,9 @@ clean-ocaml:
 clean-csisat:
 	cd $(CSISAT); make clean
 
+clean-trecs:
+	cd $(TRECS); make clean
+
 clean-doc:
 	rm -rf doc
 
@@ -203,12 +200,9 @@ test-byte: byte
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-SRCSUB = $(CMOSUB:.cmo=.ml)
 
 depend::
 	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC) > depend
-depend2::
-	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRCSUB) > depend
 
 -include depend
 
