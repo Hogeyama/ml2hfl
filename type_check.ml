@@ -11,6 +11,7 @@ let check_var x typ =
   else (Format.printf "check_var: (%a:%a), %a@." Id.print x Syntax.print_typ (Id.typ x) Syntax.print_typ typ; assert false)
 
 let rec check t typ =
+  if false then Format.printf "CHECK: %a, %a@." pp_print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
   match t with
@@ -143,7 +144,7 @@ let rec check t typ =
             | TryWith(t1,pats) -> assert false
           *)          Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
-let check t = check t TUnit
+
 
 
 

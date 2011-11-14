@@ -12,14 +12,14 @@ type 'a t =
     TBase of base * ('a -> 'a list)
   | TAbs of ('a t -> 'a t)
   | TApp of 'a t * 'a t
-  | TFun of ('a -> 'a t * 'a t)
+  | TFun of 'a t * ('a -> 'a t)
 
 
 let typ_unit = TBase(TUnit, fun _ -> [])
 let typ_bool = TBase(TBool, fun x -> [x])
 let typ_int = TBase(TInt, fun _ -> [])
-let typ_event = TFun(fun _ -> TFun(fun _ -> typ_unit, typ_unit), typ_unit)
-let make_tfun typ1 typ2 = TFun(fun _ -> typ1, typ2)
+let typ_event = TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit)
+let make_tfun typ1 typ2 = TFun(typ1, fun _ -> typ2)
 
 let is_base_typ = function
     TBase _ -> true

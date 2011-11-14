@@ -5,8 +5,8 @@ open CEGAR_type
 
 let rec occur_arg_pred x = function
     TBase(_,ps) -> List.mem x (rev_flatten_map get_fv (ps (Const Unit)))
-  | TFun typ ->
-      let typ1,typ2 = typ (Const Unit) in
+  | TFun(typ1,typ2) ->
+      let typ2 = typ2 (Const Unit) in
         occur_arg_pred x typ1 || occur_arg_pred x typ2
   | TAbs _ -> assert false
   | TApp(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x typ2
@@ -32,9 +32,9 @@ and print_typ fm = function
           if preds = []
           then Format.fprintf fm "%a" print_typ_base b
           else Format.fprintf fm "%a[%a]" print_typ_base b (print_list print_term ";" false) preds
-  | TFun typ ->
+  | TFun(typ1,typ2) ->
       let x = new_id "x" in
-      let typ1,typ2 = typ (Var x) in
+      let typ2 = typ2 (Var x) in
         if occur_arg_pred x typ2
         then Format.fprintf fm "(%a:%a -> %a)" print_var x print_typ typ1 print_typ typ2
         else Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
@@ -167,3 +167,12 @@ let print_node fm = function
   | EventNode s -> Format.fprintf fm "%s" s
 
 let print_ce = print_list print_node "; " false
+
+
+
+
+let term = print_term
+let var = print_var
+let typ = print_typ
+let ce = print_ce
+

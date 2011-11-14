@@ -37,8 +37,8 @@ type t =
     Const of const
   | Var of var
   | App of t * t
-  | Let of var * t * t
-  | Fun of var * t
+  | Let of var * t * t (*** for temporary use ***)
+  | Fun of var * t (*** for temporary use ***)
 
 
 type event = Event of string | Branch of int

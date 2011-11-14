@@ -59,18 +59,18 @@ let main filename in_channel =
   let () = if true then Format.printf "parsed::@.%a\n\n@." (Syntax.print_term true) t in
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Syntax.set_target t else t in
   let () = if true then Format.printf "set_target::@.%a\n\n@." (Syntax.print_term true) t in
-  let () = Type_check.check t in
+  let () = Type_check.check t Type.TUnit in
   let t =
     if !Flag.init_trans
     then
       let t = Syntax.copy_poly_funs t in
       let () = if true then Format.printf "copy_poly::@.%a\n@." Syntax.pp_print_term t in
-      let () = Type_check.check t in
+      let () = Type_check.check t Type.TUnit in
       let t = Abstract.abstract_recdata t in
-      let () = if true then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term t in
-      let () = Type_check.check t in
+      let () = if true then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term' t in
       let t = Abstract.abstract_list t in
       let () = if true then Format.printf "abst_list::@.%a\n@." Syntax.pp_print_term t in
+      let () = Type_check.check t Type.TUnit in
       let t = if !Flag.cps_excep then CPS.trans_exc t else CPS.trans t in
       let () = if true then Format.printf "CPS::@.%a\n\n@." Syntax.pp_print_term t in
       let t = CPS.remove_pair t in
@@ -79,7 +79,7 @@ let main filename in_channel =
     else t
   in
 
-  let () = Type_check.check t in
+  let () = Type_check.check t Type.TUnit in
   let prog = CEGAR_util.trans_prog t in
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog

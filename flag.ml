@@ -37,7 +37,7 @@ let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
 
-let mode = ref FileAccess
+let mode = ref Reachability
 let refine = ref RefineDependentType
 let cegar = ref CEGAR_DependentType
 let init_trans = ref true
@@ -78,4 +78,5 @@ let web = ref false
 let debug = true
 
 
-
+(* pretty printer's option *)
+let () = Format.set_margin 120

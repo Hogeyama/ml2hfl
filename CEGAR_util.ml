@@ -32,19 +32,14 @@ let rec subst_typ x t = function
       (** ASSUME: y does not contain x **)
       let ps' y = List.map (subst x t) (ps y) in
         TBase(b, ps')
-  | TFun typ ->
-      let typ' y =
-        let typ1,typ2 = typ y in
-          subst_typ x t typ1, subst_typ x t typ2
-      in
-        TFun typ'
+  | TFun(typ1,typ2) -> TFun (subst_typ x t typ1, fun y -> subst_typ x t (typ2 y))
   | _ -> assert false
 
 
 
 let rec arg_num = function
     TBase _ -> 0
-  | TFun typ -> 1 + arg_num (snd (typ (Const Unit)))
+  | TFun(_,typ) -> 1 + arg_num (typ (Const Unit))
   | _ -> assert false
 
 
@@ -142,7 +137,7 @@ let rec trans_typ = function
   | Type.TInt _ -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false
   | Type.TVar _  -> TBase(TUnit, nil)
-  | Type.TFun(x,typ) -> TFun(fun _ -> trans_typ (Id.typ x), trans_typ typ)
+  | Type.TFun(x,typ) -> TFun(trans_typ (Id.typ x), fun _ -> trans_typ typ)
   | Type.TList _ -> assert false
   | Type.TConstr("event",_) -> assert false
   | Type.TConstr _ -> assert false
@@ -163,12 +158,12 @@ let rec trans_typ' = function
       let x' = trans_var x in
       let typ1 = TBase(TInt, fun z -> List.map (fun p -> subst "v_0" z (snd (trans_term [] [] p))) ps) in
       let typ2 = trans_typ' typ in
-        TFun(fun y -> typ1, subst_typ x' y typ2)
+        TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun(x,typ) ->
       let x' = trans_var x in
       let typ1 = trans_typ' (Id.typ x) in
       let typ2 = trans_typ' typ in
-        TFun(fun y -> subst_typ x' y typ1, subst_typ x' y typ2)
+        TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TList _ -> assert false
   | Type.TConstr("event",_) -> assert false
   | Type.TConstr _ -> assert false
@@ -198,7 +193,7 @@ and trans_term xs env t =
     | Syntax.NInt _ -> assert false
     | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Unit}]) ->
         let k = new_id "k" in
-          [k, TFun(fun _ -> typ_int,typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
+          [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
     | Syntax.App({Syntax.desc=Syntax.RandInt true}, [t1;t2]) ->
         assert (t1 = Syntax.unit_term);
         let defs1,t1' = trans_term xs env t1 in
@@ -212,7 +207,7 @@ and trans_term xs env t =
         let k = new_id "k" in
         let defs,t' = trans_term xs env t in
         let xs = diff (get_fv t') (List.map fst env) in
-        let defs' = (k, TFun(fun _ -> typ_unit,typ_unit), xs@["u"], Const True, [], t')::defs in
+        let defs' = (k, TFun(typ_unit, fun _ -> typ_unit), xs@["u"], Const True, [], t')::defs in
           defs', App(Const (Temp s), make_app (Var k) (List.map (fun x -> Var x) xs))
     | Syntax.App({Syntax.desc=Syntax.Event(s,true)}, [t1;t2]) ->
         assert (t1 = Syntax.unit_term);
@@ -230,7 +225,7 @@ and trans_term xs env t =
         let f = new_id "f" in
         let x = new_id "b" in
         let typs = typ_bool :: List.map (fun x -> List.assoc x env) xs in
-        let typ = List.fold_right (fun typ1 typ2 -> TFun(fun _ -> typ1,typ2)) typs (trans_typ t2.Syntax.typ) in
+        let typ = List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs (trans_typ t2.Syntax.typ) in
         let def1 = f, typ, x::xs, Var x, [], t2' in
         let def2 = f, typ, x::xs, make_not (Var x), [], t3' in
         let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
@@ -330,7 +325,7 @@ let trans_prog t =
   let defs' =
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
-          let typ = TFun(fun _ -> TBase(TUnit,fun _ -> []), TBase(TUnit,fun _ -> [])) in
+          let typ = TFun(TBase(TUnit,fun _ -> []), fun _ -> TBase(TUnit,fun _ -> [])) in
             (main,typ,["u"],Const True,[],t') :: defs_t @ flatten_map trans_def defs
       | Flag.CEGAR_DependentType ->
           let typ = TBase(TUnit,fun _ -> []) in
@@ -352,19 +347,19 @@ let rec get_const_typ = function
   | False _ -> typ_bool
   | RandInt _ -> assert false
   | RandBool _ -> TBase(TBool,nil)
-  | And -> TFun(fun x -> typ_bool, TFun(fun y -> typ_bool, typ_bool))
-  | Or -> TFun(fun x -> typ_bool, TFun(fun y -> typ_bool, typ_bool))
-  | Not -> TFun(fun x -> TBase(TInt,nil), typ_bool)
-  | Lt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
-  | Gt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
-  | Leq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
-  | Geq -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
-  | EqBool -> TFun(fun x -> TBase(TBool,nil), TFun(fun y -> TBase(TBool,nil), typ_bool))
-  | EqInt -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), typ_bool))
+  | And -> TFun(typ_bool, fun x -> TFun(typ_bool, fun y -> typ_bool))
+  | Or -> TFun(typ_bool, fun x -> TFun(typ_bool, fun y -> typ_bool))
+  | Not -> TFun(TBase(TInt,nil), fun x -> typ_bool)
+  | Lt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
+  | Gt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
+  | Leq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
+  | Geq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
+  | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool))
+  | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
-  | Add -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq_int r (make_add x y)])))
-  | Sub -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq_int r (make_sub x y)])))
-  | Mul -> TFun(fun x -> TBase(TInt,nil), TFun(fun y -> TBase(TInt,nil), TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
+  | Add -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_add x y)])))
+  | Sub -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_sub x y)])))
+  | Mul -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If _ -> assert false
@@ -376,8 +371,7 @@ let rec get_typ env = function
     Const c -> get_const_typ c
   | Var x -> List.assoc x env
   | App(Const RandInt, t) ->
-      let typ2 = match get_typ env t with TFun typ -> snd (typ (Var "")) | _ -> assert false in
-          Format.printf "get_typ: %a@." CEGAR_print.print_term t ;
+      let typ2 = match get_typ env t with TFun(_,typ) -> typ (Var "") | _ -> assert false in
         typ2
   | App(App(App(Const If, _), t1), t2) ->
       begin
@@ -386,7 +380,7 @@ let rec get_typ env = function
         with TypeBottom -> get_typ env t2
       end
   | App(t1,t2) ->
-      let typ2 = match get_typ env t1 with TFun typ -> snd (typ t2) | _ -> assert false in
+      let typ2 = match get_typ env t1 with TFun(_,typ) -> typ t2 | _ -> assert false in
         typ2
   | Let(x,t1,t2) ->
       let typ = get_typ env t1 in
@@ -395,13 +389,13 @@ let rec get_typ env = function
   | Fun(x,t) ->
       let typ1 = List.assoc x env in
       let typ2 = get_typ env t in
-        TFun(fun _ -> typ1,typ2)
+        TFun(typ1, fun _ -> typ2)
       
 
 
 
 let rec get_arg_num = function
-    TFun typ -> 1 + get_arg_num (snd (typ (Const Unit)))
+    TFun(_,typ) -> 1 + get_arg_num (typ (Const Unit))
   | typ -> 0
 
 
@@ -521,8 +515,8 @@ let lift2 ((_,defs,main):prog) : prog =
 
 let rec get_env typ xs =
   match typ,xs with
-      TFun typ, x::xs ->
-        let typ1,typ2 = typ (Var x) in
+      TFun(typ1,typ2), x::xs ->
+        let typ2 = typ2 (Var x) in
           (x,typ1) :: get_env typ2 xs
     | _ -> []
 

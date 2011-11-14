@@ -33,10 +33,10 @@ let rec coerce env cond pts typ1 typ2 t =
                 None -> Let(x, t, make_app (Const (Tuple (List.length ts))) ts)
               | Some _ -> make_app (Const (Tuple (List.length ts))) ts
           end
-    | TFun typ1, TFun typ2 ->
+    | TFun(typ11,typ12), TFun(typ21,typ22) ->
         let x = new_id "x" in
-        let typ11,typ12 = typ1 (Var x) in
-        let typ21,typ22 = typ2 (Var x) in
+        let typ12 = typ12 (Var x) in
+        let typ22 = typ22 (Var x) in
         let env' = (x,typ11)::env in
         let t1 = coerce env' cond pts typ21 typ11 (Var x) in
         let t2 = coerce env' cond pts typ12 typ22 (App(t, t1)) in
@@ -62,12 +62,12 @@ let rec abstract_term env cond pbs t typ =
         in
           coerce env cond pbs typ' typ src
     | Const c -> coerce env cond pbs (get_const_typ c) typ t
-    | App(Const RandInt, t) -> App(abstract_term env cond pbs t (TFun(fun _ -> typ_int,typ)), Const (Tuple 0))
+    | App(Const RandInt, t) -> App(abstract_term env cond pbs t (TFun(typ_int, fun _ -> typ)), Const (Tuple 0))
     | App(t1, t2) ->
         let typ' = get_typ env t1 in
         let typ1,typ2 =
           match typ' with
-              TFun typ -> typ t2
+              TFun(typ1,typ2) -> typ1, typ2 t2
             | _ -> assert false
         in
         let t1' = abstract_term env cond pbs t1 typ' in
@@ -80,6 +80,7 @@ let rec abstract_term env cond pbs t typ =
         let pbs' = abst_arg x typ' @@ pbs in
         let t2' = abstract_term env' cond pbs' t2 typ in
           Let(x,t1',t2')
+    | Fun _ -> assert false
 
 
 let abstract_def env (f,xs,t1,e,t2) =
@@ -89,7 +90,7 @@ let abstract_def env (f,xs,t1,e,t2) =
       | x::xs' ->
           let typ1,typ2 =
             match typ with
-                TFun typ -> typ (Var x)
+                TFun(typ1,typ2) -> typ1, typ2 (Var x)
               | _ -> assert false
           in
           let env' = (x,typ1)::env in

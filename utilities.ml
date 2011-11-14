@@ -396,3 +396,9 @@ let is_prefix_string pre s =
 
 let split_string s n =
   String.sub s 0 n, String.sub s n (String.length s - n)
+
+let count_line s =
+  let n = ref 0 in
+    String.iter (fun c -> if c = '\n' then incr n) s;
+    !n
+

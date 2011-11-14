@@ -154,6 +154,8 @@ let rec extract_tuple_term env = function
   | Fun(x,t) ->
       let xs = extract_tuple_var env x in
 *)
+  | Let _ -> assert false
+  | Fun _ -> assert false
 
         
 let extract_tuple_def env (f,xs,t1,e,t2) =

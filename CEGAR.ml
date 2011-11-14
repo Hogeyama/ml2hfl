@@ -64,7 +64,7 @@ let rec cegar prog ces =
                                 aux prefix
                           | _ -> prefix
                       in
-                      let () = Format.printf "\nPrefix of spurious counter-example::\n%a\n@." CEGAR_print.print_ce prefix' in
+                        Format.printf "\nPrefix of spurious counter-example::\n%a\n@." CEGAR_print.print_ce prefix';
                         prefix'::ces
                     else ce::ces
                   in

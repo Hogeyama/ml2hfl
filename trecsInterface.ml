@@ -29,6 +29,12 @@ let initialize () =
   Trecs.Reduce.hash_typing := Hashtbl.create 10;
   Trecs.Stype.tvid := 0
 
+
+
+let string_of_parseresult (prerules, tr) =
+  (Trecs.Syntax.string_of_prerules prerules)^"\n"^(Trecs.Syntax.string_of_transitions tr)
+
+
 let trans_const = function
   | Unit -> TS.PTapp(TS.Name "unit", [])
   | True -> TS.PTapp(TS.FD 0, [])
@@ -235,11 +241,16 @@ let verifyParseResult (prerules,tr) =
           Unsafe tr
 
 
+let write_log target =
+  let cout = open_out "log.hors" in
+    output_string cout (string_of_parseresult target);
+    close_out cout
 
 
 let check target =
   let target' = trans target in
-  let () = initialize () in
+    initialize ();
+    write_log target';
     match verifyParseResult target' with
         Safe _ -> None
       | Unsafe tr -> Some (List.rev tr)

@@ -39,6 +39,9 @@ and term =
   | Fst of typed_term
   | Snd of typed_term
   | Bottom
+(*
+  | TAbs of (typ -> typed_term)
+*)
 
 and type_kind =
     KAbstract
@@ -180,3 +183,6 @@ val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 val print_term : bool -> Format.formatter -> typed_term -> unit
 val print_term' : Format.formatter -> typed_term -> unit
 
+
+val test : typ option ref ref
+val set_test : unit -> unit

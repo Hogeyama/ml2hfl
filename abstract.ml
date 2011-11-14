@@ -45,7 +45,8 @@ let rec abst_recdata_typ = function
   | TAbsBool -> assert false
   | TInt ps -> TInt ps
   | TRInt _ -> assert false
-  | TVar _ -> raise PolyTypeOccur
+  | TVar({contents=None} as x) -> raise PolyTypeOccur
+  | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
   | typ when typ = !typ_excep ->
@@ -148,6 +149,7 @@ let rec abst_recdata t =
 let abstract_recdata t =
   let t' = abst_recdata t in
     typ_excep := abst_recdata_typ !typ_excep;
+    Type_check.check t;
     t'
   
 
@@ -302,7 +304,8 @@ let rec abst_list_typ = function
   | TAbsBool -> assert false
   | TInt ps -> TInt ps
   | TRInt _ -> assert false
-  | TVar _ -> TInt[] (****)
+  | TVar({contents=None} as x) -> raise PolyTypeOccur
+  | TVar{contents=Some typ} -> abst_list_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
   | TList typ -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt[])
   | TConstr(s,b) -> TConstr(s,b)
@@ -375,13 +378,14 @@ let rec abst_list t =
           let t1' = abst_list t1 in
           let t2' = abst_list t2 in
           let i = Id.new_var "i" (TInt[]) in
+          let x = Id.new_var "x" (abst_list_typ t1.typ) in
           let xs = Id.new_var "xs" typ' in
           let t11 = make_eq (make_var i) (make_int 0) in
-          let t12 = t1' in
+          let t12 = make_var x in
           let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
           let t1'' = make_fun i (make_if t11 t12 t13) in
           let t2'' = make_add (make_snd (make_var xs)) (make_int 1) in
-            (make_let [xs, [], t2'] (make_pair t1'' t2'')).desc
+            (make_let [x, [], t1'] (make_let [xs, [], t2'] (make_pair t1'' t2''))).desc
       | Constr(s,ts) -> assert false
       | Match(t1,pats) ->
           let x,bindx =
@@ -410,10 +414,13 @@ let rec abst_list t =
       | Fst t -> Fst (abst_list t)
       | Snd t -> Snd (abst_list t)
   in
-    {desc=desc; typ=typ'}
+  let t = {desc=desc; typ=typ'} in
+  let () = Type_check.check t typ' in
+    t
     
 
 
+(*
 let rec encode_pair_typ = function
     TUnit -> TUnit
   | TBool -> TBool
@@ -433,7 +440,7 @@ let rec encode_pair_typ = function
           TFun(g, typ)
       in
         TAbs f
-(*
+
 let rec encode_pair t =
   let typ' = encode_pair_typ t.typ in
   let desc =
@@ -471,8 +478,7 @@ let rec encode_pair t =
   in
     {desc=desc; typ=typ'}
 *)
-let abstract_list t =
-  (*encode_pair*) (abst_list t)
+let abstract_list t = abst_list t
 
 
 
@@ -491,7 +497,6 @@ let rec abst_datatype_typ = function
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
   | TUnknown -> assert false
-  | TAbs _ -> assert false
 
 let rec abst_datatype_typ = function
     TUnit -> TUnit
@@ -508,7 +513,6 @@ let rec abst_datatype_typ = function
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
   | TUnknown -> assert false
-  | TAbs _ -> assert false
 
 let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Flag.Immutable, t))::fields, i+1) ([],0) ts in

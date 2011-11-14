@@ -61,7 +61,7 @@ let rec trans_typ = function
   | TInt -> TBase(CEGAR_type.TInt,nil)
   | TVar{contents=None} -> TBase(CEGAR_type.TUnit,nil)
   | TVar{contents=Some typ} -> trans_typ typ
-  | TFun(typ1,typ2) -> CEGAR_type.TFun(fun _ -> trans_typ typ1,trans_typ typ2)
+  | TFun(typ1,typ2) -> CEGAR_type.TFun(trans_typ typ1, fun _ -> trans_typ typ2)
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
 
 let get_typ_const = function

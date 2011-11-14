@@ -13,8 +13,8 @@ type 'a t =
   | TPair of 'a t * 'a t
   | TConstr of string * bool
   | TUnknown
-  | TAbs of ('a t -> 'a t)
   | TVariant of 'a t
+
 
 
 let rec decomp_tfun = function
@@ -49,17 +49,6 @@ let rec can_unify typ1 typ2 =
     | _, TVar{contents=None} -> true
     | _ -> false
 
-(*
-let rec occurs x = function
-      TUnit
-    | TBool
-    | TAbsBool
-    | TUnknown
-    | TVar _ -> false
-    | TInt ts -> List.exists (Id.same x) (List.concat (List.map get_fv ts))
-    | TRInt t -> List.exists (Id.same x) (get_fv t)
-    | TFun(y,typ) -> occurs x (Id.typ y) || occurs x typ
-*)
 
 let rec print print_pred fm typ =
   let print = print print_pred in
@@ -112,7 +101,6 @@ let rec print print_pred fm typ =
             else Format.fprintf fm "{%a}" aux typs
 *)
       | TConstr(s,_) -> Format.pp_print_string fm s
-      | TAbs _ -> assert false
 
 and print_preds print_pred fm = function
     [] -> ()
@@ -120,6 +108,55 @@ and print_preds print_pred fm = function
   | x1::x2::xs -> Format.fprintf fm "%a;%a" print_pred x1 (print_preds print_pred) (x2::xs)
 
 
+let rec flatten typ =
+  match typ with
+      TVar{contents = Some typ'} -> flatten typ'
+    | _ -> typ
+
+let rec occurs r typ =
+  match flatten typ with
+      TUnit -> false
+    | TBool -> false
+    | TAbsBool -> false
+    | TInt ps -> assert (ps = []); false
+    | TRInt p -> assert false
+    | TVar({contents=None} as r') -> r == r'
+    | TVar{contents=Some typ} -> assert false
+    | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
+    | TList typ -> occurs r typ
+    | TPair(typ1,typ2) -> occurs r typ1 || occurs r typ2
+    | TConstr(s,b) -> false
+    | TUnknown -> false
+    | TVariant _ -> assert false
+
+exception CannotUnify
+
+let rec unify typ1 typ2 =
+  let print_typ = print (fun _ -> assert false) in
+    match flatten typ1, flatten typ2 with
+        TUnit, TUnit
+      | TBool, TBool
+      | TInt _, TInt _ -> ()
+      | TRInt _, TRInt _ -> ()
+      | TFun(x1, typ1), TFun(x2, typ2) ->
+          unify (Id.typ x1) (Id.typ x2);
+          unify typ1 typ2
+      | TList typ1, TList typ2 -> unify typ1 typ2
+      | TPair(typ11,typ12), TPair(typ21,typ22) ->
+          unify typ11 typ21;
+          unify typ12 typ22
+      | TVar r1, TVar r2 when r1 == r2 -> ()
+      | TVar({contents = None} as r), typ
+      | typ, TVar({contents = None} as r) ->
+          if occurs r typ then
+            (Format.printf "occurs check failure: %a, %a@." print_typ (flatten typ1) print_typ (flatten typ2);
+             raise CannotUnify)
+          else
+            r := Some typ
+      | _ ->
+          if Flag.debug
+          then Format.printf "unification error: %a, %a@." print_typ (flatten typ1) print_typ (flatten typ2);
+          raise CannotUnify
 
 
 let rec same_shape typ1 typ2 =
@@ -136,8 +173,6 @@ let rec same_shape typ1 typ2 =
     | TPair(typ11,typ12),TPair(typ21,typ22) -> same_shape typ11 typ21 && same_shape typ12 typ22
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
     | TUnknown, TUnknown -> true
-    | TAbs _, _ -> assert false
-    | _, TAbs _ -> assert false
     | TVariant _,_ -> assert false
     | _,TVariant _ -> assert false
     | _ -> assert false
@@ -156,5 +191,5 @@ let rec is_poly_typ = function
   | TPair(typ1,typ2) -> is_poly_typ typ1 || is_poly_typ typ2
   | TConstr _ -> false
   | TUnknown _ -> assert false
-  | TAbs _ -> assert false
   | TVariant _ -> assert false
+

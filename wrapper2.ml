@@ -167,6 +167,8 @@ let rec init_rand_int = function
       let env1,t1' = init_rand_int t1 in
       let env2,t2' = init_rand_int t2 in
         env1@@env2, App(t1,t2)
+  | Fun _ -> assert false
+  | Let _ -> assert false
 
 
 let string_of_env env =

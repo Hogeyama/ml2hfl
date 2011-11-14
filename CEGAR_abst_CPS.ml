@@ -133,23 +133,24 @@ let rec abstract_term_aux env cond pts t typ1 typ2 =
     | TBase _, TBase(_,ps2) ->
         List.map (abst env cond pts) (ps2 t)
     | TFun _, TFun _ when congruent env cond typ1 typ2 -> [t]
-    | TFun typ1, TFun typ2 ->
+    | TFun(typ11,typ12), TFun(typ21,typ22) ->
         let x = new_id "x" in
-        let typ11,typ12 = typ1 (Var x) in
-        let typ21,typ22 = typ2 (Var x) in
+        let typ12 = typ12 (Var x) in
+        let typ22 = typ22 (Var x) in
         let env' = (x,typ21)::env in
           begin
-          match typ11,typ21 with
-              TBase(_,ps1), TBase(_,ps2) ->
-                let xs = abst_arg x typ21 in
-                let pts' = make_pts x typ21 @@ pts in
-                let ts = abstract_term_aux env' cond pts' (Var x) typ21 typ11 in
-                let t' = hd (abstract_term_aux env' cond pts' (make_app t ts) typ12 typ22) in
-                  [make_fun_temp xs t']
-            | TFun _, TFun _ ->
-                let x = new_id "f" in
-                let t' = App(t, hd (abstract_term_aux env' cond pts (Var x) typ21 typ11)) in
-                  [Fun(x, hd (abstract_term_aux env' cond pts t' typ12 typ22))]
+            match typ11,typ21 with
+                TBase(_,ps1), TBase(_,ps2) ->
+                  let xs = abst_arg x typ21 in
+                  let pts' = make_pts x typ21 @@ pts in
+                  let ts = abstract_term_aux env' cond pts' (Var x) typ21 typ11 in
+                  let t' = hd (abstract_term_aux env' cond pts' (make_app t ts) typ12 typ22) in
+                    [make_fun_temp xs t']
+              | TFun _, TFun _ ->
+                  let x = new_id "f" in
+                  let t' = App(t, hd (abstract_term_aux env' cond pts (Var x) typ21 typ11)) in
+                    [Fun(x, hd (abstract_term_aux env' cond pts t' typ12 typ22))]
+              | _ -> assert false
           end
     | _ -> Format.printf "abstract_term_aux: %a, %a@." print_typ typ1 print_typ typ2; assert false
 
@@ -163,14 +164,14 @@ let rec abstract_term env cond pts t typ =
     | App _ when is_base_term env t ->
         let base = get_base typ in
           abstract_term_aux env cond pts t (TBase(base,fun x -> [make_eq_int x t])) typ
-    | App(Const RandInt, t) -> abstract_term env cond pts t (TFun(fun _ -> typ_int,typ))
+    | App(Const RandInt, t) -> abstract_term env cond pts t (TFun(typ_int, fun _ -> typ))
     | App _ ->
         let t1,ts = decomp_app t in
         let rec aux ts typ =
           match ts,typ with
               [], _ -> [],typ
-            | t::ts', TFun typ ->
-                let typ1,typ2 = typ t in
+            | t::ts', TFun(typ1,typ2) ->
+                let typ2 = typ2 t in
                 let ts'',typ' = aux ts' typ2 in
                   abstract_term env cond pts t typ1 @ ts'', typ'
             | _ -> assert false
@@ -178,16 +179,17 @@ let rec abstract_term env cond pts t typ =
         let ts',typ' = aux ts (get_typ env t1) in
           abstract_term_aux env cond pts (make_app t1 ts') typ' typ
     | Let(x,t1,t2) -> assert false
+    | Fun _ -> assert false
 
 
 (* for_debug *)
 let rec abstract_typ = function
     TBase(TUnit,ps) when ps (Const Unit) = [] -> [TBase(TUnit,ps)]
   | TBase(_,ps) -> List.map (fun _ -> TBase(TBool,fun _ -> [])) (ps (Const Unit))
-  | TFun typ ->
-      let typ1,typ2 = typ (Const Unit) in
+  | TFun(typ1,typ2) ->
+      let typ2 = typ2 (Const Unit) in
       let typs = abstract_typ typ1 in
-      let aux typ1 typ2 = TFun(fun _ -> typ1, typ2) in
+      let aux typ1 typ2 = TFun(typ1, fun _ -> typ2) in
         [List.fold_right aux typs (hd (abstract_typ typ2))]
   | _ -> assert false
 
@@ -197,7 +199,7 @@ let abstract_def env (f,xs,t1,e,t2) =
     match xs with
         [] -> typ, []
       | x::xs' ->
-          let typ1,typ2 = match typ with TFun typ -> typ (Var x) | _ -> assert false in
+          let typ1,typ2 = match typ with TFun(typ1,typ2) -> typ1,typ2 (Var x) | _ -> assert false in
           let typ',env' = decomp_typ typ2 xs' in
             typ', (x,typ1)::env'
   in

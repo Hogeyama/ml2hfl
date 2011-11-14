@@ -38,7 +38,7 @@ let make_file_spec () =
    4, "unit", [];]
 
 
-let make_base_spec n q = (q, "br", [q;q])::make_line_spec (n+2) q
+let make_base_spec n q = (q, "br", [q;q])::make_line_spec 1 q
 
 let make_spec n =
   let spec =
@@ -105,10 +105,12 @@ let make_bottom ((env,defs,main):prog) : prog =
           let typ = get_typ env' t1 in
           let typ' =
             match typ with
-                TFun typ -> fst (typ (Const Unit))
+                TFun(typ,_) -> typ
               | _ -> assert false
           in
             App(aux_term (t1,typ), aux_term (t2,typ'))
+      | Let _, _ -> assert false
+      | Fun _, _ -> assert false
     in
     let t2' =
       try

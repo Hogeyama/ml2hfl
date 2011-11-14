@@ -200,10 +200,10 @@ let rec congruent env cond typ1 typ2 =
         let ps1' = ps1 (Var x) in
         let ps2' = ps2 (Var x) in
           List.length ps1' = List.length ps2' && List.for_all2 (=) ps1' ps2'
-    | TFun typ1, TFun typ2 ->
+    | TFun(typ11,typ12), TFun(typ21,typ22) ->
         let x = new_id "x" in
-        let typ11,typ12 = typ1 (Var x) in
-        let typ21,typ22 = typ2 (Var x) in
+        let typ12 = typ12 (Var x) in
+        let typ22 = typ22 (Var x) in
           congruent env cond typ11 typ21 && congruent env cond typ12 typ22
     | _ -> Format.printf "CONGRUENT: %a,%a@." print_typ typ1 print_typ typ2; assert false
 
@@ -224,6 +224,7 @@ let rec is_base_term env = function
   | App(Const Not,t) -> assert (is_base_term env t); true
   | App _ -> false
   | Let _ -> false
+  | Fun _ -> false
 
 
 
@@ -241,6 +242,7 @@ let rec make_arg_let_term = function
       let t'' = List.fold_left (fun t x -> App(t, Var x)) t' xs in
         bind @ List.combine xs ts', t''
   | Let _ -> assert false
+  | Fun _ -> assert false
 let make_arg_let_term t =
   let bind,t' = make_arg_let_term t in
     List.fold_right (fun (x,t) t' -> Let(x, t, t')) bind t'
@@ -249,6 +251,7 @@ let rec reduce_let env = function
     Const c -> Const c
   | Var x -> Var x
   | App(t1,t2) -> App(reduce_let env t1, reduce_let env t2)
+  | Fun _ -> assert false
   | Let(x,t1,t2) ->
       match t1,get_typ env t1 with
           Var _, _

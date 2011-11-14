@@ -55,37 +55,39 @@ let conv_primitive_app t ts typ =
     | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
     | _ -> make_app t ts
 
+let venv = ref []
 
-
-let rec from_type_expr tenv venv typ =
+let rec from_type_expr tenv typ =
   let typ' = Ctype.repr typ in
     match typ'.Types.desc with
         Tvar ->
           begin
             try
-              venv, List.assoc typ'.Types.id venv 
+              List.assoc typ'.Types.id !venv
             with Not_found ->
-              let x = TVar (ref None) in
-                (typ'.Types.id, x)::venv, x
+              let r = ref None in
+              let () = if 667 = typ'.Types.id then test := r in
+              let x = TVar r in
+                venv := (typ'.Types.id, x)::!venv;
+                x
           end
       | Tarrow(_, typ1, typ2, _) ->
-          let venv1,typ1' = from_type_expr tenv venv typ1 in
-          let venv2,typ2' = from_type_expr tenv venv1 typ2 in
+          let typ1' = from_type_expr tenv typ1 in
+          let typ2' = from_type_expr tenv typ2 in
           let x = Id.new_var "x" typ1' in
-            venv2, TFun(x, typ2')
+            TFun(x, typ2')
       | Ttuple (typ1::typ2::typs) ->
-          let aux (env,typ_pair) typ =
-            let env',typ' = from_type_expr tenv venv typ in
-              env', TPair(typ',typ_pair)
+          let aux typ_pair typ =
+            let typ' = from_type_expr tenv typ in
+              TPair(typ',typ_pair)
           in
-          let venv,typ1' = from_type_expr tenv venv typ1 in
-          let venv,typ2' = from_type_expr tenv venv typ2 in
-            List.fold_left aux (venv,TPair(typ1',typ2')) typs
+          let typ1' = from_type_expr tenv typ1 in
+          let typ2' = from_type_expr tenv typ2 in
+            List.fold_left aux (TPair(typ1',typ2')) typs
       | Ttuple _ -> assert false
-      | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs -> venv, List.assoc (Path.name path) prim_typs
+      | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs -> List.assoc (Path.name path) prim_typs
       | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
-          let env',typ' = from_type_expr tenv venv type_expr in
-            env', TList typ'
+          TList (from_type_expr tenv type_expr)
       | Tconstr(path, _, m) ->
           let b =
             try match (Env.find_type path tenv).type_kind with
@@ -94,7 +96,7 @@ let rec from_type_expr tenv venv typ =
               | Type_record _ -> true
             with Not_found -> true
           in
-            venv, TConstr(Path.name path, b)
+            TConstr(Path.name path, b)
       | Tobject _ -> unsupported "Tobject"
       | Tfield _ -> unsupported "Tfield"
       | Tnil _ -> unsupported "Tnil"
@@ -103,7 +105,7 @@ let rec from_type_expr tenv venv typ =
       | Tvariant _ -> unsupported "Tvariant"
       | Tunivar _ -> unsupported "Tunivar"
       | Tpoly _ -> unsupported "Tpoly"
-let from_type_expr tenv venv typ = snd (from_type_expr tenv venv typ)
+      | Tpackage _ -> unsupported "Tpackage"
 
 
 let from_rec_flag = function
@@ -116,7 +118,40 @@ let from_mutable_flag = function
   | Asttypes.Immutable -> Flag.Immutable
 
 
-let from_ident x typ = Id.make (Ident.binding_time x) (Ident.name x) typ
+
+let sign_to_letter s =
+  let is_op s = List.mem s.[0] ['!';'$';'%';'&';'*';'+';'-';'.';'/';':';'<';'=';'>';'?';'@';'^';'|';'~'] in
+  let map = function
+      '!' -> "_bang"
+    | '$' -> "_dollar"
+    | '%' -> "_percent"
+    | '&' -> "_ampersand"
+    | '*' -> "_asterisk"
+    | '+' -> "_plus"
+    | '-' -> "_minus"
+    | '.' -> "_dot"
+    | '/' -> "_slash"
+    | ':' -> "_colon"
+    | '<' -> "_lessthan"
+    | '=' -> "_equal"
+    | '>' -> "_greaterthan"
+    | '?' -> "_question"
+    | '@' -> "_at"
+    | '^' -> "_caret"
+    | '|' -> "_bar"
+    | '~' -> "_tilde"
+    | c -> String.make 1 c
+  in
+  let rec trans acc s =
+    if String.length s = 0
+    then acc
+    else trans (acc ^ map s.[0]) (String.sub s 1 (String.length s - 1))
+  in
+    if is_op s
+    then trans "op" s
+    else s
+
+let from_ident x typ = Id.make (Ident.binding_time x) (sign_to_letter (Ident.name x)) typ
 
 
 let get_constr_name desc typ env =
@@ -164,14 +199,13 @@ let get_label_name label env =
 let rec from_type_declaration tenv decl =
   let venv = List.map (fun typ -> typ.Types.id, TVar (ref None)) decl.type_params in
   let params = List.map snd venv in
-  let venv = [] in
   let kind =
     match decl.type_kind with
         Type_abstract -> KAbstract
       | Type_variant stypss ->
-          KVariant(List.map (fun (s,typs) -> s,List.map (from_type_expr tenv venv) typs) stypss)
+          KVariant(List.map (fun (s,typs) -> s,List.map (from_type_expr tenv) typs) stypss)
       | Type_record(sftyps,_) ->
-          KRecord(List.map (fun (s,flag,typ) -> s,(from_mutable_flag flag,from_type_expr tenv venv typ)) sftyps)
+          KRecord(List.map (fun (s,flag,typ) -> s,(from_mutable_flag flag,from_type_expr tenv typ)) sftyps)
   in
     params, kind
 
@@ -187,11 +221,11 @@ let rec add_type_env env typ =
               Type_abstract -> ()
             | Type_variant stypss ->
                 let typ_name = Path.name path in
-                let kind = Type_decl.TKVariant (List.map (fun (s,typs) -> s, List.map (from_type_expr env []) typs) stypss) in
+                let kind = Type_decl.TKVariant (List.map (fun (s,typs) -> s, List.map (from_type_expr env) typs) stypss) in
                   Type_decl.add_type_decl typ_name kind
             | Type_record(fields,_) ->
                 let typ_name = Path.name path in
-                let kind = Type_decl.TKRecord(List.map (fun (s,f,typ) -> s,(from_mutable_flag f,from_type_expr env [] typ)) fields) in
+                let kind = Type_decl.TKRecord(List.map (fun (s,f,typ) -> s,(from_mutable_flag f,from_type_expr env typ)) fields) in
                   Type_decl.add_type_decl typ_name kind
         end
     | Tobject _ -> unsupported "Tobject"
@@ -200,7 +234,7 @@ let rec add_type_env env typ =
     | Tlink _ -> unsupported "Tlink"
     | Tsubst _ ->  unsupported "Tsubst"
     | Tvariant _ -> unsupported "Tvariant"
-    | Tunivar -> ()
+    | Tunivar -> unsupported "Tunivar"
     | Tpoly _ -> unsupported "Tpoly"
     | Tpackage _ -> unsupported "Tpackage"
 
@@ -213,12 +247,12 @@ let add_exc_env cstr_desc env =
     if typ_name = "exn"
     then
       let name = get_constr_name cstr_desc cstr_desc.cstr_res env in
-      let typs = List.map (from_type_expr env []) cstr_desc.cstr_args in
+      let typs = List.map (from_type_expr env) cstr_desc.cstr_args in
         Type_decl.add_exc_decl name typs
 
 let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
   add_type_env env typ;
-  let typ' = from_type_expr env [] typ in
+  let typ' = from_type_expr env typ in
   let desc =
     match desc with
         Tpat_any -> PVar(Id.new_var "u" typ')
@@ -231,6 +265,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
       | Tpat_constant(Const_int32 n) -> unsupported "pattern match (int32 constant)"
       | Tpat_constant(Const_int64 n) -> unsupported "pattern match (int64 constant)"
       | Tpat_constant(Const_nativeint n) -> unsupported "pattern match (nativeint constant)"
+      | Tpat_tuple([]|[_]) -> assert false
       | Tpat_tuple(p1::p2::ps) ->
           let p1' = from_pattern p1 in
           let p2' = from_pattern p2 in
@@ -334,20 +369,97 @@ let rec get_bindings pat t =
     | POr _,_ -> assert false
 
 
+(*
+let rec subst_tvar_var map = function
+
+
+and subst_tvar_typ map = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> assert false
+  | TInt ps -> TInt ps
+  | TRInt p -> TRInt p
+  | TVar x -> List.assq x map
+  | TFun(x,typ2) -> TFun(subst_tvar_var x, subst_tvar_typ typ2)
+  | TList typ -> TList (subst_tvar_typ typ)
+  | TPair(typ1,typ2) -> TPair(subst_tvar_typ typ1, subst_tvar_typ typ2)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TUnknown _ -> assert false
+  | TVariant _ -> assert false
+  | TTAbs _ -> assert false
+
+and subst_tvar_term t =
+  match t.desc with
+    | True
+    | False
+    | Unknown
+    | Int of int
+    | NInt of id
+    | RandInt of bool
+    | RandValue of typ * bool
+    | Var of id
+    | Fun of id * typed_term
+    | App of typed_term * typed_term list
+    | If of typed_term * typed_term * typed_term
+    | Branch of typed_term * typed_term
+    | Let of Flag.rec_flag * (id * id list * typed_term) list * typed_term
+    | BinOp of binop * typed_term * typed_term
+    | Not of typed_term
+    | Label of bool * typed_term
+    | LabelInt of int * typed_term
+    | Event of string * bool
+    | Record of (string * (Flag.mutable_flag * typed_term)) list
+    | Proj of int * string * Flag.mutable_flag * typed_term
+    | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
+    | Nil
+    | Cons of typed_term * typed_term
+    | Constr of string * typed_term list
+    | Match of typed_term * (typed_pattern * typed_term option * typed_term) list
+    | Raise of typed_term
+    | TryWith of typed_term * typed_term
+    | Pair of typed_term * typed_term
+    | Fst of typed_term
+    | Snd of typed_term
+    | Bottom
+    | TAbs _ -> assert false
+
+let to_abs t =
+  let uniq xs ys = List.fold_left (fun xs y -> if List.memq y xs then xs else y::xs) xs ys in
+  let rec get_tvars =
+    TUnit -> []
+    | TBool -> []
+    | TAbsBool -> assert false
+    | TInt ps -> []
+    | TRInt p -> []
+    | TVar x -> [x]
+    | TFun(x,typ2) -> uniq (get_tvars (Id.typ x) @@ get_tvars typ2)
+    | TList typ -> get_tvars typ
+    | TPair(typ1,typ2) -> uniq (get_tvars typ1 @@ get_tvars typ2)
+    | TConstr(s,b) -> []
+    | TUnknown _ -> assert false
+    | TVariant _ -> assert false
+    | TTAbs _ -> assert false
+  in
+  let vs = get_tvars t.typ in
+    List.fold_left (fun t v -> (fun x -> subst_tvar x t)
+  let map = List.map (fun x -> x, 
+*)
+let to_abs x = x
+
 let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   add_type_env env typ;
-  let typ' = from_type_expr env [] typ in
+  let typ' = from_type_expr env typ in
     match exp_desc with
         Texp_ident(path, _) ->
-          conv_primitive_var (Id.make (Path.binding_time path) (Path.name path) typ')
+          conv_primitive_var (Id.make (Path.binding_time path) (sign_to_letter (Path.name path)) typ')
       | Texp_constant c -> from_constant c
       | Texp_let(rec_flag, [p,e1], e2) ->
           let flag = from_rec_flag rec_flag in
           let p' = from_pattern p in
-          let t1 = from_expression e1 in
+          let t1 = to_abs (from_expression e1) in
           let t2 = from_expression e2 in
           let bindings = get_bindings p' t1 in
-            List.fold_right (fun (x,t') t -> {desc=Let(flag,[x,[],t'],t);typ=typ'}) bindings t2
+            List.fold_right (fun (x,t') t -> make_let_f flag [x,[],t'] t) bindings t2
       | Texp_let _ -> unsupported "Texp_let"
           (*
             | Texp_let(rec_flag, pats, e) ->
@@ -358,14 +470,14 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           *)
       | Texp_function([{Typedtree.pat_desc=Tpat_var x},e],Total) ->
           begin
-            match e.exp_desc, from_type_expr env [] typ with
+            match e.exp_desc, from_type_expr env typ with
                 Texp_when _,_ -> unsupported "???"
               | _,TFun({Id.typ=typ1},typ2) ->
                   let x' = from_ident x typ1 in
                     make_fun x' (from_expression e)
               | _ -> assert false
           end
-      | Texp_function(pes,Total) ->
+      | Texp_function(pes,totality) ->
           let x,typ2 =
             match typ' with
                 TFun(x,typ2) -> x,typ2
@@ -376,8 +488,15 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                 Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
               | _ -> from_pattern p, None, from_expression e
           in
-          let f = Id.new_var "f" typ' in
-            make_fun x {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pes);typ=typ2}
+          let tail =
+            match totality with
+                Total -> []
+              | Partial ->
+                  let p = {pat_desc=PVar(Id.new_var "u" (Id.typ x)); pat_typ=Id.typ x} in
+                  let t = make_let [Id.new_var "u" TUnit, [], make_app fail_term [unit_term]] (make_bottom typ2) in
+                    [p, None, t]
+          in
+            make_fun x {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pes@tail);typ=typ2}
       | Texp_apply(e, es) ->
           let t = from_expression e in
           let aux = function
@@ -447,7 +566,8 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
               let flag = from_mutable_flag lbl.lbl_mut in
                 try
                   name, (flag, from_expression (List.assoc lbl fields))
-                with Not_found -> name, (flag, {desc=Proj(lbl.lbl_pos, name, flag, {desc=Var r;typ=Id.typ r});typ=from_type_expr env [] lbl.lbl_arg})
+                with Not_found ->
+                  name, (flag, {desc=Proj(lbl.lbl_pos, name, flag, {desc=Var r;typ=Id.typ r});typ=from_type_expr env lbl.lbl_arg})
             in
               List.map aux labels
           in
@@ -491,10 +611,11 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             from_expression e
           *)
       | Texp_object _ -> unsupported "expression (class)"
+      | Texp_pack _ -> unsupported "expression (pack)"
 
 
 
-let from_exception_declaration env = List.map (from_type_expr env [])
+let from_exception_declaration env = List.map (from_type_expr env)
 
 
 let from_top_level_phrase (env,defs) = function

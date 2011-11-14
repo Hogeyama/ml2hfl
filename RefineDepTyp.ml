@@ -243,6 +243,8 @@ and print_aty aty =
   | ATunit(n) -> print_string2 ("unit("^(string_of_int n)^")")
   | ATint(n) -> print_string2 "int"
   | ATbool(n) -> print_string2 "bool"
+  | ATlist _ -> assert false
+
 
 let rec print_atenv atenv =
   match atenv with
@@ -1863,9 +1865,12 @@ let rec trans_typ = function
     CT.TBase(CT.TUnit,_) -> TUnit
   | CT.TBase(CT.TInt,_) -> TInt[]
   | CT.TBase(CT.TBool,_) -> TBool
-  | CT.TFun typ ->
-      let typ1,typ2 = typ (CS.Const CS.Unit) in
+  | CT.TBase _ -> assert false
+  | CT.TFun(typ1,typ2) ->
+      let typ2 = typ2 (CS.Const CS.Unit) in
         TFun(Id.new_var "x" (trans_typ typ1), trans_typ typ2)
+  | CT.TApp _ -> assert false
+  | CT.TAbs _ -> assert false
 
 let trans_var env x =
   let name,id = CS.decomp_id x in

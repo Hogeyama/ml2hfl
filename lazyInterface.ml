@@ -31,6 +31,8 @@ let rec conv_term t =
     Const(c) -> Term.Const([], conv_const c)
   | Var(x) -> Term.make_var x
   | App(t1, t2) -> Term.apply (conv_term t1) [conv_term t2]
+  | Fun _ -> assert false
+  | Let _ -> assert false
 
 let inv_const c =
   match c with
@@ -58,6 +60,11 @@ let rec inv_term t =
     Term.Const(_, c) -> Const(inv_const c)
   | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
+  | Term.Forall (_, _, _) -> assert false
+  | Term.Error _ -> assert false
+  | Term.Ret (_, _, _, _) -> assert false
+  | Term.Call (_, _, _) -> assert false
+
 
 let conv_fdef (f, args, guard, _, body) =
   { Fdef.attr = [];
@@ -71,8 +78,8 @@ let rec conv_typ ty =
     TBase(TUnit, _) -> SimType.Unit
   | TBase(TInt, _) -> SimType.Int
   | TBase(TBool, _) -> SimType.Bool
-  | TFun(tmp) ->
-      let ty1, ty2 = tmp (Const True) in
+  | TFun(ty1,tmp) ->
+      let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
   | _ ->
       let _ = Format.printf "%a@." print_typ ty in
@@ -103,7 +110,7 @@ let rec inv_abst_type aty =
       TBase(TInt, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(x, aty1, aty2) ->
       let x = Var.string_of x in
-      TFun(fun t -> inv_abst_type aty1, subst_typ x t (inv_abst_type aty2))
+      TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
 
 
 let infer [cex] prog =
