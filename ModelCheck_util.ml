@@ -138,6 +138,8 @@ let rec eta_expand_term env = function
       let t = make_if (Const RandBool) (aux t2) (aux t3) in
         List.fold_right (fun x t -> Fun(x,t)) xs t
   | App(t1, t2) -> App(eta_expand_term env t1, eta_expand_term env t2)
+  | Fun _ -> assert false
+  | Let _ -> assert false
 
 
 let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
@@ -158,7 +160,7 @@ let trans_ce ce =
     match s with
         "unit" -> [CEGAR_syntax.EventNode "unit"]
       | "br" -> []
-      | s when s.[0] = 'l' -> [CEGAR_syntax.LineNode (int_of_string (take s 1))]
+      | s when s.[0] = 'l' -> [CEGAR_syntax.BranchNode (int_of_string (take s 1))]
       | s when is_prefix_string "event_" s -> [CEGAR_syntax.EventNode (take s 6)]
       | _ -> assert false
   in

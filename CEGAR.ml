@@ -52,23 +52,25 @@ let rec cegar prog ces =
                   let ces' =
                     if Flag.use_prefix_trace
                     then
-                      let prefix' =
+                      let prefix' = assert false
+(*
                         match !Flag.refine with
                             Flag.RefineDependentType ->
                               let rec aux = function
                                   [] -> []
-                                | [BrNode true; LineNode _] -> [EventNode "then_fail"]
-                                | [BrNode false; LineNode _] -> [EventNode "else_fail"]
+                                | [LineNode _] -> [EventNode "then_fail"]
+                                | [LineNode _] -> [EventNode "else_fail"]
                                 | n::ce -> n :: aux ce
                               in
                                 aux prefix
                           | _ -> prefix
+*)
                       in
                         Format.printf "\nPrefix of spurious counter-example::\n%a\n@." CEGAR_print.print_ce prefix';
                         prefix'::ces
                     else ce::ces
                   in
-                  let prog' = Refine.refine ces' prog in
+                  let prog' = Refine.refine' ces' prog in
                     add_time tmp Flag.time_cegar;
                     if Flag.print_progress then print_msg "DONE!\n";
                     incr Flag.cegar_loop;

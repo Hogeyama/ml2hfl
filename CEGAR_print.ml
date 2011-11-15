@@ -162,8 +162,7 @@ and print_prog_ML fm (env,defs,s) =
 
 
 let print_node fm = function
-    BrNode b -> Format.fprintf fm "%b" b
-  | LineNode n -> Format.fprintf fm "#%d" n
+    BranchNode n -> Format.fprintf fm "#%d" n
   | EventNode s -> Format.fprintf fm "%s" s
 
 let print_ce = print_list print_node "; " false

@@ -70,10 +70,6 @@ let rec check t typ =
         check t2 (TInt[])
     | {desc=Not t; typ=TBool} ->
         check t TBool
-    | {desc=Label(_,t); typ=typ} ->
-        check t typ
-    | {desc=LabelInt(_,t); typ=typ} ->
-        check t typ
     | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event)
     | {desc=Event(_,true); typ=typ'} -> assert (typ' = typ_event_cps)
     | {desc=Pair(t1,t2); typ=TPair(typ1,typ2)} ->

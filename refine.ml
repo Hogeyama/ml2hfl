@@ -42,13 +42,12 @@ let refine ces ((env,defs,main):prog) =
     match !Flag.refine with
         Flag.RefineSizedType ->
           let rec aux = function
-              (LineNode _)::ce -> 0 :: aux ce
-            | (BrNode b)::(LineNode _)::ce -> (if b then 0 else 1) :: aux ce
+              (BranchNode n)::ce -> n :: aux ce
             | (EventNode _)::ce -> aux ce
             | [] -> []
             | _ -> assert false
           in
-            LazyInterface.infer (List.map aux ces) (env,defs,main)
+            LazyInterface.infer [List.hd (List.map aux ces)] (env,defs,main)
       | Flag.RefineDependentType ->
           try
             RefineDepTyp.infer ces (env,defs,main)
@@ -60,15 +59,15 @@ let refine ces ((env,defs,main):prog) =
 
 
 let refine' ces ((env,defs,main):prog) =
+Format.printf "REFINE': %a@." CEGAR_print.ce (List.hd ces);
   let map1 =
-          let rec aux = function
-              (LineNode _)::ce -> 0 :: aux ce
-            | (BrNode b)::(LineNode _)::ce -> (if b then 0 else 1) :: aux ce
-            | (EventNode _)::ce -> aux ce
-            | [] -> []
-            | _ -> assert false
-          in
-            LazyInterface.infer (List.map aux ces) (env,defs,main)
+    let rec aux = function
+        (BranchNode n)::ce -> n :: aux ce
+      | (EventNode _)::ce -> aux ce
+      | [] -> []
+      | _ -> assert false
+    in
+      LazyInterface.infer [List.hd (List.map aux ces)] (env,defs,main)
   in
   let map2 =
     try

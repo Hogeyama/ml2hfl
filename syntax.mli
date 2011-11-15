@@ -23,8 +23,6 @@ and term =
   | Let of Flag.rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
-  | Label of bool * typed_term
-  | LabelInt of int * typed_term
   | Event of string * bool
   | Record of (string * (Flag.mutable_flag * typed_term)) list
   | Proj of int * string * Flag.mutable_flag * typed_term
@@ -157,6 +155,7 @@ val copy_poly_funs : typed_term -> typed_term
 val trans_let : typed_term -> typed_term
 (** returns a term whose definitions of let expressions are side-effect free *)
 val is_value : typed_term -> bool
+val has_exception : typed_term -> bool
 
 (** {6 Printing} *)
 
@@ -184,5 +183,3 @@ val print_term : bool -> Format.formatter -> typed_term -> unit
 val print_term' : Format.formatter -> typed_term -> unit
 
 
-val test : typ option ref ref
-val set_test : unit -> unit

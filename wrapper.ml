@@ -60,6 +60,7 @@ and print_term fm t =
         then Format.fprintf fm "(%a <=> %a)" print_term t1 print_term t2
         else Format.fprintf fm "(%a %a %a)" print_term t1 (print_binop t1.typ) op print_term t2
     | Not t -> Format.fprintf fm "(NOT %a)" print_term t
+    | _ -> assert false
 
 
 

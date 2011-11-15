@@ -45,7 +45,7 @@ let rec abst_recdata_typ = function
   | TAbsBool -> assert false
   | TInt ps -> TInt ps
   | TRInt _ -> assert false
-  | TVar({contents=None} as x) -> raise PolyTypeOccur
+  | TVar{contents=None} -> raise PolyTypeOccur
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
@@ -58,6 +58,7 @@ let rec abst_recdata_typ = function
   | TConstr(s,_) -> assert false
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
+  | TVariant _ -> assert false
 
 let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
@@ -110,9 +111,9 @@ let rec abst_recdata t =
       | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
       | Branch(t1, t2) -> Branch(abst_recdata t1, abst_recdata t2)
       | Let(flag, [f, xs, t1], t2) -> Let(flag, [abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t1], abst_recdata t2)
+      | Let _ -> assert false
       | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
       | Not t -> Not (abst_recdata t)
-      | Label(b, t) -> Label(b, abst_recdata t)
       | Event(s,b) -> Event(s,b)
       | Record _ -> assert false
       | Proj _ -> assert false
@@ -149,7 +150,7 @@ let rec abst_recdata t =
 let abstract_recdata t =
   let t' = abst_recdata t in
     typ_excep := abst_recdata_typ !typ_excep;
-    Type_check.check t;
+    Type_check.check t TUnit;
     t'
   
 
@@ -182,7 +183,6 @@ let rec abstract_mutable t =
             Let(flag, bindings', abstract_mutable t2)
       | BinOp(op, t1, t2) -> BinOp(op, abstract_mutable t1, abstract_mutable t2)
       | Not t -> Not (abstract_mutable t)
-      | Label(b, t) -> Label(b, abstract_mutable t)
       | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,abstract_mutable t)) fields)
       | Proj(i,s,Flag.Immutable,t) -> Proj(i, s, Flag.Immutable, abstract_mutable t)
@@ -195,6 +195,15 @@ let rec abstract_mutable t =
       | Match(t,pats) ->
           let aux (pat,cond,t) = pat,apply_opt abstract_mutable cond, abstract_mutable t in
             Match(abstract_mutable t, List.map aux pats)
+      | Snd _ -> assert false
+      | Fst _ -> assert false
+      | Pair (_, _) -> assert false
+      | TryWith (_, _) -> assert false
+      | Raise _ -> assert false
+      | SetField (_, _, _, _, _, _) -> assert false
+      | RandValue (_, _) -> assert false
+      | Bottom -> assert false
+
   in
     {desc=desc; typ=t.typ}
 
@@ -304,13 +313,14 @@ let rec abst_list_typ = function
   | TAbsBool -> assert false
   | TInt ps -> TInt ps
   | TRInt _ -> assert false
-  | TVar({contents=None} as x) -> raise PolyTypeOccur
+  | TVar{contents=None} -> raise PolyTypeOccur
   | TVar{contents=Some typ} -> abst_list_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
   | TList typ -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt[])
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
+  | TVariant _ -> assert false
 
 let abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -366,13 +376,12 @@ let rec abst_list t =
             Let(flag, bindings', abst_list t2)
       | BinOp(op, t1, t2) -> BinOp(op, abst_list t1, abst_list t2)
       | Not t -> Not (abst_list t)
-      | Label(b, t) -> Label(b, abst_list t)
       | Event(s,b) -> Event(s,b)
       | Record _ -> assert false
       | Proj _ -> assert false
       | SetField _ -> assert false
       | Nil ->
-          let typ'' = match t.typ with TList typ -> abst_list_typ typ in
+          let typ'' = match t.typ with TList typ -> abst_list_typ typ | _ -> assert false in
             Pair(make_fun (Id.new_var "x" (TInt[])) (make_bottom typ''), make_int 0)
       | Cons(t1,t2) ->
           let t1' = abst_list t1 in

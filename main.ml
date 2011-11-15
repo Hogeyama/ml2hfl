@@ -71,7 +71,7 @@ let main filename in_channel =
       let t = Abstract.abstract_list t in
       let () = if true then Format.printf "abst_list::@.%a\n@." Syntax.pp_print_term t in
       let () = Type_check.check t Type.TUnit in
-      let t = if !Flag.cps_excep then CPS.trans_exc t else CPS.trans t in
+      let t = if Syntax.has_exception t then CPS.trans_exc t else CPS.trans t in
       let () = if true then Format.printf "CPS::@.%a\n\n@." Syntax.pp_print_term t in
       let t = CPS.remove_pair t in
       let () = if true then Format.printf "remove_pair::@.%a\n\n@." Syntax.pp_print_term t in
@@ -100,7 +100,9 @@ let spec =
    "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " use sized type system for CEGAR";
    "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " same as -st";
    "-na", Arg.Clear Flag.init_trans, " do not abstract data";
+(*
    "-exn", Arg.Set Flag.cps_excep, " CPS transformation for exception";
+*)
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineSizedType), " use sized type system for predicate discovery";
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " use dependent type system for predicate discovery"
   ]

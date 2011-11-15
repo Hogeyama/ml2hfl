@@ -28,7 +28,8 @@ let conv_const c =
 
 let rec conv_term t =
   match t with
-    Const(c) -> Term.Const([], conv_const c)
+  | Const(Bottom) -> Term.make_var "bottom"
+  | Const(c) -> Term.Const([], conv_const c)
   | Var(x) -> Term.make_var x
   | App(t1, t2) -> Term.apply (conv_term t1) [conv_term t2]
   | Fun _ -> assert false
@@ -66,12 +67,17 @@ let rec inv_term t =
   | Term.Call (_, _, _) -> assert false
 
 
-let conv_fdef (f, args, guard, _, body) =
+let conv_event e =
+  match e with
+      Event(x) -> Term.Const([], Const.Event(Idnt.make x))
+    | Branch(_) -> assert false
+
+let conv_fdef (f, args, guard, events, body) =
   { Fdef.attr = [];
     Fdef.name = Idnt.make f;
     Fdef.args = List.map Idnt.make args;
     Fdef.guard = conv_term guard;
-    Fdef.body = conv_term body }
+    Fdef.body = List.fold_right (fun e t -> Term.apply (conv_event e) [t]) events (conv_term body) }
 
 let rec conv_typ ty =
   match ty with

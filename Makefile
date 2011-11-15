@@ -78,7 +78,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	lazyInterface.cmo \
 	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo CEGAR_abst_CPS.cmo \
-	trecs.cmo trecsInterface.cmo \
+	$(TRECS)/trecs.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
@@ -139,7 +139,7 @@ trecs:
 #	cd $(TRECS) && ocamlc -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml main.ml
 	cd $(TRECS) && ocamlopt -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml
 #	cd $(TRECS) && ocamlc -pack -o trecs.cmo utilities.cmo syntax.cmo parser.cmo lexer.cmo grammar.cmo automaton.cmo conversion.cmo typing.cmo stype.cmo reduce.cmo generalize.cmo main.cmo
-	cd $(TRECS) && ocamlopt -pack -o ../trecs.cmx utilities.cmx syntax.cmx parser.cmx lexer.cmx grammar.cmx automaton.cmx conversion.cmx typing.cmx stype.cmx reduce.cmx generalize.cmx
+	cd $(TRECS) && ocamlopt -pack -o trecs.cmx utilities.cmx syntax.cmx parser.cmx lexer.cmx grammar.cmx automaton.cmx conversion.cmx typing.cmx stype.cmx reduce.cmx generalize.cmx
 
 
 

@@ -65,9 +65,7 @@ let rec from_type_expr tenv typ =
             try
               List.assoc typ'.Types.id !venv
             with Not_found ->
-              let r = ref None in
-              let () = if 667 = typ'.Types.id then test := r in
-              let x = TVar r in
+              let x = TVar (ref None) in
                 venv := (typ'.Types.id, x)::!venv;
                 x
           end

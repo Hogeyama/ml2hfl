@@ -402,12 +402,6 @@ let rec remove_pair t typ_opt =
       | Not t1 ->
           let t1' = root (remove_pair t1 None) in
             Leaf (make_not t1')
-      | Label(b, t1) ->
-          let t1' = root (remove_pair t1 None) in
-            Leaf {desc=Label(b, t1'); typ=root typs}
-      | LabelInt(n, t1) ->
-          let t1' = root (remove_pair t1 None) in
-            Leaf {desc=LabelInt(n, t1'); typ=root typs}
       | Record fields -> assert false
       | Proj(i,s,f,t1) -> assert false
       | SetField(n,i,s,f,t1,t2) -> assert false
@@ -700,9 +694,6 @@ let rec infer_cont_pos env t =
         let typed = infer_cont_pos env t in
         let _ = unify typed.typ_cps (TBaseCPS t.typ) in
           {t_cps=NotCPS typed; typ_cps=TBaseCPS t.typ}
-    | Label(b,t) ->
-        let typed = infer_cont_pos env t in
-          {t_cps=LabelCPS(b, typed); typ_cps=typed.typ_cps}
     | Event(s,true) -> assert false
     | Event(s,false) -> {t_cps=EventCPS s; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS TUnit)}
     | Fst t ->
@@ -731,7 +722,6 @@ let rec infer_cont_pos env t =
     | SetField (_, _, _, _, _, _) -> assert false
     | Proj (_, _, _, _) -> assert false
     | Record _ -> assert false
-    | LabelInt (_, _) -> assert false
     | Branch (_, _) -> assert false
     | RandValue (_, _) -> assert false
     | Nil -> assert false

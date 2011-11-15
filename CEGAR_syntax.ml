@@ -43,7 +43,7 @@ type t =
 
 type event = Event of string | Branch of int
 
-type ce_node = BrNode of bool | LineNode of int | EventNode of string
+type ce_node = BranchNode of int | EventNode of string
 type ce = ce_node list
 
 

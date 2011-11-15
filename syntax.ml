@@ -27,8 +27,6 @@ and term =
   | Let of Flag.rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
-  | Label of bool * typed_term
-  | LabelInt of int * typed_term
   | Event of string * bool
   | Record of (string * (Flag.mutable_flag * typed_term)) list
   | Proj of int * string * Flag.mutable_flag * typed_term
@@ -77,9 +75,6 @@ type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 
 
-
-let test = ref (ref None)
-let set_test () = !test := Some TUnit
 
 let rec id___typ = function
     TUnit -> TUnit
@@ -135,9 +130,7 @@ and id__ t =
           let t2' = id__ t2 in
             Let(flag, bindings', t2')
       | BinOp(op, t1, t2) -> BinOp(op, id__ t1, id__ t2)
-      | Not t1 ->Not (id__ t1)
-      | Label(b, t1) -> Label(b, id__ t1)
-      | LabelInt(n, t1) -> LabelInt(n, id__ t1)
+      | Not t1 -> Not (id__ t1)
       | Event(s,b) -> Event(s,b)
       | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,id__ t1)) fields)
       | Proj(i,s,f,t1) -> Proj(i,s,f,id__ t1)
@@ -289,18 +282,6 @@ and print_term pri typ fm t =
         let p = 6 in
         let s1,s2 = paren pri p in
           fprintf fm "%snot %a%s" s1 (print_term p typ) t s2
-    | Label(true, t) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          fprintf fm "%sl_then %a%s" s1 (print_term p typ) t s2
-    | Label(false, t) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          fprintf fm "%sl_else %a%s" s1 (print_term p typ) t s2
-    | LabelInt(n, t) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-          fprintf fm "%sbr%d %a%s" s1 n (print_term p typ) t s2
     | Event(s,false) -> fprintf fm "{%s}" s
     | Event(s,true) -> fprintf fm "{|%s|}" s
     | Record fields ->
@@ -585,7 +566,6 @@ let rec get_nint t =
     | BinOp(op, t1, t2) -> get_nint t1 @@@ get_nint t2
     | Not t -> get_nint t
     | Fun(x,t) -> diff (get_nint t) [x]
-    | Label(_,t) -> get_nint t
     | Event _ -> []
     | Nil -> []
     | Cons(t1,t2) -> get_nint t1 @@@ get_nint t2
@@ -600,7 +580,6 @@ let rec get_nint t =
     | SetField _ -> assert false
     | Proj _ -> assert false
     | Record _ -> assert false
-    | LabelInt _ -> assert false
     | RandValue _ -> assert false
     | Bottom -> []
 
@@ -621,7 +600,6 @@ let rec get_int t =
     | BinOp(_, t1, t2) -> get_int t1 @@@ get_int t2
     | Not t -> get_int t
     | Fun(_,t) -> get_int t
-    | Label(_,t) -> get_int t
     | Event _ -> []
     | Nil -> []
     | Cons(t1,t2) -> get_int t1 @@@ get_int t2
@@ -636,7 +614,6 @@ let rec get_int t =
     | SetField (_, _, _, _, _, _) -> assert false
     | Proj (_, _, _, _) -> assert false
     | Record _ -> assert false
-    | LabelInt (_, _) -> assert false
     | RandValue (_, _) -> assert false
     | Bottom -> []
 
@@ -662,8 +639,6 @@ let rec get_fv vars t =
     | BinOp(op, t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Not t -> get_fv vars t
     | Fun(x,t) -> get_fv (x::vars) t
-    | Label(_,t) -> get_fv vars t
-    | LabelInt(_,t) -> get_fv vars t
     | Event(s,_) -> []
     | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
     | Proj(_,_,_,t) -> get_fv vars t
@@ -713,7 +688,6 @@ let rec get_fv2 vars t =
     | BinOp(op, t1, t2) -> get_fv2 vars t1 @@@ get_fv2 vars t2
     | Not t -> get_fv2 vars t
     | Fun(x,t) -> get_fv2 (x::vars) t
-    | Label(_,t) -> get_fv2 vars t
     | Event(s,_) -> []
     | Nil -> []
     | Cons(t1,t2) -> get_fv2 vars t1 @@@ get_fv2 vars t2
@@ -729,7 +703,6 @@ let rec get_fv2 vars t =
     | SetField (_, _, _, _, _, _) -> assert false
     | Proj (_, _, _, _) -> assert false
     | Record _ -> assert false
-    | LabelInt (_, _) -> assert false
     | RandValue (_, _) -> assert false
     | Bottom -> []
 let get_fv2 = get_fv2 []
@@ -818,12 +791,6 @@ let rec subst x t t' =
     | Not t1 ->
         let t1' = subst x t t1 in
           make_not t1'
-    | Label(b, t1) ->
-        let t1' = subst x t t1 in
-          {desc=Label(b, t1'); typ=t'.typ}
-    | LabelInt(n, t1) ->
-        let t1' = subst x t t1 in
-          {desc=LabelInt(n, t1'); typ=t'.typ}
     | Event(s,_) -> t'
     | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst x t t1)) fields); typ=t'.typ}
     | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst x t t1); typ=t'.typ}
@@ -889,9 +856,6 @@ let rec subst_int n t t' =
       | Not t1 ->
           let t1' = subst_int n t t1 in
             Not t1'
-      | Label(b, t1) ->
-          let t1' = subst_int n t t1 in
-            Label(b, t1')
       | Event(s,b) -> Event(s,b)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(subst_int n t t1, subst_int n t t2)
@@ -905,7 +869,6 @@ let rec subst_int n t t' =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandInt _ -> assert false
       | RandValue (_, _) -> assert false
   in
@@ -1010,8 +973,6 @@ let rec eval t =
               Fun(x,{desc=App(t', ts');typ=typ})
       | Fun(x,t) ->
           Fun(x, eval t)
-      | Label(b,t) ->
-          Label(b, eval t)
       | Event(s,b) -> Event(s,b)
       | Snd _ -> assert false
       | Fst _ -> assert false
@@ -1023,7 +984,6 @@ let rec eval t =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
       | Bottom -> assert false
       | Cons _ -> assert false
@@ -1146,7 +1106,6 @@ let rec merge_let_fun t =
       | Fun(x, t) -> Fun(x, merge_let_fun t)
       | BinOp(op, t1, t2) -> BinOp(op, merge_let_fun t1, merge_let_fun t2)
       | Not t -> Not (merge_let_fun t)
-      | Label(b, t) -> Label(b, merge_let_fun t)
       | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,merge_let_fun t)) fields)
       | Proj(i,s,f,t) -> Proj(i,s,f,merge_let_fun t)
@@ -1161,7 +1120,6 @@ let rec merge_let_fun t =
       | Pair(t1,t2) -> Pair(merge_let_fun t1, merge_let_fun t2)
       | Fst t -> Fst (merge_let_fun t)
       | Snd t -> Snd (merge_let_fun t)
-      | LabelInt _ -> assert false
       | RandValue _ -> assert false
   in
     {desc=desc; typ=t.typ}
@@ -1257,9 +1215,6 @@ let rec lift_aux xs t =
       | Not t ->
           let defs,t' = lift_aux xs t in
             defs, Not t'
-      | Label(b,t) ->
-          let defs,t' = lift_aux xs t in
-            defs, Label(b,t')
       | Event(s,b) -> [], Event(s,b)
       | Record fields ->
           let aux (s,(f,t)) =
@@ -1372,9 +1327,6 @@ let rec canonize t =
       | Fun(x,t) ->
           let t' = canonize t in
             Fun(x, t')
-      | Label(b,t) ->
-          let t' = canonize t in
-            Label(b, t')
       | Event(s,b) -> Event(s,b)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(canonize t1, canonize t2)
@@ -1388,7 +1340,6 @@ let rec canonize t =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
       | Bottom -> assert false
   in
@@ -1508,8 +1459,6 @@ let part_eval t =
         | BinOp(op, t1, t2) -> BinOp(op, aux apply t1, aux apply t2)
         | Not t -> Not (aux apply t)
         | Unknown -> Unknown
-        | Label(b, t) -> Label(b, aux apply t)
-        | LabelInt(n, t) -> LabelInt(n, aux apply t)
         | Event(s,b) -> Event(s,b)
         | Record fields -> Record (List.map (fun (s,(f,t)) -> s,(f,aux apply t)) fields)
         | Proj(i,s,f,t) -> Proj(i, s, f, aux apply t)
@@ -1690,9 +1639,6 @@ let rec add_string str t =
           let x' = Id.add_name x str in
           let t' = add_string str t in
             Fun(x', t')
-      | Label(b,t) ->
-          let t' = add_string str t in
-            Label(b, t')
       | Event(s,b) -> Event(s,b)
       | Snd _ -> assert false
       | Fst _ -> assert false
@@ -1705,7 +1651,6 @@ let rec add_string str t =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
       | RandInt _ -> assert false
       | Bottom -> assert false
@@ -1759,7 +1704,6 @@ let rec remove_unused t =
       | Not t ->
           let t' = remove_unused t in
             Not t'
-      | Label _ -> assert false
       | Event(s,b) -> Event(s,b)
       | Snd _ -> assert false
       | Fst _ -> assert false
@@ -1772,7 +1716,6 @@ let rec remove_unused t =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
       | RandInt _ -> assert false
       | Bottom -> assert false
@@ -2066,7 +2009,6 @@ let rec normalize_bool_exp t =
       | Branch _
       | Let _
       | BinOp((Add|Sub|Mult), _, _)
-      | Label _
       | Event _ -> assert false
       | Snd _ -> assert false
       | Fst _ -> assert false
@@ -2079,7 +2021,6 @@ let rec normalize_bool_exp t =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
       | RandInt _ -> assert false
       | Bottom -> assert false
@@ -2106,7 +2047,6 @@ let rec get_and_list t =
     | If _
     | Branch _
     | Let _
-    | Label _
     | Event _ -> assert false
     | Snd _ -> assert false
     | Fst _ -> assert false
@@ -2119,7 +2059,6 @@ let rec get_and_list t =
     | SetField (_, _, _, _, _, _) -> assert false
     | Proj (_, _, _, _) -> assert false
     | Record _ -> assert false
-    | LabelInt (_, _) -> assert false
     | RandValue (_, _) -> assert false
     | RandInt _ -> assert false
     | Bottom -> assert false
@@ -2177,7 +2116,6 @@ let rec merge_geq_leq t =
       | Branch _
       | Let _
       | BinOp((Add|Sub|Mult), _, _)
-      | Label _
       | Event _ -> Format.printf "%a@." pp_print_term t; assert false
       | Snd _ -> assert false
       | Fst _ -> assert false
@@ -2190,7 +2128,6 @@ let rec merge_geq_leq t =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
       | RandInt _ -> assert false
       | Bottom -> assert false
@@ -2357,8 +2294,6 @@ let rec max_pat_num t =
     | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
     | BinOp(_, t1, t2) -> max (max_pat_num t1) (max_pat_num t2)
     | Not t -> max_pat_num t
-    | Label(_, t) -> max_pat_num t
-    | LabelInt(_, t) -> max_pat_num t
     | Event _ -> 0
     | Nil -> 0
     | Cons(t1,t2) -> max (max_pat_num t1) (max_pat_num t2)
@@ -2401,8 +2336,6 @@ let rec max_label_num t =
     | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
     | BinOp(_, t1, t2) -> max (max_label_num t1) (max_label_num t2)
     | Not t -> max_label_num t
-    | Label(_, t) -> max_label_num t
-    | LabelInt(n, t) -> max n (max_label_num t)
     | Event _ -> -1
     | Nil -> -1
     | Cons(t1,t2) -> max (max_label_num t1) (max_label_num t2)
@@ -2453,7 +2386,6 @@ let rec init_rand_int t =
             Let(flag, bindings', init_rand_int t2)
       | BinOp(op, t1, t2) -> BinOp(op, init_rand_int t1, init_rand_int t2)
       | Not t -> Not (init_rand_int t)
-      | Label(b,t) -> Label(b, init_rand_int t)
       | Event(s,b) -> Event(s,b)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(init_rand_int t1, init_rand_int t2)
@@ -2468,7 +2400,6 @@ let rec init_rand_int t =
       | SetField (_, _, _, _, _, _) -> assert false
       | Proj (_, _, _, _) -> assert false
       | Record _ -> assert false
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
       | RandInt _ -> assert false
   in
@@ -2562,18 +2493,6 @@ let rec print_term' pri fm t =
           let p = 6 in
           let s1,s2 = paren pri p in
             fprintf fm "%snot %a%s" s1 (print_term' p) t s2
-      | Label(true, t) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%sl_then %a%s" s1 (print_term' p) t s2
-      | Label(false, t) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%sl_else %a%s" s1 (print_term' p) t s2
-      | LabelInt(n, t) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%sbr%d %a%s" s1 n (print_term' p) t s2
       | Event(s,b) -> fprintf fm "{%s}" s
       | Record fields ->
           let rec aux fm = function
@@ -2761,7 +2680,6 @@ and unify_sub_term t typ =
           let t2' = unify_sub_term t2 t2.typ in
             BinOp(op, t1', t2')
       | Not t -> Not (unify_sub_term t t.typ)
-      | Label(b, t) -> Label(b, unify_sub_term t typ)
       | Event(s,b) -> Event(s,b)
       | Record fields -> assert false
       | Proj(i,s,f,t) -> assert false
@@ -2822,7 +2740,6 @@ and unify_sub_term t typ =
               | _ -> assert false
           in
             Snd (unify_sub_term t typ')
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
   in
     {desc=desc; typ=typ}
@@ -2886,8 +2803,6 @@ and rename_tvar map t =
             Let(flag, bindings', t2')
       | BinOp(op, t1, t2) -> BinOp(op, rename_tvar map t1, rename_tvar map t2)
       | Not t1 ->Not (rename_tvar map t1)
-      | Label(b, t1) -> Label(b, rename_tvar map t1)
-      | LabelInt(n, t1) -> LabelInt(n, rename_tvar map t1)
       | Event(s,b) -> Event(s,b)
       | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,rename_tvar map t1)) fields)
       | Proj(i,s,f,t1) -> Proj(i,s,f,rename_tvar map t1)
@@ -2991,9 +2906,6 @@ Format.printf "%a@." pp_print_term t;
       | Not t ->
           let map,t' = rename_poly_funs f t in
             map, Not t'
-      | Label(b, t) -> 
-          let map,t' = rename_poly_funs f t in
-            map, Label(b, t')
       | Event(s,b) -> [], Event(s,b)
       | Record fields -> assert false
       | Proj(i,s,f,t) -> assert false
@@ -3028,7 +2940,6 @@ Format.printf "%a@." pp_print_term t;
       | Snd t ->
           let map,t' = rename_poly_funs f t in
             map, Snd t'
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
   in
     map, {desc=desc; typ=t.typ}
@@ -3082,7 +2993,6 @@ let () = Format.printf "RENAME[%n]: %s@." (List.length tvars) (Id.name f) in
       | Let _ -> assert false
       | BinOp(op, t1, t2) -> BinOp(op, copy_poly_funs false t1, copy_poly_funs false t2)
       | Not t -> Not (copy_poly_funs false t)
-      | Label(b, t) -> Label(b, copy_poly_funs false t)
       | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,copy_poly_funs false t)) fields)
       | Proj(i,s,f,t) -> Proj(i,s,f,copy_poly_funs false t)
@@ -3097,7 +3007,6 @@ let () = Format.printf "RENAME[%n]: %s@." (List.length tvars) (Id.name f) in
       | Pair(t1,t2) -> Pair(copy_poly_funs false t1, copy_poly_funs false t2)
       | Fst t -> Fst (copy_poly_funs false t)
       | Snd t -> Snd (copy_poly_funs false t)
-      | LabelInt (_, _) -> assert false
       | RandValue (_, _) -> assert false
   in
     {desc=desc; typ=t.typ}
@@ -3168,12 +3077,6 @@ let rec trans_let t =
       | Not t1 ->
           let t1' = trans_let t1 in
             Not t1'
-      | Label(b, t1) ->
-          let t1' = trans_let t1 in
-            Label(b, t1')
-      | LabelInt(n, t1) ->
-          let t1' = trans_let t1 in
-            LabelInt(n, t1')
       | Event(s,b) -> Event(s,b)
       | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,trans_let t1)) fields)
       | Proj(i,s,f,t1) -> Proj(i,s,f,trans_let t1)
@@ -3205,3 +3108,38 @@ let rec is_value t =
 
 
 
+let rec has_exception t =
+  match t.desc with
+      Unit -> false
+    | True -> false
+    | False -> false
+    | Unknown -> false
+    | Int n -> false
+    | NInt y -> false
+    | RandInt b -> false
+    | RandValue(typ,b) -> false
+    | Var y -> false
+    | Fun(y, t) -> has_exception t
+    | App(t1, ts) -> has_exception t1 || List.exists has_exception ts
+    | If(t1, t2, t3) -> has_exception t1 || has_exception t2 || has_exception t3
+    | Branch(t1, t2) -> has_exception t1 || has_exception t2
+    | Let(flag, bindings, t2) ->
+        has_exception t2 || List.exists (fun (_,_,t) -> has_exception t) bindings
+    | BinOp(op, t1, t2) -> has_exception t1 || has_exception t2
+    | Not t1 -> has_exception t1
+    | Event(s,b) -> false
+    | Record fields ->  List.exists (fun (f,(s,t1)) -> has_exception t1) fields
+    | Proj(i,s,f,t1) -> has_exception t1
+    | SetField(n,i,s,f,t1,t2) -> has_exception t1 || has_exception t2
+    | Nil -> false
+    | Cons(t1,t2) -> has_exception t1 || has_exception t2
+    | Constr(s,ts) -> List.exists has_exception ts
+    | Match(t1,pats) ->
+        let aux (pat,cond,t1) = (match cond with None -> false | Some c -> has_exception c) || has_exception t1 in
+          has_exception t1 || List.exists aux pats
+    | Raise t -> true
+    | TryWith(t1,t2) -> true || has_exception t1
+    | Pair(t1,t2) -> has_exception t1 || has_exception t2
+    | Fst t -> has_exception t
+    | Snd t -> has_exception t
+    | Bottom -> false
