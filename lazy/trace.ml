@@ -213,8 +213,8 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
   in
   let tt = Term.subst (sub_inv nd.name) (List.hd tts) in
   let tp = Term.subst (sub_inv nd.name) (List.hd tps) in
-  let ttw = Term.subst (sub_inv nd.name) (ApronInterface.widen (List.map Term.bor (hoge tts))) in
-  let tpw = Term.subst (sub_inv nd.name) (ApronInterface.widen (List.map Term.bor (hoge tps))) in
+  let ttw = if Flags.enable_widening then Term.subst (sub_inv nd.name) (ApronInterface.widen (List.map Term.bor (hoge tts))) else Term.tunit(*dummy*) in
+  let tpw = if Flags.enable_widening then Term.subst (sub_inv nd.name) (ApronInterface.widen (List.map Term.bor (hoge tps))) else Term.tunit(*dummy*)in
   let interp =
     let t1, t2, tw1, tw2 =
       if nd.closed then

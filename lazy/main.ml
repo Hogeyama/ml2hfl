@@ -154,10 +154,28 @@ let test_apply_apply2 () =
   Format.printf "%a" Prog.pr prog;
   prog
 
+let test_foo () =
+  let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = Term.ttrue; Fdef.body = Term.apply (Term.make_var "check") [Term.apply (Term.make_var "f") [Term.make_var "h"]; Term.tint 2] } in
+  let f = { Fdef.attr = []; Fdef.name = Idnt.make "f"; Fdef.args = [Idnt.make "g"]; Fdef.guard = Term.ttrue; Fdef.body = Term.apply (Term.make_var "g") [Term.make_var "inc"] } in
+  let h = { Fdef.attr = []; Fdef.name = Idnt.make "h"; Fdef.args = [Idnt.make "k"]; Fdef.guard = Term.ttrue; Fdef.body = Term.apply (Term.make_var "k") [Term.apply (Term.make_var "k") [Term.tint 0]] } in
+  let inc = { Fdef.attr = []; Fdef.name = Idnt.make "inc"; Fdef.args = [Idnt.make "x"]; Fdef.guard = Term.ttrue; Fdef.body = Term.add (Term.make_var "x") (Term.tint 1) } in
+  let check1 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.eqInt (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.tunit} in
+  let check2 = { Fdef.attr = []; Fdef.name = Idnt.make "check"; Fdef.args = [Idnt.make "x1"; Idnt.make "x2"]; guard = Term.neqInt (Term.make_var "x1") (Term.make_var "x2"); Fdef.body = Term.tfail} in
+  let prog = { Prog.attr = [];
+               Prog.fdefs = [main; f; h; inc; check1; check2];
+               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
+                             Idnt.make "f", SimType.tfun [SimType.tfun [SimType.tfun [SimType.Int; SimType.Int]; SimType.Int]; SimType.Int];
+                             Idnt.make "h", SimType.tfun [SimType.tfun [SimType.Int; SimType.Int]; SimType.Int];
+                             Idnt.make "inc", SimType.tfun [SimType.Int; SimType.Int];
+                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.main = main.Fdef.name } in
+  Format.printf "%a" Prog.pr prog;
+  prog
+
 let _ =
   let _ = Cvc3Interface.open_cvc3 () in
   let _ =
-		  match 2 with
+		  match 10 with
 		    0 -> let _ = Verifier.verify (test_sum ()) in ()
 		  | 1 -> let _ = Verifier.verify (test_sum_assert ()) in ()
 		  | 2 -> let _ = Verifier.infer_abst_type [0; 1; 0; 1; 0; 1] (test_copy_copy ()) in ()
@@ -168,5 +186,6 @@ let _ =
 		  | 7 -> Verifier.verify (test_applyh2 ())
 		  | 8 -> Verifier.verify (test_apply_apply ())
 		  | 9 -> let _ = Verifier.infer_abst_type [0; 0; 0; 1] (test_apply_apply2 ()) in ()
+		  | 10 -> Verifier.verify (test_foo ())
   in
   Cvc3Interface.close_cvc3 ()

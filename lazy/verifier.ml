@@ -18,7 +18,7 @@ let verify prog =
 				  let eptrs = List.map Trace.of_error_path eps(*eps'*) in
       let fcs = List.unique (Util.concat_map Trace.function_calls_of eps) in
       let env = Trace.infer_env prog eptrs fcs in
-      let _ = Format.printf "sized types:@.  %a@." SizType.pr_env env in
+      let _ = Format.printf "interaction types:@.  %a@." SizType.pr_env env in
       if SizType.check_prog env prog then
         Format.printf "@.The program is safe@."
       else
@@ -42,15 +42,17 @@ let infer_abst_type cex prog =
   let fcs = List.unique (Util.concat_map Trace.function_calls_of eps) in
   let env = Trace.infer_env prog eptrs fcs in
 (**)
-  let _ = Format.printf "sized types:@.  %a@." SizType.pr_env env in
-(**)
+  let _ = Format.printf "interaction types:@.  %a@." SizType.pr_env env in
 (*
   let env = List.map (fun (f, sty) -> f, RefType.of_sized_type sty) env in
-  let _ = Format.printf "refinement types:@.  %a@." RefType.pr_env env' in
+  let _ = Format.printf "refinement types:@.  %a@." RefType.pr_env env in
+  let env = List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env in  
 *)
   let env = List.map (fun (f, sty) -> f, AbsType.of_sized_type f sty) env in
-(*
-  let env = List.map (fun ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys)) (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env) in
-*)
+  let env =
+    List.map
+      (fun ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys))
+      (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env)
+  in
   let _ = Format.printf "abstraction types:@.  %a@." AbsType.pr_env env in
   env

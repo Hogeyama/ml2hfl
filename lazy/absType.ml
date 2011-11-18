@@ -133,5 +133,16 @@ let of_sized_type f sty =
     List.iter (Format.printf "%a: %a@." Var.pr f Term.pr) ps'';
     aty
 
-
-
+let rec of_refinement_type rty =
+  match rty with
+    RefType.Base(x, RefType.Unit, t) -> Base(Unit, x, if t = Term.ttrue then [] else [t])
+  | RefType.Base(x, RefType.Bool, t) -> Base(Bool, x, if t = Term.ttrue then [] else [t])
+  | RefType.Base(x, RefType.Int, t) -> Base(Int, x, if t = Term.ttrue then [] else [t])
+  | RefType.Fun(xs) ->
+      let res = List.map (fun (x, rty1, rty2) -> x, (of_refinement_type rty1, of_refinement_type rty2)) xs in
+      let xs = List.map fst res in
+      let atys1 = List.map fst (List.map snd res) in
+      let atys2 = List.map snd (List.map snd res) in
+      let x = Var.new_var () in
+      let atys2 = List.map2 (fun y aty -> let sub z = if z = y then Term.make_var2 x else raise Not_found in subst sub aty) xs atys2 in
+      Fun(x, merge atys1, merge atys2)

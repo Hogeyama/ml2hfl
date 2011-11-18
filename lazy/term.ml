@@ -303,7 +303,9 @@ let rec redex_of env t =
 
 let rec dnf t =
   match fun_args t with
-    Const(_, Const.True), [] ->
+    Var(_, _), [] ->
+      [[t]]
+  | Const(_, Const.True), [] ->
       [[]]
   | Const(_, Const.False), [] ->
       []
@@ -317,10 +319,12 @@ let rec dnf t =
       dnfn t
   | Const(_, bop), [_; _] ->
       [[t]]
-  | t,_-> Format.printf "@.%a@." pr t; assert false
+  | t, _-> Format.printf "@.%a@." pr t; assert false
 and dnfn t =
   match fun_args t with
-    Const(_, Const.True), [] ->
+    Var(_, _), [] ->
+      [[t]]
+  | Const(_, Const.True), [] ->
       []
   | Const(_, Const.False), [] ->
       [[]]
@@ -334,7 +338,7 @@ and dnfn t =
       dnf t
   | Const(a, bop), [t1; t2] ->
       [[apply (Const(a, Const.bnot_ibin bop)) [t1; t2]]]
-  | _ -> assert false
+  | t, _-> Format.printf "@.%a@." pr t; assert false
 
 let term_of_arith nxs n =
   let ts =
