@@ -1078,7 +1078,7 @@ and term_of_ac ac =
   match ac with
     Cpred _ -> assert false
   | Csub(rty1,rty2) -> assert false
-  | Cterm t -> canonize ((*simplify*) t)
+  | Cterm t -> Trans.canonize ((*simplify*) t)
   | Cimp(c1,c2) ->
       let t1 = term_of c1 in
       let t2 = term_of c2 in

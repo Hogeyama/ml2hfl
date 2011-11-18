@@ -668,7 +668,7 @@ let from_use_file ast =
     | Decl_exc(exc,typs) -> t(*Exception(exc,typs,t)*)
   in
   let t = List.fold_left aux {desc=Unit;typ=TUnit} defs in
-    merge_let_fun t
+    Trans.merge_let_fun t
 
 
 

@@ -487,8 +487,10 @@ let rec encode_pair t =
   in
     {desc=desc; typ=typ'}
 *)
-let abstract_list t = abst_list t
-
+let abstract_list t =
+  let t' = abst_list t in
+  let () = Type_check.check t' Type.TUnit in    
+    t'
 
 
 let rec abst_datatype_typ = function

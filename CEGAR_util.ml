@@ -317,10 +317,10 @@ let move_event (f,xs,t1,e,t2) =
     f, xs, t1, e', t2'
 
 let trans_prog t =
-  let t = Syntax.trans_let t in
+  let t = Trans.trans_let t in
   let () = if false then Format.printf "trans_let :@.%a\n\n@." (Syntax.print_term true) t in
   let main = new_id "main" in
-  let defs,t = Syntax.lift t in
+  let defs,t = Trans.lift t in
   let defs_t,t' = trans_term [] [] t in
   let defs' =
     match !Flag.cegar with

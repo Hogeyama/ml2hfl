@@ -68,7 +68,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
-	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo CEGAR_util.cmo \
+	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo type_check.cmo trans.cmo CEGAR_util.cmo \
 	lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
 	lazy/util.cmo lazy/flags.cmo \
 	lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/simType.cmo lazy/arith.cmo lazy/term.cmo \
@@ -76,10 +76,11 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	lazy/prog.cmo lazy/ctree.cmo lazy/ctreeExpander.cmo lazy/sizType.cmo lazy/trace.cmo lazy/refType.cmo \
 	lazy/absType.cmo lazy/verifier.cmo \
 	lazyInterface.cmo \
-	type_decl.cmo type_check.cmo CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
+	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo CEGAR_abst_CPS.cmo \
 	$(TRECS)/trecs.cmo trecsInterface.cmo \
-	ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo main.cmo
+	ModelCheck_util.cmo ModelCheck.cmo ModelCheck_CPS.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
+	main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)

@@ -317,7 +317,7 @@ let rec dnf t =
       dnfn t
   | Const(_, bop), [_; _] ->
       [[t]]
-  | _ -> assert false
+  | t,_-> Format.printf "@.%a@." pr t; assert false
 and dnfn t =
   match fun_args t with
     Const(_, Const.True), [] ->

@@ -306,11 +306,7 @@ let rec trans_exc ct ce t =
     | Snd t ->
         let ct' t1 = ct (make_snd t1) in
           trans_exc ct' ce t
-    | _ -> (Format.printf "%a@." pp_print_term t; assert false)
-let trans_exc t =
-  let u = Id.new_var "u" typ_event in
-  let ce _ = make_let [u, [], fail_term] unit_term in
-    trans_exc (fun x -> x) ce t
+    | _ -> Format.printf "%a@." pp_print_term t; assert false
 
 
 type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
@@ -429,7 +425,6 @@ let rec remove_pair t typ_opt =
 
 let remove_pair t =
   let t' = root (remove_pair t None) in
-Format.printf "%a@." pp_print_term' t';
   let () = Type_check.check t' TUnit in
     t'
 
@@ -795,8 +790,6 @@ let rec transform c {t_cps=t; typ_cps=typ} =
           then
             let r = Id.new_var "r" (trans_typ typ) in
             let k = Id.new_var "k" (TFun(r,TUnit)) in
-Format.printf "VAR: %a: %a ==> %a@." print_id k print_typ_cps typ print_typ (trans_typ typ);
-Format.printf "VAR: %a: %a@." print_id k print_typ k.Id.typ;
             let c1 x = make_app x [make_var k] in
             let cc = List.fold_right (fun t cc -> fun x -> transform (fun y -> cc (make_app x [y])) t) ts c1 in
               make_let' k [r] (c (make_var r)) (transform cc t1)
@@ -864,15 +857,58 @@ let transform = transform (fun x -> x)
 
 
 
+let rec has_exception t =
+  match t.desc with
+      Unit -> false
+    | True -> false
+    | False -> false
+    | Unknown -> false
+    | Int n -> false
+    | NInt y -> false
+    | RandInt b -> false
+    | RandValue(typ,b) -> false
+    | Var y -> false
+    | Fun(y, t) -> has_exception t
+    | App(t1, ts) -> has_exception t1 || List.exists has_exception ts
+    | If(t1, t2, t3) -> has_exception t1 || has_exception t2 || has_exception t3
+    | Branch(t1, t2) -> has_exception t1 || has_exception t2
+    | Let(flag, bindings, t2) ->
+        has_exception t2 || List.exists (fun (_,_,t) -> has_exception t) bindings
+    | BinOp(op, t1, t2) -> has_exception t1 || has_exception t2
+    | Not t1 -> has_exception t1
+    | Event(s,b) -> false
+    | Record fields ->  List.exists (fun (f,(s,t1)) -> has_exception t1) fields
+    | Proj(i,s,f,t1) -> has_exception t1
+    | SetField(n,i,s,f,t1,t2) -> has_exception t1 || has_exception t2
+    | Nil -> false
+    | Cons(t1,t2) -> has_exception t1 || has_exception t2
+    | Constr(s,ts) -> List.exists has_exception ts
+    | Match(t1,pats) ->
+        let aux (pat,cond,t1) = (match cond with None -> false | Some c -> has_exception c) || has_exception t1 in
+          has_exception t1 || List.exists aux pats
+    | Raise t -> true
+    | TryWith(t1,t2) -> true || has_exception t1
+    | Pair(t1,t2) -> has_exception t1 || has_exception t2
+    | Fst t -> has_exception t
+    | Snd t -> has_exception t
+    | Bottom -> false
+
 
 let trans t =
-  let cps_pre = infer_cont_pos [] t in
-  let () = if true then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
-  let cps = transform cps_pre in
-  let () = if true then Format.printf "CPS:@.%a@." pp_print_term cps in
-  let () = Type_check.check cps TUnit in
-    cps
-
+  let t' =
+    if has_exception t
+    then
+      let u = Id.new_var "u" typ_event in
+      let ce _ = make_let [u, [], fail_term] unit_term in
+        trans_exc (fun x -> x) ce t
+    else
+      let cps_pre = infer_cont_pos [] t in
+      let () = if false then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
+      let cps = transform cps_pre in
+        cps
+  in
+    Type_check.check t' TUnit;
+    t'
 
 
 

@@ -1,5 +1,5 @@
 
-(** *)
+(** Syntax of intermediate language *)
 
 type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
@@ -72,6 +72,7 @@ val typ_event : typ
 val typ_event_cps : typ
 val typ_excep : typ ref
 
+(** {6 Term constructor} *)
 val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term
@@ -115,8 +116,13 @@ val make_pvar : id -> typed_pattern
 val make_pconst : typed_term -> typed_pattern
 val make_pnil : typ -> typed_pattern
 val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
+val imply : typed_term -> typed_term -> typed_term
+val and_list : typed_term list -> typed_term
 
+(** {6 Term destructor} *)
+val decomp_fun : typed_term -> id list * typed_term
 
+(** {6 Misc} *)
 val subst : id -> typed_term -> typed_term -> typed_term
 val subst_int : int -> typed_term -> typed_term -> typed_term
 val subst_term : (id * typed_term) list -> typed_term -> typed_term
@@ -128,34 +134,20 @@ val get_fv2 : typed_term -> id list
 val get_args : typ -> id list
 val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
-val merge_let_fun : typed_term -> typed_term
-(** [let f ... = fun x -> t] や [let f ... = let g x = t in g] を [let f ... x = t] に *)
-val imply : typed_term -> typed_term -> typed_term
-val and_list : typed_term list -> typed_term
-val lift : typed_term -> (id * (id list * typed_term)) list * typed_term
-(** [lift t] で，[t] をlambda-lift する．the definitions of let expressions must be side-effect free *)
-
-val canonize : typed_term -> typed_term
-val part_eval : typed_term -> typed_term
-val add_string : string -> typed_term -> typed_term
-val remove_unused : typed_term -> typed_term
+val get_vars_pat : typed_pattern -> id list
 
 val eval : typed_term -> typed_term
 val eta_expand : typed_term -> typed_term
 val normalize_bool_exp : typed_term -> typed_term
 val get_and_list : typed_term -> typed_term list
 val merge_geq_leq : typed_term -> typed_term
-val set_target : typed_term -> typed_term
 
 val max_pat_num : typed_term -> int
 val max_label_num : typed_term -> int
 val is_external : id -> bool
-val init_rand_int : typed_term -> typed_term
-val copy_poly_funs : typed_term -> typed_term
-val trans_let : typed_term -> typed_term
-(** returns a term whose definitions of let expressions are side-effect free *)
 val is_value : typed_term -> bool
-val has_exception : typed_term -> bool
+val init_rand_int : typed_term -> typed_term
+
 
 (** {6 Printing} *)
 
@@ -174,12 +166,10 @@ val print_constr_list : Format.formatter -> literal list -> unit
 val pp_print_typ : Format.formatter -> typ -> unit
 (** Same as [print_typ] *)
 
-val pp_print_term : Format.formatter -> typed_term -> unit
-val pp_print_term' : Format.formatter -> typed_term -> unit
-val pp_print_term_typ : Format.formatter -> typed_term -> unit
-val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
-
 val print_term : bool -> Format.formatter -> typed_term -> unit
 val print_term' : Format.formatter -> typed_term -> unit
-
-
+val pp_print_term : Format.formatter -> typed_term -> unit
+val pp_print_term' : Format.formatter -> typed_term -> unit
+(** Same as [print_term'] *)
+val pp_print_term_typ : Format.formatter -> typed_term -> unit
+val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit

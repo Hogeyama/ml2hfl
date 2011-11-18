@@ -18,7 +18,7 @@ let linconstr_of env t =
           Const.EqInt, [], tt
       | Term.Const(_, Const.False), [] ->
           Const.EqInt, [], ff
-      | _ -> assert false)
+      | t,_ -> Format.printf "ERROR: %a@." Term.pr t; assert false)
   in
   let expr = Apron.Linexpr1.make env in
   Apron.Linexpr1.set_array expr

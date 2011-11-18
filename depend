@@ -791,8 +791,8 @@ ocaml-3.12.0/driver/compile.cmx: ocaml-3.12.0/utils/warnings.cmx \
     ocaml-3.12.0/utils/config.cmx ocaml-3.12.0/utils/clflags.cmx \
     ocaml-3.12.0/utils/ccomp.cmx ocaml-3.12.0/bytecomp/bytegen.cmx \
     ocaml-3.12.0/driver/compile.cmi
-flag.cmo:
-flag.cmx:
+flag.cmo: /usr/lib/ocaml/format.cmi
+flag.cmx: /usr/lib/ocaml/format.cmx
 utilities.cmo: /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/sys.cmi \
     /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi
@@ -825,11 +825,19 @@ typing.cmo: utilities.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
     CEGAR_type.cmo CEGAR_syntax.cmo /usr/lib/ocaml/array.cmi
 typing.cmx: utilities.cmx /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx /usr/lib/ocaml/array.cmx
-CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo syntax.cmi \
+type_check.cmo: type_decl.cmo type.cmo syntax.cmi /usr/lib/ocaml/list.cmi \
+    id.cmo /usr/lib/ocaml/format.cmi
+type_check.cmx: type_decl.cmx type.cmx syntax.cmx /usr/lib/ocaml/list.cmx \
+    id.cmx /usr/lib/ocaml/format.cmx
+trans.cmo: utilities.cmo type_check.cmo type.cmo syntax.cmi \
+    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo
+trans.cmx: utilities.cmx type_check.cmx type.cmx syntax.cmx \
+    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx
+CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo trans.cmo syntax.cmi \
     /usr/lib/ocaml/random.cmi /usr/lib/ocaml/list.cmi id.cmo \
     /usr/lib/ocaml/format.cmi flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     CEGAR_print.cmo /usr/lib/ocaml/array.cmi
-CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx syntax.cmx \
+CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx \
     /usr/lib/ocaml/random.cmx /usr/lib/ocaml/list.cmx id.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
     CEGAR_print.cmx /usr/lib/ocaml/array.cmx
@@ -975,10 +983,6 @@ type_decl.cmo: utilities.cmo type.cmo syntax.cmi /usr/lib/ocaml/list.cmi \
     flag.cmo
 type_decl.cmx: utilities.cmx type.cmx syntax.cmx /usr/lib/ocaml/list.cmx \
     flag.cmx
-type_check.cmo: type_decl.cmo type.cmo syntax.cmi /usr/lib/ocaml/list.cmi \
-    id.cmo /usr/lib/ocaml/format.cmi
-type_check.cmx: type_decl.cmx type.cmx syntax.cmx /usr/lib/ocaml/list.cmx \
-    id.cmx /usr/lib/ocaml/format.cmx
 CPS.cmo: utilities.cmo typing.cmo type_check.cmo type.cmo syntax.cmi \
     /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo CPS.cmi
 CPS.cmx: utilities.cmx typing.cmx type_check.cmx type.cmx syntax.cmx \
@@ -991,7 +995,7 @@ CEGAR_CPS.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
     CEGAR_print.cmx /usr/lib/ocaml/array.cmx CEGAR_CPS.cmi
 parser_wrapper.cmo: utilities.cmo ocaml-3.12.0/typing/types.cmi \
     ocaml-3.12.0/typing/typemod.cmi ocaml-3.12.0/typing/typedtree.cmi \
-    type_decl.cmo type.cmo syntax.cmi ocaml-3.12.0/typing/subst.cmi \
+    type_decl.cmo type.cmo trans.cmo syntax.cmi ocaml-3.12.0/typing/subst.cmi \
     /usr/lib/ocaml/string.cmi /usr/lib/ocaml/scanf.cmi \
     ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/path.cmi \
     ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/location.cmi \
@@ -1003,7 +1007,7 @@ parser_wrapper.cmo: utilities.cmo ocaml-3.12.0/typing/types.cmi \
     ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi
 parser_wrapper.cmx: utilities.cmx ocaml-3.12.0/typing/types.cmx \
     ocaml-3.12.0/typing/typemod.cmx ocaml-3.12.0/typing/typedtree.cmx \
-    type_decl.cmx type.cmx syntax.cmx ocaml-3.12.0/typing/subst.cmx \
+    type_decl.cmx type.cmx trans.cmx syntax.cmx ocaml-3.12.0/typing/subst.cmx \
     /usr/lib/ocaml/string.cmx /usr/lib/ocaml/scanf.cmx \
     ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/path.cmx \
     ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/location.cmx \
@@ -1025,10 +1029,10 @@ wrapper2.cmo: utilities.cmo /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmi \
 wrapper2.cmx: utilities.cmx /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmx \
     /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
     flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx wrapper2.cmi
-abstract.cmo: utilities.cmo type_decl.cmo type.cmo syntax.cmi \
+abstract.cmo: utilities.cmo type_decl.cmo type_check.cmo type.cmo syntax.cmi \
     /usr/lib/ocaml/set.cmi /usr/lib/ocaml/list.cmi id.cmo flag.cmo \
     abstract.cmi
-abstract.cmx: utilities.cmx type_decl.cmx type.cmx syntax.cmx \
+abstract.cmx: utilities.cmx type_decl.cmx type_check.cmx type.cmx syntax.cmx \
     /usr/lib/ocaml/set.cmx /usr/lib/ocaml/list.cmx id.cmx flag.cmx \
     abstract.cmi
 CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
@@ -1085,11 +1089,11 @@ feasibility.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
 feasibility.cmx: wrapper2.cmx utilities.cmx /usr/lib/ocaml/list.cmx \
     /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
     CEGAR_print.cmx feasibility.cmi
-RefineDepTyp.cmo: wrapper.cmi utilities.cmo type.cmo syntax.cmi \
+RefineDepTyp.cmo: wrapper.cmi utilities.cmo type.cmo trans.cmo syntax.cmi \
     /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
     feasibility.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     CEGAR_print.cmo
-RefineDepTyp.cmx: wrapper.cmx utilities.cmx type.cmx syntax.cmx \
+RefineDepTyp.cmx: wrapper.cmx utilities.cmx type.cmx trans.cmx syntax.cmx \
     /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx \
     feasibility.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
     CEGAR_print.cmx
@@ -1109,8 +1113,8 @@ CEGAR.cmx: wrapper2.cmx wrapper.cmx utilities.cmx refine.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_CPS.cmx CEGAR_abst.cmx
 main.cmo: wrapper2.cmi wrapper.cmi utilities.cmo /usr/lib/ocaml/unix.cmi \
     ocaml-3.12.0/typing/typetexp.cmi ocaml-3.12.0/typing/typemod.cmi \
-    ocaml-3.12.0/typing/typecore.cmi type_check.cmo /usr/lib/ocaml/sys.cmi \
-    syntax.cmi /usr/lib/ocaml/string.cmi refine.cmi \
+    ocaml-3.12.0/typing/typecore.cmi type_check.cmo type.cmo trans.cmo \
+    /usr/lib/ocaml/sys.cmi syntax.cmi /usr/lib/ocaml/string.cmi refine.cmi \
     /usr/lib/ocaml/parsing.cmi parser_wrapper.cmo \
     ocaml-3.12.0/parsing/parser.cmi /usr/lib/ocaml/lexing.cmi \
     ocaml-3.12.0/parsing/lexer.cmi lazyInterface.cmo \
@@ -1120,8 +1124,8 @@ main.cmo: wrapper2.cmi wrapper.cmi utilities.cmo /usr/lib/ocaml/unix.cmi \
     /usr/lib/ocaml/arg.cmi abstract.cmi
 main.cmx: wrapper2.cmx wrapper.cmx utilities.cmx /usr/lib/ocaml/unix.cmi \
     ocaml-3.12.0/typing/typetexp.cmx ocaml-3.12.0/typing/typemod.cmx \
-    ocaml-3.12.0/typing/typecore.cmx type_check.cmx /usr/lib/ocaml/sys.cmx \
-    syntax.cmx /usr/lib/ocaml/string.cmx refine.cmx \
+    ocaml-3.12.0/typing/typecore.cmx type_check.cmx type.cmx trans.cmx \
+    /usr/lib/ocaml/sys.cmx syntax.cmx /usr/lib/ocaml/string.cmx refine.cmx \
     /usr/lib/ocaml/parsing.cmx parser_wrapper.cmx \
     ocaml-3.12.0/parsing/parser.cmx /usr/lib/ocaml/lexing.cmx \
     ocaml-3.12.0/parsing/lexer.cmx lazyInterface.cmx \
