@@ -315,6 +315,8 @@ let rec dnf t =
       dnf t1 @ dnf t2
   | Const(_, Const.Imply), [t1; t2] ->
       dnfn t1 @ dnf t2
+  | Const(_, Const.Iff), [t1; t2] ->
+      raise Util.ToBeImplemented
   | Const(_, Const.Not), [t] -> 
       dnfn t
   | Const(_, bop), [_; _] ->
@@ -334,11 +336,75 @@ and dnfn t =
       let tss1 = dnfn t1 in Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnfn t2)
   | Const(_, Const.Imply), [t1; t2] ->
       let tss1 = dnf t1 in Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnfn t2)
+  | Const(_, Const.Iff), [t1; t2] ->
+      raise Util.ToBeImplemented
   | Const(_, Const.Not), [t] -> 
       dnf t
   | Const(a, bop), [t1; t2] ->
       [[apply (Const(a, Const.bnot_ibin bop)) [t1; t2]]]
   | t, _-> Format.printf "@.%a@." pr t; assert false
+
+
+
+let rec unit_vars is_unit t =
+		match fun_args t with
+		  Var(_, v), [] ->
+      if is_unit then [v] else []
+		| Const(_, c), [] ->
+		    []
+		| Const(a, Const.And), [t1; t2]
+		| Const(a, Const.Or), [t1; t2]
+		| Const(a, Const.Imply), [t1; t2]
+		| Const(a, Const.Iff), [t1; t2]
+		| Const(a, Const.Lt), [t1; t2]
+		| Const(a, Const.Gt), [t1; t2]
+		| Const(a, Const.Leq), [t1; t2]
+		| Const(a, Const.Geq), [t1; t2]
+		| Const(a, Const.EqBool), [t1; t2]
+		| Const(a, Const.EqInt), [t1; t2]
+		| Const(a, Const.NeqBool), [t1; t2]
+		| Const(a, Const.NeqInt), [t1; t2]
+		| Const(a, Const.Add), [t1; t2]
+		| Const(a, Const.Sub), [t1; t2]
+		| Const(a, Const.Mul), [t1; t2]
+		| Const(a, Const.Minus), [t1; t2] ->
+		    unit_vars false t1 @ unit_vars false t2
+		| Const(a, Const.Not), [t] -> 
+		    unit_vars false t
+		| Const(a, Const.EqUnit), [t1; t2]
+		| Const(a, Const.NeqUnit), [t1; t2] ->
+		    unit_vars true t1 @ unit_vars true t2
+		| t, _-> Format.printf "@.%a@." pr t; assert false
+
+let rec boolean_vars is_boolean t =
+		match fun_args t with
+		  Var(_, v), [] ->
+      if is_boolean then [v] else []
+		| Const(_, c), [] ->
+		    []
+		| Const(a, Const.And), [t1; t2]
+		| Const(a, Const.Or), [t1; t2]
+		| Const(a, Const.Imply), [t1; t2]
+		| Const(a, Const.Iff), [t1; t2]
+		| Const(a, Const.EqBool), [t1; t2]
+		| Const(a, Const.NeqBool), [t1; t2] ->
+		    boolean_vars true t1 @ boolean_vars true t2
+		| Const(a, Const.Lt), [t1; t2]
+		| Const(a, Const.Gt), [t1; t2]
+		| Const(a, Const.Leq), [t1; t2]
+		| Const(a, Const.Geq), [t1; t2]
+		| Const(a, Const.EqUnit), [t1; t2]
+		| Const(a, Const.EqInt), [t1; t2]
+		| Const(a, Const.NeqUnit), [t1; t2]
+		| Const(a, Const.NeqInt), [t1; t2]
+		| Const(a, Const.Add), [t1; t2]
+		| Const(a, Const.Sub), [t1; t2]
+		| Const(a, Const.Mul), [t1; t2]
+		| Const(a, Const.Minus), [t1; t2] ->
+		    boolean_vars false t1 @ boolean_vars false t2
+		| Const(a, Const.Not), [t] -> 
+		    boolean_vars true t
+		| t, _-> Format.printf "@.%a@." pr t; assert false
 
 let term_of_arith nxs n =
   let ts =
@@ -381,6 +447,7 @@ let int_rel_of t =
       c, nxs, n
   | _ -> invalid_arg "Term.int_rel_of"
 
+(* ensure that the result does not have the constant () *)
 let rec simplify t =
   match fun_args t with
     Const(attr, Const.And), [t1; t2] ->
@@ -421,7 +488,14 @@ let rec simplify t =
         ttrue
       else
         apply (Const(attr, c)) [t1; t2]
-  | Const(attr, c), [t1; t2] when c = Const.NeqUnit || c = Const.NeqBool || c = Const.NeqInt ->
+  | Const(attr, Const.NeqUnit), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      (match t1, t2 with
+        Const(_, Const.Unit), Const(_, Const.Unit) ->
+          tfalse
+      | _ -> assert false)
+  | Const(attr, c), [t1; t2] when c = Const.NeqBool || c = Const.NeqInt ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
       (match t1, t2 with
@@ -441,3 +515,28 @@ let rec set_arity am t =
   | Ret(a, ret, t) -> Ret(a, set_arity am ret, set_arity am t)
   | Error(a) -> Error(a)
 *)
+
+
+(* require that ts are formulas *)
+let elim_unit_boolean ts =
+  let _ = assert (ts <> []) in
+  let uvs = List.unique (Util.concat_map (unit_vars false) ts) in
+  let ts =
+    if uvs = [] then
+      ts
+    else
+      let sub x = if List.mem x uvs then tunit else raise Not_found in
+      List.map (fun t -> simplify (subst sub t)) ts
+  in
+  let bvs = List.unique (Util.concat_map (boolean_vars true) ts) in
+  if bvs = [] then
+    [ts],
+    function [t] -> t | _ -> assert false
+  else
+		  let subs = Util.multiply_list_list (@) (List.map (fun b -> [[b, ttrue]; [b, tfalse]]) bvs) in
+		  List.map
+		    (fun sub ->
+		       List.map (fun t -> simplify (subst (fun x -> List.assoc x sub) t)) ts)
+		    subs,
+		  fun ts ->
+      bor (List.map2 (fun t sub -> band (t::(List.map (fun (b, t) -> eqBool (make_var2 b) t) sub))) ts subs)

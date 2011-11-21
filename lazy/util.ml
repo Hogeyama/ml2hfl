@@ -1,5 +1,7 @@
 open ExtList
 
+exception ToBeImplemented
+
 let rec prefix xs ys =
   match xs, ys with
     [], _ -> true
@@ -29,6 +31,8 @@ let rec diff xs ys =
         diff xs' ys
       else
         x'::(diff xs' ys)
+
+let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
 
 let rec find_map f xs =
   match xs with
@@ -110,15 +114,15 @@ let rec transpose_list xss =
     let xs, xss = List.split (List.map (function x::xs -> x, xs | _ -> assert false ) xss) in
     xs::transpose_list xss
 
-let multiply_list xss yss =
+let multiply_list f xs ys =
   concat_map
-    (fun xs ->
-      List.map (fun ys -> xs @ ys) yss)
-    xss
+    (fun x ->
+      List.map (fun y -> f x y) ys)
+    xs
 
-let multiply_list_list xsss =
+let multiply_list_list f xsss =
   List.fold_left
-    multiply_list
+    (multiply_list f)
     (List.hd xsss)
     (List.tl xsss)
 

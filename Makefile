@@ -23,6 +23,7 @@ CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
 INCLUDES = -I /usr/lib \
 	-I /usr/lib/ocaml \
+	-I /usr/local/lib \
 	-I /usr/local/lib/ocaml/3.12.0/gmp \
 	-I /usr/local/lib/ocaml/3.12.0/apron \
 	-I $(CSISAT)/lib \
@@ -134,7 +135,7 @@ csisat:
 	cd $(CSISAT); make
 
 # TODO: refine & write rule for bytecode
-trecs:
+trecs::
 	cd $(TRECS) && ocamlyacc parser.mly
 	cd $(TRECS) && ocamllex lexer.mll
 #	cd $(TRECS) && ocamlc -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml main.ml

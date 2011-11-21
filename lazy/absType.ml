@@ -102,7 +102,7 @@ let of_sized_type f sty =
       | SizType.Bool x
       | SizType.Int x ->
           let vars' = x::vars in
-          let ps1,ps2 = List.partition (fun p -> Utilities.subset (Term.fvs p) vars') ps in
+          let ps1,ps2 = List.partition (fun p -> Util.subset (Term.fvs p) vars') ps in
           let b =
             match sty with
                 SizType.Unit _ -> Unit

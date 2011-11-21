@@ -4,21 +4,12 @@ open ExtString
 let manpk = Polka.manager_alloc_strict ()
 (*let maneq = Polka.manager_alloc_equalities ()*)
 
-(* encoding true->0, false->1, is it OK??? *)
-let tt = 0
-let ff = 1
-
 let linconstr_of env t =
   let c, nxs, n =
     try
       Term.int_rel_of t
     with Invalid_argument(_) ->
-      (match Term.fun_args t with
-        Term.Const(_, Const.True), [] ->
-          Const.EqInt, [], tt
-      | Term.Const(_, Const.False), [] ->
-          Const.EqInt, [], ff
-      | t, _ -> Format.printf "Boolean variable not supported: %a@." Term.pr t; assert false)
+      Format.printf "Boolean and unit variables are not supported: %a@." Term.pr t; assert false
   in
   let expr = Apron.Linexpr1.make env in
   Apron.Linexpr1.set_array expr
@@ -127,17 +118,24 @@ let widen ts =
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let ts = List.map (fun t -> polyhedron_of env t) ts in
+  let tss, f = Term.elim_unit_boolean ts in
+  let aux ts =
+		  let ts = List.map (fun t -> polyhedron_of env t) ts in
 (*
-  Format.printf "poly: @[<hv>%a@]@ " (Util.pr_list Apron.Abstract1.print ",@ ") ts;
+		  Format.printf "poly: @[<hv>%a@]@ " (Util.pr_list Apron.Abstract1.print ",@ ") ts;
 *)
-  match ts with
-    t::ts ->
-      let ab = List.fold_left (fun t1 t2 -> widen2 t1 t2) t ts in
+		  let widen_aux ts =
+				  match ts with
+				    t::ts ->
+				      let ab = List.fold_left (fun t1 t2 -> widen2 t1 t2) t ts in
 (*
-      Format.printf "widen: @[%a@]@ " Apron.Abstract1.print ab;
+				      Format.printf "widen: @[%a@]@ " Apron.Abstract1.print ab;
 *)
-      let res = of_linconstrs (Apron.Abstract1.to_lincons_array manpk ab) in
-      Format.printf "widen_out: @[%a@]@]@ " Term.pr res;
-      res
-  | _ -> assert false
+				      let res = of_linconstrs (Apron.Abstract1.to_lincons_array manpk ab) in
+				      Format.printf "widen_out: @[%a@]@]@ " Term.pr res;
+				      res
+				  | _ -> assert false
+		  in
+		  widen_aux ts
+  in
+  f (List.map aux tss)
