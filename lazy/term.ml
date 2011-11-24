@@ -161,7 +161,13 @@ let iff t1 t2 =
     ttrue
   else
     apply (Const([], Const.Iff)) [t1; t2]
-    
+
+let iff2 t1 t2 =
+  if equiv t1 t2 then
+    ttrue
+  else
+    band [imply t1 t2; imply t2 t1]
+
 let add t1 t2 = apply (Const([], Const.Add)) [t1; t2]
 let rec sum ts =
   match ts with
@@ -447,7 +453,10 @@ let int_rel_of t =
       c, nxs, n
   | _ -> invalid_arg "Term.int_rel_of"
 
-(* ensure that the result does not have the constant () *)
+(* ensure that:
+  the result does not use () if t does not use a unit variable and
+  t1 =b t2 and t1 <>b t2 are replaced with t1 iff t2 and not (t1 iff t2) resp.
+  ToDo: check whether they are actually ensured *)
 let rec simplify t =
   match fun_args t with
     Const(attr, Const.And), [t1; t2] ->
@@ -481,28 +490,49 @@ let rec simplify t =
         Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) ->
           Const(attr, Const.Int(n1 - n2))
       | _ -> apply (Const(attr, Const.Sub)) [t1; t2])
-  | Const(attr, c), [t1; t2] when c = Const.EqUnit || c = Const.EqBool || c = Const.EqInt ->
+  | Const(attr, c), [t1; t2] when c = Const.EqUnit || c = Const.EqInt ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
       if t1 = t2 then
         ttrue
       else
         apply (Const(attr, c)) [t1; t2]
-  | Const(attr, Const.NeqUnit), [t1; t2] ->
+  | Const(attr, c), [t1; t2] when c= Const.NeqUnit || c = Const.NeqInt ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
-      (match t1, t2 with
-        Const(_, Const.Unit), Const(_, Const.Unit) ->
-          tfalse
-      | _ -> assert false)
-  | Const(attr, c), [t1; t2] when c = Const.NeqBool || c = Const.NeqInt ->
+      if t1 = t2 then
+        tfalse
+      else
+		      (match t1, t2 with
+		        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) when n1 <> n2 ->
+		          ttrue
+		      | _ -> apply (Const(attr, c)) [t1; t2])
+  | Const(attr, Const.EqBool), [t1; t2] ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
-      (match t1, t2 with
-        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) when n1 <> n2 ->
-          ttrue
-      | _ -> apply (Const(attr, c)) [t1; t2])
-  | _ -> t
+      if t1 = t2 then
+        ttrue
+      else
+        iff2 t1 t2
+  | Const(attr, Const.NeqBool), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      if t1 = t2 then
+        tfalse
+      else
+        bnot (iff2 t1 t2)
+  | Var(attr, x), [] ->
+      Var(attr, x)
+  | Const(attr, c), [] ->
+      Const(attr, c)
+  | Const(attr, c), [t] ->
+      let t = simplify t in
+      apply (Const(attr, c)) [t]
+  | Const(attr, c), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      apply (Const(attr, c)) [t1; t2]
+  | _ -> let _ = Format.printf "%a" pr t in assert false
 
 
 (*
@@ -517,7 +547,7 @@ let rec set_arity am t =
 *)
 
 
-(* require that ts are formulas *)
+(* require that ts are formulas, ensures that the result does not use =b *)
 let elim_unit_boolean ts =
   let _ = assert (ts <> []) in
   let uvs = List.unique (Util.concat_map (unit_vars false) ts) in

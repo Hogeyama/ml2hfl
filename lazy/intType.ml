@@ -22,13 +22,6 @@ let of_simple_type sty =
   in
   make (aux sty) Term.ttrue Term.ttrue
 
-let make_fun_shape tys ty =
-  let n = List.length tys in
-  List.fold_right
-    (fun ty retty -> Fun [ty, retty])
-    tys
-    ty
-
 let is_base ty =
   match ty with
     Unit(_) | Bool(_) | Int(_) -> true
@@ -69,20 +62,6 @@ let rec pr ppf sty =
       Format.fprintf ppf "%a" pr_shape sty.shape
   | _, _ ->
       Format.fprintf ppf "<@[<hov>%a |@ %a |@ %a@]>" Term.pr sty.pre pr_shape sty.shape Term.pr sty.post
-
-let merge_shapes shs =
-  match shs with
-    Fun(_)::_ ->
-        Fun
-          (Util.concat_map
-            (function (Fun(xs)) -> xs | _ -> assert false)
-            shs)
-  | [ty] ->
-      ty
-  | [] -> Fun [](*???*)
-  | _ ->
-      let _ = Format.printf ":%a:@." (Util.pr_list pr_shape ":") shs in
-      assert false
 
 let pr_bind ppf (f, sty) = Format.fprintf ppf "%a: %a" Var.pr f pr sty
 let pr_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_bind "@ ") env
@@ -157,30 +136,49 @@ let shape_env_of env fcs =
 		      (fun (x, _) -> Var.is_top x)
 		      fcs)
   in
-  let rec shape_of_x_uid (x, uid) =
+		let make_fun_shape tys ty =
+		  List.fold_right
+		    (fun ty retty -> Fun [ty, retty])
+		    tys
+		    ty
+		in
+		let merge_shapes shs =
+			 match shs with
+			   Fun(_)::_ ->
+			       Fun
+			         (Util.concat_map
+			           (function (Fun(xs)) -> xs | _ -> assert false)
+			           shs)
+			 | [ty] ->
+			     ty
+			 | [] -> assert false(*Fun []*)
+			 | _ ->
+			     let _ = Format.printf ":%a:@." (Util.pr_list pr_shape ":") shs in
+			     assert false
+		in
+  let rec shape_of (x, uid) =
     match env x with
       SimType.Unit -> Unit(x)
     | SimType.Bool -> Bool(x)
     | SimType.Int -> Int(x)
     | SimType.Fun(_, _) as ty ->
         let n = SimType.arity ty in
-        let ret = merge_shapes (shape_of (Var.T(x, uid, n))) in
-(*
-Format.printf "%a@." Var.pr (Var.T(x, uid, n));
-*)
+        let ret = merge_shapes (shapes_of (Var.T(x, uid, n))) in
+								(*
+								Format.printf "%a@." Var.pr (Var.T(x, uid, n));
+								*)
         make_fun_shape
           (List.init n
             (fun i ->
-              let args = shape_of (Var.T(x, uid, i)) in
-(*
-Format.printf "%a@." Var.pr (Var.T(x, uid, i));
-*)
-              merge_shapes args))
+														(*
+														Format.printf "%a@." Var.pr (Var.T(x, uid, i));
+														*)
+              merge_shapes (shapes_of (Var.T(x, uid, i)))))
           ret
     | _ ->
         let _ = Format.printf "%a:%d" Var.pr x uid in
         assert false
-  and shape_of x =
+  and shapes_of x =
     match env x with
       SimType.Unit -> [Unit(x)]
     | SimType.Bool -> [Bool(x)]
@@ -188,20 +186,24 @@ Format.printf "%a@." Var.pr (Var.T(x, uid, i));
     | SimType.Fun(_, _) as ty ->
         let res =
 		        List.map
-		          (fun uid -> shape_of_x_uid (x, uid))
+		          (fun uid -> shape_of (x, uid))
 		          (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
         in
         if res = [] then [(of_simple_type ty).shape] else res
   in
-  List.map (fun x_uid -> x_uid, shape_of_x_uid x_uid) tlfcs
+  List.map (fun x_uid -> x_uid, shape_of x_uid) tlfcs
 
-let of_summaries senv sums =
+let of_summaries prog sums fcs =
   List.map
     (fun (x_uid, sh) ->
       let pres = Util.filter_map (function `Pre(x_uid', t) when x_uid = x_uid' -> Some(t) | _ -> None) sums in
       let posts = Util.filter_map (function `Post(x_uid', t) when x_uid = x_uid' -> Some(t) | _ -> None) sums in
-      fst x_uid, canonize (make sh (if pres = [] then (*???*)Term.ttrue else Term.band pres) (if posts = [] then (*???*)Term.ttrue else Term.bor posts)))
-    senv
+      fst x_uid,
+      canonize
+        (make sh
+          (if pres = [] then (*???*)Term.ttrue else Term.band(*???*) pres)
+          (if posts = [] then (*???*)Term.ttrue else Term.bor(*???*) posts)))
+    (shape_env_of (Prog.type_of prog) fcs)
 
 
 let check_prog env prog = assert false

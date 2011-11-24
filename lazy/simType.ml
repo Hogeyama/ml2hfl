@@ -2,6 +2,11 @@ open ExtList
 
 type t = Unit | Bool | Int | Fun of t * t
 
+let is_base ty =
+  match ty with
+    Unit | Bool | Int -> true
+  | Fun(_, _) -> false
+
 let tfun tys =
   List.fold_right
     (fun ty1 ty2 -> Fun(ty1, ty2))
@@ -37,3 +42,13 @@ let rec pr ppf ty =
 let pr_bind ppf (x, ty) = Format.fprintf ppf "%a: %a" Var.pr x pr ty
 
 let equiv ty1 ty2 = ty1 = ty2
+
+let find_last_base ty =
+  let rec aux ty i j =
+    match ty with
+		    Unit | Bool | Int ->
+        j
+		  | Fun(ty1, ty2) ->
+		      aux ty2 (i + 1) (if is_base ty1 then i else j)
+  in
+  aux ty 0 (-1)

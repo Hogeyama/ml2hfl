@@ -47,7 +47,7 @@ let rec pr ppf tr =
 						    (snd nd.name)
 				  in
 				  let _ =
-				    let ts = nd.constr::List.rev (List.map Ctree.eq_xtty nd.subst) in
+				    let ts = nd.constr::List.rev (List.map CompTree.eq_xtty nd.subst) in
 				    if ts <> [] then
 						    Format.fprintf ppf "@,  @[<v>%a@]"
 						      (Util.pr_list Term.pr ", @,") ts
@@ -62,63 +62,17 @@ let rec pr ppf tr =
 						    Var.pr (fst nd.name)
 						    (snd nd.name)
 
-let rec function_calls_of ep =
-  match ep with
-    [] ->
-      []
-  | s::ep' ->
-      (match s with
-        Ctree.Call(x, _) ->
-          x::function_calls_of ep'
-      | _ -> function_calls_of ep')
-
-let of_error_path ep =
-		let rec path_set_open p =
-		  match p with
-		    Top -> Top
-		  | Path(up, nd, trs) ->
-        Path(path_set_open up, { nd with closed = false }, trs)
-  in
-  let rec aux (Loc(tr, p) as loc) ep0 =
-    match ep0 with
-      [] ->
-        assert false
-    | s::ep ->
-        (match s with
-          Ctree.Call(y, g) ->
-            if Var.is_top (fst y) then
-              aux (insert_down loc (make y true g [])) ep
-            else if Var.is_pos (fst y) then
-              let _ = assert (g = Term.ttrue) in
-              aux (down loc (Var.fc_of (fst y))) ep
-            else if Var.is_neg (fst y) then
-              let _ = assert (g = Term.ttrue) in
-		            aux (up loc) ep
-            else assert false
-        | Ctree.Arg(xttys) ->
-            let nd = get tr in
-            aux (Loc(set tr { nd with subst = xttys @ nd.subst }, p)) ep
-        | Ctree.Ret(x, t, ty) ->
-            let nd = get tr in
-            let nd' = { nd with subst = (x, t, ty)::nd.subst } in
-            let Var.T(f, _, _) = x in
-            if Var.is_pos f then
-              aux (up (Loc(set tr nd', p))) ep
-            else if Var.is_neg f then
-              aux (down (Loc(set tr nd', p)) (Var.fc_of x)) ep
-            else assert false
-        | Ctree.Nop ->
-            aux loc ep
-        | Ctree.Error ->
-            let _ = assert (ep = []) in
-            let nd = get tr in
-            root (Loc(set tr { nd with closed = false }, path_set_open p)))
-  in
-  match ep with
-    Ctree.Call(x, g)::ep -> aux (zipper (make x true g [])) ep
-  | _ -> assert false
-
 exception FeasibleErrorTrace of tree
+
+let rec path_set_open p =
+		match p with
+		  Top -> Top
+		| Path(up, nd, trs) ->
+      Path(path_set_open up, { nd with closed = false }, trs)
+
+
+
+
 
 let rec ancestor_of (x, uid) (x', uid') =
   (x = x' && uid = uid') ||
@@ -126,14 +80,22 @@ let rec ancestor_of (x, uid) (x', uid') =
     Var.V(_) -> false
   | Var.T(x', uid', _) -> ancestor_of (x, uid) (x', uid'))
 
+let rec visible y (Var.T(x', uid', arg') as z) =
+  match y with
+    Var.V(_) -> false
+  | Var.T(x, uid, arg) ->
+      (x = x' && uid = uid' && arg' <= arg) ||
+      (visible x z)
+
+(* for interaction type inference, (x, uid) is always a top level function call *)
 let term_of_nodes (x, uid) nds =
   let xttys = Util.concat_map (fun nd -> nd.subst) nds in
   let ts = List.map (fun nd -> nd.constr) nds in
   let xttys1, xttys2 =
     List.partition
-		    (function (Var.T(x', uid', _), _, _) ->
-		      (*true*)
-		      ancestor_of (x, uid) (x', uid')
+		    (function (Var.T(x', uid', _) as y, _, _) ->
+		      visible x y (* only for refinement type inference *)
+        || ancestor_of (x, uid) (x', uid')
 		    | (Var.V(_), _, _) -> assert false)
       xttys
   in
@@ -143,7 +105,7 @@ let term_of_nodes (x, uid) nds =
       (*Format.printf "%a@." Term.pr t;*)
       Term.subst sub t)
     (fun t1 t2 -> Term.equiv t1 t2)
-    (Term.band (List.map Ctree.eq_xtty xttys1 @ ts))
+    (Term.band (List.map CompTree.eq_xtty xttys1 @ ts))
 
 let rec nodes_of_tree (Node(nd, trs)) =
   nd::Util.concat_map nodes_of_tree trs
@@ -180,6 +142,7 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
       Var.V(_) ->
         Term.make_var2 x
     | Var.T(y', uid', arg) ->
+        (* ToDo: no need to be recursive??? *)
         if y = y' && uid = uid' then
           Term.make_var2 (Var.T(y', 0(*???*), arg))
         else
@@ -197,6 +160,7 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
       Var.V(_) ->
         Term.make_var2 x
     | Var.T(y', uid', arg) ->
+        (* ToDo: no need to be recursive??? *)
         if y = y' && uid' = 0 then
           Term.make_var2 (Var.T(y', uid, arg))
         else
@@ -224,6 +188,10 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
     in
 
 		  let interp =
+      if Term.equiv t2 Term.ttrue then
+        (* this is necessary for finding refinement types that witness the infeasibility of error trace *)
+        Term.ttrue
+      else
 		    try
 		      (if Flags.enable_widening then
 		        try
@@ -268,51 +236,20 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
       Top -> let _ = assert (interp = Term.ttrue) in None
     | Path(up, nd, trs) -> Some(root (Loc(Node({ nd with constr = Term.band [nd.constr; Term.bnot (interp)] }, trs), up)))
 
-let rec summaries_of eptr0 =
-  let rec summaries_of_aux sums eptr =
+let rec summaries_of constrs0 =
+  let rec summaries_of_aux sums constrs =
 (**)
-    let _ = Format.printf "error trace:@.  %a@." pr eptr in
+    let _ = Format.printf "constraints:@.  %a@." pr constrs in
 (**)
-    let sums', eptr_opt =
+    let sums', constrs_opt =
       try
-        summary_of (find_leaf eptr)
+        summary_of (find_leaf constrs)
       with CsisatInterface.No_interpolant ->
-        raise (FeasibleErrorTrace(eptr0))
+        raise (FeasibleErrorTrace(constrs0))
     in
-    match eptr_opt with
+    match constrs_opt with
       None -> sums' @ sums
-    | Some(eptr) ->
-        summaries_of_aux (sums' @ sums) eptr
+    | Some(constrs) ->
+        summaries_of_aux (sums' @ sums) constrs
   in
-  summaries_of_aux [] eptr0
-
-let infer_env prog eptrs fcs =
-(**)
-  let _ = Format.printf "error traces:@.  @[<v>%a@]@." (Util.pr_list pr "@,") eptrs in
-(**)
-  let sums = Util.concat_map
-    (fun eptr ->
-      Format.printf "@.";
-      summaries_of eptr)
-    eptrs
-  in
-(*
-  let _ = List.iter (function `Pre((x, uid), pre) ->
-    Format.printf "Pre(%a,%d): %a@." Var.pr x uid Term.pr pre
-  | `Post((x, uid), post) ->
-    Format.printf "Post(%a,%d): %a@." Var.pr x uid Term.pr post) sums
-  in
-*)
-  let senv = SizType.shape_env_of (Prog.type_of prog) fcs in
-  let env = SizType.of_summaries senv sums in
-  let env' =
-    List.map
-      (fun (f, sty) ->
-        f, SizType.of_simple_type sty)
-      (List.find_all
-        (fun (f, sty) -> not (List.mem_assoc f env))
-        (List.map
-          (fun (f, sty) -> Var.make f, sty)
-          prog.Prog.types))
-  in
-  env @ env'
+  summaries_of_aux [] constrs0

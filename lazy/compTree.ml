@@ -20,7 +20,7 @@ let ret_args f uid arity =
   Term.make_var2 (Var.T(f, uid, arity)),
   List.init arity (fun i -> Term.make_var2 (Var.T(f, uid, i)))
 
-let init_ctree_of prog = 
+let init_ctree_of prog =
   let uid = gen_id () in
   let ty_main = Prog.type_of prog (Var.V(prog.Prog.main)) in
   let ret, args =
@@ -71,12 +71,12 @@ let save_as_dot filename rt wl =
   in
   Util.save_as_dot filename vs es
 
-let rec paths_of (Node(_, _, cs)) =
-  Util.concat_map (fun (g, n) -> let ps = paths_of n in if ps = [] then [[g]] else List.map (fun p -> g::p) ps) !cs
+let rec traces_of (Node(_, _, cs)) =
+  Util.concat_map (fun (g, n) -> let ps = traces_of n in if ps = [] then [[g]] else List.map (fun p -> g::p) ps) !cs
 
-let error_paths_of rt = List.filter (fun p -> List.last p = Error) (paths_of rt)
+let error_traces_of rt = List.filter (fun p -> List.last p = Error) (traces_of rt)
 
-let rec pr_path ppf p =
+let rec pr_trace ppf p =
   let pr ppf s =
     match s with
       Call(_, t) ->
@@ -189,5 +189,12 @@ let expand_node prog fenv (Node((uid, p), t, cs)) =
   with Not_found -> (*no redex found*)
     fenv, []
 
-let find_node rt path = assert false
-
+let rec function_calls_of tr =
+  match tr with
+    [] ->
+      []
+  | s::tr' ->
+      (match s with
+        Call(x, _) ->
+          x::function_calls_of tr'
+      | _ -> function_calls_of tr')

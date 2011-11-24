@@ -9,7 +9,14 @@ let linconstr_of env t =
     try
       Term.int_rel_of t
     with Invalid_argument(_) ->
-      Format.printf "Boolean and unit variables are not supported: %a@." Term.pr t; assert false
+      (match Term.fun_args t with
+        Term.Const(_, Const.True), [] ->
+          Const.EqInt, [], 0
+      | Term.Const(_, Const.False), [] ->
+          Const.EqInt, [], 1
+      | _ ->
+          let _ = Format.printf "Boolean and unit variables are not supported: %a@." Term.pr t in
+          assert false)
   in
   let expr = Apron.Linexpr1.make env in
   Apron.Linexpr1.set_array expr
@@ -132,10 +139,14 @@ let widen ts =
 				      Format.printf "widen: @[%a@]@ " Apron.Abstract1.print ab;
 *)
 				      let res = of_linconstrs (Apron.Abstract1.to_lincons_array manpk ab) in
-				      Format.printf "widen_out: @[%a@]@]@ " Term.pr res;
+(*
+				      Format.printf "widen_out: @[%a@]" Term.pr res;
+*)
 				      res
 				  | _ -> assert false
 		  in
 		  widen_aux ts
   in
-  f (List.map aux tss)
+  let res = f (List.map aux tss) in
+		let _ = Format.printf "widen_out: @[%a@]@]@ " Term.pr res in
+  res
