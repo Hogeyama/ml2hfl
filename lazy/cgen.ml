@@ -1,13 +1,13 @@
 open ExtList
 open ExtString
 
-type t = { name: Var.t * int; closed: bool; constr: Term.t; subst: (Var.t * Term.t * SimType.t) list }
+type t = { name: Var.t * int; closed: bool; constr: Term.t; subst: (Var.t * Term.t * SimType.t) list; ret: (Var.t * int) option (* for refinement type inference only *) }
 type tree = Node of t * tree list
 type path = Top | Path of path * t * tree list
 type location = Loc of tree * path
 
 let make name closed constr subst =
-  Node({ name = name; closed = closed; constr = constr; subst = subst }, [])
+  Node({ name = name; closed = closed; constr = constr; subst = subst; ret = None }, [])
 let get (Node(nd, _)) = nd
 let set (Node(_, trs)) nd = Node(nd, trs)
 
@@ -226,11 +226,14 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
     interp
   in
   if nd.closed then
-    [`Post((x, uid), interp)],
+    (match nd.ret with
+      None -> [`Post((x, uid), interp)]
+    | Some(x, uid) -> [`Pre((x, uid), interp)]),
     match p with
       Top -> assert false
     | Path(up, nd, trs) -> Some(root (Loc(Node({ nd with constr = Term.band [nd.constr; interp] }, trs), up)))
   else
+    let _ = assert (nd.ret = None) in
     [`Pre((x, uid), interp)],
     match p with
       Top -> let _ = assert (interp = Term.ttrue) in None

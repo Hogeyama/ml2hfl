@@ -9,14 +9,29 @@ let cgen etr =
     | s::etr ->
         (match s with
           CompTree.Call(y, g) ->
-            aux (insert_down loc (make y true g [])) etr
+            if Var.is_top (fst y) then
+              aux (insert_down loc (make y true g [])) etr
+            else if Var.is_pos (fst y) then
+              let _ = assert (g = Term.ttrue) in
+              aux (insert_down loc (make y true g [])) etr (* changed *)
+            else if Var.is_neg (fst y) then
+              let _ = assert (g = Term.ttrue) in
+              let nd = get tr in (* changed *)
+              let nd' = { nd with ret = Some(y) } in (* changed *)
+		            aux (up (Loc(set tr nd', p))) etr (* changed *)
+            else assert false
         | CompTree.Arg(xttys) ->
             let nd = get tr in
             aux (Loc(set tr { nd with subst = xttys @ nd.subst }, p)) etr
         | CompTree.Ret(x, t, ty) ->
             let nd = get tr in
             let nd' = { nd with subst = (x, t, ty)::nd.subst } in
-            aux (up (Loc(set tr nd', p))) etr
+            let Var.T(f, _, _) = x in
+            if Var.is_pos f then
+              aux (up (Loc(set tr nd', p))) etr
+            else if Var.is_neg f then
+              aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true Term.ttrue [])) etr (* changed *)
+            else assert false
         | CompTree.Nop ->
             aux loc etr
         | CompTree.Error ->

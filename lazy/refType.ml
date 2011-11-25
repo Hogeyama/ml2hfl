@@ -12,6 +12,11 @@ let pr_base ppf bty =
   | Int ->
       Format.fprintf ppf "int"
 
+let is_base rty =
+  match rty with
+    Base(_, _, _) -> true
+  | Fun(_) -> false
+
 let rec pr ppf rty =
   match rty with
     Base(x, bty, t) ->
@@ -22,7 +27,8 @@ let rec pr ppf rty =
           Format.fprintf ppf "{@[<hov>%a:%a@ |@ %a@]}" Var.pr x pr_base bty Term.pr t)
   | Fun(xs) ->
       let pr_aux ppf (x, rty1, rty2) =
-        Format.fprintf ppf " @[<hov>%a:%a@ ->@ %a@]" Var.pr x pr rty1 pr rty2
+        let _ = if is_base rty1 then Format.fprintf ppf "@[<hov>%a:%a" Var.pr x pr rty1 else Format.fprintf ppf "@[<hov>%a:(%a)" Var.pr x(*???*) pr rty1 in
+        Format.fprintf ppf "@ ->@ %a@]" pr rty2
       in
       let _ = assert (xs <> []) in
       Format.fprintf ppf "@[<hv>%a@]" (Util.pr_list pr_aux " /\\@ ") xs

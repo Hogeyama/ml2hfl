@@ -67,3 +67,8 @@ let rec fc_of x =
   match x with
     V(_) -> raise Not_found
   | T(x', uid, _) -> try fc_of x' with Not_found -> x', uid
+
+let rec fc_ref_of x =
+  match x with
+    V(_) -> assert false
+  | T(x', uid, _) -> x', uid

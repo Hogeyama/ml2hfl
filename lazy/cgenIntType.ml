@@ -28,7 +28,7 @@ let cgen etr =
             if Var.is_pos f then
               aux (up (Loc(set tr nd', p))) etr
             else if Var.is_neg f then
-              aux (down (Loc(set tr nd', p)) (Var.fc_of x)) etr
+              aux (down (Loc(set tr nd', p)) (Var.fc_of f)) etr
             else assert false
         | CompTree.Nop ->
             aux loc etr
