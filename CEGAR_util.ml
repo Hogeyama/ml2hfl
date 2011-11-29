@@ -333,7 +333,9 @@ let trans_prog t =
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
   let defs''' = List.map move_event defs'' in
-    pop_main (eta_expand (env, defs''', main))
+  let prog = pop_main (eta_expand (env, defs''', main)) in
+    if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
+    prog
 
 
 let nil = fun _ -> []

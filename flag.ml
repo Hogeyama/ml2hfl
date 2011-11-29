@@ -11,8 +11,11 @@ type rec_flag = Nonrecursive | Recursive
 type mutable_flag = Immutable | Mutable
 
 type mode = Reachability | FileAccess
-type refine = RefineSizedType | RefineDependentType
 type cegar = CEGAR_SizedType | CEGAR_DependentType
+type pred_abst = PredAbst | PredAbstCPS
+type model_check = ModelCheck | ModelCheckCPS
+type refine = RefineSizedType | RefineDependentType
+type form = CPS
 
 
 (* debug option *)
@@ -38,10 +41,14 @@ let filter_forward = ref true
 let use_unknown = ref false
 
 let mode = ref Reachability
-let refine = ref RefineDependentType
-let cegar = ref CEGAR_DependentType
 let init_trans = ref true
-let cps_excep = ref false
+let cegar = ref CEGAR_DependentType
+let pred_abst = ref PredAbstCPS
+let model_check = ref ModelCheckCPS
+let refine = ref RefineDependentType
+let form : form list ref = ref []
+
+
 
 
 

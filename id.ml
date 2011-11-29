@@ -1,10 +1,15 @@
 type 'a t = {id:int; name:string; typ:'a}
 
-let counter = ref 1
+let init_counter = 1
+let counter = ref init_counter
+let tmp_counter = ref init_counter
 
 let new_int () = incr counter; let n = !counter in if n = 187 then n else n
 let get_counter () = !counter
 let set_counter n = counter := n
+let save_counter () = tmp_counter := !counter
+let reset_counter () = counter := !tmp_counter
+let clear_counter () = counter := init_counter
 
 let make id name typ = {id=id; name=name; typ=typ}
 let new_var s typ = {id=new_int(); name=s; typ=typ}

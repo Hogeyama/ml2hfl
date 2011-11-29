@@ -5,9 +5,8 @@ exception CannotRefute
 
 val add_pred : CEGAR_syntax.env -> CEGAR_syntax.env -> CEGAR_syntax.env
 
-val refine : CEGAR_syntax.ce_node list list -> CEGAR_syntax.prog -> CEGAR_syntax.prog
-val refine' : CEGAR_syntax.ce_node list list -> CEGAR_syntax.prog -> CEGAR_syntax.prog
-(** [refine traces t] で，反例のリスト [traces] を用いて [t] の述語発見を行う．
+val refine : CEGAR_syntax.ce_node list -> CEGAR_syntax.ce_node list list -> CEGAR_syntax.prog -> CEGAR_syntax.prog
+(** [refine prefix traces t] で，反例のリスト [traces] を用いて [t] の述語発見を行う．
 *)
 (*
 val add_preds_ : (Syntax.id * Syntax.typ) list -> Syntax.typed_term -> Syntax.typed_term

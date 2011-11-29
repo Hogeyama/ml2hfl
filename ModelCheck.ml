@@ -22,13 +22,10 @@ let check prog n =
         Assert_failure(s,_,_) as e when s <> "" -> raise e
       | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
-
-
-
-
-
-
-
-
-
-
+let check prog n =
+  match !Flag.model_check with
+      Flag.ModelCheckCPS ->
+        if not (List.mem Flag.CPS !Flag.form)
+        then failwith "Program must be in CPS @ ModelCheckCPS";
+        ModelCheck_CPS.check prog n
+    | Flag.ModelCheck -> check prog n

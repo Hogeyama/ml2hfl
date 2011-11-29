@@ -546,6 +546,7 @@ let rec lift_aux xs t =
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.new_var (Id.name f) typ in
+          let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' t1 in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
@@ -555,6 +556,7 @@ let rec lift_aux xs t =
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.new_var (Id.name f) typ in
+          let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [{desc=Var x;typ=Id.typ x}]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' (subst f f'' t1) in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in

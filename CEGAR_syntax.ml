@@ -119,6 +119,10 @@ let rec get_fv = function
   | Fun(x,t) -> diff (get_fv t) [x]
 
 
+let rec get_typ_arity = function
+    TFun(typ1,typ2) -> 1 + get_typ_arity (typ2 (Const Unit))
+  | typ -> 0
+
 
 let rec decomp_app = function
     App(t1,t2) ->
@@ -130,3 +134,49 @@ let rec decomp_fun = function
       let xs,t = decomp_fun t in
         x::xs, t
   | t -> [], t
+
+
+let get_var_arity f env = get_typ_arity (List.assoc f env)
+
+let rec is_CPS_value env = function
+    Const Unit
+  | Const True
+  | Const False
+  | Const (Int _)
+  | Var _ -> true
+  | App(App(Const And, t1), t2)
+  | App(App(Const Or, t1), t2)
+  | App(App(Const Lt, t1), t2)
+  | App(App(Const Gt, t1), t2)
+  | App(App(Const Leq, t1), t2)
+  | App(App(Const Geq, t1), t2)
+  | App(App(Const Add, t1), t2)
+  | App(App(Const Sub, t1), t2)
+  | App(App(Const Mul, t1), t2) -> is_CPS_value env t1 && is_CPS_value env t2
+  | App(Const Not, t) -> is_CPS_value env t
+  | App _ as t ->
+      let t1,ts = decomp_app t in
+      let n = match t1 with Var f -> Format.printf "%s, %d" f (get_var_arity f env); get_var_arity f env | _ -> 0 in
+      let b1 = n > List.length ts in
+      let b2 = List.for_all (is_CPS_value env) ts in
+Format.printf ":: %b,%b@." b1 b2;
+        b1 && b2
+  | Let _ -> assert false
+  | Fun _ -> assert false
+  | _ -> false
+let is_CPS_def env (f,xs,cond,es,t) =
+  let b1 = is_CPS_value env cond in
+  let b2 =
+    match t with
+        Const _ -> true
+      | Var _ -> true
+      | App _ -> List.for_all (is_CPS_value env) (snd (decomp_app t))
+      | Let _ -> assert false
+      | Fun _ -> assert false
+  in
+Format.printf "%s: %b,%b@." f b1 b2;
+    b1 && b2
+
+let is_CPS ((env,defs,main):prog) = List.for_all (is_CPS_def env) defs
+
+    
