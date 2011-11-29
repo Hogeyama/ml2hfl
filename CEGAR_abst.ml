@@ -116,10 +116,10 @@ let abstract_def env (f,xs,t1,e,t2) =
 let abstract ((env,defs,main):prog) : prog =
   let (env,defs,main) = make_arg_let (env,defs,main) in
   let (env,defs,main) = add_label (env,defs,main) in
-  let () = if true then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
+  let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
   let prog = Typing.infer ([], defs, main) in
-  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog_typ prog in    
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog_typ prog in    
     prog

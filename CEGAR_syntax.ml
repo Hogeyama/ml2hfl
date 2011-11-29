@@ -156,11 +156,8 @@ let rec is_CPS_value env = function
   | App(Const Not, t) -> is_CPS_value env t
   | App _ as t ->
       let t1,ts = decomp_app t in
-      let n = match t1 with Var f -> Format.printf "%s, %d" f (get_var_arity f env); get_var_arity f env | _ -> 0 in
-      let b1 = n > List.length ts in
-      let b2 = List.for_all (is_CPS_value env) ts in
-Format.printf ":: %b,%b@." b1 b2;
-        b1 && b2
+      let n = match t1 with Var f -> get_var_arity f env | _ -> 0 in
+        n > List.length ts && List.for_all (is_CPS_value env) ts
   | Let _ -> assert false
   | Fun _ -> assert false
   | _ -> false
@@ -174,7 +171,6 @@ let is_CPS_def env (f,xs,cond,es,t) =
       | Let _ -> assert false
       | Fun _ -> assert false
   in
-Format.printf "%s: %b,%b@." f b1 b2;
     b1 && b2
 
 let is_CPS ((env,defs,main):prog) = List.for_all (is_CPS_def env) defs
