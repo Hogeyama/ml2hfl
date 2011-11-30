@@ -33,11 +33,10 @@ let rec cegar prog ces =
         None,_ -> prog, None
       | Some ce, ce'::_ when ce = ce' -> raise NoProgress;
       | Some ce, _ ->
-          Format.printf "Spurious counter-example::\n%a\n@." CEGAR_print.print_ce ce;
-            match Feasibility.check ce prog with
-                Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
-              | Feasibility.Infeasible prefix ->
-                  let ces' = ce::ces in
-                  let prog' = Refine.refine prefix ces' prog in
-                    post ();
-                    cegar prog' ces'
+          match Feasibility.check ce prog with
+              Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
+            | Feasibility.Infeasible prefix ->
+                let ces' = ce::ces in
+                let prog' = Refine.refine prefix ces' prog in
+                  post ();
+                  cegar prog' ces'

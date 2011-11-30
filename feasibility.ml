@@ -68,6 +68,7 @@ let rec get_prefix ce n =
     | c::ce' -> c::get_prefix ce' n
 
 let check ce ((env,defs,main):prog) =
+  let () = Format.printf "Spurious counter-example::\n%a\n@." CEGAR_print.print_ce ce in
   let tmp = get_time () in
   let () = if Flag.print_progress then print_msg "\n(3) Checking counter-example ... " in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce in
