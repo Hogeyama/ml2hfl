@@ -22,7 +22,7 @@ and print_typ_base fm = function
   | TTuple n -> Format.fprintf fm "tuple"
   | TList _ -> assert false
 
-and print_typ fm = function
+and print_typ_aux fm = function
     TBase(b,ps) ->
       let x = new_id "x" in
       let preds = ps (Var x) in
@@ -36,12 +36,18 @@ and print_typ fm = function
       let x = new_id "x" in
       let typ2 = typ2 (Var x) in
         if occur_arg_pred x typ2
-        then Format.fprintf fm "(%a:%a -> %a)" print_var x print_typ typ1 print_typ typ2
-        else Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
+        then Format.fprintf fm "(%a:%a -> %a)" print_var x print_typ_aux typ1 print_typ_aux typ2
+        else Format.fprintf fm "(%a -> %a)" print_typ_aux typ1 print_typ_aux typ2
   | TApp _ as typ ->
       let typ,typs = decomp_tapp typ in
-        Format.fprintf fm "(%a)" (print_list print_typ " " false) (typ::typs)
+        Format.fprintf fm "(%a)" (print_list print_typ_aux " " false) (typ::typs)
   | TAbs _ -> assert false
+
+and print_typ fm typ =
+  let n = Id.get_counter () in
+    Id.set_counter 1;
+    print_typ_aux fm typ;
+    Id.set_counter n
 
 and print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a : %a@." print_var f print_typ typ) env
@@ -159,7 +165,6 @@ and print_prog_ML fm (env,defs,s) =
   Format.fprintf fm "and br x y = if true then x else y@.";
   List.iter (print_fun_def_ML fm) defs;
   if env <> [] then Format.fprintf fm "Types:\n%a@." print_env env
-
 
 let print_node fm = function
     BranchNode n -> Format.fprintf fm "#%d" n

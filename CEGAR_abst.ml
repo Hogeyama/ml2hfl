@@ -123,3 +123,17 @@ let abstract ((env,defs,main):prog) : prog =
   let prog = Typing.infer ([], defs, main) in
   let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog_typ prog in    
     prog
+
+
+let abstract prog =
+  let tmp = get_time() in
+  let () = if Flag.print_progress then print_msg "\n(1) Abstracting ... " in
+  let abst =
+    match !Flag.refine with
+        Flag.RefineDependentType -> CEGAR_abst_CPS.abstract prog
+      | Flag.RefineSizedType -> abstract prog
+  in
+  let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
+  let () = if Flag.print_progress then print_msg "DONE!\n" in
+  let () = add_time tmp Flag.time_abstraction in
+    abst

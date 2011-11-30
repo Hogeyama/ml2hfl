@@ -48,6 +48,8 @@ let add_pred map env =
 
 
 let refine prefix ces ((env,defs,main):prog) =
+  let tmp = get_time () in
+  if Flag.print_progress then print_msg "\n(4) Discovering predicates ... ";
   let ces =
     if Flag.use_prefix_trace
     then
@@ -87,6 +89,8 @@ let refine prefix ces ((env,defs,main):prog) =
           with RefineDepTyp.Untypable -> raise CannotRefute
   in
   let env' = add_pred map env in
+    add_time tmp Flag.time_cegar;
+    if Flag.print_progress then print_msg "DONE!\n";
     env', defs, main
 
 

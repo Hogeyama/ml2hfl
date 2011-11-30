@@ -22,10 +22,18 @@ let check prog n =
         Assert_failure(s,_,_) as e when s <> "" -> raise e
       | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
-let check prog n =
-  match !Flag.model_check with
-      Flag.ModelCheckCPS ->
-        if not (List.mem Flag.CPS !Flag.form)
-        then failwith "Program must be in CPS @ ModelCheckCPS";
-        ModelCheck_CPS.check prog n
-    | Flag.ModelCheck -> check prog n
+let check abst prog =
+  let n = (fun (_,defs,_) -> List.length defs) prog in
+  let tmp = get_time() in
+  let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in
+  let result =
+    match !Flag.model_check with
+        Flag.ModelCheckCPS ->
+          if not (List.mem Flag.CPS !Flag.form)
+          then failwith "Program must be in CPS @ ModelCheckCPS";
+          ModelCheck_CPS.check abst n
+      | Flag.ModelCheck -> check abst n
+  in
+  let () = add_time tmp Flag.time_mc in
+  let () = if Flag.print_progress then print_msg "DONE!\n\n" in
+    result

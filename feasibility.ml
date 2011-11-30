@@ -68,16 +68,23 @@ let rec get_prefix ce n =
     | c::ce' -> c::get_prefix ce' n
 
 let check ce ((env,defs,main):prog) =
-  if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce;
+  let tmp = get_time () in
+  let () = if Flag.print_progress then print_msg "\n(3) Checking counter-example ... " in
+  let () = if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce in
   let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) (List.tl ce) in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr _ _ = () in
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
-    if false then Format.printf "prefix(%d): %a@." n CEGAR_print.print_ce prefix;
+  let () = if false then Format.printf "prefix(%d): %a@." n CEGAR_print.print_ce prefix in
+  let result =
     if Wrapper2.checksat env' constr
     then Feasible (env', Wrapper2.get_solution env' constr)
     else Infeasible prefix
+  in
+    if Flag.print_progress then print_msg "DONE!\n";
+    add_time tmp Flag.time_cegar;
+    result
 
 
 

@@ -91,9 +91,7 @@ let make_bottom ((env,defs,main):prog) : prog =
         Var x
     in
     let rec aux_term = function
-        Const Bottom, typ ->
-          let n = get_arg_num typ in
-            make_bottom n
+        Const Bottom, typ -> make_bottom (get_arg_num typ)
       | Const c, _ -> Const c
       | Var x, _ -> Var x
       | App(App(App(Const If, t1), t2), t3), typ ->
@@ -121,7 +119,7 @@ let make_bottom ((env,defs,main):prog) : prog =
   in
   let make (x,n) =
     let xs = Array.to_list (Array.init n (fun _ -> "x")) in
-      x, xs, Const True, [], make_app (Var x) (List.map (fun x -> Var x) xs)
+      x, xs, Const True, [], Const Unit
   in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (uniq compare !bottoms) in

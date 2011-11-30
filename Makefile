@@ -82,7 +82,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
  lazy/verifier.cmo \
 	lazyInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst.cmo CEGAR_abst_CPS.cmo \
+	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
 	$(TRECS)/trecs.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
 	main.cmo
