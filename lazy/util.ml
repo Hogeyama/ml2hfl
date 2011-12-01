@@ -18,10 +18,12 @@ let rec init xs =
  | [x] -> []
  | x::xs' -> x::(init xs')
 
+(*
 let rec last xs =
  match xs with
    [x] -> x
  | x::xs' -> last xs'
+*)
 
 let rec diff xs ys =
   match xs, ys with
@@ -100,6 +102,16 @@ let rec split_at xs n =
   else
     assert false
 
+let rec split_with p xs =
+  match xs with
+    [] -> raise Not_found
+  | x::xs' ->
+      if p x then
+        [], x, xs'
+      else
+        let ls, y, rs = split_with p xs' in
+        x::ls, y, rs
+
 let rec classify eqrel xs =
   match xs with
     [] -> []
@@ -139,6 +151,13 @@ let rec pr_list epr sep ppf xs =
         epr x
         (fun ppf sep -> Format.fprintf ppf sep) sep
         (pr_list epr sep) xs'
+
+let rec pr_opt epr none ppf x =
+  match x with
+    None ->
+      Format.fprintf ppf "%s" none
+  | Some(x) ->
+      Format.fprintf ppf "%a" epr x
 
 (* graph *)
 let save_as_dot filename vertices edges =

@@ -89,6 +89,7 @@ let rename sub sty =
     (Term.subst subst sty.pre)
     (Term.subst subst sty.post)
 
+(*
 let rec sub_from_tys new_var tys =
   if tys = [] then
     []
@@ -108,6 +109,7 @@ let rec sub_from_tys new_var tys =
 		      let sub1 = sub_from_tys new_var tys1 in
 		      let sub2 = sub_from_tys new_var tys2 in
 		      sub1 @ sub2
+*)
 
 let rec sub_from new_var ty =
 		match ty with
@@ -158,9 +160,17 @@ let shape_env_of env fcs =
 		in
   let rec shape_of (x, uid) =
     match env x with
-      SimType.Unit -> Unit(x)
-    | SimType.Bool -> Bool(x)
-    | SimType.Int -> Int(x)
+      SimType.Unit ->
+        (* pred disc assume that top level functions are with a function type but MoCHi violates *)
+        Unit(x)
+(*
+        let _ = Format.printf "%a:%d" Var.pr x uid in
+        assert false
+*)
+    | SimType.Bool ->
+        Bool(x)
+    | SimType.Int ->
+        Int(x)
     | SimType.Fun(_, _) as ty ->
         let n = SimType.arity ty in
         let ret = merge_shapes (shapes_of (Var.T(x, uid, n))) in

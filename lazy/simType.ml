@@ -11,7 +11,7 @@ let tfun tys =
   List.fold_right
     (fun ty1 ty2 -> Fun(ty1, ty2))
     (Util.init tys)
-    (Util.last tys)
+    (List.last tys)
 
 let rec arity ty =
   match ty with

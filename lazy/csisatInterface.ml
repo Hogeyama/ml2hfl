@@ -182,3 +182,17 @@ let interpolate t1 t2 =
   *)
   let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
   simplify (formula_of (CsisatAstUtil.dnf interp))
+
+(* t1 and t2 should share only variables that satisfy p *)
+let interpolate_bvs p t1 t2 =
+  let t1 =
+    let fvs = List.filter (fun x -> not (p x)) (Term.fvs t1) in
+    let sub = List.map (fun x -> x, Term.make_var2 (Var.new_var ())) fvs in
+    Term.subst (fun x -> List.assoc x sub) t1
+  in
+  let t2 =
+    let fvs = List.filter (fun x -> not (p x)) (Term.fvs t2) in
+    let sub = List.map (fun x -> x, Term.make_var2 (Var.new_var ())) fvs in
+    Term.subst (fun x -> List.assoc x sub) t2
+  in
+  interpolate t1 t2

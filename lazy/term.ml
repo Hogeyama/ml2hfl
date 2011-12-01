@@ -201,7 +201,7 @@ let eq_ty ty t1 t2 =
   | SimType.Int ->
       eqInt t1 t2
   | SimType.Fun(_, _) ->
-      ttrue(*???*)
+      ttrue(*???assert false*)
   | _ ->
       let _ = Format.printf "%a@." SimType.pr ty in
       assert false

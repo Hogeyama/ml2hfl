@@ -1,6 +1,6 @@
 open ExtList
 
-type t = Base of Var.t * b * Term.t | Fun of (Var.t * t * t) list
+type t = Base of Var.t * b * Term.t | Fun of (t * t) list
 and b = Unit | Bool | Int
 
 let pr_base ppf bty =
@@ -17,17 +17,27 @@ let is_base rty =
     Base(_, _, _) -> true
   | Fun(_) -> false
 
+let bv_of rty =
+  match rty with
+    Base(bv, _, _) -> bv
+  | Fun(_) -> assert false
+
 let rec pr ppf rty =
   match rty with
     Base(x, bty, t) ->
       (match t with
         Term.Const(_, Const.True) ->
-          Format.fprintf ppf "%a" pr_base bty
+          Format.fprintf ppf "%a:%a" Var.pr x pr_base bty
       | _ ->
-          Format.fprintf ppf "{@[<hov>%a:%a@ |@ %a@]}" Var.pr x pr_base bty Term.pr t)
+          Format.fprintf ppf "%a:%a{@[<hov>%a@]}" Var.pr x pr_base bty Term.pr t)
   | Fun(xs) ->
-      let pr_aux ppf (x, rty1, rty2) =
-        let _ = if is_base rty1 then Format.fprintf ppf "@[<hov>%a:%a" Var.pr x pr rty1 else Format.fprintf ppf "@[<hov>%a:(%a)" Var.pr x(*???*) pr rty1 in
+      let pr_aux ppf (rty1, rty2) =
+        let _ =
+          if is_base rty1 then
+            Format.fprintf ppf "@[<hov>%a" pr rty1
+          else
+            Format.fprintf ppf "@[<hov>(%a)" pr rty1
+        in
         Format.fprintf ppf "@ ->@ %a@]" pr rty2
       in
       let _ = assert (xs <> []) in
@@ -42,7 +52,7 @@ let rec of_simple_type ty =
   | SimType.Bool -> Base(Var.new_var(), Bool, Term.ttrue)
   | SimType.Int -> Base(Var.new_var(), Int, Term.ttrue)
   | SimType.Fun(ty1, ty2) ->
-      Fun([Var.new_var(), of_simple_type ty1, of_simple_type ty2])
+      Fun([of_simple_type ty1, of_simple_type ty2])
 
 (*???*)
 let rec of_interaction_type sty =
@@ -54,7 +64,6 @@ let rec of_interaction_type sty =
       Fun
         (List.map
           (fun (ty1, ty2) ->
-            (match ty1 with IntType.Unit(x) | IntType.Bool(x) | IntType.Int(x) -> x | _ -> Var.new_var()),
             of_interaction_type (IntType.make ty1 Term.ttrue sty.IntType.pre),
             of_interaction_type (IntType.make ty2 Term.ttrue sty.IntType.post))
           xs)
@@ -62,16 +71,15 @@ let rec of_interaction_type sty =
 let rec subst sub rty =
   match rty with
     Base(x, bty, t) ->
-      let sub y = if Var.equiv x y then raise Not_found else sub y in
-      Base(x, bty, Term.subst sub t)
+      let sub' y = if Var.equiv x y then raise Not_found else sub y in
+      Base(x, bty, Term.subst sub' t)
   | Fun(xs) ->
       Fun
         (List.map
-		        (fun (x, rty1, rty2) ->
-		          x,
+		        (fun (rty1, rty2) ->
 		          subst sub rty1,
-		          let sub y = if Var.equiv x y then raise Not_found else sub y in
-		          subst sub rty2)
+		          let sub' y = if is_base rty1 && Var.equiv (bv_of rty1) y then raise Not_found else sub y in
+		          subst sub' rty2)
 		        xs)
 
 let set_base_cond rty t =
@@ -81,6 +89,54 @@ let set_base_cond rty t =
   | Fun(_) ->
       assert false
 
+
+
+
+
+
+let rename sub sty =
+  let subst x = Term.make_var2 (sub x) in
+		let rec aux sty =
+		  match sty with
+		    Base(x, bty, t) ->
+        Base((try sub x with Not_found -> x), bty, Term.subst subst t)
+		  | Fun(xs) ->
+		      Fun
+		        (List.map
+		          (fun (sty1, sty2) ->
+		            aux sty1,
+		            aux sty2)
+		          xs)
+  in
+  aux sty
+
+let rec sub_from new_var ty =
+		match ty with
+		  Base(x, bty, t) ->
+		    let y = new_var () in
+		    [x, y]
+		| Fun(xs) ->
+		    Util.concat_map 
+        (fun (sty1, sty2) ->
+          let sub1 = sub_from new_var sty1 in
+          let sub2 = sub_from new_var sty2 in
+          sub1 @ sub2)
+        xs
+
+let canonize sty =
+  let new_var =
+    let cnt = ref 0 in
+    fun () -> cnt := !cnt + 1; Var.V("v" ^ (string_of_int !cnt))
+  in
+  let sub = sub_from new_var sty in
+  rename (fun x -> List.assoc x sub) sty
+
+
+
+
+
+
+
 let env_of env sums fcs =
   let tlfcs =
     List.unique
@@ -88,10 +144,10 @@ let env_of env sums fcs =
 		      (fun (x, _) -> Var.is_top x)
 		      fcs)
   in
-		let make_fun_shape x_tys ty =
+		let make_fun_shape tys ty =
 		  List.fold_right
-		    (fun (x, ty) retty -> Fun [x, ty, retty])
-		    x_tys
+		    (fun ty retty -> Fun [ty, retty])
+		    tys
 		    ty
 		in
 		let merge_shapes shs =
@@ -110,19 +166,17 @@ let env_of env sums fcs =
 		in
   let rec shape_of (x, uid) =
     match env x with
-      SimType.Unit -> Base(x, Unit, Term.ttrue)
-    | SimType.Bool -> Base(x, Bool, Term.ttrue)
-    | SimType.Int -> Base(x, Int, Term.ttrue)
+      SimType.Unit | SimType.Bool | SimType.Int ->
+        (* pred disc assume that top level functions are with a function type but MoCHi violates *)
+        Base(x, (match env x with SimType.Unit -> Unit | SimType.Bool -> Bool | SimType.Int -> Int), Term.ttrue)
+(*
+        let _ = Format.printf "%a:%d" Var.pr x uid in
+        assert false
+*)
     | SimType.Fun(_, _) as ty ->
         let n = SimType.arity ty in
         (* ret is of base type *)
-        let pres = Util.filter_map (function `Pre(x_uid, t) when x_uid = (x, uid) -> Some(t) | _ -> None) sums in
-        let pre = if pres = [] then Term.ttrue(*???*) else Term.bor(*???*) pres in
-        let posts = Util.filter_map (function `Post(x_uid, t) when x_uid = (x, uid) -> Some(t) | _ -> None) sums in
-        let post = if posts = [] then Term.ttrue(*???*) else Term.band(*???*) posts in
-        let ret = set_base_cond (merge_shapes (shapes_of (Var.T(x, uid, n)))) post in
-        let j = SimType.find_last_base ty in
-        let _ = if j = -1 then ()(*assert (Term.equiv pre Term.ttrue)*) in
+        let ret = merge_shapes (shapes_of (Var.T(x, uid, n))) in
 								(*
 								Format.printf "%a@." Var.pr (Var.T(x, uid, n));
 								*)
@@ -132,18 +186,17 @@ let env_of env sums fcs =
 														(*
 														Format.printf "%a@." Var.pr (Var.T(x, uid, i));
 														*)
-              let y = Var.T(x, uid, i) in
-              let rty = merge_shapes (shapes_of y) in
-              y, if i = j then set_base_cond rty pre else rty))
+              merge_shapes (shapes_of (Var.T(x, uid, i)))))
           ret
     | _ ->
         let _ = Format.printf "%a:%d" Var.pr x uid in
         assert false
   and shapes_of x =
     match env x with
-      SimType.Unit -> [Base(x, Unit, Term.ttrue)]
-    | SimType.Bool -> [Base(x, Bool, Term.ttrue)]
-    | SimType.Int -> [Base(x, Int, Term.ttrue)]
+      SimType.Unit | SimType.Bool | SimType.Int ->
+        let ps = Util.filter_map (function `P(y, t) when x = y -> Some(t) | _ -> None) sums in
+        let p = (*???*)if ps = [] then Term.ttrue else Term.band ps in
+        [Base(x, (match env x with SimType.Unit -> Unit | SimType.Bool -> Bool | SimType.Int -> Int), p)]
     | SimType.Fun(_, _) as ty ->
         let res =
 		        List.map
@@ -156,5 +209,5 @@ let env_of env sums fcs =
 
 let of_summaries prog sums fcs =
   List.map
-    (fun (x_uid, rty) -> fst x_uid, rty)
+    (fun (x_uid, rty) -> fst x_uid, canonize rty)
     (env_of (Prog.type_of prog) sums fcs)

@@ -116,8 +116,8 @@ let rec inv_abst_type aty =
   | AbsType.Base(AbsType.Int, x, ts) ->
       let x = Var.string_of x in
       TBase(TInt, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
-  | AbsType.Fun(x, aty1, aty2) ->
-      let x = Var.string_of x in
+  | AbsType.Fun(aty1, aty2) ->
+      let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
 
 
