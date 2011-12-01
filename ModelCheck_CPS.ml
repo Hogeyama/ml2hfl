@@ -8,7 +8,6 @@ open ModelCheck_util
 
 
 let check prog n =
-   Format.printf "ETA_EXPAND:\n%a@." CEGAR_print.print_prog prog;
   let prog = eta_expand prog in
   let () = if false then Format.printf "ETA_EXPAND:\n%a@." CEGAR_print.print_prog prog in
   let prog = elim_non_det prog in

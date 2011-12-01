@@ -316,6 +316,13 @@ let move_event (f,xs,t1,e,t2) =
   in
     f, xs, t1, e', t2'
 
+let rec uniq_env = function
+    [] -> []
+  | (f,typ)::env ->
+      if List.exists (fun (g,_) -> f = g) env
+      then uniq_env env
+      else (f,typ) :: uniq_env env
+
 let trans_prog t =
   let t = Trans.trans_let t in
   let () = if false then Format.printf "trans_let :@.%a\n\n@." (Syntax.print_term true) t in
@@ -332,8 +339,9 @@ let trans_prog t =
             (main,typ,[],Const True,[],t') :: defs_t @ flatten_map trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
+  let env' = uniq_env env in
   let defs''' = List.map move_event defs'' in
-  let prog = pop_main (eta_expand (env, defs''', main)) in
+  let prog = pop_main (eta_expand (env', defs''', main)) in
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
     prog
 

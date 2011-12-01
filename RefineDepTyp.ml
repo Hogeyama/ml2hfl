@@ -1971,6 +1971,13 @@ let rec add_preds_typ sol typ1 typ2 =
 
 let infer ces prog =
   let ces =  List.map (fun ce -> List.map (fun b -> LabNode b) (Feasibility.trans_ce ce prog) @ [FailNode]) ces in
+  let pp_print_node fm = function
+      LabNode true -> Format.fprintf fm "then"
+    | LabNode false -> Format.fprintf fm "else"
+    | FailNode -> Format.fprintf fm "fail"
+    | _ -> assert false
+  in
+  let () = if true then Format.printf "CE: %a" (print_list pp_print_node "; " false) (List.hd ces) in
   let defs,main = trans prog in
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in

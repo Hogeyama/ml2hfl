@@ -9,7 +9,7 @@ open ModelCheck_util
 
 let check prog n =
   let prog = CEGAR_CPS.trans prog true in
-  let () = if false then Format.printf "CPS:\n%a@." CEGAR_print.print_prog prog in
+  let () = if true then Format.printf "CPS:\n%a@." CEGAR_print.print_prog prog in
   let prog = eta_expand prog in
   let prog = elim_non_det prog in
   let prog = make_bottom prog in
