@@ -39,6 +39,7 @@ let merge_counterexample = ref false
 let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
+let church_encode = false
 
 let mode = ref Reachability
 let init_trans = ref true

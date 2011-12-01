@@ -70,7 +70,7 @@ let rec get_prefix ce n =
 let check ce ((env,defs,main):prog) =
   let () = Format.printf "Spurious counter-example::\n%a\n@." CEGAR_print.print_ce ce in
   let tmp = get_time () in
-  let () = if Flag.print_progress then print_msg "\n(3) Checking counter-example ... " in
+  let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... " !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce in
   let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) (List.tl ce) in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in

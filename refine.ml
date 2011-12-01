@@ -49,7 +49,7 @@ let add_pred map env =
 
 let refine prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
-  if Flag.print_progress then print_msg "\n(4) Discovering predicates ... ";
+  if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... " !Flag.cegar_loop;
   let ces =
     if Flag.use_prefix_trace
     then

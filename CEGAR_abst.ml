@@ -21,7 +21,7 @@ let abst_arg x typ =
 
 let rec coerce env cond pts typ1 typ2 t =
   match typ1,typ2 with
-      _ when congruent env cond typ1 typ2 -> t
+      _ when congruent env cond typ1 typ2 -> Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.print_typ typ1 CEGAR_print.print_typ typ2;t
     | TBase(_,ps1),TBase(_,ps2) ->
         let var = match t with Var x -> Some x | _ -> None in
         let x = match var with None -> new_id "x" | Some x -> x in
@@ -83,6 +83,7 @@ let rec abstract_term env cond pbs t typ =
     | Fun _ -> assert false
 
 
+
 let abstract_def env (f,xs,t1,e,t2) =
   let rec aux typ xs env =
     match xs with
@@ -104,11 +105,13 @@ let abstract_def env (f,xs,t1,e,t2) =
     then
       let g = new_id "f" in
       let fv = get_fv t2' in
-        [g,fv,Const True,e,t2'; f,xs,Const True,[],make_app (Var g) (List.map (fun x -> Var x) fv)]
+      let t = make_app (Var g) (List.map (fun x -> Var x) fv) in
+      let t' = make_if ff (Const Bottom) t in
+        Format.printf "FUN_VAR1 %s; %a ===> %a@." f CEGAR_print.term t CEGAR_print.term t';
+        [g,fv,Const True,e,t2'; f,xs,Const True,[],t']
     else
-      if t1 = Const True
-      then [f, xs, Const True, e, t2']
-      else [f, xs, Const True, e, make_if ff (Const Bottom) t2']
+        (Format.printf "FUN_VAR2 %s@." f;
+        [f, xs, Const True, e, make_if ff (Const Bottom) t2'])
 
 
 
@@ -119,19 +122,18 @@ let abstract ((env,defs,main):prog) : prog =
   let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
   let prog = Typing.infer ([], defs, main) in
-  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog_typ prog in    
     prog
 
 
 let abstract prog =
   let tmp = get_time() in
-  let () = if Flag.print_progress then print_msg "\n(1) Abstracting ... " in
+  let () = if Flag.print_progress then Format.printf "\n(%d-1) Abstracting ... " !Flag.cegar_loop in
   let abst =
-    match !Flag.refine with
-        Flag.RefineDependentType -> CEGAR_abst_CPS.abstract prog
-      | Flag.RefineSizedType -> abstract prog
+    match !Flag.pred_abst with
+        Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract prog
+      | Flag.PredAbst -> abstract prog
   in
   let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
   let () = if Flag.print_progress then print_msg "DONE!\n" in

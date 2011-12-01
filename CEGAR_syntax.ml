@@ -115,7 +115,7 @@ let rec get_fv = function
     Const _ -> []
   | Var x -> [x]
   | App(t1, t2) -> get_fv t1 @@@ get_fv t2
-  | Let(x,t1,t2) -> diff (get_fv t1) [x] @@@ get_fv t2
+  | Let(x,t1,t2) -> get_fv t1 @@@ diff (get_fv t2) [x]
   | Fun(x,t) -> diff (get_fv t) [x]
 
 

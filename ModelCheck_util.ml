@@ -165,11 +165,44 @@ let trans_ce ce =
     flatten_map aux ce
 
 
-let model_check_aux target =
-    match TrecsInterface.check target with
+let true_var = "True"
+let false_var = "False"
+let rec church_encode_term = function
+    Const True -> Var true_var
+  | Const False -> Var false_var
+  | Const If -> assert false
+  | Const c -> Const c
+  | Var x -> Var x
+  | App(App(App(Const If, Const RandBool), t2), t3) ->
+      let t2' = church_encode_term t2 in
+      let t3' = church_encode_term t3 in
+        make_app (Const If) [Const RandBool; t2'; t3']
+  | App(App(App(Const If, Var b), t2), t3) ->
+      let t2' = church_encode_term t2 in
+      let t3' = church_encode_term t3 in
+        make_app (Var b) [t2'; t3']
+  | App(t1, t2) -> App(church_encode_term t1, church_encode_term t2)
+  | Let _ -> assert false
+  | Fun _ -> assert false
+let church_encode ((env,defs,main):prog) : prog =
+  let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
+  let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
+  let defs' = List.map (apply_body_def church_encode_term) defs @ [true_def; false_def] in
+    Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.print_prog ([],defs',main);
+    Typing.infer ([],defs',main)
+
+
+
+
+let model_check_aux (prog,spec) =
+  let prog' =
+    if Flag.church_encode
+    then church_encode prog
+    else prog
+  in
+    match TrecsInterface.check (prog',spec) with
         None -> None
       | Some ce -> Some (trans_ce ce)
         
-
 
 

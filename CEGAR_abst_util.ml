@@ -189,22 +189,21 @@ let assume env cond pbs t1 =
   then Const False
   else snd (weakest env cond pbs t1)
 
-(* TODO: equiv *)
+
 let rec congruent env cond typ1 typ2 =
   match typ1,typ2 with
       TBase(b1,ps1), TBase(b2,ps2) when b1=b2 ->
         let x = new_id "x" in
-(*
-          List.for_all2 (equiv env cond) (ps1 (Var x)) (ps2 (Var x))
-*)
+        let env' = (x,typ1)::env in
         let ps1' = ps1 (Var x) in
         let ps2' = ps2 (Var x) in
-          List.length ps1' = List.length ps2' && List.for_all2 (=) ps1' ps2'
+          List.length ps1' = List.length ps2' && List.for_all2 (Wrapper2.equiv env' cond) ps1' ps2'
     | TFun(typ11,typ12), TFun(typ21,typ22) ->
         let x = new_id "x" in
         let typ12 = typ12 (Var x) in
         let typ22 = typ22 (Var x) in
-          congruent env cond typ11 typ21 && congruent env cond typ12 typ22
+        let env' = (x,typ11)::env in
+          congruent env cond typ11 typ21 && congruent env' cond typ12 typ22
     | _ -> Format.printf "CONGRUENT: %a,%a@." print_typ typ1 print_typ typ2; assert false
 
 

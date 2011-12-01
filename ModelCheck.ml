@@ -9,7 +9,7 @@ open ModelCheck_util
 
 let check prog n =
   let prog = CEGAR_CPS.trans prog true in
-  let () = if true then Format.printf "CPS:\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "CPS:\n%a@." CEGAR_print.print_prog prog in
   let prog = eta_expand prog in
   let prog = elim_non_det prog in
   let prog = make_bottom prog in
@@ -25,7 +25,7 @@ let check prog n =
 let check abst prog =
   let n = (fun (_,defs,_) -> List.length defs) prog in
   let tmp = get_time() in
-  let () = if Flag.print_progress then print_msg  "\n(2) Checking HORS ... " in
+  let () = if Flag.print_progress then Format.printf "\n(%d-2) Checking HORS ... " !Flag.cegar_loop in
   let result =
     match !Flag.model_check with
         Flag.ModelCheckCPS ->
