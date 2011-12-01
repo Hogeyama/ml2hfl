@@ -185,7 +185,7 @@ let abst env cond pbs p =
       then tt
       else make_if tt (Const True) (make_if ff (Const False) (Const RandBool))
 *)
-      make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
+      make_if tt (Const True) (make_if ff (Const False) (Const RandBool))
 
 
 let assume env cond pbs t1 =
