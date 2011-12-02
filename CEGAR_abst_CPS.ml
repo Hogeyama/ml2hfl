@@ -212,7 +212,7 @@ let abstract_def env (f,xs,t1,e,t2) =
     if e <> [] && ff <> Const False
     then
       let g = new_id "f" in
-      let fv = get_fv t2' in
+      let fv = diff (get_fv t2') (List.map fst env) in
         [g, fv, Const True, e, t2';
          f, xs', Const True, [], make_if ff (Const Bottom) (make_app (Var g) (List.map (fun x -> Var x) fv))]
     else

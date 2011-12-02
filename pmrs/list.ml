@@ -1,7 +1,7 @@
 
 let rec make_list m =
   if m <= 0
-  then [0]
+  then []
   else Random.int 0 :: make_list (m-1)
 
 let rec make_list_list m =

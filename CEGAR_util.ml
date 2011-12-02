@@ -512,6 +512,7 @@ let rec lift_term2 xs = function
         (f',ys',Const True,[],t1'') :: defs1, f''
 
 
+
 let lift_def2 ((f,xs,t1,e,t2):fun_def) : fun_def list =
   let ys,t2' = decomp_fun t2 in
   let defs1,t1' = lift_term2 xs t1 in

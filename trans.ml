@@ -548,13 +548,6 @@ let rec lift_aux xs t =
       | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
           let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
           let ys' = fv @ ys in
-            if Id.to_string f = "k_273" then
-            Format.printf "%a: %a@.%a; %a; %a@."
-              print_id f
-              pp_print_term t1
-              (print_list print_id "," false) xs
-              (print_list print_id "," false) (get_fv t1)
-              (print_list print_id "," false) (inter' Id.compare (get_fv t1) xs);
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
