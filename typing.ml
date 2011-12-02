@@ -23,6 +23,10 @@ let rec print_typ fm = function
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
   | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * " false) typs
 
+let print_env fm =
+  let aux fm (f,typ) = Format.fprintf fm "%s:%a@." f print_typ typ in
+    Format.fprintf fm "%a@." (print_list aux "" false)
+
 let new_tvar () = TVar (ref None)
 
 let rec occurs r = function

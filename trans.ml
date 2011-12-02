@@ -447,6 +447,7 @@ let set_target t =
             match Id.typ x with
                 TInt _ -> make_app randint_term [unit_term]
               | TUnit -> unit_term
+              | TVar _ -> unit_term
               | typ -> {desc=RandValue(typ, false); typ=typ}
           in
           let args = List.map aux xs in
@@ -513,6 +514,8 @@ let rec merge_let_fun t =
 
 
 
+let filter_base = List.filter (fun x -> is_base_typ (Id.typ x))
+
 let rec lift_aux xs t =
   let defs,desc =
     match t.desc with
@@ -541,23 +544,29 @@ let rec lift_aux xs t =
           let defs1,t1' = lift_aux xs t1 in
           let defs2,t2' = lift_aux xs t2 in
             defs1 @ defs2, Branch(t1',t2')
+      | Let(_,[_,[],_],_) -> assert false
       | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
-          let fv = xs in
+          let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
           let ys' = fv @ ys in
+            if Id.to_string f = "k_273" then
+            Format.printf "%a: %a@.%a; %a; %a@."
+              print_id f
+              pp_print_term t1
+              (print_list print_id "," false) xs
+              (print_list print_id "," false) (get_fv t1)
+              (print_list print_id "," false) (inter' Id.compare (get_fv t1) xs);
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
-          let f' = Id.new_var (Id.name f) typ in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' t1 in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
       | Let(Flag.Recursive,[f,ys,t1],t2) ->
-          let fv = xs in
+          let fv = union (filter_base xs) (inter (get_fv t1) xs) in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
-          let f' = Id.new_var (Id.name f) typ in
           let f' = Id.set_typ f typ in
-          let f'' = List.fold_left (fun t x -> make_app t [{desc=Var x;typ=Id.typ x}]) (make_var f') fv in
+          let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' (subst f f'' t1) in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc

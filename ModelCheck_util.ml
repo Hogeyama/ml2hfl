@@ -122,7 +122,7 @@ let make_bottom ((env,defs,main):prog) : prog =
       x, xs, Const True, [], Const Unit
   in
   let defs' = List.map aux_def defs in
-  let bottom_defs = List.map make (uniq compare !bottoms) in
+  let bottom_defs = List.map make (uniq !bottoms) in
     env, bottom_defs@@defs', main
 
 

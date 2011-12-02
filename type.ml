@@ -16,6 +16,14 @@ type 'a t =
   | TVariant of 'a t
 
 
+let is_base_typ = function
+    TUnit
+  | TBool
+  | TAbsBool
+  | TInt _
+  | TRInt _ -> true
+  | _ -> false
+
 
 let rec decomp_tfun = function
     TFun(x,typ) ->

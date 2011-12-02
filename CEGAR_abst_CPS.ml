@@ -225,16 +225,18 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 let abstract ((env,defs,main):prog) : prog =
+  let _ = Typing.infer ([], defs, main) in
   let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
   let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
+  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog_ML ([], defs, main) in
   let prog = Typing.infer ([], defs, main) in
   let prog = lift2 prog in
   let () = if true then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = trans_eager prog in
-  let () = if true then Format.printf "TRANS_EAGER:\n%a@." CEGAR_print.print_prog_typ prog in
   let _ = Typing.infer prog in
+  let () = if true then Format.printf "TRANS_EAGER:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
   let () = if false then Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in

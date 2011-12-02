@@ -48,7 +48,7 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
     let ds =
       let rec fixp xs =
         let xs' =
-          uniq compare
+          uniq
             (xs @
                (List.flatten
                   (List.map
@@ -115,18 +115,18 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
                check env cond pbs (make_not p))
         pbss
       in
-      let xs = uniq compare (xs' @ xs) in
-      let nxs = uniq compare (nxs' @ nxs) in
-      let ys = uniq compare (ys' @ ys) in
+      let xs = uniq (xs' @ xs) in
+      let nxs = uniq (nxs' @ nxs) in
+      let ys = uniq (ys' @ ys) in
       let ws = 
-        uniq compare
+        uniq
           (List.flatten
              (List.map
                 (fun y1 ->
                    List.map
                      (fun y2 ->
                         List.sort compare
-                          (uniq compare (y1 @ y2)))
+                          (uniq (y1 @ y2)))
                      ys)
                 ys))
       in

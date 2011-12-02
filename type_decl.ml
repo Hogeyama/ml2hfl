@@ -52,4 +52,4 @@ let constr_pos s =
     else find (fun (s',_) -> s=s') 0 !typ_decls
 
 
-let rec get_exc_typs = uniq compare (rev_flatten_map snd !exc_decls)
+let rec get_exc_typs = uniq (rev_flatten_map snd !exc_decls)
