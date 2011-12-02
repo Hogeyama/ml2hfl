@@ -10,10 +10,10 @@ let cgen etr =
         (match s with
           CompTree.Call(y, g) ->
             if Var.is_top (fst y) then
-              aux (insert_down loc (make y true g None [])) etr
+              aux (insert_down loc (make y true [g] [])) etr
             else if Var.is_pos (fst y) then (* changed *)
               let _ = assert (g = Term.ttrue) in
-              aux (insert_down loc (make y true g None [])) etr
+              aux (insert_down loc (make y true [g] [])) etr
             else if Var.is_neg (fst y) then (* changed *)
 (*              if Flags.use_ret then*)
 		              let nd = get tr in
@@ -21,22 +21,22 @@ let cgen etr =
 				            aux (up (Loc(set tr nd', p))) etr
 (*              else
 		              let _ = assert (g = Term.ttrue) in
-		              aux (insert_down loc (make y true g None [])) etr*)
+		              aux (insert_down loc (make y true [g] [])) etr*)
             else assert false
         | CompTree.Arg(xttys) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) xttys in
             let nd = get tr in
-            aux (Loc(set tr { nd with subst = nd.subst @ [xttys] }, p)) etr
+            aux (Loc(set tr { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] }, p)) etr
         | CompTree.Ret(x, t, ty) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) [x, t, ty] in
             let nd = get tr in
-            let nd' = { nd with subst = nd.subst @ [xttys] } in
+            let nd' = { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] } in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(set tr nd', p))) etr
             else if Var.is_neg f then (* changed *)
 (*              if Flags.use_ret then*)
-                aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true Term.ttrue None [])) etr
+                aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true [Term.ttrue] [])) etr
 (*              else
                 aux (up (Loc(set tr nd', p))) etr*)
             else assert false
@@ -48,7 +48,7 @@ let cgen etr =
             root (Loc(set tr { nd with closed = false }, path_set_open p)))
   in
   match etr with
-    CompTree.Call(x, g)::etr -> aux (zipper (make x true g None [])) etr
+    CompTree.Call(x, g)::etr -> aux (zipper (make x true [g] [])) etr
   | _ -> assert false
 
 let infer_env prog sums fcs =
@@ -95,9 +95,9 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 		in
   let _ =
 		  if nd.closed then
-				  Format.printf "computing conditions of <%a> and <%a>:@.  @[<v>" Var.pr arg Var.pr ret
+				  Format.printf "computing conditions of %a and %a:@.  @[<v>" Var.pr arg Var.pr ret
 		  else
-				  Format.printf "computing a condition of <%a>:@.  @[<v>" Var.pr arg
+				  Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg
   in
   let interp1, interp2 =
 				let trs, ps = rec_calls_of (fst nd.name) loc in
@@ -173,10 +173,6 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 
     try
 						let interp =
-						  if Term.equiv t2 Term.ttrue then
-						    (* this is necessary for finding refinement types that witness the infeasibility of error trace *)
-						    Term.ttrue
-						  else
 								try
 								  (if Flags.enable_widening then
 								    try
@@ -211,6 +207,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 						if nd.closed then Term.ttrue, interp else interp, Term.ttrue(*dummy*)
     with CsisatInterface.No_interpolant ->
       if nd.closed then
+        let _ = Format.printf "*******@ " in
 								let tt = Term.simplify (raw (term_of_nodes [nd])) in
 				    let tp1, tp2 = terms_of_path p in
 								let tp1 = Term.simplify tp1 in
@@ -234,43 +231,51 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 		  match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
-        let subs1, sub::subs2 = Util.split_at nd.subst (List.length trs1) in
-        let sub = List.map (fun (x, t, ty) -> x, t) sub in
-        let sub x = List.assoc x sub in
-        Some(root (Loc(Node({ nd with pre = Term.band [nd.pre; Term.subst sub interp2];
-                                      post = (match nd.post with
-                                               None -> Some(Term.subst sub (Term.bnot interp1))
-                                             | Some(t) ->(*???*) Some(Term.bor [t; Term.subst sub (Term.bnot interp1) ]));
-                                      subst = subs1 @ subs2 }, trs1 @ trs2), up)))
+        let ts1, t::ts2 = Util.split_at nd.constr (List.length trs1 + 1) in
+        let xttyss1, xttys::xttyss2 = Util.split_at nd.subst (List.length trs1) in
+        let ts2 = match ts2 with t'::ts2' -> (Term.band [t; interp2; t'])::ts2' | [] -> assert false in
+        let xttyss2 = match xttyss2 with xttys'::xttyss2' -> (xttys @ xttys')::xttyss2' | [] -> assert false in
+        (root (Loc(Node({ nd with constr = ts1 @ ts2;
+                                  subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))::
+        if Term.equiv interp1 Term.ttrue then
+          []
+        else
+		        [root (Loc(Node({ nd with ret = None;
+                                    closed = false;
+                                    constr = ts1 @ [Term.band [t; Term.bnot interp1]];
+		                                  subst = xttyss1 @ [xttys] }, trs1), path_set_open (left_of_path up)))]
 		else
 		  let _ = assert (nd.ret = None) in
     [`P(arg, interp1)],
 		  match p with
-		    Top -> let _ = assert (interp1 = Term.ttrue) in None
+		    Top -> let _ = assert (interp1 = Term.ttrue) in []
 		  | Path(up, trs1, nd, trs2) ->
         (* assert (trs2 = []) *)
-        let subs1, sub::subs2 = Util.split_at nd.subst (List.length trs1) in
-        let sub = List.map (fun (x, t, ty) -> x, t) sub in
-        let sub x = List.assoc x sub in
-        Some(root (Loc(Node({ nd with post = (match nd.post with
-                                               None -> Some(Term.subst sub (Term.bnot interp1))
-                                             | Some(t) ->(*???*) Some(Term.bor [t; Term.subst sub (Term.bnot interp1) ]));
-                                      subst = subs1 @ subs2 }, trs1 @ trs2), up)))
+        let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
+        let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
+        [root (Loc(Node({ nd with constr = ts1 @ [Term.band [t; Term.bnot interp1]];
+                                  subst = xttyss1 @ [xttys] }, trs1 @ trs2), up))]
 
-let summaries_of env constrs0 =
-  let rec summaries_of_aux sums constrs =
-(**)
-    let _ = Format.printf "constraints:@.  %a@." pr constrs in
-(**)
-    let sums', constrs_opt =
-      try
-        summary_of env (find_leaf constrs)
-      with CsisatInterface.No_interpolant ->
-        raise (FeasibleErrorTrace(constrs0))
-    in
-    match constrs_opt with
-      None -> sums' @ sums
-    | Some(constrs) ->
-        summaries_of_aux (sums' @ sums) constrs
+let summaries_of env constrss0 =
+  let rec summaries_of_aux sums constrss =
+    match constrss with
+      [] -> sums
+   | constrs::constrss' ->
+	    			(**)
+				    let _ = Format.printf "constraints:@.  %a@." pr constrs in
+				    (**)
+				    let sums', constrss'' =
+				      try
+				        summary_of env (find_leaf constrs)
+				      with CsisatInterface.No_interpolant ->
+				        raise (FeasibleErrorTrace(constrs(*???*)))
+				    in
+				    match constrss with
+				      [] -> sums' @ sums
+				    | _ ->
+				        summaries_of_aux (sums' @ sums) (constrss'' @ constrss')
+(*
+      Format.printf "@.";
+*)
   in
-  summaries_of_aux [] constrs0
+  summaries_of_aux [] constrss0

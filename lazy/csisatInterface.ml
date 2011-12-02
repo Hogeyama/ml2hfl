@@ -174,7 +174,7 @@ let interpolate t1 t2 =
         let _ = Format.printf "wrong interpolant=%a@," Fol.pr (invert it) in
         failwith "CsisatInterface.interpolate"
       *)
-    with CsisatAst.SAT_FORMULA(_) ->
+    with CsisatAst.SAT | CsisatAst.SAT_FORMULA(_) ->
       raise No_interpolant
   in
   (*

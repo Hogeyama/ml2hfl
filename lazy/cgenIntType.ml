@@ -10,7 +10,7 @@ let cgen etr =
         (match s with
           CompTree.Call(y, g) ->
             if Var.is_top (fst y) then
-              aux (insert_down loc (make y true g None [])) etr
+              aux (insert_down loc (make y true [g] [])) etr
             else if Var.is_pos (fst y) then
               let _ = assert (g = Term.ttrue) in
               aux (down loc (Var.fc_of (fst y))) etr
@@ -21,11 +21,11 @@ let cgen etr =
         | CompTree.Arg(xttys) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) xttys in
             let nd = get tr in
-            aux (Loc(set tr { nd with subst = nd.subst @ [xttys] }, p)) etr
+            aux (Loc(set tr { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] }, p)) etr
         | CompTree.Ret(x, t, ty) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) [x, t, ty] in
             let nd = get tr in
-            let nd' = { nd with subst = nd.subst @ [xttys] } in
+            let nd' = { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] } in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(set tr nd', p))) etr
@@ -40,7 +40,7 @@ let cgen etr =
             root (Loc(set tr { nd with closed = false }, path_set_open p)))
   in
   match etr with
-    CompTree.Call(x, g)::etr -> aux (zipper (make x true g None [])) etr
+    CompTree.Call(x, g)::etr -> aux (zipper (make x true [g] [])) etr
   | _ -> assert false
 
 let infer_env prog sums fcs =
@@ -186,11 +186,12 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
 		  match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
-        let subs1, sub::subs2 = Util.split_at nd.subst (List.length trs1) in
-        let sub = List.map (fun (x, t, ty) -> x, t) sub in
-        let sub x = List.assoc x sub in
-        Some(root (Loc(Node({ nd with pre = Term.band [nd.pre; Term.subst sub interp];
-                                      subst = subs1 @ subs2 }, trs1 @ trs2), up)))
+        let ts1, t::ts2 = Util.split_at nd.constr (List.length trs1 + 1) in
+        let xttyss1, xttys::xttyss2 = Util.split_at nd.subst (List.length trs1) in
+        let ts2 = match ts2 with t'::ts2' -> (Term.band [t; interp; t'])::ts2' | [] -> assert false in
+        let xttyss2 = match xttyss2 with xttys'::xttyss2' -> (xttys @ xttys')::xttyss2' | [] -> assert false in
+        Some(root (Loc(Node({ nd with constr = ts1 @ ts2;
+                                      subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))
 		else
 		  let _ = assert (nd.ret = None) in
 		  [`Pre((x, uid), interp)],
@@ -198,13 +199,12 @@ let summary_of (Loc(Node(nd, []), p) as loc) =
 		    Top -> let _ = assert (interp = Term.ttrue) in None
 		  | Path(up, trs1, nd, trs2) ->
         (* assert (trs2 = []) *)
-        let subs1, sub::subs2 = Util.split_at nd.subst (List.length trs1) in
-        let sub = List.map (fun (x, t, ty) -> x, t) sub in
-        let sub x = List.assoc x sub in
-        Some(root (Loc(Node({ nd with post = (match nd.post with
-                                               None -> Some(Term.subst sub (Term.bnot interp))
-                                             | Some(t) -> assert false(*Some(Term.bor [t; Term.subst sub (Term.bnot interp) ])*));
-                                      subst = subs1 @ subs2 }, trs1 @ trs2), up)))
+        let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
+        let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
+        let ts2 = [Term.band [t; Term.bnot interp]] in
+        let xttyss2 = [xttys] in
+        Some(root (Loc(Node({ nd with constr = ts1 @ ts2;
+                                      subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))
 
 let summaries_of constrs0 =
   let rec summaries_of_aux sums constrs =

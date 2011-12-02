@@ -138,6 +138,14 @@ let multiply_list_list f xsss =
     (List.hd xsss)
     (List.tl xsss)
 
+let rec iter3 f xs ys zs =
+  match xs, ys, zs with
+    [], [], [] ->
+      ()
+  | x::xs', y::ys', z::zs' ->
+      let () = f x y z in
+      iter3 f xs' ys' zs'
+
 let rec pr_list epr sep ppf xs =
   match xs with
     [] ->

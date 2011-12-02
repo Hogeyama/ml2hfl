@@ -5,12 +5,7 @@ let refineRefTypes prog etrs =
 (**)
   let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list Cgen.pr "@,") constrss in
 (**)
-  let sums = Util.concat_map
-    (fun constrs ->
-      Format.printf "@.";
-      CgenRefType.summaries_of (Prog.type_of prog) constrs)
-    constrss
-  in
+  let sums = CgenRefType.summaries_of (Prog.type_of prog) constrss in
 (*
   let _ = List.iter (function `Pre((x, uid), pre) ->
     Format.printf "Pre(%a,%d): %a@." Var.pr x uid Term.pr pre
