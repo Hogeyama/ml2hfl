@@ -270,7 +270,7 @@ let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
 
-  if false then
+  if true then
     begin
   (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");
@@ -761,7 +761,8 @@ let rec chk_term rtenv term id trace traces =
                  c1@c2
              with
                  PickRty -> [Cfalse])
-    | App({desc=Event("fail",false)}, _) ->
+    | App({desc=Event("fail",false)}, _)
+    | Event("fail",false) ->
         if List.for_all (function [FailNode] -> true | _ -> false) traces then
           [Cfalse]
         else
@@ -1903,10 +1904,16 @@ let rec trans_term env = function
 
 let trans_env env = List.map (fun (x,typ) -> x, trans_typ typ) env
 
-let trans_def env_cegar env (f,xs,t1,_,t2) =
+let trans_def env_cegar env (f,xs,t1,es,t2) =
   let env' = trans_env (CU.get_env (List.assoc f env_cegar) xs) in
   let env'' = env' @@ env in
-    trans_var env'' f, (List.map (trans_var env'') xs, trans_term env'' t2)
+  let t2' =
+    match es with
+        [] -> trans_term env'' t2
+      | [CS.Event "fail"] -> make_app fail_term [unit_term]
+      | _ -> assert false
+  in
+    trans_var env'' f, (List.map (trans_var env'') xs, t2')
 
 let trans ((env,defs,main):CS.prog) =
   let defs = to_if_exp defs in
