@@ -1,6 +1,6 @@
 type 'a t = {id:int; name:string; typ:'a}
 
-let init_counter = 1
+let init_counter = 0
 let counter = ref init_counter
 let tmp_counter = ref init_counter
 

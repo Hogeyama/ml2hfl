@@ -51,7 +51,7 @@ and print_typ_aux fm = function
 
 and print_typ fm typ =
   let n = Id.get_counter () in
-    Id.set_counter 1;
+    Id.set_counter 0;
     print_typ_aux fm typ;
     Id.set_counter n
 

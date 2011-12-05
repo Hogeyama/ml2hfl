@@ -493,10 +493,11 @@ let rec lift_term2 xs = function
       let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
       let ys' = fv' @ ys in
       let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' fv fv' in
-      let f' = make_app (Var f) (List.map (fun x -> Var x) fv) in
+      let f' = rename_id f in
+      let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
       let defs1,t1''' = lift_term2 ys' t1'' in
-      let defs2,t2' = lift_term2 xs (subst f f' t2) in
-        (f,ys',Const True,[],t1''') :: defs1 @ defs2, t2'
+      let defs2,t2' = lift_term2 xs (subst f f'' t2) in
+        (f',ys',Const True,[],t1''') :: defs1 @ defs2, t2'
   | Fun _ as t ->
       let f = new_id "f" in
       let ys,t1 = decomp_fun t in
@@ -504,9 +505,13 @@ let rec lift_term2 xs = function
       let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
       let ys' = fv' @ ys in
       let t1' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1 fv fv' in
-      let f' = make_app (Var f) (List.map (fun x -> Var x) fv) in
+      let f' = rename_id f in
+      let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
       let defs1,t1'' = lift_term2 ys' t1' in
-        (f,ys',Const True,[],t1'') :: defs1, f'
+        (f',ys',Const True,[],t1'') :: defs1, f''
+
+
+
 
 let lift_def2 ((f,xs,t1,e,t2):fun_def) : fun_def list =
   let ys,t2' = decomp_fun t2 in
@@ -517,7 +522,7 @@ let lift_def2 ((f,xs,t1,e,t2):fun_def) : fun_def list =
 (*** variables must be distinct from others globally ***)
 let lift2 ((_,defs,main):prog) : prog =
   let defs = flatten_map lift_def2 defs in
-  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if true then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
     Typing.infer ([],defs,main)
 
 

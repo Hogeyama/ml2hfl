@@ -238,6 +238,8 @@ let abstract ((env,defs,main):prog) : prog =
   let () = if true then Format.printf "TRANS_EAGER:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
-  let () = if false then Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if true then Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = lift2 prog in
+  let () = if true then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let _ = Typing.infer prog in
     prog

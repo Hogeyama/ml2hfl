@@ -124,6 +124,7 @@ let rec infer_term env = function
         TFun(typ_x,typ1)
 
 let infer_def env (f,xs,t1,_,t2) =
+Format.printf "INFER: %s@." f;
   let typs = List.map (fun _ -> new_tvar()) xs in
   let env' = List.map2 (fun x typ -> x,typ) xs typs @ env in
   let typ1 = infer_term env' t1 in

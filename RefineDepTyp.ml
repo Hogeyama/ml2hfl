@@ -270,7 +270,7 @@ let invalid_counter = -10
 
 let rec process_term trace term traces env pcounter =
 
-  if true then
+  if false then
     begin
   (**)
   print_string2 ("id: " ^ (string_of_int pcounter) ^ "\n");

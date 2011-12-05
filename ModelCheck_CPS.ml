@@ -9,13 +9,13 @@ open ModelCheck_util
 
 let check prog n =
   let prog = eta_expand prog in
-  let () = if false then Format.printf "ETA_EXPAND:\n%a@." CEGAR_print.print_prog prog in
+  let () = if true then Format.printf "ETA_EXPAND:\n%a@." CEGAR_print.print_prog prog in
   let prog = elim_non_det prog in
-  let () = if false then Format.printf "ELIM_NON_DET:\n%a@." CEGAR_print.print_prog prog in
+  let () = if true then Format.printf "ELIM_NON_DET:\n%a@." CEGAR_print.print_prog prog in
   let prog = put_into_if prog in
   let prog = make_bottom prog in
   let prog = pop_main prog in
-  let () = if false then Format.printf "POP_MAIN:\n%a@." CEGAR_print.print_prog prog in
+  let () = if true then Format.printf "POP_MAIN:\n%a@." CEGAR_print.print_prog prog in
   let prog = capitalize prog in
   let spec = make_spec n in
     try
