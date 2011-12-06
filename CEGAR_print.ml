@@ -51,7 +51,7 @@ and print_typ_aux fm = function
 
 and print_typ fm typ =
   let n = Id.get_counter () in
-    Id.set_counter 0;
+    Id.set_counter 1;
     print_typ_aux fm typ;
     Id.set_counter n
 
@@ -114,34 +114,14 @@ and print_prog fm ((_,defs,s):prog) =
 and print_prog_typ fm (env,defs,s) =
   Format.fprintf fm "Main: %a@." print_var s;
   List.iter (print_fun_def fm) defs;
-  Format.fprintf fm "Types:\n%a@." print_env env
+  Format.fprintf fm "Types:\n%a@." print_env env;
 
-let to_if_exp (defs:fun_def list) : fun_def list =
-  let merge = function
-      [f,xs,t1,e,t2] -> assert (t1 = Const True); f, xs, t1, e, t2
-    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
-        f1, xs1, Const True, [], make_if t21 t22 t12
-    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
-        f1, xs1, Const True, [], make_if t11 t12 t22
-    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=t21 && t11=Const True ->
-        f1, xs1, Const True, [], make_if t11 t12 t22
-    | _ -> assert false
-  in
-  let rec aux = function
-      [] -> []
-    | (f,xs,t1,e,t2)::defs ->
-        let defs1,defs2 = List.partition (fun (g,_,_,_,_) -> f = g) defs in
-        let def' = merge ((f,xs,t1,e,t2)::defs1) in
-          def' :: aux defs2
-  in
-    aux defs
-
-let rec print_const_ML fm = function
+and print_const_ML fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
-  | RandBool -> Format.fprintf fm "rand_bool"
-  | RandInt -> Format.fprintf fm "rand_int"
+  | RandBool -> Format.fprintf fm "rand_bool()"
+  | RandInt -> Format.fprintf fm "rand_int()"
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
   | Not -> Format.fprintf fm "(not)"
@@ -162,7 +142,7 @@ let rec print_const_ML fm = function
   | Proj(_,i) -> Format.fprintf fm "#%d" i
   | If -> Format.fprintf fm "if_term"
   | Temp _ -> assert false
-  | Bottom -> Format.fprintf fm "(bottom())"
+  | Bottom -> assert false
   | EqUnit -> assert false
 
 and print_term_ML fm = function
@@ -176,17 +156,20 @@ and print_term_ML fm = function
         Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " true) xs print_term_ML t1 print_term_ML t2
   | Fun(x,t) -> Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
 
-and print_fun_def_ML fm ((f,xs,t1,e,t2):fun_def) =
-  if t1 = Const True
-  then Format.fprintf fm "and %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t2
-  else Format.fprintf fm "%a when %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t1 print_term_ML t2
+and print_fun_def_ML fm (f,xs,t1,e,t2) =
+  let s = 
+    match e with
+        None -> ""
+      | Some e -> " {" ^ e ^ "} =>"
+  in
+    if t1 = Const True
+    then Format.fprintf fm "and %a = %s %a@." (print_list print_var " " false) (f::xs) s print_term_ML t2
+    else Format.fprintf fm "%a when %a = %s %a@." (print_list print_var " " false) (f::xs) print_term_ML t1 s print_term_ML t2
 
-and print_prog_ML fm ((env,defs,s):prog) =
+and print_prog_ML fm (env,defs,s) =
   Format.fprintf fm "let rec if_term b x y = if b then x else y@.";
   Format.fprintf fm "and br x y = if true then x else y@.";
-  Format.fprintf fm "and bottom x = bottom x@.";
-  Format.fprintf fm "and rand_bool = true@.";
-  List.iter (print_fun_def_ML fm) (to_if_exp defs);
+  List.iter (print_fun_def_ML fm) defs;
   if env <> [] then Format.fprintf fm "Types:\n%a@." print_env env
 
 let print_node fm = function

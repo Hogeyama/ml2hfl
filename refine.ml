@@ -48,10 +48,8 @@ let add_pred map env =
 
 
 let refine prefix ces ((env,defs,main):prog) =
-  if true then Feasibility.print_ce_reduction (List.hd ces) ((env,defs,main):prog);
   let tmp = get_time () in
-  if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
-        Format.printf "\nPrefix of spurious counter-example::\n%a\n@." CEGAR_print.print_ce prefix;
+  if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... " !Flag.cegar_loop;
   let ces =
     if Flag.use_prefix_trace
     then

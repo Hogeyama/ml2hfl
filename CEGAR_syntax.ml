@@ -55,6 +55,10 @@ type prog = env * fun_def list * var
 
 
 
+let get_env (env,_,_) = env
+let get_defs (_,defs,_) = defs
+let get_main (_,_,main) = main
+
 
 let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
 let rename_id s =

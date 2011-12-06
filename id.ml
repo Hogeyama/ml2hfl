@@ -19,12 +19,8 @@ let id x = x.id
 let name x = x.name
 let typ x = x.typ
 
-let to_string x = name x ^ "_" ^ string_of_int (id x)
-
-let compare x y =
-  if to_string x = "f_37" then Format.printf "compare: %s, %s, %d@." (to_string x) (to_string y) (compare (to_string x) (to_string y));
-  compare (to_string x) (to_string y)
-let same x y = compare x y = 0
+let same x y = name x = name y && id x = id y
+let compare x y = compare (name x,id x) (name y,id y)
 
 let set_name x name = {x with name=name}
 let set_typ x typ = {x with typ=typ}
@@ -37,4 +33,4 @@ let rec assoc x = function
 
 let print fm x = Format.fprintf fm "%s_%n" (name x) (id x)
 
-
+let to_string x = name x ^ "_" ^ string_of_int (id x)

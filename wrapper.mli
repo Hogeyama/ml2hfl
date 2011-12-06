@@ -14,6 +14,9 @@ val open_cvc3 : unit -> unit
 val close_cvc3 : unit -> unit
 (** cvc3 を閉じる．*)
 
+val reopen_cvc3 : unit -> unit
+(** equivalent to (close_cvc3 . open_cvc3) *)
+
 val equiv : Syntax.typed_term list -> Syntax.typed_term -> Syntax.typed_term -> bool
 (** [equiv cond t1 t2] で，[cond],[t1] |= [t2] かつ [cond],[t1] |= [t2] かどうかを調べる *)
 

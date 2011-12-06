@@ -21,8 +21,17 @@ let rec subst x t = function
   | Fun(y,t1) when x = y -> Fun(y,t1)
   | Fun(y,t1) -> Fun(y, subst x t t1)
 
-let subst_map map t =
-  List.fold_right (fun (x,t) t' -> subst x t t') map t
+let rec subst_map map = function
+    Const c -> Const c
+  | Var x when List.mem_assoc x map -> List.assoc x map
+  | Var x -> Var x
+  | App(t1,t2) -> App(subst_map map t1, subst_map map t2)
+  | Let(x,t1,t2) ->
+      let map' = List.filter (fun (y,_) -> x <> y) map in
+        Let(x, subst_map map' t1, subst_map map' t2)
+  | Fun(x,t1) ->
+      let map' = List.filter (fun (y,_) -> x <> y) map in
+        Fun(x, subst_map map' t1)
 
 let subst_def x t (f,xs,t1,t2) =
   f, xs, subst x t t1, subst x t t2
@@ -41,6 +50,7 @@ let rec arg_num = function
     TBase _ -> 0
   | TFun(_,typ) -> 1 + arg_num (typ (Const Unit))
   | _ -> assert false
+
 
 
 
@@ -342,6 +352,18 @@ let trans_prog t =
   let env' = uniq_env env in
   let defs''' = List.map move_event defs'' in
   let prog = pop_main (eta_expand (env', defs''', main)) in
+
+  let () = Id.clear_counter () in
+  let map = rev_flatten_map (fun (f,xs,_,_,_) -> (f,rename_id f)::List.map (fun x -> x,rename_id x) xs)  (get_defs prog) in
+  let map = uniq' (fun (x,_) (y,_) -> compare x y) map in
+  let rename_var x = List.assoc x map in
+  let rename_term t = subst_map (List.map (fun (x,x') -> x,Var x') map) t in
+  let rename_def (f,xs,t1,e,t2) = rename_var f, List.map rename_var xs, rename_term t1, e, rename_term t2 in
+  let env = List.map (fun (f,typ) -> rename_var f, typ) (get_env prog) in
+  let defs = List.map rename_def (get_defs prog) in
+  let main = rename_var (get_main prog) in
+  let prog = env, defs, main in
+  let _ = Typing.infer prog in
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
     prog
 
@@ -480,6 +502,7 @@ let lift ((_,defs,main):prog) : prog =
 
 
 
+
 let rec lift_term2 xs = function
     Const c -> [], Const c
   | Var x -> [], Var x
@@ -511,18 +534,14 @@ let rec lift_term2 xs = function
         (f',ys',Const True,[],t1'') :: defs1, f''
 
 
-
-
 let lift_def2 ((f,xs,t1,e,t2):fun_def) : fun_def list =
   let ys,t2' = decomp_fun t2 in
   let defs1,t1' = lift_term2 xs t1 in
   let defs2,t2'' = lift_term2 xs t2' in
     (f, xs@ys, t1', e, t2'')::defs1@defs2
-
-(*** variables must be distinct from others globally ***)
 let lift2 ((_,defs,main):prog) : prog =
   let defs = flatten_map lift_def2 defs in
-  let () = if true then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
     Typing.infer ([],defs,main)
 
 

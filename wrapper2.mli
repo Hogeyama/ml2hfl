@@ -14,6 +14,9 @@ val open_cvc3 : unit -> unit
 val close_cvc3 : unit -> unit
 (** cvc3 を閉じる．*)
 
+val reopen_cvc3 : unit -> unit
+(** equivalent to (close_cvc3 . open_cvc3) *)
+
 val set_datatype_cvc3 : ?cout:out_channel -> Syntax.typed_term -> unit
 
 val equiv : (CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list -> CEGAR_syntax.t list -> CEGAR_syntax.t -> CEGAR_syntax.t -> bool

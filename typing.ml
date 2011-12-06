@@ -23,10 +23,6 @@ let rec print_typ fm = function
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
   | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * " false) typs
 
-let print_env fm =
-  let aux fm (f,typ) = Format.fprintf fm "%s:%a@." f print_typ typ in
-    Format.fprintf fm "%a@." (print_list aux "" false)
-
 let new_tvar () = TVar (ref None)
 
 let rec occurs r = function
@@ -124,7 +120,6 @@ let rec infer_term env = function
         TFun(typ_x,typ1)
 
 let infer_def env (f,xs,t1,_,t2) =
-Format.printf "INFER: %s@." f;
   let typs = List.map (fun _ -> new_tvar()) xs in
   let env' = List.map2 (fun x typ -> x,typ) xs typs @ env in
   let typ1 = infer_term env' t1 in

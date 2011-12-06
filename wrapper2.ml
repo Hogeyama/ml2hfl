@@ -80,6 +80,8 @@ let close_cvc3 () =
   match Unix.close_process (!cvc3in, !cvc3out) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
+let reopen_cvc3 () = close_cvc3 (); open_cvc3 ()
+
 let set_datatype_cvc3 ?(cout = !cvc3out) t = ()(*
   let id = ref 0 in
   let fm = Format.formatter_of_out_channel cout in

@@ -208,7 +208,6 @@ let rec uniq_aux' compare acc = function
   | x::xs -> uniq_aux' compare (x::acc) xs
 let uniq' compare xs = uniq_aux' compare [] (List.sort compare xs)
 
-
 let (@@) = List.rev_append
 let (@@@) xs ys = uniq_sorted (List.merge compare xs ys)
 
@@ -220,6 +219,8 @@ let set_eq l1 l2 = subset l1 l2 && subset l2 l1
 let union l1 l2 = List.fold_left (fun l x -> if List.mem x l then l else x::l) l2 l1
 let inter' compare l1 l2 = List.filter (fun x -> List.exists (fun y -> compare x y = 0) l2) l1
 let union' compare l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> compare x y = 0) l then l else x::l) l2 l1
+
+
 
 let rec take xs n =
   match xs,n with

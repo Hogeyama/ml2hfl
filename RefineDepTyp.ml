@@ -761,8 +761,7 @@ let rec chk_term rtenv term id trace traces =
                  c1@c2
              with
                  PickRty -> [Cfalse])
-    | App({desc=Event("fail",false)}, _)
-    | Event("fail",false) ->
+    | App({desc=Event("fail",false)}, _) ->
         if List.for_all (function [FailNode] -> true | _ -> false) traces then
           [Cfalse]
         else
@@ -1904,14 +1903,13 @@ let rec trans_term env = function
 
 let trans_env env = List.map (fun (x,typ) -> x, trans_typ typ) env
 
-let trans_def env_cegar env (f,xs,t1,es,t2) =
+let trans_def env_cegar env (f,xs,t1,e,t2) =
   let env' = trans_env (CU.get_env (List.assoc f env_cegar) xs) in
   let env'' = env' @@ env in
   let t2' =
-    match es with
+    match e with
         [] -> trans_term env'' t2
       | [CS.Event "fail"] -> make_app fail_term [unit_term]
-      | _ -> assert false
   in
     trans_var env'' f, (List.map (trans_var env'') xs, t2')
 

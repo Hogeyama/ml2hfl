@@ -34,18 +34,12 @@ let make_pts x typ =
 
 
 
-let is_bool env t =
-  try
-    match get_typ env t with
-        TBase(TBool,_) -> true
-      | _ -> false
-  with TypeBottom -> false
 
 let rec trans_eager_bool f = function
-    Const True -> App(Var f, Const True)
-  | Const False -> App(Var f, Const False)
-  | Const RandBool -> trans_eager_bool f (make_br (Const True) (Const False))
-  | Var x -> App(Var f, Var x)
+    Const True
+  | Const False
+  | Var _ as t -> App(Var f, t)
+  | Const RandInt -> assert false
   | App(App(Const Or, t1), t2) ->
       let x = new_id "b" in
       let f' = new_id "f" in
@@ -76,44 +70,50 @@ let rec trans_eager_bool f = function
 
 let id x = x
 let rec trans_eager_term env c t =
-  match t with
-      App(App(Const And, _), _)
-    | App(App(Const Or, _), _)
-    | App(Const Not, _)
-    | App(App(App(Const If, _), _), _) when is_bool env t ->
-        let x = new_id "b" in
-        let f = new_id "f" in
-          begin
-            match c (Var x) with
-                App(Var k, Var y) when x = y -> trans_eager_bool k t
-              | t' -> Let(f, Fun(x, t'), trans_eager_bool f t)
-          end
-    | Const RandBool -> trans_eager_term env c (make_br (Const True) (Const False))
-    | Const (And | Or | Not | Lt | Gt | Leq | Geq | EqInt | EqBool) -> assert false
-    | Const _
-    | Var _ -> c t
-    | Fun(x,t) -> c (Fun(x, trans_eager_term env id t))
-    | App(App(App(Const If, t1), t2), t3) ->
-        let x = new_id "b" in
-        let f = new_id "f" in
-        let t2' = trans_eager_term env id t2 in
-        let t3' = trans_eager_term env id t3 in
-          begin
-            match make_if (Var x) t2' t3' with
-                App(Var k, Var y) when x=y ->
-                  let t1' = trans_eager_bool k t1 in
-                    c (Let(f, Var k, t1'))
-              | t' ->
-                  let t1' = trans_eager_bool f t1 in
-                    c (Let(f, Fun(x, t'), t1'))
-          end
-    | App(t1, t2) ->
-        let c' x = App(trans_eager_term env id t1, x) in
-          c (trans_eager_term env c' t2)
-    | Let(f, t1, t2) ->
-        let t1' = trans_eager_term env id t1 in
-        let t2' = trans_eager_term env id t2 in
-          c (Let(f, t1', t2'))
+  let is_bool t =
+    try
+      match get_typ env t with
+          TBase(TBool,_) -> true
+        | _ -> false
+    with TypeBottom -> false
+  in
+    match t with
+        App(App(Const And, _), _)
+      | App(App(Const Or, _), _)
+      | App(Const Not, _)
+      | App(App(App(Const If, _), _), _) when is_bool t ->
+          let x = new_id "b" in
+          let f = new_id "f" in
+            begin
+              match c (Var x) with
+                  App(Var k, Var y) when x = y -> trans_eager_bool k t
+                | t' -> Let(f, Fun(x, t'), trans_eager_bool f t)
+            end
+      | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | EqInt | EqBool) -> assert false
+      | Const _
+      | Var _ -> c t
+      | Fun(x,t) -> c (Fun(x, trans_eager_term env id t))
+      | App(App(App(Const If, t1), t2), t3) ->
+          let x = new_id "b" in
+          let f = new_id "f" in
+          let t2' = trans_eager_term env id t2 in
+          let t3' = trans_eager_term env id t3 in
+            begin
+              match make_if (Var x) t2' t3' with
+                  App(Var k, Var y) when x=y ->
+                    let t1' = trans_eager_bool k t1 in
+                      c (Let(f, Var k, t1'))
+                | t' ->
+                    let t1' = trans_eager_bool f t1 in
+                      c (Let(f, Fun(x, t'), t1'))
+            end
+      | App(t1, t2) ->
+          let c' x = App(trans_eager_term env id t1, x) in
+            c (trans_eager_term env c' t2)
+      | Let(f, t1, t2) ->
+          let t1' = trans_eager_term env id t1 in
+          let t2' = trans_eager_term env id t2 in
+            c (Let(f, t1', t2'))
 let trans_eager_def env (f,xs,t1,e,t2) =
   let env' = get_env (List.assoc f env) xs @@ env in
     assert (t1 = Const True);
@@ -212,7 +212,7 @@ let abstract_def env (f,xs,t1,e,t2) =
     if e <> [] && ff <> Const False
     then
       let g = new_id "f" in
-      let fv = diff (get_fv t2') (List.map fst env) in
+      let fv = get_fv t2' in
         [g, fv, Const True, e, t2';
          f, xs', Const True, [], make_if ff (Const Bottom) (make_app (Var g) (List.map (fun x -> Var x) fv))]
     else
@@ -225,21 +225,17 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 let abstract ((env,defs,main):prog) : prog =
-  let _ = Typing.infer ([], defs, main) in
   let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
   let prog = Typing.infer ([], defs, main) in
   let prog = lift2 prog in
-  let () = if true then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = trans_eager prog in
-  let _ = Typing.infer prog in
-  let () = if true then Format.printf "TRANS_EAGER:\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "TRANS_EAGER:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
-  let () = if true then Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = lift2 prog in
-  let () = if true then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
-  let _ = Typing.infer prog in
     prog

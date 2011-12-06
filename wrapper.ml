@@ -220,6 +220,8 @@ let close_cvc3 () =
   match Unix.close_process (!cvc3in, !cvc3out) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
+let reopen_cvc3 () = close_cvc3 (); open_cvc3 ()
+
 
 
 let check pre p =
@@ -304,7 +306,7 @@ let get_solution p t =
 
 
   let fm = Format.formatter_of_out_channel cout in
-  let fv = uniq (get_fv2 p) in
+  let fv = uniq' compare (get_fv2 p) in
 
   let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
   let query = "CHECKSAT " ^ string_of_term p ^ "; COUNTERMODEL;" in

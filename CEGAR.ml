@@ -18,10 +18,8 @@ let pre prog =
 let post () =
   incr Flag.cegar_loop;
   (**)
-  Wrapper2.close_cvc3 ();
-  Wrapper.close_cvc3 ();
-  Wrapper.open_cvc3 ();
-  Wrapper2.open_cvc3 ();
+  Wrapper.reopen_cvc3 ();
+  Wrapper2.reopen_cvc3 ();
   (**)
   Id.reset_counter ()
 
