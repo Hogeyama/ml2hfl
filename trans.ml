@@ -514,6 +514,10 @@ let rec merge_let_fun t =
 
 let filter_base = List.filter (fun x -> is_base_typ (Id.typ x))
 
+let compare_id x y =
+  let aux x = not (is_base_typ (Id.typ x)), Id.to_string x in
+    compare (aux x) (aux y)
+
 let rec lift_aux xs t =
   let defs,desc =
     match t.desc with
@@ -543,8 +547,8 @@ let rec lift_aux xs t =
           let defs2,t2' = lift_aux xs t2 in
             defs1 @ defs2, Branch(t1',t2')
       | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
-          let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
           let fv = xs in
+          let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.new_var (Id.name f) typ in
@@ -554,8 +558,8 @@ let rec lift_aux xs t =
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
       | Let(Flag.Recursive,[f,ys,t1],t2) ->
-          let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
           let fv = xs in
+          let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.new_var (Id.name f) typ in

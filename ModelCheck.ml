@@ -35,5 +35,5 @@ let check abst prog =
       | Flag.ModelCheck -> check abst n
   in
   let () = add_time tmp Flag.time_mc in
-  let () = if Flag.print_progress then print_msg "DONE!\n\n" in
+  let () = if Flag.print_progress then Format.printf "DONE!@.@." in
     result

@@ -83,9 +83,9 @@ let main filename in_channel =
       | Flag.CEGAR_DependentType ->
           let t_result, result = CEGAR.cegar prog [] in
 	    match result with
-	        None -> print_msg "\nSafe!\n\n"
+	        None -> Format.printf "@.Safe!@.@."
 	      | Some print ->
-                  print_msg "\n\nUnsafe!\n\n";
+                  Format.printf "@.@.Unsafe!@.@.";
                   print ()
 
 

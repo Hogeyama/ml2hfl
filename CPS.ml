@@ -824,7 +824,7 @@ let rec transform c {t_cps=t; typ_cps=typ} =
           else
             let xs1,xs2 = take2 xs n in
             let typ_g = app_typ f.id_typ xs1 in
-            let g = {id_cps=Id.new_var (Id.to_string f.id_cps) TUnknown; id_typ=typ_g} in
+            let g = {id_cps=Id.new_var (Id.name f.id_cps) TUnknown; id_typ=typ_g} in
             let t1' = {t_cps=LetCPS(Flag.Nonrecursive, g, xs2, t1, {t_cps=VarCPS g;typ_cps=typ_g}); typ_cps=typ_g} in
               transform c {t_cps=LetCPS(flag,f,xs1,t1',t2); typ_cps=typ}
     | BinOpCPS(op, t1, t2) ->
