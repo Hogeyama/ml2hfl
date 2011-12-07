@@ -68,7 +68,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
-	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo \
+	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo type_check.cmo trans.cmo CEGAR_util.cmo \
 	lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
 	lazy/util.cmo lazy/flags.cmo \
@@ -112,6 +112,12 @@ $(NAME).opt: $(CMX)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
 
 
+
+spec_parser.ml spec_parser.mli: spec_parser.mly
+	$(OCAMLYACC) -v $<
+
+spec_lexer.ml: spec_lexer.mll
+	$(OCAMLLEX) $<
 
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx

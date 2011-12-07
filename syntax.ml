@@ -1919,4 +1919,153 @@ let rec is_value t =
 
 
 
+(*
+let rec add_preds_typ = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> TAbsBool
+  | TInt ps -> TInt ps
+  | TRInt p -> TRInt p
+  | TVar({contents=None} as x) -> TVar x
+  | TVar{contents=Some typ} -> add_preds_typ typ
+  | TFun(x,typ) -> TFun(Id.set_typ x (add_preds_typ (Id.typ x)), add_preds_typ typ)
+  | TList typ -> TList (add_preds_typ typ)
+  | TPair(typ1,typ2) -> TPair(add_preds_typ typ1, add_preds_typ typ2)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TUnknown -> TUnknown
+  | TVariant _ -> assert false
 
+and add_preds_var x = Id.set_typ x (add_preds_typ (Id.typ x))
+
+and add_preds_pat p =
+  let typ = add_preds_typ p.pat_typ in
+  let desc =
+    match p.pat_desc with
+        PVar x -> PVar (add_preds_var x)
+      | PConst t -> PConst (add_preds t)
+      | PConstruct(s,ps) -> PConstruct(s, List.map add_preds_pat ps)
+      | PNil -> PNil
+      | PCons(p1,p2) -> PCons(add_preds_pat p1, add_preds_pat p2)
+      | PPair(p1,p2) -> PPair(add_preds_pat p1, add_preds_pat p2)
+      | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,add_preds_pat p)) pats)
+      | POr(p1,p2) -> POr(add_preds_pat p1, add_preds_pat p2)
+  in
+    {pat_desc=desc; pat_typ=typ}
+
+and add_preds env t =
+  let typ = add_preds_typ t.typ in
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(add_preds_typ typ,b)
+      | Var y -> Var (add_preds_var y)
+      | Fun(y, t) -> Fun(add_preds_var y, add_preds t)
+      | App(t1, ts) -> App(add_preds t1, List.map add_preds ts)
+      | If(t1, t2, t3) -> If(add_preds t1, add_preds t2, add_preds t3)
+      | Branch(t1, t2) -> Branch(add_preds t1, add_preds t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> add_preds_var f, List.map add_preds_var xs, add_preds t) bindings in
+          let t2' = add_preds t2 in
+            Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, add_preds t1, add_preds t2)
+      | Not t1 -> Not (add_preds t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,add_preds t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,add_preds t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,add_preds t1,add_preds t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(add_preds t1, add_preds t2)
+      | Constr(s,ts) -> Constr(s, List.map add_preds ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = add_preds_pat pat, apply_opt add_preds cond, add_preds t1 in
+            Match(add_preds t1, List.map aux pats)
+      | Raise t -> Raise (add_preds t)
+      | TryWith(t1,t2) -> TryWith(add_preds t1, add_preds t2)
+      | Pair(t1,t2) -> Pair(add_preds t1, add_preds t2)
+      | Fst t -> Fst(add_preds t)
+      | Snd t -> Snd(add_preds t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=typ}
+
+
+let rec prop_preds_typ = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> TAbsBool
+  | TInt ps -> TInt ps
+  | TRInt p -> TRInt p
+  | TVar({contents=None} as x) -> TVar x
+  | TVar{contents=Some typ} -> prop_preds_typ typ
+  | TFun(x,typ) -> TFun(Id.set_typ x (prop_preds_typ (Id.typ x)), prop_preds_typ typ)
+  | TList typ -> TList (prop_preds_typ typ)
+  | TPair(typ1,typ2) -> TPair(prop_preds_typ typ1, prop_preds_typ typ2)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TUnknown -> TUnknown
+  | TVariant _ -> assert false
+
+and prop_preds_var x = Id.set_typ x (prop_preds_typ (Id.typ x))
+
+and prop_preds_pat p =
+  let typ = prop_preds_typ p.pat_typ in
+  let desc =
+    match p.pat_desc with
+        PVar x -> PVar (prop_preds_var x)
+      | PConst t -> PConst (prop_preds t)
+      | PConstruct(s,ps) -> PConstruct(s, List.map prop_preds_pat ps)
+      | PNil -> PNil
+      | PCons(p1,p2) -> PCons(prop_preds_pat p1, prop_preds_pat p2)
+      | PPair(p1,p2) -> PPair(prop_preds_pat p1, prop_preds_pat p2)
+      | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,prop_preds_pat p)) pats)
+      | POr(p1,p2) -> POr(prop_preds_pat p1, prop_preds_pat p2)
+  in
+    {pat_desc=desc; pat_typ=typ}
+
+and prop_preds t =
+  let typ = prop_preds_typ t.typ in
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(prop_preds_typ typ,b)
+      | Var y -> Var (prop_preds_var y)
+      | Fun(y, t) -> Fun(prop_preds_var y, prop_preds t)
+      | App(t1, ts) -> App(prop_preds t1, List.map prop_preds ts)
+      | If(t1, t2, t3) -> If(prop_preds t1, prop_preds t2, prop_preds t3)
+      | Branch(t1, t2) -> Branch(prop_preds t1, prop_preds t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> prop_preds_var f, List.map prop_preds_var xs, prop_preds t) bindings in
+          let t2' = prop_preds t2 in
+            Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, prop_preds t1, prop_preds t2)
+      | Not t1 -> Not (prop_preds t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,prop_preds t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,prop_preds t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,prop_preds t1,prop_preds t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(prop_preds t1, prop_preds t2)
+      | Constr(s,ts) -> Constr(s, List.map prop_preds ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = prop_preds_pat pat, apply_opt prop_preds cond, prop_preds t1 in
+            Match(prop_preds t1, List.map aux pats)
+      | Raise t -> Raise (prop_preds t)
+      | TryWith(t1,t2) -> TryWith(prop_preds t1, prop_preds t2)
+      | Pair(t1,t2) -> Pair(prop_preds t1, prop_preds t2)
+      | Fst t -> Fst(prop_preds t)
+      | Snd t -> Snd(prop_preds t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=typ}
+*)

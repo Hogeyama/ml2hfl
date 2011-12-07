@@ -75,7 +75,7 @@ let rec print print_pred fm typ =
           assert (not Flag.check_fun_arg_typ || can_unify (Id.typ x) typ);
           (*      if (match typ1 with TInt _ -> true | TRInt _ -> true | _ -> false) (*&& occurs x typ2*)
                   then fprintf fm "(%a -> %a)" print_id_typ x print typ2
-                  else*) Format.fprintf fm "(%a -> %a)" print (Id.typ x) print typ
+                  else*) Format.fprintf fm "(%a:%a -> %a)" Id.print x print (Id.typ x) print typ
       | TUnknown -> Format.fprintf fm "???"
       | TList typ -> Format.fprintf fm "%a list" print typ
       | TPair(typ1,typ2) -> Format.fprintf fm "(%a * %a)" print typ1 print typ2

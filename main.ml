@@ -35,7 +35,7 @@ let print_info () =
 
 
 
-
+let spec_file = ref ""
 
 let main filename in_channel =
   let input_string =
@@ -56,20 +56,34 @@ let main filename in_channel =
     in
       Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
-  let () = if true then Format.printf "parsed::@.%a\n\n@." (Syntax.print_term true) t in
+  let spec =
+    if !spec_file = ""
+    then []
+    else Spec_parser.typedefs Spec_lexer.token (Lexing.from_channel (open_in !spec_file))
+  in
+
+
+List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec;
+
+
+  let () = if true then Format.printf "parsed::@.%a\n\n@." Syntax.pp_print_term' t in
+(*
+  let t = add_preds spec t in
+  let () = if true then Format.printf "add_preds::@.%a\n\n@." Syntax.pp_print_term' t in
+*)
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
-  let () = if true then Format.printf "set_target::@.%a\n\n@." (Syntax.print_term true) t in
+  let () = if true then Format.printf "set_target::@.%a\n\n@." Syntax.pp_print_term' t in
   let t =
     if !Flag.init_trans
     then
       let t = Trans.copy_poly_funs t in
       let () = if true then Format.printf "copy_poly::@.%a\n@." Syntax.pp_print_term t in
       let t = Abstract.abstract_recdata t in
-      let () = if true then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term' t in
+      let () = if false then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term' t in
       let t = Abstract.abstract_list t in
       let () = if true then Format.printf "abst_list::@.%a\n@." Syntax.pp_print_term t in
       let t = CPS.trans t in
-      let () = if true then Format.printf "CPS::@.%a\n\n@." Syntax.pp_print_term t in
+      let () = if false then Format.printf "CPS::@.%a\n\n@." Syntax.pp_print_term t in
       let t = CPS.remove_pair t in
       let () = if true then Format.printf "remove_pair::@.%a\n\n@." Syntax.pp_print_term t in
         t
@@ -101,7 +115,9 @@ let spec =
    "-exn", Arg.Set Flag.cps_excep, " CPS transformation for exception";
 *)
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineSizedType), " use sized type system for predicate discovery";
-   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " use dependent type system for predicate discovery"
+   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " use dependent type system for predicate discovery";
+   "-spec", Arg.String (fun file -> spec_file := file),
+         "<filename>  use <filename> as specification";
   ]
 
 
@@ -130,7 +146,7 @@ let () =
         Wrapper.close_cvc3 ();
         if !Flag.web then close_log ()
     with
-        Parsing.Parse_error _ -> Format.printf "Parse error.@."; exit 1
+        Parsing.Parse_error -> Format.printf "Parse error.@."; exit 1
       | LongInput -> Format.printf "Input is too long.@."; exit 1
       | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
