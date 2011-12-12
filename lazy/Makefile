@@ -1,7 +1,7 @@
 SOURCES = enum.ml extList.ml extString.ml \
           util.ml flags.ml \
           attr.ml idnt.ml const.ml var.ml arith.ml simType.ml term.ml fdef.ml prog.ml \
-          apronInterface.ml csisatInterface.ml cvc3Interface.ml \
+          apronInterface.ml cvc3Interface.ml csisatInterface.ml \
           compTree.ml compTreeExpander.ml \
           hornClause.ml cgen.ml \
           intType.ml cgenIntType.ml \

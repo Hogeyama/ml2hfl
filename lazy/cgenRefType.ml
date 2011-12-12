@@ -1,3 +1,5 @@
+open ExtList
+open ExtString
 open Cgen
 
 (* generate a set of constraints from an error trace *)
@@ -48,7 +50,7 @@ let cgen etr =
             root (Loc(set tr { nd with closed = false }, path_set_open p)))
   in
   match etr with
-    CompTree.Call(x, g)::etr -> aux (zipper (make x true [g] [])) etr
+    CompTree.Call(x, g)::etr -> get_unsat_prefix (aux (zipper (make x true [g] [])) etr)
   | _ -> assert false
 
 let infer_env prog sums fcs =
@@ -77,184 +79,251 @@ let rec visible x y =
 				      (z = z' && uid = uid' && arg' <= arg) ||
 				      (visible z y))
 
-let summary_of env (Loc(Node(nd, []), p) as loc) =  
-  let x, uid = fst nd.name, snd nd.name in
-  let arg =
-		  let i = SimType.find_last_base (env x) in
-		  let _ = if i = -1 then ()(* condition must be Term.ttrue *) in
-    Var.T(x, uid, i)
-  in
-		let ret =
-		  match nd.ret with
-		    None ->
-		      Var.T(x, uid, SimType.arity (env x))
-		  | Some(x, uid) ->
-		      let i = SimType.find_last_base (env x) in
-		      let _ = if i = -1 then ()(* condition must be Term.ttrue *) in
-		      Var.T(x, uid, i)
-		in
-  let _ =
-		  if nd.closed then
-				  Format.printf "computing conditions of %a and %a:@.  @[<v>" Var.pr arg Var.pr ret
-		  else
-				  Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg
-  in
-  let interp1, interp2 =
-				let trs, ps = rec_calls_of (fst nd.name) loc in
-				let sub (y, uid) x =
-				  match x with
-				    Var.V(_) ->
-				      Term.make_var2 x
-				  | Var.T(y', uid', arg) ->
-				      (* ToDo: no need to be recursive??? *)
-				      if y = y' && uid = uid' then
-				        Term.make_var2 (Var.T(y', 0(*???*), arg))
-				      else
-				        Term.make_var2 x
-				in
-    let vis = visible (if nd.closed then ret else arg) in
-				let tts, tps = List.split
-				  (List.map2
-				    (fun tr p ->
-				      Term.simplify
-            (Term.subst
-              (sub (get tr).name)
-              (qelim vis (term_of_nodes (nodes_of_tree tr)))),
-				      Term.simplify
-            (Term.subst
-              (sub (get tr).name)
-              (qelim vis (term_of_nodes (nodes_of_path p)))))
-				    trs ps)
-				in
-				let sub_inv (y, uid) x =
-				  match x with
-				    Var.V(_) ->
-				      Term.make_var2 x
-				  | Var.T(y', uid', arg) ->
-				      (* ToDo: no need to be recursive??? *)
-				      if y = y' && uid' = 0 then
-				        Term.make_var2 (Var.T(y', uid, arg))
-				      else
-				        Term.make_var2 x
-				in
-				let hoge ts =
-						let _, tss = List.fold_left
-						  (fun (ts, tss) t ->
-						    t::ts, tss @ [t::ts])
-						  ([], [])
-						  ts
-				  in
-				  tss
-				in
-				let tt = Term.subst (sub_inv nd.name) (List.hd tts) in
-				let tp = Term.subst (sub_inv nd.name) (List.hd tps) in
-				let ttw =
-      if Flags.enable_widening then
-        Term.subst
-          (sub_inv nd.name)
-          (ApronInterface.widen (List.map Term.bor (hoge tts)))
-      else
-        Term.tunit(*dummy*)
-    in
-				let tpw =
-      if Flags.enable_widening then
-        Term.subst
-          (sub_inv nd.name)
-          (ApronInterface.widen (List.map Term.bor (hoge tps)))
-      else
-        Term.tunit(*dummy*)
-    in
-				let t1, t2, tw1, tw2 =
-				  if nd.closed then
-				    tt, tp, ttw, tpw
-				  else
-				    tp, tt, tpw, ttw
-				in
+(*
+let rec enum_visible x =
+  match x with
+    Var.V(_) ->
+      [x]
+  | Var.T(x, uid, arg) ->
+      enum_visible x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
+*)
 
+let args_of_tree env tr =
+  (* ToDo: not enought for higher-order functions *)
+  let x, uid = (get tr).name in
+  let n = SimType.arity (env x) in
+  List.init n (fun i -> Var.T(x, uid, i))
+
+let ret_of_tree env tr =
+  (* ToDo: not enought for higher-order functions *)
+  let x, uid = (get tr).name in
+		match (get tr).ret with
+		  None ->
+		    Var.T(x, uid, SimType.arity (env x))
+		| Some(x, uid) ->
+						SimType.find_last_base env (x, uid)
+
+let arg_of env nd =
+  let x, uid = nd.name in
+		if nd.closed then
+				match nd.ret with
+				  None ->
+				    Var.T(x, uid, SimType.arity (env x))
+				| Some(x, uid) ->
+								SimType.find_last_base env (x, uid)
+		else
+				SimType.find_last_base env (x, uid)
+
+let summary_of env (Loc(Node(nd, []), p) as loc) =  
+  let arg = arg_of env nd in
+  let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+  let parginterps, interp =
     try
-						let interp =
-								try
-								  (if Flags.enable_widening then
-								    try
-								      let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr tw1 Term.pr tw2 in
-								      CsisatInterface.interpolate_bvs vis tw1 tw2
-								    with CsisatInterface.No_interpolant ->
-								      if nd.closed then
-								        if Term.equiv t2 tw2 then
-								          raise CsisatInterface.No_interpolant
-								        else
-								          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr tw1 Term.pr t2 in
-								          CsisatInterface.interpolate_bvs vis tw1 t2
-								      else
-								        if Term.equiv t1 tw1 then
-								          raise CsisatInterface.No_interpolant
-								        else
-								          let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr tw2 in
-								          CsisatInterface.interpolate_bvs vis t1 tw2
-								  else
-								    raise CsisatInterface.No_interpolant)
-								with CsisatInterface.No_interpolant ->
-								  (try
-								    if Flags.enable_widening && Term.equiv t1 tw1 && Term.equiv t2 tw2 then
-								      raise CsisatInterface.No_interpolant
-								    else
-								      let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-								      CsisatInterface.interpolate_bvs vis t1 t2
-								  with CsisatInterface.No_interpolant ->
-								    raise CsisatInterface.No_interpolant)
-						in
-						let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
-						if nd.closed then Term.ttrue, interp else interp, Term.ttrue(*dummy*)
+      let interp =
+		      if Flags.enable_widening then
+										let trs, ps = rec_calls_of (fst nd.name) loc in
+										let tts, tps = List.split
+										  (List.map2
+										    (fun tr p ->
+                let arg = arg_of env (get tr) in
+(*
+                let _ = Format.printf "%a@." Var.pr arg in
+*)
+										      Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_tree tr)))),
+										      Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))))
+										    trs ps)
+										in
+										let tt = List.hd tts in
+										let tp = List.hd tps in
+				      let xss = List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs in
+										let ttw = widen xss tts in
+										let tpw = widen xss tps in
+										let t1, t2, tw1, tw2 =
+										  if nd.closed then
+										    tt, tp, ttw, tpw
+										  else
+										    tp, tt, tpw, ttw
+										in
+		        interpolate_widen_bvs (visible arg) nd.closed t1 t2 tw1 tw2
+		      else
+										let tt = Term.simplify (qelim (visible arg) (term_of_nodes [nd])) in
+										let tp = Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p))) in
+										let t1, t2 = if nd.closed then tt, tp else tp, tt in
+		        interpolate_bvs (visible arg) t1 t2
+      in
+      let _ = Format.printf "@]@." in
+						[], interp
     with CsisatInterface.No_interpolant ->
-      if nd.closed then
-        let _ = Format.printf "*******@ " in
-								let tt = Term.simplify (raw (term_of_nodes [nd])) in
-				    let tp1, tp2 = terms_of_path p in
-								let tp1 = Term.simplify tp1 in
-								let tp2 = Term.simplify tp2 in
-				    let t1 = Term.band [tp1; tt] in
-				    let t2 = Term.band [tp1; tp2] in
-				    let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-								let interp2 = CsisatInterface.interpolate_bvs (visible ret) t1 t2 in
-								let _ = Format.printf "interp_out: %a@ " Term.pr interp2 in
-				    let t1 = tp1 in
-				    let t2 = Term.band [tt; Term.bnot interp2] in
-				    let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-								let interp1 = CsisatInterface.interpolate_bvs (visible arg) t1 t2 in
-								let _ = Format.printf "interp_out: %a@ " Term.pr interp1 in
-        interp1, interp2
+      let _ = Format.printf "*******@ " in
+      if Flags.enable_widening then
+								let trs, ps = rec_calls_of (fst nd.name) loc in
+		      let argps =
+  		      let tr = Node(nd, []) in
+				      let locs = find_all (fun nd -> Var.ancestor_of (Var.tlfc_of (Var.T(fst (get tr).name, snd (get tr).name, (*dummy*)-1))) nd.name) (root loc) in
+								  List.map
+								    (fun (Loc(tr, p)) ->
+														SimType.find_last_base env (get tr).name,
+								      left_of_path p)
+								    locs
+        in
+				    let ts0 =
+		        List.map
+		          (fun (arg, p) ->
+		            let t = Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
+		            (*let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in*)
+		            t)
+		          argps
+				    in
+        let ndss =
+          List.map
+            (fun tr ->
+								      let locs = find_all (fun nd -> Var.ancestor_of (Var.tlfc_of (Var.T(fst (get tr).name, snd (get tr).name, (*dummy*)-1))) nd.name) (root loc) in
+								      Util.concat_map (fun (Loc(tr, _)) -> nodes_of_tree tr) locs)
+            trs
+		      in
+		      let interp =
+										let tts, tps = List.split
+										  (Util.map3
+										    (fun tr nds p ->
+                let arg = arg_of env (get tr) in
+(*
+                let _ = Format.printf "%a@." Var.pr arg in
+*)
+										      let ts, xttys = term_of_nodes nds in
+										      Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (ts0 @ ts, xttys))),
+										      Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))))
+										    trs ndss ps)
+										in
+										let tt = List.hd tts in
+										let tp = List.hd tps in
+				      let xss = List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs in
+										let ttw = widen xss tts in
+										let tpw = widen xss tps in
+										let t1, t2, tw1, tw2 =
+										  if nd.closed then
+										    tt, tp, ttw, tpw
+										  else
+										    tp, tt, tpw, ttw
+										in
+		        interpolate_widen_bvs (visible arg) nd.closed t1 t2 tw1 tw2
+		      in
+		      let _ = Format.printf "@]@." in
+        let nds = List.hd ndss in
+		      let _, parginterps =
+				      List.fold_left
+				        (fun (t0::ts0, parginterps) (arg, p) ->
+												  let _ = Format.printf "computing condition of %a:@.  @[<v>" Var.pr arg in
+														let interp =
+				            let t1 = t0 in
+				            let t2 =
+					  			        let ts, xttys = term_of_nodes nds in
+									  					  Term.simplify (qelim (visible arg) ((if nd.closed then Term.bnot interp else interp)::ts0 @ ts, xttys))
+				            in
+				            interpolate_bvs (visible arg) t1 t2
+		            in
+		            let _ = Format.printf "@]@." in
+				          ts0 @ [interp], (p, arg, interp)::parginterps)
+				        (ts0, []) argps
+		      in
+		      parginterps, interp
       else
-        raise CsisatInterface.No_interpolant
+		      let argps =
+  		      let tr = Node(nd, []) in
+		        let locs = find_all (fun nd -> Var.ancestor_of (Var.tlfc_of (Var.T(fst (get tr).name, snd (get tr).name, (*dummy*)-1))) nd.name) (root loc) in
+		        List.map
+		          (fun (Loc(tr, p)) ->
+														SimType.find_last_base env (get tr).name,
+		            left_of_path p)
+		          locs
+		      in
+				    let ts0 =
+		        List.map
+		          (fun (arg, p) ->
+		            let t = Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
+		            (*let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in*)
+		            t)
+		          argps
+				    in
+        let nds =
+  		      let tr = Node(nd, []) in
+		        let locs = find_all (fun nd -> Var.ancestor_of (Var.tlfc_of (Var.T(fst (get tr).name, snd (get tr).name, (*dummy*)-1))) nd.name) (root loc) in
+		        Util.concat_map (fun (Loc(tr, _)) -> nodes_of_tree tr) locs
+        in
+		      let interp =
+		        let tt =
+						      let ts, xttys = term_of_nodes nds in
+												Term.simplify (qelim (visible arg) (ts0 @ ts, xttys))
+		        in
+		        let tp = Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p))) in
+		        let t1, t2 = if nd.closed then tt, tp else tp, tt in
+										interpolate_bvs (visible arg) t1 t2
+		      in
+		      let _ = Format.printf "@]@." in
+		      let _, parginterps =
+				      List.fold_left
+				        (fun (t0::ts0, parginterps) (arg, p) ->
+												  let _ = Format.printf "computing condition of %a:@.  @[<v>" Var.pr arg in
+														let interp =
+				            let t1 = t0 in
+				            let t2 =
+					  			        let ts, xttys = term_of_nodes nds in
+									  					  Term.simplify (qelim (visible arg) ((if nd.closed then Term.bnot interp else interp)::ts0 @ ts, xttys))
+				            in
+				            interpolate_bvs (visible arg) t1 t2
+		            in
+		            let _ = Format.printf "@]@." in
+				          ts0 @ [interp], (p, arg, interp)::parginterps)
+				        (ts0, []) argps
+		      in
+		      parginterps, interp
   in
 		if nd.closed then
-    [`P(arg, interp1); `P(ret, interp2)],
-		  match p with
+    `P(arg, interp)::(List.map (fun (_, arg, interp) -> `P(arg, interp)) parginterps),
+		  (match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
         let ts1, t::ts2 = Util.split_at nd.constr (List.length trs1 + 1) in
         let xttyss1, xttys::xttyss2 = Util.split_at nd.subst (List.length trs1) in
-        let ts2 = match ts2 with t'::ts2' -> (Term.band [t; interp2; t'])::ts2' | [] -> assert false in
+(*
+        let xts = List.map (fun (x, t, _) -> x, t) xttys in
+        let sub x = List.assoc x xts in
+*)
+        let ts2 = match ts2 with t'::ts2' -> (Term.band [t; (*Term.subst sub*) interp; t'])::ts2' | [] -> assert false in
+(**)
         let xttyss2 = match xttyss2 with xttys'::xttyss2' -> (xttys @ xttys')::xttyss2' | [] -> assert false in
+(**)
         (root (Loc(Node({ nd with constr = ts1 @ ts2;
-                                  subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))::
-        if Term.equiv interp1 Term.ttrue then
-          []
-        else
-		        [root (Loc(Node({ nd with ret = None;
-                                    closed = false;
-                                    constr = ts1 @ [Term.band [t; Term.bnot interp1]];
-		                                  subst = xttyss1 @ [xttys] }, trs1), path_set_open (left_of_path up)))]
+                                  subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up))))::
+    Util.concat_map
+      (fun (Path(up, trs1, nd, []), _, interp) ->
+				    if Term.equiv interp Term.ttrue then
+				      []
+				    else
+		        let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
+		        let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
+(**)
+		        let xts = List.map (fun (x, t, _) -> x, t) xttys in
+		        let sub x = List.assoc x xts in
+(**)
+				      [root (Loc(Node({ nd with ret = None;
+				                                closed = false;
+				                                constr = ts1 @ [Term.band [t; Term.bnot ((*Term.subst sub*) interp)]];
+				                                subst = xttyss1 @ [(*[]*)(**)xttys(**)] }, trs1), path_set_open up))])
+      parginterps
 		else
 		  let _ = assert (nd.ret = None) in
-    [`P(arg, interp1)],
+    [`P(arg, interp)],
 		  match p with
-		    Top -> let _ = assert (interp1 = Term.ttrue) in []
-		  | Path(up, trs1, nd, trs2) ->
-        (* assert (trs2 = []) *)
+		    Top -> let _ = assert (interp = Term.ttrue) in []
+		  | Path(up, trs1, nd, []) ->
         let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
         let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
-        [root (Loc(Node({ nd with constr = ts1 @ [Term.band [t; Term.bnot interp1]];
-                                  subst = xttyss1 @ [xttys] }, trs1 @ trs2), up))]
+(**)
+        let xts = List.map (fun (x, t, _) -> x, t) xttys in
+        let sub x = List.assoc x xts in
+(**)
+        [root (Loc(Node({ nd with constr = ts1 @ [Term.band [t; Term.bnot ((**)Term.subst sub(**) interp)]];
+                                  subst = xttyss1 @ [[](*xttys*)] }, trs1), up))]
 
 let summaries_of env constrss0 =
   let rec summaries_of_aux sums constrss =

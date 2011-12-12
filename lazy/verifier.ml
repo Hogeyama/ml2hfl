@@ -6,13 +6,11 @@ let refineRefTypes prog etrs =
   let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list Cgen.pr "@,") constrss in
 (**)
   let sums = CgenRefType.summaries_of (Prog.type_of prog) constrss in
-(*
-  let _ = List.iter (function `Pre((x, uid), pre) ->
-    Format.printf "Pre(%a,%d): %a@." Var.pr x uid Term.pr pre
-  | `Post((x, uid), post) ->
-    Format.printf "Post(%a,%d): %a@." Var.pr x uid Term.pr post) sums
+(**)
+  let _ = List.iter (fun (`P(x, t)) ->
+    Format.printf "P(%a): %a@." Var.pr x Term.pr t) sums
   in
-*)
+(**)
   let fcs = List.unique (Util.concat_map CompTree.function_calls_of etrs) in
   let env = CgenRefType.infer_env prog sums fcs in
   env
@@ -25,7 +23,7 @@ let refineIntTypes prog etrs =
   let sums = Util.concat_map
     (fun constrs ->
       Format.printf "@.";
-      CgenIntType.summaries_of constrs)
+      CgenIntType.summaries_of (Prog.type_of prog) constrs)
     constrss
   in
 (*

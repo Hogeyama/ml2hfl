@@ -8,16 +8,16 @@ let rec pr ppf x =
     V(id) ->
       Format.fprintf ppf "%a" Idnt.pr id
   | T(x, uid, arg) ->
-      Format.fprintf ppf "<%a%s%s>" pr x
-        (":" ^ String.of_int uid)
-        (":" ^ String.of_int arg)
+      Format.fprintf ppf "<%a@@%d:%d>" pr x uid arg
+
+let rec pr_x_uid ppf (x, uid) = Format.fprintf ppf "<%a@@%d>" pr x uid
 
 let make id = V(id)
 
 let new_var () = V(Idnt.new_id ())
 
 let header = "a"
-let separator = "__" (*???*)(*"-"*)
+let separator = "___" (*???*)(*"-"*)
 
 let string_of x =
   let rec f x =
@@ -63,12 +63,21 @@ and is_neg x =
     V(_) -> false
   | T(x', _, _) -> is_pos x'
 
-let rec fc_of x =
+(* return the call id of top level function call *)
+let rec tlfc_of x =
   match x with
     V(_) -> raise Not_found
-  | T(x', uid, _) -> try fc_of x' with Not_found -> x', uid
+  | T(x', uid, _) -> try tlfc_of x' with Not_found -> x', uid
 
+(* return the call id of parent function call *)
 let rec fc_ref_of x =
   match x with
     V(_) -> assert false
   | T(x', uid, _) -> x', uid
+
+let rec ancestor_of (x, uid) (x', uid') =
+  (x = x' && uid = uid') ||
+  (match x' with
+    V(_) -> false
+  | T(x', uid', _) -> ancestor_of (x, uid) (x', uid'))
+

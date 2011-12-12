@@ -144,11 +144,14 @@ let of_interaction_type f sty =
 let rec of_refinement_type rty =
   match rty with
     RefType.Base(x, RefType.Unit, t) ->
-      Base(Unit, x, if t = Term.ttrue then [] else [t])
+      let ps = if Flags.atom then Term.atoms t else if t = Term.ttrue || t = Term.tfalse then [] else [t] in
+      Base(Unit, x, ps)
   | RefType.Base(x, RefType.Bool, t) ->
-      Base(Bool, x, if t = Term.ttrue then [] else [t])
+      let ps = if Flags.atom then Term.atoms t else if t = Term.ttrue || t = Term.tfalse then [] else [t] in
+      Base(Bool, x, ps)
   | RefType.Base(x, RefType.Int, t) ->
-      Base(Int, x, if t = Term.ttrue then [] else [t])
+      let ps = if Flags.atom then Term.atoms t else if t = Term.ttrue || t = Term.tfalse then [] else [t] in
+      Base(Int, x, ps)
   | RefType.Fun(xs) ->
       let _ = assert (xs <> []) in
       let atys = List.map (fun (rty1, rty2) -> Fun(of_refinement_type rty1, of_refinement_type rty2)) xs in

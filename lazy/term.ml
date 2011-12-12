@@ -350,6 +350,24 @@ and dnfn t =
       [[apply (Const(a, Const.bnot_ibin bop)) [t1; t2]]]
   | t, _-> Format.printf "@.%a@." pr t; assert false
 
+let rec atoms t =
+  match fun_args t with
+    Var(_, _), [] ->
+      [t]
+  | Const(_, Const.True), []
+  | Const(_, Const.False), [] ->
+      []
+  | Const(_, Const.And), [t1; t2]
+  | Const(_, Const.Or), [t1; t2]
+  | Const(_, Const.Imply), [t1; t2]
+  | Const(_, Const.Iff), [t1; t2] ->
+      atoms t1 @ atoms t2
+  | Const(_, Const.Not), [t] -> 
+      atoms t
+  | Const(_, bop), [_; _] ->
+      [t]
+  | t, _->
+      Format.printf "@.%a@." pr t; assert false
 
 
 let rec unit_vars is_unit t =
@@ -490,6 +508,19 @@ let rec simplify t =
         Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) ->
           Const(attr, Const.Int(n1 - n2))
       | _ -> apply (Const(attr, Const.Sub)) [t1; t2])
+  | Const(attr, Const.Mul), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
+      (match t1, t2 with
+        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) ->
+          Const(attr, Const.Int(n1 * n2))
+      | Const(_, Const.Int(0)), t
+      | t, Const(_, Const.Int(0)) ->
+          tint 0
+      | Const(_, Const.Int(1)), t
+      | t, Const(_, Const.Int(1)) ->
+          t
+      | _ -> apply (Const(attr, Const.Mul)) [t1; t2])
   | Const(attr, c), [t1; t2] when c = Const.EqUnit || c = Const.EqInt ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
@@ -570,3 +601,10 @@ let elim_unit_boolean ts =
 		    subs,
 		  fun ts ->
       bor (List.map2 (fun t sub -> band (t::(List.map (fun (b, t) -> eqBool (make_var2 b) t) sub))) ts subs)
+
+
+(* p for bound variables *)
+let rename_fresh p t =
+  let fvs = List.filter (fun x -> not (p x)) (fvs t) in
+  let sub = List.map (fun x -> x, make_var2 (Var.new_var ())) fvs in
+  subst (fun x -> List.assoc x sub) t

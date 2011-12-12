@@ -8,6 +8,16 @@ let rec prefix xs ys =
   | x::xs', y::ys' -> x = y && prefix xs' ys'
   | _, _ -> false
 
+(* nonemp_prefixes [1;2;3] = [[1]; [1; 2]; [1; 2; 3]] *)
+let nonemp_prefixes ts =
+		let _, tss = List.fold_left
+		  (fun (ts, tss) t ->
+		    ts @ [t], tss @ [ts @ [t]])
+		  ([], [])
+		  ts
+  in
+  tss
+
 let rec fixed_point f eq x =
   let x' = f x in
   if eq x x' then x else fixed_point f eq x'
@@ -137,6 +147,13 @@ let multiply_list_list f xsss =
     (multiply_list f)
     (List.hd xsss)
     (List.tl xsss)
+
+let rec map3 f xs ys zs =
+  match xs, ys, zs with
+    [], [], [] ->
+      []
+  | x::xs', y::ys', z::zs' ->
+      f x y z::map3 f xs' ys' zs'
 
 let rec iter3 f xs ys zs =
   match xs, ys, zs with

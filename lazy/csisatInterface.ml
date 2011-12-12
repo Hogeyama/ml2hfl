@@ -161,6 +161,11 @@ let iff t1 t2 =
 exception No_interpolant
 
 let interpolate t1 t2 =
+(*
+  if Cvc3Interface.is_valid (Term.bnot t2) then
+    t1
+  else
+*)
   let p1 = CsisatAstUtil.simplify (csisat_of_formula t1) in
   let p2 = CsisatAstUtil.simplify (csisat_of_formula t2) in
   (*
@@ -176,6 +181,7 @@ let interpolate t1 t2 =
       *)
     with CsisatAst.SAT | CsisatAst.SAT_FORMULA(_) ->
       raise No_interpolant
+   | Failure(msg) -> let _ = Format.printf "csisat error: %s@." msg in raise No_interpolant(*???*)
   in
   (*
   Format.printf "%s@." (CsisatAstUtil.print_pred interp);
@@ -183,16 +189,13 @@ let interpolate t1 t2 =
   let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
   simplify (formula_of (CsisatAstUtil.dnf interp))
 
-(* t1 and t2 should share only variables that satisfy p *)
+(*
+(* t1 and t2 share only variables that satisfy p *)
 let interpolate_bvs p t1 t2 =
-  let t1 =
-    let fvs = List.filter (fun x -> not (p x)) (Term.fvs t1) in
-    let sub = List.map (fun x -> x, Term.make_var2 (Var.new_var ())) fvs in
-    Term.subst (fun x -> List.assoc x sub) t1
-  in
-  let t2 =
-    let fvs = List.filter (fun x -> not (p x)) (Term.fvs t2) in
-    let sub = List.map (fun x -> x, Term.make_var2 (Var.new_var ())) fvs in
-    Term.subst (fun x -> List.assoc x sub) t2
-  in
+  let t1 = Term.rename_fresh p t1 in
+  let t2 = Term.rename_fresh p t2 in
+(*
+		let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
+*)
   interpolate t1 t2
+*)

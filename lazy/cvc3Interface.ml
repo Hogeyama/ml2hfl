@@ -173,7 +173,7 @@ let is_valid t =
     "QUERY " ^ string_of_term t ^ ";" ^
     "POP;\n"
   in
-  let _ = Format.printf "input to cvc3: %s@ " inp in
+  let _ = if Flags.debug then Format.printf "input to cvc3: %s@ " inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let res = input_line cin in
   if Str.string_match (Str.regexp ".*Valid") res 0 then
@@ -183,6 +183,16 @@ let is_valid t =
   else
     let _ = Format.printf "unknown error of CVC3: %s@ " res in
     assert false
+
+let implies t1 t2 = is_valid (Term.imply t1 t2)
+
+(*
+(* t1 and t2 share only variables that satisfy p *)
+let implies_bvs p t1 t2 =
+  let t1 = Term.rename_fresh p t1 in
+  let t2 = Term.rename_fresh p t2 in
+  implies t1 t2
+*)
 
 (*
 let checksat env p =
