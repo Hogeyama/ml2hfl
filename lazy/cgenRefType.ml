@@ -335,7 +335,17 @@ let summaries_of env constrss0 =
 				    (**)
 				    let sums', constrss'' =
 				      try
-				        summary_of env (find_leaf constrs)
+            let loc =
+              if Flags.enable_widening then
+                let locs = List.rev (find_leaves constrs) in
+                let locs' = List.filter (fun (Loc(Node(nd, []), p) as loc) -> is_recursive nd.name loc) locs in
+                (match locs' with
+                  [] -> List.hd locs
+                | loc::_ -> loc)
+              else
+                find_leaf constrs
+            in
+				        summary_of env loc
 				      with CsisatInterface.No_interpolant ->
 				        raise (FeasibleErrorTrace(constrs(*???*)))
 				    in

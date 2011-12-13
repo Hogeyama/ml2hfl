@@ -44,6 +44,21 @@ let find_leaf tr =
   in
   aux (zipper tr)
 
+let find_leaves tr =
+  let rec aux (Loc(Node(nd, trs), p) as loc) =
+    match trs with
+      [] ->
+        [loc]
+    | _ ->
+        List.concat
+		        (List.init
+            (List.length trs)
+		          (fun i ->
+		            let trs1, tr::trs2 = Util.split_at trs i in
+		            aux (Loc(tr, Path(p, trs1, nd, trs2)))))
+  in
+  aux (zipper tr)
+
 let find_rev_leaf tr =
   let rec aux (Loc(Node(nd, trs), p) as loc) =
     match trs with
@@ -166,6 +181,13 @@ let find_all cond tr =
       trs
   in
   aux (zipper tr)
+
+let rec is_recursive (x, uid) (Loc(tr, p) as loc) =
+  (try
+		  is_recursive (x, uid) (up loc)
+  with Not_found ->
+    false) ||
+		(let x', uid' = (get tr).name in Var.equiv x' x && uid' <> uid)
 
 let rec rec_calls_of x (Loc(tr, p) as loc) =
   let trs, ps = 
