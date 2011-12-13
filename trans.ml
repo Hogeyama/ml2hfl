@@ -547,6 +547,7 @@ let rec lift_aux xs t =
           let defs2,t2' = lift_aux xs t2 in
             defs1 @ defs2, Branch(t1',t2')
       | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
+          let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
           let fv = xs in
           let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
           let ys' = fv @ ys in
@@ -558,6 +559,7 @@ let rec lift_aux xs t =
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
       | Let(Flag.Recursive,[f,ys,t1],t2) ->
+          let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
           let fv = xs in
           let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
           let ys' = fv @ ys in

@@ -8,7 +8,7 @@ check.cmi: CEGAR_syntax.cmo
 feasibility.cmi: CEGAR_syntax.cmo
 infer.cmi: syntax.cmi
 refine.cmi: CEGAR_syntax.cmo
-spec_parser.cmi: /usr/lib/ocaml/lexing.cmi
+spec_parser.cmi: syntax.cmi /usr/lib/ocaml/lexing.cmi
 syntax.cmi: type.cmo id.cmo /usr/lib/ocaml/format.cmi flag.cmo
 wrapper.cmi: syntax.cmi
 wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
@@ -988,8 +988,16 @@ lazy/cgenRefType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
 lazy/cgenRefType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
     ./lazy/simType.cmx ./lazy/refType.cmx ./lazy/prog.cmx \
     /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
-    ./lazy/csisatInterface.cmx ./lazy/compTree.cmx ./lazy/cgen.cmx \
-    ./lazy/apronInterface.cmx
+    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/ctree.cmx \
+    ./lazy/csisatInterface.cmx ./lazy/apronInterface.cmx
+lazy/refType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
+    ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
+    ./lazy/intType.cmo /usr/lib/ocaml/format.cmi ./lazy/extList.cmi \
+    ./lazy/const.cmo
+lazy/refType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
+    ./lazy/simType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
+    ./lazy/intType.cmx /usr/lib/ocaml/format.cmx ./lazy/extList.cmx \
+    ./lazy/const.cmx
 lazy/absType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/refType.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
     ./lazy/extList.cmi
@@ -1076,6 +1084,14 @@ CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
 CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx /usr/lib/ocaml/list.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx
+CEGAR_abst.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
+    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst_CPS.cmo \
+    CEGAR_abst.cmi
+CEGAR_abst.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
+    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx CEGAR_abst_CPS.cmx \
+    CEGAR_abst.cmi
 CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     CEGAR_print.cmo CEGAR_abst_util.cmo
@@ -1108,6 +1124,12 @@ ModelCheck_util.cmx: utilities.cmx typing.cmx trecsInterface.cmx \
     /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx /usr/lib/ocaml/array.cmx
+ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo ModelCheck_CPS.cmo \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo \
+    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_CPS.cmi
+ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx ModelCheck_CPS.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_CPS.cmx
 ModelCheck_CPS.cmo: utilities.cmo ModelCheck_util.cmo \
     /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     CEGAR_print.cmo
@@ -1136,12 +1158,12 @@ RefineDepTyp.cmx: wrapper.cmx utilities.cmx type.cmx trans.cmx syntax.cmx \
     CEGAR_print.cmx
 refine.cmo: wrapper2.cmi utilities.cmo RefineDepTyp.cmo \
     /usr/lib/ocaml/list.cmi lazyInterface.cmo /usr/lib/ocaml/format.cmi \
-    flag.cmo feasibility.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo refine.cmi
+    flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
+    refine.cmi
 refine.cmx: wrapper2.cmx utilities.cmx RefineDepTyp.cmx \
     /usr/lib/ocaml/list.cmx lazyInterface.cmx /usr/lib/ocaml/format.cmx \
-    flag.cmx feasibility.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx refine.cmi
+    flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx \
+    refine.cmi
 CEGAR.cmo: wrapper2.cmi wrapper.cmi utilities.cmo refine.cmi ModelCheck.cmo \
     /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
     feasibility.cmi CEGAR_util.cmo CEGAR_syntax.cmo CEGAR_print.cmo \

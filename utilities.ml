@@ -219,8 +219,6 @@ let set_eq l1 l2 = subset l1 l2 && subset l2 l1
 let union l1 l2 = List.fold_left (fun l x -> if List.mem x l then l else x::l) l2 l1
 let inter' compare l1 l2 = List.filter (fun x -> List.exists (fun y -> compare x y = 0) l2) l1
 let union' compare l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> compare x y = 0) l then l else x::l) l2 l1
-let subset' compare l1 l2 = List.for_all (fun x -> List.exists (fun y -> compare x y = 0) l2) l1
-let set_eq' compare l1 l2 = subset' compare l1 l2 && subset' compare l2 l1
 
 
 

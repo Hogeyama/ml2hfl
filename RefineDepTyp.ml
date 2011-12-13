@@ -1910,7 +1910,6 @@ let trans_def env_cegar env (f,xs,t1,e,t2) =
     match e with
         [] -> trans_term env'' t2
       | [CS.Event "fail"] -> make_app fail_term [unit_term]
-      | _ -> assert false
   in
     trans_var env'' f, (List.map (trans_var env'') xs, t2')
 

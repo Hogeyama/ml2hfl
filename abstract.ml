@@ -329,7 +329,7 @@ let rec get_match_bind_cond t p =
       PVar x -> [abst_list_var x, t], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false
-    | PNil -> [], make_eq (make_snd t) (make_int 0)
+    | PNil -> [], make_leq (make_snd t) (make_int 0)
     | PCons _ ->
         let rec decomp = function
             {pat_desc=PCons(p1,p2)} ->

@@ -129,13 +129,13 @@ let abstract ((env,defs,main):prog) : prog =
 
 let abstract prog =
   let tmp = get_time() in
-  let () = if Flag.print_progress then Format.printf "\n(%d-1) Abstracting ... @?" !Flag.cegar_loop in
+  let () = if Flag.print_progress then Format.printf "\n(%d-1) Abstracting ... " !Flag.cegar_loop in
   let abst =
     match !Flag.pred_abst with
         Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract prog
       | Flag.PredAbst -> abstract prog
   in
   let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
-  let () = if Flag.print_progress then Format.printf "DONE!@." in
+  let () = if Flag.print_progress then print_msg "DONE!\n" in
   let () = add_time tmp Flag.time_abstraction in
     abst

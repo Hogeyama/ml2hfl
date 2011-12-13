@@ -73,7 +73,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
 	lazy/util.cmo lazy/flags.cmo \
 	lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/simType.cmo lazy/term.cmo lazy/fdef.cmo lazy/prog.cmo \
-	lazy/apronInterface.cmo lazy/cvc3Interface.cmo lazy/csisatInterface.cmo \
+	lazy/apronInterface.cmo lazy/csisatInterface.cmo lazy/cvc3Interface.cmo \
 	lazy/compTree.cmo lazy/compTreeExpander.cmo \
  lazy/hornClause.cmo lazy/cgen.cmo \
  lazy/intType.cmo lazy/cgenIntType.cmo \
