@@ -127,7 +127,7 @@ let trans_eager ((env,defs,main):prog) : prog =
 
 
 
-let rec abstract_term_aux env cond pts t typ1 typ2 =
+let rec coerce env cond pts t typ1 typ2 =
   match typ1,typ2 with
       _, TBase(TUnit,ps) when ps (Const Unit) = [] -> [t]
     | TBase _, TBase(_,ps2) ->
@@ -143,27 +143,27 @@ let rec abstract_term_aux env cond pts t typ1 typ2 =
                 TBase(_,ps1), TBase(_,ps2) ->
                   let xs = abst_arg x typ21 in
                   let pts' = make_pts x typ21 @@ pts in
-                  let ts = abstract_term_aux env' cond pts' (Var x) typ21 typ11 in
-                  let t' = hd (abstract_term_aux env' cond pts' (make_app t ts) typ12 typ22) in
+                  let ts = coerce env' cond pts' (Var x) typ21 typ11 in
+                  let t' = hd (coerce env' cond pts' (make_app t ts) typ12 typ22) in
                     [make_fun_temp xs t']
               | TFun _, TFun _ ->
                   let x = new_id "f" in
-                  let t' = App(t, hd (abstract_term_aux env' cond pts (Var x) typ21 typ11)) in
-                    [Fun(x, hd (abstract_term_aux env' cond pts t' typ12 typ22))]
+                  let t' = App(t, hd (coerce env' cond pts (Var x) typ21 typ11)) in
+                    [Fun(x, hd (coerce env' cond pts t' typ12 typ22))]
               | _ -> assert false
           end
-    | _ -> Format.printf "abstract_term_aux: %a, %a@." print_typ typ1 print_typ typ2; assert false
+    | _ -> Format.printf "coerce: %a, %a@." print_typ typ1 print_typ typ2; assert false
 
 
 let rec abstract_term env cond pts t typ =
   if false then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
   match t with
-      Var x -> abstract_term_aux env cond pts t (List.assoc x env) typ
-    | Const Bottom -> abstract_term_aux env cond pts t typ typ
-    | Const c -> abstract_term_aux env cond pts t (get_const_typ c) typ
+      Var x -> coerce env cond pts t (List.assoc x env) typ
+    | Const Bottom -> coerce env cond pts t typ typ
+    | Const c -> coerce env cond pts t (get_const_typ c) typ
     | App _ when is_base_term env t ->
         let base = get_base typ in
-          abstract_term_aux env cond pts t (TBase(base,fun x -> [make_eq_int x t])) typ
+          coerce env cond pts t (TBase(base,fun x -> [make_eq_int x t])) typ
     | App(Const RandInt, t) -> abstract_term env cond pts t (TFun(typ_int, fun _ -> typ))
     | App _ ->
         let t1,ts = decomp_app t in
@@ -177,7 +177,7 @@ let rec abstract_term env cond pts t typ =
             | _ -> assert false
         in
         let ts',typ' = aux ts (get_typ env t1) in
-          abstract_term_aux env cond pts (make_app t1 ts') typ' typ
+          coerce env cond pts (make_app t1 ts') typ' typ
     | Let(x,t1,t2) -> assert false
     | Fun _ -> assert false
 
@@ -208,17 +208,13 @@ let abstract_def env (f,xs,t1,e,t2) =
   let pts = List.flatten (List.map (fun (x,typ) -> make_pts x typ) env') in
   let xs' = List.flatten (List.map (fun (x,typ) -> abst_arg x typ) env') in
   let t2' = hd (abstract_term env'' [t1] pts t2 typ) in
-  let ff = assume env' [] pts t1 in
-    if e <> [] && ff <> Const False
+    if e <> [] && t1 <> Const True
     then
-      let g = new_id "f" in
+      let g = rename_id f in
       let fv = get_fv t2' in
         [g, fv, Const True, e, t2';
-         f, xs', Const True, [], make_if ff (Const Bottom) (make_app (Var g) (List.map (fun x -> Var x) fv))]
-    else
-      if ff = Const False
-      then [f, xs', Const True, e, t2']
-      else [f, xs', Const True, e, make_if ff (Const Bottom) t2']
+         f, xs', Const True, [], assume env' [] pts t1 (make_app (Var g) (List.map (fun x -> Var x) fv))]
+    else [f, xs', Const True, e, assume env' [] pts t1 t2']
 
 
 

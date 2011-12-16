@@ -569,7 +569,7 @@ let interpolation ts1 ts2 =
   let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2) in
 
   let fv =
-    let aux acc = List.fold_left (fun acc t -> acc @@@ get_fv2 t) acc in
+    let aux acc = List.fold_left (fun acc t -> uniq (acc @@ get_fv2 t)) acc in
       aux (aux [] ts1) ts2
   in
   let env = List.combine fv fv in

@@ -40,6 +40,7 @@ let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
 let church_encode = false
+let beta_reduce = false (* do beta reduction before model checking *)
 
 let mode = ref Reachability
 let init_trans = ref true

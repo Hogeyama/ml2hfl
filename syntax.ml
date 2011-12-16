@@ -567,16 +567,16 @@ let rec get_nint t =
     | Int n -> []
     | NInt x -> [x]
     | Var x -> []
-    | App(t, ts) -> get_nint t @@@ (rev_map_flatten get_nint ts)
-    | If(t1, t2, t3) -> get_nint t1 @@@ get_nint t2 @@@ get_nint t3
-    | Branch(t1, t2) -> get_nint t1 @@@ get_nint t2
-    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_nint t @@@ acc) (get_nint t2) bindings
-    | BinOp(op, t1, t2) -> get_nint t1 @@@ get_nint t2
+    | App(t, ts) -> get_nint t @@ (rev_map_flatten get_nint ts)
+    | If(t1, t2, t3) -> get_nint t1 @@ get_nint t2 @@ get_nint t3
+    | Branch(t1, t2) -> get_nint t1 @@ get_nint t2
+    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_nint t @@ acc) (get_nint t2) bindings
+    | BinOp(op, t1, t2) -> get_nint t1 @@ get_nint t2
     | Not t -> get_nint t
     | Fun(x,t) -> diff (get_nint t) [x]
     | Event _ -> []
     | Nil -> []
-    | Cons(t1,t2) -> get_nint t1 @@@ get_nint t2
+    | Cons(t1,t2) -> get_nint t1 @@ get_nint t2
     | RandInt _ -> []
     | Fst _ -> assert false
     | Snd _ -> assert false
@@ -590,6 +590,7 @@ let rec get_nint t =
     | Record _ -> assert false
     | RandValue _ -> assert false
     | Bottom -> []
+let get_nint t = uniq (get_nint t)
 
 let rec get_int t =
   match t.desc with
@@ -600,17 +601,17 @@ let rec get_int t =
     | Int n -> [n]
     | NInt x -> []
     | Var x -> []
-    | App(t, ts) -> get_int t @@@ (rev_map_flatten get_int ts)
-    | If(t1, t2, t3) -> get_int t1 @@@ get_int t2 @@@ get_int t3
-    | Branch(t1, t2) -> get_int t1 @@@ get_int t2
-    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@@ acc) (get_int t2) bindings
+    | App(t, ts) -> get_int t @@ (rev_map_flatten get_int ts)
+    | If(t1, t2, t3) -> get_int t1 @@ get_int t2 @@ get_int t3
+    | Branch(t1, t2) -> get_int t1 @@ get_int t2
+    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@ acc) (get_int t2) bindings
     | BinOp(Mult, t1, t2) -> [] (* non-linear expressions not supported *)
-    | BinOp(_, t1, t2) -> get_int t1 @@@ get_int t2
+    | BinOp(_, t1, t2) -> get_int t1 @@ get_int t2
     | Not t -> get_int t
     | Fun(_,t) -> get_int t
     | Event _ -> []
     | Nil -> []
-    | Cons(t1,t2) -> get_int t1 @@@ get_int t2
+    | Cons(t1,t2) -> get_int t1 @@ get_int t2
     | RandInt _ -> []
     | Snd _ -> assert false
     | Fst _ -> assert false
@@ -624,6 +625,7 @@ let rec get_int t =
     | Record _ -> assert false
     | RandValue (_, _) -> assert false
     | Bottom -> []
+let get_int t = uniq (get_int t)
 
 let rec get_fv vars t =
   match t.desc with
@@ -635,36 +637,36 @@ let rec get_fv vars t =
     | NInt x -> []
     | RandInt _ -> []
     | Var x -> if List.mem x vars then [] else [x]
-    | App(t, ts) -> get_fv vars t @@@ (rev_map_flatten (get_fv vars) ts)
-    | If(t1, t2, t3) -> get_fv vars t1 @@@ get_fv vars t2 @@@ get_fv vars t3
-    | Branch(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
+    | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
+    | If(t1, t2, t3) -> get_fv vars t1 @@ get_fv vars t2 @@ get_fv vars t3
+    | Branch(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
     | Let(flag, bindings, t2) ->
         let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
         let vars' = match flag with Flag.Nonrecursive -> vars | Flag.Recursive -> vars_with_fun in
-        let aux fv (_,xs,t) = get_fv (xs@@vars') t @@@ fv in
+        let aux fv (_,xs,t) = get_fv (xs@@vars') t @@ fv in
         let fv_t2 = get_fv vars_with_fun t2 in
           List.fold_left aux fv_t2 bindings
-    | BinOp(op, t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
+    | BinOp(op, t1, t2) -> get_fv vars t1 @@ get_fv vars t2
     | Not t -> get_fv vars t
     | Fun(x,t) -> get_fv (x::vars) t
     | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@ acc) [] fields
     | Proj(_,_,_,t) -> get_fv vars t
-    | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
+    | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@ get_fv vars t2
     | Nil -> []
-    | Cons(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@@ acc) [] ts
+    | Cons(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = get_fv vars t @@@ acc in
+        let aux acc (_,_,t) = get_fv vars t @@ acc in
           List.fold_left aux (get_fv vars t) pats
-    | TryWith(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
+    | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
     | Bottom -> []
-    | Pair(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
+    | Pair(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
     | Fst t -> get_fv vars t
     | Snd t -> get_fv vars t
     | Raise t -> get_fv vars t
     | RandValue _ -> assert false
-let get_fv = get_fv []
+let get_fv t = uniq (get_fv [] t)
 
 let rec get_fv2 vars t =
   match t.desc with
@@ -676,32 +678,32 @@ let rec get_fv2 vars t =
     | NInt x -> [x]
     | RandInt _ -> []
     | Var x -> if List.mem x vars then [] else [x]
-    | App(t, ts) -> get_fv2 vars t @@@ (rev_map_flatten (get_fv2 vars) ts)
-    | If(t1, t2, t3) -> get_fv2 vars t1 @@@ get_fv2 vars t2 @@@ get_fv2 vars t3
-    | Branch(t1, t2) -> get_fv2 vars t1 @@@ get_fv2 vars t2
+    | App(t, ts) -> get_fv2 vars t @@ (rev_map_flatten (get_fv2 vars) ts)
+    | If(t1, t2, t3) -> get_fv2 vars t1 @@ get_fv2 vars t2 @@ get_fv2 vars t3
+    | Branch(t1, t2) -> get_fv2 vars t1 @@ get_fv2 vars t2
     | Let(flag, bindings, t) ->
         let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
         let vars' = match flag with Flag.Nonrecursive -> vars | Flag.Recursive -> vars_with_fun in
-        let aux fv (_,xs,t) = get_fv2 (xs@@vars') t @@@ fv in
+        let aux fv (_,xs,t) = get_fv2 (xs@@vars') t @@ fv in
         let fv_t = get_fv2 vars_with_fun t in
           List.fold_left aux fv_t bindings
             (*
               | Let(flag, bindings, t) ->
               let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
               let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
-              let aux fv (_,xs,t) = get_fv2 (xs@@vars') t @@@ fv in
+              let aux fv (_,xs,t) = get_fv2 (xs@@vars') t @@ fv in
               let fv_t = get_fv2 vars_with_fun t in
               List.fold_left aux fv_t bindings
             *)
-    | BinOp(op, t1, t2) -> get_fv2 vars t1 @@@ get_fv2 vars t2
+    | BinOp(op, t1, t2) -> get_fv2 vars t1 @@ get_fv2 vars t2
     | Not t -> get_fv2 vars t
     | Fun(x,t) -> get_fv2 (x::vars) t
     | Event(s,_) -> []
     | Nil -> []
-    | Cons(t1,t2) -> get_fv2 vars t1 @@@ get_fv2 vars t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv2 vars t @@@ acc) [] ts
+    | Cons(t1,t2) -> get_fv2 vars t1 @@ get_fv2 vars t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv2 vars t @@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = get_fv2 vars t @@@ acc in
+        let aux acc (_,_,t) = get_fv2 vars t @@ acc in
           List.fold_left aux (get_fv2 vars t) pats
     | Snd _ -> assert false
     | Fst _ -> assert false
@@ -713,7 +715,7 @@ let rec get_fv2 vars t =
     | Record _ -> assert false
     | RandValue (_, _) -> assert false
     | Bottom -> []
-let get_fv2 = get_fv2 []
+let get_fv2 t = uniq (get_fv2 [] t)
 
 
 

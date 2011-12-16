@@ -180,7 +180,7 @@ let print_ce = print_list print_node "; " false
 
 
 
-
+let fun_def = print_fun_def
 let term = print_term
 let var = print_var
 let typ = print_typ

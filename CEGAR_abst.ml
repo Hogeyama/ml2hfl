@@ -100,18 +100,14 @@ let abstract_def env (f,xs,t1,e,t2) =
   let typ,env' = aux (List.assoc f env) xs env in
   let pbs = rev_flatten_map (fun (x,typ) -> abst_arg x typ) env' in
   let t2' = abstract_term env' [t1] pbs t2 typ in
-  let ff = assume env' [] pbs t1 in
     if e <> [] && t1 <> Const True
     then
       let g = new_id "f" in
       let fv = get_fv t2' in
-      let t = make_app (Var g) (List.map (fun x -> Var x) fv) in
-      let t' = make_if ff (Const Bottom) t in
-        Format.printf "FUN_VAR1 %s; %a ===> %a@." f CEGAR_print.term t CEGAR_print.term t';
-        [g,fv,Const True,e,t2'; f,xs,Const True,[],t']
+      let t = assume env' [] pbs t1 (make_app (Var g) (List.map (fun x -> Var x) fv)) in
+        [g,fv,Const True,e,t2'; f,xs,Const True,[],t]
     else
-        (Format.printf "FUN_VAR2 %s@." f;
-        [f, xs, Const True, e, make_if ff (Const Bottom) t2'])
+        [f, xs, Const True, e, assume env' [] pbs t1 t2']
 
 
 
@@ -136,6 +132,6 @@ let abstract prog =
       | Flag.PredAbst -> abstract prog
   in
   let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
-  let () = if Flag.print_progress then print_msg "DONE!\n" in
+  let () = if Flag.print_progress then Format.printf "DONE!@." in
   let () = add_time tmp Flag.time_abstraction in
     abst

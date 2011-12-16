@@ -188,10 +188,12 @@ let abst env cond pbs p =
       make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
-let assume env cond pbs t1 =
+let assume env cond pbs t1 t2 =
   if t1 = Const True
-  then Const False
-  else snd (weakest env cond pbs t1)
+  then t2
+  else
+    let ff = snd (weakest env cond pbs t1) in
+      make_if ff (Const Bottom) t2
 
 
 let rec congruent env cond typ1 typ2 =

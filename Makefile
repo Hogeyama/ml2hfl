@@ -208,9 +208,9 @@ TEST=test_new/*.ml
 LIMIT=120
 
 test: opt
-	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:') 2>&1; echo; done
+	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | grep -v File | grep -v Warning; echo; done
 test-byte: byte
-	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:') 2>&1; echo; done
+	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | grep -v File | grep -v Warning; echo; done
 
 
 ################################################################################

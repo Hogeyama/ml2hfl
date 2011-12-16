@@ -209,7 +209,6 @@ let rec uniq_aux' compare acc = function
 let uniq' compare xs = uniq_aux' compare [] (List.sort compare xs)
 
 let (@@) = List.rev_append
-let (@@@) xs ys = uniq_sorted (List.merge compare xs ys)
 
 
 let diff l1 l2 = List.filter (fun x -> not(List.mem x l2)) l1

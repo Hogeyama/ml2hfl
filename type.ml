@@ -202,3 +202,9 @@ let rec is_poly_typ = function
   | TUnknown _ -> assert false
   | TVariant _ -> assert false
 
+
+let rec copy = function
+    TVar {contents = Some typ} -> copy typ
+  | TVar {contents = None} -> TVar (ref None)
+  | typ -> typ
+

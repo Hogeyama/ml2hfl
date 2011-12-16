@@ -192,15 +192,65 @@ let church_encode ((env,defs,main):prog) : prog =
     Typing.infer ([],defs',main)
 
 
+let rec full_app f n = function
+    Const _ -> true
+  | Var x when f = x -> false
+  | Var x -> true
+  | App _ as t ->
+      let t1,ts = decomp_app t in
+      let b1 = if t1 = Var f then n = List.length ts else true in
+        assert (f <> "K_156" || b1);
+      let b2 = List.for_all (full_app f n) ts in
+        b1 && b2
+  | Let _ -> assert false
+  | Fun _ -> assert false
+
+let can_reduce (f,_,t1,es,_) env defs =
+  let n = arg_num (List.assoc f env) in
+    t1 = Const True && es = [] &&
+    List.length (List.filter (fun (g,_,_,_,_) -> f=g) defs) = 1 &&
+    List.length (rev_flatten_map (fun (_,_,_,_,t) -> List.filter ((=) f) (get_fv t)) defs) = 1 &&
+    List.for_all (fun (_,_,_,_,t2) -> full_app f n t2) defs
+
+let rec beta_reduce_term (f,xs,t1,es,t2) = function
+    Const c -> Const c
+  | Var x -> Var x
+  | App _ as t ->
+      let t1,ts = decomp_app t in
+      let ts' = List.map (beta_reduce_term (f,xs,t1,es,t2)) ts in
+        if t1 = Var f
+        then List.fold_right2 subst xs ts' t2
+        else make_app t1 ts'
+  | Let _ -> assert false
+  | Fun _ -> assert false
+
+let beta_reduce_aux ((env,defs,main):prog) : prog =
+  let rec aux defs1 = function
+      [] -> defs1
+    | ((f,_,_,_,_) as def)::defs2 when can_reduce def env (defs1@@def::defs2) ->
+        let reduce_def (f',xs',t1',es',t2') = f', xs', t1', es', beta_reduce_term def t2' in
+        let defs1' = List.map reduce_def defs1 in
+        let defs2' = List.map reduce_def defs2 in
+          aux defs1' defs2'
+    | def::defs2 -> aux (defs1@[def]) defs2
+  in
+    env, aux [] defs, main
+
+let rec beta_reduce prog = 
+  let prog' = beta_reduce_aux prog in
+    if get_defs prog = get_defs prog'
+    then prog
+    else beta_reduce prog'
+
+
+
 
 
 let model_check_aux (prog,spec) =
-  let prog' =
-    if Flag.church_encode
-    then church_encode prog
-    else prog
-  in
-    match TrecsInterface.check (prog',spec) with
+  let prog = Typing.infer prog in
+  let prog = if Flag.beta_reduce then beta_reduce prog else prog in
+  let prog = if Flag.church_encode then church_encode prog else prog in
+    match TrecsInterface.check (prog,spec) with
         None -> None
       | Some ce -> Some (trans_ce ce)
         

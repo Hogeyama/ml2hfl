@@ -17,6 +17,8 @@ let rec trans_simpl_typ = function
   | TVar _ -> assert false
   | TUnknown -> assert false
   | TList _ -> assert false
+  | TVar {contents = None} -> assert false
+  | TVar {contents = Some typ} -> trans_simpl_typ typ
   | typ -> typ
 
 let trans_simpl_var x = Id.set_typ x (trans_simpl_typ (Id.typ x))
@@ -36,10 +38,10 @@ let rec trans_simpl c t =
       | NInt _ -> c t
       | Bottom -> make_bottom typ
       | RandInt false ->
-        let r = Id.new_var "r" (TInt[]) in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-        let t = make_let' k [r] (c (make_var r)) (make_var k) in
-          make_app (make_randint_cps TUnit) [t]
+          let r = Id.new_var "r" (TInt[]) in
+          let k = Id.new_var "k" (TFun(r,TUnit)) in
+          let t = make_let' k [r] (c (make_var r)) (make_var k) in
+            make_app (make_randint_cps TUnit) [t]
       | RandInt true -> assert false
       | Var x -> c (make_var (trans_simpl_var x))
       | Fun(x, t) ->
@@ -65,27 +67,27 @@ let rec trans_simpl c t =
           let c'' y = make_let' k [x] (c (make_var x)) (make_if y t2' t3') in
             trans_simpl c'' t1
       | Let _ -> assert false
-(*
-      | Let(Flag.Nonrecursive, x, [], t1, t2) ->
-          let x' = trans_simpl_var x in
-          let c' t = subst x' t (trans_simpl c t2) in
+          (*
+            | Let(Flag.Nonrecursive, x, [], t1, t2) ->
+            let x' = trans_simpl_var x in
+            let c' t = subst x' t (trans_simpl c t2) in
             trans_simpl c' t1
-      | Let(Flag.Recursive, f, [], t1, t2) -> assert false
-      | Let(flag, f, [x], t1, t2) ->
-          let x' = trans_simpl_var x in
-          let r = Id.new_var "r" typ in
-          let k = Id.new_var "k" (TFun(r,TUnit)) in
-          let f' = trans_simpl_var f in
-          let c' y = make_app (make_var k) [y] in
-          let t1' = trans_simpl c' t1 in
-          let t2' = trans_simpl c t2 in
+            | Let(Flag.Recursive, f, [], t1, t2) -> assert false
+            | Let(flag, f, [x], t1, t2) ->
+            let x' = trans_simpl_var x in
+            let r = Id.new_var "r" typ in
+            let k = Id.new_var "k" (TFun(r,TUnit)) in
+            let f' = trans_simpl_var f in
+            let c' y = make_app (make_var k) [y] in
+            let t1' = trans_simpl c' t1 in
+            let t2' = trans_simpl c t2 in
             make_let_f flag f' [x';k] t1' t2'
-      | Let(flag, f, x::xs, t1, t2) ->
-          let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
-          let g = Id.new_var (Id.name f) typ in
-          let t1' = make_let g xs t1 (make_var g) in
+            | Let(flag, f, x::xs, t1, t2) ->
+            let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
+            let g = Id.new_var (Id.name f) typ in
+            let t1' = make_let g xs t1 (make_var g) in
             trans_simpl c (make_let_f flag f [x] t1' t2)
-*)
+          *)
       | BinOp(op, t1, t2) ->
           let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=typ} in
           let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in

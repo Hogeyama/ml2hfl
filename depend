@@ -925,13 +925,13 @@ lazy/csisatInterface.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
 lazy/cvc3Interface.cmo: ./lazy/var.cmo ./lazy/util.cmo \
     /usr/lib/ocaml/unix.cmi ./lazy/term.cmo /usr/lib/ocaml/string.cmi \
     /usr/lib/ocaml/str.cmi ./lazy/simType.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
-    ./lazy/const.cmo
+    /usr/lib/ocaml/format.cmi ./lazy/flags.cmo ./lazy/extString.cmi \
+    ./lazy/extList.cmi ./lazy/const.cmo
 lazy/cvc3Interface.cmx: ./lazy/var.cmx ./lazy/util.cmx \
     /usr/lib/ocaml/unix.cmi ./lazy/term.cmx /usr/lib/ocaml/string.cmx \
     /usr/lib/ocaml/str.cmi ./lazy/simType.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
-    ./lazy/const.cmx
+    /usr/lib/ocaml/format.cmx ./lazy/flags.cmx ./lazy/extString.cmx \
+    ./lazy/extList.cmx ./lazy/const.cmx
 lazy/compTree.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     /usr/lib/ocaml/string.cmi ./lazy/simType.cmo ./lazy/prog.cmo \
     /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi \
@@ -950,10 +950,14 @@ lazy/hornClause.cmo:
 lazy/hornClause.cmx:
 lazy/cgen.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/simType.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
-    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/compTree.cmo
+    ./lazy/flags.cmo ./lazy/extString.cmi ./lazy/extList.cmi \
+    ./lazy/cvc3Interface.cmo ./lazy/csisatInterface.cmo ./lazy/compTree.cmo \
+    ./lazy/apronInterface.cmo
 lazy/cgen.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
     ./lazy/simType.cmx /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/compTree.cmx
+    ./lazy/flags.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
+    ./lazy/cvc3Interface.cmx ./lazy/csisatInterface.cmx ./lazy/compTree.cmx \
+    ./lazy/apronInterface.cmx
 lazy/intType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
     ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi ./lazy/extString.cmi \
@@ -965,13 +969,13 @@ lazy/intType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
 lazy/cgenIntType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
     ./lazy/intType.cmo /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
-    ./lazy/csisatInterface.cmo ./lazy/compTree.cmo ./lazy/cgen.cmo \
-    ./lazy/apronInterface.cmo
+    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/csisatInterface.cmo \
+    ./lazy/compTree.cmo ./lazy/cgen.cmo
 lazy/cgenIntType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
     ./lazy/simType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
     ./lazy/intType.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
-    ./lazy/csisatInterface.cmx ./lazy/compTree.cmx ./lazy/cgen.cmx \
-    ./lazy/apronInterface.cmx
+    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/csisatInterface.cmx \
+    ./lazy/compTree.cmx ./lazy/cgen.cmx
 lazy/refType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
     ./lazy/intType.cmo /usr/lib/ocaml/format.cmi ./lazy/extList.cmi \
@@ -983,39 +987,31 @@ lazy/refType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
 lazy/cgenRefType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/simType.cmo ./lazy/refType.cmo ./lazy/prog.cmo \
     /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
-    ./lazy/csisatInterface.cmo ./lazy/compTree.cmo ./lazy/cgen.cmo \
-    ./lazy/apronInterface.cmo
+    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/csisatInterface.cmo \
+    ./lazy/compTree.cmo ./lazy/cgen.cmo
 lazy/cgenRefType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
     ./lazy/simType.cmx ./lazy/refType.cmx ./lazy/prog.cmx \
     /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/ctree.cmx \
-    ./lazy/csisatInterface.cmx ./lazy/apronInterface.cmx
-lazy/refType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/intType.cmo /usr/lib/ocaml/format.cmi ./lazy/extList.cmi \
-    ./lazy/const.cmo
-lazy/refType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/intType.cmx /usr/lib/ocaml/format.cmx ./lazy/extList.cmx \
-    ./lazy/const.cmx
+    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/csisatInterface.cmx \
+    ./lazy/compTree.cmx ./lazy/cgen.cmx
 lazy/absType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
     ./lazy/refType.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
-    ./lazy/extList.cmi
+    ./lazy/flags.cmo ./lazy/extList.cmi
 lazy/absType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
     ./lazy/refType.cmx /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/extList.cmx
-lazy/verifier.cmo: ./lazy/util.cmo /usr/lib/ocaml/string.cmi \
-    ./lazy/refType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/intType.cmo /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
-    ./lazy/extList.cmi ./lazy/compTreeExpander.cmo ./lazy/compTree.cmo \
-    ./lazy/cgenRefType.cmo ./lazy/cgenIntType.cmo ./lazy/cgen.cmo \
-    ./lazy/absType.cmo
-lazy/verifier.cmx: ./lazy/util.cmx /usr/lib/ocaml/string.cmx \
-    ./lazy/refType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/intType.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
-    ./lazy/extList.cmx ./lazy/compTreeExpander.cmx ./lazy/compTree.cmx \
-    ./lazy/cgenRefType.cmx ./lazy/cgenIntType.cmx ./lazy/cgen.cmx \
-    ./lazy/absType.cmx
+    ./lazy/flags.cmx ./lazy/extList.cmx
+lazy/verifier.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
+    /usr/lib/ocaml/string.cmi ./lazy/refType.cmo ./lazy/prog.cmo \
+    /usr/lib/ocaml/list.cmi ./lazy/intType.cmo /usr/lib/ocaml/format.cmi \
+    ./lazy/flags.cmo ./lazy/extList.cmi ./lazy/compTreeExpander.cmo \
+    ./lazy/compTree.cmo ./lazy/cgenRefType.cmo ./lazy/cgenIntType.cmo \
+    ./lazy/cgen.cmo ./lazy/absType.cmo
+lazy/verifier.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
+    /usr/lib/ocaml/string.cmx ./lazy/refType.cmx ./lazy/prog.cmx \
+    /usr/lib/ocaml/list.cmx ./lazy/intType.cmx /usr/lib/ocaml/format.cmx \
+    ./lazy/flags.cmx ./lazy/extList.cmx ./lazy/compTreeExpander.cmx \
+    ./lazy/compTree.cmx ./lazy/cgenRefType.cmx ./lazy/cgenIntType.cmx \
+    ./lazy/cgen.cmx ./lazy/absType.cmx
 lazyInterface.cmo: ./lazy/verifier.cmo ./lazy/var.cmo ./lazy/term.cmo \
     ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
     ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi ./lazy/fdef.cmo \
@@ -1084,14 +1080,6 @@ CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
 CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx /usr/lib/ocaml/list.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx
-CEGAR_abst.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst_CPS.cmo \
-    CEGAR_abst.cmi
-CEGAR_abst.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx CEGAR_abst_CPS.cmx \
-    CEGAR_abst.cmi
 CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     CEGAR_print.cmo CEGAR_abst_util.cmo
@@ -1124,12 +1112,6 @@ ModelCheck_util.cmx: utilities.cmx typing.cmx trecsInterface.cmx \
     /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx /usr/lib/ocaml/array.cmx
-ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo ModelCheck_CPS.cmo \
-    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo \
-    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_CPS.cmi
-ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx ModelCheck_CPS.cmx \
-    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx \
-    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_CPS.cmx
 ModelCheck_CPS.cmo: utilities.cmo ModelCheck_util.cmo \
     /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     CEGAR_print.cmo
@@ -1176,8 +1158,9 @@ main.cmo: wrapper2.cmi wrapper.cmi utilities.cmo /usr/lib/ocaml/unix.cmi \
     ocaml-3.12.0/typing/typetexp.cmi ocaml-3.12.0/typing/typemod.cmi \
     ocaml-3.12.0/typing/typecore.cmi type_check.cmo type.cmo trans.cmo \
     /usr/lib/ocaml/sys.cmi syntax.cmi /usr/lib/ocaml/string.cmi \
-    spec_parser.cmi refine.cmi /usr/lib/ocaml/parsing.cmi parser_wrapper.cmo \
-    ocaml-3.12.0/parsing/parser.cmi /usr/lib/ocaml/lexing.cmi \
+    spec_parser.cmi spec_lexer.cmo refine.cmi /usr/lib/ocaml/parsing.cmi \
+    parser_wrapper.cmo ocaml-3.12.0/parsing/parser.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/lexing.cmi \
     ocaml-3.12.0/parsing/lexer.cmi lazyInterface.cmo \
     /usr/lib/ocaml/format.cmi flag.cmo /usr/lib/ocaml/filename.cmi \
     ocaml-3.12.0/typing/env.cmi ./lazy/cvc3Interface.cmo \
@@ -1187,8 +1170,9 @@ main.cmx: wrapper2.cmx wrapper.cmx utilities.cmx /usr/lib/ocaml/unix.cmi \
     ocaml-3.12.0/typing/typetexp.cmx ocaml-3.12.0/typing/typemod.cmx \
     ocaml-3.12.0/typing/typecore.cmx type_check.cmx type.cmx trans.cmx \
     /usr/lib/ocaml/sys.cmx syntax.cmx /usr/lib/ocaml/string.cmx \
-    spec_parser.cmx refine.cmx /usr/lib/ocaml/parsing.cmx parser_wrapper.cmx \
-    ocaml-3.12.0/parsing/parser.cmx /usr/lib/ocaml/lexing.cmx \
+    spec_parser.cmx spec_lexer.cmx refine.cmx /usr/lib/ocaml/parsing.cmx \
+    parser_wrapper.cmx ocaml-3.12.0/parsing/parser.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/lexing.cmx \
     ocaml-3.12.0/parsing/lexer.cmx lazyInterface.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx /usr/lib/ocaml/filename.cmx \
     ocaml-3.12.0/typing/env.cmx ./lazy/cvc3Interface.cmx \

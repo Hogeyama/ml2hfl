@@ -81,6 +81,7 @@ let decomp_id s =
 let add_name x s =
   let name,n = decomp_id x in
     name ^ s ^ if n <> 0 then string_of_int n else ""
+let id_name x = fst (decomp_id x)
 
 
 
@@ -118,9 +119,10 @@ let make_loop () =
 let rec get_fv = function
     Const _ -> []
   | Var x -> [x]
-  | App(t1, t2) -> get_fv t1 @@@ get_fv t2
-  | Let(x,t1,t2) -> get_fv t1 @@@ diff (get_fv t2) [x]
+  | App(t1, t2) -> get_fv t1 @@ get_fv t2
+  | Let(x,t1,t2) -> get_fv t1 @@ diff (get_fv t2) [x]
   | Fun(x,t) -> diff (get_fv t) [x]
+let get_fv t = uniq (get_fv t)
 
 
 let rec get_typ_arity = function
