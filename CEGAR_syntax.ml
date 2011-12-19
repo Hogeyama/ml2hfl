@@ -80,7 +80,7 @@ let decomp_id s =
   with _ -> s, 0
 let add_name x s =
   let name,n = decomp_id x in
-    name ^ s ^ if n <> 0 then string_of_int n else ""
+    name ^ s ^ "_" ^ if n <> 0 then string_of_int n else ""
 let id_name x = fst (decomp_id x)
 
 

@@ -22,37 +22,33 @@ and print_typ_base fm = function
   | TTuple n -> Format.fprintf fm "tuple"
   | TList _ -> assert false
 
-and print_typ_aux fm = function
+and print_typ_aux var fm = function
     TBase(b,ps) ->
-      let x = new_id "x" in
+      let x,occur = match var with None -> new_id "x", false | Some(x,occur) -> x, occur in
       let preds = ps (Var x) in
-        if List.mem x (rev_flatten_map get_fv preds)
-        then Format.fprintf fm "%a:%a[%a]" print_var x print_typ_base b (print_list print_term ";" false) preds
-        else
-          if preds = []
-          then Format.fprintf fm "%a" print_typ_base b
-          else Format.fprintf fm "%a[%a]" print_typ_base b (print_list print_term ";" false) preds
+        if occur || List.mem x (rev_flatten_map get_fv preds) then Format.fprintf fm "%a:" print_var x;
+        Format.fprintf fm "%a" print_typ_base b;
+        if preds <> [] then Format.fprintf fm "[%a]" (print_list print_term ";" false) preds
   | TFun _ as typ ->
       let rec aux b fm = function
           TFun(typ1, typ2) ->
             let x = new_id "x" in
             let typ2 = typ2 (Var x) in
             let s1,s2 = if b then "(",")" else "","" in
-              if occur_arg_pred x typ2
-              then Format.fprintf fm "%s%a:%a -> %a%s" s1 print_var x print_typ_aux typ1 (aux false) typ2 s2
-              else Format.fprintf fm "%s%a -> %a%s" s1 print_typ_aux typ1 (aux false) typ2 s2
-        | typ -> print_typ_aux fm typ
+            let var' = if occur_arg_pred x typ2 then Some(x, true) else Some(x, false) in
+              Format.fprintf fm "%s%a -> %a%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+        | typ -> print_typ_aux None fm typ
       in
         aux true fm typ
   | TApp _ as typ ->
       let typ,typs = decomp_tapp typ in
-        Format.fprintf fm "(%a)" (print_list print_typ_aux " " false) (typ::typs)
+        Format.fprintf fm "(%a)" (print_list (print_typ_aux None) " " false) (typ::typs)
   | TAbs _ -> assert false
 
 and print_typ fm typ =
   let n = Id.get_counter () in
     Id.set_counter 1;
-    print_typ_aux fm typ;
+    print_typ_aux None fm typ;
     Id.set_counter n
 
 and print_env fm env =

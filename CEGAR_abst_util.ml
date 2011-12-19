@@ -193,6 +193,11 @@ let filter env (cond:CEGAR_syntax.t list) (pbs:(CEGAR_syntax.t*CEGAR_syntax.t) l
       let bottoms = loop [] [[],pbs] 0 in
         make_dnf (List.map fst bottoms)
   in
+let conj = List.fold_left make_and (Const True) in
+Format.printf "FILTER(pbs):";
+List.iter (fun (t1,t2) -> Format.printf "(%a,%a); " print_term t1 print_term t2) pbs;
+Format.printf "@.";
+Format.printf "FILTER: %a |- %a => _|_@." print_term (conj cond) print_term ff;
     make_if ff (Const Bottom)
 
 
