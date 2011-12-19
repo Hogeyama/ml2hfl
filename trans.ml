@@ -447,7 +447,7 @@ let set_target t =
             match Id.typ x with
                 TInt _ -> make_app randint_term [unit_term]
               | TUnit -> unit_term
-              | typ -> {desc=RandValue(typ, false); typ=typ}
+              | typ -> assert false; {desc=RandValue(typ, false); typ=typ}
           in
           let args = List.map aux xs in
           let main = make_app {desc=Var f;typ=Id.typ f} args in
@@ -547,24 +547,18 @@ let rec lift_aux xs t =
           let defs2,t2' = lift_aux xs t2 in
             defs1 @ defs2, Branch(t1',t2')
       | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
-          let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
-          let fv = xs in
           let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
-          let f' = Id.new_var (Id.name f) typ in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' t1 in
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
       | Let(Flag.Recursive,[f,ys,t1],t2) ->
-          let fv = union' Id.compare (filter_base xs) (inter' Id.compare (get_fv t1) xs) in
-          let fv = xs in
           let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
-          let f' = Id.new_var (Id.name f) typ in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [{desc=Var x;typ=Id.typ x}]) (make_var f') fv in
           let defs1,t1' = lift_aux ys' (subst f f'' t1) in

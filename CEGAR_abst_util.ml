@@ -173,6 +173,33 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
 
 
 
+let filter env (cond:CEGAR_syntax.t list) (pbs:(CEGAR_syntax.t*CEGAR_syntax.t) list) =
+  let check pbs = check env cond pbs (Const False) in
+  let ff =
+    if not (check pbs)
+    then Const False
+    else
+      let aux bottoms ((pbs:(CEGAR_syntax.t*CEGAR_syntax.t)list), (rest:(CEGAR_syntax.t*CEGAR_syntax.t)list)) =
+        let cands = List.map (fun pb -> List.merge compare [pb] pbs, diff rest [pb]) rest in
+          List.filter (fun (pbs,_) -> not (List.exists (fun (pbs',_) -> subset pbs' pbs) bottoms)) cands
+      in
+      let rec loop bottoms (cands:((CEGAR_syntax.t*CEGAR_syntax.t) list * (CEGAR_syntax.t*CEGAR_syntax.t) list) list) width =
+        let cands' = uniq (rev_flatten_map (aux bottoms) cands) in
+        let bottoms' = List.filter (fun (pbs,_) -> check pbs) cands' @@ bottoms in
+          if width >= !Flag.wp_max_num
+          then bottoms'
+          else loop bottoms' cands' (width+1)
+      in
+      let bottoms = loop [] [[],pbs] 0 in
+        make_dnf (List.map fst bottoms)
+  in
+    make_if ff (Const Bottom)
+
+
+
+
+
+
 let abst env cond pbs p =
   if has_bottom p
   then Const Bottom

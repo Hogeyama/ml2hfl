@@ -163,6 +163,6 @@ let print_ce_reduction ce ((_,defs,main):prog) =
       Format.printf "  %a ... -%s->@." print_term t s
   in
     Format.printf "Error trace::@.";
-    Format.printf "  %a ... -->@." print_term (Var main);
+    pr (Var main) [];
     ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
     Format.printf "  ERROR!@.@."

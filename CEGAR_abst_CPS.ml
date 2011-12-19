@@ -145,7 +145,8 @@ let rec coerce env cond pts t typ1 typ2 =
                   let pts' = make_pts x typ21 @@ pts in
                   let ts = coerce env' cond pts' (Var x) typ21 typ11 in
                   let t' = hd (coerce env' cond pts' (make_app t ts) typ12 typ22) in
-                    [make_fun_temp xs t']
+                  let t'' = filter env' cond pts' t' in
+                    [make_fun_temp xs t'']
               | TFun _, TFun _ ->
                   let x = new_id "f" in
                   let t' = App(t, hd (coerce env' cond pts (Var x) typ21 typ11)) in
@@ -153,6 +154,13 @@ let rec coerce env cond pts t typ1 typ2 =
               | _ -> assert false
           end
     | _ -> Format.printf "coerce: %a, %a@." print_typ typ1 print_typ typ2; assert false
+(*
+let coerce env cond pts t typ1 typ2 =
+  let t' = coerce env cond pts t typ1 typ2 in
+    Format.printf "coerce: %a ==> %a@." print_typ typ1 print_typ typ2;
+    Format.printf "        %a ==> [%a]@." print_term t (print_list print_term ";" false) t';
+    t'
+*)
 
 
 let rec abstract_term env cond pts t typ =
@@ -224,7 +232,7 @@ let abstract ((env,defs,main):prog) : prog =
   let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
+  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
   let prog = Typing.infer ([], defs, main) in
   let prog = lift2 prog in
   let () = if false then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in

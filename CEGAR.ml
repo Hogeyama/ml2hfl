@@ -31,6 +31,7 @@ let rec cegar prog ces =
         None,_ -> prog, None
       | Some ce, ce'::_ when ce = ce' -> raise NoProgress;
       | Some ce, _ ->
+          Feasibility.print_ce_reduction ce prog;
           match Feasibility.check ce prog with
               Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
             | Feasibility.Infeasible prefix ->
