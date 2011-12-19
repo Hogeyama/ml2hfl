@@ -354,7 +354,12 @@ let trans_prog t =
   let prog = pop_main (eta_expand (env', defs''', main)) in
 
   let () = Id.clear_counter () in
-  let map = rev_flatten_map (fun (f,xs,_,_,_) -> (f,rename_id f)::List.map (fun x -> x,rename_id x) xs)  (get_defs prog) in
+  let aux (f,xs,_,_,_) =
+    let f' = rename_id f in
+      if true then Format.printf "rename: %s ==> %s@." f f';
+      (f,f')::List.map (fun x -> x,rename_id x) xs
+  in
+  let map = rev_flatten_map aux (get_defs prog) in
   let map = uniq' (fun (x,_) (y,_) -> compare x y) map in
   let rename_var x = List.assoc x map in
   let rename_term t = subst_map (List.map (fun (x,x') -> x,Var x') map) t in
