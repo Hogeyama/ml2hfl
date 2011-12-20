@@ -96,8 +96,16 @@ let make_bottom ((env,defs,main):prog) : prog =
       | Var x, _ -> Var x
       | App(App(App(Const If, t1), t2), t3), typ ->
           let t1' = aux_term (t1,TBase(TBool,fun _ -> [])) in
-          let t2' = aux_term (t2,typ) in
-          let t3' = aux_term (t3,typ) in
+          let t2' =
+            try
+              aux_term (t2,typ)
+            with TypeBottom -> make_bottom 0
+          in
+          let t3' =
+            try
+              aux_term (t3,typ)
+            with TypeBottom -> make_bottom 0
+          in
             App(App(App(Const If, t1'), t2'), t3')
       | App(t1,t2), _ ->
           let typ = get_typ env' t1 in

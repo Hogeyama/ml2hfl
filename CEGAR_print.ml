@@ -83,6 +83,8 @@ and print_const fm = function
 and print_term fm = function
     Const c -> print_const fm c
   | Var x -> print_var fm x
+  | App(App(App(Const If, Const RandBool), Const True), Const False) ->
+      print_const fm RandBool
   | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(%a %a %a)" print_term t1 print_const op print_term t2
   | App _ as t ->
@@ -112,11 +114,14 @@ and print_prog_typ fm (env,defs,s) =
   List.iter (print_fun_def fm) defs;
   Format.fprintf fm "Types:\n%a@." print_env env;
 
+
+
+
 and print_const_ML fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
-  | RandBool -> Format.fprintf fm "rand_bool()"
+  | RandBool -> Format.fprintf fm "(Random.bool())"
   | RandInt -> Format.fprintf fm "rand_int()"
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
@@ -138,33 +143,28 @@ and print_const_ML fm = function
   | Proj(_,i) -> Format.fprintf fm "#%d" i
   | If -> Format.fprintf fm "if_term"
   | Temp _ -> assert false
-  | Bottom -> assert false
+  | Bottom -> Format.fprintf fm "()"
   | EqUnit -> assert false
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
   | Var x -> print_var fm x
-  | App _ as t ->
-      let t,ts = decomp_app t in
-        Format.fprintf fm "(%a)" (print_list print_term_ML " " false) (t::ts)
+  | App(App(App(Const If, t1), t2), t3) ->
+      Format.fprintf fm "(if %a then %a else %a)" print_term_ML t1 print_term_ML t2 print_term_ML t3
+  | App(t1,t2) ->
+        Format.fprintf fm "(%a %a)" print_term_ML t1 print_term_ML t2
   | Let(x,t1,t2) ->
       let xs,t1 = decomp_fun t1 in
         Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " true) xs print_term_ML t1 print_term_ML t2
   | Fun(x,t) -> Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
 
-and print_fun_def_ML fm (f,xs,t1,e,t2) =
-  let s = 
-    match e with
-        None -> ""
-      | Some e -> " {" ^ e ^ "} =>"
-  in
-    if t1 = Const True
-    then Format.fprintf fm "and %a = %s %a@." (print_list print_var " " false) (f::xs) s print_term_ML t2
-    else Format.fprintf fm "%a when %a = %s %a@." (print_list print_var " " false) (f::xs) print_term_ML t1 s print_term_ML t2
+and print_fun_def_ML fm ((f,xs,t1,_,t2):fun_def) =
+  if t1 = Const True
+  then Format.fprintf fm "and %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t2
+  else Format.fprintf fm "%a when %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t1 print_term_ML t2
 
-and print_prog_ML fm (env,defs,s) =
-  Format.fprintf fm "let rec if_term b x y = if b then x else y@.";
-  Format.fprintf fm "and br x y = if true then x else y@.";
+and print_prog_ML fm ((env,defs,s):prog) =
+  Format.fprintf fm "let rec f x = f x@.";
   List.iter (print_fun_def_ML fm) defs;
   if env <> [] then Format.fprintf fm "Types:\n%a@." print_env env
 
@@ -173,6 +173,7 @@ let print_node fm = function
   | EventNode s -> Format.fprintf fm "%s" s
 
 let print_ce = print_list print_node "; " false
+
 
 
 

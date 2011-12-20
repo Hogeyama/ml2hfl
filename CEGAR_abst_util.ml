@@ -193,11 +193,6 @@ let filter env (cond:CEGAR_syntax.t list) (pbs:(CEGAR_syntax.t*CEGAR_syntax.t) l
       let bottoms = loop [] [[],pbs] 0 in
         make_dnf (List.map fst bottoms)
   in
-let conj = List.fold_left make_and (Const True) in
-Format.printf "FILTER(pbs):";
-List.iter (fun (t1,t2) -> Format.printf "(%a,%a); " print_term t1 print_term t2) pbs;
-Format.printf "@.";
-Format.printf "FILTER: %a |- %a => _|_@." print_term (conj cond) print_term ff;
     make_if ff (Const Bottom)
 
 
@@ -213,11 +208,10 @@ let abst env cond pbs p =
 (*
     let env' = List.map (function _, Var x -> x,TBase(TBool,fun _ -> []) | _ -> assert false) pbs in
       if Wrapper2.equiv env' cond (make_not tt) ff
+*)
       if make_not tt = ff || tt = make_not ff
       then tt
-      else make_if tt (Const True) (make_if ff (Const False) (Const RandBool))
-*)
-      make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
+      else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
 let assume env cond pbs t1 t2 =

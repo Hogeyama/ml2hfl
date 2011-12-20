@@ -569,7 +569,7 @@ let rec get_env typ xs =
 
 exception EvalBottom
 
-let eval_prog_cbn (env,defs,main) =
+let eval_prog_cbn ((env,defs,main):prog) =
   let get_int_value = function
       Const (Int n) -> n
     | Const RandInt -> Random.int 100
@@ -579,8 +579,8 @@ let eval_prog_cbn (env,defs,main) =
   let rec step_eval = function
       Const c -> Const c
     | Var x ->
-        let defs' = List.filter (fun (f,_,t1,_) -> f = x && eval t1 = Const True) defs in
-        let _,_,_,t = List.nth defs' (Random.int (List.length defs')) in
+        let defs' = List.filter (fun (f,_,t1,_,_) -> f = x && eval t1 = Const True) defs in
+        let _,_,_,_,t = List.nth defs' (Random.int (List.length defs')) in
         let () = if List.length defs' > 2 then Format.printf " *** non-deterministic branch ***@." in
           t
     | App(App(Const And, t1), t2) ->
@@ -644,8 +644,8 @@ let eval_prog_cbn (env,defs,main) =
           let ts' = take ts n in
             List.fold_right2 subst xs ts' t
         in
-        let defs' = List.filter (fun (g,xs,t1,_) -> g = f && eval (aux xs t1) = Const True) defs in
-        let _,xs,_,t' = List.nth defs' (Random.int (List.length defs')) in
+        let defs' = List.filter (fun (g,xs,t1,_,_) -> g = f && eval (aux xs t1) = Const True) defs in
+        let _,xs,_,_,t' = List.nth defs' (Random.int (List.length defs')) in
         let () = if List.length defs' > 2 then Format.printf " *** non-deterministic branch ***@." in
         let _,ts2 = take2 ts (List.length xs) in
           make_app (aux xs t') ts2
