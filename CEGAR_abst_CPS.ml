@@ -155,13 +155,13 @@ let rec coerce env cond pts t typ1 typ2 =
               | _ -> assert false
           end
     | _ -> Format.printf "coerce: %a, %a@." print_typ typ1 print_typ typ2; assert false
-
+(*
 let coerce env cond pts t typ1 typ2 =
   let t' = coerce env cond pts t typ1 typ2 in
     Format.printf "coerce: %a ==> %a@." print_typ typ1 print_typ typ2;
     Format.printf "        %a ==> [%a]@." print_term t (print_list print_term ";" false) t';
     t'
-
+*)
 
 
 let rec abstract_term env cond pts t typ =
