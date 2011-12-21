@@ -96,7 +96,7 @@ let rec check t typ =
     | {desc=Match(t,pats); typ=typ'} ->
         let aux (p,cond,t) =
           match cond with None -> () | Some cond -> check cond TBool;
-          check t typ'
+            check t typ'
         in
           check t t.typ;
           List.iter aux pats
@@ -140,6 +140,7 @@ let rec check t typ =
             | TryWith(t1,pats) -> assert false
           *)          Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
+let check t typ = if Flag.check_typ then check t typ
 
 
 

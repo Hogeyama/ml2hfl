@@ -545,6 +545,9 @@ let and_list ts = match ts with
   | [t] -> t
   | t::ts -> List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TBool}) t ts
 
+let add_typ_label x t = {desc=t.desc; typ=TLabel(x,t.typ)}
+let add_typ_pred p t = {desc=t.desc; typ=TPred(p,t.typ)}
+
 
 
 

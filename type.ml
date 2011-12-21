@@ -14,6 +14,8 @@ type 'a t =
   | TConstr of string * bool
   | TUnknown
   | TVariant of 'a t
+  | TLabel of 'a t Id.t * 'a t
+  | TPred of 'a t Id.t * 'a t
 
 
 
@@ -110,6 +112,7 @@ let rec print print_pred fm typ =
             else Format.fprintf fm "{%a}" aux typs
 *)
       | TConstr(s,_) -> Format.pp_print_string fm s
+      | TPred(x,typ) -> Format.fprintf fm "(%a|[%a])" print typ Id.print x
 
 and print_preds print_pred fm = function
     [] -> ()
@@ -208,3 +211,10 @@ let rec copy = function
   | TVar {contents = None} -> TVar (ref None)
   | typ -> typ
 
+
+
+let rec app_typ typ typs =
+  match typ,typs with
+    | TFun(_,typ2), _::typs' -> app_typ typ2 typs'
+    | _, [] -> typ
+    | _ -> assert false

@@ -140,22 +140,54 @@ let rec make_arg_let t =
 
 let nil _ = []
 
-let rec trans_typ = function
-    Type.TUnit -> TBase(TUnit, nil)
-  | Type.TBool -> TBase(TBool, fun x -> [x])
+let trans_var x = Id.to_string x
+
+let rec trans_typ f path = function
+    Type.TUnit -> TBase(TUnit, nil), []
+  | Type.TBool -> TBase(TBool, fun x -> [x]), []
   | Type.TAbsBool -> assert false
-  | Type.TInt _ -> TBase(TInt, nil)
+  | Type.TInt _ -> TBase(TInt, nil), []
   | Type.TRInt _  -> assert false
-  | Type.TVar _  -> TBase(TUnit, nil)
-  | Type.TFun(x,typ) -> TFun(trans_typ (Id.typ x), fun _ -> trans_typ typ)
+  | Type.TVar _  -> TBase(TUnit, nil), []
+  | Type.TFun(x,typ) ->
+      let typ1,preds1 = trans_typ f (path@[0]) (Id.typ x) in
+      let typ2,preds2 = trans_typ f (path@[1]) typ in
+        TFun(typ1, fun _ -> typ2), preds1@@preds2
   | Type.TList _ -> assert false
   | Type.TConstr("event",_) -> assert false
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
+  | Type.TPred(x,typ) ->
+      let typ',preds = trans_typ f path typ in
+        typ', ((f, trans_var x, path)::preds)
   | _ -> assert false
 
-let trans_var x = Id.to_string x
+let preds = ref []
+
+let trans_typ f path typ =
+  let typ',ps = trans_typ f path typ in
+
+
+
+
+let pr fm (f,x,path) =
+  let rec proj path typ =
+    match path,typ with
+        [],typ -> typ
+      | 0::path',TFun(typ1,typ2) -> proj path' typ1
+      | 1::path',TFun(typ1,typ2) -> proj path' (typ2 (Const Unit))
+      | _ -> assert false
+  in
+    Format.printf "%s(%s) => %a@." f x (print_list Format.pp_print_int ";" false) path
+in
+Format.printf "AA:%a@.%a@.@." Syntax.print_typ typ (print_list pr "" false) ps;
+
+
+
+
+    preds := ps @@ !preds;
+    typ'
 
 let rec trans_typ' = function
     Type.TUnit -> TBase(TUnit, nil)
@@ -235,7 +267,7 @@ and trans_term xs env t =
         let f = new_id "f" in
         let x = new_id "b" in
         let typs = typ_bool :: List.map (fun x -> List.assoc x env) xs in
-        let typ = List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs (trans_typ t2.Syntax.typ) in
+        let typ = List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs (trans_typ f [] t2.Syntax.typ) in
         let def1 = f, typ, x::xs, Var x, [], t2' in
         let def2 = f, typ, x::xs, make_not (Var x), [], t3' in
         let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
@@ -302,20 +334,27 @@ let rec formula_of t =
     | _ -> assert false
 
 let trans_def (f,(xs,t)) =
+  let f' = trans_var f in
   let xs' = List.map trans_var xs in
-  let env = List.map2 (fun x' x -> x', trans_typ (Id.typ x)) xs' xs in
+  let path = ref [] in
+  let aux x' x =
+    let typ = trans_typ f' (!path@[0]) (Id.typ x) in
+      path:=1::!path; 
+      x', typ
+  in
+  let env = List.map2 aux xs' xs in
     try
       (match t.Syntax.desc with
 	   Syntax.If(t1, t2, t3) ->
 	     let t1' = formula_of t1 in
 	     let defs2,t2' = trans_term xs' env t2 in
 	     let defs3,t3' = trans_term xs' env t3 in
-	       ((trans_var f, trans_typ (Id.typ f), xs', t1', [], t2')::defs2) @
-		 ((trans_var f, trans_typ (Id.typ f), xs', make_not t1', [], t3')::defs3)
+	       ((f', trans_typ f' [] (Id.typ f), xs', t1', [], t2')::defs2) @
+		 ((f', trans_typ f' [] (Id.typ f), xs', make_not t1', [], t3')::defs3)
 	 | _ -> raise Not_found)
     with Not_found ->
       let defs,t' = trans_term xs' env t in
-	(trans_var f, trans_typ (Id.typ f), xs', Const True, [], t')::defs
+	(f', trans_typ f' [] (Id.typ f), xs', Const True, [], t')::defs
 
 let move_event (f,xs,t1,e,t2) =
   assert (e = []);
@@ -369,8 +408,39 @@ let trans_prog t =
   let main = rename_var (get_main prog) in
   let prog = env, defs, main in
   let _ = Typing.infer prog in
+
+  Format.printf "P::@.%a\n" CEGAR_print.print_prog_typ prog;
+  let trans_pred (f,x,path) =
+    let f' = rename_var f in
+    let x' = rename_var x in
+    let _,xs,_,_,_ = List.find (fun (g,_,_,_,_) -> g = f') defs in
+    let rec index n = function
+        [] -> assert false
+      | x''::_ when x'=x'' -> n
+      | _::xs -> index (n+1) xs
+    in
+      f', index 0 xs, path
+  in
+  let preds = List.map trans_pred !preds in
+
+
+
+let pr fm (f,n,path) =
+  let rec proj path typ =
+    match path,typ with
+        [],typ -> typ
+      | 0::path',TFun(typ1,typ2) -> proj path' typ1
+      | 1::path',TFun(typ1,typ2) -> proj path' (typ2 (Const Unit))
+      | _ -> Format.printf "%s(%d)@." f n; assert false
+  in
+  let typ = List.assoc f env in
+  let typ' = proj path typ in
+    Format.printf "%s(%d) => %a, %a@." f n (print_list Format.pp_print_int ";" false) path print_typ typ'
+in
+Format.printf "%a@." (print_list pr "" false) preds;
+
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
-    prog
+    prog, preds
 
 
 let nil = fun _ -> []

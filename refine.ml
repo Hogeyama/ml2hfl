@@ -8,7 +8,6 @@ open CEGAR_util
 exception CannotRefute
       
 
-
 let add env ps p =
   if List.exists (Wrapper2.equiv env [] p) ps
   then ps
@@ -33,12 +32,12 @@ let rec merge_typ env typ typ' =
           let typ1 = merge_typ env typ11 typ21 in
           let typ2 = merge_typ env' typ12 typ22 in
             TFun(typ1, fun t -> subst_typ x t typ2)
-      | TBase _, _ -> assert false
-      | TFun _, _ -> assert false
-      | TAbs _, _ -> assert false
-      | TApp _, _ -> assert false
+      | TBase _, _
+      | TFun _, _
+      | TAbs _, _
+      | TApp _, _ -> Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ'; assert false
 
-let add_pred map env =
+let add_preds map env =
   let aux (f,typ) =
     try
       f, merge_typ [] typ (List.assoc f map)
@@ -47,7 +46,26 @@ let add_pred map env =
     List.map aux env
 
 
-let refine prefix ces ((env,defs,main):prog) =
+let rec add_to_path path typ1 typ2 =
+  match path,typ2 with
+      [],_ -> merge_typ [] typ1 typ2
+    | 0::path',TFun(typ21,typ22) -> TFun(add_to_path path' typ1 typ21, typ22)
+    | 1::path',TFun(typ21,typ22) -> TFun(typ21, fun x -> add_to_path path' typ1 (typ22 x))
+    | _ -> Format.printf "%a@." CEGAR_print.typ typ2; assert false
+
+let rec add_pred n path typ =
+  match typ with
+      TBase _ -> assert false
+    | TFun(typ1,typ2) when n=0 ->
+        TFun(typ1, fun x -> add_to_path (List.tl path) typ1 (typ2 x))
+    | TFun(typ1,typ2) ->
+        assert (List.hd path = 1);
+        TFun(typ1, fun x -> add_pred (n-1) (List.tl path) (typ2 x))
+    | TAbs _ -> assert false
+    | TApp _ -> assert false
+
+
+let refine preds prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
   if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
   let ces =
@@ -88,7 +106,13 @@ let refine prefix ces ((env,defs,main):prog) =
             RefineDepTyp.infer ces (env,defs,main)
           with RefineDepTyp.Untypable -> raise CannotRefute
   in
-  let env' = add_pred map env in
+  let map' =
+    let aux map (f,n,path) =
+      List.map (fun (g,typ) -> if f = g then g, add_pred n path typ else g, typ) map
+    in
+      List.fold_left aux map preds
+  in
+  let env' = add_preds map' env in
     add_time tmp Flag.time_cegar;
     if Flag.print_progress then Format.printf "DONE!@.";
     env', defs, main

@@ -114,8 +114,6 @@ let make_loop () =
   let f = new_id "loop" in
     [f, ["u"], Const True, App(Var f, Const Unit)], App(Var f, Const Unit)
 
-
-
 let rec get_fv = function
     Const _ -> []
   | Var x -> [x]

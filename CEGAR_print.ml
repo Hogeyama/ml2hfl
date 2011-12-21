@@ -168,6 +168,89 @@ and print_prog_ML fm ((env,defs,s):prog) =
   List.iter (print_fun_def_ML fm) defs;
   if env <> [] then Format.fprintf fm "Types:\n%a@." print_env env
 
+
+
+let rec print_base_typ_as_tree fm = function
+    TUnit -> Format.fprintf fm "TUnit"
+  | TInt -> Format.fprintf fm "TInt"
+  | TBool -> Format.fprintf fm "TBool"
+  | TList -> Format.fprintf fm "TList"
+  | TTuple n -> Format.fprintf fm "(TTuple %d)" n
+
+and print_typ_as_tree fm = function
+    TBase(b,ps) ->
+      let x = new_id "x" in
+        Format.fprintf fm "(TBase(%a,fun %s->%a))" print_base_typ_as_tree b x (print_list_as_tree print_term_as_tree) (ps (Var x))
+  | TAbs _ -> assert false
+  | TApp _ -> assert false
+  | TFun(typ1,typ2) ->
+      let x = new_id "x" in
+        Format.fprintf fm "(TFun(%a,fun %s->%a))" print_typ_as_tree typ1 x print_typ_as_tree (typ2 (Var x))
+
+and print_var_as_tree fm x = Format.printf "\"%s\"" x
+
+and print_const_as_tree fm = function
+  | Unit -> Format.fprintf fm "Unit"
+  | True -> Format.fprintf fm "True"
+  | False -> Format.fprintf fm "False"
+  | RandBool -> Format.fprintf fm "RandBool"
+  | RandInt -> Format.fprintf fm "RandInt"
+  | And -> Format.fprintf fm "And"
+  | Or -> Format.fprintf fm "Or"
+  | Not -> Format.fprintf fm "Not"
+  | Lt -> Format.fprintf fm "Lt"
+  | Gt -> Format.fprintf fm "Gt"
+  | Leq -> Format.fprintf fm "Leq"
+  | Geq -> Format.fprintf fm "Geq"
+  | EqBool -> Format.fprintf fm "EqBool"
+  | EqInt -> Format.fprintf fm "EqInt"
+  | Int n -> Format.fprintf fm "(Int %d)" n
+  | Add -> Format.fprintf fm "Add"
+  | Sub -> Format.fprintf fm "Sub"
+  | Mul -> Format.fprintf fm "Mult"
+  | Tuple n -> assert false
+  | Proj _ -> assert false
+  | If -> Format.fprintf fm "If"
+  | Temp _ -> assert false
+  | Bottom -> Format.fprintf fm "Bottom"
+  | EqUnit -> assert false
+
+and print_term_as_tree fm = function
+    Const c -> Format.fprintf fm "(Const %a)" print_const_as_tree c
+  | Var x -> Format.fprintf fm "(Var %a)" print_var_as_tree x
+  | App(t1,t2) -> Format.fprintf fm "(App(%a,%a))" print_term_as_tree t1 print_term_as_tree t2
+  | Let(x,t1,t2) -> assert false
+  | Fun(x,t) -> assert false
+
+and print_event_as_tree fm = function
+    Event s -> Format.fprintf fm "(Event \"%s\")" s
+  | Branch n -> Format.fprintf fm "(Branch %d)" n
+
+and print_list_as_tree (pr:Format.formatter -> 'a -> unit) fm xs = Format.fprintf fm "[%a]" (print_list pr ";" false) xs
+
+and print_fun_def_as_tree fm ((f,xs,t1,es,t2):fun_def) =
+  Format.fprintf fm "%a,%a,%a,%a,%a"
+    print_var_as_tree f
+    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_var_as_tree ";" false) xs) xs
+(*(print_list_as_tree Format.pp_print_string) xs
+*)
+    print_term_as_tree t1
+    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_event_as_tree ";" false) xs) es
+    print_term_as_tree t2
+
+and print_env_as_tree fm env =
+  let aux fm (f,typ) = Format.printf "%a,%a" print_var_as_tree f print_typ_as_tree typ in
+    Format.fprintf fm "[%a]" (print_list aux ";" false) env
+  
+and print_prog_as_tree fm ((env,defs,s):prog) =
+  Format.fprintf fm "(%a,%a,%a)"
+    print_env_as_tree env
+    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_fun_def_as_tree ";" false) xs) defs
+    print_var_as_tree s
+
+
+
+
 let print_node fm = function
     BranchNode n -> Format.fprintf fm "#%d" n
   | EventNode s -> Format.fprintf fm "%s" s
@@ -182,4 +265,6 @@ let term = print_term
 let var = print_var
 let typ = print_typ
 let ce = print_ce
+let prog = print_prog
+let prog_typ = print_prog_typ
 

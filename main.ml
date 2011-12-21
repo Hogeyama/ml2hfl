@@ -72,16 +72,16 @@ List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.prin
   let () = if true then Format.printf "add_preds::@.%a\n\n@." Syntax.pp_print_term' t in
 *)
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
-  let () = if true then Format.printf "set_target::@.%a\n\n@." Syntax.pp_print_term' t in
+  let () = if true then Format.printf "set_target::@.%a\n\n@." Syntax.pp_print_term t in
   let t =
     if !Flag.init_trans
     then
       let t = Trans.copy_poly_funs t in
       let () = if true then Format.printf "copy_poly::@.%a\n@." Syntax.pp_print_term t in
       let t = Abstract.abstract_recdata t in
-      let () = if false then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term' t in
+      let () = if false then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term t in
       let t = Abstract.abstract_list t in
-      let () = if true then Format.printf "abst_list::@.%a\n@." Syntax.pp_print_term t in
+      let () = if true then Format.printf "abst_list::@.%a\n@." Syntax.pp_print_term' t in
       let t = CPS.trans t in
       let () = if false then Format.printf "CPS::@.%a\n\n@." Syntax.pp_print_term t in
       let t = CPS.remove_pair t in
@@ -91,11 +91,11 @@ List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.prin
   in
 
   let () = Type_check.check t Type.TUnit in
-  let prog = CEGAR_util.trans_prog t in
+  let prog,preds = CEGAR_util.trans_prog t in
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->
-          let t_result, result = CEGAR.cegar prog [] in
+          let t_result, result = CEGAR.cegar prog preds [] in
 	    match result with
 	        None -> Format.printf "@.Safe!@.@."
 	      | Some print ->

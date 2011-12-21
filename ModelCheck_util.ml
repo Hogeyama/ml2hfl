@@ -213,7 +213,7 @@ let rec full_app f n = function
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let can_reduce (f,_,t1,es,_) env defs =
+let should_reduce (f,_,t1,es,_) env defs =
   let n = arg_num (List.assoc f env) in
     t1 = Const True && es = [] &&
     List.length (List.filter (fun (g,_,_,_,_) -> f=g) defs) = 1 &&
@@ -235,7 +235,7 @@ let rec beta_reduce_term (f,xs,t1,es,t2) = function
 let beta_reduce_aux ((env,defs,main):prog) : prog =
   let rec aux defs1 = function
       [] -> defs1
-    | ((f,_,_,_,_) as def)::defs2 when can_reduce def env (defs1@@def::defs2) ->
+    | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@def::defs2) ->
         let reduce_def (f',xs',t1',es',t2') = f', xs', t1', es', beta_reduce_term def t2' in
         let defs1' = List.map reduce_def defs1 in
         let defs2' = List.map reduce_def defs2 in

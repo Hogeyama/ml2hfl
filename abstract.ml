@@ -354,6 +354,24 @@ let rec get_match_bind_cond t p =
         let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
           bind1@@bind2, make_and cond1 cond2
 
+let make_cons t1 t2 =
+  let i = Id.new_var "i" (TInt[]) in
+  let x = Id.new_var "x" t1.typ in
+  let xs_typ =
+    match t2.typ with
+        TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,TPred(x,typ12)),typ2)
+      | _ -> assert false
+  in
+  let xs = Id.new_var "xs" xs_typ in
+  let t11 = make_eq (make_var i) (make_int 0) in
+  let t12 = make_var x in
+  let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
+  let t_len = make_fun i (make_if t11 t12 t13) in
+  let t_f = make_add (make_snd (make_var xs)) (make_int 1) in
+  let cons = Id.new_var "cons" (TFun(x,TFun(xs,xs_typ)))  in
+    make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1; t2])
+  
+
 let rec abst_list t =
   let typ' = abst_list_typ t.typ in
   let desc =
@@ -386,15 +404,7 @@ let rec abst_list t =
       | Cons(t1,t2) ->
           let t1' = abst_list t1 in
           let t2' = abst_list t2 in
-          let i = Id.new_var "i" (TInt[]) in
-          let x = Id.new_var "x" (abst_list_typ t1.typ) in
-          let xs = Id.new_var "xs" typ' in
-          let t11 = make_eq (make_var i) (make_int 0) in
-          let t12 = make_var x in
-          let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
-          let t1'' = make_fun i (make_if t11 t12 t13) in
-          let t2'' = make_add (make_snd (make_var xs)) (make_int 1) in
-            (make_let [x, [], t1'] (make_let [xs, [], t2'] (make_pair t1'' t2''))).desc
+            (make_cons t1' t2').desc
       | Constr(s,ts) -> assert false
       | Match(t1,pats) ->
           let x,bindx =
