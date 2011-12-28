@@ -69,6 +69,7 @@ let print_constraints = false
 let print_lower_bound = false
 let print_cvc3 = false
 let print_refine_log = false
+let print_eval_abst = ref false
 
 
 (* variables for log *)

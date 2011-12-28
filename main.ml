@@ -118,6 +118,7 @@ let spec =
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " use dependent type system for predicate discovery";
    "-spec", Arg.String (fun file -> spec_file := file),
          "<filename>  use <filename> as specification";
+   "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " print evaluation of abstacted program";
   ]
 
 

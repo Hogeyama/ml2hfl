@@ -159,7 +159,7 @@ let rec extract_tuple_term env = function
 
         
 let extract_tuple_def env (f,xs,t1,e,t2) =
-  let env' = get_env (List.assoc f env) xs @@ env in
+  let env' = get_arg_env (List.assoc f env) xs @@ env in
   let xs' = List.flatten (List.map (extract_tuple_var env') xs) in
   let t1' = hd (extract_tuple_term env t1) in
   let t2' = hd (extract_tuple_term env' t2) in

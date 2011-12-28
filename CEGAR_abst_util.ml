@@ -292,7 +292,7 @@ let rec reduce_let env = function
         | _ -> assert false
 
 let make_arg_let_def env (f,xs,t1,e,t2) =
-    f, xs, t1, e, reduce_let (get_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)
+    f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)
 
 let make_arg_let ((env,defs,main):prog) : prog =
   let defs' = List.map (make_arg_let_def env) defs in

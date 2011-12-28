@@ -13,7 +13,7 @@ let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env
 
 let assoc_def defs n t =
   let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
-    List.nth defs' n
+    List.length defs', List.nth defs' n
 
 (* sat=true denotes constr is satisfiable *)
 let rec check_aux pr ce sat n constr env defs t k =
@@ -26,9 +26,6 @@ let rec check_aux pr ce sat n constr env defs t k =
         check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
         check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
           k ce sat n constr env (make_app (Const op) [t1;t2])))
-(*
-  | App(Const (Event s), t) -> check_aux pr ce sat n constr env defs (App(t,Const Unit)) k
-*)
     | App(Const RandInt, t) ->
         let r = new_id "r" in
         let env' = (r,typ_int)::env in
@@ -41,7 +38,7 @@ let rec check_aux pr ce sat n constr env defs t k =
             if List.length xs > List.length ts
             then k ce sat n constr env (App(t1,t2))
             else
-              let f,xs,tf1,e,tf2 = assoc_def defs (List.hd ce) t1' in
+              let num,(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' in
               let ts1,ts2 = take2 ts (List.length xs) in
               let aux = List.fold_right2 subst xs ts1 in
               let tf1' = aux tf1 in
@@ -52,7 +49,7 @@ let rec check_aux pr ce sat n constr env defs t k =
               let sat' = sat && Wrapper2.checksat env constr' in
                 assert (List.length xs = List.length ts);
                 assert (ts2 = []);
-                pr t1' e;
+                pr t1' (List.hd ce) num e;
                 if e = [Event "fail"]
                 then init_cont ce' sat' n' constr' env tf2'
                 else (assert (e=[]); check_aux pr ce' sat' n' constr' env defs tf2' k)))
@@ -74,7 +71,7 @@ let check ce ((env,defs,main):prog) =
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce in
   let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) (List.tl ce) in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
-  let pr _ _ = () in
+  let pr _ _ _ _ = () in
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
   let () = if false then Format.printf "prefix(%d): %a@." n CEGAR_print.print_ce prefix in
@@ -158,11 +155,12 @@ let trans_ce ce ((env,defs,main):prog) =
 let print_ce_reduction ce ((_,defs,main):prog) =
   let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) (List.tl ce) in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
-  let pr t e =
-    let s = match e with [] -> "" | [Event s] -> s | _ -> assert false in
-      Format.printf "  %a ... -%s->@." print_term t s
+  let pr t br n e =
+    let s1 = if n = 1 then "" else " [" ^ string_of_int (br+1) ^ "/" ^ string_of_int n ^ "]" in
+    let s2 = match e with [] -> "" | [Event s] -> s ^ " -->" | _ -> assert false in
+      Format.printf "  %a%s ... --> %s@." print_term t s1 s2
   in
     Format.printf "Error trace::@.";
-    pr (Var main) [];
+    pr (Var main) 0 1 [];
     ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
     Format.printf "  ERROR!@.@."

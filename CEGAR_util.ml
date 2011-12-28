@@ -167,10 +167,7 @@ let preds = ref []
 
 let trans_typ f path typ =
   let typ',ps = trans_typ f path typ in
-
-
-
-
+(*
 let pr fm (f,x,path) =
   let rec proj path typ =
     match path,typ with
@@ -182,10 +179,7 @@ let pr fm (f,x,path) =
     Format.printf "%s(%s) => %a@." f x (print_list Format.pp_print_int ";" false) path
 in
 Format.printf "AA:%a@.%a@.@." Syntax.print_typ typ (print_list pr "" false) ps;
-
-
-
-
+*)
     preds := ps @@ !preds;
     typ'
 
@@ -620,11 +614,11 @@ let lift2 ((_,defs,main):prog) : prog =
     Typing.infer ([],defs,main)
 
 
-let rec get_env typ xs =
+let rec get_arg_env typ xs =
   match typ,xs with
       TFun(typ1,typ2), x::xs ->
         let typ2 = typ2 (Var x) in
-          (x,typ1) :: get_env typ2 xs
+          (x,typ1) :: get_arg_env typ2 xs
     | _ -> []
 
     

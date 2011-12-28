@@ -1904,7 +1904,7 @@ let rec trans_term env = function
 let trans_env env = List.map (fun (x,typ) -> x, trans_typ typ) env
 
 let trans_def env_cegar env (f,xs,t1,e,t2) =
-  let env' = trans_env (CU.get_env (List.assoc f env_cegar) xs) in
+  let env' = trans_env (CU.get_arg_env (List.assoc f env_cegar) xs) in
   let env'' = env' @@ env in
   let t2' =
     match e with

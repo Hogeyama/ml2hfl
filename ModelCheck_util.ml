@@ -84,7 +84,7 @@ let elim_non_det ((env,defs,main):prog) : prog =
 let make_bottom ((env,defs,main):prog) : prog =
   let bottoms = ref [] in
   let aux_def (f,xs,t1,e,t2) =
-    let env' = get_env (List.assoc f env) xs @@ env in
+    let env' = get_arg_env (List.assoc f env) xs @@ env in
     let make_bottom n =
       let x = "Bottom" ^ string_of_int n in
         bottoms := (x,n)::!bottoms;
@@ -151,7 +151,7 @@ let rec eta_expand_term env = function
 let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
-  let t2' = eta_expand_term (get_env (List.assoc f env) xs @@ env) t2 in
+  let t2' = eta_expand_term (get_arg_env (List.assoc f env) xs @@ env) t2 in
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
     f, xs@ys, t1, e, t2''
 

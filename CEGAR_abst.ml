@@ -131,7 +131,122 @@ let abstract prog =
         Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract prog
       | Flag.PredAbst -> abstract prog
   in
-  let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
+  let () = if true then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
   let () = if Flag.print_progress then Format.printf "DONE!@." in
   let () = add_time tmp Flag.time_abstraction in
     abst
+
+
+
+
+
+
+
+
+
+
+
+
+
+exception EvalBottom
+exception EvalFail
+exception EvalValue
+exception Skip
+exception Restart
+
+let assoc_def defs n t =
+  let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
+    List.nth defs' n
+
+let rec is_value env = function
+    Const Bottom -> false
+  | Const RandBool -> false
+  | Const _ -> true
+  | Var x -> get_arg_num (get_typ env (Var x)) > 0
+  | App(App(App(Const If, _), _), _) -> false
+  | App _ as t ->
+      let t1,ts = decomp_app t in
+        List.for_all (is_value env) (t1::ts) && get_arg_num (get_typ env t) = List.length ts
+  | Let _ -> assert false
+  | Fun _ -> assert false
+
+let rec read_bool () =
+  Format.printf "RandBool (t/f/r/s): @?";
+  let s = read_line () in
+    match s with
+      | _ when String.length s = 0 -> read_bool ()
+      | _ when s.[0] = 't' -> true
+      | _ when s.[0] = 'f' -> false
+      | _ when s.[0] = 'r' -> raise Restart
+      | _ when s.[0] = 's' -> raise Skip
+      | _ -> read_bool ()
+
+let rec step_eval_abst_cbn ce env_orig env_abst defs = function
+    Const Bottom -> raise EvalBottom
+  | Const RandBool ->
+      let t =
+        if read_bool ()
+        then Const True
+        else Const False
+      in
+        ce, t
+  | Var x ->
+      let ce',(f,xs,tf1,es,tf2) =
+        if List.exists (fun (f,_) -> f = x) env_orig
+        then List.tl ce, assoc_def defs (List.hd ce) (Var x)
+        else ce, assoc_def defs 0 (Var x)
+      in
+        assert (tf1 = Const True);
+        if List.mem (Event "fail") es then raise EvalFail;
+        ce', tf2
+  | App(App(App(Const If, Const True), t2), _) -> ce, t2
+  | App(App(App(Const If, Const False), _), t3) -> ce, t3
+  | App(App(App(Const If, t1), t2), t3) ->
+      let ce',t1' = step_eval_abst_cbn ce env_orig env_abst defs t1 in
+        ce', App(App(App(Const If, t1'), t2), t3)
+  | App _ as t ->
+      let t1,ts = decomp_app t in
+      let ce',(f,xs,tf1,es,tf2) =
+        if List.exists (fun (f,_) -> Var f = t1) env_orig
+        then List.tl ce, assoc_def defs (List.hd ce) t1
+        else ce, assoc_def defs 0 t1
+      in
+        assert (tf1 = Const True);
+        if List.mem (Event "fail") es then raise EvalFail;
+        ce', List.fold_right2 subst xs ts tf2
+  | _ -> assert false
+
+let rec eval_abst_cbn prog abst ce =
+  let env_orig = get_env prog in
+  let env_abst = get_env abst in
+  let defs = get_defs abst in
+  let main = get_main abst in
+  let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) ce in
+  let rec loop ce t =
+    Format.printf "  %a -->@." print_term t;
+    let ce',t' = step_eval_abst_cbn ce env_orig env_abst defs t in
+      if t' <> Const Unit
+      then loop ce' t'
+  in
+  let pr () =
+    try
+      loop ce' (Var main)
+    with
+        Failure "nth" -> Format.printf "RESET (inconsistent)@.@."; eval_abst_cbn prog abst ce
+      | Restart -> eval_abst_cbn prog abst ce
+      | EvalFail ->
+          Format.printf "  ERROR!@.@.";
+          Format.printf "Press Enter.@.";
+          ignore (read_line())
+      | EvalBottom ->
+          Format.printf "  DIVERGE!@.@.";
+          Format.printf "Press Enter.@.";
+          ignore (read_line())
+  in
+    try
+      Format.printf "Evaluation of abstracted program::@.";
+      pr ();
+    with Skip -> ()
+
+
+
