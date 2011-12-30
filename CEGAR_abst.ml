@@ -172,14 +172,13 @@ let rec is_value env = function
 
 let rec read_bool () =
   Format.printf "RandBool (t/f/r/s): @?";
-  let s = read_line () in
-    match s with
-      | _ when String.length s = 0 -> read_bool ()
-      | _ when s.[0] = 't' -> true
-      | _ when s.[0] = 'f' -> false
-      | _ when s.[0] = 'r' -> raise Restart
-      | _ when s.[0] = 's' -> raise Skip
-      | _ -> read_bool ()
+  match read_line () with
+    | s when String.length s = 0 -> read_bool ()
+    | s when s.[0] = 't' -> true
+    | s when s.[0] = 'f' -> false
+    | s when s.[0] = 'r' -> raise Restart
+    | s when s.[0] = 's' -> raise Skip
+    | s -> read_bool ()
 
 let rec step_eval_abst_cbn ce env_orig env_abst defs = function
     Const Bottom -> raise EvalBottom
@@ -217,6 +216,7 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
   | _ -> assert false
 
 let rec eval_abst_cbn prog abst ce =
+  let abst = put_into_if abst in
   let env_orig = get_env prog in
   let env_abst = get_env abst in
   let defs = get_defs abst in
@@ -231,8 +231,10 @@ let rec eval_abst_cbn prog abst ce =
   let pr () =
     try
       loop ce' (Var main)
-    with
-        Failure "nth" -> Format.printf "RESET (inconsistent)@.@."; eval_abst_cbn prog abst ce
+    with(*
+        Failure "nth" ->
+          Format.printf "RESET (inconsistent)@.@.";
+          eval_abst_cbn prog abst ce*)
       | Restart -> eval_abst_cbn prog abst ce
       | EvalFail ->
           Format.printf "  ERROR!@.@.";

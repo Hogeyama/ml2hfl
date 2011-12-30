@@ -82,7 +82,7 @@ let rec cegar prog preds ces =
         None,_ -> prog, None
       | Some ce, ce'::_ when ce = ce' -> raise NoProgress;
       | Some ce, _ ->
-          CEGAR_abst.eval_abst_cbn prog abst ce;
+          if !Flag.print_eval_abst then CEGAR_abst.eval_abst_cbn prog abst ce;
           Feasibility.print_ce_reduction ce prog;
           match Feasibility.check ce prog with
               Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
