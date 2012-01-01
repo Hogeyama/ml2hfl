@@ -387,23 +387,37 @@ let trans_prog t =
   let prog = pop_main (eta_expand (env', defs''', main)) in
 
   let () = Id.clear_counter () in
-  let aux (f,xs,_,_,_) =
-    let f' = rename_id f in
-      if true then Format.printf "rename: %s ==> %s@." f f';
-      (f,f')::List.map (fun x -> x,rename_id x) xs
+  let defs = get_defs prog in
+  let vars = List.map (fun (f,_,_,_,_) -> f) defs in
+  let var_names = List.rev_map id_name (uniq vars) in
+  let rename_id' x var_names =
+    let x_name = id_name x in
+      if List.length (List.filter ((=) x_name) var_names) = 1
+      then x_name
+      else rename_id x
   in
-  let map = rev_flatten_map aux (get_defs prog) in
+  let make_map_fun (f,_,_,_,_) =
+    let f' = rename_id' f var_names in
+      if true then Format.printf "rename: %s ==> %s@." f f';
+      f, f'
+  in
+  let map = List.rev_map make_map_fun defs in
+  let var_names' = List.map snd map in
+  let make_map_vars (_,xs,_,_,_) =
+    let var_names' = List.rev_map id_name xs @@ var_names' in
+      List.map (fun x -> x, rename_id' x var_names') xs
+  in
+  let map = rev_flatten_map make_map_vars defs @@ map in
   let map = uniq' (fun (x,_) (y,_) -> compare x y) map in
   let rename_var x = List.assoc x map in
   let rename_term t = subst_map (List.map (fun (x,x') -> x,Var x') map) t in
   let rename_def (f,xs,t1,e,t2) = rename_var f, List.map rename_var xs, rename_term t1, e, rename_term t2 in
   let env = List.map (fun (f,typ) -> rename_var f, typ) (get_env prog) in
-  let defs = List.map rename_def (get_defs prog) in
+  let defs = List.map rename_def defs in
   let main = rename_var (get_main prog) in
   let prog = env, defs, main in
   let _ = Typing.infer prog in
 
-  Format.printf "P::@.%a\n" CEGAR_print.print_prog_typ prog;
   let trans_pred (f,x,path) =
     let f' = rename_var f in
     let x' = rename_var x in
@@ -419,19 +433,19 @@ let trans_prog t =
 
 
 
-let pr fm (f,n,path) =
-  let rec proj path typ =
-    match path,typ with
-        [],typ -> typ
-      | 0::path',TFun(typ1,typ2) -> proj path' typ1
-      | 1::path',TFun(typ1,typ2) -> proj path' (typ2 (Const Unit))
-      | _ -> Format.printf "%s(%d)@." f n; assert false
+  let pr fm (f,n,path) =
+    let rec proj path typ =
+      match path,typ with
+          [],typ -> typ
+        | 0::path',TFun(typ1,typ2) -> proj path' typ1
+        | 1::path',TFun(typ1,typ2) -> proj path' (typ2 (Const Unit))
+        | _ -> Format.printf "%s(%d)@." f n; assert false
+    in
+    let typ = List.assoc f env in
+    let typ' = proj path typ in
+      Format.printf "%s(%d) => %a, %a@." f n (print_list Format.pp_print_int ";" false) path print_typ typ'
   in
-  let typ = List.assoc f env in
-  let typ' = proj path typ in
-    Format.printf "%s(%d) => %a, %a@." f n (print_list Format.pp_print_int ";" false) path print_typ typ'
-in
-Format.printf "%a@." (print_list pr "" false) preds;
+    Format.printf "%a@." (print_list pr "" false) preds;
 
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
     prog, preds
@@ -773,4 +787,104 @@ let rec has_bottom = function
   | App(t1, t2) -> has_bottom t1 || has_bottom t2
   | _ -> assert false
 
+
+
+
+let rec normalize_bool_term = function
+    Const c -> Const c
+  | Var x -> Var x
+  | App(App(Const (EqInt|Lt|Gt|Leq|Geq) as op, t1), t2) ->
+      let neg xs = List.map (fun (x,n) -> x,-n) xs in
+      let rec decomp = function
+          Const (Int n) -> [None, n]
+        | Var x -> [Some (Var x), 1]
+        | App(App(Const Add, t1), t2) ->
+            decomp t1 @@ decomp t2
+        | App(App(Const Sub, t1), t2) ->
+            decomp t1 @@ neg (decomp t2)
+        | App(App(Const Mul, t1), t2) ->
+            let xns1 = decomp t1 in
+            let xns2 = decomp t2 in
+            let reduce xns = List.fold_left (fun acc (_,n) -> acc+n) 0 xns in
+            let not_const xns = List.exists (fun (x,_) -> x <> None) xns in
+              begin
+                match not_const xns1, not_const xns2 with
+                    true, true ->
+                      Format.printf "Nonlinear expression not supported: %a@." CEGAR_print.term (make_app op [t1;t2]);
+                      assert false
+                  | false, true ->
+                      let k = reduce xns1 in
+                        List.rev_map (fun (x,n) -> x,n*k) xns2
+                  | true, false ->
+                      let k = reduce xns2 in
+                        List.rev_map (fun (x,n) -> x,n*k) xns1
+                  | false, false ->
+                      [None, reduce xns1 + reduce xns2]
+              end
+        | _ -> assert false
+      in
+      let xns1 = decomp t1 in
+      let xns2 = decomp t2 in
+      let compare (x1,_) (x2,_) =
+        let aux = function
+            None -> true, ""
+          | Some (Var x) -> false, x
+          | _ -> assert false
+        in
+          compare (aux x1) (aux x2)
+      in
+      let xns = List.sort compare (xns1 @@ (neg xns2)) in
+      let d = List.fold_left (fun d (_,n) -> gcd d (abs n)) 0 xns in
+      let xns' = List.map (fun (x,n) -> assert (n mod d = 0); x, n/d) xns in
+      let rec aux = function
+          [] -> []
+        | (x,n)::xns ->
+            let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
+            let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
+              (x,n') :: aux xns2
+      in
+      let xns'' = aux xns' in
+      let xns''' = List.filter (fun (_,n) -> n<>0) xns'' in
+      let x,n = List.hd xns''' in
+      let xns = List.tl xns''' in
+      let op',t1',t2' =
+        let aux = function
+            None, n -> Const (Int n)
+          | Some x, 1 -> x
+          | Some x, n -> make_mul (make_int n) x
+        in
+        let t1,xns',op' =
+          if n<0
+          then
+            let op' =
+              match op with
+                  Const EqInt -> Const EqInt
+                | Const Lt -> Const Gt
+                | Const Gt -> Const Lt
+                | Const Leq -> Const Geq
+                | Const Geq -> Const Leq
+                | _ -> assert false
+            in
+              aux (x,-n), xns, op'
+          else
+            aux (x,n), neg xns, op
+        in
+        let ts = List.map aux xns' in
+        let make_add_sub t1 t2 =
+          match t2 with
+              Const (Int n) when n < 0 -> make_sub t1 (make_int (-n))
+            | App(App(Const Mul, Const (Int n)), t2') when n < 0 -> make_sub t1 (make_mul (make_int (-n)) t2')
+            | _ -> make_add t1 t2
+        in
+        let t2 =
+          match ts with
+              [] -> Const (Int 0)
+            | t::ts' -> List.fold_left make_add_sub t ts'
+        in
+          op', t1, t2
+      in
+        make_app op' [t1'; t2']
+  | App(t1, t2) -> App(normalize_bool_term t1, normalize_bool_term t2)
+  | Let _ -> assert false
+  | Fun _ -> assert false
 

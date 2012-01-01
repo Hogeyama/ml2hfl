@@ -547,7 +547,9 @@ let rec lift_aux xs t =
           let defs2,t2' = lift_aux xs t2 in
             defs1 @ defs2, Branch(t1',t2')
       | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
-          let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
+          let fv = inter' Id.compare (get_fv t1) xs in
+          let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
+          let fv = List.sort compare_id fv in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
@@ -556,7 +558,9 @@ let rec lift_aux xs t =
           let defs2,t2' = lift_aux xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
       | Let(Flag.Recursive,[f,ys,t1],t2) ->
-          let fv = List.sort compare_id (uniq' Id.compare (filter_base xs @@ inter' Id.compare (get_fv t1) xs)) in
+          let fv = inter' Id.compare (get_fv t1) xs in
+          let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
+          let fv = List.sort compare_id fv in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in

@@ -61,17 +61,6 @@ let get_main (_,_,main) = main
 
 
 let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
-let rename_id s =
-  let len = String.length s in
-  let n =
-    try
-      let i = String.rindex s '_' in
-      let n = String.sub s (i+1) (len-i-1) in
-      let _ = int_of_string n in
-        i
-    with _ -> len
-  in
-    String.sub s 0 n ^ "_" ^ string_of_int (Id.new_int ())
 let decomp_id s =
   try
     let len = String.length s in
@@ -82,6 +71,9 @@ let add_name x s =
   let name,n = decomp_id x in
     name ^ s ^ "_" ^ if n <> 0 then string_of_int n else ""
 let id_name x = fst (decomp_id x)
+let rename_id s =
+  let name = id_name s in
+    name ^ "_" ^ string_of_int (Id.new_int ())
 
 
 
@@ -97,6 +89,7 @@ let make_if t1 t2 t3 =
       Const True -> t2
     | Const False -> t3
     | _ -> make_app (Const If) [t1;t2;t3]
+let make_int n = Const (Int n)
 let make_br t1 t2 = make_if (Const RandBool) t1 t2
 let make_and t1 t2 = make_app (Const And) [t1; t2]
 let make_or t1 t2 = make_app (Const Or) [t1; t2]
@@ -182,3 +175,6 @@ let is_CPS_def env (f,xs,cond,es,t) =
 let is_CPS ((env,defs,main):prog) = List.for_all (is_CPS_def env) defs
 
     
+
+
+

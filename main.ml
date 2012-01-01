@@ -119,6 +119,7 @@ let spec =
    "-spec", Arg.String (fun file -> spec_file := file),
          "<filename>  use <filename> as specification";
    "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " print evaluation of abstacted program";
+   "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " lift variables which occur in a body";
   ]
 
 

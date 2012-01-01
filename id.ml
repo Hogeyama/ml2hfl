@@ -21,6 +21,12 @@ let typ x = x.typ
 
 let to_string x = name x ^ "_" ^ string_of_int (id x)
 
+let to_string' x =
+  let n = id x in
+    if n = 0
+    then name x
+    else name x ^ "_" ^ string_of_int n
+
 let compare x y = compare (to_string x) (to_string y)
 let same x y = compare x y = 0
 

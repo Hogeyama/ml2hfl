@@ -205,18 +205,26 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
         ce', App(App(App(Const If, t1'), t2), t3)
   | App _ as t ->
       let t1,ts = decomp_app t in
-      let ce',(f,xs,tf1,es,tf2) =
-        if List.exists (fun (f,_) -> Var f = t1) env_orig
-        then List.tl ce, assoc_def defs (List.hd ce) t1
-        else ce, assoc_def defs 0 t1
-      in
-        assert (tf1 = Const True);
-        if List.mem (Event "fail") es then raise EvalFail;
-        ce', List.fold_right2 subst xs ts tf2
+        if t1 = Const If
+        then
+          match ts with
+              Const True::t2::_::_ -> ce, t2
+            | Const False::_::t3::_ -> ce, t3
+            | t1::ts' -> 
+                let ce',t1' = step_eval_abst_cbn ce env_orig env_abst defs t1 in
+                  ce', make_app (Const If) (t1'::ts')
+        else
+          let ce',(f,xs,tf1,es,tf2) =
+            if List.exists (fun (f,_) -> Var f = t1) env_orig
+            then List.tl ce, assoc_def defs (List.hd ce) t1
+            else ce, assoc_def defs 0 t1
+          in
+            assert (tf1 = Const True);
+            if List.mem (Event "fail") es then raise EvalFail;
+            ce', List.fold_right2 subst xs ts tf2
   | _ -> assert false
 
 let rec eval_abst_cbn prog abst ce =
-  let abst = put_into_if abst in
   let env_orig = get_env prog in
   let env_abst = get_env abst in
   let defs = get_defs abst in
@@ -224,6 +232,15 @@ let rec eval_abst_cbn prog abst ce =
   let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) ce in
   let rec loop ce t =
     Format.printf "  %a -->@." print_term t;
+    let t1,_ = decomp_app t in
+    let () =
+      try
+        match t1 with
+            Var x ->
+              Format.printf "    %s:: %a@." x print_typ (List.assoc x env_orig)
+          | _ -> ()
+      with Not_found -> ()
+    in
     let ce',t' = step_eval_abst_cbn ce env_orig env_abst defs t in
       if t' <> Const Unit
       then loop ce' t'
@@ -232,7 +249,7 @@ let rec eval_abst_cbn prog abst ce =
     try
       loop ce' (Var main)
     with(*
-        Failure "nth" ->
+          Failure "nth" ->
           Format.printf "RESET (inconsistent)@.@.";
           eval_abst_cbn prog abst ce*)
       | Restart -> eval_abst_cbn prog abst ce

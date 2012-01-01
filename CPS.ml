@@ -820,7 +820,7 @@ let trans_typ typ_orig typ = trans_typ (merge_typ typ (from_orig_typ typ_orig))
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
 
-let rec transform c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
+let rec transform k_post c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
   match t with
       UnitCPS -> c unit_term
     | TrueCPS -> c true_term
@@ -834,7 +834,7 @@ let rec transform c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
         let x' = trans_var x in
         let r = Id.new_var "r" (trans_typ typ) in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
-          c (make_fun x' (make_fun k (transform (fun y -> make_app (make_var k) [y]) t)))
+          c (make_fun x' (make_fun k (transform k_post (fun y -> make_app (make_var k) [y]) t)))
 *)
         assert false
     | AppCPS(t1, ts) ->
@@ -842,27 +842,27 @@ let rec transform c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
           if n = List.length ts
           then
             let r = Id.new_var "r" (trans_typ typ_orig typ) in
-            let k = Id.new_var "k" (TFun(r,TUnit)) in
+            let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
             let c1 x = make_app x [make_var k] in
-            let cc = List.fold_right (fun t cc -> fun x -> transform (fun y -> cc (make_app x [y])) t) ts c1 in
-              make_let' k [r] (c (make_var r)) (transform cc t1)
+            let cc = List.fold_right (fun t cc -> fun x -> transform k_post (fun y -> cc (make_app x [y])) t) ts c1 in
+              make_let' k [r] (c (make_var r)) (transform k_post cc t1)
           else
             let ts1,ts2 = take2 ts n in
             let typ' = app_typ t1.typ_cps ts1 in
             let typ_orig' = Type.app_typ t1.typ_orig ts1 in
-              transform c {t_cps=AppCPS({t_cps=AppCPS(t1,ts1);typ_cps=typ';typ_orig=typ_orig'},ts2); typ_cps=typ; typ_orig=typ_orig}
+              transform k_post c {t_cps=AppCPS({t_cps=AppCPS(t1,ts1);typ_cps=typ';typ_orig=typ_orig'},ts2); typ_cps=typ; typ_orig=typ_orig}
     | IfCPS(t1, t2, t3) ->
         let x = Id.new_var "b" (trans_typ typ_orig typ) in
-        let k = Id.new_var "k" (TFun(x,TUnit)) in
+        let k = Id.new_var ("k" ^ k_post) (TFun(x,TUnit)) in
         let c' y = make_app (make_var k) [y] in
-        let t2' = transform c' t2 in
-        let t3' = transform c' t3 in
+        let t2' = transform k_post c' t2 in
+        let t3' = transform k_post c' t3 in
         let c'' y = make_let' k [x] (c (make_var x)) (make_if y t2' t3') in
-          transform c'' t1
+          transform k_post c'' t1
     | LetCPS(Flag.Nonrecursive, f, [], t1, t2) ->
         let f' = trans_var f in
-        let c' t = subst f' t (transform c t2) in
-          transform c' t1
+        let c' t = subst f' t (transform k_post c t2) in
+          transform k_post c' t1
     | LetCPS(Flag.Recursive, _, [],  _, _) -> assert false
     | LetCPS(flag, f, xs, t1, t2) ->
         let n = get_arg_num f.id_typ in
@@ -872,8 +872,9 @@ let rec transform c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
             let k = Id.new_var "k" (TFun(r,TUnit)) in
             let f' = trans_var f in
             let xs' = List.map trans_var xs in
-            let t1' = transform (fun y -> make_app (make_var k) [y]) t1 in
-            let t2' = transform c t2 in
+            let k_post' = "_" ^ Id.name f' in
+            let t1' = transform k_post' (fun y -> make_app (make_var k) [y]) t1 in
+            let t2' = transform k_post' c t2 in
               make_let_f flag [f', xs'@[k], t1'] t2'
           else
             let xs1,xs2 = take2 xs n in
@@ -881,28 +882,28 @@ let rec transform c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
             let typ_orig_g = Type.app_typ (Id.typ f.id_cps) xs1 in
             let g = {id_cps=Id.new_var (Id.name f.id_cps) typ_orig_g; id_typ=typ_g} in
             let t1' = {t_cps=LetCPS(Flag.Nonrecursive, g, xs2, t1, {t_cps=VarCPS g;typ_cps=typ_g; typ_orig=typ_orig_g}); typ_cps=typ_g; typ_orig=typ_orig_g} in
-              transform c {t_cps=LetCPS(flag,f,xs1,t1',t2); typ_cps=typ; typ_orig=typ_orig}
+              transform k_post c {t_cps=LetCPS(flag,f,xs1,t1',t2); typ_cps=typ; typ_orig=typ_orig}
     | BinOpCPS(op, t1, t2) ->
         let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=trans_typ typ_orig typ} in
-        let c2 y1 = transform (fun y2 -> c1 y1 y2) t2 in
-          transform c2 t1
+        let c2 y1 = transform k_post (fun y2 -> c1 y1 y2) t2 in
+          transform k_post c2 t1
     | NotCPS t ->
         let c' t1 = c (make_not t1) in
-          transform c' t
+          transform k_post c' t
     | UnknownCPS -> assert false
     | EventCPS s ->  c (make_event_cps s)
     | FstCPS t ->
         let c' t1 = c (make_fst t1) in
-          transform c' t
+          transform k_post c' t
     | SndCPS t ->
         let c' t1 = c (make_snd t1) in
-          transform c' t
+          transform k_post c' t
     | PairCPS(t1,t2) ->
         let c1 t1' t2' = c (make_pair t1' t2') in
-        let c2 y1 = transform (fun y2 -> c1 y1 y2) t2 in
-          transform c2 t1
+        let c2 y1 = transform k_post (fun y2 -> c1 y1 y2) t2 in
+          transform k_post c2 t1
     | t -> (Format.printf "%a@." print_t_cps t; assert false)
-let transform = transform (fun x -> x)
+let transform = transform "" (fun x -> x)
 
 
 
