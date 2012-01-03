@@ -856,6 +856,10 @@ CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx \
     /usr/lib/ocaml/random.cmx /usr/lib/ocaml/list.cmx id.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
     CEGAR_print.cmx /usr/lib/ocaml/array.cmx
+useless_elim.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi id.cmo \
+    /usr/lib/ocaml/format.cmi CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+useless_elim.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx id.cmx \
+    /usr/lib/ocaml/format.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 lazy/enum.cmo: /usr/lib/ocaml/obj.cmi lazy/enum.cmi
 lazy/enum.cmx: /usr/lib/ocaml/obj.cmx lazy/enum.cmi
 lazy/extList.cmo: /usr/lib/ocaml/obj.cmi /usr/lib/ocaml/list.cmi \
@@ -1104,12 +1108,12 @@ trecsInterface.cmx: utilities.cmx /usr/lib/ocaml/string.cmx \
     /usr/lib/ocaml/lexing.cmx /usr/lib/ocaml/hashtbl.cmx \
     /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
     CEGAR_print.cmx
-ModelCheck_util.cmo: utilities.cmo typing.cmo trecsInterface.cmo \
-    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
+ModelCheck_util.cmo: utilities.cmo useless_elim.cmo typing.cmo \
+    trecsInterface.cmo /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo /usr/lib/ocaml/array.cmi
-ModelCheck_util.cmx: utilities.cmx typing.cmx trecsInterface.cmx \
-    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
+ModelCheck_util.cmx: utilities.cmx useless_elim.cmx typing.cmx \
+    trecsInterface.cmx /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx /usr/lib/ocaml/array.cmx
 ModelCheck_CPS.cmo: utilities.cmo ModelCheck_util.cmo \

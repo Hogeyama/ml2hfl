@@ -207,39 +207,62 @@ let rec full_app f n = function
   | App _ as t ->
       let t1,ts = decomp_app t in
       let b1 = if t1 = Var f then n = List.length ts else true in
-        assert (f <> "K_156" || b1);
       let b2 = List.for_all (full_app f n) ts in
         b1 && b2
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let should_reduce (f,_,t1,es,_) env defs =
+let should_reduce (f,xs,t1,es,t2) env defs =
   let n = arg_num (List.assoc f env) in
     t1 = Const True && es = [] &&
     List.length (List.filter (fun (g,_,_,_,_) -> f=g) defs) = 1 &&
     List.length (rev_flatten_map (fun (_,_,_,_,t) -> List.filter ((=) f) (get_fv t)) defs) = 1 &&
     List.for_all (fun (_,_,_,_,t2) -> full_app f n t2) defs
 
-let rec beta_reduce_term (f,xs,t1,es,t2) = function
+let rec get_head_count f = function
+    Const _ -> 0
+  | Var x -> 0
+  | App _ as t ->
+      let t1,ts = decomp_app t in
+      let n = List.fold_left (fun n t -> n + get_head_count f t) 0 ts in
+        if t1 = Var f
+        then 1 + n
+        else n
+  | Let _ -> assert false
+  | Fun _ -> assert false
+
+let rec beta_reduce_term flag (f,xs,t1,es,t2) = function
     Const c -> Const c
   | Var x -> Var x
   | App _ as t ->
       let t1,ts = decomp_app t in
-      let ts' = List.map (beta_reduce_term (f,xs,t1,es,t2)) ts in
+      let ts' = List.map (beta_reduce_term flag (f,xs,t1,es,t2)) ts in
         if t1 = Var f
-        then List.fold_right2 subst xs ts' t2
+        then
+          if List.for_all (function Const _ | Var _ -> true | App _ -> false | _ -> assert false) ts'
+          then List.fold_right2 subst xs ts' t2
+          else (flag := true; make_app t1 ts')
         else make_app t1 ts'
   | Let _ -> assert false
   | Fun _ -> assert false
+
+let beta_reduce_term flag ((f,_,_,_,_) as def) t =
+  let n = get_head_count f t in
+    if n = 1
+    then beta_reduce_term flag def t
+    else (if n >= 2 then flag := true; t)
 
 let beta_reduce_aux ((env,defs,main):prog) : prog =
   let rec aux defs1 = function
       [] -> defs1
     | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@def::defs2) ->
-        let reduce_def (f',xs',t1',es',t2') = f', xs', t1', es', beta_reduce_term def t2' in
+        let flag = ref false in
+        let reduce_def (f',xs',t1',es',t2') = f', xs', t1', es', beta_reduce_term flag def t2' in
         let defs1' = List.map reduce_def defs1 in
         let defs2' = List.map reduce_def defs2 in
-          aux defs1' defs2'
+          if !flag
+          then aux (defs1'@[def]) defs2'
+          else aux defs1' defs2'
     | def::defs2 -> aux (defs1@[def]) defs2
   in
     env, aux [] defs, main
@@ -256,6 +279,9 @@ let rec beta_reduce prog =
 
 let model_check_aux (prog,spec) =
   let prog = Typing.infer prog in
+(*
+  let prog = Useless_elim.elim prog in
+*)
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
     match TrecsInterface.check (prog,spec) with

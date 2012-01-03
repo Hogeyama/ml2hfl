@@ -69,7 +69,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo spec_parser.cmo spec_lexer.cmo \
-	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo type_check.cmo trans.cmo CEGAR_util.cmo \
+	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo type_check.cmo trans.cmo CEGAR_util.cmo useless_elim.cmo \
 	lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
 	lazy/util.cmo lazy/flags.cmo \
 	lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/simType.cmo lazy/term.cmo lazy/fdef.cmo lazy/prog.cmo \
