@@ -71,9 +71,9 @@ let post () =
   (**)
   Id.reset_counter ()
 
-(*
+
 let test_prog =
-  (["f",TBase(TUnit,fun _ ->[]); "main",TBase(TUnit,fun _ ->[])],
+  ([],
    ["f",["x";"y"],Const True,[],
     make_if
       (make_eq_int (Var"x") (make_int 0))
@@ -81,19 +81,22 @@ let test_prog =
       (make_app (Var "f") [make_sub (Var "x") (make_int 1); Var "y"]);
     "main",[],Const True,[],make_app (Var "f") [make_int 1; make_int 1]],
    "main")
-*)
+
 (*
 let test_prog =
-  (["f",TBase(TUnit,fun _ ->[]); "main",TBase(TUnit,fun _ ->[])],
-   ["f",["x"],Const True,[],Var "x";
-    "f",["x"],Const True,[],make_int 0;
-    "main",[],Const True,[],make_app (Var "f") [make_int 1]],
+  ([],
+   ["f",["g"],Const True,[],App(Var "g", make_int 1);
+    "g1",["x"],Const True,[],make_int 0;
+    "g2",["x"],Const True,[],Var "x";
+    "main",[],Const True,[], make_if (make_eq_int (App(Var "f", Var "g1")) (App(Var "f", Var "g2"))) (Const Unit) (Const Unit)],
    "main")
+let test_prog = Typing.infer test_prog
 let test_prog' = Useless_elim.elim test_prog
 let () = Format.printf "TEST:@.%a@.@." CEGAR_print.prog test_prog
 let () = Format.printf "TEST_ELIMED:@.%a@.@." CEGAR_print.prog test_prog'
 let () = assert false
 *)
+
 
 let rec cegar prog preds ces =
   let () = pre prog in

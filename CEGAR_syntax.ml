@@ -131,6 +131,11 @@ let rec decomp_fun = function
       let xs,t = decomp_fun t in
         x::xs, t
   | t -> [], t
+let rec decomp_tfun = function
+    TFun(typ1,typ2) ->
+      let typs,typ = decomp_tfun (typ2 (Const Unit)) in
+        typ1::typs, typ
+  | typ -> [], typ
 
 
 let get_var_arity f env = get_typ_arity (List.assoc f env)

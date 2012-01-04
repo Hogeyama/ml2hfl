@@ -279,9 +279,7 @@ let rec beta_reduce prog =
 
 let model_check_aux (prog,spec) =
   let prog = Typing.infer prog in
-(*
-  let prog = Useless_elim.elim prog in
-*)
+  let prog = if Flag.useless_elim then Useless_elim.elim prog else prog in
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
     match TrecsInterface.check (prog,spec) with

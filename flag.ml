@@ -41,6 +41,7 @@ let filter_forward = ref true
 let use_unknown = ref false
 let church_encode = false
 let beta_reduce = true (* do beta reduction before model checking *)
+let useless_elim = false
 let lift_fv_only = ref false
 
 let mode = ref Reachability
