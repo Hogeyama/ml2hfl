@@ -1924,7 +1924,6 @@ let rec is_value t =
 
 
 
-(*
 let rec add_preds_typ = function
     TUnit -> TUnit
   | TBool -> TBool
@@ -1947,7 +1946,7 @@ and add_preds_pat p =
   let desc =
     match p.pat_desc with
         PVar x -> PVar (add_preds_var x)
-      | PConst t -> PConst (add_preds t)
+      | PConst t -> PConst t
       | PConstruct(s,ps) -> PConstruct(s, List.map add_preds_pat ps)
       | PNil -> PNil
       | PCons(p1,p2) -> PCons(add_preds_pat p1, add_preds_pat p2)
@@ -1970,36 +1969,37 @@ and add_preds env t =
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(add_preds_typ typ,b)
       | Var y -> Var (add_preds_var y)
-      | Fun(y, t) -> Fun(add_preds_var y, add_preds t)
-      | App(t1, ts) -> App(add_preds t1, List.map add_preds ts)
-      | If(t1, t2, t3) -> If(add_preds t1, add_preds t2, add_preds t3)
-      | Branch(t1, t2) -> Branch(add_preds t1, add_preds t2)
+      | Fun(y, t) -> Fun(add_preds_var y, add_preds env t)
+      | App(t1, ts) -> App(add_preds env t1, List.map (add_preds env) ts)
+      | If(t1, t2, t3) -> If(add_preds env t1, add_preds env t2, add_preds env t3)
+      | Branch(t1, t2) -> Branch(add_preds env t1, add_preds env t2)
       | Let(flag, bindings, t2) ->
-          let bindings' = List.map (fun (f,xs,t) -> add_preds_var f, List.map add_preds_var xs, add_preds t) bindings in
-          let t2' = add_preds t2 in
+          let bindings' = List.map (fun (f,xs,t) -> add_preds_var f, List.map add_preds_var xs, add_preds env t) bindings in
+          let t2' = add_preds env t2 in
             Let(flag, bindings', t2')
-      | BinOp(op, t1, t2) -> BinOp(op, add_preds t1, add_preds t2)
-      | Not t1 -> Not (add_preds t1)
+      | BinOp(op, t1, t2) -> BinOp(op, add_preds env t1, add_preds env t2)
+      | Not t1 -> Not (add_preds env t1)
       | Event(s,b) -> Event(s,b)
-      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,add_preds t1)) fields)
-      | Proj(i,s,f,t1) -> Proj(i,s,f,add_preds t1)
-      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,add_preds t1,add_preds t2)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,add_preds env t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,add_preds env t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,add_preds env t1,add_preds env t2)
       | Nil -> Nil
-      | Cons(t1,t2) -> Cons(add_preds t1, add_preds t2)
-      | Constr(s,ts) -> Constr(s, List.map add_preds ts)
+      | Cons(t1,t2) -> Cons(add_preds env t1, add_preds env t2)
+      | Constr(s,ts) -> Constr(s, List.map (add_preds env) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = add_preds_pat pat, apply_opt add_preds cond, add_preds t1 in
-            Match(add_preds t1, List.map aux pats)
-      | Raise t -> Raise (add_preds t)
-      | TryWith(t1,t2) -> TryWith(add_preds t1, add_preds t2)
-      | Pair(t1,t2) -> Pair(add_preds t1, add_preds t2)
-      | Fst t -> Fst(add_preds t)
-      | Snd t -> Snd(add_preds t)
+          let aux (pat,cond,t1) = add_preds_pat pat, apply_opt (add_preds env) cond, add_preds env t1 in
+            Match(add_preds env t1, List.map aux pats)
+      | Raise t -> Raise (add_preds env t)
+      | TryWith(t1,t2) -> TryWith(add_preds env t1, add_preds env t2)
+      | Pair(t1,t2) -> Pair(add_preds env t1, add_preds env t2)
+      | Fst t -> Fst(add_preds env t)
+      | Snd t -> Snd(add_preds env t)
       | Bottom -> Bottom
   in
     {desc=desc; typ=typ}
 
 
+(*
 let rec prop_preds_typ = function
     TUnit -> TUnit
   | TBool -> TBool

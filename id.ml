@@ -39,6 +39,6 @@ let rec assoc x = function
     [] -> raise Not_found
   | (a,b)::l -> if same x a then b else assoc x l
 
-let print fm x = Format.fprintf fm "%s_%n" (name x) (id x)
+let print fm x = Format.pp_print_string fm (to_string' x)
 
 

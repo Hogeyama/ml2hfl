@@ -62,30 +62,36 @@ let main filename in_channel =
     else Spec_parser.typedefs Spec_lexer.token (Lexing.from_channel (open_in !spec_file))
   in
 
+  let () =
+    if spec <> []
+    then
+      begin
+        Format.printf "spec::@.";
+        List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec;
+        Format.printf "@."
+      end
+  in
 
-List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec;
+  let () = if true then Format.printf "parsed::@.%a@.@.@." Syntax.pp_print_term t in
 
+  let t = Syntax.add_preds spec t in
+  let () = if true then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term' t in
 
-  let () = if true then Format.printf "parsed::@.%a\n\n@." Syntax.pp_print_term' t in
-(*
-  let t = add_preds spec t in
-  let () = if true then Format.printf "add_preds::@.%a\n\n@." Syntax.pp_print_term' t in
-*)
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
-  let () = if true then Format.printf "set_target::@.%a\n\n@." Syntax.pp_print_term t in
+  let () = if true then Format.printf "set_target::@.%a@.@.@." Syntax.pp_print_term t in
   let t =
     if !Flag.init_trans
     then
       let t = Trans.copy_poly_funs t in
-      let () = if true then Format.printf "copy_poly::@.%a\n@." Syntax.pp_print_term t in
+      let () = if true then Format.printf "copy_poly::@.%a@.@." Syntax.pp_print_term t in
       let t = Abstract.abstract_recdata t in
-      let () = if false then Format.printf "abst_recdata::@.%a\n@." Syntax.pp_print_term t in
+      let () = if false then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term t in
       let t = Abstract.abstract_list t in
-      let () = if true then Format.printf "abst_list::@.%a\n@." Syntax.pp_print_term' t in
+      let () = if true then Format.printf "abst_list::@.%a@.@." Syntax.pp_print_term t in
       let t = CPS.trans t in
-      let () = if false then Format.printf "CPS::@.%a\n\n@." Syntax.pp_print_term t in
+      let () = if false then Format.printf "CPS::@.%a@.@.@." Syntax.pp_print_term t in
       let t = CPS.remove_pair t in
-      let () = if true then Format.printf "remove_pair::@.%a\n\n@." Syntax.pp_print_term t in
+      let () = if true then Format.printf "remove_pair::@.%a@.@.@." Syntax.pp_print_term t in
         t
     else t
   in
@@ -104,7 +110,7 @@ List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.prin
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
-let spec =
+let arg_spec =
   ["-web", Arg.Set Flag.web, " web mode";
    "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
          "<dir>  add <dir> to the list of include directories";
@@ -130,10 +136,10 @@ let () =
     try
       let filename = ref "" in
       let set_file name =
-        if !filename <> "" then (Arg.usage spec usage; exit 1);
+        if !filename <> "" then (Arg.usage arg_spec usage; exit 1);
         filename := name
       in
-      let () = Arg.parse spec set_file usage in
+      let () = Arg.parse arg_spec set_file usage in
       let cin = match !filename with ""|"-" -> stdin | _ -> open_in !filename in
         if !Flag.web then open_log ();
         Wrapper.open_cvc3 ();

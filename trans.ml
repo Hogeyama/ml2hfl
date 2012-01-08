@@ -447,7 +447,7 @@ let set_target t =
             match Id.typ x with
                 TInt _ -> make_app randint_term [unit_term]
               | TUnit -> unit_term
-              | typ -> assert false; {desc=RandValue(typ, false); typ=typ}
+              | typ -> raise (Not_implemented "RandValue"); {desc=RandValue(typ, false); typ=typ}
           in
           let args = List.map aux xs in
           let main = make_app {desc=Var f;typ=Id.typ f} args in
