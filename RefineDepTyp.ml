@@ -1820,7 +1820,6 @@ let test tdefs s defs traces pred =
            (fun ac ->
               let ac' = subst_sol_ac pids sol ac in
               let t = term_of_ac (subst_sol_ac pids sol ac) in
-Format.printf "CHECK: %t,@.       %t@." (fun _ -> print_ac ac) (fun _ -> print_ac ac');
               if Wrapper.check [] t
               then ()
               else begin
@@ -1986,9 +1985,7 @@ let infer ces prog =
     | FailNode -> Format.fprintf fm "fail"
     | _ -> assert false
   in
-  let () = if true then Format.printf "CE: %a" (print_list pp_print_node "; " false) (List.hd ces) in
   let defs,main = trans prog in
-Format.printf "prog:@.%a@.@." Syntax.pp_print_term (List.fold_right (fun (f,(xs,t')) t -> make_let [f,xs,t'] t) defs (make_var main));
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in
   let aux f =

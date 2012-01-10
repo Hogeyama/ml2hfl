@@ -67,10 +67,10 @@ let print_trecs_output = false
 let print_trace = false
 let print_interpolant = false
 let print_progress = true
-let print_constraints = true
+let print_constraints = false
 let print_lower_bound = false
 let print_cvc3 = false
-let print_refine_log = true
+let print_refine_log = false
 let print_eval_abst = ref false
 
 

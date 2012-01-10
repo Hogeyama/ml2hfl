@@ -67,7 +67,7 @@ let rec add_pred n path typ =
 
 let refine preds prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
-  if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... %a@?" !Flag.cegar_loop CEGAR_print.ce (List.hd ces);
+  if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
   let ces =
     if Flag.use_prefix_trace
     then
@@ -106,7 +106,6 @@ let refine preds prefix ces ((env,defs,main):prog) =
             RefineDepTyp.infer [List.hd ces] (env,defs,main)
           with RefineDepTyp.Untypable -> raise CannotRefute
   in
-    List.iter (fun (f,typ) ->Format.printf "%s: %a@." f CEGAR_print.typ typ) map;
   let map' =
     let aux map (f,n,path) =
       List.map (fun (g,typ) -> if f = g then g, add_pred n path typ else g, typ) map

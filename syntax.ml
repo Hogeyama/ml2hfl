@@ -916,41 +916,42 @@ let rec subst_map map t =
         let t2' = subst_map map t2 in
           make_branch t1' t2'
     | Let(Flag.Nonrecursive, bindings, t2) ->
-        let rec aux map = function
-            [] -> map, []
+        let rec aux map acc = function
+            [] -> map, List.rev acc
           | (f,xs,t1)::bindings ->
               let map' = List.filter (fun (x,_) -> List.mem x xs) map in
-                (f, xs, subst_map map' t1) :: aux map' bindings in
-        let bindings' = aux map bindings in
+                aux map' ((f, xs, subst_map map' t1)::acc) bindings in
+        let map',bindings' = aux map [] bindings in
         let t2' = subst_map map' t2 in
           make_let bindings' t2'
     | Let(Flag.Recursive, bindings, t2) ->
-        let bindings' =
-          if in_bindings
-          then bindings
-          else List.map (fun (f,xs,t1) -> f, xs, if List.exists (Id.same x) xs then t else subst_map map t1) bindings
+        let map' = List.filter (fun (x,_) -> List.exists (fun (f,_,_) -> f = x) bindings) map in
+        let aux (f,xs,t1) =
+          let map'' = List.filter (fun (x,_) -> List.mem x xs) map' in
+            f, xs, subst_map map'' t1
         in
-        let t2' = if in_bindings then t2 else subst_map map t2 in
+        let bindings' = List.map aux bindings in
+        let t2' = subst_map map' t2 in
           make_letrec bindings' t2'
     | BinOp(op, t1, t2) ->
         let t1' = subst_map map t1 in
         let t2' = subst_map map t2 in
-          {desc=BinOp(op, t1', t2'); typ=t'.typ}
+          {desc=BinOp(op, t1', t2'); typ=t.typ}
     | Not t1 ->
         let t1' = subst_map map t1 in
           make_not t1'
-    | Event(s,_) -> t'
-    | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst_map map t1)) fields); typ=t'.typ}
-    | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst_map map t1); typ=t'.typ}
-    | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst_map map t1,subst_map map t2); typ=t'.typ}
-    | Nil -> t'
-    | Cons(t1,t2) -> {desc=Cons(subst_map map t1, subst_map map t2); typ=t'.typ}
-    | Constr(s,ts) -> {desc=Constr(s, List.map (subst_map map) ts); typ=t'.typ}
+    | Event(s,_) -> t
+    | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst_map map t1)) fields); typ=t.typ}
+    | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst_map map t1); typ=t.typ}
+    | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst_map map t1,subst_map map t2); typ=t.typ}
+    | Nil -> t
+    | Cons(t1,t2) -> {desc=Cons(subst_map map t1, subst_map map t2); typ=t.typ}
+    | Constr(s,ts) -> {desc=Constr(s, List.map (subst_map map) ts); typ=t.typ}
     | Match(t1,pats) ->
         let aux (pat,cond,t1) = pat, cond, subst_map map t1 in
-          {desc=Match(subst_map map t1, List.map aux pats); typ=t'.typ}
-    | Raise t1 -> {desc=Raise(subst_map map t1); typ=t'.typ}
-    | TryWith(t1,t2) -> {desc=TryWith(subst_map map t1, subst_map map t2); typ=t'.typ}
+          {desc=Match(subst_map map t1, List.map aux pats); typ=t.typ}
+    | Raise t1 -> {desc=Raise(subst_map map t1); typ=t.typ}
+    | TryWith(t1,t2) -> {desc=TryWith(subst_map map t1, subst_map map t2); typ=t.typ}
     | Pair(t1,t2) -> make_pair (subst_map map t1) (subst_map map t2)
     | Fst t1 -> make_fst (subst_map map t1)
     | Snd t1 -> make_snd (subst_map map t1)
