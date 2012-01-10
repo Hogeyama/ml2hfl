@@ -263,7 +263,7 @@ let new_tvar () = TVar (Id.new_int ())
 
 
 
-
+(*
 module G = Graph.Pack.Digraph
 
 let calc_scc min n egdes =
@@ -272,7 +272,8 @@ let calc_scc min n egdes =
   let () = List.iter (fun (x,y) -> G.add_edge g vertices.(x-min) vertices.(y-min)) egdes in
   let sccs = List.map (List.map (fun l -> min + G.V.label l)) (G.Components.scc_list g) in
     sccs
-
+*)
+let calc_scc _ = raise (Not_implemented "calc_scc")
 
 
 
