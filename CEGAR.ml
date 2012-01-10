@@ -28,7 +28,7 @@ let post () =
   Id.reset_counter ()
 
 
-(*
+
 let test_prog =
   ([],
    ["f",["x";"y"],Const True,[],
@@ -60,6 +60,14 @@ let test_prog =
     "main",[],Const True,[], App(App(App (Const If, Const True), Var "bot"), (App(Var "f", Const Unit)))],
    "main")
 
+let test_prog =
+  ([],
+   ["Main_1",[],(Const True),[],(Var "K_main_3");
+    "F",[],(Const True),[],(App((((Var "Read_"))),(Var "F")));
+    "K_main_3",[],(Const True),[],(Var "F");
+    "Read_",["k"],(Const True),[],Var "k"],"Main_1")
+
+(*
 let test_prog = Typing.infer test_prog
 let test_prog' = Useless_elim.elim test_prog
 let () = Format.printf "TEST:@.%a@.@." CEGAR_print.prog test_prog
