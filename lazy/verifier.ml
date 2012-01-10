@@ -52,18 +52,21 @@ let verify prog =
         Format.printf "error traces:@.";
         List.iter (fun ep -> Format.printf "  %a@." CompTree.pr_trace ep) etrs'
       in
-      match Flags.refine with `RefType ->
-		      let env = refineRefTypes prog etrs(*etrs'*) in
-		      if IntType.check_prog env prog then
-		        Format.printf "@.The program is safe@."
-		      else
-		        loop etrs (i + 1)
+      match Flags.refine with
+        `RefType ->
+				      let env = refineRefTypes prog etrs(*etrs'*) in
+  						  let _ = Format.printf "refinement types:@.  %a@." RefType.pr_env env in
+				      if RefTypeCheck.check_prog env prog then
+				        Format.printf "@.The program is safe@."
+				      else
+				        loop etrs (i + 1)
       | `IntType ->
-		      let env = refineIntTypes prog etrs(*etrs'*) in
-		      if IntType.check_prog env prog then
-		        Format.printf "@.The program is safe@."
-		      else
-		        loop etrs (i + 1)
+				      let env = refineIntTypes prog etrs(*etrs'*) in
+          let _ = Format.printf "interaction types:@.  %a@." IntType.pr_env env in
+				      if IntTypeCheck.check_prog env prog then
+				        Format.printf "@.The program is safe@."
+				      else
+				        loop etrs (i + 1)
     in
     loop [] 1
   with Cgen.FeasibleErrorTrace(eptr) ->

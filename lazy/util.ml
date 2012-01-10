@@ -91,6 +91,7 @@ let partition_map p ys =
   in
   aux [] [] (List.rev ys)
 
+(*
 let rec filter_map p xs =
   match xs with
     [] -> []
@@ -99,6 +100,19 @@ let rec filter_map p xs =
         Some(y) -> y::(filter_map p xs')
       | None -> filter_map p xs'
       | _ -> failwith "Util.filter_map")
+*)
+
+let filteri p xs =
+  let rec aux i xs =
+		  match xs with
+		    [] -> []
+		  | x::xs' ->
+		      if p i x then
+          x::(aux (i + 1) xs')
+        else
+		        aux (i + 1) xs'
+  in
+  aux 0 xs
 
 let rec split_at xs n =
   if n = 0 then
@@ -202,3 +216,19 @@ let save_as_dot filename vertices edges =
     edges;
   Format.fprintf ocf "}@]@?";
   close_out oc
+
+
+(*  *)
+let permutations n =
+  let rec aux xs =
+    match xs with
+      [] -> []
+    | _ ->
+        List.concat (List.init (List.length xs) (fun i -> let xs1, x::xs2 = split_at xs i in List.map (fun p -> x::p) (aux (xs1 @ xs2))))
+  in
+  aux (List.init n (fun i -> i))
+
+let maps n1 n2 =
+  let xs = List.init n1 (fun i -> i) in
+  let yss = permutations n2 in
+  List.map (fun ys -> List.combine xs ys) yss

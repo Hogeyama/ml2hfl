@@ -139,7 +139,12 @@ let bor ts =
   in
   aux (List.unique ts)
 
-let bnot t = apply (Const([], Const.Not)) [t]
+let bnot t =
+  match fun_args t with
+    Const(a, Const.True), [] -> Const(a, Const.False)
+  | Const(a, Const.False), [] -> Const(a, Const.True)
+  | Const(a, Const.Not), [t] -> t
+  | _ -> apply (Const([], Const.Not)) [t]
 
 let imply t1 t2 =
   if equiv t1 ttrue then
@@ -153,8 +158,14 @@ let imply t1 t2 =
   else
     apply (Const([], Const.Imply)) [t1; t2]
 
-let forall xs t =
-  Forall([], xs, t)
+let forall env t =
+  let xs = fvs t in
+  let _ = Format.printf "env: %a@.xs: %a@." (Util.pr_list SimType.pr_bind ",") env (Util.pr_list Var.pr ",") xs in
+  let env = List.filter (fun (x, _) -> List.mem x xs) env in
+  if env = [] then t else Forall([], env, t)
+
+let exists xs t =
+  bnot (forall xs (bnot t))
 
 let iff t1 t2 =
   if equiv t1 t2 then

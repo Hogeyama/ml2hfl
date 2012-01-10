@@ -175,7 +175,7 @@ let test_foo () =
 let _ =
   let _ = Cvc3Interface.open_cvc3 () in
   let _ =
-		  match 2 with
+		  match 0 with
 		    0 -> Verifier.verify (test_sum ())
 		  | 1 -> Verifier.verify (test_sum_assert ())
 		  | 2 -> let _ = Verifier.infer_abst_type [0; 1; 0; 1; 0; 1] (test_copy_copy ()) in ()

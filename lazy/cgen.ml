@@ -302,7 +302,9 @@ let interpolate_bvs p t1 t2 =
 
 
 let widen xss ts =
-  List.iter (fun xs -> Format.printf "%a@." (Util.pr_list Var.pr ", ") xs) xss;
+(*
+  List.iter (fun xs -> Format.printf "%a@ " (Util.pr_list Var.pr ", ") xs) xss;
+*)
   let xs = List.hd xss in
   let ts =
     List.map2

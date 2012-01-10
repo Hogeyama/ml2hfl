@@ -1,4 +1,4 @@
 let enable_widening = true
 let debug = true
-let refine = `RefType (* `IntType *)
+let refine = `IntType (* `RefType *)
 let atom = true

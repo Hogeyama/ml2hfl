@@ -4,8 +4,8 @@ SOURCES = enum.ml extList.ml extString.ml \
           apronInterface.ml cvc3Interface.ml csisatInterface.ml \
           compTree.ml compTreeExpander.ml \
           hornClause.ml cgen.ml \
-          intType.ml cgenIntType.ml \
-          refType.ml cgenRefType.ml \
+          intType.ml cgenIntType.ml intTypeCheck.ml \
+          refType.ml cgenRefType.ml refTypeCheck.ml \
           absType.ml \
           verifier.ml \
           main.ml

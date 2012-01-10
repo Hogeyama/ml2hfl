@@ -212,7 +212,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 		      let _, parginterps =
 				      List.fold_left
 				        (fun (t0::ts0, parginterps) (arg, p) ->
-												  let _ = Format.printf "computing condition of %a:@.  @[<v>" Var.pr arg in
+												  let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
 														let interp =
 				            let t1 = t0 in
 				            let t2 =
@@ -262,7 +262,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 		      let _, parginterps =
 				      List.fold_left
 				        (fun (t0::ts0, parginterps) (arg, p) ->
-												  let _ = Format.printf "computing condition of %a:@.  @[<v>" Var.pr arg in
+												  let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
 														let interp =
 				            let t1 = t0 in
 				            let t2 =

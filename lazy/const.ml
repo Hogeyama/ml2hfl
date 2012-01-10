@@ -83,7 +83,7 @@ let bnot_ibin c =
   | Geq -> Lt
   | EqInt -> NeqInt
   | NeqInt -> EqInt
-  | _ -> assert false
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 let rec pr_bin ppf c =
   match c with
