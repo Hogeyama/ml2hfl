@@ -661,7 +661,7 @@ let from_use_file ast =
         in
         let map1 = List.map2 (fun f f' ->  f, make_var f') fs fs' in
         let map2 = List.map2 (fun f f' ->  f', make_app (make_var f) (List.map make_var (aux f))) fs fs' in
-        let sbst t = subst_term map2 (subst_term map1 t) in
+        let sbst t = subst_map map2 (subst_map map1 t) in
         let defs' = List.map (fun (f,t) -> f, List.fold_right (fun f t -> {desc=Fun(f,t);typ=TFun(f,t.typ)}) (aux f) (sbst t)) defs in
           List.fold_right (fun (f,t1) t2 -> make_letrec [f, [], t1] t2) defs' (sbst t)
     | Decl_type(typs) -> t(*Type_decl(typs,t)*)

@@ -392,7 +392,7 @@ let trans_prog t =
   let var_names = List.rev_map id_name (uniq vars) in
   let rename_id' x var_names =
     let x_name = id_name x in
-      if List.length (List.filter ((=) x_name) var_names) = 1
+      if false && List.length (List.filter ((=) x_name) var_names) = 1
       then x_name
       else rename_id x
   in

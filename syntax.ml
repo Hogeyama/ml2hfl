@@ -887,9 +887,74 @@ let rec subst_int n t t' =
   in
     {desc=desc; typ=t'.typ}
 
-let subst_term sub term =
-  let ids, terms = List.split sub in
-  List.fold_right2 subst ids terms term
+let rec subst_map map t =
+  match t.desc with
+      Unit -> t
+    | True -> t
+    | False -> t
+    | Unknown -> t
+    | Int n -> t
+    | NInt y -> if List.mem_assoc y map then List.assoc y map else t
+    | Bottom -> t
+    | RandInt _ -> t
+    | Var y -> if List.mem_assoc y map then List.assoc y map else t
+    | Fun(y, t1) ->
+        let map' = List.filter (fun (x,_) -> Id.same x y) map in
+        let t1' = subst_map map' t1 in
+          make_fun y t1'
+    | App(t1, ts) ->
+        let t1' = subst_map map t1 in
+        let ts' = List.map (subst_map map) ts in
+          make_app t1' ts'
+    | If(t1, t2, t3) ->
+        let t1' = subst_map map t1 in
+        let t2' = subst_map map t2 in
+        let t3' = subst_map map t3 in
+          make_if t1' t2' t3'
+    | Branch(t1, t2) ->
+        let t1' = subst_map map t1 in
+        let t2' = subst_map map t2 in
+          make_branch t1' t2'
+    | Let(Flag.Nonrecursive, bindings, t2) ->
+        let rec aux map = function
+            [] -> map, []
+          | (f,xs,t1)::bindings ->
+              let map' = List.filter (fun (x,_) -> List.mem x xs) map in
+                (f, xs, subst_map map' t1) :: aux map' bindings in
+        let bindings' = aux map bindings in
+        let t2' = subst_map map' t2 in
+          make_let bindings' t2'
+    | Let(Flag.Recursive, bindings, t2) ->
+        let bindings' =
+          if in_bindings
+          then bindings
+          else List.map (fun (f,xs,t1) -> f, xs, if List.exists (Id.same x) xs then t else subst_map map t1) bindings
+        in
+        let t2' = if in_bindings then t2 else subst_map map t2 in
+          make_letrec bindings' t2'
+    | BinOp(op, t1, t2) ->
+        let t1' = subst_map map t1 in
+        let t2' = subst_map map t2 in
+          {desc=BinOp(op, t1', t2'); typ=t'.typ}
+    | Not t1 ->
+        let t1' = subst_map map t1 in
+          make_not t1'
+    | Event(s,_) -> t'
+    | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst_map map t1)) fields); typ=t'.typ}
+    | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst_map map t1); typ=t'.typ}
+    | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst_map map t1,subst_map map t2); typ=t'.typ}
+    | Nil -> t'
+    | Cons(t1,t2) -> {desc=Cons(subst_map map t1, subst_map map t2); typ=t'.typ}
+    | Constr(s,ts) -> {desc=Constr(s, List.map (subst_map map) ts); typ=t'.typ}
+    | Match(t1,pats) ->
+        let aux (pat,cond,t1) = pat, cond, subst_map map t1 in
+          {desc=Match(subst_map map t1, List.map aux pats); typ=t'.typ}
+    | Raise t1 -> {desc=Raise(subst_map map t1); typ=t'.typ}
+    | TryWith(t1,t2) -> {desc=TryWith(subst_map map t1, subst_map map t2); typ=t'.typ}
+    | Pair(t1,t2) -> make_pair (subst_map map t1) (subst_map map t2)
+    | Fst t1 -> make_fst (subst_map map t1)
+    | Snd t1 -> make_snd (subst_map map t1)
+    | RandValue _ -> assert false
 
 let rec subst_type x t = function
     TUnit -> TUnit
@@ -932,7 +997,7 @@ let rec eval t =
                NInt _ ->
                  App({desc=Fun(x, eval t);typ=TFun(x,t.typ)}, List.map eval (t'::ts))
              | _ ->
-                 (eval ({desc=App(subst_term [x, t'] t, ts);typ=t.typ})).desc)
+                 (eval ({desc=App(subst_map [x, t'] t, ts);typ=t.typ})).desc)
       | App(t, []) -> (eval t).desc
       | App(t, ts) ->
           App(eval t, List.map eval ts)
@@ -951,13 +1016,13 @@ let rec eval t =
             then
             if (*safe t1*)true then
             let t1' = List.fold_right (fun x t -> {desc=Fun(x, t);typ=TFun(x,t.typ)}) xs (eval t1) in
-            (eval (subst_term [f, t1'] t2)).desc
+            (eval (subst_map [f, t1'] t2)).desc
             else
             Let(flag, f, xs, eval t1, eval t2)
             else
           (*if not (List.mem f (get_fv t1)) then
             let t1' = List.fold_right (fun x t -> Fun(x, t)) xs (eval t1) in
-            eval (subst_term [f, t1'] t2)
+            eval (subst_map [f, t1'] t2)
             else*)
             Let(flag, f, xs, eval t1, eval t2)
           *)
@@ -1267,9 +1332,9 @@ let rec normalize_bool_exp t =
           let xns2 = decomp t2 in
           let compare (x1,_) (x2,_) =
             let aux = function
-                None -> max_int
-              | Some {desc=Var x} -> Id.id x
-              | Some {desc=NInt n} -> Id.id n
+                None -> "\255"
+              | Some {desc=Var x} -> Id.to_string x
+              | Some {desc=NInt n} -> Id.to_string n
               | _ -> assert false
             in
               compare (aux x1) (aux x2)

@@ -103,7 +103,7 @@ let refine preds prefix ces ((env,defs,main):prog) =
           if not (List.mem Flag.CPS !Flag.form)
           then failwith "Program must be in CPS @ ModelCheckCPS"; 
           try
-            RefineDepTyp.infer ces (env,defs,main)
+            RefineDepTyp.infer [List.hd ces] (env,defs,main)
           with RefineDepTyp.Untypable -> raise CannotRefute
   in
     List.iter (fun (f,typ) ->Format.printf "%s: %a@." f CEGAR_print.typ typ) map;

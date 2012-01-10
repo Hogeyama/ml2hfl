@@ -1114,7 +1114,7 @@ let interpolate ids c1 c2 =
   let ts1 = if Flag.gen_int then int_gen ts1 else ts1 in
   let ts2 = if Flag.gen_int then int_gen ts2 else ts2 in
 *)
-  let ts2 = List.map (subst_term (List.map (fun id -> id, new_var (Id.typ id)) bv)) ts2 in
+  let ts2 = List.map (subst_map (List.map (fun id -> id, new_var (Id.typ id)) bv)) ts2 in
   let t =
     try
       Wrapper.interpolation ts1 ts2
@@ -1122,7 +1122,7 @@ let interpolate ids c1 c2 =
       (*if not !Flag.use_nint
       then
         let bv = list_diff (List.flatten (List.map get_fv ts1)) ids in
-        let ts2 = [subst_term (List.map (fun id -> id, new_var ()) bv) (Not (term_of c2))] in
+        let ts2 = [subst_map (List.map (fun id -> id, new_var ()) bv) (Not (term_of c2))] in
           try
             Wrapper.interpolation ts1 ts2
           with Assert_failure _ -> raise Untypable
@@ -1141,9 +1141,9 @@ let rec substc sub c =
     (List.map (subst_ac sub) c)
 and subst_ac sub ac =
   match ac with
-    Cpred(Pred(pid, terms)) -> Cpred(Pred(pid, List.map (subst_term sub) terms))
+    Cpred(Pred(pid, terms)) -> Cpred(Pred(pid, List.map (subst_map sub) terms))
   | Csub(rty1,rty2) -> assert false
-  | Cterm(term) -> Cterm(Syntax.eval (subst_term sub term))
+  | Cterm(term) -> Cterm(Syntax.eval (subst_map sub term))
   | Cimp(c1,c2) -> Cimp(substc sub c1, substc sub c2)
   | Cfalse -> Cfalse
 
@@ -1157,7 +1157,7 @@ and subst_sol_ac pids sol ac =
       else
         (try
           let (ids, t) = List.assoc pid sol in
-          Cterm(subst_term (List.combine ids terms) t)
+          Cterm(subst_map (List.combine ids terms) t)
         with Not_found ->
           Cterm(true_term))
   | Csub(rty1,rty2) -> assert false
@@ -1172,7 +1172,7 @@ and subst_sol_ac_ sol ac =
     Cpred(Pred(pid, terms)) ->
       (try
         let (ids, t) = List.assoc pid sol in
-        Cterm(subst_term (List.combine ids terms) t)
+        Cterm(subst_map (List.combine ids terms) t)
       with Not_found ->
         Cpred(Pred(pid, terms)))
   | Csub(rty1,rty2) -> assert false
@@ -1305,13 +1305,13 @@ let rec compute_lbs c lbs =
                      tmp);
               let eqs1, eqs2 = List.partition (function ({desc=Var(_)}, _) -> true | _ -> false) eqs in
               let sub = List.map (function ({desc=Var(id)}, t) -> id, t | _ -> assert false) eqs1 in
-              let cond = (List.map (function Cterm(t) -> subst_term sub t | _ -> assert false) c2) @
+              let cond = (List.map (function Cterm(t) -> subst_map sub t | _ -> assert false) c2) @
                 (List.concat conds) in
               let cond = Utilities.uniq (List.filter (fun t -> t.desc <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
-              let eqs2 = List.map (fun (t1, t2) -> subst_term sub t1, t2) eqs2 in
+              let eqs2 = List.map (fun (t1, t2) -> subst_map sub t1, t2) eqs2 in
               let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
               let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
-              let terms = List.map (subst_term sub) terms in
+              let terms = List.map (subst_map sub) terms in
               let terms = List.map Wrapper.simplify_exp terms in 
                 pid, (cond, eqs2, terms)
                   (*
@@ -1398,7 +1398,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
         let t =
           (*if not !Flag.split_free_var then*)
           let rename_nint t =
-            subst_term (List.map (fun id -> id, new_var (TInt[])) (get_nint t)) t
+            subst_map (List.map (fun id -> id, new_var (TInt[])) (get_nint t)) t
           in
             try
               let aux t ts =
@@ -1493,7 +1493,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
           (*
             solve_aux' (imply (and_list (t::(List.map2 (fun id term -> BinOp(Eq, Var(id), term)) ids' terms'))) cub) sol c
           *)
-        let nubs = Utilities.uniq ((subst_term (List.combine ids' terms') t)::nubs) in
+        let nubs = Utilities.uniq ((subst_map (List.combine ids' terms') t)::nubs) in
           solve_aux' lbs ac ubs nubs sol c
   | _ -> assert false
 
@@ -1508,7 +1508,7 @@ let rec merge_solution sol =
             let t' = imply (and_list (List.map2 (fun id1 id2 -> BinOp(Eq, Var(id1), Var(id2))) ids' ids)) t' in
 *)
 (**)
-            let t' = subst_term (List.combine ids' (List.map make_var ids)) t' in
+            let t' = subst_map (List.combine ids' (List.map make_var ids)) t' in
 (**)
             (*if Wrapper.equiv [] t (BinOp(And, t, t')) then t else*) {desc=BinOp(And, t, t');typ=TBool})
           t sol1
@@ -1553,7 +1553,7 @@ let rec solve_aux lbs c solution =
                       Cfalse -> [false_term]
                     | Cpred(Pred(pid, terms)) ->
                         let ts = List.filter (fun (pid', _) -> pid = pid') solution in
-                        List.map (fun (_, (ids, t)) -> subst_term (List.combine ids terms) t) ts
+                        List.map (fun (_, (ids, t)) -> subst_map (List.combine ids terms) t) ts
                     | _ -> assert false
                 in
                 let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) c in
@@ -1818,7 +1818,10 @@ let test tdefs s defs traces pred =
        if Flag.debug then
          List.iter
            (fun ac ->
-              if Wrapper.check [] (term_of_ac (subst_sol_ac pids sol ac))
+              let ac' = subst_sol_ac pids sol ac in
+              let t = term_of_ac (subst_sol_ac pids sol ac) in
+Format.printf "CHECK: %t,@.       %t@." (fun _ -> print_ac ac) (fun _ -> print_ac ac');
+              if Wrapper.check [] t
               then ()
               else begin
                 print_string2 "wrong solution for:";
@@ -1942,7 +1945,7 @@ let rec add_preds_typ sol typ1 typ2 =
             let p =
               let ids, t = List.assoc pid sol in
                 (*Format.printf "%a,%a,%a@." (print_term_fm ML true) t (print_ids) ids  (print_termlist ML 0 false) terms; *)
-                subst_term (List.combine ids terms) t
+                subst_map (List.combine ids terms) t
             in
             let ps =
               let aux ps p =
@@ -1985,6 +1988,7 @@ let infer ces prog =
   in
   let () = if true then Format.printf "CE: %a" (print_list pp_print_node "; " false) (List.hd ces) in
   let defs,main = trans prog in
+Format.printf "prog:@.%a@.@." Syntax.pp_print_term (List.fold_right (fun (f,(xs,t')) t -> make_let [f,xs,t'] t) defs (make_var main));
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in
   let aux f =

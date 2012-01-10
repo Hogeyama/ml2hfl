@@ -125,7 +125,7 @@ val decomp_fun : typed_term -> id list * typed_term
 (** {6 Misc} *)
 val subst : id -> typed_term -> typed_term -> typed_term
 val subst_int : int -> typed_term -> typed_term -> typed_term
-val subst_term : (id * typed_term) list -> typed_term -> typed_term
+val subst_map : (id * typed_term) list -> typed_term -> typed_term
 val subst_type : id -> typed_term -> typ -> typ
 val get_nint : typed_term -> id list
 val get_int : typed_term -> int list

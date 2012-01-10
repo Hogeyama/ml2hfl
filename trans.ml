@@ -383,7 +383,7 @@ let rec copy_poly_funs top t =
                 let typs = get_argtyps (Id.typ f') in
                 let xs' = List.map2 (fun x typ -> Id.new_var (Id.name x) typ) xs (take typs (List.length xs)) in
                 let xs_map = List.map2 (fun x x' -> x, make_var x') xs xs' in
-                let t1 = subst_term xs_map t1 in
+                let t1 = subst_map xs_map t1 in
                 let t1 =
                   match flag with
                       Flag.Nonrecursive -> t1
