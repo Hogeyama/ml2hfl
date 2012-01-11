@@ -1,7 +1,7 @@
 
 .PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
 
-OCAML_SOURCE = ocaml-3.12.0
+OCAML_SOURCE = ocaml-3.12.1
 TRECS = trecs-1.22
 CSISAT = csisat-read-only
 
@@ -24,8 +24,8 @@ CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 INCLUDES = -I /usr/lib \
 	-I /usr/lib/ocaml \
 	-I /usr/local/lib \
-	-I /usr/local/lib/ocaml/3.12.0/gmp \
-	-I /usr/local/lib/ocaml/3.12.0/apron \
+	-I /usr/local/lib/ocaml/3.12.1/gmp \
+	-I /usr/local/lib/ocaml/3.12.1/apron \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
 	-I $(OCAML_SOURCE)/bytecomp \
@@ -73,11 +73,11 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
 	lazy/util.cmo lazy/flags.cmo \
 	lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/arith.cmo lazy/simType.cmo lazy/term.cmo lazy/fdef.cmo lazy/prog.cmo \
-	lazy/apronInterface.cmo lazy/csisatInterface.cmo lazy/cvc3Interface.cmo \
+	lazy/apronInterface.cmo lazy/cvc3Interface.cmo lazy/csisatInterface.cmo \
 	lazy/compTree.cmo lazy/compTreeExpander.cmo \
  lazy/hornClause.cmo lazy/cgen.cmo \
- lazy/intType.cmo lazy/cgenIntType.cmo \
- lazy/refType.cmo lazy/cgenRefType.cmo \
+ lazy/intType.cmo lazy/cgenIntType.cmo lazy/intTypeCheck.cmo \
+ lazy/refType.cmo lazy/cgenRefType.cmo lazy/refTypeCheck.cmo \
 	lazy/absType.cmo \
  lazy/verifier.cmo \
 	lazyInterface.cmo \
