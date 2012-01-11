@@ -273,7 +273,7 @@ let calc_scc min n egdes =
   let sccs = List.map (List.map (fun l -> min + G.V.label l)) (G.Components.scc_list g) in
     sccs
 *)
-let calc_scc _ = raise (Not_implemented "calc_scc")
+let calc_scc _ = raise (Fatal "Not implemented: calc_scc")
 
 
 

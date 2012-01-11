@@ -1,7 +1,7 @@
 
 .PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
 
-OCAML_SOURCE = ocaml-3.12.1
+OCAML_SOURCE = ocaml-3.12.0
 TRECS = trecs-1.22
 CSISAT = csisat-read-only
 
@@ -24,8 +24,8 @@ CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 INCLUDES = -I /usr/lib \
 	-I /usr/lib/ocaml \
 	-I /usr/local/lib \
-	-I /usr/local/lib/ocaml/3.12.1/gmp \
-	-I /usr/local/lib/ocaml/3.12.1/apron \
+	-I /usr/local/lib/ocaml/3.12.0/gmp \
+	-I /usr/local/lib/ocaml/3.12.0/apron \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
 	-I $(OCAML_SOURCE)/bytecomp \

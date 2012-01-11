@@ -276,16 +276,15 @@ let verifyFile filename =
   let r = Sys.command cmd in
   let () = if r <> 0 then raise (Fatal "TRecS FAILED!") in
   let ic = open_in result_file in
-  let s = input_line ic in
-    if s = "SATISFIED"
-    then
-      let () = close_in ic in
-        Safe []
-    else
-      let () = assert (s = "VIOLATED") in
-      let s = input_line ic in
-        close_in ic;
-        Unsafe (parse_trace s)
+    match input_line ic with
+        "SATISFIED" ->
+          close_in ic;
+          Safe []
+      | "VIOLATED" ->
+          let s = input_line ic in
+            close_in ic;
+            Unsafe (parse_trace s)
+      | s -> raise (Fatal ("Unsupported TRecS output: " ^ s))
 
 let write_log filename target =
   let cout = open_out filename in

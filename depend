@@ -1100,16 +1100,16 @@ CEGAR_abst.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/string.cmx \
     /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx \
     CEGAR_abst_CPS.cmx CEGAR_abst.cmi
-trecsInterface.cmo: utilities.cmo /usr/lib/ocaml/string.cmi \
-    /usr/lib/ocaml/parsing.cmi /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/lexing.cmi /usr/lib/ocaml/hashtbl.cmi \
-    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo
-trecsInterface.cmx: utilities.cmx /usr/lib/ocaml/string.cmx \
-    /usr/lib/ocaml/parsing.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/lexing.cmx /usr/lib/ocaml/hashtbl.cmx \
-    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx
+trecsInterface.cmo: utilities.cmo /usr/lib/ocaml/sys.cmi \
+    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/parsing.cmi \
+    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/lexing.cmi \
+    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi flag.cmo \
+    CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+trecsInterface.cmx: utilities.cmx /usr/lib/ocaml/sys.cmx \
+    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/parsing.cmx \
+    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/lexing.cmx \
+    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx flag.cmx \
+    CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 ModelCheck_util.cmo: utilities.cmo useless_elim.cmo typing.cmo \
     trecsInterface.cmo /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \

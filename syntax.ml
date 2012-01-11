@@ -894,10 +894,10 @@ let rec subst_map map t =
     | False -> t
     | Unknown -> t
     | Int n -> t
-    | NInt y -> if List.mem_assoc y map then List.assoc y map else t
+    | NInt y -> if Id.mem_assoc y map then Id.assoc y map else t
     | Bottom -> t
     | RandInt _ -> t
-    | Var y -> if List.mem_assoc y map then List.assoc y map else t
+    | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
     | Fun(y, t1) ->
         let map' = List.filter (fun (x,_) -> Id.same x y) map in
         let t1' = subst_map map' t1 in
@@ -919,15 +919,15 @@ let rec subst_map map t =
         let rec aux map acc = function
             [] -> map, List.rev acc
           | (f,xs,t1)::bindings ->
-              let map' = List.filter (fun (x,_) -> List.mem x xs) map in
+              let map' = List.filter (fun (x,_) -> Id.mem x xs) map in
                 aux map' ((f, xs, subst_map map' t1)::acc) bindings in
         let map',bindings' = aux map [] bindings in
         let t2' = subst_map map' t2 in
           make_let bindings' t2'
     | Let(Flag.Recursive, bindings, t2) ->
-        let map' = List.filter (fun (x,_) -> List.exists (fun (f,_,_) -> f = x) bindings) map in
+        let map' = List.filter (fun (x,_) -> List.exists (fun (f,_,_) -> Id.same f x) bindings) map in
         let aux (f,xs,t1) =
-          let map'' = List.filter (fun (x,_) -> List.mem x xs) map' in
+          let map'' = List.filter (fun (x,_) -> Id.mem x xs) map' in
             f, xs, subst_map map'' t1
         in
         let bindings' = List.map aux bindings in
