@@ -238,20 +238,67 @@ let verifyParseResult (prerules,tr) =
           print_string "The property is not satisfied.\nThe error trace is:\n  ";
           Trecs.Reduce.print_trace tr;
           print_string ("The number of expansions: "^(string_of_int !Trecs.Reduce.redcount)^"\n");
-          Unsafe tr
+          Unsafe (List.rev tr)
 
 
-let write_log target =
-  let cout = open_out "log.hors" in
+
+
+
+(*
+let parse_node = function
+    "br" -> BrNode
+  | "fail" -> FailNode
+  | s when s.[0] = 'l' -> LineNode (int_of_string (String.sub s 1 (String.length s - 1)))
+  | _ -> assert false
+*)    
+
+let get_pair s =
+  let n1 = String.index s ',' in
+  let n2 = String.index s ')' in
+  let q = String.sub s 1 (n1-1) in
+  let n = int_of_string (String.sub s (n1+1) (n2-n1-1)) in
+  let s' = String.sub s (n2+1) (String.length s-n2-1) in
+    (q, n), s'
+
+let rec parse_trace s =
+  match s.[0] with
+      '.' -> []
+    | ' ' -> parse_trace (String.sub s 1 (String.length s - 1))
+    | '(' ->
+      let node,s' = get_pair s in
+        node :: parse_trace s'
+    | _ -> assert false
+
+let verifyFile filename =
+  let p1,p2 = 10000,10 in
+  let result_file = "result" in
+  let cmd = Format.sprintf "%s -p %d %d -o %s %s" Flag.trecs p1 p2 result_file filename in
+  let r = Sys.command cmd in
+  let () = if r <> 0 then raise (Fatal "TRecS FAILED!") in
+  let ic = open_in result_file in
+  let s = input_line ic in
+    if s = "SATISFIED"
+    then
+      let () = close_in ic in
+        Safe []
+    else
+      let () = assert (s = "VIOLATED") in
+      let s = input_line ic in
+        close_in ic;
+        Unsafe (parse_trace s)
+
+let write_log filename target =
+  let cout = open_out filename in
     output_string cout (string_of_parseresult target);
     close_out cout
 
 
 let check target =
   let target' = trans target in
+  let input = "input.hors" in
     initialize ();
-    write_log target';
-    match verifyParseResult target' with
+    write_log input target';
+    match verifyFile input with
         Safe _ -> None
-      | Unsafe tr -> Some (List.rev tr)
+      | Unsafe tr -> Some tr
 
