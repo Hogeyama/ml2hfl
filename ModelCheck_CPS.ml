@@ -19,6 +19,4 @@ let check prog n =
   let spec = make_spec n in
     try
       model_check_aux (prog,spec)
-    with
-        Assert_failure(s,_,_) as e when s <> "" -> raise e
-      | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
+    with End_of_file -> raise (Fatal "TRecS failed")

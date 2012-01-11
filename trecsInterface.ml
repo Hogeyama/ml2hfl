@@ -270,8 +270,12 @@ let rec parse_trace s =
     | _ -> assert false
 
 let verifyFile filename =
+  let default = "empty" in
   let p1,p2 = 10000,10 in
   let result_file = "result" in
+  let oc = open_out result_file in
+  let () = output_string oc default in
+  let () = close_out oc in
   let cmd = Format.sprintf "%s -p %d %d -o %s %s" Flag.trecs p1 p2 result_file filename in
   let r = Sys.command cmd in
   let () = if r <> 0 then raise (Fatal "TRecS FAILED!") in
@@ -284,7 +288,11 @@ let verifyFile filename =
           let s = input_line ic in
             close_in ic;
             Unsafe (parse_trace s)
-      | s -> raise (Fatal ("Unsupported TRecS output: " ^ s))
+      | s ->
+          close_in ic;
+          if r <> 0 || s = default
+          then raise (Fatal "TRecS FAILED!")
+          else raise (Fatal ("Unsupported TRecS output: " ^ s))
 
 let write_log filename target =
   let cout = open_out filename in
