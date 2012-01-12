@@ -159,7 +159,13 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 								let trs, ps = rec_calls_of (fst nd.name) loc in
 		      let argps =
   		      let tr = Node(nd, []) in
-				      let locs = find_all (fun nd -> Var.ancestor_of (Var.tlfc_of (Var.T(fst (get tr).name, snd (get tr).name, (*dummy*)-1))) nd.name) (root loc) in
+				      let locs =
+            find_all
+              (fun nd ->
+                SimType.find_last_base env nd.name <> arg &&
+                let tmp = Var.tlfc_of (Var.T(fst (get tr).name, snd (get tr).name, (*dummy*)-1)) in
+                Var.ancestor_of tmp nd.name)
+              (root loc) in
 								  List.map
 								    (fun (Loc(tr, p)) ->
 														SimType.find_last_base env (get tr).name,
