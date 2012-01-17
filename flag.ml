@@ -16,6 +16,10 @@ type model_check = ModelCheck | ModelCheckCPS
 type refine = RefineSizedType | RefineDependentType
 type form = CPS
 
+(* TRecS option *)
+let use_new_trecs = false
+let trecs_param1 = ref 1000
+let trecs_param2 = ref 10
 
 (* debug option *)
 let check_fun_arg_typ = false

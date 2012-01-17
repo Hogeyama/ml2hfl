@@ -81,12 +81,6 @@ let trans ((_,defs,_),spec) =
 
 
 
-
-
-
-
-
-
 (*** from $(TRECS)/main.ml ***)
 
 let parseFile filename =
@@ -269,30 +263,36 @@ let rec parse_trace s =
         node :: parse_trace s'
     | _ -> assert false
 
-let verifyFile filename =
+let rec verifyFile filename =
   let default = "empty" in
-  let p1,p2 = 10000,10 in
+  let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
   let result_file = "result" in
   let oc = open_out result_file in
   let () = output_string oc default in
   let () = close_out oc in
   let cmd = Format.sprintf "%s -p %d %d -o %s %s" Flag.trecs p1 p2 result_file filename in
-  let r = Sys.command cmd in
-  let () = if r <> 0 then raise (Fatal "TRecS FAILED!") in
-  let ic = open_in result_file in
-    match input_line ic with
-        "SATISFIED" ->
-          close_in ic;
-          Safe []
-      | "VIOLATED" ->
-          let s = input_line ic in
-            close_in ic;
-            Unsafe (parse_trace s)
-      | s ->
-          close_in ic;
-          if r <> 0 || s = default
-          then raise (Fatal "TRecS FAILED!")
-          else raise (Fatal ("Unsupported TRecS output: " ^ s))
+  let cmd' = Format.sprintf "%s | grep 'Verification failed (time out).'" cmd in
+  let r = Sys.command cmd' in
+    if r = 0
+    then
+      let () = Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1) in
+      let () = Flag.trecs_param1 := 2 * p1 in
+        verifyFile filename
+    else
+      let ic = open_in result_file in
+        match input_line ic with
+            "SATISFIED" ->
+              close_in ic;
+              Safe []
+          | "VIOLATED" ->
+              let s = input_line ic in
+                close_in ic;
+                Unsafe (parse_trace s)
+          | s ->
+              close_in ic;
+              if r <> 0 || s = default
+              then raise (Fatal "TRecS FAILED!")
+              else raise (Fatal ("Unsupported TRecS output: " ^ s))
 
 let write_log filename target =
   let cout = open_out filename in
@@ -301,11 +301,20 @@ let write_log filename target =
 
 
 let check target =
+  initialize ();
   let target' = trans target in
-  let input = "input.hors" in
-    initialize ();
-    write_log input target';
-    match verifyFile input with
+  let r =
+    if Flag.use_new_trecs
+    then
+      let input = "input.hors" in
+        write_log input target';
+        verifyFile input
+    else
+      verifyParseResult target'
+  in
+    match r with
         Safe _ -> None
       | Unsafe tr -> Some tr
+
+
 

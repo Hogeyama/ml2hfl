@@ -1039,3 +1039,17 @@ let rec trans_let t =
 
 
 
+let rec rename_spec spec t =
+  match t.desc with
+    | Let(flag, bindings, t2) ->
+        let aux1 f (f',typ) =
+          if Id.name f = Id.name f'
+          then (f,typ)
+          else (f',typ)
+        in
+        let aux2 spec (f,_,_) = List.map (aux1 f) spec in
+        let spec' = List.fold_left aux2 spec bindings in
+          rename_spec spec' t2
+    | _ -> spec
+
+  

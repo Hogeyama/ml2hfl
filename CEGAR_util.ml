@@ -142,7 +142,9 @@ let nil _ = []
 
 let trans_var x = Id.to_string x
 
-let rec trans_typ f path = function
+let preds = ref []
+
+let rec trans_typ_aux f path = function
     Type.TUnit -> TBase(TUnit, nil), []
   | Type.TBool -> TBase(TBool, fun x -> [x]), []
   | Type.TAbsBool -> assert false
@@ -150,8 +152,8 @@ let rec trans_typ f path = function
   | Type.TRInt _  -> assert false
   | Type.TVar _  -> TBase(TUnit, nil), []
   | Type.TFun(x,typ) ->
-      let typ1,preds1 = trans_typ f (path@[0]) (Id.typ x) in
-      let typ2,preds2 = trans_typ f (path@[1]) typ in
+      let typ1,preds1 = trans_typ_aux f (path@[0]) (Id.typ x) in
+      let typ2,preds2 = trans_typ_aux f (path@[1]) typ in
         TFun(typ1, fun _ -> typ2), preds1@@preds2
   | Type.TList _ -> assert false
   | Type.TConstr("event",_) -> assert false
@@ -159,14 +161,12 @@ let rec trans_typ f path = function
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
   | Type.TPred(x,typ) ->
-      let typ',preds = trans_typ f path typ in
+      let typ',preds = trans_typ_aux f path typ in
         typ', ((f, trans_var x, path)::preds)
   | _ -> assert false
 
-let preds = ref []
-
-let trans_typ f path typ =
-  let typ',ps = trans_typ f path typ in
+and trans_typ f path typ =
+  let typ',ps = trans_typ_aux f path typ in
 (*
 let pr fm (f,x,path) =
   let rec proj path typ =
@@ -183,7 +183,7 @@ Format.printf "AA:%a@.%a@.@." Syntax.print_typ typ (print_list pr "" false) ps;
     preds := ps @@ !preds;
     typ'
 
-let rec trans_typ' = function
+and trans_typ_aux' = function
     Type.TUnit -> TBase(TUnit, nil)
   | Type.TBool -> TBase(TBool, nil)
   | Type.TAbsBool -> assert false
@@ -193,12 +193,12 @@ let rec trans_typ' = function
   | Type.TFun({Id.typ=Type.TInt ps} as x,typ) ->
       let x' = trans_var x in
       let typ1 = TBase(TInt, fun z -> List.map (fun p -> subst "v_0" z (snd (trans_term [] [] p))) ps) in
-      let typ2 = trans_typ' typ in
+      let typ2 = trans_typ_aux' typ in
         TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun(x,typ) ->
       let x' = trans_var x in
-      let typ1 = trans_typ' (Id.typ x) in
-      let typ2 = trans_typ' typ in
+      let typ1 = trans_typ_aux' (Id.typ x) in
+      let typ2 = trans_typ_aux' typ in
         TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TList _ -> assert false
   | Type.TConstr("event",_) -> assert false
@@ -419,6 +419,7 @@ let trans_prog t =
   let _ = Typing.infer prog in
 
   let trans_pred (f,x,path) =
+    Format.printf "TRANS_PRED: %s, %s, %a@." f x (print_list Format.pp_print_int ";" false) path;
     let f' = rename_var f in
     let x' = rename_var x in
     let _,xs,_,_,_ = List.find (fun (g,_,_,_,_) -> g = f') defs in
@@ -430,8 +431,6 @@ let trans_prog t =
       f', index 0 xs, path
   in
   let preds = List.map trans_pred !preds in
-
-
 
   let pr fm (f,n,path) =
     let rec proj path typ =

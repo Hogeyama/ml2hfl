@@ -359,7 +359,7 @@ let make_cons t1 t2 =
   let x = Id.new_var "x" t1.typ in
   let xs_typ =
     match t2.typ with
-        TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,TPred(x,typ12)),typ2)
+        TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,typ12),typ2)
       | _ -> assert false
   in
   let xs = Id.new_var "xs" xs_typ in
@@ -369,6 +369,7 @@ let make_cons t1 t2 =
   let t_len = make_fun i (make_if t11 t12 t13) in
   let t_f = make_add (make_snd (make_var xs)) (make_int 1) in
   let cons = Id.new_var "cons" (TFun(x,TFun(xs,xs_typ)))  in
+    Format.printf "MAKE_CONS: %a, %a@." Id.print x Id.print cons;
     make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1; t2])
   
 

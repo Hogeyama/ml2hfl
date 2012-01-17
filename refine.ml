@@ -67,54 +67,54 @@ let rec add_pred n path typ =
 
 let refine preds prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
-  if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
-  let ces =
-    if Flag.use_prefix_trace
-    then
-      let prefix' =
-        assert false
-          (*
-            match !Flag.refine with
-            Flag.RefineDependentType ->
-            let rec aux = function
-            [] -> []
-            | [LineNode _] -> [EventNode "then_fail"]
-            | [LineNode _] -> [EventNode "else_fail"]
-            | n::ce -> n :: aux ce
-            in
-            aux prefix
-            | _ -> prefix
-          *)
-      in
-        Format.printf "\nPrefix of spurious counter-example::\n%a\n@." CEGAR_print.print_ce prefix';
-        prefix' :: List.tl ces
-    else ces
-  in
-  let map =
-    match !Flag.refine with
-        Flag.RefineSizedType ->
-          let rec aux = function
-              (BranchNode n)::ce -> n :: aux ce
-            | (EventNode _)::ce -> aux ce
-            | [] -> []
-          in
-            LazyInterface.infer [List.hd (List.map aux ces)] (env,defs,main)
-      | Flag.RefineDependentType ->
-          if not (List.mem Flag.CPS !Flag.form)
-          then failwith "Program must be in CPS @ ModelCheckCPS"; 
-          try
-            RefineDepTyp.infer [List.hd ces] (env,defs,main)
-          with RefineDepTyp.Untypable -> raise CannotRefute
-  in
-  let map' =
-    let aux map (f,n,path) =
-      List.map (fun (g,typ) -> if f = g then g, add_pred n path typ else g, typ) map
+    if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
+    let ces =
+      if Flag.use_prefix_trace
+      then
+        let prefix' =
+          assert false
+            (*
+              match !Flag.refine with
+              Flag.RefineDependentType ->
+              let rec aux = function
+              [] -> []
+              | [LineNode _] -> [EventNode "then_fail"]
+              | [LineNode _] -> [EventNode "else_fail"]
+              | n::ce -> n :: aux ce
+              in
+              aux prefix
+              | _ -> prefix
+            *)
+        in
+          Format.printf "\nPrefix of spurious counter-example::\n%a\n@." CEGAR_print.print_ce prefix';
+          prefix' :: List.tl ces
+      else ces
     in
-      List.fold_left aux map preds
-  in
-  let env' = add_preds map' env in
-    add_time tmp Flag.time_cegar;
-    if Flag.print_progress then Format.printf "DONE!@.";
-    env', defs, main
+    let map =
+      match !Flag.refine with
+          Flag.RefineSizedType ->
+            let rec aux = function
+                (BranchNode n)::ce -> n :: aux ce
+              | (EventNode _)::ce -> aux ce
+              | [] -> []
+            in
+              LazyInterface.infer [List.hd (List.map aux ces)] (env,defs,main)
+        | Flag.RefineDependentType ->
+            if not (List.mem Flag.CPS !Flag.form)
+            then failwith "Program must be in CPS @ ModelCheckCPS"; 
+            try
+              RefineDepTyp.infer [List.hd ces] (env,defs,main)
+            with RefineDepTyp.Untypable -> raise CannotRefute
+    in
+    let map' =
+      let aux map (f,n,path) =
+        List.map (fun (g,typ) -> if f = g then g, add_pred n path typ else g, typ) map
+      in
+        List.fold_left aux map preds
+    in
+    let env' = add_preds map' env in
+      add_time tmp Flag.time_cegar;
+      if Flag.print_progress then Format.printf "DONE!@.";
+      env', defs, main
 
 

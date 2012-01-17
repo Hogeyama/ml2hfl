@@ -147,7 +147,7 @@ val max_label_num : typed_term -> int
 val is_external : id -> bool
 val is_value : typed_term -> bool
 val init_rand_int : typed_term -> typed_term
-val add_preds : (id * typ) list -> typed_term -> typed_term
+val replace_typ : (id * typ) list -> typed_term -> typed_term
 
 
 (** {6 Printing} *)
