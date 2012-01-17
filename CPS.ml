@@ -805,14 +805,14 @@ let rec trans_typ_aux = function
   | TFunCPS(b,Some x_orig,typ1,typ2) when !b ->
       let typ1' = trans_typ_aux typ1 in
       let x = Id.new_var "x" typ1' in
-      let typ2' = subst_type x (make_var x_orig) (trans_typ_aux typ2) in
+      let typ2' = subst_type x_orig (make_var x) (trans_typ_aux typ2) in
       let r = Id.new_var "r" typ2' in
       let k = Id.new_var "k" (TFun(r,TUnit)) in
         TFun(x, TFun(k, TUnit))
   | TFunCPS(_,Some x_orig,typ1,typ2) ->
       let typ1' = trans_typ_aux typ1 in
       let x = Id.new_var "x" typ1' in
-      let typ2' = subst_type x (make_var x_orig) (trans_typ_aux typ2) in
+      let typ2' = subst_type x_orig (make_var x) (trans_typ_aux typ2) in
         TFun(x, typ2')
   | TFunCPS _ -> assert false
   | TPairCPS(typ1,typ2) -> TPair(trans_typ_aux typ1, trans_typ_aux typ2)

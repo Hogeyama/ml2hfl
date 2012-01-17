@@ -1992,7 +1992,8 @@ let infer ces prog =
     try
       let _,rty = List.find (fun (x, _) -> Id.same f x) rte in
       let typ = List.fold_left (add_preds_typ sol) (Id.typ f) rty in
-        [Id.to_string' f, CU.trans_typ_aux' typ]
+        if Flag.print_refine_log then Format.printf "%a: %a@." Id.print f print_typ typ;
+        [CU.trans_var f, CU.trans_typ' typ]
     with Not_found -> []
   in
     rev_flatten_map aux fs

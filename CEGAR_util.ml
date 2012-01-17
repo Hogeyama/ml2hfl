@@ -140,7 +140,7 @@ let rec make_arg_let t =
 
 let nil _ = []
 
-let trans_var x = Id.to_string x
+let trans_var x = Id.to_string' x
 
 let preds = ref []
 
@@ -151,6 +151,17 @@ let rec trans_typ_aux f path = function
   | Type.TInt _ -> TBase(TInt, nil), []
   | Type.TRInt _  -> assert false
   | Type.TVar _  -> TBase(TUnit, nil), []
+  | Type.TFun({Id.typ=Type.TBool} as x,typ) ->
+      let x' = trans_var x in
+      let typ1 = TBase(TBool, fun x -> [x]) in
+      let typ2,preds = trans_typ_aux f (path@[1]) typ in
+        TFun(typ1, fun y -> subst_typ x' y typ2), preds
+  | Type.TFun({Id.typ=Type.TInt ps} as x,typ) ->
+      let x' = trans_var x in
+      let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term [] [] p)) in
+      let typ1 = TBase(TInt, fun z -> List.map (aux z) ps) in
+      let typ2,preds = trans_typ_aux f (path@[1]) typ in
+        TFun(typ1, fun y -> subst_typ x' y typ2), preds
   | Type.TFun(x,typ) ->
       let typ1,preds1 = trans_typ_aux f (path@[0]) (Id.typ x) in
       let typ2,preds2 = trans_typ_aux f (path@[1]) typ in
@@ -183,29 +194,7 @@ Format.printf "AA:%a@.%a@.@." Syntax.print_typ typ (print_list pr "" false) ps;
     preds := ps @@ !preds;
     typ'
 
-and trans_typ_aux' = function
-    Type.TUnit -> TBase(TUnit, nil)
-  | Type.TBool -> TBase(TBool, nil)
-  | Type.TAbsBool -> assert false
-  | Type.TInt _ -> assert false
-  | Type.TRInt _  -> assert false
-  | Type.TVar _  -> assert false
-  | Type.TFun({Id.typ=Type.TInt ps} as x,typ) ->
-      let x' = trans_var x in
-      let typ1 = TBase(TInt, fun z -> List.map (fun p -> subst "v_0" z (snd (trans_term [] [] p))) ps) in
-      let typ2 = trans_typ_aux' typ in
-        TFun(typ1, fun y -> subst_typ x' y typ2)
-  | Type.TFun(x,typ) ->
-      let x' = trans_var x in
-      let typ1 = trans_typ_aux' (Id.typ x) in
-      let typ2 = trans_typ_aux' typ in
-        TFun(typ1, fun y -> subst_typ x' y typ2)
-  | Type.TList _ -> assert false
-  | Type.TConstr("event",_) -> assert false
-  | Type.TConstr _ -> assert false
-  | Type.TUnknown -> assert false
-  | Type.TPair _ -> assert false
-  | _ -> assert false
+and trans_typ' typ = trans_typ "" [] typ
 
 and trans_binop = function
     Syntax.Eq -> assert false
@@ -792,6 +781,7 @@ let rec has_bottom = function
 let rec normalize_bool_term = function
     Const c -> Const c
   | Var x -> Var x
+  | App(App(Const EqBool, Const True), t) -> normalize_bool_term t
   | App(App(Const (EqInt|Lt|Gt|Leq|Geq) as op, t1), t2) ->
       let neg xs = List.map (fun (x,n) -> x,-n) xs in
       let rec decomp = function

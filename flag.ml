@@ -17,13 +17,13 @@ type refine = RefineSizedType | RefineDependentType
 type form = CPS
 
 (* TRecS option *)
-let use_new_trecs = false
+let use_new_trecs = true
 let trecs_param1 = ref 1000
 let trecs_param2 = ref 10
 
 (* debug option *)
 let check_fun_arg_typ = false
-let check_typ = false
+let check_typ = true
 
 (* method option *)
 let wp_max_num = ref 3
