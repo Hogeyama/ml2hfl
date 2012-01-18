@@ -11,7 +11,7 @@ let cnt = ref 0
 
 let open_cvc3 () =
   let _ = cnt := 0 in
-  let cin, cout = Unix.open_process (cvc3 ^ " +int") in
+  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
   cvc3in := cin;
   cvc3out := cout
 

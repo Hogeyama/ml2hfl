@@ -4,7 +4,7 @@ let log_dir = "./log"
 let trecs = "./trecs -p 10000 10"
 let cvc3 = "./cvc3"
 let trecs_log = "log.hors"
-
+let cvc3_option = "+interactive"
 
 type rec_flag = Nonrecursive | Recursive
 type mutable_flag = Immutable | Mutable
@@ -17,7 +17,7 @@ type refine = RefineSizedType | RefineDependentType
 type form = CPS
 
 (* TRecS option *)
-let use_new_trecs = true
+let use_new_trecs = false
 let trecs_param1 = ref 1000
 let trecs_param2 = ref 10
 

@@ -212,7 +212,7 @@ let rec from_pred map = function
 
 
 let open_cvc3 () =
-  let cin,cout = Unix.open_process (Flag.cvc3 ^ " +int") in
+  let cin,cout = Unix.open_process (Flag.cvc3 ^ " " ^ Flag.cvc3_option) in
   cvc3in := cin;
   cvc3out := cout
 
