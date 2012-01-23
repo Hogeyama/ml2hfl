@@ -1,0 +1,125 @@
+\begin{figure}[tbp]
+\typicallabel{A-Assume}
+
+%%%\infrule[A-Const]
+%%%  {c\mbox{~has~the~base~type~}b}
+%%%  {\T{\Gamma}{c}{b[\lambda x.x=c]}{\TRUE}}
+%%%\rulesp
+%%%
+%%%\infrule[A-Op]
+%%%  {\alphaB(\Gamma) \pS \OP(\seq{v}):b}
+%%%  {\T{\Gamma}{\OP(\seq{v})}{b[\lambda x.x=\OP(\seq{v})]}{\TRUE}}
+%%%\rulesp
+%%%
+%%%
+%%%\infrule[A-Var]
+%%%  {x:b[\seq{P}] \in \Gamma}
+%%%  {\T{\Gamma}{x}{b[\lambda y.y=x]}{\TRUE}}
+%%%\rulesp
+
+
+\infrule[A-Base]
+  {\mbox{$e$ is a constant, a variable or an expression of the form \(\OP(\seq{v})\)}\\
+    \alphaB(\Gamma) \pS e \COL b}
+  {\T{\Gamma}{e}{b[\lambda \nu.\nu=e]}{\TRUE}}
+\rulesp
+
+\infrule[A-CAdd]
+  {\T{\Gamma}{e}{b[\seq{Q}]}{e'} \\
+   \beta(\Gamma,x:b[\seq{Q}]) \pS \psi \COL \TBOOL \andalso
+   \beta(\Gamma,x:b[\seq{Q}]) \pS \psi' \COL \TBOOL \\
+   \models  P(x) \IMPLY \THE{\Gamma,x:b[\seq{Q}]}(\psi) \andalso
+   \models \neg P(x) \IMPLY \THE{\Gamma,x:b[\seq{Q}]}(\psi') \\
+   e''=\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}}
+  {\T{\Gamma}{e}{b[\seq{Q},P]}{\LETEQIN{x}{e'}{\tuple{x,e''}}}}
+\rulesp
+
+\infrule[A-CRem]
+  {\T{\Gamma}{e}{b[\seq{Q},\seq{P}]}{e'}}
+  {\T{\Gamma}{e}{b[\seq{P}]}{\LETEQIN{\tuple{\seq{x},\seq{y}}}}{e'}{\tuple{\seq{y}}}}
+\rulesp
+
+\infrule[A-App]
+  {\Gamma(x)=(y_1\COL\sigma_1 \to \cdots \to y_k\COL\sigma_k \to\sigma) \\
+%% \andalso   \mbox{\(\Gamma(x)\) is a function type} \\
+    \T{\Gamma,y_1:\sigma_1,\dots,y_{i-1}:\sigma_{i-1}}{v_i}{[v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\sigma_i}{e_i}\\
+  \mbox{ (for each $i\in\set{1,\ldots,k}$)}}
+  {\T{\Gamma}{x\ \seq{v}}{[\seq{v}/\seq{y}]\sigma}
+     {\begin{array}{l}
+      \LETEQIN{y_1}{e_1}\cdots \\
+      \LETEQIN{y_k}{e_k}x\ \seq{y}
+      \end{array}}}
+\rulesp
+%%%
+%%%\infrule[A-Fun]
+%%%  {f:(\seq{x}:\seq{\sigma} \to \sigma) \in \Gamma \andalso
+%%%   \T{\Gamma}{\seq{v}}{\seq{\sigma}}{\seq{e}}}
+%%%  {\T{\Gamma}{f\ \seq{v}}{[\seq{v}/\seq{x}]\sigma}{f\ \seq{e}}}
+%%%\rulesp
+
+\infrule[A-Let]
+  {\T{\Gamma}{e_1}{\sigma'}{e_1'} \andalso
+   \T{\Gamma,x:\sigma'}{e_2}{\sigma}{e_2'}}% \andalso
+%   x \not\in \FV{\sigma}}
+  {\T{\Gamma}{\LETEQIN{x}{e_1}{e_2}}{\sigma}{\LETEQIN{x}{e_1'}{e_2'}}}
+\rulesp
+
+
+\infrule[A-Fail]
+  {\beta(\Gamma) \pS \psi \COL \TBOOL \andalso
+   \models \THE{\Gamma}(\psi)}
+  {\T{\Gamma}{\FAIL}{\sigma}{\ASSUME{\psi}{\FAIL}}}
+\rulesp
+
+\infrule[A-Asm]
+  {\T{\Gamma}{v}{\TBOOL[\lambda x.x]}{e_1} \\
+   \T{\Gamma,x\COL\TBOOL[\lambda x.v]}{e}{\sigma}{e_2}}
+  {\T{\Gamma}{\ASSUME{v}{e}}{\sigma}{\LETEQIN{x}{e_1}\ASSUME{x}{e_2}}}
+\rulesp
+
+\infrule[A-Par]
+  {\T{\Gamma}{e_1}{\sigma}{e_1'} \andalso
+   \T{\Gamma}{e_2}{\sigma}{e_2'}}
+  {\T{\Gamma}{\PAR{e_1}{e_2}}{\sigma}{\PAR{e_1'}{e_2'}}}
+\rulesp
+
+%\infrule[A-Par2]
+%  {\T{\Gamma}{e_1}{\sigma}{e_1'} \andalso
+%   \T{\Gamma}{e_2}{\sigma}{e_2'}}
+%  {\T{\Gamma}{\PARB{e_1}{e_2}}{\sigma}{\PARB{e_1'}{e_2'}}}
+%\rulesp
+
+%\infrule[A-Tuple]
+%  {\T{\Gamma}{v_i}{\sigma_i}{e_i} \andalso
+%   (\mbox{for~each~}i=1,\dots,m)}
+%  {\T{\Gamma}{(v_1,\dots,v_m)}{\sigma_1 \times \dots \times \sigma_m}{(e_1,\dots,e_m)}}
+%\rulesp
+%
+%\infrule[A-Nth]
+%  {\T{\Gamma}{v}{\sigma_1 \times \dots \times \sigma_m}{e}}
+%  {\T{\Gamma}{\NTH{i}{v}}{\sigma_i}{\NTH{i}{e}}}
+%\rulesp
+
+
+\infrule[A-CFun]
+  {\T{\Gamma}{e}{(x\COL\sigma'_1\to\sigma'_2)}{e'}
+  \andalso \T{\Gamma,x\COL\sigma_1}{x}{\sigma'_1}{e_1'}
+  \\ \T{\Gamma,x\COL\sigma_1,x'\COL\sigma'_1,y\COL\sigma'_2}{y}{\sigma_2}{e_2'}}
+  {\T{\Gamma}{e}{(x\COL\sigma_1\to\sigma_2)}
+   {\begin{array}{l}
+    \LETEQIN{f}{e'} \\
+    \lambda x.\LETEQIN{x'}{e_1'} \\
+    \ \ \ \ \ \ \LETEQIN{y}{f\ x'}e_2'\end{array}}}
+
+\rulesp
+
+\infrule[A-Prog]
+  {f_i: (\seq{x}_i:\seq{\sigma}_i \to \sigma_i) \in \Gamma \andalso
+   \T{\Gamma,\seq{x}_i:\seq{\sigma}_i}{e_i}{\sigma_i}{e_i'} \\
+   \mbox{(for each \(i \in \set{1,\dots,m}\))} \andalso
+   \Gamma(\textit{main})=\TUNIT[\,] \to \TUNIT[\,]}
+  {\T{}{\set{f_1\ \seq{x}_1 = e_1,\ldots,f_m\ \seq{x}_m = e_m}}{\Gamma}{\\\set{f_1\ \seq{x}_1 = e_1',\ldots,f_m\ \seq{x}_m = e_m'}}}
+%%\koba{Do we need somewhere the condition that the abstraction types conform to the simple types?}
+\caption{Predicate Abstraction Rules}
+\label{fig:pred_abst}
+\end{figure}

@@ -1,0 +1,790 @@
+\section{Proof of Theorem~\ref{th:rel-complete}}
+\label{sec:relcomp}
+
+In this section, we consider the normalized dependent typing rules in Figure~\ref{fig:dep_rules2},
+which are equivalent to those in Figure~\ref{fig:dep_rules}.
+%%%Below we assume that the rule \rn{A-Fail} has been extended to:
+%%%
+%%%\infrule[A-Fail']
+%%%  {\models \theta_{\Gamma}\psi}
+%%%  {\T{\Gamma}{\FAIL}{\sigma}{\ASSUME{\psi}{\FAIL}}}
+
+\begin{figure}[tbp]
+%%\koba{It seems we need an empty intersection \(\top = \bigwedge_{\set{i\in \emptyset}} \delta_i \).
+%%Consider \texttt{f\ g = fail}, where the simple type of \(f\) is \((\TUNIT\ra \TUNIT)\ra \TUNIT\).
+%%Then, \(f\) is only given a type \(\top\).}
+
+\typicallabel{D-Assume}
+
+%%%\infrule[D-\(\land\)-Intro]
+%%%  {\DPT{\Delta}{e}{\delta_1} \andalso
+%%%   \DPT{\Delta}{e}{\delta_2}}
+%%%  {\DPT{\Delta}{e}{\delta_1 \land \delta_2}}
+%%%\rulesp
+%%%
+%%%\infrule[D-\(\land\)-Elim]
+%%%  {\DPT{\Delta}{e}{\delta_1 \land \delta_2} \andalso
+%%%   i \in \set{1,2}}
+%%%  {\DPT{\Delta}{e}{\delta_i}}
+%%%\rulesp
+
+\infrule[D-Base]
+  {\mbox{$e$ is a constant, a variable or an expression of the form \(\OP(\seq{v})\)}\\
+    \alphaB(\Delta) \pS e:b}
+  {\DPT{\Delta}{e}{\rt{\nu}{b}{\nu=e}}}
+\rulesp
+
+
+%%%\infrule[D-VarFun]
+%%%  {x:\delta \in \Delta\andalso \mbox{$\delta$ is a function type}}
+%%%  {\DPT{\Delta}{x}{\delta}}
+%%%\rulesp
+%%%
+%%%\infrule[D-App]
+%%%  {\DPT{\Delta}{e}{\dtI_{j\in\set{1,\ldots,m}} {(y\COL\delta_{j,0}\ra \delta_{j,1})}}\\
+%%%   \DPT{\Delta}{v}{\dtI_{j\in\set{1,\ldots,m}} \delta_{j,0}}}
+%%%  {\DPT{\Delta}{e\,v}{\dtI_{j\in\set{1,\ldots,m}} [v/y]\delta_{j,1}}}
+
+\infrule[D-App]
+  {\Delta(x)= \dtI_{j\in\set{1,\ldots,m}}y_1\COL\delta_{j,1} \to \cdots \to y_k\COL\delta_{j,k} \to\delta_j\\
+   \mbox{\(\Delta(x)\) is a function type}\\
+   \DPT{\Delta} %%,y_1:\delta_{j,1},\dots,y_{i-1}: \delta_{j,i-1}}
+  {v_i}{\dtI_{j\in\set{1,\ldots,m}}[v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\delta_{j,i}} \\
+%%   \delta'_{j,i} \subT [v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\delta_{j,i}\\
+  \mbox{ (for each $i\in\set{1,\ldots,k}$, $j\in\set{1,\ldots,m}$)}}
+  {\DPT{\Delta}{x\ \seq{v}}{\dtI_{j\in\set{1,\ldots,m}} [\seq{v}/\seq{y}]\delta_j}}
+\rulesp
+
+\infrule[D-Let]
+  {\DPT{\Delta}{e_1}{\delta'} \andalso
+   \DPT{\Delta,x:\delta'}{e_2}{\delta}}
+  {\DPT{\Delta}{\LETEQIN{x}{e_1}{e_2}}{\delta}}
+\rulesp
+
+
+\infrule[D-Fail]
+  {\models \SEM{\Delta} \IMPLY \FALSE}
+  {\DPT{\Delta}{\FAIL}{\delta}}
+\rulesp
+
+\infrule[D-Assume]
+  {\alphaB(\Delta)\pS v:\TBOOL\\
+   \DPT{\Delta,x\COL\rtbase{\nu}{\TBOOL}{v}}{e}{\delta}}
+  {\DPT{\Delta}{\ASSUME{v}{e}}{\delta}}
+
+%%\infrule[D-Assume]
+%%  {\DPT{\Delta}{v}{\TBOOL} \andalso
+%%   \DPT{\Delta,v}{e}{\delta}}
+%%  {\DPT{\Delta}{\ASSUME{v}{e}}{\delta}}
+\rulesp
+
+\infrule[D-Par]
+  {\DPT{\Delta}{e_1}{\delta} \andalso
+   \DPT{\Delta}{e_2}{\delta}}
+  {\DPT{\Delta}{\PAR{e_1}{e_2}}{\delta}}
+\rulesp
+
+%%%\infrule[D-Coerce]
+%%%  {\DPT{\Delta}{e}{\rt{\nu}{b}{\psi'}} \andalso
+%%%   \models \SEM{\Delta} \land \psi' \IMPLY \psi}
+%%%  {\DPT{\Delta}{e}{\rt{\nu}{b}{\psi}}}
+%%%
+%%%\koba{How about subtyping on functions?}
+
+\infrule[D-Coerce]
+  {\DPT{\Delta}{e}{\delta'}\andalso \Delta \p \delta'\subT \delta}
+  {\DPT{\Delta}{e}{\delta}}
+\infrule[D-Prog]
+  {f_i: (\seq{x}_i:\seq{\delta}_i \to \delta_i) \in \Delta \andalso
+   \DPT{\Delta,\seq{x}_i:\seq{\delta}_i}{e_i}{\delta_i} \\
+   (\mbox{for~each~}i=1,\dots,n)}
+  {\DPT{}{\set{f_1\ \seq{x}_1 = e_1,\ldots,f_m\ \seq{x}_m = e_m}}{\Delta}}
+\rulesp
+
+\infrule[Sub-Base]
+  {\models \SEM{\Delta} \land \psi \IMPLY \psi'}
+  {\DPSUB{\Delta}{\rt{\nu}{b}{\psi}\subT \rt{\nu}{b}{\psi'}}}
+\rulesp
+\infrule[Sub-Fun]
+  {\DPSUB{\Delta}{\delta_{i,1}\subT \delta_{i,1'}} \mbox{ (for each $i\in S$)}\\
+   \DPSUB{\Delta, x\COL\delta_{i,1}}{\delta_{i,2}'\subT\delta_{i,2}} \mbox{ (for each $i\in S$)}\\
+    S \subseteq S'}
+%%   \DPSUB{\Delta,x\COL \delta_1}{\delta_2'\subT \delta_2}}
+  {\DPSUB{\Delta}{\dtI_{i\in S'} (x\COL \delta'_{i,1}\ra \delta'_{i,2}) 
+                    \subT\dtI_{i\in S} (\delta_{i,1}\ra \delta_{i,2})}}
+%%  {\DPSUB{\Delta}{(x\COL\delta'_1\to \delta'_2)\subT (x\COL\delta_1\to \delta_2)}}
+
+%%\infrule[Sub-IT]
+%%  {\forall i\in\set{1,\ldots,m}.\exists i'\in\set{1,\ldots,m'}.\DPSUB{\Delta}{\delta'_{i'}\subT \delta_{i}}}
+\caption{Normalized Dependent Intersection Type System}
+\label{fig:dep_rules2}
+\end{figure}
+
+%%\begin{pfsketch}
+%%\koba{The following is just a semantic intuition.}
+
+%%%We first define the semantics of dependent types by:
+%%%\[
+%%%\begin{array}{l}
+%%%\dtsem{\rtbase{\dvar}{b}{\psi}} = \set{\dvar \in \sem{b} \mid \psi}\\
+%%%\dtsem{x\COL\delta_1\ra \delta_2} =
+%%%  \left\{\begin{array}{ll}
+%%%     \set{g \mid \forall x\in \dtsem{\delta_1}.g(x)\subseteq \dtsem{\delta_2}}\\
+%%%    \qquad \mbox{if $\delta_2$ is a base type}\\
+%%%     \set{g \mid \forall x\in \dtsem{\delta_1}.g(x)\in \dtsem{\delta_2}}\\
+%%%    \qquad \mbox{otherwise}
+%%%  \end{array}
+%%%  \right.
+%%%\end{array}
+%%%\]
+%%%Note that a function in \(x\rtbase{\dvar}{\TINT}{\psi_1}\ra \rtbase{\dvar}{\TINT}{\psi_2}\)
+%%%returns a \emph{set} of integers, because of the non-determinism in our language.
+%%%The non-determinism is however restricted to base types, so that 
+%%%if \(\delta_2\) is a function type, the codomain of \(g(x)\) is \(\dtsem{\delta_2}\),
+%%%rather than the powerset of \(\dtsem{\delta_2}\).
+%%%
+%%%The semantics of dependent type environments is given by:
+%%%\[
+%%%\begin{array}{l}
+%%%\dtsem{\Delta} = \set{\emptyset}\\
+%%%\dtsem{\Delta,x\COL \delta} =
+%%%    \set{\rho\set{x\mapsto v} \mid \rho\in \Delta, v\in \dtsem{\rho\delta}}
+%%%\end{array}
+%%%\]
+%%%\(\rho\delta\) is the dependent type obtained by applying the substituion \(\rho\) to \(\delta\)
+%%%(this is necessary because of the dependency of types on values).
+
+%%The semantic domain \(\sem{\sigma}\) is defined by:
+%%\[
+%%\begin{array}{l}
+%%\sem{b[P_1,\ldots,P_n]} = \PSet{(\TBOOL\times \cdots \times \TBOOL)\cup\set{\FAIL}}\\
+%%x\COL b[P_1,\ldots,P_n] \ra \sigma_2 = 
+%%  \TBOOL\times \cdots \times \TBOOL \ra \sem{\sigma_2}\\
+%%\sem{\sigma_1\ra \sigma_2} = 
+%%    \sem{\sigma_1} \ra \sem{\sigma_2}\\
+%%\end{array}
+%%\]
+
+We first define the set of \emph{type templates}, ranged over by \(\xi\), by:
+\[
+\begin{array}{l}
+\xi ::= \set{\nu\COL b \mid C} \mid \dtI_{j\in S} (x\COL\xi_1\ra \xi_2)\\
+C ::= \hole_i \mid C_1\land C_2 \mid C_1\lor C_2 \mid \neg C_1 \mid \TRUE \mid \FALSE
+\end{array}
+\]
+We write \(C[\psi_1,\ldots,\psi_k]\) for the formula obtained from \(C\) by replacing 
+every occurence of \(\hole_i\)  (where \(i\in\set{1,\ldots,k}\)) with \(\psi_i\).
+A \emph{type template environment} is a sequence \(x_1\COL\xi_1,\ldots,x_n\COL\xi_n\)
+of bindings of variables to type templates. Type templates and type template environments
+are subject to the well-formedness condition analogous to that of dependent types
+and dependent type environments. 
+
+For a type template \(\xi\) and an abstraction type \(\sigma\), 
+the dependent type \(\comp{\xi}{\sigma}\) is defined by:
+\[
+\begin{array}{l}
+\comp{\set{\nu\COL b \mid C}}{b[P_1,\ldots,P_n]} = \set{\nu\COL b \mid C[P_1(\nu),\ldots,P_n(\nu)]}\\
+\comp{\dtI_{i\in S}(x\COL\xi_{1,i}\ra \xi_{2,i})}{x\COL\sigma_1\ra \sigma_2} =\\
+\qquad\qquad    \dtI_{i\in S}(x\COL \comp{\xi_{1,i}}{\sigma_1} \ra \comp{\xi_{2,i}}{\sigma_2})
+\end{array}
+\]
+For example, let \(\xi\) and \(\sigma\) be:
+\[
+\begin{array}{l}
+\xi = (x\COL\set{\nu\COL \TINT\mid \neg \hole_2}\ra \set{\nu\COL \TINT\mid \neg\hole_1})\\
+\qquad  \land (x\COL\set{\nu\COL \TINT\mid \hole_1\land \hole_2}\ra \set{\nu\COL \TINT\mid \hole_1})\\
+\sigma = x\COL\TINT[\lambda \nu.\nu>0, \lambda \nu.\nu<3]\ra \TINT[\lambda \nu.\nu>x]
+\end{array}
+\]
+Then, \(\comp{\xi}{\sigma}\) is the following dependent type:
+\[
+\begin{array}{l}
+(x\COL\set{\nu\COL \TINT\mid \neg \nu<3}\ra \set{\nu\COL \TINT\mid \neg(\nu>x)})\\
+  \land (x\COL\set{\nu\COL \TINT\mid \nu>0\land \nu<3}\ra \set{\nu\COL \TINT\mid \nu>x})
+\end{array}
+\]
+
+Similarly, given a type template environment \(\Xi\) and an abstraction type environment \(\Gamma\),
+the dependent type environment \(\comp{\Xi}{\Gamma}\) is defined by:
+\[
+\begin{array}{l}
+\comp{\emptyset}{\emptyset} = \emptyset\\
+\comp{(\Xi,x\COL\xi)}{\Gamma,x\COL\sigma} = \comp{\Xi}{\Gamma}, x\COL \comp{\xi}{\sigma}
+\end{array}
+\]
+
+By the definition of type templates and \(\depty\), 
+\(\delta\in \depty(\sigma)\) if and only if \(\delta = \comp{\xi}{\sigma}\) for some \(\xi\).
+Similarly, \(\Delta\in \depty(\Gamma)\) if and only if
+\(\Delta = \comp{\Xi}{\Gamma}\) for some \(\Xi\).
+%%We write \(\tytemp{\sigma}{\delta}\) for \(\kappa\) such that 
+
+For a type template \(\xi\),
+we define \(\sem{\xi}\) by:
+\[
+\begin{array}{l}
+\sem{\rtbase{\dvar}{b}{C}}=\\
+\qquad  \set{\tuple{c_1,\ldots,c_n} \mid C[c_1,\ldots,c_n]=\TRUE}\\
+%%  \set{(d, \tuple{c_1,\ldots,c_n}) \mid [d/\dvar]\psi \land  C[c_1,\ldots,c_n]}\\
+%%\qquad \PSet{\set{\tuple{c_1,\ldots,c_n} \mid C[c_1,\ldots,c_n] \equiv \TRUE}}\\
+\sem{\dtI_{j\in S}(\rtfun{x\COL\xi_{1,j}}{\xi_{2,j}})} = \\ %%, x\COL\sigma_1 \to \sigma_2} =\\
+\qquad \set{g \mid \forall j\in S.\forall h\in \sem{\xi_{1,j}}.g(h) \subseteq \sem{\xi_{2,j}}}
+\end{array}
+\]
+Intuitively, \(\sem{\xi}\) denotes the set of abstract (semantic) values obtained by 
+abstracting values of a type \(\delta\) by using an abstraction type \(\sigma\) such that \(\comp{\xi}{\sigma}=\delta\).
+
+The above semantics is extended to type template environments by:
+\[
+\begin{array}{lcl}
+\sem{\emptyset} &=& \emptyset\\
+\sem{\Xi, x\COL\xi} &=&
+  \set{\rho\set{x\mapsto v} \mid \rho\in \sem{\Xi}, v\in \sem{\xi}}
+\end{array}
+\]
+We call an element of \(\sem{\Xi}\) an \emph{abstract environment} and write \(\env\) for it.
+
+%%The semantics \(\esem{e}{\st}\) of of a term \(e\) of type \(\st\) is given by:
+%%\[
+%%\begin{array}{l}
+%%\esem{e}{\TBOOL\times\cdots\times \TBOOL} = 
+%%      \set{ v \mid e \reds{} v} \cup \set{\FAIL \mid e \reds{} E[\FAIL]}\\
+%%\esem{e}{\st_1\ra \st_2} = 
+%%      \set{(\esem{e_1}{\st_1}, \esem{e e_1}{\st_2}) \mid e_1:\st_1}\\
+%%\end{array}
+%%\]
+
+Define the set of simple types (for boolean programs) by:
+\[ \st ::= \TBOOL\times\cdots \times \TBOOL \mid \st_1 \ra \st_2\]
+The semantics \(\set{\st}\) is given by:
+\[
+\begin{array}{l}
+\sem{\underbrace{\TBOOL\times \cdots \times \TBOOL}_n} =
+\set{ \tuple{c_1,\ldots,c_n}\mid c_i\in\set{\TRUE,\FALSE}}\cup \set{\FAIL}\\
+\sem{\st_1\ra \st_2} =
+  \set{g \mid \forall h\in\sem{\st_1}\setminus\set{\FAIL}.g(h)\subseteq \sem{\st_2}}\cup\set{\FAIL}
+\end{array}
+\]
+(Note that the codomain is the powerset of \(\sem{\st_2}\), because of non-determinism.)
+
+Given an abstract environment \(\env\) and an expression \(e\) (of a higher-order boolean program)
+of simple type \(\st\), 
+the semantics \(\esem{e}{\env} (\subseteq \sem{\st})\) of a term \(e\) is given by:
+
+\[
+\begin{array}{l}
+\esem{c}{\env} = \set{c}\\
+\esem{x}{\env} = \set{\env(x)}\\
+\esem{\OP(\seq{v})}{\env} = \set{\sem{\OP}(\seq{w}) \mid \seq{w}\in \esem{\seq{v}}{\env}}\\
+\esem{\lambda x:\st.e}{\env} = \\
+\quad      \{\set{(v,\esem{e}{\env\set{{x}\mapsto {v}}}) \mid {v}\in \sem{\st}\setminus\set{\FAIL}}
+          \cup \set{(\FAIL,\set{\FAIL})}\}\\
+\esem{e_1 e_2}{\env} =\\
+\quad     \set{g(h) \mid g\in \esem{e_1}{\env}\setminus\set{\FAIL}, h\in \esem{e_2}{\env}}
+    \cup (\esem{e_1}{\env}\cap \set{\FAIL})\\
+\esem{\LETEQIN{x}{e_1}{e_2}}{\env} =\\
+\quad      \set{\esem{e_2}{\env\set{x\mapsto v}} \mid v\in \esem{e_1}{\env}\setminus\set{\FAIL}}
+     \cup (\esem{e_1}{\env}\cap \set{\FAIL})\\
+\esem{\FAIL}{\env} = \set{\FAIL}\\
+\esem{\ASSUME{v}{e}}{\env} = 
+  \left\{\begin{array}{ll}
+       \emptyset  & \mbox{if \(\TRUE\not\in \esem{v}{\env}\)}\\
+      \esem{e}{\env} & \mbox{otherwise}
+     \end{array}
+  \right.\\
+\esem{e_1\PAROP e_2}{\env} =
+      \esem{e_1}{\env} \cup \esem{e_2}{\env}\\
+\end{array}
+\]
+
+
+The following lemma states that we can adjust abstraction according to a change of abstraction types.
+\begin{lemma}
+\label{lem:relcomp-coerce}
+Suppose:
+\begin{enumerate}
+\item \(\T{\Gamma}{e}{\sigma'}{e_0'}\); and 
+\item \(\forall j\in J.\comp{\Xi_j}{\Gamma} \pDT \comp{\xi'_j}{\sigma'} \subT \comp{\xi_j}{\sigma}\),
+\end{enumerate}
+where \(J\) is a finite set.
+Then, there exists \(e'\) such that
+\begin{enumerate}
+\item \(\T{\Gamma}{e}{\sigma}{e'}\); and 
+\item \(\forall j\in J.\forall \env\in \sem{\Xi_j}.
+(\esem{e_0'}{\env}\subseteq \sem{\xi_j'}\imply \esem{e'}{\env}\subseteq \sem{\xi_j})\).
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+This follows by induction on the size of \(\alphaB(\sigma)\).
+%%(Here, the size of types is defined by:
+%%\(\mathit{}(b) =1\) and \(\mathit{order}(\tau_1\ra\tau_2) =
+%%  \MAX(\mathit{order}(\tau_1)+1, \mathit{order}
+%%the order of a base type is \(0\), and the order of \(\tau_1\ra \tau_2\) is the maximum of
+
+%%\(\comp{\Xi}{\Gamma} \pDT \comp{\xi'}{\sigma'} \subT \comp{\xi}{\sigma}\), with case
+%%analysis on the last rule used.
+\begin{itemize}
+\item Case \rn{Sub-Base}:\\
+In this case, we have:
+\[
+\begin{array}{l}
+\xi_j' \equiv \rtbase{\nu}{b}{C_j'}\\
+\xi_j \equiv  \rtbase{\nu}{b}{C_j}\\
+\sigma' \equiv b[P'_1,\ldots,P'_{k'}]\\
+\sigma \equiv b[P_1,\ldots,P_k]\\
+\SEM{\comp{\Xi}{\Gamma}}\land C'[P'_1(\nu),\ldots,P'_{k'(\nu)}] \imply C[P_1(\nu),\ldots,P_k(\nu)]
+\end{array}
+\]
+%%Let \(\sigma' = b[Q_1,\ldots,Q_{k'}]\).
+%%By the induction hypothesis, we have:
+%%\[
+%%\begin{array}{l}
+%%\T{\Gamma}{e}{\rtbase{\nu}{b}{C_1[P_1(\nu),\ldots,P_k(\nu)]}}{e_1'}\\
+%%\esem{e_1'}{\rho}\in\sem{\delta', \sigma'}
+%%\end{array}
+%%\]
+By the last condition, we have:
+\[
+\begin{array}{l}
+z_i \COL \set{\nu:b_i \mid D_{j,i}}\in \Xi_j \mbox{ (for each $i\in \set{1,\ldots,m}$)}\\
+z_i \COL  b_i[Q_{i,1},\ldots,Q_{i,k_i}] \in \Gamma \mbox{ (for each $i\in \set{1,\ldots,m}$)}\\
+\models D_{j,1}[Q_{1,1}(z_1),\ldots,Q_{1,k_1}(z_1)]\land \cdots\\
+\quad\land D_{j,m}[Q_{m,1}(z_m),\ldots,Q_{m,k_m}(z_m)]\\
+\quad\land C_j'[P'_1(\nu),\ldots,P'_{k'}(\nu)] \imply  C_j[P_1(\nu),\ldots,P_k(\nu)]\\
+\qquad\qquad \hfill\mbox{ (for each $j\in J$)}
+\end{array}
+\]
+
+Let \(\psi\) and \(\psi'\) be:
+\[
+\begin{array}{l}
+\psi \equiv 
+  \bigwedge_{j\in J}(D_{j,1}[z_1]\land \cdots\land D_{j,m}[z_m]\land C_j'[v_0]\imply C_j[v_1])\\
+\psi' \equiv 
+ \bigwedge_{j\in J}( D_{j,1}[z_1]\land \cdots\land D_{j,m}[z_m] \land C_j'[v_0]\imply C_j[v_2])\\
+v_0 = \tuple{\NTH{1}(y),\ldots,\NTH{k'}(y)}\\
+v_1 = \tuple{\NTH{k'+1}(y),\ldots,\NTH{k'+k-1}(y),\TRUE}\\
+v_2 = \tuple{\NTH{k'+1}(y),\ldots,\NTH{k'+k-1}(y),\FALSE}\\
+\end{array}
+\]
+
+%%%Let \(D[u_1,\ldots,u_m, x',x]\) be a boolean formula such that
+%%%\[
+%%%\begin{array}{l}
+%%%\exists z_1,\ldots,z_m,z.
+%%% u_1 = \tuple{Q_{1,1}(z_1),\ldots,Q_{1,k_1}(z_1)}\land \cdots\\
+%%% \land u_m = \tuple{Q_{m,1}(z_m),\ldots,Q_{m,k_m}(z_m)}\\
+%%% \land x'=\tuple{P'_1(z),\ldots,P'_{k'}(z)}\\
+%%% \land x=\tuple{P_1(z),\ldots,P_{k}(z)}
+%%%\end{array}
+%%%\]
+%%%
+%%%Then, we have:
+%%%\[
+%%%\models D[u_1,\ldots,u_m,x,y] \land D_1[u_1]\land \cdots\land D_m[u_m]\land C'[x]\imply C[y].
+%%%\]
+%%%
+%%%Let \(\psi\) and \(\psi'\) be:
+%%%\[
+%%%\begin{array}{l}
+%%%\psi \equiv 
+%%%D[u_1,\ldots,u_m,v_0,v_1] \\
+%%%\quad\land (D_1[u_1]\land \cdots\land D_m[u_m]\land C'[v_0]\imply C[v_1])\\
+%%%\psi' \equiv 
+%%%D[u_1,\ldots,u_m,v_0,v_2] \\
+%%%\quad\land (D_1[u_1]\land \cdots\land D_m[u_m]
+%%%\land C'[v_0]\imply C[v_2])\\
+%%%v_0 = \tuple{\NTH{1}(y),\ldots,\NTH{k'}(y)}\\
+%%%v_1 = \tuple{\NTH{k'+1}(y),\ldots,\NTH{k'+k-1}(y),\TRUE}\\
+%%%v_2 = \tuple{\NTH{k'+1}(y),\ldots,\NTH{k'+k-1}(y),\FALSE}\\
+%%%\end{array}
+%%%\]
+Then, we have
+\[
+\begin{array}{l}
+\models P_k(y) \imply \THE{\Gamma,y\COL b[P_1',\ldots,P'_{k'},P_1,\ldots,P_{k-1}]}\psi\\
+\models \neg P_k(y) \imply \THE{\Gamma,y\COL b[P_1',\ldots,P'_{k'},P_1,\ldots,P_{k-1}]}\psi'\\
+\end{array}
+\]
+Let \(e'\) be:
+\[
+\begin{array}{l}
+\LETEQIN{\tuple{\seq{u}}}{e_0'}\\
+\LETEQIN{\tuple{y_1,\ldots,y_{k'+k-1}}}{\tuple{\seq{u},\underbrace{\nondet,\ldots,\nondet}_{k-1}}}\\
+\LETEQIN{y_{k'+k}}{\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}}\\
+  {\tuple{y_{k'+1},\ldots,y_{k'+k-1},y_{k'+k}}}
+\end{array}
+\]
+(where \(\nondet = \PARB{\TRUE}{\FALSE}\)).
+Then, we have
+\(\T{\Gamma}{e}{\sigma}{e'}\), modulo some simplification of the output of the translation.
+(Here, the expression is complex because of the rules \rn{A-CoerceAdd} and \rn{A-CoerceRem},
+but the idea is simple:
+\(e'\) first assigns non-deterministic booleans for the values of \(P_1,\ldots,P_{k-1}\),
+and then filter out invalid assignments when the value of \(P_k\) is computed.)
+Suppose \(\rho\in \sem{\Xi_j}\) and \(\esem{e_0'}{\rho}\subseteq \sem{\xi_j'}\).
+By the definition of \(e'\),
+\(\tuple{c_1,\ldots,c_k}\in \esem{e'}{\rho}\) implies 
+\(D_{j,1}[\rho(z_1)]\land \cdots \land D_{j,m}[\rho(z_m)]\land C_j'[c'_1,\ldots,c'_{k'}]\imply C_j[c_1,\ldots,c_k]\)
+for some \(\tuple{c_1',\ldots,c'_{k'}}\in \esem{e_0'}{\rho}\).
+By the condition \(\env\in\sem{\Xi}\) and \(\esem{e_1'}{\rho}\subseteq \sem{\xi_j'}\),
+we have \(D_{j,1}[\rho(z_1)]\land \cdots \land D_{j,m}[\rho(z_m)]\land C_j'[c'_1,\ldots,c'_k]=\TRUE\).
+Thus, 
+\(C_j[c_1,\ldots,c_k]=\TRUE\).
+Thus, we have \(\esem{e'}{\env}\subseteq \sem{\xi_j}\) as required.
+
+\item Case \rn{Sub-Fun}:\\
+In this case, for every \(j\in J\), we have:
+\[
+\begin{array}{l}
+\xi_j' = \dtI_{i\in S_j'} (x\COL\xi'_{1,i}\ra \xi'_{2,i})\\
+\xi_j = \dtI_{i\in S_j} (x\COL\xi_{1,i}\ra \xi_{2,i})\\
+S_j\subseteq S_j'\\
+\sigma = x\COL\sigma_1 \ra \sigma_2\\
+\sigma' = x\COL\sigma_1'\ra \sigma_2'\\
+%%\delta' = \dtI_{i\in\set{1,\ldots,m,\ldots,n}} (x\COL\delta'_{1,i}\ra \delta'_{2,i})\\
+%%\delta = \dtI_{i\in\set{1,\ldots,m}} (x\COL\delta_{1,i}\ra \delta_{2,i})\\
+\forall i\in S_j.
+\comp{\Xi_j}{\Gamma} \pDT \comp{\xi_{1,i}}{\sigma_1} \subT \comp{\xi'_{1,i}}{\sigma'_1}\\
+\forall i\in S_j.
+\comp{\Xi_j}{\Gamma},x\COL\comp{\xi_{1,i}}{\sigma_1} \p \comp{\xi'_{2,i}}{\sigma'_2}\subT \comp{\xi_{2,i}}{\sigma_2}
+%%  \mbox{ for each $i\in \bigcup_{j\in J}S_j$}\\
+\end{array}
+\]
+By the assumption, we have:
+\[
+\begin{array}{l}
+\T{\Gamma}{e}{\delta'}{e_0'}\\
+\end{array}
+\]
+Since \(\T{\Gamma, x\COL\sigma}{x}{\sigma}{x}\) and \(\forall \env\in\sem{\Xi,x\COL\xi}.\esem{x}{\env}\subseteq \sem{\xi}\)
+hold in general, by the induction hypothesis, we have:
+\[
+\begin{array}{l}
+\T{\Gamma,x\COL\sigma_1}{x}{\sigma_1'}{e_1'}\\
+\forall j\in J.\forall i\in S_j.\forall \env_1\in\sem{\Xi_j,x\COL\xi_{1,i}}.
+   \esem{e_1'}{\env_1}\subseteq \sem{\xi'_{1,i}} \\
+\hfill \cdots \mbox{(1)}\\
+\T{\Gamma,x\COL\sigma_1,x'\COL\sigma_1',y\COL\sigma_2'}{y}{\sigma_2}{e_2'}\\
+\forall j\in J.\forall i\in S_j.\forall \env_2\in\sem{\Xi_j,x\COL\xi_{1,i},x\COL\xi'_{1,i},y\COL\xi_{2,i}'}.\\
+\qquad   \esem{e_2'}{\env_2}\subseteq \sem{\xi_{2,i}}
+\hfill \cdots \mbox{(2)}\\
+\end{array}
+\]
+%%for each \(i\in S\). \koba{Here, how can we guarantee that \(e_1', e_2'\) do not depend on \(i\)?}
+
+Let \(e'\) be
+\[\lambda x.\LETEQIN{x'}{e_1'}\LETEQIN{y}{e_0'\,x'}{e_2'}.\]
+Then we have
+\[\T{\Gamma}{e}{\sigma}{e'}.\]
+
+It remains to show
+\[\forall j\in J.\forall\env\in \sem{\Xi_j}.
+(\esem{e_0'}{\env}\subseteq \sem{\xi_j'}\imply \esem{e'}{\env}\subseteq \sem{\xi_j}).\]
+Suppose \(\env\in \sem{\Xi}\) and \(\esem{e_0'}{\env}\subseteq \sem{\xi_j'}\).
+Assume also that \(v_0\in \sem{\xi_{1,i}}\) (where \(i\in S_j\)).
+It suffices to show 
+\[\esem{\LETEQIN{x'}{e_1'}\LETEQIN{y}{e_0'\,x'}{e_2'}}{\rho_1} \subseteq \sem{\xi_{2,i}}\]
+for \(\rho_1 = \rho\set{x\mapsto v_0}\).
+
+By the condition (1), we have \(\esem{e_1'}{\rho_1}\subseteq \sem{\xi_{1,i}'}\).
+Let \(v_1\in \esem{e_1'}{\rho_1}\subseteq \sem{\xi_{1,i}'}\).
+By the assumption \(\esem{e_0'}{\env}\subseteq \sem{\xi_j'}\),
+we also have 
+\[\esem{e_0'x'}{\rho_1\set{x'\mapsto v_1}}\subseteq \sem{\xi_j'}.\]
+Let \(v_2\in \esem{e_0'x'}{\rho_1\set{x'\mapsto v_1}}\)
+and \(\rho_2 = \rho_1\set{x'\mapsto v_1,y\mapsto v_2}\).
+Then by the condition (2), we have
+\[
+\esem{e_2'}{\rho_2}\subseteq \sem{\xi_{2,i}}.
+\]
+Thus, we have
+\[\esem{\LETEQIN{x'}{e_1'}\LETEQIN{y}{e_0'\,x'}{e_2'}}{\rho_1} \subseteq \sem{\xi_{2,i}}\]
+as required.
+\end{itemize}
+\end{proof}
+
+The following is the key lemma, which states that if an expression has type \(\delta\) in
+the dependent intersection type system, we can obtain an abstract program that is precise enough
+to derive the property described by \(\delta\).
+\begin{lemma}
+\label{lem:relcomp-main}
+Suppose that \(\comp{\Xi}{\Gamma} \pDT e: \comp{\xi}{\sigma}\).
+%% with \(\Delta=\comp{\Xi}{\Gamma}\) and \(\dtvar=\comp{\xi}{\sigma}\).
+%%Further, assume also that \(\FV{\sigma}=\FV{\dtvar}\).
+Then, there exists \(e'\) such that
+\begin{enumerate}
+\item \(\T{\Gamma}{e}{\sigma}{e'}\)
+\item For any \(\rho\in \sem{\Xi}\),
+    \(\esem{e'}{\rho}\subseteq \sem{\xi}\).
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+This follows by induction on the derivation of \(\comp{\Xi}{\Gamma} \pDT e: \comp{\xi}{\sigma}\),
+with case analysis on the last rule used.
+
+\begin{itemize}
+\item \textit{{\rn{D-Base}}}:
+In this case, \(\xi = \hole_i\).
+Let \(\dtvar = \rt{\nu}{b}{\nu=e}\) and \(\sigma=b[\seq{P},\lambda \nu.\nu=e,\seq{Q}]\).
+Let \(e'\) be:
+\(\tuple{\seq{\nondet},\TRUE,\seq{\nondet}}\) where \(\nondet = \PARB{\TRUE}{\FALSE}\).
+Then \(\T{\Gamma}{e}{\tau}{e'}\) is obtained by using the rules
+\rn{A-Base}, \rn{A-CoerceAdd}, and \rn{A-CoerceRem} (modulo simplifications of the tarnslated term).
+ \(\esem{e'}{\rho}\subseteq\sem{\xi}\)
+also holds as required.
+
+%%\koba{Here, it is important that the abstract values of \(\seq{P},\seq{Q}\) can be independent of
+%%the actual value of \(e\).}
+\item \textit{\rn{D-App}}:
+In this case,
+\[
+\begin{array}{l}
+\delta = \dtI_{j\in S} [\seq{v}/\seq{y}]\delta_j\\
+\Delta(x) = \dtI_{j\in S}y_1\COL\delta_{j,1}\ra \cdots \ra y_k\COL\delta_{j,k}\ra \delta_j\\
+\Delta \pDT v_i: \dtI_{j\in S} [v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\delta_{j,i}
+\end{array}
+\]
+By the condition \(\Delta = \comp{\Xi}{\Gamma}\) and \(\delta = \comp{\xi}{\sigma}\), we have:
+\[
+\begin{array}{l}
+\Xi(x) = \dtI_{j\in S}y_1\COL\xi_{j,1}\ra \cdots \ra y_k\COL\xi_{j,k}\ra \xi_j\\
+\Gamma(x) = y_1\COL \sigma_1\ra \cdots \ra y_k\COL\sigma_k\ra \sigma'\\
+\delta_{j,i} = \comp{\xi_{j,i}}{\sigma_i}\\
+\delta_j = \comp{\xi_j}{\sigma'}
+\comp{\xi}{\sigma} = \comp{\dtI_{j\in S} \xi_j}{[\seq{v}/\seq{y}]\sigma'}
+\end{array}
+\]
+Thus, we have:
+\[
+\begin{array}{l}
+\dtI_{j\in S}
+  [v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\delta_{j,i} =\\
+\qquad \comp{(\dtI_{j\in S}\xi_{j,i})}{[v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\sigma_{i}}.
+\end{array}\]
+By the induction hypothesis, we have:
+\[
+\begin{array}{l}
+\T{\Delta}{v_i}{[v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\sigma_{i}}{e'_{i}}\\
+\esem{e_i'}{\rho} \subseteq \sem{\dtI_{j\in S}\xi_{j,i}} 
+  \subseteq \sem{\xi_{j,i}}.
+\end{array}
+\]
+
+By the assumption \(\rho\in \sem{\Xi}\) and 
+\(\Xi(x) = \dtI_{j\in S}y_1\COL\xi_{j,1}\ra \cdots \ra y_k\COL\xi_{j,k}\ra \xi_j\),
+we have \(\esem{x\, e_1\,\cdots\,e_k}{\rho} \subseteq
+                 \sem{\xi_j}\).
+Thus, we have
+\[\esem{x\, e_1\,\cdots\,e_k}{\rho} \subseteq
+                \sem{\dtI_{j\in S}\xi_j}.\]
+
+By the condition \(\comp{\xi}{\sigma} = \comp{\dtI_{j\in S} \xi_j}{[\seq{v}/\seq{y}]\sigma'}\)
+and Lemma~\ref{lem:relcomp-coerce}, we have \(e'\) such that
+\[
+\begin{array}{l}
+\T{\Gamma}{e}{\sigma}{e'}\\
+\forall \env\in\set{\Xi}.\esem{e'}{\rho}\subseteq \sem{\xi}
+\end{array}
+\]
+\item \textit{\rn{D-Let}}:
+In this case, we have:
+\[
+\begin{array}{l}
+e = \LETEQIN{x}{e_1}{e_2}\\
+\comp{\Xi}{\Gamma} \pDT e_1: \comp{\xi_1}{\sigma_1}\\
+\comp{\Xi}{\Gamma}, x\COL\comp{\xi_1}{\sigma_1}\pDT e_2: \comp{\xi_2}{\sigma_2}
+\end{array}
+\]
+By the induction hypothesis, we have:
+\[
+\begin{array}{l}
+\T{\Gamma}{e_1}{\sigma_1}{e_1'}\\
+\T{\Gamma, x\COL\sigma_1}{e_2}{\sigma}{e_2'}\\
+\forall \rho\in \sem{\Xi}.\esem{e_1'}{\rho} \subseteq\sem{\xi_1}\\
+\forall \rho\in \sem{\Xi}.\forall v\in \sem{xi_1}.
+ \esem{e_2'}{\rho\set{x\mapsto v}}\in \sem{\xi}
+\end{array}
+\]
+%%\koba{What if \(\sem{\rho\dtvar',\rho\sigma'}\) is empty??-- In that case,
+%%\(\esem{e_1'}{\rho'}\) is empty, so that the condition below holds.}
+Let \(e' \equiv \LETEQIN{x}{e_1'}{e_2'}\). Then
+From the first two conditions above and \rn{A-Let}, we obtain
+\[ \T{\Gamma}{e}{\sigma}{e'}.\]
+From the last two conditions, we obtain 
+\(\FAIL\not\in \esem{e_1'}{\rho}\) and 
+\[\forall \rho\in \sem{\Xi}.\forall v\in \esem{e_1'}{\rho}. \esem{e_2'}{\rho\set{x\mapsto v}}\in \sem{\xi}\]
+which implies 
+\[\forall \rho\in\sem{\Xi}.\esem{e'}{\env}\subseteq \sem{\xi}.\]
+
+
+\item \textit{\rn{D-Fail}}:
+In this case, we have:
+\[
+\begin{array}{l}
+e \equiv \FAIL\qquad\qquad
+\SEM{\comp{\Xi}{\Gamma}} \imply \FALSE
+\end{array}
+\]
+By the second condition, we have:
+%% \(z_i\COL \set{\nu:b_i \mid C_i[P_{i,1}(\nu),\ldots,P_{i,k_i}]} \in \comp{\Xi}{\Gamma}
+%%(i\in \set{1,\ldots,m})\) with
+\[
+\begin{array}{l}
+z_i \COL \set{\nu\COL b_i \mid C_i} \in \Xi \mbox{ (for $i\in\set{1,\ldots,m}$)}\\
+z_i \COL b_i[P_{i,1},\ldots,P_{i,k_i}] \in \Gamma\mbox{ (for $i\in\set{1,\ldots,m}$)}\\
+C_1[P_{1,1}(z_1),\ldots,P_{1,k_1}(z_1)]\land \cdots\\
+\land C_m[P_{m,1}(z_m),\ldots,P_{m,k_m}(z_m)]\imply \FALSE.
+\end{array}
+\]
+%%%Let \(D[u_1,\ldots,u_m]\) be a boolean formula equivalent to:
+%%%\[
+%%%\begin{array}{l}
+%%%\exists z_1,\ldots,z_m.
+%%%  u_1 = \tuple{P_{1,1}(z_1),\ldots,P_{1,k_1}(z_1)}\\
+%%% \land \cdots
+%%% \land u_m = \tuple{P_{m,1}(z_m),\ldots,P_{m,k_m}(z_m)}
+%%%\end{array}
+%%%\]
+%%%(Note that such a formula always exists, although it may not be computable. It is indeed computable
+%%%in Presburger arithmetic.)
+
+Let us define \(e'\) by:
+\[
+\begin{array}{l}
+e' \equiv \ASSUME{\psi}{\FAIL}\\
+%%e_3' \equiv \LETEQIN{y}{\TRUE}{\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\TRUE}{\FALSE})}}\\
+\psi \equiv C_1[z_1]\land \cdots \land C_m[z_m] \imply \FALSE\\  %%%) \land D[z_1,\ldots,z_m]\\
+%%\psi' \equiv \TRUE
+\end{array}
+\]
+Then, since \(\models \THE{\Gamma}\psi\) holds,
+we have \(\T{\Gamma}{\FAIL}{\sigma}{e'}\).
+Suppose \(\env\in \sem{\Xi}\). Then, \(\esem{C_1[z_1]\land \cdots \land C_m[z_m]}{\env} = \set{\FALSE}\),
+so that we have \(\esem{e'}{\env} = \emptyset \subseteq \sem{\xi}\) as required.
+%%and \(\forall \env\in \sem{\Xi}.\esem{e'}{\env} = \emptyset \subseteq \sem{\xi}\).
+%% (note that the value of \(\psi\) is \(\FALSE\)).
+%%Thus, \(e'\equiv\LETEQIN{x}{e_1'}{\ASSUME{x}{e_2'}}\) satisfies the required conditions.
+
+\item \textit{\rn{D-Assume}}:
+In this case, we have:
+\[
+\begin{array}{l}
+e \equiv \ASSUME{v}{e_1}\\
+\comp{\Xi}{\Gamma}, x\COL \set{\nu:\TUNIT\mid v} \pDT e:\comp{\xi}{\sigma}
+\end{array}
+\]
+Let \(\xi = \set{\nu:\TUNIT\mid \hole_1}\) and \(\sigma_1 = \TUNIT[\lambda x.v]\).
+By the induction hypothesis, we have \(e'_1\) such that
+\[
+\begin{array}{l}
+ \T{\Gamma, x\COL \sigma_1}{e_1}{\sigma}{e_1'}\\
+\forall \env\in\sem{\Xi}.\forall w\in\sem{\xi}.
+  \esem{e_1'}{\rho\set{x\mapsto w}}\subseteq \sem{\xi}
+\end{array}
+\]
+
+Let us define \(e_2'\) by:
+\[
+\begin{array}{l}
+e_2' \equiv \LETEQIN{\tuple{u,w}}{e_3'}{w}\\
+e_3' \equiv \LETEQIN{y}{\TRUE}{\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}}\\
+\psi \equiv \psi' \equiv \TRUE\\
+\end{array}
+\]
+Let \(e'\) be \(\LETEQIN{x}{e_1'}{\ASSUME{x}{e_2'}}\).
+Then, by using \rn{A-Base}, \rn{A-CoerceAdd}, and \rn{A-CoerceRem}, we obtain
+\[\T{\comp{\Xi}{\Gamma}}{e}{\comp{\xi}{\sigma}}{e'}.\]
+Suppose \(\env\in \sem{\Xi}\). 
+Then, we have
+\[ \esem{e'}{\env} = \esem{e_1'}{\env}=\esem{e_1'}{\env\set{x\mapsto \TRUE}} \subseteq \sem{\xi}\]
+as required.
+
+\item Case \rn{D-Par}:
+In this case, we have:
+\[
+\begin{array}{l}
+e \equiv e_1 \PAROP e_2\\
+\comp{\Xi}{\Gamma} \pDT e_i: \comp{\xi}{\sigma}
+\end{array}
+\]
+By the induction hypothesis, we have:
+\[
+\begin{array}{l}
+\T{\Gamma}{e_1}{\sigma}{e_1'}\\
+\forall \env\in\sem{\Xi}.
+\esem{e'_1}{\env} \subseteq \sem{\xi}\\
+\T{\Gamma}{e_2}{\sigma}{e_2'}\\
+\forall \env\in\sem{\Xi}.
+\esem{e'_2}{\env} \subseteq \sem{\xi}\\
+\end{array}
+\]
+The required conditions hold for 
+\(e' = e'_1\PAROP e'_2\).
+
+\item Case \rn{D-Coerce}:
+In this case, we have
+\[
+\begin{array}{l}
+\comp{\Xi}{\Gamma} \pDT e: \comp{\xi'}{\sigma'}\\
+\comp{\xi'}{\sigma'}\subT \comp{\xi}{\sigma}
+\end{array}
+\]
+By the induction hypothesis, we have:
+\[
+\begin{array}{l}
+\T{\Gamma}{e}{\sigma'}{e_1'}\\
+\forall \env\in \sem{\Xi}.\esem{e_1'}{\env} \subseteq \sem{\xi'}
+\end{array}
+\]
+By Lemma~\ref{lem:relcomp-coerce}, we have \(e'\) that satisfies the required conditions.
+\end{itemize}
+
+\end{proof}
+
+\begin{lemma}[correspondence between the denotational and operational semantics]
+\label{lem:denot}
+Let \(e\) be a closed term.
+If \(e\reds{} \FAIL\), then \(\FAIL \in \esem{e}{\emptyset}\).
+\end{lemma}
+\begin{proof}
+This follows by straightforward induction on the length of \(e\reds{}\FAIL\).
+\end{proof}
+
+\begin{pfof}{Theorem~\ref{th:rel-complete}}
+Let \(D = \set{f_1(\seq{x}_1) = e_1,\ldots,f_n(\seq{x}_n)=e_n}\).
+Suppose \(\DPT{}{D}{\Delta}\) and \(\Delta= \comp{\Xi}{\Gamma}\). 
+Then, by Lemma~\ref{lem:relcomp-main}, we have an abstract program
+\(D' = \set{f_1(\seq{x}_1)=e_1',\ldots, f_n(\seq{x}_n)=e_n'}\) such that
+\[
+\begin{array}{l}
+\T{}{D}{\Gamma}{D'}\\
+%%\Gamma(f_i) = \seq{x}_i\COL\seq{\sigma}_i\ra \sigma_i'\\
+\forall \env\in\sem{\Xi}.\esem{\lambda \seq{x}_i.e'_i}{\env} \subseteq \sem{\Xi(f_i)}
+\end{array}
+\]
+Let \(e'^{(m)}\) be the closed expression:
+\[
+\begin{array}{l}
+\LETEQIN{\tuple{f_1^{(0)},\ldots,f_n^{(0)}}}
+    {\tuple{\lambda \seq{x}_1.\bot_1,\ldots,\lambda \seq{x}_n.\bot_n}}\\
+\LETEQIN{\tuple{f_1^{(1)},\ldots,f_n^{(1)}}}
+    {\\\qquad\tuple{\lambda \seq{x}_1.[\seq{f}^{(0)}/\seq{f}]e_1',\ldots,\lambda \seq{x}_1.[\seq{f}^{(0)}/\seq{f}]e_n'}}\\
+\cdots \\
+\LETEQIN{\tuple{f_1^{(m)},\ldots,f_n^{(m)}}}
+    {\\\qquad\tuple{\lambda \seq{x}_1.[\seq{f}^{(m-1)}/\seq{f}]e_1',\ldots,\lambda \seq{x}_1.[\seq{f}^{(m-1)}/\seq{f}]e_n'}}\\
+\quad \textit{main}^{(m)}\tuple{}
+\end{array}
+\]
+Here, \(\bot_i= \ASSUME{\FALSE}c_i\) where \(c_i\) is a constant of the result type of \(f_i\).
+Intuitively, \(e'^{(m)}\) is the program obtained from \(\textit{main}\) by unfolding the function definitions of \(D'\)
+\(m\) times.
+By the construction and the condition
+\(\forall \env\in\sem{\Xi}.\esem{\lambda \seq{x}_i.e'_i}{\env} \subseteq \sem{\Xi(f_i)}\),
+for every \(m\), we have \(\esem{e'^{(m)}}{\emptyset} \subseteq \sem{\TUNIT{C}}\) for some \(C\).
+Thus, \(\FAIL\not\in \esem{e'^{(m)}}{\emptyset}\).
+By Lemma~\ref{lem:denot}, \(e'\not\reds{}\FAIL\) for every \(m\).
+Thus, we have \(\textit{main}\tuple{} \not\redswith{}{D'} \FAIL\).
+\end{pfof}
+%%\end{pfsketch}

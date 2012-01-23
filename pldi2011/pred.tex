@@ -1,0 +1,986 @@
+\section{Predicate Abstraction}
+\label{sec:pred}
+
+This section formalizes predicate abstraction for higher-order programs.
+%
+As explained in Section~\ref{sec:intro}, we use \emph{abstraction types} 
+to express which predicates should be used for abstracting each 
+sub-expression. The syntax of abstraction types is given by:
+\begin{eqnarray*}
+\sigma \mbox{ (abstraction~types) }&::=& b_1[\seq{P}] \mid \cdots \mid b_n[\seq{P}] \mid x\COL\sigma_1 \to \sigma_2 \\
+P,Q \mbox{ (predicates) }&::=& \lambda x.\psi \\
+\Gamma \mbox{ (type~environments)} &::=& \emptyset \mid \Gamma,f\COL\sigma \mid \Gamma,x\COL\sigma
+%\psi&::=& \NTH{i}{x} \mid \NOT \psi \mid \psi_1 \AND \psi_2
+\end{eqnarray*}
+Here, the meta-variable \(\psi\) represents an expression of type 
+\(\TBOOL\) (which is called \emph{a formula}) that is constructed only 
+from variables of base types, constants, and primitive operations; we do 
+not allow formulas that contain function applications, like \(y>f(x)\).
+%%We also use the meta-variable \(\psi\) to denote Boolean formulas (i.e, formulas that 
+%%can be represented as Boolean expressions).
+% we call the expressions of the Boolean progrms, Boolean expressions
+%
+% whose sub-expression can only have the type of the form \(\TBOOL\times 
+%\cdots \times \TBOOL\). 
+The base type \(b_i[\seq{P}]\) describes values \(v\) of type \(b_i\) 
+that should be abstracted to a tuple of booleans
+%that over-approximates 
+\(\tuple{P_1(v),\dots,P_n(v)}\). For example, the integer \(3\) with the 
+abstraction type \(\TINT[\lambda \nu.\nu>0,\lambda \nu.\nu<2]\) is 
+abstracted to \(\tuple{\TRUE,\FALSE}\). We often abbreviate \(b[\,]\) 
+to \(b\).
+%(Recall again that it does not mean the value should satisfy \(\seq{P}\); an integer \(3\) can have type \(\TINT[\lambda x.x<0]\).)
+The dependent function type \(x\COL\sigma_1 \to \sigma_2\) describes 
+functions that take a value \(v\) of type \(\sigma_1\), and return a 
+value of type \([v/x]\sigma_2\).
+% if applied to the actual argument \(v\) of type \(\sigma_1\).
+The scope of \(x\) in the type \(x\COL\sigma_1 \to \sigma_2\) is 
+\(\sigma_2\). When \(x\) does not occur in \(\sigma_2\), we often write 
+\(\sigma_1\to\sigma_2\) for \(x\COL\sigma_1 \to \sigma_2\).
+%
+%In the function type, the variable \(x\) denotes the actual argument, 
+%and can be used in the predicates in \(\sigma_2\).
+As mentioned already, abstraction types only describe how each 
+expression should be abstracted, not the actual value. For example, \(3\) 
+can have type \(\INT[\lambda \nu.\nu<0]\), and \(\lambda x.x\) can have 
+type \(x\COL\INT[\,] \ra \INT[\lambda \nu.\nu=x+1]\) (and abstracted to
+%%a function 
+\(\lambda x:\TUNIT.\FALSE\)).
+
+We do not consider types whose predicates are ill-typed or violate a 
+variable's scope, such as \(x\COL\TBOOL[\,]\to \TINT[\lambda y.x+1=y]\) 
+and \(x\COL\TINT[\lambda x.y>x]\to y\COL\TINT[\,]\to \TBOOL[\,]\). (The 
+former uses a boolean variable as an integer, and the latter refers to 
+the variable \(y\) outside its scope.) Figure~\ref{fig:wf} defines the 
+well-formedness conditions for types and type environments. In the 
+figure, \(\Delta\pS e:\tau\) denotes the type judgment of the standard 
+simple type system. We write \(\alphaB(\sigma)\) and \(\alphaB(\Gamma)\) 
+respectively for the simple type and the simple type environment 
+obtained by removing predicates. For example, 
+%%\begin{eqnarray*}
+%%&&
+\(\alphaB(f\COL (x\COL\TINT[\,]\to \TINT[\lambda y.y>x]), z\COL\TINT[\lambda z.z>0]) %%\\
+  = f\COL \TINT \to \TINT,z\COL \TINT\).
+%%  &=& f\COL \TINT \to \TINT,z\COL \TINT.
+%%\end{eqnarray*}
+\begin{figure}
+\infrule{
+    \alphaB(\Gamma),x\COL b \pS \psi_i: \TBOOL \mbox{ for each $i\in\set{1,\ldots,n}$}}
+   {\Gamma \pW b[\lambda x.\psi_1,\ldots, \lambda x.\psi_n]}
+\rulesp
+\InfruleW{0.45}{\Gamma \pW \sigma_1 \andalso \Gamma, x\COL\sigma_1 \pW \sigma_2}
+   {\Gamma \pW x\COL\sigma_1 \to \sigma_2}
+\InfruleW{0.15}{\ }{\pW \emptyset}
+\InfruleW{0.25}{\pW \Gamma \andalso \Gamma \pW \sigma}
+      {\pW \Gamma, x\COL\sigma}
+\caption{Well-formed types and type environments}
+\label{fig:wf}
+\end{figure}
+
+
+Figure~\ref{fig:pred_abst} defines the predicate abstraction relation 
+\(\T{\Gamma}{e_1}{\sigma}{e_2}\), which reads that an expression \(e_1\) 
+(of the source language in Section~\ref{sec:lang}) can be abstracted to 
+an expression \(e_2\) (of the HBP language given in 
+Section~\ref{sec:boolean}) by using the abstraction type \(\sigma\), 
+under the assumption that each free variable \(x\) of \(e_1\) has been 
+abstracted using the abstraction type \(\Gamma(x)\). In the rules, it is 
+implicitly assumed that all the type environments and types are 
+well-formed. We do not distinguish between function variables and other 
+variables (hence, \rn{A-App} applies also to a function variable \(f\)).
+%%The predicate abstraction relation \(\T{\Gamma}{e_1}{\sigma}{e_2}\) 
+%%reads that the Boolean expression \(e_2\) is an abstraction of the 
+%%expression \(e_1\) with the abstraction type \(\sigma\) under 
+%%the 
+%%abstraction type environment \(\Gamma\).
+%
+%%The derivation rules for the relation are presented in 
+%
+%The rules are .. the previous dependent type 
+%systems~\cite{Flanagan2006,Rondon2008,Unno2009,Terauchi2010} except that 
+%...
+%
+%In \rn{A-Var}, we write \(x\ \seq{e}\) for \(\LETEQIN{\seq{x}}{\seq{e}}{x\ \seq{x}}\).
+%In \rn{A-Fun}, we write \(f\ \seq{e}\) for \(\LETEQIN{\seq{x}}{\seq{e}}{f\ \seq{x}}\).
+%\rn{A-Assume} and 
+In \rn{A-CAdd}, \(\ASSUME{e_1}{e_2}\) is a syntax sugar for 
+\(\LETEQIN{x_1}{e_1}{\ASSUME{x_1}{e_2}}\).
+
+\input{pred_rules}
+
+In \rn{A-CAdd} and \rn{A-Fail}, \(\beta(\sigma)\) (\(\beta(\Gamma)\), 
+resp.) represent the simple type (simple type environment, resp.) 
+obtained by replacing each occurrence of a base abstraction type 
+\(b[P_1,\dots,P_m]\) with \(\underbrace{\TBOOL \times \cdots \times 
+\TBOOL}_m\). Intuitively, \(\beta(\Gamma)\) represents the type 
+environment for the output program of the transformation. 
+
+%%Similar syntax sugars are also used in \rn{A-Assume} and \rn{A-Coerce}.
+%%%In \rn{A-Assume} and \rn{A-Coerce}, we write \(\ASSUME{e_1}{e_2}\) for:
+%%%\[
+%%% \LETEQIN{x}{e_1}{\ASSUME{x}{e_2}}.
+%%%\]
+%%%In \rn{A-Coerce}, we write \(\tuple{e_1,\dots,e_n}\) for:
+%%%\[
+%%% \LETEQIN{x_1}{e_1}{\dots \IN\ \LETEQIN{x_n}{e_n}{\tuple{x_1,\dots,x_n}}}.
+%%%\]
+%
+
+
+
+
+We explain the main rules. 
+Base values are abstracted by using three rules \rn{A-Base}, \rn{A-CAdd}, and \rn{A-CRem}.
+Before explaining those rules, 
+let us discuss the following simplified version, specialized
+for a single predicate:
+\infrule[A-BSimp]
+  {
+%%\mbox{$e$ is a constant, a variable or an expression of the form \(\OP(\seq{v})\)}\\
+%%    \alphaB(\Gamma) \pS e \COL b\\
+%%   \beta(\Gamma,x:b[\seq{Q}]) \pS \psi \COL \TBOOL \andalso
+%%   \beta(\Gamma,x:b[\seq{Q}]) \pS \psi' \COL \TBOOL \\
+   \models  P(e) \IMPLY \THE{\Gamma}(\psi) \andalso
+   \models \neg P(e) \IMPLY \THE{\Gamma}(\psi')}
+  {\T{\Gamma}{e}{b[P]}{\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}}}
+
+\noindent
+Here, we assume that \(e\) is a constant, a variable, or an expression of the form \(\OP(\seq{v})\)
+and has a base type \(b\). \(\psi\) and \(\psi'\) are boolean formulas that may contain variables in \(\Gamma\).
+As \(e\) may contain variables, we need to take into account information about the values of the variables,
+which is obtained by using the substitution \(\THE{\Gamma}\), defined as:
+%%\begin{eqnarray*}
+\(\set{x \mapsto \tuple{P_1(x),\dots,P_m(x)} \mid \Gamma(x)=b[P_1,\dots,P_m]}\).
+%%\end{eqnarray*}
+For example, let \(\Gamma\) be \(x\COL\TINT[\lambda x.x\mathbin{>}0, \lambda x.x<0]\)
+and \(\psi\) be \(\NTH{1}(x) \land \NTH{2}(x)\). Then,
+\(\THE{\Gamma}(\psi) = x>0\land x<0\).
+As in this example, the substitution \(\THE{\Gamma}\) maps a boolean expression of an abstract program
+to the corresponding condition in the source program.
+In rule \rn{A-BSimp} above, \(\models  P(e) \IMPLY \THE{\Gamma}(\psi)\) means that
+\(P(e)\) is true only if \(\THE{\Gamma}(\psi)\) is true, i.e. the value of \(\psi\) in the abstract program is true.
+Thus, the abstract value of \(e\) may be \(\TRUE\) only if the value of \(\psi\) is \(\TRUE\),
+hence the part \(\ASSUME{\psi}{\TRUE}\) in the abstract program. Similarly,
+the abstract value of \(e\) may be \(\FALSE\) only if the value of \(\psi'\) is \(\TRUE\),
+hence the part \(\ASSUME{\psi'}{\FALSE}\).
+
+For example, let \(e \equiv x+1\),  \(P \equiv \lambda x\geq 0\), and \(\Gamma \equiv x\COL \TINT[P]\).
+Then, \(\models P(x+1) \imply \TRUE\) and \(\models \neg P(x+1) \imply \neg P(x)\), so that 
+\(e\) is abstracted to \(\PARB{(\ASSUME{\TRUE}{\TRUE})}{(\ASSUME{\neg x}{\FALSE})}\).
+Note that \(\THE{\Gamma}(\neg x) = [P(x) /x] \neg x = \neg P(x)\).
+
+We need to generalize the above rule to the case for multiple predicates.
+The following is a naive rule.
+\infrule[A-BCartesian]
+  {\T{\Gamma}{e}{b[P_i]}{e_i}}
+  {\T{\Gamma}{e}{b[P_1,\ldots,P_n]}{\tuple{e_1,\ldots,e_n}}}
+This produces a well-known cartesian abstraction, which is often too imprecise.
+The problem is that each boolean value of the abstraction is computed separately,
+ignoring the correlation. 
+For example, let \(P_1 \equiv \lambda x.x>0\) and
+\(P_2 \equiv \lambda x.x \leq 0\) with \(n=2\). Then, a possible abstraction of an unknown integer
+should be \(\tuple{\TRUE,\FALSE}\) and \(\tuple{\FALSE,\TRUE}\), but the above
+rule would generate 
+\(\tuple{(\PARB{\TRUE}{\FALSE}),(\PARB{\TRUE}{\FALSE})}\), which also contains
+\(\tuple{\TRUE,\TRUE}\) and \(\tuple{\FALSE,\FALSE}\).
+
+The discussion above motivated us to introduce the three rules 
+\rn{A-Base}, \rn{A-CAdd}, and \rn{A-CRem}. 
+In order to abstract an expression \(e\) with \(b[P_1,\ldots,P_n]\),
+we first use \rn{A-Base} to abstract \(e\) to \(\TRUE\) by using the abstraction type \(b[\lambda \nu.\nu=e]\);
+this is necessary to keep the exact information about \(e\) during the computation of abstractions.
+\rn{A-CAdd} is then used to add predicates \(P_1,\ldots,P_n\) one by one, taking into account
+the correlation between the predicates. Note that in \rn{A-CAdd}, 
+the result of abstraction by the other predicates is taken into account by the substitution \(\THE{\Gamma,x:b[\seq{Q}]}\).
+Finally, \rn{A-CRem} is used to remove the unnecessary predicate \(\lambda \nu.\nu=e\).
+See Example~\ref{ex:abstraction} for an application of these rules.
+
+Note that rule \rn{A-CAdd} is non-deterministic in the choice of 
+conditions \(\psi\) and \(\psi'\), so that how to compute the conditions 
+is left unspecified. We have intentionally made so, because depending on 
+base data types, the most precise conditions (the strongest conditions 
+entailed by \(P(x)\) and \(\neg P(x)\)) may not be computable or are too 
+expensive to compute. For linear arithmetics, however, we can use 
+off-the-shelf automated theorem provers to obtain such conditions.
+
+%
+%%%In the rule \rn{A-Base}, a base value \(e\) 
+%%%is abstracted to \(\TRUE\), by using the equality predicate \(\lambda 
+%%%x.x=e\). Note that \(e\) is restricted to a constant, a variable, or a 
+%%%primitive operation, so that \(x=e\) is a formula. To abstract base 
+%%%values with other predicates, the rules \rn{A-CAdd} and \rn{A-CRem} 
+%%%explained later should be used.
+%%%%
+%%%%
+%%%%%\nk{We may want to consider merging \rn{A-Const} and \rn{A-Op}. 
+%%%%%In fact, a constant \(c\) can be considered a nullary operator.}
+%%%%
+
+In rule \rn{A-App}, each argument \(v_i\) is abstracted by using the 
+abstraction type \(\sigma_i\) with \(y_1,\ldots,y_{i-1}\) being replaced 
+by the actual arguments. 
+%%For example, we can derive:
+%%\[
+%% \T{\Gamma}{\texttt{inc}\ y}{\TINT[\lambda \nu.\nu=y+1]}{\texttt{inc}\ y}.
+%%\]
+%%for \(\Gamma=\texttt{inc}:(x:\TINT[\,] \to \TINT[\lambda \nu.\nu=x+1]),y:\TINT[\,]\).
+%%%
+Note that this rule applies also to the case where the sequence 
+\(\seq{v}\) is empty (i.e. \(k=0\)). Thus, we can derive 
+\(\T{\Gamma}{y}{\sigma}{y}\) if \(\Gamma(y)=\sigma\). Note also that the 
+boolean expression \(e_i\) in \rn{A-App} can depend on 
+\(y_1,\dots,y_{i-1}\).
+
+%%In \rn{A-Fail}, we write \(\beta(\sigma)\) (\(\beta(\Gamma)\), resp.) 
+%%for the simple type (simple type environment, resp.) obtained by 
+%%replacing each occurrence of a base abstraction type \(b[P_1,\dots,P_m]\) 
+%%with \(\underbrace{\TBOOL \times \cdots \times \TBOOL}_m\). Intuitively, 
+%%\(\beta(\Gamma)\) represents the type environment for the output program 
+%%of the transformation. 
+%
+In \rn{A-Fail}, the assume statement is inserted for filtering out an 
+invalid combination of abstract values. For example, let \(\Gamma\) be 
+\(x\COL\TINT[\lambda x.x\mathbin{>}0, \lambda x.x<0]\). Then, 
+\(\ASSUME{(\NTH{1}(x) \land \NTH{2}(x))}\) is inserted since \(x>0\) and 
+\(x<0\) cannot be true simultaneously.
+%
+In \rn{A-Asm}, we can use the fact that \(v\) is \(\TRUE\) in \(e\) for 
+abstracting \(e\).
+
+%%%The rules \rn{A-CAdd} and \rn{A-CRem} are used for coercing the 
+%%%abstraction type of a base expression. Before explaining them, let us 
+%%%first explain the following straightforward coercion rule:
+%%%%
+%%%\infrule
+%%%  {\T{\Gamma}{e}{b[\seq{Q}]}{e'} \\
+%%%   \beta(\Gamma,x:b[\seq{Q}]) \pS \psi_i \COL \TBOOL \andalso
+%%%   \beta(\Gamma,x:b[\seq{Q}]) \pS \psi_i' \COL \TBOOL \\
+%%%   \models P_i(x) \IMPLY \THE{\Gamma,x:b[\seq{Q}]}(\psi_i) \andalso
+%%%   \models \neg P_i(x) \IMPLY \THE{\Gamma,x:b[\seq{Q}]}(\psi_i') \\
+%%%   e_i=\PARB{(\ASSUME{\psi_i}{\TRUE})}{(\ASSUME{\psi_i'}{\FALSE}) \\
+%%%   \mbox{(for each \(i \in \set{1,\dots,n}\))}}}
+%%%  {\T{\Gamma}{e}{b[P_1,\dots,P_n]}{\LETEQIN{x}{e'}\tuple{e_1,\dots,e_n}}}
+%%%%
+%%%In the rule, the first premise means that \(e\) is abstracted to \(e'\) 
+%%%by using predicates \(\seq{Q}\). To coerce the abstraction type of \(e\) 
+%%%to \(b[P_1,\dots,P_n]\), we over-approximate the possible value of 
+%%%\(P_i(e)\) for each \(i \in \set{1,\dots,n}\), by using \(e'\). Note 
+%%%that the most imprecise abstraction is \(\PARB{\TRUE}{\FALSE}\), which 
+%%%represents a non-deterministic boolean. To get a more precise 
+%%%abstraction, we find a condition \(\THE{\Gamma,x:b[\seq{Q}]}(\psi_i)\) 
+%%%(\(\THE{\Gamma,x:b[\seq{Q}]}(\psi_i')\), resp.) that is entailed by 
+%%%\(P_i(x)\) (\(\neg P_i(x)\), resp.) and expressed by using only 
+%%%available predicates, where \(x\) represents the value of \(e\). By 
+%%%using them, we obtain a more precise abstraction of \(P_i(x)\):
+%%%\[\PARB{(\ASSUME{\psi_i}{\TRUE})}{(\ASSUME{\psi_i'}{\FALSE})}.\]
+%%%%
+%%%For example, suppose that we have \(\T{\Gamma}{e}{\TINT[\lambda 
+%%%x.x=1]}{e'}\). The abstraction \(e'\) represents whether \(e=1\) holds. 
+%%%%
+%%%To change the abstraction type to \(\TINT[\lambda x.x>0]\), we look for 
+%%%boolean formulas \(\psi\) and \(\psi'\) such that \(\THE{\Gamma,x\COL 
+%%%b[\lambda x.x=1]}(\psi)\) and \(\THE{\Gamma,x\COL b[\lambda 
+%%%x.x=1]}(\psi')\) are entailed by \(x>0\) and \(\neg(x>0)\) respectively, 
+%%%and obtain \(\psi = \TRUE\) and \(\psi' = \neg x\) since we have
+%%%\begin{eqnarray*}
+%%%&&\models x > 0 \implies \TRUE(\equiv\THE{\Gamma,x\COL b[\lambda x.x=1]}(\psi)), \\
+%%%&&\models x \leq 0 \implies x \neq 1(\equiv\THE{\Gamma,x\COL b[\lambda x.x=1]}(\psi')).
+%%%\end{eqnarray*}
+%%%%
+%%%As a result, we obtain:
+%%%%
+%%%\[\T{\Gamma}{e}{\TINT[\lambda x.x>0]}{\LETEQIN{x}{e'}{\tuple{e''}}}.\]
+%%%%
+%%%where \(e'' = \PARB{(\ASSUME{\TRUE}\TRUE)}{(\ASSUME{\neg x}\FALSE)}\). 
+%%%%
+%%%%For example, let us consider how the expression \(x+1\) is abstracted by 
+%%%%using the abstraction type \(\TINT[\lambda \nu.\nu>0]\) under the type 
+%%%%environment \(x:\TINT[\lambda \nu.\nu=0]\). We look for boolean formulas 
+%%%%\(\psi_1\) and \(\psi_1'\) such that \(\THE{x:\TINT[\lambda 
+%%%%\nu.\nu=0]}(\psi_1)\) and \(\THE{x:\TINT[\lambda \nu.\nu=0]}(\psi_1')\) 
+%%%%are entailed by \(x+1>0\) and \(\neg(x+1>0)\) respectively, and obtain 
+%%%%\(\psi_1 = \TRUE\) and \(\psi_1' = \neg x\) since we have
+%%%%\begin{eqnarray*}
+%%%%&&\models x+1 > 0 \implies \TRUE(\equiv\THE{x:\TINT[\lambda \nu.\nu=0]}(\psi_1)), \\
+%%%%&&\models x+1 \leq 0 \implies x \neq 0(\equiv\THE{x:\TINT[\lambda \nu.\nu=0]}(\psi_1')).
+%%%%\end{eqnarray*}
+%%%%As a result, we obtain:
+%%%%\[\T{x:\TINT[\lambda x.x=0]}{x+1}{\TINT[\lambda x.x>0]}{e'}.
+%%%%\]
+%%%%Here, \(e' = \PARB{(\ASSUME{\TRUE}\TRUE)}{(\ASSUME{\neg x}\FALSE)}\).
+%%%%
+%%%
+%%%Note that the above coercion rule may cause imprecise abstraction even 
+%%%if we use the most precise boolean formulas for \(\psi_i\) and 
+%%%\(\psi_i'\). It is because the boolean expression \(e_i\) for each 
+%%%predicate \(P_i\) is obtained without considering \(e_j\ (j \neq i)\) 
+%%%for other predicates \(P_j\). For example, we get an imprecise boolean 
+%%%expression \(\tuple{\PARB{\TRUE}{\FALSE},\PARB{\TRUE}{\FALSE}}\) if we 
+%%%coerce the type \(\TINT[\,]\) of some expression to \(\TINT[\lambda 
+%%%\nu.\nu>0,\lambda \nu.\nu<0]\). (Note here that the second predicate 
+%%%must be false if the first predicate is true.)
+%%%
+%%%To avoid the imprecision, we instead use \rn{A-CAdd} to add predicates 
+%%%one-by-one considering other ones, and then use \rn{A-CRem} to remove 
+%%%unnecessary ones.
+%%%%
+%%%For example, given \(\T{\Gamma}{e}{\TINT[\,]}{e_0}\), we can use 
+%%%\rn{A-CAdd} and \rn{A-CRem} to derive:
+%%%\begin{eqnarray*}
+%%%\T{\Gamma}{e}{\TINT[\lambda \nu.\nu>0,\lambda \nu.\nu<0]}{e_1}
+%%%\end{eqnarray*}
+%%%Here, \(e_1 \equiv \LETEQIN{x_1}{\PARB{\TRUE}{\FALSE}}e_2\) and \(e_2\) 
+%%%is:
+%%%\[
+%%% \tuple{x_1,\IFTE{x_1}{\FALSE}{\PARB{\TRUE}{\FALSE}}}.
+%%%\]
+%%%%
+%%%%%As the former is the most tricky rule, we explain it in detail.
+%%%%%In the rule, \(\THE{\Gamma}\) represents the following substitution:
+%%%%%\begin{eqnarray*}
+%%%%%\set{x \mapsto \tuple{P_1(x),\dots,P_m(x)} \mid \Gamma(x)=b[P_1,\dots,P_m]}.
+%%%%%\end{eqnarray*}
+%%%%%%Given a Boolean formula \(\psi\) whose variables are in \(\DOM{\Gamma}\), 
+%%%%%%we can regard the formula \(\THE{\Gamma}\psi\) as a \emph{concretization} 
+%%%%%%of \(\psi\) with \(\Gamma\), by interpreting each variable \(x\) in 
+%%%%%%\(\psi\) as the tuple \(\tuple{P_1(x),\dots,P_m(x)}\).
+%%%%%% of the predicates for \(x\) specified by \(\Gamma\).
+%%%%, which has the type \(\underbrace{\TBOOL \times \cdots \times 
+%%%%\TBOOL}_n\)
+%%%
+%%%%
+%%%%\addspan{A-Base is NOT subsumed by A-CADD. For example, there is no way 
+%%%%to derive \(\T{\Gamma}{1}{\INT[\lambda x.x=1]}{\TRUE}\) without using 
+%%%%\rn{A-Base}. (Note also that the first premise of A-CADD rule must have 
+%%%%originally been derived from A-Base.)}
+
+Rule \rn{A-CFun} is used for changing the abstraction type of a function 
+from \(x\COL\sigma_1\ra \sigma_2\) to \(x\COL\sigma'_1\ra \sigma'_2\), 
+which is analogous to the usual rule for subtyping-based coercion. If a 
+function \(f\) is used in different contexts which require different 
+abstraction types of \(f\), \rn{A-CFun} can be used to adjust the 
+abstraction type of \(f\) to that required for each context.
+
+%%%\begin{example}
+%%%\label{ex:cfun}
+%%%\addspan{Let \(\Gamma=f:(x:\TINT \to \TINT[\lambda \nu.\nu=x+1])\). 
+%%%Suppose that in some context, \(f\) is required to have the abstraction 
+%%%type \(\TINT[\lambda \nu.\nu \geq 0] \to \TINT[\lambda \nu.\nu \geq 0]\). 
+%%%Predicate abstraction of \(f\) in the context proceeds as in Figure~\ref{fig:cfun}.}
+%%%\end{example}
+
+%%%\begin{figure*}
+%%%\[
+%%%\infers[A-CFun]
+%%% {\T{\Gamma}{f}{\TINT[\lambda \nu.\nu \geq 0] \to \TINT[\lambda \nu.\nu \geq 0]}{e}}
+%%% {\infers%[A-App]
+%%%   {\T{\Gamma}{f}{\sigma}{f}}
+%%%   {\Gamma(f)=\sigma} \andalso
+%%%  \infers%[A-CRem]
+%%%    {\T{\Gamma,x:\TINT[\lambda \nu.\nu \geq 0]}{x}{\TINT[\,]}{\tuple{}}}
+%%%    {\infers%[A-App]
+%%%      {\T{\Gamma,x:\TINT[\lambda \nu.\nu \geq 0]}{x}{\TINT[\lambda \nu.\nu \geq 0]}{x}}
+%%%      {(\Gamma,x:\TINT[\lambda \nu.\nu \geq 0])(x)=\TINT[\lambda \nu.\nu \geq 0]}
+%%%    } \andalso
+%%%  \infers
+%%%    {\T{\begin{array}{r}\Gamma,x:\TINT[\lambda \nu.\nu \geq 0],x':\TINT[\,], \\ y:\TINT[\lambda \nu.\nu=x+1]\end{array}}{y}{\TINT[\lambda \nu.\nu \geq 0]}{x}}
+%%%    {%\infers[A-App]
+%%%     % {\T{\Gamma,x:\TINT[\lambda \nu.\nu \geq 0]}{x}{\TINT[\lambda \nu.\nu \geq 0]}{x}}
+%%%     % {(\Gamma,x:\TINT[\lambda \nu.\nu \geq 0])(x)=\TINT[\lambda \nu.\nu \geq 0]}
+%%%     \vdots
+%%%    }
+%%% }
+%%%\]
+%%%Here, \(\sigma=(x:\TINT[\,] \to \TINT[\lambda \nu.\nu=x+1])\)
+%%%\caption{Predicate Abstraction for Example~\ref{ex:cfun}}
+%%%\label{fig:cfun}
+%%%\end{figure*}
+
+%%%The predicate abstraction rules are straightforward except for 
+%%%\rn{A-Coerce}. \rn{A-Coerce} is necessary to coerce the abstraction type 
+%%%\(b[\seq{Q}]\) of some expression \(e\) to another abstraction type 
+%%%\(b[\seq{P}]\), which is required by the context of \(e\).
+%%%%
+%%%Given an abstraction \(e'\) of \(e\) with \(b[\seq{Q}]\), \rn{A-Coerce} 
+%%%generates another abstraction of \(e\) with \(b[P_1,\dots,P_m]\) from 
+%%%\(e'\). For each \(P_i\), \rn{A-Coerce} first finds the necessary 
+%%%conditions \(\phi\) and \(\phi'\) for \(P_i(x)\) and \(\NOT P_i(x)\) to 
+%%%hold respectively. Here, \(\phi\) and \(\phi'\) are represented as 
+%%%\(\THE{\Gamma,x:b[\seq{Q}]}\psi_i\) and 
+%%%\(\THE{\Gamma,x:b[\seq{Q}]}\psi_i'\) respectively by using some Boolean 
+%%%formulas \(\psi_i\) and \(\psi_i'\), whose variable \(x\) is interpreted 
+%%%as \(\tuple{\seq{Q}(x)}\). Then, we can obtain the Boolean formula 
+%%%\(e_i=\PARB{(\ASSUME{\psi_i}{\TRUE})}{(\ASSUME{\psi_i'}{\FALSE})}\) for 
+%%%the predicate \(P_i\) such that if \(P_i(x)\) is satisfied in the 
+%%%original program, then \(e_i\) evaluates to \(\TRUE\) or diverges in the 
+%%%Boolean program, and if \(\NOT P_i(x)\) is satisfied, then \(e_i\) evaluates to \(\FALSE\) or diverges.
+%never evaluate to \(\TRUE\).
+%never evaluate to \(\FALSE\)
+
+%%\todo{add an example derivation}
+
+We can read the predicate abstraction rules for 
+\(\T{\Gamma}{e}{\sigma}{e'}\) as
+%%a deterministic and syntax-directed 
+an algorithm that takes \(\Gamma, e\) and \(\sigma\)  as input, and 
+outputs \(e'\) as an abstraction of \(e\), by (1) restricting 
+applications of the rules for coercion (of names \rn{A-CXyz}) to the 
+actual arguments
+%%\(\seq{v}\) 
+of function applications,
+%Ž®‘S‘Ì‚É‚àcoercion‚ª•K—v
+%%the function applications \(x\ \seq{v}\) and \(f\ \seq{v}\) in \rn{A-Var} and \rn{A-Fun}, 
+and (2) fixing an algorithm to find the boolean formulas \(\psi\) and 
+\(\psi'\) in \rn{A-CAdd}.
+%%For example, we can use an algorithm to find the strongest ones as in \cite{Ball2002}.
+%
+(Note that in \rn{A-Let}, the type \(\sigma'\) can be obtained from 
+\(\Gamma\) and \(e_1\).)
+%%\todo{In \rn{A-Let}, the bound variable \(x\) is annotated with the type 
+%%\(\sigma'\), which can be automatically obtained from \(e_1\).}
+The rule for \(\T{}{D}{\Gamma}{D'}\) can then be interpreted as an 
+algorithm that takes \(D\) and \(\Gamma\) as input, and outputs an HBP 
+\(D'\) as an abstraction of \(D\).
+
+\begin{example}
+\label{ex:abstraction}
+Recall the program \(M_2\) in Section~\ref{sec:intro}.
+Let \(\Gamma\) be: %% the following abstraction type:
+\[
+\begin{array}{l}
+x\COL \ITint{\lambda \nu.\nu\geq 0}, g\COL \ITint{\lambda \nu.\nu> 0} \ra \TUNIT
+\end{array}
+\]
+The body of \(f\) is transformed as follows. \(x+1\) is transformed by:
+\[
+\infers[A-CRem]
+  {\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu>0}}{e_2}}
+  {\infers[A-CAdd]
+    {\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu=x+1,\lambda \nu.\nu>0}}{e_1}}
+    {\infers[A-Base]
+      {\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu=x+1}}{\TRUE}}
+      {}}}
+\]
+%
+Here, \(e_1 \equiv \LETEQIN{y_1}{\TRUE}{\tuple{y_1,e_3}}\) and \(e_2 
+\equiv \LETEQIN{\tuple{y_1,y_2}}{e_1}{y_2}\), with \(e_3 \equiv 
+\PARB{(\ASSUME{\TRUE}{\TRUE})}{(\ASSUME{\neg (x\land y_1)}{\FALSE})}\).
+%%which is equivalent to \(\TRUE\) if \(x\land y_1=\TRUE\) and \(\TRUE\PAROPB \FALSE\) otherwise.
+Here, we used \(\TRUE\) and \(\neg (x\land y_1)\) as \(\psi\) and 
+\(\psi'\) respectively, in %rule 
+\rn{A-CAdd}. (Note that 
+\(P(y_1) \imply \THE{\Gamma,y_1:\TINT[\lambda \nu.\nu=x+1]}(\psi_1)\), i.e.,
+\(y_1 \leq 0 \imply \neg(x\geq0 \land y_1=x+1)\) holds.)
+By simplifying \(e_2\), we get \(\IFTE{x}{\TRUE}{\TRUE\PAROPB\FALSE}\).
+%%\(\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu>x}}{\ifexp{
+Thus, the body \(g(x+1)\) of function \(f\) is transformed by using 
+\rn{A-App} as follows:
+\[
+\infers%[A-App]
+  {\T{\Gamma}{g (x+1)}{\TUNIT}{\begin{array}{l}\LETEQIN{y}{\IFTE{x}{\TRUE\\\quad\quad\quad\quad\quad\ \ }{(\TRUE\PAROPB\FALSE)}}g(y)\end{array}}}
+  {\Gamma(g)=\ITint{\lambda \nu.\nu> 0} \ra \TUNIT \andalso
+   \infers%[A-CRem]
+    {\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu>0}}{e_2}}
+    {\vdots}}
+\]
+\end{example}
+
+Our predicate abstraction rules are applicable to programs that use 
+infinite data domain other than integers. 
+See 
+\iffull
+Appendix~\ref{sec:examplelist}
+\else
+\cite{Kobayashi2011}
+\fi
+for an example of abstracting a list-processing program.
+
+%%%\iffull
+%%%\begin{example}
+%%%\label{ex:list}
+%%%Consider a language having a list type \(\Tlist\) as a data type, with the following constants and
+%%%operators:
+%%%\[
+%%%\begin{array}{l}
+%%%\textit{nil}: \Tlist, \qquad 
+%%%%%\textit{isnil}: \Tlist \to \TBOOL\\
+%%%\textit{cons}: \TINT, \Tlist \to \Tlist\\
+%%%\textit{car}: \Tlist \to \TINT, \qquad 
+%%%\textit{cdr}: \Tlist \to \Tlist\\
+%%%\textit{length}: \Tlist \to \TINT
+%%%\end{array}
+%%%\]
+%%%Let us consider the following program.
+%%%\begin{verbatim}
+%%%let map f x = if x=nil then nil 
+%%%           else let y=f(car(x)) in 
+%%%                let r=map f (cdr(x)) in cons(y,r) in
+%%%let g x = x+1 in
+%%%  if length(map g l) = length(l) then () else fail
+%%%\end{verbatim}
+%%%Consider the following abstraction type environment:
+%%%\[
+%%%\begin{array}{l}
+%%%\textit{map}\COL(\ITint{\,}\ra \ITint{\,}) \ra x\COL\Tlist[\,]\\
+%%%\qquad\qquad \ra \Tlist[\lambda r.\textit{length}(r)=\textit{length}(x)] \\%%\sigma \\
+%%%g\COL \ITint{\,}\ra \ITint{\,}
+%%%\end{array}
+%%%\]
+%%%
+%%%By applying the predicate abstraction (and some simplification), 
+%%%we get the following abstract version of \texttt{map}: see Appendix~\ref{sec:examplelist} for 
+%%%details.
+%%%\begin{verbatim}
+%%%let map f x = if randb() then tt
+%%%              else let y=f() in
+%%%               let r=map f() in r in
+%%%let g x = () in
+%%%  if map g () then () else fail
+%%%\end{verbatim}
+%%%By model-checking the abstract program, we know that the program never fails.
+%%%\qed
+%%%\end{example}
+%%%\fi
+
+%%%\begin{example}
+%%%Recall the program \(M_3\) in Section~\ref{sec:intro}.
+%%%Let \(\Gamma\) be the following abstraction type:
+%%%\[
+%%%\begin{array}{l}
+%%%x\COL \ITint{\,}, g\COL \ITint{\lambda \nu.\nu> x} \ra \TUNIT
+%%%\end{array}
+%%%\]
+%%%The body of the function \(f\) is transformed as follows.
+%%%First, \(n+1\) is transformed by:
+%%%\[
+%%%\infers[A-CRem]{\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu>x}}{e_2}}
+%%% {\infers[A-CAdd]{\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu=x+1,\lambda \nu.\nu>x}}{e_1}}
+%%% {\infers[A-Base]{\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu=x+1}}{\TRUE}}{}}}
+%%%\]
+%%%Here, \(e_1 \equiv \LETEQIN{y}{\TRUE}{\tuple{y,e_3}}\)
+%%%and \(e_2 \equiv \LETEQIN{\tuple{x,y}}{e_1}{y}\), where
+%%%\[ e_3 \equiv  (\ASSUME{\TRUE}{\TRUE})\PAROP (\ASSUME{\neg y}{\FALSE}).\]
+%%%Here, we used \(\TRUE\) and \(\neg y\) as \(\psi\) and \(\psi'\) respectively,
+%%%in rule \rn{A-CAdd}. (Note that \(\neg (y>x) \imply [(y=x+1)/y](\neg y)\) holds.)
+%%%By simplifying \(e_2\), we get 
+%%%\(\T{\Gamma}{x+1}{\ITint{\lambda \nu.\nu>x}}{\TRUE}\).
+%%%Thus, the body \(g(x+1)\) of function \(f\) is transformed into \(g(\TRUE)\).
+%%%\qed
+%%%\end{example}
+
+%%%\begin{example}
+%%%Recall the program \(M_3\) in Section~\ref{sec:intro}.
+%%%Let \(\Gamma\) be the following abstraction type:
+%%%\[
+%%%\begin{array}{l}
+%%%f\COL (x\COL\ITint{\,}) \ra (\ITint{\lambda w.w> x} \ra \TUNIT) \ra \TUNIT,\\
+%%%h \COL (z\COL\ITint{\,}) \ra (y\COL\ITint{\lambda y.y> z}) \ra \TUNIT,\\
+%%%g n\COL \ITint{\lambda x.x\geq 0}
+%%%\end{array}
+%%%\]
+%%%The main expression \verb|if n>=0 then f n (h n) else ()| is expressed as
+%%%\(\PAR{e_1}{e_2}\) where
+%%%\[
+%%%\begin{array}{l}
+%%%e_1 \equiv \ASSUME{n\geq 0}{f\,n\,(h\,n)}\\
+%%%e_2 \equiv \ASSUME{\neg n\geq 0}{()}.
+%%%\end{array}
+%%%\]
+%%%The condition \(n\geq 0\) is transformed as follows.
+%%%\[
+%%%\infers[A-C]{\T{\Gamma}{n\geq 0}{\TBOOL[\lambda x.x=\TRUE]}{\LETEQIN{x}{\TRUE}{e_3}}}
+%%%   {\infers[A-Op]{\T{\Gamma}{n\geq 0}{\TBOOL[\lambda x.x=(n\geq 0)]}{\TRUE}}{}}
+%%%\]
+%%%Here, \(e_3\) is \(\PARB{(\ASSUME{(x\IMPLY n)}{\TRUE})}{(\ASSUME{(x\IMPLY\neg n)}{\FALSE})}\).
+%%%(Thus, \(\LETEQIN{x}{\TRUE}{e_3}\) is equivalent to:\\
+%%%\(\PARB{(\ASSUME{n}{\TRUE})}{(\ASSUME{\neg n}{\FALSE})}\),
+%%%which is further simplified to \(n\).)
+%%%The expression \(f\,n\,(h\,n)\) is transformed as follows (by using \rn{A-Var}).
+%%%\[
+%%%\infers[A-Var]
+%%%   {\T{\Gamma}{f\,n\,(h\,n)}{\TUNIT}{f\,e_4\,e_5}}
+%%%   {\T{\Gamma}{n}{\ITint{\,}}{e_4} &
+%%%    \T{\Gamma}{h\,n}{\sigma}{e_5}}
+%%%\]
+%%%Here, \(\sigma = \ITint{\lambda w.w>n}\ra\TUNIT\), 
+%%%\(e_4 \equiv \LETEQIN{x}{\TRUE}{()}\) and \(e_5 \equiv \LETEQIN{y}{(\LETEQIN{x}{\TRUE}{()})}h\,y\).
+%%%\(\T{\Gamma}{n}{\ITint{\,}}{e_4}\) is obtained by.
+%%%\[
+%%%\infers[A-C]{\T{\Gamma}{n}{\ITint{\,}}{\LETEQIN{x}{\TRUE}{()}}}
+%%%   {\infers[A-Op]{\T{\Gamma}{n}{\ITint{\lambda x.x=n}}{\TRUE}}{}}
+%%%\]
+%%%\(\T{\Gamma}{h\,n}{\sigma}{e_5}\) is obtained by:
+%%%\[
+%%%\infers[A-Var]
+%%%  {\T{\Gamma}{h\,n}{\sigma}{e_5}}
+%%%  {\infers[A-C]{\T{\Gamma}{n}{\ITint{\,}}{\LETEQIN{x}{\TRUE}{()}}}
+%%%   {\infers[A-Const]{\T{\Gamma}{n}{\ITint{\lambda x.x=n}}{\TRUE}}
+%%%    {}}}
+%%%\]
+%%%Thus, with some trivial simplification of expressions, we obtain
+%%%\(\ASSUME{n}{f()(h())}\) from \(e_1\).
+%%%Similarly, we obtain \(\ASSUME{\neg n}{()}\) from \(e_2\).
+%%%Therefore, the abstract version of the main expression is equivalent to:
+%%%\(
+%%%\IFTE{n}{f()(h())}{()}
+%%%\).
+%%%\qed
+%%%\end{example}
+
+%%%\begin{remark}
+%%%It is possible to add the following rule for
+%%%changing abstraction types of functions.
+%%%%%coercing functions. 
+%%%%%\todo{coercion~rule~for~functions}
+%%%%\infrule
+%%%%  {\SUB{\Gamma}{e_1}{\sigma_1'}{\sigma_1} \andalso
+%%%%   \SUB{\Gamma,y:\sigma_1'}{e_2}{\sigma_2}{\sigma_2'}}
+%%%%  {\SUB{\Gamma}{\lambda x.\lambda y.e_2\ (x\ (e_1\ y))}{(y:\sigma_1 \to \sigma_2)}{(y:\sigma_1' \to \sigma_2')}}
+%%%
+%%%\infrule
+%%%  {\T{\Gamma}{e}{x\COL\sigma_1\to\sigma_2}{e'}
+%%%  \\ \T{\Gamma,x'\COL\sigma_1'}{x'}{\sigma_1}{e_1'}
+%%%  \\ \T{\Gamma,x'\COL\sigma_1',x\COL\sigma_1,y\COL\sigma_2}{y}{\sigma_2'}{e_2'}}
+%%%  {\T{\Gamma}{e}{x'\COL\sigma_1'\to\sigma_2'}
+%%%   {\lambda x'.\LETEQIN{x}{e_1'}\LETEQIN{y}{e'\ x}e_2'}}
+%%%%%%\unno{Can we use \(\lambda x.e\)}
+%%%%%%\unno{I have replaced the following rule with the above one:
+%%%%%%\infrule
+%%%%%%  {\T{\Gamma}{e}{x\COL\sigma_1\to\sigma_2}{e'}
+%%%%%%  \\ \T{\Gamma,x\COL\sigma_1'}{x'}{\sigma_1}{e_1'}
+%%%%%%  \\ \T{\Gamma,y\COL\sigma_2}{y}{\sigma_2'}{e_2'}}
+%%%%%%  {\T{\Gamma}{e}{x\COL\sigma_1'\to\sigma_2'}
+%%%%%%   {\lambda x'.\LETEQIN{x}{e_1'}\LETEQIN{y}{e'}e_2'}}
+%%%%%%}
+%%%%\rulesp
+%%%This introduces more flexibility in the choice of predicates used at each program point.
+%%%For example, there are two calls of a higher-order function: \(f(g)\) and \(f(h)\).
+%%%With the extension above, we need not use the same abstraction type for \(g\) and \(h\).
+%%%\qed
+%%%\end{remark}
+
+We discuss properties of the predicate abstraction relation below. First, 
+we show that if abstraction types are consistent, there is always a 
+valid transformation. 
+%%Here, 
+%%we write \(\alphaB(\sigma)\) (\(\alphaB(\Gamma)\), resp.)
+%%for the simple type (type environment, resp.) obtained by
+%%each occurrence of a base abstraction type \(b[P_1,\dots,P_m]\) 
+%%with \(b\). 
+We write \(\Gamma\pD e:\sigma\) for the type judgment relation obtained 
+from the predicate abstraction rules by removing all the conditions on 
+outputs:
+%%\iffull
+see 
+\iffull 
+Appendix~\ref{sec:abst-types}. 
+\else
+\cite{Kobayashi2011}.
+\fi
+%% for the type derivation rules.
+%%\else
+%%see the full paper~\cite{KSU10} for the type derivation rules.
+%%\fi
+%\nk{Write typing rules in appendix or supplemenatary material.}
+
+\begin{theorem}
+Suppose \(\Gamma\pD e:\sigma\). Then, \(\alphaB(\Gamma)\pS 
+e:\alphaB(\sigma)\). Furthermore, there exists \(e'\) such that 
+\(\T{\Gamma}{e}{\sigma}{e'}\).
+\end{theorem}
+\begin{proof}
+Straightforward induction on the derivation of \(\Gamma\pD e:\sigma\). 
+Note that in the rule for \rn{A-CAdd}, we can choose \(\TRUE\) as 
+\(\psi\) and \(\psi'\).
+\end{proof}
+
+The following lemma guarantees that the output of the transformation is 
+well-typed.
+\begin{lemma}
+If \(\T{\Gamma}{e_1}{\sigma}{e_2}\), then \(\beta(\Gamma)\pS e_2: 
+\beta(\sigma)\).
+\end{lemma}
+\begin{proof}
+Straightforward induction on the derivation of 
+\(\T{\Gamma}{e_1}{\sigma}{e_2}\).
+\end{proof}
+
+%% is derivable if and only if \(e_1\) and 
+%%\(e_2\) respectively have the types \(\alpha(\sigma)\) and 
+%%\(\beta(\sigma)\) in the standard simple type system under 
+%%\(\alpha(\Gamma)\) and \(\beta(\Gamma)\). Here, \(\alpha(\bullet)\) and 
+%%\(\beta(\bullet)\) respectively replace each occurrence of a base 
+%%abstraction type \(b[P_1,\dots,P_m]\) in the argument with \(b\) and 
+%%\(\underbrace{\TBOOL \times \cdots \times \TBOOL}_m\).
+%%\end{theorem}
+%\begin{theorem}
+%If \(\T{\Gamma}{e_1}{\sigma}{e_2}\), then \(\alpha(\Gamma) \vdash 
+%e_1:\alpha(\sigma)\) and \(\beta(\Gamma) \vdash e_2:\beta(\sigma)\) are 
+%derivable, where \(\alpha\) is defined by:
+%\begin{eqnarray*}
+%\alpha(\emptyset)&=&\emptyset \\
+%\alpha(\Gamma,x:\sigma)&=&\alpha(\Gamma),x:\alpha(\sigma) \\
+%\alpha(\Gamma,f:\sigma)&=&\alpha(\Gamma),f:\alpha(\sigma) \\
+%\alpha(x:\sigma_1 \to \sigma_2)&=&\alpha(\sigma_1) \to \alpha(\sigma_2) \\
+%\alpha(b[\seq{P}])&=&b
+%\end{eqnarray*}
+%\(\beta\) is defined by:
+%\begin{eqnarray*}
+%\beta(\emptyset)&=&\emptyset \\
+%\beta(\Gamma,x:\sigma)&=&\beta(\Gamma),x:\beta(\sigma) \\
+%\beta(\Gamma,f:\sigma)&=&\beta(\Gamma),f:\beta(\sigma) \\
+%\beta(x:\sigma_1 \to \sigma_2)&=&\beta(\sigma_1) \to \beta(\sigma_2) \\
+%\beta(b[P_1,\dots,P_m])&=&\underbrace{\TBOOL \times \cdots \times \TBOOL}_m
+%\end{eqnarray*}
+%\end{theorem}
+
+The theorem below states that our predicate abstraction is sound in the 
+sense that if a source program fails, so does its abstraction
+\iffull 
+(see Appendix~\ref{sec:soundness} for the proof). 
+\else
+(see \cite{Kobayashi2011} for the proof). 
+\fi
+Thus, the safety of the abstract program (which is decidable by 
+Theorem~\ref{th:decidability}) is a sufficient condition for the safety 
+of the source program.
+\begin{theorem}[soundness]
+\label{thm:soundness} If \(\T{}{D_1}{\Gamma}{D_2}\) and 
+\(\textit{main}\tuple{} \redswith{s}{D_1} \FAIL\), then 
+\(\textit{main}\tuple{} \redswith{s}{D_2} \FAIL\).
+%%Suppose that 
+%%\begin{itemize}
+%%\item \(\T{}{D_1}{\Gamma}{D_2}\) and 
+%%\item \(\T{\Gamma}{e_1}{\sigma}{e_2}\).
+%%\end{itemize}
+%%If \(e_1 \redswith{s}{D_1} \FAIL\), then \(e_2 \redswith{s}{D_2} \FAIL\).
+\end{theorem}
+%%\koba{Using \(\Rightarrow\) for the translation and \(\Longrightarrow\) for
+%%reductions seem confusing. Perhaps use \(\leadsto\) for the former.}
+
+The theorem above says that the abstraction is sound but not how good 
+the abstraction is. We compare below the verification power of the 
+combination of predicate abstraction and higher-order model checking 
+with the dependent intersection type system given in 
+\iffull 
+Appendix~\ref{sec:dit}, 
+\else
+\cite{Kobayashi2011},
+\fi 
+which is essentially equivalent to the one in \cite{Terauchi2010}.
+
+We write \(\B[\psi_1,\ldots,\psi_k]\) for the set of formulas 
+constructed from \(\psi_1,\ldots,\psi_k\) and boolean operators (\(\TRUE, 
+\FALSE, \land, \lor, \neg\)). For an abstraction type \(\sigma\), the 
+set \(\depty(\sigma)\) of dependent types is:
+\[
+\begin{array}{l}
+\depty(b[P_1,\ldots,P_n]) =
+    \set{\rtbase{\dvar}{b}{\psi} \mid \psi \in \B[P_1(\dvar),\ldots,P_n(\dvar)]}\\
+\depty(x\COL\sigma_1 \to \sigma_2) = %%\\
+%%\qquad    
+\set{(\rtfunb{x}{\dtvar_{11}}{\dtvar_{21}})\land \cdots \land (\rtfunb{x}{\dtvar_{1m}}{\dtvar_{2m}})\\
+\qquad\quad
+  \mid \delta_{11},\ldots,\delta_{1m}\in \depty(\sigma_1), 
+  \delta_{21},\ldots,\delta_{2m}\in \depty(\sigma_2)}
+\end{array}
+\]
+We extend \(\depty\) to a map from abstraction type environments to the 
+powerset of dependent type environments by:
+\[
+\begin{array}{l}
+ \depty(\set{x_1\COL\sigma_1,\ldots,x_n\COL\sigma_n}) =\\
+    \set{\set{x_1\COL\dtvar_1,\ldots,x_n\COL\dtvar_n} \mid 
+\dtvar_i \in \depty(\sigma_i)\mbox{ for each $i\in\set{1,\ldots,n}$}}
+\end{array}
+\]
+The following theorem says that our predicate abstraction (with 
+higher-order model checking) has at least the same verification power as 
+the dependent intersection type system.
+
+%%\koba{Below, do we need to restrict \(\delta\) to base types?}
+\begin{theorem}[relative completeness]
+\label{th:rel-complete}
+Suppose \(\DPT{}{D}{\Delta}\). %% and \(. %% and \(\DPT{\Delta}{e}{\delta}\).
+If \(\Delta \in \depty(\Gamma)\), then %% and \(\delta\in \depty(\sigma)\), then 
+there exists \(D'\) such that %%and \(e'\) such that
+\(\T{}{D}{\Gamma}{D'}\) and \(\textit{main}\tuple{}\ \mathbin{{\not\!\!\redswith{}{D'}}} \FAIL\).
+%%\begin{enumerate}
+%%\item \(\T{}{D}{\Gamma}{D'}\),
+%%\item \(\T{\Gamma}{e}{\sigma}{e'}\), and
+%%\item \(e' \not\redswith{}{D'} \FAIL\).
+%%\end{enumerate}
+\end{theorem}
+\iffull
+The proof is given in Appendix~\ref{sec:relcomp}.
+\fi
+%%%\begin{pfsketch}
+%%%\koba{The following is just a semantic intuition.}
+%%%For each \(\delta\in \depty(\sigma)\), associate the following denotation
+%%%\(\sem{\delta,\sigma}\):
+%%%\[
+%%%\begin{array}{l}
+%%%\sem{\rtbase{\dvar}{b}{C[P_1(\dvar),\ldots,P_n(\dvar)]}, b[P_1,\ldots,P_n]}
+%%% = \\
+%%%\qquad\set{(c_1,\ldots,c_n) \mid C[c_1,\ldots,c_n] \equiv \TRUE}\\
+%%%\sem{\rtfun{\dtvar_{1}}{\dtvar_{2}}, \sigma_1 \to \sigma_2} =\\
+%%%\qquad
+%%%  \set{g \mid \forall h\in\sem{\dtvar_1,\sigma_1}.g(h)\in\sem{\dtvar_2,\sigma_2}}\\
+%%%\sem{\rtfunb{x}{\rtbase{\nu}{b}{C[P_1(\dvar),\ldots,P_k(\dvar)]}}{\dtvar_{2}}, x:b[\seq{P}] \to \sigma_2} =\\
+%%%  \set{g \mid \forall (c_1,\ldots,c_k)\in\sem{\rtbase{\nu}{b}{C[P_1(\dvar),\ldots,P_k(\dvar)]},b[\seq{P}]}.\\
+%%%\qquad   \forall d\in\set{d \mid P_1(d)=c_1,\ldots,P_k(d)=c_k}.\\
+%%%\qquad g(c_1,\ldots,c_k)\in\sem{[d/x]\dtvar_2,[d/x]\sigma_2}}\\
+%%%\sem{\dtvar_1\land \dtvar_2, \sigma} =
+%%%  \sem{\dtvar_1,\sigma}\cap \sem{\dtvar_2,\sigma}
+%%%\end{array}
+%%%\]
+%%%Then, a term \(e\) of type \(\delta\) can be transformed into a function \(e'\) such that
+%%%\(\sem{e'} \in \sem{\dtvar,\sigma}\).
+%%%\end{pfsketch}
+
+\begin{remark}
+\label{rem:more-expressive-than-deptype} The converse of the above 
+theorem does not hold: see 
+\iffull 
+Appendix~\ref{sec:comparison-with-dit}. 
+\else
+\cite{Kobayashi2011}.
+\fi 
+Together with 
+Theorem~\ref{th:rel-complete}, this implies that our combination of 
+predicate abstraction and higher-order model checking is strictly more 
+powerful than the dependent intersection type system.
+\end{remark}
+%%%Consider the following program:
+%%%\begin{verbatim}
+%%%let f x y = if (x()>0)&&(y()<=0) then fail else () in
+%%%let h x y = x in let g n = f(h n)(h n) in g(randi())
+%%%\end{verbatim}
+%%%Given the abstraction type environment: 
+%%%\[
+%%%\begin{array}{l}
+%%%f\COL (\TUNIT\ra \INT[\lambda \nu.\nu>0]) \ra (\TUNIT\ra \INT[\lambda \nu.\nu>0]) \ra \TUNIT,\\
+%%%  g\COL \INT[\,] \ra \TUNIT,
+%%%\end{array}\]
+%%%the above program is abstracted to:
+%%%\begin{verbatim}
+%%%let f x y = if x() && not(y()) then fail else () in
+%%%let h x y = x in
+%%%let g() = let b = randb() in f (h b) (h b) in g()
+%%%\end{verbatim}
+%%%and is successfully verified by a higher-order model checker.
+%%%The above program is, however, not typable with the corresponding dependent type environment:
+%%%\[
+%%%\begin{array}{l}
+%%%f\COL ((\TUNIT\ra \rtbase{\nu}{\INT}{\nu>0}) \ra (\TUNIT\ra \rtbase{\nu}{\INT}{\nu>0})\ra \TUNIT)\\
+%%%\quad\land ((\TUNIT\ra \rtbase{\nu}{\INT}{\nu\leq 0}) \ra (\TUNIT\ra \rtbase{\nu}{\INT}{\nu\leq 0})\ra \TUNIT)\\
+%%%g\COL \INT \ra \TUNIT
+%%%\end{array}
+%%%\]
+%%%%%The above program can be verified with the dependent type system by changing the type of \(f\) to
+%%%%%\(f\COL (x\COL\rtbase{\nu}{\INT}{\TRUE} \ra \rtbase{\nu}{\INT}{\nu=x}\ra \TUNIT)\).
+%%%%%By slightly modifying the program above, however, we can construct a (closed) program that
+%%%%%can be verified with our verification method but cannot be verified with the dependent intersection
+%%%%%type system (see Appendix~\ref{sec:expressive-power}). 
+%%%Together with Theorem~\ref{th:rel-complete}, this implies that
+%%%our combination of predicate abstraction and higher-order model checking is strictly more powerful than 
+%%%the dependent type system in Figure~\ref{fig:dep_rules}.
+%%%\end{remark}
+%%%Conversely, the following theorem asserts that
+%%%our predicate abstraction 
+%%%has no more verification power than the dependent intersection type system.
+%%%\koba{Double check that the following theorem does hold.
+%%%It is a bit strange as the dependent type does not seem to take the evaluation order
+%%%into account..
+%%%The dependent type system is sound only for call-by-value?
+%%%For example, \((\lambda x.\FAIL)(\textit{loop()})\) seems typable
+%%%(if we extend the syntax of applications), by assigning
+%%%the type \(\rtbase{x}{\INT}{\bot}\) to \(\textit{loop}()\).
+%%%In fact, the rule for \(\FAIL\) seems to assume that functions are strict.}
+%%%\begin{theorem}
+%%%\label{th:rel-soundness}
+%%%Suppose \(\T{}{D}{\Gamma}{D'}\) and \(\textit{main}\tuple{} \not\redswith{}{D'} \FAIL\).
+%%%%%\begin{enumerate}
+%%%%%\item \(\T{}{D}{\Gamma}{D'}\), 
+%%%%%\item \(\T{\Gamma}{e}{\sigma}{e'}\), and
+%%%%%\item \(e' \not\redswith{}{D'} \FAIL\).
+%%%%%\end{enumerate}
+%%%Then, there exists \(\Delta\in \depty(\Gamma)\) %%,\delta\in \depty(\sigma)\) 
+%%%such that \(\DPT{}{D}{\Delta}\). %% and \(\DPT{\Delta}{e}{\delta}\).
+%%%\end{theorem}
+%%%
+%%%\begin{pfsketch}
+%%%\koba{There may be a direct proof without going through the denotational semantics. The idea below anyway provides
+%%%an intuititon why the theorem should hold.}
+%%%For each function \(f\) in \(D'\), let \(\sem{f}\) be the set-theoretic denotational semantics of \(f\).
+%%%(Actually, if necessary, we can compute this from all the reduction sequences of \(e'\). We may need to be a bit careful
+%%%about the issue of definability, if we talk about the denotational semantics.)
+%%%Assign to \(f\) the type \(\RecoverDT(\sem{f}, \Gamma(f))\), where
+%%%\[
+%%%\begin{array}{l}
+%%%\RecoverDT((c_1,\ldots,c_k), b[P_1,\ldots,P_k]) =\\ 
+%%%\qquad      \rtbase{\nu}{b}{P_1(\nu)^{c_1} \land \cdots \land P_k(\nu)^{c_k}}\\
+%%%        \mbox{ (where $\psi^c = \psi$ if \(c=\TRUE\), $\neg\psi$ if \(c=\FALSE\), and \(\FALSE\) if \(c=\bot\))}\\
+%%%\RecoverDT(g, x\COL\sigma_1\ra \sigma_2) =\\
+%%%  \bigwedge_{h\in \dom(g)} (x\COL \RecoverDT(h,\sigma_1) \ra \RecoverDT(g(h), \sigma_2))\\
+%%%\end{array}
+%%%\]
+%%%Then, \(\Delta = \set{f\COL\RecoverDT(\sem{f},\Gamma(f))\mid f\in\dom(\Gamma)}\) satisfies the
+%%%required conditions.
+%%%\end{pfsketch}
+%%The above theorem states that in order for \(e_1\) not to fail 
+%%for any (type-respecting) bindings, it is sufficient for the abstract program \(e_2\) not to fail.
+%%Note that the latter is decidable by Theorem~\ref{th:decidability}.
+
+
+%%\nk{I have moved the following remark here, which should be rewritten to make
+%%the point clearer. Especially, include an example for which
+%%\((x:\TINT[\,] \to \TINT[\,]) \to y:\TINT[\lambda 
+%%y.y=x] \to \TINT[\,]\) is ``crucial''.}
+
+
+\begin{remark} 
+\label{rem:limitation} The well-formedness condition for abstraction 
+types is sometimes too restrictive to express a necessary predicate. For 
+example, consider the following program.
+\begin{verbatim}
+let apply f x = f x in let g y z = assert(y=z) in
+let k n = apply (g n) n; k(n+1) in  k(0)
+\end{verbatim}
+In order to verify that the assertion failure does not occur, we need a 
+correlation between the argument of \(f\) and \(x\), which cannot be 
+expressed by abstraction types. The problem can be avoided either by 
+adding a dummy parameter to \texttt{apply} (as \texttt{let apply n f x = 
+...}) and using the abstraction type \(n\COL\TINT[\,]\ra (\TINT[\lambda 
+\nu.\nu=n]\ra \TUNIT)\ra \TINT[\lambda \nu.\nu=n]\ra \TUNIT\), or by 
+swapping the parameters \(f\) and \(x\). A more fundamental solution 
+(which is left for future work) would be to introduce \emph{polymorphic} 
+abstraction types, like 
+%
+%\(\forall m\COL\TINT.(\TINT[\lambda \nu.\nu=m]\ra \TUNIT)\ra 
+%\TINT[\lambda \nu.\nu=n]\ra n\COL\TINT[\lambda \nu.\nu=m]\ra \TUNIT)\), 
+\(\forall m\COL\TINT.(\TINT[\lambda \nu.\nu=m]\ra \TUNIT)\ra 
+\TINT[\lambda \nu.\nu=m]\ra \TUNIT\), 
+%
+and extend the predicate abstraction rules 
+accordingly. 
+%%The former is a common technique used in dependent types~\cite{Xi1999}, but it is not obvious
+%%how to apply this kind of transformation automatically.
+\end{remark}
+%%%\begin{verbatim}
+%%%let f g x = g(x+1) in 
+%%%let h z y = assert(y>z) in
+%%%let n = rand() in f (h n) n
+%%%\end{verbatim}
+%%%In order to verify this program, we would need the above (ill-formed) abstraction type,
+%%%to express the co-relation between \texttt{g}'s first argument and \texttt{x}.
+%%%This problem can be avoided by adding a dummy parameter to \texttt{f}, and
+%%%use the abstraction type:
+%%%\(z:\ITint{\,} \to (w:\TINT[\lambda w.w<z] \to \TINT[\,]) \to x:\TINT[\lambda x.x\geq z] \to \TINT[\,]\).
+%%%This is a common technique used in dependent types~\cite{Xi1999}, but it is not obvious
+%%%how to apply this kind of transformation automatically.
+%%%%%%\item Functions and quantifers are not allowed to occur in predicates.
+%%%%%%This limits 
+%%%%%%\end{enumerate}
+%%%\qed
+%%%\end{remark}

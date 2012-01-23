@@ -1,0 +1,59 @@
+\section{Further Notes on Remark~\ref{rem:more-expressive-than-deptype}}
+\label{sec:expressive-power}
+
+The reason why the program in Remark~\ref{rem:more-expressive-than-deptype}
+is not typable under
+\[
+\begin{array}{l}
+f\COL (\rtbase{\nu}{\INT}{\nu>0} \ra \rtbase{\nu}{\INT}{\nu>0}\ra \TUNIT)\\
+\qquad
+      \land (\rtbase{\nu}{\INT}{\nu\leq 0} \ra \rtbase{\nu}{\INT}{\nu\leq 0}\ra \TUNIT),\\
+g\COL \INT \ra \TUNIT
+\end{array}
+\]
+is that in order to type \texttt{f n n}, we need to perform a case analysis on
+whether \(n>0\) or \(n\leq 0\), which is not available in the rules in Figure~\ref{fig:dep_rules}.
+
+In fact, in Liquid types~\cite{Rondon2008}, the verification of the following program fails
+(as long as we checked using the online demo):
+\begin{verbatim}
+qualif POS(v): 0<v
+qualif NEG(v): v<=0
+let f x y = assert(not(x>0 && y<=0))
+let test n = f n n
+\end{verbatim}
+
+The program above is verifiable in the dependent type system by adding the predicate \(x=y\).
+The following program is, however, untypable in the dependet type system of Figure~\ref{fig:dep_rules},
+no matter what predicates are used.
+\begin{verbatim}
+let f x y = if (x()>0)&& (y()<=0) then fail else () in
+let h x () = x in
+let next x = if x>0 then -x else -x+1 in
+let g n = f (h n) (h n); g(next n) in
+   g 0
+\end{verbatim}
+For the same reason as above, the dependent type system cannot perform case analysis on
+whether the argument \texttt{n} of \texttt{g} is positive or not. Further, as \texttt{x} and \texttt{y}
+are functions, we cannot express the co-relation between them (note that 
+types like \(x\COL(\TUNIT\ra \TINT)\ra \set{y\COL \TUNIT\ra \TINT\mid x()=y()}\ra \TUNIT\),
+where function variables occur in a constraint, are not allowed).
+
+
+The program can be verified by our method, by using the following abstraction type environment:
+\[
+\begin{array}{l}
+\texttt{f}\COL (\TUNIT\ra \INT[\lambda \nu.\nu>0]) \ra (\TUNIT\ra \INT[\lambda \nu.\nu>0]) \ra \TUNIT,\\
+\texttt{h}\COL \INT[\lambda \nu.\nu>0] \ra \TUNIT \ra \INT[\lambda \nu.\nu>0] \\
+\texttt{next}\COL \INT[\,] \ra \INT[\,] \\
+\texttt{g}\COL \INT[\lambda \nu.\nu>0] \ra \TUNIT,
+\end{array}
+\]
+The following higher-order boolean program is generated and model-checked.
+\begin{verbatim}
+let f x y = if (x()&& not(y()) then fail else () in
+let h x () = x in
+let next() = () in
+let g b = f (h b) (h b); g(randb()) in
+   g(randb())
+\end{verbatim}

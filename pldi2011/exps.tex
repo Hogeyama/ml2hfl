@@ -1,0 +1,472 @@
+\section{Implementation and Preliminary Experiments}
+\label{sec:experiment}
+
+Based on our method described so far, we have implemented a prototype 
+verifier for a tiny subset of Objective Caml, having only booleans and 
+integers as base types. Instead of the non-deterministic choice 
+(\(e_1\PAROP e_2\)), the system allows conditionals and free variables 
+(representing unknown integers). Our verifier uses 
+\trecs{}~\cite{Kobayashi2009,Kobayashi2009d} as the underlying 
+higher-order model checker (for Step~2 in Figure~\ref{fig:cegar}), and 
+uses CSIsat~\cite{Beyer2008} for computing interpolants to solve 
+constraints (for Step~4).
+%checking the satisfiability of constraints and 
+CVC3~\cite{Barrett2007} is used for feasibility checking (for Step~3) 
+and computing abstract transitions (i.e., to compute formulas \(\psi\) 
+and \(\psi'\) in rule \rn{A-CAdd} of Figure~\ref{fig:pred_abst} for 
+Step~1). As computing the precise abstract transitions (i.e. the 
+strongest formulas \(\psi\) and \(\psi'\) in rule \rn{A-CAdd}) is 
+expensive, we have adapted several optimizations described in Section 
+5.2 of \cite{Ball2001} such as bounding the maximum number of predicates 
+taken into account for computing abstraction with a sacrifice of the 
+precision. The implementation can be tested at 
+\url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/cegar/}. 
+\iffull
+\else
+The full version~\cite{Kobayashi2011} contains more details about the experiments.
+\fi
+
+The results of preliminary experiments are shown in Table~\ref{tab:exp}. 
+The column ``S'' shows the size of programs, measured in word counts.
+%\footnote{The number of lines does not seem to be a good measure for 
+%functional programs. The largest program \texttt{a-cppr} consists of 32 
+%lines.}
+%
+The column ``O'' shows the largest order of functions in the 
+program (an order-1 function  takes only base values as arguments, while 
+an order-2 function takes  order-1 functions as 
+arguments).\footnote{Because of the restriction of the model checker 
+\trecs{}, all the source programs are actually verified after the CPS 
+transformation. Thus, all the tested programs are actually higher-order, 
+taking continuation functions.} The column ``C''
+%%and ``P'' 
+shows the number of CEGAR cycles.
+%% and
+%%the total number\footnote{For example, the number of predicates in \(f\COL\TINT[P_1,P_2]\ra \TINT[P_1],
+%%x\COL \TINT[P_1]\) is counted as \(4\). For \texttt{neg}, this number is large, but the number of
+%%predicates added to each base type is small.}
+The remaining columns show running times, measured in seconds. The 
+column ``abst'' shows the time spent for computing abstract programs 
+(from given programs and abstraction types). The column ``mc'' shows the 
+time spent (by \trecs{}) for higher-order model checking. The column 
+``cegar'' shows the time spent for finding new predicates (Step~4 in 
+Figure~\ref{fig:cegar}).
+%%of which the time spent by the interpolating theorem prover (CSIsat) is shown in the column ``IP''.
+The column ``total'' shows the total running time (machine spec.: 3GHz 
+CPU with 8GB memory).
+
+The programs used in the experiment are as follows. Free variables 
+denote unknown integers.
+%%See \cite{KSU10} and \url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/cegar/} for more details.
+\begin{asparaitem}
+\item \texttt{intro1}, \texttt{intro2}, and \texttt{intro3} are the 
+three examples in Section~\ref{sec:intro}.
+%\iffull
+%\else
+%\delspan{
+%{\texttt{sum}} and {\texttt{mult}} are essentially the same as those used in 
+%{\cite{Terauchi2010}}. They compute {\(1+\cdots+n\)} and {\iffull 
+%\(\underbrace{n+\cdots+n}_n\) \else \(n+\cdots+n\) \fi} respectively, and 
+%assert that the result is greater than or equal to {\(n\)}.
+%}
+%\fi
+%\iffull
+\item \texttt{sum} and \texttt{mult} compute \(1+\cdots+n\) and 
+\(\underbrace{n+\cdots+n}_n\) respectively, and asserts that the result 
+is greater than or equal to \(n\). Here is the code of \texttt{sum}.
+\begin{verbatim}
+  let rec sum n =
+    if n <= 0 then 0 else n + sum (n - 1)
+  in assert (n <= sum n)
+\end{verbatim}
+%%\begin{verbatim}
+%%let rec mult n m =
+%%  if n <= 0 || m <= 0 then 0 else n + mult n (m-1)
+%%in
+%%let n = rand() in
+%%  assert (n <= mult n n)
+%%\end{verbatim}
+%\fi
+\item \texttt{max} defines a higher-order function that takes a function 
+that computes the maximum of two integers, and three integers as input, 
+and returns the maximum of the three integers:
+\begin{verbatim}
+  let max max2 x y z = max2 (max2 x y) z in
+  let f x y = if x >= y then x else y in
+  let m = max f x y z in assert (f x m = m)
+\end{verbatim}
+The last line asserts that the return value of \verb|max| is greater 
+than or equal to \texttt{x} (with respect to the function \(f\)).
+%\newpage
+\item \texttt{mc91} is McCarthy 91 function.
+\begin{verbatim}
+  let rec mc91 x = 
+    if x > 100 then x - 10 else mc91(mc91(x + 11)) 
+  in if n <= 101 then assert (mc91 n = 91)
+\end{verbatim}
+The last line asserts that the result is \(91\) if the argument is less 
+than or equal to \(101\).
+%%Notice that there are no annotations on the pre/post conditions of \texttt{mc91}; they are automatically
+%%found by our CEGAR procedure.
+\item \texttt{ack} defines Ackermann function \textit{ack} and asserts 
+\(\textit{ack}(n)\geq n\).
+\item \texttt{repeat} defines a higher-order function that takes a 
+function $f$ and integers $n$, $s$, then returns $f^n(s)$.
+\begin{verbatim}
+  let rec repeat f n s =
+    if n = 0 then s else f (repeat f (n - 1) s) in
+  let succ x = x + 1 in
+    assert (repeat succ n 0 = n)
+\end{verbatim}
+%%\texttt{repeateqn} is the program obtained by replacing the assertion with
+%%\texttt{assert(repeat succ n 0 = n)}.
+
+%%\item twice is a program which takes a function $f$ and an integer $s$, then returns $f(f(s))$.
+%%\begin{verbatim}
+%%let twice f x = f (f x) in
+%%let f x = 2 * x in
+%%let n = rand() in
+%%  assert (not(n>0) || twice f n > n)
+%%\end{verbatim}
+\item \texttt{fhnhn} is a program not typable in the dependent 
+intersection type system but verifiable in our method (c.f. 
+Remark~\ref{rem:more-expressive-than-deptype}):
+\begin{verbatim}
+  let f x y = assert (not (x() > 0 && y() < 0)) in
+  let h x y = x in let g n = f (h n) (h n) in g m
+\end{verbatim}
+%%used to show that our predicate abstraction is strictly more powerful than approaches based on dependent types.
+\item \texttt{hrec} is a program that creates infinitely many function 
+closures:
+\begin{verbatim}
+  let rec f g x = 
+    if x >= 0 then g x else f (f g) (g x) in
+  let succ x = x + 1 in assert(f succ n >= 0)
+\end{verbatim}
+%%%\item \texttt{lock} is a program that manipulates a lock.
+%%%\begin{verbatim}
+%%%let lock st = if st then fail else true in
+%%%let unlock st = if st then false else fail in
+%%%let f n st = if n > 0 then lock(st) else st in
+%%%let g n st = if n > 0 then unlock(st) else st in
+%%%  assert (not (g n (f n false)))
+%%%\end{verbatim}
+%%%Here, the variable \texttt{st} represents the state of a lock (which is locked if \texttt{st} is true,
+%%%and unlocked if \texttt{st} is false).
+%%%The functions \texttt{f} and \texttt{g} check the value of \texttt{n}, and respectively 
+%%%acquires and releases the lock only if \(\texttt{n}>0\). The assertion and fail commands above
+%%%ensure that the lock is used correctly.
+%%This is also untypable in the dependent intersection type system in Figure~\ref{fig:dep_rules}.
+%%\item file is a program which reads from the file several times and closes the file.
+%%      The program checks closed file is not accessed and the file will be closed.
+\item \texttt{neg} is an example that needs nested intersection types: 
+\begin{verbatim}
+  let g x y = x in
+  let twice f x y = f (f x) y in
+  let neg x y = -x() in
+    if n >= 0 then assert(twice neg (g n) () >= 0)
+    else ()
+\end{verbatim}
+%%      We check uncaught exception cannot occur.
+%%\begin{verbatim}
+%%let rec repeat f n s =
+%%  if n = 0 then s else f (repeat f (n-1) s)
+%%in
+%%let succ x = x + 1 in
+%%let n = rand() in
+%%  assert (repeat succ n 0 = n)
+%%\end{verbatim}
+\item \texttt{apply} is the program discussed in 
+Remark~\ref{rem:limitation}.
+\item \texttt{a-prod}, \texttt{a-cppr}, and \texttt{a-init} are programs 
+manipulating arrays. A (functional) array has been encoded as a pair of 
+the size and a function from indices to array contents. For example, the 
+functions for creating and updating arrays are defined as follows.
+\begin{verbatim}
+  let mk_array n i = assert(0<=i && i<n); 0
+  let update i n a x =
+    a(i); let a' j = if i=j then x else a(i) in a'
+\end{verbatim}
+For \texttt{a-prod} and \texttt{a-cppr}, it has been verified that there 
+is no array boundary error. Program \texttt{a-init} initializes an array, 
+and asserts the correctness of initialization. and \texttt{a-max} 
+creates an array of size \(n\) whose \(i\)-th element is \(n-i\), 
+computes the maximum element \(m\), and asserts that \(m\geq n\).
+%%, it has been verified that an array initialization function is correct
+%%(in that all the elements are initialized). 
+These examples show an advantage of higher-order model checking; various 
+data structures can be encoded as higher-order functions, and their 
+properties can be verified in a uniform manner.
+\item \texttt{l-zipunzip} and \texttt{l-zipmap} are taken from 
+list-processing programs. We have manually abstracted lists to integers 
+(representing the list length), and then verified the size properties of 
+list functions. For example, the code for \text{l-zipunizp} is:
+\begin{verbatim}
+  let f g x y = g (x+1) (y+1) in
+  let rec unzip x k = 
+    if x=0 then k 0 0 else unzip (x-1) (f k) in
+  let rec zip x y =
+    if x=0 then if y=0 then 0 else fail()
+    else if y=0 then fail() else 1+zip(x-1)(y-1)
+  in unzip n zip
+\end{verbatim}
+\item \texttt{hors} encodes a model checking problem for higher-order 
+recursion schemes \emph{extended with integers} (which cannot be handled 
+by recursion scheme model checkers). 
+\item \texttt{e-simpl} and \texttt{e-fact} model programs that use 
+exceptions, where an exception handler is expressed as a continuation, 
+and assert that there are no uncaught exceptions. The idea of the 
+encoding of exceptions is similar to \cite{Kobayashi2009c}, but unlike 
+\cite{Kobayashi2009c}, exceptions can carry integer values. 
+\item \texttt{r-lock} and \texttt{r-file} model programs that use locks 
+and files, and assert that they are accessed in a correct manner. The 
+encoding is similar to \cite{Kobayashi2009}, but (unlike 
+\cite{Kobayashi2009}) the programs' control behaviors depend on integer 
+values.
+%%%\begin{verbatim}
+%%%let f n k = if n >= 0 then () else k 0 in
+%%%let g n = if n = 0 then () else fail () in
+%%%let n = rand() in f n g
+%%%\end{verbatim}
+%%%This models the following program that raises and handles an exception with an integer parameter:
+%%%\begin{verbatim}
+%%%let ff n = if n >= 0 then () else raise (Fail 0) in
+%%%let n = rand() in
+%%%  try ff n with Fail 0 -> ()
+%%%\end{verbatim}
+%%%The exception handler ``\texttt{Fail 0 -> ()}'' is
+%%% expressed by the function \verb|g| above.
+\item A program of name ``xxx-e'' is a buggy version of the program 
+``xxx''.
+\end{asparaitem}
+
+The above programs have been verified (or rejected, for wrong programs) 
+correctly, except \texttt{apply}.
+%% and \texttt{a-max}. 
+%%For \texttt{xxx}, too specific abstraction types
+%%(like \(\texttt{xxx}:(\TINT[\cdots]\ra \TINT[\cdots])\ra \TINT[\lambda x.x=i]\ra 
+%%\TINT[\lambda x.x=0]\ra \TINT[\lambda x.x=i]\)
+%%for \(i=0,1,\ldots\)) were generated and the CEGAR loop did not terminate.
+%%This indicates that it is useful to add a heuristic to generalize inferred abstraction types.
+As discussed in Remark~\ref{rem:limitation}, \texttt{apply} cannot be 
+verified because of the fundamental limitation of abstraction types. Our 
+system continues to infer new (but too specific) abstraction types 
+\((\TINT[\lambda \nu.\nu=i]\ra \TUNIT)\ra\TINT[\lambda \nu.\nu=i]\ra 
+\TUNIT\) for \(i=0,1,2,\ldots\) forever and (necessarily) does not 
+terminate. The program can however be verified if the arguments of 
+\texttt{apply} are swapped. The same problem has been observed for 
+variations of some of the programs above: sometimes we had to add or 
+swap arguments of functions.
+
+Another limitation revealed by the experiments is that for some 
+variations of the programs, the system infers too specific predicates 
+and does not terminate. For example, the verification for \texttt{a-max} 
+fails if we assert \(m\geq a(j)\) instead of \(m\geq n\) (where \(m\) is 
+the maximal element computed, \(a\) is the array, and \(j\) is some 
+index).
+%%A similar problem occurred for variations of some of the other programs;
+%%the system sometimes fail to find appropriate predicates due to a subtle change of a program
+%%(e.g. replacing \texttt{let x=0 in f(x)} with \texttt{f(0)}).
+%%predicates. For example, the result sometimes changes between
+%%Another limitation revealed by the experiments is that the CEGAR part of the system is still
+%%fragile, in that a slight change of a program may make the system diverge, inferrring too specific
+%%predicates. For example, the result sometimes changes between
+%%\texttt{f(0)} and \texttt{let x=0 in f(x)}.
+%%a condition \(k\geq 0 \land k \leq 0\) with \(k=0\).
+Relaxing these limitations seems necessary for verification of larger 
+programs, and we plan to do so by adding heuristics to generalize 
+inferred abstraction types (e.g. by using widening 
+techniques~\cite{Cousot1978}).
+
+Apart from the limitations above, our system is reasonably fast. This 
+indicates that, although higher-order model checking has the extremely 
+high worst-case complexity (\(n\)-EXPTIME complete~\cite{Ong2006}),
+%%and computing an abstract program is also in general costly,
+%%(see discussions in Section~\ref{sec:conc}),
+our overall approach works at least for small programs as long as 
+suitable predicates are found. See further discussions on the 
+scalability in Section~\ref{sec:conc}.
+%%At the moment, the automatic discovery of predicates is the major bottleneck.
+%%Thus, integration with Liquid type-like approach~\cite{Rondon2008} (where hints on predicates are provided by users) may be useful.
+%%%Note that although the tested programs
+%%%are quite small, they contain tricky ones as discussed in 
+%%%Remark~\ref{rem:more-expressive-than-deptype} and Section~\ref{sec:related}.
+%%%As the running times show, most of the time has been spent by the interpolating theorem prover in
+%%%the CEGAR phase. Rejecting unsafe programs (of names ``xxx-e'') was faster than verifying safe programs (of names ``xxx'');
+%%%this is because for the former, it is sufficient to find just one error path.
+%%%
+%%%Our current verifier is slow for \texttt{max}. This is probably because 
+%%%the size of the constraints generated from an error trace (and passed to the interpolating theorem prover)
+%%%is large: the number of atomic constraints generated from an error trace of \texttt{max} is 80, while it is 20 for 
+%%%an error trace of \texttt{mc91}. 
+%%%This suggests that further optimizations of the CEGAR and predicate
+%%%abstraction phases may be necessary for larger programs.
+
+%The predicates used for verifying mc91 are $r=x-10, x \geq 101, r=91$ (where $r$ is the return value).
+%This function returns 91 for all input $x \leq 101$.
+%To 
+
+\begin{table*}
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|r|r|r|}
+\hline
+%%program & S & O & C  & abst (s) & mc (s) & cegar (s) %%& IP (s)
+%%& total (s) \\
+program & S & O & C & abst & mc & cegar %%& IP 
+& total \\
+\hline
+intro1&         27&     2&      1 & 0.00 & 0.00 & 0.00 & 0.01 \\
+intro2&         29&     2&      1 & 0.00 & 0.00 & 0.00 & 0.00 \\
+intro3&         30&     2&      1 & 0.00 & 0.00 & 0.00 & 0.00 \\
+sum&            24&     1&      2 & 0.00 & 0.00 & 0.01 & 0.02 \\
+mult&           31&     1&      2 & 0.01 & 0.00 & 0.02 & 0.03 \\
+max&            42&     2&      1 & 0.00 & 0.00 & 0.03 & 0.03 \\
+%max&           2&      1&      11&     0.009&  0.006&  0.042&  %0.000&%        0.058\\
+mc91&           32&     1&      2 & 0.01 & 0.04 & 0.02 & 0.07 \\
+ack&            53&     1&      3 & 0.02 & 0.09 & 0.03 & 0.15 \\
+%%repeat&               2&      2&      11&     0.009&  0.015&  0.018&  %0.000& 0.042\\
+repeat&         37&     2&      3 & 0.01 & 0.02 & 0.12 & 0.15\\
+%%repeateqn&            2&      -&      -&      -&      -&      -& %%   -&      
+%%  -\\
+%%twice&                2&      1&      12&     0.124&  0.020&  0.200&  0.032&  0.356\\
+%%\hline
+fhnhn &         37&     2&      1 & 0.01 & 0.01 & 0.02 & 0.04 \\
+hrec &          34&     2&      2 & 0.00 & 0.01 & 0.02 & 0.03 \\
+neg&            47&     2&      1 & 0.01 & 0.01 & 0.01 & 0.03 \\
+%%neg &         2&      1&      45&     0.003&  0.014&  0.023&  %0.000&%%       0.041\\
+apply&          34&     2&      -&      -&      -&      -&      -\\
+a-prod &        70&     2&      4 & 0.07 & 0.06 & 0.08 & 0.22 \\
+a-cppr &        149&    2&      6 & 0.32 & 2.82 & 0.26 & 3.40 \\
+%%lock&         1&      1&      5&      0.040&  0.008&  0.064&  0.036&  0.124\\
+%%excep&        2&      1&      4&      0.020&  0.008&  0.036&  %%0.008&
+%%      0.072\\
+\hline
+%%file-e&               1&      1&      &       0.056&  0.016&  0.040&  0.008&  0.136\\
+%%\hline
+\end{tabular}
+\begin{tabular}{|l|r|r|r|r|r|r|r|}
+\hline
+%%program & order & cycle & pred & abst (s) & mc (s) & cegar (s) %%& IP (s)
+%%& total (s) \\
+program & S & O & C & abst & mc & cegar %%& IP 
+& total \\
+\hline
+%max&           2&      1&      11&     0.009&  0.006&  0.042&  %0.000&%        0.058\\
+%%repeat&               2&      2&      11&     0.009&  0.015&  0.018&  %0.000& 0.042\\
+a-init &        96&     2&      5 & 0.16 & 0.18 & 0.38 & 0.73\\
+a-max &        70&     2&      5 & 2.34 & 2.01 & 0.43 & 4.78 \\
+l-zipunzip&     81&     2&      3 & 0.03 & 0.08 & 0.02 & 0.12 \\
+%%twice&                2&      1&      12&     0.124&  0.020&  0.200&  0.032&  0.356\\
+%%\hline
+l-zipmap &      65&     2&      4 & 0.07 & 0.09 & 0.03 & 0.20 \\
+hors&           64&     2&      2 & 0.00 & 0.00 & 0.00 & 0.01 \\
+e-simple &      27&     2&      1 & 0.00 & 0.00 & 0.00 & 0.00 \\
+e-fact &        55&     2&      2 & 0.00 & 0.01 & 0.00 & 0.01 \\
+%%lock&         1&      1&      5&      0.040&  0.008&  0.064&  0.036&  0.124\\
+r-lock &        54&     1&      5 & 0.01 & 0.02 & 0.02 & 0.04 \\
+r-file &        168&    1&      12 & 0.30 & 4.78 & 0.16 & 5.23 \\
+%%file&         1&      3&      &       0.256&  0.064&  0.284&  0.084&  0.616\\
+%%\hline
+%%intro1-e&     2&      0&      0&      0.000&  0.000&  0.000&  %0.000& 0.024\\
+%%\hline
+%%intro2-e&     2&      0&      0&      0.012&  0.000&  0.000&  %0.000& 0.028\\
+%%\hline
+%%intro3-e&     2&      0&      0&      0.004&  0.004&  0.000&  %0.000& 0.024\\
+%%\hline
+sum-e&          26&     1&      0 & 0.00 & 0.00 & 0.00 & 0.00 \\
+mult-e&         33&     1&      0 & 0.00 & 0.00 & 0.00 & 0.00 \\
+mc91-e&         32&     1&      0 & 0.00 & 0.00 & 0.00 & 0.00 \\
+repeat-e&       35&     2&      0 & 0.00 & 0.00 & 0.00 & 0.00 \\
+a-max-e&        70&     2&      2 & 0.01 & 0.06 & 0.06 & 0.13 \\
+%%twice-e&      2&      0&      0&      0.000&  0.000&  0.000&  %0.000& 0.016\\
+%%\hline
+%%lock-e&               1&      0&      0&      0.008&  0.000&  0.000&  %0.000& 0.032\\
+r-lock-e&         54&     1&      0 & 0.00 & 0.00 & 0.00 & 0.00 \\
+%\iffull
+excep-e&        27&     2&      0 & 0.00 & 0.00 & 0.00 & 0.00 \\
+%\fi
+\hline
+%%file-e&               1&      1&      &       0.056&  0.016&  0.040&  0.008&  0.136\\
+%%\hline
+
+\end{tabular}
+\end{center}
+\caption{Results of preliminary experiments}
+\label{tab:exp}
+\end{table*}
+
+
+%%%The implementation 
+%%%
+%%%\todo{evaluate termination property and analysis speed}
+%%%
+%%%\todo{the machine environment for the experiments}
+%%%
+%%%In this section, we report on the results of preliminary experiments. We 
+%%%have implemented a prototype verifier based on our higher-order 
+%%%verification framework by newly implementing the predicate abstraction 
+%%%and the CEGAR parts formalized in Sections~\ref{sec:pred} and 
+%%%\ref{sec:cegar}. We use \trecs{}~\cite{Kobayashi2009,Kobayashi2009d} for 
+%%%the model checking part. In the predicate abstraction part, we have 
+%%%adopted several optimizations described in \cite{Ball2002} for finding 
+%%%Boolean formulas for abstraction in \rn{A-C}.
+%%%%unlike in \cite{Ball2002} 
+%%%To further optimize the abstraction part, our implementation does not 
+%%%try to find the strongest Boolean formulas. Instead, we find the 
+%%%strongest Boolean formulas whose number of the conjunctions is 
+%%%restricted to a finite number. In the CEGAR part, we have adopted the 
+%%%interpolating theorem prover CSIsat~\cite{Beyer2008}.
+
+%implementation: cps conversion etc
+
+%%%\begin{table}[t]
+%%%\begin{center}
+%%%\begin{tabular}{|l|r|r||r|r|r|r|}
+%%%\hline
+%%%programs & size & order & time & pred & cegar & mc \\
+%%%\hline
+%%%\tt{M}   &    0 &     0 &    0 &    0 &     0 &  0 \\
+%%%\hline
+%%%\tt{M}   &    0 &     0 &    0 &    0 &     0 &  0 \\
+%%%\hline
+%%%\end{tabular}
+%%%\end{center}
+%%%\caption{Experimental Results}\label{tab:exps}
+%%%\end{table}
+%%%
+%%%The experimental results are summarized in Table~\ref{tab:exps}. The 
+%%%columns ``size'' and ``order'' respectively show the size and the order 
+%%%of the programs, which are defined by: \todo{}
+%%%%
+%%%The column ``time'' shows the elapsed time (in seconds) for verification. 
+%%%The columns ``pred'', ``cegar'', and ``mc'' respectively show the 
+%%%percentage of the elapsed time for predicate abstraction, CEGAR, and 
+%%%model checking. The program ...
+%%%\begin{itemize}
+%%%\item programs in the paper
+%%%\item simple integer functions from \cite{Terauchi2010}
+%%%\item simple higher-order functions (twice, ntimes)
+%%%\item McCarthy's 91 function
+%%%\item erroneous programs
+%%%\item higher-order programs that encode various control operators
+%%%\item verification of resource usage safety
+%%%\item
+%%%\item array-manipulating programs from \cite{Xi1999}
+%%%\item higher-order programs that encode various data structures with Church encoding
+%%%\item example from probabilistic inference
+%%%\item higher-order but artificial examples: e.g. the context-sensitive language \(a^n b^n c^n\), the double exponential length language \(\underbrace{a \dots a}_{2^{2^n}}\).
+%%%\end{itemize}
+%%%
+%%%For the unsafe programs, our verifier can find counterexamples 
+%%%reasonably fast.
+%%%%mostly terminating,
+%%%For the safe programs, the model checking part is rather fast even for 
+%%%higher-order programs. The bottleneck of the current prototype 
+%%%implementation is the predicate abstraction part: it does not scale for 
+%%%a large number of abstraction predicates. The CEGAR part is rather slow, 
+%%%and sometimes discovers a large number of predicates, which slow down 
+%%%the predicate abstraction part. We believe that we can relax the 
+%%%problems of the CEGAR part by exploiting a caller/callee information for 
+%%%constraint partitioning so that we can focus on really-required 
+%%%predicates for the success of verification. 
+%%%%refuting an infeasible error path.

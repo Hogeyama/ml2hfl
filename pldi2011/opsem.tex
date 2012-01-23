@@ -1,0 +1,61 @@
+\begin{figure}[t]
+\typicallabel{E-Assume}
+\infrule[E-App]
+  {f\ \seq{x}=e \in D}
+  {E[f\ \seq{v}] \stackrel{\epsilon}{\RED}_D E[[\seq{v}/\seq{x}]e]}
+\rulesp
+
+\infax[E-Let]
+  {E[\LETEQIN{x}{v}{e}] \stackrel{\epsilon}{\RED}_D E[[v/x]e]}
+\rulesp
+
+\infax[E-Op]
+  {E[\OP(\seq{c})] \stackrel{\epsilon}{\RED}_D E[\SEM{\OP}(\seq{c})]}
+\rulesp
+
+\infax[E-Par]
+  {E[\PAR{e_0}{e_1}] \stackrel{i}{\RED}_D E[e_i]}
+\rulesp
+
+%%%\infax[E-Par-Right]
+%%%  {\PAR{e_1}{e_2} \stackrel{1}{\RED}_D e_2}
+%%%\rulesp
+%%%
+%%%\infax[E-Par2-Left]
+%%%  {\PARB{e_1}{e_2} \stackrel{\epsilon}{\RED}_D e_1}
+%%%\rulesp
+%%%
+%%%\infax[E-Par2-Right]
+%%%  {\PARB{e_1}{e_2} \stackrel{\epsilon}{\RED}_D e_2}
+%%%\rulesp
+
+\infax[E-Assume]
+  {E[\ASSUME{\TRUE}{e}] \stackrel{\epsilon}{\RED}_D E[e]}
+\rulesp
+
+%%\infax[E-Nth]
+%%  {\NTH{i}{(v_1,\dots,v_m)} \stackrel{\epsilon}{\RED}_D v_i}
+%%\rulesp
+
+%\infrule[E-Ctx]
+%  {e_1 \stackrel{l}{\RED}_D e_2}
+%  {E[e_1] \stackrel{l}{\RED}_D E[e_2]}
+%\rulesp
+
+\infax[E-Fail]
+  {E[\FAIL] \stackrel{\epsilon}{\RED}_D \FAIL}
+%\rulesp
+
+%%%\infax
+%%%  {e \stackrel{\epsilon}{\RED^*}_D e}
+%%%\rulesp
+%%%
+%%%\infrule
+%%%  {e \stackrel{\pi_1}{\RED^*}_D e'' \andalso
+%%%   e'' \stackrel{\pi_2}{\RED}_D e'}
+%%%  {e \stackrel{\pi_1 \cdot \pi_2}{\RED^*}_D e'}
+%%%\rulesp
+
+\caption{Call-by-Value Operational Semantics}
+\label{fig:opsem}
+\end{figure}

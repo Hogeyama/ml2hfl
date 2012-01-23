@@ -1,0 +1,88 @@
+\section{Typing Rules for Abstraction Types}
+\label{sec:abst-types}
+
+The judgment \(\DT{\Gamma}{e}{\sigma}\), which means 
+``under the abstraction type environment \(\Gamma\), the expression 
+\(e\) can be consistently abstracted to an expression of abstraction type \(\sigma\),''
+is inductively defined by the following rules.
+%%\begin{figure}
+\typicallabel{T-Assume}
+
+%%%\infrule[T-Const]
+%%%  {c\mbox{~has~the~base~type~}b}
+%%%  {\DT{\Gamma}{c}{b[\lambda x.x=c]}}
+%%%%\rulesp
+%%%
+%%%\infrule[T-Op]
+%%%  {\alphaB(\Gamma) \pS \OP(\seq{v}):b}
+%%%  {\DT{\Gamma}{\OP(\seq{v})}{b[\lambda x.x=\OP(\seq{v})]}}
+%%%%\rulesp
+
+\infrule[T-Base]
+  {\mbox{$e$ is a constant, a variable or an expression of the form \(\OP(\seq{v})\)}\\
+    \alphaB(\Gamma) \pS e:b}
+  {\DT{\Gamma}{e}{b[\lambda y.y=e]}}
+%\rulesp
+
+\infrule[T-Var]
+  {\Gamma(x)=(x_1\COL\sigma_1 \to \cdots \to x_k\COL\sigma_k \to\sigma) \andalso
+   \mbox{\(\Gamma(x)\) is a function type} \\
+    \DT{\Gamma,x_1:\sigma_1,\dots,x_{i-1}:\sigma_{i-1}}{v_i}{[v_1/x_1,\ldots,v_{i-1}/x_{i-1}]\sigma_i} \\
+  \mbox{ (for each $i\in\set{1,\ldots,k}$)}}
+  {\DT{\Gamma}{x\ \seq{v}}{[\seq{v}/\seq{x}]\sigma}}
+%\rulesp
+
+\infrule[T-Let]
+  {\DT{\Gamma}{e_1}{\sigma'} \andalso
+   \DT{\Gamma,x:\sigma'}{e_2}{\sigma}}
+  {\DT{\Gamma}{\LETEQIN{x}{e_1}{e_2}}{\sigma}}
+%\rulesp
+
+
+\infax[T-Fail]
+  {\DT{\Gamma}{\FAIL}{\sigma}}
+%\rulesp
+
+\infrule[T-Assume]
+  {\DT{\Gamma}{v}{\TBOOL[\lambda x.x=\TRUE]} \\
+   \DT{\Gamma}{e}{\sigma}}
+  {\DT{\Gamma}{\ASSUME{v}{e}}{\sigma}}
+%\rulesp
+
+\infrule[T-Par]
+  {\DT{\Gamma}{e_1}{\sigma} \andalso
+   \DT{\Gamma}{e_2}{\sigma}}
+  {\DT{\Gamma}{\PAR{e_1}{e_2}}{\sigma}}
+%\rulesp
+
+%\infrule[T-Coerce]
+%  {\DT{\Gamma}{e}{b[\seq{Q}]}}
+%  {\DT{\Gamma}{e}{b[\seq{P}]}}
+%%\rulesp
+
+\infrule[T-CAdd]
+  {\DT{\Gamma}{v}{b[\seq{Q}]}}
+  {\DT{\Gamma}{v}{b[\seq{Q},P]}}
+
+\infrule[T-CRem]
+  {\DT{\Gamma}{v}{b[\seq{Q},\seq{P}]}}
+  {\DT{\Gamma}{v}{b[\seq{P}]}}
+
+\infrule[T-CFun]
+  {\DT{\Gamma}{v}{(x\COL\sigma'_1\to\sigma'_2)} \\
+   \DT{\Gamma,x\COL\sigma_1}{x}{\sigma'_1} \\
+   \DT{\Gamma,x\COL\sigma_1,x'\COL\sigma'_1,y\COL\sigma'_2}{y}{\sigma_2}}
+  {\DT{\Gamma}{v}{(x\COL\sigma_1\to\sigma_2)}}
+
+
+%\infrule[T-Prog]
+%  {f_i: (\seq{x}_i:\seq{\sigma}_i \to \sigma_i) \in \Gamma \andalso
+%   \DT{\Gamma,\seq{x}_i:\seq{\sigma}_i}{e_i}{\sigma_i} \\
+%   (\mbox{for~each~}i=1,\dots,n)}
+%  {\DT{}{\set{f_1\ \seq{x}_1 = e_1,\ldots,f_m\ \seq{x}_m = e_m}}{\Gamma}}
+%%\rulesp
+
+%%\caption{Dependent Typing Rules}
+%%\label{fig:dep_types}
+%%\end{figure}
+%%\input{dep_types_rules}

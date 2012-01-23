@@ -1,0 +1,101 @@
+\section{Predicate Abstraction for a List-Processing Program}
+\label{sec:examplelist}
+%%\begin{example}
+
+This section gives an example of application of our predicate abstraction to 
+list-manipulating programs.
+
+Consider a language having a list type \(\Tlist\) as a data type, with the following constants and
+operators:
+\[
+\begin{array}{l}
+\textit{nil}: \Tlist, \qquad 
+%%\textit{isnil}: \Tlist \to \TBOOL\\
+\textit{cons}: \TINT, \Tlist \to \Tlist\\
+\textit{car}: \Tlist \to \TINT, \qquad 
+\textit{cdr}: \Tlist \to \Tlist\\
+\textit{length}: \Tlist \to \TINT
+\end{array}
+\]
+Let us consider the following program.
+\begin{verbatim}
+let map f x = if isnil(x) then nil 
+           else let y=f(car(x)) in 
+                let r=map f (cdr(x)) in cons(y,r) in
+let g x = x+1 in
+  if length(map g l) = length(l) then () else fail
+\end{verbatim}
+Let \(\Gamma\) be the abstraction type environment:
+\[
+\begin{array}{l}
+\textit{map}\COL(\ITint{\,}\ra \ITint{\,}) \ra x\COL\Tlist[\,]\ra \sigma \\
+f\COL \ITint{\,}\ra \ITint{\,}, \qquad x\COL \Tlist[\,]
+\end{array}
+\]
+where \(\sigma = \Tlist[\lambda r.\textit{length}(r)=\textit{length}(x)]\).
+The then-part of the body of function \texttt{map} is expressed as
+\[
+e_1 \equiv \ASSUME{(x=\textit{nil})}{\textit{nil}},
+\]
+It is transformed as follows.
+\infrule {\T{\Gamma}{x=\textit{nil}}{\TBOOL[\lambda u.u=\TRUE]}{e_*}\\
+       \T{\Gamma,u\COL \TBOOL[\lambda u.x=\textit{nil}]}{\textit{nil}}{\sigma}{e_3}}
+{\T{\Gamma}{e_1}{\sigma}{\LETEQIN{u}{e_*}{\ASSUME{u}{e_3}}}}
+Here, \(e_*\) is (simplified to) a non-deterministic boolean \(\PARB{\TRUE}{\FALSE}\).\\
+\(e_3\) is \(\LETEQIN{\tuple{x_1,x_2}}{e_4}{x_2}\) where
+\[e_4 \equiv \LETEQIN{r}{\TRUE}{\tuple{r,\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}}},\]
+with \(\psi = u \IMPLY r\) and \(\psi' = u\IMPLY \neg r\).
+It is obtained as follows.
+\[
+\infers[A-CRem]{\T{\Gamma,u\COL \TBOOL[\lambda u.x=\textit{nil}]}{\textit{nil}}{\sigma}{e_3}}
+{\infers[A-CAdd]{\T{\Gamma,u\COL \TBOOL[\lambda u.x=\textit{nil}]}{\textit{nil}}{\sigma_1}{e_4}}
+  {\infers[A-Base]{\T{\Gamma,u\COL \TBOOL[\lambda u.x=\textit{nil}]}
+   {\textit{nil}}{\Tlist[\lambda r.r=\textit{nil}]}{\TRUE}}
+    {}}}
+\]
+Here \(\sigma_1 = \Tlist[\lambda r.r=\textit{nil}, \lambda r.\textit{length}(r)=\textit{length}(x)]\).
+(Note that the condition \(P(x) \IMPLY \THE{\Gamma,x:b[\seq{Q}]}\psi\) in \rn{A-CAdd} is
+  \((\textit{length}(r)=\textit{length}(x)) \IMPLY (x=\textit{nil} \IMPLY r=\textit{nil})\), which is valid.)
+After simplification, we get \(\TRUE\) as the abstraction of the then-part.
+
+Let \(\Gamma'\) be the abstraction type environment:
+\[
+\begin{array}{l}
+\Gamma, u\COL \Tlist[\lambda x.\neg(x=\textit{nil})], \\
+r\COL\Tlist[\lambda r.\textit{length}(r)=\textit{length}(\textit{cdr}(x))],y\COL\TINT[\,]
+\end{array}
+\]
+\(\textit{cons}(y,r)\) is transformed as follows.
+\[
+\infers[A-CRem]
+  {\T{\Gamma'}{\textit{cons}(y,r)}{\sigma}{e_5}}
+ {\infers[A-CAdd]
+  {\T{\Gamma'}{\textit{cons}(y,r)}{\sigma_2}{e_6}}
+  {\infers[A-Base]
+    {\T{\Gamma'}{\textit{cons}(y,r)}{\Tlist[\lambda z.z=\textit{cons}(y,r)]}{\TRUE}}{}}}
+\]
+Here, \(e_5\), \(e_6\), and \(\sigma_2\) are given by:
+\[
+\begin{array}{l}
+e_5 \equiv \LETEQIN{\tuple{x_1,x_2}}{e_6}{x_2}\\
+e_6 \equiv
+\LETEQIN{z}{\TRUE}{\tuple{z,\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}}}\\
+\psi \equiv u\land z\IMPLY r\\
+\psi'\equiv u\land z\IMPLY\neg r\\
+\sigma_2 = \Tlist[\lambda z.z=\textit{cons}(y,r), \lambda z.\textit{length}(z)=\textit{length}(x)].
+\end{array}
+\]
+\(e_5\) can be simplified to \(r\) (under the condition \(u=\TRUE\), which comes from the condition of the else-branch).
+
+By transforming the rest of the body in a similar manner, we get the following abstract version of \texttt{map}
+(after simplification).
+\begin{verbatim}
+let map f x = if randb() then tt
+          else let y=f() in
+               let r=map f () in r in
+let g x = () in
+  if map g () then () else fail
+\end{verbatim}
+%%By model-checking the abstract program, we know that the program never fails.
+%%\qed
+%%\end{example}

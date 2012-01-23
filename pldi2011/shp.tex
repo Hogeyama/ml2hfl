@@ -1,0 +1,60 @@
+\section{Construction of SHP}
+\label{sec:shp}
+
+%%The general construction is given below.
+
+This section gives the general construction of SHP.
+
+Consider a program normalized to the following form:
+\begin{eqnarray*}
+D&::=& \set{f_1\ \seq{x}_1 = e_{10}\PAROP e_{11},\ldots,f_m\ \seq{x}_m = e_{m0}\PAROP e_{m1}} \\
+e&::=& \ASSUME{v}{\CALL} \mid \LETEQIN{x}{\OP(\seq{v})}{\CALL}\\
+\CALL &::=& c \mid x\ \seq{v} \mid f\ \seq{v} \mid \FAIL \\
+v&::=& c \mid x\ \seq{v} \mid f\ \seq{v}
+%%v&::=& c \mid x \mid f\ \seq{v}
+\end{eqnarray*}
+Here, for the sake of simplicity, we have assumed that every function definition has
+at most one (tail) function call, and the return value is \(\tuple{}\); this does not
+lose generality as the normal form can be obtained by applying CPS transformation and \(\lambda\)-lifting.
+Given a path \(s = b_1\cdots b_\ell\) of \(D\)
+(which means that the branch \(b_i\) has been chosen at \(i\)th function call), 
+the corresponding SHP \(D' = \mkSHP(D, s)\) is given by:
+\[
+\begin{array}{l}
+D' = \{\Copy{f_i}{j}\ \seq{x}_i = \X{e_{ib_j}}{j+1} \mid i\in\set{1,\ldots,m}, j\in\set{1,\ldots,\ell},\\
+\qquad               \mbox{the target of the \(j\)th function call is \(f_i\)}\}\\
+\quad \cup 
+  \{\Copy{f_i}{j}\ \seq{x}_i = \tuple{} \mid i\in\set{1,\ldots,m}, j\in\set{1,\ldots,\ell},\\
+\qquad                  \mbox{the target of the \(j\)th function call is not \(f_i\)}\}\\
+\quad \cup \set{\textit{main}\tuple{} = \Copy{\textit{main}}{1}\tuple{}}
+%%
+%%\Copy{f_i}{j}\ {\seq{x}_i} = 
+%% \left\{\begin{array}{ll}
+%%           \X{e_{ib_j}}{j} &
+%%   \mbox{if 
+%%        {\tuple{}}    & \mbox{otherwise}
+%%        \end{array}
+%%  \right.
+\end{array}
+\]
+where \(\X{e}{j}\) is given by:
+\[
+\begin{array}{l}
+\X{\ASSUME{v}{\CALL}}{j} = \ASSUME{v}{\X{\CALL}{j}}\\
+\X{\LETEQIN{x}{\OP(\seq{v})}{\CALL}}{j} = \LETEQIN{x}{\OP(\seq{v})}{\X{\CALL}{j}}\\
+\X{c}{j} = c\qquad
+\X{\FAIL}{j} = \FAIL\qquad
+\X{x}{j} = x\\
+\X{x\ v_1\,\cdots\,v_k}{j} = \NTH{j}(x)\ \Dup{v_1}{j+1}\,\cdots\,\Dup{v_k}{j+1} \qquad(k \geq 1)\\
+\X{f\ v_1\,\cdots\,v_k}{j} = \Copy{f}{j}\ \Dup{v_1}{j+1}\,\cdots\,\Dup{v_k}{j+1}\\
+\Dup{c}{j} = c\qquad
+\Dup{x}{j} = x \quad \mbox{(if \(x\) is a base variable)}\\
+\Dup{(x\ \seq{v})}{j} =
+                   \tuple{\underbrace{\lambda\seq{y}.\tuple{},\ldots,\lambda\seq{y}.\tuple{}}_{j-1},\NTH{j}(x)(\Dup{\seq{v}}{j}),\ldots,\NTH{\ell}(x)(\Dup{\seq{v}}{j})}\\
+ \quad \mbox{(if \(x\) is a function variable)} \\
+\Dup{(f\ \seq{v})}{j} =
+                   \tuple{\underbrace{\lambda\seq{y}.\tuple{},\ldots,\lambda\seq{y}.\tuple{}}_{j-1},\Copy{f}{j}(\Dup{\seq{v}}{j}),\ldots,\Copy{f}{\ell}(\Dup{\seq{v}}{j})}\\
+\end{array}
+\]
+Here, each function parameter has been replaced by a \(\ell\)-tuple of functions.
+

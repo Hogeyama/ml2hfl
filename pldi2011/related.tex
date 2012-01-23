@@ -1,0 +1,441 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Model Checking of Higher-Order Programs}
+
+%\iffull
+The model checking of higher-order recursion schemes has been 
+extensively 
+%\iffull
+%studied~\cite{Knapik2002,Ong2006,Hague2008,Kobayashi2009a}. 
+%\else
+studied~\cite{Knapik2002,Ong2006,Kobayashi2009a}. 
+%\fi
+Ong~\cite{Ong2006} proved the decidability of the modal \(\mu\)-calculus 
+model checking of recursion schemes. Kobayashi~\cite{Kobayashi2009} then 
+proposed a new framework of higher-order program verification based on 
+the model checking of recursion schemes, already suggesting a use of 
+predicate abstraction and CEGAR to deal with programs manipulating 
+infinite data domain. There were two missing pieces in his framework, 
+however. One was a practical model checking algorithm for recursion 
+schemes (note that the model checking of recursion schemes is in general 
+\(n\)-EXPTIME-complete), and the other was a method to apply predicate 
+abstraction and CEGAR to higher-order programs. The former piece has 
+been supplied later by Kobayashi~\cite{Kobayashi2009c}, and supplying 
+the latter piece was the goal of the present paper.
+%\else
+%\delspan{
+%Kobayashi~{\cite{Kobayashi2009}} has shown that verification problems for 
+%functional programs with finite data domains can be reduced to the 
+%recursion scheme model checking.
+%%%and developed a practical model checker for recursion schemes.
+%He~{\cite{Kobayashi2009}} also suggested an idea of using predicate 
+%abstraction and CEGAR to deal with infinite data domains, but without 
+%any concrete method: In particular, he did not discuss at all how 
+%abstraction interface like abstraction types can be defined, how HBP can 
+%be obtained by using the abstraction interface, or how predicates are 
+%systematically discovered from spurious error paths to ensure the 
+%progress property.
+%}
+%\fi
+
+In parallel to the present work, Unno et 
+al.~\cite{Kobayashi2010,Unno2010} and Ong and Ramsay~\cite{Ong2011} 
+proposed applications of higher-order model checking to verification of 
+tree-processing programs. Their approaches are radically different from 
+ours. First, they use different abstraction techniques: tree data are 
+abstracted using either tree automata~\cite{Kobayashi2010,Unno2010} or 
+patterns~\cite{Ong2011}, which cannot abstract values using binary 
+predicates (such as \(2\times x\geq y\)). Secondly, The method of 
+\cite{Kobayashi2010} applies only to programs that can be expressed in 
+the form of (higher-order) tree transducers, and the extension in 
+\cite{Unno2010} requires user annotations. Ong and Ramsay's 
+method~\cite{Ong2011} applies to general functional programs and 
+includes a CEGAR mechanism, but the precision of their method is heavily 
+affected by that of a variable binding analysis, and their CEGAR is 
+completely different from ours.
+%%Ong and Ramsay~\cite{Ong2011} introduces CEGAR, which is quite different from ours.
+Their technique does not satisfy relative completeness like 
+Theorem~\ref{th:rel-complete}.
+
+%%%In parallel to the present work, Kobayashi et al.~\cite{Kobayashi2010} 
+%%%investigated yet another approach to applying higher-order model checking to
+%%%verification of higher-order programs.
+%%%The technique and the target programs are quite different from those of the present work.
+%%%First, they~\cite{Kobayashi2010} use a different abstraction technique;
+%%%tree data are abstracted by using states of tree automata. 
+%%%Binary predicates such as \(2\times x\geq y\) cannot be expressed in the automata-based approach,
+%%%and no CEGAR-like technique is used.
+%%%Secondly, their approach applies only to programs that can be expressed in the form
+%%%of (higher-order) tree transducers.
+%%%\iffull There is a clear distinction between
+%%%input tree data and output tree data, and trees cannot be freely constructed
+%%%and deconstructed in programs. 
+%%%\fi
+%%%Unno et al.~\cite{Unno2010} recently extended the method
+%%%to handle arbitrary tree-processing programs, but it requires certain annotations of
+%%%invariants on intermediate data structures.
+%%%Ong and Ramsy~\cite{Ong2011} have also developed a verification method for tree-processing
+%%%programs based on higher-order model checking. They introduce a CEGAR method to refine
+%%%abstractions, but in a rather different way.
+
+
+
+%%\nk{If ICALP submission is accepted, insert a comment on that paper.}
+
+%%%The target programs of their approach are 
+%%%by . , and Kobayashi et al. have applied the 
+%%%decidability result to verification of higher-order functional 
+%%%programs~\cite{Kobayashi2009,Kobayashi2009c}. The main limitation of 
+%%%these methods is that they cannot handle programs that manipulate 
+%%%infinite data domains such as integers and lists.
+%%%%except \cite{Kobayashi2010} 
+%%%To relax the limitation, some of the authors have proposed a 
+%%%verification method for higher-order programs that manipulate tree data 
+%%%structures~\cite{Kobayashi2010}. The method can handle integers by 
+%%%encoding them as lists. However, the method cannot handle integer 
+%%%operations well since the method does not support intermediate data 
+%%%structures. Another limitation of the method is that specifications must 
+%%%be regular. Thus, we cannot express the specification like \(x \geq y\) 
+%%%on integer variables \(x\) and \(y\).
+
+%complete for a fragment of HMTTs called linear HMTTs, however supports 
+%only regular specifications.
+
+\subsection{Dependent Type Inference}
+
+There have been studies on automatic or semi-automatic inference of 
+dependent types~\cite{Chin2001,Flanagan2006,Rondon2008,Unno2009,Jhala2009,Terauchi2010}.
+%\nk{Add a pointer to Chin's work on size inference.}
+There are similarities between the goals of those studies and that of 
+our work. First, one of the goals of dependent type inference is to 
+prove the lack of assertion failures, as in the present work. Secondly, 
+our technique can actually be used for inferring dependent types. 
+%%As described in \cite{Kobayashi2009c},
+Recursion scheme model checker \trecs{}~\cite{Kobayashi2009c} is 
+type-based, and produces type information as a certificate of successful 
+verification. For example, for the abstraction of the last example in 
+Section~\ref{sec:intro}, it infers the type \(\TUNIT\ra (\TRUE \ra 
+\TUNIT)\ra\TUNIT\) for (the abstract version of) \(f\). Combined with 
+the abstraction type of \(f\), we can recover the following dependent 
+type for \(f:(x\COL \TINT \ra (y\COL\set{\nu\COL\TINT \mid \nu>x}\ra 
+\TUNIT)\ra \TUNIT)\).
+
+Though the goals are similar, the techniques are different. Rondon et 
+al.'s liquid types~\cite{Rondon2008} requires users to specify 
+predicates (or more precisely, shapes of predicates, called 
+\emph{qualifiers}) used in dependent types. Jhala et al.~\cite{Jhala2009} 
+proposed an automatic method for inferring qualifiers for liquid types. 
+Their method extracts qualifiers from a proof that a finite unfolding of 
+a source program does not get stuck, and has some similarity to our 
+method to infer abstraction types from an error path.
+%
+Unno and Kobayashi~\cite{Unno2009} proposed an automatic method for 
+inferring dependent types.
+%%They also use interpolants, but in a different way from ours. 
+They first prepare templates of dependent types (that contain predicate 
+variables) and generate (possibly recursive) constraints on predicate 
+variables. They then solve the constraints by using an interpolating 
+theorem prover. Jhala et al.~\cite{Jhala2010} also propose a similar 
+method, where they reduce the constraint solving in the last phase to 
+model checking of imperative programs.
+%%abstract interpretation and imperative program model checking to solve the constraints in the last phase.
+These approaches~\cite{Rondon2008,Unno2009,Jhala2009,Jhala2010} do 
+support higher-order functions, but in a limited manner, in the sense 
+that nested intersection types are not allowed. The difference between 
+dependent types with/without intersections is like the one between 
+context (or flow) sensitive/insensitive analyses. The former is more 
+precise though it can be costly.\footnote{Our method is an extreme case 
+of context/flow sensitive analysis, which is sound and complete for 
+programs with finite data domains.} In general, nested intersection 
+types are necessary to verify a program when function parameters are 
+used more than once in different contexts. Indeed, as discussed in 
+\iffull
+Appendix~\ref{sec:intersection}
+\else
+\cite{Kobayashi2011}, 
+\fi
+several of the programs in Section~\ref{sec:experiment} (e.g. 
+\texttt{neg}, where the first argument of \texttt{twice} is used in two 
+different contexts) require nested intersection types, and almost all 
+the examples given by Kobayashi~\cite{Kobayashi2009,Kobayashi2009c} call 
+for nested intersection types. 
+%%We are not sure how often such situations occur
+%%in the reachability verification of ordinary programs. However, 
+%%If other verification problems
+%%for higher-order programs are encoded into reachability problems, %%\cite{Kobayashi2009,Kobayashi2009c},
+%%then nested intersection types are often required; in fact, almost all the examples given in 
+%%\cite{Kobayashi2009,Kobayashi2009c} call for nested intersection types. 
+%
+%Our method supports both nested intersection types and automatic 
+%inference of dependent types.
+
+%(especially compared with a more mature one of Liquid 
+%types~\cite{Rondon2008})
+The limitation of our current prototype implementation is that the 
+supported language features are limited. We believe that it is possible 
+to extend our implementation to deal with data structures. In fact, the 
+predicate abstraction introduced in Section~\ref{sec:pred} applies to 
+data structures 
+%%\iffull (recall Example~\ref{ex:list}), \else (see an example in \cite{Kobayashi2011}) \fi 
+given an appropriate theorem prover. We expect the CEGAR part can also 
+be extended, e.g. by restricting the properties on data structures to 
+size properties, by treating data constructors as uninterpreted function 
+symbols, etc.
+%%%\iffull
+%%%Another limitation of our approach is that the result of our verification is less predictable.
+%%%In fact, as in the experiments for \texttt{xxx} and \texttt{yyy}, a slight change of a 
+%%%source program makes the system to fail to discover appropriate predicates.
+%%%This is because the CEGAR technique for automatic discovery of predicates is necessarily heuristic.
+%%%We plan to improve the heuristic for finding predicates.
+%%%\fi
+
+Technically, most closest to ours is Terauchi's work~\cite{Terauchi2010}. 
+In his method, candidates for dependent types are inferred from a finite 
+unfolding of a source program,
+%%by using an interpolating theorem prover, 
+and then a fixedpoint computation algorithm is used to filter out 
+invalid types. If the source program is not typable with the candidates 
+for dependent types, the program is further unfolded and more candidates 
+are collected. This cycle (which may diverge) is repeated until the 
+source program is found to be well-typed or ill-typed. This is somewhat 
+similar to the way our verification method works: abstraction types are 
+inferred from an error trace (instead of an unfolding of a program), and 
+then higher-order model checking (which also involves a fixedpoint 
+computation) is applied to verify the abstract program. If the 
+verification fails and an infeasible error path is found, the error path 
+is used to infer more predicates, and this cycle is repeated. Thus, 
+roughly speaking, our CEGAR phase corresponds to that of Terauchi to 
+find candidates for dependent types, and our phases for predicate 
+abstraction and higher-order model checking corresponds to Terauchi's 
+fixedpoint computation phase.
+%%\koba{Stress that our technique is strictly more powerful than Terauchi's type system.}
+Advantages of ours are: (i) our method can generate an error path as a 
+counterexample; there is no false alarm. On the other hand, a 
+counterexample of Terauchi's method is an unfolding of a program, which 
+may actually be safe. (ii) We infer predicates from an error trace, 
+rather than from an unfolding of a program; From the latter, too many 
+constraints are generated, especially for programs containing non-linear 
+recursions.
+%%\todo{Experiments to support this claim.}
+%%(Note that Terauchi's intersection type inference algorithm requi
+%%\iffull
+%%generated\footnote{In fact,
+%%his algorithm first infers the shape of dependent types by intersection type inference, 
+%%which requires as many steps as the number of \(\beta\)-reductions.
+%%The number of \(\beta\)-reduction steps for simply-typed \(\lambda\)-terms (without recursion) is known to be 
+%%non-elementary.}, 
+%%\else
+%%generated,
+%%\fi
+%%which can be a burden to
+%%the underlying interpolating theorem prover. 
+(iii) Our method can find dependent types constructed from arbitrary 
+boolean combinations of the inferred predicates, while Terauchi's method 
+only looks for dependent types constructed from the formulas directly 
+generated by an interpolating theorem prover; thus, the success of the 
+latter more heavily relies on the quality or heuristics of the 
+underlying interpolating theorem prover.
+%
+%(Note that as discussed at the end of Section~\ref{sec:experiment}, 
+%whether appropriate predicates are obtained through an interpolating 
+%theorem prover are somewhat unpredictable.)
+%
+%%(A price to pay instead in our method is 
+%%that the computation of predicate abstraction and higher-order model checking can be more costly.)
+(iv) Because of the point (iii) above, our method (predicate abstraction 
++ higher-order model checking) can also be used in a liquid type-like 
+setting~\cite{Rondon2008} where atomic predicates are given by a user.
+%%(but unlike liquid types, our method can infer nested intersection types),
+(v) Because of the point discussed in 
+Remark~\ref{rem:more-expressive-than-deptype}, the combination of our 
+predicate abstraction and higher-order model checking is strictly more 
+powerful than Terauchi's approach (as long as suitable predicates are 
+found).
+%
+(vi) Our method can be extended to verify more general properties 
+(expressed by the modal \(\mu\)-calculus), by appealing to the results 
+on higher-order model checking~\cite{Ong2006,Kobayashi2009a}.
+%%\cite{Kobayashi2011}.
+%%Some of the above claims are supported by experimental results: see \iffull Appendix~\ref{sec:depcegar}.
+%%\else \cite{Kobayashi2011}. \fi
+%%For a fairer comparison, however, larger experiments are required in both approaches.
+%%%\iffull
+%%%(The programs \texttt{sum} and \texttt{mult} used in our experiments 
+%%%are almost the same as those tested by Terauchi~\cite{Terauchi2010},
+%%%and the running times are comparable. We cannot, however, draw any conclusion from such small experiments.%
+%%%\footnote{Actually, we have tried other examples in the paper with his system on the web, but 
+%%%many of them could not be tested because of unknown errors.
+%%%For \texttt{mc91}, Terauchi's system failed
+%%%because of a failure of the underlying theorem prover, so it is not clear whether this shows a fundamental 
+%%%limitation of his method. })
+%%%\fi
+%%%type constraints 
+%%%Their method 
+%%%The notion of counterexamples is however different
+%%%from that of the present work; a counterexample in their work is an ill-typed 
+%%%infer dependent types completely automatically. 
+%%%Dependent types have been applied to verification of higher-order 
+%%%functional programs with infinite data 
+%%%domains~\cite{Flanagan2006,Rondon2008,Unno2009,Terauchi2010}.
+%%%%
+%%%Rondon et al. have proposed liquid types~\cite{Rondon2008}, which are 
+%%%dependent types whose base types can be refined by using user-specified  
+%%%predicates.
+%%%% as in our abstraction types.
+%%%Their system verifies a program by automatically inferring liquid types 
+%%%of the program. However, the system does not support counterexample 
+%%%finding and automatic abstraction refinement unlike in our system.
+%%%%predicate discovery
+%%%
+%%%Some of the authors have proposed a dependent type inference 
+%%%method~\cite{Unno2009}, which supports counterexample finding and 
+%%%automatic abstraction refinement using an interpolating theorem prover. 
+%%%%counterexample guided 
+%%%%the depedent type system used in
+%%%However, the method is incomplete for higher-order programs in a sense 
+%%%that a counterexample reported by the method may be infeasible.
+%%%% with finite data domains
+%%%In contrast, our present verification framework is complete for 
+%%%higher-order programs.
+%%%%sound but not terminating
+%%%
+%%%Terauchi has recently proposed another dependent type inference 
+%%%method~\cite{Terauchi2010}, which is complete for higher-order programs 
+%%%thanks to the use of intersection types. 
+%
+%%%\nk{Rewrite below.}
+%%%Given a program and candidate types, which are essentially the same as 
+%%%our abstraction types, his system automatically infers intersection 
+%%%types of the program that can be constructed from the candidate types. 
+%%%If the program cannot be typed by using the current candidate types, his 
+%%%system can automatically find new candidate types.
+%%%%
+%%%Our method can be seen as a similar dependent type inference method: the 
+%%%predicate abstraction part (that uses dependent types) in combination 
+%%%with the higher-order model checking part~\cite{Kobayashi2009} (that 
+%%%uses intersection types) essentially infer intersection types of a 
+%%%program that can be constructed from abstraction types.
+%%%%which we believe is as expressive as Terauchi's type system.
+%%%%\todo{The CEGAR part is essentially different from ...}
+%%%
+%%%In contrast to the verification methods based on dependent types, our 
+%%%method is carefully designed so that we can solve a verification problem 
+%%%by clearly dividing it into three sub-problems: predicate abstraction, 
+%%%higher-order model checking, and CEGAR. The division of the problem may 
+%%%make the verification slower. However, the division enables us to extend 
+%%%our method easily. For example, we can support advanced language 
+%%%features such as recursive data structures and exceptions, and/or 
+%%%support verification of other safety properties than reachability such 
+%%%as resource usage safety~\cite{Igarashi2005} by just extending the 
+%%%predicate abstraction part.
+%%%%
+%%%Moreover, we can support modal-\(\mu\) calculus model checking by 
+%%%replacing only the model checking part with \cite{Kobayashi2009a}.
+%%%%
+%%%The CEGAR part alone can be replaced if more effective predicate 
+%%%discovery method than the interpolation-based one proposed in this paper 
+%%%is proposed.
+%%%
+%%%% and/or more advanced type systems than the simple type system used in 
+%%%%this paper \cite{Tsukada2010}
+%%%
+%%%%%%we can further optimize the predicate abstraction part and the CEGAR part separately.
+%%%%
+%%%%The model-checking part~\cite{Kobayashi2009,Kobayashi2009d} is sound and 
+%%%%complete, supports more expressive specifications and possibly more 
+%%%%time-efficient.
+%%%
+%%%%the abstraction type \(b[\seq{P}]\) used in our method can be seen as 
+%%%%the set of refinement types of the form \(\set{\nu:b \mid \phi_i}\), 
+%%%%where \(\phi_i\) is a propositional formula whose propositions are 
+%%%%\(\seq{P}(\nu)\)
+%%%
+%%%%
+
+\subsection{Traditional Model Checking}
+
+Predicate abstraction and CEGAR have been extensively studied in the 
+context of finite state or pushdown model 
+checking~\cite{Graf1997,Ball2001,Ball2002,Ball2005,Clarke2003a,Henzinger2002,Henzinger2004,Heizmann2010}. 
+%
+Predicate abstraction has also been applied to the game-semantics-based 
+model checking~\cite{Bakewell2009}. We are not, however, aware of 
+previous work that applies predicate abstraction and CEGAR to 
+higher-order model checking. As discussed in Section~\ref{sec:intro}, 
+the extension of predicate abstraction and CEGAR to higher-order model 
+checking is non-trivial. One may think that 
+defunctionalization~\cite{Reynolds1972} can be used to eliminate 
+higher-order functions and apply conventional model checking. The 
+defunctionalization however uses recursive data structures to represent 
+closures, so that the resulting verification method is too imprecise, 
+unless a clever abstraction technique for recursive data structures is 
+available.
+
+%
+The three components of our verification method, predicate abstraction, 
+higher-order model checking (\trecs{}), and CEGAR, may be seen as 
+higher-order counterparts of the three components of 
+SLAM~\cite{Ball2001,Ball2002,Ball2005}: \textsc{C2bp}, \textsc{Bebop}, 
+and \textsc{Newton}.
+%
+Our use of dependency in abstraction types appears to subsume Ball et 
+al.'s polymorphic predicate abstraction~\cite{Ball2005}. For example, 
+the \texttt{id} function in \cite{Ball2005} can be abstracted by using 
+the abstraction type {\(x:\TINT[\,] \to \TINT[\lambda y.y=x]\)}.
+
+There are a lot of studies to optimize predicate abstraction (especially 
+for optimizing or avoiding the costly computation of abstract transition 
+functions) in the context of conventional model 
+checking~\cite{Ball2001,McMillan2005}. We have already borrowed some of 
+the optimization techniques as mentioned in Section~\ref{sec:experiment}, 
+and plan to adapt more techniques.
+
+%One may think that traditional first-order model checking can be applied 
+%to verification of higher-order programs by using 
+%defunctionalization~\cite{Reynolds1972}, a program transformation which 
+%eliminates higher-order functions. However, defunctionalization requires 
+%recursive types (to express closures), so that the defunctionalized 
+%version of a simply-typed program is not simply-typed. Thus, the 
+%resulting verification method is no longer complete even for 
+%higher-order boolean programs. Without very good abstraction mechanisms 
+%for recursive data structures, the resulting method will be very 
+%imprecise for higher-order functional programs.
+
+%
+%%%\cite{Graf1997} have proposed predicate abstraction, which abstracts an 
+%%infinite state system to a finite state one for finite state model 
+%%checking. \cite{Ball2001} have applied predicate abstraction for 
+%%model-checking C programs. 
+
+%%%CEGAR has been originally proposed by Clarke et al.~\cite{Clarke2003a}, 
+%%%and applied to software model checking~\cite{Ball2002,Henzinger2002}. 
+%%%\cite{Henzinger2004} have shown that an interpolating theorem 
+%%%prover~\cite{McMillan2005,Beyer2008} can be used to systematically 
+%%%extract new predicates from a spurious counterexample (i.e., an 
+%%%infeasible error path). However, their method is limited to first-order 
+%%%programs. In this paper, we have proposed a CEGAR for higher-order 
+%%%programs based on an interpolating theorem prover.
+
+%saving costs for computing abstract transition: lazy 
+%abstraction~\cite{Henzinger2002}, proofs from counterexamples~\cite{McMillan2006,Heizmann2010}
+
+%FOCI~\cite{McMillan2005}
+%CSIsat~\cite{Beyer2008},
+%CLPprover~\cite{}
+%MathSAT~\cite{}
+
+\subsection{Abstract Interpretation}
+The combination of predicate abstraction and higher-order model checking 
+may be viewed as a kind of abstract interpretation~\cite{Cousot1978}. 
+The abstract domain used for each functional value is defined by 
+abstraction types, and predicate abstraction transforms a source program 
+into an HBP whose semantics corresponds to the abstract semantics of the 
+source program. Higher-order model checking then computes the abstract 
+semantics. An advantage here is that thanks to the model checking 
+algorithm~\cite{Kobayashi2009c} for higher-order recursion schemes, the 
+computation of the abstract semantics is often much faster than a naive 
+fixed-point computation (which is extremely costly for higher-order 
+function values).
+%%We are not aware of (implementation of) abstract interpreter-based
+%%verification methods for higher-order functional programs that are directly relevant to ours.

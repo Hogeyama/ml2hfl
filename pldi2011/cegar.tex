@@ -1,0 +1,711 @@
+\section{Counterexample-Guided Abstraction Refinement (CEGAR)}
+\label{sec:cegar}
+
+This section describes a CEGAR procedure to discover new predicates used 
+for predicate abstraction when the higher-order model checker \trecs{} 
+has reported an error path \(s\) of a boolean program. 
+%\koba{Revise Figure~1, and refer to it}
+
+\subsection{Feasibility checking}
+
+Given an error path \(s\) of an abstract program, we first check whether 
+\(s\) is feasible in the source program \(D\), i.e. whether 
+\(\textit{main}\tuple{}\redswith{s}{D}\FAIL\). This can be easily 
+checked by actually executing the source program along the path \(s\), 
+and checking whether all the branching conditions are true. (Here, we 
+assume that the program is closed. If we allow free variables for 
+storing base values, we can just symbolically execute the source program 
+along the path, and check whether all the conditions are satisfiable.) 
+If the source program indeed has the error path (i.e. 
+\(\textit{main}\tuple{}\redswith{s}{D}\FAIL\)), then we report the error 
+path as a counterexample.
+
+\subsection{Predicate discovery and refinement of abstraction types}
+If the error path is infeasible (i.e. \(\textit{main}\tuple{}\not\redswith{s}{D}\FAIL\)), 
+we find new predicates to refine predicate abstractions.
+
+In the case of the model checking of first-order programs, this is 
+usually performed by, for each program point \(\ell\) in the error path, 
+(i) computing the strongest condition \(C_1\) at \(\ell\), (ii) 
+computing the weakest condition \(C_2\) for reaching from \(\ell\) to 
+the failure node, and (iii) using a theorem prover to find a condition 
+\(C\) such that \(C_1\! \Rightarrow\! C\) and \(C\! \Rightarrow\! \neg 
+C_2\). Then the predicates in \(C\) can be used for abstracting the 
+state at the program point. For example, in the reduction sequence (2) 
+of \(M_1\) in Section~\ref{sec:intro}, the condition \(C_1\) on the 
+local variable \(x\) is \(n\!>\!0\land x\!=\!n\), and the condition 
+\(C_2\) is \(x+1\geq 0\). From them, we obtain \(C \equiv x>0\) as a 
+predicate for abstracting \(x\).
+
+It is unclear, however, how to extend it to deal with higher-order 
+functions. For example, in the example above, how can we find a suitable 
+abstraction type for functions \(f\) and \(g\)? To address this issue, 
+as mentioned in Section~\ref{sec:intro}, we use the following type-based 
+approach. From an infeasible error path, we first construct a 
+\emph{straightline higher-order program} (abbreviated to SHP, which is 
+straightline in the sense that it contains neither branches nor 
+recursion and that each function is called at most once) that has 
+exactly one execution path, corresponding to the path \(s\) of the 
+source program. We then infer the dependent types of functions in the 
+straightline program, and use the predicates occurring in the dependent 
+types for refining abstraction types of the source program. We describe 
+each step in more detail below.
+
+
+\subsubsection{Constructing SHP}
+\label{sec:straight}
+
+Given a source program and a path \(s\), the corresponding SHP is 
+obtained by (i) making a copy of each function for each call in the 
+execution path, and (ii) for each copy, removing the branches not taken 
+in \(s\).
+
+\begin{example}
+\label{ex:shp}
+Recall the program \(M_3\) in Section~\ref{sec:intro}.
+\[
+\begin{array}{l}
+\textit{main}\tuple{} = k\ m \qquad f\ x\ g = g(x+1)\\
+h\ z\ y = \PAR{(\ASSUME{y>z}{\tuple{}})}{(\ASSUME{\neg (y>z)}{\FAIL})}\\
+k\ n = {(\ASSUME{n\geq 0}{f\ n\ (h\ n)})}
+%%\qquad\qquad 
+\PAROP {(\ASSUME{\neg (n\geq 0)}{\tuple{}})}\\
+\end{array} 
+\]
+%%(where \(n\) is some constant).
+Here, we have represented conditionals and assert expressions in our 
+language.\footnote{Here, for the sake of simplicity, we assume that \(m\) 
+is some integer constant. As already mentioned, the random number 
+generator \(\textit{randi}\) can actually be encoded in our language.} 
+Given the spurious error path \(0\cdot 1\), we obtain the following SHP.
+%%\(\textit{SP}_1\).
+\[
+\begin{array}{ll}
+\textit{main}\tuple{} = k\ m \qquad
+h\ z\ y = {\ASSUME{\neg (y>z)}{\FAIL}}\\
+f\ x\ g = g(x+1) \qquad
+k\ n = {\ASSUME{n\geq 0}{f\ n\ (h\ n)}} 
+\end{array} 
+\]
+It has been obtained by removing irrelevant non-deterministic branches 
+in \(h\) and \(k\).
+\end{example}
+
+The construction of an SHP generally requires duplication of function 
+definitions and function parameters. For example, consider the following 
+program:
+\[
+\begin{array}{l}
+\textit{main}\tuple{} = k\ m \qquad
+\textit{twice}\ f\ x = f(f\ x)\\
+g\ x = \IFTE{x\leq 0}{1}{2+g(x-1)}\\
+k\ n = \LETEQIN{x}{\textit{twice}\ g\ n}
+                {\ASSERT(x>0)}\\
+\end{array}
+\]
+(where \(m\) is some integer constant). The program calls the function 
+\(g\) twice, and asserts that the result \(x\) is positive.
+%%%\begin{verbatim}
+%%%let twice f x = f (f x)
+%%%let g x = if x=0 then 1 else 2+(g(x-1))
+%%%let main = let x = twice g 0 in assert(x>0)
+%%%\end{verbatim}
+Suppose that an infeasible path \(0101\) has been given, which 
+represents the following (infeasible) execution path:
+\[
+\begin{array}{l}
+\textit{main}\tuple{} \red{} k\ m\reds{}  \LETEQIN{x}{g (g\ m)}{\cdots}\\
+\qquad \stackrel{0}{\reds{}}    \LETEQIN{x}{g(1)}{\cdots} %%\\
+%%\qquad 
+\stackrel{1}{\reds{}}    \LETEQIN{x}{2+g(0)}{\cdots}\\
+\qquad \stackrel{0}{\reds{}}    \LETEQIN{x}{2+1}{\cdots} %%\\
+%%\qquad 
+\reds \ASSERT{3>0} %%\\ %%(= (\ASSUME{3>0}{\tuple{}})\PAROP(\ASSUME{3\leq 0}{\FAIL})) %%\\
+%%\qquad 
+\stackrel{1}{\reds{}} \FAIL
+\end{array}
+\]
+The path is infeasible because the final transition is invalid.
+
+From the source program and the path above, we construct the following 
+straightline program:\footnote{For clarity, we have extended our 
+language with tuples of functions. If necessary, they can be removed by 
+the currying transformation.}
+\[
+\begin{array}{l}
+\textit{main}\tuple{} = k\ m \qquad
+\textit{twice}\ \tuple{\Copy{f}{1},\Copy{f}{2}}\ x = \Copy{f}{2}(\Copy{f}{1}\ x)\\
+\Copy{g}{1}\ x = \ASSUME{x\leq 0}{1}\qquad
+\Copy{g}{3}\ x =  \ASSUME{x\leq 0}{1}\\
+\Copy{g}{2}\ x = \ASSUME{\neg(x\leq 0)}{2+\Copy{g}{3}(x-1)}\\
+k\ n = \LETEQIN{x}{\textit{twice}\,\tuple{\Copy{g}{1},\Copy{g}{2}}\,n}
+ \ASSUME{\neg (x>0)}{\FAIL}\\
+\end{array}
+\]
+As \(g\) is called three times, we have prepared three copies 
+\(\Copy{g}{1}\), \(\Copy{g}{2}\), \(\Copy{g}{3}\) of \(g\), and 
+eliminated unused non-deterministic branches. Note that the function 
+parameter \(f\) of \(\textit{twice}\) has been replaced by a function 
+pair \(\tuple{\Copy{f}{1},\Copy{f}{2}}\) accordingly.
+%%\begin{verbatim}
+%%let twice (f1, f2) x = f2 (f1 x)
+%%let g1 x = assume(x=0)
+%%let g2 x = assume(x!=0); 2+g3(x-1)
+%%let g3 x = assume(x=0)
+%%let main = let x = twice (g1,g2) 0 in assert(x>0)
+%%\end{verbatim}
+
+The general construction is given below. Consider a program normalized 
+to the following form:
+\begin{eqnarray*}
+D&::=& \set{f_1\ \seq{x}_1 = e_{10}\PAROP e_{11},\ldots,f_m\ \seq{x}_m = e_{m0}\PAROP e_{m1}} \\
+e&::=& \ASSUME{v}{\CALL} \mid \LETEQIN{x}{\OP(\seq{v})}{\CALL}\\
+\CALL &::=& \tuple{} %c
+\mid x\ \seq{v} \mid f\ \seq{v} \mid \FAIL \\
+v&::=& c \mid x\ \seq{v} \mid f\ \seq{v}
+%v&::=& c \mid x \mid f\ \seq{v}
+\end{eqnarray*}
+Here, for the sake of simplicity, we have assumed that every function definition has
+at most one (tail) function call, and the return value is \(\tuple{}\); this does not
+lose generality as the normal form can be obtained by applying CPS transformation and \(\lambda\)-lifting.
+Given a path \(s = b_1\cdots b_\ell\) of \(D\)
+(which means that the branch \(b_i\) has been chosen at \(i\)th function call), 
+the corresponding SHP \(D' = \mkSHP(D, s)\) is given by:
+\[
+\begin{array}{l}
+D' = \{\Copy{f_i}{j}\ \seq{x}_i = \X{e_{ib_j}}{j+1} \mid i\in\set{1,\ldots,m}, j\in\set{1,\ldots,\ell},\\
+\qquad               \mbox{the target of the \(j\)th function call is \(f_i\)}\}\\
+\quad \cup 
+  \{\Copy{f_i}{j}\ \seq{x}_i = \tuple{} \mid i\in\set{1,\ldots,m}, j\in\set{1,\ldots,\ell},\\
+\qquad                  \mbox{the target of the \(j\)th function call is not \(f_i\)}\}\\
+\quad \cup \set{\textit{main}\tuple{} = \Copy{\textit{main}}{1}\tuple{}}
+%%
+%%\Copy{f_i}{j}\ {\seq{x}_i} = 
+%% \left\{\begin{array}{ll}
+%%           \X{e_{ib_j}}{j} &
+%%   \mbox{if 
+%%        {\tuple{}}    & \mbox{otherwise}
+%%        \end{array}
+%%  \right.
+\end{array}
+\]
+%where 
+Here, \(\X{e}{j}\) is given by:
+\[
+\begin{array}{l}
+\X{\ASSUME{v}{\CALL}}{j} = \ASSUME{v}{\X{\CALL}{j}}\\
+\X{\LETEQIN{x}{\OP(\seq{v})}{\CALL}}{j} = \LETEQIN{x}{\OP(\seq{v})}{\X{\CALL}{j}}\\
+%\X{c}{j} = c\qquad
+\X{\tuple{}}{j} = \tuple{}\qquad
+\X{\FAIL}{j} = \FAIL\qquad
+\X{x}{j} = x\\
+\X{x\ v_1\,\cdots\,v_k}{j} = \NTH{j}(x)\ \Dup{v_1}{j+1}\,\cdots\,\Dup{v_k}{j+1} \qquad(k \geq 1)\\
+\X{f\ v_1\,\cdots\,v_k}{j} = \Copy{f}{j}\ \Dup{v_1}{j+1}\,\cdots\,\Dup{v_k}{j+1}\\
+\Dup{c}{j} = c\qquad
+\Dup{x}{j} = x \quad \mbox{(if \(x\) is a base variable)}\\
+\Dup{(x\ \seq{v})}{j} =
+                   \tuple{\underbrace{\lambda\seq{y}.\tuple{},\ldots,\lambda\seq{y}.\tuple{}}_{j-1},\NTH{j}(x)(\Dup{\seq{v}}{j}),\ldots,\NTH{\ell}(x)(\Dup{\seq{v}}{j})}\\
+ \quad \mbox{(if \(x\) is a function variable)} \\
+\Dup{(f\ \seq{v})}{j} =
+                   \tuple{\underbrace{\lambda\seq{y}.\tuple{},\ldots,\lambda\seq{y}.\tuple{}}_{j-1},\Copy{f}{j}(\Dup{\seq{v}}{j}),\ldots,\Copy{f}{\ell}(\Dup{\seq{v}}{j})}\\
+\end{array}
+\]
+Here, each function parameter has been replaced by a \(\ell\)-tuple of 
+functions.
+
+The SHP \(\mkSHP(D,s)\), constructed from a source program \(D\) and a 
+spurious error path \(s\), contains neither recursion nor 
+non-deterministic branch, and is reduced to \(\FAIL\) if and only if 
+\(\textit{main}\tuple{}\redswith{s}{D} \FAIL\). Furthermore, each 
+function in the SHP is called at most once.
+
+%%%Consider a program normalized to the following form:
+%%%\begin{eqnarray*}
+%%%D&::=& \set{f_1\ \seq{x}_1 = e_{10}\PAROP e_{11},\ldots,f_m\ \seq{x}_m = e_{m0}\PAROP e_{m1}} \\
+%%%e&::=& \ASSUME{v}{\CALL} \mid \LETEQIN{x}{\OP(\seq{v})}{\CALL}\\
+%%%\CALL &::=& c \mid x\ \seq{v} \mid f\ \seq{v} \mid \FAIL \\
+%%%v&::=& c \mid x\ \seq{v} \mid f\ \seq{v}
+%%%%%v&::=& c \mid x \mid f\ \seq{v}
+%%%\end{eqnarray*}
+%%%Here, for the sake of simplicity, we have assumed that every function definition has
+%%%at most one (tail) function call, and the return value is \(\tuple{}\); this does not
+%%%lose generality as the normal form can be obtained by applying CPS transformation and \(\lambda\)-lifting.
+%%%Given a path \(s = b_1\cdots b_\ell\) of \(D\)
+%%%(which means that the branch \(b_i\) has been chosen at \(i\)th function call), 
+%%%the corresponding SHP \(D' = \mkSHP(D, s)\) is given by:
+%%%\[
+%%%\begin{array}{l}
+%%%D' = \{\Copy{f_i}{j}\ \seq{x}_i = \X{e_{ib_j}}{j+1} \mid i\in\set{1,\ldots,m}, j\in\set{1,\ldots,\ell},\\
+%%%\qquad               \mbox{the target of the \(j\)th function call is \(f_i\)}\}\\
+%%%\quad \cup 
+%%%  \{\Copy{f_i}{j}\ \seq{x}_i = \tuple{} \mid i\in\set{1,\ldots,m}, j\in\set{1,\ldots,\ell},\\
+%%%\qquad                  \mbox{the target of the \(j\)th function call is not \(f_i\)}\}\\
+%%%\quad \cup \set{\textit{main}\tuple{} = \Copy{\textit{main}}{1}\tuple{}}
+%%%%%
+%%%%%\Copy{f_i}{j}\ {\seq{x}_i} = 
+%%%%% \left\{\begin{array}{ll}
+%%%%%           \X{e_{ib_j}}{j} &
+%%%%%   \mbox{if 
+%%%%%        {\tuple{}}    & \mbox{otherwise}
+%%%%%        \end{array}
+%%%%%  \right.
+%%%\end{array}
+%%%\]
+%%%where \(\X{e}{j}\) is given by:
+%%%\[
+%%%\begin{array}{l}
+%%%\X{\ASSUME{v}{\CALL}}{j} = \ASSUME{v}{\X{\CALL}{j}}\\
+%%%\X{\LETEQIN{x}{\OP(\seq{v})}{\CALL}}{j} = \LETEQIN{x}{\OP(\seq{v})}{\X{\CALL}{j}}\\
+%%%\X{c}{j} = c\qquad
+%%%\X{\FAIL}{j} = \FAIL\qquad
+%%%\X{x}{j} = x\\
+%%%\X{x\ v_1\,\cdots\,v_k}{j} = \NTH{j}(x)\ \Dup{v_1}{j+1}\,\cdots\,\Dup{v_k}{j+1} \qquad(k \geq 1)\\
+%%%\X{f\ v_1\,\cdots\,v_k}{j} = \Copy{f}{j}\ \Dup{v_1}{j+1}\,\cdots\,\Dup{v_k}{j+1}\\
+%%%\Dup{c}{j} = c\qquad
+%%%\Dup{x}{j} = x \quad \mbox{(if \(x\) is a base variable)}\\
+%%%\Dup{(x\ \seq{v})}{j} =
+%%%                   \tuple{\underbrace{\lambda\seq{y}.\tuple{},\ldots,\lambda\seq{y}.\tuple{}}_{j-1},\NTH{j}(x)(\Dup{\seq{v}}{j}),\ldots,\NTH{\ell}(x)(\Dup{\seq{v}}{j})}\\
+%%% \quad \mbox{(if \(x\) is a function variable)} \\
+%%%\Dup{(f\ \seq{v})}{j} =
+%%%                   \tuple{\underbrace{\lambda\seq{y}.\tuple{},\ldots,\lambda\seq{y}.\tuple{}}_{j-1},\Copy{f}{j}(\Dup{\seq{v}}{j}),\ldots,\Copy{f}{\ell}(\Dup{\seq{v}}{j})}\\
+%%%\end{array}
+%%%\]
+%%%Here, each function parameter has been replaced by a \(\ell\)-tuple of functions.
+
+The generated straightline program satisfies the following properties.
+%\koba{Is the following property used in the short version?}
+\begin{lemma}
+Suppose \(D' = \mkSHP(D,s)\). Then:
+\begin{enumerate}
+\item \(D'\) contains neither recursions nor non-deterministic branches \(e_1\PAROP e_2\).
+\item \(\textit{main}\tuple{}\redswith{s}{D} \FAIL\) if and only if
+\({\textit{main}}\tuple{}\redswith{}{D'} \FAIL\).
+\item Each function \(\Copy{f_i}{j}\) in \(D'\) is called at most once.
+\end{enumerate}
+\end{lemma}
+%\koba{We will need more properties to prove the progress.}
+
+
+%\begin{figure}
+%\typicallabel{S-Assume}
+%\infrule[S-Fun]
+%  {f\ \seq{x}=e \in D}
+%  {(\psi,E[f\ \seq{v}]) \stackrel{\epsilon}{\RED}_D (\psi,E[[\seq{v}/\seq{x}]e])}
+%\rulesp
+%
+%\infax[S-Let]
+%  {(\psi,E[\LETEQIN{x}{v}{e}]) \stackrel{\epsilon}{\RED}_D (\psi,E[[v/x]e])}
+%\rulesp
+%
+%\infrule[S-Op]
+%  {x:\mbox{fresh}}
+%  {(\psi,E[\OP(\seq{v})]) \stackrel{\epsilon}{\RED}_D (\psi \land x=\OP(\seq{v}),E[x])}
+%\rulesp
+%
+%\infax[S-Par]
+%  {(\psi,E[\PAR{e_0}{e_1}]) \stackrel{i}{\RED}_D (\psi,E[e_i])}
+%\rulesp
+%
+%\infrule[S-Assume]
+%  {\psi \land v\mbox{~is~satisfiable}}
+%  {(\psi,E[\ASSUME{v}{e}]) \stackrel{\epsilon}{\RED}_D (\psi \land v,E[e])}
+%\rulesp
+%
+%\infax[S-Fail]
+%  {(\psi,E[\FAIL]) \stackrel{\epsilon}{\RED}_D (\psi,\FAIL)}
+%
+%\caption{Symbolic Evaluation Rules}
+%\label{fig:symb}
+%\end{figure}
+
+%%%\subsection{Straightline Higher-Order Program Generation}
+%%%If the error path is infeasible, we obtain a straightline program for 
+%%%the error path from the original program.
+%%%
+%%%In this section, we assume that a program conforms to the following 
+%%%syntax:
+%%%\begin{eqnarray*}
+%%%D&::=& \set{f_1\ \seq{x}_1 = e_1,\ldots,f_m\ \seq{x}_m = e_m} \\
+%%%e&::=& \ASSUME{v}{d} \mid \PAR{e_1}{e_2} \\
+%%%d
+%%%&::=& c \mid x\ \seq{v} \mid f\ \seq{v} \mid \LETEQIN{x}{\OP(\seq{v})}{d} \mid \FAIL \\
+%%%v&::=& c \mid x \mid f\ \seq{v}
+%%%\end{eqnarray*}
+%%%The above assumption does not lose generality since we can always obtain 
+%%%a program that conforms to the syntax by using the CPS transformation.
+%%%
+%%%Given a program \((D,e)\), an infeasible error path of \((D,e)\) is of the following form:
+%%%\begin{eqnarray*}
+%%%&&e \underbrace{\redswith{s_0}{}}_{\rn{E-Par}} \ASSUME{v}{d} \redwith{\epsilon}{}^* f_1\ \seq{v} \underbrace{\red}_{\rn{E-App}} \\
+%%%&&\theta_1 e_1 \underbrace{\redswith{s_1}{}}_{\rn{E-Par}} \theta_1 (\ASSUME{v_1}{d_1}) \redwith{\epsilon}{}^* \theta_1 (x_1\ \seq{v}_1) \underbrace{\red}_{\rn{E-App}} \cdots \\
+%%%%x_1 may be function name
+%%%&&\theta_N e_N \underbrace{\redswith{s_N}{}}_{\rn{E-Par}} \theta_N (\ASSUME{v_N}{d_N}) \redwith{\epsilon}{}^* \FAIL \\
+%%%\end{eqnarray*}
+%%%Here, \(\theta_i=\set{\seq{x}_i \mapsto \seq{v}_{i-1}}\), \(\FV{e_i} 
+%%%\cup \FV{\ASSUME{v_i}{d_i}} \cup \FV{x_i\ \seq{v_i}} \subseteq 
+%%%\set{\seq{x_i}}\), and \(\theta_i x_i\) is of the form \(f_{i+1}\ 
+%%%\seq{v}_i'\). We write \((D,e) \slice{s_0 \cdots s_N} 
+%%%(D',\ASSUME{v}{f_1^{(1)}\ \X{\seq{v}}{1}})\), where \(D'\) is defined by:
+%%%\begin{eqnarray*}
+%%%D'&=&\set{f_i^{(i)}\ \seq{x}_i=\ASSUME{v_i}{\Y{x_i}{i+1}\ \X{\seq{v}_i}{i+1}}}_{i=1}^{N-1} \cup \\
+%%%  & &\set{f_i^{(N)}\ \seq{x}_N=\ASSUME{v_N}{\FAIL}} \\
+%%%\Y{x}{i}&=&\NTH{i}{x} \\
+%%%\Y{f}{i}&=&f^{(i)} \\
+%%%\X{v_1\cdots v_n}{i}&=&\X{v_1}{i}\cdots\X{v_n}{i} \\
+%%%\X{c}{i}&=&c \\
+%%%\X{x}{i}&=&x \\
+%%%\X{f\ \seq{v}}{i}&=&\tuple{f^{(1)}\ \X{\seq{v}}{i},\dots,f^{(N)}\ \X{\seq{v}}{i}}
+%%%\end{eqnarray*}
+%%%
+%%%%\(e \not\redswith{}{D} \FAIL\)
+%%%\begin{theorem}
+%%%\(e_2 \not\redswith{}{D_2} \FAIL\) if and only if \(s\) is infeasible 
+%%%and \((D_1,e_1) \slice{s} (D_2,e_2)\).
+%%%\end{theorem}
+
+\subsubsection{Typing SHP}
+
+The next step is to infer dependent types for functions in SHP. Thanks 
+to the properties that SHP contains neither recursion nor 
+non-deterministic branch and that every function is linear, the standard 
+dependent type system is sound and complete for the safety of the 
+program. Let us write \(\pDT D\) if \(D\) is typable in the fragment of 
+the dependent type system presented in Section~\ref{sec:pred} without 
+intersection types (but extended with (non-dependent) tuple types). 
+\begin{lemma}
+Let \(D' = \mkSHP(D,s)\). Then, \(\pDT D':\Delta\) for some \(\Delta\) 
+if and only if \(\textit{main}\tuple{} \not\redswith{}{D'} \FAIL\).
+\end{lemma}
+\begin{pfsketch}
+The ``only if'' part follows immediately from the soundness of the 
+dependent type system. For the ``if'' part, it suffices to observe that, 
+as every function in \(D'\) is linear, each variable \(x\) of base type 
+can be assigned a type \(\rtbase{\nu}{b}{\nu=v}\), where \(v\) is the 
+value that \(x\) is bound to.
+\end{pfsketch}
+
+We can use existing algorithms~\cite{Unno2009,Terauchi2010} to infer 
+dependent types: we first prepare a template of a dependent type for 
+each function, generate constraints on predicate variables, and solve 
+the constraints. We give below an overview of the dependent type 
+inference procedure through an example; an interested reader may wish to 
+consult \cite{Unno2009,Terauchi2010}.
+%
+%%\footnote{Although the dependent type inference techniques of \cite{Unno2009,Terauchi2010} are
+%%different (especially in the way recursive functions are handled), 
+%%they are essentially the same for straightline programs.}
+
+\begin{example}
+\label{ex:dt-inference} Recall the straightline program in 
+Example~\ref{ex:shp}. We prepare the following templates of the types of 
+functions \(f\), \(h\), \(k\):
+\[
+\begin{array}{l}
+f: (\rtfunb{x}{\rtbase{\nu}{\INT}{P_1(\nu)}} %%\\
+%%\qquad 
+{\rtfun{(\rtfunb{y}{\rtbase{\nu}{\INT}{P_2(\nu,x)}}{\TUNIT})}{\TUNIT}})\\
+h: (\rtfunb{z}{\rtbase{\nu}{\INT}{P_3(\nu)}}
+    {\rtfunb{y}{\rtbase{\nu}{\INT}{P_4(\nu,z)}}{\TUNIT}})\\
+k: (\rtfunb{x}{\rtbase{\nu}{\INT}{P_0(\nu)}}{\TUNIT})
+\end{array}
+\]
+From the program, we obtain the following constraints on 
+\(P_0,\ldots,P_4\):
+\[
+\begin{array}{l}
+P_0(m) \qquad \forall x.(P_1(x) \imply P_2(x+1, x))\\
+\forall z,y.(P_3(z) \land P_4(y, z) \imply y>z)\\
+%%\forall x.n\geq 0 \imply (P_1(n) \land P_3(n) \land (P_2(x, n) \imply P_4(x, n)))\\
+\forall n,y.P_0(n) \imply \\
+\qquad(n\geq 0 \imply (P_1(n)\land P_3(n)\land (P_2(y,n)\imply P_4(y,n))))\\
+\end{array}
+\]
+Each constraint has been obtained from the definitions of 
+\textit{main},\(f,g\), and \(k\).
+%% respectively.
+They can be normalized to:
+\[
+\begin{array}{l}
+\forall \nu.(\nu=m \imply P_0(\nu))\\
+\forall n,\nu.(P_0(n) \land n\geq 0\land \nu=n \imply P_1(\nu))\\
+\forall x,\nu.(P_1(x)\land \nu=x+1 \imply P_2(\nu,x))\\
+\forall n,\nu.(P_0(n) \land n\geq 0 \land \nu=n\imply P_3(\nu))\\
+\forall n,z,\nu.(P_0(n) \land n\geq 0 \land z=n\land P_2(\nu,n) \imply P_4(\nu,z))\\
+\forall z,y.(P_3(z) \land P_4(y, z) \imply y>z)
+\end{array}
+\]
+These constraints are ``acyclic'' in the sense that for each constraint 
+of the form \(C_i \imply P_i(\seq{x})\), \(C_i\) contains only (positive) 
+occurrences of predicates \(P_j\)'s such that \(j<i\) occur. Such 
+constraints can be solved by using a sub-procedure of existing methods 
+for dependent type inference based on 
+interpolants~\cite{Unno2009,Terauchi2010}, and the following predicates 
+can be obtained. (The inferred predicates depend on the underlying 
+interpolating theorem prover.)
+\[
+\begin{array}{l}
+P_0(\nu) \equiv %%\TRUE \qquad
+P_1(\nu) \equiv P_3(\nu) \equiv \TRUE \\%%\nu\geq 0\\
+P_2(\nu,x) \equiv P_4(\nu,x)\equiv \nu>x
+\end{array}
+\]
+Thus, we obtain the following types for \(f\) and \(h\):
+\[
+\begin{array}{l}
+%%f: (\rtfunb{x}{\rtbase{\nu}{\INT}{\nu\geq 0}}\\
+f: (\rtfunb{x}{\rtbase{\nu}{\INT}{\TRUE}} %%\\
+%%\qquad 
+{\rtfun{(\rtfunb{y}{\rtbase{\nu}{\INT}{\nu>x}}{\TUNIT})}{\TUNIT}})\\
+%%h: (\rtfunb{z}{\rtbase{\nu}{\INT}{\nu\geq 0}}
+h: (\rtfunb{z}{\rtbase{\nu}{\INT}{\TRUE}}
+    {\rtfunb{y}{\rtbase{\nu}{\INT}{\nu>z}}{\TUNIT}})\\
+\end{array}
+\]
+\end{example}
+
+%\iffull
+%In general, we have:
+%\begin{lemma}
+%Let \(D\) be a straightline, linear higher-order program that uses only 
+%linear arithmetics. Then, there exists an algorithm that decides whether 
+%\(\pDT D\) holds, and if so, outputs \(\Delta\) such that \(\pDT 
+%D:\Delta\).
+%\end{lemma}
+%\begin{pfsketch}
+%As mentioned above, first prepare templates of dependent types and 
+%generate constraints on predicate variables. The constraints can be 
+%normalized to the form
+%\[
+%\begin{array}{l}
+% C_1 \imply P_1, C_2[P_1]\imply P_2,\ldots, C_n[P_1,\ldots,P_{n-1}]\imply P_n,\\
+%   C_{n+1}[P_1,\ldots,P_n] \imply \psi,
+%\end{array}\]
+%where all the first-order variables are universally quantified, and 
+%\(C_i\) contains only positive occurrences of predicate variables. It 
+%suffices to obtain the strongest solution \(P_1^s = C_1, P_2^s = 
+%C_2[P_1^s], \ldots, P_n^s = C_n[P_1^s,\ldots,P_{n-1}^s]\) and check 
+%whether \(C_{n+1}[P_1^s,\ldots,P_n^s]\imply \psi\) is a valid formula. 
+%(In the actual algorithm, we use interpolants instead of the strongest 
+%solutions.)
+%\end{pfsketch}
+%\koba{We need not restrict ourselves to linear arithmetics; all we need is
+%the property that the validity of a formula is undecidable.}
+%%%we do not even need interpolants if we compute the greatest solution.}
+%\fi
+
+%%\subsection{Dependent Type Inference}
+\subsubsection{Refining abstraction types}
+%%Given a straightline program \((D,e)\), we infer dependent types of 
+%%\((D,e)\) by using existing dependent type inference methods based on 
+%%interpolation~\cite{Unno2009,Terauchi2010}. These methods are complete 
+%%for straightline programs in a sense that given a simply-typed and safe 
+%%straightline program \((D,e)\), these methods can infer dependent types 
+%%\(\Delta,\delta\) such that \(\DPT{}{D}{\Delta}\) and 
+%%\(\DPT{\Delta}{e}{\delta}\).
+
+The final step is to refine the abstraction types of the source program, 
+based on the dependent types inferred for the straightline program. Let 
+\(\delta_{f,j}\) be the inferred dependent type of \(\Copy{f}{j}\). Then, 
+we can obtain an abstraction type \(\sigma_{f,j}\) such that 
+\(\UNDUP{\delta_{f,j}} \in \depty(\sigma_{f,j})\) (the choice of such 
+\(\sigma_{f,j}\) depends on what predicates are considered atomic), 
+where \(\UNDUP{\delta}\) is defined by:
+\begin{eqnarray*}
+\UNDUP{\rt{\nu}{b}{\psi}}&=&\rt{\nu}{b}{\psi} \\
+\UNDUP{x:\delta_1 \to \delta_2}&=&x:\UNDUP{\delta_1} \to \UNDUP{\delta_2} \\
+\UNDUP{\delta_1 \times \dots \times \delta_n}&=&\bigwedge_{i\in \set{1,\dots,n}} \UNDUP{\delta_i}
+\end{eqnarray*}
+The new abstraction type \(\sigma'_f\) of \(f\) is given by: 
+\[ \sigma'_f = \sigma_f \itlub \sigma_{f,1} \itlub \cdots \itlub \sigma_{f,\ell},\]
+where \(\sigma_f\) is the previous abstraction type of \(f\) and 
+\(\sigma_1\itlub \sigma_2\) is obtained by just merging the corresponding predicates:
+\[
+\begin{array}{l}
+b[\seq{P}] \itlub b[\seq{Q}] = b[\seq{P},\seq{Q}]\\
+(x\COL\sigma_1 \to \sigma_2)\itlub(x\COL\sigma'_1 \to \sigma'_2)
+  = x\COL(\sigma_1\itlub\sigma'_1) \to (\sigma_2\itlub\sigma'_2)
+\end{array}
+\]
+
+We write \(\RefAT(\Gamma,\Delta)\) for the refined abstraction type 
+environment \(f_1\COL \sigma'_{f_1},\ldots,f_n\COL \sigma'_{f_n}\). 
+(There is a non-determinism coming from the choice of \(\sigma_{f,j}\), 
+but that does not matter below.)
+
+\begin{example}
+\label{ex:it-inference} Recall Example~\ref{ex:it-inference}. From the 
+dependent types of \(f\) and \(g\), we obtain the following abstraction 
+types:
+\[
+\begin{array}{l}
+%%f: (x\COL\INT[\lambda \nu.\nu\geq 0] \ra (y\COL \INT[\lambda \nu.\nu>x]\ra \TUNIT)\ra \TUNIT)\\
+%%h: (z\COL\INT[\lambda \nu.\nu\geq 0]\ra y\COL \INT[\lambda \nu.\nu>z] \ra \TUNIT)
+f: (x\COL\INT[\,] \ra (y\COL \INT[\lambda \nu.\nu>x]\ra \TUNIT)\ra \TUNIT)\\
+h: (z\COL\INT[\,]\ra y\COL \INT[\lambda \nu.\nu>z] \ra \TUNIT)
+\end{array}
+\]
+Suppose that the previous abstraction types were
+\[
+\begin{array}{l}
+f: (x\COL\INT[\,] \ra (y\COL \INT[\,]\ra \TUNIT)\ra \TUNIT)\\
+h: (z\COL\INT[\lambda \nu.\nu= 0]\ra y\COL \INT[\lambda \nu.\nu>0] \ra \TUNIT)
+\end{array}
+\]
+Then, the refined abstraction types are:
+\[
+\begin{array}{l}
+f: (x\COL\INT[\,] \ra (y\COL \INT[\lambda \nu.\nu>x]\ra \TUNIT)\ra \TUNIT)\\
+h: (z\COL\INT[\lambda \nu.\nu=0]\ra y\COL \INT[\lambda \nu.\nu>0, \lambda \nu.\nu>z] \ra \TUNIT)
+\end{array}
+\]
+
+\end{example}
+%%%\koba{Rewrite below}
+%%%We can extract new predicates used for abstraction of the original 
+%%%program from the dependent types \(\Delta\) of the straightline program 
+%%%\((D,e)\). We can show that the new predicates obtained from a 
+%%%straightline program are sufficient for our predicate abstraction to 
+%%%reject the infeasible error path corresponding to the straightline 
+%%%program.
+
+
+\subsection{Properties of the CEGAR algorithm}
+We now discuss properties of the overall CEGAR algorithm.
+%
+If the refined abstraction type is obtained from an infeasible error 
+path \(s\), the new abstract boolean program no longer has the path \(s\). 
+This is the so called ``progress property'' known in the literature on 
+CEGAR for the usual (i.e. finite state or pushdown) model checking. 
+%
+%\koba{Below (and also in several places above), for the sake of 
+%simplicity, I have fixed the main expression to \textit{main}. If we do 
+%not adapt the simplification, it would be better to prepare a shorthand 
+%form for \(D:\Delta\land \Delta\p e:\delta\), \(\T{}{D}{\Gamma}{D'}\land 
+%\T{\Gamma}{e}{\sigma}{e'}\), etc.}
+%
+Formally, we can prove the following 
+property 
+\iffull 
+(see Appendix~\ref{sec:progress} for the proof):
+\else
+(see \cite{Kobayashi2011} for the proof):
+\fi
+\begin{theorem}[progress]
+\label{thm:progress}
+Let \(D_1\) be a well-typed program and \(s\) be an infeasible path of \(D_1\). 
+Suppose 
+ \(D_2 = \mkSHP(D_1,s)\) and 
+ \(\DPT{}{D_2}{\Delta}\) with \(\Gamma = \RefAT(\Gamma',\Delta)\) for some \(\Gamma'\).
+%%\end{itemize}
+%%\begin{itemize}
+%%\item \(D_2 = \mkSHP(D_1,s)\),
+%%\item \(\DPT{}{D_2}{\Delta}\), and 
+%%\item \(\Gamma = \RefAT(\Gamma',\Delta)\) for some \(\Gamma'\).
+%%\end{itemize}
+Then, there exists \(D_3\) such that
+ \(\T{}{D_1}{\Gamma}{D_3}\), and
+ \(\textit{main}\tuple{} \not\redswith{s}{D_3} \FAIL\).
+%%\begin{itemize}
+%%\item \(\T{}{D_1}{\Gamma}{D_3}\), and
+%%\item \(\textit{main}\tuple{} \not\redswith{s}{D_3} \FAIL\).
+%%\end{itemize}
+%%%Suppose that
+%%%\begin{itemize}
+%%%\item \((D_1,e_1) \slice{s} (D_2,e_2)\),
+%%%\item \(\DPT{}{D_2}{\Delta}\), and
+%%%\item \(\DPT{\Delta}{e_2}{\delta}\).
+%%%\end{itemize}
+%%%%For any \(\seq{c}\) such that \(\Gamma \pS \seq{c} \COL \seq{b}\)
+%%%If \(\Delta \in \depty(\Gamma)\) and \(\delta \in \depty(\sigma)\), 
+%%%there exist \(D_3,e_3\) such that:
+%%%\begin{itemize}
+%%%\item \(\T{}{D_1}{\Gamma}{D_3}\), 
+%%%\item \(\T{\Gamma}{e_1}{\sigma}{e_3}\), and 
+%%%\item \(e_3 \not\redswith{s}{D_3} \FAIL\).
+%%%\end{itemize}
+\end{theorem}
+%%%\begin{proof}
+%%%First, by Theorem~\ref{th:rel-complete}, 
+%%%we have \(D_4\) such that
+%%%\(\T{}{D_2}{\Gamma}{D_4}\) and 
+%%%\(\textit{main}\tuple{} \not\redswith{}{D_4} \FAIL\).
+%%%%%First, show that there exist \(D_4,e_4\) such that:
+%%%%%\begin{itemize}
+%%%%%\item \(\T{}{D_2}{\Gamma}{D_4}\), 
+%%%%%\item \(\T{\Gamma}{e_2}{\sigma}{e_4}\), and 
+%%%%%\item \(e_4 \not\redswith{s}{D_4} \FAIL\).
+%%%%%\end{itemize}
+%%%We can then construct \(D_3\) from both \(D_1\) and \(D_4\).
+%%%\end{proof}
+
+The progress property above does not guarantee that the verification 
+will eventually terminate: There is a case where the entire CEGAR loop 
+does not terminate, finding new spurious error paths forever (see 
+Section~\ref{sec:experiment}). Indeed, we cannot expect to obtain a 
+sound and complete verification algorithm, as the reachability is 
+undecidable in general even if programs are restricted to those using 
+only linear arithmetics.
+
+We can however modify our algorithm so that it is \emph{relatively 
+complete} with respect to the dependent intersection type system, in the 
+sense that all the programs typable in the dependent intersection type 
+system can be verified by our method. Let \(\textit{genP}\) be a total 
+map from the set of integers to the set of predicates. (Such a total map 
+exists, as the set of predicates is recursively enumerable.) Upon the 
+\(i\)-th iteration of the CEGAR loop, add the predicate 
+\(\textit{genP}(i)\) to each position of abstraction type, in addition 
+to the predicates inferred from counterexamples. Then, if a program is 
+well-typed under \(\Delta\) in the dependent intersection type system, 
+an abstraction type environment \(\Gamma\) such that \(\Delta\in 
+\depty(\Gamma)\) is eventually found, so that by 
+Theorem~\ref{th:rel-complete}, our verification succeeds. Of course, 
+this is impractical, but we may be able to adapt the technique of 
+\cite{Jhala2006} to get a practical algorithm.
+%%%%%We can, however, show that if a program is well-typed in the dependent intersection type system,
+%%%we can modify the algorithm so that it can eventually accept the p
+%%%a modification of our verification method can eventually succeed.
+%%%For that purpose, for each cegar iteration, ...\koba{Rewrite below}
+%%%Furthermore, we believe we can extend our method so that it can 
+%%%eventually accept the program if a program is typable under the 
+%%%dependent intersection type system.
+%%%%
+%%%For that purpose, we need to use a dependent type inference method that 
+%%%can eventually discover every predicate (note that the set of predicates 
+%%%is recursively enumerable). Construction of such a dependent type 
+%%%inference method is still unknown, 
+%%%however, there exists a pioneering 
+%%%work on such a predicate discovery by Jhala and McMillan in the context 
+%%%of finite-state model checking, which we believe can be adopted to our 
+%%%method.
+%%%\koba{The construction of such a method is
+%%%trivial, although whether an \emph{efficient} method exists is unclear.
+%%%So, remove ``we believe'' and rephrase the succeeding statements.}
+
+
+%%%\begin{remark}
+%%%\label{rem:incompleteness}
+%%%Our verification method does not terminate for the program given in Remark~\ref{rem:limitation}.
+%%%The program is obviously safe (i.e., the assertion always succeeds)
+%%%but the program is not typable in the dependent type system in Section~\ref{sec:pred}.
+%%%To type the program, we need to assign to \texttt{apply}
+%%%a type like \(\forall n.(({\rtbase{\nu}{\INT}{\nu=n}}\ra{\TUNIT})\ra
+%%%           {\rtbase{\nu}{\INT}{\nu=n}}\ra{\TUNIT})\),
+%%%which is not allowed in the dependent type system in Section~\ref{sec:pred}.
+%%%%%%(Note that the program would be typable if the arguments of \texttt{apply} were swapped.)
+%%%Thus, by Theorem~\ref{th:rel-soundness}, the program cannot be verified by our verification method either.
+%%%In fact, our verification method would generate 
+%%%abstraction types 
+%%%\[ (\TINT[\lambda \nu.\nu=n]\ra \TUNIT)\ra \TINT[\lambda \nu.\nu=n] \ra \TUNIT\]
+%%%for \(n=0,1,2,\ldots\) and diverge.
+%%%As mentioned in Remark~\ref{rem:limitation}, the program can be verified if we swap
+%%%the parameter of \textit{apply} or we add an additional parameter to \textit{apply}.
+%%%\end{remark}
+
+%function coercing‚à‚¢‚ê‚é
+%
+%function subtyping
+%
+%denotation semantics‚ðŽg‚Á‚Ä‚â‚é‚à‚Ì‚Æsyntactic‚É‚â‚é•û–@
+%
+%simulationŠÖŒW‚ð’è‹`
+

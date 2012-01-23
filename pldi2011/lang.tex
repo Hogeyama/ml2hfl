@@ -1,0 +1,114 @@
+\section{Language}
+\label{sec:lang}
+
+This section introduces a simply-typed, higher-order functional language, 
+which is used as the target of our verification method.
+
+We assume a set \(\BT = \set{b_1,\ldots,b_n}\) of data types, and a set 
+\(\vset{b_i}\) of constants, ranged over by \(c\), for each data type 
+\(b_i\). We also assume that there are operators 
+\(\OP:{b_{i_1},\ldots,b_{i_k}\ra b_j}\); we write \(\SEM{\OP}\) for the 
+function denoted by \(\OP\). We assume that the set of data types 
+includes \(\TUNIT\) with \(\vset{\TUNIT} = \tuple{}\), and \(\TBOOL\) 
+with \(\vset{\TBOOL}=\set{\TRUE, \FALSE}\), and that the set of 
+operators includes \(=\ :b,b\ra \TBOOL\) for every \(b\in \BT\), and 
+boolean connectives such as \(\land:\TBOOL,\TBOOL\ra \TBOOL\).
+
+The syntax of the language is given by:
+\begin{eqnarray*}
+D \mbox{ (program) }&::=& \set{f_1\ \seq{x}_1 = e_1,\ldots,f_m\ \seq{x}_m = e_m} \\
+e \mbox{ (expressions) }
+&::=& c \mid x\ \seq{v} \mid f\ \seq{v} \mid \LETEQIN{x}{e_1}{e_2} \mid \OP(\seq{v}) \\
+&\mid& \FAIL \mid \ASSUME{v}{e} \mid \PAR{e_1}{e_2} \\ %%\mid \PARB{e_1}{e_2} \\
+%%&\mid& (v_1,\dots,v_m) \mid \NTH{i}{v} \\
+v \mbox{ (values) }&::=& c \mid x \mid f\ \seq{v} %\\ \mid (v_1,\dots,v_m) 
+%%c&::=&n \mid \TRUE \mid \FALSE \mid \cdots \\
+%%\OP&::=& + \mid \times \mid \ =\  \mid \NOT \mid \AND \mid \cdots \\
+%%T&::=& B \mid T_1 \to T_2 \mid T_1 \times \dots \times T_n \\
+%%B&::=& \TINT \mid \TBOOL \mid \cdots \\
+%%E&::=& \HOLE \mid \LETEQIN{x}{E}{e}
+\end{eqnarray*}
+
+Here, \(\seq{x}\) abbreviates a (possibly empty) sequence 
+\(x_1,\ldots,x_n\). In the definition \(f\ \seq{x} = e\), we call the 
+length of \(\seq{x}\) the \emph{arity} of \(f\). In the definition of 
+values, the length of \(\seq{v}\) in \(f\,\seq{v}\) must be smaller than 
+the arity of \(f\). (In other words, \(f\,\seq{v}\) must be a partial 
+application.) We assume that every function in \(D\) has a non-zero 
+arity, and that \(D\) contains a distinguished function symbol 
+\(\textit{main}\in \set{f_1,\ldots,f_m}\) whose simple type is 
+\(\TUNIT\ra \TUNIT\).
+%%of arity \(1\) that takes the unit value.
+
+Most of the expressions are standard, except the following ones. The 
+expression \(\FAIL\) aborts the program and reports a failure. The 
+expression \(\ASSUME{v}{e}\) evaluates \(e\) if \(v\) is true; otherwise 
+it stops the program (without a failure). The expression 
+\(\PAR{e_1}{e_2}\) evaluates \(e_1\) or \(e_2\) in a non-deterministic 
+manner. Note that a standard conditional expression 
+\(\IFTE{v}{e_1}{e_2}\) can be expressed as: 
+\[
+ \PAR{(\ASSUME{v}{e_1})}{(\LETEQIN{x}{\NOT v}\ASSUME{x}{e_2})}.
+\]
+%
+We can express the assertion \(\ASSERT{v}\) as 
+\(\IFTE{v}{\tuple{}}{\FAIL}\).
+%\[
+% \PAR{(\ASSUME{v}{\tuple{}})}{(\ASSUME{\neg v}{\FAIL})}.
+%\]
+%
+The random number generator \(\textit{randi}\) used in 
+Section~\ref{sec:intro} is defined by:
+\[
+\begin{array}{l}
+\textit{randi}\,\tuple{} = (\textit{randiFrom}\, 1)\PAROP (\textit{randiTo}\, 0)\\
+\textit{randiFrom}\,n = n\PAROP (\textit{randiFrom}\,(n+1))\\
+\textit{randiTo}\,n = n\PAROP (\textit{randiTo}\,(n-1))\\
+\end{array}
+\]
+
+We assume that a program is well-typed in the standard simple type 
+system, where the set of types is given by:
+\[ \tau ::= b_1 \mid \cdots \mid b_n \mid \tau_1\ra \tau_2.\]
+%
+Furthermore, we assume that the body of each definition has a data type 
+\(b_i\), not a function type. This is not a limitation, as we can always 
+use the continuation-passing-style (CPS) transformation to transform a 
+higher-order program to an equivalent one that satisfies the restriction.
+%%%For example, a function definition
+%%% f x = e
+%%%(where e returns a function)
+%%%can be transformed into
+%%% f' x k = k e
+%%%where k is the continuation parameter. This is indeed applied in our implementation.
+
+%%%\(x\ \seq{v}\) and \(f\ \seq{v}\) are values if the arities of \(x\) and 
+%%%\(f\) are less than the length of \(\seq{v}\). We write 
+%%%\(\IFTE{e_1}{e_2}{e_3}\) for
+%%%\[
+%%% \PAR{(\ASSUME{e_1}{e_2})}{(\ASSUME{\NOT e_1}{e_3})}
+%%%\]
+%%%
+%%%\todo{add explanation}
+
+We define the set of \emph{evaluation contexts} by: \(E ::= \HOLE \mid 
+\LETEQIN{x}{E}{e}\). The reduction relation is given in 
+Figure~\ref{fig:opsem}. We label the reduction relation with 
+\(0,1,\epsilon\) to record which branch has been chosen by a 
+non-deterministic expression \(\PAR{e_1}{e_2}\); it will be used to 
+relate reductions of a source program and an abstract program later in 
+Sections~\ref{sec:pred} and \ref{sec:cegar}. We write \(e_1 
+\redswith{l_1\cdots l_n}{D} e_2\) if 
+\[e_1 (\redwith{\epsilon}{D})^* \redwith{l_1}{D}(\redwith{\epsilon}{D})^* \cdots (\redwith{\epsilon}{D})^* \redwith{l_n}{D}(\redwith{\epsilon}{D})^* e_2.\]
+We often omit the subscript \(D\) when it is clear from the context.
+%%\todo{add explanation}
+The goal of our verification method is to check whether \\
+\(\textit{main}\,\tuple{} \redswith{s}{D} \FAIL\).%
+%%where \textit{main} is a function symbol with arity \(0\).
+\footnote{Thus, we consider the reachability problem for a closed 
+program. Note, however, that we can express unknown values by using 
+non-determinism (recall \textit{randi}). It is also easy to extend our 
+method to deal with more general verification problems, such as resource 
+usage verification~\cite{Kobayashi2009}.}
+
+\input{opsem}

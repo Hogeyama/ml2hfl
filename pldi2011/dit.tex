@@ -1,0 +1,23 @@
+\section{Dependent Intersection Type System}
+\label{sec:dit}
+
+The dependent intersection type system mentioned in 
+%\iffull 
+Section~\ref{sec:pred} 
+%\else Section~4 \fi
+is given in Figure~\ref{fig:dep_rules}.
+In the figure, \(\rt{\nu}{b}{\psi}\)
+describes the set of values of base type \(b\) that satisfy \(\psi\).
+We often abbreviate \(\rt{\nu}{b}{\TRUE}\) as \(b\).
+\(\bigwedge_{i\in S}(x:\delta_{1,i} \to \delta_{2,i})\) describes 
+functions that, given a value of type \(\delta_{1,i}\), return a value of
+type \(\delta_{2,i}\) (for every \(i\in S\), where \(S\) is a finite set).
+We apply well-formedness conditions analogous to abstraction types. In particular,
+in \(x:\delta_{1,i} \to \delta_{2,i}\), \(x\) can occur in \(\delta_{2,i}\) only if
+\(\delta_{1,i}\) is a base type. Also, we assume that in an intersection type
+\(\bigwedge_{i\in S}(x:\delta_{1,i} \to \delta_{2,i})\), the simple types of
+\(x:\delta_{1,i} \to \delta_{2,i}\) are the same for all \(i\in S\).
+In rule \rn{D-Base}, \(\DtoS\) maps a dependent type environment to a simple
+type environment.
+
+\input{dep_rules}
