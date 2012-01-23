@@ -38,6 +38,5 @@ let rec decomp_tapp = function
       let typ,typs = decomp_tapp typ1 in
         typ, typs@[typ2]
   | typ -> typ, []
-  
-  
+
 

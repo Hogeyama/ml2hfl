@@ -1389,7 +1389,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
                 end
               in
                 ti
-            with Untypable -> raise Untypable;
+            with Untypable -> raise Untypable(*;
               (*try
                 let ub = [Cterm(rename_nint (imply (and_list dubs) cub))] in
                 interpolate ids' lb ub
@@ -1437,7 +1437,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
                     let t2 = interpolate ids' lb [Cimp([Cterm(t1)], ub)] in
                     BinOp(And, t1, t2)
                     with Untypable ->
-                    interpolate ids' lb ub*)
+                    interpolate ids' lb ub*)*)
         in
         let sol = (pid', (ids', t))::sol in
           (*
@@ -1769,6 +1769,7 @@ let test tdefs s defs traces pred =
          List.iter
            (fun ac ->
               let ac' = subst_sol_ac pids sol ac in
+              let () = ignore ac' in
               let t = term_of_ac (subst_sol_ac pids sol ac) in
               if Wrapper.check [] t
               then ()

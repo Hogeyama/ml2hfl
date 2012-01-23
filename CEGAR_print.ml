@@ -36,7 +36,10 @@ and print_typ_aux var fm = function
             let typ2 = typ2 (Var x) in
             let s1,s2 = if b then "(",")" else "","" in
             let var' = if occur_arg_pred x typ2 then Some(x, true) else Some(x, false) in
-              Format.fprintf fm "%s%a -> %a%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+            let b' = match typ2 with TFun _ -> true | _ -> false in
+              if b'
+              then Format.fprintf fm "%s@[%a ->@ %a@]%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+              else Format.fprintf fm "%s%a -> %a%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
         | typ -> print_typ_aux None fm typ
       in
         aux true fm typ

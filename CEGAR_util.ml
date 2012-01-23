@@ -111,7 +111,7 @@ let rec make_arg_let t =
       | Syntax.Int n -> Syntax.Int n
       | Syntax.Var x -> Syntax.Var x
       | Syntax.App(t, ts) ->
-          let f = Id.new_var "f" (t.Syntax.typ) in
+          let f = Id.new_var "f__" (t.Syntax.typ) in
           let xts = List.map (fun t -> Id.new_var "x" (t.Syntax.typ), t) ts in
           let t' = {Syntax.desc=Syntax.App(Syntax.make_var f, List.map (fun (x,_) -> Syntax.make_var x) xts); Syntax.typ=Type.TUnknown} in
             (List.fold_left (fun t2 (x,t1) -> Syntax.make_let [x,[],t1] t2) t' ((f,t)::xts)).Syntax.desc
@@ -158,7 +158,7 @@ let rec trans_typ_aux f path = function
         TFun(typ1, fun y -> subst_typ x' y typ2), preds
   | Type.TFun({Id.typ=Type.TInt ps} as x,typ) ->
       let x' = trans_var x in
-      let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term [] [] p)) in
+      let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term "" [] [] p)) in
       let typ1 = TBase(TInt, fun z -> List.map (aux z) ps) in
       let typ2,preds = trans_typ_aux f (path@[1]) typ in
         TFun(typ1, fun y -> subst_typ x' y typ2), preds
@@ -208,7 +208,7 @@ and trans_binop = function
   | Syntax.Sub -> Const Sub
   | Syntax.Mult -> Const Mul
 
-and trans_term xs env t =
+and trans_term post xs env t =
   match t.Syntax.desc with
       Syntax.Unit -> [], Const Unit
     | Syntax.True -> [], Const True
@@ -221,8 +221,8 @@ and trans_term xs env t =
           [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
     | Syntax.App({Syntax.desc=Syntax.RandInt true}, [t1;t2]) ->
         assert (t1 = Syntax.unit_term);
-        let defs1,t1' = trans_term xs env t1 in
-        let defs2,t2' = trans_term xs env t2 in
+        let defs1,t1' = trans_term post xs env t1 in
+        let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, App(Const RandInt, t2')
     | Syntax.RandInt _ -> assert false
     | Syntax.Var x ->
@@ -230,24 +230,24 @@ and trans_term xs env t =
           [], Var x'
     | Syntax.App({Syntax.desc=Syntax.Event(s,false)}, [t]) ->
         let k = new_id "k" in
-        let defs,t' = trans_term xs env t in
+        let defs,t' = trans_term post xs env t in
         let xs = diff (get_fv t') (List.map fst env) in
         let defs' = (k, TFun(typ_unit, fun _ -> typ_unit), xs@["u"], Const True, [], t')::defs in
           defs', App(Const (Temp s), make_app (Var k) (List.map (fun x -> Var x) xs))
     | Syntax.App({Syntax.desc=Syntax.Event(s,true)}, [t1;t2]) ->
         assert (t1 = Syntax.unit_term);
-        let defs1,t1' = trans_term xs env t1 in
-        let defs2,t2' = trans_term xs env t2 in
+        let defs1,t1' = trans_term post xs env t1 in
+        let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, App(Const (Temp s), App(t2', Const Unit))
     | Syntax.App(t, ts) ->
-        let defs,t' = trans_term xs env t in
-        let defss,ts' = List.split (List.map (trans_term xs env) ts) in
+        let defs,t' = trans_term post xs env t in
+        let defss,ts' = List.split (List.map (trans_term post xs env) ts) in
           defs @ (List.flatten defss), make_app t' ts'
     | Syntax.If(t1, t2, t3) ->
-        let defs1,t1' = trans_term xs env t1 in
-        let defs2,t2' = trans_term xs env t2 in
-        let defs3,t3' = trans_term xs env t3 in
-        let f = new_id "f" in
+        let defs1,t1' = trans_term post xs env t1 in
+        let defs2,t2' = trans_term post xs env t2 in
+        let defs3,t3' = trans_term post xs env t3 in
+        let f = new_id ("f" ^ post) in
         let x = new_id "b" in
         let typs = typ_bool :: List.map (fun x -> List.assoc x env) xs in
         let typ = List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs (trans_typ f [] t2.Syntax.typ) in
@@ -257,8 +257,8 @@ and trans_term xs env t =
           def1::def2::defs1@defs2@defs3, t
     | Syntax.Let _ -> assert false
     | Syntax.BinOp(Syntax.Eq, t1, t2) ->
-        let defs1,t1' = trans_term xs env t1 in
-        let defs2,t2' = trans_term xs env t2 in
+        let defs1,t1' = trans_term post xs env t1 in
+        let defs2,t2' = trans_term post xs env t2 in
         let op =
           match t1.Syntax.typ with
               Type.TUnit -> EqUnit
@@ -268,11 +268,11 @@ and trans_term xs env t =
         in
           defs1@defs2, make_app (Const op) [t1'; t2']
     | Syntax.BinOp(op, t1, t2) ->
-        let defs1,t1' = trans_term xs env t1 in
-        let defs2,t2' = trans_term xs env t2 in
+        let defs1,t1' = trans_term post xs env t1 in
+        let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, make_app (trans_binop op) [t1'; t2']
     | Syntax.Not t ->
-        let defs,t' = trans_term xs env t in
+        let defs,t' = trans_term post xs env t in
           defs, App(Const Not, t')
     | Syntax.Fun _ -> assert false
     | Syntax.Event _ -> assert false
@@ -318,11 +318,12 @@ let rec formula_of t =
 
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in
+  let post = "_" ^ Id.name f in
   let xs' = List.map trans_var xs in
   let path = ref [] in
   let aux x' x =
     let typ = trans_typ f' (!path@[0]) (Id.typ x) in
-      path:=1::!path; 
+      path := 1::!path;
       x', typ
   in
   let env = List.map2 aux xs' xs in
@@ -330,13 +331,13 @@ let trans_def (f,(xs,t)) =
       (match t.Syntax.desc with
 	   Syntax.If(t1, t2, t3) ->
 	     let t1' = formula_of t1 in
-	     let defs2,t2' = trans_term xs' env t2 in
-	     let defs3,t3' = trans_term xs' env t3 in
+	     let defs2,t2' = trans_term post xs' env t2 in
+	     let defs3,t3' = trans_term post xs' env t3 in
 	       ((f', trans_typ f' [] (Id.typ f), xs', t1', [], t2')::defs2) @
 		 ((f', trans_typ f' [] (Id.typ f), xs', make_not t1', [], t3')::defs3)
 	 | _ -> raise Not_found)
     with Not_found ->
-      let defs,t' = trans_term xs' env t in
+      let defs,t' = trans_term post xs' env t in
 	(f', trans_typ f' [] (Id.typ f), xs', Const True, [], t')::defs
 
 let move_event (f,xs,t1,e,t2) =
@@ -360,7 +361,7 @@ let trans_prog t =
   let () = if false then Format.printf "trans_let :@.%a\n\n@." (Syntax.print_term true) t in
   let main = new_id "main" in
   let defs,t = Trans.lift t in
-  let defs_t,t' = trans_term [] [] t in
+  let defs_t,t' = trans_term "" [] [] t in
   let defs' =
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
@@ -510,7 +511,7 @@ let map_defs f defs =
   in
     rev_map_flatten aux defs
 
-
+(*
 let rec extract_temp_if = function
     Const If -> assert false
   | Const c -> [], Const c
@@ -532,6 +533,7 @@ let rec extract_temp_if = function
         defs1@@defs2, App(t1',t2')
   | _ -> assert false
 let extract_temp_if defs = map_defs extract_temp_if defs
+*)
 
 
 
@@ -876,4 +878,3 @@ let rec normalize_bool_term = function
   | App(t1, t2) -> App(normalize_bool_term t1, normalize_bool_term t2)
   | Let _ -> assert false
   | Fun _ -> assert false
-

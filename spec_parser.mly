@@ -13,7 +13,7 @@ let print_error_information () =
 
 let parse_error _ = print_error_information ()
 
-let new_var s = Id.make 0 s TUnknown
+let new_var s = Id.make 0 s (TInt[])
 %}
 
 %token EOF

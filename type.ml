@@ -139,6 +139,7 @@ let rec occurs r typ =
     | TConstr(s,b) -> false
     | TUnknown -> false
     | TVariant _ -> assert false
+    | TPred _ -> assert false
 
 exception CannotUnify
 
@@ -203,6 +204,7 @@ let rec is_poly_typ = function
   | TConstr _ -> false
   | TUnknown _ -> assert false
   | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 
 let rec copy = function

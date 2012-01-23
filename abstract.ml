@@ -57,6 +57,7 @@ let rec abst_recdata_typ = function
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
   | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
@@ -150,7 +151,7 @@ let abstract_recdata t =
     typ_excep := abst_recdata_typ !typ_excep;
     Type_check.check t TUnit;
     t'
-  
+
 
 
 
@@ -319,6 +320,7 @@ let rec abst_list_typ = function
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
   | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 let abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -352,7 +354,7 @@ let rec get_match_bind_cond t p =
         let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
           bind1@@bind2, make_and cond1 cond2
 
-let make_cons t1 t2 =
+let make_cons post t1 t2 =
   let i = Id.new_var "i" (TInt[]) in
   let x = Id.new_var "x" t1.typ in
   let xs_typ =
@@ -367,11 +369,11 @@ let make_cons t1 t2 =
   let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
   let t_len = make_fun i (make_if t11 t12 t13) in
   let t_f = make_add (make_snd (make_var xs)) (make_int 1) in
-  let cons = Id.new_var "cons" (TFun(x,TFun(xs,xs_typ)))  in
+  let cons = Id.new_var ("cons"^post) (TFun(x,TFun(xs,xs_typ)))  in
     make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1; t2])
 
 
-let rec abst_list t =
+let rec abst_list post t =
   let typ' = abst_list_typ t.typ in
   let desc =
     match t.desc with
@@ -384,15 +386,19 @@ let rec abst_list t =
       | NInt x -> NInt (abst_list_var x)
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
-      | Fun(x,t) -> Fun(abst_list_var x, abst_list t)
-      | App(t, ts) -> App(abst_list t, List.map abst_list ts)
-      | If(t1, t2, t3) -> If(abst_list t1, abst_list t2, abst_list t3)
-      | Branch(t1, t2) -> Branch(abst_list t1, abst_list t2)
+      | Fun(x,t) -> Fun(abst_list_var x, abst_list post t)
+      | App(t, ts) -> App(abst_list post t, List.map (abst_list post) ts)
+      | If(t1, t2, t3) -> If(abst_list post t1, abst_list post t2, abst_list post t3)
+      | Branch(t1, t2) -> Branch(abst_list post t1, abst_list post t2)
       | Let(flag, bindings, t2) ->
-          let bindings' = List.map (fun (f,xs,t) -> abst_list_var f, List.map abst_list_var xs, abst_list t) bindings in
-            Let(flag, bindings', abst_list t2)
-      | BinOp(op, t1, t2) -> BinOp(op, abst_list t1, abst_list t2)
-      | Not t -> Not (abst_list t)
+          let aux (f,xs,t) =
+            let post' = "_" ^ Id.name f in
+              abst_list_var f, List.map abst_list_var xs, abst_list post' t
+          in
+          let bindings' = List.map aux bindings in
+            Let(flag, bindings', abst_list post t2)
+      | BinOp(op, t1, t2) -> BinOp(op, abst_list post t1, abst_list post t2)
+      | Not t -> Not (abst_list post t)
       | Event(s,b) -> Event(s,b)
       | Record _ -> assert false
       | Proj _ -> assert false
@@ -401,9 +407,9 @@ let rec abst_list t =
           let typ'' = match t.typ with TList(typ,_) -> abst_list_typ typ | _ -> assert false in
             Pair(make_fun (Id.new_var "x" (TInt[])) (make_bottom typ''), make_int 0)
       | Cons(t1,t2) ->
-          let t1' = abst_list t1 in
-          let t2' = abst_list t2 in
-            (make_cons t1' t2').desc
+          let t1' = abst_list post t1 in
+          let t2' = abst_list post t2 in
+            (make_cons post t1' t2').desc
       | Constr(s,ts) -> assert false
       | Match(t1,pats) ->
           let x,bindx =
@@ -411,7 +417,7 @@ let rec abst_list t =
                 Var x -> Id.set_typ x (abst_list_typ t1.typ), fun t -> t
               | _ ->
                   let x = Id.new_var "xs" (abst_list_typ t1.typ) in
-                    x, fun t -> make_let [x, [], abst_list t1] t
+                    x, fun t -> make_let [x, [], abst_list post t1] t
           in
           let aux (p,cond,t) t' =
             let bind,cond' = get_match_bind_cond (make_var x) p in
@@ -419,86 +425,26 @@ let rec abst_list t =
             let t_cond =
               match cond with
                   None -> true_term
-                | Some cond -> add_bind (abst_list cond)
+                | Some cond -> add_bind (abst_list post cond)
             in
-              make_if (make_and cond' t_cond) (add_bind (abst_list t)) t'
+              make_if (make_and cond' t_cond) (add_bind (abst_list post t)) t'
           in
           let t_pats = List.fold_right aux pats (make_bottom typ') in
             (bindx t_pats).desc
-      | Raise t -> Raise (abst_list t)
-      | TryWith(t1,t2) -> TryWith(abst_list t1, abst_list t2)
+      | Raise t -> Raise (abst_list post t)
+      | TryWith(t1,t2) -> TryWith(abst_list post t1, abst_list post t2)
       | Bottom -> Bottom
-      | Pair(t1,t2) -> Pair(abst_list t1, abst_list t2)
-      | Fst t -> Fst (abst_list t)
-      | Snd t -> Snd (abst_list t)
+      | Pair(t1,t2) -> Pair(abst_list post t1, abst_list post t2)
+      | Fst t -> Fst (abst_list post t)
+      | Snd t -> Snd (abst_list post t)
   in
   let t = {desc=desc; typ=typ'} in
   let () = Type_check.check t typ' in
     t
-    
 
-
-(*
-let rec encode_pair_typ = function
-    TUnit -> TUnit
-  | TBool -> TBool
-  | TAbsBool -> assert false
-  | TInt ps -> TInt ps
-  | TRInt _ -> assert false
-  | TVar _ -> assert false
-  | TFun(x,typ) -> TFun(Id.set_typ x (encode_pair_typ (Id.typ x)), encode_pair_typ typ)
-  | TList typ -> assert false
-  | TConstr _ -> assert false
-  | TUnknown -> assert false
-  | TPair(typ1,typ2) ->
-      let f typ =
-        let fst = Id.new_var "f" (encode_pair_typ typ1) in
-        let snd = Id.new_var "s" (encode_pair_typ typ2) in
-        let g = Id.new_var "g" (TFun(fst, TFun(snd, typ))) in
-          TFun(g, typ)
-      in
-        TAbs f
-
-let rec encode_pair t =
-  let typ' = encode_pair_typ t.typ in
-  let desc =
-    match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
-      | Unknown -> Unknown
-      | Int n -> Int n
-      | Var x -> Var x
-      | NInt x -> NInt x
-      | RandInt t -> RandInt (apply_opt encode_pair t)
-      | RandValue(typ,None) -> RandValue(typ,None)
-      | RandValue(typ,Some t) -> RandValue(typ,Some (encode_pair t))
-      | Fun(x,t) -> Fun(x, encode_pair t)
-      | App(t, ts) -> App(encode_pair t, List.map encode_pair ts)
-      | If(t1, t2, t3) -> If(encode_pair t1, encode_pair t2, encode_pair t3)
-      | Branch(t1, t2) -> Branch(encode_pair t1, encode_pair t2)
-      | Let(flag, f, xs, t1, t2) -> Let(flag, f, xs, encode_pair t1, encode_pair t2)
-      | BinOp(op, t1, t2) -> BinOp(op, encode_pair t1, encode_pair t2)
-      | Not t -> Not (encode_pair t)
-      | Fail -> Fail
-      | Label(b, t) -> Label(b, encode_pair t)
-      | Event s -> Event s
-      | Record _ -> assert false
-      | Proj _ -> assert false
-      | SetField _ -> assert false
-      | Nil -> assert false
-      | Cons(t1,t2) -> assert false
-      | Constr(s,ts) -> assert false
-      | Match(t1,pats) -> assert false
-      | TryWith(t,pats) -> assert false
-      | Pair(t1,t2) -> {desc=
-      | Fs
-  in
-    {desc=desc; typ=typ'}
-*)
 let abstract_list t =
-  let t' = abst_list t in
-  let () = Type_check.check t' Type.TUnit in    
+  let t' = abst_list "" t in
+  let () = Type_check.check t' Type.TUnit in
     t'
 
 
@@ -517,6 +463,8 @@ let rec abst_datatype_typ = function
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
   | TUnknown -> assert false
+  | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 let rec abst_datatype_typ = function
     TUnit -> TUnit
@@ -533,6 +481,8 @@ let rec abst_datatype_typ = function
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
   | TUnknown -> assert false
+  | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Flag.Immutable, t))::fields, i+1) ([],0) ts in

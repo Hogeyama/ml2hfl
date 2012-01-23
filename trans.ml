@@ -19,6 +19,7 @@ let rec id___typ = function
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
 
@@ -82,6 +83,84 @@ and id__ t =
 
 
 
+let rec id2___typ env = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> TAbsBool
+  | TInt ps -> TInt (List.map (id2__ env) ps)
+  | TRInt p -> TRInt (id2__ env p)
+  | TVar({contents=None} as x) -> TVar x
+  | TVar{contents=Some typ} -> id2___typ env typ
+  | TFun(x,typ) -> TFun(Id.set_typ x (id2___typ env (Id.typ x)), id2___typ env typ)
+  | TList(typ,ps) -> TList(id2___typ env typ, List.map (id2__ env) ps)
+  | TPair(typ1,typ2) -> TPair(id2___typ env typ1, id2___typ env typ2)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TUnknown -> TUnknown
+  | TVariant _ -> assert false
+  | TPred _ -> assert false
+
+and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
+
+and id2___pat env p =
+  let typ = id2___typ env p.pat_typ in
+  let desc =
+    match p.pat_desc with
+        PVar x -> PVar (id2___var env x)
+      | PConst t -> PConst (id2__ env t)
+      | PConstruct(s,ps) -> PConstruct(s, List.map (id2___pat env) ps)
+      | PNil -> PNil
+      | PCons(p1,p2) -> PCons(id2___pat env p1, id2___pat env p2)
+      | PPair(p1,p2) -> PPair(id2___pat env p1, id2___pat env p2)
+      | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,id2___pat env p)) pats)
+      | POr(p1,p2) -> POr(id2___pat env p1, id2___pat env p2)
+  in
+    {pat_desc=desc; pat_typ=typ}
+
+and id2__ env t =
+  let typ = id2___typ env t.typ in
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(id2___typ env typ,b)
+      | Var y -> Var (id2___var env y)
+      | Fun(y, t) -> Fun(id2___var env y, id2__ env t)
+      | App(t1, ts) -> App(id2__ env t1, List.map (id2__ env) ts)
+      | If(t1, t2, t3) -> If(id2__ env t1, id2__ env t2, id2__ env t3)
+      | Branch(t1, t2) -> Branch(id2__ env t1, id2__ env t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> id2___var env f, List.map (id2___var env) xs, id2__ env t) bindings in
+          let t2' = id2__ env t2 in
+            Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, id2__ env t1, id2__ env t2)
+      | Not t1 -> Not (id2__ env t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,id2__ env t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,id2__ env t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,id2__ env t1,id2__ env t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(id2__ env t1, id2__ env t2)
+      | Constr(s,ts) -> Constr(s, List.map (id2__ env) ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = id2___pat env pat, apply_opt (id2__ env) cond, id2__ env t1 in
+            Match(id2__ env t1, List.map aux pats)
+      | Raise t -> Raise (id2__ env t)
+      | TryWith(t1,t2) -> TryWith(id2__ env t1, id2__ env t2)
+      | Pair(t1,t2) -> Pair(id2__ env t1, id2__ env t2)
+      | Fst t -> Fst(id2__ env t)
+      | Snd t -> Snd(id2__ env t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=typ}
+
+
+
+
 let rec flatten_tvar_typ = function
     TUnit -> TUnit
   | TBool -> TBool
@@ -96,6 +175,7 @@ let rec flatten_tvar_typ = function
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
 
@@ -177,6 +257,7 @@ let rec rename_tvar_typ map = function
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
+  | TPred _ -> assert false
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
 
@@ -256,7 +337,7 @@ let rec get_tvars typ =
       | TConstr(s,b) -> []
       | TUnknown _ -> assert false
       | TVariant _ -> assert false
-
+      | TPred _ -> assert false
 
 
 let rec rename_poly_funs f t =
@@ -451,7 +532,7 @@ let set_target t =
             match Id.typ x with
                 TInt _ -> make_app randint_term [unit_term]
               | TUnit -> unit_term
-              | typ -> raise (Fatal ("Not implemented: RandValue")); {desc=RandValue(typ, false); typ=typ}
+              | typ -> raise (Fatal ("Not implemented: RandValue"))(* {desc=RandValue(typ, false); typ=typ}*)
           in
           let args = List.map aux xs in
           let main = make_app {desc=Var f;typ=Id.typ f} args in
@@ -1173,10 +1254,7 @@ let rec replace_typ_aux env t =
       | Proj(i,s,f,t1) -> Proj(i,s,f,replace_typ_aux env t1)
       | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,replace_typ_aux env t1,replace_typ_aux env t2)
       | Nil -> Nil
-      | Cons(t1,t2) ->
-          let t' = Cons(replace_typ_aux env t1, replace_typ_aux env t2) in
-            Format.printf "%a ===> %a@.@." pp_print_term' t pp_print_term' {desc=t'; typ=t.typ};
-            t'
+      | Cons(t1,t2) -> Cons(replace_typ_aux env t1, replace_typ_aux env t2)
       | Constr(s,ts) -> Constr(s, List.map (replace_typ_aux env) ts)
       | Match(t1,pats) ->
           let aux (pat,cond,t1) = pat, apply_opt (replace_typ_aux env) cond, replace_typ_aux env t1 in
@@ -1706,3 +1784,54 @@ let print_ce ce t =
   ignore (eval_and_print_ce ce t);
   Format.printf "error\n@."
 *)
+
+
+
+let rec elim_fun fun_name t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Var y -> Var y
+      | Fun(y, t1) ->
+          let f = Id.new_var fun_name t.typ in
+            Let(Flag.Nonrecursive, [f, [y], elim_fun fun_name t1], make_var f)
+      | App(t1, ts) -> App(elim_fun fun_name t1, List.map (elim_fun fun_name) ts)
+      | If(t1, t2, t3) -> If(elim_fun fun_name t1, elim_fun fun_name t2, elim_fun fun_name t3)
+      | Branch(t1, t2) -> Branch(elim_fun fun_name t1, elim_fun fun_name t2)
+      | Let(flag, bindings, t2) ->
+          let aux (f,xs,t) =
+            let fun_name' = "f_" ^ Id.name f in
+              f, xs, elim_fun fun_name' t
+          in
+          let bindings' = List.map aux bindings in
+          let t2' = elim_fun fun_name t2 in
+            Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, elim_fun fun_name t1, elim_fun fun_name t2)
+      | Not t1 -> Not (elim_fun fun_name t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,elim_fun fun_name t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,elim_fun fun_name t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,elim_fun fun_name t1,elim_fun fun_name t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(elim_fun fun_name t1, elim_fun fun_name t2)
+      | Constr(s,ts) -> Constr(s, List.map (elim_fun fun_name) ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, apply_opt (elim_fun fun_name) cond, elim_fun fun_name t1 in
+            Match(elim_fun fun_name t1, List.map aux pats)
+      | Raise t -> Raise (elim_fun fun_name t)
+      | TryWith(t1,t2) -> TryWith(elim_fun fun_name t1, elim_fun fun_name t2)
+      | Pair(t1,t2) -> Pair(elim_fun fun_name t1, elim_fun fun_name t2)
+      | Fst t -> Fst(elim_fun fun_name t)
+      | Snd t -> Snd(elim_fun fun_name t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=t.typ}
+
+let elim_fun t = elim_fun "f" t

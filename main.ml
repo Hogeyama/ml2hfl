@@ -37,6 +37,15 @@ let print_info () =
 
 let spec_file = ref ""
 
+let print_spec spec =
+  if spec <> []
+  then
+    begin
+      Format.printf "spec::@.";
+      List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec;
+      Format.printf "@."
+    end
+
 let main filename in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
@@ -57,7 +66,7 @@ let main filename in_channel =
       Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
 
-  let () = if true then Format.printf "parsed::@.%a@.@.@." Syntax.pp_print_term t in
+  let () = if true then Format.printf "parsed::@.%a@.@." Syntax.pp_print_term t in
 
   let spec =
     if !spec_file = ""
@@ -66,27 +75,17 @@ let main filename in_channel =
       Spec_parser.typedefs Spec_lexer.token (Lexing.from_channel (open_in !spec_file))
   in
 
-  let () =
-    if spec <> []
-    then
-      begin
-        Format.printf "spec::@.";
-        List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec;
-        Format.printf "@."
-      end
-  in
+  let () = print_spec spec in
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
-  let () = if true then Format.printf "set_target::@.%a@.@.@." Syntax.pp_print_term t in
+  let () = if true then Format.printf "set_target::@.%a@.@." Syntax.pp_print_term t in
   let t =
     if !Flag.init_trans
     then
       let t = Trans.copy_poly_funs t in
       let () = if true then Format.printf "copy_poly::@.%a@.@." Syntax.pp_print_term' t in
       let spec' = Trans.rename_spec spec t in
-        Format.printf "spec'::@.";
-        List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec';
-        Format.printf "@.";
+      let () = print_spec spec' in
       let t = Trans.replace_typ spec' t in
       let () = if true then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term' t in
       let t = Abstract.abstract_recdata t in
@@ -122,9 +121,6 @@ let arg_spec =
    "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " use sized type system for CEGAR";
    "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " same as -st";
    "-na", Arg.Clear Flag.init_trans, " do not abstract data";
-(*
-   "-exn", Arg.Set Flag.cps_excep, " CPS transformation for exception";
-*)
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineSizedType), " use sized type system for predicate discovery";
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " use dependent type system for predicate discovery";
    "-spec", Arg.String (fun file -> spec_file := file),

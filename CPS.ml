@@ -988,7 +988,8 @@ let rec has_exception t =
 
 
 let trans t =
-  let t' =
+  let t = Trans.elim_fun t in
+  let t_cps =
     if has_exception t
     then
       let u = Id.new_var "u" typ_event in
@@ -1000,8 +1001,8 @@ let trans t =
       let cps = transform cps_pre in
         cps
   in
-    Type_check.check t' TUnit;
-    t'
+    Type_check.check t_cps TUnit;
+    t_cps
 
 
 

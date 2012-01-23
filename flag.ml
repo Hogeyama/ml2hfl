@@ -59,7 +59,7 @@ let form : form list ref = ref []
 
 
 
-(* display or not *)
+(* print option *)
 let print_source = true
 let print_cps = true
 let print_abst = true
@@ -75,6 +75,7 @@ let print_lower_bound = false
 let print_cvc3 = false
 let print_refine_log = false
 let print_eval_abst = ref false
+
 
 
 (* variables for log *)
