@@ -493,7 +493,7 @@ let rec get_typ env = function
       let typ1 = List.assoc x env in
       let typ2 = get_typ env t in
         TFun(typ1, fun _ -> typ2)
-      
+
 
 
 
@@ -623,7 +623,7 @@ let rec get_arg_env typ xs =
           (x,typ1) :: get_arg_env typ2 xs
     | _ -> []
 
-    
+
 
 
 

@@ -85,7 +85,7 @@ let rec from_type_expr tenv typ =
       | Ttuple _ -> assert false
       | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs -> List.assoc (Path.name path) prim_typs
       | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
-          TList (from_type_expr tenv type_expr)
+          TList(from_type_expr tenv type_expr, [])
       | Tconstr(path, _, m) ->
           let b =
             try match (Env.find_type path tenv).type_kind with

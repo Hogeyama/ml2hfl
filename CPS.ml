@@ -14,7 +14,6 @@ let rec trans_simpl_typ = function
       let k = Id.new_var "k" (TFun(y,TUnit)) in
         TFun(Id.set_typ x typ1, TFun(k,TUnit))
   | TPair(typ1,typ2) -> TPair(trans_simpl_typ typ1, trans_simpl_typ typ2)
-  | TVar _ -> assert false
   | TUnknown -> assert false
   | TList _ -> assert false
   | TVar {contents = None} -> assert false
@@ -155,11 +154,10 @@ let rec trans_exc_typ = function
       let e = Id.new_var "e" !typ_excep in
       let h = Id.new_var "h" (TFun(e,TUnit)) in
         TFun(Id.set_typ x typ1, TFun(k,TFun(h,TUnit)))
-  | TList typ -> TList (trans_exc_typ typ)
+  | TList(typ,ps) -> TList(trans_exc_typ typ, ps)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
   | TVariant _ -> assert false
-  | TLabel _ -> assert false
   | TPred _ -> assert false
   | TPair(typ1,typ2) -> TPair(trans_exc_typ typ1, trans_exc_typ typ2)
 
@@ -353,11 +351,10 @@ let rec remove_pair_typ = function
       let xs' = List.flatten (List.map aux xs) in
         Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
   | TPair(typ1,typ2) -> Node(remove_pair_typ typ1, remove_pair_typ typ2)
-  | TList typ -> Leaf (TList(root (remove_pair_typ typ)))
+  | TList(typ,ps) -> Leaf (TList(root (remove_pair_typ typ), ps))
   | TConstr(s,b) -> Leaf (TConstr(s,b))
   | TUnknown -> assert false
   | TVariant _ -> assert false
-  | TLabel _ -> assert false
   | TPred(x,typ) ->
       let x' = remove_pair_var x in
       let typ' = remove_pair_typ typ in
@@ -766,12 +763,81 @@ let rec app_typ typ typs =
       TVarCPS{contents=Some typ},_ -> app_typ typ typs
     | TFunCPS(_,_,typ2), _::typs' -> app_typ typ2 typs'
     | _, [] -> typ
-    | _ -> raise (Fatal "")
+    | _ -> raise (Fatal "bug? (CPS.app_typ)")
+
+
+
+
+let rec add_preds_cont_aux k t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Var y -> Var y
+      | Fun(y, t) -> Fun(y, add_preds_cont_aux k t)
+      | App(t1, ts) ->
+          let aux (typ,ts) t =
+            let x, typ' =
+              match typ with
+                  TFun(x,typ) -> x, subst_type x t typ
+                | _ -> assert false
+            in
+            let t' =
+              if t.desc = Var k
+              then make_var (Id.set_typ k (Id.typ x))
+              else add_preds_cont_aux k t
+            in
+              typ', t'::ts
+          in
+          let _,ts' = List.fold_left aux (t1.typ,[]) ts in
+            App(add_preds_cont_aux k t1, ts')
+      | If(t1, t2, t3) -> If(add_preds_cont_aux k t1, add_preds_cont_aux k t2, add_preds_cont_aux k t3)
+      | Branch(t1, t2) -> Branch(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, add_preds_cont_aux k t) bindings in
+          let t2' = add_preds_cont_aux k t2 in
+            Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, add_preds_cont_aux k t1, add_preds_cont_aux k t2)
+      | Not t1 -> Not (add_preds_cont_aux k t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,add_preds_cont_aux k t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,add_preds_cont_aux k t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,add_preds_cont_aux k t1,add_preds_cont_aux k t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
+      | Constr(s,ts) -> Constr(s, List.map (add_preds_cont_aux k) ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, apply_opt (add_preds_cont_aux k) cond, add_preds_cont_aux k t1 in
+            Match(add_preds_cont_aux k t1, List.map aux pats)
+      | Raise t -> Raise (add_preds_cont_aux k t)
+      | TryWith(t1,t2) -> TryWith(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
+      | Pair(t1,t2) -> Pair(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
+      | Fst t -> Fst(add_preds_cont_aux k t)
+      | Snd t -> Snd(add_preds_cont_aux k t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=t.typ}
+
+let add_preds_cont k t =
+  let t' = add_preds_cont_aux k t in
+  let ks = List.filter (Id.same k) (get_fv t') in
+    if List.length ks = 0
+    then (assert (t.desc = Bottom); k, t)
+    else (assert (List.length ks = 1); List.hd ks, t)
+
+
 
 let rec trans_typ typ_orig typ =
   match typ_orig,typ with
       _, TVarCPS{contents=Some typ} -> trans_typ typ_orig typ
     | _, TBaseCPS _ -> typ_orig
+    | _, TPredCPS(_,typ) -> trans_typ typ_orig typ
     | TFun(x_orig,typ), TFunCPS(b,typ1,typ2) when !b ->
         let typ1' = trans_typ (Id.typ x_orig) typ1 in
         let x = Id.new_var "x" typ1' in
@@ -785,11 +851,12 @@ let rec trans_typ typ_orig typ =
         let typ2' = subst_type x_orig (make_var x) (trans_typ typ typ2) in
           TFun(x, typ2')
     | TPair(typ_orig1,typ_orig2), TPairCPS(typ1,typ2) -> TPair(trans_typ typ_orig1 typ1, trans_typ typ_orig2 typ2)
-    | TPred(_,typ_orig), TPredCPS(x,typ) ->
+    | TPred(x,typ_orig), typ ->
         let typ' = trans_typ typ_orig typ in
           TPred(Id.set_typ x typ', typ')
-    | _ -> raise (Fatal "")
-
+    | _ ->
+        Format.printf "%a,%a@." print_typ typ_orig print_typ_cps typ;
+        raise (Fatal "bug? (CPS.trans_typ)")
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
 
@@ -811,7 +878,8 @@ let rec transform k_post c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
             let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
             let c1 x = make_app x [make_var k] in
             let cc = List.fold_right (fun t cc -> fun x -> transform k_post (fun y -> cc (make_app x [y])) t) ts c1 in
-              make_let' k [r] (c (make_var r)) (transform k_post cc t1)
+            let k',t1' = add_preds_cont k (transform k_post cc t1) in
+              make_let' k' [r] (c (make_var r)) t1'
           else
             let ts1,ts2 = take2 ts n in
             let typ' = app_typ t1.typ_cps ts1 in
@@ -838,17 +906,18 @@ let rec transform k_post c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
             let r = Id.new_var "r" (trans_typ t1.typ_orig t1.typ_cps) in
             let k = Id.new_var "k" (TFun(r,TUnit)) in
             let f' = trans_var f in
-            let xs' = List.map trans_var xs in
+            let xs' = List.map trans_var xs @ [k] in
             let k_post' = "_" ^ Id.name f' in
             let t1' = transform k_post' (fun y -> make_app (make_var k) [y]) t1 in
             let t2' = transform k_post' c t2 in
-              make_let_f flag [f', xs'@[k], t1'] t2'
+              make_let_f flag [f', xs', t1'] t2'
           else
             let xs1,xs2 = take2 xs n in
             let typ_g = app_typ f.id_typ xs1 in
             let typ_orig_g = Type.app_typ (Id.typ f.id_cps) xs1 in
             let g = {id_cps=Id.new_var (Id.name f.id_cps) typ_orig_g; id_typ=typ_g} in
-            let t1' = {t_cps=LetCPS(Flag.Nonrecursive, g, xs2, t1, {t_cps=VarCPS g;typ_cps=typ_g; typ_orig=typ_orig_g}); typ_cps=typ_g; typ_orig=typ_orig_g} in
+            let t_g = {t_cps=VarCPS g; typ_cps=typ_g; typ_orig=typ_orig_g} in
+            let t1' = {t_cps=LetCPS(Flag.Nonrecursive, g, xs2, t1, t_g); typ_cps=typ_g; typ_orig=typ_orig_g} in
               transform k_post c {t_cps=LetCPS(flag,f,xs1,t1',t2); typ_cps=typ; typ_orig=typ_orig}
     | BinOpCPS(op, t1, t2) ->
         let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=trans_typ typ_orig typ} in
@@ -870,7 +939,8 @@ let rec transform k_post c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
         let c2 y1 = transform k_post (fun y2 -> c1 y1 y2) t2 in
           transform k_post c2 t1
     | t -> (Format.printf "%a@." print_t_cps t; assert false)
-let transform = transform "" (fun x -> x)
+
+let transform t = Trans.propagate_typ_arg (transform "" (fun x -> x) t)
 
 
 

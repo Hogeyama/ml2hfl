@@ -47,6 +47,9 @@ let rec mem_assoc x = function
   | [] -> false
   | (a, b) :: l -> same a x || mem_assoc x l
 
-let print fm x = Format.pp_print_string fm (to_string' x)
+let print fm x =
+  let s = to_string' x in
+    assert (s <> "");
+    Format.pp_print_string fm s
 
 

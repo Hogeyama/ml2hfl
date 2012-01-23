@@ -37,7 +37,7 @@ let print_termlist tl =
 
 let print_ldefs ldefs =
    List.iter
-     (fun (x,n,tl,t) -> 
+     (fun (x,n,tl,t) ->
       (print_string2 "id: ";
        print_ident x;
        print_string2 "\ncond:";
@@ -48,7 +48,7 @@ let print_ldefs ldefs =
 
 let print_ldefs2 ldefs =
    List.iter
-     (fun (x,n,tl,t) -> 
+     (fun (x,n,tl,t) ->
       (print_string2 "term: ";
        print_term x;
        print_string2 "\ncond:";
@@ -56,7 +56,7 @@ let print_ldefs2 ldefs =
        print_string2 "\nterm: ";
        print_term t;
        print_string2 "\n")) ldefs
-       
+
 
 let print_c c = Format.printf "\n\n %a\n" Syntax.print_constr_list c
 let print_ca c = Format.printf "%a\n" Syntax.print_constr c
@@ -67,15 +67,15 @@ let print_allc l =
 let print_trace l =
    List.iter (fun (l,x,y,n) ->
                (print_string2 "cond:\n";
-                print_termlist l; 
+                print_termlist l;
                 print_string2 "term1: ";
                 print_term x; print_string2 "\n term2: ";print_term y; print_string2 "\n";
                 print_int n;print_string2 "\n\n")) l
 
 type tinfo = ety list ref
-and ety = ETfun of tinfo * ety | ETunit of int | ETindirect of tinfo 
+and ety = ETfun of tinfo * ety | ETunit of int | ETindirect of tinfo
 
-type aty = ATunit of int | ATfun of aty list * aty | ATint of int | ATbool of int | ATlist of int
+type aty = ATunit of int | ATfun of aty list * aty | ATint of int | ATbool of int
  (** Integers added to ATint and ATbool will be used as an identifier of the predicate **)
 
 type myterm = MyUnit of tinfo | MyFail of tinfo | MyVar of id * tinfo
@@ -85,7 +85,7 @@ let rec print_myterm t =
   match t with
       MyUnit(_) ->
         Format.printf "()"
-    | MyFail(_) -> 
+    | MyFail(_) ->
         Format.printf "fail"
     | MyVar(id,_) ->
         print_ident id
@@ -173,7 +173,6 @@ and tinfo2ty typ tinfo =
             TInt _ -> [ATint(0)]
           | TRInt _ -> [ATint(0)]
           | TBool -> [ATbool(0)]
-          | TList _ -> [ATlist(0)]
           | _ -> ty1
      else ty1
 and ety2ty typ ety =
@@ -211,7 +210,6 @@ let rec rename_aty aty =
     ATunit(n) -> ATunit(n)
   | ATint(n) -> ATint(new_pid())
   | ATbool(n) -> ATbool(new_pid())
-  | ATlist(n) -> ATlist(new_pid())
   | ATfun(ty1,aty1) ->
       ATfun(rename_ty ty1, rename_aty aty1)
 
@@ -243,7 +241,6 @@ and print_aty aty =
   | ATunit(n) -> print_string2 ("unit("^(string_of_int n)^")")
   | ATint(n) -> print_string2 "int"
   | ATbool(n) -> print_string2 "bool"
-  | ATlist _ -> assert false
 
 
 let rec print_atenv atenv =
@@ -519,7 +516,6 @@ type pred = Pred of pid * Syntax.typed_term list
 type rty = RTunit of int | RTint of (Syntax.typed_term -> pred) | RTbool of (Syntax.typed_term -> pred)
         | RTifun of (Syntax.typed_term -> pred) * (Syntax.typed_term -> rty) | RTbfun of (Syntax.typed_term -> pred) * (Syntax.typed_term-> rty)
         | RTfun of rty list * rty
-        | RTlist of (Syntax.typed_term -> pred) | RTlfun of (Syntax.typed_term -> pred) * (Syntax.typed_term -> rty)
 
 type ac = Cpred of pred | Csub of rty * rty | Cterm of Syntax.typed_term | Cimp of ac list * ac list | Cfalse
 
@@ -530,14 +526,10 @@ let rec aty2rty aty vars =
         RTint(fun x-> Pred(n,x::vars))
    | ATbool(n) ->
         RTbool(fun x-> Pred(n,x::vars))
-   | ATlist(n) ->
-        RTlist(fun x-> Pred(n,x::vars))
    | ATfun(ATint(n)::_, aty1) ->
          RTifun((fun x-> Pred(n,x::vars)), (fun x->aty2rty aty1 (x::vars)))
    | ATfun(ATbool(n)::_, aty1) ->
          RTbfun((fun x-> Pred(n,[x])), (fun x->aty2rty aty1 (x::vars)))
-   | ATfun(ATlist(n)::_, aty1) ->
-         RTlfun((fun x-> Pred(n,x::vars)), (fun x->aty2rty aty1 (x::vars)))
    | ATfun(ty1, aty1) ->
          RTfun(ty2rtyl ty1 vars, aty2rty aty1 vars)
 and ty2rtyl ty vars =
@@ -597,29 +589,22 @@ let print_pred pred =
 let rec print_rty rty =
   match rty with
     RTunit(n) -> print_string2 ("Unit("^(string_of_int n)^")")
-  | RTint(f) -> let x = new_var (TInt[]) in 
+  | RTint(f) -> let x = new_var (TInt[]) in
                 let pred = f x in
                  (print_string2 "{";
                   print_var x;
                   print_string2 ":int | ";
                   print_pred pred;
                   print_string2 "}")
-  | RTbool(f) ->let x = new_var TBool in 
+  | RTbool(f) ->let x = new_var TBool in
                 let pred = f x in
                  (print_string2 "{";
                   print_var x;
                   print_string2 ":bool | ";
                   print_pred pred;
                   print_string2 "}")
-  | RTlist(f) ->let x = new_var (TList(TUnknown)) in 
-                let pred = f x in
-                 (print_string2 "{";
-                  print_var x;
-                  print_string2 ":list | ";
-                  print_pred pred;
-                  print_string2 "}")
   | RTifun(f,g) ->
-           let x = new_var (TInt[]) in 
+           let x = new_var (TInt[]) in
            let (pred, rty1) = (f x, g x) in
               (print_var x;
                print_string2 ":{";
@@ -628,9 +613,9 @@ let rec print_rty rty =
                print_pred pred;
                print_string2 "} -> ";
                print_rty rty1)
-  
+
   | RTbfun(f, g) ->
-           let x = new_var (TInt[]) in 
+           let x = new_var (TInt[]) in
            let (pred, rty1) = (f x, g x) in
               (print_var x;
                print_string2 ":{";
@@ -639,18 +624,8 @@ let rec print_rty rty =
                print_pred pred;
                print_string2 "} -> ";
                print_rty rty1)
-  | RTlfun(f, g) ->
-           let x = new_var (TList(TUnknown)) in
-           let (pred, rty1) = (f x, g x) in
-              (print_var x;
-               print_string2 ":{";
-               print_var x;
-               print_string2 ":list | ";
-               print_pred pred;
-               print_string2 "} -> ";
-               print_rty rty1)
   | RTfun(rtyl1,rty2) ->
-       (print_rtyl rtyl1; 
+       (print_rtyl rtyl1;
         print_string2 " -> ";
         print_rty rty2)
 and print_rtyl rtyl =
@@ -679,9 +654,6 @@ let rec id_of_rty rty =
     let rty1 = g (dummy_var) in
        id_of_rty rty1
  | RTbfun(_, g) ->
-    let rty1 = g (dummy_var) in
-       id_of_rty rty1
- | RTlfun(_, g) ->
     let rty1 = g (dummy_var) in
        id_of_rty rty1
  | RTfun(_,rty1) ->
@@ -841,10 +813,6 @@ and chk_args rtenv rty terms =
               let (pred, rty2) = (f term, g term) in
               let (c1, rty3) = chk_args rtenv rty2 terms' in
                 (Cpred(pred)::c1, rty3)
-          | RTlfun(f, g) ->
-              let (pred, rty2) = (f term, g term) in
-              let (c1, rty3) = chk_args rtenv rty2 terms' in
-                (Cpred(pred)::c1, rty3)
           | RTfun(rtyl1,rty2) ->
               let c1 = chk_term_rtyl rtenv term rtyl1 in
               let (c2, rty3) = chk_args rtenv rty2 terms' in
@@ -903,11 +871,6 @@ let rec mk_venv vars rty =
              let (venv, id) = mk_venv vars' rty2 in
              let rty_v = RTbool(f) in
                ((v,[rty_v])::venv, id)
-         | RTlfun(f, g) ->
-             let rty2 = g ({desc=Var v;typ=Id.typ v}) in
-             let (venv, id) = mk_venv vars' rty2 in
-             let rty_v = RTlist(f) in
-               ((v,[rty_v])::venv, id)
          | RTfun(rtyl1,rty2) ->
              let (venv, id) = mk_venv vars' rty2 in
                ((v, rtyl1)::venv, id)
@@ -918,7 +881,6 @@ let getc_from_rtyl v rtyl =
   match rtyl with
     [RTint(f)] -> [Cpred(f ({desc=Var v;typ=Id.typ v}))]
   | [RTbool(f)] -> [Cpred(f ({desc=Var v;typ=Id.typ v}))]
-  | [RTlist(f)] -> [Cpred(f ({desc=Var v;typ=Id.typ v}))]
   | _ -> []
 
 let getc_from_env env =
@@ -960,7 +922,7 @@ exception SubTincompatible of rty * rty
 
 let rec reduce_subty rty1 rty2 =
   match (rty1,rty2) with
-    (RTunit(m), RTunit(n)) -> 
+    (RTunit(m), RTunit(n)) ->
       if m=n then [] else raise (SubTincompatible(rty1,rty2))
   | (RTint(f1), RTint(f2)) ->
       let v = new_var (TInt[]) in
@@ -969,11 +931,6 @@ let rec reduce_subty rty1 rty2 =
          [Cimp([Cpred(pred1)], [Cpred(pred2)])]
   | (RTbool(f1), RTbool(f2)) ->
       let v = new_var TBool in
-      let pred1 = f1 v in
-      let pred2 = f2 v in
-         [Cimp([Cpred(pred1)], [Cpred(pred2)])]
-  | (RTlist(f1), RTlist(f2)) ->
-      let v = new_var (TList(TUnknown)) in
       let pred1 = f1 v in
       let pred2 = f2 v in
          [Cimp([Cpred(pred1)], [Cpred(pred2)])]
@@ -986,13 +943,6 @@ let rec reduce_subty rty1 rty2 =
         [Cimp([Cpred(pred2)], c2)]
   | (RTbfun(f1,g1), RTbfun(f2,g2)) ->
       let v = new_var TBool in
-      let pred1 = f1 v in
-      let pred2 = f2 v in
-      let c1 = reduce_subty (g1 v) (g2 v) in
-      let c2 = merge_and_unify compare [Cpred(pred1)] c1 in
-        [Cimp([Cpred(pred2)], c2)]
-  | (RTlfun(f1,g1), RTlfun(f2,g2)) ->
-      let v = new_var (TList(TUnknown)) in
       let pred1 = f1 v in
       let pred2 = f2 v in
       let c1 = reduce_subty (g1 v) (g2 v) in
@@ -1015,7 +965,7 @@ and reduce_subtyl_ty rtyl1 rty2 =
     reduce_subty rty1 rty2
 
 let rec reduce_constr c =
-  List.fold_left 
+  List.fold_left
   (fun c1 -> fun ac ->
      merge_and_unify compare (reduce_ac ac) c1)
    [] c
@@ -1029,7 +979,7 @@ and reduce_ac ac =
   | Cfalse -> [ac]
 
 let rec normalize_constr c =
-  List.fold_left 
+  List.fold_left
   (fun c1 -> fun ac ->
      merge_and_unify compare (normalize_ac ac) c1)
    [] c
@@ -1143,7 +1093,7 @@ and subst_ac sub ac =
   match ac with
     Cpred(Pred(pid, terms)) -> Cpred(Pred(pid, List.map (subst_map sub) terms))
   | Csub(rty1,rty2) -> assert false
-  | Cterm(term) -> Cterm(Syntax.eval (subst_map sub term))
+  | Cterm(term) -> Cterm(Trans.eval (subst_map sub term))
   | Cimp(c1,c2) -> Cimp(substc sub c1, substc sub c2)
   | Cfalse -> Cfalse
 
@@ -1811,7 +1761,7 @@ let test tdefs s defs traces pred =
               print_string2 "(";
               print_terms (List.map make_var ids);
               print_string2 ") = ";
-              print_term (Syntax.merge_geq_leq (Syntax.normalize_bool_exp t));
+              print_term (Trans.merge_geq_leq (Trans.normalize_bool_exp t));
               print_string2 "\n")
            sol in
      let _ =
@@ -1954,7 +1904,7 @@ let rec add_preds_typ sol typ1 typ2 =
                 then ps
                 else ((*Format.printf "adding %a@." (print_term_fm ML true) p;*) p::ps)
               in
-              let p' = Syntax.merge_geq_leq (Syntax.normalize_bool_exp p) in
+              let p' = Trans.merge_geq_leq (Trans.normalize_bool_exp p) in
                 List.fold_left aux ps [p']
             in
               TInt ps
@@ -1979,12 +1929,6 @@ let rec add_preds_typ sol typ1 typ2 =
 
 let infer ces prog =
   let ces =  List.map (fun ce -> List.map (fun b -> LabNode b) (Feasibility.trans_ce ce prog) @ [FailNode]) ces in
-  let pp_print_node fm = function
-      LabNode true -> Format.fprintf fm "then"
-    | LabNode false -> Format.fprintf fm "else"
-    | FailNode -> Format.fprintf fm "fail"
-    | _ -> assert false
-  in
   let defs,main = trans prog in
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in

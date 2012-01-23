@@ -11,6 +11,8 @@ let print_error_information () =
     (st.Lexing.pos_cnum - st.Lexing.pos_bol)
     (en.Lexing.pos_cnum - en.Lexing.pos_bol)
 
+let parse_error _ = print_error_information ()
+
 let new_var s = Id.make 0 s TUnknown
 %}
 
@@ -91,6 +93,8 @@ exp:
   { make_var $1 }
 | LPAREN exp RPAREN
   { $2 }
+| INT
+  { make_int $1 }
 | MINUS exp
   { make_sub (make_int 0) $2 }
 | exp EQUAL exp
@@ -144,9 +148,17 @@ typ:
 | typ_base_id
   { $1 }
 | typ LIST
-  { new_var "", TList (snd $1) }
+  { new_var "", TList(snd $1, []) }
+| typ LIST LSQUAR pred_list RSQUAR
+  { new_var "", TList(snd $1, $4) }
 | typ ARROW typ
-  { new_var "", TFun({(fst $1) with Id.typ=snd $1}, subst_type (fst $3) (make_var abst_var) (snd $3)) }
+  {
+    let x1,typ1 = $1 in
+    let x2,typ2 = $3 in
+    let x = {x1 with Id.typ=subst_type x1 (make_var abst_var) typ1} in
+    let typ = subst_type x2 (make_var abst_var) typ2 in
+      new_var "", TFun(x, typ)
+  }
 
 pred_list:
   { [] }

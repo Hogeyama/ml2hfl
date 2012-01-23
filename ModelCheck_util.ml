@@ -196,7 +196,7 @@ let church_encode ((env,defs,main):prog) : prog =
   let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
   let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
   let defs' = List.map (apply_body_def church_encode_term) defs @ [true_def; false_def] in
-    Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.print_prog ([],defs',main);
+    if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.print_prog ([],defs',main);
     Typing.infer ([],defs',main)
 
 
@@ -267,13 +267,11 @@ let beta_reduce_aux ((env,defs,main):prog) : prog =
   in
     env, aux [] defs, main
 
-let rec beta_reduce prog = 
+let rec beta_reduce prog =
   let prog' = beta_reduce_aux prog in
     if get_defs prog = get_defs prog'
     then prog
     else beta_reduce prog'
-
-
 
 
 
@@ -285,6 +283,6 @@ let model_check_aux (prog,spec) =
     match TrecsInterface.check (prog,spec) with
         None -> None
       | Some ce -> Some (trans_ce ce)
-        
+
 
 

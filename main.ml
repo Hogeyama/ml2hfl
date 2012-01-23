@@ -62,21 +62,19 @@ let main filename in_channel =
   let spec =
     if !spec_file = ""
     then []
-    else Spec_parser.typedefs Spec_lexer.token (Lexing.from_channel (open_in !spec_file))
+    else
+      Spec_parser.typedefs Spec_lexer.token (Lexing.from_channel (open_in !spec_file))
   in
-  let spec' = Trans.rename_spec spec t in
 
   let () =
-    if spec' <> []
+    if spec <> []
     then
       begin
         Format.printf "spec::@.";
-        List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec';
+        List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec;
         Format.printf "@."
       end
   in
-  let t = Syntax.replace_typ spec' t in
-  let () = if true then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term' t in
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
   let () = if true then Format.printf "set_target::@.%a@.@.@." Syntax.pp_print_term t in
@@ -84,7 +82,13 @@ let main filename in_channel =
     if !Flag.init_trans
     then
       let t = Trans.copy_poly_funs t in
-      let () = if true then Format.printf "copy_poly::@.%a@.@." Syntax.pp_print_term t in
+      let () = if true then Format.printf "copy_poly::@.%a@.@." Syntax.pp_print_term' t in
+      let spec' = Trans.rename_spec spec t in
+        Format.printf "spec'::@.";
+        List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec';
+        Format.printf "@.";
+      let t = Trans.replace_typ spec' t in
+      let () = if true then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term' t in
       let t = Abstract.abstract_recdata t in
       let () = if false then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term t in
       let t = Abstract.abstract_list t in

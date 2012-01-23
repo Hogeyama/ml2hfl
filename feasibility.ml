@@ -65,7 +65,7 @@ let rec get_prefix ce n =
     | c::ce' -> c::get_prefix ce' n
 
 let check ce ((env,defs,main):prog) =
-  let () = Format.printf "Spurious counter-example::\n%a\n@." CEGAR_print.print_ce ce in
+  let () = Format.printf "Spurious counter-example::@.%a@." CEGAR_print.print_ce ce in
   let tmp = get_time () in
   let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce in
@@ -74,7 +74,7 @@ let check ce ((env,defs,main):prog) =
   let pr _ _ _ _ = () in
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
-  let () = if false then Format.printf "prefix(%d): %a@." n CEGAR_print.print_ce prefix in
+  let () = if true then Format.printf "@.@.Prefix of spurious counter-example::@.%a@.@." CEGAR_print.print_ce prefix in
   let result =
     if Wrapper2.checksat env' constr
     then Feasible (env', Wrapper2.get_solution env' constr)

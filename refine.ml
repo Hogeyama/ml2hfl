@@ -6,7 +6,7 @@ open CEGAR_util
 
 
 exception CannotRefute
-      
+
 
 let add env ps p =
   if List.exists (Wrapper2.equiv env [] p) ps

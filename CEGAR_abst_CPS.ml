@@ -145,7 +145,6 @@ let rec coerce env cond pts t typ1 typ2 =
                   let pts' = make_pts x typ21 @@ pts in
                   let ts = coerce env' cond pts' (Var x) typ21 typ11 in
                   let t' = hd (coerce env' cond pts' (make_app t ts) typ12 typ22) in
-                  let t'' = t' in
                   let t'' = filter env' cond pts' t' in
                     [make_fun_temp xs t'']
               | TFun _, TFun _ ->

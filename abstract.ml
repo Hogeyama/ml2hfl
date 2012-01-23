@@ -37,18 +37,16 @@ let get_preds = function
 
 
 
-exception PolyTypeOccur
-
 let rec abst_recdata_typ = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> assert false
   | TInt ps -> TInt ps
   | TRInt _ -> assert false
-  | TVar{contents=None} -> raise PolyTypeOccur
+  | TVar{contents=None} -> raise (Fatal "Polymorhic types occur!")
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
-  | TList typ -> TList (abst_recdata_typ typ)
+  | TList(typ,ps) -> TList(abst_recdata_typ typ, ps)
   | typ when typ = !typ_excep ->
 (*
       let x = Id.new_var "path" (TList(TInt[])) in
@@ -304,7 +302,7 @@ let make_tl n t =
   let t2 = make_sub (make_snd t) (make_int n) in
     make_pair t1 t2
 
-    
+
 
 
 let rec abst_list_typ = function
@@ -313,10 +311,10 @@ let rec abst_list_typ = function
   | TAbsBool -> assert false
   | TInt ps -> TInt ps
   | TRInt _ -> assert false
-  | TVar{contents=None} -> raise PolyTypeOccur
+  | TVar{contents=None} -> raise (Fatal "Polymorhic types occur!")
   | TVar{contents=Some typ} -> abst_list_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
-  | TList typ -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt[])
+  | TList(typ,ps) -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt ps)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
@@ -359,7 +357,8 @@ let make_cons t1 t2 =
   let x = Id.new_var "x" t1.typ in
   let xs_typ =
     match t2.typ with
-        TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,typ12),typ2)
+      | TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,typ12),typ2)
+      | TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,TPred(x,typ12)),typ2)
       | _ -> assert false
   in
   let xs = Id.new_var "xs" xs_typ in
@@ -369,9 +368,8 @@ let make_cons t1 t2 =
   let t_len = make_fun i (make_if t11 t12 t13) in
   let t_f = make_add (make_snd (make_var xs)) (make_int 1) in
   let cons = Id.new_var "cons" (TFun(x,TFun(xs,xs_typ)))  in
-    Format.printf "MAKE_CONS: %a, %a@." Id.print x Id.print cons;
     make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1; t2])
-  
+
 
 let rec abst_list t =
   let typ' = abst_list_typ t.typ in
@@ -400,7 +398,7 @@ let rec abst_list t =
       | Proj _ -> assert false
       | SetField _ -> assert false
       | Nil ->
-          let typ'' = match t.typ with TList typ -> abst_list_typ typ | _ -> assert false in
+          let typ'' = match t.typ with TList(typ,_) -> abst_list_typ typ | _ -> assert false in
             Pair(make_fun (Id.new_var "x" (TInt[])) (make_bottom typ''), make_int 0)
       | Cons(t1,t2) ->
           let t1' = abst_list t1 in

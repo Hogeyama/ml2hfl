@@ -87,7 +87,7 @@ let rec check t typ =
     | {desc=Proj _} -> assert false
     | {desc=SetField _} -> assert false
     | {desc=Nil; typ=TList _} -> ()
-    | {desc=Cons(t1,t2); typ=TList typ'} ->
+    | {desc=Cons(t1,t2); typ=TList(typ',_)} ->
         check t1 typ';
         check t2 typ
     | {desc=Constr(s,ts)} ->

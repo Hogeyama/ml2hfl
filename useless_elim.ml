@@ -389,7 +389,7 @@ let rec calc_eq constrs =
   let min = List.fold_left (fun acc (x,y) -> min acc (min x y)) max edges in
   let sccs = calc_scc min (max-min+1) edges in
     List.map (fun scc -> List.hd scc, List.tl scc) sccs
-    
+
 
 let solve_constraints constrs env eqs =
   let hash = Hashtbl.create 0 in

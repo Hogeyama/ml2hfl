@@ -208,7 +208,8 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
         if t1 = Const If
         then
           match ts with
-              Const True::t2::_::_ -> ce, t2
+              [] -> assert false
+            | Const True::t2::_::_ -> ce, t2
             | Const False::_::t3::_ -> ce, t3
             | t1::ts' -> 
                 let ce',t1' = step_eval_abst_cbn ce env_orig env_abst defs t1 in

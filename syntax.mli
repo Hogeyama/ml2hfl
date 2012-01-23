@@ -66,7 +66,6 @@ exception Infeasible
 
 val dummy_var : id
 val abst_var : id
-val abst_list_var : id
 
 val typ_event : typ
 val typ_event_cps : typ
@@ -136,18 +135,11 @@ val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
 val get_vars_pat : typed_pattern -> id list
 
-val eval : typed_term -> typed_term
-val eta_expand : typed_term -> typed_term
-val normalize_bool_exp : typed_term -> typed_term
-val get_and_list : typed_term -> typed_term list
-val merge_geq_leq : typed_term -> typed_term
-
 val max_pat_num : typed_term -> int
 val max_label_num : typed_term -> int
 val is_external : id -> bool
 val is_value : typed_term -> bool
 val init_rand_int : typed_term -> typed_term
-val replace_typ : (id * typ) list -> typed_term -> typed_term
 
 
 (** {6 Printing} *)
@@ -158,8 +150,6 @@ val print_ids : Format.formatter -> id list -> unit
 val print_id_typ : Format.formatter -> id -> unit
 val print_ids_typ : Format.formatter -> id list -> unit
 val print_termlist : int -> bool -> Format.formatter -> typed_term list -> unit
-val string_of_ident : id -> string
-val string_of_term : typed_term -> string
 val string_of_node : node -> string
 val print_pattern : Format.formatter -> typed_pattern -> unit
 val print_constr : Format.formatter -> literal -> unit
