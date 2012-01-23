@@ -1,7 +1,9 @@
 open ExtList
 open ExtString
 
-(* length constr = length subst + 1 *)
+(* length constr = length subst + 1 and closed then length subst = length trs + 1
+   does the condition holds for interaction types too?
+ *)
 type t = { name: Var.t * int; closed: bool; constr: Term.t list; subst: (Var.t * Term.t * SimType.t) list list; ret: (Var.t * int) option (* for refinement type inference only *) }
 type tree = Node of t * tree list
 type path = Top | Path of path * tree list * t * tree list
@@ -80,6 +82,9 @@ let rec up_until x_uid (Loc(tr, p)) =
         up_until x_uid (Loc(Node(nd, trs1 @ tr::trs2), up))
 *)
 
+let tree_of_path p =
+  root (Loc(make (Var.make "hole", -1) true [Term.ttrue] [], p))
+
 let rec pr ppf tr =
   match tr with
     Node(nd, trs) ->
@@ -93,21 +98,17 @@ let rec pr ppf tr =
             let _ =
 				          Util.iter3
 				            (fun t xttys tr ->
+														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map CompTree.eq_xtty xttys) in
                   let _ = if t <> Term.ttrue then Format.fprintf ppf ", @,%a" Term.pr t in
-														    Format.fprintf ppf ", @,{%a}, @,%a"
-		                  (Util.pr_list Term.pr ", @,") (List.map CompTree.eq_xtty xttys)
-		                  pr tr)
+                  Format.fprintf ppf ", @,%a" pr tr)
 				            (if List.length trs = List.length nd.constr - 1 then List.tl nd.constr else Util.init (List.tl nd.constr))
 				            (if List.length trs = List.length nd.subst then nd.subst else Util.init nd.subst)
 				            trs
             in
-            let _ =
-              if List.length trs + 1 = List.length nd.constr - 1 && List.last nd.constr <> Term.ttrue then
-                Format.fprintf ppf ", @,%a" Term.pr (List.last nd.constr)
-            in
             if List.length trs + 1 = List.length nd.subst then
-              Format.fprintf ppf ", @,{%a}"
-                (Util.pr_list Term.pr ", @,") (List.map CompTree.eq_xtty (List.last nd.subst))
+              let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map CompTree.eq_xtty (List.last nd.subst)) in
+		            if List.last nd.constr <> Term.ttrue then
+		              Format.fprintf ppf ", @,%a" Term.pr (List.last nd.constr)
         in
         Format.fprintf ppf "@]"
 				  in
@@ -120,6 +121,9 @@ let rec pr ppf tr =
 						  Format.fprintf ppf "@,</%a@@%d>@]"
 								  Var.pr x
 								  id
+
+let pr_path ppf p =
+		Format.fprintf ppf "%a" pr (tree_of_path p)
 
 exception FeasibleErrorTrace of tree
 
@@ -230,7 +234,10 @@ let get_unsat_prefix tr =
 		        let ts0, xttys0, trs, b = aux_aux ts0 xttys0 (List.tl nd.constr) nd.subst trs in
           ts0, xttys0,
           (if b then
-            Node({ nd with constr = List.take (List.length trs + 1) nd.constr; subst = List.take (List.length trs) nd.subst; closed = false; ret = None }, trs)
+            Node({ nd with constr = List.take (List.length trs + 1) nd.constr;
+                           subst = List.take (List.length trs) nd.subst;
+                           closed = false;
+                           ret = None }, trs)
           else
             Node(nd, trs)),
           b
@@ -302,16 +309,19 @@ let interpolate_bvs p t1 t2 =
 
 
 let widen xss ts =
-(*
-  List.iter (fun xs -> Format.printf "%a@ " (Util.pr_list Var.pr ", ") xs) xss;
-*)
-  let xs = List.hd xss in
-  let ts =
-    List.map2
-      (fun ys t ->
-        let sub = List.combine ys xs in
-        Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) t)
-      xss
-      ts
-  in
-  ApronInterface.widen (List.map Term.bor (Util.nonemp_prefixes ts))
+  match ts with
+    [t] -> t
+  | _ ->
+			  	(*
+				  List.iter (fun xs -> Format.printf "%a@ " (Util.pr_list Var.pr ", ") xs) xss;
+	  			*)
+				  let xs = List.hd xss in
+				  let ts =
+				    List.map2
+				      (fun ys t ->
+				        let sub = List.combine ys xs in
+				        Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) t)
+				      xss
+				      ts
+				  in
+				  ApronInterface.widen (List.map Term.bor (Util.nonemp_prefixes ts))

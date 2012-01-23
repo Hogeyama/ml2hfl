@@ -2,9 +2,9 @@ open ExtList
 
 let refineRefTypes prog etrs =
 		let constrss = List.map CgenRefType.cgen etrs in
-(**)
+(*
   let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list Cgen.pr "@,") constrss in
-(**)
+*)
   let sums = CgenRefType.summaries_of (Prog.type_of prog) constrss in
 (**)
   let _ = List.iter (fun (`P(x, t)) ->
@@ -17,9 +17,9 @@ let refineRefTypes prog etrs =
 
 let refineIntTypes prog etrs =
 		let constrss = List.map CgenIntType.cgen etrs in
-(**)
+(*
   let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list Cgen.pr "@,") constrss in
-(**)
+*)
   let sums = Util.concat_map
     (fun constrs ->
       Format.printf "@.";

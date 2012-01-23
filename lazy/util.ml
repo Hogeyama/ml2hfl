@@ -2,6 +2,12 @@ open ExtList
 
 exception ToBeImplemented
 
+let opt2list = function None -> [] | Some(x) -> [x]
+
+let fst_triple (x, _, _) = x
+let snd_triple (_, x, _) = x
+let trd_triple (_, _, x) = x
+
 let rec prefix xs ys =
   match xs, ys with
     [], _ -> true
@@ -45,6 +51,46 @@ let rec diff xs ys =
         x'::(diff xs' ys)
 
 let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
+
+let map_left f xs =
+  let rec aux ys xs =
+    match xs with
+      [] -> ys
+    | x::xs ->
+        let y = f ys x xs in
+        aux (ys @ [y]) xs
+  in
+  aux [] xs
+
+let map_right f xs =
+  let rec aux xs ys =
+    match xs with
+      [] -> ys
+    | x::xs ->
+        let y = f (List.rev xs) x ys in
+				    aux xs (y::ys)
+  in
+  aux (List.rev xs) []
+
+let map_fold_left f z xs =
+  let rec aux ys z xs =
+    match xs with
+      [] -> ys, z
+    | x::xs ->
+        let y, z = f ys z x xs in
+				    aux (ys @ [y]) z xs
+  in
+  aux [] z xs
+
+let map_fold_right f xs z =
+  let rec aux xs z ys =
+    match xs with
+      [] -> z, ys
+    | x::xs ->
+        let z, y = f (List.rev xs) x z ys in
+		      aux xs z (y::ys)
+  in
+  aux (List.rev xs) z []
 
 let rec find_map f xs =
   match xs with
@@ -114,6 +160,7 @@ let filteri p xs =
   in
   aux 0 xs
 
+(* equivalent to split_nth *)
 let rec split_at xs n =
   if n = 0 then
     [], xs
@@ -125,6 +172,11 @@ let rec split_at xs n =
     | _ -> assert false)
   else
     assert false
+
+let rec split xs ls =
+  match ls with
+    [] -> [xs]
+  | l::ls -> let xs1, xs2 = split_at xs l in xs1::split xs2 ls
 
 let rec split_with p xs =
   match xs with
@@ -168,6 +220,21 @@ let rec map3 f xs ys zs =
       []
   | x::xs', y::ys', z::zs' ->
       f x y z::map3 f xs' ys' zs'
+
+let rec zip3 xs ys zs =
+  match xs, ys, zs with
+    [], [], [] ->
+      []
+  | x::xs', y::ys', z::zs' ->
+      (x, y, z)::zip3 xs' ys' zs'
+
+let rec unzip3 ls =
+  match ls with
+    [] ->
+      [], [], []
+  | (x, y, z)::ls ->
+      let (xs, ys, zs) = unzip3 ls in
+      x::xs, y::ys, z::zs
 
 let rec iter3 f xs ys zs =
   match xs, ys, zs with
