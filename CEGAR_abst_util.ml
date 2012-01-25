@@ -6,6 +6,8 @@ open CEGAR_print
 open CEGAR_util
 
 
+let debug = false
+
 
 let hd xs =
   match xs with
@@ -203,7 +205,7 @@ let abst env cond pbs p =
   if has_bottom p
   then Const Bottom
   else
-    let () =    Format.printf "pbs:%a@.p:%a@." print_pbs pbs CEGAR_print.term p in
+    let () = if debug then Format.printf "pbs:%a@.p:%a@." print_pbs pbs CEGAR_print.term p in
     let tt, ff = weakest env cond pbs p in
 (*
     let env' = List.map (function _, Var x -> x,TBase(TBool,fun _ -> []) | _ -> assert false) pbs in

@@ -4,6 +4,8 @@ open Utilities
 
 exception Untypable
 
+let pr_flag = ref false
+
 let cgen_flag = ref true (** this should be set to false if we want to propagate conditions on free variables eagerly **)
 
 let print_prog t defs =
@@ -1294,10 +1296,9 @@ let rec solve_aux' lbs ac ubs nubs sol = function
                let id = {(new_id ()) with Id.typ = t.typ} in ids @ [id])
         [] terms'
       in
-      let _ = if Flag.debug then
-        assert (List.length ids' = List.length (Utilities.uniq ids')) in
+      let _ = if Flag.debug then assert (List.length ids' = List.length (Utilities.uniq ids')) in
       let eqs = List.concat (List.map2 (fun id term -> if Var(id) = term.desc then [] else [{desc=Var(id);typ=Id.typ id}, term]) ids' terms') in
-        (if Flag.debug && Flag.print_refine_log then
+        (if not !pr_flag && Flag.debug && Flag.print_refine_log then
            begin
              print_string2 "eqs: ";
              List.iter (fun (t1, t2) -> print_term {desc=BinOp(Eq, t1, t2);typ=TBool}; print_string2 ", ") eqs;
@@ -1331,7 +1332,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
             let ub = substc sub [Cimp(eqs @ (subst_constr lbs c), cub)] in
           *)
         let _ =
-          if Flag.debug && Flag.print_refine_log then
+          if not !pr_flag && Flag.debug && Flag.print_refine_log then
             begin
               print_string2 "solving ";
               print_pname pid';
@@ -1365,7 +1366,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
               let ub = [Cimp(List.map (fun t -> Cterm(t)) (dubs @ nubs'), List.map (fun t -> Cterm(t)) ubs)] in
               let ti = interpolate ids' lb ub in
               let _ =
-                if Flag.debug && Flag.print_refine_log then begin
+                if not !pr_flag && Flag.debug && Flag.print_refine_log then begin
                   List.iter2
                     (fun t c ->
                        match c with Cpred(Pred(pid, terms)) ->
@@ -1391,53 +1392,53 @@ let rec solve_aux' lbs ac ubs nubs sol = function
                 ti
             with Untypable -> raise Untypable(*;
               (*try
-                let ub = [Cterm(rename_nint (imply (and_list dubs) cub))] in
-                interpolate ids' lb ub
-                with Untypable ->*)
-              let lb = [Cterm(and_list _lbs)] in
-              let ub = [Cimp(List.map (fun t -> Cterm(t)) (dubs @ nubs'), List.map (fun t -> Cterm(t)) ubs)] in
-              let ti = interpolate ids' lb ub in
-              let _ =
-                if Flag.debug(* && Flag.print_interpolant*) then begin
-                  List.iter2
-                    (fun t c ->
-                       match c with
-                           Cpred(Pred(pid, terms)) ->
-                             print_pname pid;
-                             print_string2 "(";
-                             print_terms terms;
-                             print_string2 ")";
-                             print_string2 ":\n";
-                             print_constraint [Cterm(t)];
-                             print_string2 "\n"
-                         | _ -> assert false)
-                    dubs c;
-                  print_string2 "lb: ";
-                  print_constraint lb;
-                  print_string2 "\n";
-                  print_string2 "ub: ";
-                  print_constraint ub;
-                  print_string2 "\nsolution2: ";
-                  print_term ti;
-                  print_string2 "\n\n"
-                end
-              in
-                ti
-                  (*else
-                    try
-                    let tmp = !Flag.use_nint in
-                    let _ = Flag.use_nint := true in
-                    let t1 = interpolate [] lb (substc (List.map (fun id -> id, new_var ()) ids') [Cimp(lb, ub)]) in
-                    let _ = Flag.use_nint := tmp in
-                    let _ = if Flag.debug && t1 <> True then
-                    let _ = print_string2 "hoge: " in
-                    let _ = print_term t1 in
-                    print_string2 "\n"
-                    in
-                    let t2 = interpolate ids' lb [Cimp([Cterm(t1)], ub)] in
-                    BinOp(And, t1, t2)
-                    with Untypable ->
-                    interpolate ids' lb ub*)*)
+                                               let ub = [Cterm(rename_nint (imply (and_list dubs) cub))] in
+                                               interpolate ids' lb ub
+                                               with Untypable ->*)
+                                               let lb = [Cterm(and_list _lbs)] in
+                                               let ub = [Cimp(List.map (fun t -> Cterm(t)) (dubs @ nubs'), List.map (fun t -> Cterm(t)) ubs)] in
+                                               let ti = interpolate ids' lb ub in
+                                               let _ =
+                                               if Flag.debug(* && Flag.print_interpolant*) then begin
+                                               List.iter2
+                                               (fun t c ->
+                                               match c with
+                                               Cpred(Pred(pid, terms)) ->
+                                               print_pname pid;
+                                               print_string2 "(";
+                                               print_terms terms;
+                                               print_string2 ")";
+                                               print_string2 ":\n";
+                                               print_constraint [Cterm(t)];
+                                               print_string2 "\n"
+                                               | _ -> assert false)
+                                               dubs c;
+                                               print_string2 "lb: ";
+                                               print_constraint lb;
+                                               print_string2 "\n";
+                                               print_string2 "ub: ";
+                                               print_constraint ub;
+                                               print_string2 "\nsolution2: ";
+                                               print_term ti;
+                                               print_string2 "\n\n"
+                                               end
+                                               in
+                                               ti
+              (*else
+                                               try
+                                               let tmp = !Flag.use_nint in
+                                               let _ = Flag.use_nint := true in
+                                               let t1 = interpolate [] lb (substc (List.map (fun id -> id, new_var ()) ids') [Cimp(lb, ub)]) in
+                                               let _ = Flag.use_nint := tmp in
+                                               let _ = if Flag.debug && t1 <> True then
+                                               let _ = print_string2 "hoge: " in
+                                               let _ = print_term t1 in
+                                               print_string2 "\n"
+                                               in
+                                               let t2 = interpolate ids' lb [Cimp([Cterm(t1)], ub)] in
+                                               BinOp(And, t1, t2)
+                                               with Untypable ->
+                                               interpolate ids' lb ub*)*)
         in
         let sol = (pid', (ids', t))::sol in
           (*
@@ -1532,7 +1533,7 @@ let rec solve_aux lbs c solution =
 let solve_constr c =
   let lbs = compute_lbs c [] in
 
-  let _ = if Flag.debug && Flag.print_lower_bound then
+  let _ = if not !pr_flag && Flag.debug && Flag.print_lower_bound then
     begin
       print_string2 "\nLower bounds:\n";
       List.iter
@@ -1594,7 +1595,7 @@ let filter_backward c =
       aux (c1 @ c21) c22
   in
   let c' = aux c1 c2 in
-  (if Flag.debug && Flag.print_refine_log then Format.printf "filter_backward: %d -> %d@." (List.length c) (List.length c'));
+  (if not !pr_flag && Flag.debug && Flag.print_refine_log then Format.printf "filter_backward: %d -> %d@." (List.length c) (List.length c'));
   c'
 
 let filter_forward c =
@@ -1634,8 +1635,39 @@ let _ = print_term cond; print_string2 "\n" in
         | ac -> ac) c21)) c22
   in
   let c', pids = aux [] c in
-  (if Flag.debug && Flag.print_refine_log then Format.printf "filter_forward: %d -> %d@." (List.length c) (List.length c'));
+  (if not !pr_flag && Flag.debug && Flag.print_refine_log then Format.printf "filter_forward: %d -> %d@." (List.length c) (List.length c'));
   c', pids
+
+
+let rec filter2 c =
+  let aux = function
+      Cimp(c1,[ac]) -> c1, ac
+    | _ -> assert false
+  in
+  let c' = List.map aux c in
+  let rec loop (c:(ac list*ac) list) : (ac list*ac) list =
+    let aux (c,ac) =
+      if c = []
+      then
+        match ac with
+            Cpred(Pred(pid,_)) -> [pid]
+          | ac -> assert false
+      else []
+    in
+    let pids = rev_flatten_map aux c in
+      if pids = []
+      then c
+      else
+        let aux = function
+            Cpred(Pred(pid,_)) -> not (List.mem pid pids)
+          | _ -> true
+        in
+        let c' = List.filter (fun (_,ac) -> aux ac) c in
+        let c'' = List.map (fun (c,ac) -> List.filter aux c, ac) c' in
+          loop c''
+  in
+    List.map (fun (c,ac) -> Cimp(c,[ac])) (loop c')
+
 
 
 let rec get_sol typ1 typ2 =
@@ -1686,19 +1718,19 @@ let test tdefs s defs traces pred =
          let _ = if Flag.debug && Flag.print_constraints then print_atenv te in
        *)
      let rte = atenv2rtenv te in
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "Type templates:\n" in
-     let _ = if Flag.debug && Flag.print_constraints then print_rtenv rte in
+     let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_string2 "Type templates:\n" in
+     let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_rtenv rte in
      let c = gen_constr defs rte in
 
-         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nConstraints:\n" in
-         let _ = if Flag.debug && Flag.print_constraints then print_constraint c in
-         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
+         let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_string2 "\nConstraints:\n" in
+         let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_constraint c in
+         let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_string2 "\n" in
 
      let c' = reduce_constr c in
 
-         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nReduced constraints:\n" in
-         let _ = if Flag.debug && Flag.print_constraints then print_constraint c' in
-         let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
+         let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_string2 "\nReduced constraints:\n" in
+         let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_constraint c' in
+         let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_string2 "\n" in
 
        (**)
      let sol = Utilities.rev_flatten_map
@@ -1709,7 +1741,7 @@ let test tdefs s defs traces pred =
           with Not_found -> [])
        rte
      in
-     let _ = List.iter
+     let _ = if not !pr_flag then List.iter
        (fun (pid, (ids, t)) ->
           print_pname pid;
           print_string2 "(";
@@ -1723,11 +1755,11 @@ let test tdefs s defs traces pred =
        (**)
      let c'' = normalize_constr c' in
        (**)
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nNormalized constraints:\n" in
-     let _ = if Flag.debug && Flag.print_constraints then print_constraint c'' in
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
+     let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_string2 "\nNormalized constraints:\n" in
+     let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_constraint c'' in
+     let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_string2 "\n" in
        (**)
-     let _ = if Flag.debug then save_as_dot ("constraints" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c'' in
+     let _ = if not !pr_flag && Flag.debug then save_as_dot ("constraints" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c'' in
 
      let c'' =
        if not !cgen_flag then
@@ -1746,12 +1778,22 @@ let test tdefs s defs traces pred =
      *)
      let c''', pids = (if !Flag.filter_forward then filter_forward else (fun x -> x, [])) (filter_backward c'') in
      let c''' = List.rev (Utilities.uniq (filter_backward c''')) in
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
-     let _ = if Flag.debug && Flag.print_constraints then print_constraint c''' in
-     let _ = if Flag.debug && Flag.print_constraints then print_string2 "\n" in
+     let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
+     let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_constraint c''' in
+     let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_string2 "\n" in
      let _ = if Flag.debug then save_as_dot ("constraints_filtered" ^ (string_of_int !Flag.cegar_loop) ^ ".dot") c''' in
      let sol = solve_constr c''' in
-     let _ = if Flag.debug then print_string2 "\nSolutions::\n" in
+
+
+
+     let c_test = filter2 c''' in
+     let _ = if !pr_flag then print_string2 "\nFiltered constraints2:\n" in
+     let _ = if !pr_flag then print_constraint c_test in
+     let _ = if !pr_flag then print_string2 "\n" in
+
+
+
+     let _ = if !pr_flag || Flag.debug then print_string2 "\nSolutions::\n" in
      let _ =
        if Flag.debug
        then
@@ -1945,4 +1987,10 @@ let infer ces prog =
 
 
 
+let infer_and_print ces prog =
+  pr_flag := true;
+  infer ces prog;
+  pr_flag := false
+
+let infer ces prog = infer ces prog
 

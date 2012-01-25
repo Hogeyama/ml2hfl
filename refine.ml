@@ -9,7 +9,6 @@ exception CannotRefute
 
 
 let add env ps p =
-Format.printf "%a@." CEGAR_print.term p;
   if List.exists (Wrapper2.equiv env [] p) ps
   then ps
   else normalize_bool_term p :: ps
@@ -99,10 +98,12 @@ let refine preds prefix ces ((env,defs,main):prog) =
               | (EventNode _)::ce -> aux ce
               | [] -> []
             in
-              LazyInterface.infer [List.hd (List.map aux ces)] (env,defs,main)
+            let map = LazyInterface.infer [List.hd (List.map aux ces)] (env,defs,main) in
+              if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
+              map
         | Flag.RefineDependentType ->
             if not (List.mem Flag.CPS !Flag.form)
-            then failwith "Program must be in CPS @ ModelCheckCPS"; 
+            then failwith "Program must be in CPS @ ModelCheckCPS";
             try
               RefineDepTyp.infer [List.hd ces] (env,defs,main)
             with RefineDepTyp.Untypable -> raise CannotRefute
@@ -113,6 +114,7 @@ let refine preds prefix ces ((env,defs,main):prog) =
       in
         List.fold_left aux map preds
     in
+    let () = if false then List.iter (fun (x,typ) -> Format.printf "%a: %a@." CEGAR_print.var x CEGAR_print.typ typ) map' in
     let env' = add_preds map' env in
       add_time tmp Flag.time_cegar;
       if Flag.print_progress then Format.printf "DONE!@.";

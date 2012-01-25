@@ -6,6 +6,10 @@ open CEGAR_util
 open CEGAR_abst_util
 
 
+
+let debug = false
+
+
 let abst_arg x typ =
   match typ with
       TBase(_,ps) ->
@@ -208,7 +212,7 @@ let rec eta_expand_term_aux env t typ =
     | _ -> assert false
 
 let rec eta_expand_term env t typ =
-  if true then Format.printf "ETA: %a: %a@." print_term t print_typ typ;
+  if debug then Format.printf "ETA: %a: %a@." print_term t print_typ typ;
   match t with
       Const Bottom
     | Const RandInt -> t
@@ -252,7 +256,7 @@ let print_env fm env =
   Format.fprintf fm "@."
 
 let rec abstract_term top env cond pts t typ =
-  if true then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
+  if debug then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
   match t with
     | Const Bottom -> assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
     | (Var _ | Const _ | App _) when is_base_term env t ->
@@ -310,14 +314,14 @@ let abstract_def env (f,xs,t1,e,t2) =
             typ', (x,typ1)::env'
   in
   let typ,env' = decomp_typ (List.assoc f env) xs in
-Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
+if debug then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@ env in
   let pts = List.flatten (List.map (fun (x,typ) -> make_pts x typ) env') in
   let xs' = List.flatten (List.map (fun (x,typ) -> abst_arg x typ) env') in
   let t2' = eta_expand_term env'' t2 typ in
-Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2';
-Flag.print_fun_arg_typ := true;
-Format.printf "%s:: %a@." f print_term t2';
+if debug then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2';
+if debug then Flag.print_fun_arg_typ := true;
+if debug then Format.printf "%s:: %a@." f print_term t2';
   let t2'' = hd (abstract_term true env'' [t1] pts t2' typ) in
   let t2''' = eta_reduce_term t2'' in
     if e <> [] && t1 <> Const True
