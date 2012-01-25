@@ -232,14 +232,27 @@ let rec eta_expand_term env t typ =
     | Fun _ -> assert false
 
 
+let rec eta_reduce_term = function
+    Const _
+  | Var _ as t -> t
+  | App(t1,t2) -> App(eta_reduce_term t1, eta_reduce_term t2)
+  | Let _ -> assert false
+  | Fun(x, typ, t) ->
+      match eta_reduce_term t with
+          App(t, Var y) when x = y && not (List.mem y (get_fv t)) -> t
+        | t' -> Fun(x, typ, t')
+
+let eta_reduce_term t =
+  Format.printf "REDUCE: [%a]@." print_term t;
+  eta_reduce_term t
+let eta_reduce_term t = t
 
 let print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a:%a,@ " print_var f print_typ typ) env;
   Format.fprintf fm "@."
 
 let rec abstract_term top env cond pts t typ =
-  if true then Format.printf "abstract_term: %a: %a@."
-    CEGAR_print.print_term t CEGAR_print.print_typ typ;
+  if true then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
   match t with
     | Const Bottom -> assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
     | (Var _ | Const _ | App _) when is_base_term env t ->
@@ -257,7 +270,8 @@ let rec abstract_term top env cond pts t typ =
                 abstract_term false env cond pts t typ1 @ aux ts' (typ2 t)
             | _ -> assert false
         in
-          [make_app t1 (aux ts (get_typ env t1))]
+        let t' = make_app t1 (aux ts (get_typ env t1)) in
+          [filter env cond pts t']
     | Fun _ ->
         let env',t' = decomp_annot_fun t in
         let env' = List.map (fun (x,typ) -> x, get_opt_val typ) env' in
@@ -270,6 +284,7 @@ let rec abstract_term top env cond pts t typ =
     | Var _ -> assert false
     | Const _ -> assert false
     | Let _ -> assert false
+
 
 
 
@@ -304,13 +319,14 @@ Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_pri
 Flag.print_fun_arg_typ := true;
 Format.printf "%s:: %a@." f print_term t2';
   let t2'' = hd (abstract_term true env'' [t1] pts t2' typ) in
+  let t2''' = eta_reduce_term t2'' in
     if e <> [] && t1 <> Const True
     then
       let g = rename_id f in
-      let fv = diff (get_fv t2'') (List.map fst env) in
-        [g, fv, Const True, e, t2'';
+      let fv = diff (get_fv t2''') (List.map fst env) in
+        [g, fv, Const True, e, t2''';
          f, xs', Const True, [], assume env' [] pts t1 (make_app (Var g) (List.map (fun x -> Var x) fv))]
-    else [f, xs', Const True, e, assume env' [] pts t1 t2'']
+    else [f, xs', Const True, e, assume env' [] pts t1 t2''']
 
 
 

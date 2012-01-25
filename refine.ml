@@ -9,6 +9,7 @@ exception CannotRefute
 
 
 let add env ps p =
+Format.printf "%a@." CEGAR_print.term p;
   if List.exists (Wrapper2.equiv env [] p) ps
   then ps
   else normalize_bool_term p :: ps

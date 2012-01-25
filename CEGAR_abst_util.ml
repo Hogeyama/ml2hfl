@@ -195,8 +195,6 @@ let filter env cond pbs =
   in
     make_if ff (Const Bottom)
 
-
-
 let print_pbs fm pbs =
   List.iter (fun (p,_) -> Format.printf "%a;" CEGAR_print.term p) pbs
 
