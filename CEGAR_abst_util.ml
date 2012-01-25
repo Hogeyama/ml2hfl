@@ -37,14 +37,14 @@ let mapi f xs =
     aux 1 xs
 
 
-let weakest env (cond:CEGAR_syntax.t list) ds p =
+let weakest env cond ds p =
   if check env cond [] p then (*???*)
     Const True, Const False
   else if check env cond [] (make_not p) then (*???*)
     Const False, Const True
   else
     let fvp = get_fv p in
-    let ts = ((cond @@ List.map fst ds):CEGAR_syntax.t list) in
+    let ts = cond @@ List.map fst ds in
     let ds =
       let rec fixp xs =
         let xs' =
@@ -173,17 +173,17 @@ let weakest env (cond:CEGAR_syntax.t list) ds p =
 
 
 
-let filter env (cond:CEGAR_syntax.t list) (pbs:(CEGAR_syntax.t*CEGAR_syntax.t) list) =
+let filter env cond pbs =
   let check pbs = check env cond pbs (Const False) in
   let ff =
     if not (check pbs)
     then Const False
     else
-      let aux bottoms ((pbs:(CEGAR_syntax.t*CEGAR_syntax.t)list), (rest:(CEGAR_syntax.t*CEGAR_syntax.t)list)) =
+      let aux bottoms (pbs, rest) =
         let cands = List.map (fun pb -> List.merge compare [pb] pbs, diff rest [pb]) rest in
           List.filter (fun (pbs,_) -> not (List.exists (fun (pbs',_) -> subset pbs' pbs) bottoms)) cands
       in
-      let rec loop bottoms (cands:((CEGAR_syntax.t*CEGAR_syntax.t) list * (CEGAR_syntax.t*CEGAR_syntax.t) list) list) width =
+      let rec loop bottoms cands width =
         let cands' = uniq (rev_flatten_map (aux bottoms) cands) in
         let bottoms' = List.filter (fun (pbs,_) -> check pbs) cands' @@ bottoms in
           if width >= !Flag.wp_max_num
@@ -197,13 +197,15 @@ let filter env (cond:CEGAR_syntax.t list) (pbs:(CEGAR_syntax.t*CEGAR_syntax.t) l
 
 
 
-
+let print_pbs fm pbs =
+  List.iter (fun (p,_) -> Format.printf "%a;" CEGAR_print.term p) pbs
 
 
 let abst env cond pbs p =
   if has_bottom p
   then Const Bottom
   else
+    let () =    Format.printf "pbs:%a@.p:%a@." print_pbs pbs CEGAR_print.term p in
     let tt, ff = weakest env cond pbs p in
 (*
     let env' = List.map (function _, Var x -> x,TBase(TBool,fun _ -> []) | _ -> assert false) pbs in
@@ -238,6 +240,10 @@ let rec congruent env cond typ1 typ2 =
           congruent env cond typ11 typ21 && congruent env' cond typ12 typ22
     | _ -> Format.printf "CONGRUENT: %a,%a@." print_typ typ1 print_typ typ2; assert false
 
+
+let decomp_tbase = function
+    TBase(b, ps) -> b, ps
+  | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
 
 let rec is_base_term env = function
     Const (Unit | True | False | Int _ | RandInt) -> true
@@ -294,13 +300,13 @@ let rec reduce_let env = function
 let make_arg_let_def env (f,xs,t1,e,t2) =
     f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)
 
-let make_arg_let ((env,defs,main):prog) : prog =
+let make_arg_let (env,defs,main) =
   let defs' = List.map (make_arg_let_def env) defs in
     (env,defs',main)
 
 
 
-let rec add_label ((env,defs,main):prog) : prog =
+let rec add_label (env,defs,main) =
   let merge = function
       [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, (Branch 0)::e, t2]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->

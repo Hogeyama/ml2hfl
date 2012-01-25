@@ -83,19 +83,20 @@ let main filename in_channel =
     if !Flag.init_trans
     then
       let t = Trans.copy_poly_funs t in
-      let () = if true then Format.printf "copy_poly::@.%a@.@." Syntax.pp_print_term' t in
+      let () = if true then Format.printf "copy_poly::@.%a@.@." Syntax.pp_print_term_typ t in
       let spec' = Trans.rename_spec spec t in
       let () = print_spec spec' in
       let t = Trans.replace_typ spec' t in
-      let () = if true then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term' t in
+      let () = if true then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term_typ t in
       let t = Abstract.abstract_recdata t in
-      let () = if false then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term t in
+      let () = if false then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term_typ t in
       let t = Abstract.abstract_list t in
+      let () = if true then Format.printf "abst_list::@.%a@.@." Syntax.pp_print_term' t in
       let () = if true then Format.printf "abst_list::@.%a@.@." Syntax.pp_print_term t in
       let t = CPS.trans t in
-      let () = if true then Format.printf "CPS::@.%a@.@.@." Syntax.pp_print_term t in
+      let () = if true then Format.printf "CPS::@.%a@.@.@." Syntax.pp_print_term_typ t in
       let t = CPS.remove_pair t in
-      let () = if true then Format.printf "remove_pair::@.%a@.@.@." Syntax.pp_print_term t in
+      let () = if true then Format.printf "remove_pair::@.%a@.@.@." Syntax.pp_print_term_typ t in
         t
     else t
   in

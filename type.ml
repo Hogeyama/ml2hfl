@@ -219,3 +219,20 @@ let rec app_typ typ typs =
     | TFun(_,typ2), _::typs' -> app_typ typ2 typs'
     | _, [] -> typ
     | _ -> assert false
+
+
+let rec has_pred = function
+    TUnit -> false
+  | TBool -> false
+  | TAbsBool -> false
+  | TInt ps -> ps <> []
+  | TRInt _ -> assert false
+  | TVar{contents=None} -> false
+  | TVar{contents=Some typ} -> has_pred typ
+  | TFun(x,typ) -> has_pred (Id.typ x) || has_pred typ
+  | TList(typ,ps) -> has_pred typ || ps <> []
+  | TPair(typ1,typ2) -> has_pred typ1 || has_pred typ2
+  | TConstr _ -> false
+  | TUnknown -> false
+  | TVariant _ -> assert false
+  | TPred (_,typ) -> has_pred typ

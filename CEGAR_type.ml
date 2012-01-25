@@ -21,14 +21,21 @@ let typ_int = TBase(TInt, fun _ -> [])
 let typ_event = TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit)
 let make_tfun typ1 typ2 = TFun(typ1, fun _ -> typ2)
 
-let is_base_typ = function
+let is_base = function
     TBase _ -> true
   | _ -> false
 
-let get_base = function
-    TBase(b, _) -> b
+let decomp_base = function
+    TBase(b, ps) -> b, ps
   | _ -> assert false
 
+let get_base typ = fst (decomp_base typ)
+
+let rec app typ ts =
+  match typ,ts with
+    | TFun(_,typ2), t::ts' -> app (typ2 t) ts'
+    | _, [] -> typ
+    | _ -> assert false
 
 let make_tapp typ typs =
   List.fold_left (fun typ1 typ2 -> TApp(typ1,typ2)) typ typs

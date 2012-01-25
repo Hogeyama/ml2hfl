@@ -66,7 +66,7 @@ let rec trans_typ = function
 
 let get_typ_const = function
   | Unit -> TUnit
-  | True -> TBool 
+  | True -> TBool
   | False -> TBool
   | RandBool -> TBool
   | RandInt ->
@@ -113,13 +113,14 @@ let rec infer_term env = function
       let env' = (x,typ1)::env in
       let typ2 = infer_term env' t2 in
         typ2
-  | Fun(x,t) ->
+  | Fun(x,_,t) ->
       let typ_x = new_tvar() in
       let env' = (x,typ_x)::env in
       let typ1 = infer_term env' t in
         TFun(typ_x,typ1)
 
 let infer_def env (f,xs,t1,_,t2) =
+  if false then Format.printf "%a@." CEGAR_print.var f;
   let typs = List.map (fun _ -> new_tvar()) xs in
   let env' = List.map2 (fun x typ -> x,typ) xs typs @ env in
   let typ1 = infer_term env' t1 in
@@ -130,7 +131,7 @@ let infer_def env (f,xs,t1,_,t2) =
     unify typ typ'
 
 
-let infer ((_,defs,main):prog) : prog =
+let infer (_,defs,main) =
   let env = List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
   let () = unify TUnit (List.assoc main env) in
   let () = List.iter (infer_def env) defs in

@@ -345,8 +345,8 @@ let rec constraints_term env_orig env t typ =
           reduce_constraint typ2 typ @@
           constraints_term env_orig env t1 (TFun(typ1,typ2)) @@
           constraints_term env_orig env t2 typ1
-    | Let(x,t1,t2) -> assert false
-    | Fun(x,t) -> assert false
+    | Let _ -> assert false
+    | Fun _ -> assert false
 
 let new_env env x =
   let typ = template (List.assoc x env) in
@@ -419,7 +419,7 @@ let print_env _ env =
   List.iter (fun (x,typ) -> Format.printf "%s: %a@." x print_typ typ) env;
   Format.printf "@."
 
-let infer ((env,defs,main):prog) =
+let infer (env,defs,main) =
   let env' = List.map (fun (f,_) -> (new_env env) f) env in
   let constrs = (List.assoc main env', TBase) :: rev_flatten_map (constraints_def env env') defs in
   let eqs = calc_eq constrs in
@@ -471,7 +471,7 @@ let elim_def env (f,xs,t1,es,t2) =
           [f, xs', elim_term env' t1, es, elim_term env' t2]
 
 (** call-by-name *)
-let elim ((env,defs,main):prog) : prog =
+let elim (env,defs,main) =
   let env' = infer (env,defs,main) in
   let defs' = flatten_map (elim_def env') defs in
     Format.printf "BEFORE:@.%a@.@.%a@.AFTER:@.%a@." CEGAR_print.prog (env,defs,main) print_env env' CEGAR_print.prog (env,defs',main);

@@ -208,9 +208,19 @@ TEST=test_new/*.ml
 LIMIT=120
 
 test: opt
-	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | grep -v File | grep -v Warning; echo; done
+	for i in $(TEST); \
+	do echo $$i; \
+	(ulimit -t $(LIMIT); \
+	./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:|Verification') 2>&1 | grep -v File | grep -v Warning; \
+	echo; \
+	done
 test-rs: opt
-	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).opt $$i -rs | egrep 'Safe|Unsafe|cycle:') 2>&1 | grep -v File | grep -v Warning; echo; done
+	for i in $(TEST); \
+	do echo $$i; \
+	(ulimit -t $(LIMIT); \
+	./$(NAME).opt -rs $$i | egrep 'Safe|Unsafe|cycle:|Verification') 2>&1 | grep -v File | grep -v Warning; \
+	echo; \
+	done
 test-byte: byte
 	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | grep -v File | grep -v Warning; echo; done
 
@@ -219,9 +229,10 @@ test-byte: byte
 # depend
 
 SRC = $(CMO:.cmo=.ml)
+SRC_MOCHI = $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC)))
 
 depend::
-	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC) > depend
+	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
 

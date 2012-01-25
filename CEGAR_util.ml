@@ -18,8 +18,8 @@ let rec subst x t = function
   | App(t1,t2) -> App(subst x t t1, subst x t t2)
   | Let(y,t1,t2) when x = y -> Let(y, subst x t t1, t2)
   | Let(y,t1,t2) -> Let(y, subst x t t1, subst x t t2)
-  | Fun(y,t1) when x = y -> Fun(y,t1)
-  | Fun(y,t1) -> Fun(y, subst x t t1)
+  | Fun(y,typ,t1) when x = y -> Fun(y, typ, t1)
+  | Fun(y,typ,t1) -> Fun(y, typ, subst x t t1)
 
 let rec subst_map map = function
     Const c -> Const c
@@ -29,9 +29,9 @@ let rec subst_map map = function
   | Let(x,t1,t2) ->
       let map' = List.filter (fun (y,_) -> x <> y) map in
         Let(x, subst_map map' t1, subst_map map' t2)
-  | Fun(x,t1) ->
+  | Fun(x, typ,t1) ->
       let map' = List.filter (fun (y,_) -> x <> y) map in
-        Fun(x, subst_map map' t1)
+        Fun(x, typ, subst_map map' t1)
 
 let subst_def x t (f,xs,t1,t2) =
   f, xs, subst x t t1, subst x t t2
@@ -54,7 +54,7 @@ let rec arg_num = function
 
 
 
-let rec pop_main ((env,defs,main):prog) =
+let rec pop_main (env,defs,main) =
   let compare_fun f g = compare (g = main, f) (f = main, g) in
   let compare_def (f,_,_,_,_) (g,_,_,_,_) = compare_fun f g in
   let compare_env (f,_) (g,_) = compare_fun f g in
@@ -83,9 +83,9 @@ let rec put_into_if_term = function
         else
           let ts' = List.map put_into_if_term ts in
             make_app t' ts'
-  | Fun(x,t) -> Fun(x, put_into_if_term t)
+  | Fun(x,typ,t) -> Fun(x, typ, put_into_if_term t)
   | Let(x,t1,t2) -> Let(x, put_into_if_term t1, put_into_if_term t2)
-let put_into_if ((env,defs,main):prog) : prog = env, List.map (apply_body_def put_into_if_term) defs, main
+let put_into_if (env,defs,main) = env, List.map (apply_body_def put_into_if_term) defs, main
 
 
 
@@ -97,7 +97,7 @@ let eta_expand_def env (f,xs,t1,e,t2) =
   let t2' = List.fold_left (fun t x -> App(t, Var x)) t2 ys in
     f, xs@ys, t1, e, t2' (* put_into_term t2' *)
 
-let eta_expand ((env,defs,main) : prog) : prog=
+let eta_expand (env,defs,main) =
   env, List.map (eta_expand_def env) defs, main
 
 
@@ -449,7 +449,7 @@ let rec get_const_typ = function
   | Unit _ -> TBase(TUnit, nil)
   | True _ -> typ_bool
   | False _ -> typ_bool
-  | RandInt _ -> assert false
+  | RandInt _ -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
   | RandBool _ -> TBase(TBool,nil)
   | And -> TFun(typ_bool, fun x -> TFun(typ_bool, fun y -> typ_bool))
   | Or -> TFun(typ_bool, fun x -> TFun(typ_bool, fun y -> typ_bool))
@@ -490,10 +490,12 @@ let rec get_typ env = function
       let typ = get_typ env t1 in
       let env' = (x,typ)::env in
         get_typ env' t2
-  | Fun(x,t) ->
+  | Fun(x,_,t) -> assert false
+(*
       let typ1 = List.assoc x env in
       let typ2 = get_typ env t in
         TFun(typ1, fun _ -> typ2)
+*)
 
 
 
@@ -563,15 +565,15 @@ let rec lift_term xs = function
       let f' = make_app (Var f) (List.map (fun x -> Var x) xs) in
       let defs,t''' = lift_term xs' t'' in
         (f,xs',Const True,[],t''')::defs, f'
-let lift_def (f,xs,t1,e,t2):fun_def list =
+let lift_def (f,xs,t1,e,t2) =
   let ys,t2' = decomp_fun t2 in
   let xs' = xs@ys in
   let defs1,t1' = lift_term xs t1 in
   let defs2,t2'' = lift_term xs' t2' in
     (f, xs', t1', e, t2'')::defs1@defs2
-let lift ((_,defs,main):prog) : prog =
-  let defs':fun_def list = rev_flatten_map lift_def defs in
-    Typing.infer (([],defs',main):prog)
+let lift (_,defs,main) =
+  let defs' = rev_flatten_map lift_def defs in
+    Typing.infer ([],defs',main)
 
 
 
@@ -607,12 +609,12 @@ let rec lift_term2 xs = function
         (f',ys',Const True,[],t1'') :: defs1, f''
 
 
-let lift_def2 ((f,xs,t1,e,t2):fun_def) : fun_def list =
+let lift_def2 (f,xs,t1,e,t2) =
   let ys,t2' = decomp_fun t2 in
   let defs1,t1' = lift_term2 xs t1 in
   let defs2,t2'' = lift_term2 xs t2' in
     (f, xs@ys, t1', e, t2'')::defs1@defs2
-let lift2 ((_,defs,main):prog) : prog =
+let lift2 (_,defs,main) =
   let defs = flatten_map lift_def2 defs in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
     Typing.infer ([],defs,main)
@@ -637,7 +639,7 @@ let rec get_arg_env typ xs =
 
 exception EvalBottom
 
-let eval_prog_cbn ((env,defs,main):prog) =
+let eval_prog_cbn (env,defs,main) =
   let get_int_value = function
       Const (Int n) -> n
     | Const RandInt -> Random.int 100
@@ -702,7 +704,7 @@ let eval_prog_cbn ((env,defs,main):prog) =
             | Const False -> t3
             | _ -> assert false
         end
-    | App(Fun(x,t1),t2) -> subst x t2 t1
+    | App(Fun(x,_,t1),t2) -> subst x t2 t1
     | App _ as t ->
         let t1,ts = decomp_app t in
         let f = match t1 with Var f -> f | _ -> assert false in
@@ -718,7 +720,7 @@ let eval_prog_cbn ((env,defs,main):prog) =
         let _,ts2 = take2 ts (List.length xs) in
           make_app (aux xs t') ts2
     | Let(x,t1,t2) -> subst x t1 t2
-    | Fun(x,t) -> Fun(x,t)
+    | Fun(x,typ,t) -> Fun(x,typ,t)
   and eval t =
     let t' = step_eval t in
       if t = t'

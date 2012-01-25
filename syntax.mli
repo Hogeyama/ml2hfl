@@ -109,6 +109,7 @@ val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
 val make_pair : typed_term -> typed_term -> typed_term
 val make_nil : typ -> typed_term
+val make_cons : typed_term -> typed_term -> typed_term
 val make_match : typed_term -> (typed_pattern * typed_term option * typed_term) list -> typed_term
 val make_loop : typ -> typed_term
 val make_pvar : id -> typed_pattern

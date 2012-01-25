@@ -75,10 +75,6 @@ type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 
 
-
-
-
-
 let rec print_typ t = Type.print (print_term 0 false) t
 and print_ids fm = function
     [] -> ()
@@ -90,9 +86,10 @@ and print_ids fm = function
 and print_id = Id.print
 
 and print_id_typ fm x =
-  match Id.typ x with
-      TUnknown -> fprintf fm "%a" Id.print x
-    | _ -> fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
+  let typ = Id.typ x in
+    if typ = TUnknown || not (has_pred typ)
+    then fprintf fm "%a" Id.print x
+    else fprintf fm "(%a:%a)" Id.print x print_typ typ
 
 and print_ids_typ fm = function
     [] -> ()
@@ -170,20 +167,15 @@ and print_term pri typ fm t =
         let b = ref true in
         let print_binding fm (f,xs,t1) =
           let pre = if !b then "let" ^ s_rec else "and" in
-            Format.printf "%s %a=@ @,%a@ " pre p_ids (f::xs) (print_term p typ) t1;
-            b := false
-        in
-        let print_binding fm (f,xs,t1) =
-          let pre = if !b then "let" ^ s_rec else "and" in
-            Format.printf "%s %a %a=@ @,%a@ " pre print_id_typ f p_ids xs (print_term p typ) t1;
+            Format.printf "%s %a=@ %a@ " pre p_ids (f::xs) (print_term p typ) t1;
             b := false
         in
         let print_bindings fm = List.iter (print_binding fm) in
           begin
             match t2.desc with
-                Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@;in@;%a@]%s"
+                Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
                   s1 print_bindings bindings (print_term p typ) t2 s2
-              | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@;@[<v 2>in@;@]@[<hov>%a@]@]%s"
+              | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
                   s1 print_bindings bindings (print_term p typ) t2 s2
           end
     | BinOp(op, t1, t2) ->
@@ -562,7 +554,18 @@ let make_if t1 t2 t3 =
   match t1.desc with
       True -> t2
     | False -> t3
-    | _ -> {desc=If(t1, t2, t3); typ=t2.typ}
+    | _ ->
+        let typ =
+          match has_pred t2.typ, has_pred t3.typ with
+              false, false -> t2.typ
+            | true, false -> t2.typ
+            | false, true -> t3.typ
+            | true, true ->
+                if t2.typ = t3.typ
+                then t2.typ
+                else raise (Fatal "Not implemented (Syntax.make_if)")
+        in
+          {desc=If(t1, t2, t3); typ=typ}
 let make_branch t2 t3 =
   assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
   {desc=Branch(t2, t3); typ=t2.typ}
@@ -595,6 +598,9 @@ let make_snd t =
     {desc=Snd t; typ=typ}
 let make_pair t1 t2 = {desc=Pair(t1,t2); typ=TPair(t1.typ,t2.typ)}
 let make_nil typ = {desc=Nil; typ=typ}
+let make_cons t1 t2 =
+  assert (not Flag.check_typ || Type.can_unify (TList(t1.typ,[])) t2.typ);
+  {desc=Cons(t1,t2); typ=t2.typ}
 let make_match t1 pats = {desc=Match(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats)}
 
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}

@@ -1142,58 +1142,59 @@ let rec rename_spec spec t =
 
 
 let rec propagate_typ_arg t =
-  let desc =
-    match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
-      | Unknown -> Unknown
-      | Int n -> Int n
-      | NInt y -> NInt y
-      | RandInt b -> RandInt b
-      | RandValue(typ,b) -> RandValue(typ,b)
-      | Var y -> Var y
-      | Fun(y, t) -> Fun(y, propagate_typ_arg t)
-      | App(t1, ts) -> App(propagate_typ_arg t1, List.map propagate_typ_arg ts)
-      | If(t1, t2, t3) -> If(propagate_typ_arg t1, propagate_typ_arg t2, propagate_typ_arg t3)
-      | Branch(t1, t2) -> Branch(propagate_typ_arg t1, propagate_typ_arg t2)
-      | Let(flag, bindings, t2) ->
-          let aux (f,xs,t) =
-            let xs' =
-              let ys = take (get_args (Id.typ f)) (List.length xs) in
-              let aux x y ys =
-                let ys' = List.map (fun z -> Id.set_typ z (subst_type y (make_var x) (Id.typ z))) ys in
-                  Id.set_typ x (Id.typ y) :: ys'
-              in
-                List.fold_right2 aux xs ys []
+  match t.desc with
+      Unit -> unit_term
+    | True -> true_term
+    | False -> false_term
+    | Unknown -> assert false
+    | Int n -> make_int n
+    | NInt y -> {desc=NInt y; typ=t.typ}
+    | RandInt b -> {desc=RandInt b; typ=t.typ}
+    | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t.typ}
+    | Var y -> make_var y
+    | Fun(y, t) -> make_fun y (propagate_typ_arg t)
+    | App(t1, ts) -> make_app (propagate_typ_arg t1) (List.map propagate_typ_arg ts)
+    | If(t1, t2, t3) -> make_if (propagate_typ_arg t1) (propagate_typ_arg t2) (propagate_typ_arg t3)
+    | Branch(t1, t2) -> make_branch (propagate_typ_arg t1) (propagate_typ_arg t2)
+    | Let(flag, bindings, t2) ->
+        let aux (f,xs,t) =
+          let xs' =
+            let ys = take (get_args (Id.typ f)) (List.length xs) in
+            let aux x y ys =
+              let ys' = List.map (fun z -> Id.set_typ z (subst_type y (make_var x) (Id.typ z))) ys in
+                Id.set_typ x (Id.typ y) :: ys'
             in
-            let t' = propagate_typ_arg t in
-            let t'' = List.fold_left2 (fun t x x' -> subst x (make_var x') t) t' xs xs' in
-              f, xs', t''
+              List.fold_right2 aux xs ys []
           in
-          let bindings' = List.map aux bindings in
-          let t2' = propagate_typ_arg t2 in
-            Let(flag, bindings', t2')
-      | BinOp(op, t1, t2) -> BinOp(op, propagate_typ_arg t1, propagate_typ_arg t2)
-      | Not t1 -> Not (propagate_typ_arg t1)
-      | Event(s,b) -> Event(s,b)
-      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,propagate_typ_arg t1)) fields)
-      | Proj(i,s,f,t1) -> Proj(i,s,f,propagate_typ_arg t1)
-      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,propagate_typ_arg t1,propagate_typ_arg t2)
-      | Nil -> Nil
-      | Cons(t1,t2) -> Cons(propagate_typ_arg t1, propagate_typ_arg t2)
-      | Constr(s,ts) -> Constr(s, List.map propagate_typ_arg ts)
-      | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt propagate_typ_arg cond, propagate_typ_arg t1 in
-            Match(propagate_typ_arg t1, List.map aux pats)
-      | Raise t -> Raise (propagate_typ_arg t)
-      | TryWith(t1,t2) -> TryWith(propagate_typ_arg t1, propagate_typ_arg t2)
-      | Pair(t1,t2) -> Pair(propagate_typ_arg t1, propagate_typ_arg t2)
-      | Fst t -> Fst(propagate_typ_arg t)
-      | Snd t -> Snd(propagate_typ_arg t)
-      | Bottom -> Bottom
-  in
-    {desc=desc; typ=t.typ}
+          let t' = propagate_typ_arg t in
+          let t'' = List.fold_left2 (fun t x x' -> subst x (make_var x') t) t' xs xs' in
+            f, xs', t''
+        in
+        let bindings' = List.map aux bindings in
+        let t2' = propagate_typ_arg t2 in
+          make_let_f flag bindings' t2'
+    | BinOp(op, t1, t2) ->
+        {desc=BinOp(op, propagate_typ_arg t1, propagate_typ_arg t2); typ=t.typ}
+    | Not t1 -> make_not (propagate_typ_arg t1)
+    | Event(s,b) -> {desc=Event(s,b); typ=t.typ}
+    | Record fields ->
+        {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,propagate_typ_arg t1)) fields); typ=t.typ}
+    | Proj(i,s,f,t1) ->
+        {desc=Proj(i,s,f,propagate_typ_arg t1); typ=t.typ}
+    | SetField(n,i,s,f,t1,t2) ->
+        {desc=SetField(n,i,s,f,propagate_typ_arg t1,propagate_typ_arg t2); typ=t.typ}
+    | Nil -> make_nil t.typ
+    | Cons(t1,t2) -> make_cons (propagate_typ_arg t1) (propagate_typ_arg t2)
+    | Constr(s,ts) -> {desc=Constr(s, List.map propagate_typ_arg ts); typ=t.typ}
+    | Match(t1,pats) ->
+        let aux (pat,cond,t1) = pat, apply_opt propagate_typ_arg cond, propagate_typ_arg t1 in
+          make_match (propagate_typ_arg t1) (List.map aux pats)
+    | Raise t -> {desc=Raise (propagate_typ_arg t); typ=t.typ}
+    | TryWith(t1,t2) -> {desc=TryWith(propagate_typ_arg t1, propagate_typ_arg t2); typ=t.typ}
+    | Pair(t1,t2) -> make_pair (propagate_typ_arg t1) (propagate_typ_arg t2)
+    | Fst t -> make_fst (propagate_typ_arg t)
+    | Snd t -> make_snd (propagate_typ_arg t)
+    | Bottom -> make_bottom t.typ
 
 
 

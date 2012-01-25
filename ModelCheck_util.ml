@@ -142,7 +142,7 @@ let rec eta_expand_term env = function
       let xs = Array.to_list (Array.init (arg_num typ) (fun _ -> new_id "x")) in
       let aux t = List.fold_left (fun t x -> App(t, Var x)) t xs in
       let t = make_if (Const RandBool) (aux t2) (aux t3) in
-        List.fold_right (fun x t -> Fun(x,t)) xs t
+        List.fold_right (fun x t -> Fun(x,None,t)) xs t
   | App(t1, t2) -> App(eta_expand_term env t1, eta_expand_term env t2)
   | Fun _ -> assert false
   | Let _ -> assert false

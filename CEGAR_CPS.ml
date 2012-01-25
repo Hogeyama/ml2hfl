@@ -40,7 +40,7 @@ let rec trans_const = function
   | App(App(Const (Proj(n,i)), t1), t2) -> App(trans_const t2, App(Const (Proj(n,i)), trans_const t1))
   | App(t1,t2) -> App(trans_const t1, trans_const t2)
   | Let(x,t1,t2) -> Let(x, trans_const t1, trans_const t2)
-  | Fun(x,t) -> Fun(x, trans_const t)
+  | Fun(x,typ,t) -> Fun(x, typ, trans_const t)
 
 let rec trans_simpl c = function
     Const x -> c (Const x)
@@ -53,7 +53,7 @@ let rec trans_simpl c = function
       let c' y =
         match c (Var x) with
             App(Var k', Var x') when x = x' -> subst k (Var k') (make_if y t2' t3')
-          | tk -> Let(k, Fun(x, tk), make_if y t2' t3')
+          | tk -> Let(k, Fun(x, None, tk), make_if y t2' t3')
       in
         trans_simpl c' t1
   | App(App(Const And, t1), t2) ->
@@ -62,7 +62,7 @@ let rec trans_simpl c = function
         let k' =
           match c (Var x) with
               App(Var k', Var x') when x = x' -> Var k'
-            | tk -> Fun(x, tk)
+            | tk -> Fun(x, None, tk)
         in
           make_app (Var and_cps) [t1';t2';k']
       in
@@ -74,7 +74,7 @@ let rec trans_simpl c = function
         let k' =
           match c (Var x) with
               App(Var k', Var x') when x = x' -> Var k'
-            | tk -> Fun(x, tk)
+            | tk -> Fun(x, None, tk)
         in
           make_app (Var or_cps) [t1';t2';k']
       in
@@ -92,7 +92,7 @@ let rec trans_simpl c = function
         let k' =
           match c (Var r) with
               App(Var k', Var r') when r = r' -> Var k'
-            | tk -> Fun(r, tk)
+            | tk -> Fun(r, None, tk)
         in
           trans_simpl (fun x -> make_app y [x; k']) t2
       in
@@ -100,9 +100,9 @@ let rec trans_simpl c = function
   | Let(x,t1,t2) ->
       let c' t = subst x t (trans_simpl c t2) in
         trans_simpl c' t1
-  | Fun(x,t) ->
+  | Fun(x,_,t) ->
       let k = new_id "k" in
-        c (Fun(x, Fun(k, trans_simpl (fun x -> App(Var k, x)) t)))
+        c (Fun(x, None, Fun(k, None, trans_simpl (fun x -> App(Var k, x)) t)))
 
 let trans_simpl_def (f,xs,t1,e,t2) =
   if f =  "mult_70" then () else ();
@@ -157,34 +157,34 @@ let rec extract_tuple_term env = function
   | Let _ -> assert false
   | Fun _ -> assert false
 
-        
+
 let extract_tuple_def env (f,xs,t1,e,t2) =
   let env' = get_arg_env (List.assoc f env) xs @@ env in
   let xs' = List.flatten (List.map (extract_tuple_var env') xs) in
   let t1' = hd (extract_tuple_term env t1) in
   let t2' = hd (extract_tuple_term env' t2) in
     f, xs', t1', e, t2'
-let extract_tuple ((env,defs,main):prog) : prog =
+let extract_tuple (env,defs,main) =
   let defs = List.map (extract_tuple_def env) defs in
   let () = if false then Format.printf "EXTRACTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
     Typing.infer ([],defs,main)
-  
 
 
-let to_funs_def (f,xs,t1,e,t2) = f, [], t1, e, List.fold_right (fun x t-> Fun(x,t)) xs t2
+
+let to_funs_def (f,xs,t1,e,t2) = f, [], t1, e, List.fold_right (fun x t-> Fun(x,None,t)) xs t2
 let to_funs defs = List.map to_funs_def defs
 
 
 let rec reduce = function
     Const c -> Const c
   | Var x -> Var x
-  | App(Fun(x,t1),t2) -> reduce (subst x t2 t1)
+  | App(Fun(x,_,t1),t2) -> reduce (subst x t2 t1)
   | App(t1,t2) -> App(reduce t1, reduce t2)
-  | Fun(x,t) -> Fun(x, reduce t)
+  | Fun(x,typ,t) -> Fun(x, typ, reduce t)
   | Let(x,t1,t2) -> reduce (subst x t1 t2)
-let reduce_def ((f,xs,t1,e,t2):fun_def) : fun_def = f,xs,t1,e,reduce t2
+let reduce_def (f,xs,t1,e,t2) = f,xs,t1,e,reduce t2
 
-let trans ((env,defs,main):prog) lift_opt : prog =
+let trans (env,defs,main) lift_opt =
   let _ = Typing.infer (env,defs,main) in
   let defs = to_funs defs in
   let _ = Typing.infer (env,defs,main) in

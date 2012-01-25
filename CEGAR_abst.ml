@@ -40,7 +40,7 @@ let rec coerce env cond pts typ1 typ2 t =
         let env' = (x,typ11)::env in
         let t1 = coerce env' cond pts typ21 typ11 (Var x) in
         let t2 = coerce env' cond pts typ12 typ22 (App(t, t1)) in
-          Fun(x, t2)
+          Fun(x, None, t2)
     | _ -> Format.printf "COERCE: %a, %a@." print_typ typ1 print_typ typ2; assert false
 
 let coerce env cond pts typ1 typ2 =
@@ -208,12 +208,11 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
         if t1 = Const If
         then
           match ts with
-              [] -> assert false
-            | Const True::t2::_::_ -> ce, t2
-            | Const False::_::t3::_ -> ce, t3
-            | t1::ts' -> 
-                let ce',t1' = step_eval_abst_cbn ce env_orig env_abst defs t1 in
-                  ce', make_app (Const If) (t1'::ts')
+              t1::t2::t3::ts' ->
+                let t2' = make_app t2 ts' in
+                let t3' = make_app t3 ts' in
+                  step_eval_abst_cbn ce env_orig env_abst defs (make_if t1 t2' t3')
+            | _ -> assert false
         else
           let ce',(f,xs,tf1,es,tf2) =
             if List.exists (fun (f,_) -> Var f = t1) env_orig
@@ -226,12 +225,14 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
   | _ -> assert false
 
 let rec eval_abst_cbn prog abst ce =
+  Format.printf "Program with abstraction types::@.%a@." CEGAR_print.print_prog abst;
   let env_orig = get_env prog in
   let env_abst = get_env abst in
   let defs = get_defs abst in
   let main = get_main abst in
   let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) ce in
   let rec loop ce t =
+    assert (match get_typ env_abst t with TBase(TUnit,_) -> true | _ -> false);
     Format.printf "  %a -->@." print_term t;
     let t1,_ = decomp_app t in
     let () =

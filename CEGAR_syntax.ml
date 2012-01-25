@@ -33,25 +33,25 @@ type const =
 
 
 
-type t =
+and t =
     Const of const
   | Var of var
   | App of t * t
   | Let of var * t * t (*** for temporary use ***)
-  | Fun of var * t (*** for temporary use ***)
+  | Fun of var * typ option * t (*** for temporary use ***)
 
 
-type event = Event of string | Branch of int
+and event = Event of string | Branch of int
 
-type ce_node = BranchNode of int | EventNode of string
-type ce = ce_node list
+and ce_node = BranchNode of int | EventNode of string
+and ce = ce_node list
 
 
 
-type fun_def = var * var list * t * event list * t
-type typ = t CEGAR_type.t
-type env = (var * typ) list
-type prog = env * fun_def list * var
+and fun_def = var * var list * t * event list * t
+and typ = t CEGAR_type.t
+and env = (var * typ) list
+and prog = env * fun_def list * var
 
 
 
@@ -83,7 +83,8 @@ let make_app t ts = List.fold_left (fun t1 t2 -> App(t1, t2)) t ts
 let make_fun xs t =
   let f = new_id "f" in
     [f, xs, Const True, t], f
-let make_fun_temp xs t = List.fold_right (fun x t -> Fun(x,t)) xs t
+let make_annot_fun x typ t = Fun(x, Some typ, t)
+let make_fun_temp xs t = List.fold_right (fun x t -> Fun(x,None,t)) xs t
 let make_if t1 t2 t3 =
   match t1 with
       Const True -> t2
@@ -103,16 +104,17 @@ let make_eq_bool t1 t2 = make_app (Const EqBool) [t1; t2]
 let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
-let make_loop () =
-  let f = new_id "loop" in
-    [f, ["u"], Const True, App(Var f, Const Unit)], App(Var f, Const Unit)
+
+
+
+
 
 let rec get_fv = function
     Const _ -> []
   | Var x -> [x]
   | App(t1, t2) -> get_fv t1 @@ get_fv t2
   | Let(x,t1,t2) -> get_fv t1 @@ diff (get_fv t2) [x]
-  | Fun(x,t) -> diff (get_fv t) [x]
+  | Fun(x,_,t) -> diff (get_fv t) [x]
 let get_fv t = uniq (get_fv t)
 
 
@@ -127,10 +129,14 @@ let rec decomp_app = function
         t, ts@[t2]
   | t -> t, []
 let rec decomp_fun = function
-    Fun(x,t) ->
+    Fun(x,_,t) ->
       let xs,t = decomp_fun t in
         x::xs, t
   | t -> [], t
+let rec decomp_annot_fun acc = function
+    Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
+  | t -> List.rev acc, t
+let decomp_annot_fun t = decomp_annot_fun [] t
 let rec decomp_tfun = function
     TFun(typ1,typ2) ->
       let typs,typ = decomp_tfun (typ2 (Const Unit)) in
@@ -177,9 +183,9 @@ let is_CPS_def env (f,xs,cond,es,t) =
   in
     b1 && b2
 
-let is_CPS ((env,defs,main):prog) = List.for_all (is_CPS_def env) defs
+let is_CPS (env,defs,main) = List.for_all (is_CPS_def env) defs
 
-    
+
 
 
 
