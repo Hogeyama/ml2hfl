@@ -29,7 +29,7 @@ let print_info () =
   Format.printf "abst: %fsec\n" !Flag.time_abstraction;
   Format.printf "mc: %fsec\n" !Flag.time_mc;
   Format.printf "cegar: %fsec\n" !Flag.time_cegar;
-  if Flag.debug then Format.printf "IP: %fsec\n" !Flag.time_interpolant;
+  if false && Flag.debug then Format.printf "IP: %fsec\n" !Flag.time_interpolant;
   Format.printf "total: %fsec\n" (get_time());
   Format.pp_print_flush Format.std_formatter ()
 

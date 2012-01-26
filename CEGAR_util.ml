@@ -140,7 +140,7 @@ let rec make_arg_let t =
 
 let nil _ = []
 
-let trans_var x = Id.to_string' x
+let trans_var x = Id.to_string x
 
 let preds = ref []
 

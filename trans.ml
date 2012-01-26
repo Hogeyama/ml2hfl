@@ -358,9 +358,14 @@ let rec rename_poly_funs f map t =
       | NInt _
       | RandInt _ -> map, t.desc
       | Var x when Id.same x f ->
-          let x' = Id.new_var_id x in
-            raise (Fatal "Not implemented: Trans.rename_poly_funs");
-            (x,x')::map, Var x'
+          if is_poly_typ t.typ
+          then raise (Fatal "Not implemented: Trans.rename_poly_funs")
+          else
+            if List.exists (fun (_,f') -> Type.can_unify (Id.typ f') (Id.typ x)) map
+            then map, Var x
+            else
+              let x' = Id.new_var_id x in
+                (x,x')::map, Var x'
       | Var x -> map, Var x
       | Fun(x, t) ->
           let map',t' = rename_poly_funs f map t in
@@ -1460,7 +1465,109 @@ let rec eta_expand t =
 
 
 
-
+let normalize_binop_exp op t1 t2 =
+  let neg xs = List.map (fun (x,n) -> x,-n) xs in
+  let rec decomp t =
+    match t.desc with
+        Int n -> [None, n]
+      | Var x -> [Some {desc=Var x;typ=Id.typ x}, 1]
+      | NInt x -> [Some {desc=NInt x;typ=Id.typ x}, 1]
+      | BinOp(Add, t1, t2) ->
+          decomp t1 @@ decomp t2
+      | BinOp(Sub, t1, t2) ->
+          decomp t1 @@ neg (decomp t2)
+      | BinOp(Mult, t1, t2) ->
+          let xns1 = decomp t1 in
+          let xns2 = decomp t2 in
+          let reduce xns = List.fold_left (fun acc (_,n) -> acc+n) 0 xns in
+          let aux (x,_) = x <> None in
+            begin
+              match List.exists aux xns1, List.exists aux xns2 with
+                  true, true ->
+                    Format.printf "Nonlinear expression not supported: %a@."
+                      pp_print_term {desc=BinOp(op,t1,t2);typ=TInt[]};
+                    assert false
+                | false, true ->
+                    let k = reduce xns1 in
+                      List.rev_map (fun (x,n) -> x,n*k) xns2
+                | true, false ->
+                    let k = reduce xns2 in
+                      List.rev_map (fun (x,n) -> x,n*k) xns1
+                | false, false ->
+                    [None, reduce xns1 + reduce xns2]
+            end
+      | _ -> assert false
+  in
+  let xns1 = decomp t1 in
+  let xns2 = decomp t2 in
+  let compare (x1,_) (x2,_) =
+    let aux = function
+        None -> "\255"
+      | Some {desc=Var x} -> Id.to_string x
+      | Some {desc=NInt n} -> Id.to_string n
+      | _ -> assert false
+    in
+      compare (aux x1) (aux x2)
+  in
+  let xns = List.sort compare (xns1 @@ (neg xns2)) in
+  let rec aux = function
+      [] -> []
+    | (x,n)::xns ->
+        let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
+        let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
+          (x,n') :: aux xns2
+  in
+  let xns' = aux xns in
+  let xns'' = List.filter (fun (x,n) -> n<>0) xns' in
+  let op',t1',t2' =
+    match xns'' with
+        [] -> assert false
+      | (x,n)::xns ->
+          let aux :typed_term option * int -> typed_term= function
+              None,n -> {desc=Int n; typ=TInt[]}
+            | Some x,n -> if n=1 then x else {desc=BinOp(Mult, {desc=Int n;typ=TInt[]}, x); typ=TInt[]}
+          in
+          let t1,xns',op' =
+            if n<0
+            then
+              let op' =
+                match op with
+                    Eq -> Eq
+                  | Lt -> Gt
+                  | Gt -> Lt
+                  | Leq -> Geq
+                  | Geq -> Leq
+                  | _ -> assert false
+              in
+                aux (x,-n), xns, op'
+            else
+              aux (x,n), neg xns, op
+          in
+          let ts = List.map aux xns' in
+          let t2 =
+            match ts with
+                [] -> {desc=Int 0; typ=TInt[]}
+              | t::ts' -> List.fold_left (fun t2 t -> {desc=BinOp(Add, t2, t);typ=TInt[]}) t ts'
+          in
+            op', t1, t2
+  in
+  let rec simplify t =
+    let desc =
+      match t.desc with
+          BinOp(Add, t1, {desc=BinOp(Mult, {desc=Int n}, t2)}) when n < 0 ->
+            let t1' = simplify t1 in
+              BinOp(Sub, t1', {desc=BinOp(Mult, {desc=Int(-n);typ=TInt[]}, t2); typ=TInt[]})
+        | BinOp(Add, t1, {desc=Int n}) when n < 0 ->
+            let t1' = simplify t1 in
+              BinOp(Sub, t1', {desc=Int(-n);typ=TInt[]})
+        | BinOp(Add, t1, t2) ->
+            let t1' = simplify t1 in
+              BinOp(Add, t1', t2)
+        | t -> t
+    in
+      {desc=desc; typ=t.typ}
+  in
+    BinOp(op', t1', simplify t2')
 
 let rec normalize_bool_exp t =
   let desc =
@@ -1477,108 +1584,7 @@ let rec normalize_bool_exp t =
       | BinOp(Eq, _, {desc=True|False|Unknown})
       | BinOp(Eq, {desc=Nil|Cons _}, _)
       | BinOp(Eq, _, {desc=Nil|Cons _}) as t -> t
-      | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
-          let neg xs = List.map (fun (x,n) -> x,-n) xs in
-          let rec decomp t =
-            match t.desc with
-                Int n -> [None, n]
-              | Var x -> [Some {desc=Var x;typ=Id.typ x}, 1]
-              | NInt x -> [Some {desc=NInt x;typ=Id.typ x}, 1]
-              | BinOp(Add, t1, t2) ->
-                  decomp t1 @@ decomp t2
-              | BinOp(Sub, t1, t2) ->
-                  decomp t1 @@ neg (decomp t2)
-              | BinOp(Mult, t1, t2) ->
-                  let xns1 = decomp t1 in
-                  let xns2 = decomp t2 in
-                  let reduce xns = List.fold_left (fun acc (_,n) -> acc+n) 0 xns in
-                  let aux (x,_) = x <> None in
-                    begin
-                      match List.exists aux xns1, List.exists aux xns2 with
-                          true, true ->
-                            Format.printf "Nonlinear expression not supported: %a@." pp_print_term {desc=BinOp(op,t1,t2);typ=TInt[]};
-                            assert false
-                        | false, true ->
-                            let k = reduce xns1 in
-                              List.rev_map (fun (x,n) -> x,n*k) xns2
-                        | true, false ->
-                            let k = reduce xns2 in
-                              List.rev_map (fun (x,n) -> x,n*k) xns1
-                        | false, false ->
-                            [None, reduce xns1 + reduce xns2]
-                    end
-              | _ -> assert false
-          in
-          let xns1 = decomp t1 in
-          let xns2 = decomp t2 in
-          let compare (x1,_) (x2,_) =
-            let aux = function
-                None -> "\255"
-              | Some {desc=Var x} -> Id.to_string x
-              | Some {desc=NInt n} -> Id.to_string n
-              | _ -> assert false
-            in
-              compare (aux x1) (aux x2)
-          in
-          let xns = List.sort compare (xns1 @@ (neg xns2)) in
-          let rec aux = function
-              [] -> []
-            | (x,n)::xns ->
-                let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
-                let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
-                  (x,n') :: aux xns2
-          in
-          let xns' = aux xns in
-          let xns'' = List.filter (fun (x,n) -> n<>0) xns' in
-          let op',t1',t2' =
-            match xns'' with
-                [] -> assert false
-              | (x,n)::xns ->
-                  let aux :typed_term option * int -> typed_term= function
-                      None,n -> {desc=Int n; typ=TInt[]}
-                    | Some x,n -> if n=1 then x else {desc=BinOp(Mult, {desc=Int n;typ=TInt[]}, x); typ=TInt[]}
-                  in
-                  let t1,xns',op' =
-                    if n<0
-                    then
-                      let op' =
-                        match op with
-                            Eq -> Eq
-                          | Lt -> Gt
-                          | Gt -> Lt
-                          | Leq -> Geq
-                          | Geq -> Leq
-                          | _ -> assert false
-                      in
-                        aux (x,-n), xns, op'
-                    else
-                      aux (x,n), neg xns, op
-                  in
-                  let ts = List.map aux xns' in
-                  let t2 =
-                    match ts with
-                        [] -> {desc=Int 0; typ=TInt[]}
-                      | t::ts' -> List.fold_left (fun t2 t -> {desc=BinOp(Add, t2, t);typ=TInt[]}) t ts'
-                  in
-                    op', t1, t2
-          in
-          let rec simplify t =
-            let desc =
-              match t.desc with
-                  BinOp(Add, t1, {desc=BinOp(Mult, {desc=Int n}, t2)}) when n < 0 ->
-                    let t1' = simplify t1 in
-                      BinOp(Sub, t1', {desc=BinOp(Mult, {desc=Int(-n);typ=TInt[]}, t2); typ=TInt[]})
-                | BinOp(Add, t1, {desc=Int n}) when n < 0 ->
-                    let t1' = simplify t1 in
-                      BinOp(Sub, t1', {desc=Int(-n);typ=TInt[]})
-                | BinOp(Add, t1, t2) ->
-                    let t1' = simplify t1 in
-                      BinOp(Add, t1', t2)
-                | t -> t
-            in
-              {desc=desc; typ=t.typ}
-          in
-            BinOp(op', t1', simplify t2')
+      | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> normalize_binop_exp op t1 t2
       | Not t -> Not (normalize_bool_exp t)
       | Unit
       | Int _

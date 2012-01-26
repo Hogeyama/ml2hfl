@@ -84,39 +84,6 @@ let string_of_term t =
 
 
 
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 let cvc3in = ref stdin
 let cvc3out = ref stdout
@@ -168,11 +135,14 @@ let rec to_pred t =
 let to_pred t = CsisatAstUtil.integer_heuristic (to_pred t)
 
 let parse_ident s =
-  let len = String.length s in
-  let n = String.rindex s '_' in
-  let name = String.sub s 0 n in
-  let id = int_of_string (String.sub s (n+1) (len-n-1)) in
-    Id.make id name TUnknown
+  try
+    let len = String.length s in
+    let n = String.rindex s '_' in
+    let name = String.sub s 0 n in
+    let id = int_of_string (String.sub s (n+1) (len-n-1)) in
+      Id.make id name TUnknown
+  with Failure "int_of_string" | Not_found ->
+    Id.make 0 s TUnknown
 
 let rec from_exp map = function
     CsisatAst.Constant x -> {desc=Int (int_of_float x); typ=TInt[]}

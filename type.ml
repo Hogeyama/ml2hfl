@@ -76,7 +76,7 @@ let rec print print_pred fm typ =
       | TVar{contents=Some typ} -> print fm typ
       | TVar _ -> Format.fprintf fm "!!!"
       | TFun(x, typ) ->
-          if Id.to_string' x = ""
+          if Id.to_string x = ""
           then Format.fprintf fm "(%a -> %a)" print (Id.typ x) print typ
           else Format.fprintf fm "(%a:%a -> %a)" Id.print x print (Id.typ x) print typ
       | TUnknown -> Format.fprintf fm "???"

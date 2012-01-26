@@ -301,7 +301,9 @@ let is_uppercase c =
 
 
 
-let get_time () = (Unix.times()).Unix.tms_utime +. (Unix.times()).Unix.tms_cutime
+let get_time () =
+  let times = Unix.times() in
+  times.Unix.tms_utime +. times.Unix.tms_cutime
 
 
 let add_time tmp t = t := !t +. get_time () -. tmp
@@ -333,7 +335,7 @@ let rec gcd m n =
 
 (* graph *)
 let save_as_dot filename vertices edges =
-  let oc = open_out filename in 
+  let oc = open_out filename in
   let ocf =
     Format.make_formatter
       (output oc)

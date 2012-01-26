@@ -66,7 +66,7 @@ let decomp_id s =
     let len = String.length s in
     let i = String.rindex s '_' in
       String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
-  with _ -> s, 0
+  with Failure "int_of_string" | Not_found -> s, 0
 let add_name x s =
   let name,n = decomp_id x in
     name ^ s ^ "_" ^ if n <> 0 then string_of_int n else ""

@@ -1973,6 +1973,7 @@ let rec add_preds_typ sol typ1 typ2 =
 let infer ces prog =
   let ces =  List.map (fun ce -> List.map (fun b -> LabNode b) (Feasibility.trans_ce ce prog) @ [FailNode]) ces in
   let defs,main = trans prog in
+  let () = if true then Format.printf "%a@." pp_print_term (List.fold_right (fun (f,(xs,t)) t' -> make_let [f,xs,t] t') defs (make_var main)) in
   let rte,sol = test [] main defs ces None in
   let fs = List.map fst defs in
   let aux f =
@@ -1989,7 +1990,7 @@ let infer ces prog =
 
 let infer_and_print ces prog =
   pr_flag := true;
-  infer ces prog;
+  ignore (infer ces prog);
   pr_flag := false
 
 let infer ces prog = infer ces prog

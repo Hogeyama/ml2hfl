@@ -19,9 +19,7 @@ let id x = x.id
 let name x = x.name
 let typ x = x.typ
 
-let to_string x = name x ^ "_" ^ string_of_int (id x)
-
-let to_string' x =
+let to_string x =
   let n = id x in
     if n = 0
     then name x
@@ -48,7 +46,7 @@ let rec mem_assoc x = function
   | (a, b) :: l -> same a x || mem_assoc x l
 
 let print fm x =
-  let s = to_string' x in
+  let s = to_string x in
     assert (s <> "");
     Format.pp_print_string fm s
 
