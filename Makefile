@@ -210,6 +210,15 @@ LIMIT=120
 test: opt
 	for i in $(TEST); \
 	do echo $$i; \
+	timeout -s 14 $(LIMIT) ./$(NAME).opt $$i 2>&1 | \
+	  egrep 'Safe|Unsafe|cycle:|Verification' | \
+	  grep -v File | \
+	  grep -v Warning; \
+	echo; \
+	done
+test2: opt
+	for i in $(TEST); \
+	do echo $$i; \
 	(ulimit -t $(LIMIT); \
 	./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:|Verification') 2>&1 | grep -v File | grep -v Warning; \
 	echo; \

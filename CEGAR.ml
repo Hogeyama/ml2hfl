@@ -23,7 +23,6 @@ let post () =
   incr Flag.cegar_loop;
   (**)
   Wrapper.reopen_cvc3 ();
-  Wrapper2.reopen_cvc3 ();
   (**)
   Id.reset_counter ()
 
