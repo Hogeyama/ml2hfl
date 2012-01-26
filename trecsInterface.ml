@@ -217,7 +217,7 @@ let rec report_input g m =
   let _ = print_string ("The number of states: "^(string_of_int (Trecs.Automaton.size_st m))^"\n") in
     ()
 
-let verifyParseResult (prerules,tr) = 
+let verifyParseResult (prerules,tr) =
   let (g, m) = Trecs.Conversion.convert (prerules,tr) in
   let _ = if !debugging  then Trecs.Grammar.print_rules g.Trecs.Grammar.r else () in
   let _ = report_input g m in
@@ -244,7 +244,7 @@ let parse_node = function
   | "fail" -> FailNode
   | s when s.[0] = 'l' -> LineNode (int_of_string (String.sub s 1 (String.length s - 1)))
   | _ -> assert false
-*)    
+*)
 
 let get_pair s =
   let n1 = String.index s ',' in

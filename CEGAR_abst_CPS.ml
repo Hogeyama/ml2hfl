@@ -306,6 +306,7 @@ let rec abstract_typ = function
 
 
 let abstract_def env (f,xs,t1,e,t2) =
+Format.printf "%s@." f;
   let rec decomp_typ typ xs =
     match xs with
         [] -> typ, []

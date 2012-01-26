@@ -1,7 +1,7 @@
 
 let ocaml_lib = ["/usr/lib/ocaml"]
 let log_dir = "./log"
-let trecs = "./trecs -p 10000 10"
+let trecs = "./trecs -exp"
 let cvc3 = "./cvc3"
 let trecs_log = "log.hors"
 let cvc3_option = "+interactive"

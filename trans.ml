@@ -340,8 +340,15 @@ let rec get_tvars typ =
       | TPred _ -> assert false
 
 
-let rec rename_poly_funs f t =
-  let map,desc =
+let rec rename_poly_funs f map t =
+  let rename_poly_funs_list map ts =
+    let aux t (map,ts) =
+      let map',t' = rename_poly_funs f map t in
+        map', t'::ts
+    in
+      List.fold_right aux ts (map,[])
+  in
+  let map',desc =
     match t.desc with
         Unit
       | True
@@ -349,91 +356,105 @@ let rec rename_poly_funs f t =
       | Unknown
       | Int _
       | NInt _
-      | RandInt _ -> [], t.desc
+      | RandInt _ -> map, t.desc
       | Var x when Id.same x f ->
           let x' = Id.new_var_id x in
-            [x,x'], Var x'
-      | Var x -> [], Var x
+            raise (Fatal "Not implemented: Trans.rename_poly_funs");
+            (x,x')::map, Var x'
+      | Var x -> map, Var x
       | Fun(x, t) ->
-          let map,t' = rename_poly_funs f t in
-            map, Fun(x, t')
+          let map',t' = rename_poly_funs f map t in
+            map', Fun(x, t')
       | App({desc=Var x}, ts) when Id.same x f ->
-          if is_poly_typ (Id.typ x)
-          then
-            let xs = take (get_args (Id.typ f)) (List.length ts) in
-            let typ = List.fold_right2 (fun t x typ -> TFun(Id.set_typ x t.typ, typ)) ts xs t.typ in
-            let x' = Id.new_var (Id.name x) typ in
-            let maps,ts' = List.split (List.map (rename_poly_funs f) ts) in
-              (x,x') :: List.flatten maps, App(make_var x', ts')
-          else
-            let maps,ts' = List.split (List.map (rename_poly_funs f) ts) in
-            let x' = Id.new_var_id x in
-              (x,x') :: List.flatten maps, App(make_var x', ts')
+          let x' =
+            if is_poly_typ (Id.typ x)
+            then
+              let xs = take (get_args (Id.typ f)) (List.length ts) in
+              let typ = List.fold_right2 (fun t x typ -> TFun(Id.set_typ x t.typ, typ)) ts xs t.typ in
+                Id.new_var (Id.name x) typ
+            else
+              Id.new_var_id x
+          in
+          let map',ts' = rename_poly_funs_list map ts in
+          let check (_,f') = Type.can_unify (Id.typ f') (Id.typ x') in
+            if List.exists check map'
+            then
+              let _,x'' = List.find check map' in
+                map', App(make_var x'', ts')
+            else (x,x')::map', App(make_var x', ts')
       | App({desc=Var x}, ts) ->
-          let maps,ts' = List.split (List.map (rename_poly_funs f) ts) in
-            List.flatten maps, App(make_var x, ts')
+          let map',ts' = rename_poly_funs_list map ts in
+            map', App(make_var x, ts')
       | App(t, ts) ->
-          let maps,ts' = List.split (List.map (rename_poly_funs f) ts) in
-          let map,t' = rename_poly_funs f t in
-            map @@ rev_flatten maps, App(t',ts')
+          let map',ts' = rename_poly_funs_list map ts in
+          let map'',t' = rename_poly_funs f map' t in
+            map'', App(t',ts')
       | If(t1, t2, t3) ->
-          let map1,t1' = rename_poly_funs f t1 in
-          let map2,t2' = rename_poly_funs f t2 in
-          let map3,t3' = rename_poly_funs f t3 in
-            map1@@map2@@map3, If(t1', t2', t3')
+          let map1,t1' = rename_poly_funs f map t1 in
+          let map2,t2' = rename_poly_funs f map1 t2 in
+          let map3,t3' = rename_poly_funs f map2 t3 in
+            map3, If(t1', t2', t3')
       | Branch(t1, t2) ->
-          let map1,t1' = rename_poly_funs f t1 in
-          let map2,t2' = rename_poly_funs f t2 in
-            map1@@map2, Branch(t1', t2')
+          let map1,t1' = rename_poly_funs f map t1 in
+          let map2,t2' = rename_poly_funs f map1 t2 in
+            map2, Branch(t1', t2')
       | Let(flag, bindings, t2) ->
-          let maps,bindings' = List.split (List.map (fun (g,xs,t) -> let map,t' = rename_poly_funs f t in map,(g,xs,t')) bindings) in
-          let map2,t2' = rename_poly_funs f t2 in
-            map2 @@ rev_flatten maps, Let(flag, bindings', t2')
+          let aux (g,xs,t) (map,bindings) =
+            let map',t' = rename_poly_funs f map t in
+              map', (g,xs,t')::bindings
+          in
+          let map',bindings' = List.fold_right aux bindings (map,[]) in
+          let map'',t2' = rename_poly_funs f map' t2 in
+            map'', Let(flag, bindings', t2')
       | BinOp(op, t1, t2) ->
-          let map1,t1' = rename_poly_funs f t1 in
-          let map2,t2' = rename_poly_funs f t2 in
-            map1@@map2, BinOp(op, t1', t2')
+          let map1,t1' = rename_poly_funs f map t1 in
+          let map2,t2' = rename_poly_funs f map1 t2 in
+            map2, BinOp(op, t1', t2')
       | Not t ->
-          let map,t' = rename_poly_funs f t in
-            map, Not t'
-      | Event(s,b) -> [], Event(s,b)
+          let map',t' = rename_poly_funs f map t in
+            map', Not t'
+      | Event(s,b) -> map, Event(s,b)
       | Record fields -> assert false
       | Proj(i,s,f,t) -> assert false
       | SetField(n,i,s,f,t1,t2) -> assert false
-      | Nil -> [], Nil
+      | Nil -> map, Nil
       | Cons(t1,t2) ->
-          let map1,t1' = rename_poly_funs f t1 in
-          let map2,t2' = rename_poly_funs f t2 in
-            map1@@map2, Cons(t1', t2')
+          let map1,t1' = rename_poly_funs f map t1 in
+          let map2,t2' = rename_poly_funs f map1 t2 in
+            map2, Cons(t1', t2')
       | Constr(s,ts) ->
-          let maps,ts' = List.split (List.map (rename_poly_funs f) ts) in
-            rev_flatten maps, Constr(s, ts')
+          let map',ts' = rename_poly_funs_list map ts in
+            map', Constr(s, ts')
       | Match(t,pats) ->
-          let map,t' = rename_poly_funs f t in
-          let maps,pats' = List.split (List.map (fun (p,c,t) -> let map,t' = rename_poly_funs f t in map,(p,c,t')) pats) in
-            map @@ rev_flatten maps, Match(t', pats')
+          let aux (p,c,t) (map,bindings) =
+            let map',t' = rename_poly_funs f map t in
+              map', (p,c,t')::bindings
+          in
+          let map',pats' = List.fold_right aux pats (map,[]) in
+          let map'',t' = rename_poly_funs f map' t in
+            map'', Match(t', pats')
       | Raise t ->
-          let map,t' = rename_poly_funs f t in
-            map, Raise t'
+          let map',t' = rename_poly_funs f map t in
+            map', Raise t'
       | TryWith(t1,t2) ->
-          let map1,t1' = rename_poly_funs f t1 in
-          let map2,t2' = rename_poly_funs f t2 in
-            map1@@map2, TryWith(t1', t2')
-      | Bottom -> [], Bottom
+          let map1,t1' = rename_poly_funs f map t1 in
+          let map2,t2' = rename_poly_funs f map1 t2 in
+            map2, TryWith(t1', t2')
+      | Bottom -> map, Bottom
       | Pair(t1,t2) ->
-          let map1,t1' = rename_poly_funs f t1 in
-          let map2,t2' = rename_poly_funs f t2 in
-            map1@@map2, Pair(t1', t2')
+          let map1,t1' = rename_poly_funs f map t1 in
+          let map2,t2' = rename_poly_funs f map1 t2 in
+            map2, Pair(t1', t2')
       | Fst t ->
-          let map,t' = rename_poly_funs f t in
-            map, Fst t'
+          let map',t' = rename_poly_funs f map t in
+            map', Fst t'
       | Snd t ->
-          let map,t' = rename_poly_funs f t in
-            map, Snd t'
+          let map',t' = rename_poly_funs f map t in
+            map', Snd t'
       | RandValue (_, _) -> assert false
   in
-    map, {desc=desc; typ=t.typ}
-
+    map', {desc=desc; typ=t.typ}
+let rename_poly_funs f t = rename_poly_funs f [] t
 
 let rec copy_poly_funs top t =
   let desc =
@@ -456,7 +477,13 @@ let rec copy_poly_funs top t =
           let t2' = copy_poly_funs top t2 in
           let map,t2'' = rename_poly_funs f t2' in
           let n = List.length map in
-          let () = if n >= 2 then Format.printf "COPY: %s(%d)@." (Id.name f) n in
+            if n >= 2
+            then
+              begin
+                Format.printf "COPY: @[";
+                List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
+                Format.printf "@.";
+              end;
             if map = [] && top && t2.desc = Unit
             then Let(flag, [f, xs, copy_poly_funs false t1], t2')
             else
@@ -465,10 +492,13 @@ let rec copy_poly_funs top t =
                 let () = Type.unify (rename_tvar_typ tvar_map (Id.typ f)) (Id.typ f') in
                 let xs = List.map (rename_tvar_var tvar_map) xs in
                 let t1 = rename_tvar tvar_map t1 in
+(*
                 let typs = get_argtyps (Id.typ f') in
                 let xs' = List.map2 (fun x typ -> Id.new_var (Id.name x) typ) xs (take typs (List.length xs)) in
                 let xs_map = List.map2 (fun x x' -> x, make_var x') xs xs' in
                 let t1 = subst_map xs_map t1 in
+*)
+                let xs' = xs in
                 let t1 =
                   match flag with
                       Flag.Nonrecursive -> t1
@@ -1396,7 +1426,7 @@ let rec eta_expand t =
           let t2' = eta_expand t2 in
           let t3' = eta_expand t3 in
             If(t1', t2', t3')
-      | Let _ -> Format.printf "Not implemented@."; assert false
+      | Let _ -> raise (Fatal "Not implemented: Trans.eta_expand(Let)")
           (*
             | Let(f, xs, t1, t2) ->
             let t1' = eta_expand t1 in

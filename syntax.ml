@@ -87,9 +87,7 @@ and print_id = Id.print
 
 and print_id_typ fm x =
   let typ = Id.typ x in
-    if typ = TUnknown || not (has_pred typ)
-    then fprintf fm "%a" Id.print x
-    else fprintf fm "(%a:%a)" Id.print x print_typ typ
+    fprintf fm "(%a:%a)" Id.print x print_typ typ
 
 and print_ids_typ fm = function
     [] -> ()

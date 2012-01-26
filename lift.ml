@@ -185,7 +185,7 @@ let rec lift_aux xs = function
       let defs,t' = lift_aux xs t in
         defs, RandInt (Some t')
   | Var x -> [], Var x
-  | Fun _ -> Format.printf "Not implemented@."; assert false
+  | Fun _ -> raise (Fatal "Not implemented: List.list_aux")
   | App(t, ts) ->
       let defs,t' = lift_aux xs t in
       let defss,ts' = List.split (List.map (lift_aux xs) ts) in

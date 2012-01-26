@@ -158,9 +158,9 @@ let print_ce_reduction ce ((_,defs,main):prog) =
   let pr t br n e =
     let s1 = if n = 1 then "" else " [" ^ string_of_int (br+1) ^ "/" ^ string_of_int n ^ "]" in
     let s2 = match e with [] -> "" | [Event s] -> s ^ " -->" | _ -> assert false in
-      Format.printf "  %a%s ... --> %s@." print_term t s1 s2
+      Format.printf "%a%s ... --> %s@\n" print_term t s1 s2
   in
-    Format.printf "Error trace::@.";
+    Format.printf "Error trace::@\n  @[";
     pr (Var main) 0 1 [];
     ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
-    Format.printf "  ERROR!@.@."
+    Format.printf "ERROR!@.@."

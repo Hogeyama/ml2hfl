@@ -123,6 +123,21 @@ let set_datatype_cvc3 ?(cout = !cvc3out) t = ()(*
     output_string cout "DATATYPE List = nil | cons (cdr: List) END;"
 *)
 
+
+exception Satisfiable
+
+
+
+let string_of_var env x =
+  let post =
+    match List.assoc x env with
+        TBase(TUnit,_) -> "_u"
+      | TBase(TInt,_) -> "_i"
+      | TBase(TBool,_) -> "_b"
+      | _ -> assert false
+  in
+    x ^ post
+
 let string_of_typ env x =
   match List.assoc x env with
       TBase(TUnit,_) -> "INT"
@@ -131,19 +146,11 @@ let string_of_typ env x =
     | _ -> assert false
 
 
-
-
-
-exception Satisfiable
-
-
-
-
 let rec string_of_term env = function
     Const True -> "TRUE"
   | Const False -> "FALSE"
   | Const (Int n) -> string_of_int n
-  | Var x -> x
+  | Var x -> string_of_var env x
   | App(App(Const And, t1), t2) -> "(" ^ string_of_term env t1 ^ " AND " ^ string_of_term env t2 ^ ")"
   | App(App(Const Or, t1), t2) -> "(" ^ string_of_term env t1 ^ " OR " ^ string_of_term env t2 ^ ")"
   | App(Const Not, t) -> "(NOT " ^ string_of_term env t ^ ")"
@@ -176,7 +183,7 @@ let rec init_rand_int = function
 let string_of_env env =
   let aux str (x,typ) =
     match typ with
-        TBase _ -> str ^ x ^ ":" ^ string_of_typ env x ^ "; "
+        TBase _ -> str ^ string_of_var env x ^ ":" ^ string_of_typ env x ^ "; "
       | _ -> str
   in
     List.fold_left aux "" env
@@ -206,7 +213,7 @@ let checksat env p =
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
 
-  let types = List.fold_left (fun str (x,_) -> str ^ x ^ ":" ^ string_of_typ env x ^ "; ") "" env in
+  let types = string_of_env env in
   let query = "CHECKSAT " ^ string_of_term env p ^ ";" in
 
   let q = "PUSH;"^types^query^"\nPOP;" in
@@ -285,7 +292,7 @@ let get_solution env p =
 
   let fm = Format.formatter_of_out_channel cout in
 
-  let types = List.fold_left (fun str (x,_) -> str ^ x ^ ":" ^ string_of_typ env x ^ "; ") "" env in
+  let types = string_of_env env in
   let query = "CHECKSAT " ^ string_of_term env p ^ "; COUNTERMODEL;" in
 
   let q = types ^ query in
