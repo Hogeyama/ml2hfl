@@ -245,11 +245,12 @@ let rec eta_reduce_term = function
       match eta_reduce_term t with
           App(t, Var y) when x = y && not (List.mem y (get_fv t)) -> t
         | t' -> Fun(x, typ, t')
-
+(*
 let eta_reduce_term t =
   Format.printf "REDUCE: [%a]@." print_term t;
   eta_reduce_term t
 let eta_reduce_term t = t
+*)
 
 let print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a:%a,@ " print_var f print_typ typ) env;

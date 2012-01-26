@@ -267,10 +267,11 @@ let print_node fm = function
   | EventNode s -> Format.fprintf fm "%s" s
 
 
+(*
 let print_node fm = function
     BranchNode n -> Format.fprintf fm "BranchNode %d" n
   | EventNode s -> Format.fprintf fm "EventNode %S" s
-
+*)
 
 
 let print_ce = print_list print_node "; " false
