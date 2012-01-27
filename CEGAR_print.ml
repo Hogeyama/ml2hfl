@@ -89,10 +89,14 @@ and print_term fm = function
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
   | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
-      Format.fprintf fm "(%a %a %a)" print_term t1 print_const op print_term t2
+      Format.fprintf fm "(%a@ %a@ %a)" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
-        Format.fprintf fm "(%a)" (print_list print_term " " false) (t::ts)
+      let rec pr fm = function
+          [] -> ()
+        | t::ts -> Format.fprintf fm "@ %a%a" print_term t pr ts
+      in
+        Format.fprintf fm "(@[<hov 1>%a%a@])" print_term t pr ts
   | Let(x,t1,t2) ->
       let xs,t1 = decomp_fun t1 in
         Format.fprintf fm "(let %a %a@ =@ %a@ in@ %a)" print_var x (print_list print_var " " false) xs print_term t1 print_term t2
@@ -104,7 +108,7 @@ and print_term fm = function
           | Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
           | Some typ -> print_var fm x
       in
-        Format.fprintf fm "(fun %a@ ->@ %a)" (print_list pr " " false) env print_term t'
+        Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " " false) env print_term t'
 
 and print_fun_def fm (f,xs,t1,es,t2) =
   let s = List.fold_left (fun s -> function (Event s) -> " {" ^ s ^ "} =>" | (Branch n) -> " l" ^ string_of_int n ^ " =>") "" es in

@@ -107,7 +107,7 @@ let main filename in_channel =
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->
-          let t_result, result = CEGAR.cegar prog preds [] in
+          let t_result, result = CEGAR.cegar prog preds in
 	    match result with
 	        None -> Format.printf "@.Safe!@.@."
 	      | Some print ->
@@ -159,7 +159,7 @@ let () =
     with
         Parsing.Parse_error -> Format.printf "Parse error.@."; exit 1
       | LongInput -> Format.printf "Input is too long.@."; exit 1
-      | TimeOut -> Format.printf "Verification failed (time out).@."; exit 1
+      | TimeOut -> Format.printf "@.Verification failed (time out).@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
       | Refine.CannotRefute -> Format.printf "Verification failed (new predicates not found).@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1

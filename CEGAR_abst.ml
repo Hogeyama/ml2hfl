@@ -148,7 +148,6 @@ let abstract prog =
 
 
 
-exception EvalBottom
 exception EvalFail
 exception EvalValue
 exception Skip
@@ -171,7 +170,7 @@ let rec is_value env = function
   | Fun _ -> assert false
 
 let rec read_bool () =
-  Format.printf "RandBool (t/f/r/s): @?";
+  Format.printf "RandBool (t/f/r/s): ";
   match read_line () with
     | s when String.length s = 0 -> read_bool ()
     | s when s.[0] = 't' -> true
@@ -181,7 +180,7 @@ let rec read_bool () =
     | s -> read_bool ()
 
 let rec step_eval_abst_cbn ce env_orig env_abst defs = function
-    Const Bottom -> raise EvalBottom
+    Const Bottom -> raise TypeBottom
   | Const RandBool ->
       let t =
         if read_bool ()
@@ -219,27 +218,27 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
             then List.tl ce, assoc_def defs (List.hd ce) t1
             else ce, assoc_def defs 0 t1
           in
+          let ts1,ts2 = take2 ts (List.length xs) in
             assert (tf1 = Const True);
             if List.mem (Event "fail") es then raise EvalFail;
-            ce', List.fold_right2 subst xs ts tf2
+            ce', make_app (List.fold_right2 subst xs ts1 tf2) ts2
   | _ -> assert false
 
 let rec eval_abst_cbn prog abst ce =
-  Format.printf "Program with abstraction types::@.%a@." CEGAR_print.print_prog abst;
+  Format.printf "Program with abstraction types::@.%a@." CEGAR_print.print_prog_typ abst;
   let env_orig = get_env prog in
   let env_abst = get_env abst in
   let defs = get_defs abst in
   let main = get_main abst in
   let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) ce in
   let rec loop ce t =
+    Format.printf "%a -->@\n" print_term t;
     assert (match get_typ env_abst t with TBase(TUnit,_) -> true | _ -> false);
-    Format.printf "  %a -->@." print_term t;
-    let t1,_ = decomp_app t in
     let () =
       try
-        match t1 with
-            Var x ->
-              Format.printf "    %s:: %a@." x print_typ (List.assoc x env_orig)
+        match decomp_app t with
+            Var x, _ ->
+              Format.printf "  %s:: %a@\n" x print_typ (List.assoc x env_orig)
           | _ -> ()
       with Not_found -> ()
     in
@@ -256,16 +255,16 @@ let rec eval_abst_cbn prog abst ce =
           eval_abst_cbn prog abst ce*)
       | Restart -> eval_abst_cbn prog abst ce
       | EvalFail ->
-          Format.printf "  ERROR!@.@.";
+          Format.printf "ERROR!@.@.";
           Format.printf "Press Enter.@.";
           ignore (read_line())
-      | EvalBottom ->
-          Format.printf "  DIVERGE!@.@.";
+      | TypeBottom ->
+          Format.printf "DIVERGE!@.@.";
           Format.printf "Press Enter.@.";
           ignore (read_line())
   in
     try
-      Format.printf "Evaluation of abstracted program::@.";
+      Format.printf "Evaluation of abstracted program::@.  @[";
       pr ();
     with Skip -> ()
 
