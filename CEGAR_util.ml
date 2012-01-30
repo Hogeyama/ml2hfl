@@ -41,7 +41,7 @@ let rec subst_typ x t = function
       (** ASSUME: y does not contain x **)
       let ps' y = List.map (subst x t) (ps y) in
         TBase(b, ps')
-  | TFun(typ1,typ2) -> TFun (subst_typ x t typ1, fun y -> subst_typ x t (typ2 y))
+  | TFun(typ1,typ2) -> TFun(subst_typ x t typ1, fun y -> subst_typ x t (typ2 y))
   | _ -> assert false
 
 

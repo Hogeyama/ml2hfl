@@ -147,7 +147,10 @@ let sign_to_letter s =
   in
     if is_op s
     then trans "op" s
-    else s
+    else
+      if s.[String.length s - 1] = '\''
+      then (s.[String.length s - 1] <- '_'; s)
+      else s
 
 let from_ident x typ = Id.make (Ident.binding_time x) (sign_to_letter (Ident.name x)) typ
 

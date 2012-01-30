@@ -81,7 +81,7 @@ let weakest env cond ds p =
         pbs
     in
     let pbss =
-      if Flag.use_neg_pred
+      if !Flag.use_neg_pred
       then mapi (fun i _ -> [i]) ds @ mapi (fun i _ -> [-i]) ds
       else mapi (fun i _ -> [i]) ds
     in
@@ -121,7 +121,7 @@ let weakest env cond ds p =
       let xs = uniq (xs' @ xs) in
       let nxs = uniq (nxs' @ nxs) in
       let ys = uniq (ys' @ ys) in
-      let ws = 
+      let ws =
         uniq
           (List.flatten
              (List.map
@@ -176,11 +176,11 @@ let weakest env cond ds p =
 
 
 
-let filter env cond pbs =
+let filter env cond pbs must t =
+  let have pbs' (pbs,_) = List.exists (fun pb -> List.mem pb pbs') pbs in
   let check pbs = check env cond pbs (Const False) in
-  let ff =
     if not (check pbs)
-    then Const False
+    then t
     else
       let aux bottoms (pbs, rest) =
         let cands = List.map (fun pb -> List.merge compare [pb] pbs, diff rest [pb]) rest in
@@ -194,19 +194,26 @@ let filter env cond pbs =
           else loop bottoms' cands' (width+1)
       in
       let bottoms = loop [] [[],pbs] 0 in
-        make_dnf (List.map fst bottoms)
-  in
-    make_if ff (Const Bottom)
+      let bottoms' =
+        match must with
+            None -> bottoms
+          | Some pbs' -> List.filter (have pbs') bottoms
+      in
+      let ff = make_dnf (List.map fst bottoms') in
+        make_if ff (Const Bottom) t
+
+let filter env cond pbs must t = t
+
 
 let print_pbs fm pbs =
   List.iter (fun (p,_) -> Format.printf "%a;" CEGAR_print.term p) pbs
 
 
 let abst env cond pbs p =
+  if debug then Format.printf "pbs:%a@.p:%a@." print_pbs pbs CEGAR_print.term p;
   if has_bottom p
   then Const Bottom
   else
-    let () = if debug then Format.printf "pbs:%a@.p:%a@." print_pbs pbs CEGAR_print.term p in
     let tt, ff = weakest env cond pbs p in
 (*
     let env' = List.map (function _, Var x -> x,TBase(TBool,fun _ -> []) | _ -> assert false) pbs in
@@ -259,7 +266,7 @@ let rec is_base_term env = function
       assert (is_base_term env t1);
       assert (is_base_term env t2);
       true
-  | App(Const Not,t) -> assert (is_base_term env t); true
+  | App(Const Not,t) -> is_base_term env t
   | App _ -> false
   | Let _ -> false
   | Fun _ -> false

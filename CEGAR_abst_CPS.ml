@@ -256,35 +256,40 @@ let print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a:%a,@ " print_var f print_typ typ) env;
   Format.fprintf fm "@."
 
-let rec abstract_term top env cond pts t typ =
+let rec abstract_term top must env cond pts t typ =
   if debug then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
   match t with
     | Const Bottom -> assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
+    | Var x when congruent env cond (List.assoc x env) typ ->
+        List.map (fun x -> Var x) (abst_arg x typ)
     | (Var _ | Const _ | App _) when is_base_term env t ->
         let btyp,ps = decomp_tbase typ in
           if top && btyp = TUnit && ps t = []
           then [Const Unit]
           else List.map (abst env cond pts) (ps t)
-    | App(Const RandInt, t) -> abstract_term false env cond pts t (TFun(typ_int, fun _ -> typ))
+    | App(Const RandInt, t) -> abstract_term false must env cond pts t (TFun(typ_int, fun _ -> typ))
     | App _ ->
         let t1,ts = decomp_app t in
         let rec aux ts typ =
           match ts,typ with
               [], _ -> assert (fst (decomp_tbase typ) = TUnit); []
             | t::ts', TFun(typ1,typ2) ->
-                abstract_term false env cond pts t typ1 @ aux ts' (typ2 t)
+                abstract_term false None env cond pts t typ1 @ aux ts' (typ2 t)
             | _ -> assert false
         in
         let t' = make_app t1 (aux ts (get_typ env t1)) in
-          [filter env cond pts t']
+          if !Flag.use_filter
+          then [filter env cond pts must t']
+          else [t']
     | Fun _ ->
         let env',t' = decomp_annot_fun t in
         let env' = List.map (fun (x,typ) -> x, get_opt_val typ) env' in
-        let pts' = flatten_map (fun (x,typ) -> make_pts x typ) env' @@ pts in
+        let pts' = flatten_map (fun (x,typ) -> make_pts x typ) env' in
+        let pts'' = pts' @@ pts in
         let xs' = flatten_map (fun (x,typ) -> abst_arg x typ) env' in
         let env'' = env' @@ env in
         let typ' = CEGAR_type.app typ (List.map (fun (x,_) -> Var x) env') in
-        let t'' = hd (abstract_term false env'' cond pts' t' typ') in
+        let t'' = hd (abstract_term false (Some pts') env'' cond pts'' t' typ') in
           [make_fun_temp xs' t'']
     | Var _ -> assert false
     | Const _ -> assert false
@@ -315,15 +320,15 @@ let abstract_def env (f,xs,t1,e,t2) =
             typ', (x,typ1)::env'
   in
   let typ,env' = decomp_typ (List.assoc f env) xs in
-if debug then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
+  if debug then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@ env in
   let pts = List.flatten (List.map (fun (x,typ) -> make_pts x typ) env') in
   let xs' = List.flatten (List.map (fun (x,typ) -> abst_arg x typ) env') in
   let t2' = eta_expand_term env'' t2 typ in
-if debug then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2';
-if debug then Flag.print_fun_arg_typ := true;
-if debug then Format.printf "%s:: %a@." f print_term t2';
-  let t2'' = hd (abstract_term true env'' [t1] pts t2' typ) in
+  if debug then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2';
+  if debug then Flag.print_fun_arg_typ := true;
+  if debug then Format.printf "%s:: %a@." f print_term t2';
+  let t2'' = hd (abstract_term true None env'' [t1] pts t2' typ) in
   let t2''' = eta_reduce_term t2'' in
     if e <> [] && t1 <> Const True
     then
@@ -341,7 +346,7 @@ let abstract ((env,defs,main):prog) : prog =
   let (env,defs,main) = add_label (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = flatten_map (abstract_def env) defs in
-  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
   let prog = Typing.infer ([], defs, main) in
   let prog = lift2 prog in
   let () = if false then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in

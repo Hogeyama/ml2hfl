@@ -117,18 +117,20 @@ let main filename in_channel =
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let arg_spec =
-  ["-web", Arg.Set Flag.web, " web mode";
+  ["-web", Arg.Set Flag.web, " Web mode";
    "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
-         "<dir>  add <dir> to the list of include directories";
-   "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " use sized type system for CEGAR";
-   "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " same as -st";
-   "-na", Arg.Clear Flag.init_trans, " do not abstract data";
-   "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineSizedType), " use sized type system for predicate discovery";
-   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " use dependent type system for predicate discovery";
-   "-spec", Arg.String (fun file -> spec_file := file),
-         "<filename>  use <filename> as specification";
-   "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " print evaluation of abstacted program";
-   "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " lift variables which occur in a body";
+         "<dir>  Add <dir> to the list of include directories";
+   "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Use sized type system for CEGAR";
+   "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Same as -st";
+   "-na", Arg.Clear Flag.init_trans, " Do not abstract data";
+   "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineSizedType), " Use sized type system for predicate discovery";
+   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " Use dependent type system for predicate discovery";
+   "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as specification";
+   "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
+   "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
+   "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
+   "-trecs", Arg.Set Flag.new_cegar, Format.sprintf " Change trecs command (default: \"%s\")" !Flag.trecs;
+   "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
   ]
 
 
@@ -161,7 +163,7 @@ let () =
       | LongInput -> Format.printf "Input is too long.@."; exit 1
       | TimeOut -> Format.printf "@.Verification failed (time out).@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
-      | Refine.CannotRefute -> Format.printf "Verification failed (new predicates not found).@."; exit 1
+      | Refine.CannotRefute -> Format.printf "Verification failed (cannot refute an error path).@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
       | Typemod.Error(_,e) -> Format.printf "%a@." Typemod.report_error e; exit 1
       | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1

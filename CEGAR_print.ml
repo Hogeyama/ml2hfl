@@ -3,6 +3,12 @@ open Utilities
 open CEGAR_syntax
 open CEGAR_type
 
+let counter = ref 0
+let new_id x =
+  let x' = x ^ "_" ^ string_of_int !counter in
+    incr counter;
+    x'
+
 let rec occur_arg_pred x = function
     TBase(_,ps) -> List.mem x (rev_flatten_map get_fv (ps (Const Unit)))
   | TFun(typ1,typ2) ->
@@ -35,7 +41,7 @@ and print_typ_aux var fm = function
             let x = new_id "x" in
             let typ2 = typ2 (Var x) in
             let s1,s2 = if b then "(",")" else "","" in
-            let var' = if occur_arg_pred x typ2 then Some(x, true) else Some(x, false) in
+            let var' = Some(x, occur_arg_pred x typ2) in
             let b' = match typ2 with TFun _ -> true | _ -> false in
               if b'
               then Format.fprintf fm "%s@[%a ->@ %a@]%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
@@ -49,10 +55,8 @@ and print_typ_aux var fm = function
   | TAbs _ -> assert false
 
 and print_typ fm typ =
-  let n = Id.get_counter () in
-    Id.set_counter 1;
-    print_typ_aux None fm typ;
-    Id.set_counter n
+  counter := 1;
+  print_typ_aux None fm typ
 
 and print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a : %a@." print_var f print_typ typ) env
@@ -89,7 +93,7 @@ and print_term fm = function
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
   | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
-      Format.fprintf fm "(%a@ %a@ %a)" print_term t1 print_const op print_term t2
+      Format.fprintf fm "(@[%a@ %a@ %a@])" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
       let rec pr fm = function
@@ -111,12 +115,13 @@ and print_term fm = function
         Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " " false) env print_term t'
 
 and print_fun_def fm (f,xs,t1,es,t2) =
-  let s = List.fold_left (fun s -> function (Event s) -> " {" ^ s ^ "} =>" | (Branch n) -> " l" ^ string_of_int n ^ " =>") "" es in
+  let aux = fun s -> function (Event s) -> " {" ^ s ^ "} =>" | (Branch n) -> " l" ^ string_of_int n ^ " =>" in
+  let s = List.fold_left aux "" es in
     if t1 = Const True
     then
       let ys,t2 = decomp_fun t2 in
-        Format.fprintf fm "%a ->%s %a@." (print_list print_var " " false) (f::xs@ys) s print_term t2
-    else Format.fprintf fm "%a when %a ->%s %a@." (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
+        Format.fprintf fm "@[<hov 4>%a ->%s@ %a@." (print_list print_var " " false) (f::xs@ys) s print_term t2
+    else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@." (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
 
 and print_prog fm (_,defs,s) =
   Format.fprintf fm "Main: %a@." print_var s;
@@ -165,13 +170,12 @@ and print_term_ML fm = function
   | App(App(App(Const If, t1), t2), t3) ->
       Format.fprintf fm "(if %a then %a else %a)" print_term_ML t1 print_term_ML t2 print_term_ML t3
   | App(t1,t2) ->
-        Format.fprintf fm "(%a %a)" print_term_ML t1 print_term_ML t2
+      Format.fprintf fm "(%a %a)" print_term_ML t1 print_term_ML t2
   | Let(x,t1,t2) ->
       let xs,t1 = decomp_fun t1 in
         Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " true) xs print_term_ML t1 print_term_ML t2
-  | Fun(x,typ,t) when typ=None || not !Flag.print_fun_arg_typ ->
+  | Fun(x,_,t) ->
       Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
-  | Fun(x,Some typ,t) -> Format.fprintf fm "(fun (%a:%a) -> %a)" print_var x print_typ typ print_term_ML t
 
 and print_fun_def_ML fm (f,xs,t1,_,t2) =
   if t1 = Const True

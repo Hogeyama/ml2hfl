@@ -118,14 +118,20 @@ let abstract ((env,defs,main):prog) : prog =
   let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
   let prog = Typing.infer ([], defs, main) in
     prog
 
 
-let abstract prog =
+let abstract count prog =
   let tmp = get_time() in
-  let () = if Flag.print_progress then Format.printf "\n(%d-1) Abstracting ... @?" !Flag.cegar_loop in
+  let () =
+    if Flag.print_progress
+    then
+      match count with
+          None -> Format.printf "\n(%d-1) Abstracting ... @?" !Flag.cegar_loop
+        | Some c -> Format.printf "\n(%d-1-%d) Abstracting ... @?" !Flag.cegar_loop c
+  in
   let abst =
     match !Flag.pred_abst with
         Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract prog

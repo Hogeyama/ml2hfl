@@ -8,17 +8,6 @@ let rec make_list_list m =
   if m <= 0
   then []
   else make_list (Random.int 0) :: make_list_list (m-1)
-(*
-let rec make_list (u:unit) =
-  if Random.int 0 > 0
-  then []
-  else 0 :: make_list ()
-
-let rec make_list_list (u:unit) =
-  if Random.int 0 > 0
-  then []
-  else make_list () :: make_list_list ()
-*)
 
 let head = function
     [] -> assert false

@@ -1,8 +1,8 @@
 
 let ocaml_lib = ["/usr/lib/ocaml"]
 let log_dir = "./log"
-let trecs = "./trecs -exp"
-let cvc3 = "./cvc3"
+let trecs = ref "./trecs"
+let cvc3 = ref "./cvc3"
 let trecs_log = "log.hors"
 let cvc3_option = "+interactive"
 
@@ -34,7 +34,7 @@ let use_dor = true
 let use_prefix_trace = false
 let use_nint = ref false
 let use_subterm = false
-let use_neg_pred = true
+let use_neg_pred = ref false
 let use_part_eval = true
 let check_sat = true
 let gen_int = true
@@ -46,6 +46,7 @@ let church_encode = false
 let beta_reduce = true (* do beta reduction before model checking *)
 let useless_elim = false
 let lift_fv_only = ref false
+let use_filter = ref false
 
 let mode = ref Reachability
 let init_trans = ref true
@@ -54,6 +55,7 @@ let pred_abst = ref PredAbstCPS
 let model_check = ref ModelCheckCPS
 let refine = ref RefineDependentType
 let form : form list ref = ref []
+let new_cegar = ref false
 
 
 

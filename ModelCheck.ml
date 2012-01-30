@@ -22,10 +22,16 @@ let check prog n =
         Assert_failure(s,_,_) as e when s <> "" -> raise e
       | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
-let check abst prog =
+let check count abst prog =
   let n = (fun (_,defs,_) -> List.length defs) prog in
   let tmp = get_time() in
-  let () = if Flag.print_progress then Format.printf "\n(%d-2) Checking HORS ... @?" !Flag.cegar_loop in
+  let () =
+    if Flag.print_progress
+    then
+      match count with
+          None -> Format.printf "\n(%d-2) Checking HORS ... @?" !Flag.cegar_loop
+        | Some c -> Format.printf "\n(%d-2-%d) Checking HORS ... @?" !Flag.cegar_loop c
+  in
   let result =
     match !Flag.model_check with
         Flag.ModelCheckCPS ->
@@ -35,5 +41,5 @@ let check abst prog =
       | Flag.ModelCheck -> check abst n
   in
   let () = add_time tmp Flag.time_mc in
-  let () = if Flag.print_progress then Format.printf "DONE!@.@." in
+  let () = if Flag.print_progress then Format.printf "DONE!@." in
     result

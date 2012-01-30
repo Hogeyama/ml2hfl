@@ -72,7 +72,7 @@ let rec from_pred map = function
 
 
 let open_cvc3 () =
-  let cin,cout = Unix.open_process (Flag.cvc3 ^ " " ^ Flag.cvc3_option) in
+  let cin,cout = Unix.open_process (!Flag.cvc3 ^ " " ^ Flag.cvc3_option) in
   cvc3in := cin;
   cvc3out := cout
 
@@ -283,7 +283,7 @@ let interpolation env ts1 ts2 =
 
 let get_solution env p =
   (**)
-  let cin,cout = Unix.open_process Flag.cvc3 in
+  let cin,cout = Unix.open_process !Flag.cvc3 in
     (**)
 
 (*
