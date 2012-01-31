@@ -277,10 +277,11 @@ let rec beta_reduce prog =
 
 let model_check_aux (prog,spec) =
   let prog = Typing.infer prog in
+  let env = get_env prog in
   let prog = if Flag.useless_elim then Useless_elim.elim prog else prog in
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
-    match TrecsInterface.check (prog,spec) with
+    match TrecsInterface.check env (prog,spec) with
         None -> None
       | Some ce -> Some (trans_ce ce)
 

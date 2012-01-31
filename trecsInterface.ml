@@ -300,7 +300,7 @@ let write_log filename target =
     close_out cout
 
 
-let check target =
+let check env target =
   initialize ();
   let target' = trans target in
   let r =
@@ -313,7 +313,9 @@ let check target =
       verifyParseResult target'
   in
     match r with
-        Safe _ -> None
+        Safe te ->
+          ignore (Dependent_type.trans te env);
+          None
       | Unsafe tr -> Some tr
 
 
