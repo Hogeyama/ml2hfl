@@ -1,7 +1,9 @@
 open ExtList
 open ExtString
 
-(* only argument side can have intersection types *)
+(** Interaction types *)
+
+(** only argument side can have intersection types *)
 type s =
   Unit of Var.t
 | Bool of Var.t
@@ -27,7 +29,7 @@ let of_simple_type sty =
 		  | SimType.Fun(sty1, sty2) ->
 		      Fun(aux sty1, aux sty2)
   in
-  make (aux sty) Term.ttrue Term.ttrue
+  make (aux sty) Formula.ttrue Formula.ttrue
 
 let is_base sh =
   match sh with
@@ -86,7 +88,7 @@ let rec rename_shape sub ty =
       And(List.map (rename_shape sub) shs)
 
 let rename sub ty =
-  let subst x = Term.make_var2 (sub x) in
+  let subst x = Term.make_var (sub x) in
   make
     (rename_shape sub ty.shape)
     (Term.subst subst ty.pre)
@@ -107,11 +109,11 @@ let rec typed_unify new_var shs =
 		      let y = new_var () in
 		      List.map (function Int(x) -> (x, y), SimType.Int | _ -> assert false) shs
 		  | Fun(_) ->
-		      let shs1, shs2 = List.split (List.map (fun (Fun(sh1, sh2)) -> sh1, sh2) shs) in
+		      let shs1, shs2 = List.split (List.map (function (Fun(sh1, sh2)) -> sh1, sh2 | _ -> assert false) shs) in
 		      typed_unify new_var shs1 @ typed_unify new_var shs2
     | And(_) ->
-        let shss = List.map (fun (And(shs)) -> shs) shs in
-        Util.concat_map (typed_unify new_var) (Util.transpose_list shss)
+        let shss = List.map (function (And(shs)) -> shs | _ -> assert false) shs in
+        Util.concat_map (typed_unify new_var) (Util.transpose shss)
 
 let unify new_var tys =
   List.map fst (typed_unify new_var tys)
@@ -146,7 +148,7 @@ let alpha ty =
 let canonize ty =
   let new_var =
     let cnt = ref 0 in
-    fun () -> cnt := !cnt + 1; Var.V("v" ^ (string_of_int !cnt))
+    fun () -> cnt := !cnt + 1; Var.V(Idnt.make ("v" ^ (string_of_int !cnt)))
   in
   let sub = fresh_names new_var ty.shape in
   rename (fun x -> List.assoc x sub) ty
@@ -207,9 +209,11 @@ let shape_env_of env fcs =
 														*)
               intersect_shapes (shapes_of (Var.T(x, uid, i)))))
           (intersect_shapes (shapes_of (Var.T(x, uid, n))))
+(*
     | _ ->
         let _ = Format.printf "%a:%d" Var.pr x uid in
         assert false
+*)
   and shapes_of x =
     match env x with
       SimType.Unit -> [Unit(x)]
@@ -233,8 +237,8 @@ let of_summaries prog sums fcs =
       fst x_uid,
       canonize
         (make sh
-          (if pres = [] then (*???*)Term.ttrue else Term.band(*???*) pres)
-          (if posts = [] then (*???*)Term.ttrue else Term.bor(*???*) posts)))
+          (if pres = [] then (*???*)Formula.ttrue else Formula.band(*???*) pres)
+          (if posts = [] then (*???*)Formula.ttrue else Formula.bor(*???*) posts)))
     (shape_env_of (Prog.type_of prog) fcs)
 
 let simplify ty =
@@ -243,8 +247,8 @@ let simplify ty =
 				  let sub = unify Var.new_var shs in
 				  make
 				    (rename_shape (fun x -> List.assoc x sub) (List.hd shs))
-				    (Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) ty.pre)
-				    (Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) ty.post)
+				    (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.pre)
+				    (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.post)
   | _ -> ty
 
 let intersect tys =
@@ -258,8 +262,8 @@ let intersect tys =
       simplify
         (make
 		        (intersect_shapes shs)
-		        (Term.bor pres)
-		        (Term.band (List.map2 (fun pre post -> Term.imply pre post) pres posts)))
+		        (Formula.bor pres)
+		        (Formula.band (List.map2 (fun pre post -> Formula.imply pre post) pres posts)))
 
 let intersect_env env =
   List.map
@@ -278,7 +282,7 @@ let rec coerce pos sh1 sh2 phi =
   | [Unit(x)], [Unit(y)]
   | [Bool(x)], [Bool(y)]
   | [Int(x)], [Int(y)] ->
-      Term.subst (fun z -> if Var.equiv x z then Term.make_var2 y else raise Not_found) phi
+      Term.subst (fun z -> if Var.equiv x z then Term.make_var y else raise Not_found) phi
   | [Fun(sh11, sh12)], [Fun(sh21, sh22)] ->
       coerce (not pos) sh11 sh21 (coerce pos sh12 sh22 phi)
   | shs1, shs2 ->
@@ -286,7 +290,7 @@ let rec coerce pos sh1 sh2 phi =
       let n2 = List.length shs2 in
       if pos then
         let fs = Util.maps n1 n2 in
-        Term.band
+        Formula.band
           (List.map
             (fun f ->
               List.fold_right
@@ -298,7 +302,7 @@ let rec coerce pos sh1 sh2 phi =
             fs)
       else
         let fs = Util.maps n2 n1 in
-        Term.bor
+        Formula.bor
           (List.map
             (fun f ->
               List.fold_right
@@ -309,9 +313,9 @@ let rec coerce pos sh1 sh2 phi =
                 phi)
             fs)
 and coerceNegSet sh shs phi =
-  Term.exists
+  Formula.exists
     (env_of sh)
-    (Term.band (List.map (fun sh' -> coerce false sh sh' phi) shs))
+    (Formula.band (List.map (fun sh' -> coerce false sh sh' phi) shs))
 
 let compose ty1 ty2 =
   (*
@@ -330,6 +334,7 @@ let compose ty1 ty2 =
               (List.map
                 (function (Fun(sh1, sh2)) -> sh1, sh2 | _ -> assert false)
                 shs)
+        | _ -> assert false
       in
       let sh1 = intersect_shapes shs1 in
       let sh2 = intersect_shapes shs2 in
@@ -340,13 +345,13 @@ let compose ty1 ty2 =
       let post2 = ty2.post in
       let post2' = coerce true ty2.shape sh1 post2 in
       let env = List.unique (env_of sh1) in
-      let pre = Term.band
-        [Term.forall env (Term.imply post2' pre1);
-         Term.forall (env_of ty2.shape) (Term.imply post1' pre2)]
+      let pre = Formula.band
+        [Formula.forall env (Formula.imply post2' pre1);
+         Formula.forall (env_of ty2.shape) (Formula.imply post1' pre2)]
       in
-      let post = Term.band
-        [Term.exists env (Term.band [post1; post2']);
-         Term.exists (env_of ty2.shape) (Term.band [post1'; post2])]
+      let post = Formula.band
+        [Formula.exists env (Formula.band [post1; post2']);
+         Formula.exists (env_of ty2.shape) (Formula.band [post1'; post2])]
       in
       make sh2 pre post
 
@@ -355,158 +360,158 @@ let type_of_const c =
   Format.printf "%a@ " Const.pr c;
   *)
   match c with
-    Const.Event(id) when id = CompTree.event_fail ->
-(* ToDo *)
+    Const.Event(id) when Idnt.string_of id = CompTree.event_fail ->
+      (** ToDo *)
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
 		    make
 		      (make_fun_shape [Unit(x1)] (Unit(x2)))
-        Term.tfalse
-		      Term.ttrue
+        Formula.tfalse
+		      Formula.ttrue
   | Const.Event(_) ->
       assert false
   | Const.Unit ->
       let x = Var.new_var () in
-      make (Unit(x)) Term.ttrue (Term.eqUnit (Term.make_var2 x) (Term.tunit))
+      make (Unit(x)) Formula.ttrue (Formula.eqUnit (Term.make_var x) (Term.tunit))
   | Const.True ->
       let x = Var.new_var () in
-      make (Bool(x)) Term.ttrue (Term.iff (Term.make_var2 x) (Term.ttrue))
+      make (Bool(x)) Formula.ttrue (Formula.iff (Term.make_var x) (Formula.ttrue))
   | Const.False ->
       let x = Var.new_var () in
-      make (Bool(x)) Term.ttrue (Term.iff (Term.make_var2 x) (Term.tfalse))
+      make (Bool(x)) Formula.ttrue (Formula.iff (Term.make_var x) (Formula.tfalse))
   | Const.And ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Bool(x1); Bool(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.band [Term.make_var2 x1; Term.make_var2 x2]))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.band [Term.make_var x1; Term.make_var x2]))
   | Const.Or ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Bool(x1); Bool(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.bor [Term.make_var2 x1; Term.make_var2 x2]))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.bor [Term.make_var x1; Term.make_var x2]))
   | Const.Imply ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Bool(x1); Bool(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.imply (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.imply (Term.make_var x1) (Term.make_var x2)))
   | Const.Iff ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Bool(x1); Bool(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.iff (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.iff (Term.make_var x1) (Term.make_var x2)))
   | Const.Not ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       make
         (make_fun_shape [Bool(x1)] (Bool(x2)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x2) (Term.bnot (Term.make_var2 x1)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x2) (Formula.bnot (Term.make_var x1)))
   | Const.Lt ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.lt (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.lt (Term.make_var x1) (Term.make_var x2)))
   | Const.Gt ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.gt (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.gt (Term.make_var x1) (Term.make_var x2)))
   | Const.Leq ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.leq (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.leq (Term.make_var x1) (Term.make_var x2)))
   | Const.Geq ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.geq (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.geq (Term.make_var x1) (Term.make_var x2)))
   | Const.EqBool ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Bool(x1); Bool(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.eqBool (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.eqBool (Term.make_var x1) (Term.make_var x2)))
   | Const.NeqBool ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Bool(x1); Bool(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.neqBool (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.neqBool (Term.make_var x1) (Term.make_var x2)))
   | Const.EqUnit ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Unit(x1); Unit(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.eqUnit (Term.make_var2 x1) (Term.make_var2 x2))) (*ToDo*)
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.eqUnit (Term.make_var x1) (Term.make_var x2))) (**ToDo*)
   | Const.NeqUnit ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Unit(x1); Unit(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.neqUnit (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.neqUnit (Term.make_var x1) (Term.make_var x2)))
   | Const.EqInt ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.eqInt (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.eqInt (Term.make_var x1) (Term.make_var x2)))
   | Const.NeqInt ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Bool(x3)))
-        Term.ttrue
-        (Term.iff (Term.make_var2 x3) (Term.neqInt (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.iff (Term.make_var x3) (Formula.neqInt (Term.make_var x1) (Term.make_var x2)))
   | Const.Int(n) ->
       let x = Var.new_var () in
-      make (Int(x)) Term.ttrue (Term.eqInt (Term.make_var2 x) (Term.tint n))
+      make (Int(x)) Formula.ttrue (Formula.eqInt (Term.make_var x) (Term.tint n))
   | Const.RandInt ->
-(* ToDo *)
+      (** ToDo *)
       let x = Var.new_var () in
-      make (Int(x)) Term.ttrue Term.ttrue
+      make (Int(x)) Formula.ttrue Formula.ttrue
 (*
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       make
         (Fun([Unit(x1), Int(x2)]))
-        Term.ttrue
-        Term.ttrue
+        Formula.ttrue
+        Formula.ttrue
 *)
   | Const.Add ->
       let x1 = Var.new_var () in
@@ -514,28 +519,28 @@ let type_of_const c =
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Int(x3)))
-        Term.ttrue
-        (Term.eqInt (Term.make_var2 x3) (Term.add (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.eqInt (Term.make_var x3) (Term.add (Term.make_var x1) (Term.make_var x2)))
   | Const.Sub ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Int(x3)))
-        Term.ttrue
-        (Term.eqInt (Term.make_var2 x3) (Term.sub (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.eqInt (Term.make_var x3) (Term.sub (Term.make_var x1) (Term.make_var x2)))
   | Const.Mul ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       let x3 = Var.new_var () in
       make
         (make_fun_shape [Int(x1); Int(x2)] (Int(x3)))
-        Term.ttrue
-        (Term.eqInt (Term.make_var2 x3) (Term.mul (Term.make_var2 x1) (Term.make_var2 x2)))
+        Formula.ttrue
+        (Formula.eqInt (Term.make_var x3) (Term.mul (Term.make_var x1) (Term.make_var x2)))
   | Const.Minus ->
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
       make
         (make_fun_shape [Int(x1)] (Int(x2)))
-        Term.ttrue
-        (Term.eqInt (Term.make_var2 x2) (Term.minus (Term.make_var2 x1)))
+        Formula.ttrue
+        (Formula.eqInt (Term.make_var x2) (Term.minus (Term.make_var x1)))

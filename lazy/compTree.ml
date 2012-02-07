@@ -1,6 +1,11 @@
 open ExtList
 open ExtString
 
+(** Computation trees *)
+
+(** {6 Types} *)
+
+(** Elements of traces *)
 type s =
   Call of (Var.t * int) * Term.t
 | Arg of (Var.t * Term.t * SimType.t) list
@@ -8,19 +13,57 @@ type s =
 | Nop
 | Error
 
-(* ToDo: use record *)
-type t = Node of (int * int list) * Term.t * (s * t) list ref
+(** Computation trees *)
+type t = { uid: int; path: int list; term: Term.t; children: (s * t) list ref }
 
-(* generate id of a function call *)
+(** {6 Basic functions} *)
+
+let make uid path term children =
+  { uid = uid; path = path; term = term; children = children; }
+
+(** generate a new id of a function call *)
 let gen_id =
   let cnt = ref 0 in
   fun () -> cnt := !cnt + 1; !cnt
 
+(** @return ids for the return value and arguments *)
 let ret_args f uid arity = 
-  Term.make_var2 (Var.T(f, uid, arity)),
-  List.init arity (fun i -> Term.make_var2 (Var.T(f, uid, i)))
+  Term.make_var (Var.T(f, uid, arity)),
+  List.init arity (fun i -> Term.make_var (Var.T(f, uid, i)))
 
-let init_ctree_of prog =
+(** {6 Functions on traces} *)
+
+let rec pr_trace ppf p =
+  let pr ppf s =
+    match s with
+      Call(_, t) ->
+        Format.fprintf ppf "[@[<hov>%a.@," Term.pr t
+    | Arg(xttys) ->
+        Format.fprintf ppf "%a@," Term.pr (Formula.band (List.map Formula.eq_xtty xttys))
+    | Ret(x, t, ty) -> 
+        Format.fprintf ppf "%a@]]@," Term.pr (Formula.eq_xtty (x, t, ty))
+    | Nop ->
+        Format.fprintf ppf "nop"
+    | Error ->
+        Format.fprintf ppf "error"
+  in
+  Format.fprintf ppf "%a" (Util.pr_list pr "") p
+
+let rec function_calls_of tr =
+  match tr with
+    [] ->
+      []
+  | s::tr' ->
+      (match s with
+        Call(x, _) ->
+          x::function_calls_of tr'
+      | _ -> function_calls_of tr')
+
+(** {6 Functions on computation trees} *)
+
+(** @param prog a program
+    initialize a computation tree of prog *)
+let init prog =
   let uid = gen_id () in
   let ty_main = Prog.type_of prog (Var.V(prog.Prog.main)) in
   let ret, args =
@@ -30,24 +73,20 @@ let init_ctree_of prog =
      (SimType.arity ty_main)
   in
   let _, retty = SimType.args_ret ty_main in
-  Node((uid, []), Term.Ret([], ret, Term.Call([], Term.make_var prog.Prog.main, args), retty), ref [])
+  make uid [] (Term.Ret([], ret, Term.Call([], Term.make_var (Var.make prog.Prog.main), args), retty)) (ref [])
 
-
-let eq_xtty (x, t, ty) =
-  Term.eq_ty ty (Term.make_var2 x) t
-
-let save_as_dot filename rt wl =
+let save_as_dot filename ct wl =
   let node_name uid t = (String.of_int uid) ^ ": " ^ Term.string_of t in
   let f s =
     match s with
       Call(_, t) -> Term.string_of t
-    | Arg(xttys) -> Term.string_of (Term.band (List.map eq_xtty xttys))
-    | Ret(x, t, ty) -> Term.string_of (eq_xtty (x, t, ty))
+    | Arg(xttys) -> Term.string_of (Formula.band (List.map Formula.eq_xtty xttys))
+    | Ret(x, t, ty) -> Term.string_of (Formula.eq_xtty (x, t, ty))
     | Nop -> ""
     | Error -> ""
   in
-  let rec traverse (s, l) (Node((uid, _), t, cs)) =
-    let s' = node_name uid t in
+  let rec traverse (s, l) ct =
+    let s' = node_name ct.uid ct.term in
     (s, s', l)::
     (List.concat
       (List.map
@@ -55,15 +94,15 @@ let save_as_dot filename rt wl =
           traverse
             (s', "[label = \"" ^ (f g) ^ "\"]")
             n)
-        !cs))
+        !(ct.children)))
   in
-  let es = List.unique (traverse ("", "") rt) in
+  let es = List.unique (traverse ("", "") ct) in
   let vs = List.unique (List.concat (List.map (fun (x, y, _) -> [x, ""; y, ""]) es)) in
   let es = List.filter (fun (x, _, _) -> x <> "") es in
   let vs = List.filter (fun (x, _) -> x <> "") vs in
   let vs = List.map
     (fun (x, _) ->
-      if List.exists (fun (Node((uid, _), t, _)) -> x = node_name uid t) wl then
+      if List.exists (fun ct -> x = node_name ct.uid ct.term) wl then
         (x, "[style = dashed]")
       else
         (x, ""))
@@ -71,42 +110,28 @@ let save_as_dot filename rt wl =
   in
   Util.save_as_dot filename vs es
 
-let rec traces_of (Node(_, _, cs)) =
-  Util.concat_map (fun (g, n) -> let ps = traces_of n in if ps = [] then [[g]] else List.map (fun p -> g::p) ps) !cs
+(** @param ct a computation tree 
+    @return traces of ct *)
+let rec traces_of ct =
+  Util.concat_map (fun (g, n) -> let ps = traces_of n in if ps = [] then [[g]] else List.map (fun p -> g::p) ps) !(ct.children)
 
-let error_traces_of rt = List.filter (fun p -> List.last p = Error) (traces_of rt)
-
-let rec pr_trace ppf p =
-  let pr ppf s =
-    match s with
-      Call(_, t) ->
-        Format.fprintf ppf "[@[<hov>%a.@," Term.pr t
-    | Arg(xttys) ->
-        Format.fprintf ppf "%a@," Term.pr (Term.band (List.map eq_xtty xttys))
-    | Ret(x, t, ty) -> 
-        Format.fprintf ppf "%a@]]@," Term.pr (eq_xtty (x, t, ty))
-    | Nop ->
-        Format.fprintf ppf "nop"
-    | Error ->
-        Format.fprintf ppf "error"
-  in
-  Format.fprintf ppf "%a" (Util.pr_list pr "") p
+let error_traces_of ct = List.filter (fun p -> List.last p = Error) (traces_of ct)
 
 let event_fail = "fail"
-let expand_node prog fenv (Node((uid, p), t, cs)) =
+let expand_node prog fenv ct =
   let _ =
-    if !cs <> [] then
+    if !(ct.children) <> [] then
       let _ =  Format.printf "the node is already expanded@." in
       assert false
   in
   try
-    let ctx, red = Term.redex_of (Prog.type_of prog) t in
+    let ctx, red = Term.redex_of (Prog.type_of prog) ct.term in
     let fenv, gns =
       match red with
-        Term.App(_, Term.Const(_, Const.Event(id)), _(*???*)) when id = event_fail ->
-          fenv, [Error, Node((gen_id (), p), Term.Error([]), ref [])]
+        Term.App(_, Term.Const(_, Const.Event(id)), _(*???*)) when Idnt.string_of id = event_fail ->
+          fenv, [Error, make (gen_id ()) ct.path (Term.Error([])) (ref [])]
       | Term.App(_, Term.Const(_, Const.RandInt), t(*???*)) ->
-          fenv, [Nop, Node((gen_id (), p), ctx (Term.apply t [Term.make_var2 (Var.make (Idnt.new_id ()))]), ref [])]
+          fenv, [Nop, make (gen_id ()) ct.path (ctx (Term.apply t [Term.make_var (Var.make (Idnt.new_id ()))])) (ref [])]
       | Term.App(_, _, _) ->
           let func, args = Term.fun_args red in
           let attr, f =
@@ -152,7 +177,7 @@ let expand_node prog fenv (Node((uid, p), t, cs)) =
                 fun argty -> farg, aarg, argty
               | _ -> assert false)
               faargs argtys),
-          Node((uid, p), ctx reduct, ref [])]
+          make uid ct.path (ctx reduct) (ref [])]
       | Term.Call(_, Term.Var(_, g), args) ->
           (match g with
             Var.V(f) ->
@@ -171,30 +196,20 @@ let expand_node prog fenv (Node((uid, p), t, cs)) =
                     end
                   in
                   let sub x = List.assoc x faargs in
-                  Call((g, uid), Term.subst sub fd.Fdef.guard),
-                  Node((gen_id (), p @ [i]), ctx (Term.subst sub fd.Fdef.body), ref []))
+                  Call((g, ct.uid), Term.subst sub fd.Fdef.guard),
+                  make (gen_id ()) (ct.path @ [i]) (ctx (Term.subst sub fd.Fdef.body)) (ref []))
                 fdefs
           | Var.T(_, _, _) ->
               let f = try fenv g with Not_found -> assert false in
-              fenv, [Call((g, uid), Term.ttrue), Node((gen_id (), p), ctx (Term.apply f args), ref [])])
+              fenv, [Call((g, ct.uid), Formula.ttrue), make (gen_id ()) ct.path (ctx (Term.apply f args)) (ref [])])
       | Term.Ret(_, Term.Var(a, ret), t, ty) ->
-          fenv, [Ret(ret, t, ty), Node((gen_id (), p), ctx (Term.Var(a, ret)), ref [])]
+          fenv, [Ret(ret, t, ty), make (gen_id ()) ct.path (ctx (Term.Var(a, ret))) (ref [])]
       | _ -> begin
           Format.printf "%a@." Term.pr red;
           assert false
          end
     in
-    let _ = cs := gns in
+    let _ = ct.children := gns in
     fenv, List.map snd gns
   with Not_found -> (*no redex found*)
     fenv, []
-
-let rec function_calls_of tr =
-  match tr with
-    [] ->
-      []
-  | s::tr' ->
-      (match s with
-        Call(x, _) ->
-          x::function_calls_of tr'
-      | _ -> function_calls_of tr')

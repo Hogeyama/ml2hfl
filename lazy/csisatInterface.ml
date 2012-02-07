@@ -1,6 +1,9 @@
 open ExtList
 open ExtString
 open Term
+open Formula
+
+(** Interface to CSIsat *)
 
 let csisat_unit = CsisatAst.Application("unit", [])
 let csisat_true = CsisatAst.Application("true", [])
@@ -78,7 +81,7 @@ let rec term_of s =
     CsisatAst.Constant(f) ->
       tint (int_of_float f), SimType.Int
   | CsisatAst.Variable(id) ->
-      make_var2 (Var.parse id), SimType.Int(*???*)
+      make_var (Var.parse id), SimType.Int(*???*)
   | CsisatAst.Application(_, _) ->
       if s = csisat_unit then
         tunit, SimType.Unit
@@ -136,7 +139,7 @@ let satisfiable p =
     assert false(*false*)
 
 let implies t1 t2 =
-  if Term.equiv t1 Term.tfalse then
+  if Term.equiv t1 tfalse then
     true
   else
     let oldih = !ih in
@@ -162,7 +165,7 @@ exception No_interpolant
 
 let interpolate t1 t2 =
 (*
-  if Cvc3Interface.is_valid (Term.bnot t2) then
+  if Cvc3Interface.is_valid (bnot t2) then
     t1
   else
 *)

@@ -1,6 +1,8 @@
 open ExtList
 open ExtString
 
+(** Arithmetic expressions *)
+
 let mul m nxs = List.map (fun (n, x) -> m * n, x) nxs
 
 let minus nxs = mul (-1) nxs

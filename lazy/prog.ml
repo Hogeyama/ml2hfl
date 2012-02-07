@@ -1,5 +1,7 @@
 open ExtList
 
+(** Programs *)
+
 type t = { attr: Attr.t; fdefs: Fdef.t list; types: (Idnt.t * SimType.t) list; main: Idnt.t }
 
 let pr ppf prog =
@@ -13,7 +15,7 @@ let fdefs_of prog id =
   end else
     res
 
-(* support type look-up for structured variables *)
+(** support type look-up for structured variables *)
 let rec type_of prog x =
   match x with
     Var.V(id) ->
@@ -37,7 +39,7 @@ let set_arity am prog =
   { prog with fdefs = List.map (Fdef.set_arity am) prog.fdefs }
 *)
 
-(* x is a structured variable *)
+(** @param x x is a structured variable *)
 let is_base prog x =
   match type_of prog x with
     SimType.Fun(_, _) -> false

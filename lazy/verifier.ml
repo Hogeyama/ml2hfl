@@ -1,5 +1,7 @@
 open ExtList
 
+(** Verifier *)
+
 let refineRefTypes prog etrs =
 		let constrss = List.map CgenRefType.cgen etrs in
 (*
@@ -42,7 +44,7 @@ let verify prog =
   Format.printf "%a" Prog.pr prog;
 *)
   try
-		  let rt = CompTree.init_ctree_of prog in
+		  let rt = CompTree.init prog in
     let strategy = if true then CompTreeExpander.bf_strategy rt else CompTreeExpander.df_strategy rt in
     let rec loop old_etrs i =
       let _ = CompTreeExpander.expand_until_new_error_trace_found prog rt strategy in
@@ -78,7 +80,7 @@ let infer_abst_type cex prog =
   let _ = Format.printf "%a" Prog.pr prog in
 *)
   let _ = Format.printf "%s@." (String.concat ":" (List.map string_of_int cex)) in
-  let rt = CompTree.init_ctree_of prog in
+  let rt = CompTree.init prog in
   let strategy = CompTreeExpander.cex_strategy cex rt in
   let _ = CompTreeExpander.expand_until_new_error_trace_found prog rt strategy in
   let etrs = CompTree.error_traces_of rt in
@@ -100,7 +102,7 @@ let infer_abst_type cex prog =
   in
 		let env =
 		  List.map
-		    (fun ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys))
+		    (function ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys) | _ -> assert false)
 		    (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env)
 		in
 		let _ = Format.printf "abstraction types:@.  %a@." AbsType.pr_env env in

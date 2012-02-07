@@ -1,5 +1,7 @@
 open ExtList
 
+(** Simple types *)
+
 type t = Unit | Bool | Int | Fun of t * t
 
 let is_base ty =

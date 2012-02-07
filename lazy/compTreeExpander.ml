@@ -1,39 +1,46 @@
 open ExtList
 open ExtString
+open CompTree
 
-type t = { is_end: unit -> bool; get: unit -> CompTree.t list; next: unit -> CompTree.t; update: CompTree.t list -> unit }
+(** Expanding computation trees *)
 
-let bf_strategy rt =
-  let wlr = ref [rt] in
+(** expansion strategies *)
+type s = { is_end: unit -> bool; get: unit -> t list; next: unit -> t; update: t list -> unit }
+
+(** breadth first strategy *)
+let bf_strategy ct =
+  let wlr = ref [ct] in
   { is_end = (fun () -> !wlr = []);
     get = (fun () -> !wlr);
     next = (fun () -> match !wlr with [] -> raise Not_found | n::wl -> wlr := wl; n);
     update = (fun wl -> wlr := !wlr @ wl) }
 
-let df_strategy rt =
-  let wlr = ref [rt] in
+(** depth first strategy *)
+let df_strategy ct =
+  let wlr = ref [ct] in
   { is_end = (fun () -> !wlr = []);
     get = (fun () -> !wlr);
     next = (fun () -> match !wlr with [] -> raise Not_found | n::wl -> wlr := wl; n);
     update = (fun wl -> wlr := wl @ !wlr) }
 
-let cex_strategy cex rt =
-  let filt rts = List.filter (fun (CompTree.Node((_, p), _, _)) -> Util.prefix p cex) rts in
-  let wlr = ref (filt [rt]) in
+(** strategy using a given counterexample *)
+let cex_strategy cex ct =
+  let filt cts = List.filter (fun ct -> Util.is_prefix ct.path cex) cts in
+  let wlr = ref (filt [ct]) in
   { is_end = (fun () -> !wlr = []);
     get = (fun () -> !wlr);
     next = (fun () -> match !wlr with [] -> raise Not_found | n::wl -> wlr := wl; n);
     update = (fun wl -> wlr := (filt wl) @ !wlr) }
 
 
-(* ToDo: refactor the function *)
-let expand_until_new_error_trace_found prog rt strategy =
+(** ToDo: refactor the function *)
+let expand_until_new_error_trace_found prog ct strategy =
   let rec loop fenv =
     if strategy.is_end () then
       ()
     else
-      let _ = if Flags.debug then CompTree.save_as_dot "compTree.dot" rt (strategy.get ()) in
-      let fenv, wl = CompTree.expand_node prog fenv (strategy.next ()) in
+      let _ = if Flags.debug then save_as_dot "compTree.dot" ct (strategy.get ()) in
+      let fenv, wl = expand_node prog fenv (strategy.next ()) in
       let _ = strategy.update wl in
       let rec lp () =
         let _ = Format.printf "expand the computation tree ? (y/n): %!" in
@@ -45,7 +52,7 @@ let expand_until_new_error_trace_found prog rt strategy =
         else
           lp ()
       in
-      if List.exists (function (CompTree.Node(_, Term.Error(_), _)) -> true | _ -> false) wl (*&& not (lp ())*) then
+      if List.exists (fun ct -> match ct.term with Term.Error(_) -> true | _ -> false) wl (*&& not (lp ())*) then
         ()
       else
         loop fenv

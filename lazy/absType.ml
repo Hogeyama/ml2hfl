@@ -1,5 +1,7 @@
 open ExtList
 
+(** Abstraction types *)
+
 type t = Base of b * Var.t * Term.t list | Fun of t * t
 and b = Unit | Bool | Int
 
@@ -59,16 +61,17 @@ let rec merge2 aty1 aty2 =
     Base(bty1, x1, ts1), Base(bty2, x2, ts2) ->
       let _ = assert (bty1 = bty2) in
       let x = Var.new_var () in
-      let sub1 y = if y = x1 then Term.make_var2 x else raise Not_found in
-      let sub2 y = if y = x2 then Term.make_var2 x else raise Not_found in
+      let sub1 y = if y = x1 then Term.make_var x else raise Not_found in
+      let sub2 y = if y = x2 then Term.make_var x else raise Not_found in
       Base(bty1, x, List.unique ((List.map (Term.subst sub1) ts1) @ (List.map (Term.subst sub2) ts2)))
   | Fun(aty11, aty12), Fun(aty21, aty22) ->
       let aty1 = merge2 aty11 aty21 in
-      let sub1 y = if is_base aty11 && Var.equiv (bv_of aty11) y then Term.make_var2 (bv_of aty1) else raise Not_found in
-      let sub2 y = if is_base aty21 && Var.equiv (bv_of aty21) y then Term.make_var2 (bv_of aty1) else raise Not_found in
+      let sub1 y = if is_base aty11 && Var.equiv (bv_of aty11) y then Term.make_var (bv_of aty1) else raise Not_found in
+      let sub2 y = if is_base aty21 && Var.equiv (bv_of aty21) y then Term.make_var (bv_of aty1) else raise Not_found in
       let aty12 = subst sub1 aty12 in
       let aty22 = subst sub2 aty22 in
       Fun(aty1, merge2 aty12 aty22)
+  | _ -> assert false
 
 let merge atys =
   match atys with
@@ -132,7 +135,7 @@ let of_interaction_type f sty =
             Fun(Var.new_var (), aty1, aty2), ps2
   in
   let env = get_env sty.IntType.shape in
-  let subst = Term.subst (fun x -> Term.make_var2 (List.assoc x env)) in
+  let subst = Term.subst (fun x -> Term.make_var (List.assoc x env)) in
   let ps = [subst sty.IntType.pre; subst sty.IntType.post] in
   let ps' = List.filter (function Term.Const(_, Const.True) -> false | _ -> true) ps in
   let aty,ps'' = trans env ps' [] sty.IntType.shape in
@@ -144,13 +147,13 @@ let of_interaction_type f sty =
 let rec of_refinement_type rty =
   match rty with
     RefType.Base(x, RefType.Unit, t) ->
-      let ps = if Flags.atom then Term.atoms t else if t = Term.ttrue || t = Term.tfalse then [] else [t] in
+      let ps = if Flags.atom then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
       Base(Unit, x, ps)
   | RefType.Base(x, RefType.Bool, t) ->
-      let ps = if Flags.atom then Term.atoms t else if t = Term.ttrue || t = Term.tfalse then [] else [t] in
+      let ps = if Flags.atom then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
       Base(Bool, x, ps)
   | RefType.Base(x, RefType.Int, t) ->
-      let ps = if Flags.atom then Term.atoms t else if t = Term.ttrue || t = Term.tfalse then [] else [t] in
+      let ps = if Flags.atom then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
       Base(Int, x, ps)
   | RefType.Fun(xs) ->
       let _ = assert (xs <> []) in

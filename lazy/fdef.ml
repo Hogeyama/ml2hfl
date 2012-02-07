@@ -1,6 +1,10 @@
 open ExtList
 
-(* args.length > 0, a.name=b.name=>a.args.length=b.args.length, guard is boolean expression without function calls *)
+(** Function definitions *)
+
+(** args.length > 0,
+    a.name=b.name=>a.args.length=b.args.length,
+    guard is boolean expression without function calls *)
 type t = { attr: Attr.t; name: Idnt.t; args: Idnt.t list; guard: Term.t; body: Term.t }
 
 let pr ppf fdef =

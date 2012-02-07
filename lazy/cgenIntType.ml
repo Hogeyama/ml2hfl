@@ -2,7 +2,9 @@ open ExtList
 open ExtString
 open Cgen
 
-(* generate a set of constraints from an error trace *)
+(** Constraint generation for interaction types *)
+
+(** generate a set of constraints from an error trace *)
 let cgen etr =
   let rec aux (Loc(tr, p) as loc) etr0 =
     match etr0 with
@@ -14,20 +16,20 @@ let cgen etr =
             if Var.is_top (fst y) then
               aux (insert_down loc (make y true [g] [])) etr
             else if Var.is_pos (fst y) then
-              let _ = assert (g = Term.ttrue) in
+              let _ = assert (g = Formula.ttrue) in
               aux (down loc (Var.tlfc_of (fst y))) etr
             else if Var.is_neg (fst y) then
-              let _ = assert (g = Term.ttrue) in
+              let _ = assert (g = Formula.ttrue) in
 		            aux (up loc) etr
             else assert false
         | CompTree.Arg(xttys) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) xttys in
             let nd = get tr in
-            aux (Loc(set tr { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] }, p)) etr
+            aux (Loc(set tr { nd with constr = nd.constr @ [Formula.ttrue]; subst = nd.subst @ [xttys] }, p)) etr
         | CompTree.Ret(x, t, ty) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) [x, t, ty] in
             let nd = get tr in
-            let nd' = { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] } in
+            let nd' = { nd with constr = nd.constr @ [Formula.ttrue]; subst = nd.subst @ [xttys] } in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(set tr nd', p))) etr
@@ -60,7 +62,7 @@ let infer_env prog sums fcs =
   env @ env'
 
 
-(* require that (x, uid) is a top level function call *)
+(** require: (x, uid) is a top level function call *)
 let visible (x, uid) =
   function
     Var.T(x', uid', _) as y ->
@@ -68,8 +70,8 @@ let visible (x, uid) =
 		| Var.V(_) ->
       assert false
 
+(** ToDo: not enought for higher-order functions *)
 let vars_of_tree env tr =
-  (* ToDo: not enought for higher-order functions *)
   let x, uid = (get tr).name in
   let n = SimType.arity (env x) in
   List.init (n + 1) (fun i -> Var.T(x, uid, i))
@@ -88,8 +90,8 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 						let tts, tps = List.split
 						  (List.map2
 						    (fun tr p ->
-						      Term.rename_fresh (visible (get tr).name) (Term.simplify (qelim (visible (get tr).name) (term_of_nodes (nodes_of_tree tr)))),
-						      Term.rename_fresh (visible (get tr).name) (Term.simplify (qelim (visible (get tr).name) (term_of_nodes (nodes_of_path p)))))
+						      Term.rename_fresh (visible (get tr).name) (Formula.simplify (Formula.eqelim (visible (get tr).name) (term_of_nodes (nodes_of_tree tr)))),
+						      Term.rename_fresh (visible (get tr).name) (Formula.simplify (Formula.eqelim (visible (get tr).name) (term_of_nodes (nodes_of_path p)))))
 						    trs ps)
 						in
 						let tt = List.hd tts in
@@ -105,8 +107,8 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 						in
       interpolate_widen nd.closed t1 t2 tw1 tw2
     else
-						let tt = Term.simplify (qelim (visible nd.name) (term_of_nodes [nd])) in
-						let tp = Term.simplify (qelim (visible nd.name) (term_of_nodes (nodes_of_path p))) in
+						let tt = Formula.simplify (Formula.eqelim (visible nd.name) (term_of_nodes [nd])) in
+						let tp = Formula.simplify (Formula.eqelim (visible nd.name) (term_of_nodes (nodes_of_path p))) in
 						let t1, t2 = if nd.closed then tt, tp else tp, tt in
       interpolate t1 t2
   in
@@ -118,25 +120,25 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 		  match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
-        let ts1, t::ts2 = Util.split_at nd.constr (List.length trs1 + 1) in
-        let xttyss1, xttys::xttyss2 = Util.split_at nd.subst (List.length trs1) in
+        let ts1, t::ts2 = List.split_nth (List.length trs1 + 1) nd.constr in
+        let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
-        let ts2 = match ts2 with t'::ts2' -> (Term.band [t; Term.subst sub interp; t'])::ts2' | [] -> assert false in
+        let ts2 = match ts2 with t'::ts2' -> (Formula.band [t; Term.subst sub interp; t'])::ts2' | [] -> assert false in
         Some(root (Loc(Node({ nd with constr = ts1 @ ts2;
                                       subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))
 		else
 		  let _ = assert (nd.ret = None) in
 		  [`Pre((x, uid), interp)],
 		  match p with
-		    Top -> let _ = assert (interp = Term.ttrue) in None
+		    Top -> let _ = assert (interp = Formula.ttrue) in None
 		  | Path(up, trs1, nd, trs2) ->
         (* assert (trs2 = []) *)
-        let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
-        let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
+        let ts1, t::[] = List.split_nth (List.length trs1 + 1) nd.constr in
+        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
-        Some(root (Loc(Node({ nd with constr = ts1 @ [Term.band [t; Term.bnot (Term.subst sub interp)]];
+        Some(root (Loc(Node({ nd with constr = ts1 @ [Formula.band [t; Formula.bnot (Term.subst sub interp)]];
                                       subst = xttyss1 @ [[]]}, trs1 @ trs2), up)))
 
 let summaries_of env constrs0 =

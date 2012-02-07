@@ -2,7 +2,9 @@ open ExtList
 open ExtString
 open Cgen
 
-(* generate a set of constraints from an error trace *)
+(** Constraint generation for refinement types *)
+
+(** generate a set of constraints from an error trace *)
 let cgen etr =
   let rec aux (Loc(tr, p) as loc) etr0 =
     match etr0 with
@@ -14,7 +16,7 @@ let cgen etr =
             if Var.is_top (fst y) then
               aux (insert_down loc (make y true [g] [])) etr
             else if Var.is_pos (fst y) then (* changed *)
-              let _ = assert (g = Term.ttrue) in
+              let _ = assert (g = Formula.ttrue) in
               aux (insert_down loc (make y true [g] [])) etr
             else if Var.is_neg (fst y) then (* changed *)
 (*              if Flags.use_ret then*)
@@ -22,23 +24,23 @@ let cgen etr =
 		              let nd' = { nd with ret = Some(y) } in
 				            aux (up (Loc(set tr nd', p))) etr
 (*              else
-		              let _ = assert (g = Term.ttrue) in
+		              let _ = assert (g = Formula.ttrue) in
 		              aux (insert_down loc (make y true [g] [])) etr*)
             else assert false
         | CompTree.Arg(xttys) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) xttys in
             let nd = get tr in
-            aux (Loc(set tr { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] }, p)) etr
+            aux (Loc(set tr { nd with constr = nd.constr @ [Formula.ttrue]; subst = nd.subst @ [xttys] }, p)) etr
         | CompTree.Ret(x, t, ty) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) [x, t, ty] in
             let nd = get tr in
-            let nd' = { nd with constr = nd.constr @ [Term.ttrue]; subst = nd.subst @ [xttys] } in
+            let nd' = { nd with constr = nd.constr @ [Formula.ttrue]; subst = nd.subst @ [xttys] } in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(set tr nd', p))) etr
             else if Var.is_neg f then (* changed *)
 (*              if Flags.use_ret then*)
-                aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true [Term.ttrue] [])) etr
+                aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true [Formula.ttrue] [])) etr
 (*              else
                 aux (up (Loc(set tr nd', p))) etr*)
             else assert false
@@ -52,7 +54,7 @@ let cgen etr =
   match etr with
     CompTree.Call(x, g)::etr ->
       let tr = aux (zipper (make x true [g] [])) etr in
-      let tr' = (*get_unsat_prefix*) tr in
+      let tr' = get_unsat_prefix tr in
 (*
       let _ = Format.printf "%a@.%a@." pr tr pr tr' in
 *)
@@ -73,7 +75,7 @@ let infer_env prog sums fcs =
   in
   env @ env'
 
-(* assume that x is a structured variable *)
+(** require: x is a structured variable *)
 let rec visible x y =
   match x with
     Var.V(_) ->
@@ -94,14 +96,14 @@ let rec enum_visible x =
       enum_visible x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
 *)
 
+(** ToDo: not enought for higher-order functions *)
 let args_of_tree env tr =
-  (* ToDo: not enought for higher-order functions *)
   let x, uid = (get tr).name in
   let n = SimType.arity (env x) in
   List.init n (fun i -> Var.T(x, uid, i))
 
+(** ToDo: not enought for higher-order functions *)
 let ret_of_tree env tr =
-  (* ToDo: not enought for higher-order functions *)
   let x, uid = (get tr).name in
 		match (get tr).ret with
 		  None ->
@@ -120,7 +122,7 @@ let ret_of env nd =
 		| Some(x, uid) ->
 						SimType.find_last_base env (x, uid)
 
-(* assume that all the substituted nodes are closed *)
+(** require: all the substituted nodes are closed *)
 let subst_interps env tr ret_interp_list =
   let rec aux (Node(nd, trs) as tr) =
     if trs = [] then
@@ -136,7 +138,11 @@ let subst_interps env tr ret_interp_list =
         | tr::trs, t::ts, xttys::xttyss ->
             let trs, ts, xttyss = aux2 trs ts xttyss in
             (match tr with
-              `L(t') -> (match ts, xttyss with t''::ts, xttys'::xttyss -> trs, Term.band [t; t'; t''] :: ts, (xttys @ xttys') :: xttyss | _ -> assert false)
+              `L(t') ->
+                (match ts, xttyss with
+                  t''::ts, xttys'::xttyss ->
+                    trs, Formula.band [t; t'; t''] :: ts, (xttys @ xttys') :: xttyss
+                | _ -> assert false)
             | `R(tr) -> tr::trs, t::ts, xttys::xttyss)
       in
       let trs, ts, xttyss = aux2 (List.map aux trs) (List.tl nd.constr) nd.subst in
@@ -149,24 +155,33 @@ let subst_interp closed p interp =
 		  match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
-        let ts1, t::ts2 = Util.split_at nd.constr (List.length trs1 + 1) in
-        let xttyss1, xttys::xttyss2 = Util.split_at nd.subst (List.length trs1) in
-        (* must not apply xttys to interp *)
-        let ts2 = match ts2 with t'::ts2' -> (Term.band [t; interp; t'])::ts2' | [] -> assert false in
-        let xttyss2 = match xttyss2 with xttys'::xttyss2' -> (xttys @ xttys')::xttyss2' | [] -> assert false in
+        let ts1, t::ts2 = List.split_nth (List.length trs1 + 1) nd.constr in
+        let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
+        (** must not apply xttys to interp *)
+        let ts2 =
+          match ts2 with
+            t'::ts2' -> (Formula.band [t; interp; t'])::ts2'
+          | [] -> assert false
+        in
+        let xttyss2 =
+          match xttyss2 with
+            xttys'::xttyss2' -> (xttys @ xttys')::xttyss2'
+          | [] -> assert false
+        in
         Some(root (Loc(Node({ nd with constr = ts1 @ ts2;
                                       subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))
 		else
 		  match p with
-		    Top -> let _ = assert (interp = Term.ttrue) in None
-		  | Path(up, trs1, nd, []) ->
-				    if Term.equiv interp Term.ttrue then
+		    Top -> let _ = assert (interp = Formula.ttrue) in None
+		  | Path(up, trs1, nd, trs2) ->
+        let _ = assert (trs2 = []) in
+				    if Term.equiv interp Formula.ttrue then
           let _ = Format.printf "stop propagation@." in
 				      None
 				    else
-		        let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
-		        let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
-          (* must not apply xttys to interp *)
+		        let ts1, t::[] = List.split_nth (List.length trs1 + 1) nd.constr in
+		        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
+          (** must not apply xttys to interp *)
 		        let interp, xttys =
 		          (* apply xttys to interp: unsound try hrec.ml
 				        let xts = List.map (fun (x, t, _) -> x, t) xttys in
@@ -177,7 +192,7 @@ let subst_interp closed p interp =
 		        in
 		        Some(root (Loc(Node({ nd with (**)ret = None;
 				                                    closed = false;(**)
-				                                    constr = ts1 @ [Term.band [t; Term.bnot interp]];
+				                                    constr = ts1 @ [Formula.band [t; Formula.bnot interp]];
 		                                      subst = xttyss1 @ [xttys] }, trs1), (**)path_set_open(**) up)))
 
 let related n1 n2 =
@@ -195,8 +210,8 @@ let rec prune_tree pred (Node(nd, trs)) =
     None
   else
     let trs = List.map (prune_tree pred) trs in
-    let [[t1]; ts1; ts2] = Util.split nd.constr [1; List.length trs] in
-    let [xttyss1; xttyss2] = Util.split nd.subst [List.length trs] in
+    let [[t1]; ts1; ts2] = Util.split_multiple [1; List.length trs] nd.constr in
+    let [xttyss1; xttyss2] = Util.split_multiple [List.length trs] nd.subst in
     let res, xttys =
       List.fold_left
        (fun (res, xttys1) (t, xttys2, tr) ->
@@ -212,15 +227,19 @@ let rec prune_tree pred (Node(nd, trs)) =
                       subst = List.flatten [xttyss1; if xttys = [] then xttyss2 else (xttys @ List.hd xttyss2) :: List.tl xttyss2] },
             trs))
 
-(* assume that for any nd in the spine, not (pred nd.name) *)
+(** require: for any nd in the spine, not (pred nd.name) *)
 let rec prune_path pred p =
   match p with
     Top -> Top
   | Path(up, trs1, nd, trs2) ->
       let trs1 = List.map (prune_tree pred) trs1 in
       let trs2 = List.map (prune_tree pred) trs2 in
-      let [[t1]; ts1; [t2]; ts2; ts3] = Util.split nd.constr [1; List.length trs1; 1; List.length trs2] in
-      let [xttyss1; [xttys1]; xttyss2; xttyss3] = Util.split nd.subst [List.length trs1; 1; List.length trs2] in
+      let [[t1]; ts1; [t2]; ts2; ts3] =
+        Util.split_multiple [1; List.length trs1; 1; List.length trs2] nd.constr
+      in
+      let [xttyss1; [xttys1]; xttyss2; xttyss3] =
+        Util.split_multiple [List.length trs1; 1; List.length trs2] nd.subst
+      in
       let (ts1, xttyss1, trs1), xttys1' =
 				    let res, xttys =
 				      List.fold_left
@@ -235,7 +254,7 @@ let rec prune_path pred p =
 (*
         Util.unzip3
           (List.filter_map (fun x -> x)
-            (Util.map3 (fun t xttys -> function (Some(tr)) -> Some(t, xttys, tr) | None -> assert (t = Term.ttrue); None) ts1 xttyss1 trs1))
+            (Util.map3 (fun t xttys -> function (Some(tr)) -> Some(t, xttys, tr) | None -> assert (t = Formula.ttrue); None) ts1 xttyss1 trs1))
 *)
       in
       let (ts2, xttyss2, trs2), xttys2' =
@@ -254,18 +273,19 @@ let rec prune_path pred p =
         { nd with constr = List.flatten [[t1]; ts1; [t2]; ts2; ts3];
                   subst = List.flatten [xttyss1; [xttys1' @ xttys1]; xttyss2; if xttys2' = [] then xttyss3 else (xttys2' @ List.hd xttyss3) :: List.tl xttyss3] }, trs2)
 
-(* assume that all the related locations of loc is a leaf *)
+(** require: all the related locations of loc is a leaf *)
 let summary_of env loc =
   let Loc(Node(nd, []), p) = loc in
 		let _ = if not nd.closed then assert (nd.ret = None) in
 		let locs = related_locs loc in
+  let b = Flags.enable_quick_inference && List.length locs = 1 in
   try
-    if List.length locs = 1 then
+    if b then
 						let arg = if nd.closed then ret_of env nd else arg_of env nd in
 						let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
 		    let interp =
-								let tt = Term.simplify (qelim (visible arg) (term_of_nodes [nd])) in
-								let tp = Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p))) in
+								let tt = Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes [nd])) in
+								let tp = Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p))) in
 								let t1, t2 = if nd.closed then tt, tp else tp, tt in
 				    interpolate_bvs (visible arg) t1 t2
 		    in
@@ -274,37 +294,44 @@ let summary_of env loc =
     else (* necessary try repeat.ml *)
       raise CsisatInterface.No_interpolant
   with CsisatInterface.No_interpolant ->
-    let _ = Format.printf "**** quick inference failed ****@]@." in
+    let _ = if b then Format.printf "**** quick inference failed ****@]@." in
     let arg_p_interp_list, ret_interp_list =
 						let arg_p_t_list =
 						  List.map
 						    (fun (Loc(tr, p)) ->
 		          let p = left_of_path p in
-            let p = (* necessary: try linmax.ml *)prune_path (fun name -> related nd.name name) p in
+            let p =
+              if nd.closed then
+                (* try linmax.ml *)
+                prune_path (fun name -> related nd.name name) p
+              else
+                (* try neg.ml *)
+                p
+            in
             (*let _ = Format.printf "%a@." pr_path p in*)
 		          let arg = arg_of env (get tr) in
-            let t = Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
+            let t = Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
+            (*let t = Formula.formula_of_dnf (Term.dnf t) in*)
 						      (**)let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in(**)
 		          arg, p, t)
 		        locs
       in
+		    let ret_nds_t_list, _ =
+								Util.map_fold_left
+								  (fun res nds0 (Loc(tr, _)) _ ->
+		  		      let arg_p_t_list = List.take (List.length res + 1) arg_p_t_list in
+				        let ret = ret_of env (get tr) in
+		          let nds = nds0 @ nodes_of_tree tr in
+												let ts, xttys = term_of_nodes nds in
+								    let t = Term.rename_fresh (visible ret) (Formula.simplify (Formula.eqelim (visible ret) ((List.map Util.trd3 arg_p_t_list) @ ts, xttys))) in
+            (*let t = Formula.formula_of_dnf (Term.dnf t) in*)
+								    (**)let _ = if (get tr).closed then Format.printf "%a: %a@." Var.pr ret Term.pr t in(**)
+		          (ret, nds, t), nds)
+								  [] locs
+						in
       if nd.closed then
-		      let ret_nds_t_list, _ =
-								  Util.map_fold_left
-								    (fun res nds0 (Loc(tr, _)) _ ->
-		  		        let arg_p_t_list = List.take (List.length res + 1) arg_p_t_list in
-				          let ret = ret_of env (get tr) in
-		            let nds = nds0 @ nodes_of_tree tr in
-														let ts, xttys = term_of_nodes nds in
-								      let t = Term.rename_fresh (visible ret) (Term.simplify (qelim (visible ret) ((List.map Util.trd_triple arg_p_t_list) @ ts, xttys))) in
-								      (**)let _ = Format.printf "%a: %a@." Var.pr ret Term.pr t in(**)
-		            (ret, nds, t), nds)
-								    [] locs
-								in
 								let Some(tr) = prune_tree (fun name -> related nd.name name) (root loc) in
-(**)
-        let _ = Format.printf "%a@." pr tr in
-(**)
+        (*let _ = Format.printf "context: %a@." pr tr in*)
         let res =
 								  Util.map_right
 								    (fun ret_nds_t_list (ret, nds, t1) res ->
@@ -313,9 +340,9 @@ let summary_of env loc =
 						          let _, ret_interp_list = List.split res in
                 let t2 =
                   let ts, xttys = term_of_nodes (nodes_of_tree tr) in
-                  Term.simplify (qelim (visible ret)
-                    ((**)List.map Util.trd_triple arg_p_t_list @(**)
-                     List.map Util.trd_triple ret_nds_t_list @
+                  Formula.simplify (Formula.eqelim (visible ret)
+                    ((**)List.map Util.trd3 arg_p_t_list @(**)
+                     List.map Util.trd3 ret_nds_t_list @
                      List.map snd ret_interp_list @ ts,
                      xttys))
                 in
@@ -331,10 +358,10 @@ let summary_of env loc =
 																				  let t1 = t in
 																				  let t2 =
 																					  	let ts, xttys = term_of_nodes nds in
-																								Term.simplify (qelim (visible arg)
-                          (List.map Util.trd_triple arg_p_interp_list @
-                           List.map Util.trd_triple arg_p_t_list @
-                           Term.bnot interp :: ts,
+																								Formula.simplify (Formula.eqelim (visible arg)
+                          (List.map Util.trd3 arg_p_interp_list @
+                           List.map Util.trd3 arg_p_t_list @
+                           Formula.bnot interp :: ts,
                            xttys))
 																				  in
 																				  interpolate_bvs (visible arg) t1 t2
@@ -356,10 +383,10 @@ let summary_of env loc =
 														  let t1 = t in
 														  let t2 =
                   let ts, xttys = term_of_nodes (nodes_of_tree tr) in
-  																Term.simplify
-                    (qelim (visible arg)
-                      (List.map Util.trd_triple arg_p_interp_list @
-                      List.map Util.trd_triple arg_p_t_list @
+  																Formula.simplify
+                    (Formula.eqelim (visible arg)
+                      (List.map Util.trd3 arg_p_interp_list @
+                      List.map Util.trd3 arg_p_t_list @
                       List.map snd ret_interp_list @
                       ts, xttys))
 														  in
@@ -372,12 +399,54 @@ let summary_of env loc =
 								List.concat arg_p_interp_list_list @ arg_p_interp_list,
         ret_interp_list
       else
-		      let nds =
-								  Util.concat_map
-								    (fun (Loc(tr, _)) ->
-		            nodes_of_tree tr)
-								    locs
-								in
+        let ret_nds_t_list, [_, nds0, _] =
+          List.split_nth (List.length ret_nds_t_list - 1) ret_nds_t_list
+        in
+(*
+        let res =
+								  Util.map_right
+								    (fun ret_nds_t_list (ret, nds, t1) res ->
+						        let interp =
+										 					let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr ret in
+						          let _, ret_interp_list = List.split res in
+                let t2 =
+                  let ts, xttys = term_of_nodes nds0 in
+                  TFormula.simplify (Formula.eqelim (visible ret)
+                    ((**)List.map Util.trd3 arg_p_t_list @(**)
+                     List.map Util.trd3 ret_nds_t_list @
+                     List.map snd ret_interp_list @ ts,
+                     xttys))
+                in
+																let interp = interpolate_bvs (visible ret) t1 t2 in
+						  						  let _ = Format.printf "@]@." in
+						          interp
+						        in
+														let arg_p_interp_list =
+																Util.map_left
+																		(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
+																				let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+																				let interp =
+																				  let t1 = t in
+																				  let t2 =
+																					  	let ts, xttys = term_of_nodes nds in
+																								Formula.simplify (Formula.eqelim (visible arg)
+                          (List.map Util.trd3 arg_p_interp_list @
+                           List.map Util.trd3 arg_p_t_list @
+                           Formula.bnot interp :: ts,
+                           xttys))
+																				  in
+																				  interpolate_bvs (visible arg) t1 t2
+																		  in
+																		  let _ = Format.printf "@]@." in
+																				(arg, p, interp))
+																		(List.take (List.length ret_nds_t_list + 1) arg_p_t_list)
+														in
+														arg_p_interp_list,
+		            (ret, interp))
+												ret_nds_t_list
+        in
+*)
+				    let arg_p_interp_list_list, ret_interp_list = [], [](*List.split res*) in
 								let arg_p_interp_list =
 										Util.map_left
 												(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
@@ -385,12 +454,12 @@ let summary_of env loc =
 														let interp =
 														  let t1 = t in
 														  let t2 =
-															  	let ts, xttys = term_of_nodes nds in
-																		Term.simplify (qelim (visible arg)
-                    (List.map Util.trd_triple arg_p_interp_list @
-                     List.map Util.trd_triple arg_p_t_list @
-                     ts,
-                     xttys))
+															  	let ts, xttys = term_of_nodes nds0 in
+																		Formula.simplify (Formula.eqelim (visible arg)
+                    (List.map Util.trd3 arg_p_interp_list @
+                     List.map Util.trd3 arg_p_t_list @
+                     List.map snd ret_interp_list @
+                     ts, xttys))
 														  in
 														  interpolate_bvs (visible arg) t1 t2
 												  in
@@ -398,8 +467,8 @@ let summary_of env loc =
 														(arg, p, interp))
 												arg_p_t_list
 								in
-								arg_p_interp_list,
-        []
+								List.concat arg_p_interp_list_list @ arg_p_interp_list,
+        ret_interp_list
     in
     List.map (fun (ret, interp) -> `P(ret, interp)) ret_interp_list @
     List.map (fun (arg, _, interp) -> `P(arg, interp)) arg_p_interp_list,
@@ -414,7 +483,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
     try
       let interp =
 								let (tts, tps), xss =
-	  							let trs, ps = (*reverseしなくてよいのか？*)rec_calls_of (fst nd.name) loc in
+	  							let trs, ps = (* no need to reverse? *)rec_calls_of (fst nd.name) loc in
 	         List.split
 												(List.map2
 													 (fun tr p ->
@@ -422,8 +491,8 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (*
 			             let _ = Format.printf "%a@." Var.pr arg in
 *)
-													   Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_tree tr)))),
-													   Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))))
+													   Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_tree tr)))),
+													   Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))))
 													 trs ps),
 			  		   List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
 								in
@@ -456,14 +525,14 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 				  let ts0 =
 		      List.map
 		        (fun (arg, p) ->
-		          let t = Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
+		          let t = Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
 		          (*let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in*)
 		          t)
 		        argps
 				  in
 		    let interp =
 								let (tts, tps), xss =
-    						let trs, ps = (*reverseしなくてよいのか？*)rec_calls_of (fst nd.name) loc in
+    						let trs, ps = (* no need to reverse? *)rec_calls_of (fst nd.name) loc in
           List.split
 												(List.map2
 												  (fun tr p ->
@@ -471,17 +540,17 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (*
 		              let _ = Format.printf "%a@." Var.pr arg in
 *)
-(* ts0 や ndsもこの中で求めないと全く意味が無いのでは？ *)
+(* why not compute ts0 and nds? *)
 (*
                 if nd.closed then
-														    Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_tree tr)))),
+														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_tree tr)))),
   												    let ts, xttys = term_of_nodes (nds @ nodes_of_path p) in
-														    Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (ts0 @ ts, xttys)))
+														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (ts0 @ ts, xttys)))
                 else
 *)
   												    let ts, xttys = term_of_nodes (nds @ nodes_of_tree tr) in
-														    Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (ts0 @ ts, xttys))),
-														    Term.rename_fresh (visible arg) (Term.simplify (qelim (visible arg) (term_of_nodes (nodes_of_path p)))))
+														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (ts0 @ ts, xttys))),
+														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))))
 												  trs ps),
 				      List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
 								in
@@ -507,7 +576,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 				          let t1 = t0 in
 				          let t2 =
 												    let ts, xttys = term_of_nodes (nds @ nodes_of_tree tr) in
-									  					Term.simplify (qelim (visible arg) ((if nd.closed then Term.bnot interp else interp)::ts0 @ ts, xttys))
+									  					Formula.simplify (Formula.eqelim (visible arg) ((if nd.closed then Formula.bnot interp else interp)::ts0 @ ts, xttys))
 				          in
 				          interpolate_bvs (visible arg) t1 t2
 		          in
@@ -522,13 +591,13 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 		  (match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
-        let ts1, t::ts2 = Util.split_at nd.constr (List.length trs1 + 1) in
-        let xttyss1, xttys::xttyss2 = Util.split_at nd.subst (List.length trs1) in
+        let ts1, t::ts2 = List.split_nth (List.length trs1 + 1) nd.constr in
+        let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
 (*
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
 *)
-        let ts2 = match ts2 with t'::ts2' -> (Term.band [t; (*Term.subst sub*) interp; t'])::ts2' | [] -> assert false in
+        let ts2 = match ts2 with t'::ts2' -> (Formula.band [t; (*Term.subst sub*) interp; t'])::ts2' | [] -> assert false in
 (**)
         let xttyss2 = match xttyss2 with xttys'::xttyss2' -> (xttys @ xttys')::xttyss2' | [] -> assert false in
 (**)
@@ -536,33 +605,33 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
                                   subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up))))::
     Util.concat_map
       (fun (Path(up, trs1, nd, []), _, interp) ->
-				    if Term.equiv interp Term.ttrue then
+				    if Term.equiv interp Formula.ttrue then
 				      []
 				    else
-		        let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
-		        let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
+		        let ts1, t::[] = List.split_nth (List.length trs1 + 1) nd.constr in
+		        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
 (**)
 		        let xts = List.map (fun (x, t, _) -> x, t) xttys in
 		        let sub x = List.assoc x xts in
 (**)
 				      [root (Loc(Node({ nd with ret = None;
 				                                closed = false;
-				                                constr = ts1 @ [Term.band [t; Term.bnot ((*Term.subst sub*) interp)]];
+				                                constr = ts1 @ [Formula.band [t; Formula.bnot ((*Term.subst sub*) interp)]];
 				                                subst = xttyss1 @ [(*[]*)(**)xttys(**)] }, trs1), path_set_open up))])
       parginterps
 		else
 		  let _ = assert (nd.ret = None) in
     [`P(arg, interp)],
 		  match p with
-		    Top -> let _ = assert (interp = Term.ttrue) in []
+		    Top -> let _ = assert (interp = Formula.ttrue) in []
 		  | Path(up, trs1, nd, []) ->
-        let ts1, t::[] = Util.split_at nd.constr (List.length trs1 + 1) in
-        let xttyss1, xttys::[] = Util.split_at nd.subst (List.length trs1) in
+        let ts1, t::[] = List.split_nth (List.length trs1 + 1) nd.constr in
+        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
 (**)
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
 (**)
-        [root (Loc(Node({ nd with constr = ts1 @ [Term.band [t; Term.bnot ((**)Term.subst sub(**) interp)]];
+        [root (Loc(Node({ nd with constr = ts1 @ [Formula.band [t; Formula.bnot ((**)Term.subst sub(**) interp)]];
                                   subst = xttyss1 @ [[](*xttys*)] }, trs1), up))]
 *)
 
@@ -591,7 +660,7 @@ let summaries_of env constrss0 =
             in
 				        if Flags.enable_widening then summary_of_widen env loc else summary_of env loc
 				      with CsisatInterface.No_interpolant ->
-				        raise (FeasibleErrorTrace(constrs(*???*)))
+				        raise (FeasibleErrorTrace(constrs(**ToDo*)))
 				    in
 				    match constrss with
 				      [] -> sums' @ sums

@@ -1,6 +1,8 @@
 open ExtList
 open ExtString
 
+(** Variables *)
+
 type t = V of Idnt.t | T of t * int * int
 
 let rec pr ppf x =
@@ -24,9 +26,9 @@ let string_of x =
     match x with
       V(id) ->
         (try
-          let _ = String.find id separator in
+          let _ = String.find (Idnt.string_of id) separator in
           assert false
-        with Invalid_string -> id)
+        with Invalid_string -> Idnt.string_of id)
     | T(x, uid, arg) ->
         f x ^ separator ^ String.of_int uid ^ separator ^ String.of_int arg
   in
@@ -42,10 +44,10 @@ let parse s =
   in
   if String.starts_with s header then
     match String.nsplit s separator with
-      _::s::ss -> f (V(s)) ss
+      _::s::ss -> f (V(Idnt.make s)) ss
     | _ -> assert false
   else
-    V(s)
+    V(Idnt.make s)
 
 let equiv x y = x = y
 
@@ -63,13 +65,13 @@ and is_neg x =
     V(_) -> false
   | T(x', _, _) -> is_pos x'
 
-(* return the call id of top level function call *)
+(** @return the call id of top level function call *)
 let rec tlfc_of x =
   match x with
     V(_) -> raise Not_found
   | T(x', uid, _) -> try tlfc_of x' with Not_found -> x', uid
 
-(* return the call id of parent function call *)
+(** @return the call id of parent function call *)
 let rec fc_ref_of x =
   match x with
     V(_) -> assert false

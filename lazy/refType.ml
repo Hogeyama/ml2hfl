@@ -1,5 +1,7 @@
 open ExtList
 
+(** Refinement types *)
+
 type t = Base of Var.t * b * Term.t | Fun of (t * t) list
 and b = Unit | Bool | Int
 
@@ -48,9 +50,9 @@ let pr_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_bind "@ ") 
 
 let rec of_simple_type ty =
   match ty with
-    SimType.Unit -> Base(Var.new_var(), Unit, Term.ttrue)
-  | SimType.Bool -> Base(Var.new_var(), Bool, Term.ttrue)
-  | SimType.Int -> Base(Var.new_var(), Int, Term.ttrue)
+    SimType.Unit -> Base(Var.new_var(), Unit, Formula.ttrue)
+  | SimType.Bool -> Base(Var.new_var(), Bool, Formula.ttrue)
+  | SimType.Int -> Base(Var.new_var(), Int, Formula.ttrue)
   | SimType.Fun(ty1, ty2) ->
       Fun([of_simple_type ty1, of_simple_type ty2])
 
@@ -81,7 +83,7 @@ let set_base_cond rty t =
 
 
 let rename sub sty =
-  let subst x = Term.make_var2 (sub x) in
+  let subst x = Term.make_var (sub x) in
 		let rec aux sty =
 		  match sty with
 		    Base(x, bty, t) ->
@@ -112,7 +114,7 @@ let rec fresh_names new_var ty =
 let canonize sty =
   let new_var =
     let cnt = ref 0 in
-    fun () -> cnt := !cnt + 1; Var.V("v" ^ (string_of_int !cnt))
+    fun () -> cnt := !cnt + 1; Var.V(Idnt.make ("v" ^ (string_of_int !cnt)))
   in
   let sub = fresh_names new_var sty in
   rename (fun x -> List.assoc x sub) sty
@@ -150,11 +152,12 @@ let env_of env sums fcs =
 			     let _ = Format.printf ":%a:@." (Util.pr_list pr ":") shs in
 			     assert false
 		in
+  let conv_base = function SimType.Unit -> Unit | SimType.Bool -> Bool | SimType.Int -> Int | _ -> assert false in
   let rec shape_of (x, uid) =
     match env x with
       SimType.Unit | SimType.Bool | SimType.Int ->
         (* pred disc assume that top level functions are with a function type but MoCHi violates *)
-        Base(x, (match env x with SimType.Unit -> Unit | SimType.Bool -> Bool | SimType.Int -> Int), Term.ttrue)
+        Base(x, conv_base (env x), Formula.ttrue)
 (*
         let _ = Format.printf "%a:%d" Var.pr x uid in
         assert false
@@ -174,15 +177,17 @@ let env_of env sums fcs =
 														*)
               merge_shapes (shapes_of (Var.T(x, uid, i)))))
           ret
+(*
     | _ ->
         let _ = Format.printf "%a:%d" Var.pr x uid in
         assert false
+*)
   and shapes_of x =
     match env x with
       SimType.Unit | SimType.Bool | SimType.Int ->
         let ps = List.filter_map (function `P(y, t) when x = y -> Some(t) | _ -> None) sums in
-        let p = (*???*)if ps = [] then Term.ttrue else Term.band ps in
-        [Base(x, (match env x with SimType.Unit -> Unit | SimType.Bool -> Bool | SimType.Int -> Int), p)]
+        let p = (*???*)if ps = [] then Formula.ttrue else Formula.band ps in
+        [Base(x, conv_base (env x), p)]
     | SimType.Fun(_, _) as ty ->
         let res =
 		        List.map
@@ -208,8 +213,8 @@ let rec of_interaction_type ty = assert false
   | IntType.Bool(x) -> Base(x, Bool, ty.IntType.post)
   | IntType.Int(x) -> Base(x, Int, ty.IntType.post)
   | IntType.Fun(sh1, sh2) ->
-      Fun([of_interaction_type (IntType.make sh1 Term.ttrue ty.IntType.pre),
-           of_interaction_type (IntType.make sh2 Term.ttrue ty.IntType.post)])
+      Fun([of_interaction_type (IntType.make sh1 Formula.ttrue ty.IntType.pre),
+           of_interaction_type (IntType.make sh2 Formula.ttrue ty.IntType.post)])
   | IntType.And(shs) ->
       of_interction_type shs
 *)

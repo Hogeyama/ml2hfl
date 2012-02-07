@@ -1,10 +1,12 @@
 open ExtList
 open ExtString
 
-(* length constr = length subst + 1 and closed then length subst = length trs + 1
-   does the condition holds for interaction types too?
- *)
-type t = { name: Var.t * int; closed: bool; constr: Term.t list; subst: (Var.t * Term.t * SimType.t) list list; ret: (Var.t * int) option (* for refinement type inference only *) }
+(** Constraint generation *)
+
+(** invariant: length constr = length subst + 1 and closed then length subst = length trs + 1
+    ToDo: does the condition holds for interaction types too?
+    @param ret for refinement type inference only *)
+type t = { name: Var.t * int; closed: bool; constr: Term.t list; subst: (Var.t * Term.t * SimType.t) list list; ret: (Var.t * int) option }
 type tree = Node of t * tree list
 type path = Top | Path of path * tree list * t * tree list
 type location = Loc of tree * path
@@ -24,7 +26,7 @@ let down (Loc(tr, p)) x =
     Node(nd, trs) ->
       let trs1, tr', trs2 =
         try
-          Util.split_with (fun tr -> (get tr).name = x) trs
+          Util.find_split (fun tr -> (get tr).name = x) trs
         with Not_found ->
           assert false
       in
@@ -56,7 +58,7 @@ let find_leaves tr =
 		        (List.init
             (List.length trs)
 		          (fun i ->
-		            let trs1, tr::trs2 = Util.split_at trs i in
+		            let trs1, tr::trs2 = List.split_nth i trs in
 		            aux (Loc(tr, Path(p, trs1, nd, trs2)))))
   in
   aux (zipper tr)
@@ -83,7 +85,7 @@ let rec up_until x_uid (Loc(tr, p)) =
 *)
 
 let tree_of_path p =
-  root (Loc(make (Var.make "hole", -1) true [Term.ttrue] [], p))
+  root (Loc(make (Var.make (Idnt.make "hole"), -1) true [Formula.ttrue] [], p))
 
 let rec pr ppf tr =
   match tr with
@@ -92,22 +94,23 @@ let rec pr ppf tr =
 						  Format.fprintf ppf "@[<v>%a" Var.pr_x_uid nd.name
 				  in
 				  let _ =
-								let _ = Format.fprintf ppf "@,  @[<v>%a" Term.pr (List.hd nd.constr) in
+								let _ = Format.fprintf ppf "@,  @[<v>" in
+        let _ = let g = List.hd nd.constr in (*if g <> Formula.ttrue then*) Format.fprintf ppf "%a" Term.pr g in
         let _ =
 						    if nd.subst <> [] then
             let _ =
 				          Util.iter3
 				            (fun t xttys tr ->
-														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map CompTree.eq_xtty xttys) in
-                  let _ = if t <> Term.ttrue then Format.fprintf ppf ", @,%a" Term.pr t in
+														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Formula.eq_xtty xttys) in
+                  let _ = if t <> Formula.ttrue then Format.fprintf ppf ", @,%a" Term.pr t in
                   Format.fprintf ppf ", @,%a" pr tr)
 				            (if List.length trs = List.length nd.constr - 1 then List.tl nd.constr else Util.init (List.tl nd.constr))
 				            (if List.length trs = List.length nd.subst then nd.subst else Util.init nd.subst)
 				            trs
             in
             if List.length trs + 1 = List.length nd.subst then
-              let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map CompTree.eq_xtty (List.last nd.subst)) in
-		            if List.last nd.constr <> Term.ttrue then
+              let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Formula.eq_xtty (List.last nd.subst)) in
+		            if List.last nd.constr <> Formula.ttrue then
 		              Format.fprintf ppf ", @,%a" Term.pr (List.last nd.constr)
         in
         Format.fprintf ppf "@]"
@@ -131,7 +134,7 @@ let rec path_set_open p =
 		match p with
 		  Top -> Top
 		| Path(up, trs1, nd, trs2) ->
-      Path(path_set_open up, trs1, { nd with ret = None(*???*); closed = false }, trs2)
+      Path(path_set_open up, trs1, { nd with ret = None(**ToDo*); closed = false }, trs2)
 
 
 
@@ -140,19 +143,6 @@ let rec path_set_open p =
 let term_of_nodes nds =
   Util.concat_map (fun nd -> nd.constr) nds,
   Util.concat_map (fun nd -> List.concat nd.subst) nds
-
-let raw (ts, xttys) = Term.band (List.map CompTree.eq_xtty xttys @ ts)
-
-(* elim as many variables as possible that do not satisfy p, p for bound variables *)
-let qelim p (ts, xttys) =
-  let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
-  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
-  Util.fixed_point
-    (fun t ->
-      (*Format.printf "%a@." Term.pr t;*)
-      Term.subst sub t)
-    (fun t1 t2 -> Term.equiv t1 t2)
-    (Term.band (List.map CompTree.eq_xtty xttys1 @ ts))
 
 let rec nodes_of_tree (Node(nd, trs)) =
   nd::Util.concat_map nodes_of_tree trs
@@ -166,15 +156,15 @@ let rec left_of_path p =
   match p with
     Top -> Top
   | Path(up, trs1, nd, _) ->
-      let ts1, _ = Util.split_at nd.constr (List.length trs1 + 2) in
-      let xttyss1, _ = Util.split_at nd.subst (List.length trs1 + 1) in
+      let ts1, _ = List.split_nth (List.length trs1 + 2) nd.constr in
+      let xttyss1, _ = List.split_nth (List.length trs1 + 1) nd.subst in
       Path(left_of_path up, trs1, { nd with constr = ts1; subst = xttyss1}, [])
 let rec right_of_path p =
   match p with
     Top -> Top
   | Path(up, trs1, nd, trs2) ->
-      let _, ts2 = Util.split_at nd.constr (List.length trs1 + 2) in
-      let _, xttyss2 = Util.split_at nd.subst (List.length trs1 + 1) in
+      let _, ts2 = List.split_nth (List.length trs1 + 2) nd.constr in
+      let _, xttyss2 = List.split_nth (List.length trs1 + 1) nd.subst in
       Path(right_of_path up, [], { nd with constr = ts2; subst = xttyss2}, trs2)
 
 let find_all cond tr =
@@ -212,9 +202,9 @@ let get_unsat_prefix tr =
         let g = List.hd nd.constr in
         let ts0 = g::ts0 in
 (*
-        let _ = Format.printf "%a: %a@." Var.pr_x_uid nd.name Term.pr (Term.bnot (raw (ts0, xttys0))) in
+        let _ = Format.printf "%a: %a@." Var.pr_x_uid nd.name Term.pr (Formula.bnot (Formula.formula_of_fes (ts0, xttys0))) in
 *)
-        if Cvc3Interface.is_valid (Term.bnot (qelim (fun _ -> false) (ts0, xttys0))) then
+        if Cvc3Interface.is_valid (Formula.bnot (Formula.eqelim (fun _ -> false) (ts0, xttys0))) then
           ts0, xttys0, make nd.name false [g] [], true
         else
 		        let rec aux_aux ts0 xttys0 ts xttyss trs =
@@ -230,6 +220,7 @@ let get_unsat_prefix tr =
 				            else
 						            let ts0, xttys0, trs, b = aux_aux ts0 xttys0 ts xttyss trs in
 						            ts0, xttys0, tr::trs, b
+            | _ -> assert false
 		        in
 		        let ts0, xttys0, trs, b = aux_aux ts0 xttys0 (List.tl nd.constr) nd.subst trs in
           ts0, xttys0,
@@ -242,14 +233,14 @@ let get_unsat_prefix tr =
             Node(nd, trs)),
           b
   in
-  let _, _, tr, true = aux [Term.ttrue] [] tr in
+  let _, _, tr, true = aux [Formula.ttrue] [] tr in
   tr
 
 let interpolate_chk t1 t2 =
   try
-    CsisatInterface.interpolate t1 t2
+    Formula.simplify (CsisatInterface.interpolate t1 t2)
   with CsisatInterface.No_interpolant ->
-				if Flags.debug && Cvc3Interface.implies t1 (Term.bnot t2) then
+				if Flags.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
 				  let _ = Format.printf "an error has occurred because of CSIsat@." in
 				  assert false
 				else
@@ -287,7 +278,7 @@ let interpolate_widen closed t1 t2 tw1 tw2 =
 		let _ = Format.printf "interp_out: %a@ " Term.pr interp in
   interp
 
-(* t1 and t2 share only variables that satisfy p *)
+(** require: t1 and t2 share only variables that satisfy p *)
 let interpolate_widen_bvs p closed t1 t2 tw1 tw2 =
 		let t1 = Term.rename_fresh p t1 in
 		let t2 = Term.rename_fresh p t2 in
@@ -301,7 +292,7 @@ let interpolate t1 t2 =
 		let _ = Format.printf "interp_out: %a@ " Term.pr interp in
   interp
 
-(* t1 and t2 share only variables that satisfy p *)
+(* require: t1 and t2 share only variables that satisfy p *)
 let interpolate_bvs p t1 t2 =
 		let t1 = Term.rename_fresh p t1 in
 		let t2 = Term.rename_fresh p t2 in
@@ -320,8 +311,8 @@ let widen xss ts =
 				    List.map2
 				      (fun ys t ->
 				        let sub = List.combine ys xs in
-				        Term.subst (fun x -> Term.make_var2 (List.assoc x sub)) t)
+				        Term.subst (fun x -> Term.make_var (List.assoc x sub)) t)
 				      xss
 				      ts
 				  in
-				  ApronInterface.widen (List.map Term.bor (Util.nonemp_prefixes ts))
+				  ApronInterface.widen (List.map Formula.bor (Util.nonemp_prefixes ts))

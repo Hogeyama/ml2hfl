@@ -1,32 +1,28 @@
 open ExtList
 
+(** Utility functions *)
+
+(** {6 Exceptions} *)
+
 exception ToBeImplemented
 
+(** {6 Functions on options} *)
+
 let opt2list = function None -> [] | Some(x) -> [x]
+let rec pr_opt epr none ppf x =
+  match x with
+    None ->
+      Format.fprintf ppf "%s" none
+  | Some(x) ->
+      Format.fprintf ppf "%a" epr x
 
-let fst_triple (x, _, _) = x
-let snd_triple (_, x, _) = x
-let trd_triple (_, _, x) = x
+(** {6 Functions on tuples} *)
 
-let rec prefix xs ys =
-  match xs, ys with
-    [], _ -> true
-  | x::xs', y::ys' -> x = y && prefix xs' ys'
-  | _, _ -> false
+let fst3 (x, _, _) = x
+let snd3 (_, x, _) = x
+let trd3 (_, _, x) = x
 
-(* nonemp_prefixes [1;2;3] = [[1]; [1; 2]; [1; 2; 3]] *)
-let nonemp_prefixes ts =
-		let _, tss = List.fold_left
-		  (fun (ts, tss) t ->
-		    ts @ [t], tss @ [ts @ [t]])
-		  ([], [])
-		  ts
-  in
-  tss
-
-let rec fixed_point f eq x =
-  let x' = f x in
-  if eq x x' then x else fixed_point f eq x'
+(** {6 Functions on lists} *)
 
 let rec init xs =
  match xs with
@@ -34,23 +30,80 @@ let rec init xs =
  | [x] -> []
  | x::xs' -> x::(init xs')
 
-(*
-let rec last xs =
- match xs with
-   [x] -> x
- | x::xs' -> last xs'
-*)
+let filteri p xs =
+  let rec aux i xs =
+		  match xs with
+		    [] -> []
+		  | x::xs' ->
+		      if p i x then
+          x::(aux (i + 1) xs')
+        else
+		        aux (i + 1) xs'
+  in
+  aux 0 xs
 
-let rec diff xs ys =
-  match xs, ys with
-    [], [] | [],  _ |  _, [] -> xs
-  | x'::xs', ys ->
-      if List.mem x' ys then
-        diff xs' ys
-      else
-        x'::(diff xs' ys)
+let rec map3 f xs ys zs =
+  match xs, ys, zs with
+    [], [], [] ->
+      []
+  | x::xs', y::ys', z::zs' ->
+      f x y z::map3 f xs' ys' zs'
+  | _ -> assert false
 
-let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
+let rec zip3 xs ys zs =
+  match xs, ys, zs with
+    [], [], [] ->
+      []
+  | x::xs', y::ys', z::zs' ->
+      (x, y, z)::zip3 xs' ys' zs'
+  | _ -> assert false
+
+let rec unzip3 ls =
+  match ls with
+    [] ->
+      [], [], []
+  | (x, y, z)::ls ->
+      let (xs, ys, zs) = unzip3 ls in
+      x::xs, y::ys, z::zs
+
+let rec iter3 f xs ys zs =
+  match xs, ys, zs with
+    [], [], [] ->
+      ()
+  | x::xs', y::ys', z::zs' ->
+      let () = f x y z in
+      iter3 f xs' ys' zs'
+  | _ -> assert false
+
+let rec find_map f xs =
+  match xs with
+    [] -> raise Not_found
+  | x::xs' ->
+      try
+        f x
+      with Not_found ->
+        find_map f xs'
+
+let rec concat_map f xs =
+  match xs with
+    [] ->
+      []
+  | x::xs' ->
+      let x = f x in
+      let xs' = concat_map f xs' in
+      x @ xs'
+
+let partition_map p ys =
+  let rec aux ls rs xs =
+    match xs with
+      [] -> ls, rs
+    | x::xs' ->
+        (match p x with
+          `L(y) -> aux (y::ls) rs xs'
+        | `R(y) -> aux ls (y::rs) xs'
+        | _ -> failwith "Util.partition_map")
+  in
+  aux [] [] (List.rev ys)
 
 let map_left f xs =
   let rec aux ys xs =
@@ -92,15 +145,6 @@ let map_fold_right f xs z =
   in
   aux (List.rev xs) z []
 
-let rec find_map f xs =
-  match xs with
-    [] -> raise Not_found
-  | x::xs' ->
-      try
-        f x
-      with Not_found ->
-        find_map f xs'
-
 let rec ctx_of xs i =
   match xs with
     [] -> assert false
@@ -113,79 +157,69 @@ let rec ctx_of xs i =
       else
         assert false
 
-let ctx_elem xs =
+let all_ctx_elem_of xs =
   List.mapi (fun i x -> ctx_of xs i, x) xs
 
-let rec concat_map f xs =
-  match xs with
-    [] ->
-      []
-  | x::xs' ->
-      let x = f x in
-      let xs' = concat_map f xs' in
-      x @ xs'
+let rec is_prefix xs ys =
+  match xs, ys with
+    [], _ -> true
+  | x::xs', y::ys' -> x = y && is_prefix xs' ys'
+  | _, _ -> false
 
-let partition_map p ys =
-  let rec aux ls rs xs =
-    match xs with
-      [] -> ls, rs
-    | x::xs' ->
-        (match p x with
-          `L(y) -> aux (y::ls) rs xs'
-        | `R(y) -> aux ls (y::rs) xs'
-        | _ -> failwith "Util.partition_map")
+(** nonemp_prefixes \[1;2;3\] = \[\[1\]; \[1; 2\]; \[1; 2; 3\]\] *)
+let nonemp_prefixes ts =
+		let _, tss = List.fold_left
+		  (fun (ts, tss) t ->
+		    ts @ [t], tss @ [ts @ [t]])
+		  ([], [])
+		  ts
   in
-  aux [] [] (List.rev ys)
+  tss
 
-(*
+(** @deprecated  use ExtList.List.last *)
+let rec last xs =
+ match xs with
+   [] -> assert false
+ | [x] -> x
+ | x::xs' -> last xs'
+
+(** @deprecated  use ExtList.List.filter_map *)
 let rec filter_map p xs =
   match xs with
     [] -> []
   | x::xs' ->
       (match p x with
         Some(y) -> y::(filter_map p xs')
-      | None -> filter_map p xs'
-      | _ -> failwith "Util.filter_map")
-*)
+      | None -> filter_map p xs')
 
-let filteri p xs =
-  let rec aux i xs =
-		  match xs with
-		    [] -> []
-		  | x::xs' ->
-		      if p i x then
-          x::(aux (i + 1) xs')
-        else
-		        aux (i + 1) xs'
-  in
-  aux 0 xs
-
-(* equivalent to split_nth *)
-let rec split_at xs n =
+(** @deprecated  use ExtList.List.split_nth *)
+let rec split_nth n xs =
   if n = 0 then
     [], xs
   else if n > 0 then
     (match xs with
       x::xs' ->
-        let xs1, xs2 = split_at xs' (n - 1) in
+        let xs1, xs2 = split_nth (n - 1) xs' in
         x::xs1, xs2
     | _ -> assert false)
   else
     assert false
 
-let rec split xs ls =
+let rec split_multiple ls xs =
   match ls with
     [] -> [xs]
-  | l::ls -> let xs1, xs2 = split_at xs l in xs1::split xs2 ls
+  | l::ls ->
+      let xs1, xs2 = List.split_nth l xs in
+      xs1::split_multiple ls xs2
 
-let rec split_with p xs =
+let rec find_split p xs =
   match xs with
     [] -> raise Not_found
   | x::xs' ->
       if p x then
         [], x, xs'
       else
-        let ls, y, rs = split_with p xs' in
+        let ls, y, rs = find_split p xs' in
         x::ls, y, rs
 
 let rec classify eqrel xs =
@@ -195,54 +229,17 @@ let rec classify eqrel xs =
       let t, f = List.partition (fun x' -> eqrel x x') xs' in
       (x::t)::(classify eqrel f)
 
-let rec transpose_list xss =
-  if List.for_all (fun xs -> xs = []) xss then
-    []
-  else
-    let xs, xss = List.split (List.map (function x::xs -> x, xs | _ -> assert false ) xss) in
-    xs::transpose_list xss
-
 let multiply_list f xs ys =
   concat_map
     (fun x ->
       List.map (fun y -> f x y) ys)
     xs
 
-let multiply_list_list f xsss =
+let multiply_list_list f xss =
   List.fold_left
     (multiply_list f)
-    (List.hd xsss)
-    (List.tl xsss)
-
-let rec map3 f xs ys zs =
-  match xs, ys, zs with
-    [], [], [] ->
-      []
-  | x::xs', y::ys', z::zs' ->
-      f x y z::map3 f xs' ys' zs'
-
-let rec zip3 xs ys zs =
-  match xs, ys, zs with
-    [], [], [] ->
-      []
-  | x::xs', y::ys', z::zs' ->
-      (x, y, z)::zip3 xs' ys' zs'
-
-let rec unzip3 ls =
-  match ls with
-    [] ->
-      [], [], []
-  | (x, y, z)::ls ->
-      let (xs, ys, zs) = unzip3 ls in
-      x::xs, y::ys, z::zs
-
-let rec iter3 f xs ys zs =
-  match xs, ys, zs with
-    [], [], [] ->
-      ()
-  | x::xs', y::ys', z::zs' ->
-      let () = f x y z in
-      iter3 f xs' ys' zs'
+    (List.hd xss)
+    (List.tl xss)
 
 let rec pr_list epr sep ppf xs =
   match xs with
@@ -258,14 +255,33 @@ let rec pr_list epr sep ppf xs =
         (fun ppf sep -> Format.fprintf ppf sep) sep
         (pr_list epr sep) xs'
 
-let rec pr_opt epr none ppf x =
-  match x with
-    None ->
-      Format.fprintf ppf "%s" none
-  | Some(x) ->
-      Format.fprintf ppf "%a" epr x
+(** {6 Functions on sets} *)
 
-(* graph *)
+let rec diff xs ys =
+  match xs, ys with
+    [], [] | [],  _ |  _, [] -> xs
+  | x'::xs', ys ->
+      if List.mem x' ys then
+        diff xs' ys
+      else
+        x'::(diff xs' ys)
+
+let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
+
+(** {6 Functions on matrices} *)
+
+let rec transpose xss =
+  if List.for_all (fun xs -> xs = []) xss then
+    []
+  else
+    let xs, xss =
+      List.split
+        (List.map (function x::xs -> x, xs | _ -> assert false ) xss)
+    in
+    xs::transpose xss
+
+(** {6 Functions on graphs} *)
+
 let save_as_dot filename vertices edges =
   let oc = open_out filename in 
   let ocf =
@@ -285,13 +301,19 @@ let save_as_dot filename vertices edges =
   close_out oc
 
 
-(*  *)
+(** {6 Functions on permutations} *)
+
 let permutations n =
   let rec aux xs =
     match xs with
       [] -> []
     | _ ->
-        List.concat (List.init (List.length xs) (fun i -> let xs1, x::xs2 = split_at xs i in List.map (fun p -> x::p) (aux (xs1 @ xs2))))
+        List.concat
+          (List.init
+            (List.length xs)
+            (fun i ->
+              let xs1, x::xs2 = List.split_nth i xs in
+              List.map (fun p -> x::p) (aux (xs1 @ xs2))))
   in
   aux (List.init n (fun i -> i))
 
@@ -299,3 +321,10 @@ let maps n1 n2 =
   let xs = List.init n1 (fun i -> i) in
   let yss = permutations n2 in
   List.map (fun ys -> List.combine xs ys) yss
+
+(** {6 Other functions} *)
+
+let rec fixed_point f eq x =
+  let x' = f x in
+  if eq x x' then x else fixed_point f eq x'
+

@@ -1,3 +1,5 @@
+(** Attributes *)
+
 type s = Arity of int
 type t = s list
 

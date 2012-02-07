@@ -1,6 +1,8 @@
 open ExtList
 open ExtString
 
+(** Interface to CVC3 *)
+
 let cvc3in = ref stdin
 let cvc3out = ref stdout
 
@@ -63,15 +65,15 @@ let rec string_of_term t =
   | Term.Const(_, Const.EqUnit), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " = " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.NeqUnit), [t1; t2] ->
-      string_of_term (Term.bnot (Term.eqInt t1 t2))
+      string_of_term (Formula.bnot (Formula.eqInt t1 t2))
   | Term.Const(_, Const.EqBool), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " <=> " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.NeqBool), [t1; t2] ->
-      string_of_term (Term.bnot (Term.eqBool t1 t2))
+      string_of_term (Formula.bnot (Formula.eqBool t1 t2))
   | Term.Const(_, Const.EqInt), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " = " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.NeqInt), [t1; t2] ->
-      string_of_term (Term.bnot (Term.eqInt t1 t2))
+      string_of_term (Formula.bnot (Formula.eqInt t1 t2))
   | Term.Const(_, Const.Unit), [] ->
       "0"(*"UNIT"*)
   | Term.Const(_, Const.True), [] ->
@@ -91,7 +93,11 @@ let rec string_of_term t =
   | Term.Forall(_, env, t), [] ->
       let benv, env = List.partition (function (_, SimType.Bool) -> true | _ -> false) env in
       let fenv x t y = if x = y then t else raise Not_found in
-      let t = List.fold_left (fun t (x, _) -> Term.band [Term.subst (fenv x Term.ttrue) t; Term.subst (fenv x Term.tfalse) t]) t benv in
+      let t = List.fold_left
+        (fun t (x, _) ->
+          Formula.band [Term.subst (fenv x Formula.ttrue) t; Term.subst (fenv x Formula.tfalse) t])
+        t benv
+      in
       "(" ^ (if env = [] then "" else "FORALL (" ^ string_of_env_comma env ^ "): ") ^ string_of_term t ^ ")"
   | _, _ ->
       let _ = Format.printf "%a@." Term.pr t in
@@ -107,7 +113,7 @@ let infer t ty =
     | Term.Const(_, Const.True), []
     | Term.Const(_, Const.False), [] ->
         let _ = assert (SimType.equiv ty SimType.Bool) in []
-    | Term.Const(_, Const.Int(n)), [] ->
+    | Term.Const(_, Const.Int(_)), [] ->
         let _ = assert (SimType.equiv ty SimType.Int) in []
     | Term.Const(_, Const.Not), [t] ->
         let _ = assert (SimType.equiv ty SimType.Bool) in
@@ -184,7 +190,7 @@ let is_valid t =
     let _ = Format.printf "unknown error of CVC3: %s@ " res in
     assert false
 
-let implies t1 t2 = is_valid (Term.imply t1 t2)
+let implies t1 t2 = is_valid (Formula.imply t1 t2)
 
 (*
 (* t1 and t2 share only variables that satisfy p *)

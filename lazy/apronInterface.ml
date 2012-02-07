@@ -1,6 +1,8 @@
 open ExtList
 open ExtString
 
+(** Interface to Apron *)
+
 let manpk = Polka.manager_alloc_strict ()
 (*let maneq = Polka.manager_alloc_equalities ()*)
 
@@ -64,9 +66,9 @@ let of_linconstr c =
       else
         let t' =
           if n = 1 then
-            Term.make_var2 x
+            Term.make_var x
           else
-            Term.mul (Term.tint n) (Term.make_var2 x)
+            Term.mul (Term.tint n) (Term.make_var x)
         in
         match t with
           Term.Const(_, Const.Int(m)) when m = 0 -> t'
@@ -76,28 +78,28 @@ let of_linconstr c =
   in
   let zero = Term.tint 0 in
   match Apron.Lincons1.get_typ c with
-    Apron.Lincons1.SUP -> Term.gt t zero
-  | Apron.Lincons1.SUPEQ -> Term.geq t zero
-  | Apron.Lincons1.EQ -> Term.eqInt t zero
-  | Apron.Lincons1.DISEQ -> Term.neqInt t zero
+    Apron.Lincons1.SUP -> Formula.gt t zero
+  | Apron.Lincons1.SUPEQ -> Formula.geq t zero
+  | Apron.Lincons1.EQ -> Formula.eqInt t zero
+  | Apron.Lincons1.DISEQ -> Formula.neqInt t zero
   | _ -> assert false
 let of_linconstrs cs =
-  Term.band
+  Formula.band
     (List.mapi
       (fun i _ ->
         of_linconstr (Apron.Lincons1.array_get cs i))
       (List.make (Apron.Lincons1.array_length cs) ()))
 
 let polyhedron_of env t =
-  let tss = Term.dnf t in
+  let tss = Formula.dnf t in
 (*
   List.iter (fun ts -> Format.printf "cj: @[<hv>%a@]@ " (Util.pr_list Term.pr ",@ ") ts) tss;
 *)
-  let tss = if tss = [] then [[Term.tfalse]] else tss in
+  let tss = if tss = [] then [[Formula.tfalse]] else tss in
   let abs =
     List.map
       (fun ts ->
-        let ts = if ts = [] then [Term.ttrue] else ts in
+        let ts = if ts = [] then [Formula.ttrue] else ts in
         let tab = Apron.Lincons1.array_make env (List.length ts) in
         List.iteri
           (fun i t ->
@@ -125,7 +127,7 @@ let widen ts =
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let tss, f = Term.elim_unit_boolean ts in
+  let tss, f = Formula.elim_unit_boolean ts in
   let aux ts =
 		  let ts = List.map (fun t -> polyhedron_of env t) ts in
 (*

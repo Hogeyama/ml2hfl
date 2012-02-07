@@ -1,3 +1,5 @@
+(** Constants*)
+
 type t =
   Event of Idnt.t
 | Unit
@@ -25,7 +27,9 @@ type t =
 | Mul
 | Minus
 
-let rec is_int_rel c =
+(** @param c a constant
+    @return whether c is a binary relation on integers *)
+let rec is_ibin c =
   match c with
     Event(_)
   | Unit
@@ -33,7 +37,9 @@ let rec is_int_rel c =
   | Lt | Gt | Leq | Geq | EqInt | NeqInt -> true
   | Int(_) | RandInt | Add | Sub | Mul | Minus -> false
 
-let rec is_binary c =
+(** @param c a constant
+    @return whether c is a binary relation *)
+let rec is_bin c =
   match c with
     Event(_)
   | Unit
@@ -45,6 +51,32 @@ let rec is_binary c =
   | Lt | Gt | Leq | Geq | EqInt | NeqInt
   | EqBool | NeqBool | EqUnit | NeqUnit
   | Add | Sub | Mul -> true
+
+let rec is_eq c =
+  match c with
+    Event(_)
+  | Unit
+  | True | False
+  | Int(_) | RandInt
+  | Not
+  | Minus
+  | And | Or | Imply | Iff
+  | Lt | Gt | Leq | Geq -> false
+  | EqInt | EqBool | EqUnit -> true
+  | NeqInt | NeqBool | NeqUnit
+  | Add | Sub | Mul -> false
+
+let rec is_formula c =
+  match c with
+    Event(_)
+  | Unit
+  | Int(_) | RandInt
+  | Minus
+  | Add | Sub | Mul -> false
+  | True | False | Not | And | Or | Imply | Iff
+  | Lt | Gt | Leq | Geq
+  | EqInt | EqBool | EqUnit
+  | NeqInt | NeqBool | NeqUnit -> true
 
 let rec pr ppf c =
   match c with
