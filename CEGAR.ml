@@ -45,6 +45,7 @@ let rec cegar1 prog preds ces =
           Flag.use_neg_pred := true;
           cegar1 prog preds ces
       | Some ce, ce'::_ when ce = ce' ->
+          Feasibility.print_ce_reduction ce prog;
           if !Flag.print_eval_abst then CEGAR_abst.eval_abst_cbn prog abst ce;
           raise NoProgress
       | Some ce, _ ->
@@ -54,7 +55,7 @@ let rec cegar1 prog preds ces =
               Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
             | Feasibility.Infeasible prefix ->
                 let ces' = ce::ces in
-                let _,prog' = Refine.refine preds prefix ce prog in
+                let _,prog' = Refine.refine preds prefix ces' prog in
                   post ();
                   cegar1 prog' preds ces'
 
@@ -106,7 +107,7 @@ let rec cegar2 prog preds ce_map =
           match Feasibility.check ce prog with
               Feasibility.Feasible(_, sol) -> prog, Some (make_ce_printer ce prog sol)
             | Feasibility.Infeasible prefix ->
-                let map,_ = Refine.refine preds prefix ce prog in
+                let map,_ = Refine.refine preds prefix [ce] prog in
                 let ce_map' = (ce,map)::ce_map in
                   post ();
                   cegar2 prog preds ce_map'

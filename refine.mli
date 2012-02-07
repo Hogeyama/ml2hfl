@@ -5,7 +5,7 @@ exception CannotRefute
 
 val refine :
   (CEGAR_syntax.var * int * int list) list ->
-  CEGAR_syntax.ce -> CEGAR_syntax.ce ->
+  CEGAR_syntax.ce -> CEGAR_syntax.ce list ->
   CEGAR_syntax.prog ->
   (CEGAR_syntax.var * CEGAR_syntax.typ) list * CEGAR_syntax.prog
 (** [refine prefix traces t] で，反例のリスト [traces] を用いて [t] の述語発見を行う．

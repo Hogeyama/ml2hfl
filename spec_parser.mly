@@ -147,6 +147,8 @@ typ:
   { $2 }
 | typ_base_id
   { $1 }
+| typ TIMES typ
+  { new_var "", TPair(snd $1, snd $3) }
 | typ LIST
   { new_var "", TList(snd $1, []) }
 | typ LIST LSQUAR pred_list RSQUAR

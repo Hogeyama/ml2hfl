@@ -304,7 +304,7 @@ let check env target =
   initialize ();
   let target' = trans target in
   let r =
-    if Flag.use_new_trecs
+    if !Flag.use_new_trecs
     then
       let input = "input.hors" in
         write_log input target';

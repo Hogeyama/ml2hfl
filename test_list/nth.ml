@@ -1,5 +1,5 @@
 
-let rec nth n (xs:int list) =
+let rec nth n xs =
   match xs with
     | [] -> assert false
     | x::xs' -> if n = 0 then x else nth (n-1) xs'

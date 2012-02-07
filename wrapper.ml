@@ -8,12 +8,16 @@ open Type
 let rec print_typ t = Type.print print_term t
 and print_ids fm = function
     [] -> ()
-  | x::xs -> Format.fprintf fm "%a %a" Id.print x print_ids xs
+  | x::xs -> Format.fprintf fm "%a %a" print_id x print_ids xs
 
 (*
   and print_id fm x = fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
 *)
-and print_id = Id.print
+and print_id fm x =
+  match Id.typ x with
+      TInt _ -> Format.fprintf fm "%a_i" Id.print x
+    | TBool -> Format.fprintf fm "%a_b" Id.print x
+    | typ -> Syntax.pp_print_typ Format.std_formatter typ; assert false
 
 and print_id_typ fm x =
   match Id.typ x with
@@ -53,7 +57,7 @@ and print_term fm t =
     | Var x -> print_id fm x
     | BinOp(Mult, t1, t2) when
         (match t1.desc with Int(_) -> false | _ -> (match t2.desc with Int(_) -> false | _ -> true)) ->
-          Format.printf "Nonlinear expression not supported.@.";
+        Format.printf "Nonlinear expression not supported.@.";
           assert false
     | BinOp(op, t1, t2) ->
         if op = Eq && t1.typ = TBool
@@ -61,8 +65,6 @@ and print_term fm t =
         else Format.fprintf fm "(%a %a %a)" print_term t1 (print_binop t1.typ) op print_term t2
     | Not t -> Format.fprintf fm "(NOT %a)" print_term t
     | _ -> assert false
-
-
 
 
 let string_of_ident x =

@@ -17,7 +17,7 @@ type refine = RefineSizedType | RefineDependentType
 type form = CPS
 
 (* TRecS option *)
-let use_new_trecs = true
+let use_new_trecs = ref true
 let trecs_param1 = ref 1000
 let trecs_param2 = ref 10
 

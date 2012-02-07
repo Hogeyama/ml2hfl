@@ -57,12 +57,11 @@ let main filename in_channel =
   let () = if !Flag.web then write_log_string input_string in
   let t =
     let lb = Lexing.from_string input_string in
-    let _ = lb.Lexing.lex_curr_p <-
-      {Lexing.pos_fname = Filename.basename filename;
-       Lexing.pos_lnum = 1;
-       Lexing.pos_cnum = 0;
-       Lexing.pos_bol = 0}
-    in
+      lb.Lexing.lex_curr_p <-
+        {Lexing.pos_fname = Filename.basename filename;
+         Lexing.pos_lnum = 1;
+         Lexing.pos_cnum = 0;
+         Lexing.pos_bol = 0};
       Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
   in
 
@@ -72,7 +71,13 @@ let main filename in_channel =
     if !spec_file = ""
     then []
     else
-      Spec_parser.typedefs Spec_lexer.token (Lexing.from_channel (open_in !spec_file))
+      let lb = Lexing.from_channel (open_in !spec_file) in
+      lb.Lexing.lex_curr_p <-
+        {Lexing.pos_fname = Filename.basename !spec_file;
+         Lexing.pos_lnum = 1;
+         Lexing.pos_cnum = 0;
+         Lexing.pos_bol = 0};
+        Spec_parser.typedefs Spec_lexer.token lb
   in
 
   let () = print_spec spec in
@@ -87,18 +92,21 @@ let main filename in_channel =
       let t = t' in
       let spec' = Trans.rename_spec spec t in
       let () = print_spec spec' in
-      let t = Trans.replace_typ spec' t in
-      let () = if true then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term_typ t in
-      let t = Abstract.abstract_recdata t in
-      let () = if false then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term_typ t in
-      let t = Abstract.abstract_list t in
-      let () = if true then Format.printf "abst_list::@.%a@.@." Syntax.pp_print_term' t in
-      let () = if true then Format.printf "abst_list::@.%a@.@." Syntax.pp_print_term t in
-      let t = CPS.trans t in
-      let () = if true then Format.printf "CPS::@.%a@.@.@." Syntax.pp_print_term_typ t in
-      let t = CPS.remove_pair t in
-      let () = if true then Format.printf "remove_pair::@.%a@.@.@." Syntax.pp_print_term_typ t in
-        t
+      let t' = Trans.replace_typ spec' t in
+      let () = if true && t <> t' then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
+      let t' = Abstract.abstract_recdata t in
+      let () = if true && t <> t' then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term t' in
+      let t = t' in
+      let t' = Abstract.abstract_list t in
+      let () = if true && t <> t' then Format.printf "abst_list::@.%a@.@." Syntax.pp_print_term t' in
+      let t = t' in
+      let t' = CPS.trans t in
+      let () = if true && t <> t' then Format.printf "CPS::@.%a@.@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
+      let t' = CPS.remove_pair t in
+      let () = if true && t <> t' then Format.printf "remove_pair::@.%a@.@.@." Syntax.pp_print_term_typ t' in
+        t'
     else t
   in
 
@@ -129,7 +137,8 @@ let arg_spec =
    "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
    "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
-   "-trecs", Arg.Set Flag.new_cegar, Format.sprintf " Change trecs command (default: \"%s\")" !Flag.trecs;
+   "-trecs", Arg.String Flag.(fun cmd -> trecs := cmd), Format.sprintf " Change trecs command (default: \"%s\")" !Flag.trecs;
+   "-old-trecs", Arg.Clear Flag.new_cegar, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
   ]
 

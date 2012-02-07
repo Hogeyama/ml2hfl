@@ -80,7 +80,7 @@ let rec add_pred n path typ =
 
 
 
-let refine preds prefix ce ((env,defs,main):prog) =
+let refine preds prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
     if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
     if Flag.use_prefix_trace then raise (Fatal "Not implemented: Flag.use_prefix_trace");
@@ -92,14 +92,14 @@ let refine preds prefix ce ((env,defs,main):prog) =
               | (EventNode _)::ce -> aux ce
               | [] -> []
             in
-            let map = LazyInterface.infer [aux ce] (env,defs,main) in
-              if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [ce] (env,defs,main);
+            let map = LazyInterface.infer (List.map aux ces) (env,defs,main) in
+              if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
               map
         | Flag.RefineDependentType ->
             if not (List.mem Flag.CPS !Flag.form)
             then failwith "Program must be in CPS @ ModelCheckCPS";
             try
-              RefineDepTyp.infer [ce] (env,defs,main)
+              RefineDepTyp.infer [List.hd ces] (env,defs,main)
             with RefineDepTyp.Untypable -> raise CannotRefute
     in
     let map' =
