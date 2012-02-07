@@ -46,10 +46,10 @@ let rec cegar1 prog preds ces =
           cegar1 prog preds ces
       | Some ce, ce'::_ when ce = ce' ->
           Feasibility.print_ce_reduction ce prog;
-          if !Flag.print_eval_abst then CEGAR_abst.eval_abst_cbn prog abst ce;
+          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog abst ce;
           raise NoProgress
       | Some ce, _ ->
-          if !Flag.print_eval_abst then CEGAR_abst.eval_abst_cbn prog abst ce;
+          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog abst ce;
           Feasibility.print_ce_reduction ce prog;
           match Feasibility.check ce prog with
               Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
@@ -84,7 +84,7 @@ let rec cegar2 prog preds ce_map =
             Flag.use_neg_pred := true;
             aux c ce_map ces prog
         | Some ce when List.mem ce ces ->
-            if !Flag.print_eval_abst then CEGAR_abst.eval_abst_cbn prog abst ce;
+            if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog abst ce;
             raise NoProgress
         | Some ce when List.mem_assoc ce ce_map ->
             let map = List.assoc ce ce_map in

@@ -13,7 +13,7 @@ val abstract : int option -> CEGAR_syntax.prog -> CEGAR_syntax.prog
     入力は、引数を評価しても fail しないものとする
 *)
 
-val eval_abst_cbn : CEGAR_syntax.prog -> CEGAR_syntax.prog -> CEGAR_syntax.ce -> unit
+
 
 
 
