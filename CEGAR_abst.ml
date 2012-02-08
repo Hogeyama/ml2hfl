@@ -131,8 +131,8 @@ let abstract count prog =
     if Flag.print_progress
     then
       match count with
-          None -> Format.printf "\n(%d-1) Abstracting ... @?" !Flag.cegar_loop
-        | Some c -> Format.printf "\n(%d-1-%d) Abstracting ... @?" !Flag.cegar_loop c
+          None -> Format.printf "(%d-1) Abstracting ... @?" !Flag.cegar_loop
+        | Some c -> Format.printf "(%d-1-%d) Abstracting ... @?" !Flag.cegar_loop c
   in
   let labeled,abst =
     match !Flag.pred_abst with
@@ -140,7 +140,7 @@ let abstract count prog =
       | Flag.PredAbst -> abstract prog
   in
   let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
-  let () = if Flag.print_progress then Format.printf "DONE!@." in
+  let () = if Flag.print_progress then Format.printf "DONE!@.@." in
   let () = add_time tmp Flag.time_abstraction in
     labeled,abst
 

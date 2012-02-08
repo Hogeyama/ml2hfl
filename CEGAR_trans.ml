@@ -196,7 +196,7 @@ let assoc_def labeled defs ce acc t =
 let init_cont ce acc _ = assert (ce=[]); List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
-  if true then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) print_term t;
+  if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) print_term t;
   match t with
     | Const RandInt -> assert false
     | Const c -> k ce acc (Const c)

@@ -1792,10 +1792,10 @@ let test tdefs s defs traces pred =
      let _ = if !pr_flag then print_string2 "\n" in
 
 
-
-     let _ = if !pr_flag || Flag.debug then print_string2 "\nSolutions::\n" in
+     let print_solutions = false in
+     let _ = if (print_solutions || !pr_flag) && Flag.debug then print_string2 "\nSolutions::\n" in
      let _ =
-       if Flag.debug
+       if print_solutions && Flag.debug
        then
          List.iter
            (fun (pid, (ids, t)) ->
@@ -1807,7 +1807,7 @@ let test tdefs s defs traces pred =
               print_string2 "\n")
            sol in
      let _ =
-       if Flag.debug then
+       if print_solutions && Flag.debug then
          List.iter
            (fun ac ->
               let ac' = subst_sol_ac pids sol ac in
@@ -1823,7 +1823,7 @@ let test tdefs s defs traces pred =
               end)
            c''
      in
-     let _ = if Flag.debug then print_string2 "\n\n" in
+     let _ = if print_solutions && Flag.debug then print_string2 "\n\n" in
        rte, sol)
 
 
@@ -1985,7 +1985,7 @@ let infer ces prog =
     try
       let _,rty = List.find (fun (x, _) -> Id.same f x) rte in
       let typ = List.fold_left (add_preds_typ sol) (Id.typ f) rty in
-        if true || Flag.print_refine_log then Format.printf "%a: %a@." Id.print f print_typ typ;
+        if Flag.print_refine_log then Format.printf "%a: %a@." Id.print f print_typ typ;
         [CU.trans_var f, CU.trans_typ' typ]
     with Not_found -> []
   in

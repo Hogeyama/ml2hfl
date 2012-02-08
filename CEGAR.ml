@@ -108,6 +108,7 @@ let rec cegar2 prog preds ce_map =
           match Feasibility.check ce prog with
               Feasibility.Feasible(_, sol) -> prog, Some (make_ce_printer ce prog sol)
             | Feasibility.Infeasible prefix ->
+                let () = if true then Format.printf "Prefix of spurious counter-example::@.%a@.@." CEGAR_print.print_ce prefix in
                 let map,_ = Refine.refine preds prefix [ce] prog in
                 let ce_map' = (ce,map)::ce_map in
                   post ();

@@ -29,8 +29,8 @@ let check count abst prog =
     if Flag.print_progress
     then
       match count with
-          None -> Format.printf "\n(%d-2) Checking HORS ... @?" !Flag.cegar_loop
-        | Some c -> Format.printf "\n(%d-2-%d) Checking HORS ... @?" !Flag.cegar_loop c
+          None -> Format.printf "(%d-2) Checking HORS ... @?" !Flag.cegar_loop
+        | Some c -> Format.printf "(%d-2-%d) Checking HORS ... @?" !Flag.cegar_loop c
   in
   let result =
     match !Flag.model_check with
@@ -41,5 +41,5 @@ let check count abst prog =
       | Flag.ModelCheck -> check abst n
   in
   let () = add_time tmp Flag.time_mc in
-  let () = if Flag.print_progress then Format.printf "DONE!@." in
+  let () = if Flag.print_progress then Format.printf "DONE!@.@." in
     result

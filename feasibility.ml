@@ -72,7 +72,6 @@ let check ce ((env,defs,main):prog) =
   let pr _ _ _ _ = () in
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
-  let () = if true then Format.printf "@.@.Prefix of spurious counter-example::@.%a@.@." CEGAR_print.print_ce prefix in
   let result =
     if Wrapper2.checksat env' constr
     then Feasible (env', Wrapper2.get_solution env' constr)
@@ -152,7 +151,6 @@ let trans_ce ce ((env,defs,main):prog) =
 
 
 let print_ce_reduction ce ((_,defs,main):prog) =
-Format.printf "CE: %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr t br n e =

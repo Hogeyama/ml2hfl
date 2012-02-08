@@ -59,7 +59,7 @@ and print_typ fm typ =
   print_typ_aux None fm typ
 
 and print_env fm env =
-  List.iter (fun (f,typ) -> Format.fprintf fm "%a : %a@." print_var f print_typ typ) env
+  List.iter (fun (f,typ) -> Format.fprintf fm "@[%a : %a@]@\n" print_var f print_typ typ) env
 
 and print_const fm = function
   | Unit -> Format.fprintf fm "()"
@@ -120,17 +120,19 @@ and print_fun_def fm (f,xs,t1,es,t2) =
     if t1 = Const True
     then
       let ys,t2 = decomp_fun t2 in
-        Format.fprintf fm "@[<hov 4>%a ->%s@ %a@]@\n" (print_list print_var " " false) (f::xs@ys) s print_term t2
-    else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]@\n" (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
+        Format.fprintf fm "@[<hov 4>%a ->%s@ %a@]" (print_list print_var " " false) (f::xs@ys) s print_term t2
+    else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]" (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
 
 and print_prog fm (_,defs,s) =
-  Format.fprintf fm "Main: %a@\n" print_var s;
-  List.iter (print_fun_def fm) defs
+  Format.fprintf fm "@[Main: %a@\n  @[%a@]@]@\n"
+    print_var s
+    (print_list print_fun_def "@\n" false) defs
 
 and print_prog_typ fm (env,defs,s) =
-  Format.fprintf fm "Main: %a@\n" print_var s;
-  List.iter (print_fun_def fm) defs;
-  Format.fprintf fm "Types:\n%a@." print_env env;
+  Format.fprintf fm "@[Main: %a@\n  @[%a@]@\n@[Types:@\n  @[%a@."
+    print_var s
+    (print_list print_fun_def "@\n" false) defs
+    print_env env
 
 
 

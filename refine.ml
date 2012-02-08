@@ -106,7 +106,7 @@ let refine preds prefix ces ((env,defs,main):prog) =
     let () = if false then List.iter (fun (x,typ) -> Format.printf "%a: %a@." CEGAR_print.var x CEGAR_print.typ typ) map' in
     let env' = add_preds_env map' env in
       add_time tmp Flag.time_cegar;
-      if Flag.print_progress then Format.printf "DONE!@.";
+      if Flag.print_progress then Format.printf "DONE!@.@.";
       map', (env', defs, main)
 
 
