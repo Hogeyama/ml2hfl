@@ -1,20 +1,13 @@
 open ExtList
 open ExtString
+open Trace
 
 (** Computation trees *)
 
 (** {6 Types} *)
 
-(** Elements of traces *)
-type s =
-  Call of (Var.t * int) * Term.t
-| Arg of (Var.t * Term.t * SimType.t) list
-| Ret of Var.t * Term.t * SimType.t
-| Nop
-| Error
-
 (** Computation trees *)
-type t = { uid: int; path: int list; term: Term.t; children: (s * t) list ref }
+type t = { uid: int; path: int list; term: Term.t; children: (Trace.s * t) list ref }
 
 (** {6 Basic functions} *)
 
@@ -26,54 +19,17 @@ let gen_id =
   let cnt = ref 0 in
   fun () -> cnt := !cnt + 1; !cnt
 
-(** @return ids for the return value and arguments *)
+(** @return the structured variables of the return value and arguments *)
 let ret_args f uid arity = 
   Term.make_var (Var.T(f, uid, arity)),
   List.init arity (fun i -> Term.make_var (Var.T(f, uid, i)))
 
-(** {6 Functions on traces} *)
+(** @param ct a computation tree 
+    @return traces of ct *)
+let rec traces_of ct =
+  Util.concat_map (fun (g, n) -> let ps = traces_of n in if ps = [] then [[g]] else List.map (fun p -> g::p) ps) !(ct.children)
 
-let rec pr_trace ppf p =
-  let pr ppf s =
-    match s with
-      Call(_, t) ->
-        Format.fprintf ppf "[@[<hov>%a.@," Term.pr t
-    | Arg(xttys) ->
-        Format.fprintf ppf "%a@," Term.pr (Formula.band (List.map Formula.eq_xtty xttys))
-    | Ret(x, t, ty) -> 
-        Format.fprintf ppf "%a@]]@," Term.pr (Formula.eq_xtty (x, t, ty))
-    | Nop ->
-        Format.fprintf ppf "nop"
-    | Error ->
-        Format.fprintf ppf "error"
-  in
-  Format.fprintf ppf "%a" (Util.pr_list pr "") p
-
-let rec function_calls_of tr =
-  match tr with
-    [] ->
-      []
-  | s::tr' ->
-      (match s with
-        Call(x, _) ->
-          x::function_calls_of tr'
-      | _ -> function_calls_of tr')
-
-(** {6 Functions on computation trees} *)
-
-(** @param prog a program
-    initialize a computation tree of prog *)
-let init prog =
-  let uid = gen_id () in
-  let ty_main = Prog.type_of prog (Var.V(prog.Prog.main)) in
-  let ret, args =
-    ret_args
-     (Var.V(prog.Prog.main))
-     uid
-     (SimType.arity ty_main)
-  in
-  let _, retty = SimType.args_ret ty_main in
-  make uid [] (Term.Ret([], ret, Term.Call([], Term.make_var (Var.make prog.Prog.main), args), retty)) (ref [])
+let error_traces_of ct = List.filter (fun p -> List.last p = Error) (traces_of ct)
 
 let save_as_dot filename ct wl =
   let node_name uid t = (String.of_int uid) ^ ": " ^ Term.string_of t in
@@ -110,25 +66,36 @@ let save_as_dot filename ct wl =
   in
   Util.save_as_dot filename vs es
 
-(** @param ct a computation tree 
-    @return traces of ct *)
-let rec traces_of ct =
-  Util.concat_map (fun (g, n) -> let ps = traces_of n in if ps = [] then [[g]] else List.map (fun p -> g::p) ps) !(ct.children)
+(** {6 Functions on computation trees} *)
 
-let error_traces_of ct = List.filter (fun p -> List.last p = Error) (traces_of ct)
+(** @param prog a program
+    initialize a computation tree of prog *)
+let init prog =
+  let uid = gen_id () in
+  let ty_main = Prog.type_of prog (Var.V(prog.Prog.main)) in
+  let ret, args =
+    ret_args
+     (Var.V(prog.Prog.main))
+     uid
+     (SimType.arity ty_main)
+  in
+  let _, retty = SimType.args_ret ty_main in
+  make uid [] (Term.Ret([], ret, Term.Call([], Term.make_var (Var.make prog.Prog.main), args), retty)) (ref [])
 
-let event_fail = "fail"
+let emp_fun_env x =
+  let _ = Format.printf "\"%a\" not found@." Var.pr x in
+  assert false
 let expand_node prog fenv ct =
   let _ =
     if !(ct.children) <> [] then
-      let _ =  Format.printf "the node is already expanded@." in
+      let _ =  Format.printf "given node is already expanded@." in
       assert false
   in
   try
     let ctx, red = Term.redex_of (Prog.type_of prog) ct.term in
     let fenv, gns =
       match red with
-        Term.App(_, Term.Const(_, Const.Event(id)), _(*???*)) when Idnt.string_of id = event_fail ->
+        Term.App(_, Term.Const(_, Const.Event(id)), _(*???*)) when Idnt.string_of id = Term.event_fail ->
           fenv, [Error, make (gen_id ()) ct.path (Term.Error([])) (ref [])]
       | Term.App(_, Term.Const(_, Const.RandInt), t(*???*)) ->
           fenv, [Nop, make (gen_id ()) ct.path (ctx (Term.apply t [Term.make_var (Var.make (Idnt.new_id ()))])) (ref [])]

@@ -3,11 +3,13 @@ SOURCES = enum.ml extList.ml extString.ml \
           attr.ml idnt.ml const.ml var.ml arith.ml simType.ml term.ml formula.ml fdef.ml prog.ml \
           flags.ml \
           apronInterface.ml cvc3Interface.ml csisatInterface.ml \
-          compTree.ml compTreeExpander.ml \
-          hornClause.ml cgen.ml \
-          intType.ml cgenIntType.ml intTypeCheck.ml \
-          refType.ml cgenRefType.ml refTypeCheck.ml \
+          intType.ml intTypeCheck.ml \
+          refType.ml refTypeCheck.ml \
           absType.ml \
+          trace.ml compTree.ml compTreeExpander.ml \
+          tcGen.ml tcGenIntType.ml tcGenRefType.ml \
+          tcSolve.ml tcSolveIntType.ml tcSolveRefType.ml \
+          hornClause.ml hcGenRefType.ml hcSolveRefType.ml \
           verifier.ml \
           main.ml
 DOC_FILES = enum.mli extList.mli extString.mli $(SOURCES)

@@ -156,7 +156,7 @@ let env_of env sums fcs =
   let rec shape_of (x, uid) =
     match env x with
       SimType.Unit | SimType.Bool | SimType.Int ->
-        (* pred disc assume that top level functions are with a function type but MoCHi violates *)
+        (* predicate discovery algo. assumes that each top level definition is with a function type but MoCHi violates the condition *)
         Base(x, conv_base (env x), Formula.ttrue)
 (*
         let _ = Format.printf "%a:%d" Var.pr x uid in

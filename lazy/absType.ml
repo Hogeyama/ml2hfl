@@ -147,13 +147,13 @@ let of_interaction_type f sty =
 let rec of_refinement_type rty =
   match rty with
     RefType.Base(x, RefType.Unit, t) ->
-      let ps = if Flags.atom then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
+      let ps = if !Flags.extract_atomic_predicates then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
       Base(Unit, x, ps)
   | RefType.Base(x, RefType.Bool, t) ->
-      let ps = if Flags.atom then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
+      let ps = if !Flags.extract_atomic_predicates then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
       Base(Bool, x, ps)
   | RefType.Base(x, RefType.Int, t) ->
-      let ps = if Flags.atom then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
+      let ps = if !Flags.extract_atomic_predicates then Formula.atoms t else if t = Formula.ttrue || t = Formula.tfalse then [] else [t] in
       Base(Int, x, ps)
   | RefType.Fun(xs) ->
       let _ = assert (xs <> []) in

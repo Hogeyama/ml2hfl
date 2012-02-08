@@ -3,29 +3,29 @@ open ExtList
 (** Verifier *)
 
 let refineRefTypes prog etrs =
-		let constrss = List.map CgenRefType.cgen etrs in
+		let constrss = List.map TcGenRefType.cgen etrs in
 (*
-  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list Cgen.pr "@,") constrss in
+  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list TcGen.pr "@,") constrss in
 *)
-  let sums = CgenRefType.summaries_of (Prog.type_of prog) constrss in
+  let sums = TcSolveRefType.summaries_of (Prog.type_of prog) constrss in
 (**)
   let _ = List.iter (fun (`P(x, t)) ->
     Format.printf "P(%a): %a@." Var.pr x Term.pr t) sums
   in
 (**)
-  let fcs = List.unique (Util.concat_map CompTree.function_calls_of etrs) in
-  let env = CgenRefType.infer_env prog sums fcs in
+  let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
+  let env = TcSolveRefType.infer_env prog sums fcs in
   env
 
 let refineIntTypes prog etrs =
-		let constrss = List.map CgenIntType.cgen etrs in
+		let constrss = List.map TcGenIntType.cgen etrs in
 (*
-  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list Cgen.pr "@,") constrss in
+  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list TcGen.pr "@,") constrss in
 *)
   let sums = Util.concat_map
     (fun constrs ->
       Format.printf "@.";
-      CgenIntType.summaries_of (Prog.type_of prog) constrs)
+      TcSolveIntType.summaries_of (Prog.type_of prog) constrs)
     constrss
   in
 (*
@@ -35,14 +35,12 @@ let refineIntTypes prog etrs =
     Format.printf "Post(%a,%d): %a@." Var.pr x uid Term.pr post) sums
   in
 *)
-  let fcs = List.unique (Util.concat_map CompTree.function_calls_of etrs) in
-  let env = CgenIntType.infer_env prog sums fcs in
+  let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
+  let env = TcSolveIntType.infer_env prog sums fcs in
   env
 
 let verify prog =
-(*
-  Format.printf "%a" Prog.pr prog;
-*)
+  let _ = if !Flags.debug then Format.printf "%a" Prog.pr prog in
   try
 		  let rt = CompTree.init prog in
     let strategy = if true then CompTreeExpander.bf_strategy rt else CompTreeExpander.df_strategy rt in
@@ -52,7 +50,7 @@ let verify prog =
       let etrs' = Util.diff etrs old_etrs in
       let _ =
         Format.printf "error traces:@.";
-        List.iter (fun ep -> Format.printf "  %a@." CompTree.pr_trace ep) etrs'
+        List.iter (fun ep -> Format.printf "  %a@." Trace.pr ep) etrs'
       in
       match Flags.refine with
         `RefType ->
@@ -71,18 +69,19 @@ let verify prog =
 				        loop etrs (i + 1)
     in
     loop [] 1
-  with Cgen.FeasibleErrorTrace(eptr) ->
-   Format.printf "@.The program is unsafe@.Error trace: %a@." Cgen.pr eptr
+  with TcGen.FeasibleErrorTrace(eptr) ->
+   Format.printf "@.The program is unsafe@.Error trace: %a@." TcGen.pr eptr
 
 
-let infer_abst_type cex prog =
+let infer_abst_type cexs prog =
 (*
   let _ = Format.printf "%a" Prog.pr prog in
 *)
-  let _ = Format.printf "%s@." (String.concat ":" (List.map string_of_int cex)) in
+  let _ = List.iter (fun cex -> Format.printf "%s@." (String.concat ":" (List.map string_of_int cex))) cexs in
   let rt = CompTree.init prog in
-  let strategy = CompTreeExpander.cex_strategy cex rt in
-  let _ = CompTreeExpander.expand_until_new_error_trace_found prog rt strategy in
+  let filter cts = List.filter (fun ct -> List.exists (Util.is_prefix ct.CompTree.path) cexs) cts in
+  let strategy = CompTreeExpander.filter_strategy filter rt in
+  let _ = CompTreeExpander.expand_all(*expand_until_new_error_trace_found*) prog rt strategy in
   let etrs = CompTree.error_traces_of rt in
   let env =
 		  match Flags.refine with

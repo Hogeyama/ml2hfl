@@ -1,7 +1,15 @@
-(** Verification flags *)
+(** Flags for verifier *)
 
-let enable_widening = false
-let enable_quick_inference = false
-let debug = true
+let debug = ref true
+
+(** {6 Flags for predicate discovery} *)
+
+let generalize_predicates = ref false
+
+(** {6 Flags fo abstraction type construction} *)
+let extract_atomic_predicates = ref false
+
+(** Deprecated flags *)
+
 let refine = (*`IntType *) `RefType
-let atom = false
+let enable_quick_inference = false

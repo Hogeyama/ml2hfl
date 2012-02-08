@@ -176,14 +176,14 @@ let nonemp_prefixes ts =
   in
   tss
 
-(** @deprecated  use ExtList.List.last *)
+(** @deprecated use ExtList.List.last *)
 let rec last xs =
  match xs with
    [] -> assert false
  | [x] -> x
  | x::xs' -> last xs'
 
-(** @deprecated  use ExtList.List.filter_map *)
+(** @deprecated use ExtList.List.filter_map *)
 let rec filter_map p xs =
   match xs with
     [] -> []
@@ -192,7 +192,7 @@ let rec filter_map p xs =
         Some(y) -> y::(filter_map p xs')
       | None -> filter_map p xs')
 
-(** @deprecated  use ExtList.List.split_nth *)
+(** @deprecated use ExtList.List.split_nth *)
 let rec split_nth n xs =
   if n = 0 then
     [], xs

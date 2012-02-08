@@ -121,7 +121,8 @@ let make_var x = Var([], x)
 let tint n = Const([], Const.Int(n))
 let tunit = Const([], Const.Unit)
 let tevent id = Const([], Const.Event(Idnt.make id))
-let tfail = apply (tevent "fail") [tunit]
+let event_fail = "fail"
+let tfail = apply (tevent event_fail) [tunit]
 
 (** {6 Functions on integers} *)
 

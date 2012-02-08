@@ -179,7 +179,7 @@ let is_valid t =
     "QUERY " ^ string_of_term t ^ ";" ^
     "POP;\n"
   in
-  let _ = if Flags.debug then Format.printf "input to cvc3: %s@ " inp in
+  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@ " inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let res = input_line cin in
   if Str.string_match (Str.regexp ".*Valid") res 0 then

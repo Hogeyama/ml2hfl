@@ -360,7 +360,7 @@ let type_of_const c =
   Format.printf "%a@ " Const.pr c;
   *)
   match c with
-    Const.Event(id) when Idnt.string_of id = CompTree.event_fail ->
+    Const.Event(id) when Idnt.string_of id = Term.event_fail ->
       (** ToDo *)
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in

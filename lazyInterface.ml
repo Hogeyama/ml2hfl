@@ -17,6 +17,7 @@ let conv_const c =
   | Gt -> Const.Gt
   | Leq -> Const.Leq
   | Geq -> Const.Geq
+  | EqUnit -> Const.EqUnit
   | EqBool -> Const.EqBool
   | EqInt -> Const.EqInt
   | Int(n) -> Const.Int(n)
@@ -28,9 +29,9 @@ let conv_const c =
 
 let rec conv_term t =
   match t with
-  | Const(Bottom) -> Term.make_var "bottom" (***)
+  | Const(Bottom) -> Term.make_var (Var.make (Idnt.make "bottom")) (***)
   | Const(c) -> Term.Const([], conv_const c)
-  | Var(x) -> Term.make_var x
+  | Var(x) -> Term.make_var (Var.make (Idnt.make x))
   | App(t1, t2) -> Term.apply (conv_term t1) [conv_term t2]
   | Fun _ -> assert false
   | Let _ -> assert false
@@ -60,6 +61,12 @@ let rec inv_term t =
   match t with
     Term.Const(_, c) -> Const(inv_const c)
   | Term.Var(_, x) -> Var(Var.string_of x)
+  | Term.App(_, Term.App(_, t1, t2), t3) ->
+      (match t1 with
+        Term.Const(_, Const.NeqUnit) -> App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.NeqBool) -> App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.NeqInt) -> App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
+      | _ -> App(App(inv_term t1, inv_term t2), inv_term t3))
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
   | Term.Forall (_, _, _) -> assert false
   | Term.Error _ -> assert false
@@ -121,12 +128,12 @@ let rec inv_abst_type aty =
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
 
 
-let infer [cex] prog =
+let infer cexs prog =
   let prog = conv_prog prog in
-  let env = Verifier.infer_abst_type cex prog in
+  let env = Verifier.infer_abst_type cexs prog in
   List.map
    (fun (f, rty) ->
-     match f with Var.V(id) -> id, inv_abst_type rty)
+     match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty)
    env
 (*
   List.map
