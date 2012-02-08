@@ -89,7 +89,7 @@ let rec eval_abst_cbn prog abst ce =
   let env_abst = get_env abst in
   let defs = get_defs abst in
   let main = get_main abst in
-  let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) ce in
+  let ce' = ce in
   let rec loop ce t =
     Format.printf "%a -->@\n" print_term t;
     assert (match get_typ env_abst t with TBase(TUnit,_) -> true | _ -> false);
@@ -130,4 +130,106 @@ let rec eval_abst_cbn prog abst ce =
 
 
 
+
+
+let rec get_nonrec main defs =
+  let aux (f,_,t1,e,_) =
+    f <> main &&
+    t1 = Const True &&
+    e = [] &&
+    1 >= count_list (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@ get_fv t2)) defs &&
+    1 >= count_list (fun (g,_,_,_,_) -> f = g) defs
+  in
+  let defs' = List.filter aux defs in
+    List.map (fun (f,xs,_,_,t) -> f, List.fold_right (fun x t -> Fun(x,None,t)) xs t) defs'
+
+let rec beta_reduce_term = function
+    Const c -> Const c
+  | Var x -> Var x
+  | App(t1, t2) ->
+      let t1' = beta_reduce_term t1 in
+      let t2' = beta_reduce_term t2 in
+        begin
+          match t1' with
+              Fun(x,_,t1') -> beta_reduce_term (subst x t2' t1')
+            | _ -> App(t1', t2')
+        end
+  | Fun(x, typ, t) -> Fun(x, typ, beta_reduce_term t)
+  | Let _ -> assert false
+let beta_reduce_def (f,xs,t1,e,t2) =
+  f, xs, beta_reduce_term t1, e, beta_reduce_term t2
+
+let rec expand_nonrec (env,defs,main) =
+  let nonrec = get_nonrec main defs in
+  let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
+  let rec loop defs =
+    let defs' = List.map aux defs in
+      if defs = defs'
+      then defs
+      else loop defs'
+  in
+  let defs' = List.filter (fun (f,_,_,_,_) -> not (List.mem_assoc f nonrec)) defs in
+  let defs'' = loop defs' in
+  let defs''' = List.map beta_reduce_def defs'' in
+    (env,defs''',main)
+
+
+
+
+
+let assoc_def labeled defs ce acc t =
+  let f = match t with Var f -> f | _ -> assert false in
+  let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
+    if List.mem f labeled
+    then
+      let c = List.hd ce in
+      let ce' = List.tl ce in
+      let acc' = c::acc in
+      let def = List.nth defs' c in
+        ce', acc', def
+    else
+      let acc' = 0::acc in
+      let def = List.hd defs' in
+        assert (List.length defs' = 1);
+        ce, acc', def
+
+let init_cont ce acc _ = assert (ce=[]); List.rev acc
+
+let rec trans_ce_aux labeled ce acc defs t k =
+  if true then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) print_term t;
+  match t with
+    | Const RandInt -> assert false
+    | Const c -> k ce acc (Const c)
+    | Var x -> k ce acc (Var x)
+    | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
+        trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
+        trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
+          k ce acc (make_app (Const op) [t1;t2])))
+    | App(Const RandInt, t) ->
+        let r = new_id "r" in
+          trans_ce_aux labeled ce acc defs (App(t,Var r)) k
+    | App(t1,t2) ->
+        trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
+        trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
+          let t1',ts = decomp_app (App(t1,t2)) in
+          let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
+            if List.length xs > List.length ts
+            then k ce acc (App(t1,t2))
+            else
+              let ce',acc',(f,xs,tf1,e,tf2) = assoc_def labeled defs ce acc t1' in
+              let ts1,ts2 = take2 ts (List.length xs) in
+              let aux = List.fold_right2 subst xs ts1 in
+              let tf2' = make_app (aux tf2) ts2 in
+                assert (List.length xs = List.length ts);
+                if e = [Event "fail"]
+                then init_cont ce' acc' tf2'
+                else trans_ce_aux labeled ce' acc' defs tf2' k))
+    | Let _ -> assert false
+    | Fun _ -> assert false
+
+let trans_ce ce labeled ((env,defs,main):prog) =
+  let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  let ce' = trans_ce_aux labeled ce [] defs t init_cont in
+    assert (not (List.mem main labeled));
+    0::ce'
 

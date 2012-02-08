@@ -11,7 +11,8 @@ let debug = false
 
 let hd xs =
   match xs with
-      [x] -> x
+      [] -> assert false
+    | [x] -> x
     | _ -> assert false
 
 
@@ -316,7 +317,7 @@ let make_arg_let (env,defs,main) =
 
 let rec add_label (env,defs,main) =
   let merge = function
-      [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, (Branch 0)::e, t2]
+      [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, e, t2]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
         [f1,xs1,t11,(Branch 1)::e1,t12; f2,xs2,t21,(Branch 0)::e2,t22]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
@@ -330,7 +331,9 @@ let rec add_label (env,defs,main) =
         let defs' = merge ((f,xs,t1,e,t2)::defs1) in
           defs' @ aux defs2
   in
-    (env, aux defs, main)
+  let defs' = aux defs in
+  let labeled = uniq (rev_flatten_map (function (f,_,_,(Branch _)::_,t) -> [f] | _ -> []) defs') in
+    labeled, (env, defs', main)
 
 
 

@@ -140,6 +140,10 @@ let arg_spec =
    "-trecs", Arg.String Flag.(fun cmd -> trecs := cmd), Format.sprintf " Change trecs command (default: \"%s\")" !Flag.trecs;
    "-old-trecs", Arg.Clear Flag.new_cegar, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
+   "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicates accumulation";
+   "-rc", Arg.Set Flag.relative_complete, " To be relative complete";
+   "-gp", Arg.Set Flags.generalize_predicates, " Generalize predicates";
+   "-eap", Arg.Set Flags.extract_atomic_predicates, " Extract atomic predicates"
   ]
 
 

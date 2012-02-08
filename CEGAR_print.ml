@@ -120,15 +120,15 @@ and print_fun_def fm (f,xs,t1,es,t2) =
     if t1 = Const True
     then
       let ys,t2 = decomp_fun t2 in
-        Format.fprintf fm "@[<hov 4>%a ->%s@ %a@." (print_list print_var " " false) (f::xs@ys) s print_term t2
-    else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@." (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
+        Format.fprintf fm "@[<hov 4>%a ->%s@ %a@]@\n" (print_list print_var " " false) (f::xs@ys) s print_term t2
+    else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]@\n" (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
 
 and print_prog fm (_,defs,s) =
-  Format.fprintf fm "Main: %a@." print_var s;
+  Format.fprintf fm "Main: %a@\n" print_var s;
   List.iter (print_fun_def fm) defs
 
 and print_prog_typ fm (env,defs,s) =
-  Format.fprintf fm "Main: %a@." print_var s;
+  Format.fprintf fm "Main: %a@\n" print_var s;
   List.iter (print_fun_def fm) defs;
   Format.fprintf fm "Types:\n%a@." print_env env;
 
@@ -269,17 +269,16 @@ and print_prog_as_tree fm (env,defs,s) =
 
 
 
-
+(*
 let print_node fm = function
     BranchNode n -> Format.fprintf fm "#%d" n
   | EventNode s -> Format.fprintf fm "%s" s
 
-
-(*
 let print_node fm = function
     BranchNode n -> Format.fprintf fm "BranchNode %d" n
   | EventNode s -> Format.fprintf fm "EventNode %S" s
 *)
+let print_node = Format.pp_print_int
 
 
 let print_ce = print_list print_node "; " false

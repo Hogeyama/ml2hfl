@@ -87,12 +87,7 @@ let refine preds prefix ces ((env,defs,main):prog) =
     let map =
       match !Flag.refine with
           Flag.RefineSizedType ->
-            let rec aux = function
-                (BranchNode n)::ce -> n :: aux ce
-              | (EventNode _)::ce -> aux ce
-              | [] -> []
-            in
-            let map = LazyInterface.infer (List.map aux ces) (env,defs,main) in
+            let map = LazyInterface.infer ces (env,defs,main) in
               if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
               map
         | Flag.RefineDependentType ->

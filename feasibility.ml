@@ -58,18 +58,16 @@ let rec check_aux pr ce sat n constr env defs t k =
 
 let rec get_prefix ce n =
   match ce with
-      [] -> assert false
-    | [EventNode "fail" | EventNode "unit"] -> assert (n=0); ce
-    | (BranchNode _)::ce' when n = 0 -> []
-    | (BranchNode _ as c)::ce' -> c::get_prefix ce' (n-1)
-    | c::ce' -> c::get_prefix ce' n
+      [] -> assert (n=0); ce
+    | c::ce' when n = 0 -> []
+    | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce ((env,defs,main):prog) =
   let () = Format.printf "Spurious counter-example::@.%a@." CEGAR_print.print_ce ce in
   let tmp = get_time () in
   let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce in
-  let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) (List.tl ce) in
+  let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr _ _ _ _ = () in
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
@@ -143,7 +141,7 @@ let rec trans_ce ce ce_br env defs t k =
 
 let trans_ce ce ((env,defs,main):prog) =
   if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce;
-  let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) (List.tl ce) in
+  let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let ce_br = trans_ce ce' [] [] defs t init_cont in
     ce_br
@@ -152,8 +150,10 @@ let trans_ce ce ((env,defs,main):prog) =
 
 
 
+
 let print_ce_reduction ce ((_,defs,main):prog) =
-  let ce' = flatten_map (function BranchNode n -> [n] | _ -> []) (List.tl ce) in
+Format.printf "CE: %a@." CEGAR_print.ce ce;
+  let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr t br n e =
     let s1 = if n = 1 then "" else " [" ^ string_of_int (br+1) ^ "/" ^ string_of_int n ^ "]" in

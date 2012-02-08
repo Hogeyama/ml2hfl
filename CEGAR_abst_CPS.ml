@@ -127,77 +127,6 @@ let trans_eager (env,defs,main) =
 
 
 
-(*
-let c = ref 0
-let ni () = let n = !c in incr c; n
-
-let rec coerce env cond pts t typ1 typ2 =
-Format.printf "t:%a@.pts: %a@." CEGAR_print.term t print_pbs pts;
-  match typ1,typ2 with
-      _, TBase(TUnit,ps) when ps (Const Unit) = [] -> [t]
-    | TBase _, TBase(_,ps2) ->
-        List.map (abst env cond pts) (ps2 t)
-    | TFun _, TFun _ when congruent env cond typ1 typ2 -> [t]
-    | TFun(typ11,typ12), TFun(typ21,typ22) ->
-        let x = new_id "x" in
-        let typ12 = typ12 (Var x) in
-        let typ22 = typ22 (Var x) in
-        let env' = (x,typ21)::env in
-          begin
-            match typ11,typ21 with
-                TBase(_,ps1), TBase(_,ps2) ->
-                Format.printf "typ11,typ21: %a,%a@." CEGAR_print.typ typ11 CEGAR_print.typ typ21;
-                  let xs = abst_arg x typ21 in
-                  let pts' = make_pts x typ21 @@ pts in
-                  let ts = coerce env' cond pts' (Var x) typ21 typ11 in
-                  let t' = hd (coerce env' cond pts' (make_app t ts) typ12 typ22) in
-                  let t'' = filter env' cond pts' t' in
-                    [make_fun_temp xs t'']
-              | TFun _, TFun _ ->
-                  let x = new_id "f" in
-                  let t' = App(t, hd (coerce env' cond pts (Var x) typ21 typ11)) in
-                    [Fun(x, None, hd (coerce env' cond pts t' typ12 typ22))]
-              | _ -> assert false
-          end
-    | _ -> Format.printf "coerce: %a, %a@." print_typ typ1 print_typ typ2; assert false
-
-let coerce env cond pts t typ1 typ2 =
-  let r = ni() in
-    Format.printf "coerce%d: %a ==> %a@." r print_typ typ1 print_typ typ2;
-  let t' = coerce env cond pts t typ1 typ2 in
-    Format.printf "      %d  %a ==> [%a]@." r print_term t (print_list print_term ";" false) t';
-    t'
-
-
-
-let rec abstract_term env cond pts t typ =
-  if true then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
-  match t with
-      Var x -> coerce env cond pts t (List.assoc x env) typ
-    | Const Bottom -> coerce env cond pts t typ typ
-    | Const c -> coerce env cond pts t (get_const_typ c) typ
-    | App _ when is_base_term env t ->
-        let base = get_base typ in
-          coerce env cond pts t (TBase(base,fun x -> [make_eq_int x t])) typ
-    | App(Const RandInt, t) -> abstract_term env cond pts t (TFun(typ_int, fun _ -> typ))
-    | App _ ->
-        let t1,ts = decomp_app t in
-        let rec aux ts typ =
-          match ts,typ with
-              [], _ -> [],typ
-            | t::ts', TFun(typ1,typ2) ->
-                let typ2 = typ2 t in
-                let ts'',typ' = aux ts' typ2 in
-                  abstract_term env cond pts t typ1 @ ts'', typ'
-            | _ -> assert false
-        in
-        let ts',typ' = aux ts (get_typ env t1) in
-          coerce env cond pts (make_app t1 ts') typ' typ
-    | Let(x,t1,t2) -> assert false
-    | Fun _ -> assert false
-*)
-
-
 let rec eta_expand_term_aux env t typ =
   if false then Format.printf "ETA_AUX: %a: %a@." print_term t print_typ typ;
   match typ with
@@ -233,7 +162,27 @@ let rec eta_expand_term env t typ =
           eta_expand_term_aux env t' typ
     | Const _ -> assert false
     | Let _ -> assert false
-    | Fun _ -> assert false
+    | Fun(x,_,t') ->
+        match typ with
+            TFun(typ1,typ2) ->
+              let env' = (x,typ1)::env in
+              let t'' = eta_expand_term env' t' (typ2 (Var x)) in
+                Fun(x, Some typ1, t'')
+          | _ -> assert false
+let eta_expand_def env (f,xs,t1,e,t2) =
+  let rec decomp_typ typ xs =
+    match xs with
+        [] -> typ, []
+      | x::xs' ->
+          let typ1,typ2 = match typ with TFun(typ1,typ2) -> typ1,typ2 (Var x) | _ -> assert false in
+          let typ',env' = decomp_typ typ2 xs' in
+            typ', (x,typ1)::env'
+  in
+  let typ,env' = decomp_typ (List.assoc f env) xs in
+  let env'' = env' @@ env in
+  let t2' = eta_expand_term env'' t2 typ in
+    f, xs, t1, e, t2'
+let eta_expand (env,defs,main) = env, List.map (eta_expand_def env) defs, main
 
 
 let rec eta_reduce_term = function
@@ -259,7 +208,8 @@ let print_env fm env =
 let rec abstract_term top must env cond pts t typ =
   if debug then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
   match t with
-    | Const Bottom -> assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
+    | Const Bottom ->
+        assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
     | Var x when congruent env cond (List.assoc x env) typ ->
         List.map (fun x -> Var x) (abst_arg x typ)
     | (Var _ | Const _ | App _) when is_base_term env t ->
@@ -272,7 +222,8 @@ let rec abstract_term top must env cond pts t typ =
         let t1,ts = decomp_app t in
         let rec aux ts typ =
           match ts,typ with
-              [], _ -> assert (fst (decomp_tbase typ) = TUnit); []
+              [], _ ->
+                assert (fst (decomp_tbase typ) = TUnit); []
             | t::ts', TFun(typ1,typ2) ->
                 abstract_term false None env cond pts t typ1 @ aux ts' (typ2 t)
             | _ -> assert false
@@ -289,7 +240,7 @@ let rec abstract_term top must env cond pts t typ =
         let xs' = flatten_map (fun (x,typ) -> abst_arg x typ) env' in
         let env'' = env' @@ env in
         let typ' = CEGAR_type.app typ (List.map (fun (x,_) -> Var x) env') in
-        let t'' = hd (abstract_term false (Some pts') env'' cond pts'' t' typ') in
+        let t'' = hd (abstract_term true (Some pts') env'' cond pts'' t' typ') in
           [make_fun_temp xs' t'']
     | Var _ -> assert false
     | Const _ -> assert false
@@ -324,7 +275,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   let env'' = env' @@ env in
   let pts = List.flatten (List.map (fun (x,typ) -> make_pts x typ) env') in
   let xs' = List.flatten (List.map (fun (x,typ) -> abst_arg x typ) env') in
-  let t2' = eta_expand_term env'' t2 typ in
+  let t2' = t2 in
   if debug then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2';
   if debug then Flag.print_fun_arg_typ := true;
   if debug then Format.printf "%s:: %a@." f print_term t2';
@@ -342,12 +293,16 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
-let abstract ((env,defs,main):prog) : prog =
-  let (env,defs,main) = add_label (env,defs,main) in
-  let _ = Typing.infer (env,defs,main) in
-  let defs = flatten_map (abstract_def env) defs in
-  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([], defs, main) in
-  let prog = Typing.infer ([], defs, main) in
+let abstract (prog:prog) =
+(*
+  let prog = CEGAR_trans.expand_nonrec prog in
+*)
+  let labeled,prog = add_label prog in
+  let prog = eta_expand prog in
+  let defs = flatten_map (abstract_def (get_env prog)) (get_defs prog) in
+  let prog = ([], defs, get_main prog) in
+  let () = if true then Format.printf "ABST:\n%a@." CEGAR_print.print_prog prog in
+  let prog = Typing.infer prog in
   let prog = lift2 prog in
   let () = if false then Format.printf "LIFT:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = trans_eager prog in
@@ -356,4 +311,9 @@ let abstract ((env,defs,main):prog) : prog =
   let _ = Typing.infer prog in
   let () = if false then Format.printf "PUT_INTO_IF:\n%a@." CEGAR_print.print_prog_typ prog in
   let prog = lift2 prog in
-    prog
+    labeled, prog
+
+
+
+
+

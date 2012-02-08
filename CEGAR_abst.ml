@@ -112,15 +112,15 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
-let abstract ((env,defs,main):prog) : prog =
+let abstract ((env,defs,main):prog) =
   let (env,defs,main) = make_arg_let (env,defs,main) in
-  let (env,defs,main) = add_label (env,defs,main) in
+  let labeled,(env,defs,main) = add_label (env,defs,main) in
   let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.print_prog (env,defs,main) in
   let _ = Typing.infer (env,defs,main) in
   let defs = rev_flatten_map (abstract_def env) defs in
   let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.print_prog ([],defs,main) in
   let prog = Typing.infer ([], defs, main) in
-    prog
+    labeled,prog
 
 
 
@@ -134,7 +134,7 @@ let abstract count prog =
           None -> Format.printf "\n(%d-1) Abstracting ... @?" !Flag.cegar_loop
         | Some c -> Format.printf "\n(%d-1-%d) Abstracting ... @?" !Flag.cegar_loop c
   in
-  let abst =
+  let labeled,abst =
     match !Flag.pred_abst with
         Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract prog
       | Flag.PredAbst -> abstract prog
@@ -142,7 +142,7 @@ let abstract count prog =
   let () = if false then Format.printf "Abstracted program::\n%a@." CEGAR_print.print_prog abst in
   let () = if Flag.print_progress then Format.printf "DONE!@." in
   let () = add_time tmp Flag.time_abstraction in
-    abst
+    labeled,abst
 
 
 

@@ -18,6 +18,7 @@ type result =
     Feasible of (string * CEGAR_syntax.typ) list * string list
   | Infeasible of CEGAR_syntax.ce
 
+
 val check: CEGAR_syntax.ce -> CEGAR_syntax.prog -> result
 
 (** [check ce defs s] で，反例 [ce] が実際にあり得るパスかどうかをチェックする．

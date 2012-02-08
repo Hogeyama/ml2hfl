@@ -43,7 +43,10 @@ and t =
 
 and event = Event of string | Branch of int
 
+(*
 and ce_node = BranchNode of int | EventNode of string
+*)
+and ce_node = int
 and ce = ce_node list
 
 

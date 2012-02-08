@@ -30,9 +30,10 @@ let rec cegar1 prog preds ces =
   pre ();
   Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@."
     !Flag.cegar_loop CEGAR_print.print_prog_typ prog;
-  let abst = CEGAR_abst.abstract None prog in
+  let labeled,abst = CEGAR_abst.abstract None prog in
   let result = ModelCheck.check None abst prog in
-    match result,ces with
+  let result' = apply_opt (fun ce -> CEGAR_trans.trans_ce ce labeled prog) result in
+    match result',ces with
         None,_ -> prog, None
       | Some ce, ce'::_ when ce = ce' && not !Flag.use_filter ->
           Format.printf "Filter option enabled.@.";
@@ -68,7 +69,7 @@ let rec cegar2 prog preds ce_map =
   Flag.use_filter := false;
   Flag.use_neg_pred := false;
   let rec aux c ce_map ces prog =
-    let abst = CEGAR_abst.abstract (Some c) prog in
+    let _,abst = CEGAR_abst.abstract (Some c) prog in
     let result = ModelCheck.check (Some c) abst prog in
       match result with
           None ->

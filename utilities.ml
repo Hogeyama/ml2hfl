@@ -383,11 +383,13 @@ let apply_opt f = function
   | Some x -> Some (f x)
 
 
-let rec print_list print punc last fm xs =
+let rec print_list_aux print punc last fm xs =
   match xs with
       [] -> ()
     | [x] -> Format.fprintf fm "%a%s" print x (if last then punc else "")
-    | x::xs -> Format.fprintf fm "%a%s@,%a" print x punc (print_list print punc last) xs
+    | x::xs -> Format.fprintf fm "%a%s@,%a" print x punc (print_list_aux print punc last) xs
+let print_list print punc last fm xs =
+  Format.fprintf fm "@[%a@]" (print_list_aux print punc last) xs
 
 
 
@@ -406,3 +408,5 @@ let count_line s =
     String.iter (fun c -> if c = '\n' then incr n) s;
     !n
 
+let count_list f xs =
+  List.fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs

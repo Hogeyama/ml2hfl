@@ -164,10 +164,10 @@ let trans_ce ce =
   let take s n = snd (split_string s n) in
   let aux (s,_) =
     match s with
-        "unit" -> [CEGAR_syntax.EventNode "unit"]
+        "unit" -> []
       | "br" -> []
-      | s when s.[0] = 'l' -> [CEGAR_syntax.BranchNode (int_of_string (take s 1))]
-      | s when is_prefix_string "event_" s -> [CEGAR_syntax.EventNode (take s 6)]
+      | s when s.[0] = 'l' -> [int_of_string (take s 1)]
+      | s when is_prefix_string "event_" s -> []
       | _ -> assert false
   in
     flatten_map aux ce
