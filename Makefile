@@ -62,7 +62,7 @@ lib: ocaml csisat trecs
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli alpha.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
+MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
 CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
