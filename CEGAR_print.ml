@@ -85,7 +85,7 @@ and print_const fm = function
   | Proj(_,i) -> Format.fprintf fm "#%d" i
   | If -> Format.fprintf fm "if"
   | Bottom -> Format.fprintf fm "_|_"
-  | Temp _ -> assert false
+  | Temp s -> Format.fprintf fm "Temp{%s}" s
 
 and print_term fm = function
     Const c -> print_const fm c

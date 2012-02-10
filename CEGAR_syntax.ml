@@ -30,6 +30,7 @@ type const =
   | Proj of int * int (* 0-origin *)
   | If (* for abstraction and model-checking *)
   | Bottom
+  | Label of string
 
 
 

@@ -208,6 +208,7 @@ and trans_binop = function
   | Syntax.Sub -> Const Sub
   | Syntax.Mult -> Const Mul
 
+(** App(Temp e, t) means execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
   match t.Syntax.desc with
       Syntax.Unit -> [], Const Unit
@@ -238,7 +239,7 @@ and trans_term post xs env t =
         assert (t1 = Syntax.unit_term);
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
-          defs1@defs2, App(Const (Temp s), App(t2', Const Unit))
+          defs1@defs2, App(Const (Temp s), t2')
     | Syntax.App(t, ts) ->
         let defs,t' = trans_term post xs env t in
         let defss,ts' = List.split (List.map (trans_term post xs env) ts) in
@@ -340,14 +341,44 @@ let trans_def (f,(xs,t)) =
       let defs,t' = trans_term post xs' env t in
 	(f', trans_typ f' [] (Id.typ f), xs', Const True, [], t')::defs
 
-let move_event (f,xs,t1,e,t2) =
-  assert (e = []);
-  let e',t2' =
-    match t2 with
-        App(Const (Temp s), t2') -> [Event s], t2'
-      | _ -> [], t2
-  in
-    f, xs, t1, e', t2'
+
+let event_of_temp (env,defs,main) =
+  if is_CPS (env,defs,"")
+  then
+    let move_event (f,xs,t1,e,t2) =
+      assert (e = []);
+      let e',t2' =
+        match t2 with
+            App(Const (Temp s), t2') -> [Event s], App(t2', Const Unit)
+          | _ -> [], t2
+      in
+        f, xs, t1, e', t2'
+    in
+      env, List.map move_event defs, main
+  else
+    let rec aux = function
+        Const (Temp e) -> [e]
+      | Const c -> []
+      | Var x -> []
+      | App(t1, t2) -> aux t1 @@ aux t2
+      | Fun _ -> assert false
+      | Let _ -> assert false
+    in
+    let evts = uniq (rev_map_flatten (fun (_,_,_,_,t) -> aux t) defs) in
+    let map = List.map (fun e -> e, new_id e) evts in
+    let evt_env = List.map (fun (_,f) -> f, TFun(typ_unit, fun _ -> typ_unit)) map in
+    let evt_defs = List.map (fun (e,f) -> f,["u"],Const True,[Event e],Const Unit) map in
+    let rec aux = function
+        Const c -> Const c
+      | Var x -> Var x
+      | App(Const (Temp e), t) -> App(t, App(Var (List.assoc e map), Const Unit))
+      | App(t1, t2) -> App(aux t1, aux t2)
+      | Fun _ -> assert false
+      | Let _ -> assert false
+    in
+    let defs' = List.map (apply_body_def aux) defs in
+      evt_env@@env, evt_defs@@defs', main
+
 
 let rec uniq_env = function
     [] -> []
@@ -357,8 +388,9 @@ let rec uniq_env = function
       else (f,typ) :: uniq_env env
 
 let trans_prog t =
+  let () = if false then Format.printf "BEFORE:@.%a@.@.@." Syntax.pp_print_term t in
   let t = Trans.trans_let t in
-  let () = if false then Format.printf "trans_let :@.%a\n\n@." (Syntax.print_term true) t in
+  let () = if false then Format.printf "AFTER:@.%a@.@.@." Syntax.pp_print_term t in
   let main = new_id "main" in
   let defs,t = Trans.lift t in
   let defs_t,t' = trans_term "" [] [] t in
@@ -373,8 +405,10 @@ let trans_prog t =
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
   let env' = uniq_env env in
-  let defs''' = List.map move_event defs'' in
-  let prog = pop_main (eta_expand (env', defs''', main)) in
+  let prog = env', defs'', main in
+  let prog = event_of_temp prog in
+  let prog = eta_expand prog in
+  let prog = pop_main prog in
 
   let () = Id.clear_counter () in
   let defs = get_defs prog in

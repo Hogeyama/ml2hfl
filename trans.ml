@@ -1097,7 +1097,7 @@ let part_eval2 t =
 
 
 
-(** returns a term whose definitions of let expressions are side-effect free *)
+(** return a term whose let-expressions' bodies are side-effect free *)
 let rec trans_let t =
   let desc =
     match t.desc with
