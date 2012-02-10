@@ -143,7 +143,8 @@ let arg_spec =
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicates accumulation";
    "-rc", Arg.Set Flag.relative_complete, " To be relative complete";
    "-gp", Arg.Set Flags.generalize_predicates, " Generalize predicates";
-   "-eap", Arg.Set Flags.extract_atomic_predicates, " Extract atomic predicates"
+   "-eap", Arg.Set Flags.extract_atomic_predicates, " Extract atomic predicates";
+   "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions"
   ]
 
 

@@ -115,7 +115,10 @@ and print_term fm = function
         Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " " false) env print_term t'
 
 and print_fun_def fm (f,xs,t1,es,t2) =
-  let aux = fun s -> function (Event s) -> " {" ^ s ^ "} =>" | (Branch n) -> " l" ^ string_of_int n ^ " =>" in
+  let aux s = function
+      (Event s) -> Format.sprintf " {%s} =>" s
+    | (Branch n) -> Format.sprintf " l%d =>" n
+  in
   let s = List.fold_left aux "" es in
     if t1 = Const True
     then
