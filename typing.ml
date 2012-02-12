@@ -5,6 +5,7 @@ open CEGAR_type
 
 
 exception CannotUnify
+exception External
 
 type typ =
     TUnit
@@ -100,7 +101,15 @@ let get_typ_const = function
 
 let rec infer_term env = function
     Const c -> get_typ_const c
-  | Var x -> (try List.assoc x env with _ -> Format.printf "VAR: %s@." x; assert false)
+  | Var x ->
+      let typ =
+        try
+          List.assoc x env
+        with
+            Not_found when is_external x -> raise External
+          | Not_found -> Format.printf "VAR: %s@." x; assert false
+      in
+        typ
   | App(t1,t2) ->
       let typ1 = infer_term env t1 in
       let typ2 = infer_term env t2 in

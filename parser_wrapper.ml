@@ -18,7 +18,10 @@ exception Unsupported of string
 let unsupported s = raise (Unsupported s)
 
 
-let () = Config.load_path := Flag.ocaml_lib @ !Config.load_path
+(*
+let () = Compile.init_path ()
+*)
+let () = Config.load_path := Flag.ocaml_lib
 let initial_env = Compile.initial_env ()
 
 

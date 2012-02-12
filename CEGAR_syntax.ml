@@ -190,6 +190,6 @@ let is_CPS_def env (f,xs,cond,es,t) =
 let is_CPS (env,defs,main) = List.for_all (is_CPS_def env) defs
 
 
-
+let is_external x = String.contains x '.'
 
 

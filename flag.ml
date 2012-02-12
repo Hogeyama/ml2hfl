@@ -1,5 +1,5 @@
 
-let ocaml_lib = ["/usr/lib/ocaml"]
+let ocaml_lib = [""; "/usr/lib/ocaml"]
 let log_dir = "./log"
 let trecs = ref "./trecs"
 let cvc3 = ref "./cvc3"

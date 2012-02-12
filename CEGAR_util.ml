@@ -440,7 +440,7 @@ let trans_prog t =
   let defs = List.map rename_def defs in
   let main = rename_var (get_main prog) in
   let prog = env, defs, main in
-  let _ = Typing.infer prog in
+  let () = try ignore (Typing.infer prog) with Typing.External -> () in
 
   let trans_pred (f,x,path) =
     Format.printf "TRANS_PRED: %s, %s, %a@." f x (print_list Format.pp_print_int ";" false) path;

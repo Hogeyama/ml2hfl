@@ -133,7 +133,7 @@ let arg_spec =
    "-na", Arg.Clear Flag.init_trans, " Do not abstract data";
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineSizedType), " Use sized type system for predicate discovery";
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType), " Use dependent type system for predicate discovery";
-   "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as specification";
+   "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
    "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
    "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
