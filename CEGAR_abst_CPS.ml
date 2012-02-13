@@ -295,13 +295,13 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 let abstract (prog:prog) =
   let prog = if !Flag.expand_nonrec then CEGAR_trans.expand_nonrec prog else prog in
-  let () = if true then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.print_prog prog in
   let prog = eta_expand prog in
-  let () = if true then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.print_prog prog in
   let labeled,prog = add_label prog in
   let defs = flatten_map (abstract_def (get_env prog)) (get_defs prog) in
   let prog = ([], defs, get_main prog) in
-  let () = if true then Format.printf "ABST:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "ABST:@\n%a@." CEGAR_print.print_prog prog in
   let prog = Typing.infer prog in
   let prog = lift2 prog in
   let () = if false then Format.printf "LIFT:@\n%a@." CEGAR_print.print_prog_typ prog in

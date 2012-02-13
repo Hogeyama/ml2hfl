@@ -629,17 +629,17 @@ let rec unify typ1 typ2 =
     | typ1,typ2 -> Format.printf "typ1: %a@.typ2: %a@." print_typ_cps typ1 print_typ_cps typ2; assert false
 
 
-let rec trans_cont_pos_typ typ =
+let rec trans_cont_pos_typ force typ =
   match typ with
       TUnit
     | TInt _
     | TBool -> TBaseCPS typ
     | TFun(x,typ2) ->
         let typ1 = Id.typ x in
-        let b = match typ2 with TFun _ -> false | _ -> true in
-          TFunCPS(ref b, trans_cont_pos_typ typ1, trans_cont_pos_typ typ2)
-    | TPair(typ1,typ2) -> TPairCPS(trans_cont_pos_typ typ1, trans_cont_pos_typ typ2)
-    | TPred(x,typ) -> TPredCPS(x, trans_cont_pos_typ typ)
+        let b = force || match typ2 with TFun _ -> false | _ -> true in
+          TFunCPS(ref b, trans_cont_pos_typ force typ1, trans_cont_pos_typ force typ2)
+    | TPair(typ1,typ2) -> TPairCPS(trans_cont_pos_typ force typ1, trans_cont_pos_typ force typ2)
+    | TPred(x,typ) -> TPredCPS(x, trans_cont_pos_typ force typ)
     | _ -> assert false
 
 let rec infer_cont_pos env t =
@@ -649,7 +649,7 @@ let rec infer_cont_pos env t =
     | False -> {t_cps=FalseCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
     | Unknown -> {t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
     | Int n -> {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
-    | Bottom -> {t_cps=BottomCPS; typ_cps=trans_cont_pos_typ t.typ; typ_orig=t.typ}
+    | Bottom -> {t_cps=BottomCPS; typ_cps=trans_cont_pos_typ false t.typ; typ_orig=t.typ}
     | NInt x -> assert false
     | RandInt true -> assert false
     | RandInt false -> {t_cps=RandIntCPS; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS (TInt[])); typ_orig=t.typ}
@@ -658,7 +658,7 @@ let rec infer_cont_pos env t =
           try
             List.assoc (Id.to_string x) env
           with
-              Not_found when is_external x -> raise (Fatal "Unimplemented: CPS.infer_cont_pos(external function)")
+              Not_found when is_external x -> trans_cont_pos_typ false t.typ
             | Not_found -> Format.printf "%a@." print_id x; assert false
         in
           {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ}
@@ -687,7 +687,7 @@ let rec infer_cont_pos env t =
         let typ = unify typed2.typ_cps typed3.typ_cps in
           {t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typ; typ_orig=t.typ}
     | Let(flag, [f, xs, t1], t2) ->
-        let typ_f = new_tvar' (trans_cont_pos_typ (Id.typ f)) in
+        let typ_f = new_tvar' (trans_cont_pos_typ false (Id.typ f)) in
         let f' = {id_cps=f; id_typ=typ_f} in
         let typ_args = List.map (fun _ -> new_tvar ()) xs in
         let xs' = List.map2 (fun x typ -> {id_cps=x; id_typ=typ}) xs typ_args in
