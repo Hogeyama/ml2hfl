@@ -1,0 +1,11 @@
+
+%BEGING
+S -> F (a, b).
+F x -> _dcons x G.
+G x y -> x y.
+%ENDG
+
+%BEGINA
+q0 a -> q0.
+q0 b -> .
+%ENDA

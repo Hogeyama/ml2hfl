@@ -1,0 +1,250 @@
+%BEGING
+S -> F 0.
+F x -> _case 24 x
+    (html (F 21) (F 20))
+    (head (F 22) (F 20))
+    (base (F 20) (F 20))
+    (link (F 20) (F 20))
+    (meta (F 20) (F 20))
+    (script (F 14) (F 20))
+    (style (F 14) (F 20))
+    (title (F 14) (F 20))
+    (body (F 23) (F 20))
+    (br9 (a (F 18) (F 20)) (img (F 20) (F 20)) (br (F 20) (F 20)) (h1 (F 17) (F 20)) (h2 (F 17) (F 20)) (h3 (F 17) (F 20)) (h4 (F 17) (F 20)) (h5 (F 17) (F 20)) (h6 (F 17) (F 20)))
+    (br6 (h1 (F 17) (F 20)) (h2 (F 17) (F 20)) (h3 (F 17) (F 20)) (h4 (F 17) (F 20)) (h5 (F 17) (F 20)) (h6 (F 17) (F 20)))
+    (br8 (br (F 20) (F 20)) (img (F 20) (F 20)) (h1 (F 17) (F 20)) (h2 (F 17) (F 20)) (h3 (F 17) (F 20)) (h4 (F 17) (F 20)) (h5 (F 17) (F 20)) (h6 (F 17) (F 20)))
+    (a (F 18) (F 20))
+    (br2 (div (F 19) (F 20)) (p (F 17) (F 20)))
+    (text (F 20) (F 20))
+    (br6 (base (F 20) (F 15)) (link (F 20) (F 15)) (meta (F 20) (F 15)) (script (F 14) (F 15)) (style (F 14) (F 15)) leaf)
+    (br12 (div (F 19) (F 16)) (p (F 17) (F 16)) (a (F 18) (F 16)) (img (F 20) (F 16)) (br (F 20) (F 16)) (h1 (F 17) (F 16))  (h2 (F 17) (F 16)) (h3 (F 17) (F 16)) (h4 (F 17) (F 16)) (h5 (F 17) (F 16)) (h6 (F 17) (F 16)) leaf)
+    (br11 (a (F 18) (F 17)) (img (F 20) (F 17)) (br (F 20) (F 17)) (h1 (F 17) (F 17)) (h2 (F 17) (F 17)) (h3 (F 17) (F 17)) (h4 (F 17) (F 17)) (h5 (F 17) (F 17)) (h6 (F 17) (F 17)) (text (F 20) (F 17)) leaf)
+    (br10 (br (F 20) (F 18)) (img (F 20) (F 18)) (h1 (F 17) (F 18)) (h2 (F 17) (F 18)) (h3 (F 17) (F 18)) (h4 (F 17) (F 18)) (h5 (F 17) (F 18)) (h6 (F 17) (F 18)) (text (F 20) (F 18)) leaf)
+    (br13 (a (F 18) (F 19)) (img (F 20) (F 18)) (br (F 20) (F 19)) (h1 (F 17) (F 19))  (h2 (F 17) (F 19))  (h3 (F 17) (F 19))  (h4 (F 17) (F 19))  (h5 (F 17) (F 19))  (h6 (F 17) (F 19)) (text (F 20) (F 19)) (div (F 19) (F 19)) (p (F 17) (F 19)) leaf)
+    leaf
+    (head (F 22) (F 8)) 
+    (br6 (base (F 20) (F 22))(link (F 20) (F 22)) (meta (F 20) (F 22)) (script (F 14) (F 22)) (style (F 14) (F 22)) (title (F 14) (F 15)))
+    (br11 (div (F 19) (F 16)) (div (F 17) (F 16)) (a (F 18) (F 16)) (img (F 20) (F 16)) (br (F 20) (F 16)) (h1 (F 17) (F 16)) (h2 (F 17) (F 16)) (h3 (F 17) (F 16)) (h4 (F 17) (F 16)) (h5 (F 17) (F 16)) (h6 (F 17) (F 16))).
+        
+%ENDG
+
+%BEGINA
+q0 html -> q21 q20.
+q0 br2 -> q0 q0.
+q0 br3 -> q0 q0 q0.
+q0 br4 -> q0 q0 q0 q0.
+q0 br5 -> q0 q0 q0 q0 q0.
+q0 br6 -> q0 q0 q0 q0 q0 q0.
+q0 br7 -> q0 q0 q0 q0 q0 q0 q0.
+q0 br8 -> q0 q0 q0 q0 q0 q0 q0 q0.
+q0 br9 -> q0 q0 q0 q0 q0 q0 q0 q0 q0.
+q0 br10 -> q0 q0 q0 q0 q0 q0 q0 q0 q0 q0.
+q0 br11 -> q0 q0 q0 q0 q0 q0 q0 q0 q0 q0 q0.
+q0 br12 -> q0 q0 q0 q0 q0 q0 q0 q0 q0 q0 q0 q0.
+q0 br13 -> q0 q0 q0 q0 q0 q0 q0 q0 q0 q0 q0 q0 q0.
+q8 body -> q23 q20.
+q8 br2 -> q8 q8.
+q8 br3 -> q8 q8 q8.
+q8 br4 -> q8 q8 q8 q8.
+q8 br5 -> q8 q8 q8 q8 q8.
+q8 br6 -> q8 q8 q8 q8 q8 q8.
+q8 br7 -> q8 q8 q8 q8 q8 q8 q8.
+q8 br8 -> q8 q8 q8 q8 q8 q8 q8 q8.
+q8 br9 -> q8 q8 q8 q8 q8 q8 q8 q8 q8.
+q8 br10 -> q8 q8 q8 q8 q8 q8 q8 q8 q8 q8.
+q8 br11 -> q8 q8 q8 q8 q8 q8 q8 q8 q8 q8 q8.
+q8 br12 -> q8 q8 q8 q8 q8 q8 q8 q8 q8 q8 q8 q8.
+q8 br13 -> q8 q8 q8 q8 q8 q8 q8 q8 q8 q8 q8 q8 q8.
+q14 text -> q20 q20.
+q14 br2 -> q14 q14.
+q14 br3 -> q14 q14 q14.
+q14 br4 -> q14 q14 q14 q14.
+q14 br5 -> q14 q14 q14 q14 q14.
+q14 br6 -> q14 q14 q14 q14 q14 q14.
+q14 br7 -> q14 q14 q14 q14 q14 q14 q14.
+q14 br8 -> q14 q14 q14 q14 q14 q14 q14 q14.
+q14 br9 -> q14 q14 q14 q14 q14 q14 q14 q14 q14.
+q14 br10 -> q14 q14 q14 q14 q14 q14 q14 q14 q14 q14.
+q14 br11 -> q14 q14 q14 q14 q14 q14 q14 q14 q14 q14 q14.
+q14 br12 -> q14 q14 q14 q14 q14 q14 q14 q14 q14 q14 q14 q14.
+q14 br13 -> q14 q14 q14 q14 q14 q14 q14 q14 q14 q14 q14 q14 q14.
+q15 base -> q20 q15.
+q15 link -> q20 q15.
+q15 meta -> q20 q15.
+q15 script -> q14 q15.
+q15 style -> q14 q15.
+q15 leaf -> .
+q15 br2 -> q15 q15.
+q15 br3 -> q15 q15 q15.
+q15 br4 -> q15 q15 q15 q15.
+q15 br5 -> q15 q15 q15 q15 q15.
+q15 br6 -> q15 q15 q15 q15 q15 q15.
+q15 br7 -> q15 q15 q15 q15 q15 q15 q15.
+q15 br8 -> q15 q15 q15 q15 q15 q15 q15 q15.
+q15 br9 -> q15 q15 q15 q15 q15 q15 q15 q15 q15.
+q15 br10 -> q15 q15 q15 q15 q15 q15 q15 q15 q15 q15.
+q15 br11 -> q15 q15 q15 q15 q15 q15 q15 q15 q15 q15 q15.
+q15 br12 -> q15 q15 q15 q15 q15 q15 q15 q15 q15 q15 q15 q15.
+q15 br13 -> q15 q15 q15 q15 q15 q15 q15 q15 q15 q15 q15 q15 q15.
+q16 div -> q19 q16.
+q16 p -> q17 q16.
+q16 a -> q18 q16.
+q16 img -> q20 q16.
+q16 br -> q20 q16.
+q16 h1 -> q17 q16.
+q16 h2 -> q17 q16.
+q16 h3 -> q17 q16.
+q16 h4 -> q17 q16.
+q16 h5 -> q17 q16.
+q16 h6 -> q17 q16.
+q16 leaf -> .
+q16 br2 -> q16 q16.
+q16 br3 -> q16 q16 q16.
+q16 br4 -> q16 q16 q16 q16.
+q16 br5 -> q16 q16 q16 q16 q16.
+q16 br6 -> q16 q16 q16 q16 q16 q16.
+q16 br7 -> q16 q16 q16 q16 q16 q16 q16.
+q16 br8 -> q16 q16 q16 q16 q16 q16 q16 q16.
+q16 br9 -> q16 q16 q16 q16 q16 q16 q16 q16 q16.
+q16 br10 -> q16 q16 q16 q16 q16 q16 q16 q16 q16 q16.
+q16 br11 -> q16 q16 q16 q16 q16 q16 q16 q16 q16 q16 q16.
+q16 br12 -> q16 q16 q16 q16 q16 q16 q16 q16 q16 q16 q16 q16.
+q16 br13 -> q16 q16 q16 q16 q16 q16 q16 q16 q16 q16 q16 q16 q16.
+q17 a -> q18 q17.
+q17 img -> q20 q17.
+q17 br -> q20 q17.
+q17 h1 -> q17 q17.
+q17 h2 -> q17 q17.
+q17 h3 -> q17 q17.
+q17 h4 -> q17 q17.
+q17 h5 -> q17 q17.
+q17 h6 -> q17 q17.
+q17 text -> q20 q17.
+q17 leaf -> .
+q17 br2 -> q17 q17.
+q17 br3 -> q17 q17 q17.
+q17 br4 -> q17 q17 q17 q17.
+q17 br5 -> q17 q17 q17 q17 q17.
+q17 br6 -> q17 q17 q17 q17 q17 q17.
+q17 br7 -> q17 q17 q17 q17 q17 q17 q17.
+q17 br8 -> q17 q17 q17 q17 q17 q17 q17 q17.
+q17 br9 -> q17 q17 q17 q17 q17 q17 q17 q17 q17.
+q17 br10 -> q17 q17 q17 q17 q17 q17 q17 q17 q17 q17.
+q17 br11 -> q17 q17 q17 q17 q17 q17 q17 q17 q17 q17 q17.
+q17 br12 -> q17 q17 q17 q17 q17 q17 q17 q17 q17 q17 q17 q17.
+q17 br13 -> q17 q17 q17 q17 q17 q17 q17 q17 q17 q17 q17 q17 q17.
+q18 br -> q20 q18.
+q18 img -> q20 q18.
+q18 h1 -> q17 q18.
+q18 h2 -> q17 q18.
+q18 h3 -> q17 q18.
+q18 h4 -> q17 q18.
+q18 h5 -> q17 q18.
+q18 h6 -> q17 q18.
+q18 text -> q20 q18.
+q18 leaf -> .
+q18 br2 -> q18 q18.
+q18 br3 -> q18 q18 q18.
+q18 br4 -> q18 q18 q18 q18.
+q18 br5 -> q18 q18 q18 q18 q18.
+q18 br6 -> q18 q18 q18 q18 q18 q18.
+q18 br7 -> q18 q18 q18 q18 q18 q18 q18.
+q18 br8 -> q18 q18 q18 q18 q18 q18 q18 q18.
+q18 br9 -> q18 q18 q18 q18 q18 q18 q18 q18 q18.
+q18 br10 -> q18 q18 q18 q18 q18 q18 q18 q18 q18 q18.
+q18 br11 -> q18 q18 q18 q18 q18 q18 q18 q18 q18 q18 q18.
+q18 br12 -> q18 q18 q18 q18 q18 q18 q18 q18 q18 q18 q18 q18.
+q18 br13 -> q18 q18 q18 q18 q18 q18 q18 q18 q18 q18 q18 q18 q18.
+q19 a -> q18 q19.
+q19 img -> q20 q19.
+q19 br -> q20 q19.
+q19 h1 -> q17 q19.
+q19 h2 -> q17 q19.
+q19 h3 -> q17 q19.
+q19 h4 -> q17 q19.
+q19 h5 -> q17 q19.
+q19 h6 -> q17 q19.
+q19 text -> q20 q19.
+q19 div -> q19 q19.
+q19 p -> q17 q19.
+q19 leaf -> .
+q19 br2 -> q19 q19.
+q19 br3 -> q19 q19 q19.
+q19 br4 -> q19 q19 q19 q19.
+q19 br5 -> q19 q19 q19 q19 q19.
+q19 br6 -> q19 q19 q19 q19 q19 q19.
+q19 br7 -> q19 q19 q19 q19 q19 q19 q19.
+q19 br8 -> q19 q19 q19 q19 q19 q19 q19 q19.
+q19 br9 -> q19 q19 q19 q19 q19 q19 q19 q19 q19.
+q19 br10 -> q19 q19 q19 q19 q19 q19 q19 q19 q19 q19.
+q19 br11 -> q19 q19 q19 q19 q19 q19 q19 q19 q19 q19 q19.
+q19 br12 -> q19 q19 q19 q19 q19 q19 q19 q19 q19 q19 q19 q19.
+q19 br13 -> q19 q19 q19 q19 q19 q19 q19 q19 q19 q19 q19 q19 q19.
+q20 leaf -> .
+q20 br2 -> q20 q20.
+q20 br3 -> q20 q20 q20.
+q20 br4 -> q20 q20 q20 q20.
+q20 br5 -> q20 q20 q20 q20 q20.
+q20 br6 -> q20 q20 q20 q20 q20 q20.
+q20 br7 -> q20 q20 q20 q20 q20 q20 q20.
+q20 br8 -> q20 q20 q20 q20 q20 q20 q20 q20.
+q20 br9 -> q20 q20 q20 q20 q20 q20 q20 q20 q20.
+q20 br10 -> q20 q20 q20 q20 q20 q20 q20 q20 q20 q20.
+q20 br11 -> q20 q20 q20 q20 q20 q20 q20 q20 q20 q20 q20.
+q20 br12 -> q20 q20 q20 q20 q20 q20 q20 q20 q20 q20 q20 q20.
+q20 br13 -> q20 q20 q20 q20 q20 q20 q20 q20 q20 q20 q20 q20 q20.
+q21 head -> q22 q8.
+q21 br2 -> q21 q21.
+q21 br3 -> q21 q21 q21.
+q21 br4 -> q21 q21 q21 q21.
+q21 br5 -> q21 q21 q21 q21 q21.
+q21 br6 -> q21 q21 q21 q21 q21 q21.
+q21 br7 -> q21 q21 q21 q21 q21 q21 q21.
+q21 br8 -> q21 q21 q21 q21 q21 q21 q21 q21.
+q21 br9 -> q21 q21 q21 q21 q21 q21 q21 q21 q21.
+q21 br10 -> q21 q21 q21 q21 q21 q21 q21 q21 q21 q21.
+q21 br11 -> q21 q21 q21 q21 q21 q21 q21 q21 q21 q21 q21.
+q21 br12 -> q21 q21 q21 q21 q21 q21 q21 q21 q21 q21 q21 q21.
+q21 br13 -> q21 q21 q21 q21 q21 q21 q21 q21 q21 q21 q21 q21 q21.
+q22 base -> q20 q22.
+q22 link -> q20 q22.
+q22 meta -> q20 q22.
+q22 script -> q14 q22.
+q22 style -> q14 q22.
+q22 title -> q14 q15.
+q22 br2 -> q22 q22.
+q22 br3 -> q22 q22 q22.
+q22 br4 -> q22 q22 q22 q22.
+q22 br5 -> q22 q22 q22 q22 q22.
+q22 br6 -> q22 q22 q22 q22 q22 q22.
+q22 br7 -> q22 q22 q22 q22 q22 q22 q22.
+q22 br8 -> q22 q22 q22 q22 q22 q22 q22 q22.
+q22 br9 -> q22 q22 q22 q22 q22 q22 q22 q22 q22.
+q22 br10 -> q22 q22 q22 q22 q22 q22 q22 q22 q22 q22.
+q22 br11 -> q22 q22 q22 q22 q22 q22 q22 q22 q22 q22 q22.
+q22 br12 -> q22 q22 q22 q22 q22 q22 q22 q22 q22 q22 q22 q22.
+q22 br13 -> q22 q22 q22 q22 q22 q22 q22 q22 q22 q22 q22 q22 q22.
+q23 div -> q19 q16.
+q23 p -> q17 q16.
+q23 a -> q18 q16.
+q23 img -> q20 q16.
+q23 br -> q20 q16.
+q23 h1 -> q17 q16.
+q23 h2 -> q17 q16.
+q23 h3 -> q17 q16.
+q23 h4 -> q17 q16.
+q23 h5 -> q17 q16.
+q23 h6 -> q17 q16.
+q23 br2 -> q23 q23.
+q23 br3 -> q23 q23 q23.
+q23 br4 -> q23 q23 q23 q23.
+q23 br5 -> q23 q23 q23 q23 q23.
+q23 br6 -> q23 q23 q23 q23 q23 q23.
+q23 br7 -> q23 q23 q23 q23 q23 q23 q23.
+q23 br8 -> q23 q23 q23 q23 q23 q23 q23 q23.
+q23 br9 -> q23 q23 q23 q23 q23 q23 q23 q23 q23.
+q23 br10 -> q23 q23 q23 q23 q23 q23 q23 q23 q23 q23.
+q23 br11 -> q23 q23 q23 q23 q23 q23 q23 q23 q23 q23 q23.
+q23 br12 -> q23 q23 q23 q23 q23 q23 q23 q23 q23 q23 q23 q23.
+q23 br13 -> q23 q23 q23 q23 q23 q23 q23 q23 q23 q23 q23 q23 q23.
+%ENDA

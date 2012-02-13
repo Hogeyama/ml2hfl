@@ -1,0 +1,16 @@
+/*
+Input: r* e
+*/
+%BEGING
+S -> F 0.
+F cmds -> _case 1 cmds (br close (read (F 0))).
+%ENDG
+
+/*
+Output: read* close
+*/
+%BEGINA
+q0 read -> q0.
+q0 close -> .
+q0 br -> q0 q0.
+%ENDA

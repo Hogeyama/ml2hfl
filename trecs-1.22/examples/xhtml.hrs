@@ -1,0 +1,605 @@
+%BEGING
+S -> F 0.
+F x ->
+  _case 50 x
+    (html (F 27) (F 26))
+    (body (F 30) (F 26))
+    (br (br (caption (F 11) (F 37)) (br (col (F 26) (F 37)) (colgroup (F 16) (F 37)))) (br (br (tbody (F 39) (F 15)) (tfoot (F 39) (F 40))) (br (thead (F 39) (F 38)) (tr (F 41) (F 15)))))
+    (br (br (caption (F 11) (F 45)) (br (col (F 26) (F 45)) (colgroup (F 16) (F 45)))) (br (br (tbody (F 47) (F 23)) (tfoot (F 47) (F 48))) (br (thead (F 47) (F 46)) (tr (F 49) (F 23)))))
+    (text (F 26) (F 26))
+    (br (br leaf (br (base (F 26) (F 5)) (link (F 26) (F 5)))) (br (br (meta (F 26) (F 5)) (object (F 29) (F 5))) (br (script (F 4) (F 5)) (style (F 4) (F 5)))))
+    (br (br (br (br (br leaf (br (a (F 13) (F 6)) (abbr (F 11) (F 6)))) (br (acronym (F 11) (F 6)) (br (address (F 11) (F 6)) (b (F 11) (F 6))))) (br (br (bdo (F 11) (F 6)) (br (big (F 11) (F 6)) (blockquote (F 7) (F 6)))) (br (br (brk (F 26) (F 6)) (button (F 6) (F 6))) (br (cite (F 11) (F 6)) (code (F 11) (F 6)))))) (br (br (br (del (F 6) (F 6)) (br (dfn (F 11) (F 6)) (div (F 6) (F 6)))) (br (dl (F 36) (F 6)) (br (em (F 11) (F 6)) (fieldset (F 34) (F 6))))) (br (br (form (F 19) (F 6)) (br (h1 (F 11) (F 6)) (h2 (F 11) (F 6)))) (br (br (h3 (F 11) (F 6)) (h4 (F 11) (F 6))) (br (h5 (F 11) (F 6)) (h6 (F 11) (F 6))))))) (br (br (br (br (hr (F 26) (F 6)) (br (i (F 11) (F 6)) (img (F 26) (F 6)))) (br (input (F 26) (F 6)) (br (ins (F 6) (F 6)) (kbd (F 11) (F 6))))) (br (br (label (F 11) (F 6)) (br (map (F 8) (F 6)) (noscript (F 7) (F 6)))) (br (br (object (F 29) (F 6)) (ol (F 35) (F 6))) (br (p (F 11) (F 6)) (pre (F 11) (F 6)))))) (br (br (br (q (F 11) (F 6)) (br (samp (F 11) (F 6)) (select (F 31) (F 6)))) (br (br (small (F 11) (F 6)) (span (F 11) (F 6))) (br (strong (F 11) (F 6)) (sub (F 11) (F 6))))) (br (br (sup (F 11) (F 6)) (br (table (F 2) (F 6)) (text (F 26) (F 6)))) (br (br (textarea (F 4) (F 6)) (tt (F 11) (F 6))) (br (ul (F 35) (F 6)) (var (F 11) (F 6))))))))
+    (br (br (br (br leaf (address (F 11) (F 7))) (br (blockquote (F 7) (F 7)) (br (div (F 6) (F 7)) (dl (F 36) (F 7))))) (br (br (fieldset (F 34) (F 7)) (form (F 19) (F 7))) (br (h1 (F 11) (F 7)) (br (h2 (F 11) (F 7)) (h3 (F 11) (F 7)))))) (br (br (br (h4 (F 11) (F 7)) (h5 (F 11) (F 7))) (br (h6 (F 11) (F 7)) (br (hr (F 26) (F 7)) (noscript (F 7) (F 7))))) (br (br (ol (F 35) (F 7)) (p (F 11) (F 7))) (br (pre (F 11) (F 7)) (br (table (F 2) (F 7)) (ul (F 35) (F 7)))))))
+    (br (br (br (br leaf (address (F 11) (F 8))) (br (area (F 26) (F 8)) (br (blockquote (F 7) (F 8)) (div (F 6) (F 8))))) (br (br (dl (F 36) (F 8)) (fieldset (F 34) (F 8))) (br (form (F 19) (F 8)) (br (h1 (F 11) (F 8)) (h2 (F 11) (F 8)))))) (br (br (br (h3 (F 11) (F 8)) (h4 (F 11) (F 8))) (br (h5 (F 11) (F 8)) (br (h6 (F 11) (F 8)) (hr (F 26) (F 8))))) (br (br (noscript (F 7) (F 8)) (br (ol (F 35) (F 8)) (p (F 11) (F 8)))) (br (pre (F 11) (F 8)) (br (table (F 2) (F 8)) (ul (F 35) (F 8)))))))
+    (br leaf (br (optgroup (F 32) (F 9)) (option (F 4) (F 9))))
+    (br leaf (option (F 4) (F 10)))
+    (br (br (br (br (br leaf (a (F 13) (F 11))) (br (abbr (F 11) (F 11)) (acronym (F 11) (F 11)))) (br (br (b (F 11) (F 11)) (bdo (F 11) (F 11))) (br (big (F 11) (F 11)) (brk (F 26) (F 11))))) (br (br (br (button (F 6) (F 11)) (cite (F 11) (F 11))) (br (code (F 11) (F 11)) (del (F 6) (F 11)))) (br (br (dfn (F 11) (F 11)) (em (F 11) (F 11))) (br (i (F 11) (F 11)) (br (img (F 26) (F 11)) (input (F 26) (F 11))))))) (br (br (br (br (ins (F 6) (F 11)) (kbd (F 11) (F 11))) (br (label (F 11) (F 11)) (map (F 8) (F 11)))) (br (br (object (F 29) (F 11)) (q (F 11) (F 11))) (br (samp (F 11) (F 11)) (select (F 31) (F 11))))) (br (br (br (small (F 11) (F 11)) (span (F 11) (F 11))) (br (strong (F 11) (F 11)) (sub (F 11) (F 11)))) (br (br (sup (F 11) (F 11)) (text (F 26) (F 11))) (br (textarea (F 4) (F 11)) (br (tt (F 11) (F 11)) (var (F 11) (F 11))))))))
+    (br (br (br (br (br leaf (br (abbr (F 13) (F 12)) (acronym (F 13) (F 12)))) (br (address (F 11) (F 12)) (br (b (F 13) (F 12)) (bdo (F 13) (F 12))))) (br (br (big (F 13) (F 12)) (br (blockquote (F 7) (F 12)) (brk (F 26) (F 12)))) (br (button (F 12) (F 12)) (br (cite (F 13) (F 12)) (code (F 13) (F 12)))))) (br (br (br (del (F 12) (F 12)) (br (dfn (F 13) (F 12)) (div (F 6) (F 12)))) (br (dl (F 36) (F 12)) (br (em (F 13) (F 12)) (fieldset (F 34) (F 12))))) (br (br (form (F 19) (F 12)) (br (h1 (F 11) (F 12)) (h2 (F 11) (F 12)))) (br (h3 (F 11) (F 12)) (br (h4 (F 11) (F 12)) (h5 (F 11) (F 12))))))) (br (br (br (br (h6 (F 11) (F 12)) (br (hr (F 26) (F 12)) (i (F 13) (F 12)))) (br (img (F 26) (F 12)) (br (ins (F 12) (F 12)) (kbd (F 13) (F 12))))) (br (br (label (F 13) (F 12)) (br (noscript (F 7) (F 12)) (object (F 33) (F 12)))) (br (ol (F 35) (F 12)) (br (p (F 11) (F 12)) (pre (F 11) (F 12)))))) (br (br (br (q (F 13) (F 12)) (br (samp (F 13) (F 12)) (small (F 13) (F 12)))) (br (span (F 13) (F 12)) (br (strong (F 13) (F 12)) (sub (F 13) (F 12))))) (br (br (sup (F 13) (F 12)) (br (table (F 2) (F 12)) (text (F 26) (F 12)))) (br (tt (F 13) (F 12)) (br (ul (F 35) (F 12)) (var (F 13) (F 12))))))))
+    (br (br (br (br leaf (br (abbr (F 13) (F 13)) (acronym (F 13) (F 13)))) (br (br (b (F 13) (F 13)) (bdo (F 13) (F 13))) (br (big (F 13) (F 13)) (brk (F 26) (F 13))))) (br (br (button (F 12) (F 13)) (br (cite (F 13) (F 13)) (code (F 13) (F 13)))) (br (br (del (F 12) (F 13)) (dfn (F 13) (F 13))) (br (em (F 13) (F 13)) (i (F 13) (F 13)))))) (br (br (br (img (F 26) (F 13)) (br (ins (F 12) (F 13)) (kbd (F 13) (F 13)))) (br (br (label (F 13) (F 13)) (object (F 33) (F 13))) (br (q (F 13) (F 13)) (samp (F 13) (F 13))))) (br (br (br (small (F 13) (F 13)) (span (F 13) (F 13))) (br (strong (F 13) (F 13)) (sub (F 13) (F 13)))) (br (br (sup (F 13) (F 13)) (text (F 26) (F 13))) (br (tt (F 13) (F 13)) (var (F 13) (F 13)))))))
+    (br leaf (br (dd (F 6) (F 14)) (dt (F 11) (F 14))))
+    (br leaf (br (tbody (F 39) (F 15)) (tr (F 41) (F 15))))
+    (br leaf (col (F 26) (F 16)))
+    (br leaf (tr (F 41) (F 17)))
+    (br leaf (td (F 6) (F 18)))
+    (br (br (br leaf (br (address (F 11) (F 19)) (blockquote (F 21) (F 19)))) (br (br (div (F 20) (F 19)) (dl (F 44) (F 19))) (br (fieldset (F 42) (F 19)) (hr (F 26) (F 19))))) (br (br (noscript (F 21) (F 19)) (br (ol (F 43) (F 19)) (p (F 11) (F 19)))) (br (br (pre (F 11) (F 19)) (script (F 4) (F 19))) (br (table (F 3) (F 19)) (ul (F 43) (F 19))))))
+    (br (br (br (br (br leaf (a (F 13) (F 20))) (br (abbr (F 11) (F 20)) (br (acronym (F 11) (F 20)) (address (F 11) (F 20))))) (br (br (b (F 11) (F 20)) (br (bdo (F 11) (F 20)) (big (F 11) (F 20)))) (br (blockquote (F 21) (F 20)) (br (brk (F 26) (F 20)) (button (F 6) (F 20)))))) (br (br (br (cite (F 11) (F 20)) (br (code (F 11) (F 20)) (del (F 6) (F 20)))) (br (dfn (F 11) (F 20)) (br (div (F 20) (F 20)) (dl (F 44) (F 20))))) (br (br (em (F 11) (F 20)) (br (fieldset (F 42) (F 20)) (hr (F 26) (F 20)))) (br (i (F 11) (F 20)) (br (img (F 26) (F 20)) (input (F 26) (F 20))))))) (br (br (br (br (ins (F 6) (F 20)) (kbd (F 11) (F 20))) (br (label (F 11) (F 20)) (br (map (F 8) (F 20)) (noscript (F 21) (F 20))))) (br (br (object (F 29) (F 20)) (br (ol (F 43) (F 20)) (p (F 11) (F 20)))) (br (pre (F 11) (F 20)) (br (q (F 11) (F 20)) (samp (F 11) (F 20)))))) (br (br (br (select (F 31) (F 20)) (br (small (F 11) (F 20)) (span (F 11) (F 20)))) (br (strong (F 11) (F 20)) (br (sub (F 11) (F 20)) (sup (F 11) (F 20))))) (br (br (table (F 3) (F 20)) (br (text (F 26) (F 20)) (textarea (F 4) (F 20)))) (br (tt (F 11) (F 20)) (br (ul (F 43) (F 20)) (var (F 11) (F 20))))))))
+    (br (br (br leaf (br (address (F 11) (F 21)) (blockquote (F 21) (F 21)))) (br (div (F 20) (F 21)) (br (dl (F 44) (F 21)) (fieldset (F 42) (F 21))))) (br (br (hr (F 26) (F 21)) (br (noscript (F 21) (F 21)) (ol (F 43) (F 21)))) (br (br (p (F 11) (F 21)) (pre (F 11) (F 21))) (br (table (F 3) (F 21)) (ul (F 43) (F 21))))))
+    (br leaf (br (dd (F 20) (F 22)) (dt (F 11) (F 22))))
+    (br leaf (br (tbody (F 47) (F 23)) (tr (F 49) (F 23))))
+    (br leaf (tr (F 49) (F 24)))
+    (br leaf (td (F 20) (F 25)))
+    leaf
+    (head (F 28) (F 1))
+    (br (br (base (F 26) (F 28)) (br (link (F 26) (F 28)) (meta (F 26) (F 28)))) (br (br (object (F 29) (F 28)) (script (F 4) (F 28))) (br (style (F 4) (F 28)) (title (F 4) (F 5)))))
+    (br (br (br (br (br leaf (br (a (F 13) (F 6)) (abbr (F 11) (F 6)))) (br (acronym (F 11) (F 6)) (br (address (F 11) (F 6)) (b (F 11) (F 6))))) (br (br (bdo (F 11) (F 6)) (br (big (F 11) (F 6)) (blockquote (F 7) (F 6)))) (br (br (brk (F 26) (F 6)) (button (F 6) (F 6))) (br (cite (F 11) (F 6)) (code (F 11) (F 6)))))) (br (br (br (del (F 6) (F 6)) (br (dfn (F 11) (F 6)) (div (F 6) (F 6)))) (br (br (dl (F 36) (F 6)) (em (F 11) (F 6))) (br (fieldset (F 34) (F 6)) (form (F 19) (F 6))))) (br (br (h1 (F 11) (F 6)) (br (h2 (F 11) (F 6)) (h3 (F 11) (F 6)))) (br (br (h4 (F 11) (F 6)) (h5 (F 11) (F 6))) (br (h6 (F 11) (F 6)) (hr (F 26) (F 6))))))) (br (br (br (br (i (F 11) (F 6)) (br (img (F 26) (F 6)) (input (F 26) (F 6)))) (br (ins (F 6) (F 6)) (br (kbd (F 11) (F 6)) (label (F 11) (F 6))))) (br (br (map (F 8) (F 6)) (br (noscript (F 7) (F 6)) (object (F 29) (F 6)))) (br (br (ol (F 35) (F 6)) (p (F 11) (F 6))) (br (param (F 26) (F 29)) (pre (F 11) (F 6)))))) (br (br (br (q (F 11) (F 6)) (br (samp (F 11) (F 6)) (select (F 31) (F 6)))) (br (br (small (F 11) (F 6)) (span (F 11) (F 6))) (br (strong (F 11) (F 6)) (sub (F 11) (F 6))))) (br (br (sup (F 11) (F 6)) (br (table (F 2) (F 6)) (text (F 26) (F 6)))) (br (br (textarea (F 4) (F 6)) (tt (F 11) (F 6))) (br (ul (F 35) (F 6)) (var (F 11) (F 6))))))))
+    (br (br (br (br (address (F 11) (F 7)) (blockquote (F 7) (F 7))) (br (div (F 6) (F 7)) (dl (F 36) (F 7)))) (br (br (fieldset (F 34) (F 7)) (form (F 19) (F 7))) (br (h1 (F 11) (F 7)) (br (h2 (F 11) (F 7)) (h3 (F 11) (F 7)))))) (br (br (br (h4 (F 11) (F 7)) (h5 (F 11) (F 7))) (br (h6 (F 11) (F 7)) (br (hr (F 26) (F 7)) (noscript (F 7) (F 7))))) (br (br (ol (F 35) (F 7)) (p (F 11) (F 7))) (br (pre (F 11) (F 7)) (br (table (F 2) (F 7)) (ul (F 35) (F 7)))))))
+    (br (optgroup (F 32) (F 9)) (option (F 4) (F 9)))
+    (option (F 4) (F 10))
+    (br (br (br (br (br leaf (br (abbr (F 13) (F 12)) (acronym (F 13) (F 12)))) (br (address (F 11) (F 12)) (br (b (F 13) (F 12)) (bdo (F 13) (F 12))))) (br (br (big (F 13) (F 12)) (br (blockquote (F 7) (F 12)) (brk (F 26) (F 12)))) (br (button (F 12) (F 12)) (br (cite (F 13) (F 12)) (code (F 13) (F 12)))))) (br (br (br (del (F 12) (F 12)) (br (dfn (F 13) (F 12)) (div (F 6) (F 12)))) (br (dl (F 36) (F 12)) (br (em (F 13) (F 12)) (fieldset (F 34) (F 12))))) (br (br (form (F 19) (F 12)) (br (h1 (F 11) (F 12)) (h2 (F 11) (F 12)))) (br (h3 (F 11) (F 12)) (br (h4 (F 11) (F 12)) (h5 (F 11) (F 12))))))) (br (br (br (br (h6 (F 11) (F 12)) (br (hr (F 26) (F 12)) (i (F 13) (F 12)))) (br (img (F 26) (F 12)) (br (ins (F 12) (F 12)) (kbd (F 13) (F 12))))) (br (br (label (F 13) (F 12)) (br (noscript (F 7) (F 12)) (object (F 33) (F 12)))) (br (ol (F 35) (F 12)) (br (p (F 11) (F 12)) (param (F 26) (F 33)))))) (br (br (br (pre (F 11) (F 12)) (br (q (F 13) (F 12)) (samp (F 13) (F 12)))) (br (small (F 13) (F 12)) (br (span (F 13) (F 12)) (strong (F 13) (F 12))))) (br (br (sub (F 13) (F 12)) (br (sup (F 13) (F 12)) (table (F 2) (F 12)))) (br (br (text (F 26) (F 12)) (tt (F 13) (F 12))) (br (ul (F 35) (F 12)) (var (F 13) (F 12))))))))
+    (legend (F 11) (F 6))
+    (li (F 6) (F 26))
+    (br (dd (F 6) (F 14)) (dt (F 11) (F 14)))
+    (br (br (col (F 26) (F 37)) (br (colgroup (F 16) (F 37)) (tbody (F 39) (F 15)))) (br (tfoot (F 39) (F 40)) (br (thead (F 39) (F 38)) (tr (F 41) (F 15)))))
+    (br (tbody (F 39) (F 15)) (br (tfoot (F 39) (F 40)) (tr (F 41) (F 15))))
+    (tr (F 41) (F 17))
+    (br (tbody (F 39) (F 15)) (tr (F 41) (F 15)))
+    (td (F 6) (F 18))
+    (legend (F 11) (F 20))
+    (li (F 20) (F 26))
+    (br (dd (F 20) (F 22)) (dt (F 11) (F 22)))
+    (br (br (col (F 26) (F 45)) (br (colgroup (F 16) (F 45)) (tbody (F 47) (F 23)))) (br (tfoot (F 47) (F 48)) (br (thead (F 47) (F 46)) (tr (F 49) (F 23)))))
+    (br (tbody (F 47) (F 23)) (br (tfoot (F 47) (F 48)) (tr (F 49) (F 23))))
+    (tr (F 49) (F 24))
+    (br (tbody (F 47) (F 23)) (tr (F 49) (F 23)))
+    (td (F 20) (F 25)).
+%ENDG
+
+%BEGINA
+q0 html -> q27 q26.
+q0 br -> q0 q0.
+q1 body -> q30 q26.
+q1 br -> q1 q1.
+q2 caption -> q11 q37.
+q2 col -> q26 q37.
+q2 colgroup -> q16 q37.
+q2 tbody -> q39 q15.
+q2 tfoot -> q39 q40.
+q2 thead -> q39 q38.
+q2 tr -> q41 q15.
+q2 br -> q2 q2.
+q3 caption -> q11 q45.
+q3 col -> q26 q45.
+q3 colgroup -> q16 q45.
+q3 tbody -> q47 q23.
+q3 tfoot -> q47 q48.
+q3 thead -> q47 q46.
+q3 tr -> q49 q23.
+q3 br -> q3 q3.
+q4 text -> q26 q26.
+q4 br -> q4 q4.
+q5 leaf -> .
+q5 base -> q26 q5.
+q5 link -> q26 q5.
+q5 meta -> q26 q5.
+q5 object -> q29 q5.
+q5 script -> q4 q5.
+q5 style -> q4 q5.
+q5 br -> q5 q5.
+q6 leaf -> .
+q6 a -> q13 q6.
+q6 abbr -> q11 q6.
+q6 acronym -> q11 q6.
+q6 address -> q11 q6.
+q6 b -> q11 q6.
+q6 bdo -> q11 q6.
+q6 big -> q11 q6.
+q6 blockquote -> q7 q6.
+q6 brk -> q26 q6.
+q6 button -> q6 q6.
+q6 cite -> q11 q6.
+q6 code -> q11 q6.
+q6 del -> q6 q6.
+q6 dfn -> q11 q6.
+q6 div -> q6 q6.
+q6 dl -> q36 q6.
+q6 em -> q11 q6.
+q6 fieldset -> q34 q6.
+q6 form -> q19 q6.
+q6 h1 -> q11 q6.
+q6 h2 -> q11 q6.
+q6 h3 -> q11 q6.
+q6 h4 -> q11 q6.
+q6 h5 -> q11 q6.
+q6 h6 -> q11 q6.
+q6 hr -> q26 q6.
+q6 i -> q11 q6.
+q6 img -> q26 q6.
+q6 input -> q26 q6.
+q6 ins -> q6 q6.
+q6 kbd -> q11 q6.
+q6 label -> q11 q6.
+q6 map -> q8 q6.
+q6 noscript -> q7 q6.
+q6 object -> q29 q6.
+q6 ol -> q35 q6.
+q6 p -> q11 q6.
+q6 pre -> q11 q6.
+q6 q -> q11 q6.
+q6 samp -> q11 q6.
+q6 select -> q31 q6.
+q6 small -> q11 q6.
+q6 span -> q11 q6.
+q6 strong -> q11 q6.
+q6 sub -> q11 q6.
+q6 sup -> q11 q6.
+q6 table -> q2 q6.
+q6 text -> q26 q6.
+q6 textarea -> q4 q6.
+q6 tt -> q11 q6.
+q6 ul -> q35 q6.
+q6 var -> q11 q6.
+q6 br -> q6 q6.
+q7 leaf -> .
+q7 address -> q11 q7.
+q7 blockquote -> q7 q7.
+q7 div -> q6 q7.
+q7 dl -> q36 q7.
+q7 fieldset -> q34 q7.
+q7 form -> q19 q7.
+q7 h1 -> q11 q7.
+q7 h2 -> q11 q7.
+q7 h3 -> q11 q7.
+q7 h4 -> q11 q7.
+q7 h5 -> q11 q7.
+q7 h6 -> q11 q7.
+q7 hr -> q26 q7.
+q7 noscript -> q7 q7.
+q7 ol -> q35 q7.
+q7 p -> q11 q7.
+q7 pre -> q11 q7.
+q7 table -> q2 q7.
+q7 ul -> q35 q7.
+q7 br -> q7 q7.
+q8 leaf -> .
+q8 address -> q11 q8.
+q8 area -> q26 q8.
+q8 blockquote -> q7 q8.
+q8 div -> q6 q8.
+q8 dl -> q36 q8.
+q8 fieldset -> q34 q8.
+q8 form -> q19 q8.
+q8 h1 -> q11 q8.
+q8 h2 -> q11 q8.
+q8 h3 -> q11 q8.
+q8 h4 -> q11 q8.
+q8 h5 -> q11 q8.
+q8 h6 -> q11 q8.
+q8 hr -> q26 q8.
+q8 noscript -> q7 q8.
+q8 ol -> q35 q8.
+q8 p -> q11 q8.
+q8 pre -> q11 q8.
+q8 table -> q2 q8.
+q8 ul -> q35 q8.
+q8 br -> q8 q8.
+q9 leaf -> .
+q9 optgroup -> q32 q9.
+q9 option -> q4 q9.
+q9 br -> q9 q9.
+q10 leaf -> .
+q10 option -> q4 q10.
+q10 br -> q10 q10.
+q11 leaf -> .
+q11 a -> q13 q11.
+q11 abbr -> q11 q11.
+q11 acronym -> q11 q11.
+q11 b -> q11 q11.
+q11 bdo -> q11 q11.
+q11 big -> q11 q11.
+q11 brk -> q26 q11.
+q11 button -> q6 q11.
+q11 cite -> q11 q11.
+q11 code -> q11 q11.
+q11 del -> q6 q11.
+q11 dfn -> q11 q11.
+q11 em -> q11 q11.
+q11 i -> q11 q11.
+q11 img -> q26 q11.
+q11 input -> q26 q11.
+q11 ins -> q6 q11.
+q11 kbd -> q11 q11.
+q11 label -> q11 q11.
+q11 map -> q8 q11.
+q11 object -> q29 q11.
+q11 q -> q11 q11.
+q11 samp -> q11 q11.
+q11 select -> q31 q11.
+q11 small -> q11 q11.
+q11 span -> q11 q11.
+q11 strong -> q11 q11.
+q11 sub -> q11 q11.
+q11 sup -> q11 q11.
+q11 text -> q26 q11.
+q11 textarea -> q4 q11.
+q11 tt -> q11 q11.
+q11 var -> q11 q11.
+q11 br -> q11 q11.
+q12 leaf -> .
+q12 abbr -> q13 q12.
+q12 acronym -> q13 q12.
+q12 address -> q11 q12.
+q12 b -> q13 q12.
+q12 bdo -> q13 q12.
+q12 big -> q13 q12.
+q12 blockquote -> q7 q12.
+q12 brk -> q26 q12.
+q12 button -> q12 q12.
+q12 cite -> q13 q12.
+q12 code -> q13 q12.
+q12 del -> q12 q12.
+q12 dfn -> q13 q12.
+q12 div -> q6 q12.
+q12 dl -> q36 q12.
+q12 em -> q13 q12.
+q12 fieldset -> q34 q12.
+q12 form -> q19 q12.
+q12 h1 -> q11 q12.
+q12 h2 -> q11 q12.
+q12 h3 -> q11 q12.
+q12 h4 -> q11 q12.
+q12 h5 -> q11 q12.
+q12 h6 -> q11 q12.
+q12 hr -> q26 q12.
+q12 i -> q13 q12.
+q12 img -> q26 q12.
+q12 ins -> q12 q12.
+q12 kbd -> q13 q12.
+q12 label -> q13 q12.
+q12 noscript -> q7 q12.
+q12 object -> q33 q12.
+q12 ol -> q35 q12.
+q12 p -> q11 q12.
+q12 pre -> q11 q12.
+q12 q -> q13 q12.
+q12 samp -> q13 q12.
+q12 small -> q13 q12.
+q12 span -> q13 q12.
+q12 strong -> q13 q12.
+q12 sub -> q13 q12.
+q12 sup -> q13 q12.
+q12 table -> q2 q12.
+q12 text -> q26 q12.
+q12 tt -> q13 q12.
+q12 ul -> q35 q12.
+q12 var -> q13 q12.
+q12 br -> q12 q12.
+q13 leaf -> .
+q13 abbr -> q13 q13.
+q13 acronym -> q13 q13.
+q13 b -> q13 q13.
+q13 bdo -> q13 q13.
+q13 big -> q13 q13.
+q13 brk -> q26 q13.
+q13 button -> q12 q13.
+q13 cite -> q13 q13.
+q13 code -> q13 q13.
+q13 del -> q12 q13.
+q13 dfn -> q13 q13.
+q13 em -> q13 q13.
+q13 i -> q13 q13.
+q13 img -> q26 q13.
+q13 ins -> q12 q13.
+q13 kbd -> q13 q13.
+q13 label -> q13 q13.
+q13 object -> q33 q13.
+q13 q -> q13 q13.
+q13 samp -> q13 q13.
+q13 small -> q13 q13.
+q13 span -> q13 q13.
+q13 strong -> q13 q13.
+q13 sub -> q13 q13.
+q13 sup -> q13 q13.
+q13 text -> q26 q13.
+q13 tt -> q13 q13.
+q13 var -> q13 q13.
+q13 br -> q13 q13.
+q14 leaf -> .
+q14 dd -> q6 q14.
+q14 dt -> q11 q14.
+q14 br -> q14 q14.
+q15 leaf -> .
+q15 tbody -> q39 q15.
+q15 tr -> q41 q15.
+q15 br -> q15 q15.
+q16 leaf -> .
+q16 col -> q26 q16.
+q16 br -> q16 q16.
+q17 leaf -> .
+q17 tr -> q41 q17.
+q17 br -> q17 q17.
+q18 leaf -> .
+q18 td -> q6 q18.
+q18 br -> q18 q18.
+q19 leaf -> .
+q19 address -> q11 q19.
+q19 blockquote -> q21 q19.
+q19 div -> q20 q19.
+q19 dl -> q44 q19.
+q19 fieldset -> q42 q19.
+q19 hr -> q26 q19.
+q19 noscript -> q21 q19.
+q19 ol -> q43 q19.
+q19 p -> q11 q19.
+q19 pre -> q11 q19.
+q19 script -> q4 q19.
+q19 table -> q3 q19.
+q19 ul -> q43 q19.
+q19 br -> q19 q19.
+q20 leaf -> .
+q20 a -> q13 q20.
+q20 abbr -> q11 q20.
+q20 acronym -> q11 q20.
+q20 address -> q11 q20.
+q20 b -> q11 q20.
+q20 bdo -> q11 q20.
+q20 big -> q11 q20.
+q20 blockquote -> q21 q20.
+q20 brk -> q26 q20.
+q20 button -> q6 q20.
+q20 cite -> q11 q20.
+q20 code -> q11 q20.
+q20 del -> q6 q20.
+q20 dfn -> q11 q20.
+q20 div -> q20 q20.
+q20 dl -> q44 q20.
+q20 em -> q11 q20.
+q20 fieldset -> q42 q20.
+q20 hr -> q26 q20.
+q20 i -> q11 q20.
+q20 img -> q26 q20.
+q20 input -> q26 q20.
+q20 ins -> q6 q20.
+q20 kbd -> q11 q20.
+q20 label -> q11 q20.
+q20 map -> q8 q20.
+q20 noscript -> q21 q20.
+q20 object -> q29 q20.
+q20 ol -> q43 q20.
+q20 p -> q11 q20.
+q20 pre -> q11 q20.
+q20 q -> q11 q20.
+q20 samp -> q11 q20.
+q20 select -> q31 q20.
+q20 small -> q11 q20.
+q20 span -> q11 q20.
+q20 strong -> q11 q20.
+q20 sub -> q11 q20.
+q20 sup -> q11 q20.
+q20 table -> q3 q20.
+q20 text -> q26 q20.
+q20 textarea -> q4 q20.
+q20 tt -> q11 q20.
+q20 ul -> q43 q20.
+q20 var -> q11 q20.
+q20 br -> q20 q20.
+q21 leaf -> .
+q21 address -> q11 q21.
+q21 blockquote -> q21 q21.
+q21 div -> q20 q21.
+q21 dl -> q44 q21.
+q21 fieldset -> q42 q21.
+q21 hr -> q26 q21.
+q21 noscript -> q21 q21.
+q21 ol -> q43 q21.
+q21 p -> q11 q21.
+q21 pre -> q11 q21.
+q21 table -> q3 q21.
+q21 ul -> q43 q21.
+q21 br -> q21 q21.
+q22 leaf -> .
+q22 dd -> q20 q22.
+q22 dt -> q11 q22.
+q22 br -> q22 q22.
+q23 leaf -> .
+q23 tbody -> q47 q23.
+q23 tr -> q49 q23.
+q23 br -> q23 q23.
+q24 leaf -> .
+q24 tr -> q49 q24.
+q24 br -> q24 q24.
+q25 leaf -> .
+q25 td -> q20 q25.
+q25 br -> q25 q25.
+q26 leaf -> .
+q26 br -> q26 q26.
+q27 head -> q28 q1.
+q27 br -> q27 q27.
+q28 base -> q26 q28.
+q28 link -> q26 q28.
+q28 meta -> q26 q28.
+q28 object -> q29 q28.
+q28 script -> q4 q28.
+q28 style -> q4 q28.
+q28 title -> q4 q5.
+q28 br -> q28 q28.
+q29 leaf -> .
+q29 a -> q13 q6.
+q29 abbr -> q11 q6.
+q29 acronym -> q11 q6.
+q29 address -> q11 q6.
+q29 b -> q11 q6.
+q29 bdo -> q11 q6.
+q29 big -> q11 q6.
+q29 blockquote -> q7 q6.
+q29 brk -> q26 q6.
+q29 button -> q6 q6.
+q29 cite -> q11 q6.
+q29 code -> q11 q6.
+q29 del -> q6 q6.
+q29 dfn -> q11 q6.
+q29 div -> q6 q6.
+q29 dl -> q36 q6.
+q29 em -> q11 q6.
+q29 fieldset -> q34 q6.
+q29 form -> q19 q6.
+q29 h1 -> q11 q6.
+q29 h2 -> q11 q6.
+q29 h3 -> q11 q6.
+q29 h4 -> q11 q6.
+q29 h5 -> q11 q6.
+q29 h6 -> q11 q6.
+q29 hr -> q26 q6.
+q29 i -> q11 q6.
+q29 img -> q26 q6.
+q29 input -> q26 q6.
+q29 ins -> q6 q6.
+q29 kbd -> q11 q6.
+q29 label -> q11 q6.
+q29 map -> q8 q6.
+q29 noscript -> q7 q6.
+q29 object -> q29 q6.
+q29 ol -> q35 q6.
+q29 p -> q11 q6.
+q29 param -> q26 q29.
+q29 pre -> q11 q6.
+q29 q -> q11 q6.
+q29 samp -> q11 q6.
+q29 select -> q31 q6.
+q29 small -> q11 q6.
+q29 span -> q11 q6.
+q29 strong -> q11 q6.
+q29 sub -> q11 q6.
+q29 sup -> q11 q6.
+q29 table -> q2 q6.
+q29 text -> q26 q6.
+q29 textarea -> q4 q6.
+q29 tt -> q11 q6.
+q29 ul -> q35 q6.
+q29 var -> q11 q6.
+q29 br -> q29 q29.
+q30 address -> q11 q7.
+q30 blockquote -> q7 q7.
+q30 div -> q6 q7.
+q30 dl -> q36 q7.
+q30 fieldset -> q34 q7.
+q30 form -> q19 q7.
+q30 h1 -> q11 q7.
+q30 h2 -> q11 q7.
+q30 h3 -> q11 q7.
+q30 h4 -> q11 q7.
+q30 h5 -> q11 q7.
+q30 h6 -> q11 q7.
+q30 hr -> q26 q7.
+q30 noscript -> q7 q7.
+q30 ol -> q35 q7.
+q30 p -> q11 q7.
+q30 pre -> q11 q7.
+q30 table -> q2 q7.
+q30 ul -> q35 q7.
+q30 br -> q30 q30.
+q31 optgroup -> q32 q9.
+q31 option -> q4 q9.
+q31 br -> q31 q31.
+q32 option -> q4 q10.
+q32 br -> q32 q32.
+q33 leaf -> .
+q33 abbr -> q13 q12.
+q33 acronym -> q13 q12.
+q33 address -> q11 q12.
+q33 b -> q13 q12.
+q33 bdo -> q13 q12.
+q33 big -> q13 q12.
+q33 blockquote -> q7 q12.
+q33 brk -> q26 q12.
+q33 button -> q12 q12.
+q33 cite -> q13 q12.
+q33 code -> q13 q12.
+q33 del -> q12 q12.
+q33 dfn -> q13 q12.
+q33 div -> q6 q12.
+q33 dl -> q36 q12.
+q33 em -> q13 q12.
+q33 fieldset -> q34 q12.
+q33 form -> q19 q12.
+q33 h1 -> q11 q12.
+q33 h2 -> q11 q12.
+q33 h3 -> q11 q12.
+q33 h4 -> q11 q12.
+q33 h5 -> q11 q12.
+q33 h6 -> q11 q12.
+q33 hr -> q26 q12.
+q33 i -> q13 q12.
+q33 img -> q26 q12.
+q33 ins -> q12 q12.
+q33 kbd -> q13 q12.
+q33 label -> q13 q12.
+q33 noscript -> q7 q12.
+q33 object -> q33 q12.
+q33 ol -> q35 q12.
+q33 p -> q11 q12.
+q33 param -> q26 q33.
+q33 pre -> q11 q12.
+q33 q -> q13 q12.
+q33 samp -> q13 q12.
+q33 small -> q13 q12.
+q33 span -> q13 q12.
+q33 strong -> q13 q12.
+q33 sub -> q13 q12.
+q33 sup -> q13 q12.
+q33 table -> q2 q12.
+q33 text -> q26 q12.
+q33 tt -> q13 q12.
+q33 ul -> q35 q12.
+q33 var -> q13 q12.
+q33 br -> q33 q33.
+q34 legend -> q11 q6.
+q34 br -> q34 q34.
+q35 li -> q6 q26.
+q35 br -> q35 q35.
+q36 dd -> q6 q14.
+q36 dt -> q11 q14.
+q36 br -> q36 q36.
+q37 col -> q26 q37.
+q37 colgroup -> q16 q37.
+q37 tbody -> q39 q15.
+q37 tfoot -> q39 q40.
+q37 thead -> q39 q38.
+q37 tr -> q41 q15.
+q37 br -> q37 q37.
+q38 tbody -> q39 q15.
+q38 tfoot -> q39 q40.
+q38 tr -> q41 q15.
+q38 br -> q38 q38.
+q39 tr -> q41 q17.
+q39 br -> q39 q39.
+q40 tbody -> q39 q15.
+q40 tr -> q41 q15.
+q40 br -> q40 q40.
+q41 td -> q6 q18.
+q41 br -> q41 q41.
+q42 legend -> q11 q20.
+q42 br -> q42 q42.
+q43 li -> q20 q26.
+q43 br -> q43 q43.
+q44 dd -> q20 q22.
+q44 dt -> q11 q22.
+q44 br -> q44 q44.
+q45 col -> q26 q45.
+q45 colgroup -> q16 q45.
+q45 tbody -> q47 q23.
+q45 tfoot -> q47 q48.
+q45 thead -> q47 q46.
+q45 tr -> q49 q23.
+q45 br -> q45 q45.
+q46 tbody -> q47 q23.
+q46 tfoot -> q47 q48.
+q46 tr -> q49 q23.
+q46 br -> q46 q46.
+q47 tr -> q49 q24.
+q47 br -> q47 q47.
+q48 tbody -> q47 q23.
+q48 tr -> q49 q23.
+q48 br -> q48 q48.
+q49 td -> q20 q25.
+q49 br -> q49 q49.
+%ENDA

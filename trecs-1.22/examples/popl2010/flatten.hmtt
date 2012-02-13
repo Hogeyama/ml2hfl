@@ -1,0 +1,7 @@
+Flatten x = F x nil.
+F x z = case x of
+	| nil => z
+	| cons x1 x2 => F x1 (F x2 z)
+	| a => cons a z
+	| b => cons b z
+.

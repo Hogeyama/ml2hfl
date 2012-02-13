@@ -1,0 +1,43 @@
+S x -> Appendix x leaf.
+/*Appendix x y -> Visit x (Appendix1 y) (doc (appendix leaf leaf) y).*/
+Appendix x y ->
+  case x of
+    doc x1 x2 -> Appendix1 y doc x1 x2
+  | preface x1 x2 -> Appendix1 y preface x1 x2
+  | header x1 x2 -> Appendix1 y header x1 x2
+  | p x1 x2 -> Appendix1 y p x1 x2
+  | div x1 x2 -> Appendix1 y div x1 x2
+  | note x1 x2 -> Appendix1 y note x1 x2
+  | leaf -> doc (appendix leaf leaf) y.
+
+Appendix1 y l x1 x2 -> doc (Body x1 (appendix (Rest x1 leaf) leaf)) y.
+
+Id1 y l x1 x2 -> l (Id x1 leaf) (Id x2 y).
+Id x y ->
+  case x of
+    doc x1 x2 -> doc (Id x1 leaf) (Id x2 y)
+  | preface x1 x2 -> preface (Id x1 leaf) (Id x2 y)
+  | header x1 x2 -> header (Id x1 leaf) (Id x2 y)
+  | p x1 x2 -> p (Id x1 leaf) (Id x2 y)
+  | div x1 x2 -> div (Id x1 leaf) (Id x2 y)
+  | note x1 x2 -> note (Id x1 leaf) (Id x2 y)
+  | leaf -> y.
+
+Body x y ->
+  case x of
+    doc x1 x2 -> doc (Body x1 leaf) (Body x2 y)
+  | preface x1 x2 -> Body x2 y
+  | header x1 x2 -> header (Body x1 leaf) (Body x2 y)
+  | p x1 x2 -> p (Body x1 leaf) (Body x2 y)
+  | div x1 x2 -> div (Body x1 leaf) (Body x2 y)
+  | note x1 x2 -> Body x2 y
+  | leaf -> y.
+Rest x y ->
+  case x of
+    doc x1 x2 -> Rest x1 (Rest x2 y)
+  | preface x1 x2 -> Id x1 (Rest x2 y)
+  | header x1 x2 -> Rest x1 (Rest x2 y)
+  | p x1 x2 -> Rest x1 (Rest x2 y)
+  | div x1 x2 -> Rest x1 (Rest x2 y)
+  | note x1 x2 -> Id x1 (Rest x2 y)
+  | leaf -> y.

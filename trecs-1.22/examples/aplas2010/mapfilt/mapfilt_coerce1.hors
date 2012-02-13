@@ -1,0 +1,19 @@
+%BEGING
+RSFDStart -> MapFilt 1.
+MapFilt xs -> MapFilt_2 xs xs.
+MapFilt_2 xs xs_2 -> Filt_2 P_1 P_2 xs xs.
+Filt_2 p p_2 xs xs_2 -> _case 3 xs (br fail fail) (br T_nil (br (p 2) (br (p_2 2 2) (Filt2_2 0 0 p p_2 2 2 1 1)))) (br fail fail).
+P_1 x -> _case 3 x (br fail fail) (br fail fail) (br tt ff).
+P_2 x x_2 -> _case 3 x (br fail fail) (br fail fail) (br T_tt T_ff).
+T_nil -> success__.
+Filt2_2 b b_2 p p_2 x x_2 xs xs_2 -> _case 3 b (br (T_cons (Copy_1 x) (Copy_2 x x) (Filt_1 p xs) (Filt_2 p p_2 xs xs)) (Filt_2 p p_2 xs xs)) (br fail fail) (br fail fail).
+T_tt -> success__.
+T_ff -> success__.
+T_cons x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+Copy_1 x -> _case 3 x (br tt ff) (br nil (cons (Copy_1 2) (Copy_1 1))) (br c d).
+Copy_2 x x_2 -> _case 3 x (br T_tt T_ff) (br T_nil (T_cons (Copy_1 2) (Copy_2 2 2) (Copy_1 1) (Copy_2 1 1))) (br T_c T_d).
+Filt_1 p xs -> _case 3 xs (br fail fail) (br nil (Filt2_1 0 p 2 1)) (br fail fail).
+T_c -> success__.
+T_d -> success__.
+Filt2_1 b p x xs -> _case 3 b (br (cons (Copy_1 x) (Filt_1 p xs)) (Filt_1 p xs)) (br fail fail) (br fail fail).
+%ENDG

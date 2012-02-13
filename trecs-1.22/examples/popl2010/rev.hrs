@@ -1,0 +1,22 @@
+/*
+Input: a*b*
+*/
+%BEGING
+S -> Rev 0 e.
+Rev x z -> _case 2 x
+	(br z (br (Rev 0 (a z))  (Rev 1 (b z)) ) )
+	(br z (Rev 1 (b z)) ).
+%ENDG
+
+/*
+Output: b*a*
+*/
+%BEGINA
+q0 b -> q0.
+q0 e -> .
+q0 a -> q1.
+q0 br -> q0 q0.
+q1 a -> q1.
+q1 e -> .
+q1 br -> q1 q1.
+%ENDA

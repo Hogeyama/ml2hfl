@@ -1,0 +1,13 @@
+
+%BEGING
+S -> a (F 0 c) (F 1 (b c)).
+F y x -> _case 2 y (a x (F y (b x))) c.
+%ENDG
+
+%BEGINA
+q0 a -> q0 q0.
+q0 b -> q1.
+q1 b -> q1.
+q0 c -> .
+q1 c -> .
+%ENDA

@@ -1,0 +1,76 @@
+TRecS 1.17: Type-based model checker for higher-order recursion schemes
+analyzing jwig-guess_main.hors...
+CASE9 : 
+  
+CASE8 : 
+  
+CASE7 : 
+  
+CASE6 : 
+  
+CASE5 : 
+  
+CASE4 : 
+  
+RSFDStart : 
+  q0
+  
+CASE3 : 
+  
+CASE2 : 
+  
+CASE1 : 
+  
+Wrap_1 : 
+  q30 -> q0
+  
+CASE19 : 
+  
+CASE18 : 
+  
+CASE17 : 
+  
+CASE16 : 
+  
+CASE15 : 
+  
+CASE14 : 
+  
+CASE13 : 
+  
+CASE12 : 
+  
+Start_1 : 
+  q0
+  
+CASE11 : 
+  
+Copy_1 : 
+  0 -> q11
+  0 -> q4
+  1 -> q11
+  1 -> q19
+  1 -> q20
+  1 -> q26
+  1 -> q5
+  1 -> q6
+  10 -> q6
+  11 -> q19
+  12 -> q20
+  13 -> q20
+  4 -> q28
+  9 -> q6
+  
+CASE10 : 
+  
+Recorddoc_1 : 
+  (q6 -> q6) -> q30
+  
+ShowRecord_1 : 
+  2 -> q0
+  
+Old_1 : 
+  (q26 -> q6 -> q6) -> (q26 -> q6 -> q6) -> q6 -> q6
+  
+The number of expansions: 76
+Elapsed Time: 0.047sec

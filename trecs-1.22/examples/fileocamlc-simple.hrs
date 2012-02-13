@@ -1,0 +1,34 @@
+/*** A simplified version of fileocamlc.hrs, which is based on the source code of OCaml 3.11.0, bytecomp/symtable.ml ***/
+/*** The function ReadSec passes to C1 three closures for reading/closing a file.
+ *** C1 then uses the closures to read/close the file.
+ ***/
+
+%BEGING
+S -> ReadSec C1.
+ReadSec k -> br (k Nop Nop Nop) (Newr (ReadSec2 k)).
+ReadSec2 k x -> k (Read x) (Read x) (Close x).
+Nop k -> k.
+C1 rstring rstruct clreader -> rstruct (rstring (Loop rstring rstruct clreader)).
+Loop rstring rstruct clreader -> br (DLLinit rstring rstruct clreader) (Loop rstring rstruct clreader).
+DLLinit rstring rstruct clreader -> rstring (rstruct (clreader end)).
+I x y -> x y.
+K x y -> y.
+Newr k -> br (newr (k I)) (k K).
+Close x k -> x close k.
+Read x k -> x read k.
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0.
+qr br -> qr qr.
+qany br -> qany qany.
+q0 newr -> qr.
+qr newr -> qany.
+qr read -> qr.
+qany read -> qany.
+qr close -> qc.
+qany close -> qany.
+qc end ->.
+q0 end ->.
+qany end ->.
+%ENDA

@@ -1,0 +1,27 @@
+#!/bin/sh
+trecs example2-1.hrs
+trecs example2-3.hrs
+trecs example3-1.hrs
+trecs file.hrs
+trecs flow.hrs
+trecs exception.hrs
+trecs twofiles.hrs
+trecs filewrong.hrs
+trecs twofilesexn.hrs
+trecs fileocamlc.hrs
+trecs lock1.hrs
+trecs lock2.hrs
+trecs order5.hrs
+trecs order5-2.hrs
+trecs rev.hrs
+trecs merge.hrs
+trecs bool.hrs
+trecs lock-bool.hrs
+trecs copystring-bool.hrs
+trecs merge-bool.hrs
+trecs gapid.hrs
+trecs homrep.hrs
+trecs xhtml.hrs
+trecs xhtml-m-remdiv.hrs
+trecs m91-2.hrs
+trecs m91.hrs

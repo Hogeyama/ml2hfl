@@ -1,0 +1,32 @@
+
+%BEGING
+S -> Merge (1, (1, (2, (2, (0, 0))))) (1, (2, (2, (0, 0)))) Copy.
+Copy x -> _dcons x G.
+G x y -> _case 3 x nil (a (Copy y)) (b (Copy y)).
+Merge x y k ->
+  _dcons x (C k y).
+C k y c x ->
+  _case 3 c
+   /* nil */  (k y)
+   /* a */
+     (Merge x y (Cons1 k))
+   /* b */
+     (_dcons y (C2 k x)).
+Cons1 k x -> k (1, x).
+C2 k x c y ->
+  _case 3 c
+     /* nil */ (k (2, x))
+     /* a::_ */ 
+       (Merge (2, x) y (Cons1 k))
+     /* b::_ */
+       (Merge x y (Cons2 k)).
+Cons2 k x -> k (2, (2, x)).
+%ENDG
+
+%BEGINA
+q0 a -> q0.
+q0 b -> q1.
+q1 b -> q1.
+q0 nil -> .
+q1 nil -> .
+%ENDA

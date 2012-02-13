@@ -1,0 +1,5 @@
+1.11   changed the scheduling policy for expanding functions that take finite data as arguments
+1.10   extension with finite data domains
+1.09   delay expansion of recursion only when a function is recursively called twice
+1.08   breadth-first -> depth-first search
+1.07   eliminate redexes if they are already typable

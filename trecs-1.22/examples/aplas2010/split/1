@@ -1,0 +1,2 @@
+Fatal error: exception Failure("invalid arguments")
+(Program not linked with -g, cannot print stack backtrace)

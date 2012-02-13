@@ -1,0 +1,73 @@
+%BEGING
+RSFDStart -> Start.
+Start -> Start_2.
+Start_2 -> br (Wrap_1 (Recorddoc_1 (text leaf))) (br (Wrap_2 (Recorddoc_1 (text leaf)) (Recorddoc_2 (text leaf) (T_text leaf T_leaf))) (T_br (Wrap_1 (Recorddoc_1 (text leaf))) (Wrap_2 (Recorddoc_1 (text leaf)) (Recorddoc_2 (text leaf) (T_text leaf T_leaf))) (ShowRecord_1 2) (ShowRecord_2 2 2))).
+T_br x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+Wrap_1 x -> html (head (title (text leaf leaf) leaf) (body x leaf)) leaf.
+Wrap_2 x x_2 -> T_html (head (title (text leaf leaf) leaf) (body x leaf)) (T_head (title (text leaf leaf) leaf) (T_title (text leaf leaf) (T_text leaf T_leaf leaf T_leaf) leaf T_leaf) (body x leaf) (T_body x x_2 leaf T_leaf)) leaf T_leaf.
+Recorddoc_1 x -> div (p (text leaf leaf) (x (p (text leaf leaf) (form (div (input leaf (input leaf leaf)) leaf) leaf)))) leaf.
+Recorddoc_2 x x_2 -> T_div (p (text leaf leaf) (x (p (text leaf leaf) (form (div (input leaf (input leaf leaf)) leaf) leaf)))) (T_p (text leaf leaf) (T_text leaf T_leaf leaf T_leaf) (x (p (text leaf leaf) (form (div (input leaf (input leaf leaf)) leaf) leaf))) (x_2 (p (text leaf leaf) (form (div (input leaf (input leaf leaf)) leaf) leaf)) (T_p (text leaf leaf) (T_text leaf T_leaf leaf T_leaf) (form (div (input leaf (input leaf leaf)) leaf) leaf) (T_form (div (input leaf (input leaf leaf)) leaf) (T_div (input leaf (input leaf leaf)) (T_input leaf T_leaf (input leaf leaf) (T_input leaf T_leaf leaf T_leaf)) leaf T_leaf) leaf T_leaf)))) leaf T_leaf.
+T_text x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_leaf -> success__.
+ShowRecord_1 x -> _case 14 x fail fail (html (head (Copy_1 4) (body (div (p (Copy_1 0) (text leaf (Old_1 text text (Copy_1 9)))) leaf) leaf)) leaf) fail fail fail fail fail fail fail fail fail fail fail.
+ShowRecord_2 x x_2 -> _case 14 x fail fail CASE20 fail fail fail fail fail fail fail fail fail fail fail.
+T_title x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_form x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_input x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_html x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_head x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_body x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_div x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_p x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+Old_1 n r z -> text leaf (n leaf (text leaf (r leaf (text leaf z)))).
+Old_2 n n_2 r r_2 z z_2 -> T_text leaf T_leaf (n leaf (text leaf (r leaf (text leaf z)))) (n_2 leaf T_leaf (text leaf (r leaf (text leaf z))) (T_text leaf T_leaf (r leaf (text leaf z)) (r_2 leaf T_leaf (text leaf z) (T_text leaf T_leaf z z_2)))).
+Copy_1 x -> _case 14 x (text (Copy_1 1) (Copy_1 1)) leaf (html (Copy_1 3) (Copy_1 1)) (head (Copy_1 4) (Copy_1 5)) (title (Copy_1 0) (Copy_1 1)) (body (Copy_1 6) (Copy_1 1)) (div (Copy_1 7) (Copy_1 1)) (p (Copy_1 0) (Copy_1 8)) (text (Copy_1 1) (Copy_1 9)) (p (Copy_1 0) (Copy_1 10)) (form (Copy_1 11) (Copy_1 1)) (div (Copy_1 12) (Copy_1 1)) (input (Copy_1 1) (Copy_1 13)) (input (Copy_1 1) (Copy_1 1)).
+Copy_2 x x_2 -> _case 14 x (T_text (Copy_1 1) (Copy_2 1 1) (Copy_1 1) (Copy_2 1 1)) T_leaf (T_html (Copy_1 3) (Copy_2 3 3) (Copy_1 1) (Copy_2 1 1)) (T_head (Copy_1 4) (Copy_2 4 4) (Copy_1 5) (Copy_2 5 5)) (T_title (Copy_1 0) (Copy_2 0 0) (Copy_1 1) (Copy_2 1 1)) (T_body (Copy_1 6) (Copy_2 6 6) (Copy_1 1) (Copy_2 1 1)) (T_div (Copy_1 7) (Copy_2 7 7) (Copy_1 1) (Copy_2 1 1)) (T_p (Copy_1 0) (Copy_2 0 0) (Copy_1 8) (Copy_2 8 8)) (T_text (Copy_1 1) (Copy_2 1 1) (Copy_1 9) (Copy_2 9 9)) (T_p (Copy_1 0) (Copy_2 0 0) (Copy_1 10) (Copy_2 10 10)) (T_form (Copy_1 11) (Copy_2 11 11) (Copy_1 1) (Copy_2 1 1)) (T_div (Copy_1 12) (Copy_2 12 12) (Copy_1 1) (Copy_2 1 1)) (T_input (Copy_1 1) (Copy_2 1 1) (Copy_1 13) (Copy_2 13 13)) (T_input (Copy_1 1) (Copy_2 1 1) (Copy_1 1) (Copy_2 1 1)).
+CASE20 -> T_html (head (Copy_1 4) (body (div (p (Copy_1 0) (text leaf (Old_1 text text (Copy_1 9)))) leaf) leaf)) (T_head (Copy_1 4) (Copy_2 4 4) (body (div (p (Copy_1 0) (text leaf (Old_1 text text (Copy_1 9)))) leaf) leaf) (T_body (div (p (Copy_1 0) (text leaf (Old_1 text text (Copy_1 9)))) leaf) (T_div (p (Copy_1 0) (text leaf (Old_1 text text (Copy_1 9)))) (T_p (Copy_1 0) (Copy_2 0 0) (text leaf (Old_1 text text (Copy_1 9))) (T_text leaf T_leaf (Old_1 text text (Copy_1 9)) (Old_2 text T_text text T_text (Copy_1 9) (Copy_2 9 9)))) leaf T_leaf) leaf T_leaf)) leaf T_leaf.
+%ENDG
+
+%BEGINA
+qR html -> q100 qL.
+qR br -> qR qR.
+qR success__ -> .
+q100 head -> q101 q102.
+q100 br -> q100 q100.
+q100 success__ -> .
+qL leaf -> .
+qL br -> qL qL.
+qL success__ -> .
+q101 title -> qT qL.
+q101 br -> q101 q101.
+q101 success__ -> .
+q102 body -> q103 qL.
+q102 br -> q102 q102.
+q102 success__ -> .
+qT text -> qL qL.
+qT br -> qT qT.
+qT success__ -> .
+q103 div -> q104 qL.
+q103 br -> q103 q103.
+q103 success__ -> .
+q104 p -> qT q105.
+q104 br -> q104 q104.
+q104 success__ -> .
+q105 text -> qL q106.
+q105 br -> q105 q105.
+q105 success__ -> .
+q106 p -> qT q107.
+q106 br -> q106 q106.
+q106 success__ -> .
+q107 form -> q108 qL.
+q107 br -> q107 q107.
+q107 success__ -> .
+q108 div -> q109 qL.
+q108 br -> q108 q108.
+q108 success__ -> .
+q109 input -> qL q110.
+q109 br -> q109 q109.
+q109 success__ -> .
+q110 input -> qL qL.
+q110 br -> q110 q110.
+q110 success__ -> .
+
+%ENDA

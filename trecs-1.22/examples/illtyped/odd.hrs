@@ -1,0 +1,18 @@
+%BEGING
+S -> N Zero (F Two).
+Zero s z -> z.
+Succ n s z -> s n.
+One s z -> Succ Zero s z.
+Two s z -> Succ One s z.
+N n f -> f n (N (Succ n)).
+F p n k -> D n Zero p (k (F p)) (prod (k (F p))).
+D m a n tt ff -> m (D1 m a n tt ff) (D2 m a n tt ff).
+D1 m a n tt ff pm -> a (D11 m a n tt ff pm) (D12 m a n tt ff pm).
+D11 m a n tt ff pm pa -> D pa pa z tt ff.
+D12 m a n tt ff pm -> D m n n tt ff.
+D2 m a n tt ff -> a ff tt.
+%ENDG
+
+%BEGINA
+q0 prod -> q0.
+%ENDA

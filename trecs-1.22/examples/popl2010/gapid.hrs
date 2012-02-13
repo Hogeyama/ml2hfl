@@ -1,0 +1,96 @@
+/*
+Input: Doc
+type Doc      = doc[Preface, (Div|P|Note)*]
+type Preface  = preface[Header, P*]
+type Header   = header[A*]
+type P        = p[A*]
+type Div      = div[(Div|P|Note|A)*]
+type Note     = note[(P|A)*]
+type A        = a[A*]
+*/
+
+%BEGING
+/* written by hand */
+S -> F 0 leaf.
+Box v x -> v x.
+Nogap w v x -> w x.
+Node l p v x -> l (p v leaf) x.
+Conc p q v x -> p v (q v x).
+Leaf x -> x.
+/*Gapid n x v y -> Visit x (Gapid1 v y) (Gapid2 v y n).*/
+Gapid n x v y -> 
+  _case 15 x
+    (Gapid1 v y doc 13 12)
+    (Gapid1 v y preface 14 12)
+    (Gapid1 v y header 9 12)
+    (Gapid1 v y p 9 12)
+    (Gapid1 v y div 10 12)
+    (Gapid1 v y note 11 12)
+    (Gapid1 v y a 9 12)
+    (br (Gapid1 v y div 10 7) (br (Gapid1 v y p 9 7) (br (Gapid1 v y note 11 7) (Gapid2 v y n))))
+    (br (Gapid1 v y p 9 8) (Gapid2 v y n))
+    (br (Gapid1 v y a 9 9) (Gapid2 v y n))
+    (br (Gapid1 v y div 10 10) (br (Gapid1 v y p 9 10) (br (Gapid1 v y note 11 10) (br (Gapid1 v y a 9 10) (Gapid2 v y n)))))
+    (br (Gapid1 v y p 9 11) (br (Gapid1 v y a 9 11) (Gapid2 v y n)))
+    (Gapid2 v y n)
+    (Gapid1 v y preface 14 7)
+    (Gapid1 v y header 9 8).
+Gapid1 v x l x1 x2 -> Conc (Node l (Gapid 0 x1)) (Gapid 1 x2) v x.
+Gapid2 v x n -> _case 2 n (Box v x) (Nogap Leaf v x).
+F x y -> Gapid 0 x A y.
+A x -> a leaf x.
+%ENDG
+
+/*
+Output: Doc
+type Doc      = doc[Preface, (Div|P|Note)*]
+type Preface  = preface[Header, P*]
+type Header   = header[A*]
+type P        = p[A*]
+type Div      = div[(Div|P|Note|A)*]
+type Note     = note[(P|A)*]
+type A        = a[A*]
+*/
+%BEGINA
+q0 doc -> q13 q12.
+q0 br -> q0 q0.
+q1 preface -> q14 q12.
+q1 br -> q1 q1.
+q2 header -> q9 q12.
+q2 br -> q2 q2.
+q3 p -> q9 q12.
+q3 br -> q3 q3.
+q4 div -> q10 q12.
+q4 br -> q4 q4.
+q5 note -> q11 q12.
+q5 br -> q5 q5.
+q6 a -> q9 q12.
+q6 br -> q6 q6.
+q7 div -> q10 q7.
+q7 p -> q9 q7.
+q7 note -> q11 q7.
+q7 leaf -> .
+q7 br -> q7 q7.
+q8 p -> q9 q8.
+q8 leaf -> .
+q8 br -> q8 q8.
+q9 a -> q9 q9.
+q9 leaf -> .
+q9 br -> q9 q9.
+q10 div -> q10 q10.
+q10 p -> q9 q10.
+q10 note -> q11 q10.
+q10 a -> q9 q10.
+q10 leaf -> .
+q10 br -> q10 q10.
+q11 p -> q9 q11.
+q11 a -> q9 q11.
+q11 leaf -> .
+q11 br -> q11 q11.
+q12 leaf -> .
+q12 br -> q12 q12.
+q13 preface -> q14 q7.
+q13 br -> q13 q13.
+q14 header -> q9 q8.
+q14 br -> q14 q14.
+%ENDA

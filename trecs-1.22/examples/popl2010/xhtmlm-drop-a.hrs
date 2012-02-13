@@ -1,0 +1,208 @@
+%BEGING
+S -> F 0 leaf.
+F x t ->
+  _case 32 x
+    (html (F 19 leaf) (F 18 t))
+    (body (F 21 leaf) (F 18 t))
+    (text (F 18 leaf) (F 18 t))
+    (br (br t (br (base (F 18 leaf) (F 3 t)) (link (F 18 leaf) (F 3 t)))) (br (meta (F 18 leaf) (F 3 t)) (br (script (F 2 leaf) (F 3 t)) (style (F 2 leaf) (F 3 t)))))
+    (br (br (br t (br (div (F 6 leaf) (F 4 t)) (dl (F 24 leaf) (F 4 t)))) (br (br (form (F 12 leaf) (F 4 t)) (h1 (F 7 leaf) (F 4 t))) (br (h2 (F 7 leaf) (F 4 t)) (h3 (F 7 leaf) (F 4 t))))) (br (br (h4 (F 7 leaf) (F 4 t)) (br (h5 (F 7 leaf) (F 4 t)) (h6 (F 7 leaf) (F 4 t)))) (br (br (ol (F 23 leaf) (F 4 t)) (p (F 7 leaf) (F 4 t))) (br (table (F 22 leaf) (F 4 t)) (ul (F 23 leaf) (F 4 t))))))
+    (br (br t (brk (F 18 leaf) (F 5 t))) (br (img (F 18 leaf) (F 5 t)) (text (F 18 leaf) (F 5 t))))
+    (br (br (br (br t (F 5 (F 6 t))) (br (brk (F 18 leaf) (F 6 t)) (div (F 6 leaf) (F 6 t)))) (br (br (dl (F 24 leaf) (F 6 t)) (form (F 12 leaf) (F 6 t))) (br (h1 (F 7 leaf) (F 6 t)) (br (h2 (F 7 leaf) (F 6 t)) (h3 (F 7 leaf) (F 6 t)))))) (br (br (br (h4 (F 7 leaf) (F 6 t)) (h5 (F 7 leaf) (F 6 t))) (br (h6 (F 7 leaf) (F 6 t)) (img (F 18 leaf) (F 6 t)))) (br (br (ol (F 23 leaf) (F 6 t)) (p (F 7 leaf) (F 6 t))) (br (table (F 22 leaf) (F 6 t)) (br (text (F 18 leaf) (F 6 t)) (ul (F 23 leaf) (F 6 t)))))))
+    (br (br t (F 5 (F 7 t))) (br (brk (F 18 leaf) (F 7 t)) (br (img (F 18 leaf) (F 7 t)) (text (F 18 leaf) (F 7 t)))))
+    (br t (br (dd (F 6 leaf) (F 8 t)) (dt (F 7 leaf) (F 8 t))))
+    (br t (br (tbody (F 25 leaf) (F 9 t)) (tr (F 26 leaf) (F 9 t))))
+    (br t (tr (F 26 leaf) (F 10 t)))
+    (br t (td (F 6 leaf) (F 11 t)))
+    (br (br (br t (br (div (F 13 leaf) (F 12 t)) (dl (F 29 leaf) (F 12 t)))) (br (br (h1 (F 7 leaf) (F 12 t)) (h2 (F 7 leaf) (F 12 t))) (br (h3 (F 7 leaf) (F 12 t)) (h4 (F 7 leaf) (F 12 t))))) (br (br (h5 (F 7 leaf) (F 12 t)) (br (h6 (F 7 leaf) (F 12 t)) (ol (F 28 leaf) (F 12 t)))) (br (br (p (F 7 leaf) (F 12 t)) (script (F 2 leaf) (F 12 t))) (br (table (F 27 leaf) (F 12 t)) (ul (F 28 leaf) (F 12 t))))))
+    (br (br (br (br t (F 5 (F 13 t))) (br (brk (F 18 leaf) (F 13 t)) (div (F 13 leaf) (F 13 t)))) (br (br (dl (F 29 leaf) (F 13 t)) (h1 (F 7 leaf) (F 13 t))) (br (h2 (F 7 leaf) (F 13 t)) (h3 (F 7 leaf) (F 13 t))))) (br (br (br (h4 (F 7 leaf) (F 13 t)) (h5 (F 7 leaf) (F 13 t))) (br (h6 (F 7 leaf) (F 13 t)) (img (F 18 leaf) (F 13 t)))) (br (br (ol (F 28 leaf) (F 13 t)) (p (F 7 leaf) (F 13 t))) (br (table (F 27 leaf) (F 13 t)) (br (text (F 18 leaf) (F 13 t)) (ul (F 28 leaf) (F 13 t)))))))
+    (br t (br (dd (F 13 leaf) (F 14 t)) (dt (F 7 leaf) (F 14 t))))
+    (br t (br (tbody (F 30 leaf) (F 15 t)) (tr (F 31 leaf) (F 15 t))))
+    (br t (tr (F 31 leaf) (F 16 t)))
+    (br t (td (F 13 leaf) (F 17 t)))
+    t
+    (head (F 20 leaf) (F 1 t))
+    (br (br (base (F 18 leaf) (F 20 t)) (br (link (F 18 leaf) (F 20 t)) (meta (F 18 leaf) (F 20 t)))) (br (script (F 2 leaf) (F 20 t)) (br (style (F 2 leaf) (F 20 t)) (title (F 2 leaf) (F 3 t)))))
+    (br (br (br (div (F 6 leaf) (F 4 t)) (br (dl (F 24 leaf) (F 4 t)) (form (F 12 leaf) (F 4 t)))) (br (h1 (F 7 leaf) (F 4 t)) (br (h2 (F 7 leaf) (F 4 t)) (h3 (F 7 leaf) (F 4 t))))) (br (br (h4 (F 7 leaf) (F 4 t)) (br (h5 (F 7 leaf) (F 4 t)) (h6 (F 7 leaf) (F 4 t)))) (br (br (ol (F 23 leaf) (F 4 t)) (p (F 7 leaf) (F 4 t))) (br (table (F 22 leaf) (F 4 t)) (ul (F 23 leaf) (F 4 t))))))
+    (br (tbody (F 25 leaf) (F 9 t)) (tr (F 26 leaf) (F 9 t)))
+    (li (F 6 leaf) (F 18 t))
+    (br (dd (F 6 leaf) (F 8 t)) (dt (F 7 leaf) (F 8 t)))
+    (tr (F 26 leaf) (F 10 t))
+    (td (F 6 leaf) (F 11 t))
+    (br (tbody (F 30 leaf) (F 15 t)) (tr (F 31 leaf) (F 15 t)))
+    (li (F 13 leaf) (F 18 t))
+    (br (dd (F 13 leaf) (F 14 t)) (dt (F 7 leaf) (F 14 t)))
+    (tr (F 31 leaf) (F 16 t))
+    (td (F 13 leaf) (F 17 t)).
+%ENDG
+
+%BEGINA
+q0 html -> q19 q18.
+q0 br -> q0 q0.
+q1 body -> q21 q18.
+q1 br -> q1 q1.
+q2 text -> q18 q18.
+q2 br -> q2 q2.
+q3 leaf -> .
+q3 base -> q18 q3.
+q3 link -> q18 q3.
+q3 meta -> q18 q3.
+q3 script -> q2 q3.
+q3 style -> q2 q3.
+q3 br -> q3 q3.
+q4 leaf -> .
+q4 div -> q6 q4.
+q4 dl -> q24 q4.
+q4 form -> q12 q4.
+q4 h1 -> q7 q4.
+q4 h2 -> q7 q4.
+q4 h3 -> q7 q4.
+q4 h4 -> q7 q4.
+q4 h5 -> q7 q4.
+q4 h6 -> q7 q4.
+q4 ol -> q23 q4.
+q4 p -> q7 q4.
+q4 table -> q22 q4.
+q4 ul -> q23 q4.
+q4 br -> q4 q4.
+q5 leaf -> .
+q5 brk -> q18 q5.
+q5 img -> q18 q5.
+q5 text -> q18 q5.
+q5 br -> q5 q5.
+q6 leaf -> .
+q6 a -> q5 q6.
+q6 brk -> q18 q6.
+q6 div -> q6 q6.
+q6 dl -> q24 q6.
+q6 form -> q12 q6.
+q6 h1 -> q7 q6.
+q6 h2 -> q7 q6.
+q6 h3 -> q7 q6.
+q6 h4 -> q7 q6.
+q6 h5 -> q7 q6.
+q6 h6 -> q7 q6.
+q6 img -> q18 q6.
+q6 ol -> q23 q6.
+q6 p -> q7 q6.
+q6 table -> q22 q6.
+q6 text -> q18 q6.
+q6 ul -> q23 q6.
+q6 br -> q6 q6.
+q7 leaf -> .
+q7 a -> q5 q7.
+q7 brk -> q18 q7.
+q7 img -> q18 q7.
+q7 text -> q18 q7.
+q7 br -> q7 q7.
+q8 leaf -> .
+q8 dd -> q6 q8.
+q8 dt -> q7 q8.
+q8 br -> q8 q8.
+q9 leaf -> .
+q9 tbody -> q25 q9.
+q9 tr -> q26 q9.
+q9 br -> q9 q9.
+q10 leaf -> .
+q10 tr -> q26 q10.
+q10 br -> q10 q10.
+q11 leaf -> .
+q11 td -> q6 q11.
+q11 br -> q11 q11.
+q12 leaf -> .
+q12 div -> q13 q12.
+q12 dl -> q29 q12.
+q12 h1 -> q7 q12.
+q12 h2 -> q7 q12.
+q12 h3 -> q7 q12.
+q12 h4 -> q7 q12.
+q12 h5 -> q7 q12.
+q12 h6 -> q7 q12.
+q12 ol -> q28 q12.
+q12 p -> q7 q12.
+q12 script -> q2 q12.
+q12 table -> q27 q12.
+q12 ul -> q28 q12.
+q12 br -> q12 q12.
+q13 leaf -> .
+q13 a -> q5 q13.
+q13 brk -> q18 q13.
+q13 div -> q13 q13.
+q13 dl -> q29 q13.
+q13 h1 -> q7 q13.
+q13 h2 -> q7 q13.
+q13 h3 -> q7 q13.
+q13 h4 -> q7 q13.
+q13 h5 -> q7 q13.
+q13 h6 -> q7 q13.
+q13 img -> q18 q13.
+q13 ol -> q28 q13.
+q13 p -> q7 q13.
+q13 table -> q27 q13.
+q13 text -> q18 q13.
+q13 ul -> q28 q13.
+q13 br -> q13 q13.
+q14 leaf -> .
+q14 dd -> q13 q14.
+q14 dt -> q7 q14.
+q14 br -> q14 q14.
+q15 leaf -> .
+q15 tbody -> q30 q15.
+q15 tr -> q31 q15.
+q15 br -> q15 q15.
+q16 leaf -> .
+q16 tr -> q31 q16.
+q16 br -> q16 q16.
+q17 leaf -> .
+q17 td -> q13 q17.
+q17 br -> q17 q17.
+q18 leaf -> .
+q18 br -> q18 q18.
+q19 head -> q20 q1.
+q19 br -> q19 q19.
+q20 base -> q18 q20.
+q20 link -> q18 q20.
+q20 meta -> q18 q20.
+q20 script -> q2 q20.
+q20 style -> q2 q20.
+q20 title -> q2 q3.
+q20 br -> q20 q20.
+q21 div -> q6 q4.
+q21 dl -> q24 q4.
+q21 form -> q12 q4.
+q21 h1 -> q7 q4.
+q21 h2 -> q7 q4.
+q21 h3 -> q7 q4.
+q21 h4 -> q7 q4.
+q21 h5 -> q7 q4.
+q21 h6 -> q7 q4.
+q21 ol -> q23 q4.
+q21 p -> q7 q4.
+q21 table -> q22 q4.
+q21 ul -> q23 q4.
+q21 br -> q21 q21.
+q22 tbody -> q25 q9.
+q22 tr -> q26 q9.
+q22 br -> q22 q22.
+q23 li -> q6 q18.
+q23 br -> q23 q23.
+q24 dd -> q6 q8.
+q24 dt -> q7 q8.
+q24 br -> q24 q24.
+q25 tr -> q26 q10.
+q25 br -> q25 q25.
+q26 td -> q6 q11.
+q26 br -> q26 q26.
+q27 tbody -> q30 q15.
+q27 tr -> q31 q15.
+q27 br -> q27 q27.
+q28 li -> q13 q18.
+q28 br -> q28 q28.
+q29 dd -> q13 q14.
+q29 dt -> q7 q14.
+q29 br -> q29 q29.
+q30 tr -> q31 q16.
+q30 br -> q30 q30.
+q31 td -> q13 q17.
+q31 br -> q31 q31.
+%ENDA

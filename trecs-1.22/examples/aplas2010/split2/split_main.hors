@@ -1,0 +1,32 @@
+%BEGING
+RSFDStart -> Split_1 0.
+Split_1 x -> _case 23 x (br (Make_1 man (Copy_1 11) 15) (Make_1 woman (Copy_1 11) 15)) (Make_1 man (Copy_1 11) 15) (Make_1 woman (Copy_1 11) 15) (br fail fail) (br fail fail) fail fail fail (br fail fail) fail fail fail fail fail (br fail fail) fail (br fail fail) fail fail fail fail (br fail fail) (br fail fail).
+Make_1 tag name sdpair -> _case 23 sdpair fail fail fail (br fail fail) (br fail fail) fail fail fail (br fail fail) fail fail fail fail fail (br fail fail) (tag name (sons (Map_1 Split_1 3)) (daughters (Map_1 Split_1 4))) (br fail fail) fail fail fail fail (br fail fail) (br fail fail).
+Copy_1 x -> _case 23 x (person (Copy_1 5) (Copy_1 11) (Copy_1 13)) (person (Copy_1 6) (Copy_1 11) (Copy_1 13)) (person (Copy_1 7) (Copy_1 11) (Copy_1 13)) (br (cons (Copy_1 1) (Copy_1 3)) nil) (br (cons (Copy_1 2) (Copy_1 4)) nil) (gender (Copy_1 8)) (gender (Copy_1 9)) (gender (Copy_1 10)) (br m f) m f (name (Copy_1 12)) text (children (Copy_1 14)) (br (cons (Copy_1 0) (Copy_1 14)) nil) (pair (Copy_1 3) (Copy_1 4)) (br (man (Copy_1 11) (Copy_1 19) (Copy_1 20)) (woman (Copy_1 11) (Copy_1 19) (Copy_1 20))) (man (Copy_1 11) (Copy_1 19) (Copy_1 20)) (woman (Copy_1 11) (Copy_1 19) (Copy_1 20)) (sons (Copy_1 21)) (daughters (Copy_1 22)) (br (cons (Copy_1 17) (Copy_1 21)) nil) (br (cons (Copy_1 18) (Copy_1 22)) nil).
+Map_1 f l -> _case 23 l fail fail fail (br (cons (f 1) (Map_1 f 3)) nil) (br (cons (f 2) (Map_1 f 4)) nil) fail fail fail (br fail fail) fail fail fail fail fail (br (cons (f 0) (Map_1 f 14)) nil) fail (br fail fail) fail fail fail fail (br (cons (f 17) (Map_1 f 21)) nil) (br (cons (f 18) (Map_1 f 22)) nil).
+%ENDG
+
+%BEGINA
+qMW man -> qN qSs qDs.
+qMW woman -> qN qSs qDs.
+qMW br -> qMW qMW.
+qN name -> qT.
+qN br -> qN qN.
+qSs sons -> qMen.
+qSs br -> qSs qSs.
+qDs daughters -> qWomen.
+qDs br -> qDs qDs.
+qT text -> .
+qT br -> qT qT.
+qMen cons -> qMan qMen.
+qMen nil -> .
+qMen br -> qMen qMen.
+qWomen cons -> qWoman qWomen.
+qWomen nil -> .
+qWomen br -> qWomen qWomen.
+qMan man -> qN qSs qDs.
+qMan br -> qMan qMan.
+qWoman woman -> qN qSs qDs.
+qWoman br -> qWoman qWoman.
+
+%ENDA

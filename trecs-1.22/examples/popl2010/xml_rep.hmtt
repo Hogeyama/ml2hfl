@@ -1,0 +1,15 @@
+S x = F x leaf.
+Box v x = v x.
+Nogap w v x = w x.
+Node l p v x = l (p v leaf) x.
+Conc p q v x = p v (q v x).
+Replace x pp y =
+  case x of
+    doc x1 x2 => doc (Replace x1 pp leaf) (Replace x2 pp y)
+  | preface x1 x2 => preface (Replace x1 pp leaf) (Replace x2 pp y)
+  | header x1 x2 => header (Replace x1 pp leaf) (Replace x2 pp y)
+  | p x1 x2 => p (Replace x1 pp leaf) (Replace x2 pp y)
+  | div x1 x2 => pp (Replace x1 pp) (Replace x2 pp y)
+  | note x1 x2 => note (Replace x1 pp leaf) (Replace x2 pp y)
+  | leaf => y.
+F x y = Replace x (Node section (Conc (Nogap (header leaf)) Box)) y.

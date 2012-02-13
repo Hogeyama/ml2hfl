@@ -1,0 +1,71 @@
+%BEGING
+RSFDStart -> Start.
+Start -> Start_2.
+Start_2 -> Wrap_2 (LoopRows_1 Calendar_1) (LoopRows_2 Calendar_1 Calendar_2).
+Wrap_2 x x_2 -> T_html (head (title (text leaf leaf) leaf) (body x leaf)) (T_head (title (text leaf leaf) leaf) (T_title (text leaf leaf) (T_text leaf T_leaf leaf T_leaf) leaf T_leaf) (body x leaf) (T_body x x_2 leaf T_leaf)) leaf T_leaf.
+LoopRows_1 x -> br x (LoopRows_1 (NextTr_1 2 Row_1)).
+LoopRows_2 x x_2 -> br x (br x_2 (T_br x x_2 (LoopRows_1 (NextTr_1 2 Row_1)) (LoopRows_2 (NextTr_1 2 Row_1) (NextTr_2 2 2 Row_1 Row_2)))).
+Calendar_1 -> table (tr (td (text leaf leaf) leaf) leaf) leaf.
+Calendar_2 -> T_table (tr (td (text leaf leaf) leaf) leaf) (T_tr (td (text leaf leaf) leaf) (T_td (text leaf leaf) (T_text leaf T_leaf leaf T_leaf) leaf T_leaf) leaf T_leaf) leaf T_leaf.
+T_html x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_head x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_title x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_body x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_br x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+NextTr_1 c row -> _case 10 c fail fail (table (tr (Copy_1 4) (AppendRow_1 6 row)) leaf) fail fail (br fail fail) (br fail fail) fail (br fail fail) fail.
+NextTr_2 c c_2 row row_2 -> _case 10 c fail fail (T_table (tr (Copy_1 4) (AppendRow_1 6 row)) (T_tr (Copy_1 4) (Copy_2 4 4) (AppendRow_1 6 row) (AppendRow_2 6 6 row row_2)) leaf T_leaf) fail fail (br fail fail) (br fail fail) fail (br fail fail) fail.
+Row_1 -> tr (td (text leaf leaf) leaf) leaf.
+Row_2 -> T_tr (td (text leaf leaf) leaf) (T_td (text leaf leaf) (T_text leaf T_leaf leaf T_leaf) leaf T_leaf) leaf T_leaf.
+T_table x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_tr x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_td x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_text x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_leaf -> success__.
+Copy_1 x -> _case 10 x (text (Copy_1 1) (Copy_1 1)) leaf (table (Copy_1 3) (Copy_1 1)) (tr (Copy_1 4) (Copy_1 6)) (th (Copy_1 0) (Copy_1 5)) (br leaf (th (Copy_1 0) (Copy_1 5))) (br (tr (Copy_1 7) (Copy_1 6)) leaf) (td (Copy_1 0) (Copy_1 8)) (br leaf (td (Copy_1 0) (Copy_1 8))) (tr (Copy_1 7) (Copy_1 6)).
+Copy_2 x x_2 -> _case 10 x (T_text (Copy_1 1) (Copy_2 1 1) (Copy_1 1) (Copy_2 1 1)) T_leaf (T_table (Copy_1 3) (Copy_2 3 3) (Copy_1 1) (Copy_2 1 1)) (T_tr (Copy_1 4) (Copy_2 4 4) (Copy_1 6) (Copy_2 6 6)) (T_th (Copy_1 0) (Copy_2 0 0) (Copy_1 5) (Copy_2 5 5)) (br T_leaf (T_th (Copy_1 0) (Copy_2 0 0) (Copy_1 5) (Copy_2 5 5))) (br (T_tr (Copy_1 7) (Copy_2 7 7) (Copy_1 6) (Copy_2 6 6)) T_leaf) (T_td (Copy_1 0) (Copy_2 0 0) (Copy_1 8) (Copy_2 8 8)) (br T_leaf (T_td (Copy_1 0) (Copy_2 0 0) (Copy_1 8) (Copy_2 8 8))) (T_tr (Copy_1 7) (Copy_2 7 7) (Copy_1 6) (Copy_2 6 6)).
+AppendRow_1 rs row -> _case 10 rs fail (LoopCols_1 row) fail (tr (Copy_1 4) (AppendRow_1 6 row)) fail (br (LoopCols_1 row) fail) (br (tr (Copy_1 7) (AppendRow_1 6 row)) (LoopCols_1 row)) fail (br (LoopCols_1 row) fail) (tr (Copy_1 7) (AppendRow_1 6 row)).
+AppendRow_2 rs rs_2 row row_2 -> _case 10 rs fail (LoopCols_2 row row_2) fail (T_tr (Copy_1 4) (Copy_2 4 4) (AppendRow_1 6 row) (AppendRow_2 6 6 row row_2)) fail (br (LoopCols_2 row row_2) fail) (br (T_tr (Copy_1 7) (Copy_2 7 7) (AppendRow_1 6 row) (AppendRow_2 6 6 row row_2)) (LoopCols_2 row row_2)) fail (br (LoopCols_2 row row_2) fail) (T_tr (Copy_1 7) (Copy_2 7 7) (AppendRow_1 6 row) (AppendRow_2 6 6 row row_2)).
+T_th x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+LoopCols_1 row -> br row (LoopCols_1 (NextDay_1 9 Col_1)).
+LoopCols_2 row row_2 -> br (T_br row row_2 (LoopCols_1 (NextDay_1 9 Col_1)) (LoopCols_2 (NextDay_1 9 Col_1) (NextDay_2 9 9 Col_1 Col_2))) row_2.
+NextDay_1 row c -> _case 10 row fail fail fail (tr (InsertDay_1 4 c) (Copy_1 6)) fail (br fail fail) (br (tr (InsertDay_1 7 c) (Copy_1 6)) fail) fail (br fail fail) (tr (InsertDay_1 7 c) (Copy_1 6)).
+NextDay_2 row row_2 c c_2 -> _case 10 row fail fail fail (T_tr (InsertDay_1 4 c) (InsertDay_2 4 4 c c_2) (Copy_1 6) (Copy_2 6 6)) fail (br fail fail) (br (T_tr (InsertDay_1 7 c) (InsertDay_2 7 7 c c_2) (Copy_1 6) (Copy_2 6 6)) fail) fail (br fail fail) (T_tr (InsertDay_1 7 c) (InsertDay_2 7 7 c c_2) (Copy_1 6) (Copy_2 6 6)).
+Col_1 -> td (text leaf leaf) leaf.
+Col_2 -> T_td (text leaf leaf) (T_text leaf T_leaf leaf T_leaf) leaf T_leaf.
+InsertDay_1 cs c -> _case 10 cs fail c fail fail fail (br c fail) (br fail c) (td (Copy_1 0) (InsertDay_1 8 c)) (br c (td (Copy_1 0) (InsertDay_1 8 c))) fail.
+InsertDay_2 cs cs_2 c c_2 -> _case 10 cs fail c_2 fail fail fail (br c_2 fail) (br fail c_2) (T_td (Copy_1 0) (Copy_2 0 0) (InsertDay_1 8 c) (InsertDay_2 8 8 c c_2)) (br c_2 (T_td (Copy_1 0) (Copy_2 0 0) (InsertDay_1 8 c) (InsertDay_2 8 8 c c_2))) fail.
+%ENDG
+
+%BEGINA
+qTab table -> q104 qL.
+qTab br -> qTab qTab.
+qTab success__ -> .
+q104 tr -> q105 qRows.
+q104 br -> q104 q104.
+q104 success__ -> .
+qL leaf -> .
+qL br -> qL qL.
+qL success__ -> .
+q105 th -> qT q106.
+q105 br -> q105 q105.
+q105 success__ -> .
+qRows tr -> q108 qRows.
+qRows leaf -> .
+qRows br -> qRows qRows.
+qRows success__ -> .
+qT text -> qL qL.
+qT br -> qT qT.
+qT success__ -> .
+q106 leaf -> .
+q106 th -> qT q106.
+q106 br -> q106 q106.
+q106 success__ -> .
+q108 td -> qT q109.
+q108 br -> q108 q108.
+q108 success__ -> .
+q109 leaf -> .
+q109 td -> qT q109.
+q109 br -> q109 q109.
+q109 success__ -> .
+
+%ENDA

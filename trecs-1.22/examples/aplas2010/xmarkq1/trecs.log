@@ -1,0 +1,64 @@
+TRecS 1.17: Type-based model checker for higher-order recursion schemes
+analyzing xmarkq1_main.hors...
+Start_1 : 
+  0 -> qIL
+  
+P4_1 : 
+  61 -> (15 -> qIL) -> qIL
+  
+Ret_1 : 
+  qIL -> qIL
+  
+Copy_1 : 
+  12 -> q12
+  13 -> q13
+  16 -> q16
+  2 -> q2
+  24 -> q24
+  28 -> q28
+  29 -> q29
+  32 -> q32
+  33 -> q33
+  34 -> q34
+  49 -> q49
+  50 -> q50
+  62 -> q62
+  63 -> q63
+  64 -> q64
+  72 -> q72
+  80 -> q80
+  88 -> q88
+  91 -> q91
+  94 -> q94
+  96 -> q96
+  98 -> qI
+  
+P5_1 : 
+  71 -> (15 -> qIL) -> qIL
+  
+FilterItem_1 : 
+  (qIL -> qIL) -> qIL -> 15 -> qIL
+  
+P6_1 : 
+  79 -> (15 -> qIL) -> qIL
+  
+PickItem_1 : 
+  0 -> (15 -> qIL) -> qIL
+  
+RSFDStart : 
+  qIL
+  
+P1_1 : 
+  25 -> (15 -> qIL) -> qIL
+  
+Append_1 : 
+  97 -> qI -> qIL
+  
+P2_1 : 
+  31 -> (15 -> qIL) -> qIL
+  
+P3_1 : 
+  48 -> (15 -> qIL) -> qIL
+  
+The number of expansions: 135
+Elapsed Time: 0.047sec

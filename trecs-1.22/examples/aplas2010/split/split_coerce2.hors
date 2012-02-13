@@ -1,0 +1,86 @@
+%BEGING
+RSFDStart -> Split 0.
+Split x -> Split_2 x x.
+Split_2 x x_2 -> _case 16 x (br (br (Make_2 man T_man (Copy_1 11) (Copy_2 11 11) 15 15) (MakePair_2 14 14 nil T_nil nil T_nil)) (br (MakePair_1 14 nil nil) (br (MakePair_2 14 14 nil T_nil nil T_nil) (Make_2 woman T_woman (Copy_1 11) (Copy_2 11 11) 15 15)))) (br (Make_2 man T_man (Copy_1 11) (Copy_2 11 11) 15 15) (MakePair_2 14 14 nil T_nil nil T_nil)) (br (MakePair_1 14 nil nil) (br (MakePair_2 14 14 nil T_nil nil T_nil) (Make_2 woman T_woman (Copy_1 11) (Copy_2 11 11) 15 15))) (br fail fail) (br fail fail) fail fail fail (br fail fail) fail fail fail fail fail (br fail fail) fail.
+T_man x1 x1_2 x2 x2_2 x3 x3_2 -> br x1_2 (br x2_2 x3_2).
+MakePair_1 ps ms fs -> _case 16 ps fail fail fail (br (MakePair_1 3 (cons (person (gender m) (Copy_1 11) (Copy_1 13)) ms) fs) (pair ms fs)) (br (MakePair_1 4 ms (cons (person (gender f) (Copy_1 11) (Copy_1 13)) fs)) (pair ms fs)) fail fail fail (br fail fail) fail fail fail fail fail (br (br (MakePair_1 14 (cons (person (gender m) (Copy_1 11) (Copy_1 13)) ms) fs) (MakePair_1 14 ms (cons (person (gender f) (Copy_1 11) (Copy_1 13)) fs))) (pair ms fs)) fail.
+MakePair_2 ps ps_2 ms ms_2 fs fs_2 -> _case 16 ps fail fail fail (br (MakePair_2 3 3 (cons (person (gender m) (Copy_1 11) (Copy_1 13)) ms) (T_cons (person (gender m) (Copy_1 11) (Copy_1 13)) (T_person (gender m) (T_gender m T_m) (Copy_1 11) (Copy_2 11 11) (Copy_1 13) (Copy_2 13 13)) ms ms_2) fs fs_2) (T_pair ms ms_2 fs fs_2)) (br (MakePair_2 4 4 ms ms_2 (cons (person (gender f) (Copy_1 11) (Copy_1 13)) fs) (T_cons (person (gender f) (Copy_1 11) (Copy_1 13)) (T_person (gender f) (T_gender f T_f) (Copy_1 11) (Copy_2 11 11) (Copy_1 13) (Copy_2 13 13)) fs fs_2)) (T_pair ms ms_2 fs fs_2)) fail fail fail (br fail fail) fail fail fail fail fail (CASE2 ms ms_2 fs fs_2) fail.
+T_nil -> success__.
+Make_2 tag tag_2 name name_2 sdpair sdpair_2 -> _case 16 sdpair fail fail fail (br fail fail) (br fail fail) fail fail fail (br fail fail) fail fail fail fail fail (br fail fail) (br (tag_2 name name_2 (sons (Map_1 Split_1 3)) (T_sons (Map_1 Split_1 3) (Map_2 Split_1 Split_2 3 3)) (daughters (Map_1 Split_1 4)) (T_daughters (Map_1 Split_1 4) (Map_2 Split_1 Split_2 4 4))) (br (Rev_2 3 3 nil T_nil) (Rev_2 4 4 nil T_nil))).
+T_woman x1 x1_2 x2 x2_2 x3 x3_2 -> br x1_2 (br x2_2 x3_2).
+Copy_1 x -> _case 16 x (person (Copy_1 5) (Copy_1 11) (Copy_1 13)) (person (Copy_1 6) (Copy_1 11) (Copy_1 13)) (person (Copy_1 7) (Copy_1 11) (Copy_1 13)) (br (cons (Copy_1 1) (Copy_1 3)) nil) (br (cons (Copy_1 2) (Copy_1 4)) nil) (gender (Copy_1 8)) (gender (Copy_1 9)) (gender (Copy_1 10)) (br m f) m f (name (Copy_1 12)) text (children (Copy_1 14)) (br (cons (Copy_1 0) (Copy_1 14)) nil) (pair (Copy_1 3) (Copy_1 4)).
+Copy_2 x x_2 -> _case 16 x (T_person (Copy_1 5) (Copy_2 5 5) (Copy_1 11) (Copy_2 11 11) (Copy_1 13) (Copy_2 13 13)) (T_person (Copy_1 6) (Copy_2 6 6) (Copy_1 11) (Copy_2 11 11) (Copy_1 13) (Copy_2 13 13)) (T_person (Copy_1 7) (Copy_2 7 7) (Copy_1 11) (Copy_2 11 11) (Copy_1 13) (Copy_2 13 13)) (br (T_cons (Copy_1 1) (Copy_2 1 1) (Copy_1 3) (Copy_2 3 3)) T_nil) (br (T_cons (Copy_1 2) (Copy_2 2 2) (Copy_1 4) (Copy_2 4 4)) T_nil) (T_gender (Copy_1 8) (Copy_2 8 8)) (T_gender (Copy_1 9) (Copy_2 9 9)) (T_gender (Copy_1 10) (Copy_2 10 10)) (br T_m T_f) T_m T_f (T_name (Copy_1 12) (Copy_2 12 12)) T_text (T_children (Copy_1 14) (Copy_2 14 14)) (br (T_cons (Copy_1 0) (Copy_2 0 0) (Copy_1 14) (Copy_2 14 14)) T_nil) (T_pair (Copy_1 3) (Copy_2 3 3) (Copy_1 4) (Copy_2 4 4)).
+T_sons x1 x1_2 -> x1_2.
+T_daughters x1 x1_2 -> x1_2.
+Map_1 f l -> _case 16 l fail fail fail (br (cons (f 1) (Map_1 f 3)) nil) (br (cons (f 2) (Map_1 f 4)) nil) fail fail fail (br fail fail) fail fail fail fail fail (br (cons (f 0) (Map_1 f 14)) nil) fail.
+Map_2 f f_2 l l_2 -> _case 16 l fail fail fail (br (T_cons (f 1) (f_2 1 1) (Map_1 f 3) (Map_2 f f_2 3 3)) T_nil) (br (T_cons (f 2) (f_2 2 2) (Map_1 f 4) (Map_2 f f_2 4 4)) T_nil) fail fail fail (br fail fail) fail fail fail fail fail (br (T_cons (f 0) (f_2 0 0) (Map_1 f 14) (Map_2 f f_2 14 14)) T_nil) fail.
+Split_1 x -> _case 16 x (br (Make_1 man (Copy_1 11) 15) (Make_1 woman (Copy_1 11) 15)) (Make_1 man (Copy_1 11) 15) (Make_1 woman (Copy_1 11) 15) (br fail fail) (br fail fail) fail fail fail (br fail fail) fail fail fail fail fail (br fail fail) fail.
+Rev_2 l l_2 z z_2 -> _case 16 l fail fail fail (br (Rev_2 3 3 (cons (Copy_1 1) z) (T_cons (Copy_1 1) (Copy_2 1 1) z z_2)) z_2) (br (Rev_2 4 4 (cons (Copy_1 2) z) (T_cons (Copy_1 2) (Copy_2 2 2) z z_2)) z_2) fail fail fail (br fail fail) fail fail fail fail fail (br (Rev_2 14 14 (cons (Copy_1 0) z) (T_cons (Copy_1 0) (Copy_2 0 0) z z_2)) z_2) fail.
+T_person x1 x1_2 x2 x2_2 x3 x3_2 -> br x1_2 (br x2_2 x3_2).
+T_gender x1 x1_2 -> x1_2.
+T_m -> success__.
+T_f -> success__.
+T_name x1 x1_2 -> x1_2.
+T_text -> success__.
+T_children x1 x1_2 -> x1_2.
+T_cons x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+T_pair x1 x1_2 x2 x2_2 -> br x1_2 x2_2.
+Make_1 tag name sdpair -> _case 16 sdpair fail fail fail (br fail fail) (br fail fail) fail fail fail (br fail fail) fail fail fail fail fail (br fail fail) (tag name (sons (Map_1 Split_1 3)) (daughters (Map_1 Split_1 4))).
+CASE2 ms ms_2 fs fs_2 -> br (br (MakePair_2 14 14 (cons (person (gender m) (Copy_1 11) (Copy_1 13)) ms) (T_cons (person (gender m) (Copy_1 11) (Copy_1 13)) (T_person (gender m) (T_gender m T_m) (Copy_1 11) (Copy_2 11 11) (Copy_1 13) (Copy_2 13 13)) ms ms_2) fs fs_2) (MakePair_2 14 14 ms ms_2 (cons (person (gender f) (Copy_1 11) (Copy_1 13)) fs) (T_cons (person (gender f) (Copy_1 11) (Copy_1 13)) (T_person (gender f) (T_gender f T_f) (Copy_1 11) (Copy_2 11 11) (Copy_1 13) (Copy_2 13 13)) fs fs_2))) (T_pair ms ms_2 fs fs_2).
+%ENDG
+
+%BEGINA
+qPair pair -> qMPs qFPs.
+qPair br -> qPair qPair.
+qPair success__ -> .
+qMPs cons -> qMP qMPs.
+qMPs nil -> .
+qMPs br -> qMPs qMPs.
+qMPs success__ -> .
+qFPs cons -> qFP qFPs.
+qFPs nil -> .
+qFPs br -> qFPs qFPs.
+qFPs success__ -> .
+qMP person -> qGM qN qC.
+qMP br -> qMP qMP.
+qMP success__ -> .
+qFP person -> qGF qN qC.
+qFP br -> qFP qFP.
+qFP success__ -> .
+qGM gender -> qMale.
+qGM br -> qGM qGM.
+qGM success__ -> .
+qGF gender -> qFemale.
+qGF br -> qGF qGF.
+qGF success__ -> .
+qN name -> qT.
+qN br -> qN qN.
+qN success__ -> .
+qC children -> qPs.
+qC br -> qC qC.
+qC success__ -> .
+qMale m -> .
+qMale br -> qMale qMale.
+qMale success__ -> .
+qFemale f -> .
+qFemale br -> qFemale qFemale.
+qFemale success__ -> .
+qT text -> .
+qT br -> qT qT.
+qT success__ -> .
+qPs cons -> qP qPs.
+qPs nil -> .
+qPs br -> qPs qPs.
+qPs success__ -> .
+qP person -> qG qN qC.
+qP br -> qP qP.
+qP success__ -> .
+qG gender -> qMF.
+qG br -> qG qG.
+qG success__ -> .
+qMF m -> .
+qMF f -> .
+qMF br -> qMF qMF.
+qMF success__ -> .
+
+%ENDA

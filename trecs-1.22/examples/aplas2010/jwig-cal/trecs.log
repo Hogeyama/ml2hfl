@@ -1,0 +1,123 @@
+TRecS 1.17: Type-based model checker for higher-order recursion schemes
+analyzing jwig-cal_main.hors...
+CASE3 : 
+  
+CASE18 : 
+  
+CASE2 : 
+  
+CASE17 : 
+  
+CASE1 : 
+  
+CASE16 : 
+  
+CASE15 : 
+  
+CASE14 : 
+  
+CASE13 : 
+  
+CASE12 : 
+  
+Wrap_1 : 
+  q30 -> q0
+  
+CASE11 : 
+  
+CASE10 : 
+  
+InsertDay_1 : 
+  7 -> q18 -> q41
+  8 -> q18 -> q18
+  
+Col_1 : 
+  q18
+  
+LoopCols_1 : 
+  q15 -> q15
+  
+RSFDStart : 
+  q0
+  
+AppendRow_1 : 
+  6 -> q15 -> q15
+  
+CASE36 : 
+  
+CASE35 : 
+  
+CASE34 : 
+  
+CASE33 : 
+  
+CASE32 : 
+  
+CASE31 : 
+  
+NextDay_1 : 
+  9 -> q18 -> q15
+  
+CASE30 : 
+  
+Row_1 : 
+  q15
+  
+LoopRows_1 : 
+  q30 -> q30
+  
+CASE29 : 
+  
+CASE28 : 
+  
+Copy_1 : 
+  0 -> q6
+  1 -> q26
+  1 -> q6
+  4 -> q41
+  5 -> q18
+  6 -> q15
+  7 -> q41
+  8 -> q18
+  
+CASE27 : 
+  
+CASE26 : 
+  
+CASE25 : 
+  
+CASE24 : 
+  
+NextTr_1 : 
+  2 -> q15 -> q30
+  
+CASE23 : 
+  
+Start_1 : 
+  q0
+  
+CASE22 : 
+  
+CASE21 : 
+  
+CASE20 : 
+  
+Calendar_1 : 
+  q30
+  
+CASE9 : 
+  
+CASE8 : 
+  
+CASE7 : 
+  
+CASE6 : 
+  
+CASE5 : 
+  
+CASE4 : 
+  
+CASE19 : 
+  
+The number of expansions: 75
+Elapsed Time: 0.11sec

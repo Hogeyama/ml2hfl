@@ -1,0 +1,15 @@
+RemoveB x = F x G.
+F x g = case x of
+	| doc y => doc (F y g)
+	| a x y => a (g x) (F y g)
+	| b x y => b (F x g) (F y g)
+	| pc => pc
+	| e => e
+.
+G x = case x of
+	| doc y => doc(G y)
+	| b x y => G y
+	| a x y => a (G x) (G y)
+	| pc => pc
+	| e => e
+.

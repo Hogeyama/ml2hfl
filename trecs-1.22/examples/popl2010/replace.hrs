@@ -1,0 +1,39 @@
+/*
+Input: L(M,q1) = b*, L(M,q2) = a*, L(M,q0) = a*b*
+q0 a -> q0.
+q0 b -> q1.
+q0 e -> .
+q1 b -> q1.
+q1 e -> .
+q2 a -> q2.
+q2 e -> .
+*/
+%BEGING
+Sp -> S 1 2 0.
+S sa sb x -> Conv sa (C1 sb x).
+C1 sb x u -> Conv sb (Repl x u).
+Repl x u v -> _case 3 x
+  (br (u (Repl 0 u v)) (br (v (Repl 1 u v)) e))
+  (br (v (Repl 1 u v)) e)
+  (br (u (Repl 2 u v)) e).
+Conv x k -> _case 3 x
+  (br (Conv 0 (C2 k a)) (br (Conv 1 (C2 k b)) (k I)))
+  (br (Conv 1 (C2 k b)) (k I))
+  (br (Conv 2 (C2 k a)) (k I)).
+C2 k y z -> k (Concat y z).
+Concat x y z -> x (y z).
+I x -> x.
+%ENDG
+
+/*
+Output: b*a*
+*/
+%BEGINA
+q0 a -> q1.
+q0 b -> q0.
+q0 e -> .
+q0 br -> q0 q0.
+q1 a -> q1.
+q1 e -> .
+q1 br -> q1 q1.
+%ENDA

@@ -1,0 +1,40 @@
+%BEGING
+S -> br (SortI (1, (2, (2, (2, (1, (0, 0))))))) 
+     (br (SortI (1, (0, 0))) (SortI (1, (2, (0, 0))))).
+SortI x -> Sort Copy x.
+Sort k x ->
+  _dcons x (Sortsub k).
+Sortsub k c x ->
+  _case 3 c
+    /* nil */ (k (0,0))
+    /* a::_ */
+      (Sort (Insert k 1) x)
+    /* b::_ */
+      (Sort (Insert k 2) x).
+Insert k c x ->
+  _dcons x (Insertsub k c).
+Insertsub k c d x ->
+  _case 3 c
+     /* nil: this case cannot happen */ 
+        (k (d, x))
+     /* 1 */
+        (k (c, (d, x)))
+     /* 2 */
+        ( _case 3 d
+           /* nil */ (k (c, (d,x)))
+            /* 1 */ (Insert (Cons1 k) c x)
+            /* 2 */ (k (c, (d, x)))).
+Copy x -> _dcons x G.
+G x y -> _case 3 x nil (a (Copy y)) (b (Copy y)).
+Cons1 k x -> k (1, x).
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0.
+q0 a -> q0.
+q0 b -> q1.
+q1 b -> q1.
+q0 nil -> .
+q1 nil -> .
+%ENDA
+

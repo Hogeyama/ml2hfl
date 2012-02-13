@@ -1,0 +1,36 @@
+%BEGING
+Insert x xs -> case xs of
+    nil => cons (copy x) nil
+  | cons y ys => (case x of
+      a => cons a (copy xs)
+    | b => (case y of
+        a => cons a (Insert x ys)
+      | b => cons b (copy xs)
+    )  
+  )
+.
+Isort x -> case x of
+    nil => nil
+  | cons y ys => Insert y (coerce qL1 (Isort ys))
+.
+%ENDG
+
+%BEGINA
+/* (a | b)* */
+qL0 nil -> .
+qL0 cons -> q0 qL0.
+q0 a -> .
+q0 b -> .
+/* a*b* */
+qL1 nil -> .
+qL1 cons -> q1 qL1.
+qL1 cons -> q2 qL2.
+qL2 nil -> .
+qL2 cons -> q2 qL2.
+q1 a -> .
+q2 b -> .
+%ENDA
+
+%BEGINT
+Isort : qL0 -> qL1.
+%ENDT

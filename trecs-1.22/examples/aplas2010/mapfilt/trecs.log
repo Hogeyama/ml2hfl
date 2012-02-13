@@ -1,0 +1,7 @@
+TRecS 1.17: Type-based model checker for higher-order recursion schemes
+analyzing mapfilt_main.hors...
+The property is not satisfied.
+The error trace is:
+  (br,2)(br,1)(cons,1)(br,2)(d,0).
+The number of expansions: 15
+Elapsed Time: 0.sec

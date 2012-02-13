@@ -1,0 +1,49 @@
+/*
+Input:
+type Doc = doc[(A | B)*]
+type A = a[(A | B)*]
+type B = b[Pc]
+type Pc = pc[]
+
+q0 doc -> q1.
+q0 br -> q0 q0.
+q1 a -> q1 q1.
+q1 b -> q2 q1.
+q1 e -> .
+q1 br -> q1 q1.
+q2 pc -> .
+q2 br -> q2 q2.
+*/
+%BEGING
+Sp -> S 0.
+S x -> F x G.
+F x g -> _case 3 x
+  (doc (F 1 g))
+  (br (a (g 1) (F 1 g)) (br (b (F 2 g) (F 1 g)) e))
+  pc.
+G x -> _case 3 x
+  (doc (G 1))
+  (br (a (G 1) (G 1)) (br (G 1) e))
+  pc.
+%ENDG
+
+/*
+Output:
+type Doc = doc[(A | B)*]
+type A = a[A*]
+type B = b[Pc]
+type Pc = pc[]
+*/
+%BEGINA
+q0 doc -> q1.
+q0 br -> q0 q0.
+q1 a -> q3 q1.
+q1 b -> q2 q1.
+q1 e -> .
+q1 br -> q1 q1.
+q2 pc -> .
+q2 br -> q2 q2.
+q3 a -> q3 q3.
+q3 e -> .
+q3 br -> q3 q3.
+%ENDA

@@ -1,0 +1,39 @@
+%BEGING
+S -> Merge 0 0 I.
+Merge x y z ->
+  _case 2 x
+    (br3 (Copy y z) (MergeAN y z) (MergeBN y z))
+    (br (Copy y z) (MergeBN y z)).
+I x -> x.
+Copy x y ->
+  _case 2 x 
+     (br3 (y end) (Copy 0 (Concat y a)) (Copy 1 (Concat y b)))
+     (br  (y end) (Copy 1 (Concat y b))).
+
+MergeAN y z ->
+  _case 2 y 
+     (br3 (Copy 0 (Concat z a)) (MergeAA z) (MergeAB z))
+     (br (Copy 0 (Concat z a)) (MergeAB z)).
+MergeBN y z ->
+  _case 2 y
+     (br3 (Copy 1 (Concat z b)) (MergeAB z) (MergeBB z))
+     (br (Copy 1 (Concat z b)) (MergeBB z)).
+
+MergeAA z -> MergeAN 0 (Concat z a).
+MergeAB z -> MergeBN 0 (Concat z a).
+MergeBB z -> MergeBN 1 (Concat z b).
+
+Concat x y z -> x(y(z)).
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0.
+q0 br3 -> q0 q0 q0.
+q1 br -> q1 q1.
+q1 br3 -> q1 q1 q1.
+q0 a -> q0.
+q0 b -> q1.
+q1 b -> q1.
+q0 end -> .
+q1 end -> .
+%ENDA

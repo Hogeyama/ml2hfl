@@ -1,0 +1,28 @@
+/*
+Input: L(M,q0) = a*b*, L(M,q1) = b*
+*/
+%BEGING
+S -> Merge 0 1.
+Merge x y -> _case 2 x 
+	(br (Copy y)  (br (Merge_a 0 y) (Merge_b 1 y)))
+	(br (Copy y) (Merge_b 1 y)).
+Merge_a x y -> _case 2 y
+	(br (a(Copy y)) (br (a(a(Merge x 0)))  (a(Merge_b 1 x)) ) )
+	(br (a(Copy y)) (a(Merge_b 1 x)) ).
+Merge_b x y -> _case 2 y
+	(br (b(Copy y))  (br (b(Merge_a 0 x))  (b(b(Merge y 1))) ) )
+	(br (b(Copy y)) (b(Merge_a 0 x)) ).
+Copy x -> _case 2 x
+	(br e (br (a(Copy 0))  (b(Copy 1)) ) )
+	(br e (b(Copy 1)) ).
+%ENDG
+
+/*
+Output: (a|b)*
+*/
+%BEGINA
+q0 a -> q0.
+q0 e -> .
+q0 b -> q0.
+q0 br -> q0 q0.
+%ENDA
