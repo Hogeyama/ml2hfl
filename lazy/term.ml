@@ -9,11 +9,15 @@ type t =
   Var of Attr.t * Var.t
 | Const of Attr.t * Const.t
 | App of Attr.t * t * t
+
 | Call of Attr.t * t * t list
 | Ret of Attr.t * t * t * SimType.t
 | Error of Attr.t
+
 | Forall of Attr.t * (Var.t * SimType.t) list * t
 | Exists of Attr.t * (Var.t * SimType.t) list * t
+
+| Coeff of Attr.t * Var.t
 
 (** {6 Basic functions} *)
 
@@ -55,6 +59,8 @@ let rec pr ppf t =
       Format.fprintf ppf "Forall(%a, %a)" (Util.pr_list SimType.pr_bind ",") env pr t
   | Exists(_, env, t) ->
       Format.fprintf ppf "Exists(%a, %a)" (Util.pr_list SimType.pr_bind ",") env pr t
+  | Coeff(_, x) ->
+      Format.fprintf ppf "%a" Var.pr x
 
 let rec pr2 ppf t =
   match t with
@@ -83,6 +89,8 @@ let rec pr2 ppf t =
       Format.fprintf ppf "Error"
   | Forall(_, _, _) | Exists(_, _, _) ->
       assert false
+  | Coeff(_, x) ->
+      Format.fprintf ppf "%a" Var.pr x
 
 (** ToDo: implement equivalence up to attributes and binders *)
 let equiv t1 t2 = t1 = t2
@@ -92,14 +100,16 @@ let rec fvs t =
     Var(_, x) -> [x]
   | Const(_, _) -> []
   | App(_, t1, t2) -> List.unique (fvs t1 @ fvs t2)
+  | Call(_, _, _) | Ret(_, _, _, _) | Error(_) -> assert false
   | Forall(_, env, t) | Exists(_, env, t) -> Util.diff (fvs t) (List.map fst env)
-  | _ -> assert false
+  | Coeff(_, x) -> [x] (*???*)
 
 let rec subst sub t =
   match t with
     Var(a, x) -> (try sub x with Not_found -> Var(a, x))
   | Const(a, c) -> Const(a, c)
   | App(a, t1, t2) -> App(a, subst sub t1, subst sub t2)
+  | Call(_, _, _) | Ret(_, _, _, _) | Error(_) -> assert false
   | Forall(a, env, t) ->
       let xs = List.map fst env in
       let sub x = if List.mem x xs then raise Not_found else sub x in
@@ -108,7 +118,7 @@ let rec subst sub t =
       let xs = List.map fst env in
       let sub x = if List.mem x xs then raise Not_found else sub x in
       Exists(a, env, subst sub t)
-  | _ -> assert false
+  | Coeff(a, x) -> (try sub x with Not_found -> Coeff(a, x)) (*???*)
 
 let rec apply t ts =
   match ts with
@@ -144,61 +154,6 @@ let rec sum ts =
 let sub t1 t2 = apply (Const([], Const.Sub)) [t1; t2]
 let minus t = apply (Const([], Const.Minus)) [t]
 let mul t1 t2 = apply (Const([], Const.Mul)) [t1; t2]
-
-let term_of_arith nxs n =
-  let ts =
-    (if n = 0 then [] else [tint n]) @
-    (List.filter_map (fun (n, x) -> if n = 0 then None else Some(mul (tint n) (make_var x))) nxs)
-  in
-  sum ts
-
-let terms_of_arith (nxs, n) =
-  let nxs =
-    List.filter_map
-      (fun (n, x) ->
-        if n = 0 then
-          None
-        else
-          Some(n, x))
-      nxs
-  in
-  let nxs1, nxs2 = List.partition (fun (n, _) -> n > 0) nxs in
-  sum ((if n > 0 then [tint n] else []) @ List.map (fun (n, x) -> if n = 1 then make_var x else mul (tint n) (make_var x)) nxs1),
-  sum ((if n < 0 then [tint (-n)] else []) @ List.map (fun (n, x) -> if n = -1 then make_var x else mul (tint (-n)) (make_var x)) nxs2)
-
-let rec arith_of t =
-  match fun_args t with
-    Var(_, x), [] ->
-      [1, x], 0
-  | Const(_, Const.Int(n)), [] ->
-      [], n
-  | Const(_, Const.Add), [t1; t2] ->
-      let nxs1, n1 = arith_of t1 in
-      let nxs2, n2 = arith_of t2 in
-      Arith.canonize (nxs1 @ nxs2), n1 + n2
-  | Const(_, Const.Sub), [t1; t2] ->
-      let nxs1, n1 = arith_of t1 in
-      let nxs2, n2 = arith_of t2 in
-      let nxs2, n2 =  Arith.minus nxs2, -n2 in
-      Arith.canonize (nxs1 @ nxs2), n1 + n2
-  | Const(_, Const.Mul), [Const(_, Const.Int(m)); t]
-  | Const(_, Const.Mul), [t; Const(_, Const.Int(m))] ->
-      let nxs, n = arith_of t in
-      Arith.mul m nxs, m * n
-  | Const(_, Const.Minus), [t] ->
-      let nxs, n = arith_of t in
-      Arith.minus nxs, -n
-  | Const(_, Const.Unit), [] ->
-      [], 0 (*????*)
-  | _ ->
-      invalid_arg "Term.arith_of"
-
-let int_rel_of t =
-		match fun_args t with
-		  Const(_, c), [t1; t2] when Const.is_ibin c ->
-		    let nxs, n = arith_of (sub t1 t2) in
-		    c, nxs, n
-		| _ -> invalid_arg "Term.int_rel_of"
 
 (** {6 Other functions} *)
 
@@ -344,3 +299,7 @@ let rename_fresh p t =
   let sub = List.map (fun x -> x, make_var (Var.new_var ())) fvs in
   subst (fun x -> List.assoc x sub) t
 
+let int_of t =
+  match t with
+    Const(_, Const.Int(n)) -> n
+  | _ -> raise Not_found

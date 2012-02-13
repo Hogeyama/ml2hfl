@@ -3,24 +3,40 @@ open ExtList
 (** Verifier *)
 
 let refineRefTypes prog etrs =
-		let constrss = List.map TcGenRefType.cgen etrs in
-(*
-  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list TcGen.pr "@,") constrss in
-*)
-  let sums = TcSolveRefType.summaries_of (Prog.type_of prog) constrss in
-(**)
-  let _ = List.iter (fun (`P(x, t)) ->
-    Format.printf "P(%a): %a@." Var.pr x Term.pr t) sums
+  let sums =
+		  if true then
+						let ctrs, hcss = List.split (List.map (HcGenRefType.cgen (Prog.type_of prog)) etrs) in
+		    let hcs = List.concat hcss in
+				  let _ = Format.printf "call trees:@.  @[<v>%a@]@." (Util.pr_list CallTree.pr "@,") ctrs in
+				  let _ = Format.printf "horn clauses:@.  @[<v>%a@]@." (Util.pr_list HornClause.pr "@,") hcs in
+      let ts = HornClause.formula_of hcs in
+      let _ = Format.printf "verification conditions:@.  @[<v>%a@]@." (Util.pr_list Term.pr "@,") ts in
+      let t = Farkas.farkas (Formula.band ts) in
+      let _ = Format.printf "constraint on coefficients:@.  @[%a@]@." Term.pr t in
+      let qft = AtpInterface.real_qelim t in
+      let _ = Format.printf "solution of the constraint:@.  @[%a@]@." Term.pr qft in
+		    let sol = HcSolve.solve ctrs hcs in
+      List.map (fun ((x, _), t) -> `P(x, t)) sol
+		  else
+						let constrss = List.map TcGenRefType.cgen etrs in
+				  (*
+				  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list TraceConstr.pr "@,") constrss in
+				  *)
+				  TcSolveRefType.summaries_of (Prog.type_of prog) constrss
   in
-(**)
-  let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
-  let env = TcSolveRefType.infer_env prog sums fcs in
-  env
+  (**)
+		let _ = List.iter (fun (`P(x, t)) ->
+		  Format.printf "P[%a]: %a@." Var.pr x Term.pr t) sums
+		in
+		(**)
+		let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
+		let env = TcSolveRefType.infer_env prog sums fcs in
+		env
 
 let refineIntTypes prog etrs =
 		let constrss = List.map TcGenIntType.cgen etrs in
 (*
-  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list TcGen.pr "@,") constrss in
+  let _ = Format.printf "constraints:@.  @[<v>%a@]@." (Util.pr_list TraceConstr.pr "@,") constrss in
 *)
   let sums = Util.concat_map
     (fun constrs ->
@@ -69,8 +85,8 @@ let verify prog =
 				        loop etrs (i + 1)
     in
     loop [] 1
-  with TcGen.FeasibleErrorTrace(eptr) ->
-   Format.printf "@.The program is unsafe@.Error trace: %a@." TcGen.pr eptr
+  with TraceConstr.FeasibleErrorTrace(eptr) ->
+   Format.printf "@.The program is unsafe@.Error trace: %a@." TraceConstr.pr eptr
 
 
 let infer_abst_type cexs prog =

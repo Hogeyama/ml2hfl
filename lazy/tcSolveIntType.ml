@@ -1,6 +1,7 @@
 open ExtList
 open ExtString
-open TcGen
+open Zipper
+open TraceConstr
 open TcSolve
 
 (** Trace constraint solving for interaction types *)
@@ -28,7 +29,7 @@ let visible (x, uid) =
 		| Var.V(_) ->
       assert false
 
-(** ToDo: not enought for higher-order functions *)
+(** ToDo: not enough for higher-order functions *)
 let vars_of_tree env tr =
   let x, uid = (get tr).name in
   let n = SimType.arity (env x) in
@@ -48,8 +49,10 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 						let tts, tps = List.split
 						  (List.map2
 						    (fun tr p ->
-						      Term.rename_fresh (visible (get tr).name) (Formula.simplify (Formula.eqelim (visible (get tr).name) (term_of_nodes (nodes_of_tree tr)))),
-						      Term.rename_fresh (visible (get tr).name) (Formula.simplify (Formula.eqelim (visible (get tr).name) (term_of_nodes (nodes_of_path p)))))
+						      Term.rename_fresh (visible (get tr).name)
+              (Formula.simplify (Formula.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_tree tr)))),
+						      Term.rename_fresh (visible (get tr).name)
+              (Formula.simplify (Formula.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_path p)))))
 						    trs ps)
 						in
 						let tt = List.hd tts in
@@ -65,8 +68,8 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 						in
       interpolate_widen nd.closed t1 t2 tw1 tw2
     else
-						let tt = Formula.simplify (Formula.eqelim (visible nd.name) (term_of_nodes [nd])) in
-						let tp = Formula.simplify (Formula.eqelim (visible nd.name) (term_of_nodes (nodes_of_path p))) in
+						let tt = Formula.simplify (Formula.eqelim (visible nd.name) (fes_of_nodes [nd])) in
+						let tp = Formula.simplify (Formula.eqelim (visible nd.name) (fes_of_nodes (nodes_of_path p))) in
 						let t1, t2 = if nd.closed then tt, tp else tp, tt in
       interpolate t1 t2
   in

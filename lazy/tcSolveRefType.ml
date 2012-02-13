@@ -1,6 +1,7 @@
 open ExtList
 open ExtString
-open TcGen
+open Zipper
+open TraceConstr
 open TcSolve
 
 (** Trace constraint solving for refinement types
@@ -20,34 +21,13 @@ let infer_env prog sums fcs =
   in
   env @ env'
 
-(** require: x is a structured variable *)
-let rec visible x y =
-  match x with
-    Var.V(_) ->
-      false
-  | Var.T(z, uid, arg) ->
-      (match y with
-        Var.V(_) -> false
-      | Var.T(z', uid', arg') ->
-				      (z = z' && uid = uid' && arg' <= arg) ||
-				      (visible z y))
-
-(*
-let rec enum_visible x =
-  match x with
-    Var.V(_) ->
-      [x]
-  | Var.T(x, uid, arg) ->
-      enum_visible x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
-*)
-
-(** ToDo: not enought for higher-order functions *)
+(** ToDo: not enough for higher-order functions *)
 let args_of_tree env tr =
   let x, uid = (get tr).name in
   let n = SimType.arity (env x) in
   List.init n (fun i -> Var.T(x, uid, i))
 
-(** ToDo: not enought for higher-order functions *)
+(** ToDo: not enough for higher-order functions *)
 let ret_of_tree env tr =
   let x, uid = (get tr).name in
 		match (get tr).ret with
@@ -90,8 +70,8 @@ let subst_interps env tr ret_interp_list =
                 | _ -> assert false)
             | `R(tr) -> tr::trs, t::ts, xttys::xttyss)
       in
-      let trs, ts, xttyss = aux2 (List.map aux trs) (List.tl nd.constr) nd.subst in
-      `R(Node({ nd with constr = List.hd nd.constr :: ts; subst = xttyss }, trs))
+      let trs, ts, xttyss = aux2 (List.map aux trs) nd.constr nd.subst in
+      `R(Node({ nd with constr = ts; subst = xttyss }, trs))
   in
   match aux tr with `R(tr) -> tr | _ -> assert false
 
@@ -100,7 +80,7 @@ let subst_interp closed p interp =
 		  match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
-        let ts1, t::ts2 = List.split_nth (List.length trs1 + 1) nd.constr in
+        let ts1, t::ts2 = List.split_nth (List.length trs1) nd.constr in
         let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
         (** must not apply xttys to interp *)
         let ts2 =
@@ -124,7 +104,7 @@ let subst_interp closed p interp =
           let _ = Format.printf "stop propagation@." in
 				      None
 				    else
-		        let ts1, t::[] = List.split_nth (List.length trs1 + 1) nd.constr in
+		        let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
 		        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
           (** must not apply xttys to interp *)
 		        let interp, xttys =
@@ -155,7 +135,7 @@ let rec prune_tree pred (Node(nd, trs)) =
     None
   else
     let trs = List.map (prune_tree pred) trs in
-    let [[t1]; ts1; ts2] = Util.split_multiple [1; List.length trs] nd.constr in
+    let [ts1; ts2] = Util.split_multiple [List.length trs] nd.constr in
     let [xttyss1; xttyss2] = Util.split_multiple [List.length trs] nd.subst in
     let res, xttys =
       List.fold_left
@@ -168,7 +148,7 @@ let rec prune_tree pred (Node(nd, trs)) =
     in
     let (ts1, xttyss1, trs) = Util.unzip3 res in
     Some
-      (Node({ nd with constr = List.flatten [[t1]; ts1; ts2];
+      (Node({ nd with constr = List.flatten [ts1; ts2];
                       subst = List.flatten [xttyss1; if xttys = [] then xttyss2 else (xttys @ List.hd xttyss2) :: List.tl xttyss2] },
             trs))
 
@@ -179,8 +159,8 @@ let rec prune_path pred p =
   | Path(up, trs1, nd, trs2) ->
       let trs1 = List.map (prune_tree pred) trs1 in
       let trs2 = List.map (prune_tree pred) trs2 in
-      let [[t1]; ts1; [t2]; ts2; ts3] =
-        Util.split_multiple [1; List.length trs1; 1; List.length trs2] nd.constr
+      let [ts1; [t2]; ts2; ts3] =
+        Util.split_multiple [List.length trs1; 1; List.length trs2] nd.constr
       in
       let [xttyss1; [xttys1]; xttyss2; xttyss3] =
         Util.split_multiple [List.length trs1; 1; List.length trs2] nd.subst
@@ -215,7 +195,7 @@ let rec prune_path pred p =
         Util.unzip3 res, xttys
       in
       Path(prune_path pred up, trs1,
-        { nd with constr = List.flatten [[t1]; ts1; [t2]; ts2; ts3];
+        { nd with constr = List.flatten [ts1; [t2]; ts2; ts3];
                   subst = List.flatten [xttyss1; [xttys1' @ xttys1]; xttyss2; if xttys2' = [] then xttyss3 else (xttys2' @ List.hd xttyss3) :: List.tl xttyss3] }, trs2)
 
 (** require: all the related locations of loc is a leaf *)
@@ -229,10 +209,10 @@ let summary_of env loc =
 						let arg = if nd.closed then ret_of env nd else arg_of env nd in
 						let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
 		    let interp =
-								let tt = Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes [nd])) in
-								let tp = Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p))) in
+								let tt = Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes [nd])) in
+								let tp = Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))) in
 								let t1, t2 = if nd.closed then tt, tp else tp, tt in
-				    interpolate_bvs (visible arg) t1 t2
+				    interpolate_bvs (RefType.visible arg) t1 t2
 		    in
 		    let _ = Format.printf "@]@." in
 						[`P(arg, interp)], Util.opt2list (subst_interp nd.closed p interp)
@@ -255,7 +235,7 @@ let summary_of env loc =
             in
             (*let _ = Format.printf "%a@." pr_path p in*)
 		          let arg = arg_of env (get tr) in
-            let t = Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
+            let t = Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p)))) in
             (*let t = Formula.formula_of_dnf (Term.dnf t) in*)
 						      (**)let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in(**)
 		          arg, p, t)
@@ -267,8 +247,8 @@ let summary_of env loc =
 		  		      let arg_p_t_list = List.take (List.length res + 1) arg_p_t_list in
 				        let ret = ret_of env (get tr) in
 		          let nds = nds0 @ nodes_of_tree tr in
-												let ts, xttys = term_of_nodes nds in
-								    let t = Term.rename_fresh (visible ret) (Formula.simplify (Formula.eqelim (visible ret) ((List.map Util.trd3 arg_p_t_list) @ ts, xttys))) in
+												let ts, xttys = fes_of_nodes nds in
+								    let t = Term.rename_fresh (RefType.visible ret) (Formula.simplify (Formula.eqelim (RefType.visible ret) ((List.map Util.trd3 arg_p_t_list) @ ts, xttys))) in
             (*let t = Formula.formula_of_dnf (Term.dnf t) in*)
 								    (**)let _ = if (get tr).closed then Format.printf "%a: %a@." Var.pr ret Term.pr t in(**)
 		          (ret, nds, t), nds)
@@ -284,14 +264,14 @@ let summary_of env loc =
 										 					let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr ret in
 						          let _, ret_interp_list = List.split res in
                 let t2 =
-                  let ts, xttys = term_of_nodes (nodes_of_tree tr) in
-                  Formula.simplify (Formula.eqelim (visible ret)
+                  let ts, xttys = fes_of_nodes (nodes_of_tree tr) in
+                  Formula.simplify (Formula.eqelim (RefType.visible ret)
                     ((**)List.map Util.trd3 arg_p_t_list @(**)
                      List.map Util.trd3 ret_nds_t_list @
                      List.map snd ret_interp_list @ ts,
                      xttys))
                 in
-																let interp = interpolate_bvs (visible ret) t1 t2 in
+																let interp = interpolate_bvs (RefType.visible ret) t1 t2 in
 						  						  let _ = Format.printf "@]@." in
 						          interp
 						        in
@@ -302,14 +282,14 @@ let summary_of env loc =
 																				let interp =
 																				  let t1 = t in
 																				  let t2 =
-																					  	let ts, xttys = term_of_nodes nds in
-																								Formula.simplify (Formula.eqelim (visible arg)
+																					  	let ts, xttys = fes_of_nodes nds in
+																								Formula.simplify (Formula.eqelim (RefType.visible arg)
                           (List.map Util.trd3 arg_p_interp_list @
                            List.map Util.trd3 arg_p_t_list @
                            Formula.bnot interp :: ts,
                            xttys))
 																				  in
-																				  interpolate_bvs (visible arg) t1 t2
+																				  interpolate_bvs (RefType.visible arg) t1 t2
 																		  in
 																		  let _ = Format.printf "@]@." in
 																				(arg, p, interp))
@@ -327,15 +307,15 @@ let summary_of env loc =
 														let interp =
 														  let t1 = t in
 														  let t2 =
-                  let ts, xttys = term_of_nodes (nodes_of_tree tr) in
+                  let ts, xttys = fes_of_nodes (nodes_of_tree tr) in
   																Formula.simplify
-                    (Formula.eqelim (visible arg)
+                    (Formula.eqelim (RefType.visible arg)
                       (List.map Util.trd3 arg_p_interp_list @
                       List.map Util.trd3 arg_p_t_list @
                       List.map snd ret_interp_list @
                       ts, xttys))
 														  in
-														  interpolate_bvs (visible arg) t1 t2
+														  interpolate_bvs (RefType.visible arg) t1 t2
 												  in
 												  let _ = Format.printf "@]@." in
 														(arg, p, interp))
@@ -355,14 +335,14 @@ let summary_of env loc =
 										 					let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr ret in
 						          let _, ret_interp_list = List.split res in
                 let t2 =
-                  let ts, xttys = term_of_nodes nds0 in
-                  TFormula.simplify (Formula.eqelim (visible ret)
+                  let ts, xttys = fes_of_nodes nds0 in
+                  TFormula.simplify (Formula.eqelim (RefType.visible ret)
                     ((**)List.map Util.trd3 arg_p_t_list @(**)
                      List.map Util.trd3 ret_nds_t_list @
                      List.map snd ret_interp_list @ ts,
                      xttys))
                 in
-																let interp = interpolate_bvs (visible ret) t1 t2 in
+																let interp = interpolate_bvs (RefType.visible ret) t1 t2 in
 						  						  let _ = Format.printf "@]@." in
 						          interp
 						        in
@@ -373,14 +353,14 @@ let summary_of env loc =
 																				let interp =
 																				  let t1 = t in
 																				  let t2 =
-																					  	let ts, xttys = term_of_nodes nds in
-																								Formula.simplify (Formula.eqelim (visible arg)
+																					  	let ts, xttys = fes_of_nodes nds in
+																								Formula.simplify (Formula.eqelim (RefType.visible arg)
                           (List.map Util.trd3 arg_p_interp_list @
                            List.map Util.trd3 arg_p_t_list @
                            Formula.bnot interp :: ts,
                            xttys))
 																				  in
-																				  interpolate_bvs (visible arg) t1 t2
+																				  interpolate_bvs (RefType.visible arg) t1 t2
 																		  in
 																		  let _ = Format.printf "@]@." in
 																				(arg, p, interp))
@@ -399,14 +379,14 @@ let summary_of env loc =
 														let interp =
 														  let t1 = t in
 														  let t2 =
-															  	let ts, xttys = term_of_nodes nds0 in
-																		Formula.simplify (Formula.eqelim (visible arg)
+															  	let ts, xttys = fes_of_nodes nds0 in
+																		Formula.simplify (Formula.eqelim (RefType.visible arg)
                     (List.map Util.trd3 arg_p_interp_list @
                      List.map Util.trd3 arg_p_t_list @
                      List.map snd ret_interp_list @
                      ts, xttys))
 														  in
-														  interpolate_bvs (visible arg) t1 t2
+														  interpolate_bvs (RefType.visible arg) t1 t2
 												  in
 												  let _ = Format.printf "@]@." in
 														(arg, p, interp))
@@ -436,8 +416,8 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (*
 			             let _ = Format.printf "%a@." Var.pr arg in
 *)
-													   Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_tree tr)))),
-													   Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))))
+													   Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr)))),
+													   Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p)))))
 													 trs ps),
 			  		   List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
 								in
@@ -451,7 +431,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 										else
 											 tp, tt, tpw, ttw
 								in
-			     interpolate_widen_bvs (visible arg) nd.closed t1 t2 tw1 tw2
+			     interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
       in
       let _ = Format.printf "@]@." in
 						[], interp
@@ -470,7 +450,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 				  let ts0 =
 		      List.map
 		        (fun (arg, p) ->
-		          let t = Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))) in
+		          let t = Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p)))) in
 		          (*let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in*)
 		          t)
 		        argps
@@ -488,14 +468,14 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (* why not compute ts0 and nds? *)
 (*
                 if nd.closed then
-														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_tree tr)))),
-  												    let ts, xttys = term_of_nodes (nds @ nodes_of_path p) in
-														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (ts0 @ ts, xttys)))
+														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr)))),
+  												    let ts, xttys = fes_of_nodes (nds @ nodes_of_path p) in
+														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))
                 else
 *)
-  												    let ts, xttys = term_of_nodes (nds @ nodes_of_tree tr) in
-														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (ts0 @ ts, xttys))),
-														    Term.rename_fresh (visible arg) (Formula.simplify (Formula.eqelim (visible arg) (term_of_nodes (nodes_of_path p)))))
+  												    let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
+														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (ts0 @ ts, xttys))),
+														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Formula.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p)))))
 												  trs ps),
 				      List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
 								in
@@ -509,7 +489,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 										else
 										  tp, tt, tpw, ttw
 								in
-		      interpolate_widen_bvs (visible arg) nd.closed t1 t2 tw1 tw2
+		      interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
 		    in
 		    let _ = Format.printf "@]@." in
 		    let _, parginterps =
@@ -520,10 +500,10 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 												let interp =
 				          let t1 = t0 in
 				          let t2 =
-												    let ts, xttys = term_of_nodes (nds @ nodes_of_tree tr) in
-									  					Formula.simplify (Formula.eqelim (visible arg) ((if nd.closed then Formula.bnot interp else interp)::ts0 @ ts, xttys))
+												    let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
+									  					Formula.simplify (Formula.eqelim (RefType.visible arg) ((if nd.closed then Formula.bnot interp else interp)::ts0 @ ts, xttys))
 				          in
-				          interpolate_bvs (visible arg) t1 t2
+				          interpolate_bvs (RefType.visible arg) t1 t2
 		          in
 		          let _ = Format.printf "@]@." in
 				        ts0 @ [interp], (p, arg, interp)::parginterps)
@@ -536,7 +516,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 		  (match p with
 		    Top -> assert false
 		  | Path(up, trs1, nd, trs2) ->
-        let ts1, t::ts2 = List.split_nth (List.length trs1 + 1) nd.constr in
+        let ts1, t::ts2 = List.split_nth (List.length trs1) nd.constr in
         let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
 (*
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
@@ -553,7 +533,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 				    if Term.equiv interp Formula.ttrue then
 				      []
 				    else
-		        let ts1, t::[] = List.split_nth (List.length trs1 + 1) nd.constr in
+		        let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
 		        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
 (**)
 		        let xts = List.map (fun (x, t, _) -> x, t) xttys in
@@ -570,7 +550,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 		  match p with
 		    Top -> let _ = assert (interp = Formula.ttrue) in []
 		  | Path(up, trs1, nd, []) ->
-        let ts1, t::[] = List.split_nth (List.length trs1 + 1) nd.constr in
+        let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
         let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
 (**)
         let xts = List.map (fun (x, t, _) -> x, t) xttys in

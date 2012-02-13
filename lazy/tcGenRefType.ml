@@ -1,8 +1,9 @@
 open ExtList
 open ExtString
-open TcGen
+open Zipper
+open TraceConstr
 
-(** Trace constraint generation for refinement types
+(** Trace constraint generation for refinement type inference
     @deprecated use HcGenRefType *)
 
 (** generate a set of constraints from an error trace *)
@@ -15,18 +16,18 @@ let cgen etr =
         (match s with
           Trace.Call(y, g) ->
             if Var.is_top (fst y) then
-              aux (insert_down loc (make y true [g] [])) etr
+              aux (insert_down loc (make y true g [] [])) etr
             else if Var.is_pos (fst y) then (* changed *)
               let _ = assert (g = Formula.ttrue) in
-              aux (insert_down loc (make y true [g] [])) etr
+              aux (insert_down loc (make y true g [] [])) etr
             else if Var.is_neg (fst y) then (* changed *)
-(*              if Flags.use_ret then*)
+              let _ = assert (g = Formula.ttrue) in
+              if true then
 		              let nd = get tr in
 		              let nd' = { nd with ret = Some(y) } in
 				            aux (up (Loc(set tr nd', p))) etr
-(*              else
-		              let _ = assert (g = Formula.ttrue) in
-		              aux (insert_down loc (make y true [g] [])) etr*)
+              else
+		              aux (insert_down loc (make y true g [] [])) etr
             else assert false
         | Trace.Arg(xttys) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) xttys in
@@ -40,10 +41,10 @@ let cgen etr =
             if Var.is_pos f then
               aux (up (Loc(set tr nd', p))) etr
             else if Var.is_neg f then (* changed *)
-(*              if Flags.use_ret then*)
-                aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true [Formula.ttrue] [])) etr
-(*              else
-                aux (up (Loc(set tr nd', p))) etr*)
+              if true then
+                aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true Formula.ttrue [] [])) etr
+              else
+                aux (up (Loc(set tr nd', p))) etr
             else assert false
         | Trace.Nop ->
             aux loc etr
@@ -54,10 +55,6 @@ let cgen etr =
   in
   match etr with
     Trace.Call(x, g)::etr ->
-      let tr = aux (zipper (make x true [g] [])) etr in
-      let tr' = get_unsat_prefix tr in
-(*
-      let _ = Format.printf "%a@.%a@." pr tr pr tr' in
-*)
-      tr'
+      let tr = aux (zipper (make x true g [] [])) etr in
+      if !Flags.use_min_unsat_prefix then get_min_unsat_prefix tr else tr
   | _ -> assert false

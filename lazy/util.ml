@@ -1,10 +1,16 @@
 open ExtList
+open ExtString
 
 (** Utility functions *)
 
 (** {6 Exceptions} *)
 
-exception ToBeImplemented
+exception NotImplemented
+
+(** {6 Functions on strings} *)
+
+let is_int s =
+  try let _ = int_of_string s in true with Failure _ -> false
 
 (** {6 Functions on options} *)
 

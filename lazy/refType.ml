@@ -218,3 +218,26 @@ let rec of_interaction_type ty = assert false
   | IntType.And(shs) ->
       of_interction_type shs
 *)
+
+
+(** require: x is a structured variable *)
+let rec visible x y =
+  match x with
+    Var.V(_) ->
+      false
+  | Var.T(z, uid, arg) ->
+      (match y with
+        Var.V(_) -> false
+      | Var.T(z', uid', arg') ->
+				      (z = z' && uid = uid' && arg' <= arg) ||
+				      (visible z y))
+
+let visible_vars env x =
+  let rec aux x =
+		  match x with
+		    Var.V(_) ->
+		      [x]
+		  | Var.T(x, uid, arg) ->
+		      aux x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
+  in
+  List.filter (fun x -> SimType.is_base (env x)) (aux x)

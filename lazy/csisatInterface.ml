@@ -9,69 +9,69 @@ let csisat_unit = CsisatAst.Application("unit", [])
 let csisat_true = CsisatAst.Application("true", [])
 let csisat_false = CsisatAst.Application("false", [])
 
-let rec csisat_of_term t =
+let rec of_term t =
   match fun_args t with
     Var(_, x), [] -> CsisatAst.Variable(Var.string_of x)
-  | Const(_, c), args -> csisat_of_term_aux c args
+  | Const(_, c), args -> of_term_aux c args
   | _ -> assert false
-and csisat_of_term_aux c args =
+and of_term_aux c args =
   match c, args with
     Const.Int(n), [] -> CsisatAst.Constant(float_of_int n)
-  | Const.Add, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([csisat_of_term t1; csisat_of_term t2]))
-  | Const.Sub, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([csisat_of_term t1; CsisatAst.Coeff(-1.0, csisat_of_term t2)]))
+  | Const.Add, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([of_term t1; of_term t2]))
+  | Const.Sub, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([of_term t1; CsisatAst.Coeff(-1.0, of_term t2)]))
   | Const.Mul, [Const(_, Const.Int(n)); t]
-  | Const.Mul, [t; Const(_, Const.Int(n))] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(float_of_int n, csisat_of_term t))
-  | Const.Minus, [t] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(-1.0, csisat_of_term t))
+  | Const.Mul, [t; Const(_, Const.Int(n))] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(float_of_int n, of_term t))
+  | Const.Minus, [t] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(-1.0, of_term t))
   | Const.Unit, [] -> csisat_unit
   | _ ->
       let _ = Format.printf "%a %a@." Const.pr c (Util.pr_list Term.pr " ") args in
       assert false
 
 let ih = ref true
-let rec csisat_of_formula t =
+let rec of_formula t =
   match fun_args t with
     Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(Var.string_of x), csisat_true)(*???*)
-  | Const(_, c), args -> (if !ih then CsisatAstUtil.integer_heuristic else fun x -> x) (csisat_of_formula_aux c args)
+  | Const(_, c), args -> (if !ih then CsisatAstUtil.integer_heuristic else fun x -> x) (of_formula_aux c args)
   | _ -> assert false
-and csisat_of_formula_aux c args =
+and of_formula_aux c args =
   match c, args with
     Const.True, [] -> CsisatAst.True
   | Const.False, [] -> CsisatAst.False
-  | Const.And, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.And([csisat_of_formula t1; csisat_of_formula t2]))
-  | Const.Or, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.Or([csisat_of_formula t1; csisat_of_formula t2]))
-  | Const.Imply, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.Or([CsisatAst.Not(csisat_of_formula t1); csisat_of_formula t2]))
+  | Const.And, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.And([of_formula t1; of_formula t2]))
+  | Const.Or, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.Or([of_formula t1; of_formula t2]))
+  | Const.Imply, [t1; t2] -> CsisatAstUtil.simplify (CsisatAst.Or([CsisatAst.Not(of_formula t1); of_formula t2]))
   | Const.Iff, [t1; t2] ->
       CsisatAstUtil.simplify
         (CsisatAst.Or
-            ([CsisatAst.And([csisat_of_formula t1; csisat_of_formula t2]);
-              CsisatAst.And([CsisatAst.Not(csisat_of_formula t1); CsisatAst.Not(csisat_of_formula t2)])]))
-  | Const.Not, [t] -> CsisatAst.Not(csisat_of_formula t)
-  | Const.Lt, [t1; t2] -> CsisatAst.Lt(csisat_of_term t1, csisat_of_term t2)
-  | Const.Gt, [t1; t2] -> CsisatAst.Lt(csisat_of_term t2, csisat_of_term t1)
-  | Const.Leq, [t1; t2] -> CsisatAst.Leq(csisat_of_term t1, csisat_of_term t2)
-  | Const.Geq, [t1; t2] -> CsisatAst.Leq(csisat_of_term t2, csisat_of_term t1)
+            ([CsisatAst.And([of_formula t1; of_formula t2]);
+              CsisatAst.And([CsisatAst.Not(of_formula t1); CsisatAst.Not(of_formula t2)])]))
+  | Const.Not, [t] -> CsisatAst.Not(of_formula t)
+  | Const.Lt, [t1; t2] -> CsisatAst.Lt(of_term t1, of_term t2)
+  | Const.Gt, [t1; t2] -> CsisatAst.Lt(of_term t2, of_term t1)
+  | Const.Leq, [t1; t2] -> CsisatAst.Leq(of_term t1, of_term t2)
+  | Const.Geq, [t1; t2] -> CsisatAst.Leq(of_term t2, of_term t1)
   | Const.EqUnit, [t1; t2] ->
-      CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2)
+      CsisatAst.Eq(of_term t1, of_term t2)
   | Const.EqBool, [t1; t2] ->
-      let t1 = csisat_of_formula t1 in
-      let t2 = csisat_of_formula t2 in
+      let t1 = of_formula t1 in
+      let t2 = of_formula t2 in
       CsisatAstUtil.simplify
         (CsisatAst.Or([
           CsisatAst.And([t1; t2]);
           CsisatAst.And([CsisatAst.Not(t1); CsisatAst.Not(t2)])]))
   | Const.EqInt, [t1; t2] ->
-      CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2)
+      CsisatAst.Eq(of_term t1, of_term t2)
   | Const.NeqUnit, [t1; t2] ->
-      CsisatAst.Not(CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2))
+      CsisatAst.Not(CsisatAst.Eq(of_term t1, of_term t2))
   | Const.NeqBool, [t1; t2] ->
-      let t1 = csisat_of_formula t1 in
-      let t2 = csisat_of_formula t2 in
+      let t1 = of_formula t1 in
+      let t2 = of_formula t2 in
       CsisatAstUtil.simplify
         (CsisatAst.And([
           CsisatAst.Or([t1; t2]);
           CsisatAst.Or([CsisatAst.Not(t1); CsisatAst.Not(t2)])]))
   | Const.NeqInt, [t1; t2] ->
-      CsisatAst.Not(CsisatAst.Eq(csisat_of_term t1, csisat_of_term t2))
+      CsisatAst.Not(CsisatAst.Eq(of_term t1, of_term t2))
   | _ ->
       let _ = Format.printf "%a@." Const.pr c in
       assert false
@@ -144,8 +144,8 @@ let implies t1 t2 =
   else
     let oldih = !ih in
     let _ = ih := false in
-    let p1 = CsisatAstUtil.simplify (csisat_of_formula t1) in
-    let p2 = CsisatAstUtil.simplify (csisat_of_formula t2) in
+    let p1 = CsisatAstUtil.simplify (of_formula t1) in
+    let p2 = CsisatAstUtil.simplify (of_formula t2) in
     let _ = ih := oldih in
     (*
     Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
@@ -169,8 +169,8 @@ let interpolate t1 t2 =
     t1
   else
 *)
-  let p1 = CsisatAstUtil.simplify (csisat_of_formula t1) in
-  let p2 = CsisatAstUtil.simplify (csisat_of_formula t2) in
+  let p1 = CsisatAstUtil.simplify (of_formula t1) in
+  let p2 = CsisatAstUtil.simplify (of_formula t2) in
   (*
   Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
   *)

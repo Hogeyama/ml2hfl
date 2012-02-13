@@ -1,8 +1,9 @@
 open ExtList
 open ExtString
-open TcGen
+open Zipper
+open TraceConstr
 
-(** Trace constraint generation for interaction types *)
+(** Trace constraint generation for interaction type inference *)
 
 (** generate a set of constraints from an error trace *)
 let cgen etr =
@@ -14,7 +15,7 @@ let cgen etr =
         (match s with
           Trace.Call(y, g) ->
             if Var.is_top (fst y) then
-              aux (insert_down loc (make y true [g] [])) etr
+              aux (insert_down loc (make y true g [] [])) etr
             else if Var.is_pos (fst y) then
               let _ = assert (g = Formula.ttrue) in
               aux (down loc (Var.tlfc_of (fst y))) etr
@@ -44,5 +45,7 @@ let cgen etr =
             root (Loc(set tr { nd with closed = false }, path_set_open p)))
   in
   match etr with
-    Trace.Call(x, g)::etr -> aux (zipper (make x true [g] [])) etr
+    Trace.Call(x, g)::etr ->
+      let tr = aux (zipper (make x true g [] [])) etr in
+       if !Flags.use_min_unsat_prefix then (*ToDo: test*) get_min_unsat_prefix tr else tr
   | _ -> assert false

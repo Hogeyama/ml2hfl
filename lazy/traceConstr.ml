@@ -6,7 +6,7 @@ open Zipper
 
 (** {6 Type} *)
 
-(** trace constraints
+(** element of trace constraint
     invariant: length constr = length subst
     invariant: length subst = length trs or length subst = length trs + 1
                (closed or not is not relevant)
@@ -14,10 +14,10 @@ open Zipper
     @param ret for refinement type inference only *)
 type t = { name: Var.t * int;
            closed: bool;
+           ret: (Var.t * int) option;
            guard: Term.t;
            constr: Term.t list;
-           subst: (Var.t * Term.t * SimType.t) list list;
-           ret: (Var.t * int) option }
+           subst: (Var.t * Term.t * SimType.t) list list }
 
 (** {6 Exception} *)
 
@@ -26,7 +26,8 @@ exception FeasibleErrorTrace of t tree
 (** {6 Functions on trace trees} *)
 
 let make name closed guard constr subst =
-  Zipper.make { name = name; closed = closed; guard = guard; constr = constr; subst = subst; ret = None } []
+  Zipper.make { name = name; closed = closed; ret = None;
+                guard = guard; constr = constr; subst = subst } []
 
 let rec pr ppf tr =
   match tr with
@@ -66,7 +67,7 @@ let rec pr ppf tr =
 								  Var.pr x
 								  id
 
-let get_unsat_prefix tr =
+let get_min_unsat_prefix tr =
   let rec aux (ts0, xttys0) tr =
 		  match tr with
 		    Node(nd, trs) ->

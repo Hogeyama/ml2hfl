@@ -99,6 +99,10 @@ let rec string_of_term t =
         t benv
       in
       "(" ^ (if env = [] then "" else "FORALL (" ^ string_of_env_comma env ^ "): ") ^ string_of_term t ^ ")"
+  | Term.Exists(_, env, t), [] ->
+      assert false
+  | Term.Coeff(_, _), [] ->
+      assert false
   | _, _ ->
       let _ = Format.printf "%a@." Term.pr t in
       assert false
@@ -150,6 +154,10 @@ let infer t ty =
         let _ = assert (SimType.equiv ty SimType.Bool) in
         let xs = List.map fst env in
         List.filter (fun (x, _) -> not (List.mem x xs)) (aux t SimType.Bool)
+		  | Term.Exists(_, env, t), [] ->
+		      assert false
+		  | Term.Coeff(_, _), [] ->
+		      assert false
     | _, _ ->
         let _ = Format.printf "%a@." Term.pr t in
         assert false

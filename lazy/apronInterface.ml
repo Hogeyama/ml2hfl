@@ -9,7 +9,7 @@ let manpk = Polka.manager_alloc_strict ()
 let linconstr_of env t =
   let c, nxs, n =
     try
-      Term.int_rel_of t
+      LinArith.aif_of t
     with Invalid_argument(_) ->
       (match Term.fun_args t with
         Term.Const(_, Const.True), [] ->
@@ -32,7 +32,7 @@ let linconstr_of env t =
     (Array.of_list
       (List.map
         (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.string_of x))
-      (Arith.minus nxs)))
+      (LinArith.minus nxs)))
     (Some ((Apron.Coeff.s_of_int (-n))));
   match c with
     Const.Lt -> Apron.Lincons1.make mexpr Apron.Lincons1.SUP

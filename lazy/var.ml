@@ -65,6 +65,11 @@ and is_neg x =
     V(_) -> false
   | T(x', _, _) -> is_pos x'
 
+let is_avail x =
+  match x with
+    V(_) -> true
+  | T(_, _, i) -> i <> -1
+
 (** @return the call id of top level function call *)
 let rec tlfc_of x =
   match x with
