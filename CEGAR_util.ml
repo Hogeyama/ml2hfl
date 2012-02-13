@@ -387,32 +387,33 @@ let rec uniq_env = function
       then uniq_env env
       else (f,typ) :: uniq_env env
 
+
 let trans_prog t =
+  let ext_env = List.map (fun (x,typ) -> trans_var x, trans_typ' typ) (Trans.make_ext_env t) in
   let () = if false then Format.printf "BEFORE:@.%a@.@.@." Syntax.pp_print_term t in
   let t = Trans.trans_let t in
   let () = if false then Format.printf "AFTER:@.%a@.@.@." Syntax.pp_print_term t in
   let main = new_id "main" in
-  let defs,t = Trans.lift t in
-  let defs_t,t' = trans_term "" [] [] t in
+  let defs,t_main = Trans.lift t in
+  let defs_t,t_main' = trans_term "" [] [] t_main in
   let defs' =
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
           let typ = TFun(TBase(TUnit,fun _ -> []), fun _ -> TBase(TUnit,fun _ -> [])) in
-            (main,typ,["u"],Const True,[],t') :: defs_t @ flatten_map trans_def defs
+            (main,typ,["u"],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
       | Flag.CEGAR_DependentType ->
           let typ = TBase(TUnit,fun _ -> []) in
-            (main,typ,[],Const True,[],t') :: defs_t @ flatten_map trans_def defs
+            (main,typ,[],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
-  let env' = uniq_env env in
+  let env' = uniq_env (ext_env @@ env) in
   let prog = env', defs'', main in
   let prog = event_of_temp prog in
   let prog = eta_expand prog in
   let prog = pop_main prog in
 
   let () = Id.clear_counter () in
-  let defs = get_defs prog in
-  let vars = List.map (fun (f,_,_,_,_) -> f) defs in
+  let vars = List.map (fun (f,_,_,_,_) -> f) (get_defs prog) in
   let var_names = List.rev_map id_name (uniq vars) in
   let rename_id' x var_names =
     let x_name = id_name x in
@@ -420,24 +421,27 @@ let trans_prog t =
       then x_name
       else rename_id x
   in
-  let make_map_fun (f,_,_,_,_) =
-    let f' = rename_id' f var_names in
-      if true then Format.printf "rename: %s ==> %s@." f f';
-      f, f'
+  let make_map_fun (f,_) =
+    if is_external f
+    then f, f
+    else
+      let f' = rename_id' f var_names in
+        if true then Format.printf "rename: %s ==> %s@." f f';
+        f, f'
   in
-  let map = List.rev_map make_map_fun defs in
+  let map = List.rev_map make_map_fun (get_env prog) in
   let var_names' = List.map snd map in
   let make_map_vars (_,xs,_,_,_) =
     let var_names' = List.rev_map id_name xs @@ var_names' in
       List.map (fun x -> x, rename_id' x var_names') xs
   in
-  let map = rev_flatten_map make_map_vars defs @@ map in
+  let map = rev_flatten_map make_map_vars (get_defs prog) @@ map in
   let map = uniq' (fun (x,_) (y,_) -> compare x y) map in
   let rename_var x = List.assoc x map in
   let rename_term t = subst_map (List.map (fun (x,x') -> x,Var x') map) t in
   let rename_def (f,xs,t1,e,t2) = rename_var f, List.map rename_var xs, rename_term t1, e, rename_term t2 in
   let env = List.map (fun (f,typ) -> rename_var f, typ) (get_env prog) in
-  let defs = List.map rename_def defs in
+  let defs = List.map rename_def (get_defs prog) in
   let main = rename_var (get_main prog) in
   let prog = env, defs, main in
   let () = try ignore (Typing.infer prog) with Typing.External -> () in

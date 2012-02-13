@@ -1872,3 +1872,44 @@ let rec elim_fun fun_name t =
     {desc=desc; typ=t.typ}
 
 let elim_fun t = elim_fun "f" t
+
+
+
+
+
+let rec make_ext_env t =
+  match t.desc with
+      Unit -> []
+    | True -> []
+    | False -> []
+    | Unknown -> []
+    | Int n -> []
+    | NInt x -> []
+    | RandInt _ -> []
+    | Var x -> if is_external x then [x, Id.typ x] else []
+    | App(t, ts) -> make_ext_env t @@ (rev_map_flatten (make_ext_env) ts)
+    | If(t1, t2, t3) -> make_ext_env t1 @@ make_ext_env t2 @@ make_ext_env t3
+    | Branch(t1, t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Let(flag, bindings, t2) ->
+        let aux fv (_,xs,t) = make_ext_env t @@ fv in
+          List.fold_left aux (make_ext_env t2) bindings
+    | BinOp(op, t1, t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Not t -> make_ext_env t
+    | Fun(x,t) -> make_ext_env t
+    | Event(s,_) -> []
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env t @@ acc) [] fields
+    | Proj(_,_,_,t) -> make_ext_env t
+    | SetField(_,_,_,_,t1,t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Nil -> []
+    | Cons(t1, t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env t @@ acc) [] ts
+    | Match(t,pats) ->
+        let aux acc (_,_,t) = make_ext_env t @@ acc in
+          List.fold_left aux (make_ext_env t) pats
+    | TryWith(t1,t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Bottom -> []
+    | Pair(t1,t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Fst t -> make_ext_env t
+    | Snd t -> make_ext_env t
+    | Raise t -> make_ext_env t
+    | RandValue _ -> assert false
