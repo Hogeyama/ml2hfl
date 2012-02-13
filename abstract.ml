@@ -245,51 +245,23 @@ let rec get_abst_val env typ =
     | TConstr(s,true) -> assert false
     | TConstr(s,false) -> RandValue(TConstr(s,false), None)
     | typ -> print_typ Format.std_formatter typ; assert false
-let rec abst_ext_funs t =
-  let desc =
-    match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
-      | Unknown -> Unknown
-      | Int n -> Int n
-      | Var x ->
-          if is_external x
-          then
-            let x' = Id.new_var_id x in
-              Let(Flag.Nonrecursive, x', [], get_abst_val (Id.typ x), make_var x')
-          else Var x
-      | NInt x -> NInt x
-      | RandInt None -> RandInt None
-      | RandInt (Some t) -> RandInt (Some (abst_ext_funs t))
-      | RandValue(typ,None) -> RandValue(typ,None)
-      | RandValue(typ,Some t) -> RandValue(typ,Some (abst_ext_funs t))
-      | Fun(x,t) -> Fun(x, abst_ext_funs t)
-      | App(t, ts) -> App(abst_ext_funs t, List.map abst_ext_funs ts)
-      | If(t1, t2, t3) -> If(abst_ext_funs t1, abst_ext_funs t2, abst_ext_funs t3)
-      | Branch(t1, t2) -> Branch(abst_ext_funs t1, abst_ext_funs t2)
-      | Let(flag, f, xs, t1, t2) -> Let(flag, f, xs, abst_ext_funs t1, abst_ext_funs t2)
-      | BinOp(op, t1, t2) -> BinOp(op, abst_ext_funs t1, abst_ext_funs t2)
-      | Not t -> Not (abst_ext_funs t)
-      | Fail -> Fail
-      | Label(b, t) -> Label(b, abst_ext_funs t)
-      | Event s -> Event s
-      | Record(b,fields) -> Record(b, List.map (fun (f,(s,t)) -> f,(s,abst_ext_funs t)) fields)
-      | Proj(n,i,s,f,t) -> Proj(n,i,s,f,abst_ext_funs t)
-      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,abst_ext_funs t1,abst_ext_funs t2)
-      | Nil -> Nil
-      | Cons(t1,t2) -> Cons(abst_ext_funs t1, abst_ext_funs t2)
-      | Constr(s,ts) -> Constr(s, List.map abst_ext_funs ts)
-      | Match(t1,t2,x,y,t3) -> Match(abst_ext_funs t1, abst_ext_funs t2, x, y, abst_ext_funs t3)
-      | Match_(t,pats) ->
-          let aux (pat,cond,t) = pat, apply_opt abst_ext_funs cond, abst_ext_funs t in
-            Match_(abst_ext_funs t, List.map aux pats)
-      | TryWith(t,pats) ->
-          let aux (pat,cond,t) = pat, apply_opt abst_ext_funs cond, abst_ext_funs t in
-            TryWith(abst_ext_funs t, List.map aux pats)
-  in
-    {desc=desc; typ=t.typ}
 *)
+(* temporal implementation *)
+let rec get_abst_val = function
+      TFun(x,typ) ->
+        let x' = Id.new_var "x" (Id.typ x) in
+          make_fun x' (get_abst_val typ)
+    | TUnit -> unit_term
+    | TBool -> make_eq (make_int 0) (get_abst_val (TInt[]))
+    | TInt _ -> make_app randint_term [unit_term]
+    | _ -> raise (Fatal "Not implemented: get_abst_val")
+let abst_ext_funs t =
+  let env = Trans.make_ext_env t in
+  let env' = uniq' (fun (f,_) (g,_) -> Id.compare f g) env in
+  let aux (f,typ) t = make_let [f, [], get_abst_val typ] t in
+    List.fold_right aux env' t
+
+
 
 
 

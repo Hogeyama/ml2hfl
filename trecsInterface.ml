@@ -42,10 +42,23 @@ let trans_const = function
   | c -> Format.printf "print_const: %a@." CEGAR_print.print_term (Const c); assert false
 
 
+let rec sanitize_id x =
+  let map = function
+      '\'' -> "_prime_"
+    | '.' -> "_dot_"
+    | c -> String.make 1 c
+  in
+  let rec trans acc s =
+    if String.length s = 0
+    then acc
+    else trans (acc ^ map s.[0]) (String.sub s 1 (String.length s - 1))
+  in
+    trans "" x
+
 let rec trans_term = function
     Const c -> trans_const c
-  | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT x, [])
-  | Var x -> TS.PTapp (TS.Name x, [])
+  | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (sanitize_id x), [])
+  | Var x -> TS.PTapp (TS.Name (sanitize_id x), [])
   | App(App(App(Const If, Const RandBool), t2), t3) ->
       TS.PTapp(TS.Name "br", [trans_term t2; trans_term t3])
   | App(App(App(Const If, t1), t2), t3) ->
@@ -64,7 +77,7 @@ let rec trans_fun_def (f,xs,t1,es,t2) =
       | Branch n -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [t])
   in
     assert (t1 = Const True);
-    f, xs, List.fold_right aux es (trans_term t2)
+    sanitize_id f, xs, List.fold_right aux es (trans_term t2)
 
 let trans_spec (q,e,qs) =
   let aux q = "q" ^ string_of_int q in
