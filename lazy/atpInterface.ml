@@ -4,8 +4,6 @@ open Formula
 
 exception Nonpresburger
 
-let debug = ref false
-
 let rec of_term t =
   match fun_args t with
     Var(_, x), [] ->
@@ -324,7 +322,7 @@ let rec qelim_lin bvs [] fms =
   if List.mem Atp_batch.False fms then
     [], []
   else begin
-				if !debug then
+				if !Flags.debug then
 						Format.printf "%a@." Fol.pr (formula_of (Atp_batch.list_conj fms));
 				let fms' = Atp_batch.homogenize langs fms in
 				let bvs' = List.unique (Util.diff (Util.catmap Atp_batch.fv fms') (Util.catmap Atp_batch.fv fms)) in
@@ -335,7 +333,7 @@ let rec qelim_lin bvs [] fms =
 								(function Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var(_); Atp_batch.Var(_)])) -> false
 								| _ -> true)
 								fms_lin in
-				if !debug then
+				if !Flags.debug then
 						Format.printf "%a@.%a@." Fol.pr (formula_of (Atp_batch.list_conj fms_lin_ineq)) Fol.pr (formula_of (Atp_batch.list_conj fms_lin_eq));
 				let fms_lin_eq1, fms_lin_eq2 =
 						List.partition
@@ -485,25 +483,25 @@ let qelim bvs p =
 		  		    (fun fms ->
             let rec loop bvs fms =
               let old_bvs = bvs in
-              ((if !debug then
+              ((if !Flags.debug then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !debug then Format.printf "eliminating uninterpreted function symbols@.";
+              if !Flags.debug then Format.printf "eliminating uninterpreted function symbols@.";
               let bvs, fms = qelim_ufs bvs [] fms in
-              (if !debug then
+              (if !Flags.debug then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !debug then Format.printf "eliminating equalities@.";
+              if !Flags.debug then Format.printf "eliminating equalities@.";
               let bvs, fms = qelim_eq bvs [] fms in
-              (if !debug then
+              (if !Flags.debug then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !debug then Format.printf "eliminating linear inequalities and equalities@.";
+              if !Flags.debug then Format.printf "eliminating linear inequalities and equalities@.";
               let bvs, fmss = qelim_lin bvs [] fms in
-              (if !debug then
+              (if !Flags.debug then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   Fol.pr (formula_of (Atp_batch.list_disj (List.map Atp_batch.list_conj fmss))));

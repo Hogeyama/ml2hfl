@@ -43,6 +43,7 @@ let rec pr ppf ty =
       Format.fprintf ppf "@ ->@ %a@]" pr ty2
 
 let pr_bind ppf (x, ty) = Format.fprintf ppf "%a:%a" Var.pr x pr ty
+let pr_bind2 ppf (x, ty) = Format.fprintf ppf "%a:%a" Idnt.pr x pr ty
 
 let equiv ty1 ty2 = ty1 = ty2
 
@@ -56,4 +57,16 @@ let find_last_base env (x, uid) =
   in
   let i = aux (env x) 0 (-1) in
 		let _ = if i = -1 then ()(* condition must be Term.ttrue *) in
+		Var.T(x, uid, i)
+
+let find_last_base2 env (x, uid) =
+  let rec aux ty i j =
+    match ty with
+		    Unit | Bool | Int ->
+        j
+		  | Fun(ty1, ty2) ->
+		      aux ty2 (i + 1) (if is_base ty1 then i else j)
+  in
+  let i = aux (env x) 0 (-1) in
+		let _ = if i = -1 then raise Not_found in
 		Var.T(x, uid, i)

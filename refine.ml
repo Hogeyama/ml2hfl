@@ -84,19 +84,21 @@ let refine preds prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
     if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
     if Flag.use_prefix_trace then raise (Fatal "Not implemented: Flag.use_prefix_trace");
-    let map =
+    let map, defs =
       match !Flag.refine with
           Flag.RefineSizedType ->
             let is_ext (f,_,_,_,_) = not (is_external f) in
             let defs = List.filter is_ext defs in
-            let map = LazyInterface.infer ces (env,defs,main) in
+            let map, ext_fdefs = LazyInterface.infer ces (env,defs,main) in
+(*
               if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
-              map
+*)
+              map, defs @ ext_fdefs
         | Flag.RefineDependentType ->
             if not (List.mem Flag.CPS !Flag.form)
             then failwith "Program must be in CPS @ ModelCheckCPS";
             try
-              RefineDepTyp.infer [List.hd ces] (env,defs,main)
+              RefineDepTyp.infer [List.hd ces] (env,defs,main), defs
             with RefineDepTyp.Untypable -> raise CannotRefute
     in
     let map' =

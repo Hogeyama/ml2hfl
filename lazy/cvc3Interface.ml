@@ -21,6 +21,9 @@ let close_cvc3 () =
   match Unix.close_process (!cvc3in, !cvc3out) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
+let string_of_var x =
+  String.map (fun c -> if c = '.' then '_' else c) (Var.string_of x)
+
 (* encoding unit as 0 *)
 let string_of_type ty =
   match ty with
@@ -33,16 +36,16 @@ let deco s = "cnt" ^ string_of_int !cnt ^ "_" ^ s
 
 let string_of_env env =
   String.concat "; "
-    (List.map (fun (x, ty) -> deco (Var.string_of x) ^ ":" ^ string_of_type ty) env)
+    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type ty) env)
 
 let string_of_env_comma env =
   String.concat ", "
-    (List.map (fun (x, ty) -> deco (Var.string_of x) ^ ":" ^ string_of_type ty) env)
+    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type ty) env)
 
 let rec string_of_term t =
   match Term.fun_args t with
     Term.Var(_, x), [] ->
-      deco (Var.string_of x)
+      deco (string_of_var x)
   | Term.Const(_, Const.Int(n)), [] ->
       string_of_int n
   | Term.Const(_, Const.Add), [t1; t2] ->
@@ -101,8 +104,6 @@ let rec string_of_term t =
       "(" ^ (if env = [] then "" else "FORALL (" ^ string_of_env_comma env ^ "): ") ^ string_of_term t ^ ")"
   | Term.Exists(_, env, t), [] ->
       assert false
-  | Term.Coeff(_, _), [] ->
-      assert false
   | _, _ ->
       let _ = Format.printf "%a@." Term.pr t in
       assert false
@@ -156,8 +157,6 @@ let infer t ty =
         List.filter (fun (x, _) -> not (List.mem x xs)) (aux t SimType.Bool)
 		  | Term.Exists(_, env, t), [] ->
 		      assert false
-		  | Term.Coeff(_, _), [] ->
-		      assert false
     | _, _ ->
         let _ = Format.printf "%a@." Term.pr t in
         assert false
@@ -187,7 +186,7 @@ let is_valid t =
     "QUERY " ^ string_of_term t ^ ";" ^
     "POP;\n"
   in
-  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@ " inp in
+  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@." inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let res = input_line cin in
   if Str.string_match (Str.regexp ".*Valid") res 0 then
@@ -195,7 +194,7 @@ let is_valid t =
   else if Str.string_match (Str.regexp ".*Invalid") res 0 then
     false
   else
-    let _ = Format.printf "unknown error of CVC3: %s@ " res in
+    let _ = Format.printf "unknown error of CVC3: %s@." res in
     assert false
 
 let implies t1 t2 = is_valid (Formula.imply t1 t2)
@@ -230,3 +229,52 @@ let checksat env p =
       Format.printf "CVC3 reported an error@."; assert false
     end
 *)
+
+let solve t =
+  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
+  let _ = cnt := !cnt + 1 in
+  let fm = Format.formatter_of_out_channel cout in
+  let inp =
+    "PUSH;" ^
+    (string_of_env (infer t SimType.Bool)) ^ ";" ^
+    "CHECKSAT " ^ string_of_term t ^ ";" ^
+    "COUNTERMODEL;" ^
+    "POP;\n"
+  in
+  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@." inp in
+  let _ = Format.fprintf fm "%s@?" inp in
+  let _ = close_out cout in
+  let rec aux () =
+    try
+      let s = input_line cin in
+        if Str.string_match (Str.regexp ".*ASSERT") s 0 then
+          let pos_begin = String.index s '(' + 1 in
+          let pos_end = String.index s ')' in
+          let s' = String.sub s pos_begin (pos_end - pos_begin) in
+          s' :: aux ()
+        else
+          aux ()
+    with End_of_file ->
+      []
+  in
+  let ss = aux () in
+  let _ = close_in cin in
+  let _ =
+		  match Unix.close_process (cin, cout) with
+		    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+  in
+(*
+  let _ = List.iter (fun s -> Format.printf "%s@." s) ss in
+*)
+  List.map
+    (fun s ->
+      let _, s = String.split s "_" in
+(*
+      let _ = Format.printf "%s@." s in
+*)
+      let c, n = String.split s " = " in
+(*
+      let _ = Format.printf "%s, %s@." c n in
+*)
+      Var.make_coeff (Idnt.make c), Term.tint (int_of_string n))
+    ss

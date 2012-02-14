@@ -190,15 +190,26 @@ let interpolate t1 t2 =
   Format.printf "%s@." (CsisatAstUtil.print_pred interp);
   *)
   let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
-  simplify (formula_of (CsisatAstUtil.dnf interp))
+  (*Formula.simplify*) (formula_of (CsisatAstUtil.dnf interp))
 
-(*
-(* t1 and t2 share only variables that satisfy p *)
-let interpolate_bvs p t1 t2 =
-  let t1 = Term.rename_fresh p t1 in
-  let t2 = Term.rename_fresh p t2 in
-(*
+let interpolate_chk t1 t2 =
+  try
+    Formula.simplify (interpolate t1 t2)
+  with No_interpolant ->
+				if !Flags.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
+				  let _ = Format.printf "an error has occurred because of CSIsat@." in
+				  assert false
+				else
+						raise No_interpolant
+
+let interpolate t1 t2 =
 		let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-*)
+		let interp = interpolate_chk t1 t2 in
+		let _ = Format.printf "interp_out: %a@ " Term.pr interp in
+  interp
+
+(** @param p represents variables shared by t1 and t2 *)
+let interpolate_bvs p t1 t2 =
+		let t1 = Term.rename_fresh p t1 in
+		let t2 = Term.rename_fresh p t2 in
   interpolate t1 t2
-*)

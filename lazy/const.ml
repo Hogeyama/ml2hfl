@@ -108,6 +108,16 @@ let bnot_ibin c =
   | Geq -> Lt
   | _ -> let _ = Format.printf "%a" pr c in assert false
 
+let minus_ibin c =
+  match c with
+    EqInt -> EqInt
+  | NeqInt -> NeqInt
+  | Lt -> Gt
+  | Gt -> Lt
+  | Leq -> Geq
+  | Geq -> Leq
+  | _ -> let _ = Format.printf "%a" pr c in assert false
+
 let rec pr_bin ppf c =
   match c with
     Event(_)

@@ -230,7 +230,7 @@ let formula_of_fes (ts, xttys) = band (ts @ List.map eq_xtty xttys)
 (** eliminate as many existentially quantified variables as possible
     @param p variables not satifying p are existentially quantified
     ignore equalities on functions *)
-let eqelim p (ts, xttys) =
+let eqelim_fes p (ts, xttys) =
   let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
   let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
   let ts =
@@ -299,6 +299,128 @@ let eqelim p (ts, xttys) =
 
 (** {6 Other functions} *)
 
+let rec eqelim p ts =
+  try
+		  let ts1, xtty, ts2 =
+		    Util.find_split_map
+		      (fun t ->
+		        match fun_args t with
+		          Const(_, Const.EqInt), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) -> Some(x, t, SimType.Int)
+		        | Const(_, Const.EqInt), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) -> Some(x, t, SimType.Int)
+		        | _ -> None)
+		      ts
+		  in
+		  eqelim p (conjuncts (eqelim_fes p (ts1 @ ts2, [xtty])))
+  with Not_found ->
+    ts
+
+let of_aif (c, nxs, n) =
+  match c with
+    Const.EqInt ->
+      eqInt (LinArith.term_of (nxs, n)) (tint 0)
+  | Const.NeqInt ->
+      neqInt (LinArith.term_of (nxs, n)) (tint 0)
+  | Const.Lt ->
+      lt (LinArith.term_of (nxs, n)) (tint 0)
+  | Const.Gt ->
+      gt (LinArith.term_of (nxs, n)) (tint 0)
+  | Const.Leq ->
+      leq (LinArith.term_of (nxs, n)) (tint 0)
+  | Const.Geq ->
+      geq (LinArith.term_of (nxs, n)) (tint 0)
+
+let cand c1 c2 nxs n =
+  match c1, c2 with
+  | Const.EqInt, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
+  | Const.EqInt, Const.NeqInt -> tfalse
+  | Const.EqInt, Const.Lt -> tfalse
+  | Const.EqInt, Const.Gt -> tfalse
+  | Const.EqInt, Const.Leq -> of_aif (Const.EqInt, nxs, n)
+  | Const.EqInt, Const.Geq -> of_aif (Const.EqInt, nxs, n)
+
+  | Const.NeqInt, Const.EqInt -> tfalse
+  | Const.NeqInt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.NeqInt, Const.Lt -> of_aif (Const.Lt, nxs, n)
+  | Const.NeqInt, Const.Gt -> of_aif (Const.Gt, nxs, n)
+  | Const.NeqInt, Const.Leq -> of_aif (Const.Lt, nxs, n)
+  | Const.NeqInt, Const.Geq -> of_aif (Const.Gt, nxs, n)
+
+  | Const.Lt, Const.EqInt -> tfalse
+  | Const.Lt, Const.NeqInt -> of_aif (Const.Lt, nxs, n)
+  | Const.Lt, Const.Lt -> of_aif (Const.Lt, nxs, n)
+  | Const.Lt, Const.Gt -> tfalse
+  | Const.Lt, Const.Leq -> of_aif (Const.Lt, nxs, n)
+  | Const.Lt, Const.Geq -> tfalse
+
+  | Const.Gt, Const.EqInt -> tfalse
+  | Const.Gt, Const.NeqInt -> of_aif (Const.Gt, nxs, n)
+  | Const.Gt, Const.Lt -> tfalse
+  | Const.Gt, Const.Gt -> of_aif (Const.Gt, nxs, n)
+  | Const.Gt, Const.Leq -> tfalse
+  | Const.Gt, Const.Geq -> of_aif (Const.Gt, nxs, n)
+
+  | Const.Leq, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
+  | Const.Leq, Const.NeqInt -> of_aif (Const.Lt, nxs, n)
+  | Const.Leq, Const.Lt -> of_aif (Const.Lt, nxs, n)
+  | Const.Leq, Const.Gt -> tfalse
+  | Const.Leq, Const.Leq -> of_aif (Const.Leq, nxs, n)
+  | Const.Leq, Const.Geq -> of_aif (Const.EqInt, nxs, n)
+
+  | Const.Geq, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
+  | Const.Geq, Const.NeqInt -> of_aif (Const.Gt, nxs, n)
+  | Const.Geq, Const.Lt -> tfalse
+  | Const.Geq, Const.Gt -> of_aif (Const.Gt, nxs, n)
+  | Const.Geq, Const.Leq -> of_aif (Const.EqInt, nxs, n)
+  | Const.Geq, Const.Geq -> of_aif (Const.Geq, nxs, n)
+
+  | _ -> assert false
+
+let cor c1 c2 nxs n =
+  match c1, c2 with
+  | Const.EqInt, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
+  | Const.EqInt, Const.NeqInt -> ttrue
+  | Const.EqInt, Const.Lt -> of_aif (Const.Leq, nxs, n)
+  | Const.EqInt, Const.Gt -> of_aif (Const.Geq, nxs, n)
+  | Const.EqInt, Const.Leq -> of_aif (Const.Leq, nxs, n)
+  | Const.EqInt, Const.Geq -> of_aif (Const.Geq, nxs, n)
+
+  | Const.NeqInt, Const.EqInt -> ttrue
+  | Const.NeqInt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.NeqInt, Const.Lt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.NeqInt, Const.Gt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.NeqInt, Const.Leq -> ttrue
+  | Const.NeqInt, Const.Geq -> ttrue
+
+  | Const.Lt, Const.EqInt -> of_aif (Const.Leq, nxs, n)
+  | Const.Lt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.Lt, Const.Lt -> of_aif (Const.Lt, nxs, n)
+  | Const.Lt, Const.Gt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.Lt, Const.Leq -> of_aif (Const.Leq, nxs, n)
+  | Const.Lt, Const.Geq -> ttrue
+
+  | Const.Gt, Const.EqInt -> of_aif (Const.Geq, nxs, n)
+  | Const.Gt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.Gt, Const.Lt -> of_aif (Const.NeqInt, nxs, n)
+  | Const.Gt, Const.Gt -> of_aif (Const.Gt, nxs, n)
+  | Const.Gt, Const.Leq -> ttrue
+  | Const.Gt, Const.Geq -> of_aif (Const.Geq, nxs, n)
+
+  | Const.Leq, Const.EqInt -> of_aif (Const.Leq, nxs, n)
+  | Const.Leq, Const.NeqInt -> ttrue
+  | Const.Leq, Const.Lt -> of_aif (Const.Leq, nxs, n)
+  | Const.Leq, Const.Gt -> ttrue
+  | Const.Leq, Const.Leq -> of_aif (Const.Leq, nxs, n)
+  | Const.Leq, Const.Geq -> ttrue
+
+  | Const.Geq, Const.EqInt -> of_aif (Const.Geq, nxs, n)
+  | Const.Geq, Const.NeqInt -> ttrue
+  | Const.Geq, Const.Lt -> ttrue
+  | Const.Geq, Const.Gt -> of_aif (Const.Geq, nxs, n)
+  | Const.Geq, Const.Leq -> ttrue
+  | Const.Geq, Const.Geq -> of_aif (Const.Geq, nxs, n)
+
+  | _ -> assert false
+
 (** ensure: () is eliminated if a unit variable does not occur in t
     ensure: "t1 =b t2" and "t1 <>b t2" are eliminated by replacing them with "t1 iff t2" and "not (t1 iff t2)" respectively.
     ToDo: check whether they are actually ensured *)
@@ -317,35 +439,52 @@ let rec simplify t =
       let t2 = simplify t2 in
       (try
 		      (match LinArith.aif_of t1, LinArith.aif_of t2 with
-		        (Const.Leq, nxs1, n1), (Const.Leq, nxs2, n2)
-		      | (Const.Geq, nxs1, n1), (Const.Geq, nxs2, n2) ->
-		          if LinArith.equiv nxs1 (LinArith.minus nxs2) && n1 = -n2 then
-		            eqInt (LinArith.term_of (nxs1, n1)) (tint 0)
-		          else t
+		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 nxs2 && n1 = n2 ->
+            cand c1 c2 nxs1 n1
+		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 (LinArith.minus nxs2) && n1 = -n2 ->
+            cand c1 (Const.minus_ibin c2) nxs1 n1
 		      | _ -> apply (Const(attr, Const.And)) [t1; t2])
 						with Invalid_argument _ ->
         (match t1, t2 with
           Const(_, Const.True), _ -> t2
         | _, Const(_, Const.True) -> t1
+        | Const(_, Const.False), _
+        | _, Const(_, Const.False) -> tfalse
         | _, _ ->
   						    apply (Const(attr, Const.And)) [t1; t2]))
-  | Const(attr, c), [t1; t2] when Const.is_ibin c ->
+  | Const(attr, Const.Or), [t1; t2] ->
+      let t1 = simplify t1 in
+      let t2 = simplify t2 in
       (try
-		      let t1, t2 = LinArith.pos_neg_terms_of (LinArith.of_term (sub t1 t2)) in
-		      if c = Const.EqInt && t1 = t2 then
-		        ttrue
-		      else if c = Const.NeqInt && t1 = t2 then
-		        tfalse
-		(* unsound??
-		      else if c = Const.NeqInt then
-				      (match t1, t2 with
-				        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) when n1 <> n2 ->
-				          ttrue
-				      | _ -> )
-		*)
-		      else
-		        apply (Const(attr, c)) [t1; t2]
-      with Invalid_argument _ -> t)
+		      (match LinArith.aif_of t1, LinArith.aif_of t2 with
+		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 nxs2 && n1 = n2 ->
+            cor c1 c2 nxs1 n1
+		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 (LinArith.minus nxs2) && n1 = -n2 ->
+            cor c1 (Const.minus_ibin c2) nxs1 n1
+		      | _ -> apply (Const(attr, Const.Or)) [t1; t2])
+						with Invalid_argument _ ->
+		      (match t1, t2 with
+		        Const(_, Const.True), _
+		      | _, Const(_, Const.True) -> ttrue
+		      | Const(_, Const.False), _ -> t2
+		      | _, Const(_, Const.False) -> t1
+		      | _, _ ->
+		  						  apply (Const(attr, Const.Or)) [t1; t2]))
+  | Const(attr, c), [t1; t2] when Const.is_ibin c ->
+ 	    let t1, t2 = try LinArith.pos_neg_terms_of (LinArith.of_term (Term.sub t1 t2)) with Invalid_argument _ -> t1, t2 in
+		    if c = Const.EqInt && t1 = t2 then
+		      ttrue
+		    else if c = Const.NeqInt && t1 = t2 then
+		      tfalse
+(* unsound??
+		    else if c = Const.NeqInt then
+				    (match t1, t2 with
+				      Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) when n1 <> n2 ->
+				        ttrue
+				    | _ -> )
+*)
+		    else
+		      apply (Const(attr, c)) [t1; t2]
   | Const(attr, Const.EqUnit), [t1; t2] ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
@@ -378,7 +517,11 @@ let rec simplify t =
       Forall(a, env, simplify t)
   | Exists(a, env, t), [] ->
       Exists(a, env, simplify t)
-  | _ -> LinArith.simplify t
+  | _ ->
+(*
+      let _ = Format.printf "%a@." pr t in
+*)
+      LinArith.simplify t
 
 (** require: ts are formulas
     ensure: the result does not use =b *)

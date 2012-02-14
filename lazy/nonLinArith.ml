@@ -73,7 +73,10 @@ let equiv nxs1 nxs2 =
 let rec of_term t =
   match fun_args t with
     Var(_, x), [] ->
-      [tint 1, x], tint 0
+      if Var.is_coeff x then
+        [], make_var x
+      else
+        [tint 1, x], tint 0
   | Const(_, Const.Int(n)), [] ->
       [], tint n
   | Const(_, Const.Add), [t1; t2] ->
@@ -98,19 +101,20 @@ let rec of_term t =
       let nxs, n = of_term t in
       minus nxs, LinArith.simplify (Term.minus n)
   | _ ->
+      let _ = Format.printf "%a@." Term.pr t in
       invalid_arg "NonLinArith.of_term"
 
 let term_of (nxs, n) =
   let ts =
-    (if n = 0 then [] else [tint n]) @
+    (if Term.equiv n (Term.tint 0) then [] else [n]) @
     (List.filter_map
       (fun (n, x) ->
-        if n = 0 then
+        if Term.equiv n (Term.tint 0) then
           None
-        else if n = 1 then
+        else if Term.equiv n (Term.tint 1) then
           Some(make_var x)
         else
-          Some(Term.mul (tint n) (make_var x)))
+          Some(Term.mul n (make_var x)))
       nxs)
   in
   sum ts

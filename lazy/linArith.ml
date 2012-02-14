@@ -91,7 +91,9 @@ let rec of_term t =
   | Const(_, Const.Unit), [] ->
       [], 0
 *)
-  | _ -> assert false
+  | _ ->
+      let _ = Format.printf "%a@." Term.pr t in
+      assert false
 
 let term_of (nxs, n) =
   let ts =
@@ -134,14 +136,14 @@ let aif_of t =
 (** let aif use only geq *)
 let canonize_aif (c, nxs, n) =
   match c with
-    Const.Leq ->
-      minus nxs, -n
-  | Const.Geq ->
-      nxs, n
-  | Const.Lt ->
+    Const.Lt ->
       minus nxs, -(n + 1)
   | Const.Gt ->
       nxs, n - 1
+  | Const.Leq ->
+      minus nxs, -n
+  | Const.Geq ->
+      nxs, n
   | _ -> assert false
 
 let pr_caif ppf (nxs, n) =
@@ -159,4 +161,4 @@ let rec simplify t =
      with Invalid_argument _ -> t)
   | Const(attr, c), ts ->
       apply (Const(attr, c)) (List.map simplify ts)
-  | _ -> let _ = Format.printf "%a" Term.pr t in assert false
+  | _ -> let _ = Format.printf "not supported: %a@." Term.pr t in raise Util.NotImplemented

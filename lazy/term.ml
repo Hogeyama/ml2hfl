@@ -17,8 +17,6 @@ type t =
 | Forall of Attr.t * (Var.t * SimType.t) list * t
 | Exists of Attr.t * (Var.t * SimType.t) list * t
 
-| Coeff of Attr.t * Var.t
-
 (** {6 Basic functions} *)
 
 let rec fun_args t =
@@ -59,8 +57,6 @@ let rec pr ppf t =
       Format.fprintf ppf "Forall(%a, %a)" (Util.pr_list SimType.pr_bind ",") env pr t
   | Exists(_, env, t) ->
       Format.fprintf ppf "Exists(%a, %a)" (Util.pr_list SimType.pr_bind ",") env pr t
-  | Coeff(_, x) ->
-      Format.fprintf ppf "%a" Var.pr x
 
 let rec pr2 ppf t =
   match t with
@@ -89,20 +85,17 @@ let rec pr2 ppf t =
       Format.fprintf ppf "Error"
   | Forall(_, _, _) | Exists(_, _, _) ->
       assert false
-  | Coeff(_, x) ->
-      Format.fprintf ppf "%a" Var.pr x
 
 (** ToDo: implement equivalence up to attributes and binders *)
 let equiv t1 t2 = t1 = t2
 
 let rec fvs t =
   match t with
-    Var(_, x) -> [x]
+    Var(_, x) -> if Var.is_coeff x then [] else [x]
   | Const(_, _) -> []
   | App(_, t1, t2) -> List.unique (fvs t1 @ fvs t2)
   | Call(_, _, _) | Ret(_, _, _, _) | Error(_) -> assert false
   | Forall(_, env, t) | Exists(_, env, t) -> Util.diff (fvs t) (List.map fst env)
-  | Coeff(_, x) -> [x] (*???*)
 
 let rec subst sub t =
   match t with
@@ -118,7 +111,6 @@ let rec subst sub t =
       let xs = List.map fst env in
       let sub x = if List.mem x xs then raise Not_found else sub x in
       Exists(a, env, subst sub t)
-  | Coeff(a, x) -> (try sub x with Not_found -> Coeff(a, x)) (*???*)
 
 let rec apply t ts =
   match ts with
@@ -303,3 +295,14 @@ let int_of t =
   match t with
     Const(_, Const.Int(n)) -> n
   | _ -> raise Not_found
+
+let rec var2coeff t =
+  match t with
+    Var(a, x) -> Var(a, match x with Var.V(id) -> Var.C(id) | _ -> assert false)
+  | Const(a, c) -> Const(a, c)
+  | App(a, t1, t2) -> App(a, var2coeff t1, var2coeff t2)
+  | Call(_, _, _)
+  | Ret(_, _, _, _)
+  | Error(_)
+  | Forall(_, _, _)
+  | Exists(_, _, _) -> assert false

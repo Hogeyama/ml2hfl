@@ -75,7 +75,7 @@ let get_min_unsat_prefix tr =
 (*
         let _ = Format.printf "%a: %a@." Var.pr_x_uid nd.name Term.pr (Formula.bnot (Formula.formula_of_fes fes)) in
 *)
-        if Cvc3Interface.is_valid (Formula.bnot (Formula.eqelim (fun _ -> false) fes)) then
+        if Cvc3Interface.is_valid (Formula.bnot (Formula.eqelim_fes (fun _ -> false) fes)) then
           fes, make nd.name false nd.guard [] [], true
         else
 		        let rec aux_aux (ts0, xttys0) ts xttyss trs =

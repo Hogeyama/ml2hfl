@@ -228,6 +228,17 @@ let rec find_split p xs =
         let ls, y, rs = find_split p xs' in
         x::ls, y, rs
 
+let rec find_split_map f xs =
+  match xs with
+    [] -> raise Not_found
+  | x::xs' ->
+      match f x with
+        None ->
+		        let ls, y, rs = find_split_map f xs' in
+		        x::ls, y, rs
+      | Some(x) ->
+          [], x, xs'
+
 let rec classify eqrel xs =
   match xs with
     [] -> []

@@ -6,72 +6,154 @@ open HornClause
 
 (** Horn clause solving *)
 
-(*
-let rec compute_lbs hcs lbs =
-  let hcs1, hcs2 = List.partition
-    (function Cimp(c1', [Cpred _]) ->
-       List.for_all (function Cpred(Pred(pid, _)) -> List.mem_assoc pid lbs | _ -> true) c1'
-       | Cimp _ -> false
-       | _ -> assert false) c
+exception NoSolution
+
+let lookup pid lbs =
+		let xs, ts = List.assoc pid lbs in
+  xs,
+		let fvs = List.filter (fun x -> not (List.mem x xs)) (List.unique (Util.concat_map Term.fvs ts)) in
+		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
+  List.map (Term.subst (fun x -> List.assoc x sub)) ts
+
+let compute_lb lbs (Hc(Some(pid, xs), ps, ts)) =
+  let ts =
+    List.unique
+		    (ts @
+		    Util.concat_map
+		      (fun (pid, xs) ->
+		        let ys, ts = lookup pid lbs in
+		        let sub = List.combine ys xs in
+		        let sub x = Term.make_var (List.assoc x sub) in
+		        List.map (Term.subst sub) ts)
+		      ps)
   in
-    if c1 = [] then
-      lbs
+(*
+  Format.printf "%a@." (Util.pr_list Term.pr ",") ts;
+*)
+  let ts = Formula.eqelim (fun x -> List.mem x xs) ts in
+  pid, (xs, ts)
+
+let compute_lbs hcs =
+  let rec aux hcs lbs =
+    let hcs1, hcs2 =
+      List.partition
+       (function (Hc(Some(_), ps, _)) ->
+         List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) ps
+       | (Hc(None, _, _)) -> false)
+       hcs
+    in
+    if hcs1 = [] then
+      lbs (* hcs2 are all false *)
     else
-      let compute_lb = function
-          Cimp(cl, [Cpred(Pred(pid, terms))]) ->
-            let c1, c2 = List.partition (function Cpred(_) -> true | _ -> false) cl in
-            let conds, eqss = List.split (List.map
-                                            (function Cpred(Pred(pid', terms')) ->
-                                               let cond, eqs, terms'' = List.assoc pid' lbs in
-                                                 cond, eqs @ (List.combine terms' terms'')
-                                               | _ -> assert false)
-                                            c1)
-            in
-            let eqs = Utilities.uniq (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
-              (if Flag.debug then
-                 (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
-                 let tmp = Utilities.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
-                   List.iter (fun l ->
-                                let tmp = Utilities.uniq (List.map snd l) in
-                                  if List.length tmp <> 1 then
-                                    let _ = List.iter (fun t -> Format.printf "%a@." Syntax.pp_print_term t) tmp in
-                                      assert false)
-                     tmp);
-              let eqs1, eqs2 = List.partition (function ({desc=Var(_)}, _) -> true | _ -> false) eqs in
-              let sub = List.map (function ({desc=Var(id)}, t) -> id, t | _ -> assert false) eqs1 in
-              let cond = (List.map (function Cterm(t) -> subst_map sub t | _ -> assert false) c2) @
-                (List.concat conds) in
-              let cond = Utilities.uniq (List.filter (fun t -> t.desc <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
-              let eqs2 = List.map (fun (t1, t2) -> subst_map sub t1, t2) eqs2 in
-              let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
-              let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
-              let terms = List.map (subst_map sub) terms in
-              let terms = List.map Wrapper.simplify_exp terms in 
-                pid, (cond, eqs2, terms)
-                  (*
-                    let rec elim ids c =
-                    try
-                    let c1, c2 = List.partition (function Cterm(BinOp(Eq, Var(id), term)) -> not (List.mem id (ids @ get_fv term)) | _ -> false) c in
-                    if c1 = []
-                    then c2
-                    else
-                    match c1 with
-                    (Cterm(BinOp(Eq, Var(id), term)))::c1 -> elim ids (substc [id, term] (c1 @ c2))
-                    | _ -> assert false
-                    with Not_found ->
-                    c
-                    in
-                    let sub, eqs = eqs ids terms in
-                    pid, (ids, elim ids (Utilities.uniq (substc sub ((subst_constr lbs cl) @ eqs))))
-                  *)
-        | _ -> assert false
+      aux hcs2 (lbs @ (* need to merge? *)(List.map (compute_lb lbs) hcs1))
+  in
+  aux hcs []
+
+let rec solve_hc lbs ub ts ps =
+  match ps with
+    [] -> []
+  | (pid, xs)::ps ->
+      let interp =
+        let t1 =
+          try
+            let ys, ts = lookup pid lbs in
+												let sub = List.combine ys xs in
+												let sub x = Term.make_var (List.assoc x sub) in
+            Formula.band (List.map (Term.subst sub) ts)
+          with Not_found ->
+            assert false
+        in
+        let t2 = Formula.band
+          (Formula.bnot ub :: ts @
+          Util.concat_map
+            (fun (pid, xs) ->
+		            let ys, ts = lookup pid lbs in
+														let sub = List.combine ys xs in
+														let sub x = Term.make_var (List.assoc x sub) in
+								      List.map (Term.subst sub) ts)
+            ps)
+        in
+        CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) t1 t2
       in
-        compute_lbs c2 (lbs @ (List.map compute_lb c1))
-*)
+      (pid, (xs, interp))::
+      solve_hc lbs ub (interp::ts) ps
 
-let solve ctrs hcs = []
-(*  let lbs = compute_lbs hcs [] in
-  let sol = solve_aux lbs hcs [] in
-  List.map (fun (pred, (ids, t)) -> pred, (ids, Formula.simplify t)) sol
-*)
+let pr_sol ppf sol =
+  let pr_aux ppf (pid, (xs, t)) =
+    Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr t
+  in
+  Format.printf "@[<v>%a@]" (Util.pr_list pr_aux "@,") sol
 
+let merge_solution sol =
+  List.map
+    (fun sol ->
+      let _ = if !Flags.debug then assert (List.length (List.unique (List.map (fun (_, (xs, _)) -> xs) sol)) = 1) in
+      fst (List.hd sol), (fst (snd (List.hd sol)), Formula.band (List.map (fun (_, (_, t)) -> t) sol)))
+    (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) sol)
+
+let solve_aux lbs hcs =
+		let get_lh_pids hcs =
+				Util.concat_map
+				  (fun (Hc(_, ps, _)) ->
+				    List.map fst ps)
+				  hcs
+  in
+  let rec aux hcs sol =
+		  let lh_pids = get_lh_pids hcs in
+		  let hcs1, hcs2 =
+      List.partition
+				    (function
+          (Hc(None, _, _)) ->
+            true
+        | (Hc(Some(pid, _), _, _)) ->
+            (*List.mem_assoc pid sol (*remark1*) &&*) not (List.mem pid lh_pids))
+		      hcs
+		  in
+		  if hcs1 = [] then
+		    if hcs2 <> [] then
+        assert false (* call filter_constr before solve_constr *)
+		    else
+		      merge_solution sol
+		  else
+      let sol' =
+				    sol @
+				    (Util.concat_map
+						    (fun (Hc(popt, ps, ts)) ->
+						      let ub =
+						        match popt with
+						          None -> Formula.tfalse
+						        | Some(pid, xs) ->
+		                Formula.band
+								            (List.map
+				                  (fun (_, (ys, t)) ->
+																		      let sub = List.combine ys xs in
+																		      let sub x = Term.make_var (List.assoc x sub) in
+				                    Term.subst sub t)
+				                  (List.filter (fun (pid', _) -> pid = pid') sol))
+						      in
+						      (if List.length ps = 1 && ts = [] then
+						        (* ToDo: optimization *)
+						        ());
+						      if Cvc3Interface.is_valid (Formula.imply (Formula.band ts) ub) then
+						        [](*remark1*)
+						      else if ps = [] then
+						        raise NoSolution
+						      else
+						        solve_hc lbs ub ts ps)
+						    hcs1)
+    		in
+		    aux hcs2 sol'
+  in
+  aux hcs []
+
+let solve ctrs hcs =
+  let lbs = compute_lbs hcs in
+  let _ =
+    let pr_lb ppf (pid, (xs, ts)) =
+      Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr (Formula.band ts)
+    in
+    Format.printf "lower bounds:@.  @[<v>%a@]@." (Util.pr_list pr_lb "@,") lbs
+  in
+  let sol = solve_aux lbs hcs in
+  let _ = Format.printf "solution:@.  @[<v>%a@]@." pr_sol sol in
+  List.map (fun (pred, (xs, t)) -> pred, (xs, Formula.simplify t)) sol

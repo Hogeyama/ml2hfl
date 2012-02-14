@@ -25,7 +25,7 @@ let rec infer_term cenv env t =
   let f, args = Term.fun_args t in
   let ty_f =
     match f with
-      Term.Var(_, x) ->
+      Term.Var(_, x) when not (Var.is_coeff x) ->
         (try
           alpha (List.assoc x cenv)
         with Not_found ->
@@ -51,7 +51,7 @@ let rec infer_term cenv env t =
             raise Ill_typed))
     | Term.Const(_, c) ->
         type_of_const c
-    | Term.App(_, _, _) | Term.Call(_, _, _) | Term.Ret(_, _, _, _) | Term.Error(_) | Term.Forall(_, _, _) | Term.Exists(_, _, _) | Term.Coeff(_, _) ->
+    | Term.App(_, _, _) | Term.Call(_, _, _) | Term.Ret(_, _, _, _) | Term.Error(_) | Term.Forall(_, _, _) | Term.Exists(_, _, _) ->
         assert false
   in
   let tys = List.map (infer_term cenv env) args in

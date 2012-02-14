@@ -210,7 +210,7 @@ let rec abstract_term top must env cond pts t typ =
   match t with
     | Const Bottom ->
         assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
-    | Var x when congruent env cond (List.assoc x env) typ ->
+    | Var x when congruent env cond (try List.assoc x env with Not_found -> assert false) typ ->
         List.map (fun x -> Var x) (abst_arg x typ)
     | (Var _ | Const _ | App _) when is_base_term env t ->
         let btyp,ps = decomp_tbase typ in
@@ -270,7 +270,7 @@ let abstract_def env (f,xs,t1,e,t2) =
           let typ',env' = decomp_typ typ2 xs' in
             typ', (x,typ1)::env'
   in
-  let typ,env' = decomp_typ (List.assoc f env) xs in
+  let typ,env' = decomp_typ (try List.assoc f env with Not_found -> assert false) xs in
   if debug then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@ env in
   let pts = List.flatten (List.map (fun (x,typ) -> make_pts x typ) env') in

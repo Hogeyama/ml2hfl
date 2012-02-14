@@ -60,7 +60,7 @@ let inv_const c =
 let rec inv_term t =
   match t with
     Term.Const(_, c) -> Const(inv_const c)
-  | Term.Var(_, x) -> Var(Var.string_of x)
+  | Term.Var(_, x) -> Var(Var.string_of2 x)
   | Term.App(_, Term.App(_, t1, t2), t3) ->
       (match t1 with
         Term.Const(_, Const.NeqUnit) -> App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
@@ -87,6 +87,13 @@ let conv_fdef (f, args, guard, events, body) =
     Fdef.args = List.map Idnt.make args;
     Fdef.guard = conv_term guard;
     Fdef.body = List.fold_right (fun e t -> Term.apply (conv_event e) [Term.Const([],Const.Unit)]) events (conv_term body) } (***)
+
+let inv_fdef fdef =
+  Idnt.string_of fdef.Fdef.name,
+  List.map Idnt.string_of fdef.Fdef.args,
+  inv_term fdef.Fdef.guard,
+  [],
+  inv_term fdef.Fdef.body
 
 let rec conv_typ ty =
   match ty with
@@ -130,11 +137,12 @@ let rec inv_abst_type aty =
 
 let infer cexs prog =
   let prog = conv_prog prog in
-  let env = Verifier.infer_abst_type cexs prog in
+  let env, ext_fdefs = Verifier.infer_abst_type cexs prog in
   List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty)
-   env
+   env,
+  List.map inv_fdef ext_fdefs
 (*
   List.map
     (fun (f, _) ->

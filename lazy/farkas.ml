@@ -12,12 +12,12 @@ let farkas t =
   let _ =
 		  List.iter
 		    (fun ars ->
-		      Format.printf "canonized verification condition:@.  @[<v>%a@]@." (Util.pr_list pr_caif "@,") ars)
+		      Format.printf "canonized unsatisfiable constraints:@.  @[<v>%a@]@." (Util.pr_list pr_caif "@,") ars)
 		    arss
   in
   let t =
     Formula.simplify
-		    (bor
+		    (band
 						  (List.map
 						    (fun ars ->
 						      let l0 = make_var (Var.new_var ()) in
@@ -46,7 +46,8 @@ let farkas t =
               (List.map (fun (Var(_, x)) -> x, SimType.Int) (l0::ls))
               (Formula.simplify
 										      (band
-												      (eqInt (sum cs) (tint (-1)) ::
+												      (List.map (fun l -> geq l (tint 0)) (l0::ls) @
+                  eqInt (sum cs) (tint (-1)) ::
 												      List.map (fun cs -> eqInt (sum cs) (tint 0)) css))))
 						    arss))
   in

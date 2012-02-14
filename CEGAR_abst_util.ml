@@ -259,7 +259,7 @@ let rec is_base_term env = function
   | Const _ -> false
   | Var x ->
       begin
-        match List.assoc x env with
+        match try List.assoc x env with Not_found -> assert false with
             TBase _ -> true
           | _ -> false
       end
