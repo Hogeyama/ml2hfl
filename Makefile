@@ -4,6 +4,8 @@
 OCAML_SOURCE = ocaml-3.12.1
 TRECS = trecs-1.22
 CSISAT = csisat-read-only
+ATP = /usr/lib/ocaml/atp
+APRON = /usr/local/lib
 
 # OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
 # OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
@@ -24,9 +26,8 @@ CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 INCLUDES = -I /usr/lib \
 	-I /usr/lib/ocaml \
 	-I /usr/local/lib \
-	-I /usr/local/lib/ocaml/3.12.0/gmp \
-	-I /usr/local/lib/ocaml/3.12.0/apron \
-	-I /usr/lib/ocaml/atp \
+	-I $(ATP) \
+	-I $(APRON) \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
 	-I $(OCAML_SOURCE)/bytecomp \
