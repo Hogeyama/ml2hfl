@@ -93,7 +93,7 @@ let main filename in_channel =
       let spec' = Trans.rename_spec spec t in
       let () = print_spec spec' in
       let t' = Trans.replace_typ spec' t in
-      let () = if true && t <> t' then Format.printf "add_preds::@.%a@.@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "add_preds::@.%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Abstract.abstract_recdata t in
       let () = if true && t <> t' then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term t' in
@@ -105,10 +105,10 @@ let main filename in_channel =
       let () = if true && t <> t' then Format.printf "abst_ext_fun::@.%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t' = CPS.trans t in
-      let () = if true && t <> t' then Format.printf "CPS::@.%a@.@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "CPS::@.%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = CPS.remove_pair t in
-      let () = if true && t <> t' then Format.printf "remove_pair::@.%a@.@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "remove_pair::@.%a@.@." Syntax.pp_print_term_typ t' in
         t'
     else t
   in

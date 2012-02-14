@@ -86,6 +86,7 @@ and print_const fm = function
   | If -> Format.fprintf fm "if"
   | Bottom -> Format.fprintf fm "_|_"
   | Temp s -> Format.fprintf fm "Temp{%s}" s
+  | Label n -> Format.fprintf fm "l%d" n
 
 and print_term fm = function
     Const c -> print_const fm c
@@ -168,6 +169,7 @@ and print_const_ML fm = function
   | Temp _ -> assert false
   | Bottom -> Format.fprintf fm "()"
   | EqUnit -> assert false
+  | Label _ -> assert false
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
@@ -238,6 +240,7 @@ and print_const_as_tree fm = function
   | Temp _ -> assert false
   | Bottom -> Format.fprintf fm "Bottom"
   | EqUnit -> assert false
+  | Label _ -> assert false
 
 and print_term_as_tree fm = function
     Const c -> Format.fprintf fm "(Const %a)" print_const_as_tree c

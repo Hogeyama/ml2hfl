@@ -132,51 +132,6 @@ let rec eval_abst_cbn prog abst ce =
 
 
 
-let rec get_nonrec main defs =
-  let aux (f,_,t1,e,_) =
-    f <> main &&
-    t1 = Const True &&
-    e = [] &&
-    1 >= count_list (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@ get_fv t2)) defs &&
-    1 >= count_list (fun (g,_,_,_,_) -> f = g) defs
-  in
-  let defs' = List.filter aux defs in
-    List.map (fun (f,xs,_,_,t) -> f, List.fold_right (fun x t -> Fun(x,None,t)) xs t) defs'
-
-let rec beta_reduce_term = function
-    Const c -> Const c
-  | Var x -> Var x
-  | App(t1, t2) ->
-      let t1' = beta_reduce_term t1 in
-      let t2' = beta_reduce_term t2 in
-        begin
-          match t1' with
-              Fun(x,_,t1') -> beta_reduce_term (subst x t2' t1')
-            | _ -> App(t1', t2')
-        end
-  | Fun(x, typ, t) -> Fun(x, typ, beta_reduce_term t)
-  | Let _ -> assert false
-let beta_reduce_def (f,xs,t1,e,t2) =
-  f, xs, beta_reduce_term t1, e, beta_reduce_term t2
-
-let rec expand_nonrec (env,defs,main) =
-  let nonrec = get_nonrec main defs in
-  let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
-  let rec loop defs =
-    let defs' = List.map aux defs in
-      if defs = defs'
-      then defs
-      else loop defs'
-  in
-  let defs' = List.filter (fun (f,_,_,_,_) -> not (List.mem_assoc f nonrec)) defs in
-  let defs'' = loop defs' in
-  let defs''' = List.map beta_reduce_def defs'' in
-    (env,defs''',main)
-
-
-
-
-
 let assoc_def labeled defs ce acc t =
   let f = match t with Var f -> f | _ -> assert false in
   let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in

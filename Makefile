@@ -152,7 +152,7 @@ csisat:
 	cd $(CSISAT); make
 
 atp_batch.cmx:
-	cd $(atp) && make compiled
+	cd $(ATP) && make compiled
 
 # TODO: refine & write rule for bytecode
 trecs::
@@ -216,12 +216,13 @@ clean-all: clean clean-doc clean-ocaml clean-csisat
 
 TEST=test_new/*.ml
 LIMIT=120
+OPTION=
 
 test: opt
 	for i in $(TEST); \
 	do echo $$i; \
-	timeout -s 14 $(LIMIT) ./$(NAME).opt $$i 2>&1 | \
-	  egrep 'Safe|Unsafe|cycle:|Verification' | \
+	timeout -s 14 $(LIMIT) ./$(NAME).opt $(OPTION) $$i 2>&1 | \
+	  egrep 'Safe|Unsafe|cycle:|Verification|Fatal' | \
 	  grep -v File | \
 	  grep -v Warning; \
 	echo; \
@@ -230,14 +231,7 @@ test2: opt
 	for i in $(TEST); \
 	do echo $$i; \
 	(ulimit -t $(LIMIT); \
-	./$(NAME).opt $$i | egrep 'Safe|Unsafe|cycle:|Verification') 2>&1 | grep -v File | grep -v Warning; \
-	echo; \
-	done
-test-rs: opt
-	for i in $(TEST); \
-	do echo $$i; \
-	(ulimit -t $(LIMIT); \
-	./$(NAME).opt -rs $$i | egrep 'Safe|Unsafe|cycle:|Verification') 2>&1 | grep -v File | grep -v Warning; \
+	./$(NAME).opt $(OPTION) $$i 2>&1 | egrep 'Safe|Unsafe|cycle:|Verification|Fatal') | grep -v File | grep -v Warning; \
 	echo; \
 	done
 test-byte: byte

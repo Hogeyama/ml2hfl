@@ -30,7 +30,7 @@ type const =
   | Proj of int * int (* 0-origin *)
   | If (* for abstraction and model-checking *)
   | Bottom
-  | Label of string
+  | Label of int
 
 
 
@@ -108,6 +108,7 @@ let make_eq_bool t1 t2 = make_app (Const EqBool) [t1; t2]
 let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
+let make_label n t = make_app (Const (Label n)) [t]
 
 
 

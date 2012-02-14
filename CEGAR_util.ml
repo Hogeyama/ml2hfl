@@ -506,12 +506,16 @@ let rec get_const_typ = function
   | Proj _ -> assert false
   | If _ -> assert false
   | Bottom -> raise TypeBottom
-  | _ -> assert false
+  | Label _ -> assert false
+  | Temp _ -> assert false
+  | EqUnit -> assert false
 
 
 let rec get_typ env = function
     Const c -> get_const_typ c
   | Var x -> List.assoc x env
+  | App(Const (Label _), t) ->
+      get_typ env t
   | App(Const RandInt, t) ->
       let typ2 = match get_typ env t with TFun(_,typ) -> typ (Var "") | _ -> assert false in
         typ2

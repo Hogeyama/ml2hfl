@@ -77,7 +77,7 @@ let check ce ((env,defs,main):prog) =
     then Feasible (env', Wrapper2.get_solution env' constr)
     else Infeasible prefix
   in
-    if Flag.print_progress then Format.printf "DONE!@.";
+    if Flag.print_progress then Format.printf "DONE!@.@.";
     add_time tmp Flag.time_cegar;
     result
 

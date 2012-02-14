@@ -82,7 +82,7 @@ let rec add_pred n path typ =
 
 let refine preds prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
-    if Flag.print_progress then Format.printf "\n(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
+    if Flag.print_progress then Format.printf "(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
     if Flag.use_prefix_trace then raise (Fatal "Not implemented: Flag.use_prefix_trace");
     let map, defs =
       match !Flag.refine with

@@ -59,6 +59,7 @@ let rec trans_term = function
     Const c -> trans_const c
   | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (sanitize_id x), [])
   | Var x -> TS.PTapp (TS.Name (sanitize_id x), [])
+  | App(Const (Label n), t) -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [trans_term t])
   | App(App(App(Const If, Const RandBool), t2), t3) ->
       TS.PTapp(TS.Name "br", [trans_term t2; trans_term t3])
   | App(App(App(Const If, t1), t2), t3) ->
@@ -71,13 +72,13 @@ let rec trans_term = function
   | Let _ -> assert false
 
 let rec trans_fun_def (f,xs,t1,es,t2) =
-  let rec aux e t =
+  let rec add_event e t =
     match e with
         Event s -> TS.PTapp(TS.Name ("event_" ^ s), [t])
-      | Branch n -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [t])
+      | Branch n -> assert false(* TS.PTapp(TS.Name ("l" ^ string_of_int n), [t])*)
   in
     assert (t1 = Const True);
-    sanitize_id f, xs, List.fold_right aux es (trans_term t2)
+    sanitize_id f, xs, List.fold_right add_event es (trans_term t2)
 
 let trans_spec (q,e,qs) =
   let aux q = "q" ^ string_of_int q in

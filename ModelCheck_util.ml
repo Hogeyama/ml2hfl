@@ -43,7 +43,7 @@ let make_base_spec n q = (q, "br", [q;q])::make_line_spec 1 q
 let make_spec n =
   let spec =
     match !Flag.mode with
-        Flag.Reachability -> (0,"unit",[])::make_base_spec n 0
+        Flag.Reachability -> (0,"unit",[])::(0,"event_fail",[1])::make_base_spec n 0
       | Flag.FileAccess ->
           let spec = make_file_spec () in
           let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
@@ -84,29 +84,32 @@ let elim_non_det ((env,defs,main):prog) : prog =
 let make_bottom ((env,defs,main):prog) : prog =
   let bottoms = ref [] in
   let aux_def (f,xs,t1,e,t2) =
-    let env' = get_arg_env (List.assoc f env) xs @@ env in
+    let f_typ = List.assoc f env in
+    let env' = get_arg_env f_typ xs @@ env in
     let make_bottom n =
       let x = "Bottom" ^ string_of_int n in
         bottoms := (x,n)::!bottoms;
         Var x
     in
-    let rec aux_term = function
+    let rec aux_term t typ =
+      match t,typ with
         Const Bottom, typ -> make_bottom (get_arg_num typ)
       | Const c, _ -> Const c
       | Var x, _ -> Var x
       | App(App(App(Const If, t1), t2), t3), typ ->
-          let t1' = aux_term (t1,TBase(TBool,fun _ -> [])) in
+          let t1' = aux_term t1 (TBase(TBool,fun _ -> [])) in
           let t2' =
             try
-              aux_term (t2,typ)
+              aux_term t2 typ
             with TypeBottom -> make_bottom 0
           in
           let t3' =
             try
-              aux_term (t3,typ)
+              aux_term t3 typ
             with TypeBottom -> make_bottom 0
           in
             App(App(App(Const If, t1'), t2'), t3')
+      | App(Const (Label n), t), typ -> App(Const (Label n), aux_term t typ)
       | App(t1,t2), _ ->
           let typ = get_typ env' t1 in
           let typ' =
@@ -114,15 +117,16 @@ let make_bottom ((env,defs,main):prog) : prog =
                 TFun(typ,_) -> typ
               | _ -> assert false
           in
-            App(aux_term (t1,typ), aux_term (t2,typ'))
+            App(aux_term t1 typ, aux_term t2 typ')
       | Let _, _ -> assert false
       | Fun _, _ -> assert false
     in
-    let t2' =
-      try
-        aux_term (t2, get_typ env' t2)
-      with TypeBottom -> make_bottom 0
+    let app_typ x = function
+        TFun(_,typ2) -> typ2 (Var x)
+      | _ -> assert false
     in
+    let typ = List.fold_right app_typ xs f_typ in
+    let t2' = aux_term t2 typ in
       f, xs, t1, e, t2'
   in
   let make (x,n) =

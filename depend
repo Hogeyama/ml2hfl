@@ -2,11 +2,11 @@ CEGAR_CPS.cmi: CEGAR_syntax.cmo
 CEGAR_abst.cmi: CEGAR_syntax.cmo
 CPS.cmi: syntax.cmi
 abstract.cmi: syntax.cmi
-alpha.cmi: syntax.cmi
 automata.cmi: /usr/lib/ocaml/format.cmi
 check.cmi: CEGAR_syntax.cmo
 feasibility.cmi: CEGAR_syntax.cmo
 infer.cmi: syntax.cmi
+myModule.cmi:
 refine.cmi: CEGAR_syntax.cmo
 spec_parser.cmi: syntax.cmi /usr/lib/ocaml/lexing.cmi
 syntax.cmi: type.cmo id.cmo /usr/lib/ocaml/format.cmi flag.cmo
@@ -258,6 +258,16 @@ lazy/tcSolveIntType.cmx: ./lazy/var.cmx ./lazy/term.cmx ./lazy/tcSolve.cmx \
     /usr/lib/ocaml/list.cmx ./lazy/intType.cmx ./lazy/formula.cmx \
     /usr/lib/ocaml/format.cmx ./lazy/flags.cmx ./lazy/extString.cmx \
     ./lazy/extList.cmx ./lazy/csisatInterface.cmx
+lazy/tcSolveRefType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
+    ./lazy/tcSolve.cmo ./lazy/tcGen.cmo ./lazy/simType.cmo ./lazy/refType.cmo \
+    ./lazy/prog.cmo /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
+    /usr/lib/ocaml/format.cmi ./lazy/flags.cmo ./lazy/extString.cmi \
+    ./lazy/extList.cmi ./lazy/csisatInterface.cmo
+lazy/tcSolveRefType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
+    ./lazy/tcSolve.cmx ./lazy/tcGen.cmx ./lazy/simType.cmx ./lazy/refType.cmx \
+    ./lazy/prog.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
+    /usr/lib/ocaml/format.cmx ./lazy/flags.cmx ./lazy/extString.cmx \
+    ./lazy/extList.cmx ./lazy/csisatInterface.cmx
 lazy/hornClause.cmo:
 lazy/hornClause.cmx:
 lazy/hcGenRefType.cmo:
@@ -340,11 +350,11 @@ wrapper2.cmo: utilities.cmo /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmi \
 wrapper2.cmx: utilities.cmx /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmx \
     /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
     flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx wrapper2.cmi
-abstract.cmo: utilities.cmo type_decl.cmo type_check.cmo type.cmo syntax.cmi \
-    /usr/lib/ocaml/set.cmi /usr/lib/ocaml/list.cmi id.cmo flag.cmo \
+abstract.cmo: utilities.cmo type_decl.cmo type_check.cmo type.cmo trans.cmo \
+    syntax.cmi /usr/lib/ocaml/set.cmi /usr/lib/ocaml/list.cmi id.cmo flag.cmo \
     abstract.cmi
-abstract.cmx: utilities.cmx type_decl.cmx type_check.cmx type.cmx syntax.cmx \
-    /usr/lib/ocaml/set.cmx /usr/lib/ocaml/list.cmx id.cmx flag.cmx \
+abstract.cmx: utilities.cmx type_decl.cmx type_check.cmx type.cmx trans.cmx \
+    syntax.cmx /usr/lib/ocaml/set.cmx /usr/lib/ocaml/list.cmx id.cmx flag.cmx \
     abstract.cmi
 CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
@@ -360,10 +370,10 @@ CEGAR_trans.cmx: utilities.cmx /usr/lib/ocaml/string.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo
+    CEGAR_trans.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo
 CEGAR_abst_CPS.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
     /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx
+    CEGAR_trans.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx
 CEGAR_abst.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
     /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst_CPS.cmo \
