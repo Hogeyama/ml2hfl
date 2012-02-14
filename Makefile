@@ -1,12 +1,6 @@
+include Makefile.config
 
 .PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
-
-OCAML_SOURCE = ocaml-3.12.0
-TRECS = trecs-1.22
-CSISAT = csisat-read-only
-ATP = atp
-APRON = /usr/local/lib/ocaml/3.12.0/apron
-GMP = /usr/local/lib/ocaml/3.12.0/gmp
 
 # OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
 # OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
