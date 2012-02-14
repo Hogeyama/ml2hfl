@@ -87,6 +87,8 @@ let refine preds prefix ces ((env,defs,main):prog) =
     let map =
       match !Flag.refine with
           Flag.RefineSizedType ->
+            let is_ext (f,_,_,_,_) = not (is_external f) in
+            let defs = List.filter is_ext defs in
             let map = LazyInterface.infer ces (env,defs,main) in
               if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
               map
