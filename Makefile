@@ -1,11 +1,12 @@
 
 .PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
 
-OCAML_SOURCE = ocaml-3.12.1
+OCAML_SOURCE = ocaml-3.12.0
 TRECS = trecs-1.22
 CSISAT = csisat-read-only
-ATP = /usr/lib/ocaml/atp
-APRON = /usr/local/lib
+ATP = atp
+APRON = /usr/local/lib/ocaml/3.12.0/apron
+GMP = /usr/local/lib/ocaml/3.12.0/gmp
 
 # OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
 # OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
@@ -28,6 +29,7 @@ INCLUDES = -I /usr/lib \
 	-I /usr/local/lib \
 	-I $(ATP) \
 	-I $(APRON) \
+	-I $(GMP) \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
 	-I $(OCAML_SOURCE)/bytecomp \
@@ -65,27 +67,32 @@ lib: ocaml csisat trecs
 # bytecode and native-code compilation
 
 MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
+LAZY_CMO = enum.cmo extList.cmo extString.cmo \
+	util.cmo zipper.cmo \
+	attr.cmo idnt.cmo const.cmo var.cmo simType.cmo \
+	term.cmo linArith.cmo nonLinArith.cmo formula.cmo fdef.cmo prog.cmo \
+	flags.cmo \
+	apronInterface.cmo cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
+	farkas.cmo \
+	intType.cmo intTypeCheck.cmo \
+	refType.cmo refTypeCheck.cmo \
+	absType.cmo \
+	trace.cmo compTree.cmo compTreeExpander.cmo \
+	traceConstr.cmo tcGenIntType.cmo  tcGenRefType.cmo \
+	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo \
+	callTree.cmo hornClause.cmo hcGenRefType.cmo hcSolve.cmo \
+	verifier.cmo
+
 CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
+	$(ATP)/atp_batch.cmo \
+	$(addprefix lazy/,$(LAZY_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo spec_parser.cmo spec_lexer.cmo \
-	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo type_check.cmo trans.cmo CEGAR_util.cmo useless_elim.cmo \
-	lazy/enum.cmo lazy/extList.cmo lazy/extString.cmo \
-	lazy/util.cmo lazy/zipper.cmo \
-	lazy/attr.cmo lazy/idnt.cmo lazy/const.cmo lazy/var.cmo lazy/simType.cmo lazy/term.cmo lazy/linArith.cmo lazy/nonLinArith.cmo lazy/formula.cmo lazy/fdef.cmo lazy/prog.cmo \
-	lazy/flags.cmo \
-	lazy/apronInterface.cmo lazy/cvc3Interface.cmo lazy/csisatInterface.cmo lazy/atpInterface.cmo \
- lazy/farkas.cmo \
-	lazy/intType.cmo lazy/intTypeCheck.cmo \
-	lazy/refType.cmo lazy/refTypeCheck.cmo \
-	lazy/absType.cmo \
-	lazy/trace.cmo lazy/compTree.cmo lazy/compTreeExpander.cmo \
- lazy/traceConstr.cmo lazy/tcGenIntType.cmo  lazy/tcGenRefType.cmo \
- lazy/tcSolve.cmo lazy/tcSolveIntType.cmo  lazy/tcSolveRefType.cmo \
-	lazy/callTree.cmo lazy/hornClause.cmo lazy/hcGenRefType.cmo lazy/hcSolve.cmo \
-	lazy/verifier.cmo \
+	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
+	type_check.cmo trans.cmo CEGAR_util.cmo useless_elim.cmo \
 	lazyInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
@@ -93,7 +100,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
 	main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma nums.cma atp_batch.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma nums.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 
@@ -149,6 +156,9 @@ ocaml: $(OCAML_SOURCE)/Makefile
 
 csisat:
 	cd $(CSISAT); make
+
+atp_batch.cmx:
+	cd $(atp) && make compiled
 
 # TODO: refine & write rule for bytecode
 trecs::
