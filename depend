@@ -2,471 +2,231 @@ CEGAR_CPS.cmi: CEGAR_syntax.cmo
 CEGAR_abst.cmi: CEGAR_syntax.cmo
 CPS.cmi: syntax.cmi
 abstract.cmi: syntax.cmi
-automata.cmi: /usr/lib/ocaml/format.cmi
+automata.cmi:
 check.cmi: CEGAR_syntax.cmo
 feasibility.cmi: CEGAR_syntax.cmo
 infer.cmi: syntax.cmi
 myModule.cmi:
 refine.cmi: CEGAR_syntax.cmo
-spec_parser.cmi: syntax.cmi /usr/lib/ocaml/lexing.cmi
-syntax.cmi: type.cmo id.cmo /usr/lib/ocaml/format.cmi flag.cmo
+spec_parser.cmi: syntax.cmi
+syntax.cmi: type.cmo id.cmo flag.cmo
 wrapper.cmi: syntax.cmi
 wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
-flag.cmo: /usr/lib/ocaml/format.cmi
-flag.cmx: /usr/lib/ocaml/format.cmx
-utilities.cmo: /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/sys.cmi \
-    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi
-utilities.cmx: /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/sys.cmx \
-    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx
-id.cmo: /usr/lib/ocaml/format.cmi
-id.cmx: /usr/lib/ocaml/format.cmx
-type.cmo: utilities.cmo id.cmo /usr/lib/ocaml/format.cmi flag.cmo
-type.cmx: utilities.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx
-automata.cmo: /usr/lib/ocaml/format.cmi /usr/lib/ocaml/array.cmi automata.cmi
-automata.cmx: /usr/lib/ocaml/format.cmx /usr/lib/ocaml/array.cmx automata.cmi
-syntax.cmo: utilities.cmo type.cmo /usr/lib/ocaml/string.cmi \
-    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
-    syntax.cmi
-syntax.cmx: utilities.cmx type.cmx /usr/lib/ocaml/string.cmx \
-    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx \
-    syntax.cmi
-spec_parser.cmo: type.cmo syntax.cmi /usr/lib/ocaml/parsing.cmi \
-    /usr/lib/ocaml/obj.cmi /usr/lib/ocaml/lexing.cmi id.cmo \
-    /usr/lib/ocaml/format.cmi spec_parser.cmi
-spec_parser.cmx: type.cmx syntax.cmx /usr/lib/ocaml/parsing.cmx \
-    /usr/lib/ocaml/obj.cmx /usr/lib/ocaml/lexing.cmx id.cmx \
-    /usr/lib/ocaml/format.cmx spec_parser.cmi
-spec_lexer.cmo: syntax.cmi spec_parser.cmi /usr/lib/ocaml/lexing.cmi \
-    /usr/lib/ocaml/format.cmi
-spec_lexer.cmx: syntax.cmx spec_parser.cmx /usr/lib/ocaml/lexing.cmx \
-    /usr/lib/ocaml/format.cmx
-CEGAR_type.cmo: /usr/lib/ocaml/list.cmi
-CEGAR_type.cmx: /usr/lib/ocaml/list.cmx
-CEGAR_syntax.cmo: utilities.cmo type.cmo /usr/lib/ocaml/string.cmi \
-    /usr/lib/ocaml/list.cmi id.cmo CEGAR_type.cmo
-CEGAR_syntax.cmx: utilities.cmx type.cmx /usr/lib/ocaml/string.cmx \
-    /usr/lib/ocaml/list.cmx id.cmx CEGAR_type.cmx
-CEGAR_print.cmo: utilities.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo
-CEGAR_print.cmx: utilities.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx
-typing.cmo: utilities.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
-    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo /usr/lib/ocaml/array.cmi
-typing.cmx: utilities.cmx /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
-    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx /usr/lib/ocaml/array.cmx
-type_decl.cmo: utilities.cmo type.cmo syntax.cmi /usr/lib/ocaml/list.cmi \
-    flag.cmo
-type_decl.cmx: utilities.cmx type.cmx syntax.cmx /usr/lib/ocaml/list.cmx \
-    flag.cmx
-type_check.cmo: type_decl.cmo type.cmo syntax.cmi /usr/lib/ocaml/list.cmi \
-    id.cmo /usr/lib/ocaml/format.cmi flag.cmo
-type_check.cmx: type_decl.cmx type.cmx syntax.cmx /usr/lib/ocaml/list.cmx \
-    id.cmx /usr/lib/ocaml/format.cmx flag.cmx
-trans.cmo: utilities.cmo type_check.cmo type.cmo syntax.cmi \
-    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo
-trans.cmx: utilities.cmx type_check.cmx type.cmx syntax.cmx \
-    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx
-CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo trans.cmo syntax.cmi \
-    /usr/lib/ocaml/random.cmi /usr/lib/ocaml/list.cmi id.cmo \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo /usr/lib/ocaml/array.cmi
-CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx \
-    /usr/lib/ocaml/random.cmx /usr/lib/ocaml/list.cmx id.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx /usr/lib/ocaml/array.cmx
-useless_elim.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi id.cmo \
-    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi CEGAR_util.cmo \
-    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
-useless_elim.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx id.cmx \
-    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx CEGAR_util.cmx \
-    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
-lazy/enum.cmo: /usr/lib/ocaml/obj.cmi lazy/enum.cmi
-lazy/enum.cmx: /usr/lib/ocaml/obj.cmx lazy/enum.cmi
-lazy/extList.cmo: /usr/lib/ocaml/obj.cmi /usr/lib/ocaml/list.cmi \
-    ./lazy/enum.cmi lazy/extList.cmi
-lazy/extList.cmx: /usr/lib/ocaml/obj.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/enum.cmx lazy/extList.cmi
-lazy/extString.cmo: /usr/lib/ocaml/sys.cmi /usr/lib/ocaml/string.cmi \
-    /usr/lib/ocaml/list.cmi ./lazy/enum.cmi lazy/extString.cmi
-lazy/extString.cmx: /usr/lib/ocaml/sys.cmx /usr/lib/ocaml/string.cmx \
-    /usr/lib/ocaml/list.cmx ./lazy/enum.cmx lazy/extString.cmi
-lazy/util.cmo: /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
-    ./lazy/extList.cmi
-lazy/util.cmx: /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/extList.cmx
+lazy/enum.cmo: lazy/enum.cmi
+lazy/enum.cmx: lazy/enum.cmi
+lazy/extList.cmo: lazy/extList.cmi
+lazy/extList.cmx: lazy/extList.cmi
+lazy/extString.cmo: lazy/extString.cmi
+lazy/extString.cmx: lazy/extString.cmi
+lazy/util.cmo:
+lazy/util.cmx:
+lazy/zipper.cmo:
+lazy/zipper.cmx:
 lazy/attr.cmo:
 lazy/attr.cmx:
-lazy/idnt.cmo: /usr/lib/ocaml/format.cmi ./lazy/extList.cmi
-lazy/idnt.cmx: /usr/lib/ocaml/format.cmx ./lazy/extList.cmx
-lazy/const.cmo: ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi
-lazy/const.cmx: ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx
-lazy/var.cmo: /usr/lib/ocaml/string.cmi ./lazy/idnt.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi
-lazy/var.cmx: /usr/lib/ocaml/string.cmx ./lazy/idnt.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx
-lazy/arith.cmo: ./lazy/var.cmo ./lazy/util.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/extString.cmi ./lazy/extList.cmi
-lazy/arith.cmx: ./lazy/var.cmx ./lazy/util.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx
-lazy/simType.cmo: ./lazy/var.cmo ./lazy/util.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi ./lazy/extList.cmi
-lazy/simType.cmx: ./lazy/var.cmx ./lazy/util.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/extList.cmx
-lazy/term.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/simType.cmo \
-    /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi \
-    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo ./lazy/attr.cmo \
-    ./lazy/arith.cmo
-lazy/term.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/simType.cmx \
-    /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx ./lazy/attr.cmx \
-    ./lazy/arith.cmx
-lazy/formula.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
-    ./lazy/extList.cmi ./lazy/const.cmo ./lazy/arith.cmo
-lazy/formula.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/extList.cmx ./lazy/const.cmx ./lazy/arith.cmx
-lazy/fdef.cmo: ./lazy/util.cmo ./lazy/term.cmo ./lazy/idnt.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/extList.cmi ./lazy/attr.cmo
-lazy/fdef.cmx: ./lazy/util.cmx ./lazy/term.cmx ./lazy/idnt.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/extList.cmx ./lazy/attr.cmx
-lazy/prog.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/simType.cmo \
-    /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi \
-    ./lazy/fdef.cmo ./lazy/extList.cmi ./lazy/attr.cmo
-lazy/prog.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/simType.cmx \
-    /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/fdef.cmx ./lazy/extList.cmx ./lazy/attr.cmx
+lazy/idnt.cmo:
+lazy/idnt.cmx:
+lazy/const.cmo:
+lazy/const.cmx:
+lazy/var.cmo:
+lazy/var.cmx:
+lazy/simType.cmo:
+lazy/simType.cmx:
+lazy/term.cmo:
+lazy/term.cmx:
+lazy/linArith.cmo:
+lazy/linArith.cmx:
+lazy/nonLinArith.cmo:
+lazy/nonLinArith.cmx:
+lazy/formula.cmo:
+lazy/formula.cmx:
+lazy/fdef.cmo:
+lazy/fdef.cmx:
+lazy/prog.cmo:
+lazy/prog.cmx:
 lazy/flags.cmo:
 lazy/flags.cmx:
-lazy/apronInterface.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    /usr/local/lib/polka.cmi /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
-    ./lazy/const.cmo /usr/lib/ocaml/array.cmi ./lazy/arith.cmo
-lazy/apronInterface.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    /usr/local/lib/polka.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
-    ./lazy/const.cmx /usr/lib/ocaml/array.cmx ./lazy/arith.cmx
-lazy/cvc3Interface.cmo: ./lazy/var.cmo ./lazy/util.cmo \
-    /usr/lib/ocaml/unix.cmi ./lazy/term.cmo /usr/lib/ocaml/string.cmi \
-    /usr/lib/ocaml/str.cmi ./lazy/simType.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/formula.cmo /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
-    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo
-lazy/cvc3Interface.cmx: ./lazy/var.cmx ./lazy/util.cmx \
-    /usr/lib/ocaml/unix.cmi ./lazy/term.cmx /usr/lib/ocaml/string.cmx \
-    /usr/lib/ocaml/str.cmi ./lazy/simType.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/formula.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx
-lazy/csisatInterface.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi \
-    ./lazy/const.cmo
-lazy/csisatInterface.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx \
-    ./lazy/const.cmx
-lazy/intType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/idnt.cmo ./lazy/formula.cmo /usr/lib/ocaml/format.cmi \
-    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo
-lazy/intType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/idnt.cmx ./lazy/formula.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx
-lazy/intTypeCheck.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/prog.cmo /usr/lib/ocaml/list.cmi ./lazy/intType.cmo \
-    ./lazy/idnt.cmo ./lazy/formula.cmo /usr/lib/ocaml/format.cmi \
-    ./lazy/fdef.cmo ./lazy/extList.cmi ./lazy/cvc3Interface.cmo
-lazy/intTypeCheck.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/prog.cmx /usr/lib/ocaml/list.cmx ./lazy/intType.cmx \
-    ./lazy/idnt.cmx ./lazy/formula.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/fdef.cmx ./lazy/extList.cmx ./lazy/cvc3Interface.cmx
-lazy/refType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/idnt.cmo ./lazy/formula.cmo /usr/lib/ocaml/format.cmi \
-    ./lazy/extList.cmi ./lazy/const.cmo
-lazy/refType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/idnt.cmx ./lazy/formula.cmx /usr/lib/ocaml/format.cmx \
-    ./lazy/extList.cmx ./lazy/const.cmx
+lazy/apronInterface.cmo:
+lazy/apronInterface.cmx:
+lazy/cvc3Interface.cmo:
+lazy/cvc3Interface.cmx:
+lazy/csisatInterface.cmo:
+lazy/csisatInterface.cmx:
+lazy/atpInterface.cmo:
+lazy/atpInterface.cmx:
+lazy/farkas.cmo:
+lazy/farkas.cmx:
+lazy/intType.cmo:
+lazy/intType.cmx:
+lazy/intTypeCheck.cmo:
+lazy/intTypeCheck.cmx:
+lazy/refType.cmo:
+lazy/refType.cmx:
 lazy/refTypeCheck.cmo:
 lazy/refTypeCheck.cmx:
-lazy/absType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/refType.cmo /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/flags.cmo ./lazy/extList.cmi
-lazy/absType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/refType.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/flags.cmx ./lazy/extList.cmx
-lazy/trace.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/extString.cmi ./lazy/extList.cmi
-lazy/trace.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/extString.cmx ./lazy/extList.cmx
-lazy/compTree.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/trace.cmo \
-    ./lazy/term.cmo /usr/lib/ocaml/string.cmi ./lazy/simType.cmo \
-    ./lazy/prog.cmo /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo \
-    ./lazy/formula.cmo /usr/lib/ocaml/format.cmi ./lazy/fdef.cmo \
-    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/const.cmo
-lazy/compTree.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/trace.cmx \
-    ./lazy/term.cmx /usr/lib/ocaml/string.cmx ./lazy/simType.cmx \
-    ./lazy/prog.cmx /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx \
-    ./lazy/formula.cmx /usr/lib/ocaml/format.cmx ./lazy/fdef.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/const.cmx
-lazy/compTreeExpander.cmo: ./lazy/term.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi ./lazy/flags.cmo ./lazy/extString.cmi \
-    ./lazy/extList.cmi ./lazy/compTree.cmo
-lazy/compTreeExpander.cmx: ./lazy/term.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/flags.cmx ./lazy/extString.cmx \
-    ./lazy/extList.cmx ./lazy/compTree.cmx
-lazy/tcGen.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi ./lazy/idnt.cmo \
-    ./lazy/formula.cmo /usr/lib/ocaml/format.cmi ./lazy/extString.cmi \
-    ./lazy/extList.cmi ./lazy/cvc3Interface.cmo
-lazy/tcGen.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx ./lazy/idnt.cmx \
-    ./lazy/formula.cmx /usr/lib/ocaml/format.cmx ./lazy/extString.cmx \
-    ./lazy/extList.cmx ./lazy/cvc3Interface.cmx
-lazy/tcGenIntType.cmo: ./lazy/var.cmo ./lazy/trace.cmo ./lazy/tcGen.cmo \
-    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
-    ./lazy/extString.cmi ./lazy/extList.cmi
-lazy/tcGenIntType.cmx: ./lazy/var.cmx ./lazy/trace.cmx ./lazy/tcGen.cmx \
-    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx
-lazy/tcGenRefType.cmo: ./lazy/var.cmo ./lazy/trace.cmo ./lazy/tcGen.cmo \
-    ./lazy/simType.cmo /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
-    ./lazy/extString.cmi ./lazy/extList.cmi
-lazy/tcGenRefType.cmx: ./lazy/var.cmx ./lazy/trace.cmx ./lazy/tcGen.cmx \
-    ./lazy/simType.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx
-lazy/tcSolve.cmo: ./lazy/util.cmo ./lazy/term.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/formula.cmo /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
-    ./lazy/extString.cmi ./lazy/extList.cmi ./lazy/cvc3Interface.cmo \
-    ./lazy/csisatInterface.cmo ./lazy/apronInterface.cmo
-lazy/tcSolve.cmx: ./lazy/util.cmx ./lazy/term.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/formula.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
-    ./lazy/extString.cmx ./lazy/extList.cmx ./lazy/cvc3Interface.cmx \
-    ./lazy/csisatInterface.cmx ./lazy/apronInterface.cmx
-lazy/tcSolveIntType.cmo: ./lazy/var.cmo ./lazy/term.cmo ./lazy/tcSolve.cmo \
-    ./lazy/tcGen.cmo ./lazy/simType.cmo ./lazy/prog.cmo \
-    /usr/lib/ocaml/list.cmi ./lazy/intType.cmo ./lazy/formula.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/flags.cmo ./lazy/extString.cmi \
-    ./lazy/extList.cmi ./lazy/csisatInterface.cmo
-lazy/tcSolveIntType.cmx: ./lazy/var.cmx ./lazy/term.cmx ./lazy/tcSolve.cmx \
-    ./lazy/tcGen.cmx ./lazy/simType.cmx ./lazy/prog.cmx \
-    /usr/lib/ocaml/list.cmx ./lazy/intType.cmx ./lazy/formula.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/flags.cmx ./lazy/extString.cmx \
-    ./lazy/extList.cmx ./lazy/csisatInterface.cmx
-lazy/tcSolveRefType.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/term.cmo \
-    ./lazy/tcSolve.cmo ./lazy/tcGen.cmo ./lazy/simType.cmo ./lazy/refType.cmo \
-    ./lazy/prog.cmo /usr/lib/ocaml/list.cmi ./lazy/formula.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/flags.cmo ./lazy/extString.cmi \
-    ./lazy/extList.cmi ./lazy/csisatInterface.cmo
-lazy/tcSolveRefType.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/term.cmx \
-    ./lazy/tcSolve.cmx ./lazy/tcGen.cmx ./lazy/simType.cmx ./lazy/refType.cmx \
-    ./lazy/prog.cmx /usr/lib/ocaml/list.cmx ./lazy/formula.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/flags.cmx ./lazy/extString.cmx \
-    ./lazy/extList.cmx ./lazy/csisatInterface.cmx
+lazy/absType.cmo:
+lazy/absType.cmx:
+lazy/trace.cmo:
+lazy/trace.cmx:
+lazy/compTree.cmo:
+lazy/compTree.cmx:
+lazy/compTreeExpander.cmo:
+lazy/compTreeExpander.cmx:
+lazy/traceConstr.cmo:
+lazy/traceConstr.cmx:
+lazy/tcGenIntType.cmo:
+lazy/tcGenIntType.cmx:
+lazy/tcGenRefType.cmo:
+lazy/tcGenRefType.cmx:
+lazy/tcSolve.cmo:
+lazy/tcSolve.cmx:
+lazy/tcSolveIntType.cmo:
+lazy/tcSolveIntType.cmx:
+lazy/tcSolveRefType.cmo:
+lazy/tcSolveRefType.cmx:
+lazy/callTree.cmo:
+lazy/callTree.cmx:
 lazy/hornClause.cmo:
 lazy/hornClause.cmx:
 lazy/hcGenRefType.cmo:
 lazy/hcGenRefType.cmx:
-lazy/hcSolveRefType.cmo:
-lazy/hcSolveRefType.cmx:
-lazy/verifier.cmo: ./lazy/var.cmo ./lazy/util.cmo ./lazy/trace.cmo \
-    ./lazy/term.cmo ./lazy/tcSolveRefType.cmo ./lazy/tcSolveIntType.cmo \
-    ./lazy/tcGenRefType.cmo ./lazy/tcGenIntType.cmo ./lazy/tcGen.cmo \
-    /usr/lib/ocaml/string.cmi ./lazy/refTypeCheck.cmo ./lazy/refType.cmo \
-    ./lazy/prog.cmo /usr/lib/ocaml/list.cmi ./lazy/intTypeCheck.cmo \
-    ./lazy/intType.cmo /usr/lib/ocaml/format.cmi ./lazy/flags.cmo \
-    ./lazy/extList.cmi ./lazy/compTreeExpander.cmo ./lazy/compTree.cmo \
-    ./lazy/absType.cmo
-lazy/verifier.cmx: ./lazy/var.cmx ./lazy/util.cmx ./lazy/trace.cmx \
-    ./lazy/term.cmx ./lazy/tcSolveRefType.cmx ./lazy/tcSolveIntType.cmx \
-    ./lazy/tcGenRefType.cmx ./lazy/tcGenIntType.cmx ./lazy/tcGen.cmx \
-    /usr/lib/ocaml/string.cmx ./lazy/refTypeCheck.cmx ./lazy/refType.cmx \
-    ./lazy/prog.cmx /usr/lib/ocaml/list.cmx ./lazy/intTypeCheck.cmx \
-    ./lazy/intType.cmx /usr/lib/ocaml/format.cmx ./lazy/flags.cmx \
-    ./lazy/extList.cmx ./lazy/compTreeExpander.cmx ./lazy/compTree.cmx \
-    ./lazy/absType.cmx
-lazyInterface.cmo: ./lazy/verifier.cmo ./lazy/var.cmo ./lazy/term.cmo \
-    ./lazy/simType.cmo ./lazy/prog.cmo /usr/lib/ocaml/list.cmi \
-    ./lazy/idnt.cmo /usr/lib/ocaml/format.cmi ./lazy/fdef.cmo \
-    ./lazy/extList.cmi ./lazy/const.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo ./lazy/absType.cmo
-lazyInterface.cmx: ./lazy/verifier.cmx ./lazy/var.cmx ./lazy/term.cmx \
-    ./lazy/simType.cmx ./lazy/prog.cmx /usr/lib/ocaml/list.cmx \
-    ./lazy/idnt.cmx /usr/lib/ocaml/format.cmx ./lazy/fdef.cmx \
-    ./lazy/extList.cmx ./lazy/const.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx ./lazy/absType.cmx
-CPS.cmo: utilities.cmo typing.cmo type_check.cmo type.cmo trans.cmo \
-    syntax.cmi /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi \
-    flag.cmo CPS.cmi
-CPS.cmx: utilities.cmx typing.cmx type_check.cmx type.cmx trans.cmx \
-    syntax.cmx /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx \
-    flag.cmx CPS.cmi
-CEGAR_CPS.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo /usr/lib/ocaml/array.cmi CEGAR_CPS.cmi
-CEGAR_CPS.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx /usr/lib/ocaml/array.cmx CEGAR_CPS.cmi
-parser_wrapper.cmo: utilities.cmo ocaml-3.12.0/typing/types.cmi \
-    ocaml-3.12.0/typing/typemod.cmi ocaml-3.12.0/typing/typedtree.cmi \
-    type_decl.cmo type.cmo trans.cmo syntax.cmi ocaml-3.12.0/typing/subst.cmi \
-    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/scanf.cmi \
-    ocaml-3.12.0/typing/primitive.cmi ocaml-3.12.0/typing/path.cmi \
-    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/location.cmi \
-    /usr/lib/ocaml/list.cmi ocaml-3.12.0/typing/ident.cmi id.cmo \
-    /usr/lib/ocaml/format.cmi flag.cmo ocaml-3.12.0/typing/env.cmi \
-    /usr/lib/ocaml/digest.cmi ocaml-3.12.0/typing/datarepr.cmi \
-    ocaml-3.12.0/typing/ctype.cmi ocaml-3.12.0/utils/config.cmi \
-    ocaml-3.12.0/driver/compile.cmi ocaml-3.12.0/typing/btype.cmi \
-    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmi
-parser_wrapper.cmx: utilities.cmx ocaml-3.12.0/typing/types.cmx \
-    ocaml-3.12.0/typing/typemod.cmx ocaml-3.12.0/typing/typedtree.cmx \
-    type_decl.cmx type.cmx trans.cmx syntax.cmx ocaml-3.12.0/typing/subst.cmx \
-    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/scanf.cmx \
-    ocaml-3.12.0/typing/primitive.cmx ocaml-3.12.0/typing/path.cmx \
-    ocaml-3.12.0/parsing/parsetree.cmi ocaml-3.12.0/parsing/location.cmx \
-    /usr/lib/ocaml/list.cmx ocaml-3.12.0/typing/ident.cmx id.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx ocaml-3.12.0/typing/env.cmx \
-    /usr/lib/ocaml/digest.cmx ocaml-3.12.0/typing/datarepr.cmx \
-    ocaml-3.12.0/typing/ctype.cmx ocaml-3.12.0/utils/config.cmx \
-    ocaml-3.12.0/driver/compile.cmx ocaml-3.12.0/typing/btype.cmx \
-    ocaml-3.12.0/parsing/asttypes.cmi /usr/lib/ocaml/array.cmx
-wrapper.cmo: utilities.cmo /usr/lib/ocaml/unix.cmi type.cmo trans.cmo \
-    syntax.cmi /usr/lib/ocaml/string.cmi /usr/lib/ocaml/str.cmi \
-    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
-    wrapper.cmi
-wrapper.cmx: utilities.cmx /usr/lib/ocaml/unix.cmi type.cmx trans.cmx \
-    syntax.cmx /usr/lib/ocaml/string.cmx /usr/lib/ocaml/str.cmi \
-    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx \
-    wrapper.cmi
-wrapper2.cmo: utilities.cmo /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmi \
-    /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi \
-    flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo wrapper2.cmi
-wrapper2.cmx: utilities.cmx /usr/lib/ocaml/unix.cmi /usr/lib/ocaml/string.cmx \
-    /usr/lib/ocaml/str.cmi /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx \
-    flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx wrapper2.cmi
-abstract.cmo: utilities.cmo type_decl.cmo type_check.cmo type.cmo trans.cmo \
-    syntax.cmi /usr/lib/ocaml/set.cmi /usr/lib/ocaml/list.cmi id.cmo flag.cmo \
-    abstract.cmi
-abstract.cmx: utilities.cmx type_decl.cmx type_check.cmx type.cmx trans.cmx \
-    syntax.cmx /usr/lib/ocaml/set.cmx /usr/lib/ocaml/list.cmx id.cmx flag.cmx \
-    abstract.cmi
-CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo
-CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx
-CEGAR_trans.cmo: utilities.cmo /usr/lib/ocaml/string.cmi \
-    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi CEGAR_util.cmo \
+lazy/hcSolve.cmo:
+lazy/hcSolve.cmx:
+lazy/verifier.cmo:
+lazy/verifier.cmx:
+flag.cmo:
+flag.cmx:
+utilities.cmo:
+utilities.cmx:
+id.cmo:
+id.cmx:
+type.cmo: utilities.cmo id.cmo flag.cmo
+type.cmx: utilities.cmx id.cmx flag.cmx
+automata.cmo: automata.cmi
+automata.cmx: automata.cmi
+syntax.cmo: utilities.cmo type.cmo id.cmo flag.cmo syntax.cmi
+syntax.cmx: utilities.cmx type.cmx id.cmx flag.cmx syntax.cmi
+spec_parser.cmo: type.cmo syntax.cmi id.cmo spec_parser.cmi
+spec_parser.cmx: type.cmx syntax.cmx id.cmx spec_parser.cmi
+spec_lexer.cmo: syntax.cmi spec_parser.cmi
+spec_lexer.cmx: syntax.cmx spec_parser.cmx
+CEGAR_type.cmo:
+CEGAR_type.cmx:
+CEGAR_syntax.cmo: utilities.cmo type.cmo id.cmo CEGAR_type.cmo
+CEGAR_syntax.cmx: utilities.cmx type.cmx id.cmx CEGAR_type.cmx
+CEGAR_print.cmo: utilities.cmo flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo
+CEGAR_print.cmx: utilities.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx
+typing.cmo: utilities.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+typing.cmx: utilities.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+type_decl.cmo: utilities.cmo type.cmo syntax.cmi flag.cmo
+type_decl.cmx: utilities.cmx type.cmx syntax.cmx flag.cmx
+type_check.cmo: type_decl.cmo type.cmo syntax.cmi id.cmo flag.cmo
+type_check.cmx: type_decl.cmx type.cmx syntax.cmx id.cmx flag.cmx
+trans.cmo: utilities.cmo type_check.cmo type.cmo syntax.cmi id.cmo flag.cmo
+trans.cmx: utilities.cmx type_check.cmx type.cmx syntax.cmx id.cmx flag.cmx
+CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo trans.cmo syntax.cmi id.cmo \
+    flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx id.cmx \
+    flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+useless_elim.cmo: utilities.cmo typing.cmo id.cmo CEGAR_util.cmo \
     CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
-CEGAR_trans.cmx: utilities.cmx /usr/lib/ocaml/string.cmx \
-    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx CEGAR_util.cmx \
+useless_elim.cmx: utilities.cmx typing.cmx id.cmx CEGAR_util.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
-CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_trans.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo
-CEGAR_abst_CPS.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_trans.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx
-CEGAR_abst.cmo: utilities.cmo typing.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo CEGAR_abst_CPS.cmo \
-    CEGAR_abst.cmi
-CEGAR_abst.cmx: utilities.cmx typing.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx CEGAR_abst_CPS.cmx \
-    CEGAR_abst.cmi
+lazyInterface.cmo: CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo
+lazyInterface.cmx: CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx
+CPS.cmo: utilities.cmo typing.cmo type_check.cmo type.cmo trans.cmo \
+    syntax.cmi id.cmo flag.cmo CPS.cmi
+CPS.cmx: utilities.cmx typing.cmx type_check.cmx type.cmx trans.cmx \
+    syntax.cmx id.cmx flag.cmx CPS.cmi
+CEGAR_CPS.cmo: utilities.cmo typing.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_CPS.cmi
+CEGAR_CPS.cmx: utilities.cmx typing.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_CPS.cmi
+parser_wrapper.cmo: utilities.cmo type_decl.cmo type.cmo trans.cmo syntax.cmi \
+    id.cmo flag.cmo config.cmo
+parser_wrapper.cmx: utilities.cmx type_decl.cmx type.cmx trans.cmx syntax.cmx \
+    id.cmx flag.cmx config.cmx
+wrapper.cmo: utilities.cmo type.cmo trans.cmo syntax.cmi id.cmo flag.cmo \
+    wrapper.cmi
+wrapper.cmx: utilities.cmx type.cmx trans.cmx syntax.cmx id.cmx flag.cmx \
+    wrapper.cmi
+wrapper2.cmo: utilities.cmo flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo wrapper2.cmi
+wrapper2.cmx: utilities.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx wrapper2.cmi
+abstract.cmo: utilities.cmo type_decl.cmo type_check.cmo type.cmo trans.cmo \
+    syntax.cmi id.cmo flag.cmo abstract.cmi
+abstract.cmx: utilities.cmx type_decl.cmx type_check.cmx type.cmx trans.cmx \
+    syntax.cmx id.cmx flag.cmx abstract.cmi
+CEGAR_abst_util.cmo: wrapper2.cmi utilities.cmo flag.cmo CEGAR_util.cmo \
+    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+CEGAR_abst_util.cmx: wrapper2.cmx utilities.cmx flag.cmx CEGAR_util.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+CEGAR_trans.cmo: utilities.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmo
+CEGAR_trans.cmx: utilities.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx
+CEGAR_abst_CPS.cmo: utilities.cmo typing.cmo flag.cmo CEGAR_util.cmo \
+    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo
+CEGAR_abst_CPS.cmx: utilities.cmx typing.cmx flag.cmx CEGAR_util.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx
+CEGAR_abst.cmo: utilities.cmo typing.cmo flag.cmo CEGAR_util.cmo \
+    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst_util.cmo \
+    CEGAR_abst_CPS.cmo CEGAR_abst.cmi
+CEGAR_abst.cmx: utilities.cmx typing.cmx flag.cmx CEGAR_util.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx \
+    CEGAR_abst_CPS.cmx CEGAR_abst.cmi
 dependent_type.cmo: CEGAR_syntax.cmo
 dependent_type.cmx: CEGAR_syntax.cmx
-trecsInterface.cmo: utilities.cmo /usr/lib/ocaml/sys.cmi \
-    /usr/lib/ocaml/string.cmi /usr/lib/ocaml/parsing.cmi \
-    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/lexing.cmi \
-    /usr/lib/ocaml/hashtbl.cmi /usr/lib/ocaml/format.cmi flag.cmo \
-    dependent_type.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo
-trecsInterface.cmx: utilities.cmx /usr/lib/ocaml/sys.cmx \
-    /usr/lib/ocaml/string.cmx /usr/lib/ocaml/parsing.cmx \
-    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/lexing.cmx \
-    /usr/lib/ocaml/hashtbl.cmx /usr/lib/ocaml/format.cmx flag.cmx \
-    dependent_type.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx
+trecsInterface.cmo: utilities.cmo flag.cmo dependent_type.cmo CEGAR_util.cmo \
+    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+trecsInterface.cmx: utilities.cmx flag.cmx dependent_type.cmx CEGAR_util.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 ModelCheck_util.cmo: utilities.cmo useless_elim.cmo typing.cmo \
-    trecsInterface.cmo /usr/lib/ocaml/string.cmi /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo /usr/lib/ocaml/array.cmi
+    trecsInterface.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_print.cmo
 ModelCheck_util.cmx: utilities.cmx useless_elim.cmx typing.cmx \
-    trecsInterface.cmx /usr/lib/ocaml/string.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx /usr/lib/ocaml/array.cmx
-ModelCheck_CPS.cmo: utilities.cmo ModelCheck_util.cmo \
-    /usr/lib/ocaml/format.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo
-ModelCheck_CPS.cmx: utilities.cmx ModelCheck_util.cmx \
-    /usr/lib/ocaml/format.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx
-ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo ModelCheck_CPS.cmo \
-    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo \
-    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_CPS.cmi
-ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx ModelCheck_CPS.cmx \
-    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx \
-    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_CPS.cmx
-feasibility.cmo: wrapper2.cmi utilities.cmo /usr/lib/ocaml/list.cmi \
-    /usr/lib/ocaml/format.cmi flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
-    CEGAR_syntax.cmo CEGAR_print.cmo feasibility.cmi
-feasibility.cmx: wrapper2.cmx utilities.cmx /usr/lib/ocaml/list.cmx \
-    /usr/lib/ocaml/format.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
-    CEGAR_syntax.cmx CEGAR_print.cmx feasibility.cmi
+    trecsInterface.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_print.cmx
+ModelCheck_CPS.cmo: utilities.cmo ModelCheck_util.cmo CEGAR_util.cmo \
+    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo
+ModelCheck_CPS.cmx: utilities.cmx ModelCheck_util.cmx CEGAR_util.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo ModelCheck_CPS.cmo flag.cmo \
+    CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
+    CEGAR_CPS.cmi
+ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx ModelCheck_CPS.cmx flag.cmx \
+    CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx \
+    CEGAR_CPS.cmx
+feasibility.cmo: wrapper2.cmi utilities.cmo flag.cmo CEGAR_util.cmo \
+    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo feasibility.cmi
+feasibility.cmx: wrapper2.cmx utilities.cmx flag.cmx CEGAR_util.cmx \
+    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx feasibility.cmi
 RefineDepTyp.cmo: wrapper.cmi utilities.cmo type.cmo trans.cmo syntax.cmi \
-    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
-    feasibility.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmo
+    id.cmo flag.cmo feasibility.cmi CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_print.cmo
 RefineDepTyp.cmx: wrapper.cmx utilities.cmx type.cmx trans.cmx syntax.cmx \
-    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx \
-    feasibility.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx
-refine.cmo: wrapper2.cmi utilities.cmo RefineDepTyp.cmo \
-    /usr/lib/ocaml/list.cmi lazyInterface.cmo /usr/lib/ocaml/format.cmi \
+    id.cmx flag.cmx feasibility.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_print.cmx
+refine.cmo: wrapper2.cmi utilities.cmo RefineDepTyp.cmo lazyInterface.cmo \
     flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo \
     refine.cmi
-refine.cmx: wrapper2.cmx utilities.cmx RefineDepTyp.cmx \
-    /usr/lib/ocaml/list.cmx lazyInterface.cmx /usr/lib/ocaml/format.cmx \
+refine.cmx: wrapper2.cmx utilities.cmx RefineDepTyp.cmx lazyInterface.cmx \
     flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx \
     refine.cmi
-CEGAR.cmo: wrapper.cmi utilities.cmo refine.cmi ModelCheck.cmo \
-    /usr/lib/ocaml/list.cmi id.cmo /usr/lib/ocaml/format.cmi flag.cmo \
-    feasibility.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_trans.cmo \
+CEGAR.cmo: wrapper.cmi utilities.cmo refine.cmi ModelCheck.cmo id.cmo \
+    flag.cmo feasibility.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_trans.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_abst.cmi
-CEGAR.cmx: wrapper.cmx utilities.cmx refine.cmx ModelCheck.cmx \
-    /usr/lib/ocaml/list.cmx id.cmx /usr/lib/ocaml/format.cmx flag.cmx \
-    feasibility.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_trans.cmx \
+CEGAR.cmx: wrapper.cmx utilities.cmx refine.cmx ModelCheck.cmx id.cmx \
+    flag.cmx feasibility.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_trans.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst.cmx
-main.cmo: wrapper2.cmi wrapper.cmi utilities.cmo /usr/lib/ocaml/unix.cmi \
-    ocaml-3.12.0/typing/typetexp.cmi ocaml-3.12.0/typing/typemod.cmi \
-    ocaml-3.12.0/typing/typecore.cmi type_check.cmo type.cmo trans.cmo \
-    /usr/lib/ocaml/sys.cmi syntax.cmi /usr/lib/ocaml/string.cmi \
-    spec_parser.cmi spec_lexer.cmo refine.cmi /usr/lib/ocaml/parsing.cmi \
-    parser_wrapper.cmo ocaml-3.12.0/parsing/parser.cmi \
-    /usr/lib/ocaml/list.cmi /usr/lib/ocaml/lexing.cmi \
-    ocaml-3.12.0/parsing/lexer.cmi lazyInterface.cmo \
-    /usr/lib/ocaml/format.cmi ./lazy/flags.cmo flag.cmo \
-    /usr/lib/ocaml/filename.cmi ocaml-3.12.0/typing/env.cmi \
-    ./lazy/cvc3Interface.cmo ocaml-3.12.0/utils/config.cmi CPS.cmi \
-    CEGAR_util.cmo CEGAR.cmo /usr/lib/ocaml/arg.cmi abstract.cmi
-main.cmx: wrapper2.cmx wrapper.cmx utilities.cmx /usr/lib/ocaml/unix.cmi \
-    ocaml-3.12.0/typing/typetexp.cmx ocaml-3.12.0/typing/typemod.cmx \
-    ocaml-3.12.0/typing/typecore.cmx type_check.cmx type.cmx trans.cmx \
-    /usr/lib/ocaml/sys.cmx syntax.cmx /usr/lib/ocaml/string.cmx \
-    spec_parser.cmx spec_lexer.cmx refine.cmx /usr/lib/ocaml/parsing.cmx \
-    parser_wrapper.cmx ocaml-3.12.0/parsing/parser.cmx \
-    /usr/lib/ocaml/list.cmx /usr/lib/ocaml/lexing.cmx \
-    ocaml-3.12.0/parsing/lexer.cmx lazyInterface.cmx \
-    /usr/lib/ocaml/format.cmx ./lazy/flags.cmx flag.cmx \
-    /usr/lib/ocaml/filename.cmx ocaml-3.12.0/typing/env.cmx \
-    ./lazy/cvc3Interface.cmx ocaml-3.12.0/utils/config.cmx CPS.cmx \
-    CEGAR_util.cmx CEGAR.cmx /usr/lib/ocaml/arg.cmx abstract.cmx
+main.cmo: wrapper2.cmi wrapper.cmi utilities.cmo type_check.cmo type.cmo \
+    trans.cmo syntax.cmi spec_parser.cmi spec_lexer.cmo refine.cmi \
+    parser_wrapper.cmo lazyInterface.cmo flag.cmo config.cmo CPS.cmi \
+    CEGAR_util.cmo CEGAR.cmo abstract.cmi
+main.cmx: wrapper2.cmx wrapper.cmx utilities.cmx type_check.cmx type.cmx \
+    trans.cmx syntax.cmx spec_parser.cmx spec_lexer.cmx refine.cmx \
+    parser_wrapper.cmx lazyInterface.cmx flag.cmx config.cmx CPS.cmx \
+    CEGAR_util.cmx CEGAR.cmx abstract.cmx
