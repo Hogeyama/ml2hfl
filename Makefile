@@ -149,7 +149,7 @@ ocaml: $(OCAML_SOURCE)/Makefile
 	cd $(OCAML_SOURCE); make world opt world.opt opt.opt
 
 csisat:
-	cd $(CSISAT); make
+	cd $(CSISAT); make STATIC=1
 
 atp_batch.cmx:
 	cd $(ATP) && make compiled
@@ -245,7 +245,7 @@ SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend::
-	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
+	$(OCAMLDEP) -I lazy $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
 
