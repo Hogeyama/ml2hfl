@@ -242,7 +242,7 @@ test-byte: byte
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-SRC_MOCHI = $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC)))
+SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend::
 	$(OCAMLDEP) $(INCLUDES) $(MLI) $(SRC_MOCHI) > depend
