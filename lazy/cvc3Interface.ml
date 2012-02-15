@@ -251,7 +251,9 @@ let solve t =
           let pos_begin = String.index s '(' + 1 in
           let pos_end = String.index s ')' in
           let s' = String.sub s pos_begin (pos_end - pos_begin) in
-          s' :: aux ()
+          if Str.string_match (Str.regexp "cvc3") s' 0
+          then aux ()
+          else s' :: aux ()
         else
           aux ()
     with End_of_file ->
