@@ -5,7 +5,7 @@ open ExtString
 
 (** {6 Exceptions} *)
 
-exception NotImplemented
+exception NotImplemented of string
 
 (** {6 Functions on strings} *)
 

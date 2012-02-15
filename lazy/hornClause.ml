@@ -64,7 +64,9 @@ let subst_hcs sub hc =
 				              List.map (subst_pred sub) ps, List.map (Term.subst sub) ts
               | [] ->
                   [p], []
-              | _ -> raise Util.NotImplemented)
+              | _ ->
+                  let _ = Format.printf "@.@[<v>%a@]@." (Util.pr_list pr "@,") hcs in
+                  raise (Util.NotImplemented "HornClause.subst_hcs"))
             ps)
       in
       let ps = List.concat pss in

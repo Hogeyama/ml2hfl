@@ -38,13 +38,13 @@ let rec pr ppf t =
       let f, args = fun_args t in
       (match f, args with
         Var(_, _), _ ->
-          Format.fprintf ppf "(@[<hov2>%a@ @[<hov>%a@]@])" pr f (Util.pr_list pr "@ ") args
+          Format.fprintf ppf "@[<hov2>(%a@ @[<hov>%a@])@]" pr f (Util.pr_list pr "@ ") args
       | Const(_, _), [t] ->
           Format.fprintf ppf "(%a %a)" pr f pr t
       | Const(_, c), [t1; t2] when Const.is_bin c ->
-          Format.fprintf ppf "(@[<hov>%a %a@ %a@])" pr t1 Const.pr_bin c pr t2
+          Format.fprintf ppf "@[<hov>(%a %a@ %a)@]" pr t1 Const.pr_bin c pr t2
       | Const(_, _), _ ->
-          Format.fprintf ppf "(@[<hov2>%a@ @[<hov>%a@]@])" pr f (Util.pr_list pr "@ ") args
+          Format.fprintf ppf "@[<hov2>(%a@ @[<hov>%a@])@]" pr f (Util.pr_list pr "@ ") args
       | _, _ ->
           assert false)
   | Call(_, f, args) ->
@@ -54,11 +54,11 @@ let rec pr ppf t =
   | Error(_) ->
       Format.fprintf ppf "Error"
   | Forall(_, env, t) ->
-      Format.fprintf ppf "Forall(%a, %a)" (Util.pr_list SimType.pr_bind ",") env pr t
+      Format.fprintf ppf "@[<hov2>forall %a,@ %a@]" (Util.pr_list SimType.pr_bind ",") env pr t
   | Exists(_, env, t) ->
-      Format.fprintf ppf "Exists(%a, %a)" (Util.pr_list SimType.pr_bind ",") env pr t
+      Format.fprintf ppf "@[<hov2>exists %a,@ %a@]" (Util.pr_list SimType.pr_bind ",") env pr t
 
-let rec pr2 ppf t =
+let rec pr_string_of ppf t =
   match t with
     Var(_, x) ->
       Format.fprintf ppf "%a" Var.pr x
@@ -68,19 +68,19 @@ let rec pr2 ppf t =
       let f, args = fun_args t in
       (match f, args with
         Var(_, _), _ ->
-          Format.fprintf ppf "(%a %a)" pr2 f (Util.pr_list pr2 " ") args
+          Format.fprintf ppf "(%a %a)" pr_string_of f (Util.pr_list pr_string_of " ") args
       | Const(_, _), [t] ->
-          Format.fprintf ppf "(%a %a)" pr2 f pr2 t
+          Format.fprintf ppf "(%a %a)" pr_string_of f pr_string_of t
       | Const(_, c), [t1; t2] when Const.is_bin c ->
-          Format.fprintf ppf "(%a %a %a)" pr2 t1 Const.pr_bin c pr2 t2
+          Format.fprintf ppf "(%a %a %a)" pr_string_of t1 Const.pr_bin c pr_string_of t2
       | Const(_, _), _ ->
-          Format.fprintf ppf "(%a %a)" pr2 f (Util.pr_list pr2 " ") args
+          Format.fprintf ppf "(%a %a)" pr_string_of f (Util.pr_list pr_string_of " ") args
       | _, _ ->
           assert false)
   | Call(_, f, args) ->
-      Format.fprintf ppf "Call(%a)" (Util.pr_list pr2 ", ") (f::args)
+      Format.fprintf ppf "Call(%a)" (Util.pr_list pr_string_of ", ") (f::args)
   | Ret(_, ret, t, _) ->
-      Format.fprintf ppf "Ret(%a, %a)" pr2 ret pr2 t
+      Format.fprintf ppf "Ret(%a, %a)" pr_string_of ret pr_string_of t
   | Error(_) ->
       Format.fprintf ppf "Error"
   | Forall(_, _, _) | Exists(_, _, _) ->
@@ -150,7 +150,7 @@ let mul t1 t2 = apply (Const([], Const.Mul)) [t1; t2]
 (** {6 Other functions} *)
 
 let string_of t =
-  Format.fprintf Format.str_formatter "%a" pr2 t;
+  Format.fprintf Format.str_formatter "%a" pr_string_of t;
   Format.flush_str_formatter ()
 
 let rec redex_of env t =

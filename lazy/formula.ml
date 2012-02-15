@@ -191,7 +191,7 @@ let rec dnf t =
   | Const(_, Const.Imply), [t1; t2] ->
       dnfn t1 @ dnf t2
   | Const(_, Const.Iff), [t1; t2] ->
-      raise Util.NotImplemented
+      raise (Util.NotImplemented "Formula.dnf")
   | Const(_, Const.Not), [t] -> 
       dnfn t
   | Const(_, bop), [_; _] ->
@@ -212,7 +212,7 @@ and dnfn t =
   | Const(_, Const.Imply), [t1; t2] ->
       let tss1 = dnf t1 in Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnfn t2)
   | Const(_, Const.Iff), [t1; t2] ->
-      raise Util.NotImplemented
+      raise (Util.NotImplemented "Formula.dnfn")
   | Const(_, Const.Not), [t] -> 
       dnf t
   | Const(a, bop), [t1; t2] ->
@@ -298,21 +298,6 @@ let eqelim p (ts, xttys) =
 *)
 
 (** {6 Other functions} *)
-
-let rec eqelim p ts =
-  try
-		  let ts1, xtty, ts2 =
-		    Util.find_split_map
-		      (fun t ->
-		        match fun_args t with
-		          Const(_, Const.EqInt), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) -> Some(x, t, SimType.Int)
-		        | Const(_, Const.EqInt), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) -> Some(x, t, SimType.Int)
-		        | _ -> None)
-		      ts
-		  in
-		  eqelim p (conjuncts (eqelim_fes p (ts1 @ ts2, [xtty])))
-  with Not_found ->
-    ts
 
 let of_aif (c, nxs, n) =
   match c with
@@ -471,7 +456,15 @@ let rec simplify t =
 		      | _, _ ->
 		  						  apply (Const(attr, Const.Or)) [t1; t2]))
   | Const(attr, c), [t1; t2] when Const.is_ibin c ->
- 	    let t1, t2 = try LinArith.pos_neg_terms_of (LinArith.of_term (Term.sub t1 t2)) with Invalid_argument _ -> t1, t2 in
+ 	    let t1, t2 =
+        try
+          LinArith.pos_neg_terms_of (LinArith.of_term (Term.sub t1 t2))
+        with Invalid_argument _ ->
+		        try
+		          NonLinArith.pos_neg_terms_of (NonLinArith.of_term (Term.sub t1 t2))
+		        with Invalid_argument _ ->
+            t1, t2
+      in
 		    if c = Const.EqInt && t1 = t2 then
 		      ttrue
 		    else if c = Const.NeqInt && t1 = t2 then
@@ -558,3 +551,20 @@ let rec elim_int_equality t =
       bor [lt t1 t2; gt t1 t2]
   | Const(attr, c), ts ->
       apply (Const(attr, c)) (List.map elim_int_equality ts)
+
+let rec eqelim p ts =
+  try
+		  let ts1, xtty, ts2 =
+		    Util.find_split_map
+		      (fun t ->
+		        match fun_args t with
+		          Const(_, Const.EqInt), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) ->
+              Some(x, t, SimType.Int)
+		        | Const(_, Const.EqInt), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) ->
+              Some(x, t, SimType.Int)
+		        | _ -> None)
+		      ts
+		  in
+		  eqelim p (conjuncts ((*simplify*) (eqelim_fes p (ts1 @ ts2, [xtty]))))
+  with Not_found ->
+    ts

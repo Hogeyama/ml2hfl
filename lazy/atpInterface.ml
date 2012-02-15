@@ -26,9 +26,9 @@ let rec of_term t =
 				  | Const.Sub -> Atp_batch.Fn("-", [t1; t2])
 				  | Const.Mul -> Atp_batch.Fn("*", [t1; t2])
 				  | Const.Div ->
-				      raise Util.NotImplemented
+				      raise (Util.NotImplemented "AtpInterface.of_term")
 				  | Const.Mod ->
-				      raise Util.NotImplemented)
+				      raise (Util.NotImplemented "AtpInterface.of_term"))
 
 let rec of_formula t =
   match fun_args t with
@@ -51,7 +51,7 @@ let rec of_formula t =
       let t2 = of_term t2 in
       (match c with
         Const.EqUnit | Const.NeqUnit | Const.EqBool | Const.NeqBool ->
-          raise Util.NotImplemented
+          raise (Util.NotImplemented "AtpInterface.of_formula")
       | Const.EqInt ->
           Atp_batch.Atom(Atp_batch.R("=", [t1; t2]))
       | Const.NeqInt ->
@@ -65,7 +65,7 @@ let rec of_formula t =
           Atp_batch.Atom(Atp_batch.R("<=", [t1; t2]))
 				  | Const.Geq ->
           Atp_batch.Atom(Atp_batch.R(">=", [t1; t2]))
-				  (*| Const.Divides -> raise NotImplemented (*"divides"*)*)
+				  (*| Const.Divides -> raise (Util.NotImplemented "AtpInterface.of_formula") (*"divides"*)*)
       | _ -> assert false)
   | Forall(_, env, t), [] ->
       List.fold_right (fun (x, _) phi -> Atp_batch.Forall(Var.string_of x , phi)) env (of_formula t)
@@ -118,7 +118,7 @@ let rec formula_of p =
   | Atp_batch.Atom(Atp_batch.R(">=", [t1; t2])) ->
       geq (term_of t1) (term_of t2)
   | Atp_batch.Atom(Atp_batch.R("divides", [t1; t2])) ->
-      raise Util.NotImplemented
+      raise (Util.NotImplemented "AtpInterface.formula_of")
   | _ -> assert false
 
 (** {6 Functions on ATP formulas} *)

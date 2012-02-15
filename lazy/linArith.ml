@@ -161,4 +161,4 @@ let rec simplify t =
      with Invalid_argument _ -> t)
   | Const(attr, c), ts ->
       apply (Const(attr, c)) (List.map simplify ts)
-  | _ -> let _ = Format.printf "not supported: %a@." Term.pr t in raise Util.NotImplemented
+  | _ -> let _ = Format.printf "not supported: %a@." Term.pr t in raise (Util.NotImplemented "LinArith.simplify")
