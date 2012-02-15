@@ -25,7 +25,9 @@ let refineRefTypes prog etrs =
           ()
         else
           let coeffs = Cvc3Interface.solve (Formula.band !ext_constrs) in
-          ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs
+          let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
+          let pr_aux ppf (c, t) = Format.fprintf ppf "%a = %a" Var.pr c Term.pr t in
+          Format.printf "solutions:@.  @[<v>%a@]@." (Util.pr_list pr_aux "@,") !ext_coeffs
       in
       let hcs = List.map (HornClause.subst (fun x -> List.assoc x !ext_coeffs)) hcs in
 		    let sol = HcSolve.solve ctrs hcs in

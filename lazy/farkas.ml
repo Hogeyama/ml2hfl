@@ -23,7 +23,7 @@ let farkas t =
 						      let l0 = make_var (Var.new_var ()) in
 										  let ls = List.map (fun _ -> make_var (Var.new_var ())) ars in
 										  let vs = List.unique (Util.concat_map (fun (nxs, _) -> List.map snd nxs) ars) in
-						      let _ = Format.printf "vars: %a@." (Util.pr_list Var.pr ",") vs in
+						      let _ = if false then Format.printf "vars: %a@." (Util.pr_list Var.pr ",") vs in
 						      let tss =
 						        (l0 :: List.map (fun _ -> tint 0) vs) ::
 								      List.map2
