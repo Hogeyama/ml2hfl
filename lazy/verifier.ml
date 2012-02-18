@@ -14,6 +14,7 @@ let refineRefTypes prog etrs =
 				  let _ = Format.printf "call trees:@.  @[<v>%a@]@." (Util.pr_list CallTree.pr "@,") ctrs in
 				  let _ = Format.printf "horn clauses:@.  @[<v>%a@]@." (Util.pr_list HornClause.pr "@,") hcs in
       let t = HornClause.formula_of hcs in
+      let t = Formula.simplify (Formula.linearize t) in
       let _ = Format.printf "unsatisfiable constraint:@.  @[<v>%a@]@." Term.pr t in
       let ts = Farkas.farkas t in
       let qfts =
@@ -142,7 +143,7 @@ let infer_abst_type cexs prog =
 		                          Term.make_var c)
 		                        xs
 		                    in
-						                let retval = NonLinArith.term_of (List.combine coeffs (List.map (fun x -> Var.make x) xs), const) in
+						                let retval = ParLinArith.term_of (List.combine coeffs (List.map (fun x -> Var.make x) xs), const) in
 						                Term.apply (Term.make_var (Var.make k)) [retval]
 						              else
 						                assert false

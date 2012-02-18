@@ -52,9 +52,13 @@ let rec string_of_term t =
       "(" ^ string_of_term t1 ^ " + " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.Sub), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " - " ^ string_of_term t2 ^ ")"
+(*
   | Term.Const(_, Const.Mul), [Term.Const(_, Const.Int(m)); t]
   | Term.Const(_, Const.Mul), [t; Term.Const(_, Const.Int(m))] ->
       "(" ^ string_of_int m ^ " * " ^ string_of_term t ^ ")"
+*)
+  | Term.Const(_, Const.Mul), [t1; t2] ->
+      "(" ^ string_of_term t1 ^ " * " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.Minus), [t] ->
       "(- " ^ string_of_term t ^ ")"
   | Term.Const(_, Const.Leq), [t1; t2] ->

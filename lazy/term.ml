@@ -137,15 +137,27 @@ let rec sum ts =
   | t::ts' ->
       let t' = sum ts' in
       (match t' with
-        Const(_, Const.Int(0)) ->
-          t
-      | _ ->
-          apply (Const([], Const.Add)) [t; t'])
+        Const(_, Const.Int(0)) -> t
+      | _ -> add t t')
 
 (*let sub t1 t2 = apply (Const([], Const.Add)) [t1; apply (Const([], Const.Minus)) [t2]]*)
 let sub t1 t2 = apply (Const([], Const.Sub)) [t1; t2]
 let minus t = apply (Const([], Const.Minus)) [t]
 let mul t1 t2 = apply (Const([], Const.Mul)) [t1; t2]
+let prod ts =
+  let rec aux ts =
+		  match ts with
+		    [] -> tint 1
+		  | [t] -> t
+		  | (Const(_, Const.Int(1)))::ts' -> aux ts'
+		  | (Const(_, Const.Int(0)))::_ -> raise Not_found
+		  | t::ts' ->
+		      let t' = aux ts' in
+		      (match t' with
+		        Const(_, Const.Int(1)) -> t
+		      | _ -> mul t t')
+  in
+  try aux ts with Not_found -> tint 0
 
 (** {6 Other functions} *)
 

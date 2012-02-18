@@ -195,8 +195,17 @@ let rec filter_map p xs =
     [] -> []
   | x::xs' ->
       (match p x with
-        Some(y) -> y::(filter_map p xs')
+        Some(r) -> r :: (filter_map p xs')
       | None -> filter_map p xs')
+
+let rec filter_map2 p xs ys =
+  match xs, ys with
+    [], [] -> []
+  | x::xs', y::ys' ->
+      (match p x y with
+        Some(r) -> r :: (filter_map2 p xs' ys')
+      | None -> filter_map2 p xs' ys')
+  | _ -> assert false
 
 (** @deprecated use ExtList.List.split_nth *)
 let rec split_nth n xs =
@@ -272,6 +281,13 @@ let rec pr_list epr sep ppf xs =
         (fun ppf sep -> Format.fprintf ppf sep) sep
         (pr_list epr sep) xs'
 
+let all_equiv p xs =
+  match xs with
+    [] ->
+      true
+  | x::xs ->
+      List.for_all (fun x' -> p x x') xs
+
 (** {6 Functions on sets} *)
 
 let rec diff xs ys =
@@ -345,3 +361,19 @@ let rec fixed_point f eq x =
   let x' = f x in
   if eq x x' then x else fixed_point f eq x'
 
+
+let gcd ns =
+  let rec aux n1 n2 =
+    let _ = if not (n1 >= 0 && n2 >= 0) then let _ = Format.printf "%d, %d@." n1 n2 in assert false in
+    if n1 = n2 then
+      n1
+    else if n1 > n2 then
+      aux (n1 - n2) n2
+    else
+      aux n1 (n2 - n1)
+  in
+  match ns with
+    [] ->
+      invalid_arg "Util.gcd"
+  | n::ns ->
+      List.fold_left aux n ns

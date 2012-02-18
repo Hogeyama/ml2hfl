@@ -40,6 +40,71 @@ let alpha hc =
       let sub x = List.assoc x sub in
       Hc(popt, List.map (subst_pred sub) ps, List.map (Term.subst sub) ts)
 
+
+
+let lookup pid lbs =
+		let xs, ts = List.assoc pid lbs in
+  xs,
+		let fvs = List.filter (fun x -> not (List.mem x xs)) (List.unique (Util.concat_map Term.fvs ts)) in
+		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
+  List.map (Term.subst (fun x -> List.assoc x sub)) ts
+
+let subst_lbs lbs (Hc(popt, ps, ts)) =
+  let ts =
+    List.unique
+		    (ts @
+		    Util.concat_map
+		      (fun (pid, xs) ->
+		        let ys, ts = lookup pid lbs in
+		        let sub = List.combine ys xs in
+		        let sub x = Term.make_var (List.assoc x sub) in
+		        List.map (Term.subst sub) ts)
+		      ps)
+  in
+(*
+  Format.printf "%a@." (Util.pr_list Term.pr ",") ts;
+*)
+  let ts = Formula.conjuncts (Formula.simplify (Formula.band ts)) in
+  let ts =
+    let bvs = match popt with None -> [] | Some(_, xs) -> xs in
+    Formula.eqelim (fun x -> List.mem x bvs) ts
+  in
+  Hc(popt, [], ts)
+
+let compute_lb lbs (Hc(Some(pid, xs), ps, ts)) =
+  let Hc(_, [], ts) = subst_lbs lbs (Hc(Some(pid, xs), ps, ts)) in
+  pid, (xs, ts)
+
+let compute_lbs hcs =
+  let rec aux hcs lbs =
+    let hcs1, hcs2 =
+      List.partition
+       (function (Hc(Some(_), ps, _)) ->
+         List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) ps
+       | (Hc(None, _, _)) -> false)
+       hcs
+    in
+    if hcs1 = [] then
+      lbs (* hcs2 are all false *)
+    else
+      aux hcs2 (lbs @ (* need to merge? *)(List.map (compute_lb lbs) hcs1))
+  in
+  aux hcs []
+
+let pr_lb ppf (pid, (xs, ts)) =
+  Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr (Formula.band ts)
+
+let pr_lbs pps lbs =
+  Format.printf "@[<v>%a@]" (Util.pr_list pr_lb "@,") lbs
+
+
+let formula_of hcs =
+  let lbs = compute_lbs hcs in
+  let _ = Format.printf "lower bounds:@.  %a@." pr_lbs lbs in
+  let hcs = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
+  Formula.simplify (Formula.band (Util.concat_map (fun hc -> let Hc(None, [], ts) = subst_lbs lbs hc in ts) hcs))
+
+(** @deprecated only used by a deprecated function bwd_formula_of *)
 let subst_hcs sub hc =
 (*
   let _ = Format.printf "before:@.  @[%a@]@." pr hc in
@@ -71,6 +136,7 @@ let subst_hcs sub hc =
       in
       let ps = List.concat pss in
       let ts = ts @ List.concat tss in
+      let ts = (* this makes the return value of bwd_formula_of huge, try ICFP2012 intro3*)Formula.conjuncts (Formula.simplify (Formula.band ts)) in
       let ts =
         let bvs = (match popt with None -> [] | Some(_, xs) -> xs) @ Util.concat_map fvs_pred ps in
         Formula.eqelim (fun x -> List.mem x bvs) ts
@@ -81,8 +147,8 @@ let subst_hcs sub hc =
 *)
       hc
 
-
-let formula_of hcs =
+(** @deprecated use formula_of instead *)
+let bwd_formula_of hcs =
   let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | _ -> false) hcs in
   let hcs =
 		  Util.fixed_point

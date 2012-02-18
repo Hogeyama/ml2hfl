@@ -28,12 +28,13 @@ let linconstr_of env t =
       nxs))
     (Some ((Apron.Coeff.s_of_int n)));
   let mexpr = Apron.Linexpr1.make env in
+  let (nxs, n) = LinArith.minus (nxs, n) in
   Apron.Linexpr1.set_array mexpr
     (Array.of_list
       (List.map
         (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.string_of x))
-      (LinArith.minus nxs)))
-    (Some ((Apron.Coeff.s_of_int (-n))));
+      nxs))
+    (Some ((Apron.Coeff.s_of_int n)));
   match c with
     Const.Lt -> Apron.Lincons1.make mexpr Apron.Lincons1.SUP
   | Const.Gt -> Apron.Lincons1.make expr Apron.Lincons1.SUP

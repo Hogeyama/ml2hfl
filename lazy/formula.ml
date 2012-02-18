@@ -173,132 +173,6 @@ let rec conjuncts t =
       conjuncts t1 @ conjuncts t2
   | _, _ -> [t]
 
-(** {6 Functions on DNF formulas} *)
-
-let rec dnf t =
-  match fun_args t with
-    Var(_, _), [] ->
-      [[t]]
-  | Const(_, Const.True), [] ->
-      [[]]
-  | Const(_, Const.False), [] ->
-      []
-  | Const(_, Const.And), [t1; t2] ->
-      let tss1 = dnf t1 in
-      Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnf t2)
-  | Const(_, Const.Or), [t1; t2] ->
-      dnf t1 @ dnf t2
-  | Const(_, Const.Imply), [t1; t2] ->
-      dnfn t1 @ dnf t2
-  | Const(_, Const.Iff), [t1; t2] ->
-      raise (Util.NotImplemented "Formula.dnf")
-  | Const(_, Const.Not), [t] -> 
-      dnfn t
-  | Const(_, bop), [_; _] ->
-      [[t]]
-  | t, _-> Format.printf "@.%a@." Term.pr t; assert false
-and dnfn t =
-  match fun_args t with
-    Var(_, _), [] ->
-      [[t]]
-  | Const(_, Const.True), [] ->
-      []
-  | Const(_, Const.False), [] ->
-      [[]]
-  | Const(_, Const.And), [t1; t2] ->
-      dnfn t1 @ dnfn t2
-  | Const(_, Const.Or), [t1; t2] ->
-      let tss1 = dnfn t1 in Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnfn t2)
-  | Const(_, Const.Imply), [t1; t2] ->
-      let tss1 = dnf t1 in Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnfn t2)
-  | Const(_, Const.Iff), [t1; t2] ->
-      raise (Util.NotImplemented "Formula.dnfn")
-  | Const(_, Const.Not), [t] -> 
-      dnf t
-  | Const(a, bop), [t1; t2] ->
-      [[apply (Const(a, Const.bnot_ibin bop)) [t1; t2]]]
-  | t, _-> Format.printf "@.%a@." Term.pr t; assert false
-
-let formula_of_dnf tss =
-  bor (List.map band tss)
-
-(** {6 Functions on formulas with explicit substitutions} *)
-
-(** ignore equalities on functions *)
-let formula_of_fes (ts, xttys) = band (ts @ List.map eq_xtty xttys)
-
-(** eliminate as many existentially quantified variables as possible
-    @param p variables not satifying p are existentially quantified
-    ignore equalities on functions *)
-let eqelim_fes p (ts, xttys) =
-  let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
-  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
-  let ts =
-    List.map
-				  (fun t ->
-				    Util.fixed_point
-						    (fun t ->
-						      (*Format.printf "%a@." pr t;*)
-						      subst sub t)
-						    (fun t1 t2 -> Term.equiv t1 t2)
-						    t)
-		    ts
-  in
-  let xttys1 =
-    List.map
-				  (fun xtty ->
-		      Util.fixed_point
-						    (fun (x, t, ty) ->
-						      (*Format.printf "%a@." pr t;*)
-						      x, subst sub t, ty)
-						    (fun (x1, t1, ty1) (x2, t2, ty2) ->
-            x1 = x2 && Term.equiv t1 t2 && ty1 = ty2)
-          xtty)
-		    xttys1
-  in
-  let rec aux xttys (xttys1, xttys2) =
-    match xttys with
-      [] ->
-        (xttys1, xttys2)
-    | (x, t, ty)::xttys ->
-        (match t with
-          Var(_, y)
-            when not (p y) &&
-                 not (List.exists (fun (x, _, _ ) -> Var.equiv y x) xttys2) ->
-            aux xttys (xttys1, (y, make_var x, ty)::xttys2)
-        | _ ->
-            aux xttys ((x, t, ty)::xttys1, xttys2))
-  in
-  let xttys11, xttys12 = aux xttys1 ([], []) in
-  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys12) in
-  let ts =
-    List.map
-				  (fun t ->
-				    Util.fixed_point
-						    (fun t ->
-						      (*Format.printf "%a@." pr t;*)
-						      subst sub t)
-						    (fun t1 t2 -> Term.equiv t1 t2)
-						    t)
-		    (ts @ List.map eq_xtty xttys11)
-  in
-  let ts = Util.concat_map conjuncts ts in
-  band ts
-
-(*
-let eqelim p (ts, xttys) =
-  let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
-  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
-		Util.fixed_point
-		  (fun t ->
-		    (*Format.printf "%a@." pr t;*)
-		    subst sub t)
-		  (fun t1 t2 -> equiv t1 t2)
-		  (band (ts @ List.map eq_xtty xttys1))
-*)
-
-(** {6 Other functions} *)
-
 let of_aif (c, nxs, n) =
   match c with
     Const.EqInt ->
@@ -424,9 +298,9 @@ let rec simplify t =
       let t2 = simplify t2 in
       (try
 		      (match LinArith.aif_of t1, LinArith.aif_of t2 with
-		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 nxs2 && n1 = n2 ->
+		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (nxs2, n2) ->
             cand c1 c2 nxs1 n1
-		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 (LinArith.minus nxs2) && n1 = -n2 ->
+		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)) ->
             cand c1 (Const.minus_ibin c2) nxs1 n1
 		      | _ -> apply (Const(attr, Const.And)) [t1; t2])
 						with Invalid_argument _ ->
@@ -442,9 +316,9 @@ let rec simplify t =
       let t2 = simplify t2 in
       (try
 		      (match LinArith.aif_of t1, LinArith.aif_of t2 with
-		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 nxs2 && n1 = n2 ->
+		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (nxs2, n2) ->
             cor c1 c2 nxs1 n1
-		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv nxs1 (LinArith.minus nxs2) && n1 = -n2 ->
+		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)) ->
             cor c1 (Const.minus_ibin c2) nxs1 n1
 		      | _ -> apply (Const(attr, Const.Or)) [t1; t2])
 						with Invalid_argument _ ->
@@ -461,9 +335,12 @@ let rec simplify t =
           LinArith.pos_neg_terms_of (LinArith.of_term (Term.sub t1 t2))
         with Invalid_argument _ ->
 		        try
-		          NonLinArith.pos_neg_terms_of (NonLinArith.of_term (Term.sub t1 t2))
+		          ParLinArith.pos_neg_terms_of (ParLinArith.of_term (Term.sub t1 t2))
 		        with Invalid_argument _ ->
-            t1, t2
+				        try
+				          NonLinArith.pos_neg_terms_of (NonLinArith.of_term (Term.sub t1 t2))
+				        with Invalid_argument _ ->
+		            t1, t2
       in
 		    if c = Const.EqInt && t1 = t2 then
 		      ttrue
@@ -516,6 +393,139 @@ let rec simplify t =
 *)
       LinArith.simplify t
 
+(** {6 Functions on DNF formulas} *)
+
+let rec dnf t =
+  match fun_args t with
+    Var(_, _), [] ->
+      [[t]]
+  | Const(_, Const.True), [] ->
+      [[]]
+  | Const(_, Const.False), [] ->
+      []
+  | Const(_, Const.And), [t1; t2] ->
+      let tss1 = dnf t1 in
+      Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnf t2)
+  | Const(_, Const.Or), [t1; t2] ->
+      dnf t1 @ dnf t2
+  | Const(_, Const.Imply), [t1; t2] ->
+      dnfn t1 @ dnf t2
+  | Const(_, Const.Iff), [t1; t2] ->
+      raise (Util.NotImplemented "Formula.dnf")
+  | Const(_, Const.Not), [t] -> 
+      dnfn t
+  | Const(_, bop), [_; _] ->
+      [[t]]
+  | t, _-> Format.printf "@.%a@." Term.pr t; assert false
+and dnfn t =
+  match fun_args t with
+    Var(_, _), [] ->
+      [[t]]
+  | Const(_, Const.True), [] ->
+      []
+  | Const(_, Const.False), [] ->
+      [[]]
+  | Const(_, Const.And), [t1; t2] ->
+      dnfn t1 @ dnfn t2
+  | Const(_, Const.Or), [t1; t2] ->
+      let tss1 = dnfn t1 in Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnfn t2)
+  | Const(_, Const.Imply), [t1; t2] ->
+      let tss1 = dnf t1 in Util.concat_map (fun ts2 -> List.map (fun ts1 -> ts1 @ ts2) tss1) (dnfn t2)
+  | Const(_, Const.Iff), [t1; t2] ->
+      raise (Util.NotImplemented "Formula.dnfn")
+  | Const(_, Const.Not), [t] -> 
+      dnf t
+  | Const(a, bop), [t1; t2] ->
+      [[apply (Const(a, Const.bnot_ibin bop)) [t1; t2]]]
+  | t, _-> Format.printf "@.%a@." Term.pr t; assert false
+
+let formula_of_dnf tss =
+  bor (List.map band tss)
+
+(** {6 Functions on formulas with explicit substitutions} *)
+
+(** ignore equalities on functions *)
+let formula_of_fes (ts, xttys) = band (ts @ List.map eq_xtty xttys)
+
+(** eliminate as many existentially quantified variables as possible
+    @param p variables not satifying p are existentially quantified
+    ignore equalities on functions *)
+let eqelim_fes p (ts, xttys) =
+  let flag = false in
+  let pr_xtty ppf (x, t, _) =
+    Format.fprintf ppf "%a -> %a" Var.pr x Term.pr t
+  in
+		let _ = if flag then Format.printf "sub: %a@." (Util.pr_list pr_xtty ", ") xttys in
+  let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
+  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
+  let ts =
+    List.map
+				  (fun t ->
+				    Util.fixed_point
+						    (fun t ->
+						      let _ = if flag then Format.printf "before: %a@." pr t in
+						      let t = simplify (subst sub t) in
+						      let _ = if flag then Format.printf "after: %a@." pr t in
+            t)
+						    (fun t1 t2 -> Term.equiv t1 t2)
+						    t)
+		    ts
+  in
+  let xttys1 =
+    List.map
+				  (fun xtty ->
+		      Util.fixed_point
+						    (fun (x, t, ty) ->
+						      (*Format.printf "%a@." pr t;*)
+						      x, subst sub t, ty)
+						    (fun (x1, t1, ty1) (x2, t2, ty2) ->
+            x1 = x2 && Term.equiv t1 t2 && ty1 = ty2)
+          xtty)
+		    xttys1
+  in
+  let rec aux xttys (xttys1, xttys2) =
+    match xttys with
+      [] ->
+        (xttys1, xttys2)
+    | (x, t, ty)::xttys ->
+        (match t with
+          Var(_, y)
+            when not (p y) &&
+                 not (List.exists (fun (x, _, _ ) -> Var.equiv y x) xttys2) ->
+            aux xttys (xttys1, (y, make_var x, ty)::xttys2)
+        | _ ->
+            aux xttys ((x, t, ty)::xttys1, xttys2))
+  in
+  let xttys11, xttys12 = aux xttys1 ([], []) in
+  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys12) in
+  let ts =
+    List.map
+				  (fun t ->
+				    Util.fixed_point
+						    (fun t ->
+						      (*Format.printf "%a@." pr t;*)
+						      subst sub t)
+						    (fun t1 t2 -> Term.equiv t1 t2)
+						    t)
+		    (ts @ List.map eq_xtty xttys11)
+  in
+  let ts = Util.concat_map conjuncts ts in
+  band ts
+
+(*
+let eqelim p (ts, xttys) =
+  let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
+  let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
+		Util.fixed_point
+		  (fun t ->
+		    (*Format.printf "%a@." pr t;*)
+		    subst sub t)
+		  (fun t1 t2 -> equiv t1 t2)
+		  (band (ts @ List.map eq_xtty xttys1))
+*)
+
+(** {6 Other functions} *)
+
 (** require: ts are formulas
     ensure: the result does not use =b *)
 let elim_unit_boolean ts =
@@ -541,30 +551,93 @@ let elim_unit_boolean ts =
 		  fun ts ->
       bor (List.map2 (fun t sub -> band (t::(List.map (fun (b, t) -> eqBool (make_var b) t) sub))) ts subs)
 
-let rec elim_int_equality t =
+let rec elim_neq_int t =
   match fun_args t with
     Var(attr, x), [] ->
       Var(attr, x)
+(*
   | Const(attr, Const.EqInt), [t1; t2] ->
       band [leq t1 t2; geq t1 t2]
+*)
   | Const(attr, Const.NeqInt), [t1; t2] ->
       bor [lt t1 t2; gt t1 t2]
   | Const(attr, c), ts ->
-      apply (Const(attr, c)) (List.map elim_int_equality ts)
+      apply (Const(attr, c)) (List.map elim_neq_int ts)
 
 let rec eqelim p ts =
   try
 		  let ts1, xtty, ts2 =
 		    Util.find_split_map
 		      (fun t ->
-		        match fun_args t with
-		          Const(_, Const.EqInt), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) ->
-              Some(x, t, SimType.Int)
-		        | Const(_, Const.EqInt), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) ->
-              Some(x, t, SimType.Int)
-		        | _ -> None)
+          try
+            let c, nxs, n = ParLinArith.aif_of t in
+            if c = Const.EqInt then
+              (try
+(*
+not (List.mem x (fvs t))
+*)
+                let nxs1, (n', x), nxs2 = Util.find_split (fun (n, x) -> not (p x) && (Term.equiv n (tint 1) || Term.equiv n (tint (-1)))) nxs in
+                if int_of n' = 1 then
+                  Some(x, ParLinArith.term_of (ParLinArith.minus (nxs1 @ nxs2, n)), SimType.Int)
+                else if int_of n' = -1 then
+                  Some(x, ParLinArith.term_of (nxs1 @ nxs2, n), SimType.Int)
+                else
+                  assert false
+              with Not_found ->
+                None)
+            else
+              None
+    						with Invalid_argument _ ->
+            None)
 		      ts
 		  in
-		  eqelim p (conjuncts ((*simplify*) (eqelim_fes p (ts1 @ ts2, [xtty]))))
+    (* simplify possibly makes the return value huge, try ICFP2012 intro3
+       ToDo: control size increase*)
+		  List.map simplify (eqelim p (conjuncts (simplify (eqelim_fes p (ts1 @ ts2, [xtty])))))
   with Not_found ->
     ts
+
+let rec linearize t =
+  match fun_args t with
+    Const(attr, Const.Not), [t] ->
+      bnot (linearize t)
+  | Const(attr, Const.And), [t1; t2] ->
+      band [linearize t1; linearize t2]
+  | Const(attr, Const.Or), [t1; t2] ->
+      bor [linearize t1; linearize t2]
+  | Const(attr, c), [_; _] when Const.is_ibin c ->
+				  (try
+       let _ = LinArith.aif_of t in
+       t
+      with Invalid_argument _ ->
+		       try
+								  let c, nxs, n = ParLinArith.aif_of t in
+								  let nla, la = ParLinArith.factorize (nxs, n) in
+								  let t1 = NonLinArith.term_of nla in
+								  let t2 = LinArith.term_of la in
+		        if Term.equiv t1 (tint 1) then
+		          t2
+		        else if Term.equiv t2 (tint 1) then
+            t1
+          else
+										  (match c with
+										    Const.EqInt ->
+										      bor [eqInt t1 (tint 0); eqInt t2 (tint 0)]
+										  | Const.NeqInt ->
+										      band [neqInt t1 (tint 0); neqInt t2 (tint 0)]
+										  | Const.Lt -> (* t1 * t2 < 0 iff t1 > 0 && t2 < 0 || t1 < 0 && t2 > 0 *)
+										      bor [band [gt t1 (tint 0); lt t2 (tint 0)]; band [lt t1 (tint 0); gt t2 (tint 0)]]
+										  | Const.Gt ->
+										      bor [band [gt t1 (tint 0); gt t2 (tint 0)]; band [lt t1 (tint 0); lt t2 (tint 0)]]
+										  | Const.Leq ->
+										      bor [band [geq t1 (tint 0); leq t2 (tint 0)]; band [leq t1 (tint 0); geq t2 (tint 0)]]
+										  | Const.Geq ->
+										      bor [band [geq t1 (tint 0); geq t2 (tint 0)]; band [leq t1 (tint 0); leq t2 (tint 0)]]
+				        | _ -> assert false)
+						  with Invalid_argument _ ->
+						    t)
+  | Forall(a, env, t), [] ->
+      Forall(a, env, linearize t)
+  | Exists(a, env, t), [] ->
+      Exists(a, env, linearize t)
+  | _ -> t

@@ -8,47 +8,6 @@ open HornClause
 
 exception NoSolution
 
-let lookup pid lbs =
-		let xs, ts = List.assoc pid lbs in
-  xs,
-		let fvs = List.filter (fun x -> not (List.mem x xs)) (List.unique (Util.concat_map Term.fvs ts)) in
-		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-  List.map (Term.subst (fun x -> List.assoc x sub)) ts
-
-let compute_lb lbs (Hc(Some(pid, xs), ps, ts)) =
-  let ts =
-    List.unique
-		    (ts @
-		    Util.concat_map
-		      (fun (pid, xs) ->
-		        let ys, ts = lookup pid lbs in
-		        let sub = List.combine ys xs in
-		        let sub x = Term.make_var (List.assoc x sub) in
-		        List.map (Term.subst sub) ts)
-		      ps)
-  in
-(*
-  Format.printf "%a@." (Util.pr_list Term.pr ",") ts;
-*)
-  let ts = Formula.eqelim (fun x -> List.mem x xs) ts in
-  pid, (xs, ts)
-
-let compute_lbs hcs =
-  let rec aux hcs lbs =
-    let hcs1, hcs2 =
-      List.partition
-       (function (Hc(Some(_), ps, _)) ->
-         List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) ps
-       | (Hc(None, _, _)) -> false)
-       hcs
-    in
-    if hcs1 = [] then
-      lbs (* hcs2 are all false *)
-    else
-      aux hcs2 (lbs @ (* need to merge? *)(List.map (compute_lb lbs) hcs1))
-  in
-  aux hcs []
-
 let rec solve_hc lbs ub ts ps =
   match ps with
     [] -> []
@@ -148,12 +107,7 @@ let solve_aux lbs hcs =
 
 let solve ctrs hcs =
   let lbs = compute_lbs hcs in
-  let _ =
-    let pr_lb ppf (pid, (xs, ts)) =
-      Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr (Formula.band ts)
-    in
-    Format.printf "lower bounds:@.  @[<v>%a@]@." (Util.pr_list pr_lb "@,") lbs
-  in
+  let _ = Format.printf "lower bounds:@.  %a@." pr_lbs lbs in
   let sol = solve_aux lbs hcs in
   let _ = Format.printf "solution:@.  @[<v>%a@]@." pr_sol sol in
   List.map (fun (pred, (xs, t)) -> pred, (xs, Formula.simplify t)) sol

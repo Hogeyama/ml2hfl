@@ -1,30 +1,29 @@
 open ExtList
 open Term
 open Formula
-open NonLinArith
+open ParLinArith
 
 (** Farkas lemma *)
 
 (** @param an unsatisfiable formula *)
 let farkas t =
-  let tss = dnf (elim_int_equality t) in
-  let arss = List.map (List.map (fun t -> canonize_aif (aif_of t))) tss in
+  let tss = dnf (elim_neq_int t) in
+  let aifss = List.map (List.map (fun t -> canonize_aif (try aif_of t with Invalid_argument _ -> assert false))) tss in
   let _ =
 		  List.iter
-		    (fun ars ->
-		      Format.printf "canonized unsatisfiable constraints:@.  @[<v>%a@]@." (Util.pr_list pr_caif "@,") ars)
-		    arss
+		    (fun aifs ->
+		      Format.printf "canonized unsatisfiable constraints:@.  @[<v>%a@]@." (Util.pr_list pr_aif "@,") aifs)
+		    aifss
   in
 		List.map
-				(fun ars ->
-						let l0 = make_var (Var.new_var ()) in
-						let ls = List.map (fun _ -> make_var (Var.new_var ())) ars in
-						let vs = List.unique (Util.concat_map (fun (nxs, _) -> List.map snd nxs) ars) in
+				(fun aifs ->
+      let aifs = (Const.Geq, [], tint 1) :: aifs in
+						let ls = List.map (fun _ -> make_var (Var.new_var ())) aifs in
+						let vs = List.unique (Util.concat_map (fun (_, nxs, _) -> List.map snd nxs) aifs) in
 						let _ = if false then Format.printf "vars: %a@." (Util.pr_list Var.pr ",") vs in
 						let tss =
-						  (l0 :: List.map (fun _ -> tint 0) vs) ::
 								List.map2
-								  (fun (nxs, n) l ->
+								  (fun (_, nxs, n) l ->
 								    Term.mul l n ::
 								    List.map
 								      (fun v ->
@@ -36,17 +35,23 @@ let farkas t =
 								        with Not_found ->
 								          tint 0)
 								      vs)
-								  ars ls
+								  aifs ls
 						in
 						let cs::css = Util.transpose tss in
       let ts =
-        List.map (fun l -> geq l (tint 0)) (l0::ls) @
+        Util.filter_map2 (fun (c, _, _) l -> match c with Const.EqInt -> None | Const.Geq -> Some(geq l (tint 0)) | _ -> assert false) aifs ls @
         eqInt (sum cs) (tint (-1)) ::
 								List.map (fun cs -> eqInt (sum cs) (tint 0)) css
       in
+(*
+      let _ = Format.printf "constraint1:@.  @[<v>%a@]@." Term.pr (Formula.band ts) in
+*)
       let ts = List.map Formula.simplify ts in
+(*
+      let _ = Format.printf "constraint2:@.  @[<v>%a@]@." Term.pr (Formula.band ts) in
+*)
       let ts = Formula.eqelim Var.is_coeff ts in
       exists
-        (List.map (fun (Var(_, x)) -> x, SimType.Int) (l0::ls))
+        (List.map (fun (Var(_, x)) -> x, SimType.Int) ls)
         (Formula.simplify (band ts)))
-				arss
+				aifss
