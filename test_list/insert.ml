@@ -15,11 +15,6 @@ let rec insert (x:int) ys =
         if x < y then x::y::ys'
         else y::(insert x ys')
 
-let rec sum xs =
-  match xs with
-      [] -> 0
-    | x::xs' -> x + sum xs'
-
 let main n m =
   let xs = make_list m in
   let xs' = insert n xs in
