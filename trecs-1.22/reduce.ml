@@ -1168,10 +1168,12 @@ let rec td_app tdlfun tdlarg =
     | ITcase(m, n) -> 
         if n=0 then
           let atys = 
-              List.map 
-                  (fun td ->
-                       match td with
-                        TDbase(aty) -> aty | _ -> raise (Fatal "td_app")) tdlarg in
+             List.map
+                 (fun td -> aty_of_td td)
+(**                       match td with
+                       TDbase(aty) -> aty | _ -> raise (Fatal "td_app"))
+**)
+                  tdlarg in
           let atys' =
               List.map (fun aty -> ITfun([aty], mk_const_ty (m-1) aty)) atys in
             List.map (fun (aty,td) -> TDapp(aty, tdlfun, [td])) (List.combine atys' tdlarg)
