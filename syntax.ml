@@ -73,7 +73,7 @@ exception Infeasible
 type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 
-
+(*** PRINTINF FUNCTIONS ***)
 
 let rec print_typ t = Type.print (print_term 0 false) t
 and print_ids fm = function
@@ -92,9 +92,6 @@ and print_id_typ fm x =
 and print_ids_typ fm = function
     [] -> ()
   | x::xs -> fprintf fm "%a %a" print_id_typ x print_ids_typ xs
-
-
-
 
 (* priority (low -> high)
    1 : If, Let, Letrec, Match
@@ -236,15 +233,14 @@ and print_term pri typ fm t =
     | Pair(t1,t2) ->
         fprintf fm "(%a,%a)" (print_term 2 typ) t1 (print_term 2 typ) t2
     | Fst t ->
-        let p = 4 in
+        let p = 8 in
         let s1,s2 = paren pri (p+1) in
-          fprintf fm "%sfst %a%s" s1 (print_term 1 typ) t s2
+          fprintf fm "%sfst %a%s" s1 (print_term p typ) t s2
     | Snd t ->
-        let p = 4 in
+        let p = 8 in
         let s1,s2 = paren pri (p+1) in
-          fprintf fm "%ssnd %a%s" s1 (print_term 1 typ) t s2
+          fprintf fm "%ssnd %a%s" s1 (print_term p typ) t s2
     | Bottom -> fprintf fm "_|_"
-
 
 and print_pattern fm pat =
   let rec aux fm pat =
@@ -278,11 +274,7 @@ and print_pattern fm pat =
       | PPair(pat1,pat2) -> fprintf fm "(%a, %a)" aux pat1 aux pat2
   in
     fprintf fm "| %a" aux pat
-
 let print_term typ fm = print_term 0 typ fm
-
-
-
 
 let rec print_term' pri fm t =
   fprintf fm "(";(
@@ -441,8 +433,6 @@ and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@;%a" (print_term'
 let print_term' fm = print_term' 0 fm
 let pp_print_term' = print_term'
 
-
-
 let string_of_node = function
     BrNode -> assert false
   | LabNode true -> "then"
@@ -451,21 +441,24 @@ let string_of_node = function
   | PatNode n -> "br" ^ string_of_int n
   | EventNode s -> s
 
-
-
 let print_constr fm = function
     Cond t -> print_term false fm t
   | Pred(f,n,x,ts) -> Format.printf "P_{%a_%d}^%a(%a)" print_id f n print_id x (print_termlist 0 false) ts
 let print_constr_list fm = List.iter (fun c -> Format.fprintf fm "@;[%a]" print_constr c)
 
-
-
 let pp_print_typ = print_typ
 let pp_print_term = print_term false
 let pp_print_term_typ = print_term true
 
+let print_defs fm (defs:(id * (id list * typed_term)) list) =
+  let print_fundef (f, (xs, t)) =
+    fprintf fm "%a %a-> %a.\n" print_id f print_ids xs pp_print_term t
+  in
+    List.iter print_fundef defs
 
 
+
+(*** TERM CONSTRUCTORS ***)
 
 let dummy_var = {Id.id=0; Id.name=""; Id.typ=TInt[]}
 let abst_var = {Id.id=0; Id.name="v"; Id.typ=TInt[]}
@@ -546,7 +539,7 @@ let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt[]}
 let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt[]}
 let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt[]}
 let make_neg t = make_sub (make_int 0) t
-let make_if t1 t2 t3 =
+let make_if_ t1 t2 t3 =
   assert (not Flag.check_typ || Type.can_unify t1.typ TBool);
   assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
   match t1.desc with
@@ -559,9 +552,9 @@ let make_if t1 t2 t3 =
             | true, false -> t2.typ
             | false, true -> t3.typ
             | true, true ->
-                if t2.typ = t3.typ
-                then t2.typ
-                else raise (Fatal "Not implemented (Syntax.make_if)")
+                if t2.typ <> t3.typ
+                then Format.printf "make_if_ (%a) (%a)@." pp_print_typ t2.typ pp_print_typ t3.typ;
+                t2.typ
         in
           {desc=If(t1, t2, t3); typ=typ}
 let make_branch t2 t3 =
@@ -617,16 +610,13 @@ let and_list ts = match ts with
 
 
 
-
+(*** AUXILIARY FUNCTIONS ***)
 
 let rec decomp_fun = function
     {desc=Fun(x,t)} ->
       let xs,t' = decomp_fun t in
         x::xs, t'
   | t -> [], t
-
-
-
 
 let rec get_nint t =
   match t.desc with
@@ -845,14 +835,15 @@ let rec subst x t t' =
         let t1' = subst x t t1 in
         let t2' = subst x t t2 in
         let t3' = subst x t t3 in
-          make_if t1' t2' t3'
+          make_if_ t1' t2' t3'
     | Branch(t1, t2) ->
         let t1' = subst x t t1 in
         let t2' = subst x t t2 in
           make_branch t1' t2'
     | Let(Flag.Nonrecursive, bindings, t2) ->
         let in_bindings = List.exists (fun (f,_,_) -> Id.same f x) bindings in
-        let bindings' = List.map (fun (f,xs,t1) -> f, xs, if List.exists (Id.same x) xs then t else subst x t t1) bindings in
+        let aux (f,xs,t1) = f, xs, if List.exists (Id.same x) xs then t else subst x t t1 in
+        let bindings' = List.map aux bindings in
         let t2' = if in_bindings then t2 else subst x t t2 in
           make_let bindings' t2'
     | Let(Flag.Recursive, bindings, t2) ->
@@ -977,7 +968,7 @@ let rec subst_map map t =
         let t1' = subst_map map t1 in
         let t2' = subst_map map t2 in
         let t3' = subst_map map t3 in
-          make_if t1' t2' t3'
+          make_if_ t1' t2' t3'
     | Branch(t1, t2) ->
         let t1' = subst_map map t1 in
         let t2' = subst_map map t2 in
@@ -1134,105 +1125,7 @@ let rec max_label_num t =
     | Bottom -> assert false
 
 
-
-
-
 let is_external x = String.contains (Id.name x) '.'
-
-
-let rec init_rand_int t =
-  let desc =
-    match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
-      | Unknown -> Unknown
-      | Int n -> Int n
-      | Var x -> Var x
-      | NInt x -> NInt x
-      | RandInt false -> assert false
-      | App({desc=RandInt false},[{desc=Unit}]) -> NInt (Id.new_var "_r" (TInt[]))
-      | Fun(x,t) -> Fun(x, init_rand_int t)
-      | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
-      | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)
-      | Branch(t1,t2) -> Branch(init_rand_int t1, init_rand_int t2)
-      | Let(flag,bindings,t2) ->
-          let bindings' = List.map (fun (f,xs,t) -> f,xs,init_rand_int t) bindings in
-            Let(flag, bindings', init_rand_int t2)
-      | BinOp(op, t1, t2) -> BinOp(op, init_rand_int t1, init_rand_int t2)
-      | Not t -> Not (init_rand_int t)
-      | Event(s,b) -> Event(s,b)
-      | Nil -> Nil
-      | Cons(t1,t2) -> Cons(init_rand_int t1, init_rand_int t2)
-      | Constr(s,ts) -> Constr(s, List.map init_rand_int ts)
-      | Match(t,pats) -> Match(init_rand_int t, List.map (fun (pat,cond,t) -> pat,apply_opt init_rand_int cond,init_rand_int t) pats)
-      | Bottom -> Bottom
-      | Snd _ -> assert false
-      | Fst _ -> assert false
-      | Pair (_, _) -> assert false
-      | TryWith (_, _) -> assert false
-      | Raise _ -> assert false
-      | SetField (_, _, _, _, _, _) -> assert false
-      | Proj (_, _, _, _) -> assert false
-      | Record _ -> assert false
-      | RandValue (_, _) -> assert false
-      | RandInt _ -> assert false
-  in
-    {desc=desc; typ=t.typ}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let print_defs fm (defs:(id * (id list * typed_term)) list) =
-  let print_fundef (f, (xs, t)) =
-    fprintf fm "%a %a-> %a.\n" print_id f print_ids xs pp_print_term t
-  in
-    List.iter print_fundef defs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 let rec is_value t =
@@ -1242,7 +1135,31 @@ let rec is_value t =
 
 
 
+let rec merge_typ typ1 typ2 =
+  match typ1,typ2 with
+      TVar{contents=Some typ1}, typ2
+    | typ1, TVar{contents=Some typ2} -> merge_typ typ1 typ2
+    | TVar({contents=None} as r1), TVar({contents=None} as r2) when r1 == r2 -> typ1
+    | TUnit, TUnit -> TUnit
+    | TBool, TBool -> TBool
+    | TInt ps1, TInt ps2 -> TInt (uniq (ps1@@ps2))
+    | TFun(x1,typ1), TFun(x2,typ2) ->
+        let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
+        let x = Id.new_var (Id.name x1) x_typ in
+        let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
+          TFun(x, typ)
+    | TList(typ1,ps1), TList(typ2,ps2) ->
+        TList(merge_typ typ1 typ2, uniq (ps1@@ps2))
+    | TPair(typ11,typ12), TPair(typ21,typ22) -> TPair(merge_typ typ11 typ21, merge_typ typ12 typ22)
+    | typ, TUnknown
+    | TUnknown, typ -> typ
+    | _ -> Format.printf "typ1:%a, %a@." pp_print_typ typ1 pp_print_typ typ2; assert false
 
 
-
-
+let make_if t1 t2 t3 =
+  assert (not Flag.check_typ || Type.can_unify t1.typ TBool);
+  assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
+  match t1.desc with
+      True -> t2
+    | False -> t3
+    | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ}

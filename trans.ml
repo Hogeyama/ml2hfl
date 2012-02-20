@@ -1913,3 +1913,47 @@ let rec make_ext_env t =
     | Snd t -> make_ext_env t
     | Raise t -> make_ext_env t
     | RandValue _ -> assert false
+
+
+
+let rec init_rand_int t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | Var x -> Var x
+      | NInt x -> NInt x
+      | RandInt false -> assert false
+      | App({desc=RandInt false},[{desc=Unit}]) -> NInt (Id.new_var "_r" (TInt[]))
+      | Fun(x,t) -> Fun(x, init_rand_int t)
+      | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
+      | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)
+      | Branch(t1,t2) -> Branch(init_rand_int t1, init_rand_int t2)
+      | Let(flag,bindings,t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f,xs,init_rand_int t) bindings in
+            Let(flag, bindings', init_rand_int t2)
+      | BinOp(op, t1, t2) -> BinOp(op, init_rand_int t1, init_rand_int t2)
+      | Not t -> Not (init_rand_int t)
+      | Event(s,b) -> Event(s,b)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(init_rand_int t1, init_rand_int t2)
+      | Constr(s,ts) -> Constr(s, List.map init_rand_int ts)
+      | Match(t,pats) -> Match(init_rand_int t, List.map (fun (pat,cond,t) -> pat,apply_opt init_rand_int cond,init_rand_int t) pats)
+      | Bottom -> Bottom
+      | Snd _ -> assert false
+      | Fst _ -> assert false
+      | Pair (_, _) -> assert false
+      | TryWith (_, _) -> assert false
+      | Raise _ -> assert false
+      | SetField (_, _, _, _, _, _) -> assert false
+      | Proj (_, _, _, _) -> assert false
+      | Record _ -> assert false
+      | RandValue (_, _) -> assert false
+      | RandInt _ -> assert false
+  in
+    {desc=desc; typ=t.typ}
+
+

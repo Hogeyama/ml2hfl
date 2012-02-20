@@ -28,8 +28,12 @@ let post () =
 
 let rec cegar1 prog preds ces =
   pre ();
-  Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@."
-    !Flag.cegar_loop CEGAR_print.print_prog_typ prog;
+  let pr =
+    if !Flag.expand_nonrec
+    then CEGAR_util.print_prog_typ'
+    else CEGAR_print.print_prog_typ
+  in
+  let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
   let labeled,abst = CEGAR_abst.abstract None prog in
   let result = ModelCheck.check None abst prog in
   let result' = apply_opt (fun ce -> CEGAR_trans.trans_ce ce labeled prog) result in
@@ -55,6 +59,7 @@ let rec cegar1 prog preds ces =
           match Feasibility.check ce prog with
               Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
             | Feasibility.Infeasible prefix ->
+                let () = if true then Format.printf "Prefix of spurious counter-example::@.%a@.@." CEGAR_print.print_ce prefix in
                 let ces' = ce::ces in
                 let _,prog' = Refine.refine preds prefix ces' prog in
                   post ();

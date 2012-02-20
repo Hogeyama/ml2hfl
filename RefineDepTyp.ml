@@ -730,7 +730,7 @@ let rec chk_term rtenv term id trace traces =
             (try
                let rtyl = try List.assoc x rtenv with Not_found -> [] in
                let rty1 = pick_rty id rtyl in
-               let (c1,rty2)= chk_args rtenv rty1 (List.map init_rand_int ts) in
+               let (c1,rty2)= chk_args rtenv rty1 (List.map Trans.init_rand_int ts) in
                let c2 = subty rty2 rty in
                  c1@c2
              with

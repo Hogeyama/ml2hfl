@@ -37,9 +37,7 @@ and term =
   | Fst of typed_term
   | Snd of typed_term
   | Bottom
-(*
-  | TAbs of (typ -> typed_term)
-*)
+
 
 and type_kind =
     KAbstract
@@ -140,7 +138,6 @@ val max_pat_num : typed_term -> int
 val max_label_num : typed_term -> int
 val is_external : id -> bool
 val is_value : typed_term -> bool
-val init_rand_int : typed_term -> typed_term
 
 
 (** {6 Printing} *)

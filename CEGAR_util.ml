@@ -922,3 +922,42 @@ let rec normalize_bool_term = function
   | App(t1, t2) -> App(normalize_bool_term t1, normalize_bool_term t2)
   | Let _ -> assert false
   | Fun _ -> assert false
+
+
+
+
+let assoc_fun_def defs f =
+  let make_fun xs t =
+    let xs' = List.map rename_id xs in
+    let map = List.map2 (fun x x' -> x, Var x') xs xs' in
+      List.fold_right (fun x t -> Fun(x,None,t)) xs' (subst_map map t)
+  in
+  let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
+    match defs' with
+        [_,xs,Const True,_,t] -> make_fun xs t
+      | [_] -> raise (Fatal "Not implemented: CEGAR_abst_CPS.assoc_fun_def")
+      | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when make_not t11 = t21 ->
+          assert (xs1 = xs2);
+          make_fun xs1 (make_if t11 t12 t22)
+      | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
+          assert (xs1 = xs2);
+          make_fun xs1 (make_if t21 t22 t12)
+      | _ -> assert false
+
+let rec get_nonrec defs main =
+  let check (f,xs,t1,e,t2) =
+    let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
+      List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
+        (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@ get_fv t2) xs) defs' ||
+         f <> main &&
+         1 >= count_list (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@ get_fv t2)) defs &&
+         2 >= List.length defs')
+  in
+  let defs' = List.filter check defs in
+    List.map (fun (f,xs,_,_,t) -> f, assoc_fun_def defs f) defs'
+
+
+let print_prog_typ' fm (env,defs,main) =
+  let nonrec = get_nonrec defs main in
+  let env' = List.filter (fun (f,_) -> not (List.mem_assoc f nonrec)) env in
+    print_prog_typ fm (env',defs,main)

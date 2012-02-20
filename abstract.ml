@@ -314,7 +314,7 @@ let rec get_match_bind_cond t p =
             [] -> bind, cond
           | p::ps ->
               let bind',cond' = get_match_bind_cond (make_app (make_fst t) [make_int i]) p in
-                aux (bind'@@bind) (make_and cond' cond) (i+1) ps
+                aux (bind'@@bind) (make_and cond cond') (i+1) ps
         in
         let len = List.length ps in
         let bind, cond = get_match_bind_cond (make_tl len t) p' in
@@ -529,7 +529,7 @@ and abst_datatype t =
       | Constr _
       | Record _ ->
           let bind,t' = abst_datatype' t in
-            
+
       | Match(t1,pats) ->
           let x = Id.new_var "x" (abst_datatype_typ t1.typ) in
             assert false;
@@ -548,7 +548,7 @@ and abst_datatype t =
       | TryWith(t1,t2) -> TryWith(t1,t2)
   in
     {desc=desc; typ=typ'}
-        
+
 
 let abstract_data_type t = abst_data_type t
 

@@ -1,7 +1,7 @@
 CEGAR_CPS.cmi: CEGAR_syntax.cmo
 CEGAR_abst.cmi: CEGAR_syntax.cmo
 CPS.cmi: syntax.cmi
-abstract.cmi: syntax.cmi
+abstract.cmi: type.cmo syntax.cmi id.cmo
 automata.cmi:
 check.cmi: CEGAR_syntax.cmo
 feasibility.cmi: CEGAR_syntax.cmo

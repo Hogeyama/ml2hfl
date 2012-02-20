@@ -41,8 +41,8 @@ let print_spec spec =
   if spec <> []
   then
     begin
-      Format.printf "spec::@.";
-      List.iter (fun (x,typ) -> Format.printf "%a: %a@." Syntax.print_id x Syntax.print_typ typ) spec;
+      Format.printf "spec::@. @[";
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x Syntax.print_typ typ) spec;
       Format.printf "@."
     end
 
@@ -57,15 +57,17 @@ let main filename in_channel =
   let () = if !Flag.web then write_log_string input_string in
   let t =
     let lb = Lexing.from_string input_string in
-      lb.Lexing.lex_curr_p <-
-        {Lexing.pos_fname = Filename.basename filename;
-         Lexing.pos_lnum = 1;
-         Lexing.pos_cnum = 0;
-         Lexing.pos_bol = 0};
-      Parser_wrapper.from_use_file (Parser.use_file Lexer.token lb)
+    let () = lb.Lexing.lex_curr_p <-
+      {Lexing.pos_fname = Filename.basename filename;
+       Lexing.pos_lnum = 1;
+       Lexing.pos_cnum = 0;
+       Lexing.pos_bol = 0};
+    in
+    let parsed = Parse.use_file lb in
+      Parser_wrapper.from_use_file parsed
   in
 
-  let () = if true then Format.printf "parsed::@.%a@.@." Syntax.pp_print_term t in
+  let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term t in
 
   let spec =
     if !spec_file = ""
@@ -83,32 +85,32 @@ let main filename in_channel =
   let () = print_spec spec in
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
-  let () = if true then Format.printf "set_target::@.%a@.@." Syntax.pp_print_term t in
+  let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
   let t =
     if !Flag.init_trans
     then
       let t' = Trans.copy_poly_funs t in
-      let () = if true && t <> t' then Format.printf "copy_poly::@.%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let spec' = Trans.rename_spec spec t in
       let () = print_spec spec' in
       let t' = Trans.replace_typ spec' t in
-      let () = if true && t <> t' then Format.printf "add_preds::@.%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Abstract.abstract_recdata t in
-      let () = if true && t <> t' then Format.printf "abst_recdata::@.%a@.@." Syntax.pp_print_term t' in
+      let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t' = Abstract.abstract_list t in
-      let () = if true && t <> t' then Format.printf "abst_list::@.%a@.@." Syntax.pp_print_term t' in
+      let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t' = Abstract.abst_ext_funs t in
-      let () = if true && t <> t' then Format.printf "abst_ext_fun::@.%a@.@." Syntax.pp_print_term t' in
+      let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t' = CPS.trans t in
-      let () = if true && t <> t' then Format.printf "CPS::@.%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = CPS.remove_pair t in
-      let () = if true && t <> t' then Format.printf "remove_pair::@.%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
         t'
     else t
   in
@@ -118,11 +120,11 @@ let main filename in_channel =
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->
-          let t_result, result = CEGAR.cegar prog preds in
+          let prog_result, result = CEGAR.cegar prog preds in
 	    match result with
-	        None -> Format.printf "@.Safe!@.@."
+	        None -> Format.printf "Safe!@.@."
 	      | Some print ->
-                  Format.printf "@.@.Unsafe!@.@.";
+                  Format.printf "Unsafe!@.@.";
                   print ()
 
 
@@ -176,7 +178,7 @@ let () =
         Wrapper.close_cvc3 ();
         if !Flag.web then close_log ()
     with
-        Parsing.Parse_error -> Format.printf "Parse error.@."; exit 1
+        Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
       | LongInput -> Format.printf "Input is too long.@."; exit 1
       | TimeOut -> Format.printf "@.Verification failed (time out).@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1

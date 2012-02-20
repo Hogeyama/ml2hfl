@@ -61,6 +61,8 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
   | App(App(App(Const If, t1), t2), t3) ->
       let ce',t1' = step_eval_abst_cbn ce env_orig env_abst defs t1 in
         ce', App(App(App(Const If, t1'), t2), t3)
+  | App(Const (Label _), t) ->
+      step_eval_abst_cbn ce env_orig env_abst defs t
   | App _ as t ->
       let t1,ts = decomp_app t in
         if t1 = Const If
@@ -85,6 +87,7 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
 
 let rec eval_abst_cbn prog abst ce =
   Format.printf "Program with abstraction types::@.%a@." CEGAR_print.print_prog_typ abst;
+  Format.printf "CE: %a@." CEGAR_print.ce ce;
   let env_orig = get_env prog in
   let env_abst = get_env abst in
   let defs = get_defs abst in
