@@ -3,6 +3,17 @@ open Utilities
 open CEGAR_syntax
 open CEGAR_type
 
+
+type linearBinOp = LinEqInt | LinGt | LinLt | LinGeq | LinLeq
+type linearArithTerm = int * CEGAR_syntax.var option
+type linearBoolTerm =
+    BBoolTerm of CEGAR_syntax.t
+  | BArithTerm of linearBinOp * linearArithTerm list * linearArithTerm list
+type prop = LinearTerm of linearBoolTerm | PropAnd of prop list | PropOr of prop list
+
+exception BBoolTrans
+
+
 let counter = ref 0
 let new_id x =
   let x' = x ^ "_" ^ string_of_int !counter in
@@ -34,7 +45,7 @@ and print_typ_aux var fm = function
       let preds = ps (Var x) in
         if occur || List.mem x (rev_flatten_map get_fv preds) then Format.fprintf fm "%a:" print_var x;
         Format.fprintf fm "%a" print_typ_base b;
-        if preds <> [] then Format.fprintf fm "[%a]" (print_list print_term ";" false) preds
+        if preds <> [] then Format.fprintf fm "[@[%a@]]" (print_list print_linear_exp ";@ " false) preds
   | TFun _ as typ ->
       let rec aux b fm = function
           TFun(typ1, typ2) ->
@@ -137,6 +148,107 @@ and print_prog_typ fm (env,defs,s) =
     print_var s
     (print_list print_fun_def "@\n" false) defs
     print_env env
+
+
+
+
+
+
+and linearArithTerm_of_term t =
+  match t with
+      App(App(Const Add, t1), t2) ->
+        linearArithTerm_of_term t1 @ linearArithTerm_of_term t2
+    | App(App(Const Sub, t1), t2) ->
+        let neg_terms = List.map (fun (n,x) -> -n,x) in
+          linearArithTerm_of_term t1 @ neg_terms (linearArithTerm_of_term t2)
+    | App(App(Const Mul, Const (Int n)), Var x) -> [n, Some x]
+    | Const (Int n) -> [n, None]
+    | Var x -> [1, Some x]
+    | _ -> assert false
+
+and linearBoolTerm_of_term t =
+  try
+    let binop,t1,t2 =
+      match t with
+          App(App(Const op, t1), t2) -> op, t1, t2
+        | _ -> raise BBoolTrans
+    in
+    let binop' =
+      match binop with
+          EqInt -> LinEqInt
+        | Gt -> LinGt
+        | Lt -> LinLt
+        | Geq -> LinGeq
+        | Leq -> LinLeq
+        | _ -> raise BBoolTrans
+    in
+      BArithTerm (binop', linearArithTerm_of_term t1, linearArithTerm_of_term t2)
+  with BBoolTrans -> BBoolTerm t
+
+and prop_of_term t =
+  let rec decomp op = function
+      App(App(Const op', t1), t2) when op = op' -> decomp op t1 @ decomp op t2
+    | t -> [t]
+  in
+  let rec trans t =
+    match t with
+        App(App(Const And, _), _) ->
+          let ts = decomp And t in
+            PropAnd (List.map trans ts)
+      | App(App(Const Or, _), _) ->
+          let ts = decomp Or t in
+            PropOr (List.map trans ts)
+      | _ -> LinearTerm (linearBoolTerm_of_term t)
+  in
+    trans t
+
+and print_linearArithTerm_list fm ts =
+  let sign n = if n < 0 then "-" else "+" in
+  let pr_tail fm = function
+      n, None -> Format.fprintf fm "@ %s %d" (sign n) (abs n)
+    | 1, Some x -> Format.fprintf fm "@ + %a" print_var x
+    | -1, Some x -> Format.fprintf fm "@ - %a" print_var x
+    | n, Some x -> Format.fprintf fm "@ %s %d*%a" (sign n) (abs n) print_var x
+  in
+  let pr_head fm = function
+      n, None -> Format.pp_print_int fm n
+    | 1, Some x -> print_var fm x
+    | -1, Some x -> Format.fprintf fm "-%a" print_var x
+    | n, Some x -> Format.fprintf fm "%d*%a" n print_var x
+  in
+    pr_head fm (List.hd ts);
+    print_list pr_tail "" false fm (List.tl ts)
+
+and print_linearBoolTerm fm = function
+    BBoolTerm t -> print_term fm t
+  | BArithTerm(op,ts1,ts2) ->
+      let s =
+        match op with
+            LinEqInt -> "="
+          | LinGt -> ">"
+          | LinLt -> "<"
+          | LinGeq -> ">="
+          | LinLeq -> "<="
+      in
+        Format.fprintf fm "@[@[%a@]@ %s@ @[%a@]@]"
+          print_linearArithTerm_list ts1
+          s
+          print_linearArithTerm_list ts2
+
+and print_prop fm = function
+    LinearTerm t -> print_linearBoolTerm fm t
+  | PropAnd ps ->
+      let aux fm p =
+        match p with
+            PropOr _ -> Format.fprintf fm "(@[%a@])" print_prop p
+          | _ -> print_prop fm p
+      in
+        print_list aux " && " false fm ps
+  | PropOr ps ->
+      print_list print_prop " || " false fm ps
+
+and print_linear_exp fm t = print_prop fm (prop_of_term t)
+
 
 
 
@@ -294,6 +406,8 @@ let print_ce = print_list print_node "; " false
 
 
 
+
+
 let fun_def = print_fun_def
 let term = print_term
 let var = print_var
@@ -301,4 +415,3 @@ let typ = print_typ
 let ce = print_ce
 let prog = print_prog
 let prog_typ = print_prog_typ
-

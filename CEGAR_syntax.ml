@@ -192,5 +192,3 @@ let is_CPS (env,defs,main) = List.for_all (is_CPS_def env) defs
 
 
 let is_external x = String.contains x '.'
-
-
