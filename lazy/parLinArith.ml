@@ -146,7 +146,7 @@ let pos_neg_terms_of (nxs, n) =
   in
   let nxs1, nxs2 = List.partition (fun (n, _) -> try int_of n > 0 with Not_found -> true) nxs in
   sum ((try if int_of n > 0 then [n] else [] with Not_found -> [n]) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint 1) then make_var x else Term.mul n (make_var x)) nxs1),
-  sum ((try if int_of n < 0 then [Term.minus n] else [] with Not_found -> []) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint (-1)) then make_var x else Term.mul (Term.minus n) (make_var x)) nxs2)
+  sum ((try if int_of n < 0 then [LinArith.simplify (Term.minus n)] else [] with Not_found -> []) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint (-1)) then make_var x else Term.mul (Term.minus n) (make_var x)) nxs2)
 
 (** {6 Functions on parametric-linear atomic integer formulas} *)
 

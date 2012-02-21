@@ -18,33 +18,46 @@ let refineRefTypes prog etrs =
           hcs
         else
 				      let t = HornClause.formula_of hcs in
-				      let _ = Format.printf "unsatisfiable constraint:@.  @[<v>%a@]@." Term.pr t in
-				      let t = Formula.simplify (Formula.linearize t) in
-				      let _ = Format.printf "linearized unsatisfiable constraint:@.  @[<v>%a@]@." Term.pr t in
-				      let qfts =
-						      if Formula.is_linear t then
-				          let fvs = Term.fvs t in
-				          let t = Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t in
-								      let qft = Formula.simplify (Formula.bnot (AtpInterface.integer_qelim t)) in
-								      let _ = Format.printf "quantifier eliminated constraint on coefficients:@.  @[<v>%a@]@." Term.pr qft in
-								      [qft]
-						      else
-								      let ts = Farkas.farkas t in
-								      List.map
-								        (fun t ->
-								          let _ = Format.printf "constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
-								          let qft = AtpInterface.real_qelim t in
+				      let _ = Format.printf "verification condition:@.  @[<v>%a |= bot@]@." Term.pr t in
+(*
+										let fvs = Term.fvs t in
+										let t = Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t in
+*)
+				      let ts =
+								    let ts = Farkas.farkas t in
+								    List.map
+								      (fun t ->
+								        let _ = Format.printf "constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
+                if !Flags.use_bit_vector then
+                  t
+                else
+		          				  let t = Formula.simplify (Formula.linearize t) in
+						            let _ = Format.printf "linearized constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
+                  let qft =
+																    if Formula.is_linear t then
+																      Formula.simplify (AtpInterface.integer_qelim t)
+																    else
+				                  Formula.simplify (AtpInterface.real_qelim t)
+                  in
 								          let _ = Format.printf "quantifier eliminated constraint on coefficients:@.  @[<v>%a@]@." Term.pr qft in
-								          qft)
-								        ts
-				      in
-				      let _ = ext_constrs := qfts @ !ext_constrs in
+                  qft)
+								      ts
+				    in
+				      let _ = ext_constrs := ts @ !ext_constrs in
 						    let _ =
 				        let pr_aux ppf (c, t) = Format.fprintf ppf "%a = %a" Var.pr c Term.pr t in
-						      if List.for_all (fun qft -> Cvc3Interface.is_valid (Term.subst (fun x -> List.assoc x !ext_coeffs) qft)) qfts then
+						      if List.for_all (fun t -> Cvc3Interface.is_valid (Term.subst (fun x -> List.assoc x !ext_coeffs) t)) ts then
 						        Format.printf "solutions (not changed):@.  @[<v>%a@]@." (Util.pr_list pr_aux "@,") !ext_coeffs
 						      else
-						        let coeffs = Cvc3Interface.solve (Formula.band !ext_constrs) in
+						        let coeffs =
+                if !Flags.use_bit_vector then
+                  (* find positive coefficients *)
+                  let t = Formula.elim_minus (Formula.band !ext_constrs) in
+								          let _ = Format.printf "constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
+                  Cvc3Interface.solve_bv t
+                else
+                  Cvc3Interface.solve (Formula.band !ext_constrs)
+              in
 						        let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
 						        Format.printf "solutions:@.  @[<v>%a@]@." (Util.pr_list pr_aux "@,") !ext_coeffs
 						    in

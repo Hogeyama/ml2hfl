@@ -557,14 +557,21 @@ let rec elim_neq_int t =
   match fun_args t with
     Var(attr, x), [] ->
       Var(attr, x)
-(*
-  | Const(attr, Const.EqInt), [t1; t2] ->
-      band [leq t1 t2; geq t1 t2]
-*)
   | Const(attr, Const.NeqInt), [t1; t2] ->
       bor [lt t1 t2; gt t1 t2]
   | Const(attr, c), ts ->
       apply (Const(attr, c)) (List.map elim_neq_int ts)
+
+let rec elim_eq_neq_int t =
+  match fun_args t with
+    Var(attr, x), [] ->
+      Var(attr, x)
+  | Const(attr, Const.EqInt), [t1; t2] ->
+      band [leq t1 t2; geq t1 t2]
+  | Const(attr, Const.NeqInt), [t1; t2] ->
+      bor [lt t1 t2; gt t1 t2]
+  | Const(attr, c), ts ->
+      apply (Const(attr, c)) (List.map elim_eq_neq_int ts)
 
 let rec eqelim p ts =
   try
@@ -682,4 +689,29 @@ let rec is_linear t =
   | Forall(_, _, t), []
   | Exists(_, _, t), [] ->
       is_linear t
+  | _ -> assert false
+
+let rec elim_minus t =
+  match fun_args t with
+    Const(attr, Const.True), [] ->
+      Const(attr, Const.True)
+  | Const(attr, Const.False), [] ->
+      Const(attr, Const.False)
+  | Const(attr, Const.Not), [t] ->
+      bnot (elim_minus t)
+  | Const(attr, Const.And), [t1; t2] ->
+      band [elim_minus t1; elim_minus t2]
+  | Const(attr, Const.Or), [t1; t2] ->
+      bor [elim_minus t1; elim_minus t2]
+  | Const(attr, c), [_; _] when Const.is_ibrel c ->
+				  (try
+        let c, pol = NonLinArith.aif_of t in
+        let t1, t2 = NonLinArith.pos_neg_terms_of pol in
+        apply (Const(attr, c)) [t1; t2]
+      with Invalid_argument _ ->
+		      assert false)
+  | Forall(a, env, t), [] ->
+      Forall(a, env, elim_minus t)
+  | Exists(a, env, t), [] ->
+      Exists(a, env, elim_minus t)
   | _ -> assert false

@@ -112,9 +112,10 @@ let rec simplify t =
     Var(attr, x), [] ->
       Var(attr, x)
   | Const(_, c), _ when Const.is_iexp c ->
-     (try
-       term_of (of_term t)
-     with Invalid_argument _ -> t)
+      (try
+        term_of (of_term t)
+      with Invalid_argument _ ->
+        t)
   | Const(attr, c), ts ->
       apply (Const(attr, c)) (List.map simplify ts)
   | _ ->

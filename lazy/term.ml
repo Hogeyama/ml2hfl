@@ -97,6 +97,14 @@ let rec fvs t =
   | Call(_, _, _) | Ret(_, _, _, _) | Error(_) -> assert false
   | Forall(_, env, t) | Exists(_, env, t) -> Util.diff (fvs t) (List.map fst env)
 
+let rec coefficients t =
+  match t with
+    Var(_, x) -> if Var.is_coeff x then [x] else []
+  | Const(_, _) -> []
+  | App(_, t1, t2) -> List.unique (coefficients t1 @ coefficients t2)
+  | Call(_, _, _) | Ret(_, _, _, _) | Error(_) -> assert false
+  | Forall(_, env, t) | Exists(_, env, t) -> Util.diff (coefficients t) (List.map fst env)
+
 let rec subst sub t =
   match t with
     Var(a, x) -> (try sub x with Not_found -> Var(a, x))

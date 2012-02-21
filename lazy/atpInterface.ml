@@ -119,7 +119,9 @@ let rec formula_of p =
       geq (term_of t1) (term_of t2)
   | Atp_batch.Atom(Atp_batch.R("divides", [t1; t2])) ->
       raise (Util.NotImplemented "AtpInterface.formula_of")
-  | _ -> assert false
+  | _ ->
+      let _ = Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
+      assert false
 
 (** {6 Functions on ATP formulas} *)
 

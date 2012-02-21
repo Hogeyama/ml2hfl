@@ -78,7 +78,12 @@ let subst_lbs lbs (Hc(popt, ps, ts)) =
 				    *)
 				    if fvs <> [] && Formula.is_linear t then
 				      let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
-				      let t = AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t) in
+				      let t =
+            try
+              AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
+            with Util.NotImplemented _ ->
+              t
+          in
 (*
           let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
 *)

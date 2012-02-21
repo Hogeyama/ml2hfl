@@ -405,22 +405,24 @@ let bv_dec bv =
   in
   List.rev (aux (List.rev bv))
 
-let bv_of_nat bits n =
-  let bv, n =
-		  List.fold_right
-		    (fun _ (bv, n) ->
-		      n mod 2 :: bv, n / 2)
-		    (List.init bits (fun _ -> ()))
-		    ([], n)
+let bv_of_nat n =
+  let _ = assert (n >= 0) in
+  let rec aux bv n =
+    if n = 0 then
+      bv
+    else
+  				aux (n mod 2 :: bv) (n / 2)
   in
-  let _ = assert (n = 0) in
-  bv
+  aux [] n
 
 let bv_of_int bits n =
+  assert false
+(*
   if n >= 0 then
     bv_of_nat bits n
   else
     bv_inc (bv_not (bv_of_nat bits (-n)))
+*)
 
 let nat_of_bv bv =
   List.fold_left (fun x y -> x * 2 + y) 0 bv
