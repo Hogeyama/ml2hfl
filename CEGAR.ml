@@ -50,16 +50,23 @@ let rec cegar1 prog preds ces =
           Flag.use_neg_pred := true;
           cegar1 prog preds ces
       | Some ce, ce'::_ when ce = ce' ->
+          let ce_labeled = get_opt_val result in
           Feasibility.print_ce_reduction ce prog;
-          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog abst ce;
+          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
           raise NoProgress
       | Some ce, _ ->
-          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog abst ce;
+          let ce_labeled = get_opt_val result in
           Feasibility.print_ce_reduction ce prog;
+          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
           match Feasibility.check ce prog with
               Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
             | Feasibility.Infeasible prefix ->
-                let () = if true then Format.printf "Prefix of spurious counter-example::@.%a@.@." CEGAR_print.print_ce prefix in
+                let () =
+                  if true
+                  then
+                    Format.printf "Prefix of spurious counter-example::@.%a@.@."
+                      CEGAR_print.print_ce prefix
+                in
                 let ces' = ce::ces in
                 let _,prog' = Refine.refine preds prefix ces' prog in
                   post ();
@@ -74,7 +81,7 @@ let rec cegar2 prog preds ce_map =
   Flag.use_filter := false;
   Flag.use_neg_pred := false;
   let rec aux c ce_map ces prog =
-    let _,abst = CEGAR_abst.abstract (Some c) prog in
+    let labeled,abst = CEGAR_abst.abstract (Some c) prog in
     let result = ModelCheck.check (Some c) abst prog in
       match result with
           None ->
@@ -90,7 +97,8 @@ let rec cegar2 prog preds ce_map =
             Flag.use_neg_pred := true;
             aux c ce_map ces prog
         | Some ce when List.mem ce ces ->
-            if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog abst ce;
+            let ce_labeled = get_opt_val result in
+            if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
             raise NoProgress
         | Some ce when List.mem_assoc ce ce_map ->
             let map = List.assoc ce ce_map in
@@ -113,7 +121,11 @@ let rec cegar2 prog preds ce_map =
           match Feasibility.check ce prog with
               Feasibility.Feasible(_, sol) -> prog, Some (make_ce_printer ce prog sol)
             | Feasibility.Infeasible prefix ->
-                let () = if true then Format.printf "Prefix of spurious counter-example::@.%a@.@." CEGAR_print.print_ce prefix in
+                let () =
+                  if true then
+                    Format.printf "Prefix of spurious counter-example::@.%a@.@."
+                      CEGAR_print.print_ce prefix
+                in
                 let map,_ = Refine.refine preds prefix [ce] prog in
                 let ce_map' = (ce,map)::ce_map in
                   post ();
