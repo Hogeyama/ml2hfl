@@ -154,6 +154,9 @@ csisat:
 atp_batch.cmx:
 	cd $(ATP) && make compiled
 
+atp_batch.cmo:
+	cd $(ATP) && make bytecode
+
 # TODO: refine & write rule for bytecode
 trecs::
 	cd $(TRECS) && ocamlyacc parser.mly

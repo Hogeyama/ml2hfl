@@ -143,7 +143,7 @@ let arg_spec =
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
    "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
    "-trecs", Arg.String Flag.(fun cmd -> trecs := cmd), Format.sprintf " Change trecs command (default: \"%s\")" !Flag.trecs;
-   "-old-trecs", Arg.Clear Flag.new_cegar, " Use old trecs (temporary option)";
+   "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicates accumulation";
    "-rc", Arg.Set Flag.relative_complete, " To be relative complete";

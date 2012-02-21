@@ -9,8 +9,9 @@ open CEGAR_util
 
 exception EvalFail
 exception EvalValue
-exception Skip
-exception Restart
+exception EvalSkip
+exception EvalRestart
+exception EvalTerminate
 
 let assoc_def defs n t =
   let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
@@ -29,16 +30,15 @@ let rec is_value env = function
   | Fun _ -> assert false
 
 let rec read_bool () =
-  Format.printf "RandBool (t/f/r/s): ";
+  Format.printf "RandBool (t/f/r/s): @?";
   match read_line () with
-    | s when String.length s = 0 -> read_bool ()
-    | s when s.[0] = 't' -> true
-    | s when s.[0] = 'f' -> false
-    | s when s.[0] = 'r' -> raise Restart
-    | s when s.[0] = 's' -> raise Skip
+    | "t" -> true
+    | "f" -> false
+    | "r" -> raise EvalRestart
+    | "s" -> raise EvalSkip
     | s -> read_bool ()
 
-let rec step_eval_abst_cbn ce env_orig env_abst defs = function
+let rec step_eval_abst_cbn check ce env_orig env_abst defs = function
     Const Bottom -> raise TypeBottom
   | Const RandBool ->
       let t =
@@ -47,6 +47,7 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
         else Const False
       in
         ce, t
+  | Const Unit -> ce, Const Unit
   | Var x ->
       let ce',(f,xs,tf1,es,tf2) =
         if List.exists (fun (f,_) -> f = x) env_orig
@@ -59,10 +60,22 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
   | App(App(App(Const If, Const True), t2), _) -> ce, t2
   | App(App(App(Const If, Const False), _), t3) -> ce, t3
   | App(App(App(Const If, t1), t2), t3) ->
-      let ce',t1' = step_eval_abst_cbn ce env_orig env_abst defs t1 in
+      let ce',t1' = step_eval_abst_cbn check ce env_orig env_abst defs t1 in
         ce', App(App(App(Const If, t1'), t2), t3)
-  | App(Const (Label _), t) ->
-      step_eval_abst_cbn ce env_orig env_abst defs t
+  | App(Const (Label n), t) ->
+      let n' = List.hd ce in
+      let ce' = List.tl ce in
+      let rec input_loop () =
+        Format.printf "Differs from the counterexample.@\n";
+        Format.printf "Continue? (y)es/(n)o/(r)estart: @?";
+        match read_line () with
+          | "y" -> ()
+          | "n" -> raise EvalSkip
+          | "r" -> raise EvalRestart
+          | s -> input_loop ()
+      in
+      let check' = if check && n <> n' then (input_loop; false) else check in
+        step_eval_abst_cbn check' ce' env_orig env_abst defs t
   | App _ as t ->
       let t1,ts = decomp_app t in
         if t1 = Const If
@@ -71,18 +84,18 @@ let rec step_eval_abst_cbn ce env_orig env_abst defs = function
               t1::t2::t3::ts' ->
                 let t2' = make_app t2 ts' in
                 let t3' = make_app t3 ts' in
-                  step_eval_abst_cbn ce env_orig env_abst defs (make_if t1 t2' t3')
+                  step_eval_abst_cbn check ce env_orig env_abst defs (make_if t1 t2' t3')
             | _ -> assert false
         else
-          let ce',(f,xs,tf1,es,tf2) =
+          let (f,xs,tf1,es,tf2) =
             if List.exists (fun (f,_) -> Var f = t1) env_orig
-            then List.tl ce, assoc_def defs (List.hd ce) t1
-            else ce, assoc_def defs 0 t1
+            then assoc_def defs (List.hd ce) t1
+            else assoc_def defs 0 t1
           in
           let ts1,ts2 = take2 ts (List.length xs) in
             assert (tf1 = Const True);
             if List.mem (Event "fail") es then raise EvalFail;
-            ce', make_app (List.fold_right2 subst xs ts1 tf2) ts2
+            ce, make_app (List.fold_right2 subst xs ts1 tf2) ts2
   | _ -> assert false
 
 let rec eval_abst_cbn prog abst ce =
@@ -104,31 +117,34 @@ let rec eval_abst_cbn prog abst ce =
           | _ -> ()
       with Not_found -> ()
     in
-    let ce',t' = step_eval_abst_cbn ce env_orig env_abst defs t in
-      if t' <> Const Unit
-      then loop ce' t'
+    let ce',t' = step_eval_abst_cbn true ce env_orig env_abst defs t in
+      if t' = Const Unit then raise EvalTerminate;
+      loop ce' t'
   in
-  let pr () =
+  let rec confirm () =
+    Format.printf "(s)kip/(r)estart/(q)uit: @?";
+    match read_line () with
+      | "s" -> ()
+      | "r" -> eval_abst_cbn prog abst ce
+      | "q" -> exit 0
+      | s -> confirm ()
+  in
+    Format.printf "Evaluation of abstracted program::@.  @[";
     try
       loop ce' (Var main)
-    with(*
-          Failure "nth" ->
-          Format.printf "RESET (inconsistent)@.@.";
-          eval_abst_cbn prog abst ce*)
-      | Restart -> eval_abst_cbn prog abst ce
+    with
+        EvalRestart -> eval_abst_cbn prog abst ce
       | EvalFail ->
           Format.printf "ERROR!@.@.";
-          Format.printf "Press Enter.@.";
-          ignore (read_line())
+          confirm ()
+      | EvalSkip -> ()
+      | EvalTerminate ->
+          Format.printf "TERMINATES!@.@.";
+          confirm ()
       | TypeBottom ->
-          Format.printf "DIVERGE!@.@.";
-          Format.printf "Press Enter.@.";
-          ignore (read_line())
-  in
-    try
-      Format.printf "Evaluation of abstracted program::@.  @[";
-      pr ();
-    with Skip -> ()
+          Format.printf "DIVERGES!@.@.";
+          confirm ()
+
 
 
 
