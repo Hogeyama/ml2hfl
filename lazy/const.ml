@@ -24,7 +24,7 @@ let rec is_bin c =
 
 (** @param c a constant
     @return whether c is a binary relation on integers *)
-let rec is_ibin c =
+let is_ibrel c =
   match c with
     Event(_)
   | Unit | True | False | Int(_) | RandInt
@@ -98,7 +98,7 @@ let rec pr ppf c =
   | Sub -> Format.fprintf ppf "(-)"
   | Mul -> Format.fprintf ppf "(*)"
 
-let bnot_ibin c =
+let bnot_ibrel c =
   match c with
     EqInt -> NeqInt
   | NeqInt -> EqInt
@@ -108,7 +108,7 @@ let bnot_ibin c =
   | Geq -> Lt
   | _ -> let _ = Format.printf "%a" pr c in assert false
 
-let minus_ibin c =
+let minus_ibrel c =
   match c with
     EqInt -> EqInt
   | NeqInt -> NeqInt
@@ -116,6 +116,16 @@ let minus_ibin c =
   | Gt -> Lt
   | Leq -> Geq
   | Geq -> Leq
+  | _ -> let _ = Format.printf "%a" pr c in assert false
+
+let lift_ibrel c =
+  match c with
+    EqInt -> (=)
+  | NeqInt -> (<>)
+  | Lt -> (<)
+  | Gt -> (>)
+  | Leq -> (<=)
+  | Geq -> (>=)
   | _ -> let _ = Format.printf "%a" pr c in assert false
 
 let rec pr_bin ppf c =

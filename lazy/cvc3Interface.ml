@@ -72,7 +72,7 @@ let rec string_of_term t =
   | Term.Const(_, Const.EqUnit), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " = " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.NeqUnit), [t1; t2] ->
-      string_of_term (Formula.bnot (Formula.eqInt t1 t2))
+      string_of_term (Formula.bnot (Formula.eqUnit t1 t2))
   | Term.Const(_, Const.EqBool), [t1; t2] ->
       "(" ^ string_of_term t1 ^ " <=> " ^ string_of_term t2 ^ ")"
   | Term.Const(_, Const.NeqBool), [t1; t2] ->
@@ -274,6 +274,9 @@ let solve t =
 *)
   List.map
     (fun s ->
+(*
+      let _ = Format.printf "?: %s@." s in
+*)
       let _, s = String.split s "_" in
 (*
       let _ = Format.printf "%s@." s in
@@ -282,5 +285,132 @@ let solve t =
 (*
       let _ = Format.printf "%s, %s@." c n in
 *)
-      Var.make_coeff (Idnt.make c), Term.tint (int_of_string n))
+      Var.parse c, Term.tint (int_of_string n))
+    ss
+
+let bit = 8
+
+let string_of_int_bv n =
+  (*ToDo check whether n can be expressed using bit bits*)
+  String.concat "" ("0bin" :: List.map string_of_int (Util.bv_of_int bit n))
+
+let int_of_string_bv s =
+  let _ = assert (String.starts_with "0bin" s) in
+  let bv = List.map (fun c -> if c = '0' then 0 else if c = '1' then 1 else assert false) (String.explode (String.sub s 4 (String.length s - 4))) in
+  Util.int_of_bv bv
+
+(* encoding unit as 0 *)
+let string_of_type_bv ty =
+  match ty with
+    SimType.Unit -> "BITVECTOR(1)"
+  | SimType.Bool -> "BOOLEAN"
+  | SimType.Int -> "BITVECTOR(" ^ string_of_int bit ^ ")"
+  | SimType.Fun(_, _) -> assert false
+
+let string_of_env_bv env =
+  String.concat "; "
+    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv ty) env)
+
+let string_of_env_comma env =
+  String.concat ", "
+    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv ty) env)
+
+let rec string_of_term_bv t =
+  match Term.fun_args t with
+    Term.Var(_, x), [] ->
+      deco (string_of_var x)
+  | Term.Const(_, Const.Int(n)), [] ->
+      string_of_int_bv n
+  | Term.Const(_, Const.Add), [t1; t2] ->
+      "BVPLUS(" ^ string_of_term_bv t1 ^ ", " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Sub), [t1; t2] ->
+      "BVSUB(" ^ string_of_term_bv t1 ^ ", " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Mul), [t1; t2] ->
+      "BVMULT(" ^ string_of_int bit ^ ", " ^ string_of_term_bv t1 ^ ", " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Minus), [t] ->
+      "BVUMINUS(" ^ string_of_term_bv t ^ ")"
+  | Term.Const(_, Const.Leq), [t1; t2] ->
+      "BVSLE(" ^ string_of_term_bv t1 ^ ", " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Geq), [t1; t2] ->
+      "BVSGE(" ^ string_of_term_bv t1 ^ ", " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Lt), [t1; t2] ->
+      "BVSLT(" ^ string_of_term_bv t1 ^ ", " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Gt), [t1; t2] ->
+      "BVSGT(" ^ string_of_term_bv t1 ^ ", " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.EqUnit), [t1; t2] ->
+      "(" ^ string_of_term_bv t1 ^ " = " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.NeqUnit), [t1; t2] ->
+      string_of_term_bv (Formula.bnot (Formula.eqUnit t1 t2))
+  | Term.Const(_, Const.EqBool), [t1; t2] ->
+      "(" ^ string_of_term_bv t1 ^ " <=> " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.NeqBool), [t1; t2] ->
+      string_of_term_bv (Formula.bnot (Formula.eqBool t1 t2))
+  | Term.Const(_, Const.EqInt), [t1; t2] ->
+      "(" ^ string_of_term_bv t1 ^ " = " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.NeqInt), [t1; t2] ->
+      string_of_term_bv (Formula.bnot (Formula.eqInt t1 t2))
+  | Term.Const(_, Const.Unit), [] ->
+      "0bin0"(*"UNIT"*)
+  | Term.Const(_, Const.True), [] ->
+      "TRUE"
+  | Term.Const(_, Const.False), [] ->
+      "FALSE"
+  | Term.Const(_, Const.And), [t1; t2] ->
+      "(" ^ string_of_term_bv t1 ^ " AND " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Or), [t1; t2] ->
+      "(" ^ string_of_term_bv t1 ^ " OR " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Imply), [t1; t2] ->
+      "(" ^ string_of_term_bv t1 ^ " => " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Iff), [t1; t2] ->
+      "(" ^ string_of_term_bv t1 ^ " <=> " ^ string_of_term_bv t2 ^ ")"
+  | Term.Const(_, Const.Not), [t] -> 
+      "(NOT " ^ string_of_term_bv t ^ ")"
+  | Term.Forall(_, env, t), [] ->
+      assert false
+  | Term.Exists(_, env, t), [] ->
+      assert false
+  | _, _ ->
+      let _ = Format.printf "%a@." Term.pr t in
+      assert false
+
+let solve_bv t =
+  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
+  let _ = cnt := !cnt + 1 in
+  let fm = Format.formatter_of_out_channel cout in
+  let inp =
+    "PUSH;" ^
+    (string_of_env_bv (infer t SimType.Bool)) ^ ";" ^
+    "CHECKSAT " ^ string_of_term_bv t ^ ";" ^
+    "COUNTERMODEL;" ^
+    "POP;\n"
+  in
+  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@." inp in
+  let _ = Format.fprintf fm "%s@?" inp in
+  let _ = close_out cout in
+  let rec aux () =
+    try
+      let s = input_line cin in
+        if Str.string_match (Str.regexp ".*ASSERT") s 0 then
+          let pos_begin = String.index s '(' + 1 in
+          let pos_end = String.index s ')' in
+          let s' = String.sub s pos_begin (pos_end - pos_begin) in
+          if Str.string_match (Str.regexp "cvc3") s' 0
+          then aux ()
+          else s' :: aux ()
+        else
+          aux ()
+    with End_of_file ->
+      []
+  in
+  let ss = aux () in
+  let _ = close_in cin in
+  let _ =
+		  match Unix.close_process (cin, cout) with
+		    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+  in
+  List.map
+    (fun s ->
+      let _, s = String.split s "_" in
+      let c, n = String.split s " = " in
+      Var.parse c, Term.tint (int_of_string_bv n))
     ss

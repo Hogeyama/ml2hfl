@@ -74,7 +74,7 @@ let rec of_formula t =
 
 let rec term_of = function
     Atp_batch.Var(id) ->
-      make_var (Var.make (Idnt.make id))
+      make_var (Var.parse id)
   | Atp_batch.Fn(s, []) when Util.is_int s ->
       tint (int_of_string s)
   | Atp_batch.Fn("+", [t1; t2]) ->
@@ -104,9 +104,9 @@ let rec formula_of p =
   | Atp_batch.Iff(p1, p2) ->
       iff (formula_of p1) (formula_of p2)
   | Atp_batch.Forall(x, p) ->
-      forall [Var.make (Idnt.make x), SimType.Int] (formula_of p)
+      assert false(*forall [Var.parse id, SimType.Int???] (formula_of p)*)
   | Atp_batch.Exists(x, p) ->
-      exists [Var.make (Idnt.make x), SimType.Int] (formula_of p)
+      assert false(*exists [Var.parse id, SimType.Int???] (formula_of p)*)
   | Atp_batch.Atom(Atp_batch.R("=", [t1; t2])) ->
       eqInt (term_of t1) (term_of t2)
   | Atp_batch.Atom(Atp_batch.R("<", [t1; t2])) ->

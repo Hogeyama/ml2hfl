@@ -307,14 +307,3 @@ let int_of t =
   match t with
     Const(_, Const.Int(n)) -> n
   | _ -> raise Not_found
-
-let rec var2coeff t =
-  match t with
-    Var(a, x) -> Var(a, match x with Var.V(id) -> Var.C(id) | _ -> assert false)
-  | Const(a, c) -> Const(a, c)
-  | App(a, t1, t2) -> App(a, var2coeff t1, var2coeff t2)
-  | Call(_, _, _)
-  | Ret(_, _, _, _)
-  | Error(_)
-  | Forall(_, _, _)
-  | Exists(_, _, _) -> assert false

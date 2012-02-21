@@ -65,11 +65,30 @@ let subst_lbs lbs (Hc(popt, ps, ts)) =
   Format.printf "%a@." (Util.pr_list Term.pr ",") ts;
 *)
   let ts = Formula.conjuncts (Formula.simplify (Formula.band ts)) in
+  let bvs = match popt with None -> [] | Some(_, xs) -> xs in
   let ts =
-    let bvs = match popt with None -> [] | Some(_, xs) -> xs in
-    Formula.eqelim (fun x -> List.mem x bvs) ts
+    Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts
   in
-  Hc(popt, [], ts)
+  let ts =
+    Util.map_left
+      (fun ts1 t ts2 ->
+				    let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
+	    			(*
+				    let _ = Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+				    *)
+				    if fvs <> [] && Formula.is_linear t then
+				      let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
+				      let t = AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t) in
+(*
+          let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
+*)
+				      let _ = Format.printf "after:@.  @[%a@]@." Term.pr t in
+				      t
+				    else
+				      t)
+      ts
+  in
+  Hc(popt, [], Formula.conjuncts (Formula.simplify (Formula.band ts)))
 
 let compute_lb lbs (Hc(Some(pid, xs), ps, ts)) =
   let Hc(_, [], ts) = subst_lbs lbs (Hc(Some(pid, xs), ps, ts)) in
@@ -139,7 +158,7 @@ let subst_hcs sub hc =
       let ts = (* this makes the return value of bwd_formula_of huge, try ICFP2012 intro3*)Formula.conjuncts (Formula.simplify (Formula.band ts)) in
       let ts =
         let bvs = (match popt with None -> [] | Some(_, xs) -> xs) @ Util.concat_map fvs_pred ps in
-        Formula.eqelim (fun x -> List.mem x bvs) ts
+        Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts
       in
       let hc = Hc(popt, ps, ts) in
 (*

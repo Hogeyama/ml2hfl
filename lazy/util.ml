@@ -290,6 +290,7 @@ let all_equiv p xs =
 
 (** {6 Functions on sets} *)
 
+(*
 let rec diff xs ys =
   match xs, ys with
     [], [] | [],  _ |  _, [] -> xs
@@ -298,8 +299,13 @@ let rec diff xs ys =
         diff xs' ys
       else
         x'::(diff xs' ys)
+*)
 
+let diff l1 l2 = List.filter (fun x -> not (List.mem x l2)) l1
 let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
+let inter l1 l2 = List.filter (fun x -> List.mem x l2) l1
+let union l1 l2 = List.unique (l1 @ l2)
+let set_equiv l1 l2 = subset l1 l2 && subset l2 l1
 
 (** {6 Functions on matrices} *)
 
@@ -377,3 +383,52 @@ let gcd ns =
       invalid_arg "Util.gcd"
   | n::ns ->
       List.fold_left aux n ns
+
+let bv_not bv =
+  List.map (fun n -> if n = 0 then 1 else if n = 1 then 0 else assert false) bv
+
+let bv_inc bv =
+  let rec aux bv =
+		  match bv with
+      [] -> assert false
+    | 0::bv -> 1 :: bv
+    | 1::bv -> 0 :: aux bv
+  in
+  List.rev (aux (List.rev bv))
+
+let bv_dec bv =
+  let rec aux bv =
+		  match bv with
+      [] -> assert false
+    | 0::bv -> 1 :: aux bv
+    | 1::bv -> 0 :: bv
+  in
+  List.rev (aux (List.rev bv))
+
+let bv_of_nat bits n =
+  let bv, n =
+		  List.fold_right
+		    (fun _ (bv, n) ->
+		      n mod 2 :: bv, n / 2)
+		    (List.init bits (fun _ -> ()))
+		    ([], n)
+  in
+  let _ = assert (n = 0) in
+  bv
+
+let bv_of_int bits n =
+  if n >= 0 then
+    bv_of_nat bits n
+  else
+    bv_inc (bv_not (bv_of_nat bits (-n)))
+
+let nat_of_bv bv =
+  List.fold_left (fun x y -> x * 2 + y) 0 bv
+
+let int_of_bv bv =
+  if List.hd bv = 0 then
+    nat_of_bv bv
+  else if List.hd bv = 1 then
+    -nat_of_bv (bv_not (bv_dec bv))
+  else
+    assert false

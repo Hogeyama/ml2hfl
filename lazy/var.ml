@@ -20,32 +20,32 @@ let make_coeff id = C(id)
 
 let new_var () = V(Idnt.new_id ())
 
-let header = "a"
+let vheader = "v"
+let cheader = "c"
 let separator = "___" (*???*)(*"-"*)
+
+let rec string_of x =
+		match x with
+		  V(id) ->
+		    (try
+		      let _ = String.find (Idnt.string_of id) separator in
+		      assert false
+		    with Invalid_string ->
+        vheader ^ separator ^ Idnt.string_of id)
+		| C(id) ->
+		    (try
+		      let _ = String.find (Idnt.string_of id) separator in
+		      assert false
+		    with Invalid_string ->
+        cheader ^ separator ^ Idnt.string_of id)
+		| T(x, uid, arg) ->
+		    string_of x ^ separator ^ String.of_int uid ^ separator ^ String.of_int arg
 
 let string_of2 x =
   match x with
     V(id) | C(id) ->
       Idnt.string_of id
   | T(_, _, _) -> assert false
-
-let string_of x =
-  match x with
-    C(id) ->
-      Idnt.string_of id
-  | _ ->
-				  let rec f x =
-				    match x with
-				      V(id) ->
-				        (try
-				          let _ = String.find (Idnt.string_of id) separator in
-				          assert false
-				        with Invalid_string -> Idnt.string_of id)
-				    | C(_) -> assert false
-				    | T(x, uid, arg) ->
-				        f x ^ separator ^ String.of_int uid ^ separator ^ String.of_int arg
-				  in
-				  header ^ separator ^ f x
 
 let parse s =
   let rec f x ss =
@@ -55,12 +55,16 @@ let parse s =
         f (T(x, int_of_string s1, int_of_string s2)) ss
     | _ -> assert false
   in
-  if String.starts_with s header then
+  if String.starts_with s vheader then
     match String.nsplit s separator with
       _::s::ss -> f (V(Idnt.make s)) ss
     | _ -> assert false
+  else if String.starts_with s cheader then
+    match String.nsplit s separator with
+      _::s::ss -> f (C(Idnt.make s)) ss
+    | _ -> assert false
   else
-    V(Idnt.make s)
+    assert false(*V(Idnt.make s)*)
 
 let equiv x y = x = y
 

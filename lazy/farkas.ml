@@ -8,15 +8,13 @@ open ParLinArith
 (** @param an unsatisfiable formula *)
 let farkas t =
   let tss = dnf (elim_neq_int t) in
-  let aifss = List.map (List.map (fun t -> canonize_aif (try aif_of t with Invalid_argument _ -> assert false))) tss in
-  let _ =
-		  List.iter
-		    (fun aifs ->
-		      Format.printf "canonized unsatisfiable constraints:@.  @[<v>%a@]@." (Util.pr_list pr_aif "@,") aifs)
-		    aifss
+  let tss = 
+    dnf (Formula.simplify (Formula.bor (List.map Formula.band tss)))
   in
+  let aifss = List.map (List.map (fun t -> canonize_aif (try aif_of t with Invalid_argument _ -> Format.printf "%a@." Term.pr t; assert false))) tss in
 		List.map
 				(fun aifs ->
+		    let _ = Format.printf "canonized unsatisfiable constraints:@.  @[<v>%a@]@." (Util.pr_list pr_aif "@,") aifs in
       let aifs = (Const.Geq, [], tint 1) :: aifs in
 						let ls = List.map (fun _ -> make_var (Var.new_var ())) aifs in
 						let vs = List.unique (Util.concat_map (fun (_, nxs, _) -> List.map snd nxs) aifs) in

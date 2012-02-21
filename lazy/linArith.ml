@@ -97,7 +97,7 @@ let rec of_term t =
   | Const(_, Const.Minus), [t] ->
       minus (of_term t)
   | _ ->
-      let _ = Format.printf "%a@." Term.pr t in
+      (*let _ = Format.printf "%a@." Term.pr t in*)
       invalid_arg "LinArith.of_term"
 
 let term_of (nxs, n) =
@@ -124,7 +124,7 @@ let pos_neg_terms_of (nxs, n) =
 
 let aif_of t =
 		match fun_args t with
-		  Const(_, c), [t1; t2] when Const.is_ibin c ->
+		  Const(_, c), [t1; t2] when Const.is_ibrel c ->
 		    let nxs, n = of_term (sub t1 t2) in
 		    c, nxs, n
 		| _ -> invalid_arg "LinArith.aif_of"

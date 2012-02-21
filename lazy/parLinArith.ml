@@ -116,7 +116,7 @@ let rec of_term t =
   | Const(_, Const.Minus), [t] ->
       minus (of_term t)
   | _ ->
-      let _ = Format.printf "%a@." Term.pr t in
+      (*let _ = Format.printf "%a@." Term.pr t in*)
       invalid_arg "ParLinArith.of_term"
 
 let term_of (nxs, n) =
@@ -152,11 +152,11 @@ let pos_neg_terms_of (nxs, n) =
 
 let aif_of t =
 		match fun_args t with
-		  Const(_, c), [t1; t2] when Const.is_ibin c ->
+		  Const(_, c), [t1; t2] when Const.is_ibrel c ->
 		    let nxs, n = of_term (sub t1 t2) in
 		    c, nxs, n
 		| _ ->
-      let _ = Format.printf "%a@." Term.pr t in
+      (*let _ = Format.printf "%a@." Term.pr t in*)
       invalid_arg "ParLinArith.aif_of"
 
 let pr_aif ppf (c, nxs, n) =
@@ -217,9 +217,9 @@ let factorize (nxs, n) =
 		  in
 		  let d = Util.gcd (List.map (fun (c, _) -> abs c) cxs) in
 		  let cxs = List.map (fun (c, xopt) -> c / d, xopt) cxs in
-		  NonLinArith.mul_coeff d pol,
+    tint d ::
+		  NonLinArith.factorize pol @
 		  let nxs, ns = Util.partition_map (function (c, None) -> `R(c) | (c, Some(x)) -> `L(c, x)) cxs in
-		  nxs, List.fold_left (+) 0 ns
+		  [LinArith.term_of (nxs, List.fold_left (+) 0 ns)]
   with Not_found ->
-    NonLinArith.of_term (term_of (nxs, n)),
-    ([], 1)
+    NonLinArith.factorize (NonLinArith.of_term (term_of (nxs, n)))

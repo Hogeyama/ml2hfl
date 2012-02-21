@@ -13,32 +13,45 @@ let refineRefTypes prog etrs =
 		    let hcs = List.concat hcss in
 				  let _ = Format.printf "call trees:@.  @[<v>%a@]@." (Util.pr_list CallTree.pr "@,") ctrs in
 				  let _ = Format.printf "horn clauses:@.  @[<v>%a@]@." (Util.pr_list HornClause.pr "@,") hcs in
-      let t = HornClause.formula_of hcs in
-      let t = Formula.simplify (Formula.linearize t) in
-      let _ = Format.printf "unsatisfiable constraint:@.  @[<v>%a@]@." Term.pr t in
-      let ts = Farkas.farkas t in
-      let qfts =
-        List.map
-          (fun t ->
-            let _ = Format.printf "constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
-            let qft = Term.var2coeff (AtpInterface.real_qelim t) in
-            let _ = Format.printf "quantifier eliminated constraint on coefficients:@.  @[<v>%a@]@." Term.pr qft in
-            qft)
-          ts
-      in
-      let _ = ext_constrs := qfts @ !ext_constrs in
-      let _ =
-        if List.for_all (fun qft -> Cvc3Interface.is_valid (Term.subst (fun x -> List.assoc x !ext_coeffs) qft)) qfts then
-          ()
+      let hcs =
+        if false then
+          hcs
         else
-          let coeffs = Cvc3Interface.solve (Formula.band !ext_constrs) in
-          let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
-          let pr_aux ppf (c, t) = Format.fprintf ppf "%a = %a" Var.pr c Term.pr t in
-          Format.printf "solutions:@.  @[<v>%a@]@." (Util.pr_list pr_aux "@,") !ext_coeffs
+				      let t = HornClause.formula_of hcs in
+				      let _ = Format.printf "unsatisfiable constraint:@.  @[<v>%a@]@." Term.pr t in
+				      let t = Formula.simplify (Formula.linearize t) in
+				      let _ = Format.printf "linearized unsatisfiable constraint:@.  @[<v>%a@]@." Term.pr t in
+				      let qfts =
+						      if Formula.is_linear t then
+				          let fvs = Term.fvs t in
+				          let t = Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t in
+								      let qft = Formula.simplify (Formula.bnot (AtpInterface.integer_qelim t)) in
+								      let _ = Format.printf "quantifier eliminated constraint on coefficients:@.  @[<v>%a@]@." Term.pr qft in
+								      [qft]
+						      else
+								      let ts = Farkas.farkas t in
+								      List.map
+								        (fun t ->
+								          let _ = Format.printf "constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
+								          let qft = AtpInterface.real_qelim t in
+								          let _ = Format.printf "quantifier eliminated constraint on coefficients:@.  @[<v>%a@]@." Term.pr qft in
+								          qft)
+								        ts
+				      in
+				      let _ = ext_constrs := qfts @ !ext_constrs in
+						    let _ =
+				        let pr_aux ppf (c, t) = Format.fprintf ppf "%a = %a" Var.pr c Term.pr t in
+						      if List.for_all (fun qft -> Cvc3Interface.is_valid (Term.subst (fun x -> List.assoc x !ext_coeffs) qft)) qfts then
+						        Format.printf "solutions (not changed):@.  @[<v>%a@]@." (Util.pr_list pr_aux "@,") !ext_coeffs
+						      else
+						        let coeffs = Cvc3Interface.solve (Formula.band !ext_constrs) in
+						        let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
+						        Format.printf "solutions:@.  @[<v>%a@]@." (Util.pr_list pr_aux "@,") !ext_coeffs
+						    in
+						    List.map (HornClause.subst (fun x -> List.assoc x !ext_coeffs)) hcs
       in
-      let hcs = List.map (HornClause.subst (fun x -> List.assoc x !ext_coeffs)) hcs in
-		    let sol = HcSolve.solve ctrs hcs in
-      List.map (fun (x, (_, t)) -> `P(x, t)) sol
+				  let sol = HcSolve.solve ctrs hcs in
+		    List.map (fun (x, (_, t)) -> `P(x, t)) sol
 		  else
 						let constrss = List.map TcGenRefType.cgen etrs in
 				  (*

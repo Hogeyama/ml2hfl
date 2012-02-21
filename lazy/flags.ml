@@ -1,6 +1,6 @@
 (** Flags for verifier *)
 
-let debug = ref false
+let debug = ref true
 
 (** {6 Flags for predicate discovery} *)
 
