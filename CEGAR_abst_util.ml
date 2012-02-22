@@ -202,7 +202,6 @@ let filter env cond pbs must t =
       let ff = make_dnf (List.map fst bottoms') in
         make_if ff (Const Bottom) t
 
-let filter env cond pbs must t = t
 
 
 let print_pbs fm pbs =

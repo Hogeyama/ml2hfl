@@ -114,7 +114,7 @@ let rec eval_abst_cbn prog labeled abst ce =
       | "r" -> eval_abst_cbn prog labeled abst ce
       | s -> confirm ()
   in
-    Format.printf "Evaluation of abstracted program::@.  @[";
+    Format.printf "Evaluation of abstracted program::@.";
     try
       loop ce' (Var main)
     with

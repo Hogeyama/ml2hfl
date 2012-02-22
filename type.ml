@@ -77,12 +77,12 @@ let rec print print_pred fm typ =
       | TVar _ -> Format.fprintf fm "!!!"
       | TFun(x, typ) ->
           if Id.to_string x = ""
-          then Format.fprintf fm "(%a -> %a)" print (Id.typ x) print typ
-          else Format.fprintf fm "(%a:%a -> %a)" Id.print x print (Id.typ x) print typ
+          then Format.fprintf fm "(@[%a@ ->@ %a@])" print (Id.typ x) print typ
+          else Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print (Id.typ x) print typ
       | TUnknown -> Format.fprintf fm "???"
-      | TList(typ,[]) -> Format.fprintf fm "%a list" print typ
-      | TList(typ,ps) -> Format.fprintf fm "%a list[%a]" print typ print_preds ps
-      | TPair(typ1,typ2) -> Format.fprintf fm "(%a * %a)" print typ1 print typ2
+      | TList(typ,[]) -> Format.fprintf fm "@[%a list@]" print typ
+      | TList(typ,ps) -> Format.fprintf fm "@[%a list[%a]@]" print typ print_preds ps
+      | TPair(typ1,typ2) -> Format.fprintf fm "(@[%a@ *@ %a@])" print typ1 print typ2
       | TVariant _ -> assert false
 (*
       | TVariant ctypss ->

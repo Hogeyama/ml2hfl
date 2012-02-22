@@ -224,9 +224,11 @@ let rec eta_reduce_term = function
   | App(t1,t2) -> App(eta_reduce_term t1, eta_reduce_term t2)
   | Let _ -> assert false
   | Fun(x, typ, t) ->
-      match eta_reduce_term t with
-          App(t, Var y) when x = y && not (List.mem y (get_fv t)) -> t
-        | t' -> Fun(x, typ, t')
+      let t' = eta_reduce_term t in
+      match t' with
+          App(App(App(Const If,_),_),_) -> Fun(x, typ, t')
+        | App(t, Var y) when x = y && not (List.mem y (get_fv t)) -> t
+        | _ -> Fun(x, typ, t')
 (*
 let eta_reduce_term t =
   Format.printf "REDUCE: [%a]@." print_term t;
@@ -342,12 +344,12 @@ let abstract (prog:prog) =
   let () = if false then Format.printf "ABST:@\n%a@." CEGAR_print.print_prog prog in
   let prog = Typing.infer prog in
   let prog = lift2 prog in
-  let () = if false then Format.printf "LIFT:@\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "LIFT:@\n%a@." CEGAR_print.print_prog prog in
   let prog = trans_eager prog in
-  let () = if false then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.print_prog prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
-  let () = if false then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.print_prog_typ prog in
+  let () = if false then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.print_prog prog in
   let prog = lift2 prog in
     labeled, prog
 

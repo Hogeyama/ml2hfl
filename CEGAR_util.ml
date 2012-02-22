@@ -79,7 +79,7 @@ let rec put_into_if_term = function
                 let t3' = put_into_if_term t3 in
                 let ts'' = List.map put_into_if_term ts' in
                 make_if t1' (put_into_if_term (make_app t2' ts'')) (put_into_if_term (make_app t3' ts''))
-            | _ -> assert false
+            | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
         else
           let ts' = List.map put_into_if_term ts in
             make_app t' ts'

@@ -13,7 +13,9 @@ let print_error_information () =
 
 let parse_error _ = print_error_information ()
 
-let new_var s = Id.make 0 s (TInt[])
+let make_id s = Id.make 0 s (TInt[])
+let make_id_typ typ = Id.make 0 "" typ
+let orig_id x = {x with Id.id = 0}
 %}
 
 %token EOF
@@ -119,7 +121,7 @@ exp:
   { make_not $2 }
 
 id:
-| IDENT { new_var $1 }
+| IDENT { make_id $1 }
 
 typedefs:
   { [] }
@@ -138,9 +140,15 @@ typ_base:
 
 typ_base_id:
 | id COLON typ_base
-  { $1, $3 }
+  {
+    let x = Id.new_var_id $1 in
+Format.printf "PARSE1: %a@." pp_print_typ $3;
+let typ = subst_type $1 (make_var abst_var) $3 in
+Format.printf "PARSE2: %a@." pp_print_typ typ;
+      Some {x with Id.typ=typ}, typ
+  }
 | typ_base
-  { new_var "", $1 }
+  { None, $1 }
 
 typ:
 | LPAREN typ RPAREN
@@ -148,18 +156,25 @@ typ:
 | typ_base_id
   { $1 }
 | typ TIMES typ
-  { new_var "", TPair(snd $1, snd $3) }
+  { None, TPair(snd $1, snd $3) }
 | typ LIST
-  { new_var "", TList(snd $1, []) }
+  { None, TList(snd $1, []) }
 | typ LIST LSQUAR pred_list RSQUAR
-  { new_var "", TList(snd $1, $4) }
+  { None, TList(snd $1, $4) }
 | typ ARROW typ
   {
     let x1,typ1 = $1 in
     let x2,typ2 = $3 in
-    let x = {x1 with Id.typ=subst_type x1 (make_var abst_var) typ1} in
-    let typ = subst_type x2 (make_var abst_var) typ2 in
-      new_var "", TFun(x, typ)
+    let x1',typ2' =
+      match x1 with
+          None -> make_id_typ typ1, typ2
+        | Some x1' ->
+            let typ2' = subst_type (orig_id x1') (make_var x1') typ2 in
+              if typ2 = typ2'
+              then make_id_typ typ1, typ2
+              else x1', typ2'
+    in
+      None, TFun(x1', typ2')
   }
 
 pred_list:
