@@ -142,9 +142,7 @@ typ_base_id:
 | id COLON typ_base
   {
     let x = Id.new_var_id $1 in
-Format.printf "PARSE1: %a@." pp_print_typ $3;
-let typ = subst_type $1 (make_var abst_var) $3 in
-Format.printf "PARSE2: %a@." pp_print_typ typ;
+    let typ = subst_type $1 (make_var abst_var) $3 in
       Some {x with Id.typ=typ}, typ
   }
 | typ_base
