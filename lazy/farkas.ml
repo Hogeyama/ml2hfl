@@ -12,7 +12,14 @@ let farkas t =
   let tss = 
     dnf (Formula.simplify (Formula.bor (List.map Formula.band tss)))
   in
-  let aifss = List.map (List.map (fun t -> canonize_aif (try aif_of t with Invalid_argument _ -> Format.printf "%a@." Term.pr t; assert false))) tss in
+  let aifss =
+    List.map
+      (List.map
+        (fun t ->
+          canonize_aif
+            (try aif_of t with Invalid_argument _ -> Format.printf "%a@." Term.pr t; assert false)))
+      tss
+  in
 		List.map
 				(fun aifs ->
 		    let _ = Format.printf "unsatisfiable constraints:@.  @[<v>%a@]@." (Util.pr_list pr_aif "@,") aifs in

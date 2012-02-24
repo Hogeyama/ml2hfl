@@ -178,7 +178,8 @@ let pr_aif ppf (c, nxs, n) =
 		      ">="
 		  | _ -> assert false)
 
-(** the result only uses geq and eq *)
+(** the result only uses geq and eq
+    require: c is not <> *)
 let canonize_aif (c, nxs, n) =
   match c with
     Const.EqInt ->

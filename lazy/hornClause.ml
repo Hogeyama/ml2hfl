@@ -62,36 +62,56 @@ let subst_lbs lbs (Hc(popt, ps, ts)) =
 		      ps)
   in
 (*
-  Format.printf "%a@." (Util.pr_list Term.pr ",") ts;
+  Format.printf "1:%a@." (Util.pr_list Term.pr ",") ts;
 *)
   let ts = Formula.conjuncts (Formula.simplify (Formula.band ts)) in
+(*
+  Format.printf "2:%a@." (Util.pr_list Term.pr ",") ts;
+*)
   let bvs = match popt with None -> [] | Some(_, xs) -> xs in
   let ts =
     Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts
   in
-  let ts =
-    Util.map_left
-      (fun ts1 t ts2 ->
-				    let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
-	    			(*
-				    let _ = Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
-				    *)
-				    if fvs <> [] && Formula.is_linear t then
-				      let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
-				      let t =
-            try
-              AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
-            with Util.NotImplemented _ ->
-              t
-          in
 (*
-          let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
+  Format.printf "3:%a@." (Util.pr_list Term.pr ",") ts;
 *)
-				      let _ = Format.printf "after:@.  @[%a@]@." Term.pr t in
-				      t
-				    else
-				      t)
-      ts
+  let ts =
+    if true then
+      let t = Formula.band ts in
+      if Formula.is_linear t then
+						  let fvs = List.unique (Util.diff (Term.fvs t) bvs) in
+				    try
+				      Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
+				    with Util.NotImplemented _ ->
+				      ts
+      else
+        ts
+    else
+		    Util.map_left
+		      (fun ts1 t ts2 ->
+						    let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
+			    			(*
+						    let _ = Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+						    *)
+						    if fvs <> [] && Formula.is_linear t then
+						      let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
+						      let t =
+		            if true then
+				            try
+				              AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
+				            with Util.NotImplemented _ ->
+				              t
+		            else
+		              t
+		          in
+          		(*
+		          let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
+          		*)
+						      let _ = Format.printf "after:@.  @[%a@]@." Term.pr t in
+						      t
+						    else
+						      t)
+		      ts
   in
   Hc(popt, [], Formula.conjuncts (Formula.simplify (Formula.band ts)))
 
@@ -160,7 +180,7 @@ let subst_hcs sub hc =
       in
       let ps = List.concat pss in
       let ts = ts @ List.concat tss in
-      let ts = (* this makes the return value of bwd_formula_of huge, try ICFP2012 intro3*)Formula.conjuncts (Formula.simplify (Formula.band ts)) in
+      let ts = (* this makes the return value of bwd_formula_of huge, e.g. ICFP2012 intro3*)Formula.conjuncts (Formula.simplify (Formula.band ts)) in
       let ts =
         let bvs = (match popt with None -> [] | Some(_, xs) -> xs) @ Util.concat_map fvs_pred ps in
         Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts

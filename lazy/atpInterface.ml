@@ -11,7 +11,7 @@ let rec of_term t =
   | Const(_, Const.Event(_)), [] ->
       assert false
   | Const(_, Const.Unit), [] ->
-      assert false
+      raise (Util.NotImplemented  "AtpInterface.of_term")
   | Const(_, Const.Int(n)), [] ->
       Atp_batch.Fn((*Num.*)string_of_int n, [])
   | Const(_, Const.RandInt), [] ->
@@ -32,7 +32,9 @@ let rec of_term t =
 
 let rec of_formula t =
   match fun_args t with
-    Const(_, Const.True), [] ->
+    Var(_, _), [] ->
+      raise (Util.NotImplemented "AtpInterface.of_formula")
+  | Const(_, Const.True), [] ->
       Atp_batch.True
   | Const(_, Const.False) , [] ->
       Atp_batch.False
@@ -71,6 +73,9 @@ let rec of_formula t =
       List.fold_right (fun (x, _) phi -> Atp_batch.Forall(Var.string_of x , phi)) env (of_formula t)
   | Exists(_, env, t), [] ->
       List.fold_right (fun (x, _) phi -> Atp_batch.Exists(Var.string_of x , phi)) env (of_formula t)
+  | _ ->
+      let _ = Format.printf "%a@." Term.pr t in
+      assert false
 
 let rec term_of = function
     Atp_batch.Var(id) ->

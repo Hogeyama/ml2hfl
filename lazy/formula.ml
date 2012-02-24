@@ -438,7 +438,12 @@ and dnfn t =
   | Const(_, Const.Not), [t] -> 
       dnf t
   | Const(a, bop), [t1; t2] ->
-      [[apply (Const(a, Const.bnot_ibrel bop)) [t1; t2]]]
+      let c = Const.bnot_ibrel bop in
+      (match c with
+        Const.NeqInt ->
+          [[lt t1 t2]; [gt t1 t2]]
+      | _ ->
+          [[apply (Const(a, c)) [t1; t2]]])
   | t, _-> Format.printf "@.%a@." Term.pr t; assert false
 
 let formula_of_dnf tss =
@@ -609,10 +614,20 @@ let rec eqelim p ts =
             else
               None
     						with Invalid_argument _ ->
-            None)
+            (match fun_args t with
+              Const(_, Const.EqUnit), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) ->
+                Some(x, t, SimType.Unit)
+            | Const(_, Const.EqUnit), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) ->
+                Some(x, t, SimType.Unit)
+            | Const(_, Const.EqBool), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) ->
+                Some(x, t, SimType.Bool)
+            | Const(_, Const.EqBool), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) ->
+                Some(x, t, SimType.Bool)
+            | _ ->
+                None))
 		      ts
 		  in
-    (* simplify possibly makes the return value huge, try ICFP2012 intro3
+    (* simplify possibly makes the return value huge, e.g. ICFP2012 intro3
        ToDo: control size increase*)
 		  List.map simplify (eqelim p (conjuncts (simplify (eqelim_fes p (ts1 @ ts2, [xtty])))))
   with Not_found ->
@@ -671,25 +686,36 @@ let rec linearize t =
 
 let rec is_linear t =
   match fun_args t with
-    Const(attr, Const.True), [] ->
+    Var(_, _), [] ->
       true
-  | Const(attr, Const.False), [] ->
+  | Const(_, Const.True), [] ->
       true
-  | Const(attr, Const.Not), [t] ->
+  | Const(_, Const.False), [] ->
+      true
+  | Const(_, Const.Not), [t] ->
       is_linear t
-  | Const(attr, Const.And), [t1; t2]
-  | Const(attr, Const.Or), [t1; t2] ->
+  | Const(_, Const.And), [t1; t2]
+  | Const(_, Const.Or), [t1; t2]
+  | Const(_, Const.Imply), [t1; t2]
+  | Const(_, Const.Iff), [t1; t2] ->
       is_linear t1 && is_linear t2
-  | Const(attr, c), [_; _] when Const.is_ibrel c ->
+  | Const(_, c), [_; _] when Const.is_ibrel c ->
 				  (try
         let _ = LinArith.aif_of t in
         true
       with Invalid_argument _ ->
 		      false)
+  | Const(_, Const.EqUnit), [_; _]
+  | Const(_, Const.NeqUnit), [_; _]
+  | Const(_, Const.EqBool), [_; _]
+  | Const(_, Const.NeqBool), [_; _] ->
+      true
   | Forall(_, _, t), []
   | Exists(_, _, t), [] ->
       is_linear t
-  | _ -> assert false
+  | _ ->
+      let _ = Format.printf "%a@." pr t in
+      assert false
 
 let rec elim_minus t =
   match fun_args t with
@@ -703,6 +729,10 @@ let rec elim_minus t =
       band [elim_minus t1; elim_minus t2]
   | Const(attr, Const.Or), [t1; t2] ->
       bor [elim_minus t1; elim_minus t2]
+  | Const(attr, Const.Imply), [t1; t2] ->
+      imply (elim_minus t1) (elim_minus t2)
+  | Const(attr, Const.Iff), [t1; t2] ->
+      iff (elim_minus t1) (elim_minus t2)
   | Const(attr, c), [_; _] when Const.is_ibrel c ->
 				  (try
         let c, pol = NonLinArith.aif_of t in

@@ -6,10 +6,19 @@ open HornClause
 
 (** Horn clauses generation for refinement type inference *)
 
+let related n1 n2 =
+  let tmp = Var.tlfc_of (Var.T(fst n1, snd n1, (*dummy*)-1)) in
+  Var.ancestor_of tmp n2
+let related_locs loc =
+  let Loc(tr, _) = loc in
+		find_all
+		  (fun nd ->
+		    related (get tr).name nd.name)
+		  (root loc)
+
 (** generate a set of constraints from an error trace *)
 let cgen env etr =
   let rec aux (Loc(tr, p) as loc) hcs etr0 =
-    let pre = SimType.find_last_base env (get tr).name in
     match etr0 with
       [] ->
         assert false
@@ -28,23 +37,40 @@ let cgen env etr =
 				          aux (up (Loc(set tr nd', p))) hcs etr
             else assert false
         | Trace.Arg(xttys) ->
-            let ts = List.filter_map (fun (x, t, ty) -> if SimType.is_base ty then Some(Formula.eq_xtty (x, t, ty)) else None) xttys in
+            let ts =
+              List.filter_map
+                (fun (x, t, ty) ->
+                  if SimType.is_base ty then
+                    Some(Formula.eq_xtty (x, t, ty))
+                  else
+                    None)
+                xttys
+            in
             if ts <> [] then
-		            let x, _, _ =
-		               List.find (fun (_, _, ty) -> SimType.is_base ty) (List.rev xttys)
-		            in
-		            let pres =
-		             (if Var.is_avail pre then [pred_of env pre] else []) @ 
-		             (List.filter_map
-		               (fun tr ->
-		                 match (get tr).ret with
-		                   None -> assert false
-		                 | Some(x_uid) ->
-		                     (try Some(pred_of env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
-		               (children tr))
-		            in
-		            let nd = get tr in
-		            let hcs = (Hc(Some(pred_of env x), pres, nd.data @ ts))::hcs in
+		            let hcs =
+		  								    let locs = related_locs loc in
+				            let pres =
+		                Util.concat_map
+		                  (fun (Loc(tr, _)) ->
+								              (try [pred_of env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
+								              (List.filter_map
+								                (fun tr ->
+								                  match (get tr).ret with
+								                    None -> assert false
+								                  | Some(x_uid) ->
+								                      (try Some(pred_of env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
+								                (children tr)))
+		                  locs
+				            in
+				            let x, _, _ =
+				              List.find
+		                  (fun (_, _, ty) -> SimType.is_base ty)
+		                  (List.rev xttys)
+				            in
+                let ts = Util.concat_map (fun (Loc(tr, _)) -> (get tr).data) locs @ ts in
+                (Hc(Some(pred_of env x), pres, ts))::hcs
+              in
+  		          let nd = get tr in
 		            aux (Loc(set tr { nd with data = nd.data @ ts }, p)) hcs etr
             else
               aux (Loc(tr, p)) hcs etr
@@ -64,6 +90,7 @@ let cgen env etr =
             let nd = get tr in
             root (Loc(set tr { nd with closed = false }, path_set_open p)),
             (* assume that fail is NOT a proper subterm of the function definition *)
+            let pre = SimType.find_last_base env (get tr).name in
             (Hc(None, [pred_of env pre], (get tr).data))::hcs)
   in
   match etr with

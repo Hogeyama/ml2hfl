@@ -413,7 +413,10 @@ let bv_of_nat n =
     else
   				aux (n mod 2 :: bv) (n / 2)
   in
-  aux [] n
+  if n = 0 then
+    [0]
+  else
+    aux [] n
 
 let bv_of_int bits n =
   assert false

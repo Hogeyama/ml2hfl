@@ -197,7 +197,7 @@ let interpolate_chk t1 t2 =
     Formula.simplify (interpolate t1 t2)
   with No_interpolant ->
 				if !Flags.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
-				  let _ = Format.printf "an error has occurred because of CSIsat@." in
+				  let _ = Format.printf "an error of CSIsat@." in
 				  assert false
 				else
 						raise No_interpolant
