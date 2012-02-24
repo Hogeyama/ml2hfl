@@ -197,7 +197,7 @@ and print_term pri typ fm t =
     | Nil -> fprintf fm "[]"
     | Cons(t1,t2) ->
         let p = 7 in
-        let s1,s2 = paren pri (p+1) in
+        let s1,s2 = paren pri p in
           fprintf fm "%s%a::@,%a%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
     | Constr(s,ts) ->
         let p = 8 in

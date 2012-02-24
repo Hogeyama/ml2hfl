@@ -142,14 +142,16 @@ let arg_spec =
    "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
    "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
-   "-trecs", Arg.String Flag.(fun cmd -> trecs := cmd), Format.sprintf " Change trecs command (default: \"%s\")" !Flag.trecs;
+   "-trecs", Arg.String Flag.(fun cmd -> trecs := cmd),
+             Format.sprintf "<cmd>  Change trecs command yr <cmd> (default: \"%s\")" !Flag.trecs;
    "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicates accumulation";
    "-rc", Arg.Set Flag.relative_complete, " To be relative complete";
    "-gp", Arg.Set Flags.generalize_predicates, " Generalize predicates";
    "-eap", Arg.Set Flags.extract_atomic_predicates, " Extract atomic predicates";
-   "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions"
+   "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
+   "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
   ]
 
 
