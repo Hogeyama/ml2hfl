@@ -22,19 +22,19 @@ let pr ppf (nxs, n) =
           else
             assert false
         in
-				    List.iter
-				      (fun (n, x) ->
+        List.iter
+          (fun (n, x) ->
             if n > 0 then
-  				        let _ = Format.fprintf ppf " + " in
+              let _ = Format.fprintf ppf " + " in
               let _ = if n <> 1 then Format.fprintf ppf "%d " n in
               Format.fprintf ppf "%a" Var.pr x
             else if n < 0 then
-  				        let _ = Format.fprintf ppf " - " in
+              let _ = Format.fprintf ppf " - " in
               let _ = if -n <> 1 then Format.fprintf ppf "%d " (-n) in
               Format.fprintf ppf "%a" Var.pr x
             else
               assert false)
-				      nxs
+          nxs
     | _ -> ()
   in
   if n > 0 then
@@ -53,11 +53,11 @@ let coeff (nxs, _) x =
 
 let canonize (nxs, n) =
   List.filter (fun (n, _) -> n <> 0)
-		  (List.map
-		    (function ((n, x)::nxs) ->
-		      (List.fold_left (+) n (List.map fst nxs), x)
-		    | _ -> assert false)
-		    (Util.classify (fun (_, x1) (_, x2) -> Var.equiv x1 x2) nxs)),
+    (List.map
+      (function ((n, x)::nxs) ->
+        (List.fold_left (+) n (List.map fst nxs), x)
+      | _ -> assert false)
+      (Util.classify (fun (_, x1) (_, x2) -> Var.equiv x1 x2) nxs)),
   n
 
 let mul_coeff m (nxs, n) =
@@ -115,19 +115,36 @@ let term_of (nxs, n) =
   in
   sum ts
 
-let pos_neg_terms_of (nxs, n) =
-  let nxs1, nxs2 = List.partition (fun (n, _) -> assert (n <> 0); n > 0) nxs in
-  sum ((if n > 0 then [tint n] else []) @ List.map (fun (n, x) -> if n = 1 then make_var x else Term.mul (tint n) (make_var x)) nxs1),
-  sum ((if n < 0 then [tint (-n)] else []) @ List.map (fun (n, x) -> if n = -1 then make_var x else Term.mul (tint (-n)) (make_var x)) nxs2)
-
 (** {6 Functions on linear atomic integer formulas} *)
 
+let div_gcd_aif (c, nxs, n) =
+  let m = Util.gcd (abs n :: (List.map (fun (n, _) -> abs n) nxs)) in
+  let _ = assert (m <> 0) in
+  c, List.map (fun (n, x) -> n / m, x) nxs, n / m
+
 let aif_of t =
-		match fun_args t with
-		  Const(_, c), [t1; t2] when Const.is_ibrel c ->
-		    let nxs, n = of_term (sub t1 t2) in
-		    c, nxs, n
-		| _ -> invalid_arg "LinArith.aif_of"
+  match fun_args t with
+    Const(_, c), [t1; t2] when Const.is_ibrel c ->
+      let nxs, n = of_term (sub t1 t2) in
+      div_gcd_aif (c, nxs, n)
+  | _ -> invalid_arg "LinArith.aif_of"
+
+let term_of_aif (c, nxs, n) =
+  if c = Const.IBTrue then
+    Const([], Const.True)
+  else if c = Const.IBFalse then
+    Const([], Const.False)
+  else if nxs = [] then
+    if Const.lift_ibrel c n 0 then
+      Const([], Const.True)
+    else
+      Const([], Const.False)
+  else
+    let nxs1, nxs2 = List.partition (fun (n, _) -> assert (n <> 0); n > 0) nxs in
+    apply
+      (Const([], c))
+      [sum ((if n > 0 then [tint n] else []) @ List.map (fun (n, x) -> if n = 1 then make_var x else Term.mul (tint n) (make_var x)) nxs1);
+       sum ((if n < 0 then [tint (-n)] else []) @ List.map (fun (n, x) -> if n = -1 then make_var x else Term.mul (tint (-n)) (make_var x)) nxs2)]
 
 (** {6 Other functions} *)
 

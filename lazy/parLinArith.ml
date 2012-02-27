@@ -23,32 +23,32 @@ let pr ppf (nxs, n) =
           else
             Format.fprintf ppf "0"(*???*)
         in
-				    List.iter
-				      (fun (n, x) ->
+        List.iter
+          (fun (n, x) ->
             try
-		            let n = int_of n in
-		            if n > 0 then
-		  				        let _ = Format.fprintf ppf " + " in
-		              let _ = if n <> 1 then Format.fprintf ppf "%d " n in
-		              Format.fprintf ppf "%a" Var.pr x
-		            else if n < 0 then
-		  				        let _ = Format.fprintf ppf " - " in
-		              let _ = if -n <> 1 then Format.fprintf ppf "%d " (-n) in
-		              Format.fprintf ppf "%a" Var.pr x
+              let n = int_of n in
+              if n > 0 then
+                let _ = Format.fprintf ppf " + " in
+                let _ = if n <> 1 then Format.fprintf ppf "%d " n in
+                Format.fprintf ppf "%a" Var.pr x
+              else if n < 0 then
+                let _ = Format.fprintf ppf " - " in
+                let _ = if -n <> 1 then Format.fprintf ppf "%d " (-n) in
+                Format.fprintf ppf "%a" Var.pr x
               else
                 Format.fprintf ppf "+ 0"(*???*)
             with Not_found ->
-		  				      Format.fprintf ppf " + %a %a" Term.pr n Var.pr x)
-				      nxs
+              Format.fprintf ppf " + %a %a" Term.pr n Var.pr x)
+          nxs
   in
   try
-		  let n = int_of n in
-		  if n > 0 then
-		    let _ = if nxs <> [] then Format.fprintf ppf " + " in
-		    Format.fprintf ppf "%d" n
-		  else if n < 0 then
-		    let _ = if nxs <> [] then Format.fprintf ppf " - " in
-		    Format.fprintf ppf "%d" (-n)
+    let n = int_of n in
+    if n > 0 then
+      let _ = if nxs <> [] then Format.fprintf ppf " + " in
+      Format.fprintf ppf "%d" n
+    else if n < 0 then
+      let _ = if nxs <> [] then Format.fprintf ppf " - " in
+      Format.fprintf ppf "%d" (-n)
     else
       ()(*???*)
   with Not_found ->
@@ -65,10 +65,10 @@ let canonize (nxs, n) =
   List.map
     (function ((n, x)::nxs) ->
       NonLinArith.simplify
-		      (List.fold_left
-		        Term.add
-		        n
-		        (List.map fst nxs)),
+        (List.fold_left
+          Term.add
+          n
+          (List.map fst nxs)),
       x
     | _ -> assert false)
     res,
@@ -76,8 +76,8 @@ let canonize (nxs, n) =
 
 let mul_coeff m (nxs, n) =
   canonize
-		  (List.map (fun (n, x) -> Term.mul m n, x) nxs,
-		  Term.mul m n)
+    (List.map (fun (n, x) -> Term.mul m n, x) nxs,
+    Term.mul m n)
 
 let minus (nxs, n) = mul_coeff (tint (-1)) (nxs, n)
 
@@ -134,49 +134,63 @@ let term_of (nxs, n) =
   in
   sum ts
 
-let pos_neg_terms_of (nxs, n) =
-  let nxs =
-    List.filter_map
-      (fun (n, x) ->
-        if Term.equiv n (Term.tint 0) then
-          None
-        else
-          Some(n, x))
-      nxs
-  in
-  let nxs1, nxs2 = List.partition (fun (n, _) -> try int_of n > 0 with Not_found -> true) nxs in
-  sum ((try if int_of n > 0 then [n] else [] with Not_found -> [n]) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint 1) then make_var x else Term.mul n (make_var x)) nxs1),
-  sum ((try if int_of n < 0 then [LinArith.simplify (Term.minus n)] else [] with Not_found -> []) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint (-1)) then make_var x else Term.mul (Term.minus n) (make_var x)) nxs2)
+let factorize (nxs, n) =
+  try
+    let nxs = (n, None) :: List.map (fun (n, x) -> n, Some(x)) nxs in
+    let polxs = List.map (fun (n, xopt) -> NonLinArith.of_term n, xopt) nxs in
+    let polxs = List.filter (fun (pol, xopt) -> pol <> []) polxs in
+    let cpolxs = List.map (fun (pol, xopt) -> NonLinArith.gcd_coeff pol, xopt) polxs in
+    let pol = snd (fst (List.hd cpolxs)) in
+    let cxs =
+      List.map
+        (fun ((c, pol'), xopt) ->
+          if NonLinArith.equiv pol pol' then
+            c, xopt
+          else if NonLinArith.equiv pol (NonLinArith.minus pol') then
+            -c, xopt
+          else
+            raise Not_found (*give up*))
+        cpolxs
+    in
+    let d = Util.gcd (List.map (fun (c, _) -> abs c) cxs) in
+    let _ = assert (d <> 0) in
+    let cxs = List.map (fun (c, xopt) -> c / d, xopt) cxs in
+    tint d ::
+    NonLinArith.factorize pol @
+    let nxs, ns = Util.partition_map (function (c, None) -> `R(c) | (c, Some(x)) -> `L(c, x)) cxs in
+    [LinArith.term_of (nxs, List.fold_left (+) 0 ns)]
+  with Not_found ->
+    NonLinArith.factorize (NonLinArith.of_term (term_of (nxs, n)))
 
 (** {6 Functions on parametric-linear atomic integer formulas} *)
-
-let aif_of t =
-		match fun_args t with
-		  Const(_, c), [t1; t2] when Const.is_ibrel c ->
-		    let nxs, n = of_term (sub t1 t2) in
-		    c, nxs, n
-		| _ ->
-      (*let _ = Format.printf "%a@." Term.pr t in*)
-      invalid_arg "ParLinArith.aif_of"
 
 let pr_aif ppf (c, nxs, n) =
   Format.fprintf ppf
     "%a %s 0"
     pr (nxs, n)
     (match c with
-		    Const.EqInt ->
-		      "="
-		  | Const.NeqInt ->
-		      "<>"
-		  | Const.Lt ->
-		      "<"
-		  | Const.Gt ->
-		      ">"
-		  | Const.Leq ->
-		      "<="
-		  | Const.Geq ->
-		      ">="
-		  | _ -> assert false)
+      Const.EqInt ->
+        "="
+    | Const.NeqInt ->
+        "<>"
+    | Const.Lt ->
+        "<"
+    | Const.Gt ->
+        ">"
+    | Const.Leq ->
+        "<="
+    | Const.Geq ->
+        ">="
+    | _ -> assert false)
+
+let aif_of t =
+  match fun_args t with
+    Const(_, c), [t1; t2] when Const.is_ibrel c ->
+      let nxs, n = of_term (sub t1 t2) in
+      c, nxs, n
+  | _ ->
+      (*let _ = Format.printf "%a@." Term.pr t in*)
+      invalid_arg "ParLinArith.aif_of"
 
 (** the result only uses geq and eq
     require: c is not <> *)
@@ -198,29 +212,24 @@ let canonize_aif (c, nxs, n) =
       Const.Geq, nxs, n
   | _ -> assert false
 
-let factorize (nxs, n) =
-  try
-		  let nxs = (n, None) :: List.map (fun (n, x) -> n, Some(x)) nxs in
-		  let polxs = List.map (fun (n, xopt) -> NonLinArith.of_term n, xopt) nxs in
-		  let polxs = List.filter (fun (pol, xopt) -> pol <> []) polxs in
-		  let cpolxs = List.map (fun (pol, xopt) -> NonLinArith.gcd_coeff pol, xopt) polxs in
-		  let pol = snd (fst (List.hd cpolxs)) in
-		  let cxs =
-		    List.map
-		      (fun ((c, pol'), xopt) ->
-		        if NonLinArith.equiv pol pol' then
-		          c, xopt
-		        else if NonLinArith.equiv pol (NonLinArith.minus pol') then
-		          -c, xopt
-		        else
-		          raise Not_found (*give up*))
-		      cpolxs
-		  in
-		  let d = Util.gcd (List.map (fun (c, _) -> abs c) cxs) in
-		  let cxs = List.map (fun (c, xopt) -> c / d, xopt) cxs in
-    tint d ::
-		  NonLinArith.factorize pol @
-		  let nxs, ns = Util.partition_map (function (c, None) -> `R(c) | (c, Some(x)) -> `L(c, x)) cxs in
-		  [LinArith.term_of (nxs, List.fold_left (+) 0 ns)]
-  with Not_found ->
-    NonLinArith.factorize (NonLinArith.of_term (term_of (nxs, n)))
+let term_of_aif (c, nxs, n) =
+  if nxs = [] && try int_of n; true with Not_found -> false then
+    if Const.lift_ibrel c (int_of n) 0 then
+      Const([], Const.True)
+    else
+      Const([], Const.False)
+  else
+    let nxs =
+      List.filter_map
+        (fun (n, x) ->
+          if Term.equiv n (Term.tint 0) then
+            None
+          else
+            Some(n, x))
+        nxs
+    in
+    let nxs1, nxs2 = List.partition (fun (n, _) -> try int_of n > 0 with Not_found -> true) nxs in
+    apply
+      (Const([], c))
+      [sum ((try if int_of n > 0 then [n] else [] with Not_found -> [n]) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint 1) then make_var x else Term.mul n (make_var x)) nxs1);
+       sum ((try if int_of n < 0 then [LinArith.simplify (Term.minus n)] else [] with Not_found -> []) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint (-1)) then make_var x else Term.mul (Term.minus n) (make_var x)) nxs2)]

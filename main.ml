@@ -148,8 +148,8 @@ let arg_spec =
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicates accumulation";
    "-rc", Arg.Set Flag.relative_complete, " To be relative complete";
-   "-gp", Arg.Set Flags.generalize_predicates, " Generalize predicates";
-   "-eap", Arg.Set Flags.extract_atomic_predicates, " Extract atomic predicates";
+   "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
+   "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
   ]

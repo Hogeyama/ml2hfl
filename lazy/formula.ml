@@ -92,12 +92,12 @@ let iff2 t1 t2 =
   else
     band [imply t1 t2; imply t2 t1]
 
+let eqUnit t1 t2 = apply (Const([], Const.EqUnit)) [t1; t2]
+let neqUnit t1 t2 = apply (Const([], Const.NeqUnit)) [t1; t2]
 let eqBool t1 t2 = apply (Const([], Const.EqBool)) [t1; t2]
 let neqBool t1 t2 = apply (Const([], Const.NeqBool)) [t1; t2]
 let eqInt t1 t2 = apply (Const([], Const.EqInt)) [t1; t2]
 let neqInt t1 t2 = apply (Const([], Const.NeqInt)) [t1; t2]
-let eqUnit t1 t2 = apply (Const([], Const.EqUnit)) [t1; t2]
-let neqUnit t1 t2 = apply (Const([], Const.NeqUnit)) [t1; t2]
 (** ignore equalities of functions *)
 let eq_ty ty t1 t2 =
   match ty with
@@ -122,6 +122,7 @@ let geq t1 t2 = apply (Const([], Const.Geq)) [t1; t2]
 (*let gt t1 t2 = apply (Const([], Const.Lt)) [t2; t1]*)
 (*let leq t1 t2 = apply (Const([], Const.Or)) [lt t1 t2; eq t1 t2]*)
 (*let geq t1 t2 = apply (Const([], Const.Or)) [gt t1 t2; eq t1 t2]*)
+let ibrel c t1 t2 = apply (Const([], c)) [t1; t2]
 
 (** ignore equalities of functions *)
 let eq_xtty (x, t, ty) =
@@ -194,183 +195,84 @@ let of_aif (c, nxs, n) =
   | Const.Geq ->
       geq (LinArith.term_of (nxs, n)) (tint 0)
 
-let cand c1 c2 nxs n =
-  match c1, c2 with
-  | Const.EqInt, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
-  | Const.EqInt, Const.NeqInt -> tfalse
-  | Const.EqInt, Const.Lt -> tfalse
-  | Const.EqInt, Const.Gt -> tfalse
-  | Const.EqInt, Const.Leq -> of_aif (Const.EqInt, nxs, n)
-  | Const.EqInt, Const.Geq -> of_aif (Const.EqInt, nxs, n)
-
-  | Const.NeqInt, Const.EqInt -> tfalse
-  | Const.NeqInt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.NeqInt, Const.Lt -> of_aif (Const.Lt, nxs, n)
-  | Const.NeqInt, Const.Gt -> of_aif (Const.Gt, nxs, n)
-  | Const.NeqInt, Const.Leq -> of_aif (Const.Lt, nxs, n)
-  | Const.NeqInt, Const.Geq -> of_aif (Const.Gt, nxs, n)
-
-  | Const.Lt, Const.EqInt -> tfalse
-  | Const.Lt, Const.NeqInt -> of_aif (Const.Lt, nxs, n)
-  | Const.Lt, Const.Lt -> of_aif (Const.Lt, nxs, n)
-  | Const.Lt, Const.Gt -> tfalse
-  | Const.Lt, Const.Leq -> of_aif (Const.Lt, nxs, n)
-  | Const.Lt, Const.Geq -> tfalse
-
-  | Const.Gt, Const.EqInt -> tfalse
-  | Const.Gt, Const.NeqInt -> of_aif (Const.Gt, nxs, n)
-  | Const.Gt, Const.Lt -> tfalse
-  | Const.Gt, Const.Gt -> of_aif (Const.Gt, nxs, n)
-  | Const.Gt, Const.Leq -> tfalse
-  | Const.Gt, Const.Geq -> of_aif (Const.Gt, nxs, n)
-
-  | Const.Leq, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
-  | Const.Leq, Const.NeqInt -> of_aif (Const.Lt, nxs, n)
-  | Const.Leq, Const.Lt -> of_aif (Const.Lt, nxs, n)
-  | Const.Leq, Const.Gt -> tfalse
-  | Const.Leq, Const.Leq -> of_aif (Const.Leq, nxs, n)
-  | Const.Leq, Const.Geq -> of_aif (Const.EqInt, nxs, n)
-
-  | Const.Geq, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
-  | Const.Geq, Const.NeqInt -> of_aif (Const.Gt, nxs, n)
-  | Const.Geq, Const.Lt -> tfalse
-  | Const.Geq, Const.Gt -> of_aif (Const.Gt, nxs, n)
-  | Const.Geq, Const.Leq -> of_aif (Const.EqInt, nxs, n)
-  | Const.Geq, Const.Geq -> of_aif (Const.Geq, nxs, n)
-
-  | _ -> assert false
-
-let cor c1 c2 nxs n =
-  match c1, c2 with
-  | Const.EqInt, Const.EqInt -> of_aif (Const.EqInt, nxs, n)
-  | Const.EqInt, Const.NeqInt -> ttrue
-  | Const.EqInt, Const.Lt -> of_aif (Const.Leq, nxs, n)
-  | Const.EqInt, Const.Gt -> of_aif (Const.Geq, nxs, n)
-  | Const.EqInt, Const.Leq -> of_aif (Const.Leq, nxs, n)
-  | Const.EqInt, Const.Geq -> of_aif (Const.Geq, nxs, n)
-
-  | Const.NeqInt, Const.EqInt -> ttrue
-  | Const.NeqInt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.NeqInt, Const.Lt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.NeqInt, Const.Gt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.NeqInt, Const.Leq -> ttrue
-  | Const.NeqInt, Const.Geq -> ttrue
-
-  | Const.Lt, Const.EqInt -> of_aif (Const.Leq, nxs, n)
-  | Const.Lt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.Lt, Const.Lt -> of_aif (Const.Lt, nxs, n)
-  | Const.Lt, Const.Gt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.Lt, Const.Leq -> of_aif (Const.Leq, nxs, n)
-  | Const.Lt, Const.Geq -> ttrue
-
-  | Const.Gt, Const.EqInt -> of_aif (Const.Geq, nxs, n)
-  | Const.Gt, Const.NeqInt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.Gt, Const.Lt -> of_aif (Const.NeqInt, nxs, n)
-  | Const.Gt, Const.Gt -> of_aif (Const.Gt, nxs, n)
-  | Const.Gt, Const.Leq -> ttrue
-  | Const.Gt, Const.Geq -> of_aif (Const.Geq, nxs, n)
-
-  | Const.Leq, Const.EqInt -> of_aif (Const.Leq, nxs, n)
-  | Const.Leq, Const.NeqInt -> ttrue
-  | Const.Leq, Const.Lt -> of_aif (Const.Leq, nxs, n)
-  | Const.Leq, Const.Gt -> ttrue
-  | Const.Leq, Const.Leq -> of_aif (Const.Leq, nxs, n)
-  | Const.Leq, Const.Geq -> ttrue
-
-  | Const.Geq, Const.EqInt -> of_aif (Const.Geq, nxs, n)
-  | Const.Geq, Const.NeqInt -> ttrue
-  | Const.Geq, Const.Lt -> ttrue
-  | Const.Geq, Const.Gt -> of_aif (Const.Geq, nxs, n)
-  | Const.Geq, Const.Leq -> ttrue
-  | Const.Geq, Const.Geq -> of_aif (Const.Geq, nxs, n)
-
-  | _ -> assert false
-
 (** ensure: () is eliminated if a unit variable does not occur in t
     ensure: "t1 =b t2" and "t1 <>b t2" are eliminated by replacing them with "t1 iff t2" and "not (t1 iff t2)" respectively.
     ToDo: check whether they are actually ensured *)
 let rec simplify t =
+(*
+  Format.printf "%a@." Term.pr t;
+*)
   match fun_args t with
-    Const(attr, Const.Not), [t] ->
-      let t = simplify t in
+    Var(_, _), [] ->
+      t
+  | Const(_, Const.True), [] ->
+      ttrue
+  | Const(_, Const.False), [] ->
+      tfalse
+  | Const(attr, Const.Not), [t] ->
       (match fun_args t with
-        Const(_, Const.Not), [t] ->
-          t
-      | Const(attr, c), [t1; t2] when Const.is_ibrel c ->
-          apply (Const(attr, Const.bnot_ibrel c)) [t1; t2]
-      | _ -> apply (Const(attr, Const.Not)) [t])
-  | Const(attr, Const.And), [t1; t2] ->
-      let t1 = simplify t1 in
-      let t2 = simplify t2 in
-      (try
-		      (match LinArith.aif_of t1, LinArith.aif_of t2 with
-		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (nxs2, n2) ->
-            cand c1 c2 nxs1 n1
-		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)) ->
-            cand c1 (Const.minus_ibrel c2) nxs1 n1
-		      | _ -> invalid_arg "dummy")
-						with Invalid_argument _ ->
-        let ts = List.unique (conjuncts t1 @ conjuncts t2) in
-        if List.mem tfalse ts then
+        Var(_, _), [] ->
+          bnot t
+      | Const(_, Const.True), [] ->
           tfalse
-        else
-          band (List.filter (fun t -> t <> ttrue) ts))
-  | Const(attr, Const.Or), [t1; t2] ->
-      let t1 = simplify t1 in
-      let t2 = simplify t2 in
-      (try
-		      (match LinArith.aif_of t1, LinArith.aif_of t2 with
-		        (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (nxs2, n2) ->
-            cor c1 c2 nxs1 n1
-		      | (c1, nxs1, n1), (c2, nxs2, n2) when LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)) ->
-            cor c1 (Const.minus_ibrel c2) nxs1 n1
-		      | _ -> invalid_arg "dummy")
-						with Invalid_argument _ ->
-        let ts = List.unique (disjuncts t1 @ disjuncts t2) in
-        if List.mem ttrue ts then
+      | Const(_, Const.False), [] ->
           ttrue
-        else
-          bor (List.filter (fun t -> t <> tfalse) ts))
-  | Const(attr, c), [t1; t2] when Const.is_ibrel c ->
-				 	let t1, t2 =
-				    try
-				      LinArith.pos_neg_terms_of (LinArith.of_term (Term.sub t1 t2))
-				    with Invalid_argument _ ->
-						    try
-						      ParLinArith.pos_neg_terms_of (ParLinArith.of_term (Term.sub t1 t2))
-						    with Invalid_argument _ ->
-						      try
-						        NonLinArith.pos_neg_terms_of (NonLinArith.of_term (Term.sub t1 t2))
-						      with Invalid_argument _ ->
-						        t1, t2
-				  in
-		    (match t1, t2 with
-        Const(_, Const.Int(n1)), Const(_, Const.Int(n2)) ->
-          if Const.lift_ibrel c n1 n2 then
-            ttrue
-          else
-            tfalse
+      | Const(_, Const.Not), [t] ->
+          simplify t
+      | Const(attr, Const.And), [t1; t2] ->
+          simplify (bor [bnot t1; bnot t2])
+      | Const(attr, Const.Or), [t1; t2] ->
+          simplify (band [bnot t1; bnot t2])
+      | Const(attr, Const.Imply), [t1; t2] ->
+          simplify (band [t1; bnot t2])
+      | Const(attr, Const.Iff), [t1; t2] ->
+          simplify (bor [band [t1; bnot t2]; band [bnot t1; t2]])
+      | Const(attr, c), [t1; t2] when Const.is_ibrel c ->
+          simplify (ibrel (Const.bnot_ibrel c) t1 t2)
+      | Const(attr, Const.EqUnit), [t1; t2] ->
+          simplify (neqUnit t1 t2)
+      | Const(attr, Const.NeqUnit), [t1; t2] ->
+          simplify (eqUnit t1 t2)
+      | Const(attr, Const.EqBool), [t1; t2] ->
+          simplify (eqBool t1 t2)
+      | Const(attr, Const.NeqBool), [t1; t2] ->
+          simplify (neqBool t1 t2)
+      | Forall(attr, env, t), [] ->
+          simplify (exists env (bnot t))
+      | Exists(attr, env, t), [] ->
+          simplify (forall env (bnot t))
       | _ ->
-						    if c = Const.EqInt && t1 = t2 then
-						      ttrue
-						    else if c = Const.NeqInt && t1 = t2 then
-						      tfalse
-						    else
-						      apply (Const(attr, c)) [t1; t2])
+          let _ = Format.printf "not %a@." pr t in
+          assert false)
+  | Const(attr, Const.And), [t1; t2] ->
+      band (simplify_conjuncts (conjuncts (band [simplify t1; simplify t2])))
+  | Const(attr, Const.Or), [t1; t2] ->
+      bor (simplify_disjuncts (disjuncts (bor [simplify t1; simplify t2])))
+  | Const(attr, Const.Imply), [t1; t2] ->
+      simplify (bor [bnot t1; t2])
+  | Const(attr, Const.Iff), [t1; t2] ->
+      simplify (bor [band [t1; t2]; band [bnot t1; bnot t2]])
+  | Const(attr, c), [t1; t2] when Const.is_ibrel c ->
+      (try
+        LinArith.term_of_aif (LinArith.aif_of t)
+      with Invalid_argument _ ->
+        try
+          ParLinArith.term_of_aif (ParLinArith.aif_of t)
+        with Invalid_argument _ ->
+          try
+            NonLinArith.term_of_aif (NonLinArith.aif_of t)
+          with Invalid_argument _ ->
+            assert false)
   | Const(attr, Const.EqUnit), [t1; t2] ->
-      let t1 = simplify t1 in
-      let t2 = simplify t2 in
       if t1 = t2 then
         ttrue
       else
-        apply (Const(attr, Const.EqUnit)) [t1; t2]
+        eqUnit t1 t2
   | Const(attr, Const.NeqUnit), [t1; t2] ->
-      let t1 = simplify t1 in
-      let t2 = simplify t2 in
       if t1 = t2 then
         tfalse
       else
-        apply (Const(attr, Const.NeqUnit)) [t1; t2]
+        neqUnit t1 t2
   | Const(attr, Const.EqBool), [t1; t2] ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
@@ -390,10 +292,86 @@ let rec simplify t =
   | Exists(a, env, t), [] ->
       Exists(a, env, simplify t)
   | _ ->
-(*
       let _ = Format.printf "%a@." pr t in
+      assert false
+      (*LinArith.simplify t*)
+and simplify_conjuncts ts =
+(*
+  let _ = Format.printf "%a@." (Util.pr_list Term.pr ",") ts in
 *)
-      LinArith.simplify t
+  let ts = List.unique ts in
+  if List.mem tfalse ts then
+    [tfalse]
+  else
+    let ts = List.filter (fun t -> t <> ttrue) ts in
+    let aifs, ts = Util.partition_map (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t)) ts in
+    let aifss =
+      Util.classify
+        (fun (_, nxs1, n1) (_, nxs2, n2) ->
+          LinArith.equiv (nxs1, n1) (nxs2, n2) ||
+          LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)))
+        aifs
+    in
+    let aifs =
+		    List.map
+		      (fun ((c1, nxs1, n1)::aifs) ->
+		        let cs = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, n1) (nxs2, n2) then c2 else Const.minus_ibrel c2) aifs in
+		        let c = List.fold_left Const.cand c1 cs in
+		        c, nxs1, n1)
+		      aifss
+    in
+    if true then
+				  let sub, ts' =
+        Util.partition_map
+          (function
+            (Const.EqInt, [1, x], n) ->
+              `L(x, Term.tint (-n))
+          | (Const.EqInt, [-1, x], n) ->
+              `L(x, Term.tint n)
+          | aif ->
+              `R(LinArith.term_of_aif aif))
+          aifs
+      in
+				  let ts =
+        List.map
+          (fun t ->
+            let t' = simplify (subst (fun x -> List.assoc x sub) t) in
+            (*
+            Format.printf "%a@." Term.pr t';
+            *)
+            if t' = ttrue || t' = tfalse then t' else t)
+          (ts' @ ts)
+      in
+				  let ts = List.map (fun (x, t) -> eqInt (make_var x) t) sub @ ts in
+(*
+      let _ = Format.printf "%a@." (Util.pr_list Term.pr ",") ts in
+*)
+      ts
+    else
+      List.map LinArith.term_of_aif aifs @ ts
+and simplify_disjuncts ts =
+  let ts = List.unique ts in
+  if List.mem ttrue ts then
+    [ttrue]
+  else
+    let ts = List.filter (fun t -> t <> tfalse) ts in
+    let aifs, ts = Util.partition_map (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t)) ts in
+    let aifss =
+      Util.classify
+        (fun (_, nxs1, n1) (_, nxs2, n2) ->
+          LinArith.equiv (nxs1, n1) (nxs2, n2) ||
+          LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)))
+        aifs
+    in
+    let aifs =
+		    List.map
+		      (fun ((c1, nxs1, n1)::aifs) ->
+		        let cs = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, n1) (nxs2, n2) then c2 else Const.minus_ibrel c2) aifs in
+		        let c = List.fold_left Const.cor c1 cs in
+		        c, nxs1, n1)
+		      aifss
+    in
+    List.map LinArith.term_of_aif aifs @ ts
 
 (** {6 Functions on DNF formulas} *)
 
@@ -443,7 +421,7 @@ and dnfn t =
         Const.NeqInt ->
           [[lt t1 t2]; [gt t1 t2]]
       | _ ->
-          [[apply (Const(a, c)) [t1; t2]]])
+          [[ibrel c t1 t2]])
   | t, _-> Format.printf "@.%a@." Term.pr t; assert false
 
 let formula_of_dnf tss =
@@ -462,33 +440,33 @@ let eqelim_fes p (ts, xttys) =
   let pr_xtty ppf (x, t, _) =
     Format.fprintf ppf "%a -> %a" Var.pr x Term.pr t
   in
-		let _ = if flag then Format.printf "sub: %a@." (Util.pr_list pr_xtty ", ") xttys in
+  let _ = if flag then Format.printf "sub: %a@." (Util.pr_list pr_xtty ", ") xttys in
   let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
   let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
   let ts =
     List.map
-				  (fun t ->
-				    Util.fixed_point
-						    (fun t ->
-						      let _ = if flag then Format.printf "before: %a@." pr t in
-						      let t = simplify (subst sub t) in
-						      let _ = if flag then Format.printf "after: %a@." pr t in
+      (fun t ->
+        Util.fixed_point
+          (fun t ->
+            let _ = if flag then Format.printf "before: %a@." pr t in
+            let t = simplify (subst sub t) in
+            let _ = if flag then Format.printf "after: %a@." pr t in
             t)
-						    (fun t1 t2 -> Term.equiv t1 t2)
-						    t)
-		    ts
+          (fun t1 t2 -> Term.equiv t1 t2)
+          t)
+      ts
   in
   let xttys1 =
     List.map
-				  (fun xtty ->
-		      Util.fixed_point
-						    (fun (x, t, ty) ->
-						      (*Format.printf "%a@." pr t;*)
-						      x, subst sub t, ty)
-						    (fun (x1, t1, ty1) (x2, t2, ty2) ->
+      (fun xtty ->
+        Util.fixed_point
+          (fun (x, t, ty) ->
+            (*Format.printf "%a@." pr t;*)
+            x, subst sub t, ty)
+          (fun (x1, t1, ty1) (x2, t2, ty2) ->
             x1 = x2 && Term.equiv t1 t2 && ty1 = ty2)
           xtty)
-		    xttys1
+      xttys1
   in
   let rec aux xttys (xttys1, xttys2) =
     match xttys with
@@ -507,14 +485,14 @@ let eqelim_fes p (ts, xttys) =
   let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys12) in
   let ts =
     List.map
-				  (fun t ->
-				    Util.fixed_point
-						    (fun t ->
-						      (*Format.printf "%a@." pr t;*)
-						      subst sub t)
-						    (fun t1 t2 -> Term.equiv t1 t2)
-						    t)
-		    (ts @ List.map eq_xtty xttys11)
+      (fun t ->
+        Util.fixed_point
+          (fun t ->
+            (*Format.printf "%a@." pr t;*)
+            subst sub t)
+          (fun t1 t2 -> Term.equiv t1 t2)
+          t)
+      (ts @ List.map eq_xtty xttys11)
   in
   let ts = Util.concat_map conjuncts ts in
   band ts
@@ -523,39 +501,40 @@ let eqelim_fes p (ts, xttys) =
 let eqelim p (ts, xttys) =
   let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
   let sub x = List.assoc x (List.map (fun (x, t, _) -> x, t) xttys2) in
-		Util.fixed_point
-		  (fun t ->
-		    (*Format.printf "%a@." pr t;*)
-		    subst sub t)
-		  (fun t1 t2 -> equiv t1 t2)
-		  (band (ts @ List.map eq_xtty xttys1))
+  Util.fixed_point
+    (fun t ->
+      (*Format.printf "%a@." pr t;*)
+      subst sub t)
+    (fun t1 t2 -> equiv t1 t2)
+    (band (ts @ List.map eq_xtty xttys1))
 *)
 
 (** {6 Other functions} *)
 
+(** ensure: the result does not use =u, (), and unit variables *)
+let elim_unit t =
+  let uvs = List.unique (fvs_ty SimType.Unit t SimType.Bool) in
+  if uvs = [] then
+    t
+  else
+    let sub x = if List.mem x uvs then tunit else raise Not_found in
+    simplify (subst sub t)
+
 (** require: ts are formulas
     ensure: the result does not use =b *)
-let elim_unit_boolean ts =
+let elim_boolean ts =
   let _ = assert (ts <> []) in
-  let uvs = List.unique (Util.concat_map (unit_vars false) ts) in
-  let ts =
-    if uvs = [] then
-      ts
-    else
-      let sub x = if List.mem x uvs then tunit else raise Not_found in
-      List.map (fun t -> simplify (subst sub t)) ts
-  in
-  let bvs = List.unique (Util.concat_map (boolean_vars true) ts) in
+  let bvs = List.unique (Util.concat_map (fun t -> fvs_ty SimType.Bool t SimType.Bool) ts) in
   if bvs = [] then
     [ts],
     function [t] -> t | _ -> assert false
   else
-		  let subs = Util.multiply_list_list (@) (List.map (fun b -> [[b, ttrue]; [b, tfalse]]) bvs) in
-		  List.map
-		    (fun sub ->
-		       List.map (fun t -> simplify (subst (fun x -> List.assoc x sub) t)) ts)
-		    subs,
-		  fun ts ->
+    let subs = Util.multiply_list_list (@) (List.map (fun b -> [[b, ttrue]; [b, tfalse]]) bvs) in
+    List.map
+      (fun sub ->
+         List.map (fun t -> simplify (subst (fun x -> List.assoc x sub) t)) ts)
+      subs,
+    fun ts ->
       bor (List.map2 (fun t sub -> band (t::(List.map (fun (b, t) -> eqBool (make_var b) t) sub))) ts subs)
 
 let rec elim_neq_int t =
@@ -580,9 +559,9 @@ let rec elim_eq_neq_int t =
 
 let rec eqelim p ts =
   try
-		  let ts1, xtty, ts2 =
-		    Util.find_split_map
-		      (fun t ->
+    let ts1, xtty, ts2 =
+      Util.find_split_map
+        (fun t ->
           try
             (*let c, nxs, n = LinArith.aif_of t in
             if c = Const.EqInt then
@@ -613,7 +592,7 @@ let rec eqelim p ts =
                 None)
             else
               None
-    						with Invalid_argument _ ->
+          with Invalid_argument _ ->
             (match fun_args t with
               Const(_, Const.EqUnit), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) ->
                 Some(x, t, SimType.Unit)
@@ -625,11 +604,11 @@ let rec eqelim p ts =
                 Some(x, t, SimType.Bool)
             | _ ->
                 None))
-		      ts
-		  in
+        ts
+    in
     (* simplify possibly makes the return value huge, e.g. ICFP2012 intro3
        ToDo: control size increase*)
-		  List.map simplify (eqelim p (conjuncts (simplify (eqelim_fes p (ts1 @ ts2, [xtty])))))
+    List.map simplify (eqelim p (conjuncts (simplify (eqelim_fes p (ts1 @ ts2, [xtty])))))
   with Not_found ->
     ts
 
@@ -638,18 +617,18 @@ let rec split_ibrel c ts =
     [] -> assert false
   | [t] -> apply (Const([], c)) [t; tint 0]
   | t::ts ->
-						(match c with
-						  Const.EqInt ->
-						    bor (List.map (fun t -> eqInt t (tint 0)) (t::ts))
-						| Const.NeqInt ->
-						    band (List.map (fun t -> neqInt t (tint 0)) (t::ts))
-						| Const.Lt
-						| Const.Gt ->
-						    bor [band [gt t (tint 0); split_ibrel c ts]; band [lt t (tint 0); split_ibrel (Const.minus_ibrel c) ts]]
-						| Const.Leq
-						| Const.Geq ->
-						    bor [band [geq t (tint 0); split_ibrel c ts]; band [leq t (tint 0); split_ibrel (Const.minus_ibrel c) ts]]
-				  | _ -> assert false)
+      (match c with
+        Const.EqInt ->
+          bor (List.map (fun t -> eqInt t (tint 0)) (t::ts))
+      | Const.NeqInt ->
+          band (List.map (fun t -> neqInt t (tint 0)) (t::ts))
+      | Const.Lt
+      | Const.Gt ->
+          bor [band [gt t (tint 0); split_ibrel c ts]; band [lt t (tint 0); split_ibrel (Const.minus_ibrel c) ts]]
+      | Const.Leq
+      | Const.Geq ->
+          bor [band [geq t (tint 0); split_ibrel c ts]; band [leq t (tint 0); split_ibrel (Const.minus_ibrel c) ts]]
+      | _ -> assert false)
 
 let rec linearize t =
   match fun_args t with
@@ -664,17 +643,17 @@ let rec linearize t =
   | Const(attr, Const.Or), [t1; t2] ->
       bor [linearize t1; linearize t2]
   | Const(attr, c), [_; _] when Const.is_ibrel c ->
-				  (try
+      (try
         let _ = LinArith.aif_of t in
         t
       with Invalid_argument _ ->
-		      try
-								  let c, nxs, n = ParLinArith.aif_of t in
-								  let ts = ParLinArith.factorize (nxs, n) in
+        try
+          let c, nxs, n = ParLinArith.aif_of t in
+          let ts = ParLinArith.factorize (nxs, n) in
           let ts = List.filter (fun t -> not (Term.equiv t (tint 1))) ts in
           split_ibrel c ts
-						  with Invalid_argument _ ->
-						    let c, pol = NonLinArith.aif_of t in
+        with Invalid_argument _ ->
+          let c, pol = NonLinArith.aif_of t in
           let ts = NonLinArith.factorize pol in
           let ts = List.filter (fun t -> not (Term.equiv t (tint 1))) ts in
           split_ibrel c ts)
@@ -700,11 +679,11 @@ let rec is_linear t =
   | Const(_, Const.Iff), [t1; t2] ->
       is_linear t1 && is_linear t2
   | Const(_, c), [_; _] when Const.is_ibrel c ->
-				  (try
+      (try
         let _ = LinArith.aif_of t in
         true
       with Invalid_argument _ ->
-		      false)
+        false)
   | Const(_, Const.EqUnit), [_; _]
   | Const(_, Const.NeqUnit), [_; _]
   | Const(_, Const.EqBool), [_; _]
@@ -734,12 +713,11 @@ let rec elim_minus t =
   | Const(attr, Const.Iff), [t1; t2] ->
       iff (elim_minus t1) (elim_minus t2)
   | Const(attr, c), [_; _] when Const.is_ibrel c ->
-				  (try
-        let c, pol = NonLinArith.aif_of t in
-        let t1, t2 = NonLinArith.pos_neg_terms_of pol in
-        apply (Const(attr, c)) [t1; t2]
+      (try
+        (* assume that the result does not contain Sub, Minus, negative integers *)
+        NonLinArith.term_of_aif (NonLinArith.aif_of t)
       with Invalid_argument _ ->
-		      assert false)
+        assert false)
   | Forall(a, env, t), [] ->
       Forall(a, env, elim_minus t)
   | Exists(a, env, t), [] ->

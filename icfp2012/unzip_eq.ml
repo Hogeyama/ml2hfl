@@ -1,3 +1,4 @@
+(* unzip_eq.ml: verification failed *)
 let rec unzip (xys:(int*int) list) =
   match xys with
       [] -> [], []

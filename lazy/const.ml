@@ -7,6 +7,7 @@ type t =
 | And | Or | Imply | Iff
 | EqUnit | NeqUnit | EqBool | NeqBool
 | EqInt | NeqInt | Lt | Gt | Leq | Geq
+| IBTrue | IBFalse (* only used for cand and cor *)
 | Add | Sub | Mul
 | Div | Mod
 
@@ -126,6 +127,10 @@ let lift_ibrel c =
   | Gt -> (>)
   | Leq -> (<=)
   | Geq -> (>=)
+(*
+  | IBTrue -> fun _ _ -> true
+  | IBFalse -> fun _ _ -> false
+*)
   | _ -> let _ = Format.printf "%a" pr c in assert false
 
 let rec pr_bin ppf c =
@@ -156,3 +161,96 @@ let rec pr_bin ppf c =
   | Add -> Format.fprintf ppf "+"
   | Sub -> Format.fprintf ppf "-"
   | Mul -> Format.fprintf ppf "*"
+
+
+let cand c1 c2 =
+  match c1, c2 with
+  | EqInt, EqInt -> EqInt
+  | EqInt, NeqInt -> IBFalse
+  | EqInt, Lt -> IBFalse
+  | EqInt, Gt -> IBFalse
+  | EqInt, Leq -> EqInt
+  | EqInt, Geq -> EqInt
+
+  | NeqInt, EqInt -> IBFalse
+  | NeqInt, NeqInt -> NeqInt
+  | NeqInt, Lt -> Lt
+  | NeqInt, Gt -> Gt
+  | NeqInt, Leq -> Lt
+  | NeqInt, Geq -> Gt
+
+  | Lt, EqInt -> IBFalse
+  | Lt, NeqInt -> Lt
+  | Lt, Lt -> Lt
+  | Lt, Gt -> IBFalse
+  | Lt, Leq -> Lt
+  | Lt, Geq -> IBFalse
+
+  | Gt, EqInt -> IBFalse
+  | Gt, NeqInt -> Gt
+  | Gt, Lt -> IBFalse
+  | Gt, Gt -> Gt
+  | Gt, Leq -> IBFalse
+  | Gt, Geq -> Gt
+
+  | Leq, EqInt -> EqInt
+  | Leq, NeqInt -> Lt
+  | Leq, Lt -> Lt
+  | Leq, Gt -> IBFalse
+  | Leq, Leq -> Leq
+  | Leq, Geq -> EqInt
+
+  | Geq, EqInt -> EqInt
+  | Geq, NeqInt -> Gt
+  | Geq, Lt -> IBFalse
+  | Geq, Gt -> Gt
+  | Geq, Leq -> EqInt
+  | Geq, Geq -> Geq
+
+  | _ -> assert false
+
+let cor c1 c2 =
+  match c1, c2 with
+  | EqInt, EqInt -> EqInt
+  | EqInt, NeqInt -> IBTrue
+  | EqInt, Lt -> Leq
+  | EqInt, Gt -> Geq
+  | EqInt, Leq -> Leq
+  | EqInt, Geq -> Geq
+
+  | NeqInt, EqInt -> IBTrue
+  | NeqInt, NeqInt -> NeqInt
+  | NeqInt, Lt -> NeqInt
+  | NeqInt, Gt -> NeqInt
+  | NeqInt, Leq -> IBTrue
+  | NeqInt, Geq -> IBTrue
+
+  | Lt, EqInt -> Leq
+  | Lt, NeqInt -> NeqInt
+  | Lt, Lt -> Lt
+  | Lt, Gt -> NeqInt
+  | Lt, Leq -> Leq
+  | Lt, Geq -> IBTrue
+
+  | Gt, EqInt -> Geq
+  | Gt, NeqInt -> NeqInt
+  | Gt, Lt -> NeqInt
+  | Gt, Gt -> Gt
+  | Gt, Leq -> IBTrue
+  | Gt, Geq -> Geq
+
+  | Leq, EqInt -> Leq
+  | Leq, NeqInt -> IBTrue
+  | Leq, Lt -> Leq
+  | Leq, Gt -> IBTrue
+  | Leq, Leq -> Leq
+  | Leq, Geq -> IBTrue
+
+  | Geq, EqInt -> Geq
+  | Geq, NeqInt -> IBTrue
+  | Geq, Lt -> IBTrue
+  | Geq, Gt -> Geq
+  | Geq, Leq -> IBTrue
+  | Geq, Geq -> Geq
+
+  | _ -> assert false

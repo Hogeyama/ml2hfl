@@ -203,7 +203,7 @@ let summary_of env loc =
   let Loc(Node(nd, []), p) = loc in
 		let _ = if not nd.closed then assert (nd.ret = None) in
 		let locs = related_locs loc in
-  let b = Flags.enable_quick_inference && List.length locs = 1 in
+  let b = Global.enable_quick_inference && List.length locs = 1 in
   try
     if b then
 						let arg = if nd.closed then ret_of env nd else arg_of env nd in
@@ -575,7 +575,7 @@ let summaries_of env constrss0 =
               let locs = List.rev (find_leaves constrs) in
               let locs = List.filter (fun loc -> Util.diff (related_locs loc) locs = []) locs in
               let _ = assert (locs <> []) in
-              if !Flags.generalize_predicates then
+              if !Global.generalize_predicates then
                 let locs' = List.filter (fun (Loc(Node(nd, []), p) as loc) -> is_recursive nd.name loc) locs in
                 (match locs' with
                   [] -> List.hd locs
@@ -583,7 +583,7 @@ let summaries_of env constrss0 =
               else
                 List.hd locs(*find_leaf constrs*)
             in
-				        if !Flags.generalize_predicates then summary_of_widen env loc else summary_of env loc
+				        if !Global.generalize_predicates then summary_of_widen env loc else summary_of env loc
 				      with CsisatInterface.No_interpolant ->
 				        raise (FeasibleErrorTrace(constrs(**ToDo*)))
 				    in

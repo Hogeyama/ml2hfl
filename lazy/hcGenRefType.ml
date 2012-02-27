@@ -40,7 +40,7 @@ let cgen env etr =
             let ts =
               List.filter_map
                 (fun (x, t, ty) ->
-                  if SimType.is_base ty then
+                  if SimType.is_base ty && (ty <> SimType.Unit || !Global.refine_unit) then
                     Some(Formula.eq_xtty (x, t, ty))
                   else
                     None)
@@ -63,11 +63,15 @@ let cgen env etr =
 		                  locs
 				            in
 				            let x, _, _ =
-				              List.find
-		                  (fun (_, _, ty) -> SimType.is_base ty)
-		                  (List.rev xttys)
+                  try
+						              List.find
+				                  (fun (_, _, ty) -> SimType.is_base ty && (ty <> SimType.Unit || !Global.refine_unit))
+				                  (List.rev xttys)
+                  with Not_found ->
+                    assert false
 				            in
                 let ts = Util.concat_map (fun (Loc(tr, _)) -> (get tr).data) locs @ ts in
+                let ts = Formula.conjuncts (Formula.simplify (Formula.elim_unit (Formula.band ts))) in
                 (Hc(Some(pred_of env x), pres, ts))::hcs
               in
   		          let nd = get tr in
@@ -76,7 +80,9 @@ let cgen env etr =
               aux (Loc(tr, p)) hcs etr
         | Trace.Ret(x, t, ty) ->
             let _ = assert (SimType.is_base ty) in
-            let hcs = (Hc(Some(pred_of env x), [assert false], t::(get tr).data))::hcs in
+            let ts = t::(get tr).data in
+            let ts = Formula.conjuncts (Formula.simplify (Formula.elim_unit (Formula.band ts))) in
+            let hcs = (Hc(Some(pred_of env x), [assert false], ts))::hcs in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(tr, p))) hcs etr
@@ -90,8 +96,7 @@ let cgen env etr =
             let nd = get tr in
             root (Loc(set tr { nd with closed = false }, path_set_open p)),
             (* assume that fail is NOT a proper subterm of the function definition *)
-            let pre = SimType.find_last_base env (get tr).name in
-            (Hc(None, [pred_of env pre], (get tr).data))::hcs)
+            (Hc(None, (try [pred_of env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []), (get tr).data))::hcs)
   in
   match etr with
     Trace.Call(x, guard)::etr ->

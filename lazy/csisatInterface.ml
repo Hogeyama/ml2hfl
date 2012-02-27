@@ -16,13 +16,15 @@ let rec of_term t =
   | _ -> assert false
 and of_term_aux c args =
   match c, args with
-    Const.Int(n), [] -> CsisatAst.Constant(float_of_int n)
+    Const.Unit, [] -> csisat_unit
+  | Const.True, [] -> csisat_true
+  | Const.False, [] -> csisat_false
+  | Const.Int(n), [] -> CsisatAst.Constant(float_of_int n)
   | Const.Add, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([of_term t1; of_term t2]))
   | Const.Sub, [t1; t2] -> CsisatAstUtil.simplify_expr (CsisatAst.Sum([of_term t1; CsisatAst.Coeff(-1.0, of_term t2)]))
   | Const.Mul, [Const(_, Const.Int(n)); t]
   | Const.Mul, [t; Const(_, Const.Int(n))] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(float_of_int n, of_term t))
   | Const.Minus, [t] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(-1.0, of_term t))
-  | Const.Unit, [] -> csisat_unit
   | _ ->
       let _ = Format.printf "%a %a@." Const.pr c (Util.pr_list Term.pr " ") args in
       assert false
@@ -52,6 +54,8 @@ and of_formula_aux c args =
   | Const.Geq, [t1; t2] -> CsisatAst.Leq(of_term t2, of_term t1)
   | Const.EqUnit, [t1; t2] ->
       CsisatAst.Eq(of_term t1, of_term t2)
+  | Const.NeqUnit, [t1; t2] ->
+      CsisatAst.Not(CsisatAst.Eq(of_term t1, of_term t2))
   | Const.EqBool, [t1; t2] ->
       let t1 = of_formula t1 in
       let t2 = of_formula t2 in
@@ -59,10 +63,6 @@ and of_formula_aux c args =
         (CsisatAst.Or([
           CsisatAst.And([t1; t2]);
           CsisatAst.And([CsisatAst.Not(t1); CsisatAst.Not(t2)])]))
-  | Const.EqInt, [t1; t2] ->
-      CsisatAst.Eq(of_term t1, of_term t2)
-  | Const.NeqUnit, [t1; t2] ->
-      CsisatAst.Not(CsisatAst.Eq(of_term t1, of_term t2))
   | Const.NeqBool, [t1; t2] ->
       let t1 = of_formula t1 in
       let t2 = of_formula t2 in
@@ -70,6 +70,8 @@ and of_formula_aux c args =
         (CsisatAst.And([
           CsisatAst.Or([t1; t2]);
           CsisatAst.Or([CsisatAst.Not(t1); CsisatAst.Not(t2)])]))
+  | Const.EqInt, [t1; t2] ->
+      CsisatAst.Eq(of_term t1, of_term t2)
   | Const.NeqInt, [t1; t2] ->
       CsisatAst.Not(CsisatAst.Eq(of_term t1, of_term t2))
   | _ ->
@@ -149,7 +151,7 @@ let implies t1 t2 =
     let _ = ih := oldih in
     (*
     Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
-      *)
+    *)
     not (satisfiable (CsisatAst.And([p1; CsisatAst.Not(p2)])))
     (*with CsisatAst.SAT_FORMULA _ ->
       false*)
@@ -164,52 +166,54 @@ let iff t1 t2 =
 exception No_interpolant
 
 let interpolate t1 t2 =
-(*
-  if Cvc3Interface.is_valid (bnot t2) then
-    t1
+  if Cvc3Interface.is_valid (bnot t1) then
+    tfalse (*???*)
+  else if Cvc3Interface.is_valid (bnot t2) then
+    ttrue (*???*)
   else
-*)
-  let p1 = CsisatAstUtil.simplify (of_formula t1) in
-  let p2 = CsisatAstUtil.simplify (of_formula t2) in
-  (*
-  Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
-  *)
-  let interp =
-    try
-      CsisatInterpolate.interpolate_with_proof p1 p2
-      (*
-      if not (implies p1 it && implies it p2) then
-        let _ = Format.printf "wrong interpolant=%a@," Fol.pr (invert it) in
-        failwith "CsisatInterface.interpolate"
-      *)
-    with CsisatAst.SAT | CsisatAst.SAT_FORMULA(_) ->
-      raise No_interpolant
-   | Failure(msg) -> let _ = Format.printf "csisat error: %s@." msg in raise No_interpolant(*???*)
-  in
-  (*
-  Format.printf "%s@." (CsisatAstUtil.print_pred interp);
-  *)
-  let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
-  (*Formula.simplify*) (formula_of (CsisatAstUtil.dnf interp))
+		  let p1 = CsisatAstUtil.simplify (of_formula t1) in
+		  let p2 = CsisatAstUtil.simplify (of_formula t2) in
+		  (*
+		  Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
+		  *)
+		  let interp =
+		    try
+		      CsisatInterpolate.interpolate_with_proof p1 p2
+		      (*
+		      if not (implies p1 it && implies it p2) then
+		        let _ = Format.printf "wrong interpolant=%a@," Fol.pr (invert it) in
+		        failwith "CsisatInterface.interpolate"
+		      *)
+		    with CsisatAst.SAT | CsisatAst.SAT_FORMULA(_) ->
+		      raise No_interpolant
+		    | Failure(msg) ->
+		      let _ = Format.printf "csisat error: %s@." msg in
+		      assert false(*raise No_interpolant*)
+		  in
+		  (*Format.printf "%s@." (CsisatAstUtil.print_pred interp);*)
+		  let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
+		  let interp = CsisatAstUtil.dnf interp in
+		  (*Format.printf "%s@." (CsisatAstUtil.print_pred interp);*)
+		  (*Formula.simplify*) (formula_of interp)
 
 let interpolate_chk t1 t2 =
   try
     Formula.simplify (interpolate t1 t2)
   with No_interpolant ->
-				if !Flags.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
-				  let _ = Format.printf "an error of CSIsat@." in
-				  assert false
-				else
-						raise No_interpolant
+    if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
+      let _ = Format.printf "an error of CSIsat@." in
+      assert false
+    else
+      raise No_interpolant
 
 let interpolate t1 t2 =
-		let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
-		let interp = interpolate_chk t1 t2 in
-		let _ = Format.printf "interp_out: %a@ " Term.pr interp in
+  let _ = Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2 in
+  let interp = interpolate_chk t1 t2 in
+  let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
   interp
 
 (** @param p represents variables shared by t1 and t2 *)
 let interpolate_bvs p t1 t2 =
-		let t1 = Term.rename_fresh p t1 in
-		let t2 = Term.rename_fresh p t2 in
+  let t1 = Term.rename_fresh p (simplify (band (eqelim p (conjuncts t1)))) in
+  let t2 = Term.rename_fresh p (simplify (band (eqelim p (conjuncts t2)))) in
   interpolate t1 t2

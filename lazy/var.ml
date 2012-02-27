@@ -22,7 +22,7 @@ let new_var () = V(Idnt.new_id ())
 
 let vheader = "v"
 let cheader = "c"
-let separator = "___" (*???*)(*"-"*)
+let separator = "_sep_" (*???*)
 
 let rec string_of x =
 		match x with
@@ -52,7 +52,7 @@ let parse s =
     match ss with
       [] -> x
     | s1::s2::ss ->
-        f (T(x, int_of_string s1, int_of_string s2)) ss
+        (try f (T(x, int_of_string s1, int_of_string s2)) ss with _ -> Format.printf "%s,%s@." s1 s2; assert false)
     | _ -> assert false
   in
   if String.starts_with s vheader then
@@ -85,6 +85,7 @@ and is_neg x =
   | C(_) -> assert false
   | T(x', _, _) -> is_pos x'
 
+(** @deprecated *)
 let is_avail x =
   match x with
     V(_) -> true

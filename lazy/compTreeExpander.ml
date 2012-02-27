@@ -36,7 +36,7 @@ let expand_until_new_error_trace_found prog ct strategy =
     if strategy.is_end () then
       ()
     else
-      let _ = if !Flags.debug then save_as_dot "compTree.dot" ct (strategy.get ()) in
+      let _ = if !Global.debug then save_as_dot "compTree.dot" ct (strategy.get ()) in
       let fenv, wl = expand_node prog fenv (strategy.pick ()) in
       let _ = strategy.add wl in
 						let rec lp () =

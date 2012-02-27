@@ -154,16 +154,16 @@ let minus t = apply (Const([], Const.Minus)) [t]
 let mul t1 t2 = apply (Const([], Const.Mul)) [t1; t2]
 let prod ts =
   let rec aux ts =
-		  match ts with
-		    [] -> tint 1
-		  | [t] -> t
-		  | (Const(_, Const.Int(1)))::ts' -> aux ts'
-		  | (Const(_, Const.Int(0)))::_ -> raise Not_found
-		  | t::ts' ->
-		      let t' = aux ts' in
-		      (match t' with
-		        Const(_, Const.Int(1)) -> t
-		      | _ -> mul t t')
+    match ts with
+      [] -> tint 1
+    | [t] -> t
+    | (Const(_, Const.Int(1)))::ts' -> aux ts'
+    | (Const(_, Const.Int(0)))::_ -> raise Not_found
+    | t::ts' ->
+        let t' = aux ts' in
+        (match t' with
+          Const(_, Const.Int(1)) -> t
+        | _ -> mul t t')
   in
   try aux ts with Not_found -> tint 0
 
@@ -176,7 +176,7 @@ let string_of t =
 let rec redex_of env t =
   match t with
 (*
-				Const(a, Const.RandInt) ->
+    Const(a, Const.RandInt) ->
       (fun t -> t), Const(a, Const.RandInt)
 *)
     App(_, _, _) ->
@@ -194,34 +194,34 @@ let rec redex_of env t =
         let args1, (ctx, red), args2 = r [] args in
         (fun t -> apply f (args1 @ [ctx t] @ args2)), red
       with Not_found ->
-		      (match f with
-						    Const(_, Const.Event(id)) when Idnt.string_of id = "fail" ->
+        (match f with
+          Const(_, Const.Event(id)) when Idnt.string_of id = "fail" ->
             let ar = 1 in
-		          if List.length args >= ar then
-		            let args1, args2 = List.split_nth ar args in
-		            (fun t -> apply t args2), apply f args1
-		          else raise Not_found
-						  | Const(_, Const.RandInt) ->
+            if List.length args >= ar then
+              let args1, args2 = List.split_nth ar args in
+              (fun t -> apply t args2), apply f args1
+            else raise Not_found
+        | Const(_, Const.RandInt) ->
             let ar = 1 in
-		          if List.length args >= ar then
-		            let args1, args2 = List.split_nth ar args in
-		            (fun t -> apply t args2), apply f args1
-		          else raise Not_found
-		      | Var(attr, ff) ->
-		          let ar =
-		            try
-		              SimType.arity (env ff)
-		            with Not_found ->
-		              raise Not_found (* ff is not a function name *)
-		              (*(Format.printf "%a@." Var.pr ff; assert false)*)
-		          in
-		          if List.length args >= ar then
-		            let args1, args2 = List.split_nth ar args in
-		            (fun t -> apply t args2), apply f args1
-		          else raise Not_found
-		      | Const(attr, c) ->
-		          raise Not_found
-		      | _ -> assert false))
+            if List.length args >= ar then
+              let args1, args2 = List.split_nth ar args in
+              (fun t -> apply t args2), apply f args1
+            else raise Not_found
+        | Var(attr, ff) ->
+            let ar =
+              try
+                SimType.arity (env ff)
+              with Not_found ->
+                raise Not_found (* ff is not a function name *)
+                (*(Format.printf "%a@." Var.pr ff; assert false)*)
+            in
+            if List.length args >= ar then
+              let args1, args2 = List.split_nth ar args in
+              (fun t -> apply t args2), apply f args1
+            else raise Not_found
+        | Const(attr, c) ->
+            raise Not_found
+        | _ -> assert false))
   | Call(a, f, args) ->
       (fun t -> t), Call(a, f, args)
   | Ret(a, ret, t, ty) ->
@@ -233,65 +233,39 @@ let rec redex_of env t =
   | _ -> raise Not_found
 
 
-let rec unit_vars is_unit t =
-		match fun_args t with
-		  Var(_, v), [] ->
-      if is_unit then [v] else []
-		| Const(_, c), [] ->
-		    []
-		| Const(a, Const.And), [t1; t2]
-		| Const(a, Const.Or), [t1; t2]
-		| Const(a, Const.Imply), [t1; t2]
-		| Const(a, Const.Iff), [t1; t2]
-		| Const(a, Const.Lt), [t1; t2]
-		| Const(a, Const.Gt), [t1; t2]
-		| Const(a, Const.Leq), [t1; t2]
-		| Const(a, Const.Geq), [t1; t2]
-		| Const(a, Const.EqBool), [t1; t2]
-		| Const(a, Const.EqInt), [t1; t2]
-		| Const(a, Const.NeqBool), [t1; t2]
-		| Const(a, Const.NeqInt), [t1; t2]
-		| Const(a, Const.Add), [t1; t2]
-		| Const(a, Const.Sub), [t1; t2]
-		| Const(a, Const.Mul), [t1; t2]
-		| Const(a, Const.Minus), [t1; t2] ->
-		    unit_vars false t1 @ unit_vars false t2
-		| Const(a, Const.Not), [t] -> 
-		    unit_vars false t
-		| Const(a, Const.EqUnit), [t1; t2]
-		| Const(a, Const.NeqUnit), [t1; t2] ->
-		    unit_vars true t1 @ unit_vars true t2
-		| t, _-> Format.printf "@.%a@." pr t; assert false
-
-let rec boolean_vars is_boolean t =
-		match fun_args t with
-		  Var(_, v), [] ->
-      if is_boolean then [v] else []
-		| Const(_, c), [] ->
-		    []
-		| Const(a, Const.And), [t1; t2]
-		| Const(a, Const.Or), [t1; t2]
-		| Const(a, Const.Imply), [t1; t2]
-		| Const(a, Const.Iff), [t1; t2]
-		| Const(a, Const.EqBool), [t1; t2]
-		| Const(a, Const.NeqBool), [t1; t2] ->
-		    boolean_vars true t1 @ boolean_vars true t2
-		| Const(a, Const.Lt), [t1; t2]
-		| Const(a, Const.Gt), [t1; t2]
-		| Const(a, Const.Leq), [t1; t2]
-		| Const(a, Const.Geq), [t1; t2]
-		| Const(a, Const.EqUnit), [t1; t2]
-		| Const(a, Const.EqInt), [t1; t2]
-		| Const(a, Const.NeqUnit), [t1; t2]
-		| Const(a, Const.NeqInt), [t1; t2]
-		| Const(a, Const.Add), [t1; t2]
-		| Const(a, Const.Sub), [t1; t2]
-		| Const(a, Const.Mul), [t1; t2]
-		| Const(a, Const.Minus), [t1; t2] ->
-		    boolean_vars false t1 @ boolean_vars false t2
-		| Const(a, Const.Not), [t] -> 
-		    boolean_vars true t
-		| t, _-> Format.printf "@.%a@." pr t; assert false
+let rec fvs_ty ty1 t ty2 =
+  match fun_args t with
+    Var(_, v), [] ->
+      if ty2 = ty1 then [v] else []
+  | Const(_, c), [] ->
+      []
+  | Const(a, Const.Not), [t] -> 
+      fvs_ty ty1 t SimType.Bool
+  | Const(a, Const.Minus), [t] ->
+      fvs_ty ty1 t SimType.Int
+  | Const(a, Const.EqUnit), [t1; t2]
+  | Const(a, Const.NeqUnit), [t1; t2] ->
+      fvs_ty ty1 t1 SimType.Unit @ fvs_ty ty1 t2 SimType.Unit
+  | Const(a, Const.EqBool), [t1; t2]
+  | Const(a, Const.NeqBool), [t1; t2]
+  | Const(a, Const.And), [t1; t2]
+  | Const(a, Const.Or), [t1; t2]
+  | Const(a, Const.Imply), [t1; t2]
+  | Const(a, Const.Iff), [t1; t2] ->
+      fvs_ty ty1 t1 SimType.Bool @ fvs_ty ty1 t2 SimType.Bool
+  | Const(a, Const.EqInt), [t1; t2]
+  | Const(a, Const.NeqInt), [t1; t2]
+  | Const(a, Const.Lt), [t1; t2]
+  | Const(a, Const.Gt), [t1; t2]
+  | Const(a, Const.Leq), [t1; t2]
+  | Const(a, Const.Geq), [t1; t2]
+  | Const(a, Const.Add), [t1; t2]
+  | Const(a, Const.Sub), [t1; t2]
+  | Const(a, Const.Mul), [t1; t2] ->
+      fvs_ty ty1 t1 SimType.Int @ fvs_ty ty1 t2 SimType.Int
+  | _->
+      let _ = Format.printf "@.%a@." pr t in
+      assert false
 
 (*
 let rec set_arity am t =

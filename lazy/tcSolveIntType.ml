@@ -44,7 +44,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 		    Format.printf "computing a precondition of %a:@.  @[<v>" Var.pr_x_uid nd.name
 		in
   let interp =
-    if !Flags.generalize_predicates then
+    if !Global.generalize_predicates then
 				  let trs, ps = rec_calls_of (fst nd.name) loc in
 						let tts, tps = List.split
 						  (List.map2

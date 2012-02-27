@@ -105,7 +105,22 @@ let term_of_pterm (n, xs) =
 let term_of pol =
   sum (List.map term_of_pterm pol)
 
-(** {6 Other functions} *)
+(** assume: pol <> [] *)
+let gcd_coeff pol =
+  let n = Util.gcd (List.map (fun (n, _) -> abs n) pol) in
+  let _ = assert (n <> 0) in
+  n, List.map (fun (m, x) -> m / n, x) pol
+
+let gcd_vars pol =
+  let xs = List.map snd pol in
+  match xs with
+    [] -> []
+  | x::xs -> List.fold_left Util.inter x xs
+
+let factorize pol =
+  let n, pol = gcd_coeff pol in
+  let xs = gcd_vars pol in
+  tint n :: List.map make_var xs @ [term_of (List.map (fun (n, ys) -> n, Util.diff ys xs) pol)]
 
 let rec simplify t =
   match fun_args t with
@@ -122,54 +137,50 @@ let rec simplify t =
       let _ = Format.printf "not supported: %a@." Term.pr t in
       raise (Util.NotImplemented "NonLinArith.simplify")
 
-let pos_neg_terms_of pol =
-  let pol1, pol2 = List.partition (fun (n, _) -> assert(n <> 0); n > 0) pol in
-  sum (List.map (fun (n, xs) -> if n = 1 then Term.prod (List.map make_var xs) else Term.prod (tint n :: List.map make_var xs)) pol1),
-  sum (List.map (fun (n, xs) -> if n = -1 then Term.prod (List.map make_var xs) else Term.prod (tint (-n) :: List.map make_var xs)) pol2)
-
 (** {6 Functions on parametric-linear atomic integer formulas} *)
-
-let aif_of t =
-		match fun_args t with
-		  Const(_, c), [t1; t2] when Const.is_ibrel c ->
-		    let pol = of_term (sub t1 t2) in
-		    c, pol
-		| _ ->
-      (*let _ = Format.printf "%a@." Term.pr t in*)
-      invalid_arg "NonLinArith.aif_of"
 
 let pr_aif ppf (c, pol) =
   Format.fprintf ppf
     "%a %s 0"
     pr pol
     (match c with
-		    Const.EqInt ->
-		      "="
-		  | Const.NeqInt ->
-		      "<>"
-		  | Const.Lt ->
-		      "<"
-		  | Const.Gt ->
-		      ">"
-		  | Const.Leq ->
-		      "<="
-		  | Const.Geq ->
-		      ">="
-		  | _ -> assert false)
+      Const.EqInt ->
+        "="
+    | Const.NeqInt ->
+        "<>"
+    | Const.Lt ->
+        "<"
+    | Const.Gt ->
+        ">"
+    | Const.Leq ->
+        "<="
+    | Const.Geq ->
+        ">="
+    | _ -> assert false)
 
+let div_gcd_aif (c, pol) =
+  let _, pol = gcd_coeff pol in
+  c, pol
 
-(** assume: pol <> [] *)
-let gcd_coeff pol =
-  let n = Util.gcd (List.map (fun (n, _) -> abs n) pol) in
-  n, List.map (fun (m, x) -> m / n, x) pol
+let aif_of t =
+  match fun_args t with
+    Const(_, c), [t1; t2] when Const.is_ibrel c ->
+      let pol = of_term (sub t1 t2) in
+      div_gcd_aif (c, pol)
+  | _ ->
+      (*let _ = Format.printf "%a@." Term.pr t in*)
+      invalid_arg "NonLinArith.aif_of"
 
-let gcd_vars pol =
-  let xs = List.map snd pol in
-  match xs with
-    [] -> []
-  | x::xs -> List.fold_left Util.inter x xs
-
-let factorize pol =
-  let n, pol = gcd_coeff pol in
-  let xs = gcd_vars pol in
-  tint n :: List.map make_var xs @ [term_of (List.map (fun (n, ys) -> n, Util.diff ys xs) pol)]
+let term_of_aif (c, pol) =
+  match pol with
+    [(n, [])] ->
+      if Const.lift_ibrel c n 0 then
+        Const([], Const.True)
+      else
+        Const([], Const.False)
+  | _ ->
+      let pol1, pol2 = List.partition (fun (n, _) -> assert(n <> 0); n > 0) pol in
+      apply
+        (Const([], c))
+        [sum (List.map (fun (n, xs) -> if n = 1 then Term.prod (List.map make_var xs) else Term.prod (tint n :: List.map make_var xs)) pol1);
+         sum (List.map (fun (n, xs) -> if n = -1 then Term.prod (List.map make_var xs) else Term.prod (tint (-n) :: List.map make_var xs)) pol2)]

@@ -63,9 +63,9 @@ lib: ocaml csisat trecs
 MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
 LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	util.cmo zipper.cmo \
+	global.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo simType.cmo \
 	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo formula.cmo fdef.cmo prog.cmo \
-	flags.cmo \
 	apronInterface.cmo cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
 	farkas.cmo \
 	intType.cmo intTypeCheck.cmo \

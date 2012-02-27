@@ -47,5 +47,5 @@ let cgen etr =
   match etr with
     Trace.Call(x, g)::etr ->
       let tr = aux (zipper (make x true g [] [])) etr in
-       if !Flags.use_min_unsat_prefix then (*ToDo: test*) get_min_unsat_prefix tr else tr
+       if !Global.use_min_unsat_prefix then (*ToDo: test*) get_min_unsat_prefix tr else tr
   | _ -> assert false

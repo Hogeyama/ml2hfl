@@ -25,10 +25,10 @@ let rec path_set_open p =
 let rec pr ppf tr =
   match tr with
     Node(nd, trs) ->
-				  let _ = Format.fprintf ppf "@[<v>%a@," Var.pr_x_uid nd.name in
+				  let _ = Format.fprintf ppf "@[<v>%a" Var.pr_x_uid nd.name in
 				  let _ =
 						  if trs <> [] then
-  								let _ = Format.fprintf ppf "  @[<v>" in
+  								let _ = Format.fprintf ppf "@,  @[<v>" in
 				      let _ = Format.fprintf ppf "%a" (Util.pr_list pr "@,") trs in
           Format.fprintf ppf "@]"
 				  in
@@ -38,6 +38,6 @@ let rec pr ppf tr =
 		          None -> nd.name
 		        | Some(x, id) -> x, id
         in
-						  Format.fprintf ppf "</%a@@%d>@]"
+						  Format.fprintf ppf "@,</%a@@%d>@]"
 								  Var.pr x
 								  id

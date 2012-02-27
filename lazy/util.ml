@@ -38,13 +38,13 @@ let rec init xs =
 
 let filteri p xs =
   let rec aux i xs =
-		  match xs with
-		    [] -> []
-		  | x::xs' ->
-		      if p i x then
+    match xs with
+      [] -> []
+    | x::xs' ->
+        if p i x then
           x::(aux (i + 1) xs')
         else
-		        aux (i + 1) xs'
+          aux (i + 1) xs'
   in
   aux 0 xs
 
@@ -127,7 +127,7 @@ let map_right f xs =
       [] -> ys
     | x::xs ->
         let y = f (List.rev xs) x ys in
-				    aux xs (y::ys)
+        aux xs (y::ys)
   in
   aux (List.rev xs) []
 
@@ -137,7 +137,7 @@ let map_fold_left f z xs =
       [] -> ys, z
     | x::xs ->
         let y, z = f ys z x xs in
-				    aux (ys @ [y]) z xs
+        aux (ys @ [y]) z xs
   in
   aux [] z xs
 
@@ -147,7 +147,7 @@ let map_fold_right f xs z =
       [] -> z, ys
     | x::xs ->
         let z, y = f (List.rev xs) x z ys in
-		      aux xs z (y::ys)
+        aux xs z (y::ys)
   in
   aux (List.rev xs) z []
 
@@ -174,11 +174,11 @@ let rec is_prefix xs ys =
 
 (** nonemp_prefixes \[1;2;3\] = \[\[1\]; \[1; 2\]; \[1; 2; 3\]\] *)
 let nonemp_prefixes ts =
-		let _, tss = List.fold_left
-		  (fun (ts, tss) t ->
-		    ts @ [t], tss @ [ts @ [t]])
-		  ([], [])
-		  ts
+  let _, tss = List.fold_left
+    (fun (ts, tss) t ->
+      ts @ [t], tss @ [ts @ [t]])
+    ([], [])
+    ts
   in
   tss
 
@@ -243,8 +243,8 @@ let rec find_split_map f xs =
   | x::xs' ->
       match f x with
         None ->
-		        let ls, y, rs = find_split_map f xs' in
-		        x::ls, y, rs
+          let ls, y, rs = find_split_map f xs' in
+          x::ls, y, rs
       | Some(x) ->
           [], x, xs'
 
@@ -367,20 +367,25 @@ let rec fixed_point f eq x =
   let x' = f x in
   if eq x x' then x else fixed_point f eq x'
 
-
+(** ensure: never returns 0 *)
 let gcd ns =
   let rec aux n1 n2 =
-    let _ = if not (n1 >= 0 && n2 >= 0) then let _ = Format.printf "%d, %d@." n1 n2 in assert false in
-    if n1 = n2 then
+    let _ =
+      if not (n1 >= 0 && n2 >= 0) then
+        let _ = Format.printf "%d, %d@." n1 n2 in
+        assert false
+    in
+    if n1 < n2 then
+      aux n2 n1
+    else if n2 = 0 then
+      let _ = assert (n1 <> 0) in
       n1
-    else if n1 > n2 then
-      aux (n1 - n2) n2
     else
-      aux n1 (n2 - n1)
+      aux n2 (n1 mod n2)
   in
-  match ns with
+  match List.filter (fun n -> n <> 0) ns with
     [] ->
-      invalid_arg "Util.gcd"
+      1(*invalid_arg "Util.gcd"*)
   | n::ns ->
       List.fold_left aux n ns
 
@@ -389,7 +394,7 @@ let bv_not bv =
 
 let bv_inc bv =
   let rec aux bv =
-		  match bv with
+    match bv with
       [] -> assert false
     | 0::bv -> 1 :: bv
     | 1::bv -> 0 :: aux bv
@@ -398,7 +403,7 @@ let bv_inc bv =
 
 let bv_dec bv =
   let rec aux bv =
-		  match bv with
+    match bv with
       [] -> assert false
     | 0::bv -> 1 :: aux bv
     | 1::bv -> 0 :: bv
@@ -411,7 +416,7 @@ let bv_of_nat n =
     if n = 0 then
       bv
     else
-  				aux (n mod 2 :: bv) (n / 2)
+      aux (n mod 2 :: bv) (n / 2)
   in
   if n = 0 then
     [0]

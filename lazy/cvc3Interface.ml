@@ -114,6 +114,9 @@ let rec string_of_term t =
 
 let infer t ty =
   let rec aux t ty =
+(*
+    Format.printf "%a@." Term.pr t;
+*)
     match Term.fun_args t with
       Term.Var(_, x), [] ->
         [x, ty]
@@ -134,12 +137,12 @@ let infer t ty =
     | Term.Const(_, Const.NeqUnit), [t1; t2] ->
         let _ = assert (SimType.equiv ty SimType.Bool) in
         aux t1 SimType.Unit @ aux t2 SimType.Unit
+    | Term.Const(_, Const.EqBool), [t1; t2]
+    | Term.Const(_, Const.NeqBool), [t1; t2]
     | Term.Const(_, Const.And), [t1; t2]
     | Term.Const(_, Const.Or), [t1; t2]
     | Term.Const(_, Const.Imply), [t1; t2]
-    | Term.Const(_, Const.Iff), [t1; t2]
-    | Term.Const(_, Const.EqBool), [t1; t2]
-    | Term.Const(_, Const.NeqBool), [t1; t2] ->
+    | Term.Const(_, Const.Iff), [t1; t2] ->
         let _ = assert (SimType.equiv ty SimType.Bool) in
         aux t1 SimType.Bool @ aux t2 SimType.Bool
     | Term.Const(_, Const.Add), [t1; t2]
@@ -155,12 +158,11 @@ let infer t ty =
     | Term.Const(_, Const.NeqInt), [t1; t2] ->
       let _ = assert (SimType.equiv ty SimType.Bool) in
         aux t1 SimType.Int @ aux t2 SimType.Int
-    | Term.Forall(_, env, t), [] ->
+    | Term.Forall(_, env, t), []
+		  | Term.Exists(_, env, t), [] ->
         let _ = assert (SimType.equiv ty SimType.Bool) in
         let xs = List.map fst env in
         List.filter (fun (x, _) -> not (List.mem x xs)) (aux t SimType.Bool)
-		  | Term.Exists(_, env, t), [] ->
-		      assert false
     | _, _ ->
         let _ = Format.printf "%a@." Term.pr t in
         assert false
@@ -190,7 +192,7 @@ let is_valid t =
     "QUERY " ^ string_of_term t ^ ";" ^
     "POP;\n"
   in
-  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@." inp in
+  let _ = if !Global.debug then Format.printf "input to cvc3: %s@." inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let res = input_line cin in
   if Str.string_match (Str.regexp ".*Valid") res 0 then
@@ -245,7 +247,7 @@ let solve t =
     "COUNTERMODEL;" ^
     "POP;\n"
   in
-  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@." inp in
+  let _ = if !Global.debug then Format.printf "input to cvc3: %s@." inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let _ = close_out cout in
   let rec aux () =
@@ -422,7 +424,7 @@ let solve_bv t =
     "COUNTERMODEL;" ^
     "POP;\n"
   in
-  let _ = if !Flags.debug then Format.printf "input to cvc3: %s@." inp in
+  let _ = if !Global.debug then Format.printf "input to cvc3: %s@." inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let _ = close_out cout in
   let rec aux () =
@@ -455,3 +457,11 @@ let solve_bv t =
 *)
       Var.parse c, Term.tint (int_of_string_bv n))
     ss
+
+(** @deprecated *)
+let simplify_conjuncts ts =
+  let ts = Formula.simplify_conjuncts ts in
+  let aifs, ts = Util.partition_map (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t)) ts in
+  let sub, ts' = Util.partition_map (function (Const.EqInt, [1, x], n) -> `L(x, Term.tint (-n)) | aif -> `R(LinArith.term_of_aif aif)) aifs in
+  let ts = List.filter (fun t -> not (is_valid (Term.subst (fun x -> List.assoc x sub) t))) (ts' @ ts) in
+  List.map (fun (x, t) -> Formula.eqInt (Term.make_var x) t) sub @ ts

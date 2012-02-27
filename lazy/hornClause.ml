@@ -31,88 +31,96 @@ let subst_pred sub (x, xs) =
 let subst sub (Hc(popt, ps, ts)) =
   Hc(popt, ps, List.map (Term.subst sub) ts)
 
-let alpha hc =
-  match hc with
-    Hc(popt, ps, ts) ->
-      let bvs = List.unique (match popt with None -> [] | Some(_, xs) -> xs) in
-      let fvs = Util.diff (List.unique (Util.concat_map (fun (_, xs) -> xs) ps @ Util.concat_map Term.fvs ts)) bvs in
-      let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-      let sub x = List.assoc x sub in
-      Hc(popt, List.map (subst_pred sub) ps, List.map (Term.subst sub) ts)
+let alpha (Hc(popt, ps, ts)) =
+  let bvs = List.unique (match popt with None -> [] | Some(_, xs) -> xs) in
+  let fvs = Util.diff (List.unique (Util.concat_map (fun (_, xs) -> xs) ps @ Util.concat_map Term.fvs ts)) bvs in
+  let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
+  let sub x = List.assoc x sub in
+  Hc(popt, List.map (subst_pred sub) ps, List.map (Term.subst sub) ts)
 
-
+let coefficients (Hc(popt, ps, ts)) =
+  Util.concat_map Term.coefficients ts
 
 let lookup pid lbs =
-		let xs, ts = List.assoc pid lbs in
+  let xs, ts = List.assoc pid lbs in
   xs,
-		let fvs = List.filter (fun x -> not (List.mem x xs)) (List.unique (Util.concat_map Term.fvs ts)) in
-		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-  List.map (Term.subst (fun x -> List.assoc x sub)) ts
+  if !Global.rename_lookup then
+		  let fvs = List.filter (fun x -> not (List.mem x xs)) (List.unique (Util.concat_map Term.fvs ts)) in
+		  let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
+		  List.map (Term.subst (fun x -> List.assoc x sub)) ts
+  else
+    ts
 
 let subst_lbs lbs (Hc(popt, ps, ts)) =
   let ts =
     List.unique
-		    (ts @
-		    Util.concat_map
-		      (fun (pid, xs) ->
-		        let ys, ts = lookup pid lbs in
-		        let sub = List.combine ys xs in
-		        let sub x = Term.make_var (List.assoc x sub) in
-		        List.map (Term.subst sub) ts)
-		      ps)
+      (ts @
+      Util.concat_map
+        (fun (pid, xs) ->
+          let ys, ts = lookup pid lbs in
+          let sub = List.map2 (fun y x -> y, Term.make_var x) ys xs in
+          List.map (Term.subst (fun x -> List.assoc x sub)) ts)
+        ps)
   in
 (*
   Format.printf "1:%a@." (Util.pr_list Term.pr ",") ts;
 *)
-  let ts = Formula.conjuncts (Formula.simplify (Formula.band ts)) in
+  let ts = Formula.conjuncts (Formula.simplify (Formula.elim_unit (Formula.band ts))) in
 (*
   Format.printf "2:%a@." (Util.pr_list Term.pr ",") ts;
 *)
   let bvs = match popt with None -> [] | Some(_, xs) -> xs in
   let ts =
-    Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts
+    if !Global.rename_lookup then
+		    Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts
+    else (* sound? *)
+		    let xs = Util.diff (Util.concat_map snd ps) bvs in
+		    Formula.eqelim (fun x -> not (List.mem x xs) || Var.is_coeff x) ts
   in
 (*
   Format.printf "3:%a@." (Util.pr_list Term.pr ",") ts;
 *)
+  let ts = Formula.simplify_conjuncts ts in
+  Format.printf "4:%a@." (Util.pr_list Term.pr ",") ts;
   let ts =
     if true then
       let t = Formula.band ts in
-      if Formula.is_linear t then
-						  let fvs = List.unique (Util.diff (Term.fvs t) bvs) in
-				    try
-				      Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
-				    with Util.NotImplemented _ ->
-				      ts
+      if !Global.rename_lookup && Formula.is_linear t then
+        let fvs = List.unique (Util.diff (Term.fvs t) bvs) in
+        try
+          Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
+        with Util.NotImplemented _ ->
+          ts
       else
         ts
     else
-		    Util.map_left
-		      (fun ts1 t ts2 ->
-						    let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
-			    			(*
-						    let _ = Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
-						    *)
-						    if fvs <> [] && Formula.is_linear t then
-						      let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
-						      let t =
-		            if true then
-				            try
-				              AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
-				            with Util.NotImplemented _ ->
-				              t
-		            else
-		              t
-		          in
-          		(*
-		          let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
-          		*)
-						      let _ = Format.printf "after:@.  @[%a@]@." Term.pr t in
-						      t
-						    else
-						      t)
-		      ts
+      Util.map_left
+        (fun ts1 t ts2 ->
+          let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
+          (*
+          let _ = Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+          *)
+          if fvs <> [] && !Global.rename_lookup && Formula.is_linear t then
+            let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
+            let t =
+              if true then
+                try
+                  AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
+                with Util.NotImplemented _ ->
+                  t
+              else
+                t
+            in
+            (*
+            let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
+            *)
+            let _ = Format.printf "after:@.  @[%a@]@." Term.pr t in
+            t
+          else
+            t)
+        ts
   in
+  Format.printf "5:%a@." (Util.pr_list Term.pr ",") ts;
   Hc(popt, [], Formula.conjuncts (Formula.simplify (Formula.band ts)))
 
 let compute_lb lbs (Hc(Some(pid, xs), ps, ts)) =
@@ -162,15 +170,15 @@ let subst_hcs sub hc =
               let hcs = List.find_all (fun (Hc(Some(y, _), _, _)) -> Var.equiv x y) sub in
               match hcs with
                 [Hc(Some(_, ys), ps, ts)] ->
-																		let ps, ts =
-																				let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Util.concat_map fvs_pred ps @ Util.concat_map Term.fvs ts)) in
-																				let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-																				List.map (subst_pred (fun x -> List.assoc x sub)) ps,
-				                List.map (Term.subst (fun x -> List.assoc x sub)) ts
-				              in
-				              let sub = List.combine ys (List.map Term.make_var xs) in
-				              let sub x = List.assoc x sub in
-				              List.map (subst_pred sub) ps, List.map (Term.subst sub) ts
+                  let ps, ts =
+                    let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Util.concat_map fvs_pred ps @ Util.concat_map Term.fvs ts)) in
+                    let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
+                    List.map (subst_pred (fun x -> List.assoc x sub)) ps,
+                    List.map (Term.subst (fun x -> List.assoc x sub)) ts
+                  in
+                  let sub = List.combine ys (List.map Term.make_var xs) in
+                  let sub x = List.assoc x sub in
+                  List.map (subst_pred sub) ps, List.map (Term.subst sub) ts
               | [] ->
                   [p], []
               | _ ->
@@ -195,19 +203,19 @@ let subst_hcs sub hc =
 let bwd_formula_of hcs =
   let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | _ -> false) hcs in
   let hcs =
-		  Util.fixed_point
-						(fun hcs ->
-						  List.map (subst_hcs hcs2) hcs)
-						(fun hcs hcs' -> hcs =(*???*) hcs')
-						hcs1
+    Util.fixed_point
+      (fun hcs ->
+        List.map (subst_hcs hcs2) hcs)
+      (fun hcs hcs' -> hcs =(*???*) hcs')
+      hcs1
   in
   Formula.simplify
-				(Formula.bor
-				  (List.map
-				    (fun (Hc(None, ps, ts)) ->
-				      if ps = [] then
-				        Formula.band ts
-				      else
-				        let _ = Format.printf "%a@." pr (Hc(None, ps, ts)) in
-				        assert false)
-				    hcs))
+    (Formula.bor
+      (List.map
+        (fun (Hc(None, ps, ts)) ->
+          if ps = [] then
+            Formula.band ts
+          else
+            let _ = Format.printf "%a@." pr (Hc(None, ps, ts)) in
+            assert false)
+        hcs))
