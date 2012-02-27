@@ -117,6 +117,7 @@ let main filename in_channel =
 
   let () = Type_check.check t Type.TUnit in
   let prog,preds = CEGAR_util.trans_prog t in
+  let prog = LazyInterface.insert_extra_param prog in
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->

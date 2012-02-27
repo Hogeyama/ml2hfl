@@ -152,3 +152,6 @@ let infer cexs prog =
         assert false)
     prog.Prog.types
 *)
+
+
+let insert_extra_param prog = prog
