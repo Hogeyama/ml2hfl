@@ -9,7 +9,8 @@ trecsbyte: $(SOURCE)
 	(ocamlc -o trecs $(SOURCE); rm *.cmi *.cmx *.o; cd ..)
 
 trecs: $(SOURCE)
-	(ocamlopt -o trecs unix.cmxa $(SOURCE); rm *.cmi *.cmx *.o; cd ..)
+	(ocamlopt -o trecs unix.cmxa $(SOURCE); cd ..)
+#	(ocamlopt -o trecs unix.cmxa $(SOURCE); rm *.cmi *.cmx *.o; cd ..)
 
 .SUFFIXES:
 	.ml .cmo .mli .cmi

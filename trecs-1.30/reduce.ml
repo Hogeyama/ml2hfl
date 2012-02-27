@@ -1358,17 +1358,19 @@ let rec td_app tdlfun tdlarg =
         with Not_found -> []
        )
     | ITcase(m, n) -> 
-        if n=0 then
-          let atys = 
-              List.map 
-                  (fun td ->
-                       match td with
-                        TDbase(aty) -> aty | _ -> raise (Fatal "td_app")) tdlarg in
-          let atys' =
-              List.map (fun aty -> ITfun([aty], mk_const_ty (m-1) aty)) atys in
-            List.map (fun (aty,td) -> TDapp(aty, tdlfun, [td])) (List.combine atys' tdlarg)
-        else
-           [TDapp(ITcase(m-1,n-1), tdlfun, [])]
+       if n=0 then
+         let atys =
+             List.map
+                 (fun td -> aty_of_td td)
+(**                       match td with
+                       TDbase(aty) -> aty | _ -> raise (Fatal "td_app"))
+**)
+                  tdlarg in
+         let atys' =
+             List.map (fun aty -> ITfun([aty], mk_const_ty (m-1) aty)) atys in
+           List.map (fun (aty,td) -> TDapp(aty, tdlfun, [td])) (List.combine atys' tdlarg)
+       else
+          [TDapp(ITcase(m-1,n-1), tdlfun, [])]
     | ITpair1 _ -> []
     | ITpair2 _ -> []
         

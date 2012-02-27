@@ -244,7 +244,7 @@ let rec create_file n =
       let n = Random.int(15) in
       let prefix = if !web then "/home/koba/horsmc/log/log" else "log" in
       let filename = prefix^(string_of_int n)^".hrs" in
-      let fp = open_out_gen [Open_wronly;Open_creat;Open_excl;Open_trunc] 0o666 filename in
+      let fp = open_out_gen [Open_wronly;Open_creat;Open_trunc] 0o666 filename in
          (filename, fp)
      with
        _ -> create_file (n-1)
