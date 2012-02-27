@@ -214,6 +214,18 @@ let interpolate t1 t2 =
 
 (** @param p represents variables shared by t1 and t2 *)
 let interpolate_bvs p t1 t2 =
-  let t1 = Term.rename_fresh p (simplify (band (eqelim p (conjuncts t1)))) in
-  let t2 = Term.rename_fresh p (simplify (band (eqelim p (conjuncts t2)))) in
+  let t1 =
+    if !Global.rename_lower_bounds then
+      simplify (band (eqelim p (conjuncts t1)))
+    else
+      simplify (band (eqelim (function Var.V(_) -> true | x -> p x) (conjuncts t1)))
+  in
+  let t2 =
+    if !Global.rename_lower_bounds then
+      simplify (band (eqelim p (conjuncts t2)))
+    else
+      simplify (band (eqelim (function Var.V(_) -> true | x -> p x) (conjuncts t2)))
+  in
+  let t1 = Term.rename_fresh p t1 in
+  let t2 = Term.rename_fresh p t2 in
   interpolate t1 t2

@@ -156,7 +156,13 @@ let formula_of hcs =
   let lbs = compute_lbs hcs in
   let _ = Format.printf "lower bounds:@.  %a@." pr_lbs lbs in
   let hcs = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
-  Formula.simplify (Formula.band (Util.concat_map (fun hc -> let Hc(None, [], ts) = subst_lbs !Global.rename_lower_bounds lbs hc in ts) hcs))
+  Formula.simplify
+    (Formula.band
+      (Util.concat_map
+        (fun hc ->
+          let Hc(None, [], ts) = subst_lbs true lbs hc in
+          ts)
+        hcs))
 
 (** @deprecated only used by a deprecated function bwd_formula_of *)
 let subst_hcs sub hc =

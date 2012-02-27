@@ -8,7 +8,7 @@ let generalize_predicates = ref false
 let use_min_unsat_prefix = ref true
 
 let refine_unit = ref false
-let rename_lower_bounds = ref false
+let rename_lower_bounds = ref true (* false is unsound *)
 
 (** {6 Flags for abstraction type construction} *)
 let extract_atomic_predicates = ref false

@@ -290,7 +290,7 @@ let solve t =
       Var.parse c, Term.tint (int_of_string n))
     ss
 
-let bit = 2
+let bit = 1
 
 let string_of_int_bv n =
   let _ = assert (n >= 0) in
