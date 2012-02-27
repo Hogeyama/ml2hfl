@@ -41,3 +41,10 @@ let rec pr ppf tr =
 						  Format.fprintf ppf "@,</%a@@%d>@]"
 								  Var.pr x
 								  id
+
+(** @deprecated *)
+let rec left_of_path p =
+  match p with
+    Top -> Top
+  | Path(up, trs1, nd, _) ->
+      Path(left_of_path up, trs1, nd, [])

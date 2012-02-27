@@ -41,23 +41,23 @@ let alpha (Hc(popt, ps, ts)) =
 let coefficients (Hc(popt, ps, ts)) =
   Util.concat_map Term.coefficients ts
 
-let lookup pid lbs =
+let lookup rename pid lbs =
   let xs, ts = List.assoc pid lbs in
   xs,
-  if !Global.rename_lookup then
+  if rename then
 		  let fvs = List.filter (fun x -> not (List.mem x xs)) (List.unique (Util.concat_map Term.fvs ts)) in
 		  let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
 		  List.map (Term.subst (fun x -> List.assoc x sub)) ts
   else
     ts
 
-let subst_lbs lbs (Hc(popt, ps, ts)) =
+let subst_lbs rename lbs (Hc(popt, ps, ts)) =
   let ts =
     List.unique
       (ts @
       Util.concat_map
         (fun (pid, xs) ->
-          let ys, ts = lookup pid lbs in
+          let ys, ts = lookup rename pid lbs in
           let sub = List.map2 (fun y x -> y, Term.make_var x) ys xs in
           List.map (Term.subst (fun x -> List.assoc x sub)) ts)
         ps)
@@ -71,22 +71,24 @@ let subst_lbs lbs (Hc(popt, ps, ts)) =
 *)
   let bvs = match popt with None -> [] | Some(_, xs) -> xs in
   let ts =
-    if !Global.rename_lookup then
+    if rename then
 		    Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts
     else (* sound? *)
-		    let xs = Util.diff (Util.concat_map snd ps) bvs in
-		    Formula.eqelim (fun x -> not (List.mem x xs) || Var.is_coeff x) ts
+		    Formula.eqelim (fun x -> (match x with Var.V(_) -> true | _ -> false) || List.mem x bvs || Var.is_coeff x) ts
   in
 (*
   Format.printf "3:%a@." (Util.pr_list Term.pr ",") ts;
 *)
   let ts = Formula.simplify_conjuncts ts in
+(*
   Format.printf "4:%a@." (Util.pr_list Term.pr ",") ts;
+*)
   let ts =
     if true then
       let t = Formula.band ts in
-      if !Global.rename_lookup && Formula.is_linear t then
-        let fvs = List.unique (Util.diff (Term.fvs t) bvs) in
+      let fvs = List.unique (Util.diff (Term.fvs t) bvs) in
+      let fvs = if rename then fvs else List.filter (function Var.V(_) -> false | _ -> true) fvs in
+      if fvs <> [] && Formula.is_linear t then
         try
           Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
         with Util.NotImplemented _ ->
@@ -97,18 +99,16 @@ let subst_lbs lbs (Hc(popt, ps, ts)) =
       Util.map_left
         (fun ts1 t ts2 ->
           let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
+          let fvs = if rename then fvs else List.filter (function Var.V(_) -> false | _ -> true) fvs in
           (*
           let _ = Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
           *)
-          if fvs <> [] && !Global.rename_lookup && Formula.is_linear t then
+          if fvs <> [] && Formula.is_linear t then
             let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
             let t =
-              if true then
-                try
-                  AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
-                with Util.NotImplemented _ ->
-                  t
-              else
+              try
+                AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
+              with Util.NotImplemented _ ->
                 t
             in
             (*
@@ -120,11 +120,13 @@ let subst_lbs lbs (Hc(popt, ps, ts)) =
             t)
         ts
   in
+(*
   Format.printf "5:%a@." (Util.pr_list Term.pr ",") ts;
+*)
   Hc(popt, [], Formula.conjuncts (Formula.simplify (Formula.band ts)))
 
 let compute_lb lbs (Hc(Some(pid, xs), ps, ts)) =
-  let Hc(_, [], ts) = subst_lbs lbs (Hc(Some(pid, xs), ps, ts)) in
+  let Hc(_, [], ts) = subst_lbs !Global.rename_lower_bounds lbs (Hc(Some(pid, xs), ps, ts)) in
   pid, (xs, ts)
 
 let compute_lbs hcs =
@@ -154,7 +156,7 @@ let formula_of hcs =
   let lbs = compute_lbs hcs in
   let _ = Format.printf "lower bounds:@.  %a@." pr_lbs lbs in
   let hcs = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
-  Formula.simplify (Formula.band (Util.concat_map (fun hc -> let Hc(None, [], ts) = subst_lbs lbs hc in ts) hcs))
+  Formula.simplify (Formula.band (Util.concat_map (fun hc -> let Hc(None, [], ts) = subst_lbs !Global.rename_lower_bounds lbs hc in ts) hcs))
 
 (** @deprecated only used by a deprecated function bwd_formula_of *)
 let subst_hcs sub hc =

@@ -48,7 +48,7 @@ let cgen env etr =
             in
             if ts <> [] then
 		            let hcs =
-		  								    let locs = related_locs loc in
+		  								    let locs = related_locs loc (*(Loc(tr, left_of_path p))*) in
 				            let pres =
 		                Util.concat_map
 		                  (fun (Loc(tr, _)) ->

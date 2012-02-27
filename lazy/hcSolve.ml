@@ -15,7 +15,7 @@ let rec solve_hc lbs ub ts ps =
       let interp =
         let t1 =
           try
-            let ys, ts = lookup pid lbs in
+            let ys, ts = lookup true pid lbs in
 												let sub = List.combine ys xs in
 												let sub x = Term.make_var (List.assoc x sub) in
             Formula.simplify (Formula.band (List.map (Term.subst sub) ts))
@@ -28,7 +28,7 @@ let rec solve_hc lbs ub ts ps =
 				          (Formula.bnot ub :: ts @
 				          Util.concat_map
 				            (fun (pid, xs) ->
-						            let ys, ts = lookup pid lbs in
+						            let ys, ts = lookup true pid lbs in
 																		let sub = List.combine ys xs in
 																		let sub x = Term.make_var (List.assoc x sub) in
 												      List.map (Term.subst sub) ts)
