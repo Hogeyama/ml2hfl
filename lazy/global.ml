@@ -1,4 +1,4 @@
-(** Flags for verifier *)
+(** Global variables *)
 
 let debug = ref true
 
@@ -7,7 +7,8 @@ let debug = ref true
 let generalize_predicates = ref false
 let use_min_unsat_prefix = ref true
 
-let refine_only_int = ref true
+let refine_unit = ref false
+let rename_lookup = ref true
 
 (** {6 Flags for abstraction type construction} *)
 let extract_atomic_predicates = ref false
