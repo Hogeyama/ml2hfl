@@ -64,6 +64,7 @@ exception Infeasible
 
 val dummy_var : id
 val abst_var : id
+val length_var : id
 
 val typ_event : typ
 val typ_event_cps : typ
