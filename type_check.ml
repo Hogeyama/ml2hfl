@@ -18,11 +18,11 @@ let rec check t typ =
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
     | {desc=(Int _ | NInt _); typ=(TInt _ | TRInt _)} -> ()
-    | {desc=RandInt false; typ=TFun(x,TInt[])} ->
+    | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
     | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->
         check_var x TUnit;
-        check_var k (TFun(Id.new_var "" (TInt[]), TUnit))
+        check_var k (TFun(Id.new_var "" TInt, TUnit))
     | {desc=Var x; typ=typ'} ->
         check_var x typ'
     | {desc=Fun(x,t); typ=TFun(y,typ')} ->
@@ -60,14 +60,14 @@ let rec check t typ =
         check t1 t1.typ;
         check t2 t2.typ;
     | {desc=BinOp((Lt|Gt|Leq|Geq),t1,t2); typ=TBool} ->
-        check t1 (TInt[]);
-        check t2 (TInt[])
+        check t1 TInt;
+        check t2 TInt
     | {desc=BinOp((And|Or),t1,t2); typ=TBool} ->
         check t1 TBool;
         check t2 TBool
     | {desc=BinOp((Add|Sub|Mult),t1,t2); typ=TInt _} ->
-        check t1 (TInt[]);
-        check t2 (TInt[])
+        check t1 TInt;
+        check t2 TInt
     | {desc=Not t; typ=TBool} ->
         check t TBool
     | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event)
@@ -87,7 +87,7 @@ let rec check t typ =
     | {desc=Proj _} -> assert false
     | {desc=SetField _} -> assert false
     | {desc=Nil; typ=TList _} -> ()
-    | {desc=Cons(t1,t2); typ=TList(typ',_)} ->
+    | {desc=Cons(t1,t2); typ=TList typ'} ->
         check t1 typ';
         check t2 typ
     | {desc=Constr(s,ts)} ->

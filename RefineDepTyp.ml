@@ -591,7 +591,7 @@ let print_pred pred =
 let rec print_rty rty =
   match rty with
     RTunit(n) -> print_string2 ("Unit("^(string_of_int n)^")")
-  | RTint(f) -> let x = new_var (TInt[]) in
+  | RTint(f) -> let x = new_var TInt in
                 let pred = f x in
                  (print_string2 "{";
                   print_var x;
@@ -606,7 +606,7 @@ let rec print_rty rty =
                   print_pred pred;
                   print_string2 "}")
   | RTifun(f,g) ->
-           let x = new_var (TInt[]) in
+           let x = new_var TInt in
            let (pred, rty1) = (f x, g x) in
               (print_var x;
                print_string2 ":{";
@@ -617,7 +617,7 @@ let rec print_rty rty =
                print_rty rty1)
 
   | RTbfun(f, g) ->
-           let x = new_var (TInt[]) in
+           let x = new_var TInt in
            let (pred, rty1) = (f x, g x) in
               (print_var x;
                print_string2 ":{";
@@ -927,7 +927,7 @@ let rec reduce_subty rty1 rty2 =
     (RTunit(m), RTunit(n)) ->
       if m=n then [] else raise (SubTincompatible(rty1,rty2))
   | (RTint(f1), RTint(f2)) ->
-      let v = new_var (TInt[]) in
+      let v = new_var TInt in
       let pred1 = f1 v in
       let pred2 = f2 v in
          [Cimp([Cpred(pred1)], [Cpred(pred2)])]
@@ -937,7 +937,7 @@ let rec reduce_subty rty1 rty2 =
       let pred2 = f2 v in
          [Cimp([Cpred(pred1)], [Cpred(pred2)])]
   | (RTifun(f1,g1), RTifun(f2,g2)) ->
-      let v = new_var (TInt[]) in
+      let v = new_var TInt in
       let pred1 = f1 v in
       let pred2 = f2 v in
       let c1 = reduce_subty (g1 v) (g2 v) in
@@ -1349,7 +1349,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
         let t =
           (*if not !Flag.split_free_var then*)
           let rename_nint t =
-            subst_map (List.map (fun id -> id, new_var (TInt[])) (get_nint t)) t
+            subst_map (List.map (fun id -> id, new_var TInt) (get_nint t)) t
           in
             try
               let aux t ts =
@@ -1678,7 +1678,7 @@ let rec get_sol typ1 typ2 =
     | TInt _, _ -> assert false
     | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
-    | TFun({Id.typ=TInt ps} as x,rtyp1), RTifun(pred, rtyp2) ->
+    | TFun({Id.typ=TInt|TPred(TInt,_)} as x,rtyp1), RTifun(pred, rtyp2) ->
         get_sol rtyp1 (rtyp2 (make_var x))
     | TFun({Id.typ=TRInt p},rtyp1), RTifun(pred, rtyp2) ->
         let Pred(pid, terms) = pred (make_var abst_var) in
@@ -1858,7 +1858,7 @@ let to_if_exp (defs:CS.fun_def list) : CS.fun_def list =
 
 let rec trans_typ = function
     CT.TBase(CT.TUnit,_) -> TUnit
-  | CT.TBase(CT.TInt,_) -> TInt[]
+  | CT.TBase(CT.TInt,_) -> TInt
   | CT.TBase(CT.TBool,_) -> TBool
   | CT.TBase _ -> assert false
   | CT.TFun(typ1,typ2) ->
@@ -1927,10 +1927,13 @@ let rec add_preds_typ sol typ1 typ2 =
       TUnit, RTunit _ -> TUnit
     | TAbsBool, RTbool _ -> TAbsBool
     | TBool, RTbool _ -> TBool
+(*
     | TInt ps, RTint _ -> TInt ps (***)
+*)
     | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
-    | TFun({Id.typ=TInt ps} as x,rtyp1), RTifun(pred, rtyp2) ->
+    | TFun({Id.typ=TInt|TPred(TInt,_)} as x,rtyp1), RTifun(pred, rtyp2) ->
+        let ps = match Id.typ x with TInt -> [] | TPred(_,ps) -> ps in
         let Pred(pid, terms) = pred (make_var abst_var) in
         let typ =
           try
@@ -1950,9 +1953,9 @@ let rec add_preds_typ sol typ1 typ2 =
               let p' = Trans.merge_geq_leq (Trans.normalize_bool_exp p) in
                 List.fold_left aux ps [p']
             in
-              TInt ps
+              TPred(TInt, ps)
           with Not_found -> (*assert false*)
-            TInt ps
+            TPred(TInt, ps)
         in
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (make_var x)) in
           TFun(Id.set_typ x typ, rtyp)

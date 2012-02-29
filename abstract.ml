@@ -25,39 +25,30 @@ let hd = function
 
 
 
-let get_preds = function
-    TInt ps -> ps
-  | _ -> assert false
-
-
-
-
-
-
-
 
 
 let rec abst_recdata_typ = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> assert false
-  | TInt ps -> TInt ps
+  | TInt -> TInt
   | TRInt _ -> assert false
   | TVar{contents=None} -> raise (Fatal "Polymorhic types occur!")
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
-  | TList(typ,ps) -> TList(abst_recdata_typ typ, ps)
+  | TList typ -> TList (abst_recdata_typ typ)
   | typ when typ = !typ_excep ->
 (*
       let x = Id.new_var "path" (TList(TInt[])) in
         TFun(x, TInt[])
 *)
-      TInt[]
+      TInt
   | TConstr(s,_) -> assert false
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
   | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,ps) -> TPred(abst_recdata_typ typ, ps)
+  | TPredAuto _ -> assert false
 
 let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
@@ -252,7 +243,7 @@ let rec get_abst_val = function
         let x' = Id.new_var "x" (Id.typ x) in
           make_fun x' (get_abst_val typ)
     | TUnit -> unit_term
-    | TBool -> make_eq (make_int 0) (get_abst_val (TInt[]))
+    | TBool -> make_eq (make_int 0) (get_abst_val TInt)
     | TInt _ -> make_app randint_term [unit_term]
     | _ -> raise (Fatal "Not implemented: get_abst_val")
 let abst_ext_funs t =
@@ -270,29 +261,73 @@ let abst_ext_funs t =
 
 
 let make_tl n t =
-  let x = Id.new_var "x" (TInt[]) in
+  let x = Id.new_var "x" TInt in
   let t1 = make_fun x (make_app (make_fst t) [make_add (make_var x) (make_int n)]) in
   let t2 = make_sub (make_snd t) (make_int n) in
     make_pair t1 t2
 
 
 
+let rec snd_of_length t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Var y -> Var y
+      | Fun(y, t) -> Fun(y, snd_of_length t)
+      | App({desc=Var x}, [t]) when x = length_var -> Snd t
+      | App(t1, ts) -> App(snd_of_length t1, List.map snd_of_length ts)
+      | If(t1, t2, t3) -> If(snd_of_length t1, snd_of_length t2, snd_of_length t3)
+      | Branch(t1, t2) -> Branch(snd_of_length t1, snd_of_length t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, snd_of_length t) bindings in
+          let t2' = snd_of_length t2 in
+            Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, snd_of_length t1, snd_of_length t2)
+      | Not t1 -> Not (snd_of_length t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,snd_of_length t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,snd_of_length t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,snd_of_length t1,snd_of_length t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(snd_of_length t1, snd_of_length t2)
+      | Constr(s,ts) -> Constr(s, List.map snd_of_length ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, apply_opt snd_of_length cond, snd_of_length t1 in
+            Match(snd_of_length t1, List.map aux pats)
+      | Raise t -> Raise (snd_of_length t)
+      | TryWith(t1,t2) -> TryWith(snd_of_length t1, snd_of_length t2)
+      | Pair(t1,t2) -> Pair(snd_of_length t1, snd_of_length t2)
+      | Fst t -> Fst(snd_of_length t)
+      | Snd t -> Snd(snd_of_length t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=t.typ}
 
 let rec abst_list_typ = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> assert false
-  | TInt ps -> TInt ps
+  | TInt -> TInt
   | TRInt _ -> assert false
-  | TVar{contents=None} -> raise (Fatal "Polymorhic types occur!")
+  | TVar{contents=None} -> raise (Fatal "Polymorhic types occur! (Abstract.abst_list_typ)")
   | TVar{contents=Some typ} -> abst_list_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
-  | TList(typ,ps) -> TPair(TFun(Id.new_var "x" (TInt[]), abst_list_typ typ), TInt ps)
+  | TList typ -> TPair(TFun(Id.new_var "x" TInt, abst_list_typ typ), TInt)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> assert false
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
   | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,ps) ->
+      let ps' = List.map snd_of_length ps in
+        TPred(abst_list_typ typ, ps')
+  | TPredAuto _ -> assert false
 
 let abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -327,12 +362,13 @@ let rec get_match_bind_cond t p =
           bind1@@bind2, make_and cond1 cond2
 
 let make_cons post t1 t2 =
-  let i = Id.new_var "i" (TInt[]) in
+  let i = Id.new_var "i" TInt in
   let x = Id.new_var "x" t1.typ in
   let xs_typ =
     match t2.typ with
       | TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,typ12),typ2)
-      | TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,TPred(x,typ12)),typ2)
+      | TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,TPredAuto(x,typ12)),typ2)
+      | TPred(TPair(TFun(typ11,typ12),typ2), ps) -> TPred(TPair(TFun(typ11,typ12),typ2), ps)
       | _ -> assert false
   in
   let xs = Id.new_var "xs" xs_typ in
@@ -376,8 +412,8 @@ let rec abst_list post t =
       | Proj _ -> assert false
       | SetField _ -> assert false
       | Nil ->
-          let typ'' = match t.typ with TList(typ,_) -> abst_list_typ typ | _ -> assert false in
-            Pair(make_fun (Id.new_var "x" (TInt[])) (make_bottom typ''), make_int 0)
+          let typ'' = match t.typ with TList typ -> abst_list_typ typ | _ -> assert false in
+            Pair(make_fun (Id.new_var "x" TInt) (make_bottom typ''), make_int 0)
       | Cons(t1,t2) ->
           let t1' = abst_list post t1 in
           let t2' = abst_list post t2 in
@@ -414,6 +450,70 @@ let rec abst_list post t =
   let () = Type_check.check t typ' in
     t
 
+let rec abst_list post t =
+  let typ' = abst_list_typ t.typ in
+    match t.desc with
+        Unit -> unit_term
+      | True -> true_term
+      | False -> false_term
+      | Unknown -> assert false
+      | Int n -> make_int n
+      | Var x -> make_var (abst_list_var x)
+      | NInt x -> assert false
+      | RandInt b -> randint_term
+      | RandValue(typ,b) -> raise (Fatal "Not implemented (Abstract.abst_list)")
+      | Fun(x,t) -> make_fun (abst_list_var x) (abst_list post t)
+      | App(t, ts) -> make_app (abst_list post t) (List.map (abst_list post) ts)
+      | If(t1, t2, t3) -> make_if (abst_list post t1) (abst_list post t2) (abst_list post t3)
+      | Branch(t1, t2) -> make_branch (abst_list post t1) (abst_list post t2)
+      | Let(flag, bindings, t2) ->
+          let aux (f,xs,t) =
+            let post' = "_" ^ Id.name f in
+              abst_list_var f, List.map abst_list_var xs, abst_list post' t
+          in
+          let bindings' = List.map aux bindings in
+            make_let_f flag bindings' (abst_list post t2)
+      | BinOp(op, t1, t2) -> {desc=BinOp(op, abst_list post t1, abst_list post t2); typ=typ'}
+      | Not t -> make_not (abst_list post t)
+      | Event(s,b) -> {desc=Event(s,b); typ=typ'}
+      | Record _ -> assert false
+      | Proj _ -> assert false
+      | SetField _ -> assert false
+      | Nil ->
+          let typ'' = match t.typ with TList typ -> abst_list_typ typ | _ -> assert false in
+            make_pair (make_fun (Id.new_var "x" TInt) (make_bottom typ'')) (make_int 0)
+      | Cons(t1,t2) ->
+          let t1' = abst_list post t1 in
+          let t2' = abst_list post t2 in
+            make_cons post t1' t2'
+      | Constr(s,ts) -> assert false
+      | Match(t1,pats) ->
+          let x,bindx =
+            match t1.desc with
+                Var x -> Id.set_typ x (abst_list_typ t1.typ), fun t -> t
+                | _ ->
+                    let x = Id.new_var "xs" (abst_list_typ t1.typ) in
+                      x, fun t -> make_let [x, [], abst_list post t1] t
+          in
+          let aux (p,cond,t) t' =
+            let bind,cond' = get_match_bind_cond (make_var x) p in
+            let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
+            let t_cond =
+              match cond with
+                  None -> true_term
+                | Some cond -> add_bind (abst_list post cond)
+            in
+              make_if (make_and cond' t_cond) (add_bind (abst_list post t)) t'
+          in
+          let t_pats = List.fold_right aux pats (make_bottom typ') in
+            bindx t_pats
+      | Raise t -> {desc=Raise (abst_list post t); typ=typ'}
+      | TryWith(t1,t2) -> {desc=TryWith(abst_list post t1, abst_list post t2); typ=typ'}
+      | Bottom -> {desc=Bottom; typ=typ'}
+      | Pair(t1,t2) -> make_pair(abst_list post t1) (abst_list post t2)
+      | Fst t -> make_fst (abst_list post t)
+      | Snd t -> make_snd (abst_list post t)
+
 let abstract_list t =
   let t' = abst_list "" t in
   let () = Type_check.check t' Type.TUnit in
@@ -424,7 +524,7 @@ let rec abst_datatype_typ = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> TAbsBool
-  | TInt ps -> TInt ps
+  | TInt -> TInt
   | TRInt p -> TRInt p
   | TVar _ -> assert false
   | TFun(x,typ) ->
@@ -436,25 +536,8 @@ let rec abst_datatype_typ = function
   | TConstr(s,true) -> assert false
   | TUnknown -> assert false
   | TVariant _ -> assert false
-  | TPred _ -> assert false
-
-let rec abst_datatype_typ = function
-    TUnit -> TUnit
-  | TBool -> TBool
-  | TAbsBool -> TAbsBool
-  | TInt ps -> TInt ps
-  | TRInt p -> TRInt p
-  | TVar _ -> assert false
-  | TFun(x,typ) ->
-      let x' = Id.set_typ x (abst_datatype_typ (Id.typ x)) in
-        TFun(x', abst_datatype_typ typ)
-  | TList _ -> assert false
-  | TPair _ -> assert false
-  | TConstr(s,false) -> assert false
-  | TConstr(s,true) -> assert false
-  | TUnknown -> assert false
-  | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,ps) -> TPred(abst_datatype_typ typ, ps)
+  | TPredAuto _ -> assert false
 
 let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Flag.Immutable, t))::fields, i+1) ([],0) ts in

@@ -9,17 +9,18 @@ let rec id___typ = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> TAbsBool
-  | TInt ps -> TInt (List.map id__ ps)
+  | TInt -> TInt
   | TRInt p -> TRInt (id__ p)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> id___typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (id___typ (Id.typ x)), id___typ typ)
-  | TList(typ,ps) -> TList(id___typ typ, List.map id__ ps)
+  | TList typ -> TList (id___typ typ)
   | TPair(typ1,typ2) -> TPair(id___typ typ1, id___typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,ps) -> TPred(id___typ typ, List.map id__ ps)
+  | TPredAuto _ -> assert false
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
 
@@ -87,17 +88,18 @@ let rec id2___typ env = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> TAbsBool
-  | TInt ps -> TInt (List.map (id2__ env) ps)
+  | TInt -> TInt
   | TRInt p -> TRInt (id2__ env p)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> id2___typ env typ
   | TFun(x,typ) -> TFun(Id.set_typ x (id2___typ env (Id.typ x)), id2___typ env typ)
-  | TList(typ,ps) -> TList(id2___typ env typ, List.map (id2__ env) ps)
+  | TList typ -> TList (id2___typ env typ)
   | TPair(typ1,typ2) -> TPair(id2___typ env typ1, id2___typ env typ2)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,ps) -> TPred(id2___typ env typ, List.map (id2__ env) ps)
+  | TPredAuto _ -> assert false
 
 and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
 
@@ -165,17 +167,18 @@ let rec flatten_tvar_typ = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> TAbsBool
-  | TInt ps -> TInt (List.map flatten_tvar ps)
+  | TInt -> TInt
   | TRInt p -> TRInt (flatten_tvar p)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> flatten_tvar_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (flatten_tvar_typ (Id.typ x)), flatten_tvar_typ typ)
-  | TList(typ,ps) -> TList(flatten_tvar_typ typ, List.map flatten_tvar ps)
+  | TList typ -> TList(flatten_tvar_typ typ)
   | TPair(typ1,typ2) -> TPair(flatten_tvar_typ typ1, flatten_tvar_typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,ps) -> TPred(flatten_tvar_typ typ, List.map flatten_tvar ps)
+  | TPredAuto _ -> assert false
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
 
@@ -246,18 +249,19 @@ let rec rename_tvar_typ map = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> TAbsBool
-  | TInt ps -> TInt ps
+  | TInt -> TInt
   | TRInt p -> TRInt p
   | TVar({contents=None} as x) when List.mem_assq x map -> TVar (List.assq x map)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> rename_tvar_typ map typ
   | TFun(x,typ) -> TFun(Id.set_typ x (rename_tvar_typ map (Id.typ x)), rename_tvar_typ map typ)
-  | TList(typ,ps) -> TList(rename_tvar_typ map typ, ps)
+  | TList typ -> TList(rename_tvar_typ map typ)
   | TPair(typ1,typ2) -> TPair(rename_tvar_typ map typ1, rename_tvar_typ map typ2)
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,ps) -> TPred(rename_tvar_typ map typ, ps)
+  | TPredAuto _ -> assert false
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
 
@@ -327,17 +331,18 @@ let rec get_tvars typ =
         TUnit -> []
       | TBool -> []
       | TAbsBool -> assert false
-      | TInt _ -> []
+      | TInt -> []
       | TRInt _ -> []
       | TVar({contents=None} as x) -> [x]
       | TVar{contents=Some typ} -> get_tvars typ
       | TFun(x,typ2) -> get_tvars (Id.typ x) @@@ get_tvars typ2
-      | TList(typ,_) -> get_tvars typ
+      | TList typ -> get_tvars typ
       | TPair(typ1,typ2) -> get_tvars typ1 @@@ get_tvars typ2
       | TConstr(s,b) -> []
       | TUnknown _ -> assert false
       | TVariant _ -> assert false
-      | TPred _ -> assert false
+      | TPred(typ,_) -> get_tvars typ
+      | TPredAuto _ -> assert false
 
 
 let rec rename_poly_funs f map t =
@@ -1365,9 +1370,9 @@ let rec eval t =
       | BinOp(Mult, {desc=Int 1}, t) ->
           (eval t).desc
       | BinOp(Sub, t1, t2) ->
-          (eval {desc=BinOp(Add, eval t1, eval {desc=BinOp(Mult, {desc=Int(-1);typ=TInt[]}, t2);typ=TInt[]});typ=TInt[]}).desc
+          (eval (make_add (eval t1) (eval (make_mul (make_int (-1)) t2)))).desc
       | BinOp(Mult, {desc=Int n}, {desc=BinOp(Mult, {desc=Int m}, t)}) ->
-          (eval {desc=BinOp(Mult, {desc=Int(n * m);typ=TInt[]}, t);typ=TInt[]}).desc
+          (eval (make_mul (make_int (n*m)) t)).desc
       | BinOp(op, t1, t2) ->
           BinOp(op, eval t1, eval t2)
       | Not t ->
@@ -1485,7 +1490,7 @@ let normalize_binop_exp op t1 t2 =
               match List.exists aux xns1, List.exists aux xns2 with
                   true, true ->
                     Format.printf "Nonlinear expression not supported: %a@."
-                      pp_print_term {desc=BinOp(op,t1,t2);typ=TInt[]};
+                      pp_print_term {desc=BinOp(op,t1,t2);typ=TInt};
                     assert false
                 | false, true ->
                     let k = reduce xns1 in
@@ -1524,8 +1529,8 @@ let normalize_binop_exp op t1 t2 =
         [] -> assert false
       | (x,n)::xns ->
           let aux :typed_term option * int -> typed_term= function
-              None,n -> {desc=Int n; typ=TInt[]}
-            | Some x,n -> if n=1 then x else {desc=BinOp(Mult, {desc=Int n;typ=TInt[]}, x); typ=TInt[]}
+              None,n -> {desc=Int n; typ=TInt}
+            | Some x,n -> if n=1 then x else make_mul (make_int n) x
           in
           let t1,xns',op' =
             if n<0
@@ -1546,8 +1551,8 @@ let normalize_binop_exp op t1 t2 =
           let ts = List.map aux xns' in
           let t2 =
             match ts with
-                [] -> {desc=Int 0; typ=TInt[]}
-              | t::ts' -> List.fold_left (fun t2 t -> {desc=BinOp(Add, t2, t);typ=TInt[]}) t ts'
+                [] -> make_int 0
+              | t::ts' -> List.fold_left make_add t ts'
           in
             op', t1, t2
   in
@@ -1556,10 +1561,10 @@ let normalize_binop_exp op t1 t2 =
       match t.desc with
           BinOp(Add, t1, {desc=BinOp(Mult, {desc=Int n}, t2)}) when n < 0 ->
             let t1' = simplify t1 in
-              BinOp(Sub, t1', {desc=BinOp(Mult, {desc=Int(-n);typ=TInt[]}, t2); typ=TInt[]})
+              BinOp(Sub, t1', make_mul (make_int (-n)) t2)
         | BinOp(Add, t1, {desc=Int n}) when n < 0 ->
             let t1' = simplify t1 in
-              BinOp(Sub, t1', {desc=Int(-n);typ=TInt[]})
+              BinOp(Sub, t1', make_int (-n))
         | BinOp(Add, t1, t2) ->
             let t1' = simplify t1 in
               BinOp(Add, t1', t2)
@@ -1927,7 +1932,7 @@ let rec init_rand_int t =
       | Var x -> Var x
       | NInt x -> NInt x
       | RandInt false -> assert false
-      | App({desc=RandInt false},[{desc=Unit}]) -> NInt (Id.new_var "_r" (TInt[]))
+      | App({desc=RandInt false},[{desc=Unit}]) -> NInt (Id.new_var "_r" TInt)
       | Fun(x,t) -> Fun(x, init_rand_int t)
       | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
       | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)

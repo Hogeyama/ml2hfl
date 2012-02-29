@@ -13,7 +13,7 @@ let print_error_information () =
 
 let parse_error _ = print_error_information ()
 
-let make_id s = Id.make 0 s (TInt[])
+let make_id s = Id.make 0 s TInt
 let make_id_typ typ = Id.make 0 "" typ
 let orig_id x = {x with Id.id = 0}
 %}
@@ -64,26 +64,19 @@ let orig_id x = {x with Id.id = 0}
 %token PLUS
 %token MINUS
 %token TIMES
-%token CHOICE
+%token BAR
 %token FAIL
 %token ASSERT
 %token QUESTION
 %token UNKNOWN
 
 /* priority : low -> high */
-%left prec_if
-%left prec_app
-%nonassoc FUN
-%right ARROW
-%left prec_fun
-%nonassoc prec_let
-%left SEMI
 %left OR
 %left AND
 %nonassoc EQUAL LTHAN GTHAN LEQ GEQ
 %left PLUS MINUS
-%left prec_add
-%nonassoc IDENT INT TRUE FALSE UNKNOWN QUESTION LPAREN RPAREN BEGIN END LET IN FAIL ASSERT
+%left prec_app
+
 
 %start typedefs
 %type <(Syntax.id * Syntax.typ) list> typedefs
@@ -117,8 +110,12 @@ exp:
   { make_add $1 $3 }
 | exp MINUS exp
   { make_sub $1 $3 }
+| exp TIMES exp
+  { make_sub $1 $3 }
 | NOT exp
   { make_not $2 }
+| id exp %prec prec_app
+  { make_app (make_var length_var) [$2] }
 
 id:
 | IDENT { make_id $1 }
@@ -128,37 +125,34 @@ typedefs:
 | id COLON typ typedefs
   { ($1, snd $3)::$4 }
 
-typ_base:
+typ_aux:
 | TUNIT
   { TUnit }
 | TBOOL
   { TBool }
 | TINT
-  { TInt([]) }
+  { TInt }
 | TINT LSQUAR pred_list RSQUAR
-  { TInt($3) }
-
-typ_base_id:
-| id COLON typ_base
-  {
-    let x = Id.new_var_id $1 in
-    let typ = subst_type $1 (make_var abst_var) $3 in
-      Some {x with Id.typ=typ}, typ
-  }
-| typ_base
-  { None, $1 }
+  { TPred(TInt, $3) }
+| typ LIST
+  { TList (snd $1) }
+| typ LIST LSQUAR pred_list RSQUAR
+  { TPred(TList(snd $1), $4) }
+| LPAREN typ LIST LSQUAR pred_list RSQUAR RPAREN
+  { TPred(TList(snd $2), $5) }
 
 typ:
 | LPAREN typ RPAREN
   { $2 }
-| typ_base_id
-  { $1 }
+| id COLON typ_aux
+  {
+    let x = Id.new_var (Id.name $1) $3 in
+      Some x, subst_type $1 (make_var abst_var) $3
+  }
+| typ_aux
+  { None, $1 }
 | typ TIMES typ
   { None, TPair(snd $1, snd $3) }
-| typ LIST
-  { None, TList(snd $1, []) }
-| typ LIST LSQUAR pred_list RSQUAR
-  { None, TList(snd $1, $4) }
 | typ ARROW typ
   {
     let x1,typ1 = $1 in
@@ -167,6 +161,7 @@ typ:
       match x1 with
           None -> make_id_typ typ1, typ2
         | Some x1' ->
+            Format.printf "VAR: %a, %a@." Id.print (orig_id x1') Id.print x1';
             let typ2' = subst_type (orig_id x1') (make_var x1') typ2 in
               if typ2 = typ2'
               then make_id_typ typ1, typ2

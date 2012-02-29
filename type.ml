@@ -5,11 +5,11 @@ type 'a t =
     TUnit
   | TBool
   | TAbsBool
-  | TInt of 'a list
+  | TInt
   | TRInt of 'a
   | TVar of 'a t option ref
   | TFun of ('a t Id.t) * 'a t
-  | TList of 'a t * 'a list
+  | TList of 'a t
   | TPair of 'a t * 'a t
   | TConstr of string * bool
   | TUnknown
@@ -17,18 +17,23 @@ type 'a t =
 (*
   | TLabel of 'a t Id.t * 'a t
 *)
-  | TPred of 'a t Id.t * 'a t
+  | TPred of 'a t * 'a list
+  | TPredAuto of 'a t Id.t * 'a t
 
 
 
-let is_base_typ = function
+let rec is_base_typ = function
     TUnit
   | TBool
   | TAbsBool
   | TInt _
   | TRInt _ -> true
+  | TPred(typ,_) -> is_base_typ typ
   | _ -> false
 
+let elim_tpred = function
+    TPred(typ,_) -> typ
+  | typ -> typ
 
 let rec decomp_tfun = function
     TFun(x,typ) ->
@@ -40,12 +45,14 @@ let rec can_unify typ1 typ2 =
   match typ1,typ2 with
       TVar{contents=Some typ1},typ2
     | typ1,TVar{contents=Some typ2} -> can_unify typ1 typ2
+    | TPred(typ1,_), typ2
+    | typ1, TPred(typ2,_) -> can_unify typ1 typ2
     | TUnit,TUnit -> true
     | (TBool|TAbsBool),(TBool|TAbsBool) -> true
     | TInt _,TInt _ -> true
     | TRInt _,TRInt _ -> true
     | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
-    | TList(typ1,_), TList(typ2,_) -> can_unify typ1 typ2
+    | TList typ1, TList typ2 -> can_unify typ1 typ2
     | TPair(typ11,typ12), TPair(typ21,typ22) -> can_unify typ11 typ21 && can_unify typ12 typ22
     | TConstr("event",_), TFun _ -> true
     | TFun _, TConstr("event",_) -> true
@@ -70,8 +77,7 @@ let rec print print_pred fm typ =
         TUnit -> Format.fprintf fm "unit"
       | TAbsBool -> Format.fprintf fm "abool"
       | TBool -> Format.fprintf fm "bool"
-      | TInt [] -> Format.fprintf fm "int"
-      | TInt ps -> Format.fprintf fm "int[%a]" print_preds ps
+      | TInt -> Format.fprintf fm "int"
       | TRInt p -> assert false (*Format.fprintf fm "{ %a | %a }" Id.print abst_var print_preds [p]*)
       | TVar{contents=Some typ} -> print fm typ
       | TVar _ -> Format.fprintf fm "!!!"
@@ -80,8 +86,8 @@ let rec print print_pred fm typ =
           then Format.fprintf fm "(@[%a@ ->@ %a@])" print (Id.typ x) print typ
           else Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print (Id.typ x) print typ
       | TUnknown -> Format.fprintf fm "???"
-      | TList(typ,[]) -> Format.fprintf fm "@[%a list@]" print typ
-      | TList(typ,ps) -> Format.fprintf fm "@[%a list[%a]@]" print typ print_preds ps
+      | TList typ -> Format.fprintf fm "@[%a list@]" print typ
+      | TPred(TList typ, ps) -> Format.fprintf fm "@[%a list[%a]@]" print typ print_preds ps
       | TPair(typ1,typ2) -> Format.fprintf fm "(@[%a@ *@ %a@])" print typ1 print typ2
       | TVariant _ -> assert false
 (*
@@ -114,7 +120,8 @@ let rec print print_pred fm typ =
             else Format.fprintf fm "{%a}" aux typs
 *)
       | TConstr(s,_) -> Format.pp_print_string fm s
-      | TPred(x,typ) -> Format.fprintf fm "(%a|[%a])" print typ Id.print x
+      | TPred(typ,ps) -> Format.fprintf fm "%a[%a]" print typ print_preds ps
+      | TPredAuto(x,typ) -> Format.fprintf fm "(%a|[%a])" print typ Id.print x
 
 and print_preds print_pred = print_list print_pred ";" false
 
@@ -129,17 +136,18 @@ let rec occurs r typ =
       TUnit -> false
     | TBool -> false
     | TAbsBool -> false
-    | TInt ps -> assert (ps = []); false
+    | TInt -> false
     | TRInt p -> assert false
     | TVar({contents=None} as r') -> r == r'
     | TVar{contents=Some typ} -> assert false
     | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
-    | TList(typ,ps) -> assert (ps = []); occurs r typ
+    | TList typ -> occurs r typ
     | TPair(typ1,typ2) -> occurs r typ1 || occurs r typ2
     | TConstr(s,b) -> false
     | TUnknown -> false
     | TVariant _ -> assert false
-    | TPred _ -> assert false
+    | TPred(typ,_) -> occurs r typ
+    | TPredAuto _ -> assert false
 
 exception CannotUnify
 
@@ -153,7 +161,7 @@ let rec unify typ1 typ2 =
       | TFun(x1, typ1), TFun(x2, typ2) ->
           unify (Id.typ x1) (Id.typ x2);
           unify typ1 typ2
-      | TList(typ1,_), TList(typ2,_) -> unify typ1 typ2
+      | TList typ1, TList typ2 -> unify typ1 typ2
       | TPair(typ11,typ12), TPair(typ21,typ22) ->
           unify typ11 typ21;
           unify typ12 typ22
@@ -181,7 +189,7 @@ let rec same_shape typ1 typ2 =
     | TVar{contents=None}, TVar{contents=None} -> true
     | TVar{contents=Some typ1},TVar{contents=Some typ2} -> same_shape typ1 typ2
     | TFun(x1,typ1),TFun(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
-    | TList(typ1,_),TList(typ2,_) -> same_shape typ1 typ2
+    | TList typ1, TList typ2 -> same_shape typ1 typ2
     | TPair(typ11,typ12),TPair(typ21,typ22) -> same_shape typ11 typ21 && same_shape typ12 typ22
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
     | TUnknown, TUnknown -> true
@@ -194,17 +202,18 @@ let rec is_poly_typ = function
     TUnit -> false
   | TBool -> false
   | TAbsBool -> false
-  | TInt _ -> false
+  | TInt -> false
   | TRInt _ -> false
   | TVar{contents=None} -> true
   | TVar{contents=Some typ} -> is_poly_typ typ
   | TFun(x,typ) -> is_poly_typ (Id.typ x) || is_poly_typ typ
-  | TList(typ,_) -> is_poly_typ typ
+  | TList typ -> is_poly_typ typ
   | TPair(typ1,typ2) -> is_poly_typ typ1 || is_poly_typ typ2
   | TConstr _ -> false
   | TUnknown _ -> assert false
   | TVariant _ -> assert false
-  | TPred _ -> assert false
+  | TPred(typ,_) -> is_poly_typ typ
+  | TPredAuto _ -> assert false
 
 
 let rec copy = function
@@ -225,14 +234,15 @@ let rec has_pred = function
     TUnit -> false
   | TBool -> false
   | TAbsBool -> false
-  | TInt ps -> ps <> []
+  | TInt -> false
   | TRInt _ -> assert false
   | TVar{contents=None} -> false
   | TVar{contents=Some typ} -> has_pred typ
   | TFun(x,typ) -> has_pred (Id.typ x) || has_pred typ
-  | TList(typ,ps) -> has_pred typ || ps <> []
+  | TList typ -> has_pred typ
   | TPair(typ1,typ2) -> has_pred typ1 || has_pred typ2
   | TConstr _ -> false
   | TUnknown -> false
   | TVariant _ -> assert false
-  | TPred (_,typ) -> has_pred typ
+  | TPred(typ,ps) -> has_pred typ || ps <> []
+  | TPredAuto (_,typ) -> has_pred typ

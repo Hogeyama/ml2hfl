@@ -164,7 +164,7 @@ and linearArithTerm_of_term t =
     | App(App(Const Mul, Const (Int n)), Var x) -> [n, Some x]
     | Const (Int n) -> [n, None]
     | Var x -> [1, Some x]
-    | _ -> assert false
+    | _ -> raise (Fatal "non linear expression (CEGAR_print.linearArithTerm_of_term)")
 
 and linearBoolTerm_of_term t =
   try

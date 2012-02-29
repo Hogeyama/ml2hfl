@@ -130,7 +130,7 @@ exception Satisfiable
 
 let string_of_var env x =
   let post =
-    match (try List.assoc x env with Not_found -> Format.printf "%s@." x; assert false) with
+    match List.assoc x env with
         TBase(TUnit,_) -> "_u"
       | TBase(TInt,_) -> "_i"
       | TBase(TBool,_) -> "_b"

@@ -74,11 +74,11 @@ let main filename in_channel =
     then []
     else
       let lb = Lexing.from_channel (open_in !spec_file) in
-      lb.Lexing.lex_curr_p <-
-        {Lexing.pos_fname = Filename.basename !spec_file;
-         Lexing.pos_lnum = 1;
-         Lexing.pos_cnum = 0;
-         Lexing.pos_bol = 0};
+        lb.Lexing.lex_curr_p <-
+          {Lexing.pos_fname = Filename.basename !spec_file;
+           Lexing.pos_lnum = 1;
+           Lexing.pos_cnum = 0;
+           Lexing.pos_bol = 0};
         Spec_parser.typedefs Spec_lexer.token lb
   in
 
@@ -95,13 +95,13 @@ let main filename in_channel =
       let spec' = Trans.rename_spec spec t in
       let () = print_spec spec' in
       let t' = Trans.replace_typ spec' t in
-      let () = if true && t <> t' then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term' t' in
       let t = t' in
       let t' = Abstract.abstract_recdata t in
-      let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
+      let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Abstract.abstract_list t in
-      let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
+      let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term' t' in
       let t = t' in
       let t' = Abstract.abst_ext_funs t in
       let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
@@ -121,12 +121,11 @@ let main filename in_channel =
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->
-          let prog_result, result = CEGAR.cegar prog preds in
-	    match result with
-	        None -> Format.printf "Safe!@.@."
-	      | Some print ->
-                  Format.printf "Unsafe!@.@.";
-                  print ()
+	  match CEGAR.cegar prog preds with
+	      prog', None -> Format.printf "Safe!@.@."
+	    | _, Some print ->
+                Format.printf "Unsafe!@.@.";
+                print ()
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"

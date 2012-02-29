@@ -44,6 +44,14 @@ let rec subst_typ x t = function
   | TFun(typ1,typ2) -> TFun(subst_typ x t typ1, fun y -> subst_typ x t (typ2 y))
   | _ -> assert false
 
+let rec subst_typ_map map = function
+    TBase(b,ps) ->
+      (** ASSUME: y does not contain x **)
+      let ps' y = List.map (subst_map map) (ps y) in
+        TBase(b, ps')
+  | TFun(typ1,typ2) -> TFun(subst_typ_map map typ1, fun y -> subst_typ_map map (typ2 y))
+  | _ -> assert false
+
 
 
 let rec arg_num = function
@@ -156,7 +164,8 @@ let rec trans_typ_aux f path = function
       let typ1 = TBase(TBool, fun x -> [x]) in
       let typ2,preds = trans_typ_aux f (path@[1]) typ in
         TFun(typ1, fun y -> subst_typ x' y typ2), preds
-  | Type.TFun({Id.typ=Type.TInt ps} as x,typ) ->
+  | Type.TFun({Id.typ=Type.TInt|Type.TPred(Type.TInt,_)} as x,typ) ->
+      let ps = match Id.typ x with Type.TPred(_,ps) -> ps | _ -> [] in
       let x' = trans_var x in
       let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term "" [] [] p)) in
       let typ1 = TBase(TInt, fun z -> List.map (aux z) ps) in
@@ -171,26 +180,27 @@ let rec trans_typ_aux f path = function
   | Type.TConstr _ -> assert false
   | Type.TUnknown -> assert false
   | Type.TPair _ -> assert false
-  | Type.TPred(x,typ) ->
+  | Type.TPred(typ,ps) -> trans_typ_aux f path typ
+  | Type.TPredAuto(x,typ) ->
       let typ',preds = trans_typ_aux f path typ in
         typ', ((f, trans_var x, path)::preds)
   | _ -> assert false
 
 and trans_typ f path typ =
   let typ',ps = trans_typ_aux f path typ in
-(*
-let pr fm (f,x,path) =
-  let rec proj path typ =
-    match path,typ with
-        [],typ -> typ
+    (*
+      let pr fm (f,x,path) =
+      let rec proj path typ =
+      match path,typ with
+      [],typ -> typ
       | 0::path',TFun(typ1,typ2) -> proj path' typ1
       | 1::path',TFun(typ1,typ2) -> proj path' (typ2 (Const Unit))
       | _ -> assert false
-  in
-    Format.printf "%s(%s) => %a@." f x (print_list Format.pp_print_int ";" false) path
-in
-Format.printf "AA:%a@.%a@.@." Syntax.print_typ typ (print_list pr "" false) ps;
-*)
+      in
+      Format.printf "%s(%s) => %a@." f x (print_list Format.pp_print_int ";" false) path
+      in
+      Format.printf "AA:%a@.%a@.@." Syntax.print_typ typ (print_list pr "" false) ps;
+    *)
     preds := ps @@ !preds;
     typ'
 
@@ -208,7 +218,7 @@ and trans_binop = function
   | Syntax.Sub -> Const Sub
   | Syntax.Mult -> Const Mul
 
-(** App(Temp e, t) means execution of App(t,Unit) after happening the event e *)
+(** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
   match t.Syntax.desc with
       Syntax.Unit -> [], Const Unit
@@ -248,25 +258,29 @@ and trans_term post xs env t =
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
         let defs3,t3' = trans_term post xs env t3 in
-        let f = new_id ("f" ^ post) in
+        let f = new_id ("br" ^ post) in
         let x = new_id "b" in
-        let typs = typ_bool :: List.map (fun x -> List.assoc x env) xs in
-        let typ = List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs (trans_typ f [] t2.Syntax.typ) in
-        let def1 = f, typ, x::xs, Var x, [], t2' in
-        let def2 = f, typ, x::xs, make_not (Var x), [], t3' in
+        let typ0 = trans_typ f [] t2.Syntax.typ in
+        let aux x typ2 = TFun(List.assoc x env, fun y -> subst_typ x y typ2) in
+        let typ = List.fold_right aux xs typ0 in
+        let typ' = TFun(typ_bool, fun _ -> typ) in
+        let def1 = f, typ', x::xs, Var x, [], t2' in
+        let def2 = f, typ', x::xs, make_not (Var x), [], t3' in
         let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
           def1::def2::defs1@defs2@defs3, t
     | Syntax.Let _ -> assert false
     | Syntax.BinOp(Syntax.Eq, t1, t2) ->
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
-        let op =
-          match t1.Syntax.typ with
-              Type.TUnit -> EqUnit
-            | Type.TBool -> EqBool
-            | Type.TInt _ -> EqInt
-            | _ -> assert false
+        let rec aux = function
+            Type.TUnit -> EqUnit
+          | Type.TBool -> EqBool
+          | Type.TInt -> EqInt
+          | Type.TPred(typ,_) -> aux typ
+          | Type.TUnknown -> EqInt
+          | _ -> assert false
         in
+        let op = aux t1.Syntax.typ in
           defs1@defs2, make_app (Const op) [t1'; t2']
     | Syntax.BinOp(op, t1, t2) ->
         let defs1,t1' = trans_term post xs env t1 in
@@ -299,11 +313,11 @@ let rec formula_of t =
         let t1' = formula_of t1 in
         let t2' = formula_of t2 in
         let op =
-          match t1.Syntax.typ with
+          match Type.elim_tpred t1.Syntax.typ with
               Type.TUnit -> EqUnit
             | Type.TBool -> EqBool
-            | Type.TInt _ -> EqInt
-            | _ -> assert false
+            | Type.TInt -> EqInt
+            | _ -> Format.printf "%a@." Syntax.print_typ t1.Syntax.typ; assert false
         in
           make_app (Const op) [t1'; t2']
     | Syntax.BinOp(op, t1, t2) ->
@@ -334,12 +348,14 @@ let trans_def (f,(xs,t)) =
 	     let t1' = formula_of t1 in
 	     let defs2,t2' = trans_term post xs' env t2 in
 	     let defs3,t3' = trans_term post xs' env t3 in
-	       ((f', trans_typ f' [] (Id.typ f), xs', t1', [], t2')::defs2) @
-		 ((f', trans_typ f' [] (Id.typ f), xs', make_not t1', [], t3')::defs3)
+             let typ' = trans_typ f' [] (Id.typ f) in
+	       ((f', typ', xs', t1', [], t2')::defs2) @
+		 ((f', typ', xs', make_not t1', [], t3')::defs3)
 	 | _ -> raise Not_found)
     with Not_found ->
       let defs,t' = trans_term post xs' env t in
-	(f', trans_typ f' [] (Id.typ f), xs', Const True, [], t')::defs
+      let typ' = trans_typ f' [] (Id.typ f) in
+	(f', typ', xs', Const True, [], t')::defs
 
 
 let event_of_temp (env,defs,main) =
@@ -437,9 +453,11 @@ let trans_prog t =
   in
   let map = rev_flatten_map make_map_vars (get_defs prog) @@ map in
   let map = uniq' (fun (x,_) (y,_) -> compare x y) map in
+  let smap = List.map (fun (x,x') -> x,Var x') map in
   let rename_var x = List.assoc x map in
-  let rename_term t = subst_map (List.map (fun (x,x') -> x,Var x') map) t in
+  let rename_term t = subst_map smap t in
   let rename_def (f,xs,t1,e,t2) = rename_var f, List.map rename_var xs, rename_term t1, e, rename_term t2 in
+  let rename_typ typ = subst_typ_map smap typ in
   let env = List.map (fun (f,typ) -> rename_var f, typ) (get_env prog) in
   let defs = List.map rename_def (get_defs prog) in
   let main = rename_var (get_main prog) in

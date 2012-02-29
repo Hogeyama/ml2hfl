@@ -12,7 +12,3 @@ let rec make_list n =
 let main n =
   let xs = make_list n in
     assert (length xs = n)
-
-
-
-

@@ -32,7 +32,7 @@ rule token = parse
 | '+' { PLUS }
 | '-' { MINUS }
 | '*' { TIMES }
-| '|' { CHOICE }
+| '|' { BAR }
 | "type" { TYPE }
 | "unit" { TUNIT }
 | "bool" { TBOOL }
