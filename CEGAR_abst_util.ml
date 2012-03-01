@@ -245,7 +245,7 @@ let rec congruent env cond typ1 typ2 =
         let typ22 = typ22 (Var x) in
         let env' = (x,typ11)::env in
           congruent env cond typ11 typ21 && congruent env' cond typ12 typ22
-    | _ -> Format.printf "CONGRUENT: %a,%a@." print_typ typ1 print_typ typ2; assert false
+    | _ -> Format.printf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 
 let decomp_tbase = function

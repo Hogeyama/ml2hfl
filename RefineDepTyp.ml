@@ -1894,7 +1894,7 @@ let rec trans_term env = function
   | CS.App(CS.App(CS.Const CS.Mul, t1), t2) -> make_mul (trans_term env t1) (trans_term env t2)
   | CS.App(t1,t2)  -> make_app (trans_term env t1) [trans_term env t2]
   | CS.Let _ -> assert false
-  | t -> Format.printf "trans_term: %a@." CP.print_term t; assert false
+  | t -> Format.printf "trans_term: %a@." CP.term t; assert false
 
 let trans_env env = List.map (fun (x,typ) -> x, trans_typ typ) env
 

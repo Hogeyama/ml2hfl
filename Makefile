@@ -60,7 +60,7 @@ lib: ocaml csisat trecs
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli
+MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli CEGAR_print.mli
 LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	util.cmo zipper.cmo \
 	global.cmo \

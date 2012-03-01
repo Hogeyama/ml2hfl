@@ -20,7 +20,7 @@ let not_def = not_cps, ["x"; "k"], Const True, [], (make_if (Var "x") (App(Var "
 let rec trans_const = function
     Const (Int _ | Unit | True | False | RandBool | If | Tuple _ | Bottom as c) -> Const c
   | Const Not -> Var not_cps
-  | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.print_const c; assert false
+  | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.const c; assert false
   | Var x -> Var x
 (*
   | App(App(Const (Label n), t1), t2) -> App(Const (Label n), App(t2, t1))
@@ -108,7 +108,7 @@ let trans_simpl_def (f,xs,t1,e,t2) =
   if f =  "mult_70" then () else ();
   assert (xs = []);
   let t2 = trans_simpl (fun x -> x) t2 in
-  if false then Format.printf "TRANS: %a@." CEGAR_print.print_term t2;
+  if false then Format.printf "TRANS: %a@." CEGAR_print.term t2;
   let t2 = trans_const t2 in
     (f, [], t1, e, t2)
 
@@ -166,7 +166,7 @@ let extract_tuple_def env (f,xs,t1,e,t2) =
     f, xs', t1', e, t2'
 let extract_tuple (env,defs,main) =
   let defs = List.map (extract_tuple_def env) defs in
-  let () = if false then Format.printf "EXTRACTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if false then Format.printf "EXTRACTED:\n%a@." CEGAR_print.prog ([],defs,main) in
     Typing.infer ([],defs,main)
 
 
@@ -192,10 +192,10 @@ let trans (env,defs,main) lift_opt =
   let defs = List.map reduce_def defs in
   let defs = and_def::or_def::not_def::defs in
   let prog = env, defs, main in
-  let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.prog prog in
   let _ = Typing.infer prog in
   let prog = if lift_opt then lift prog else lift2 prog in
-  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog prog in
     extract_tuple prog
 
 

@@ -1,7 +1,6 @@
 open Utilities
 open CEGAR_syntax
 open CEGAR_type
-open CEGAR_print
 
 let const_of_bool b = if b then True else False
 
@@ -457,7 +456,6 @@ let trans_prog t =
   let rename_var x = List.assoc x map in
   let rename_term t = subst_map smap t in
   let rename_def (f,xs,t1,e,t2) = rename_var f, List.map rename_var xs, rename_term t1, e, rename_term t2 in
-  let rename_typ typ = subst_typ_map smap typ in
   let env = List.map (fun (f,typ) -> rename_var f, typ) (get_env prog) in
   let defs = List.map rename_def (get_defs prog) in
   let main = rename_var (get_main prog) in
@@ -488,7 +486,7 @@ let trans_prog t =
     in
     let typ = List.assoc f env in
     let typ' = proj path typ in
-      Format.printf "%s(%d) => %a, %a@." f n (print_list Format.pp_print_int ";" false) path print_typ typ'
+      Format.printf "%s(%d) => %a, %a@." f n (print_list Format.pp_print_int ";" false) path CEGAR_print.typ typ'
   in
     Format.printf "%a@." (print_list pr "" false) preds;
 
@@ -676,7 +674,7 @@ let lift_def2 (f,xs,t1,e,t2) =
     (f, xs@ys, t1', e, t2'')::defs1@defs2
 let lift2 (_,defs,main) =
   let defs = flatten_map lift_def2 defs in
-  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.print_prog ([],defs,main) in
+  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog ([],defs,main) in
     Typing.infer ([],defs,main)
 
 
@@ -795,7 +793,7 @@ let eval_prog_cbn (env,defs,main) =
         | App _ -> fst (decomp_app t), true
         | _ -> assert false
     in
-      Format.printf "%a%s ->@." print_term hd (if b then " ..." else "");
+      Format.printf "%a%s ->@." CEGAR_print.term hd (if b then " ..." else "");
       let t' =
         try Some (step_eval t) with EvalBottom -> None
       in
@@ -808,7 +806,7 @@ let eval_prog_cbn (env,defs,main) =
         aux t'
   in
     eval_and_print (Var main)
-    
+
 
 
 (*
@@ -978,4 +976,4 @@ let rec get_nonrec defs main =
 let print_prog_typ' fm (env,defs,main) =
   let nonrec = get_nonrec defs main in
   let env' = List.filter (fun (f,_) -> not (List.mem_assoc f nonrec)) env in
-    print_prog_typ fm (env',defs,main)
+    CEGAR_print.prog_typ fm (env',defs,main)

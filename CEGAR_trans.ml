@@ -85,7 +85,7 @@ let rec step_eval_abst_cbn ce labeled env_abst defs = function
   | _ -> assert false
 
 let rec eval_abst_cbn prog labeled abst ce =
-  Format.printf "Program with abstraction types::@.%a@." CEGAR_print.print_prog abst;
+  Format.printf "Program with abstraction types::@.%a@." CEGAR_print.prog abst;
   Format.printf "CE: %a@." CEGAR_print.ce ce;
   let env_orig = get_env prog in
   let env_abst = get_env abst in
@@ -93,13 +93,13 @@ let rec eval_abst_cbn prog labeled abst ce =
   let main = get_main abst in
   let ce' = ce in
   let rec loop ce t =
-    Format.printf "%a -->@\n" print_term t;
+    Format.printf "%a -->@\n" CEGAR_print.term t;
     assert (match get_typ env_abst t with TBase(TUnit,_) -> true | _ -> false);
     let () =
       try
         match decomp_app t with
             Var x, _ ->
-              Format.printf "  %s:: %a@\n" x print_typ (List.assoc x env_orig)
+              Format.printf "  %s:: %a@\n" x CEGAR_print.typ (List.assoc x env_orig)
           | _ -> ()
       with Not_found -> ()
     in
@@ -155,7 +155,7 @@ let assoc_def labeled defs ce acc t =
 let init_cont ce acc _ = assert (ce=[]); List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
-  if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) print_term t;
+  if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
     | Const RandInt -> assert false
     | Const c -> k ce acc (Const c)

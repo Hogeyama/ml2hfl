@@ -139,12 +139,12 @@ and print_fun_def fm (f,xs,t1,es,t2) =
     else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]" (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
 
 and print_prog fm (_,defs,s) =
-  Format.fprintf fm "@[Main: %a@\n  @[%a@]@]@\n"
+  Format.fprintf fm "@[Main: %a@\n  @[%a@]@]@?"
     print_var s
     (print_list print_fun_def "@\n" false) defs
 
 and print_prog_typ fm (env,defs,s) =
-  Format.fprintf fm "@[Main: %a@\n  @[%a@]@\n@[Types:@\n  @[%a@."
+  Format.fprintf fm "@[Main: %a@\n  @[%a@]@\n@]@[Types:@\n  @[%a@]@]@?"
     print_var s
     (print_list print_fun_def "@\n" false) defs
     print_env env
@@ -407,7 +407,7 @@ let print_ce = print_list print_node "; " false
 
 
 
-
+let const = print_const
 let fun_def = print_fun_def
 let term = print_term
 let var = print_var

@@ -17,7 +17,7 @@ let assoc_def defs n t =
 
 (* sat=true denotes constr is satisfiable *)
 let rec check_aux pr ce sat n constr env defs t k =
-  if false then Format.printf "check_aux[%d]: %a@." (List.length ce) print_term t;
+  if false then Format.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
     | Const RandInt -> assert false
     | Const c -> k ce sat n constr env (Const c)
@@ -63,10 +63,10 @@ let rec get_prefix ce n =
     | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce ((env,defs,main):prog) =
-  let () = Format.printf "Spurious counter-example::@.%a@." CEGAR_print.print_ce ce in
+  let () = Format.printf "Spurious counter-example::@.%a@." CEGAR_print.ce ce in
   let tmp = get_time () in
   let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
-  let () = if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce in
+  let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr _ _ _ _ = () in
@@ -101,7 +101,7 @@ let assoc_def defs n t ce_br =
     ce_br', List.nth defs' n
 
 let rec trans_ce ce ce_br env defs t k =
-  if false then Format.printf "trans_ce[%d]: %a@." (List.length ce) print_term t;
+  if false then Format.printf "trans_ce[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
       Const RandInt -> assert false
     | Const c -> k ce ce_br env (Const c)
@@ -139,7 +139,7 @@ let rec trans_ce ce ce_br env defs t k =
     | Fun _ -> assert false
 
 let trans_ce ce ((env,defs,main):prog) =
-  if false then Format.printf "ce:        %a@." CEGAR_print.print_ce ce;
+  if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let ce_br = trans_ce ce' [] [] defs t init_cont in
@@ -156,7 +156,7 @@ let print_ce_reduction ce ((_,defs,main):prog) =
   let pr t br n e =
     let s1 = if n = 1 then "" else " [" ^ string_of_int (br+1) ^ "/" ^ string_of_int n ^ "]" in
     let s2 = match e with [] -> "" | [Event s] -> s ^ " -->" | _ -> assert false in
-      Format.printf "%a%s ... --> %s@\n" print_term t s1 s2
+      Format.printf "%a%s ... --> %s@\n" CEGAR_print.term t s1 s2
   in
     Format.printf "Error trace::@\n  @[";
     pr (Var main) 0 1 [];

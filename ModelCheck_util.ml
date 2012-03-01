@@ -200,7 +200,7 @@ let church_encode ((env,defs,main):prog) : prog =
   let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
   let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
   let defs' = List.map (apply_body_def church_encode_term) defs @ [true_def; false_def] in
-    if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.print_prog ([],defs',main);
+    if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog ([],defs',main);
     Typing.infer ([],defs',main)
 
 

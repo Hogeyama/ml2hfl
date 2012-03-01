@@ -25,7 +25,7 @@ let conv_const c =
   | Add -> Const.Add
   | Sub -> Const.Sub
   | Mul -> Const.Mul
-  | _ -> Format.printf "%a@." print_const c; assert false
+  | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
   match t with
@@ -104,7 +104,7 @@ let rec conv_typ ty =
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
   | _ ->
-      let _ = Format.printf "%a@." print_typ ty in
+      let _ = Format.printf "%a@." CEGAR_print.typ ty in
       assert false
 
 let conv_prog (typs, fdefs, main) =

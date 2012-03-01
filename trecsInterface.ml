@@ -39,7 +39,7 @@ let trans_const = function
   | Unit -> TS.PTapp(TS.Name "unit", [])
   | True -> TS.PTapp(TS.FD 0, [])
   | False -> TS.PTapp(TS.FD 1, [])
-  | c -> Format.printf "print_const: %a@." CEGAR_print.print_term (Const c); assert false
+  | c -> Format.printf "print_const: %a@." CEGAR_print.term (Const c); assert false
 
 
 let rec sanitize_id x =

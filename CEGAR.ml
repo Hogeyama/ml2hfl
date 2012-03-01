@@ -31,7 +31,7 @@ let rec cegar1 prog preds ces =
   let pr =
     if !Flag.expand_nonrec
     then CEGAR_util.print_prog_typ'
-    else CEGAR_print.print_prog_typ
+    else CEGAR_print.prog_typ
   in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
   let labeled,abst = CEGAR_abst.abstract None prog in
@@ -65,7 +65,7 @@ let rec cegar1 prog preds ces =
                   if true
                   then
                     Format.printf "Prefix of spurious counter-example::@.%a@.@."
-                      CEGAR_print.print_ce prefix
+                      CEGAR_print.ce prefix
                 in
                 let ces' = ce::ces in
                 let _,prog' = Refine.refine preds prefix ces' prog in
@@ -86,7 +86,7 @@ let rec cegar2 prog preds ce_map =
       match result with
           None ->
             Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@."
-              !Flag.cegar_loop CEGAR_print.print_prog_typ prog;
+              !Flag.cegar_loop CEGAR_print.prog_typ prog;
             Success prog
         | Some ce when List.mem ce ces && not !Flag.use_filter ->
             Format.printf "Filter option enabled.@.";
@@ -106,7 +106,7 @@ let rec cegar2 prog preds ce_map =
               aux (c+1) ce_map (ce::ces) prog'
         | Some ce ->
             Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@."
-              !Flag.cegar_loop CEGAR_print.print_prog_typ prog;
+              !Flag.cegar_loop CEGAR_print.prog_typ prog;
             Fail ce
   in
   let ces,prog' =
@@ -124,7 +124,7 @@ let rec cegar2 prog preds ce_map =
                 let () =
                   if true then
                     Format.printf "Prefix of spurious counter-example::@.%a@.@."
-                      CEGAR_print.print_ce prefix
+                      CEGAR_print.ce prefix
                 in
                 let map,_ = Refine.refine preds prefix [ce] prog in
                 let ce_map' = (ce,map)::ce_map in

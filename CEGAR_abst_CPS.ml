@@ -1,7 +1,6 @@
 open Utilities
 open CEGAR_syntax
 open CEGAR_type
-open CEGAR_print
 open CEGAR_util
 open CEGAR_abst_util
 
@@ -100,7 +99,7 @@ let rec trans_eager_bool f = function
       let t2' = trans_eager_bool f t2 in
       let t3' = trans_eager_bool f t3 in
         Let(f', Fun(x, None, make_if (Var x) t2' t3'), t1')
-  | t -> Format.printf "trans_eager_bool: %a@." print_term t; assert false
+  | t -> Format.printf "trans_eager_bool: %a@." CEGAR_print.term t; assert false
 
 let id x = x
 let rec trans_eager_term env c t =
@@ -158,7 +157,7 @@ let trans_eager (env,defs,main) =
 
 
 let rec eta_expand_term_aux env t typ =
-  if false then Format.printf "ETA_AUX: %a: %a@." print_term t print_typ typ;
+  if false then Format.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match typ with
       TBase _ -> t
     | TFun(typ1,typ2) ->
@@ -171,7 +170,7 @@ let rec eta_expand_term_aux env t typ =
     | _ -> assert false
 
 let rec eta_expand_term env t typ =
-  if debug then Format.printf "ETA: %a: %a@." print_term t print_typ typ;
+  if debug then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
       Const Bottom
     | Const RandInt -> t
@@ -200,7 +199,7 @@ let rec eta_expand_term env t typ =
             TFun(typ1,typ2) ->
               let env' = (x,typ1)::env in
               let t'' = eta_expand_term env' t' (typ2 (Var x)) in
-                Fun(x, Some typ1, t'')
+          assert (x <> "x_46");                Fun(x, Some typ1, t'')
           | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
 let eta_expand_def env (f,xs,t1,e,t2) =
   let rec decomp_typ typ xs =
@@ -237,11 +236,11 @@ let eta_reduce_term t = t
 *)
 
 let print_env fm env =
-  List.iter (fun (f,typ) -> Format.fprintf fm "%a:%a,@ " print_var f print_typ typ) env;
+  List.iter (fun (f,typ) -> Format.fprintf fm "%a:%a,@ " CEGAR_print.var f CEGAR_print.typ typ) env;
   Format.fprintf fm "@."
 
 let rec abstract_term top must env cond pts t typ =
-  if debug then Format.printf "abstract_term: %a: %a@." CEGAR_print.print_term t CEGAR_print.print_typ typ;
+  if debug then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
     | Const Bottom ->
         assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
@@ -267,7 +266,7 @@ let rec abstract_term top must env cond pts t typ =
                 assert (fst (decomp_tbase typ) = TUnit); []
             | t::ts', TFun(typ1,typ2) ->
                 abstract_term false None env cond pts t typ1 @ aux ts' (typ2 t)
-            | _ -> assert false
+            | _,typ -> Format.printf "@.%a@.typ:%a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
         in
         let t' = make_app t1 (aux ts (get_typ env t1)) in
           if !Flag.use_filter
@@ -318,7 +317,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   let xs' = flatten_map (fun (x,typ) -> abst_arg x typ) env' in
   if debug then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
   if debug then Flag.print_fun_arg_typ := true;
-  if debug then Format.printf "%s:: %a@." f print_term t2;
+  if debug then Format.printf "%s:: %a@." f CEGAR_print.term t2;
   let t2' = hd (abstract_term true None env'' [t1] pts t2 typ) in
   let t2'' = eta_reduce_term t2' in
     if e <> [] && t1 <> Const True
@@ -336,20 +335,20 @@ let abstract_def env (f,xs,t1,e,t2) =
 let abstract (prog:prog) =
   let labeled,prog = add_label prog in
   let prog = if !Flag.expand_nonrec then expand_nonrec prog else prog in
-  let () = if false && !Flag.expand_nonrec then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false && !Flag.expand_nonrec then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog prog in
   let prog = eta_expand prog in
-  let () = if false then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog prog in
   let defs = flatten_map (abstract_def (get_env prog)) (get_defs prog) in
   let prog = ([], defs, get_main prog) in
-  let () = if false then Format.printf "ABST:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "ABST:@\n%a@." CEGAR_print.prog prog in
   let prog = Typing.infer prog in
   let prog = lift2 prog in
-  let () = if false then Format.printf "LIFT:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "LIFT:@\n%a@." CEGAR_print.prog prog in
   let prog = trans_eager prog in
-  let () = if false then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
-  let () = if false then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.print_prog prog in
+  let () = if false then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog prog in
   let prog = lift2 prog in
     labeled, prog
 
