@@ -103,9 +103,12 @@ let main filename in_channel =
       let t' = Abstract.abstract_list t in
       let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term' t' in
       let t = t' in
+(*
       let t' = Abstract.abst_ext_funs t in
       let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
+*)
+      let t = if !Flag.refine = Flag.RefineSizedType then LazyInterface.insert_extra_param t else t in
       let t' = CPS.trans t in
       let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
@@ -117,7 +120,6 @@ let main filename in_channel =
 
   let () = Type_check.check t Type.TUnit in
   let prog,preds = CEGAR_util.trans_prog t in
-  let prog = LazyInterface.insert_extra_param prog in
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->

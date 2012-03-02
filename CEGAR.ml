@@ -34,6 +34,7 @@ let rec cegar1 prog preds ces =
     else CEGAR_print.prog_typ
   in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
+  let prog = if !Flag.refine = Flag.RefineSizedType then LazyInterface.instantiate_param prog else prog in
   let labeled,abst = CEGAR_abst.abstract None prog in
   let result = ModelCheck.check None abst prog in
   let result' = apply_opt (fun ce -> CEGAR_trans.trans_ce ce labeled prog) result in

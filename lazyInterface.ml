@@ -155,3 +155,4 @@ let infer cexs prog =
 
 
 let insert_extra_param prog = prog
+let instantiate_param prog = prog
