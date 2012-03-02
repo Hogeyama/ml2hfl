@@ -159,7 +159,6 @@ let rec trans_exc_typ = function
   | TUnknown -> assert false
   | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(trans_exc_typ typ, ps)
-  | TPredAuto _ -> assert false
   | TPair(typ1,typ2) -> TPair(trans_exc_typ typ1, trans_exc_typ typ2)
 
 let trans_exc_var x = Id.set_typ x (trans_exc_typ (Id.typ x))
@@ -406,10 +405,6 @@ let rec remove_pair_typ = function
           | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
         Leaf (TPred(typ', ps'))
-  | TPredAuto(x,typ) ->
-      let x' = remove_pair_var x in
-      let typ' = remove_pair_typ typ in
-        map (fun path x -> TPredAuto(x, root (proj path typ'))) x'
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
@@ -545,7 +540,6 @@ and typ_cps =
   | TFunCPS of bool ref * typ_cps * typ_cps
   | TPairCPS of typ_cps * typ_cps
   | TPredCPS of typ_cps * Syntax.typed_term list
-  | TPredAutoCPS of Syntax.id * typ_cps
 
 
 
@@ -559,8 +553,6 @@ let rec print_typ_cps fm = function
       Format.fprintf fm "(%a * %a)" print_typ_cps typ1 print_typ_cps typ2
   | TPredCPS(typ,ps) ->
       Format.fprintf fm "%a[...])" print_typ_cps typ
-  | TPredAutoCPS(x,typ) ->
-      Format.fprintf fm "(%a|[%a])" print_typ_cps typ Id.print x
 
 
 and print_typed_termlist fm = List.iter (fun bd -> Format.fprintf fm "@;%a" print_typed_term bd)
@@ -653,9 +645,7 @@ let rec occurs r typ =
 
 let rec unify typ1 typ2 =
   match typ1, typ2 with
-      typ1, TPredAutoCPS(x,typ2)
-    | TPredAutoCPS(x,typ1), typ2 -> TPredAutoCPS(x, unify typ1 typ2)
-    | TVarCPS({contents = Some typ} as r), typ'
+      TVarCPS({contents = Some typ} as r), typ'
     | typ, TVarCPS({contents = Some typ'} as r) ->
         let typ'' = unify typ typ' in
           r := Some (flatten typ'');
@@ -696,7 +686,6 @@ let rec trans_cont_pos_typ force typ =
           TFunCPS(ref b, trans_cont_pos_typ force typ1, trans_cont_pos_typ force typ2)
     | TPair(typ1,typ2) -> TPairCPS(trans_cont_pos_typ force typ1, trans_cont_pos_typ force typ2)
     | TPred(typ,ps) -> TPredCPS(trans_cont_pos_typ force typ, ps)
-    | TPredAuto(x,typ) -> TPredAutoCPS(x, trans_cont_pos_typ force typ)
     | _ -> assert false
 
 let rec infer_cont_pos env t =
@@ -818,7 +807,7 @@ let rec get_arg_num = function
   | TFunCPS({contents=true},typ1,typ2) -> 1
   | TFunCPS({contents=false},typ1,typ2) -> 1 + get_arg_num typ2
   | TPairCPS _ -> assert false
-  | TPredAutoCPS _ -> assert false
+  | TPredCPS _ -> assert false
 
 
 let rec app_typ typ typs =
@@ -901,7 +890,6 @@ let rec trans_typ typ_orig typ =
   match typ_orig,typ with
       _, TVarCPS{contents=Some typ} -> trans_typ typ_orig typ
     | _, TBaseCPS _ -> typ_orig
-    | _, TPredAutoCPS(_,typ) -> trans_typ typ_orig typ
     | TFun(x_orig,typ), TFunCPS(b,typ1,typ2) when !b ->
         let typ1' = trans_typ (Id.typ x_orig) typ1 in
         let x = Id.new_var "x" typ1' in
@@ -916,9 +904,6 @@ let rec trans_typ typ_orig typ =
           TFun(x, typ2')
     | TPair(typ_orig1,typ_orig2), TPairCPS(typ1,typ2) -> TPair(trans_typ typ_orig1 typ1, trans_typ typ_orig2 typ2)
     | TPred(typ1,ps), typ2 -> TPred(trans_typ typ1 typ2, ps)
-    | TPredAuto(x,typ_orig), typ ->
-        let typ' = trans_typ typ_orig typ in
-          TPredAuto(Id.set_typ x typ', typ')
     | _ ->
         Format.printf "%a,%a@." print_typ typ_orig print_typ_cps typ;
         raise (Fatal "bug? (CPS.trans_typ)")

@@ -20,7 +20,6 @@ let rec id___typ = function
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(id___typ typ, List.map id__ ps)
-  | TPredAuto _ -> assert false
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
 
@@ -99,7 +98,6 @@ let rec id2___typ env = function
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(id2___typ env typ, List.map (id2__ env) ps)
-  | TPredAuto _ -> assert false
 
 and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
 
@@ -178,7 +176,6 @@ let rec flatten_tvar_typ = function
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(flatten_tvar_typ typ, List.map flatten_tvar ps)
-  | TPredAuto _ -> assert false
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
 
@@ -261,7 +258,6 @@ let rec rename_tvar_typ map = function
   | TUnknown -> TUnknown
   | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(rename_tvar_typ map typ, ps)
-  | TPredAuto _ -> assert false
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
 
@@ -342,7 +338,6 @@ let rec get_tvars typ =
       | TUnknown _ -> assert false
       | TVariant _ -> assert false
       | TPred(typ,_) -> get_tvars typ
-      | TPredAuto _ -> assert false
 
 
 let rec rename_poly_funs f map t =

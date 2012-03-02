@@ -1067,7 +1067,6 @@ and subst_type x t = function
   | TVariant _ -> assert false
   | TConstr _ -> assert false
   | TPair(typ1,typ2) -> TPair(subst_type x t typ1, subst_type x t typ2)
-  | TPredAuto(y,typ) -> TPredAuto(y, subst_type x t typ)
 
 
 

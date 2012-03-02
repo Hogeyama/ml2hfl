@@ -26,7 +26,7 @@ let post () =
 
 
 
-let rec cegar1 prog preds ces =
+let rec cegar1 prog ces =
   pre ();
   let pr =
     if !Flag.expand_nonrec
@@ -44,12 +44,12 @@ let rec cegar1 prog preds ces =
           Format.printf "Filter option enabled.@.";
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_filter := true;
-          cegar1 prog preds ces
+          cegar1 prog ces
       | Some ce, ce'::_ when ce = ce' && not !Flag.use_neg_pred ->
           Format.printf "Negative-predicate option enabled.@.";
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_neg_pred := true;
-          cegar1 prog preds ces
+          cegar1 prog ces
       | Some ce, ce'::_ when ce = ce' ->
           let ce_labeled = get_opt_val result in
           Feasibility.print_ce_reduction ce prog;
@@ -69,15 +69,15 @@ let rec cegar1 prog preds ces =
                       CEGAR_print.ce prefix
                 in
                 let ces' = ce::ces in
-                let _,prog' = Refine.refine preds prefix ces' prog in
+                let _,prog' = Refine.refine prefix ces' prog in
                   post ();
-                  cegar1 prog' preds ces'
+                  cegar1 prog' ces'
 
 
 
 type result = Success of prog | Fail of ce
 
-let rec cegar2 prog preds ce_map =
+let rec cegar2 prog ce_map =
   pre ();
   Flag.use_filter := false;
   Flag.use_neg_pred := false;
@@ -127,17 +127,17 @@ let rec cegar2 prog preds ce_map =
                     Format.printf "Prefix of spurious counter-example::@.%a@.@."
                       CEGAR_print.ce prefix
                 in
-                let map,_ = Refine.refine preds prefix [ce] prog in
+                let map,_ = Refine.refine prefix [ce] prog in
                 let ce_map' = (ce,map)::ce_map in
                   post ();
-                  cegar2 prog preds ce_map'
+                  cegar2 prog ce_map'
 
 
 
-let cegar prog preds =
+let cegar prog =
   if !Flag.new_cegar
-  then cegar2 prog preds []
-  else cegar1 prog preds []
+  then cegar2 prog []
+  else cegar1 prog []
 
 
 

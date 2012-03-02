@@ -119,11 +119,11 @@ let main filename in_channel =
   in
 
   let () = Type_check.check t Type.TUnit in
-  let prog,preds = CEGAR_util.trans_prog t in
+  let prog = CEGAR_util.trans_prog t in
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify prog
       | Flag.CEGAR_DependentType ->
-	  match CEGAR.cegar prog preds with
+	  match CEGAR.cegar prog with
 	      prog', None -> Format.printf "Safe!@.@."
 	    | _, Some print ->
                 Format.printf "Unsafe!@.@.";

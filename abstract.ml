@@ -48,7 +48,6 @@ let rec abst_recdata_typ = function
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
   | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(abst_recdata_typ typ, ps)
-  | TPredAuto _ -> assert false
 
 let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
@@ -285,7 +284,6 @@ let rec abst_list_typ = function
   | TPred(typ,ps) ->
       let ps' = List.map (abst_list "") ps in
         TPred(abst_list_typ typ, ps')
-  | TPredAuto _ -> assert false
 
 and abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -322,20 +320,13 @@ and get_match_bind_cond t p =
 and make_cons post t1 t2 =
   let i = Id.new_var "i" TInt in
   let x = Id.new_var "x" t1.typ in
-  let xs_typ =
-    match t2.typ with
-      | TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,typ12),typ2)
-      | TPair(TFun(typ11,typ12),typ2) -> TPair(TFun(typ11,TPredAuto(x,typ12)),typ2)
-      | TPred(TPair(TFun(typ11,typ12),typ2), ps) -> TPred(TPair(TFun(typ11,typ12),typ2), ps)
-      | _ -> assert false
-  in
-  let xs = Id.new_var "xs" xs_typ in
+  let xs = Id.new_var "xs" t2.typ in
   let t11 = make_eq (make_var i) (make_int 0) in
   let t12 = make_var x in
   let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
   let t_len = make_fun i (make_if t11 t12 t13) in
   let t_f = make_add (make_snd (make_var xs)) (make_int 1) in
-  let cons = Id.new_var ("cons"^post) (TFun(x,TFun(xs,xs_typ)))  in
+  let cons = Id.new_var ("cons"^post) (TFun(x,TFun(xs,t2.typ))) in
     make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1; t2])
 
 
@@ -496,7 +487,6 @@ let rec abst_datatype_typ = function
   | TUnknown -> assert false
   | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(abst_datatype_typ typ, ps)
-  | TPredAuto _ -> assert false
 
 let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Flag.Immutable, t))::fields, i+1) ([],0) ts in

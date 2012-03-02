@@ -18,7 +18,6 @@ type 'a t =
   | TLabel of 'a t Id.t * 'a t
 *)
   | TPred of 'a t * 'a list
-  | TPredAuto of 'a t Id.t * 'a t
 
 
 
@@ -121,7 +120,6 @@ let rec print print_pred fm typ =
 *)
       | TConstr(s,_) -> Format.pp_print_string fm s
       | TPred(typ,ps) -> Format.fprintf fm "%a[%a]" print typ print_preds ps
-      | TPredAuto(x,typ) -> Format.fprintf fm "(%a|[%a])" print typ Id.print x
 
 and print_preds print_pred = print_list print_pred ";" false
 
@@ -147,7 +145,6 @@ let rec occurs r typ =
     | TUnknown -> false
     | TVariant _ -> assert false
     | TPred(typ,_) -> occurs r typ
-    | TPredAuto _ -> assert false
 
 exception CannotUnify
 
@@ -213,7 +210,6 @@ let rec is_poly_typ = function
   | TUnknown _ -> assert false
   | TVariant _ -> assert false
   | TPred(typ,_) -> is_poly_typ typ
-  | TPredAuto _ -> assert false
 
 
 let rec copy = function
@@ -245,4 +241,3 @@ let rec has_pred = function
   | TUnknown -> false
   | TVariant _ -> assert false
   | TPred(typ,ps) -> has_pred typ || ps <> []
-  | TPredAuto (_,typ) -> has_pred typ

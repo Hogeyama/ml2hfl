@@ -80,7 +80,7 @@ let rec add_pred n path typ =
 
 
 
-let refine preds prefix ces ((env,defs,main):prog) =
+let refine prefix ces ((env,defs,main):prog) =
   let tmp = get_time () in
     if Flag.print_progress then Format.printf "(%d-4) Discovering predicates ... @?" !Flag.cegar_loop;
     if Flag.use_prefix_trace then raise (Fatal "Not implemented: Flag.use_prefix_trace");
@@ -101,16 +101,9 @@ let refine preds prefix ces ((env,defs,main):prog) =
               RefineDepTyp.infer [List.hd ces] (env,defs,main), defs
             with RefineDepTyp.Untypable -> raise CannotRefute
     in
-    let map' =
-      let aux map (f,n,path) =
-        List.map (fun (g,typ) -> if f = g then g, add_pred n path typ else g, typ) map
-      in
-        List.fold_left aux map preds
-    in
-    let () = if false then List.iter (fun (x,typ) -> Format.printf "%a: %a@." CEGAR_print.var x CEGAR_print.typ typ) map' in
-    let env' = add_preds_env map' env in
+    let env' = add_preds_env map env in
       add_time tmp Flag.time_cegar;
       if Flag.print_progress then Format.printf "DONE!@.@.";
-      map', (env', defs, main)
+      map, (env', defs, main)
 
 
