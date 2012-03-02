@@ -21,7 +21,7 @@ let typ x = x.typ
 
 let to_string x =
   let n = id x in
-    if n = 0
+    if n <= 0
     then name x
     else name x ^ "_" ^ string_of_int n
 

@@ -268,48 +268,6 @@ let make_tl n t =
 
 
 
-let rec snd_of_length t =
-  let desc =
-    match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
-      | Unknown -> Unknown
-      | Int n -> Int n
-      | NInt y -> NInt y
-      | RandInt b -> RandInt b
-      | RandValue(typ,b) -> RandValue(typ,b)
-      | Var y -> Var y
-      | Fun(y, t) -> Fun(y, snd_of_length t)
-      | App({desc=Var x}, [t]) when x = length_var -> Snd t
-      | App(t1, ts) -> App(snd_of_length t1, List.map snd_of_length ts)
-      | If(t1, t2, t3) -> If(snd_of_length t1, snd_of_length t2, snd_of_length t3)
-      | Branch(t1, t2) -> Branch(snd_of_length t1, snd_of_length t2)
-      | Let(flag, bindings, t2) ->
-          let bindings' = List.map (fun (f,xs,t) -> f, xs, snd_of_length t) bindings in
-          let t2' = snd_of_length t2 in
-            Let(flag, bindings', t2')
-      | BinOp(op, t1, t2) -> BinOp(op, snd_of_length t1, snd_of_length t2)
-      | Not t1 -> Not (snd_of_length t1)
-      | Event(s,b) -> Event(s,b)
-      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,snd_of_length t1)) fields)
-      | Proj(i,s,f,t1) -> Proj(i,s,f,snd_of_length t1)
-      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,snd_of_length t1,snd_of_length t2)
-      | Nil -> Nil
-      | Cons(t1,t2) -> Cons(snd_of_length t1, snd_of_length t2)
-      | Constr(s,ts) -> Constr(s, List.map snd_of_length ts)
-      | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt snd_of_length cond, snd_of_length t1 in
-            Match(snd_of_length t1, List.map aux pats)
-      | Raise t -> Raise (snd_of_length t)
-      | TryWith(t1,t2) -> TryWith(snd_of_length t1, snd_of_length t2)
-      | Pair(t1,t2) -> Pair(snd_of_length t1, snd_of_length t2)
-      | Fst t -> Fst(snd_of_length t)
-      | Snd t -> Snd(snd_of_length t)
-      | Bottom -> Bottom
-  in
-    {desc=desc; typ=t.typ}
-
 let rec abst_list_typ = function
     TUnit -> TUnit
   | TBool -> TBool
@@ -321,17 +279,17 @@ let rec abst_list_typ = function
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
   | TList typ -> TPair(TFun(Id.new_var "x" TInt, abst_list_typ typ), TInt)
   | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown -> assert false
+  | TUnknown -> TUnknown
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
   | TVariant _ -> assert false
   | TPred(typ,ps) ->
-      let ps' = List.map snd_of_length ps in
+      let ps' = List.map (abst_list "") ps in
         TPred(abst_list_typ typ, ps')
   | TPredAuto _ -> assert false
 
-let abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
+and abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
-let rec get_match_bind_cond t p =
+and get_match_bind_cond t p =
   match p.pat_desc with
       PVar x -> [abst_list_var x, t], true_term
     | PConst t' -> [], make_eq t t'
@@ -361,7 +319,7 @@ let rec get_match_bind_cond t p =
         let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
           bind1@@bind2, make_and cond1 cond2
 
-let make_cons post t1 t2 =
+and make_cons post t1 t2 =
   let i = Id.new_var "i" TInt in
   let x = Id.new_var "x" t1.typ in
   let xs_typ =
@@ -381,7 +339,7 @@ let make_cons post t1 t2 =
     make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1; t2])
 
 
-let rec abst_list post t =
+and abst_list post t =
   let typ' = abst_list_typ t.typ in
   let desc =
     match t.desc with
@@ -395,6 +353,7 @@ let rec abst_list post t =
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Fun(x,t) -> Fun(abst_list_var x, abst_list post t)
+      | App({desc=Var x}, [t]) when x = length_var -> Snd (abst_list post t) (** for predicates *)
       | App(t, ts) -> App(abst_list post t, List.map (abst_list post) ts)
       | If(t1, t2, t3) -> If(abst_list post t1, abst_list post t2, abst_list post t3)
       | Branch(t1, t2) -> Branch(abst_list post t1, abst_list post t2)

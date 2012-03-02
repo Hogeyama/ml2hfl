@@ -460,11 +460,11 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 
 (*** TERM CONSTRUCTORS ***)
 
-let dummy_var = {Id.id=0; Id.name=""; Id.typ=TInt}
-let abst_var = {Id.id=0; Id.name="v"; Id.typ=TUnknown}
+let dummy_var = Id.make (-1) "" TInt
+let abst_var = Id.make (-1) "v" TUnknown
 let length_var =
-  let x = Id.make 0 "l" (TList TUnknown) in
-    Id.make 0 "length" (TFun(x, TInt))
+  let x = Id.make (-1) "l" (TList TUnknown) in
+    Id.make (-1) "length" (TFun(x, TInt))
 
 let typ_event = TFun(Id.new_var "" TUnit, TUnit)
 let typ_event_cps =
