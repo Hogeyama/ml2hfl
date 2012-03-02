@@ -152,7 +152,7 @@ let assoc_def labeled defs ce acc t =
         assert (List.length defs' = 1);
         ce, acc', def
 
-let init_cont ce acc _ = assert (ce=[]); List.rev acc
+let init_cont _ acc _ = List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
   if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;

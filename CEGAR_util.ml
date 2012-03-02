@@ -337,16 +337,21 @@ let trans_def (f,(xs,t)) =
 let event_of_temp (env,defs,main) =
   if is_CPS (env,defs,"")
   then
-    let move_event (f,xs,t1,e,t2) =
+    let make_event (f,xs,t1,e,t2) =
       assert (e = []);
-      let e',t2' =
-        match t2 with
-            App(Const (Temp s), t2') -> [Event s], App(t2', Const Unit)
-          | _ -> [], t2
-      in
-        f, xs, t1, e', t2'
+      match t2 with
+          App(Const (Temp s), t2') when t1 = Const True ->
+            [], [f, xs, t1, [Event s], App(t2', Const Unit)]
+        | App(Const (Temp s), t2') ->
+            let g = new_id s in
+              [g, TFun(typ_bool,fun _ -> TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit))],
+              (* cannot refute if b is eliminated, because k can have no predicates in current impl. *)
+              [g, ["b"; "k"], Const True, [Event s], App(Var "k", Const Unit);
+               f, xs, t1, [], App(App(Var g, Const True), t2')]
+        | _ -> [], [f, xs, t1, [], t2]
     in
-      env, List.map move_event defs, main
+    let envs,defss = List.split (List.map make_event defs) in
+      List.flatten envs @@ env, List.flatten defss, main
   else
     let rec aux = function
         Const (Temp e) -> [e]
