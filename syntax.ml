@@ -73,7 +73,7 @@ exception Infeasible
 type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 
-(*** PRINTINF FUNCTIONS ***)
+(*** PRINTING FUNCTIONS ***)
 
 let rec print_typ t = Type.print (print_term 0 false) t
 and print_ids fm = function

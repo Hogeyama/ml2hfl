@@ -161,7 +161,6 @@ typ:
       match x1 with
           None -> make_id_typ typ1, typ2
         | Some x1' ->
-            Format.printf "VAR: %a, %a@." Id.print (orig_id x1') Id.print x1';
             let typ2' = subst_type (orig_id x1') (make_var x1') typ2 in
               if typ2 = typ2'
               then make_id_typ typ1, typ2

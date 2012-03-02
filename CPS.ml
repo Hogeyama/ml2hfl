@@ -352,22 +352,22 @@ let rec remove_pair_pred t =
       | Var y -> Var y
       | BinOp(op, t1, t2) -> BinOp(op, remove_pair_pred t1, remove_pair_pred t2)
       | Not t1 -> Not (remove_pair_pred t1)
-      | Fst t ->
+      | Fst t1 ->
           let x' =
-            match remove_pair_pred t with
+            match remove_pair_pred t1 with
                 {desc=Var x} when x = abst_var -> x
               | {desc=Var x} -> Id.add_name x "1"
               | _ -> raise UnsupportedPredicate
           in
-            Var x'
-      | Snd t ->
+            Var (Id.set_typ x' t.typ)
+      | Snd t1 ->
           let x' =
-            match remove_pair_pred t with
+            match remove_pair_pred t1 with
                 {desc=Var x} when x = abst_var -> x
               | {desc=Var x} -> Id.add_name x "2"
               | _ -> raise UnsupportedPredicate
           in
-            Var x'
+            Var (Id.set_typ x' t.typ)
       | _ -> raise UnsupportedPredicate
   in
     {desc=desc; typ=t.typ}
