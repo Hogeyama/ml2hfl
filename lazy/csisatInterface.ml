@@ -173,9 +173,9 @@ let interpolate t1 t2 =
   else
 		  let p1 = CsisatAstUtil.simplify (of_formula t1) in
 		  let p2 = CsisatAstUtil.simplify (of_formula t2) in
-		  (*
+		  (**)
 		  Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
-		  *)
+		  (**)
 		  let interp =
 		    try
 		      CsisatInterpolate.interpolate_with_proof p1 p2
@@ -198,7 +198,9 @@ let interpolate t1 t2 =
 
 let interpolate_chk t1 t2 =
   try
-    Formula.simplify (interpolate t1 t2)
+    let t = interpolate t1 t2 in
+    let _ = Format.printf "interp: %a@." Term.pr t in
+    Formula.simplify t
   with No_interpolant ->
     if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
       let _ = Format.printf "an error of CSIsat@." in

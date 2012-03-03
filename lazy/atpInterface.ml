@@ -29,6 +29,9 @@ let rec of_term t =
 				      raise (Util.NotImplemented "AtpInterface.of_term")
 				  | Const.Mod ->
 				      raise (Util.NotImplemented "AtpInterface.of_term"))
+  | _ ->
+      let _ = Format.printf "%a@." Term.pr t in
+      assert false
 
 let rec of_formula t =
   match fun_args t with
@@ -147,10 +150,10 @@ let is_valid p =
 
 (** {6 Functions on formulas} *)
 let integer_qelim t =
-  Formula.simplify (formula_of (Atp_batch.integer_qelim (of_formula t)))
+  Formula.simplify (formula_of (Atp_batch.integer_qelim (of_formula (elim_eq_neq_boolean t))))
 
 let real_qelim t =
-  Formula.simplify (formula_of (Atp_batch.real_qelim (of_formula t)))
+  Formula.simplify (formula_of (Atp_batch.real_qelim (of_formula (elim_eq_neq_boolean t))))
 
 (*
 
