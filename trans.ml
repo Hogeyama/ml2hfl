@@ -563,13 +563,14 @@ let set_target t =
     match xs, Id.typ f with
         [], TUnit -> replace_main (make_var f) t
       | _ ->
-          let aux x =
-            match Id.typ x with
-                TInt _ -> make_app randint_term [unit_term]
-              | TUnit -> unit_term
-              | typ -> raise (Fatal ("Not implemented: RandValue"))(* {desc=RandValue(typ, false); typ=typ}*)
+          let rec aux = function
+              TInt _ -> make_app randint_term [unit_term]
+            | TUnit -> unit_term
+            | TVar{contents=None} -> raise (Fatal ("Polymorphic types occur"))
+            | TVar{contents=Some typ} -> aux typ
+            | typ -> raise (Fatal ("Not implemented: RandValue"))(* {desc=RandValue(typ, false); typ=typ}*)
           in
-          let args = List.map aux xs in
+          let args = List.map (fun x -> aux (Id.typ x)) xs in
           let main = make_app {desc=Var f;typ=Id.typ f} args in
           let main' =
             let u = Id.new_var "main" main.typ in

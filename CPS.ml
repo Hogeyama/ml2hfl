@@ -396,7 +396,7 @@ let rec remove_pair_typ = function
   | TVariant _ -> assert false
   | TPred(TPair(typ1,typ2),ps) ->
       let ps' = List.map remove_pair_pred ps in
-        remove_pair_typ (TPair(typ1,TPred(typ2,ps')))
+        remove_pair_typ (TPair(TPred(typ1,ps'),typ2))
   | TPred(typ,ps) ->
       let ps' = List.map remove_pair_pred ps in
       let typ' =

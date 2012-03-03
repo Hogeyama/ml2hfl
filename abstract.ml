@@ -261,8 +261,8 @@ let abst_ext_funs t =
 
 let make_tl n t =
   let x = Id.new_var "x" TInt in
-  let t1 = make_fun x (make_app (make_fst t) [make_add (make_var x) (make_int n)]) in
-  let t2 = make_sub (make_snd t) (make_int n) in
+  let t1 = make_sub (make_fst t) (make_int n) in
+  let t2 = make_fun x (make_app (make_snd t) [make_add (make_var x) (make_int n)]) in
     make_pair t1 t2
 
 
@@ -276,7 +276,7 @@ let rec abst_list_typ = function
   | TVar{contents=None} -> raise (Fatal "Polymorhic types occur! (Abstract.abst_list_typ)")
   | TVar{contents=Some typ} -> abst_list_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
-  | TList typ -> TPair(TFun(Id.new_var "x" TInt, abst_list_typ typ), TInt)
+  | TList typ -> TPair(TInt, TFun(Id.new_var "x" TInt, abst_list_typ typ))
   | TConstr(s,b) -> TConstr(s,b)
   | TUnknown -> TUnknown
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
@@ -292,7 +292,7 @@ and get_match_bind_cond t p =
       PVar x -> [abst_list_var x, t], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false
-    | PNil -> [], make_eq (make_snd t) (make_int 0)
+    | PNil -> [], make_eq (make_fst t) (make_int 0)
     | PCons _ ->
         let rec decomp = function
             {pat_desc=PCons(p1,p2)} ->
@@ -304,12 +304,12 @@ and get_match_bind_cond t p =
         let rec aux bind cond i = function
             [] -> bind, cond
           | p::ps ->
-              let bind',cond' = get_match_bind_cond (make_app (make_fst t) [make_int i]) p in
+              let bind',cond' = get_match_bind_cond (make_app (make_snd t) [make_int i]) p in
                 aux (bind'@@bind) (make_and cond cond') (i+1) ps
         in
         let len = List.length ps in
         let bind, cond = get_match_bind_cond (make_tl len t) p' in
-          aux bind (make_and (make_leq (make_int len) (make_snd t)) cond) 0 ps
+          aux bind (make_and (make_leq (make_int len) (make_fst t)) cond) 0 ps
     | PRecord _ -> assert false
     | POr _ -> assert false
     | PPair(p1,p2) ->
@@ -323,9 +323,9 @@ and make_cons post t1 t2 =
   let xs = Id.new_var "xs" t2.typ in
   let t11 = make_eq (make_var i) (make_int 0) in
   let t12 = make_var x in
-  let t13 = make_app (make_fst (make_var xs)) [make_sub (make_var i) (make_int 1)] in
-  let t_len = make_fun i (make_if t11 t12 t13) in
-  let t_f = make_add (make_snd (make_var xs)) (make_int 1) in
+  let t13 = make_app (make_snd (make_var xs)) [make_sub (make_var i) (make_int 1)] in
+  let t_f = make_fun i (make_if t11 t12 t13) in
+  let t_len = make_add (make_fst (make_var xs)) (make_int 1) in
   let cons = Id.new_var ("cons"^post) (TFun(x,TFun(xs,t2.typ))) in
     make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1; t2])
 
@@ -344,7 +344,7 @@ and abst_list post t =
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Fun(x,t) -> Fun(abst_list_var x, abst_list post t)
-      | App({desc=Var x}, [t]) when x = length_var -> Snd (abst_list post t) (** for predicates *)
+      | App({desc=Var x}, [t]) when x = length_var -> Fst (abst_list post t) (** for predicates *)
       | App(t, ts) -> App(abst_list post t, List.map (abst_list post) ts)
       | If(t1, t2, t3) -> If(abst_list post t1, abst_list post t2, abst_list post t3)
       | Branch(t1, t2) -> Branch(abst_list post t1, abst_list post t2)
@@ -431,7 +431,7 @@ let rec abst_list post t =
       | SetField _ -> assert false
       | Nil ->
           let typ'' = match t.typ with TList typ -> abst_list_typ typ | _ -> assert false in
-            make_pair (make_fun (Id.new_var "x" TInt) (make_bottom typ'')) (make_int 0)
+            make_pair (make_int 0) (make_fun (Id.new_var "x" TInt) (make_bottom typ''))
       | Cons(t1,t2) ->
           let t1' = abst_list post t1 in
           let t2' = abst_list post t2 in
@@ -441,9 +441,9 @@ let rec abst_list post t =
           let x,bindx =
             match t1.desc with
                 Var x -> Id.set_typ x (abst_list_typ t1.typ), fun t -> t
-                | _ ->
-                    let x = Id.new_var "xs" (abst_list_typ t1.typ) in
-                      x, fun t -> make_let [x, [], abst_list post t1] t
+              | _ ->
+                  let x = Id.new_var "xs" (abst_list_typ t1.typ) in
+                    x, fun t -> make_let [x, [], abst_list post t1] t
           in
           let aux (p,cond,t) t' =
             let bind,cond' = get_match_bind_cond (make_var x) p in

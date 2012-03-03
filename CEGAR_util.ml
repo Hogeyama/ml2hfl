@@ -396,14 +396,16 @@ let rename_prog prog =
       else rename_id x
   in
   let make_map_fun (f,_) =
-    if is_external f
-    then f, f
-    else
-      let f' = rename_id' f var_names in
-        if true then Format.printf "rename: %s ==> %s@." f f';
-        f, f'
+    let f' =
+      if is_external f
+      then f
+      else rename_id' f var_names
+    in
+      f, f'
   in
   let map = List.rev_map make_map_fun (get_env prog) in
+  let () = List.iter (fun (f,f') -> Format.printf "rename: %s ==> %s@." f f') map in
+  let () = Format.printf "@." in
   let var_names' = List.map snd map in
   let make_map_vars (_,xs,_,_,_) =
     let var_names' = List.rev_map id_name xs @@ var_names' in
