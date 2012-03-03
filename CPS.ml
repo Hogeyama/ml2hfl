@@ -337,45 +337,6 @@ let rec proj path t =
     | 2::path',Node(_,t') -> proj path' t'
     | _ -> assert false
 
-exception UnsupportedPredicate
-
-let rec remove_pair_pred t =
-  let desc =
-    match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
-      | Unknown -> Unknown
-      | Int n -> Int n
-      | NInt y -> NInt y
-      | Var y -> Var y
-      | BinOp(op, t1, t2) -> BinOp(op, remove_pair_pred t1, remove_pair_pred t2)
-      | Not t1 -> Not (remove_pair_pred t1)
-      | Fst t1 ->
-          let x' =
-            match remove_pair_pred t1 with
-                {desc=Var x} when x = abst_var -> x
-              | {desc=Var x} -> Id.add_name x "1"
-              | _ -> raise UnsupportedPredicate
-          in
-            Var (Id.set_typ x' t.typ)
-      | Snd t1 ->
-          let x' =
-            match remove_pair_pred t1 with
-                {desc=Var x} when x = abst_var -> x
-              | {desc=Var x} -> Id.add_name x "2"
-              | _ -> raise UnsupportedPredicate
-          in
-            Var (Id.set_typ x' t.typ)
-      | _ -> raise UnsupportedPredicate
-  in
-    {desc=desc; typ=t.typ}
-
-let remove_pair_pred t =
-  try
-    remove_pair_pred t
-  with UnsupportedPredicate ->
-    raise (Fatal "Unsupported predicate: CPS.remove_pair_typ")
 
 let rec remove_pair_typ = function
     TUnit -> Leaf TUnit
@@ -392,13 +353,13 @@ let rec remove_pair_typ = function
   | TPair(typ1,typ2) -> Node(remove_pair_typ typ1, remove_pair_typ typ2)
   | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
   | TConstr(s,b) -> Leaf (TConstr(s,b))
-  | TUnknown -> assert false
+  | TUnknown -> Leaf TUnknown
   | TVariant _ -> assert false
   | TPred(TPair(typ1,typ2),ps) ->
-      let ps' = List.map remove_pair_pred ps in
+      let ps' = List.map remove_pair ps in
         remove_pair_typ (TPair(TPred(typ1,ps'),typ2))
   | TPred(typ,ps) ->
-      let ps' = List.map remove_pair_pred ps in
+      let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ typ with
             Leaf typ -> typ
@@ -411,7 +372,7 @@ and remove_pair_var x =
   let aux path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
     map aux (remove_pair_typ (Id.typ x))
 
-and remove_pair t typ_opt =
+and remove_pair_aux t typ_opt =
   let typ = match typ_opt with None -> t.typ | Some typ -> typ in
   let typs = remove_pair_typ typ in
     match t.desc with
@@ -426,36 +387,36 @@ and remove_pair t typ_opt =
       | Var x -> map (fun _ x -> make_var x) (remove_pair_var x)
       | Fun(x, t) ->
           let xs = flatten (remove_pair_var x) in
-          let t' = root (remove_pair t None) in
+          let t' = root (remove_pair_aux t None) in
             Leaf (List.fold_right make_fun xs t')
       | App(t, ts) ->
           let typs = get_argtyps t.typ in
           let typs' = take typs (List.length ts) in
-          let t' = root (remove_pair t None) in
-          let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair t (Some typ))) ts typs') in
+          let t' = root (remove_pair_aux t None) in
+          let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t (Some typ))) ts typs') in
             Leaf (make_app t' ts')
       | If(t1, t2, t3) ->
-          let t1' = root (remove_pair t1 None) in
-          let t2' = root (remove_pair t2 None) in
-          let t3' = root (remove_pair t3 None) in
+          let t1' = root (remove_pair_aux t1 None) in
+          let t2' = root (remove_pair_aux t2 None) in
+          let t3' = root (remove_pair_aux t3 None) in
             Leaf (make_if t1' t2' t3')
       | Branch(t1, t2) ->
-          let t1' = root (remove_pair t1 None) in
-          let t2' = root (remove_pair t2 None) in
+          let t1' = root (remove_pair_aux t1 None) in
+          let t2' = root (remove_pair_aux t2 None) in
             Leaf {desc=Branch(t1',t2'); typ=t1'.typ}
       | Let(flag, [f, xs, t1], t2) ->
           let f' = root (remove_pair_var f) in
           let xs' = List.flatten (List.map (fun x -> flatten (remove_pair_var x)) xs) in
-          let t1' = root (remove_pair t1 None) in
-          let t2' = root (remove_pair t2 None) in
+          let t1' = root (remove_pair_aux t1 None) in
+          let t2' = root (remove_pair_aux t2 None) in
             Leaf (make_let_f flag [f', xs', t1'] t2')
       | Let _ -> assert false
       | BinOp(op, t1, t2) ->
-          let t1' = root (remove_pair t1 None) in
-          let t2' = root (remove_pair t2 None) in
+          let t1' = root (remove_pair_aux t1 None) in
+          let t2' = root (remove_pair_aux t2 None) in
             Leaf {desc=BinOp(op, t1', t2'); typ=root typs}
       | Not t1 ->
-          let t1' = root (remove_pair t1 None) in
+          let t1' = root (remove_pair_aux t1 None) in
             Leaf (make_not t1')
       | Record fields -> assert false
       | Proj(i,s,f,t1) -> assert false
@@ -465,25 +426,27 @@ and remove_pair t typ_opt =
       | Constr(s,ts) -> assert false
       | Match(t1,pats) -> assert false
       | TryWith(t1,t2) -> assert false
-      | Pair(t1,t2) -> Node(remove_pair t1 None, remove_pair t2 None)
+      | Pair(t1,t2) -> Node(remove_pair_aux t1 None, remove_pair_aux t2 None)
+      | Fst {desc=Var x} when x = abst_var -> Leaf (make_var x) (* for predicates *)
       | Fst t ->
           let t' =
-            match remove_pair t None with
+            match remove_pair_aux t None with
                 Leaf _ -> assert false
               | Node(t',_) -> t'
           in
             t'
+      | Snd {desc=Var x} when x = abst_var -> Leaf (make_var x) (* for predicates *)
       | Snd t ->
-          let t' = 
-            match remove_pair t None with
+          let t' =
+            match remove_pair_aux t None with
                 Leaf _ -> assert false
               | Node(_,t') -> t'
           in
             t'
       | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 
-let remove_pair t =
-  let t' = root (remove_pair t None) in
+and remove_pair t =
+  let t' = root (remove_pair_aux t None) in
   let () = Type_check.check t' TUnit in
     t'
 
