@@ -1,5 +1,6 @@
-(* intro3.ml: verification succeeded *)
-let succ a f x = f (x + 1)
-let rec app x a f = if Random.int 0 = 0 then app x (ExtFuncs.f2 x a) (succ (ExtFuncs.f1 x) f) else f x
+(* intro3.ml: safe but ill-typed *)
+let succ f x = f (x + 1)
+let rec app3 f g = if Random.int 0 = 0 then app3 (succ f) g else g f
+let app x f = f x
 let check x y = if x <= y then () else assert false
-let main i = app i (ExtFuncs.g1 i) (check i)
+let main i = app3 (check i) (app i)

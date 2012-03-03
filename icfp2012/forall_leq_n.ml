@@ -1,14 +1,15 @@
 (* forall_leq_n.ml: verification failed *)
-let rec for_all f (xs:int list) =
+let rec for_all n f (xs:int list) =
   match xs with
       [] -> true
-    | x::xs' -> f x && for_all f xs'
+    | x::xs' -> f x && for_all n f xs'
 
 let rec make_list n =
   if n < 0
   then []
   else n :: make_list (n-1)
 
+let check n x = n >= x
+
 let main n =
-  let check x = n >= x in
-    assert (for_all check (make_list n))
+    assert (for_all n (check n) (make_list n))

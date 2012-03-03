@@ -11,6 +11,5 @@ let rec make_list (acc:int list) n =
   else make_list (n::acc) (n-1)
 
 let main (n:int) =
-  let n = 2 in
   let check (i:int) x = i >= x in
     assert (for_all_i 0 check (make_list [] n))

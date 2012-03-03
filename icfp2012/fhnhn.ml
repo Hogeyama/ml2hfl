@@ -1,4 +1,4 @@
-(* fhnhn.ml: verification succeeded *)
-let f a x y = assert (not ((x () > 0) && (y () <= 0)))
+(* fhnhn.ml: safe but ill-typed *)
+let f x y = assert (not ((x () > 0) && (y () <= 0)))
 let h (x:int) (y:unit) = x
-let main n = f (ExtFuncs.f1 n) (h n) (h n)
+let main n = f (h n) (h n)

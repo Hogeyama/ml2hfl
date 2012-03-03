@@ -1,4 +1,4 @@
-(* a-max_mod.ml: verification failed *)
+(* a-max-arg-inst.ml: verification succeeded *)
 let make_array n i = n - i
 let rec array_max i p (a:int->int) (n:int) m =
   if i >= n then
@@ -6,8 +6,8 @@ let rec array_max i p (a:int->int) (n:int) m =
   else
     let x = a i in
     let z = if x > m then x else m in
-    array_max (i+1) (*(ExtFuncs.f4 i p n m)*)p a n z
+    array_max (i+1) p a n z
 let main n =
   if n > 0 then
-    let m = array_max 0 (ExtFuncs.f1 n) (make_array n) n (-1) in
+    let m = array_max 0 n (make_array n) n (-1) in
     assert (m >= n)
