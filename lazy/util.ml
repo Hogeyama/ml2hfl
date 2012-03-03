@@ -442,3 +442,17 @@ let int_of_bv bv =
     -nat_of_bv (bv_not (bv_dec bv))
   else
     assert false
+
+
+(** require: p xs is satisfied *)
+let minimal p xs =
+  let rec aux xs ys =
+		  match xs with
+		    [] -> ys
+		  | x::xs' ->
+        if p (xs' @ ys) then
+          aux xs' ys
+        else
+          aux xs' (x::ys)
+  in
+  aux xs []

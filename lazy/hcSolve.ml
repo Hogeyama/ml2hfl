@@ -68,7 +68,7 @@ let rec solve_hc lbs ub ts ps =
                 with CsisatInterface.No_interpolant ->
                   CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) (Formula.band (t :: ts1 @ ts2)) t2)
           with Not_found ->
-            if true then
+            if false then
               CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) t1 t2
             else
 		            (*List.map (fun (x, n) -> Formula.eqInt (Term.make_var x) (Term.tint n)) xns*)

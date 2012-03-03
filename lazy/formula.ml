@@ -207,12 +207,10 @@ let of_aif (c, nxs, n) =
 (** ensure: () is eliminated if a unit variable does not occur in t
     ToDo: check whether they are actually ensured *)
 let rec simplify t =
-(*
-  Format.printf "%a@." Term.pr t;
-*)
+  let _ = if false then Format.printf "%a@." Term.pr t in
   match fun_args t with
     Var(_, _), [] ->
-      t
+      t (*eqBool t ttrue*)
   | Const(_, Const.True), [] ->
       ttrue
   | Const(_, Const.False), [] ->
@@ -220,7 +218,7 @@ let rec simplify t =
   | Const(attr, Const.Not), [t] ->
       (match fun_args t with
         Var(_, _), [] ->
-          bnot t
+          bnot t (* eqBool t tfalse *)
       | Const(_, Const.True), [] ->
           tfalse
       | Const(_, Const.False), [] ->
@@ -286,13 +284,30 @@ let rec simplify t =
       let t2 = simplify t2 in
       if t1 = t2 then
         ttrue
+      else if t1 = ttrue then
+        t2
+      else if t1 = tfalse then
+        simplify (bnot t2)
+      else if t2 = ttrue then
+        t1
+      else if t2 = tfalse then
+        simplify (bnot t1)
       else
         eqBool t1 t2
   | Const(attr, Const.NeqBool), [t1; t2] ->
       let t1 = simplify t1 in
       let t2 = simplify t2 in
+      let flag = false in
       if t1 = t2 then
         tfalse
+      else if t1 = ttrue then
+        if flag then eqBool t2 tfalse else simplify (bnot t2)
+      else if t1 = tfalse then
+        if flag then eqBool t2 ttrue else t2
+      else if t2 = ttrue then
+        if flag then eqBool t1 tfalse else simplify (bnot t1)
+      else if t2 = tfalse then
+        if flag then eqBool t1 ttrue else t1
       else
         neqBool t1 t2
   | Forall(a, env, t), [] ->
@@ -327,6 +342,34 @@ and simplify_conjuncts ts =
 		        let c = List.fold_left Const.cand c1 cs in
 		        c, nxs1, n1)
 		      aifss
+    in
+    let bts =
+      let bts' =
+        List.filter
+          (fun t ->
+            match fun_args t with
+              Var(_, _), []
+            | Const(_, Const.Not), [Var(_, _)] ->
+                true
+            | _ ->
+                false)
+          bts
+      in
+      let pxs, nxs =
+		      Util.partition_map
+          (fun t ->
+            match fun_args t with
+              Var(_, x), [] ->
+                `L(x)
+            | Const(_, Const.Not), [Var(_, x)] ->
+                `R(x)
+            | _ -> assert false)
+		        bts'
+      in
+      if Util.inter pxs nxs <> [] then
+        [tfalse]
+      else
+        bts
     in
     if true then
 				  let sub, ts' =
@@ -376,6 +419,34 @@ and simplify_disjuncts ts =
 		        let c = List.fold_left Const.cor c1 cs in
 		        c, nxs1, n1)
 		      aifss
+    in
+    let bts =
+      let bts' =
+        List.filter
+          (fun t ->
+            match fun_args t with
+              Var(_, _), []
+            | Const(_, Const.Not), [Var(_, _)] ->
+                true
+            | _ ->
+                false)
+          bts
+      in
+      let pxs, nxs =
+		      Util.partition_map
+          (fun t ->
+            match fun_args t with
+              Var(_, x), [] ->
+                `L(x)
+            | Const(_, Const.Not), [Var(_, x)] ->
+                `R(x)
+            | _ -> assert false)
+		        bts'
+      in
+      if Util.inter pxs nxs <> [] then
+        [ttrue]
+      else
+        bts
     in
     List.map LinArith.term_of_aif aifs @ bts
 
@@ -637,6 +708,10 @@ let rec eqelim p ts =
                 Some(x, t, SimType.Unit)
             | Const(_, Const.EqUnit), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) ->
                 Some(x, t, SimType.Unit)
+            | Var(_, x), [] when not (p x) ->
+                Some(x, ttrue, SimType.Bool)
+            | Const(_, Const.Not), [Var(_, x)] when not (p x) ->
+                Some(x, tfalse, SimType.Bool)
             | Const(_, Const.EqBool), [Var(_, x); t] when not (p x) && not (List.mem x (fvs t)) ->
                 Some(x, t, SimType.Bool)
             | Const(_, Const.EqBool), [t; Var(_, x)] when not (p x) && not (List.mem x (fvs t)) ->

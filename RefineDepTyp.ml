@@ -1959,7 +1959,7 @@ let rec add_preds_typ sol typ1 typ2 =
         in
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (make_var x)) in
           TFun(Id.set_typ x typ, rtyp)
-    | TFun(x,rtyp1), RTbfun(_, rtyp2) ->
+    | TFun(x,rtyp1), RTbfun(_(*ignores predicates for booleans?*), rtyp2) ->
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (make_var x)) in
           TFun(x, rtyp)
     | TFun(x,rtyp1), RTfun(typs, rtyp2) ->

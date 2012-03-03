@@ -200,7 +200,19 @@ let interpolate_chk t1 t2 =
   try
     let t = interpolate t1 t2 in
     (*let _ = Format.printf "interp: %a@." Term.pr t in*)
-    Formula.simplify t
+    let t = Formula.simplify t in
+    if true then
+      let ts = Formula.conjuncts t in
+		    (match ts with
+		      [t] -> t
+		    | _ ->
+          let _ = if !Global.debug then Format.printf "finding minimal interpolant@." in
+          let _ = if !Global.debug then Format.printf "before:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
+          let ts = Util.minimal (fun ts -> Cvc3Interface.implies (Formula.band ts) (Formula.bnot t2)) ts in
+          let _ = if !Global.debug then Format.printf "after:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
+		        Formula.band ts)
+    else
+      t
   with No_interpolant ->
     if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
       let _ = Format.printf "an error of CSIsat@." in
