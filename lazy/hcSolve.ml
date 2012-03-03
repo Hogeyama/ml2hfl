@@ -8,6 +8,9 @@ open HornClause
 
 exception NoSolution
 
+let pr_sol_aux ppf (pid, (xs, t)) =
+  Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr t
+
 let rec solve_hc lbs ub ts ps =
   match ps with
     [] -> []
@@ -34,16 +37,59 @@ let rec solve_hc lbs ub ts ps =
 												      List.map (Term.subst sub) ts)
 				            ps))
         in
-        CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) t1 t2
+						  if true (* true makes verification of file.ml too slow... why? *) then
+						    let ts = Formula.conjuncts t1 in
+						    let xns, ts2 =
+						      Util.partition_map
+								      (fun t ->
+						          try
+										        match LinArith.aif_of t with
+												        (Const.EqInt, [1, x], n) ->
+												          `L(x, -n)
+												      | (Const.EqInt, [-1, x], n) ->
+												          `L(x, n)
+												      | aif ->
+												          `R(LinArith.term_of_aif aif)
+						          with Invalid_argument _ ->
+						            `R(t))
+						        ts
+						    in
+          try
+								    (match xns with
+								      [] -> raise Not_found
+								    | _ ->
+                let xns1, (x, n), xns2 = Util.find_split (fun (x, _) -> pid = x) xns in
+                let t = Formula.eqInt (Term.make_var x) (Term.tint n) in
+                let ts1 =
+										        List.map (fun (x', n') -> Formula.eqInt (Term.make_var x') (Term.add (Term.make_var x) (Term.tint (n' - n)))) (xns1 @ xns2)
+                in
+		      						  try
+        						    CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) (Formula.band (ts1 @ ts2)) t2
+                with CsisatInterface.No_interpolant ->
+                  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) (Formula.band (t :: ts1 @ ts2)) t2)
+          with Not_found ->
+            if true then
+              CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) t1 t2
+            else
+		            (*List.map (fun (x, n) -> Formula.eqInt (Term.make_var x) (Term.tint n)) xns*)
+										    (let xns = List.sort ~cmp:(fun (_, n1) (_, n2) -> n1 - n2) xns in
+										    match xns with
+										      [] -> CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) t1 t2
+										    | (x, n)::xns ->
+		                let ts1 =
+												        (Formula.eqInt (Term.make_var x) (Term.tint n))::
+												        List.map (fun (x', n') -> Formula.eqInt (Term.make_var x') (Term.add (Term.make_var x) (Term.tint (n' - n)))) xns
+		                in
+		                CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) (Formula.band (ts1 @ ts2)) t2)
+						  else
+						    CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) t1 t2
       in
-      (pid, (xs, interp))::
-      solve_hc lbs ub (interp::ts) ps
+      let sol = pid, (xs, interp)	in
+      let _ = Format.printf "%a@." pr_sol_aux sol in
+      sol :: solve_hc lbs ub (interp::ts) ps
 
 let pr_sol ppf sol =
-  let pr_aux ppf (pid, (xs, t)) =
-    Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr t
-  in
-  Format.printf "@[<v>%a@]" (Util.pr_list pr_aux "@,") sol
+  Format.printf "@[<v>%a@]" (Util.pr_list pr_sol_aux "@,") sol
 
 let merge_solution sol =
   List.map

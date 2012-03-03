@@ -52,6 +52,7 @@ let lookup rename pid lbs =
     ts
 
 let subst_lbs rename lbs (Hc(popt, ps, ts)) =
+  let flag = false in
   let ts =
     List.unique
       (ts @
@@ -62,13 +63,9 @@ let subst_lbs rename lbs (Hc(popt, ps, ts)) =
           List.map (Term.subst (fun x -> List.assoc x sub)) ts)
         ps)
   in
-(*
-  Format.printf "1:%a@." (Util.pr_list Term.pr ",") ts;
-*)
+  let _ = if flag then Format.printf "1:%a@." (Util.pr_list Term.pr ",") ts in
   let ts = Formula.conjuncts (Formula.simplify (Formula.elim_unit (Formula.band ts))) in
-(*
-  Format.printf "2:%a@." (Util.pr_list Term.pr ",") ts;
-*)
+  let _ = if flag then Format.printf "2:%a@." (Util.pr_list Term.pr ",") ts in
   let bvs = match popt with None -> [] | Some(_, xs) -> xs in
   let ts =
     if rename then
@@ -76,54 +73,50 @@ let subst_lbs rename lbs (Hc(popt, ps, ts)) =
     else (* sound? *)
 		    Formula.eqelim (fun x -> (match x with Var.V(_) -> true | _ -> false) || List.mem x bvs || Var.is_coeff x) ts
   in
-(*
-  Format.printf "3:%a@." (Util.pr_list Term.pr ",") ts;
-*)
+  let _ = if flag then Format.printf "3:%a@." (Util.pr_list Term.pr ",") ts in
   let ts = Formula.simplify_conjuncts ts in
-(*
-  Format.printf "4:%a@." (Util.pr_list Term.pr ",") ts;
-*)
+  let _ = if flag then Format.printf "4:%a@." (Util.pr_list Term.pr ",") ts in
   let ts =
-    if true then
-      let t = Formula.band ts in
-      let fvs = List.unique (Util.diff (Term.fvs t) bvs) in
-      let fvs = if rename then fvs else List.filter (function Var.V(_) -> false | _ -> true) fvs in
-      if fvs <> [] && Formula.is_linear t then
-        try
-          Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
-        with Util.NotImplemented _ ->
-          ts
-      else
-        ts
+    let t = Formula.band ts in
+    let fvs = List.unique (Util.diff (Term.fvs t) bvs) in
+    let fvs = if rename then fvs else List.filter (function Var.V(_) -> false | _ -> true) fvs in
+    let _ = if flag then Format.printf "fvs: %a@." (Util.pr_list Var.pr ",") fvs in
+    if fvs <> [] && Formula.is_linear t then
+      try
+        Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
+      with Util.NotImplemented _ ->
+		      Util.map_left
+		        (fun ts1 t ts2 ->
+		          let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
+		          let fvs = if rename then fvs else List.filter (function Var.V(_) -> false | _ -> true) fvs in
+		          let _ = if flag then Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+		          if fvs <> [] && Formula.is_linear t then
+		            let _ = if flag then Format.printf "before:@.  @[%a@]@." Term.pr t in
+		            let t =
+		              try
+		                AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
+		              with Util.NotImplemented _ ->
+		                t
+		            in
+		            (*
+		            let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
+		            *)
+		            let _ = if flag then Format.printf "after:@.  @[%a@]@." Term.pr t in
+		            t
+		          else
+		            t)
+		        ts
     else
-      Util.map_left
-        (fun ts1 t ts2 ->
-          let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
-          let fvs = if rename then fvs else List.filter (function Var.V(_) -> false | _ -> true) fvs in
-          (*
-          let _ = Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
-          *)
-          if fvs <> [] && Formula.is_linear t then
-            let _ = Format.printf "before:@.  @[%a@]@." Term.pr t in
-            let t =
-              try
-                AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
-              with Util.NotImplemented _ ->
-                t
-            in
-            (*
-            let t = Formula.simplify (Formula.bor (List.map Formula.band (Formula.dnf t))) in
-            *)
-            let _ = Format.printf "after:@.  @[%a@]@." Term.pr t in
-            t
-          else
-            t)
-        ts
+      ts
   in
-(*
-  Format.printf "5:%a@." (Util.pr_list Term.pr ",") ts;
-*)
+  let _ = if flag then Format.printf "5:%a@." (Util.pr_list Term.pr ",") ts in
   Hc(popt, [], Formula.conjuncts (Formula.simplify (Formula.band ts)))
+
+let pr_lb ppf (pid, (xs, ts)) =
+  Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr (Formula.band ts)
+
+let pr_lbs pps lbs =
+  Format.printf "@[<v>%a@]" (Util.pr_list pr_lb "@,") lbs
 
 let compute_lb lbs (Hc(Some(pid, xs), ps, ts)) =
   let Hc(_, [], ts) = subst_lbs !Global.rename_lower_bounds lbs (Hc(Some(pid, xs), ps, ts)) in
@@ -141,15 +134,18 @@ let compute_lbs hcs =
     if hcs1 = [] then
       lbs (* hcs2 are all false *)
     else
-      aux hcs2 (lbs @ (* need to merge? *)(List.map (compute_lb lbs) hcs1))
+      let lbs' =
+        List.map
+          (fun hc ->
+            let lb = compute_lb lbs hc in
+            let _ = Format.printf "%a@." pr_lb lb in
+            lb)
+        hcs1
+      in
+      aux hcs2 (lbs @ (* need to merge? *)lbs')
   in
   aux hcs []
 
-let pr_lb ppf (pid, (xs, ts)) =
-  Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr (Formula.band ts)
-
-let pr_lbs pps lbs =
-  Format.printf "@[<v>%a@]" (Util.pr_list pr_lb "@,") lbs
 
 
 let formula_of hcs =
@@ -166,9 +162,8 @@ let formula_of hcs =
 
 (** @deprecated only used by a deprecated function bwd_formula_of *)
 let subst_hcs sub hc =
-(*
-  let _ = Format.printf "before:@.  @[%a@]@." pr hc in
-*)
+  let flag = false in
+  let _ = if flag then Format.printf "before:@.  @[%a@]@." pr hc in
   match hc with
     Hc(popt, ps, ts) ->
       let pss, tss =
@@ -202,9 +197,7 @@ let subst_hcs sub hc =
         Formula.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) ts
       in
       let hc = Hc(popt, ps, ts) in
-(*
-      let _ = Format.printf "after:@.  @[%a@]@." pr hc in
-*)
+      let _ = if flag then Format.printf "after:@.  @[%a@]@." pr hc in
       hc
 
 (** @deprecated use formula_of instead *)

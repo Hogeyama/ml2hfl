@@ -173,9 +173,9 @@ let interpolate t1 t2 =
   else
 		  let p1 = CsisatAstUtil.simplify (of_formula t1) in
 		  let p2 = CsisatAstUtil.simplify (of_formula t2) in
-		  (**)
+		  (*
 		  Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
-		  (**)
+		  *)
 		  let interp =
 		    try
 		      CsisatInterpolate.interpolate_with_proof p1 p2
@@ -199,7 +199,7 @@ let interpolate t1 t2 =
 let interpolate_chk t1 t2 =
   try
     let t = interpolate t1 t2 in
-    let _ = Format.printf "interp: %a@." Term.pr t in
+    (*let _ = Format.printf "interp: %a@." Term.pr t in*)
     Formula.simplify t
   with No_interpolant ->
     if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
@@ -209,9 +209,10 @@ let interpolate_chk t1 t2 =
       raise No_interpolant
 
 let interpolate t1 t2 =
-  let _ = Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2 in
+  let flag = true in
+  let _ = if flag then Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2 in
   let interp = interpolate_chk t1 t2 in
-  let _ = Format.printf "interp_out: %a@]@." Term.pr interp in
+  let _ = if flag then Format.printf "interp_out: %a@]@." Term.pr interp in
   interp
 
 (** @param p represents variables shared by t1 and t2 *)

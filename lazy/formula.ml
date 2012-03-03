@@ -344,10 +344,11 @@ and simplify_conjuncts ts =
       List.map
         (fun t ->
           let t' = simplify (subst (fun x -> List.assoc x sub) t) in
-          (*
-          Format.printf "%a@." Term.pr t';
-          *)
-          if t' = ttrue || t' = tfalse then t' else t)
+          if t' = ttrue || t' = tfalse then
+            let _ = if true then Format.printf "eliminated: %a@." Term.pr t in
+            t'
+          else
+            t)
         (ts' @ bts)
     else
       List.map LinArith.term_of_aif aifs @ bts

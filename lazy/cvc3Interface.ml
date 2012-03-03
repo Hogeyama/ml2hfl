@@ -175,6 +175,7 @@ let infer t ty =
     (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))  
 
 let is_valid t =
+  let flag = false in
   let cin = !cvc3in in
   let cout = !cvc3out in
   let _ = cnt := !cnt + 1 in
@@ -192,7 +193,7 @@ let is_valid t =
     "QUERY " ^ string_of_term t ^ ";" ^
     "POP;\n"
   in
-  let _ = if !Global.debug then Format.printf "input to cvc3: %s@." inp in
+  let _ = if !Global.debug && flag then Format.printf "input to cvc3: %s@." inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let res = input_line cin in
   if Str.string_match (Str.regexp ".*Valid") res 0 then

@@ -72,11 +72,11 @@ let refineRefTypes prog etrs =
       *)
       TcSolveRefType.summaries_of (Prog.type_of prog) constrss
   in
-  (**)
+  (*
   let _ = List.iter (fun (`P(x, t)) ->
     Format.printf "P[%a]: %a@." Var.pr x Term.pr t) sums
   in
-  (**)
+  *)
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
   let env = TcSolveRefType.infer_env prog sums fcs in
   env
