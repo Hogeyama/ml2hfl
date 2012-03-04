@@ -320,135 +320,172 @@ let rec simplify t =
       (*LinArith.simplify t*)
 and simplify_conjuncts ts =
   let ts = List.unique ts in
-  if List.mem tfalse ts then
+  if ts = [] then
+    []
+  else if List.mem tfalse ts then
     [tfalse]
   else
-    let aifs, bts =
-      Util.partition_map
-        (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
-        (List.filter (fun t -> t <> ttrue) ts)
-    in
-    let aifs =
-		    let aifss =
-		      Util.classify
-		        (fun (_, nxs1, n1) (_, nxs2, n2) ->
-		          LinArith.equiv (nxs1, n1) (nxs2, n2) ||
-		          LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)))
-		        aifs
-		    in
-		    List.map
-		      (fun ((c1, nxs1, n1)::aifs) ->
-		        let cs = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, n1) (nxs2, n2) then c2 else Const.minus_ibrel c2) aifs in
-		        let c = List.fold_left Const.cand c1 cs in
-		        c, nxs1, n1)
-		      aifss
-    in
-    let bts =
-      let bts' =
-        List.filter
-          (fun t ->
-            match fun_args t with
-              Var(_, _), []
-            | Const(_, Const.Not), [Var(_, _)] ->
-                true
-            | _ ->
-                false)
-          bts
-      in
-      let pxs, nxs =
+    let ts =
+		    let aifs, bts =
 		      Util.partition_map
-          (fun t ->
-            match fun_args t with
-              Var(_, x), [] ->
-                `L(x)
-            | Const(_, Const.Not), [Var(_, x)] ->
-                `R(x)
-            | _ -> assert false)
-		        bts'
-      in
-      if Util.inter pxs nxs <> [] then
-        [tfalse]
-      else
-        bts
+		        (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
+		        (List.filter (fun t -> t <> ttrue) ts)
+		    in
+		    let aifs =
+				    let aifss =
+				      Util.classify
+				        (fun (_, nxs1, n1) (_, nxs2, n2) ->
+				          LinArith.equiv (nxs1, 0) (nxs2, 0) ||
+				          LinArith.equiv (nxs1, 0) (LinArith.minus (nxs2, 0)))
+				        aifs
+				    in
+				    Util.concat_map
+				      (fun ((c1, nxs1, n1)::aifs) ->
+				        let cns = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, 0) (nxs2, 0) then c2, -n2 else Const.minus_ibrel c2, n2) aifs in
+				        let cns = Const.candns ((c1, -n1) :: cns) in
+				        List.map (fun (c, n) -> c, nxs1, -n) cns)
+				      aifss
+		    in
+		    let bts =
+		      let bts' =
+		        List.filter
+		          (fun t ->
+		            match fun_args t with
+		              Var(_, _), []
+		            | Const(_, Const.Not), [Var(_, _)] ->
+		                true
+		            | _ ->
+		                false)
+		          bts
+		      in
+		      let pxs, nxs =
+				      Util.partition_map
+		          (fun t ->
+		            match fun_args t with
+		              Var(_, x), [] ->
+		                `L(x)
+		            | Const(_, Const.Not), [Var(_, x)] ->
+		                `R(x)
+		            | _ -> assert false)
+				        bts'
+		      in
+		      if Util.inter pxs nxs <> [] then
+		        [tfalse]
+		      else
+		        bts
+		    in
+		    if true then
+						  let sub, ts' =
+		        Util.partition_map
+		          (function
+		            (Const.EqInt, [1, x], n) ->
+		              `L(x, Term.tint (-n))
+		          | (Const.EqInt, [-1, x], n) ->
+		              `L(x, Term.tint n)
+		          | aif ->
+		              `R(LinArith.term_of_aif aif))
+		          aifs
+		      in
+						  List.map (fun (x, t) -> eqInt (make_var x) t) sub @
+		      List.map
+		        (fun t ->
+		          let t' = simplify (subst (fun x -> List.assoc x sub) t) in
+		          if t' = ttrue || t' = tfalse then
+		            let _ = if true then Format.printf "eliminated: %a@." Term.pr t in
+		            t'
+		          else
+		            t)
+		        (ts' @ bts)
+		    else
+		      List.map LinArith.term_of_aif aifs @ bts
     in
-    if true then
-				  let sub, ts' =
-        Util.partition_map
-          (function
-            (Const.EqInt, [1, x], n) ->
-              `L(x, Term.tint (-n))
-          | (Const.EqInt, [-1, x], n) ->
-              `L(x, Term.tint n)
-          | aif ->
-              `R(LinArith.term_of_aif aif))
-          aifs
-      in
-				  List.map (fun (x, t) -> eqInt (make_var x) t) sub @
-      List.map
-        (fun t ->
-          let t' = simplify (subst (fun x -> List.assoc x sub) t) in
-          if t' = ttrue || t' = tfalse then
-            let _ = if true then Format.printf "eliminated: %a@." Term.pr t in
-            t'
-          else
-            t)
-        (ts' @ bts)
-    else
-      List.map LinArith.term_of_aif aifs @ bts
+				if ts = [] then
+      []
+    else if List.mem tfalse ts then
+				  [tfalse]
+		  else
+		    ts
 and simplify_disjuncts ts =
-  let ts = List.unique ts in
-  if List.mem ttrue ts then
-    [ttrue]
-  else
-    let aifs, bts =
-      Util.partition_map
-        (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
-        (List.filter (fun t -> t <> tfalse) ts)
-    in
-    let aifs =
-		    let aifss =
-		      Util.classify
-		        (fun (_, nxs1, n1) (_, nxs2, n2) ->
-		          LinArith.equiv (nxs1, n1) (nxs2, n2) ||
-		          LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)))
-		        aifs
-		    in
-		    List.map
-		      (fun ((c1, nxs1, n1)::aifs) ->
-		        let cs = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, n1) (nxs2, n2) then c2 else Const.minus_ibrel c2) aifs in
-		        let c = List.fold_left Const.cor c1 cs in
-		        c, nxs1, n1)
-		      aifss
-    in
-    let bts =
-      let bts' =
-        List.filter
-          (fun t ->
-            match fun_args t with
-              Var(_, _), []
-            | Const(_, Const.Not), [Var(_, _)] ->
-                true
-            | _ ->
-                false)
-          bts
-      in
-      let pxs, nxs =
-		      Util.partition_map
-          (fun t ->
-            match fun_args t with
-              Var(_, x), [] ->
-                `L(x)
-            | Const(_, Const.Not), [Var(_, x)] ->
-                `R(x)
-            | _ -> assert false)
-		        bts'
-      in
-      if Util.inter pxs nxs <> [] then
-        [ttrue]
+		let ts = List.unique ts in
+		if ts = [] then
+    []
+  else if List.mem ttrue ts then
+		  [ttrue]
+		else
+		  let ts =
+				  let aifs, bts =
+				    Util.partition_map
+				      (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
+				      (List.filter (fun t -> t <> tfalse) ts)
+				  in
+				  let aifs =
+						  let aifss =
+						    Util.classify
+						      (fun (_, nxs1, n1) (_, nxs2, n2) ->
+						        LinArith.equiv (nxs1, n1) (nxs2, n2) ||
+						        LinArith.equiv (nxs1, n1) (LinArith.minus (nxs2, n2)))
+						      aifs
+						  in
+						  List.map
+						    (fun ((c1, nxs1, n1)::aifs) ->
+						      let cs = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, n1) (nxs2, n2) then c2 else Const.minus_ibrel c2) aifs in
+						      let c = List.fold_left Const.cor c1 cs in
+						      c, nxs1, n1)
+						    aifss
+				  in
+				  let bts =
+				    let bts' =
+				      List.filter
+				        (fun t ->
+				          match fun_args t with
+				            Var(_, _), []
+				          | Const(_, Const.Not), [Var(_, _)] ->
+				              true
+				          | _ ->
+				              false)
+				        bts
+				    in
+				    let pxs, nxs =
+						    Util.partition_map
+				        (fun t ->
+				          match fun_args t with
+				            Var(_, x), [] ->
+				              `L(x)
+				          | Const(_, Const.Not), [Var(_, x)] ->
+				              `R(x)
+				          | _ -> assert false)
+						      bts'
+				    in
+				    if Util.inter pxs nxs <> [] then
+				      [ttrue]
+				    else
+				      bts
+				  in
+				  List.map LinArith.term_of_aif aifs @ bts
+		  in
+    if ts = [] then
+      []
+				else if List.mem ttrue ts then
+				  [ttrue]
+				else
+      let tss = List.map conjuncts ts in
+      let ts' = List.fold_left Util.inter (List.hd tss) (List.tl tss) in
+      if ts' <> [] then
+        let _ = if false then Format.printf "shared: %a@." (Util.pr_list Term.pr ", ") ts' in
+        let ts = simplify_disjuncts (List.map (fun ts -> simplify (band (Util.diff ts ts'))) tss) in
+        let t = simplify (band ts') in
+        List.map (fun t' -> band [t; t']) ts
       else
-        bts
-    in
-    List.map LinArith.term_of_aif aifs @ bts
+        ts
+      (*List.map
+        band
+		      (Util.filter_map_left
+		        (fun tss1 ts tss2 ->
+		          if List.exists (fun ts' -> Util.subset ts' ts) (tss1 @ tss2) then
+		            None
+		          else
+		            Some(ts))
+		        (List.map conjuncts ts))*)
 
 (** {6 Functions on DNF formulas} *)
 

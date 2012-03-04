@@ -1,3 +1,5 @@
+open ExtList
+
 (** Constants*)
 
 type t =
@@ -163,7 +165,7 @@ let rec pr_bin ppf c =
   | Mul -> Format.fprintf ppf "*"
 
 
-let cand c1 c2 =
+let rec cand c1 c2 =
   match c1, c2 with
   | EqInt, EqInt -> EqInt
   | EqInt, NeqInt -> IBFalse
@@ -172,44 +174,47 @@ let cand c1 c2 =
   | EqInt, Leq -> EqInt
   | EqInt, Geq -> EqInt
 
-  | NeqInt, EqInt -> IBFalse
+  | NeqInt, EqInt -> cand c2 c1
   | NeqInt, NeqInt -> NeqInt
   | NeqInt, Lt -> Lt
   | NeqInt, Gt -> Gt
   | NeqInt, Leq -> Lt
   | NeqInt, Geq -> Gt
 
-  | Lt, EqInt -> IBFalse
-  | Lt, NeqInt -> Lt
+  | Lt, EqInt -> cand c2 c1
+  | Lt, NeqInt -> cand c2 c1
   | Lt, Lt -> Lt
   | Lt, Gt -> IBFalse
   | Lt, Leq -> Lt
   | Lt, Geq -> IBFalse
 
-  | Gt, EqInt -> IBFalse
-  | Gt, NeqInt -> Gt
-  | Gt, Lt -> IBFalse
+  | Gt, EqInt -> cand c2 c1
+  | Gt, NeqInt -> cand c2 c1
+  | Gt, Lt -> cand c2 c1
   | Gt, Gt -> Gt
   | Gt, Leq -> IBFalse
   | Gt, Geq -> Gt
 
-  | Leq, EqInt -> EqInt
-  | Leq, NeqInt -> Lt
-  | Leq, Lt -> Lt
-  | Leq, Gt -> IBFalse
+  | Leq, EqInt -> cand c2 c1
+  | Leq, NeqInt -> cand c2 c1
+  | Leq, Lt -> cand c2 c1
+  | Leq, Gt -> cand c2 c1
   | Leq, Leq -> Leq
   | Leq, Geq -> EqInt
 
-  | Geq, EqInt -> EqInt
-  | Geq, NeqInt -> Gt
-  | Geq, Lt -> IBFalse
-  | Geq, Gt -> Gt
-  | Geq, Leq -> EqInt
+  | Geq, EqInt -> cand c2 c1
+  | Geq, NeqInt -> cand c2 c1
+  | Geq, Lt -> cand c2 c1
+  | Geq, Gt -> cand c2 c1
+  | Geq, Leq -> cand c2 c1
   | Geq, Geq -> Geq
+
+  | IBTrue, c | c, IBTrue -> c
+  | IBFalse, _ | _, IBFalse -> IBFalse
 
   | _ -> assert false
 
-let cor c1 c2 =
+let rec cor c1 c2 =
   match c1, c2 with
   | EqInt, EqInt -> EqInt
   | EqInt, NeqInt -> IBTrue
@@ -218,39 +223,106 @@ let cor c1 c2 =
   | EqInt, Leq -> Leq
   | EqInt, Geq -> Geq
 
-  | NeqInt, EqInt -> IBTrue
+  | NeqInt, EqInt -> cor c2 c1
   | NeqInt, NeqInt -> NeqInt
   | NeqInt, Lt -> NeqInt
   | NeqInt, Gt -> NeqInt
   | NeqInt, Leq -> IBTrue
   | NeqInt, Geq -> IBTrue
 
-  | Lt, EqInt -> Leq
-  | Lt, NeqInt -> NeqInt
+  | Lt, EqInt -> cor c2 c1
+  | Lt, NeqInt -> cor c2 c1
   | Lt, Lt -> Lt
   | Lt, Gt -> NeqInt
   | Lt, Leq -> Leq
   | Lt, Geq -> IBTrue
 
-  | Gt, EqInt -> Geq
-  | Gt, NeqInt -> NeqInt
-  | Gt, Lt -> NeqInt
+  | Gt, EqInt -> cor c2 c1
+  | Gt, NeqInt -> cor c2 c1
+  | Gt, Lt -> cor c2 c1
   | Gt, Gt -> Gt
   | Gt, Leq -> IBTrue
   | Gt, Geq -> Geq
 
-  | Leq, EqInt -> Leq
-  | Leq, NeqInt -> IBTrue
-  | Leq, Lt -> Leq
-  | Leq, Gt -> IBTrue
+  | Leq, EqInt -> cor c2 c1
+  | Leq, NeqInt -> cor c2 c1
+  | Leq, Lt -> cor c2 c1
+  | Leq, Gt -> cor c2 c1
   | Leq, Leq -> Leq
   | Leq, Geq -> IBTrue
 
-  | Geq, EqInt -> Geq
-  | Geq, NeqInt -> IBTrue
-  | Geq, Lt -> IBTrue
-  | Geq, Gt -> Geq
-  | Geq, Leq -> IBTrue
+  | Geq, EqInt -> cor c2 c1
+  | Geq, NeqInt -> cor c2 c1
+  | Geq, Lt -> cor c2 c1
+  | Geq, Gt -> cor c2 c1
+  | Geq, Leq -> cor c2 c1
   | Geq, Geq -> Geq
 
+  | IBTrue, _ | _, IBTrue -> IBTrue
+  | IBFalse, c | c, IBFalse -> c
+
   | _ -> assert false
+
+
+(** x c1 n1 and x c2 n2 *)
+let rec candn (c1, n1) (c2, n2) =
+  match c1, c2 with
+  | EqInt, EqInt -> if n1 = n2 then [EqInt, n1] else [IBFalse, 0]
+  | EqInt, NeqInt -> if n1 = n2 then [IBFalse, 0] else [EqInt, n1]
+  | EqInt, Lt -> if n1 >= n2 then [IBFalse, 0] else [EqInt, n1]
+  | EqInt, Gt -> if n1 <= n2 then [IBFalse, 0] else [EqInt, n1]
+  | EqInt, Leq -> if n1 > n2 then [IBFalse, 0] else [EqInt, n1]
+  | EqInt, Geq -> if n1 < n2 then [IBFalse, 0] else [EqInt, n1]
+
+  | NeqInt, EqInt -> candn (c2, n2) (c1, n1)
+  | NeqInt, NeqInt -> if n1 = n2 then [NeqInt, n1] else [NeqInt, n1; NeqInt, n2]
+  | NeqInt, Lt -> if n1 >= n2 then [Lt, n2] else [NeqInt, n1; Lt, n2]
+  | NeqInt, Gt -> if n1 <= n2 then [Gt, n2] else [NeqInt, n1; Gt, n2]
+  | NeqInt, Leq -> if n1 = n2 then [Lt, n2] else if n1 > n2 then [Leq, n2] else [NeqInt, n1; Leq, n2]
+  | NeqInt, Geq -> if n1 = n2 then [Gt, n2] else if n1 < n2 then [Geq, n2] else [NeqInt, n1; Geq, n2]
+
+  | Lt, EqInt -> candn (c2, n2) (c1, n1)
+  | Lt, NeqInt -> candn (c2, n2) (c1, n1)
+  | Lt, Lt -> if n1 <= n2 then [Lt, n1] else [Lt, n2]
+  | Lt, Gt -> if n1 = n2 + 2 then [EqInt, n2 + 1] else if n1 <= n2 + 1 then [IBFalse, 0] else [Lt, n1; Gt, n2]
+  | Lt, Leq -> if n1 <= n2 then [Lt, n1] else [Leq, n2]
+  | Lt, Geq -> if n1 = n2 + 1 then [EqInt, n2] else if n1 <= n2 then [IBFalse, 0] else [Lt, n1; Geq, n2]
+
+  | Gt, EqInt -> candn (c2, n2) (c1, n1)
+  | Gt, NeqInt -> candn (c2, n2) (c1, n1)
+  | Gt, Lt -> candn (c2, n2) (c1, n1)
+  | Gt, Gt -> if n1 >= n2 then [Gt, n1] else [Gt, n2]
+  | Gt, Leq -> if n1 + 1 = n2 then [EqInt, n2] else if n1 >= n2 then [IBFalse, 0] else [Gt, n1; Leq, n2]
+  | Gt, Geq -> if n1 >= n2 then [Gt, n1] else [Geq, n2]
+
+  | Leq, EqInt -> candn (c2, n2) (c1, n1)
+  | Leq, NeqInt -> candn (c2, n2) (c1, n1)
+  | Leq, Lt -> candn (c2, n2) (c1, n1)
+  | Leq, Gt -> candn (c2, n2) (c1, n1)
+  | Leq, Leq -> if n1 <= n2 then [Leq, n1] else [Leq, n2]
+  | Leq, Geq -> if n1 = n2 then [EqInt, n1] else if n1 < n2 then [IBFalse, 0] else [Leq, n1; Geq, n2]
+
+  | Geq, EqInt -> candn (c2, n2) (c1, n1)
+  | Geq, NeqInt -> candn (c2, n2) (c1, n1)
+  | Geq, Lt -> candn (c2, n2) (c1, n1)
+  | Geq, Gt -> candn (c2, n2) (c1, n1)
+  | Geq, Leq -> candn (c2, n2) (c1, n1)
+  | Geq, Geq -> if n1 >= n2 then [Geq, n1] else [Geq, n2]
+
+  | IBTrue, _ -> [c2, n2]
+  | _, IBTrue -> [c1, n1]
+  | IBFalse, _ | _, IBFalse -> [IBFalse, 0]
+
+  | _ -> assert false
+
+let rec candns cns =
+  match cns with
+    [] -> assert false
+  | [cn] -> [cn]
+  | cn::cns' ->
+      let cns'' = candns cns' in
+      let cns''' = List.unique (Util.concat_map (candn cn) cns'') in
+      if Util.set_equiv cns''' (cn::cns'') then
+        cns'''
+      else
+        candns cns'''

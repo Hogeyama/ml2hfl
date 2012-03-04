@@ -151,6 +151,19 @@ let map_fold_right f xs z =
   in
   aux (List.rev xs) z []
 
+let filter_map_left f xs =
+  let rec aux ys xs =
+    match xs with
+      [] -> ys
+    | x::xs ->
+        (match f ys x xs with
+          None ->
+            aux ys xs
+        | Some(y) ->
+            aux (ys @ [y]) xs)
+  in
+  aux [] xs
+
 let rec ctx_of xs i =
   match xs with
     [] -> assert false

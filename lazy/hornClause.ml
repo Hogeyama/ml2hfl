@@ -52,7 +52,7 @@ let lookup rename pid lbs =
     ts
 
 let subst_lbs rename lbs (Hc(popt, ps, ts)) =
-  let flag = false in
+  let flag = true in
   let ts =
     List.unique
       (ts @
@@ -162,7 +162,7 @@ let formula_of hcs =
 
 (** @deprecated only used by a deprecated function bwd_formula_of *)
 let subst_hcs sub hc =
-  let flag = false in
+  let flag = true in
   let _ = if flag then Format.printf "before:@.  @[%a@]@." pr hc in
   match hc with
     Hc(popt, ps, ts) ->
