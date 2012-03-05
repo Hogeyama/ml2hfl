@@ -5,7 +5,7 @@ let rec nth n xs =
     | x::xs' -> if n = 0 then x else nth (n-1) xs'
 
 let rec make_list n =
-  if n < 0
+  if n = 0
   then []
   else n :: make_list (n-1)
 
