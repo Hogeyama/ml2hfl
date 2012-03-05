@@ -114,8 +114,15 @@ exp:
   { make_sub $1 $3 }
 | NOT exp
   { make_not $2 }
-| id exp %prec prec_app
-  { make_app (make_var length_var) [$2] }
+| id id
+  {
+    let x =
+      if Id.name $1 = "length"
+      then length_var
+      else $2
+    in
+      make_app (make_var x) [make_var $2]
+  }
 
 id:
 | IDENT { make_id $1 }
@@ -147,7 +154,8 @@ typ:
 | id COLON typ_aux
   {
     let x = Id.new_var (Id.name $1) $3 in
-      Some x, subst_type $1 (make_var abst_var) $3
+    let typ = subst_type $1 (make_var abst_var) $3 in
+      Some (Id.set_typ x typ), typ
   }
 | typ_aux
   { None, $1 }
