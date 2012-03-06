@@ -1200,6 +1200,7 @@ let make_if t1 t2 t3 =
       True -> t2
     | False -> t3
     | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ}
+(*
 let rec make_app t ts =
   match t,ts with
     | t,[]_ -> t
@@ -1218,3 +1219,4 @@ let rec make_app t ts =
           make_app {desc=App(t,[t2]); typ=typ'} ts
     | _ when not Flag.check_typ -> {desc=App(t,ts); typ=TUnknown}
     | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=TUnknown}; assert false
+*)

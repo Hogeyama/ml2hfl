@@ -431,7 +431,7 @@ and remove_pair_aux t typ_opt =
       | Fst t ->
           let t' =
             match remove_pair_aux t None with
-                Leaf _ -> assert false
+                Leaf _ -> Format.printf "%a@." pp_print_term t;assert false
               | Node(t',_) -> t'
           in
             t'

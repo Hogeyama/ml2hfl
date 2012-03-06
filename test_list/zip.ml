@@ -1,9 +1,16 @@
 
 let rec zip (xs:int list) (ys:int list) =
-  match xs,ys with
-      [],[] -> []
-    | x::xs',y::ys' -> (x,y)::zip xs' ys'
-    | _ -> assert false
+  match xs with
+      [] ->
+        begin
+          match ys with
+              [] -> []
+            | _ -> assert false
+        end
+    | x::xs' ->
+        match ys with
+            [] -> assert false
+          | y::ys' -> (x,y)::zip xs' ys'
 
 let rec make_list n =
   if n < 0

@@ -114,7 +114,7 @@ exp:
   { make_sub $1 $3 }
 | NOT exp
   { make_not $2 }
-| id id
+| id id /* for length l */
   {
     let x =
       if Id.name $1 = "length"
@@ -123,6 +123,7 @@ exp:
     in
       make_app (make_var x) [make_var $2]
   }
+
 
 id:
 | IDENT { make_id $1 }

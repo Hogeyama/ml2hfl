@@ -218,6 +218,7 @@ let abst env cond pbs p =
     let env' = List.map (function _, Var x -> x,TBase(TBool,fun _ -> []) | _ -> assert false) pbs in
       if Wrapper2.equiv env' cond (make_not tt) ff
 *)
+  if debug then Format.printf "tt:%a@.ff:%a@." CEGAR_print.term tt CEGAR_print.term ff;
       if make_not tt = ff || tt = make_not ff
       then tt
       else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))

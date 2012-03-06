@@ -120,9 +120,8 @@ and print_term fm = function
       let env,t' = decomp_annot_fun t in
       let pr fm (x,typ) =
         match typ with
-            None -> print_var fm x
-          | Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
-          | Some typ -> print_var fm x
+            Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
+          | _ -> print_var fm x
       in
         Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " " false) env print_term t'
 
