@@ -12,7 +12,7 @@ type linearBoolTerm =
 type prop = LinearTerm of linearBoolTerm | PropAnd of prop list | PropOr of prop list
 
 exception BBoolTrans
-
+exception NonLinear
 
 let counter = ref 0
 let new_id x =
@@ -163,7 +163,8 @@ and linearArithTerm_of_term t =
     | App(App(Const Mul, Const (Int n)), Var x) -> [n, Some x]
     | Const (Int n) -> [n, None]
     | Var x -> [1, Some x]
-    | _ -> raise (Fatal "non linear expression (CEGAR_print.linearArithTerm_of_term)")
+    | _ -> raise NonLinear
+
 
 and linearBoolTerm_of_term t =
   try
@@ -246,7 +247,10 @@ and print_prop fm = function
   | PropOr ps ->
       print_list print_prop " || " false fm ps
 
-and print_linear_exp fm t = print_prop fm (prop_of_term t)
+and print_linear_exp fm t =
+  try
+    print_prop fm (prop_of_term t)
+  with NonLinear -> print_term fm t
 
 
 

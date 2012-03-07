@@ -157,9 +157,11 @@ let rec trans_typ = function
   | Type.TInt _ -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false
   | Type.TVar _  -> TBase(TUnit, nil)
-  | Type.TFun({Id.typ=Type.TBool} as x,typ) ->
+  | Type.TFun({Id.typ=Type.TBool|Type.TPred(Type.TBool,_)} as x,typ) ->
+      let ps = match Id.typ x with Type.TPred(_,ps) -> ps | _ -> [] in
       let x' = trans_var x in
-      let typ1 = TBase(TBool, fun x -> [x]) in
+      let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term "" [] [] p)) in
+      let typ1 = TBase(TBool, fun z -> z :: List.map (aux z) ps) in
       let typ2 = trans_typ typ in
         TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun({Id.typ=Type.TInt|Type.TPred(Type.TInt,_)} as x,typ) ->
