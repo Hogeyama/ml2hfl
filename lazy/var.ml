@@ -7,9 +7,10 @@ type t = V of Idnt.t | C of Idnt.t | T of t * int * int
 
 let rec pr ppf x =
   match x with
-    V(id)
-  | C(id) ->
+    V(id) ->
       Format.fprintf ppf "%a" Idnt.pr id
+  | C(id) ->
+      Format.fprintf ppf "?%a" Idnt.pr id
   | T(x, uid, arg) ->
       Format.fprintf ppf "<%a@@%d:%d>" pr x uid arg
 

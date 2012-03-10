@@ -1,3 +1,4 @@
+(* verification failed *)
 let hd xs = xs 0
 let tl xs i = xs (i + 1)
 let nil x = assert false

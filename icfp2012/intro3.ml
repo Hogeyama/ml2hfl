@@ -1,4 +1,4 @@
-(* intro3.ml: safe but ill-typed *)
+(* safe but untypable *)
 let succ f x = f (x + 1)
 let rec app3 f g = if Random.int 0 = 0 then app3 (succ f) g else g f
 let app x f = f x

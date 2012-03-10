@@ -22,7 +22,7 @@ let close_cvc3 () =
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
 let string_of_var x =
-  String.map (fun c -> if c = '.' then '_' else c) (Var.string_of x)
+  String.map (fun c -> if c = '.' || c = '!' then '_' else c) (Var.string_of x)
 
 (* encoding unit as 0 *)
 let string_of_type ty =

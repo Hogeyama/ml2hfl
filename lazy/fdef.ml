@@ -18,3 +18,6 @@ let pr ppf fdef =
 let set_arity am fdef =
   { fdef with body = Term.set_arity am fdef.body}
 *)
+
+let rec coefficients fdef =
+  Term.coefficients fdef.guard @ Term.coefficients fdef.body

@@ -664,11 +664,12 @@ let rec infer_cont_pos env t =
     | RandInt false -> {t_cps=RandIntCPS; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS TInt); typ_orig=t.typ}
     | Var x ->
         let typ =
-          try
-            List.assoc (Id.to_string x) env
-          with
-              Not_found when is_external x -> trans_cont_pos_typ false t.typ
-            | Not_found -> Format.printf "%a@." print_id x; assert false
+		        try
+		          List.assoc (Id.to_string x) env
+		        with
+		            Not_found when is_external x -> trans_cont_pos_typ false t.typ
+		          | Not_found when is_parameter x -> TBaseCPS(TInt)
+		          | Not_found -> Format.printf "%a@." print_id x; assert false
         in
           {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ}
     | Fun(x, t') ->

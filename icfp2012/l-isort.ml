@@ -1,4 +1,4 @@
-(* isort.ml: verification failed *)
+(* verification failed *)
 let rec insert (x:int) ys =
   match ys with
     | [] -> [x]

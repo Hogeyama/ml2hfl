@@ -7,11 +7,14 @@ open ParLinArith
 
 (** @param an unsatisfiable formula *)
 let farkas t =
+  let flag = true in
+  let _ = if flag then Format.printf "1:%a@." Term.pr t in
   let ps = List.unique (coefficients t) in
-  let tss = dnf (if !Global.use_bit_vector then elim_eq_neq_int t else elim_neq_int t) in
-  let tss = 
-    dnf (Formula.simplify (Formula.bor (List.map Formula.band tss)))
-  in
+  let t = Formula.simplify t in
+  let t = if !Global.use_bit_vector then elim_eq_neq_int t else elim_neq_int t in
+  let _ = if flag then Format.printf "2:%a@." Term.pr t in
+  let tss = dnf t in
+  let _ = if flag then Format.printf "3:%a@." Term.pr (formula_of_dnf tss) in
   let aifss =
     List.map
       (List.map

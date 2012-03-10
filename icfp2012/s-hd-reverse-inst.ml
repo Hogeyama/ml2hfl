@@ -1,4 +1,4 @@
-(** need extra parameter but progress infinitely *)
+(** need extra parameter? typable? *)
 
 let hd xs = xs 0
 let tl xs i = xs (i + 1)
@@ -13,7 +13,7 @@ let rec reverse xs1 xs2 =
 
 let rec init_string x len =
   if len = 0 then
-    fun i -> 0
+    nil
   else
     cons x (init_string x (len - 1))
 

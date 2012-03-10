@@ -108,7 +108,14 @@ let main filename in_channel =
       let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
 *)
-      let t = if !Flag.refine = Flag.RefineSizedType then LazyInterface.insert_extra_param t else t in
+      let t =
+        if !Flag.refine = Flag.RefineSizedType && !Flag.relative_complete then
+          let t = LazyInterface.insert_extra_param t in
+          let () = if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@." (List.length !LazyInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t in
+          t
+        else
+          t
+      in
       let t' = CPS.trans t in
       let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in

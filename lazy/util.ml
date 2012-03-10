@@ -30,6 +30,12 @@ let trd3 (_, _, x) = x
 
 (** {6 Functions on lists} *)
 
+let rec unfold f seed =
+  match f seed with
+    None -> []
+  | Some(x, seed') ->
+      x :: unfold f seed'
+
 let rec init xs =
  match xs with
    [] -> assert false

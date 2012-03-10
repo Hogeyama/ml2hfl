@@ -26,15 +26,15 @@ let post () =
 
 
 
-let rec cegar1 prog ces =
+let rec cegar1 prog0 ces =
   pre ();
   let pr =
     if !Flag.expand_nonrec
     then CEGAR_util.print_prog_typ'
     else CEGAR_print.prog_typ
   in
+  let prog = if !Flag.refine = Flag.RefineSizedType && !Flag.relative_complete then LazyInterface.instantiate_param prog0 else prog0 in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
-  let prog = if !Flag.refine = Flag.RefineSizedType then LazyInterface.instantiate_param prog else prog in
   let labeled,abst = CEGAR_abst.abstract None prog in
   let result = ModelCheck.check None abst prog in
   let result' = apply_opt (fun ce -> CEGAR_trans.trans_ce ce labeled prog) result in
@@ -69,7 +69,7 @@ let rec cegar1 prog ces =
                       CEGAR_print.ce prefix
                 in
                 let ces' = ce::ces in
-                let _,prog' = Refine.refine prefix ces' prog in
+                let _,prog' = Refine.refine prefix ces' prog0 in
                   post ();
                   cegar1 prog' ces'
 

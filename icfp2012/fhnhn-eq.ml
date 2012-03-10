@@ -1,4 +1,4 @@
-(* fhnhneq.ml: safe but ill-typed *)
+(* safe but untypable *)
 let f x y = assert (x () = y ())
-let h (x:int) (y:unit) = x
+let h (x:int) () = x
 let main n = f (h n) (h n)

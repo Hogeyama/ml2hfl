@@ -1,6 +1,7 @@
 
 open Utilities
 open CEGAR_type
+open ExtString
 
 type var = string
 
@@ -192,3 +193,4 @@ let is_CPS (env,defs,main) = List.for_all (is_CPS_def env) defs
 
 
 let is_external x = String.contains x '.'
+let is_parameter x = String.starts_with x Flag.extpar_header

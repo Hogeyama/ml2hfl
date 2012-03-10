@@ -73,12 +73,12 @@ let print_type = true
 let print_hors = false
 let print_trecs_output = false
 let print_trace = false
-let print_interpolant = false
+let print_interpolant = true
 let print_progress = true
-let print_constraints = false
-let print_lower_bound = false
+let print_constraints = true
+let print_lower_bound = true
 let print_cvc3 = false
-let print_refine_log = false
+let print_refine_log = true
 let print_eval_abst = ref false
 let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
@@ -103,3 +103,5 @@ let debug = true
 
 (* pretty printer's option *)
 let () = Format.set_margin 120
+
+let extpar_header = "_ep"

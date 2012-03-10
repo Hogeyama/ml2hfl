@@ -1,4 +1,4 @@
-(* safe but untypable *)
+(* verification succeeded *)
 let rec loop (u:unit) = loop u
 let hd (len, l) = l 0
 let tl (len, l) = (len - 1, fun i -> l (i + 1))
@@ -13,13 +13,13 @@ let rec make_list n =
 
 let leq n x = x <= n
 
-let rec for_all f (len, l) =
+let rec for_all ex f (len, l) =
 		if len = 0 then
 	   true
   else if len >= 1 then
-	   f (l 0(*hd (len, l) fails*)) && for_all f (tl (len, l))
+	   f (l 0(*hd (len, l) fails*)) && for_all ex f (tl (len, l))
   else
     loop ()
 
 let main len =
-  assert (for_all (leq len) (make_list len))
+  assert (for_all len (leq len) (make_list len))

@@ -2,8 +2,7 @@ open ExtList
 
 (** Verifier *)
 
-let ext_fdefs = ref ([] : Fdef.t list)
-let ext_coeffs = ref  ([] : (Var.t * Term.t) list)
+let ext_coeffs = ref ([] : (Var.t * Term.t) list)
 let ext_constrs = ref ([] : Term.t list)
 
 let refineRefTypes prog etrs =
@@ -32,7 +31,7 @@ let refineRefTypes prog etrs =
 				            let ts = Farkas.farkas t in
 				            List.map
 				              (fun t ->
-				                let _ = Format.printf "constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
+				                let _ = if true then Format.printf "new constraint on coefficients:@.  @[<v>%a@]@." Term.pr t in
 				                if !Global.use_bit_vector then
 				                  t
 				                else
@@ -136,51 +135,13 @@ let verify prog =
   with TraceConstr.FeasibleErrorTrace(eptr) ->
    Format.printf "@.The program is unsafe@.Error trace: %a@." TraceConstr.pr eptr
 
+let init_coeffs prog =
+		let cs = List.unique (Prog.coefficients prog) in
+  let _ = Format.printf "parameters: %a@." (Util.pr_list Var.pr ",") cs in
+		ext_coeffs := List.map (fun c -> c, Term.tint 0) cs
+
 let infer_abst_type cexs prog =
   try
-    let prog =
-      let xs = List.map (fun fdef -> fdef.Fdef.name) prog.Prog.fdefs in
-      let ext_env = List.filter (fun (x, _) -> not (List.mem x xs)) prog.Prog.types in
-      if ext_env = [] then
-        prog
-      else
-        let _ =
-          if !ext_fdefs = [] then
-            let fdefs =
-              List.map
-                (fun (f, ty) ->
-                  let args, ret = SimType.args_ret ty in
-                  let xs = List.map (fun _ -> Idnt.new_id ()) args in
-                  let body =
-                    if (*cps*)true then
-                      let args, [cont] = List.split_nth (List.length args - 1) args in
-                      let xs, [k] = List.split_nth (List.length xs - 1) xs in
-                      let _ = if !Global.debug then assert (List.for_all (fun arg -> SimType.is_base arg) args && not (SimType.is_base cont)) in
-                      let const =
-                        let c = Var.make_coeff (Idnt.new_cid ()) in
-                        let _ = ext_coeffs := (c, Term.tint 0)::!ext_coeffs in
-                        Term.make_var c
-                      in
-                      let coeffs =
-                        List.map
-                          (fun _ ->
-                            let c = Var.make_coeff (Idnt.new_cid ()) in
-                            let _ = ext_coeffs := (c, Term.tint 0)::!ext_coeffs in
-                            Term.make_var c)
-                          xs
-                      in
-                      let retval = ParLinArith.term_of (List.combine coeffs (List.map (fun x -> Var.make x) xs), const) in
-                      Term.apply (Term.make_var (Var.make k)) [retval]
-                    else
-                      assert false
-                  in
-                  { Fdef.attr = []; Fdef.name = f; Fdef.args = xs; guard = Formula.ttrue; body = body })
-                ext_env
-            in
-            ext_fdefs := fdefs
-        in
-        { prog with Prog.fdefs = prog.Prog.fdefs @ !ext_fdefs }
-    in
     let _ = if !Global.debug then Format.printf "%a" Prog.pr prog in
     let cexs = [List.hd cexs] in
     let _ = List.iter (fun cex -> Format.printf "%s@." (String.concat ":" (List.map string_of_int cex))) cexs in
@@ -215,9 +176,7 @@ let infer_abst_type cexs prog =
         (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env)
     in
     let _ = Format.printf "abstraction types:@.  %a@." AbsType.pr_env env in
-    let fdefs = List.map (fun fdef -> { fdef with Fdef.body = Term.subst (fun x -> List.assoc x !ext_coeffs) fdef.Fdef.body} ) !ext_fdefs in
-    let _ = Format.printf "external function definitions:@.  @[<v>%a@]@." (Util.pr_list Fdef.pr "@,") fdefs in
-    env, fdefs
+    env
   with Util.NotImplemented s ->
     let _ = Format.printf "not implemented in %s@." s in
     assert false

@@ -2,6 +2,7 @@
 open Format
 open Utilities
 open Type
+open ExtString
 
 type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
@@ -730,7 +731,7 @@ let rec get_fv vars t =
     | Cons(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
     | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = get_fv vars t @@ acc in
+        let aux acc (_,_,t) = get_fv vars(* no need to update? *) t @@ acc in
           List.fold_left aux (get_fv vars t) pats
     | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
     | Bottom -> []
@@ -1161,6 +1162,7 @@ let rec max_label_num t =
 
 
 let is_external x = String.contains (Id.name x) '.'
+let is_parameter x = String.starts_with (Id.name x) Flag.extpar_header
 
 
 let rec is_value t =
