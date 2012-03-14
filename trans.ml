@@ -489,7 +489,7 @@ let rec copy_poly_funs top t =
                 List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
                 Format.printf "@.";
               end;
-            if map = [] && top && t2.desc = Unit
+            if map = []
             then Let(flag, [f, xs, copy_poly_funs false t1], t2')
             else
               let aux t (_,f') =

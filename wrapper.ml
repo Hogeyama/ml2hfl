@@ -63,10 +63,10 @@ and print_term fm t =
         (match t1.desc with Int(_) -> false | _ -> (match t2.desc with Int(_) -> false | _ -> true)) ->
         Format.printf "Nonlinear expression not supported.@.";
           assert false
+    | BinOp(Eq, ({typ=TBool|TPred(TBool,_)} as t1), t2) ->
+        Format.fprintf fm "(%a <=> %a)" print_term t1 print_term t2
     | BinOp(op, t1, t2) ->
-        if op = Eq && t1.typ = TBool
-        then Format.fprintf fm "(%a <=> %a)" print_term t1 print_term t2
-        else Format.fprintf fm "(%a %a %a)" print_term t1 (print_binop t1.typ) op print_term t2
+        Format.fprintf fm "(%a %a %a)" print_term t1 (print_binop t1.typ) op print_term t2
     | Not t -> Format.fprintf fm "(NOT %a)" print_term t
     | _ -> assert false
 
