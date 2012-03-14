@@ -463,6 +463,7 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 
 let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" TUnknown
+let abst_var_bool = Id.set_typ abst_var TBool
 let length_var =
   let x = Id.make (-1) "l" (TList TUnknown) in
     Id.make (-1) "length" (TFun(x, TInt))

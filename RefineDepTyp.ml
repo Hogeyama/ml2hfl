@@ -531,7 +531,7 @@ let rec aty2rty aty vars =
    | ATfun(ATint(n)::_, aty1) ->
          RTifun((fun x-> Pred(n,x::vars)), (fun x->aty2rty aty1 (x::vars)))
    | ATfun(ATbool(n)::_, aty1) ->
-         RTbfun((fun x-> Pred(n,[x])), (fun x->aty2rty aty1 (x::vars)))
+         RTbfun((fun x-> Pred(n,x::vars)), (fun x->aty2rty aty1 (x::vars)))
    | ATfun(ty1, aty1) ->
          RTfun(ty2rtyl ty1 vars, aty2rty aty1 vars)
 and ty2rtyl ty vars =
@@ -1956,6 +1956,33 @@ let rec add_preds_typ sol typ1 typ2 =
               TPred(TInt, ps)
           with Not_found -> (*assert false*)
             TPred(TInt, ps)
+        in
+        let rtyp = add_preds_typ sol rtyp1 (rtyp2 (make_var x)) in
+          TFun(Id.set_typ x typ, rtyp)
+    | TFun({Id.typ=TBool|TPred(TBool,_)} as x,rtyp1), RTbfun(pred, rtyp2) ->
+        let ps = match Id.typ x with TBool -> [] | TPred(_,ps) -> ps in
+        let Pred(pid, terms) = pred (make_var abst_var_bool) in
+        let typ =
+          try
+            let p =
+              let ids, t = List.assoc pid sol in
+                (*Format.printf "%a,%a,%a@." (print_term_fm ML true) t (print_ids) ids  (print_termlist ML 0 false) terms; *)
+                subst_map (List.combine ids terms) t
+            in
+            let ps =
+              let aux ps p =
+                if List.exists (Wrapper.equiv [] p) ps ||
+                  List.exists (Wrapper.equiv [] (make_not p)) ps ||
+                  Wrapper.equiv [] p true_term || Wrapper.equiv [] p false_term
+                then ps
+                else ((*Format.printf "adding %a@." (print_term_fm ML true) p;*) p::ps)
+              in
+              let p' = Trans.merge_geq_leq (Trans.normalize_bool_exp p) in
+                List.fold_left aux ps [p']
+            in
+              TPred(TBool, ps)
+          with Not_found -> (*assert false*)
+            TPred(TBool, ps)
         in
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (make_var x)) in
           TFun(Id.set_typ x typ, rtyp)
