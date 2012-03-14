@@ -922,13 +922,14 @@ let assoc_fun_def defs f =
           make_fun xs1 (make_if t21 t22 t12)
       | _ -> assert false
 
-let rec get_nonrec defs main =
+let get_nonrec defs main =
   let check (f,xs,t1,e,t2) =
     let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
+    let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@ get_fv t2)) defs in
       List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
         (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@ get_fv t2) xs) defs' ||
          f <> main &&
-         1 >= count_list (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@ get_fv t2)) defs &&
+         1 >= List.length (uniq (List.map (fun (f,_,_,_,_) -> f) used)) &&
          2 >= List.length defs')
   in
   let defs' = List.filter check defs in

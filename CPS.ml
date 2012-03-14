@@ -763,7 +763,6 @@ let rec infer_cont_pos env t =
 
 
 
-
 let rec get_arg_num = function
     TBaseCPS _ -> 0
   | TVarCPS{contents=None} -> 0
@@ -1004,7 +1003,57 @@ let rec has_exception t =
     | Bottom -> false
 
 
+
+
+
+let rec short_circuit_eval t =
+  let desc =
+    match t.desc with
+        Unit
+      | True
+      | False
+      | Unknown
+      | Int _
+      | NInt _
+      | RandInt _
+      | RandValue _
+      | Var _ -> t.desc
+      | Fun(y, t) -> Fun(y, short_circuit_eval t)
+      | App(t1, ts) -> App(short_circuit_eval t1, List.map short_circuit_eval ts)
+      | If(t1, t2, t3) -> If(short_circuit_eval t1, short_circuit_eval t2, short_circuit_eval t3)
+      | Branch(t1, t2) -> Branch(short_circuit_eval t1, short_circuit_eval t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, short_circuit_eval t) bindings in
+            Let(flag, bindings', short_circuit_eval t2)
+      | BinOp(And, t1, t2) -> If(short_circuit_eval t1, short_circuit_eval t2, false_term)
+      | BinOp(Or, t1, t2) -> If(short_circuit_eval t1, true_term, short_circuit_eval t2)
+      | BinOp(op, t1, t2) -> BinOp(op, short_circuit_eval t1, short_circuit_eval t2)
+      | Not t1 -> Not (short_circuit_eval t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields -> Record (List.map (fun (f,(s,t1)) -> f,(s,short_circuit_eval t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,short_circuit_eval t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,short_circuit_eval t1,short_circuit_eval t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(short_circuit_eval t1,short_circuit_eval t2)
+      | Constr(s,ts) -> Constr(s, List.map short_circuit_eval ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, apply_opt short_circuit_eval cond, short_circuit_eval t1 in
+            Match(short_circuit_eval t1, List.map aux pats)
+      | Raise t -> Raise (short_circuit_eval t)
+      | TryWith(t1,t2) -> TryWith(short_circuit_eval t1, short_circuit_eval t2)
+      | Pair(t1,t2) -> Pair(short_circuit_eval t1, short_circuit_eval t2)
+      | Fst t -> Fst (short_circuit_eval t)
+      | Snd t -> Snd (short_circuit_eval t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=t.typ}
+
+
+
+
+
 let trans t =
+  let t = short_circuit_eval t in
   let t = Trans.elim_fun t in
   let t_cps =
     if has_exception t
