@@ -157,8 +157,7 @@ typ:
 | id COLON typ_aux
   {
     let x = Id.new_var (Id.name $1) $3 in
-    let abst_var' = Id.set_typ abst_var $3 in
-    let typ = subst_type $1 (make_var abst_var') $3 in
+    let typ = subst_type $1 (make_var abst_var) $3 in
       Some (Id.set_typ x typ), typ
   }
 | typ_aux
