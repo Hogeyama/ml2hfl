@@ -141,7 +141,7 @@ let rec inv_abst_type aty =
 
 let infer cexs prog =
   let prog = conv_prog prog in
-  let env = Verifier.infer_abst_type cexs prog in
+  let env = Verifier.refine cexs prog in
   List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty)
@@ -180,7 +180,7 @@ let rec trans_type typ =
         (fun x ->
           let x' = trans_id x in
           (match x'.Id.typ with
-            Type.TFun(_, _) ->
+            Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
 				          Util.unfold
 				            (fun i ->
 				              if i < !number_of_extra_params then
@@ -220,7 +220,7 @@ let insert_extra_param t =
               List.map
                 (fun t ->
                   match t.Syntax.typ with
-                    Type.TFun(_, _) -> new_params bvs
+                    Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) -> new_params bvs
                   | _ -> [])
                 ts'
             in
@@ -240,7 +240,7 @@ let insert_extra_param t =
                   (List.map
                     (fun x ->
                       (match x.Id.typ with
-                        Type.TFun(_, _) ->
+                        Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
 				                      Util.unfold
 				                        (fun i ->
 				                          if i < !number_of_extra_params then
@@ -285,5 +285,5 @@ let insert_extra_param t =
 
 let instantiate_param (typs, fdefs, main as prog) =
   let _ = if !Verifier.ext_coeffs = [] then Verifier.init_coeffs (conv_prog prog) in
-  let map = List.map (fun (x, t) -> Var.string_of2 x, inv_term t) !Verifier.ext_coeffs in
+  let map = List.map (fun (x, n) -> Var.string_of2 x, inv_term (Term.tint n)) !Verifier.ext_coeffs in
   (typs, List.map (fun (f, args, guard, events, body) -> (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body)) fdefs, main)

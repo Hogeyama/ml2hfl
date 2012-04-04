@@ -309,6 +309,15 @@ let all_equiv p xs =
 
 (** {6 Functions on sets} *)
 
+let rec remove_one xs p =
+  match xs with
+    [] -> assert false
+  | x::xs' ->
+      if p x then
+        xs'
+      else
+        x::remove_one xs' p
+
 (*
 let rec diff xs ys =
   match xs, ys with

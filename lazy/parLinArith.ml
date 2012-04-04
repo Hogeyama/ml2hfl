@@ -155,10 +155,13 @@ let factorize (nxs, n) =
     let d = Util.gcd (List.map (fun (c, _) -> abs c) cxs) in
     let _ = assert (d <> 0) in
     let cxs = List.map (fun (c, xopt) -> c / d, xopt) cxs in
-    tint d ::
-    NonLinArith.factorize pol @
-    let nxs, ns = Util.partition_map (function (c, None) -> `R(c) | (c, Some(x)) -> `L(c, x)) cxs in
-    [LinArith.term_of (nxs, List.fold_left (+) 0 ns)]
+    let ts =
+		    tint d ::
+		    NonLinArith.factorize pol @
+		    let nxs, ns = Util.partition_map (function (c, None) -> `R(c) | (c, Some(x)) -> `L(c, x)) cxs in
+		    [LinArith.term_of (nxs, List.fold_left (+) 0 ns)]
+    in
+    List.filter (fun t -> t <> Term.tint 1) ts
   with Not_found ->
     NonLinArith.factorize (NonLinArith.of_term (term_of (nxs, n)))
 

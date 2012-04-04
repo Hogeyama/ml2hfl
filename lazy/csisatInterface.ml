@@ -206,41 +206,30 @@ let interpolate_chk t1 t2 =
 		    (match ts with
 		      [t] -> t
 		    | _ ->
-          let _ = if !Global.debug then Format.printf "finding minimal interpolant@." in
-          let _ = if !Global.debug then Format.printf "before:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
+          let _ = if !Global.debug > 0 then Format.printf "finding minimal interpolant@." in
+          let _ = if !Global.debug > 0 then Format.printf "before:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
           let ts = Util.minimal (fun ts -> Cvc3Interface.implies (Formula.band ts) (Formula.bnot t2)) ts in
-          let _ = if !Global.debug then Format.printf "after:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
+          let _ = if !Global.debug > 0 then Format.printf "after:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
 		        Formula.band ts)
     else
       t
   with No_interpolant ->
-    if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
+    if !Global.debug > 0 && Cvc3Interface.implies t1 (Formula.bnot t2) then
       let _ = Format.printf "an error of CSIsat@." in
       assert false
     else
       raise No_interpolant
 
 let interpolate t1 t2 =
-  let flag = true in
-  let _ = if flag then Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2 in
+  let _ = if !Global.debug > 1 then Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2 in
   let interp = interpolate_chk t1 t2 in
-  let _ = if flag then Format.printf "interp_out: %a@]@." Term.pr interp in
+  let _ = if !Global.debug > 1 then Format.printf "interp_out: %a@]@." Term.pr interp in
   interp
 
 (** @param p represents variables shared by t1 and t2 *)
 let interpolate_bvs p t1 t2 =
-  let t1 =
-    if !Global.rename_lower_bounds then
-      simplify (band (eqelim p (conjuncts t1)))
-    else
-      simplify (band (eqelim (function Var.V(_) -> true | x -> p x) (conjuncts t1)))
-  in
-  let t2 =
-    if !Global.rename_lower_bounds then
-      simplify (band (eqelim p (conjuncts t2)))
-    else
-      simplify (band (eqelim (function Var.V(_) -> true | x -> p x) (conjuncts t2)))
-  in
+  let t1 = simplify (band (conjuncts t1)) in
+  let t2 = simplify (band (conjuncts t2)) in
   let t1 = Term.rename_fresh p t1 in
   let t2 = Term.rename_fresh p t2 in
   interpolate t1 t2

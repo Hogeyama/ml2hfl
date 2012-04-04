@@ -326,3 +326,68 @@ let rec candns cns =
         cns'''
       else
         candns cns'''
+
+
+(** x c1 n1 or x c2 n2 *)
+let rec corn (c1, n1) (c2, n2) =
+  match c1, c2 with
+  | EqInt, EqInt -> if n1 = n2 then [EqInt, n1] else [EqInt, n1; EqInt, n2]
+  | EqInt, NeqInt -> if n1 = n2 then [IBTrue, 0] else [NeqInt, n2]
+  | EqInt, Lt -> if n1 = n2 then [Leq, n1] else if n1 < n2 then [Lt, n2] else [EqInt, n1; Lt, n2]
+  | EqInt, Gt -> if n1 = n2 then [Geq, n1] else if n1 > n2 then [Gt, n2] else [EqInt, n1; Gt, n2]
+  | EqInt, Leq -> if n1 <= n2 then [Leq, n2] else [EqInt, n1; Leq, n2]
+  | EqInt, Geq -> if n1 >= n2 then [Geq, n2] else [EqInt, n1; Geq, n2]
+
+  | NeqInt, EqInt -> corn (c2, n2) (c1, n1)
+  | NeqInt, NeqInt -> if n1 = n2 then [NeqInt, n1] else [IBTrue, 0]
+  | NeqInt, Lt -> if n1 < n2 then [IBTrue, 0] else [NeqInt, n1]
+  | NeqInt, Gt -> if n1 > n2 then [IBTrue, 0] else [NeqInt, n1]
+  | NeqInt, Leq -> if n1 <= n2 then [IBTrue, 0] else [NeqInt, n1]
+  | NeqInt, Geq -> if n1 >= n2 then [IBTrue, 0] else [NeqInt, n1]
+
+  | Lt, EqInt -> corn (c2, n2) (c1, n1)
+  | Lt, NeqInt -> corn (c2, n2) (c1, n1)
+  | Lt, Lt -> if n1 <= n2 then [Lt, n2] else [Lt, n1]
+  | Lt, Gt -> if n1 = n2 then [NeqInt, n1] else if n1 > n2 then [IBTrue, 0] else [Lt, n1; Gt, n2]
+  | Lt, Leq -> if n1 <= n2 then [Leq, n2] else [Lt, n1]
+  | Lt, Geq -> if n1 >= n2 then [IBTrue, 0] else [Lt, n1; Geq, n2]
+
+  | Gt, EqInt -> corn (c2, n2) (c1, n1)
+  | Gt, NeqInt -> corn (c2, n2) (c1, n1)
+  | Gt, Lt -> corn (c2, n2) (c1, n1)
+  | Gt, Gt -> if n1 >= n2 then [Gt, n2] else [Gt, n1]
+  | Gt, Leq -> if n1 <= n2 then [IBTrue, 0] else [Gt, n1; Leq, n2]
+  | Gt, Geq -> if n1 >= n2 then [Geq, n2] else [Gt, n1]
+
+  | Leq, EqInt -> corn (c2, n2) (c1, n1)
+  | Leq, NeqInt -> corn (c2, n2) (c1, n1)
+  | Leq, Lt -> corn (c2, n2) (c1, n1)
+  | Leq, Gt -> corn (c2, n2) (c1, n1)
+  | Leq, Leq -> if n1 <= n2 then [Leq, n2] else [Leq, n1]
+  | Leq, Geq -> if n1 >= n2 then [IBTrue, 0] else [Leq, n1; Geq, n2]
+
+  | Geq, EqInt -> corn (c2, n2) (c1, n1)
+  | Geq, NeqInt -> corn (c2, n2) (c1, n1)
+  | Geq, Lt -> corn (c2, n2) (c1, n1)
+  | Geq, Gt -> corn (c2, n2) (c1, n1)
+  | Geq, Leq -> corn (c2, n2) (c1, n1)
+  | Geq, Geq -> if n1 >= n2 then [Geq, n2] else [Geq, n1]
+
+  | IBTrue, _ | _, IBTrue -> [IBTrue, 0]
+  | IBFalse, _ -> [c2, n2]
+  | _, IBFalse -> [c1, n1]
+
+  | _ -> assert false
+
+
+let rec corns cns =
+  match cns with
+    [] -> assert false
+  | [cn] -> [cn]
+  | cn::cns' ->
+      let cns'' = corns cns' in
+      let cns''' = List.unique (Util.concat_map (corn cn) cns'') in
+      if Util.set_equiv cns''' (cn::cns'') then
+        cns'''
+      else
+        corns cns'''

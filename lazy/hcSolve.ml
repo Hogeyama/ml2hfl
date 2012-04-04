@@ -8,37 +8,50 @@ open HornClause
 
 exception NoSolution
 
-let pr_sol_aux ppf (pid, (xs, t)) =
+let pr_sol_elem ppf (pid, (xs, t)) =
   Format.fprintf ppf "@[<hov>%a =@ %a@]" pr_pred (pid, xs) Term.pr t
 
-let rec solve_hc lbs ub ts ps =
+let rec solve_hc lbs ub fes ps =
   match ps with
     [] -> []
   | (pid, xs)::ps ->
       let interp =
         let t1 =
           try
-            let ys, ts = lookup true pid lbs in
+            let ys, fes = lookup pid lbs in
 												let sub = List.combine ys xs in
-												let sub x = Term.make_var (List.assoc x sub) in
-            Formula.simplify (Formula.band (List.map (Term.subst sub) ts))
+            let fes = Formula.subst_fes (fun x -> Term.make_var (List.assoc x sub)) fes in
+            let fes =
+				          let fes = Formula.make_fes [] (Formula.conjuncts (Formula.formula_of_fes fes)) in
+										    let fes = Formula.equantify_fes (fun x -> List.mem x xs) fes in
+										    let fes = Formula.eqelim_fes (fun x -> List.mem x xs) fes in
+              fes
+            in
+            Formula.simplify (Formula.formula_of_fes fes)
           with Not_found ->
             assert false
         in
         let t2 =
-          Formula.simplify
-				        (Formula.band
-				          (Formula.bnot ub :: ts @
-				          Util.concat_map
-				            (fun (pid, xs) ->
-						            let ys, ts = lookup true pid lbs in
+          let fes =
+            Formula.band_fes
+		            (Formula.make_fes [] [Formula.bnot ub]::
+              fes::
+						        List.map
+						          (fun (pid, xs) ->
+								          let ys, fes = lookup pid lbs in
 																		let sub = List.combine ys xs in
-																		let sub x = Term.make_var (List.assoc x sub) in
-												      List.map (Term.subst sub) ts)
-				            ps))
+														    Formula.subst_fes (fun x -> Term.make_var (List.assoc x sub)) fes)
+						          ps)
+          in
+          let fes =
+		          let fes = Formula.make_fes [] (Formula.conjuncts (Formula.formula_of_fes fes)) in
+								    let fes = Formula.equantify_fes (fun x -> List.mem x xs) fes in
+								    let fes = Formula.eqelim_fes (fun x -> List.mem x xs) fes in
+            fes
+          in
+          Formula.simplify (Formula.formula_of_fes fes)
         in
 						  if true (* true makes verification of file.ml too slow... why? *) then
-						    let ts = Formula.conjuncts t1 in
 						    let xns, ts2 =
 						      Util.partition_map
 								      (fun t ->
@@ -52,7 +65,7 @@ let rec solve_hc lbs ub ts ps =
 												          `R(LinArith.term_of_aif aif)
 						          with Invalid_argument _ ->
 						            `R(t))
-						        ts
+						        (Formula.conjuncts t1)
 						    in
           try
 								    (match xns with
@@ -85,16 +98,17 @@ let rec solve_hc lbs ub ts ps =
 						    CsisatInterface.interpolate_bvs (fun x -> List.mem x xs) t1 t2
       in
       let sol = pid, (xs, interp)	in
-      let _ = Format.printf "%a@." pr_sol_aux sol in
-      sol :: solve_hc lbs ub (interp::ts) ps
+      let _ = Format.printf "%a@." pr_sol_elem sol in
+						let fes = Formula.band_fes [Formula.make_fes [] [interp]; fes] in
+      sol :: solve_hc lbs ub fes ps
 
 let pr_sol ppf sol =
-  Format.printf "@[<v>%a@]" (Util.pr_list pr_sol_aux "@,") sol
+  Format.printf "@[<v>%a@]" (Util.pr_list pr_sol_elem "@,") sol
 
 let merge_solution sol =
   List.map
     (fun sol ->
-      let _ = if !Global.debug then assert (List.length (List.unique (List.map (fun (_, (xs, _)) -> xs) sol)) = 1) in
+      let _ = if !Global.debug > 0 then assert (List.length (List.unique (List.map (fun (_, (xs, _)) -> xs) sol)) = 1) in
       fst (List.hd sol), (fst (snd (List.hd sol)), Formula.band (List.map (fun (_, (_, t)) -> t) sol)))
     (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) sol)
 
@@ -125,7 +139,7 @@ let solve_aux lbs hcs =
       let sol' =
         sol @
         (Util.concat_map
-          (fun (Hc(popt, ps, ts)) ->
+          (fun (Hc(popt, ps, fes)) ->
             let ub =
               match popt with
                 None -> Formula.tfalse
@@ -138,15 +152,15 @@ let solve_aux lbs hcs =
                         Term.subst sub t)
                       (List.filter (fun (pid', _) -> pid = pid') sol))
             in
-            (if List.length ps = 1 && ts = [] then
+            (if List.length ps = 1 && (let Formula.FES(xttys, ts) = fes in xttys = [] && ts = []) then
               (* ToDo: optimization *)
               ());
-            if Cvc3Interface.is_valid (Formula.imply (Formula.band ts) ub) then
+            if Cvc3Interface.is_valid (Formula.imply (Formula.formula_of_fes fes) ub) then
               [](*remark1*)
             else if ps = [] then
               raise NoSolution
             else
-              solve_hc lbs ub ts ps)
+              solve_hc lbs ub fes ps)
           hcs1)
       in
       aux hcs2 sol'

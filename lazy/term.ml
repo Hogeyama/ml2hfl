@@ -120,6 +120,23 @@ let rec subst sub t =
       let sub x = if List.mem x xs then raise Not_found else sub x in
       Exists(a, env, subst sub t)
 
+let subst_var sub x =
+  try let Var(_, y) = sub x in y with Not_found -> x
+
+(** ToDo: first compute the fixed-point of sub *)
+let subst_fixed sub t =
+  let _ = if !Global.debug > 1 then Format.printf "before: %a@." pr t in
+  let t =
+		  Util.fixed_point
+		    (fun t ->
+		      let t = subst sub t in
+		      t)
+		    equiv
+		    t
+  in
+		let _ = if !Global.debug > 1 then Format.printf "after: %a@." pr t in
+  t
+
 let rec apply t ts =
   match ts with
     [] ->

@@ -68,24 +68,24 @@ let rec pr ppf tr =
 								  id
 
 let get_min_unsat_prefix tr =
-  let rec aux (ts0, xttys0) tr =
+  let rec aux (Formula.FES(xttys0, ts0)) tr =
 		  match tr with
 		    Node(nd, trs) ->
-        let fes = nd.guard::ts0, xttys0 in
+        let fes = Formula.make_fes xttys0 (nd.guard::ts0) in
 (*
         let _ = Format.printf "%a: %a@." Var.pr_x_uid nd.name Term.pr (Formula.bnot (Formula.formula_of_fes fes)) in
 *)
-        if Cvc3Interface.is_valid (Formula.bnot (Formula.eqelim_fes (fun _ -> false) fes)) then
+        if Cvc3Interface.is_valid (Formula.bnot (Formula.formula_of_fes (Formula.eqelim_fes (fun _ -> false) fes))) then
           fes, make nd.name false nd.guard [] [], true
         else
-		        let rec aux_aux (ts0, xttys0) ts xttyss trs =
+		        let rec aux_aux fes ts xttyss trs =
 		          match ts, xttyss, trs with
 		            [], [], [] ->
-                (ts0, xttys0), [], false
+                fes, [], false
             | [t], [xttys], [] ->
-                (t::ts0, xttys @ xttys0), [], false
+                Formula.band_fes [fes; Formula.make_fes xttys [t]], [], false
 		          | t::ts, xttys::xttyss, tr::trs ->
-						          let fes, tr, fail = aux (t::ts0, xttys @ xttys0) tr in
+						          let fes, tr, fail = aux (Formula.band_fes [fes; Formula.make_fes xttys [t]]) tr in
 				            if fail then
 				              fes, [tr], true
 				            else
@@ -104,7 +104,7 @@ let get_min_unsat_prefix tr =
             Node(nd, trs)),
           fail
   in
-  let _, tr, true = aux ([Formula.ttrue(*???*)], []) tr in
+  let _, tr, true = aux (Formula.make_fes [] [Formula.ttrue(*???*)]) tr in
   tr
 
 (** {6 Functions on trace zippers} *)
@@ -172,5 +172,6 @@ let rec right_of_path p =
 (** {6 Functions on trace nodes} *)
 
 let fes_of_nodes nds =
-  Util.concat_map (fun nd -> nd.guard :: nd.constr) nds,
-  Util.concat_map (fun nd -> List.concat nd.subst) nds
+  Formula.make_fes
+    (Util.concat_map (fun nd -> List.concat nd.subst) nds)
+    (Util.concat_map (fun nd -> nd.guard :: nd.constr) nds)

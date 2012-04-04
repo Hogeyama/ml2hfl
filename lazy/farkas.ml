@@ -7,14 +7,15 @@ open ParLinArith
 
 (** @param an unsatisfiable formula *)
 let farkas t =
-  let flag = true in
-  let _ = if flag then Format.printf "1:%a@." Term.pr t in
+  let _ = if !Global.debug > 1 then Format.printf "1:%a@." Term.pr t in
   let ps = List.unique (coefficients t) in
   let t = Formula.simplify t in
   let t = if !Global.use_bit_vector then elim_eq_neq_int t else elim_neq_int t in
-  let _ = if flag then Format.printf "2:%a@." Term.pr t in
+  let t = elim_eq_neq_boolean t in
+  let t = elim_imply_iff t in
+  let _ = if !Global.debug > 1 then Format.printf "2:%a@." Term.pr t in
   let tss = dnf t in
-  let _ = if flag then Format.printf "3:%a@." Term.pr (formula_of_dnf tss) in
+  let _ = if !Global.debug > 1 then Format.printf "3:%a@." Term.pr (formula_of_dnf tss) in
   let aifss =
     List.map
       (List.map
@@ -57,20 +58,7 @@ let farkas t =
         List.map (fun cs -> eqInt (sum cs) (tint 0)) css
       in
 (*
-      let _ = Format.printf "constraint1:@.  @[<v>%a@]@." Term.pr (Formula.band ts) in
-*)
-      let ts = List.map Formula.simplify ts in
-(*
-      let _ = Format.printf "constraint2:@.  @[<v>%a@]@." Term.pr (Formula.band ts) in
-*)
       let ts = if !Global.use_bit_vector then ts else Formula.eqelim Var.is_coeff ts in
-      let t =
-        (*exists
-          (List.map (fun (Var(_, x)) -> x, SimType.Int) ls)*)
-          (Formula.simplify (band ts))
-      in
-(*
-      let _ = Format.printf "constraint3:@.  @[<v>%a@]@." Term.pr t in
 *)
-      t)
+      Formula.simplify (band ts))
     aifss

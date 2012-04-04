@@ -175,7 +175,6 @@ let infer t ty =
     (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))  
 
 let is_valid t =
-  let flag = false in
   let cin = !cvc3in in
   let cout = !cvc3out in
   let _ = cnt := !cnt + 1 in
@@ -193,7 +192,7 @@ let is_valid t =
     "QUERY " ^ string_of_term t ^ ";" ^
     "POP;\n"
   in
-  let _ = if !Global.debug && flag then Format.printf "input to cvc3: %s@." inp in
+  let _ = if !Global.debug > 1 then Format.printf "input to cvc3: %s@." inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let res = input_line cin in
   if Str.string_match (Str.regexp ".*Valid") res 0 then
@@ -224,7 +223,7 @@ let checksat env p =
   let query = "CHECKSAT " ^ string_of_term env p ^ ";" in
 
   let q = "PUSH;"^types^query^"\nPOP;" in
-  let _ = if Flag.debug && Flag.print_cvc3 then Format.fprintf Format.std_formatter "checksat: %s@." q in
+  let _ = if Global.debug > 0 && Flag.print_cvc3 then Format.fprintf Format.std_formatter "checksat: %s@." q in
 
   let () = Format.fprintf fm "%s@?" q in
   let s = input_line cin in
@@ -248,7 +247,7 @@ let solve t =
     "COUNTERMODEL;" ^
     "POP;\n"
   in
-  let _ = if !Global.debug then Format.printf "input to cvc3: %s@." inp in
+  let _ = if !Global.debug > 0 then Format.printf "input to cvc3: %s@." inp in
   let _ = Format.fprintf fm "%s@?" inp in
   let _ = close_out cout in
   let rec aux () =
@@ -288,10 +287,10 @@ let solve t =
 (*
       let _ = Format.printf "%s, %s@." c n in
 *)
-      Var.parse c, Term.tint (int_of_string n))
+      Var.parse c, int_of_string n)
     ss
 
-let bit = 1
+let rbit = ref 1
 
 let string_of_int_bv n =
   let _ = assert (n >= 0) in
@@ -308,7 +307,7 @@ let string_of_type_bv ty =
   match ty with
     SimType.Unit -> "BITVECTOR(1)"
   | SimType.Bool -> "BOOLEAN"
-  | SimType.Int -> "BITVECTOR(" ^ string_of_int bit ^ ")"
+  | SimType.Int -> "BITVECTOR(" ^ string_of_int !rbit ^ ")"
   | SimType.Fun(_, _) -> assert false
 
 let string_of_env_bv env =
@@ -322,7 +321,7 @@ let string_of_env_comma env =
 let rec string_of_term_bv t =
   match Term.fun_args t with
     Term.Var(_, x), [] ->
-      deco (string_of_var x), bit
+      deco (string_of_var x), !rbit
   | Term.Const(_, Const.Int(n)), [] ->
       string_of_int_bv n
   | Term.Const(_, Const.Add), [t1; t2] ->
@@ -414,50 +413,77 @@ let rec string_of_term_bv t =
       let _ = Format.printf "%a@." Term.pr t in
       assert false
 
+exception Unsatisfiable
+
+let threshold = 2
+
 let solve_bv t =
-  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
-  let _ = cnt := !cnt + 1 in
-  let fm = Format.formatter_of_out_channel cout in
-  let inp =
-    "PUSH;" ^
-    (string_of_env_bv (infer t SimType.Bool)) ^ ";" ^
-    "CHECKSAT " ^ fst (string_of_term_bv t) ^ ";" ^
-    "COUNTERMODEL;" ^
-    "POP;\n"
+  let rec solve_bv_aux bit =
+    if bit >= threshold then
+      raise Unsatisfiable
+    else
+				  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
+				  let fm = Format.formatter_of_out_channel cout in
+				  let _ = cnt := !cnt + 1 in
+				  let inp =
+				    "PUSH;" ^
+				    (string_of_env_bv (infer t SimType.Bool)) ^ ";" ^
+				    "CHECKSAT " ^ fst (string_of_term_bv t) ^ ";" ^
+				    "COUNTERMODEL;" ^
+				    "POP;\n"
+				  in
+				  let _ = if !Global.debug > 0 then Format.printf "CVC3 Input: %s@." inp in
+				  let _ =
+		      let old_bit = !rbit in
+		      let _ = rbit := bit in
+		      let _ = Format.fprintf fm "%s@?" inp in
+								let _ = close_out cout in
+		      rbit := old_bit
+		    in
+	     let s = input_line cin in
+      let _ = if !Global.debug > 0 then Format.printf "CVC3 Output: %s@." s in
+				  if Str.string_match (Str.regexp ".*Unsatisfiable.") s 0 then
+								let _ = close_in cin in
+								let _ =
+										match Unix.close_process (cin, cout) with
+										  Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+								in
+		      solve_bv_aux (bit + 1)
+      else if Str.string_match (Str.regexp ".*Satisfiable.") s 0 then
+						  let rec aux () =
+						    try
+						      let s = input_line cin in
+						      let _ = if !Global.debug > 0 then Format.printf "CVC3 Output: %s@." s in
+						      if Str.string_match (Str.regexp ".*ASSERT") s 0 then
+						        let pos_begin = String.index s '(' + 1 in
+						        let pos_end = String.index s ')' in
+						        let s' = String.sub s pos_begin (pos_end - pos_begin) in
+						        if Str.string_match (Str.regexp "cvc3") s' 0 then
+                aux ()
+						        else
+                s' :: aux ()
+						      else
+						        aux ()
+						    with End_of_file ->
+    								let _ = close_in cin in
+												let _ =
+														match Unix.close_process (cin, cout) with
+														  Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+												in
+						      []
+						  in
+								let ss = aux () in
+								List.map
+								  (fun s ->
+								    let _, s = String.split s "_" in
+								    let c, n = String.split s " = " in
+								    let _ = if !Global.debug > 1 then Format.printf "%s = %s@." c n in
+								    Var.parse c, int_of_string_bv n)
+								  ss
+      else
+        assert false
   in
-  let _ = if !Global.debug then Format.printf "input to cvc3: %s@." inp in
-  let _ = Format.fprintf fm "%s@?" inp in
-  let _ = close_out cout in
-  let rec aux () =
-    try
-      let s = input_line cin in
-        if Str.string_match (Str.regexp ".*ASSERT") s 0 then
-          let pos_begin = String.index s '(' + 1 in
-          let pos_end = String.index s ')' in
-          let s' = String.sub s pos_begin (pos_end - pos_begin) in
-          if Str.string_match (Str.regexp "cvc3") s' 0
-          then aux ()
-          else s' :: aux ()
-        else
-          aux ()
-    with End_of_file ->
-      []
-  in
-  let ss = aux () in
-  let _ = close_in cin in
-  let _ =
-		  match Unix.close_process (cin, cout) with
-		    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
-  in
-  List.map
-    (fun s ->
-      let _, s = String.split s "_" in
-      let c, n = String.split s " = " in
-(*
-      let _ = Format.printf "%s, %s@." c n in
-*)
-      Var.parse c, Term.tint (int_of_string_bv n))
-    ss
+  solve_bv_aux 1
 
 (** @deprecated *)
 let simplify_conjuncts ts =

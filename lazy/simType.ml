@@ -47,13 +47,16 @@ let pr_bind2 ppf (x, ty) = Format.fprintf ppf "%a:%a" Idnt.pr x pr ty
 
 let equiv ty1 ty2 = ty1 = ty2
 
+(** ToDo: function type refinement *)
+let refinable ty = !Global.refine_function || (is_base ty && (!Global.refine_unit || ty <> Unit))
+
 let find_last_base2 env (x, uid) =
   let rec aux ty i j =
     match ty with
 		    Unit | Bool | Int ->
         j
 		  | Fun(ty1, ty2) ->
-		      aux ty2 (i + 1) (if is_base ty1 && (ty1 <> Unit || !Global.refine_unit) then i else j)
+		      aux ty2 (i + 1) (if refinable ty1 then i else j)
   in
   let i = aux (env x) 0 (-1) in
 		let _ = if i = -1 then raise Not_found in

@@ -10,7 +10,7 @@ let rec pr ppf x =
     V(id) ->
       Format.fprintf ppf "%a" Idnt.pr id
   | C(id) ->
-      Format.fprintf ppf "?%a" Idnt.pr id
+      Format.fprintf ppf "%a" Idnt.pr id
   | T(x, uid, arg) ->
       Format.fprintf ppf "<%a@@%d:%d>" pr x uid arg
 
