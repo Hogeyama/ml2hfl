@@ -24,7 +24,11 @@ let post () =
   Id.reset_counter ()
 *)
 
-
+let inlined_functions prog =
+  let _, defs, main = prog in
+  let fs = List.map fst (CEGAR_util.get_nonrec defs main) in
+  ExtList.List.unique fs
+(*Util.diff (List.map (fun (f, _, _, _, _) -> f) defs) *)
 
 let rec cegar1 prog0 ces =
   pre ();
@@ -69,7 +73,7 @@ let rec cegar1 prog0 ces =
                       CEGAR_print.ce prefix
                 in
                 let ces' = ce::ces in
-                let _,prog' = Refine.refine prefix ces' prog0 in
+                let _,prog' = Refine.refine (inlined_functions prog0) prefix ces' prog0 in
                   post ();
                   cegar1 prog' ces'
 
@@ -77,6 +81,7 @@ let rec cegar1 prog0 ces =
 
 type result = Success of prog | Fail of ce
 
+(*
 let rec cegar2 prog ce_map =
   pre ();
   Flag.use_filter := false;
@@ -127,17 +132,18 @@ let rec cegar2 prog ce_map =
                     Format.printf "Prefix of spurious counter-example::@.%a@.@."
                       CEGAR_print.ce prefix
                 in
-                let map,_ = Refine.refine prefix [ce] prog in
+                let map,_ = Refine.refine labeled prefix [ce] prog in
                 let ce_map' = (ce,map)::ce_map in
                   post ();
                   cegar2 prog ce_map'
+*)
 
 
 
 let cegar prog =
-  if !Flag.new_cegar
+  (*if !Flag.new_cegar
   then cegar2 prog []
-  else cegar1 prog []
+  else*) cegar1 prog []
 
 
 

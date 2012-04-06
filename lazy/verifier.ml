@@ -121,7 +121,7 @@ let refine_coeffs t =
 				let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
 			 Format.printf "solutions:@.  %a@." pr_coeffs !ext_coeffs
 
-let infer_ref_types prog etrs =
+let infer_ref_types fs prog etrs =
   let sums =
     if false then
       (* deprecated: old buggy refinement type inference algorithm *)
@@ -132,6 +132,7 @@ let infer_ref_types prog etrs =
       (* refinement type inference using Horn clauses *)
       let ctrs, hcss = List.split (List.map (HcGenRefType.cgen (Prog.type_of prog)) etrs) in
       let hcs = List.concat hcss in
+      let hcs = if !Global.inline then HornClause.inline fs hcs else hcs in
       let _ = Format.printf "call trees:@.  @[<v>%a@]@." (Util.pr_list CallTree.pr "@,") ctrs in
       let _ = Format.printf "horn clauses:@.  @[<v>%a@]@." (Util.pr_list HornClause.pr "@,") hcs in
       let hcs =
@@ -143,14 +144,20 @@ let infer_ref_types prog etrs =
 						    let _ = refine_coeffs t in
 								  List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs
       in
-      List.map (fun (x, (_, t)) -> `P(x, t)) (HcSolve.solve ctrs hcs)
+      List.map
+        (fun (x, (xs, t)) ->
+          let ys = RefType.visible_vars (Prog.type_of prog) x in
+          let _ = assert (List.length xs = List.length ys) in
+          let sub = List.map2 (fun x y -> x, Term.make_var y) xs ys in
+          `P(x, Term.subst (fun x -> List.assoc x sub) t))
+        (HcSolve.solve ctrs hcs)
   in
   let _ =
     if !Global.debug > 1 then
       List.iter (fun (`P(x, t)) -> Format.printf "P[%a]: %a@." Var.pr x Term.pr t) sums
   in
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
-  TcSolveRefType.infer_env prog sums fcs
+  HcSolve.infer_env prog sums fcs
 
 let infer_int_types prog etrs =
   let constrss = List.map TcGenIntType.cgen etrs in
@@ -173,11 +180,11 @@ let infer_int_types prog etrs =
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
   TcSolveIntType.infer_env prog sums fcs
 
-let infer_abst_type prog etrs =
+let infer_abst_type fs prog etrs =
   let env =
 		  match Global.refine with
 		    `RefType ->
-		      let env = infer_ref_types prog etrs in
+		      let env = infer_ref_types fs prog etrs in
 		      let _ = Format.printf "refinement types:@.  %a@." RefType.pr_env env in
 		      List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env
 		  | `IntType ->
@@ -194,7 +201,8 @@ let infer_abst_type prog etrs =
     (function ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys) | _ -> assert false)
     (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env)
 
-let refine cexs prog =
+let refine fs cexs prog =
+  let _ = Format.printf "inlined functions: %s@." (String.concat "," fs) in
   try
     let _ = if !Global.debug > 0 then Format.printf "%a" Prog.pr prog in
     let etrs =
@@ -210,7 +218,7 @@ let refine cexs prog =
       Format.printf "error traces:@.";
       List.iter (fun ep -> Format.printf "  %a@." Trace.pr ep) etrs
     in
-    let env = infer_abst_type prog etrs in
+    let env = infer_abst_type fs prog etrs in
     let _ = Format.printf "abstraction types:@.  %a@." AbsType.pr_env env in
     env
   with Util.NotImplemented s ->
@@ -223,7 +231,7 @@ let refine cexs prog =
 
 
 
-let verify prog =
+let verify fs prog =
   let _ = if !Global.debug > 0 then Format.printf "%a" Prog.pr prog in
   try
     let rt = CompTree.init prog in
@@ -238,7 +246,7 @@ let verify prog =
       in
       match Global.refine with
         `RefType ->
-          let env = infer_ref_types prog etrs(*etrs'*) in
+          let env = infer_ref_types fs prog etrs(*etrs'*) in
           let _ = Format.printf "refinement types:@.  %a@." RefType.pr_env env in
           if RefTypeCheck.check_prog env prog then
             Format.printf "@.The program is safe@."

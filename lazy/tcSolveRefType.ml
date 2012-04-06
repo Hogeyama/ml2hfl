@@ -7,20 +7,6 @@ open TcSolve
 (** Trace constraint solving for refinement types
     @deprecated use HcSolveRefType *)
 
-let infer_env prog sums fcs =
-  let env = RefType.of_summaries prog sums fcs in
-  let env' =
-    List.map
-      (fun (f, sty) ->
-        f, RefType.of_simple_type sty)
-      (List.find_all
-        (fun (f, sty) -> not (List.mem_assoc f env))
-        (List.map
-          (fun (f, sty) -> Var.make f, sty)
-          prog.Prog.types))
-  in
-  env @ env'
-
 (** ToDo: not enough for higher-order functions *)
 let args_of_tree env tr =
   let x, uid = (get tr).name in

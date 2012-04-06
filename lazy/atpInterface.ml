@@ -155,6 +155,66 @@ let integer_qelim t =
 let real_qelim t =
   Formula.simplify (formula_of (Atp_batch.real_qelim (of_formula (elim_eq_neq_boolean t))))
 
+
+
+
+let qelim_fes bvs (Formula.FES(xttys, ts) as fes) =
+  let ts =
+		  try
+				  let fvs =
+				    let fvs = List.unique (Util.diff (Util.concat_map Term.fvs ts) (bvs @ Util.concat_map Formula.fvs_xtty xttys)) in
+		      let _ = if !Global.debug > 1 then Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+				    fvs
+				  in
+      let t = Formula.band ts in
+		    if fvs <> [] && Formula.is_linear t then
+		      Formula.conjuncts (integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
+		    else
+		      raise (Util.NotImplemented "subst_lbs")
+		  with Util.NotImplemented _ ->
+				  Util.map_left
+				    (fun ts1 t ts2 ->
+				      let fvs =
+            let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Formula.fvs_xtty xttys @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
+	  			      let _ = if !Global.debug > 1 then Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+            fvs
+          in
+				      if fvs <> [] && Formula.is_linear t then
+				        let _ = if !Global.debug > 1 then Format.printf "before:@.  @[%a@]@." Term.pr t in
+				        let t =
+				          try
+				            integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
+				          with Util.NotImplemented _ ->
+				            t
+				        in
+				        let _ = if !Global.debug > 1 then Format.printf "after:@.  @[%a@]@." Term.pr t in
+				        t
+				      else
+				        t)
+				    ts
+  in
+  Formula.make_fes xttys ts
+
+
+
+(** @deprecated unsound *)
+let merge_fess xs fess =
+  let xttyss, tss = List.split (List.map (fun (Formula.FES(xttys, ts)) -> xttys, ts) fess) in
+  let xttys = List.flatten xttyss in
+  let xttys =
+    Util.concat_map
+      (fun (((x, t, ty) as xtty)::xttys) ->
+        if xttys <> [] && List.mem x xs then
+          let _ = if !Global.debug > 1 then Format.printf "xttys: %a@." (Util.pr_list Formula.pr_xtty ",") (xtty::xttys) in
+          [xtty] (* ToDo: prove that this is sound and complete *)
+        else
+          xtty::xttys)
+      (Util.classify (fun (x1, _, _) (x2, _, _) -> x1 = x2) xttys)
+  in
+  let ts = List.flatten tss in
+  Formula.make_fes xttys ts
+
+
 (*
 
 

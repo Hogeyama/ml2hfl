@@ -4,6 +4,7 @@
 exception CannotRefute
 
 val refine :
+  string list ->
   CEGAR_syntax.ce -> CEGAR_syntax.ce list ->
   CEGAR_syntax.prog ->
   (CEGAR_syntax.var * CEGAR_syntax.typ) list * CEGAR_syntax.prog

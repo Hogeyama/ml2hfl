@@ -117,10 +117,10 @@ let conv_prog (typs, fdefs, main) =
     Prog.types = List.map (fun (x, ty) -> Idnt.make x, conv_typ ty) typs;
     Prog.main = Idnt.make main }
 
-let verify (*cexs*) prog =
+let verify fs (*cexs*) prog =
   let prog = conv_prog prog in
   Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
-  let _ = Verifier.verify prog in
+  let _ = Verifier.verify fs prog in
   Format.printf "END verification@,@]"
 
 let rec inv_abst_type aty =
@@ -139,9 +139,9 @@ let rec inv_abst_type aty =
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
 
 
-let infer cexs prog =
+let infer labeled cexs prog =
   let prog = conv_prog prog in
-  let env = Verifier.refine cexs prog in
+  let env = Verifier.refine labeled cexs prog in
   List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty)

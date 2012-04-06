@@ -128,7 +128,7 @@ let main filename in_channel =
   let () = Type_check.check t Type.TUnit in
   let prog = CEGAR_util.trans_prog t in
     match !Flag.cegar with
-        Flag.CEGAR_SizedType -> LazyInterface.verify prog
+        Flag.CEGAR_SizedType -> LazyInterface.verify [] prog
       | Flag.CEGAR_DependentType ->
 	  match CEGAR.cegar prog with
 	      prog', None -> Format.printf "Safe!@.@."
@@ -175,6 +175,7 @@ let () =
         filename := name
       in
       let () = Arg.parse arg_spec set_file usage in
+      let _ = Global.inline := !Flag.expand_nonrec in
       let cin = match !filename with ""|"-" -> stdin | _ -> open_in !filename in
         if !Flag.web then open_log ();
         Wrapper.open_cvc3 ();

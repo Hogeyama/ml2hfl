@@ -1,6 +1,6 @@
 (** Global variables *)
 
-let debug = ref 2
+let debug = ref 0
 
 (** {6 Options for abstraction type inference} *)
 let refine = (*`IntType *) `RefType
@@ -17,3 +17,5 @@ let use_bit_vector = ref true
 
 (** {6 Options for deprecated old refinement type inference method} *)
 let enable_quick_inference = false
+
+let inline = ref false

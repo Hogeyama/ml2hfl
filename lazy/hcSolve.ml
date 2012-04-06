@@ -18,7 +18,7 @@ let rec solve_hc lbs ub fes ps =
       let interp =
         let t1 =
           try
-            let ys, fes = lookup pid lbs in
+            let ys, fes = lookup_lbs pid lbs in
 												let sub = List.combine ys xs in
             let fes = Formula.subst_fes (fun x -> Term.make_var (List.assoc x sub)) fes in
             let fes =
@@ -38,7 +38,7 @@ let rec solve_hc lbs ub fes ps =
               fes::
 						        List.map
 						          (fun (pid, xs) ->
-								          let ys, fes = lookup pid lbs in
+								          let ys, fes = lookup_lbs pid lbs in
 																		let sub = List.combine ys xs in
 														    Formula.subst_fes (fun x -> Term.make_var (List.assoc x sub)) fes)
 						          ps)
@@ -109,7 +109,17 @@ let merge_solution sol =
   List.map
     (fun sol ->
       let _ = if !Global.debug > 0 then assert (List.length (List.unique (List.map (fun (_, (xs, _)) -> xs) sol)) = 1) in
-      fst (List.hd sol), (fst (snd (List.hd sol)), Formula.band (List.map (fun (_, (_, t)) -> t) sol)))
+      let pid = fst (List.hd sol) in
+      let xs = fst (snd (List.hd sol)) in
+      let ts =
+        List.map
+          (fun (_, (ys, t)) ->
+            let sub = List.combine ys xs in
+            let sub x = Term.make_var (List.assoc x sub) in
+            Term.subst sub t)
+          sol
+      in
+      pid, (xs, Formula.band ts))
     (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) sol)
 
 let solve_aux lbs hcs =
@@ -173,3 +183,18 @@ let solve ctrs hcs =
   let sol = solve_aux lbs hcs in
   let _ = Format.printf "solution:@.  @[<v>%a@]@." pr_sol sol in
   List.map (fun (pred, (xs, t)) -> pred, (xs, Formula.simplify t)) sol
+
+let infer_env prog sums fcs =
+  let env = RefType.of_summaries prog sums fcs in
+  let env' =
+    List.map
+      (fun (f, sty) ->
+        f, RefType.of_simple_type sty)
+      (List.find_all
+        (fun (f, sty) -> not (List.mem_assoc f env))
+        (List.map
+          (fun (f, sty) -> Var.make f, sty)
+          prog.Prog.types))
+  in
+  env @ env'
+
