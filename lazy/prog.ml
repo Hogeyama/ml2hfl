@@ -5,7 +5,7 @@ open ExtList
 type t = { attr: Attr.t; fdefs: Fdef.t list; types: (Idnt.t * SimType.t) list; main: Idnt.t }
 
 let pr ppf prog =
-  Format.fprintf ppf "@[<v>%a@,%a@]@." (Util.pr_list Fdef.pr "@ ") prog.fdefs (Util.pr_list SimType.pr_bind2 "@ ") prog.types
+  Format.fprintf ppf "@[<v>%a@,%a@]" (Util.pr_list Fdef.pr "@ ") prog.fdefs (Util.pr_list SimType.pr_bind2 "@ ") prog.types
 
 let fdefs_of prog id =
   let res = List.find_all (fun fdef -> fdef.Fdef.name = id) prog.fdefs in

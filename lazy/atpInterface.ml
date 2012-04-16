@@ -145,8 +145,11 @@ let theory =
 let langs = Atp_batch.add_default [Atp_batch.int_lang]
 
 let is_valid p =
-  let _ = if !Global.debug > 0 && false then Format.printf "%a@." (Term.pr) (formula_of p) in
-  Atp_batch.nelop langs (Atp_batch.Imp(theory, p))
+  let _ = Global.log_begin "is_valid" in
+  let _ = Global.log (fun () -> Format.printf "%a@," (Term.pr) (formula_of p)) in
+  let res = Atp_batch.nelop langs (Atp_batch.Imp(theory, p)) in
+  let _ = Global.log_end "is_valid" in
+  res
 
 (** {6 Functions on formulas} *)
 let integer_qelim t =
@@ -159,11 +162,12 @@ let real_qelim t =
 
 
 let qelim_fes bvs (Formula.FES(xttys, ts) as fes) =
+  let _ = Global.log_begin "qelim_fes" in
   let ts =
 		  try
 				  let fvs =
 				    let fvs = List.unique (Util.diff (Util.concat_map Term.fvs ts) (bvs @ Util.concat_map Formula.fvs_xtty xttys)) in
-		      let _ = if !Global.debug > 1 then Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+		      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs) in
 				    fvs
 				  in
       let t = Formula.band ts in
@@ -176,27 +180,28 @@ let qelim_fes bvs (Formula.FES(xttys, ts) as fes) =
 				    (fun ts1 t ts2 ->
 				      let fvs =
             let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Util.concat_map Formula.fvs_xtty xttys @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
-	  			      let _ = if !Global.debug > 1 then Format.printf "bvs: %a@.fvs: %a@." (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs in
+	  			      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs) in
             fvs
           in
 				      if fvs <> [] && Formula.is_linear t then
-				        let _ = if !Global.debug > 1 then Format.printf "before:@.  @[%a@]@." Term.pr t in
+				        let _ = Global.log (fun () -> Format.printf "before:@,  @[%a@]@," Term.pr t) in
 				        let t =
 				          try
 				            integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
 				          with Util.NotImplemented _ ->
 				            t
 				        in
-				        let _ = if !Global.debug > 1 then Format.printf "after:@.  @[%a@]@." Term.pr t in
+				        let _ = Global.log (fun () -> Format.printf "after:@,  @[%a@]@," Term.pr t) in
 				        t
 				      else
 				        t)
 				    ts
   in
+  let _ = Global.log_end "qelim_fes" in
   Formula.make_fes xttys ts
 
 
-
+(*
 (** @deprecated unsound *)
 let merge_fess xs fess =
   let xttyss, tss = List.split (List.map (fun (Formula.FES(xttys, ts)) -> xttys, ts) fess) in
@@ -205,7 +210,7 @@ let merge_fess xs fess =
     Util.concat_map
       (fun (((x, t, ty) as xtty)::xttys) ->
         if xttys <> [] && List.mem x xs then
-          let _ = if !Global.debug > 1 then Format.printf "xttys: %a@." (Util.pr_list Formula.pr_xtty ",") (xtty::xttys) in
+          let _ = Global.log (fun () -> Format.printf "xttys: %a@," (Util.pr_list Formula.pr_xtty ",") (xtty::xttys)) in
           [xtty] (* ToDo: prove that this is sound and complete *)
         else
           xtty::xttys)
@@ -215,7 +220,6 @@ let merge_fess xs fess =
   Formula.make_fes xttys ts
 
 
-(*
 
 
 (*

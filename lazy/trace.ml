@@ -16,13 +16,16 @@ type t = Elm of s | Seq of t list | Br of t * t
 
 (** {6 Basic functions} *)
 
+let cnt = ref 0
 let pr_elem ppf elm =
   match elm with
     Call(_, t) ->
+      let _ = cnt := !cnt + 1 in
       Format.fprintf ppf "[@[<hov>%a.@," Term.pr t
   | Arg(xttys) ->
       Format.fprintf ppf "%a@," Term.pr (Formula.band (List.map Formula.eq_xtty xttys))
   | Ret(x, t, ty) -> 
+      let _ = cnt := !cnt - 1 in
       Format.fprintf ppf "%a@]]@," Term.pr (Formula.eq_xtty (x, t, ty))
   | Nop ->
       Format.fprintf ppf "nop"
@@ -30,7 +33,9 @@ let pr_elem ppf elm =
       Format.fprintf ppf "error"
 
 let pr ppf trace =
-  Format.fprintf ppf "%a" (Util.pr_list pr_elem "") trace
+  let _ = cnt := 0 in
+  let _ = Format.fprintf ppf "%a" (Util.pr_list pr_elem "") trace in
+  ignore (List.init !cnt (fun _ -> Format.fprintf ppf "@]"))
 
 let rec pr_exp ppf trexp =
   match trexp with

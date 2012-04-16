@@ -197,34 +197,46 @@ let interpolate t1 t2 =
 		  (*Formula.simplify*) (formula_of interp)
 
 let interpolate_chk t1 t2 =
-  try
-    let t = interpolate t1 t2 in
-    (*let _ = Format.printf "interp: %a@." Term.pr t in*)
-    let t = Formula.simplify t in
-    if true then
-      let ts = Formula.conjuncts t in
-		    (match ts with
-		      [t] -> t
-		    | _ ->
-          let _ = if !Global.debug > 0 then Format.printf "finding minimal interpolant@." in
-          let _ = if !Global.debug > 0 then Format.printf "before:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
-          let ts = Util.minimal (fun ts -> Cvc3Interface.implies (Formula.band ts) (Formula.bnot t2)) ts in
-          let _ = if !Global.debug > 0 then Format.printf "after:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts in
-		        Formula.band ts)
-    else
-      t
-  with No_interpolant ->
-    if !Global.debug > 0 && Cvc3Interface.implies t1 (Formula.bnot t2) then
-      let _ = Format.printf "an error of CSIsat@." in
-      assert false
-    else
-      raise No_interpolant
+  let _ = Global.log_begin "interpolate_chk" in
+		try
+		  let t = interpolate t1 t2 in
+		  (*let _ = Format.printf "interp: %a@." Term.pr t in*)
+		  let t = Formula.simplify t in
+    let res =
+				  if true then
+				    let ts = Formula.conjuncts t in
+						  (match ts with
+						    [t] -> t
+						  | _ ->
+				        let _ = Global.log (fun () -> Format.printf "finding minimal interpolant@.") in
+				        let _ = Global.log (fun () -> Format.printf "before:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts) in
+				        let ts = Util.minimal (fun ts -> Cvc3Interface.implies (Formula.band ts) (Formula.bnot t2)) ts in
+				        let _ = Global.log (fun () -> Format.printf "after:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts) in
+						      Formula.band ts)
+				  else
+				    t
+    in
+    let _ = Global.log_end "interpolate_chk" in
+    res
+		with No_interpolant ->
+		  if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
+		    let _ = Format.printf "an error of CSIsat@." in
+		    assert false
+		  else
+      let _ = Global.log_end "interpolate_chk" in
+		    raise No_interpolant
 
 let interpolate t1 t2 =
-  let _ = if !Global.debug > 1 then Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2 in
-  let interp = interpolate_chk t1 t2 in
-  let _ = if !Global.debug > 1 then Format.printf "interp_out: %a@]@." Term.pr interp in
-  interp
+  let _ = Global.log_begin "interpolate" in
+  let _ = Global.log (fun () -> Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2) in
+  try
+		  let interp = interpolate_chk t1 t2 in
+		  let _ = Global.log (fun () -> Format.printf "interp_out: %a@]@." Term.pr interp) in
+		  let _ = Global.log_end "interpolate" in
+		  interp
+  with No_interpolant ->
+		  let _ = Global.log_end "interpolate" in
+    raise No_interpolant
 
 (** @param p represents variables shared by t1 and t2 *)
 let interpolate_bvs p t1 t2 =

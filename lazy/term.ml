@@ -123,9 +123,16 @@ let rec subst sub t =
 let subst_var sub x =
   try let Var(_, y) = sub x in y with Not_found -> x
 
+let subst_fixed_var sub x =
+		Util.fixed_point
+		  (fun x -> subst_var sub x)
+		  Var.equiv
+		  x
+
 (** ToDo: first compute the fixed-point of sub *)
 let subst_fixed sub t =
-  let _ = if !Global.debug > 1 then Format.printf "before: %a@." pr t in
+  let _ = Global.log_begin "subst_fixed" in
+  let _ = Global.log (fun () -> Format.printf "before: %a@," pr t) in
   let t =
 		  Util.fixed_point
 		    (fun t ->
@@ -134,7 +141,8 @@ let subst_fixed sub t =
 		    equiv
 		    t
   in
-		let _ = if !Global.debug > 1 then Format.printf "after: %a@." pr t in
+		let _ = Global.log (fun () -> Format.printf "after: %a@," pr t) in
+  let _ = Global.log_end "subst_fixed" in
   t
 
 let rec apply t ts =

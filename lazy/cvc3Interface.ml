@@ -175,6 +175,7 @@ let infer t ty =
     (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))  
 
 let is_valid t =
+  let _ = Global.log_begin "is_valid" in
   let cin = !cvc3in in
   let cout = !cvc3out in
   let _ = cnt := !cnt + 1 in
@@ -192,16 +193,20 @@ let is_valid t =
     "QUERY " ^ string_of_term t ^ ";" ^
     "POP;\n"
   in
-  let _ = if !Global.debug > 1 then Format.printf "input to cvc3: %s@." inp in
+  let _ = Global.log (fun () -> Format.printf "input to cvc3: %s@," inp) in
   let _ = Format.fprintf fm "%s@?" inp in
   let res = input_line cin in
-  if Str.string_match (Str.regexp ".*Valid") res 0 then
-    true
-  else if Str.string_match (Str.regexp ".*Invalid") res 0 then
-    false
-  else
-    let _ = Format.printf "unknown error of CVC3: %s@." res in
-    assert false
+  let res =
+		  if Str.string_match (Str.regexp ".*Valid") res 0 then
+		    true
+		  else if Str.string_match (Str.regexp ".*Invalid") res 0 then
+		    false
+		  else
+		    let _ = Format.printf "unknown error of CVC3: %s@." res in
+		    assert false
+  in
+  let _ = Global.log_end "is_valid" in
+  res
 
 let implies t1 t2 = is_valid (Formula.imply t1 t2)
 
@@ -237,6 +242,7 @@ let checksat env p =
 *)
 
 let solve t =
+  let _ = Global.log_begin "solve" in
   let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
   let _ = cnt := !cnt + 1 in
   let fm = Format.formatter_of_out_channel cout in
@@ -247,7 +253,7 @@ let solve t =
     "COUNTERMODEL;" ^
     "POP;\n"
   in
-  let _ = if !Global.debug > 0 then Format.printf "input to cvc3: %s@." inp in
+  let _ = Global.log (fun () -> Format.printf "input to cvc3: %s@," inp) in
   let _ = Format.fprintf fm "%s@?" inp in
   let _ = close_out cout in
   let rec aux () =
@@ -274,21 +280,25 @@ let solve t =
 (*
   let _ = List.iter (fun s -> Format.printf "%s@." s) ss in
 *)
-  List.map
-    (fun s ->
-(*
-      let _ = Format.printf "?: %s@." s in
-*)
-      let _, s = String.split s "_" in
-(*
-      let _ = Format.printf "%s@." s in
-*)
-      let c, n = String.split s " = " in
-(*
-      let _ = Format.printf "%s, %s@." c n in
-*)
-      Var.parse c, int_of_string n)
-    ss
+  let res =
+		  List.map
+		    (fun s ->
+		(*
+		      let _ = Format.printf "?: %s@." s in
+		*)
+		      let _, s = String.split s "_" in
+		(*
+		      let _ = Format.printf "%s@." s in
+		*)
+		      let c, n = String.split s " = " in
+		(*
+		      let _ = Format.printf "%s, %s@." c n in
+		*)
+		      Var.parse c, int_of_string n)
+		    ss
+  in
+  let _ = Global.log_end "solve" in
+  res
 
 let rbit = ref 1
 
@@ -418,6 +428,7 @@ exception Unsatisfiable
 let threshold = 2
 
 let solve_bv t =
+  let _ = Global.log_begin "solve_bv" in
   let rec solve_bv_aux bit =
     if bit >= threshold then
       raise Unsatisfiable
@@ -432,7 +443,7 @@ let solve_bv t =
 				    "COUNTERMODEL;" ^
 				    "POP;\n"
 				  in
-				  let _ = if !Global.debug > 0 then Format.printf "CVC3 Input: %s@." inp in
+				  let _ = Global.log (fun () -> Format.printf "CVC3 Input: %s@," inp) in
 				  let _ =
 		      let old_bit = !rbit in
 		      let _ = rbit := bit in
@@ -441,7 +452,7 @@ let solve_bv t =
 		      rbit := old_bit
 		    in
 	     let s = input_line cin in
-      let _ = if !Global.debug > 0 then Format.printf "CVC3 Output: %s@." s in
+      let _ = Global.log (fun () -> Format.printf "CVC3 Output: %s@." s) in
 				  if Str.string_match (Str.regexp ".*Unsatisfiable.") s 0 then
 								let _ = close_in cin in
 								let _ =
@@ -453,7 +464,7 @@ let solve_bv t =
 						  let rec aux () =
 						    try
 						      let s = input_line cin in
-						      let _ = if !Global.debug > 0 then Format.printf "CVC3 Output: %s@." s in
+						      let _ = Global.log (fun () -> Format.printf "CVC3 Output: %s@," s) in
 						      if Str.string_match (Str.regexp ".*ASSERT") s 0 then
 						        let pos_begin = String.index s '(' + 1 in
 						        let pos_end = String.index s ')' in
@@ -477,13 +488,16 @@ let solve_bv t =
 								  (fun s ->
 								    let _, s = String.split s "_" in
 								    let c, n = String.split s " = " in
-								    let _ = if !Global.debug > 1 then Format.printf "%s = %s@." c n in
+								    let _ = Global.log (fun () -> Format.printf "%s = %s@," c n) in
 								    Var.parse c, int_of_string_bv n)
 								  ss
       else
         assert false
   in
-  solve_bv_aux 1
+  let res = solve_bv_aux 1 in
+  let _ = Global.log_end "solve_bv" in
+  res
+
 
 (** @deprecated *)
 let simplify_conjuncts ts =
