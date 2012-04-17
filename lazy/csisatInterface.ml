@@ -26,7 +26,7 @@ and of_term_aux c args =
   | Const.Mul, [t; Const(_, Const.Int(n))] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(float_of_int n, of_term t))
   | Const.Minus, [t] -> CsisatAstUtil.simplify_expr (CsisatAst.Coeff(-1.0, of_term t))
   | _ ->
-      let _ = Format.printf "%a %a@." Const.pr c (Util.pr_list Term.pr " ") args in
+      let _ = Format.printf "%a %a@," Const.pr c (Util.pr_list Term.pr " ") args in
       assert false
 
 let ih = ref true
@@ -75,7 +75,7 @@ and of_formula_aux c args =
   | Const.NeqInt, [t1; t2] ->
       CsisatAst.Not(CsisatAst.Eq(of_term t1, of_term t2))
   | _ ->
-      let _ = Format.printf "%a@." Const.pr c in
+      let _ = Format.printf "%a@," Const.pr c in
       assert false
 
 let rec term_of s =
@@ -187,51 +187,46 @@ let interpolate t1 t2 =
 		    with CsisatAst.SAT | CsisatAst.SAT_FORMULA(_) ->
 		      raise No_interpolant
 		    | Failure(msg) ->
-		      let _ = Format.printf "csisat error: %s@." msg in
+		      let _ = Format.printf "csisat error: %s@," msg in
 		      assert false(*raise No_interpolant*)
 		  in
-		  (*Format.printf "%s@." (CsisatAstUtil.print_pred interp);*)
+		  (*Format.printf "%s@," (CsisatAstUtil.print_pred interp);*)
 		  let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
 		  let interp = CsisatAstUtil.dnf interp in
-		  (*Format.printf "%s@." (CsisatAstUtil.print_pred interp);*)
+		  (*Format.printf "%s@," (CsisatAstUtil.print_pred interp);*)
 		  (*Formula.simplify*) (formula_of interp)
 
 let interpolate_chk t1 t2 =
-  let _ = Global.log_begin "interpolate_chk" in
 		try
 		  let t = interpolate t1 t2 in
-		  (*let _ = Format.printf "interp: %a@." Term.pr t in*)
+		  (*let _ = Format.printf "interp: %a@," Term.pr t in*)
 		  let t = Formula.simplify t in
-    let res =
-				  if true then
-				    let ts = Formula.conjuncts t in
-						  (match ts with
-						    [t] -> t
-						  | _ ->
-				        let _ = Global.log (fun () -> Format.printf "finding minimal interpolant@.") in
-				        let _ = Global.log (fun () -> Format.printf "before:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts) in
-				        let ts = Util.minimal (fun ts -> Cvc3Interface.implies (Formula.band ts) (Formula.bnot t2)) ts in
-				        let _ = Global.log (fun () -> Format.printf "after:@.  @[%a@]@." (Util.pr_list Term.pr ", ") ts) in
-						      Formula.band ts)
-				  else
-				    t
-    in
-    let _ = Global.log_end "interpolate_chk" in
-    res
+				if true then
+				  let ts = Formula.conjuncts t in
+						(match ts with
+						  [t] -> t
+						| _ ->
+				      let _ = Global.log_begin "finding minimal interpolant" in
+				      let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.band ts)) in
+				      let ts = Util.minimal (fun ts -> Cvc3Interface.implies (Formula.band ts) (Formula.bnot t2)) ts in
+				      let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]@," Term.pr (Formula.band ts)) in
+				      let _ = Global.log_end "finding minimal interpolant" in
+						    Formula.band ts)
+				else
+				  t
 		with No_interpolant ->
 		  if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
-		    let _ = Format.printf "an error of CSIsat@." in
+		    let _ = Format.printf "an error of CSIsat@," in
 		    assert false
 		  else
-      let _ = Global.log_end "interpolate_chk" in
 		    raise No_interpolant
 
 let interpolate t1 t2 =
   let _ = Global.log_begin "interpolate" in
-  let _ = Global.log (fun () -> Format.printf "@[<v>interp_in1: %a@,interp_in2: %a@," Term.pr t1 Term.pr t2) in
+  let _ = Global.log (fun () -> Format.printf "input1: @[<v>%a@]@,input2: @[<v>%a@]@," Term.pr t1 Term.pr t2) in
   try
 		  let interp = interpolate_chk t1 t2 in
-		  let _ = Global.log (fun () -> Format.printf "interp_out: %a@]@." Term.pr interp) in
+		  let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr interp) in
 		  let _ = Global.log_end "interpolate" in
 		  interp
   with No_interpolant ->

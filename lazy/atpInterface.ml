@@ -163,6 +163,7 @@ let real_qelim t =
 
 let qelim_fes bvs (Formula.FES(xttys, ts) as fes) =
   let _ = Global.log_begin "qelim_fes" in
+  let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," pr_fes fes) in
   let ts =
 		  try
 				  let fvs =
@@ -197,8 +198,10 @@ let qelim_fes bvs (Formula.FES(xttys, ts) as fes) =
 				        t)
 				    ts
   in
+  let res = Formula.make_fes xttys ts in
+  let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" pr_fes res) in
   let _ = Global.log_end "qelim_fes" in
-  Formula.make_fes xttys ts
+  res
 
 
 (*

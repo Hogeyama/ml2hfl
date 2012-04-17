@@ -131,8 +131,8 @@ let subst_fixed_var sub x =
 
 (** ToDo: first compute the fixed-point of sub *)
 let subst_fixed sub t =
-  let _ = Global.log_begin "subst_fixed" in
-  let _ = Global.log (fun () -> Format.printf "before: %a@," pr t) in
+  let _ = Global.log_begin "Term.subst_fixed" in
+  let _ = Global.log (fun () -> Format.printf "input: %a@," pr t) in
   let t =
 		  Util.fixed_point
 		    (fun t ->
@@ -141,8 +141,8 @@ let subst_fixed sub t =
 		    equiv
 		    t
   in
-		let _ = Global.log (fun () -> Format.printf "after: %a@," pr t) in
-  let _ = Global.log_end "subst_fixed" in
+		let _ = Global.log (fun () -> Format.printf "output: %a" pr t) in
+  let _ = Global.log_end "Term.subst_fixed" in
   t
 
 let rec apply t ts =
@@ -153,6 +153,9 @@ let rec apply t ts =
       apply (App([], t, t')) ts'
 
 let make_var x = Var([], x)
+let new_var () = make_var (Var.V(Idnt.new_id ()))
+
+
 let tint n = Const([], Const.Int(n))
 let tunit = Const([], Const.Unit)
 let tevent id = Const([], Const.Event(Idnt.make id))
@@ -304,10 +307,11 @@ let rec set_arity am t =
 *)
 
 
+
 (** @param p variables satisfying p are bound *)
 let rename_fresh p t =
   let fvs = List.filter (fun x -> not (p x)) (fvs t) in
-  let sub = List.map (fun x -> x, make_var (Var.new_var ())) fvs in
+  let sub = List.map (fun x -> x, new_var ()) fvs in
   subst (fun x -> List.assoc x sub) t
 
 let int_of t =

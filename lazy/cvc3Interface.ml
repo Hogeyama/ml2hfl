@@ -109,13 +109,13 @@ let rec string_of_term t =
   | Term.Exists(_, env, t), [] ->
       assert false
   | _, _ ->
-      let _ = Format.printf "%a@." Term.pr t in
+      let _ = Format.printf "%a@," Term.pr t in
       assert false
 
 let infer t ty =
   let rec aux t ty =
 (*
-    Format.printf "%a@." Term.pr t;
+    Format.printf "%a@," Term.pr t;
 *)
     match Term.fun_args t with
       Term.Var(_, x), [] ->
@@ -164,7 +164,7 @@ let infer t ty =
         let xs = List.map fst env in
         List.filter (fun (x, _) -> not (List.mem x xs)) (aux t SimType.Bool)
     | _, _ ->
-        let _ = Format.printf "%a@." Term.pr t in
+        let _ = Format.printf "%a@," Term.pr t in
         assert false
   in
   List.map
@@ -191,18 +191,20 @@ let is_valid t =
     String.concat " "
       (List.map (fun t -> "ASSERT " ^ (string_of_term t) ^ "; ") []) ^
     "QUERY " ^ string_of_term t ^ ";" ^
-    "POP;\n"
+    "POP;"
   in
-  let _ = Global.log (fun () -> Format.printf "input to cvc3: %s@," inp) in
-  let _ = Format.fprintf fm "%s@?" inp in
+  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
+  let _ = Format.fprintf fm "%s\n@?" inp in
   let res = input_line cin in
   let res =
 		  if Str.string_match (Str.regexp ".*Valid") res 0 then
+		    let _ = Format.printf "output of CVC3: valid" in
 		    true
 		  else if Str.string_match (Str.regexp ".*Invalid") res 0 then
+		    let _ = Format.printf "output of CVC3: invalid" in
 		    false
 		  else
-		    let _ = Format.printf "unknown error of CVC3: %s@." res in
+		    let _ = Format.printf "unknown error of CVC3: %s@," res in
 		    assert false
   in
   let _ = Global.log_end "is_valid" in
@@ -228,7 +230,7 @@ let checksat env p =
   let query = "CHECKSAT " ^ string_of_term env p ^ ";" in
 
   let q = "PUSH;"^types^query^"\nPOP;" in
-  let _ = if Global.debug > 0 && Flag.print_cvc3 then Format.fprintf Format.std_formatter "checksat: %s@." q in
+  let _ = if Global.debug > 0 && Flag.print_cvc3 then Format.fprintf Format.std_formatter "checksat: %s@," q in
 
   let () = Format.fprintf fm "%s@?" q in
   let s = input_line cin in
@@ -237,7 +239,7 @@ let checksat env p =
     else if Str.string_match (Str.regexp ".*Unsatisfiable") s 0 then
       false
     else begin
-      Format.printf "CVC3 reported an error@."; assert false
+      Format.printf "CVC3 reported an error@,"; assert false
     end
 *)
 
@@ -253,7 +255,7 @@ let solve t =
     "COUNTERMODEL;" ^
     "POP;\n"
   in
-  let _ = Global.log (fun () -> Format.printf "input to cvc3: %s@," inp) in
+  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
   let _ = Format.fprintf fm "%s@?" inp in
   let _ = close_out cout in
   let rec aux () =
@@ -278,21 +280,21 @@ let solve t =
 		    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
   in
 (*
-  let _ = List.iter (fun s -> Format.printf "%s@." s) ss in
+  let _ = List.iter (fun s -> Format.printf "%s@," s) ss in
 *)
   let res =
 		  List.map
 		    (fun s ->
 		(*
-		      let _ = Format.printf "?: %s@." s in
+		      let _ = Format.printf "?: %s@," s in
 		*)
 		      let _, s = String.split s "_" in
 		(*
-		      let _ = Format.printf "%s@." s in
+		      let _ = Format.printf "%s@," s in
 		*)
 		      let c, n = String.split s " = " in
 		(*
-		      let _ = Format.printf "%s, %s@." c n in
+		      let _ = Format.printf "%s, %s@," c n in
 		*)
 		      Var.parse c, int_of_string n)
 		    ss
@@ -420,7 +422,7 @@ let rec string_of_term_bv t =
   | Term.Exists(_, env, t), [] ->
       assert false
   | _, _ ->
-      let _ = Format.printf "%a@." Term.pr t in
+      let _ = Format.printf "%a@," Term.pr t in
       assert false
 
 exception Unsatisfiable
@@ -443,7 +445,7 @@ let solve_bv t =
 				    "COUNTERMODEL;" ^
 				    "POP;\n"
 				  in
-				  let _ = Global.log (fun () -> Format.printf "CVC3 Input: %s@," inp) in
+				  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
 				  let _ =
 		      let old_bit = !rbit in
 		      let _ = rbit := bit in
@@ -452,7 +454,7 @@ let solve_bv t =
 		      rbit := old_bit
 		    in
 	     let s = input_line cin in
-      let _ = Global.log (fun () -> Format.printf "CVC3 Output: %s@." s) in
+      let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
 				  if Str.string_match (Str.regexp ".*Unsatisfiable.") s 0 then
 								let _ = close_in cin in
 								let _ =
@@ -464,7 +466,7 @@ let solve_bv t =
 						  let rec aux () =
 						    try
 						      let s = input_line cin in
-						      let _ = Global.log (fun () -> Format.printf "CVC3 Output: %s@," s) in
+						      let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
 						      if Str.string_match (Str.regexp ".*ASSERT") s 0 then
 						        let pos_begin = String.index s '(' + 1 in
 						        let pos_end = String.index s ')' in
