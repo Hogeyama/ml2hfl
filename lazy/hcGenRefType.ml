@@ -7,8 +7,8 @@ open HornClause
 (** Horn clauses generation for refinement type inference *)
 
 let related n1 n2 =
-  let tmp = Var.tlfc_of (Var.T(fst n1, snd n1, (*dummy*)-1)) in
-  Var.ancestor_of tmp n2
+  let tmp = CallId.tlfc_of (Var.T(fst n1, snd n1, (*dummy*)-1)) in
+  CallId.ancestor_of tmp n2
 let related_locs loc =
   let Loc(tr, _) = loc in
 		find_all
@@ -26,10 +26,10 @@ let cgen env etr =
         (match s with
           Trace.Call(y, guard) ->
             if Var.is_top (fst y) then
-              aux (insert_down loc (make y true (Formula.make_fes [] [guard]))) hcs etr
+              aux (insert_down loc (make y true (Fes.make [] [guard]))) hcs etr
             else if Var.is_pos (fst y) then
               let _ = assert (guard = Formula.ttrue) in
-              aux (insert_down loc (make y true (Formula.make_fes [] [guard]))) hcs etr
+              aux (insert_down loc (make y true (Fes.make [] [guard]))) hcs etr
             else if Var.is_neg (fst y) then
               let _ = assert (guard = Formula.ttrue) in
 		            let nd = get tr in
@@ -52,7 +52,7 @@ let cgen env etr =
 		                    None)
 		                xttys
 		            in
-		            let fes = Formula.make_fes xttys [] in
+		            let fes = Fes.make xttys [] in
 				          let hcs =
 				  								  let locs = related_locs loc (*(Loc(tr, left_of_path p))*) in
 						          let pres =
@@ -68,11 +68,11 @@ let cgen env etr =
 										              (children tr)))
 				                locs
 						          in
-		              let fes = Formula.band_fes (List.map (fun (Loc(tr, _)) -> (get tr).data) locs @ [fes]) in
+		              let fes = Fes.band (List.map (fun (Loc(tr, _)) -> (get tr).data) locs @ [fes]) in
 		              (Hc(Some(pred_of env pre), pres, fes))::hcs
 		            in
 		  		        let nd = get tr in
-				          aux (Loc(set tr { nd with data = Formula.band_fes [nd.data; fes] }, p)) hcs etr
+				          aux (Loc(set tr { nd with data = Fes.band [nd.data; fes] }, p)) hcs etr
             with Not_found ->
               if !Global.refine_function then
                 (* ToDo: need function type refinement *)
@@ -82,13 +82,13 @@ let cgen env etr =
         | Trace.Ret(x, t, ty) ->
             let _ = assert (SimType.is_base ty) in
             let xttys = if SimType.is_base ty && ty <> SimType.Unit(*sound???*) then [x, t, ty] else [] in
-            let fes = Formula.band_fes [(get tr).data; Formula.make_fes xttys []] in
+            let fes = Fes.band [(get tr).data; Fes.make xttys []] in
             let hcs = (Hc(Some(pred_of env x), [assert false], fes))::hcs in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(tr, p))) hcs etr
             else if Var.is_neg f then
-              aux (insert_down (Loc(tr, p)) (make (Var.fc_ref_of f) true (Formula.make_fes [] []))) hcs etr
+              aux (insert_down (Loc(tr, p)) (make (CallId.fc_ref_of f) true (Fes.make [] []))) hcs etr
             else assert false
         | Trace.Nop ->
             aux loc hcs etr
@@ -101,5 +101,5 @@ let cgen env etr =
   in
   match etr with
     Trace.Call(x, guard)::etr ->
-      aux (zipper (make x true (Formula.make_fes [] [guard]))) [] etr
+      aux (zipper (make x true (Fes.make [] [guard]))) [] etr
   | _ -> assert false

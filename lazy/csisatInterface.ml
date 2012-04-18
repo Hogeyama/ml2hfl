@@ -11,7 +11,7 @@ let csisat_false = CsisatAst.Application("false", [])
 
 let rec of_term t =
   match fun_args t with
-    Var(_, x), [] -> CsisatAst.Variable(Var.string_of x)
+    Var(_, x), [] -> CsisatAst.Variable(Var.print x)
   | Const(_, c), args -> of_term_aux c args
   | _ -> assert false
 and of_term_aux c args =
@@ -32,7 +32,7 @@ and of_term_aux c args =
 let ih = ref true
 let rec of_formula t =
   match fun_args t with
-    Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(Var.string_of x), csisat_true)(*???*)
+    Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(Var.print x), csisat_true)(*???*)
   | Const(_, c), args -> (if !ih then CsisatAstUtil.integer_heuristic else fun x -> x) (of_formula_aux c args)
   | _ -> assert false
 and of_formula_aux c args =

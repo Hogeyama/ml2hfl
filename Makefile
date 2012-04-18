@@ -64,15 +64,15 @@ MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli wr
 LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	util.cmo zipper.cmo \
 	global.cmo \
-	attr.cmo idnt.cmo const.cmo var.cmo simType.cmo \
-	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo formula.cmo fdef.cmo prog.cmo \
+	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
+	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo formula.cmo tsubst.cmo fes.cmo fdef.cmo prog.cmo \
 	apronInterface.cmo cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
 	farkas.cmo \
 	intType.cmo intTypeCheck.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
-	traceConstr.cmo tcGenIntType.cmo  tcGenRefType.cmo \
+	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo \
 	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo \
 	callTree.cmo hornClause.cmo hcGenRefType.cmo hcSolve.cmo \
 	verifier.cmo

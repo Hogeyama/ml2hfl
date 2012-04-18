@@ -33,7 +33,7 @@ let rec pr ppf tr =
   match tr with
     Node(nd, trs) ->
 				  let _ =
-						  Format.fprintf ppf "@[<v>%a" Var.pr_x_uid nd.name
+						  Format.fprintf ppf "@[<v>%a" CallId.pr nd.name
 				  in
 				  let _ =
 								let _ = Format.fprintf ppf "@,  @[<v>" in
@@ -43,7 +43,7 @@ let rec pr ppf tr =
             let _ =
 				          Util.iter3
 				            (fun t xttys tr ->
-														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Formula.eq_xtty xttys) in
+														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Tsubst.formula_of_elem xttys) in
                   let _ = if t <> Formula.ttrue then Format.fprintf ppf ", @,%a" Term.pr t in
                   Format.fprintf ppf ", @,%a" pr tr)
 				            (List.take (List.length trs) nd.constr)
@@ -51,7 +51,7 @@ let rec pr ppf tr =
 				            trs
             in
             if List.length trs + 1 = List.length nd.subst then
-              let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Formula.eq_xtty (List.last nd.subst)) in
+              let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Tsubst.formula_of_elem (List.last nd.subst)) in
 		            if List.last nd.constr <> Formula.ttrue then
 		              Format.fprintf ppf ", @,%a" Term.pr (List.last nd.constr)
         in
@@ -68,14 +68,14 @@ let rec pr ppf tr =
 								  id
 
 let get_min_unsat_prefix tr =
-  let rec aux (Formula.FES(xttys0, ts0)) tr =
+  let rec aux (Fes.FES(xttys0, ts0)) tr =
 		  match tr with
 		    Node(nd, trs) ->
-        let fes = Formula.make_fes xttys0 (nd.guard::ts0) in
+        let fes = Fes.make xttys0 (nd.guard::ts0) in
 (*
-        let _ = Format.printf "%a: %a@." Var.pr_x_uid nd.name Term.pr (Formula.bnot (Formula.formula_of_fes fes)) in
+        let _ = Format.printf "%a: %a@." CallId.pr nd.name Term.pr (Formula.bnot (Formula.formula_of fes)) in
 *)
-        if Cvc3Interface.is_valid (Formula.bnot (Formula.formula_of_fes (Formula.eqelim_fes (fun _ -> false) fes))) then
+        if Cvc3Interface.is_valid (Formula.bnot (Fes.formula_of (Fes.eqelim (fun _ -> false) fes))) then
           fes, make nd.name false nd.guard [] [], true
         else
 		        let rec aux_aux fes ts xttyss trs =
@@ -83,9 +83,9 @@ let get_min_unsat_prefix tr =
 		            [], [], [] ->
                 fes, [], false
             | [t], [xttys], [] ->
-                Formula.band_fes [fes; Formula.make_fes xttys [t]], [], false
+                Fes.band [fes; Fes.make xttys [t]], [], false
 		          | t::ts, xttys::xttyss, tr::trs ->
-						          let fes, tr, fail = aux (Formula.band_fes [fes; Formula.make_fes xttys [t]]) tr in
+						          let fes, tr, fail = aux (Fes.band [fes; Fes.make xttys [t]]) tr in
 				            if fail then
 				              fes, [tr], true
 				            else
@@ -104,7 +104,7 @@ let get_min_unsat_prefix tr =
             Node(nd, trs)),
           fail
   in
-  let _, tr, true = aux (Formula.make_fes [] [Formula.ttrue(*???*)]) tr in
+  let _, tr, true = aux (Fes.make [] [Formula.ttrue(*???*)]) tr in
   tr
 
 (** {6 Functions on trace zippers} *)
@@ -172,6 +172,6 @@ let rec right_of_path p =
 (** {6 Functions on trace nodes} *)
 
 let fes_of_nodes nds =
-  Formula.make_fes
+  Fes.make
     (Util.concat_map (fun nd -> List.concat nd.subst) nds)
     (Util.concat_map (fun nd -> nd.guard :: nd.constr) nds)

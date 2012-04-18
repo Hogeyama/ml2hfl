@@ -16,45 +16,45 @@ let solve_hc lbs ub fes ps =
   let _ =
     Global.log (fun () ->
       Format.printf "horn clause:@,  @[<v>%a@]@,"
-        (*(Util.pr_list pr "@,") (List.map2 (fun lb p -> Hc(Some(p), [], Formula.make_fes [] [lb])) lbs ps)*)
+        (*(Util.pr_list pr "@,") (List.map2 (fun lb p -> Hc(Some(p), [], Fes.make [] [lb])) lbs ps)*)
         pr_hc (ub, ps, fes))
   in
   let rec aux fes ps =
 				match ps with
 				  [] -> []
 				| (pid, xs)::ps ->
-		      let _ = Global.log (fun () -> Format.printf "finding a solution to %a@," Var.pr pid) in
         let ys = List.map (fun _ -> Var.new_var ()) xs in
+		      let _ = Global.log (fun () -> Format.printf "finding a solution to P[%a](%a)@," Var.pr pid (Util.pr_list Var.pr ",") ys) in
 				    let interp =
 				      let t1 =
 				        try
 				          let fes = lookup_lbs (pid, ys) lbs in
 				          let fes =
-								        let fes = Formula.make_fes [] (Formula.conjuncts (Formula.formula_of_fes fes)) in
-														  let fes = Formula.equantify_fes (fun x -> List.mem x ys) fes in
-														  let fes = Formula.eqelim_fes (fun x -> List.mem x ys) fes in
+								        let fes = Fes.make [] (Formula.conjuncts (Fes.formula_of fes)) in
+														  let fes = Fes.equantify (fun x -> List.mem x ys) fes in
+														  let fes = Fes.eqelim (fun x -> List.mem x ys) fes in
 				            fes
 				          in
-				          Formula.simplify (Formula.formula_of_fes fes)
+				          Formula.simplify (Fes.formula_of fes)
 				        with Not_found ->
 				          assert false
 				      in
 				      let t2 =
 				        let fes =
-				          Formula.band_fes
-						          (Formula.make_fes (List.map2 (fun x y -> x, Term.make_var y, SimType.Int(*???*)) xs ys) [Formula.bnot ub]::
+				          Fes.band
+						          (Fes.make (List.map2 (fun x y -> x, Term.make_var y, SimType.Int(*???*)) xs ys) [Formula.bnot ub]::
 				            fes::
 										      List.map
 										        (fun (pid, xs) -> lookup_lbs (pid, xs) lbs)
 										        ps)
 				        in
 				        let fes =
-						        let fes = Formula.make_fes [] (Formula.conjuncts (Formula.formula_of_fes fes)) in
-												  let fes = Formula.equantify_fes (fun x -> List.mem x ys) fes in
-												  let fes = Formula.eqelim_fes (fun x -> List.mem x ys) fes in
+						        let fes = Fes.make [] (Formula.conjuncts (Fes.formula_of fes)) in
+												  let fes = Fes.equantify (fun x -> List.mem x ys) fes in
+												  let fes = Fes.eqelim (fun x -> List.mem x ys) fes in
 				          fes
 				        in
-				        Formula.simplify (Formula.formula_of_fes fes)
+				        Formula.simplify (Fes.formula_of fes)
 				      in
 										if true (* true makes verification of file.ml too slow... why? *) then
 										  let xns, ts2 =
@@ -104,7 +104,7 @@ let solve_hc lbs ub fes ps =
 				    in
 				    let sol = pid, (ys, interp)	in
 				    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," pr_sol_elem sol) in
-								let fes = Formula.band_fes [Formula.make_fes (List.map2 (fun x y -> x, Term.make_var y, SimType.Int(*???*)) xs ys) [interp]; fes] in
+								let fes = Fes.band [Fes.make (List.map2 (fun x y -> x, Term.make_var y, SimType.Int(*???*)) xs ys) [interp]; fes] in
 				    sol :: aux fes ps
   in
   let res = aux fes ps in
@@ -171,10 +171,10 @@ let solve_aux lbs hcs =
                         Term.subst sub t)
                       (List.filter (fun (pid', _) -> pid = pid') sol))
             in
-            (if List.length ps = 1 && (let Formula.FES(xttys, ts) = fes in xttys = [] && ts = []) then
+            (if List.length ps = 1 && (let Fes.FES(xttys, ts) = fes in xttys = [] && ts = []) then
               (* ToDo: optimization *)
               ());
-            if Cvc3Interface.is_valid (Formula.imply (Formula.formula_of_fes fes) ub) then
+            if Cvc3Interface.is_valid (Formula.imply (Fes.formula_of fes) ub) then
               [](*remark1*)
             else if ps = [] then
               raise NoSolution

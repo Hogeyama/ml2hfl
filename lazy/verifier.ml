@@ -140,9 +140,10 @@ let infer_ref_types fs prog etrs =
       (* refinement type inference using Horn clauses *)
       let ctrs, hcss = List.split (List.map (HcGenRefType.cgen (Prog.type_of prog)) etrs) in
       let hcs = List.concat hcss in
-      let hcs = if !Global.inline then HornClause.inline fs hcs else hcs in
       let _ = Global.log (fun () -> Format.printf "call trees:@,  @[<v>%a@]@," (Util.pr_list CallTree.pr "@,") ctrs) in
       let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,") hcs) in
+      let hcs = if !Global.inline then HornClause.inline fs hcs else hcs in
+      let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,") hcs) in
       let hcs =
 						  if Util.concat_map HornClause.coefficients hcs = [] then
 						    hcs

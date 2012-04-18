@@ -20,12 +20,12 @@ let subst_fixed_pred sub (x, xs) =
 
 (** Horn clause *)
 
-type t = Hc of pred option * pred list * Formula.fes
+type t = Hc of pred option * pred list * Fes.t
 
 let pr ppf (Hc(popt, ps, fes)) =
 		let _ = Format.fprintf ppf "@[<hov>" in
 		let _ = if ps <> [] then Format.fprintf ppf "%a,@ " (Util.pr_list pr_pred ",@ ") ps in
-		let _ = Format.fprintf ppf "%a@ " Formula.pr_fes fes in
+		let _ = Format.fprintf ppf "%a@ " Fes.pr fes in
   match popt with
     None ->
       Format.fprintf ppf "|- bot@]"
@@ -35,7 +35,7 @@ let pr ppf (Hc(popt, ps, fes)) =
 let pr_hc ppf (ub, ps, fes) =
 		let _ = Format.fprintf ppf "@[<hov>" in
 		let _ = if ps <> [] then Format.fprintf ppf "%a,@ " (Util.pr_list pr_pred ",@ ") ps in
-		let _ = Format.fprintf ppf "%a@ " Formula.pr_fes fes in
+		let _ = Format.fprintf ppf "%a@ " Fes.pr fes in
   Format.fprintf ppf "|- %a@]" Term.pr ub
 
 let pred_of env x =
@@ -43,19 +43,52 @@ let pred_of env x =
 
 (** require: variables in ps do not occur in the domain of sub *)
 let subst sub (Hc(popt, ps, fes)) =
-  Hc(popt, ps, Formula.subst_fes sub fes)
+  Hc(popt, ps, Fes.subst sub fes)
 
-let coefficients (Hc(popt, ps, fes)) = Formula.coefficients_fes fes
+let coefficients (Hc(popt, ps, fes)) = Fes.coefficients fes
 
 let lookup_hcs (pid, xs) hcs =
 		let Hc(Some(_, ys), ps, fes) = List.find (function Hc(Some(pid', _), _, _) -> pid = pid' | _ -> false) hcs in
-		let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Util.concat_map fvs_pred ps @ Formula.fvs_fes fes)) in
+		let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Util.concat_map fvs_pred ps @ Fes.fvs fes)) in
 		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
   let ps = List.map (subst_pred (fun x -> List.assoc x sub)) ps in
-		let fes = Formula.subst_fes (fun x -> List.assoc x sub) fes in
+		let fes = Fes.subst (fun x -> List.assoc x sub) fes in
 		let sub = List.map2 (fun y x -> y, Term.make_var x) ys xs in
 		List.map (subst_pred (fun x -> List.assoc x sub)) ps,
-		Formula.subst_fes (fun x -> List.assoc x sub) fes
+		Fes.subst (fun x -> List.assoc x sub) fes
+
+let eqelim (Hc(popt, ps, Fes.FES(xttys, ts))) =
+		let bvs = match popt with None -> [] | Some(_, xs) -> xs in
+
+		let sub1, xttys =
+    List.partition
+      (function
+        ((x, (Term.Var(_, _) as t), _) as xtty) ->
+          not (List.mem x bvs)
+      | xtty -> false)
+      xttys
+  in
+
+		let sub2, xttys =
+    let dom = Tsubst.dom sub1 in
+    Util.partition_map
+      (function
+        ((x, (Term.Var(_, y)), ty) as xtty) ->
+          if not (List.mem y bvs) && not (List.mem y dom) then
+            `L(y, Term.make_var x, ty)
+          else
+            `R(xtty)
+      | xtty -> `R(xtty))
+      xttys
+  in
+  let sub, ts' = Tsubst.elim_duplicate (sub1 @ sub2) in
+  (* ToDo: check whether sub is cyclic *)
+  let ps = List.unique (List.map (subst_fixed_pred (Tsubst.fun_of sub)) ps) in
+  let fes = Fes.subst_fixed (Tsubst.fun_of sub) (Fes.make xttys (ts @ ts')) in
+  Hc(popt, ps, Fes.simplify fes)
+
+
+
 
 let subst_hcs hcs (Hc(popt, ps, fes) as hc) =
   let _ = Global.log_begin "subst_hcs" in
@@ -66,71 +99,40 @@ let subst_hcs hcs (Hc(popt, ps, fes) as hc) =
 						  (List.map
 						    (fun (pid, xs) ->
             try
+								      let res = lookup_hcs (pid, xs) hcs in
               let _ = Global.log (fun () -> Format.printf "%a is being substituted@," Var.pr pid) in
-								      lookup_hcs (pid, xs) hcs
+              res
             with Not_found ->
-              [pid, xs], Formula.make_fes [] [])
+              [pid, xs], Fes.make [] [])
 						    ps)
     in
 		  let fess = fes::fess in
-    let xttyss, tss = List.split (List.map (fun (Formula.FES(xttys, ts)) -> xttys, ts) fess) in
+    let xttyss, tss = List.split (List.map (fun (Fes.FES(xttys, ts)) -> xttys, ts) fess) in
     let xttys = List.flatten xttyss in
     let ts = List.flatten tss in
-    List.flatten pss, Formula.make_fes xttys ts
+    List.flatten pss, Fes.make xttys ts
   in
 
   let fes =
     let _ = Global.log_begin "simplifying formula" in
-    let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Formula.pr_fes fes) in
+    let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Fes.pr fes) in
 
-    let fes = Formula.elim_duplicate_fes (*(List.unique (Util.concat_map snd ps))*) fes in
-    let fes = Formula.simplify_fes fes in
+    let fes = Fes.elim_duplicate (*(List.unique (Util.concat_map snd ps))*) fes in
+    let fes = Fes.simplify fes in
 
-    let fes = Formula.equantify_fes (fun x -> Var.is_coeff x) fes in
+    let fes = Fes.equantify (fun x -> Var.is_coeff x) fes in
 
     let bvs = (match popt with None -> [] | Some(_, xs) -> xs) @ Util.concat_map snd ps in
-    let fes = Formula.eqelim_fes (fun x -> List.mem x bvs || Var.is_coeff x) fes in
-    let fes = Formula.simplify_fes fes in
+    let fes = Fes.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) fes in
+    let fes = Fes.simplify fes in
 
     let fes = AtpInterface.qelim_fes bvs fes in
-    let fes = Formula.simplify_fes fes in
-    let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Formula.pr_fes fes) in
+    let fes = Fes.simplify fes in
+    let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Fes.pr fes) in
     let _ = Global.log_end "simplifying formula" in
     fes
   in
-  let ps, fes =
-		  let Formula.FES(xttys, ts) = fes in
-		  let bvs = match popt with None -> [] | Some(_, xs) -> xs in
-		  let sub1, xttys =
-      Util.partition_map
-        (function
-          ((x, (Term.Var(_, _) as t), _) as xtty) ->
-            if not (List.mem x bvs) then
-              `L(x, t)
-            else
-              `R(xtty)
-        | xtty -> `R(xtty))
-        xttys
-    in
-		  let sub2, xttys =
-      Util.partition_map
-        (function
-          ((x, (Term.Var(_, y)), _) as xtty) ->
-            if not (List.mem y bvs) && not (List.mem_assoc y sub1) then
-              `L(y, Term.make_var x)
-            else
-              `R(xtty)
-        | xtty -> `R(xtty))
-        xttys
-    in
-    let sub = sub1 @ sub2 in
-    (* ToDo: check whether sub is cyclic *)
-		  let fes = Formula.make_fes xttys ts in
-    List.unique (List.map (subst_fixed_pred (fun x -> List.assoc x sub)) ps),
-    let fes = Formula.subst_fixed_fes (fun x -> List.assoc x sub) fes in
-    Formula.simplify_fes fes
-  in
-  let hc = Hc(popt, ps, fes) in
+  let hc = eqelim (Hc(popt, ps, fes)) in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr hc) in
   let _ = Global.log_end "subst_hcs" in
   hc
@@ -142,7 +144,7 @@ let inline fs hcs =
       (function Hc(Some(pid, _), _, _) ->
         List.exists
           (fun f ->
-            let Var.V(id), _ = Var.tlfc_of pid in
+            let Var.V(id), _ = CallId.tlfc_of pid in
             Idnt.string_of id = f)
           fs
       | _ -> false)
@@ -163,11 +165,11 @@ let inline fs hcs =
 
 let lookup_lbs (pid, xs) lbs =
 		let ys, fes = List.assoc pid lbs in
-		let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Formula.fvs_fes fes)) in
+		let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Fes.fvs fes)) in
 		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-		let fes = Formula.subst_fes (fun x -> List.assoc x sub) fes in
+		let fes = Fes.subst (fun x -> List.assoc x sub) fes in
 		let sub = List.map2 (fun y x -> y, Term.make_var x) ys xs in
-		Formula.subst_fes (fun x -> List.assoc x sub) fes
+		Fes.subst (fun x -> List.assoc x sub) fes
 
 let subst_lbs lbs (Hc(popt, ps, fes)) =
   let _ = Global.log_begin "subst_lbs" in
@@ -178,34 +180,34 @@ let subst_lbs lbs (Hc(popt, ps, fes)) =
 		      (fun (pid, xs) -> lookup_lbs (pid, xs) lbs)
 		      ps
 		  in
-    let xttyss, tss = List.split (List.map (fun (Formula.FES(xttys, ts)) -> xttys, ts) fess) in
+    let xttyss, tss = List.split (List.map (fun (Fes.FES(xttys, ts)) -> xttys, ts) fess) in
     let xttys = List.flatten xttyss in
     let ts = List.flatten tss in
-    Formula.make_fes xttys ts
+    Fes.make xttys ts
   in
 
-  let _ = Global.log (fun () -> Format.printf "original: %a@," Formula.pr_fes fes) in
+  let _ = Global.log (fun () -> Format.printf "original: %a@," Fes.pr fes) in
   let fes =
-    let fes = Formula.elim_duplicate_fes (*(List.unique (Util.concat_map snd ps))*) fes in
-    let fes = Formula.simplify_fes fes in
+    let fes = Fes.elim_duplicate (*(List.unique (Util.concat_map snd ps))*) fes in
+    let fes = Fes.simplify fes in
 
-    let fes = Formula.equantify_fes (fun x -> Var.is_coeff x) fes in
+    let fes = Fes.equantify (fun x -> Var.is_coeff x) fes in
 
     let bvs = match popt with None -> [] | Some(_, xs) -> xs in
-    let fes = Formula.eqelim_fes (fun x -> List.mem x bvs || Var.is_coeff x) fes in
-    let fes = Formula.simplify_fes fes in
-    let _ = Global.log (fun () -> Format.printf "simplified:@,  @[<v>%a@]@," Formula.pr_fes fes) in
+    let fes = Fes.eqelim (fun x -> List.mem x bvs || Var.is_coeff x) fes in
+    let fes = Fes.simplify fes in
+    let _ = Global.log (fun () -> Format.printf "simplified:@,  @[<v>%a@]@," Fes.pr fes) in
 
     let fes = AtpInterface.qelim_fes bvs fes in
-    let fes = Formula.simplify_fes fes in
-    let _ = Global.log (fun () -> Format.printf "quantifier eliminated:@,  @[<v>%a@]@," Formula.pr_fes fes) in
+    let fes = Fes.simplify fes in
+    let _ = Global.log (fun () -> Format.printf "quantifier eliminated:@,  @[<v>%a@]@," Fes.pr fes) in
     fes
   in
   let _ = Global.log_end "subst_lbs" in
   Hc(popt, [], fes)
 
 let pr_lb ppf (pid, (xs, fes)) =
-  Format.fprintf ppf "@[<v>%a =@ %a@]" pr_pred (pid, xs) Formula.pr_fes fes
+  Format.fprintf ppf "@[<v>%a =@ %a@]" pr_pred (pid, xs) Fes.pr fes
 
 let pr_lbs pps lbs =
   Format.printf "@[<v>%a@]" (Util.pr_list pr_lb "@,") lbs
@@ -255,7 +257,7 @@ let formula_of_forward hcs =
 		      fes)
 		    hcs
   in
-  Formula.simplify (Formula.bor (List.map Formula.formula_of_fes fess))
+  Formula.simplify (Formula.bor (List.map Fes.formula_of fess))
 
 
 let formula_of_backward hcs =
@@ -275,7 +277,7 @@ let formula_of_backward hcs =
       (List.map
         (fun (Hc(None, ps, fes)) ->
           if ps = [] then
-            Formula.formula_of_fes fes
+            Fes.formula_of fes
           else
             let _ = Format.printf "%a@." pr (Hc(None, ps, fes)) in
             assert false)
@@ -283,11 +285,11 @@ let formula_of_backward hcs =
 
 
 
-(** @deprecated *)
+(** @deprecated ?? *)
 let alpha (Hc(popt, ps, fes)) =
   let bvs = List.unique (match popt with None -> [] | Some(_, xs) -> xs) in
-  let fvs = Util.diff (List.unique (Util.concat_map (fun (_, xs) -> xs) ps @ Formula.fvs_fes fes)) bvs in
+  let fvs = Util.diff (List.unique (Util.concat_map (fun (_, xs) -> xs) ps @ Fes.fvs fes)) bvs in
   let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
   Hc(popt,
     List.map (subst_pred (fun x -> List.assoc x sub)) ps,
-    Formula.subst_fes (fun x -> List.assoc x sub) fes)
+    Fes.subst (fun x -> List.assoc x sub) fes)

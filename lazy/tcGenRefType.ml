@@ -42,7 +42,7 @@ let cgen etr =
               aux (up (Loc(set tr nd', p))) etr
             else if Var.is_neg f then (* changed *)
               if true then
-                aux (insert_down (Loc(set tr nd', p)) (make (Var.fc_ref_of f) true Formula.ttrue [] [])) etr
+                aux (insert_down (Loc(set tr nd', p)) (make (CallId.fc_ref_of f) true Formula.ttrue [] [])) etr
               else
                 aux (up (Loc(set tr nd', p))) etr
             else assert false

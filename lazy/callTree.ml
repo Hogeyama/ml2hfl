@@ -28,7 +28,7 @@ let pr ppf tr =
 		  match tr with
 		    Node(nd, trs) ->
         let _ = cnt := !cnt + 1 in
-						  let _ = Format.fprintf ppf "@[<v>%a" Var.pr_x_uid nd.name in
+						  let _ = Format.fprintf ppf "@[<v>%a" CallId.pr nd.name in
 						  let _ =
 								  if trs <> [] then
 		  								let _ = Format.fprintf ppf "@,  @[<v>" in
@@ -50,7 +50,7 @@ let pr ppf tr =
   ignore (List.init !cnt (fun _ -> Format.fprintf ppf "@]"))
 
 
-(** @deprecated *)
+(** @deprecated ?? *)
 let rec left_of_path p =
   match p with
     Top -> Top

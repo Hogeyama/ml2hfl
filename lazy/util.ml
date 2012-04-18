@@ -7,6 +7,30 @@ open ExtString
 
 exception NotImplemented of string
 
+(** {6 Functions on integers} *)
+
+(** ensure: never returns 0 *)
+let gcd ns =
+  let rec aux n1 n2 =
+    let _ =
+      if not (n1 >= 0 && n2 >= 0) then
+        let _ = Format.printf "%d, %d@." n1 n2 in
+        assert false
+    in
+    if n1 < n2 then
+      aux n2 n1
+    else if n2 = 0 then
+      let _ = assert (n1 <> 0) in
+      n1
+    else
+      aux n2 (n1 mod n2)
+  in
+  match List.filter (fun n -> n <> 0) ns with
+    [] ->
+      1(*invalid_arg "Util.gcd"*)
+  | n::ns ->
+      List.fold_left aux n ns
+
 (** {6 Functions on strings} *)
 
 let is_int s =
@@ -29,12 +53,6 @@ let snd3 (_, x, _) = x
 let trd3 (_, _, x) = x
 
 (** {6 Functions on lists} *)
-
-let rec unfold f seed =
-  match f seed with
-    None -> []
-  | Some(x, seed') ->
-      x :: unfold f seed'
 
 let rec init xs =
  match xs with
@@ -117,6 +135,21 @@ let partition_map p ys =
   in
   aux [] [] (List.rev ys)
 
+let rec filter_map2 p xs ys =
+  match xs, ys with
+    [], [] -> []
+  | x::xs', y::ys' ->
+      (match p x y with
+        Some(r) -> r :: (filter_map2 p xs' ys')
+      | None -> filter_map2 p xs' ys')
+  | _ -> assert false
+
+let rec unfold f seed =
+  match f seed with
+    None -> []
+  | Some(x, seed') ->
+      x :: unfold f seed'
+
 let map_left f xs =
   let rec aux ys xs =
     match xs with
@@ -124,6 +157,19 @@ let map_left f xs =
     | x::xs ->
         let y = f ys x xs in
         aux (ys @ [y]) xs
+  in
+  aux [] xs
+
+let filter_map_left f xs =
+  let rec aux ys xs =
+    match xs with
+      [] -> ys
+    | x::xs ->
+        (match f ys x xs with
+          None ->
+            aux ys xs
+        | Some(y) ->
+            aux (ys @ [y]) xs)
   in
   aux [] xs
 
@@ -157,18 +203,6 @@ let map_fold_right f xs z =
   in
   aux (List.rev xs) z []
 
-let filter_map_left f xs =
-  let rec aux ys xs =
-    match xs with
-      [] -> ys
-    | x::xs ->
-        (match f ys x xs with
-          None ->
-            aux ys xs
-        | Some(y) ->
-            aux (ys @ [y]) xs)
-  in
-  aux [] xs
 
 let rec ctx_of xs i =
   match xs with
@@ -184,6 +218,8 @@ let rec ctx_of xs i =
 
 let all_ctx_elem_of xs =
   List.mapi (fun i x -> ctx_of xs i, x) xs
+
+
 
 let rec is_prefix xs ys =
   match xs, ys with
@@ -216,15 +252,6 @@ let rec filter_map p xs =
       (match p x with
         Some(r) -> r :: (filter_map p xs')
       | None -> filter_map p xs')
-
-let rec filter_map2 p xs ys =
-  match xs, ys with
-    [], [] -> []
-  | x::xs', y::ys' ->
-      (match p x y with
-        Some(r) -> r :: (filter_map2 p xs' ys')
-      | None -> filter_map2 p xs' ys')
-  | _ -> assert false
 
 (** @deprecated use ExtList.List.split_nth *)
 let rec split_nth n xs =
@@ -306,6 +333,20 @@ let all_equiv p xs =
       true
   | x::xs ->
       List.for_all (fun x' -> p x x') xs
+
+(** @return a minimal subset of xs that satisfy p
+    require: p xs is satisfied *)
+let minimal p xs =
+  let rec aux xs ys =
+		  match xs with
+		    [] -> ys
+		  | x::xs' ->
+        if p (xs' @ ys) then
+          aux xs' ys
+        else
+          aux xs' (x::ys)
+  in
+  aux xs []
 
 (** {6 Functions on sets} *)
 
@@ -389,33 +430,8 @@ let maps n1 n2 =
   let yss = permutations n2 in
   List.map (fun ys -> List.combine xs ys) yss
 
-(** {6 Other functions} *)
 
-let rec fixed_point f eq x =
-  let x' = f x in
-  if eq x x' then x else fixed_point f eq x'
-
-(** ensure: never returns 0 *)
-let gcd ns =
-  let rec aux n1 n2 =
-    let _ =
-      if not (n1 >= 0 && n2 >= 0) then
-        let _ = Format.printf "%d, %d@." n1 n2 in
-        assert false
-    in
-    if n1 < n2 then
-      aux n2 n1
-    else if n2 = 0 then
-      let _ = assert (n1 <> 0) in
-      n1
-    else
-      aux n2 (n1 mod n2)
-  in
-  match List.filter (fun n -> n <> 0) ns with
-    [] ->
-      1(*invalid_arg "Util.gcd"*)
-  | n::ns ->
-      List.fold_left aux n ns
+(** {6 Functions on bitvectors} *)
 
 let bv_not bv =
   List.map (fun n -> if n = 0 then 1 else if n = 1 then 0 else assert false) bv
@@ -472,15 +488,9 @@ let int_of_bv bv =
     assert false
 
 
-(** require: p xs is satisfied *)
-let minimal p xs =
-  let rec aux xs ys =
-		  match xs with
-		    [] -> ys
-		  | x::xs' ->
-        if p (xs' @ ys) then
-          aux xs' ys
-        else
-          aux xs' (x::ys)
-  in
-  aux xs []
+
+(** {6 Other functions} *)
+
+let rec fixed_point f eq x =
+  let x' = f x in
+  if eq x x' then x else fixed_point f eq x'

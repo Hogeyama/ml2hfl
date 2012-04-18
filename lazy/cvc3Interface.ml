@@ -22,7 +22,7 @@ let close_cvc3 () =
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
 let string_of_var x =
-  String.map (fun c -> if c = '.' || c = '!' then '_' else c) (Var.string_of x)
+  String.map (fun c -> if c = '.' || c = '!' then '_' else c) (Var.print x)
 
 (* encoding unit as 0 *)
 let string_of_type ty =
@@ -501,7 +501,7 @@ let solve_bv t =
   res
 
 
-(** @deprecated *)
+(** @deprecated ?? *)
 let simplify_conjuncts ts =
   let ts = Formula.simplify_conjuncts ts in
   let aifs, ts = Util.partition_map (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t)) ts in

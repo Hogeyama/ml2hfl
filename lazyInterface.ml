@@ -64,7 +64,7 @@ let inv_const c =
 let rec inv_term t =
   match t with
     Term.Const(_, c) -> Const(inv_const c)
-  | Term.Var(_, x) -> Var(Var.string_of2 x)
+  | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, Term.App(_, t1, t2), t3) ->
       (match t1 with
         Term.Const(_, Const.NeqUnit) -> App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
@@ -126,16 +126,16 @@ let verify fs (*cexs*) prog =
 let rec inv_abst_type aty =
 		match aty with
     AbsType.Base(AbsType.Unit, x, ts) ->
-      let x = Var.string_of2 x in
+      let x = Var.string_of x in
       TBase(TUnit, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(AbsType.Bool, x, ts) ->
-      let x = Var.string_of2 x in
+      let x = Var.string_of x in
       TBase(TBool, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(AbsType.Int, x, ts) ->
-      let x = Var.string_of2 x in
+      let x = Var.string_of x in
       TBase(TInt, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(aty1, aty2) ->
-      let x = if AbsType.is_base aty1 then Var.string_of2 (AbsType.bv_of aty1) else "_dummy" in
+      let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
 
 
@@ -285,5 +285,5 @@ let insert_extra_param t =
 
 let instantiate_param (typs, fdefs, main as prog) =
   let _ = if !Verifier.ext_coeffs = [] then Verifier.init_coeffs (conv_prog prog) in
-  let map = List.map (fun (x, n) -> Var.string_of2 x, inv_term (Term.tint n)) !Verifier.ext_coeffs in
+  let map = List.map (fun (x, n) -> Var.string_of x, inv_term (Term.tint n)) !Verifier.ext_coeffs in
   (typs, List.map (fun (f, args, guard, events, body) -> (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body)) fdefs, main)

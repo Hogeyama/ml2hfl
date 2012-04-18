@@ -24,7 +24,7 @@ let linconstr_of env t =
   Apron.Linexpr1.set_array expr
     (Array.of_list
       (List.map
-        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.string_of x))
+        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.print x))
       nxs))
     (Some ((Apron.Coeff.s_of_int n)));
   let mexpr = Apron.Linexpr1.make env in
@@ -32,7 +32,7 @@ let linconstr_of env t =
   Apron.Linexpr1.set_array mexpr
     (Array.of_list
       (List.map
-        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.string_of x))
+        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.print x))
       nxs))
     (Some ((Apron.Coeff.s_of_int n)));
   match c with
@@ -124,7 +124,7 @@ let widen ts =
   Format.printf "@[<hov>widen_in: @[<hv>%a@]@ " (Util.pr_list Term.pr ",@ ") ts;
 
   let fvs = List.map
-    (fun x -> Apron.Var.of_string (Var.string_of x))
+    (fun x -> Apron.Var.of_string (Var.print x))
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in

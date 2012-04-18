@@ -18,7 +18,7 @@ let cgen etr =
               aux (insert_down loc (make y true g [] [])) etr
             else if Var.is_pos (fst y) then
               let _ = assert (g = Formula.ttrue) in
-              aux (down loc (Var.tlfc_of (fst y))) etr
+              aux (down loc (CallId.tlfc_of (fst y))) etr
             else if Var.is_neg (fst y) then
               let _ = assert (g = Formula.ttrue) in
 		            aux (up loc) etr
@@ -35,7 +35,7 @@ let cgen etr =
             if Var.is_pos f then
               aux (up (Loc(set tr nd', p))) etr
             else if Var.is_neg f then
-              aux (down (Loc(set tr nd', p)) (Var.tlfc_of f)) etr
+              aux (down (Loc(set tr nd', p)) (CallId.tlfc_of f)) etr
             else assert false
         | Trace.Nop ->
             aux loc etr
