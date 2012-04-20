@@ -105,6 +105,10 @@ let rec iter3 f xs ys zs =
       iter3 f xs' ys' zs'
   | _ -> assert false
 
+let flatten_split ps =
+  let ls, rs = List.split ps in
+  List.flatten ls, List.flatten rs
+
 let rec find_map f xs =
   match xs with
     [] -> raise Not_found

@@ -127,6 +127,19 @@ let refine_coeffs t =
   in
   Global.log_end "refine_coeffs"
 
+let infer_env prog sums fcs =
+  let env = RefType.of_summaries prog sums fcs in
+  let env' =
+    List.map
+      (fun (f, sty) ->
+        f, RefType.of_simple_type sty)
+      (List.find_all
+        (fun (f, sty) -> not (List.mem_assoc f env))
+        (List.map
+          (fun (f, sty) -> Var.make f, sty)
+          prog.Prog.types))
+  in
+  env @ env'
 
 let infer_ref_types fs prog etrs =
   let _ = Global.log_begin "infer_ref_types" in
@@ -163,7 +176,7 @@ let infer_ref_types fs prog etrs =
   in
   let _ = Global.log (fun () -> List.iter (fun (`P(x, t)) -> Format.printf "P[%a]: %a@," Var.pr x Term.pr t) sums) in
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
-  let res = HcSolve.infer_env prog sums fcs in
+  let res = infer_env prog sums fcs in
   let _ = Global.log_end "infer_ref_types" in
   res
 

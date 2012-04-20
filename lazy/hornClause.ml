@@ -48,14 +48,16 @@ let subst sub (Hc(popt, ps, fes)) =
 let coefficients (Hc(popt, ps, fes)) = Fes.coefficients fes
 
 let lookup_hcs (pid, xs) hcs =
-		let Hc(Some(_, ys), ps, fes) = List.find (function Hc(Some(pid', _), _, _) -> pid = pid' | _ -> false) hcs in
-		let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Util.concat_map fvs_pred ps @ Fes.fvs fes)) in
-		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-  let ps = List.map (subst_pred (fun x -> List.assoc x sub)) ps in
-		let fes = Fes.subst (fun x -> List.assoc x sub) fes in
-		let sub = List.map2 (fun y x -> y, Term.make_var x) ys xs in
-		List.map (subst_pred (fun x -> List.assoc x sub)) ps,
-		Fes.subst (fun x -> List.assoc x sub) fes
+		match List.find_all (function Hc(Some(pid', _), _, _) -> pid = pid' | _ -> false) hcs with
+    [Hc(Some(_, ys), ps, fes)] ->
+						let fvs = List.filter (fun x -> not (List.mem x ys)) (List.unique (Util.concat_map fvs_pred ps @ Fes.fvs fes)) in
+						let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
+				  let ps = List.map (subst_pred (fun x -> List.assoc x sub)) ps in
+						let fes = Fes.subst (fun x -> List.assoc x sub) fes in
+						let sub = List.map2 (fun y x -> y, Term.make_var x) ys xs in
+						List.map (subst_pred (fun x -> List.assoc x sub)) ps,
+						Fes.subst (fun x -> List.assoc x sub) fes
+  | [] -> raise Not_found
 
 let eqelim (Hc(popt, ps, Fes.FES(xttys, ts))) =
 		let bvs = match popt with None -> [] | Some(_, xs) -> xs in
@@ -293,3 +295,9 @@ let alpha (Hc(popt, ps, fes)) =
   Hc(popt,
     List.map (subst_pred (fun x -> List.assoc x sub)) ps,
     Fes.subst (fun x -> List.assoc x sub) fes)
+
+let get_lhs_pids hcs =
+  Util.concat_map
+    (fun (Hc(_, ps, _)) ->
+      List.map fst ps)
+    hcs
