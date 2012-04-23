@@ -10,7 +10,7 @@ SOURCES = enum.ml extList.ml extString.ml \
           trace.ml compTree.ml compTreeExpander.ml \
           traceConstr.ml tcGenIntType.ml tcGenRefType.ml \
           tcSolve.ml tcSolveIntType.ml tcSolveRefType.ml \
-          callTree.ml hornClause.ml hcGenRefType.ml hcSolve.ml \
+          callTree.ml pred.ml hornClause.ml hcGenRefType.ml hcSolve.ml \
           verifier.ml \
           main.ml
 DOC_FILES = enum.mli extList.mli extString.mli $(SOURCES)

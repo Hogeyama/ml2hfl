@@ -26,10 +26,10 @@ let cgen env etr =
         (match s with
           Trace.Call(y, guard) ->
             if Var.is_top (fst y) then
-              aux (insert_down loc (make y true (Fes.make [] [guard]))) hcs etr
+              aux (insert_down loc (make y true guard)) hcs etr
             else if Var.is_pos (fst y) then
               let _ = assert (guard = Formula.ttrue) in
-              aux (insert_down loc (make y true (Fes.make [] [guard]))) hcs etr
+              aux (insert_down loc (make y true guard)) hcs etr
             else if Var.is_neg (fst y) then
               let _ = assert (guard = Formula.ttrue) in
 		            let nd = get tr in
@@ -52,27 +52,26 @@ let cgen env etr =
 		                    None)
 		                xttys
 		            in
-		            let fes = Fes.make xttys [] in
 				          let hcs =
 				  								  let locs = related_locs loc (*(Loc(tr, left_of_path p))*) in
 						          let pres =
 				              Util.concat_map
 				                (fun (Loc(tr, _)) ->
-										            (try [pred_of env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
+										            (try [Pred.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
 										            (List.filter_map
 										              (fun tr ->
 										                match (get tr).ret with
 										                  None -> assert false
 										                | Some(x_uid) ->
-										                    (try Some(pred_of env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
+										                    (try Some(Pred.of_pid env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
 										              (children tr)))
 				                locs
 						          in
-		              let fes = Fes.band (List.map (fun (Loc(tr, _)) -> (get tr).data) locs @ [fes]) in
-		              (Hc(Some(pred_of env pre), pres, fes))::hcs
+		              let t = Formula.band (List.map (fun (Loc(tr, _)) -> (get tr).data) locs @ List.map Tsubst.formula_of_elem xttys) in
+		              (Hc(Some(Pred.of_pid_vars env pre), pres, t))::hcs
 		            in
 		  		        let nd = get tr in
-				          aux (Loc(set tr { nd with data = Fes.band [nd.data; fes] }, p)) hcs etr
+				          aux (Loc(set tr { nd with data = Formula.band (nd.data :: List.map Tsubst.formula_of_elem xttys) }, p)) hcs etr
             with Not_found ->
               if !Global.refine_function then
                 (* ToDo: need function type refinement *)
@@ -82,13 +81,13 @@ let cgen env etr =
         | Trace.Ret(x, t, ty) ->
             let _ = assert (SimType.is_base ty) in
             let xttys = if SimType.is_base ty && ty <> SimType.Unit(*sound???*) then [x, t, ty] else [] in
-            let fes = Fes.band [(get tr).data; Fes.make xttys []] in
-            let hcs = (Hc(Some(pred_of env x), [assert false], fes))::hcs in
+            let t = Formula.band ((get tr).data :: List.map Tsubst.formula_of_elem xttys) in
+            let hcs = (Hc(Some(Pred.of_pid_vars env x), [assert false], t))::hcs in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(tr, p))) hcs etr
             else if Var.is_neg f then
-              aux (insert_down (Loc(tr, p)) (make (CallId.fc_ref_of f) true (Fes.make [] []))) hcs etr
+              aux (insert_down (Loc(tr, p)) (make (CallId.fc_ref_of f) true Formula.ttrue)) hcs etr
             else assert false
         | Trace.Nop ->
             aux loc hcs etr
@@ -97,9 +96,9 @@ let cgen env etr =
             let nd = get tr in
             root (Loc(set tr { nd with closed = false }, path_set_open p)),
             (* assume that fail is NOT a proper subterm of the function definition *)
-            (Hc(None, (try [pred_of env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []), (get tr).data))::hcs)
+            (Hc(None, (try [Pred.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []), (get tr).data))::hcs)
   in
   match etr with
     Trace.Call(x, guard)::etr ->
-      aux (zipper (make x true (Fes.make [] [guard]))) [] etr
+      aux (zipper (make x true guard)) [] etr
   | _ -> assert false

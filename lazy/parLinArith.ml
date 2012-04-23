@@ -238,29 +238,26 @@ let term_of_aif (c, nxs, n) =
        sum ((try if int_of n < 0 then [LinArith.simplify (Term.minus n)] else [] with Not_found -> []) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint (-1)) then make_var x else Term.mul (Term.minus n) (make_var x)) nxs2)]
 
 
-let sub_of_aif p dom (c, nxs, n) =
+let xtty_of_aif p dom (c, nxs, n) =
 		if c = Const.EqInt then
-				(try
-						let nxs1, (n', x), nxs2 =
-						  Util.find_split
-						    (fun (n, x) ->
-						      not (p x) &&
-						      (Term.equiv n (tint 1) || Term.equiv n (tint (-1))))
-						    nxs
-						in
-      let t =
-								if int_of n' = 1 then
-										term_of (minus (nxs1 @ nxs2, n))
-								else if int_of n' = -1 then
-										term_of (nxs1 @ nxs2, n)
-								else
-										assert false
-      in
-      if Util.inter dom (fvs t) = [] (* ToDo: check whether substitution is acyclic instead *) then
-        [x, t, SimType.Int]
-      else
-        []
-				with Not_found ->
-						[])
+				let nxs1, (n', x), nxs2 =
+						Util.find_split
+						  (fun (n, x) ->
+						    not (p x) &&
+						    (Term.equiv n (tint 1) || Term.equiv n (tint (-1))))
+						  nxs
+				in
+    let t =
+						if int_of n' = 1 then
+								term_of (minus (nxs1 @ nxs2, n))
+						else if int_of n' = -1 then
+								term_of (nxs1 @ nxs2, n)
+						else
+								assert false
+    in
+    if Util.inter dom (fvs t) = [] (* ToDo: check whether substitution is acyclic instead *) then
+      x, t, SimType.Int
+    else
+      raise Not_found
 		else
-				[]
+				raise Not_found

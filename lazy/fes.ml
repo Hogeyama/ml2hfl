@@ -53,11 +53,11 @@ let subst_fixed sub (FES(xttys, ts)) =
 
 let fvs (FES(xttys, ts)) = Tsubst.fvs xttys @ Util.concat_map fvs ts
 
-let coefficients (FES(xttys, ts)) =
+let coeffs (FES(xttys, ts)) =
   Util.concat_map
-    (fun (x, t, _) -> (if Var.is_coeff x then [x] else []) @ coefficients t)
+    (fun (x, t, _) -> (if Var.is_coeff x then [x] else []) @ coeffs t)
     xttys @
-  Util.concat_map coefficients ts
+  Util.concat_map coeffs ts
 
 let simplify (FES(xttys, ts)) =
   let ts = Formula.conjuncts (Formula.simplify (Formula.band ts)) in
@@ -65,55 +65,6 @@ let simplify (FES(xttys, ts)) =
     make [] ts
   else
     make (List.map (fun (x, t, ty) -> x, LinArith.simplify t, ty) xttys) ts
-
-let elim_duplicate (FES(xttys, ts1)) =
-  let xttys, ts2 = Tsubst.elim_duplicate xttys in
-  make xttys (ts1 @ ts2)
-
-
-let rec nlfvs t =
-  match fun_args t with
-    Var(_, _), [] -> []
-  | Const(_, Const.Mul), [_; _] ->
-      (try
-        let _ = LinArith.of_term t in
-        []
-      with Invalid_argument _ ->
-        Term.fvs t(*???*))
-  | Const(_, Const.Div), [t1; t2] | Const(_, Const.Mod), [t1; t2] ->
-      assert false
-  | Const(_, c), ts ->
-      Util.concat_map nlfvs ts
-  | Call(_, _, _), [] | Ret(_, _, _, _), [] | Error(_), [] -> assert false
-  | Forall(_, env, t), [] | Exists(_, env, t), [] -> Util.diff (nlfvs t) (List.map fst env)
-
-
-let equantify p (FES(xttys, ts) as fes) =
-  let _ = Global.log_begin "equantify" in
-  let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," pr fes) in
-  let nlfvs = nlfvs (formula_of (FES(xttys, ts))) in
-  let rec aux ts xttys0 ts0 =
-    match ts with
-      [] -> xttys0, ts0
-    | t::ts' ->
-        let sub =
-          let dom = List.map Util.fst3 xttys0 in
-          let sub = Formula.sub_of p dom t in
-          List.filter (fun (x, _, _) -> not (List.mem x nlfvs) (*|| t is constant*)) sub
-        in
-        let xttys0, ts0 =
-          match sub with
-            [] -> xttys0, t::ts0
-          | [xtty] ->
-              xtty::xttys0, ts0
-        in
-        aux ts' xttys0 ts0
-  in
-  let xttys0, ts0 = aux ts xttys [] in
-  let fes = elim_duplicate (make xttys0 ts0) in
-  let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" pr fes) in
-  let _ = Global.log_end "equantify" in
-  fes
 
 
 (** apply explicit substitutions to variables x not satifying p
@@ -135,47 +86,4 @@ let eqelim p (FES(xttys, ts) as fes) =
 		  let _ = Global.log_end "eqelim" in
 		  fes
 
-let eqelim_conjuncts pid p fes =
-  let ts = Formula.conjuncts (formula_of fes) in
-  if true then
-		  let eqcs, ts =
-		    Util.partition_map
-		      (fun t ->
-		        match fun_args t with
-		          Const(_, Const.EqInt), [Var(_, x1); Var(_, x2)] ->
-              `L([x1; x2])
-		        | _ -> `R(t))
-		      ts
-		  in
-		  let eqcs =
-				  let rec aux eqcs1 eqcs2 =
-				    match eqcs2 with
-				      [] -> eqcs1
-				    | eqc2::eqcs2' ->
-				        let eqcs1' =
-				  								let flag = ref false in
-		            let eqcs = List.map (fun eqc1 -> if Util.inter eqc2 eqc1 <> [] then let _ = flag := true in List.unique (eqc1 @ eqc2) else eqc1) eqcs1 in
-				          if !flag then eqcs else eqc2 :: eqcs
-				        in
-				        aux eqcs1' eqcs2'
-				  in
-      Util.fixed_point (aux []) (fun eqcs1 eqcs2 -> List.length eqcs1 = List.length eqcs2) eqcs
-    in
-    let ts', sub =
-      Util.flatten_split
-		      (List.map
-		        (fun eqc ->
-		          let xs1, xs2 = List.partition p eqc in
-		          match xs1 with
-		            [] ->
-		              [], List.map (fun x -> x, Term.make_var (List.hd xs2), SimType.Int) (List.tl xs2)
-		          | x::xs ->
-		              let x, xs = if List.mem pid xs1 then pid, Util.diff xs1 [pid] else x, xs in
-		              List.map (fun x' -> Formula.eqInt (Term.make_var x) (Term.make_var x')) xs,
-		              List.map (fun x' -> x', Term.make_var x, SimType.Int) xs2)
-		        eqcs)
-    in
-    let ts = List.map (Term.subst (Tsubst.fun_of sub)) ts @ ts' in
-    make [] ((*Formula.simplify_conjuncts*) ts)
-  else
-				eqelim p (equantify p (make [] ts))
+(*				eqelim p (equantify p (make [] ts))*)

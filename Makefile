@@ -74,7 +74,7 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
 	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo \
 	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo \
-	callTree.cmo hornClause.cmo hcGenRefType.cmo hcSolve.cmo \
+	callTree.cmo pred.cmo hornClause.cmo hcGenRefType.cmo hcSolve.cmo \
 	verifier.cmo
 
 CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \

@@ -45,5 +45,5 @@ let is_base prog x =
     SimType.Fun(_, _) -> false
   | _ -> true
 
-let rec coefficients prog =
-  Util.concat_map Fdef.coefficients prog.fdefs
+let rec coeffs prog =
+  Util.concat_map Fdef.coeffs prog.fdefs

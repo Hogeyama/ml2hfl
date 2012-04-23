@@ -162,3 +162,20 @@ let rec simplify t =
   | _ ->
       let _ = Format.printf "not supported: %a@." Term.pr t in
       raise (Util.NotImplemented "LinArith.simplify")
+
+
+let rec nlfvs t =
+  match fun_args t with
+    Var(_, _), [] -> []
+  | Const(_, Const.Mul), [_; _] ->
+      (try
+        let _ = of_term t in
+        []
+      with Invalid_argument _ ->
+        fvs t(*???*))
+  | Const(_, Const.Div), [t1; t2] | Const(_, Const.Mod), [t1; t2] ->
+      assert false
+  | Const(_, c), ts ->
+      Util.concat_map nlfvs ts
+  | Call(_, _, _), [] | Ret(_, _, _, _), [] | Error(_), [] -> assert false
+  | Forall(_, env, t), [] | Exists(_, env, t), [] -> Util.diff (nlfvs t) (List.map fst env)

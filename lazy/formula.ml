@@ -352,6 +352,7 @@ let rec simplify t =
           try
             NonLinArith.term_of_aif (NonLinArith.aif_of t)
           with Invalid_argument _ ->
+            let _ = Format.printf "%a@," pr t in
             assert false)
   | Const(attr, Const.EqUnit), [t1; t2] ->
       if t1 = t2 then
@@ -813,22 +814,22 @@ let rec elim_minus t =
 
 
 
-let sub_of p dom t =
+let xtty_of p dom t =
 		try
-    ParLinArith.sub_of_aif p dom (ParLinArith.aif_of t)
+    ParLinArith.xtty_of_aif p dom (ParLinArith.aif_of t)
 		with Invalid_argument _ ->
 		  (match fun_args t with
 		    Const(_, Const.EqUnit), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      [x, t, SimType.Unit]
+		      x, t, SimType.Unit
 		  | Const(_, Const.EqUnit), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      [x, t, SimType.Unit]
+		      x, t, SimType.Unit
 		  | Const(_, Const.EqBool), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      [x, t, SimType.Bool]
+		      x, t, SimType.Bool
 		  | Const(_, Const.EqBool), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      [x, t, SimType.Bool]
+		      x, t, SimType.Bool
 		  | Var(_, x), []                    when not (p x) ->
-		      [x, ttrue, SimType.Bool]
+		      x, ttrue, SimType.Bool
 		  | Const(_, Const.Not), [Var(_, x)] when not (p x) ->
-		      [x, tfalse, SimType.Bool]
+		      x, tfalse, SimType.Bool
 		  | _ ->
-		      [])
+		      raise Not_found)

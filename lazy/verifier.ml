@@ -7,7 +7,7 @@ let ext_coeffs = ref ([] : (Var.t * int) list)
 let ext_constrs = ref ([] : Term.t list)
 
 let init_coeffs prog =
-		let cs = List.unique (Prog.coefficients prog) in
+		let cs = List.unique (Prog.coeffs prog) in
   let _ = Format.printf "parameters: %a@," (Util.pr_list Var.pr ",") cs in
 		ext_coeffs := List.map (fun c -> c, 0) cs
 
@@ -57,7 +57,7 @@ let solve_constrs () =
 					     if only_pos_coeffs then
 					       t
 					     else
-					       let ps = List.unique (Term.coefficients t) in
+					       let ps = List.unique (Term.coeffs t) in
 					       let ppps = List.map (fun (Var.C(id)) -> Var.C(id), Var.C(Idnt.make (Idnt.string_of id ^ "_pos")), Var.C(Idnt.make (Idnt.string_of id ^ "_neg"))) ps in
 					       let sub = List.map (fun (x, y, z) -> x, Term.sub (Term.make_var y) (Term.make_var z)) ppps in
 					       Term.subst (fun x -> List.assoc x sub) t
@@ -158,10 +158,10 @@ let infer_ref_types fs prog etrs =
       let hcs = if !Global.inline then HornClause.inline fs hcs else hcs in
       let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,") hcs) in
       let hcs =
-						  if Util.concat_map HornClause.coefficients hcs = [] then
+						  if Util.concat_map HornClause.coeffs hcs = [] then
 						    hcs
 						  else
-						    let t = HornClause.formula_of_backward hcs in
+						    let t = HcSolve.formula_of_backward hcs in
 						    let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
 						    let _ = refine_coeffs t in
 								  List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs
@@ -172,7 +172,7 @@ let infer_ref_types fs prog etrs =
           let _ = assert (List.length xs = List.length ys) in
           let sub = List.map2 (fun x y -> x, Term.make_var y) xs ys in
           `P(x, Term.subst (fun x -> List.assoc x sub) t))
-        (HcSolve.solve ctrs hcs)
+        (HcSolve.solve prog ctrs hcs)
   in
   let _ = Global.log (fun () -> List.iter (fun (`P(x, t)) -> Format.printf "P[%a]: %a@," Var.pr x Term.pr t) sums) in
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in

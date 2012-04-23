@@ -9,7 +9,7 @@ open ParLinArith
 let farkas t =
   let _ = Global.log_begin "farkas" in
   let _ = Global.log (fun () -> Format.printf "1:%a@," Term.pr t) in
-  let ps = List.unique (coefficients t) in
+  let ps = List.unique (coeffs t) in
   let t = Formula.simplify t in
   let t = if !Global.use_bit_vector then elim_eq_neq_int t else elim_neq_int t in
   let t = elim_eq_neq_boolean t in

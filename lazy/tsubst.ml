@@ -53,3 +53,92 @@ let elim_duplicate xttys =
 		      (Util.classify (fun (x1, _, _) (x2, _, _) -> x1 = x2) xttys))
   in
   List.flatten xttyss, List.flatten tss
+
+
+(** @param pids specifies the priority *)
+let extract_from pids p t =
+  let ts = Formula.conjuncts t in
+		let eqcs, ts =
+		  Util.partition_map
+		    (fun t ->
+		      match Term.fun_args t with
+		        Term.Const(_, Const.EqUnit), [Term.Var(_, x1); Term.Var(_, x2)] ->
+            `L([x1; x2], SimType.Unit)
+		      | Term.Const(_, Const.EqBool), [Term.Var(_, x1); Term.Var(_, x2)] ->
+            `L([x1; x2], SimType.Bool)
+		      | Term.Const(_, Const.EqInt), [Term.Var(_, x1); Term.Var(_, x2)] ->
+            `L([x1; x2], SimType.Int)
+		      | _ -> `R(t))
+		    ts
+		in
+		let eqcs =
+				let rec aux eqcs1 eqcs2 =
+				  match eqcs2 with
+				    [] -> eqcs1
+				  | eqc2::eqcs2' ->
+				      let eqcs1' =
+				  						let flag = ref false in
+		          let eqcs =
+              List.map
+                (fun eqc1 ->
+                  if Util.inter (fst eqc2) (fst eqc1) <> [] then
+                    let _ = assert (snd eqc1 = snd eqc2) in
+                    let _ = flag := true in
+                    List.unique (fst eqc1 @ fst eqc2), snd eqc1
+                  else
+                    eqc1)
+                eqcs1
+            in
+				        if !flag then eqcs else eqc2 :: eqcs
+				      in
+				      aux eqcs1' eqcs2'
+				in
+    Util.fixed_point (aux []) (fun eqcs1 eqcs2 -> List.length eqcs1 = List.length eqcs2) eqcs
+  in
+  let ts', sub =
+    Util.flatten_split
+		    (List.map
+		      (fun (eqc, ty) ->
+		        let xs1, xs2 = List.partition p eqc in
+		        match xs1 with
+		          [] ->
+		            [], List.map (fun x -> x, Term.make_var (List.hd xs2), ty) (List.tl xs2)
+		        | x::xs ->
+		            let x, xs =
+                try
+                  let pid = List.find (fun pid -> List.mem pid xs1) pids in
+                  pid , Util.diff xs1 [pid]
+                with Not_found -> x, xs
+              in
+		            List.map (fun x' -> Formula.eqInt (Term.make_var x) (Term.make_var x')) xs,
+		            List.map (fun x' -> x', Term.make_var x, ty) xs2)
+		      eqcs)
+  in
+  fun_of sub, Formula.simplify (Formula.band (ts @ ts'))
+
+(** may return a substitution of the form {x -> y, y -> z} *)
+let extract_from2 p ts =
+  let nlfvs = LinArith.nlfvs (Formula.band ts) in
+  let rec aux ts xttys0 ts0 =
+    match ts with
+      [] -> xttys0, ts0
+    | t::ts' ->
+        let xttys0, ts0 =
+          try
+		          let dom = List.map Util.fst3 xttys0 in
+		          let xtty = Formula.xtty_of p dom t in
+		          let xtty =
+				          if List.mem (Util.fst3 xtty) nlfvs (*|| t is constant*) then
+				            raise Not_found
+				          else
+				            xtty
+		          in
+		          xtty::xttys0, ts0
+          with Not_found ->
+            xttys0, t::ts0
+        in
+        aux ts' xttys0 ts0
+  in
+  let xttys0, ts0 = aux ts [] [] in
+  let xttys1, ts1 = elim_duplicate xttys0 in
+  xttys1, Formula.band (ts0 @ ts1)

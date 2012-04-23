@@ -19,5 +19,5 @@ let set_arity am fdef =
   { fdef with body = Term.set_arity am fdef.body}
 *)
 
-let rec coefficients fdef =
-  Term.coefficients fdef.guard @ Term.coefficients fdef.body
+let rec coeffs fdef =
+  Term.coeffs fdef.guard @ Term.coeffs fdef.body
