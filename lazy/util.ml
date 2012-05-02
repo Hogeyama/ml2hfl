@@ -164,6 +164,16 @@ let map_left f xs =
   in
   aux [] xs
 
+let map_left_right f xs =
+  let rec aux ls ys rs =
+    match rs with
+      [] -> ys
+    | x::rs ->
+        let y = f ls x rs in
+        aux (ls @ [x]) (ys @ [y]) rs
+  in
+  aux [] [] xs
+
 let filter_map_left f xs =
   let rec aux ys xs =
     match xs with

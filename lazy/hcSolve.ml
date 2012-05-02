@@ -51,29 +51,9 @@ let subst_lbs lbs (Hc(popt, ps, t)) =
     let ts = List.map (fun (pid, ts) -> lookup_lbs (pid, ts) lbs) ps in
     Formula.band (t :: ts)
   in
-
-  let t =
-    let _ = Global.log_begin "simplifying formula" in
-    let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in
-
-    let bvs = match popt with None -> [] | Some(_, xs) -> xs in
-
-    let sub, t =
-      Tsubst.extract_from
-        (match popt with None -> [] | Some(pid, _) -> [pid])
-        (fun x -> List.mem x bvs || Var.is_coeff x) t
-    in
-    let t = Term.subst sub t in
-(*
-    let t = Term.simplify (AtpInterface.qelim_fes (diff bvs (fvs ps)) t) in
-*)
-    let [], t = subst_formula (fun x -> List.mem x bvs || Var.is_coeff x) [] t in
-    let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr t) in
-    let _ = Global.log_end "simplifying formula" in
-    t
-  in
+  let hc = simplify (Hc(popt, [], t)) in
   let _ = Global.log_end "subst_lbs" in
-  Hc(popt, [], t)
+  hc
 
 
 
@@ -270,7 +250,7 @@ let solve prog ctrs hcs =
 
 let formula_of_forward hcs =
   let lbs = compute_lbs hcs in
-  let _ = Format.printf "lower bounds:@.  %a@." pr_sol lbs in
+  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," pr_sol lbs) in
   let hcs = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
   Formula.simplify
     (Formula.bor

@@ -513,6 +513,7 @@ and simplify_disjuncts ts =
 		            Some(ts))
 		        (List.map conjuncts ts))*)
 
+
 (** ToDo: first compute the fixed-point of sub *)
 let subst_fixed sub t =
   let _ = Global.log_begin "Formula.subst_fixed" in
@@ -719,6 +720,8 @@ let rec is_linear t =
   | Const(_, Const.Imply), [t1; t2]
   | Const(_, Const.Iff), [t1; t2] ->
       is_linear t1 && is_linear t2
+  | Const(_, Const.Int(_)), [] ->
+      true
   | Const(_, c), [_; _] when Const.is_ibrel c ->
       (try
         let _ = LinArith.aif_of t in

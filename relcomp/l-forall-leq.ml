@@ -1,6 +1,6 @@
 (* safe but untypable *)
 let rec loop (u:unit) = loop u
-let hd (len, l) = l 0
+(*let hd (len, l) = l 0*)
 let tl (len, l) = (len - 1, fun i -> l (i + 1))
 let nil = (0, fun i -> loop ())
 let cons a (len, l) = (len + 1, fun i -> if i = 0 then a else l (i - 1))

@@ -425,33 +425,31 @@ let rec string_of_term_bv t =
       let _ = Format.printf "%a@," Term.pr t in
       assert false
 
-exception Unsatisfiable
+exception Unknown
 
 let threshold = 2
 
 let solve_bv t =
   let _ = Global.log_begin "solve_bv" in
-  let rec solve_bv_aux bit =
-    if bit >= threshold then
-      raise Unsatisfiable
+  let rec solve_bv_aux () =
+    if !rbit > threshold then
+      raise Unknown
     else
 				  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
 				  let fm = Format.formatter_of_out_channel cout in
 				  let _ = cnt := !cnt + 1 in
-				  let inp =
-				    "PUSH;" ^
-				    (string_of_env_bv (infer t SimType.Bool)) ^ ";" ^
-				    "CHECKSAT " ^ fst (string_of_term_bv t) ^ ";" ^
-				    "COUNTERMODEL;" ^
-				    "POP;\n"
-				  in
-				  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
 				  let _ =
-		      let old_bit = !rbit in
-		      let _ = rbit := bit in
+        let _ = Global.log (fun () -> Format.printf "using %d bit@," !rbit) in
+						  let inp =
+						    "PUSH;" ^
+						    (string_of_env_bv (infer t SimType.Bool)) ^ ";" ^
+						    "CHECKSAT " ^ fst (string_of_term_bv t) ^ ";" ^
+						    "COUNTERMODEL;" ^
+						    "POP;\n"
+						  in
+						  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
 		      let _ = Format.fprintf fm "%s@?" inp in
-								let _ = close_out cout in
-		      rbit := old_bit
+								close_out cout
 		    in
 	     let s = input_line cin in
       let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
@@ -461,7 +459,8 @@ let solve_bv t =
 										match Unix.close_process (cin, cout) with
 										  Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 								in
-		      solve_bv_aux (bit + 1)
+        let _ = rbit := !rbit + 1 in
+		      solve_bv_aux ()
       else if Str.string_match (Str.regexp ".*Satisfiable.") s 0 then
 						  let rec aux () =
 						    try
@@ -496,7 +495,9 @@ let solve_bv t =
       else
         assert false
   in
-  let res = solve_bv_aux 1 in
+		let old_bit = !rbit in
+  let res = try solve_bv_aux () with Unknown -> rbit := old_bit; raise Unknown in
+		let _ = rbit := old_bit in
   let _ = Global.log_end "solve_bv" in
   res
 

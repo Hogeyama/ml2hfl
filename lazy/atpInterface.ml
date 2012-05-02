@@ -160,6 +160,19 @@ let real_qelim t =
 
 
 
+let simplify2 p t =
+  band
+		  (Util.map_left_right
+		    (fun ls t rs ->
+        let xs = fvs t in
+        let ys = Util.concat_map fvs (ls @ rs) in
+		      if List.for_all (fun x -> not (p x) && not (List.mem x ys)) xs then
+          try integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) xs) t) with
+          Util.NotImplemented _ -> t
+        else
+          t)
+		    (conjuncts t))
+
 
 let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
   let _ = Global.log_begin "qelim_fes" in

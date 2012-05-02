@@ -78,7 +78,7 @@ let solve_constrs () =
 										let _ = Format.printf "constraint on coefficients:@,  @[<v>%a@]@," Term.pr t' in
 					     try
 					       List.filter (fun (c, _) -> Var.is_coeff c) (Cvc3Interface.solve_bv t')
-					     with Cvc3Interface.Unsatisfiable ->
+					     with Cvc3Interface.Unknown ->
 					  					let t = Formula.elim_minus t in
 							  			let _ = Format.printf "constraint on coefficients:@,  @[<v>%a@]@," Term.pr t in
 					       List.filter (fun (c, _) -> Var.is_coeff c) (Cvc3Interface.solve_bv t)
@@ -100,11 +100,11 @@ let solve_constrs () =
 					     in
 					     let _ = assert (List.length pcs = List.length ncs) in
 	  		     List.map (fun (c, n) -> c, n - try List.assoc c ncs with Not_found -> assert false) pcs
-	     with Cvc3Interface.Unsatisfiable ->
+	     with Cvc3Interface.Unknown ->
 	       if only_pos_coeffs then
 	         solve_aux false
 	       else
-	         raise Cvc3Interface.Unsatisfiable
+	         raise Cvc3Interface.Unknown
 	   in
 	   solve_aux true
 
@@ -154,9 +154,9 @@ let infer_ref_types fs prog etrs =
       let ctrs, hcss = List.split (List.map (HcGenRefType.cgen (Prog.type_of prog)) etrs) in
       let hcs = List.concat hcss in
       let _ = Global.log (fun () -> Format.printf "call trees:@,  @[<v>%a@]@," (Util.pr_list CallTree.pr "@,") ctrs) in
-      let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,") hcs) in
+      let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
       let hcs = if !Global.inline then HornClause.inline fs hcs else hcs in
-      let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,") hcs) in
+      let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
       let hcs =
 						  if Util.concat_map HornClause.coeffs hcs = [] then
 						    hcs
