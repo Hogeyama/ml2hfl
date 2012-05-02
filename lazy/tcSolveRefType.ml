@@ -121,8 +121,8 @@ let rec prune_tree pred (Node(nd, trs)) =
     None
   else
     let trs = List.map (prune_tree pred) trs in
-    let [ts1; ts2] = Util.split_multiple [List.length trs] nd.constr in
-    let [xttyss1; xttyss2] = Util.split_multiple [List.length trs] nd.subst in
+    let [ts1; ts2] = Util.split_at [List.length trs] nd.constr in
+    let [xttyss1; xttyss2] = Util.split_at [List.length trs] nd.subst in
     let res, xttys =
       List.fold_left
        (fun (res, xttys1) (t, xttys2, tr) ->
@@ -146,10 +146,10 @@ let rec prune_path pred p =
       let trs1 = List.map (prune_tree pred) trs1 in
       let trs2 = List.map (prune_tree pred) trs2 in
       let [ts1; [t2]; ts2; ts3] =
-        Util.split_multiple [List.length trs1; 1; List.length trs2] nd.constr
+        Util.split_at [List.length trs1; 1; List.length trs2] nd.constr
       in
       let [xttyss1; [xttys1]; xttyss2; xttyss3] =
-        Util.split_multiple [List.length trs1; 1; List.length trs2] nd.subst
+        Util.split_at [List.length trs1; 1; List.length trs2] nd.subst
       in
       let (ts1, xttyss1, trs1), xttys1' =
 				    let res, xttys =

@@ -87,29 +87,57 @@ let simplify (Hc(popt, ps, t)) =
     let _ = Global.log_end "simplifying formula" in
     List.unique ps, t
   in
-  let ps =
-    let fvs = Term.fvs t in
-    let svs = List.unique (List.flatten (Util.map_left_right (fun lps p rps -> Util.diff (Pred.fvs p) (Util.concat_map Pred.fvs (lps @ rps) @ fvs @ bvs)) ps)) in
-				let _ = Format.printf "svs: %a@," (Util.pr_list Var.pr ",") svs in
-    let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
-    let rec aux ls rs =
-      match rs with
-        [] -> ls
-      | r::rs ->
-          let mat (_, ts1) (_, ts2) =
-            List.for_all2
-              (fun t1 t2 ->
-                t1 = t2 ||
-                (match t1 with Term.Var(_, x) -> List.mem x svs | _ -> false))
-              ts1 ts2
-          in
-          if List.exists (fun r' -> mat r r') (ls @ rs) then
-            aux ls rs
-          else
-            aux (r::ls) rs
+  let ps, t =
+    let xttys =
+      let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
+      List.unique
+		      (Util.concat_map
+		        (fun ps ->
+            List.flatten
+				          (Util.multiply_list
+				            (fun (_, ts1) (_, ts2) ->
+				              Util.concat_map
+				                (fun (t1, t2) ->
+				                  match t1 with
+				                    Term.Var(_, x) when not (List.mem x bvs) && t1 <> t2 ->
+		                        [x, t2, SimType.Int(*???*)]
+				                  | _ -> [])
+				                (List.combine ts1 ts2))
+				            ps ps))
+		        pss)
     in
-    let pss = List.map (fun ps -> aux [] ps) pss in
-    List.flatten pss
+    let _ = Global.log (fun () -> Format.printf "xttys: %a@," Tsubst.pr xttys) in
+    let xs = List.unique (List.map Util.fst3 xttys) in
+    let rec aux ps t xss =
+      match xss with
+        [] ->
+          ps, t
+      | xs::xss' ->
+          let xttyss = if xs = [] then [] else Util.multiply_list_list (fun xttys1 xttys2 -> xttys1 @ xttys2) (List.map (fun x -> List.filter_map (fun (x', t, ty) -> if x = x' then Some([x, t, ty]) else None) xttys) xs) in
+          let xttyss = List.filter (fun xttys -> Util.inter (List.map Util.fst3 xttys) (Util.concat_map (fun (_, t, _) -> Term.fvs t) xttys) = []) xttyss in
+          if xttyss = [] then
+            aux ps t xss'
+          else
+		          let ts = Formula.conjuncts t in
+            let ps1, ps2 = List.partition (fun p -> Util.inter (Pred.fvs p) xs <> []) ps in
+            let ts1, ts2 = List.partition (fun t -> Util.inter (Term.fvs t) xs <> []) ts in
+            (try
+              let ps, t =
+		              Util.find_map
+																  (fun xttys ->
+                    let ps1 = List.map (Pred.subst (Tsubst.fun_of xttys)) ps1 in
+                    let ts1 = List.map (Term.subst (Tsubst.fun_of xttys)) ts1 in
+                    if Util.subset ps1 ps2 && Util.subset ts1 ts2 then
+                      ps2, Formula.band ts2
+                    else
+                      raise Not_found)
+		                xttyss
+              in
+              aux ps t (List.filter (fun xs' -> Util.inter xs' xs = []) xss')
+            with Not_found ->
+              aux ps t xss')
+    in
+    aux ps t (List.sort ~cmp:(fun xs ys -> List.length xs - List.length ys) (Util.power xs))
   in
   Hc(popt, ps, t)
 

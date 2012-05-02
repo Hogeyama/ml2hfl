@@ -96,7 +96,7 @@ let extract_from pids p t =
     Util.fixed_point (aux []) (fun eqcs1 eqcs2 -> List.length eqcs1 = List.length eqcs2) eqcs
   in
   let ts', sub =
-    Util.flatten_split
+    Util.flatten_unzip
 		    (List.map
 		      (fun (eqc, ty) ->
 		        let xs1, xs2 = List.partition p eqc in

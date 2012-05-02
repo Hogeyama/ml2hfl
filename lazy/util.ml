@@ -54,6 +54,36 @@ let trd3 (_, _, x) = x
 
 (** {6 Functions on lists} *)
 
+(** {5 Iterating lists} *)
+
+let rec pr_list epr sep ppf xs =
+  match xs with
+    [] ->
+      ()
+  | [x] ->
+      Format.fprintf ppf "%a" epr x
+  | x::xs' ->
+      Format.fprintf
+        ppf
+        "%a%a%a"
+        epr x
+        (fun ppf sep -> Format.fprintf ppf sep) sep
+        (pr_list epr sep) xs'
+
+let rec iter3 f xs ys zs =
+  match xs, ys, zs with
+    [], [], [] ->
+      ()
+  | x::xs', y::ys', z::zs' ->
+      let () = f x y z in
+      iter3 f xs' ys' zs'
+  | _ -> assert false
+
+(** {5 Querying lists} *)
+
+(** @param xs
+    @require xs is not empty
+    @return a list obtained from xs by dropping the last element *)
 let rec init xs =
  match xs with
    [] -> assert false
@@ -72,13 +102,59 @@ let filteri p xs =
   in
   aux 0 xs
 
-let rec map3 f xs ys zs =
-  match xs, ys, zs with
-    [], [], [] ->
-      []
-  | x::xs', y::ys', z::zs' ->
-      f x y z::map3 f xs' ys' zs'
-  | _ -> assert false
+(** nonemp_prefixes \[1;2;3\] = \[\[1\]; \[1; 2\]; \[1; 2; 3\]\] *)
+let nonemp_prefixes ts =
+  let _, tss = List.fold_left
+    (fun (ts, tss) t ->
+      ts @ [t], tss @ [ts @ [t]])
+    ([], [])
+    ts
+  in
+  tss
+
+let rec ctx_of xs i =
+  match xs with
+    [] -> assert false
+  | x::xs' ->
+      if i = 0 then
+        fun ys -> ys @ xs'
+      else if i > 0 then
+        let ctx = ctx_of xs' (i - 1) in
+        fun ys -> x::ctx ys
+      else
+        assert false
+
+let all_ctx_elem_of xs =
+  List.mapi (fun i x -> ctx_of xs i, x) xs
+
+let rec is_prefix xs ys =
+  match xs, ys with
+    [], _ -> true
+  | x::xs', y::ys' -> x = y && is_prefix xs' ys'
+  | _, _ -> false
+
+let all_equiv p xs =
+  match xs with
+    [] ->
+      true
+  | x::xs ->
+      List.for_all (fun x' -> p x x') xs
+
+(** @return a minimal subset of xs that satisfy p
+    require: p xs is satisfied *)
+let minimal p xs =
+  let rec aux xs ys =
+		  match xs with
+		    [] -> ys
+		  | x::xs' ->
+        if p (xs' @ ys) then
+          aux xs' ys
+        else
+          aux xs' (x::ys)
+  in
+  aux xs []
+
+(** {5 Restructuring lists} *)
 
 let rec zip3 xs ys zs =
   match xs, ys, zs with
@@ -96,18 +172,43 @@ let rec unzip3 ls =
       let (xs, ys, zs) = unzip3 ls in
       x::xs, y::ys, z::zs
 
-let rec iter3 f xs ys zs =
+let flatten_unzip xs =
+  let ls, rs = List.split xs in
+  List.flatten ls, List.flatten rs
+
+let rec classify eqrel xs =
+  match xs with
+    [] -> []
+  | x::xs' ->
+      let t, f = List.partition (fun x' -> eqrel x x') xs' in
+      (x::t)::(classify eqrel f)
+
+let rec split_at ls xs =
+  match ls with
+    [] -> [xs]
+  | l::ls ->
+      let xs1, xs2 = List.split_nth l xs in
+      xs1::split_at ls xs2
+
+let rec find_split p xs =
+  match xs with
+    [] -> raise Not_found
+  | x::xs' ->
+      if p x then
+        [], x, xs'
+      else
+        let ls, y, rs = find_split p xs' in
+        x::ls, y, rs
+
+(** {5 Transforming lists} *)
+
+let rec map3 f xs ys zs =
   match xs, ys, zs with
     [], [], [] ->
-      ()
+      []
   | x::xs', y::ys', z::zs' ->
-      let () = f x y z in
-      iter3 f xs' ys' zs'
+      f x y z::map3 f xs' ys' zs'
   | _ -> assert false
-
-let flatten_split ps =
-  let ls, rs = List.split ps in
-  List.flatten ls, List.flatten rs
 
 let rec find_map f xs =
   match xs with
@@ -148,22 +249,6 @@ let rec filter_map2 p xs ys =
       | None -> filter_map2 p xs' ys')
   | _ -> assert false
 
-let rec unfold f seed =
-  match f seed with
-    None -> []
-  | Some(x, seed') ->
-      x :: unfold f seed'
-
-let map_left f xs =
-  let rec aux ys xs =
-    match xs with
-      [] -> ys
-    | x::xs ->
-        let y = f ys x xs in
-        aux (ys @ [y]) xs
-  in
-  aux [] xs
-
 let map_left_right f xs =
   let rec aux ls ys rs =
     match rs with
@@ -184,6 +269,16 @@ let filter_map_left f xs =
             aux ys xs
         | Some(y) ->
             aux (ys @ [y]) xs)
+  in
+  aux [] xs
+
+let map_left f xs =
+  let rec aux ys xs =
+    match xs with
+      [] -> ys
+    | x::xs ->
+        let y = f ys x xs in
+        aux (ys @ [y]) xs
   in
   aux [] xs
 
@@ -217,86 +312,6 @@ let map_fold_right f xs z =
   in
   aux (List.rev xs) z []
 
-
-let rec ctx_of xs i =
-  match xs with
-    [] -> assert false
-  | x::xs' ->
-      if i = 0 then
-        fun ys -> ys @ xs'
-      else if i > 0 then
-        let ctx = ctx_of xs' (i - 1) in
-        fun ys -> x::ctx ys
-      else
-        assert false
-
-let all_ctx_elem_of xs =
-  List.mapi (fun i x -> ctx_of xs i, x) xs
-
-
-
-let rec is_prefix xs ys =
-  match xs, ys with
-    [], _ -> true
-  | x::xs', y::ys' -> x = y && is_prefix xs' ys'
-  | _, _ -> false
-
-(** nonemp_prefixes \[1;2;3\] = \[\[1\]; \[1; 2\]; \[1; 2; 3\]\] *)
-let nonemp_prefixes ts =
-  let _, tss = List.fold_left
-    (fun (ts, tss) t ->
-      ts @ [t], tss @ [ts @ [t]])
-    ([], [])
-    ts
-  in
-  tss
-
-(** @deprecated use ExtList.List.last *)
-let rec last xs =
- match xs with
-   [] -> assert false
- | [x] -> x
- | x::xs' -> last xs'
-
-(** @deprecated use ExtList.List.filter_map *)
-let rec filter_map p xs =
-  match xs with
-    [] -> []
-  | x::xs' ->
-      (match p x with
-        Some(r) -> r :: (filter_map p xs')
-      | None -> filter_map p xs')
-
-(** @deprecated use ExtList.List.split_nth *)
-let rec split_nth n xs =
-  if n = 0 then
-    [], xs
-  else if n > 0 then
-    (match xs with
-      x::xs' ->
-        let xs1, xs2 = split_nth (n - 1) xs' in
-        x::xs1, xs2
-    | _ -> assert false)
-  else
-    assert false
-
-let rec split_multiple ls xs =
-  match ls with
-    [] -> [xs]
-  | l::ls ->
-      let xs1, xs2 = List.split_nth l xs in
-      xs1::split_multiple ls xs2
-
-let rec find_split p xs =
-  match xs with
-    [] -> raise Not_found
-  | x::xs' ->
-      if p x then
-        [], x, xs'
-      else
-        let ls, y, rs = find_split p xs' in
-        x::ls, y, rs
-
 let rec find_split_map f xs =
   match xs with
     [] -> raise Not_found
@@ -308,13 +323,6 @@ let rec find_split_map f xs =
       | Some(x) ->
           [], x, xs'
 
-let rec classify eqrel xs =
-  match xs with
-    [] -> []
-  | x::xs' ->
-      let t, f = List.partition (fun x' -> eqrel x x') xs' in
-      (x::t)::(classify eqrel f)
-
 let multiply_list f xs ys =
   concat_map
     (fun x ->
@@ -322,45 +330,22 @@ let multiply_list f xs ys =
     xs
 
 let multiply_list_list f xss =
-  List.fold_left
-    (multiply_list f)
-    (List.hd xss)
-    (List.tl xss)
+  if xss = [] then
+    assert false
+  else
+		  List.fold_left
+		    (multiply_list f)
+		    (List.hd xss)
+		    (List.tl xss)
 
-let rec pr_list epr sep ppf xs =
-  match xs with
-    [] ->
-      ()
-  | [x] ->
-      Format.fprintf ppf "%a" epr x
-  | x::xs' ->
-      Format.fprintf
-        ppf
-        "%a%a%a"
-        epr x
-        (fun ppf sep -> Format.fprintf ppf sep) sep
-        (pr_list epr sep) xs'
+(** {5 Building lists} *)
 
-let all_equiv p xs =
-  match xs with
-    [] ->
-      true
-  | x::xs ->
-      List.for_all (fun x' -> p x x') xs
+let rec unfold f seed =
+  match f seed with
+    None -> []
+  | Some(x, seed') ->
+      x :: unfold f seed'
 
-(** @return a minimal subset of xs that satisfy p
-    require: p xs is satisfied *)
-let minimal p xs =
-  let rec aux xs ys =
-		  match xs with
-		    [] -> ys
-		  | x::xs' ->
-        if p (xs' @ ys) then
-          aux xs' ys
-        else
-          aux xs' (x::ys)
-  in
-  aux xs []
 
 (** {6 Functions on sets} *)
 
@@ -372,6 +357,15 @@ let rec remove_one xs p =
         xs'
       else
         x::remove_one xs' p
+
+let rec power xs =
+  match xs with
+    [] ->
+      [[]]
+  | x::xs' ->
+      let xss = power xs' in
+      concat_map (fun xs -> [xs; x::xs]) xss
+
 
 (*
 let rec diff xs ys =
@@ -508,3 +502,36 @@ let int_of_bv bv =
 let rec fixed_point f eq x =
   let x' = f x in
   if eq x x' then x else fixed_point f eq x'
+
+
+
+
+
+(** @deprecated use ExtList.List.last *)
+let rec last xs =
+ match xs with
+   [] -> assert false
+ | [x] -> x
+ | x::xs' -> last xs'
+
+(** @deprecated use ExtList.List.filter_map *)
+let rec filter_map p xs =
+  match xs with
+    [] -> []
+  | x::xs' ->
+      (match p x with
+        Some(r) -> r :: (filter_map p xs')
+      | None -> filter_map p xs')
+
+(** @deprecated use ExtList.List.split_nth *)
+let rec split_nth n xs =
+  if n = 0 then
+    [], xs
+  else if n > 0 then
+    (match xs with
+      x::xs' ->
+        let xs1, xs2 = split_nth (n - 1) xs' in
+        x::xs1, xs2
+    | _ -> assert false)
+  else
+    assert false
