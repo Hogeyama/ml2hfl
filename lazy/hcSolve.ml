@@ -91,7 +91,7 @@ let compute_lbs hcs =
 
 
 (** makes verification of file.ml too slow... why? *)
-let general_interpolate pid p t1 t2 =
+let generalize_interpolate pid p t1 t2 =
 		let xns, ts2 =
 		  Util.partition_map
 		    (fun t ->
@@ -107,36 +107,28 @@ let general_interpolate pid p t1 t2 =
 		        `R(t))
 		    (Formula.conjuncts t1)
 		in
-		try
-		  (match xns with
-		    [] -> raise Not_found
-		  | _ ->
-		      let xns1, (x, n), xns2 = Util.find_split (fun (x, _) -> pid = x) xns in
-		      let t = Formula.eqInt (Term.make_var x) (Term.tint n) in
-		      let ts1 =
-				      List.map (fun (x', n') -> Formula.eqInt (Term.make_var x') (Term.add (Term.make_var x) (Term.tint (n' - n)))) (xns1 @ xns2)
-		      in
-								try
-          let t1 = Formula.band (ts1 @ ts2) in
-								  CsisatInterface.interpolate_bvs p t1 t2
-		      with CsisatInterface.No_interpolant ->
-          let t1 = Formula.band (t :: ts1 @ ts2) in
-		        CsisatInterface.interpolate_bvs p t1 t2)
-		with Not_found ->
-		  if false then
-		    CsisatInterface.interpolate_bvs p t1 t2
-		  else
-		    (*List.map (fun (x, n) -> Formula.eqInt (Term.make_var x) (Term.tint n)) xns*)
-				  (let xns = List.sort ~cmp:(fun (_, n1) (_, n2) -> n1 - n2) xns in
-				  match xns with
-				    [] -> CsisatInterface.interpolate_bvs p t1 t2
-				  | (x, n)::xns ->
-		        let ts1 =
-						      (Formula.eqInt (Term.make_var x) (Term.tint n))::
-						      List.map (fun (x', n') -> Formula.eqInt (Term.make_var x') (Term.add (Term.make_var x) (Term.tint (n' - n)))) xns
-		        in
-          let t1 = Formula.band (ts1 @ ts2) in
-		        CsisatInterface.interpolate_bvs p t1 t2)
+		match xns with
+		  [] -> CsisatInterface.interpolate_bvs p t1 t2
+		| _ ->
+      let (x, n) :: xns =
+        try
+		  		    let xns1, (x, n), xns2 = Util.find_split (fun (x, _) -> pid = x) xns in
+		        (x, n) :: xns1 @ xns2
+        with Not_found ->
+				      List.sort ~cmp:(fun (_, n1) (_, n2) -> n1 - n2) xns
+      in
+		    let t = Formula.eqInt (Term.make_var x) (Term.tint n) in
+		    let ts1 =
+				    List.map (fun (x', n') -> Formula.eqInt (Term.make_var x') (Term.add (Term.make_var x) (Term.tint (n' - n)))) xns
+		    in
+      let t1 = Formula.band (t :: ts1 @ ts2) in
+						try
+						  if Cvc3Interface.is_valid (Formula.bnot t1) then
+						    Formula.tfalse (*???*)
+        else
+										CsisatInterface.interpolate_bvs p (Formula.band (ts1 @ ts2)) t2
+		    with CsisatInterface.No_interpolant ->
+		      CsisatInterface.interpolate_bvs p t1 t2
 
 
 let solve_hc_aux prog lbs ps t =
@@ -182,7 +174,7 @@ let solve_hc_aux prog lbs ps t =
               with Not_found -> assert false
 						      in
 												if true then
-              general_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
+              generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
 												else
 												  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
 						    in
@@ -190,7 +182,7 @@ let solve_hc_aux prog lbs ps t =
 						    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," pr_sol_elem sol) in
 						    sol :: aux ps (Formula.band (t :: interp :: List.map Tsubst.formula_of_elem sub))
 		  in
-		  let sol = aux ps t in
+		  let sol = aux (if false then List.rev ps else ps(*seems better*)) t in
 				let _ = Global.log_end "solve_hc_aux" in
 		  sol
 

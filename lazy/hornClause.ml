@@ -52,15 +52,19 @@ let lookup_hcs (pid, ts) hcs =
   | _ -> assert false
 
 let rec subst_formula p ps t =
-  (*Format.printf "orig: %a@." Term.pr t;*)
+  (*Format.printf "input: %a@." Term.pr t;*)
   let ts = Formula.conjuncts t in
   let xttys, t = Tsubst.extract_from2 (Util.concat_map Pred.fvs ps) p ts in
   (*Format.printf "xttys: %a, t: %a@." Tsubst.pr xttys Term.pr t;*)
-  if xttys = [] then
-    ps, t
-  else
-    let sub = Tsubst.fun_of xttys in
-    subst_formula p (List.map (Pred.subst_fixed sub) ps) (Term.subst_fixed sub t)
+  let ps, t =
+		  if xttys = [] then
+		    ps, t
+		  else
+		    let sub = Tsubst.fun_of xttys in
+		    subst_formula p (List.map (Pred.subst_fixed sub) ps) (Term.subst_fixed sub t)
+  in
+  (*Format.printf "output: %a@." Term.pr t;*)
+  ps, t
 
 let simplify (Hc(popt, ps, t)) =
   let bvs = (match popt with None -> [] | Some(_, xs) -> xs) in
@@ -88,6 +92,7 @@ let simplify (Hc(popt, ps, t)) =
     List.unique ps, t
   in
   let ps, t =
+    (* ToDo: make the following simplification procedure more scalable *)
     let xttys =
       let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
       List.unique
@@ -113,8 +118,28 @@ let simplify (Hc(popt, ps, t)) =
         [] ->
           ps, t
       | xs::xss' ->
-          let xttyss = if xs = [] then [] else Util.multiply_list_list (fun xttys1 xttys2 -> xttys1 @ xttys2) (List.map (fun x -> List.filter_map (fun (x', t, ty) -> if x = x' then Some([x, t, ty]) else None) xttys) xs) in
-          let xttyss = List.filter (fun xttys -> Util.inter (List.map Util.fst3 xttys) (Util.concat_map (fun (_, t, _) -> Term.fvs t) xttys) = []) xttyss in
+          let xttyss =
+            if xs = [] then
+              []
+            else
+              Util.multiply_list_list
+                (fun xttys1 xttys2 -> xttys1 @ xttys2)
+                (List.map
+                  (fun x ->
+                    List.filter_map
+                      (fun (x', t, ty) -> if x = x' then Some([x, t, ty]) else None)
+                      xttys)
+                  xs)
+          in
+          let xttyss =
+            List.filter
+              (fun xttys ->
+                Util.inter
+                  (List.map Util.fst3 xttys)
+                  (Util.concat_map (fun (_, t, _) -> Term.fvs t) xttys)
+                = [])
+              xttyss
+          in
           if xttyss = [] then
             aux ps t xss'
           else
@@ -127,7 +152,7 @@ let simplify (Hc(popt, ps, t)) =
 																  (fun xttys ->
                     let ps1 = List.map (Pred.subst (Tsubst.fun_of xttys)) ps1 in
                     let ts1 = List.map (Term.subst (Tsubst.fun_of xttys)) ts1 in
-                    if Util.subset ps1 ps2 && Util.subset ts1 ts2 then
+                    if Util.subset ps1 ps2 && Util.subset ts1 ts2(*???*) then
                       ps2, Formula.band ts2
                     else
                       raise Not_found)
