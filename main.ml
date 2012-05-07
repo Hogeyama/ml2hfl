@@ -66,7 +66,6 @@ let main filename in_channel =
     let parsed = Parse.use_file lb in
       Parser_wrapper.from_use_file parsed
   in
-  let top_fun_list = Syntax.get_top_funs t in
   let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term t in
 
   let spec =
@@ -85,10 +84,11 @@ let main filename in_channel =
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
   let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
-  let t =
+  let top_fun_list,t =
     if !Flag.init_trans
     then
       let t' = Trans.copy_poly_funs t in
+      let top_fun_list = Syntax.get_top_funs t in
       let () = if true && t <> t' then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let spec' = Trans.rename_spec spec t in
@@ -121,13 +121,15 @@ let main filename in_channel =
       let t = t' in
       let t' = CPS.remove_pair t in
       let () = if true && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-        t'
-    else t
+        top_fun_list, t'
+    else Syntax.get_top_funs t, t
   in
 
   let () = Type_check.check t Type.TUnit in
   let prog,map = CEGAR_util.trans_prog t in
-  let top_fun_list = List.map (fun x -> List.assoc (CEGAR_util.trans_var x) map) top_fun_list in
+
+  let aux x = try [List.assoc (CEGAR_util.trans_var x) map] with Not_found -> [] in
+  let top_fun_list = rev_flatten_map aux top_fun_list in
 
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify [] prog
