@@ -112,7 +112,7 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
-let abstract ((env,defs,main):prog) =
+let abstract orig_fun_list ((env,defs,main):prog) =
   let (env,defs,main) = make_arg_let (env,defs,main) in
   let labeled,(env,defs,main) = add_label (env,defs,main) in
   let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog (env,defs,main) in
@@ -125,7 +125,7 @@ let abstract ((env,defs,main):prog) =
 
 
 
-let abstract count prog =
+let abstract orig_fun_list count prog =
   let tmp = get_time() in
   let () =
     if Flag.print_progress
@@ -136,8 +136,8 @@ let abstract count prog =
   in
   let labeled,abst =
     match !Flag.pred_abst with
-        Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract prog
-      | Flag.PredAbst -> abstract prog
+        Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract orig_fun_list prog
+      | Flag.PredAbst -> abstract orig_fun_list prog
   in
   let () = if false then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in
   let () = if Flag.print_progress then Format.printf "DONE!@.@." in

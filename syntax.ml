@@ -1223,3 +1223,10 @@ let rec make_app t ts =
     | _ when not Flag.check_typ -> {desc=App(t,ts); typ=TUnknown}
     | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=TUnknown}; assert false
 *)
+
+let rec get_top_funs acc = function
+    {desc=Let(flag, defs, t)} ->
+      let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
+        get_top_funs acc' t
+  | _ -> acc
+let get_top_funs = get_top_funs []

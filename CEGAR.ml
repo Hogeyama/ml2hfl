@@ -24,22 +24,26 @@ let post () =
   Id.reset_counter ()
 *)
 
-let inlined_functions prog =
+let inlined_functions orig_fun_list prog =
   let _, defs, main = prog in
-  let fs = List.map fst (CEGAR_util.get_nonrec defs main) in
+  let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list) in
   ExtList.List.unique fs
 (*Util.diff (List.map (fun (f, _, _, _, _) -> f) defs) *)
 
-let rec cegar1 prog0 ces =
+let rec cegar1 prog0 ces orig_fun_list =
   pre ();
   let pr =
     if !Flag.expand_nonrec
-    then CEGAR_util.print_prog_typ'
+    then CEGAR_util.print_prog_typ' orig_fun_list
     else CEGAR_print.prog_typ
   in
-  let prog = if !Flag.refine = Flag.RefineSizedType && !Flag.relative_complete then LazyInterface.instantiate_param prog0 else prog0 in
+  let prog =
+    if !Flag.refine = Flag.RefineSizedType && !Flag.relative_complete
+    then LazyInterface.instantiate_param prog0
+    else prog0
+  in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
-  let labeled,abst = CEGAR_abst.abstract None prog in
+  let labeled,abst = CEGAR_abst.abstract orig_fun_list None prog in
   let result = ModelCheck.check None abst prog in
   let result' = apply_opt (fun ce -> CEGAR_trans.trans_ce ce labeled prog) result in
     match result',ces with
@@ -48,12 +52,12 @@ let rec cegar1 prog0 ces =
           Format.printf "Filter option enabled.@.";
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_filter := true;
-          cegar1 prog ces
+          cegar1 prog ces orig_fun_list
       | Some ce, ce'::_ when ce = ce' && not !Flag.use_neg_pred ->
           Format.printf "Negative-predicate option enabled.@.";
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_neg_pred := true;
-          cegar1 prog ces
+          cegar1 prog ces orig_fun_list
       | Some ce, ce'::_ when ce = ce' ->
           let ce_labeled = get_opt_val result in
           Feasibility.print_ce_reduction ce prog;
@@ -73,9 +77,9 @@ let rec cegar1 prog0 ces =
                       CEGAR_print.ce prefix
                 in
                 let ces' = ce::ces in
-                let _,prog' = Refine.refine (inlined_functions prog0) prefix ces' prog0 in
+                let _,prog' = Refine.refine (inlined_functions orig_fun_list prog0) prefix ces' prog0 in
                   post ();
-                  cegar1 prog' ces'
+                  cegar1 prog' ces' orig_fun_list
 
 
 
@@ -140,10 +144,10 @@ let rec cegar2 prog ce_map =
 
 
 
-let cegar prog =
+let cegar prog orig_fun_list =
   (*if !Flag.new_cegar
   then cegar2 prog []
-  else*) cegar1 prog []
+  else*) cegar1 prog [] orig_fun_list
 
 
 

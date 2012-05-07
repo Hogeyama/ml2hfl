@@ -143,9 +143,9 @@ spec_lexer.ml: spec_lexer.mll
 ################################################################################
 # libraries
 
-$(OCAML_SOURCE)/Makefile:
+$(OCAML_SOURCE)/config/Makefile:
 	cd $(OCAML_SOURCE); ./configure
-ocaml: $(OCAML_SOURCE)/Makefile
+ocaml: $(OCAML_SOURCE)/config/Makefile
 	cd $(OCAML_SOURCE); make world opt world.opt opt.opt
 
 csisat:

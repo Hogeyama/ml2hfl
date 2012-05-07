@@ -50,8 +50,8 @@ let rec beta_reduce_term = function
 let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
-let rec expand_nonrec (env,defs,main) =
-  let nonrec = get_nonrec defs main in
+let rec expand_nonrec orig_fun_list (env,defs,main) =
+  let nonrec = get_nonrec defs main orig_fun_list in
   let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
   let rec loop defs =
     let defs' = List.map aux defs in
@@ -332,9 +332,9 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
-let abstract (prog:prog) =
+let abstract orig_fun_list (prog:prog) =
   let labeled,prog = add_label prog in
-  let prog = if !Flag.expand_nonrec then expand_nonrec prog else prog in
+  let prog = if !Flag.expand_nonrec then expand_nonrec orig_fun_list prog else prog in
   let () = if false && !Flag.expand_nonrec then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog prog in
   let prog = eta_expand prog in
   let () = if false then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog prog in

@@ -413,10 +413,10 @@ let rename_prog prog =
     let var_names' = List.rev_map id_name xs @@ var_names' in
       List.map (fun x -> x, rename_id' x var_names') xs
   in
-  let map = rev_flatten_map make_map_vars (get_defs prog) @@ map in
-  let map = uniq' (fun (x,_) (y,_) -> compare x y) map in
-  let smap = List.map (fun (x,x') -> x,Var x') map in
-  let rename_var x = List.assoc x map in
+  let map' = rev_flatten_map make_map_vars (get_defs prog) @@ map in
+  let map' = uniq' (fun (x,_) (y,_) -> compare x y) map' in
+  let smap = List.map (fun (x,x') -> x,Var x') map' in
+  let rename_var x = List.assoc x map' in
   let rename_term t = subst_map smap t in
   let rename_def (f,xs,t1,e,t2) = rename_var f, List.map rename_var xs, rename_term t1, e, rename_term t2 in
   let env = List.map (fun (f,typ) -> rename_var f, typ) (get_env prog) in
@@ -424,7 +424,7 @@ let rename_prog prog =
   let main = rename_var (get_main prog) in
   let prog = env, defs, main in
   let () = try ignore (Typing.infer prog) with Typing.External -> () in
-    prog
+    prog,map
 
 
 
@@ -451,9 +451,9 @@ let trans_prog t =
   let prog = event_of_temp prog in
   let prog = eta_expand prog in
   let prog = pop_main prog in
-  let prog = rename_prog prog in
+  let prog,map = rename_prog prog in
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
-    prog
+    prog,map
 
 
 let nil = fun _ -> []
@@ -922,7 +922,7 @@ let assoc_fun_def defs f =
           make_fun xs1 (make_if t21 t22 t12)
       | _ -> assert false
 
-let get_nonrec defs main =
+let get_nonrec defs main orig_fun_list =
   let check (f,xs,t1,e,t2) =
     let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
     let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@ get_fv t2)) defs in
@@ -933,10 +933,13 @@ let get_nonrec defs main =
          2 >= List.length defs')
   in
   let defs' = List.filter check defs in
-    List.map (fun (f,xs,_,_,t) -> f, assoc_fun_def defs f) defs'
+  let nonrec = List.map (fun (f,xs,_,_,t) -> f, assoc_fun_def defs f) defs' in
+    if !Flag.expand_nonrec_init
+    then nonrec
+    else List.filter (fun (f,_) -> not (List.mem f orig_fun_list)) nonrec
 
 
-let print_prog_typ' fm (env,defs,main) =
-  let nonrec = get_nonrec defs main in
+let print_prog_typ' orig_fun_list fm (env,defs,main) =
+  let nonrec = get_nonrec defs main orig_fun_list in
   let env' = List.filter (fun (f,_) -> not (List.mem_assoc f nonrec)) env in
     CEGAR_print.prog_typ fm (env',defs,main)
