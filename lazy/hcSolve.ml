@@ -89,6 +89,37 @@ let compute_lbs hcs =
   res
 
 
+let compute_lbs_ext hcs =
+  let hcs = List.filter (function Hc(None, _, _) -> false | _ -> true) hcs in
+  let pids1 = List.map (function Hc(Some(pid, _), _, _) -> pid | _ -> assert false) hcs in
+  let _ = Global.log_begin "compute_lbs_ext" in
+  let rec aux hcs lbs =
+    let hcs1, hcs2 =
+      let pids2 = List.map (function Hc(Some(pid, _), _, _) -> pid | _ -> assert false) lbs in
+      List.partition
+       (function (Hc(Some(_), ps, _)) ->
+         List.for_all (fun (pid, _) -> List.mem pid pids2 || not (List.mem pid pids1)) ps
+       | (Hc(None, _, _)) -> false)
+       hcs
+    in
+    if hcs1 = [] then
+      lbs @ hcs2
+    else
+      let lbs' =
+        List.map
+          (fun hc ->
+            let lb = subst_hcs lbs hc in
+            let _ = Global.log (fun () -> Format.printf "%a@," pr lb) in
+            lb)
+        hcs1
+      in
+      aux hcs2 (lbs @ (* need to merge? *)lbs')
+  in
+  let res = aux hcs [] in
+  let _ = Global.log_end "compute_lbs_ext" in
+  res
+
+
 
 (** makes verification of file.ml too slow... why? *)
 let generalize_interpolate pid p t1 t2 =
@@ -148,7 +179,7 @@ let solve_hc_aux prog lbs ps t =
 						  [] -> []
 						| (pid, ts)::ps ->
 		        let xs = List.map (fun _ -> Var.new_var ()) ts in
-          let tys = List.map (Prog.type_of prog) (RefType.visible_vars (Prog.type_of prog) pid) in
+          let tys = try List.map (Prog.type_of prog) (RefType.visible_vars (Prog.type_of prog) pid) with Not_found -> List.map (fun _ -> SimType.Int) xs in
           let sub = Util.map3 (fun x t ty -> x, t, ty) xs ts tys in
 				      let _ = Global.log (fun () -> Format.printf "finding a solution to %a@," Pred.pr (pid, List.map Term.make_var xs)) in
 						    let interp =
@@ -252,18 +283,26 @@ let formula_of_forward hcs =
 				      t)
 				    hcs))
 
+let formula_of_forward_ext hcs =
+  let lbs = compute_lbs_ext hcs in
+  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," (Util.pr_list pr "@,") lbs) in
+  let hcs1 = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
+  let hcs2 = List.filter (function (Hc(Some(pid, _), _, _)) -> Var.is_coeff pid | _ -> false) hcs in
+  Formula.simplify
+    (Formula.bor
+				  (List.map
+				    (fun hc ->
+				      let Hc(None, [], t) = subst_hcs (lbs @ hcs2) hc in
+				      t)
+				    hcs1))
+
 let formula_of_backward hcs =
+  let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | Hc(Some(pid, _), _, _) -> Var.is_coeff pid) hcs in
+  let hcs = List.map (subst_hcs_fixed hcs2) hcs1 in
+
   let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | _ -> false) hcs in
-  let hcs =
-		  List.map
-						(Util.fixed_point
-						  (fun hc ->
-		        subst_hcs hcs2 hc)
-						  (fun hc1 hc2 ->
-		        match hc1, hc2 with
-		          Hc(_, ps1, _), Hc(_, ps2, _) -> ps1 = ps2))
-						hcs1
-  in
+  let hcs = List.map (subst_hcs hcs2) hcs1 in
+
   Formula.simplify
     (Formula.bor
       (List.map
@@ -274,3 +313,35 @@ let formula_of_backward hcs =
             let _ = Format.printf "%a@." pr (Hc(None, ps, t)) in
             assert false)
         hcs))
+
+
+let inline_forward fs hcs =
+  let hcs1, hcs2 =
+		  List.partition
+      (function Hc(Some(pid, _), _, _) ->
+								not (Var.is_coeff pid) &&
+        List.exists
+          (fun f ->
+            let Var.V(id), _ = CallId.tlfc_of pid in
+            Idnt.string_of id = f)
+          fs
+      | _ -> false)
+		    hcs
+  in
+  let lbs = compute_lbs_ext hcs1 in
+  List.map (subst_hcs lbs) hcs2
+
+let inline_backward fs hcs =
+  let hcs1, hcs2 =
+		  List.partition
+      (function Hc(Some(pid, _), _, _) ->
+								not (Var.is_coeff pid) &&
+        List.exists
+          (fun f ->
+            let Var.V(id), _ = CallId.tlfc_of pid in
+            Idnt.string_of id = f)
+          fs
+      | _ -> false)
+		    hcs
+  in
+  List.map (subst_hcs_fixed hcs1) hcs2

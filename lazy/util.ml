@@ -316,12 +316,11 @@ let rec find_split_map f xs =
   match xs with
     [] -> raise Not_found
   | x::xs' ->
-      match f x with
-        None ->
-          let ls, y, rs = find_split_map f xs' in
-          x::ls, y, rs
-      | Some(x) ->
-          [], x, xs'
+      (try
+        [], f x, xs'
+      with Not_found ->
+        let ls, y, rs = find_split_map f xs' in
+        x::ls, y, rs)
 
 let multiply_list f xs ys =
   concat_map
@@ -365,6 +364,15 @@ let rec power xs =
   | x::xs' ->
       let xss = power xs' in
       concat_map (fun xs -> [xs; x::xs]) xss
+
+let pick n xs =
+  let rec aux n zs =
+    if n = 0 then
+      zs
+    else
+      concat_map (fun (xs, ys) -> map_left_right (fun ls x rs -> ls @ rs, x::ys) xs) (aux (n - 1) zs)
+  in
+  List.map snd (aux n [xs, []])
 
 
 (*

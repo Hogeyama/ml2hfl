@@ -26,10 +26,10 @@ let cgen env etr =
         (match s with
           Trace.Call(y, guard) ->
             if Var.is_top (fst y) then
-              aux (insert_down loc (make y true guard)) hcs etr
+              aux (insert_down loc (make y true (guard, []))) hcs etr
             else if Var.is_pos (fst y) then
               let _ = assert (guard = Formula.ttrue) in
-              aux (insert_down loc (make y true guard)) hcs etr
+              aux (insert_down loc (make y true (guard, []))) hcs etr
             else if Var.is_neg (fst y) then
               let _ = assert (guard = Formula.ttrue) in
 		            let nd = get tr in
@@ -52,7 +52,8 @@ let cgen env etr =
 		                    None)
 		                xttys
 		            in
-				          let hcs =
+              let xttys1, xttys2 = List.partition (fun (_, t, _) -> Term.coeffs t = []) xttys in
+				          let hcs, pres' =
 				  								  let locs = related_locs loc (*(Loc(tr, left_of_path p))*) in
 						          let pres =
 				              Util.concat_map
@@ -67,11 +68,22 @@ let cgen env etr =
 										              (children tr)))
 				                locs
 						          in
-		              let t = Formula.band (List.map (fun (Loc(tr, _)) -> (get tr).data) locs @ List.map Tsubst.formula_of_elem xttys) in
-		              (Hc(Some(Pred.of_pid_vars env pre), pres, t))::hcs
+		              let t = Formula.band (List.map (fun (Loc(tr, _)) -> fst (get tr).data) locs @ List.map Tsubst.formula_of_elem xttys1) in
+                let hcs', pres' =
+                  List.split
+		                  (List.map
+		                    (fun (x, t, ty) ->
+		                      let xs = List.sort (Term.fvs t) @ [x] in
+                        let pid = List.hd (List.sort (Term.coeffs t)) in
+		                      Hc(Some(pid, xs), [], Tsubst.formula_of_elem (x, t, ty)),
+		                      (pid, List.map Term.make_var xs))
+		                    xttys2)
+                in
+		              (Hc(Some(Pred.of_pid_vars env pre), (Util.concat_map (fun (Loc(tr, _)) -> snd (get tr).data) locs) @ pres' @ pres, t)) :: hcs' @ hcs,
+                pres'
 		            in
 		  		        let nd = get tr in
-				          aux (Loc(set tr { nd with data = Formula.band (nd.data :: List.map Tsubst.formula_of_elem xttys) }, p)) hcs etr
+				          aux (Loc(set tr { nd with data = Formula.band (fst nd.data :: List.map Tsubst.formula_of_elem xttys1), snd nd.data @ pres' }, p)) hcs etr
             with Not_found ->
               if !Global.refine_function then
                 (* ToDo: need function type refinement *)
@@ -81,13 +93,13 @@ let cgen env etr =
         | Trace.Ret(x, t, ty) ->
             let _ = assert (SimType.is_base ty) in
             let xttys = if SimType.is_base ty && ty <> SimType.Unit(*sound???*) then [x, t, ty] else [] in
-            let t = Formula.band ((get tr).data :: List.map Tsubst.formula_of_elem xttys) in
+            let t = Formula.band (fst (get tr).data :: List.map Tsubst.formula_of_elem xttys) in
             let hcs = (Hc(Some(Pred.of_pid_vars env x), [assert false], t))::hcs in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(tr, p))) hcs etr
             else if Var.is_neg f then
-              aux (insert_down (Loc(tr, p)) (make (CallId.fc_ref_of f) true Formula.ttrue)) hcs etr
+              aux (insert_down (Loc(tr, p)) (make (CallId.fc_ref_of f) true (Formula.ttrue, []))) hcs etr
             else assert false
         | Trace.Nop ->
             aux loc hcs etr
@@ -95,10 +107,13 @@ let cgen env etr =
             let _ = assert (etr = []) in
             let nd = get tr in
             root (Loc(set tr { nd with closed = false }, path_set_open p)),
+            let pres = try [Pred.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> [] in
             (* assume that fail is NOT a proper subterm of the function definition *)
-            (Hc(None, (try [Pred.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []), (get tr).data))::hcs)
+            Hc(None, snd nd.data @ pres, fst (get tr).data) :: hcs)
   in
   match etr with
     Trace.Call(x, guard)::etr ->
-      aux (zipper (make x true guard)) [] etr
+      let ctr, hcs = aux (zipper (make x true (guard, []))) [] etr in
+      let hcss = Util.classify (fun hc1 hc2 -> match hc1, hc2 with Hc(Some(pid1, _), _, _), Hc(Some(pid2, _), _, _) -> pid1 = pid2 | _ -> false) hcs in
+      ctr, List.map List.hd hcss
   | _ -> assert false

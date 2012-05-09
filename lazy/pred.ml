@@ -10,6 +10,8 @@ let make pid xs = pid, List.map Term.make_var xs
 let fvs (_, ts) = Util.concat_map Term.fvs ts
 let coeffs (_, ts) = Util.concat_map Term.coeffs ts
 
+let simplify (pid, ts) = pid, List.map LinArith.simplify ts
+
 let subst sub (pid, ts) =
   (pid, List.map (Term.subst sub) ts)
 

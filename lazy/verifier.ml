@@ -155,16 +155,18 @@ let infer_ref_types fs prog etrs =
       let hcs = List.concat hcss in
       let _ = Global.log (fun () -> Format.printf "call trees:@,  @[<v>%a@]@," (Util.pr_list CallTree.pr "@,") ctrs) in
       let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
-      let hcs = if !Global.inline then HornClause.inline fs hcs else hcs in
+      let hcs = if !Global.inline then HcSolve.inline_forward fs hcs else hcs in
       let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
       let hcs =
 						  if Util.concat_map HornClause.coeffs hcs = [] then
 						    hcs
 						  else
-						    let t = HcSolve.formula_of_backward hcs in
+						    let t = HcSolve.formula_of_forward_ext hcs in
 						    let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
 						    let _ = refine_coeffs t in
-								  List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs
+								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
+								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
+								  List.map (HornClause.subst_hcs_fixed hcs1) hcs2
       in
       List.map
         (fun (x, (xs, t)) ->
