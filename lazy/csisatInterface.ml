@@ -208,14 +208,14 @@ let interpolate_chk t1 t2 =
 						| _ ->
 				      let _ = Global.log_begin "finding minimal interpolant" in
 				      let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.band ts)) in
-				      let ts = Util.minimal (fun ts -> Cvc3Interface.implies (Formula.band ts) (Formula.bnot t2)) ts in
+				      let ts = Util.minimal (fun ts -> Cvc3Interface.implies ts [Formula.bnot t2]) ts in
 				      let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]@," Term.pr (Formula.band ts)) in
 				      let _ = Global.log_end "finding minimal interpolant" in
 						    Formula.band ts)
 				else
 				  t
 		with No_interpolant ->
-		  if !Global.debug && Cvc3Interface.implies t1 (Formula.bnot t2) then
+		  if !Global.debug && Cvc3Interface.implies [t1] [Formula.bnot t2] then
 		    let _ = Format.printf "an error of CSIsat@," in
 		    assert false
 		  else

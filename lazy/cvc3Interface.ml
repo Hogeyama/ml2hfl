@@ -210,7 +210,12 @@ let is_valid t =
   let _ = Global.log_end "is_valid" in
   res
 
-let implies t1 t2 = is_valid (Formula.imply t1 t2)
+let implies ts1 ts2 =
+  let ts2 = Formula.simplify_conjuncts (Util.diff ts2 ts1) in
+  if ts2 = [] then
+    true
+   else
+    is_valid (Formula.imply (Formula.band ts1) (Formula.band ts2))
 
 (*
 (* t1 and t2 share only variables that satisfy p *)

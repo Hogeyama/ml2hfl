@@ -162,8 +162,9 @@ let simplify (Hc(popt, ps, t)) =
 																  (fun xttys ->
                     (*let _ = Global.log (fun () -> Format.printf "sub: %a@," Tsubst.pr xttys) in*)
                     let ps1 = List.map (Pred.subst (Tsubst.fun_of xttys)) ps1 in
-                    let ts1 = List.map (Term.subst (Tsubst.fun_of xttys)) ts1 in
-                    if Util.subset ps1 ps2 && List.for_all (fun t -> Formula.simplify t = Formula.ttrue) (Util.diff ts1 ts2) then(*???*)
+                    let ts1 = List.map (fun t -> Formula.simplify (Term.subst (Tsubst.fun_of xttys) t)) ts1 in
+                    if Util.subset ps1 ps2 (*???*) &&
+                       Cvc3Interface.implies ts2 ts1 then
                       ps2, Formula.band ts2
                     else
                       raise Not_found)
@@ -175,7 +176,7 @@ let simplify (Hc(popt, ps, t)) =
     in
     aux ps t
       (*(List.sort ~cmp:(fun xs ys -> List.length xs - List.length ys) (Util.power xs))*)
-      (Util.pick 1 xs @ Util.pick 2 xs @ Util.pick 3 xs)
+      (Util.pick 1 xs @ Util.pick 2 xs @ Util.pick 3 xs @ Util.pick 4 xs)
   in
   let res = Hc(popt, ps, t) in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
