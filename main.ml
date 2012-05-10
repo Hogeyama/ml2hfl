@@ -88,7 +88,7 @@ let main filename in_channel =
     if !Flag.init_trans
     then
       let t' = Trans.copy_poly_funs t in
-      let top_fun_list = Syntax.get_top_funs t in
+      let top_fun_list = Syntax.get_top_funs t' in
       let () = if true && t <> t' then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let spec' = Trans.rename_spec spec t in
