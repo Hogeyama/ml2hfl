@@ -38,7 +38,7 @@ let rec cegar1 prog0 ces orig_fun_list =
     else CEGAR_print.prog_typ
   in
   let prog =
-    if !Flag.refine = Flag.RefineSizedType && !Flag.relative_complete
+    if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete
     then LazyInterface.instantiate_param prog0
     else prog0
   in

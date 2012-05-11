@@ -108,7 +108,7 @@ let main filename in_channel =
       let t = t' in
 *)
       let t =
-        if !Flag.refine = Flag.RefineSizedType && !Flag.relative_complete then
+        if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
           let t = LazyInterface.insert_extra_param t in
           let () = if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
             (List.length !LazyInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t in
@@ -149,10 +149,12 @@ let arg_spec =
    "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Use sized type system for CEGAR";
    "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Same as -st";
    "-na", Arg.Clear Flag.init_trans, " Do not abstract data";
-   "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineSizedType),
-          " Use sized type system for predicate discovery";
-   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineDependentType),
-          " Use dependent type system for predicate discovery";
+   "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
+          " Use refinement type based predicate discovery";
+   "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
+          " Use refinement type based predicate discovery";
+   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
+          " Use refinement type based predicate discovery (obsolete)";
    "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
    "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";

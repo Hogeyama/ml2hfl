@@ -391,6 +391,7 @@ let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
 let inter l1 l2 = List.filter (fun x -> List.mem x l2) l1
 let union l1 l2 = List.unique (l1 @ l2)
 let set_equiv l1 l2 = subset l1 l2 && subset l2 l1
+let is_dup xs = List.length (List.unique xs) <> List.length xs
 
 (** {6 Functions on matrices} *)
 

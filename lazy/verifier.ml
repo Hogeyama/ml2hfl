@@ -166,7 +166,7 @@ let infer_ref_types fs prog etrs =
 						    let _ = refine_coeffs t in
 								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
 								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
-								  List.map (HornClause.subst_hcs_fixed hcs1) hcs2
+								  List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2
       in
       List.map
         (fun (x, (xs, t)) ->
@@ -228,8 +228,9 @@ let infer_abst_type fs prog etrs =
     (function ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys) | _ -> assert false)
     (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env)
 
-let refine fs cexs prog =
+let refine flags fs cexs prog =
   let _ = Global.log_begin "refine" in
+  let _ = Global.generalize_predicates_simple := flags land 1 = 1 in
   let _ = Global.log (fun () -> Format.printf "inlined functions: %s@," (String.concat "," fs)) in
   let env =
 		  try

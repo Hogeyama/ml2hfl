@@ -74,7 +74,7 @@ let cgen env etr =
 		                  (List.map
 		                    (fun (x, t, ty) ->
 		                      let xs = List.sort (Term.fvs t) @ [x] in
-                        let pid = List.hd (List.sort (Term.coeffs t)) in
+                        let pid = Var.make_coeff (Idnt.new_cid ()) (*List.hd (List.sort (Term.coeffs t))*) in
 		                      Hc(Some(pid, xs), [], Tsubst.formula_of_elem (x, t, ty)),
 		                      (pid, List.map Term.make_var xs))
 		                    xttys2)
@@ -114,6 +114,6 @@ let cgen env etr =
   match etr with
     Trace.Call(x, guard)::etr ->
       let ctr, hcs = aux (zipper (make x true (guard, []))) [] etr in
-      let hcss = Util.classify (fun hc1 hc2 -> match hc1, hc2 with Hc(Some(pid1, _), _, _), Hc(Some(pid2, _), _, _) -> pid1 = pid2 | _ -> false) hcs in
-      ctr, List.map List.hd hcss
+      let _ = if !Global.debug then assert (not (Util.is_dup (List.filter_map (function Hc(Some(pid, _), _, _) -> Some(pid) | _ -> None) hcs))) in
+      ctr, hcs
   | _ -> assert false

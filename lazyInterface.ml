@@ -139,9 +139,9 @@ let rec inv_abst_type aty =
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
 
 
-let infer labeled cexs prog =
+let infer flags labeled cexs prog =
   let prog = conv_prog prog in
-  let env = Verifier.refine labeled cexs prog in
+  let env = Verifier.refine flags labeled cexs prog in
   List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty)
@@ -164,7 +164,15 @@ let new_params bvs =
       if i < !number_of_extra_params then
 						  let bts = List.map Syntax.make_var (List.filter (fun x -> x.Id.typ = Type.TInt) bvs) in
         let flag = false in
-						  let ps = Util.unfold (fun i -> if i < (List.length bts + if flag then 1 else 0) then Some(Id.new_var Flag.extpar_header Type.TInt, i + 1) else None) 0 in
+						  let ps =
+          Util.unfold
+            (fun i ->
+              if i < (List.length bts + if flag then 1 else 0) then
+                Some(Id.new_var Flag.extpar_header Type.TInt, i + 1)
+              else
+                None)
+            0
+        in
 						  let _ = params := !params @ ps in
 						  let tps = List.map Syntax.make_var ps in
 						  let ts =
@@ -173,7 +181,7 @@ let new_params bvs =
           else
             List.map2 Syntax.make_mul tps bts
         in
-						  Some(List.fold_left Syntax.make_add (List.hd ts) (List.tl ts), i + 1)
+        Some(List.fold_left Syntax.make_add (Syntax.make_int 0) ts, i + 1)
       else
         None)
     0

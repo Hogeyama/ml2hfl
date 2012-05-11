@@ -86,14 +86,14 @@ let refine labeled prefix ces ((env,defs,main):prog) =
     if Flag.use_prefix_trace then raise (Fatal "Not implemented: Flag.use_prefix_trace");
     let map =
       match !Flag.refine with
-          Flag.RefineSizedType ->
+          Flag.RefineRefType(flags) ->
             (*let is_ext (f,_,_,_,_) = not (is_external f) in*)
-            let map = LazyInterface.infer labeled ces (env,defs,main) in
+            let map = LazyInterface.infer flags labeled ces (env,defs,main) in
 (*
               if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
 *)
               map
-        | Flag.RefineDependentType ->
+        | Flag.RefineRefTypeOld ->
             if not (List.mem Flag.CPS !Flag.form)
             then failwith "Program must be in CPS @ ModelCheckCPS";
             try

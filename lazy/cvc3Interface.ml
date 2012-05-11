@@ -497,6 +497,8 @@ let solve_bv t =
 								    let _ = Global.log (fun () -> Format.printf "%s = %s@," c n) in
 								    Var.parse c, int_of_string_bv n)
 								  ss
+      else if Str.string_match (Str.regexp ".*Unknown.") s 0 then
+        assert false
       else
         assert false
   in

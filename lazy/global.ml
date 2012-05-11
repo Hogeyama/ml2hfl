@@ -19,6 +19,9 @@ let extract_atomic_predicates = ref false
 
 (** {6 Options for refinement type inference} *)
 let generalize_predicates = ref false
+let generalize_predicates_simple = ref false
+
+let generalize_predicates = ref false
 let use_min_unsat_prefix = ref true
 let refine_unit = ref true
 let refine_function = ref false

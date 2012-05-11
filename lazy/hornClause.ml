@@ -188,7 +188,7 @@ let subst_hcs hcs (Hc(popt, ps, t) as hc) =
   let _ = Global.log_begin "subst_hcs" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr hc) in
   let hc =
-		  if true then
+		  if false then
       let rec aux ps t =
         try
 		        let lps, (ps, t'), rps =

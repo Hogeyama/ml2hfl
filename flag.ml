@@ -13,7 +13,7 @@ type mode = Reachability | FileAccess
 type cegar = CEGAR_SizedType | CEGAR_DependentType
 type pred_abst = PredAbst | PredAbstCPS
 type model_check = ModelCheck | ModelCheckCPS
-type refine = RefineSizedType | RefineDependentType
+type refine = RefineRefType of int | RefineRefTypeOld
 type form = CPS
 
 (* TRecS option *)
@@ -57,7 +57,7 @@ let init_trans = ref true
 let cegar = ref CEGAR_DependentType
 let pred_abst = ref PredAbstCPS
 let model_check = ref ModelCheckCPS
-let refine = ref RefineDependentType
+let refine = ref RefineRefTypeOld
 let form : form list ref = ref []
 let new_cegar = ref false
 

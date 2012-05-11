@@ -204,7 +204,7 @@ let solve_hc_aux prog lbs ps t =
                 t
               with Not_found -> assert false
 						      in
-												if false then
+												if !Global.generalize_predicates_simple then
               generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
 												else
 												  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
@@ -284,15 +284,15 @@ let formula_of_forward hcs =
 				    hcs))
 
 let formula_of_forward_ext hcs =
-  let lbs = compute_lbs_ext hcs in
+  let hcs1, hcs = List.partition (function (Hc(None, _, _)) -> true | _ -> false) hcs in
+  let hcs2, hcs3 = List.partition (function (Hc(Some(pid, _), _, _)) -> Var.is_coeff pid | _ -> false) hcs in
+  let lbs = compute_lbs_ext hcs3 in
   let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," (Util.pr_list pr "@,") lbs) in
-  let hcs1 = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
-  let hcs2 = List.filter (function (Hc(Some(pid, _), _, _)) -> Var.is_coeff pid | _ -> false) hcs in
   Formula.simplify
     (Formula.bor
 				  (List.map
 				    (fun hc ->
-				      let Hc(None, [], t) = subst_hcs (lbs @ hcs2) hc in
+				      let Hc(None, [], t) = subst_hcs hcs2 (subst_hcs lbs hc) in
 				      t)
 				    hcs1))
 
