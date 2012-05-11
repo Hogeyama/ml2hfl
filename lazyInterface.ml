@@ -140,8 +140,14 @@ let rec inv_abst_type aty =
 
 
 let infer flags labeled cexs prog =
+  let _ = Global.generalize_predicates_simple := flags land 1 <> 0 in
+  let _ = Global.find_preds_forward := flags land 2 <> 0 in
+  let _ = Global.subst_hcs_inc := flags land 4 <> 0 in
+  let _ = Global.no_inlining := flags land 8 <> 0 || not !Flag.expand_nonrec in
+if !Global.no_inlining then Format.printf "flags:%d@." flags;
+
   let prog = conv_prog prog in
-  let env = Verifier.refine flags labeled cexs prog in
+  let env = Verifier.refine labeled cexs prog in
   List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty)

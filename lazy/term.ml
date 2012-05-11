@@ -131,8 +131,10 @@ let subst_fixed_var sub x =
 
 (** ToDo: first compute the fixed-point of sub *)
 let subst_fixed sub t =
+(*
   let _ = Global.log_begin "Term.subst_fixed" in
   let _ = Global.log (fun () -> Format.printf "input: %a@," pr t) in
+*)
   let t =
 		  Util.fixed_point
 		    (fun t ->
@@ -141,8 +143,10 @@ let subst_fixed sub t =
 		    equiv
 		    t
   in
+(*
 		let _ = Global.log (fun () -> Format.printf "output: %a" pr t) in
   let _ = Global.log_end "Term.subst_fixed" in
+*)
   t
 
 let rec apply t ts =

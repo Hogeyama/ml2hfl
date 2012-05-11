@@ -154,9 +154,16 @@ let infer_ref_types fs prog etrs =
       let ctrs, hcss = List.split (List.map (HcGenRefType.cgen (Prog.type_of prog)) etrs) in
       let hcs = List.concat hcss in
       let _ = Global.log (fun () -> Format.printf "call trees:@,  @[<v>%a@]@," (Util.pr_list CallTree.pr "@,") ctrs) in
+      let hcs = List.map HornClause.simplify hcs in
       let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
-      let hcs = if !Global.inline then HcSolve.inline_forward fs hcs else hcs in
-      let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+      let hcs =
+        if !Global.no_inlining then
+          hcs
+        else
+          let hcs = HcSolve.inline_forward fs hcs in
+          let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+          hcs
+      in
       let hcs =
 						  if Util.concat_map HornClause.coeffs hcs = [] then
 						    hcs
@@ -228,11 +235,8 @@ let infer_abst_type fs prog etrs =
     (function ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys) | _ -> assert false)
     (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env)
 
-let refine flags fs cexs prog =
+let refine fs cexs prog =
   let _ = Global.log_begin "refine" in
-  let _ = Global.generalize_predicates_simple := flags land 1 = 1 in
-  let _ = Global.find_preds_forward := flags land 2 = 1 in
-  let _ = Global.subst_hcs_inc := flags land 4 = 1 in
   let _ = Global.log (fun () -> Format.printf "inlined functions: %s@," (String.concat "," fs)) in
   let env =
 		  try
