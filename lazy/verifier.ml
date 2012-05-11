@@ -231,6 +231,8 @@ let infer_abst_type fs prog etrs =
 let refine flags fs cexs prog =
   let _ = Global.log_begin "refine" in
   let _ = Global.generalize_predicates_simple := flags land 1 = 1 in
+  let _ = Global.find_preds_forward := flags land 2 = 1 in
+  let _ = Global.subst_hcs_inc := flags land 4 = 1 in
   let _ = Global.log (fun () -> Format.printf "inlined functions: %s@," (String.concat "," fs)) in
   let env =
 		  try

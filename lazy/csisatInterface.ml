@@ -202,16 +202,32 @@ let interpolate_chk t1 t2 =
 		  (*let _ = Format.printf "interp: %a@," Term.pr t in*)
 		  let t = Formula.simplify t in
 				if true then
-				  let ts = Formula.conjuncts t in
-						(match ts with
-						  [t] -> t
-						| _ ->
-				      let _ = Global.log_begin "finding minimal interpolant" in
-				      let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.band ts)) in
-				      let ts = Util.minimal (fun ts -> Cvc3Interface.implies ts [Formula.bnot t2]) ts in
-				      let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]@," Term.pr (Formula.band ts)) in
-				      let _ = Global.log_end "finding minimal interpolant" in
-						    Formula.band ts)
+				  let ts = Formula.disjuncts t in
+      let ts =
+								(match ts with
+								  [t] -> [t]
+								| _ ->
+						      let _ = Global.log_begin "minimizing # of disjunctions" in
+						      let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.bor ts)) in
+						      let ts = Util.minimal (fun ts -> Cvc3Interface.implies [t1] [Formula.bor ts]) ts in
+						      let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr (Formula.bor ts)) in
+						      let _ = Global.log_end "minimizing # of disjunctions" in
+								    ts)
+      in
+      Formula.bor
+		      (List.map
+								  (fun t ->
+		          let ts = Formula.conjuncts t in
+												(match ts with
+												  [t] -> t
+												| _ ->
+										      let _ = Global.log_begin "minimizing # of conjunctions" in
+										      let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.band ts)) in
+										      let ts = Util.minimal (fun ts -> Cvc3Interface.implies ts [Formula.bnot t2]) ts in
+										      let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr (Formula.band ts)) in
+										      let _ = Global.log_end "minimizing # of conjunctions" in
+												    Formula.band ts))
+          ts)
 				else
 				  t
 		with No_interpolant ->

@@ -213,7 +213,7 @@ let solve_hc_aux prog lbs ps t =
 						    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," pr_sol_elem sol) in
 						    sol :: aux ps (Formula.band (t :: interp :: List.map Tsubst.formula_of_elem sub))
 		  in
-		  let sol = aux (if false then List.rev ps else ps(*seems better*)) t in
+		  let sol = aux (if !Global.find_preds_forward then ps else List.rev ps) t in
 				let _ = Global.log_end "solve_hc_aux" in
 		  sol
 

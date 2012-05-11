@@ -107,15 +107,19 @@ let simplify (Hc(popt, ps, t)) =
 				            (fun (_, ts1) (_, ts2) ->
 				              Util.concat_map
 				                (fun (t1, t2) ->
-                      try
-                        let nxs, n' = LinArith.of_term t1 in
-                        match nxs with
-                          [n, x] when n = 1 && not (List.mem x bvs) && t1 <> t2 ->
-  		                        [x, LinArith.simplify (Term.sub t2 (Term.tint n')), SimType.Int(*???*)]
-                        | _ ->
-                            raise (Invalid_argument "")
-                      with Invalid_argument _ ->
-                        [])
+                      match t1 with
+                        Term.Var(_, x) when not (List.mem x bvs) && t1 <> t2 ->
+                          [x, t2, SimType.Int(*???*)]
+                      | _ ->
+				                      (try
+				                        let nxs, n' = LinArith.of_term t1 in
+				                        match nxs with
+				                          [n, x] when n = 1 && not (List.mem x bvs) && t1 <> t2 ->
+				  		                        [x, LinArith.simplify (Term.sub t2 (Term.tint n')), SimType.Int(*???*)]
+				                        | _ ->
+				                            raise (Invalid_argument "")
+				                      with Invalid_argument _ ->
+				                        []))
 				                (List.combine ts1 ts2))
 				            ps ps))
 		        pss)
@@ -188,7 +192,7 @@ let subst_hcs hcs (Hc(popt, ps, t) as hc) =
   let _ = Global.log_begin "subst_hcs" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr hc) in
   let hc =
-		  if false then
+		  if !Global.subst_hcs_inc then
       let rec aux ps t =
         try
 		        let lps, (ps, t'), rps =
@@ -199,7 +203,7 @@ let subst_hcs hcs (Hc(popt, ps, t) as hc) =
 				            res)
 				          ps
 		        in
-		        let Hc(_, ps, t) = simplify (Hc(popt, lps @ rps @ ps, Formula.band [t; t'])) in
+		        let Hc(_, ps, t) = simplify (Hc(popt, lps @ ps @ rps, Formula.band [t; t'])) in
 		        aux ps t
         with Not_found ->
           Hc(popt, ps, t)
