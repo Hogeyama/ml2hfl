@@ -109,7 +109,7 @@ let compute_lbs_ext hcs =
         List.map
           (fun hc ->
             let lb = subst_hcs lbs hc in
-            let _ = Global.log (fun () -> Format.printf "%a@," pr lb) in
+            let _ = Global.log (fun () -> Format.printf "inlined horn clause:@,  @[<v>%a@]@," pr lb) in
             lb)
         hcs1
       in

@@ -66,11 +66,11 @@ let rec subst_formula p ps t =
   (*Format.printf "output: %a@." Term.pr t;*)
   ps, t
 
-let simplify (Hc(popt, ps, t)) =
+let simplify_aux bs (Hc(popt, ps, t)) =
   let _ = Global.log_begin "HornClause.simplify" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr (Hc(popt, ps, t))) in
   let bvs = (match popt with None -> [] | Some(_, xs) -> xs) in
-  let ps, t =
+  let bs, ps, t =
     let _ = Global.log_begin "simplifying formula" in
     let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in
     let ps, t =
@@ -91,38 +91,68 @@ let simplify (Hc(popt, ps, t)) =
     let ps, t = subst_formula (fun x -> List.mem x bvs || Var.is_coeff x) ps t in
     let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr t) in
     let _ = Global.log_end "simplifying formula" in
-    List.unique ps, t
+    let _ = List.map Pred.simplify ps in
+    let rec unique bs ps =
+      match bs, ps with
+         [], [] ->
+           [], []
+      |  b::bs, p::ps ->
+           if List.mem p ps then
+             let bs, ps = List.split (Util.filter_map2 (fun b p' -> if p <> p' then Some(b, p') else None) bs ps) in
+             let bs, ps = unique bs ps in
+             false(*??*) :: bs, p :: ps
+           else
+             let bs, ps = unique bs ps in
+             b :: bs, p :: ps
+    in
+    let bs, ps = unique bs ps in
+    bs, ps, t
   in
   let ps, t =
-    let ps = List.map Pred.simplify ps in
     let t = Formula.simplify t in
-    (* ToDo: make the following simplification procedure more scalable *)
+    (* ToDo: make the following predicate sharing procedure more scalable *)
     let xttys =
-      let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
-      List.unique
-		      (Util.concat_map
-		        (fun ps ->
-            List.flatten
-				          (Util.multiply_list
-				            (fun (_, ts1) (_, ts2) ->
-				              Util.concat_map
-				                (fun (t1, t2) ->
-                      match t1 with
-                        Term.Var(_, x) when not (List.mem x bvs) && t1 <> t2 ->
-                          [x, t2, SimType.Int(*???*)]
-                      | _ ->
-				                      (try
-				                        let nxs, n' = LinArith.of_term t1 in
-				                        match nxs with
-				                          [n, x] when n = 1 && not (List.mem x bvs) && t1 <> t2 ->
-				  		                        [x, LinArith.simplify (Term.sub t2 (Term.tint n')), SimType.Int(*???*)]
-				                        | _ ->
-				                            raise (Invalid_argument "")
-				                      with Invalid_argument _ ->
-				                        []))
-				                (List.combine ts1 ts2))
-				            ps ps))
-		        pss)
+      let unifiers ts1 ts2 =
+						  Util.concat_map
+						    (fun (t1, t2) ->
+		          match t1 with
+		            Term.Var(_, x) when not (List.mem x bvs) && t1 <> t2 ->
+		              [x, t2, SimType.Int(*???*)]
+		          | _ ->
+						          (try
+						            let nxs, n' = LinArith.of_term t1 in
+						            match nxs with
+						              [n, x] when n = 1 && not (List.mem x bvs) && t1 <> t2 ->
+						                [x, LinArith.simplify (Term.sub t2 (Term.tint n')), SimType.Int(*???*)]
+						            | _ ->
+						                raise (Invalid_argument "")
+						          with Invalid_argument _ ->
+						            []))
+						    (List.combine ts1 ts2)
+      in
+      if true then
+        let ps1, ps2 = Util.partition_map (fun (b, p) -> if b then `L(p) else `R(p)) (List.combine bs ps) in
+        List.unique
+		        (Util.concat_map
+		          (fun ((pid1, ts1) as p) ->
+		            Util.concat_map
+		              (fun (pid2, ts2) ->
+		                if pid1 = pid2 then
+		                  unifiers ts1 ts2
+		                else
+		                  [])
+		              ((List.filter (fun p' -> p <> p') ps1) @ ps2))
+		          ps1)
+      else
+		      let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
+		      List.unique
+				      (Util.concat_map
+				        (fun ps ->
+		            List.flatten
+						          (Util.multiply_list
+						            (fun (_, ts1) (_, ts2) -> unifiers ts1 ts2)
+						            ps ps))
+				        pss)
     in
     let _ = Global.log (fun () -> Format.printf "xttys: %a@," Tsubst.pr xttys) in
     let xs = List.unique (List.map Util.fst3 xttys) in
@@ -180,13 +210,14 @@ let simplify (Hc(popt, ps, t)) =
     in
     aux ps t
       (*(List.sort ~cmp:(fun xs ys -> List.length xs - List.length ys) (Util.power xs))*)
-      (Util.pick 1 xs @ Util.pick 2 xs @ Util.pick 3 xs @ Util.pick 4 xs)
+      (Util.pick 1 xs @ Util.pick 2 xs @ Util.pick 3 xs @ Util.pick 4 xs @ Util.pick 5 xs @ Util.pick 6 xs)
   in
   let res = Hc(popt, ps, t) in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
   let _ = Global.log_end "HornClause.simplify" in
   res
 
+let simplify (Hc(_, ps, _) as hc) = simplify_aux (List.map (fun _ -> false(*???*)) ps) hc
 
 let subst_hcs hcs (Hc(popt, ps, t) as hc) =
   let _ = Global.log_begin "subst_hcs" in
@@ -203,29 +234,32 @@ let subst_hcs hcs (Hc(popt, ps, t) as hc) =
 				            res)
 				          ps
 		        in
-		        let Hc(_, ps, t) = simplify (Hc(popt, lps @ ps @ rps, Formula.band [t; t'])) in
+		        let Hc(_, ps, t) =
+            let bs = List.map (fun _ -> false) lps @ List.map (fun _ -> true) ps @ List.map (fun _ -> false) rps in
+            simplify_aux bs (Hc(popt, lps @ ps @ rps, Formula.band [t; t']))
+          in
 		        aux ps t
         with Not_found ->
           Hc(popt, ps, t)
       in
       aux ps t
 		  else
-				  let ps, t =
-				    let pss, ts =
-						    List.split
+				  let bs, ps, t =
+				    let bss, pss, ts =
+						    Util.unzip3
 										  (List.map
 										    (fun (pid, ts) ->
 						          try
 														    let res = lookup_hcs (pid, ts) hcs in
 						            let _ = Global.log (fun () -> Format.printf "%a is being substituted@," Var.pr pid) in
-						            res
+						            List.map (fun _ -> true) (fst res), fst res, snd res
 						          with Not_found ->
-						            [pid, ts], Formula.ttrue)
+						            [false], [pid, ts], Formula.ttrue)
 										    ps)
 				    in
-				    List.flatten pss, Formula.band (t::ts)
+				    List.flatten bss, List.flatten pss, Formula.band (t::ts)
 				  in
-		    simplify (Hc(popt, ps, t))
+		    simplify_aux bs (Hc(popt, ps, t))
   in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr hc) in
   let _ = Global.log_end "subst_hcs" in

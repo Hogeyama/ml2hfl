@@ -157,7 +157,7 @@ let infer_ref_types fs prog etrs =
       let hcs = List.map HornClause.simplify hcs in
       let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
       let hcs =
-        if !Global.no_inlining then
+        if !Global.no_inlining || !Global.inline_after_ncs then
           hcs
         else
           let hcs = HcSolve.inline_forward fs hcs in
@@ -174,6 +174,14 @@ let infer_ref_types fs prog etrs =
 								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
 								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
 								  List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2
+      in
+      let hcs =
+        if !Global.no_inlining || not !Global.inline_after_ncs then
+          hcs
+        else
+          let hcs = HcSolve.inline_forward fs hcs in
+          let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+          hcs
       in
       List.map
         (fun (x, (xs, t)) ->

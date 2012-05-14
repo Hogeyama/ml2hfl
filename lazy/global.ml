@@ -28,6 +28,7 @@ let use_min_unsat_prefix = ref true
 let refine_unit = ref true
 let refine_function = ref false
 let no_inlining = ref false
+let inline_after_ncs = ref false
 
 (** {6 Options for non-linear constraint solving} *)
 let use_bit_vector = ref true

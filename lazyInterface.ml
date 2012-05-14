@@ -144,7 +144,7 @@ let infer flags labeled cexs prog =
   let _ = Global.find_preds_forward := flags land 2 <> 0 in
   let _ = Global.subst_hcs_inc := flags land 4 <> 0 in
   let _ = Global.no_inlining := flags land 8 <> 0 || not !Flag.expand_nonrec in
-if !Global.no_inlining then Format.printf "flags:%d@." flags;
+  let _ = Global.inline_after_ncs := flags land 16 <> 0 in
 
   let prog = conv_prog prog in
   let env = Verifier.refine labeled cexs prog in
