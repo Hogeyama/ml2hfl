@@ -69,6 +69,7 @@ let rec subst_formula p ps t =
 let simplify_aux bs (Hc(popt, ps, t)) =
   let _ = Global.log_begin "HornClause.simplify" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr (Hc(popt, ps, t))) in
+  let shared = ref (List.length ps) in
   let bvs = (match popt with None -> [] | Some(_, xs) -> xs) in
   let bs, ps, t =
     let _ = Global.log_begin "simplifying formula" in
@@ -91,7 +92,7 @@ let simplify_aux bs (Hc(popt, ps, t)) =
     let ps, t = subst_formula (fun x -> List.mem x bvs || Var.is_coeff x) ps t in
     let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr t) in
     let _ = Global.log_end "simplifying formula" in
-    let _ = List.map Pred.simplify ps in
+    let ps = List.map Pred.simplify ps in
     let rec unique bs ps =
       match bs, ps with
          [], [] ->
@@ -109,110 +110,189 @@ let simplify_aux bs (Hc(popt, ps, t)) =
     bs, ps, t
   in
   let ps, t =
-    let t = Formula.simplify t in
-    (* ToDo: make the following predicate sharing procedure more scalable *)
-    let xttys =
-      let unifiers ts1 ts2 =
-						  Util.concat_map
-						    (fun (t1, t2) ->
-		          match t1 with
-		            Term.Var(_, x) when not (List.mem x bvs) && t1 <> t2 ->
-		              [x, t2, SimType.Int(*???*)]
-		          | _ ->
-						          (try
-						            let nxs, n' = LinArith.of_term t1 in
-						            match nxs with
-						              [n, x] when n = 1 && not (List.mem x bvs) && t1 <> t2 ->
-						                [x, LinArith.simplify (Term.sub t2 (Term.tint n')), SimType.Int(*???*)]
-						            | _ ->
-						                raise (Invalid_argument "")
-						          with Invalid_argument _ ->
-						            []))
-						    (List.combine ts1 ts2)
+    if true then
+		    let t = Formula.simplify t in
+				  let ts = Formula.conjuncts t in
+      let rec aux ys ps1 ts1 ps2 ts2 =
+        let x = List.find (fun x -> not (List.mem x (bvs @ ys))) (Util.concat_map Pred.fvs (ps1 @ ps2)) in
+        try
+				      let ps1', ps2 = List.partition (fun p -> List.mem x (Pred.fvs p)) ps2 in
+				      let ts1', ts2 = List.partition (fun t -> List.mem x (Term.fvs t)) ts2 in
+		        let ps1 = ps1 @ ps1' in
+		        let ts1 = ts1 @ ts1' in
+		        let _ = if Util.subset (List.map fst ps1) (List.map fst ps2) then () else raise Not_found in
+		        let xttys =
+		          Util.concat_map
+		            (fun (pid, ts) ->
+		              let tss = List.filter_map (fun (pid', ts') -> if pid = pid' then Some(ts') else None) ps2 in
+		              List.concat
+		                (List.mapi
+		                  (fun i t ->
+		                    if List.mem x (Term.fvs t) then
+		                      let ts = List.filter (fun t' -> t <> t') (List.map (fun ts -> List.nth ts i) tss) in
+														          match t with
+														            Term.Var(_, x) ->
+														              List.map (fun t -> x, t, SimType.Int(*???*)) ts
+														          | _ ->
+																		          (try
+																		            let nxs, n' = LinArith.of_term t in
+																		            match nxs with
+																		              [n, x] when n = 1 ->
+																		                List.map (fun t -> x, LinArith.simplify (Term.sub t (Term.tint n')), SimType.Int(*???*)) ts
+																		            | _ ->
+																		                raise (Invalid_argument "")
+																		          with Invalid_argument _ ->
+																		            [])
+		                    else
+		                      [])
+		                  ts))
+		            ps1
+		        in
+		        Util.find_map
+		          (fun xtty ->
+								      let ps = Util.diff (List.map (fun p -> Pred.simplify (Pred.subst (Tsubst.fun_of [xtty]) p)) ps1) ps2 in
+								      let ts = Util.diff (List.map (fun t -> Formula.simplify (Term.subst (Tsubst.fun_of [xtty]) t)) ts1) ts2 in
+						        if ps = [] (*???*) && Cvc3Interface.implies ts2 ts then
+		              try aux [] [] [] ps2 ts2 with Not_found -> ps2, Formula.band ts2
+		            else
+		              aux ys ps ts ps2 ts2)
+		          xttys
+        with Not_found ->
+          aux (x::ys) ps1 ts1 ps2 ts2
       in
-      if true then
-        let ps1, ps2 = Util.partition_map (fun (b, p) -> if b then `L(p) else `R(p)) (List.combine bs ps) in
-        List.unique
-		        (Util.concat_map
-		          (fun ((pid1, ts1) as p) ->
-		            Util.concat_map
-		              (fun (pid2, ts2) ->
-		                if pid1 = pid2 then
-		                  unifiers ts1 ts2
-		                else
-		                  [])
-		              ((List.filter (fun p' -> p <> p') ps1) @ ps2))
-		          ps1)
-      else
-		      let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
-		      List.unique
-				      (Util.concat_map
-				        (fun ps ->
-		            List.flatten
-						          (Util.multiply_list
-						            (fun (_, ts1) (_, ts2) -> unifiers ts1 ts2)
-						            ps ps))
-				        pss)
-    in
-    let _ = Global.log (fun () -> Format.printf "xttys: %a@," Tsubst.pr xttys) in
-    let xs = List.unique (List.map Util.fst3 xttys) in
-    let _ = Global.log (fun () -> Format.printf "xs: %a@," (Util.pr_list Var.pr ",") xs) in
-    let rec aux ps t xss =
-      match xss with
-        [] ->
-          ps, t
-      | xs::xss' ->
-          let xttyss =
-            if xs = [] then
-              []
-            else
-              Util.multiply_list_list
-                (fun xttys1 xttys2 -> xttys1 @ xttys2)
-                (List.map
-                  (fun x ->
-                    List.filter_map
-                      (fun (x', t, ty) -> if x = x' then Some([x, t, ty]) else None)
-                      xttys)
-                  xs)
-          in
-          let xttyss =
-            List.filter
-              (fun xttys ->
-                Util.inter
-                  (List.map Util.fst3 xttys)
-                  (Util.concat_map (fun (_, t, _) -> Term.fvs t) xttys)
-                = [])
-              xttyss
-          in
-          if xttyss = [] then
-            aux ps t xss'
-          else
-		          let ts = Formula.conjuncts t in
-            let ps1, ps2 = List.partition (fun p -> Util.inter (Pred.fvs p) xs <> []) ps in
-            let ts1, ts2 = List.partition (fun t -> Util.inter (Term.fvs t) xs <> []) ts in
-            (try
-              let ps, t =
-		              Util.find_map
-																  (fun xttys ->
-                    (*let _ = Global.log (fun () -> Format.printf "sub: %a@," Tsubst.pr xttys) in*)
-                    let ps1 = List.map (Pred.subst (Tsubst.fun_of xttys)) ps1 in
-                    let ts1 = List.map (fun t -> Formula.simplify (Term.subst (Tsubst.fun_of xttys) t)) ts1 in
-                    if Util.subset ps1 ps2 (*???*) &&
-                       Cvc3Interface.implies ts2 ts1 then
-                      ps2, Formula.band ts2
-                    else
-                      raise Not_found)
-		                xttyss
-              in
-              aux ps t (List.filter (fun xs' -> Util.inter xs' xs = []) xss')
-            with Not_found ->
-              aux ps t xss')
-    in
-    aux ps t
-      (*(List.sort ~cmp:(fun xs ys -> List.length xs - List.length ys) (Util.power xs))*)
-      (Util.pick 1 xs @ Util.pick 2 xs @ Util.pick 3 xs @ Util.pick 4 xs @ Util.pick 5 xs @ Util.pick 6 xs)
+      (try aux [] [] [] ps ts with Not_found -> ps, Formula.band ts)
+    else
+		    let t = Formula.simplify t in
+		    (* ToDo: make the following predicate sharing procedure more scalable *)
+		    let xttys =
+		      let unifiers ts1 ts2 =
+								  Util.concat_map
+								    (fun (t1, t2) ->
+				          match t1 with
+				            Term.Var(_, x) when not (List.mem x bvs) && t1 <> t2 ->
+				              [x, t2, SimType.Int(*???*)]
+				          | _ ->
+								          (try
+								            let nxs, n' = LinArith.of_term t1 in
+								            match nxs with
+								              [n, x] when n = 1 && not (List.mem x bvs) && t1 <> t2 ->
+								                [x, LinArith.simplify (Term.sub t2 (Term.tint n')), SimType.Int(*???*)]
+								            | _ ->
+								                raise (Invalid_argument "")
+								          with Invalid_argument _ ->
+								            []))
+								    (List.combine ts1 ts2)
+		      in
+		      if true then
+		        let ps1, ps2 = Util.partition_map (fun (b, p) -> if b then `L(p) else `R(p)) (List.combine bs ps) in
+		        List.unique
+				        (Util.concat_map
+				          (fun ((pid1, ts1) as p) ->
+				            Util.concat_map
+				              (fun (pid2, ts2) ->
+				                if pid1 = pid2 then
+				                  unifiers ts1 ts2 @ unifiers ts2 ts1
+				                else
+				                  [])
+				              ((List.filter (fun p' -> p <> p') ps1) @ ps2))
+				          ps1)
+		      else
+				      let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
+				      List.unique
+						      (Util.concat_map
+						        (fun ps ->
+				            List.flatten
+								          (Util.multiply_list
+								            (fun (_, ts1) (_, ts2) -> unifiers ts1 ts2)
+								            ps ps))
+						        pss)
+		    in
+		    let _ = Global.log (fun () -> Format.printf "xttys: %a@," Tsubst.pr xttys) in
+		    let xs = List.unique (List.map Util.fst3 xttys) in
+		    let _ = Global.log (fun () -> Format.printf "xs: %a@," (Util.pr_list Var.pr ",") xs) in
+		    let rec aux ps t xss =
+		      match xss with
+		        [] ->
+		          ps, t
+		      | xs::xss' ->
+		          let xttyss =
+		            if xs = [] then
+		              []
+		            else
+		              Util.multiply_list_list
+		                (fun xttys1 xttys2 -> xttys1 @ xttys2)
+		                (List.map
+		                  (fun x ->
+		                    List.filter_map
+		                      (fun (x', t, ty) -> if x = x' then Some([x, t, ty]) else None)
+		                      xttys)
+		                  xs)
+		          in
+		          let xttyss =
+		            List.filter
+		              (fun xttys ->
+		                Util.inter
+		                  (List.map Util.fst3 xttys)
+		                  (Util.concat_map (fun (_, t, _) -> Term.fvs t) xttys)
+		                = [])
+		              xttyss
+		          in
+		          if xttyss = [] then
+		            aux ps t xss'
+		          else
+				          let ts = Formula.conjuncts t in
+		            let ps1, ps2 = List.partition (fun p -> Util.inter (Pred.fvs p) xs <> []) ps in
+		            let ts1, ts2 = List.partition (fun t -> Util.inter (Term.fvs t) xs <> []) ts in
+		            (try
+		              let ps, t =
+				              Util.find_map
+																		  (fun xttys ->
+		                    (*let _ = Global.log (fun () -> Format.printf "sub: %a@," Tsubst.pr xttys) in*)
+		                    let ps1 = List.map (fun p -> Pred.simplify (Pred.subst (Tsubst.fun_of xttys) p)) ps1 in
+		                    let ts1 = List.map (fun t -> Formula.simplify (Term.subst (Tsubst.fun_of xttys) t)) ts1 in
+		                    (*let _ = Global.log (fun () -> Format.printf "hc1: %a@,hc2: %a@," pr (Hc(None, ps1, Formula.band ts1)) pr (Hc(None, ps2, Formula.band ts2))) in*)
+		                    if Util.subset ps1 ps2 (*???*) &&
+		                       Cvc3Interface.implies ts2 ts1 then
+		                      ps2, Formula.band ts2
+		                    else
+		                      raise Not_found)
+				                xttyss
+		              in
+		              aux ps t (List.filter (fun xs' -> Util.inter xs' xs = []) xss')
+		            with Not_found ->
+		              aux ps t xss')
+		    in
+		    let xss =
+		      let p xs =
+		        let pids1, pids2 = Util.partition_map (fun ((pid, _) as p) -> if Util.inter xs (Pred.fvs p) <> [] then `L(pid) else `R(pid)) ps in
+		        Util.subset pids1 pids2
+		      in
+		      if true then
+				      let xs = List.filter (fun x -> p [x]) xs in
+		        let rec aux xss =
+			  	      let _ = Global.log (fun () -> Format.printf "#%d@." (List.length xss)) in
+		          let yss = Util.concat_map (fun ys -> List.map (fun x -> x::ys) (Util.diff xs ys)) xss in
+		          let yss = List.filter p yss in
+		          xss @ (if yss = [] || List.length yss > 30000 then [] else aux yss)
+		        in
+				      let xss = aux (List.map (fun x -> [x]) xs) in
+				      let _ = Global.log (fun () -> Format.printf "# of sets of variables: %d@." (List.length xss)) in
+		        xss
+		      else
+		        List.sort ~cmp:(fun xs ys -> List.length xs - List.length ys) (Util.power xs)
+		    in
+		    aux ps t xss
   in
   let res = Hc(popt, ps, t) in
+  let _ =
+    let _ = shared := !shared - List.length ps in
+    Global.log (fun () -> Format.printf "# of shared predicate variables: %d@," !shared)
+  in
+  let _ =
+		  let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
+    let n = List.fold_left (+) 0 (List.map (fun ps -> List.length ps - 1) pss) in
+    Global.log (fun () -> Format.printf "# of duplicate predicate variables: %d@," n)
+  in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
   let _ = Global.log_end "HornClause.simplify" in
   res

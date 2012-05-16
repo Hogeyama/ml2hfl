@@ -4,10 +4,10 @@ TEST="kmp.ml fact_exn.ml array_init.ml array_max.ml file.ml rev_append.ml rev_ac
 
 TEST="intro1.ml intro2.ml intro3.ml sum.ml mult.ml max.ml mc91.ml ack.ml repeat.ml fhnhn.ml hrec.ml neg.ml a-prod.ml a-cppr.ml a-init.ml l-zipunzip.ml l-zipmap.ml hors.ml e-simple.ml e-fact.ml r-lock.ml r-file.ml sum-e.ml mult-e.ml max-e.ml mc91-e.ml repeat-e.ml lock-e.ml excep-e.ml"
 
-APLAS="fold_right.ml forall_eq_pair.ml forall_leq.ml isnil.ml iter.ml length3.ml mem.ml nth0.ml harmonic.ml fold_left.ml iter_fun_list.ml zip.ml map.ml inits.ml risers.ml"
+APLAS="fold_right.ml forall_eq_pair.ml forall_leq.ml isnil.ml iter.ml mem.ml nth0.ml harmonic.ml fold_left.ml zip.ml risers.ml inits.ml length3.ml map.ml iter_fun_list.ml"
 
 LIMIT=120
-OPTION="-enr -rs"
+OPTION="-enr -rsn 4"
 
 for i in $APLAS
 do

@@ -329,7 +329,8 @@ let inline_forward fs hcs =
 		    hcs
   in
   let lbs = compute_lbs_ext hcs1 in
-  List.map (subst_hcs lbs) hcs2
+  let hcs = List.map (subst_hcs lbs) hcs2 in
+  hcs
 
 let inline_backward fs hcs =
   let hcs1, hcs2 =
