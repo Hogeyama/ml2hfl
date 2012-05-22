@@ -175,40 +175,45 @@ let infer t ty =
     (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))  
 
 let is_valid t =
-  let _ = Global.log_begin "is_valid" in
-  let cin = !cvc3in in
-  let cout = !cvc3out in
-  let _ = cnt := !cnt + 1 in
-  let fm = Format.formatter_of_out_channel cout in
-
-  let env =
-    infer t SimType.Bool
-    (*List.map (fun x -> x, SimType.Int) (Term.fvs t)*)
-  in
-  let inp =
-    "PUSH;" ^
-    string_of_env env ^ ";" ^
-    String.concat " "
-      (List.map (fun t -> "ASSERT " ^ (string_of_term t) ^ "; ") []) ^
-    "QUERY " ^ string_of_term t ^ ";" ^
-    "POP;"
-  in
-  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
-  let _ = Format.fprintf fm "%s\n@?" inp in
-  let res = input_line cin in
-  let res =
-		  if Str.string_match (Str.regexp ".*Valid") res 0 then
-		    let _ = Format.printf "output of CVC3: valid" in
-		    true
-		  else if Str.string_match (Str.regexp ".*Invalid") res 0 then
-		    let _ = Format.printf "output of CVC3: invalid" in
-		    false
-		  else
-		    let _ = Format.printf "unknown error of CVC3: %s@," res in
-		    assert false
-  in
-  let _ = Global.log_end "is_valid" in
-  res
+  if t = Formula.ttrue then
+    true
+  else if t = Formula.tfalse then
+    false
+  else
+		  let _ = Global.log_begin "is_valid" in
+		  let cin = !cvc3in in
+		  let cout = !cvc3out in
+		  let _ = cnt := !cnt + 1 in
+		  let fm = Format.formatter_of_out_channel cout in
+		
+		  let env =
+		    infer t SimType.Bool
+		    (*List.map (fun x -> x, SimType.Int) (Term.fvs t)*)
+		  in
+		  let inp =
+		    "PUSH;" ^
+		    string_of_env env ^ ";" ^
+		    String.concat " "
+		      (List.map (fun t -> "ASSERT " ^ (string_of_term t) ^ "; ") []) ^
+		    "QUERY " ^ string_of_term t ^ ";" ^
+		    "POP;"
+		  in
+		  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
+		  let _ = Format.fprintf fm "%s\n@?" inp in
+		  let res = input_line cin in
+		  let res =
+				  if Str.string_match (Str.regexp ".*Valid") res 0 then
+				    let _ = Format.printf "output of CVC3: valid" in
+				    true
+				  else if Str.string_match (Str.regexp ".*Invalid") res 0 then
+				    let _ = Format.printf "output of CVC3: invalid" in
+				    false
+				  else
+				    let _ = Format.printf "unknown error of CVC3: %s@," res in
+				    assert false
+		  in
+		  let _ = Global.log_end "is_valid" in
+		  res
 
 let implies ts1 ts2 =
   let ts2 = Formula.simplify_conjuncts (Util.diff ts2 ts1) in

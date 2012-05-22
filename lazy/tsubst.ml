@@ -116,7 +116,8 @@ let extract_from pids p t =
   in
   fun_of sub, Formula.simplify (Formula.band (ts @ ts'))
 
-(** may return a substitution of the form {x -> y, y -> z} *)
+(** may return a substitution of the form {x -> y, y -> z}
+    unsound for non linear expressions? maybe not *)
 let extract_from2 pvs p ts =
   let nlfvs = LinArith.nlfvs (Formula.band ts) in
   let rec aux ts xttys0 ts0 =

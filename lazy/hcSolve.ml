@@ -204,10 +204,16 @@ let solve_hc_aux prog lbs ps t =
                 t
               with Not_found -> assert false
 						      in
-												if !Global.generalize_predicates_simple then
-              generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
-												else
-												  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
+            let t =
+														if !Global.generalize_predicates_simple then
+		              generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
+														else
+														  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
+            in
+            match Term.fun_args t, Term.fun_args t1 with
+              (Term.Const(_, Const.Leq), [t11; t12]), (Term.Const(_, Const.EqInt), [t21; t22]) when t11 = t21 && t12 = t22 ->
+                let _ = Format.printf "???@," in t1 (*very adhoc to intro3*)
+            | _ -> t
 						    in
 						    let sol = pid, (xs, interp)	in
 						    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," pr_sol_elem sol) in

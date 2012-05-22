@@ -7,6 +7,12 @@ open ExtString
 
 exception NotImplemented of string
 
+(** {6 Other functions} *)
+
+let rec fixed_point f eq x =
+  let x' = f x in
+  if eq x x' then x else fixed_point f eq x'
+
 (** {6 Functions on integers} *)
 
 (** ensure: never returns 0 *)
@@ -393,6 +399,28 @@ let union l1 l2 = List.unique (l1 @ l2)
 let set_equiv l1 l2 = subset l1 l2 && subset l2 l1
 let is_dup xs = List.length (List.unique xs) <> List.length xs
 
+(** divide xs by the transitive clousre of rel *)
+let rec equiv_classes rel xs =
+  match xs with
+    [] ->
+      []
+  | x::xs ->
+      let aux xs1 xs2 =
+        let ys1, ys2 = List.partition (fun y -> List.exists (rel y) xs1) xs2 in
+        xs1 @ ys1, ys2
+      in
+      let ls, rs = fixed_point (fun (xs, ys) -> aux xs ys) (fun (xs1, _) (xs2, _) -> List.length xs1 = List.length xs2) ([x], xs) in
+      let ecs = equiv_classes rel rs in
+      ls :: ecs
+
+(** *)
+let rec representatives rel xs =
+  match xs with
+    [] -> []
+  | x::xs' ->
+      x :: representatives rel (List.filter (fun y -> not (rel x y)) xs')
+
+
 (** {6 Functions on matrices} *)
 
 let rec transpose xss =
@@ -506,11 +534,6 @@ let int_of_bv bv =
 
 
 
-(** {6 Other functions} *)
-
-let rec fixed_point f eq x =
-  let x' = f x in
-  if eq x x' then x else fixed_point f eq x'
 
 
 
