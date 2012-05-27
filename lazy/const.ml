@@ -276,8 +276,9 @@ let rec candn (c1, n1) (c2, n2) =
 
   | NeqInt, EqInt -> candn (c2, n2) (c1, n1)
   | NeqInt, NeqInt -> if n1 = n2 then [NeqInt, n1] else [NeqInt, n1; NeqInt, n2]
-  | NeqInt, Lt -> if n1 >= n2 then [Lt, n2] else [NeqInt, n1; Lt, n2]
-  | NeqInt, Gt -> if n1 <= n2 then [Gt, n2] else [NeqInt, n1; Gt, n2]
+  | NeqInt, Lt -> if n1 + 1 = n2 then [Lt, n1](*integer!*) else if n1 >= n2 then [Lt, n2] else [NeqInt, n1; Lt, n2]
+  | NeqInt, Gt -> if n1 = n2 + 1 then [Gt, n1](*integer!*) else if n1 <= n2 then [Gt, n2] else [NeqInt, n1; Gt, n2]
+
   | NeqInt, Leq -> if n1 = n2 then [Lt, n2] else if n1 > n2 then [Leq, n2] else [NeqInt, n1; Leq, n2]
   | NeqInt, Geq -> if n1 = n2 then [Gt, n2] else if n1 < n2 then [Geq, n2] else [NeqInt, n1; Geq, n2]
 
@@ -350,13 +351,13 @@ let rec corn (c1, n1) (c2, n2) =
   | Lt, Lt -> if n1 <= n2 then [Lt, n2] else [Lt, n1]
   | Lt, Gt -> if n1 = n2 then [NeqInt, n1] else if n1 > n2 then [IBTrue, 0] else [Lt, n1; Gt, n2]
   | Lt, Leq -> if n1 <= n2 then [Leq, n2] else [Lt, n1]
-  | Lt, Geq -> if n1 >= n2 then [IBTrue, 0] else [Lt, n1; Geq, n2]
+  | Lt, Geq -> if n1 + 1 = n2 then [NeqInt, n1] else if n1 >= n2 then [IBTrue, 0] else [Lt, n1; Geq, n2]
 
   | Gt, EqInt -> corn (c2, n2) (c1, n1)
   | Gt, NeqInt -> corn (c2, n2) (c1, n1)
   | Gt, Lt -> corn (c2, n2) (c1, n1)
   | Gt, Gt -> if n1 >= n2 then [Gt, n2] else [Gt, n1]
-  | Gt, Leq -> if n1 <= n2 then [IBTrue, 0] else [Gt, n1; Leq, n2]
+  | Gt, Leq -> if n1 = n2 + 1 then [NeqInt, n1] else if n1 <= n2 then [IBTrue, 0] else [Gt, n1; Leq, n2]
   | Gt, Geq -> if n1 >= n2 then [Geq, n2] else [Gt, n1]
 
   | Leq, EqInt -> corn (c2, n2) (c1, n1)

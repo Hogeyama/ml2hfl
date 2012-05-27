@@ -4,12 +4,12 @@ SOURCES = enum.ml extList.ml extString.ml \
           attr.ml idnt.ml const.ml var.ml callId.ml simType.ml term.ml linArith.ml nonLinArith.ml parLinArith.ml formula.ml tsubst.ml fes.ml fdef.ml prog.ml \
           apronInterface.ml cvc3Interface.ml csisatInterface.ml atpInterface.ml \
           farkas.ml \
-          intType.ml intTypeCheck.ml \
+#          intType.ml intTypeCheck.ml \
           refType.ml refTypeCheck.ml \
           absType.ml \
           trace.ml compTree.ml compTreeExpander.ml \
-          traceConstr.ml tcGenIntType.ml tcGenRefType.ml \
-          tcSolve.ml tcSolveIntType.ml tcSolveRefType.ml \
+#          traceConstr.ml tcGenIntType.ml tcGenRefType.ml \
+#          tcSolve.ml tcSolveIntType.ml tcSolveRefType.ml \
           callTree.ml pred.ml hornClause.ml hcGenRefType.ml hcSolve.ml \
           verifier.ml \
           main.ml

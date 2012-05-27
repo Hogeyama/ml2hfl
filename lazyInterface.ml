@@ -169,11 +169,10 @@ let new_params bvs =
     (fun i ->
       if i < !number_of_extra_params then
 						  let bts = List.map Syntax.make_var (List.filter (fun x -> x.Id.typ = Type.TInt) bvs) in
-        let flag = false in
 						  let ps =
           Util.unfold
             (fun i ->
-              if i < (List.length bts + if flag then 1 else 0) then
+              if i < (List.length bts + if !Global.coeff_const then 1 else 0) then
                 Some(Id.new_var Flag.extpar_header Type.TInt, i + 1)
               else
                 None)
@@ -182,7 +181,7 @@ let new_params bvs =
 						  let _ = params := !params @ ps in
 						  let tps = List.map Syntax.make_var ps in
 						  let ts =
-          if flag then
+          if !Global.coeff_const then
             List.hd tps :: List.map2 Syntax.make_mul (List.tl tps) bts
           else
             List.map2 Syntax.make_mul tps bts

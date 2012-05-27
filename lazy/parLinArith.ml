@@ -216,7 +216,7 @@ let canonize_aif (c, nxs, n) =
   | _ -> assert false
 
 let term_of_aif (c, nxs, n) =
-  if nxs = [] && try int_of n; true with Not_found -> false then
+  if nxs = [] && is_int_const n then
     if Const.lift_ibrel c (int_of n) 0 then
       Const([], Const.True)
     else

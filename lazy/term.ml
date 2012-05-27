@@ -265,26 +265,26 @@ let rec redex_of env t =
   | _ -> raise Not_found
 
 
-let rec fvs_ty ty1 t ty2 =
+let rec tyfvs_ty t ty =
   match fun_args t with
-    Var(_, v), [] ->
-      if ty2 = ty1 then [v] else []
+    Var(_, x), [] ->
+      [x, ty]
   | Const(_, c), [] ->
       []
   | Const(a, Const.Not), [t] -> 
-      fvs_ty ty1 t SimType.Bool
+      tyfvs_ty t SimType.Bool
   | Const(a, Const.Minus), [t] ->
-      fvs_ty ty1 t SimType.Int
+      tyfvs_ty t SimType.Int
   | Const(a, Const.EqUnit), [t1; t2]
   | Const(a, Const.NeqUnit), [t1; t2] ->
-      fvs_ty ty1 t1 SimType.Unit @ fvs_ty ty1 t2 SimType.Unit
+      tyfvs_ty t1 SimType.Unit @ tyfvs_ty t2 SimType.Unit
   | Const(a, Const.EqBool), [t1; t2]
   | Const(a, Const.NeqBool), [t1; t2]
   | Const(a, Const.And), [t1; t2]
   | Const(a, Const.Or), [t1; t2]
   | Const(a, Const.Imply), [t1; t2]
   | Const(a, Const.Iff), [t1; t2] ->
-      fvs_ty ty1 t1 SimType.Bool @ fvs_ty ty1 t2 SimType.Bool
+      tyfvs_ty t1 SimType.Bool @ tyfvs_ty t2 SimType.Bool
   | Const(a, Const.EqInt), [t1; t2]
   | Const(a, Const.NeqInt), [t1; t2]
   | Const(a, Const.Lt), [t1; t2]
@@ -294,10 +294,13 @@ let rec fvs_ty ty1 t ty2 =
   | Const(a, Const.Add), [t1; t2]
   | Const(a, Const.Sub), [t1; t2]
   | Const(a, Const.Mul), [t1; t2] ->
-      fvs_ty ty1 t1 SimType.Int @ fvs_ty ty1 t2 SimType.Int
+      tyfvs_ty t1 SimType.Int @ tyfvs_ty t2 SimType.Int
   | _->
       let _ = Format.printf "@.%a@." pr t in
       assert false
+
+let fvs_ty ty1 t ty2 =
+  List.filter_map (fun (x, ty) -> if ty = ty1 then Some(x) else None) (tyfvs_ty t ty2)
 
 (*
 let rec set_arity am t =
@@ -322,3 +325,8 @@ let int_of t =
   match t with
     Const(_, Const.Int(n)) -> n
   | _ -> raise Not_found
+
+let is_int_const t =
+  match t with
+    Const(_, Const.Int(n)) -> true
+  | _ -> false

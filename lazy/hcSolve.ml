@@ -10,45 +10,45 @@ exception NoSolution
 
 (** {6 Functions on solutions} *)
 
-let pr_sol_elem ppf (pid, (xs, t)) =
-  Format.fprintf ppf "@[<hov>%a =@ %a@]" Pred.pr (pid, List.map Term.make_var xs) Term.pr t
+let pr_sol_elem ppf (pid, (xtys, t)) =
+  Format.fprintf ppf "@[<hov>%a =@ %a@]" Pred.pr (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) Term.pr t
 
 let pr_sol ppf sol =
   Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_sol_elem "@,") sol
 
 
-let lookup_sol (pid, ts) sol =
+let lookup_sol (pid, ttys) sol =
   Formula.simplify
     (Formula.band
 		    (List.map
-		      (fun (_, (xs, t)) ->
-		        let sub = List.combine xs ts in
+		      (fun (_, (xtys, t)) ->
+		        let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
 		        Term.subst (fun x -> List.assoc x sub) t)
 		      (List.filter (fun (pid', _) -> pid = pid') sol)))
 
 let merge_sol sol =
   List.map
-    (fun (pid, xs) ->
-      pid, (xs, lookup_sol (pid, List.map Term.make_var xs) sol))
-    (List.map (fun ((pid, (xs, _))::_) -> pid, xs)
+    (fun (pid, xtys) ->
+      pid, (xtys, lookup_sol (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol))
+    (List.map (fun ((pid, (xtys, _))::_) -> pid, xtys)
       (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) sol))
 
 (** {6 Functions for solving Horn clauses} *)
 
-let lookup_lbs (pid, ts) lbs =
-		let xs, t = List.assoc pid lbs in
+let lookup_lbs (pid, ttys) lbs =
+		let xtys, t = List.assoc pid lbs in
 
-		let fvs = Util.diff (List.unique (Term.fvs t)) xs in
+		let fvs = Util.diff (List.unique (Term.fvs t)) (List.map fst xtys) in
 		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
 		let t = Term.subst (fun x -> List.assoc x sub) t in
 
-		let sub = List.combine xs ts in
+		let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
 		Term.subst (fun x -> List.assoc x sub) t
 
 let subst_lbs lbs (Hc(popt, ps, t)) =
   let _ = Global.log_begin "subst_lbs" in
   let t =
-    let ts = List.map (fun (pid, ts) -> lookup_lbs (pid, ts) lbs) ps in
+    let ts = List.map (fun (pid, ttys) -> lookup_lbs (pid, ttys) lbs) ps in
     Formula.band (t :: ts)
   in
   let hc = simplify (Hc(popt, [], t)) in
@@ -57,9 +57,9 @@ let subst_lbs lbs (Hc(popt, ps, t)) =
 
 
 
-let compute_lb lbs (Hc(Some(pid, xs), ps, t)) =
-  let Hc(_, [], t) = subst_lbs lbs (Hc(Some(pid, xs), ps, t)) in
-  pid, (xs, t)
+let compute_lb lbs (Hc(Some(pid, xtys), ps, t)) =
+  let Hc(_, [], t) = subst_lbs lbs (Hc(Some(pid, xtys), ps, t)) in
+  pid, (xtys, t)
 
 let compute_lbs hcs =
   let _ = Global.log_begin "compute_lbs" in
@@ -162,7 +162,7 @@ let generalize_interpolate pid p t1 t2 =
 		      CsisatInterface.interpolate_bvs p t1 t2
 
 
-let solve_hc_aux prog lbs ps t =
+let solve_hc_aux (*prog*) lbs ps t =
   let _ = Global.log_begin "solve_hc_aux" in
 		let _ =
 		  Global.log (fun () ->
@@ -177,15 +177,15 @@ let solve_hc_aux prog lbs ps t =
 		  let rec aux ps t =
 						match ps with
 						  [] -> []
-						| (pid, ts)::ps ->
-		        let xs = List.map (fun _ -> Var.new_var ()) ts in
-          let tys = try List.map (Prog.type_of prog) (RefType.visible_vars (Prog.type_of prog) pid) with Not_found -> List.map (fun _ -> SimType.Int) xs in
-          let sub = Util.map3 (fun x t ty -> x, t, ty) xs ts tys in
-				      let _ = Global.log (fun () -> Format.printf "finding a solution to %a@," Pred.pr (pid, List.map Term.make_var xs)) in
+						| (pid, ttys)::ps ->
+          (*let tys = try List.map (Prog.type_of prog) (RefType.visible_vars (Prog.type_of prog) pid) with Not_found -> List.map (fun _ -> SimType.Int) xs in*)
+		        let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
+          let xs = List.map Util.fst3 sub in
+				      let _ = Global.log (fun () -> Format.printf "finding a solution to %a@," Pred.pr (pid, List.map (fun (x, _, ty) -> Term.make_var x, ty) sub)) in
 						    let interp =
 						      let t1 =
 						        try
-                let t = lookup_lbs (pid, List.map Term.make_var xs) lbs in
+                let t = lookup_lbs (pid, List.map (fun (x, _, ty) -> Term.make_var x, ty) sub) lbs in
 						          let sub, t = Tsubst.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
 						          let t = Term.subst sub t in
                 let [], t = subst_formula (fun x -> List.mem x xs || Var.is_coeff x) [] t in
@@ -210,12 +210,9 @@ let solve_hc_aux prog lbs ps t =
 														else
 														  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
             in
-            match Term.fun_args t, Term.fun_args t1 with
-              (Term.Const(_, Const.Leq), [t11; t12]), (Term.Const(_, Const.EqInt), [t21; t22]) when t11 = t21 && t12 = t22 ->
-                let _ = Format.printf "???@," in t1 (*very adhoc to intro3*)
-            | _ -> t
+            t
 						    in
-						    let sol = pid, (xs, interp)	in
+						    let sol = pid, (List.map (fun (x, _, ty) -> x, ty) sub, interp)	in
 						    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," pr_sol_elem sol) in
 						    sol :: aux ps (Formula.band (t :: interp :: List.map Tsubst.formula_of_elem sub))
 		  in
@@ -223,13 +220,13 @@ let solve_hc_aux prog lbs ps t =
 				let _ = Global.log_end "solve_hc_aux" in
 		  sol
 
-let solve_hc prog lbs sol (Hc(popt, ps, t)) =
+let solve_hc (*prog*) lbs sol (Hc(popt, ps, t)) =
   let t =
     match popt with
       None -> t
-    | Some(pid, xs) ->
+    | Some(pid, xtys) ->
         try
-          Formula.band [t; Formula.bnot (lookup_sol (pid, List.map Term.make_var xs) sol)]
+          Formula.band [t; Formula.bnot (lookup_sol (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol)]
         with Not_found ->
           Formula.tfalse
   in
@@ -238,9 +235,9 @@ let solve_hc prog lbs sol (Hc(popt, ps, t)) =
   else if ps = [] then
     raise NoSolution
   else
-    solve_hc_aux prog lbs ps t
+    solve_hc_aux (*prog*) lbs ps t
 
-let solve_aux prog lbs hcs =
+let solve_aux (*prog*) lbs hcs =
   let rec aux hcs sol =
     let lhs_pids = get_lhs_pids hcs in
     (* hcs1: immediately solvable Horn clauses *)
@@ -258,17 +255,17 @@ let solve_aux prog lbs hcs =
     else if hcs1 = [] && hcs2 <> [] then
       assert false
     else
-      aux hcs2 (sol @ (Util.concat_map (solve_hc prog lbs sol) hcs1))
+      aux hcs2 (sol @ (Util.concat_map (solve_hc (*prog*) lbs sol) hcs1))
   in
   aux hcs []
 
 (** @returns sol
     each predicate not in sol must be true *)
-let solve prog ctrs hcs =
+let solve (*prog*) ctrs hcs =
   let _ = Global.log_begin "solving Horn clauses" in
   let lbs = compute_lbs hcs in
   let _ = Global.log (fun () -> Format.printf "lower bounds:@,  %a@," pr_sol lbs) in
-  let sol = solve_aux prog lbs hcs in
+  let sol = solve_aux (*prog*) lbs hcs in
   let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]" pr_sol sol) in
   let _ = Global.log_end "solving Horn clauses" in
   sol

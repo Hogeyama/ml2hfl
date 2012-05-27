@@ -557,7 +557,7 @@ let rec dnf t =
 and dnfn t =
   match fun_args t with
     Var(_, _), [] ->
-      [[t]]
+      [[bnot t]]
   | Const(_, Const.True), [] ->
       []
   | Const(_, Const.False), [] ->

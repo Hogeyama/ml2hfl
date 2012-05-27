@@ -129,9 +129,7 @@ let extract_from2 pvs p ts =
 		          let dom = List.map Util.fst3 xttys0 in
 		          let xtty = Formula.xtty_of p dom t in
 		          let xtty =
-(*
-              Format.printf "xtty: %a@,nlfvs: %a@,pvs: %a@," pr_elem xtty (Util.pr_list Var.pr ",") nlfvs (Util.pr_list Var.pr ",") pvs;
-*)
+              (*Format.printf "xtty: %a@,nlfvs: %a@,pvs: %a@," pr_elem xtty (Util.pr_list Var.pr ",") nlfvs (Util.pr_list Var.pr ",") pvs;*)
 				          if List.mem (Util.fst3 xtty) nlfvs && not (Formula.is_linear (Util.snd3 xtty)) ||
                  List.mem (Util.fst3 xtty) pvs && Term.coeffs (Util.snd3 xtty) <> [] (*|| t is constant*) then
 				            raise Not_found

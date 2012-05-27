@@ -18,6 +18,7 @@ let related_locs loc =
 
 (** generate a set of constraints from an error trace *)
 let cgen env etr =
+  let flag_coeff = true in
   let rec aux (Loc(tr, p) as loc) hcs etr0 =
     match etr0 with
       [] ->
@@ -68,15 +69,24 @@ let cgen env etr =
 										              (children tr)))
 				                locs
 						          in
-		              let t = Formula.band (List.map (fun (Loc(tr, _)) -> fst (get tr).data) locs @ List.map Tsubst.formula_of_elem xttys1) in
+		              let t =
+                  Formula.band
+																		  (List.map (fun (Loc(tr, _)) -> fst (get tr).data) locs @
+                    List.map Tsubst.formula_of_elem xttys1)
+																in
                 let hcs', pres' =
                   List.split
 		                  (List.map
 		                    (fun (x, t, ty) ->
-		                      let xs = List.sort (Term.fvs t) @ [x] in
-                        let pid = Var.make_coeff (Idnt.new_cid ()) (*List.hd (List.sort (Term.coeffs t))*) in
-		                      Hc(Some(pid, xs), [], Tsubst.formula_of_elem (x, t, ty)),
-		                      (pid, List.map Term.make_var xs))
+		                      let xtys = List.sort (List.map (fun x -> x, SimType.Int) (Term.fvs_ty SimType.Int t ty)) @ [x, ty] in
+                        let pid =
+                          if flag_coeff then
+                            Var.make_coeff (Idnt.new_cid ())
+                          else
+                            List.hd (List.sort (Term.coeffs t))
+																								in
+		                      Hc(Some(pid, xtys), [], Tsubst.formula_of_elem (x, t, ty)),
+		                      (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys))
 		                    xttys2)
                 in
 		              (Hc(Some(Pred.of_pid_vars env pre), (Util.concat_map (fun (Loc(tr, _)) -> snd (get tr).data) locs) @ pres' @ pres, t)) :: hcs' @ hcs,
@@ -114,6 +124,10 @@ let cgen env etr =
   match etr with
     Trace.Call(x, guard)::etr ->
       let ctr, hcs = aux (zipper (make x true (guard, []))) [] etr in
-      let _ = if !Global.debug then assert (not (Util.is_dup (List.filter_map (function Hc(Some(pid, _), _, _) -> Some(pid) | _ -> None) hcs))) in
-      ctr, hcs
+      if flag_coeff then
+        let _ = if !Global.debug then assert (not (Util.is_dup (List.filter_map (function Hc(Some(pid, _), _, _) -> Some(pid) | _ -> None) hcs))) in
+        ctr, hcs
+      else
+        let hcss = Util.classify (fun hc1 hc2 -> match hc1, hc2 with Hc(Some(pid1, _), _, _), Hc(Some(pid2, _), _, _) -> pid1 = pid2 | _ -> false) hcs in
+        ctr, List.map List.hd hcss
   | _ -> assert false

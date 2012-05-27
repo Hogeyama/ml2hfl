@@ -240,4 +240,4 @@ let visible_vars env x =
 		  | Var.T(x, uid, arg) ->
 		      aux x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
   in
-  List.filter (fun x -> SimType.is_base (env x)) (aux x)
+  List.filter_map (fun x -> if SimType.is_base (env x) then Some(x, env x) else None) (aux x)

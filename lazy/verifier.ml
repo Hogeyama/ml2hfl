@@ -184,12 +184,12 @@ let infer_ref_types fs prog etrs =
           hcs
       in
       List.map
-        (fun (x, (xs, t)) ->
-          let ys = RefType.visible_vars (Prog.type_of prog) x in
-          let _ = assert (List.length xs = List.length ys) in
-          let sub = List.map2 (fun x y -> x, Term.make_var y) xs ys in
+        (fun (x, (xtys, t)) ->
+          let ytys = RefType.visible_vars (Prog.type_of prog) x in
+          let _ = assert (List.length xtys = List.length ytys) in
+          let sub = List.map2 (fun (x, _) (y, _) -> x, Term.make_var y) xtys ytys in
           `P(x, Term.subst (fun x -> List.assoc x sub) t))
-        (HcSolve.solve prog ctrs hcs)
+        (HcSolve.solve ctrs hcs)
   in
   let _ = Global.log (fun () -> List.iter (fun (`P(x, t)) -> Format.printf "P[%a]: %a@," Var.pr x Term.pr t) sums) in
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in

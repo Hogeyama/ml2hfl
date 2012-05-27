@@ -399,6 +399,16 @@ let union l1 l2 = List.unique (l1 @ l2)
 let set_equiv l1 l2 = subset l1 l2 && subset l2 l1
 let is_dup xs = List.length (List.unique xs) <> List.length xs
 
+let rec redundant xs =
+  match xs with
+    [] ->
+      []
+  | x::xs' ->
+      if List.mem x xs' then
+        x :: redundant (List.filter (fun x' -> x' <> x) xs')
+      else
+        redundant xs'
+
 (** divide xs by the transitive clousre of rel *)
 let rec equiv_classes rel xs =
   match xs with
