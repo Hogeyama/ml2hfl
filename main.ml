@@ -171,6 +171,7 @@ let arg_spec =
    "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
             " Expand non-recursive functions except functions";
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
+   "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
   ]
 
 

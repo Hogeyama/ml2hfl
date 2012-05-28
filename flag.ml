@@ -51,6 +51,7 @@ let accumulate_predicats = ref true
 let relative_complete = ref false
 let expand_nonrec = ref false
 let expand_nonrec_init = ref true
+let cps_simpl = ref false
 
 let mode = ref Reachability
 let init_trans = ref true

@@ -5,7 +5,13 @@ open Utilities
 
 
 
+let make_let' f xs t1 t2 =
+  match xs,t1.desc with
+      [r], App({desc=Var _} as k, [{desc=Var r'}]) when r = r' -> subst f k t2
+    | _ -> make_let [f, xs, t1] t2
 
+
+(*
 let rec trans_simpl_typ = function
     TFun(x,typ) ->
       let typ1 = trans_simpl_typ (Id.typ x) in
@@ -21,11 +27,6 @@ let rec trans_simpl_typ = function
   | typ -> typ
 
 let trans_simpl_var x = Id.set_typ x (trans_simpl_typ (Id.typ x))
-
-let make_let' f xs t1 t2 =
-  match xs,t1.desc with
-      [r], App({desc=Var _} as k, [{desc=Var r'}]) when r = r' -> subst f k t2
-    | _ -> make_let [f, xs, t1] t2
 
 let rec trans_simpl c t =
   let typ = trans_simpl_typ t.typ in
@@ -65,28 +66,25 @@ let rec trans_simpl c t =
           let t3' = trans_simpl c' t3 in
           let c'' y = make_let' k [x] (c (make_var x)) (make_if y t2' t3') in
             trans_simpl c'' t1
-      | Let _ -> assert false
-          (*
-            | Let(Flag.Nonrecursive, x, [], t1, t2) ->
-            let x' = trans_simpl_var x in
-            let c' t = subst x' t (trans_simpl c t2) in
+      | Let(Flag.Nonrecursive, [x, [], t1], t2) ->
+          let x' = trans_simpl_var x in
+          let c' t = subst x' t (trans_simpl c t2) in
             trans_simpl c' t1
-            | Let(Flag.Recursive, f, [], t1, t2) -> assert false
-            | Let(flag, f, [x], t1, t2) ->
-            let x' = trans_simpl_var x in
-            let r = Id.new_var "r" typ in
-            let k = Id.new_var "k" (TFun(r,TUnit)) in
-            let f' = trans_simpl_var f in
-            let c' y = make_app (make_var k) [y] in
-            let t1' = trans_simpl c' t1 in
-            let t2' = trans_simpl c t2 in
-            make_let_f flag f' [x';k] t1' t2'
-            | Let(flag, f, x::xs, t1, t2) ->
-            let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
-            let g = Id.new_var (Id.name f) typ in
-            let t1' = make_let g xs t1 (make_var g) in
-            trans_simpl c (make_let_f flag f [x] t1' t2)
-          *)
+      | Let(Flag.Recursive, [f, [], t1], t2) -> assert false
+      | Let(flag, [f, [x], t1], t2) ->
+          let x' = trans_simpl_var x in
+          let r = Id.new_var "r" typ in
+          let k = Id.new_var "k" (TFun(r,TUnit)) in
+          let f' = trans_simpl_var f in
+          let c' y = make_app (make_var k) [y] in
+          let t1' = trans_simpl c' t1 in
+          let t2' = trans_simpl c t2 in
+            make_let_f flag [f', [x';k], t1'] t2'
+      | Let(flag, [f, x::xs, t1], t2) ->
+          let typ = match Id.typ f with TFun(_,typ) -> typ | _ -> assert false in
+          let g = Id.new_var (Id.name f) typ in
+          let t1' = make_let [g, xs, t1] (make_var g) in
+            trans_simpl c (make_let_f flag [f, [x], t1'] t2)
       | BinOp(op, t1, t2) ->
           let c1 t1' t2' = c {desc=BinOp(op, t1', t2'); typ=typ} in
           let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
@@ -108,7 +106,7 @@ let rec trans_simpl c t =
             trans_simpl c' t
       | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 let trans_simpl = trans_simpl (fun x -> x)
-
+*)
 
 (*
 let trans t =
@@ -504,7 +502,7 @@ and typ_cps =
   | TPairCPS of typ_cps * typ_cps
   | TPredCPS of typ_cps * Syntax.typed_term list
 
-
+let should_insert b = !b || !Flag.cps_simpl
 
 let rec print_typ_cps fm = function
     TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
@@ -767,8 +765,8 @@ let rec get_arg_num = function
     TBaseCPS _ -> 0
   | TVarCPS{contents=None} -> 0
   | TVarCPS{contents=Some typ} -> get_arg_num typ
-  | TFunCPS({contents=true},typ1,typ2) -> 1
-  | TFunCPS({contents=false},typ1,typ2) -> 1 + get_arg_num typ2
+  | TFunCPS(b,typ1,typ2) when should_insert b -> 1
+  | TFunCPS(_,typ1,typ2) -> 1 + get_arg_num typ2
   | TPairCPS _ -> assert false
   | TPredCPS _ -> assert false
 
@@ -853,7 +851,7 @@ let rec trans_typ typ_orig typ =
   match typ_orig,typ with
       _, TVarCPS{contents=Some typ} -> trans_typ typ_orig typ
     | _, TBaseCPS _ -> typ_orig
-    | TFun(x_orig,typ), TFunCPS(b,typ1,typ2) when !b ->
+    | TFun(x_orig,typ), TFunCPS(b,typ1,typ2) when should_insert b ->
         let typ1' = trans_typ (Id.typ x_orig) typ1 in
         let x = Id.new_var "x" typ1' in
         let typ2' = subst_type x_orig (make_var x) (trans_typ typ typ2) in
