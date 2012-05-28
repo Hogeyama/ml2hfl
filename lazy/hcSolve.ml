@@ -72,7 +72,8 @@ let compute_lbs hcs =
        hcs
     in
     if hcs1 = [] then
-      lbs (* hcs2 are all false *)
+      let _ = assert (List.filter (function Hc(None, _, _) -> false | _ -> true) hcs2 = []) in
+      lbs(* hcs2 are all false *)
     else
       let lbs' =
         List.map
@@ -221,17 +222,18 @@ let solve_hc_aux (*prog*) lbs ps t =
 		  sol
 
 let solve_hc (*prog*) lbs sol (Hc(popt, ps, t)) =
-  let t =
+  let t, ps' =
     match popt with
-      None -> t
+      None -> t, []
     | Some(pid, xtys) ->
         try
-          Formula.band [t; Formula.bnot (lookup_sol (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol)]
+          Formula.band [t; Formula.bnot (lookup_sol (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol)],
+          [pid, (xtys, Formula.ttrue)]
         with Not_found ->
-          Formula.tfalse
+          Formula.tfalse, []
   in
-  if Cvc3Interface.is_valid (Formula.bnot t) then
-    []
+  if Cvc3Interface.is_valid (Formula.simplify (Formula.bnot t)) then
+    ps' @ List.map (fun (pid, ttys) -> pid, (List.map (fun (_, ty) -> Var.new_var (), ty) ttys, Formula.ttrue)) ps(*[]*)
   else if ps = [] then
     raise NoSolution
   else
@@ -266,6 +268,29 @@ let solve (*prog*) ctrs hcs =
   let lbs = compute_lbs hcs in
   let _ = Global.log (fun () -> Format.printf "lower bounds:@,  %a@," pr_sol lbs) in
   let sol = solve_aux (*prog*) lbs hcs in
+  let _ =
+    if !Global.debug then
+      List.iter
+        (fun hc ->
+          let Hc(popt, [], t) =
+            try
+              subst_lbs sol hc
+            with Not_found ->
+		            let _ = Format.printf "%a@," pr hc in
+		            assert false
+          in
+          let t' =
+            try
+              match popt with None -> Formula.tfalse | Some(pid, xtys) -> lookup_lbs (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol
+            with Not_found ->
+		            let _ = Format.printf "%a@," pr hc in
+              assert false
+          in
+          if not (Cvc3Interface.implies [t] [t']) then
+            let _ = Format.printf "%a@,%a => %a@," pr hc Term.pr t Term.pr t' in
+            assert false)
+        hcs
+  in
   let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]" pr_sol sol) in
   let _ = Global.log_end "solving Horn clauses" in
   sol

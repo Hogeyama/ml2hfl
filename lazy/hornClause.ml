@@ -64,6 +64,9 @@ let lookup_hcs (pid, ttys) hcs =
 
 (** unsound for non-linear expressions? *)
 let rec subst_formula p ps t =
+  if Term.coeffs t <> [] then
+    ps, t
+  else
 		(*Format.printf "input: %a@," Term.pr t;*)
 		let ts = Formula.conjuncts t in
 		let xttys, t = Tsubst.extract_from2 (Util.concat_map Pred.fvs ps) p ts in
