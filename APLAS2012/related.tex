@@ -1,0 +1,36 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Container Abstraction}
+Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
+static reasoning about containers.  The proposed framework is based on
+an abstract interpretation for containers.  Their framework is similar
+to our framework in the sense that they model containers as mappings
+from location to values.  While they consider the client-side use of the
+specific data structures (i.e. containers), we consider a more general
+class of data structures include user-defined data structures.
+
+
+\subsection{Verification Frameworks for Functional Programs}
+There are several
+frameworks~\cite{Kawaguchi2009,Chin2003,Unno2010,Ong2011} that aimed at
+verification of functional programs with data structures.
+
+Kawaguchi et al.'s liquid type inferecne~\cite{Kawaguchi2009} are
+semi-automated verification framework based on refinement types.
+Their framework requires the shape of predicates, called logical qualifiers, to users.
+The limitation of our framework is that it cannot deal with
+\cc{recursive dependency} on recursive data structures such that
+orderedness.  Their framework can deal with recursive dependent type
+such that $\App{\INT}{\LIST_\leq} = \mu t.\NIL +
+\Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq
+x_1\}}{\LIST}}$, i.e., ordered lists of integers.
+
+Chin et al.'s sized type inference~\cite{Chin2003}
+\memo{inferred by fix-point computation}
+Their framework cannot handle higher-order functions.
+
+\memo{HMTT,PMRS}
+
+\subsection{}
+[Comparison with others (Soonho Kong et al. APLAS10, etc.)]

@@ -1,0 +1,56 @@
+\section{Background: Predicate Abstraction and CEGAR for Higher-order Model Checking}
+\label{sec:model-check}
+%\memo{Explanation of previous work}
+%\cc{
+%A source program is translated into a higher-order program with integers
+%by encoding recursive data structures. 
+%The language for programs with integers is essentially the same as the source
+%language in the previous section, except that it has no list constructors and destructors.
+%}
+We use our previous verification framework for higher-order
+programs with integers~\cite{KobayashiPLDI2011}.  This framework is
+based on the higher-order model
+checking~\cite{Ong2006,KobayashiPOPL2009}, i.e. model checking of
+higher-order recursion schemes, with techniques of predicate abstraction
+and counter-example guided abstraction refinement for higher-order
+functional programs.
+
+Figure~\ref{fig:cegar} shows the overall structure of our previous
+method.  We first translate the source program into boolean program by
+predicate abstraction.  Here, predicates are given by the notion of
+abstraction types.  Abstraction types are simple types with predicates
+that is used as how programs are abstracted to boolean programs.  For
+example, abstraction type
+$\TFun{x\COL\INT[P_1,\dots,P_n]}{r\COL\INT[Q_1,\dots,Q_m]}$ denotes the
+return values are abstracted by predicates $Q_1,\dots,Q_m$ assuming
+argument are abstracted by predicates $P_1,\dots, P_n$.  We can verify
+the abstracted program by using higher-order model checker.
+Higher-order model checker, however, cannot be applied directly to the
+abstracted program because of the gap between the semantics of the
+abstracted program and recursion scheme that has a call-by-name
+semantics.  To resolve the gap, we transform the abstracted program into
+a CPS program.  The source program is safe if the abstracted program is
+safe.  Otherwise, the model checker generates a counterexample for the
+abstracted program.  We can find a corresponding concrete error trace,
+and we can check the error path is feasible or not in the source program
+by symbolic execution.  The source program is unsafe if the error trace
+is feasible.  Otherwise, we can know that the abstraction is too coerce
+to verify the source program.  We next refine abstraction types to
+refute the counterexample, and continue the CEGAR-loop.
+
+We do not show the details of predicate abstraction and CEGAR for higher-order functional programs here.
+See the previous paper~\cite{KobayashiPLDI2011} for the details.
+
+
+%\section{Model Checking for Higher-order Programs with Integers}
+%\label{sec:model-check}
+%[Introduction of language (of PLDI2011 + pairs.)]
+%
+%A source program is translated to a higher-order programs with integers
+%by encoding lists as functions. The language of essentially the same as the source
+%language in the previous section, except that lists constructor and destructor are not in $\LINT$.
+%
+%[Description of the framework of PLDI2011.]
+%
+%We can use the verification framework for higher-order programs with integers [refs].
+

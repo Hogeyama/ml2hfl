@@ -1,0 +1,346 @@
+\section{Implementation and Preliminary Experiments}
+\label{sec:experiments}
+
+To evaluate the extended framework, we have implemented a prototype
+verifier for higher-order programs with lists and exceptions.
+%The verifier takes an OCaml program as input.
+
+We applied the verification to the following set of programs.
+
+Table~\ref{tbl:exp} shows the results of the experiments.
+
+\begin{table}
+\caption{Results of preliminary experiments}
+\label{tbl:exp}
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|r|r|r|}
+\hline
+            &       &       &                      & \multicolumn{4}{|c|}{cycle, time [sec]} \\
+\cline{5-8}
+program & size & order & \# of pred. in annot. & \cc{no opt.} & \cc{CPS} & \cc{Abst.} & \cc{both} \\
+\hline
+fold\_right      &  64 & 2 & 0 & 5, 8.53 & 5,  133 & 2, 0.36 & 2, 0.19 \\
+forall\_eq\_pair &  55 & 1 & 0 & 4, 2.32 & 4, 0.94 & 1, 0.76 & 1, 0.23 \\
+forall\_leq      &  55 & 2 & 0 & 4, 2.10 & 4, 0.86 & 1, 0.17 & 1, 0.14 \\
+isnil            &  52 & 1 & 0 & 3, 0.16 & 3, 0.15 & 2, 0.12 & 2, 0.12 \\
+iter             &  59 & 2 & 0 & 4, 1.60 & 4, 0.62 & 1, 0.16 & 1, 0.11 \\
+%length3          &  50 & 1 & 0 &       - &       - &       - & -, -    \\
+mem              &  74 & 1 & 0 & 4, 1.05 & 4, 0.34 & 3, 0.41 & 3, 0.17 \\
+nth0             &  78 & 1 & 0 & 3, 0.26 & 3, 0.16 & 3, 0.25 & 3, 0.17 \\
+harmonic         & 101 & 2 & 0 &       - & 5, 1.77 & 1, 0.16 & 1, 0.09 \\
+fold\_left       &  64 & 2 & 0 &       - &       - &       - & 2, 0.23 \\
+%iter\_fun\_list  &  59 & 3 & 0 &       - &       - &       - & -, -    \\
+zip              &  69 & 1 & 0 &       - &       - &       - & 2, 0.11 \\
+%map              &  85 & 2 & 0 &       - &       - &       - & -, -    \\
+%\hline
+inits            & 111 & 2 & 0 &       - &       - & 2, 2.53 & 3, 1.06 \\
+risers           &  79 & 1 & 0 &       - &       - & 4, 2.72 & 4, 1.17 \\
+%ground  &   - & - & - & - & - & - & - & - & - \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+%\begin{itemize}
+%\item fold\_right
+%\begin{alltt}
+%let rec fold_right (f:int->int->int) xs acc =
+%  match xs with
+%    [] -> acc
+%  | x::xs' -> f x (fold_right f xs' acc)
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let add x y = x + y
+%
+%let main n m =
+%  let xs = make_list n in
+%    assert (fold_right add xs m >= m)
+%\end{alltt}
+%
+%\item forall\_eq\_pair
+%\begin{alltt}
+%let rec for_all f (xs:(int*int) list) =
+%  match xs with
+%      [] -> true
+%    | x::xs' ->
+%        f x && for_all f xs'
+%
+%let rec eq_pair ((x:int),(y:int)) = x = y
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else (n,n) :: make_list (n-1)
+%
+%let main n = assert (for_all eq_pair (make_list n))
+%\end{alltt}
+%
+%\item forall\_leq
+%\begin{alltt}
+%let rec for_all f (xs:int list) =
+%  match xs with
+%      [] -> true
+%    | x::xs' ->
+%        f x && for_all f xs'
+%
+%let rec check x = x >= 0
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let main n = assert (for_all check (make_list n))
+%\end{alltt}
+%
+%\item isnil
+%\begin{alltt}
+%let is_nil (xs:int list) =
+%  match xs with
+%      [] -> true
+%    | _ -> false
+%
+%let rec make_list n =
+%  if n = 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let main n =
+%  let xs = make_list n in
+%    if n > 0
+%    then assert (not (is_nil xs))
+%    else ()
+%\end{alltt}
+%
+%\item iter
+%\begin{alltt}
+%let rec iter (f:int -> unit) xs =
+%  match xs with
+%      [] -> ()
+%    | x::xs' -> f x; iter f xs'
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let check x = assert (x >= 0)
+%
+%let main n =
+%  let xs = make_list n in
+%    iter check xs
+%\end{alltt}
+%
+%\item length3
+%\begin{alltt}
+%let rec length (xs:int list) =
+%  match xs with
+%      [] -> 0
+%    | _::xs' -> 1 + length xs'
+%
+%let rec make_list n =
+%  if n = 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let main n =
+%  let xs = make_list n in
+%    assert (length xs = n)
+%\end{alltt}
+%
+%\item mem
+%\begin{alltt}
+%let rec mem (x:int) xs =
+%  match xs with
+%      [] -> false
+%    | x'::xs -> x = x' || mem x xs
+%
+%let rec make_list n (x:int) =
+%  if n < 0
+%  then []
+%  else x :: make_list (n-1) x
+%
+%let is_nil (xs:int list) =
+%  match xs with
+%      [] -> true
+%    | _ -> false
+%
+%let main n m =
+%  let xs = make_list n m in
+%    assert (is_nil xs || mem m xs)
+%\end{alltt}
+%
+%\item nth0
+%\begin{alltt}
+%let is_nil (xs:int list) =
+%  match xs with
+%      [] -> true
+%    | _ -> false
+%
+%let rec nth n (xs:int list) =
+%  match xs with
+%    | [] -> assert false
+%    | x::xs' -> if n = 0 then x else nth (n-1) xs'
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let main n =
+%  let xs = make_list n in
+%    if is_nil xs
+%    then 0
+%    else nth 0 xs
+%\end{alltt}
+%
+%\item harmonic
+%\begin{alltt}
+%let rec div x y =
+%  assert (y <> 0);
+%  if x < y
+%  then 0
+%  else 1 + div (x-y) y
+%
+%let rec fold_left (f:int->int->int) acc xs =
+%  match xs with
+%      [] -> acc
+%    | x::xs' -> fold_left f (f acc x) xs'
+%
+%let rec range i j =
+%  if i > j then
+%    []
+%  else
+%    let is = range (i+1) j in
+%      i::is
+%
+%let harmonic n =
+%  let ds = range 1 n in
+%    fold_left (fun s k -> s + div 10000 k) 0 ds
+%\end{alltt}
+%
+%\item fold\_left
+%\begin{alltt}
+%let rec fold_left (f:int->int->int) acc xs =
+%  match xs with
+%      [] -> acc
+%    | x::xs' -> fold_left f (f acc x) xs'
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let add x y = x + y
+%
+%let main n m =
+%  let xs = make_list n in
+%    assert (fold_left add m xs >= m)
+%\end{alltt}
+%
+%\item iter\_fun\_list
+%\begin{alltt}
+%let rec iter (f:(int->unit)->unit) xs =
+%  match xs with
+%      [] -> ()
+%    | x::xs' -> f x; iter f xs'
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else (fun x -> assert (n >= x)) :: make_list (n-1)
+%
+%let main n =
+%  let xs = make_list n in
+%    iter (fun f -> f 0) xs
+%\end{alltt}
+%
+%
+%\item map
+%\begin{alltt}
+%let rec map f xs =
+%  match xs with
+%      [] -> []
+%    | x::xs' -> f x :: map f xs'
+%
+%let rec length xs =
+%  match xs with
+%      [] -> 0
+%    | _::xs' -> 1 + length xs'
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let succ x = x + 1
+%
+%let main n =
+%  let xs = make_list n in
+%  let xs' = map succ xs in
+%    assert (length xs = length xs')
+%\end{alltt}
+%
+%\item zip
+%\begin{alltt}
+%let rec zip xs ys =
+%  match xs with
+%      [] ->
+%        begin
+%          match ys with
+%              [] -> []
+%            | _ -> assert false
+%        end
+%    | x::xs' ->
+%        match ys with
+%            [] -> assert false
+%          | y::ys' -> (x,y)::zip xs' ys'
+%
+%let rec make_list n =
+%  if n < 0
+%  then []
+%  else n :: make_list (n-1)
+%
+%let main n =
+%  let xs = make_list n in
+%    zip xs xs
+%\end{alltt}
+%
+%\item inits
+%\begin{alltt}
+%let rec make_list m =
+%  if m <= 0
+%  then []
+%  else Random.int 0 :: make_list (m-1)
+%
+%let rec make_list_list m =
+%  if m <=0 
+%  then []
+%  else make_list (Random.int 0) :: make_list_list (m-1)
+%
+%let head = function
+%    [] -> assert false
+%  | x::xs -> x
+%
+%let ne = function
+%    [] -> 0
+%  | x::xs -> 1
+%
+%let rec filter p = function
+%    [] -> []
+%  | x::xs -> if p x = 1 then x::(filter p xs) else filter p xs
+%
+%let rec map f = function
+%    [] -> []
+%  | x::xs -> f x :: map f xs
+%
+%let main m = map head (filter ne (make_list_list m))
+%\end{alltt}
+%
+%\end{itemize}
+
+
