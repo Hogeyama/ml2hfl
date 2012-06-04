@@ -84,19 +84,38 @@ E\text{ (eval. ctx.)}
 The idea is to encode a list to a pair of its length and a function that
 maps indices to the elements of the list.  For example, the list
 $[2;3;5]$ is encoded to a pair $(3,f)$ where $f(0) = 2$, $f(1) = 3$, and
-$f(2) = 5$.  Primitive operations \texttt{head} and
-\texttt{tail} for lists is defined as follow.
+$f(2) = 5$.  The primitive operations \texttt{nil}, \texttt{cons},
+\texttt{null?}, \texttt{head}, and \texttt{tail} for lists are defined
+as follow.
 \begin{alltt}
-let head (len,f) = f 0
+let nil = (0, fun _ -> fail)
+let cons x (len,f) =
+  let f' = if i = 0 then x else f (i-1) in
+    (len+1, f')
+let null? (len,f) = len = 0
+let head (len,f) =
+  if null? (len,f) then fail
+  else f 0
 let tail (len,f) =
- if len = 0 then fail
- else len-1, fun i -> f (i+1)
+  if null? (len,f) then fail
+  else len-1, fun i -> f (i+1)
 \end{alltt}
-Since \texttt{f(i)} is the element whose position is \texttt{i} in the
-list, the encoded \texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
-element of the list.  Function \texttt{tail} returns a pair of
+\texttt{nil} is translated into the pair of length $0$ and the
+function that always fails.  \texttt{cons x xs} is translated into the
+pair of its length and the function $\{0 \mapsto \mathtt{x}\} \cup \{i \mapsto
+f (i-1) \mid i \neq 0\}$ where $f$ is the function part of encoding of
+\texttt{xs}.  \texttt{null?} just checks whether \texttt{len} is 0 or not.
+\texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
+element of the list.  \texttt{tail} returns a pair of
 \texttt{(len-1,f')} where $\mathtt{f'(0)} = \mathtt{f(1)}$,
 $\mathtt{f'(1)} = \mathtt{f(2)}$, $\dots$
+
+%Since \texttt{f(i)} is the element whose position is \texttt{i} in the
+%list, the encoded \texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
+%element of the list.  Function \texttt{tail} returns a pair of
+%\texttt{(len-1,f')} where $\mathtt{f'(0)} = \mathtt{f(1)}$,
+%$\mathtt{f'(1)} = \mathtt{f(2)}$, $\dots$
+
 %Since the original \texttt{head} returns the head of a list,
 %the encoded \texttt{head} returns the value
 
@@ -128,89 +147,101 @@ $\mathtt{f'(1)} = \mathtt{f(2)}$, $\dots$
 %\texttt{xs} satisfy \texttt{p}, is translated to a property that
 %\texttt{f} always returns a positive integer.
 
-\paragraph{Comparison with Dillig et al.'s appoach.}
-Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
-static reasoning about containers (e.g., maps, lists, and vectors). They
-model containers as functions that map a key to an abstract index that
-is mapped to a value corresponds to the index.  For example, a
-store includes list $[2;3]$ is abstracted as a map $\set{\beta \mapsto
-\set{(\AbstLoc{\eta}{i}, \TRUE)}, \AbstLoc{\eta}{i} \mapsto
-\set{(2,i=0),(3,i=1),(\NIL,i \neq 0 \land i \neq 1)}}$, where $\beta$ is the memory location that
-stores the list, and $\AbstLoc{\eta}{i}$ is the abstract location
-indexed with $i$ that represents the list.  In the abstract store, $x
-\mapsto \set{(\pi_1, P_1), \dots, (\pi_n, P_n)}$ represents that $x$ could
-have a value $\pi_i$ when $P_i$ holds.
-Our approach is a generalization of their
-approach in the following sense:
-\begin{enumerate}
- \item While our abstraction uses arbitrary predicates for container elements,
-       they abstracts container elements to the set of unknown values,
-       integer constants, and locations.
- \item While our abstraction can depend on the index by the form ``if $P_(i)$
-       then $Q(i,v)$'' where $i$ is an index and $v$ is the element at the
-       index $i$, their abstraction can depend on the index only by the form ``if $P_(i)$
-       then $Q(v)$''.
-\end{enumerate}
+This approach has the following advantages.  First, by encoding lists
+into functions over integers, we can use the predicate
+abstraction/discovery for integers.  \cc{Second, the encoding is ...}
+As abstraction method for aggregate data structures like lists, There is
+a container abstraction proposed by Dillig et al.  In their abstraction,
+a list is represented as $\set{(v_1,P_1), \dots, (v_n,P_n)}$, a finite
+set of pairs of a element of list and a condition for the index of the
+element.  On the other hand, by encoding a list as a function, the same
+information can be represented as a refinement type
+$\TFun{i\COL\INT}{\set{y\COL\INT\mid (P_1(i) \to y=v_1) \wedge \dots
+\wedge (P_n(i) \to y=v_n)}}$.  Moreover, \cc{our approach can deal with
+list properties like ... that cannot be represented as in the container
+abstraction.}  Our method, a combination of the encoding and the
+predicate abstraction for integers, is strictly more powerful than the
+container abstraction.
+
+%\paragraph{Comparison with Dillig et al.'s appoach.}
+%Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
+%static reasoning about containers (e.g., maps, lists, and vectors). They
+%model containers as functions that map a key to an abstract index that
+%is mapped to a value corresponds to the index.  For example, a store
+%includes list $[2;3]$ is abstracted as a map $\{\beta \mapsto
+%\set{(\AbstLoc{\eta}{i}, \TRUE)}, \AbstLoc{\eta}{i} \mapsto
+%\set{(2,i=0),(3,i=1),(\NIL,i \neq 0 \land i \neq 1)}\}$, where $\beta$
+%is the memory location that stores the list, and $\AbstLoc{\eta}{i}$ is
+%the abstract location indexed with $i$ that represents the list.  In the
+%abstract store, $x \mapsto \set{(\pi_1, P_1), \dots, (\pi_n, P_n)}$
+%represents that $x$ could have a value $\pi_i$ when $P_i$ holds.  Our
+%approach is a generalization of their approach in the following sense:
+%\begin{enumerate}
+% \item While our abstraction uses arbitrary predicates for container elements,
+%       they abstracts container elements to the set of unknown values,
+%       integer constants, and locations.
+% \item While our abstraction can depend on the index by the form ``if $P_(i)$
+%       then $Q(i,v)$'' where $i$ is an index and $v$ is the element at the
+%       index $i$, their abstraction can depend on the index only by the form ``if $P_(i)$
+%       then $Q(v)$''.
+%\end{enumerate}
 
 %Once a target program is translated to a list-free program,
 %we can apply our previous verification framework for higher-order programs with integers.
 
-Figure~\ref{fig:list-translation} shows the definition of the
-translation $\Trans{-}$.  Let $t$ be a list of the form
-$[v_0,\dots,v_{n-1}]$. $\Trans{t}$ denotes the pair of the length $n$ of
-$t$ and the function $\{0 \mapsto v_0, \dots, n-1 \mapsto v_{n-1}\}$
-that maps indices to elements of $t$.  $\NIL$ is translated into the pair of length $0$ and the
-function that always fails.  $\Cons{v_1}{v_2}$ is translated into the
-pair of its length and the function $\{0 \mapsto v_1\} \cup \{i \mapsto
-f (i-1) \mid i \neq 0\}$ where $f$ is the function part of encoding of
-$v_2$.  A pattern match is translated into an if-expression whose
-then-case and else-case respectively correspond to the $\NIL$ and
-$\Cons{x_1}{x_2}$ cases.
+%Figure~\ref{fig:list-translation} shows the definition of the
+%translation $\Trans{-}$.  Let $t$ be a list of the form
+%$[v_0,\dots,v_{n-1}]$. $\Trans{t}$ denotes the pair of the length $n$ of
+%$t$ and the function $\{0 \mapsto v_0, \dots, n-1 \mapsto v_{n-1}\}$
+%that maps indices to elements of $t$.  $\NIL$ is translated into the pair of length $0$ and the
+%function that always fails.  $\Cons{v_1}{v_2}$ is translated into the
+%pair of its length and the function $\{0 \mapsto v_1\} \cup \{i \mapsto
+%f (i-1) \mid i \neq 0\}$ where $f$ is the function part of encoding of
+%$v_2$.  A pattern match is translated into an if-expression whose
+%then-case and else-case respectively correspond to the $\NIL$ and
+%$\Cons{x_1}{x_2}$ cases.
+%
+%\begin{figure}[t]
+%\begin{minipage}{\widthcoef\textwidth}
+%\[
+%\begin{array}{l}
+%% \Trans{n} = n \\
+%% \Trans{x} = x \\
+%% \Trans{\Fix{f}{x}{t}} = \Fix{f}{x}{\Trans{t}} \\
+%% \Trans{t_1\ t_2} = \Trans{t_1}\ \Trans{t_2} \\
+%% \Trans{\Op{v_1,\dots,v_n}} = \Op{\Trans{v_1}, \dots, \Trans{v_n}} \\
+%% \Trans{\If{t_1}{t_2}{t_3}} = \If{\Trans{t_1}}{\Trans{t_2}}{\Trans{t_3}} \\
+%% \Trans{\FAIL} = \FAIL \\
+%% \Trans{\Pair{t_1}{t_2}} = \Pair{\Trans{t_1}}{\Trans{t_2}} \\
+% \Trans{\NIL} = \Pair{0}{\Abs{u}{\FAIL}} \quad (\text{$u$ is fresh}) \\
+%
+% \Trans{\Cons{v_1}{v_2}} = (\Fst{v_2} + 1, \\
+% \qquad \Abs{i}{\If{i-1}{\Trans{v_1}}{\Snd{v_2}\ (i-1)}}) \\
+% \quad (\text{$i$ is fresh}) \\
+%
+% \Trans{\Match{t_1}{t_2}{t_3}} = \\
+% \quad \Let{x}{\Trans{t_1}}{} \\
+% \quad \Let{len}{\Fst{x}}{} \\
+% \quad \Let{f}{\Snd{x}}{} \\
+% \qquad \IF\ len\ \THEN\ \Trans{t_2} \\
+% \qquad \ELSE\ \Let{x_1}{f\ 0}{}\\
+% \qquad\qquad\, \Let{x_2}{\Pair{len - 1}{\Abs{i}{f (i+1)}}}{} \\
+% \qquad\qquad\quad \Trans{t_3} \\
+% \quad (\text{$x$, $len$, $f$ and $i$ are fresh}) \\
+%\end{array}
+%\]
+%\end{minipage}
+%\caption{Encoding of list (excerpt).}
+%\label{fig:list-translation}
+%\end{figure}
 
-\begin{figure}[t]
-\begin{minipage}{\widthcoef\textwidth}
-\[
-\begin{array}{l}
-% \Trans{n} = n \\
-% \Trans{x} = x \\
-% \Trans{\Fix{f}{x}{t}} = \Fix{f}{x}{\Trans{t}} \\
-% \Trans{t_1\ t_2} = \Trans{t_1}\ \Trans{t_2} \\
-% \Trans{\Op{v_1,\dots,v_n}} = \Op{\Trans{v_1}, \dots, \Trans{v_n}} \\
-% \Trans{\If{t_1}{t_2}{t_3}} = \If{\Trans{t_1}}{\Trans{t_2}}{\Trans{t_3}} \\
-% \Trans{\FAIL} = \FAIL \\
-% \Trans{\Pair{t_1}{t_2}} = \Pair{\Trans{t_1}}{\Trans{t_2}} \\
- \Trans{\NIL} = \Pair{0}{\Abs{u}{\FAIL}} \quad (\text{$u$ is fresh}) \\
-
- \Trans{\Cons{v_1}{v_2}} = (\Fst{v_2} + 1, \\
- \qquad \Abs{i}{\If{i-1}{\Trans{v_1}}{\Snd{v_2}\ (i-1)}}) \\
- \quad (\text{$i$ is fresh}) \\
-
- \Trans{\Match{t_1}{t_2}{t_3}} = \\
- \quad \Let{x}{\Trans{t_1}}{} \\
- \quad \Let{len}{\Fst{x}}{} \\
- \quad \Let{f}{\Snd{x}}{} \\
- \qquad \IF\ len\ \THEN\ \Trans{t_2} \\
- \qquad \ELSE\ \Let{x_1}{f\ 0}{}\\
- \qquad\qquad\, \Let{x_2}{\Pair{len - 1}{\Abs{i}{f (i+1)}}}{} \\
- \qquad\qquad\quad \Trans{t_3} \\
- \quad (\text{$x$, $len$, $f$ and $i$ are fresh}) \\
-\end{array}
-\]
-\end{minipage}
-\caption{Encoding of list (excerpt).}
-\label{fig:list-translation}
-\end{figure}
-
-The theorem below states that the translation $\Trans{-}$ is correct in
-the sense that if a source program fails, so does the translated program, and vice versa.
-\begin{theorem}[Correctness of translation]
-  \label{th:translation-list-correct}
-  Let $t$ be a term in a program $D$.
-  $t \Reds{D} \FAIL$ if and only if $\Trans{t} \Reds{D} \FAIL$.
-\end{theorem}
-%\memo{proof?}
-%\begin{proof}
-%\end{proof}
+%The theorem below states that the translation $\Trans{-}$ is correct in
+%the sense that if a source program fails, so does the translated program, and vice versa.
+%\begin{theorem}[Correctness of translation]
+%  \label{th:translation-list-correct}
+%  Let $t$ be a term in a program $D$.
+%  $t \Reds{D} \FAIL$ if and only if $\Trans{t} \Reds{D} \FAIL$.
+%\end{theorem}
 
 
 

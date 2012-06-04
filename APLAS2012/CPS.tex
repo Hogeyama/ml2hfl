@@ -182,7 +182,8 @@ using the type $\Gamma(x)$.
 \medskip
 
 \infrule[CPS-Prog]
- {\Gamma(f_i) \text{ is of the form } \TFunC{\tau_{i1}}{\TFunC{\tau_{i2}}{\TFunC{\cdots}{\tau_{ik_i}}}} \\
+ {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \\
+  \Gamma(f_i) \text{ is of the form } \TFunL{l_1}{\tau_{i1}}{\TFunL{l_2}{\tau_{i2}}{\TFunL{l_{j-1}}{\cdots}{\TFunC{\tau_{ij}}{\TFunC{\cdots}{\tau_{ik_i}}}}}} \\
   \CPS{\Gamma}{v_i}{\Gamma(f_i)}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
  {\CPSprog{\Gamma}{\{f_1=v_1,\dots,f_n=v_n\}}{\{f_1=v_1',\dots,f_n=v_n'\}}}
 
@@ -356,7 +357,9 @@ e \CPS{\Gamma}
 }{\vdots}}
 (b)
 \end{minipage}
-\caption{Transformation of $\AbsC{x}{\AbsC{y}{\assert(x = y)}}$. ($\Gamma_x=\Gamma,x\COL\INT$ and $\Gamma_{xy}=\Gamma_x,y\COL\INT$)}
+\caption{Transformation of $\AbsC{x}{\AbsC{y}{\assert(x =
+y)}}$. ($\Gamma_x=\Gamma,x\COL\INT$ and
+$\Gamma_{xy}=\Gamma_x,y\COL\INT$)}
 \label{fig:cps-example}
 \end{figure}
 }
@@ -364,7 +367,7 @@ e \CPS{\Gamma}
 In the following, we discuss the properties of selective CPS transformation.
 The theorem below shows that we can transform arbitrary simply-typed programs into CPS.
 \begin{theorem}
-If $D$ is simply-typed, then there exists $D'$ such that $\CPSprog{\Gamma}{D}{D'}$.
+Let $D$ be a program. There exists $D'$ such that $\CPSprog{\Gamma}{D}{D'}$.
 \end{theorem}
 The following theorem states the correctness of the selective CPS
 transformation, in the sense that the transformed program is reduced to

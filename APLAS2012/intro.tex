@@ -2,10 +2,10 @@
 \label{sec:intro}
 
 In our recent paper~\cite{KobayashiPLDI2011}, we have shown how to
-construct a fully-automated program verification tool (so called a
+construct MoCHi, a fully-automated program verification tool (so called a
 "software model checker") for a tiny subset of functional language ML, a
 simply-typed lambda calculus with recursion and with some base types.
-The software model checker is an extension of higher-order model checker
+MoCHi is based on higher-order model checker
 (more precisely, the model checker for higher-order recursion scheme)
 for infinite data domains such as integers by the techniques of
 predicate abstraction and CEGAR.  This can be viewed as a higher-order
@@ -93,57 +93,100 @@ problems of our previous work.
 \end{enumerate}
 The first two are efficiency problems.
 
-%The first problem increases the number of CEGAR-cycle.
-To see the first problem, consider the following program.
+The main bottleneck of the previous version of MoCHi was
+the predicate abstraction and discovery (Steps 1 and 5), rather than
+higher-order model checking. Our previous method for
+predicate abstraction tried to abstract every integer argument
+of a function to a tuple of booleans. As a result, verification
+of a program did not succeed until an appropriate set of predicates
+ is found for \emph{every} function in the program.
+For example, consider the following program:\TODO{Replace with a example}
 \begin{alltt}
 let add x y = x + y
 let rec sum x = if x < 0 then 0 else add x (sum (x-1))
 let main x = assert (sum x >= 0)
 \end{alltt}
-In our previous framework, we have to give predicate $\Abs{x}{x\geq0}$
-for return values of \texttt{sum}, return values of \texttt{add}, and
-arguments of \texttt{add}.  The following is the abstracted program
-using the predicate.
-\begin{alltt}
-let add bx by = if bx \&\& by then true else rand_bool()
-let rec sum _ = if rand_bool() then true
-                else add true (sum ())
-let main x = assert (sum ())
-\end{alltt}
-Here, \texttt{bx} is true and \texttt{bx} is true denote that
-$\mathtt{x} \geq 0$ and $\mathtt{y} \geq 0$, respectively.
-%If we abstract the program using predicate
-%$\Abs{x}{x\geq0}$ for return values of function \texttt{sum}, we get the
-%following abstracted program.
+The program above can be successfully verified if we abstract the
+program by using predicates ... for ... and ... for ... respectively.
+Automatically finding all such predicates is difficult, however.  In the
+previous paper~\cite{KobayashiPLDI2011}, we have adapted CEGAR to find such
+predicates, but the technique is necessarily heuristic, and often fails.
+
+To reduce the burden to the program discovery phase, we introduce a refinement
+of predicate abstraction called \emph{selective predicate abstraction}.
+As the name suggests, the selective predicate abstraction applies
+predicate abstraction to only a certain set of functions, and avoids
+abstraction of the other functions by inlining them.
+
+...
+
+%%The first problem increases the number of CEGAR-cycle.
+%To see the first problem, consider the following program.
 %\begin{alltt}
-%let add u1 u2 = ()
-%let rec sum u = if rand_bool() then true
-%                else let b = sum () in
-%                     let u = add () () in
-%                       rand_bool()
+%let add x y = x + y
+%let rec sum x = if x < 0 then 0 else add x (sum (x-1))
+%let main x = assert (sum x >= 0)
+%\end{alltt}
+%In our previous framework, we have to give predicate $\Abs{x}{x\geq0}$
+%for return values of \texttt{sum}, return values of \texttt{add}, and
+%arguments of \texttt{add}.  The following is the abstracted program
+%using the predicate.
+%\begin{alltt}
+%let add bx by = if bx \&\& by then true else rand_bool()
+%let rec sum _ = if rand_bool() then true
+%                else add true (sum ())
 %let main x = assert (sum ())
 %\end{alltt}
-\texttt{rand\us{}bool()} means a non-deterministic boolean value.
-In fact, we can abstract the source program to the following program by
-using the definition of \texttt{add} with predicate $\Abs{x}{x\geq0}$
-only for return values of \texttt{sum}.
-\begin{alltt}
-let rec sum _ = if rand_bool() then true
-                else if sum () then true else rand_bool()
-let main x = assert (sum ())
-\end{alltt}
-In the body of \texttt{sum}, \texttt{add x (sum (x-1))}, i.e. \texttt{x
-+ sum (x-1)}, is abstracted to \texttt{if sum () then true else rand\us{}bool()}
-because $\mathtt{sum ()}$ is true denotes $\mathtt{sum (x-1)} \geq 0$.
-The case of $\mathtt{b}=\mathtt{false}$ is similar.
-We distinguish functions that is abstracted from functions that is not abstracted.
-In the example above, functions \texttt{sum} and \texttt{main} are abstracted, and
-function \texttt{add} is not abstracted.
-We abstract programs, intuitively, with extracting functions which is not abstracted.
-We formalize this abstraction, called selective predicate abstraction.
+%Here, \texttt{bx} is true and \texttt{bx} is true denote that
+%$\mathtt{x} \geq 0$ and $\mathtt{y} \geq 0$, respectively.
+%%If we abstract the program using predicate
+%%$\Abs{x}{x\geq0}$ for return values of function \texttt{sum}, we get the
+%%following abstracted program.
+%%\begin{alltt}
+%%let add u1 u2 = ()
+%%let rec sum u = if rand_bool() then true
+%%                else let b = sum () in
+%%                     let u = add () () in
+%%                       rand_bool()
+%%let main x = assert (sum ())
+%%\end{alltt}
+%\texttt{rand\us{}bool()} means a non-deterministic boolean value.
+%In fact, we can abstract the source program to the following program by
+%using the definition of \texttt{add} with predicate $\Abs{x}{x\geq0}$
+%only for return values of \texttt{sum}.
+%\begin{alltt}
+%let rec sum _ = if rand_bool() then true
+%                else if sum () then true else rand_bool()
+%let main x = assert (sum ())
+%\end{alltt}
+%In the body of \texttt{sum}, \texttt{add x (sum (x-1))}, i.e. \texttt{x
+%+ sum (x-1)}, is abstracted to \texttt{if sum () then true else rand\us{}bool()}
+%because $\mathtt{sum ()}$ is true denotes $\mathtt{sum (x-1)} \geq 0$.
+%The case of $\mathtt{b}=\mathtt{false}$ is similar.
+%We distinguish functions that are abstracted from functions that is not abstracted.
+%In the example above, functions \texttt{sum} and \texttt{main} are abstracted, and
+%function \texttt{add} is not abstracted.
+%We abstract programs, intuitively, with extracting functions which is not abstracted.
+%We formalize this abstraction, called selective predicate abstraction.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Another efficiency problem is caused by CPS transformation.
-As stated above, our approach need CPS transformation to use the
+As stated above, our approach needs CPS transformation to use the
 higher-order model checker, the model checker of higher-order recursion
 schemes.  Since the complexity of model checking of higher-order
 recursion scheme is $n$-EXPTIME complete for order-n

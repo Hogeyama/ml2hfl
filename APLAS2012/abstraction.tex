@@ -12,7 +12,7 @@ selective predicate abstraction.  Selective predicate abstraction
 improves the precision of abstraction.
 
 The idea of selective predicate abstraction is to distinguish functions
-that is abstracted from functions that is not abstracted.  For example,
+that are abstracted from functions that are not abstracted.  For example,
 the following program can verify by abstracting only \texttt{sum} and
 \texttt{main} as stated in Sect.~\ref{sec:intro}.
 %\TODO{find better example}
@@ -69,11 +69,10 @@ $\Abst{\mathtt{sum}\COL\tau_\mathtt{sum},\mathtt{main}\COL\tau_\mathtt{main}}{\m
 
 %We formalize this abstraction, called selective predicate abstraction,
 %as an extension of the previous predicate abstraction.
-Figure~\ref{fig:abstraction} defines selective predicate abstraction
-relation.  Figure~\ref{fig:abstraction} shows only the rules for
-applications and let-expressions.  Other rules are same as the previous
-predicate abstraction relation~\cite{KobayashiPLDI2011} except that the
-extracting function definition $E$ is added.  The relation
+Figure~\ref{fig:abstraction} shows the key rules of the selective
+predicate abstraction.  Other rules are same as the previous predicate
+abstraction relation~\cite{KobayashiPLDI2011} except that the extracting
+function definition $E$ is added.  The relation
 $\Abst{\Gamma}{E}{t}{\tau}{t'}$ reads $t$ is abstracted to $t'$ by using
 the abstraction type $\tau$ under the assumption that each free variable
 x of $t$ has been abstracted using the abstraction type $\Gamma(x)$ or
@@ -186,18 +185,12 @@ relation is same as the previous predicate abstraction.
 
 For some $D$ and $E$, there is no $D'$ such that
 $\AbstProg{\Gamma}{E}{D}{D'}$ when there is no cyclic definitions in $E$
-like $\set{f = \Abs{x}{\App{f}{x}}}$.  The theorem below shows the
-algorithm to select which functions should be in $E$.
+like $\set{f = \Abs{x}{\App{f}{x}}}$.  Therefore, recursive functions
+should be in $\Dom{\Gamma}$, and non-recursive functions should be in
+$\Dom{E}$.
 
-\begin{theorem}
- The function call relation $f_i \call_E f_j$ is defined as $f_j \in
- \FV{E(f_i)}$.  If $\AbstProg{\Gamma}{\emptyset}{D}{D'}$, and $f_i
- \call_E^+ f_i$ does not hold for each function $f_i \in \Dom{E}$, then
- there exists $D''$ such that $\AbstProg{\Gamma}{E}{D}{D''}$.
-\end{theorem}
-
-We discuss properties of selective predicate abstraction. We show that
-selective predicate abstraction is sound and, in a sense, enough precise.
+We discuss properties of the selective predicate abstraction. \cc{We show that
+selective predicate abstraction is sound and, in a sense, enough precise.}
 
 The theorem below states that selective predicate abstraction is sound
 in the sense that if the original program fails then so does its
@@ -231,7 +224,7 @@ our previous paper~\cite{KobayashiPLDI2011}.
 
 %As a consequence of the theorem, we can show that selective predicate
 %abstraction with higher-order model checking has at least the same
-%verification power of the 
+%verification power of the
 
 %\begin{figure}[t]
 %\begin{minipage}{\textwidth}
