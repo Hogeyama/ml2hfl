@@ -100,14 +100,14 @@ predicate abstraction tried to abstract every integer argument
 of a function to a tuple of booleans. As a result, verification
 of a program did not succeed until an appropriate set of predicates
  is found for \emph{every} function in the program.
-For example, consider the following program:\TODO{Replace with a example}
+For example, consider the following program:
 \begin{alltt}
 let add x y = x + y
 let rec sum x = if x < 0 then 0 else add x (sum (x-1))
-let main x = assert (sum x >= 0)
+let main x = assert (sum x >= x)
 \end{alltt}
 The program above can be successfully verified if we abstract the
-program by using predicates ... for ... and ... for ... respectively.
+program by \cc{using predicates ... for ... and ... for ... respectively}.
 Automatically finding all such predicates is difficult, however.  In the
 previous paper~\cite{KobayashiPLDI2011}, we have adapted CEGAR to find such
 predicates, but the technique is necessarily heuristic, and often fails.
