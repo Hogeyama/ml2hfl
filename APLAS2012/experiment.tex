@@ -40,7 +40,7 @@ fold\_left       &  64 & 2 & 0 &       - &       - &       - & 2, 0.23 \\
 zip              &  69 & 1 & 0 &       - &       - &       - & 2, 0.11 \\
 %map              &  85 & 2 & 0 &       - &       - &       - & -, -    \\
 %\hline
-inits            & 111 & 2 & 0 &       - &       - & 2, 2.53 & 3, 1.06 \\
+map\_head\_filter  & 111 & 2 & 0 &       - &       - & 2, 2.53 & 3, 1.06 \\
 risers           &  79 & 1 & 0 &       - &       - & 4, 2.72 & 4, 1.17 \\
 %ground  &   - & - & - & - & - & - & - & - & - \\
 \hline
@@ -49,7 +49,7 @@ risers           &  79 & 1 & 0 &       - &       - & 4, 2.72 & 4, 1.17 \\
 \end{table}
 
 The applications of two optimized techniques enable verification of the
-programs ``harmonic'', ``fold\_left'', ``zip'', ``inits'', and ``risers'', and reduce the
+programs ``harmonic'', ``fold\_left'', ``zip'', ``map\_head\_filter'', and ``risers'', and reduce the
 running time.  Especially, the application of selective CPS
 transformation reduces the running time, and selective predicate
 abstraction reduces the number of CEGAR cycles.
@@ -75,10 +75,21 @@ The details of the programs are showed as follows.
 \item ``harmonic'' defines a function that calculates $\sum_{1 \leq k}
       \frac{n}{k}$ for some $n$, $k$ using a fold function for lists.
       The program asserts that a zero division cannot occurs.
-\item ``fold\_left'' defines a fold function for lists and sum
-\item ``zip''
-\item ``inits''
-\item ``risers''
+\item ``fold\_left'' defines a fold function for lists and sum function
+      using the fold.
+\item ``zip'' defines a function that takes two lists and returns the
+      list of pairs that consists of elements of arguments.
+\item ``map\_head\_filter'' is an example of Ong et al.'s verification
+      framework\cite{} for higher-order recursion scheme with a
+      \textit{case} construct listed in their web page
+      \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
+      This defines map, head, is_nil, and filter function for lists, and
+      asserts that head does not fail in the calculation of \texttt{map
+      head (filter head xs)} for all list \texttt{xs}.
+\item ``risers'' is also an example of Ong et al.'s verification
+      framework.  This defines a function that takes a list and splits
+      the list into a list of lists such that each element is an
+      ascending list.
 \end{itemize}
 
 %\begin{itemize}
