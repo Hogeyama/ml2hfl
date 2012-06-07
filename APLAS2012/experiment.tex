@@ -49,7 +49,7 @@ risers           &  79 & 1 & 0 &       - &       - & 4, 2.72 & 4, 1.17 \\
 \end{table}
 
 The applications of two optimized techniques enable verification of the
-programs ``harmonic'', ``fold_left'', ``zip'', ``inits'', and ``risers'', and reduce the
+programs ``harmonic'', ``fold\_left'', ``zip'', ``inits'', and ``risers'', and reduce the
 running time.  Especially, the application of selective CPS
 transformation reduces the running time, and selective predicate
 abstraction reduces the number of CEGAR cycles.
@@ -58,7 +58,7 @@ The details of the programs are showed as follows.
 \begin{itemize}
 %\item ``fold\_right'' defines 
 \item ``forall\_eq\_pair'' defines a generator of lists of the form
-      $0\[(n_1,n_1);\dots;(n_k,n_k)\]$, and function \texttt{forall} that
+      $[(n_1,n_1);\dots;(n_k,n_k)]$, and function \texttt{forall} that
       takes a predicate $p$ as a function and a list and checks if all
       elements of the list satisfy the $p$.
 \item ``forall\_leq'' defines a generator of positive integer lists and
@@ -72,8 +72,10 @@ The details of the programs are showed as follows.
       checks the value is in the list.
 \item ``nth0'' defines a generator of integer lists and function
       ``nth'' that takes an index $i$ and a list and returns $i$-th element of the list.
-\item ``harmonic'' 
-\item ``fold\_left''
+\item ``harmonic'' defines a function that calculates $\sum_{1 \leq k}
+      \frac{n}{k}$ for some $n$, $k$ using a fold function for lists.
+      The program asserts that a zero division cannot occurs.
+\item ``fold\_left'' defines a fold function for lists and sum
 \item ``zip''
 \item ``inits''
 \item ``risers''
