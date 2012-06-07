@@ -6,15 +6,15 @@ verifier for higher-order programs with lists and exceptions.
 %The verifier takes an OCaml program as input.
 Our verifier uses TRecS~\cite{KobayashiPOPL2009,KobayashiPPDP2009} as
 the underlying higher-order model checker (for Step 3 in
-Fig.~\ref{fig:overview}), and uses CSIsat~\cite{Beyer2008} for predicate
+Fig.~\ref{fig:cegar}), and uses CSIsat~\cite{Beyer2008} for predicate
 discovery (for Step 5).  CVC3~\cite{Barrett2007} is used for unsafety
 check (for Step 4) and predicate abstraction (for Step 1).
 
 Table~\ref{tbl:exp} shows the results of the experiments.
 The column ``size'' shows the word counts of the program.
 The last column shows the number of CEGAR-cycle and the running time measured.
-The programs are safe, and have been verified correctly.
-
+The programs are list manipulating ones, and have been verified correctly.
+The experiment is conducted on Intel Xeon 5570 CPU with 8 MB cache and 6 GB memory.
 
 \begin{table}
 \caption{Results of preliminary experiments}
@@ -83,7 +83,7 @@ The details of the programs are showed as follows.
       framework\cite{} for higher-order recursion scheme with a
       \textit{case} construct listed in their web page
       \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
-      This defines map, head, is_nil, and filter function for lists, and
+      This defines map, head, is\_nil, and filter function for lists, and
       asserts that head does not fail in the calculation of \texttt{map
       head (filter head xs)} for all list \texttt{xs}.
 \item ``risers'' is also an example of Ong et al.'s verification

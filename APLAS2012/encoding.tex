@@ -149,16 +149,17 @@ $\mathtt{f'(1)} = \mathtt{f(2)}$, $\dots$
 
 This approach has the following advantages.  First, by encoding lists
 into functions over integers, we can use the predicate
-abstraction/discovery for integers.  \cc{Second, the encoding is ...}
-As abstraction method for aggregate data structures like lists, There is
-a container abstraction proposed by Dillig et al.  In their abstraction,
-a list is represented as $\set{(v_1,P_1), \dots, (v_n,P_n)}$, a finite
-set of pairs of a element of list and a condition for the index of the
-element.  On the other hand, by encoding a list as a function, the same
-information can be represented as a refinement type
+abstraction/discovery for integers.  Second, the encoding is as simple
+as it may seems.  As abstraction method for aggregate data structures
+like lists, There is a container abstraction proposed by Dillig et al.
+In their abstraction, a list is represented as $\set{(v_1,P_1), \dots,
+(v_n,P_n)}$, a finite set of pairs of a element of list and a condition
+for the index of the element.  On the other hand, by encoding a list as
+a function, the same information can be represented as a refinement type
 $\TFun{i\COL\INT}{\set{y\COL\INT\mid (P_1(i) \to y=v_1) \wedge \dots
 \wedge (P_n(i) \to y=v_n)}}$.  Moreover, \cc{our approach can deal with
-list properties like ... that cannot be represented as in the container
+list properties like a property that the $i$-th element of a list is
+greater than $i$ that cannot be represented as in the container
 abstraction.}  Our method, a combination of the encoding and the
 predicate abstraction for integers, is strictly more powerful than the
 container abstraction.
