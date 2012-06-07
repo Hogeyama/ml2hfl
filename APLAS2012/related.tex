@@ -2,16 +2,6 @@
 \label{sec:related}
 
 \subsection{Container Abstraction}
-Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
-static reasoning about containers.  The proposed framework is based on
-an abstract interpretation for containers.  Their framework is similar
-to our framework in the sense that they model containers as mappings
-from location to values.  While they consider the client-side use of the
-specific data structures (i.e. containers), we consider a more general
-class of data structures include user-defined data structures.
-
-
-\subsection{Verification Frameworks for Functional Programs}
 There are several
 frameworks~\cite{Kawaguchi2009,Chin2003,Unno2010,Ong2011} that aimed at
 verification of functional programs with data structures.
@@ -45,6 +35,14 @@ such that $\App{\INT}{\LIST_\leq} = \mu t.\NIL +
 x_1\}}{\LIST}}$, i.e., ordered lists of integers.  The framework,
 however, cannot deal with the properties of list elements related to its
 indices like that the $i$-th element of a list is greater than $i$.
+
+Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
+static reasoning about containers.  The proposed framework is based on
+an abstract interpretation for containers.  Their framework is similar
+to our framework in the sense that they model containers as mappings
+from location to values.  While they consider the client-side use of the
+specific data structures (i.e. containers), we consider a more general
+class of data structures include user-defined data structures.
 
 Chin et al.'s sized type inference~\cite{Chin2003}.  Their framework
 infers invariant of recursive functions by fix-point computation.  The
