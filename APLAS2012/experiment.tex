@@ -4,10 +4,17 @@
 To evaluate the extended framework, we have implemented a prototype
 verifier for higher-order programs with lists and exceptions.
 %The verifier takes an OCaml program as input.
-
-We applied the verification to the following set of programs.
+Our verifier uses TRecS~\cite{KobayashiPOPL2009,KobayashiPPDP2009} as
+the underlying higher-order model checker (for Step 3 in
+Fig.~\ref{fig:overview}), and uses CSIsat~\cite{Beyer2008} for predicate
+discovery (for Step 5).  CVC3~\cite{Barrett2007} is used for unsafety
+check (for Step 4) and predicate abstraction (for Step 1).
 
 Table~\ref{tbl:exp} shows the results of the experiments.
+The column ``size'' shows the word counts of the program.
+The last column shows the number of CEGAR-cycle and the running time measured.
+The programs are safe, and have been verified correctly.
+
 
 \begin{table}
 \caption{Results of preliminary experiments}
@@ -19,7 +26,7 @@ Table~\ref{tbl:exp} shows the results of the experiments.
 \cline{5-8}
 program & size & order & \# of pred. in annot. & \cc{no opt.} & \cc{CPS} & \cc{Abst.} & \cc{both} \\
 \hline
-fold\_right      &  64 & 2 & 0 & 5, 8.53 & 5,  133 & 2, 0.36 & 2, 0.19 \\
+fold\_right      &  64 & 2 & 0 & 5, 8.53 & 5, 20.9 & 2, 0.36 & 2, 0.19 \\
 forall\_eq\_pair &  55 & 1 & 0 & 4, 2.32 & 4, 0.94 & 1, 0.76 & 1, 0.23 \\
 forall\_leq      &  55 & 2 & 0 & 4, 2.10 & 4, 0.86 & 1, 0.17 & 1, 0.14 \\
 isnil            &  52 & 1 & 0 & 3, 0.16 & 3, 0.15 & 2, 0.12 & 2, 0.12 \\
@@ -40,6 +47,37 @@ risers           &  79 & 1 & 0 &       - &       - & 4, 2.72 & 4, 1.17 \\
 \end{tabular}
 \end{center}
 \end{table}
+
+The applications of two optimized techniques enable verification of the
+programs ``harmonic'', ``fold_left'', ``zip'', ``inits'', and ``risers'', and reduce the
+running time.  Especially, the application of selective CPS
+transformation reduces the running time, and selective predicate
+abstraction reduces the number of CEGAR cycles.
+
+The details of the programs are showed as follows.
+\begin{itemize}
+%\item ``fold\_right'' defines 
+\item ``forall\_eq\_pair'' defines a generator of lists of the form
+      $0\[(n_1,n_1);\dots;(n_k,n_k)\]$, and function \texttt{forall} that
+      takes a predicate $p$ as a function and a list and checks if all
+      elements of the list satisfy the $p$.
+\item ``forall\_leq'' defines a generator of positive integer lists and
+      the function \texttt{forall}.
+\item ``isnil'' defines a generator of integer lists and a function that
+      takes a list and checks whether the list is nil or not.
+\item ``iter'' defines a generator of positive integer lists and the
+      function \texttt{iter}.
+\item ``mem'' defines a generator of lists consists of the same elements
+      and function \texttt{mem} that takes a value and a list, then
+      checks the value is in the list.
+\item ``nth0'' defines a generator of integer lists and function
+      ``nth'' that takes an index $i$ and a list and returns $i$-th element of the list.
+\item ``harmonic'' 
+\item ``fold\_left''
+\item ``zip''
+\item ``inits''
+\item ``risers''
+\end{itemize}
 
 %\begin{itemize}
 %\item fold\_right

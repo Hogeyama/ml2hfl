@@ -8,14 +8,18 @@ We extend the language for recursive data structures later.
 %Here, we formalize a language for lists. We extend the language for
 %recursive data structures later.
 
-The source language is the call-by-value PCF with the syntax shown in
-Fig.~\ref{fig:source-syntax}.
+The source language is the simply-typed call-by-value higher-order
+functional language with recursion and integers (a la "PCF") with the
+syntax shown in Fig.~\ref{fig:source-syntax}.
 %  A program consists a set of top-level functions.
 The meta-variable $\OP$ ranges over the sets of operators over integers.
-The expressions are standard except that $\FAIL$ aborts a program.  We
-assume that every function in $D$ has a function type and $D$ contains a
-distinguished function symbol $\mathit{main} \in \set{f_1,\dots,f_n}$
-whose type is $\TFun{\INT}{\INT}$.
+The expressions are standard except that there is a primitive $\FAIL$
+that aborts a program.
+$\Assert{t}$ is syntactic sugar for $\If{t}{0}{\FAIL}$.
+We assume that every function in a program $D$
+has a function type and $D$ contains a distinguished function symbol
+$\main \in \set{f_1,\dots,f_n}$ whose type is
+$\TFun{\INT}{\INT}$.
 
 \begin{figure}[t]
 \begin{minipage}{\widthcoef\textwidth}
@@ -37,13 +41,8 @@ system, where the set of types is given in
 Fig. ~\ref{fig:source-syntax}.  We write $\Let{x}{t_2}{t_1}$
 for $(\Abs{x}{t_1})\ t_2$ and $(v_1\ \OP\ v_2)$ for $\Op{v_1,v_2}$.
 
-The goal of our verification is to check whether $\App{\mathit{main}}{0}
-\reds_D \FAIL$.  We can reduce the verification of the
-absence of assertion failures and pattern matching failures to
-verification of the property $t \reds_D \FAIL$ by using a trivial
-transformation. For example, a program ``{\tt match t with ...}'' cause
-a pattern match failure if and only if a program ``{\tt match t with
-... | {\us} -> $\FAIL$}'' execute $\FAIL$.
+The goal of our verification is to check whether $\App{\main}{n}
+\reds_D \FAIL$ for all integers $n$.
 
 %\begin{figure}[t]
 %\begin{minipage}{\widthcoef\textwidth}

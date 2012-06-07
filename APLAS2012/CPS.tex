@@ -1,5 +1,6 @@
 \subsection{Selective CPS transformation}
 \label{sec:CPS}
+\TODO{Add discussion about the increase of the order of programs}
 
 This section formalizes selective CPS transformation for abstracted
 programs.  As stated in Sect.~\ref{sec:intro}, the idea for selective CPS
@@ -182,8 +183,9 @@ using the type $\Gamma(x)$.
 \medskip
 
 \infrule[CPS-Prog]
- {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \\
-  \Gamma(f_i) \text{ is of the form } \TFunL{l_1}{\tau_{i1}}{\TFunL{l_2}{\tau_{i2}}{\TFunL{l_{j-1}}{\cdots}{\TFunC{\tau_{ij}}{\TFunC{\cdots}{\tau_{ik_i}}}}}} \\
+ {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \andalso
+  t_i \text{ is not of the form } \Abs{x}{t_i'} \\
+  \Gamma(f_i) \text{ is of the form } \TFunL{l_1}{\tau_{i1}}{\TFunL{l_2}{\tau_{i2}}{\TFunL{l_{k_i-1}}{\cdots}{\TFunC{\tau_{ik_i}}{\tau}}}} \\
   \CPS{\Gamma}{v_i}{\Gamma(f_i)}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
  {\CPSprog{\Gamma}{\{f_1=v_1,\dots,f_n=v_n\}}{\{f_1=v_1',\dots,f_n=v_n'\}}}
 
@@ -281,18 +283,9 @@ using the type $\Gamma(x)$.
 %\label{fig:cps}
 %\end{figure}
 
-In the rule \rn{CPS-AbsC}, a term $\Abs{x}{t}$ is transformed in a
-standard way, i.e. a continuation parameter $k$ is inserted and $t'$,
-the CPS version of $t$, applies to $k$.  On the other hand, in the rule
-\rn{CPS-AbsN}, no continuation parameter is inserted and direct style is
-preserved.  The rules for applications are similar. In the rule
-\rn{CPS-AppC}, a continuation is inserted, but not in the rule
-\rn{CPS-AppN}.  These rule expresses the intuition that a term which has
-a type of the form $\TFunC{\tau_1}{\tau_2}$ should insert a
-continuation.  The rules are designed in such a way that transformed
-term $t'$ has type $\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$
-holds, and transformed term $t'$ has type
-$\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
+The rules are designed in such a way that transformed term $t'$ has type
+$\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$ holds, and transformed
+term $t'$ has type $\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
 $\CPS{\Gamma}{t}{\tau}{C}{t'}$ holds, where $\AT$ is the answer type and
 $\CPSty{\tau}$ is defined as follows.
 \begin{eqnarray*}
@@ -300,6 +293,21 @@ $\CPSty{\tau}$ is defined as follows.
  \CPSty{\TFunN{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\CPSty{\tau_2}} \\
  \CPSty{\TFunC{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\TFun{(\TFun{\CPSty{\tau_2}}{\AT})}{\AT}}
 \end{eqnarray*}
+This shows the intuition that a term which has a type of the form
+$\TFunC{\tau_1}{\tau_2}$ should insert a continuation, and another term
+remains in direct style.
+
+In the rule \rn{CPS-AbsC}, a term $\Abs{x}{t}$ is transformed in a
+standard way, i.e. a continuation parameter $k$ is inserted and $t'$,
+the CPS version of $t$, applies to $k$.  On the other hand, in the rule
+\rn{CPS-AbsN}, no continuation parameter is inserted and direct style is
+preserved.  The rules for applications are similar. In the rule
+\rn{CPS-AppC}, a continuation is inserted, but not in the rule
+\rn{CPS-AppN}.  In the rule \rn{CPS-Prog}, since an application of a
+top-level function may cause a side-effect, non-termination, the function
+type for the last argument is annotated to $\IC$.
+Although this is a na\"{\i}ve way to treat non-termination as a side-effects,
+we can reduce $\IC$-annotate function types by some non-termination analysis.
 
 Figure~\ref{fig:cps-example} shows examples of selective CPS
 transformation.  The examples are the transformations of
@@ -357,7 +365,7 @@ e \CPS{\Gamma}
 }{\vdots}}
 (b)
 \end{minipage}
-\caption{Transformation of $\AbsC{x}{\AbsC{y}{\assert(x =
+\caption{Transformation of $\Abs{x}{\Abs{y}{\assert(x =
 y)}}$. ($\Gamma_x=\Gamma,x\COL\INT$ and
 $\Gamma_{xy}=\Gamma_x,y\COL\INT$)}
 \label{fig:cps-example}
@@ -374,7 +382,7 @@ transformation, in the sense that the transformed program is reduced to
 the same value as original program.
 \begin{theorem}[Correctness of CPS Transformation]
 If $\CPSprog{\Gamma}{D}{D'}$, then the following holds:
-$\App{\main}{0} \Reds{D} v$ if and only if $\App{\App{\main}{0}}{(\Abs{x}{x})} \Reds{D'} v$.
+$\App{\main}{0} \Reds{D} \FAIL$ if and only if $\App{\App{\main}{0}}{(\Abs{x}{x})} \Reds{D'} \FAIL$.
 \end{theorem}
 
 %\memo{How to infer types and labels?}
