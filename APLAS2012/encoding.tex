@@ -6,7 +6,7 @@ verification.  Our approach is to translate a source program to a
 program that has no recursive data structures and no control operations.
 The translation is sound and complete.
 
-Figure\ref{fig:extension} shows the verification framework for recursive data structures and control
+Figure~\ref{fig:extension} shows the verification framework for recursive data structures and control
 operations.
 %\begin{enumerate}
 % \item Translation of a source program with control operations into a
@@ -20,19 +20,19 @@ operations.
  \begin{center}
   \includegraphics[scale=0.4]{extension.eps}
  \end{center}
-\caption{The verification framework for recursive data structures and control operations}
+\caption{The verification \cc{framework for} recursive data structures and control operations}
 \label{fig:extension}
 \end{figure}
 
-The next section formalizes the encoding of recursive data
+The Sect.~\ref{sec:recdata} formalizes the encoding of recursive data
 structures, and Sect.~\ref{sec:control} introduces the extension for
 control operations.
 
 \subsection{Functional Encoding of Recursive Data Structures}
 \label{sec:recdata}
 
-In this section, we first formalize the encoding of lists. Next, we argue about the
-extension for recursive data structures.
+In this section, we first formalize the encoding of lists. Next, we \cc{argue about} the
+extension for user-defined recursive data structures.
 
 \[
 \begin{array}{lrl}
@@ -157,10 +157,10 @@ In their abstraction, a list is represented as $\set{(v_1,P_1), \dots,
 for the index of the element.  On the other hand, by encoding a list as
 a function, the same information can be represented as a refinement type
 $\TFun{i\COL\INT}{\set{y\COL\INT\mid (P_1(i) \to y=v_1) \wedge \dots
-\wedge (P_n(i) \to y=v_n)}}$.  Moreover, \cc{our approach can deal with
+\wedge (P_n(i) \to y=v_n)}}$.  Moreover, our approach can deal with
 list properties like a property that the $i$-th element of a list is
 greater than $i$ that cannot be represented as in the container
-abstraction.}  Our method, a combination of the encoding and the
+abstraction.  Our method, a combination of the encoding and the
 predicate abstraction for integers, is strictly more powerful than the
 container abstraction.
 

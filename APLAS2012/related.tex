@@ -28,7 +28,7 @@ Kawaguchi et al.'s liquid type inferecne~\cite{Kawaguchi2009} are
 semi-automated verification framework based on refinement types.  Their
 framework requires the shape of predicates, called logical qualifiers,
 to users.  The limitation of our framework is that it cannot deal with
-\cc{recursive dependency} on recursive data structures such that
+recursive dependency on recursive data structures such that
 orderedness.  Their framework can deal with recursive dependent type
 such that $\App{\INT}{\LIST_\leq} = \mu t.\NIL +
 \Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq

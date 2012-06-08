@@ -22,14 +22,14 @@ previous predicate abstraction.  In the previous framework, predicate
 abstraction is defined as the relation
 $\AbstPLDI{\Gamma}{t}{\sigma}{t'}$ that reads $t$ is abstracted to $t'$
 by using the abstraction type\footnote{Abstraction types are types to
-express which predicate should be used for each terms.  We do not show
+express which predicate should be used to abstract each term.  We do not show
 the definition of abstraction types.  See our previous
 paper~\cite{KobayashiPLDI2011} for details.}  $\sigma$ under the
 assumption that each free variable x of $t$ has been abstracted using
 the abstraction type $\Gamma(x)$.  We extend predicate abstract relation
 by adding the set of inline functions $E$ like
-$\Abst{\Gamma}{E}{t}{\sigma}{t'}$.  Here, functions in $E$ do not
-abstracted and are extracted in the process of abstraction.  For
+$\Abst{\Gamma}{E}{t}{\sigma}{t'}$.  Here, functions in $E$ are not
+abstracted and are inlined in the process of abstraction.  For
 example, the abstraction of the program above is represented as the
 relation
 $\Abst{\mathtt{sum}\COL\sigma_\mathtt{sum},\mathtt{main}\COL\sigma_\mathtt{main}}{\mathtt{add}=\Abs{x}{\Abs{y}{x+y}}}{t}{\sigma}{t'}$.
@@ -238,7 +238,7 @@ our previous paper~\cite{KobayashiPLDI2011}.
 
 \begin{theorem}
  If $\AbstPLDI{}{D}{\tau}{D_1}$,
- $\Abst{\emptyset}{E}{D}{\tau}{D_2}$, and
+ $\AbstProg{\emptyset}{E}{D}{D_2}$, and
  $\App{\main}{0} \Reds{D_2} \FAIL$, then
  $\App{\main}{0} \Reds{D_1} \FAIL$.
 \end{theorem}

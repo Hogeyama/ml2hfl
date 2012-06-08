@@ -8,7 +8,7 @@ transformation is to distinguish whether a continuation parameter should
 be inserted to each function or not.  When a function application has
 side-effects, we need not insert continuations in CPS transformation.
 Here, $\FAIL$, nondeterministic branch, and non-termination are
-considered as side-effects in abstracted program.
+considered as side-effects.
 %For example, since an
 %application of function $\Abs{x}{\Abs{y}{\Assert{x+y}}}$ to a value has
 %no side-effects, it can be transformed to CPS by inserting only one
@@ -16,7 +16,7 @@ considered as side-effects in abstracted program.
 %$\Abs{x}{\Abs{k}{\App{k}{(\Abs{y}{\Abs{k'}{\App{k'}{(x+y)}}})}}}$.
 
 Note that a similar approach has proposed by Nielsen~\cite{Nielsen2001}.
-Generated programs by their transformation, however, do not yield the
+Programs obtained by their transformation, however, do not yield the
 same results under a call-by-value semantics and a call-by-name
 semantics.  To be more precise, the transformation does not treat
 non-termination as a side-effect.  The transformation does not fit our
@@ -69,8 +69,8 @@ not.
 
 We first define the source language of selective CPS transformation.
 The language is the same as the source language except that: (i) the set
-of terms is extended with non-deterministic branch $\Br{t_1}{t_2}$, (ii)
-a label $l \in \{\NC,\IC\}$ is annotated to each function type like
+of terms is extended with non-deterministic branch $\Br{t_1}{t_2}$, and (ii)
+each function type is annotated with a label $l \in \{\NC,\IC\}$ like
 $\TFunL{l}{\tau_1}{\tau_2}$.
 
 %\begin{eqnarray*}

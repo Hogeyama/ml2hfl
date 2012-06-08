@@ -24,7 +24,7 @@ Our previous verification framework~\cite{KobayashiPLDI2011} is based on
 predicate abstraction and CEGAR for a higher-order model checker.
 Figure~\ref{fig:cegar} shows the overall structure of our previous
 method.  First, an input program, written in simply typed call-by-value
-lambda calculus with integers, is abstracted to a higher-order boolean
+lambda calculus with recursion and integers, is abstracted to a higher-order boolean
 program by predicate abstraction in Step 1.  The abstracted program is
 verified by the higher-order model checker, where models are described by
 higher-order recursion schemes, in Step 3.  Higher-order recursion
@@ -230,7 +230,7 @@ let rec check x f k = f x (\(\lambda\)_.check (x+1) f k)
 let f x k = assert (x >= 0); k ()
 let main n k = check n f k
 \end{alltt}
-This transformation using the fact that the application to the first
+This transformation uses the fact that the application to the first
 argument does not cause an assertion failure and the context of
 \texttt{call n} is not required to have a continuation.  Our CPS
 transformation avoids the unnecessary insertions of continuations.  We
