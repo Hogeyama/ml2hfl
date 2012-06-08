@@ -56,6 +56,7 @@ let cgen env etr =
               let xttys1, xttys2 = List.partition (fun (_, t, _) -> Term.coeffs t = []) xttys in
 				          let hcs, pres' =
 				  								  let locs = related_locs loc (*(Loc(tr, left_of_path p))*) in
+																(*let locs = if let Trace.Call(x_uid, _)::_ = etr in Var.is_pos (fst x_uid) then locs else List.filter (fun (Loc(tr', _)) -> RefType.visible (SimType.find_last_base env (get tr).name(*???*)) (SimType.find_last_base env (get tr').name(*???*))) locs in*)
 						          let pres =
 				              Util.concat_map
 				                (fun (Loc(tr, _)) ->

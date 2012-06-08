@@ -268,7 +268,7 @@ let rec redex_of env t =
 let rec tyfvs_ty t ty =
   match fun_args t with
     Var(_, x), [] ->
-      [x, ty]
+      if Var.is_coeff x then [] else [x, ty]
   | Const(_, c), [] ->
       []
   | Const(a, Const.Not), [t] -> 

@@ -29,6 +29,10 @@ let refine_unit = ref true
 let refine_function = ref false
 let no_inlining = ref false
 let inline_after_ncs = ref false
+let fol_backward = ref false
+
+let disable_pred_sharing1 = ref false
+let disable_pred_sharing2 = ref false
 
 let coeff_const = ref false
 

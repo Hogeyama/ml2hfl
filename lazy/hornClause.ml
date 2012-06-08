@@ -64,9 +64,9 @@ let lookup_hcs (pid, ttys) hcs =
 
 (** unsound for non-linear expressions? *)
 let rec subst_formula p ps t =
-  if Term.coeffs t <> [] then
+  (*if Term.coeffs t <> [] then
     ps, t
-  else
+  else*)
 		(*Format.printf "input: %a@," Term.pr t;*)
 		let ts = Formula.conjuncts t in
 		let xttys, t = Tsubst.extract_from2 (Util.concat_map Pred.fvs ps) p ts in
@@ -83,48 +83,82 @@ let rec subst_formula p ps t =
 		(*Format.printf "output: %a@," Term.pr t;*)
 		ps, t
 
-let subst_of env p ps1 ps2 x =
-  let flag = true in
-  List.unique
-				(Util.concat_map
-				  (fun p1 ->
-				    let tss =
-          List.filter_map
-            (fun p2 ->
-              if Pred.matches p env p2 p1 then
-                Some(List.map fst (snd p2))
-              else
-                None)
-            ps2
-        in
-				    List.concat
-				      (List.mapi
-				        (fun i (t, ty) ->
-				          if List.mem x (Term.fvs t) then
-				            let ts = List.map (fun ts -> List.nth ts i) tss in
-                let ts = List.filter (fun t' -> t <> t') ts in
-																match t with
-																  Term.Var(_, x) ->
-																    List.map (fun t -> x, t, ty) ts
-																| _ ->
-																				(try
-																				  let nxs, n' = LinArith.of_term t in
-																				  match nxs with
-																				    [n, x] when n = 1 ->
-																				      List.map
-                            (fun t ->
-                              x,
-                              LinArith.simplify (Term.sub t (Term.tint n')),
-                              ty)
-                            ts
-																				  | _ ->
-																				      raise (Invalid_argument "")
-																				with Invalid_argument _ ->
-																				  [])
-				          else
-				            [])
-				        (snd p1)))
-				  ps1)
+let xttyss_of env q ps1 ps2 xs =
+  try
+		  let ttys_tss_s =
+				  List.map
+						  (fun p1 ->
+								  snd p1,
+										let ps =
+												List.filter_map
+												  (fun p2 ->
+														  if Pred.matches q env p2 p1 then
+																  Some(List.map fst (snd p2))
+															 else
+																  None)
+														ps2
+										in
+										if ps = [] then raise Not_found else ps)
+								ps1
+				in
+				let xttyss =
+						Util.multiply_list_list
+						  (fun xttys1 xttys2 -> xttys1 @ xttys2)
+						  (List.map
+						    (fun (ttys, tss) ->
+						      List.map
+						        (fun ts ->
+														  Util.concat_map2
+																  (fun (t1, ty) t2 ->
+						              if t1 = t2 then
+																				  []
+																				else
+																						match t1 with
+																						  Term.Var(_, x) when q x ->
+																						    [x, t2, ty]
+																						| _ ->
+																										(try
+																										  let nxs, n' = LinArith.of_term t1 in
+																										  match nxs with
+																										    [n, x] when n = 1 && q x ->
+																                [x, LinArith.simplify (Term.sub t2 (Term.tint n')), ty]
+																										  | _ ->
+																										      raise (Invalid_argument "")
+																										with Invalid_argument _ ->
+																										  []))
+																		ttys ts)
+										  tss)
+								  ttys_tss_s)
+				in
+				let xttyss =
+				  List.filter
+						  (fun xttys ->
+								  let xttys = List.unique xttys in
+										if List.for_all
+										     (fun xttys ->
+																	match xttys with
+																	  [] -> assert false
+																	| (_, t, ty)::xttys -> List.for_all (fun (_, t', _) -> Cvc3Interface.implies env [Formula.eq_ty ty t t']) xttys)
+										     (Util.classify (fun (x, _, _) (y, _, _) -> x = y) xttys) then
+										  true
+										else
+								    (*let _ = Format.printf "duplicate: %a@," Tsubst.pr xttys in*)
+										  false)
+						  xttyss
+				in
+				let xttyss =
+				  List.filter
+						  (fun xttys ->
+								  if Util.subset xs (List.map Util.fst3 xttys) then
+										  true
+										else
+										  (*let _ = Format.printf "non-covered: %a@," Tsubst.pr xttys in*)
+												false(*assert false*))
+								xttyss
+				in
+				xttyss
+  with Not_found ->
+		  []
 
 let dup_num ps =
 		let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
@@ -159,7 +193,22 @@ let ignored_vars bvs ps =
 						in
 						Util.diff (List.unique (Util.concat_map Term.fvs ts)) bvs*)
 
+let changing_vars bvs ps =
+  let tss =
+    let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
+    Util.concat_map
+      (fun ps -> Util.transpose (List.map (fun p -> List.map fst (snd p)) ps))
+      pss
+  in
+		Util.diff
+    (List.unique
+      (Util.concat_map
+        (fun ts -> let ts = List.unique ts in match ts with [_] -> [] | _ -> Util.concat_map Term.fvs ts)
+        tss))
+    bvs
+
 let share_predicates bvs _ ps t =
+  let debug = true in
 		let t = Formula.simplify t in
 		if Term.coeffs t <> [] || dup_num ps = 0 then
 		  ps, t
@@ -169,24 +218,9 @@ let share_predicates bvs _ ps t =
 		    let rec rel xs1 xs2 =
 		      match xs1, xs2 with
 						    `L((pid1, ttys1) as p1), `L((pid2, ttys2) as p2) ->
-				        if pid1 <> pid2 then
-				          let fvs1 = Util.diff (Pred.fvs p1) bvs in
-				          let fvs2 = Util.diff (Pred.fvs p2) bvs in
-				          List.exists (fun x -> List.mem x fvs2) fvs1
-				        else
-		            let ts, tts =
-                Util.partition_map
-                  (fun ((t1, _), (t2, _)) -> if t1 = t2 then `L(t1) else `R(t1, t2))
-                  (List.combine ttys1 ttys2)
-              in
-		            let ts1, ts2 = List.split tts in
-						        let fvs1 = Util.diff (Util.concat_map (fun (t, _) -> Term.fvs t) ttys1) bvs in
-						        let fvs2 = Util.diff (Util.concat_map (fun (t, _) -> Term.fvs t) ttys2) bvs in
-		            if Util.inter (Util.concat_map Term.fvs ts) (fvs1 @ fvs2) = [] then
-						          List.exists (fun x -> List.mem x fvs2) fvs1
-		            else
-		              let _ = Format.printf "ts: %a@,p1: %a@,p2: %a@," (Util.pr_list Term.pr ",") ts Pred.pr p1 Pred.pr p2 in
-		              assert false
+				        let fvs1 = Util.diff (Pred.fvs p1) bvs in
+				        let fvs2 = Util.diff (Pred.fvs p2) bvs in
+				        List.exists (fun x -> List.mem x fvs2) fvs1
 						  | `L(p1), `R(t2) ->
 				        let fvs1 = Util.diff (Pred.fvs p1) bvs in
 				        let fvs2 = Util.diff (Term.fvs t2) bvs in
@@ -219,22 +253,19 @@ let share_predicates bvs _ ps t =
 		          Format.printf "ec: %a@," pr (Hc(None, ps, Formula.band ts)))
 		        ecs
 		    in
+      let pids_of_ec ec = Util.concat_map (function `L(pid, _) -> [pid] | `R(_) -> []) ec in
+						let preds_of_ec ec = List.filter_map (function `L(p) -> Some(p) | `R(_) -> None) ec in
 		    let reduce ec1 ec2 =
+        ec1 = [] ||
 		      let xs = List.sort (Util.diff (List.unique (Util.concat_map (function `L(p) -> Pred.fvs p | `R(t) -> Term.fvs t) ec1)) bvs) in
         if xs = [] then
-          ec1
+          false
         else
-				    		(*let _ = Global.log (fun () -> Format.printf "xs: %a@," (Util.pr_list Var.pr ",") xs) in*)
+				    		let _ = if debug then Global.log (fun () -> Format.printf "xs: %a@," (Util.pr_list Var.pr ",") xs) in
 						    let xttyss =
-				        let ps1 = List.filter_map (function `L(p) -> Some(p) | `R(_) -> None) ec1 in
-				        let ps2 = List.filter_map (function `L(p) -> Some(p) | `R(_) -> None) ec2 in
-								    Util.multiply_list_list
-								      (fun xttys1 xttys2 -> xttys1 @ xttys2)
-						        (List.map
-				            (fun x ->
-				              let ys = (*flag must be false*)subst_of env (fun x -> not (List.mem x bvs)) ps1 ps2 x in
-				              if ys = [] then [[]](*???*) else List.map (fun x -> [x]) ys)
-				            xs)
+				        let ps1 = preds_of_ec ec1 in
+				        let ps2 = preds_of_ec ec2 in
+										  xttyss_of env (fun x -> not (List.mem x bvs)) ps1 ps2 xs
 						    in
 				      if List.exists
 				           (fun xttys ->
@@ -248,17 +279,18 @@ let share_predicates bvs _ ps t =
 						             in
 		  		             let ps1, ts1 = Util.partition_map (fun x -> x) (Util.diff ec1' ec2) in
 		                 let ps2, ts2 = Util.partition_map (fun x -> x) ec2 in
+				               let _ = if debug then Format.printf "hc1: %a@,hc2: %a@," pr (Hc(None, ps1, Formula.band ts1)) pr (Hc(None, ps2, Formula.band ts2)) in
+				               Cvc3Interface.implies (env @ ts2) ts1 &&
 				               List.for_all
 		                   (fun p1 -> List.exists (fun p2 -> Pred.equiv env p1 p2) ps2)
-		                   ps1 &&
-				               Cvc3Interface.implies (env @ ts2) ts1
+		                   ps1
 				             in
-				             (if b then Format.printf "xttys: %a@," Tsubst.pr xttys);
+				             let _ = if b then Format.printf "xttys: %a@," Tsubst.pr xttys in
 				             b)
 				           xttyss then
-				        []
+				        true
 				      else
-				        ec1
+				        false
 		    in
 		    let rec aux ecs1 ecs2 =
 		      match ecs1 with
@@ -269,47 +301,57 @@ let share_predicates bvs _ ps t =
                 (Util.concat_map (function `L(p) -> [fst p] | `R(_) -> []) ec1)
 		              (Util.concat_map (function `L(p) -> [fst p] | `R(_) -> []) ec2)
             in*)
-            let min_coverings ec ecs =
-              let pids_of_ec ec = List.unique (Util.concat_map (function `L(pid, _) -> [pid] | `R(_) -> []) ec) in
+            let min_coverings nonms ec ecs =
               let pids0 = pids_of_ec ec in
-              let ec_pids_s = List.map (fun ec -> ec, pids_of_ec ec) ecs in
-              let ec_pids_s = List.filter (fun (_, pids) -> List.exists (fun pid -> List.mem pid pids) pids0) ec_pids_s in
-              let ec_pids_s1, ec_pids_s2 = List.partition (fun (ec, pids) -> Util.subset pids0 pids) ec_pids_s in
+              let ec_pids_s =
+                let ec_pids_s = List.map (fun ec -> List.sort ec, pids_of_ec ec) ecs in
+		  												List.filter (fun (_, pids) -> List.exists (fun pid -> List.mem pid pids) pids0) ec_pids_s
+														in
+              let ec_pids_s1, ec_pids_s2 = List.partition (fun (ec, pids) -> (if nonms then Util.subset else Util.subset_ms) pids0 pids) ec_pids_s in
               let rec aux ec_pids_b_s =
                 let ec_pids_b_s' =
-                  Util.concat_map
-                    (fun (ec, pids, b) ->
-                      if b then
-                        [ec, pids, b]
-                      else
-                        let insf_pids = Util.diff pids0 pids in
-                        List.map
-                          (fun (ec', pids') ->
-                            ec @ ec', List.unique (pids @ pids'), Util.subset insf_pids pids')
-                          (List.filter
-                            (fun (_, pids) ->
-                              List.exists (fun pid -> List.mem pid pids) insf_pids)
-                            ec_pids_s2))
-																				ec_pids_b_s
+																  List.unique ~cmp:(fun (ec1, _, _) (ec2, _, _) -> ec1 = ec2)
+		                  (Util.concat_map
+		                    (fun (ec, pids, b) ->
+		                      if b then
+		                        [ec, pids, b]
+		                      else
+		                        let insf_pids = (if nonms then Util.diff else Util.diff_ms) pids0 pids in
+		                        List.map
+		                          (fun (ec', pids') ->
+																												  if nonms then
+		                              List.sort (ec @ ec'), List.unique (pids @ pids'), Util.subset insf_pids pids'
+																														else
+		                              List.sort (ec @ ec'), pids @ pids', Util.subset_ms insf_pids pids')
+		                          (List.filter
+		                            (fun (ec', pids') ->
+		                              Util.intersects insf_pids pids' && not (Util.subset ec' ec))
+		                            ec_pids_s2))
+																						ec_pids_b_s)
 																in
                 if List.length ec_pids_b_s = List.length ec_pids_b_s' then
-                  List.filter_map (fun (ec, pids, b) -> if b then Some(ec) else None) ec_pids_b_s'
+                  let ecs = List.filter_map (fun (ec, _, b) -> if b then Some(ec) else None) ec_pids_b_s' in
+                  (if nonms then
+																		  []
+																		else
+																		  List.filter_map
+																				  (fun (ec, pids, b) ->
+																						  if not b && Util.subset pids0 pids && List.for_all (fun ec' -> Util.diff ec ec' <> []) ecs then
+																								  Some(ec)
+																								else
+																								  None)
+																						ec_pids_b_s') @
+																		ecs
                 else
                   aux ec_pids_b_s'
               in
-              List.map fst ec_pids_s1 @ aux (List.map (fun (ec, pids) -> ec, pids, false) ec_pids_s2)
+              List.map fst ec_pids_s1 @
+														aux (List.map (fun (ec, pids) -> ec, pids, false) ec_pids_s2)
             in
-		          let ec' =
-								      List.fold_left
-								        (fun ec1 ec2 ->
-		                if ec1 = [] then
-		                  []
-		                else
-		                  reduce ec1 ec2)
-								        ec
-								        (min_coverings ec (ecs1 @ ecs2))
-		          in
-		          aux ecs1 (if ec' = [] then ecs2 else ec' :: ecs2)
+            let ecs = min_coverings (!Global.disable_pred_sharing1 || not (Util.is_dup (pids_of_ec ec))) ec (ecs1 @ ecs2) in
+												let _ = Format.printf "ec: %a@," (Util.pr_list Pred.pr ",") (preds_of_ec ec) in
+												let _ = List.iter (fun ec -> Format.printf "%a@," (Util.pr_list Pred.pr ",") (preds_of_ec ec)) ecs in
+		          aux ecs1 (if List.exists (fun ec' -> reduce ec ec') ecs then ecs2 else ec :: ecs2)
 		    in
 		    let ecs = aux (List.sort ecs) [] in
 		    let ps, ts = Util.partition_map (fun x -> x) (List.flatten ecs) in
@@ -318,28 +360,35 @@ let share_predicates bvs _ ps t =
     let rec loop bvs' ps t =
 		    let _ = if bvs' <> [] then Format.printf "bvs': %a@," (Util.pr_list Var.pr ",") bvs' in
       let ps', t' = share_predicates_aux (bvs @ bvs') ps t in
-      if List.length ps <> List.length ps' && dup_num ps' > 0 then
-				    let bvs'' = ignored_vars bvs ps' in
-        if Util.set_equiv bvs' bvs'' then
-          ps', t'
-        else
-          loop bvs'' ps' t'
-      else
-        ps', t'
+      let ps, t, bvs' =
+		      if List.length ps <> List.length ps' && dup_num ps' > 0 then
+						    let bvs'' = ignored_vars bvs ps' in
+		        if Util.set_equiv bvs' bvs'' then
+		          ps', t', bvs'
+		        else
+		          let ps, t = loop bvs'' ps' t' in
+            ps, t, bvs''
+		      else
+		        ps', t', bvs'
+      in
+      if !Global.disable_pred_sharing2 then
+						  ps, t
+						else
+		      try
+		        let xs = Util.inter bvs' (changing_vars bvs ps) in
+		        let _ = Format.printf "hoge: %a@," (Util.pr_list Var.pr ",") xs in
+		        Util.find_map
+		          (fun xs ->
+		            let ps', t' = share_predicates_aux (bvs @ Util.diff bvs' xs) ps t in
+		            if List.length ps <> List.length ps' then
+		              ps', t'
+		            else
+		              raise Not_found)
+		          (Util.pick 1 xs @ Util.pick 2 xs)
+		      with Not_found ->
+		        ps, t
     in
     loop (ignored_vars bvs ps) ps t
-(*
-								let bvs'' =
-				      let tss =
-				    		  let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
-				        Util.concat_map (fun ps -> Util.transpose (List.map snd ps)) pss
-				      in
-		        let pxss, nxss = List.split (List.map (fun ts -> let ts = List.unique ts in match ts with [t] -> Term.fvs t, [] | _ -> [], Util.concat_map Term.fvs ts) tss) in
-										Util.diff (List.unique (Util.diff (List.flatten pxss) (List.flatten nxss))) bvs
-		      in
-				    let _ = Format.printf "bvs'': %a@," (Util.pr_list Var.pr ",") bvs'' in
-				    loop (bvs @ bvs'') ps t
-*)
 
 let simplify_aux bs (Hc(popt, ps, t)) =
   let _ = Global.log_begin "HornClause.simplify" in
@@ -384,7 +433,13 @@ let simplify_aux bs (Hc(popt, ps, t)) =
           (Formula.band
             (Term.subst (Tsubst.fun_of sub) t ::
             List.map
-              (fun (x, t, _) -> if t = Formula.ttrue then Term.make_var x else if t = Formula.tfalse then Formula.bnot (Term.make_var x) else (*if Term.is_int_const t then Formula.eqInt (Term.make_var x) t else*) assert false)
+              (fun (x, t, _) ->
+														  if t = Formula.ttrue then
+																  Term.make_var x
+																else if t = Formula.tfalse then
+																  Formula.bnot (Term.make_var x)
+																else
+																  (*if Term.is_int_const t then Formula.eqInt (Term.make_var x) t else*) assert false)
               sub))
       in
       let ps0 = ps(*List.map (Pred.subst (Tsubst.fun_of sub)) ps*) in

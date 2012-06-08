@@ -230,9 +230,18 @@ let rec concat_map f xs =
     [] ->
       []
   | x::xs' ->
-      let x = f x in
-      let xs' = concat_map f xs' in
-      x @ xs'
+      let r = f x in
+      let rs' = concat_map f xs' in
+      r @ rs'
+
+let rec concat_map2 f xs ys =
+  match xs, ys with
+    [], [] ->
+      []
+  | x::xs', y::ys' ->
+      let r = f x y in
+      let rs' = concat_map2 f xs' ys' in
+      r @ rs'
 
 let partition_map p ys =
   let rec aux ls rs xs =
@@ -397,17 +406,39 @@ let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
 let inter l1 l2 = List.filter (fun x -> List.mem x l2) l1
 let union l1 l2 = List.unique (l1 @ l2)
 let set_equiv l1 l2 = subset l1 l2 && subset l2 l1
-let is_dup xs = List.length (List.unique xs) <> List.length xs
+let intersects l1 l2 = List.exists (fun x -> List.mem x l2) l1
+let is_dup ?(cmp = (=)) xs = List.length (List.unique ~cmp:cmp xs) <> List.length xs
 
-let rec redundant xs =
+let rec redundant ?(cmp = (=)) xs =
   match xs with
     [] ->
       []
   | x::xs' ->
-      if List.mem x xs' then
-        x :: redundant (List.filter (fun x' -> x' <> x) xs')
+    		let xs'' = List.filter (fun x' -> not (cmp x x')) xs' in
+      if List.length xs' <> List.length xs'' then
+        x :: redundant xs''
       else
         redundant xs'
+
+let rec diff_ms l1 l2 =
+  match l1 with
+    [] -> []
+  | x :: l1' ->
+      (try
+		      let l, _, r = find_split (fun x' -> x = x') l2 in
+		      diff_ms l1' (l @ r)
+						with Not_found ->
+						  x :: diff_ms l1' l2)
+
+let rec subset_ms l1 l2 =
+  match l1 with
+    [] -> true
+  | x :: l1' ->
+      (try
+		      let l, _, r = find_split (fun x' -> x = x') l2 in
+		      subset_ms l1' (l @ r)
+						with Not_found ->
+						  false)
 
 (** divide xs by the transitive clousre of rel *)
 let rec equiv_classes rel xs =

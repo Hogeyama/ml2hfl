@@ -58,6 +58,11 @@ let rec cegar1 prog0 ces orig_fun_list =
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_neg_pred := true;
           cegar1 prog ces orig_fun_list
+      | Some ce, ce'::_ when ce = ce' && !Flag.wp_max_num < 8 ->
+          Flag.wp_max_num := !Flag.wp_max_num + 1;
+          Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
+          Format.printf "Restart CEGAR-loop.@.";
+          cegar1 prog ces orig_fun_list
       | Some ce, ce'::_ when ce = ce' ->
           let ce_labeled = get_opt_val result in
           Feasibility.print_ce_reduction ce prog;

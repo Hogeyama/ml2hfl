@@ -156,6 +156,7 @@ let infer_ref_types fs prog etrs =
       let _ = Global.log (fun () -> Format.printf "call trees:@,  @[<v>%a@]@," (Util.pr_list CallTree.pr "@,") ctrs) in
       let hcs = List.map HornClause.simplify hcs in
       let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+      let ohcs = hcs in
       let hcs =
         if !Global.no_inlining || !Global.inline_after_ncs then
           hcs
@@ -164,17 +165,22 @@ let infer_ref_types fs prog etrs =
           let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
           hcs
       in
-      let hcs =
+      let hcs, ohcs =
 						  if Util.concat_map HornClause.coeffs hcs = [] then
-						    hcs
+						    hcs, ohcs
 						  else
-						    let t = HcSolve.formula_of_forward_ext hcs in
+						    let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
 						    let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
 						    let _ = refine_coeffs t in
 								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
 								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
-								  List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2
+								  List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2,
+
+								  let ohcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) ohcs in
+								  let ohcs1, ohcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) ohcs in
+								  List.map (HornClause.subst_hcs(*_fixed*) ohcs1) ohcs2
       in
+      let _ = Global.log (fun () -> Format.printf "non-parametrized horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
       let hcs =
         if !Global.no_inlining || not !Global.inline_after_ncs then
           hcs
@@ -189,7 +195,7 @@ let infer_ref_types fs prog etrs =
           let _ = assert (List.length xtys = List.length ytys) in
           let sub = List.map2 (fun (x, _) (y, _) -> x, Term.make_var y) xtys ytys in
           `P(x, Term.subst (fun x -> List.assoc x sub) t))
-        (HcSolve.solve ctrs hcs)
+        (HcSolve.solve ctrs hcs ohcs)
   in
   let _ = Global.log (fun () -> List.iter (fun (`P(x, t)) -> Format.printf "P[%a]: %a@," Var.pr x Term.pr t) sums) in
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in

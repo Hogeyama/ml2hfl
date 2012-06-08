@@ -47,11 +47,13 @@ let lookup_lbs (pid, ttys) lbs =
 
 let subst_lbs lbs (Hc(popt, ps, t)) =
   let _ = Global.log_begin "subst_lbs" in
-  let t =
-    let ts = List.map (fun (pid, ttys) -> lookup_lbs (pid, ttys) lbs) ps in
-    Formula.band (t :: ts)
+  let t, ps =
+    let ts, ps =
+      Util.partition_map (fun (pid, ttys) -> try `L(lookup_lbs (pid, ttys) lbs) with Not_found -> `R(pid, ttys)) ps
+				in
+    Formula.band (t :: ts), ps
   in
-  let hc = simplify (Hc(popt, [], t)) in
+  let hc = simplify (Hc(popt, ps, t)) in
   let _ = Global.log_end "subst_lbs" in
   hc
 
@@ -119,6 +121,87 @@ let compute_lbs_ext hcs =
   let res = aux hcs [] in
   let _ = Global.log_end "compute_lbs_ext" in
   res
+
+
+
+
+let formula_of_forward hcs =
+  let lbs = compute_lbs hcs in
+  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," pr_sol lbs) in
+  let hcs = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
+  Formula.simplify
+    (Formula.bor
+				  (List.map
+				    (fun hc ->
+				      let Hc(None, [], t) = subst_lbs lbs hc in
+				      t)
+				    hcs))
+
+let formula_of_forward_ext hcs =
+  let hcs1, hcs = List.partition (function (Hc(None, _, _)) -> true | _ -> false) hcs in
+  let hcs2, hcs3 = List.partition (function (Hc(Some(pid, _), _, _)) -> Var.is_coeff pid | _ -> false) hcs in
+  let lbs = compute_lbs_ext hcs3 in
+  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," (Util.pr_list pr "@,") lbs) in
+  Formula.simplify
+    (Formula.bor
+				  (List.map
+				    (fun hc ->
+				      let Hc(None, [], t) = subst_hcs hcs2 (subst_hcs lbs hc) in
+				      t)
+				    hcs1))
+
+let formula_of_backward hcs =
+  let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | Hc(Some(pid, _), _, _) -> Var.is_coeff pid) hcs in
+  let hcs = List.map (subst_hcs_fixed hcs2) hcs1 in
+
+  let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | _ -> false) hcs in
+  let hcs = List.map (subst_hcs hcs2) hcs1 in
+
+  Formula.simplify
+    (Formula.bor
+      (List.map
+        (fun (Hc(None, ps, t)) ->
+          if ps = [] then
+            t
+          else
+            let _ = Format.printf "%a@." pr (Hc(None, ps, t)) in
+            assert false)
+        hcs))
+
+
+let inline_forward fs hcs =
+  let hcs1, hcs2 =
+		  List.partition
+      (function Hc(Some(pid, _), _, _) ->
+								not (Var.is_coeff pid) &&
+        List.exists
+          (fun f ->
+            let Var.V(id), _ = CallId.tlfc_of pid in
+            Idnt.string_of id = f)
+          fs
+      | _ -> false)
+		    hcs
+  in
+  let lbs = compute_lbs_ext hcs1 in
+  let hcs = List.map (subst_hcs lbs) hcs2 in
+  hcs
+
+let inline_backward fs hcs =
+  let hcs1, hcs2 =
+		  List.partition
+      (function Hc(Some(pid, _), _, _) ->
+								not (Var.is_coeff pid) &&
+        List.exists
+          (fun f ->
+            let Var.V(id), _ = CallId.tlfc_of pid in
+            Idnt.string_of id = f)
+          fs
+      | _ -> false)
+		    hcs
+  in
+  List.map (subst_hcs_fixed hcs1) hcs2
+
+
 
 
 
@@ -261,116 +344,50 @@ let solve_aux (*prog*) lbs hcs =
   in
   aux hcs []
 
+let check_solution sol hcs =
+  List.iter
+    (fun hc ->
+      let Hc(popt, [], t) =
+        try
+          subst_lbs sol hc
+        with Not_found ->
+		        let _ = Format.printf "%a@," pr hc in
+		        assert false
+      in
+      let t' =
+        try
+          match popt with
+										  None ->
+												  Formula.tfalse
+										| Some(pid, xtys) ->
+										    let t = lookup_lbs (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol in
+              Formula.exists (List.filter (fun (x, _) -> not (List.mem_assoc x xtys)) (Term.tyfvs_ty t SimType.Bool)) t
+        with Not_found ->
+		        let _ = Format.printf "%a@," pr hc in
+          assert false
+      in
+      if not (Cvc3Interface.implies [t] [t']) then
+        let _ = Format.printf "%a@,%a => %a@," pr hc Term.pr t Term.pr t' in
+        assert false)
+    hcs
+
 (** @returns sol
     each predicate not in sol must be true *)
-let solve (*prog*) ctrs hcs =
+let solve (*prog*) ctrs hcs ohcs =
   let _ = Global.log_begin "solving Horn clauses" in
   let lbs = compute_lbs hcs in
   let _ = Global.log (fun () -> Format.printf "lower bounds:@,  %a@," pr_sol lbs) in
   let sol = solve_aux (*prog*) lbs hcs in
-  let _ =
-    if !Global.debug then
-      List.iter
-        (fun hc ->
-          let Hc(popt, [], t) =
-            try
-              subst_lbs sol hc
-            with Not_found ->
-		            let _ = Format.printf "%a@," pr hc in
-		            assert false
-          in
-          let t' =
-            try
-              match popt with None -> Formula.tfalse | Some(pid, xtys) -> lookup_lbs (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol
-            with Not_found ->
-		            let _ = Format.printf "%a@," pr hc in
-              assert false
-          in
-          if not (Cvc3Interface.implies [t] [t']) then
-            let _ = Format.printf "%a@,%a => %a@," pr hc Term.pr t Term.pr t' in
-            assert false)
-        hcs
-  in
+  let _ = if !Global.debug then check_solution sol hcs in
   let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]" pr_sol sol) in
+  let _ =
+    if !Global.debug && false then
+      let ohcs = List.map simplify (List.map (subst_lbs sol) ohcs) in
+      let lbs = compute_lbs ohcs in
+      let ohcs = List.map simplify (List.map (subst_lbs lbs) ohcs) in
+      let _ = Global.log (fun () -> Format.printf "solved horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") ohcs) in
+      let sol = sol @ List.filter_map (function Hc(Some(pid, xtys), [], t) -> Some(pid, (xtys, t)) | _ -> None ) ohcs in
+      check_solution sol ohcs
+  in
   let _ = Global.log_end "solving Horn clauses" in
   sol
-
-
-
-(***)
-
-let formula_of_forward hcs =
-  let lbs = compute_lbs hcs in
-  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," pr_sol lbs) in
-  let hcs = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
-  Formula.simplify
-    (Formula.bor
-				  (List.map
-				    (fun hc ->
-				      let Hc(None, [], t) = subst_lbs lbs hc in
-				      t)
-				    hcs))
-
-let formula_of_forward_ext hcs =
-  let hcs1, hcs = List.partition (function (Hc(None, _, _)) -> true | _ -> false) hcs in
-  let hcs2, hcs3 = List.partition (function (Hc(Some(pid, _), _, _)) -> Var.is_coeff pid | _ -> false) hcs in
-  let lbs = compute_lbs_ext hcs3 in
-  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," (Util.pr_list pr "@,") lbs) in
-  Formula.simplify
-    (Formula.bor
-				  (List.map
-				    (fun hc ->
-				      let Hc(None, [], t) = subst_hcs hcs2 (subst_hcs lbs hc) in
-				      t)
-				    hcs1))
-
-let formula_of_backward hcs =
-  let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | Hc(Some(pid, _), _, _) -> Var.is_coeff pid) hcs in
-  let hcs = List.map (subst_hcs_fixed hcs2) hcs1 in
-
-  let hcs1, hcs2 = List.partition (function Hc(None, _, _) -> true | _ -> false) hcs in
-  let hcs = List.map (subst_hcs hcs2) hcs1 in
-
-  Formula.simplify
-    (Formula.bor
-      (List.map
-        (fun (Hc(None, ps, t)) ->
-          if ps = [] then
-            t
-          else
-            let _ = Format.printf "%a@." pr (Hc(None, ps, t)) in
-            assert false)
-        hcs))
-
-
-let inline_forward fs hcs =
-  let hcs1, hcs2 =
-		  List.partition
-      (function Hc(Some(pid, _), _, _) ->
-								not (Var.is_coeff pid) &&
-        List.exists
-          (fun f ->
-            let Var.V(id), _ = CallId.tlfc_of pid in
-            Idnt.string_of id = f)
-          fs
-      | _ -> false)
-		    hcs
-  in
-  let lbs = compute_lbs_ext hcs1 in
-  let hcs = List.map (subst_hcs lbs) hcs2 in
-  hcs
-
-let inline_backward fs hcs =
-  let hcs1, hcs2 =
-		  List.partition
-      (function Hc(Some(pid, _), _, _) ->
-								not (Var.is_coeff pid) &&
-        List.exists
-          (fun f ->
-            let Var.V(id), _ = CallId.tlfc_of pid in
-            Idnt.string_of id = f)
-          fs
-      | _ -> false)
-		    hcs
-  in
-  List.map (subst_hcs_fixed hcs1) hcs2
