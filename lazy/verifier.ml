@@ -180,7 +180,7 @@ let infer_ref_types fs prog etrs =
 								  let ohcs1, ohcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) ohcs in
 								  List.map (HornClause.subst_hcs(*_fixed*) ohcs1) ohcs2
       in
-      let _ = Global.log (fun () -> Format.printf "non-parametrized horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+      let _ = if Util.concat_map HornClause.coeffs hcs <> [] then Global.log (fun () -> Format.printf "non-parametrized horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
       let hcs =
         if !Global.no_inlining || not !Global.inline_after_ncs then
           hcs
