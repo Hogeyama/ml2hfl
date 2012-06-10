@@ -20,12 +20,12 @@ Sect.~\ref{sec:intro}.
 We formalize selective predicate abstraction as an extension of the
 previous predicate abstraction.  In the previous framework, predicate
 abstraction is defined as the relation
-$\AbstPLDI{\Gamma}{t}{\sigma}{t'}$ that reads $t$ is abstracted to $t'$
+$\AbstPLDI{\Gamma}{t}{\sigma}{t'}$ which means that $t$ is abstracted to $t'$
 by using the abstraction type\footnote{Abstraction types are types to
 express which predicate should be used to abstract each term.  We do not show
 the definition of abstraction types.  See our previous
 paper~\cite{KobayashiPLDI2011} for details.}  $\sigma$ under the
-assumption that each free variable x of $t$ has been abstracted using
+assumption that each free variable $x$ of $t$ has been abstracted using
 the abstraction type $\Gamma(x)$.  We extend predicate abstract relation
 by adding the set of inline functions $E$ like
 $\Abst{\Gamma}{E}{t}{\sigma}{t'}$.  Here, functions in $E$ are not
@@ -68,12 +68,12 @@ $\Abst{\mathtt{sum}\COL\sigma_\mathtt{sum},\mathtt{main}\COL\sigma_\mathtt{main}
 %We formalize this abstraction, called selective predicate abstraction,
 %as an extension of the previous predicate abstraction.
 Figure~\ref{fig:abstraction} shows the key rules of the selective
-predicate abstraction.  Other rules are same as the previous predicate
+predicate abstraction.  Other rules are the same as the previous predicate
 abstraction relation~\cite{KobayashiPLDI2011} except that the extracting
 function definition $E$ is added.  The relation
 $\Abst{\Gamma}{E}{t}{\tau}{t'}$ reads $t$ is abstracted to $t'$ by using
 the abstraction type $\tau$ under the assumption that each free variable
-x of $t$ has been abstracted using the abstraction type $\Gamma(x)$ or
+$x$ of $t$ has been abstracted using the abstraction type $\Gamma(x)$ or
 the definition of $x$ is the abstraction of $E(x)$.
 %$E=\set{f_{i_1}=v_{i_1},\dots,f_{i_k}=v_{i_k}}$ is a subset of a
 %program.
@@ -210,9 +210,7 @@ Selective predicate abstraction is similar to the method to reduce type
 declarations by local type inference~\cite{} in the sense that the types
 of non-recursive functions are inferred from the types of recursive functions.
 
-We discuss properties of the selective predicate abstraction. \cc{We show that
-selective predicate abstraction is sound and, in a sense, enough precise.}
-
+We discuss properties of the selective predicate abstraction.
 The theorem below states that selective predicate abstraction is sound
 in the sense that if the original program fails then so does its
 abstracted program.
@@ -231,17 +229,19 @@ abstracted program.
 % $t_2 \reds \FAIL$.
 %\end{theorem}
 
-The following theorem states that selective predicate abstraction is
-more precise compared to our previous predicate abstraction.  Here,
-$\AbstPLDI{\Gamma}{D}{\tau}{D_1}$ is the predicate abstract relation in
-our previous paper~\cite{KobayashiPLDI2011}.
+The following property can be proved in the same manner as the soundness of the previous predicate abstraction [PLDI].
 
-\begin{theorem}
+\begin{proposition}
  If $\AbstPLDI{}{D}{\tau}{D_1}$,
  $\AbstProg{\emptyset}{E}{D}{D_2}$, and
  $\App{\main}{0} \Reds{D_2} \FAIL$, then
  $\App{\main}{0} \Reds{D_1} \FAIL$.
-\end{theorem}
+\end{proposition}
+
+The proposition above states that selective predicate abstraction is
+more precise compared to our previous predicate abstraction.  Here,
+$\AbstPLDI{\Gamma}{D}{\tau}{D_1}$ is the predicate abstract relation in
+our previous paper~\cite{KobayashiPLDI2011}.
 
 %As a consequence of the theorem, we can show that selective predicate
 %abstraction with higher-order model checking has at least the same

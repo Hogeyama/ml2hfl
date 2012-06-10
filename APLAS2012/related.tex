@@ -6,10 +6,10 @@ There are several
 frameworks~\cite{Kawaguchi2009,Chin2003,Unno2010,Ong2011} that aimed at
 verification of functional programs with data structures.
 
-Ong et al.~have proposed the verification framework for recursion scheme with
+Ong and Ramsay~\cite{Ong2011} have proposed the verification framework for recursion scheme with
 recursive data structures, called Pattern Matching Recursion Scheme.  As stated in
 Sect.~\ref{}, their framework requires control flow analysis. Moreover,
-the framework cannot deal with some regular properties. For example, the
+the framework cannot deal with regular properties. For example, the
 framework cannot verify that a list obtained by applying the following
 ``id'' function to an even length list is also even length.
 \begin{alltt}
@@ -28,7 +28,7 @@ Kawaguchi et al.'s liquid type inferecne~\cite{Kawaguchi2009} are
 semi-automated verification framework based on refinement types.  Their
 framework requires the shape of predicates, called logical qualifiers,
 to users.  The limitation of our framework is that it cannot deal with
-recursive dependency on recursive data structures such that
+recursive dependency on recursive data structures such as
 orderedness.  Their framework can deal with recursive dependent type
 such that $\App{\INT}{\LIST_\leq} = \mu t.\NIL +
 \Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq
@@ -42,7 +42,7 @@ an abstract interpretation for containers.  Their framework is similar
 to our framework in the sense that they model containers as mappings
 from location to values.  While they consider the client-side use of the
 specific data structures (i.e. containers), we consider a more general
-class of data structures include user-defined data structures.
+class of data structures that includes user-defined data structures.
 
 Chin et al.'s sized type inference~\cite{Chin2003}.  Their framework
 infers invariant of recursive functions by fix-point computation.  The

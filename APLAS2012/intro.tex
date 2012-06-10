@@ -2,15 +2,16 @@
 \label{sec:intro}
 
 In our recent paper~\cite{KobayashiPLDI2011}, we have shown how to
-construct MoCHi, a fully-automated program verification tool (so called a
+construct a fully-automated program verification tool (so called a
 "software model checker") for a tiny subset of functional language ML, a
-simply-typed lambda calculus with recursion and with some base types.
-MoCHi is an extension of higher-order model checker
+simply-typed lambda calculus with recursion and integers.
+The framework is an extension of higher-order model checker
 (more precisely, the model checker for higher-order recursion scheme)
 for infinite data domains such as integers by the techniques of
 predicate abstraction and CEGAR.  This can be viewed as a higher-order
 counterpart of previous software model checkers for imperative languages
 like BLAST~\cite{Henzinger2002} and SLAM~\cite{Ball2002}.
+We have implemented a verification tool, MoCHi, based on the framework.
 
 The na\"{\i}ve application of the proposed approach, however, suffered
 from scalability problems, both in terms of efficiency and supported
@@ -24,21 +25,20 @@ Our previous verification framework~\cite{KobayashiPLDI2011} is based on
 predicate abstraction and CEGAR for a higher-order model checker.
 Figure~\ref{fig:cegar} shows the overall structure of our previous
 method.  First, an input program, written in simply typed call-by-value
-lambda calculus with recursion and integers, is abstracted to a higher-order boolean
-program by predicate abstraction in Step 1.  The abstracted program is
-verified by the higher-order model checker, where models are described by
-higher-order recursion schemes, in Step 3.  Higher-order recursion
-schemes can be viewed as a simply typed call-by-name lambda calculus
-with finite data domains and recursion.  To resolve the gap between
-semantics of higher-order recursion schemes and higher-order boolean
-programs, we translate call-by-value programs into call-by-name programs
-in Step 2.  The call-by-name abstracted program obtained by CPS
-transformation is checked by the model checker. If the abstracted
-program is safe, the source program is also safe.  If not, since the
-source program is unsafe or the abstraction is too coerce, we check the
-unsafety and discover new predicates.  We repeat predicate abstraction,
-model checking, and predicate discovery until we find out whether the
-program is safe or not.
+lambda calculus with recursion and integers, is abstracted to a
+higher-order boolean program by predicate abstraction in Step 1.  The
+abstracted program is verified by the higher-order model checker, where
+models are described by higher-order recursion schemes, in Step 3.
+Higher-order recursion schemes can be viewed as a simply typed
+call-by-name lambda calculus with finite data domains and recursion.  To
+resolve the gap between semantics of higher-order recursion schemes and
+higher-order boolean programs, we translate call-by-value programs into
+call-by-name programs in Step 2.  The call-by-name abstracted program
+obtained by CPS transformation is checked by the model checker. If the
+abstracted program is safe, the source program is also safe.  If not, we
+check whether source program is unsafe or the abstraction is too coerce
+in Step 4. If the latter, we discover new predicates in Step 5.  We
+repeat these steps until we find whether the program is safe or not.
 %Our previous verification framework is a CEGAR-based one on higher-order
 %model checker.  The verification proceeds as follows.  First, an input
 %program, written in simply typed call-by-value lambda calculus with
@@ -87,14 +87,17 @@ problems of our previous work.
        functions in the source program of predicate abstraction.
  \item Na\"{\i}ve CPS transformation extremely increases the computational cost
        of model checking of higher-order boolean program because of the
-       increase of the program order.
+       increase of the order of the program.
  \item The previous framework does not support recursive data
        structures like lists and trees.  Moreover, the previous
        implementation does not support control operations like
        exceptions and call/cc.
 \end{enumerate}
-The first two are efficiency problems.
 
+We discuss each problem in more detail and explain our approach below.
+
+\begin{itemize}
+\item
 The main bottleneck of the previous version of MoCHi was the predicate
 abstraction and discovery (Steps 1 and 5), rather than higher-order
 model checking. Our previous method for predicate abstraction tried to
@@ -103,8 +106,8 @@ a result, verification of a program did not succeed until an appropriate
 set of predicates is found for \emph{every} function in the program.
 For example, consider the program in Fig.~\ref{fig:abst-example}.  The
 program can be successfully verified if we abstract the program by using
-predicates $\Abs{y}{y>=0}$ for the second argument of \texttt{add} and
-$\Abs{r}{r>=x}$ for the return value of \texttt{add} and \texttt{sum} respectively.
+predicates $\Abs{y}{y\geq0}$ for the second argument of \texttt{add} and
+$\Abs{r}{r\geq x}$ for the return value of \texttt{add} and \texttt{sum} respectively.
 Automatically finding all such predicates is difficult, however.  In the
 previous paper~\cite{KobayashiPLDI2011}, we have adapted CEGAR to find
 such predicates, but the technique is necessarily heuristic, and often
@@ -177,27 +180,12 @@ This improves the precision of abstraction and reduce the cycle of CEGAR.
 %We abstract programs, intuitively, with extracting functions which is not abstracted.
 %We formalize this abstraction, called selective predicate abstraction.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+\item
 Another efficiency problem is caused by CPS transformation.
 As stated above, our approach needs CPS transformation to resolve the gap between
 semantics of higher-order recursion schemes and higher-order boolean
 programs.  Since the complexity of model checking of higher-order
-recursion scheme is $n$-EXPTIME complete for order-n
+recursion scheme is $n$-EXPTIME complete for order-$n$
 recursion scheme, the increase of the order of the input is crucial to
 the verification time.  Consider the following program.
 \begin{alltt}
@@ -266,6 +254,7 @@ formalize this transformation, called selective CPS transformation.
 %\memo{for language extension}
 %(iii) functional encoding of recursive data structures and control operations to support a larger subset of ML.
 
+\item
 The third problem is the insufficiency of supported language features.
 The framework proposed in our previous work
 requires an automated interpolating theorem prover for predicate
@@ -278,6 +267,7 @@ features to ones with supported features.  The transformation is carried
 out by encoding recursive data structures and control operations using
 higher-order functions.  For example, a list is encoded to a function
 that maps indices to elements.
+\end{itemize}
 
 %Our contributions are (i) the formalization of selective predicate
 %abstraction using a simple but effective way to overcome the first
