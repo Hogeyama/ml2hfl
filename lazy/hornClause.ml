@@ -83,7 +83,52 @@ let rec subst_formula p ps t =
 		(*Format.printf "output: %a@," Term.pr t;*)
 		ps, t
 
-let xttyss_of env q ps1 ps2 xs =
+let matches env xs ttys1 ttys2 =
+  let xttys =
+				Util.concat_map2
+				  (fun (t1, ty1) (t2, ty2) ->
+						  let _ = if !Global.debug then assert (ty1 = ty2) in
+				    if t1 = t2 then
+								  []
+								else if Util.inter (Term.fvs t1) xs = [] then
+								  if Cvc3Interface.implies env [Formula.eq_ty ty1 t1 t2] then
+		  						  []
+										else
+										  let _ = Format.printf "t1: %a@,t2: %a@," Term.pr t1 Term.pr t2 in
+										  assert false
+								else
+										match t1 with
+										  Term.Var(_, x) when List.mem x xs ->
+										    [x, t2, ty1]
+										| _ ->
+														(try
+														  let nxs, n' = LinArith.of_term t1 in
+														  match nxs with
+														    [n, x] when n = 1 && List.mem x xs ->
+				                [x, LinArith.simplify (Term.sub t2 (Term.tint n')), ty1]
+														  | _ ->
+														      raise (Invalid_argument "")
+														with Invalid_argument _ ->
+														  let _ = Format.printf "???t1: %a@,???t2: %a@," Term.pr t1 Term.pr t2 in
+																[](*assert false*)))
+						ttys1 ttys2
+		in
+		let _ =
+				if !Global.debug then
+		  		let xttys = List.unique xttys in
+						assert
+								(List.for_all
+								   (fun xttys ->
+													match xttys with
+															[] -> assert false
+													| (_, t, ty)::xttys ->
+															  List.for_all (fun (_, t', _) -> Cvc3Interface.implies env [Formula.eq_ty ty t t']) xttys)
+								   (Util.classify (fun (x, _, _) (y, _, _) -> x = y) xttys))
+		in
+		xttys
+
+
+let xttyss_of env q ps1 ps2 =
   try
 		  let ttys_tss_s =
 				  List.map
@@ -138,23 +183,14 @@ let xttyss_of env q ps1 ps2 xs =
 										     (fun xttys ->
 																	match xttys with
 																	  [] -> assert false
-																	| (_, t, ty)::xttys -> List.for_all (fun (_, t', _) -> Cvc3Interface.implies env [Formula.eq_ty ty t t']) xttys)
+																	| (_, t, ty)::xttys ->
+																	    List.for_all (fun (_, t', _) -> Cvc3Interface.implies env [Formula.eq_ty ty t t']) xttys)
 										     (Util.classify (fun (x, _, _) (y, _, _) -> x = y) xttys) then
 										  true
 										else
 								    (*let _ = Format.printf "duplicate: %a@," Tsubst.pr xttys in*)
 										  false)
 						  xttyss
-				in
-				let xttyss =
-				  List.filter
-						  (fun xttys ->
-								  if Util.subset xs (List.map Util.fst3 xttys) then
-										  true
-										else
-										  (*let _ = Format.printf "non-covered: %a@," Tsubst.pr xttys in*)
-												false(*assert false*))
-								xttyss
 				in
 				xttyss
   with Not_found ->
@@ -253,11 +289,80 @@ let share_predicates bvs _ ps t =
 		          Format.printf "ec: %a@," pr (Hc(None, ps, Formula.band ts)))
 		        ecs
 		    in
+      let fvs_of_ec ec = List.unique (Util.concat_map (function `L(p) -> Pred.fvs p | `R(t) -> Term.fvs t) ec) in
       let pids_of_ec ec = Util.concat_map (function `L(pid, _) -> [pid] | `R(_) -> []) ec in
 						let preds_of_ec ec = List.filter_map (function `L(p) -> Some(p) | `R(_) -> None) ec in
+						let terms_of_ec ec = List.filter_map (function `L(_) -> None | `R(t) -> Some(t)) ec in
+						let is_covered ec1 ec2 =
+								let ts0 = env @ terms_of_ec ec2 in
+						  let rec aux pxs ts =
+										let pxs = List.filter (fun (_, ttys, _, ttyss) -> List.for_all (fun ttys' -> ttys' <> ttys) ttyss) pxs in
+										let ts = Util.diff ts ts0 in
+										match List.filter (fun (_, _, xs, _) -> xs <> []) pxs with
+										  [] ->
+								      Cvc3Interface.implies ts0 ts &&
+								      List.for_all
+						          (fun (pid, ttys, _, ttyss) ->
+																  List.exists (fun ttys' -> Pred.equiv env (pid, ttys) (pid, ttys')) ttyss)
+						          pxs
+										| (pid, ttys, xs, ttyss)::_ ->
+														let xttyss =
+														  List.filter_map
+																  (fun ttys' ->
+																		  match matches env xs ttys ttys' with
+																				  [] -> None
+																				| xttys -> Some(xttys)
+																		  (*match xttyss_of env (fun x -> List.mem x xs) [pid, ttys] [pid, ttys'] with
+																				  [] -> None
+																				| [xttys] -> Some(xttys)
+																				| _ -> assert false*))
+																		ttyss
+														in
+														List.exists
+														  (fun xttys ->
+																		let _ = Format.printf "xttys: %a@," Tsubst.pr xttys in
+																  let ys = List.map Util.fst3 xttys in
+																		let pxs =
+																		  List.map
+																				  (fun (pid, ttys, xs0, ttyss) ->
+																								let xs = Util.diff xs0 ys in
+																						  if xs <> xs0 then
+																								  let _ = Format.printf "pid: %a@," Var.pr pid in
+																								  let pid, ttys = Pred.simplify (Pred.subst (Tsubst.fun_of xttys) (pid, ttys)) in
+																										let ttyss =
+																												List.sort
+																												  ~cmp:(fun ttyss1 ttyss2 -> List.length ttyss1 - List.length ttyss2)
+		  																								  (List.filter (fun ttys' -> Pred.matches (fun x -> List.mem x xs) env (pid, ttys') (pid, ttys)) ttyss)
+																										in
+																										pid, ttys, xs, ttyss
+																								else
+																								  pid, ttys, xs0, ttyss)
+																						pxs
+																		in
+																		let ts = List.map (fun t -> Formula.simplify (Term.subst (Tsubst.fun_of xttys) t)) ts in
+																  aux pxs ts)
+																xttyss
+								in
+								let ps = preds_of_ec ec2 in
+								aux
+								  (List.map
+										  (fun ((pid, ttys) as p1) ->
+												  let xs = Util.diff (Pred.fvs (pid, ttys)) bvs in
+														let ttyss =
+																List.sort
+																  ~cmp:(fun ttyss1 ttyss2 -> List.length ttyss1 - List.length ttyss2)
+																		(List.filter_map
+																		  (fun ((_, ttys') as p2) ->
+																				  if Pred.matches (fun x -> List.mem x xs) env p2 p1 then Some(ttys') else None)
+																				ps)
+														in
+												  pid, ttys, xs, ttyss)
+												(preds_of_ec ec1))
+										(terms_of_ec ec1)
+						in
 		    let reduce ec1 ec2 =
         ec1 = [] ||
-		      let xs = List.sort (Util.diff (List.unique (Util.concat_map (function `L(p) -> Pred.fvs p | `R(t) -> Term.fvs t) ec1)) bvs) in
+		      let xs = List.sort (Util.diff (fvs_of_ec ec1) bvs) in
         if xs = [] then
           false
         else
@@ -265,7 +370,15 @@ let share_predicates bvs _ ps t =
 						    let xttyss =
 				        let ps1 = preds_of_ec ec1 in
 				        let ps2 = preds_of_ec ec2 in
-										  xttyss_of env (fun x -> not (List.mem x bvs)) ps1 ps2 xs
+  										let xttyss = xttyss_of env (fun x -> not (List.mem x bvs)) ps1 ps2 in
+										  List.filter
+												  (fun xttys ->
+														  if Util.subset xs (List.map Util.fst3 xttys) then
+																  true
+																else
+																  (*let _ = Format.printf "non-covered: %a@," Tsubst.pr xttys in*)
+																		false(*assert false*))
+														xttyss
 						    in
 				      if List.exists
 				           (fun xttys ->
@@ -282,7 +395,7 @@ let share_predicates bvs _ ps t =
 				               let _ = if debug then Format.printf "hc1: %a@,hc2: %a@," pr (Hc(None, ps1, Formula.band ts1)) pr (Hc(None, ps2, Formula.band ts2)) in
 				               Cvc3Interface.implies (env @ ts2) ts1 &&
 				               List.for_all
-		                   (fun p1 -> List.exists (fun p2 -> Pred.equiv env p1 p2) ps2)
+		                   (fun p1 -> List.exists (fun p2 -> Pred.equiv env(*@ ts2 not necessary?*) p1 p2) ps2)
 		                   ps1
 				             in
 				             let _ = if b then Format.printf "xttys: %a@," Tsubst.pr xttys in
@@ -348,10 +461,16 @@ let share_predicates bvs _ ps t =
               List.map fst ec_pids_s1 @
 														aux (List.map (fun (ec, pids) -> ec, pids, false) ec_pids_s2)
             in
-            let ecs = min_coverings (!Global.disable_pred_sharing1 || not (Util.is_dup (pids_of_ec ec))) ec (ecs1 @ ecs2) in
-												let _ = Format.printf "ec: %a@," (Util.pr_list Pred.pr ",") (preds_of_ec ec) in
-												let _ = List.iter (fun ec -> Format.printf "%a@," (Util.pr_list Pred.pr ",") (preds_of_ec ec)) ecs in
-		          aux ecs1 (if List.exists (fun ec' -> reduce ec ec') ecs then ecs2 else ec :: ecs2)
+												let _ = Format.printf "checking: %a@," (Util.pr_list Pred.pr ",") (preds_of_ec ec) in
+												let b =
+												  if true then
+														  is_covered ec (List.flatten (ecs1 @ ecs2))
+														else
+				            let ecs = min_coverings (!Global.disable_pred_sharing1 || not (Util.is_dup (pids_of_ec ec))) ec (ecs1 @ ecs2) in
+																let _ = List.iter (fun ec -> Format.printf "%a@," (Util.pr_list Pred.pr ",") (preds_of_ec ec)) ecs in
+																List.exists (fun ec' -> reduce ec ec') ecs
+												in
+		          aux ecs1 (if b then ecs2 else ec :: ecs2)
 		    in
 		    let ecs = aux (List.sort ecs) [] in
 		    let ps, ts = Util.partition_map (fun x -> x) (List.flatten ecs) in
@@ -371,7 +490,7 @@ let share_predicates bvs _ ps t =
 		      else
 		        ps', t', bvs'
       in
-      if !Global.disable_pred_sharing2 then
+      if !Global.enable_pred_sharing2 then
 						  ps, t
 						else
 		      try

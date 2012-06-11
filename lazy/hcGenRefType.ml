@@ -10,7 +10,7 @@ let tlfc_of (x, uid) = CallId.tlfc_of (Var.T(x, uid, (*dummy*)-1))
 
 (** generate a set of constraints from an error trace *)
 let cgen env etr =
-  let flag_coeff = false in
+  let flag_coeff = true in
   let rec aux (Loc(tr, p) as loc) hcs etr0 =
     match etr0 with
       [] ->
