@@ -80,8 +80,8 @@ the definition of $x$ is the abstraction of $E(x)$.
 %A function definition is in E intuitively means the function
 %is expanded in the abstraction.
 
-If $E$ is the empty set, the abstract
-relation is same as the previous predicate abstraction.
+If $E$ is the empty set, the abstract relation is the same as the
+previous predicate abstraction.
 
 %\begin{equation*}
 %V_{D_1,D_2} = \{f \mid (f,t) \in (D_1 \cup D_2)\}
@@ -195,9 +195,11 @@ relation is same as the previous predicate abstraction.
 
 For some $D$ and $E$, there is $D'$ such that
 $\AbstProg{\Gamma}{E}{D}{D'}$ when there is no cyclic definitions in $E$
-like $\set{f = \Abs{x}{\App{f}{x}}}$.  Therefore, recursive functions
-should be basically in $\Dom{\Gamma}$, and non-recursive functions
-should be in $\Dom{E}$.  Even if there are some recursive functions in
+like $\set{f = \Abs{x}{\App{f}{x}}}$.
+%Therefore, recursive functions
+%should be basically in $\Dom{\Gamma}$, and non-recursive functions
+%should be in $\Dom{E}$.
+Even if there are some recursive functions in
 $E$, there is $D'$ such that $\AbstProg{\Gamma}{E}{D}{D'}$ in some cases.
 For example, the following program can be abstracted when $E = \set{\texttt{odd} = v_\texttt{odd}}$.
 \begin{alltt}
@@ -205,10 +207,6 @@ let rec even x = if x = 0 then true else odd (x-1)
     and odd x = if x = 1 then true else even (x-1) in
 let main n = even n
 \end{alltt}
-
-Selective predicate abstraction is similar to the method to reduce type
-declarations by local type inference~\cite{} in the sense that the types
-of non-recursive functions are inferred from the types of recursive functions.
 
 We discuss properties of the selective predicate abstraction.
 The theorem below states that selective predicate abstraction is sound
@@ -229,7 +227,8 @@ abstracted program.
 % $t_2 \reds \FAIL$.
 %\end{theorem}
 
-The following property can be proved in the same manner as the soundness of the previous predicate abstraction [PLDI].
+The following property can be proved in the same manner as the soundness
+of the previous predicate abstraction~\cite{KobayashiPLDI2011}.
 
 \begin{proposition}
  If $\AbstPLDI{}{D}{\tau}{D_1}$,

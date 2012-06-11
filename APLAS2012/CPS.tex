@@ -7,7 +7,7 @@ programs.  As stated in Sect.~\ref{sec:intro}, the idea for selective CPS
 transformation is to distinguish whether a continuation parameter should
 be inserted to each function or not.  When a function application has
 side-effects, we need not insert continuations in CPS transformation.
-Here, $\FAIL$, nondeterministic branch, and non-termination are
+Here, $\FAIL$, non-deterministic branch, and non-termination are
 considered as side-effects.
 %For example, since an
 %application of function $\Abs{x}{\Abs{y}{\Assert{x+y}}}$ to a value has
@@ -15,15 +15,15 @@ considered as side-effects.
 %continuation like $\Abs{x}{\Abs{y}{\Abs{k}{\App{k}{(x+y)}}}}$ instead of
 %$\Abs{x}{\Abs{k}{\App{k}{(\Abs{y}{\Abs{k'}{\App{k'}{(x+y)}}})}}}$.
 
-Note that a similar approach has proposed by Nielsen~\cite{Nielsen2001}.
-Programs obtained by their transformation, however, do not yield the
-same results under a call-by-value semantics and a call-by-name
-semantics.  To be more precise, the transformation does not treat
-non-termination as a side-effect.  The transformation does not fit our
-purpose of translating call-by-value programs into equivalent
-call-by-name programs.
+Note that a similar transformation has been proposed by
+Nielsen~\cite{Nielsen2001}.  The transformation does not fit our purpose
+of translating call-by-value programs into equivalent call-by-name
+programs.  The reason is that programs obtained by their transformation do not
+yield the same results under a call-by-value semantics and a
+call-by-name semantics.  To be more precise, the transformation does not
+treat non-termination as a side-effect.
 
-To distinguish whether we should insert a continuation or not, we
+To decide whether we should insert a continuation or not, we
 annotate a label $l \in \{\NC,\IC\}$ to each function type like
 $\TFunL{l}{\tau_1}{\tau_2}$ .  A type $\TFunC{\tau_1}{\tau_2}$ means
 that we should insert a continuation, and $\TFunN{\tau_1}{\tau_2}$ means
@@ -70,7 +70,7 @@ not.
 We first define the source language of selective CPS transformation.
 The language is the same as the source language except that: (i) the set
 of terms is extended with non-deterministic branch $\Br{t_1}{t_2}$, and (ii)
-each function type is annotated with a label $l \in \{\NC,\IC\}$ like
+each function type is attached to a label $l \in \{\NC,\IC\}$, like
 $\TFunL{l}{\tau_1}{\tau_2}$.
 
 %\begin{eqnarray*}
@@ -81,9 +81,9 @@ $\TFunL{l}{\tau_1}{\tau_2}$.
 
 Below, we formalize the selective CPS as a type-based transformation.
 Figure~\ref{fig:cps} shows the rules of the selective CPS
-transformation.  The relation $\CPS{\Gamma}{t}{\tau}{l}{t'}$ reads that
+transformation.  The relation $\CPS{\Gamma}{t}{\tau}{l}{t'}$ means that
 a term $t$ is translated to a term $t'$ by using a type $\tau$, under
-the assumption that each free variable x of $t$ has been transformed
+the assumption that each free variable $x$ of $t$ has been transformed
 using the type $\Gamma(x)$.
 %Here, $\MAbs{x}{t}$ and
 %$\MApp{t_1}{t_2}$ are, respectively, application and abstraction that
@@ -284,7 +284,7 @@ using the type $\Gamma(x)$.
 %\end{figure}
 
 The rules are designed in such a way that transformed term $t'$ has type
-$\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$ holds, and transformed
+$\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$ holds, and the transformed
 term $t'$ has type $\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
 $\CPS{\Gamma}{t}{\tau}{C}{t'}$ holds, where $\AT$ is the answer type and
 $\CPSty{\tau}$ is defined as follows.
@@ -299,55 +299,58 @@ remains in direct style.
 
 In the rule \rn{CPS-AbsC}, a term $\Abs{x}{t}$ is transformed in a
 standard way, i.e. a continuation parameter $k$ is inserted and $t'$,
-the CPS version of $t$, applies to $k$.  On the other hand, in the rule
-\rn{CPS-AbsN}, no continuation parameter is inserted and direct style is
-preserved.  The rules for applications are similar. In the rule
+the CPS version of $t$, is applied to $k$.  On the other hand, in the
+rule \rn{CPS-AbsN}, no continuation parameter is inserted and direct
+style is preserved.  The rules for applications are similar. In the rule
 \rn{CPS-AppC}, a continuation is inserted, but not in the rule
-\rn{CPS-AppN}.  In the rule \rn{CPS-Prog}, since an application of a
-top-level function may cause a side-effect, non-termination, the function
-type for the last argument is annotated to $\IC$.
-Although this is a na\"{\i}ve way to treat non-termination as a side-effects,
-we can reduce $\IC$-annotate function types by some non-termination analysis.
-
-Figure~\ref{fig:cps-example} shows examples of selective CPS
-transformation.  The examples are the transformations of
-\texttt{$\lambda$x.$\lambda$y.assert (x = y)}.
+\rn{CPS-AppN}.  In the rule \rn{CPS-Br}, a term $\Br{t_1}{t_2}$ should
+be transformed with $\IC$ and a continuation is needed because we treat
+non-deterministic branch as a side-effect.
+In the rule \rn{CPS-Prog}, since an
+application of a top-level function may cause a side-effect,
+non-termination, the function type for the last argument is annotated
+with $\IC$.  Although this is a na\"{\i}ve way to transform
+non-terminating terms, we can avoid redundant insertion of continuations
+by some termination analysis.
 
 {
 \def\check{\mathtt{check}}
 \def\apply{\mathtt{apply}}
 \def\assert{\mathtt{assert}}
 \def\assertcps{\mathtt{assert}_\mathtt{CPS}}
-\def\k{\mathtt{k}}
-\def\n{\mathtt{n}}
-\def\f{\mathtt{f}}
-\def\x{\mathtt{x}}
-\def\y{\mathtt{y}}
-\def\eq{\mathtt{=}}
-\def\App#1#2{{#1}~{#2}}
+
+Figure~\ref{fig:cps-example} shows examples of selective CPS
+transformation.  The examples are the transformations of
+$\Abs{x}{\Abs{y}{\assert(x = y)}}$ with type
+$\TFunN{\INT}{\TFunC{\INT}{\INT}}$ for (a) and
+$\TFunN{\INT}{\TFunN{\INT}{\INT}}$ for (b).
+The transformation of $\Abs{y}{\assert(x = y)}$ in (b) is the same in (a).
+In (a), there is no need to insert a continuation parameter to the back of $x$.
+On the other hand, in (b), a continuation parameter is inserted.
+
 \begin{figure}[htbp]
 \begin{minipage}{\textwidth}
 \infer{
-e \CPS{\Gamma}
+\CPS{\Gamma}
      {\Abs{x}{\Abs{y}{\assert(x = y)}}}
      {\TFunN{\INT}{\TFunC{\INT}{\INT}}}{\NC}
-     {\Abs{\kappa}{\Abs{x}{\App{\kappa}{(\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}})}}}}
+     {\Abs{x}{\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}}}
 }{
 \infer{
  \CPS{\Gamma_x}
      {\Abs{y}{\App{\assert}{(x = y)}}}
      {\TFunC{\INT}{\INT}}{\NC}
-     {\Abs{\kappa}{\App{\kappa}{(\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}})}}}
+     {\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}}
 }{
 \infer{
  \CPS{\Gamma_{xy}}
      {\App{\assert}{(x = y)}}
      {\INT}{\IC}
-     {\Abs{\kappa}{\App{\App{\assert}{(x=y)}}{k}}}
+     {\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}
 }{
- \CPS{\Gamma_{xy}}{\assert}{\TFunC{\INT}{\INT}}{\NC}{\Abs{\kappa}{\App{\kappa}{\assert}}}
+ \CPS{\Gamma_{xy}}{\assert}{\TFunC{\INT}{\INT}}{\NC}{\assert}
   &
- \infer{\CPS{\Gamma_{xy}}{x=y}{\INT}{\NC}{\Abs{\kappa}{\App{\kappa}{(x=y)}}}}{\vdots}
+ \infer{\CPS{\Gamma_{xy}}{x=y}{\INT}{\NC}{x=y}}{\vdots}
 }}}
 (a)
 
@@ -355,13 +358,13 @@ e \CPS{\Gamma}
  \CPS{\Gamma}
      {\Abs{x}{\Abs{y}{\assert(x = y)}}}
      {\TFunC{\INT}{\TFunC{\INT}{\INT}}}{\NC}
-     {}
+     {\Abs{x}{\Abs{k'}{\App{k'}{(\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}})}}}}
 }{
 \infer{
  \CPS{\Gamma_x}
      {\Abs{y}{\App{\assert}{(x = y)}}}
-     {\TFunC{\INT}{\INT}}{\IC}
-     {\Abs{\kappa}{\App{\kappa}{(\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}})}}}
+     {\TFunC{\INT}{\INT}}{\NC}
+     {\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}}
 }{\vdots}}
 (b)
 \end{minipage}
@@ -375,11 +378,11 @@ $\Gamma_{xy}=\Gamma_x,y\COL\INT$)}
 In the following, we discuss the properties of selective CPS transformation.
 The theorem below shows that we can transform arbitrary simply-typed programs into CPS.
 \begin{theorem}
-Let $D$ be a program. There exists $D'$ such that $\CPSprog{\Gamma}{D}{D'}$.
+Suppose $D$ is typable in $\Gamma$. There exists $D'$ such that $\CPSprog{\Gamma}{D}{D'}$.
 \end{theorem}
 The following theorem states the correctness of the selective CPS
 transformation, in the sense that the transformed program is reduced to
-the same value as original program.
+the same value as the original program.
 \begin{theorem}[Correctness of CPS Transformation]
 If $\CPSprog{\Gamma}{D}{D'}$, then the following holds:
 $\App{\main}{0} \Reds{D} \FAIL$ if and only if $\App{\App{\main}{0}}{(\Abs{x}{x})} \Reds{D'} \FAIL$.

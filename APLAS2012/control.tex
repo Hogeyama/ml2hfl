@@ -18,7 +18,7 @@ let rec fact n =
 let main n = try fact n with NotPositive -> assert (n < 0); 0
 \end{alltt}
 We can translate this program to an exception-free program by CPS transformation.
-The following program is a result of CPS transformation.
+The following is the result of CPS transformation.
 \begin{alltt}
 type exc = NotPositive
 let rec fact n k exn =

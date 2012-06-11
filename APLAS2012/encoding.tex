@@ -3,11 +3,11 @@
 
 This section formalizes extensions of the target language of
 verification.  Our approach is to translate a source program to a
-program that has no recursive data structures and no control operations.
+program that has no recursive data structures and no control operators.
 The translation is sound and complete.
 
 Figure~\ref{fig:extension} shows the verification framework for recursive data structures and control
-operations.
+operators.
 %\begin{enumerate}
 % \item Translation of a source program with control operations into a
 %       program with no control operations.
@@ -31,7 +31,7 @@ control operations.
 \subsection{Functional Encoding of Recursive Data Structures}
 \label{sec:recdata}
 
-In this section, we first formalize the encoding of lists. Next, we \cc{argue about} the
+In this section, we first formalize the encoding of lists. Next, we discuss the
 extension for user-defined recursive data structures.
 
 \[
@@ -148,21 +148,22 @@ $\mathtt{f'(1)} = \mathtt{f(2)}$, $\dots$
 %\texttt{f} always returns a positive integer.
 
 This approach has the following advantages.  First, by encoding lists
-into functions over integers, we can use the predicate
-abstraction/discovery for integers.  Second, the encoding is as simple
-as it may seems.  As abstraction method for aggregate data structures
-like lists, There is a container abstraction proposed by Dillig et al.
-In their abstraction, a list is represented as $\set{(v_1,P_1), \dots,
-(v_n,P_n)}$, a finite set of pairs of a element of list and a condition
-for the index of the element.  On the other hand, by encoding a list as
-a function, the same information can be represented as a refinement type
-$\TFun{i\COL\INT}{\set{y\COL\INT\mid (P_1(i) \to y=v_1) \wedge \dots
-\wedge (P_n(i) \to y=v_n)}}$.  Moreover, our approach can deal with
-list properties like a property that the $i$-th element of a list is
-greater than $i$ that cannot be represented as in the container
-abstraction.  Our method, a combination of the encoding and the
-predicate abstraction for integers, is strictly more powerful than the
-container abstraction.
+into functions over integers, we can reuse the predicate
+abstraction/discovery for integers.  Second, this abstraction is natural
+although it may not seem, and the combination with our previous
+framework is powerful.  As abstraction method for aggregate data
+structures like lists, there is a container abstraction proposed by
+Dillig et al.  In their abstraction, a list is represented as
+$\set{(v_1,P_1), \dots, (v_n,P_n)}$, a finite set of pairs of a element
+of list and a condition for the index of the element.  On the other
+hand, by encoding a list as a function, the same information can be
+represented as a refinement type $\TFun{i\COL\INT}{\set{y\COL\INT\mid
+(P_1(i) \to y=v_1) \wedge \dots \wedge (P_n(i) \to y=v_n)}}$.  Moreover,
+our approach can deal with list properties like, a property that the
+$i$-th element of a list is greater than $i$, which cannot be represented
+by the container abstraction.  Our method, a combination of the
+encoding and the predicate abstraction for integers, is strictly more
+powerful than the container abstraction.
 
 %\paragraph{Comparison with Dillig et al.'s appoach.}
 %Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
@@ -246,39 +247,71 @@ container abstraction.
 
 
 
-\subsubsection{Extension to Recursive Data Structures}
-This section discusses how to encode other recursive data structures.
+\subsubsection{Extension for Recursive Data Structures}
+We discusses how to encode other recursive data structures.
 We translate programs with recursive data structures into programs
-with lists by encoding recursive data structures to functions which maps
+with lists by encoding recursive data structures to functions which map
 paths of nodes to labels.  Here, a path is represented as a list of integers.
-For example, we encode an unlabeled tree
-$\Node{\LEAF}{\Node{\LEAF}{\LEAF}}$ to a function
-$\{[] \mapsto \NODE, [1] \mapsto \LEAF, [2] \mapsto \NODE, [2,1] \mapsto \LEAF, [2,2] \mapsto \LEAF\}$.
-
-For another example, consider the following program.
+Consider binary trees defined as follows.
 \begin{alltt}
-let rec get_child t =
-  match t with
-    Leaf -> fail
-  | Node(t1,t2) -> (t1, t2)
+type btree = Leaf | Node of btree * btree
 \end{alltt}
-This program takes an unlabeled binary tree and returns its children.
-The program is translated into the following program with no recursive
-data structures except lists.
+A binary tree is encoded into a term of the type
+$\TFun{\List\INT}{\INT}$.  For example, a binary tree
+$\Node{\LEAF}{\Node{\LEAF}{\LEAF}}$ is encoded into a function $\{[]
+\mapsto \NODE, [1] \mapsto \LEAF, [2] \mapsto \NODE, [2,1] \mapsto
+\LEAF, [2,2] \mapsto \LEAF\}$ where $\LEAF$ and $\NODE$ are defined as
+some integers.
+Here is another example, the encoding of a pattern matching.
 \begin{alltt}
-let Leaf = 0
-let Node = 1
-let rec get_child t =
-  match t nil with
-    Leaf -> fail
-  | Node ->
-      let t1 xs = t (cons 0 xs) in
-      let t2 xs = t (cons 1 xs) in
-        (t1, t2)
+match x with
+  Constr_1 (t1, t2, ...) -> t
+| Constr_2 ...
 \end{alltt}
+The expression above is encoded to the following expression.
+\begin{alltt}
+let Constr_1 = 1 in
+  ...
+let Constr_n = n in
+  match x nil with
+    Constr_1 ->
+      let t1 xs = x (cons 1 xs) in
+      let t2 xs = x (cons 2 xs) in
+        ...
+      let tn xs = x (cons n xs) in
+        t'
+  | Constr_2 -> ...
+\end{alltt}
+Here, \texttt{t'} is the encoding of \texttt{t}. The pattern matching in
+trees is translated to the pattern matching in labels, represented as
+integers.  A subterm of a tree are obtained by adding the index to the head of the path.
+%\begin{alltt}
+%let rec get_child t =
+%  match t with
+%    Constr(t1,t2)Leaf -> fail
+%  | Node(t1,t2) -> (t1, t2)
+%\end{alltt}
+%This program takes an unlabeled binary tree and returns its children.
+%The program is translated into the following program with no recursive
+%data structures except lists.
+%\begin{alltt}
+%let Leaf = 0
+%let Node = 1
+%let rec get_child t =
+%  match t nil with
+%    Leaf -> fail
+%  | Node ->
+%      let t1 xs = t (cons 0 xs) in
+%      let t2 xs = t (cons 1 xs) in
+%        (t1, t2)
+%\end{alltt}
 
-We treat only regular data types, i.e., recursive sum types of product types.
-The reason is that the encoding recursive data types generates recursive types again.
+We treat only regular algebraic data types, i.e., the combination of sum
+types and product types, which cannot have function types as arguments
+of constructors.  This encoding cannot remove recursive data types such
+as $\RecType{\alpha}{1 + (\TFun{\alpha}{\alpha})}$.  A term with the
+type is translated to a term also with a recursive type.
+%The reason is that the encoding recursive data types generates recursive types again.
 
 %We introduce the language extended with recursive data structures.
 %Figure~\ref{fig:rec-syntax} shows the syntax of the language.  The

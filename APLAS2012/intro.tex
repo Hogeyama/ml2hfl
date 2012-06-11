@@ -96,7 +96,7 @@ problems of our previous work.
 
 We discuss each problem in more detail and explain our approach below.
 
-\begin{itemize}
+\begin{enumerate}
 \item
 The main bottleneck of the previous version of MoCHi was the predicate
 abstraction and discovery (Steps 1 and 5), rather than higher-order
@@ -198,7 +198,7 @@ given.  This program is translated into the following order-5
 program\footnote{The order of program $t$ is the maximum order of the
 types of functions in $t$.  The order of type $\tau$ is defined by
 $\mathit{order}(\INT)=0$, $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
-\mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2)$.}  by
+\mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}  by
 na\"{\i}ve CPS transformation.
 \begin{alltt}
 let rec check x k1 = k1 (\(\lambda\)f.\(\lambda\)k2.f x (\(\lambda\)_.check (x+1) (\(\lambda\)g.g f k2)))
@@ -222,7 +222,7 @@ This transformation uses the fact that the application to the first
 argument does not cause an assertion failure and the context of
 \texttt{call n} is not required to have a continuation.  Our CPS
 transformation avoids the unnecessary insertions of continuations.  We
-formalize this transformation, called selective CPS transformation.
+formalize this transformation, called \emph{selective CPS transformation}.
 
 %Higher-order model checking (more precisely, the model
 %checking of higher-order recursion schemes) has been studied
@@ -267,7 +267,7 @@ features to ones with supported features.  The transformation is carried
 out by encoding recursive data structures and control operations using
 higher-order functions.  For example, a list is encoded to a function
 that maps indices to elements.
-\end{itemize}
+\end{enumerate}
 
 %Our contributions are (i) the formalization of selective predicate
 %abstraction using a simple but effective way to overcome the first

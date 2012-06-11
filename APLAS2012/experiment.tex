@@ -26,7 +26,7 @@ The experiment is conducted on Intel Xeon 5570 CPU with 8 MB cache and 6 GB memo
 \cline{5-8}
 program & size & order & \# of pred. in annot. & \cc{no opt.} & \cc{CPS} & \cc{Abst.} & \cc{both} \\
 \hline
-fold\_right      &  64 & 2 & 0 & 5, 8.53 & 5, 20.9 & 2, 0.36 & 2, 0.19 \\
+%fold\_right      &  64 & 2 & 0 & 5, 8.53 & 5, 20.9 & 2, 0.36 & 2, 0.19 \\
 forall\_eq\_pair &  55 & 1 & 0 & 4, 2.32 & 4, 0.94 & 1, 0.76 & 1, 0.23 \\
 forall\_leq      &  55 & 2 & 0 & 4, 2.10 & 4, 0.86 & 1, 0.17 & 1, 0.14 \\
 isnil            &  52 & 1 & 0 & 3, 0.16 & 3, 0.15 & 2, 0.12 & 2, 0.12 \\
@@ -79,14 +79,14 @@ The details of the programs are showed as follows.
       using the fold.
 \item ``zip'' defines a function that takes two lists and returns the
       list of pairs that consists of elements of arguments.
-\item ``map\_head\_filter'' is an example of Ong et al.'s verification
-      framework\cite{} for higher-order recursion scheme with a
+\item ``map\_head\_filter'' is an example of Ong and Ramsay's verification
+      framework~\cite{Ong2011} for higher-order recursion scheme with a
       \textit{case} construct listed in their web page
       \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
       This defines map, head, is\_nil, and filter function for lists, and
       asserts that head does not fail in the calculation of \texttt{map
       head (filter head xs)} for all list \texttt{xs}.
-\item ``risers'' is also an example of Ong et al.'s verification
+\item ``risers'' is also an example of Ong and Ramsay's verification
       framework.  This defines a function that takes a list and splits
       the list into a list of lists such that each element is an
       ascending list.
