@@ -243,6 +243,13 @@ let changing_vars bvs ps =
         tss))
     bvs
 
+let fvs_of_ec ec = List.unique (Util.concat_map (function `L(p) -> Pred.fvs p | `R(t) -> Term.fvs t) ec)
+let pids_of_ec ec = Util.concat_map (function `L(pid, _) -> [pid] | `R(_) -> []) ec
+let preds_of_ec ec = List.filter_map (function `L(p) -> Some(p) | `R(_) -> None) ec
+let terms_of_ec ec = List.filter_map (function `L(_) -> None | `R(t) -> Some(t)) ec
+let embed_preds ps = List.map (fun p -> `L(p)) ps
+let embed_terms ts = List.map (fun t -> `R(t)) ts
+
 let share_predicates bvs _ ps t =
   let debug = true in
 		let t = Formula.simplify t in
@@ -276,10 +283,24 @@ let share_predicates bvs _ ps t =
 				        (Util.representatives (Pred.equiv env))
 				        (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps0)
 				    in
-        (if ps0 = [] then [] else [List.map (fun p -> `L(p)) ps0]) @
-        Util.equiv_classes rel (List.map (fun p -> `L(p)) ps1 @ List.map (fun t -> `R(t)) ts1),
+        (if ps0 = [] then [] else [embed_preds ps0]) @
+        Util.equiv_classes rel (embed_preds ps1 @ embed_terms ts1),
         env
       in
+						let ecs =
+						  List.map
+								  (fun ec ->
+										  if preds_of_ec ec = [] then
+														(try
+														  let t = Formula.band (terms_of_ec ec) in
+																let xs = List.unique (Util.diff (Term.fvs_ty SimType.Int t SimType.Bool) bvs) in
+														  let ts = Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) in
+																List.map (fun t -> `R(t)) ts
+														with Util.NotImplemented _ -> ec)
+												else
+												  ec)
+										ecs
+						in
 		    let _ =
 		      Format.printf "bvs: %a@," (Util.pr_list Var.pr ",") bvs;
 		      Format.printf "env: %a@," Term.pr (Formula.band env);
@@ -289,10 +310,6 @@ let share_predicates bvs _ ps t =
 		          Format.printf "ec: %a@," pr (Hc(None, ps, Formula.band ts)))
 		        ecs
 		    in
-      let fvs_of_ec ec = List.unique (Util.concat_map (function `L(p) -> Pred.fvs p | `R(t) -> Term.fvs t) ec) in
-      let pids_of_ec ec = Util.concat_map (function `L(pid, _) -> [pid] | `R(_) -> []) ec in
-						let preds_of_ec ec = List.filter_map (function `L(p) -> Some(p) | `R(_) -> None) ec in
-						let terms_of_ec ec = List.filter_map (function `L(_) -> None | `R(t) -> Some(t)) ec in
 						let is_covered ec1 ec2 =
 								let ts0 = env @ terms_of_ec ec2 in
 						  let rec aux pxs ts =
@@ -490,7 +507,7 @@ let share_predicates bvs _ ps t =
 		      else
 		        ps', t', bvs'
       in
-      if !Global.enable_pred_sharing2 then
+      if not !Global.enable_pred_sharing2 then
 						  ps, t
 						else
 		      try
