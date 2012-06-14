@@ -30,7 +30,8 @@ is $\TFun{\INT}{\INT}$.
 D\text{ (programs)} &::=& \{f_1 = v_1, \dots, f_n = v_n\} \\
 t\text{ (terms)}
   &::=& n \mid x \mid \Abs{x}{t} \mid t_1\ t_2 \mid \Op{v_1,\dots,v_n} \mid \If{t_1}{t_2}{t_3} \mid \FAIL \\
-v\text{ (values)} &::=& n \mid x \mid \Abs{x}{t}
+v\text{ (values)} &::=& n \mid x \mid \Abs{x}{t} \\
+\tau\text{ (types)} &::=& \INT \mid \TFun{\tau_1}{\tau_2} \\
 \end{array}
 \]
 \end{minipage}

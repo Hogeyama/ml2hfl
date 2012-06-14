@@ -70,8 +70,9 @@ predicate abstraction relation~\cite{KobayashiPLDI2011} except that the
 set of inlined functions $E$ is added.  The relation
 $\Abst{\Gamma}{E}{t}{\tau}{t'}$ means that $t$ is abstracted to $t'$ by
 using the abstraction type $\tau$ under the assumption that each free
-variable $x$ of $t$ has been abstracted using the abstraction type
-$\Gamma(x)$ or the definition of $x$ is the abstraction of $E(x)$.
+variable $x \in \Dom{\Gamma}$ of $t$ has been abstracted using the
+abstraction type $\Gamma(x)$ and each free variable $x \in \Dom{E}$ of
+$t$ is inlined.
 %$E=\set{f_{i_1}=v_{i_1},\dots,f_{i_k}=v_{i_k}}$ is a subset of a
 %program.
 %A function definition is in E intuitively means the function
@@ -247,8 +248,8 @@ like $\set{f = \Abs{x}{\App{f}{x}}}$.
 %Therefore, recursive functions
 %should be basically in $\Dom{\Gamma}$, and non-recursive functions
 %should be in $\Dom{E}$.
-Even if there are some recursive functions in
-$E$, there is $D'$ such that $\AbstProg{\Gamma}{E}{D}{D'}$ in some cases.
+Even if $E$ has some functions which are recursive in $D$,
+there is $D'$ such that $\AbstProg{\Gamma}{E}{D}{D'}$ in some cases.
 For example, the following program can be abstracted with $E = \set{\mathtt{odd} = v_\mathtt{odd}}$.
 \begin{alltt}
 let rec even x = if x = 0 then true else odd (x-1)
