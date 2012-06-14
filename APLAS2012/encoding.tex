@@ -16,11 +16,11 @@ operators.
 % \item Verification for higher-order programs with integers based on our previous framework.
 %\end{enumerate}
 
-\begin{figure}
+\begin{figure}[t]
  \begin{center}
   \includegraphics[scale=0.4]{extension.eps}
  \end{center}
-\caption{The verification \cc{framework for} recursive data structures and control operations}
+\caption{The verification framework for recursive data structures and control operators}
 \label{fig:extension}
 \end{figure}
 
@@ -34,24 +34,24 @@ control operations.
 In this section, we first formalize the encoding of lists. Next, we discuss the
 extension for user-defined recursive data structures.
 
-\[
-\begin{array}{lrl}
-D\text{ (programs)} &::=& \{f_1 = v_1, \dots, f_n = v_n\} \\
-t\text{ (terms)}
-  &::=& n \mid x \mid \Abs{x}{t} \mid t_1\ t_2 \mid \Op{v_1,\dots,v_n} \mid \If{t_1}{t_2}{t_3} \\
- &\mid& \FAIL \mid \Pair{v_1}{v_2} \mid \Fst{t} \mid \Snd{t} \mid \NIL \mid \Cons{v_1}{v_2} \\
- &\mid& (\MATCH\ {t_1}\ \WITH\ \NIL \ra {t_2} \mid \Cons{x_1}{x_2} \ra {t_3}) \\
-
-v\text{ (values)}
-  &::=& n \mid \Abs{x}{t} \mid \Pair{v_1}{v_2} \mid \NIL \mid \Cons{v_1}{v_2} \\
-
-E\text{ (eval. ctx.)}
-  &::=& [\,] \mid E\ t \mid \App{\Abs{x}{t}}{E} \mid \If{E}{t_2}{t_3} \mid \Fst{E} \mid \Snd{E} \\
- &\mid& (\Match{E}{t_2}{t_3}) \\
-
-\tau\text{ (types)} &::=& \INT \mid \TFun{\tau_1}{\tau_2} \mid \TPair{\tau_1}{\tau_2} \mid \List{\tau} \\
-\end{array}
-\]
+%\[
+%\begin{array}{lrl}
+%D\text{ (programs)} &::=& \{f_1 = v_1, \dots, f_n = v_n\} \\
+%t\text{ (terms)}
+%  &::=& n \mid x \mid \Abs{x}{t} \mid t_1\ t_2 \mid \Op{v_1,\dots,v_n} \mid \If{t_1}{t_2}{t_3} \\
+% &\mid& \FAIL \mid \Pair{v_1}{v_2} \mid \Fst{t} \mid \Snd{t} \mid \NIL \mid \Cons{v_1}{v_2} \\
+% &\mid& (\MATCH\ {t_1}\ \WITH\ \NIL \ra {t_2} \mid \Cons{x_1}{x_2} \ra {t_3}) \\
+%
+%v\text{ (values)}
+%  &::=& n \mid \Abs{x}{t} \mid \Pair{v_1}{v_2} \mid \NIL \mid \Cons{v_1}{v_2} \\
+%
+%E\text{ (eval. ctx.)}
+%  &::=& [\,] \mid E\ t \mid \App{\Abs{x}{t}}{E} \mid \If{E}{t_2}{t_3} \mid \Fst{E} \mid \Snd{E} \\
+% &\mid& (\Match{E}{t_2}{t_3}) \\
+%
+%\tau\text{ (types)} &::=& \INT \mid \TFun{\tau_1}{\tau_2} \mid \TPair{\tau_1}{\tau_2} \mid \List{\tau} \\
+%\end{array}
+%\]
 
 %\begin{figure}[t]
 %\begin{minipage}{\widthcoef\textwidth}
@@ -85,30 +85,25 @@ The idea is to encode a list to a pair of its length and a function that
 maps indices to the elements of the list.  For example, the list
 $[2;3;5]$ is encoded to a pair $(3,f)$ where $f(0) = 2$, $f(1) = 3$, and
 $f(2) = 5$.  The primitive operations \texttt{nil}, \texttt{cons},
-\texttt{null?}, \texttt{head}, and \texttt{tail} for lists are defined
-as follow.
+\texttt{is\_nil}, \texttt{head}, and \texttt{tail} for lists are defined
+as follows.
 \begin{alltt}
 let nil = (0, fun _ -> fail)
 let cons x (len,f) =
-  let f' = if i = 0 then x else f (i-1) in
-    (len+1, f')
-let null? (len,f) = len = 0
-let head (len,f) =
-  if null? (len,f) then fail
-  else f 0
+  let f' = if i = 0 then x else f (i-1) in (len+1, f')
+let is_nil (len,f) = len = 0
+let head (len,f) = if is_nil (len,f) then fail else f 0
 let tail (len,f) =
-  if null? (len,f) then fail
-  else len-1, fun i -> f (i+1)
+  if is_nil (len,f) then fail else len-1, fun i -> f (i+1)
 \end{alltt}
 \texttt{nil} is translated into the pair of length $0$ and the
 function that always fails.  \texttt{cons x xs} is translated into the
 pair of its length and the function $\{0 \mapsto \mathtt{x}\} \cup \{i \mapsto
 f (i-1) \mid i \neq 0\}$ where $f$ is the function part of encoding of
-\texttt{xs}.  \texttt{null?} just checks whether \texttt{len} is 0 or not.
+\texttt{xs}.  \texttt{is\_nil} just checks whether \texttt{len} is 0 or not.
 \texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
 element of the list.  \texttt{tail} returns a pair of
-\texttt{(len-1,f')} where $\mathtt{f'(0)} = \mathtt{f(1)}$,
-$\mathtt{f'(1)} = \mathtt{f(2)}$, $\dots$
+\texttt{(len-1,f')} where $\mathtt{f'(i)} = \mathtt{f(i+1)}$.
 
 %Since \texttt{f(i)} is the element whose position is \texttt{i} in the
 %list, the encoded \texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
@@ -149,21 +144,23 @@ $\mathtt{f'(1)} = \mathtt{f(2)}$, $\dots$
 
 This approach has the following advantages.  First, by encoding lists
 into functions over integers, we can reuse the predicate
-abstraction/discovery for integers.  Second, this abstraction is natural
-although it may not seem, and the combination with our previous
-framework is powerful.  As abstraction method for aggregate data
-structures like lists, there is a container abstraction proposed by
-Dillig et al.  In their abstraction, a list is represented as
-$\set{(v_1,P_1), \dots, (v_n,P_n)}$, a finite set of pairs of a element
-of list and a condition for the index of the element.  On the other
-hand, by encoding a list as a function, the same information can be
-represented as a refinement type $\TFun{i\COL\INT}{\set{y\COL\INT\mid
-(P_1(i) \to y=v_1) \wedge \dots \wedge (P_n(i) \to y=v_n)}}$.  Moreover,
-our approach can deal with list properties like, a property that the
-$i$-th element of a list is greater than $i$, which cannot be represented
-by the container abstraction.  Our method, a combination of the
-encoding and the predicate abstraction for integers, is strictly more
-powerful than the container abstraction.
+abstraction/discovery for integers.  Second, the encoding induces a
+natural predicate abstraction of lists, which is general enough to
+subsume various abstractions known in the literature, such as Dillig et
+al.'s container abstraction~\cite{Dillig2011}.  In their abstraction
+method for aggregate data structures like lists, a list is represented
+as $\set{(v_1,P_1), \dots, (v_n,P_n)}$, a finite set of pairs of a
+element of list and a condition for the index of the element.  For
+example, $\set{(0,\TRUE)}$ denotes that all the elements are $0$ and
+$\set{(1,\Abs{i}{i \mathop{\mathtt{mod}} 2 = 0})}$ denotes that the even
+indexed elements are $1$.  On the other hand, by encoding a list as a
+function, the same information can be represented as a refinement type
+$\TFun{i\COL\INT}{\set{y\COL\INT\mid (P_1(i) \to y=v_1) \wedge \dots
+\wedge (P_n(i) \to y=v_n)}}$.  Moreover, our approach can deal with list
+properties like, a property that the $i$-th element of a list is greater
+than $i$, which cannot be represented by the container abstraction.  Our
+method, a combination of the encoding and the predicate abstraction for
+integers, is strictly more powerful than the container abstraction.
 
 %\paragraph{Comparison with Dillig et al.'s appoach.}
 %Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
@@ -308,9 +305,12 @@ integers.  A subterm of a tree are obtained by adding the index to the head of t
 
 We treat only regular algebraic data types, i.e., the combination of sum
 types and product types, which cannot have function types as arguments
-of constructors.  This encoding cannot remove recursive data types such
-as $\RecType{\alpha}{1 + (\TFun{\alpha}{\alpha})}$.  A term with the
-type is translated to a term also with a recursive type.
+of constructors.  We require that in a recursive type
+$\RecType{\alpha}{\tau}$, $\alpha$ does not occur below function type
+constructors. For example, $\List{\TFun{\INT}{\INT}}$ is OK, but neither
+$\RecType{\alpha}{\TFun{\alpha}{\INT}}$ nor
+$\RecType{\alpha}{\TFun{\INT}{\alpha}}$ is allowed.
+
 %The reason is that the encoding recursive data types generates recursive types again.
 
 %We introduce the language extended with recursive data structures.

@@ -10,11 +10,15 @@ Fig.~\ref{fig:cegar}), and uses CSIsat~\cite{Beyer2008} for predicate
 discovery (for Step 5).  CVC3~\cite{Barrett2007} is used for unsafety
 check (for Step 4) and predicate abstraction (for Step 1).
 
-Table~\ref{tbl:exp} shows the results of the experiments.
-The column ``size'' shows the word counts of the program.
-The last column shows the number of CEGAR-cycle and the running time measured.
-The programs are list manipulating ones, and have been verified correctly.
-The experiment is conducted on Intel Xeon 5570 CPU with 8 MB cache and 6 GB memory.
+Table~\ref{tbl:exp} shows the results of the experiments.  The column
+``size'' shows the word counts of the program.  The last column shows
+the number of CEGAR-cycle and the running time measured.  In the last
+column, ``C.'' and ``A.'' denote the uses of selective CPS
+transformation and selective predicate abstraction, respectively.  The
+programs have been verified correctly.  The experiment was conducted on
+Intel Xeon 5570 CPU with 8 MB cache and 6 GB memory.  The implementation
+can be tested and all programs are available at
+\url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/mochi/}.
 
 \begin{table}
 \caption{Results of preliminary experiments}
@@ -22,75 +26,133 @@ The experiment is conducted on Intel Xeon 5570 CPU with 8 MB cache and 6 GB memo
 \begin{center}
 \begin{tabular}{|l|r|r|r|r|r|r|r|}
 \hline
-            &       &       &                      & \multicolumn{4}{|c|}{cycle, time [sec]} \\
-\cline{5-8}
-program & size & order & \# of pred. in annot. & \cc{no opt.} & \cc{CPS} & \cc{Abst.} & \cc{both} \\
+            &       &    & \multicolumn{4}{|c|}{cycle, time [sec]} \\
+\cline{4-7}
+program    & size & order & none &     C. &   A. &    C. and A. \\
 \hline
-%fold\_right      &  64 & 2 & 0 & 5, 8.53 & 5, 20.9 & 2, 0.36 & 2, 0.19 \\
-forall\_eq\_pair &  55 & 1 & 0 & 4, 2.32 & 4, 0.94 & 1, 0.76 & 1, 0.23 \\
-forall\_leq      &  55 & 2 & 0 & 4, 2.10 & 4, 0.86 & 1, 0.17 & 1, 0.14 \\
-isnil            &  52 & 1 & 0 & 3, 0.16 & 3, 0.15 & 2, 0.12 & 2, 0.12 \\
-iter             &  59 & 2 & 0 & 4, 1.60 & 4, 0.62 & 1, 0.16 & 1, 0.11 \\
-%length3          &  50 & 1 & 0 &       - &       - &       - & -, -    \\
-mem              &  74 & 1 & 0 & 4, 1.05 & 4, 0.34 & 3, 0.41 & 3, 0.17 \\
-nth0             &  78 & 1 & 0 & 3, 0.26 & 3, 0.16 & 3, 0.25 & 3, 0.17 \\
-harmonic         & 101 & 2 & 0 &       - & 5, 1.77 & 1, 0.16 & 1, 0.09 \\
-fold\_left       &  64 & 2 & 0 &       - &       - &       - & 2, 0.23 \\
-%iter\_fun\_list  &  59 & 3 & 0 &       - &       - &       - & -, -    \\
-zip              &  69 & 1 & 0 &       - &       - &       - & 2, 0.11 \\
-%map              &  85 & 2 & 0 &       - &       - &       - & -, -    \\
+%intro1     &    27&      2& 1,  0.07 & 1,  0.06 & 0,  0.06 & 0,  0.06 \\
+%intro2     &    29&      2& 1,  0.06 & 1,  0.10 & 0,  0.06 & 0,  0.06 \\
+%intro3     &    30&      2& 1,  0.08 & 1,  0.07 & 0,  0.07 & 0,  0.06 \\
+ sum        &    24&      1& 2,  0.08 & 2,  0.08 & 1,  0.07 & 1,  0.08 \\
+ mult       &    31&      1& 5, 42.86 & 4, 36.23 & 3,  0.12 & 2,  0.10 \\
+ max        &    42&      2& 5,  7.14 & 5,  0.28 & 1,  0.20 & 0,  0.06 \\
+ mc91       &    32&      1& 2,  0.08 & 2,  0.10 & 2,  0.09 & 2,  0.09 \\
+ ack        &    53&      1&        - &        - & 1,  0.08 & 1,  0.07 \\
+%repeat     &    37&      2&        - &        - &        - &        - \\
+%fhnhn      &    37&      2&  ,       &  ,       &  ,       &  ,       \\
+%hrec       &    34&      2& 2,  0.14 & 2,  0.15 & 1,  0.10 & 1,  0.09 \\
+%neg        &    47&      2& 1,  0.20 & 1,  0.13 & 0,  0.07 & 0,  0.06 \\
+%a-prod     &    70&      2& 8,  2.80 &        - & 4,       &  ,       \\
+ a-cppr     &   149&      2&        - & 12, 2.49 & 6,  0.71 & 6,  0.30 \\
+%a-init     &    96&      2&  ,       &  ,       &  ,       &  ,       \\
+ a-max      &    70&      2&        - & 6, 11.45 & 3,  1.20 & 3,  0.22 \\
+ l-zipunzip &    81&      2&        - & 6,  0.82 &        - & 2,  0.11 \\
+ l-zipmap   &    65&      2& 6,  0.29 & 5,  0.44 & 2,  0.10 & 2,  0.09 \\
+ hors       &    64&      2& 2,  0.22 & 2,  0.11 & 1,  0.09 & 1,  0.07 \\
+ e-simple   &    27&      2& 1,  0.07 & 1,  0.07 & 0,  0.07 & 0,  0.06 \\
+ e-fact     &    55&      2& 2,  0.10 & 2,  0.08 & 0,  0.10 & 2,  0.10 \\
+ r-lock     &    54&      1& 6,  0.21 & 6,  0.14 & 0,  0.07 & 0,  0.07 \\
+ r-file     &   168&      1&        - & 13, 4.30 &        - & 7,  0.43 \\
+ sum-e      &    26&      1& 0,  0.06 & 0,  0.06 & 0,  0.07 & 0,  0.07 \\
+ mult-e     &    33&      1& 1,  0.08 & 1,  0.08 & 0,  0.07 & 1,  0.07 \\
+ mc91-e     &    32&      1& 0,  0.07 & 0,  0.07 & 0,  0.06 & 0,  0.06 \\
+ repeat-e   &    35&      2& 0,  0.08 & 0,  0.06 & 0,  0.06 & 0,  0.07 \\
+ a-max-e    &    70&      2& 3,  0.35 & 3,  0.15 & 2,  0.25 & 2,  0.14 \\
+ r-lock-e   &    54&      1& 2,  0.11 & 2,  0.10 & 0,  0.07 & 0,  0.07 \\
+%excep-e    &    27&      2&  ,       &  ,       &  ,       &  ,       \\
+%\end{tabular}
+%\begin{tabular}{|l|r|r|r|r|r|r|r|}
 %\hline
-map\_head\_filter  & 111 & 2 & 0 &       - &       - & 2, 2.53 & 3, 1.06 \\
-risers           &  79 & 1 & 0 &       - &       - & 4, 2.72 & 4, 1.17 \\
-%ground  &   - & - & - & - & - & - & - & - & - \\
+%            &       &    & \multicolumn{4}{|c|}{cycle, time [sec]} \\
+%\cline{4-7}
+%program    & size & order & no opt. &     CPS &   abst. &    both \\
+\hline
+ sum\_intro        &  33 & 1 & 2, 0.09 & 2, 0.09 & 1, 0.08 & 1, 0.07 \\
+ fold\_right       &  64 & 2 & 5, 8.53 & 5, 20.9 & 2, 0.36 & 2, 0.19 \\
+ forall\_eq\_pair  &  55 & 1 & 4, 2.32 & 4, 0.94 & 1, 0.76 & 1, 0.23 \\
+ forall\_leq       &  55 & 2 & 4, 2.10 & 4, 0.86 & 1, 0.17 & 1, 0.14 \\
+ isnil             &  52 & 1 & 3, 0.16 & 3, 0.15 & 2, 0.12 & 2, 0.12 \\
+ iter              &  59 & 2 & 4, 1.60 & 4, 0.62 & 1, 0.16 & 1, 0.11 \\
+%length3           &  50 & 1 &       - &       - &       - & -, -    \\
+ mem               &  74 & 1 & 4, 1.05 & 4, 0.34 & 3, 0.41 & 3, 0.17 \\
+ nth0              &  78 & 1 & 3, 0.26 & 3, 0.16 & 3, 0.25 & 3, 0.17 \\
+ harmonic          & 101 & 2 &       - & 5, 1.77 & 1, 0.16 & 1, 0.09 \\
+ fold\_left        &  64 & 2 &       - &       - &       - & 2, 0.23 \\
+%iter\_fun\_list   &  59 & 3 &       - &       - &       - & -, -    \\
+ zip               &  69 & 1 &       - &       - &       - & 2, 0.11 \\
+%map               &  85 & 2 &       - &       - &       - & -, -    \\
+ map\_head\_filter & 111 & 2 &       - &       - & 2, 2.53 & 3, 1.06 \\
+ risers            &  79 & 1 &       - &       - & 4, 2.72 & 4, 1.17 \\
+%ground  &   - & - & - & - & - & - & - & - \\
+ fact\_notpos      &  97 & 3 & 5, 0.26 & 5, 0.18 & 3, 0.16 & 3, 0.10 \\
+ fun\_list         &   94& 3 &       - & 13, 84.80 & 6,17.78 & 6, 11.51 \\
 \hline
 \end{tabular}
 \end{center}
 \end{table}
 
+%All programs except ... are list manipulating ones.  Almost programs
+%define a generator of lists and functions on lists, and assert that the
+%functions work correctly.
+The details of the programs are showed as follows.
+
+\begin{itemize}
+\item ``r-lock-e'' and above are the programs used in the experiments in
+      the previous paper~\cite{KobayashiPLDI2011}.
+\item ``sum\_intro'' is the example program in Sect.~\ref{sec:intro}.
+\item ``map\_head\_filter'' and ``risers'' are examples of Ong and
+      Ramsay's verification framework~\cite{Ong2011} for higher-order
+      recursion scheme with a \textit{case} construct listed in their
+      web page
+      \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
+      Our framework can verify these programs with no special treatment
+      for a case construct unlike their framework that treats a case construct specially.
+\item ``fact'' is the example program in Sect.~\ref{sec:control}.
+\item Other programs define generators of lists and functions on lists,
+      and assert that the functions work correctly.
+\end{itemize}
+%\begin{itemize}
+%%\item ``fold\_right'' defines
+%\item ``forall\_eq\_pair'' defines a generator of lists of the form
+%      $[(n_1,n_1);\dots;(n_k,n_k)]$, and function \texttt{forall} that
+%      takes a predicate $p$ as a function and a list and checks if all
+%      elements of the list satisfy the $p$.
+%\item ``forall\_leq'' defines a generator of positive integer lists and
+%      the function \texttt{forall}.
+%\item ``isnil'' defines a generator of integer lists and a function that
+%      takes a list and checks whether the list is nil or not.
+%\item ``iter'' defines a generator of positive integer lists and the
+%      function \texttt{iter}.
+%\item ``mem'' defines a generator of lists consists of the same elements
+%      and function \texttt{mem} that takes a value and a list, then
+%      checks the value is in the list.
+%\item ``nth0'' defines a generator of integer lists and function
+%      ``nth'' that takes an index $i$ and a list and returns $i$-th element of the list.
+%\item ``harmonic'' defines a function that calculates $\sum_{1 \leq k}
+%      \frac{n}{k}$ for some $n$, $k$ using a fold function for lists.
+%      The program asserts that a zero division cannot occurs.
+%\item ``fold\_left'' defines a fold function for lists and sum function
+%      using the fold.
+%\item ``zip'' defines a function that takes two lists and returns the
+%      list of pairs that consists of elements of arguments.
+%\item ``map\_head\_filter'' is an example of Ong and Ramsay's verification
+%      framework~\cite{Ong2011} for higher-order recursion scheme with a
+%      \textit{case} construct listed in their web page
+%      \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
+%      This defines map, head, is\_nil, and filter function for lists, and
+%      asserts that head does not fail in the calculation of \texttt{map
+%      head (filter head xs)} for all list \texttt{xs}.
+%\item ``risers'' is also an example of Ong and Ramsay's verification
+%      framework~\cite{Ong2011}.  This defines a function that takes a list and splits
+%      the list into a list of lists such that each element is an
+%      ascending list.
+%\end{itemize}
+
 The applications of two optimized techniques enable verification of the
-programs ``harmonic'', ``fold\_left'', ``zip'', ``map\_head\_filter'', and ``risers'', and reduce the
+programs such as ``zip'' and ``map\_head\_filter'', and reduce the
 running time.  Especially, the application of selective CPS
 transformation reduces the running time, and selective predicate
 abstraction reduces the number of CEGAR cycles.
-
-The details of the programs are showed as follows.
-\begin{itemize}
-%\item ``fold\_right'' defines 
-\item ``forall\_eq\_pair'' defines a generator of lists of the form
-      $[(n_1,n_1);\dots;(n_k,n_k)]$, and function \texttt{forall} that
-      takes a predicate $p$ as a function and a list and checks if all
-      elements of the list satisfy the $p$.
-\item ``forall\_leq'' defines a generator of positive integer lists and
-      the function \texttt{forall}.
-\item ``isnil'' defines a generator of integer lists and a function that
-      takes a list and checks whether the list is nil or not.
-\item ``iter'' defines a generator of positive integer lists and the
-      function \texttt{iter}.
-\item ``mem'' defines a generator of lists consists of the same elements
-      and function \texttt{mem} that takes a value and a list, then
-      checks the value is in the list.
-\item ``nth0'' defines a generator of integer lists and function
-      ``nth'' that takes an index $i$ and a list and returns $i$-th element of the list.
-\item ``harmonic'' defines a function that calculates $\sum_{1 \leq k}
-      \frac{n}{k}$ for some $n$, $k$ using a fold function for lists.
-      The program asserts that a zero division cannot occurs.
-\item ``fold\_left'' defines a fold function for lists and sum function
-      using the fold.
-\item ``zip'' defines a function that takes two lists and returns the
-      list of pairs that consists of elements of arguments.
-\item ``map\_head\_filter'' is an example of Ong and Ramsay's verification
-      framework~\cite{Ong2011} for higher-order recursion scheme with a
-      \textit{case} construct listed in their web page
-      \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
-      This defines map, head, is\_nil, and filter function for lists, and
-      asserts that head does not fail in the calculation of \texttt{map
-      head (filter head xs)} for all list \texttt{xs}.
-\item ``risers'' is also an example of Ong and Ramsay's verification
-      framework.  This defines a function that takes a list and splits
-      the list into a list of lists such that each element is an
-      ascending list.
-\end{itemize}
 
 %\begin{itemize}
 %\item fold\_right

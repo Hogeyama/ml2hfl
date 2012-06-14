@@ -1,6 +1,6 @@
 \subsection{Selective CPS transformation}
 \label{sec:CPS}
-\TODO{Add discussion about the increase of the order of programs}
+%\TODO{Add discussion about the increase of the order of programs}
 
 This section formalizes selective CPS transformation for abstracted
 programs.  As stated in Sect.~\ref{sec:intro}, the idea for selective CPS
@@ -18,10 +18,12 @@ considered as side-effects.
 Note that a similar transformation has been proposed by
 Nielsen~\cite{Nielsen2001}.  The transformation does not fit our purpose
 of translating call-by-value programs into equivalent call-by-name
-programs.  The reason is that programs obtained by their transformation do not
-yield the same results under a call-by-value semantics and a
-call-by-name semantics.  To be more precise, the transformation does not
-treat non-termination as a side-effect.
+programs.  A non-terminating program may be transformed into a
+terminating (call-by-name) program by their transformation.
+%The reason is that programs obtained by their transformation do not
+%yield the same results under a call-by-value semantics and a
+%call-by-name semantics.  To be more precise, the transformation does not
+%treat non-termination as a side-effect.
 
 To decide whether we should insert a continuation or not, we
 annotate a label $l \in \{\NC,\IC\}$ to each function type like
@@ -89,7 +91,7 @@ using the type $\Gamma(x)$.
 %$\MApp{t_1}{t_2}$ are, respectively, application and abstraction that
 %will be reduced statically in the translation.
 
-\begin{figure}[htbp]
+\begin{figure}[tp]
 \begin{minipage}{\textwidth}
 \infax[CPS-Const]
  {\CPS{\Gamma}{n}{\INT}{\NC}{n}}
@@ -328,7 +330,7 @@ The transformation of $\Abs{y}{\assert(x = y)}$ in (b) is the same in (a).
 In (a), there is no need to insert a continuation parameter to the back of $x$.
 On the other hand, in (b), a continuation parameter is inserted.
 
-\begin{figure}[htbp]
+\begin{figure}[tp]
 \begin{minipage}{\textwidth}
 \infer{
 \CPS{\Gamma}
@@ -385,7 +387,7 @@ transformation, in the sense that the transformed program is reduced to
 the same value as the original program.
 \begin{theorem}[Correctness of CPS Transformation]
 If $\CPSprog{\Gamma}{D}{D'}$, then the following holds:
-$\App{\main}{0} \Reds{D} \FAIL$ if and only if $\App{\App{\main}{0}}{(\Abs{x}{x})} \Reds{D'} \FAIL$.
+$\App{\main}{n} \Reds{D} \FAIL$ if and only if $\App{\App{\main}{n}}{(\Abs{x}{x})} \Reds{D'} \FAIL$.
 \end{theorem}
 
 %\memo{How to infer types and labels?}

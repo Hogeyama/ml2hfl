@@ -5,8 +5,8 @@ exists a translation that removes control operations.  For example,
 we can remove exceptions and call/cc from a program by CPS transformation.
 
 %Consider the following program (written in OCaml style).
-\begin{example}
 The following program calculates factorial and raise an exception if
+a negative number or zero is given as an argument to the function.
 \begin{alltt}
 exception NotPositive
 let rec fact n =
@@ -35,5 +35,5 @@ let main n k =
 \end{alltt}
 Once the exception is removed, we can apply our verification method to the
 program.
-\end{example}
+
 

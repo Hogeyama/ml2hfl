@@ -61,11 +61,11 @@ repeat these steps until we find whether the program is safe or not.
 %counterexample, and repeat the above processes until we find out whether
 %the program is safe or not.
 
-\begin{figure}[tbp]
+\begin{figure}[tp]
  \begin{center}
   \includegraphics[scale=0.4]{overall.eps}
  \end{center}
-\caption{Higher-Order Model Checking with Predicate Abstraction and CEGAR \TODO{''Abstraction Types'' -> New Predicates, ET \& Step 4 -> Unsafety check}}
+\caption{Higher-Order Model Checking with Predicate Abstraction and CEGAR}
 \label{fig:cegar}
 \end{figure}
 
@@ -80,38 +80,65 @@ repeat these steps until we find whether the program is safe or not.
 %The na\"{\i}ve application of the proposed approach, however, suffered
 %from scalability problems, both in terms of efficiency and supported
 %language features.
-In this paper, we address the following
-problems of our previous work.
-\begin{enumerate}
- \item The previous framework requires an appropriate set of predicates for all
-       functions in the source program of predicate abstraction.
- \item Na\"{\i}ve CPS transformation extremely increases the computational cost
-       of model checking of higher-order boolean program because of the
-       increase of the order of the program.
- \item The previous framework does not support recursive data
-       structures like lists and trees.  Moreover, the previous
-       implementation does not support control operations like
-       exceptions and call/cc.
-\end{enumerate}
+%In this paper, we address the following
+%problems of our previous work.
+%\begin{enumerate}
+% \item The previous framework requires an appropriate set of predicates for all
+%       functions in the source program of predicate abstraction.
+% \item Na\"{\i}ve CPS transformation extremely increases the computational cost
+%       of model checking of higher-order boolean program because of the
+%       increase of the order of the program.
+% \item The previous framework does not support recursive data
+%       structures like lists and trees.  Moreover, the previous
+%       implementation does not support control operations like
+%       exceptions and call/cc.
+%\end{enumerate}
+%
+%We discuss each problem in more detail and explain our approach below.
 
-We discuss each problem in more detail and explain our approach below.
+In this paper, we address three problems of our previous work.
+We discuss each problems and explain our approach below.
 
 \begin{enumerate}
-\item
-The main bottleneck of the previous version of MoCHi was the predicate
-abstraction and discovery (Steps 1 and 5), rather than higher-order
-model checking. Our previous method for predicate abstraction tried to
-abstract every integer argument of a function to a tuple of booleans. As
-a result, verification of a program did not succeed until an appropriate
-set of predicates is found for \emph{every} function in the program.
-For example, consider the program in Fig.~\ref{fig:abst-example}.  The
-program can be successfully verified if we abstract the program by using
-predicates $\Abs{y}{y\geq0}$ for the second argument of \texttt{add} and
-$\Abs{r}{r\geq x}$ for the return value of \texttt{add} and \texttt{sum} respectively.
-Automatically finding all such predicates is difficult, however.  In the
-previous paper~\cite{KobayashiPLDI2011}, we have adapted CEGAR to find
-such predicates, but the technique is necessarily heuristic, and often
-fails.
+\item The main bottleneck of the previous version of MoCHi was the
+      predicate abstraction and discovery (Steps 1 and 5), rather than
+      higher-order model checking. Our previous method for predicate
+      abstraction tried to abstract every integer argument of a function
+      to a tuple of booleans. As a result, verification of a program did
+      not succeed until an appropriate set of predicates is found for
+      \emph{every} function in the program.  For example, consider the
+      program in Fig.~\ref{fig:sum}.  The program can be successfully
+      verified if we abstract the program by using predicates
+      $\Abs{y}{y\geq0}$ for the second argument of \texttt{add} and
+      $\Abs{r}{r\geq x}$ for the return value of \texttt{add} and
+      \texttt{sum} respectively.  The following is the
+      abstracted program using the above predicates.
+\begin{alltt}
+let add bx by = if bx \&\& by then true else rand_bool()
+let rec sum _ = if rand_bool() then true
+                else add true (sum ())
+let main x = assert (sum ())
+\end{alltt}
+      Here, \texttt{rand\us{}bool()} means a non-deterministic boolean value.
+      \texttt{bx} is true and \texttt{bx} is true denote that
+      $\mathtt{x} \geq 0$ and $\mathtt{y} \geq x$, respectively.
+      If we abstract the program using only the predicate
+      $\Abs{r}{r\geq x}$ for return values of \texttt{sum}, we get the
+      following abstracted program.
+\begin{alltt}
+let add u1 u2 = ()
+let rec sum u = if rand_bool() then true
+                else let b = sum () in
+                     let u = add () () in
+                       rand_bool()
+let main x = assert (sum ())
+\end{alltt}
+      Since the return value of \texttt{add} is non-informative, the
+      abstraction is too coerce.  Automatically finding all such appropriate
+      predicates is difficult.  In the previous
+      paper~\cite{KobayashiPLDI2011}, we have adapted CEGAR to find such
+      predicates, but the technique is necessarily heuristic, and often
+      fails.
 
 \begin{figure}[t]
 \begin{alltt}
@@ -120,9 +147,8 @@ let rec sum x = if x < 0 then 0 else add x (sum (x-1))
 let main x = assert (sum x >= x)
 \end{alltt}
 \caption{Example Program for Selective Predicate Abstraction}
-\label{fig:abst-example}
+\label{fig:sum}
 \end{figure}
-
 
 To reduce the burden to the program discovery phase, we introduce a refinement
 of predicate abstraction called \emph{selective predicate abstraction}.

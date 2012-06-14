@@ -3,19 +3,21 @@
 
 \subsection{Container Abstraction}
 There are several
-frameworks~\cite{Kawaguchi2009,Chin2003,Unno2010,Ong2011} that aimed at
+frameworks~\cite{Kawaguchi2009,Chin2003,Unno2010,Ong2011} that are aimed at
 verification of functional programs with data structures.
 
 Ong and Ramsay~\cite{Ong2011} have proposed the verification framework
 for recursion scheme with recursive data structures, called Pattern
-Matching Recursion Scheme.  As stated in Sect.~\ref{}, their framework
-requires control flow analysis. Moreover, the framework cannot deal with
-regular properties. For example, the framework cannot verify that a list
-obtained by applying the following ``id'' function to an even length
-list is also even length.
-\begin{alltt}
-let rec id x = match x with nil -> nil | cons x xs -> cons x (id xs)
-\end{alltt}
+Matching Recursion Scheme.  The framework
+cannot deal with regular properties (such as ``a and b occur
+alternately'') and numerical properties (such as ``$x+y \leq z$'') cannot be used
+to abstract recursive data structures.
+%regular properties. For example, the framework cannot
+%verify that a list obtained by applying the following ``id'' function to
+%an even length list is also even length.
+%\begin{alltt}
+%let rec id x = match x with nil -> nil | cons x xs -> cons x (id xs)
+%\end{alltt}
 
 Unno et al.~\cite{Unno2010} have proposed the verification framework for higher-order
 tree processing functional programs. Their framework distinguish that
@@ -27,15 +29,23 @@ trees and the properties of output trees.
 
 Kawaguchi et al.'s liquid type inferecne~\cite{Kawaguchi2009} are
 semi-automated verification framework based on refinement types.  Their
-framework requires the shape of predicates, called logical qualifiers,
-to users.  The limitation of our framework is that it cannot deal with
-recursive dependency on recursive data structures such as
-orderedness.  Their framework can deal with recursive dependent type
-such that $\App{\INT}{\LIST_\leq} = \mu t.\NIL +
-\Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq
-x_1\}}{\LIST}}$, i.e., ordered lists of integers.  The framework,
-however, cannot deal with the properties of list elements related to its
-indices like that the $i$-th element of a list is greater than $i$.
+framework requires that users provide shape of predicates, called
+logical qualifiers.  As for the expressive power, there are trade-offs
+between their method and ours.  On the one hand, they can deal with
+``recursive dependent types'', such as $\App{\INT}{\LIST_\leq} = \RecType{t}{
+\NIL \mathop{+} \Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq
+x_1\}}{t}}}$, which represents ordered lists of integers, while our
+method cannot. On the other hand, our method can deal with the
+properties of list elements related to its indices like that the $i$-th
+element of a list is greater than $i$, while they cannot.
+%The limitation of our framework is that it cannot
+%deal with recursive dependency on recursive data structures such as
+%orderedness.  Their framework can deal with recursive dependent type
+%such that $\App{\INT}{\LIST_\leq} = \mu t.\NIL +
+%\Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq x_1\}}{t}}$,
+%i.e., ordered lists of integers.  The framework, however, cannot deal
+%with the properties of list elements related to its indices like that
+%the $i$-th element of a list is greater than $i$.
 
 Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
 static reasoning about containers.  The proposed framework is based on
@@ -51,6 +61,6 @@ Chin et al.~have proposed sized type inference~\cite{Chin2003}.  Their
 framework infers invariant of recursive functions by fix-point
 computation.  The framework cannot handle higher-order functions.
 
-Selective predicate abstraction is similar to the method to reduce type
+Selective predicate abstraction is similar to the method for reducing type
 declarations by local type inference~\cite{Pierce2000} in the sense that the types
 of non-recursive functions are inferred from the types of recursive functions.

@@ -14,12 +14,14 @@ syntax shown in Fig.~\ref{fig:source-syntax}.
 %  A program consists a set of top-level functions.
 The meta-variable $\OP$ ranges over the sets of operators over integers.
 The expressions are standard except that there is a primitive $\FAIL$
-that aborts a program.
-$\Assert{t}$ is syntactic sugar for $\If{t}{0}{\FAIL}$.
-We assume that every function in a program $D$
-has a function type and $D$ contains a distinguished function symbol
-$\main \in \set{f_1,\dots,f_n}$ whose type is
-$\TFun{\INT}{\INT}$.
+that aborts a program.  We use $\TRUE$ and $\FALSE$ as aliases of $0$
+and $1$, and we write $\Assert{t}$ for $\If{t}{0}{\FAIL}$,
+$(\Abs{x}{t_1})\ t_2$, and $(v_1\ \OP\ v_2)$ for $\Op{v_1,v_2}$.  We
+assume that a program is well-typed in the standard simple type system,
+where the set of types is given in Fig.~\ref{fig:source-syntax}, and
+every function in a program $D$ has a function type and $D$ contains a
+distinguished function symbol $\main \in \set{f_1,\dots,f_n}$ whose type
+is $\TFun{\INT}{\INT}$.
 
 \begin{figure}[t]
 \begin{minipage}{\widthcoef\textwidth}
@@ -28,18 +30,13 @@ $\TFun{\INT}{\INT}$.
 D\text{ (programs)} &::=& \{f_1 = v_1, \dots, f_n = v_n\} \\
 t\text{ (terms)}
   &::=& n \mid x \mid \Abs{x}{t} \mid t_1\ t_2 \mid \Op{v_1,\dots,v_n} \mid \If{t_1}{t_2}{t_3} \mid \FAIL \\
-v\text{ (terms)} &::=& n \mid x \mid \Abs{x}{t}
+v\text{ (values)} &::=& n \mid x \mid \Abs{x}{t}
 \end{array}
 \]
 \end{minipage}
 \caption{The syntax of source language}
 \label{fig:source-syntax}
 \end{figure}
-
-We assume that a program is well-typed in the standard simple type
-system, where the set of types is given in
-Fig. ~\ref{fig:source-syntax}.  We write $\Let{x}{t_2}{t_1}$
-for $(\Abs{x}{t_1})\ t_2$ and $(v_1\ \OP\ v_2)$ for $\Op{v_1,v_2}$.
 
 The goal of our verification is to check whether $\App{\main}{n}
 \reds_D \FAIL$ for all integers $n$.
