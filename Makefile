@@ -66,16 +66,17 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	global.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
 	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo formula.cmo tsubst.cmo fes.cmo fdef.cmo prog.cmo \
-	apronInterface.cmo cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
+	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
 	farkas.cmo \
-	intType.cmo intTypeCheck.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
-	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo \
-	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo \
 	callTree.cmo pred.cmo hornClause.cmo hcGenRefType.cmo hcSolve.cmo \
 	verifier.cmo
+# apronInterface.cmo
+#	intType.cmo intTypeCheck.cmo
+#	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo
+#	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo
 
 CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
@@ -94,7 +95,8 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
 	main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma gmp.cma apron.cma polka.cma nums.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma
+#gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 

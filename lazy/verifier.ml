@@ -144,12 +144,12 @@ let infer_env prog sums fcs =
 let infer_ref_types fs prog etrs =
   let _ = Global.log_begin "infer_ref_types" in
   let sums =
-    if false then
+    (*if false then
       (* deprecated: old buggy refinement type inference algorithm *)
       let constrss = List.map TcGenRefType.cgen etrs in
       let _ = Global.log (fun () -> Format.printf "constraints:@,  @[<v>%a@]@," (Util.pr_list TraceConstr.pr "@,") constrss) in
       TcSolveRefType.summaries_of (Prog.type_of prog) constrss
-    else
+    else*)
       (* refinement type inference using Horn clauses *)
       let ctrs, hcss = List.split (List.map (HcGenRefType.cgen (Prog.type_of prog)) etrs) in
       let hcs = List.concat hcss in
@@ -204,6 +204,7 @@ let infer_ref_types fs prog etrs =
   res
 
 
+(*
 let infer_int_types prog etrs =
   let _ = Global.log_begin "infer_int_types" in
   let constrss = List.map TcGenIntType.cgen etrs in
@@ -227,6 +228,7 @@ let infer_int_types prog etrs =
   let res = TcSolveIntType.infer_env prog sums fcs in
   let _ = Global.log_end "infer_int_types" in
   res
+*)
 
 let infer_abst_type fs prog etrs =
   let env =
@@ -235,7 +237,7 @@ let infer_abst_type fs prog etrs =
 		      let env = infer_ref_types fs prog etrs in
 		      let _ = Format.printf "refinement types:@,  %a@," RefType.pr_env env in
 		      List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env
-		  | `IntType ->
+		  (*| `IntType ->
 		      let env = infer_int_types prog etrs in
 		      let _ = Format.printf "interaction types:@,  %a@," IntType.pr_env env in
 		      let env = List.map (fun (f, sty) -> f, RefType.of_interaction_type sty) env in
@@ -243,7 +245,7 @@ let infer_abst_type fs prog etrs =
 		      List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env
 		      (*
 		      List.map (fun (f, sty) -> f, AbsType.of_interaction_type f sty) env
-		      *)
+		      *)*)
   in
   List.map
     (function ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys) | _ -> assert false)
@@ -285,7 +287,7 @@ let verify fs prog =
   let _ = Global.log_begin "verify" in
   let _ = Global.log (fun () -> Format.printf "%a" Prog.pr prog) in
   let _ =
-		  try
+		  (*try*)
 		    let rt = CompTree.init prog in
 		    let strategy = if true then CompTreeExpander.bf_strategy rt else CompTreeExpander.df_strategy rt in
 		    let rec loop old_etrs i =
@@ -304,17 +306,17 @@ let verify fs prog =
 		            Format.printf "@,The program is safe@,"
 		          else
 		            loop etrs (i + 1)
-		      | `IntType ->
+		      (*| `IntType ->
 		          let env = infer_int_types prog etrs(*etrs'*) in
 		          let _ = Format.printf "interaction types:@,  %a@," IntType.pr_env env in
 		          if IntTypeCheck.check_prog env prog then
 		            Format.printf "@,The program is safe@,"
 		          else
-		            loop etrs (i + 1)
+		            loop etrs (i + 1)*)
 		    in
 		    loop [] 1
-		  with TraceConstr.FeasibleErrorTrace(eptr) ->
-		    Format.printf "@,The program is unsafe@,Error trace: %a@," TraceConstr.pr eptr
+		  (*with TraceConstr.FeasibleErrorTrace(eptr) ->
+		    Format.printf "@,The program is unsafe@,Error trace: %a@," TraceConstr.pr eptr*)
   in
   let _ = Global.log_end "verify" in
   ()

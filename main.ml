@@ -159,7 +159,7 @@ let arg_spec =
    "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
    "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
-   "-trecs", Arg.String Flag.(fun cmd -> trecs := cmd),
+   "-trecs", Arg.String (fun cmd -> Flag.trecs := cmd),
              Format.sprintf "<cmd>  Change trecs command yr <cmd> (default: \"%s\")" !Flag.trecs;
    "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
