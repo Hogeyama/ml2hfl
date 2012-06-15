@@ -20,14 +20,16 @@ in Sect.~\ref{sec:intro}.
 We formalize selective predicate abstraction as an extension of the
 previous predicate abstraction.  In the previous framework, predicate
 abstraction is defined as the relation
-$\AbstPLDI{\Gamma}{t}{\sigma}{t'}$ which means that $t$ is abstracted to $t'$
-by using the abstraction type\footnote{\cc{Abstraction types are types to
-express which predicate should be used to abstract each value.
-See our previous
-paper~\cite{KobayashiPLDI2011} for details.}}  $\sigma$ under the
-assumption that each free variable $x$ of $t$ has been abstracted using
-the abstraction type $\Gamma(x)$.  We extend predicate abstract relation
-by adding the set of inlined functions $E$ like
+$\AbstPLDI{\Gamma}{t}{\sigma}{t'}$ which means that $t$ is abstracted to
+$t'$ by using the abstraction type $\sigma$ under the assumption that
+each free variable $x$ of $t$ has been abstracted using the abstraction
+type $\Gamma(x)$.  Abstraction types are types to express which
+predicate should be used to abstract each value.  For example, an
+abstraction type of the form $\INT[P_1,\dots,P_n]$ means that a value
+$v$ of that type should be abstracted to a tuple of $(b_1,\dots,d_n)$,
+where $b_i$ denotes whether $P_i{v}$ holds or not.  See our previous
+paper~\cite{KobayashiPLDI2011} for details.  We extend predicate
+abstraction relation by adding the set of inlined functions $E$ like
 $\Abst{\Gamma}{E}{t}{\sigma}{t'}$.  Here, functions in $E$ are not
 abstracted and are inlined in the process of abstraction.
 
@@ -77,7 +79,7 @@ $t$ is inlined.
 %program.
 %A function definition is in E intuitively means the function
 %is expanded in the abstraction.
-If $E$ is empty, the abstract relation is the same as the
+If $E$ is empty, the selective predicate abstraction relation is the same as the
 previous predicate abstraction.
 
 %\begin{equation*}
@@ -193,9 +195,6 @@ program in Fig.~\ref{fig:sum} in $E =
 source language, we translate the term
 $\App{\App{\mathtt{add}}{x}}{\App{\mathtt{sum}}{(x-1)}}$ to
 $\Let{s}{\App{\mathtt{sum}}{(x-1)}}{\App{\App{\mathtt{add}}{x}}{s}}$.
-Here, an abstraction type of the form $\INT[P_1,\dots,P_n]$ means that a
-value $v$ of that type should be abstracted to a tuple of
-$(b_1,\dots,d_n)$, where $b_i$ denotes whether $P_i{v}$ holds or not.
 In the abstraction of $\App{\App{\mathtt{add}}{x}}{s}$, \texttt{add} is
 inlined since the definition of \texttt{add} is in $E$.
 
