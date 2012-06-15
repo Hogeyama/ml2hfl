@@ -252,7 +252,7 @@ We discusses how to encode other recursive data structures.  We
 translate programs with recursive data structures into programs with
 lists by encoding recursive data structures to functions which map paths
 of nodes to labels.  Here, a path and a label is represented as a list
-of integers and an integer respectively.  Consider binary trees defined
+of integers and an integer respectively.  For example, consider binary trees defined
 as follows.
 \begin{alltt}
 type btree = Leaf | Node of btree * btree
@@ -265,23 +265,14 @@ $\Node{\LEAF}{\Node{\LEAF}{\LEAF}}$ is encoded into a function $\{[]
 some integers.
 Here is another example, the encoding of a pattern matching.
 \begin{alltt}
-match x with
-  Constr_1(x1, x2, ...) -> t
-| Constr_2 ...
+match x with Constr_1(x1, x2, ...) -> t | Constr_2 ...
 \end{alltt}
 The expression above is encoded to the following expression.
 \begin{alltt}
-let Constr_1 = 1 in
-  ...
-let Constr_n = n in
-  match x nil with
-    Constr_1 ->
-      let x1 xs = x (cons 1 xs) in
-      let x2 xs = x (cons 2 xs) in
-        ...
-      let xn xs = x (cons n xs) in
-        t'
-  | Constr_2 -> ...
+let Constr_1 = 1 in ... let Constr_n = n in
+  match x nil with Constr_1 -> let x1 xs = x (cons 1 xs) in ...
+                               let xn xs = x (cons n xs) in t'
+                 | Constr_2 -> ...
 \end{alltt}
 Here, \texttt{t'} is the encoding of \texttt{t}. The pattern matching in
 trees is translated to the pattern matching in labels, represented as
@@ -309,7 +300,8 @@ integers.  A subterm of a tree are obtained by adding the index to the head of t
 
 We treat only regular algebraic data types, i.e., the combination of sum
 types and product types, which cannot have function types as arguments
-of constructors.  We require that in a recursive type
+of constructors.  Types of recursive data structures are represented as
+recursive types.  We require that in a recursive type
 $\RecType{\alpha}{\tau}$, $\alpha$ does not occur below function type
 constructors. For example, $\List{\TFun{\INT}{\INT}}$ is OK, but neither
 $\RecType{\alpha}{\TFun{\alpha}{\INT}}$ nor

@@ -337,21 +337,21 @@ On the other hand, in (b), a continuation parameter is inserted.
 \CPS{\Gamma}
      {\Abs{x}{\Abs{y}{\assert(x = y)}}}
      {\TFunN{\INT}{\TFunC{\INT}{\INT}}}{\NC}
-     {\Abs{x}{\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}}}
+     {\Abs{x}{\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}}}
 }{
 \infer{
  \CPS{\Gamma_x}
      {\Abs{y}{\App{\assert}{(x = y)}}}
      {\TFunC{\INT}{\INT}}{\NC}
-     {\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}}
+     {\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}}
 }{
 \infer{
  \CPS{\Gamma_{xy}}
      {\App{\assert}{(x = y)}}
      {\INT}{\IC}
-     {\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}
+     {\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}
 }{
- \CPS{\Gamma_{xy}}{\assert}{\TFunC{\INT}{\INT}}{\NC}{\assert}
+ \CPS{\Gamma_{xy}}{\assert}{\TFunC{\INT}{\INT}}{\NC}{\assertcps}
   &
  \infer{\CPS{\Gamma_{xy}}{x=y}{\INT}{\NC}{x=y}}{\vdots}
 }}}
@@ -361,13 +361,13 @@ On the other hand, in (b), a continuation parameter is inserted.
  \CPS{\Gamma}
      {\Abs{x}{\Abs{y}{\assert(x = y)}}}
      {\TFunC{\INT}{\TFunC{\INT}{\INT}}}{\NC}
-     {\Abs{x}{\Abs{k'}{\App{k'}{(\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}})}}}}
+     {\Abs{x}{\Abs{k'}{\App{k'}{(\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}})}}}}
 }{
 \infer{
  \CPS{\Gamma_x}
      {\Abs{y}{\App{\assert}{(x = y)}}}
      {\TFunC{\INT}{\INT}}{\NC}
-     {\Abs{y}{\Abs{k}{\App{\App{\assert}{(x=y)}}{k}}}}
+     {\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}}
 }{\vdots}}
 (b)
 \end{minipage}

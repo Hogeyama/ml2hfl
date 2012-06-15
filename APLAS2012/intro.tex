@@ -149,12 +149,22 @@ let main x = assert (sum x >= x)
 \label{fig:sum}
 \end{figure}
 
-To reduce the burden to the program discovery phase, we introduce a refinement
-of predicate abstraction called \emph{selective predicate abstraction}.
-As the name suggests, the selective predicate abstraction applies
-predicate abstraction to only a certain set of functions, and avoids
-abstraction of the other functions by inlining them.
-This improves the precision of abstraction and reduce the cycle of CEGAR.
+      To reduce the burden to the program discovery phase, we introduce
+      a refinement of predicate abstraction called \emph{selective
+      predicate abstraction}.  As the name suggests, the selective
+      predicate abstraction applies predicate abstraction to only a
+      certain set of functions, and avoids abstraction of the other
+      functions by inlining them.
+%For example, the program above is
+%      translated to the following program by selective predicate
+%      abstraction with using only and inlining \texttt{add}.
+%\begin{alltt}
+%let rec sum x = if x <= 0 then 0 else x + (sum (x-1))
+%let main x = assert (sum ())
+%\end{alltt}
+      The selective
+      predicate abstraction improves the precision of abstraction and
+      reduce the cycle of CEGAR.
 
 %%The first problem increases the number of CEGAR-cycle.
 %To see the first problem, consider the following program.
@@ -210,10 +220,10 @@ This improves the precision of abstraction and reduce the cycle of CEGAR.
       gap between semantics of higher-order recursion schemes and
       higher-order boolean programs.  CPS transformation increases the
       order of programs and the growth of the order is not constant.
-      Since the complexity of
-      model checking of higher-order recursion scheme is $n$-EXPTIME complete
-      for order-$n$ recursion scheme, the increase of the order of the input
-      is crucial to the verification time.  Consider the following program.
+      Since the complexity of model checking of higher-order recursion
+      scheme is $n$-EXPTIME complete for order-$n$ recursion scheme, the
+      increase of the order of the input is crucial to the verification
+      time.  Consider the following program.
 \begin{alltt}
 let rec check x f = f x; check (x+1) f
 let f x = assert (x >= 0) in
@@ -289,11 +299,15 @@ let main n k = check n f k
       structures like lists and trees. Thus, the implementation dealt with
       only integers as infinite data domains.
 
-      We overcome the problem by transforming programs with unsupported
-      features to ones with supported features.  The transformation is carried
-      out by encoding recursive data structures and control operations using
-      higher-order functions.  For example, a list is encoded to a function
-      that maps an index $i$ to the $i$-th element.
+      We extend the framework to support recursive data structures
+      without an interpolating theorem prover for recursive data
+      structures.  By transforming programs with recursive data
+      structures to ones with integers, we construct a verifier that
+      uses only an interpolating theorem prover for integers.  The
+      transformation is carried out by encoding recursive data
+      structures and control operations using higher-order functions.
+      For example, a list is encoded to a function that maps an index
+      $i$ to the $i$-th element.
 \end{enumerate}
 
 %Our contributions are (i) the formalization of selective predicate
@@ -312,12 +326,11 @@ The rest of this paper is organized as follows.
 %described in this paper.
 We first formalize the source language of verification in
 Sect.~\ref{sec:language}.  Section~\ref{sec:opt} formalizes the
-optimizations, selective predicate abstraction and selective CPS
-transformation.  Section~\ref{sec:extension} shows the language
-extensions for recursive data structures and control operations.
-Section~\ref{sec:experiments} reports experiments.
-Section~\ref{sec:related} discusses related work and
-Sect.~\ref{sec:conclusion} concludes the paper.
+selective predicate abstraction and the selective CPS transformation.
+Section~\ref{sec:extension} shows the language extensions for recursive
+data structures and control operations.  Section~\ref{sec:experiments}
+reports experiments.  Section~\ref{sec:related} discusses related work
+and Sect.~\ref{sec:conclusion} concludes the paper.
 
 
 

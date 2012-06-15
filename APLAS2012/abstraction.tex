@@ -178,12 +178,12 @@ previous predicate abstraction.
 %  {\Abst{\Gamma}{E,x=e_1}{e_2}{\sigma}{e_2'}}
 %  {\Abst{\Gamma}{E}{\Let{x}{e_1}{e_2}}{\sigma}{e_2'}}
 
-%\medskip
-%
-%\infrule[A-Prog]
-%  {\Abst{\Gamma}{E}{v_i}{\Gamma(f_i)}{v_i'} \andalso
-%   \text{for each $i \in \set{1,\dots,n}$} \andalso \Dom{}}
-%  {\AbstProg{\Gamma}{E}{\set{f_1 = v_1, \dots, f_n = v_n}}{\set{f_1 = v_1', \dots, f_n = v_n'}}}
+\medskip
+
+\infrule[A-Prog]
+  {\Abst{\Gamma}{E}{v_i}{\Gamma(f_i)}{v_i'} \andalso
+   \text{for each $i \in \set{1,\dots,n}$} \andalso \Dom{\Gamma} \cup \Dom{E} = \emptyset}
+  {\AbstProg{\Gamma}{E}{\set{f_1 = v_1, \dots, f_n = v_n}}{\set{f_i = v_i' \mid f_i \notin \Dom{E}}}}
 \end{minipage}
 \caption{Selective Predicate Abstraction}
 \label{fig:abstraction}
@@ -242,8 +242,10 @@ inlined since the definition of \texttt{add} is in $E$.
 \end{figure}
 
 For some $D$ and $E$, there is $D'$ such that
-$\AbstProg{\Gamma}{E}{D}{D'}$ as long as there is no cyclic definitions in $E$
-like $\set{f = \Abs{x}{\App{g}{x}},~ g = \Abs{y}{f}}$.
+$\AbstProg{\Gamma}{E}{D}{D'}$ as long as there is no cyclic definitions
+in $E$ like $\set{f = \Abs{x}{\App{g}{x}},~ g = \Abs{y}{f}}$.
+Therefore, one way to decide a function should be in $E$ is to find a
+maximal set of the functions that has no cyclic definitions.
 %Therefore, recursive functions
 %should be basically in $\Dom{\Gamma}$, and non-recursive functions
 %should be in $\Dom{E}$.
