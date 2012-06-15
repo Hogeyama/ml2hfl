@@ -5,7 +5,7 @@
 This section formalizes selective CPS transformation for abstracted
 programs.  As stated in Sect.~\ref{sec:intro}, the idea for selective CPS
 transformation is to distinguish whether a continuation parameter should
-be inserted to each function or not.  When a function application has
+be inserted to each expression or not based on whether it has a side-effect.  When a function application has
 side-effects, we need not insert continuations in CPS transformation.
 Here, $\FAIL$, non-deterministic branch, and non-termination are
 considered as side-effects.
@@ -26,8 +26,8 @@ terminating (call-by-name) program by their transformation.
 %treat non-termination as a side-effect.
 
 To decide whether we should insert a continuation or not, we
-annotate a label $l \in \{\NC,\IC\}$ to each function type like
-$\TFunL{l}{\tau_1}{\tau_2}$ .  A type $\TFunC{\tau_1}{\tau_2}$ means
+annotate each function type with a label $\ell \in \{\NC,\IC\}$, like
+$\TFunL{\ell}{\tau_1}{\tau_2}$ .  A type $\TFunC{\tau_1}{\tau_2}$ means
 that we should insert a continuation, and $\TFunN{\tau_1}{\tau_2}$ means
 not.
 
@@ -70,10 +70,10 @@ not.
 %transforms functions with side effects.
 
 We first define the source language of selective CPS transformation.
-The language is the same as the source language except that: (i) the set
+The language is the same as the source language except: (i) the set
 of terms is extended with non-deterministic branch $\Br{t_1}{t_2}$, and (ii)
-each function type is attached to a label $l \in \{\NC,\IC\}$, like
-$\TFunL{l}{\tau_1}{\tau_2}$.
+each function type is attached to a label $\ell \in \{\NC,\IC\}$, like
+$\TFunL{\ell}{\tau_1}{\tau_2}$.
 
 %\begin{eqnarray*}
 % t\text{ (terms)} &::=& \cdots \mid \AbsT{x}{\tau}{t} \mid \AbsTC{x}{\tau}{t} \\
@@ -83,10 +83,11 @@ $\TFunL{l}{\tau_1}{\tau_2}$.
 
 Below, we formalize the selective CPS as a type-based transformation.
 Figure~\ref{fig:cps} shows the rules of the selective CPS
-transformation.  The relation $\CPS{\Gamma}{t}{\tau}{l}{t'}$ means that
-a term $t$ is translated to a term $t'$ by using a type $\tau$, under
-the assumption that each free variable $x$ of $t$ has been transformed
-using the type $\Gamma(x)$.
+transformation.  The relation $\CPS{\Gamma}{t}{\tau}{\ell}{t'}$ means
+that a term $t$ is translated to a term $t'$ by using a type $\tau$,
+under the assumption that each free variable $x$ of $t$ has been
+transformed using the type $\Gamma(x)$, $t$ has a side-effect if
+$\ell=\IC$, and $t$ has no side-effect if $\ell=\NC$.
 %Here, $\MAbs{x}{t}$ and
 %$\MApp{t_1}{t_2}$ are, respectively, application and abstraction that
 %will be reduced statically in the translation.
@@ -115,9 +116,9 @@ using the type $\Gamma(x)$.
 \medskip
 
 \infrule[CPS-AbsC]
- {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{l}{t'}}
+ {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{\ell}{t'}}
  {\CPS{\Gamma}{\Abs{x}{t}}{\TFunL{C}{\tau_1}{\tau_2}}{\NC}
-  {\Abs{x}{\Abs{k}{\SApp{l}{t'}{k}}}}}
+  {\Abs{x}{\Abs{k}{\SApp{\ell}{t'}{k}}}}}
 
 \medskip
 
@@ -130,10 +131,10 @@ using the type $\Gamma(x)$.
 \medskip
 
 \infrule[CPS-AppC]
- {\CPS{\Gamma}{t_0}{\TFunL{l}{\tau_1}{\tau}}{l_0}{t_0'} \andalso
-  \CPS{\Gamma}{t_1}{\tau_1}{l_1}{t_1'}}
+ {\CPS{\Gamma}{t_0}{\TFunL{\ell}{\tau_1}{\tau}}{\ell_0}{t_0'} \andalso
+  \CPS{\Gamma}{t_1}{\tau_1}{\ell_1}{t_1'}}
  {\CPS{\Gamma}{\App{t_0}{t_1}}{\tau}{\IC}
-  {\Abs{k}{\SApp{l_0}{t_0'}{\Abs{x_0}{\SApp{l_1}{t_1'}{\Abs{x_1}{\SApp{l}{\App{x_0}{x_1}}{k}}}}}}}}
+  {\Abs{k}{\SApp{\ell_0}{t_0'}{\Abs{x_0}{\SApp{\ell_1}{t_1'}{\Abs{x_1}{\SApp{\ell}{\App{x_0}{x_1}}{k}}}}}}}}
 
 %\medskip
 %
@@ -168,26 +169,26 @@ using the type $\Gamma(x)$.
 \medskip
 
 \infrule[CPS-IfC]
- {\CPS{\Gamma}{t_1}{\INT}{l_1}{t_1'} \andalso
-  \CPS{\Gamma}{t_2}{\tau}{l_2}{t_2'} \andalso
-  \CPS{\Gamma}{t_3}{\tau}{l_3}{t_3'}}
+ {\CPS{\Gamma}{t_1}{\INT}{\ell_1}{t_1'} \andalso
+  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \andalso
+  \CPS{\Gamma}{t_3}{\tau}{\ell_3}{t_3'}}
  {\CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}
-  {\Abs{k}{\SApp{l_1}{t_1}{\Abs{m}{\If{m}{\SApp{l_2}{t_2'}{k}}{\SApp{l_3}{t_3'}{k}}}}}}}
+  {\Abs{k}{\SApp{\ell_1}{t_1}{\Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}}}}
 
 \medskip
 
 \infrule[CPS-Br]
- {\CPS{\Gamma}{t_1}{\tau}{l_1}{t_1'} \andalso
-  \CPS{\Gamma}{t_2}{\tau}{l_2}{t_2'}}
+ {\CPS{\Gamma}{t_1}{\tau}{\ell_1}{t_1'} \andalso
+  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'}}
  {\CPS{\Gamma}{\Br{t_1}{t_2}}{\tau}{\IC}
-  {\Abs{k}{\If{\Br{0}{1}}{\SApp{l_1}{t_2'}{k}}{\SApp{l_2}{t_3'}{k}}}}}
+  {\Abs{k}{\If{\Br{0}{1}}{\SApp{\ell_1}{t_2'}{k}}{\SApp{\ell_2}{t_3'}{k}}}}}
 
 \medskip
 
 \infrule[CPS-Prog]
  {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \andalso
   t_i \text{ is not of the form } \Abs{x}{t_i'} \\
-  \Gamma(f_i) \text{ is of the form } \TFunL{l_1}{\tau_{i1}}{\TFunL{l_2}{\tau_{i2}}{\TFunL{l_{k_i-1}}{\cdots}{\TFunC{\tau_{ik_i}}{\tau}}}} \\
+  \Gamma(f_i) \text{ is of the form } \TFunL{\ell_1}{\tau_{i1}}{\TFunL{\ell_2}{\tau_{i2}}{\TFunL{\ell_{k_i-1}}{\cdots}{\TFunC{\tau_{ik_i}}{\tau}}}} \\
   \CPS{\Gamma}{v_i}{\Gamma(f_i)}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
  {\CPSprog{\Gamma}{\{f_1=v_1,\dots,f_n=v_n\}}{\{f_1=v_1',\dots,f_n=v_n'\}}}
 
@@ -289,15 +290,15 @@ The rules are designed in such a way that transformed term $t'$ has type
 $\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$ holds, and the transformed
 term $t'$ has type $\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
 $\CPS{\Gamma}{t}{\tau}{C}{t'}$ holds, where $\AT$ is the answer type and
-$\CPSty{\tau}$ is defined as follows.
+$\CPSty{\tau}$ is defined by:
 \begin{eqnarray*}
  \CPSty{\INT} &=& \INT \\
  \CPSty{\TFunN{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\CPSty{\tau_2}} \\
  \CPSty{\TFunC{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\TFun{(\TFun{\CPSty{\tau_2}}{\AT})}{\AT}}
 \end{eqnarray*}
-This shows the intuition that a term which has a type of the form
-$\TFunC{\tau_1}{\tau_2}$ should insert a continuation, and another term
-remains in direct style.
+This shows the intuition that a term of a type $\TFunC{\tau_1}{\tau_2}$
+should be inserted a continuation, and another term remains in direct
+style.
 
 In the rule \rn{CPS-AbsC}, a term $\Abs{x}{t}$ is transformed in a
 standard way, i.e. a continuation parameter $k$ is inserted and $t'$,

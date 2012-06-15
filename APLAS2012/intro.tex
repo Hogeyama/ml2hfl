@@ -98,7 +98,7 @@ whether the program is safe or not.
 %We discuss each problem in more detail and explain our approach below.
 
 In this paper, we address three problems of our previous work.
-We discuss each problems and explain our approach below.
+We discuss each problem and explain our approach below.
 
 \begin{enumerate}
 \item The main bottleneck of the previous version of MoCHi was the
@@ -110,23 +110,26 @@ We discuss each problems and explain our approach below.
       \emph{every} function in the program.  For example, consider the
       program in Fig.~\ref{fig:sum}.  The program can be successfully
       verified if we abstract the program by using predicates
-      $\Abs{y}{y\geq0}$ for the second argument of \texttt{add} and
-      $\Abs{r}{r\geq x}$ for the return value of \texttt{add} and
+      $\Abs{y}{y \geq 0}$ for the second argument of \texttt{add} and
+      $\Abs{r}{r \geq x}$ for the return value of \texttt{add} and
       \texttt{sum} respectively.  The following is the
       abstracted program using the above predicates.
 \begin{alltt}
-let add u by = if by then true else rand_bool()
-let rec sum _ = if rand_bool() then true
+let add () by = if by then true else rand_bool()
+let rec sum () = if rand_bool() then true
                 else add (if sum () then true else *)
 let main x = assert (sum ())
 \end{alltt}
-      Here, \texttt{rand\us{}bool()} means a non-deterministic boolean value.
-      \texttt{by} denotes that $\mathtt{x} \geq 0$.
-      If we abstract the program using only the predicate
-      $\Abs{r}{r\geq x}$ for return values of \texttt{sum}, we get the
-      following abstracted program.
+      Here, \texttt{rand\us{}bool()} means a non-deterministic boolean
+      value.  \texttt{by} denotes whether $\mathtt{x} \geq 0$ or not.
+      Automatically finding all such appropriate predicates is
+      difficult.  In the previous paper~\cite{KobayashiPLDI2011}, we
+      have adapted CEGAR to find such predicates, but the technique is
+      necessarily heuristic, and often fails.  If we abstract the
+      program using only the predicate $\Abs{r}{r \geq x}$ for return
+      values of \texttt{sum}, we get the following abstracted program.
 \begin{alltt}
-let add u1 u2 = ()
+let add () () = ()
 let rec sum u = if rand_bool() then true
                 else let b = sum () in
                      let u = add () () in
@@ -134,11 +137,7 @@ let rec sum u = if rand_bool() then true
 let main x = assert (sum ())
 \end{alltt}
       Since the return value of \texttt{add} is non-informative, the
-      abstraction is too coarse.  Automatically finding all such appropriate
-      predicates is inefficient.  In the previous
-      paper~\cite{KobayashiPLDI2011}, we have adapted CEGAR to find such
-      predicates, but the technique is necessarily heuristic, and often
-      fails.
+      abstraction is too coarse.
 
 \begin{figure}[t]
 \begin{alltt}
@@ -220,18 +219,18 @@ let rec check x f = f x; check (x+1) f
 let f x = assert (x >= 0) in
 let main n = check n f
 \end{alltt}
-%Function \texttt{check} may cause an assertion failure when two arguments are given.
-This program is translated into the following order-5
-program\footnote{The order of program $t$ is the maximum order of the
-types of functions in $t$.  The order of type $\tau$ is defined by
-$\mathit{order}(\INT)=0$, $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
-\mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}  by
-na\"{\i}ve CPS transformation.
+%Function \texttt{check} may cause an assertion failure only when two arguments are given.
+This program is translated into the following program by
+na\"{\i}ve call-by-value CPS transformation~\cite{Plotkin1975}.
 \begin{alltt}
 let rec check x k1 = k1 (\(\lambda\)f.\(\lambda\)k2.f x (\(\lambda\)_.check (x+1) (\(\lambda\)g.g f k2)))
 let f x k = assert (x >= 0); k ()
 let main n k = check n (\(\lambda\)g. g f k)
 \end{alltt}
+      The order\footnote{The order of program $t$ is the maximum order of the
+      types of functions in $t$.  The order of type $\tau$ is defined by
+      $\mathit{order}(\INT)=0$, $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
+      \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.} of the program is 5.
 %\begin{alltt}
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main k = check (\(\lambda\)f. f n k)
@@ -239,17 +238,19 @@ let main n k = check n (\(\lambda\)g. g f k)
 %let apply x k1 = k1 (\(\lambda\)f.\(\lambda\)k2. f x k2)
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main n k = check n (\(\lambda\)f1. apply n (\(\lambda\)f2. f2 f1 k))
-We can, however, translate the source program to the following order-3 program.
+      As a side-effect occurs only when \texttt{check} is given two arguments however,
+      we can, actually, translate the source program to the following order-3 program.
 \begin{alltt}
 let rec check x f k = f x (\(\lambda\)_.check (x+1) f k)
 let f x k = assert (x >= 0); k ()
 let main n k = check n f k
 \end{alltt}
-This transformation uses the fact that the application to the first
-argument does not cause an assertion failure and the context of
-\texttt{call n} is not required to have a continuation.  Our CPS
-transformation avoids the unnecessary insertions of continuations.  We
-formalize this transformation, called \emph{selective CPS transformation}.
+%This transformation uses the fact that the application to the first
+%argument does not cause an assertion failure and the context of
+%\texttt{call n} is not required to have a continuation.
+      Our CPS transformation avoids the unnecessary insertions of
+      continuations.  We formalize this transformation, called
+      \emph{selective CPS transformation}.
 
 %Higher-order model checking (more precisely, the model
 %checking of higher-order recursion schemes) has been studied
@@ -281,19 +282,18 @@ formalize this transformation, called \emph{selective CPS transformation}.
 %\memo{for language extension}
 %(iii) functional encoding of recursive data structures and control operations to support a larger subset of ML.
 
-\item
-The third problem is the insufficiency of supported language features.
-The framework proposed in our previous work
-requires an automated interpolating theorem prover for predicate
-abstraction and discovery, which is not available for recursive
-data structures like lists and trees. Thus, the implementation dealt
-with only integers as infinite data domains.
+\item The third problem is the insufficiency of supported language
+      features.  The framework proposed in our previous work requires an
+      automated interpolating theorem prover for predicate abstraction and
+      discovery, but good provers are not available for recursive data
+      structures like lists and trees. Thus, the implementation dealt with
+      only integers as infinite data domains.
 
-We overcome the problem by transforming programs with unsupported
-features to ones with supported features.  The transformation is carried
-out by encoding recursive data structures and control operations using
-higher-order functions.  For example, a list is encoded to a function
-that maps an index $i$ to the $i$-th element.
+      We overcome the problem by transforming programs with unsupported
+      features to ones with supported features.  The transformation is carried
+      out by encoding recursive data structures and control operations using
+      higher-order functions.  For example, a list is encoded to a function
+      that maps an index $i$ to the $i$-th element.
 \end{enumerate}
 
 %Our contributions are (i) the formalization of selective predicate

@@ -11,20 +11,20 @@ We introduce an optimization technique for predicate abstraction, called
 selective predicate abstraction.
 %Selective predicate abstraction improves the precision of abstraction.
 
-The idea of selective predicate abstraction is to distinguish functions
-that are abstracted from those that are not abstracted.  For
-example, the program in Fig.~\ref{fig:sum} can be verified by
-abstracting only \texttt{sum} and \texttt{main} as stated in
-Sect.~\ref{sec:intro}.
+The idea of selective predicate abstraction is to apply predicate
+abstractions only to a certain set of functions and inline the other
+functions.  For example, the program in Fig.~\ref{fig:sum} can
+be verified by abstracting only \texttt{sum} and \texttt{main} as stated
+in Sect.~\ref{sec:intro}.
 
 We formalize selective predicate abstraction as an extension of the
 previous predicate abstraction.  In the previous framework, predicate
 abstraction is defined as the relation
 $\AbstPLDI{\Gamma}{t}{\sigma}{t'}$ which means that $t$ is abstracted to $t'$
-by using the abstraction type\footnote{Abstraction types are types to
-express which predicate should be used to abstract each term.  We do not show
-the definition of abstraction types.  See our previous
-paper~\cite{KobayashiPLDI2011} for details.}  $\sigma$ under the
+by using the abstraction type\footnote{\cc{Abstraction types are types to
+express which predicate should be used to abstract each value.
+See our previous
+paper~\cite{KobayashiPLDI2011} for details.}}  $\sigma$ under the
 assumption that each free variable $x$ of $t$ has been abstracted using
 the abstraction type $\Gamma(x)$.  We extend predicate abstract relation
 by adding the set of inlined functions $E$ like
@@ -77,7 +77,7 @@ $t$ is inlined.
 %program.
 %A function definition is in E intuitively means the function
 %is expanded in the abstraction.
-If $E$ is the empty set, the abstract relation is the same as the
+If $E$ is empty, the abstract relation is the same as the
 previous predicate abstraction.
 
 %\begin{equation*}
@@ -193,11 +193,11 @@ program in Fig.~\ref{fig:sum} in $E =
 source language, we translate the term
 $\App{\App{\mathtt{add}}{x}}{\App{\mathtt{sum}}{(x-1)}}$ to
 $\Let{s}{\App{\mathtt{sum}}{(x-1)}}{\App{\App{\mathtt{add}}{x}}{s}}$.
-Here, an abstraction type of the form $\INT[P_1,\dots,P_n]$ means that
-the term with the type is abstracted to booleans which
-denote, respectively, whether the term satisfies $P_i$ or not.
-In the abstraction of $\App{\App{\mathtt{add}}{x}}{s}$,
-\texttt{add} is inlined since the definition of \texttt{add} is in $E$.
+Here, an abstraction type of the form $\INT[P_1,\dots,P_n]$ means that a
+value $v$ of that type should be abstracted to a tuple of
+$(b_1,\dots,d_n)$, where $b_i$ denotes whether $P_i{v}$ holds or not.
+In the abstraction of $\App{\App{\mathtt{add}}{x}}{s}$, \texttt{add} is
+inlined since the definition of \texttt{add} is in $E$.
 
 \begin{figure}[t]
 \infer{
@@ -243,8 +243,8 @@ In the abstraction of $\App{\App{\mathtt{add}}{x}}{s}$,
 \end{figure}
 
 For some $D$ and $E$, there is $D'$ such that
-$\AbstProg{\Gamma}{E}{D}{D'}$ when there is no cyclic definitions in $E$
-like $\set{f = \Abs{x}{\App{f}{x}}}$.
+$\AbstProg{\Gamma}{E}{D}{D'}$ as long as there is no cyclic definitions in $E$
+like $\set{f = \Abs{x}{\App{g}{x}},~ g = \Abs{y}{f}}$.
 %Therefore, recursive functions
 %should be basically in $\Dom{\Gamma}$, and non-recursive functions
 %should be in $\Dom{E}$.
@@ -254,30 +254,32 @@ For example, the following program can be abstracted with $E = \set{\mathtt{odd}
 \begin{alltt}
 let rec even x = if x = 0 then true else odd (x-1)
     and odd x = if x = 0 then false else even (x-1) in
-let main n = even n
+let main () = assert (even (2 * n))
 \end{alltt}
 The following is the abstraction of the program with $\Gamma =
 \mathtt{even}\COL\TFun{\INT[P_e]}{\BOOL},
-\mathtt{main}\COL\TFun{\INT[P_e]}{\BOOL}$ where $P_e = \Abs{x}{(x
+\mathtt{main}\COL\TFun{\INT[]}{\UNIT}$ where $P_e = \Abs{x}{(x
 \mathop{\mathrm{mod}} 2 = 0})$.
 \begin{alltt}
 let rec even b = if (if b then * else false) then true
                  else if (if b then false else *) then false
                  else even b
-let main b = even b
+let main () = assert (even b)
 \end{alltt}
-The abstracted \texttt{even} is equivalent to the identity function if
-it terminates.  On the other hand, we obtain the following abstraction
-with $\Gamma = \mathtt{even}\COL\TFun{\INT[P_e]}{\BOOL},
+The abstracted program is safe.  For comparison, consider
+the case where $\Gamma = \mathtt{even}\COL\TFun{\INT[P_e]}{\BOOL},
 \mathtt{odd}\COL\TFun{\INT[]}{\BOOL},
-\mathtt{main}\COL\TFun{\INT[P_e]}{\BOOL}$.
+\mathtt{main}\COL\TFun{\INT[]}{\UNIT}$ and $E=\emptyset$ (which
+corresponds to our previous approach where the predicates for
+\texttt{odd} has been found yet).
 \begin{alltt}
 let rec even b = if (if b then * else false) then true else odd ()
     and odd () = if * then false else even * in
-let main b = even b
+let main () = # assert (even b)
 \end{alltt}
-The abstracted \texttt{even} is equivalent to a non-deterministic branch
-since the abstraction of \texttt{odd} is too coerce.
+The abstracted \texttt{even} returns a non-deterministic booleans, so
+that abstract is unsafe since the abstraction of \texttt{odd} is too
+coerce.
 
 We discuss properties of the selective predicate abstraction.
 The theorem below states that selective predicate abstraction is sound
@@ -300,7 +302,7 @@ abstracted program.
 The following property can be proved in the same manner as the soundness
 of the previous predicate abstraction~\cite{KobayashiPLDI2011}.
 \begin{proposition}
- If $\AbstPLDI{}{D}{\tau}{D_1}$,
+ If $\AbstPLDI{\emptyset}{D}{\tau}{D_1}$,
  $\AbstProg{\emptyset}{E}{D}{D_2}$, and
  $\App{\main}{n} \Reds{D_2} \FAIL$, then
  $\App{\main}{n} \Reds{D_1} \FAIL$.
