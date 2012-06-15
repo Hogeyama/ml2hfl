@@ -114,6 +114,16 @@ We discuss each problem and explain our approach below.
       $\Abs{r}{r \geq x}$ for the return value of \texttt{add} and
       \texttt{sum} respectively.  The following is the
       abstracted program using the above predicates.
+
+\begin{figure}[t]
+\begin{alltt}
+let add x y = x + y
+let rec sum x = if x <= 0 then 0 else add x (sum (x-1))
+let main x = assert (sum x >= x)
+\end{alltt}
+\caption{Example Program for Selective Predicate Abstraction}
+\label{fig:sum}
+\end{figure}
 \begin{alltt}
 let add () by = if by then true else rand_bool()
 let rec sum () = if rand_bool() then true
@@ -131,40 +141,28 @@ let main x = assert (sum ())
 \begin{alltt}
 let add () () = ()
 let rec sum u = if rand_bool() then true
-                else let b = sum () in
-                     let u = add () () in
+                else let b = sum () and u = add () () in
                        rand_bool()
 let main x = assert (sum ())
 \end{alltt}
       Since the return value of \texttt{add} is non-informative, the
       abstraction is too coarse.
 
-\begin{figure}[t]
-\begin{alltt}
-let add x y = x + y
-let rec sum x = if x <= 0 then 0 else add x (sum (x-1))
-let main x = assert (sum x >= x)
-\end{alltt}
-\caption{Example Program for Selective Predicate Abstraction}
-\label{fig:sum}
-\end{figure}
-
       To reduce the burden to the program discovery phase, we introduce
       a refinement of predicate abstraction called \emph{selective
       predicate abstraction}.  As the name suggests, the selective
       predicate abstraction applies predicate abstraction to only a
       certain set of functions, and avoids abstraction of the other
-      functions by inlining them.
-%For example, the program above is
-%      translated to the following program by selective predicate
-%      abstraction with using only and inlining \texttt{add}.
-%\begin{alltt}
-%let rec sum x = if x <= 0 then 0 else x + (sum (x-1))
-%let main x = assert (sum ())
-%\end{alltt}
-      The selective
-      predicate abstraction improves the precision of abstraction and
-      reduce the cycle of CEGAR.
+      functions by inlining them.  For example, the program above is
+      translated to the following program by selective predicate
+      abstraction with using only the predicate $\Abs{r}{r \geq x}$ for
+      return values of \texttt{sum} and inlining \texttt{add}.
+\begin{alltt}
+let rec sum () = if * then true else if sum () then true else *
+let main () = assert (sum ())
+\end{alltt}
+      In this way the selective predicate abstraction improves the
+      precision of abstraction and reduce the cycle of CEGAR.
 
 %%The first problem increases the number of CEGAR-cycle.
 %To see the first problem, consider the following program.
@@ -223,24 +221,31 @@ let main x = assert (sum x >= x)
       Since the complexity of model checking of higher-order recursion
       scheme is $n$-EXPTIME complete for order-$n$ recursion scheme, the
       increase of the order of the input is crucial to the verification
-      time.  Consider the following program.
+      time.
+
+      For example, consider the following program.
 \begin{alltt}
 let rec check x f = f x; check (x+1) f
 let f x = assert (x >= 0) in
 let main n = check n f
 \end{alltt}
 %Function \texttt{check} may cause an assertion failure only when two arguments are given.
-This program is translated into the following program by
-na\"{\i}ve call-by-value CPS transformation~\cite{Plotkin1975}.
+      The program above is translated into the following program by
+      na\"{\i}ve call-by-value CPS transformation~\cite{Plotkin1975}.
 \begin{alltt}
 let rec check x k1 = k1 (\(\lambda\)f.\(\lambda\)k2.f x (\(\lambda\)_.check (x+1) (\(\lambda\)g.g f k2)))
 let f x k = assert (x >= 0); k ()
 let main n k = check n (\(\lambda\)g. g f k)
 \end{alltt}
-      The order\footnote{The order of program $t$ is the maximum order of the
-      types of functions in $t$.  The order of type $\tau$ is defined by
-      $\mathit{order}(\INT)=0$, $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
-      \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.} of the program is 5.
+      To preserve the evaluation order in original call-by-value programs
+      and translated call-by-name programs, the translated terms take
+      continuations and pass return values to the continuations.  The
+      order\footnote{The order of program $t$ is the maximum order of
+      the types of functions in $t$.  The order of type $\tau$ is
+      defined by $\mathit{order}(\INT)=0$,
+      $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
+      \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}
+      of the translated program is 5.
 %\begin{alltt}
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main k = check (\(\lambda\)f. f n k)

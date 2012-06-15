@@ -3,63 +3,70 @@
 
 \subsection{Container Abstraction}
 There are several
-method~\cite{Kawaguchi2009,Chin2003,Unno2010,Ong2011} that are aimed at
-verification of functional programs with data structures.
+methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Chin2003}
+that are aimed at verification of functional programs with data
+structures.
 
-Ong and Ramsay~\cite{Ong2011} have proposed the verification framework
+Ong and Ramsay~\cite{Ong2011} have proposed a verification method
 for recursion scheme with recursive data structures, called PMRS (Pattern
-Matching Recursion Scheme).  The framework
+Matching Recursion Scheme).  The method
 cannot deal with regular properties (such as ``a and b occur
 alternately'') and numerical properties (such as ``$x+y \leq z$'') cannot be used
 to abstract recursive data structures.
-%regular properties. For example, the framework cannot
+%regular properties. For example, the method cannot
 %verify that a list obtained by applying the following ``id'' function to
 %an even length list is also even length.
 %\begin{alltt}
 %let rec id x = match x with nil -> nil | cons x xs -> cons x (id xs)
 %\end{alltt}
 
-Unno et al.~\cite{Unno2010} have proposed the verification framework for higher-order
-tree processing functional programs. Their framework distinguish that
-input tree types and output tree types.  In order to use output trees of
-some function as input trees to some function, programmers have to
-insert coercion functions with annotations of the properties of input
-trees and the properties of output trees.
+Unno et al.~\cite{Unno2010} have also proposed a verification method for
+higher-order tree processing functional programs, which is based on
+their previous paper~\cite{Kobayashi2010}. Their method requires certain
+invariant annotations to recursive data structures.
 %\cc{This is the heavy burden to programmers}
 
-Kawaguchi et al.'s liquid type inferecne~\cite{Kawaguchi2009} are
-semi-automated verification framework based on refinement types.  Their
-framework requires that users provide shape of predicates, called
-logical qualifiers.  The expressive power of their framework and ours is
-incomparable.  They can deal with ``recursive dependent types'', such as
-$\App{\INT}{\LIST_\leq} = \RecType{t}{ \NIL \mathop{+}
+Kawaguchi et al.'s liquid type inference~\cite{Kawaguchi2009} is a
+semi-automated verification method based on refinement types, which is
+based on their previous paper~\cite{Rondon2008}.  Their method requires
+that users provide shape of predicates, called logical qualifiers.  The
+expressive power of their method and ours is incomparable.  They can
+deal with ``recursive dependent types'', such as $\App{\INT}{\LIST_\leq}
+= \RecType{t}{ \NIL \mathop{+}
 \Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq x_1\}}{t}}}$,
 which represents ordered lists of integers, while our method cannot. On
 the other hand, our method can deal with the properties of list elements
 related to its indices like ``the $i$-th element of a list is greater
 than $i$,'' while they cannot.
-%The limitation of our framework is that it cannot
+%The limitation of our method is that it cannot
 %deal with recursive dependency on recursive data structures such as
-%orderedness.  Their framework can deal with recursive dependent type
+%orderedness.  Their method can deal with recursive dependent type
 %such that $\App{\INT}{\LIST_\leq} = \mu t.\NIL +
 %\Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq x_1\}}{t}}$,
-%i.e., ordered lists of integers.  The framework, however, cannot deal
+%i.e., ordered lists of integers.  The method, however, cannot deal
 %with the properties of list elements related to its indices like that
 %the $i$-th element of a list is greater than $i$.
 
 Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
-static reasoning about containers.  The proposed framework is based on
-an abstract interpretation for containers.  Their framework is similar
-to our framework in the sense that they model containers as mappings
+static reasoning about containers.  The proposed method is based on
+an abstract interpretation for containers.  Their method is similar
+to our method in the sense that they model containers as mappings
 from location to values.  They consider the client-side use of the
 specific data structures (i.e. containers) that are primitive data
-structures or defined in the standard library.  Our framework can deal with a
+structures or defined in the standard library.  Our method can deal with a
 more general class of data structures that includes user-defined data
 structures.
 
 Chin et al.~have proposed sized type inference~\cite{Chin2003}.  Their
-framework infers invariant of recursive functions by fix-point
-computation.  The framework cannot handle higher-order functions.
+method infers invariant of recursive functions by fix-point
+computation.  The method cannot handle higher-order functions.
+
+Suter et al.~have proposed a decision procedure~\cite{Suter2010} for
+constraints on recursive algebraic data types, and a verification
+method~\cite{Suter2011}, which is based on the
+decision procedure.  The method verifies that a functional data
+structure implementation satisfies a specification, such as sortedness
+of binary search trees.
 
 Selective predicate abstraction has some similarity to local type
 inference~\cite{Pierce2000} for reducing type declarations, in the sense

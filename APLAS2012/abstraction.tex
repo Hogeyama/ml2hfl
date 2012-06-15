@@ -27,7 +27,7 @@ type $\Gamma(x)$.  Abstraction types are types to express which
 predicate should be used to abstract each value.  For example, an
 abstraction type of the form $\INT[P_1,\dots,P_n]$ means that a value
 $v$ of that type should be abstracted to a tuple of $(b_1,\dots,d_n)$,
-where $b_i$ denotes whether $P_i{v}$ holds or not.  See our previous
+where $b_i$ denotes whether $P_i(v)$ holds or not.  See our previous
 paper~\cite{KobayashiPLDI2011} for details.  We extend predicate
 abstraction relation by adding the set of inlined functions $E$ like
 $\Abst{\Gamma}{E}{t}{\sigma}{t'}$.  Here, functions in $E$ are not
@@ -271,8 +271,8 @@ The abstracted program is safe.  For comparison, consider
 the case where $\Gamma = \mathtt{even}\COL\TFun{\INT[P_e]}{\BOOL},
 \mathtt{odd}\COL\TFun{\INT[]}{\BOOL},
 \mathtt{main}\COL\TFun{\INT[]}{\UNIT}$ and $E=\emptyset$ (which
-corresponds to our previous approach where the predicates for
-\texttt{odd} has been found yet).
+corresponds to our previous approach~\cite{KobayashiPLDI2011} where the predicates for
+\texttt{odd} have been found yet).
 \begin{alltt}
 let rec even b = if (if b then * else false) then true else odd ()
     and odd () = if * then false else even * in

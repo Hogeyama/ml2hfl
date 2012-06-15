@@ -172,8 +172,10 @@ $\ell=\IC$, and $t$ has no side-effect if $\ell=\NC$.
  {\CPS{\Gamma}{t_1}{\INT}{\ell_1}{t_1'} \andalso
   \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \andalso
   \CPS{\Gamma}{t_3}{\tau}{\ell_3}{t_3'}}
- {\CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}
-  {\Abs{k}{\SApp{\ell_1}{t_1}{\Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}}}}
+ {\begin{array}{l}
+   \CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}{} \\\qquad
+   {\Abs{k}{\SApp{\ell_1}{t_1}{\Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}}}
+  \end{array}}
 
 \medskip
 

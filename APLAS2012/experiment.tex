@@ -35,7 +35,7 @@ program    & size & order & none &     C. &   A. &    C. and A. \\
 %intro3     &    30&      2& 1,  0.08 & 1,  0.07 & 0,  0.07 & 0,  0.06 \\
  sum        &    24&      1& 2,  0.08 & 2,  0.08 & 1,  0.07 & 1,  0.08 \\
 \bf mult       &\bf    31&\bf      1&\bf 5, 42.86 &\bf 4, 36.23 &\bf 3,  0.12 &\bf 2,  0.10 \\
- max        &    42&      2& 5,  7.14 & 5,  0.28 & 1,  0.20 & 0,  0.06 \\
+\bf max        &\bf    42&\bf      2&\bf 5,  7.14 &\bf 5,  0.28 &\bf 1,  0.20 &\bf 0,  0.06 \\
  mc91       &    32&      1& 2,  0.08 & 2,  0.10 & 2,  0.09 & 2,  0.09 \\
 \bf ack        &\bf    53&\bf      1&\bf        - &\bf        - &\bf 1,  0.08 &\bf 1,  0.07 \\
 %repeat     &    37&      2&        - &        - &        - &        - \\
@@ -68,9 +68,9 @@ program    & size & order & none &     C. &   A. &    C. and A. \\
 %program    & size & order & no opt. &     CPS &   abst. &    both \\
 \hline
  sum\_intro        &  33 & 1 & 2, 0.09 & 2, 0.09 & 1, 0.08 & 1, 0.07 \\
- fold\_right       &  64 & 2 & 5, 8.53 & 5, 20.9 & 2, 0.36 & 2, 0.19 \\
- forall\_eq\_pair  &  55 & 1 & 4, 2.32 & 4, 0.94 & 1, 0.76 & 1, 0.23 \\
- forall\_leq       &  55 & 2 & 4, 2.10 & 4, 0.86 & 1, 0.17 & 1, 0.14 \\
+\bf fold\_right       &\bf  64 &\bf 2 &\bf 5, 8.53 &\bf 5, 20.9 &\bf 2, 0.36 &\bf 2, 0.19 \\
+\bf forall\_eq\_pair  &\bf  55 &\bf 1 &\bf 4, 2.32 &\bf 4, 0.94 &\bf 1, 0.76 &\bf 1, 0.23 \\
+\bf forall\_leq       &\bf  55 &\bf 2 &\bf 4, 2.10 &\bf 4, 0.86 &\bf 1, 0.17 &\bf 1, 0.14 \\
  isnil             &  52 & 1 & 3, 0.16 & 3, 0.15 & 2, 0.12 & 2, 0.12 \\
  iter              &  59 & 2 & 4, 1.60 & 4, 0.62 & 1, 0.16 & 1, 0.11 \\
 %length3           &  50 & 1 &       - &       - &       - & -, -    \\
@@ -108,7 +108,11 @@ The programs used in the experiments are:
       for a case construct unlike their framework that treats a case construct specially.
 \item ``fact'' is the example program in Sect.~\ref{sec:control}.
 \item Other programs define generators of lists and functions on lists,
-      and assert that the functions work correctly.
+      and assert that the functions work correctly.  For example,
+      ``zip'' defines a function that takes two lists and returns the
+      list of pairs that consists of elements of arguments.
+      The function fails if the two arguments have different lengths.
+      ``zip'' asserts that \texttt{zip xs xs} never fails for all integer lists \texttt{xs}.
 \end{itemize}
 %\begin{itemize}
 %%\item ``fold\_right'' defines

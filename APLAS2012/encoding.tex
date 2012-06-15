@@ -15,6 +15,9 @@ operators.
 % \item Translation of the program with lists into a program with integers.
 % \item Verification for higher-order programs with integers based on our previous framework.
 %\end{enumerate}
+Sect.~\ref{sec:recdata} formalizes the encoding of recursive data
+structures, and Sect.~\ref{sec:control} introduces the extension for
+control operations.
 
 \begin{figure}[t]
  \begin{center}
@@ -24,9 +27,7 @@ operators.
 \label{fig:extension}
 \end{figure}
 
-The Sect.~\ref{sec:recdata} formalizes the encoding of recursive data
-structures, and Sect.~\ref{sec:control} introduces the extension for
-control operations.
+
 
 \subsection{Functional Encoding of Recursive Data Structures}
 \label{sec:recdata}
@@ -248,10 +249,10 @@ than the container abstraction.
 
 
 \subsubsection{Extension for Recursive Data Structures}
-We discusses how to encode other recursive data structures.  We
+We discuss how to encode other recursive data structures.  We
 translate programs with recursive data structures into programs with
 lists by encoding recursive data structures to functions which map paths
-of nodes to labels.  Here, a path and a label is represented as a list
+of nodes to labels.  Here, a path and a label are represented as a list
 of integers and an integer respectively.  For example, consider binary trees defined
 as follows.
 \begin{alltt}
@@ -265,7 +266,7 @@ $\Node{\LEAF}{\Node{\LEAF}{\LEAF}}$ is encoded into a function $\{[]
 some integers.
 Here is another example, the encoding of a pattern matching.
 \begin{alltt}
-match x with Constr_1(x1, x2, ...) -> t | Constr_2 ...
+match x with Constr_1(x1, x2, ...) -> t | Constr_2(...) -> ...
 \end{alltt}
 The expression above is encoded to the following expression.
 \begin{alltt}
@@ -276,7 +277,7 @@ let Constr_1 = 1 in ... let Constr_n = n in
 \end{alltt}
 Here, \texttt{t'} is the encoding of \texttt{t}. The pattern matching in
 trees is translated to the pattern matching in labels, represented as
-integers.  A subterm of a tree are obtained by adding the index to the head of the path.
+integers.  A subterm of a tree is obtained by adding the index to the head of the path.
 %\begin{alltt}
 %let rec get_child t =
 %  match t with
