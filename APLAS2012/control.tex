@@ -2,11 +2,11 @@
 \label{sec:control}
 We can extend the framework to deal with control operations (e.g., exceptions and \texttt{call/cc}) if there
 exists a translation that removes control operations.  For example,
-we can remove exceptions and \texttt{call/cc} from a program by CPS transformation.
+we can remove exceptions and \texttt{call/cc} from a program by CPS transformation~\cite{Nielsen2001}.
 
 %Consider the following program (written in OCaml style).
 The following program calculates factorial and raise an exception if
-a negative number or zero is given as an argument to the function.
+a negative number or zero is given.
 \begin{alltt}
 exception NotPositive
 let rec fact n =

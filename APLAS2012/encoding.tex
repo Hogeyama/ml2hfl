@@ -91,20 +91,20 @@ as follows.
 \begin{alltt}
 let nil = (0, fun _ -> fail)
 let cons x (len,f) =
-  let f' = if i = 0 then x else f (i-1) in (len+1, f')
+  let f' i = if i = 0 then x else f (i-1) in (len+1, f')
 let is_nil (len,f) = len = 0
 let head (len,f) = if is_nil (len,f) then fail else f 0
 let tail (len,f) =
-  if is_nil (len,f) then fail else len-1, fun i -> f (i+1)
+  (if is_nil (len,f) then fail else len-1), fun i -> f (i+1)
 \end{alltt}
 \texttt{nil} is translated into the pair of length $0$ and the
 function that always fails.  \texttt{cons x xs} is translated into the
 pair of its length and the function $\{0 \mapsto \mathtt{x}\} \cup \{i \mapsto
 f (i-1) \mid i \neq 0\}$ where $f$ is the function part of encoding of
 \texttt{xs}.  \texttt{is\_nil} just checks whether \texttt{len} is 0 or not.
-\texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
-element of the list.  \texttt{tail} returns a pair of
-\texttt{(len-1,f')} where $\mathtt{f'(i)} = \mathtt{f(i+1)}$.
+\texttt{head} returns \texttt{f(0)}, i.e. the first
+element of the list.  \texttt{tail} returns the pair of
+\texttt{(len-1,f')} where $\texttt{f'(i)} = \texttt{f(i+1)}$.
 
 %Since \texttt{f(i)} is the element whose position is \texttt{i} in the
 %list, the encoded \texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
@@ -162,7 +162,7 @@ $\TFun{(i\COL\INT)}{\set{x\COL\INT\mid (P_1(i) \to x=v_1) \wedge \dots
 $\TFun{(i\COL\INT)}{\set{x\COL\INT\mid i \mathop{\mathtt{mod}} 2 = 0 \to x=1}}$.  Moreover, our
 approach can deal with list properties like ``the $i$-th
 element of a list is greater than $i$,'' which cannot be represented by
-the container abstraction.  Thus, our method, a combination of the encoding
+the container abstraction.  Thus, our method, i.e., a combination of the encoding
 and the predicate abstraction for integers, is strictly more powerful
 than the container abstraction.
 

@@ -3,7 +3,7 @@
 
 In our recent paper~\cite{KobayashiPLDI2011}, we have shown how to
 construct a fully-automated program verification tool (so called a
-"software model checker") for a tiny subset of functional language ML, a
+``software model checker'') for a tiny subset of functional language ML, a
 simply-typed lambda calculus with recursion and integers.
 The framework is an extension of higher-order model checker
 (more precisely, the model checker for higher-order recursion scheme)
@@ -33,13 +33,11 @@ Higher-order recursion schemes can be viewed as a simply typed
 call-by-name lambda calculus with finite data domains and recursion.  To
 resolve the gap between the evaluation strategies of higher-order
 recursion schemes and higher-order boolean programs, we translate
-call-by-value programs into call-by-name programs in Step 2.  The
-call-by-name abstracted program obtained by CPS transformation is
-checked by the model checker. If the abstracted program is safe, the
-source program is also safe.  If not, we check whether source program is
-unsafe or the abstraction is too coerce in Step 4. If the latter, we
-discover new predicates in Step 5.  We repeat these steps until we find
-whether the program is safe or not.
+call-by-value programs into call-by-name programs in Step 2. If the
+abstracted program is safe, the source program is also safe.  If not, we
+check whether source program is unsafe or the abstraction is too coerce
+in Step 4. If the latter, we discover new predicates in Step 5.  We
+repeat these steps until we find whether the program is safe or not.
 %Our previous verification framework is a CEGAR-based one on higher-order
 %model checker.  The verification proceeds as follows.  First, an input
 %program, written in simply typed call-by-value lambda calculus with
@@ -108,7 +106,7 @@ We discuss each problem and explain our approach below.
       to a tuple of booleans. As a result, verification of a program did
       not succeed until an appropriate set of predicates is found for
       \emph{every} function in the program.  For example, consider the
-      program in Fig.~\ref{fig:sum}.  The program can be successfully
+      program shown in Fig.~\ref{fig:sum}.  The program can be successfully
       verified if we abstract the program by using predicates
       $\Abs{y}{y \geq 0}$ for the second argument of \texttt{add} and
       $\Abs{r}{r \geq x}$ for the return value of \texttt{add} and
@@ -153,10 +151,10 @@ let main x = assert (sum ())
       predicate abstraction}.  As the name suggests, the selective
       predicate abstraction applies predicate abstraction to only a
       certain set of functions, and avoids abstraction of the other
-      functions by inlining them.  For example, the program above is
-      translated to the following program by selective predicate
-      abstraction with using only the predicate $\Abs{r}{r \geq x}$ for
-      return values of \texttt{sum} and inlining \texttt{add}.
+      functions by inlining them.  The selective predicate abstraction
+      generates the following safe program by using only the
+      predicate $\Abs{r}{r \geq x}$ for return values of \texttt{sum}
+      and inlining \texttt{add}.
 \begin{alltt}
 let rec sum () = if * then true else if sum () then true else *
 let main () = assert (sum ())
@@ -215,12 +213,12 @@ let main () = assert (sum ())
 
 \item Another efficiency problem is caused by CPS transformation.  As
       stated above, our approach needs CPS transformation to resolve the
-      gap between semantics of higher-order recursion schemes and
+      gap between evaluation strategies of higher-order recursion schemes and
       higher-order boolean programs.  CPS transformation increases the
       order of programs and the growth of the order is not constant.
       Since the complexity of model checking of higher-order recursion
       scheme is $n$-EXPTIME complete for order-$n$ recursion scheme, the
-      increase of the order of the input is crucial to the verification
+      increase of the order of an input is crucial to the verification
       time.
 
       For example, consider the following program.
@@ -304,15 +302,13 @@ let main n k = check n f k
       structures like lists and trees. Thus, the implementation dealt with
       only integers as infinite data domains.
 
-      We extend the framework to support recursive data structures
-      without an interpolating theorem prover for recursive data
-      structures.  By transforming programs with recursive data
-      structures to ones with integers, we construct a verifier that
-      uses only an interpolating theorem prover for integers.  The
-      transformation is carried out by encoding recursive data
-      structures and control operations using higher-order functions.
-      For example, a list is encoded to a function that maps an index
-      $i$ to the $i$-th element.
+      To support recursive data structures without an interpolating
+      theorem prover for these, we translate programs with recursive
+      data structures into ones with integers.  The transformation is
+      carried out by encoding recursive data structures and control
+      operations using higher-order functions.  For example, a list is
+      encoded to a function that maps an index $i$ to the $i$-th
+      element.
 \end{enumerate}
 
 %Our contributions are (i) the formalization of selective predicate

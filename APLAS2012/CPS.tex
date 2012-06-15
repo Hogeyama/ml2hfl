@@ -3,12 +3,13 @@
 %\TODO{Add discussion about the increase of the order of programs}
 
 This section formalizes selective CPS transformation for abstracted
-programs.  As stated in Sect.~\ref{sec:intro}, the idea for selective CPS
-transformation is to distinguish whether a continuation parameter should
-be inserted to each expression or not based on whether it has a side-effect.  When a function application has
-side-effects, we need not insert continuations in CPS transformation.
-Here, $\FAIL$, non-deterministic branch, and non-termination are
-considered as side-effects.
+programs.  As stated in Sect.~\ref{sec:intro}, the idea of the selective
+CPS transformation is to distinguish whether a continuation parameter
+should be inserted to each expression or not based on whether it has a
+side-effect.  When a function application has no side-effects, we need
+not insert a continuation.  Here, $\FAIL$,
+non-deterministic branch, and non-termination are considered as
+side-effects.
 %For example, since an
 %application of function $\Abs{x}{\Abs{y}{\Assert{x+y}}}$ to a value has
 %no side-effects, it can be transformed to CPS by inserting only one
@@ -17,7 +18,7 @@ considered as side-effects.
 
 Note that a similar transformation has been proposed by
 Nielsen~\cite{Nielsen2001}.  The transformation does not fit our purpose
-of translating call-by-value programs into equivalent call-by-name
+to translate call-by-value programs into equivalent call-by-name
 programs.  A non-terminating program may be transformed into a
 terminating (call-by-name) program by their transformation.
 %The reason is that programs obtained by their transformation do not
@@ -27,7 +28,7 @@ terminating (call-by-name) program by their transformation.
 
 To decide whether we should insert a continuation or not, we
 annotate each function type with a label $\ell \in \{\NC,\IC\}$, like
-$\TFunL{\ell}{\tau_1}{\tau_2}$ .  A type $\TFunC{\tau_1}{\tau_2}$ means
+$\TFunL{\ell}{\tau_1}{\tau_2}$.  A type $\TFunC{\tau_1}{\tau_2}$ means
 that we should insert a continuation, and $\TFunN{\tau_1}{\tau_2}$ means
 not.
 
@@ -85,15 +86,16 @@ Below, we formalize the selective CPS as a type-based transformation.
 Figure~\ref{fig:cps} shows the rules of the selective CPS
 transformation.  The relation $\CPS{\Gamma}{t}{\tau}{\ell}{t'}$ means
 that a term $t$ is translated to a term $t'$ by using a type $\tau$,
-under the assumption that each free variable $x$ of $t$ has been
-transformed using the type $\Gamma(x)$, $t$ has a side-effect if
-$\ell=\IC$, and $t$ has no side-effect if $\ell=\NC$.
+under the assumption that (i) each free variable $x$ of $t$ has been
+transformed using the type $\Gamma(x)$, (ii) $t$ has a side-effect if
+$\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 %Here, $\MAbs{x}{t}$ and
 %$\MApp{t_1}{t_2}$ are, respectively, application and abstraction that
 %will be reduced statically in the translation.
 
 \begin{figure}[tp]
 \begin{minipage}{\textwidth}
+
 \infax[CPS-Const]
  {\CPS{\Gamma}{n}{\INT}{\NC}{n}}
 
@@ -190,7 +192,7 @@ $\ell=\IC$, and $t$ has no side-effect if $\ell=\NC$.
 \infrule[CPS-Prog]
  {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \andalso
   t_i \text{ is not of the form } \Abs{x}{t_i'} \\
-  \Gamma(f_i) \text{ is of the form } \TFunL{\ell_1}{\tau_{i1}}{\TFunL{\ell_2}{\tau_{i2}}{\TFunL{\ell_{k_i-1}}{\cdots}{\TFunC{\tau_{ik_i}}{\tau}}}} \\
+  \Gamma(f_i) \text{ is of the form } \TFunL{\ell_1}{\tau_{i1}}{\TFunL{\ell_2}{\tau_{i2}}{\TFunL{\ell_{j-1}}{\cdots}{\TFunC{\tau_{ij}}{\tau}}}} \\
   \CPS{\Gamma}{v_i}{\Gamma(f_i)}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
  {\CPSprog{\Gamma}{\{f_1=v_1,\dots,f_n=v_n\}}{\{f_1=v_1',\dots,f_n=v_n'\}}}
 
@@ -324,12 +326,12 @@ by some termination analysis.
 \def\assert{\mathtt{assert}}
 \def\assertcps{\mathtt{assert}_\mathtt{CPS}}
 
-Figure~\ref{fig:cps-example} shows examples of selective CPS
+Figure~\ref{fig:cps-example} shows examples of the selective CPS
 transformation.  The examples are the transformations of
 $\Abs{x}{\Abs{y}{\assert(x = y)}}$ with type
 $\TFunN{\INT}{\TFunC{\INT}{\INT}}$ for (a) and
-$\TFunN{\INT}{\TFunN{\INT}{\INT}}$ for (b).
-The transformation of $\Abs{y}{\assert(x = y)}$ in (b) is the same in (a).
+$\TFunC{\INT}{\TFunC{\INT}{\INT}}$ for (b).
+The transformation of $\Abs{y}{\assert(x = y)}$ in (b) is the same as one in (a).
 In (a), there is no need to insert a continuation parameter to the back of $x$.
 On the other hand, in (b), a continuation parameter is inserted.
 
@@ -380,13 +382,14 @@ $\Gamma_{xy}=\Gamma_x,y\COL\INT$)}
 \end{figure}
 }
 
-In the following, we discuss the properties of selective CPS transformation.
-The theorem below shows that we can transform arbitrary simply-typed programs into CPS.
+In the following, we discuss the properties of selective CPS
+transformation.  The theorem below states that we can transform
+arbitrary simply-typed programs by the selective CPS.
 \begin{theorem}
 Suppose $D$ is typable in $\Gamma$. There exists $D'$ such that $\CPSprog{\Gamma}{D}{D'}$.
 \end{theorem}
-The following theorem states the correctness of the selective CPS
-transformation, in the sense that the transformed program is reduced to
+The following theorem states the soundness of the selective CPS
+transformation, that the transformed program is reduced to
 the same value as the original program.
 \begin{theorem}[Correctness of CPS Transformation]
 If $\CPSprog{\Gamma}{D}{D'}$, then the following holds:

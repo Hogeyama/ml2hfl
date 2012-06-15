@@ -9,7 +9,7 @@ structures.
 
 Ong and Ramsay~\cite{Ong2011} have proposed a verification method
 for recursion scheme with recursive data structures, called PMRS (Pattern
-Matching Recursion Scheme).  The method
+Matching Recursion Scheme.)  The method
 cannot deal with regular properties (such as ``a and b occur
 alternately'') and numerical properties (such as ``$x+y \leq z$'') cannot be used
 to abstract recursive data structures.
@@ -22,18 +22,18 @@ to abstract recursive data structures.
 
 Unno et al.~\cite{Unno2010} have also proposed a verification method for
 higher-order tree processing functional programs, which is based on
-their previous paper~\cite{Kobayashi2010}. Their method requires certain
+their previous work~\cite{Kobayashi2010}. Their method requires certain
 invariant annotations to recursive data structures.
 %\cc{This is the heavy burden to programmers}
 
 Kawaguchi et al.'s liquid type inference~\cite{Kawaguchi2009} is a
 semi-automated verification method based on refinement types, which is
-based on their previous paper~\cite{Rondon2008}.  Their method requires
+based on their previous work~\cite{Rondon2008}.  Their method requires
 that users provide shape of predicates, called logical qualifiers.  The
 expressive power of their method and ours is incomparable.  They can
 deal with ``recursive dependent types'', such as $\App{\INT}{\LIST_\leq}
-= \RecType{t}{ \NIL \mathop{+}
-\Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq x_1\}}{t}}}$,
+= \mu t.\, \NIL$ $\mathop{+}
+\Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq x_1\}}{t}}$,
 which represents ordered lists of integers, while our method cannot. On
 the other hand, our method can deal with the properties of list elements
 related to its indices like ``the $i$-th element of a list is greater
@@ -48,16 +48,17 @@ than $i$,'' while they cannot.
 %the $i$-th element of a list is greater than $i$.
 
 Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
-static reasoning about containers.  The proposed method is based on
-an abstract interpretation for containers.  Their method is similar
-to our method in the sense that they model containers as mappings
-from location to values.  They consider the client-side use of the
-specific data structures (i.e. containers) that are primitive data
-structures or defined in the standard library.  Our method can deal with a
-more general class of data structures that includes user-defined data
-structures.
+static reasoning about containers.  The proposed method is based on an
+abstract interpretation for containers.  Their method is similar to our
+method in the sense that they model containers as mappings from location
+to values.  They consider the client-side use of the specific data
+structures (i.e. containers) that are primitive data structures or
+defined in the standard library.  Our method can deal with a more
+general class of data structures that includes user-defined data
+structures.  Moreover, as discussed in Sect.~\ref{sec:extension}, our
+method is strictly more powerful than their method.
 
-Chin et al.~have proposed sized type inference~\cite{Chin2003}.  Their
+Chin et al.~\cite{Chin2003} have proposed sized type inference.  Their
 method infers invariant of recursive functions by fix-point
 computation.  The method cannot handle higher-order functions.
 

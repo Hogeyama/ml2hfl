@@ -25,8 +25,8 @@ $t'$ by using the abstraction type $\sigma$ under the assumption that
 each free variable $x$ of $t$ has been abstracted using the abstraction
 type $\Gamma(x)$.  Abstraction types are types to express which
 predicate should be used to abstract each value.  For example, an
-abstraction type of the form $\INT[P_1,\dots,P_n]$ means that a value
-$v$ of that type should be abstracted to a tuple of $(b_1,\dots,d_n)$,
+abstraction type $\INT[P_1,\dots,P_n]$ means that a value
+$v$ of that type should be abstracted to a tuple of $(b_1,\dots,b_n)$,
 where $b_i$ denotes whether $P_i(v)$ holds or not.  See our previous
 paper~\cite{KobayashiPLDI2011} for details.  We extend predicate
 abstraction relation by adding the set of inlined functions $E$ like
@@ -190,9 +190,10 @@ previous predicate abstraction.
 \end{figure}
 
 Figure~\ref{fig:abst-example} shows the part of the abstraction of the
-program in Fig.~\ref{fig:sum} in $E =
+program shown in Fig.~\ref{fig:sum} with $E =
 (\mathtt{add}=\Abs{x}{\Abs{y}{x+y}})$.  Due to the restriction of the
-source language, we translate the term
+source language of previous predicate
+abstraction~\cite{KobayashiPLDI2011}, we translate the term
 $\App{\App{\mathtt{add}}{x}}{\App{\mathtt{sum}}{(x-1)}}$ to
 $\Let{s}{\App{\mathtt{sum}}{(x-1)}}{\App{\App{\mathtt{add}}{x}}{s}}$.
 In the abstraction of $\App{\App{\mathtt{add}}{x}}{s}$, \texttt{add} is
@@ -234,8 +235,8 @@ inlined since the definition of \texttt{add} is in $E$.
 
 \caption{Abstraction of $\App{\App{\mathtt{add}}{x}}{(\App{\mathtt{sum}}{(x-1)})}$.
  ($*$ is a syntactic sugar for $\Br{\TRUE}{\FALSE}$.
-  $\Gamma = \mathtt{sum}\COL(\TFun{x\COL\INT[]}{\INT[\Abs{r}{r \geq x}]}),~ x>0$.
-  $\Gamma' = \Gamma,~s\COL\INT[\Abs{s}{s>0}]$.
+  $\Gamma = x\COL\INT[], \mathtt{sum}\COL(\TFun{y\COL\INT[]}{\INT[\Abs{r}{r \geq y}]}),~ x>0$.
+  $\Gamma' = \Gamma,~s\COL\INT[\Abs{s}{s \geq x}]$.
   $E = (\mathtt{add}=\Abs{x}{\Abs{y}{x+y}})$.
   $t = \If{s}{\TRUE}{*}$.)}
 \label{fig:abst-example}
@@ -244,8 +245,8 @@ inlined since the definition of \texttt{add} is in $E$.
 For some $D$ and $E$, there is $D'$ such that
 $\AbstProg{\Gamma}{E}{D}{D'}$ as long as there is no cyclic definitions
 in $E$ like $\set{f = \Abs{x}{\App{g}{x}},~ g = \Abs{y}{f}}$.
-Therefore, one way to decide a function should be in $E$ is to find a
-maximal set of the functions that has no cyclic definitions.
+Therefore, one way to decide $E$ is to find a maximal set of the
+functions that has no cyclic definitions.
 %Therefore, recursive functions
 %should be basically in $\Dom{\Gamma}$, and non-recursive functions
 %should be in $\Dom{E}$.
@@ -255,7 +256,7 @@ For example, the following program can be abstracted with $E = \set{\mathtt{odd}
 \begin{alltt}
 let rec even x = if x = 0 then true else odd (x-1)
     and odd x = if x = 0 then false else even (x-1) in
-let main () = assert (even (2 * n))
+let main () = assert (even (n+n))
 \end{alltt}
 The following is the abstraction of the program with $\Gamma =
 \mathtt{even}\COL\TFun{\INT[P_e]}{\BOOL},
@@ -276,7 +277,7 @@ corresponds to our previous approach~\cite{KobayashiPLDI2011} where the predicat
 \begin{alltt}
 let rec even b = if (if b then * else false) then true else odd ()
     and odd () = if * then false else even * in
-let main () = # assert (even b)
+let main () = assert (even b)
 \end{alltt}
 The abstracted \texttt{even} returns a non-deterministic booleans, so
 that abstract is unsafe since the abstraction of \texttt{odd} is too
