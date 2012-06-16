@@ -28,7 +28,7 @@ predicate should be used to abstract each value.  For example, an
 abstraction type $\INT[P_1,\dots,P_n]$ means that a value
 $v$ of that type should be abstracted to a tuple of $(b_1,\dots,b_n)$,
 where $b_i$ denotes whether $P_i(v)$ holds or not.  See our previous
-paper~\cite{KobayashiPLDI2011} for details.  We extend predicate
+paper~\cite{KobayashiPLDI2011} for details.  We extend the predicate
 abstraction relation by adding the set of inlined functions $E$ like
 $\Abst{\Gamma}{E}{t}{\sigma}{t'}$.  Here, functions in $E$ are not
 abstracted and are inlined in the process of abstraction.
@@ -255,7 +255,7 @@ there is $D'$ such that $\AbstProg{\Gamma}{E}{D}{D'}$ in some cases.
 For example, the following program can be abstracted with $E = \set{\mathtt{odd} = v_\mathtt{odd}}$.
 \begin{alltt}
 let rec even x = if x = 0 then true else odd (x-1)
-    and odd x = if x = 0 then false else even (x-1) in
+    and odd x = if x = 0 then false else even (x-1)
 let main () = assert (even (n+n))
 \end{alltt}
 The following is the abstraction of the program with $\Gamma =
@@ -273,15 +273,15 @@ the case where $\Gamma = \mathtt{even}\COL\TFun{\INT[P_e]}{\BOOL},
 \mathtt{odd}\COL\TFun{\INT[]}{\BOOL},
 \mathtt{main}\COL\TFun{\INT[]}{\UNIT}$ and $E=\emptyset$ (which
 corresponds to our previous approach~\cite{KobayashiPLDI2011} where the predicates for
-\texttt{odd} have been found yet).
+\texttt{odd} have not been found yet).
 \begin{alltt}
 let rec even b = if (if b then * else false) then true else odd ()
-    and odd () = if * then false else even * in
+    and odd () = if * then false else even *
 let main () = assert (even b)
 \end{alltt}
-The abstracted \texttt{even} returns a non-deterministic booleans, so
-that abstract is unsafe since the abstraction of \texttt{odd} is too
-coarse.
+Since the abstraction of \texttt{odd} is too coarse, the abstracted 
+\texttt{even} returns a non-deterministic booleans.  Thus, the 
+abstracted program is unsafe.
 
 We discuss properties of the selective predicate abstraction.
 The theorem below states that selective predicate abstraction is sound
@@ -311,7 +311,7 @@ of the previous predicate abstraction~\cite{KobayashiPLDI2011}.
 \end{proposition}
 The proposition above states that selective predicate abstraction is
 more precise compared to our previous predicate abstraction.  Here,
-$\AbstPLDI{\Gamma}{D}{\tau}{D_1}$ is the predicate abstract relation in
+$\AbstPLDI{\Gamma}{D}{\tau}{D_1}$ is the predicate abstraction relation in
 our previous paper~\cite{KobayashiPLDI2011}.
 
 %As a consequence of the theorem, we can show that selective predicate
