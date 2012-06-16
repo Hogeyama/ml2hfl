@@ -4,7 +4,7 @@ operations (e.g., exceptions and \texttt{call/cc}) by removing these
 from a program by CPS transformation~\cite{Nielsen2001}.
 
 %Consider the following program (written in OCaml style).
-The following program calculates factorial and raise an exception if
+The following program calculates factorial and raises an exception if
 a negative number or zero is given.
 \begin{alltt}
 exception NotPositive
@@ -13,8 +13,7 @@ let rec fact n =
   else try n * fact (n - 1) exn with NotPositive -> 1
 let main n = try fact n with NotPositive -> assert (n <= 0); 0
 \end{alltt}
-We can translate this program to an exception-free program by CPS transformation.
-The following is the result of CPS transformation.
+We can translate this program to an exception-free program by CPS transformation as follows:
 \begin{alltt}
 type exc = NotPositive
 let rec fact n k exn =
