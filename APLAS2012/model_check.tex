@@ -34,7 +34,7 @@ safe.  Otherwise, the model checker generates a counterexample for the
 abstracted program.  We can find a corresponding concrete error trace,
 and we can check the error path is feasible or not in the source program
 by symbolic execution.  The source program is unsafe if the error trace
-is feasible.  Otherwise, we can know that the abstraction is too coerce
+is feasible.  Otherwise, we can know that the abstraction is too coarse
 to verify the source program.  We next refine abstraction types to
 refute the counterexample, and continue the CEGAR-loop.
 

@@ -24,7 +24,7 @@ framework.
 Our previous verification framework~\cite{KobayashiPLDI2011} is based on
 predicate abstraction and CEGAR for a higher-order model checker.
 Figure~\ref{fig:cegar} shows the overall structure of our previous
-method.  First, an input program, written in simply typed call-by-value
+method.  First, an input program, written in a simply typed call-by-value
 lambda calculus with recursion and integers, is abstracted to a
 higher-order boolean program by predicate abstraction in Step 1.  The
 abstracted program is verified by the higher-order model checker, where
@@ -35,7 +35,7 @@ resolve the gap between the evaluation strategies of higher-order
 recursion schemes and higher-order boolean programs, we translate
 call-by-value programs into call-by-name programs in Step 2. If the
 abstracted program is safe, the source program is also safe.  If not, we
-check whether source program is unsafe or the abstraction is too coerce
+check whether the source program is in fact unsafe or the abstraction is too coarse
 in Step 4. If the latter, we discover new predicates in Step 5.  We
 repeat these steps until we find whether the program is safe or not.
 %Our previous verification framework is a CEGAR-based one on higher-order
@@ -55,7 +55,7 @@ repeat these steps until we find whether the program is safe or not.
 %concrete error trace from the counterexample, and we can check whether
 %the error path is feasible or not in the source program by symbolic
 %execution.  If the error trace is feasible, the source program is
-%unsafe.  Otherwise, the abstraction is too coerce to verify the source
+%unsafe.  Otherwise, the abstraction is too coarce to verify the source
 %program.  We next discover new predicates to refute the
 %counterexample, and repeat the above processes until we find out whether
 %the program is safe or not.
@@ -110,7 +110,7 @@ We discuss each problem and explain our approach below.
       verified if we abstract the program by using predicates
       $\Abs{y}{y \geq 0}$ for the second argument of \texttt{add} and
       $\Abs{r}{r \geq x}$ for the return value of \texttt{add} and
-      \texttt{sum} respectively.  The following is the
+      \texttt{sum}.  The following is the
       abstracted program using the above predicates.
 
 \begin{figure}[t]
@@ -134,8 +134,8 @@ let main x = assert (sum ())
       difficult.  In the previous paper~\cite{KobayashiPLDI2011}, we
       have adapted CEGAR to find such predicates, but the technique is
       necessarily heuristic, and often fails.  If we abstract the
-      program using only the predicate $\Abs{r}{r \geq x}$ for return
-      values of \texttt{sum}, we get the following abstracted program.
+      program using only the predicate $\Abs{r}{r \geq x}$ for the return
+      value of \texttt{sum}, we get the following abstracted program.
 \begin{alltt}
 let add () () = ()
 let rec sum u = if rand_bool() then true
@@ -153,7 +153,7 @@ let main x = assert (sum ())
       certain set of functions, and avoids abstraction of the other
       functions by inlining them.  The selective predicate abstraction
       generates the following safe program by using only the
-      predicate $\Abs{r}{r \geq x}$ for return values of \texttt{sum}
+      predicate $\Abs{r}{r \geq x}$ for the return values of \texttt{sum}
       and inlining \texttt{add}.
 \begin{alltt}
 let rec sum () = if * then true else if sum () then true else *
@@ -213,37 +213,37 @@ let main () = assert (sum ())
 
 \item Another efficiency problem is caused by CPS transformation.  As
       stated above, our approach needs CPS transformation to resolve the
-      gap between evaluation strategies of higher-order recursion schemes and
-      higher-order boolean programs.  CPS transformation increases the
-      order of programs and the growth of the order is not constant.
-      Since the complexity of model checking of higher-order recursion
-      scheme is $n$-EXPTIME complete for order-$n$ recursion scheme, the
-      increase of the order of an input is crucial to the verification
-      time.
-
-      For example, consider the following program.
-\begin{alltt}
-let rec check x f = f x; check (x+1) f
-let f x = assert (x >= 0) in
-let main n = check n f
-\end{alltt}
-%Function \texttt{check} may cause an assertion failure only when two arguments are given.
-      The program above is translated into the following program by
-      na\"{\i}ve call-by-value CPS transformation~\cite{Plotkin1975}.
-\begin{alltt}
-let rec check x k1 = k1 (\(\lambda\)f.\(\lambda\)k2.f x (\(\lambda\)_.check (x+1) (\(\lambda\)g.g f k2)))
-let f x k = assert (x >= 0); k ()
-let main n k = check n (\(\lambda\)g. g f k)
-\end{alltt}
-      To preserve the evaluation order in original call-by-value programs
-      and translated call-by-name programs, the translated terms take
-      continuations and pass return values to the continuations.  The
+      gap between the evaluation strategies of higher-order recursion schemes and
+      higher-order boolean programs.  However, CPS transformation increases the
       order\footnote{The order of program $t$ is the maximum order of
       the types of functions in $t$.  The order of type $\tau$ is
       defined by $\mathit{order}(\INT)=0$,
       $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
       \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}
-      of the translated program is 5.
+      of programs and the growth of the order is not bounded by a constant.
+      Since the complexity of model checking of higher-order recursion
+      scheme is $n$-EXPTIME complete for order-$n$ recursion scheme, the
+      increase of the order of an input is crucial to the verification
+      time.
+%
+      For example, consider the following program.
+\begin{alltt}
+let rec check x f = f x; check (x+1) f
+let f x = assert (x >= 0)
+let main n = check n f
+\end{alltt}
+%Function \texttt{check} may cause an assertion failure only when two arguments are given.
+      The above program is translated into the following program by
+      a na\"{\i}ve call-by-value CPS transformation~\cite{Plotkin1975}.
+\begin{alltt}
+let rec check x k1 = k1 (\(\lambda\)f.\(\lambda\)k2.f x (\(\lambda\)_.check (x+1) (\(\lambda\)g.g f k2)))
+let f x k = assert (x >= 0); k ()
+let main n k = check n (\(\lambda\)g. g f k)
+\end{alltt}
+      To preserve the evaluation order of an original call-by-value program,
+      each function of the translated call-by-name program takes
+      a continuation and passes its return value to the continuation.  Note here that the
+      order of the translated program is increased to 5.
 %\begin{alltt}
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main k = check (\(\lambda\)f. f n k)
@@ -251,8 +251,8 @@ let main n k = check n (\(\lambda\)g. g f k)
 %let apply x k1 = k1 (\(\lambda\)f.\(\lambda\)k2. f x k2)
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main n k = check n (\(\lambda\)f1. apply n (\(\lambda\)f2. f2 f1 k))
-      As a side-effect occurs only when \texttt{check} is given two arguments however,
-      we can, actually, translate the source program to the following order-3 program.
+      We can, however, obtain the following order-3 program by omitting the continuation \texttt{k1} of \texttt{check},
+      which is actually unnecessary since a partial application of \texttt{check} in the original program never causes side effects including an assertion failure,
 \begin{alltt}
 let rec check x f k = f x (\(\lambda\)_.check (x+1) f k)
 let f x k = assert (x >= 0); k ()
@@ -261,7 +261,7 @@ let main n k = check n f k
 %This transformation uses the fact that the application to the first
 %argument does not cause an assertion failure and the context of
 %\texttt{call n} is not required to have a continuation.
-      Our CPS transformation avoids the unnecessary insertions of
+      Our CPS transformation avoids such unnecessary insertions of
       continuations.  We formalize this transformation, called
       \emph{selective CPS transformation}.
 
@@ -298,17 +298,17 @@ let main n k = check n f k
 \item The third problem is the insufficiency of supported language
       features.  The framework proposed in our previous work requires an
       automated interpolating theorem prover for predicate abstraction and
-      discovery, but good provers are not available for recursive data
+      discovery, but practical provers are not available for recursive data
       structures like lists and trees. Thus, the implementation dealt with
       only integers as infinite data domains.
-
-      To support recursive data structures without an interpolating
-      theorem prover for these, we translate programs with recursive
-      data structures into ones with integers.  The transformation is
-      carried out by encoding recursive data structures and control
-      operations using higher-order functions.  For example, a list is
-      encoded to a function that maps an index $i$ to the $i$-th
-      element.
+      
+      To support recursive data structures without relying on interpolating
+      theorem provers for recursive data structures, we extend our verification framework as follows.
+      As a preprocessing of our CEGAR-based model checking,
+      we translate programs that manipulate recursive data structures into ones that manipulate only integers.
+      The transformation is carried out by encoding recursive data structures using higher-order functions.  For example, a list is
+      encoded to a function that maps an index $i$ to the $i$-th element.
+      In a similar way, we support control operations (e.g., exceptions and call/cc) by using higher-order functions.
 \end{enumerate}
 
 %Our contributions are (i) the formalization of selective predicate
