@@ -311,7 +311,7 @@ rule \rn{CPS-AbsN}, no continuation parameter is inserted and direct
 style is preserved.  The rules for applications are similar. In the rule
 \rn{CPS-AppC}, a continuation is inserted, but not in the rule
 \rn{CPS-AppN}.  In the rule \rn{CPS-Br}, a term $\Br{t_1}{t_2}$ should
-be transformed with $\IC$ and a continuation is needed because we treat
+be transformed with $\IC$ and a continuation is needed because we need to treat
 non-deterministic branch as a side-effect.  In the rule \rn{CPS-Prog},
 since an application of a top-level function may cause a side-effect,
 non-termination, the function type for the last argument is annotated
@@ -378,9 +378,9 @@ On the other hand, in (b), a continuation parameter is inserted.
 (b)
 \end{minipage}
 \caption{Transformation of $\Abs{x}{\Abs{y}{\assert(x =
-y)}}$. ($\Gamma_x=\Gamma,x\COL\INT$ and
-$\Gamma_{xy}=\Gamma_x,y\COL\INT$)}
-\label{fig:cps-example}
+y)}}$. ($\Gamma_x=\Gamma,x\COL\INT$.
+$\Gamma_{xy}=\Gamma_x,y\COL\INT$. $\App{\App{\assertcps}{b}}{k}$ asserts
+$b$ and returns $\App{k}{()}$)} \label{fig:cps-example}
 \end{figure}
 }
 
@@ -393,7 +393,7 @@ Suppose $D$ is typable in $\Gamma$. There exists $D'$ such that $\CPSprog{\Gamma
 The following theorem states the soundness of the selective CPS
 transformation, that the transformed program is reduced to
 the same value as the original program.
-\begin{theorem}[Correctness of CPS Transformation]
+\begin{theorem}[Soundness of CPS Transformation]
 If $\CPSprog{\Gamma}{D}{D'}$, then the following holds:
 $\App{\main}{n} \Reds{D} \FAIL$ if and only if $\App{\App{\main}{n}}{(\Abs{x}{x})} \Reds{D'} \FAIL$.
 \end{theorem}

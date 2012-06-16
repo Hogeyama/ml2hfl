@@ -1,9 +1,13 @@
 
+\vspace{-3mm}
+
 \section{Optimizations}
 \label{sec:opt}
 
 This section introduces optimizations for each phase of predicate
 abstraction (Step 1) and CPS transformation (Step 2) in Fig.~\ref{fig:cegar}.
+
+\vspace{-2mm}
 
 \subsection{Selective Predicate Abstraction}
 
@@ -191,11 +195,11 @@ previous predicate abstraction.
 \label{fig:abstraction}
 \end{figure}
 
-Figure~\ref{fig:abst-example} shows the part of the abstraction of the
+Figure~\ref{fig:abst-example} shows a part of the abstraction of the
 program shown in Fig.~\ref{fig:sum} with $E =
 (\mathtt{add}=\Abs{x}{\Abs{y}{x+y}})$.  Due to the restriction of the
 source language of previous predicate
-abstraction~\cite{KobayashiPLDI2011}, we translate the term
+abstraction~\cite{KobayashiPLDI2011}, we translated the term
 $\App{\App{\mathtt{add}}{x}}{\App{\mathtt{sum}}{(x-1)}}$ to
 $\Let{s}{\App{\mathtt{sum}}{(x-1)}}{\App{\App{\mathtt{add}}{x}}{s}}$.
 In the abstraction of $\App{\App{\mathtt{add}}{x}}{s}$, \texttt{add} is

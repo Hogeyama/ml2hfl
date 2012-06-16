@@ -1,6 +1,8 @@
 \section{Language Extensions}
 \label{sec:extension}
 
+\vspace{-2mm}
+
 This section formalizes extensions of the target language of
 verification.  Our approach is to translate a source program to a
 program that has no recursive data structures and no control operators.
@@ -21,7 +23,7 @@ control operations.
 
 \begin{figure}[t]
  \begin{center}
-  \includegraphics[scale=0.4]{extension.eps}
+  \includegraphics[scale=0.35]{extension.eps}
  \end{center}
 \caption{The verification framework for recursive data structures and control operators}
 \label{fig:extension}
@@ -100,7 +102,7 @@ let tail (len,f) =
 \texttt{nil} is translated into the pair of length $0$ and the
 function that always fails.  \texttt{cons x xs} is translated into the
 pair of its length and the function $\{0 \mapsto \mathtt{x}\} \cup \{i \mapsto
-f (i-1) \mid i \neq 0\}$ where $f$ is the function part of encoding of
+f (i-1) \mid i \neq 0\}$ where $f$ is the function part of the encoding of
 \texttt{xs}.  \texttt{is\_nil} just checks whether \texttt{len} is 0 or not.
 \texttt{head} returns \texttt{f(0)}, i.e. the first
 element of the list.  \texttt{tail} returns the pair of
@@ -163,7 +165,7 @@ represented as $\TFun{(i\COL\INT)}{\set{x\COL\INT\mid i
 with list properties like ``the $i$-th element of a list is greater than
 $i$,'' which cannot be represented by the container abstraction.  Thus,
 our method, i.e., a combination of the encoding and the predicate
-abstraction for integers, is strictly more powerful than the container
+abstraction for integers, is strictly more expressive than the container
 abstraction.
 
 %\paragraph{Comparison with Dillig et al.'s appoach.}
@@ -300,7 +302,7 @@ integers.  A subterm of a tree is obtained by adding the index to the head of th
 %\end{alltt}
 
 We treat only regular algebraic data types, i.e., the combination of sum
-types and product types.  Types of recursive data structures are represented as
+types and product types.  Types of recursive data structures can be represented as
 recursive types.  We require that in a recursive type
 $\RecType{\alpha}{\tau}$, $\alpha$ does not occur below function type
 constructors. For example, $\List{(\TFun{\INT}{\INT})}$ is OK, but neither

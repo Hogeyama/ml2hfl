@@ -24,20 +24,21 @@ framework.
 Our previous verification framework~\cite{KobayashiPLDI2011} is based on
 predicate abstraction and CEGAR for a higher-order model checker.
 Figure~\ref{fig:cegar} shows the overall structure of our previous
-method.  First, an input program, written in a simply typed call-by-value
-lambda calculus with recursion and integers, is abstracted to a
-higher-order boolean program by predicate abstraction in Step 1.  The
-abstracted program is verified by a higher-order model checker, where
-models are described by higher-order recursion schemes, in Step 3.
+method.  First, an input program, written in a simply typed
+call-by-value lambda calculus with recursion and integers, is abstracted
+to a higher-order boolean program by predicate abstraction in Step 1.
+The abstracted program is verified by a higher-order model checker,
+where models are described by higher-order recursion schemes, in Step 3.
 Higher-order recursion schemes can be viewed as a simply typed
 call-by-name lambda calculus with finite data domains and recursion.  To
 resolve the gap between the evaluation strategies of higher-order
-recursion schemes and higher-order boolean programs, we translate
-the call-by-value program into a call-by-name program in Step 2. If the
-abstracted program is safe, the original functional program is also safe.  If not, we
-check whether the original program is in fact unsafe or the abstraction is too coarse
-in Step 4. If the latter, we discover new predicates in Step 5.  We
-repeat these steps until we find whether the program is safe or not.
+recursion schemes and higher-order boolean programs, we translate the
+call-by-value program into a call-by-name program in Step 2. If the
+abstracted program is safe, the original functional program is also
+safe.  If not, we check whether the original program is in fact unsafe
+or the abstraction is too coarse in Step 4. If the latter, we discover
+new predicates in Step 5.  We repeat these steps until we find whether
+the program is safe or not.
 %Our previous verification framework is a CEGAR-based one on higher-order
 %model checker.  The verification proceeds as follows.  First, an input
 %program, written in simply typed call-by-value lambda calculus with
@@ -62,7 +63,7 @@ repeat these steps until we find whether the program is safe or not.
 
 \begin{figure}[tp]
  \begin{center}
-  \includegraphics[scale=0.4]{overall.eps}
+  \includegraphics[scale=0.35]{overall.eps}
  \end{center}
 \caption{Higher-Order Model Checking with Predicate Abstraction and CEGAR}
 \label{fig:cegar}
@@ -101,17 +102,16 @@ We discuss each problem and explain our approach below.
 \begin{enumerate}
 \item The main bottleneck of the previous version of MoCHi was the
       predicate abstraction and discovery (Steps 1 and 5), rather than
-      higher-order model checking. Our previous method for predicate
-      abstraction tried to abstract every integer argument of a function
-      to a tuple of booleans.  As a result, verification of a program did
-      not succeed until an appropriate set of predicates is found for
-      \emph{every} function in the program.  For example, consider the
-      program shown in Fig.~\ref{fig:sum}.  The program can be successfully
-      verified if we abstract the program by using predicates
-      $\Abs{y}{y \geq 0}$ for the second argument of \texttt{add} and
-      $\Abs{r}{r \geq x}$ for the return value of \texttt{add} and
-      \texttt{sum}.  The following is the
-      abstracted program using the above predicates.
+      higher-order model checking.  Our previous method for predicate
+      abstraction tried to abstract \emph{every} function in the
+      program. As a result, verification of a program did not succeed
+      until an appropriate set of predicates is found for every
+      function.  For example, consider the program shown in
+      Fig.~\ref{fig:sum}.  The program can be successfully verified if
+      we abstract the program by using predicates $\Abs{y}{y \geq 0}$
+      for the second argument of \texttt{add} and $\Abs{r}{r \geq x}$
+      for the return value of \texttt{add} and \texttt{sum}.  The
+      following is the abstracted program using the above predicates.
 \begin{figure}[t]
 \begin{alltt}
 let add x y = x + y
@@ -142,7 +142,7 @@ let rec sum u = if * then true
 let main x = assert (sum ())
 \end{alltt}
       Since the return value of \texttt{add} is non-informative, the
-      abstraction is too coarse.
+      abstraction is too coarse to prove the safety of the original program.
 
       To reduce the burden to the predicate discovery phase, we introduce
       a refinement of predicate abstraction called \emph{selective
@@ -158,7 +158,7 @@ let rec sum () = if * then true else if sum () then true else *
 let main () = assert (sum ())
 \end{alltt}
       In this way the selective predicate abstraction improves the
-      precision of abstraction and reduce the number of the cycle of CEGAR.
+      precision of abstraction and reduce the number of CEGAR iterations.
 
 %%The first problem increases the number of CEGAR-cycle.
 %To see the first problem, consider the following program.
