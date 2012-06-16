@@ -128,7 +128,7 @@ let rec sum () = if * then true
                 else add (if sum () then true else *)
 let main x = assert (sum ())
 \end{alltt}
-      Here, ``*'' means a non-deterministic boolean
+      Here, * means a non-deterministic boolean
       value.  The argument \texttt{b} denotes whether $\mathtt{y} \geq 0$ or not.
 %      Automatically finding all such appropriate predicates is difficult.
       In the previous paper~\cite{KobayashiPLDI2011}, we
@@ -139,8 +139,7 @@ let main x = assert (sum ())
 \begin{alltt}
 let add () () = ()
 let rec sum u = if * then true
-                else let b = sum () and u = add () () in
-                       *
+                else let b = sum () and u = add () () in *
 let main x = assert (sum ())
 \end{alltt}
       Since the return value of \texttt{add} is non-informative, the
@@ -301,14 +300,14 @@ let main n k = check n f k
       discovery, but practical provers are not available for recursive data
       structures like lists and trees. Thus, the implementation dealt with
       only integers as infinite data domains.
-      
+
       To support recursive data structures without relying on interpolating
       theorem provers for them, we extend our verification framework as follows.
       As a preprocessing of our CEGAR-based model checking,
       we translate programs that manipulate recursive data structures into ones that manipulate only integers.
       The transformation is carried out by encoding recursive data structures using higher-order functions.  For example, a list is
       encoded to a function that maps an index $i$ to the $i$-th element.
-      In a similar way, we support control operations (e.g., exceptions and call/cc) by using higher-order functions.
+      In a similar way, we support control operations (e.g., exceptions and \texttt{call/cc}) by using higher-order functions.
 \end{enumerate}
 
 %Our contributions are (i) the formalization of selective predicate
