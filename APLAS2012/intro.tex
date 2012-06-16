@@ -130,8 +130,8 @@ let main x = assert (sum ())
 \end{alltt}
       Here, ``*'' means a non-deterministic boolean
       value.  The argument \texttt{b} denotes whether $\mathtt{y} \geq 0$ or not.
-      Automatically finding all such appropriate predicates is
-      difficult.  In the previous paper~\cite{KobayashiPLDI2011}, we
+%      Automatically finding all such appropriate predicates is difficult.
+      In the previous paper~\cite{KobayashiPLDI2011}, we
       have adapted CEGAR to find such predicates, but the technique is
       necessarily heuristic, and often fails.  If we abstract the
       program using only the predicate $\Abs{r}{r \geq x}$ for the return
@@ -160,7 +160,7 @@ let rec sum () = if * then true else if sum () then true else *
 let main () = assert (sum ())
 \end{alltt}
       In this way the selective predicate abstraction improves the
-      precision of abstraction and reduce the cycle of CEGAR.
+      precision of abstraction and reduce the number of the cycle of CEGAR.
 
 %%The first problem increases the number of CEGAR-cycle.
 %To see the first problem, consider the following program.

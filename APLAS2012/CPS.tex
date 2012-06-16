@@ -312,12 +312,14 @@ style is preserved.  The rules for applications are similar. In the rule
 \rn{CPS-AppC}, a continuation is inserted, but not in the rule
 \rn{CPS-AppN}.  In the rule \rn{CPS-Br}, a term $\Br{t_1}{t_2}$ should
 be transformed with $\IC$ and a continuation is needed because we treat
-non-deterministic branch as a side-effect.
-In the rule \rn{CPS-Prog}, since an
-application of a top-level function may cause a side-effect,
+non-deterministic branch as a side-effect.  In the rule \rn{CPS-Prog},
+since an application of a top-level function may cause a side-effect,
 non-termination, the function type for the last argument is annotated
-with $\IC$.  Although this is a na\"{\i}ve way to transform
-non-terminating terms, we can avoid redundant insertion of continuations
+with $\IC$.  For the sake of simplicity, regardless of whether functions
+are recursive, we consider all the top-level functions may not terminate
+conservatively.
+%Although this is a na\"{\i}ve way to transform non-terminating terms.
+We can avoid redundant insertion of continuations
 by some termination analysis.
 
 {

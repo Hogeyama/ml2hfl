@@ -182,7 +182,9 @@ previous predicate abstraction.
 
 \infrule[A-Prog]
   {\Abst{\Gamma}{E}{v_i}{\Gamma(f_i)}{v_i'} \andalso
-   \text{for each $i \in \set{1,\dots,n}$} \andalso \Dom{\Gamma} \cup \Dom{E} = \emptyset}
+   \text{for each $i$ s.t. $f_i \notin \Dom{E}$} \\
+   \Dom{\Gamma} \cup \Dom{E} = {\set{f_1, \dots, f_n}} \andalso
+   \Dom{\Gamma} \cap \Dom{E} = \emptyset}
   {\AbstProg{\Gamma}{E}{\set{f_1 = v_1, \dots, f_n = v_n}}{\set{f_i = v_i' \mid f_i \notin \Dom{E}}}}
 \end{minipage}
 \caption{Selective Predicate Abstraction}
@@ -236,7 +238,7 @@ inlined since the definition of \texttt{add} is in $E$.
 \caption{Abstraction of $\App{\App{\mathtt{add}}{x}}{(\App{\mathtt{sum}}{(x-1)})}$.
  ($*$ is a syntactic sugar for $\Br{\TRUE}{\FALSE}$.
   $\Gamma = x\COL\INT[], \mathtt{sum}\COL(\TFun{y\COL\INT[]}{\INT[\Abs{r}{r \geq y}]}),~ x>0$.
-  $\Gamma' = \Gamma,~s\COL\INT[\Abs{s}{s \geq x}]$.
+  $\Gamma' = \Gamma,~s\COL\INT[\Abs{s}{s \geq x-1}]$.
   $E = (\mathtt{add}=\Abs{x}{\Abs{y}{x+y}})$.
   $t = \If{s}{\TRUE}{*}$.)}
 \label{fig:abst-example}
@@ -288,7 +290,7 @@ The theorem below states that selective predicate abstraction is sound
 in the sense that if the original program fails then so does its
 abstracted program.
 \begin{theorem}[soundness]
- If $\AbstProg{\emptyset}{E}{D_1}{D_2}$, and
+ If $\AbstProg{\Gamma}{E}{D_1}{D_2}$, and
  $\App{\main}{n} \Reds{D_1} \FAIL$, then
  $\App{\main}{n} \Reds{D_2} \FAIL$.
 \end{theorem}
@@ -304,8 +306,8 @@ abstracted program.
 The following property can be proved in the same manner as the soundness
 of the previous predicate abstraction~\cite{KobayashiPLDI2011}.
 \begin{proposition}
- If $\AbstPLDI{\emptyset}{D}{\tau}{D_1}$,
- $\AbstProg{\emptyset}{E}{D}{D_2}$, and
+ If $\AbstPLDI{\Gamma}{D}{\tau}{D_1}$,
+ $\AbstProg{\Gamma}{E}{D}{D_2}$, and
  $\App{\main}{n} \Reds{D_2} \FAIL$, then
  $\App{\main}{n} \Reds{D_1} \FAIL$.
 \end{proposition}
