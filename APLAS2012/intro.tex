@@ -33,7 +33,7 @@ Higher-order recursion schemes can be viewed as a simply typed
 call-by-name lambda calculus with finite data domains and recursion.  To
 resolve the gap between the evaluation strategies of higher-order
 recursion schemes and higher-order boolean programs, we translate
-call-by-value programs into call-by-name programs in Step 2. If the
+the call-by-value program into a call-by-name program in Step 2. If the
 abstracted program is safe, the original functional program is also safe.  If not, we
 check whether the original program is in fact unsafe or the abstraction is too coarse
 in Step 4. If the latter, we discover new predicates in Step 5.  We
@@ -103,7 +103,7 @@ We discuss each problem and explain our approach below.
       predicate abstraction and discovery (Steps 1 and 5), rather than
       higher-order model checking. Our previous method for predicate
       abstraction tried to abstract every integer argument of a function
-      to a tuple of booleans. As a result, verification of a program did
+      to a tuple of booleans.  As a result, verification of a program did
       not succeed until an appropriate set of predicates is found for
       \emph{every} function in the program.  For example, consider the
       program shown in Fig.~\ref{fig:sum}.  The program can be successfully
@@ -123,13 +123,13 @@ let main x = assert (sum x >= x)
 \label{fig:sum}
 \end{figure}
 \begin{alltt}
-let add () by = if by then true else rand_bool()
-let rec sum () = if rand_bool() then true
+let add () b = b
+let rec sum () = if * then true
                 else add (if sum () then true else *)
 let main x = assert (sum ())
 \end{alltt}
-      Here, \texttt{rand\us{}bool()} means a non-deterministic boolean
-      value.  \texttt{by} denotes whether $\mathtt{x} \geq 0$ or not.
+      Here, ``*'' means a non-deterministic boolean
+      value.  The argument \texttt{b} denotes whether $\mathtt{y} \geq 0$ or not.
       Automatically finding all such appropriate predicates is
       difficult.  In the previous paper~\cite{KobayashiPLDI2011}, we
       have adapted CEGAR to find such predicates, but the technique is
@@ -138,15 +138,15 @@ let main x = assert (sum ())
       value of \texttt{sum}, we get the following abstracted program.
 \begin{alltt}
 let add () () = ()
-let rec sum u = if rand_bool() then true
+let rec sum u = if * then true
                 else let b = sum () and u = add () () in
-                       rand_bool()
+                       *
 let main x = assert (sum ())
 \end{alltt}
       Since the return value of \texttt{add} is non-informative, the
       abstraction is too coarse.
 
-      To reduce the burden to the program discovery phase, we introduce
+      To reduce the burden to the predicate discovery phase, we introduce
       a refinement of predicate abstraction called \emph{selective
       predicate abstraction}.  As the name suggests, the selective
       predicate abstraction applies predicate abstraction to only a
@@ -296,7 +296,7 @@ let main n k = check n f k
 %(iii) functional encoding of recursive data structures and control operations to support a larger subset of ML.
 
 \item The third problem is the insufficiency of supported language
-      features.  The framework proposed in our previous work requires an
+      features.  Our previous framework requires an
       automated interpolating theorem prover for predicate abstraction and
       discovery, but practical provers are not available for recursive data
       structures like lists and trees. Thus, the implementation dealt with

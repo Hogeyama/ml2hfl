@@ -12,14 +12,14 @@ The source language is a simply-typed call-by-value higher-order
 functional language with recursion and integers (a la ``PCF'') with the
 syntax shown in Fig.~\ref{fig:source-syntax}.
 %  A program consists a set of top-level functions.
-The meta-variable $\OP$ ranges over the sets of operators over integers.
+The meta-variable $\OP$ ranges over the set of operators over integers.
 The expressions are standard except that there is a primitive $\FAIL$
 that aborts a program.  We use $\TRUE$ and $\FALSE$ as aliases of $0$
 and $1$, and we write $\Assert{t}$ for $\If{t}{0}{\FAIL}$,
 $(\Abs{x}{t_1})\ t_2$, and $(v_1\ \OP\ v_2)$ for $\Op{v_1,v_2}$.  We
-assume that a program is well-typed in the standard simple type system,
-where the set of types is given in Fig.~\ref{fig:source-syntax}, and
-every function in a program $D$ has a function type and $D$ contains a
+assume that (i) a program is well-typed in the standard simple type system,
+where the set of types is given in Fig.~\ref{fig:source-syntax}, (ii)
+every function in a program $D$ has a function type, and (iii) $D$ contains a
 distinguished function symbol $\main \in \set{f_1,\dots,f_n}$ whose type
 is $\TFun{\INT}{\INT}$.
 
@@ -40,7 +40,7 @@ v\text{ (values)} &::=& n \mid x \mid \Abs{x}{t} \\
 \end{figure}
 
 The goal of our verification is to check whether $\App{\main}{n}
-\reds_D \FAIL$ for all integers $n$.
+\reds_D \FAIL$ for some integer $n$.
 
 %\begin{figure}[t]
 %\begin{minipage}{\widthcoef\textwidth}
