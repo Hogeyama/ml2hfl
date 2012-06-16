@@ -7,11 +7,10 @@ that are aimed at verification of functional programs with data
 structures.
 
 Ong and Ramsay~\cite{Ong2011} have proposed a verification method for
-recursion scheme with recursive data structures, called Pattern Matching
-Recursion Scheme (PMRS).  The method cannot deal with regular properties
+recursion schemes with recursive data structures, called Pattern Matching
+Recursion Schemes (PMRSs).  The method cannot express regular properties
 (such as ``a and b occur alternately'') and numerical properties (such
-as ``$x+y \leq z$'' where $x,y,z$ are the lengths of lists) cannot be
-used to abstract recursive data structures.
+as ``$x+y \leq z$'' where $x,y,z$ are the length of lists).
 %regular properties. For example, the method cannot
 %verify that a list obtained by applying the following ``id'' function to
 %an even length list is also even length.
@@ -19,22 +18,23 @@ used to abstract recursive data structures.
 %let rec id x = match x with nil -> nil | cons x xs -> cons x (id xs)
 %\end{alltt}
 
-Unno et al.~\cite{Unno2010} have also proposed a verification method for
-higher-order tree processing functional programs, which is based on
-their previous work~\cite{Kobayashi2010}. Their method requires certain
+Unno et al.~\cite{Unno2010} have also proposed a verification method for 
+higher-order tree processing functional programs, which is based on a 
+verification method for higher-order multi-tree 
+transducers~\cite{Kobayashi2010}. Their method requires certain 
 invariant annotations to recursive data structures.
 %\cc{This is the heavy burden to programmers}
 
 Rondon et al.'s liquid type inference~\cite{Rondon2008,Kawaguchi2009} is a
 semi-automated verification method based on refinement types.  Their method requires
-that users provide shape of predicates, called logical qualifiers.  The
+users to provide templates of predicates, called logical qualifiers.  The
 expressive power of their method and ours is incomparable.  They can
 deal with ``recursive dependent types'', such as $\App{\INT}{\LIST_\leq}
 = \mu t.\, \NIL$ $\mathop{+}
 \Cons{x_1\COL\INT}{x_2\COL\App{\{\nu\COL\INT \mid \nu \leq x_1\}}{t}}$,
 which represents ordered lists of integers, while our method cannot. On
 the other hand, our method can deal with the properties of list elements
-related to its indices like ``the $i$-th element of a list is greater
+related to their indices like ``the $i$-th element of a list is greater
 than $i$,'' while they cannot.
 %The limitation of our method is that it cannot
 %deal with recursive dependency on recursive data structures such as
@@ -45,15 +45,15 @@ than $i$,'' while they cannot.
 %with the properties of list elements related to its indices like that
 %the $i$-th element of a list is greater than $i$.
 
-Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
-static reasoning about containers.  The proposed method is based on an
-abstract interpretation for containers.  Their method is similar to our
-method in the sense that they model containers as mappings from location
-to values.  They consider only a client-side use of specific data
-structures (i.e. containers) such as primitive data structures and those
-defined in a standard library.  In contrast, our method can deal with a
-user-defined data structures.  Moreover, as discussed in
-Sect.~\ref{sec:extension}, our method is strictly more powerful than
+Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for 
+statically reasoning about containers.  The proposed method is based on 
+an abstract interpretation for containers.  Their method is similar to 
+our method in the sense that they model containers as mappings from 
+locations to values.  They consider only a client-side use of specific 
+data structures (i.e. containers) such as primitive data structures and 
+those defined in a standard library.  In contrast, our method can deal 
+with a user-defined data structures.  Moreover, as discussed in 
+Sect.~\ref{sec:extension}, our method is strictly more expressive than 
 their method.
 
 Chin et al.~\cite{Chin2003} have proposed sized type inference.  Their
