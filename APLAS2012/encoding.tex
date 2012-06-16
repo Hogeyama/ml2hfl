@@ -300,8 +300,7 @@ integers.  A subterm of a tree is obtained by adding the index to the head of th
 %\end{alltt}
 
 We treat only regular algebraic data types, i.e., the combination of sum
-types and product types, which cannot have function types as arguments
-of constructors.  Types of recursive data structures are represented as
+types and product types.  Types of recursive data structures are represented as
 recursive types.  We require that in a recursive type
 $\RecType{\alpha}{\tau}$, $\alpha$ does not occur below function type
 constructors. For example, $\List{(\TFun{\INT}{\INT})}$ is OK, but neither

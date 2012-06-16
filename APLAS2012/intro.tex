@@ -112,7 +112,6 @@ We discuss each problem and explain our approach below.
       $\Abs{r}{r \geq x}$ for the return value of \texttt{add} and
       \texttt{sum}.  The following is the
       abstracted program using the above predicates.
-
 \begin{figure}[t]
 \begin{alltt}
 let add x y = x + y
@@ -128,14 +127,14 @@ let rec sum () = if * then true
                 else add (if sum () then true else *)
 let main x = assert (sum ())
 \end{alltt}
-      Here, * means a non-deterministic boolean
-      value.  The argument \texttt{b} denotes whether $\mathtt{y} \geq 0$ or not.
+      Here, * means a non-deterministic boolean value.  The argument
+      \texttt{b} denotes whether $\mathtt{y} \geq 0$ or not.
 %      Automatically finding all such appropriate predicates is difficult.
-      In the previous paper~\cite{KobayashiPLDI2011}, we
-      have adapted CEGAR to find such predicates, but the technique is
-      necessarily heuristic, and often fails.  If we abstract the
-      program using only the predicate $\Abs{r}{r \geq x}$ for the return
-      value of \texttt{sum}, we get the following abstracted program.
+      In the previous paper~\cite{KobayashiPLDI2011}, we have adapted
+      CEGAR to find such predicates, but the technique is necessarily
+      heuristic, and often fails.  Suppose if we could not find the
+      predicates for \texttt{add}, we get the following abstracted
+      program.
 \begin{alltt}
 let add () () = ()
 let rec sum u = if * then true

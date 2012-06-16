@@ -49,12 +49,12 @@ Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
 static reasoning about containers.  The proposed method is based on an
 abstract interpretation for containers.  Their method is similar to our
 method in the sense that they model containers as mappings from location
-to values.  They consider the client-side use of the specific data
-structures (i.e. containers) that are primitive data structures or
-defined in the standard library.  Our method can deal with a more
-general class of data structures that includes user-defined data
-structures.  Moreover, as discussed in Sect.~\ref{sec:extension}, our
-method is strictly more powerful than their method.
+to values.  They consider only a client-side use of specific data
+structures (i.e. containers) such as primitive data structures and those
+defined in a standard library.  In contrast, our method can deal with a
+user-defined data structures.  Moreover, as discussed in
+Sect.~\ref{sec:extension}, our method is strictly more powerful than
+their method.
 
 Chin et al.~\cite{Chin2003} have proposed sized type inference.  Their
 method infers invariant of recursive functions by fix-point computation.
