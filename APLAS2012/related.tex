@@ -1,18 +1,17 @@
 \section{Related Work}
 \label{sec:related}
 
-\subsection{Container Abstraction}
 There are several
 methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Chin2003}
 that are aimed at verification of functional programs with data
 structures.
 
-Ong and Ramsay~\cite{Ong2011} have proposed a verification method
-for recursion scheme with recursive data structures, called PMRS (Pattern
-Matching Recursion Scheme.)  The method
-cannot deal with regular properties (such as ``a and b occur
-alternately'') and numerical properties (such as ``$x+y \leq z$'') cannot be used
-to abstract recursive data structures.
+Ong and Ramsay~\cite{Ong2011} have proposed a verification method for
+recursion scheme with recursive data structures, called Pattern Matching
+Recursion Scheme (PMRS).  The method cannot deal with regular properties
+(such as ``a and b occur alternately'') and numerical properties (such
+as ``$x+y \leq z$'' where $x,y,z$ are the lengths of lists) cannot be
+used to abstract recursive data structures.
 %regular properties. For example, the method cannot
 %verify that a list obtained by applying the following ``id'' function to
 %an even length list is also even length.
