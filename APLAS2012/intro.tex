@@ -27,15 +27,15 @@ Figure~\ref{fig:cegar} shows the overall structure of our previous
 method.  First, an input program, written in a simply typed call-by-value
 lambda calculus with recursion and integers, is abstracted to a
 higher-order boolean program by predicate abstraction in Step 1.  The
-abstracted program is verified by the higher-order model checker, where
+abstracted program is verified by a higher-order model checker, where
 models are described by higher-order recursion schemes, in Step 3.
 Higher-order recursion schemes can be viewed as a simply typed
 call-by-name lambda calculus with finite data domains and recursion.  To
 resolve the gap between the evaluation strategies of higher-order
 recursion schemes and higher-order boolean programs, we translate
 call-by-value programs into call-by-name programs in Step 2. If the
-abstracted program is safe, the source program is also safe.  If not, we
-check whether the source program is in fact unsafe or the abstraction is too coarse
+abstracted program is safe, the original functional program is also safe.  If not, we
+check whether the original program is in fact unsafe or the abstraction is too coarse
 in Step 4. If the latter, we discover new predicates in Step 5.  We
 repeat these steps until we find whether the program is safe or not.
 %Our previous verification framework is a CEGAR-based one on higher-order
@@ -251,8 +251,8 @@ let main n k = check n (\(\lambda\)g. g f k)
 %let apply x k1 = k1 (\(\lambda\)f.\(\lambda\)k2. f x k2)
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main n k = check n (\(\lambda\)f1. apply n (\(\lambda\)f2. f2 f1 k))
-      We can, however, obtain the following order-3 program by omitting the continuation \texttt{k1} of \texttt{check},
-      which is actually unnecessary since a partial application of \texttt{check} in the original program never causes side effects including an assertion failure,
+      We can, however, obtain the following order-3 program instead by omitting the continuation \texttt{k1} of \texttt{check},
+      which is actually unnecessary since a partial application of \texttt{check} in the original program never causes side effects including an assertion failure.
 \begin{alltt}
 let rec check x f k = f x (\(\lambda\)_.check (x+1) f k)
 let f x k = assert (x >= 0); k ()
@@ -303,7 +303,7 @@ let main n k = check n f k
       only integers as infinite data domains.
       
       To support recursive data structures without relying on interpolating
-      theorem provers for recursive data structures, we extend our verification framework as follows.
+      theorem provers for them, we extend our verification framework as follows.
       As a preprocessing of our CEGAR-based model checking,
       we translate programs that manipulate recursive data structures into ones that manipulate only integers.
       The transformation is carried out by encoding recursive data structures using higher-order functions.  For example, a list is
