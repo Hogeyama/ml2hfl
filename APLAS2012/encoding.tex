@@ -150,21 +150,21 @@ natural predicate abstraction of lists, which is general enough to
 subsume various abstractions known in the literature, such as Dillig et
 al.'s container abstraction~\cite{Dillig2011}.  In their abstraction
 method for aggregate data structures like lists, a list is represented
-as $\set{(v_1,P_1), \dots, (v_n,P_n)}$, a finite set of pairs of a
-element of list and a condition for the index of the element.  For
-example, $\set{(0,\TRUE)}$ denotes that all the elements are $0$ and
-$\set{(1,\Abs{i}{i \mathop{\mathtt{mod}} 2 = 0})}$ denotes that the even
-indexed elements are $1$.  On the other hand, by encoding a list as a
-function, the same information can be represented as a refinement type
-$\TFun{(i\COL\INT)}{\set{x\COL\INT\mid (P_1(i) \to x=v_1) \wedge \dots
-\wedge (P_n(i) \to x=v_n)}}$.  For example, $\set{(1,\Abs{i}{i
-\mathop{\mathtt{mod}} 2 = 0})}$ is represented as
-$\TFun{(i\COL\INT)}{\set{x\COL\INT\mid i \mathop{\mathtt{mod}} 2 = 0 \to x=1}}$.  Moreover, our
-approach can deal with list properties like ``the $i$-th
-element of a list is greater than $i$,'' which cannot be represented by
-the container abstraction.  Thus, our method, i.e., a combination of the encoding
-and the predicate abstraction for integers, is strictly more powerful
-than the container abstraction.
+as $\set{(v_1,P_1), \dots, (v_n,P_n)}$ that means that the element is
+$v_i$ if $P_i$, a condition for the index, holds.  For example, $\set{(0,\TRUE)}$ denotes that all
+the elements are $0$ and $\set{(1,\Abs{i}{i \mathop{\mathtt{mod}} 2 =
+0})}$ denotes that the even indexed elements are $1$.  On the other
+hand, by encoding a list as a function, the same information can be
+represented as a refinement type $\TFun{(i\COL\INT)}{\set{x\COL\INT\mid
+(P_1(i) \to x=v_1) \wedge \dots \wedge (P_n(i) \to x=v_n)}}$.  For
+example, $\set{(1,\Abs{i}{i \mathop{\mathtt{mod}} 2 = 0})}$ is
+represented as $\TFun{(i\COL\INT)}{\set{x\COL\INT\mid i
+\mathop{\mathtt{mod}} 2 = 0 \to x=1}}$.  Moreover, our approach can deal
+with list properties like ``the $i$-th element of a list is greater than
+$i$,'' which cannot be represented by the container abstraction.  Thus,
+our method, i.e., a combination of the encoding and the predicate
+abstraction for integers, is strictly more powerful than the container
+abstraction.
 
 %\paragraph{Comparison with Dillig et al.'s appoach.}
 %Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for

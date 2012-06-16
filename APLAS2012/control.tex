@@ -1,8 +1,7 @@
 \subsection{Extension for Control Operations}
-\label{sec:control}
-We can extend the framework to deal with control operations (e.g., exceptions and \texttt{call/cc}) if there
-exists a translation that removes control operations.  For example,
-we can remove exceptions and \texttt{call/cc} from a program by CPS transformation~\cite{Nielsen2001}.
+\label{sec:control} We can extend the framework to deal with control
+operations (e.g., exceptions and \texttt{call/cc}) by removing these
+from a program by CPS transformation~\cite{Nielsen2001}.
 
 %Consider the following program (written in OCaml style).
 The following program calculates factorial and raise an exception if
@@ -12,7 +11,7 @@ exception NotPositive
 let rec fact n =
   if n <= 0 then raise NotPositive
   else try n * fact (n - 1) exn with NotPositive -> 1
-let main n = try fact n with NotPositive -> assert (n < 0); 0
+let main n = try fact n with NotPositive -> assert (n <= 0); 0
 \end{alltt}
 We can translate this program to an exception-free program by CPS transformation.
 The following is the result of CPS transformation.
@@ -23,7 +22,7 @@ let rec fact n k exn =
   else let exn' e = match e with NotPositive -> k 1 in
          fact (n - 1) (fun r -> k (n * r))) exn'
 let main n k =
-  fact n k (fun e -> match e with NotPositive -> assert (n < 0); k 0
+  fact n k (fun e -> match e with NotPositive -> assert (n <= 0); k 0
                                 | _ -> assert false)
 \end{alltt}
 Once the exception is removed, we can apply our verification method to the
