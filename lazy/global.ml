@@ -36,6 +36,9 @@ let enable_pred_sharing2 = ref false
 
 let coeff_const = ref false
 
+let flag_coeff = ref false
+
+
 (** {6 Options for non-linear constraint solving} *)
 let use_bit_vector = ref true
 

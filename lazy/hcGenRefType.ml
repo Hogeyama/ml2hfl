@@ -10,7 +10,6 @@ let tlfc_of (x, uid) = CallId.tlfc_of (Var.T(x, uid, (*dummy*)-1))
 
 (** generate a set of constraints from an error trace *)
 let cgen env etr =
-  let flag_coeff = true in
   let rec aux (Loc(tr, p) as loc) hcs etr0 =
     match etr0 with
       [] ->
@@ -111,7 +110,7 @@ let cgen env etr =
 				                  (fun (x, t, ty) ->
 				                    let xtys = List.sort (List.map (fun x -> x, SimType.Int) (Term.fvs_ty SimType.Int t ty)) @ [x, ty] in
 		                      let pid =
-		                        if flag_coeff then
+		                        if not !Global.flag_coeff then
 		                          Var.make_coeff (Idnt.new_cid ())
 		                        else
 		                          List.hd (List.sort (Term.coeffs t))
@@ -155,7 +154,7 @@ let cgen env etr =
   match etr with
     Trace.Call(x, guard)::etr ->
       let ctr, hcs = aux (zipper (make x true (guard, []))) [] etr in
-      if flag_coeff then
+      if not !Global.flag_coeff then
         let _ = if !Global.debug then assert (not (Util.is_dup (List.filter_map (function Hc(Some(pid, _), _, _) -> Some(pid) | _ -> None) hcs))) in
         ctr, hcs
       else

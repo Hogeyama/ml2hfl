@@ -594,7 +594,7 @@ let share_predicates bvs0 _ ps t =
 				            ps', t'
 				          else
 				            raise Not_found)
-		        (Util.pick 1 zs(* @ Util.pick 2 zs*))
+		        (Util.pick 1 zs @ Util.pick 2 zs)
 		    with Not_found ->
 		      ps, t
 
