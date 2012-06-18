@@ -260,6 +260,23 @@ let terms_of_ec ec = List.filter_map (function `L(_) -> None | `R(t) -> Some(t))
 let embed_preds ps = List.map (fun p -> `L(p)) ps
 let embed_terms ts = List.map (fun t -> `R(t)) ts
 
+let rec rel bvs xs1 xs2 =
+  match xs1, xs2 with
+    `L((pid1, ttys1) as p1), `L((pid2, ttys2) as p2) ->
+      let fvs1 = Util.diff (Pred.fvs p1) bvs in
+      let fvs2 = Util.diff (Pred.fvs p2) bvs in
+      List.exists (fun x -> List.mem x fvs2) fvs1
+  | `L(p1), `R(t2) ->
+      let fvs1 = Util.diff (Pred.fvs p1) bvs in
+      let fvs2 = Util.diff (Term.fvs t2) bvs in
+      List.exists (fun x -> List.mem x fvs2) fvs1
+  | `R(t1), `L(p2) ->
+      rel bvs (`L(p2)) (`R(t1))
+  | `R(t1), `R(t2) ->
+      let fvs1 = Util.diff (Term.fvs t1) bvs in
+      let fvs2 = Util.diff (Term.fvs t2) bvs in
+      List.exists (fun x -> List.mem x fvs2) fvs1
+
 let share_predicates bvs0 _ ps t =
   let debug = true in
 		let t = Formula.simplify t in
@@ -268,23 +285,6 @@ let share_predicates bvs0 _ ps t =
   else
 		  let share_predicates_aux cvs bvs ps t =
 						let ts = Formula.conjuncts t in
-		    let rec rel xs1 xs2 =
-		      match xs1, xs2 with
-						    `L((pid1, ttys1) as p1), `L((pid2, ttys2) as p2) ->
-				        let fvs1 = Util.diff (Pred.fvs p1) bvs in
-				        let fvs2 = Util.diff (Pred.fvs p2) bvs in
-				        List.exists (fun x -> List.mem x fvs2) fvs1
-						  | `L(p1), `R(t2) ->
-				        let fvs1 = Util.diff (Pred.fvs p1) bvs in
-				        let fvs2 = Util.diff (Term.fvs t2) bvs in
-				        List.exists (fun x -> List.mem x fvs2) fvs1
-						  | `R(t1), `L(p2) ->
-				        rel (`L(p2)) (`R(t1))
-						  | `R(t1), `R(t2) ->
-				        let fvs1 = Util.diff (Term.fvs t1) bvs in
-				        let fvs2 = Util.diff (Term.fvs t2) bvs in
-				        List.exists (fun x -> List.mem x fvs2) fvs1
-		    in
 		    let ecs, env, zs =
 				    let env, ts1 = List.partition (fun t -> Util.subset (Term.fvs t) bvs) ts in
 				    let ps0, ps1 = List.partition (fun p -> Util.subset (Pred.fvs p) bvs) ps in
@@ -293,7 +293,7 @@ let share_predicates bvs0 _ ps t =
 				        (Util.representatives (Pred.equiv env))
 				        (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps0)
 				    in
-								let ecs = Util.equiv_classes rel (embed_preds ps1(* redundant *) @ embed_terms ts1) in
+								let ecs = Util.equiv_classes (rel bvs) (embed_preds ps1(* redundant *) @ embed_terms ts1) in
 								let zs =
   								let zs = Util.diff (List.unique (Util.concat_map Pred.fvs ps0)) bvs0 in
 										List.filter
@@ -598,6 +598,48 @@ let share_predicates bvs0 _ ps t =
 		    with Not_found ->
 		      ps, t
 
+let simplify2 bvs t =
+  let ts = Formula.conjuncts t in
+		let ecs = Util.equiv_classes (rel bvs) (embed_terms ts) in
+		Formula.band
+				(List.map
+				  (fun ec ->
+						  let t = Formula.band (terms_of_ec ec) in
+								let xs = Util.diff (Term.fvs_ty SimType.Int t SimType.Bool) bvs in
+				    if xs <> [] && Term.coeffs t = [] then
+		        try
+		          let tss, f = Tsubst.elim_boolean [t] in
+												let ts = List.map (fun [t] -> t) tss in
+												f (List.map (fun t -> AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) ts)
+										with Util.NotImplemented _ ->
+												t
+		      else
+		        t)
+				  ecs)
+(*
+  let p x = List.mem x bvs || Var.is_coeff x in
+  Formula.band
+		  (Util.map_left_right
+		    (fun ls t rs ->
+        let xs =
+								  List.filter
+										  (fun x -> not (p x))
+												(Util.diff
+												  (Term.fvs_ty SimType.Int t SimType.Bool)
+														(Util.concat_map (fun t -> Term.fvs_ty SimType.Int t SimType.Bool) (ls @ rs)))
+								in
+		      if xs <> [] && Term.coeffs t = [] then
+          try
+            let tss, f = Tsubst.elim_boolean [t] in
+												let ts = List.map (fun [t] -> t) tss in
+										  f (List.map (fun t -> AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) ts)
+										with Util.NotImplemented _ ->
+										  t
+        else
+          t)
+		    (Formula.conjuncts t))
+*)
+
 let simplify_aux bs (Hc(popt, ps, t)) =
   let _ = Global.log_begin "HornClause.simplify" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr (Hc(popt, ps, t))) in
@@ -617,7 +659,7 @@ let simplify_aux bs (Hc(popt, ps, t)) =
     (*let _ = Global.log (fun () -> Format.printf "a:@,  @[<v>%a@]@," Term.pr t) in*)
     let t =
       let xs = List.unique (bvs @ Util.concat_map Pred.fvs ps) in
-      AtpInterface.simplify2 (fun x -> List.mem x xs || Var.is_coeff x) t
+      simplify2 xs t
       (*
       let t = Term.simplify (AtpInterface.qelim_fes (diff bvs (fvs ps)) t) in
       *)
