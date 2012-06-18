@@ -164,11 +164,20 @@ let simplify2 p t =
   band
 		  (Util.map_left_right
 		    (fun ls t rs ->
-        let xs = fvs t in
-        let ys = Util.concat_map fvs (ls @ rs) in
-		      if List.for_all (fun x -> not (p x) && not (List.mem x ys)) xs then
-          try integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) xs) t) with
-          Util.NotImplemented _ -> t
+        let xs =
+								  List.filter
+										  (fun x -> not (p x))
+												(Util.diff
+												  (fvs_ty SimType.Int t SimType.Bool)
+														(Util.concat_map (fun t -> fvs_ty SimType.Int t SimType.Bool) (ls @ rs)))
+								in
+		      if xs <> [] && Term.coeffs t = [] then
+          try
+            let tss, f = Tsubst.elim_boolean [t] in
+												let ts = List.map (fun [t] -> t) tss in
+										  f (List.map (fun t -> integer_qelim (exists (List.map (fun x -> x, SimType.Int) xs) t)) ts)
+										with Util.NotImplemented _ ->
+										  t
         else
           t)
 		    (conjuncts t))

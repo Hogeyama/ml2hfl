@@ -289,7 +289,8 @@ let bor_bts bts =
 		  bts
 
 
-(** ensure: () is eliminated if a unit variable does not occur in t
+(** require: t has the type bool
+    ensure: () is eliminated if a unit variable does not occur in t
     ToDo: check whether they are actually ensured *)
 let rec simplify t =
   match fun_args t with
@@ -589,28 +590,14 @@ let formula_of_dnf tss =
 (** ensure: the result does not use =u, (), and unit variables *)
 let elim_unit t =
   let uvs = List.unique (fvs_ty SimType.Unit t SimType.Bool) in
-  if uvs = [] then
-    t
-  else
-    let sub x = if List.mem x uvs then tunit else raise Not_found in
-    simplify (subst sub t)
-
-(** require: ts are formulas
-    ensure: the result does not use =b *)
-let elim_boolean ts =
-  let _ = assert (ts <> []) in
-  let bvs = List.unique (Util.concat_map (fun t -> fvs_ty SimType.Bool t SimType.Bool) ts) in
-  if bvs = [] then
-    [ts],
-    function [t] -> t | _ -> assert false
-  else
-    let subs = Util.multiply_list_list (@) (List.map (fun b -> [[b, ttrue]; [b, tfalse]]) bvs) in
-    List.map
-      (fun sub ->
-         List.map (fun t -> simplify (subst (fun x -> List.assoc x sub) t)) ts)
-      subs,
-    fun ts ->
-      bor (List.map2 (fun t sub -> band (t::(List.map (fun (b, t) -> eqBool (make_var b) t) sub))) ts subs)
+		let t =
+		  if uvs = [] then
+		    t
+		  else
+		    let sub x = if List.mem x uvs then tunit else raise Not_found in
+		    subst sub t
+		in
+		simplify t
 
 let rec elim_imply_iff t =
   match fun_args t with

@@ -145,3 +145,24 @@ let extract_from2 pvs p ts =
   let xttys0, ts0 = aux ts [] [] in
   let xttys1, ts1 = elim_duplicate xttys0 in
   xttys1, Formula.band (ts0 @ ts1)
+
+
+(** ensure: the result does not use =b *)
+let elim_boolean ts =
+  let bvs = List.unique (Util.concat_map (fun t -> Term.fvs_ty SimType.Bool t SimType.Bool) ts) in
+  if bvs = [] then
+    [ts],
+    function [t] -> t | _ -> assert false
+  else
+    let subs = Util.multiply_list_list (@) (List.map (fun b -> [[b, Formula.ttrue, SimType.Bool]; [b, Formula.tfalse, SimType.Bool]]) bvs) in
+    List.map
+      (fun sub ->
+         List.map (fun t -> Formula.simplify (Term.subst (fun_of sub) t)) ts)
+      subs,
+    fun ts ->
+      Formula.bor
+						  (List.map2
+								  (fun t sub ->
+										  Formula.band [t; formula_of sub])
+										ts
+										subs)
