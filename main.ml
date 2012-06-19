@@ -146,9 +146,9 @@ let arg_spec =
   ["-web", Arg.Set Flag.web, " Web mode";
    "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
          "<dir>  Add <dir> to the list of include directories";
-   "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Use sized type system for CEGAR";
+   "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Use interaction type based verifier";
    "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Same as -st";
-   "-na", Arg.Clear Flag.init_trans, " Do not abstract data";
+   "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
           " Use refinement type based predicate discovery";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
@@ -163,13 +163,15 @@ let arg_spec =
              Format.sprintf "<cmd>  Change trecs command yr <cmd> (default: \"%s\")" !Flag.trecs;
    "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
-   "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicates accumulation";
-   "-rc", Arg.Set Flag.relative_complete, " To be relative complete";
+   "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicate accumulation";
+   "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
+   "-nex", Arg.Int (fun n -> Global.number_of_extra_params := n),
+          " Number of inserted extra parameters for each functional argument";
    "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
    "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
-            " Expand non-recursive functions except functions";
+            " Expand non-recursive functions except functions in the original program";
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
   ]

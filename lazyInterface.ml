@@ -167,11 +167,10 @@ let infer flags labeled cexs prog =
 *)
 
 let params = ref []
-let number_of_extra_params = ref 1
 let new_params bvs =
   Util.unfold
     (fun i ->
-      if i < !number_of_extra_params then
+      if i < !Global.number_of_extra_params then
 						  let bts = List.map Syntax.make_var (List.filter (fun x -> x.Id.typ = Type.TInt) bvs) in
 						  let ps =
           Util.unfold
@@ -206,7 +205,7 @@ let rec trans_type typ =
             Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
 				          Util.unfold
 				            (fun i ->
-				              if i < !number_of_extra_params then
+				              if i < !Global.number_of_extra_params then
 				                Some(Id.new_var "ex" Type.TInt, i + 1)
 				              else
 				                None)
@@ -266,7 +265,7 @@ let insert_extra_param t =
                         Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
 				                      Util.unfold
 				                        (fun i ->
-				                          if i < !number_of_extra_params then
+				                          if i < !Global.number_of_extra_params then
 				                            Some(Id.new_var "ex" Type.TInt, i + 1)
 				                          else
 				                            None)
