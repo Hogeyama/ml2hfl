@@ -121,7 +121,7 @@ let rec main_loop parsed =
 	      | _, Some print ->
                   Format.printf "Unsafe!@.@.";
                   print ()
-          with Verifier.FailedToRefineExtraParameters -> main_loop t
+          with Verifier.FailedToRefineExtraParameters -> main_loop parsed
 
 
 let main filename in_channel =
