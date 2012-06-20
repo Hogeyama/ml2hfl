@@ -39,6 +39,7 @@ let coeff_const = ref false
 let flag_coeff = ref false
 
 let number_of_extra_params = ref 1
+let bits_threshold = ref 2
 
 (** {6 Options for non-linear constraint solving} *)
 let use_bit_vector = ref true

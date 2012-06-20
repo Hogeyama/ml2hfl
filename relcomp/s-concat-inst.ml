@@ -1,9 +1,8 @@
-(* verification failed *)
 (** explicit parameter version **)
 
-let rec make (n:int) = fun i -> if i < n then true else false
+let make (n:int) = fun i -> if i < n then true else false
 
-let rec tail (n:int) s = fun i -> s (i + 1)
+let tail (n:int) s = fun i -> s (i + 1)
 
 let rec concat (n1:int) s1 (n2:int) s2 =
   if not (s1 0) then
@@ -15,12 +14,14 @@ let rec concat (n1:int) s1 (n2:int) s2 =
       else
         concat (n1 - 1) (tail n1 s1) n2 s2 (i - 1)
 
+let nth len s i = s i
+
 let main (n1:int) n2 =
   if n1 >= 0 && n2 >= 0 then
 		  let s1 = make n1 in
 		  let s2 = make n2 in
 		  let s = concat n1 s1 n2 s2 in
-		  assert (not (s (n1 + n2)))
+				assert (not (nth (n1 + n2) s (n1 + n2)))
 
 (** types **
 make: n:nat -> string[n]

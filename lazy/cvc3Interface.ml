@@ -313,8 +313,6 @@ let solve t =
   let _ = Global.log_end "solve" in
   res
 
-let rbit = ref 1
-
 let string_of_int_bv n =
   let _ = assert (n >= 0) in
   let bv = Util.bv_of_nat n in
@@ -326,71 +324,71 @@ let int_of_string_bv s =
   Util.nat_of_bv bv
 
 (* encoding unit as 0 *)
-let string_of_type_bv ty =
+let string_of_type_bv rbit ty =
   match ty with
     SimType.Unit -> "BITVECTOR(1)"
   | SimType.Bool -> "BOOLEAN"
-  | SimType.Int -> "BITVECTOR(" ^ string_of_int !rbit ^ ")"
+  | SimType.Int -> "BITVECTOR(" ^ string_of_int rbit ^ ")"
   | SimType.Fun(_, _) -> assert false
 
-let string_of_env_bv env =
+let string_of_env_bv rbit env =
   String.concat "; "
-    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv ty) env)
+    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv rbit ty) env)
 
-let string_of_env_comma env =
+let string_of_env_comma rbit env =
   String.concat ", "
-    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv ty) env)
+    (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv rbit ty) env)
 
-let rec string_of_term_bv t =
+let rec string_of_term_bv rbit t =
   match Term.fun_args t with
     Term.Var(_, x), [] ->
-      deco (string_of_var x), !rbit
+      deco (string_of_var x), rbit
   | Term.Const(_, Const.Int(n)), [] ->
       string_of_int_bv n
   | Term.Const(_, Const.Add), [t1; t2] ->
-      let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = max bit1 bit2 + 1 in
       "BVPLUS(" ^ string_of_int bit ^ ", " ^ s1 ^ ", " ^ s2 ^ ")", bit
   | Term.Const(_, Const.Sub), [t1; t2] ->
       assert false
-      (*let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      (*let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = bit1 in
       "BVSUB(" ^ string_of_int bit ^ ", " ^ s1 ^ ", " ^ s2 ^ ")", bit*)
   | Term.Const(_, Const.Mul), [t1; t2] ->
-      let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = bit1 + bit2 in
       "BVMULT(" ^ string_of_int bit ^ ", " ^ s1 ^ ", " ^ s2 ^ ")", bit
   | Term.Const(_, Const.Minus), [t] ->
       assert false
-      (*let s, bit = string_of_term_bv t in
+      (*let s, bit = string_of_term_bv rbit t in
       "BVUMINUS(" ^ s ^ ")", bit*)
   | Term.Const(_, Const.Leq), [t1; t2] ->
-      let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = max bit1 bit2 in
       let s1 = if bit = bit1 then s1 else "BVZEROEXTEND(" ^ s1 ^ ", " ^ string_of_int (bit - bit1) ^")" in
       let s2 = if bit = bit2 then s2 else "BVZEROEXTEND(" ^ s2 ^ ", " ^ string_of_int (bit - bit2) ^")" in
       "BVLE(" ^ s1 ^ ", " ^ s2 ^ ")", bit
   | Term.Const(_, Const.Geq), [t1; t2] ->
-      let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = max bit1 bit2 in
       let s1 = if bit = bit1 then s1 else "BVZEROEXTEND(" ^ s1 ^ ", " ^ string_of_int (bit - bit1) ^")" in
       let s2 = if bit = bit2 then s2 else "BVZEROEXTEND(" ^ s2 ^ ", " ^ string_of_int (bit - bit2) ^")" in
       "BVGE(" ^ s1 ^ ", " ^ s2 ^ ")", bit
   | Term.Const(_, Const.Lt), [t1; t2] ->
-      let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = max bit1 bit2 in
       let s1 = if bit = bit1 then s1 else "BVZEROEXTEND(" ^ s1 ^ ", " ^ string_of_int (bit - bit1) ^")" in
       let s2 = if bit = bit2 then s2 else "BVZEROEXTEND(" ^ s2 ^ ", " ^ string_of_int (bit - bit2) ^")" in
       "BVLT(" ^ s1 ^ ", " ^ s2 ^ ")", bit
   | Term.Const(_, Const.Gt), [t1; t2] ->
-      let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = max bit1 bit2 in
       let s1 = if bit = bit1 then s1 else "BVZEROEXTEND(" ^ s1 ^ ", " ^ string_of_int (bit - bit1) ^")" in
       let s2 = if bit = bit2 then s2 else "BVZEROEXTEND(" ^ s2 ^ ", " ^ string_of_int (bit - bit2) ^")" in
@@ -398,20 +396,20 @@ let rec string_of_term_bv t =
   | Term.Const(_, Const.EqUnit), [t1; t2] ->
       assert false
   | Term.Const(_, Const.NeqUnit), [t1; t2] ->
-      string_of_term_bv (Formula.bnot (Formula.eqUnit t1 t2))
+      string_of_term_bv rbit (Formula.bnot (Formula.eqUnit t1 t2))
   | Term.Const(_, Const.EqBool), [t1; t2] ->
       assert false(*"(" ^ string_of_term_bv t1 ^ " <=> " ^ string_of_term_bv t2 ^ ")"*)
   | Term.Const(_, Const.NeqBool), [t1; t2] ->
-      string_of_term_bv (Formula.bnot (Formula.eqBool t1 t2))
+      string_of_term_bv rbit (Formula.bnot (Formula.eqBool t1 t2))
   | Term.Const(_, Const.EqInt), [t1; t2] ->
-      let s1, bit1 = string_of_term_bv t1 in
-      let s2, bit2 = string_of_term_bv t2 in
+      let s1, bit1 = string_of_term_bv rbit t1 in
+      let s2, bit2 = string_of_term_bv rbit t2 in
       let bit = max bit1 bit2 in
       let s1 = if bit = bit1 then s1 else "BVZEROEXTEND(" ^ s1 ^ ", " ^ string_of_int (bit - bit1) ^")" in
       let s2 = if bit = bit2 then s2 else "BVZEROEXTEND(" ^ s2 ^ ", " ^ string_of_int (bit - bit2) ^")" in
       "(" ^ s1 ^ " = " ^ s2 ^ ")", bit
   | Term.Const(_, Const.NeqInt), [t1; t2] ->
-      string_of_term_bv (Formula.bnot (Formula.eqInt t1 t2))
+      string_of_term_bv rbit (Formula.bnot (Formula.eqInt t1 t2))
   | Term.Const(_, Const.Unit), [] ->
       "0bin0"(*"UNIT"*), 1
   | Term.Const(_, Const.True), [] ->
@@ -419,15 +417,26 @@ let rec string_of_term_bv t =
   | Term.Const(_, Const.False), [] ->
       "FALSE", -1
   | Term.Const(_, Const.And), [t1; t2] ->
-      "(" ^ fst (string_of_term_bv t1) ^ " AND " ^ fst (string_of_term_bv t2) ^ ")", -1
+      "(" ^
+						fst (string_of_term_bv rbit t1) ^ " AND " ^
+						fst (string_of_term_bv rbit t2) ^
+						")", -1
   | Term.Const(_, Const.Or), [t1; t2] ->
-      "(" ^ fst (string_of_term_bv t1) ^ " OR " ^ fst (string_of_term_bv t2) ^ ")", -1
+      "(" ^
+						fst (string_of_term_bv rbit t1) ^ " OR " ^
+						fst (string_of_term_bv rbit t2) ^
+						")", -1
   | Term.Const(_, Const.Imply), [t1; t2] ->
-      "(" ^ fst (string_of_term_bv t1) ^ " => " ^ fst (string_of_term_bv t2) ^ ")", -1
+      "(" ^
+						fst (string_of_term_bv rbit t1) ^ " => " ^
+						fst (string_of_term_bv rbit t2) ^
+						")", -1
   | Term.Const(_, Const.Iff), [t1; t2] ->
-      "(" ^ fst (string_of_term_bv t1) ^ " <=> " ^ fst (string_of_term_bv t2) ^ ")", -1
+      "(" ^
+						fst (string_of_term_bv rbit t1) ^ " <=> " ^
+						fst (string_of_term_bv rbit t2) ^ ")", -1
   | Term.Const(_, Const.Not), [t] -> 
-      "(NOT " ^ fst (string_of_term_bv t) ^ ")", -1
+      "(NOT " ^ fst (string_of_term_bv rbit t) ^ ")", -1
   | Term.Forall(_, env, t), [] ->
       assert false
   | Term.Exists(_, env, t), [] ->
@@ -438,81 +447,111 @@ let rec string_of_term_bv t =
 
 exception Unknown
 
-let threshold = 2
-
-let solve_bv t =
+let solve_bv only_pos (* find only positive solutions *) rbit t =
   let _ = Global.log_begin "solve_bv" in
-  let rec solve_bv_aux () =
-    if !rbit > threshold then
-      raise Unknown
-    else
-				  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
-				  let fm = Format.formatter_of_out_channel cout in
-				  let _ = cnt := !cnt + 1 in
-				  let _ =
-        let _ = Global.log (fun () -> Format.printf "using %d bit@," !rbit) in
-						  let inp =
-						    "PUSH;" ^
-						    (string_of_env_bv (infer t SimType.Bool)) ^ ";" ^
-						    "CHECKSAT " ^ fst (string_of_term_bv t) ^ ";" ^
-						    "COUNTERMODEL;" ^
-						    "POP;\n"
-						  in
-						  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
-		      let _ = Format.fprintf fm "%s@?" inp in
-								close_out cout
-		    in
-	     let s = input_line cin in
-      let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
-				  if Str.string_match (Str.regexp ".*Unsatisfiable.") s 0 then
-								let _ = close_in cin in
+		let t =
+		  if only_pos then
+		    t
+		  else
+		    let ps = List.unique (Term.coeffs t) in
+		    let ppps =
+						  List.map
+								  (fun x ->
+										  x,
+												Var.rename_base (fun id -> Idnt.make (Idnt.string_of id ^ "_pos")) x,
+												Var.rename_base (fun id -> Idnt.make (Idnt.string_of id ^ "_neg")) x)
+										ps
+						in
+		    let sub = List.map (fun (x, y, z) -> x, Term.sub (Term.make_var y) (Term.make_var z)) ppps in
+		    Term.subst (fun x -> List.assoc x sub) t
+		in
+		let t = Formula.elim_minus t in
+		let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
+		let fm = Format.formatter_of_out_channel cout in
+		let _ = cnt := !cnt + 1 in
+		let _ =
+    let _ = Global.log (fun () -> Format.printf "using %d bit@," rbit) in
+				let inp =
+						"PUSH;" ^
+						(string_of_env_bv rbit (infer t SimType.Bool)) ^ ";" ^
+						"CHECKSAT " ^ fst (string_of_term_bv rbit t) ^ ";" ^
+						"COUNTERMODEL;" ^
+						"POP;\n"
+				in
+				let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
+		  let _ = Format.fprintf fm "%s@?" inp in
+				close_out cout
+		in
+	 let s = input_line cin in
+  let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
+		if Str.string_match (Str.regexp ".*Unsatisfiable.") s 0 then
+				let _ = close_in cin in
+				let _ =
+						match Unix.close_process (cin, cout) with
+								Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+				in
+    let _ = Global.log_end "solve_bv" in
+    raise Unknown
+  else if Str.string_match (Str.regexp ".*Satisfiable.") s 0 then
+				let rec aux () =
+						try
+						  let s = input_line cin in
+						  let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
+						  if Str.string_match (Str.regexp ".*ASSERT") s 0 then
+						    let pos_begin = String.index s '(' + 1 in
+						    let pos_end = String.index s ')' in
+						    let s' = String.sub s pos_begin (pos_end - pos_begin) in
+						    if Str.string_match (Str.regexp "cvc3") s' 0 then
+            aux ()
+						    else
+            s' :: aux ()
+						  else
+						    aux ()
+						with End_of_file ->
+    				let _ = close_in cin in
 								let _ =
 										match Unix.close_process (cin, cout) with
-										  Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+												Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 								in
-        let _ = rbit := !rbit + 1 in
-		      solve_bv_aux ()
-      else if Str.string_match (Str.regexp ".*Satisfiable.") s 0 then
-						  let rec aux () =
-						    try
-						      let s = input_line cin in
-						      let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
-						      if Str.string_match (Str.regexp ".*ASSERT") s 0 then
-						        let pos_begin = String.index s '(' + 1 in
-						        let pos_end = String.index s ')' in
-						        let s' = String.sub s pos_begin (pos_end - pos_begin) in
-						        if Str.string_match (Str.regexp "cvc3") s' 0 then
-                aux ()
-						        else
-                s' :: aux ()
-						      else
-						        aux ()
-						    with End_of_file ->
-    								let _ = close_in cin in
-												let _ =
-														match Unix.close_process (cin, cout) with
-														  Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
-												in
-						      []
-						  in
-								let ss = aux () in
-								List.map
-								  (fun s ->
-								    let _, s = String.split s "_" in
-								    let c, n = String.split s " = " in
-								    let _ = Global.log (fun () -> Format.printf "%s = %s@," c n) in
-								    Var.parse c, int_of_string_bv n)
-								  ss
-      else if Str.string_match (Str.regexp ".*Unknown.") s 0 then
-        assert false
-      else
-        assert false
-  in
-		let old_bit = !rbit in
-  let res = try solve_bv_aux () with Unknown -> rbit := old_bit; raise Unknown in
-		let _ = rbit := old_bit in
-  let _ = Global.log_end "solve_bv" in
-  res
+						  []
+				in
+				let ss = aux () in
+				let sol =
+						List.map
+								(fun s ->
+										let _, s = String.split s "_" in
+										let x, n = String.split s " = " in
+										let _ = Global.log (fun () -> Format.printf "%s = %s@," x n) in
+										Var.parse x, int_of_string_bv n)
+								ss
+				in
+				let sol =
+					 if only_pos then
+					   sol
+					 else
+					   let pxs, nxs, xs =
+					     Util.partition_map3
+					       (fun (x, n) ->
+					         let s = Idnt.string_of (Var.base x) in
+					         if String.ends_with s "_pos" then
+					           `A(Var.rename_base (fun _ -> Idnt.make (String.sub s 0 (String.length s - 4))) x, n)
+					         else if String.ends_with s "_neg" then
+					           `B(Var.rename_base (fun _ -> Idnt.make (String.sub s 0 (String.length s - 4))) x, n)
+					         else
+														  `C(x, n)
+														  (*let _ = Format.printf "%s@," s in
+					           assert false*))
+					       sol
+					   in
+					   let _ = if !Global.debug then assert (List.length pxs = List.length nxs) in
+	  		   List.map (fun (x, n) -> x, n - try List.assoc x nxs with Not_found -> assert false) pxs @ xs
+				in
+    let _ = Global.log_end "solve_bv" in
+				sol
+  else if Str.string_match (Str.regexp ".*Unknown.") s 0 then
+    assert false
+  else
+    assert false
 
 
 (** @deprecated ?? *)

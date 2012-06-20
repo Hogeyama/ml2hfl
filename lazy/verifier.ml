@@ -46,82 +46,72 @@ let elim_univ_quantifiers t =
   let _ = Global.log_end "elim_univ_quantifiers" in
   ts
 
-let solve_constrs () =
-		if not !Global.use_bit_vector then
-				List.filter (fun (c, _) -> Var.is_coeff c) (Cvc3Interface.solve (Formula.band !ext_constrs))
-  else
-	   let rec solve_aux only_pos_coeffs (* find only positive coefficients *) =
-	     try
-					   let t = Formula.band !ext_constrs in
-								let t =
-					     if only_pos_coeffs then
-					       t
-					     else
-					       let ps = List.unique (Term.coeffs t) in
-					       let ppps = List.map (fun (Var.C(id)) -> Var.C(id), Var.C(Idnt.make (Idnt.string_of id ^ "_pos")), Var.C(Idnt.make (Idnt.string_of id ^ "_neg"))) ps in
-					       let sub = List.map (fun (x, y, z) -> x, Term.sub (Term.make_var y) (Term.make_var z)) ppps in
-					       Term.subst (fun x -> List.assoc x sub) t
-					   in
-								let coeffs =
-					     let t' =
-            Formula.simplify
-              (Term.subst
-                (fun x ->
-                  let n = List.assoc x !ext_coeffs in
-                  if n = 0 then
-                    raise Not_found
-                  else (* reuse old solution if possible *)
-                    Term.tint (n))
-                t)
-          in
-										let t' = Formula.elim_minus t' in
-										let _ = Format.printf "constraint on coefficients:@,  @[<v>%a@]@," Term.pr t' in
-					     try
-					       List.filter (fun (c, _) -> Var.is_coeff c) (Cvc3Interface.solve_bv t')
-					     with Cvc3Interface.Unknown ->
-					  					let t = Formula.elim_minus t in
-							  			let _ = Format.printf "constraint on coefficients:@,  @[<v>%a@]@," Term.pr t in
-					       List.filter (fun (c, _) -> Var.is_coeff c) (Cvc3Interface.solve_bv t)
-					   in
-					   if only_pos_coeffs then
-					     coeffs
-					   else
-					     let pcs, ncs =
-					       Util.partition_map
-					         (fun (Var.C(id), n) ->
-					           let s = Idnt.string_of id in
-					           if String.ends_with s "_pos" then
-					             `L(Var.C(Idnt.make (String.sub s 0 (String.length s - 4))) , n)
-					           else if String.ends_with s "_neg" then
-					             `R(Var.C(Idnt.make (String.sub s 0 (String.length s - 4))) , n)
-					           else
-					             assert false)
-					         coeffs
-					     in
-					     let _ = assert (List.length pcs = List.length ncs) in
-	  		     List.map (fun (c, n) -> c, n - try List.assoc c ncs with Not_found -> assert false) pcs
-	     with Cvc3Interface.Unknown ->
-	       if only_pos_coeffs then
-	         solve_aux false
-	       else
-	         raise Cvc3Interface.Unknown
-	   in
-	   solve_aux true
+exception FailedToRefineExtraParameters
 
-let refine_coeffs t =
+let rec solve_bv t =
+  let ibs = List.init !Global.bits_threshold (fun i -> i + 1, true) @ List.init (!Global.bits_threshold - 1(*???*)) (fun i -> i + 1, false) in
+		try
+    Util.find_map (fun (bit, only_pos) -> try Cvc3Interface.solve_bv only_pos bit t with Cvc3Interface.Unknown -> raise Not_found) ibs
+		with Not_found ->
+    raise FailedToRefineExtraParameters
+
+let solve_constrs t =
+		if not !Global.use_bit_vector then
+				List.filter (fun (c, _) -> Var.is_coeff c) (Cvc3Interface.solve t)
+  else
+				let changed = ref false in
+				let t' =
+      Formula.simplify
+        (Term.subst
+          (fun x ->
+            let n = List.assoc x !ext_coeffs in
+            if n = 0 then
+              raise Not_found
+            else (* reuse old solution if possible *)
+														let _ = changed := true in
+              Term.tint (n))
+          t)
+    in
+				let _ = Format.printf "solving a constraint on coefficients (reusing old solution):@,  @[<v>%a@]@," Term.pr t' in
+				try
+					 List.filter (fun (c, _) -> Var.is_coeff c) (solve_bv t')
+				with Cvc3Interface.Unknown ->
+						if not !changed then
+								raise Cvc3Interface.Unknown
+						else
+								let _ = Format.printf "solving a constraint on coefficients:@,  @[<v>%a@]@," Term.pr t in
+							 List.filter (fun (c, _) -> Var.is_coeff c) (solve_bv t)
+
+let refine_coeffs hcs =
   let _ = Global.log_begin "refine_coeffs" in
-  let b =
+  (*
+		let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
+		let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
+		let b =
 			 let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x !ext_coeffs)) t) in
 			 let _ = Global.log (fun () -> Format.printf "reuse old solution if:@,  @[<v>%a |= bot@]@," Term.pr t') in
     Cvc3Interface.is_valid (Formula.bnot t')
   in
+		*)
+		let b =
+		  let hcs = 
+						let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
+						let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
+						List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2
+				in
+  		let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
+			 let _ = Global.log (fun () -> Format.printf "reuse old solution if:@,  @[<v>%a |= bot@]@," Term.pr t) in
+    Cvc3Interface.is_valid (Formula.bnot t)
+		in
   let _ =
 				if b then
 					 Format.printf "solutions (not changed):@,  %a@," pr_coeffs !ext_coeffs
 				else
+						let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
+						let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
 		    let ts = elim_univ_quantifiers t in
 						let _ = ext_constrs := ts @ !ext_constrs in
-						let coeffs = solve_constrs () in
+						let coeffs = solve_constrs (if true then Formula.band ts else Formula.band !ext_constrs) in
 						let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
 					 Format.printf "solutions:@,  %a@," pr_coeffs !ext_coeffs
   in
@@ -169,9 +159,7 @@ let infer_ref_types fs prog etrs =
 						  if Util.concat_map HornClause.coeffs hcs = [] then
 						    hcs, ohcs
 						  else
-						    let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
-						    let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
-						    let _ = refine_coeffs t in
+						    let _ = refine_coeffs hcs in
 								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
 								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
 								  List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2,

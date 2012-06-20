@@ -33,6 +33,22 @@ let string_of x =
 
 let equiv x y = x = y
 
+let rec rename_base f x =
+  match x with
+    V(id) ->
+      V(f id)
+		| C(id) ->
+      C(f id)
+  | T(x, uid, arg) ->
+		    T(rename_base f x, uid, arg)
+
+let rec base x =
+  match x with
+    V(id) | C(id) ->
+      id
+  | T(x, _, _) ->
+		    base x
+
 let is_top x =
   match x with
     V(_) -> true

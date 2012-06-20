@@ -167,6 +167,8 @@ let arg_spec =
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
    "-nex", Arg.Int (fun n -> Global.number_of_extra_params := n),
           " Number of inserted extra parameters for each functional argument";
+   "-tbit", Arg.Int (fun n -> Global.bits_threshold := n),
+          " Threshold on the number of bits used in the bit-vector modeling";
    "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";

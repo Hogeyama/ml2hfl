@@ -315,6 +315,7 @@ let share_predicates bvs0 _ ps t =
 														(try
 														  let t = Formula.band (terms_of_ec ec) in
 																let xs = List.unique (Util.diff (Term.fvs_ty SimType.Int t SimType.Bool) bvs) in
+																(*let _ = if xs <> [] then assert false in*)
 														  let ts = Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) in
 																List.map (fun t -> `R(t)) ts
 														with Util.NotImplemented _ -> ec)
@@ -560,7 +561,7 @@ let share_predicates bvs0 _ ps t =
     in
     let bvs', ps, t, zs = loop None (ignored_vars bvs0 ps) ps t in
     if not !Global.enable_pred_sharing2 then
-						if false then
+						if !Global.disable_pred_sharing1 then
   						ps, t
 						else (*a-max‚ªrsn 0‚Å‚È‚¢‚Æ¬Œ÷‚µ‚È‚­‚È‚é intro3‚Írsn0‚ÅOK‚É‚È‚é*)
 				    try
@@ -599,20 +600,37 @@ let share_predicates bvs0 _ ps t =
 		      ps, t
 
 let simplify2 bvs t =
+  let debug = true in
+		let t =
+				let xs = Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) bvs in
+				let t =
+				  let sub, t =
+				    Tsubst.extract_from [] (fun x -> not (List.mem x xs)) t
+				  in
+						Term.subst sub t
+				in
+    let [], t = subst_formula (fun x -> not (List.mem x xs)) [] t in
+				t
+		in
   let ts = Formula.conjuncts t in
 		let ecs = Util.equiv_classes (rel bvs) (embed_terms ts) in
 		Formula.band
 				(List.map
 				  (fun ec ->
 						  let t = Formula.band (terms_of_ec ec) in
-								let xs = Util.diff (Term.fvs_ty SimType.Int t SimType.Bool) bvs in
+								let xs = Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) bvs in
 				    if xs <> [] && Term.coeffs t = [] then
-		        try
-		          let tss, f = Tsubst.elim_boolean [t] in
-												let ts = List.map (fun [t] -> t) tss in
-												f (List.map (fun t -> AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) ts)
-										with Util.NotImplemented _ ->
-												t
+										let _ = if debug then Format.printf "t: %a@," Term.pr t in
+		        let tss, f = Tsubst.elim_boolean [t] in
+										let ts = List.map (fun [t] -> t) tss in
+										f
+												(List.map
+														(fun t0 ->
+																let t = Formula.exists (List.map (fun x -> x, SimType.Int) xs) t0 in
+																let t' = try Formula.simplify (AtpInterface.integer_qelim t) with Util.NotImplemented _ -> t in
+																let _ = if debug then Format.printf "%a -> %a@," Term.pr t Term.pr t' in
+																if try Formula.disjunctive t' with Util.NotImplemented _ -> true then t0 else t')
+														ts)
 		      else
 		        t)
 				  ecs)
@@ -641,13 +659,14 @@ let simplify2 bvs t =
 *)
 
 let simplify_aux bs (Hc(popt, ps, t)) =
+  let debug = false in
   let _ = Global.log_begin "HornClause.simplify" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr (Hc(popt, ps, t))) in
   let shared = ref (List.length ps) in
   let bvs = (match popt with None -> [] | Some(_, xtys) -> List.map fst xtys) in
   let bs, ps, t =
-    (*let _ = Global.log_begin "simplifying formula" in
-    let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in*)
+    let _ = if debug then Global.log_begin "simplifying formula" in
+    let _ = if debug then Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in
     let ps, t =
 		    let sub, t =
 		      Tsubst.extract_from
@@ -656,7 +675,7 @@ let simplify_aux bs (Hc(popt, ps, t)) =
 		    in
       List.map (Pred.subst sub) ps, Term.subst sub t
     in
-    (*let _ = Global.log (fun () -> Format.printf "a:@,  @[<v>%a@]@," Term.pr t) in*)
+    let _ = if debug then Global.log (fun () -> Format.printf "a:@,  @[<v>%a@]@," Term.pr t) in
     let t =
       let xs = List.unique (bvs @ Util.concat_map Pred.fvs ps) in
       simplify2 xs t
@@ -664,7 +683,7 @@ let simplify_aux bs (Hc(popt, ps, t)) =
       let t = Term.simplify (AtpInterface.qelim_fes (diff bvs (fvs ps)) t) in
       *)
     in
-    (*let _ = Global.log (fun () -> Format.printf "b:@,  @[<v>%a@]@," Term.pr t) in*)
+    let _ = if debug then Global.log (fun () -> Format.printf "b:@,  @[<v>%a@]@," Term.pr t) in
     let ps, t =
 				  (*let rec aux ts1 ts2 =
 						  match ts1 with
@@ -693,28 +712,28 @@ let simplify_aux bs (Hc(popt, ps, t)) =
               sub))
       in
       let ps0 = ps(*List.map (Pred.subst (Tsubst.fun_of sub)) ps*) in
-      (*let _ = Format.printf "a:%a@," Term.pr t0 in*)
+      let _ = if debug then Format.printf "!a:%a@," Term.pr t0 in
       ps0,
       if Term.fvs_ty SimType.Bool t0 SimType.Bool = [] then
         let t' = Formula.elim_eq_neq_boolean t0 in
-        (*let _ = Format.printf "b:%a@," Term.pr t' in*)
+        let _ = if debug then Format.printf "!b:%a@," Term.pr t' in
         let t' = Formula.elim_imply_iff t' in
-        (*let _ = Format.printf "c:%a@," Term.pr t' in*)
+        let _ = if debug then Format.printf "!c:%a@," Term.pr t' in
         if t0 <> t' then
           let t' = Formula.formula_of_dnf (Formula.dnf t') in
-          (*let _ = Format.printf "d:%a@," Term.pr t' in*)
+          let _ = if debug then Format.printf "!d:%a@," Term.pr t' in
           let t' = Formula.simplify t' in
-          let _ = Format.printf "boolean equalities eliminated:@,  @[<v>before: %a@,after: %a@]@," Term.pr t Term.pr t' in
+          let _ = if debug then Format.printf "boolean equalities eliminated:@,  @[<v>before: %a@,after: %a@]@," Term.pr t Term.pr t' in
           t'
         else
           t0
       else
         t0
     in
-    (*let _ = Global.log (fun () -> Format.printf "c:@,  @[<v>%a@]@," Term.pr t) in*)
+    let _ = if debug then Global.log (fun () -> Format.printf "c:@,  @[<v>%a@]@," Term.pr t) in
     let ps, t = subst_formula (fun x -> List.mem x bvs || Var.is_coeff x) ps t in
-    (*let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr t) in
-    let _ = Global.log_end "simplifying formula" in*)
+    let _ = if debug then Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr t) in
+    let _ = if debug then Global.log_end "simplifying formula" in
     let ps = List.map Pred.simplify ps in
     let rec unique bs ps =
       match bs, ps with

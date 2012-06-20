@@ -554,6 +554,9 @@ let rec dnf t =
       dnfn t
   | Const(_, bop), [_; _] ->
       [[t]]
+  | Forall(_, _, _), []
+  | Exists(_, _, _), [] ->
+      raise (Util.NotImplemented "Formula.dnf")
   | t, _-> Format.printf "@,%a@," Term.pr t; assert false
 and dnfn t =
   match fun_args t with
@@ -580,7 +583,13 @@ and dnfn t =
           [[lt t1 t2]; [gt t1 t2]]
       | _ ->
           [[ibrel c t1 t2]])
+  | Forall(_, _, _), []
+  | Exists(_, _, _), [] ->
+      raise (Util.NotImplemented "Formula.dnfn")
   | t, _-> Format.printf "@,%a@," Term.pr t; assert false
+
+let disjunctive t =
+  List.length (dnf t) >= 2
 
 let formula_of_dnf tss =
   bor (List.map band tss)

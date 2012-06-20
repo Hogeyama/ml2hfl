@@ -255,6 +255,19 @@ let partition_map p ys =
   in
   aux [] [] (List.rev ys)
 
+let partition_map3 p ys =
+  let rec aux ls1 ls2 ls3 xs =
+    match xs with
+      [] -> ls1, ls2, ls3
+    | x::xs' ->
+        (match p x with
+          `A(y) -> aux (y::ls1) ls2 ls3 xs'
+        | `B(y) -> aux ls1 (y::ls2) ls3 xs'
+        | `C(y) -> aux ls1 ls2 (y::ls3) xs'
+        | _ -> failwith "Util.partition_map3")
+  in
+  aux [] [] [] (List.rev ys)
+
 let rec filter_map2 p xs ys =
   match xs, ys with
     [], [] -> []
