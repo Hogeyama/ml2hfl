@@ -46,28 +46,9 @@ let print_spec spec =
       Format.printf "@."
     end
 
-let main filename in_channel =
-  let input_string =
-    let s = String.create Flag.max_input_size in
-    let n = my_input in_channel s 0 Flag.max_input_size in
-      if n = Flag.max_input_size then raise LongInput;
-      String.sub s 0 n
-  in
 
-  let () = if !Flag.web then write_log_string input_string in
-  let t =
-    let lb = Lexing.from_string input_string in
-    let () = lb.Lexing.lex_curr_p <-
-      {Lexing.pos_fname = Filename.basename filename;
-       Lexing.pos_lnum = 1;
-       Lexing.pos_cnum = 0;
-       Lexing.pos_bol = 0};
-    in
-    let parsed = Parse.use_file lb in
-      Parser_wrapper.from_use_file parsed
-  in
-  let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term t in
-
+let rec main_loop parsed =
+  let t = parsed in
   let spec =
     if !spec_file = ""
     then []
@@ -134,11 +115,35 @@ let main filename in_channel =
     match !Flag.cegar with
         Flag.CEGAR_SizedType -> LazyInterface.verify [] prog
       | Flag.CEGAR_DependentType ->
-	  match CEGAR.cegar prog top_fun_list with
-	      prog', None -> Format.printf "Safe!@.@."
-	    | _, Some print ->
-                Format.printf "Unsafe!@.@.";
-                print ()
+          try
+	    match CEGAR.cegar prog top_fun_list with
+	        prog', None -> Format.printf "Safe!@.@."
+	      | _, Some print ->
+                  Format.printf "Unsafe!@.@.";
+                  print ()
+          with Verifier.FailedToRefineExtraParameters -> main_loop t
+
+
+let main filename in_channel =
+  let input_string =
+    let s = String.create Flag.max_input_size in
+    let n = my_input in_channel s 0 Flag.max_input_size in
+      if n = Flag.max_input_size then raise LongInput;
+      String.sub s 0 n
+  in
+
+  let () = if !Flag.web then write_log_string input_string in
+  let lb = Lexing.from_string input_string in
+  let () = lb.Lexing.lex_curr_p <-
+    {Lexing.pos_fname = Filename.basename filename;
+     Lexing.pos_lnum = 1;
+     Lexing.pos_cnum = 0;
+     Lexing.pos_bol = 0};
+  in
+  let parsed = Parse.use_file lb in
+  let parsed = Parser_wrapper.from_use_file parsed in
+  let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term parsed in
+    main_loop parsed
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
