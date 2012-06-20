@@ -72,14 +72,14 @@ let solve_constrs t =
               Term.tint (n))
           t)
     in
-				let _ = Format.printf "solving a constraint on coefficients (reusing old solution):@,  @[<v>%a@]@," Term.pr t' in
+				let _ = Global.log (fun () -> Format.printf "solving a constraint on coefficients (reusing old solution):@,  @[<v>%a@]@," Term.pr t') in
 				try
 					 List.filter (fun (c, _) -> Var.is_coeff c) (solve_bv t')
 				with Cvc3Interface.Unknown ->
 						if not !changed then
 								raise Cvc3Interface.Unknown
 						else
-								let _ = Format.printf "solving a constraint on coefficients:@,  @[<v>%a@]@," Term.pr t in
+								let _ = Global.log (fun () -> Format.printf "solving a constraint on coefficients:@,  @[<v>%a@]@," Term.pr t) in
 							 List.filter (fun (c, _) -> Var.is_coeff c) (solve_bv t)
 
 let refine_coeffs hcs =
@@ -105,7 +105,7 @@ let refine_coeffs hcs =
 		in
   let _ =
 				if b then
-					 Format.printf "solutions (not changed):@,  %a@," pr_coeffs !ext_coeffs
+					 Global.log (fun () -> Format.printf "solutions (not changed):@,  %a@," pr_coeffs !ext_coeffs)
 				else
 						let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
 						let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
@@ -113,7 +113,7 @@ let refine_coeffs hcs =
 						let _ = ext_constrs := ts @ !ext_constrs in
 						let coeffs = solve_constrs (if true then Formula.band ts else Formula.band !ext_constrs) in
 						let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
-					 Format.printf "solutions:@,  %a@," pr_coeffs !ext_coeffs
+					 Global.log (fun () -> Format.printf "solutions:@,  %a@," pr_coeffs !ext_coeffs)
   in
   Global.log_end "refine_coeffs"
 
@@ -160,6 +160,7 @@ let infer_ref_types fs prog etrs =
 						    hcs, ohcs
 						  else
 						    let _ = refine_coeffs hcs in
+										let _ = Format.printf "solutions :@.  %a@." pr_coeffs !ext_coeffs in
 								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
 								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
 								  List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2,
