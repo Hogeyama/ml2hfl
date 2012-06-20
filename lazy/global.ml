@@ -1,16 +1,16 @@
 (** Global variables *)
 
-let debug = ref true
+let debug = ref false
 let debug_level = ref 10
 
 let current_log_level = ref 0
 let log_begin str =
   let _ = current_log_level := !current_log_level + 1 in
-  if !debug_level >= !current_log_level then Format.printf "begin %s[%d]@,  @[<v>" str !current_log_level
+  if !debug && !debug_level >= !current_log_level then Format.printf "begin %s[%d]@,  @[<v>" str !current_log_level
 let log f =
-  if !debug_level >= !current_log_level then f ()
+  if !debug && !debug_level >= !current_log_level then f ()
 let log_end str =
-  let _ = if !debug_level >= !current_log_level then Format.printf "@]@,end %s[%d]@," str !current_log_level in
+  let _ = if !debug && !debug_level >= !current_log_level then Format.printf "@]@,end %s[%d]@," str !current_log_level in
   current_log_level := !current_log_level - 1
 
 (** {6 Options for abstraction type inference} *)

@@ -175,7 +175,7 @@ let infer t ty =
     (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))  
 
 let is_valid t =
-  let debug = false in
+  let debug = !Global.debug && false in
   if t = Formula.ttrue then
     true
   else if t = Formula.tfalse then
