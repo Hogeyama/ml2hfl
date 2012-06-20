@@ -121,7 +121,13 @@ let rec main_loop parsed =
 	      | _, Some print ->
                   Format.printf "Unsafe!@.@.";
                   print ()
-          with Verifier.FailedToRefineExtraParameters -> main_loop parsed
+          with Verifier.FailedToRefineExtraParameters ->
+										  let _ = LazyInterface.params := [] in
+												let _ = Verifier.ext_coeffs := [] in
+												let _ = Verifier.ext_constrs := [] in
+												let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in
+												let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
+												main_loop parsed
 
 
 let main filename in_channel =
