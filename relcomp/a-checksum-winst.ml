@@ -1,4 +1,3 @@
-(* safe but untypable *)
 let make n i = assert (0 <= i && i < n); 0
 let update n ex ar i x =
   assert (0 <= i && i < n);

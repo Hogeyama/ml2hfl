@@ -1,4 +1,3 @@
-(* verification succeeded *)
 let app ex f g = f g
 let f x k = k x
 let check x y = assert (x = y)

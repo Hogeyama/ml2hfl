@@ -1,4 +1,3 @@
-(* a-max-arg-param.ml: verification failed *)
 let make_array n i = n - i
 let rec array_max i p (a:int->int) (n:int) m =
   if i >= n then

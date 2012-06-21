@@ -1,4 +1,3 @@
-(* safe but untypble *)
 let rec loop u = loop u
 let rec array_max i (n:int) (ar:int->int) m =
   if i >= n then

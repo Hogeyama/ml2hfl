@@ -1,4 +1,3 @@
-(* verification failed *)
 let rec for_all_i i f (xs:int list) =
   match xs with
       [] -> true

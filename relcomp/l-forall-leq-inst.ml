@@ -1,4 +1,3 @@
-(* verification succeeded *)
 let rec loop (u:unit) = loop u
 (*let hd (len, l) = l 0*)
 (*let tl (len, l) = (len - 1, fun i -> l (i + 1))*)

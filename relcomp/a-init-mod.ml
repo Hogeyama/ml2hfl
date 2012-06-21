@@ -1,4 +1,3 @@
-(* verification failed *)
 let make n i = 0
 let update i x ar j = if j = i then x else ar j
 let rec init i x n ar =

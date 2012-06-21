@@ -1,4 +1,3 @@
-(* app_succ_leq-arg.ml: verification succeeded *)
 let succ x f = f (x + 1)
 let k x f y = succ y f
 let rec app x f = if Random.int 0 = 0 then app x (k x f) else f x

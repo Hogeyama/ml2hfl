@@ -1,4 +1,3 @@
-(* verification succeeded *)
 let make n = (n, fun i -> assert (0 <= i && i < n); 0)
 let update ex1 ex2 (n, ar) i x =
   assert (0 <= i && i < n);

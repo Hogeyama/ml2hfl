@@ -1,4 +1,3 @@
-(* verification succeeded *)
 let rec array_max i (n:int) ex (ar:int->int) m =
   if i >= n then
     m

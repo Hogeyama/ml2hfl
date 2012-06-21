@@ -1,4 +1,3 @@
-(* safe but untypable *)
 let rec loop (u:unit) = loop u
 (*let hd (len, l) = l 0*)
 (*let tl (len, l) = (len - 1, fun i -> l (i + 1))*)
@@ -6,6 +5,7 @@ let rec loop (u:unit) = loop u
 (*let cons a (len, l) = (len + 1, fun i -> if i = 0 then a else l (i - 1))*)
 
 let rec make_list n =
+(*‚±‚ê‚Ì‚¹‚¢‚Åapp-succ0‚Æ“¯‚¶Ž–‚É‚È‚Á‚Ä‚¢‚é*)
   if n < 0 then
     (0, fun i -> loop ())(*nil*)
   else

@@ -1,4 +1,3 @@
-(* a-max-down.ml: verification failed *)
 let make_array n i = n - i
 let rec array_max n i (a:int->int) m =
   if i < 0 then

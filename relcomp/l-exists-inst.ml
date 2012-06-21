@@ -1,4 +1,3 @@
-(* exists-inst.ml *)
 let hd xs = xs 0
 let tl a xs i = xs (i + 1)
 
