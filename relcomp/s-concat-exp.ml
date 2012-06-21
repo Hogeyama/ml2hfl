@@ -12,7 +12,7 @@ let nth s i = s i
 
 let main n1 n2 =
   if n1 >= 0 && n2 >= 0 then
-		  let s1 = fun i -> if i < n1 then true else false in
-		  let s2 = fun i -> if i < n2 then true else false in
-		  let s = concat s1 s2 in
-		  assert (not (nth s (n1 + n2)))
+    let s1 = fun i -> if i < n1 then true else false in
+    let s2 = fun i -> if i < n2 then true else false in
+    let s = concat s1 s2 in
+    assert (not (nth s (n1 + n2)))

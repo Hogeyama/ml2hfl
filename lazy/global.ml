@@ -1,6 +1,6 @@
 (** Global variables *)
 
-let debug = ref false
+let debug = ref true
 let debug_level = ref 10
 
 let current_log_level = ref 0
