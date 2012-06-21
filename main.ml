@@ -83,17 +83,17 @@ let rec main_loop parsed =
       let t' = Abstract.abstract_list t in
       let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term' t' in
       let t = t' in
-(*
-      let t' = Abstract.abst_ext_funs t in
-      let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
-      let t = t' in
-*)
+        (*
+          let t' = Abstract.abst_ext_funs t in
+          let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
+          let t = t' in
+        *)
       let t =
         if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
           let t = LazyInterface.insert_extra_param t in
           let () = if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
             (List.length !LazyInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t in
-          t
+            t
         else
           t
       in
@@ -122,12 +122,12 @@ let rec main_loop parsed =
                   Format.printf "Unsafe!@.@.";
                   print ()
           with Verifier.FailedToRefineExtraParameters ->
-										  let _ = LazyInterface.params := [] in
-												let _ = Verifier.ext_coeffs := [] in
-												let _ = Verifier.ext_constrs := [] in
-												let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in
-												let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
-												main_loop parsed
+            let _ = LazyInterface.params := [] in
+            let _ = Verifier.ext_coeffs := [] in
+            let _ = Verifier.ext_constrs := [] in
+            let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in
+            let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
+              main_loop parsed
 
 
 let main filename in_channel =

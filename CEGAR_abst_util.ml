@@ -257,11 +257,16 @@ let rec is_base_term env = function
     Const (Unit | True | False | Int _ | RandInt) -> true
   | Const _ -> false
   | Var x ->
-      begin
-        match try List.assoc x env with Not_found -> assert false with
-            TBase _ -> true
-          | _ -> false
-      end
+      let typ =
+        try
+          List..assoc x env
+        with Not_found -> Format.printf "Not found: %s@." x; assert false
+      in
+        begin
+          match typ with
+              TBase _ -> true
+            | _ -> false
+        end
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqInt|EqBool|Add|Sub|Mul),t1),t2) ->
       assert (is_base_term env t1);
       assert (is_base_term env t2);
@@ -333,11 +338,3 @@ let rec add_label (env,defs,main) =
   let defs' = aux defs in
   let labeled = uniq (rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs') in
     labeled, (env, defs', main)
-
-
-
-
-
-
-
-

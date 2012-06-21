@@ -599,7 +599,7 @@ let make_snd t =
     match elim_tpred t.typ with
         TPair(_,typ) -> typ
       | TUnknown -> TUnknown
-      | typ -> Format.printf "%a@." print_typ typ; assert false
+      | typ -> assert false
   in
     {desc=Snd t; typ=typ}
 let make_pair t1 t2 = {desc=Pair(t1,t2); typ=TPair(t1.typ,t2.typ)}

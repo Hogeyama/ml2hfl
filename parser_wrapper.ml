@@ -79,15 +79,13 @@ let rec from_type_expr tenv typ =
           let typ2' = from_type_expr tenv typ2 in
           let x = Id.new_var "x" typ1' in
             TFun(x, typ2')
-      | Ttuple (typ1::typ2::typs) ->
+      | Ttuple [] -> assert false
+      | Ttuple (typ::typs) ->
           let aux typ_pair typ =
             let typ' = from_type_expr tenv typ in
-              TPair(typ',typ_pair)
+              TPair(typ_pair,typ')
           in
-          let typ1' = from_type_expr tenv typ1 in
-          let typ2' = from_type_expr tenv typ2 in
-            List.fold_left aux (TPair(typ1',typ2')) typs
-      | Ttuple _ -> assert false
+            List.fold_left aux (from_type_expr tenv typ) typs
       | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs -> List.assoc (Path.name path) prim_typs
       | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
           TList (from_type_expr tenv type_expr)
@@ -268,12 +266,13 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
       | Tpat_constant(Const_int32 n) -> unsupported "pattern match (int32 constant)"
       | Tpat_constant(Const_int64 n) -> unsupported "pattern match (int64 constant)"
       | Tpat_constant(Const_nativeint n) -> unsupported "pattern match (nativeint constant)"
-      | Tpat_tuple([]|[_]) -> assert false
-      | Tpat_tuple(p1::p2::ps) ->
-          let p1' = from_pattern p1 in
-          let p2' = from_pattern p2 in
-          let make_pair p1 p2 = {pat_desc=PPair(p1,p2); pat_typ=TPair(p1.pat_typ,p2.pat_typ)} in
-            (List.fold_left (fun p_pair p -> make_pair p_pair (from_pattern p)) (make_pair p1' p2') ps).pat_desc
+      | Tpat_tuple [] -> assert false
+      | Tpat_tuple(p::ps) ->
+          let aux p1 p2 =
+            let p2' = from_pattern p2 in
+              {pat_desc=PPair(p1,p2'); pat_typ=TPair(p1.pat_typ,p2'.pat_typ)}
+          in
+            (List.fold_left aux (from_pattern p) ps).pat_desc
       | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "()" -> PConst {desc=Unit;typ=typ'}
       | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "[]" -> PNil
       | Tpat_construct(cstr_desc, [p1;p2]) when get_constr_name cstr_desc typ env = "::" ->
@@ -445,7 +444,7 @@ let to_abs t =
   in
   let vs = get_tvars t.typ in
     List.fold_left (fun t v -> (fun x -> subst_tvar x t)
-  let map = List.map (fun x -> x, 
+  let map = List.map (fun x -> x,
 *)
 let to_abs x = x
 
@@ -486,7 +485,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                 TFun(x,typ2) -> x,typ2
               | _ -> assert false
           in
-          let aux (p,e) = 
+          let aux (p,e) =
             match e.exp_desc with
                 Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
               | _ -> from_pattern p, None, from_expression e
@@ -528,7 +527,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           in
             {desc=Match(t, pts'); typ=typ'}
       | Texp_try(e,pes) ->
-          let aux (p,e) = 
+          let aux (p,e) =
             match e.exp_desc with
                 Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
               | _ -> from_pattern p, None, from_expression e
@@ -537,10 +536,9 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           let pes' = List.map aux pes in
           let pes'' = pes' @ [] in
             {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pes''); typ=typ'}); typ=typ'}
-      | Texp_tuple(e1::e2::es) ->
-          let t1 = from_expression e1 in
-          let t2 = from_expression e2 in
-            List.fold_left (fun t e -> make_pair t (from_expression e)) (make_pair t1 t2) es
+      | Texp_tuple(e::es) ->
+          let t = from_expression e in
+            List.fold_left (fun t e -> make_pair t (from_expression e)) t es
       | Texp_tuple _ -> assert false
       | Texp_construct(desc,es) ->
           let desc =
@@ -674,6 +672,3 @@ let from_use_file ast =
   in
   let t = List.fold_left aux {desc=Unit;typ=TUnit} defs in
     Trans.merge_let_fun t
-
-
-
