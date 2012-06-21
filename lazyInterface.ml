@@ -232,9 +232,28 @@ let insert_extra_param t =
 		      | Syntax.RandValue(typ,b) -> Syntax.RandValue(typ,b)
 		      | Syntax.Var y -> Syntax.Var (trans_id y)
 		      | Syntax.Fun(y, t1) ->
-            let y' = trans_id y in
-            Syntax.Fun(y', aux (bvs @ [y']) t1)
-		
+            let ys =
+              let y' = trans_id y in
+              (match y'.Id.typ with
+                Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
+				              Util.unfold
+				                (fun i ->
+				                  if i < !Global.number_of_extra_params then
+				                    Some(Id.new_var "ex" Type.TInt, i + 1)
+				                  else
+				                    None)
+				                0
+              | _ ->
+                  []) @ [y']
+            in
+            let f, _ =
+		            List.fold_left
+														  (fun (f, ty) y -> (fun t -> f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
+														  ((fun t -> t), trans_type t.Syntax.typ)
+																ys
+												in
+												(f (aux (bvs @ ys) t1)).Syntax.desc
+
 		      | Syntax.App(t1, ts) ->
 		          let t1' = aux bvs t1 in
 		          let ts' = List.map (aux bvs) ts in
