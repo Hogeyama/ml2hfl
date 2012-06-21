@@ -259,7 +259,7 @@ let rec is_base_term env = function
   | Var x ->
       let typ =
         try
-          List..assoc x env
+          List.assoc x env
         with Not_found -> Format.printf "Not found: %s@." x; assert false
       in
         begin

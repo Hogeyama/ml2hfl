@@ -55,6 +55,7 @@ let conv_primitive_app t ts typ =
     | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
     | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
     | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ}
+    | Var {Id.name="Random.bool"}, [{desc=Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
     | Var {Id.name="Random.int"}, [{desc=Int 0}] -> make_app randint_term [unit_term]
     | Var {Id.name="Pervasives.open_in"}, [{desc=Int _}] -> make_app (make_event "newr") [unit_term]
     | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
