@@ -101,7 +101,7 @@ let rec main_loop parsed =
       let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = CPS.remove_pair t in
-      let () = if true && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
         top_fun_list, t'
     else Syntax.get_top_funs t, t
   in

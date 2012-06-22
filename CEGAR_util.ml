@@ -409,19 +409,19 @@ let rename_prog prog =
   let () = List.iter (fun (f,f') -> Format.printf "rename: %s ==> %s@." f f') map in
   let () = Format.printf "@." in
   let var_names' = List.map snd map in
-  let make_map_vars (_,xs,_,_,_) =
-    let var_names' = List.rev_map id_name xs @@ var_names' in
-      List.map (fun x -> x, rename_id' x var_names') xs
+  let rename_var map x = List.assoc x map in
+  let rename_def (f,xs,t1,e,t2) =
+    let () = Id.clear_counter () in
+    let var_names'' = List.rev_map id_name xs @@ var_names' in
+    let arg_map = List.map (fun x -> x, rename_id' x var_names'') xs in
+    let arg_map = uniq' (fun (x,_) (y,_) -> compare x y) arg_map in
+    let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@ map) in
+    let rename_term t = subst_map smap t in
+      rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2
   in
-  let map' = rev_flatten_map make_map_vars (get_defs prog) @@ map in
-  let map' = uniq' (fun (x,_) (y,_) -> compare x y) map' in
-  let smap = List.map (fun (x,x') -> x,Var x') map' in
-  let rename_var x = List.assoc x map' in
-  let rename_term t = subst_map smap t in
-  let rename_def (f,xs,t1,e,t2) = rename_var f, List.map rename_var xs, rename_term t1, e, rename_term t2 in
-  let env = List.map (fun (f,typ) -> rename_var f, typ) (get_env prog) in
+  let env = List.map (fun (f,typ) -> rename_var map f, typ) (get_env prog) in
   let defs = List.map rename_def (get_defs prog) in
-  let main = rename_var (get_main prog) in
+  let main = rename_var map (get_main prog) in
   let prog = env, defs, main in
   let () = try ignore (Typing.infer prog) with Typing.External -> () in
     prog,map

@@ -484,11 +484,7 @@ let rec copy_poly_funs top t =
           let () = assert (tvars > []) in
           let t2' = copy_poly_funs top t2 in
           let map,t2'' = rename_poly_funs f t2' in
-            if Id.name f = "nil_1042" then assert false;
           let n = List.length map in
-                Format.printf "COPY%s: @[" (Id.name f);
-                List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
-                Format.printf "@.";
             if n >= 2
             then
               begin
