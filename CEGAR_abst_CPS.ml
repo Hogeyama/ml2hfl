@@ -351,8 +351,3 @@ let abstract orig_fun_list (prog:prog) =
   let () = if false then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog prog in
   let prog = lift2 prog in
     labeled, prog
-
-
-
-
-

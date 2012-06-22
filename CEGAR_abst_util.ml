@@ -19,7 +19,6 @@ let check env cond pbs p =
   let ps,_ = List.split pbs in
     Wrapper2.check env (cond@@ps) p
 
-
 let make_conj pbs =
   match pbs with
       [] -> Const True
@@ -235,13 +234,13 @@ let assume env cond pbs t1 t2 =
 let rec congruent env cond typ1 typ2 =
   match typ1,typ2 with
       TBase(b1,ps1), TBase(b2,ps2) when b1=b2 ->
-        let x = new_id "x" in
+        let x = new_id "x_abst" in
         let env' = (x,typ1)::env in
         let ps1' = ps1 (Var x) in
         let ps2' = ps2 (Var x) in
           List.length ps1' = List.length ps2' && List.for_all2 (Wrapper2.equiv env' cond) ps1' ps2'
     | TFun(typ11,typ12), TFun(typ21,typ22) ->
-        let x = new_id "x" in
+        let x = new_id "x_abst" in
         let typ12 = typ12 (Var x) in
         let typ22 = typ22 (Var x) in
         let env' = (x,typ11)::env in

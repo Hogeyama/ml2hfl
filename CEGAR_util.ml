@@ -943,3 +943,21 @@ let print_prog_typ' orig_fun_list fm (env,defs,main) =
   let nonrec = get_nonrec defs main orig_fun_list in
   let env' = List.filter (fun (f,_) -> not (List.mem_assoc f nonrec)) env in
     CEGAR_print.prog_typ fm (env',defs,main)
+
+
+(* for avoiding variable conflicts *)
+let counter = ref 0
+
+let rec reconstruct_typ_typ = function
+    TBase(b, f) -> TBase(b, f)
+  | TAbs _ -> assert false
+  | TApp _ -> assert false
+  | TFun(typ1, typ2) ->
+      let x = "_rc_x" ^ string_of_int !counter in
+      let typ1' = reconstruct_typ_typ typ1 in
+      let typ2' = reconstruct_typ_typ (typ2 (Var x)) in
+        TFun(typ1', fun y -> subst_typ x y typ2')
+
+let rec reconstruct_typ (env,defs,prog) =
+  let env' = List.map (fun (f,typ) -> f, reconstruct_typ_typ typ) env in
+    env', defs, prog
