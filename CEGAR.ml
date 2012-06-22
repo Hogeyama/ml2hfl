@@ -83,7 +83,7 @@ let rec cegar1 prog0 ces orig_fun_list =
                 in
                 let ces' = ce::ces in
                 let _,prog' = Refine.refine (inlined_functions orig_fun_list prog0) prefix ces' prog0 in
-                let prog' = reconstruct_typ prog' in
+(*                let prog' = reconstruct_typ prog' in*)
                   post ();
                   cegar1 prog' ces' orig_fun_list
 
