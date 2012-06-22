@@ -134,7 +134,7 @@ let string_of_var env x =
         TBase(TUnit,_) -> "_u"
       | TBase(TInt,_) -> "_i"
       | TBase(TBool,_) -> "_b"
-      | _ -> assert false
+      | _ -> Format.printf "%s@." x; assert false
   in
     x ^ post
 
