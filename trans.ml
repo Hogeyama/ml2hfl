@@ -361,11 +361,14 @@ let rec rename_poly_funs f map t =
           if is_poly_typ t.typ
           then raise (Fatal "Not implemented: Trans.rename_poly_funs")
           else
-            if List.exists (fun (_,f') -> Type.can_unify (Id.typ f') (Id.typ x)) map
-            then map, Var x
-            else
-              let x' = Id.new_var_id x in
-                (x,x')::map, Var x'
+            begin
+              try
+                let _,x' = List.find (fun (_,f') -> Type.can_unify (Id.typ f') (Id.typ x)) map in
+                  map, Var x'
+              with Not_found ->
+                let x' = Id.new_var_id x in
+                  (x,x')::map, Var x'
+            end
       | Var x -> map, Var x
       | Fun(x, t) ->
           let map',t' = rename_poly_funs f map t in
@@ -481,7 +484,11 @@ let rec copy_poly_funs top t =
           let () = assert (tvars > []) in
           let t2' = copy_poly_funs top t2 in
           let map,t2'' = rename_poly_funs f t2' in
+            if Id.name f = "nil_1042" then assert false;
           let n = List.length map in
+                Format.printf "COPY%s: @[" (Id.name f);
+                List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
+                Format.printf "@.";
             if n >= 2
             then
               begin
