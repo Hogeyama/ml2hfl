@@ -137,16 +137,16 @@ and print_fun_def fm (f,xs,t1,es,t2) =
         Format.fprintf fm "@[<hov 4>%a ->%s@ %a@]" (print_list print_var " " false) (f::xs@ys) s print_term t2
     else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]" (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
 
-and print_prog fm (_,defs,s) =
+and print_prog fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@]@?"
-    print_var s
-    (print_list print_fun_def "@\n" false) defs
+    print_var prog.main
+    (print_list print_fun_def "@\n" false) prog.defs
 
-and print_prog_typ fm (env,defs,s) =
+and print_prog_typ fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@\n@]@[Types:@\n  @[%a@]@]@?"
-    print_var s
-    (print_list print_fun_def "@\n" false) defs
-    print_env env
+    print_var prog.main
+    (print_list print_fun_def "@\n" false) prog.defs
+    print_env prog.env
 
 
 

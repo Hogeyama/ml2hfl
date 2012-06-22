@@ -65,11 +65,11 @@ let rec main_loop parsed =
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
   let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
-  let top_fun_list,t =
+  let fun_list,t =
     if !Flag.init_trans
     then
       let t' = Trans.copy_poly_funs t in
-      let top_fun_list = Syntax.get_top_funs t' in
+      let fun_list = Syntax.get_top_funs t' in
       let () = if true && t <> t' then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let spec' = Trans.rename_spec spec t in
@@ -102,7 +102,7 @@ let rec main_loop parsed =
       let t = t' in
       let t' = CPS.remove_pair t in
       let () = if true && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
-        top_fun_list, t'
+        fun_list, t'
     else Syntax.get_top_funs t, t
   in
 
@@ -110,13 +110,14 @@ let rec main_loop parsed =
   let prog,map = CEGAR_util.trans_prog t in
 
   let aux x = try [List.assoc (CEGAR_util.trans_var x) map] with Not_found -> [] in
-  let top_fun_list = rev_flatten_map aux top_fun_list in
+  let fun_list = rev_flatten_map aux fun_list in
 
     match !Flag.cegar with
-        Flag.CEGAR_SizedType -> LazyInterface.verify [] prog
+        Flag.CEGAR_SizedType ->
+          LazyInterface.verify [] (prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main)
       | Flag.CEGAR_DependentType ->
           try
-	    match CEGAR.cegar prog top_fun_list with
+            match CEGAR.cegar prog {CEGAR.orig_fun_list=fun_list} with
 	        prog', None -> Format.printf "Safe!@.@."
 	      | _, Some print ->
                   Format.printf "Unsafe!@.@.";

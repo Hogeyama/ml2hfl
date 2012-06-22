@@ -87,10 +87,10 @@ let rec step_eval_abst_cbn ce labeled env_abst defs = function
 let rec eval_abst_cbn prog labeled abst ce =
   Format.printf "Program with abstraction types::@.%a@." CEGAR_print.prog abst;
   Format.printf "CE: %a@." CEGAR_print.ce ce;
-  let env_orig = get_env prog in
-  let env_abst = get_env abst in
-  let defs = get_defs abst in
-  let main = get_main abst in
+  let env_orig = prog.env in
+  let env_abst = abst.env in
+  let defs = abst.defs in
+  let main = abst.main in
   let ce' = ce in
   let rec loop ce t =
     Format.printf "%a -->@\n" CEGAR_print.term t;
@@ -186,12 +186,8 @@ let rec trans_ce_aux labeled ce acc defs t k =
     | Let _ -> assert false
     | Fun _ -> assert false
 
-let trans_ce ce labeled ((env,defs,main):prog) =
+let trans_ce ce labeled {defs=defs;main=main} =
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let ce' = trans_ce_aux labeled ce [] defs t init_cont in
     assert (not (List.mem main labeled));
     0::ce'
-
-
-
-

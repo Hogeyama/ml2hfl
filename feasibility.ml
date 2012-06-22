@@ -62,7 +62,7 @@ let rec get_prefix ce n =
     | c::ce' when n = 0 -> []
     | c::ce' -> c::get_prefix ce' (n-1)
 
-let check ce ((env,defs,main):prog) =
+let check ce {defs=defs; main=main} =
   let () = Format.printf "Spurious counter-example::@.%a@." CEGAR_print.ce ce in
   let tmp = get_time () in
   let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
@@ -138,7 +138,7 @@ let rec trans_ce ce ce_br env defs t k =
     | Let _ -> assert false
     | Fun _ -> assert false
 
-let trans_ce ce ((env,defs,main):prog) =
+let trans_ce ce {defs=defs;main=main} =
   if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
@@ -150,7 +150,7 @@ let trans_ce ce ((env,defs,main):prog) =
 
 
 
-let print_ce_reduction ce ((_,defs,main):prog) =
+let print_ce_reduction ce {defs=defs;main=main} =
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr t br n e =

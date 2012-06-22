@@ -56,13 +56,7 @@ and ce = ce_node list
 and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
-and prog = env * fun_def list * var
-
-
-
-let get_env (env,_,_) = env
-let get_defs (_,defs,_) = defs
-let get_main (_,_,main) = main
+and prog = {env:env; defs:fun_def list; main:var}
 
 
 let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
@@ -189,7 +183,7 @@ let is_CPS_def env (f,xs,cond,es,t) =
   in
     b1 && b2
 
-let is_CPS (env,defs,main) = List.for_all (is_CPS_def env) defs
+let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 
 
 let is_external x = String.contains x '.'

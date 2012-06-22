@@ -56,8 +56,8 @@ let add_preds_env map env =
   in
     List.map aux env
 
-let add_preds map (env,defs,main) =
-  add_preds_env map env, defs, main
+let add_preds map prog =
+  {prog with env = add_preds_env map prog.env}
 
 
 let rec add_to_path path typ1 typ2 =
@@ -80,7 +80,7 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled prefix ces ((env,defs,main):prog) =
+let refine labeled prefix ces {env=env;defs=defs;main=main} =
   let tmp = get_time () in
     if Flag.print_progress then Format.printf "(%d-4) Discovering predicates ... @." !Flag.cegar_loop;
     if Flag.use_prefix_trace then raise (Fatal "Not implemented: Flag.use_prefix_trace");
@@ -97,12 +97,10 @@ let refine labeled prefix ces ((env,defs,main):prog) =
             if not (List.mem Flag.CPS !Flag.form)
             then failwith "Program must be in CPS @ ModelCheckCPS";
             try
-              RefineDepTyp.infer [List.hd ces] (env,defs,main)
+              RefineDepTyp.infer [List.hd ces] {env=env;defs=defs;main=main}
             with RefineDepTyp.Untypable -> raise CannotRefute
     in
     let env' = add_preds_env map env in
       add_time tmp Flag.time_cegar;
       if Flag.print_progress then Format.printf "DONE!@.@.";
-      map, (env', defs, main)
-
-
+      map, {env=env';defs=defs;main=main}

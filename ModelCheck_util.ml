@@ -55,16 +55,16 @@ let make_spec n =
 
 let capitalize_var = String.capitalize
 
-let capitalize ((env,defs,main):prog) : prog =
+let capitalize {env=env;defs=defs;main=main} =
   let env' = List.map (fun (f,typ) -> capitalize_var f, typ) env in
   let map = List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
   let aux (f,xs,t1,e,t2) = capitalize_var f, xs, subst_map map t1, e, subst_map map t2 in
   let defs' = List.map aux defs in
   let main' = capitalize_var main in
-    env', defs', main'
+    {env=env'; defs=defs'; main=main'}
 
 
-let elim_non_det ((env,defs,main):prog) : prog =
+let elim_non_det {defs=defs;main=main} =
   let check f (g,_,_,_,_) = f = g in
   let mem f defs = List.exists (check f) defs in
   let rec elim_non_det_def = function
@@ -79,9 +79,9 @@ let elim_non_det ((env,defs,main):prog) : prog =
           (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
     | def::defs -> def :: elim_non_det_def defs
   in
-    Typing.infer ([], elim_non_det_def defs, main)
+    Typing.infer {env=[]; defs=elim_non_det_def defs; main=main}
 
-let make_bottom ((env,defs,main):prog) : prog =
+let make_bottom {env=env;defs=defs;main=main} =
   let bottoms = ref [] in
   let aux_def (f,xs,t1,e,t2) =
     let f_typ = List.assoc f env in
@@ -135,7 +135,7 @@ let make_bottom ((env,defs,main):prog) : prog =
   in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (uniq !bottoms) in
-    env, bottom_defs@@defs', main
+    {env=env; defs=bottom_defs@@defs'; main=main}
 
 
 let rec eta_expand_term env = function
@@ -159,8 +159,7 @@ let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
     f, xs@ys, t1, e, t2''
 
-let eta_expand ((env,defs,main) : prog) : prog=
-  lift2 (env, List.map (eta_expand_def env) defs, main)
+let eta_expand prog = lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
 
@@ -196,12 +195,13 @@ let rec church_encode_term = function
   | App(t1, t2) -> App(church_encode_term t1, church_encode_term t2)
   | Let _ -> assert false
   | Fun _ -> assert false
-let church_encode ((env,defs,main):prog) : prog =
+let church_encode {env=env;defs=defs;main=main} =
   let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
   let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
   let defs' = List.map (apply_body_def church_encode_term) defs @ [true_def; false_def] in
-    if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog ([],defs',main);
-    Typing.infer ([],defs',main)
+  let prog = {env=[];defs=defs';main=main} in
+    if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog prog;
+    Typing.infer prog
 
 
 let rec full_app f n = function
@@ -256,7 +256,7 @@ let beta_reduce_term flag ((f,_,_,_,_) as def) t =
     then beta_reduce_term flag def t
     else (if n >= 2 then flag := true; t)
 
-let beta_reduce_aux ((env,defs,main):prog) : prog =
+let beta_reduce_aux {env=env;defs=defs;main=main} =
   let rec aux defs1 = function
       [] -> defs1
     | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@def::defs2) ->
@@ -269,11 +269,11 @@ let beta_reduce_aux ((env,defs,main):prog) : prog =
           else aux defs1' defs2'
     | def::defs2 -> aux (defs1@[def]) defs2
   in
-    env, aux [] defs, main
+    {env=env; defs = aux [] defs; main=main}
 
 let rec beta_reduce prog =
   let prog' = beta_reduce_aux prog in
-    if get_defs prog = get_defs prog'
+    if prog.defs = prog'.defs
     then prog
     else beta_reduce prog'
 
@@ -281,13 +281,10 @@ let rec beta_reduce prog =
 
 let model_check_aux (prog,spec) =
   let prog = Typing.infer prog in
-  let env = get_env prog in
+  let env = prog.env in
   let prog = if Flag.useless_elim then Useless_elim.elim prog else prog in
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
     match TrecsInterface.check env (prog,spec) with
         None -> None
       | Some ce -> Some (trans_ce ce)
-
-
-

@@ -124,8 +124,8 @@ let add_to_tinfo newinfo tinfo =
       tinfo := newinfo::tys
 
 let register_tinfo (f:id) (tinfo: tinfo) =
-  let r = 
-        try List.assoc f !tinfomap 
+  let r =
+        try List.assoc f !tinfomap
         with Not_found ->
           let r1 = ref [] in
           (tinfomap := (f, r1)::!tinfomap;
@@ -136,7 +136,7 @@ let register_tinfo (f:id) (tinfo: tinfo) =
 
 let branchtab = ref []
 (*let register_branch b counter =
-  let r = 
+  let r =
         try List.assoc counter !branchtab
         with Not_found ->
           let r1 = ref [] in
@@ -147,7 +147,7 @@ let branchtab = ref []
     r := trace@[b]*)
 
 let register_branches trace counter =
-  let r = 
+  let r =
         try List.assoc counter !branchtab
         with Not_found ->
           let r1 = ref [] in
@@ -159,8 +159,8 @@ let register_branches trace counter =
 
 
 let rec tinfolist2ty typ tinfolist =
-  List.fold_left 
-   (fun ty -> fun tinfo -> 
+  List.fold_left
+   (fun ty -> fun tinfo ->
        merge_and_unify compare ty (tinfo2ty typ tinfo))
    [] tinfolist
 and tinfo2ty typ tinfo =
@@ -226,7 +226,7 @@ let mk_atenv () =
 let rec print_ty ty indent=
   match ty with
     [] -> print_string2 "top"
-(** (match typ with TInt _-> print_string2 "int" 
+(** (match typ with TInt _-> print_string2 "int"
                | TBool  -> print_string2 "bool" | _ -> print_string2 "top")
 **)
   | [aty] ->
@@ -482,8 +482,8 @@ let rec eval_term t defs traces pcounter =
             trace2id := ((pcounter, []), counter)::!trace2id;
             add_to_tinfo (ETunit(counter)) tinfo
     | MyVar(f,tinfo) ->
-        let (vars,body) = 
-          try List.assoc f defs 
+        let (vars,body) =
+          try List.assoc f defs
           with Not_found -> raise (Undefined(f))
         in
         let env = [] in
@@ -497,8 +497,8 @@ let rec eval_term t defs traces pcounter =
             (process_term [] body traces env pcounter)
     | MyApp _ ->
         let (f, ts) = decompose_redex t in
-        let (vars,body) = 
-          try List.assoc f defs 
+        let (vars,body) =
+          try List.assoc f defs
           with Not_found -> raise (Undefined(f))
         in
         let env = List.combine vars ts in
@@ -514,7 +514,7 @@ let rec eval_term t defs traces pcounter =
 
 
 (** from types to refinement type templates **)
-type pred = Pred of pid * Syntax.typed_term list 
+type pred = Pred of pid * Syntax.typed_term list
 type rty = RTunit of int | RTint of (Syntax.typed_term -> pred) | RTbool of (Syntax.typed_term -> pred)
         | RTifun of (Syntax.typed_term -> pred) * (Syntax.typed_term -> rty) | RTbfun of (Syntax.typed_term -> pred) * (Syntax.typed_term-> rty)
         | RTfun of rty list * rty
@@ -524,7 +524,7 @@ type ac = Cpred of pred | Csub of rty * rty | Cterm of Syntax.typed_term | Cimp 
 let rec aty2rty aty vars =
   match aty with
      ATunit(n) -> RTunit(n)
-   | ATint(n) -> 
+   | ATint(n) ->
         RTint(fun x-> Pred(n,x::vars))
    | ATbool(n) ->
         RTbool(fun x-> Pred(n,x::vars))
@@ -541,7 +541,7 @@ and ty2rtyl ty vars =
 let rec aty2rty aty vars =
   match aty with
      ATunit(n) -> RTunit(n)
-   | ATint(n) -> 
+   | ATint(n) ->
         RTint(fun x->Pred(n,[x]))
    | ATbool(n) ->
         RTbool(fun x->Pred(n,[x]))
@@ -564,7 +564,7 @@ let new_var() =
 *)
 let new_id() = {Id.id=Id.new_int (); Id.name="x"; Id.typ=TUnit}
 let new_var typ = make_var {(new_id()) with Id.typ=typ}
-let dummy_var = 
+let dummy_var =
   {desc=Var({Id.id=0; Id.name="x"; Id.typ=TUnit}); typ=TUnit}
 
 let print_var x =
@@ -633,14 +633,14 @@ let rec print_rty rty =
 and print_rtyl rtyl =
   match rtyl with
      [] -> print_string2 "top"
-   | [rty] -> 
+   | [rty] ->
        (print_string2 "("; print_rty rty; print_string2 ")")
    | rty0::rtyl' ->
        (print_string2 "("; print_rty rty0; print_string2 ")/\\";
         print_rtyl rtyl')
 
 let print_rtenv rtenv =
-  List.iter 
+  List.iter
   (fun (f,ty) ->
      (print_ident f; print_string2 ":\n";
       List.iter (fun rty -> print_string2 " "; print_rty rty; print_string2 "\n") ty))
@@ -675,7 +675,7 @@ let pick_rty id rtyl =
 let rec print_ac ac =
   match ac with
     Cpred(pred) -> print_pred pred
-  | Csub(rty1,rty2) -> 
+  | Csub(rty1,rty2) ->
         (print_string2 "(";
          print_rty rty1;
          print_string2 " <: ";
@@ -824,8 +824,8 @@ and chk_args rtenv rty terms =
 and chk_term_rty rtenv term rty =
   let id = id_of_rty(rty) in
     match term.desc with
-        Unit -> 
-          (match rty with 
+        Unit ->
+          (match rty with
                RTunit(_) -> []
              | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-unit type")
           )
@@ -843,7 +843,7 @@ and chk_term_rty rtenv term rty =
       | Var x -> chk_term_rty rtenv ({desc=App({desc=Var x;typ=Id.typ x}, []);typ=Id.typ x}) rty
       | Event("fail",false) -> [Cfalse]
       | True | False -> (*???*)
-          (match rty with 
+          (match rty with
                RTbool(_) -> []
              | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-boolean type")
           )
@@ -854,7 +854,7 @@ and chk_term_rty rtenv term rty =
 
 and chk_term_rtyl rtenv term rtyl =
   List.fold_left (fun c -> fun rty ->
-                    (chk_term_rty rtenv term rty)@c) [] rtyl 
+                    (chk_term_rty rtenv term rty)@c) [] rtyl
 
 let rec mk_venv vars rty =
   match vars with
@@ -1020,7 +1020,7 @@ let save_as_dot filename cs =
 let save_as_dot _ _ = ()
 
 let rec term_of c =
-  List.fold_left 
+  List.fold_left
   (fun t -> fun ac ->
      {desc=BinOp(And, t, term_of_ac ac);typ=TBool})
    true_term c
@@ -1049,7 +1049,7 @@ let int_gen ts =
       let ts1, ts2 = List.partition (function {desc=BinOp(Eq, t, {desc=Int(n)})} -> minint = n | _ -> false) ts in
       match ts1 with
         [] -> ts
-      | ({desc=BinOp(Eq, t, {desc=Int(n)})} as tt)::ts -> 
+      | ({desc=BinOp(Eq, t, {desc=Int(n)})} as tt)::ts ->
           tt :: List.map (subst_int n t) (ts @ ts2)
       | _ -> assert false
 
@@ -1183,7 +1183,7 @@ let eqs ids terms =
   let xs = List.combine ids terms in
   let xs1, xs2 = List.partition (fun (_, term) -> match term with Var(id) -> true | _ -> false) xs in
     List.map (fun (id, Var(id')) -> id', Var(id)) xs1,
-  List.map (fun (id, term) -> Cterm(BinOp(Eq, Var(id), term))) xs 
+  List.map (fun (id, term) -> Cterm(BinOp(Eq, Var(id), term))) xs
 *)
 
 let rec subst_ac lbs ac =
@@ -1264,7 +1264,7 @@ let rec compute_lbs c lbs =
               let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
               let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
               let terms = List.map (subst_map sub) terms in
-              let terms = List.map Wrapper.simplify_exp terms in 
+              let terms = List.map Wrapper.simplify_exp terms in
                 pid, (cond, eqs2, terms)
                   (*
                     let rec elim ids c =
@@ -1617,8 +1617,8 @@ let filter_forward c =
     else
       aux (c1 @ (List.map
         (function Cimp(c, [Cpred(Pred(pid, terms))]) ->
-          let cond = 
-            List.fold_left 
+          let cond =
+            List.fold_left
               (fun t1 t2 -> {desc=BinOp(And, t1, t2);typ=TBool})
               true_term (let cond, _ , _ = List.assoc pid lbs in cond)
           in
@@ -1695,7 +1695,7 @@ let rec get_sol typ1 typ2 =
         print_rty typ2;
         assert false
 
-let test tdefs s defs traces pred = 
+let test tdefs s defs traces pred =
   branchtab := [];
   tinfomap := [];
   trace2id := [];
@@ -1909,7 +1909,7 @@ let trans_def env_cegar env (f,xs,t1,e,t2) =
   in
     trans_var env'' f, (List.map (trans_var env'') xs, t2')
 
-let trans ((env,defs,main):CS.prog) =
+let trans ({CS.env=env;CS.defs=defs;CS.main=main}:CS.prog) =
   let defs = to_if_exp defs in
   let env' = trans_env env in
     List.map (trans_def env env') defs, trans_var env' main
@@ -2029,4 +2029,3 @@ let infer_and_print ces prog =
   pr_flag := false
 
 let infer ces prog = infer ces prog
-

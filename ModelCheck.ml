@@ -23,7 +23,7 @@ let check prog n =
       | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
 let check count abst prog =
-  let n = (fun (_,defs,_) -> List.length defs) prog in
+  let n = List.length prog.defs in
   let tmp = get_time() in
   let () =
     if Flag.print_progress

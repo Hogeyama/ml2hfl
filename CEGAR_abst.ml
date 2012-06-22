@@ -112,15 +112,16 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
-let abstract orig_fun_list ((env,defs,main):prog) =
-  let (env,defs,main) = make_arg_let (env,defs,main) in
-  let labeled,(env,defs,main) = add_label (env,defs,main) in
-  let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog (env,defs,main) in
-  let _ = Typing.infer (env,defs,main) in
-  let defs = rev_flatten_map (abstract_def env) defs in
-  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.prog ([],defs,main) in
-  let prog = Typing.infer ([], defs, main) in
-    labeled,prog
+let abstract orig_fun_list prog =
+  let prog = make_arg_let prog in
+  let labeled,prog = add_label prog in
+  let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog in
+  let _ = Typing.infer prog in
+  let defs = rev_flatten_map (abstract_def prog.env) prog.defs in
+  let prog = {env=[]; defs=defs; main=prog.main} in
+  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.prog prog in
+  let prog = Typing.infer prog in
+    labeled, prog
 
 
 
@@ -143,9 +144,3 @@ let abstract orig_fun_list count prog =
   let () = if Flag.print_progress then Format.printf "DONE!@.@." in
   let () = add_time tmp Flag.time_abstraction in
     labeled,abst
-
-
-
-
-
-

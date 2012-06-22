@@ -84,7 +84,7 @@ let trans_spec (q,e,qs) =
   let aux q = "q" ^ string_of_int q in
     (aux q, e), List.map aux qs
 
-let trans ((_,defs,_),spec) =
+let trans ({defs=defs},spec) =
   let defs':Trecs.Syntax.prerules = List.map trans_fun_def defs in
   let spec':Trecs.Syntax.transitions = List.map trans_spec spec in
     (defs', spec')

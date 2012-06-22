@@ -50,7 +50,7 @@ let rec beta_reduce_term = function
 let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
-let rec expand_nonrec orig_fun_list (env,defs,main) =
+let rec expand_nonrec orig_fun_list {env=env;defs=defs;main=main} =
   let nonrec = get_nonrec defs main orig_fun_list in
   let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
   let rec loop defs =
@@ -62,7 +62,7 @@ let rec expand_nonrec orig_fun_list (env,defs,main) =
   let defs' = List.filter (fun (f,_,_,_,_) -> not (List.mem_assoc f nonrec)) defs in
   let defs'' = loop defs' in
   let defs''' = List.map beta_reduce_def defs'' in
-    (env,defs''',main)
+    {env=env; defs=defs'''; main=main}
 
 
 
@@ -152,8 +152,7 @@ let trans_eager_def env (f,xs,t1,e,t2) =
     assert (t1 = Const True);
     f, xs, t1, e, trans_eager_term env' id t2
 
-let trans_eager (env,defs,main) =
-  env, List.map (trans_eager_def env) defs, main
+let trans_eager prog = {prog with defs = List.map (trans_eager_def prog.env) prog.defs}
 
 
 let rec eta_expand_term_aux env t typ =
@@ -214,7 +213,7 @@ let eta_expand_def env (f,xs,t1,e,t2) =
   let env'' = env' @@ env in
   let t2' = eta_expand_term env'' t2 typ in
     f, xs, t1, e, t2'
-let eta_expand (env,defs,main) = env, List.map (eta_expand_def env) defs, main
+let eta_expand prog = {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
 let rec eta_reduce_term = function
@@ -332,14 +331,14 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
-let abstract orig_fun_list (prog:prog) =
+let abstract orig_fun_list prog =
   let labeled,prog = add_label prog in
   let prog = if !Flag.expand_nonrec then expand_nonrec orig_fun_list prog else prog in
   let () = if false && !Flag.expand_nonrec then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog prog in
   let prog = eta_expand prog in
   let () = if false then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog prog in
-  let defs = flatten_map (abstract_def (get_env prog)) (get_defs prog) in
-  let prog = ([], defs, get_main prog) in
+  let defs = flatten_map (abstract_def prog.env) prog.defs in
+  let prog = {env=[]; defs=defs; main=prog.main} in
   let () = if false then Format.printf "ABST:@\n%a@." CEGAR_print.prog prog in
   let prog = Typing.infer prog in
   let prog = lift2 prog in

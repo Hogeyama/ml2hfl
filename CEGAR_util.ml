@@ -61,13 +61,13 @@ let rec arg_num = function
 
 
 
-let rec pop_main (env,defs,main) =
+let rec pop_main {env=env;defs=defs;main=main} =
   let compare_fun f g = compare (g = main, f) (f = main, g) in
   let compare_def (f,_,_,_,_) (g,_,_,_,_) = compare_fun f g in
   let compare_env (f,_) (g,_) = compare_fun f g in
   let env' = List.sort compare_env env in
   let defs' = List.sort compare_def defs in
-    env', defs', main
+    {env=env'; defs=defs'; main=main}
 
 
 
@@ -92,7 +92,8 @@ let rec put_into_if_term = function
             make_app t' ts'
   | Fun(x,typ,t) -> Fun(x, typ, put_into_if_term t)
   | Let(x,t1,t2) -> Let(x, put_into_if_term t1, put_into_if_term t2)
-let put_into_if (env,defs,main) = env, List.map (apply_body_def put_into_if_term) defs, main
+let put_into_if prog =
+  {prog with defs=List.map (apply_body_def put_into_if_term) prog.defs}
 
 
 
@@ -104,8 +105,8 @@ let eta_expand_def env (f,xs,t1,e,t2) =
   let t2' = List.fold_left (fun t x -> App(t, Var x)) t2 ys in
     f, xs@ys, t1, e, t2' (* put_into_term t2' *)
 
-let eta_expand (env,defs,main) =
-  env, List.map (eta_expand_def env) defs, main
+let eta_expand prog =
+  {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
 let rec make_arg_let t =
@@ -336,8 +337,8 @@ let trans_def (f,(xs,t)) =
 	(f', typ', xs', Const True, [], t')::defs
 
 
-let event_of_temp (env,defs,main) =
-  if is_CPS (env,defs,"")
+let event_of_temp ({env=env;defs=defs;main=main} as prog) =
+  if is_CPS prog
   then
     let make_event (f,xs,t1,e,t2) =
       assert (e = []);
@@ -353,7 +354,7 @@ let event_of_temp (env,defs,main) =
         | _ -> [], [f, xs, t1, [], t2]
     in
     let envs,defss = List.split (List.map make_event defs) in
-      List.flatten envs @@ env, List.flatten defss, main
+      {env=List.flatten envs @@ env; defs=List.flatten defss; main=main}
   else
     let rec aux = function
         Const (Temp e) -> [e]
@@ -376,7 +377,7 @@ let event_of_temp (env,defs,main) =
       | Let _ -> assert false
     in
     let defs' = List.map (apply_body_def aux) defs in
-      evt_env@@env, evt_defs@@defs', main
+      {env=evt_env@@env; defs=evt_defs@@defs'; main=main}
 
 
 let rec uniq_env = function
@@ -389,7 +390,7 @@ let rec uniq_env = function
 
 let rename_prog prog =
   let () = Id.clear_counter () in
-  let vars = List.map (fun (f,_,_,_,_) -> f) (get_defs prog) in
+  let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
   let var_names = List.rev_map id_name (uniq vars) in
   let rename_id' x var_names =
     let x_name = id_name x in
@@ -406,7 +407,7 @@ let rename_prog prog =
     in
       f, f'
   in
-  let map = List.rev_map make_map_fun (get_env prog) in
+  let map = List.rev_map make_map_fun prog.env in
   let () = List.iter (fun (f,f') -> Format.printf "rename: %s ==> %s@." f f') map in
   let () = Format.printf "@." in
   let var_names' = List.map snd map in
@@ -420,10 +421,10 @@ let rename_prog prog =
     let rename_term t = subst_map smap t in
       rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2
   in
-  let env = List.map (fun (f,typ) -> rename_var map f, typ) (get_env prog) in
-  let defs = List.map rename_def (get_defs prog) in
-  let main = rename_var map (get_main prog) in
-  let prog = env, defs, main in
+  let env = List.map (fun (f,typ) -> rename_var map f, typ) prog.env in
+  let defs = List.map rename_def prog.defs in
+  let main = rename_var map prog.main in
+  let prog = {env=env; defs=defs; main=main} in
   let () = try ignore (Typing.infer prog) with Typing.External -> () in
     prog,map
 
@@ -448,7 +449,7 @@ let trans_prog t =
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
   let env' = uniq_env (ext_env @@ env) in
-  let prog = env', defs'', main in
+  let prog = {env=env'; defs=defs''; main=main} in
   let prog = event_of_temp prog in
   let prog = eta_expand prog in
   let prog = pop_main prog in
@@ -592,9 +593,9 @@ let lift_def (f,xs,t1,e,t2) =
   let defs1,t1' = lift_term xs t1 in
   let defs2,t2'' = lift_term xs' t2' in
     (f, xs', t1', e, t2'')::defs1@defs2
-let lift (_,defs,main) =
+let lift {defs=defs; main=main} =
   let defs' = rev_flatten_map lift_def defs in
-    Typing.infer ([],defs',main)
+    Typing.infer {env=[];defs=defs';main=main}
 
 
 
@@ -635,10 +636,10 @@ let lift_def2 (f,xs,t1,e,t2) =
   let defs1,t1' = lift_term2 xs t1 in
   let defs2,t2'' = lift_term2 xs t2' in
     (f, xs@ys, t1', e, t2'')::defs1@defs2
-let lift2 (_,defs,main) =
+let lift2 {defs=defs; main=main} =
   let defs = flatten_map lift_def2 defs in
-  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog ([],defs,main) in
-    Typing.infer ([],defs,main)
+  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog {env=[];defs=defs;main=main} in
+    Typing.infer {env=[];defs=defs;main=main}
 
 
 let rec get_arg_env typ xs =
@@ -940,10 +941,10 @@ let get_nonrec defs main orig_fun_list =
     else List.filter (fun (f,_) -> not (List.mem f orig_fun_list)) nonrec
 
 
-let print_prog_typ' orig_fun_list fm (env,defs,main) =
+let print_prog_typ' orig_fun_list fm {env=env;defs=defs;main=main} =
   let nonrec = get_nonrec defs main orig_fun_list in
   let env' = List.filter (fun (f,_) -> not (List.mem_assoc f nonrec)) env in
-    CEGAR_print.prog_typ fm (env',defs,main)
+    CEGAR_print.prog_typ fm {env=env';defs=defs;main=main}
 
 
 (* for avoiding variable conflicts *)
