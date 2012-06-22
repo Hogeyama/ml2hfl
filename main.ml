@@ -180,6 +180,10 @@ let arg_spec =
           " Number of inserted extra parameters for each functional argument";
    "-tbit", Arg.Int (fun n -> Global.bits_threshold := n),
           " Threshold on the number of bits used in the bit-vector modeling";
+   "-cc", Arg.Set Global.coeff_const,
+          " Add constant terms to extra parameters";
+   "-aec", Arg.Set Global.accumulate_ext_constrs,
+          " Accumulate constraints on the coefficients of extra parameters";
    "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";

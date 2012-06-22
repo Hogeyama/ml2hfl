@@ -1,4 +1,4 @@
 let succ ex f x = f (x + 1)
-let rec app ex f x = if Random.int 0 = 0 then app x (succ x f) (x - 1) else f x
+let rec app ex f x = if Random.bool () then app (*ex‚ª‹‚Ü‚Á‚½‚ç‚¾‚ß*)x (succ x f) (x - 1) else f x
 let check x y = if x = y then () else assert false
 let main n = app n (check n) n

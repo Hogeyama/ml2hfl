@@ -34,12 +34,12 @@ let fol_backward = ref false
 let disable_pred_sharing1 = ref false
 let enable_pred_sharing2 = ref false
 
-let coeff_const = ref false
-
 let flag_coeff = ref false
 
+let coeff_const = ref false
 let number_of_extra_params = ref 1
 let bits_threshold = ref 2
+let accumulate_ext_constrs = ref false
 
 (** {6 Options for non-linear constraint solving} *)
 let use_bit_vector = ref true
