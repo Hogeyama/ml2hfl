@@ -42,7 +42,7 @@ let trans_const = function
   | c -> Format.printf "print_const: %a@." CEGAR_print.term (Const c); assert false
 
 
-let rec sanitize_id x =
+let rec trans_id x =
   let map = function
       '\'' -> "_prime_"
     | '.' -> "_dot_"
@@ -57,8 +57,8 @@ let rec sanitize_id x =
 
 let rec trans_term = function
     Const c -> trans_const c
-  | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (sanitize_id x), [])
-  | Var x -> TS.PTapp (TS.Name (sanitize_id x), [])
+  | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (trans_id x), [])
+  | Var x -> TS.PTapp (TS.Name (trans_id x), [])
   | App(Const (Label n), t) -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [trans_term t])
   | App(App(App(Const If, Const RandBool), t2), t3) ->
       TS.PTapp(TS.Name "br", [trans_term t2; trans_term t3])
@@ -78,7 +78,7 @@ let rec trans_fun_def (f,xs,t1,es,t2) =
       | Branch n -> assert false(* TS.PTapp(TS.Name ("l" ^ string_of_int n), [t])*)
   in
     assert (t1 = Const True);
-    sanitize_id f, xs, List.fold_right add_event es (trans_term t2)
+    trans_id f, List.map trans_id xs, List.fold_right add_event es (trans_term t2)
 
 let trans_spec (q,e,qs) =
   let aux q = "q" ^ string_of_int q in
@@ -98,9 +98,9 @@ let trans ((_,defs,_),spec) =
 (*** from $(TRECS)/main.ml ***)
 
 let parseFile filename =
-  let in_strm = 
+  let in_strm =
     try
-      open_in filename 
+      open_in filename
     with
 	Sys_error _ -> (print_string ("Cannot open file: "^filename^"\n");exit(-1)) in
   let _ = print_string ("analyzing "^filename^"...\n") in
@@ -109,14 +109,14 @@ let parseFile filename =
   let result =
     try
       Trecs.Parser.main Trecs.Lexer.token lexbuf
-    with 
+    with
 	Failure _ -> exit(-1) (*** exception raised by the lexical analyer ***)
       | Parsing.Parse_error -> (print_string "Parse error\n";exit(-1)) in
-  let _ = 
+  let _ =
     try
       close_in in_strm
     with
-	Sys_error _ -> (print_string ("Cannot close file: "^filename^"\n");exit(-1)) 
+	Sys_error _ -> (print_string ("Cannot close file: "^filename^"\n");exit(-1))
   in
     result
 
@@ -127,9 +127,9 @@ let parseStdIn() =
   let result =
     try
       Trecs.Parser.main Trecs.Lexer.token lexbuf
-    with 
+    with
 	Failure _ -> exit(-1) (*** exception raised by the lexical analyer ***)
-      | Parsing.Parse_error -> (print_string "Parse error\n";exit(-1)) 
+      | Parsing.Parse_error -> (print_string "Parse error\n";exit(-1))
   in
     result
 
@@ -141,7 +141,7 @@ exception LimitReached of Trecs.Typing.te
 let rec verify_aux g m steps trials redexes1 freezed dmap cte nte counter =
   if trials =0 then
      raise (LimitReached (hash2list nte))
-  else 
+  else
      let _ = show_time() in
      let _ = debug "reduce\n" in
      let _ = if !te_updated then (Trecs.Reduce.red_init(); te_updated := false)
@@ -157,13 +157,13 @@ let rec verify_aux g m steps trials redexes1 freezed dmap cte nte counter =
      let _ = Trecs.Reduce.set_flag_freezed true freezed in
      let h = Trecs.Reduce.titable_create (8*steps) in
      let telist = Trecs.Reduce.tinfomap2telist !Trecs.Reduce.tinfomap h in
-     let telist' = Trecs.Typing.filter_valid_types telist nte in 
-     let _ = if !debugging then 
+     let telist' = Trecs.Typing.filter_valid_types telist nte in
+     let _ = if !debugging then
                 (print_string "Candidates:\n";
                  Trecs.Typing.print_te telist')
              else () in
      let te = list2hash telist' in
-     (*** for debugging 
+     (*** for debugging
      let _ = debug "***********\n" in
      let _ = Typing.print_te (hash2list te) in
      let _ = debug "***********\n" in
@@ -178,19 +178,19 @@ let rec verify_aux g m steps trials redexes1 freezed dmap cte nte counter =
      let _ = show_time() in
      let _ = debug "type check ended\n" in
      let _ = debug "Inferred type\n" in
-     let _ = if !debugging then Trecs.Typing.print_te new_telist else () in 
+     let _ = if !debugging then Trecs.Typing.print_te new_telist else () in
      let ty = Trecs.Typing.lookup_te g.Trecs.Grammar.s nte' in
        if List.mem (Trecs.Typing.ITbase(m.Trecs.Automaton.init)) ty
        then hash2list nte'
        else
 (**     let te0 = init_te g.nt in
-        let _ = check_eterms_in_freezed freezed te0 nte' cte in 
+        let _ = check_eterms_in_freezed freezed te0 nte' cte in
  **)
         (*** Reset the flags of tinfo ***)
         let _ = Trecs.Reduce.set_flag_queue false redexes1' in
         let _ = Trecs.Reduce.set_flag_freezed false freezed in
 (**         verify_aux g m (min (!factor*steps) 10000) (trials-1) redexes1' freezed dmap cte nte' (counter+steps) **)
-         verify_aux g m steps (trials-1) redexes1' freezed dmap cte nte' (counter+steps) 
+         verify_aux g m steps (trials-1) redexes1' freezed dmap cte nte' (counter+steps)
 
 let tcheck = ref false
 
@@ -199,7 +199,7 @@ let verify g m =
   let trials = !Trecs.Reduce.trials_limit in
   let dmap = Trecs.Grammar.mk_depend g in
   let cte = Trecs.Typing.automaton2cte m in
-  let _ = if !tcheck then 
+  let _ = if !tcheck then
             try (Trecs.Stype.tcheck g cte; flush stdout) with
               Trecs.Stype.IllSorted s ->
                 (print_string s;
@@ -213,7 +213,7 @@ let verify g m =
   let te = verify_aux g m steps trials init_queue [] dmap cte nte steps in
     (te, cte, dmap)
 
-let verify_init g m = 
+let verify_init g m =
   let steps = !Trecs.Reduce.loop_count in
   let trials = !Trecs.Reduce.trials_limit in
   let dmap = Trecs.Grammar.mk_depend g in
@@ -331,6 +331,3 @@ let check env target =
           ignore (Dependent_type.trans te env);
           None
       | Unsafe tr -> Some tr
-
-
-
