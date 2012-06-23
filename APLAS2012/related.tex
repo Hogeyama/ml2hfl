@@ -1,6 +1,8 @@
 \section{Related Work}
 \label{sec:related}
 
+\memo{UnnoPPDP?, DML?, other framework based on dependent types?}
+
 There are several
 methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Chin2003}
 that are aimed at verification of functional programs with data
@@ -18,9 +20,9 @@ as ``$x+y \leq z$'' where $x,y,z$ are the length of lists).
 %let rec id x = match x with nil -> nil | cons x xs -> cons x (id xs)
 %\end{alltt}
 
-Unno et al.~\cite{Unno2010} have also proposed a verification method for 
-higher-order tree processing functional programs, which is based on a 
-verification method for higher-order multi-tree 
+Unno et al.~\cite{Unno2010} have also proposed a verification method for
+higher-order tree processing functional programs, which is based on a
+verification method for higher-order multi-tree
 transducers~\cite{Kobayashi2010}. Their method requires certain
 invariant annotations to recursive data structures.
 %\cc{This is the heavy burden to programmers}
@@ -45,15 +47,15 @@ than $i$,'' while they cannot.
 %with the properties of list elements related to its indices like that
 %the $i$-th element of a list is greater than $i$.
 
-Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for 
-statically reasoning about containers.  The proposed method is based on 
-an abstract interpretation for containers.  Their method is similar to 
-our method in the sense that they model containers as mappings from 
-locations to values.  They consider only a client-side use of specific 
-data structures (i.e. containers) such as primitive data structures and 
-those defined in a standard library.  In contrast, our method can deal 
-with user-defined data structures.  Moreover, as discussed in 
-Sect.~\ref{sec:extension}, our method is strictly more expressive than 
+Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
+statically reasoning about containers.  The proposed method is based on
+an abstract interpretation for containers.  Their method is similar to
+our method in the sense that they model containers as mappings from
+locations to values.  They consider only a client-side use of specific
+data structures (i.e. containers) such as primitive data structures and
+those defined in a standard library.  In contrast, our method can deal
+with user-defined data structures.  Moreover, as discussed in
+Sect.~\ref{sec:extension}, our method is strictly more expressive than
 their method.
 
 Chin et al.~\cite{Chin2003} have proposed sized type inference.  Their

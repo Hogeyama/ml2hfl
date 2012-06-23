@@ -110,7 +110,7 @@ We discuss each problem and explain our approach below.
       Fig.~\ref{fig:sum}.  The program can be successfully verified if
       we abstract the program by using predicates $\Abs{y}{y \geq 0}$
       for the second argument of \texttt{add} and $\Abs{r}{r \geq x}$
-      for the return value of \texttt{add} and \texttt{sum}.  The
+      for the return values of \texttt{add} and \texttt{sum}.  The
       following is the abstracted program using the above predicates.
 \begin{figure}[t]
 \begin{alltt}
@@ -319,7 +319,7 @@ let main n k = check n f k
 %frameworks for higher-order language, and (iv) the implementation and
 %experiments.
 
-The rest of this paper is organized as follows. 
+The rest of this paper is organized as follows.
 %In Sect.~\ref{sec:model-check}, we introduce our previous framework for
 %higher-order programs with integers, which is the base of our framework
 %described in this paper.
@@ -353,7 +353,7 @@ and Sect.~\ref{sec:conclusion} concludes the paper.
 %is to check that a program does not execute the command \texttt{fail}.  We can
 %also check that pattern matching failures and uncaught exceptions do not
 %occur by a trivial transformation. For example, a program
-%\texttt{(match t with ...)} cause a pattern match failure if and only if 
+%\texttt{(match t with ...)} cause a pattern match failure if and only if
 %a program \texttt{(match t with ... | \_ -> fail)} execute \texttt{fail}.
 %
 %The base of our framework is the verification of higher-order programs with integers.

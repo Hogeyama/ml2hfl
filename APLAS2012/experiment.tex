@@ -16,7 +16,7 @@ check (for Step 4) and predicate abstraction (for Step 1).
 
 Table~\ref{tbl:exp} shows the results of the experiments.  The column
 ``size'' shows the word counts of the program.  The last column shows
-the number of CEGAR-cycle and the running time measured.  In the last
+the number of CEGAR-cycles and the running time measured.  In the last
 column, ``C.'' and ``A.'' denote the uses of selective CPS
 transformation and selective predicate abstraction, respectively.  The
 programs have been verified correctly.  The experiment was conducted on
@@ -108,13 +108,12 @@ The programs used in the experiments are:
       recursion scheme with a \textit{case} construct listed at their
       web page
       \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
-      Our framework can verify these programs without special treatment
-      for a case construct unlike their framework that treats a case construct specially.
+      Our framework can verify these programs without a special
+      treatment of case constructs unlike in their framework.
 \item ``fact'' is the example program in Sect.~\ref{sec:control}.
 \item Other programs define generators of lists and functions on lists,
       and assert that the functions work correctly.  For example,
-      ``zip'' defines a function that takes two lists and returns the
-      list of pairs that consists of elements of arguments.
+      ``zip'' defines a function that takes two lists and returns a list of corresponding pairs.
       The function fails if the two arguments have different lengths.
       ``zip'' asserts that \texttt{zip xs xs} never fails for all integer lists \texttt{xs}.
 \end{itemize}
@@ -438,7 +437,7 @@ abstraction reduces the number of CEGAR cycles.
 %  else Random.int 0 :: make_list (m-1)
 %
 %let rec make_list_list m =
-%  if m <=0 
+%  if m <=0
 %  then []
 %  else make_list (Random.int 0) :: make_list_list (m-1)
 %
@@ -462,5 +461,3 @@ abstraction reduces the number of CEGAR cycles.
 %\end{alltt}
 %
 %\end{itemize}
-
-

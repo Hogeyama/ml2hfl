@@ -73,7 +73,7 @@ not.
 We first define the source language of selective CPS transformation.
 The language is the same as the one in Sect.~\ref{sec:language} except: (i) the set
 of terms is extended with non-deterministic branch $\Br{t_1}{t_2}$, and (ii)
-each function type is attached to a label $\ell \in \{\NC,\IC\}$, like
+a label $\ell \in \{\NC,\IC\}$ is attached to each function type, like
 $\TFunL{\ell}{\tau_1}{\tau_2}$.
 
 %\begin{eqnarray*}
@@ -87,8 +87,8 @@ Figure~\ref{fig:cps} shows the rules of the selective CPS
 transformation.  The relation $\CPS{\Gamma}{t}{\tau}{\ell}{t'}$ means
 that a term $t$ is translated to a term $t'$ by using a type $\tau$,
 under the assumption that (i) each free variable $x$ of $t$ has been
-transformed using the type $\Gamma(x)$, (ii) $t$ has a side-effect if
-$\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
+transformed using the type $\Gamma(x)$, \cc{(ii) $t$ may have a side-effect if
+$\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.}
 %Here, $\MAbs{x}{t}$ and
 %$\MApp{t_1}{t_2}$ are, respectively, application and abstraction that
 %will be reduced statically in the translation.
@@ -333,7 +333,7 @@ transformation.  The examples are the transformations of
 $\Abs{x}{\Abs{y}{\assert(x = y)}}$ with type
 $\TFunN{\INT}{\TFunC{\INT}{\INT}}$ for (a) and
 $\TFunC{\INT}{\TFunC{\INT}{\INT}}$ for (b).
-The transformation of $\Abs{y}{\assert(x = y)}$ in (b) is the same as one in (a).
+The transformation of $\Abs{y}{\assert(x = y)}$ in (b) is the same as the one in (a).
 In (a), there is no need to insert a continuation parameter to the back of $x$.
 On the other hand, in (b), a continuation parameter is inserted.
 
@@ -386,7 +386,7 @@ $b$ and returns $\App{k}{()}$)} \label{fig:cps-example}
 
 In the following, we discuss properties of the selective CPS
 transformation.  The theorem below states that we can transform
-arbitrary simply-typed programs by the selective CPS.
+arbitrary simply-typed programs by the selective CPS transformation.
 \begin{theorem}
 Suppose $D$ is typable in $\Gamma$. There exists $D'$ such that $\CPSprog{\Gamma}{D}{D'}$.
 \end{theorem}

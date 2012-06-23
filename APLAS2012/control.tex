@@ -1,6 +1,6 @@
 \subsection{Extension for Control Operations}
 \label{sec:control} We can extend the framework to deal with control
-operations (e.g., exceptions and \texttt{call/cc}) by removing these
+operations (e.g., exceptions and \texttt{call/cc}) by removing them
 from a program by CPS transformation~\cite{Nielsen2001}.
 
 %Consider the following program (written in OCaml style).
@@ -26,4 +26,3 @@ let main n k =
 \end{alltt}
 Once the exception is removed, we can apply our verification method to the
 program.
-

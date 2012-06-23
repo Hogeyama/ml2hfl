@@ -16,7 +16,7 @@ The meta-variable $\OP$ ranges over the set of operators over integers.
 The expressions are standard except that there is a primitive $\FAIL$
 that aborts a program.  We use $\TRUE$ and $\FALSE$ as aliases of $0$
 and $1$, and we write $\Assert{t}$ for $\If{t}{0}{\FAIL}$,
-$\Let{x}{t_1}{t_2}$ for $(\Abs{x}{t_1})\ t_2$, and $(v_1\ \OP\ v_2)$ for $\Op{v_1,v_2}$.  We
+$\Let{x}{t_1}{t_2}$ for $(\Abs{x}{t_2})\ t_1$, and $(v_1\ \OP\ v_2)$ for $\Op{v_1,v_2}$.  We
 assume that (i) a program is well-typed in the standard simple type system,
 where the set of types is given in Fig.~\ref{fig:source-syntax}, (ii)
 every function in a program $D$ has a function type, and (iii) $D$ contains a
