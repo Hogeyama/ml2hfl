@@ -47,6 +47,7 @@ let orig_id x = {x with Id.id = 0}
 %token THEN
 %token ELSE
 %token TYPE
+%token INLINE
 %token TUNIT
 %token TBOOL
 %token TINT
@@ -78,8 +79,8 @@ let orig_id x = {x with Id.id = 0}
 %left prec_app
 
 
-%start typedefs
-%type <(Syntax.id * Syntax.typ) list> typedefs
+%start spec
+%type <Spec.spec> spec
 
 %%
 
@@ -128,10 +129,20 @@ exp:
 id:
 | IDENT { make_id $1 }
 
-typedefs:
-  { [] }
-| id COLON typ typedefs
-  { ($1, snd $3)::$4 }
+spec:
+  { Spec.init }
+| typedef spec
+  { {$2 with Spec.abst_env = $1::$2.Spec.abst_env} }
+| inline spec
+  { {$2 with Spec.inlined = $1::$2.Spec.inlined} }
+
+inline:
+| INLINE id
+  { $2 }
+
+typedef:
+| id COLON typ
+  { $1, snd $3 }
 
 typ_aux:
 | TUNIT

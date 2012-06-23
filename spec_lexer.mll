@@ -33,6 +33,7 @@ rule token = parse
 | '-' { MINUS }
 | '*' { TIMES }
 | '|' { BAR }
+| "inline" { INLINE }
 | "type" { TYPE }
 | "unit" { TUNIT }
 | "bool" { TBOOL }
@@ -61,8 +62,8 @@ rule token = parse
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 (*| lower (digit|lower|upper|'_')* *)
 (*    { IDENT(Lexing.lexeme lexbuf) } *)
-| lower (digit|lower|upper)* 
-    { IDENT(Lexing.lexeme lexbuf) } 
+| lower (digit|lower|upper)*
+    { IDENT(Lexing.lexeme lexbuf) }
 | eof
     { EOF }
 | _
@@ -85,7 +86,7 @@ and comment = parse
 
 and string = parse
 | '\"' { "" }
-| (digit|lower|upper|space|symbol)+ 
+| (digit|lower|upper|space|symbol)+
   { let s = Lexing.lexeme lexbuf in
       s ^ (string lexbuf) }
 | "\\n" { "\n" ^ (string lexbuf) }
@@ -95,6 +96,3 @@ and string = parse
         (Lexing.lexeme_start lexbuf)
         (Lexing.lexeme_end lexbuf);
       failwith "lex error" }
-
-
-

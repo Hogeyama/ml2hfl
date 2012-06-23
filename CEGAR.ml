@@ -7,8 +7,7 @@ open CEGAR_util
 exception NoProgress
 exception CannotDiscoverPredicate
 
-type info = {orig_fun_list:var list}
-
+type info = {orig_fun_list:var list; inlined:var list}
 
 let make_ce_printer ce prog sol () =
   Format.printf "Inputs:@.";
@@ -26,8 +25,8 @@ let post () =
   Id.reset_counter ()
 *)
 
-let inlined_functions orig_fun_list {defs=defs;main=main} =
-  let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list) in
+let inlined_functions orig_fun_list force {defs=defs;main=main} =
+  let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   ExtList.List.unique fs
 (*Util.diff (List.map (fun (f, _, _, _, _) -> f) defs) *)
 
@@ -35,7 +34,7 @@ let rec cegar1 prog0 ces info =
   pre ();
   let pr =
     if !Flag.expand_nonrec
-    then CEGAR_util.print_prog_typ' info.orig_fun_list
+    then CEGAR_util.print_prog_typ' info.orig_fun_list info.inlined
     else CEGAR_print.prog_typ
   in
   let prog =
@@ -46,7 +45,7 @@ let rec cegar1 prog0 ces info =
     else prog0
   in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
-  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list None prog in
+  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined None prog in
   let result = ModelCheck.check None abst prog in
   let result' = apply_opt (fun ce -> CEGAR_trans.trans_ce ce labeled prog) result in
     match result',ces with
@@ -85,7 +84,8 @@ let rec cegar1 prog0 ces info =
                       CEGAR_print.ce prefix
                 in
                 let ces' = ce::ces in
-                let _,prog' = Refine.refine (inlined_functions info.orig_fun_list prog0) prefix ces' prog0 in
+                let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+                let _,prog' = Refine.refine inlined_functions prefix ces' prog0 in
 (*                let prog' = reconstruct_typ prog' in*)
                   post ();
                   cegar1 prog' ces' info

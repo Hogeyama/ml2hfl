@@ -65,7 +65,8 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	util.cmo zipper.cmo \
 	global.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
-	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo formula.cmo tsubst.cmo fes.cmo fdef.cmo prog.cmo \
+	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo \
+	formula.cmo tsubst.cmo fes.cmo fdef.cmo prog.cmo \
 	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
 	farkas.cmo \
 	refType.cmo refTypeCheck.cmo \
@@ -85,14 +86,17 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
 	$(ATP)/atp_batch.cmo \
 	$(addprefix lazy/,$(LAZY_CMO)) \
-	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo syntax.cmo spec_parser.cmo spec_lexer.cmo \
+	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
+	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	type_check.cmo trans.cmo CEGAR_util.cmo useless_elim.cmo \
 	lazyInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
+	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo \
+	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
 	$(TRECS)/trecs.cmo dependent_type.cmo trecsInterface.cmo \
-	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
+	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
+	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
 	main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma
@@ -236,11 +240,20 @@ test2: opt
 	for i in $(TEST); \
 	do echo $$i; \
 	(ulimit -t $(LIMIT); \
-	./$(NAME).opt $(OPTION) $$i 2>&1 | egrep 'Safe|Unsafe|cycle:|Verification|Fatal') | grep -v File | grep -v Warning; \
+	./$(NAME).opt $(OPTION) $$i 2>&1 | \
+	  egrep 'Safe|Unsafe|cycle:|Verification|Fatal') | \
+	  grep -v File | \
+	  grep -v Warning; \
 	echo; \
 	done
 test-byte: byte
-	for i in $(TEST); do echo $$i; (ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | grep -v File | grep -v Warning; echo; done
+	for i in $(TEST); \
+	do echo $$i; \
+	(ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | \
+	  grep -v File | \
+	  grep -v Warning; \
+	echo; \
+	done
 
 
 ################################################################################
@@ -253,4 +266,3 @@ depend::
 	$(OCAMLDEP) -I lazy $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
-

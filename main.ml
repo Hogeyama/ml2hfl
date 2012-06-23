@@ -6,6 +6,9 @@ exception LongInput
 exception NoProgress
 exception CannotDiscoverPredicate
 
+
+
+
 let log_filename = ref ""
 let log_cout = ref stdout
 let log_fm = ref Format.std_formatter
@@ -37,31 +40,12 @@ let print_info () =
 
 let spec_file = ref ""
 
-let print_spec spec =
-  if spec <> []
-  then
-    begin
-      Format.printf "spec::@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x Syntax.print_typ typ) spec;
-      Format.printf "@."
-    end
 
 
 let rec main_loop parsed =
   let t = parsed in
-  let spec =
-    if !spec_file = ""
-    then []
-    else
-      let lb = Lexing.from_channel (open_in !spec_file) in
-        lb.Lexing.lex_curr_p <-
-          {Lexing.pos_fname = Filename.basename !spec_file;
-           Lexing.pos_lnum = 1;
-           Lexing.pos_cnum = 0;
-           Lexing.pos_bol = 0};
-        Spec_parser.typedefs Spec_lexer.token lb
-  in
-  let () = print_spec spec in
+  let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
+  let () = Spec.print spec in
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
   let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
@@ -72,9 +56,9 @@ let rec main_loop parsed =
       let fun_list = Syntax.get_top_funs t' in
       let () = if true && t <> t' then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
-      let spec' = Trans.rename_spec spec t in
-      let () = print_spec spec' in
-      let t' = Trans.replace_typ spec' t in
+      let spec' = Spec.rename spec t in
+      let () = Spec.print spec' in
+      let t' = Trans.replace_typ spec'.Spec.abst_env t in
       let () = if true && t <> t' then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term' t' in
       let t = t' in
       let t' = Abstract.abstract_recdata t in
@@ -91,8 +75,8 @@ let rec main_loop parsed =
       let t =
         if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
           let t = LazyInterface.insert_extra_param t in
-          let () = if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-            (List.length !LazyInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t in
+            if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+              (List.length !LazyInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
             t
         else
           t
@@ -112,12 +96,14 @@ let rec main_loop parsed =
   let aux x = try [List.assoc (CEGAR_util.trans_var x) map] with Not_found -> [] in
   let fun_list = rev_flatten_map aux fun_list in
 
+  let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
+
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
           LazyInterface.verify [] (prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main)
       | Flag.CEGAR_DependentType ->
           try
-            match CEGAR.cegar prog {CEGAR.orig_fun_list=fun_list} with
+            match CEGAR.cegar prog {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined} with
 	        prog', None -> Format.printf "Safe!@.@."
 	      | _, Some print ->
                   Format.printf "Unsafe!@.@.";
