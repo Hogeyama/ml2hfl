@@ -1212,7 +1212,7 @@ let rec propagate_typ_arg t =
     | Match(t1,pats) ->
         let aux (pat,cond,t1) = pat, apply_opt propagate_typ_arg cond, propagate_typ_arg t1 in
           make_match (propagate_typ_arg t1) (List.map aux pats)
-    | Raise t -> {desc=Raise (propagate_typ_arg t); typ=t.typ}
+    | Raise t1 -> {desc=Raise (propagate_typ_arg t1); typ=t.typ}
     | TryWith(t1,t2) -> {desc=TryWith(propagate_typ_arg t1, propagate_typ_arg t2); typ=t.typ}
     | Pair(t1,t2) -> make_pair (propagate_typ_arg t1) (propagate_typ_arg t2)
     | Fst t -> make_fst (propagate_typ_arg t)

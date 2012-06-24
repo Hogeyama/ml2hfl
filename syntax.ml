@@ -1067,7 +1067,7 @@ and subst_type x t = function
   | TUnknown -> TUnknown
   | TList typ -> TList (subst_type x t typ)
   | TVariant _ -> assert false
-  | TConstr _ -> assert false
+  | TConstr(s,b) -> TConstr(s,b)
   | TPair(typ1,typ2) -> TPair(subst_type x t typ1, subst_type x t typ2)
 
 
@@ -1191,9 +1191,10 @@ let rec merge_typ typ1 typ2 =
           TFun(x, typ)
     | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
     | TPair(typ11,typ12), TPair(typ21,typ22) -> TPair(merge_typ typ11 typ21, merge_typ typ12 typ22)
+    | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
     | typ, TUnknown
     | TUnknown, typ -> typ
-    | _ -> Format.printf "typ1:%a, %a@." pp_print_typ typ1 pp_print_typ typ2; assert false
+    | _ -> Format.printf "typ1:%a, typ2:%a@." pp_print_typ typ1 pp_print_typ typ2; assert false
 
 
 let make_if t1 t2 t3 =

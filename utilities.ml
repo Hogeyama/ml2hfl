@@ -1,7 +1,7 @@
 exception Fatal of string
 
 let table_create n = Hashtbl.create n;;
-let table_find tab x = Hashtbl.find tab x 
+let table_find tab x = Hashtbl.find tab x
 let table_add tab a b = Hashtbl.add tab a b
 (***
   let debug s = (print_string s; print_string "\n"; flush(stdout))
@@ -12,14 +12,14 @@ let show_time() =
     !debugging
   then
     print_string (string_of_float (Sys.time()))
-  else 
+  else
     ()
 let debug s =
   if
     !debugging
   then
     (print_string s; flush stdout)
-  else 
+  else
     ()
 
 
@@ -39,7 +39,7 @@ let rec list_take_nth l n =
     [] -> raise (Fatal "list_take_nth: position is wrong")
   | a::l' ->
      if n=0 then (a, l')
-     else 
+     else
        let (x, l'') = list_take_nth l' (n-1) in
          (x, a::l'')
 
@@ -47,7 +47,7 @@ let rec merge_and_unify comp l1 l2 =
   match (l1, l2) with
     (_,[]) -> l1
   | ([], _)->l2
-  | (x::l1',y::l2') -> 
+  | (x::l1',y::l2') ->
         let c = comp x y in
          if c=0 then x::(merge_and_unify comp l1' l2')
          else if c<0 then x::(merge_and_unify comp l1' l2)
@@ -56,7 +56,7 @@ let rec merge comp l1 l2 =
   match (l1, l2) with
     (_,[]) -> l1
   | ([], _)->l2
-  | (x::l1',y::l2') -> 
+  | (x::l1',y::l2') ->
         let c = comp x y in
          if c<0 then x::(merge comp l1' l2)
          else y::(merge comp l1 l2');;
@@ -98,8 +98,8 @@ let rec list_last_and_rest l =
   match l with
      [] -> raise Not_found
   | [x] -> (x, [])
-  | x::l' -> 
-     let (y, l'') = list_last_and_rest(l') 
+  | x::l' ->
+     let (y, l'') = list_last_and_rest(l')
      in (y, x::l'')
 
 let rec subset_sortedlist comp l1 l2 =
@@ -108,7 +108,7 @@ let rec subset_sortedlist comp l1 l2 =
   | x::l1' ->
       match l2 with
          [] -> false
-       | y::l2' -> 
+       | y::l2' ->
           let c = comp x y in
           if c=0 then subset_sortedlist comp l1' l2'
           else if c<0 then false
@@ -119,10 +119,10 @@ let swap (x,y) = (y,x);;
 (*** substitutions ***)
 type ('a, 'b) substitution = ('a * 'b) list
 let subst_empty = []
-let subst_var s var default = 
+let subst_var s var default =
   try
      List.assoc var s
-  with 
+  with
      Not_found -> default
 let make_subst x v = [(x,v)]
 let list2subst x = x
@@ -149,27 +149,27 @@ let print_env f g env =
 let env2list x = x;;
 let list2env x = x;;
 
-(*** perfect_matching checks to see if there exists a perfect matching 
+(*** perfect_matching checks to see if there exists a perfect matching
  *** The implementation is extremely naive, assuming
  *** that the size of the input graph is very small.
  *** For a large graph, an approximate, conservative
  *** algorithm should be used.
  ***)
 let rec delete x l =
-  match l with 
+  match l with
     [] -> raise Not_found
   | y::l' -> if x=y then l' else y::(delete x l')
 
 let rec find nodes candidates =
   match candidates with
     [] -> true
-  | nodes1::candidates' -> 
+  | nodes1::candidates' ->
       List.exists (fun x->
                     try let nodes' = delete x nodes in find nodes' candidates'
                     with
-                      Not_found -> false) 
+                      Not_found -> false)
       nodes1
-       
+
 let perfect_matching nodes1 nodes2 edges =
  let get_neighbors x = List.map snd (List.filter (fun (x',_) -> x=x') edges) in
  let sources = List.map fst edges in

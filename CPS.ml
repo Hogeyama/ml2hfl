@@ -150,7 +150,8 @@ let rec trans_exc ct ce t =
         let k = Id.new_var "k" (TFun(x,TUnit)) in
         let aux t1 t2 =
           match t2.desc with
-              App({desc=Var k}, [{desc=Constr(c,ts)}]) -> make_app (make_var k) [{desc=Constr(c,t1::ts);typ=t.typ}]
+              App({desc=Var k}, [{desc=Constr(c,ts)}]) ->
+                make_app (make_var k) [{desc=Constr(c,t1::ts);typ=t.typ}]
             | _ -> assert false
         in
         let ct1 x = make_app (make_var k) [{desc=Constr(cstr,[x]);typ=t.typ}] in
@@ -374,18 +375,30 @@ and t_cps =
 and typ_cps =
     TBaseCPS of Syntax.typ
   | TVarCPS of typ_cps option ref
-  | TFunCPS of bool ref * typ_cps * typ_cps
+  | TFunCPS of effect ref * typ_cps * typ_cps
   | TPairCPS of typ_cps * typ_cps
   | TPredCPS of typ_cps * Syntax.typed_term list
+and effect = ENone | ECont | EExcepHandler
 
-let should_insert b = !b || !Flag.cps_simpl
+let effect_max x y =
+  match x, y with
+      ENone, _ -> y
+    | ECont, EExcepHandler -> EExcepHandler
+    | ECont, _ -> ECont
+    | EExcepHandler, _ -> EExcepHandler
+
+let should_insert b = !b <> ENone || !Flag.cps_simpl
 
 let rec print_typ_cps fm = function
     TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
   | TVarCPS {contents = None} -> Format.fprintf fm "?"
   | TVarCPS {contents = Some typ} -> Format.fprintf fm "%a" print_typ_cps typ
+  | TFunCPS({contents=ENone},typ1,typ2) ->
+      Format.fprintf fm "(%a -> %a)" print_typ_cps typ1 print_typ_cps typ2
+  | TFunCPS({contents=ECont},typ1,typ2) ->
+      Format.fprintf fm "(%a => %a)" print_typ_cps typ1 print_typ_cps typ2
   | TFunCPS({contents=b},typ1,typ2) ->
-      Format.fprintf fm "(%a %s %a)" print_typ_cps typ1 (if b then "=>" else "->") print_typ_cps typ2
+      Format.fprintf fm "(%a -=> %a)" print_typ_cps typ1 print_typ_cps typ2
   | TPairCPS(typ1,typ2) ->
       Format.fprintf fm "(%a * %a)" print_typ_cps typ1 print_typ_cps typ2
   | TPredCPS(typ,ps) ->
@@ -521,104 +534,137 @@ let rec trans_cont_pos_typ force typ =
     | TBool -> TBaseCPS typ
     | TFun(x,typ2) ->
         let typ1 = Id.typ x in
-        let b = force || match typ2 with TFun _ -> false | _ -> true in
+        let b = effect_max force (match typ2 with TFun _ -> ENone | _ -> ECont) in
           TFunCPS(ref b, trans_cont_pos_typ force typ1, trans_cont_pos_typ force typ2)
     | TPair(typ1,typ2) -> TPairCPS(trans_cont_pos_typ force typ1, trans_cont_pos_typ force typ2)
     | TPred(typ,ps) -> TPredCPS(trans_cont_pos_typ force typ, ps)
     | _ -> assert false
 
-let rec infer_cont_pos env t =
+let rec infer_effect env t =
   match t.desc with
-      Unit -> {t_cps=UnitCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
-    | True -> {t_cps=TrueCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
-    | False -> {t_cps=FalseCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
-    | Unknown -> {t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
-    | Int n -> {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
-    | Bottom -> {t_cps=BottomCPS; typ_cps=trans_cont_pos_typ false t.typ; typ_orig=t.typ}
+      Unit ->
+        let t' = {t_cps=UnitCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ} in
+          t', ENone
+    | True ->
+        let t' = {t_cps=TrueCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ} in
+          t', ENone
+    | False ->
+        let t' = {t_cps=FalseCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ} in
+          t', ENone
+    | Unknown -> assert false (*{t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}*)
+    | Int n ->
+        let t' = {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ; typ_orig=t.typ} in
+          t', ENone
+    | Bottom ->
+        let t' = {t_cps=BottomCPS; typ_cps=trans_cont_pos_typ ENone t.typ; typ_orig=t.typ} in
+          t', ECont
     | NInt x -> assert false
     | RandInt true -> assert false
-    | RandInt false -> {t_cps=RandIntCPS; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS TInt); typ_orig=t.typ}
+    | RandInt false ->
+        let typ = TFunCPS(ref ECont, TBaseCPS TUnit, TBaseCPS TInt) in
+        let t' = {t_cps=RandIntCPS; typ_cps=typ; typ_orig=t.typ} in
+          t', ENone
     | Var x ->
         let typ =
-		        try
-		          List.assoc (Id.to_string x) env
-		        with
-		            Not_found when is_external x -> trans_cont_pos_typ false t.typ
-		          | Not_found when is_parameter x -> TBaseCPS(TInt)
-		          | Not_found -> Format.printf "%a@." print_id x; assert false
+	  try
+	    List.assoc (Id.to_string x) env
+	  with
+	      Not_found when is_external x -> trans_cont_pos_typ ENone t.typ
+	    | Not_found when is_parameter x -> TBaseCPS(TInt)
+	    | Not_found -> Format.printf "%a@." print_id x; assert false
         in
-          {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ}
+        let t' = {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ} in
+          t', ENone
     | Fun(x, t') ->
-(*
-        let typ = new_tvar() in
-        let env' = (Id.to_string x, typ)::env in
-        let typed = infer_cont_pos env' t' in
+        (*
+          let typ = new_tvar() in
+          let env' = (Id.to_string x, typ)::env in
+          let typed = infer_effect env' t' in
           {t_cps=FunCPS({id_cps=x;id_typ=typ},typed); typ_cps=TFunCPS(ref true,typ,typed.typ_cps)}
-*)
+        *)
         let f = Id.new_var "f" t.typ in
-          infer_cont_pos env (make_let [f, [x], t'] (make_var f))
-    | App(t1, ts) ->
-        let typed1 = infer_cont_pos env t1 in
-        let typeds = List.map (infer_cont_pos env) ts in
+          infer_effect env (make_let [f, [x], t'] (make_var f))
+    | App(t1, []) -> assert false
+    | App(t1, t2::t3::ts) ->
+        let typ = (make_app t1 [t2]).typ in
+          infer_effect env {desc=App({desc=App(t1,[t2]);typ=typ}, t3::ts); typ=t.typ}
+    | App(t1, [t2]) ->
+        let typed1,e1 = infer_effect env t1 in
+        let typed2,e2 = infer_effect env t2 in
         let typ_result = new_tvar () in
-        let aux typed (typ,b) = TFunCPS(ref b,typed.typ_cps,typ), false in
-        let typ,_ = List.fold_right aux typeds (typ_result,true) in
+        let typ = TFunCPS(ref ENone, typed2.typ_cps, typ_result) in
         let _ = unify typed1.typ_cps typ in
-          {t_cps=AppCPS(typed1,typeds); typ_cps=typ_result; typ_orig=t.typ}
+        let t' = {t_cps=AppCPS(typed1,[typed2]); typ_cps=typ_result; typ_orig=t.typ} in
+        let e = effect_max e1 e2 in
+          t', e
     | If(t1, t2, t3) ->
-        let typed1 = infer_cont_pos env t1 in
-        let typed2 = infer_cont_pos env t2 in
-        let typed3 = infer_cont_pos env t3 in
+        let typed1,e1 = infer_effect env t1 in
+        let typed2,e2 = infer_effect env t2 in
+        let typed3,e3 = infer_effect env t3 in
         let _ = unify typed1.typ_cps (TBaseCPS TBool) in
         let typ = unify typed2.typ_cps typed3.typ_cps in
-          {t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typ; typ_orig=t.typ}
+        let t' = {t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typ; typ_orig=t.typ} in
+        let e = effect_max (effect_max e1 e2) e3 in
+          t', e
     | Let(flag, [f, xs, t1], t2) ->
-        let typ_f = new_tvar' (trans_cont_pos_typ false (Id.typ f)) in
+        let typ_f = new_tvar' (trans_cont_pos_typ ENone (Id.typ f)) in
         let f' = {id_cps=f; id_typ=typ_f} in
         let typ_args = List.map (fun _ -> new_tvar ()) xs in
         let xs' = List.map2 (fun x typ -> {id_cps=x; id_typ=typ}) xs typ_args in
         let env2 = (Id.to_string f, typ_f) :: env in
-        let env1 = List.combine (List.map Id.to_string xs) typ_args @@ if flag = Flag.Nonrecursive then env else env2 in
-        let typed1 = infer_cont_pos env1 t1 in
-        let typed2 = infer_cont_pos env2 t2 in
-        let b = ref true in
-        let aux typ1 typ2 =
-          let typ = TFunCPS(ref !b,typ1,typ2) in
-            b := false; typ
+        let env1 =
+          List.combine (List.map Id.to_string xs) typ_args @@
+            if flag = Flag.Nonrecursive then env else env2
         in
-        let typ = List.fold_right aux typ_args typed1.typ_cps in
+        let typed1, e1 = infer_effect env1 t1 in
+        let typed2, e2 = infer_effect env2 t2 in
+        let aux typ1 (typ2,e) = TFunCPS(ref e, typ1, typ2), ENone in
+        let typ,_ = List.fold_right aux typ_args (typed1.typ_cps,ECont) in
         let _ = unify typ_f typ in
-          {t_cps=LetCPS(flag,f',xs',typed1,typed2); typ_cps=typed2.typ_cps; typ_orig=t.typ}
+        let t' = {t_cps=LetCPS(flag,f',xs',typed1,typed2); typ_cps=typed2.typ_cps; typ_orig=t.typ} in
+        let e = if xs = [] then effect_max e1 e2 else e2 in
+          t', e
     | Let _ -> assert false
     | BinOp(op, t1, t2) ->
-        let typed1 = infer_cont_pos env t1 in
-        let typed2 = infer_cont_pos env t2 in
+        let typed1,e1 = infer_effect env t1 in
+        let typed2,e2 = infer_effect env t2 in
         let _ = unify typed1.typ_cps typed2.typ_cps in
-          {t_cps=BinOpCPS(op,typed1,typed2); typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
+        let t' = {t_cps=BinOpCPS(op,typed1,typed2); typ_cps=TBaseCPS t.typ; typ_orig=t.typ} in
+        let e = effect_max e1 e2 in
+          t', e
     | Not t ->
-        let typed = infer_cont_pos env t in
+        let typed,e = infer_effect env t in
         let _ = unify typed.typ_cps (TBaseCPS t.typ) in
-          {t_cps=NotCPS typed; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
+        let t' = {t_cps=NotCPS typed; typ_cps=TBaseCPS t.typ; typ_orig=t.typ} in
+          t', e
     | Event(s,true) -> assert false
-    | Event(s,false) -> {t_cps=EventCPS s; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS TUnit); typ_orig=t.typ}
+    | Event(s,false) ->
+        let typ = TFunCPS(ref ENone, TBaseCPS TUnit, TBaseCPS TUnit) in
+        let t' = {t_cps=EventCPS s; typ_cps=typ; typ_orig=t.typ} in
+          t', ENone
     | Fst t ->
-        let typed = infer_cont_pos env t in
+        let typed,e = infer_effect env t in
         let typ1 = new_tvar() in
         let typ2 = new_tvar() in
         let typ = TPairCPS(typ1,typ2) in
         let _ = unify typed.typ_cps typ in
-          {t_cps=FstCPS typed; typ_cps=typ1; typ_orig=t.typ}
+        let t' = {t_cps=FstCPS typed; typ_cps=typ1; typ_orig=t.typ} in
+          t', e
     | Snd t ->
-        let typed = infer_cont_pos env t in
+        let typed,e = infer_effect env t in
         let typ1 = new_tvar() in
         let typ2 = new_tvar() in
         let typ = TPairCPS(typ1,typ2) in
         let _ = unify typed.typ_cps typ in
-          {t_cps=SndCPS typed; typ_cps=typ2; typ_orig=t.typ}
+        let t' = {t_cps=SndCPS typed; typ_cps=typ2; typ_orig=t.typ} in
+          t', e
     | Pair(t1,t2) ->
-        let typed1 = infer_cont_pos env t1 in
-        let typed2 = infer_cont_pos env t2 in
-          {t_cps=PairCPS(typed1,typed2); typ_cps=TPairCPS(typed1.typ_cps,typed2.typ_cps); typ_orig=t.typ}
+        let typed1,e1 = infer_effect env t1 in
+        let typed2,e2 = infer_effect env t2 in
+        let typ = TPairCPS(typed1.typ_cps,typed2.typ_cps) in
+        let t' = {t_cps=PairCPS(typed1,typed2); typ_cps=typ; typ_orig=t.typ} in
+        let e = effect_max e1 e2 in
+          t', e
     | TryWith (_, _) -> assert false
     | Raise _ -> assert false
     | Match (_, _) -> assert false
@@ -727,7 +773,6 @@ let add_preds_cont k t =
 
 let rec trans_typ typ_orig typ =
   match typ_orig,typ with
-      _, TVarCPS{contents=Some typ} -> trans_typ typ_orig typ
     | _, TBaseCPS _ -> typ_orig
     | TFun(x_orig,typ), TFunCPS(b,typ1,typ2) when should_insert b ->
         let typ1' = trans_typ (Id.typ x_orig) typ1 in
@@ -741,11 +786,24 @@ let rec trans_typ typ_orig typ =
         let x = Id.new_var "x" typ1' in
         let typ2' = subst_type x_orig (make_var x) (trans_typ typ typ2) in
           TFun(x, typ2')
-    | TPair(typ_orig1,typ_orig2), TPairCPS(typ1,typ2) -> TPair(trans_typ typ_orig1 typ1, trans_typ typ_orig2 typ2)
+    | TPair(typ_orig1,typ_orig2), TPairCPS(typ1,typ2) ->
+        TPair(trans_typ typ_orig1 typ1, trans_typ typ_orig2 typ2)
     | TPred(typ1,ps), typ2 -> TPred(trans_typ typ1 typ2, ps)
     | _ ->
         Format.printf "%a,%a@." print_typ typ_orig print_typ_cps typ;
         raise (Fatal "bug? (CPS.trans_typ)")
+
+let trans_typ orig typ =
+  let rec aux = function
+      TBaseCPS typ -> TBaseCPS typ
+    | TVarCPS{contents=Some typ} -> aux typ
+    | TVarCPS{contents=None} -> raise (Fatal "bug? (CPS.trans_typ)")
+    | TFunCPS(b, typ1, (TFunCPS _ as typ2)) -> TFunCPS(b, aux typ1, aux typ2)
+    | TFunCPS(b, typ1, typ2) -> TFunCPS(ref (effect_max !b ECont), aux typ1, aux typ2)
+    | TPairCPS(typ1, typ2) -> TPairCPS(aux typ1, aux typ2)
+    | TPredCPS(typ, ps) -> TPredCPS(aux typ, ps)
+  in
+    trans_typ orig (aux typ)
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
 
@@ -759,6 +817,8 @@ let rec transform k_post c {t_cps=t; typ_cps=typ; typ_orig=typ_orig} =
     | RandIntCPS -> c (make_randint_cps TUnit)
     | VarCPS x -> c (make_var (trans_var x))
     | FunCPS(x, t) -> assert false
+    | AppCPS({t_cps=AppCPS(t1, ts1)}, ts2) when List.length ts1 < get_arg_num t1.typ_cps ->
+        transform k_post c {t_cps=AppCPS(t1,ts1@ts2); typ_cps=typ; typ_orig=typ_orig}
     | AppCPS(t1, ts) ->
         let n = get_arg_num t1.typ_cps in
           if n = List.length ts
@@ -932,14 +992,14 @@ let trans t =
   let t = short_circuit_eval t in
   let t = Trans.elim_fun t in
   let t_cps =
-    if has_exception t
+    if false && has_exception t
     then
       let u = Id.new_var "u" typ_event in
       let ce _ = make_let [u, [], fail_term] unit_term in
         trans_exc (fun x -> x) ce t
     else
-      let cps_pre = infer_cont_pos [] t in
-      let () = if false then Format.printf "CPS_infer_cont_pos:@.%a@." print_t_cps cps_pre.t_cps in
+      let cps_pre,_ = infer_effect [] t in
+      let () = if false then Format.printf "CPS_infer_effect:@.%a@." print_t_cps cps_pre.t_cps in
       let cps = transform cps_pre in
         cps
   in

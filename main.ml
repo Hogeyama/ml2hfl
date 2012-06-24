@@ -48,7 +48,7 @@ let rec main_loop parsed =
   let () = Spec.print spec in
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
-  let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
+  let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term' t in
   let fun_list,t =
     if !Flag.init_trans
     then
