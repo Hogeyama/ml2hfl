@@ -108,7 +108,12 @@ let rec main_loop parsed =
 	      | _, Some print ->
                   Format.printf "Unsafe!@.@.";
                   print ()
-          with Verifier.FailedToRefineExtraParameters ->
+          with Verifier.FailedToRefineTypes ->
+										  let _ = assert (not !Flag.relative_complete) in
+												let _ = Flag.relative_complete := true in
+            let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
+              main_loop parsed												
+          | Verifier.FailedToRefineExtraParameters ->
             let _ = LazyInterface.params := [] in
             let _ = Verifier.ext_coeffs := [] in
             let _ = Verifier.ext_constrs := [] in

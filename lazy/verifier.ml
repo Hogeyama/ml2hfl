@@ -265,6 +265,8 @@ let infer_abst_type fs prog etrs =
     (function ((f, sty)::fstys) -> f, AbsType.merge (sty::List.map snd fstys) | _ -> assert false)
     (Util.classify (fun (f1, _) (f2, _) -> f1 = f2) env)
 
+exception FailedToRefineTypes
+
 let refine fs cexs prog =
   let _ = Global.log_begin "refine" in
   let _ = Global.log (fun () -> Format.printf "inlined functions: %s@," (String.concat "," fs)) in
@@ -281,7 +283,7 @@ let refine fs cexs prog =
 				    CompTree.error_traces_of rt
 		    in
 		    let _ = Global.log (fun () -> Format.printf "error traces:@,  @[<v>%a@]@," (Util.pr_list Trace.pr "@,") etrs) in
-		    let env = infer_abst_type fs prog etrs in
+		    let env = try infer_abst_type fs prog etrs with HcSolve.NoSolution -> raise FailedToRefineTypes in
 		    let _ = Format.printf "abstraction types:@,  %a@," AbsType.pr_env env in
 		    env
 		  with Util.NotImplemented s ->
