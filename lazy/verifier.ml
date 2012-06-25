@@ -55,14 +55,21 @@ let solve_bv_aux t =
 		with Not_found ->
     raise Cvc3Interface.Unknown
 
-let exparams : Var.t list ref = ref []
+let masked_params : Var.t list ref = ref []
 
 let solve_bv t =
 		try
-				let _ = if !Global.debug && !exparams <> [] then Format.printf "exparams: %a@," (Util.pr_list Var.pr ",") !exparams in
-				let coeffs = List.map (fun c -> c, 0) (Util.inter !exparams (Term.coeffs t)) in
-				let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
-				coeffs @ solve_bv_aux t'
+		  if !Global.disable_parameter_inference_heuristics then
+				  raise Cvc3Interface.Unknown
+				else
+				  let masked_params = Util.inter !masked_params (Term.coeffs t) in
+						if masked_params = [] then
+						  raise Cvc3Interface.Unknown
+						else
+								let _ = if !Global.debug then Format.printf "masked_params: %a@," (Util.pr_list Var.pr ",") masked_params in
+								let coeffs = List.map (fun c -> c, 0) masked_params in
+								let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
+								coeffs @ solve_bv_aux t'
 		with Cvc3Interface.Unknown ->
   		solve_bv_aux t
 
@@ -178,7 +185,7 @@ let infer_ref_types fs prog etrs =
 						    hcs, ohcs
 						  else
 						    let _ = refine_coeffs hcs in
-										let _ = Format.printf "solutions :@.  %a@." pr_coeffs !ext_coeffs in
+										let _ = Format.printf "inferred extra parameters:@,  %a@," pr_coeffs !ext_coeffs in
 								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
 								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
 								  List.map (HornClause.subst_hcs(*_fixed*) hcs1) hcs2,

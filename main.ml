@@ -162,15 +162,19 @@ let arg_spec =
    "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicate accumulation";
+
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
    "-nex", Arg.Int (fun n -> Global.number_of_extra_params := n),
           " Number of inserted extra parameters for each functional argument";
    "-tbit", Arg.Int (fun n -> Global.bits_threshold := n),
           " Threshold on the number of bits used in the bit-vector modeling";
-   "-cc", Arg.Set Global.coeff_const,
-          " Add constant terms to extra parameters";
+   "-cc", Arg.Set Global.enable_coeff_const,
+          " Disable constant terms of extra parameters";
    "-aec", Arg.Set Global.accumulate_ext_constrs,
           " Accumulate constraints on the coefficients of extra parameters";
+   "-dph", Arg.Set Global.disable_parameter_inference_heuristics,
+          " Disable heuristics of instantiation parameter inference";
+
    "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";

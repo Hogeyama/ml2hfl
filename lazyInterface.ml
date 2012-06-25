@@ -167,7 +167,8 @@ let infer flags labeled cexs prog =
 *)
 
 let params = ref []
-let new_params bvs exs =
+(** ToDo: exs may contain extra parameters that are not related to the recursive call *)
+let new_params recursive bvs exs =
   Util.unfold
     (fun i ->
       if i < !Global.number_of_extra_params then
@@ -175,31 +176,46 @@ let new_params bvs exs =
 						  let ps =
           Util.unfold
             (fun i ->
-              if i < (List.length bvs' + if !Global.coeff_const then 1 else 0) then
+              if i < (List.length bvs' + if !Global.enable_coeff_const then 1 else 0) then
                 Some(Id.new_var Flag.extpar_header Type.TInt, i + 1)
               else
                 None)
             0
         in
 						  let _ = params := !params @ ps in
-						  let ts =
-          if !Global.coeff_const then
-            Syntax.make_var (List.hd ps) ::
-												List.map2
-												  (fun p x ->
-													   let _ = if List.mem x exs then Verifier.exparams := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.exparams in
-													   Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
-													 (List.tl ps)
-													 bvs'
-          else
-            List.map2
-												  (fun p x ->
-													   let _ = if List.mem x exs then Verifier.exparams := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.exparams in
-														  Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
-														ps
-														bvs'
+								let xs =
+										match recursive with
+										  None -> []
+										| Some(xs) -> xs
+								in
+					   let ts =
+										let _ =
+										  if !Global.enable_coeff_const (*&& recursive = None*) then
+												  Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string (List.hd ps))) :: !Verifier.masked_params
+										in
+          (if !Global.enable_coeff_const then [Syntax.make_var (List.hd ps)] else []) @
+										List.map2
+												(fun p x ->
+													 let _ =
+																if recursive <> None then
+																  (if xs = [] then
+																		  (if List.mem x exs then
+      						  								Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params (*this is necessary for l-length_cps-append.ml*))
+																		else if not (List.mem x xs) then
+    						  								Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params)
+																(* how to deal with non-recursive function calls here? *)
+																(*else
+																		if List.mem x exs then
+      						  						Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params*)
+														in
+													 Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
+												(if !Global.enable_coeff_const then List.tl ps else ps)
+												bvs'
         in
-        Some(List.fold_left Syntax.make_add (Syntax.make_int 0) ts, i + 1)
+								if ts = [] then
+          Some(Syntax.make_int 0, i + 1)
+								else
+          Some(List.fold_left Syntax.make_add (List.hd ts) (List.tl ts), i + 1)
       else
         None)
     0
@@ -229,8 +245,9 @@ and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
 
 let insert_extra_param t =
-  let _ = Verifier.exparams := [] in
-		let rec aux bvs exs t =
+  let debug = !Global.debug in
+  let _ = Verifier.masked_params := [] in
+		let rec aux rfs bvs exs t =
 		  let desc =
 		    match t.Syntax.desc with
 		        Syntax.Unit -> Syntax.Unit
@@ -258,7 +275,8 @@ let insert_extra_param t =
                   []
             in
 												let ys' = ys @ [y'] in
-            let f, _ =
+												let rfs = match rfs with [] -> assert false | (f, xxs, recursive)::rfs' -> (f, xxs @ [y', ys], recursive)::rfs' in
+												let f, _ =
 		            List.fold_left
 														  (fun (f, ty) y -> (fun t -> f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
 														  ((fun t -> t), trans_type t.Syntax.typ)
@@ -271,26 +289,55 @@ let insert_extra_param t =
 														  bvs @ [y']),
 														exs @ ys
 												in
-												(f (aux bvs exs t1)).Syntax.desc
+												(f (aux rfs bvs exs t1)).Syntax.desc
 
 		      | Syntax.App(t1, ts) ->
-		          let t1' = aux bvs exs t1 in
-		          let ts' = List.map (aux bvs exs) ts in
-            let tss =
-              List.map
-                (fun t ->
-                  match t.Syntax.typ with
-                    Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) -> new_params bvs exs
-                  | _ -> [])
-                ts'
-            in
-            let ts'' = List.flatten (List.map2 (fun ts t -> ts @ [t]) tss ts') in
-		          Syntax.App(t1', ts'')
+								    let _ = match t1.Syntax.desc with Syntax.App(_, _) -> assert false | _ -> () in
+		          let t1' = aux rfs bvs exs t1 in
+												let recursive, xss =
+												  match t1'.Syntax.desc with
+														  Syntax.Var(f) ->
+																  (try
+		    												  let _, xxss, _ = List.find (fun (f', _, recursive) -> recursive && Id.to_string f' = Id.to_string f) rfs in
+																				let _ =
+																				  if debug then
+																						  Format.printf "rec: %a@." Syntax.pp_print_term t1'
+																				in
+																				let xxss = List.take (List.length ts) xxss in
+																				true,
+																				List.map2
+																				  (fun t (x, xs) ->
+																						  match t.Syntax.typ with
+																								  Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
+																										  (match t.Syntax.desc with Syntax.Var(y) when x = y -> let _ = Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs | _ -> [])
+																								| _ -> [])
+																						ts xxss
+																		with Not_found ->
+																				(*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
+			      											let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
+																				false, [])
+														| _ ->
+      												let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
+														    false, []
+												in
+				        let ts' = List.map (aux rfs bvs exs) ts in
+		          let tss =
+		            List.mapi
+		              (fun i t ->
+		                match t.Syntax.typ with
+		                  Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
+																				  new_params (if recursive then Some(List.nth xss i) else None) bvs exs
+		                | _ -> [])
+		              ts'
+		          in
+		          let ts'' = List.flatten (List.map2 (fun ts t -> ts @ [t]) tss ts') in
+				        Syntax.App(t1', ts'')
 		
-		      | Syntax.If(t1, t2, t3) -> Syntax.If(aux bvs exs t1, aux bvs exs t2, aux bvs exs t3)
-		      | Syntax.Branch(t1, t2) -> Syntax.Branch(aux bvs exs t1, aux bvs exs t2)
+		      | Syntax.If(t1, t2, t3) -> Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
+		      | Syntax.Branch(t1, t2) -> Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
 		
 		      | Syntax.Let(flag, bindings, t2) ->
+												let bvs' = bvs @ (if flag = Flag.Nonrecursive then [] else List.map Util.fst3 bindings) in
 		          let aux' (f,xs,t) =
               let f' = trans_id f in
               let xs' = List.map trans_id xs in
@@ -314,43 +361,47 @@ let insert_extra_param t =
 														let xs'' = List.flatten (List.map2 (fun xs x -> xs @ [x]) xss xs') in
 														let bvs, exs =
 														  (if true then
-																  bvs @ (if flag = Flag.Nonrecursive then [] else [f']) @ xs''
+																  bvs' @ xs''
 																else
-		  														bvs @ (if flag = Flag.Nonrecursive then [] else [f']) @ xs'),
+		  														bvs' @ xs'),
 																exs @ List.flatten xss
 														in
-		            f', xs'', aux bvs exs t
+  												let rfs' = (f, List.map2 (fun xs x -> x, xs) xss xs', flag <> Flag.Nonrecursive) :: rfs in
+										    (*mutual recursion and binding partial applied functions are not supported
+														let rfs' = (if flag = Flag.Nonrecursive then [] else List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
+														*)
+		            f', xs'', aux rfs' bvs exs t
 		          in
             let bindings' = List.map aux' bindings in
-		            Syntax.Let(flag, bindings', aux (bvs @ List.map (fun (f,_,_) -> f) bindings') exs t2)
+            Syntax.Let(flag, bindings', aux rfs (bvs @ List.map Util.fst3 bindings') exs t2)
 		
-		      | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux bvs exs t1, aux bvs exs t2)
-		      | Syntax.Not t1 -> Syntax.Not (aux bvs exs t1)
+		      | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
+		      | Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
 		      | Syntax.Event(s,b) -> Syntax.Event(s,b)
-		      | Syntax.Record fields -> Syntax.Record (List.map (fun (f,(s,t1)) -> f,(s,aux bvs exs t1)) fields)
-		      | Syntax.Proj(i,s,f,t1) -> Syntax.Proj(i,s,f,aux bvs exs t1)
-		      | Syntax.SetField(n,i,s,f,t1,t2) -> Syntax.SetField(n,i,s,f,aux bvs exs t1,aux bvs exs t2)
+		      | Syntax.Record fields -> Syntax.Record (List.map (fun (f,(s,t1)) -> f,(s,aux rfs bvs exs t1)) fields)
+		      | Syntax.Proj(i,s,f,t1) -> Syntax.Proj(i,s,f,aux rfs bvs exs t1)
+		      | Syntax.SetField(n,i,s,f,t1,t2) -> Syntax.SetField(n,i,s,f,aux rfs bvs exs t1,aux rfs bvs exs t2)
 		      | Syntax.Nil -> Syntax.Nil
-		      | Syntax.Cons(t1,t2) -> Syntax.Cons(aux bvs exs t1, aux bvs exs t2)
-		      | Syntax.Constr(s,ts) -> Syntax.Constr(s, List.map (aux bvs exs) ts)
+		      | Syntax.Cons(t1,t2) -> Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)
+		      | Syntax.Constr(s,ts) -> Syntax.Constr(s, List.map (aux rfs bvs exs) ts)
 		      | Syntax.Match(t1,pats) ->
 		          let aux' (pat, cond, t) =
               (* ToDo: need to update pat!? *)
               pat,
-														Utilities.apply_opt (aux (bvs @ Syntax.get_vars_pat pat) exs) cond,
-														aux (bvs @ Syntax.get_vars_pat pat) exs t
+														Utilities.apply_opt (aux rfs (bvs @ Syntax.get_vars_pat pat) exs) cond,
+														aux rfs (bvs @ Syntax.get_vars_pat pat) exs t
             in
-		            Syntax.Match(aux bvs exs t1, List.map aux' pats)
-		      | Syntax.Raise t -> Syntax.Raise (aux bvs exs t)
-		      | Syntax.TryWith(t1,t2) -> Syntax.TryWith(aux bvs exs t1, aux bvs exs t2)
-		      | Syntax.Pair(t1,t2) -> Syntax.Pair(aux bvs exs t1, aux bvs exs t2)
-		      | Syntax.Fst t -> Syntax.Fst(aux bvs exs t)
-		      | Syntax.Snd t -> Syntax.Snd(aux bvs exs t)
+		            Syntax.Match(aux rfs bvs exs t1, List.map aux' pats)
+		      | Syntax.Raise t -> Syntax.Raise (aux rfs bvs exs t)
+		      | Syntax.TryWith(t1,t2) -> Syntax.TryWith(aux rfs bvs exs t1, aux rfs bvs exs t2)
+		      | Syntax.Pair(t1,t2) -> Syntax.Pair(aux rfs bvs exs t1, aux rfs bvs exs t2)
+		      | Syntax.Fst t -> Syntax.Fst(aux rfs bvs exs t)
+		      | Syntax.Snd t -> Syntax.Snd(aux rfs bvs exs t)
 		      | Syntax.Bottom -> Syntax.Bottom
 		  in
 		    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
 		in
-		aux [] [] t
+		aux [] [] [] t
 
 let instantiate_param (typs, fdefs, main as prog) =
   let _ = if !Verifier.ext_coeffs = [] then Verifier.init_coeffs (conv_prog prog) in
