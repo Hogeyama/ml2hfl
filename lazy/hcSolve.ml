@@ -289,10 +289,13 @@ let solve_hc_aux (*prog*) lbs ps t =
               with Not_found -> assert false
 						      in
             let t =
-														if !Global.generalize_predicates_simple then
-		              generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
-														else
-														  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
+												  try
+																if !Global.generalize_predicates_simple then
+				              generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
+																else
+																  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
+														with CsisatInterface.No_interpolant ->
+														  raise NoSolution
             in
             t
 						    in
