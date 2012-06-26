@@ -75,10 +75,10 @@ let rec main_loop parsed =
         *)
       let t' = Trans.inlined_f spec'.Spec.inlined_f t in
       let () = if true && t <> t' then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-						let t' = Trans.lift_fst_snd t' in
       let t = t' in
       let t =
         if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
+    						let t = Trans.lift_fst_snd t in
           let t = LazyInterface.insert_extra_param t in
             if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
               (List.length !LazyInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
