@@ -37,11 +37,14 @@ let parse parser lexer filename =
 
 let rename {abst_env=aenv; inlined=inlined} t =
   let funs = get_top_funs t in
-  let rename_id f =
+  let rename_id f = (* temporal implementation *)
+    List.find (fun f' -> Id.name f = Id.name f') funs
+(*
     try
       List.find (fun f' -> Id.name f = Id.name f') funs
     with Not_found -> raise (Fatal ("SPEC: " ^ Id.name f ^ " not found"))
+*)
   in
-  let aenv' = List.map (fun (f,typ) -> rename_id f, typ) aenv in
-  let inlined' = List.map rename_id inlined in
+  let aenv' = flatten_map (fun (f,typ) -> try [rename_id f, typ] with Not_found -> []) aenv in
+  let inlined' = flatten_map (fun f -> try [rename_id f] with Not_found -> []) inlined in
     {abst_env=aenv'; inlined=inlined'}
