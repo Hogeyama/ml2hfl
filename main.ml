@@ -73,7 +73,7 @@ let rec main_loop parsed =
           let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
           let t = t' in
         *)
-      let t' = Trans.inlined_f spec.Spec.inlined_f t in
+      let t' = Trans.inlined_f spec'.Spec.inlined_f t in
       let () = if true && t <> t' then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t =

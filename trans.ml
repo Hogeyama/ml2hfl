@@ -1946,4 +1946,79 @@ let rec init_rand_int t =
 
 
 
-let inlined_f inlined t = t
+let rec inlined_f inlined fs t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Var y -> Var y
+      | Fun(y, t1) -> Fun(y, inlined_f inlined fs t1)
+      | App(t1, ts) ->
+						    let t1' = inlined_f inlined fs t1 in
+										let ts' = List.map (inlined_f inlined fs) ts in
+								  (*let _ = Format.printf "func: %a@." pp_print_term t1' in*)
+										(match t1'.desc with
+										  Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
+												  let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
+    						    let _ = assert (List.length ts' <= List.length xs) in
+														let xs1, xs2 = ExtList.List.split_nth (List.length ts') xs in
+														let map = List.combine xs1 ts' in
+	    							  let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) map in
+	    							  let _ = Format.printf "before: %a@." pp_print_term t in
+														let t' = subst_map map t in
+	    							  let _ = Format.printf "after: %a@." pp_print_term t' in
+														let f, _ =
+				            List.fold_left
+																  (fun (f, ty) y -> (fun t -> f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
+																  ((fun t -> t), Type.app_typ t1'.typ (List.map (fun t -> t.typ) ts))
+																		xs2
+														in
+  												(f t').Syntax.desc
+										| _ ->
+    						    App(t1', ts'))
+      | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
+      | Branch(t1, t2) -> Branch(inlined_f inlined fs t1, inlined_f inlined fs t2)
+      | Let(flag, bindings, t2) ->
+          let aux (f,xs,t) =
+  								  (*let _ = Format.printf "func: %a@." print_id f in
+												let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
+  						    if flag = Flag.Nonrecursive && List.exists (fun f' -> Id.same f' f) inlined then
+												  `R(f, xs, inlined_f inlined fs t)
+												else
+              `L(f, xs, inlined_f inlined fs t)
+          in
+          let bindings', fs' = Util.partition_map aux bindings in
+          let t2' = inlined_f inlined (fs @ fs') t2 in
+          if bindings' = [] then
+										  t2'.desc
+										else
+										  Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, inlined_f inlined fs t1, inlined_f inlined fs t2)
+      | Not t1 -> Not (inlined_f inlined fs t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,inlined_f inlined fs t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,inlined_f inlined fs t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,inlined_f inlined fs t1,inlined_f inlined fs t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)
+      | Constr(s,ts) -> Constr(s, List.map (inlined_f inlined fs) ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, apply_opt (inlined_f inlined fs) cond, inlined_f inlined fs t1 in
+            Match(inlined_f inlined fs t1, List.map aux pats)
+      | Raise t -> Raise (inlined_f inlined fs t)
+      | TryWith(t1,t2) -> TryWith(inlined_f inlined fs t1, inlined_f inlined fs t2)
+      | Pair(t1,t2) -> Pair(inlined_f inlined fs t1, inlined_f inlined fs t2)
+      | Fst t -> Fst(inlined_f inlined fs t)
+      | Snd t -> Snd(inlined_f inlined fs t)
+      | Bottom -> Bottom
+						| _ -> Format.printf "inlined_f: %a@." pp_print_term t; assert false
+  in
+    {desc=desc; typ=t.typ}
+
+let inlined_f inlined t = inlined_f inlined [] t

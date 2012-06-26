@@ -298,7 +298,7 @@ let insert_extra_param t =
 												  match t1'.Syntax.desc with
 														  Syntax.Var(f) ->
 																  (try
-		    												  let _, xxss, _ = List.find (fun (f', _, recursive) -> recursive && Id.to_string f' = Id.to_string f) rfs in
+		    												  let _, xxss, _ = List.find (fun (f', _, recursive) -> recursive && Id.same f' f) rfs in
 																				let _ =
 																				  if debug then
 																						  Format.printf "rec: %a@." Syntax.pp_print_term t1'
