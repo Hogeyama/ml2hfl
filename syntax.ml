@@ -994,7 +994,7 @@ and subst_map map t =
     | RandInt _ -> t
     | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
     | Fun(y, t1) ->
-        let map' = List.filter (fun (x,_) -> Id.same x y) map in
+        let map' = List.filter (fun (x,_) -> not (Id.same x y)) map in
         let t1' = subst_map map' t1 in
           make_fun y t1'
     | App(t1, ts) ->
@@ -1014,15 +1014,15 @@ and subst_map map t =
         let rec aux map acc = function
             [] -> map, List.rev acc
           | (f,xs,t1)::bindings ->
-              let map' = List.filter (fun (x,_) -> Id.mem x xs) map in
+              let map' = List.filter (fun (x,_) -> not (Id.mem x xs)) map in
                 aux map' ((f, xs, subst_map map' t1)::acc) bindings in
         let map',bindings' = aux map [] bindings in
         let t2' = subst_map map' t2 in
           make_let bindings' t2'
     | Let(Flag.Recursive, bindings, t2) ->
-        let map' = List.filter (fun (x,_) -> List.exists (fun (f,_,_) -> Id.same f x) bindings) map in
+        let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_,_) -> Id.same f x) bindings)) map in
         let aux (f,xs,t1) =
-          let map'' = List.filter (fun (x,_) -> Id.mem x xs) map' in
+          let map'' = List.filter (fun (x,_) -> not (Id.mem x xs)) map' in
             f, xs, subst_map map'' t1
         in
         let bindings' = List.map aux bindings in
