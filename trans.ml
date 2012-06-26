@@ -2042,3 +2042,93 @@ let rec inlined_f inlined fs t =
     {desc=desc; typ=t.typ}
 
 let inlined_f inlined t = inlined_f inlined [] t
+
+let rec lift_fst_snd fs t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Var y -> Var y
+      | Fun(y, t1) -> Fun(y, lift_fst_snd fs t1)(* ommit the case where y is a pair *)
+      | App(t1, ts) -> App(lift_fst_snd fs t1, List.map (lift_fst_snd fs) ts)
+      | If(t1, t2, t3) -> If(lift_fst_snd fs t1, lift_fst_snd fs t2, lift_fst_snd fs t3)
+      | Branch(t1, t2) -> Branch(lift_fst_snd fs t1, lift_fst_snd fs t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' =
+										  List.map
+												  (fun (f,xs,t) ->
+														  f, xs,
+																let fs' =
+																  List.flatten
+																		  (ExtList.List.filter_map
+																				  (fun x ->
+																						  match x.Id.typ with
+																								  TPair(_, _) ->
+																										  Some([Id.new_var x.Id.name (fst_typ x.Id.typ), true, x; Id.new_var x.Id.name (snd_typ x.Id.typ), false, x])
+																								| _ -> None)
+																	  			xs)
+																in
+																if fs' = [] then
+  																lift_fst_snd fs t
+																else
+																  { desc =
+																						Let
+																						  (Flag.Nonrecursive,
+																								List.map
+																								  (fun (x, bfst, xorig) ->
+																										  (* ommit the case where x is a pair *)
+																												x, [], if bfst then { desc = Fst(make_var xorig); typ = x.Id.typ} else { desc = Snd(make_var xorig); typ = x.Id.typ})
+																										fs',
+																							 lift_fst_snd (fs @ fs') t);
+																				typ = t.typ }
+																(* ommit the case where f is a pair *))
+														bindings
+										in
+          Let(flag, bindings', lift_fst_snd fs t2)
+      | BinOp(op, t1, t2) -> BinOp(op, lift_fst_snd fs t1, lift_fst_snd fs t2)
+      | Not t1 -> Not (lift_fst_snd fs t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,lift_fst_snd fs t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,lift_fst_snd fs t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,lift_fst_snd fs t1,lift_fst_snd fs t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(lift_fst_snd fs t1, lift_fst_snd fs t2)
+      | Constr(s,ts) -> Constr(s, List.map (lift_fst_snd fs) ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, apply_opt (lift_fst_snd fs) cond, lift_fst_snd fs t1 in
+            Match(lift_fst_snd fs t1, List.map aux pats)
+      | Raise t -> Raise (lift_fst_snd fs t)
+      | TryWith(t1,t2) -> TryWith(lift_fst_snd fs t1, lift_fst_snd fs t2)
+      | Pair(t1,t2) -> Pair(lift_fst_snd fs t1, lift_fst_snd fs t2)
+      | Fst t ->
+						    (match t.desc with
+										  Var(x) ->
+												  (try
+  												  let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.same x' x) fs in
+																(make_var x).desc
+														with Not_found ->
+														  Fst(lift_fst_snd fs t))
+										| _ ->
+    						    Fst(lift_fst_snd fs t))
+      | Snd t ->
+						    (match t.desc with
+										  Var(x) ->
+												  (try
+  												  let (x, _, _) = List.find (fun (_, bfst, x') -> not bfst && Id.same x' x) fs in
+																(make_var x).desc
+														with Not_found ->
+														  Snd(lift_fst_snd fs t))
+										| _ ->
+    						    Snd(lift_fst_snd fs t))
+      | Bottom -> Bottom
+						| _ -> Format.printf "lift_fst_snd: %a@." pp_print_term t; assert false
+  in
+    {desc=desc; typ=t.typ}
+
+let lift_fst_snd t = lift_fst_snd [] t

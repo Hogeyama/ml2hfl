@@ -225,6 +225,15 @@ let rec app_typ typ typs =
     | _, [] -> typ
     | _ -> assert false
 
+let fst_typ typ =
+  match typ with
+    TPair(typ1, _) -> typ1
+  | _ -> assert false
+
+let snd_typ typ =
+  match typ with
+    TPair(_, typ2) -> typ2
+  | _ -> assert false
 
 let rec has_pred = function
     TUnit -> false
