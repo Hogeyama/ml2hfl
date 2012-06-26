@@ -142,6 +142,7 @@ let refine_coeffs hcs =
 						let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
 					 Global.log (fun () -> Format.printf "solutions:@,  %a@," pr_coeffs !ext_coeffs)
   in
+		let _ = Cvc3Interface.close_cvc3 (); Cvc3Interface.open_cvc3 () in
 		let _ = elapsed_time := timer () in
   Global.log_end "refine_coeffs"
 
