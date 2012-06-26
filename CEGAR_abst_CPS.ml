@@ -198,7 +198,7 @@ let rec eta_expand_term env t typ =
             TFun(typ1,typ2) ->
               let env' = (x,typ1)::env in
               let t'' = eta_expand_term env' t' (typ2 (Var x)) in
-          assert (x <> "x_46");                Fun(x, Some typ1, t'')
+                Fun(x, Some typ1, t'')
           | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
 let eta_expand_def env (f,xs,t1,e,t2) =
   let rec decomp_typ typ xs =
