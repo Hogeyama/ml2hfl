@@ -196,10 +196,13 @@ let new_params recursive bvs exs =
 												  Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string (List.hd ps))) :: !Verifier.masked_params
 										in
           (if !Global.enable_coeff_const then [Syntax.make_var (List.hd ps)] else []) @
+										let b = recursive <> None && xs = [] && Util.subset bvs' exs in
 										List.map2
 												(fun p x ->
 													 let _ =
-																if recursive <> None then
+														  if b then
+																  ()
+																else if recursive <> None then
 																  (if xs = [] then
 																		  (if List.mem x exs then
       						  								Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params (*this is necessary for l-length_cps-append.ml*))
@@ -312,7 +315,8 @@ let insert_extra_param t =
 																				  (fun t (x, xs) ->
 																						  match t.Syntax.typ with
 																								  Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-																										  (match t.Syntax.desc with Syntax.Var(y) when x = y -> let _ = Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs | _ -> [])
+																										  (match t.Syntax.desc with Syntax.Var(y) when Id.same x y ->
+																												  let _ = Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs | _ -> [])
 																								| _ -> [])
 																						ts xxss
 																		with Not_found ->
