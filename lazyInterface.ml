@@ -200,9 +200,9 @@ let new_params recursive bvs exs =
 										List.map2
 												(fun p x ->
 													 let _ =
-														  if b then
+														  (*if b then
 																  ()
-																else if recursive <> None then
+																else*) if recursive <> None then
 																  (if xs = [] then
 																		  (if List.mem x exs then
       						  								Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params (*this is necessary for l-length_cps-append.ml*))
