@@ -31,7 +31,6 @@ let inlined_functions orig_fun_list force {defs=defs;main=main} =
 (*Util.diff (List.map (fun (f, _, _, _, _) -> f) defs) *)
 
 let rec cegar1 prog0 ces info =
-  let time_tmp = get_time () in
   pre ();
   let pr =
     if !Flag.expand_nonrec
@@ -89,7 +88,6 @@ let rec cegar1 prog0 ces info =
                 let _,prog' = Refine.refine inlined_functions prefix ces' prog0 in
 (*                let prog' = reconstruct_typ prog' in*)
                   post ();
-  let () = add_time time_tmp Flag.time_other in
     cegar1 prog' ces' info
 
 

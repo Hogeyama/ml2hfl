@@ -64,7 +64,7 @@ let rec get_prefix ce n =
 
 let check ce {defs=defs; main=main} =
   let () = Format.printf "Spurious counter-example::@.%a@." CEGAR_print.ce ce in
-  let tmp = get_time () in
+  let time_tmp = get_time () in
   let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
   let ce' = List.tl ce in
@@ -78,7 +78,7 @@ let check ce {defs=defs; main=main} =
     else Infeasible prefix
   in
     if Flag.print_progress then Format.printf "DONE!@.@.";
-    add_time tmp Flag.time_cegar;
+    add_time time_tmp Flag.time_cegar;
     result
 
 

@@ -33,9 +33,6 @@ let print_info () =
   Format.printf "mc: %fsec\n" !Flag.time_mc;
   Format.printf "cegar: %fsec\n" !Flag.time_cegar;
   if false && Flag.debug then Format.printf "IP: %fsec\n" !Flag.time_interpolant;
-(*
-  Format.printf "other: %fsec\n" !Flag.time_other;
-*)
   Format.printf "total: %fsec\n" (get_time());
   Format.pp_print_flush Format.std_formatter ()
 
@@ -105,25 +102,22 @@ let rec main_loop parsed =
 
   let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
 
-  let () = add_time time_tmp Flag.time_other in
-
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
           LazyInterface.verify [] (prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main)
       | Flag.CEGAR_DependentType ->
           try
-            match CEGAR.cegar prog {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined} with
-	        prog', None -> Format.printf "Safe!@.@."
-	      | _, Some print ->
-                  Format.printf "Unsafe!@.@.";
-                  print ()
+            let r = CEGAR.cegar prog {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined} in
+              match r with
+                  prog', None -> Format.printf "Safe!@.@."
+                | _, Some print ->
+                    Format.printf "Unsafe!@.@.";
+                    print ()
           with
               Verifier.FailedToRefineTypes ->
-                let time_tmp = get_time () in
 	        let _ = assert (not !Flag.relative_complete) in
 	        let _ = Flag.relative_complete := true in
                 let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
-                let () = add_time time_tmp Flag.time_other in
                   main_loop parsed
             | Verifier.FailedToRefineExtraParameters ->
                 let time_tmp = get_time () in
@@ -132,7 +126,6 @@ let rec main_loop parsed =
                 let _ = Verifier.ext_constrs := [] in
                 let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in
                 let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
-                let () = add_time time_tmp Flag.time_other in
                   main_loop parsed
 
 

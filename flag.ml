@@ -92,7 +92,6 @@ let time_abstraction = ref 0.
 let time_mc = ref 0.
 let time_cegar = ref 0.
 let time_interpolant = ref 0.
-let time_other = ref 0.
 
 let cegar_loop = ref 0
 let time_limit = 0
