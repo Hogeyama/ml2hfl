@@ -1,5 +1,6 @@
 open ExtList
 
+open Utilities
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
@@ -152,6 +153,7 @@ let infer flags labeled cexs prog =
 
   let prog = conv_prog prog in
   let env = Verifier.refine labeled cexs prog in
+		let _ = Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Verifier.elapsed_time in
   List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty)
@@ -245,6 +247,7 @@ and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
 
 let insert_extra_param t =
+  let tmp = get_time() in
   let debug = !Global.debug in
   let _ = Verifier.masked_params := [] in
 		let rec aux rfs bvs exs t =
@@ -401,9 +404,14 @@ let insert_extra_param t =
 		  in
 		    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
 		in
-		aux [] [] [] t
+		let res = aux [] [] [] t in
+  let _ = add_time tmp Flag.time_parameter_inference in
+  res
 
 let instantiate_param (typs, fdefs, main as prog) =
+  let tmp = get_time() in
   let _ = if !Verifier.ext_coeffs = [] then Verifier.init_coeffs (conv_prog prog) in
   let map = List.map (fun (x, n) -> Var.string_of x, inv_term (Term.tint n)) !Verifier.ext_coeffs in
-  (typs, List.map (fun (f, args, guard, events, body) -> (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body)) fdefs, main)
+  let res = (typs, List.map (fun (f, args, guard, events, body) -> (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body)) fdefs, main) in
+  let _ = add_time tmp Flag.time_parameter_inference in
+  res

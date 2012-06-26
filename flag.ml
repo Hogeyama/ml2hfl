@@ -92,6 +92,7 @@ let time_abstraction = ref 0.
 let time_mc = ref 0.
 let time_cegar = ref 0.
 let time_interpolant = ref 0.
+let time_parameter_inference = ref 0.
 
 let cegar_loop = ref 0
 let time_limit = 0

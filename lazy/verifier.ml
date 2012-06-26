@@ -107,8 +107,10 @@ let solve_constrs t =
 										with Cvc3Interface.Unknown ->
 										  raise FailedToRefineExtraParameters
 
+let elapsed_time = ref 0.0
 let refine_coeffs hcs =
   let _ = Global.log_begin "refine_coeffs" in
+  let timer = Global.timer () in
   (*
 		let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
 		let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
@@ -140,6 +142,7 @@ let refine_coeffs hcs =
 						let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
 					 Global.log (fun () -> Format.printf "solutions:@,  %a@," pr_coeffs !ext_coeffs)
   in
+		let _ = elapsed_time := timer () in
   Global.log_end "refine_coeffs"
 
 let infer_env prog sums fcs =

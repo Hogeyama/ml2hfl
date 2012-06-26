@@ -3,6 +3,13 @@
 let debug = ref true
 let debug_level = ref 10
 
+let timer () =
+  let st = Unix.times () in
+  (fun () ->
+    let en = Unix.times () in
+    (en.Unix.tms_utime -. st.Unix.tms_utime) +.
+    (en.Unix.tms_cutime -. st.Unix.tms_cutime))
+
 let current_log_level = ref 0
 let log_begin str =
   let _ = current_log_level := !current_log_level + 1 in

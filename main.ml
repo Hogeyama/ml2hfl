@@ -33,6 +33,7 @@ let print_info () =
   Format.printf "mc: %fsec\n" !Flag.time_mc;
   Format.printf "cegar: %fsec\n" !Flag.time_cegar;
   if false && Flag.debug then Format.printf "IP: %fsec\n" !Flag.time_interpolant;
+  Format.printf "exparam: %fsec\n" !Flag.time_parameter_inference;
   Format.printf "total: %fsec\n" (get_time());
   Format.pp_print_flush Format.std_formatter ()
 
