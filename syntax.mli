@@ -87,6 +87,7 @@ val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term
 val make_let : (id * id list * typed_term) list -> typed_term -> typed_term
+val make_lets : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_letrec : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_let_f : Flag.rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
 val make_fun : id -> typed_term -> typed_term

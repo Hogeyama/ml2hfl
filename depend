@@ -1,17 +1,17 @@
+abstract.cmi: type.cmo syntax.cmi id.cmo
+wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
+refine.cmi: CEGAR_syntax.cmo
+CEGAR_print.cmi: CEGAR_syntax.cmo
 CEGAR_CPS.cmi: CEGAR_syntax.cmo
 CEGAR_abst.cmi: CEGAR_syntax.cmo
-CEGAR_print.cmi: CEGAR_syntax.cmo
-CPS.cmi: syntax.cmi
-abstract.cmi: type.cmo syntax.cmi id.cmo
-automata.cmi:
-check.cmi: CEGAR_syntax.cmo
-feasibility.cmi: CEGAR_syntax.cmo
 infer.cmi: syntax.cmi
-refine.cmi: CEGAR_syntax.cmo
-spec_parser.cmi: spec.cmo
+CPS.cmi: syntax.cmi
+feasibility.cmi: CEGAR_syntax.cmo
 syntax.cmi: type.cmo id.cmo flag.cmo
 wrapper.cmi: syntax.cmi
-wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
+check.cmi: CEGAR_syntax.cmo
+automata.cmi:
+spec_parser.cmi: spec.cmo
 lazy/enum.cmo: lazy/enum.cmi
 lazy/enum.cmx: lazy/enum.cmi
 lazy/extList.cmo: lazy/enum.cmi lazy/extList.cmi
@@ -194,6 +194,8 @@ syntax.cmo: utilities.cmo type.cmo id.cmo flag.cmo lazy/extString.cmi \
     syntax.cmi
 syntax.cmx: utilities.cmx type.cmx id.cmx flag.cmx lazy/extString.cmx \
     syntax.cmi
+spec.cmo: utilities.cmo syntax.cmi id.cmo
+spec.cmx: utilities.cmx syntax.cmx id.cmx
 spec_parser.cmo: type.cmo syntax.cmi spec.cmo id.cmo spec_parser.cmi
 spec_parser.cmx: type.cmx syntax.cmx spec.cmx id.cmx spec_parser.cmi
 spec_lexer.cmo: syntax.cmi spec_parser.cmi
@@ -214,8 +216,10 @@ type_decl.cmo: utilities.cmo type.cmo syntax.cmi flag.cmo
 type_decl.cmx: utilities.cmx type.cmx syntax.cmx flag.cmx
 type_check.cmo: type_decl.cmo type.cmo syntax.cmi id.cmo flag.cmo
 type_check.cmx: type_decl.cmx type.cmx syntax.cmx id.cmx flag.cmx
-trans.cmo: utilities.cmo type_check.cmo type.cmo syntax.cmi id.cmo flag.cmo
-trans.cmx: utilities.cmx type_check.cmx type.cmx syntax.cmx id.cmx flag.cmx
+trans.cmo: utilities.cmo lazy/util.cmo type_check.cmo type.cmo syntax.cmi \
+    id.cmo flag.cmo lazy/extList.cmi
+trans.cmx: utilities.cmx lazy/util.cmx type_check.cmx type.cmx syntax.cmx \
+    id.cmx flag.cmx lazy/extList.cmx
 CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo trans.cmo syntax.cmi id.cmo \
     flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
 CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx id.cmx \
@@ -322,8 +326,6 @@ CEGAR.cmx: wrapper.cmx utilities.cmx refine.cmx ModelCheck.cmx \
     lazyInterface.cmx id.cmx flag.cmx feasibility.cmx lazy/extList.cmx \
     CEGAR_util.cmx CEGAR_type.cmx CEGAR_trans.cmx CEGAR_syntax.cmx \
     CEGAR_print.cmx CEGAR_abst.cmx
-spec.cmo: utilities.cmo syntax.cmi id.cmo
-spec.cmx: utilities.cmx syntax.cmx id.cmx
 main.cmo: wrapper2.cmi wrapper.cmi lazy/verifier.cmo utilities.cmo \
     type_check.cmo type.cmo trans.cmo syntax.cmi spec_parser.cmi \
     spec_lexer.cmo spec.cmo refine.cmi parser_wrapper.cmo lazyInterface.cmo \

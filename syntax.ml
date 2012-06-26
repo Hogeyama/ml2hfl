@@ -509,6 +509,12 @@ let rec make_app t ts =
     | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=TUnknown}; assert false
 let make_let bindings t2 =
   {desc=Let(Flag.Nonrecursive,bindings,t2); typ=t2.typ}
+let make_lets bindings t2 =
+  List.fold_right
+		  (fun binding t2 ->
+				  {desc=Let(Flag.Nonrecursive,[binding],t2); typ=t2.typ})
+		  bindings
+    t2
 let make_letrec bindings t2 =
   {desc=Let(Flag.Recursive,bindings,t2); typ=t2.typ}
 let make_let_f flag bindings t2 =

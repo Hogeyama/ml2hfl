@@ -2034,8 +2034,22 @@ let rec inlined_f inlined fs t =
       | Raise t -> Raise (inlined_f inlined fs t)
       | TryWith(t1,t2) -> TryWith(inlined_f inlined fs t1, inlined_f inlined fs t2)
       | Pair(t1,t2) -> Pair(inlined_f inlined fs t1, inlined_f inlined fs t2)
-      | Fst t -> Fst(inlined_f inlined fs t)
-      | Snd t -> Snd(inlined_f inlined fs t)
+      | Fst t ->
+						    let t' = inlined_f inlined fs t in
+								  let t' =
+												match t'.desc with
+												  Pair(t1, _) -> t1
+												| _ -> t'
+										in
+										Fst(t')
+      | Snd t ->
+						    let t' = inlined_f inlined fs t in
+								  let t' =
+												match t'.desc with
+												  Pair(_, t2) -> t2
+												| _ -> t'
+										in
+										Snd(t')
       | Bottom -> Bottom
 						| _ -> Format.printf "inlined_f: %a@." pp_print_term t; assert false
   in
@@ -2077,16 +2091,13 @@ let rec lift_fst_snd fs t =
 																if fs' = [] then
   																lift_fst_snd fs t
 																else
-																  { desc =
-																						Let
-																						  (Flag.Nonrecursive,
-																								List.map
-																								  (fun (x, bfst, xorig) ->
-																										  (* ommit the case where x is a pair *)
-																												x, [], if bfst then { desc = Fst(make_var xorig); typ = x.Id.typ} else { desc = Snd(make_var xorig); typ = x.Id.typ})
-																										fs',
-																							 lift_fst_snd (fs @ fs') t);
-																				typ = t.typ }
+																  make_lets
+																				(List.map
+																						(fun (x, bfst, xorig) ->
+																								(* ommit the case where x is a pair *)
+																								x, [], if bfst then { desc = Fst(make_var xorig); typ = x.Id.typ} else { desc = Snd(make_var xorig); typ = x.Id.typ})
+																						fs')
+																				(lift_fst_snd (fs @ fs') t)
 																(* ommit the case where f is a pair *))
 														bindings
 										in
