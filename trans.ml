@@ -1943,3 +1943,7 @@ let rec init_rand_int t =
       | RandInt _ -> assert false
   in
     {desc=desc; typ=t.typ}
+
+
+
+let inlined_f inlined t = t

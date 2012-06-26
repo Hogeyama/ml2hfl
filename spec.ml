@@ -2,11 +2,11 @@
 open Utilities
 open Syntax
 
-type spec = {abst_env : (id * typ) list; inlined : id list}
+type spec = {abst_env : (id * typ) list; inlined : id list; inlined_f : id list}
 
-let init = {abst_env=[]; inlined=[]}
+let init = {abst_env=[]; inlined=[]; inlined_f=[]}
 
-let print {abst_env=aenv; inlined=inlined} =
+let print {abst_env=aenv; inlined=inlined; inlined_f=inlined_f} =
   if aenv <> []
   then
     begin
@@ -19,6 +19,13 @@ let print {abst_env=aenv; inlined=inlined} =
     begin
       Format.printf "spec (inlined functions)::@. @[";
       List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined;
+      Format.printf "@."
+    end;
+  if inlined_f <> []
+  then
+    begin
+      Format.printf "spec (force inlined functions)::@. @[";
+      List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined_f;
       Format.printf "@."
     end
 
@@ -35,7 +42,7 @@ let parse parser lexer filename =
       parser lexer lb
 
 
-let rename {abst_env=aenv; inlined=inlined} t =
+let rename {abst_env=aenv; inlined=inlined; inlined_f=inlined_f} t =
   let funs = get_top_funs t in
   let rename_id f = (* temporal implementation *)
     List.find (fun f' -> Id.name f = Id.name f') funs
@@ -47,4 +54,5 @@ let rename {abst_env=aenv; inlined=inlined} t =
   in
   let aenv' = flatten_map (fun (f,typ) -> try [rename_id f, typ] with Not_found -> []) aenv in
   let inlined' = flatten_map (fun f -> try [rename_id f] with Not_found -> []) inlined in
-    {abst_env=aenv'; inlined=inlined'}
+  let inlined_f' = flatten_map (fun f -> try [rename_id f] with Not_found -> []) inlined_f in
+    {abst_env=aenv'; inlined=inlined'; inlined_f=inlined_f'}

@@ -34,6 +34,7 @@ rule token = parse
 | '*' { TIMES }
 | '|' { BAR }
 | "inline" { INLINE }
+| "inlinef" { INLINEF }
 | "type" { TYPE }
 | "unit" { TUNIT }
 | "bool" { TBOOL }

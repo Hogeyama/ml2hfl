@@ -33,6 +33,9 @@ let print_info () =
   Format.printf "mc: %fsec\n" !Flag.time_mc;
   Format.printf "cegar: %fsec\n" !Flag.time_cegar;
   if false && Flag.debug then Format.printf "IP: %fsec\n" !Flag.time_interpolant;
+(*
+  Format.printf "other: %fsec\n" !Flag.time_other;
+*)
   Format.printf "total: %fsec\n" (get_time());
   Format.pp_print_flush Format.std_formatter ()
 
@@ -43,6 +46,7 @@ let spec_file = ref ""
 
 
 let rec main_loop parsed =
+  let time_tmp = get_time () in
   let t = parsed in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in
@@ -72,6 +76,9 @@ let rec main_loop parsed =
           let () = if true && t <> t' then Format.printf "abst_ext_fun::@. @[%a@.@." Syntax.pp_print_term t' in
           let t = t' in
         *)
+      let t' = Trans.inlined_f spec.Spec.inlined_f t in
+      let () = if true && t <> t' then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
       let t =
         if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
           let t = LazyInterface.insert_extra_param t in
@@ -98,6 +105,8 @@ let rec main_loop parsed =
 
   let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
 
+  let () = add_time time_tmp Flag.time_other in
+
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
           LazyInterface.verify [] (prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main)
@@ -108,18 +117,23 @@ let rec main_loop parsed =
 	      | _, Some print ->
                   Format.printf "Unsafe!@.@.";
                   print ()
-          with Verifier.FailedToRefineTypes ->
-										  let _ = assert (not !Flag.relative_complete) in
-												let _ = Flag.relative_complete := true in
-            let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
-              main_loop parsed												
-          | Verifier.FailedToRefineExtraParameters ->
-            let _ = LazyInterface.params := [] in
-            let _ = Verifier.ext_coeffs := [] in
-            let _ = Verifier.ext_constrs := [] in
-            let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in
-            let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
-              main_loop parsed
+          with
+              Verifier.FailedToRefineTypes ->
+                let time_tmp = get_time () in
+	        let _ = assert (not !Flag.relative_complete) in
+	        let _ = Flag.relative_complete := true in
+                let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
+                let () = add_time time_tmp Flag.time_other in
+                  main_loop parsed
+            | Verifier.FailedToRefineExtraParameters ->
+                let time_tmp = get_time () in
+                let _ = LazyInterface.params := [] in
+                let _ = Verifier.ext_coeffs := [] in
+                let _ = Verifier.ext_constrs := [] in
+                let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in
+                let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
+                let () = add_time time_tmp Flag.time_other in
+                  main_loop parsed
 
 
 let main filename in_channel =

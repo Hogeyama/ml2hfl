@@ -48,6 +48,7 @@ let orig_id x = {x with Id.id = 0}
 %token ELSE
 %token TYPE
 %token INLINE
+%token INLINEF
 %token TUNIT
 %token TBOOL
 %token TINT
@@ -135,9 +136,15 @@ spec:
   { {$2 with Spec.abst_env = $1::$2.Spec.abst_env} }
 | inline spec
   { {$2 with Spec.inlined = $1::$2.Spec.inlined} }
+| inlinef spec
+  { {$2 with Spec.inlined_f = $1::$2.Spec.inlined_f} }
 
 inline:
 | INLINE id
+  { $2 }
+
+inlinef:
+| INLINEF id
   { $2 }
 
 typedef:
