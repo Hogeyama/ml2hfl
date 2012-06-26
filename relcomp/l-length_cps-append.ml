@@ -1,17 +1,24 @@
-let rec append (len1, l1) (len2, l2) =
-  if len1 = 0 then
-    (len2, l2)
+(*let nil = (0, fun i -> assert false)*)
+let cons a (len, l) =
+  (len + 1, fun i -> if i = 0 then a else l (i - 1))
+let hd (len, l) = l 0
+let tl (len, l) = (len - 1, fun i -> l (i + 1))
+let is_nil (len, l) = len = 0
+
+let rec append xs1 xs2 =
+  if is_nil xs1 then
+    xs2
   else
-    let (len, l) = append (len1 - 1, fun i -> l1 (i + 1)) (len2, l2) in
-    (len + 1, fun i -> if i = 0 then l1 0 else l (i - 1))
-let rec length_cps (*ex*) k (len, l) =
-  if len = 0 then
+    let xs = append (tl xs1) xs2 in
+				cons (hd xs1) xs
+let rec length_cps (*ex*) k xs =
+  if is_nil xs then
     k 0
   else
     length_cps
       (*len‚©ex-1‚ª•K—v‚È‚Ì‚Éex‚ª‹‚Ü‚Á‚ÄŽ¸”s app-succ‚Æ“¯‚¶Œ»Û*)
       (fun len -> k (len + 1))
-      (len - 1, fun i -> l (i + 1))
+      (tl xs)
 let main len1 len2 =
   length_cps
     (*(len1 + len2)*)

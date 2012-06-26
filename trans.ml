@@ -1957,39 +1957,59 @@ let rec inlined_f inlined fs t =
       | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
-      | Var y -> Var y
+      | Var y ->
+						    if List.exists (fun (x, _, _) -> Id.same x y) fs then
+												let (f, xs, t') = try List.find (fun (x, _, _) -> Id.same x y) fs with Not_found -> assert false in
+												let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) [f, t'] in
+												let f, _ =
+				          List.fold_left
+																(fun (f, ty) y -> (fun t -> f {desc=Fun(y, t); typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> let _ = Format.printf "%a@." print_typ ty in assert false)
+																((fun t -> t), t.typ)
+																xs
+												in
+												let t' = inlined_f inlined fs t' in
+  										(f t').desc
+										else
+										  Var y
       | Fun(y, t1) -> Fun(y, inlined_f inlined fs t1)
       | App(t1, ts) ->
-						    let t1' = inlined_f inlined fs t1 in
-										let ts' = List.map (inlined_f inlined fs) ts in
 								  (*let _ = Format.printf "func: %a@." pp_print_term t1' in*)
-										(match t1'.desc with
+										(match t1.desc with
 										  Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
 												  let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
-    						    let _ = assert (List.length ts' <= List.length xs) in
-														let xs1, xs2 = ExtList.List.split_nth (List.length ts') xs in
-														let map = List.combine xs1 ts' in
-	    							  let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) map in
-	    							  let _ = Format.printf "before: %a@." pp_print_term t in
+    						    let ts1, ts2 = if List.length ts <= List.length xs then ts, [] else ExtList.List.split_nth (List.length xs) ts in
+														let xs1, xs2 = ExtList.List.split_nth (List.length ts1) xs in
+														let map = List.combine xs1 ts1 in
+	    							  (*let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) map in
+	    							  let _ = Format.printf "before: %a@." pp_print_term t in*)
 														let t' = subst_map map t in
-	    							  let _ = Format.printf "after: %a@." pp_print_term t' in
+	    							  (*let _ = Format.printf "after: %a@." pp_print_term t' in*)
 														let f, _ =
 				            List.fold_left
-																  (fun (f, ty) y -> (fun t -> f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
-																  ((fun t -> t), Type.app_typ t1'.typ (List.map (fun t -> t.typ) ts))
+																  (fun (f, ty) y -> (fun t -> f {desc=Fun(y, t); typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
+																  ((fun t -> t), Type.app_typ t1.typ (List.map (fun t -> t.typ) ts))
 																		xs2
 														in
-  												(f t').Syntax.desc
+  												(inlined_f inlined fs (make_app (f t') ts2)).desc
 										| _ ->
+										    let t1' = inlined_f inlined fs t1 in
+														let ts' = List.map (inlined_f inlined fs) ts in
     						    App(t1', ts'))
       | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
       | Branch(t1, t2) -> Branch(inlined_f inlined fs t1, inlined_f inlined fs t2)
       | Let(flag, bindings, t2) ->
           let aux (f,xs,t) =
-  								  (*let _ = Format.printf "func: %a@." print_id f in
-												let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
-  						    if flag = Flag.Nonrecursive && List.exists (fun f' -> Id.same f' f) inlined then
-												  `R(f, xs, inlined_f inlined fs t)
+  								  (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
+  						    if flag = Flag.Nonrecursive then
+												  if List.exists (fun f' -> Id.same f' f) inlined then
+														  (*let _ = Format.printf "func: %a@." print_id f in*)
+																(*let _ = Format.printf "???: %a@." pp_print_term t in*)
+  												  `R(f, xs, inlined_f inlined fs t)
+														else if xs = [] && (match t.desc with Fst(t) | Snd(t) -> (match t.desc with Var _ -> true | _ -> false) | _ -> false) then
+														  (*let _ = Format.printf "fst/snd: %a@." print_id f in*)
+  												  `R(f, xs, t)
+														else
+                `L(f, xs, inlined_f inlined fs t)
 												else
               `L(f, xs, inlined_f inlined fs t)
           in
