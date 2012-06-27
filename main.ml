@@ -218,10 +218,10 @@ let () =
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main !filename cin;
-        print_info ();
         Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
+        print_info ();
         if !Flag.web then close_log ()
     with
         Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
