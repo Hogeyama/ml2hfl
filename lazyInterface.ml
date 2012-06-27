@@ -316,7 +316,7 @@ let insert_extra_param t =
 																						  match t.Syntax.typ with
 																								  Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
 																										  (match t.Syntax.desc with Syntax.Var(y) when Id.same x y ->
-																												  let _ = Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs | _ -> [])
+																												  let _ = if debug then Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs | _ -> [])
 																								| _ -> [])
 																						ts xxss
 																		with Not_found ->
