@@ -25,7 +25,7 @@ let hd = function
 
 
 
-
+exception Polymorhic
 
 let rec abst_recdata_typ = function
     TUnit -> TUnit
@@ -33,7 +33,7 @@ let rec abst_recdata_typ = function
   | TAbsBool -> assert false
   | TInt -> TInt
   | TRInt _ -> assert false
-  | TVar{contents=None} -> raise (Fatal "Polymorhic types occur!")
+  | TVar{contents=None} -> raise Polymorhic
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
@@ -54,7 +54,11 @@ let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 let abst_label c = make_int (Type_decl.constr_pos c)
 
 let rec abst_recdata_pat p =
-  let typ = abst_recdata_typ p.pat_typ in
+  let typ =
+    try
+      abst_recdata_typ p.pat_typ
+    with Polymorhic -> raise (Fatal "Polymorhic types occur! (Abstract.abst_rectdata_typ)")
+  in
   let desc,cond =
     match p.pat_desc with
         PVar x -> PVar x, []
@@ -83,7 +87,13 @@ let rec abst_recdata_pat p =
     {pat_desc=desc; pat_typ=typ}, cond
 
 let rec abst_recdata t =
-  let typ' = abst_recdata_typ t.typ in
+  let typ' =
+    try
+      abst_recdata_typ t.typ
+    with Polymorhic ->
+      Format.printf "@.%a@." pp_print_term t;
+      raise (Fatal "Polymorhic types occur! (Abstract.abst_rectdata_typ)")
+  in
   let desc =
     match t.desc with
         Unit -> Unit
@@ -522,7 +532,7 @@ let rec abst_datatype' t =
         let t' = abst_datatype t in
           match t.typ with
               TConstr _ | TPair _ | TConstr(_,true) -> [], t'
-            | _ -> 
+            | _ ->
                 if is_value t'
                 then [], make_variant t'
                 else
