@@ -67,7 +67,7 @@ let rec main_loop parsed =
       let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Abstract.abstract_list t in
-      let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term' t' in
+      let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
         (*
           let t' = Abstract.abst_ext_funs t in
@@ -164,7 +164,7 @@ let arg_spec =
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
           " Use refinement type based predicate discovery";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
-          " Use refinement type based predicate discovery";
+          "<num>  Use refinement type based predicate discovery";
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
           " Use refinement type based predicate discovery (obsolete)";
    "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
@@ -172,7 +172,7 @@ let arg_spec =
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
    "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
    "-trecs", Arg.String (fun cmd -> Flag.trecs := cmd),
-             Format.sprintf "<cmd>  Change trecs command yr <cmd> (default: \"%s\")" !Flag.trecs;
+             Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
    "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
    "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicate accumulation";
