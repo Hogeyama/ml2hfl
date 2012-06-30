@@ -25,7 +25,7 @@ let hd = function
 
 
 
-exception Polymorhic
+exception PolymorphicType
 
 let rec abst_recdata_typ = function
     TUnit -> TUnit
@@ -33,7 +33,7 @@ let rec abst_recdata_typ = function
   | TAbsBool -> assert false
   | TInt -> TInt
   | TRInt _ -> assert false
-  | TVar{contents=None} -> raise Polymorhic
+  | TVar{contents=None} -> raise PolymorphicType
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
@@ -57,7 +57,7 @@ let rec abst_recdata_pat p =
   let typ =
     try
       abst_recdata_typ p.pat_typ
-    with Polymorhic -> raise (Fatal "Polymorhic types occur! (Abstract.abst_rectdata_typ)")
+    with PolymorphicType -> raise (Fatal "PolymorphicType types occur! (Abstract.abst_rectdata_typ)")
   in
   let desc,cond =
     match p.pat_desc with
@@ -90,9 +90,9 @@ let rec abst_recdata t =
   let typ' =
     try
       abst_recdata_typ t.typ
-    with Polymorhic ->
-      Format.printf "@.%a@." pp_print_term t;
-      raise (Fatal "Polymorhic types occur! (Abstract.abst_rectdata_typ)")
+    with PolymorphicType ->
+      Format.printf "@.%a : %a@." pp_print_term t print_typ t.typ;
+      raise (Fatal "PolymorphicType types occur! (Abstract.abst_rectdata_typ)")
   in
   let desc =
     match t.desc with
@@ -109,7 +109,8 @@ let rec abst_recdata t =
       | App(t, ts) -> App(abst_recdata t, List.map abst_recdata ts)
       | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
       | Branch(t1, t2) -> Branch(abst_recdata t1, abst_recdata t2)
-      | Let(flag, [f, xs, t1], t2) -> Let(flag, [abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t1], abst_recdata t2)
+      | Let(flag, [f, xs, t1], t2) ->
+          Let(flag, [abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t1], abst_recdata t2)
       | Let _ -> assert false
       | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
       | Not t -> Not (abst_recdata t)
@@ -283,7 +284,7 @@ let rec abst_list_typ = function
   | TAbsBool -> assert false
   | TInt -> TInt
   | TRInt _ -> assert false
-  | TVar{contents=None} -> raise (Fatal "Polymorhic types occur! (Abstract.abst_list_typ)")
+  | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
   | TVar{contents=Some typ} -> abst_list_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
   | TList typ -> TPair(TInt, TFun(Id.new_var "x" TInt, abst_list_typ typ))
