@@ -945,7 +945,7 @@ types is sometimes too restrictive to express a necessary predicate. For
 example, consider the following program.
 \begin{verbatim}
 let apply f x = f x in let g y z = assert(y=z) in
-let k n = apply (g n) n; k(n+1) in  k(0)
+let rec k n = apply (g n) n; k(n+1) in  k(0)
 \end{verbatim}
 In order to verify that the assertion failure does not occur, we need a 
 correlation between the argument of \(f\) and \(x\), which cannot be 

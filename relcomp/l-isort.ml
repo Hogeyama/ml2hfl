@@ -26,12 +26,12 @@ let rec make_list n =
   else
     cons n (make_list (n - 1))
 
-let rec check xs =
+let rec ordered xs =
   if is_nil xs then
     true
   else if is_nil (tl xs) then
     true
   else
-    hd xs <= hd (tl xs) && check (tl xs)
+    hd xs <= hd (tl xs) && ordered (tl xs)
 
-let main len = assert (check (isort (len, fun i -> len - i)))
+let main len = assert (ordered (isort (len, fun i -> len - i)))
