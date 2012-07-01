@@ -476,6 +476,7 @@ let rec get_const_typ = function
   | Gt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
   | Leq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
   | Geq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
+  | EqUnit -> TFun(TBase(TUnit,nil), fun x -> TFun(TBase(TUnit,nil), fun y -> typ_bool))
   | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool))
   | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
@@ -488,7 +489,6 @@ let rec get_const_typ = function
   | Bottom -> raise TypeBottom
   | Label _ -> assert false
   | Temp _ -> assert false
-  | EqUnit -> assert false
 
 
 let rec get_typ env = function

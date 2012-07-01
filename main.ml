@@ -162,7 +162,7 @@ let arg_spec =
    "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Same as -st";
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
-          " Use refinement type based predicate discovery";
+          " Use refinement type based predicate discovery (same as -rsn 0)";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
           "<num>  Use refinement type based predicate discovery";
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),

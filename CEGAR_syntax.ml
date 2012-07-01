@@ -153,6 +153,7 @@ let rec is_CPS_value env = function
   | Const (Int _)
   | Var _ -> true
   | App(App(Const And, t1), t2)
+  | App(App(Const EqUnit, t1), t2)
   | App(App(Const EqInt, t1), t2)
   | App(App(Const EqBool, t1), t2)
   | App(App(Const Or, t1), t2)

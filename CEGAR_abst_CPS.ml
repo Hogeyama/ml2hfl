@@ -122,7 +122,7 @@ let rec trans_eager_term env c t =
                   App(Var k, Var y) when x = y -> trans_eager_bool k t
                 | t' -> Let(f, Fun(x, None, t'), trans_eager_bool f t)
             end
-      | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | EqInt | EqBool) -> assert false
+      | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | EqUnit | EqInt | EqBool) -> assert false
       | Const _
       | Var _ -> c t
       | Fun(x,_,t) -> c (Fun(x, None, trans_eager_term env id t))
@@ -261,8 +261,7 @@ let rec abstract_term top must env cond pts t typ =
         let t1,ts = decomp_app t in
         let rec aux ts typ =
           match ts,typ with
-              [], _ ->
-                assert (fst (decomp_tbase typ) = TUnit); []
+              [], _ when fst (decomp_tbase typ) = TUnit -> []
             | t::ts', TFun(typ1,typ2) ->
                 abstract_term false None env cond pts t typ1 @ aux ts' (typ2 t)
             | _,typ -> Format.printf "@.%a@.typ:%a@." CEGAR_print.term t CEGAR_print.typ typ; assert false

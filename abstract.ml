@@ -301,6 +301,7 @@ and abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 and get_match_bind_cond t p =
   match p.pat_desc with
       PVar x -> [abst_list_var x, t], true_term
+    | PConst {desc=Unit} -> [], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false
     | PNil -> [], make_eq (make_fst t) (make_int 0)
