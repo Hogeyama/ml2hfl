@@ -55,7 +55,7 @@ let rec cegar1 prog0 ces info =
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_filter := true;
           cegar1 prog ces info
-      | Some ce, ce'::_ when ce = ce' && not !Flag.use_neg_pred ->
+      | Some ce, ce'::_ when ce = ce' && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
           Format.printf "Negative-predicate option enabled.@.";
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_neg_pred := true;

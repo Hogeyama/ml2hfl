@@ -174,7 +174,9 @@ let arg_spec =
    "-trecs", Arg.String (fun cmd -> Flag.trecs := cmd),
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
    "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
-   "-neg-pred", Arg.Set Flag.use_neg_pred, " Use negative predicates";
+   "-neg-pred-on", Arg.Set Flag.use_neg_pred, " Use negative predicates";
+   "-neg-pred-off", Arg.Unit (fun _ -> Flag.use_neg_pred := false; Flag.never_use_neg_pred := true),
+                    " Never use negative predicates";
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicate accumulation";
 
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
