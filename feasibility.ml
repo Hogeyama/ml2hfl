@@ -152,13 +152,14 @@ let trans_ce ce {defs=defs;main=main} =
 
 let print_ce_reduction ce {defs=defs;main=main} =
   let ce' = List.tl ce in
-  let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  let _,_,_,e,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr t br n e =
     let s1 = if n = 1 then "" else " [" ^ string_of_int (br+1) ^ "/" ^ string_of_int n ^ "]" in
     let s2 = match e with [] -> "" | [Event s] -> s ^ " -->" | _ -> assert false in
       Format.printf "%a%s ... --> %s@\n" CEGAR_print.term t s1 s2
   in
     Format.printf "Error trace::@\n  @[";
-    pr (Var main) 0 1 [];
-    ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
+    pr (Var main) 0 1 e;
+    if e <> [Event "fail"] then
+      ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
     Format.printf "ERROR!@.@."
