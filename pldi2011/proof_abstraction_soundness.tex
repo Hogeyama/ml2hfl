@@ -1,7 +1,7 @@
 \section{Proof of Theorem~\protect\ref{thm:soundness} (Soundness)}
 \label{sec:soundness}
 
-We assume that \rn{A-App} is replaced with the following more general 
+We assume that \rn{A-App} is replaced with the following more general
 rules.
 %necessary to prove substitution lemma
 
@@ -17,8 +17,8 @@ rules.
   {\T{\Gamma}{v\ \seq{v}}{[\seq{v}/\seq{y}]\sigma}
      {\LETEQIN{x}{e}{\LETEQIN{\seq{y}}{\seq{e}}{x\ \seq{y}}}}}
 
-We also assume that \rn{A-CoerceAdd}, \rn{A-CoerceRem}, and \rn{A-CoerceFun} are replaced 
-with the following more general rules that allow coercion of expressions 
+We also assume that \rn{A-CoerceAdd}, \rn{A-CoerceRem}, and \rn{A-CoerceFun} are replaced
+with the following more general rules that allow coercion of expressions
 as well as values.
 %necessary to prove Lemma~\ref{lem:subb}
 
@@ -61,9 +61,9 @@ Here, we write \(e_1 \equiv e_2\) if for any context \(C\),
 %\infax[E-Beta]
 %  {E[(\lambda x.e)v]\red E[[v/x]e]}
 
-Below we assume that \(\T{}{D_1}{\Gamma}{D_2}\). We prove the soundness 
-by showing that each reduction \(\redwith{l}{D_1}\) can be simulated by 
-some reduction \(\redswith{l}{D_2}\). Formally, we can prove the 
+Below we assume that \(\T{}{D_1}{\Gamma}{D_2}\). We prove the soundness
+by showing that each reduction \(\redwith{l}{D_1}\) can be simulated by
+some reduction \(\redswith{l}{D_2}\). Formally, we can prove the
 following lemma:
 \begin{lemma}
 \label{lem:sim}
@@ -75,16 +75,16 @@ Suppose that
 \end{itemize}
 There exists \(e_2'\) such that:
 \begin{itemize}
-\item \(\T{\Gamma}{e_1'}{\sigma}{e_2'}\) and 
+\item \(\T{\Gamma}{e_1'}{\sigma}{e_2'}\) and
 \item \(e_2 \redswith{l}{D_2} e_2'\).
 \end{itemize}
 \end{lemma}
-To prove Lemma~\ref{lem:sim}, we first prepare 
+To prove Lemma~\ref{lem:sim}, we first prepare
 Lemmas~\ref{lem:const}-\ref{lem:fun}.
 
 \begin{lemma}
 \label{lem:const}
-If \(\T{\Gamma}{c}{b[\seq{P}]}{e}\), then 
+If \(\T{\Gamma}{c}{b[\seq{P}]}{e}\), then
 \(e \redswith{\epsilon}{D_2} \tuple{\seq{v}} \equiv \tuple{\seq{P}(c)}\) for some \(\seq{v}\).
 \end{lemma}
 \begin{proof}
@@ -154,7 +154,7 @@ Thus, we get \(e \redswith{\epsilon}{} \tuple{\seq{v}} \equiv \tuple{\seq{P}(c)}
 \end{proof}
 
 \begin{lemma}
-\label{lem:fail} If \(\T{\Gamma}{\FAIL}{\sigma}{e}\), then \(e 
+\label{lem:fail} If \(\T{\Gamma}{\FAIL}{\sigma}{e}\), then \(e
 \redswith{\epsilon}{D_2} \FAIL\).
 \end{lemma}
 \begin{proof}
@@ -193,7 +193,7 @@ We have
 \item \(\T{\Gamma}{\FAIL}{b[\seq{Q},\seq{P}]}{e'}\).
 \end{itemize}
 By I.H., we get \(e' \redswith{\epsilon}{} \FAIL\).
-Thus, we get 
+Thus, we get
 \begin{eqnarray*}
 e &\redswith{\epsilon}{}& \LETEQIN{\tuple{\seq{x},\seq{y}}}{\FAIL}{\tuple{\seq{y}}} \\
 &\redwith{\epsilon}{}& \FAIL
@@ -218,11 +218,11 @@ If \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1}{v}{\sigma'}{v'}\) and
 \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{[v/x]e}{[v/x]\sigma}{[v'/x]e'}\).
 \end{lemma}
 %\begin{proof}
-%Straightforward induction on the derivation of 
+%Straightforward induction on the derivation of
 %\(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2}{e}{\sigma}{e'}\).
 %\end{proof}
 \begin{proof}
-We prove the lemma by induction on the derivation of 
+We prove the lemma by induction on the derivation of
 \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2}{e}{\sigma}{e'}\).
 Case analysis on the last rule used:
 \begin{itemize}
@@ -248,7 +248,7 @@ We have
 \end{itemize}
 if \(x=y\), then \(\sigma'=\sigma=[v/x]\sigma\) and
 \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{v}{\sigma'}{v'=[v'/x]e'}\).
-if \(x \neq y\), then by \rn{A-Var}, we get 
+if \(x \neq y\), then by \rn{A-Var}, we get
 \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{[v/x]e}{[v/x]\sigma}{[v'/x]e'}\).
 
 %\item[] \rn{A-Const}
@@ -267,15 +267,15 @@ if \(x \neq y\), then by \rn{A-Var}, we get
 We have
 \begin{itemize}
 \item \(e=v_0\ \seq{v}\),
-\item \(\sigma=[\seq{v}/\seq{y}]\sigma'\),
+\item \(\sigma=[\seq{v}/\seq{y}]\sigma''\),
 \item \(e'=\LETEQIN{z}{e_1}{\LETEQIN{\seq{y}}{\seq{e}}{z\ \seq{y}}}\),
-\item \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2}{v_0}{(y_1\COL\sigma_1 \to \cdots \to y_k\COL\sigma_k \to\sigma')}{e_1}\),
+\item \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2}{v_0}{(y_1\COL\sigma_1 \to \cdots \to y_k\COL\sigma_k \to\sigma'')}{e_1}\),
 \item \(k \geq 1\), and
 \item for each $i\in\set{1,\ldots,k}$, \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2,y_1:\sigma_1,\dots,y_{i-1}:\sigma_{i-1}}{v_i}{[v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\sigma_i}{e_i}\).
 \end{itemize}
 By I.H., we obtain
 \begin{itemize}
-\item \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{[v/x]v_0}{[v/x](y_1\COL\sigma_1 \to \cdots \to y_k\COL\sigma_k \to\sigma')}{[v'/x]e_1}\) and
+\item \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{[v/x]v_0}{[v/x](y_1\COL\sigma_1 \to \cdots \to y_k\COL\sigma_k \to\sigma'')}{[v'/x]e_1}\) and
 \item for each $i\in\set{1,\ldots,k}$, we obtain \(\T{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2,y_1:[v/x]\sigma_1,\dots,y_{i-1}:[v/x]\sigma_{i-1}}{[v/x]v_i}{[v_1/y_1,\ldots,v_{i-1}/y_{i-1},v/x]\sigma_i}{[v'/x]e_i}\).
 \end{itemize}
 By \rn{A-App'}, we get
@@ -439,7 +439,7 @@ We have
 \item \(\models \neg P(y) \IMPLY \THE{\Gamma,r:\sigma',y:b[\seq{Q}]}\psi'\), and
 \item \(e_2'=\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}\).
 \end{itemize}
-By I.H., we get 
+By I.H., we get
 \(\T{\Gamma,\Gamma'}{e}{b[\seq{Q}]}{\LETEQIN{r}{e_1}{e_1'}}\)
 By \rn{A-CoerceAdd'}, we obtain
 \(\T{\Gamma,\Gamma'}{e}{\sigma}{\LETEQIN{y}{\LETEQIN{r}{e_1}{e_1'}}{\tuple{y,e_2'}}}\)
@@ -453,14 +453,14 @@ We have
 \item \(e_2=\LETEQIN{\tuple{\seq{x},\seq{y}}}{e'}{\tuple{\seq{y}}}\), and
 \item \(\T{\Gamma,r:\sigma'}{r}{b[\seq{Q},\seq{P}]}{e'}\).
 \end{itemize}
-By I.H., we get 
+By I.H., we get
 \(\T{\Gamma,\Gamma'}{e}{b[\seq{Q},\seq{P}]}{\LETEQIN{r}{e_1}{e'}}\).
 By \rn{A-CoerceRem'}, we obtain
 \(\T{\Gamma,\Gamma'}{e}{\sigma}{\LETEQIN{\tuple{\seq{x},\seq{y}}}{\LETEQIN{r}{e_1}{e'}}{\tuple{\seq{y}}}}\).
 By \rn{A-Eq}, we obtain
 \(\T{\Gamma,\Gamma'}{e}{\sigma}{\LETEQIN{r}{e_1}e_2}\).
 
-\item[] \rn{A-CoerceFun'} 
+\item[] \rn{A-CoerceFun'}
 We have
 \begin{itemize}
 \item \(\T{\Gamma,r:\sigma'}{r}{(x\COL\sigma'_1\to\sigma'_2)}{e'}\),
@@ -469,7 +469,7 @@ We have
 \item \(\sigma=x\COL\sigma_1\to\sigma_2\), and
 \item \(e_2=\LETEQIN{z}{e'}\lambda x.\LETEQIN{x'}{e_1'}\LETEQIN{y}{z\ x'}e_2'\).
 \end{itemize}
-By I.H., we get 
+By I.H., we get
 \(\T{\Gamma,\Gamma'}{e}{(x\COL\sigma'_1\to\sigma'_2)}{\LETEQIN{r}{e_1}{e'}}\).
 By \rn{A-CoerceFun'}, we obtain
 \(\T{\Gamma,\Gamma'}{e}{\sigma}{\LETEQIN{z}{\LETEQIN{r}{e_1}{e'}}\lambda x.\LETEQIN{x'}{e_1'}\LETEQIN{y}{z\ x'}e_2'}\).
@@ -482,32 +482,32 @@ We have
 \item \(\T{\Gamma,r:\sigma'}{r}{\sigma}{e_2'}\) and
 \item \(e_2' \equiv e_2\).
 \end{itemize}
-By I.H., 
+By I.H.,
 we obtain \(\T{\Gamma,\Gamma'}{e}{\sigma}{\LETEQIN{r}{e_1}{e_2'}}\).
 By \rn{A-Eq}, we get
 \(\T{\Gamma,\Gamma'}{e}{\sigma}{\LETEQIN{r}{e_1}{e_2}}\).
 \end{itemize}
 \end{proof}
 
-The following lemma states that if a value \(v\) is abstracted to \(e\), 
-we can obtain another abstraction \(v'\) of \(v\) such that \(e 
+The following lemma states that if a value \(v\) is abstracted to \(e\),
+we can obtain another abstraction \(v'\) of \(v\) such that \(e
 \redswith{\epsilon}{} v'\).
 \begin{lemma}
 \label{lem:val}
-If \(\T{\Gamma}{v}{\sigma}{e}\), then \(\T{\Gamma}{v}{\sigma}{v'}\) and 
+If \(\T{\Gamma}{v}{\sigma}{e}\), then \(\T{\Gamma}{v}{\sigma}{v'}\) and
 \(e \redswith{\epsilon}{} v'\) for some \(v'\).
 \end{lemma}
 Lemma~\ref{lem:val} immediately follows from the following lemma:
 \begin{lemma}
 \label{lem:val_aux}
 If \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{e}\) and
-\(\TT{\Gamma,x_1:\sigma_1,\dots,x_{i-1}:\sigma_{i-1}}{v_i}{\sigma_i}{v_i'}\) for each \(i \in \set{1,\dots,k}\), then 
+\(\TT{\Gamma,x_1:\sigma_1,\dots,x_{i-1}:\sigma_{i-1}}{v_i}{\sigma_i}{v_i'}\) for each \(i \in \set{1,\dots,k}\), then
 there exists some value \(\theta_k v'\) such that:
 \begin{itemize}
 \item \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and
 \item \(\theta_k e \equiv \theta_k v'\).
 \end{itemize}
-Here, \(\theta_i\) represents \([v_1'/x_1]\cdots[v_i'/x_i]\), and we 
+Here, \(\theta_i\) represents \([v_1'/x_1]\cdots[v_i'/x_i]\), and we
 write \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) if:
 \begin{itemize}
 \item \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and
@@ -520,17 +520,17 @@ for some value \(\theta_{k+1} v''\).
 \end{itemize}
 \end{lemma}
 \begin{proof}
-%If \(v=c\), the lemma follows immediately from Lemma~\ref{lem:const}. 
+%If \(v=c\), the lemma follows immediately from Lemma~\ref{lem:const}.
 Assume that \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{e}\) and
 \(\TT{\Gamma,x_1:\sigma_1,\dots,x_{i-1}:\sigma_{i-1}}{v_i}{\sigma_i}{v_i'}\) for each \(i \in \set{1,\dots,k}\).
-We prove the lemma by induction on the derivation of 
+We prove the lemma by induction on the derivation of
 \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{e}\). Case analysis on the last rule used:
 \begin{itemize}
 
 \item[] \rn{A-Base}
 We have \(e=\TRUE\) and \(\sigma=b[\seq{P}]\).
 Let \(v'=\TRUE\).
-Then, we obtain \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and 
+Then, we obtain \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and
 \(\theta_k e=\theta_k v'\).
 
 %\item[] \rn{A-Const}
@@ -545,11 +545,11 @@ Then, we obtain \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) a
 \item[] \rn{A-Var}
 We have \(e=v=x\).
 Let \(v'=v\).
-Then, we get \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and 
+Then, we get \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and
 \(\theta_k e=\theta_k v'\).
 %
 Suppose that \(\sigma=x_{k+1}:\sigma_{k+1} \to \sigma'\),
-\(\sigma'\) is a function type, and 
+\(\sigma'\) is a function type, and
 \(\TT{\Gamma,x_1:\sigma_1,\dots,x_{k+1}:\sigma_{k+1}}{v_{k+1}}{\sigma_{k+1}}{v_{k+1}'}\).
 \begin{itemize}
 \item if \(v'=f\), then \(\theta_{k+1} (f\ x_{k+1})\) is a value.
@@ -557,12 +557,12 @@ By \rn{A-App} and \rn{A-Eq}, we get
 \(\TT{\Gamma,x_1:\sigma_1,\dots,x_{k+1}:\sigma_{k+1}}{v\ x_{k+1}}{\sigma'}{v''}\), where
 \(v''=v'\ x_{k+1}\).
 \item Otherwise, \(\theta_{k+1} (v'\ x_{k+1}) \equiv \theta_{k+1} v''\) and
-\(\TT{\Gamma,x_1:\sigma_1,\dots,x_{k+1}:\sigma_{k+1}}{v\ x_{k+1}}{\sigma'}{v''}\) 
+\(\TT{\Gamma,x_1:\sigma_1,\dots,x_{k+1}:\sigma_{k+1}}{v\ x_{k+1}}{\sigma'}{v''}\)
 for some value \(\theta_{k+1} v''\).
 %\todo{add explanation}
 \end{itemize}
 
-\item[] \rn{A-App'} 
+\item[] \rn{A-App'}
 We have
 \begin{itemize}
 \item \(v=v_f\ v_{k+1} \cdots v_j\),
@@ -619,8 +619,8 @@ We have
 \item \(\models \neg P(y) \IMPLY \THE{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k,y:b[\seq{Q}]}\psi'\), and
 \item \(e_2=\PARB{(\ASSUME{\psi}{\TRUE})}{(\ASSUME{\psi'}{\FALSE})}\).
 \end{itemize}
-By I.H., we get 
-\(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{b[\seq{Q}]}{v_{01}}\) and 
+By I.H., we get
+\(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{b[\seq{Q}]}{v_{01}}\) and
 \(\theta_k e_1 \equiv \theta_k v_{01}\) for some value \(\theta_k v_{01}\).
 We obtain some \(v_{02}\) such that:
 \begin{eqnarray*}
@@ -638,14 +638,14 @@ We have
 \item \(e=\LETEQIN{\tuple{\seq{x},\seq{y}}}{e'}{\tuple{\seq{y}}}\), and
 \item \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{b[\seq{Q},\seq{P}]}{e'}\).
 \end{itemize}
-By I.H., we get \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{b[\seq{Q},\seq{P}]}{\tuple{\seq{v}_1,\seq{v}_2}}\) and 
+By I.H., we get \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{b[\seq{Q},\seq{P}]}{\tuple{\seq{v}_1,\seq{v}_2}}\) and
 \(\theta_k e' \equiv \theta_k \tuple{\seq{v}_1,\seq{v}_2}\) for some value \(\theta_k \tuple{\seq{v}_1,\seq{v}_2}\).
 Thus, we get \(\theta_k e \equiv \theta_k \tuple{\seq{v}_2}\).
 By \rn{A-Eq}, we obtain
 \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\), where
 \(v'=\tuple{\seq{v}_2}\).
 
-\item[] \rn{A-CoerceFun'} 
+\item[] \rn{A-CoerceFun'}
 We have
 \begin{itemize}
 \item \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{(x_{k+1}\COL\sigma_{k+1}' \to \sigma'')}{e'}\).
@@ -655,10 +655,10 @@ We have
 \item \(\sigma=x_{k+1}:\sigma_{k+1} \to \sigma'\).
 \end{itemize}
 Let \(v'=e\).
-Then, we obtain \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and 
+Then, we obtain \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{v'}\) and
 \(\theta_k e=\theta_k v'\).
 %
-By I.H., we obtain some value \(\theta_k v'''\) such that 
+By I.H., we obtain some value \(\theta_k v'''\) such that
 \(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{(x_{k+1}\COL\sigma_{k+1}' \to \sigma'')}{v'''}\) and
 \(\theta_k e' \equiv \theta_k v'''\).
 %
@@ -678,7 +678,7 @@ Then, we get
 &\equiv& \theta_{k+1} (\LETEQIN{x_{k+1}'}{e_1'}\LETEQIN{y}{v'''\ x_{k+1}'}e_2')
 \end{eqnarray*}
 By I.H., we obtain \(\theta_{k+1} (v'\ x_{k+1}) \equiv \theta_{k+1} v''\) and
-\(\TT{\Gamma,x_1:\sigma_1,\dots,x_{k+1}:\sigma_{k+1}}{v\ x_{k+1}}{\sigma'}{v''}\) 
+\(\TT{\Gamma,x_1:\sigma_1,\dots,x_{k+1}:\sigma_{k+1}}{v\ x_{k+1}}{\sigma'}{v''}\)
 for some value \(\theta_{k+1} v''\).
 
 \item[] \rn{A-Eq}
@@ -687,7 +687,7 @@ We have
 \item \(\T{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v}{\sigma}{e'}\) and
 \item \(e' \equiv e\).
 \end{itemize}
-%Suppose that \(\sigma=x_{k+1}:\sigma_{k+1} \to \sigma'\) and 
+%Suppose that \(\sigma=x_{k+1}:\sigma_{k+1} \to \sigma'\) and
 %\(\TT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{v_{k+1}}{\sigma_{k+1}}{v_{k+1}'}\).
 %
 By I.H., there exists some value \(\theta_k v''\) such that:
@@ -747,7 +747,7 @@ We obtain
 \LETEQIN{r}{v_1'\ v_2''}e_r'
 \end{eqnarray*}
 
-\item[] \rn{A-CoerceFun'} 
+\item[] \rn{A-CoerceFun'}
 We have
 \begin{itemize}
 \item \(\T{\Gamma,r:(x:\sigma_1 \to \sigma_2)}{r}{(x\COL\sigma''_1\to\sigma''_2)}{e'}\),
@@ -773,7 +773,7 @@ We obtain
 &&(\LETEQIN{r}{v_1'}{e_r})\ v_2' \\
 &=&(\LETEQIN{r}{v_1'}\LETEQIN{z}{e'} \\
 &&\lambda x.\LETEQIN{x'}{e_1'}\LETEQIN{y}{z\ x'}e_2')\ v_2' \\
-%e'‚ª•›ì—p‚ð‹N‚±‚³‚È‚¢‚±‚Æ‚ðŽg‚Á‚Ä‚¢‚é
+%e'ãŒå‰¯ä½œç”¨ã‚’èµ·ã“ã•ãªã„ã“ã¨ã‚’ä½¿ã£ã¦ã„ã‚‹
 &\equiv&\LETEQIN{x'}{[v_1'/r,v_2'/x]e_1'} \\
 &&\LETEQIN{y}{(\LETEQIN{r}{v_1'}e')\ x'}[v_1'/r,v_2'/x]e_2' \\
 &\redswith{\epsilon}{}&\LETEQIN{x'}{v_2'''} \\
@@ -806,7 +806,7 @@ By I.H., there exist \(e_r'\) and \(v_2''\) such that:
 \item \(\T{\Gamma,r:[v_1/x]\sigma_2}{r}{[v_1/x]\sigma_2'}{e_r'}\), and
 \item \(\T{\Gamma}{v_2}{\sigma_1}{v_2''}\).
 \end{itemize}
-Thus, we get 
+Thus, we get
 \((\LETEQIN{r}{v_1'}{e_r})\ v_2' \redswith{\epsilon}{}\equiv \LETEQIN{r}{v_1'\ v_2''}e_r'\).
 
 \end{itemize}
@@ -833,7 +833,7 @@ There exist \(e_r,v_1',\dots,v_{j+1}'\) such that:
 \end{itemize}
 \end{lemma}
 \begin{proof}
-We prove the lemma by induction on the derivation of 
+We prove the lemma by induction on the derivation of
 \(\T{\Gamma}{f\ v_1\cdots v_j}{(x_{j+1}\COL\sigma_{j+1}' \to \cdots \to x_k\COL\sigma_k' \to b[\seq{Q}])}{e}\).
 Case analysis on the last rule used:
 \begin{itemize}
@@ -841,12 +841,12 @@ Case analysis on the last rule used:
 We have
 \begin{itemize}
 \item \(j=0\),
-\item for each \(i \in \set{1,\dots,k}\), \(\sigma_i=\sigma_i'\), 
-\item \(\seq{P}=\seq{Q}\), and 
+\item for each \(i \in \set{1,\dots,k}\), \(\sigma_i=\sigma_i'\),
+\item \(\seq{P}=\seq{Q}\), and
 \item \(e=f\).
 \end{itemize}
 We obtain
-\(\T{\Gamma}{v_1}{\sigma_1}{v_1'}\), where 
+\(\T{\Gamma}{v_1}{\sigma_1}{v_1'}\), where
 \(v_1'=v_1''\).
 %
 Let \(e_r=r\).
@@ -858,7 +858,7 @@ By \rn{A-Var}, we obtain
 %
 We get \(e\ v_1''=f\ v_1' \equiv \LETEQIN{r}{f\ v_1'}e_r\).
 
-\item[] \rn{A-App'} 
+\item[] \rn{A-App'}
 We have
 \begin{itemize}
 \item \(\T{\Gamma}{f\ v_1\cdots v_{\ell}}{(x_{\ell+1}\COL\sigma_{\ell+1}'' \to \cdots \to x_j\COL\sigma_j'' \to \sigma)}{e'}\),
@@ -868,7 +868,7 @@ We have
 \item \(e=\LETEQIN{x}{e'}\LETEQIN{x_{\ell+1}}{e_{\ell+1}}\cdots\LETEQIN{x_j}{e_j}x\ x_{\ell+1}\cdots x_j\).
 \end{itemize}
 By Lemma~\ref{lem:val} and \ref{lem:sub}, for each \(i \in \set{\ell+1,\dots,j}\), we obtain \(v_i''\) such that
-\(\T{\Gamma}{v_i}{[v_{\ell+1}/x_{\ell+1},\dots,v_{i-1}/x_{i-1}]\sigma_i''}{v_i''}\) and 
+\(\T{\Gamma}{v_i}{[v_{\ell+1}/x_{\ell+1},\dots,v_{i-1}/x_{i-1}]\sigma_i''}{v_i''}\) and
 \([v_{\ell+1}''/x_{\ell+1},\dots,v_{i-1}''/x_{i-1}]e_i \redswith{\epsilon}{} v_i''\).
 %
 By I.H., there exist \(e_r',v_1',\dots,v_{\ell+1}'\) such that:
@@ -882,12 +882,12 @@ By I.H., there exist \(e_r',v_1',\dots,v_{\ell+1}'\) such that:
     {e_r'}\).
 \end{itemize}
 %
-We have 
+We have
 \begin{eqnarray*}
 e\ v_{j+1}''&=&(\LETEQIN{x}{e'} \\
 &&\LETEQIN{x_{\ell+1}}{e_{\ell+1}}\cdots\LETEQIN{x_j}{e_j} \\
 &&x\ x_{\ell+1}\cdots x_j)\ v_{j+1}'' \\
-%e'‚ª•›ì—p‚ð‹N‚±‚³‚È‚¢‚±‚Æ‚ðŽg‚Á‚Ä‚¢‚é
+%e'ãŒå‰¯ä½œç”¨ã‚’èµ·ã“ã•ãªã„ã“ã¨ã‚’ä½¿ã£ã¦ã„ã‚‹
 &\equiv&(\LETEQIN{x_{\ell+1}}{e_{\ell+1}}\cdots\LETEQIN{x_j}{e_j} \\
 &&e'\ x_{\ell+1}\cdots x_j)\ v_{j+1}'' \\
 &\redswith{\epsilon}{}&e'\ v_{\ell+1}''\cdots v_{j+1}'' \\
@@ -896,7 +896,7 @@ e\ v_{j+1}''&=&(\LETEQIN{x}{e'} \\
 \end{eqnarray*}
 Here, we have
 \begin{itemize}
-\item for each \(i \in \set{\ell+2,\dots,j+1}\), 
+\item for each \(i \in \set{\ell+2,\dots,j+1}\),
 \(\T{\Gamma}{v_i}{[v_1/x_1,\dots,v_{i-1}/x_{i-1}]\sigma_i}{v_i'}\), and
 \item
 \(\T{\Gamma,r:[v_1/x_1,\dots,v_{j+1}/x_{j+1}](x_{j+2}:\sigma_{j+2} \to \cdots \to x_k:\sigma_k \to b[\seq{P}])}
@@ -941,7 +941,7 @@ Here, we have
 %%%    {e_r}\).
 %%%\end{itemize}
 
-\item[] \rn{A-CoerceFun'} 
+\item[] \rn{A-CoerceFun'}
 We have
 \begin{itemize}
 \item \(\T{\Gamma}{f\ v_1\cdots v_j}{(x_{j+1}\COL\sigma_{j+1}'' \to \cdots \to x_k\COL\sigma_k'' \to b[\seq{R}])}{e'}\).
@@ -950,7 +950,7 @@ We have
 \item \(e=\LETEQIN{z}{e'}\lambda x_{j+1}.\LETEQIN{x_{j+1}'}{e_1'}\LETEQIN{y}{z\ x_{j+1}'}e_2'\).
 \end{itemize}
 By Lemmas~\ref{lem:sub} and \ref{lem:val}, we get some \(v_{j+1}'''\) such that
-\(\T{\Gamma}{v_{j+1}}{\sigma_{j+1}''}{v_{j+1}'''}\) and 
+\(\T{\Gamma}{v_{j+1}}{\sigma_{j+1}''}{v_{j+1}'''}\) and
 \([v_{j+1}''/x_{j+1}]e_1' \redswith{\epsilon}{} v_{j+1}'''\).
 %
 By I.H., there exist \(e_r',v_1',\dots,v_{j+1}'\) such that:
@@ -963,7 +963,7 @@ By I.H., there exist \(e_r',v_1',\dots,v_{j+1}'\) such that:
     {[v_{j+1}/x_{j+1}](x_{j+2}\COL\sigma_{j+2}'' \to \cdots \to x_k\COL\sigma_k'' \to b[\seq{R}])}
     {e_r'}\).
 \end{itemize}
-By Lemmas~\ref{lem:sub}, we get 
+By Lemmas~\ref{lem:sub}, we get
 \(\T{\Gamma,y\COL [v_{j+1}/x_{j+1}](x_{j+2}\COL\sigma_{j+2}'' \to \cdots \to x_k\COL\sigma_k'' \to b[\seq{R}])}
     {y}
     {[v_{j+1}/x_{j+1}](x_{j+2}\COL\sigma_{j+2}' \to \cdots \to x_k\COL\sigma_k' \to b[\seq{Q}])}
@@ -981,7 +981,7 @@ We have
 e\ v_{j+1}''
 &=&(\LETEQIN{z}{e'}\lambda x_{j+1}.\\
 &&\LETEQIN{x_{j+1}'}{e_1'}\LETEQIN{y}{z\ x_{j+1}'}e_2')\ v_{j+1}'' \\
-%e'‚ª•›ì—p‚ð‹N‚±‚³‚È‚¢‚±‚Æ‚ðŽg‚Á‚Ä‚¢‚é
+%e'ãŒå‰¯ä½œç”¨ã‚’èµ·ã“ã•ãªã„ã“ã¨ã‚’ä½¿ã£ã¦ã„ã‚‹
 &\equiv&(\lambda x_{j+1}.\LETEQIN{x_{j+1}'}{e_1'}\LETEQIN{y}{e'\ x_{j+1}'}e_2') \\
 &&v_{j+1}'' \\
 &\redwith{\epsilon}{}& \LETEQIN{x_{j+1}'}{[v_{j+1}''/x_{j+1}]e_1'}\LETEQIN{y}{e'\ x_{j+1}'} \\
@@ -1022,10 +1022,10 @@ Thus, we obtain \(e\ v_{j+1}'' \redswith{\epsilon}{}\equiv \LETEQIN{r}{f\ v_1'\c
 
 
 
-We now show that each reduction \(\redwith{l}{D_1}\) can be simulated by 
+We now show that each reduction \(\redwith{l}{D_1}\) can be simulated by
 some reduction \(\redswith{l}{D_2}\).
 \begin{pfof}{Lemma~\ref{lem:sim}}
-We prove the lemma by induction on the derivation of 
+We prove the lemma by induction on the derivation of
 \(\T{\Gamma}{e_1}{\sigma}{e_2}\).
 Case analysis on the last rule used:
 \begin{itemize}
@@ -1062,7 +1062,7 @@ By \rn{E-App}, we obtain
 \(e_1'=[\seq{v}/\seq{x}]e^{(1)}\) and \(l=\epsilon\).
 %
 By Lemmas~\ref{lem:val} and \ref{lem:sub}, for each \(i \in \set{j+1,\dots,k}\), we obtain \(v_i''\) such that
-\(\T{\Gamma}{v_i}{[v_{j+1}/x_{j+1},\dots,v_{i-1}/x_{i-1}]\sigma_i'}{v_i''}\) and 
+\(\T{\Gamma}{v_i}{[v_{j+1}/x_{j+1},\dots,v_{i-1}/x_{i-1}]\sigma_i'}{v_i''}\) and
 \([v_{j+1}''/x_{j+1},\dots,v_{i-1}''/x_{i-1}]e_i'' \redswith{\epsilon}{} v_i''\).
 %
 By Lemma~\ref{lem:fun}, there exist \(e_r,v_1',\dots,v_{j+1}'\) such that:
@@ -1080,7 +1080,7 @@ By \rn{E-Let} and \rn{E-App}, we obtain
 \begin{eqnarray*}
 e_2&=&\LETEQIN{x}{e}\LETEQIN{x_{j+1}}{e_{j+1}''}\cdots\LETEQIN{x_k}{e_k''} \\
 &&x\ x_{j+1}\cdots x_k \\
-%e‚ª•›ì—p‚ð‹N‚±‚³‚È‚¢‚±‚Æ‚ðŽg‚Á‚Ä‚¢‚é
+%eãŒå‰¯ä½œç”¨ã‚’èµ·ã“ã•ãªã„ã“ã¨ã‚’ä½¿ã£ã¦ã„ã‚‹
 &\equiv&\LETEQIN{x_{j+1}}{e_{j+1}''}\cdots\LETEQIN{x_k}{e_k''}e\ x_{j+1}\cdots x_k \\
 &\redswith{\epsilon}{}&e\ v_{j+1}''\cdots v_k'' \\
 &\redswith{\epsilon}{}\equiv&(\LETEQIN{r}{f\ v_1'\cdots v_{j+1}'}e_r)\ v_{j+2}''\cdots v_k'' \\
@@ -1092,8 +1092,8 @@ Here, we have
 \item \(\T{\Gamma,r:[v_1/x_1,\dots,v_k/x_k]b[\seq{P}]}{r}{\sigma}{e_r'}\).
 \end{itemize}
 %
-By \rn{A-Prog}, we have 
-\(\T{\Gamma,\seq{x}:\seq{\sigma}}{e^{(1)}}{b[\seq{P}]}{e^{(2)}}\) and 
+By \rn{A-Prog}, we have
+\(\T{\Gamma,\seq{x}:\seq{\sigma}}{e^{(1)}}{b[\seq{P}]}{e^{(2)}}\) and
 \(f\ \seq{x}=e^{(2)} \in D_2\) for some \(e^{(2)}\).
 %
 By Lemma~\ref{lem:sub}, we get
@@ -1101,7 +1101,7 @@ By Lemma~\ref{lem:sub}, we get
 %
 By Lemma~\ref{lem:subb} and \rn{A-Eq}, we obtain some \(e_2'\) such that
 \(\T{\Gamma}{e_1'}{\sigma}{\LETEQIN{r}{[\seq{v}'/\seq{x}]e^{(2)}}{e_r'}}\).
-By \rn{A-Eq}, we get some \(e_2'\) such that 
+By \rn{A-Eq}, we get some \(e_2'\) such that
 \(\T{\Gamma}{e_1'}{\sigma}{e_2'}\) and
 \(e_2 \redswith{\epsilon}{} e_2'\).
 
@@ -1126,7 +1126,7 @@ By \rn{A-Let}, we obtain
 Thus, we get \(e_2 \redswith{l}{} e_2'\).
 \item Otherwise, we can apply either \rn{E-Let} or \rn{E-Fail} to \(e_1\):
 \begin{itemize}
-\item[\rn{E-Let}] 
+\item[\rn{E-Let}]
 We have \(e_{11}=v\) for some \(v\).
 We get \(e_1'=[v/x]e_{12}\) and \(l=\epsilon\).
 By Lemma~\ref{lem:val}, we get some \(v'\) such that
@@ -1134,7 +1134,7 @@ By Lemma~\ref{lem:val}, we get some \(v'\) such that
 \(e_{21} \redswith{\epsilon}{} v'\).
 %
 By Lemma~\ref{lem:sub} and \([v/x]\sigma=\sigma\), we obtain
-\(\T{\Gamma}{e_1'}{\sigma}{e_2'}\), where 
+\(\T{\Gamma}{e_1'}{\sigma}{e_2'}\), where
 \(e_2'=[v'/x]e_{22}\).
 Thus, by \rn{E-Let}, we have
 \begin{eqnarray*}
@@ -1143,7 +1143,7 @@ e_2&=&\LETEQIN{x}{e_{21}}e_{22} \\
 &\redwith{\epsilon}{}& [v'/x]e_{22} \\
 &=& e_2'
 \end{eqnarray*}
-\item[\rn{E-Fail}] 
+\item[\rn{E-Fail}]
 We have \(e_{11}=e_1'=\FAIL\) and \(l=\epsilon\).
 By \rn{A-Fail}, \rn{A-Eq}, and \(\ASSUME{\TRUE}{\FAIL} \equiv \FAIL\), we obtain
 \(\T{\Gamma}{e_1'}{\sigma}{e_2'}\), where
@@ -1272,10 +1272,10 @@ By \rn{A-Var}, \rn{A-Base}, \rn{A-CoerceRem}, \rn{A-App'}, and \rn{A-Eq}, we obt
 \(\T{\Gamma}{\textit{main}\tuple{}}{\TUNIT}{\textit{main}\ \tuple{}}\).
 %\(e=\LETEQIN{x}{\textit{main}}\LETEQIN{y}{\tuple{}}x\ y\).
 %
-By Lemmas~\ref{lem:sim}, we obtain \(e\) such that 
-\(\T{\Gamma}{\FAIL}{\TUNIT}{e}\) and 
+By Lemmas~\ref{lem:sim}, we obtain \(e\) such that
+\(\T{\Gamma}{\FAIL}{\TUNIT}{e}\) and
 \(\textit{main}\ \tuple{} \redswith{s}{D_2} e\).
 %
-By Lemma~\ref{lem:fail}, we get \(e \redswith{\epsilon}{D_2} \FAIL\). 
+By Lemma~\ref{lem:fail}, we get \(e \redswith{\epsilon}{D_2} \FAIL\).
 Thus, we obtain \(\textit{main}\tuple{} \redswith{s}{D_2} \FAIL\).
 \end{pfof}

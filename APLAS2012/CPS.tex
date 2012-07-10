@@ -87,8 +87,8 @@ Figure~\ref{fig:cps} shows the rules of the selective CPS
 transformation.  The relation $\CPS{\Gamma}{t}{\tau}{\ell}{t'}$ means
 that a term $t$ is translated to a term $t'$ by using a type $\tau$,
 under the assumption that (i) each free variable $x$ of $t$ has been
-transformed using the type $\Gamma(x)$, \cc{(ii) $t$ may have a side-effect if
-$\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.}
+transformed using the type $\Gamma(x)$, (ii) $t$ may have a side-effect if
+$\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 %Here, $\MAbs{x}{t}$ and
 %$\MApp{t_1}{t_2}$ are, respectively, application and abstraction that
 %will be reduced statically in the translation.
@@ -106,8 +106,9 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.}
 
 \medskip
 
-\infax[CPS-Op]
- {\CPS{\Gamma}{\Op{v_1,\dots,v_n}}{\INT}{\NC}{\Op{v_1,\dots,v_n}}}
+\infrule[CPS-Op]
+ {\CPS{\Gamma}{v_i}{\INT}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
+ {\CPS{\Gamma}{\Op{v_1,\dots,v_n}}{\INT}{\NC}{\Op{v_1',\dots,v_n'}}}
 
 \medskip
 
@@ -388,14 +389,20 @@ In the following, we discuss properties of the selective CPS
 transformation.  The theorem below states that we can transform
 arbitrary simply-typed programs by the selective CPS transformation.
 \begin{theorem}
-Suppose $D$ is typable in $\Gamma$. There exists $D'$ such that $\CPSprog{\Gamma}{D}{D'}$.
+\label{thm:cps_total}
+Suppose $D$ is typable in $\Gamma$. There exists $\Gamma'$ and $D'$ such
+that $\Gamma = \ElimAnnot{\Gamma'}$ and $\CPSprog{\Gamma'}{D}{D'}$,
+where $\ElimAnnot{\Gamma}$ is a function that maps an environment with
+annotations into the corresponding environment without annotations.
 \end{theorem}
 The following theorem states the soundness of the selective CPS
 transformation, that the transformed program is reduced to
 the same value as the original program.
 \begin{theorem}[Soundness of CPS Transformation]
+\label{thm:cps_sound}
 If $\CPSprog{\Gamma}{D}{D'}$, then the following holds:
-$\App{\main}{n} \Reds{D} \FAIL$ if and only if $\App{\App{\main}{n}}{(\Abs{x}{x})} \Reds{D'} \FAIL$.
+$\App{\main}{n} \Reds{D} \FAIL$ if and only if
+$\App{\App{\main}{n}}{(\Abs{x}{x})} \Reds{D'} \FAIL$.
 \end{theorem}
 
 %\memo{How to infer types and labels?}

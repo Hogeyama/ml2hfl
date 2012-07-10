@@ -2,7 +2,7 @@
 \label{sec:language}
 In this section, we introduce the source language of our verification method.
 %We extend the language for recursive data structures later.
-%As mentioned in Section~\ref{sec:intro}, 
+%As mentioned in Section~\ref{sec:intro},
 %We formalize the verification method for a language with lists.
 %and argue about recursive data structures later.
 %Here, we formalize a language for lists. We extend the language for
@@ -24,7 +24,6 @@ distinguished function symbol $\main \in \set{f_1,\dots,f_n}$ whose type
 is $\TFun{\INT}{\INT}$.
 
 \begin{figure}[t]
-\begin{minipage}{\widthcoef\textwidth}
 \[
 \begin{array}{lrl}
 D\text{ (programs)} &::=& \{f_1 = v_1, \dots, f_n = v_n\} \\
@@ -34,7 +33,6 @@ v\text{ (values)} &::=& n \mid x \mid \Abs{x}{t} \\
 \tau\text{ (types)} &::=& \INT \mid \TFun{\tau_1}{\tau_2} \\
 \end{array}
 \]
-\end{minipage}
 \caption{The syntax of source language}
 \label{fig:source-syntax}
 \end{figure}
@@ -115,6 +113,3 @@ The goal of our verification is to check whether $\App{\main}{n}
 %\caption{The semantics of source language}
 %\label{fig:source-semantics}
 %\end{figure}
-
-
-

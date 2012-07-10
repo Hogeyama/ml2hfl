@@ -172,8 +172,8 @@ previous predicate abstraction.
 \medskip
 
 \infrule[A-AppExp]
- {E(x) = \Abs{x_1}{\cdots\Abs{x_n}{e}} \andalso
-  \Abst{\Gamma}{E}{e[v_1/x_1,\dots,v_{i-1}/x_{i-1}]}{\sigma}{e'}}
+ {E(x) = \Abs{\seq{x}}{e} \andalso
+  \Abst{\Gamma}{E}{[\seq{v}/\seq{x}]e}{\sigma}{e'}}
  {\Abst{\Gamma}{E}{\App{x}{\seq{v}}}{\sigma}{e'}}
 
 %\medskip
@@ -187,7 +187,7 @@ previous predicate abstraction.
 \infrule[A-Prog]
   {\Abst{\Gamma}{E}{v_i}{\Gamma(f_i)}{v_i'} \andalso
    \text{for each $i$ s.t. $f_i \notin \Dom{E}$} \\
-   \Dom{\Gamma} \cup \Dom{E} = {\set{f_1, \dots, f_n}} \andalso
+   E \subseteq {\set{f_1 = v_1, \dots, f_n = v_n}} \andalso
    \Dom{\Gamma} \cap \Dom{E} = \emptyset}
   {\AbstProg{\Gamma}{E}{\set{f_1 = v_1, \dots, f_n = v_n}}{\set{f_i = v_i' \mid f_i \notin \Dom{E}}}}
 \end{minipage}
@@ -285,15 +285,16 @@ let rec even b = if (if b then * else false) then true else odd ()
     and odd () = if * then false else even *
 let main () = assert (even b)
 \end{alltt}
-Since the abstraction of \texttt{odd} is too coarse, the abstracted 
-\texttt{even} returns a non-deterministic booleans.  Thus, the 
+Since the abstraction of \texttt{odd} is too coarse, the abstracted
+\texttt{even} returns a non-deterministic booleans.  Thus, the
 abstracted program is unsafe.
 
 We discuss properties of the selective predicate abstraction.
 The theorem below states that selective predicate abstraction is sound
 in the sense that if the original program fails then so does its
 abstracted program.
-\begin{theorem}[soundness]
+\begin{theorem}[Soundness of Selective Predicate Abstraction]
+\label{thm:abst_sound}
  If $\AbstProg{\Gamma}{E}{D_1}{D_2}$, and
  $\App{\main}{n} \Reds{D_1} \FAIL$, then
  $\App{\main}{n} \Reds{D_2} \FAIL$.
@@ -399,5 +400,3 @@ our previous paper~\cite{KobayashiPLDI2011}.
 %Fig.~\ref{fig:affine}. $\Affine{f_i}{D}$ denotes $f_i$ is occurred at
 %most once except that it counts as ones if $f_i$ occurred at most once
 %each in the then-part and the else-part of an if-expression.
-
-
