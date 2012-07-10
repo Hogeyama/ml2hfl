@@ -156,7 +156,7 @@ let trans_eager prog = {prog with defs = List.map (trans_eager_def prog.env) pro
 
 
 let rec eta_expand_term_aux env t typ =
-  if false then Format.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if debug then Format.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match typ with
       TBase _ -> t
     | TFun(typ1,typ2) ->
@@ -243,7 +243,7 @@ let rec abstract_term top must env cond pts t typ =
   match t with
     | Const Bottom ->
         assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
-    | Var x when congruent env cond (try List.assoc x env with Not_found -> assert false) typ ->
+    | Var x when congruent env cond (List.assoc x env) typ ->
         List.map (fun x -> Var x) (abst_arg x typ)
     | (Var _ | Const _ | App _) when is_base_term env t ->
         let btyp,ps = decomp_tbase typ in

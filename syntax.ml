@@ -507,18 +507,22 @@ let rec make_app t ts =
         make_app {desc=App(t,[t2]); typ=typ} ts
     | _ when not Flag.check_typ -> {desc=App(t,ts); typ=TUnknown}
     | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=TUnknown}; assert false
-let make_let bindings t2 =
-  {desc=Let(Flag.Nonrecursive,bindings,t2); typ=t2.typ}
 let make_lets bindings t2 =
   List.fold_right
-		  (fun binding t2 ->
-				  {desc=Let(Flag.Nonrecursive,[binding],t2); typ=t2.typ})
-		  bindings
+    (fun binding t2 ->
+       {desc=Let(Flag.Nonrecursive,[binding],t2); typ=t2.typ})
+    bindings
     t2
-let make_letrec bindings t2 =
-  {desc=Let(Flag.Recursive,bindings,t2); typ=t2.typ}
 let make_let_f flag bindings t2 =
-  {desc=Let(flag,bindings,t2); typ=t2.typ}
+  let rec aux (f,xs,t) =
+    match t.desc with
+        Fun(x,t') -> aux (f, xs@[x], t')
+      | _ -> f, xs, t
+  in
+  let bindings' = List.map aux bindings in
+    {desc=Let(flag,bindings',t2); typ=t2.typ}
+let make_let bindings t2 = make_let_f Flag.Nonrecursive bindings t2
+let make_letrec bindings t2 = make_let_f Flag.Recursive bindings t2
 let rec make_loop typ =
   let u = Id.new_var "u" TUnit in
   let f = Id.new_var "loop" (TFun(u,typ)) in
@@ -1183,7 +1187,8 @@ let rec merge_typ typ1 typ2 =
   match typ1,typ2 with
       TVar{contents=Some typ1}, typ2
     | typ1, TVar{contents=Some typ2} -> merge_typ typ1 typ2
-    | TVar({contents=None} as r1), TVar({contents=None} as r2) when r1 == r2 -> typ1
+    | TVar({contents=None}), _ -> typ2
+    | _, TVar({contents=None}) -> typ1
     | TUnit, TUnit -> TUnit
     | TBool, TBool -> TBool
     | TInt, TInt -> TInt

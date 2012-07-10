@@ -72,6 +72,16 @@ let rec pop_main {env=env;defs=defs;main=main} =
 
 
 
+let rec get_arg_env typ xs =
+  match typ,xs with
+      TFun(typ1,typ2), x::xs ->
+        let typ2 = typ2 (Var x) in
+          (x,typ1) :: get_arg_env typ2 xs
+    | _ -> []
+
+
+
+
 let rec put_into_if_term = function
     Const c -> Const c
   | Var x -> Var x
@@ -207,7 +217,7 @@ and trans_term post xs env t =
     | Syntax.Int n -> [], Const (Int n)
     | Syntax.NInt _ -> assert false
     | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Unit}]) ->
-        let k = new_id "k" in
+        let k = new_id ("k" ^ post) in
           [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
     | Syntax.App({Syntax.desc=Syntax.RandInt true}, [t1;t2]) ->
         assert (t1 = Syntax.unit_term);
@@ -337,6 +347,51 @@ let trans_def (f,(xs,t)) =
 	(f', typ', xs', Const True, [], t')::defs
 
 
+let get_var_arity f env = get_typ_arity (List.assoc f env)
+
+let rec is_CPS_value env = function
+    Const Unit
+  | Const True
+  | Const False
+  | Const (Int _)
+  | Var _ -> true
+  | App(App(Const And, t1), t2)
+  | App(App(Const EqUnit, t1), t2)
+  | App(App(Const EqInt, t1), t2)
+  | App(App(Const EqBool, t1), t2)
+  | App(App(Const Or, t1), t2)
+  | App(App(Const Lt, t1), t2)
+  | App(App(Const Gt, t1), t2)
+  | App(App(Const Leq, t1), t2)
+  | App(App(Const Geq, t1), t2)
+  | App(App(Const Add, t1), t2)
+  | App(App(Const Sub, t1), t2)
+  | App(App(Const Mul, t1), t2) -> is_CPS_value env t1 && is_CPS_value env t2
+  | App(Const Not, t) -> is_CPS_value env t
+  | App _ as t ->
+      let t1,ts = decomp_app t in
+      let n = match t1 with Var f -> get_var_arity f env | _ -> 0 in
+        n > List.length ts && List.for_all (is_CPS_value env) ts
+  | Let _ -> assert false
+  | Fun _ -> assert false
+  | _ -> false
+let is_CPS_def env (f,xs,cond,es,t) =
+  let env' = get_arg_env (List.assoc f env) xs @@ env in
+  let b1 = is_CPS_value env' cond in
+  let b2 =
+    match t with
+        Const _ -> true
+      | Var _ -> true
+      | App _ -> List.for_all (is_CPS_value env') (snd (decomp_app t))
+      | Let _ -> assert false
+      | Fun _ -> assert false
+  in
+    b1 && b2
+
+let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
+
+
+
 let event_of_temp ({env=env;defs=defs;main=main} as prog) =
   if is_CPS prog
   then
@@ -436,6 +491,7 @@ let trans_prog t =
   let t = Trans.trans_let t in
   let () = if false then Format.printf "AFTER:@.%a@.@.@." Syntax.pp_print_term t in
   let main = new_id "main" in
+  let () = if true then Format.printf "@.%a@.@.@." Syntax.pp_print_term t in
   let defs,t_main = Trans.lift t in
   let defs_t,t_main' = trans_term "" [] [] t_main in
   let defs' =
@@ -640,16 +696,6 @@ let lift2 {defs=defs; main=main} =
   let defs = flatten_map lift_def2 defs in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog {env=[];defs=defs;main=main} in
     Typing.infer {env=[];defs=defs;main=main}
-
-
-let rec get_arg_env typ xs =
-  match typ,xs with
-      TFun(typ1,typ2), x::xs ->
-        let typ2 = typ2 (Var x) in
-          (x,typ1) :: get_arg_env typ2 xs
-    | _ -> []
-
-
 
 
 

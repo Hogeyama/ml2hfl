@@ -144,47 +144,6 @@ let rec decomp_tfun = function
   | typ -> [], typ
 
 
-let get_var_arity f env = get_typ_arity (List.assoc f env)
-
-let rec is_CPS_value env = function
-    Const Unit
-  | Const True
-  | Const False
-  | Const (Int _)
-  | Var _ -> true
-  | App(App(Const And, t1), t2)
-  | App(App(Const EqUnit, t1), t2)
-  | App(App(Const EqInt, t1), t2)
-  | App(App(Const EqBool, t1), t2)
-  | App(App(Const Or, t1), t2)
-  | App(App(Const Lt, t1), t2)
-  | App(App(Const Gt, t1), t2)
-  | App(App(Const Leq, t1), t2)
-  | App(App(Const Geq, t1), t2)
-  | App(App(Const Add, t1), t2)
-  | App(App(Const Sub, t1), t2)
-  | App(App(Const Mul, t1), t2) -> is_CPS_value env t1 && is_CPS_value env t2
-  | App(Const Not, t) -> is_CPS_value env t
-  | App _ as t ->
-      let t1,ts = decomp_app t in
-      let n = match t1 with Var f -> get_var_arity f env | _ -> 0 in
-        n > List.length ts && List.for_all (is_CPS_value env) ts
-  | Let _ -> assert false
-  | Fun _ -> assert false
-  | _ -> false
-let is_CPS_def env (f,xs,cond,es,t) =
-  let b1 = is_CPS_value env cond in
-  let b2 =
-    match t with
-        Const _ -> true
-      | Var _ -> true
-      | App _ -> List.for_all (is_CPS_value env) (snd (decomp_app t))
-      | Let _ -> assert false
-      | Fun _ -> assert false
-  in
-    b1 && b2
-
-let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 
 
 let is_external x = String.contains x '.'

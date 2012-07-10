@@ -44,13 +44,12 @@ let spec_file = ref ""
 
 
 let rec main_loop parsed =
-  let time_tmp = get_time () in
   let t = parsed in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in
 
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
-  let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term' t in
+  let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
   let fun_list,t =
     if !Flag.init_trans
     then
@@ -88,7 +87,7 @@ let rec main_loop parsed =
           t
       in
       let t' = CPS.trans t in
-      let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t' = CPS.remove_pair t in
       let () = if true && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
@@ -122,7 +121,6 @@ let rec main_loop parsed =
                 let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
                   main_loop parsed
             | Verifier.FailedToRefineExtraParameters ->
-                let time_tmp = get_time () in
                 let _ = LazyInterface.params := [] in
                 let _ = Verifier.ext_coeffs := [] in
                 let _ = Verifier.ext_constrs := [] in

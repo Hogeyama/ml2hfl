@@ -111,7 +111,7 @@ let rec infer_term env = function
         with
             Not_found when is_external x -> raise External
           | Not_found when is_parameter x -> TInt
-          | Not_found -> Format.printf "VAR: %s@." x; assert false
+          | Not_found -> Format.printf "Not_found VAR: %s@." x; assert false
       in
         typ
   | App(t1,t2) ->

@@ -642,7 +642,7 @@ let compare_id x y =
   let aux x = not (is_base_typ (Id.typ x)), Id.to_string x in
     compare (aux x) (aux y)
 
-let rec lift_aux xs t =
+let rec lift_aux post xs t =
   let defs,desc =
     match t.desc with
         Unit -> [], Unit
@@ -654,21 +654,33 @@ let rec lift_aux xs t =
       | RandInt b -> [], RandInt b
       | Var x -> [], Var x
       | Fun(x,t1) ->
-          let f = Id.new_var "f" t.typ in
-          let defs,t1' = lift_aux xs (make_let [f,[x],t1] (make_var f)) in
-            defs,t1'.desc
+          let f = Id.new_var ("f" ^ post) t.typ in
+          let aux f ys t1 t2 =
+            let fv = inter' Id.compare (get_fv t1) xs in
+            let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
+            let fv = List.sort compare_id fv in
+            let ys' = fv @ ys in
+            let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
+            let f' = Id.set_typ f typ in
+            let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
+            let defs1,t1' = lift_aux post ys' t1 in
+            let defs2,t2' = lift_aux post xs (subst f f'' t2) in
+              defs1 @ [(f',(ys',t1'))] @ defs2, t2'
+          in
+          let defs,t' = aux f [x] t1 (make_var f) in
+            defs, t'.desc
       | App(t, ts) ->
-          let defs,t' = lift_aux xs t in
-          let defss,ts' = List.split (List.map (lift_aux xs) ts) in
+          let defs,t' = lift_aux post xs t in
+          let defss,ts' = List.split (List.map (lift_aux post xs) ts) in
             defs @ (List.flatten defss), App(t', ts')
       | If(t1,t2,t3) ->
-          let defs1,t1' = lift_aux xs t1 in
-          let defs2,t2' = lift_aux xs t2 in
-          let defs3,t3' = lift_aux xs t3 in
+          let defs1,t1' = lift_aux post xs t1 in
+          let defs2,t2' = lift_aux post xs t2 in
+          let defs3,t3' = lift_aux post xs t3 in
             defs1 @ defs2 @ defs3, If(t1',t2',t3')
       | Branch(t1,t2) ->
-          let defs1,t1' = lift_aux xs t1 in
-          let defs2,t2' = lift_aux xs t2 in
+          let defs1,t1' = lift_aux post xs t1 in
+          let defs2,t2' = lift_aux post xs t2 in
             defs1 @ defs2, Branch(t1',t2')
       | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
           let fv = inter' Id.compare (get_fv t1) xs in
@@ -678,8 +690,8 @@ let rec lift_aux xs t =
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-          let defs1,t1' = lift_aux ys' t1 in
-          let defs2,t2' = lift_aux xs (subst f f'' t2) in
+          let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' t1 in
+          let defs2,t2' = lift_aux post xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
       | Let(Flag.Recursive,[f,ys,t1],t2) ->
           let fv = inter' Id.compare (get_fv t1) xs in
@@ -689,94 +701,94 @@ let rec lift_aux xs t =
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-          let defs1,t1' = lift_aux ys' (subst f f'' t1) in
-          let defs2,t2' = lift_aux xs (subst f f'' t2) in
+          let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' (subst f f'' t1) in
+          let defs2,t2' = lift_aux post xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
-(*
-      | Let(flag,bindings,t2) ->
-          let fv = xs in
-          let lift_binding (f,ys,t) =
-            let ys' = fv @ ys in
-            let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
-            let f' = Id.new_var (Id.name f) typ in
-            let t' =
-              match flag with
-                  Flag.Nonrecursive -> t
+              (*
+                | Let(flag,bindings,t2) ->
+                let fv = xs in
+                let lift_binding (f,ys,t) =
+                let ys' = fv @ ys in
+                let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
+                let f' = Id.new_var (Id.name f) typ in
+                let t' =
+                match flag with
+                Flag.Nonrecursive -> t
                 | Flag.Recursive ->
-                    (*** buggy ***)
-                    let f'' = make_app (make_var f') (List.map make_var fv) in
-                      subst f f'' t
-            in
-            let defs1,t'' = lift_aux ys' t' in
-              defs1, (f', ys', t'')
-          in
-          let defss,bindings' = List.split (List.map lift_binding bindings) in
-          let aux t (f,_,_) (f',_,_) =
-            let f'' = make_app (make_var f') (List.map make_var fv) in
-              subst f f'' t
-          in
-          let defs2,t2' = lift_aux xs (List.fold_left2 aux t2 bindings bindings') in
-            List.flatten defss @ defs2, t2'.desc
-*)
+              (*** buggy ***)
+                let f'' = make_app (make_var f') (List.map make_var fv) in
+                subst f f'' t
+                in
+                let defs1,t'' = lift_aux post ys' t' in
+                defs1, (f', ys', t'')
+                in
+                let defss,bindings' = List.split (List.map lift_binding bindings) in
+                let aux t (f,_,_) (f',_,_) =
+                let f'' = make_app (make_var f') (List.map make_var fv) in
+                subst f f'' t
+                in
+                let defs2,t2' = lift_aux post xs (List.fold_left2 aux t2 bindings bindings') in
+                List.flatten defss @ defs2, t2'.desc
+              *)
       | Let _ -> raise (Fatal "Unimplemented: lift(Let)")
       | BinOp(op,t1,t2) ->
-          let defs1,t1' = lift_aux xs t1 in
-          let defs2,t2' = lift_aux xs t2 in
+          let defs1,t1' = lift_aux post xs t1 in
+          let defs2,t2' = lift_aux post xs t2 in
             defs1 @ defs2, BinOp(op,t1',t2')
       | Not t ->
-          let defs,t' = lift_aux xs t in
+          let defs,t' = lift_aux post xs t in
             defs, Not t'
       | Event(s,b) -> [], Event(s,b)
       | Record fields ->
           let aux (s,(f,t)) =
-            let defs,t' = lift_aux xs t in
+            let defs,t' = lift_aux post xs t in
               defs, (s,(f,t'))
           in
           let defss,fields' = List.split (List.map aux fields) in
             List.flatten defss, Record fields'
       | Proj(i,s,f,t) ->
-          let defs,t' = lift_aux xs t in
+          let defs,t' = lift_aux post xs t in
             defs, Proj(i,s,f,t')
       | Nil -> [], Nil
       | Cons(t1,t2) ->
-          let defs1,t1' = lift_aux xs t1 in
-          let defs2,t2' = lift_aux xs t2 in
+          let defs1,t1' = lift_aux post xs t1 in
+          let defs2,t2' = lift_aux post xs t2 in
             defs1 @ defs2, Cons(t1',t2')
       | Constr(c,ts) ->
-          let defss,ts' = List.split (List.map (lift_aux xs) ts) in
+          let defss,ts' = List.split (List.map (lift_aux post xs) ts) in
             List.flatten defss, Constr(c,ts')
       | Match(t,pats) ->
-          let defs,t' = lift_aux xs t in
+          let defs,t' = lift_aux post xs t in
           let aux (pat,cond,t) (defs,pats) =
             let xs' = get_vars_pat pat @@ xs in
             let defs',cond' =
               match cond with
                   None -> [], None
                 | Some t ->
-                    let defs',t' = lift_aux xs' t in
+                    let defs',t' = lift_aux post xs' t in
                       defs', Some t'
             in
-            let defs'',t' = lift_aux xs' t in
+            let defs'',t' = lift_aux post xs' t in
               defs''@defs'@defs, (pat,cond',t')::pats
           in
           let defs',pats' = List.fold_right aux pats (defs,[]) in
             defs', Match(t',pats')
       | Pair(t1,t2) ->
-          let defs1,t1' = lift_aux xs t1 in
-          let defs2,t2' = lift_aux xs t2 in
+          let defs1,t1' = lift_aux post xs t1 in
+          let defs2,t2' = lift_aux post xs t2 in
             defs1 @ defs2, Pair(t1',t2')
       | Fst t ->
-          let defs,t' = lift_aux xs t in
+          let defs,t' = lift_aux post xs t in
             defs, Fst t'
       | Snd t ->
-          let defs,t' = lift_aux xs t in
+          let defs,t' = lift_aux post xs t in
             defs, Snd t'
       | Bottom -> [], Bottom
       | _ -> Format.printf "lift: %a@." pp_print_term t; assert false
   in
     defs, {desc=desc; typ=t.typ}
 (** [lift t] で，[t] をlambda-lift する．the definitions of let expressions must be side-effect free *)
-let lift t = lift_aux [](*(get_fv2 t)*) t
+let lift t = lift_aux "" [](*(get_fv2 t)*) t
 
 
 
@@ -1397,55 +1409,59 @@ let rec eval t =
 
 
 
-
-let rec eta_expand t =
+(* reduce only terms of the form "(fun x -> t1) t2" *)
+(* t is assumed to be a CBN-program *)
+let rec eta_reduce t =
   let desc =
     match t.desc with
         Unit -> Unit
       | True -> True
       | False -> False
+      | Unknown -> Unknown
       | Int n -> Int n
       | NInt x -> NInt x
+      | RandInt b -> RandInt b
       | Var x -> Var x
-      | Fun(x, t) -> assert false
-          (*let f = new_var' "f" in
-            eta_expand (Let(f, [x], t, Var f))*)
-      | App(t, ts) ->
-          let t' = eta_expand t in
-          let ts' = List.map eta_expand ts in
-            App(t', ts')
+      | Fun(x, t) -> Fun(x, eta_reduce t)
+      | App(t, []) -> (eta_reduce t).desc
+      | App(t1, t2::ts) ->
+          begin
+            match eta_reduce t1 with
+                {desc=Fun(x,t1')} ->
+                  (eta_reduce {desc=App(subst x t2 t1', ts); typ=t.typ}).desc
+              | t1' ->
+                  let ts' = List.map eta_reduce (t2::ts) in
+                    (make_app t1' ts').desc
+          end
       | If(t1, t2, t3) ->
-          let t1' = eta_expand t1 in
-          let t2' = eta_expand t2 in
-          let t3' = eta_expand t3 in
+          let t1' = eta_reduce t1 in
+          let t2' = eta_reduce t2 in
+          let t3' = eta_reduce t3 in
             If(t1', t2', t3')
-      | Let _ -> raise (Fatal "Not implemented: Trans.eta_expand(Let)")
-          (*
-            | Let(f, xs, t1, t2) ->
-            let t1' = eta_expand t1 in
-            let t2' = eta_expand t2 in
-
-            let n = (List.length (get_args f.typ)) - (List.length xs) in
-            let ds = tabulate n (fun _ -> new_var' "d") in
-            let xs' = List.map2 (fun x x' -> {x with typ = x'.typ}) (xs @ ds) (get_args f.typ) in
-
-            Let(f, xs', App(t1', List.map (fun d -> Var(d)) ds), t2')
-            | Letrec(f, xs, t1, t2) ->
-            let t1' = eta_expand t1 in
-            let t2' = eta_expand t2 in
-
-            let n = (List.length (get_args f.typ)) - (List.length xs) in
-            let ds = tabulate n (fun _ -> new_var' "d") in
-            let xs' = List.map2 (fun x x' -> {x with typ = x'.typ}) (xs @ ds) (get_args f.typ) in
-
-            Letrec(f, xs', App(t1', List.map (fun d -> Var(d)) ds), t2')
-          *)
+      | Let(flag,bindings,t) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, eta_reduce t) bindings in
+          let t' = eta_reduce t in
+            Let(flag, bindings', t')
       | BinOp(op, t1, t2) ->
-          let t1' = eta_expand t1 in
-          let t2' = eta_expand t2 in
+          let t1' = eta_reduce t1 in
+          let t2' = eta_reduce t2 in
             BinOp(op, t1', t2')
-      | Unknown -> Unknown
-      | _ -> assert false
+      | Not t1 ->
+          let t1' = eta_reduce t1 in
+            Not t1'
+      | Event(s,b) -> Event(s,b)
+      | Pair(t1,t2) ->
+          let t1' = eta_reduce t1 in
+          let t2' = eta_reduce t2 in
+            Pair(t1', t2')
+      | Fst t1 ->
+          let t1' = eta_reduce t1 in
+            Fst t1'
+      | Snd t1 ->
+          let t1' = eta_reduce t1 in
+            Snd t1'
+      | Bottom -> Bottom
+      | _ -> Format.printf "%a@." pp_print_term t; assert false
   in
     {desc=desc; typ=t.typ}
 
@@ -1958,83 +1974,83 @@ let rec inlined_f inlined fs t =
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y ->
-	  if List.exists (fun (x, _, _) -> Id.same x y) fs then
-	    let (f, xs, t') = try List.find (fun (x, _, _) -> Id.same x y) fs with Not_found -> assert false in
-	      (*let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) [f, t'] in*)
-	    let f, _ =
-	      List.fold_left
-		(fun (f, ty) y ->
-		   (fun t ->
-		      f {desc=Fun(y, t); typ=ty}),
-		   match ty with
-		       Type.TFun(_, ty') -> ty'
-		     | _ ->
-			 let _ = Format.printf "%a@." print_typ ty in assert false)
-		((fun t -> t), t.typ)
-		xs
-	    in
-	    let t' = inlined_f inlined fs t' in
-  	      (f t').desc
-	  else
-	    Var y
+    if List.exists (fun (x, _, _) -> Id.same x y) fs then
+      let (f, xs, t') = try List.find (fun (x, _, _) -> Id.same x y) fs with Not_found -> assert false in
+        (*let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) [f, t'] in*)
+      let f, _ =
+        List.fold_left
+    (fun (f, ty) y ->
+       (fun t ->
+          f {desc=Fun(y, t); typ=ty}),
+       match ty with
+           Type.TFun(_, ty') -> ty'
+         | _ ->
+       let _ = Format.printf "%a@." print_typ ty in assert false)
+    ((fun t -> t), t.typ)
+    xs
+      in
+      let t' = inlined_f inlined fs t' in
+          (f t').desc
+    else
+      Var y
       | Fun(y, t1) -> Fun(y, inlined_f inlined fs t1)
       | App(t1, ts) ->
-	  (*let _ = Format.printf "func: %a@." pp_print_term t1' in*)
-	  (match t1.desc with
-	       Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
-		 let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
-		 let ts = List.map (inlined_f inlined fs) ts in
-		 let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | NInt _ | Var _ -> `L(t) | _ -> `R(Id.new_var "arg" t.typ)) ts in
-    		 let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else ExtList.List.split_nth (List.length xs) ys in
-		 let xs1, xs2 = ExtList.List.split_nth (List.length ys1) xs in
-		 let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
-		 let t' = subst_map map t in
-		 let f, _ =
-		   List.fold_left
-		     (fun (f, ty) x -> (fun t -> f {desc=Fun(x, t); typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
-		     ((fun t -> t), Type.app_typ t1.typ (List.map (fun t -> t.typ) ts))
-		     xs2
-		 in
-		 let bindings = Util.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, [], t)) ys ts in
-  		   (make_lets bindings (make_app (f t') (List.map (fun y -> match y with `L(t) -> t | `R(y) -> make_var y) ys2))).desc
-	     | _ ->
-		 let t1' = inlined_f inlined fs t1 in
-		 let ts' = List.map (inlined_f inlined fs) ts in
-    		   App(t1', ts'))
+    (*let _ = Format.printf "func: %a@." pp_print_term t1' in*)
+    (match t1.desc with
+         Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
+     let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
+     let ts = List.map (inlined_f inlined fs) ts in
+     let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | NInt _ | Var _ -> `L(t) | _ -> `R(Id.new_var "arg" t.typ)) ts in
+         let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else ExtList.List.split_nth (List.length xs) ys in
+     let xs1, xs2 = ExtList.List.split_nth (List.length ys1) xs in
+     let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
+     let t' = subst_map map t in
+     let f, _ =
+       List.fold_left
+         (fun (f, ty) x -> (fun t -> f {desc=Fun(x, t); typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
+         ((fun t -> t), Type.app_typ t1.typ (List.map (fun t -> t.typ) ts))
+         xs2
+     in
+     let bindings = Util.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, [], t)) ys ts in
+         (make_lets bindings (make_app (f t') (List.map (fun y -> match y with `L(t) -> t | `R(y) -> make_var y) ys2))).desc
+       | _ ->
+     let t1' = inlined_f inlined fs t1 in
+     let ts' = List.map (inlined_f inlined fs) ts in
+           App(t1', ts'))
       | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
       | Branch(t1, t2) -> Branch(inlined_f inlined fs t1, inlined_f inlined fs t2)
       | Let(flag, bindings, t2) ->
           let aux (f,xs,t) =
-  	    (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
-	    let rec lift t =
-	      match t.desc with
-  		  Fun(x, t') ->
-		    let xs, t' = lift t' in
-		      x::xs, t'
-		| _ -> [], t
-	    in
-  	      if flag = Flag.Nonrecursive then
-		if List.exists (fun f' -> Id.same f' f) inlined then
-		  let t' = inlined_f inlined fs t in
-		  let xs', t' = lift t' in
-		    (*let _ = Format.printf "inlined: %a, %a, %a@." print_id f (Util.pr_list print_id ",") xs pp_print_term t' in*)
-  		    `R(f, xs @ xs', t')
-		else if xs = [] && (match t.desc with Fst(t) | Snd(t) -> (match t.desc with Var _ -> true | _ -> false) | _ -> false) then
-		  (*let _ = Format.printf "fst/snd: %a@." print_id f in*)
-  		  `R(f, xs, t)
-		else
-		  let t' = inlined_f inlined fs t in
-		  let xs', t' = lift t' in
+        (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
+      let rec lift t =
+        match t.desc with
+        Fun(x, t') ->
+        let xs, t' = lift t' in
+          x::xs, t'
+    | _ -> [], t
+      in
+          if flag = Flag.Nonrecursive then
+    if List.exists (fun f' -> Id.same f' f) inlined then
+      let t' = inlined_f inlined fs t in
+      let xs', t' = lift t' in
+        (*let _ = Format.printf "inlined: %a, %a, %a@." print_id f (Util.pr_list print_id ",") xs pp_print_term t' in*)
+          `R(f, xs @ xs', t')
+    else if xs = [] && (match t.desc with Fst(t) | Snd(t) -> (match t.desc with Var _ -> true | _ -> false) | _ -> false) then
+      (*let _ = Format.printf "fst/snd: %a@." print_id f in*)
+        `R(f, xs, t)
+    else
+      let t' = inlined_f inlined fs t in
+      let xs', t' = lift t' in
                     `L(f, xs @ xs', t')
-	      else
+        else
                 `L(f, xs, inlined_f inlined fs t)
           in
           let bindings', fs' = Util.partition_map aux bindings in
           let t2' = inlined_f inlined (fs @ fs') t2 in
             if bindings' = [] then
-	      t2'.desc
-	    else
-	      Let(flag, bindings', t2')
+        t2'.desc
+      else
+        Let(flag, bindings', t2')
       | BinOp(op, t1, t2) -> BinOp(op, inlined_f inlined fs t1, inlined_f inlined fs t2)
       | Not t1 -> Not (inlined_f inlined fs t1)
       | Event(s,b) -> Event(s,b)
@@ -2051,18 +2067,18 @@ let rec inlined_f inlined fs t =
       | TryWith(t1,t2) -> TryWith(inlined_f inlined fs t1, inlined_f inlined fs t2)
       | Pair(t1,t2) -> Pair(inlined_f inlined fs t1, inlined_f inlined fs t2)
       | Fst t ->
-	  let t' = inlined_f inlined fs t in
+    let t' = inlined_f inlined fs t in
             begin
-	      match t'.desc with
-		  Pair(t1, _) -> t1.desc
-	        | _ -> Fst t'
+        match t'.desc with
+      Pair(t1, _) -> t1.desc
+          | _ -> Fst t'
             end
       | Snd t ->
-	  let t' = inlined_f inlined fs t in
+    let t' = inlined_f inlined fs t in
             begin
-	      match t'.desc with
-		  Pair(_, t2) -> t2.desc
-	        | _ -> Snd t'
+        match t'.desc with
+      Pair(_, t2) -> t2.desc
+          | _ -> Snd t'
             end
       | Bottom -> Bottom
       | _ -> Format.printf "inlined_f: %a@." pp_print_term t; assert false
@@ -2089,32 +2105,32 @@ let rec lift_fst_snd fs t =
       | Branch(t1, t2) -> Branch(lift_fst_snd fs t1, lift_fst_snd fs t2)
       | Let(flag, bindings, t2) ->
           let bindings' =
-										  List.map
-												  (fun (f,xs,t) ->
-														  f, xs,
-																let fs' =
-																  List.flatten
-																		  (ExtList.List.filter_map
-																				  (fun x ->
-																						  match x.Id.typ with
-																								  TPair(_, _) ->
-																										  Some([Id.new_var x.Id.name (fst_typ x.Id.typ), true, x; Id.new_var x.Id.name (snd_typ x.Id.typ), false, x])
-																								| _ -> None)
-																	  			xs)
-																in
-																if fs' = [] then
-  																lift_fst_snd fs t
-																else
-																  make_lets
-																				(List.map
-																						(fun (x, bfst, xorig) ->
-																								(* ommit the case where x is a pair *)
-																								x, [], if bfst then { desc = Fst(make_var xorig); typ = x.Id.typ} else { desc = Snd(make_var xorig); typ = x.Id.typ})
-																						fs')
-																				(lift_fst_snd (fs @ fs') t)
-																(* ommit the case where f is a pair *))
-														bindings
-										in
+                      List.map
+                          (fun (f,xs,t) ->
+                              f, xs,
+                                let fs' =
+                                  List.flatten
+                                      (ExtList.List.filter_map
+                                          (fun x ->
+                                              match x.Id.typ with
+                                                  TPair(_, _) ->
+                                                      Some([Id.new_var x.Id.name (fst_typ x.Id.typ), true, x; Id.new_var x.Id.name (snd_typ x.Id.typ), false, x])
+                                                | _ -> None)
+                                          xs)
+                                in
+                                if fs' = [] then
+                                  lift_fst_snd fs t
+                                else
+                                  make_lets
+                                        (List.map
+                                            (fun (x, bfst, xorig) ->
+                                                (* ommit the case where x is a pair *)
+                                                x, [], if bfst then { desc = Fst(make_var xorig); typ = x.Id.typ} else { desc = Snd(make_var xorig); typ = x.Id.typ})
+                                            fs')
+                                        (lift_fst_snd (fs @ fs') t)
+                                (* ommit the case where f is a pair *))
+                            bindings
+                    in
           Let(flag, bindings', lift_fst_snd fs t2)
       | BinOp(op, t1, t2) -> BinOp(op, lift_fst_snd fs t1, lift_fst_snd fs t2)
       | Not t1 -> Not (lift_fst_snd fs t1)
@@ -2132,28 +2148,75 @@ let rec lift_fst_snd fs t =
       | TryWith(t1,t2) -> TryWith(lift_fst_snd fs t1, lift_fst_snd fs t2)
       | Pair(t1,t2) -> Pair(lift_fst_snd fs t1, lift_fst_snd fs t2)
       | Fst t ->
-						    (match t.desc with
-										  Var(x) ->
-												  (try
-  												  let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.same x' x) fs in
-																(make_var x).desc
-														with Not_found ->
-														  Fst(lift_fst_snd fs t))
-										| _ ->
-    						    Fst(lift_fst_snd fs t))
+                (match t.desc with
+                      Var(x) ->
+                          (try
+                            let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.same x' x) fs in
+                                (make_var x).desc
+                            with Not_found ->
+                              Fst(lift_fst_snd fs t))
+                    | _ ->
+                    Fst(lift_fst_snd fs t))
       | Snd t ->
-						    (match t.desc with
-										  Var(x) ->
-												  (try
-  												  let (x, _, _) = List.find (fun (_, bfst, x') -> not bfst && Id.same x' x) fs in
-																(make_var x).desc
-														with Not_found ->
-														  Snd(lift_fst_snd fs t))
-										| _ ->
-    						    Snd(lift_fst_snd fs t))
+                (match t.desc with
+                      Var(x) ->
+                          (try
+                            let (x, _, _) = List.find (fun (_, bfst, x') -> not bfst && Id.same x' x) fs in
+                                (make_var x).desc
+                            with Not_found ->
+                              Snd(lift_fst_snd fs t))
+                    | _ ->
+                    Snd(lift_fst_snd fs t))
       | Bottom -> Bottom
-						| _ -> Format.printf "lift_fst_snd: %a@." pp_print_term t; assert false
+            | _ -> Format.printf "lift_fst_snd: %a@." pp_print_term t; assert false
   in
     {desc=desc; typ=t.typ}
 
 let lift_fst_snd t = lift_fst_snd [] t
+
+
+(* t is assumed to be a CBN-program *)
+let rec expand_let_val t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Var y -> Var y
+      | Fun(y, t) -> Fun(y, expand_let_val t)
+      | App(t1, ts) -> App(expand_let_val t1, List.map expand_let_val ts)
+      | If(t1, t2, t3) -> If(expand_let_val t1, expand_let_val t2, expand_let_val t3)
+      | Branch(t1, t2) -> Branch(expand_let_val t1, expand_let_val t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, expand_let_val t) bindings in
+          let t2' = expand_let_val t2 in
+          let bindings1,bindings2 = List.partition (fun (_,xs,_) -> xs = []) bindings' in
+          let t2'' = List.fold_left (fun t (f,_,t') -> subst f t' t) t2' bindings1 in
+            if bindings2 = []
+            then t2''.desc
+            else Let(flag, bindings2, t2'')
+      | BinOp(op, t1, t2) -> BinOp(op, expand_let_val t1, expand_let_val t2)
+      | Not t1 -> Not (expand_let_val t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,expand_let_val t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,expand_let_val t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,expand_let_val t1,expand_let_val t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(expand_let_val t1, expand_let_val t2)
+      | Constr(s,ts) -> Constr(s, List.map expand_let_val ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, apply_opt expand_let_val cond, expand_let_val t1 in
+            Match(expand_let_val t1, List.map aux pats)
+      | Raise t -> Raise (expand_let_val t)
+      | TryWith(t1,t2) -> TryWith(expand_let_val t1, expand_let_val t2)
+      | Pair(t1,t2) -> Pair(expand_let_val t1, expand_let_val t2)
+      | Fst t -> Fst(expand_let_val t)
+      | Snd t -> Snd(expand_let_val t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=t.typ}

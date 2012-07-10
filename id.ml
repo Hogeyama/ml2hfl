@@ -4,7 +4,7 @@ let init_counter = 0
 let counter = ref init_counter
 let tmp_counter = ref init_counter
 
-let new_int () = incr counter; let n = !counter in if n = 187(*???*) then n else n
+let new_int () = incr counter; !counter
 let get_counter () = !counter
 let set_counter n = counter := n
 let save_counter () = tmp_counter := !counter
@@ -49,5 +49,3 @@ let print fm x =
   let s = to_string x in
     assert (s <> "");
     Format.pp_print_string fm s
-
-

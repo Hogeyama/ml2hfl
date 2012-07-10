@@ -416,5 +416,6 @@ let term = print_term
 let var = print_var
 let typ = print_typ
 let ce = print_ce
+let env = print_env
 let prog = print_prog
 let prog_typ = print_prog_typ
