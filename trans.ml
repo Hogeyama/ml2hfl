@@ -17,8 +17,6 @@ let rec id___typ = function
   | TList typ -> TList (id___typ typ)
   | TPair(typ1,typ2) -> TPair(id___typ typ1, id___typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown -> TUnknown
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(id___typ typ, List.map id__ ps)
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
@@ -95,8 +93,6 @@ let rec id2___typ env = function
   | TList typ -> TList (id2___typ env typ)
   | TPair(typ1,typ2) -> TPair(id2___typ env typ1, id2___typ env typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown -> TUnknown
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(id2___typ env typ, List.map (id2__ env) ps)
 
 and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
@@ -173,8 +169,6 @@ let rec flatten_tvar_typ = function
   | TList typ -> TList(flatten_tvar_typ typ)
   | TPair(typ1,typ2) -> TPair(flatten_tvar_typ typ1, flatten_tvar_typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown -> TUnknown
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(flatten_tvar_typ typ, List.map flatten_tvar ps)
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
@@ -255,8 +249,6 @@ let rec rename_tvar_typ map = function
   | TList typ -> TList(rename_tvar_typ map typ)
   | TPair(typ1,typ2) -> TPair(rename_tvar_typ map typ1, rename_tvar_typ map typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown -> TUnknown
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(rename_tvar_typ map typ, ps)
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
@@ -335,8 +327,6 @@ let rec get_tvars typ =
       | TList typ -> get_tvars typ
       | TPair(typ1,typ2) -> get_tvars typ1 @@@ get_tvars typ2
       | TConstr(s,b) -> []
-      | TUnknown _ -> assert false
-      | TVariant _ -> assert false
       | TPred(typ,_) -> get_tvars typ
 
 
@@ -2081,7 +2071,9 @@ let rec inlined_f inlined fs t =
           | _ -> Snd t'
             end
       | Bottom -> Bottom
+(*
       | _ -> Format.printf "inlined_f: %a@." pp_print_term t; assert false
+*)
   in
     {desc=desc; typ=t.typ}
 
@@ -2168,7 +2160,9 @@ let rec lift_fst_snd fs t =
                     | _ ->
                     Snd(lift_fst_snd fs t))
       | Bottom -> Bottom
-            | _ -> Format.printf "lift_fst_snd: %a@." pp_print_term t; assert false
+(*
+      | _ -> Format.printf "lift_fst_snd: %a@." pp_print_term t; assert false
+*)
   in
     {desc=desc; typ=t.typ}
 

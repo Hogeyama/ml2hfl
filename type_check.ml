@@ -3,7 +3,7 @@ open Syntax
 open Type
 open Type_decl
 
-let var = Id.make (-1) "" (TUnknown:Syntax.typ)
+let var = Id.make (-1) "" typ_unknown
 
 let check_var x typ =
   if Type.can_unify (Id.typ x) typ
@@ -141,8 +141,3 @@ let rec check t typ =
           *)          Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ
-
-
-
-
-

@@ -1689,7 +1689,6 @@ let rec get_sol typ1 typ2 =
         let typ = Id.typ x in
         (Utilities.rev_flatten_map (fun typ' -> get_sol typ typ') typs) @
         (get_sol rtyp1 rtyp2)
-    | TUnknown, _ -> []
     | _, _ ->
         Format.printf "%a and " print_typ typ1;
         print_rty typ2;
@@ -1876,7 +1875,7 @@ let rec trans_term env = function
   | CS.Const CS.True -> true_term
   | CS.Const CS.False -> false_term
   | CS.Const (CS.Int n) -> make_int n
-  | CS.Const CS.Bottom -> make_bottom TUnknown
+  | CS.Const CS.Bottom -> make_bottom typ_unknown
   | CS.Const (CS.Temp s) -> make_event s
   | CS.Var x -> make_var (trans_var env x)
   | CS.App(CS.Const CS.RandInt, t) -> make_app (trans_term env t) [make_app randint_term [unit_term]]
@@ -1993,7 +1992,6 @@ let rec add_preds_typ sol typ1 typ2 =
         let typ = List.fold_left (add_preds_typ sol) (Id.typ x) typs in
         let rtyp = add_preds_typ sol rtyp1 rtyp2 in
           TFun(Id.set_typ x typ, rtyp)
-    | TUnknown, _ -> TUnknown
     | _, _ ->
         Format.printf "%a and " print_typ typ1;
         assert false

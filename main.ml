@@ -44,6 +44,10 @@ let spec_file = ref ""
 
 
 let rec main_loop parsed =
+(*
+  let typs = Type_decl.get_base_types "" in
+    List.iter (fun typ -> Format.printf "TYPE: %a@." Syntax.print_typ typ) typs;
+*)
   let t = parsed in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in
@@ -147,7 +151,7 @@ let main filename in_channel =
   in
   let parsed = Parse.use_file lb in
   let parsed = Parser_wrapper.from_use_file parsed in
-  let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term parsed in
+  let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' parsed in
     main_loop parsed
 
 

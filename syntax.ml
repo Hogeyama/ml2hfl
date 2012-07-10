@@ -461,13 +461,7 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 
 (*** TERM CONSTRUCTORS ***)
 
-let dummy_var = Id.make (-1) "" TInt
-let abst_var = Id.make (-1) "v" TUnknown
-let abst_var_bool = Id.set_typ abst_var TBool
-let length_var =
-  let x = Id.make (-1) "l" (TList TUnknown) in
-    Id.make (-1) "length" (TFun(x, TInt))
-
+let typ_unknown = TConstr("???", false)
 let typ_event = TFun(Id.new_var "" TUnit, TUnit)
 let typ_event_cps =
   let u = Id.new_var "" TUnit in
@@ -475,6 +469,13 @@ let typ_event_cps =
   let k = Id.new_var "" (TFun(r,TUnit)) in
     TFun(u, TFun(k, TUnit))
 let typ_excep = ref (TConstr("exn",true))
+
+let dummy_var = Id.make (-1) "" TInt
+let abst_var = Id.make (-1) "v" typ_unknown
+let abst_var_bool = Id.set_typ abst_var TBool
+let length_var =
+  let x = Id.make (-1) "l" (TList typ_unknown) in
+    Id.make (-1) "length" (TFun(x, TInt))
 
 let unit_term = {desc=Unit; typ=TUnit}
 let true_term = {desc=True;typ=TBool}
@@ -505,8 +506,8 @@ let rec make_app t ts =
                 pp_print_term {desc=App(t,ts);typ=TUnit};
               assert false);
         make_app {desc=App(t,[t2]); typ=typ} ts
-    | _ when not Flag.check_typ -> {desc=App(t,ts); typ=TUnknown}
-    | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=TUnknown}; assert false
+    | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
+    | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=typ_unknown}; assert false
 let make_lets bindings t2 =
   List.fold_right
     (fun binding t2 ->
@@ -600,7 +601,7 @@ let make_fst t =
   let typ =
     match elim_tpred t.typ with
         TPair(typ,_) -> typ
-      | TUnknown -> TUnknown
+      | typ when typ = typ_unknown -> typ_unknown
       | _ -> assert false
   in
     {desc=Fst t; typ=typ}
@@ -608,7 +609,7 @@ let make_snd t =
   let typ =
     match elim_tpred t.typ with
         TPair(_,typ) -> typ
-      | TUnknown -> TUnknown
+      | typ when typ = typ_unknown -> typ_unknown
       | typ -> assert false
   in
     {desc=Snd t; typ=typ}
@@ -1074,9 +1075,7 @@ and subst_type x t = function
       let y' = Id.set_typ y (subst_type x t (Id.typ y)) in
       let typ' = subst_type x t typ in
         TFun(y', typ')
-  | TUnknown -> TUnknown
   | TList typ -> TList (subst_type x t typ)
-  | TVariant _ -> assert false
   | TConstr(s,b) -> TConstr(s,b)
   | TPair(typ1,typ2) -> TPair(subst_type x t typ1, subst_type x t typ2)
 
@@ -1202,9 +1201,9 @@ let rec merge_typ typ1 typ2 =
           TFun(x, typ)
     | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
     | TPair(typ11,typ12), TPair(typ21,typ22) -> TPair(merge_typ typ11 typ21, merge_typ typ12 typ22)
+    | _ when typ1 = typ_unknown -> typ2
+    | _ when typ2 = typ_unknown -> typ1
     | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
-    | typ, TUnknown
-    | TUnknown, typ -> typ
     | _ -> Format.printf "typ1:%a, typ2:%a@." pp_print_typ typ1 pp_print_typ typ2; assert false
 
 

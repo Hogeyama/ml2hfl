@@ -12,12 +12,8 @@ type 'a t =
   | TList of 'a t
   | TPair of 'a t * 'a t
   | TConstr of string * bool
-  | TUnknown
-  | TVariant of 'a t
-(*
-  | TLabel of 'a t Id.t * 'a t
-*)
   | TPred of 'a t * 'a list
+(*| TLabel of 'a t Id.t * 'a t*)
 
 
 
@@ -62,8 +58,6 @@ let rec can_unify typ1 typ2 =
           List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
     | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && can_unify typ1 typ2) fields1 fields2
 *)
-    | TUnknown, _ -> true
-    | _, TUnknown -> true
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
     | _ -> false
@@ -84,11 +78,9 @@ let rec print print_pred fm typ =
           if Id.to_string x = ""
           then Format.fprintf fm "(@[%a@ ->@ %a@])" print (Id.typ x) print typ
           else Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print (Id.typ x) print typ
-      | TUnknown -> Format.fprintf fm "???"
       | TList typ -> Format.fprintf fm "@[%a list@]" print typ
       | TPred(TList typ, ps) -> Format.fprintf fm "@[%a list[%a]@]" print typ print_preds ps
       | TPair(typ1,typ2) -> Format.fprintf fm "(@[%a@ *@ %a@])" print typ1 print typ2
-      | TVariant _ -> assert false
 (*
       | TVariant ctypss ->
           let rec aux fm = function
@@ -142,8 +134,6 @@ let rec occurs r typ =
     | TList typ -> occurs r typ
     | TPair(typ1,typ2) -> occurs r typ1 || occurs r typ2
     | TConstr(s,b) -> false
-    | TUnknown -> false
-    | TVariant _ -> assert false
     | TPred(typ,_) -> occurs r typ
 
 exception CannotUnify
@@ -189,9 +179,6 @@ let rec same_shape typ1 typ2 =
     | TList typ1, TList typ2 -> same_shape typ1 typ2
     | TPair(typ11,typ12),TPair(typ21,typ22) -> same_shape typ11 typ21 && same_shape typ12 typ22
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
-    | TUnknown, TUnknown -> true
-    | TVariant _,_ -> assert false
-    | _,TVariant _ -> assert false
     | _ -> assert false
 
 
@@ -207,8 +194,6 @@ let rec is_poly_typ = function
   | TList typ -> is_poly_typ typ
   | TPair(typ1,typ2) -> is_poly_typ typ1 || is_poly_typ typ2
   | TConstr _ -> false
-  | TUnknown _ -> assert false
-  | TVariant _ -> assert false
   | TPred(typ,_) -> is_poly_typ typ
 
 
@@ -247,6 +232,4 @@ let rec has_pred = function
   | TList typ -> has_pred typ
   | TPair(typ1,typ2) -> has_pred typ1 || has_pred typ2
   | TConstr _ -> false
-  | TUnknown -> false
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> has_pred typ || ps <> []

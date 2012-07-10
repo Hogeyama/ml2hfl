@@ -18,15 +18,11 @@ and print_id fm x =
       TInt -> Format.fprintf fm "%a_i" Id.print x
     | TBool -> Format.fprintf fm "%a_b" Id.print x
     | TPred(typ,_) -> aux typ
-    | TUnknown -> Format.fprintf fm "%a_i" Id.print x
     | typ -> Syntax.pp_print_typ Format.std_formatter typ; assert false
   in
     aux (Id.typ x)
 
-and print_id_typ fm x =
-  match Id.typ x with
-      TVar _ | TUnknown -> Format.fprintf fm "%a" Id.print x
-    | _ -> Format.fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
+and print_id_typ fm x = Format.fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
 
 and print_ids_typ fm = function
     [] -> ()
@@ -100,7 +96,6 @@ let rec string_of_typ = function
   | TBool -> "BOOLEAN"
   | TVar({contents = Some(typ)}) -> string_of_typ typ
   | TPred(typ,_) -> string_of_typ typ
-  | TUnknown -> "INT"
   | typ -> (Format.printf "%a@." print_typ typ; assert false)
 
 
@@ -147,9 +142,9 @@ let parse_ident s =
     let n = String.rindex s '_' in
     let name = String.sub s 0 n in
     let id = int_of_string (String.sub s (n+1) (len-n-1)) in
-      Id.make id name TUnknown
+      Id.make id name typ_unknown
   with Failure "int_of_string" | Not_found ->
-    Id.make 0 s TUnknown
+    Id.make 0 s typ_unknown
 
 let rec from_exp map = function
     CsisatAst.Constant x -> make_int (int_of_float x)
@@ -696,8 +691,6 @@ let rec congruent cond typ1 typ2 =
             | _ -> cond
         in
           congruent cond (Id.typ x1) (Id.typ x2) && congruent cond' typ1 typ2
-    | TUnknown, _ -> true
-    | _, TUnknown -> true
     | TVar _, _ -> assert false
     | _, TVar _ -> assert false
     | _ -> false
@@ -765,15 +758,3 @@ let rec remove_type = function
       let t3' = remove_type t3 in
         If(t1', t2', t3')
 *)
-
-
-
-
-
-
-
-
-
-
-
-

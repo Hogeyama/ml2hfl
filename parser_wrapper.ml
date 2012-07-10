@@ -103,7 +103,7 @@ let rec from_type_expr tenv typ =
                 Type_abstract -> false
               | Type_variant _ -> true
               | Type_record _ -> true
-            with Not_found -> true
+            with Not_found -> false
           in
             TConstr(Path.name path, b)
       | Tobject _ -> unsupported "Tobject"
@@ -128,7 +128,7 @@ let from_mutable_flag = function
 
 
 
-let sign_to_letter s =
+let sign_to_letters s =
   let is_op s = List.mem s.[0] ['!';'$';'%';'&';'*';'+';'-';'.';'/';':';'<';'=';'>';'?';'@';'^';'|';'~'] in
   let map = function
       '!' -> "_bang"
@@ -160,7 +160,7 @@ let sign_to_letter s =
     then trans "op" s
     else s
 
-let from_ident x typ = Id.make (Ident.binding_time x) (sign_to_letter (Ident.name x)) typ
+let from_ident x typ = Id.make (Ident.binding_time x) (sign_to_letters (Ident.name x)) typ
 
 
 let get_constr_name desc typ env =
@@ -461,7 +461,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   let typ' = from_type_expr env typ in
     match exp_desc with
         Texp_ident(path, _) ->
-          conv_primitive_var (Id.make (Path.binding_time path) (sign_to_letter (Path.name path)) typ')
+          conv_primitive_var (Id.make (Path.binding_time path) (sign_to_letters (Path.name path)) typ')
       | Texp_constant c -> from_constant c
       | Texp_let(rec_flag, [p,e1], e2) ->
           let flag = from_rec_flag rec_flag in

@@ -2,6 +2,7 @@
 open Utilities
 open Syntax
 open Type
+open Type_decl
 
 
 module PredSet =
@@ -43,10 +44,11 @@ let rec abst_recdata_typ = function
         TFun(x, TInt[])
 *)
       TInt
-  | TConstr(s,_) -> assert false
-  | TUnknown -> assert false
+  | TConstr(s,true) -> assert false(*
+      let kind = assoc_typ s in
+        match *)
+  | TConstr(s,false) -> TInt
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(abst_recdata_typ typ, ps)
 
 let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
@@ -289,9 +291,7 @@ let rec abst_list_typ = function
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
   | TList typ -> TPair(TInt, TFun(Id.new_var "x" TInt, abst_list_typ typ))
   | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown -> TUnknown
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
-  | TVariant _ -> assert false
   | TPred(typ,ps) ->
       let ps' = List.map (abst_list "") ps in
         TPred(abst_list_typ typ, ps')
@@ -496,8 +496,6 @@ let rec abst_datatype_typ = function
   | TPair _ -> assert false
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
-  | TUnknown -> assert false
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(abst_datatype_typ typ, ps)
 
 let record_of_term_list ts =

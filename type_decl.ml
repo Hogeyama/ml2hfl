@@ -53,3 +53,36 @@ let constr_pos s =
 
 
 let rec get_exc_typs = uniq' compare (rev_flatten_map snd !exc_decls)
+
+(* Not implemented *)
+let get_mutual_decls s =
+  !typ_decls
+
+let get_base_types s =
+  let decls = get_mutual_decls s in
+  let names = List.map fst decls in
+  let add typ typs = if List.exists (same_shape typ) typs then typs else typ::typs in
+  let rec elim_and_decomp acc = function
+      [] -> acc
+    | typ::typs ->
+        match typ with
+     TUnit -> elim_and_decomp acc typs
+    | TBool -> elim_and_decomp (add TBool acc) typs
+    | TAbsBool -> assert false
+    | TInt -> elim_and_decomp (add TInt acc) typs
+    | TRInt _ -> assert false
+    | TVar _ -> assert false
+    | TFun _ -> elim_and_decomp (add TInt acc) typs
+    | TList _ -> raise (Fatal "Unsupported (type t = ... t list ...)")
+    | TPair(typ1,typ2) -> elim_and_decomp acc (typ1::typ2::typs)
+    | TConstr(s,b) ->
+        if List.mem s names
+        then elim_and_decomp acc typs
+        else raise (Fatal "Not implemented (Type_decl.get_base_types)")
+    | TPred _ -> assert false
+  in
+  let aux = function
+      TKVariant styps -> rev_map_flatten snd styps
+    | TKRecord sftyps -> List.map (fun (_,(_,typ)) -> typ) sftyps
+  in
+    rev_map_flatten aux (List.map snd decls)

@@ -59,7 +59,7 @@ and env = (var * typ) list
 and prog = {env:env; defs:fun_def list; main:var}
 
 
-let new_id s = Id.to_string (Id.new_var s Type.TUnknown)
+let new_id s = Id.to_string (Id.new_var s Syntax.typ_unknown)
 let decomp_id s =
   try
     let len = String.length s in

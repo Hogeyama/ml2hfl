@@ -30,8 +30,6 @@ let rec trans_exc_typ = function
         TFun(Id.set_typ x typ1, TFun(k,TFun(h,TUnit)))
   | TList typ -> TList (trans_exc_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown -> assert false
-  | TVariant _ -> assert false
   | TPred(typ,ps) -> TPred(trans_exc_typ typ, ps)
   | TPair(typ1,typ2) -> TPair(trans_exc_typ typ1, trans_exc_typ typ2)
 
@@ -228,8 +226,6 @@ let rec remove_pair_typ = function
   | TPair(typ1,typ2) -> Node(remove_pair_typ typ1, remove_pair_typ typ2)
   | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
   | TConstr(s,b) -> Leaf (TConstr(s,b))
-  | TUnknown -> Leaf TUnknown
-  | TVariant _ -> assert false
   | TPred(TPair(typ1,typ2),ps) ->
       let ps' = List.map remove_pair ps in
         remove_pair_typ (TPair(TPred(typ1,ps'),typ2))
