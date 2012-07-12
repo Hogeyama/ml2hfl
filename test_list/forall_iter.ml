@@ -25,7 +25,7 @@ let rec for_all f xs =
       [] -> true, xs
     | x::xs' ->
         let b,xs' = for_all f xs' in
-          f x && b, xs'
+          f x && b, x::xs'
 
 let rec iter f xs =
   match xs with

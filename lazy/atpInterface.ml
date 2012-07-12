@@ -153,7 +153,11 @@ let is_valid p =
 
 (** {6 Functions on formulas} *)
 let integer_qelim t =
-  simplify (formula_of (Atp_batch.integer_qelim (of_formula (elim_eq_neq_boolean t))))
+  let debug = false && !Global.debug in
+  let _ = if debug then Format.printf "intqelim input: @[<v>%a@]@," Term.pr t in
+  let t = simplify (formula_of (Atp_batch.integer_qelim (of_formula (elim_eq_neq_boolean t)))) in
+  let _ = if debug then Format.printf "intqelim output: @[<v>%a@]@," Term.pr t in
+		t
 
 let real_qelim t =
   simplify (formula_of (Atp_batch.real_qelim (of_formula (elim_eq_neq_boolean t))))
