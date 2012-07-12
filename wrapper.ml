@@ -18,7 +18,7 @@ and print_id fm x =
       TInt -> Format.fprintf fm "%a_i" Id.print x
     | TBool -> Format.fprintf fm "%a_b" Id.print x
     | TPred(typ,_) -> aux typ
-    | typ -> Syntax.pp_print_typ Format.std_formatter typ; assert false
+    | typ -> Format.printf "print_id: %a: %a@." Id.print x pp_print_typ typ; assert false
   in
     aux (Id.typ x)
 
@@ -97,6 +97,8 @@ let rec string_of_typ = function
   | TVar({contents = Some(typ)}) -> string_of_typ typ
   | TPred(typ,_) -> string_of_typ typ
   | typ -> (Format.printf "%a@." print_typ typ; assert false)
+
+let env_of_id x = string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; "
 
 
 let iff t1 t2 = CsisatAst.Not (CsisatAst.And [CsisatAst.Not (CsisatAst.And[t1; t2]); CsisatAst.Not (CsisatAst.And[CsisatAst.Not t1; CsisatAst.Not t2])])
@@ -194,8 +196,6 @@ let close_cvc3 () =
 
 let reopen_cvc3 () = close_cvc3 (); open_cvc3 ()
 
-
-
 let check pre p =
 (*
   let pre = List.map init_rand_int pre in
@@ -207,7 +207,7 @@ let check pre p =
   let fm = Format.formatter_of_out_channel cout in
     (**)
   let fv = uniq' Id.compare (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
-  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
+  let types = List.fold_left (fun str x -> str ^ env_of_id x) "" fv in
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term p ^ ";" in
   let q = "PUSH;"^types^assertion^query^"\nPOP;" in
@@ -239,7 +239,7 @@ let checksat p =
   let p, _  = Typing.infer env p in
   let fv = List.map fst env in
 *)
-  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
+  let types = List.fold_left (fun str x -> str ^ env_of_id x) "" fv in
   let query = "CHECKSAT " ^ string_of_term p ^ ";" in
 
   let q = "PUSH;"^types^query^"\nPOP;" in
@@ -280,7 +280,7 @@ let get_solution p t =
   let fm = Format.formatter_of_out_channel cout in
   let fv = uniq' compare (get_fv2 p) in
 
-  let types = List.fold_left (fun str x -> str ^ string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; ") "" fv in
+  let types = List.fold_left (fun str x -> str ^ env_of_id x) "" fv in
   let query = "CHECKSAT " ^ string_of_term p ^ "; COUNTERMODEL;" in
 
   let q = types ^ query in

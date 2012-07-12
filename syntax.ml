@@ -123,7 +123,7 @@ and print_binop fm = function
 and print_termlist pri typ fm = List.iter (fun bd -> fprintf fm "@;%a" (print_term pri typ) bd)
 and print_term pri typ fm t =
   match t.desc with
-      Unit -> fprintf fm "unit"
+      Unit -> fprintf fm "()"
     | True -> fprintf fm "true"
     | False -> fprintf fm "false"
     | Unknown -> fprintf fm "***"
@@ -473,6 +473,7 @@ let typ_excep = ref (TConstr("exn",true))
 
 let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
+let abst_var_int = Id.set_typ abst_var TInt
 let abst_var_bool = Id.set_typ abst_var TBool
 let length_var =
   let x = Id.make (-1) "l" (TList typ_unknown) in

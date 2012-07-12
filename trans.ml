@@ -458,7 +458,7 @@ let rec rename_poly_funs f map t =
     map', {desc=desc; typ=t.typ}
 let rename_poly_funs f t = rename_poly_funs f [] t
 
-let rec copy_poly_funs top t =
+let rec copy_poly_funs t =
   let desc =
     match t.desc with
         Unit -> Unit
@@ -469,14 +469,14 @@ let rec copy_poly_funs top t =
       | NInt x -> NInt x
       | RandInt b -> RandInt b
       | Var x -> Var x
-      | Fun(x, t) -> Fun(x, copy_poly_funs false t)
-      | App(t, ts) -> App(copy_poly_funs false t, List.map (copy_poly_funs false) ts)
-      | If(t1, t2, t3) -> If(copy_poly_funs false t1, copy_poly_funs false t2, copy_poly_funs false t3)
-      | Branch(t1, t2) -> Branch(copy_poly_funs false t1, copy_poly_funs false t2)
+      | Fun(x, t) -> Fun(x, copy_poly_funs t)
+      | App(t, ts) -> App(copy_poly_funs t, List.map (copy_poly_funs) ts)
+      | If(t1, t2, t3) -> If(copy_poly_funs t1, copy_poly_funs t2, copy_poly_funs t3)
+      | Branch(t1, t2) -> Branch(copy_poly_funs t1, copy_poly_funs t2)
       | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
           let tvars = get_tvars (Id.typ f) in
           let () = assert (tvars > []) in
-          let t2' = copy_poly_funs top t2 in
+          let t2' = copy_poly_funs t2 in
           let map,t2'' = rename_poly_funs f t2' in
           let n = List.length map in
             if n >= 2
@@ -487,53 +487,47 @@ let rec copy_poly_funs top t =
                 Format.printf "@.";
               end;
             if map = []
-            then Let(flag, [f, xs, copy_poly_funs false t1], t2')
+            then Let(flag, [f, xs, copy_poly_funs t1], t2')
             else
               let aux t (_,f') =
                 let tvar_map = List.map (fun v -> v, ref None) tvars in
                 let () = Type.unify (rename_tvar_typ tvar_map (Id.typ f)) (Id.typ f') in
                 let xs = List.map (rename_tvar_var tvar_map) xs in
                 let t1 = rename_tvar tvar_map t1 in
-(*
-                let typs = get_argtyps (Id.typ f') in
-                let xs' = List.map2 (fun x typ -> Id.new_var (Id.name x) typ) xs (take typs (List.length xs)) in
-                let xs_map = List.map2 (fun x x' -> x, make_var x') xs xs' in
-                let t1 = subst_map xs_map t1 in
-*)
                 let xs' = xs in
                 let t1 =
                   match flag with
                       Flag.Nonrecursive -> t1
                     | Flag.Recursive -> subst f (make_var f') t1
                 in
-                let t1 = copy_poly_funs false t1 in
+                let t1 = copy_poly_funs t1 in
                   make_let_f flag [f', xs', t1] t
               in
                 (List.fold_left aux t2'' map).desc
-      | Let(flag, [f, xs, t1], t2) -> Let(flag, [f, xs, copy_poly_funs false t1], copy_poly_funs top t2)
+      | Let(flag, [f, xs, t1], t2) -> Let(flag, [f, xs, copy_poly_funs t1], copy_poly_funs t2)
       | Let _ -> assert false
-      | BinOp(op, t1, t2) -> BinOp(op, copy_poly_funs false t1, copy_poly_funs false t2)
-      | Not t -> Not (copy_poly_funs false t)
+      | BinOp(op, t1, t2) -> BinOp(op, copy_poly_funs t1, copy_poly_funs t2)
+      | Not t -> Not (copy_poly_funs t)
       | Event(s,b) -> Event(s,b)
-      | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,copy_poly_funs false t)) fields)
-      | Proj(i,s,f,t) -> Proj(i,s,f,copy_poly_funs false t)
-      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,copy_poly_funs false t1,copy_poly_funs false t2)
+      | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,copy_poly_funs t)) fields)
+      | Proj(i,s,f,t) -> Proj(i,s,f,copy_poly_funs t)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,copy_poly_funs t1,copy_poly_funs t2)
       | Nil -> Nil
-      | Cons(t1,t2) -> Cons(copy_poly_funs false t1, copy_poly_funs false t2)
-      | Constr(s,ts) -> Constr(s, List.map (copy_poly_funs false) ts)
-      | Match(t,pats) -> Match(copy_poly_funs false t, List.map (fun (pat,cond,t) -> pat,cond,copy_poly_funs false t) pats)
-      | Raise t -> Raise (copy_poly_funs false t)
-      | TryWith(t1,t2) -> TryWith(copy_poly_funs false t1, copy_poly_funs false t2)
+      | Cons(t1,t2) -> Cons(copy_poly_funs t1, copy_poly_funs t2)
+      | Constr(s,ts) -> Constr(s, List.map (copy_poly_funs) ts)
+      | Match(t,pats) -> Match(copy_poly_funs t, List.map (fun (pat,cond,t) -> pat,cond,copy_poly_funs t) pats)
+      | Raise t -> Raise (copy_poly_funs t)
+      | TryWith(t1,t2) -> TryWith(copy_poly_funs t1, copy_poly_funs t2)
       | Bottom -> Bottom
-      | Pair(t1,t2) -> Pair(copy_poly_funs false t1, copy_poly_funs false t2)
-      | Fst t -> Fst (copy_poly_funs false t)
-      | Snd t -> Snd (copy_poly_funs false t)
+      | Pair(t1,t2) -> Pair(copy_poly_funs t1, copy_poly_funs t2)
+      | Fst t -> Fst (copy_poly_funs t)
+      | Snd t -> Snd (copy_poly_funs t)
       | RandValue (_, _) -> assert false
   in
     {desc=desc; typ=t.typ}
 
 let copy_poly_funs t =
-  let t' = flatten_tvar (copy_poly_funs true t) in
+  let t' = flatten_tvar (copy_poly_funs t) in
   let () = Type_check.check t' Type.TUnit in
     t'
 

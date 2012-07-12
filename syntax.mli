@@ -65,6 +65,7 @@ exception Infeasible
 
 val dummy_var : id
 val abst_var : id
+val abst_var_int : id
 val abst_var_bool : id
 val length_var : id
 

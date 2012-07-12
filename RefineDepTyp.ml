@@ -1681,7 +1681,7 @@ let rec get_sol typ1 typ2 =
     | TFun({Id.typ=TInt|TPred(TInt,_)} as x,rtyp1), RTifun(pred, rtyp2) ->
         get_sol rtyp1 (rtyp2 (make_var x))
     | TFun({Id.typ=TRInt p},rtyp1), RTifun(pred, rtyp2) ->
-        let Pred(pid, terms) = pred (make_var abst_var) in
+        let Pred(pid, terms) = pred (make_var abst_var_int) in
         [pid, (List.map (function {desc=Var(id)} -> id | _ -> assert false) terms, p)]
     | TFun(x,rtyp1), RTbfun(_, rtyp2) ->
         get_sol rtyp1 (rtyp2 (make_var x))
@@ -1933,7 +1933,7 @@ let rec add_preds_typ sol typ1 typ2 =
     | TVar _, _ -> assert false
     | TFun({Id.typ=TInt|TPred(TInt,_)} as x,rtyp1), RTifun(pred, rtyp2) ->
         let ps = match Id.typ x with TInt -> [] | TPred(_,ps) -> ps | _ -> assert false in
-        let Pred(pid, terms) = pred (make_var abst_var) in
+        let Pred(pid, terms) = pred (make_var abst_var_int) in
         let typ =
           try
             let p =

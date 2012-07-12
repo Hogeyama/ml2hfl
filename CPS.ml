@@ -186,10 +186,9 @@ let rec trans_exc ct ce t =
 
 type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
 
-let root x =
-  match x with
-      Leaf t -> t
-    | Node _ -> assert false
+let root = function
+    Leaf t -> t
+  | Node _ -> assert false
 let rec flatten = function
     Leaf f -> [f]
   | Node(lhs,rhs) -> flatten lhs @ flatten rhs
@@ -665,6 +664,7 @@ let rec infer_effect env t =
         let e = new_evar () in
           constraints := CGeqVar(e, typed1.effect) :: !constraints;
           constraints := CGeqVar(e, typed2.effect) :: !constraints;
+          constraints := CGeq(e, ECont) :: !constraints; (* for remove_pair *)
           {t_cps=PairCPS(typed1,typed2); typ_cps=typ; typ_orig=t.typ; effect=e}
     | TryWith (_, _) -> assert false
     | Raise _ -> assert false
@@ -1103,7 +1103,7 @@ let trans1 t =
       constraints := CGeq(typed.effect, ECont) :: !constraints;
       if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
       sol := solve_constraints !constraints;
-      if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
+      if true then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
       transform typed
   in
   let t = Trans.eta_reduce t in
