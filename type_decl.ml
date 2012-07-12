@@ -30,8 +30,12 @@ let in_exc_decls s = List.mem_assoc s !exc_decls
 
 
 let add_type_decl s k =
-  if not (in_typ_decls s) && s <> "bool"
-  then typ_decls := (s,k)::!typ_decls
+  if not (in_typ_decls s) && s <> "unit" && s <> "bool" && s <> "list"
+  then
+    begin
+      if true then Format.printf "ADD %s = %a@." s print_kind k;
+      typ_decls := (s,k)::!typ_decls
+    end
 
 let add_exc_decl s typs =
   if not (in_exc_decls s)
@@ -74,6 +78,7 @@ let get_mutual_decls s =
 let get_ground_types s =
   let decls = get_mutual_decls s in
   let names = List.map fst decls in
+    List.iter (Format.printf "!?: %s@.") names;
   let add typ typs = if List.exists (same_shape typ) typs then typs else typ::typs in
   let rec elim_and_decomp acc = function
       [] -> acc
@@ -84,7 +89,7 @@ let get_ground_types s =
           | TAbsBool -> assert false
           | TInt -> elim_and_decomp (add TInt acc) typs
           | TRInt _ -> assert false
-          | TVar _ -> assert false
+          | TVar _ -> raise (Fatal "Unsupported (type 'a t = ...")
           | TFun _ -> elim_and_decomp (add TInt acc) typs
           | TList _ -> raise (Fatal "Unsupported (type t = ... t list ...)")
           | TPair(typ1,typ2) -> elim_and_decomp acc (typ1::typ2::typs)
