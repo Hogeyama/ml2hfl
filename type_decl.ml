@@ -78,7 +78,6 @@ let get_mutual_decls s =
 let get_ground_types s =
   let decls = get_mutual_decls s in
   let names = List.map fst decls in
-    List.iter (Format.printf "!?: %s@.") names;
   let add typ typs = if List.exists (same_shape typ) typs then typs else typ::typs in
   let rec elim_and_decomp acc = function
       [] -> acc
