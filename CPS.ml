@@ -160,8 +160,8 @@ let rec trans_exc ct ce t =
         let k = Id.new_var "k" (TFun(x,TUnit)) in
         let ct' y = make_app (make_var k) [y] in
         let aux (pat,c,t) =
-          assert (c = None);
-          pat, None, trans_exc ct' ce t
+          assert (c = true_term);
+          pat, c, trans_exc ct' ce t
         in
         let pats' = List.map aux pats in
         let ct'' y = make_let [k, [x], ct (make_var x)] {desc=Match(y,pats');typ=TUnit} in
@@ -529,7 +529,7 @@ let rec infer_effect_typ typ =
           TFunCPS(e, infer_effect_typ typ1, infer_effect_typ typ2)
     | TPair(typ1,typ2) -> TPairCPS(infer_effect_typ typ1, infer_effect_typ typ2)
     | TPred(typ,ps) -> TPredCPS(infer_effect_typ typ, ps)
-    | _ -> assert false
+    | _ -> Format.printf "%a@." print_typ typ; assert false
 
 let new_var x = {id_cps=x; id_typ=infer_effect_typ (Id.typ x)}
 
@@ -844,7 +844,7 @@ let rec add_preds_cont_aux k t =
       | Cons(t1,t2) -> Cons(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
       | Constr(s,ts) -> Constr(s, List.map (add_preds_cont_aux k) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt (add_preds_cont_aux k) cond, add_preds_cont_aux k t1 in
+          let aux (pat,cond,t1) = pat, add_preds_cont_aux k cond, add_preds_cont_aux k t1 in
             Match(add_preds_cont_aux k t1, List.map aux pats)
       | Raise t -> Raise (add_preds_cont_aux k t)
       | TryWith(t1,t2) -> TryWith(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
@@ -1079,7 +1079,7 @@ let rec short_circuit_eval t =
       | Cons(t1,t2) -> Cons(short_circuit_eval t1,short_circuit_eval t2)
       | Constr(s,ts) -> Constr(s, List.map short_circuit_eval ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt short_circuit_eval cond, short_circuit_eval t1 in
+          let aux (pat,cond,t1) = pat, short_circuit_eval cond, short_circuit_eval t1 in
             Match(short_circuit_eval t1, List.map aux pats)
       | Raise t -> Raise (short_circuit_eval t)
       | TryWith(t1,t2) -> TryWith(short_circuit_eval t1, short_circuit_eval t2)

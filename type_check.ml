@@ -95,8 +95,8 @@ let rec check t typ =
         assert (Type.can_unify t.typ (get_constr_typ s))
     | {desc=Match(t,pats); typ=typ'} ->
         let aux (p,cond,t) =
-          match cond with None -> () | Some cond -> check cond TBool;
-            check t typ'
+          check cond TBool;
+          check t typ'
         in
           check t t.typ;
           List.iter aux pats

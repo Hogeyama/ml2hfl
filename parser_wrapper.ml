@@ -264,7 +264,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
   let typ' = from_type_expr env typ in
   let desc =
     match desc with
-        Tpat_any -> PVar(Id.new_var "u" typ')
+        Tpat_any -> PAny
       | Tpat_var x -> PVar(from_ident x typ')
       | Tpat_alias _ -> unsupported "pattern match (alias)"
       | Tpat_constant(Const_int n) -> PConst {desc=Int n;typ=typ'}
@@ -354,7 +354,8 @@ let from_constant = function
 
 let rec get_bindings pat t =
   match pat.pat_desc, t.desc with
-      PVar x, _ -> [x, t]
+      PAny, _ -> []
+    | PVar x, _ -> [x, t]
     | PRecord(pats), Record(fields) ->
         let aux (i,(_,_,p)) =
           let _,(_,t) = List.nth fields i in
@@ -495,8 +496,8 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           in
           let aux (p,e) =
             match e.exp_desc with
-                Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
-              | _ -> from_pattern p, None, from_expression e
+                Texp_when(e1,e2) -> from_pattern p, from_expression e1, from_expression e2
+              | _ -> from_pattern p, true_term, from_expression e
           in
           let tail =
             match totality with
@@ -504,7 +505,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
               | Partial ->
                   let p = {pat_desc=PVar(Id.new_var "u" (Id.typ x)); pat_typ=Id.typ x} in
                   let t = make_let [Id.new_var "u" TUnit, [], make_app fail_term [unit_term]] (make_bottom typ2) in
-                    [p, None, t]
+                    [p, true_term, t]
           in
             make_fun x {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pes@tail);typ=typ2}
       | Texp_apply(e, es) ->
@@ -520,8 +521,8 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           let t = from_expression e in
           let aux (p,e) =
             match e.exp_desc with
-                Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
-              | _ -> from_pattern p, None, from_expression e
+                Texp_when(e1,e2) -> from_pattern p, from_expression e1, from_expression e2
+              | _ -> from_pattern p, true_term, from_expression e
           in
           let pts = List.map aux pes in
           let pts' =
@@ -531,14 +532,14 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                   let p = {pat_desc=PVar(Id.new_var "u" t.typ); pat_typ=t.typ} in
                   let u = Id.new_var "u" TUnit in
                   let t = make_let [u, [], make_app fail_term [unit_term]] (make_bottom typ') in
-                    pts@[p, None, t]
+                    pts@[p, true_term, t]
           in
             {desc=Match(t, pts'); typ=typ'}
       | Texp_try(e,pes) ->
           let aux (p,e) =
             match e.exp_desc with
-                Texp_when(e1,e2) -> from_pattern p, Some (from_expression e1), from_expression e2
-              | _ -> from_pattern p, None, from_expression e
+                Texp_when(e1,e2) -> from_pattern p, from_expression e1, from_expression e2
+              | _ -> from_pattern p, true_term, from_expression e
           in
           let x = Id.new_var "e" !typ_excep in
           let pes' = List.map aux pes in

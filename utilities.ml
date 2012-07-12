@@ -286,14 +286,6 @@ let uniq_flatten_map compare f xs = uniq' compare (rev_map_flatten f xs)
 
 
 
-let rec last = function
-    [] -> assert false
-  | [x] -> x
-  | x::xs -> last xs
-
-
-
-
 let is_uppercase c =
   'A' <= c && c <= 'Z'
 
@@ -324,6 +316,11 @@ let rec last = function
     [] -> failwith "last"
   | [x] -> x
   | x::xs -> last xs
+
+let rec init = function
+    [] -> failwith "init"
+  | [x] -> []
+  | x::xs -> x :: init xs
 
 
 
@@ -414,3 +411,5 @@ let count_line s =
 
 let count_list f xs =
   List.fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
+
+let trd (_,_,x) = x

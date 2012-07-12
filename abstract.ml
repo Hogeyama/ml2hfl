@@ -38,15 +38,11 @@ let rec abst_recdata_typ = function
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
-  | typ when typ = !typ_excep ->
-(*
-      let x = Id.new_var "path" (TList(TInt[])) in
-        TFun(x, TInt[])
-*)
-      TInt
-  | TConstr(s,true) -> assert false(*
-      let kind = assoc_typ s in
-        match *)
+  | TConstr(s,true) ->
+      let typs = get_ground_types s in
+      let typs' = if List.mem TInt typs then typs else TInt::typs in
+      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(typ1,typ2)) (init typs') (last typs') in
+        TFun(Id.new_var "path" (TList TInt), r_typ)
   | TConstr(s,false) -> TInt
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
   | TPred(typ,ps) -> TPred(abst_recdata_typ typ, ps)
@@ -61,32 +57,59 @@ let rec abst_recdata_pat p =
       abst_recdata_typ p.pat_typ
     with PolymorphicType -> raise (Fatal "PolymorphicType types occur! (Abstract.abst_rectdata_typ)")
   in
-  let desc,cond =
+  let desc,cond,bind =
     match p.pat_desc with
-        PVar x -> PVar x, []
-      | PConst t -> PConst t, []
-      | PConstruct(c,[]) ->
-(*
-          let x = Id.new_var "x" typ in
-          let cond = [make_eq (make_app (make_var x) [make_nil (TList(TInt[]))]) (abst_label c)] in
-            PVar x, cond
-*)
-          let x = Id.new_var "x" typ in
-            PVar x, [make_eq (make_var x) (abst_label c)]
-      | PConstruct(c,ps) -> assert false
-      | PNil -> PNil, []
+        PAny -> PAny, true_term, []
+      | PVar x -> PVar (abst_recdata_var x), true_term, []
+      | PConst t -> PConst t, true_term, []
+      | PConstruct(c,ps) ->
+          let f = Id.new_var "f" (abst_recdata_typ p.pat_typ) in
+          let ppcbs = List.map (fun p -> p, abst_recdata_pat p) ps in
+          let typ_name = match p.pat_typ with TConstr(s,true) -> s | _ -> assert false in
+          let ground_types = Type_decl.get_ground_types typ_name in
+          let make_bind i (p,(p',_,_)) =
+            let t =
+              if List.mem p.pat_typ ground_types
+              then
+                let rec find c = function
+                    [] -> assert false
+                  | typ::typs -> if typ = p.pat_typ then c else find (c+1) typs
+                in
+                let j = find 0 ground_types in
+                  make_nth (1 + j) (1 + List.length ground_types)
+                    (make_app (make_var f) [make_cons (make_int i) (make_nil TInt)])
+              else
+                let path = Id.new_var "path" (TList TInt) in
+                  make_fun path (make_app (make_var f) [make_cons (make_int i) (make_var path)])
+            in
+              t, p'
+          in
+          let binds = mapi make_bind ppcbs in
+          let make_cond (t,pt) (_,(p,cond,_)) =
+            match p.pat_desc with
+                PAny
+              | PVar _ -> true_term
+              | _ ->
+                  make_match t [pt, true_term, true_term; make_pany p.pat_typ, true_term, false_term]
+          in
+          let conds' = List.map2 make_cond binds ppcbs in
+          let cond0 = make_eq (make_fst (make_app (make_var f) [make_nil TInt])) (abst_label c) in
+          let cond = List.fold_left make_and true_term (cond0 :: conds') in
+          let bind = binds @ flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
+            PVar f, cond, bind
+      | PNil -> PNil, true_term, []
       | PCons(p1,p2) ->
-          let p1',cond1 = abst_recdata_pat p1 in
-          let p2',cond2 = abst_recdata_pat p2 in
-            PCons(p1',p2'), cond1@@cond2
+          let p1',cond1,bind1 = abst_recdata_pat p1 in
+          let p2',cond2,bind2 = abst_recdata_pat p2 in
+            PCons(p1',p2'), make_and cond1 cond2, bind1@bind2
       | PRecord _ -> assert false
       | POr _ -> assert false
       | PPair(p1,p2) ->
-          let p1',cond1 = abst_recdata_pat p1 in
-          let p2',cond2 = abst_recdata_pat p2 in
-            PPair(p1',p2'), cond1@@cond2
+          let p1',cond1,bind1 = abst_recdata_pat p1 in
+          let p2',cond2,bind2 = abst_recdata_pat p2 in
+            PPair(p1',p2'), make_and cond1 cond2, bind1@bind2
   in
-    {pat_desc=desc; pat_typ=typ}, cond
+    {pat_desc=desc; pat_typ=typ}, cond, bind
 
 let rec abst_recdata t =
   let typ' =
@@ -122,21 +145,42 @@ let rec abst_recdata t =
       | SetField _ -> assert false
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abst_recdata t1, abst_recdata t2)
-      | Constr(c,[]) ->
-(*
-          let x = Id.new_var "path" (TList(TInt[])) in
-            Fun(x,  abst_label c)
-*)
-          (abst_label c).desc
-      | Constr(c,ts) -> assert false
+      | Constr(c,ts) ->
+          let ts' = List.map abst_recdata ts in
+          let typ_name = match t.typ with TConstr(s,true) -> s | _ -> assert false in
+          let ground_types = get_ground_types typ_name in
+          let make_return label typ t =
+            let aux typ' = if typ = typ' then t else get_typ_default (abst_recdata_typ typ') in
+            let head =
+              match label with
+                  None -> make_int 0
+                | Some t -> t
+            in
+              make_tuple (head :: List.map aux ground_types)
+          in
+          let path = Id.new_var "path" (TList TInt) in
+          let path' = Id.new_var "path'" (TList TInt) in
+          let pat0 = make_pnil TInt, true_term, make_return (Some (abst_label c)) TUnit unit_term in
+          let xtyps = List.map (fun t -> Id.new_var "x" (abst_recdata_typ t.typ), t.typ) ts in
+          let make_pat i (x,typ) =
+            let t =
+              if List.mem typ ground_types
+              then make_return None typ (make_var x)
+              else make_app (make_var x) [make_var path']
+            in
+              make_pcons (make_pconst (make_int i)) (make_pvar path'), true_term, t
+          in
+          let pats = mapi make_pat xtyps in
+          let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
+            (make_lets defs (make_fun path (make_match (make_var path) (pat0::pats)))).desc
       | Match(t1,pats) ->
           let aux (p,c,t) =
-            let make_and' t1 = function
-                None -> Some t1
-              | Some t2 -> Some (make_and t1 t2)
+            let p',c',bind = abst_recdata_pat p in
+            let t' = abst_recdata t in
+            let aux (t,p) t' =
+              make_match t [p, true_term, t'; make_pany p.pat_typ, true_term, make_loop t'.typ]
             in
-            let p',cs = abst_recdata_pat p in
-              p', List.fold_right make_and' cs c, abst_recdata t
+              p', make_and c c', List.fold_right aux bind t'
           in
           let pats' = List.map aux pats in
             Match(abst_recdata t1, pats')
@@ -149,11 +193,15 @@ let rec abst_recdata t =
   in
     {desc=desc; typ=typ'}
 
+
+
+
 let abstract_recdata t =
-  let t' = abst_recdata t in
+  let t = abst_recdata t in
+  let t = Trans.simplify_match t in
     typ_excep := abst_recdata_typ !typ_excep;
     Type_check.check t TUnit;
-    t'
+    t
 
 
 
@@ -195,7 +243,7 @@ let rec abstract_mutable t =
       | Cons(t1,t2) -> Cons(abstract_mutable t1, abstract_mutable t2)
       | Constr(s,ts) -> Constr(s, List.map abstract_mutable ts)
       | Match(t,pats) ->
-          let aux (pat,cond,t) = pat,apply_opt abstract_mutable cond, abstract_mutable t in
+          let aux (pat,cond,t) = pat, abstract_mutable cond, abstract_mutable t in
             Match(abstract_mutable t, List.map aux pats)
       | Snd _ -> assert false
       | Fst _ -> assert false
@@ -300,7 +348,8 @@ and abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
 and get_match_bind_cond t p =
   match p.pat_desc with
-      PVar x -> [abst_list_var x, t], true_term
+      PAny -> [], true_term
+    | PVar x -> [abst_list_var x, t], true_term
     | PConst {desc=Unit} -> [], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false
@@ -343,76 +392,6 @@ and make_cons post t1 t2 =
 
 
 and abst_list post t =
-  let typ' = abst_list_typ t.typ in
-  let desc =
-    match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
-      | Unknown -> Unknown
-      | Int n -> Int n
-      | Var x -> Var (abst_list_var x)
-      | NInt x -> NInt (abst_list_var x)
-      | RandInt b -> RandInt b
-      | RandValue(typ,b) -> RandValue(typ,b)
-      | Fun(x,t) -> Fun(abst_list_var x, abst_list post t)
-      | App({desc=Var x}, [t]) when x = length_var -> Fst (abst_list post t) (** for predicates *)
-      | App(t, ts) -> App(abst_list post t, List.map (abst_list post) ts)
-      | If(t1, t2, t3) -> If(abst_list post t1, abst_list post t2, abst_list post t3)
-      | Branch(t1, t2) -> Branch(abst_list post t1, abst_list post t2)
-      | Let(flag, bindings, t2) ->
-          let aux (f,xs,t) =
-            let post' = "_" ^ Id.name f in
-              abst_list_var f, List.map abst_list_var xs, abst_list post' t
-          in
-          let bindings' = List.map aux bindings in
-            Let(flag, bindings', abst_list post t2)
-      | BinOp(op, t1, t2) -> BinOp(op, abst_list post t1, abst_list post t2)
-      | Not t -> Not (abst_list post t)
-      | Event(s,b) -> Event(s,b)
-      | Record _ -> assert false
-      | Proj _ -> assert false
-      | SetField _ -> assert false
-      | Nil ->
-          let typ'' = match t.typ with TList typ -> abst_list_typ typ | _ -> assert false in
-            Pair(make_fun (Id.new_var "x" TInt) (make_bottom typ''), make_int 0)
-      | Cons(t1,t2) ->
-          let t1' = abst_list post t1 in
-          let t2' = abst_list post t2 in
-            (make_cons post t1' t2').desc
-      | Constr(s,ts) -> assert false
-      | Match(t1,pats) ->
-          let x,bindx =
-            match t1.desc with
-                Var x -> Id.set_typ x (abst_list_typ t1.typ), fun t -> t
-              | _ ->
-                  let x = Id.new_var "xs" (abst_list_typ t1.typ) in
-                    x, fun t -> make_let [x, [], abst_list post t1] t
-          in
-          let aux (p,cond,t) t' =
-            let bind,cond' = get_match_bind_cond (make_var x) p in
-            let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
-            let t_cond =
-              match cond with
-                  None -> true_term
-                | Some cond -> add_bind (abst_list post cond)
-            in
-              make_if (make_and cond' t_cond) (add_bind (abst_list post t)) t'
-          in
-          let t_pats = List.fold_right aux pats (make_bottom typ') in
-            (bindx t_pats).desc
-      | Raise t -> Raise (abst_list post t)
-      | TryWith(t1,t2) -> TryWith(abst_list post t1, abst_list post t2)
-      | Bottom -> Bottom
-      | Pair(t1,t2) -> Pair(abst_list post t1, abst_list post t2)
-      | Fst t -> Fst (abst_list post t)
-      | Snd t -> Snd (abst_list post t)
-  in
-  let t = {desc=desc; typ=typ'} in
-  let () = Type_check.check t typ' in
-    t
-
-let rec abst_list post t =
   let typ' = abst_list_typ t.typ in
     match t.desc with
         Unit -> unit_term
@@ -460,11 +439,7 @@ let rec abst_list post t =
           let aux (p,cond,t) t' =
             let bind,cond' = get_match_bind_cond (make_var x) p in
             let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
-            let t_cond =
-              match cond with
-                  None -> true_term
-                | Some cond -> add_bind (abst_list post cond)
-            in
+            let t_cond = add_bind (abst_list post cond) in
               make_if (make_and cond' t_cond) (add_bind (abst_list post t)) t'
           in
           let t_pats = List.fold_right aux pats (make_bottom typ') in

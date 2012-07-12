@@ -116,6 +116,9 @@ let rec print print_pred fm typ =
 and print_preds print_pred = print_list print_pred ";" false
 
 
+let print_typ_init typ = print (fun _ -> assert false) typ
+
+
 let rec flatten typ =
   match typ with
       TVar{contents = Some typ'} -> flatten typ'
@@ -139,31 +142,30 @@ let rec occurs r typ =
 exception CannotUnify
 
 let rec unify typ1 typ2 =
-  let print_typ = print (fun _ -> assert false) in
-    match flatten typ1, flatten typ2 with
-        TUnit, TUnit
-      | TBool, TBool
-      | TInt _, TInt _ -> ()
-      | TRInt _, TRInt _ -> ()
-      | TFun(x1, typ1), TFun(x2, typ2) ->
-          unify (Id.typ x1) (Id.typ x2);
-          unify typ1 typ2
-      | TList typ1, TList typ2 -> unify typ1 typ2
-      | TPair(typ11,typ12), TPair(typ21,typ22) ->
-          unify typ11 typ21;
-          unify typ12 typ22
-      | TVar r1, TVar r2 when r1 == r2 -> ()
-      | TVar({contents = None} as r), typ
-      | typ, TVar({contents = None} as r) ->
-          if occurs r typ then
-            (Format.printf "occurs check failure: %a, %a@." print_typ (flatten typ1) print_typ (flatten typ2);
-             raise CannotUnify)
-          else
-            r := Some typ
-      | _ ->
-          if Flag.debug
-          then Format.printf "unification error: %a, %a@." print_typ (flatten typ1) print_typ (flatten typ2);
-          raise CannotUnify
+  match flatten typ1, flatten typ2 with
+      TUnit, TUnit
+    | TBool, TBool
+    | TInt _, TInt _ -> ()
+    | TRInt _, TRInt _ -> ()
+    | TFun(x1, typ1), TFun(x2, typ2) ->
+        unify (Id.typ x1) (Id.typ x2);
+        unify typ1 typ2
+    | TList typ1, TList typ2 -> unify typ1 typ2
+    | TPair(typ11,typ12), TPair(typ21,typ22) ->
+        unify typ11 typ21;
+        unify typ12 typ22
+    | TVar r1, TVar r2 when r1 == r2 -> ()
+    | TVar({contents = None} as r), typ
+    | typ, TVar({contents = None} as r) ->
+        if occurs r typ then
+          (Format.printf "occurs check failure: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+           raise CannotUnify)
+        else
+          r := Some typ
+    | _ ->
+        if Flag.debug
+        then Format.printf "unification error: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+        raise CannotUnify
 
 
 let rec same_shape typ1 typ2 =
@@ -179,7 +181,7 @@ let rec same_shape typ1 typ2 =
     | TList typ1, TList typ2 -> same_shape typ1 typ2
     | TPair(typ11,typ12),TPair(typ21,typ22) -> same_shape typ11 typ21 && same_shape typ12 typ22
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
-    | _ -> assert false
+    | _ -> Format.printf "%a,%a@.Type.same_shape" print_typ_init typ1 print_typ_init typ2; assert false
 
 
 let rec is_poly_typ = function

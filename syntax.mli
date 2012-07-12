@@ -30,7 +30,7 @@ and term =
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
-  | Match of typed_term * (typed_pattern * typed_term option * typed_term) list
+  | Match of typed_term * (typed_pattern * typed_term * typed_term) list
   | Raise of typed_term
   | TryWith of typed_term * typed_term
   | Pair of typed_term * typed_term
@@ -46,7 +46,8 @@ and type_kind =
 and pred = term
 and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =
-    PVar of id
+    PAny
+  | PVar of id
   | PConst of typed_term
   | PConstruct of string * typed_pattern list
   | PNil
@@ -110,16 +111,22 @@ val make_geq : typed_term -> typed_term -> typed_term
 val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
 val make_pair : typed_term -> typed_term -> typed_term
+val make_tuple : typed_term list -> typed_term
 val make_nil : typ -> typed_term
+val make_nil2 : typ -> typed_term
 val make_cons : typed_term -> typed_term -> typed_term
-val make_match : typed_term -> (typed_pattern * typed_term option * typed_term) list -> typed_term
+val make_match : typed_term -> (typed_pattern * typed_term * typed_term) list -> typed_term
 val make_loop : typ -> typed_term
+val make_nth : int -> int -> typed_term -> typed_term
+val make_pany : typ -> typed_pattern
 val make_pvar : id -> typed_pattern
 val make_pconst : typed_term -> typed_pattern
 val make_pnil : typ -> typed_pattern
+val make_pnil2 : typ -> typed_pattern
 val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 val imply : typed_term -> typed_term -> typed_term
 val and_list : typed_term list -> typed_term
+val get_typ_default : typ -> typed_term
 
 (** {6 Term destructor} *)
 val decomp_fun : typed_term -> id list * typed_term

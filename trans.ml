@@ -25,7 +25,8 @@ and id___pat p =
   let typ = id___typ p.pat_typ in
   let desc =
     match p.pat_desc with
-        PVar x -> PVar (id___var x)
+        PAny -> PAny
+      | PVar x -> PVar (id___var x)
       | PConst t -> PConst (id__ t)
       | PConstruct(s,ps) -> PConstruct(s, List.map id___pat ps)
       | PNil -> PNil
@@ -67,7 +68,7 @@ and id__ t =
       | Cons(t1,t2) -> Cons(id__ t1, id__ t2)
       | Constr(s,ts) -> Constr(s, List.map id__ ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = id___pat pat, apply_opt id__ cond, id__ t1 in
+          let aux (pat,cond,t1) = id___pat pat, id__ cond, id__ t1 in
             Match(id__ t1, List.map aux pats)
       | Raise t -> Raise (id__ t)
       | TryWith(t1,t2) -> TryWith(id__ t1, id__ t2)
@@ -101,7 +102,8 @@ and id2___pat env p =
   let typ = id2___typ env p.pat_typ in
   let desc =
     match p.pat_desc with
-        PVar x -> PVar (id2___var env x)
+        PAny -> PAny
+      | PVar x -> PVar (id2___var env x)
       | PConst t -> PConst (id2__ env t)
       | PConstruct(s,ps) -> PConstruct(s, List.map (id2___pat env) ps)
       | PNil -> PNil
@@ -143,7 +145,7 @@ and id2__ env t =
       | Cons(t1,t2) -> Cons(id2__ env t1, id2__ env t2)
       | Constr(s,ts) -> Constr(s, List.map (id2__ env) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = id2___pat env pat, apply_opt (id2__ env) cond, id2__ env t1 in
+          let aux (pat,cond,t1) = id2___pat env pat, id2__ env cond, id2__ env t1 in
             Match(id2__ env t1, List.map aux pats)
       | Raise t -> Raise (id2__ env t)
       | TryWith(t1,t2) -> TryWith(id2__ env t1, id2__ env t2)
@@ -177,7 +179,8 @@ and flatten_tvar_pat p =
   let typ = flatten_tvar_typ p.pat_typ in
   let desc =
     match p.pat_desc with
-        PVar x -> PVar (flatten_tvar_var x)
+        PAny -> PAny
+      | PVar x -> PVar (flatten_tvar_var x)
       | PConst t -> PConst (flatten_tvar t)
       | PConstruct(s,ps) -> PConstruct(s, List.map flatten_tvar_pat ps)
       | PNil -> PNil
@@ -219,7 +222,7 @@ and flatten_tvar t =
       | Cons(t1,t2) -> Cons(flatten_tvar t1, flatten_tvar t2)
       | Constr(s,ts) -> Constr(s, List.map flatten_tvar ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = flatten_tvar_pat pat, apply_opt flatten_tvar cond, flatten_tvar t1 in
+          let aux (pat,cond,t1) = flatten_tvar_pat pat, flatten_tvar cond, flatten_tvar t1 in
             Match(flatten_tvar t1, List.map aux pats)
       | Raise t -> Raise (flatten_tvar t)
       | TryWith(t1,t2) -> TryWith(flatten_tvar t1, flatten_tvar t2)
@@ -257,7 +260,8 @@ and rename_tvar_pat map p =
   let typ = rename_tvar_typ map p.pat_typ in
   let desc =
     match p.pat_desc with
-        PVar x -> PVar (rename_tvar_var map x)
+        PAny -> PAny
+      | PVar x -> PVar (rename_tvar_var map x)
       | PConst t -> PConst (rename_tvar map t)
       | PConstruct(s,ps) -> PConstruct(s, List.map (rename_tvar_pat map) ps)
       | PNil -> PNil
@@ -300,7 +304,7 @@ and rename_tvar map t =
       | Cons(t1,t2) -> Cons(rename_tvar map t1, rename_tvar map t2)
       | Constr(s,ts) -> Constr(s, List.map (rename_tvar map) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = rename_tvar_pat map pat, apply_opt (rename_tvar map) cond, rename_tvar map t1 in
+          let aux (pat,cond,t1) = rename_tvar_pat map pat, rename_tvar map cond, rename_tvar map t1 in
             Match(rename_tvar map t1, List.map aux pats)
       | Raise t -> Raise (rename_tvar map t)
       | TryWith(t1,t2) -> TryWith(rename_tvar map t1, rename_tvar map t2)
@@ -751,13 +755,7 @@ let rec lift_aux post xs t =
           let defs,t' = lift_aux post xs t in
           let aux (pat,cond,t) (defs,pats) =
             let xs' = get_vars_pat pat @@ xs in
-            let defs',cond' =
-              match cond with
-                  None -> [], None
-                | Some t ->
-                    let defs',t' = lift_aux post xs' t in
-                      defs', Some t'
-            in
+            let defs',cond' = lift_aux post xs' t in
             let defs'',t' = lift_aux post xs' t in
               defs''@defs'@defs, (pat,cond',t')::pats
           in
@@ -980,7 +978,7 @@ let part_eval t =
         | Cons(t1,t2) -> Cons(aux apply t1, aux apply t2)
         | Constr(c,ts) -> Constr(c, List.map (aux apply) ts)
         | Match(t,pats) ->
-            let aux' (pat,cond,t) = pat, apply_opt (aux apply) cond, aux apply t in
+            let aux' (pat,cond,t) = pat, aux apply cond, aux apply t in
               Match(aux apply t, List.map aux' pats)
         | Snd _ -> assert false
         | Fst _ -> assert false
@@ -1208,11 +1206,11 @@ let rec propagate_typ_arg t =
         {desc=Proj(i,s,f,propagate_typ_arg t1); typ=t.typ}
     | SetField(n,i,s,f,t1,t2) ->
         {desc=SetField(n,i,s,f,propagate_typ_arg t1,propagate_typ_arg t2); typ=t.typ}
-    | Nil -> make_nil t.typ
+    | Nil -> make_nil2 t.typ
     | Cons(t1,t2) -> make_cons (propagate_typ_arg t1) (propagate_typ_arg t2)
     | Constr(s,ts) -> {desc=Constr(s, List.map propagate_typ_arg ts); typ=t.typ}
     | Match(t1,pats) ->
-        let aux (pat,cond,t1) = pat, apply_opt propagate_typ_arg cond, propagate_typ_arg t1 in
+        let aux (pat,cond,t1) = pat, propagate_typ_arg cond, propagate_typ_arg t1 in
           make_match (propagate_typ_arg t1) (List.map aux pats)
     | Raise t1 -> {desc=Raise (propagate_typ_arg t1); typ=t.typ}
     | TryWith(t1,t2) -> {desc=TryWith(propagate_typ_arg t1, propagate_typ_arg t2); typ=t.typ}
@@ -1283,7 +1281,7 @@ let rec replace_typ_aux env t =
       | Cons(t1,t2) -> Cons(replace_typ_aux env t1, replace_typ_aux env t2)
       | Constr(s,ts) -> Constr(s, List.map (replace_typ_aux env) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt (replace_typ_aux env) cond, replace_typ_aux env t1 in
+          let aux (pat,cond,t1) = pat, replace_typ_aux env cond, replace_typ_aux env t1 in
             Match(replace_typ_aux env t1, List.map aux pats)
       | Raise t -> Raise (replace_typ_aux env t)
       | TryWith(t1,t2) -> TryWith(replace_typ_aux env t1, replace_typ_aux env t2)
@@ -1854,7 +1852,7 @@ let rec elim_fun fun_name t =
       | Cons(t1,t2) -> Cons(elim_fun fun_name t1, elim_fun fun_name t2)
       | Constr(s,ts) -> Constr(s, List.map (elim_fun fun_name) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt (elim_fun fun_name) cond, elim_fun fun_name t1 in
+          let aux (pat,cond,t1) = pat, elim_fun fun_name cond, elim_fun fun_name t1 in
             Match(elim_fun fun_name t1, List.map aux pats)
       | Raise t -> Raise (elim_fun fun_name t)
       | TryWith(t1,t2) -> TryWith(elim_fun fun_name t1, elim_fun fun_name t2)
@@ -1935,7 +1933,8 @@ let rec init_rand_int t =
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(init_rand_int t1, init_rand_int t2)
       | Constr(s,ts) -> Constr(s, List.map init_rand_int ts)
-      | Match(t,pats) -> Match(init_rand_int t, List.map (fun (pat,cond,t) -> pat,apply_opt init_rand_int cond,init_rand_int t) pats)
+      | Match(t,pats) ->
+          Match(init_rand_int t, List.map (fun (pat,cond,t) -> pat, init_rand_int cond,init_rand_int t) pats)
       | Bottom -> Bottom
       | Snd _ -> assert false
       | Fst _ -> assert false
@@ -2051,7 +2050,7 @@ let rec inlined_f inlined fs t =
       | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)
       | Constr(s,ts) -> Constr(s, List.map (inlined_f inlined fs) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt (inlined_f inlined fs) cond, inlined_f inlined fs t1 in
+          let aux (pat,cond,t1) = pat, inlined_f inlined fs cond, inlined_f inlined fs t1 in
             Match(inlined_f inlined fs t1, List.map aux pats)
       | Raise t -> Raise (inlined_f inlined fs t)
       | TryWith(t1,t2) -> TryWith(inlined_f inlined fs t1, inlined_f inlined fs t2)
@@ -2134,7 +2133,7 @@ let rec lift_fst_snd fs t =
       | Cons(t1,t2) -> Cons(lift_fst_snd fs t1, lift_fst_snd fs t2)
       | Constr(s,ts) -> Constr(s, List.map (lift_fst_snd fs) ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt (lift_fst_snd fs) cond, lift_fst_snd fs t1 in
+          let aux (pat,cond,t1) = pat, lift_fst_snd fs cond, lift_fst_snd fs t1 in
             Match(lift_fst_snd fs t1, List.map aux pats)
       | Raise t -> Raise (lift_fst_snd fs t)
       | TryWith(t1,t2) -> TryWith(lift_fst_snd fs t1, lift_fst_snd fs t2)
@@ -2204,13 +2203,73 @@ let rec expand_let_val t =
       | Cons(t1,t2) -> Cons(expand_let_val t1, expand_let_val t2)
       | Constr(s,ts) -> Constr(s, List.map expand_let_val ts)
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, apply_opt expand_let_val cond, expand_let_val t1 in
+          let aux (pat,cond,t1) = pat, expand_let_val cond, expand_let_val t1 in
             Match(expand_let_val t1, List.map aux pats)
       | Raise t -> Raise (expand_let_val t)
       | TryWith(t1,t2) -> TryWith(expand_let_val t1, expand_let_val t2)
       | Pair(t1,t2) -> Pair(expand_let_val t1, expand_let_val t2)
       | Fst t -> Fst(expand_let_val t)
       | Snd t -> Snd(expand_let_val t)
+      | Bottom -> Bottom
+  in
+    {desc=desc; typ=t.typ}
+
+
+let rec simplify_match t =
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | NInt y -> NInt y
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Var y -> Var y
+      | Fun(y, t) -> Fun(y, simplify_match t)
+      | App(t1, ts) -> App(simplify_match t1, List.map simplify_match ts)
+      | If(t1, t2, t3) -> If(simplify_match t1, simplify_match t2, simplify_match t3)
+      | Branch(t1, t2) -> Branch(simplify_match t1, simplify_match t2)
+      | Let(flag, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, simplify_match t) bindings in
+          let t2' = simplify_match t2 in
+            Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) -> BinOp(op, simplify_match t1, simplify_match t2)
+      | Not t1 -> Not (simplify_match t1)
+      | Event(s,b) -> Event(s,b)
+      | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,simplify_match t1)) fields)
+      | Proj(i,s,f,t1) -> Proj(i,s,f,simplify_match t1)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,simplify_match t1,simplify_match t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(simplify_match t1, simplify_match t2)
+      | Constr(s,ts) -> Constr(s, List.map simplify_match ts)
+      | Match(t1,pats) ->
+          let aux (pat,cond,t1) = pat, simplify_match cond, simplify_match t1 in
+          let pats' = List.map aux pats in
+          let rec elim_unused = function
+              [] -> []
+            | ({pat_desc=PAny|PVar _} as pat, cond, t)::_ when cond = true_term -> [pat, cond, t]
+            | pct::pats -> pct :: elim_unused pats
+          in
+          let pats'' = elim_unused pats' in
+            begin
+              match pats'' with
+                  [] -> assert false
+                | [{pat_desc=PAny}, cond, t] ->
+                    let x = Id.new_var "u" t1.typ in
+                    assert (cond = true_term);
+                    (make_let [x, [], t1] t).desc
+                | [{pat_desc=PVar x}, cond, t] ->
+                    assert (cond = true_term);
+                    (make_let [x, [], t1] t).desc
+                | _ -> Match(simplify_match t1, pats'')
+            end
+      | Raise t -> Raise (simplify_match t)
+      | TryWith(t1,t2) -> TryWith(simplify_match t1, simplify_match t2)
+      | Pair(t1,t2) -> Pair(simplify_match t1, simplify_match t2)
+      | Fst t -> Fst(simplify_match t)
+      | Snd t -> Snd(simplify_match t)
       | Bottom -> Bottom
   in
     {desc=desc; typ=t.typ}

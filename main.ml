@@ -44,14 +44,9 @@ let spec_file = ref ""
 
 
 let rec main_loop parsed =
-(*
-  let typs = Type_decl.get_base_types "" in
-    List.iter (fun typ -> Format.printf "TYPE: %a@." Syntax.print_typ typ) typs;
-*)
   let t = parsed in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in
-
   let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
   let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
   let fun_list,t =
@@ -64,10 +59,10 @@ let rec main_loop parsed =
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
       let t' = Trans.replace_typ spec'.Spec.abst_env t in
-      let () = if true && t <> t' then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term t' in
+      let () = if true && spec <> Spec.init then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Abstract.abstract_recdata t in
-      let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t' = Abstract.abstract_list t in
       let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
@@ -151,7 +146,7 @@ let main filename in_channel =
   in
   let parsed = Parse.use_file lb in
   let parsed = Parser_wrapper.from_use_file parsed in
-  let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' parsed in
+  let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term parsed in
     main_loop parsed
 
 
