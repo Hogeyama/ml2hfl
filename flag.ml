@@ -50,7 +50,7 @@ let lift_fv_only = ref false
 let use_filter = ref false
 let accumulate_predicats = ref true
 let relative_complete = ref false
-let expand_nonrec = ref false
+let expand_nonrec = ref true
 let expand_nonrec_init = ref true
 let cps_simpl = ref false
 
