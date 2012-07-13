@@ -33,7 +33,7 @@ let add_type_decl s k =
   if not (in_typ_decls s) && s <> "unit" && s <> "bool" && s <> "list"
   then
     begin
-      if true then Format.printf "ADD %s = %a@." s print_kind k;
+      if false then Format.printf "ADD %s = %a@." s print_kind k;
       typ_decls := (s,k)::!typ_decls
     end
 

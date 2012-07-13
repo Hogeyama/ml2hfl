@@ -39,7 +39,6 @@ let conv_primitive_var x =
     | _ -> make_var x
 
 let conv_primitive_app t ts typ =
-  Format.printf "%a@." pp_print_term t;
   match t.desc,ts with
       Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
     | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
