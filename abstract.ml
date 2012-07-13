@@ -39,9 +39,8 @@ let rec abst_recdata_typ = function
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
   | TConstr(s,true) ->
-      let typs = get_ground_types s in
-      let typs' = if List.mem TInt typs then typs else TInt::typs in
-      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(typ1,typ2)) (init typs') (last typs') in
+      let typs = TInt :: get_ground_types s in
+      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(typ1,typ2)) (init typs) (last typs) in
         TFun(Id.new_var "path" (TList TInt), r_typ)
   | TConstr(s,false) -> TInt
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
