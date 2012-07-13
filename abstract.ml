@@ -93,7 +93,8 @@ let rec abst_recdata_pat p =
                   make_match t [pt, true_term, true_term; make_pany p.pat_typ, true_term, false_term]
           in
           let conds' = List.map2 make_cond binds ppcbs in
-          let cond0 = make_eq (make_fst (make_app (make_var f) [make_nil TInt])) (abst_label c) in
+          let cond0 = make_eq (make_nth 0 (1 + List.length ground_types)
+                                 (make_app (make_var f) [make_nil TInt])) (abst_label c) in
           let cond = List.fold_left make_and true_term (cond0 :: conds') in
           let bind = binds @ flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
             PVar f, cond, bind
@@ -235,10 +236,10 @@ let rec abstract_mutable t =
       | Not t -> Not (abstract_mutable t)
       | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,abstract_mutable t)) fields)
-      | Proj(i,s,Flag.Immutable,t) -> Proj(i, s, Flag.Immutable, abstract_mutable t)
-      | Proj(i,s,Flag.Mutable,t) ->
+      | Proj(i,s,Immutable,t) -> Proj(i, s, Immutable, abstract_mutable t)
+      | Proj(i,s,Mutable,t) ->
           let u = Id.new_var "u" t.typ in
-            Let(Flag.Nonrecursive, [u, [], abstract_mutable t], randint_term)
+            Let(Nonrecursive, [u, [], abstract_mutable t], randint_term)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abstract_mutable t1, abstract_mutable t2)
       | Constr(s,ts) -> Constr(s, List.map abstract_mutable ts)
@@ -474,7 +475,7 @@ let rec abst_datatype_typ = function
   | TPred(typ,ps) -> TPred(abst_datatype_typ typ, ps)
 
 let record_of_term_list ts =
-  let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Flag.Immutable, t))::fields, i+1) ([],0) ts in
+  let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Immutable, t))::fields, i+1) ([],0) ts in
     {desc=Record fields; typ=TConstr("",false)}
 
 (*

@@ -25,13 +25,13 @@ and term =
   | App of typed_term * typed_term list
   | If of typed_term * typed_term * typed_term
   | Branch of typed_term * typed_term
-  | Let of Flag.rec_flag * (id * id list * typed_term) list * typed_term
+  | Let of rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
   | Event of string * bool
-  | Record of (string * (Flag.mutable_flag * typed_term)) list
-  | Proj of int * string * Flag.mutable_flag * typed_term
-  | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
+  | Record of (string * (mutable_flag * typed_term)) list
+  | Proj of int * string * mutable_flag * typed_term
+  | SetField of int option * int * string * mutable_flag * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
@@ -46,11 +46,14 @@ and term =
   | TAbs of (typ -> typed_term)
 *)
 
+and rec_flag = Nonrecursive | Recursive
+and mutable_flag = Immutable | Mutable
+
 
 and type_kind =
     KAbstract
   | KVariant of (string * typ list) list
-  | KRecord of (string * (Flag.mutable_flag * typ)) list
+  | KRecord of (string * (mutable_flag * typ)) list
 
 and pred = term
 
@@ -63,7 +66,7 @@ and pattern =
   | PNil
   | PCons of typed_pattern * typed_pattern
   | PPair of typed_pattern * typed_pattern
-  | PRecord of (int * (string * Flag.mutable_flag * typed_pattern)) list
+  | PRecord of (int * (string * mutable_flag * typed_pattern)) list
   | POr of typed_pattern * typed_pattern
 
 type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode of int
@@ -153,7 +156,7 @@ and print_term pri typ fm t =
           fprintf fm "@[%sbr %a %a%s@]" s1 (print_term p typ) t1 (print_term p typ) t2 s2
     | Let(_, [], _) -> assert false
     | Let(flag, bindings, t2) ->
-        let s_rec = match flag with Flag.Nonrecursive -> "" | Flag.Recursive -> " rec" in
+        let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
         let p_ids fm xs =
@@ -315,7 +318,7 @@ let rec print_term' pri fm t =
           let s1,s2 = paren pri p in
             fprintf fm "%sbr %a %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
       | Let(flag, [f, xs, t1], t2) ->
-          let s_rec = match flag with Flag.Nonrecursive -> "" | Flag.Recursive -> " rec" in
+          let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
           let p = 1 in
           let s1,s2 = paren pri (p+1) in
           let p_ids fm () =
@@ -513,7 +516,7 @@ let rec make_app t ts =
 let make_lets bindings t2 =
   List.fold_right
     (fun binding t2 ->
-       {desc=Let(Flag.Nonrecursive,[binding],t2); typ=t2.typ})
+       {desc=Let(Nonrecursive,[binding],t2); typ=t2.typ})
     bindings
     t2
 let make_let_f flag bindings t2 =
@@ -524,8 +527,8 @@ let make_let_f flag bindings t2 =
   in
   let bindings' = List.map aux bindings in
     {desc=Let(flag,bindings',t2); typ=t2.typ}
-let make_let bindings t2 = make_let_f Flag.Nonrecursive bindings t2
-let make_letrec bindings t2 = make_let_f Flag.Recursive bindings t2
+let make_let bindings t2 = make_let_f Nonrecursive bindings t2
+let make_letrec bindings t2 = make_let_f Recursive bindings t2
 let make_loop typ =
   let u = Id.new_var "u" TUnit in
   let f = Id.new_var "loop" (TFun(u,typ)) in
@@ -742,7 +745,7 @@ let rec get_fv vars t =
     | Branch(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
     | Let(flag, bindings, t2) ->
         let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-        let vars' = match flag with Flag.Nonrecursive -> vars | Flag.Recursive -> vars_with_fun in
+        let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
         let aux fv (_,xs,t) = get_fv (xs@@vars') t @@ fv in
         let fv_t2 = get_fv vars_with_fun t2 in
           List.fold_left aux fv_t2 bindings
@@ -783,7 +786,7 @@ let rec get_fv2 vars t =
     | Branch(t1, t2) -> get_fv2 vars t1 @@ get_fv2 vars t2
     | Let(flag, bindings, t) ->
         let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-        let vars' = match flag with Flag.Nonrecursive -> vars | Flag.Recursive -> vars_with_fun in
+        let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
         let aux fv (_,xs,t) = get_fv2 (xs@@vars') t @@ fv in
         let fv_t = get_fv2 vars_with_fun t in
           List.fold_left aux fv_t bindings
@@ -888,7 +891,7 @@ and subst x t t' =
           let t1' = subst x t t1 in
           let t2' = subst x t t2 in
             make_branch t1' t2'
-      | Let(Flag.Nonrecursive, bindings, t2) ->
+      | Let(Nonrecursive, bindings, t2) ->
           let aux (f,xs,t1) =
             subst_var x t f,
             List.map (subst_var x t) xs,
@@ -900,8 +903,8 @@ and subst x t t' =
             else subst x t t2
           in
             make_let bindings' t2'
-      | Let(Flag.Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
-      | Let(Flag.Recursive, bindings, t2) ->
+      | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
+      | Let(Recursive, bindings, t2) ->
           let aux (f,xs,t1) =
             subst_var x t f,
             List.map (subst_var x t) xs,
@@ -1036,7 +1039,7 @@ and subst_map map t =
         let t1' = subst_map map t1 in
         let t2' = subst_map map t2 in
           make_branch t1' t2'
-    | Let(Flag.Nonrecursive, bindings, t2) ->
+    | Let(Nonrecursive, bindings, t2) ->
         let rec aux map acc = function
             [] -> map, List.rev acc
           | (f,xs,t1)::bindings ->
@@ -1045,7 +1048,7 @@ and subst_map map t =
         let map',bindings' = aux map [] bindings in
         let t2' = subst_map map' t2 in
           make_let bindings' t2'
-    | Let(Flag.Recursive, bindings, t2) ->
+    | Let(Recursive, bindings, t2) ->
         let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_,_) -> Id.same f x) bindings)) map in
         let aux (f,xs,t1) =
           let map'' = List.filter (fun (x,_) -> not (Id.mem x xs)) map' in

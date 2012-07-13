@@ -107,10 +107,10 @@ let rec trans_exc ct ce t =
                 let t1' = make_let g xs t1 (make_var g) in
                   trans_exc ct ce (make_let_f flag [f, [x], t1'] t2)
 *)
-    | Let(Flag.Nonrecursive, [x, [], t1], t2) ->
+    | Let(Nonrecursive, [x, [], t1], t2) ->
         let ct' t = subst x t (trans_exc ct ce t2) in
           trans_exc ct' ce t1
-    | Let(Flag.Recursive, [f, [], t1], t2) -> assert false
+    | Let(Recursive, [f, [], t1], t2) -> assert false
     | Let(flag, [f, [x], t1], t2) ->
         let x' = trans_exc_var x in
         let r = Id.new_var "r" (trans_exc_typ t1.typ) in
@@ -360,7 +360,7 @@ and t_cps =
   | FunCPS of typed_ident * typed_term
   | AppCPS of typed_term * typed_term
   | IfCPS of typed_term * typed_term * typed_term
-  | LetCPS of Flag.rec_flag * (typed_ident * typed_term) list * typed_term
+  | LetCPS of rec_flag * (typed_ident * typed_term) list * typed_term
   | BinOpCPS of binop * typed_term * typed_term
   | NotCPS of typed_term
   | LabelCPS of bool * typed_term
@@ -435,10 +435,11 @@ and print_t_cps fm = function
       Format.fprintf fm "@[@[if %a@]@;then @[%a@]@;else @[%a@]@]"
         print_typed_term t1 print_typed_term t2 print_typed_term t3
   | LetCPS(flag, bindings, t) ->
-      let is_rec = match flag with Flag.Nonrecursive -> false | Flag.Recursive -> true in
+      let is_rec = match flag with Nonrecursive -> false | Recursive -> true in
       let head = ref (if is_rec then "let rec" else "let") in
-      let pr fm ((f:typed_ident),(t:typed_term)) =
-        Format.fprintf fm "%s %a : %a = @[%a@]@;" !head print_id f.id_cps print_typ_cps f.id_typ print_typed_term t;
+      let pr fm (f,t) =
+        Format.fprintf fm "%s %a : %a = @[%a@]@;"
+          !head print_id f.id_cps print_typ_cps f.id_typ print_typed_term t;
         head := "and"
       in
         Format.fprintf fm "@[<v>@[<hov 2>%a@]@;in@;%a@]" (print_list pr "" false) bindings print_typed_term t
@@ -597,15 +598,15 @@ let rec infer_effect env t =
         let make_env (f,_,_) = Id.to_string f, infer_effect_typ (Id.typ f) in
         let env_f = List.map make_env bindings in
         let env' = env_f @@ env in
-        let env'' = match flag with Flag.Nonrecursive -> env | Flag.Recursive -> env' in
+        let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
         let aux (f, xs, t1) =
           let f' = {id_cps=f; id_typ=List.assoc (Id.to_string f) env_f} in
           let t1' = List.fold_right make_fun xs t1 in
           let typed = infer_effect env'' t1' in
           let () =
             match flag with
-                Flag.Nonrecursive -> ()
-              | Flag.Recursive -> lift_letrec_typ typed
+                Nonrecursive -> ()
+              | Recursive -> lift_letrec_typ typed
           in
             unify f'.id_typ typed.typ_cps;
             f', typed

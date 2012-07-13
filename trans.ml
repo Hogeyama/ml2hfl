@@ -497,8 +497,8 @@ let rec copy_poly_funs t =
                 let xs' = xs in
                 let t1 =
                   match flag with
-                      Flag.Nonrecursive -> t1
-                    | Flag.Recursive -> subst f (make_var f') t1
+                      Nonrecursive -> t1
+                    | Recursive -> subst f (make_var f') t1
                 in
                 let t1 = copy_poly_funs t1 in
                   make_let_f flag [f', xs', t1] t
@@ -674,7 +674,7 @@ let rec lift_aux post xs t =
           let defs1,t1' = lift_aux post xs t1 in
           let defs2,t2' = lift_aux post xs t2 in
             defs1 @ defs2, Branch(t1',t2')
-      | Let(Flag.Nonrecursive,[f,ys,t1],t2) ->
+      | Let(Nonrecursive,[f,ys,t1],t2) ->
           let fv = inter' Id.compare (get_fv t1) xs in
           let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
           let fv = List.sort compare_id fv in
@@ -685,7 +685,7 @@ let rec lift_aux post xs t =
           let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' t1 in
           let defs2,t2' = lift_aux post xs (subst f f'' t2) in
             defs1 @ [(f',(ys',t1'))] @ defs2, t2'.desc
-      | Let(Flag.Recursive,[f,ys,t1],t2) ->
+      | Let(Recursive,[f,ys,t1],t2) ->
           let fv = inter' Id.compare (get_fv t1) xs in
           let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
           let fv = List.sort compare_id fv in
@@ -913,7 +913,7 @@ let part_eval t =
             begin
               try
                 let xs, t1 = List.assoc x apply in
-                  Let(Flag.Nonrecursive, [x, xs, t1], make_var x)
+                  Let(Nonrecursive, [x, xs, t1], make_var x)
               with Not_found -> Var x
             end
         | Fun(x, t) -> Fun(x, aux apply t)
@@ -923,7 +923,7 @@ let part_eval t =
               match ts with
                   [] ->
                     let xs, t1 = List.assoc f apply in
-                      Let(Flag.Nonrecursive, [f, xs, t1], (make_var f))
+                      Let(Nonrecursive, [f, xs, t1], (make_var f))
                 | [t] -> t.desc
                 | t::ts' -> App(t, ts')
             else
@@ -960,10 +960,11 @@ let part_eval t =
             else
               begin
                 match flag, is_alias xs t1.desc  with
-                    Flag.Nonrecursive, None -> Let(flag, [f, xs, aux apply t1], aux apply t2)
-                  | Flag.Nonrecursive, Some x -> (subst f (make_var x) (aux apply t2)).desc
-                  | Flag.Recursive, Some x when not (List.mem f (get_fv t1)) -> (subst f {desc=Var x;typ=Id.typ x} (aux apply t2)).desc
-                  | Flag.Recursive, _ -> Let(flag, [f, xs, aux apply t1], aux apply t2)
+                    Nonrecursive, None -> Let(flag, [f, xs, aux apply t1], aux apply t2)
+                  | Nonrecursive, Some x -> (subst f (make_var x) (aux apply t2)).desc
+                  | Recursive, Some x when not (List.mem f (get_fv t1)) ->
+                      (subst f {desc=Var x;typ=Id.typ x} (aux apply t2)).desc
+                  | Recursive, _ -> Let(flag, [f, xs, aux apply t1], aux apply t2)
               end
         | Let _ -> assert false
         | BinOp(op, t1, t2) -> BinOp(op, aux apply t1, aux apply t2)
@@ -1125,9 +1126,9 @@ let rec trans_let t =
           let t1' = trans_let t1 in
           let t2' = trans_let t2 in
             Branch(t1', t2')
-      | Let(Flag.Nonrecursive, [f, [], t1], t2) ->
+      | Let(Nonrecursive, [f, [], t1], t2) ->
           App(make_fun f (trans_let t2), [trans_let t1])
-      | Let(Flag.Nonrecursive, bindings, t2) when List.exists (fun (_,xs,_) -> xs=[]) bindings -> assert false
+      | Let(Nonrecursive, bindings, t2) when List.exists (fun (_,xs,_) -> xs=[]) bindings -> assert false
       | Let(flag, bindings, t2) ->
           let bindings' = List.map (fun (f,xs,t) -> f, xs, trans_let t) bindings in
           let t2' = trans_let t2 in
@@ -1258,7 +1259,7 @@ let rec replace_typ_aux env t =
             in
             let t' = replace_typ_aux env t in
             let t'' =
-              if flag = Flag.Nonrecursive
+              if flag = Nonrecursive
               then t'
               else subst f (make_var f') t'
             in
@@ -1828,7 +1829,7 @@ let rec elim_fun fun_name t =
       | Var y -> Var y
       | Fun(y, t1) ->
           let f = Id.new_var fun_name t.typ in
-            Let(Flag.Nonrecursive, [f, [y], elim_fun fun_name t1], make_var f)
+            Let(Nonrecursive, [f, [y], elim_fun fun_name t1], make_var f)
       | App(t1, ts) -> App(elim_fun fun_name t1, List.map (elim_fun fun_name) ts)
       | If(t1, t2, t3) -> If(elim_fun fun_name t1, elim_fun fun_name t2, elim_fun fun_name t3)
       | Branch(t1, t2) -> Branch(elim_fun fun_name t1, elim_fun fun_name t2)
@@ -2016,7 +2017,7 @@ let rec inlined_f inlined fs t =
           x::xs, t'
     | _ -> [], t
       in
-          if flag = Flag.Nonrecursive then
+          if flag = Nonrecursive then
     if List.exists (fun f' -> Id.same f' f) inlined then
       let t' = inlined_f inlined fs t in
       let xs', t' = lift t' in

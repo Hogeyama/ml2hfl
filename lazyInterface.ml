@@ -347,7 +347,7 @@ let insert_extra_param t =
 	| Syntax.Branch(t1, t2) -> Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
 
 	| Syntax.Let(flag, bindings, t2) ->
-	    let bvs' = bvs @ (if flag = Flag.Nonrecursive then [] else List.map Util.fst3 bindings) in
+	    let bvs' = bvs @ (if flag = Syntax.Nonrecursive then [] else List.map Util.fst3 bindings) in
 	    let aux' (f,xs,t) =
               let f' = trans_id f in
               let xs' = List.map trans_id xs in
@@ -376,7 +376,7 @@ let insert_extra_param t =
 		   bvs' @ xs'),
 		exs @ List.flatten xss
 	      in
-  	      let rfs' = (f, List.map2 (fun xs x -> x, xs) xss xs', flag <> Flag.Nonrecursive) :: rfs in
+  	      let rfs' = (f, List.map2 (fun xs x -> x, xs) xss xs', flag <> Syntax.Nonrecursive) :: rfs in
 		(*mutual recursion and binding partial applied functions are not supported
 		  let rfs' = (if flag = Flag.Nonrecursive then [] else List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
 		*)

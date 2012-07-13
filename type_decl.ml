@@ -5,7 +5,7 @@ open Utilities
 
 type kind =
     TKVariant of (string * typ list) list
-  | TKRecord of (string * (Flag.mutable_flag * typ)) list
+  | TKRecord of (string * (mutable_flag * typ)) list
 
 let typ_decls : (string * kind) list ref = ref []
 let exc_decls : (string * typ list) list ref = ref []
@@ -21,7 +21,7 @@ let print_kind fm = function
         print_list aux " | " false fm stypss
   | TKRecord sftyps ->
       let aux fm (s,(f,typ)) =
-        Format.fprintf fm "%s%s:%a" (if f = Flag.Mutable then "mutable " else "") s print_typ typ
+        Format.fprintf fm "%s%s:%a" (if f = Mutable then "mutable " else "") s print_typ typ
       in
         Format.fprintf fm "@[{%a}@]" (print_list aux "; " false) sftyps
 

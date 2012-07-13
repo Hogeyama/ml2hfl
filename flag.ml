@@ -6,9 +6,6 @@ let cvc3 = ref "./cvc3"
 let trecs_log = "log.hors"
 let cvc3_option = "+interactive"
 
-type rec_flag = Nonrecursive | Recursive
-type mutable_flag = Immutable | Mutable
-
 type mode = Reachability | FileAccess
 type cegar = CEGAR_SizedType | CEGAR_DependentType
 type pred_abst = PredAbst | PredAbstCPS

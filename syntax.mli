@@ -20,13 +20,13 @@ and term =
   | App of typed_term * typed_term list
   | If of typed_term * typed_term * typed_term
   | Branch of typed_term * typed_term
-  | Let of Flag.rec_flag * (id * id list * typed_term) list * typed_term
+  | Let of rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
   | Event of string * bool
-  | Record of (string * (Flag.mutable_flag * typed_term)) list
-  | Proj of int * string * Flag.mutable_flag * typed_term
-  | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
+  | Record of (string * (mutable_flag * typed_term)) list
+  | Proj of int * string * mutable_flag * typed_term
+  | SetField of int option * int * string * mutable_flag * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
@@ -38,11 +38,14 @@ and term =
   | Snd of typed_term
   | Bottom
 
+and rec_flag = Nonrecursive | Recursive
+and mutable_flag = Immutable | Mutable
+
 
 and type_kind =
     KAbstract
   | KVariant of (string * typ list) list
-  | KRecord of (string * (Flag.mutable_flag * typ)) list
+  | KRecord of (string * (mutable_flag * typ)) list
 and pred = term
 and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =
@@ -53,7 +56,7 @@ and pattern =
   | PNil
   | PCons of typed_pattern * typed_pattern
   | PPair of typed_pattern * typed_pattern
-  | PRecord of (int * (string * Flag.mutable_flag * typed_pattern)) list
+  | PRecord of (int * (string * mutable_flag * typed_pattern)) list
   | POr of typed_pattern * typed_pattern
 type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode of int
 
@@ -92,7 +95,7 @@ val make_fail : typ -> typed_term
 val make_let : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_letrec : (id * id list * typed_term) list -> typed_term -> typed_term
-val make_let_f : Flag.rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
+val make_let_f : rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
 val make_fun : id -> typed_term -> typed_term
 val make_not : typed_term -> typed_term
 val make_and : typed_term -> typed_term -> typed_term

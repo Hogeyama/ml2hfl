@@ -8,7 +8,7 @@ open Type
 
 
 type declaration =
-    Decl_let of Flag.rec_flag * (id * typed_term) list
+    Decl_let of rec_flag * (id * typed_term) list
   | Decl_type of (string * (typ list * type_kind)) list
   | Decl_exc of string * typ list
 
@@ -120,13 +120,13 @@ let rec from_type_expr tenv typ =
 
 
 let from_rec_flag = function
-    Asttypes.Nonrecursive -> Flag.Nonrecursive
-  | Asttypes.Recursive -> Flag.Recursive
+    Asttypes.Nonrecursive -> Nonrecursive
+  | Asttypes.Recursive -> Recursive
   | Asttypes.Default -> unsupported "rec_flag (Default)"
 
 let from_mutable_flag = function
-    Asttypes.Mutable -> Flag.Mutable
-  | Asttypes.Immutable -> Flag.Immutable
+    Asttypes.Mutable -> Mutable
+  | Asttypes.Immutable -> Immutable
 
 
 
@@ -637,7 +637,7 @@ let from_top_level_phrase (env,defs) = function
       let aux2 = function
           Tstr_eval e ->
             let t = from_expression e in
-              [Decl_let(Flag.Nonrecursive, [Id.new_var "u" t.typ, t])]
+              [Decl_let(Nonrecursive, [Id.new_var "u" t.typ, t])]
         | Tstr_value(rec_flag,defs) ->
             let flag = from_rec_flag rec_flag in
             let defs' = List.map (fun (p,t) -> from_pattern p, from_expression t) defs in
@@ -661,9 +661,9 @@ let from_top_level_phrase (env,defs) = function
 let from_use_file ast =
   let _,defs = List.fold_left from_top_level_phrase (initial_env,[]) ast in
   let aux t = function
-      Decl_let(Flag.Nonrecursive, defs) ->
-        List.fold_right (fun (f,t1) t2 -> {desc=Let(Flag.Nonrecursive, [f, [], t1], t2); typ=t2.typ}) defs t
-    | Decl_let(Flag.Recursive, defs) ->
+      Decl_let(Nonrecursive, defs) ->
+        List.fold_right (fun (f,t1) t2 -> {desc=Let(Nonrecursive, [f, [], t1], t2); typ=t2.typ}) defs t
+    | Decl_let(Recursive, defs) ->
         let fs = List.map fst defs in
         let fs' = List.map Id.new_var_id fs in
         let aux f =
