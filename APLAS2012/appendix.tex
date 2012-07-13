@@ -1,0 +1,530 @@
+\appendix
+
+\section{Rules for Selective Predicate Abstraction}
+
+\TODO{List all the rules for selective predicate abstraction.}
+%This section shows all the rules for selective predicate abstraction.
+
+\section{Proof of Theorem~\ref{thm:abst_sound}}
+
+\TODO{Add explanation of the proof}
+\memo{The only differences from PLDI are the proofs of Lemma~\ref{lem:sub} and Lemma~\ref{lem:sim}.
+Other proof are irrelevant to \rn{AppExp}.}
+
+
+\begin{lemma}
+\label{lem:sim}
+Suppose that
+\begin{itemize}
+\item $\Abst{\Gamma}{E}{e_1}{\sigma}{e_2}$ and
+\item $e_1 \Redwith{l}{D_1} e_1'$.
+\end{itemize}
+There exists $e_2'$ such that:
+\begin{itemize}
+\item $\Abst{\Gamma}{E}{e_1'}{\sigma}{e_2'}$ and
+\item $e_2 \Redswith{l}{D_2} e_2'$.
+\end{itemize}
+\end{lemma}
+
+\begin{lemma}
+\label{lem:const}
+If $\Abst{\Gamma}{E}{c}{b[\seq{P}]}{e}$, then
+$e \Redswith{\epsilon}{D_2} \Tuple{\seq{v}} \equiv \Tuple{\seq{P}(c)}$ for some $\seq{v}$.
+\end{lemma}
+
+\begin{lemma}
+\label{lem:fail}
+If $\Abst{\Gamma}{E}{\FAIL}{\sigma}{e}$, then $e
+\Redswith{\epsilon}{D_2} \FAIL$.
+\end{lemma}
+
+\begin{lemma}
+\label{lem:sub}
+If $\Abst{\Gamma,\seq{x}_1:\seq{\sigma}_1}{E}{v}{\sigma'}{v'}$ and
+$\Abst{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2}{E}{e}{\sigma}{e'}$, then
+$\Abst{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{E}{[v/x]e}{[v/x]\sigma}{[v'/x]e'}$.
+\end{lemma}
+
+\begin{lemma}
+\label{lem:subb}
+Suppose that
+\begin{itemize}
+\item $\Abst{\Gamma,\Gamma'}{E}{e}{\sigma'}{e_1}$,
+\item $\Abst{\Gamma,r:\sigma'}{E}{r}{\sigma}{e_2}$, and
+%\item $\sigma,\sigma'$ are base types, and
+\item $r \not\in \FV{\sigma}$.
+\end{itemize}
+We obtain $\Abst{\Gamma,\Gamma'}{E}{e}{\sigma}{\Let{r}{e_1}{e_2}}$.
+\end{lemma}
+
+\begin{lemma}
+\label{lem:val}
+If $\Abst{\Gamma}{E}{v}{\sigma}{e}$, then $\Abst{\Gamma}{E}{v}{\sigma}{v'}$ and
+$e \Redswith{\epsilon}{} v'$ for some $v'$.
+\end{lemma}
+
+Lemma~\ref{lem:val} immediately follows from the following lemma:
+
+\begin{lemma}
+\label{lem:val_aux}
+If $\Abst{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{E}{v}{\sigma}{e}$ and
+$\AbstT{\Gamma,x_1:\sigma_1,\dots,x_{i-1}:\sigma_{i-1}}{E}{v_i}{\sigma_i}{v_i'}$ for each $i \in \set{1,\dots,k}$, then
+there exists some value $\theta_k v'$ such that:
+\begin{itemize}
+\item $\AbstT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{E}{v}{\sigma}{v'}$ and
+\item $\theta_k e \equiv \theta_k v'$.
+\end{itemize}
+Here, $\theta_i$ represents $[v_1'/x_1]\cdots[v_i'/x_i]$, and we
+write $\AbstT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{E}{v}{\sigma}{v'}$ if:
+\begin{itemize}
+\item $\Abst{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{E}{v}{\sigma}{v'}$ and
+\item if $\sigma=x_{k+1}:\sigma_{k+1} \to \sigma'$,
+$\sigma'$ is a function type, and
+$\AbstT{\Gamma,x_1:\sigma_1,\dots,x_k:\sigma_k}{E}{v_{k+1}}{\sigma_{k+1}}{v_{k+1}'}$, then
+$\theta_{k+1} (v'\ x_{k+1}) \equiv \theta_{E}{k+1} v''$ and
+$\AbstT{\Gamma,x_1:\sigma_1,\dots,x_{k+1}:\sigma_{k+1}}{E}{v\ x_{k+1}}{\sigma'}{v''}$
+for some value $\theta_{k+1} v''$.
+\end{itemize}
+\end{lemma}
+
+\begin{lemma}
+\label{lem:coerce}
+Suppose that
+\begin{itemize}
+\item $\Abst{\Gamma,r:(x:\sigma_1 \to \sigma_2)}{E}{r}{(x:\sigma_1' \to \sigma_2')}{e_r}$,
+\item $\Abst{\Gamma}{E}{v_1}{\sigma_1 \to \sigma_2}{v_1'}$, and
+\item $\Abst{\Gamma}{E}{v_2}{\sigma_1'}{v_2'}$.
+\end{itemize}
+There exist $e_r'$ and $v_2''$ such that:
+\begin{itemize}
+\item $(\Let{r}{v_1'}{e_r})\ v_2' \Redswith{\epsilon}{}\equiv \Let{r}{v_1'\ v_2''}e_r'$,
+\item $\Abst{\Gamma,r:[v_1/x]\sigma_2}{E}{r}{[v_1/x]\sigma_2'}{e_r'}$, and
+\item $\Abst{\Gamma}{E}{v_2}{\sigma_1}{v_2''}$.
+\end{itemize}
+\end{lemma}
+
+\begin{lemma}
+\label{lem:fun}
+Suppose that
+\begin{itemize}
+\item $\Abst{\Gamma}{E}{f\ v_1\cdots v_j}{(x_{j+1}\COL\sigma_{j+1}' \to \cdots \to x_k\COL\sigma_k' \to b[\seq{Q}])}{e}$,
+\item $j<k$,
+\item $\Gamma(f)=x_1:\sigma_1 \to \cdots \to x_k:\sigma_k \to b[\seq{P}]$, and
+\item $\Abst{\Gamma}{E}{v_{j+1}}{\sigma_{j+1}'}{v_{j+1}''}$.
+\end{itemize}
+There exist $e_r,v_1',\dots,v_{j+1}'$ such that:
+\begin{itemize}
+\item $e\ v_{j+1}'' \Redswith{\epsilon}{}\equiv \Let{r}{f\ v_1'\cdots v_{j+1}'}{e_r}$,
+\item
+$\Abst{\Gamma,r:[v_1/x_1,\dots,v_{j+1}/x_{j+1}](x_{j+2}:\sigma_{j+2} \to \cdots \to x_k:\sigma_k \to b[\seq{P}])}{E}
+    {r}
+    {[v_{j+1}/x_{j+1}](x_{j+2}\COL\sigma_{j+2}' \to \cdots \to x_k\COL\sigma_k' \to b[\seq{Q}])}
+    {e_r}$, and
+\item for each $i \in \set{1,\dots,j+1}$, $\Abst{\Gamma}{E}{v_i}{[v_1/x_1,\dots,v_{i-1}/x_{i-1}]\sigma_i}{v_i'}$.
+\end{itemize}
+\end{lemma}
+
+\begin{proof}[Proof of Lemma~\ref{lem:sub}]
+We prove the lemma by induction on the derivation of
+$\Abst{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2}{E}{e}{\sigma}{e'}$.
+We proceed by case analysis on the last rule used.
+We only show the case $\rn{A-AppExp}$.
+We have
+\begin{itemize}
+\item $e = \App{x'}{\seq{v}}$,
+\item $E(x') = \Abs{x_1}{\cdots\Abs{x_n}{e''}}$,
+\item $\Abst{\Gamma,\seq{x}_1:\seq{\sigma}_1,x:\sigma',\seq{x}_2:\seq{\sigma}_2}{E}{[v_1/x_1,\dots,v_n/x_n]e''}{\sigma}{e'}$.
+\end{itemize}
+By I.H., we get $\Abst{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{E}{[v/x][v_1/x_1,\dots,v_n/x_n]e''}{[v/x]\sigma}{[v'/x]e'}$.
+By \rn{A-AppExp}, we obtain $\Abst{\Gamma,\seq{x}_1:\seq{\sigma}_1,\seq{x}_2:[v/x]\seq{\sigma}_2}{E}{[v/x]e}{[v/x]\sigma}{[v'/x]e'}$.
+\qed
+\end{proof}
+
+Now, we are ready to prove that each reduction $\Redwith{l}{D_1}$ can be simulated by $\Redswith{l}{D_2}$.
+
+\begin{proof}[Proof of Lemma~\ref{lem:sim}]
+We prove the lemma by induction on the derivation of $\Abst{\Gamma}{E}{e_1}{\sigma}{e_2}$.
+We proceed by case analysis on the last rule used.
+We only show the case $\rn{A-AppExp}$.
+We have
+\begin{itemize}
+\item $e_1 = \App{x}{\seq{v}}$,
+\item $E(x) = \Abs{\seq{x}}{e}$,
+\item $\Abst{\Gamma}{E}{[\seq{v}/\seq{x}]e}{\sigma}{e_2}$.
+\end{itemize}
+We get $e'_1 = [\seq{v}/\seq{x}]e$ and $l = \epsilon$ by \rn{E-App}.  By \rn{E-App},
+we immediately obtain $\Abst{\Gamma}{E}{[\seq{v}/\seq{x}]}{\sigma}{e_2'}$ and $e_1'
+\Redswith{\epsilon}{D_2} e_2$, where $e'_2 = e_2$.
+\qed
+\end{proof}
+
+
+\section{The Semantics of Source Language of Selective CPS Transformation}
+
+\TODO{Show the evaluation rules of the language}
+
+\begin{figure}[t]
+\[
+\begin{array}{lrl}
+E\text{ (eval. ctx.)} &::=& \hole \mid \App{E}{t} \mid \App{v}{E} \mid \If{E}{t_1}{t_2}
+\end{array}
+\]
+
+\infrule{{(f=v) \in D}}{f \red v}
+
+\infrule
+ {\text{$\Denote{\OP}$ is the function denoted by $\OP$}}
+ {\Op{v_1,\dots,v_n} \red \Denote{\OP}(v_1,\dots,v_n)}
+
+\infax{\App{(\Abs{x}{t_1})}{t_2} \red a}
+
+\infax{\If{\TRUE}{t_1}{t_2} \red t_1}
+
+\infax{\If{\FALSE}{t_1}{t_2} \red t_2}
+
+\infax{\Br{t_1}{t_2} \red t_1}
+
+\infax{\Br{t_1}{t_2} \red t_2}
+
+\infrule{t \red t'}{E[t] \red E[t']}
+
+\infax{E[\FAIL] \red \FAIL}
+
+\caption{The semantics of the source language}
+\label{fig:source-semantics}
+\end{figure}
+
+
+\section{Proof of Theorem~\ref{thm:cps_total}}
+
+We prove Theorem~\ref{thm:cps_total} which states that there is at least
+one selective CPS transformation.
+% under the assumption that all function types is annotated with label $\IC$.
+Theorem~\ref{thm:cps_total} is a corollary of the following theorem.
+
+\begin{theorem}
+Suppose $D$ is typable in $\Gamma$. There exists $D'$ such that
+$\CPSprog{\ToC{\Gamma}}{D}{D'}$, where $\ToC{\Gamma}$ is a function that
+maps an environment into the corresponding environment
+with all the annotations are $\IC$.
+\end{theorem}
+
+To show the theorem~\ref{thm:cps_total},
+we first prove the following lemma.
+
+\begin{lemma}
+\label{lem:cps_total_term}
+Suppose
+\begin{itemize}
+\item $\Gamma \p t \COL \tau$
+\item all the annotations in the derivation of $\Gamma \p t \COL \tau$ are $\IC$.
+\end{itemize}
+There exists $t'$ and $\ell$ such that $\CPS{\Gamma}{t}{\tau}{\ell}{t'}$, and $\ell = \NC$ if $t$ is a value.
+\end{lemma}
+\begin{proof}
+We prove the lemma by induction on the structure of $t$.
+
+\begin{itemize}
+\item Case $t = n$ and $t = x$: \\
+      We have
+      $\CPS{\Gamma}{t}{\tau}{\NC}{t}$ by \rn{CPS-Const} and \rn{CPS-Var}, respectively.
+
+\item Case $t = \Op{v_1,\dots,v_n}$: \\
+      We have $\Gamma \p v_i \COL \INT$ for each $i \in \set{1,\dots,n}$.
+      By I.H., we obtain $\CPS{\Gamma}{v_i}{\INT}{\NC}{v_i'}$ for some $v_i'$.
+      We get $\CPS{\Gamma}{\Op{v_1,\dots,v_n}}{\INT}{\NC}{\Op{v_1',\dots,v_n'}}$ by \rn{CPS-Op}.
+
+\item Case $t = \Abs{x}{t_1}$: \\
+      We have $\Gamma \p t_1 \COL \TFun{\tau_1}{\tau_2}$.
+      By I.H., we obtain
+      $\CPS{\Gamma,x\COL\tau_1}{t_1}{\tau_2}{\ell}{t_1'}$ for some $t_1'$ and $l$.
+      We get
+      $\CPS{\Gamma}{\Abs{x}{t_1}}{\TFunC{\tau_1}{\tau_2}}{\NC}{{\Abs{x}{\Abs{k}{\SApp{\ell}{t_1'}{k}}}}}$
+      by \rn{CPS-AbsC}.
+
+\item Case $t = \App{t_0}{t_1}$: \\
+      We have $\Gamma \p t_0 \COL {\TFunL{\IC}{\tau_1}{\tau}}$ and $\Gamma \p t_1 \COL \tau_1$.
+      By I.H., we obtain $\CPS{\Gamma}{t_0}{\TFunL{\IC}{\tau_1}{\tau}}{\ell_0}{t_0'}$ and
+      $\CPS{\Gamma}{t_1}{\tau_1}{\ell_1}{t_1'}$ for some $\ell_0$, $t_0'$, $\ell_1$, and $t_1'$.
+      We get $\CPS{\Gamma}{\App{t_0}{t_1}}{\tau}{\IC}{\Abs{k}{\SApp{\ell_0}{t_0'}{\Abs{x_0}{\SApp{\ell_1}{t_1'}{\Abs{x_1}{\App{\App{x_0}{x_1}}{k}}}}}}}$ by \rn{CPS-AppC}.
+
+\item Case $t = \FAIL$: \\
+      We have $\CPS{\Gamma}{\FAIL}{\tau}{\IC}{\Abs{k}{\FAIL}}$ by \rn{CPS-Fail}.
+
+\item Case $t = \If{t_1}{t_2}{t_3}$: \\
+      We have $\Gamma \p t_1 \COL \INT$, $\Gamma \p t_2 \COL \tau$, and $\Gamma \p t_3 \COL \tau$.
+      By I.H., we obtain
+      \begin{itemize}
+       \item $\CPS{\Gamma}{t_1}{\INT}{\ell_1}{t_1'}$ for some $t_1'$ and $l_1$.
+       \item $\CPS{\Gamma}{t_2}{\tau}{\ell_1}{t_2'}$ for some $t_2'$ and $l_2$.
+       \item $\CPS{\Gamma}{t_3}{\tau}{\ell_1}{t_3'}$ for some $t_3'$ and $l_3$.
+      \end{itemize}
+      We get $\CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}{}{\Abs{k}{\SApp{\ell_1}{t_1}{\Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}}}$ by \rn{CPS-IfC}.
+
+\item Case $t = \Br{t_1}{t_2}$: \\
+      We have $\Gamma \p t_2 \COL \tau$ and $\Gamma \p t_3 \COL \tau$.
+      By I.H., we obtain $\CPS{\Gamma}{t_0}{\tau}{\ell_0}{t_0'}$ and
+      $\CPS{\Gamma}{t_1}{\tau}{\ell_1}{t_1'}$ for some $\ell_0$, $t_0'$, $\ell_1$, and $t_1'$.
+      We get $\CPS{\Gamma}{\Br{t_1}{t_2}}{\tau}{\IC}{\Abs{k}{\If{\Br{0}{1}}{\SApp{\ell_1}{t_2'}{k}}{\SApp{\ell_2}{t_3'}{k}}}}$ by \rn{CPS-Br}. \qed
+\end{itemize}
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:cps_total}]
+Immediately from Lemma~\ref{lem:cps_total_term}.
+\qed
+\end{proof}
+
+
+\section{Proof of Theorem~\ref{thm:cps_sound}\memo{now editting}}
+
+\TODO{Introduce $\ToC{-}$}
+
+\begin{figure}[tp]
+\begin{minipage}{\textwidth}
+
+\infax[CPS-Const']
+ {\CPScolon{\Gamma}{n}{\INT}{\NC}{k}{\App{k}{n}}}
+
+\medskip
+
+\infax[CPS-Var']
+ {\CPScolon{\Gamma,x\COL\tau}{x}{\tau}{\NC}{k}{\App{k}{x}}}
+
+\medskip
+
+\infax[CPS-Op']
+ {\CPScolon{\Gamma}{\Op{v_1,\dots,v_n}}{\INT}{\NC}{k}{\App{k}{(\Op{v_1,\dots,v_n})}}}
+
+\medskip
+
+\infrule[CPS-AbsN']
+ {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{\NC}{t'}}
+ {\CPScolon{\Gamma}{\Abs{x}{t}}{\TFunN{\tau_1}{\tau_2}}{\NC}{k}{\App{k}{(\Abs{x}{t'})}}}
+
+\medskip
+
+\infrule[CPS-AbsC']
+ {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{\ell}{t'}}
+ {\CPScolon{\Gamma}{\Abs{x}{t}}{\TFunL{C}{\tau_1}{\tau_2}}{\NC}{k}
+  {\App{k}{(\Abs{x}{\Abs{k'}{\SApp{\ell}{t'}{k'}}})}}}
+
+\medskip
+
+\infrule[CPS-AppN1']
+ {t_0 \text{ is not a value} \andalso t_1 \text{ is not a value} \\
+  \CPScolon{\Gamma}{t_0}{\TFunN{\tau_1}{\tau}}{\NC}{\Abs{x}{\App{k}{(\App{x}{t_1'})}}}{t_0'} \andalso
+  \CPS{\Gamma}{t_1}{\tau_1}{\NC}{t_1'}}
+ {\CPScolon{\Gamma}{\App{t_0}{t_1}}{\tau}{\NC}{k}{t_0'}}
+
+\medskip
+
+\infrule[CPS-AppN2']
+ {t \text{ is not a value} \andalso
+  \CPS{\Gamma}{v}{\TFunN{\tau_1}{\tau}}{\NC}{v'} \andalso
+  \CPScolon{\Gamma}{t}{\tau_1}{\NC}{\Abs{x}{\App{k}{(\App{v'}{x})}}}{t'}}
+ {\CPScolon{\Gamma}{\App{v}{t}}{\tau}{\NC}{k}{\App{v'}{t'}}}
+
+\medskip
+
+\infrule[CPS-AppN3']
+ {\CPS{\Gamma}{v_0}{\TFunN{\tau_1}{\tau}}{\NC}{v_0'} \andalso
+  \CPS{\Gamma}{v_1}{\tau_1}{\NC}{v_1'}}
+ {\CPScolon{\Gamma}{\App{v_0}{v_1}}{\tau}{\NC}{k}{\App{k}{(\App{v_0'}{v_1'})}}}
+
+\medskip
+
+\infrule[CPS-AppC1']
+ {t_0 \text{ is not a value} \andalso
+  \CPScolon{\Gamma}{t_0}{\TFunL{\ell}{\tau_1}{\tau}}{\ell_0}
+   {\Abs{x_0}{\SApp{\ell_1}{t_1'}{\Abs{x_1}{\SApp{\ell}{\App{x_0}{x_1}}{k}}}}}{t_0'} \\
+  \CPS{\Gamma}{t_1}{\tau_1}{\ell_1}{t_1'}}
+ {\CPScolon{\Gamma}{\App{t_0}{t_1}}{\tau}{\IC}{k}{t_0'}}
+
+\medskip
+
+\infrule[CPS-AppC2']
+ {t \text{ is not a value} \andalso
+  \CPS{\Gamma}{v}{\TFunL{\ell}{\tau_1}{\tau}}{\NC}{v'} \andalso
+  \CPScolon{\Gamma}{t}{\tau_1}{\ell_1}{\Abs{x}{\SApp{\ell}{\App{x}{v'}}{k}}}{t'}}
+ {\CPScolon{\Gamma}{\App{v}{t}}{\tau}{\IC}{k}{t'}}
+
+\medskip
+
+\infrule[CPS-AppC3']
+ {\CPS{\Gamma}{v_0}{\TFunL{\ell}{\tau_1}{\tau}}{\NC}{v_0'} \andalso
+  \CPS{\Gamma}{v_1}{\tau_1}{\NC}{t_1'}}
+ {\CPScolon{\Gamma}{\App{t_0}{t_1}}{\tau}{\IC}{k}
+  {\SApp{\ell}{k}{\App{v_0'}{v_1'}}}}
+
+\medskip
+
+\infax[CPS-Fail']
+ {\CPScolon{\Gamma}{\FAIL}{\tau}{\IC}{k}{\FAIL}}
+
+\medskip
+
+\infrule[CPS-IfN1']
+ {t_1 \text{ is not a value} \andalso
+  \CPScolon{\Gamma}{t_1}{\INT}{\NC}{\Abs{x}{\If{x}{t_2'}{t_3'}}}{t_1'} \\
+  \CPS{\Gamma}{t_2}{\tau}{\NC}{t_2'} \andalso
+  \CPS{\Gamma}{t_3}{\tau}{\NC}{t_3'}}
+ {\CPScolon{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\NC}{k}{\If{t_1'}{t_2'}{t_3'}}}
+
+\medskip
+
+\infrule[CPS-IfN2']
+ {\CPS{\Gamma}{v}{\INT}{\NC}{v'} \andalso
+  \CPS{\Gamma}{t_2}{\tau}{\NC}{t_2'} \andalso
+  \CPS{\Gamma}{t_3}{\tau}{\NC}{t_3'}}
+ {\CPScolon{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\NC}{k}{\If{v'}{\App{k}{t_2'}}{\App{k}{t_3'}}}}
+
+\medskip
+
+\infrule[CPS-IfC1']
+ {\CPScolon{\Gamma}{t_1}{\INT}{\ell_1}{\Abs{x}{\If{x}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}{t_1'} \\
+  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \andalso
+  \CPS{\Gamma}{t_3}{\tau}{\ell_3}{t_3'}}
+ {\CPScolon{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}{k}{t_1'}}
+
+\medskip
+
+\infrule[CPS-IfC2']
+ {\CPS{\Gamma}{v}{\INT}{\ell_1}{v'} \andalso
+  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \andalso
+  \CPS{\Gamma}{t_3}{\tau}{\ell_3}{t_3'}}
+ {\begin{array}{l}
+   \CPScolon{\Gamma}{\If{v}{t_2}{t_3}}{\tau}{\IC}{k}{\SApp{\ell_1}{v'}{\Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}}
+  \end{array}}
+
+\medskip
+
+\infrule[CPS-Br']
+ {\CPS{\Gamma}{t_1}{\tau}{\ell_1}{t_1'} \andalso
+  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'}}
+ {\CPScolon{\Gamma}{\Br{t_1}{t_2}}{\tau}{\IC}{k}
+  {\If{\Br{0}{1}}{\SApp{\ell_1}{t_2'}{k}}{\SApp{\ell_2}{t_3'}{k}}}}
+
+\end{minipage}
+\caption{Selective Colon Translation}
+\label{fig:cps_colon}
+\end{figure}
+
+
+\begin{figure}[tp]
+\begin{minipage}{\textwidth}
+
+\infax[CPS-CHole]
+ {\CPScolon{\Gamma}{\hole}{\tau}{\ell}{k}{k}}
+
+\medskip
+
+\infrule[CPS-CAppN1']
+ {\CPScolon{\Gamma}{E}{\TFunN{\tau_1}{\tau}}{\NC}{\App{k}{(\Abs{x}{\App{k}{(\App{x}{t_1'})}})}}{t} \andalso
+  \CPS{\Gamma}{t_1}{\tau_1}{\NC}{t_1'}}
+ {\CPScolon{\Gamma}{\App{E}{t_1}}{\tau}{\NC}{k}{t}}
+
+\medskip
+
+\infrule[CPS-AppN2']
+ {\CPS{\Gamma}{v}{\TFunN{\tau_1}{\tau}}{\NC}{v'} \andalso
+  \CPScolon{\Gamma}{E}{\tau_1}{\NC}{\App{k}{(\Abs{x}{\App{k}{(\App{v'}{x})}})}}{t'}}
+ {\CPScolon{\Gamma}{\App{v}{E}}{\tau}{\NC}{k}{\App{v'}{t'}}}
+
+\medskip
+
+\infrule[CPS-AppC1']
+ {\CPScolon{\Gamma}{E}{\TFunL{\ell}{\tau_1}{\tau}}{\ell_0}
+   {\Abs{x_0}{\SApp{\ell_1}{t_1'}{\Abs{x_1}{\SApp{\ell}{\App{x_0}{x_1}}{k}}}}}{t} \\
+  \CPS{\Gamma}{t_1}{\tau_1}{\ell_1}{t_1'}}
+ {\CPScolon{\Gamma}{\App{E}{t_1}}{\tau}{\IC}{k}{t}}
+
+\medskip
+
+\infrule[CPS-AppC2']
+ {\CPS{\Gamma}{v}{\TFunL{\ell}{\tau_1}{\tau}}{\NC}{v'} \andalso
+  \CPScolon{\Gamma}{E}{\tau_1}{\ell_1}{\Abs{x}{\SApp{\ell}{\App{x}{v'}}{k}}}{t}}
+ {\CPScolon{\Gamma}{\App{v}{E}}{\tau}{\IC}{k}{t}}
+
+\medskip
+
+\infrule[CPS-CIfN']
+ {\CPScolon{\Gamma}{t_1}{\INT}{\NC}{\App{k}{(\Abs{x}{\If{x}{t_2'}{t_3'}})}}{t_1'} \\
+  \CPS{\Gamma}{t_2}{\tau}{\NC}{t_2'} \andalso
+  \CPS{\Gamma}{t_3}{\tau}{\NC}{t_3'}}
+ {\CPScolon{\Gamma}{\If{E}{t_2}{t_3}}{\tau}{\NC}{k}{\If{t_1'}{t_2'}{t_3'}}}
+
+\medskip
+
+\infrule[CPS-IfC']
+ {\CPScolon{\Gamma}{E}{\INT}{\ell_1}{\Abs{x}{\If{x}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}{t_1'} \\
+  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \andalso
+  \CPS{\Gamma}{t_3}{\tau}{\ell_3}{t_3'}}
+ {\CPScolon{\Gamma}{\If{E}{t_2}{t_3}}{\tau}{\IC}{k}{t_1'}}
+
+\end{minipage}
+\caption{Selective Colon Translation for Contexts}
+\label{fig:cps_colon_context}
+\end{figure}
+
+
+\begin{lemma}
+\label{lem:cps_weak}
+If $\CPS{\Gamma}{e}{\tau}{\ell}{t'}$, then $\CPS{\Gamma,x_1\COL\tau_1,\dots,x_n\COL\tau_n}{t}{\tau}{\ell}{t'}$
+\end{lemma}
+
+
+\begin{lemma}
+\label{lem:cps_sub}
+Suppose $\CPS{\emptyset}{v}{\tau_1}{\NC}{v'}$.
+\begin{itemize}
+\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\IC}{t'}$,
+      then $\CPS{\Gamma}{[v/x]t}{\tau_1}{\IC}{[v'/x]t'}$, and
+\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\NC}{e'}$,
+      then $\CPS{\Gamma}{[v/x]t}{\tau_1}{\NC}{[v'/x]t'}$.
+\end{itemize}
+\end{lemma}
+
+
+\begin{lemma}
+\label{lem:colon_context}
+If
+\begin{itemize}
+\item $\CPScolon{\Gamma}{E}{\tau}{n}{k}{k'}$,
+\item $\CPScolon{\Gamma}{t}{\tau}{n}{k'}{t_1}$, and
+\item $\CPScolon{\Gamma}{E[t]}{\tau}{n}{k}{t_2}$,
+\end{itemize}
+then $t_1 \reds t_2$.
+\end{lemma}
+
+
+\begin{lemma}
+\label{lem:init_red}
+%Suppose $\Gamma(k)=\TFun{\tau}{X}$.
+The followings hold.
+\begin{itemize}
+\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\IC}{t'}$,
+      then $\CPScolon{\Gamma}{t}{\tau_1}{\IC}{k}{t''}$ and $\App{t'}{k} \reds t''$.
+\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\NC}{e'}$,
+      then $\CPScolon{\Gamma}{t}{\tau_1}{\NC}{E}{t''}$ and $E[t'] = t''$.
+\end{itemize}
+\end{lemma}
+
+
+\begin{lemma}
+\label{lem:cps_sim}
+%Suppose $\Gamma(k)=\TFun{\tau}{X}$.
+If
+\begin{itemize}
+\item $t_1 \red t_2$,
+\item $\CPScolon{\Gamma}{t_1}{\tau_1}{\ell}{\Abs{x}{x}}{t_1'}$, and
+\item $\CPScolon{\Gamma}{t_2}{\tau_1}{\ell}{\Abs{x}{x}}{t_2'}$,
+\end{itemize}
+then $t_1' \reds t_2'$.
+\end{lemma}
+\begin{proof}
+We prove the lemma by induction on the derivation of $t_1 \red t_2$.
+Case analysis on the last rule used.
+\begin{itemize}
+\item Case
+\end{itemize}
+\end{proof}
