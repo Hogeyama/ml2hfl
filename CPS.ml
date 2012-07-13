@@ -40,8 +40,7 @@ let rec trans_exc ct ce t =
       Unit
     | True
     | False
-    | Int _
-    | NInt _ -> ct t
+    | Int _ -> ct t
     | RandInt false ->
         let r = Id.new_var "r" TInt in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
@@ -250,7 +249,6 @@ and remove_pair_aux t typ_opt =
       | True
       | False
       | Int _
-      | NInt _
       | RandInt _
       | Event _ -> Leaf t
       | Bottom -> map (fun _ -> make_bottom) typs
@@ -537,7 +535,6 @@ let rec infer_effect env t =
         let e = new_evar () in
           constraints := CGeq(e, ECont) :: !constraints;
           {t_cps=BottomCPS; typ_cps=infer_effect_typ t.typ; typ_orig=t.typ; effect=e}
-    | NInt x -> assert false
     | RandInt true -> assert false
     | RandInt false ->
         let e = new_evar () in
@@ -800,7 +797,6 @@ let rec add_preds_cont_aux k t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -1049,7 +1045,6 @@ let rec short_circuit_eval t =
       | False
       | Unknown
       | Int _
-      | NInt _
       | RandInt _
       | RandValue _
       | Var _ -> t.desc
@@ -1170,8 +1165,7 @@ let rec trans_exc ct ce t =
       Unit
     | True
     | False
-    | Int _
-    | NInt _ -> ct t
+    | Int _ -> ct t
     | RandInt false ->
         let r = Id.new_var "r" TInt in
         let k = Id.new_var "k" (TFun(r,TUnit)) in
@@ -1380,7 +1374,6 @@ and remove_pair_aux t typ_opt =
       | True
       | False
       | Int _
-      | NInt _
       | RandInt _
       | Event _ -> Leaf t
       | Bottom -> map (fun _ -> make_bottom) typs
@@ -1661,7 +1654,6 @@ let rec infer_cont_pos env t =
     | Unknown -> {t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
     | Int n -> {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}
     | Bottom -> {t_cps=BottomCPS; typ_cps=trans_cont_pos_typ false t.typ; typ_orig=t.typ}
-    | NInt x -> assert false
     | RandInt true -> assert false
     | RandInt false -> {t_cps=RandIntCPS; typ_cps=TFunCPS(ref false, TBaseCPS TUnit, TBaseCPS TInt); typ_orig=t.typ}
     | Var x ->
@@ -1793,7 +1785,6 @@ let rec add_preds_cont_aux k t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -1975,7 +1966,6 @@ let rec has_exception t =
     | False -> false
     | Unknown -> false
     | Int n -> false
-    | NInt y -> false
     | RandInt b -> false
     | RandValue(typ,b) -> false
     | Var y -> false
@@ -2016,7 +2006,6 @@ let rec short_circuit_eval t =
       | False
       | Unknown
       | Int _
-      | NInt _
       | RandInt _
       | RandValue _
       | Var _ -> t.desc

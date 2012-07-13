@@ -158,13 +158,16 @@ let rec unify typ1 typ2 =
     | TVar({contents = None} as r), typ
     | typ, TVar({contents = None} as r) ->
         if occurs r typ then
-          (Format.printf "occurs check failure: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+          (Format.printf "occurs check failure: %a, %a@."
+             print_typ_init (flatten typ1) print_typ_init (flatten typ2);
            raise CannotUnify)
         else
           r := Some typ
+    | TPred(typ1,_), typ2
+    | typ1, TPred(typ2,_) -> unify typ1 typ2
     | _ ->
-        if Flag.debug
-        then Format.printf "unification error: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+        Format.printf "unification error: %a, %a@."
+          print_typ_init (flatten typ1) print_typ_init (flatten typ2);
         raise CannotUnify
 
 

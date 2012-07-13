@@ -127,7 +127,6 @@ let rec abst_recdata t =
       | Unknown -> Unknown
       | Int n -> Int n
       | Var x -> Var (abst_recdata_var x)
-      | NInt x -> NInt (abst_recdata_var x)
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Fun(x,t) -> Fun(abst_recdata_var x, abst_recdata t)
@@ -221,7 +220,6 @@ let rec abstract_mutable t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt x -> NInt x
       | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, abstract_mutable t)
@@ -400,7 +398,6 @@ and abst_list post t =
       | Unknown -> assert false
       | Int n -> make_int n
       | Var x -> make_var (abst_list_var x)
-      | NInt x -> assert false
       | RandInt b -> randint_term
       | RandValue(typ,b) -> raise (Fatal "Not implemented (Abstract.abst_list)")
       | Fun(x,t) -> make_fun (abst_list_var x) (abst_list post t)
@@ -523,7 +520,6 @@ and abst_datatype t =
       | Unknown -> Unknown
       | Int n -> Int n
       | Var x -> Var x
-      | NInt x -> NInt x
       | RandInt None -> RandInt None
       | RandInt (Some t) -> RandInt (Some (abst_datatype t))
       | RandValue(typ,None) -> RandValue(typ,None)

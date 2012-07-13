@@ -52,7 +52,6 @@ and print_term fm t =
     | True -> Format.fprintf fm "TRUE"
     | False -> Format.fprintf fm "FALSE"
     | Int n -> Format.fprintf fm "%d" n
-    | NInt x -> print_id fm x
     | RandInt _ -> assert false
     | Var x -> print_id fm x
     | BinOp(Mult, t1, t2) when
@@ -109,7 +108,7 @@ let rec to_exp t =
       True -> CsisatAst.Variable "tru"
     | False -> CsisatAst.Variable "fls"
     | Int n -> CsisatAst.Constant (float_of_int n)
-    | Var x | NInt x -> CsisatAst.Variable (Id.to_string x)
+    | Var x -> CsisatAst.Variable (Id.to_string x)
     | RandInt t -> assert false
     | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
     | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
@@ -464,7 +463,6 @@ and simplify_exp t =
     match t.desc with
         Var _ -> t.desc
       | Int _ -> t.desc
-      | NInt _ -> t.desc
       | RandInt t ->
           assert (not t);
           RandInt false
@@ -631,7 +629,6 @@ let rec type_of = function
     Unit -> TUnit
   | Bool _ -> TBool
   | Int _ -> TInt (ref [])
-  | NInt _ -> TInt (ref [])
   | Var x -> x.typ
   | App(f, ts) ->
       let rec aux typ ts =

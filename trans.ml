@@ -46,7 +46,6 @@ and id__ t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(id___typ typ,b)
       | Var y -> Var (id___var y)
@@ -123,7 +122,6 @@ and id2__ env t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(id2___typ env typ,b)
       | Var y -> Var (id2___var env y)
@@ -200,7 +198,6 @@ and flatten_tvar t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(flatten_tvar_typ typ,b)
       | Var y -> Var (flatten_tvar_var y)
@@ -281,7 +278,6 @@ and rename_tvar map t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(rename_tvar_typ map typ,b)
       | Var y -> Var (rename_tvar_var map y)
@@ -295,7 +291,7 @@ and rename_tvar map t =
           let t2' = rename_tvar map t2 in
             Let(flag, bindings', t2')
       | BinOp(op, t1, t2) -> BinOp(op, rename_tvar map t1, rename_tvar map t2)
-      | Not t1 ->Not (rename_tvar map t1)
+      | Not t1 -> Not (rename_tvar map t1)
       | Event(s,b) -> Event(s,b)
       | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,rename_tvar map t1)) fields)
       | Proj(i,s,f,t1) -> Proj(i,s,f,rename_tvar map t1)
@@ -349,7 +345,6 @@ let rec rename_poly_funs f map t =
       | False
       | Unknown
       | Int _
-      | NInt _
       | RandInt _ -> map, t.desc
       | Var x when Id.same x f ->
           if is_poly_typ t.typ
@@ -466,7 +461,6 @@ let rec copy_poly_funs t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt x -> NInt x
       | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, copy_poly_funs t)
@@ -486,9 +480,11 @@ let rec copy_poly_funs t =
                 List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
                 Format.printf "@.";
               end;
+(*
             if map = []
             then Let(flag, [f, xs, copy_poly_funs t1], t2')
             else
+*)
               let aux t (_,f') =
                 let tvar_map = List.map (fun v -> v, ref None) tvars in
                 let () = Type.unify (rename_tvar_typ tvar_map (Id.typ f)) (Id.typ f') in
@@ -593,7 +589,6 @@ let rec merge_let_fun t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt x -> NInt x
       | RandInt b -> RandInt b
       | Var x -> Var x
       | App(t, ts) -> App(merge_let_fun t, List.map merge_let_fun ts)
@@ -642,7 +637,6 @@ let rec lift_aux post xs t =
       | False -> [], False
       | Unknown -> [], Unknown
       | Int n -> [], Int n
-      | NInt x -> [], NInt x
       | RandInt b -> [], RandInt b
       | Var x -> [], Var x
       | Fun(x,t1) ->
@@ -786,7 +780,6 @@ let rec canonize t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt x -> NInt x
       | RandInt b -> RandInt b
       | Var x -> Var x
       | App(t, ts) ->
@@ -907,7 +900,6 @@ let part_eval t =
         | True -> True
         | False -> False
         | Int n -> Int n
-        | NInt x -> NInt x
         | RandInt b -> RandInt b
         | Var x ->
             begin
@@ -1023,7 +1015,6 @@ let part_eval2 t =
     | True -> True
     | False -> False
     | Int n -> Int n
-    | NInt x -> NInt x
     | Var x -> Var x
     | Fun(x, t) ->
         let t' = aux t in
@@ -1109,7 +1100,6 @@ let rec trans_let t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | Var y -> Var y
       | Fun(y, t) -> Fun(y, trans_let t)
@@ -1170,7 +1160,6 @@ let rec propagate_typ_arg t =
     | False -> false_term
     | Unknown -> assert false
     | Int n -> make_int n
-    | NInt y -> {desc=NInt y; typ=t.typ}
     | RandInt b -> {desc=RandInt b; typ=t.typ}
     | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t.typ}
     | Var y -> make_var y
@@ -1235,7 +1224,6 @@ let rec replace_typ_aux env t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -1311,14 +1299,9 @@ let rec eval t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt x -> NInt x
       | Var x -> Var x
       | App({desc=Fun(x, t)}, t'::ts) ->
-          (match t'.desc with
-               NInt _ ->
-                 App({desc=Fun(x, eval t);typ=TFun(x,t.typ)}, List.map eval (t'::ts))
-             | _ ->
-                 (eval ({desc=App(subst_map [x, t'] t, ts);typ=t.typ})).desc)
+          (eval ({desc=App(subst_map [x, t'] t, ts);typ=t.typ})).desc
       | App(t, []) -> (eval t).desc
       | App(t, ts) ->
           App(eval t, List.map eval ts)
@@ -1406,7 +1389,6 @@ let rec eta_reduce t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt x -> NInt x
       | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, eta_reduce t)
@@ -1462,7 +1444,6 @@ let normalize_binop_exp op t1 t2 =
     match t.desc with
         Int n -> [None, n]
       | Var x -> [Some {desc=Var x;typ=Id.typ x}, 1]
-      | NInt x -> [Some {desc=NInt x;typ=Id.typ x}, 1]
       | BinOp(Add, t1, t2) ->
           decomp t1 @@ decomp t2
       | BinOp(Sub, t1, t2) ->
@@ -1495,7 +1476,6 @@ let normalize_binop_exp op t1 t2 =
     let aux = function
         None -> "\255"
       | Some {desc=Var x} -> Id.to_string x
-      | Some {desc=NInt n} -> Id.to_string n
       | _ -> assert false
     in
       compare (aux x1) (aux x2)
@@ -1579,7 +1559,6 @@ let rec normalize_bool_exp t =
       | Not t -> Not (normalize_bool_exp t)
       | Unit
       | Int _
-      | NInt _
       | Fun _
       | App _
       | If _
@@ -1618,7 +1597,6 @@ let rec get_and_list t =
     | Not t -> [{desc=Not t; typ=t.typ}]
     | Unit
     | Int _
-    | NInt _
     | Fun _
     | App _
     | If _
@@ -1686,7 +1664,6 @@ let rec merge_geq_leq t =
       | Not t -> Not (merge_geq_leq t)
       | Unit
       | Int _
-      | NInt _
       | Fun _
       | App _
       | If _
@@ -1727,7 +1704,6 @@ let rec eval_and_print_ce ce t =
     | False -> ce, {desc=Unit; typ=TUnit}
     | Unknown -> ce, {desc=Unit; typ=TUnit}
     | Int n -> ce, {desc=Unit; typ=TUnit}
-    | NInt x -> ce, {desc=Unit; typ=TUnit}
     | RandInt false -> ce, {desc=Unit; typ=TUnit}
     | RandInt true -> assert false(*eval_and_print_ce ce (make_app t [{desc=Unit;typ=TUnit}])*)
     | Var x -> assert false
@@ -1823,7 +1799,6 @@ let rec elim_fun fun_name t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -1875,7 +1850,6 @@ let rec make_ext_env t =
     | False -> []
     | Unknown -> []
     | Int n -> []
-    | NInt x -> []
     | RandInt _ -> []
     | Var x -> if is_external x then [x, Id.typ x] else []
     | App(t, ts) -> make_ext_env t @@ (rev_map_flatten (make_ext_env) ts)
@@ -1916,9 +1890,8 @@ let rec init_rand_int t =
       | Unknown -> Unknown
       | Int n -> Int n
       | Var x -> Var x
-      | NInt x -> NInt x
       | RandInt false -> assert false
-      | App({desc=RandInt false},[{desc=Unit}]) -> NInt (Id.new_var "_r" TInt)
+      | App({desc=RandInt false},[{desc=Unit}]) -> Var (Id.new_var "_r" TInt)
       | Fun(x,t) -> Fun(x, init_rand_int t)
       | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
       | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)
@@ -1958,7 +1931,6 @@ let rec inlined_f inlined fs t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y ->
@@ -1988,7 +1960,7 @@ let rec inlined_f inlined fs t =
          Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
      let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
      let ts = List.map (inlined_f inlined fs) ts in
-     let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | NInt _ | Var _ -> `L(t) | _ -> `R(Id.new_var "arg" t.typ)) ts in
+     let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | Var _ -> `L(t) | _ -> `R(Id.new_var "arg" t.typ)) ts in
          let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else ExtList.List.split_nth (List.length xs) ys in
      let xs1, xs2 = ExtList.List.split_nth (List.length ys1) xs in
      let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
@@ -2085,7 +2057,6 @@ let rec lift_fst_snd fs t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -2176,7 +2147,6 @@ let rec expand_let_val t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -2222,7 +2192,6 @@ let rec simplify_match t =
       | False -> False
       | Unknown -> Unknown
       | Int n -> Int n
-      | NInt y -> NInt y
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y

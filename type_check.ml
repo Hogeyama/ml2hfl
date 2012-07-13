@@ -17,7 +17,7 @@ let rec check t typ =
   match t with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
-    | {desc=(Int _ | NInt _); typ=(TInt _ | TRInt _)} -> ()
+    | {desc=Int _; typ=(TInt _ | TRInt _)} -> ()
     | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
     | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->

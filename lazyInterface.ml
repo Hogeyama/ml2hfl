@@ -264,7 +264,6 @@ let insert_extra_param t =
 	| Syntax.False -> Syntax.False
 	| Syntax.Unknown -> Syntax.Unknown
 	| Syntax.Int n -> Syntax.Int n
-	| Syntax.NInt y -> Syntax.NInt y
 	| Syntax.RandInt b -> Syntax.RandInt b
 	| Syntax.RandValue(typ,b) -> Syntax.RandValue(typ,b)
 	| Syntax.Var y -> Syntax.Var (trans_id y)

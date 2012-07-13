@@ -17,7 +17,6 @@ and term =
   | False
   | Unknown
   | Int of int
-  | NInt of id
   | RandInt of bool
   | RandValue of typ * bool
   | Var of id
@@ -131,7 +130,6 @@ and print_term pri typ fm t =
     | False -> fprintf fm "false"
     | Unknown -> fprintf fm "***"
     | Int n -> fprintf fm "%d" n
-    | NInt x -> fprintf fm "?%a?" print_id x
     | RandInt false -> fprintf fm "rand_int"
     | RandInt true -> fprintf fm "rand_int_cps"
     | RandValue(typ',false) -> fprintf fm "rand_val[%a]()" print_typ typ'
@@ -288,7 +286,6 @@ let rec print_term' pri fm t =
       | False -> fprintf fm "false"
       | Unknown -> fprintf fm "***"
       | Int n -> fprintf fm "%d" n
-      | NInt x -> fprintf fm "?%a?" print_id x
       | RandInt false -> fprintf fm "rand_int"
       | RandInt true -> fprintf fm "rand_int_cps"
       | RandValue(typ',false) ->
@@ -668,7 +665,6 @@ let rec get_nint t =
     | False -> []
     | Unknown -> []
     | Int n -> []
-    | NInt x -> [x]
     | Var x -> []
     | App(t, ts) -> get_nint t @@ (rev_map_flatten get_nint ts)
     | If(t1, t2, t3) -> get_nint t1 @@ get_nint t2 @@ get_nint t3
@@ -702,7 +698,6 @@ let rec get_int t =
     | False -> []
     | Unknown -> []
     | Int n -> [n]
-    | NInt x -> []
     | Var x -> []
     | App(t, ts) -> get_int t @@ (rev_map_flatten get_int ts)
     | If(t1, t2, t3) -> get_int t1 @@ get_int t2 @@ get_int t3
@@ -737,7 +732,6 @@ let rec get_fv vars t =
     | False -> []
     | Unknown -> []
     | Int n -> []
-    | NInt x -> []
     | RandInt _ -> []
     | Var x -> if List.mem x vars then [] else [x]
     | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
@@ -778,7 +772,6 @@ let rec get_fv2 vars t =
     | False -> []
     | Unknown -> []
     | Int n -> []
-    | NInt x -> [x]
     | RandInt _ -> []
     | Var x -> if List.mem x vars then [] else [x]
     | App(t, ts) -> get_fv2 vars t @@ (rev_map_flatten (get_fv2 vars) ts)
@@ -868,7 +861,6 @@ and subst x t t' =
       | False -> t'
       | Unknown -> t'
       | Int n -> t'
-      | NInt y -> if Id.same x y then t else t'
       | Bottom -> t'
       | RandInt _ -> t'
       | Var y when Id.same x y -> t
@@ -953,7 +945,6 @@ and subst_int n t t' =
       | False -> False
       | Unknown -> Unknown
       | Int m -> if n = m then t.desc else BinOp(Add, t, {desc=Int(m-n); typ=TInt})
-      | NInt y -> NInt y
       | Var y -> Var y
       | Bottom -> Bottom
       | Fun(y, t1) -> Fun(y, subst_int n t t1)
@@ -1018,7 +1009,6 @@ and subst_map map t =
     | False -> t
     | Unknown -> t
     | Int n -> t
-    | NInt y -> if Id.mem_assoc y map then Id.assoc y map else t
     | Bottom -> t
     | RandInt _ -> t
     | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
@@ -1115,7 +1105,6 @@ let rec max_pat_num t =
     | False -> 0
     | Unknown -> 0
     | Int _ -> 0
-    | NInt _ -> 0
     | Var _ -> 0
     | Fun(_, t) -> max_pat_num t
     | App(t, ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) (max_pat_num t) ts
@@ -1153,7 +1142,6 @@ let rec max_label_num t =
     | False -> -1
     | Unknown -> -1
     | Int _ -> -1
-    | NInt _ -> -1
     | RandInt _ -> -1
     | Var _ -> -1
     | Fun(_, t) -> max_label_num t
@@ -1193,7 +1181,7 @@ let is_parameter x = String.starts_with (Id.name x) Flag.extpar_header
 
 let rec is_value t =
   match t.desc with
-      Unit | True | False | Int _ | NInt _ | Var _ | Nil -> true
+      Unit | True | False | Int _ | Var _ | Nil -> true
     | _ -> false
 
 

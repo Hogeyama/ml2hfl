@@ -12,7 +12,6 @@ and term =
   | False
   | Unknown
   | Int of int
-  | NInt of id
   | RandInt of bool (** true denotes CPS-term *)
   | RandValue of typ * bool (** true denotes CPS-term *)
   | Var of id

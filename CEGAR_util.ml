@@ -220,7 +220,6 @@ and trans_term post xs env t =
     | Syntax.False -> [], Const False
     | Syntax.Unknown -> assert false
     | Syntax.Int n -> [], Const (Int n)
-    | Syntax.NInt _ -> assert false
     | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Unit}]) ->
         let k = new_id ("k" ^ post) in
           [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
@@ -294,7 +293,6 @@ let rec formula_of t =
     | Syntax.False -> Const False
     | Syntax.Unknown -> assert false
     | Syntax.Int n -> Const (Int n)
-    | Syntax.NInt _ -> assert false
     | Syntax.RandInt false -> raise Not_found
     | Syntax.Var x ->
         let x' = trans_var x in

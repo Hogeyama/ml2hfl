@@ -356,9 +356,6 @@ let rec process_term trace term traces env pcounter =
     | BinOp(_) ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
-    | NInt _ ->
-        let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
-          [MyTerm(term, new_tinfo()), trace, traces]
     | Int _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
@@ -1354,8 +1351,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
             try
               let aux t ts =
                 match t.desc with
-                    (BinOp(Eq, t, {desc=Var(id)}))
-                  | (BinOp(Eq, t, {desc=NInt(id)})) ->
+                    (BinOp(Eq, t, {desc=Var(id)})) ->
                       List.mem id (ids' @ Utilities.rev_map_flatten get_fv2 (t::ts))
                   | _ -> true
               in
