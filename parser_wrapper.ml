@@ -37,14 +37,31 @@ let conv_primitive_var x =
   match Id.name x with
       "Pervasives.stdin" -> unit_term
     | _ -> make_var x
+
+let check_polymorphic_comparison = function
+    TUnit | TBool | TInt -> ()
+  | _ -> raise (Fatal "Unsupported: polymorphic comparison")
+
 let conv_primitive_app t ts typ =
   match t.desc,ts with
-      Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
-    | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
-    | Var {Id.name="Pervasives.<"}, [t1;t2] -> make_lt t1 t2
-    | Var {Id.name="Pervasives.>"}, [t1;t2] -> make_gt t1 t2
-    | Var {Id.name="Pervasives.<="}, [t1;t2] -> make_leq t1 t2
-    | Var {Id.name="Pervasives.>="}, [t1;t2] -> make_geq t1 t2
+      Var {Id.name="Pervasives.="}, [t1;t2] ->
+        check_polymorphic_comparison t1.typ;
+        make_eq t1 t2
+    | Var {Id.name="Pervasives.<>"}, [t1;t2] ->
+        check_polymorphic_comparison t1.typ;
+        make_neq t1 t2
+    | Var {Id.name="Pervasives.<"}, [t1;t2] ->
+        check_polymorphic_comparison t1.typ;
+        make_lt t1 t2
+    | Var {Id.name="Pervasives.>"}, [t1;t2] ->
+        check_polymorphic_comparison t1.typ;
+        make_gt t1 t2
+    | Var {Id.name="Pervasives.<="}, [t1;t2] ->
+        check_polymorphic_comparison t1.typ;
+        make_leq t1 t2
+    | Var {Id.name="Pervasives.>="}, [t1;t2] ->
+        check_polymorphic_comparison t1.typ;
+        make_geq t1 t2
     | Var {Id.name="Pervasives.&&"}, [t1;t2] -> make_and t1 t2
     | Var {Id.name="Pervasives.||"}, [t1;t2] -> make_or t1 t2
     | Var {Id.name="Pervasives.+"}, [t1;t2] -> make_add t1 t2

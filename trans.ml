@@ -557,7 +557,11 @@ let set_target t =
           let rec aux = function
               TInt _ -> make_app randint_term [unit_term]
             | TUnit -> unit_term
-            | TVar{contents=None} -> raise (Fatal ("Polymorphic types occur"))
+            | TVar({contents=None} as r) ->
+                Format.printf "Warning: the input of the function is assumed to be a unit@.";
+                r := Some TUnit;
+                unit_term
+                (*raise (Fatal ("Polymorphic types occur! (Trans.set_target)"))*)
             | TVar{contents=Some typ} -> aux typ
             | typ -> raise (Fatal ("Not implemented: RandValue"))(* {desc=RandValue(typ, false); typ=typ}*)
           in
