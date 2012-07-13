@@ -604,7 +604,7 @@ let make_fst t =
     match elim_tpred t.typ with
         TPair(typ,_) -> typ
       | typ when typ = typ_unknown -> typ_unknown
-      | _ -> assert false
+      | typ -> Format.printf "make_fst: %a@." print_typ typ; assert false
   in
     {desc=Fst t; typ=typ}
 let make_snd t =
@@ -612,7 +612,7 @@ let make_snd t =
     match elim_tpred t.typ with
         TPair(_,typ) -> typ
       | typ when typ = typ_unknown -> typ_unknown
-      | typ -> assert false
+      | typ -> Format.printf "make_snd: %a@." print_typ typ; assert false
   in
     {desc=Snd t; typ=typ}
 let make_pair t1 t2 = {desc=Pair(t1,t2); typ=TPair(t1.typ,t2.typ)}

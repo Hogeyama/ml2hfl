@@ -372,7 +372,6 @@ and typ_cps =
     TBaseCPS of Syntax.typ
   | TFunCPS of effect_var * typ_cps * typ_cps
   | TPairCPS of typ_cps * typ_cps
-  | TPredCPS of typ_cps * Syntax.typed_term list
 and effect = EUnkown (* for debug *) | ENone | ECont | EExcepHandler
 and effect_var = int
 and effect_constr =
@@ -398,8 +397,6 @@ let rec print_typ_cps' fm = function
       Format.fprintf fm "(%a -e%d-> %a)" print_typ_cps' typ1 e print_typ_cps' typ2
   | TPairCPS(typ1,typ2) ->
       Format.fprintf fm "(%a * %a)" print_typ_cps' typ1 print_typ_cps' typ2
-  | TPredCPS(typ,ps) ->
-      Format.fprintf fm "%a[...])" print_typ_cps' typ
 
 let rec print_typ_cps fm = function
     TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
@@ -414,8 +411,6 @@ let rec print_typ_cps fm = function
   | TFunCPS _ -> assert false
   | TPairCPS(typ1,typ2) ->
       Format.fprintf fm "(%a * %a)" print_typ_cps typ1 print_typ_cps typ2
-  | TPredCPS(typ,ps) ->
-      Format.fprintf fm "%a[...])" print_typ_cps typ
 
 
 and print_typed_termlist fm = List.iter (fun bd -> Format.fprintf fm "@;%a" print_typed_term bd)
@@ -500,8 +495,6 @@ let rec unify typ1 typ2 =
     | TPairCPS(typ11,typ12), TPairCPS(typ21,typ22) ->
         unify typ11 typ21;
         unify typ12 typ22
-    | TPredCPS(typ1,_), typ2
-    | typ1, TPredCPS(typ2,_) -> unify typ1 typ2
     | typ1,typ2 ->
         Format.printf "Bug?@.typ1: %a@.typ2: %a@."
           print_typ_cps typ1 print_typ_cps typ2;
@@ -527,7 +520,7 @@ let rec infer_effect_typ typ =
           (match typ2 with TFun _ -> () | _ -> constraints := CGeq(e, ECont) :: !constraints);
           TFunCPS(e, infer_effect_typ typ1, infer_effect_typ typ2)
     | TPair(typ1,typ2) -> TPairCPS(infer_effect_typ typ1, infer_effect_typ typ2)
-    | TPred(typ,ps) -> TPredCPS(infer_effect_typ typ, ps)
+    | TPred(typ,ps) -> infer_effect_typ typ
     | _ -> Format.printf "%a@." print_typ typ; assert false
 
 let new_var x = {id_cps=x; id_typ=infer_effect_typ (Id.typ x)}
@@ -787,7 +780,6 @@ let rec get_arg_num = function
   | TFunCPS(e,typ1,typ2) when should_insert (!sol e) -> 1
   | TFunCPS(_,typ1,typ2) -> 1 + get_arg_num typ2
   | TPairCPS _ -> assert false
-  | TPredCPS _ -> assert false
 
 
 let rec app_typ typ typs =

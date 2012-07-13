@@ -264,7 +264,7 @@ and trans_term post xs env t =
           | Type.TBool -> EqBool
           | Type.TInt -> EqInt
           | Type.TPred(typ,_) -> aux typ
-          | _ -> assert false
+          | typ -> Format.printf "trans_term: %a@." Syntax.print_typ typ; assert false
         in
         let op = aux t1.Syntax.typ in
           defs1@defs2, make_app (Const op) [t1'; t2']
