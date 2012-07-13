@@ -251,7 +251,7 @@ let rec abstract_term top must env cond pts t typ =
           then [Const Unit]
           else List.map (abst env cond pts) (ps t)
     | App(App(App(Const If, t1), t2), t3) ->
-        let t1' = hd (abstract_term false None env cond pts t1 typ_bool) in
+        let t1' = hd (abstract_term false None env cond pts t1 typ_bool2) in
         let t2' = hd (abstract_term top must env (t1::cond) pts t2 typ) in
         let t3' = hd (abstract_term top must env (make_not t1::cond) pts t3 typ) in
           [make_if t1' t2' t3']

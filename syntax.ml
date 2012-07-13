@@ -140,7 +140,7 @@ and print_term pri typ fm t =
     | Fun(x, t) ->
         let p = 20 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%sfun %a -> %a%s@]" s1 print_id x (print_term p typ) t s2
+          fprintf fm "%s@[<hov 2>fun %a ->@ %a%s@]" s1 print_id x (print_term p typ) t s2
     | App(t, ts) ->
         let p = 80 in
         let s1,s2 = paren pri p in

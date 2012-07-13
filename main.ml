@@ -89,7 +89,7 @@ let rec main_loop parsed =
       let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t' = CPS.remove_pair t in
-      let () = if true && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
+      let () = if false && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
         fun_list, t'
     else Syntax.get_top_funs t, t
   in
@@ -195,6 +195,8 @@ let arg_spec =
             " Expand non-recursive functions except functions in the original program";
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
+   "-bool-init-empty", Arg.Set Flag.bool_init_empty,
+                      " Use an empty set as the initial sets of predicates for booleans"
   ]
 
 

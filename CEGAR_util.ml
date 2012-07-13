@@ -163,7 +163,10 @@ let trans_var x = Id.to_string x
 
 let rec trans_typ = function
     Type.TUnit -> TBase(TUnit, nil)
-  | Type.TBool -> TBase(TBool, fun x -> [x])
+  | Type.TBool ->
+      if !Flag.bool_init_empty
+      then TBase(TBool, nil)
+      else TBase(TBool, fun x -> [x])
   | Type.TAbsBool -> assert false
   | Type.TInt _ -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false
@@ -172,7 +175,11 @@ let rec trans_typ = function
       let ps = match Id.typ x with Type.TPred(_,ps) -> ps | _ -> [] in
       let x' = trans_var x in
       let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term "" [] [] p)) in
-      let typ1 = TBase(TBool, fun z -> z :: List.map (aux z) ps) in
+      let typ1 =
+        if !Flag.bool_init_empty
+        then TBase(TBool, fun z -> List.map (aux z) ps)
+        else TBase(TBool, fun z -> z :: List.map (aux z) ps)
+      in
       let typ2 = trans_typ typ in
         TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun({Id.typ=Type.TInt|Type.TPred(Type.TInt,_)} as x,typ) ->
@@ -250,7 +257,7 @@ and trans_term post xs env t =
         let typ0 = trans_typ t2.Syntax.typ in
         let aux x typ2 = TFun(List.assoc x env, fun y -> subst_typ x y typ2) in
         let typ = List.fold_right aux xs typ0 in
-        let typ' = TFun(typ_bool, fun _ -> typ) in
+        let typ' = TFun(typ_bool(), fun _ -> typ) in
         let def1 = f, typ', x::xs, Var x, [], t2' in
         let def2 = f, typ', x::xs, make_not (Var x), [], t3' in
         let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
@@ -399,7 +406,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as prog) =
             [], [f, xs, t1, [Event s], App(t2', Const Unit)]
         | App(Const (Temp s), t2') ->
             let g = new_id s in
-              [g, TFun(typ_bool,fun _ -> TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit))],
+              [g, TFun(typ_bool(),fun _ -> TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit))],
               (* cannot refute if b is eliminated, because k can have no predicates in current impl. *)
               [g, ["b"; "k"], Const True, [Event s], App(Var "k", Const Unit);
                f, xs, t1, [], App(App(Var g, Const True), t2')]
@@ -488,7 +495,6 @@ let trans_prog t =
   let t = Trans.trans_let t in
   let () = if false then Format.printf "AFTER:@.%a@.@.@." Syntax.pp_print_term t in
   let main = new_id "main" in
-  let () = if true then Format.printf "@.%a@.@.@." Syntax.pp_print_term t in
   let defs,t_main = Trans.lift t in
   let defs_t,t_main' = trans_term "" [] [] t_main in
   let defs' =
@@ -518,20 +524,20 @@ exception TypeBottom
 
 let rec get_const_typ = function
   | Unit _ -> TBase(TUnit, nil)
-  | True _ -> typ_bool
-  | False _ -> typ_bool
+  | True _ -> typ_bool()
+  | False _ -> typ_bool()
   | RandInt _ -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
   | RandBool _ -> TBase(TBool,nil)
-  | And -> TFun(typ_bool, fun x -> TFun(typ_bool, fun y -> typ_bool))
-  | Or -> TFun(typ_bool, fun x -> TFun(typ_bool, fun y -> typ_bool))
-  | Not -> TFun(TBase(TInt,nil), fun x -> typ_bool)
-  | Lt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
-  | Gt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
-  | Leq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
-  | Geq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
-  | EqUnit -> TFun(TBase(TUnit,nil), fun x -> TFun(TBase(TUnit,nil), fun y -> typ_bool))
-  | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool))
-  | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool))
+  | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
+  | Or -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
+  | Not -> TFun(TBase(TInt,nil), fun x -> typ_bool())
+  | Lt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
+  | Gt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
+  | Leq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
+  | Geq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
+  | EqUnit -> TFun(TBase(TUnit,nil), fun x -> TFun(TBase(TUnit,nil), fun y -> typ_bool()))
+  | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool()))
+  | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
   | Add -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_add x y)])))
   | Sub -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_sub x y)])))

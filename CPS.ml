@@ -1096,7 +1096,7 @@ let trans1 t =
       constraints := CGeq(typed.effect, ECont) :: !constraints;
       if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
       sol := solve_constraints !constraints;
-      if true then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
+      if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
       transform typed
   in
   let t = Trans.eta_reduce t in
