@@ -232,11 +232,11 @@ let rec add_type_env env typ =
             | Type_variant stypss ->
                 let typ_name = Path.name path in
                 let kind = Type_decl.TKVariant (List.map (fun (s,typs) -> s, List.map (from_type_expr env) typs) stypss) in
-                  Type_decl.add_type_decl typ_name kind
+                  Type_decl.add_typ_decl typ_name kind
             | Type_record(fields,_) ->
                 let typ_name = Path.name path in
                 let kind = Type_decl.TKRecord(List.map (fun (s,f,typ) -> s,(from_mutable_flag f,from_type_expr env typ)) fields) in
-                  Type_decl.add_type_decl typ_name kind
+                  Type_decl.add_typ_decl typ_name kind
         end
     | Tobject _ -> unsupported "Tobject"
     | Tfield _ -> unsupported "Tfield"

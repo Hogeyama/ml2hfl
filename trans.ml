@@ -2224,12 +2224,11 @@ let rec simplify_match t =
             begin
               match pats'' with
                   [] -> assert false
-                | [{pat_desc=PAny}, cond, t] ->
+                | [{pat_desc=PAny}, cond, t] when cond = true_term ->
                     let x = Id.new_var "u" t1.typ in
                     assert (cond = true_term);
                     (make_let [x, [], t1] t).desc
-                | [{pat_desc=PVar x}, cond, t] ->
-                    assert (cond = true_term);
+                | [{pat_desc=PVar x}, cond, t] when cond = true_term ->
                     (make_let [x, [], t1] t).desc
                 | _ -> Match(simplify_match t1, pats'')
             end

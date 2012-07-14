@@ -90,9 +90,7 @@ let rec check t typ =
     | {desc=Cons(t1,t2); typ=TList typ'} ->
         check t1 typ';
         check t2 typ
-    | {desc=Constr(s,ts)} ->
-        assert (ts = []);
-        assert (Type.can_unify t.typ (get_constr_typ s))
+    | {desc=Constr(s,ts)} -> ()
     | {desc=Match(t,pats); typ=typ'} ->
         let aux (p,cond,t) =
           check cond TBool;

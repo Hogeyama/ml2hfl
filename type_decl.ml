@@ -8,7 +8,6 @@ type kind =
   | TKRecord of (string * (mutable_flag * typ)) list
 
 let typ_decls : (string * kind) list ref = ref []
-let exc_decls : (string * typ list) list ref = ref []
 
 
 let print_kind fm = function
@@ -26,10 +25,9 @@ let print_kind fm = function
         Format.fprintf fm "@[{%a}@]" (print_list aux "; " false) sftyps
 
 let in_typ_decls s = List.mem_assoc s !typ_decls
-let in_exc_decls s = List.mem_assoc s !exc_decls
 
 
-let add_type_decl s k =
+let add_typ_decl s k =
   if not (in_typ_decls s) && s <> "unit" && s <> "bool" && s <> "list"
   then
     begin
@@ -38,21 +36,25 @@ let add_type_decl s k =
     end
 
 let add_exc_decl s typs =
-  if not (in_exc_decls s)
-  then exc_decls := (s,typs)::!exc_decls
-
-
-let get_constr_typ s =
-  if in_exc_decls s
-  then !typ_excep
-  else assert false
-
-
+  if in_typ_decls "exn"
+  then
+    let exc_decls,remains = List.partition (fun (s,_) -> s = "exn") !typ_decls in
+    let exc_decl =
+      match exc_decls with
+          [_, TKVariant stypss] ->
+            let stypss' =
+              if List.exists (fun (s',_) -> s = s') stypss
+              then stypss
+              else (s,typs)::stypss
+            in
+              "exn", TKVariant stypss'
+        | _ -> assert false
+    in
+      typ_decls := exc_decl :: remains
+  else typ_decls := ("exn",TKVariant[s,typs])::!typ_decls
 
 
 let assoc_typ s = List.assoc s !typ_decls
-let assoc_exc s = List.assoc s !exc_decls
-
 
 
 let constr_pos s =
@@ -68,8 +70,6 @@ let constr_pos s =
   in
     search 0 constrs
 
-
-let rec get_exc_typs = uniq' compare (rev_flatten_map snd !exc_decls)
 
 (* Not implemented *)
 let get_mutual_decls s =
