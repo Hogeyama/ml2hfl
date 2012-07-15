@@ -190,6 +190,7 @@ let arg_spec =
 
    "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
+   "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
    "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
             " Expand non-recursive functions except functions in the original program";
