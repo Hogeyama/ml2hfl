@@ -480,11 +480,9 @@ let rec copy_poly_funs t =
                 List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
                 Format.printf "@.";
               end;
-(*
             if map = []
             then Let(flag, [f, xs, copy_poly_funs t1], t2')
             else
-*)
               let aux t (_,f') =
                 let tvar_map = List.map (fun v -> v, ref None) tvars in
                 let () = Type.unify (rename_tvar_typ tvar_map (Id.typ f)) (Id.typ f') in
@@ -1402,36 +1400,20 @@ let rec eta_reduce t =
                   let ts' = List.map eta_reduce (t2::ts) in
                     (make_app t1' ts').desc
           end
-      | If(t1, t2, t3) ->
-          let t1' = eta_reduce t1 in
-          let t2' = eta_reduce t2 in
-          let t3' = eta_reduce t3 in
-            If(t1', t2', t3')
+      | If(t1, t2, t3) -> If(eta_reduce t1, eta_reduce t2, eta_reduce t3)
       | Let(flag,bindings,t) ->
           let bindings' = List.map (fun (f,xs,t) -> f, xs, eta_reduce t) bindings in
-          let t' = eta_reduce t in
-            Let(flag, bindings', t')
-      | BinOp(op, t1, t2) ->
-          let t1' = eta_reduce t1 in
-          let t2' = eta_reduce t2 in
-            BinOp(op, t1', t2')
-      | Not t1 ->
-          let t1' = eta_reduce t1 in
-            Not t1'
+            Let(flag, bindings', eta_reduce t)
+      | BinOp(op, t1, t2) -> BinOp(op, eta_reduce t1, eta_reduce t2)
+      | Not t1 -> Not (eta_reduce t1)
       | Event(s,b) -> Event(s,b)
-      | Pair(t1,t2) ->
-          let t1' = eta_reduce t1 in
-          let t2' = eta_reduce t2 in
-            Pair(t1', t2')
-      | Fst t1 ->
-          let t1' = eta_reduce t1 in
-            Fst t1'
-      | Snd t1 ->
-          let t1' = eta_reduce t1 in
-            Snd t1'
+      | Pair(t1,t2) -> Pair(eta_reduce t1, eta_reduce t2)
+      | Fst t1 -> Fst (eta_reduce t1)
+      | Snd t1 -> Snd (eta_reduce t1)
       | Bottom -> Bottom
       | _ -> Format.printf "%a@." pp_print_term t; assert false
   in
+    if false then Format.printf "%a ===> %a@." pp_print_term t pp_print_term {desc=desc; typ=t.typ};
     {desc=desc; typ=t.typ}
 
 
@@ -2154,6 +2136,10 @@ let rec expand_let_val t =
       | App(t1, ts) -> App(expand_let_val t1, List.map expand_let_val ts)
       | If(t1, t2, t3) -> If(expand_let_val t1, expand_let_val t2, expand_let_val t3)
       | Branch(t1, t2) -> Branch(expand_let_val t1, expand_let_val t2)
+      | Let(Recursive, bindings, t2) ->
+          let bindings' = List.map (fun (f,xs,t) -> f, xs, expand_let_val t) bindings in
+          let t2' = expand_let_val t2 in
+            Let(Recursive, bindings', t2')
       | Let(flag, bindings, t2) ->
           let bindings' = List.map (fun (f,xs,t) -> f, xs, expand_let_val t) bindings in
           let t2' = expand_let_val t2 in

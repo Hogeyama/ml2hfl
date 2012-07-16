@@ -104,7 +104,7 @@ and print_ids_typ fm = function
    40 : And
    50 : Eq, Lt, Gt, Leq, Geq
    60 : Add, Sub
-   70 : Cons
+   70 : Cons, Raise
    80 : App
 *)
 
@@ -137,7 +137,7 @@ and print_term pri typ fm t =
     | Var x -> print_id fm x
     | Fun(x, t) ->
         let p = 20 in
-        let s1,s2 = paren pri p in
+        let s1,s2 = paren pri (p+1) in
           fprintf fm "%s@[<hov 2>fun %a ->@ %a%s@]" s1 print_id x (print_term p typ) t s2
     | App(t, ts) ->
         let p = 80 in
@@ -227,9 +227,9 @@ and print_term pri typ fm t =
           List.iter aux pats;
           fprintf fm "@]%s" s2
     | Raise t ->
-        let p = 40 in
+        let p = 70 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%sraise %a%s@]" s1 (print_term 1 typ) t s2
+          fprintf fm "@[%sraise %a%s@]" s1 (print_term p typ) t s2
     | TryWith(t1,t2) ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
@@ -462,7 +462,6 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 
 (*** TERM CONSTRUCTORS ***)
 
-let typ_unknown = TConstr("???", false)
 let typ_event = TFun(Id.new_var "" TUnit, TUnit)
 let typ_event_cps =
   let u = Id.new_var "" TUnit in
@@ -1213,6 +1212,8 @@ let rec merge_typ typ1 typ2 =
 
 let make_if t1 t2 t3 =
   assert (not Flag.check_typ || Type.can_unify t1.typ TBool);
+  if Flag.check_typ && not (Type.can_unify t2.typ t3.typ)
+  then Format.printf "%a <=/=> %a@." print_typ t2.typ print_typ t3.typ;
   assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
   match t1.desc with
       True -> t2

@@ -16,6 +16,8 @@ type 'a t =
 (*| TLabel of 'a t Id.t * 'a t*)
 
 
+let typ_unknown = TConstr("???", false)
+
 
 let rec is_base_typ = function
     TUnit
@@ -60,6 +62,7 @@ let rec can_unify typ1 typ2 =
 *)
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
+    | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
     | _ -> false
 
 

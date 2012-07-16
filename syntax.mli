@@ -71,7 +71,6 @@ val abst_var_int : id
 val abst_var_bool : id
 val length_var : id
 
-val typ_unknown : typ
 val typ_event : typ
 val typ_event_cps : typ
 val typ_excep : typ ref

@@ -131,7 +131,10 @@ let rec make_arg_let t =
       | Syntax.App(t, ts) ->
           let f = Id.new_var "f__" (t.Syntax.typ) in
           let xts = List.map (fun t -> Id.new_var "x" (t.Syntax.typ), t) ts in
-          let t' = {Syntax.desc=Syntax.App(Syntax.make_var f, List.map (fun (x,_) -> Syntax.make_var x) xts); Syntax.typ=Syntax.typ_unknown} in
+          let t' =
+            {Syntax.desc=Syntax.App(Syntax.make_var f, List.map (fun (x,_) -> Syntax.make_var x) xts);
+             Syntax.typ=Type.typ_unknown}
+          in
             (List.fold_left (fun t2 (x,t1) -> Syntax.make_let [x,[],t1] t2) t' ((f,t)::xts)).Syntax.desc
       | Syntax.If(t1, t2, t3) ->
           let t1' = make_arg_let t1 in

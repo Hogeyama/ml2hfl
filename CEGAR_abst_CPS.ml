@@ -163,7 +163,11 @@ let rec eta_expand_term_aux env t typ =
         let x = new_id "x" in
         let typ2 = typ2 (Var x) in
         let env' = (x,typ1)::env in
-        let typ1' = match get_typ env' t with TFun(typ,_) -> typ | _ -> assert false in
+        let typ1' =
+          match get_typ env' t with
+              TFun(typ,_) -> typ
+            | typ -> Format.printf "%a: %a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
+        in
         let t' = App(t, eta_expand_term_aux env' (Var x) typ1') in
           Fun(x, Some typ1, eta_expand_term_aux env' t' typ2)
     | _ -> assert false

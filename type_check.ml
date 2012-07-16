@@ -3,7 +3,7 @@ open Syntax
 open Type
 open Type_decl
 
-let var = Id.make (-1) "" typ_unknown
+let var = Id.make (-1) "" (typ_unknown:typ)
 
 let check_var x typ =
   if Type.can_unify (Id.typ x) typ
@@ -90,7 +90,10 @@ let rec check t typ =
     | {desc=Cons(t1,t2); typ=TList typ'} ->
         check t1 typ';
         check t2 typ
-    | {desc=Constr(s,ts)} -> ()
+    | {desc=Constr(s,ts)} ->
+        let typs = Type_decl.constr_arg_typs s in
+          assert (List.length typs = List.length ts);
+          List.iter2 check ts typs
     | {desc=Match(t,pats); typ=typ'} ->
         let aux (p,cond,t) =
           check cond TBool;

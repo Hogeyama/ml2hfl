@@ -57,6 +57,18 @@ let add_exc_decl s typs =
 let assoc_typ s = List.assoc s !typ_decls
 
 
+let constr_arg_typs s =
+  let rec search = function
+      [] -> Format.printf "Not found: constructor %s@." s; assert false
+    | (_, TKRecord _)::kinds -> search kinds
+    | (_, TKVariant stypss)::kinds ->
+        try
+          List.assoc s stypss
+        with Not_found -> search kinds
+  in
+    search !typ_decls
+
+
 let constr_pos s =
   let aux = function
       _, TKVariant stypss -> List.map fst stypss
