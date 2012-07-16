@@ -1065,7 +1065,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
         let h = Id.new_var "h" (TFun(e,TUnit)) in
         let t1' = transform k_post t1 in
         let t2' = transform k_post t2 in
-          assert (!sol t2.effect = ENone);
+          assert (!sol t2.effect = ENone); (* bind h' to h when eliminating this assertion *)
           make_fun k
             (make_fun h
                (make_app_excep t1.effect t1'

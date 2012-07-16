@@ -142,11 +142,11 @@ and print_term pri typ fm t =
     | App(t, ts) ->
         let p = 80 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%s%a%a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
+          fprintf fm "@[<hov 2>%s%a%a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
     | If(t1, t2, t3) ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
-          fprintf fm "@[%s@[@[if %a@]@;then @[%a@]@;else @[%a@]@]%s@]"
+          fprintf fm "%s@[if@ %a@;@[<hov 2>then@ %a@]@;@[<hov 2>else@ %a@]@]%s"
             s1 (print_term p typ) t1 (print_term p typ) t2 (print_term p typ) t3 s2
     | Branch(t1, t2) ->
         let p = 80 in
@@ -179,11 +179,11 @@ and print_term pri typ fm t =
     | BinOp(op, t1, t2) ->
         let p = match op with Add|Sub|Mult -> 60 | And -> 40 | Or -> 30 | _ -> 50 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%s%a %a %a%s@]" s1 (print_term p typ) t1 print_binop op (print_term p typ) t2 s2
+          fprintf fm "%s@[%a@ %a@ %a@]%s" s1 (print_term p typ) t1 print_binop op (print_term p typ) t2 s2
     | Not t ->
         let p = 60 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%snot %a%s@]" s1 (print_term p typ) t s2
+          fprintf fm "%s@[not %a@]%s" s1 (print_term p typ) t s2
     | Event(s,false) -> fprintf fm "{%s}" s
     | Event(s,true) -> fprintf fm "{|%s|}" s
     | Record fields ->
@@ -201,19 +201,13 @@ and print_term pri typ fm t =
     | Cons(t1,t2) ->
         let p = 70 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%s%a::@,%a%s@]" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+          fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
     | Constr(s,ts) ->
         let p = 80 in
         let s1,s2 = paren pri p in
-        let aux fm = function
-            [] -> ()
-          | [t] -> fprintf fm "(%a)" (print_term 1 typ) t
-          | t::ts ->
-              fprintf fm "(%a" (print_term 1 typ) t;
-              List.iter (fun t -> fprintf fm ",%a" (print_term 1 typ) t) ts;
-              pp_print_string fm ")"
-        in
-          fprintf fm "@[%s%s%a%s@]" s1 s aux ts s2
+          if ts = []
+          then pp_print_string fm s
+          else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (print_term 20 typ) "," false) ts s2
     | Match(t,pats) ->
         let p = 10 in
         let s1,s2 = paren pri p in
@@ -229,21 +223,22 @@ and print_term pri typ fm t =
     | Raise t ->
         let p = 70 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%sraise %a%s@]" s1 (print_term p typ) t s2
+          fprintf fm "%s@[raise %a@]%s" s1 (print_term p typ) t s2
     | TryWith(t1,t2) ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
-          fprintf fm "@[%stry %a with@;%a%s@]" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+          fprintf fm "%s@[try %a with@;%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
     | Pair(t1,t2) ->
-        fprintf fm "@[(%a,%a)@]" (print_term 2 typ) t1 (print_term 2 typ) t2
+        let p = 20 in
+          fprintf fm "@[(%a,@;%a)@]" (print_term p typ) t1 (print_term p typ) t2
     | Fst t ->
         let p = 80 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%sfst %a%s@]" s1 (print_term p typ) t s2
+          fprintf fm "%s@[fst %a@]%s" s1 (print_term p typ) t s2
     | Snd t ->
         let p = 80 in
         let s1,s2 = paren pri p in
-          fprintf fm "@[%ssnd %a%s@]" s1 (print_term p typ) t s2
+          fprintf fm "%s@[snd %a@]%s" s1 (print_term p typ) t s2
     | Bottom -> fprintf fm "_|_"
 
 and print_pattern fm pat =
@@ -508,7 +503,9 @@ let rec make_app t ts =
               assert false);
         make_app {desc=App(t,[t2]); typ=typ} ts
     | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
-    | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=typ_unknown}; assert false
+    | _ ->
+        Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=typ_unknown};
+        assert false
 let make_lets bindings t2 =
   List.fold_right
     (fun binding t2 ->

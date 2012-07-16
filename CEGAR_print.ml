@@ -115,7 +115,8 @@ and print_term fm = function
         Format.fprintf fm "(@[<hov 1>%a%a@])" print_term t pr ts
   | Let(x,t1,t2) ->
       let xs,t1 = decomp_fun t1 in
-        Format.fprintf fm "(let %a %a@ =@ %a@ in@ %a)" print_var x (print_list print_var " " false) xs print_term t1 print_term t2
+        Format.fprintf fm "(@[let %a %a@ =@ %a@ in@ %a@])"
+          print_var x (print_list print_var " " false) xs print_term t1 print_term t2
   | Fun _ as t ->
       let env,t' = decomp_annot_fun t in
       let pr fm (x,typ) =
