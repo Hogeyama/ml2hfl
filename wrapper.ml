@@ -205,7 +205,7 @@ let check pre p =
     (**)
   let fm = Format.formatter_of_out_channel cout in
     (**)
-  let fv = uniq' Id.compare (get_fv2 p @@ List.flatten (List.rev_map get_fv2 pre)) in
+  let fv = uniq' Id.compare (get_fv p @@ List.flatten (List.rev_map get_fv pre)) in
   let types = List.fold_left (fun str x -> str ^ env_of_id x) "" fv in
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term p ^ ";" in
@@ -232,7 +232,7 @@ let checksat p =
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
 
-  let fv = uniq' Id.compare (get_fv2 p) in
+  let fv = uniq' Id.compare (get_fv p) in
 (*
   let env = List.map (fun v -> Typing.new_var v) fv in
   let p, _  = Typing.infer env p in
@@ -277,7 +277,7 @@ let get_solution p t =
 
 
   let fm = Format.formatter_of_out_channel cout in
-  let fv = uniq' compare (get_fv2 p) in
+  let fv = uniq' compare (get_fv p) in
 
   let types = List.fold_left (fun str x -> str ^ env_of_id x) "" fv in
   let query = "CHECKSAT " ^ string_of_term p ^ "; COUNTERMODEL;" in
@@ -539,7 +539,7 @@ let interpolation ts1 ts2 =
   let () = if Flag.debug && Flag.print_interpolant then Format.printf "  t2: %s@." (CsisatAstUtil.print_pred t2) in
 
   let fv =
-    let aux acc = List.fold_left (fun acc t -> uniq (acc @@ get_fv2 t)) acc in
+    let aux acc = List.fold_left (fun acc t -> uniq (acc @@ get_fv t)) acc in
       aux (aux [] ts1) ts2
   in
   let env = List.combine fv fv in

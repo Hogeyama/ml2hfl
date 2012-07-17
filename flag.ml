@@ -20,7 +20,7 @@ let trecs_param2 = ref 10
 
 (* debug option *)
 let check_fun_arg_typ = false
-let check_typ = false
+let check_typ = true
 
 (* method option *)
 let wp_max_num = ref 3

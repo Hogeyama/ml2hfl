@@ -532,6 +532,56 @@ let copy_poly_funs t =
 
 
 
+let rec inst_randvalue env defs typ =
+  match typ with
+      _ when List.mem_assoc typ env ->
+        env, defs, make_app (make_var (List.assoc typ env)) [unit_term]
+    | TUnit -> env, defs, unit_term
+    | TBool -> env, defs, randbool_unit_term
+    | TInt -> env, defs, randint_unit_term
+    | TVar({contents=None} as r) -> r := Some typ_abst; inst_randvalue env defs typ_abst
+    | TVar{contents=Some typ} -> inst_randvalue env defs typ
+    | TList typ' ->
+        let u = Id.new_var "u" TUnit in
+        let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
+        let env' = (typ,f)::env in
+        let env'',defs',t_typ' = inst_randvalue env' defs typ' in
+        let t_typ =
+          make_if randbool_unit_term (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term]))
+        in
+          env'', (f,[u],t_typ)::defs', make_app (make_var f) [unit_term]
+    | TPair(typ1,typ2) ->
+        let env',defs',t1 = inst_randvalue env defs typ1 in
+        let env'',defs'',t2 = inst_randvalue env' defs' typ2 in
+          env'', defs'', make_pair t1 t2
+    | TConstr(s,false) -> env, defs, abst_term
+    | TConstr(s,true) ->
+        let u = Id.new_var "u" TUnit in
+        let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
+        let env' = (typ,f)::env in
+        let env'',defs',t =
+          match Type_decl.assoc_typ s with
+              Type_decl.TKVariant stypss ->
+                let n = List.length stypss in
+                let aux1 (s,typs) (env,defs,itss,i) =
+                  let aux2 typ (env,defs,ts) =
+                    let env', defs',t = inst_randvalue env defs typ in
+                      env', defs', t::ts
+                  in
+                  let env',defs',ts' = List.fold_right aux2 typs (env,defs,[]) in
+                    env', defs', (i-1,ts')::itss, i-1
+                in
+                let env'',defs',itss,_ = List.fold_right aux1 stypss (env',defs,[],n) in
+                let aux (s,typs) (i,ts) =
+                  let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
+                    p, true_term, {desc=Constr(s,ts); typ=typ}
+                in
+                  env'', defs', make_match randint_unit_term (List.map2 aux stypss itss)
+            | Type_decl.TKRecord sftyps -> raise (Fatal "Not implemented: inst_randvalue(TKRecord)")
+        in
+          env'', (f,[u],t)::defs', make_app (make_var f) [unit_term]
+    | _ -> Format.printf "inst_randvalue: %a@." print_typ typ; assert false
+
 
 let set_target t =
   let rec get_last_definition f t =
@@ -553,24 +603,16 @@ let set_target t =
     match xs, Id.typ f with
         [], TUnit -> replace_main (make_var f) t
       | _ ->
-          let rec aux = function
-              TInt _ -> make_app randint_term [unit_term]
-            | TUnit -> unit_term
-            | TVar({contents=None} as r) ->
-                Format.printf "Warning: the input of the function is assumed to be a unit@.";
-                r := Some TUnit;
-                unit_term
-                (*raise (Fatal ("Polymorphic types occur! (Trans.set_target)"))*)
-            | TVar{contents=Some typ} -> aux typ
-            | typ -> raise (Fatal ("Not implemented: RandValue"))(* {desc=RandValue(typ, false); typ=typ}*)
+          let rec aux x (env,defs,args) =
+            let env',defs',arg = inst_randvalue [] defs (Id.typ x) in
+              env',defs', arg::args
           in
-          let args = List.map (fun x -> aux (Id.typ x)) xs in
+          let _,defs,args = List.fold_right aux xs ([],[],[]) in
           let main = make_app {desc=Var f;typ=Id.typ f} args in
-          let main' =
-            let u = Id.new_var "main" main.typ in
-              make_let [u, [], main] unit_term
-          in
-            replace_main main' t
+          let u = Id.new_var "main" main.typ in
+          let main' = make_let [u, [], main] unit_term in
+          let main'' = make_letrec defs main' in
+            replace_main main'' t
 
 
 

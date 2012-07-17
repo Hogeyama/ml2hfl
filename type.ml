@@ -66,57 +66,26 @@ let rec can_unify typ1 typ2 =
     | _ -> false
 
 
-let rec print print_pred fm typ =
-  let print = print print_pred in
-  let print_preds = print_preds print_pred in
+let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
+  let print' = print ~occur print_pred in
+  let print_preds = print_list print_pred ";" false in
     match typ with
         TUnit -> Format.fprintf fm "unit"
       | TAbsBool -> Format.fprintf fm "abool"
       | TBool -> Format.fprintf fm "bool"
       | TInt -> Format.fprintf fm "int"
       | TRInt p -> assert false (*Format.fprintf fm "{ %a | %a }" Id.print abst_var print_preds [p]*)
-      | TVar{contents=Some typ} -> print fm typ
+      | TVar{contents=Some typ} -> print' fm typ
       | TVar _ -> Format.fprintf fm "!!!"
       | TFun(x, typ) ->
-          if Id.to_string x = ""
-          then Format.fprintf fm "(@[%a@ ->@ %a@])" print (Id.typ x) print typ
-          else Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print (Id.typ x) print typ
-      | TList typ -> Format.fprintf fm "@[%a list@]" print typ
-      | TPred(TList typ, ps) -> Format.fprintf fm "@[%a list[%a]@]" print typ print_preds ps
-      | TPair(typ1,typ2) -> Format.fprintf fm "(@[%a@ *@ %a@])" print typ1 print typ2
-(*
-      | TVariant ctypss ->
-          let rec aux fm = function
-              [] -> ()
-            | (c,typs)::ctypss ->
-                let rec aux' fm = function
-                    [] -> ()
-                  | [typ] -> print fm typ
-                  | typ::typs -> Format.fprintf fm "%a * %a" print typ aux' typs
-                in
-                let s_of = if typs = [] then "" else " of " in
-                let bar = if ctypss = [] then "" else " | " in
-                  Format.fprintf fm "%s%s%a%s%a" c s_of aux' typs bar aux ctypss
-          in
-            aux fm ctypss
-      | TRecord(b,typs) ->
-          let rec aux fm = function
-              [] -> ()
-            | (s,(f,typ))::fields ->
-                match is_int s, fields=[] with
-                    true,true -> Format.fprintf fm "%a" print typ
-                  | true,false -> Format.fprintf fm "%a * %a" print typ aux fields
-                  | false,true -> Format.fprintf fm "%s:%a" s print typ
-                  | false,false -> Format.fprintf fm "%s:%a; %a" s print typ aux fields
-          in
-            if b
-            then Format.fprintf fm "(%a)" aux typs
-            else Format.fprintf fm "{%a}" aux typs
-*)
+          if Id.to_string x = "" || not (occur x typ)
+          then Format.fprintf fm "(@[%a@ ->@ %a@])" print' (Id.typ x) print' typ
+          else Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print' (Id.typ x) print' typ
+      | TList typ -> Format.fprintf fm "@[%a list@]" print' typ
+      | TPred(TList typ, ps) -> Format.fprintf fm "@[%a list[%a]@]" print' typ print_preds ps
+      | TPair(typ1,typ2) -> Format.fprintf fm "(@[%a@ *@ %a@])" print' typ1 print' typ2
       | TConstr(s,_) -> Format.pp_print_string fm s
-      | TPred(typ,ps) -> Format.fprintf fm "%a[%a]" print typ print_preds ps
-
-and print_preds print_pred = print_list print_pred ";" false
+      | TPred(typ,ps) -> Format.fprintf fm "%a[%a]" print' typ print_preds ps
 
 
 let print_typ_init typ = print (fun _ -> assert false) typ
@@ -241,3 +210,17 @@ let rec has_pred = function
   | TPair(typ1,typ2) -> has_pred typ1 || has_pred typ2
   | TConstr _ -> false
   | TPred(typ,ps) -> has_pred typ || ps <> []
+
+let rec to_id_string = function
+    TUnit -> "unit"
+  | TBool -> "bool"
+  | TAbsBool _ -> assert false
+  | TInt -> "int"
+  | TRInt _ -> assert false
+  | TVar{contents=None} -> assert false
+  | TVar{contents=Some typ} -> to_id_string typ
+  | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
+  | TList typ -> to_id_string typ ^ "_list"
+  | TPair(typ1,typ2) -> to_id_string typ1 ^ "__" ^ to_id_string typ2
+  | TConstr(s,_) -> s
+  | TPred(typ,_) -> to_id_string typ

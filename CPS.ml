@@ -392,8 +392,9 @@ let rec infer_effect env t =
         let env' = (Id.to_string x, x_typ) :: env in
         let typed = infer_effect env' t1 in
         let typ' = infer_effect_typ t.typ in
-        let e,r_typ = match typ' with TFunCPS(e,_,typ) -> e,typ | _ -> assert false in
+        let e,a_typ,r_typ = match typ' with TFunCPS(e,typ1,typ2) -> e,typ1,typ2 | _ -> assert false in
           constraints := CGeqVar(e, typed.effect) :: !constraints;
+          unify a_typ x_typ;
           unify r_typ typed.typ_cps;
           {t_cps=FunCPS(x',typed); typ_cps=typ'; typ_orig=t.typ; effect=new_evar()}
     | App(t1, []) -> assert false
@@ -436,6 +437,7 @@ let rec infer_effect env t =
                 Nonrecursive -> ()
               | Recursive -> lift_letrec_typ typed
           in
+            Format.printf "f'.id_typ: %a@.typed.typ_cps: %a@.@." print_typ_cps f'.id_typ print_typ_cps typed.typ_cps;
             unify f'.id_typ typed.typ_cps;
             f', typed
         in
@@ -1147,9 +1149,9 @@ let trans t =
     let () = counter := 0 in
     let () = constraints := [] in
     let typed = infer_effect [] t in
-      if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
+      if true then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
       sol := solve_constraints !constraints;
-      if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
+      if true then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
       let x = Id.new_var "x" TUnit in
       let t = transform "" typed in
       let e = Id.new_var "e" !typ_excep in

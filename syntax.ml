@@ -77,9 +77,69 @@ exception Infeasible
 type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 
+
+
+
+let rec get_fv vars t =
+  match t.desc with
+      Unit -> []
+    | True -> []
+    | False -> []
+    | Unknown -> []
+    | Int n -> []
+    | RandInt _ -> []
+    | Var x -> if List.mem x vars then [] else [x]
+    | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
+    | If(t1, t2, t3) -> get_fv vars t1 @@ get_fv vars t2 @@ get_fv vars t3
+    | Branch(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Let(flag, bindings, t2) ->
+        let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
+        let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
+        let aux fv (_,xs,t) = get_fv (xs@@vars') t @@ fv in
+        let fv_t2 = get_fv vars_with_fun t2 in
+          List.fold_left aux fv_t2 bindings
+    | BinOp(op, t1, t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Not t -> get_fv vars t
+    | Fun(x,t) -> get_fv (x::vars) t
+    | Event(s,_) -> []
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@ acc) [] fields
+    | Proj(_,_,_,t) -> get_fv vars t
+    | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Nil -> []
+    | Cons(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@ acc) [] ts
+    | Match(t,pats) ->
+        let aux acc (_,_,t) = get_fv vars(* no need to update? *) t @@ acc in
+          List.fold_left aux (get_fv vars t) pats
+    | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Bottom -> []
+    | Pair(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Fst t -> get_fv vars t
+    | Snd t -> get_fv vars t
+    | Raise t -> get_fv vars t
+    | RandValue _ -> assert false
+let get_fv t = uniq (get_fv [] t)
+
+
+let rec occur (x:id) = function
+      TUnit -> false
+    | TBool -> false
+    | TAbsBool -> false
+    | TInt -> false
+    | TRInt p -> assert false
+    | TVar{contents=None} -> false
+    | TVar{contents=Some typ} -> occur x typ
+    | TFun(y,typ) -> occur x (Id.typ y) || occur x typ
+    | TList typ -> occur x typ
+    | TPair(typ1,typ2) -> occur x typ1 || occur x typ2
+    | TConstr(s,b) -> false
+    | TPred(typ,ps) -> List.exists (fun p -> List.mem x (get_fv p)) ps || occur x typ
+
+
+
 (*** PRINTING FUNCTIONS ***)
 
-let rec print_typ t = Type.print (print_term 0 false) t
+let rec print_typ t = Type.print ~occur (print_term 0 false) t
 and print_ids fm = function
     [] -> ()
   | x::xs -> fprintf fm "%a %a" Id.print x print_ids xs
@@ -122,7 +182,7 @@ and print_binop fm = function
   | Sub -> fprintf fm "-"
   | Mult -> fprintf fm "*"
 
-and print_termlist pri typ fm = List.iter (fun bd -> fprintf fm "@;%a" (print_term pri typ) bd)
+and print_termlist pri typ fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term pri typ) bd)
 and print_term pri typ fm t =
   match t.desc with
       Unit -> fprintf fm "()"
@@ -146,7 +206,7 @@ and print_term pri typ fm t =
     | If(t1, t2, t3) ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
-          fprintf fm "%s@[if@ %a@;@[<hov 2>then@ %a@]@;@[<hov 2>else@ %a@]@]%s"
+          fprintf fm "%s@[if@ %a@ @[<hov 2>then@ %a@]@ @[<hov 2>else@ %a@]@]%s"
             s1 (print_term p typ) t1 (print_term p typ) t2 (print_term p typ) t3 s2
     | Branch(t1, t2) ->
         let p = 80 in
@@ -212,12 +272,12 @@ and print_term pri typ fm t =
         let p = 10 in
         let s1,s2 = paren pri p in
         let aux = function
-            (pat,{desc=True},t) -> fprintf fm "@[<hov 4>| @[<hov 2>%a ->@;%a@]@]@;"
+            (pat,{desc=True},t) -> fprintf fm "@ @[<hov 4>| @[<hov 2>%a ->@ %a@]@]"
               print_pattern pat (print_term p typ) t
-          | (pat,cond,t) -> fprintf fm "@[<hov 4>| @[<hov 2>%a @[<hov 2>when@ %a@] ->@;%a@]@]@;"
+          | (pat,cond,t) -> fprintf fm "@ @[<hov 4>| @[<hov 2>%a @[<hov 2>when@ %a@] ->@ %a@]@]"
               print_pattern pat (print_term p typ) cond (print_term p typ) t
         in
-          fprintf fm "%s@[<hov 2>match @[%a@] with@;" s1 (print_term p typ) t;
+          fprintf fm "%s@[<v 2>match @[%a@] with" s1 (print_term p typ) t;
           List.iter aux pats;
           fprintf fm "@]%s" s2
     | Raise t ->
@@ -227,10 +287,10 @@ and print_term pri typ fm t =
     | TryWith(t1,t2) ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
-          fprintf fm "%s@[try %a with@;%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+          fprintf fm "%s@[try %a with@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
     | Pair(t1,t2) ->
         let p = 20 in
-          fprintf fm "@[(%a,@;%a)@]" (print_term p typ) t1 (print_term p typ) t2
+          fprintf fm "@[(%a,@ %a)@]" (print_term p typ) t1 (print_term p typ) t2
     | Fst t ->
         let p = 80 in
         let s1,s2 = paren pri p in
@@ -303,7 +363,7 @@ let rec print_term' pri fm t =
       | If(t1, t2, t3) ->
           let p = 1 in
           let s1,s2 = paren pri (p+1) in
-            fprintf fm "%s@[@[if %a@]@;then @[%a@]@;else @[%a@]@]%s"
+            fprintf fm "%s@[@[if %a@]@ then @[%a@]@ else @[%a@]@]%s"
               s1 (print_term' p) t1 (print_term' p) t2 (print_term' p) t3 s2
       | Branch(t1, t2) ->
           let p = 8 in
@@ -318,9 +378,9 @@ let rec print_term' pri fm t =
           in
             begin
               match t2.desc with
-                  Let _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a@]@;in@;%a@]%s"
+                  Let _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a@]@ in@ %a@]%s"
                     s1 s_rec p_ids () (print_term' p) t1 (print_term' p) t2 s2
-                | _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a @]@;@[<v 2>in@;@]@[<hov>%a@]@]%s"
+                | _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a @]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
                     s1 s_rec p_ids () (print_term' p) t1 (print_term' p) t2 s2
             end
       | Let _ -> assert false
@@ -365,11 +425,11 @@ let rec print_term' pri fm t =
           let p = 1 in
           let s1,s2 = paren pri (p+1) in
           let aux = function
-              (pat,{desc=True},t) -> fprintf fm "%a -> %a@;" print_pattern' pat (print_term' p) t
-            | (pat,cond,t) -> fprintf fm "%a when %a -> %a@;"
+              (pat,{desc=True},t) -> fprintf fm "%a -> %a@ " print_pattern' pat (print_term' p) t
+            | (pat,cond,t) -> fprintf fm "%a when %a -> %a@ "
                 print_pattern' pat (print_term' p) cond (print_term' p) t
           in
-            fprintf fm "%smatch %a with@;" s1 (print_term' p) t;
+            fprintf fm "%smatch %a with@ " s1 (print_term' p) t;
             List.iter aux pats;
             pp_print_string fm s2
       | Raise t ->
@@ -379,7 +439,7 @@ let rec print_term' pri fm t =
       | TryWith(t1,t2) ->
           let p = 1 in
           let s1,s2 = paren pri (p+1) in
-            fprintf fm "%stry %a with@;%a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
+            fprintf fm "%stry %a with@ %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
       | Pair(t1,t2) ->
           fprintf fm "(%a,%a)" (print_term' 2) t1 (print_term' 2) t2
       | Fst t ->
@@ -426,7 +486,7 @@ and print_pattern' fm pat =
   in
     fprintf fm "| %a" aux pat
 
-and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@;%a" (print_term' pri) bd)
+and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term' pri) bd)
 let print_term' fm = print_term' 0 fm
 let pp_print_term' = print_term'
 
@@ -441,7 +501,7 @@ let string_of_node = function
 let print_constr fm = function
     Cond t -> print_term false fm t
   | Pred(f,n,x,ts) -> Format.printf "P_{%a_%d}^%a(%a)" print_id f n print_id x (print_termlist 0 false) ts
-let print_constr_list fm = List.iter (fun c -> Format.fprintf fm "@;[%a]" print_constr c)
+let print_constr_list fm = List.iter (fun c -> Format.fprintf fm "@ [%a]" print_constr c)
 
 let pp_print_typ = print_typ
 let pp_print_term = print_term false
@@ -464,6 +524,7 @@ let typ_event_cps =
   let k = Id.new_var "" (TFun(r,TUnit)) in
     TFun(u, TFun(k, TUnit))
 let typ_excep = ref (TConstr("exn",true))
+let typ_abst = TConstr("abst",false)
 
 let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
@@ -478,6 +539,10 @@ let true_term = {desc=True;typ=TBool}
 let false_term = {desc=False;typ=TBool}
 let fail_term = {desc=Event("fail",false);typ=typ_event}
 let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt)}
+let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
+let randbool_unit_term =
+  {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Int 0;typ=TInt}); typ=TBool}
+let abst_term = {desc=Constr("Abst",[]); typ=typ_abst}
 let make_bottom typ = {desc=Bottom;typ=typ}
 let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
@@ -496,7 +561,7 @@ let rec make_app t ts =
         make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
     | {typ=TFun(x,typ)}, t2::ts ->
         if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
-        then (Format.printf "make_app: %a <=/=> %a, %a@."
+        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@ %a@."
                 print_typ (Id.typ x)
                 print_typ t2.typ
                 pp_print_term {desc=App(t,ts);typ=TUnit};
@@ -513,13 +578,16 @@ let make_lets bindings t2 =
     bindings
     t2
 let make_let_f flag bindings t2 =
-  let rec aux (f,xs,t) =
-    match t.desc with
-        Fun(x,t') -> aux (f, xs@[x], t')
-      | _ -> f, xs, t
-  in
-  let bindings' = List.map aux bindings in
-    {desc=Let(flag,bindings',t2); typ=t2.typ}
+  if bindings = []
+  then t2
+  else
+    let rec aux (f,xs,t) =
+      match t.desc with
+          Fun(x,t') -> aux (f, xs@[x], t')
+        | _ -> f, xs, t
+    in
+    let bindings' = List.map aux bindings in
+      {desc=Let(flag,bindings',t2); typ=t2.typ}
 let make_let bindings t2 = make_let_f Nonrecursive bindings t2
 let make_letrec bindings t2 = make_let_f Recursive bindings t2
 let make_loop typ =
@@ -721,96 +789,6 @@ let rec get_int t =
     | RandValue (_, _) -> assert false
     | Bottom -> []
 let get_int t = uniq (get_int t)
-
-let rec get_fv vars t =
-  match t.desc with
-      Unit -> []
-    | True -> []
-    | False -> []
-    | Unknown -> []
-    | Int n -> []
-    | RandInt _ -> []
-    | Var x -> if List.mem x vars then [] else [x]
-    | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
-    | If(t1, t2, t3) -> get_fv vars t1 @@ get_fv vars t2 @@ get_fv vars t3
-    | Branch(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
-    | Let(flag, bindings, t2) ->
-        let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-        let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
-        let aux fv (_,xs,t) = get_fv (xs@@vars') t @@ fv in
-        let fv_t2 = get_fv vars_with_fun t2 in
-          List.fold_left aux fv_t2 bindings
-    | BinOp(op, t1, t2) -> get_fv vars t1 @@ get_fv vars t2
-    | Not t -> get_fv vars t
-    | Fun(x,t) -> get_fv (x::vars) t
-    | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@ acc) [] fields
-    | Proj(_,_,_,t) -> get_fv vars t
-    | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@ get_fv vars t2
-    | Nil -> []
-    | Cons(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@ acc) [] ts
-    | Match(t,pats) ->
-        let aux acc (_,_,t) = get_fv vars(* no need to update? *) t @@ acc in
-          List.fold_left aux (get_fv vars t) pats
-    | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
-    | Bottom -> []
-    | Pair(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
-    | Fst t -> get_fv vars t
-    | Snd t -> get_fv vars t
-    | Raise t -> get_fv vars t
-    | RandValue _ -> assert false
-let get_fv t = uniq (get_fv [] t)
-
-let rec get_fv2 vars t =
-  match t.desc with
-      Unit -> []
-    | True -> []
-    | False -> []
-    | Unknown -> []
-    | Int n -> []
-    | RandInt _ -> []
-    | Var x -> if List.mem x vars then [] else [x]
-    | App(t, ts) -> get_fv2 vars t @@ (rev_map_flatten (get_fv2 vars) ts)
-    | If(t1, t2, t3) -> get_fv2 vars t1 @@ get_fv2 vars t2 @@ get_fv2 vars t3
-    | Branch(t1, t2) -> get_fv2 vars t1 @@ get_fv2 vars t2
-    | Let(flag, bindings, t) ->
-        let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-        let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
-        let aux fv (_,xs,t) = get_fv2 (xs@@vars') t @@ fv in
-        let fv_t = get_fv2 vars_with_fun t in
-          List.fold_left aux fv_t bindings
-            (*
-              | Let(flag, bindings, t) ->
-              let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-              let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
-              let aux fv (_,xs,t) = get_fv2 (xs@@vars') t @@ fv in
-              let fv_t = get_fv2 vars_with_fun t in
-              List.fold_left aux fv_t bindings
-            *)
-    | BinOp(op, t1, t2) -> get_fv2 vars t1 @@ get_fv2 vars t2
-    | Not t -> get_fv2 vars t
-    | Fun(x,t) -> get_fv2 (x::vars) t
-    | Event(s,_) -> []
-    | Nil -> []
-    | Cons(t1,t2) -> get_fv2 vars t1 @@ get_fv2 vars t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv2 vars t @@ acc) [] ts
-    | Match(t,pats) ->
-        let aux acc (_,_,t) = get_fv2 vars t @@ acc in
-          List.fold_left aux (get_fv2 vars t) pats
-    | Snd _ -> assert false
-    | Fst _ -> assert false
-    | Pair (_, _) -> assert false
-    | TryWith (_, _) -> assert false
-    | Raise _ -> assert false
-    | SetField (_, _, _, _, _, _) -> assert false
-    | Proj (_, _, _, _) -> assert false
-    | Record _ -> assert false
-    | RandValue (_, _) -> assert false
-    | Bottom -> []
-let get_fv2 t = uniq (get_fv2 [] t)
-
-
 
 let rec get_vars_pat pat =
   match pat.pat_desc with

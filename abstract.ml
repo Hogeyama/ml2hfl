@@ -48,7 +48,7 @@ let rec abst_recdata_typ = function
 
 let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
-let abst_label c = make_int (Type_decl.constr_pos c)
+let abst_label c = make_int (1 + Type_decl.constr_pos c)
 
 let rec abst_recdata_pat p =
   let typ =
@@ -145,6 +145,7 @@ let rec abst_recdata t =
       | SetField _ -> assert false
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abst_recdata t1, abst_recdata t2)
+      | Constr("Abst",[]) -> (make_app randint_term [unit_term]).desc
       | Constr(c,ts) ->
           let ts' = List.map abst_recdata ts in
           let typ_name = match t.typ with TConstr(s,true) -> s | _ -> assert false in

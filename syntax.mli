@@ -74,6 +74,7 @@ val length_var : id
 val typ_event : typ
 val typ_event_cps : typ
 val typ_excep : typ ref
+val typ_abst : typ
 
 (** {6 Term constructor} *)
 val unit_term : typed_term
@@ -81,6 +82,9 @@ val true_term : typed_term
 val false_term : typed_term
 val fail_term : typed_term
 val randint_term : typed_term
+val randbool_unit_term : typed_term
+val randint_unit_term : typed_term
+val abst_term : typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
@@ -142,7 +146,6 @@ val subst_type : id -> typed_term -> typ -> typ
 val get_nint : typed_term -> id list
 val get_int : typed_term -> int list
 val get_fv : typed_term -> id list
-val get_fv2 : typed_term -> id list
 val get_args : typ -> id list
 val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list

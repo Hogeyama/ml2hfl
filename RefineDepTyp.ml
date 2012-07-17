@@ -1352,7 +1352,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
               let aux t ts =
                 match t.desc with
                     (BinOp(Eq, t, {desc=Var(id)})) ->
-                      List.mem id (ids' @ Utilities.rev_map_flatten get_fv2 (t::ts))
+                      List.mem id (ids' @ Utilities.rev_map_flatten get_fv (t::ts))
                   | _ -> true
               in
               let _lbs = Utilities.filterwo aux _lbs in
@@ -1553,13 +1553,13 @@ let add_pred pred c =
   let rec fv c = List.flatten (List.map fv_ac c)
   and fv_ac ac =
     match ac with
-        Cpred(Pred(_, terms)) -> List.flatten (List.map get_fv2 terms)
+        Cpred(Pred(_, terms)) -> List.flatten (List.map get_fv terms)
       | Csub(rty1,rty2) -> assert false
       | Cterm(term) -> get_fv term
       | Cimp(c1,c2) -> (fv c1) @ (fv c2)
       | Cfalse -> []
   in
-  let fv = get_fv2 pred in
+  let fv = get_fv pred in
   let aux = function
       Cimp(c1, c2) as ac ->
         if List.exists (fun x -> List.exists (Id.same x) fv) (fv_ac ac)

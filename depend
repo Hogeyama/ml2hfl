@@ -216,10 +216,10 @@ type_decl.cmo: utilities.cmo type.cmo syntax.cmi
 type_decl.cmx: utilities.cmx type.cmx syntax.cmx
 type_check.cmo: type_decl.cmo type.cmo syntax.cmi id.cmo flag.cmo
 type_check.cmx: type_decl.cmx type.cmx syntax.cmx id.cmx flag.cmx
-trans.cmo: utilities.cmo lazy/util.cmo type_check.cmo type.cmo syntax.cmi \
-    id.cmo flag.cmo lazy/extList.cmi
-trans.cmx: utilities.cmx lazy/util.cmx type_check.cmx type.cmx syntax.cmx \
-    id.cmx flag.cmx lazy/extList.cmx
+trans.cmo: utilities.cmo lazy/util.cmo type_decl.cmo type_check.cmo type.cmo \
+    syntax.cmi id.cmo flag.cmo lazy/extList.cmi
+trans.cmx: utilities.cmx lazy/util.cmx type_decl.cmx type_check.cmx type.cmx \
+    syntax.cmx id.cmx flag.cmx lazy/extList.cmx
 CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo trans.cmo syntax.cmi id.cmo \
     flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
 CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx id.cmx \

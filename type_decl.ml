@@ -7,7 +7,7 @@ type kind =
     TKVariant of (string * typ list) list
   | TKRecord of (string * (mutable_flag * typ)) list
 
-let typ_decls : (string * kind) list ref = ref []
+let typ_decls : (string * kind) list ref = ref ["ABST", TKVariant ["Abst", []]]
 
 
 let print_kind fm = function

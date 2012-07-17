@@ -354,111 +354,6 @@ let from_constant = function
   | Const_nativeint _ -> unsupported "constant (nativeint)"
 
 
-let rec get_bindings pat t =
-  match pat.pat_desc, t.desc with
-      PAny, _ -> []
-    | PVar x, _ -> [x, t]
-    | PRecord(pats), Record(fields) ->
-        let aux (i,(_,_,p)) =
-          let _,(_,t) = List.nth fields i in
-            get_bindings p t
-        in
-          List.flatten (List.map aux pats)
-    | PRecord pats, Var x ->
-        let aux (i,(s,f,p)) = get_bindings p {desc=Proj(i,s,f,make_var x);typ=p.pat_typ} in
-          List.flatten (List.map aux pats)
-    | PRecord pats, _ ->
-        let x = Id.new_var "x" t.typ in
-          (x,t) :: get_bindings pat (make_var x)
-    | PPair(pat1,pat2), Var x ->
-        get_bindings pat1 (make_fst (make_var x)) @ get_bindings pat2 (make_snd (make_var x))
-    | PPair(pat1,pat2), _ ->
-        let x = Id.new_var "x" t.typ in
-          (x,t) :: get_bindings pat (make_var x)
-    | PConst _,_ -> assert false
-    | PConstruct _,_ -> assert false
-    | PNil,_ -> assert false
-    | PCons _,_ -> assert false
-    | POr _,_ -> assert false
-
-
-(*
-let rec subst_tvar_var map = function
-
-
-and subst_tvar_typ map = function
-    TUnit -> TUnit
-  | TBool -> TBool
-  | TAbsBool -> assert false
-  | TInt ps -> TInt ps
-  | TRInt p -> TRInt p
-  | TVar x -> List.assq x map
-  | TFun(x,typ2) -> TFun(subst_tvar_var x, subst_tvar_typ typ2)
-  | TList typ -> TList (subst_tvar_typ typ)
-  | TPair(typ1,typ2) -> TPair(subst_tvar_typ typ1, subst_tvar_typ typ2)
-  | TConstr(s,b) -> TConstr(s,b)
-  | TUnknown _ -> assert false
-  | TVariant _ -> assert false
-  | TTAbs _ -> assert false
-
-and subst_tvar_term t =
-  match t.desc with
-    | True
-    | False
-    | Unknown
-    | Int of int
-    | NInt of id
-    | RandInt of bool
-    | RandValue of typ * bool
-    | Var of id
-    | Fun of id * typed_term
-    | App of typed_term * typed_term list
-    | If of typed_term * typed_term * typed_term
-    | Branch of typed_term * typed_term
-    | Let of Flag.rec_flag * (id * id list * typed_term) list * typed_term
-    | BinOp of binop * typed_term * typed_term
-    | Not of typed_term
-    | Label of bool * typed_term
-    | LabelInt of int * typed_term
-    | Event of string * bool
-    | Record of (string * (Flag.mutable_flag * typed_term)) list
-    | Proj of int * string * Flag.mutable_flag * typed_term
-    | SetField of int option * int * string * Flag.mutable_flag * typed_term * typed_term
-    | Nil
-    | Cons of typed_term * typed_term
-    | Constr of string * typed_term list
-    | Match of typed_term * (typed_pattern * typed_term option * typed_term) list
-    | Raise of typed_term
-    | TryWith of typed_term * typed_term
-    | Pair of typed_term * typed_term
-    | Fst of typed_term
-    | Snd of typed_term
-    | Bottom
-    | TAbs _ -> assert false
-
-let to_abs t =
-  let uniq xs ys = List.fold_left (fun xs y -> if List.memq y xs then xs else y::xs) xs ys in
-  let rec get_tvars =
-    TUnit -> []
-    | TBool -> []
-    | TAbsBool -> assert false
-    | TInt ps -> []
-    | TRInt p -> []
-    | TVar x -> [x]
-    | TFun(x,typ2) -> uniq (get_tvars (Id.typ x) @@ get_tvars typ2)
-    | TList typ -> get_tvars typ
-    | TPair(typ1,typ2) -> uniq (get_tvars typ1 @@ get_tvars typ2)
-    | TConstr(s,b) -> []
-    | TUnknown _ -> assert false
-    | TVariant _ -> assert false
-    | TTAbs _ -> assert false
-  in
-  let vs = get_tvars t.typ in
-    List.fold_left (fun t v -> (fun x -> subst_tvar x t)
-  let map = List.map (fun x -> x,
-*)
-let to_abs x = x
-
 let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   add_type_env env typ;
   let typ' = from_type_expr env typ in
@@ -496,7 +391,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                     make_fun x' (from_expression e)
               | _ -> assert false
           end
-      | Texp_function(pes,totality) ->
+      | Texp_function(pats,totality) ->
           let x,typ2 =
             match typ' with
                 TFun(x,typ2) -> x,typ2
@@ -512,10 +407,12 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                 Total -> []
               | Partial ->
                   let p = {pat_desc=PVar(Id.new_var "u" (Id.typ x)); pat_typ=Id.typ x} in
-                  let t = make_let [Id.new_var "u" TUnit, [], make_app fail_term [unit_term]] (make_bottom typ2) in
+                  let t =
+                    make_let [Id.new_var "u" TUnit, [], make_app fail_term [unit_term]] (make_bottom typ2)
+                  in
                     [p, true_term, t]
           in
-            make_fun x {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pes@tail);typ=typ2}
+            make_fun x {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pats@tail);typ=typ2}
       | Texp_apply(e, es) ->
           let t = from_expression e in
           let aux = function
@@ -525,34 +422,34 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           in
           let ts = List.map aux es in
             conv_primitive_app t ts typ'
-      | Texp_match(e,pes,tp) ->
+      | Texp_match(e,pats,tp) ->
           let t = from_expression e in
           let aux (p,e) =
             match e.exp_desc with
                 Texp_when(e1,e2) -> from_pattern p, from_expression e1, from_expression e2
               | _ -> from_pattern p, true_term, from_expression e
           in
-          let pts = List.map aux pes in
-          let pts' =
+          let pats' = List.map aux pats in
+          let pats'' =
             match tp with
-                Total -> pts
+                Total -> pats'
               | Partial ->
                   let p = {pat_desc=PVar(Id.new_var "u" t.typ); pat_typ=t.typ} in
                   let u = Id.new_var "u" TUnit in
                   let t = make_let [u, [], make_app fail_term [unit_term]] (make_bottom typ') in
-                    pts@[p, true_term, t]
+                    pats'@[p, true_term, t]
           in
-            {desc=Match(t, pts'); typ=typ'}
-      | Texp_try(e,pes) ->
+            {desc=Match(t, pats''); typ=typ'}
+      | Texp_try(e,pats) ->
           let aux (p,e) =
             match e.exp_desc with
                 Texp_when(e1,e2) -> from_pattern p, from_expression e1, from_expression e2
               | _ -> from_pattern p, true_term, from_expression e
           in
           let x = Id.new_var "e" !typ_excep in
-          let pes' = List.map aux pes in
-          let pes'' = pes' @ [] in
-            {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pes''); typ=typ'}); typ=typ'}
+          let pats' = List.map aux pats in
+          let pats'' = pats' @ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'}] in
+            {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pats''); typ=typ'}); typ=typ'}
       | Texp_tuple(e::es) ->
           let t = from_expression e in
             List.fold_left (fun t e -> make_pair t (from_expression e)) t es
