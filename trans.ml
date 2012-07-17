@@ -541,6 +541,11 @@ let rec inst_randvalue env defs typ =
     | TInt -> env, defs, randint_unit_term
     | TVar({contents=None} as r) -> r := Some typ_abst; inst_randvalue env defs typ_abst
     | TVar{contents=Some typ} -> inst_randvalue env defs typ
+    | TFun(x,typ) ->
+        let env',defs',t = inst_randvalue env defs typ in
+          env', defs', make_fun x t
+    | TList (TVar({contents=None} as r)) ->
+        r := Some typ_abst; inst_randvalue env defs typ
     | TList typ' ->
         let u = Id.new_var "u" TUnit in
         let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in

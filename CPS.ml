@@ -437,7 +437,6 @@ let rec infer_effect env t =
                 Nonrecursive -> ()
               | Recursive -> lift_letrec_typ typed
           in
-            Format.printf "f'.id_typ: %a@.typed.typ_cps: %a@.@." print_typ_cps f'.id_typ print_typ_cps typed.typ_cps;
             unify f'.id_typ typed.typ_cps;
             f', typed
         in
