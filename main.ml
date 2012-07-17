@@ -197,7 +197,8 @@ let arg_spec =
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
-                      " Use an empty set as the initial sets of predicates for booleans"
+                      " Use an empty set as the initial sets of predicates for booleans";
+   "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin"
   ]
 
 

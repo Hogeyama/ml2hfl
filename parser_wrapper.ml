@@ -95,7 +95,8 @@ let rec from_type_expr tenv typ =
               TPair(typ_pair,typ')
           in
             List.fold_left aux (from_type_expr tenv typ) typs
-      | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs -> List.assoc (Path.name path) prim_typs
+      | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs ->
+          List.assoc (Path.name path) prim_typs
       | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
           TList (from_type_expr tenv type_expr)
       | Tconstr(path, _, m) ->
@@ -465,21 +466,27 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         Texp_ident(path, _) ->
           conv_primitive_var (Id.make (Path.binding_time path) (sign_to_letters (Path.name path)) typ')
       | Texp_constant c -> from_constant c
-      | Texp_let(rec_flag, [p,e1], e2) ->
-          let flag = from_rec_flag rec_flag in
+      | Texp_let(rec_flag, [p,e1], e2)
+            when (function {pat_desc=PVar _} -> false | _ -> true) (from_pattern p) ->
           let p' = from_pattern p in
-          let t1 = to_abs (from_expression e1) in
+          let t1 = from_expression e1 in
           let t2 = from_expression e2 in
-          let bindings = get_bindings p' t1 in
-            List.fold_right (fun (x,t') t -> make_let_f flag [x,[],t'] t) bindings t2
-      | Texp_let _ -> unsupported "Texp_let"
-          (*
-            | Texp_let(rec_flag, pats, e) ->
-            let flag = from_rec_flag rec_flag in
-            let bindings = List.map (fun (p,e) -> var_of_pattern p, [], from_expression e) pats in
-            let t = from_expression e in
-            Let(flag, bindings, t)
-          *)
+            make_single_match t1 p' t2
+      | Texp_let(rec_flag, pats, e) ->
+          let flag = from_rec_flag rec_flag in
+          let aux (p,e) =
+            let p' = from_pattern p in
+            let e' = from_expression e in
+              match p'.pat_desc with
+                  PVar x -> x, [], e'
+                | _ ->
+                    if flag = Recursive
+                    then raise (Fatal "Only variables are allowed as left-hand side of 'let rec'")
+                    else unsupported "Only variables are allowed as left-hand side of 'let ... and ...'"
+          in
+          let bindings = List.map aux pats in
+          let t = from_expression e in
+            make_let_f flag bindings t
       | Texp_function([{Typedtree.pat_desc=Tpat_var x},e],Total) ->
           begin
             match e.exp_desc, from_type_expr env typ with
@@ -566,9 +573,12 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_variant _ -> unsupported "expression (variant)"
       | Texp_record(fields,None) ->
           let fields' = List.sort (fun (lbl1,_) (lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
-          let fields'' = List.map (fun (label,e) -> get_label_name label env, (from_mutable_flag label.lbl_mut, from_expression e)) fields' in
+          let aux (label,e) =
+            get_label_name label env, (from_mutable_flag label.lbl_mut, from_expression e)
+          in
+          let fields'' = List.map aux fields' in
             {desc=Record fields''; typ=typ'}
-      | Texp_record(fields,Some init) ->
+      | Texp_record(fields, Some init) ->
           let labels = Array.to_list (fst (List.hd fields)).lbl_all in
           let r = Id.new_var "r" typ' in
           let fields' =
@@ -578,15 +588,27 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                 try
                   name, (flag, from_expression (List.assoc lbl fields))
                 with Not_found ->
-                  name, (flag, {desc=Proj(lbl.lbl_pos, name, flag, {desc=Var r;typ=Id.typ r});typ=from_type_expr env lbl.lbl_arg})
+                  name, (flag, {desc=Proj(lbl.lbl_pos, name, flag,
+                                          {desc=Var r; typ=Id.typ r});
+                                typ=from_type_expr env lbl.lbl_arg})
             in
               List.map aux labels
           in
             make_let [r, [], from_expression init] {desc=Record fields';typ=typ'}
       | Texp_field(e,label) ->
-          {desc=Proj(label.lbl_pos, get_label_name label env, from_mutable_flag label.lbl_mut, from_expression e); typ=typ'}
+          {desc=Proj(label.lbl_pos,
+                     get_label_name label env,
+                     from_mutable_flag label.lbl_mut,
+                     from_expression e);
+           typ=typ'}
       | Texp_setfield(e1,label,e2) ->
-          {desc=SetField(None, label.lbl_pos, get_label_name label env, from_mutable_flag label.lbl_mut, from_expression e1, from_expression e2); typ=typ'}
+          {desc=SetField(None,
+                         label.lbl_pos,
+                         get_label_name label env,
+                         from_mutable_flag label.lbl_mut,
+                         from_expression e1,
+                         from_expression e2);
+           typ=typ'}
       | Texp_array _ -> unsupported "expression (array)"
       | Texp_ifthenelse(e1,e2,e3) ->
           let t1 = from_expression e1 in
@@ -633,17 +655,27 @@ let from_exception_declaration env = List.map (from_type_expr env)
 let from_top_level_phrase (env,defs) = function
     Parsetree.Ptop_dir _ -> unsupported "toplevel_directive"
   | Parsetree.Ptop_def struc ->
+      let struc,_,env' = Typemod.type_structure env struc Location.none in
       let aux2 = function
           Tstr_eval e ->
             let t = from_expression e in
               [Decl_let(Nonrecursive, [Id.new_var "u" t.typ, t])]
-        | Tstr_value(rec_flag,defs) ->
+        | Tstr_value(rec_flag,pats) ->
             let flag = from_rec_flag rec_flag in
-            let defs' = List.map (fun (p,t) -> from_pattern p, from_expression t) defs in
-              [Decl_let(flag, List.flatten (List.map (fun (p,t) -> get_bindings p t) defs'))]
+            let aux (p,e) =
+              let p' = from_pattern p in
+              let e' = from_expression e in
+                match p'.pat_desc with
+                    PVar x -> x, e'
+                  | _ ->
+                      if flag = Recursive
+                      then raise (Fatal "Only variables are allowed as left-hand side of 'let rec'")
+                      else unsupported "Only variables are allowed as left-hand side of 'let'"
+            in
+              [Decl_let(flag, List.map aux pats)]
         | Tstr_primitive _ -> unsupported "external"
-        | Tstr_type decls -> [](*Decl_type(List.map (fun (t,decl) -> Id.name (from_ident t ()), from_type_declaration env decl) decls)*)
-        | Tstr_exception(x,exc_decl) -> [](*Decl_exc((from_ident x).name, from_exception_declaration env exc_decl)*)
+        | Tstr_type decls -> []
+        | Tstr_exception(x,exc_decl) -> []
         | Tstr_exn_rebind _ -> unsupported "exception rebind"
         | Tstr_module _
         | Tstr_recmodule _
@@ -653,33 +685,17 @@ let from_top_level_phrase (env,defs) = function
         | Tstr_cltype _ -> unsupported "class"
         | Tstr_include _ -> unsupported "include"
       in
-      let struc,_,env' = Typemod.type_structure env struc Location.none in
         env', rev_map_flatten aux2 struc @@ defs
 
 
 let from_use_file ast =
   let _,defs = List.fold_left from_top_level_phrase (initial_env,[]) ast in
   let aux t = function
-      Decl_let(Nonrecursive, defs) ->
-        List.fold_right (fun (f,t1) t2 -> {desc=Let(Nonrecursive, [f, [], t1], t2); typ=t2.typ}) defs t
-    | Decl_let(Recursive, defs) ->
-        let fs = List.map fst defs in
-        let fs' = List.map Id.new_var_id fs in
-        let aux f =
-          let rec aux = function
-              [] -> assert false
-            | g::fs when g=f -> fs
-            | _::fs -> aux fs
-          in
-            aux fs
-        in
-        let map1 = List.map2 (fun f f' ->  f, make_var f') fs fs' in
-        let map2 = List.map2 (fun f f' ->  f', make_app (make_var f) (List.map make_var (aux f))) fs fs' in
-        let sbst t = subst_map map2 (subst_map map1 t) in
-        let defs' = List.map (fun (f,t) -> f, List.fold_right (fun f t -> {desc=Fun(f,t);typ=TFun(f,t.typ)}) (aux f) (sbst t)) defs in
-          List.fold_right (fun (f,t1) t2 -> make_letrec [f, [], t1] t2) defs' (sbst t)
-    | Decl_type(typs) -> t(*Type_decl(typs,t)*)
-    | Decl_exc(exc,typs) -> t(*Exception(exc,typs,t)*)
+      Decl_let(flag, defs) ->
+        let defs' = List.map (fun (f,t1) -> f, [], t1) defs in
+          make_let_f flag defs' t
+    | Decl_type _ -> t
+    | Decl_exc _ -> t
   in
   let t = List.fold_left aux {desc=Unit;typ=TUnit} defs in
     Trans.merge_let_fun t

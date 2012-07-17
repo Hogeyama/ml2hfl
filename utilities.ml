@@ -411,5 +411,3 @@ let count_line s =
 
 let count_list f xs =
   List.fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
-
-let trd (_,_,x) = x

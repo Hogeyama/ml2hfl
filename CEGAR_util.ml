@@ -510,9 +510,13 @@ let trans_prog t =
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
   let env' = uniq_env (ext_env @@ env) in
   let prog = {env=env'; defs=defs''; main=main} in
+  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = event_of_temp prog in
+  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = eta_expand prog in
+  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = pop_main prog in
+  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog,map = rename_prog prog in
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
     prog,map
@@ -540,9 +544,15 @@ let rec get_const_typ = function
   | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool()))
   | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
-  | Add -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_add x y)])))
-  | Sub -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_sub x y)])))
-  | Mul -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
+  | Add -> TFun(TBase(TInt,nil), fun x ->
+                TFun(TBase(TInt,nil), fun y ->
+                     TBase(TInt,fun r -> [make_eq_int r (make_add x y)])))
+  | Sub -> TFun(TBase(TInt,nil), fun x ->
+                TFun(TBase(TInt,nil), fun y ->
+                     TBase(TInt,fun r -> [make_eq_int r (make_sub x y)])))
+  | Mul -> TFun(TBase(TInt,nil), fun x ->
+                TFun(TBase(TInt,nil), fun y ->
+                     TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If _ -> assert false

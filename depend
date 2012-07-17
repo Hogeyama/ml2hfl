@@ -202,9 +202,9 @@ spec_lexer.cmo: syntax.cmi spec_parser.cmi
 spec_lexer.cmx: syntax.cmx spec_parser.cmx
 CEGAR_type.cmo: flag.cmo
 CEGAR_type.cmx: flag.cmx
-CEGAR_syntax.cmo: utilities.cmo syntax.cmi id.cmo flag.cmo lazy/extString.cmi \
+CEGAR_syntax.cmo: utilities.cmo type.cmo id.cmo flag.cmo lazy/extString.cmi \
     CEGAR_type.cmo
-CEGAR_syntax.cmx: utilities.cmx syntax.cmx id.cmx flag.cmx lazy/extString.cmx \
+CEGAR_syntax.cmx: utilities.cmx type.cmx id.cmx flag.cmx lazy/extString.cmx \
     CEGAR_type.cmx
 CEGAR_print.cmo: utilities.cmo flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
     CEGAR_print.cmi

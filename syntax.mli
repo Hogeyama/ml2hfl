@@ -118,6 +118,7 @@ val make_nil : typ -> typed_term
 val make_nil2 : typ -> typed_term
 val make_cons : typed_term -> typed_term -> typed_term
 val make_match : typed_term -> (typed_pattern * typed_term * typed_term) list -> typed_term
+val make_single_match : typed_term -> typed_pattern -> typed_term -> typed_term
 val make_loop : typ -> typed_term
 val make_nth : int -> int -> typed_term -> typed_term
 val make_pany : typ -> typed_pattern

@@ -621,19 +621,20 @@ let make_nil2 typ = {desc=Nil; typ=typ}
 let make_cons t1 t2 =
   assert (not Flag.check_typ || Type.can_unify (TList t1.typ) t2.typ);
   {desc=Cons(t1,t2); typ=t2.typ}
-let make_match t1 pats = {desc=Match(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats)}
-let rec make_nth i n t =
-  match i,n with
-      0,1 -> t
-    | 0,2 -> make_fst t
-    | _ -> make_nth (i-1) (n-1) (make_snd t)
-
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
 let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
 let make_pnil typ = {pat_desc=PNil; pat_typ=TList typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
+let make_match t1 pats = {desc=Match(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats)}
+let make_single_match t1 p t2 =
+  make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
+let rec make_nth i n t =
+  match i,n with
+      0,1 -> t
+    | 0,2 -> make_fst t
+    | _ -> make_nth (i-1) (n-1) (make_snd t)
 
 
 let imply t1 t2 = {desc=BinOp(Or, {desc=Not t1;typ=TBool}, t2); typ=TBool}

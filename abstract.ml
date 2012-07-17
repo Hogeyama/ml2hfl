@@ -133,9 +133,10 @@ let rec abst_recdata t =
       | App(t, ts) -> App(abst_recdata t, List.map abst_recdata ts)
       | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
       | Branch(t1, t2) -> Branch(abst_recdata t1, abst_recdata t2)
-      | Let(flag, [f, xs, t1], t2) ->
-          Let(flag, [abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t1], abst_recdata t2)
-      | Let _ -> assert false
+      | Let(flag, bindings, t) ->
+          let aux (f,xs,t) = abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t in
+          let bindings' = List.map aux bindings in
+            Let(flag, bindings', abst_recdata t)
       | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
       | Not t -> Not (abst_recdata t)
       | Event(s,b) -> Event(s,b)
