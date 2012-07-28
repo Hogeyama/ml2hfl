@@ -110,7 +110,7 @@ let extract_from pids p t =
                   pid , Util.diff xs1 [pid]
                 with Not_found -> x, xs
               in
-		            List.map (fun x' -> Formula.eqInt (Term.make_var x) (Term.make_var x')) xs,
+		            List.map (fun x' -> Formula.eq_ty ty (Term.make_var x) (Term.make_var x')) xs,
 		            List.map (fun x' -> x', Term.make_var x, ty) xs2)
 		      eqcs)
   in

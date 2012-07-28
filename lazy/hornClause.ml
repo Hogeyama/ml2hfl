@@ -664,7 +664,7 @@ let simplify2 bvs t =
 *)
 
 let simplify_aux bs (Hc(popt, ps, t)) =
-  let debug = !Global.debug && false in
+  let debug = false && !Global.debug in
   let _ = Global.log_begin "HornClause.simplify" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr (Hc(popt, ps, t))) in
   let shared = ref (List.length ps) in

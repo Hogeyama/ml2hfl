@@ -113,10 +113,9 @@ let rec string_of_term t =
       assert false
 
 let infer t ty =
+  let debug = false && !Global.debug in
   let rec aux t ty =
-(*
-    Format.printf "%a@," Term.pr t;
-*)
+    let _ = if debug then Format.printf "%a:%a@," Term.pr t SimType.pr ty in
     match Term.fun_args t with
       Term.Var(_, x), [] ->
         [x, ty]
@@ -169,6 +168,7 @@ let infer t ty =
   in
   List.map
     (function (x, ty)::xtys ->
+      let _ = if debug then Format.printf "%a@," (Util.pr_list SimType.pr_bind ",") ((x, ty)::xtys) in
       let _ = assert (List.for_all (fun (_, ty') -> SimType.equiv ty ty') xtys) in
       x, ty
     | _ -> assert false)

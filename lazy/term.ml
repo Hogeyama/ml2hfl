@@ -86,6 +86,9 @@ let rec pr_string_of ppf t =
   | Forall(_, _, _) | Exists(_, _, _) ->
       assert false
 
+let pr_typed_term ppf (t, ty) =
+  Format.fprintf ppf "%a:%a" pr t SimType.pr ty
+
 (** ToDo: implement equivalence up to attributes and binders *)
 let equiv t1 t2 = t1 = t2
 

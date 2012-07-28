@@ -3,7 +3,7 @@
 type t = Var.t * (Term.t * SimType.t) list
 
 let pr ppf (pid, ttys) =
-  Format.fprintf ppf "P[%a](%a)" Var.pr pid (Util.pr_list Term.pr ",") (List.map fst ttys)
+  Format.fprintf ppf "P[%a](%a)" Var.pr pid (Util.pr_list Term.pr_typed_term ",") ttys
 
 let make pid ttys = pid, ttys
 
