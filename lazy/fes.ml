@@ -4,19 +4,19 @@ open Term
 (** Formulas with explicit substitutions *)
 
 (** each element (x, t, ty) has functional dependencies x -> t and x -> ty *)
-type t = FES of Tsubst.t * Term.t list
+type t = FES of TypSubst.t * Term.t list
 
 (** {6 Functions on formulas with explicit substitutions} *)
 
 let make xttys ts = FES(xttys, ts)
 
 (** ignore equalities on functions *)
-let formula_of (FES(xttys, ts)) = Formula.band (Tsubst.formula_of xttys :: ts)
+let formula_of (FES(xttys, ts)) = Formula.band (TypSubst.formula_of xttys :: ts)
 
 let pr ppf fes =
   if true then
     let FES(xttys, ts) = fes in
-    let _ = Format.fprintf ppf "%a" Tsubst.pr xttys in
+    let _ = Format.fprintf ppf "%a" TypSubst.pr xttys in
 				let _ =
 		    if xttys <> [] then
   		    Format.fprintf ppf " && "
@@ -24,7 +24,7 @@ let pr ppf fes =
     Format.fprintf ppf "%a" (Util.pr_list pr " && ") ts
   else if true then
     let FES(xttys, ts) = fes in
-    let ts = Formula.conjuncts (Tsubst.formula_of xttys) @ ts in
+    let ts = Formula.conjuncts (TypSubst.formula_of xttys) @ ts in
     Format.fprintf ppf "%a" (Util.pr_list pr " && ") ts
   else
     Format.fprintf ppf "%a" pr (formula_of fes)
@@ -51,7 +51,7 @@ let subst_fixed sub (FES(xttys, ts)) =
     (List.map (Formula.subst_fixed sub) ts)
 
 
-let fvs (FES(xttys, ts)) = Tsubst.fvs xttys @ Util.concat_map fvs ts
+let fvs (FES(xttys, ts)) = TypSubst.fvs xttys @ Util.concat_map fvs ts
 
 let coeffs (FES(xttys, ts)) =
   Util.concat_map
@@ -77,8 +77,8 @@ let eqelim p (FES(xttys, ts) as fes) =
 		  let _ = Global.log_begin "eqelim" in
 		  let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," pr fes) in
 		  let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
-		  let _ = Global.log (fun () -> Format.printf "substitution: %a@," Tsubst.pr xttys2) in
-    let sub = Tsubst.fun_of xttys2 in
+		  let _ = Global.log (fun () -> Format.printf "substitution: %a@," TypSubst.pr xttys2) in
+    let sub = TypSubst.fun_of xttys2 in
 		  let ts = List.map (Formula.subst_fixed sub) ts in
 		  let xttys1 = List.map (fun (x, t, ty) -> x, Term.subst_fixed sub t, ty) xttys1 in
 		  let fes = FES(xttys1, ts) in

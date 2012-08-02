@@ -171,7 +171,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
   let ts =
 		  try
 				  let fvs =
-				    let fvs = List.unique (Util.diff (Util.concat_map Term.fvs ts) (bvs @ Tsubst.fvs xttys)) in
+				    let fvs = List.unique (Util.diff (Util.concat_map Term.fvs ts) (bvs @ TypSubst.fvs xttys)) in
 		      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs) in
 				    fvs
 				  in
@@ -184,7 +184,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
 				  Util.map_left
 				    (fun ts1 t ts2 ->
 				      let fvs =
-            let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ Tsubst.fvs xttys @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
+            let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ TypSubst.fvs xttys @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
 	  			      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs) in
             fvs
           in
@@ -217,7 +217,7 @@ let merge_fess xs fess =
     Util.concat_map
       (fun (((x, t, ty) as xtty)::xttys) ->
         if xttys <> [] && List.mem x xs then
-          let _ = Global.log (fun () -> Format.printf "xttys: %a@," Tsubst.pr (xtty::xttys)) in
+          let _ = Global.log (fun () -> Format.printf "xttys: %a@," TypSubst.pr (xtty::xttys)) in
           [xtty] (* ToDo: prove that this is sound and complete *)
         else
           xtty::xttys)

@@ -36,8 +36,8 @@ let save_as_dot filename ct wl =
   let f s =
     match s with
       Call(_, t) -> Term.string_of t
-    | Arg(xttys) -> Term.string_of (Tsubst.formula_of xttys)
-    | Ret(x, t, ty) -> Term.string_of (Tsubst.formula_of [x, t, ty])
+    | Arg(xttys) -> Term.string_of (TypSubst.formula_of xttys)
+    | Ret(x, t, ty) -> Term.string_of (TypSubst.formula_of [x, t, ty])
     | Nop -> ""
     | Error -> ""
   in

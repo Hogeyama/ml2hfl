@@ -3,61 +3,13 @@ open ExtString
 open Zipper
 open CallTree
 open HornClause
+open HornClauseEc
 
 (** Horn clause solving *)
 
 exception NoSolution
 
-(** {6 Functions on solutions} *)
-
-let pr_sol_elem ppf (pid, (xtys, t)) =
-  Format.fprintf ppf "@[<hov>%a =@ %a@]" Pred.pr (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) Term.pr t
-
-let pr_sol ppf sol =
-  Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_sol_elem "@,") sol
-
-
-let lookup_sol (pid, ttys) sol =
-  Formula.simplify
-    (Formula.band
-		    (List.map
-		      (fun (_, (xtys, t)) ->
-		        let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
-		        Term.subst (fun x -> List.assoc x sub) t)
-		      (List.filter (fun (pid', _) -> pid = pid') sol)))
-
-let merge_sol sol =
-  List.map
-    (fun (pid, xtys) ->
-      pid, (xtys, lookup_sol (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol))
-    (List.map (fun ((pid, (xtys, _))::_) -> pid, xtys)
-      (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) sol))
-
 (** {6 Functions for solving Horn clauses} *)
-
-let lookup_lbs (pid, ttys) lbs =
-		let xtys, t = List.assoc pid lbs in
-
-		let fvs = Util.diff (List.unique (Term.fvs t)) (List.map fst xtys) in
-		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-		let t = Term.subst (fun x -> List.assoc x sub) t in
-
-		let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
-		Term.subst (fun x -> List.assoc x sub) t
-
-let subst_lbs lbs (Hc(popt, ps, t)) =
-  let _ = Global.log_begin "subst_lbs" in
-  let t, ps =
-    let ts, ps =
-      Util.partition_map (fun (pid, ttys) -> try `L(lookup_lbs (pid, ttys) lbs) with Not_found -> `R(pid, ttys)) ps
-				in
-    Formula.band (t :: ts), ps
-  in
-  let hc = simplify (Hc(popt, ps, t)) in
-  let _ = Global.log_end "subst_lbs" in
-  hc
-
-
 
 let compute_lb lbs (Hc(Some(pid, xtys), ps, t)) =
   let Hc(_, [], t) = subst_lbs lbs (Hc(Some(pid, xtys), ps, t)) in
@@ -81,7 +33,7 @@ let compute_lbs hcs =
         List.map
           (fun hc ->
             let lb = compute_lb lbs hc in
-            let _ = Global.log (fun () -> Format.printf "%a@," pr_sol_elem lb) in
+            let _ = Global.log (fun () -> Format.printf "%a@," TypPredSubst.pr_elem lb) in
             lb)
         hcs1
       in
@@ -127,7 +79,7 @@ let compute_lbs_ext hcs =
 
 let formula_of_forward hcs =
   let lbs = compute_lbs hcs in
-  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," pr_sol lbs) in
+  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," TypPredSubst.pr lbs) in
   let hcs = List.filter (function (Hc(None, _, _)) -> true | _ -> false) hcs in
   Formula.simplify
     (Formula.bor
@@ -270,7 +222,7 @@ let solve_hc_aux (*prog*) lbs ps t =
 						      let t1 =
 						        try
                 let t = lookup_lbs (pid, List.map (fun (x, _, ty) -> Term.make_var x, ty) sub) lbs in
-						          let sub, t = Tsubst.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
+						          let sub, t = TypSubst.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
 						          let t = Term.subst sub t in
                 let [], t = subst_formula (fun x -> List.mem x xs || Var.is_coeff x) [] t in
                 t
@@ -280,9 +232,9 @@ let solve_hc_aux (*prog*) lbs ps t =
               try
                 let t =
 										        Formula.band
-                    (t :: List.map (fun (pid, ts) -> lookup_lbs (pid, ts) lbs) ps @ List.map Tsubst.formula_of_elem sub)
+                    (t :: List.map (fun (pid, ts) -> lookup_lbs (pid, ts) lbs) ps @ List.map TypSubst.formula_of_elem sub)
                 in
-						          let sub, t = Tsubst.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
+						          let sub, t = TypSubst.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
 						          let t = Term.subst sub t in
                 let [], t = subst_formula (fun x -> List.mem x xs || Var.is_coeff x) [] t in
                 t
@@ -300,8 +252,8 @@ let solve_hc_aux (*prog*) lbs ps t =
             t
 						    in
 						    let sol = pid, (List.map (fun (x, _, ty) -> x, ty) sub, interp)	in
-						    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," pr_sol_elem sol) in
-						    sol :: aux ps (Formula.band (t :: interp :: List.map Tsubst.formula_of_elem sub))
+						    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," TypPredSubst.pr_elem sol) in
+						    sol :: aux ps (Formula.band (t :: interp :: List.map TypSubst.formula_of_elem sub))
 		  in
 		  let sol = aux (if !Global.find_preds_forward then ps else List.rev ps) t in
 				let _ = Global.log_end "solve_hc_aux" in
@@ -313,7 +265,7 @@ let solve_hc (*prog*) lbs sol (Hc(popt, ps, t)) =
       None -> t, []
     | Some(pid, xtys) ->
         try
-          Formula.band [t; Formula.bnot (lookup_sol (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol)],
+          Formula.band [t; Formula.bnot (TypPredSubst.lookup (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol)],
           [pid, (xtys, Formula.ttrue)]
         with Not_found ->
           Formula.tfalse, []
@@ -339,7 +291,7 @@ let solve_aux (*prog*) lbs hcs =
         hcs
     in
     if hcs1 = [] && hcs2 = [] then
-      merge_sol sol
+      TypPredSubst.merge sol
     else if hcs1 = [] && hcs2 <> [] then
       assert false
     else
@@ -347,42 +299,15 @@ let solve_aux (*prog*) lbs hcs =
   in
   aux hcs []
 
-let check_solution sol hcs =
-  List.iter
-    (fun hc ->
-      let Hc(popt, [], t) =
-        try
-          subst_lbs sol hc
-        with Not_found ->
-		        let _ = Format.printf "%a@," pr hc in
-		        assert false
-      in
-      let t' =
-        try
-          match popt with
-										  None ->
-												  Formula.tfalse
-										| Some(pid, xtys) ->
-										    let t = lookup_lbs (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol in
-              Formula.exists (List.filter (fun (x, _) -> not (List.mem_assoc x xtys)) (Term.tyfvs_ty t SimType.Bool)) t
-        with Not_found ->
-		        let _ = Format.printf "%a@," pr hc in
-          assert false
-      in
-      if not (Cvc3Interface.implies [t] [t']) then
-        let _ = Format.printf "%a@,%a => %a@," pr hc Term.pr t Term.pr t' in
-        assert false)
-    hcs
-
 (** @returns sol
     each predicate not in sol must be true *)
 let solve (*prog*) ctrs hcs ohcs =
   let _ = Global.log_begin "solving Horn clauses" in
   let lbs = compute_lbs hcs in
-  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  %a@," pr_sol lbs) in
+  let _ = Global.log (fun () -> Format.printf "lower bounds:@,  %a@," TypPredSubst.pr lbs) in
   let sol = solve_aux (*prog*) lbs hcs in
-  let _ = if !Global.debug then check_solution sol hcs in
-  let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]" pr_sol sol) in
+  let _ = if !Global.debug then TypPredSubst.check sol hcs in
+  let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]" TypPredSubst.pr sol) in
   let _ =
     if !Global.debug && false then
       let ohcs = List.map simplify (List.map (subst_lbs sol) ohcs) in
@@ -390,7 +315,7 @@ let solve (*prog*) ctrs hcs ohcs =
       let ohcs = List.map simplify (List.map (subst_lbs lbs) ohcs) in
       let _ = Global.log (fun () -> Format.printf "solved horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") ohcs) in
       let sol = sol @ List.filter_map (function Hc(Some(pid, xtys), [], t) -> Some(pid, (xtys, t)) | _ -> None ) ohcs in
-      check_solution sol ohcs
+      TypPredSubst.check sol ohcs
   in
   let _ = Global.log_end "solving Horn clauses" in
   sol

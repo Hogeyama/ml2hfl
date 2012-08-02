@@ -128,7 +128,7 @@ let widen ts =
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let tss, f = Tsubst.elim_boolean (List.map Formula.elim_unit ts) in
+  let tss, f = TypSubst.elim_boolean (List.map Formula.elim_unit ts) in
   let aux ts =
 		  let ts = List.map (fun t -> polyhedron_of env t) ts in
 (*

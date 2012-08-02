@@ -102,7 +102,7 @@ let cgen env etr =
 						      				let t =
 								          Formula.band
 																				(List.map (fun (Loc(tr, _)) -> fst (get tr).data) locs @
-								            List.map Tsubst.formula_of_elem xttys1)
+								            List.map TypSubst.formula_of_elem xttys1)
       										in
 		              let hcs', ps' =
 		                List.split
@@ -115,7 +115,7 @@ let cgen env etr =
 		                        else
 		                          List.hd (List.sort (Term.coeffs t))
 																								in
-				                    Hc(Some(pid, xtys), [], Tsubst.formula_of_elem (x, t, ty)),
+				                    Hc(Some(pid, xtys), [], TypSubst.formula_of_elem (x, t, ty)),
 				                    (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys))
 				                  xttys2)
 		              in
@@ -123,7 +123,7 @@ let cgen env etr =
 		              ps'
 		            in
 		  		        let nd = get tr in
-				          aux (Loc(set tr { nd with data = Formula.band (fst nd.data :: List.map Tsubst.formula_of_elem xttys1), snd nd.data @ ps' }, p)) hcs etr
+				          aux (Loc(set tr { nd with data = Formula.band (fst nd.data :: List.map TypSubst.formula_of_elem xttys1), snd nd.data @ ps' }, p)) hcs etr
             with Not_found ->
               if !Global.refine_function then
                 (* ToDo: need function type refinement *)
@@ -133,7 +133,7 @@ let cgen env etr =
         | Trace.Ret(x, t, ty) ->
             let _ = assert (SimType.is_base ty) in
             let xttys = if SimType.is_base ty && ty <> SimType.Unit(*sound???*) then [x, t, ty] else [] in
-            let t = Formula.band (fst (get tr).data :: List.map Tsubst.formula_of_elem xttys) in
+            let t = Formula.band (fst (get tr).data :: List.map TypSubst.formula_of_elem xttys) in
             let hcs = (Hc(Some(Pred.of_pid_vars env x), [assert false], t))::hcs in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then

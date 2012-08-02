@@ -43,7 +43,7 @@ let rec pr ppf tr =
             let _ =
 				          Util.iter3
 				            (fun t xttys tr ->
-														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Tsubst.formula_of_elem xttys) in
+														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map TypSubst.formula_of_elem xttys) in
                   let _ = if t <> Formula.ttrue then Format.fprintf ppf ", @,%a" Term.pr t in
                   Format.fprintf ppf ", @,%a" pr tr)
 				            (List.take (List.length trs) nd.constr)
@@ -51,7 +51,7 @@ let rec pr ppf tr =
 				            trs
             in
             if List.length trs + 1 = List.length nd.subst then
-              let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map Tsubst.formula_of_elem (List.last nd.subst)) in
+              let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map TypSubst.formula_of_elem (List.last nd.subst)) in
 		            if List.last nd.constr <> Formula.ttrue then
 		              Format.fprintf ppf ", @,%a" Term.pr (List.last nd.constr)
         in

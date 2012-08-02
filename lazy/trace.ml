@@ -23,10 +23,10 @@ let pr_elem ppf elm =
       let _ = cnt := !cnt + 1 in
       Format.fprintf ppf "[@[<hov>%a.@," Term.pr t
   | Arg(xttys) ->
-      Format.fprintf ppf "%a@," Term.pr (Tsubst.formula_of xttys)
+      Format.fprintf ppf "%a@," Term.pr (TypSubst.formula_of xttys)
   | Ret(x, t, ty) -> 
       let _ = cnt := !cnt - 1 in
-      Format.fprintf ppf "%a@]]@," Term.pr (Tsubst.formula_of [x, t, ty])
+      Format.fprintf ppf "%a@]]@," Term.pr (TypSubst.formula_of [x, t, ty])
   | Nop ->
       Format.fprintf ppf "nop"
   | Error ->
