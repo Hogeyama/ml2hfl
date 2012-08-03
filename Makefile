@@ -60,7 +60,10 @@ lib: ocaml csisat trecs
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli wrapper.mli wrapper2.mli CEGAR_print.mli
+MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
+	inter_type.mli wrapper.mli wrapper2.mli CEGAR_print.mli spec_parser.mli
+CMI = $(MLI:.mli=.cmi)
+
 LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	util.cmo zipper.cmo \
 	global.cmo \
@@ -74,7 +77,7 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
 	callTree.cmo pred.cmo typPredSubst.cmo hornClause.cmo hornClauseEc.cmo hcGenRefType.cmo hcSolve.cmo \
 	verifier.cmo
-# apronInterface.cmo
+#	apronInterface.cmo
 #	intType.cmo intTypeCheck.cmo
 #	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo
 #	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo
@@ -90,7 +93,7 @@ CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	type_check.cmo trans.cmo CEGAR_util.cmo useless_elim.cmo \
-	lazyInterface.cmo \
+	ref_type.cmo type_trans.cmo lazyInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
@@ -118,10 +121,10 @@ OCAML_BYTECOMP_CMO = lambda.cmo printlambda.cmo typeopt.cmo switch.cmo \
 OCAML_DRIVER_CMO = pparse.cmo compile.cmo
 
 
-$(NAME).byte: $(CMO)
+$(NAME).byte: $(CMO) $(CMI)
 	$(OCAMLC) $(OCAMLFLAGS) -o $@ $(CMA) $(CMO)
 
-$(NAME).opt: $(CMX)
+$(NAME).opt: $(CMX) $(CMI)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
 
 
@@ -157,10 +160,10 @@ ocaml: $(OCAML_SOURCE)/config/Makefile
 csisat:
 	cd $(CSISAT); make STATIC=1
 
-atp_batch.cmx:
+$(ATP)/atp_batch.cmx:
 	cd $(ATP) && make compiled
 
-atp_batch.cmo:
+$(ATP)/atp_batch.cmo:
 	cd $(ATP) && make bytecode
 
 # TODO: refine & write rule for bytecode
@@ -188,8 +191,6 @@ dist:
 
 ################################################################################
 # documents
-
-MLI = $(wildcard *.mli)
 
 doc:
 	mkdir -p $(DOC)
