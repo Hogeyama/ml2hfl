@@ -82,11 +82,7 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 #	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo
 #	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo
 
-CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO)) \
+CMO = $(OCAML_CMO) \
 	$(ATP)/atp_batch.cmo \
 	$(addprefix lazy/,$(LAZY_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
@@ -119,6 +115,11 @@ OCAML_BYTECOMP_CMO = lambda.cmo printlambda.cmo typeopt.cmo switch.cmo \
 	matching.cmo translobj.cmo translcore.cmo translclass.cmo translmod.cmo \
 	opcodes.cmo instruct.cmo emitcode.cmo printinstr.cmo bytegen.cmo simplif.cmo
 OCAML_DRIVER_CMO = pparse.cmo compile.cmo
+OCAML_CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
+	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO))
 
 
 $(NAME).byte: $(CMO) $(CMI)
