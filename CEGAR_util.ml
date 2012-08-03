@@ -173,7 +173,8 @@ let rec trans_typ = function
   | Type.TAbsBool -> assert false
   | Type.TInt _ -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false
-  | Type.TVar _  -> TBase(TUnit, nil)
+  | Type.TVar{contents=None} -> assert false
+  | Type.TVar{contents=Some typ} -> trans_typ typ
   | Type.TFun({Id.typ=Type.TBool|Type.TPred(Type.TBool,_)} as x,typ) ->
       let ps = match Id.typ x with Type.TPred(_,ps) -> ps | _ -> [] in
       let x' = trans_var x in

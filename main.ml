@@ -41,9 +41,12 @@ let print_info () =
 
 let spec_file = ref ""
 
-
+let init () =
+  Id.clear_counter ();
+  Syntax.typ_excep := Type.TConstr("exn",true)
 
 let rec main_loop parsed =
+  let () = init () in
   let t = parsed in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in

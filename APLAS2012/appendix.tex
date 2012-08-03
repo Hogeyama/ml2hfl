@@ -170,25 +170,25 @@ E\text{ (eval. ctx.)} &::=& \hole \mid \App{E}{t} \mid \App{v}{E} \mid \If{E}{t_
 \end{array}
 \]
 
-\infrule{{(f=v) \in D}}{f \red v}
+\infrule[E-Fun]{{(f=v) \in D}}{f \red v}
 
-\infrule
+\infrule[E-Op]
  {\text{$\Denote{\OP}$ is the function denoted by $\OP$}}
  {\Op{v_1,\dots,v_n} \red \Denote{\OP}(v_1,\dots,v_n)}
 
-\infax{\App{(\Abs{x}{t_1})}{t_2} \red a}
+\infax[E-App]{\App{(\Abs{x}{t_1})}{t_2} \red a}
 
-\infax{\If{\TRUE}{t_1}{t_2} \red t_1}
+\infax[E-IfTrue]{\If{\TRUE}{t_1}{t_2} \red t_1}
 
-\infax{\If{\FALSE}{t_1}{t_2} \red t_2}
+\infax[E-IfFalse]{\If{\FALSE}{t_1}{t_2} \red t_2}
 
-\infax{\Br{t_1}{t_2} \red t_1}
+\infax[E-BrLeft]{\Br{t_1}{t_2} \red t_1}
 
-\infax{\Br{t_1}{t_2} \red t_2}
+\infax[E-BrRight]{\Br{t_1}{t_2} \red t_2}
 
-\infrule{t \red t'}{E[t] \red E[t']}
+\infrule[E-Context]{t \red t'}{E[t] \red E[t']}
 
-\infax{E[\FAIL] \red \FAIL}
+\infax[E-Fail]{E[\FAIL] \red \FAIL}
 
 \caption{The semantics of the source language}
 \label{fig:source-semantics}
@@ -275,7 +275,7 @@ Immediately from Lemma~\ref{lem:cps_total_term}.
 \end{proof}
 
 
-\section{Proof of Theorem~\ref{thm:cps_sound}\memo{now editting}}
+\section{Proof of Theorem~\ref{thm:cps_sound}}
 
 \TODO{Introduce $\ToC{-}$}
 
@@ -469,7 +469,7 @@ Immediately from Lemma~\ref{lem:cps_total_term}.
 
 \begin{lemma}
 \label{lem:cps_weak}
-If $\CPS{\Gamma}{e}{\tau}{\ell}{t'}$, then $\CPS{\Gamma,x_1\COL\tau_1,\dots,x_n\COL\tau_n}{t}{\tau}{\ell}{t'}$
+If $\CPS{\Gamma}{t}{\tau}{\ell}{t'}$, then $\CPS{\Gamma,x_1\COL\tau_1,\dots,x_n\COL\tau_n}{t}{\tau}{\ell}{t'}$
 \end{lemma}
 
 
@@ -479,7 +479,7 @@ Suppose $\CPS{\emptyset}{v}{\tau_1}{\NC}{v'}$.
 \begin{itemize}
 \item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\IC}{t'}$,
       then $\CPS{\Gamma}{[v/x]t}{\tau_1}{\IC}{[v'/x]t'}$, and
-\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\NC}{e'}$,
+\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\NC}{t'}$,
       then $\CPS{\Gamma}{[v/x]t}{\tau_1}{\NC}{[v'/x]t'}$.
 \end{itemize}
 \end{lemma}
@@ -500,31 +500,79 @@ then $t_1 \reds t_2$.
 \begin{lemma}
 \label{lem:init_red}
 %Suppose $\Gamma(k)=\TFun{\tau}{X}$.
-The followings hold.
+If
 \begin{itemize}
-\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\IC}{t'}$,
-      then $\CPScolon{\Gamma}{t}{\tau_1}{\IC}{k}{t''}$ and $\App{t'}{k} \reds t''$.
-\item If $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\NC}{e'}$,
-      then $\CPScolon{\Gamma}{t}{\tau_1}{\NC}{E}{t''}$ and $E[t'] = t''$.
+\item $\CPS{\Gamma, x \COL \tau_1}{t}{\tau_2}{\ell}{t'}$ and
+\item $\CPScolon{\Gamma}{t}{\tau_1}{\ell}{k}{t''}$,
 \end{itemize}
+then $\SApp{\ell}{t'}{k} \reds t''$, and $t'' = \App{k}{t'}$ if $\ell = \NC$.
 \end{lemma}
 
-
+\newpage
 \begin{lemma}
 \label{lem:cps_sim}
 %Suppose $\Gamma(k)=\TFun{\tau}{X}$.
-If
+Let $\id$ be $\Abs{x}{x}$.  If
 \begin{itemize}
-\item $t_1 \red t_2$,
-\item $\CPScolon{\Gamma}{t_1}{\tau_1}{\ell}{\Abs{x}{x}}{t_1'}$, and
-\item $\CPScolon{\Gamma}{t_2}{\tau_1}{\ell}{\Abs{x}{x}}{t_2'}$,
+\item $t_1 \red t_2$ and
+\item $\CPScolon{\Gamma}{t_1}{\tau_1}{\ell}{\id}{t_1'}$,
 \end{itemize}
-then $t_1' \reds t_2'$.
+then there exists $\ell'$ and $t_2'$ such that
+\begin{itemize}
+\item $\CPScolon{\Gamma}{t_2}{\tau_1}{\ell'}{\id}{t_2'}$ and
+\item $t_1' \reds t_2'$.
+\end{itemize}
+\end{lemma}
+\begin{proof}
+We prove the lemma by induction on the derivation of $t_1 \red t_2$.
+Case analysis on the last rule used.
+\begin{itemize}
+\item Case E-Fun: \\
+      We have
+      \begin{itemize}
+       \item $t_1 = f$,
+       \item $(f = v) \in D$,
+       \item $t_2 = v$, and
+       \item $t_1' = \App{\id}{f}$.
+      \end{itemize}
+      We get $t_1' \red f \red t_2'$ where $(f, t_2') \in D'$.
+      Furthermore, $\CPScolon{\Gamma}{v}{\tau_1}{\NC}{\id}{t_2'}$
+      by Lemma~\ref{lem:init_red}.
+\end{itemize}
+\end{proof}
+
+
+\begin{lemma}
+\label{lem:cps_sim_inv}
+%Suppose $\Gamma(k)=\TFun{\tau}{X}$.
+Let $\id$ be $\Abs{x}{x}$.  If
+\begin{itemize}
+\item $\CPScolon{\Gamma}{t_1}{\tau_1}{\ell}{\id}{t_1'}$ and
+\item $t_1' \red t_2'$,
+\end{itemize}
+then there exists $\ell'$ and $t_2$ such that
+\begin{itemize}
+\item $\CPScolon{\Gamma}{t_2}{\tau_1}{\ell'}{\id}{t_2'}$ and
+\item $t_1 \reds t_2$.
+\end{itemize}
 \end{lemma}
 \begin{proof}
 We prove the lemma by induction on the derivation of $t_1 \red t_2$.
 Case analysis on the last rule used.
 \begin{itemize}
 \item Case
+\end{itemize}
+\end{proof}
+
+
+\begin{proof}[Proof of Theorem~\ref{thm:cps_sound}]
+The proof follows from Lemma~\ref{lem:init_red} and Lemma~\ref{lem:cps_sim}.
+Suppose $t \reds \FAIL$ and
+\begin{itemize}
+\item if direction: \\
+
+\item only-if direction: \\
+      Suppose $\CPS{\Gamma}{t_2}{\tau_1}{\ell'}{t_2'}$.
+      We show that $t_2'$ diverges if $t_1'$
 \end{itemize}
 \end{proof}

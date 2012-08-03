@@ -54,7 +54,7 @@ let rec abst_recdata_pat p =
   let typ =
     try
       abst_recdata_typ p.pat_typ
-    with PolymorphicType -> raise (Fatal "PolymorphicType types occur! (Abstract.abst_rectdata_typ)")
+    with PolymorphicType -> raise (Fatal "Polymorphic types occur! (Abstract.abst_rectdata_typ)")
   in
   let desc,cond,bind =
     match p.pat_desc with
@@ -88,8 +88,7 @@ let rec abst_recdata_pat p =
             match p.pat_desc with
                 PAny
               | PVar _ -> true_term
-              | _ ->
-                  make_match t [pt, true_term, true_term; make_pany p.pat_typ, true_term, false_term]
+              | _ -> make_match t [pt, true_term, true_term; make_pany p.pat_typ, true_term, false_term]
           in
           let conds' = List.map2 make_cond binds ppcbs in
           let cond0 = make_eq (make_nth 0 (1 + List.length ground_types)
@@ -183,8 +182,9 @@ let rec abst_recdata t =
             in
               p', make_and c c', List.fold_right aux bind t'
           in
+          let t1' = abst_recdata t1 in
           let pats' = List.map aux pats in
-            Match(abst_recdata t1, pats')
+            Match(t1', pats')
       | Raise t -> Raise (abst_recdata t)
       | TryWith(t1,t2) -> TryWith(abst_recdata t1, abst_recdata t2)
       | Bottom -> Bottom

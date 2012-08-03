@@ -703,6 +703,8 @@ let rec make_nth i n t =
       0,1 -> t
     | 0,2 -> make_fst t
     | _ -> make_nth (i-1) (n-1) (make_snd t)
+let make_assume t1 t2 =
+  make_if_ t1 t2 (make_bottom t2.typ)
 
 
 let imply t1 t2 = {desc=BinOp(Or, {desc=Not t1;typ=TBool}, t2); typ=TBool}

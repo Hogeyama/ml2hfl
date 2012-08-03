@@ -137,6 +137,7 @@ let rec unify typ1 typ2 =
           r := Some typ
     | TPred(typ1,_), typ2
     | typ1, TPred(typ2,_) -> unify typ1 typ2
+    | TConstr(s1,_), TConstr(s2,_) -> assert (s1 = s2)
     | _ ->
         Format.printf "unification error: %a, %a@."
           print_typ_init (flatten typ1) print_typ_init (flatten typ2);

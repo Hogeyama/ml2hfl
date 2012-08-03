@@ -125,6 +125,7 @@ val make_match : typed_term -> (typed_pattern * typed_term * typed_term) list ->
 val make_single_match : typed_term -> typed_pattern -> typed_term -> typed_term
 val make_loop : typ -> typed_term
 val make_nth : int -> int -> typed_term -> typed_term
+val make_assume : typed_term -> typed_term -> typed_term
 val make_pany : typ -> typed_pattern
 val make_pvar : id -> typed_pattern
 val make_pconst : typed_term -> typed_pattern

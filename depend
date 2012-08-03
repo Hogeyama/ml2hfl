@@ -1,17 +1,13 @@
-CEGAR_CPS.cmi: CEGAR_syntax.cmo
-CEGAR_abst.cmi: CEGAR_syntax.cmo
-CEGAR_print.cmi: CEGAR_syntax.cmo
 CPS.cmi: syntax.cmi
 abstract.cmi: type.cmo syntax.cmi id.cmo
 automata.cmi:
-check.cmi: CEGAR_syntax.cmo
 feasibility.cmi: CEGAR_syntax.cmo
-infer.cmi: syntax.cmi
 refine.cmi: CEGAR_syntax.cmo
-spec_parser.cmi: spec.cmo
 syntax.cmi: type.cmo id.cmo
+inter_type.cmi:
 wrapper.cmi: syntax.cmi
 wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
+CEGAR_print.cmi: CEGAR_syntax.cmo
 lazy/enum.cmo: lazy/enum.cmi
 lazy/enum.cmx: lazy/enum.cmi
 lazy/extList.cmo: lazy/enum.cmi lazy/extList.cmi
@@ -228,6 +224,10 @@ useless_elim.cmo: utilities.cmo typing.cmo id.cmo CEGAR_util.cmo \
     CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
 useless_elim.cmx: utilities.cmx typing.cmx id.cmx CEGAR_util.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+ref_type.cmo: utilities.cmo CEGAR_syntax.cmo CEGAR_print.cmi
+ref_type.cmx: utilities.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+type_trans.cmo: ref_type.cmo CEGAR_type.cmo
+type_trans.cmx: ref_type.cmx CEGAR_type.cmx
 lazyInterface.cmo: lazy/verifier.cmo lazy/var.cmo utilities.cmo lazy/util.cmo \
     type.cmo lazy/term.cmo syntax.cmi lazy/simType.cmo lazy/prog.cmo \
     lazy/idnt.cmo id.cmo lazy/global.cmo flag.cmo lazy/fdef.cmo \
@@ -329,10 +329,10 @@ CEGAR.cmx: wrapper.cmx utilities.cmx refine.cmx ModelCheck.cmx \
 main.cmo: wrapper2.cmi wrapper.cmi lazy/verifier.cmo utilities.cmo \
     type_check.cmo type.cmo trans.cmo syntax.cmi spec_parser.cmi \
     spec_lexer.cmo spec.cmo refine.cmi parser_wrapper.cmo lazyInterface.cmo \
-    lazy/global.cmo flag.cmo lazy/cvc3Interface.cmo CPS.cmi CEGAR_util.cmo \
-    CEGAR_syntax.cmo CEGAR.cmo abstract.cmi
+    id.cmo lazy/global.cmo flag.cmo lazy/cvc3Interface.cmo CPS.cmi \
+    CEGAR_util.cmo CEGAR_syntax.cmo CEGAR.cmo abstract.cmi
 main.cmx: wrapper2.cmx wrapper.cmx lazy/verifier.cmx utilities.cmx \
     type_check.cmx type.cmx trans.cmx syntax.cmx spec_parser.cmx \
     spec_lexer.cmx spec.cmx refine.cmx parser_wrapper.cmx lazyInterface.cmx \
-    lazy/global.cmx flag.cmx lazy/cvc3Interface.cmx CPS.cmx CEGAR_util.cmx \
-    CEGAR_syntax.cmx CEGAR.cmx abstract.cmx
+    id.cmx lazy/global.cmx flag.cmx lazy/cvc3Interface.cmx CPS.cmx \
+    CEGAR_util.cmx CEGAR_syntax.cmx CEGAR.cmx abstract.cmx
