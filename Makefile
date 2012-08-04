@@ -162,6 +162,7 @@ csisat:
 	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
 
 atp:
+	-patch -d atp -N < atp_patch
 	cd $(ATP) && make compiled bytecode
 
 # TODO: refine & write rule for bytecode
