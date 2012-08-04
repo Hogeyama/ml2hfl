@@ -6,6 +6,9 @@ open HornClauseEc
 
 (** {6 Functions on predicate substitutions} *)
 
+let is_function psub =
+  not (Util.is_dup (List.map fst psub))
+
 let pr_elem ppf (pid, (xtys, t)) =
   Format.fprintf ppf
     "@[<hov>%a =@ %a@]"
@@ -15,6 +18,7 @@ let pr_elem ppf (pid, (xtys, t)) =
 let pr ppf sol =
   Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_elem "@,") sol
 
+(** @assume sol does not contain unbound variables *)
 let lookup (pid, ttys) sol =
   Formula.simplify
     (Formula.band
@@ -24,6 +28,7 @@ let lookup (pid, ttys) sol =
 		        Term.subst (fun x -> List.assoc x sub) t)
 		      (List.filter (fun (pid', _) -> pid = pid') sol)))
 
+(** @assume sol does not contain unbound variables *)
 let merge sol =
   List.map
     (fun (pid, xtys) ->
@@ -32,6 +37,7 @@ let merge sol =
       (fun ((pid, (xtys, _))::_) -> pid, xtys)
       (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) sol))
 
+(** @assume is_function lbs *)
 let lookup_lbs (pid, ttys) lbs =
 		let xtys, t = List.assoc pid lbs in
 
@@ -42,6 +48,7 @@ let lookup_lbs (pid, ttys) lbs =
 		let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
 		Term.subst (fun x -> List.assoc x sub) t
 
+(** @assume is_function lbs *)
 let subst_lbs lbs (Hc(popt, ps, t)) =
   let _ = Global.log_begin "subst_lbs" in
   let t, ps =
@@ -54,6 +61,7 @@ let subst_lbs lbs (Hc(popt, ps, t)) =
   let _ = Global.log_end "subst_lbs" in
   hc
 
+(** @assume is_function sol *)
 let check sol hcs =
   List.iter
     (fun hc ->

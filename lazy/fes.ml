@@ -11,7 +11,7 @@ type t = FES of TypSubst.t * Term.t list
 let make xttys ts = FES(xttys, ts)
 
 (** ignore equalities on functions *)
-let formula_of (FES(xttys, ts)) = Formula.band (TypSubst.formula_of xttys :: ts)
+let formula_of (FES(xttys, ts)) = Formula.band (Formula.of_subst xttys :: ts)
 
 let pr ppf fes =
   if true then
@@ -24,7 +24,7 @@ let pr ppf fes =
     Format.fprintf ppf "%a" (Util.pr_list pr " && ") ts
   else if true then
     let FES(xttys, ts) = fes in
-    let ts = Formula.conjuncts (TypSubst.formula_of xttys) @ ts in
+    let ts = Formula.conjuncts (Formula.of_subst xttys) @ ts in
     Format.fprintf ppf "%a" (Util.pr_list pr " && ") ts
   else
     Format.fprintf ppf "%a" pr (formula_of fes)

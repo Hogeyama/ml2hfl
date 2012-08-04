@@ -361,7 +361,7 @@ let simplify2 bvs t =
 				let xs = Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) bvs in
 				let t =
 				  let sub, t =
-				    TypSubst.extract_from [] (fun x -> not (List.mem x xs)) t
+				    Formula.extract_from [] (fun x -> not (List.mem x xs)) t
 				  in
 						Term.subst sub t
 				in
@@ -377,7 +377,7 @@ let simplify2 bvs t =
 								let xs = Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) bvs in
 				    if xs <> [] && Term.coeffs t = [] then
 										let _ = if debug then Format.printf "t: %a@," Term.pr t in
-		        let tss, f = TypSubst.elim_boolean [t] in
+		        let tss, f = Formula.elim_boolean [t] in
 										let ts = List.map (fun [t] -> t) tss in
 										f
 												(List.map
@@ -404,7 +404,7 @@ let simplify2 bvs t =
 								in
 		      if xs <> [] && Term.coeffs t = [] then
           try
-            let tss, f = TypSubst.elim_boolean [t] in
+            let tss, f = Formula.elim_boolean [t] in
 												let ts = List.map (fun [t] -> t) tss in
 										  f (List.map (fun t -> AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) ts)
 										with Util.NotImplemented _ ->
@@ -425,7 +425,7 @@ let simplify_aux bs (Hc(popt, ps, t)) =
     let _ = if debug then Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in
     let ps, t =
 		    let sub, t =
-		      TypSubst.extract_from
+		      Formula.extract_from
 		        (match popt with None -> [] | Some(pid, _) -> [pid])
 		        (fun x -> List.mem x bvs || Var.is_coeff x) t
 		    in

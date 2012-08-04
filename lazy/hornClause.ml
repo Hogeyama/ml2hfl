@@ -34,11 +34,31 @@ let fvs (Hc(popt, ps, t)) =
 let coeffs (Hc(popt, ps, t)) =
   List.unique (Util.concat_map Pred.coeffs ps @ Term.coeffs t)
 
-let get_lhs_pids hcs =
+let lhs_pids hcs =
   Util.concat_map
     (fun (Hc(_, ps, _)) ->
       List.map fst ps)
     hcs
+
+let rhs_pids hcs =
+  Util.concat_map
+    (function
+				  Hc(None, _, _) -> []
+				| Hc(Some(pid, _), _, _) -> [pid])
+    hcs
+
+let is_root (Hc(popt, _, _)) = popt = None
+let is_coeff (Hc(popt, _, _)) =
+  match popt with
+    None -> false
+  | Some(pid, _) -> Var.is_coeff pid
+
+let is_non_disjunctive hcs =
+  let popts = List.map (function Hc(None, _, _) -> None | Hc(Some(pid, _), _, _) -> Some(pid)) hcs in
+  not (Util.is_dup popts)
+
+let is_well_defined hcs =
+  Util.subset (lhs_pids hcs) (rhs_pids hcs)
 
 (** alpha renaming *)
 let alpha (Hc(popt, ps, t) as hc) =
@@ -70,7 +90,7 @@ let rec subst_formula p ps t =
   else*)
 		(*Format.printf "input: %a@," Term.pr t;*)
 		let ts = Formula.conjuncts t in
-		let xttys, t = TypSubst.extract_from2 (Util.concat_map Pred.fvs ps) p ts in
+		let xttys, t = Formula.extract_from2 (Util.concat_map Pred.fvs ps) p ts in
 		(*Format.printf "xttys: %a@,t: %a@," TypSubst.pr xttys Term.pr t;*)
 		let ps, t =
 				if xttys = [] then

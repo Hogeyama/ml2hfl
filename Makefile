@@ -69,13 +69,13 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	global.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
 	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo \
-	formula.cmo typSubst.cmo fes.cmo fdef.cmo prog.cmo \
+	typSubst.cmo formula.cmo fes.cmo fdef.cmo prog.cmo \
 	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
 	farkas.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
-	callTree.cmo pred.cmo typPredSubst.cmo hornClause.cmo hornClauseEc.cmo hcGenRefType.cmo hcSolve.cmo \
+	callTree.cmo pred.cmo hornClause.cmo hornClauseEc.cmo typPredSubst.cmo hcGenRefType.cmo hcSolve.cmo \
 	verifier.cmo
 #	apronInterface.cmo
 #	intType.cmo intTypeCheck.cmo
