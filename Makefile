@@ -23,7 +23,6 @@ INCLUDES = -I /usr/lib \
 	-I /usr/local/lib \
 	-I $(ATP) \
 	-I $(APRON) \
-	-I $(GMP) \
 	-I $(CSISAT)/lib \
 	-I $(CSISAT)/obj \
 	-I $(OCAML_SOURCE)/bytecomp \
