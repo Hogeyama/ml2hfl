@@ -1,6 +1,6 @@
 include Makefile.config
 
-.PHONY: main all byte opt lib ocaml csisat clean clean-doc clean-ocaml clean-csisat clean-all doc test
+.PHONY: main all byte opt lib ocaml csisat atp clean clean-doc clean-ocaml clean-csisat clean-all doc test
 
 # OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
 # OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
@@ -54,7 +54,7 @@ byte: $(NAME).byte
 opt: $(NAME).opt
 byte2: $(NAME).byte2
 opt2: $(NAME).opt2
-lib: ocaml csisat trecs
+lib: ocaml csisat trecs atp
 
 
 ################################################################################
@@ -154,18 +154,15 @@ spec_lexer.ml: spec_lexer.mll
 # libraries
 
 $(OCAML_SOURCE)/config/Makefile:
-	cd $(OCAML_SOURCE); ./configure
+	cd $(OCAML_SOURCE) && ./configure
 ocaml: $(OCAML_SOURCE)/config/Makefile
-	cd $(OCAML_SOURCE); make world opt world.opt opt.opt
+	cd $(OCAML_SOURCE) && make world opt world.opt opt.opt
 
 csisat:
-	cd $(CSISAT); make STATIC=1
+	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
 
-$(ATP)/atp_batch.cmx:
-	cd $(ATP) && make compiled
-
-$(ATP)/atp_batch.cmo:
-	cd $(ATP) && make bytecode
+atp:
+	cd $(ATP) && make compiled bytecode
 
 # TODO: refine & write rule for bytecode
 trecs::
