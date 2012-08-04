@@ -1,0 +1,68 @@
+diff -c atp_old/limitations.ml atp_new/limitations.ml
+*** atp_old/limitations.ml	2012-08-04 14:56:12.763707376 +0900
+--- atp_new/limitations.ml	2012-04-04 16:18:08.991960830 +0900
+***************
+*** 116,125 ****
+  (* ------------------------------------------------------------------------- *)
+  (* Quine from Martin Jambon.                                                 *)
+  (* ------------------------------------------------------------------------- *)
+! 
+  (fun s -> Printf.printf "%s\n%S\n" s s)
+  "(fun s -> Printf.printf \"%s\\n%S\\n\" s s)";;
+! 
+  (* ------------------------------------------------------------------------- *)
+  (* Diagonalization and quasi-diagonalization of formulas.                    *)
+  (* ------------------------------------------------------------------------- *)
+--- 116,125 ----
+  (* ------------------------------------------------------------------------- *)
+  (* Quine from Martin Jambon.                                                 *)
+  (* ------------------------------------------------------------------------- *)
+! (*
+  (fun s -> Printf.printf "%s\n%S\n" s s)
+  "(fun s -> Printf.printf \"%s\\n%S\\n\" s s)";;
+! *)
+  (* ------------------------------------------------------------------------- *)
+  (* Diagonalization and quasi-diagonalization of formulas.                    *)
+  (* ------------------------------------------------------------------------- *)
+diff -c atp_old/tableaux.ml atp_new/tableaux.ml
+*** atp_old/tableaux.ml	2012-08-04 14:56:12.763707376 +0900
+--- atp_new/tableaux.ml	2012-04-04 16:18:08.987960774 +0900
+***************
+*** 130,137 ****
+        with Failure _ -> tableau (unexp,fm::lits,n) cont (env,k);;
+  
+  let rec deepen f n =
+!   try print_string "Searching with depth limit ";
+!       print_int n; print_newline(); f n
+    with Failure _ -> deepen f (n + 1);;
+  
+  let tabrefute fms =
+--- 130,137 ----
+        with Failure _ -> tableau (unexp,fm::lits,n) cont (env,k);;
+  
+  let rec deepen f n =
+!   try (*print_string "Searching with depth limit ";
+!       print_int n; print_newline();*) f n
+    with Failure _ -> deepen f (n + 1);;
+  
+  let tabrefute fms =
+diff -c atp_old/tactics.ml atp_new/tactics.ml
+*** atp_old/tactics.ml	2012-08-04 14:56:12.763707376 +0900
+--- atp_new/tactics.ml	2012-08-04 15:07:15.474200732 +0900
+***************
+*** 293,299 ****
+  
+  let take = exists_intro_tac;;
+  
+! let cases = disj_elim_tac "";;
+  
+  (* ------------------------------------------------------------------------- *)
+  (* Thesis modification.                                                      *)
+--- 293,299 ----
+  
+  let take = exists_intro_tac;;
+  
+! let cases x = disj_elim_tac "" x;;
+  
+  (* ------------------------------------------------------------------------- *)
+  (* Thesis modification.                                                      *)
