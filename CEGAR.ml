@@ -9,11 +9,6 @@ exception CannotDiscoverPredicate
 
 type info = {orig_fun_list:var list; inlined:var list}
 
-let make_ce_printer ce prog sol () =
-  Format.printf "Inputs:@.";
-  List.iter (fun t -> Format.printf "  %s;@." t) sol;
-  Feasibility.print_ce_reduction ce prog
-
 let pre () =
   Id.save_counter ()
 
@@ -75,7 +70,7 @@ let rec cegar1 prog0 ces info =
           Feasibility.print_ce_reduction ce prog;
           if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
           match Feasibility.check ce prog with
-              Feasibility.Feasible (env, sol) -> prog, Some (make_ce_printer ce prog sol)
+              Feasibility.Feasible (env, sol) -> prog, Some sol
             | Feasibility.Infeasible prefix ->
                 let () =
                   if true

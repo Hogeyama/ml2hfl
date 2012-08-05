@@ -6,7 +6,7 @@ open CEGAR_print
 open CEGAR_util
 
 type result =
-    Feasible of (string * CEGAR_syntax.typ) list * string list
+    Feasible of (string * CEGAR_syntax.typ) list * int list
   | Infeasible of CEGAR_syntax.ce
 
 let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env

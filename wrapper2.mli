@@ -31,12 +31,7 @@ val checksat : (CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list -> CEGAR_sy
 val interpolation : (CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list -> CEGAR_syntax.t list -> CEGAR_syntax.t list -> CEGAR_syntax.t
 (** [interpolation ts1 ts2] で，[ts1],[ts2] それぞれの conjunction の interpolant を求める．*)
 
-val get_solution : (CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list -> CEGAR_syntax.t -> string list
+val get_solution : (CEGAR_syntax.var * CEGAR_syntax.t CEGAR_type.t) list -> CEGAR_syntax.t -> int list
 (** [get_solution constr t] で制約 [constr] の解を求める．
     [constr] が充足不能の場合はどうなるかわからない．
 *)
-
-
-
-
-

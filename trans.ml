@@ -605,6 +605,7 @@ let set_target t =
   in
   let f = get_opt_val (get_last_definition None t) in
   let xs = get_args (Id.typ f) in
+  let main =
     match xs, Id.typ f with
         [], TUnit -> replace_main (make_var f) t
       | _ ->
@@ -613,11 +614,19 @@ let set_target t =
               env',defs', arg::args
           in
           let _,defs,args = List.fold_right aux xs ([],[],[]) in
-          let main = make_app {desc=Var f;typ=Id.typ f} args in
+          let aux arg =
+            let x = Id.new_var "arg" arg.typ in
+              x, [], arg
+          in
+          let bindings = List.map aux args in
+          let main = make_app (make_var f) (List.map (fun (x,_,_) -> make_var x) bindings) in
+          let main = make_letrec defs main in
+          let main = make_lets bindings main in
           let u = Id.new_var "main" main.typ in
-          let main' = make_let [u, [], main] unit_term in
-          let main'' = make_letrec defs main' in
-            replace_main main'' t
+          let main = make_let [u, [], main] unit_term in
+            replace_main main t
+  in
+    Id.name f, List.length xs, main
 
 
 

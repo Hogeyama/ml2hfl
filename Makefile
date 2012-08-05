@@ -36,8 +36,8 @@ INCLUDES = -I /usr/lib \
 	-I ./lazy \
 	-I $(TRECS)
 #	-I $(OCAMLLIB)
-OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib
-OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)'
+OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
+OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
 
 DOC = doc
 
@@ -74,7 +74,8 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
-	callTree.cmo pred.cmo hornClause.cmo hornClauseEc.cmo typPredSubst.cmo hcGenRefType.cmo hcSolve.cmo \
+	callTree.cmo pred.cmo hornClause.cmo hornClauseEc.cmo \
+	typPredSubst.cmo hcGenRefType.cmo hcSolve.cmo \
 	verifier.cmo
 #	apronInterface.cmo
 #	intType.cmo intTypeCheck.cmo
@@ -95,7 +96,7 @@ CMO = $(OCAML_CMO) \
 	$(TRECS)/trecs.cmo dependent_type.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
 	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
-	main.cmo
+	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma
 #gmp.cma apron.cma polka.cma

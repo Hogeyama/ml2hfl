@@ -327,4 +327,11 @@ let get_solution env p =
     not (Str.string_match (Str.regexp "cvc3") s 0) &&
     not (Str.string_match (Str.regexp "_reach_") s 0)
   in
-    List.filter aux ts
+  let ts' = List.sort compare (List.filter aux ts) in
+  let aux t =
+    let b = Str.string_match (Str.regexp "^.+ = \(-?[0-9]+\)$") t 0 in
+    let n = String.sub t (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1) in
+      assert b;
+      int_of_string n
+  in
+    List.map aux ts'

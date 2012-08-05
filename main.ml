@@ -50,7 +50,8 @@ let rec main_loop parsed =
   let t = parsed in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in
-  let t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else t in
+  let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
+  let set_target = t in
   let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
   let fun_list,t =
     if !Flag.init_trans
@@ -113,9 +114,11 @@ let rec main_loop parsed =
             let r = CEGAR.cegar prog {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined} in
               match r with
                   prog', None -> Format.printf "Safe!@.@."
-                | _, Some print ->
+                | _, Some ce ->
                     Format.printf "Unsafe!@.@.";
-                    print ()
+                    Format.printf "Input for %s:@.  %a@." main_fun
+                      (print_list Format.pp_print_int "; " false) (take ce arg_num);
+                    Format.printf "Error trace:@.  @[%a@]@."  Eval.print (ce,set_target)
           with
               Verifier.FailedToRefineTypes ->
 	        let _ = assert (not !Flag.relative_complete) in

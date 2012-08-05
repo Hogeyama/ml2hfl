@@ -41,9 +41,9 @@ and term =
   | Fst of typed_term
   | Snd of typed_term
   | Bottom
-(*
-  | TAbs of (typ -> typed_term)
-*)
+  | Label of info * typed_term
+
+and info = InfoInt of int | InfoString of string | InfoId of id
 
 and rec_flag = Nonrecursive | Recursive
 and mutable_flag = Immutable | Mutable
@@ -300,6 +300,11 @@ and print_term pri typ fm t =
         let s1,s2 = paren pri p in
           fprintf fm "%s@[snd %a@]%s" s1 (print_term p typ) t s2
     | Bottom -> fprintf fm "_|_"
+    | Label(InfoId x, t) ->
+        fprintf fm "(@[label %a %a@])" Id.print x (print_term 80 typ) t
+    | Label(InfoString s, t) ->
+        fprintf fm "(@[label %s %a@])" s (print_term 80 typ) t
+
 
 and print_pattern fm pat =
   match pat.pat_desc with
@@ -705,6 +710,7 @@ let rec make_nth i n t =
     | _ -> make_nth (i-1) (n-1) (make_snd t)
 let make_assume t1 t2 =
   make_if_ t1 t2 (make_bottom t2.typ)
+let make_label info t = {desc=Label(info,t); typ=t.typ}
 
 
 let imply t1 t2 = {desc=BinOp(Or, {desc=Not t1;typ=TBool}, t2); typ=TBool}
@@ -907,12 +913,8 @@ and subst x t t' =
       | Fst t1 -> make_fst (subst x t t1)
       | Snd t1 -> make_snd (subst x t t1)
       | RandValue _ -> assert false
-(*
-  in
-  let t''' =    {t'' with typ=subst_type x t t''.typ} in
-  if Id.to_string x = "xs_31" then Format.printf "[xs_31 |-> %a](%a) = %a@.@." pp_print_term t pp_print_term' t' pp_print_term' t''';
-    t'''
-*)
+      | Label(info, t1) -> make_label info (subst x t t1)
+
 
 and subst_int n t t' =
   let desc =

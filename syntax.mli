@@ -36,6 +36,9 @@ and term =
   | Fst of typed_term
   | Snd of typed_term
   | Bottom
+  | Label of info * typed_term
+
+and info = InfoInt of int | InfoString of string | InfoId of id
 
 and rec_flag = Nonrecursive | Recursive
 and mutable_flag = Immutable | Mutable
@@ -126,6 +129,7 @@ val make_single_match : typed_term -> typed_pattern -> typed_term -> typed_term
 val make_loop : typ -> typed_term
 val make_nth : int -> int -> typed_term -> typed_term
 val make_assume : typed_term -> typed_term -> typed_term
+val make_label : info -> typed_term -> typed_term
 val make_pany : typ -> typed_pattern
 val make_pvar : id -> typed_pattern
 val make_pconst : typed_term -> typed_pattern
