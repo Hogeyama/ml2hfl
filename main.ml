@@ -118,7 +118,7 @@ let rec main_loop parsed =
                     Format.printf "Unsafe!@.@.";
                     Format.printf "Input for %s:@.  %a@." main_fun
                       (print_list Format.pp_print_int "; " false) (take ce arg_num);
-                    Format.printf "Error trace:@.  @[%a@]@."  Eval.print (ce,set_target)
+                    Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
           with
               Verifier.FailedToRefineTypes ->
 	        let _ = assert (not !Flag.relative_complete) in

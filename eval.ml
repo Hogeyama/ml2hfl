@@ -208,8 +208,10 @@ let rec eval_print fm rands t =
     | Bottom -> assert false
     | Label(InfoId f, v) -> eval_print fm rands (subst f (fix f v) v)
     | Label(InfoString f, v) ->
-        Format.printf "%s ... ->@\n" f;
-        eval_print fm rands v
+        let () = Format.fprintf fm "@\n@[<v 2>%s ... ->" f in
+        let r = eval_print fm rands v in
+          Format.fprintf fm "@]";
+          r
     | Label _ -> assert false
 
 let print fm (ce, t) =
