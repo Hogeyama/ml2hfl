@@ -195,6 +195,7 @@ let arg_spec =
           " Disable heuristics of instantiation parameter inference";
 
    "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
+   "-gc", Arg.Set Global.generalize_constraints, " Generalize constraints";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";

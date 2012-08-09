@@ -7,7 +7,7 @@ open ExtString
 
 exception NotImplemented of string
 
-(** {6 Other functions} *)
+(** {6 Basic functions} *)
 
 let rec fixed_point f eq x =
   let x' = f x in
@@ -45,12 +45,19 @@ let is_int s =
 (** {6 Functions on options} *)
 
 let opt2list = function None -> [] | Some(x) -> [x]
-let rec pr_opt epr none ppf x =
-  match x with
+let rec pr_opt epr none ppf opt =
+  match opt with
     None ->
       Format.fprintf ppf "%s" none
   | Some(x) ->
       Format.fprintf ppf "%a" epr x
+
+let fold_opt none some opt =
+  match opt with
+    None ->
+      none
+  | Some(x) ->
+      some x
 
 (** {6 Functions on tuples} *)
 
@@ -150,9 +157,9 @@ let all_equiv p xs =
     require: p xs is satisfied *)
 let minimal p xs =
   let rec aux xs ys =
-		  match xs with
-		    [] -> ys
-		  | x::xs' ->
+    match xs with
+      [] -> ys
+    | x::xs' ->
         if p (xs' @ ys) then
           aux xs' ys
         else
@@ -278,14 +285,14 @@ let rec filter_map2 p xs ys =
   | _ -> assert false
 
 let map_left_right f xs =
-  let rec aux ls ys rs =
+  let rec aux ls rs =
     match rs with
-      [] -> ys
+      [] -> []
     | x::rs ->
-        let y = f ls x rs in
-        aux (ls @ [x]) (ys @ [y]) rs
+        f ls x rs ::
+        aux (ls @ [x]) rs
   in
-  aux [] [] xs
+  aux [] xs
 
 let filter_map_left f xs =
   let rec aux ys xs =
@@ -360,10 +367,10 @@ let multiply_list_list f xss =
   if xss = [] then
     assert false
   else
-		  List.fold_left
-		    (multiply_list f)
-		    (List.hd xss)
-		    (List.tl xss)
+    List.fold_left
+      (multiply_list f)
+      (List.hd xss)
+      (List.tl xss)
 
 (** {5 Building lists} *)
 
@@ -427,7 +434,7 @@ let rec redundant ?(cmp = (=)) xs =
     [] ->
       []
   | x::xs' ->
-    		let xs'' = List.filter (fun x' -> not (cmp x x')) xs' in
+      let xs'' = List.filter (fun x' -> not (cmp x x')) xs' in
       if List.length xs' <> List.length xs'' then
         x :: redundant xs''
       else
@@ -438,20 +445,20 @@ let rec diff_ms l1 l2 =
     [] -> []
   | x :: l1' ->
       (try
-		      let l, _, r = find_split (fun x' -> x = x') l2 in
-		      diff_ms l1' (l @ r)
-						with Not_found ->
-						  x :: diff_ms l1' l2)
+        let l, _, r = find_split (fun x' -> x = x') l2 in
+        diff_ms l1' (l @ r)
+      with Not_found ->
+        x :: diff_ms l1' l2)
 
 let rec subset_ms l1 l2 =
   match l1 with
     [] -> true
   | x :: l1' ->
       (try
-		      let l, _, r = find_split (fun x' -> x = x') l2 in
-		      subset_ms l1' (l @ r)
-						with Not_found ->
-						  false)
+        let l, _, r = find_split (fun x' -> x = x') l2 in
+        subset_ms l1' (l @ r)
+      with Not_found ->
+        false)
 
 (** divide xs by the transitive clousre of rel *)
 let rec equiv_classes rel xs =
@@ -473,6 +480,14 @@ let rec representatives rel xs =
     [] -> []
   | x::xs' ->
       x :: representatives rel (List.filter (fun y -> not (rel x y)) xs')
+
+(** {6 Functions on maps} *)
+
+let is_map f =
+  not (is_dup (List.map fst f))
+
+let dom f =
+  List.map fst f
 
 
 (** {6 Functions on matrices} *)

@@ -129,70 +129,78 @@ lazy/callTree.cmo: lazy/zipper.cmo lazy/var.cmo lazy/util.cmo \
     lazy/extString.cmi lazy/extList.cmi lazy/callId.cmo
 lazy/callTree.cmx: lazy/zipper.cmx lazy/var.cmx lazy/util.cmx \
     lazy/extString.cmx lazy/extList.cmx lazy/callId.cmx
-lazy/pred.cmo: lazy/var.cmo lazy/util.cmo lazy/term.cmo lazy/simType.cmo \
+lazy/atom.cmo: lazy/var.cmo lazy/util.cmo lazy/term.cmo lazy/simType.cmo \
     lazy/refType.cmo lazy/linArith.cmo lazy/global.cmo lazy/formula.cmo \
     lazy/cvc3Interface.cmo
-lazy/pred.cmx: lazy/var.cmx lazy/util.cmx lazy/term.cmx lazy/simType.cmx \
+lazy/atom.cmx: lazy/var.cmx lazy/util.cmx lazy/term.cmx lazy/simType.cmx \
     lazy/refType.cmx lazy/linArith.cmx lazy/global.cmx lazy/formula.cmx \
     lazy/cvc3Interface.cmx
 lazy/hornClause.cmo: lazy/var.cmo lazy/util.cmo lazy/typSubst.cmo \
-    lazy/term.cmo lazy/simType.cmo lazy/pred.cmo lazy/linArith.cmo \
-    lazy/global.cmo lazy/formula.cmo lazy/extString.cmi lazy/extList.cmi \
-    lazy/cvc3Interface.cmo
+    lazy/term.cmo lazy/simType.cmo lazy/linArith.cmo lazy/global.cmo \
+    lazy/formula.cmo lazy/extString.cmi lazy/extList.cmi \
+    lazy/cvc3Interface.cmo lazy/atom.cmo
 lazy/hornClause.cmx: lazy/var.cmx lazy/util.cmx lazy/typSubst.cmx \
-    lazy/term.cmx lazy/simType.cmx lazy/pred.cmx lazy/linArith.cmx \
-    lazy/global.cmx lazy/formula.cmx lazy/extString.cmx lazy/extList.cmx \
-    lazy/cvc3Interface.cmx
+    lazy/term.cmx lazy/simType.cmx lazy/linArith.cmx lazy/global.cmx \
+    lazy/formula.cmx lazy/extString.cmx lazy/extList.cmx \
+    lazy/cvc3Interface.cmx lazy/atom.cmx
 lazy/hornClauseEc.cmo: lazy/var.cmo lazy/util.cmo lazy/typSubst.cmo \
-    lazy/term.cmo lazy/simType.cmo lazy/pred.cmo lazy/hornClause.cmo \
-    lazy/global.cmo lazy/formula.cmo lazy/extString.cmi lazy/extList.cmi \
-    lazy/cvc3Interface.cmo lazy/atpInterface.cmo
+    lazy/term.cmo lazy/simType.cmo lazy/hornClause.cmo lazy/global.cmo \
+    lazy/formula.cmo lazy/extString.cmi lazy/extList.cmi \
+    lazy/cvc3Interface.cmo lazy/atpInterface.cmo lazy/atom.cmo
 lazy/hornClauseEc.cmx: lazy/var.cmx lazy/util.cmx lazy/typSubst.cmx \
-    lazy/term.cmx lazy/simType.cmx lazy/pred.cmx lazy/hornClause.cmx \
-    lazy/global.cmx lazy/formula.cmx lazy/extString.cmx lazy/extList.cmx \
-    lazy/cvc3Interface.cmx lazy/atpInterface.cmx
+    lazy/term.cmx lazy/simType.cmx lazy/hornClause.cmx lazy/global.cmx \
+    lazy/formula.cmx lazy/extString.cmx lazy/extList.cmx \
+    lazy/cvc3Interface.cmx lazy/atpInterface.cmx lazy/atom.cmx
 lazy/typPredSubst.cmo: lazy/var.cmo lazy/util.cmo lazy/term.cmo \
-    lazy/simType.cmo lazy/pred.cmo lazy/hornClauseEc.cmo lazy/hornClause.cmo \
-    lazy/global.cmo lazy/formula.cmo lazy/extList.cmi lazy/cvc3Interface.cmo
+    lazy/simType.cmo lazy/hornClauseEc.cmo lazy/hornClause.cmo \
+    lazy/global.cmo lazy/formula.cmo lazy/extList.cmi lazy/cvc3Interface.cmo \
+    lazy/atom.cmo
 lazy/typPredSubst.cmx: lazy/var.cmx lazy/util.cmx lazy/term.cmx \
-    lazy/simType.cmx lazy/pred.cmx lazy/hornClauseEc.cmx lazy/hornClause.cmx \
-    lazy/global.cmx lazy/formula.cmx lazy/extList.cmx lazy/cvc3Interface.cmx
+    lazy/simType.cmx lazy/hornClauseEc.cmx lazy/hornClause.cmx \
+    lazy/global.cmx lazy/formula.cmx lazy/extList.cmx lazy/cvc3Interface.cmx \
+    lazy/atom.cmx
 lazy/hcGenRefType.cmo: lazy/zipper.cmo lazy/var.cmo lazy/util.cmo \
     lazy/trace.cmo lazy/term.cmo lazy/simType.cmo lazy/refType.cmo \
-    lazy/pred.cmo lazy/idnt.cmo lazy/hornClause.cmo lazy/global.cmo \
-    lazy/formula.cmo lazy/extString.cmi lazy/extList.cmi lazy/callTree.cmo \
-    lazy/callId.cmo
+    lazy/idnt.cmo lazy/hornClause.cmo lazy/global.cmo lazy/formula.cmo \
+    lazy/extString.cmi lazy/extList.cmi lazy/callTree.cmo lazy/callId.cmo \
+    lazy/atom.cmo
 lazy/hcGenRefType.cmx: lazy/zipper.cmx lazy/var.cmx lazy/util.cmx \
     lazy/trace.cmx lazy/term.cmx lazy/simType.cmx lazy/refType.cmx \
-    lazy/pred.cmx lazy/idnt.cmx lazy/hornClause.cmx lazy/global.cmx \
-    lazy/formula.cmx lazy/extString.cmx lazy/extList.cmx lazy/callTree.cmx \
-    lazy/callId.cmx
-lazy/hcSolve.cmo: lazy/zipper.cmo lazy/var.cmo lazy/util.cmo \
-    lazy/typPredSubst.cmo lazy/term.cmo lazy/pred.cmo lazy/linArith.cmo \
-    lazy/idnt.cmo lazy/hornClauseEc.cmo lazy/hornClause.cmo lazy/global.cmo \
-    lazy/formula.cmo lazy/extString.cmi lazy/extList.cmi \
-    lazy/cvc3Interface.cmo lazy/csisatInterface.cmo lazy/const.cmo \
-    lazy/callTree.cmo lazy/callId.cmo
-lazy/hcSolve.cmx: lazy/zipper.cmx lazy/var.cmx lazy/util.cmx \
-    lazy/typPredSubst.cmx lazy/term.cmx lazy/pred.cmx lazy/linArith.cmx \
-    lazy/idnt.cmx lazy/hornClauseEc.cmx lazy/hornClause.cmx lazy/global.cmx \
-    lazy/formula.cmx lazy/extString.cmx lazy/extList.cmx \
-    lazy/cvc3Interface.cmx lazy/csisatInterface.cmx lazy/const.cmx \
-    lazy/callTree.cmx lazy/callId.cmx
+    lazy/idnt.cmx lazy/hornClause.cmx lazy/global.cmx lazy/formula.cmx \
+    lazy/extString.cmx lazy/extList.cmx lazy/callTree.cmx lazy/callId.cmx \
+    lazy/atom.cmx
+lazy/hcBwSolve.cmo: lazy/var.cmo lazy/util.cmo lazy/typPredSubst.cmo \
+    lazy/term.cmo lazy/linArith.cmo lazy/hornClauseEc.cmo lazy/hornClause.cmo \
+    lazy/hcSolve.cmo lazy/global.cmo lazy/formula.cmo lazy/extString.cmi \
+    lazy/extList.cmi lazy/cvc3Interface.cmo lazy/csisatInterface.cmo \
+    lazy/const.cmo lazy/atom.cmo
+lazy/hcBwSolve.cmx: lazy/var.cmx lazy/util.cmx lazy/typPredSubst.cmx \
+    lazy/term.cmx lazy/linArith.cmx lazy/hornClauseEc.cmx lazy/hornClause.cmx \
+    lazy/hcSolve.cmx lazy/global.cmx lazy/formula.cmx lazy/extString.cmx \
+    lazy/extList.cmx lazy/cvc3Interface.cmx lazy/csisatInterface.cmx \
+    lazy/const.cmx lazy/atom.cmx
+lazy/hcGenSolve.cmo: lazy/var.cmo lazy/util.cmo lazy/typPredSubst.cmo \
+    lazy/hornClause.cmo lazy/hcSolve.cmo lazy/global.cmo lazy/extString.cmi \
+    lazy/extList.cmi
+lazy/hcGenSolve.cmx: lazy/var.cmx lazy/util.cmx lazy/typPredSubst.cmx \
+    lazy/hornClause.cmx lazy/hcSolve.cmx lazy/global.cmx lazy/extString.cmx \
+    lazy/extList.cmx
 lazy/verifier.cmo: lazy/var.cmo lazy/util.cmo lazy/typPredSubst.cmo \
     lazy/trace.cmo lazy/term.cmo lazy/refTypeCheck.cmo lazy/refType.cmo \
     lazy/prog.cmo lazy/hornClauseEc.cmo lazy/hornClause.cmo lazy/hcSolve.cmo \
-    lazy/hcGenRefType.cmo lazy/global.cmo lazy/formula.cmo lazy/farkas.cmo \
-    lazy/extString.cmi lazy/extList.cmi lazy/cvc3Interface.cmo \
-    lazy/compTreeExpander.cmo lazy/compTree.cmo lazy/callTree.cmo \
-    lazy/atpInterface.cmo lazy/absType.cmo
+    lazy/hcGenSolve.cmo lazy/hcGenRefType.cmo lazy/hcBwSolve.cmo \
+    lazy/global.cmo lazy/formula.cmo lazy/farkas.cmo lazy/extString.cmi \
+    lazy/extList.cmi lazy/cvc3Interface.cmo lazy/compTreeExpander.cmo \
+    lazy/compTree.cmo lazy/callTree.cmo lazy/atpInterface.cmo \
+    lazy/absType.cmo
 lazy/verifier.cmx: lazy/var.cmx lazy/util.cmx lazy/typPredSubst.cmx \
     lazy/trace.cmx lazy/term.cmx lazy/refTypeCheck.cmx lazy/refType.cmx \
     lazy/prog.cmx lazy/hornClauseEc.cmx lazy/hornClause.cmx lazy/hcSolve.cmx \
-    lazy/hcGenRefType.cmx lazy/global.cmx lazy/formula.cmx lazy/farkas.cmx \
-    lazy/extString.cmx lazy/extList.cmx lazy/cvc3Interface.cmx \
-    lazy/compTreeExpander.cmx lazy/compTree.cmx lazy/callTree.cmx \
-    lazy/atpInterface.cmx lazy/absType.cmx
+    lazy/hcGenSolve.cmx lazy/hcGenRefType.cmx lazy/hcBwSolve.cmx \
+    lazy/global.cmx lazy/formula.cmx lazy/farkas.cmx lazy/extString.cmx \
+    lazy/extList.cmx lazy/cvc3Interface.cmx lazy/compTreeExpander.cmx \
+    lazy/compTree.cmx lazy/callTree.cmx lazy/atpInterface.cmx \
+    lazy/absType.cmx
 flag.cmo:
 flag.cmx:
 utilities.cmo:

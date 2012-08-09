@@ -204,6 +204,10 @@ let prod ts =
 
 (** {6 Other functions} *)
 
+let rename xtys xtys' t =
+  let sub = List.map2 (fun (x, ty) (x', ty') -> let _ = if !Global.debug then assert (ty = ty') in x, make_var x') xtys xtys' in
+  subst (fun x -> List.assoc x sub) t
+
 let string_of t =
   Format.fprintf Format.str_formatter "%a" pr_string_of t;
   Format.flush_str_formatter ()
@@ -318,11 +322,19 @@ let rec set_arity am t =
 
 
 
-(** @param p variables satisfying p are bound *)
-let rename_fresh p t =
-  let fvs = List.filter (fun x -> not (p x)) (fvs t) in
+(** @param bnd variables satisfying bnd are bound *)
+let rename_fresh bnd t =
+  let fvs = List.filter (fun x -> not (bnd x)) (fvs t) in
   let sub = List.map (fun x -> x, new_var ()) fvs in
   subst (fun x -> List.assoc x sub) t
+
+(** rename free variables to fresh ones
+    @param fvs free variables
+    @require not (Util.is_dup fvs) *)
+let fresh fvs t =
+		let sub = List.map (fun x -> x, make_var (Var.new_var ())) fvs in
+		subst (fun x -> List.assoc x sub) t
+
 
 let int_of t =
   match t with

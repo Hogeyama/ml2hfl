@@ -1,39 +1,37 @@
 open ExtList
 open ExtString
-open Zipper
-open CallTree
 open HornClause
 open HornClauseEc
 
-(** Constraint solving for bon-recursive Horn clauses *)
+(** Solving non-recursive Horn clauses *)
 
 exception NoSolution
 
 (** {6 Functions for computing lower bounds} *)
 
 let compute_lb lbs (Hc(Some(pid, xtys), _, _) as hc) =
-  let Hc(_, [], t) = TypPredSubst.subst_lbs lbs hc in
+  let Hc(_, [], t) = TypPredSubst.subst_lhs lbs hc in
   pid, (xtys, t)
 
-(** @assume is_non_recursive hcs && is_non_disjunctive hcs && is_well_defined hcs
-    @ensure TypPredSubst.is_function ret *)
+(** @require is_non_recursive hcs && is_non_disjunctive hcs && is_well_defined hcs
+    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs) *)
 let compute_lbs hcs =
   let _ = Global.log_begin "compute_lbs" in
   let hcs = List.filter (fun hc -> not (is_root hc)) hcs in
   let rec aux hcs lbs =
     let hcs1, hcs2 =
-      List.partition
-       (function (Hc(Some(_), ps, _)) ->
-         List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) ps
-       | (Hc(None, _, _)) -> assert false)
-       hcs
+						let ready_to_compute_lb lbs =
+						  function
+						    (Hc(Some(_), afs, _)) ->
+						       List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) afs
+						  | (Hc(None, _, _)) ->
+						       assert false
+		    in
+      List.partition (ready_to_compute_lb lbs) hcs
     in
     if hcs1 = [] then
-      let _ =
-        if !Global.debug then
-          assert (hcs2 = [])
-          (* should we relax the assumption is_well_defined hcs? *)
-      in
+      (* should we relax the assumption "is_well_defined hcs"? *)
+      let _ = if !Global.debug then assert (hcs2 = []) in
       lbs
     else
       let lbs' =
@@ -44,49 +42,82 @@ let compute_lbs hcs =
             lb)
           hcs1
       in
-      aux hcs2 (lbs @ lbs' (* no need to merge thanks to the assumption *))
+      aux hcs2 (lbs @ lbs' (* no need to merge thanks to the assumption "is_non_disjunctive hcs"*))
   in
   let res = aux hcs [] in
   let _ = Global.log_end "compute_lbs" in
   res
 
-
-(** @assume is_non_recursive hcs && is_non_disjunctive hcs
-    @ensure ret is a function *)
+(** @require is_non_recursive hcs && is_non_disjunctive hcs
+    @ensure Util.is_map ret && (is_well_defined hcs => Util.set_equiv (Util.dom ret) (pids hcs))
+    a predicate not in the domain of ret should have the solution false *)
 let compute_extlbs hcs =
   let _ = Global.log_begin "compute_extlbs" in
   let hcs = List.filter (fun hc -> not (is_root hc)) hcs in
-  let pids1 = rhs_pids hcs in
-  let rec aux hcs lbs =
+  let not_defined =
+    let pids = rhs_pids hcs in
+    fun pid -> not (List.mem pid pids)
+  in
+  let rec aux hcs extlbs =
     let hcs1, hcs2 =
-      let pids2 = rhs_pids lbs in
+      let ready =
+        let pids = rhs_pids extlbs in
+        fun pid -> List.mem pid pids
+      in
       List.partition
-       (function (Hc(Some(_), ps, _)) ->
-         List.for_all (fun (pid, _) -> List.mem pid pids2 || not (List.mem pid pids1)) ps
+       (function (Hc(Some(_), afs, _)) ->
+         List.for_all (fun (pid, _) -> ready pid || not_defined pid) afs
        | (Hc(None, _, _)) -> assert false)
        hcs
     in
     if hcs1 = [] then
-      lbs @ hcs2
+      let _ = if !Global.debug then assert (hcs2 = []) in
+      extlbs (*@ hcs2*)
     else
-      let lbs' =
+      let extlbs' =
         List.map
           (fun hc ->
-            let lb = subst_hcs lbs hc in
-            let _ = Global.log (fun () -> Format.printf "inlined horn clause:@,  @[<v>%a@]@," pr lb) in
-            lb)
+            let extlb = subst_hcs extlbs hc in
+            let _ = Global.log (fun () -> Format.printf "inlined horn clause:@,  @[<v>%a@]@," pr extlb) in
+            extlb)
         hcs1
       in
-      aux hcs2 (lbs @ lbs'(* no need to merge thanks to the assumption *))
+      aux hcs2 (extlbs @ extlbs'(* no need to merge thanks to the assumption "is_non_disjunctive hcs" *))
   in
   let res = aux hcs [] in
   let _ = Global.log_end "compute_extlbs" in
   res
 
 
-(** {6 Functions for computing an equivalent FOL formula} *)
+(** {6 Functions for computing upper bounds} *)
 
-(** @assume is_non_recursive hcs *)
+(** @require is_non_recursive hcs && is_non_disjunctive hcs && is_well_defined hcs
+    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs) *)
+let compute_ubs lbs hcs =
+  List.map
+    (fun ((pid, (xtys, t)) :: rs) ->
+      pid, (xtys, Formula.simplify (Formula.band (t :: List.map (fun (_, (xtys', t')) -> Term.rename xtys' xtys t') rs))))
+		  (Util.classify
+		    (fun (pid1, _) (pid2, _) -> pid1 = pid2)
+				  (Util.concat_map
+				    (fun (Hc(popt, afs, t)) ->
+          Util.map_left_right
+            (fun afs1 (pid, ttys) afs2 ->
+              let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
+              let Hc(None, [], t) =
+                TypPredSubst.subst
+                  ~bvs:(List.map Util.fst3 sub)
+                  lbs
+                  (Hc(popt, afs1 @ afs2, Formula.band [t; Formula.of_subst sub]))
+              in
+              pid,
+              (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t))
+            afs)
+				    hcs))
+
+(** {6 Functions for computing a FOL formula equivalent to a given Horn clauses} *)
+
+(** @require is_non_recursive hcs *)
 let formula_of_forward hcs =
   let lbs = compute_lbs hcs in
   let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," TypPredSubst.pr lbs) in
@@ -94,11 +125,11 @@ let formula_of_forward hcs =
     (Formula.bor
       (List.map
         (fun hc ->
-          let Hc(None, [], t) = TypPredSubst.subst_lbs lbs hc in
+          let Hc(None, [], t) = TypPredSubst.subst_lhs lbs hc in
           t)
         (List.filter is_root hcs)))
 
-(** @assume is_non_recursive hcs *)
+(** @require is_non_recursive hcs *)
 let formula_of_forward_ext hcs =
   let hcs1, hcs = List.partition is_root hcs in
   let hcs2, hcs3 = List.partition is_coeff hcs in
@@ -112,7 +143,7 @@ let formula_of_forward_ext hcs =
           t)
         hcs1))
 
-(** @assume is_non_recursive hcs *)
+(** @require is_non_recursive hcs *)
 let formula_of_backward hcs =
   let hcs1, hcs2 = List.partition (fun hc -> is_root hc || is_coeff hc) hcs in
   let hcs = List.map (subst_hcs_fixed hcs2) hcs1 in
@@ -120,17 +151,17 @@ let formula_of_backward hcs =
   Formula.simplify
     (Formula.bor
       (List.map
-        (fun (Hc(None, ps, t)) ->
-          if ps = [] then
+        (fun (Hc(None, afs, t)) ->
+          if afs = [] then
             t
           else
-            let _ = Format.printf "%a@." pr (Hc(None, ps, t)) in
+            let _ = Format.printf "%a@." pr (Hc(None, afs, t)) in
             assert false)
         (List.map (subst_hcs hcs2) hcs1)))
 
 (** {6 Functions for inlining Horn clauses} *)
 
-(** @assume is_non_recursive hcs *)
+(** @require is_non_recursive hcs *)
 let inline_forward fs hcs =
   let hcs1, hcs2 =
     List.partition
@@ -148,7 +179,7 @@ let inline_forward fs hcs =
   let hcs = List.map (subst_hcs lbs) hcs2 in
   hcs
 
-(** @assume is_non_recursive hcs *)
+(** @require is_non_recursive hcs *)
 let inline_backward fs hcs =
   let hcs1, hcs2 =
     List.partition
@@ -163,183 +194,3 @@ let inline_backward fs hcs =
       hcs
   in
   List.map (subst_hcs_fixed hcs1) hcs2
-
-
-
-
-(** {6 Functions for solving Horn clauses} *)
-
-(** why verification of file.ml gets too slow? *)
-let generalize_interpolate pid p t1 t2 =
-  let xns, ts2 =
-    Util.partition_map
-      (fun t ->
-        try
-          match LinArith.aif_of t with
-            (Const.EqInt, [1, x], n) ->
-              `L(x, -n)
-          | (Const.EqInt, [-1, x], n) ->
-              `L(x, n)
-          | aif ->
-              `R(LinArith.term_of_aif aif)
-        with Invalid_argument _ ->
-          `R(t))
-      (Formula.conjuncts t1)
-  in
-  match xns with
-    [] -> CsisatInterface.interpolate_bvs p t1 t2
-  | _ ->
-      let (x, n) :: xns =
-        try
-          let xns1, (x, n), xns2 = Util.find_split (fun (x, _) -> pid = x) xns in
-          (x, n) :: xns1 @ xns2
-        with Not_found ->
-          List.sort ~cmp:(fun (_, n1) (_, n2) -> n1 - n2) xns
-      in
-      let t = Formula.eqInt (Term.make_var x) (Term.tint n) in
-      let ts1 =
-        List.map
-          (fun (x', n') ->
-            Formula.eqInt (Term.make_var x') (Term.add (Term.make_var x) (Term.tint (n' - n))))
-          xns
-      in
-      let t1 = Formula.band (t :: ts1 @ ts2) in
-      try
-        if Cvc3Interface.is_valid (Formula.bnot t1) then
-          Formula.tfalse (*???*)
-        else
-          CsisatInterface.interpolate_bvs p (Formula.band (ts1 @ ts2)) t2
-      with CsisatInterface.No_interpolant ->
-        CsisatInterface.interpolate_bvs p t1 t2
-
-
-let solve_hc_aux lbs ps t =
-  let _ = Global.log_begin "solve_hc_aux" in
-  let _ =
-    Global.log (fun () ->
-      Format.printf "horn clause:@,  @[<v>%a@]@,"
-        (*(Util.pr_list pr "@,") (List.map2 (fun lb p -> Hc(Some(p), [], Fes.make [] [lb])) lbs ps)*)
-        pr (Hc(None, ps, t)))
-  in
-  (*if List.length ps = 1 then
-    let [pid, ttys] = ps in
-    ToDo: optimization
-  else*)
-    let rec aux ps t =
-      match ps with
-        [] -> []
-      | (pid, ttys)::ps ->
-          let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
-          let xs = List.map Util.fst3 sub in
-          let _ =
-            Global.log
-              (fun () ->
-                Format.printf "finding a solution to %a@,"
-                  Pred.pr (pid, List.map (fun (x, _, ty) -> Term.make_var x, ty) sub))
-          in
-          let interp =
-            let simplify t =
-              let sub, t = Formula.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
-              let t = Term.subst sub t in
-              let [], t = subst_formula (fun x -> List.mem x xs || Var.is_coeff x) [] t in
-              t
-            in
-            let t1 =
-              try
-                simplify
-                  (TypPredSubst.lookup_lbs
-                    (pid, List.map (fun (x, _, ty) -> Term.make_var x, ty) sub)
-                    lbs)
-              with Not_found -> assert false
-            in
-            let t2 =
-              try
-                simplify
-                  (Formula.band
-                    (t ::
-                    List.map (fun (pid, ts) -> TypPredSubst.lookup_lbs (pid, ts) lbs) ps @
-                    List.map Formula.of_subst_elem sub))
-              with Not_found -> assert false
-            in
-            let t =
-              try
-                if !Global.generalize_predicates_simple then
-                  generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
-                else
-                  CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
-              with CsisatInterface.No_interpolant ->
-                raise NoSolution
-            in
-            t
-          in
-          let sol = pid, (List.map (fun (x, _, ty) -> x, ty) sub, interp) in
-          let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]@," TypPredSubst.pr_elem sol) in
-          sol :: aux ps (Formula.band (t :: interp :: List.map Formula.of_subst_elem sub))
-    in
-    let sol = aux (if !Global.find_preds_forward then ps else List.rev ps) t in
-    let _ = Global.log_end "solve_hc_aux" in
-    sol
-
-let solve_hc lbs sol (Hc(popt, ps, t)) =
-  let t, ps' =
-    match popt with
-      None ->
-        t, []
-    | Some(pid, xtys) ->
-        try
-          let tpid = TypPredSubst.lookup (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol in
-          Formula.band [t; Formula.bnot tpid], []
-        with Not_found ->
-          Formula.tfalse, [pid, (xtys, Formula.ttrue)]
-  in
-  if Cvc3Interface.is_valid (Formula.simplify (Formula.bnot t)) then
-    ps' @
-    List.map
-      (fun (pid, ttys) ->
-        pid,
-        (List.map (fun (_, ty) -> Var.new_var (), ty) ttys, Formula.ttrue))
-      ps
-  else if ps = [] then
-    raise NoSolution
-  else
-    solve_hc_aux lbs ps t
-
-(** @assume is_non_recursive hcs
-    @ensure TypPredSubst.is_function ret
-            dom ret = fpv hcs *)
-let solve hcs =
-  let _ = Global.log_begin "solving Horn clauses" in
-  let lbs =
-    let lbs = compute_lbs hcs in
-    let _ = Global.log (fun () -> Format.printf "lower bounds:@,  %a@," TypPredSubst.pr lbs) in
-    lbs
-  in
-  let sol =
-    let sol =
-      let rec aux hcs sol =
-        (** if is_im_sol hc then we can solve hc immediately? *)
-        let is_im_sol =
-          let lhs_pids = lhs_pids hcs in
-          function
-            (Hc(None, _, _)) ->
-              true
-          | (Hc(Some(pid, _), _, _)) ->
-              not (List.mem pid lhs_pids)
-        in
-        let hcs1, hcs2 = List.partition is_im_sol hcs in
-        if hcs1 = [] && hcs2 = [] then
-          TypPredSubst.merge sol
-        else if hcs1 = [] && hcs2 <> [] then
-          assert false
-        else
-          let sol' = sol @ (Util.concat_map (solve_hc lbs sol) hcs1) in
-          aux hcs2 sol'
-      in
-      aux hcs []
-    in
-    let _ = if !Global.debug then TypPredSubst.check sol hcs in
-    let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]" TypPredSubst.pr sol) in
-    sol
-  in
-  let _ = Global.log_end "solving Horn clauses" in
-  sol

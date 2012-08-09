@@ -31,6 +31,7 @@ let find_preds_forward = ref false
 let subst_hcs_inc = ref false
 
 let generalize_predicates = ref false
+let generalize_constraints = ref false
 let use_min_unsat_prefix = ref true
 let refine_unit = ref true
 let refine_function = ref false

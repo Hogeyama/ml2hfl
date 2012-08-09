@@ -33,6 +33,14 @@ let string_of x =
 
 let equiv x y = x = y
 
+let rec cong x1 x2 =
+  match x1, x2 with
+    V(id1), V(id2) ->
+      id1 = id2
+  | T(x1, _, arg1), T(x2, _, arg2) ->
+      arg1 = arg2 && cong x1 x2
+  | _ -> false
+
 let rec rename_base f x =
   match x with
     V(id) ->

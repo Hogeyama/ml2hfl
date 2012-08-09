@@ -2,93 +2,99 @@ open ExtList
 open HornClause
 open HornClauseEc
 
-(** Typed predicate substitutions*)
+(** Typed substitutions for predicates *)
 
-(** {6 Functions on predicate substitutions} *)
-
-let is_function psub =
-  not (Util.is_dup (List.map fst psub))
+(** {6 Basic functions} *)
 
 let pr_elem ppf (pid, (xtys, t)) =
   Format.fprintf ppf
     "@[<hov>%a =@ %a@]"
-    Pred.pr (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys)
+    Atom.pr (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys)
     Term.pr t
 
-let pr ppf sol =
-  Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_elem "@,") sol
+let pr ppf psub =
+  Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_elem "@,") psub
 
-(** @assume sol does not contain unbound variables *)
-let lookup (pid, ttys) sol =
+(** @ensure not (Util.is_dup ret) *)
+let fvs_elem (_, (xtys, t)) = Util.diff (List.unique (Term.fvs t)) (List.map fst xtys)
+let fvs psub = Util.concat_map fvs_elem psub
+
+let mat xtys ttys =
+  List.map2
+    (fun (x, ty1) (t, ty2) ->
+      let _ = if !Global.debug then assert (ty1 = ty2) in
+      x, t)
+    xtys ttys
+
+(** {6 Functions on substitutions for predicates} *)
+
+(** @require fvs psub = [] *)
+let lookup (pid, ttys) psub =
+  let _ = if !Global.debug then assert (List.mem_assoc pid psub) in
   Formula.simplify
     (Formula.band
 		    (List.map
 		      (fun (_, (xtys, t)) ->
 		        let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
 		        Term.subst (fun x -> List.assoc x sub) t)
-		      (List.filter (fun (pid', _) -> pid = pid') sol)))
+		      (List.filter (fun (pid', _) -> pid = pid') psub)))
 
-(** @assume sol does not contain unbound variables *)
-let merge sol =
+(** @require fvs psub = [] *)
+let merge psub =
   List.map
     (fun (pid, xtys) ->
-      pid, (xtys, lookup (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol))
+      pid, (xtys, lookup (Atom.of_pred (pid, xtys)) psub))
     (List.map
       (fun ((pid, (xtys, _))::_) -> pid, xtys)
-      (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) sol))
+      (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) psub))
 
-(** @assume is_function lbs *)
-let lookup_lbs (pid, ttys) lbs =
-		let xtys, t = List.assoc pid lbs in
-
-		let fvs = Util.diff (List.unique (Term.fvs t)) (List.map fst xtys) in
-		let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
-		let t = Term.subst (fun x -> List.assoc x sub) t in
-
-		let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
+(** @require Util.is_map psub *)
+let lookup_map (pid, ttys) psub =
+		let xtys, t = List.assoc pid psub in
+		let t = Term.fresh (fvs_elem (pid, (xtys, t))) t in
+		let sub = mat xtys ttys in
 		Term.subst (fun x -> List.assoc x sub) t
 
-(** @assume is_function lbs *)
-let subst_lbs lbs (Hc(popt, ps, t)) =
-  let _ = Global.log_begin "subst_lbs" in
-  let t, ps =
-    let ts, ps =
-      Util.partition_map (fun (pid, ttys) -> try `L(lookup_lbs (pid, ttys) lbs) with Not_found -> `R(pid, ttys)) ps
-				in
-    Formula.band (t :: ts), ps
-  in
-  let hc = simplify (Hc(popt, ps, t)) in
-  let _ = Global.log_end "subst_lbs" in
+(** @require Util.is_map psub *)
+let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t)) =
+  let _ = Global.log_begin "subst_lhs" in
+  let ts, ps =
+    Util.partition_map
+      (fun (pid, ttys) ->
+        try
+          `L(lookup_map (pid, ttys) psub)
+        with Not_found ->
+          `R(pid, ttys))
+      ps
+		in
+  let t = Formula.band (t :: ts) in
+  let hc = simplify bvs (Hc(popt, ps, t)) in
+  let _ = Global.log_end "subst_lhs" in
   hc
 
-(** @assume is_function sol *)
-let check sol hcs =
+(** @require Util.is_map psub *)
+let subst ?(bvs = []) psub hc =
+  let Hc(popt, ps, t) = subst_lhs ~bvs:bvs psub hc in
+  match popt with
+    None ->
+      Hc(popt, ps, t)
+  | Some(pid, xtys) ->
+      (try
+								let t' = lookup_map (Atom.of_pred (pid, xtys)) psub in
+        simplify bvs (Hc(None, ps, Formula.band [t; Formula.bnot t']))
+      with Not_found ->
+        Hc(popt, ps, t))
+
+(** @require fvs psub = [] && Util.is_map psub && Util.subset (pids hcs) (Util.dom psub) *)
+let check psub hcs =
   List.iter
     (fun hc ->
-      let Hc(popt, [], t) =
-        try
-          subst_lbs sol hc
-        with Not_found ->
+      match subst psub hc with
+        Hc(None, [], t) ->
+				      if not (Cvc3Interface.is_valid (Formula.bnot t)) then
+				        let _ = Format.printf "%a@,%a => bot@," HornClause.pr hc Term.pr t in
+				        assert false
+      | _ ->
 		        let _ = Format.printf "%a@," HornClause.pr hc in
-		        assert false
-      in
-      let t' =
-        try
-          match popt with
-										  None ->
-												  Formula.tfalse
-										| Some(pid, xtys) ->
-										    let t = lookup_lbs (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) sol in
-              Formula.exists
-                (List.filter
-                  (fun (x, _) -> not (List.mem_assoc x xtys))
-  																(Term.tyfvs_ty t SimType.Bool))
-                t
-        with Not_found ->
-		        let _ = Format.printf "%a@," HornClause.pr hc in
-          assert false
-      in
-      if not (Cvc3Interface.implies [t] [t']) then
-        let _ = Format.printf "%a@,%a => %a@," HornClause.pr hc Term.pr t Term.pr t' in
-        assert false)
+		        assert false)
     hcs

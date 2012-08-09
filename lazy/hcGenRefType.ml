@@ -51,7 +51,7 @@ let cgen env etr =
 																		  let pres x =
 																      List.filter_map
 																        (fun (Loc(tr, _)) ->
-																						    try Some(Pred.of_pid env (SimType.find_last_base2 env (get tr).name)) with Not_found -> None)
+																						    try Some(Atom.of_pid env (SimType.find_last_base2 env (get tr).name)) with Not_found -> None)
 																								(find_all
 																										(fun nd ->
 																												CallId.ancestor_of (try CallId.tlfc_of x with Not_found -> Format.printf "%a@," Var.pr x; assert false) nd.name &&
@@ -62,7 +62,7 @@ let cgen env etr =
   																				List.filter_map
 																        (fun (Loc(tr, _)) ->
 																										let Some(xuid) = (get tr).ret in
-																						    try Some(Pred.of_pid env (SimType.find_last_base2 env xuid)) with Not_found -> None)
+																						    try Some(Atom.of_pid env (SimType.find_last_base2 env xuid)) with Not_found -> None)
 																								(find_all
 																										(fun nd ->
 																												match nd.ret with
@@ -75,7 +75,7 @@ let cgen env etr =
 		      						  				let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) in
 																				List.unique
 																						((try
-																								[Pred.of_pid env (SimType.find_last_base2 env (tlfc_of (get tr).name))]
+																								[Atom.of_pid env (SimType.find_last_base2 env (tlfc_of (get tr).name))]
 																						with Not_found ->
 																								[]) @
 																						(match List.unique (Term.fvs source) with
@@ -88,13 +88,13 @@ let cgen env etr =
 		  						  								let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) (*(Loc(tr, left_of_path p))*) in
 								            Util.concat_map
 								              (fun (Loc(tr, _)) ->
-														          (try [Pred.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
+														          (try [Atom.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
 														          (List.filter_map
 														            (fun tr ->
 														              match (get tr).ret with
 														                None -> assert false
 														              | Some(x_uid) ->
-														                  (try Some(Pred.of_pid env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
+														                  (try Some(Atom.of_pid env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
 														            (children tr)))
 								              locs,
 																				locs
@@ -119,7 +119,7 @@ let cgen env etr =
 				                    (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys))
 				                  xttys2)
 		              in
-				            (Hc(Some(Pred.of_pid_vars env target), (Util.concat_map (fun (Loc(tr, _)) -> snd (get tr).data) locs) @ ps' @ ps, t)) :: hcs' @ hcs,
+				            (Hc(Some(Atom.of_pid_vars env target), (Util.concat_map (fun (Loc(tr, _)) -> snd (get tr).data) locs) @ ps' @ ps, t)) :: hcs' @ hcs,
 		              ps'
 		            in
 		  		        let nd = get tr in
@@ -134,7 +134,7 @@ let cgen env etr =
             let _ = assert (SimType.is_base ty) in
             let xttys = if SimType.is_base ty && ty <> SimType.Unit(*sound???*) then [x, t, ty] else [] in
             let t = Formula.band (fst (get tr).data :: List.map Formula.of_subst_elem xttys) in
-            let hcs = (Hc(Some(Pred.of_pid_vars env x), [assert false], t))::hcs in
+            let hcs = (Hc(Some(Atom.of_pid_vars env x), [assert false], t))::hcs in
             let Var.T(f, _, _) = x in
             if Var.is_pos f then
               aux (up (Loc(tr, p))) hcs etr
@@ -147,7 +147,7 @@ let cgen env etr =
             let _ = assert (etr = []) in
             let nd = get tr in
             root (Loc(set tr { nd with closed = false }, path_set_open p)),
-            let ps = try [Pred.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> [] in
+            let ps = try [Atom.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> [] in
             (* assume that fail is NOT a proper subterm of the function definition *)
             Hc(None, snd nd.data @ ps, fst (get tr).data) :: hcs)
   in
