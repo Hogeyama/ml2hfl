@@ -90,7 +90,7 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
             Flag.RefineRefType(flags) ->
               (*let is_ext (f,_,_,_,_) = not (is_external f) in*)
 	      let _ = Format.printf "@[<v>" in
-	      let map = LazyInterface.infer flags labeled ces (env,defs,main) in
+	      let map = RefineInterface.infer flags labeled ces (env,defs,main) in
 	      let _ = Format.printf "@]" in
                 (*
                   if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);

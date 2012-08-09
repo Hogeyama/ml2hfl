@@ -82,9 +82,9 @@ let rec main_loop parsed =
       let t =
         if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
     						let t = Trans.lift_fst_snd t in
-          let t = LazyInterface.insert_extra_param t in
+          let t = RefineInterface.insert_extra_param t in
             if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-              (List.length !LazyInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+              (List.length !RefineInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
             t
         else
           t
@@ -108,7 +108,7 @@ let rec main_loop parsed =
 
     match !Flag.cegar with
         Flag.CEGAR_SizedType ->
-          LazyInterface.verify [] (prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main)
+          RefineInterface.verify [] (prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main)
       | Flag.CEGAR_DependentType ->
           try
             let r = CEGAR.cegar prog {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined} in
@@ -126,7 +126,7 @@ let rec main_loop parsed =
                 let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
                   main_loop parsed
             | Verifier.FailedToRefineExtraParameters ->
-                let _ = LazyInterface.params := [] in
+                let _ = RefineInterface.params := [] in
                 let _ = Verifier.ext_coeffs := [] in
                 let _ = Verifier.ext_constrs := [] in
                 let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in

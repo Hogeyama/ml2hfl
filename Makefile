@@ -33,7 +33,7 @@ INCLUDES = -I /usr/lib \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray \
-	-I ./lazy \
+	-I ./refine \
 	-I $(TRECS)
 #	-I $(OCAMLLIB)
 OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
@@ -63,7 +63,7 @@ MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
 	inter_type.mli wrapper.mli wrapper2.mli CEGAR_print.mli spec_parser.mli
 CMI = $(MLI:.mli=.cmi)
 
-LAZY_CMO = enum.cmo extList.cmo extString.cmo \
+REFINE_CMO = enum.cmo extList.cmo extString.cmo \
 	util.cmo zipper.cmo \
 	global.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
@@ -84,12 +84,12 @@ LAZY_CMO = enum.cmo extList.cmo extString.cmo \
 
 CMO = $(OCAML_CMO) \
 	$(ATP)/atp_batch.cmo \
-	$(addprefix lazy/,$(LAZY_CMO)) \
+	$(addprefix refine/,$(REFINE_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	type_check.cmo trans.cmo CEGAR_util.cmo useless_elim.cmo \
-	ref_type.cmo type_trans.cmo lazyInterface.cmo \
+	ref_type.cmo type_trans.cmo refineInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
@@ -185,7 +185,7 @@ trecs-byte::
 # distribution
 
 dist:
-	tar czvf dist.tar.gz *.ml *.mli lazy/*.ml lazy/*.mli Makefile depend
+	tar czvf dist.tar.gz *.ml *.mli refine/*.ml refine/*.mli Makefile depend
 
 
 ################################################################################
@@ -201,7 +201,7 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[iox] *.o lazy/*.cm[iox] lazy/*.o *.a *.annot *~
+	rm -f *.cm[iox] *.o refine/*.cm[iox] refine/*.o *.a *.annot *~
 	rm -f $(NAME).byte $(NAME).opt
 
 clean-ocaml:
@@ -263,6 +263,6 @@ SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend::
-	$(OCAMLDEP) -I lazy $(MLI) $(SRC_MOCHI) > depend
+	$(OCAMLDEP) -I refine $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
