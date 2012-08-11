@@ -9,28 +9,28 @@ let interpolate_widen closed t1 t2 tw1 tw2 =
 				  (try
 				    let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr tw1 Term.pr tw2 in
 				    CsisatInterface.interpolate_chk tw1 tw2
-				  with CsisatInterface.No_interpolant ->
+				  with CsisatInterface.NoInterpolant ->
 						  if closed then
 						    if Term.equiv t2 tw2 then
-						      raise CsisatInterface.No_interpolant
+						      raise CsisatInterface.NoInterpolant
 						    else
 						      let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr tw1 Term.pr t2 in
 						      CsisatInterface.interpolate_chk tw1 t2
 						  else
 						    if Term.equiv t1 tw1 then
-						      raise CsisatInterface.No_interpolant
+						      raise CsisatInterface.NoInterpolant
 						    else
 						      let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr tw2 in
 						      CsisatInterface.interpolate_chk t1 tw2)
-				with CsisatInterface.No_interpolant ->
+				with CsisatInterface.NoInterpolant ->
 				  (try
 				    if (closed && Term.equiv t1 tw1) || (not closed && Term.equiv t2 tw2) then
-				      raise CsisatInterface.No_interpolant
+				      raise CsisatInterface.NoInterpolant
 				    else
 				      let _ = Format.printf "interp_in1: %a@ interp_in2: %a@ " Term.pr t1 Term.pr t2 in
 				      CsisatInterface.interpolate_chk t1 t2
-				  with CsisatInterface.No_interpolant ->
-				    raise CsisatInterface.No_interpolant)
+				  with CsisatInterface.NoInterpolant ->
+				    raise CsisatInterface.NoInterpolant)
   in
 		let _ = Format.printf "interp_out: %a@ " Term.pr interp in
   interp

@@ -596,7 +596,7 @@ and dnfn t =
 let disjunctive t =
   List.length (dnf t) >= 2
 
-let formula_of_dnf tss =
+let of_dnf tss =
   bor (List.map band tss)
 
 (** {6 Other functions} *)

@@ -69,7 +69,7 @@ REFINE_CMO = enum.cmo extList.cmo extString.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
 	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo \
 	typSubst.cmo formula.cmo fes.cmo fdef.cmo prog.cmo \
-	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo \
+	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo apronInterface.cmo \
 	farkas.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
@@ -77,7 +77,6 @@ REFINE_CMO = enum.cmo extList.cmo extString.cmo \
 	callTree.cmo atom.cmo hornClause.cmo hornClauseEc.cmo typPredSubst.cmo \
 	hcGenRefType.cmo hcSolve.cmo hcBwSolve.cmo hcGenSolve.cmo \
 	verifier.cmo
-#	apronInterface.cmo
 #	intType.cmo intTypeCheck.cmo
 #	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo
 #	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo
@@ -98,8 +97,7 @@ CMO = $(OCAML_CMO) \
 	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma
-#gmp.cma apron.cma polka.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 
@@ -175,8 +173,8 @@ trecs::
 trecs-byte::
 	cd $(TRECS) && ocamlyacc parser.mly
 	cd $(TRECS) && ocamllex lexer.mll
-	cd $(TRECS) && ocamlc -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml main.ml
-	cd $(TRECS) && ocamlc -pack -o trecs.cmo utilities.cmo syntax.cmo parser.cmo lexer.cmo grammar.cmo automaton.cmo conversion.cmo typing.cmo stype.cmo reduce.cmo generalize.cmo main.cmo
+	cd $(TRECS) && ocamlc -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml
+	cd $(TRECS) && ocamlc -pack -o trecs.cmo utilities.cmo syntax.cmo parser.cmo lexer.cmo grammar.cmo automaton.cmo conversion.cmo typing.cmo stype.cmo reduce.cmo generalize.cmo
 
 
 

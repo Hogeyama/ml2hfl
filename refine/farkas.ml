@@ -16,7 +16,7 @@ let farkas t =
   let t = elim_imply_iff t in
   let _ = Global.log (fun () -> Format.printf "2:%a@," Term.pr t) in
   let tss = dnf t in
-  let _ = Global.log (fun () -> Format.printf "3:%a@," Term.pr (formula_of_dnf tss)) in
+  let _ = Global.log (fun () -> Format.printf "3:%a@," Term.pr (of_dnf tss)) in
   let aifss =
     List.map
       (List.map

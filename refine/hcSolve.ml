@@ -96,7 +96,8 @@ let compute_extlbs hcs =
 let compute_ubs lbs hcs =
   List.map
     (fun ((pid, (xtys, t)) :: rs) ->
-      pid, (xtys, Formula.simplify (Formula.band (t :: List.map (fun (_, (xtys', t')) -> Term.rename xtys' xtys t') rs))))
+      let ts = t :: List.map (fun (_, (xtys', t')) -> Term.rename xtys' xtys t') rs in
+      pid, (xtys, Formula.simplify (Formula.band ts)))
 		  (Util.classify
 		    (fun (pid1, _) (pid2, _) -> pid1 = pid2)
 				  (Util.concat_map
@@ -117,7 +118,8 @@ let compute_ubs lbs hcs =
 
 (** {6 Functions for computing a FOL formula equivalent to a given Horn clauses} *)
 
-(** @require is_non_recursive hcs *)
+(** @require is_non_recursive hcs
+    @ensure hcs is solvable if and only if res => bot *)
 let formula_of_forward hcs =
   let lbs = compute_lbs hcs in
   let _ = Global.log (fun () -> Format.printf "lower bounds:@,  @[<v>%a@]@," TypPredSubst.pr lbs) in
@@ -129,7 +131,8 @@ let formula_of_forward hcs =
           t)
         (List.filter is_root hcs)))
 
-(** @require is_non_recursive hcs *)
+(** @require is_non_recursive hcs
+    @ensure hcs is solvable if and only if res => bot *)
 let formula_of_forward_ext hcs =
   let hcs1, hcs = List.partition is_root hcs in
   let hcs2, hcs3 = List.partition is_coeff hcs in
@@ -143,7 +146,8 @@ let formula_of_forward_ext hcs =
           t)
         hcs1))
 
-(** @require is_non_recursive hcs *)
+(** @require is_non_recursive hcs
+    @ensure hcs is solvable if and only if res => bot *)
 let formula_of_backward hcs =
   let hcs1, hcs2 = List.partition (fun hc -> is_root hc || is_coeff hc) hcs in
   let hcs = List.map (subst_hcs_fixed hcs2) hcs1 in
@@ -161,17 +165,13 @@ let formula_of_backward hcs =
 
 (** {6 Functions for inlining Horn clauses} *)
 
-(** @require is_non_recursive hcs *)
-let inline_forward fs hcs =
+(** inline predicates that satisfy p
+    @require is_non_recursive hcs *)
+let inline_forward p hcs =
   let hcs1, hcs2 =
     List.partition
       (function Hc(Some(pid, _), _, _) ->
-        not (Var.is_coeff pid) &&
-        List.exists
-          (fun f ->
-            let Var.V(id), _ = CallId.tlfc_of pid in
-            Idnt.string_of id = f)
-          fs
+        p pid
       | _ -> false)
       hcs
   in
@@ -179,17 +179,13 @@ let inline_forward fs hcs =
   let hcs = List.map (subst_hcs lbs) hcs2 in
   hcs
 
-(** @require is_non_recursive hcs *)
-let inline_backward fs hcs =
+(** inline predicates that satisfy p
+    @require is_non_recursive hcs *)
+let inline_backward p hcs =
   let hcs1, hcs2 =
     List.partition
       (function Hc(Some(pid, _), _, _) ->
-        not (Var.is_coeff pid) &&
-        List.exists
-          (fun f ->
-            let Var.V(id), _ = CallId.tlfc_of pid in
-            Idnt.string_of id = f)
-          fs
+        p pid
       | _ -> false)
       hcs
   in

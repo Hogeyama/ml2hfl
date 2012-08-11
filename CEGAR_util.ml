@@ -501,7 +501,7 @@ let trans_prog t =
   let defs_t,t_main' = trans_term "" [] [] t_main in
   let defs' =
     match !Flag.cegar with
-        Flag.CEGAR_SizedType ->
+        Flag.CEGAR_InteractionType ->
           let typ = TFun(TBase(TUnit,fun _ -> []), fun _ -> TBase(TUnit,fun _ -> [])) in
             (main,typ,["u"],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
       | Flag.CEGAR_DependentType ->

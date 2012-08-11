@@ -41,6 +41,14 @@ let rec cong x1 x2 =
       arg1 = arg2 && cong x1 x2
   | _ -> false
 
+let rec lt x1 x2 =
+  match x1, x2 with
+    V(id1), V(id2) ->
+      id1 = id2
+  | T(x1, uid1, arg1), T(x2, uid2, arg2) ->
+      arg1 = arg2 && cong x1 x2 && uid1 < uid2
+  | _ -> assert false
+
 let rec rename_base f x =
   match x with
     V(id) ->

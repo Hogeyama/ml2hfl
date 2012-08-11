@@ -67,6 +67,12 @@ let trd3 (_, _, x) = x
 
 (** {6 Functions on lists} *)
 
+let sort_by f xs =
+  List.map snd (List.sort ~cmp:(fun (n1, _) (n2,_) -> n1 - n2) (List.map (fun x -> f x, x) xs))
+
+let sort_by_dec f xs =
+  List.map snd (List.sort ~cmp:(fun (n1, _) (n2,_) -> n2 - n1) (List.map (fun x -> f x, x) xs))
+
 (** {5 Iterating lists} *)
 
 let rec pr_list epr sep ppf xs =

@@ -216,6 +216,7 @@ let is_valid t =
 		  let _ = if debug then Global.log_end "is_valid" in
 		  res
 
+(** check whether the conjunction of ts1 implies that of ts2 *)
 let implies ts1 ts2 =
   let ts2 = Formula.simplify_conjuncts (Util.diff ts2 ts1) in
   if ts2 = [] then

@@ -176,11 +176,19 @@ let infer_ref_types fs prog etrs =
       let hcs = List.map (HornClauseEc.simplify []) hcs in
       let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
       let orig_hcs = hcs in
+      let inline pid =
+        not (Var.is_coeff pid) &&
+        List.exists
+          (fun f ->
+            let Var.V(id), _ = CallId.tlfc_of pid in
+            Idnt.string_of id = f)
+          fs
+      in
       let hcs =
         if !Global.no_inlining || !Global.inline_after_ncs then
           hcs
         else
-          let hcs = HcSolve.inline_forward fs hcs in
+          let hcs = HcSolve.inline_forward inline hcs in
           let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
           hcs
       in
@@ -203,12 +211,16 @@ let infer_ref_types fs prog etrs =
         if !Global.no_inlining || not !Global.inline_after_ncs then
           hcs
         else
-          let hcs = HcSolve.inline_forward fs hcs in
+          let hcs = HcSolve.inline_forward inline hcs in
           let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
           hcs
       in
 						let sol =
-						  let sol = if !Global.generalize_constraints then HcGenSolve.solve hcs else HcBwSolve.solve hcs in
+						  let sol =
+          match !Global.predicate_discovery with
+										  Global.FunctionSummarization -> HcGenSolve.solve hcs
+										| Global.Backward -> HcBwSolve.solve hcs
+								in
 								let _ =
 						    if !Global.debug && false then
 						      let orig_hcs = List.map (HornClauseEc.simplify []) (List.map (TypPredSubst.subst_lhs sol) orig_hcs) in
@@ -228,7 +240,14 @@ let infer_ref_types fs prog etrs =
           `P(x, Term.subst (fun x -> List.assoc x sub) t))
         sol
   in
-  let _ = Global.log (fun () -> List.iter (fun (`P(x, t)) -> Format.printf "P[%a]: %a@," Var.pr x Term.pr t) sums) in
+  let _ =
+    if false then
+		    Global.log
+		      (fun () ->
+						    let _ = Format.printf "summaries:@,  @[<v>" in
+		        let _ = List.iter (fun (`P(x, t)) -> Format.printf "P[%a]: %a@," Var.pr x Term.pr t) sums in
+						    Format.printf "@]@,")
+  in
   let fcs = List.unique (Util.concat_map Trace.function_calls_of etrs) in
   let res = infer_env prog sums fcs in
   let _ = Global.log_end "infer_ref_types" in

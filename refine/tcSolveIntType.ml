@@ -44,34 +44,35 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 		    Format.printf "computing a precondition of %a:@.  @[<v>" CallId.pr nd.name
 		in
   let interp =
-    if !Global.generalize_predicates then
-				  let trs, ps = rec_calls_of (fst nd.name) loc in
-						let tts, tps = List.split
-						  (List.map2
-						    (fun tr p ->
-						      Term.rename_fresh (visible (get tr).name)
-              (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_tree tr))))),
-						      Term.rename_fresh (visible (get tr).name)
-              (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_path p))))))
-						    trs ps)
-						in
-						let tt = List.hd tts in
-						let tp = List.hd tps in
-      let xss = List.map (vars_of_tree env) trs in
-						let ttw = widen xss tts in
-						let tpw = widen xss tps in
-						let t1, t2, tw1, tw2 =
-						  if nd.closed then
-						    tt, tp, ttw, tpw
-						  else
-						    tp, tt, tpw, ttw
-						in
-      interpolate_widen nd.closed t1 t2 tw1 tw2
-    else
-						let tt = Formula.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes [nd]))) in
-						let tp = Formula.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes (nodes_of_path p)))) in
-						let t1, t2 = if nd.closed then tt, tp else tp, tt in
-      CsisatInterface.interpolate t1 t2
+    match !Global.predicate_discovery with
+      FunctionSummarization ->
+						  let trs, ps = rec_calls_of (fst nd.name) loc in
+								let tts, tps = List.split
+								  (List.map2
+								    (fun tr p ->
+								      Term.rename_fresh (visible (get tr).name)
+		              (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_tree tr))))),
+								      Term.rename_fresh (visible (get tr).name)
+		              (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_path p))))))
+								    trs ps)
+								in
+								let tt = List.hd tts in
+								let tp = List.hd tps in
+		      let xss = List.map (vars_of_tree env) trs in
+								let ttw = widen xss tts in
+								let tpw = widen xss tps in
+								let t1, t2, tw1, tw2 =
+								  if nd.closed then
+								    tt, tp, ttw, tpw
+								  else
+								    tp, tt, tpw, ttw
+								in
+		      interpolate_widen nd.closed t1 t2 tw1 tw2
+    | Backward ->
+								let tt = Formula.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes [nd]))) in
+								let tp = Formula.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes (nodes_of_path p)))) in
+								let t1, t2 = if nd.closed then tt, tp else tp, tt in
+		      CsisatInterface.interpolate t1 t2
   in
   let _ = Format.printf "@]@." in
 		if nd.closed then
@@ -110,7 +111,7 @@ let summaries_of env constrs0 =
     let sums', constrs_opt =
       try
         summary_of env (find_leaf constrs)
-      with CsisatInterface.No_interpolant ->
+      with CsisatInterface.NoInterpolant ->
         raise (FeasibleErrorTrace(constrs0))
     in
     match constrs_opt with

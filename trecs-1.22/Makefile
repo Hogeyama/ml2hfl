@@ -7,7 +7,8 @@ lexer.ml:
 	ocamllex lexer.mll
 
 trecsbyte: $(SOURCE)
-	(ocamlc -o trecs $(SOURCE); rm *.cmi *.cmx *.o; cd ..)
+	(ocamlc -o trecs unix.cma $(SOURCE); cd ..)
+#	(ocamlc -o trecs unix.cma $(SOURCE); rm *.cmi *.cmx *.o; cd ..)
 
 trecs: $(SOURCE)
 	(ocamlopt -o trecs unix.cmxa $(SOURCE); cd ..)

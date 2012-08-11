@@ -120,6 +120,22 @@ let polyhedron_of env t =
 
 let widen2 t1 t2 = Apron.Abstract1.widening manpk t1 t2
 
+let convex_hull t =
+  let fvs =
+    List.map
+      (fun x -> Apron.Var.of_string (Var.print x))
+      (List.unique (Term.fvs t))
+  in
+  let env = Apron.Environment.make (Array.of_list fvs) [||] in
+  let tss, f = Formula.elim_boolean [Formula.elim_unit t] in
+		let ts =
+    List.map
+      (fun [t] ->
+        of_linconstrs (Apron.Abstract1.to_lincons_array manpk (polyhedron_of env t)))
+      tss
+  in
+  f ts
+
 let widen ts =
   Format.printf "@[<hov>widen_in: @[<hv>%a@]@ " (Util.pr_list Term.pr ",@ ") ts;
 
@@ -128,7 +144,7 @@ let widen ts =
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let tss, f = TypSubst.elim_boolean (List.map Formula.elim_unit ts) in
+  let tss, f = Formula.elim_boolean (List.map Formula.elim_unit ts) in
   let aux ts =
 		  let ts = List.map (fun t -> polyhedron_of env t) ts in
 (*

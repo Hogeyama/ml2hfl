@@ -107,7 +107,7 @@ let rec main_loop parsed =
   let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
 
     match !Flag.cegar with
-        Flag.CEGAR_SizedType ->
+        Flag.CEGAR_InteractionType ->
           RefineInterface.verify [] (prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main)
       | Flag.CEGAR_DependentType ->
           try
@@ -158,30 +158,24 @@ let main filename in_channel =
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let arg_spec =
-  ["-web", Arg.Set Flag.web, " Web mode";
-   "-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
+  ["-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
          "<dir>  Add <dir> to the list of include directories";
-   "-st", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Use interaction type based verifier";
-   "-c", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_SizedType), " Same as -st";
+   "-web", Arg.Set Flag.web, " Web interface mode";
+   "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
+   (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
-   "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
-          " Use refinement type based predicate discovery (same as -rsn 0)";
-   "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
-          "<num>  Use refinement type based predicate discovery";
-   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
-          " Use refinement type based predicate discovery (obsolete)";
-   "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
-   "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
-   "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
-   "-trecs", Arg.String (fun cmd -> Flag.trecs := cmd),
-             Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
-   "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
-   "-neg-pred-on", Arg.Set Flag.use_neg_pred, " Use negative predicates";
-   "-neg-pred-off", Arg.Unit (fun _ -> Flag.use_neg_pred := false; Flag.never_use_neg_pred := true),
-                    " Never use negative predicates";
+   "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
+   (* verifier *)
+   "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
+   "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
+   (* CEGAR *)
    "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicate accumulation";
-
+   "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
+   "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
+   "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
+            " Expand non-recursive functions except those in the original program";
+   (* relatively complete verification *)
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
    "-nex", Arg.Int (fun n -> Global.number_of_extra_params := n),
           " Number of inserted extra parameters for each functional argument";
@@ -193,19 +187,30 @@ let arg_spec =
           " Accumulate constraints on the coefficients of extra parameters";
    "-dph", Arg.Set Global.disable_parameter_inference_heuristics,
           " Disable heuristics of instantiation parameter inference";
-
-   "-gp", Arg.Set Global.generalize_predicates, " Generalize predicates";
-   "-gc", Arg.Set Global.generalize_constraints, " Generalize constraints";
-   "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
-   "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
-   "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
-   "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
-            " Expand non-recursive functions except functions in the original program";
+   (* predicate abstraction *)
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
-   "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
+   "-neg-pred-on", Arg.Set Flag.use_neg_pred, " Use negative predicates for abstraction";
+   "-neg-pred-off", Arg.Unit (fun _ -> Flag.use_neg_pred := false; Flag.never_use_neg_pred := true),
+                    " Never use negative predicates for abstraction";
+   (* higher-order model checking *)
+   "-trecs", Arg.String (fun cmd -> Flag.trecs := cmd),
+             Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
+   "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
+   "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
+   (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
                       " Use an empty set as the initial sets of predicates for booleans";
-   "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin"
+   "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
+          " Use refinement type based predicate discovery (same as -rsn 0)";
+   "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
+          "<num>  Use refinement type based predicate discovery";
+   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
+          " Use refinement type based predicate discovery (obsolete)";
+   "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
+   "-fs", Arg.Unit (fun _ -> Global.predicate_discovery := Global.FunctionSummarization),
+     " Enable function summarization based predicate discovery";
+   (* obsolete? *)
+   "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
   ]
 
 

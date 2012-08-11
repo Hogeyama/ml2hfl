@@ -662,7 +662,7 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
         let t' = Formula.elim_imply_iff t' in
         let _ = if debug then Format.printf "!c:%a@," Term.pr t' in
         if t0 <> t' then
-          let t' = Formula.formula_of_dnf (Formula.dnf t') in
+          let t' = Formula.of_dnf (Formula.dnf t') in
           let _ = if debug then Format.printf "!d:%a@," Term.pr t' in
           let t' = Formula.simplify t' in
           let _ = if debug then Format.printf "boolean equalities eliminated:@,  @[<v>before: %a@,after: %a@]@," Term.pr t Term.pr t' in

@@ -7,7 +7,7 @@ let trecs_log = "log.hors"
 let cvc3_option = "+interactive"
 
 type mode = Reachability | FileAccess
-type cegar = CEGAR_SizedType | CEGAR_DependentType
+type cegar = CEGAR_InteractionType | CEGAR_DependentType
 type pred_abst = PredAbst | PredAbstCPS
 type model_check = ModelCheck | ModelCheckCPS
 type refine = RefineRefType of int | RefineRefTypeOld

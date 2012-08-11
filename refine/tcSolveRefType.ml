@@ -211,8 +211,8 @@ let summary_of env loc =
 		    let _ = Format.printf "@]@." in
 						[`P(arg, interp)], Util.opt2list (subst_interp nd.closed p interp)
     else (* necessary try repeat.ml *)
-      raise CsisatInterface.No_interpolant
-  with CsisatInterface.No_interpolant ->
+      raise CsisatInterface.NoInterpolant
+  with CsisatInterface.NoInterpolant ->
     let _ = if b then Format.printf "**** quick inference failed ****@]@." in
     let arg_p_interp_list, ret_interp_list =
 						let arg_p_t_list =
@@ -238,7 +238,7 @@ let summary_of env loc =
                       (RefType.visible arg)
                       (fes_of_nodes (nodes_of_path p)))))
             in
-            (*let t = Formula.formula_of_dnf (Term.dnf t) in*)
+            (*let t = Formula.of_dnf (Term.dnf t) in*)
 						      (**)let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in(**)
 		          arg, p, t)
 		        locs
@@ -255,7 +255,7 @@ let summary_of env loc =
                  fes_of_nodes nds]
             in
 								    let t = Term.rename_fresh (RefType.visible ret) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
-            (*let t = Formula.formula_of_dnf (Term.dnf t) in*)
+            (*let t = Formula.of_dnf (Term.dnf t) in*)
 								    (**)let _ = if (get tr).closed then Format.printf "%a: %a@." Var.pr ret Term.pr t in(**)
 		          (ret, nds, t), nds)
 								  [] locs
@@ -473,7 +473,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
       in
       let _ = Format.printf "@]@." in
 						[], interp
-    with CsisatInterface.No_interpolant ->
+    with CsisatInterface.NoInterpolant ->
       let _ = Format.printf "*******@ " in
 		    let argps, nds =
 				    let locs = related_locs loc in
@@ -613,16 +613,19 @@ let summaries_of env constrss0 =
               let locs = List.rev (find_leaves constrs) in
               let locs = List.filter (fun loc -> Util.diff (related_locs loc) locs = []) locs in
               let _ = assert (locs <> []) in
-              if !Global.generalize_predicates then
-                let locs' = List.filter (fun (Loc(Node(nd, []), p) as loc) -> is_recursive nd.name loc) locs in
-                (match locs' with
-                  [] -> List.hd locs
-                | loc::_ -> loc)
-              else
-                List.hd locs(*find_leaf constrs*)
+              match !Global.predicate_discovery with
+                FunctionSummarization ->
+		                let locs' = List.filter (fun (Loc(Node(nd, []), p) as loc) -> is_recursive nd.name loc) locs in
+		                (match locs' with
+		                  [] -> List.hd locs
+		                | loc::_ -> loc)
+              | Backward ->
+                  List.hd locs(*find_leaf constrs*)
             in
-				        if !Global.generalize_predicates then summary_of_widen env loc else summary_of env loc
-				      with CsisatInterface.No_interpolant ->
+            (match !Global.predicate_discovery with
+              FunctionSummarization -> summary_of_widen env loc
+            | Backward -> summary_of env loc)
+				      with CsisatInterface.NoInterpolant ->
 				        raise (FeasibleErrorTrace(constrs(**ToDo*)))
 				    in
 				    match constrss with

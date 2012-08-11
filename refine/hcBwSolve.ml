@@ -48,7 +48,7 @@ let generalize_interpolate pid p t1 t2 =
           Formula.tfalse (*???*)
         else
           CsisatInterface.interpolate_bvs p (Formula.band (ts1 @ ts2)) t2
-      with CsisatInterface.No_interpolant ->
+      with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
         CsisatInterface.interpolate_bvs p t1 t2
 
 
@@ -106,8 +106,10 @@ let solve_hc_aux lbs ps t =
                   generalize_interpolate pid (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
                 else
                   CsisatInterface.interpolate_bvs (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
-              with CsisatInterface.No_interpolant ->
+              with CsisatInterface.NoInterpolant ->
                 raise NoSolution
+              | CsisatInterface.Unknown ->
+                assert false
             in
             t
           in
