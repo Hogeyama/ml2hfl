@@ -135,9 +135,9 @@ let solve_hc lbs sol (Hc(popt, ps, t)) =
         else
           Formula.tfalse, [pid, (xtys, Formula.ttrue)]
   in
+  ps' @
   (* begin optimization *)
   if Cvc3Interface.is_valid (Formula.simplify (Formula.bnot t)) then
-    ps' @
     List.map
       (fun (pid, ttys) ->
         pid,

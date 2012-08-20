@@ -27,11 +27,15 @@ let rec solve hcs0 =
           lbs, ubs
         in
         fun pid ->
-          let xtys = TypPredSubst.args_of pid lbs in
-          let af = Atom.of_pred (pid, xtys) in
-          xtys,
-          TypPredSubst.lookup_map af lbs,
-          TypPredSubst.lookup_map af ubs
+          try
+            let xtys = TypPredSubst.args_of pid lbs in
+            let af = Atom.of_pred (pid, xtys) in
+            xtys,
+            TypPredSubst.lookup_map af lbs,
+            TypPredSubst.lookup_map af ubs
+          with Not_found ->
+            let _ = Format.printf "%a is not found@," Var.pr pid in
+            assert false
       in
       let lbs_ubs_of pids =
         let _ = assert (pids <> []) in
@@ -99,32 +103,32 @@ let rec solve hcs0 =
         else
           (*let hcs = inline_forward (fun pid -> not (List.mem pid pids)) hcs in*)
           let xtys, lbs, ubs = lbs_ubs_of pids in
-					     let lb = Formula.bor lbs in
-					     let nub = Formula.bor (List.map Formula.bnot ubs) in
-					     let _ = if !Global.debug then Format.printf "lb:%a@,nub:%a@," Term.pr lb Term.pr nub in
-					     let lb' = ApronInterface.convex_hull lb in
-					     let nub'= ApronInterface.convex_hull nub in
-				      let _ = if !Global.debug then Format.printf "lb':%a@,nub':%a@," Term.pr lb' Term.pr nub' in
+          let lb = Formula.bor lbs in
+          let nub = Formula.bor (List.map Formula.bnot ubs) in
+          let _ = if !Global.debug then Format.printf "lb:%a@,nub:%a@," Term.pr lb Term.pr nub in
+          let lb' = ApronInterface.convex_hull lb in
+          let nub'= ApronInterface.convex_hull nub in
+          let _ = if !Global.debug then Format.printf "lb':%a@,nub':%a@," Term.pr lb' Term.pr nub' in
           try
             let interp = CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub' in
             List.map (fun pid -> pid, (xtys, interp)) pids
           with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
             Util.map3
-												  (fun pid lb ub ->
-														  let interp =
-  														  let nub = Formula.bnot ub in
-																  try
-																		  CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub
-				              with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
-				                try
-				                  CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
-				                with CsisatInterface.NoInterpolant ->
-				                  raise NoSolution
-				                | CsisatInterface.Unknown ->
-				                  raise (Util.NotImplemented "integer interpolation")
-																in
-														  pid, (xtys, interp))
-														pids lbs ubs
+              (fun pid lb ub ->
+                let interp =
+                  let nub = Formula.bnot ub in
+                  try
+                    CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub
+                  with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
+                    try
+                      CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
+                    with CsisatInterface.NoInterpolant ->
+                      raise NoSolution
+                    | CsisatInterface.Unknown ->
+                      raise (Util.NotImplemented "integer interpolation")
+                in
+                pid, (xtys, interp))
+              pids lbs ubs
       in
       let sol, hcs =
         if List.length pids = 1 then

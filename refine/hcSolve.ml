@@ -117,7 +117,7 @@ let compute_ubs_hc lbs ubs (Hc(popt, ps, t)) =
         else
           Formula.tfalse, [pid, (xtys, Formula.ttrue)]
   in
-  compute_ubs_hc_aux lbs ps t
+  ps' @ compute_ubs_hc_aux lbs ps t
 
 (** @require is_non_recursive hcs && is_well_defined hcs
     @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs) *)

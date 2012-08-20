@@ -27,8 +27,10 @@ refine/idnt.cmo: refine/extList.cmi
 refine/idnt.cmx: refine/extList.cmx
 refine/const.cmo: refine/util.cmo refine/idnt.cmo refine/extList.cmi
 refine/const.cmx: refine/util.cmx refine/idnt.cmx refine/extList.cmx
-refine/var.cmo: refine/idnt.cmo refine/extString.cmi refine/extList.cmi
-refine/var.cmx: refine/idnt.cmx refine/extString.cmx refine/extList.cmx
+refine/var.cmo: refine/util.cmo refine/idnt.cmo refine/extString.cmi \
+    refine/extList.cmi
+refine/var.cmx: refine/util.cmx refine/idnt.cmx refine/extString.cmx \
+    refine/extList.cmx
 refine/callId.cmo: refine/var.cmo refine/extString.cmi refine/extList.cmi
 refine/callId.cmx: refine/var.cmx refine/extString.cmx refine/extList.cmx
 refine/simType.cmo: refine/var.cmo refine/util.cmo refine/idnt.cmo \

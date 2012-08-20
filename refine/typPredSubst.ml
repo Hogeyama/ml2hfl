@@ -50,11 +50,14 @@ let merge psub =
       (fun ((pid, (xtys, _))::_) -> pid, xtys)
       (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) psub))
 
+
+(* @raise Not_found *)
 let args_of pid psub =
 		let xtys, _ = List.assoc pid psub in
   xtys
 
-(** @require Util.is_map psub *)
+(** @require Util.is_map psub
+    @raise Not_found *)
 let lookup_map (pid, ttys) psub =
 		let xtys, t = List.assoc pid psub in
 		let t = Term.fresh (fvs_elem (pid, (xtys, t))) t in

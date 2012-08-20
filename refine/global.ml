@@ -1,7 +1,7 @@
 (** Global variables *)
 
 let debug = ref true
-let debug_level = ref 10
+let debug_level = ref 6
 
 let timer () =
   let st = Unix.times () in
