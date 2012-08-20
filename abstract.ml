@@ -191,6 +191,7 @@ let rec abst_recdata t =
       | Pair(t1,t2) -> Pair(abst_recdata t1, abst_recdata t2)
       | Fst t -> Fst (abst_recdata t)
       | Snd t -> Snd (abst_recdata t)
+      | Label(info,t) -> Label(info, abst_recdata t)
   in
     {desc=desc; typ=typ'}
 
@@ -253,70 +254,9 @@ let rec abstract_mutable t =
       | SetField (_, _, _, _, _, _) -> assert false
       | RandValue (_, _) -> assert false
       | Bottom -> assert false
-
+      | Label _ -> assert false
   in
     {desc=desc; typ=t.typ}
-
-(*
-let rec get_abst_val env typ =
-  match typ with
-      TUnit -> unit_term
-    | TBool -> {desc=BinOp(Eq, {desc=Int 0;typ=TInt[]}, {desc=RandInt None;typ=TInt[]});typ=TBool}
-    | TInt _ -> {desc=RandInt None;typ=TInt[]}
-    | TFun(x,typ2) -> assert false
-        (*
-          let typs = List.map Id.typ (get_args (Id.typ x)) in
-          let ts = List.map get_abst_val typs in
-          let x' = Id.new_var_id x in
-          let f = Id.new_var "f" typ in
-          let u = Id.new_var "u" TUnit in
-          let y = Id.new_var "y" typ2 in
-          let t1 = {desc=Let(Flag.Nonrecursive, u, [], app2app (make_var x') ts, make_var y);typ=typ} in
-          let t2 = make_var y in
-          let t = {desc=Let(Flag.Nonrecursive, y, [], get_abst_val typ2, {desc=Branch(t1, t2); typ=typ}); typ=typ} in
-          {desc=Let(Flag.Nonrecursive, f, [x'], t, make_var f); typ=typ}
-        *)
-    | TList(typ,_) -> assert false
-        (*
-          let u = Id.new_var "u" TUnit in
-          let f = Id.new_var "f" (TFun(u,typ)) in
-          let t = If(get_abst_val TBool, {desc=Nil;typ=TList, Cons(get_abst_val typ, App(make_var f, [Unit]))) in
-          Let(Recursive, f, [u], t, App(make_var f, [Unit]))
-        *)
-    | TRecord(b,typs) ->
-        let u = Id.new_var "u"  TUnit in
-        let f = Id.new_var "f"  (TFun(u,typ)) in
-        let fields = List.map (fun (s,(f,typ)) -> s,(f,get_abst_val typ)) typs in
-          Record(b,fields)
-    | TVariant _ as typ ->
-        let stypss = Typing.get_constrs_from_type typ in
-        let aux (s,typs) = Constr(s, List.map get_abst_val typs) in
-          List.fold_left (fun t styps -> If(Unknown, t, aux styps)) (aux (List.hd stypss)) (List.tl stypss)
-    | TVar x -> assert false
-    | TConstr(s,true) -> assert false
-    | TConstr(s,false) -> RandValue(TConstr(s,false), None)
-    | typ -> print_typ Format.std_formatter typ; assert false
-*)
-(* temporal implementation *)
-let rec get_abst_val = function
-      TFun(x,typ) ->
-        let x' = Id.new_var "x" (Id.typ x) in
-          make_fun x' (get_abst_val typ)
-    | TUnit -> unit_term
-    | TBool -> make_eq (make_int 0) (get_abst_val TInt)
-    | TInt _ -> make_app randint_term [unit_term]
-    | _ -> raise (Fatal "Not implemented: get_abst_val")
-let abst_ext_funs t =
-  let env = Trans.make_ext_env t in
-  let env' = uniq' (fun (f,_) (g,_) -> Id.compare f g) env in
-  let aux (f,typ) t = make_let [f, [], get_abst_val typ] t in
-    List.fold_right aux env' t
-
-
-
-
-
-
 
 
 
@@ -449,6 +389,7 @@ and abst_list post t =
       | Pair(t1,t2) -> make_pair(abst_list post t1) (abst_list post t2)
       | Fst t -> make_fst (abst_list post t)
       | Snd t -> make_snd (abst_list post t)
+      | Label(info,t) -> make_label info t
 
 let abstract_list t =
   let t' = abst_list "" t in

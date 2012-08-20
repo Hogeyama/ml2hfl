@@ -6,11 +6,7 @@ open CEGAR_type
 open CEGAR_util
 
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
-
-
-
-
-
+type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
 
 let make_line_spec n q =
@@ -54,6 +50,7 @@ let make_spec n =
 
 
 let capitalize_var = String.capitalize
+let uncapitalize_var = String.uncapitalize
 
 let capitalize {env=env;defs=defs;main=main} =
   let env' = List.map (fun (f,typ) -> capitalize_var f, typ) env in
@@ -286,5 +283,7 @@ let model_check_aux (prog,spec) =
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
     match TrecsInterface.check env (prog,spec) with
-        None -> None
-      | Some ce -> Some (trans_ce ce)
+        TrecsInterface.Safe env ->
+          let env' = List.map (fun (x,typ) -> uncapitalize_var x, typ) env in
+            Safe env'
+      | TrecsInterface.Unsafe ce -> Unsafe (trans_ce ce)

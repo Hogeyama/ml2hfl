@@ -43,7 +43,11 @@ and term =
   | Bottom
   | Label of info * typed_term
 
-and info = InfoInt of int | InfoString of string | InfoId of id
+and info =
+    InfoInt of int
+  | InfoString of string
+  | InfoId of id
+  | InfoTerm of typed_term
 
 and rec_flag = Nonrecursive | Recursive
 and mutable_flag = Immutable | Mutable
@@ -118,6 +122,7 @@ let rec get_fv vars t =
     | Snd t -> get_fv vars t
     | Raise t -> get_fv vars t
     | RandValue _ -> assert false
+    | Label _ -> assert false
 let get_fv t = uniq (get_fv [] t)
 
 
@@ -236,6 +241,14 @@ and print_term pri typ fm t =
               | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
                   s1 print_bindings bindings (print_term p typ) t2 s2
           end
+    | Not{desc = BinOp(Eq, t1, t2)} ->
+        let p = 50 in
+        let s1,s2 = paren pri p in
+          fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+    | BinOp(Mult, {desc=Int -1}, {desc=Var x}) ->
+        let p = 60 in
+        let s1,s2 = paren pri p in
+          fprintf fm "%s@[-%a@]%s" s1 print_id x s2
     | BinOp(op, t1, t2) ->
         let p = match op with Add|Sub|Mult -> 60 | And -> 40 | Or -> 30 | _ -> 50 in
         let s1,s2 = paren pri p in
@@ -304,6 +317,7 @@ and print_term pri typ fm t =
         fprintf fm "(@[label %a %a@])" Id.print x (print_term 80 typ) t
     | Label(InfoString s, t) ->
         fprintf fm "(@[label %s %a@])" s (print_term 80 typ) t
+    | Label _ -> assert false
 
 
 and print_pattern fm pat =
@@ -456,6 +470,7 @@ let rec print_term' pri fm t =
           let s1,s2 = paren pri (p+1) in
             fprintf fm "%ssnd %a%s" s1 (print_term' 1) t s2
       | Bottom -> fprintf fm "_|_"
+      | Label _ -> assert false
   );fprintf fm ":%a)" print_typ t.typ
 and print_pattern' fm pat =
   let rec aux fm pat =
@@ -762,6 +777,7 @@ let rec get_nint t =
     | Record _ -> assert false
     | RandValue _ -> assert false
     | Bottom -> []
+    | Label _ -> assert false
 let get_nint t = uniq (get_nint t)
 
 let rec get_int t =
@@ -796,6 +812,7 @@ let rec get_int t =
     | Record _ -> assert false
     | RandValue (_, _) -> assert false
     | Bottom -> []
+    | Label _ -> assert false
 let get_int t = uniq (get_int t)
 
 let rec get_vars_pat pat =
@@ -824,7 +841,7 @@ let rec get_argtyps = function
     TFun(x,typ) -> Id.typ x :: get_argtyps typ
   | _ -> []
 
-
+let arg_num typ = List.length (get_args typ)
 
 
 
@@ -978,6 +995,7 @@ and subst_int n t t' =
       | Record _ -> assert false
       | RandInt _ -> assert false
       | RandValue (_, _) -> assert false
+      | Label _ -> assert false
   in
     {desc=desc; typ=t'.typ}
 
@@ -1049,6 +1067,7 @@ and subst_map map t =
     | Fst t1 -> make_fst (subst_map map t1)
     | Snd t1 -> make_snd (subst_map map t1)
     | RandValue _ -> assert false
+    | Label _ -> assert false
 
 and subst_type x t = function
     TUnit -> TUnit
@@ -1113,6 +1132,7 @@ let rec max_pat_num t =
     | RandValue (_, _) -> assert false
     | RandInt _ -> assert false
     | Bottom -> assert false
+    | Label _ -> assert false
 
 let rec max_label_num t =
   match t.desc with
@@ -1152,6 +1172,7 @@ let rec max_label_num t =
     | Record _ -> assert false
     | RandValue (_, _) -> assert false
     | Bottom -> assert false
+    | Label _ -> assert false
 
 
 let is_external x = String.contains (Id.name x) '.'

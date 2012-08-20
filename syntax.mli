@@ -38,7 +38,11 @@ and term =
   | Bottom
   | Label of info * typed_term
 
-and info = InfoInt of int | InfoString of string | InfoId of id
+and info =
+    InfoInt of int
+  | InfoString of string
+  | InfoId of id
+  | InfoTerm of typed_term
 
 and rec_flag = Nonrecursive | Recursive
 and mutable_flag = Immutable | Mutable
@@ -154,6 +158,7 @@ val get_fv : typed_term -> id list
 val get_args : typ -> id list
 val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
+val arg_num : typ -> int
 val get_vars_pat : typed_pattern -> id list
 
 val max_pat_num : typed_term -> int

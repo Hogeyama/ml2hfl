@@ -5,7 +5,7 @@ open CEGAR_type
 open CEGAR_util
 open ModelCheck_util
 
-
+type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
 let check prog n =
   let prog = CEGAR_CPS.trans prog true in
@@ -42,4 +42,6 @@ let check count abst prog =
   in
   let () = add_time tmp Flag.time_mc in
   let () = if Flag.print_progress then Format.printf "DONE!@.@." in
-    result
+    match result with
+        ModelCheck_util.Safe env -> Safe env
+      | ModelCheck_util.Unsafe ce -> Unsafe ce

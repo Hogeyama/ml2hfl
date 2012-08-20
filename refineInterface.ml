@@ -120,6 +120,7 @@ let conv_prog (typs, fdefs, main) =
     Prog.main = Idnt.make main }
 
 let verify fs (*cexs*) prog =
+  let prog = prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main in
   let prog = conv_prog prog in
   Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
   let _ = Verifier.verify fs prog in
@@ -407,6 +408,7 @@ let insert_extra_param t =
 	| Syntax.Fst t -> Syntax.Fst(aux rfs bvs exs t)
 	| Syntax.Snd t -> Syntax.Snd(aux rfs bvs exs t)
 	| Syntax.Bottom -> Syntax.Bottom
+        | Syntax.Label(info,t) -> Syntax.Label(info, aux rfs bvs exs t)
     in
       {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
   in

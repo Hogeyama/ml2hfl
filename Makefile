@@ -21,6 +21,7 @@ CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 INCLUDES = -I /usr/lib \
 	-I /usr/lib/ocaml \
 	-I /usr/local/lib \
+	-I $(GMP) \
 	-I $(ATP) \
 	-I $(APRON) \
 	-I $(CSISAT)/lib \
@@ -60,7 +61,7 @@ lib: ocaml csisat trecs atp
 # bytecode and native-code compilation
 
 MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
-	inter_type.mli wrapper.mli wrapper2.mli CEGAR_print.mli spec_parser.mli
+	wrapper.mli wrapper2.mli CEGAR_print.mli spec_parser.mli trecs_parser.mli
 CMI = $(MLI:.mli=.cmi)
 
 REFINE_CMO = enum.cmo extList.cmo extString.cmo \
@@ -87,11 +88,12 @@ CMO = $(OCAML_CMO) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
-	type_check.cmo trans.cmo CEGAR_util.cmo useless_elim.cmo \
-	ref_type.cmo type_trans.cmo refineInterface.cmo \
+	ref_type.cmo type_check.cmo trans.cmo CEGAR_ref_type.cmo CEGAR_util.cmo \
+	useless_elim.cmo inter_type.cmo type_trans.cmo refineInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
+        trecs_parser.cmo trecs_lexer.cmo \
 	$(TRECS)/trecs.cmo dependent_type.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
 	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
@@ -130,8 +132,12 @@ $(NAME).opt: $(CMX) $(CMI)
 
 spec_parser.ml spec_parser.mli: spec_parser.mly
 	$(OCAMLYACC) -v $<
-
 spec_lexer.ml: spec_lexer.mll
+	$(OCAMLLEX) $<
+
+trecs_parser.ml trecs_parser.mli: trecs_parser.mly
+	$(OCAMLYACC) -v $<
+trecs_lexer.ml: trecs_lexer.mll
 	$(OCAMLLEX) $<
 
 # Common rules

@@ -1,14 +1,14 @@
-CPS.cmi: syntax.cmi
-abstract.cmi: type.cmo syntax.cmi id.cmo
+CPS.cmi: syntax.cmi ref_type.cmo
+abstract.cmi: syntax.cmi
 automata.cmi:
 feasibility.cmi: CEGAR_syntax.cmo
 refine.cmi: CEGAR_syntax.cmo
 syntax.cmi: type.cmo id.cmo
-inter_type.cmi:
 wrapper.cmi: syntax.cmi
 wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
 CEGAR_print.cmi: CEGAR_syntax.cmo
 spec_parser.cmi: spec.cmo
+trecs_parser.cmi: inter_type.cmo
 refine/enum.cmo: refine/enum.cmi
 refine/enum.cmx: refine/enum.cmi
 refine/extList.cmo: refine/enum.cmi refine/extList.cmi
@@ -243,8 +243,8 @@ flag.cmo:
 flag.cmx:
 utilities.cmo:
 utilities.cmx:
-id.cmo:
-id.cmx:
+id.cmo: utilities.cmo
+id.cmx: utilities.cmx
 type.cmo: utilities.cmo id.cmo
 type.cmx: utilities.cmx id.cmx
 automata.cmo: automata.cmi
@@ -273,24 +273,32 @@ typing.cmo: utilities.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
 typing.cmx: utilities.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 type_decl.cmo: utilities.cmo type.cmo syntax.cmi
 type_decl.cmx: utilities.cmx type.cmx syntax.cmx
+ref_type.cmo: utilities.cmo syntax.cmi id.cmo
+ref_type.cmx: utilities.cmx syntax.cmx id.cmx
 type_check.cmo: type_decl.cmo type.cmo syntax.cmi id.cmo flag.cmo
 type_check.cmx: type_decl.cmx type.cmx syntax.cmx id.cmx flag.cmx
 trans.cmo: utilities.cmo refine/util.cmo type_decl.cmo type_check.cmo \
-    type.cmo syntax.cmi id.cmo flag.cmo refine/extList.cmi
+    type.cmo syntax.cmi ref_type.cmo id.cmo flag.cmo refine/extList.cmi
 trans.cmx: utilities.cmx refine/util.cmx type_decl.cmx type_check.cmx \
-    type.cmx syntax.cmx id.cmx flag.cmx refine/extList.cmx
-CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo trans.cmo syntax.cmi id.cmo \
-    flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
-CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx id.cmx \
-    flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+    type.cmx syntax.cmx ref_type.cmx id.cmx flag.cmx refine/extList.cmx
+CEGAR_ref_type.cmo: utilities.cmo CEGAR_syntax.cmo CEGAR_print.cmi
+CEGAR_ref_type.cmx: utilities.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+CEGAR_util.cmo: utilities.cmo typing.cmo type.cmo trans.cmo syntax.cmi \
+    ref_type.cmo id.cmo flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_ref_type.cmo CEGAR_print.cmi
+CEGAR_util.cmx: utilities.cmx typing.cmx type.cmx trans.cmx syntax.cmx \
+    ref_type.cmx id.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_ref_type.cmx CEGAR_print.cmx
 useless_elim.cmo: utilities.cmo typing.cmo id.cmo CEGAR_util.cmo \
     CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
 useless_elim.cmx: utilities.cmx typing.cmx id.cmx CEGAR_util.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
-ref_type.cmo: utilities.cmo CEGAR_syntax.cmo CEGAR_print.cmi
-ref_type.cmx: utilities.cmx CEGAR_syntax.cmx CEGAR_print.cmx
-type_trans.cmo: ref_type.cmo CEGAR_type.cmo
-type_trans.cmx: ref_type.cmx CEGAR_type.cmx
+inter_type.cmo: utilities.cmo
+inter_type.cmx: utilities.cmx
+type_trans.cmo: inter_type.cmo id.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    CEGAR_syntax.cmo CEGAR_ref_type.cmo
+type_trans.cmx: inter_type.cmx id.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    CEGAR_syntax.cmx CEGAR_ref_type.cmx
 refineInterface.cmo: refine/verifier.cmo refine/var.cmo utilities.cmo \
     refine/util.cmo type.cmo refine/term.cmo syntax.cmi refine/simType.cmo \
     refine/prog.cmo refine/idnt.cmo id.cmo refine/global.cmo flag.cmo \
@@ -301,10 +309,10 @@ refineInterface.cmx: refine/verifier.cmx refine/var.cmx utilities.cmx \
     refine/prog.cmx refine/idnt.cmx id.cmx refine/global.cmx flag.cmx \
     refine/fdef.cmx refine/extList.cmx refine/const.cmx CEGAR_util.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx refine/absType.cmx
-CPS.cmo: utilities.cmo type_check.cmo type.cmo trans.cmo syntax.cmi id.cmo \
-    flag.cmo CPS.cmi
-CPS.cmx: utilities.cmx type_check.cmx type.cmx trans.cmx syntax.cmx id.cmx \
-    flag.cmx CPS.cmi
+CPS.cmo: utilities.cmo type_check.cmo type.cmo trans.cmo syntax.cmi \
+    ref_type.cmo id.cmo flag.cmo CPS.cmi
+CPS.cmx: utilities.cmx type_check.cmx type.cmx trans.cmx syntax.cmx \
+    ref_type.cmx id.cmx flag.cmx CPS.cmi
 CEGAR_CPS.cmo: utilities.cmo typing.cmo CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmi CEGAR_CPS.cmi
 CEGAR_CPS.cmx: utilities.cmx typing.cmx CEGAR_util.cmx CEGAR_type.cmx \
@@ -343,28 +351,34 @@ CEGAR_abst.cmo: wrapper2.cmi utilities.cmo typing.cmo flag.cmo CEGAR_util.cmo \
 CEGAR_abst.cmx: wrapper2.cmx utilities.cmx typing.cmx flag.cmx CEGAR_util.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx CEGAR_abst_util.cmx \
     CEGAR_abst_CPS.cmx CEGAR_abst.cmi
+trecs_parser.cmo: inter_type.cmo trecs_parser.cmi
+trecs_parser.cmx: inter_type.cmx trecs_parser.cmi
+trecs_lexer.cmo: utilities.cmo trecs_parser.cmi
+trecs_lexer.cmx: utilities.cmx trecs_parser.cmx
 dependent_type.cmo: CEGAR_syntax.cmo
 dependent_type.cmx: CEGAR_syntax.cmx
-trecsInterface.cmo: utilities.cmo flag.cmo dependent_type.cmo CEGAR_util.cmo \
-    CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
-trecsInterface.cmx: utilities.cmx flag.cmx dependent_type.cmx CEGAR_util.cmx \
-    CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
+trecsInterface.cmo: utilities.cmo trecs_parser.cmi trecs_lexer.cmo \
+    inter_type.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmi
+trecsInterface.cmx: utilities.cmx trecs_parser.cmx trecs_lexer.cmx \
+    inter_type.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx
 ModelCheck_util.cmo: utilities.cmo useless_elim.cmo typing.cmo \
-    trecsInterface.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
+    trecsInterface.cmo inter_type.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmi
 ModelCheck_util.cmx: utilities.cmx useless_elim.cmx typing.cmx \
-    trecsInterface.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
+    trecsInterface.cmx inter_type.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx
 ModelCheck_CPS.cmo: utilities.cmo ModelCheck_util.cmo CEGAR_util.cmo \
     CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
 ModelCheck_CPS.cmx: utilities.cmx ModelCheck_util.cmx CEGAR_util.cmx \
     CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
-ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo ModelCheck_CPS.cmo flag.cmo \
-    CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi \
-    CEGAR_CPS.cmi
-ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx ModelCheck_CPS.cmx flag.cmx \
-    CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx \
-    CEGAR_CPS.cmx
+ModelCheck.cmo: utilities.cmo ModelCheck_util.cmo ModelCheck_CPS.cmo \
+    inter_type.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmi CEGAR_CPS.cmi
+ModelCheck.cmx: utilities.cmx ModelCheck_util.cmx ModelCheck_CPS.cmx \
+    inter_type.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx CEGAR_CPS.cmx
 feasibility.cmo: wrapper2.cmi utilities.cmo flag.cmo CEGAR_util.cmo \
     CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi feasibility.cmi
 feasibility.cmx: wrapper2.cmx utilities.cmx flag.cmx CEGAR_util.cmx \
@@ -381,23 +395,23 @@ refine.cmo: wrapper2.cmi utilities.cmo refineInterface.cmo RefineDepTyp.cmo \
 refine.cmx: wrapper2.cmx utilities.cmx refineInterface.cmx RefineDepTyp.cmx \
     flag.cmx refine/cvc3Interface.cmx CEGAR_util.cmx CEGAR_type.cmx \
     CEGAR_syntax.cmx CEGAR_print.cmx refine.cmi
-CEGAR.cmo: wrapper.cmi utilities.cmo refineInterface.cmo refine.cmi \
-    ModelCheck.cmo id.cmo flag.cmo feasibility.cmi refine/extList.cmi \
-    CEGAR_util.cmo CEGAR_type.cmo CEGAR_trans.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmi CEGAR_abst.cmi
-CEGAR.cmx: wrapper.cmx utilities.cmx refineInterface.cmx refine.cmx \
-    ModelCheck.cmx id.cmx flag.cmx feasibility.cmx refine/extList.cmx \
-    CEGAR_util.cmx CEGAR_type.cmx CEGAR_trans.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx CEGAR_abst.cmx
+CEGAR.cmo: wrapper.cmi utilities.cmo type_trans.cmo refineInterface.cmo \
+    refine.cmi ModelCheck.cmo id.cmo flag.cmo feasibility.cmi \
+    refine/extList.cmi CEGAR_util.cmo CEGAR_type.cmo CEGAR_trans.cmo \
+    CEGAR_syntax.cmo CEGAR_ref_type.cmo CEGAR_print.cmi CEGAR_abst.cmi
+CEGAR.cmx: wrapper.cmx utilities.cmx type_trans.cmx refineInterface.cmx \
+    refine.cmx ModelCheck.cmx id.cmx flag.cmx feasibility.cmx \
+    refine/extList.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_trans.cmx \
+    CEGAR_syntax.cmx CEGAR_ref_type.cmx CEGAR_print.cmx CEGAR_abst.cmx
 eval.cmo: utilities.cmo type.cmo syntax.cmi id.cmo
 eval.cmx: utilities.cmx type.cmx syntax.cmx id.cmx
 main.cmo: wrapper2.cmi wrapper.cmi refine/verifier.cmo utilities.cmo \
     type_check.cmo type.cmo trans.cmo syntax.cmi spec_parser.cmi \
-    spec_lexer.cmo spec.cmo refineInterface.cmo refine.cmi parser_wrapper.cmo \
-    id.cmo refine/global.cmo flag.cmo eval.cmo refine/cvc3Interface.cmo \
-    CPS.cmi CEGAR_util.cmo CEGAR_syntax.cmo CEGAR.cmo abstract.cmi
+    spec_lexer.cmo spec.cmo refineInterface.cmo refine.cmi ref_type.cmo \
+    parser_wrapper.cmo id.cmo refine/global.cmo flag.cmo eval.cmo \
+    refine/cvc3Interface.cmo CPS.cmi CEGAR_util.cmo CEGAR.cmo abstract.cmi
 main.cmx: wrapper2.cmx wrapper.cmx refine/verifier.cmx utilities.cmx \
     type_check.cmx type.cmx trans.cmx syntax.cmx spec_parser.cmx \
-    spec_lexer.cmx spec.cmx refineInterface.cmx refine.cmx parser_wrapper.cmx \
-    id.cmx refine/global.cmx flag.cmx eval.cmx refine/cvc3Interface.cmx \
-    CPS.cmx CEGAR_util.cmx CEGAR_syntax.cmx CEGAR.cmx abstract.cmx
+    spec_lexer.cmx spec.cmx refineInterface.cmx refine.cmx ref_type.cmx \
+    parser_wrapper.cmx id.cmx refine/global.cmx flag.cmx eval.cmx \
+    refine/cvc3Interface.cmx CPS.cmx CEGAR_util.cmx CEGAR.cmx abstract.cmx

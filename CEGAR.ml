@@ -7,6 +7,7 @@ open CEGAR_util
 exception NoProgress
 exception CannotDiscoverPredicate
 
+type result = Safe of (var * CEGAR_ref_type.t) list | Unsafe of int list
 type info = {orig_fun_list:var list; inlined:var list}
 
 let pre () =
@@ -42,48 +43,67 @@ let rec cegar1 prog0 ces info =
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined None prog in
   let result = ModelCheck.check None abst prog in
-  let result' = apply_opt (fun ce -> CEGAR_trans.trans_ce ce labeled prog) result in
+  let result' =
+    match result with
+        ModelCheck.Safe env -> ModelCheck.Safe env
+      | ModelCheck.Unsafe ce -> ModelCheck.Unsafe (CEGAR_trans.trans_ce ce labeled prog)
+  in
     match result',ces with
-        None,_ -> prog, None
-      | Some ce, ce'::_ when ce = ce' && not !Flag.use_filter ->
+        ModelCheck.Safe env,_ ->
+          let aux (x,ityp) =
+            try
+              [x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp]
+            with Not_found -> []
+          in
+          let env' = rev_map_flatten aux env in
+            prog, Safe env'
+      | ModelCheck.Unsafe ce, ce'::_ when ce = ce' && not !Flag.use_filter ->
           Format.printf "Filter option enabled.@.";
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_filter := true;
           cegar1 prog ces info
-      | Some ce, ce'::_ when ce = ce' && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
+      | ModelCheck.Unsafe ce, ce'::_ when ce = ce' && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
           Format.printf "Negative-predicate option enabled.@.";
           Format.printf "Restart CEGAR-loop.@.";
           Flag.use_neg_pred := true;
           cegar1 prog ces info
-      | Some ce, ce'::_ when ce = ce' && !Flag.wp_max_num < 8 ->
+      | ModelCheck.Unsafe ce, ce'::_ when ce = ce' && !Flag.wp_max_num < 8 ->
           Flag.wp_max_num := !Flag.wp_max_num + 1;
           Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
           Format.printf "Restart CEGAR-loop.@.";
           cegar1 prog ces info
-      | Some ce, ce'::_ when ce = ce' ->
-          let ce_labeled = get_opt_val result in
-          Feasibility.print_ce_reduction ce prog;
-          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
-          raise NoProgress
-      | Some ce, _ ->
-          let ce_labeled = get_opt_val result in
-          Feasibility.print_ce_reduction ce prog;
-          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
-          match Feasibility.check ce prog with
-              Feasibility.Feasible (env, sol) -> prog, Some sol
-            | Feasibility.Infeasible prefix ->
-                let () =
-                  if true
-                  then
-                    Format.printf "Prefix of spurious counter-example::@.%a@.@."
-                      CEGAR_print.ce prefix
-                in
-                let ces' = ce::ces in
-                let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-                let _,prog' = Refine.refine inlined_functions prefix ces' prog0 in
-(*                let prog' = reconstruct_typ prog' in*)
-                  post ();
-    cegar1 prog' ces' info
+      | ModelCheck.Unsafe ce, ce'::_ when ce = ce' ->
+          let ce_labeled =
+            match result with
+                ModelCheck.Safe env -> assert false
+              | ModelCheck.Unsafe ce -> ce
+          in
+            Feasibility.print_ce_reduction ce prog;
+            if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
+            raise NoProgress
+      | ModelCheck.Unsafe ce, _ ->
+          let ce_labeled =
+            match result with
+                ModelCheck.Safe env -> assert false
+              | ModelCheck.Unsafe ce -> ce
+          in
+            Feasibility.print_ce_reduction ce prog;
+            if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_labeled;
+            match Feasibility.check ce prog with
+                Feasibility.Feasible (env, sol) -> prog, Unsafe sol
+              | Feasibility.Infeasible prefix ->
+                  let () =
+                    if true
+                    then
+                      Format.printf "Prefix of spurious counter-example::@.%a@.@."
+                        CEGAR_print.ce prefix
+                  in
+                  let ces' = ce::ces in
+                  let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+                  let _,prog' = Refine.refine inlined_functions prefix ces' prog0 in
+                    (*                let prog' = reconstruct_typ prog' in*)
+                    post ();
+                    cegar1 prog' ces' info
 
 
 

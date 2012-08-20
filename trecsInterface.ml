@@ -4,7 +4,7 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
-type result = Safe of Trecs.Typing.te | Unsafe of Trecs.Reduce.trace
+type result = Safe of (var * Inter_type.t) list | Unsafe of Trecs.Reduce.trace
 
 module TS = Trecs.Syntax
 
@@ -240,7 +240,8 @@ let verifyParseResult (prerules,tr) =
       let _ =  (Trecs.Typing.print_te te;
                 print_string ("The number of expansions: "^(string_of_int !Trecs.Reduce.redcount)^"\n"))
       in
-        Safe te
+      let trans _ = assert false in
+        Safe (List.map trans te)
     with
         Trecs.Reduce.Error tr ->
           print_string "The property is not satisfied.\nThe error trace is:\n  ";
@@ -308,6 +309,32 @@ let rec verifyFile filename =
               then raise (Fatal "TRecS FAILED!")
               else raise (Fatal ("Unsupported TRecS output: " ^ s))
 
+let rec verifyFile filename =
+  let default = "empty" in
+  let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
+  let result_file = "result" in
+  let oc = open_out result_file in
+  let () = output_string oc default in
+  let () = close_out oc in
+  let cmd = Format.sprintf "%s -p %d %d %s > %s" !Flag.trecs p1 p2 filename result_file in
+  let cmd' = Format.sprintf "%s | grep -q 'Verification failed (time out).'" cmd in
+  let r = Sys.command cmd' in
+    if r = 0
+    then
+      let () = Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1) in
+      let () = Flag.trecs_param1 := 2 * p1 in
+        verifyFile filename
+    else
+      let ic = open_in result_file in
+      let lb = Lexing.from_channel ic in
+        match Trecs_parser.output Trecs_lexer.token lb with
+          `Safe env ->
+            close_in ic;
+            Safe env
+        | `Unsafe trace ->
+            close_in ic;
+            Unsafe trace
+
 let write_log filename target =
   let cout = open_out filename in
     output_string cout (string_of_parseresult target);
@@ -317,7 +344,6 @@ let write_log filename target =
 let check env target =
   initialize ();
   let target' = trans target in
-  let r =
     if !Flag.use_new_trecs
     then
       let input = "input.hors" in
@@ -325,9 +351,3 @@ let check env target =
         verifyFile input
     else
       verifyParseResult target'
-  in
-    match r with
-        Safe te ->
-          ignore (Dependent_type.trans te env);
-          None
-      | Unsafe tr -> Some tr

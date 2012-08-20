@@ -158,10 +158,43 @@ let rec make_arg_let t =
     {Syntax.desc=desc; Syntax.typ=t.Syntax.typ}
 
 
-
 let nil _ = []
 
 let trans_var x = Id.to_string x
+let trans_inv_var s = Id.from_string s Type.typ_unknown
+
+
+
+(* for predicates *)
+let rec trans_inv_term = function
+    Const True -> Syntax.true_term
+  | Const False -> Syntax.false_term
+  | Const (Int n) -> Syntax.make_int n
+  | Var x -> Syntax.make_var (trans_inv_var x)
+  | App(App(Const And, t1), t2) ->
+      Syntax.make_and (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Or, t1), t2) ->
+      Syntax.make_or (trans_inv_term t1) (trans_inv_term t2)
+  | App(Const Not, t) ->
+      Syntax.make_not (trans_inv_term t)
+  | App(App(Const Lt, t1), t2) ->
+      Syntax.make_lt (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Gt, t1), t2) ->
+      Syntax.make_gt (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Leq, t1), t2) ->
+      Syntax.make_leq (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Geq, t1), t2) ->
+      Syntax.make_geq (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const (EqInt|EqBool), t1), t2) ->
+      Syntax.make_eq (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Add, t1), t2) ->
+      Syntax.make_add (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Sub, t1), t2) ->
+      Syntax.make_sub (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Mul, t1), t2) ->
+      Syntax.make_mul (trans_inv_term t1) (trans_inv_term t2)
+  | t -> Format.printf "%a@." CEGAR_print.term t; assert false
+
 
 
 let rec trans_typ = function
@@ -487,8 +520,26 @@ let rename_prog prog =
   let main = rename_var map prog.main in
   let prog = {env=env; defs=defs; main=main} in
   let () = try ignore (Typing.infer prog) with Typing.External -> () in
-    prog,map
+  let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
+    prog, map, rmap
 
+
+module CRT = CEGAR_ref_type
+module RT = Ref_type
+
+let rec trans_ref_type = function
+    CRT.Base(b,x,p) ->
+      let b' =
+        match b with
+            CRT.Unit -> RT.Unit
+          | CRT.Bool -> RT.Bool
+          | CRT.Int -> RT.Int
+      in
+        RT.Base(b', trans_inv_var x, trans_inv_term p)
+  | CRT.Fun(x,typ1,typ2) ->
+      RT.Fun(trans_inv_var x, trans_ref_type typ1, trans_ref_type typ2)
+  | CRT.Inter typs ->
+      RT.Inter (List.map trans_ref_type typs)
 
 
 let trans_prog t =
@@ -497,7 +548,7 @@ let trans_prog t =
   let t = Trans.trans_let t in
   let () = if false then Format.printf "AFTER:@.%a@.@.@." Syntax.pp_print_term t in
   let main = new_id "main" in
-  let defs,t_main = Trans.lift t in
+  let (defs,t_main),get_rtyp = Trans.lift t in
   let defs_t,t_main' = trans_term "" [] [] t_main in
   let defs' =
     match !Flag.cegar with
@@ -518,9 +569,10 @@ let trans_prog t =
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = pop_main prog in
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
-  let prog,map = rename_prog prog in
+  let prog,map,rmap = rename_prog prog in
+  let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
-    prog,map
+    prog,map,rmap,get_rtyp
 
 
 let nil = fun _ -> []
@@ -868,6 +920,16 @@ let rec has_bottom = function
 let rec normalize_bool_term = function
     Const c -> Const c
   | Var x -> Var x
+  | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
+      let op' =
+        match op with
+            Lt -> Geq
+          | Gt -> Leq
+          | Leq -> Gt
+          | Geq -> Lt
+          | _ -> assert false
+      in
+        normalize_bool_term (App(App(Const op', t1), t2))
   | App(App(Const EqBool, Const True), t) -> normalize_bool_term t
   | App(App(Const (EqInt|Lt|Gt|Leq|Geq) as op, t1), t2) ->
       let neg xs = List.map (fun (x,n) -> x,-n) xs in
