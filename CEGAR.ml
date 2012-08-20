@@ -68,7 +68,7 @@ let rec cegar1 prog0 ces info =
           Flag.use_neg_pred := true;
           cegar1 prog ces info
       | ModelCheck.Unsafe ce, ce'::_ when ce = ce' && !Flag.wp_max_num < 8 ->
-          Flag.wp_max_num := !Flag.wp_max_num + 1;
+          incr Flag.wp_max_num;
           Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
           Format.printf "Restart CEGAR-loop.@.";
           cegar1 prog ces info
