@@ -3,13 +3,13 @@ open ExtString
 
 (** Horn clauses *)
 
-(** The definition of a Horn clause
+(** The type of Horn clauses
     @invariant for any Hc(popt, afs, t), List.for_all (fun p -> Atom.coeffs p = []) afs *)
 type t = Hc of (Var.t * (Var.t * SimType.t) list) option * Atom.t list * Term.t
 
 (** {6 Basic functions} *)
 
-let pr ppf (Hc(popt, afs, t)) =
+let pr_elem ppf (Hc(popt, afs, t)) =
   let _ = Format.fprintf ppf "@[<hov>" in
   let _ =
     if afs <> [] then
@@ -23,6 +23,9 @@ let pr ppf (Hc(popt, afs, t)) =
       Format.fprintf ppf "|- %a@]"
         Atom.pr
         (Atom.of_pred p)
+
+let pr ppf hcs =
+  Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_elem "@,@,") hcs
 
 let fvs (Hc(popt, afs, t)) =
   Util.diff
@@ -76,6 +79,9 @@ let fresh (Hc(popt, afs, t) as hc) =
   Hc(popt,
     List.map (Atom.subst (fun x -> List.assoc x sub)) afs,
     Term.subst (fun x -> List.assoc x sub) t)
+
+let mem pid hcs =
+  List.exists (function Hc(Some(pid', _), _, _) -> pid = pid' | _ -> false) hcs
 
 (** @require is_non_disjunctive hcs *)
 let lookup (pid, ttys) hcs =

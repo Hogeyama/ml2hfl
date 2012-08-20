@@ -35,7 +35,9 @@ let lookup (pid, ttys) psub =
     (Formula.band
 		    (List.map
 		      (fun (_, (xtys, t)) ->
-		        let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
+		        let sub =
+										  List.map2 (fun (x, ty) (t, ty') -> let _ = if !Global.debug then assert (ty = ty') in x, t) xtys ttys
+										in
 		        Term.subst (fun x -> List.assoc x sub) t)
 		      (List.filter (fun (pid', _) -> pid = pid') psub)))
 
@@ -96,9 +98,9 @@ let check psub hcs =
       match subst psub hc with
         Hc(None, [], t) ->
 				      if not (Cvc3Interface.is_valid (Formula.bnot t)) then
-				        let _ = Format.printf "%a@,%a => bot@," HornClause.pr hc Term.pr t in
+				        let _ = Format.printf "%a@,%a => bot@," HornClause.pr_elem hc Term.pr t in
 				        assert false
       | _ ->
-		        let _ = Format.printf "%a@," HornClause.pr hc in
+		        let _ = Format.printf "%a@," HornClause.pr_elem hc in
 		        assert false)
     hcs

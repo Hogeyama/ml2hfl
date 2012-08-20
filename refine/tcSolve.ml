@@ -48,7 +48,7 @@ let widen xss ts =
     [t] -> t
   | _ ->
 			  	(*
-				  List.iter (fun xs -> Format.printf "%a@ " (Util.pr_list Var.pr ", ") xs) xss;
+				  List.iter (fun xs -> Format.printf "%a@ " Var.pr_list xs) xss;
 	  			*)
 				  let xs = List.hd xss in
 				  let ts =

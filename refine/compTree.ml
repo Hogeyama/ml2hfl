@@ -157,8 +157,8 @@ let expand_node prog fenv ct =
                     try
                       List.combine fargs args
                     with _ -> begin
-                      Format.printf "formal args: %a@." (Util.pr_list Var.pr ", ") fargs;
-                      Format.printf "actual args: %a@." (Util.pr_list Term.pr ", ") args;
+                      Format.printf "formal args: %a@." Var.pr_list fargs;
+                      Format.printf "actual args: %a@." Term.pr_list args;
                       assert false
                     end
                   in

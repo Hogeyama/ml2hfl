@@ -1,9 +1,9 @@
 open ExtList
 open ExtString
 
-(** Terms *)
+(** Simply-typed term expressions *)
 
-(** {6 Type} *)
+(** {6 The type of terms} *)
 
 type t =
   Var of Attr.t * Var.t
@@ -57,6 +57,9 @@ let rec pr ppf t =
       Format.fprintf ppf "@[<hov2>forall %a,@ %a@]" (Util.pr_list SimType.pr_bind ",") env pr t
   | Exists(_, env, t) ->
       Format.fprintf ppf "@[<hov2>exists %a,@ %a@]" (Util.pr_list SimType.pr_bind ",") env pr t
+
+let pr_list ppf ts =
+  Format.fprintf ppf "%a" (Util.pr_list pr ",") ts
 
 let rec pr_string_of ppf t =
   match t with

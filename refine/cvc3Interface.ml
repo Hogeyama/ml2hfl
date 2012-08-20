@@ -1,15 +1,18 @@
 open ExtList
 open ExtString
 
-(** Interface to CVC3 *)
+(** Interface to CVC3
+    unit is encoded as 0 *)
 
 let cvc3in = ref stdin
 let cvc3out = ref stdout
 
 let cvc3 = "./cvc3"
 
-(* necessary to avoid a redefinition of a variable *)
+(** A unique id of next query to CVC3
+    This is necessary to avoid a redefinition of a variable when we use the interactive mode of CVC3 *)
 let cnt = ref 0
+let deco s = "cnt" ^ string_of_int !cnt ^ "_" ^ s
 
 let open_cvc3 () =
   let _ = cnt := 0 in
@@ -22,17 +25,16 @@ let close_cvc3 () =
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
 let string_of_var x =
-  String.map (fun c -> if c = '.' || c = '!' then '_' else c) (Var.print x)
+  let s = Var.print x in
+  (** The following excaping is sufficient for identifier in OCaml? *)
+  String.map (fun c -> if c = '.' || c = '!' then '_' else c) s
 
-(* encoding unit as 0 *)
 let string_of_type ty =
   match ty with
     SimType.Unit -> "INT"
   | SimType.Bool -> "BOOLEAN"
   | SimType.Int -> "INT"
   | SimType.Fun(_, _) -> assert false
-
-let deco s = "cnt" ^ string_of_int !cnt ^ "_" ^ s
 
 let string_of_env env =
   String.concat "; "
@@ -224,6 +226,9 @@ let implies ts1 ts2 =
    else
     is_valid (Formula.imply (Formula.band ts1) (Formula.band ts2))
 
+let satisfiable t =
+  not (is_valid (Formula.bnot t))
+
 (*
 (* t1 and t2 share only variables that satisfy p *)
 let implies_bvs p t1 t2 =
@@ -336,7 +341,7 @@ let string_of_env_bv rbit env =
   String.concat "; "
     (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv rbit ty) env)
 
-let string_of_env_comma rbit env =
+let string_of_env_comma_bv rbit env =
   String.concat ", "
     (List.map (fun (x, ty) -> deco (string_of_var x) ^ ":" ^ string_of_type_bv rbit ty) env)
 

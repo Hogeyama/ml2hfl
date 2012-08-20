@@ -241,7 +241,7 @@ let term_of_aif (c, nxs, n) =
 let xtty_of_aif p dom (c, nxs, n) =
 		if c = Const.EqInt then
 				let nxs1, (n', x), nxs2 =
-						Util.find_split
+						Util.pick
 						  (fun (n, x) ->
 						    not (p x) &&
 						    (Term.equiv n (tint 1) || Term.equiv n (tint (-1))))

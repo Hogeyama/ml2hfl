@@ -196,7 +196,7 @@ let interpolate t1 t2 =
 		  (*Format.printf "%s@," (CsisatAstUtil.print_pred interp);*)
 		  let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
 		  (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
-		  (*this may cause a stack overflow: let interp = CsisatAstUtil.dnf interp in*)
+		  (*this may cause a stack overflow:*) let interp = CsisatAstUtil.dnf interp in
 		  (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
 		  let t = (*Formula.simplify*) (formula_of interp) in
     t

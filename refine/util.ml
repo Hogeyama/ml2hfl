@@ -209,14 +209,15 @@ let rec split_at ls xs =
       let xs1, xs2 = List.split_nth l xs in
       xs1::split_at ls xs2
 
-let rec find_split p xs =
+(** a.k.a. find split *)
+let rec pick p xs =
   match xs with
     [] -> raise Not_found
   | x::xs' ->
       if p x then
         [], x, xs'
       else
-        let ls, y, rs = find_split p xs' in
+        let ls, y, rs = pick p xs' in
         x::ls, y, rs
 
 (** {5 Transforming lists} *)
@@ -353,16 +354,6 @@ let map_fold_right f xs z =
   in
   aux (List.rev xs) z []
 
-let rec find_split_map f xs =
-  match xs with
-    [] -> raise Not_found
-  | x::xs' ->
-      (try
-        [], f x, xs'
-      with Not_found ->
-        let ls, y, rs = find_split_map f xs' in
-        x::ls, y, rs)
-
 let multiply_list f xs ys =
   concat_map
     (fun x ->
@@ -406,12 +397,17 @@ let rec power xs =
       let xss = power xs' in
       concat_map (fun xs -> [xs; x::xs]) xss
 
-let pick n xs =
-  let rec aux n zs =
+(** @return all the subsets of xs with the size n *)
+let nsubsets n xs =
+  let rec aux n yszss =
     if n = 0 then
-      zs
+      yszss
     else
-      concat_map (fun (xs, ys) -> map_left_right (fun ls x rs -> ls @ rs, x::ys) xs) (aux (n - 1) zs)
+      concat_map
+						  (fun (ys, zs) ->
+								  (** @invariant set_equiv (ys @ zs) xs *)
+								  map_left_right (fun ls y rs -> ls @ rs, y :: zs) ys)
+								(aux (n - 1) yszss)
   in
   List.map snd (aux n [xs, []])
 
@@ -451,7 +447,7 @@ let rec diff_ms l1 l2 =
     [] -> []
   | x :: l1' ->
       (try
-        let l, _, r = find_split (fun x' -> x = x') l2 in
+        let l, _, r = pick (fun x' -> x = x') l2 in
         diff_ms l1' (l @ r)
       with Not_found ->
         x :: diff_ms l1' l2)
@@ -461,7 +457,7 @@ let rec subset_ms l1 l2 =
     [] -> true
   | x :: l1' ->
       (try
-        let l, _, r = find_split (fun x' -> x = x') l2 in
+        let l, _, r = pick (fun x' -> x = x') l2 in
         subset_ms l1' (l @ r)
       with Not_found ->
         false)

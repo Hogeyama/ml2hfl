@@ -172,7 +172,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
 		  try
 				  let fvs =
 				    let fvs = List.unique (Util.diff (Util.concat_map Term.fvs ts) (bvs @ TypSubst.fvs xttys)) in
-		      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs) in
+		      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
 				    fvs
 				  in
       let t = band ts in
@@ -185,7 +185,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
 				    (fun ts1 t ts2 ->
 				      let fvs =
             let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ TypSubst.fvs xttys @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
-	  			      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," (Util.pr_list Var.pr ",") bvs (Util.pr_list Var.pr ",") fvs) in
+	  			      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
             fvs
           in
 				      if fvs <> [] && is_linear t then

@@ -39,7 +39,7 @@ let down (Loc(tr, p)) cond =
     Node(nd, trs) ->
       let trs1, tr', trs2 =
         try
-          Util.find_split (fun tr -> cond (get tr)) trs
+          Util.pick (fun tr -> cond (get tr)) trs
         with Not_found ->
           assert false
       in

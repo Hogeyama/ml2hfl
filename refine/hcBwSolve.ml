@@ -30,7 +30,7 @@ let generalize_interpolate pid p t1 t2 =
   | _ ->
       let (x, n) :: xns =
         try
-          let xns1, (x, n), xns2 = Util.find_split (fun (x, _) -> pid = x) xns in
+          let xns1, (x, n), xns2 = Util.pick (fun (x, _) -> pid = x) xns in
           (x, n) :: xns1 @ xns2
         with Not_found ->
           List.sort ~cmp:(fun (_, n1) (_, n2) -> n1 - n2) xns
@@ -52,13 +52,14 @@ let generalize_interpolate pid p t1 t2 =
         CsisatInterface.interpolate_bvs p t1 t2
 
 
+(* @todo merge with HcSolve.compute_ubs_hc_aux *)
 let solve_hc_aux lbs ps t =
   let _ = Global.log_begin "solve_hc_aux" in
   let _ =
     Global.log (fun () ->
       Format.printf "horn clause:@,  @[<v>%a@]@,"
-        (*(Util.pr_list pr "@,") (List.map2 (fun lb p -> Hc(Some(p), [], Fes.make [] [lb])) lbs ps)*)
-        pr (Hc(None, ps, t)))
+        (*(Util.pr_list pr_elem "@,") (List.map2 (fun lb p -> Hc(Some(p), [], Fes.make [] [lb])) lbs ps)*)
+        pr_elem (Hc(None, ps, t)))
   in
   (*if List.length ps = 1 then
     let [pid, ttys] = ps in
@@ -121,6 +122,7 @@ let solve_hc_aux lbs ps t =
     let _ = Global.log_end "solve_hc_aux" in
     sol
 
+(* @todo merge with HcSolve.compute_ubs_hc *)
 let solve_hc lbs sol (Hc(popt, ps, t)) =
   let t, ps' =
     match popt with
@@ -133,6 +135,7 @@ let solve_hc lbs sol (Hc(popt, ps, t)) =
         else
           Formula.tfalse, [pid, (xtys, Formula.ttrue)]
   in
+  (* begin optimization *)
   if Cvc3Interface.is_valid (Formula.simplify (Formula.bnot t)) then
     ps' @
     List.map
@@ -143,10 +146,12 @@ let solve_hc lbs sol (Hc(popt, ps, t)) =
   else if ps = [] then
     raise NoSolution
   else
+  (* end optimization *)
     solve_hc_aux lbs ps t
 
-(** @assume is_non_recursive hcs
-    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs) *)
+(** @require is_non_recursive hc && is_well_defined hcs
+    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs)
+    @todo merge with HcSolve.compute_ubs *)
 let solve hcs =
   let _ = Global.log_begin "solving Horn clauses" in
   let lbs =
@@ -157,7 +162,7 @@ let solve hcs =
   let sol =
     let sol =
       let rec aux hcs sol =
-        (** if is_im_sol hc then we can solve hc immediately? *)
+        (** if is_im_sol hc then we can solve hc immediately *)
         let is_im_sol =
           let lhs_pids = lhs_pids hcs in
           function

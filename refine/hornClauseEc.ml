@@ -13,20 +13,20 @@ let embed_terms ts = List.map (fun t -> `R(t)) ts
 
 let rec rel bvs xs1 xs2 =
   match xs1, xs2 with
-    `L((pid1, ttys1) as p1), `L((pid2, ttys2) as p2) ->
-      let fvs1 = Util.diff (Atom.fvs p1) bvs in
-      let fvs2 = Util.diff (Atom.fvs p2) bvs in
-      List.exists (fun x -> List.mem x fvs2) fvs1
+    `L(p1), `L(p2) ->
+      Util.intersects
+						  (Util.diff (Atom.fvs p1) bvs)
+								(Util.diff (Atom.fvs p2) bvs)
   | `L(p1), `R(t2) ->
-      let fvs1 = Util.diff (Atom.fvs p1) bvs in
-      let fvs2 = Util.diff (Term.fvs t2) bvs in
-      List.exists (fun x -> List.mem x fvs2) fvs1
+      Util.intersects
+						  (Util.diff (Atom.fvs p1) bvs)
+								(Util.diff (Term.fvs t2) bvs)
   | `R(t1), `L(p2) ->
       rel bvs (`L(p2)) (`R(t1))
   | `R(t1), `R(t2) ->
-      let fvs1 = Util.diff (Term.fvs t1) bvs in
-      let fvs2 = Util.diff (Term.fvs t2) bvs in
-      List.exists (fun x -> List.mem x fvs2) fvs1
+      Util.intersects
+						  (Util.diff (Term.fvs t1) bvs)
+								(Util.diff (Term.fvs t2) bvs)
 
 (** unsound for non-linear expressions? *)
 let rec subst_formula p afs t =
@@ -181,7 +181,7 @@ let ignored_vars bvs afs =
           tss))
       bvs
   in
-  let _ = if !Global.debug then Format.printf "xs: %a@," (Util.pr_list Var.pr ",") xs in
+  let _ = if !Global.debug then Format.printf "xs: %a@," Var.pr_list xs in
   let ys =
     List.unique
       (Util.concat_map
@@ -197,7 +197,7 @@ let ignored_vars bvs afs =
               ttys))
         afs)
   in
-  let _ = if !Global.debug then Format.printf "ys: %a@," (Util.pr_list Var.pr ",") ys in
+  let _ = if !Global.debug then Format.printf "ys: %a@," Var.pr_list ys in
   xs @ ys
 
 let changing_vars bvs afs =
@@ -262,12 +262,12 @@ let share_predicates bvs0 _ afs t =
       in
       let _ =
         if debug then
-          let _ = Format.printf "bvs: %a@," (Util.pr_list Var.pr ",") bvs in
+          let _ = Format.printf "bvs: %a@," Var.pr_list bvs in
           let _ = Format.printf "env: %a@," Term.pr (Formula.band env) in
           List.iter
             (fun ec ->
               let afs, ts = Util.partition_map (fun x -> x) ec in
-              Format.printf "ec: %a@," pr (Hc(None, afs, Formula.band ts)))
+              Format.printf "ec: %a@," pr_elem (Hc(None, afs, Formula.band ts)))
             ecs
       in
       let is_covered ec1 ec2 =
@@ -305,7 +305,7 @@ let share_predicates bvs0 _ afs t =
                   true
               | [pid, ttys, _, ttyss] ->
                   let xs = Util.diff (List.unique (Util.concat_map (fun (t, _) -> Term.fvs t) ttys)) bvs0 in
-                  let _ = Format.printf "osii: %a@," (Util.pr_list Var.pr ",") xs in
+                  let _ = Format.printf "osii: %a@," Var.pr_list xs in
                   false
               | _ -> false)*)
           | (pid, ttys, xs, ttyss)::_ ->
@@ -371,7 +371,7 @@ let share_predicates bvs0 _ afs t =
         if xs = [] then
           false
         else
-          let _ = if debug then Global.log (fun () -> Format.printf "xs: %a@," (Util.pr_list Var.pr ",") xs) in
+          let _ = if debug then Global.log (fun () -> Format.printf "xs: %a@," Var.pr_list xs) in
           let xttyss =
             let afs1 = preds_of_ec ec1 in
             let afs2 = preds_of_ec ec2 in
@@ -397,7 +397,7 @@ let share_predicates bvs0 _ afs t =
                    in
                    let afs1, ts1 = Util.partition_map (fun x -> x) (Util.diff ec1' ec2) in
                    let afs2, ts2 = Util.partition_map (fun x -> x) ec2 in
-                   let _ = if debug then Format.printf "hc1: %a@,hc2: %a@," pr (Hc(None, afs1, Formula.band ts1)) pr (Hc(None, afs2, Formula.band ts2)) in
+                   let _ = if debug then Format.printf "hc1: %a@,hc2: %a@," pr_elem (Hc(None, afs1, Formula.band ts1)) pr_elem (Hc(None, afs2, Formula.band ts2)) in
                    Cvc3Interface.implies (env @ ts2) ts1 &&
                    List.for_all
                      (fun p1 -> List.exists (fun p2 -> Atom.equiv env(*@ ts2 not necessary?*) p1 p2) afs2)
@@ -486,7 +486,7 @@ let share_predicates bvs0 _ afs t =
       afs, Formula.band (ts @ env), zs
     in
     let rec loop cvs bvs' afs t =
-      let _ = if debug then if bvs' <> [] then Format.printf "bvs': %a@," (Util.pr_list Var.pr ",") bvs' in
+      let _ = if debug then if bvs' <> [] then Format.printf "bvs': %a@," Var.pr_list bvs' in
       let afs', t', zs = share_predicates_aux cvs (bvs0 @ bvs') afs t in
       if List.length afs <> List.length afs' && Atom.num_dup afs' > 0 then
         let bvs'' = ignored_vars bvs0 afs' in
@@ -504,7 +504,7 @@ let share_predicates bvs0 _ afs t =
         afs, t
       else (*a-maxÇ™rsn 0Ç≈Ç»Ç¢Ç∆ê¨å˜ÇµÇ»Ç≠Ç»ÇÈ intro3ÇÕrsn0Ç≈OKÇ…Ç»ÇÈ*)
         try
-          let _ = if debug then if zs <> [] then Format.printf "zs: %a@," (Util.pr_list Var.pr ",") zs in
+          let _ = if debug then if zs <> [] then Format.printf "zs: %a@," Var.pr_list zs in
           Util.find_map
             (fun xs ->
               let bvs1 = Util.diff bvs' xs in
@@ -516,12 +516,12 @@ let share_predicates bvs0 _ afs t =
                   afs', t'
                 else
                   raise Not_found)
-            (Util.pick 1 zs)
+            (Util.nsubsets 1 zs)
         with Not_found ->
           afs, t
     else
       let zs = Util.inter bvs' (changing_vars bvs0 afs) in
-      let _ = if debug then if zs <> [] then Format.printf "zs: %a@," (Util.pr_list Var.pr ",") zs in
+      let _ = if debug then if zs <> [] then Format.printf "zs: %a@," Var.pr_list zs in
       if List.length zs > 7 then
         afs, t
       else
@@ -537,12 +537,52 @@ let share_predicates bvs0 _ afs t =
                   afs', t'
                 else
                   raise Not_found)
-            (Util.pick 1 zs @ Util.pick 2 zs)
+            (Util.nsubsets 1 zs @ Util.nsubsets 2 zs)
         with Not_found ->
           afs, t
 
-let simplify2 bvs t =
+(** integer quantifier elimination of formulas with integers and booleans *)
+let qelim_aux fvs t =
   let debug = !Global.debug && true in
+  let env = List.map (fun x -> x, SimType.Int) (Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) fvs) in
+  if env <> [] && Term.coeffs t = [] then
+    let _ = if debug then Format.printf "input to qelim_aux:@,  @[<v>t: %a@,env: %a@]@," Term.pr t SimType.pr_env env in
+    let ts, f =
+      let tss, f = Formula.elim_boolean [t] in
+				  List.map (fun [t] -> t) tss, f
+				in
+    f
+      (List.map
+        (fun t ->
+          try
+		          let _ = if debug then Format.printf "before: %a@," Term.pr t in
+										  let t' =
+														Formula.simplify
+														  (AtpInterface.integer_qelim
+																  (Formula.exists env t))
+											 in
+		          let _ = if debug then Format.printf "after: %a@," Term.pr t' in
+		          if try Formula.disjunctive t' with Util.NotImplemented _ -> true then
+              t
+												else
+												  t'
+          with Util.NotImplemented _ ->
+										  t)
+        ts)
+  else
+    t
+
+(** integer quantifier elimination of formulas with integers and booleans *)
+let qelim fvs t =
+  let _ = Global.log_begin "HornClauseEc.qelim" in
+  let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>t: %a@,fvs: %a@]@," Term.pr t Var.pr_list fvs) in
+  let ts = Formula.conjuncts t in
+  let ecs = Util.equiv_classes (rel fvs) (embed_terms ts) in
+  let t = Formula.band (List.map (fun ec -> qelim_aux fvs (Formula.band (terms_of_ec ec))) ecs) in
+  let _ = Global.log_end "HornClauseEc.qelim" in
+  t
+
+let simplify2 bvs t =
   let t =
     let xs = Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) bvs in
     let t =
@@ -554,28 +594,7 @@ let simplify2 bvs t =
     let [], t = subst_formula (fun x -> not (List.mem x xs)) [] t in
     t
   in
-  let ts = Formula.conjuncts t in
-  let ecs = Util.equiv_classes (rel bvs) (embed_terms ts) in
-  Formula.band
-    (List.map
-      (fun ec ->
-        let t = Formula.band (terms_of_ec ec) in
-        let xs = Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) bvs in
-        if xs <> [] && Term.coeffs t = [] then
-          let _ = if debug then Format.printf "t: %a@," Term.pr t in
-          let tss, f = Formula.elim_boolean [t] in
-          let ts = List.map (fun [t] -> t) tss in
-          f
-            (List.map
-              (fun t0 ->
-                let t = Formula.exists (List.map (fun x -> x, SimType.Int) xs) t0 in
-                let t' = try Formula.simplify (AtpInterface.integer_qelim t) with Util.NotImplemented _ -> t in
-                let _ = if debug then Format.printf "%a -> %a@," Term.pr t Term.pr t' in
-                if try Formula.disjunctive t' with Util.NotImplemented _ -> true then t0 else t')
-              ts)
-        else
-          t)
-      ecs)
+  qelim bvs t
 (*
   let p x = List.mem x bvs || Var.is_coeff x in
   Formula.band
@@ -602,8 +621,8 @@ let simplify2 bvs t =
 
 let simplify_aux bvs bs (Hc(popt, afs, t)) =
   let debug = false && !Global.debug in
-  let _ = Global.log_begin "HornClause.simplify" in
-  let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr (Hc(popt, afs, t))) in
+  let _ = Global.log_begin "HornClauseEc.simplify" in
+  let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr_elem (Hc(popt, afs, t))) in
   let shared = ref (List.length afs) in
   let bvs = bvs @ (match popt with None -> [] | Some(_, xtys) -> List.map fst xtys) in
   let bs, afs, t =
@@ -703,28 +722,25 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
     let n = Atom.num_dup afs in
     Global.log (fun () -> if n <> 0 then Format.printf "# of duplicate predicate variables: %d@," n)
   in
-  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
-  let _ = Global.log_end "HornClause.simplify" in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr_elem res) in
+  let _ = Global.log_end "HornClauseEc.simplify" in
   res
 
 let simplify bvs (Hc(_, afs, _) as hc) = simplify_aux bvs (List.map (fun _ -> false(*???*)) afs) hc
 
 let subst_hcs hcs (Hc(popt, afs, t) as hc) =
   let _ = Global.log_begin "subst_hcs" in
-  let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr hc) in
+  let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr_elem hc) in
   let hc =
     if !Global.subst_hcs_inc then
       let rec aux afs t =
         try
-          let lafs, (afs, t'), rafs =
-            Util.find_split_map
-              (fun (pid, ttys) ->
-                let res = lookup (pid, ttys) hcs in
-                let _ = Global.log (fun () -> Format.printf "%a is substituted@," Var.pr pid) in
-                res)
-              afs
+          let lafs, (pid, ttys), rafs =
+            Util.pick (fun (pid, _) -> mem pid hcs) afs
           in
+          let _ = Global.log (fun () -> Format.printf "%a is substituted@," Var.pr pid) in
           let Hc(_, afs, t) =
+  										let afs, t' = lookup (pid, ttys) hcs in
             let bs =
               List.map (fun _ -> false) lafs @
               List.map (fun _ -> true) afs @
@@ -755,14 +771,14 @@ let subst_hcs hcs (Hc(popt, afs, t) as hc) =
       in
       simplify_aux [] bs (Hc(popt, afs, t))
   in
-  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr hc) in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr_elem hc) in
   let _ = Global.log_end "subst_hcs" in
   hc
 
 let subst_hcs_fixed hcs hc =
   Util.fixed_point
     (fun hc ->
-      (*Format.printf "%a@." pr hc;*)
+      (*Format.printf "%a@." pr_elem hc;*)
       subst_hcs hcs hc)
     (fun hc1 hc2 ->
       match hc1, hc2 with

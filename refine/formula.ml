@@ -1,7 +1,7 @@
 open ExtList
 open Term
 
-(** Logical formulas *)
+(** Logical formulas (i.e., the term expression with the type bool) *)
 
 (** {6 Constructors} *)
 
@@ -72,7 +72,7 @@ let imply t1 t2 =
 let forall env t =
   let xs = fvs t in
 (*
-  let _ = Format.printf "env: %a@,xs: %a@," (Util.pr_list SimType.pr_bind ",") env (Util.pr_list Var.pr ",") xs in
+  let _ = Format.printf "env: %a@,xs: %a@," SimType.pr_env env Var.pr_list xs in
 *)
   let env = List.filter (fun (x, _) -> List.mem x xs) env in
   if env = [] then t else Forall([], env, t)
@@ -80,7 +80,7 @@ let forall env t =
 let exists env t =
   let xs = fvs t in
 (*
-  let _ = Format.printf "env: %a@,xs: %a@," (Util.pr_list SimType.pr_bind ",") env (Util.pr_list Var.pr ",") xs in
+  let _ = Format.printf "env: %a@,xs: %a@," SimType.pr_env env Var.pr_list xs in
 *)
   let env = List.filter (fun (x, _) -> List.mem x xs) env in
   if env = [] then t else Exists([], env, t)
@@ -138,7 +138,7 @@ let forall_imply conds_envs t =
   List.fold_right
     (fun (cond, env) t ->
       (*
-      let _ = Format.printf "cond: %a@,xs: %a@," pr cond (Util.pr_list Var.pr ", ") xs in
+      let _ = Format.printf "cond: %a@,xs: %a@," pr cond Var.pr_list xs in
       *)
       match cond, env, t with
         App([], App([], Const([], c), Var([], x)), t'), [y, _], _
@@ -961,7 +961,7 @@ let extract_from2 pvs p ts =
 		          let dom = List.map Util.fst3 xttys0 in
 		          let xtty = xtty_of p dom t in
 		          let xtty =
-              (*Format.printf "xtty: %a@,nlfvs: %a@,pvs: %a@," pr_elem xtty (Util.pr_list Var.pr ",") nlfvs (Util.pr_list Var.pr ",") pvs;*)
+              (*Format.printf "xtty: %a@,nlfvs: %a@,pvs: %a@," pr_elem xtty Var.pr_list nlfvs Var.pr_list pvs;*)
 				          if List.mem (Util.fst3 xtty) nlfvs && not (is_linear (Util.snd3 xtty)) ||
                  List.mem (Util.fst3 xtty) pvs && Term.coeffs (Util.snd3 xtty) <> [] (*|| t is constant*) then
 				            raise Not_found

@@ -32,7 +32,7 @@ let farkas t =
 		      let aifs = (Const.Geq, [], tint 1) :: aifs in
 		      let ls = List.map (fun _ -> make_var (Var.new_var ())) aifs in
 		      let vs = List.unique (Util.concat_map (fun (_, nxs, _) -> List.map snd nxs) aifs) in
-		      let _ = Global.log (fun () -> Format.printf "vars: %a@," (Util.pr_list Var.pr ",") vs) in
+		      let _ = Global.log (fun () -> Format.printf "vars: %a@," Var.pr_list vs) in
 		      let tss =
 		        List.map2
 		          (fun (_, nxs, n) l ->

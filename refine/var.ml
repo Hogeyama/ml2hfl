@@ -16,6 +16,9 @@ let rec pr ppf x =
   | T(x, uid, arg) ->
       Format.fprintf ppf "<%a@@%d:%d>" pr x uid arg
 
+let pr_list ppf xs =
+  Format.fprintf ppf "%a" (Util.pr_list pr ",") xs
+
 (** {6 Constructors} *)
 
 let make id = V(id)

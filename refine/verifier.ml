@@ -8,7 +8,7 @@ let ext_constrs = ref ([] : Term.t list)
 
 let init_coeffs prog =
 		let cs = List.unique (Prog.coeffs prog) in
-  let _ = Format.printf "parameters: %a@," (Util.pr_list Var.pr ",") cs in
+  let _ = Format.printf "parameters: %a@," Var.pr_list cs in
 		ext_coeffs := List.map (fun c -> c, 0) cs
 
 let pr_coeffs ppf coeffs =
@@ -66,7 +66,7 @@ let solve_bv t =
 						if masked_params = [] then
 						  raise Cvc3Interface.Unknown
 						else
-								let _ = if !Global.debug then Format.printf "masked_params: %a@," (Util.pr_list Var.pr ",") masked_params in
+								let _ = if !Global.debug then Format.printf "masked_params: %a@," Var.pr_list masked_params in
 								let coeffs = List.map (fun c -> c, 0) masked_params in
 								let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
 								coeffs @ solve_bv_aux t'
@@ -174,7 +174,7 @@ let infer_ref_types fs prog etrs =
       let hcs = List.concat hcss in
       let _ = Global.log (fun () -> Format.printf "call trees:@,  @[<v>%a@]@," (Util.pr_list CallTree.pr "@,") ctrs) in
       let hcs = List.map (HornClauseEc.simplify []) hcs in
-      let _ = Global.log (fun () -> Format.printf "horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+      let _ = Global.log (fun () -> Format.printf "horn clauses:@,  %a@," HornClause.pr hcs) in
       let orig_hcs = hcs in
       let inline pid =
         not (Var.is_coeff pid) &&
@@ -189,7 +189,7 @@ let infer_ref_types fs prog etrs =
           hcs
         else
           let hcs = HcSolve.inline_forward inline hcs in
-          let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+          let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  %a@," HornClause.pr hcs) in
           hcs
       in
       let hcs, orig_hcs =
@@ -206,13 +206,20 @@ let infer_ref_types fs prog etrs =
 								  let orig_hcs1, orig_hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) orig_hcs in
 								  List.map (HornClauseEc.subst_hcs(*_fixed*) orig_hcs1) orig_hcs2
       in
-      let _ = if Util.concat_map HornClause.coeffs hcs <> [] then Global.log (fun () -> Format.printf "non-parametrized horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+      let _ =
+						  if Util.concat_map HornClause.coeffs hcs <> [] then
+								  Global.log
+										  (fun () ->
+												  Format.printf
+														  "non-parametrized horn clauses:@,  %a@,"
+																HornClause.pr hcs)
+						in
       let hcs =
         if !Global.no_inlining || not !Global.inline_after_ncs then
           hcs
         else
           let hcs = HcSolve.inline_forward inline hcs in
-          let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") hcs) in
+          let _ = Global.log (fun () -> Format.printf "inlined horn clauses:@,  %a@," HornClause.pr hcs) in
           hcs
       in
 						let sol =
@@ -226,7 +233,7 @@ let infer_ref_types fs prog etrs =
 						      let orig_hcs = List.map (HornClauseEc.simplify []) (List.map (TypPredSubst.subst_lhs sol) orig_hcs) in
 						      let lbs = HcSolve.compute_lbs orig_hcs in
 						      let orig_hcs = List.map (HornClauseEc.simplify []) (List.map (TypPredSubst.subst_lhs lbs) orig_hcs) in
-						      let _ = Global.log (fun () -> Format.printf "solved horn clauses:@,  @[<v>%a@]@," (Util.pr_list HornClause.pr "@,@,") orig_hcs) in
+						      let _ = Global.log (fun () -> Format.printf "solved horn clauses:@,  %a@," HornClause.pr orig_hcs) in
 						      let sol = sol @ List.filter_map (function HornClause.Hc(Some(pid, xtys), [], t) -> Some(pid, (xtys, t)) | _ -> None ) orig_hcs in
 						      TypPredSubst.check sol orig_hcs
 						  in

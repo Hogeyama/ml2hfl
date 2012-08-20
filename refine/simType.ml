@@ -44,6 +44,7 @@ let rec pr ppf ty =
 
 let pr_bind ppf (x, ty) = Format.fprintf ppf "%a:%a" Var.pr x pr ty
 let pr_bind2 ppf (x, ty) = Format.fprintf ppf "%a:%a" Idnt.pr x pr ty
+let pr_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_bind ",") env
 
 let equiv ty1 ty2 = ty1 = ty2
 
