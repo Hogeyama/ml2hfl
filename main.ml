@@ -142,17 +142,17 @@ let rec main_loop parsed =
                   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
           with
               Verifier.FailedToRefineTypes ->
-	        let _ = assert (not !Flag.relative_complete) in
-	        let _ = Flag.relative_complete := true in
-                let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
-                  main_loop parsed
+	        assert (not !Flag.relative_complete);
+	        Flag.relative_complete := true;
+                incr Flag.cegar_loop;
+                main_loop parsed
             | Verifier.FailedToRefineExtraParameters ->
-                let _ = RefineInterface.params := [] in
-                let _ = Verifier.ext_coeffs := [] in
-                let _ = Verifier.ext_constrs := [] in
-                let _ = Global.number_of_extra_params := !Global.number_of_extra_params + 1 in
-                let _ = Flag.cegar_loop := !Flag.cegar_loop + 1 in
-                  main_loop parsed
+                RefineInterface.params := [];
+                Verifier.ext_coeffs := [];
+                Verifier.ext_constrs := [];
+                incr Global.number_of_extra_params;
+                incr Flag.cegar_loop;
+                main_loop parsed
 
 
 let main filename in_channel =
@@ -230,8 +230,6 @@ let arg_spec =
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-fs", Arg.Unit (fun _ -> Global.predicate_discovery := Global.FunctionSummarization),
      " Enable function summarization based predicate discovery";
-   (* obsolete? *)
-   "-nc", Arg.Set Flag.new_cegar, " Use new CEGAR method (temporary option)";
   ]
 
 
