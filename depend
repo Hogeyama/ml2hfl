@@ -353,16 +353,12 @@ CEGAR_abst.cmx: wrapper2.cmx utilities.cmx typing.cmx flag.cmx CEGAR_util.cmx \
     CEGAR_abst_CPS.cmx CEGAR_abst.cmi
 trecs_parser.cmo: inter_type.cmo trecs_parser.cmi
 trecs_parser.cmx: inter_type.cmx trecs_parser.cmi
-trecs_lexer.cmo: utilities.cmo trecs_parser.cmi
-trecs_lexer.cmx: utilities.cmx trecs_parser.cmx
 dependent_type.cmo: CEGAR_syntax.cmo
 dependent_type.cmx: CEGAR_syntax.cmx
-trecsInterface.cmo: utilities.cmo trecs_parser.cmi trecs_lexer.cmo \
-    inter_type.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmi
-trecsInterface.cmx: utilities.cmx trecs_parser.cmx trecs_lexer.cmx \
-    inter_type.cmx flag.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx
+trecsInterface.cmo: utilities.cmo trecs_parser.cmi inter_type.cmo flag.cmo \
+    CEGAR_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
+trecsInterface.cmx: utilities.cmx trecs_parser.cmx inter_type.cmx flag.cmx \
+    CEGAR_util.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 ModelCheck_util.cmo: utilities.cmo useless_elim.cmo typing.cmo \
     trecsInterface.cmo inter_type.cmo flag.cmo CEGAR_util.cmo CEGAR_type.cmo \
     CEGAR_syntax.cmo CEGAR_print.cmi
