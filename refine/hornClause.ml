@@ -48,8 +48,7 @@ let rhs_pids hcs =
     | Hc(Some(pid, _), _, _) -> [pid])
     hcs
 
-let pids hcs =
-  rhs_pids hcs @ lhs_pids hcs
+let pids hcs = rhs_pids hcs @ lhs_pids hcs
 
 let is_root (Hc(popt, _, _)) = popt = None
 let is_coeff (Hc(popt, _, _)) =

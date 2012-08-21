@@ -65,8 +65,9 @@ let lookup_map (pid, ttys) psub =
 		Term.subst (fun x -> List.assoc x sub) t
 
 (** @require Util.is_map psub *)
-let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t)) =
+let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t) as hc) =
   let _ = Global.log_begin "subst_lhs" in
+		let _ = Global.log (fun () -> Format.printf "input: %a@," HornClause.pr_elem hc) in
   let ts, ps =
     Util.partition_map
       (fun (pid, ttys) ->
@@ -78,6 +79,7 @@ let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t)) =
 		in
   let t = Formula.band (t :: ts) in
   let hc = simplify bvs (Hc(popt, ps, t)) in
+		let _ = Global.log (fun () -> Format.printf "output: %a@," HornClause.pr_elem hc) in
   let _ = Global.log_end "subst_lhs" in
   hc
 

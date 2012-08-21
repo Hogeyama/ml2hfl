@@ -20,9 +20,10 @@ let rec solve hcs0 =
       let hcs = (*inline_forward (fun pid -> not (List.mem pid pids))*) hcs0 in
       let lb_ub_of =
         let lbs, ubs =
+          let _ = Global.log (fun () -> Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs) in
           let lbs = compute_lbs hcs in
           let _ = Global.log (fun () -> Format.printf "lower bounds:@,  %a@," TypPredSubst.pr lbs) in
-          let ubs = compute_ubs lbs hcs in
+          let ubs = compute_ubs hcs in
           let _ = Global.log (fun () -> Format.printf "upper bounds:@,  %a@," TypPredSubst.pr ubs) in
           lbs, ubs
         in
@@ -134,24 +135,53 @@ let rec solve hcs0 =
         if List.length pids = 1 then
           sol, List.map (TypPredSubst.subst sol) hcs
         else
-          let rec valid_sol sol hcs =
-            let hcs' = List.map (TypPredSubst.subst sol) hcs in
-            let t = HcSolve.formula_of_forward (compute_lbs hcs') hcs' in
-            if Cvc3Interface.is_valid (Formula.bnot t) then
-              sol, hcs'
-            else
-              match sol with
-                [] ->
-                  let _ = Format.printf "%a@," Term.pr t in
-                  assert false
-              | _::sol ->
-                  valid_sol sol hcs
-          in
-          valid_sol
-            (List.sort
-              ~cmp:(fun (pid1, _) (pid2,_) -> if pid1 = pid2 then 0 else if Var.lt pid1 pid2 then -1 else 1)
-              sol)
-            hcs0
+								  if true then
+										  let sol0 =
+												  (** @todo implement topological sort of sol with resepect to the parent-child relation of the tree of Horn clauses *)
+												  List.sort
+		              ~cmp:(fun (pid1, _) (pid2,_) -> if pid1 = pid2 then 0 else if Var.lt pid1 pid2 then 1 else -1)
+		              sol
+												in
+												let hcs, sol =
+														List.fold_left
+														  (fun (hcs, sol) s ->
+						            let hcs' = List.map (TypPredSubst.subst [s]) hcs in
+						            let t = HcSolve.formula_of_forward (compute_lbs hcs') hcs' in
+						            if Cvc3Interface.is_valid (Formula.bnot t) then
+						              hcs', s::sol
+						            else
+						              hcs, sol)
+														  (hcs0, [])
+																sol0
+												in
+												if sol = [] then
+														let _ = Format.printf "Horn clauses:@,  @[<v>%a@]@," HornClause.pr hcs0 in
+														let _ = Format.printf "solution:@,  @[<v>%a@]@," TypPredSubst.pr sol0 in
+														assert false
+												else
+  												sol, hcs
+										else (** the following code is faster but incorrect? *)
+										  let sol0 =
+												  (** @todo implement topological sort of sol with resepect to the parent-child relation of the tree of Horn clauses *)
+		            List.sort
+		              ~cmp:(fun (pid1, _) (pid2,_) -> if pid1 = pid2 then 0 else if Var.lt pid1 pid2 then -1 else 1)
+		              sol
+												in
+		          let rec valid_sol sol hcs =
+												  match sol with
+		              [] ->
+																		let _ = Format.printf "Horn clauses:@,  @[<v>%a@]@," HornClause.pr hcs0 in
+																		let _ = Format.printf "solution:@,  @[<v>%a@]@," TypPredSubst.pr sol0 in
+																		assert false (*raise (Util.NotImplemented "HcGenSolve.solve")*)
+		            | _ ->
+						            let hcs' = List.map (TypPredSubst.subst sol) hcs in
+						            let t = HcSolve.formula_of_forward (compute_lbs hcs') hcs' in
+						            if Cvc3Interface.is_valid (Formula.bnot t) then
+						              sol, hcs'
+						            else
+						              valid_sol (List.tl sol) hcs
+		          in
+		          valid_sol sol0 hcs0
       in
       sol @ solve hcs
 
