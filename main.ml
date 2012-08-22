@@ -137,8 +137,10 @@ let rec main_loop parsed =
                     if env' <> [] then Format.printf "@."
               | _, CEGAR.Unsafe ce ->
                   Format.printf "Unsafe!@.@.";
-                  Format.printf "Input for %s:@.  %a@." main_fun
-                    (print_list Format.pp_print_int "; " false) (take ce arg_num);
+                  if main_fun <> ""
+                  then
+                    Format.printf "Input for %s:@.  %a@." main_fun
+                      (print_list Format.pp_print_int "; " false) (take ce arg_num);
                   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
           with
               Verifier.FailedToRefineTypes ->

@@ -394,7 +394,9 @@ let print_list print punc last fm xs =
     Format.fprintf fm "@[%a@]" (print_list_aux print punc' last) xs
 
 
-let get_opt_val = function None -> assert false | Some t -> t
+let get_opt_val = function
+    None -> raise (Failure "get_opt_val")
+  | Some t -> t
 
 
 let is_prefix_string pre s =

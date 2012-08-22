@@ -43,6 +43,7 @@ and id___info = function
     InfoInt n -> InfoInt n
   | InfoString s -> InfoString s
   | InfoId x -> InfoId (id___var x)
+  | InfoTerm t -> InfoTerm (id__ t)
 
 and id__ t =
   let typ = id___typ t.typ in
@@ -125,6 +126,7 @@ and id2___info env = function
     InfoInt n -> InfoInt n
   | InfoString s -> InfoString s
   | InfoId x -> InfoId (id2___var env x)
+  | InfoTerm t -> InfoTerm (id2__ env t)
 
 and id2__ env t =
   let typ = id2___typ env t.typ in
@@ -655,45 +657,49 @@ let rec inst_randvalue env defs typ =
     | _ -> Format.printf "inst_randvalue: %a@." print_typ typ; assert false
 
 
+let rec get_last_definition f t =
+  match t.desc with
+      Let(_, bindings, t2) ->
+        let f,_,_ = last bindings in
+          get_last_definition (Some f) t2
+    | Fun _ -> assert false
+    | _ -> f
+
+let rec replace_main main t =
+  match t.desc with
+      Let(flag, bindings, t2) -> make_let_f flag bindings (replace_main main t2)
+    | Fun _ -> assert false
+    | _ -> main
+
 let set_target t =
-  let rec get_last_definition f t =
-    match t.desc with
-        Let(_, bindings, t2) ->
-          let f,_,_ = last bindings in
-            get_last_definition (Some f) t2
-      | Fun _ -> assert false
-      | _ -> f
-  in
-  let rec replace_main main t =
-    match t.desc with
-        Let(flag, bindings, t2) -> make_let_f flag bindings (replace_main main t2)
-      | Fun _ -> assert false
-      | _ -> main
-  in
-  let f = get_opt_val (get_last_definition None t) in
-  let xs = get_args (Id.typ f) in
-  let main =
-    match xs, Id.typ f with
-        [], TUnit -> replace_main (make_var f) t
-      | _ ->
-          let rec aux x (env,defs,args) =
-            let env',defs',arg = inst_randvalue [] defs (Id.typ x) in
-              env',defs', arg::args
-          in
-          let _,defs,args = List.fold_right aux xs ([],[],[]) in
-          let aux arg =
-            let x = Id.new_var "arg" arg.typ in
-              x, [], arg
-          in
-          let bindings = List.map aux args in
-          let main = make_app (make_var f) (List.map (fun (x,_,_) -> make_var x) bindings) in
-          let main = make_letrec defs main in
-          let main = make_lets bindings main in
-          let u = Id.new_var "main" main.typ in
-          let main = make_let [u, [], main] unit_term in
-            replace_main main t
-  in
-    Id.name f, List.length xs, main
+  match get_last_definition None t with
+      None ->
+        let u = Id.new_var "main" t.typ in
+          "", 0, make_let [u, [], t] unit_term
+    | Some f ->
+        let xs = get_args (Id.typ f) in
+        let main =
+          if xs = [] && Id.typ f = TUnit
+          then replace_main (make_var f) t
+          else
+            let rec aux x (env,defs,args) =
+              let env',defs',arg = inst_randvalue [] defs (Id.typ x) in
+                env',defs', arg::args
+            in
+            let _,defs,args = List.fold_right aux xs ([],[],[]) in
+            let aux arg =
+              let x = Id.new_var "arg" arg.typ in
+                x, [], arg
+            in
+            let bindings = List.map aux args in
+            let main = make_app (make_var f) (List.map (fun (x,_,_) -> make_var x) bindings) in
+            let main = make_letrec defs main in
+            let main = make_lets bindings main in
+            let u = Id.new_var "main" main.typ in
+            let main = make_let [u, [], main] unit_term in
+              replace_main main t
+        in
+          Id.name f, List.length xs, main
 
 
 
