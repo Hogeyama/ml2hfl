@@ -41,7 +41,7 @@ let rec cegar1 prog0 ces info =
     else prog0
   in
   let () = Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog in
-  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined None prog in
+  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   let result = ModelCheck.check None abst prog in
     match result with
         ModelCheck.Safe env ->
@@ -79,16 +79,12 @@ let rec cegar1 prog0 ces info =
                   match Feasibility.check ce' prog with
                       Feasibility.Feasible (env, sol) -> prog, Unsafe sol
                     | Feasibility.Infeasible prefix ->
-                        let () =
-                          if true
-                          then
-                            Format.printf "Prefix of spurious counter-example::@.%a@.@."
-                              CEGAR_print.ce prefix
-                        in
                         let ces' = ce'::ces in
                         let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
                         let _,prog' = Refine.refine inlined_functions prefix ces' prog0 in
-                          (*                let prog' = reconstruct_typ prog' in*)
+                          if true then
+                            Format.printf "Prefix of spurious counter-example::@.%a@.@."
+                              CEGAR_print.ce prefix;
                           post ();
                           cegar1 prog' ces' info
 

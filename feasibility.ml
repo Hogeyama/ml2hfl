@@ -63,7 +63,7 @@ let rec get_prefix ce n =
     | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce {defs=defs; main=main} =
-  let () = Format.printf "Spurious counter-example::@.%a@." CEGAR_print.ce ce in
+  let () = if true then Format.printf "Spurious counter-example::@.  %a@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
   let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in

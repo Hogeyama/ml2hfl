@@ -126,14 +126,11 @@ let abstract orig_fun_list prog =
 
 
 
-let abstract orig_fun_list force count prog =
+let abstract orig_fun_list force prog =
   let tmp = get_time() in
   let () =
     if Flag.print_progress
-    then
-      match count with
-          None -> Format.printf "(%d-1) Abstracting ... @?" !Flag.cegar_loop
-        | Some c -> Format.printf "(%d-1-%d) Abstracting ... @?" !Flag.cegar_loop c
+    then Format.printf "(%d-1) Abstracting ... @?" !Flag.cegar_loop
   in
   let labeled,abst =
     match !Flag.pred_abst with
