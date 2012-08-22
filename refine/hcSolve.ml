@@ -274,7 +274,7 @@ let compute_ubs hcs =
 												  hcs
 										in
 								  Util.concat_map
-										  (fun (Hc(None, afs, t)) ->
+										  (fun (Hc(None, afs, t) as hc) ->
 												  match afs with
 														  [] ->
 																  let Hc(Some(pid, xtys), _, _) = List.hd lhcs in
@@ -289,7 +289,9 @@ let compute_ubs hcs =
 														        (Hc(None, [], Formula.band [t; Formula.of_subst sub]))
 														    in
 														    [pid, (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t)]
-														| _ -> raise (Util.NotImplemented "compute_ubs"))
+														| _ ->
+														  let _ = Format.printf "%a@," HornClause.pr_elem hc in
+														  raise (Util.NotImplemented "compute_ubs"))
 												rhcs)
 								pids)
 		in
