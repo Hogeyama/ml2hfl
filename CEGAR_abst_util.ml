@@ -9,11 +9,10 @@ open CEGAR_util
 let debug = false
 
 
-let hd xs =
-  match xs with
-      [] -> assert false
-    | [x] -> x
-    | _ -> assert false
+let hd = function
+    [] -> assert false
+  | [x] -> x
+  | _ -> assert false
 
 let check env cond pbs p =
   let ps,_ = List.split pbs in

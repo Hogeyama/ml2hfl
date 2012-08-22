@@ -247,13 +247,13 @@ let rec abstract_term top must env cond pts t typ =
   match t with
     | Const Bottom ->
         assert (fst (decomp_tbase typ) = TUnit); [Const Bottom]
-    | Var x when congruent env cond (List.assoc x env) typ ->
-        List.map (fun x -> Var x) (abst_arg x typ)
     | (Var _ | Const _ | App _) when is_base_term env t ->
         let btyp,ps = decomp_tbase typ in
           if top && btyp = TUnit && ps t = []
           then [Const Unit]
           else List.map (abst env cond pts) (ps t)
+    | Var x when congruent env cond (List.assoc x env) typ ->
+        List.map (fun x -> Var x) (abst_arg x typ)
     | App(App(App(Const If, t1), t2), t3) ->
         let t1' = hd (abstract_term false None env cond pts t1 typ_bool2) in
         let t2' = hd (abstract_term top must env (t1::cond) pts t2 typ) in
