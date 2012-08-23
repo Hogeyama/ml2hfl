@@ -107,3 +107,5 @@ let debug_level = ref 0
 let () = Format.set_margin 120
 
 let extpar_header = "_ep"
+
+let write_annot = ref true

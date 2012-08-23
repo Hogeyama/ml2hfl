@@ -45,53 +45,46 @@ let init () =
   Id.clear_counter ();
   Syntax.typ_excep := Type.TConstr("exn",true)
 
-let rec main_loop parsed =
-  let () = init () in
-  let t = parsed in
-  let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
-  let () = Spec.print spec in
-  let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
-  let set_target = t in
-  let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
+let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
-      let t' = Trans.copy_poly_funs t in
-      let fun_list = Syntax.get_top_funs t' in
-      let () = if true && t <> t' then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let spec' = Spec.rename spec t in
-      let () = Spec.print spec' in
-      let t' = Trans.replace_typ spec'.Spec.abst_env t in
-      let () = if true && spec <> Spec.init then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t' = Abstract.abstract_recdata t in
-      let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
-      let t = t' in
-      let t' = Abstract.abstract_list t in
-      let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
-      let t = t' in
-      let t' = Trans.inlined_f spec'.Spec.inlined_f t in
-      let () = if true && t <> t' then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t =
-        if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
-    	  let t = Trans.lift_fst_snd t in
-          let t = RefineInterface.insert_extra_param t in
-            if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-              (List.length !RefineInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
-            t
-        else
-          t
-      in
-      let t',get_rtyp_cps_trans = CPS.trans t in
-      let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term t' in
-      let t = t' in
-      let get_rtyp = get_rtyp_cps_trans in
-      let t',get_rtyp_remove_pair = CPS.remove_pair t in
-      let () = if false && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
-      let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
-        fun_list, t', get_rtyp
+				  let t' = Trans.copy_poly_funs t in
+				  let fun_list = Syntax.get_top_funs t' in
+				  let () = if true && t <> t' then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+				  let t = t' in
+				  let spec' = Spec.rename spec t in
+				  let () = Spec.print spec' in
+				  let t' = Trans.replace_typ spec'.Spec.abst_env t in
+				  let () = if true && spec <> Spec.init then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+				  let t = t' in
+				  let t' = Abstract.abstract_recdata t in
+				  let () = if true && t <> t' then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
+				  let t = t' in
+				  let t' = Abstract.abstract_list t in
+				  let () = if true && t <> t' then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
+				  let t = t' in
+				  let t' = Trans.inlined_f spec'.Spec.inlined_f t in
+				  let () = if true && t <> t' then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+				  let t = t' in
+				  let t =
+				    if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
+				      let t = Trans.lift_fst_snd t in
+				      let t = RefineInterface.insert_extra_param t in
+				        if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+				          (List.length !RefineInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+				        t
+				    else
+				      t
+				  in
+				  let t',get_rtyp_cps_trans = CPS.trans t in
+				  let () = if true && t <> t' then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term t' in
+				  let t = t' in
+				  let get_rtyp = get_rtyp_cps_trans in
+				  let t',get_rtyp_remove_pair = CPS.remove_pair t in
+				  let () = if false && t <> t' then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
+				  let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
+				    fun_list, t', get_rtyp
     else Syntax.get_top_funs t, t, fun _ typ -> typ
   in
 
@@ -109,7 +102,17 @@ let rec main_loop parsed =
     let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
       {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
+  prog, rmap, get_rtyp, info
 
+let rec main_loop filename orig parsed =
+  let () = init () in
+  let t = parsed in
+  let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
+  let () = Spec.print spec in
+  let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
+  let set_target = t in
+  let () = if true then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t in
+  let prog, rmap, get_rtyp, info = preprocess t spec in
     match !Flag.cegar with
         Flag.CEGAR_InteractionType ->
           RefineInterface.verify [] prog
@@ -128,6 +131,7 @@ let rec main_loop parsed =
                     in
                       rev_map_flatten aux env
                   in
+																		let _ = if !Flag.write_annot then WriteAnnot.f filename orig (List.map (fun (id, typ) -> Id.name id, typ) env') in
                   let pr (f,typ) =
                     Format.printf "%s: %a@." (Id.name f) Ref_type.print typ
                   in
@@ -144,17 +148,19 @@ let rec main_loop parsed =
                   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
           with
               Verifier.FailedToRefineTypes ->
-	        assert (not !Flag.relative_complete);
-	        Flag.relative_complete := true;
-                incr Flag.cegar_loop;
-                main_loop parsed
+                if !Flag.relative_complete then
+																  assert false
+																else
+		                Flag.relative_complete := true;
+		                incr Flag.cegar_loop;
+		                main_loop filename orig parsed
             | Verifier.FailedToRefineExtraParameters ->
                 RefineInterface.params := [];
                 Verifier.ext_coeffs := [];
                 Verifier.ext_constrs := [];
                 incr Global.number_of_extra_params;
                 incr Flag.cegar_loop;
-                main_loop parsed
+                main_loop filename orig parsed
 
 
 let main filename in_channel =
@@ -173,10 +179,10 @@ let main filename in_channel =
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
   in
-  let parsed = Parse.use_file lb in
-  let parsed = Parser_wrapper.from_use_file parsed in
+  let orig = Parse.use_file lb in
+  let parsed = Parser_wrapper.from_use_file orig in
   let () = if true then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term parsed in
-    main_loop parsed
+    main_loop filename orig parsed
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
@@ -242,7 +248,7 @@ let () =
     try
       let filename = ref "" in
       let set_file name =
-        if !filename <> "" then (Arg.usage arg_spec usage; exit 1);
+        if !filename <> "" then (* unno: is this reachable? *)(Arg.usage arg_spec usage; exit 1);
         filename := name
       in
       let () = Arg.parse arg_spec set_file usage in

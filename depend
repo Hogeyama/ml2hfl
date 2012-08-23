@@ -407,15 +407,19 @@ CEGAR.cmx: wrapper.cmx utilities.cmx type_trans.cmx refineInterface.cmx \
     refine.cmx ModelCheck.cmx id.cmx flag.cmx feasibility.cmx \
     refine/extList.cmx CEGAR_util.cmx CEGAR_type.cmx CEGAR_trans.cmx \
     CEGAR_syntax.cmx CEGAR_ref_type.cmx CEGAR_print.cmx CEGAR_abst.cmx
+writeAnnot.cmo: refine/util.cmo ref_type.cmo
+writeAnnot.cmx: refine/util.cmx ref_type.cmx
 eval.cmo: utilities.cmo type.cmo syntax.cmi id.cmo
 eval.cmx: utilities.cmx type.cmx syntax.cmx id.cmx
-main.cmo: wrapper2.cmi wrapper.cmi refine/verifier.cmo utilities.cmo \
-    type_check.cmo type.cmo trans.cmo syntax.cmi spec_parser.cmi \
-    spec_lexer.cmo spec.cmo refineInterface.cmo refine.cmi ref_type.cmo \
-    parser_wrapper.cmo id.cmo refine/global.cmo flag.cmo eval.cmo \
-    refine/cvc3Interface.cmo CPS.cmi CEGAR_util.cmo CEGAR.cmo abstract.cmi
-main.cmx: wrapper2.cmx wrapper.cmx refine/verifier.cmx utilities.cmx \
-    type_check.cmx type.cmx trans.cmx syntax.cmx spec_parser.cmx \
-    spec_lexer.cmx spec.cmx refineInterface.cmx refine.cmx ref_type.cmx \
-    parser_wrapper.cmx id.cmx refine/global.cmx flag.cmx eval.cmx \
-    refine/cvc3Interface.cmx CPS.cmx CEGAR_util.cmx CEGAR.cmx abstract.cmx
+main.cmo: writeAnnot.cmo wrapper2.cmi wrapper.cmi refine/verifier.cmo \
+    utilities.cmo type_check.cmo type.cmo trans.cmo syntax.cmi \
+    spec_parser.cmi spec_lexer.cmo spec.cmo refineInterface.cmo refine.cmi \
+    ref_type.cmo parser_wrapper.cmo id.cmo refine/global.cmo flag.cmo \
+    eval.cmo refine/cvc3Interface.cmo CPS.cmi CEGAR_util.cmo CEGAR.cmo \
+    abstract.cmi
+main.cmx: writeAnnot.cmx wrapper2.cmx wrapper.cmx refine/verifier.cmx \
+    utilities.cmx type_check.cmx type.cmx trans.cmx syntax.cmx \
+    spec_parser.cmx spec_lexer.cmx spec.cmx refineInterface.cmx refine.cmx \
+    ref_type.cmx parser_wrapper.cmx id.cmx refine/global.cmx flag.cmx \
+    eval.cmx refine/cvc3Interface.cmx CPS.cmx CEGAR_util.cmx CEGAR.cmx \
+    abstract.cmx

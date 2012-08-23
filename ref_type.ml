@@ -30,9 +30,9 @@ let rec occur x = function
 
 let rec print fm = function
     Base(base,x,p) when p = S.true_term ->
-      Format.printf "%a" print_base base
+      Format.fprintf fm "%a" print_base base
   | Base(base,x,p) ->
-      Format.printf "{%a:%a | %a}" Id.print x print_base base S.pp_print_term p
+      Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base S.pp_print_term p
   | Fun(x, typ1, typ2) ->
       if true || occur x typ2
       then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2

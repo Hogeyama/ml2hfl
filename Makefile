@@ -98,6 +98,7 @@ CMO = $(OCAML_CMO) \
 	$(TRECS)/trecs.cmo dependent_type.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
 	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
+	writeAnnot.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma gmp.cma apron.cma polka.cma
