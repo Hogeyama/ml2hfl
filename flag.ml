@@ -100,6 +100,7 @@ let max_input_size = 65536
 (* mode option *)
 let web = ref false
 let debug = true
+let debug_level = ref 0
 
 
 (* pretty printer's option *)
