@@ -7,6 +7,8 @@ syntax.cmi: type.cmo id.cmo
 wrapper.cmi: syntax.cmi
 wrapper2.cmi: syntax.cmi CEGAR_type.cmo CEGAR_syntax.cmo
 CEGAR_print.cmi: CEGAR_syntax.cmo
+CEGAR_CPS.cmi: CEGAR_syntax.cmo
+CEGAR_abst.cmi: CEGAR_syntax.cmo
 spec_parser.cmi: spec.cmo
 trecs_parser.cmi: inter_type.cmo
 refine/enum.cmo: refine/enum.cmi

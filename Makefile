@@ -61,7 +61,8 @@ lib: ocaml csisat trecs atp
 # bytecode and native-code compilation
 
 MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
-	wrapper.mli wrapper2.mli CEGAR_print.mli spec_parser.mli trecs_parser.mli
+	wrapper.mli wrapper2.mli CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
+	spec_parser.mli trecs_parser.mli
 CMI = $(MLI:.mli=.cmi)
 
 REFINE_CMO = enum.cmo extList.cmo extString.cmo \
