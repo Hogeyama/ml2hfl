@@ -115,9 +115,9 @@ let rec string_of_term t =
       assert false
 
 let infer t ty =
-  let debug = false && !Global.debug in
+  let _ = Global.log_begin ~disable:true "infer" in
   let rec aux t ty =
-    let _ = if debug then Format.printf "%a:%a@," Term.pr t SimType.pr ty in
+    let _ = Global.log (fun () -> Format.printf "%a:%a@," Term.pr t SimType.pr ty) in
     match Term.fun_args t with
       Term.Var(_, x), [] ->
         [x, ty]
@@ -168,22 +168,25 @@ let infer t ty =
         let _ = Format.printf "%a@," Term.pr t in
         assert false
   in
-  List.map
-    (function (x, ty)::xtys ->
-      let _ = if debug then Format.printf "%a@," (Util.pr_list SimType.pr_bind ",") ((x, ty)::xtys) in
-      let _ = assert (List.for_all (fun (_, ty') -> SimType.equiv ty ty') xtys) in
-      x, ty
-    | _ -> assert false)
-    (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))  
+		let env =
+		  List.map
+		    (function (x, ty)::xtys ->
+		      let _ = Global.log (fun () -> Format.printf "%a@," (Util.pr_list SimType.pr_bind ",") ((x, ty)::xtys)) in
+		      let _ = assert (List.for_all (fun (_, ty') -> SimType.equiv ty ty') xtys) in
+		      x, ty
+		    | _ -> assert false)
+		    (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))
+  in
+  let _ = Global.log_end "infer" in
+  env
 
 let is_valid t =
-  let debug = !Global.debug && false in
   if t = Formula.ttrue then
     true
   else if t = Formula.tfalse then
     false
   else
-		  let _ = if debug then Global.log_begin "is_valid" in
+    let _ = Global.log_begin ~disable:true "is_valid" in
 		  let cin = !cvc3in in
 		  let cout = !cvc3out in
 		  let _ = cnt := !cnt + 1 in
@@ -201,21 +204,21 @@ let is_valid t =
 		    "QUERY " ^ string_of_term t ^ ";" ^
 		    "POP;"
 		  in
-		  let _ = if debug then Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
+		  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
 		  let _ = Format.fprintf fm "%s\n@?" inp in
 		  let res = input_line cin in
 		  let res =
 				  if Str.string_match (Str.regexp ".*Valid") res 0 then
-				    let _ = if debug then Global.log (fun () -> Format.printf "output of CVC3: valid") in
+				    let _ = Global.log (fun () -> Format.printf "output of CVC3: valid") in
 				    true
 				  else if Str.string_match (Str.regexp ".*Invalid") res 0 then
-				    let _ = if debug then Global.log (fun () -> Format.printf "output of CVC3: invalid") in
+				    let _ = Global.log (fun () -> Format.printf "output of CVC3: invalid") in
 				    false
 				  else
 				    let _ = Format.printf "unknown error of CVC3: %s@," res in
 				    assert false
 		  in
-		  let _ = if debug then Global.log_end "is_valid" in
+    let _ = Global.log_end "is_valid" in
 		  res
 
 (** check whether the conjunction of ts1 implies that of ts2 *)

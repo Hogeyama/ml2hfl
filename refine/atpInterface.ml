@@ -153,10 +153,11 @@ let is_valid p =
 
 (** {6 Functions on formulas} *)
 let integer_qelim t =
-  let debug = false && !Global.debug in
-  let _ = if debug then Format.printf "intqelim input: @[<v>%a@]@," Term.pr t in
+  let _ = Global.log_begin ~disable:true "integer_qelim" in
+  let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr t) in
   let t = simplify (formula_of (Atp_batch.integer_qelim (of_formula (elim_eq_neq_boolean t)))) in
-  let _ = if debug then Format.printf "intqelim output: @[<v>%a@]@," Term.pr t in
+  let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]@," Term.pr t) in
+  let _ = Global.log_end "integer_qelim" in
 		t
 
 let real_qelim t =
@@ -403,7 +404,7 @@ let rec qelim_lin bvs [] fms =
   if List.mem Atp_batch.False fms then
     [], []
   else begin
-				if !Global.debug > 0 then
+				if !Global.debug_level > 0 then
 						Format.printf "%a@." Fol.pr (formula_of (Atp_batch.list_conj fms));
 				let fms' = Atp_batch.homogenize langs fms in
 				let bvs' = List.unique (Util.diff (Util.catmap Atp_batch.fv fms') (Util.catmap Atp_batch.fv fms)) in
@@ -414,7 +415,7 @@ let rec qelim_lin bvs [] fms =
 								(function Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var(_); Atp_batch.Var(_)])) -> false
 								| _ -> true)
 								fms_lin in
-				if !Global.debug > 0 then
+				if !Global.debug_level > 0 then
 						Format.printf "%a@.%a@." Fol.pr (formula_of (Atp_batch.list_conj fms_lin_ineq)) Fol.pr (formula_of (Atp_batch.list_conj fms_lin_eq));
 				let fms_lin_eq1, fms_lin_eq2 =
 						List.partition
@@ -564,25 +565,25 @@ let qelim bvs p =
 		  		    (fun fms ->
             let rec loop bvs fms =
               let old_bvs = bvs in
-              ((if !Global.debug > 0 then
+              ((if !Global.debug_level > 0 then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !Global.debug > 0 then Format.printf "eliminating uninterpreted function symbols@.";
+              if !Global.debug_level > 0 then Format.printf "eliminating uninterpreted function symbols@.";
               let bvs, fms = qelim_ufs bvs [] fms in
-              (if !Global.debug > 0 then
+              (if !Global.debug_level > 0 then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !Global.debug > 0 then Format.printf "eliminating equalities@.";
+              if !Global.debug_level > 0 then Format.printf "eliminating equalities@.";
               let bvs, fms = qelim_eq bvs [] fms in
-              (if !Global.debug > 0 then
+              (if !Global.debug_level > 0 then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !Global.debug > 0 then Format.printf "eliminating linear inequalities and equalities@.";
+              if !Global.debug_level > 0 then Format.printf "eliminating linear inequalities and equalities@.";
               let bvs, fmss = qelim_lin bvs [] fms in
-              (if !Global.debug > 0 then
+              (if !Global.debug_level > 0 then
                 Format.printf "%a;%a@."
                   (Util.pr_list Id.pr ",") bvs
                   Fol.pr (formula_of (Atp_batch.list_disj (List.map Atp_batch.list_conj fmss))));

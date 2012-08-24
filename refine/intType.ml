@@ -68,10 +68,10 @@ let rec pr ppf ty =
   | _, _ ->
       Format.fprintf ppf "<@[<hov>%a |@ %a |@ %a@]>" Term.pr ty.pre pr_shape ty.shape Term.pr ty.post
 
-let pr_bind ppf (f, ty) = Format.fprintf ppf "%a:%a" Var.pr f pr ty
+let pr_bind ppf (f, ty) = Format.fprintf ppf "%a: %a" Var.pr f pr ty
 let pr_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_bind "@ ") env
 
-let pr_shape_bind ppf (x, sh) = Format.fprintf ppf "%a:%a" Var.pr x pr_shape sh
+let pr_shape_bind ppf (x, sh) = Format.fprintf ppf "%a: %a" Var.pr x pr_shape sh
 let pr_shape_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_shape_bind "@ ") env
 
 let rec rename_shape sub ty =

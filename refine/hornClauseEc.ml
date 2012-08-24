@@ -50,6 +50,7 @@ let rec subst_formula p afs t =
   afs, t
 
 let matches env xs ttys1 ttys2 =
+  let _ = Global.log_begin "HornClauseEc.matches" in
   let xttys =
     (*try*)
       Util.concat_map2
@@ -76,7 +77,7 @@ let matches env xs ttys1 ttys2 =
                   | _ ->
                       raise (Invalid_argument "")
                 with Invalid_argument _ ->
-                  let _ = if !Global.debug then Format.printf "??t1: %a@,??t2: %a@," Term.pr t1 Term.pr t2 in
+                  let _ = Global.log (fun () -> Format.printf "??t1: %a@,??t2: %a@," Term.pr t1 Term.pr t2) in
                   [](*raise Not_found*)(*assert false*)))
         ttys1 ttys2
       (*with Not_found ->
@@ -94,6 +95,7 @@ let matches env xs ttys1 ttys2 =
                  List.for_all (fun (_, t', _) -> Cvc3Interface.implies env [Formula.eq_ty ty t t']) xttys)
            (Util.classify (fun (x, _, _) (y, _, _) -> x = y) xttys))
   in
+  let _ = Global.log_end "HornClauseEc.matches" in
   xttys
 
 let xttyss_of env q afs1 afs2 =
@@ -165,6 +167,7 @@ let xttyss_of env q afs1 afs2 =
     []
 
 let ignored_vars bvs afs =
+  let _ = Global.log_begin "HornClauseEc.ignored_vars" in
   let tss =
     let afss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) afs in
     Util.concat_map
@@ -181,7 +184,7 @@ let ignored_vars bvs afs =
           tss))
       bvs
   in
-  let _ = if !Global.debug then Format.printf "xs: %a@," Var.pr_list xs in
+  let _ = Global.log (fun () -> Format.printf "xs: %a@," Var.pr_list xs) in
   let ys =
     List.unique
       (Util.concat_map
@@ -197,8 +200,10 @@ let ignored_vars bvs afs =
               ttys))
         afs)
   in
-  let _ = if !Global.debug then Format.printf "ys: %a@," Var.pr_list ys in
-  xs @ ys
+  let _ = Global.log (fun () -> Format.printf "ys: %a@," Var.pr_list ys) in
+  let res = xs @ ys in
+  let _ = Global.log_end "HornClauseEc.ignored_vars" in
+  res
 
 let changing_vars bvs afs =
   let tss =
@@ -215,362 +220,370 @@ let changing_vars bvs afs =
     bvs
 
 let share_predicates bvs0 _ afs t =
-  let debug = !Global.debug && true in
+  let _ = Global.log_begin ~disable:true "HornClauseEc.share_predicates" in
   let t = Formula.simplify t in
-  if Term.coeffs t <> [] || Atom.num_dup afs = 0 then
-    afs, t
-  else
-    let share_predicates_aux cvs bvs afs t =
-      let ts = Formula.conjuncts t in
-      let ecs, env, zs =
-        let env, ts1 = List.partition (fun t -> Util.subset (Term.fvs t) bvs) ts in
-        let afs0, afs1 = List.partition (fun p -> Util.subset (Atom.fvs p) bvs) afs in
-        let afs0 =
-          Util.concat_map
-            (Util.representatives (Atom.equiv env))
-            (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) afs0)
-        in
-        let ecs = Util.equiv_classes (rel bvs) (embed_preds afs1(* redundant *) @ embed_terms ts1) in
-        let zs =
-          let zs = Util.diff (List.unique (Util.concat_map Atom.fvs afs0)) bvs0 in
-          List.filter
-            (fun z ->
-              let ecs' = List.filter (fun ec -> List.mem z (fvs_of_ec ec)) ecs in
-              match ecs' with
-                [_] -> true
-              | _ -> false)
-            zs
-        in
-        (if afs0 = [] then [] else [embed_preds afs0]) @ ecs,
-        env,
-        zs
-      in
-      let ecs =
-        List.map
-          (fun ec ->
-            if preds_of_ec ec = [] then
-              (try
-                let t = Formula.band (terms_of_ec ec) in
-                let xs = List.unique (Util.diff (Term.fvs_ty SimType.Int t SimType.Bool) bvs) in
-                (*let _ = if xs <> [] then assert false in*)
-                let ts = Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) in
-                List.map (fun t -> `R(t)) ts
-              with Util.NotImplemented _ -> ec)
-            else
-              ec)
-          ecs
-      in
-      let _ =
-        if debug then
-          let _ = Format.printf "bvs: %a@," Var.pr_list bvs in
-          let _ = Format.printf "env: %a@," Term.pr (Formula.band env) in
-          List.iter
-            (fun ec ->
-              let afs, ts = Util.partition_map (fun x -> x) ec in
-              Format.printf "ec: %a@," pr_elem (Hc(None, afs, Formula.band ts)))
-            ecs
-      in
-      let is_covered ec1 ec2 =
-        let ts0 = env @ terms_of_ec ec2 in
-        let rec aux pxs ts =
-          let pxs = List.filter (fun (_, ttys, _, ttyss) -> List.for_all (fun ttys' -> ttys' <> ttys) ttyss) pxs in
-          let ts = Util.diff ts ts0 in
-          match List.filter (fun (_, _, xs, _) -> xs <> []) pxs with
-            [] ->
-              let b =
-                Cvc3Interface.implies ts0 ts &&
-                List.for_all
-                  (fun (pid, ttys, _, ttyss) ->
-                    List.exists (fun ttys' -> Atom.equiv env (pid, ttys) (pid, ttys')) ttyss)
-                  pxs
-              in
-              let _ =
-                if debug then
-                  if b then
-                    Format.printf "succeeded@,"
-                  else
-                    let _ = Format.printf "ts: %a@," (Util.pr_list Term.pr ",") ts in
-                    let _ = List.iter (fun (pid, ttys, _, _) -> Format.printf "ttys: %a@," (Util.pr_list Term.pr ",") (List.map fst ttys)) pxs in
-                    Format.printf "failed:@,"
-              in
-              b
-              (*let pxs' =
-                List.filter
-                  (fun (pid, ttys, _, ttyss) ->
-                    List.for_all (fun ttys' -> not (Atom.equiv env (pid, ttys) (pid, ttys'))) ttyss)
-                  pxs
-              in
-              (match pxs' with
-                [] ->
-                  true
-              | [pid, ttys, _, ttyss] ->
-                  let xs = Util.diff (List.unique (Util.concat_map (fun (t, _) -> Term.fvs t) ttys)) bvs0 in
-                  let _ = Format.printf "osii: %a@," Var.pr_list xs in
-                  false
-              | _ -> false)*)
-          | (pid, ttys, xs, ttyss)::_ ->
-              let xttyss =
-                List.filter_map
-                  (fun ttys' ->
-                    match matches env xs ttys ttys' with
-                      [] -> None
-                    | xttys -> Some(xttys)
-                    (*match xttyss_of env (fun x -> List.mem x xs) [pid, ttys] [pid, ttys'] with
-                      [] -> None
-                    | [xttys] -> Some(xttys)
-                    | _ -> assert false*))
-                  ttyss
-              in
-              List.exists
-                (fun xttys ->
-                  let _ = if debug then Format.printf "xttys: %a@," TypSubst.pr xttys in
-                  let ys = List.map Util.fst3 xttys in
-                  let pxs =
-                    List.sort
-                      ~cmp:(fun (_, _, _, ttyss1) (_, _, _, ttyss2) -> List.length ttyss1 - List.length ttyss2)
-                      (List.map
-                        (fun (pid, ttys, xs0, ttyss) ->
-                          let xs = Util.diff xs0 ys in
-                          if xs <> xs0 then
-                            let _ = if debug then Format.printf "pid: %a@," Var.pr pid in
-                            let pid, ttys = Atom.simplify (Atom.subst (TypSubst.fun_of xttys) (pid, ttys)) in
-                            let ttyss =
-                              List.filter (fun ttys' -> Atom.matches (fun x -> List.mem x xs) env (pid, ttys') (pid, ttys)) ttyss
-                            in
-                            pid, ttys, xs, ttyss
-                          else
-                            pid, ttys, xs0, ttyss)
-                        pxs)
-                  in
-                  let ts = List.map (fun t -> Formula.simplify (Term.subst (TypSubst.fun_of xttys) t)) ts in
-                  let b = aux pxs ts in
-                  let _ = if debug then if not b then Format.printf "backtracked@," in
-                  b)
-                xttyss
-        in
-        let afs = preds_of_ec ec2 in
-        aux
-          (List.sort
-            ~cmp:(fun (_, _, _, ttyss1) (_, _, _, ttyss2) -> List.length ttyss1 - List.length ttyss2)
-            (List.map
-              (fun ((pid, ttys) as p1) ->
-                let xs = Util.diff (Atom.fvs (pid, ttys)) bvs in
-                let ttyss =
-                  List.filter_map
-                    (fun ((_, ttys') as p2) ->
-                      if Atom.matches (fun x -> List.mem x xs) env p2 p1 then Some(ttys') else None)
-                    afs
-                in
-                pid, ttys, xs, ttyss)
-              (preds_of_ec ec1)))
-          (terms_of_ec ec1)
-      in
-      (*let reduce ec1 ec2 =
-        ec1 = [] ||
-        let xs = List.sort (Util.diff (fvs_of_ec ec1) bvs) in
-        if xs = [] then
-          false
-        else
-          let _ = if debug then Global.log (fun () -> Format.printf "xs: %a@," Var.pr_list xs) in
-          let xttyss =
-            let afs1 = preds_of_ec ec1 in
-            let afs2 = preds_of_ec ec2 in
-            let xttyss = xttyss_of env (fun x -> not (List.mem x bvs)) afs1 afs2 in
-            List.filter
-              (fun xttys ->
-                if Util.subset xs (List.map Util.fst3 xttys) then
-                  true
-                else
-                  (*let _ = Format.printf "non-covered: %a@," TypSubst.pr xttys in*)
-                  false(*assert false*))
-              xttyss
-          in
-          if List.exists
-               (fun xttys ->
-                 let b =
-                   let ec1' =
-                     List.map
-                       (function
-                         `L(p) -> `L(Atom.simplify (Atom.subst (TypSubst.fun_of xttys) p))
-                       | `R(t) -> `R(Formula.simplify (Term.subst (TypSubst.fun_of xttys) t)))
-                       ec1
-                   in
-                   let afs1, ts1 = Util.partition_map (fun x -> x) (Util.diff ec1' ec2) in
-                   let afs2, ts2 = Util.partition_map (fun x -> x) ec2 in
-                   let _ = if debug then Format.printf "hc1: %a@,hc2: %a@," pr_elem (Hc(None, afs1, Formula.band ts1)) pr_elem (Hc(None, afs2, Formula.band ts2)) in
-                   Cvc3Interface.implies (env @ ts2) ts1 &&
-                   List.for_all
-                     (fun p1 -> List.exists (fun p2 -> Atom.equiv env(*@ ts2 not necessary?*) p1 p2) afs2)
-                     afs1
-                 in
-                 let _ = if debug then if b then Format.printf "xttys: %a@," TypSubst.pr xttys in
-                 b)
-               xttyss then
-            true
-          else
-            false
-      in*)
-      let rec aux ecs1 ecs2 =
-        match ecs1 with
-          [] -> ecs2
-        | ec::ecs1 ->
-            (*let covers ec1 ec2 =
-              Util.subset
-                (Util.concat_map (function `L(p) -> [fst p] | `R(_) -> []) ec1)
-                (Util.concat_map (function `L(p) -> [fst p] | `R(_) -> []) ec2)
-            in*)
-            (*let min_coverings nonms ec ecs =
-              let pids0 = pids_of_ec ec in
-              let ec_pids_s =
-                let ec_pids_s = List.map (fun ec -> List.sort ec, pids_of_ec ec) ecs in
-                List.filter (fun (_, pids) -> List.exists (fun pid -> List.mem pid pids) pids0) ec_pids_s
-              in
-              let ec_pids_s1, ec_pids_s2 = List.partition (fun (ec, pids) -> (if nonms then Util.subset else Util.subset_ms) pids0 pids) ec_pids_s in
-              let rec aux ec_pids_b_s =
-                let ec_pids_b_s' =
-                  List.unique ~cmp:(fun (ec1, _, _) (ec2, _, _) -> ec1 = ec2)
-                    (Util.concat_map
-                      (fun (ec, pids, b) ->
-                        if b then
-                          [ec, pids, b]
-                        else
-                          let insf_pids = (if nonms then Util.diff else Util.diff_ms) pids0 pids in
-                          List.map
-                            (fun (ec', pids') ->
-                              if nonms then
-                                List.sort (ec @ ec'), List.unique (pids @ pids'), Util.subset insf_pids pids'
-                              else
-                                List.sort (ec @ ec'), pids @ pids', Util.subset_ms insf_pids pids')
-                            (List.filter
-                              (fun (ec', pids') ->
-                                Util.intersects insf_pids pids' && not (Util.subset ec' ec))
-                              ec_pids_s2))
-                      ec_pids_b_s)
-                in
-                if List.length ec_pids_b_s = List.length ec_pids_b_s' then
-                  let ecs = List.filter_map (fun (ec, _, b) -> if b then Some(ec) else None) ec_pids_b_s' in
-                  (if nonms then
-                    []
-                  else
-                    List.filter_map
-                      (fun (ec, pids, b) ->
-                        if not b && Util.subset pids0 pids && List.for_all (fun ec' -> Util.diff ec ec' <> []) ecs then
-                          Some(ec)
-                        else
-                          None)
-                      ec_pids_b_s') @
-                  ecs
-                else
-                  aux ec_pids_b_s'
-              in
-              List.map fst ec_pids_s1 @
-              aux (List.map (fun (ec, pids) -> ec, pids, false) ec_pids_s2)
-            in*)
-            let b =
-              match cvs with
-                Some(xs) when not (Util.intersects xs (fvs_of_ec ec)) ->
-                  false
-              | _ ->
-                  let _ = if debug then Format.printf "checking: %a@," (Util.pr_list Atom.pr ",") (preds_of_ec ec) in
-                  (*if true then*)
-                    is_covered ec (List.flatten (ecs1 @ ecs2))
-                  (*else
-                    let ecs = min_coverings (!Global.disable_pred_sharing1 || not (Util.is_dup (pids_of_ec ec))) ec (ecs1 @ ecs2) in
-                    let _ = List.iter (fun ec -> Format.printf "%a@," (Util.pr_list Atom.pr ",") (preds_of_ec ec)) ecs in
-                    List.exists (fun ec' -> reduce ec ec') ecs*)
-            in
-            aux ecs1 (if b then ecs2 else ec :: ecs2)
-      in
-      let ecs = aux (List.sort ecs) [] in
-      let afs, ts = Util.partition_map (fun x -> x) (List.flatten ecs) in
-      afs, Formula.band (ts @ env), zs
-    in
-    let rec loop cvs bvs' afs t =
-      let _ = if debug then if bvs' <> [] then Format.printf "bvs': %a@," Var.pr_list bvs' in
-      let afs', t', zs = share_predicates_aux cvs (bvs0 @ bvs') afs t in
-      if List.length afs <> List.length afs' && Atom.num_dup afs' > 0 then
-        let bvs'' = ignored_vars bvs0 afs' in
-        let cvs' = Util.diff bvs' bvs'' in
-        if cvs' = [](*Util.set_equiv bvs' bvs''*) then
-          bvs'', afs', t', zs
-        else
-          loop (Some(cvs')) bvs'' afs' t'
-      else
-        bvs', afs', t', zs
-    in
-    let bvs', afs, t, zs = loop None (ignored_vars bvs0 afs) afs t in
-    if not !Global.enable_pred_sharing2 then
-      if !Global.disable_pred_sharing1 then
-        afs, t
-      else (*a-maxÇ™rsn 0Ç≈Ç»Ç¢Ç∆ê¨å˜ÇµÇ»Ç≠Ç»ÇÈ intro3ÇÕrsn0Ç≈OKÇ…Ç»ÇÈ*)
-        try
-          let _ = if debug then if zs <> [] then Format.printf "zs: %a@," Var.pr_list zs in
-          Util.find_map
-            (fun xs ->
-              let bvs1 = Util.diff bvs' xs in
-              if List.length bvs1 = List.length bvs' then
-                raise Not_found
-              else
-                let afs', t', _ = share_predicates_aux (Some(xs)) (bvs0 @ bvs1) afs t in
-                if List.length afs <> List.length afs' then
-                  afs', t'
-                else
-                  raise Not_found)
-            (Util.nsubsets 1 zs)
-        with Not_found ->
-          afs, t
-    else
-      let zs = Util.inter bvs' (changing_vars bvs0 afs) in
-      let _ = if debug then if zs <> [] then Format.printf "zs: %a@," Var.pr_list zs in
-      if List.length zs > 7 then
-        afs, t
-      else
-        try
-          Util.find_map
-            (fun xs ->
-              let bvs1 = Util.diff bvs' xs in
-              if List.length bvs1 = List.length bvs' then
-                raise Not_found
-              else
-                let afs', t', _ = share_predicates_aux (Some(xs)) (bvs0 @ bvs1) afs t in
-                if List.length afs <> List.length afs' then
-                  afs', t'
-                else
-                  raise Not_found)
-            (Util.nsubsets 1 zs @ Util.nsubsets 2 zs)
-        with Not_found ->
-          afs, t
+  let res =
+		  if Term.coeffs t <> [] || Atom.num_dup afs = 0 then
+		    afs, t
+		  else
+		    let share_predicates_aux cvs bvs afs t =
+		      let ts = Formula.conjuncts t in
+		      let ecs, env, zs =
+		        let env, ts1 = List.partition (fun t -> Util.subset (Term.fvs t) bvs) ts in
+		        let afs0, afs1 = List.partition (fun p -> Util.subset (Atom.fvs p) bvs) afs in
+		        let afs0 =
+		          Util.concat_map
+		            (Util.representatives (Atom.equiv env))
+		            (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) afs0)
+		        in
+		        let ecs = Util.equiv_classes (rel bvs) (embed_preds afs1(* redundant *) @ embed_terms ts1) in
+		        let zs =
+		          let zs = Util.diff (List.unique (Util.concat_map Atom.fvs afs0)) bvs0 in
+		          List.filter
+		            (fun z ->
+		              let ecs' = List.filter (fun ec -> List.mem z (fvs_of_ec ec)) ecs in
+		              match ecs' with
+		                [_] -> true
+		              | _ -> false)
+		            zs
+		        in
+		        (if afs0 = [] then [] else [embed_preds afs0]) @ ecs,
+		        env,
+		        zs
+		      in
+		      let ecs =
+		        List.map
+		          (fun ec ->
+		            if preds_of_ec ec = [] then
+		              (try
+		                let t = Formula.band (terms_of_ec ec) in
+		                let xs = List.unique (Util.diff (Term.fvs_ty SimType.Int t SimType.Bool) bvs) in
+		                (*let _ = if xs <> [] then assert false in*)
+		                let ts = Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) in
+		                List.map (fun t -> `R(t)) ts
+		              with Util.NotImplemented _ -> ec)
+		            else
+		              ec)
+		          ecs
+		      in
+		      let _ =
+		        Global.log (fun () ->
+		          let _ = Format.printf "bvs: %a@," Var.pr_list bvs in
+		          let _ = Format.printf "env: %a@," Term.pr (Formula.band env) in
+		          List.iter
+		            (fun ec ->
+		              let afs, ts = Util.partition_map (fun x -> x) ec in
+		              Format.printf "ec: %a@," pr_elem (Hc(None, afs, Formula.band ts)))
+		            ecs)
+		      in
+		      let is_covered ec1 ec2 =
+		        let ts0 = env @ terms_of_ec ec2 in
+		        let rec aux pxs ts =
+		          let pxs = List.filter (fun (_, ttys, _, ttyss) -> List.for_all (fun ttys' -> ttys' <> ttys) ttyss) pxs in
+		          let ts = Util.diff ts ts0 in
+		          match List.filter (fun (_, _, xs, _) -> xs <> []) pxs with
+		            [] ->
+		              let b =
+		                Cvc3Interface.implies ts0 ts &&
+		                List.for_all
+		                  (fun (pid, ttys, _, ttyss) ->
+		                    List.exists (fun ttys' -> Atom.equiv env (pid, ttys) (pid, ttys')) ttyss)
+		                  pxs
+		              in
+		              let _ =
+		                Global.log (fun () ->
+		                  if b then
+		                    Format.printf "succeeded@,"
+		                  else
+		                    let _ = Format.printf "ts: %a@," (Util.pr_list Term.pr ",") ts in
+		                    let _ = List.iter (fun (pid, ttys, _, _) -> Format.printf "ttys: %a@," (Util.pr_list Term.pr ",") (List.map fst ttys)) pxs in
+		                    Format.printf "failed:@,")
+		              in
+		              b
+		              (*let pxs' =
+		                List.filter
+		                  (fun (pid, ttys, _, ttyss) ->
+		                    List.for_all (fun ttys' -> not (Atom.equiv env (pid, ttys) (pid, ttys'))) ttyss)
+		                  pxs
+		              in
+		              (match pxs' with
+		                [] ->
+		                  true
+		              | [pid, ttys, _, ttyss] ->
+		                  let xs = Util.diff (List.unique (Util.concat_map (fun (t, _) -> Term.fvs t) ttys)) bvs0 in
+		                  let _ = Format.printf "osii: %a@," Var.pr_list xs in
+		                  false
+		              | _ -> false)*)
+		          | (pid, ttys, xs, ttyss)::_ ->
+		              let xttyss =
+		                List.filter_map
+		                  (fun ttys' ->
+		                    match matches env xs ttys ttys' with
+		                      [] -> None
+		                    | xttys -> Some(xttys)
+		                    (*match xttyss_of env (fun x -> List.mem x xs) [pid, ttys] [pid, ttys'] with
+		                      [] -> None
+		                    | [xttys] -> Some(xttys)
+		                    | _ -> assert false*))
+		                  ttyss
+		              in
+		              List.exists
+		                (fun xttys ->
+		                  let _ = Global.log (fun () -> Format.printf "xttys: %a@," TypSubst.pr xttys) in
+		                  let ys = List.map Util.fst3 xttys in
+		                  let pxs =
+		                    List.sort
+		                      ~cmp:(fun (_, _, _, ttyss1) (_, _, _, ttyss2) -> List.length ttyss1 - List.length ttyss2)
+		                      (List.map
+		                        (fun (pid, ttys, xs0, ttyss) ->
+		                          let xs = Util.diff xs0 ys in
+		                          if xs <> xs0 then
+		                            let _ = Global.log (fun () -> Format.printf "pid: %a@," Var.pr pid) in
+		                            let pid, ttys = Atom.simplify (Atom.subst (TypSubst.fun_of xttys) (pid, ttys)) in
+		                            let ttyss =
+		                              List.filter (fun ttys' -> Atom.matches (fun x -> List.mem x xs) env (pid, ttys') (pid, ttys)) ttyss
+		                            in
+		                            pid, ttys, xs, ttyss
+		                          else
+		                            pid, ttys, xs0, ttyss)
+		                        pxs)
+		                  in
+		                  let ts = List.map (fun t -> Formula.simplify (Term.subst (TypSubst.fun_of xttys) t)) ts in
+		                  let b = aux pxs ts in
+		                  let _ = Global.log (fun () -> if not b then Format.printf "backtracked@,") in
+		                  b)
+		                xttyss
+		        in
+		        let afs = preds_of_ec ec2 in
+		        aux
+		          (List.sort
+		            ~cmp:(fun (_, _, _, ttyss1) (_, _, _, ttyss2) -> List.length ttyss1 - List.length ttyss2)
+		            (List.map
+		              (fun ((pid, ttys) as p1) ->
+		                let xs = Util.diff (Atom.fvs (pid, ttys)) bvs in
+		                let ttyss =
+		                  List.filter_map
+		                    (fun ((_, ttys') as p2) ->
+		                      if Atom.matches (fun x -> List.mem x xs) env p2 p1 then Some(ttys') else None)
+		                    afs
+		                in
+		                pid, ttys, xs, ttyss)
+		              (preds_of_ec ec1)))
+		          (terms_of_ec ec1)
+		      in
+		      (*let reduce ec1 ec2 =
+		        ec1 = [] ||
+		        let xs = List.sort (Util.diff (fvs_of_ec ec1) bvs) in
+		        if xs = [] then
+		          false
+		        else
+		          let _ = Global.log (fun () -> Format.printf "xs: %a@," Var.pr_list xs) in
+		          let xttyss =
+		            let afs1 = preds_of_ec ec1 in
+		            let afs2 = preds_of_ec ec2 in
+		            let xttyss = xttyss_of env (fun x -> not (List.mem x bvs)) afs1 afs2 in
+		            List.filter
+		              (fun xttys ->
+		                if Util.subset xs (List.map Util.fst3 xttys) then
+		                  true
+		                else
+		                  (*let _ = Format.printf "non-covered: %a@," TypSubst.pr xttys in*)
+		                  false(*assert false*))
+		              xttyss
+		          in
+		          if List.exists
+		               (fun xttys ->
+		                 let b =
+		                   let ec1' =
+		                     List.map
+		                       (function
+		                         `L(p) -> `L(Atom.simplify (Atom.subst (TypSubst.fun_of xttys) p))
+		                       | `R(t) -> `R(Formula.simplify (Term.subst (TypSubst.fun_of xttys) t)))
+		                       ec1
+		                   in
+		                   let afs1, ts1 = Util.partition_map (fun x -> x) (Util.diff ec1' ec2) in
+		                   let afs2, ts2 = Util.partition_map (fun x -> x) ec2 in
+		                   let _ = Global.log (fun () -> Format.printf "hc1: %a@,hc2: %a@," pr_elem (Hc(None, afs1, Formula.band ts1)) pr_elem (Hc(None, afs2, Formula.band ts2))) in
+		                   Cvc3Interface.implies (env @ ts2) ts1 &&
+		                   List.for_all
+		                     (fun p1 -> List.exists (fun p2 -> Atom.equiv env(*@ ts2 not necessary?*) p1 p2) afs2)
+		                     afs1
+		                 in
+		                 let _ = Global.log (fun () -> if b then Format.printf "xttys: %a@," TypSubst.pr xttys) in
+		                 b)
+		               xttyss then
+		            true
+		          else
+		            false
+		      in*)
+		      let rec aux ecs1 ecs2 =
+		        match ecs1 with
+		          [] -> ecs2
+		        | ec::ecs1 ->
+		            (*let covers ec1 ec2 =
+		              Util.subset
+		                (Util.concat_map (function `L(p) -> [fst p] | `R(_) -> []) ec1)
+		                (Util.concat_map (function `L(p) -> [fst p] | `R(_) -> []) ec2)
+		            in*)
+		            (*let min_coverings nonms ec ecs =
+		              let pids0 = pids_of_ec ec in
+		              let ec_pids_s =
+		                let ec_pids_s = List.map (fun ec -> List.sort ec, pids_of_ec ec) ecs in
+		                List.filter (fun (_, pids) -> List.exists (fun pid -> List.mem pid pids) pids0) ec_pids_s
+		              in
+		              let ec_pids_s1, ec_pids_s2 = List.partition (fun (ec, pids) -> (if nonms then Util.subset else Util.subset_ms) pids0 pids) ec_pids_s in
+		              let rec aux ec_pids_b_s =
+		                let ec_pids_b_s' =
+		                  List.unique ~cmp:(fun (ec1, _, _) (ec2, _, _) -> ec1 = ec2)
+		                    (Util.concat_map
+		                      (fun (ec, pids, b) ->
+		                        if b then
+		                          [ec, pids, b]
+		                        else
+		                          let insf_pids = (if nonms then Util.diff else Util.diff_ms) pids0 pids in
+		                          List.map
+		                            (fun (ec', pids') ->
+		                              if nonms then
+		                                List.sort (ec @ ec'), List.unique (pids @ pids'), Util.subset insf_pids pids'
+		                              else
+		                                List.sort (ec @ ec'), pids @ pids', Util.subset_ms insf_pids pids')
+		                            (List.filter
+		                              (fun (ec', pids') ->
+		                                Util.intersects insf_pids pids' && not (Util.subset ec' ec))
+		                              ec_pids_s2))
+		                      ec_pids_b_s)
+		                in
+		                if List.length ec_pids_b_s = List.length ec_pids_b_s' then
+		                  let ecs = List.filter_map (fun (ec, _, b) -> if b then Some(ec) else None) ec_pids_b_s' in
+		                  (if nonms then
+		                    []
+		                  else
+		                    List.filter_map
+		                      (fun (ec, pids, b) ->
+		                        if not b && Util.subset pids0 pids && List.for_all (fun ec' -> Util.diff ec ec' <> []) ecs then
+		                          Some(ec)
+		                        else
+		                          None)
+		                      ec_pids_b_s') @
+		                  ecs
+		                else
+		                  aux ec_pids_b_s'
+		              in
+		              List.map fst ec_pids_s1 @
+		              aux (List.map (fun (ec, pids) -> ec, pids, false) ec_pids_s2)
+		            in*)
+		            let b =
+		              match cvs with
+		                Some(xs) when not (Util.intersects xs (fvs_of_ec ec)) ->
+		                  false
+		              | _ ->
+		                  let _ = Global.log (fun () -> Format.printf "checking: %a@," (Util.pr_list Atom.pr ",") (preds_of_ec ec)) in
+		                  (*if true then*)
+		                    is_covered ec (List.flatten (ecs1 @ ecs2))
+		                  (*else
+		                    let ecs = min_coverings (!Global.disable_pred_sharing1 || not (Util.is_dup (pids_of_ec ec))) ec (ecs1 @ ecs2) in
+		                    let _ = List.iter (fun ec -> Format.printf "%a@," (Util.pr_list Atom.pr ",") (preds_of_ec ec)) ecs in
+		                    List.exists (fun ec' -> reduce ec ec') ecs*)
+		            in
+		            aux ecs1 (if b then ecs2 else ec :: ecs2)
+		      in
+		      let ecs = aux (List.sort ecs) [] in
+		      let afs, ts = Util.partition_map (fun x -> x) (List.flatten ecs) in
+		      afs, Formula.band (ts @ env), zs
+		    in
+		    let rec loop cvs bvs' afs t =
+		      let _ = Global.log (fun () -> if bvs' <> [] then Format.printf "bvs': %a@," Var.pr_list bvs') in
+		      let afs', t', zs = share_predicates_aux cvs (bvs0 @ bvs') afs t in
+		      if List.length afs <> List.length afs' && Atom.num_dup afs' > 0 then
+		        let bvs'' = ignored_vars bvs0 afs' in
+		        let cvs' = Util.diff bvs' bvs'' in
+		        if cvs' = [](*Util.set_equiv bvs' bvs''*) then
+		          bvs'', afs', t', zs
+		        else
+		          loop (Some(cvs')) bvs'' afs' t'
+		      else
+		        bvs', afs', t', zs
+		    in
+		    let bvs', afs, t, zs = loop None (ignored_vars bvs0 afs) afs t in
+		    if not !Global.enable_pred_sharing2 then
+		      if !Global.disable_pred_sharing1 then
+		        afs, t
+		      else (*a-maxÇ™rsn 0Ç≈Ç»Ç¢Ç∆ê¨å˜ÇµÇ»Ç≠Ç»ÇÈ intro3ÇÕrsn0Ç≈OKÇ…Ç»ÇÈ*)
+		        try
+		          let _ = Global.log (fun () -> if zs <> [] then Format.printf "zs: %a@," Var.pr_list zs) in
+		          Util.find_map
+		            (fun xs ->
+		              let bvs1 = Util.diff bvs' xs in
+		              if List.length bvs1 = List.length bvs' then
+		                raise Not_found
+		              else
+		                let afs', t', _ = share_predicates_aux (Some(xs)) (bvs0 @ bvs1) afs t in
+		                if List.length afs <> List.length afs' then
+		                  afs', t'
+		                else
+		                  raise Not_found)
+		            (Util.nsubsets 1 zs)
+		        with Not_found ->
+		          afs, t
+		    else
+		      let zs = Util.inter bvs' (changing_vars bvs0 afs) in
+		      let _ = Global.log (fun () -> if zs <> [] then Format.printf "zs: %a@," Var.pr_list zs) in
+		      if List.length zs > 7 then
+		        afs, t
+		      else
+		        try
+		          Util.find_map
+		            (fun xs ->
+		              let bvs1 = Util.diff bvs' xs in
+		              if List.length bvs1 = List.length bvs' then
+		                raise Not_found
+		              else
+		                let afs', t', _ = share_predicates_aux (Some(xs)) (bvs0 @ bvs1) afs t in
+		                if List.length afs <> List.length afs' then
+		                  afs', t'
+		                else
+		                  raise Not_found)
+		            (Util.nsubsets 1 zs @ Util.nsubsets 2 zs)
+		        with Not_found ->
+		          afs, t
+  in
+  let _ = Global.log_end "HornClauseEc.share_predicates" in
+  res
 
 (** integer quantifier elimination of formulas with integers and booleans *)
 let qelim_aux fvs t =
-  let debug = !Global.debug && true in
+  let _ = Global.log_begin "HornClauseEc.qelim_aux" in
   let env = List.map (fun x -> x, SimType.Int) (Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) fvs) in
-  if env <> [] && Term.coeffs t = [] then
-    let _ = if debug then Format.printf "input to qelim_aux:@,  @[<v>t: %a@,env: %a@]@," Term.pr t SimType.pr_env env in
-    let ts, f =
-      let tss, f = Formula.elim_boolean [t] in
-				  List.map (fun [t] -> t) tss, f
-				in
-    f
-      (List.map
-        (fun t ->
-          try
-		          let _ = if debug then Format.printf "before: %a@," Term.pr t in
-										  let t' =
-														Formula.simplify
-														  (AtpInterface.integer_qelim
-																  (Formula.exists env t))
-											 in
-		          let _ = if debug then Format.printf "after: %a@," Term.pr t' in
-		          if try Formula.disjunctive t' with Util.NotImplemented _ -> true then
-              t
-												else
-												  t'
-          with Util.NotImplemented _ ->
-										  t)
-        ts)
-  else
-    t
+  let res =
+		  if env <> [] && Term.coeffs t = [] then
+		    let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>t: %a@,env: %a@]@," Term.pr t SimType.pr_env env) in
+		    let ts, f =
+		      let tss, f = Formula.elim_boolean [t] in
+						  List.map (fun [t] -> t) tss, f
+						in
+		    f
+		      (List.map
+		        (fun t ->
+		          try
+				          let _ = Global.log (fun () -> Format.printf "before: %a@," Term.pr t) in
+												  let t' =
+																Formula.simplify
+																  (AtpInterface.integer_qelim
+																		  (Formula.exists env t))
+													 in
+				          let _ = Global.log (fun () -> Format.printf "after: %a@," Term.pr t') in
+				          if try Formula.disjunctive t' with Util.NotImplemented _ -> true then
+		              t
+														else
+														  t'
+		          with Util.NotImplemented _ ->
+												  t)
+		        ts)
+		  else
+		    t
+  in
+  let _ = Global.log_end "HornClauseEc.qelim_aux" in
+  res
 
 (** integer quantifier elimination of formulas with integers and booleans *)
 let qelim fvs t =
@@ -620,14 +633,13 @@ let simplify2 bvs t =
 *)
 
 let simplify_aux bvs bs (Hc(popt, afs, t)) =
-  let debug = false && !Global.debug in
-  let _ = Global.log_begin "HornClauseEc.simplify" in
+  let _ = Global.log_begin ~disable:true "HornClauseEc.simplify" in
   let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," pr_elem (Hc(popt, afs, t))) in
   let shared = ref (List.length afs) in
   let bvs = bvs @ (match popt with None -> [] | Some(_, xtys) -> List.map fst xtys) in
   let bs, afs, t =
-    let _ = if debug then Global.log_begin "simplifying formula" in
-    let _ = if debug then Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in
+    let _ = Global.log_begin "simplifying formula" in
+    let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in
     let afs, t =
       let sub, t =
         Formula.extract_from
@@ -636,7 +648,7 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
       in
       List.map (Atom.subst sub) afs, Term.subst sub t
     in
-    let _ = if debug then Global.log (fun () -> Format.printf "a:@,  @[<v>%a@]@," Term.pr t) in
+    let _ = Global.log (fun () -> Format.printf "a:@,  @[<v>%a@]@," Term.pr t) in
     let t =
       let xs = List.unique (bvs @ Util.concat_map Atom.fvs afs) in
       simplify2 xs t
@@ -644,7 +656,7 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
       let t = Term.simplify (AtpInterface.qelim_fes (diff bvs (fvs afs)) t) in
       *)
     in
-    let _ = if debug then Global.log (fun () -> Format.printf "b:@,  @[<v>%a@]@," Term.pr t) in
+    let _ = Global.log (fun () -> Format.printf "b:@,  @[<v>%a@]@," Term.pr t) in
     let afs, t =
       (*let rec aux ts1 ts2 =
         match ts1 with
@@ -673,28 +685,28 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
               sub))
       in
       let afs0 = afs(*List.map (Atom.subst (TypSubst.fun_of sub)) afs*) in
-      let _ = if debug then Format.printf "!a:%a@," Term.pr t0 in
+      let _ = Global.log (fun () -> Format.printf "!a:%a@," Term.pr t0) in
       afs0,
       if Term.fvs_ty SimType.Bool t0 SimType.Bool = [] then
         let t' = Formula.elim_eq_neq_boolean t0 in
-        let _ = if debug then Format.printf "!b:%a@," Term.pr t' in
+        let _ = Global.log (fun () -> Format.printf "!b:%a@," Term.pr t') in
         let t' = Formula.elim_imply_iff t' in
-        let _ = if debug then Format.printf "!c:%a@," Term.pr t' in
+        let _ = Global.log (fun () -> Format.printf "!c:%a@," Term.pr t') in
         if t0 <> t' then
           let t' = Formula.of_dnf (Formula.dnf t') in
-          let _ = if debug then Format.printf "!d:%a@," Term.pr t' in
+          let _ = Global.log (fun () -> Format.printf "!d:%a@," Term.pr t') in
           let t' = Formula.simplify t' in
-          let _ = if debug then Format.printf "boolean equalities eliminated:@,  @[<v>before: %a@,after: %a@]@," Term.pr t Term.pr t' in
+          let _ = Global.log (fun () -> Format.printf "boolean equalities eliminated:@,  @[<v>before: %a@,after: %a@]@," Term.pr t Term.pr t') in
           t'
         else
           t0
       else
         t0
     in
-    let _ = if debug then Global.log (fun () -> Format.printf "c:@,  @[<v>%a@]@," Term.pr t) in
+    let _ = Global.log (fun () -> Format.printf "c:@,  @[<v>%a@]@," Term.pr t) in
     let afs, t = subst_formula (fun x -> List.mem x bvs || Var.is_coeff x) afs t in
-    let _ = if debug then Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr t) in
-    let _ = if debug then Global.log_end "simplifying formula" in
+    let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr t) in
+    let _ = Global.log_end "simplifying formula" in
     let afs = List.map Atom.simplify afs in
     let rec unique bs afs =
       match bs, afs with

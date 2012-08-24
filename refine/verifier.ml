@@ -58,20 +58,25 @@ let solve_bv_aux t =
 let masked_params : Var.t list ref = ref []
 
 let solve_bv t =
-		try
-		  if !Global.disable_parameter_inference_heuristics then
-				  raise Cvc3Interface.Unknown
-				else
-				  let masked_params = Util.inter !masked_params (Term.coeffs t) in
-						if masked_params = [] then
+  let _ = Global.log_begin "Verifier.solve_bv" in
+  let sol =
+				try
+				  if !Global.disable_parameter_inference_heuristics then
 						  raise Cvc3Interface.Unknown
 						else
-								let _ = if !Global.debug then Format.printf "masked_params: %a@," Var.pr_list masked_params in
-								let coeffs = List.map (fun c -> c, 0) masked_params in
-								let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
-								coeffs @ solve_bv_aux t'
-		with Cvc3Interface.Unknown ->
-  		solve_bv_aux t
+						  let masked_params = Util.inter !masked_params (Term.coeffs t) in
+								if masked_params = [] then
+								  raise Cvc3Interface.Unknown
+								else
+										let _ = Global.log (fun () -> Format.printf "masked_params: %a@," Var.pr_list masked_params) in
+										let coeffs = List.map (fun c -> c, 0) masked_params in
+										let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
+										coeffs @ solve_bv_aux t'
+				with Cvc3Interface.Unknown ->
+		  		solve_bv_aux t
+  in
+  let _ = Global.log_end "Verifier.solve_bv" in
+  sol
 
 let solve_constrs t =
 		if not !Global.use_bit_vector then
@@ -292,13 +297,13 @@ let infer_abst_type fs prog etrs =
 		  match Global.refine with
 		    `RefType ->
 		      let env = infer_ref_types fs prog etrs in
-		      let _ = Format.printf "refinement types:@,  %a@," RefType.pr_env env in
+		      let _ = if !Global.print_log then Format.printf "refinement types:@,  %a@," RefType.pr_env env in
 		      List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env
 		  (*| `IntType ->
 		      let env = infer_int_types prog etrs in
-		      let _ = Format.printf "interaction types:@,  %a@," IntType.pr_env env in
+		      let _ = if !Global.print_log then Format.printf "interaction types:@,  %a@," IntType.pr_env env in
 		      let env = List.map (fun (f, sty) -> f, RefType.of_interaction_type sty) env in
-		      let _ = Format.printf "refinement types:@,  %a@," RefType.pr_env env in
+		      let _ = if !Global.print_log then Format.printf "refinement types:@,  %a@," RefType.pr_env env in
 		      List.map (fun (f, sty) -> f, AbsType.of_refinement_type sty) env
 		      (*
 		      List.map (fun (f, sty) -> f, AbsType.of_interaction_type f sty) env
@@ -327,7 +332,7 @@ let refine fs cexs prog =
 		    in
 		    let _ = Global.log (fun () -> Format.printf "error traces:@,  @[<v>%a@]@," (Util.pr_list Trace.pr "@,") etrs) in
 		    let env = try infer_abst_type fs prog etrs with HcSolve.NoSolution -> raise FailedToRefineTypes in
-		    let _ = Format.printf "abstraction types:@,  %a@," AbsType.pr_env env in
+		    let _ = if !Global.print_log then Format.printf "abstraction types:@,  %a@," AbsType.pr_env env in
 		    env
 		  with Util.NotImplemented s ->
 		    let _ = Format.printf "not implemented in %s@," s in
@@ -360,14 +365,14 @@ let verify fs prog =
 		      match Global.refine with
 		        `RefType ->
 		          let env = infer_ref_types fs prog etrs(*etrs'*) in
-		          let _ = Format.printf "refinement types:@,  %a@," RefType.pr_env env in
+		          let _ = if !Global.print_log then Format.printf "refinement types:@,  %a@," RefType.pr_env env in
 		          if RefTypeCheck.check_prog env prog then
 		            Format.printf "@,The program is safe@,"
 		          else
 		            loop etrs (i + 1)
 		      (*| `IntType ->
 		          let env = infer_int_types prog etrs(*etrs'*) in
-		          let _ = Format.printf "interaction types:@,  %a@," IntType.pr_env env in
+		          let _ = if !Global.print_log then Format.printf "interaction types:@,  %a@," IntType.pr_env env in
 		          if IntTypeCheck.check_prog env prog then
 		            Format.printf "@,The program is safe@,"
 		          else

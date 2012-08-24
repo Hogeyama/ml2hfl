@@ -1,5 +1,6 @@
 (** Global variables *)
 
+let print_log = ref true
 let debug = ref true
 let debug_level = ref 6
 
@@ -11,14 +12,17 @@ let timer () =
     (en.Unix.tms_cutime -. st.Unix.tms_cutime))
 
 let current_log_level = ref 0
-let log_begin str =
+let log_disabled = ref ""
+let log_begin ?(disable = false) str =
+  let _ = log_disabled := if disable then str else "" in
   let _ = current_log_level := !current_log_level + 1 in
-  if !debug && !debug_level >= !current_log_level then Format.printf "begin %s[%d]@,  @[<v>" str !current_log_level
+  if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then Format.printf "begin %s[%d]@,  @[<v>" str !current_log_level
 let log f =
-  if !debug && !debug_level >= !current_log_level then f ()
+  if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then f ()
 let log_end str =
-  let _ = if !debug && !debug_level >= !current_log_level then Format.printf "@]@,end %s[%d]@," str !current_log_level in
-  current_log_level := !current_log_level - 1
+  let _ = if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then Format.printf "@]@,end %s[%d]@," str !current_log_level in
+  let _ = current_log_level := !current_log_level - 1 in
+  if !log_disabled = str then log_disabled := ""
 
 (** {6 Options for abstraction type inference} *)
 let refine = (*`IntType *) `RefType

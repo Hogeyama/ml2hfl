@@ -42,7 +42,7 @@ and bv_of aty =
       let _ = Format.printf "%a@." pr aty in
       assert false
 
-let pr_bind ppf (f, sty) = Format.fprintf ppf "%a:%a" Var.pr f pr sty
+let pr_bind ppf (f, sty) = Format.fprintf ppf "%a: %a" Var.pr f pr sty
 let pr_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_bind "@ ") env
 
 let rec subst sub aty =

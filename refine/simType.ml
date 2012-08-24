@@ -42,8 +42,8 @@ let rec pr ppf ty =
       let _ = if is_base ty1 then Format.fprintf ppf "@[<hov>%a" pr ty1 else Format.fprintf ppf "@[<hov>(%a)" pr ty1 in
       Format.fprintf ppf "@ ->@ %a@]" pr ty2
 
-let pr_bind ppf (x, ty) = Format.fprintf ppf "%a:%a" Var.pr x pr ty
-let pr_bind2 ppf (x, ty) = Format.fprintf ppf "%a:%a" Idnt.pr x pr ty
+let pr_bind ppf (x, ty) = Format.fprintf ppf "%a: %a" Var.pr x pr ty
+let pr_bind2 ppf (x, ty) = Format.fprintf ppf "%a: %a" Idnt.pr x pr ty
 let pr_env ppf env = Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_bind ",") env
 
 let equiv ty1 ty2 = ty1 = ty2
