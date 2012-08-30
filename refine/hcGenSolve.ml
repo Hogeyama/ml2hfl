@@ -4,7 +4,48 @@ open HornClause
 open HcSolve
 
 let template_based_constraint_solving_interpolate pids xtys lbs nubs =
-  assert false
+  let _ = Global.log_begin "template_based_constraint_solving_interpolate" in
+  let lb = Formula.bor lbs in
+  let nub = Formula.bor nubs in
+  let _ = Global.log (fun () -> Format.printf "lb:%a@,nub:%a@," Term.pr lb Term.pr nub) in
+		let sol =
+		  let rec loop num_of_conjuncts =
+				  if num_of_conjuncts > 2 then
+						  raise NonLinConstrSolve.Unknown
+						else
+						  try
+				      let interp = Formula.band (Util.unfold (fun i -> if i < num_of_conjuncts then Some(NonLinConstrSolve.gen_template xtys, i + 1) else None) 0) in
+				      let _ = Global.log (fun () -> Format.printf "interp:%a@," Term.pr interp) in
+				      (* find substitution s for coefficients such that: lb => s(interp) /\ s(interp) => not nub *)
+				      let c = Formula.bor [Formula.band [lb; Formula.bnot interp]; Formula.band [interp; nub]] in
+				    		let coeffs =
+								    NonLinConstrSolve.solve_constrs [] [] (Formula.band (NonLinConstrSolve.gen_coeff_constrs c))
+										in
+				    		let _ = Global.log (fun () -> Format.printf "solutions:@,  %a@," NonLinConstrSolve.pr_coeffs coeffs) in
+										let interp = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) interp) in
+				      let _ = Global.log (fun () -> Format.printf "interp:%a@," Term.pr interp) in
+										List.map (fun pid -> pid, (xtys, interp)) pids
+								with NonLinConstrSolve.Unknown ->
+								  loop (num_of_conjuncts + 1)
+				in
+				try
+				  loop 1
+ 			with NonLinConstrSolve.Unknown ->
+				  Util.map3
+				    (fun pid lb nub ->
+				      let interp =
+				        try
+				          CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
+				        with CsisatInterface.NoInterpolant ->
+				          raise NoSolution
+				        | CsisatInterface.Unknown ->
+				          raise (Util.NotImplemented "integer interpolation")
+				      in
+				      pid, (xtys, interp))
+				    pids lbs nubs
+		in
+  let _ = Global.log_end "template_based_constraint_solving_interpolate" in
+  sol
 
 let convex_hull_interpolate pids xtys lbs nubs =
   let _ = Global.log_begin "convex_hull_interpolate" in
@@ -14,29 +55,29 @@ let convex_hull_interpolate pids xtys lbs nubs =
   let lb' = ApronInterface.convex_hull lb in
   let nub'= ApronInterface.convex_hull nub in
   let _ = Global.log (fun () -> Format.printf "lb':%a@,nub':%a@," Term.pr lb' Term.pr nub') in
-  let res =
+  let sol =
     try
       let interp = CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub' in
       List.map (fun pid -> pid, (xtys, interp)) pids
     with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
-      Util.map3
-        (fun pid lb nub ->
-          let interp =
-            try
-              CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub
-            with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
-              try
-                CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
-              with CsisatInterface.NoInterpolant ->
-                raise NoSolution
-              | CsisatInterface.Unknown ->
-                raise (Util.NotImplemented "integer interpolation")
-          in
-          pid, (xtys, interp))
-        pids lbs nubs
+				  Util.map3
+				    (fun pid lb nub ->
+				      let interp =
+				        try
+				          CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub
+				        with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
+				          try
+				            CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
+				          with CsisatInterface.NoInterpolant ->
+				            raise NoSolution
+				          | CsisatInterface.Unknown ->
+				            raise (Util.NotImplemented "integer interpolation")
+				      in
+				      pid, (xtys, interp))
+				    pids lbs nubs
   in
   let _ = Global.log_end "convex_hull_interpolate" in
-  res
+  sol
 
 
 

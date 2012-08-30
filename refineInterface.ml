@@ -82,10 +82,10 @@ let rec inv_term t =
 
 let conv_event e = (***)
   match e with
-      Event(x) ->
-        assert (x = "fail");
-        Term.Const([], Const.Event(Idnt.make x))
-    | Branch(_) -> assert false
+    Event(x) ->
+      assert (x = "fail");
+      Term.Const([], Const.Event(Idnt.make x))
+  | Branch(_) -> assert false
 
 let conv_fdef (f, args, guard, events, body) =
   { Fdef.attr = [];
@@ -127,7 +127,7 @@ let verify fs (*cexs*) prog =
   Format.printf "END verification@,@]"
 
 let rec inv_abst_type aty =
-		match aty with
+  match aty with
     AbsType.Base(AbsType.Unit, x, ts) ->
       let x = Var.string_of x in
       TBase(TUnit, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
@@ -157,7 +157,7 @@ let infer flags labeled cexs prog =
   let cexs = if !Flag.accumulate_predicats then [List.hd cexs] else cexs in
   let prog = conv_prog prog in
   let env = Verifier.refine labeled cexs prog in
-		let _ = Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Verifier.elapsed_time in
+  let _ = Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Verifier.elapsed_time in
   List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty | _ -> assert false)
@@ -178,58 +178,58 @@ let new_params recursive bvs exs =
   Util.unfold
     (fun i ->
        if i < !Global.number_of_extra_params then
-	 let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
-	 let ps =
-           Util.unfold
-             (fun i ->
-                if i < (List.length bvs' + if !Global.enable_coeff_const then 1 else 0) then
-                  Some(Id.new_var Flag.extpar_header Type.TInt, i + 1)
-                else
-                  None)
-             0
-         in
-	 let _ = params := !params @ ps in
-	 let xs =
-	   match recursive with
-	       None -> []
-	     | Some(xs) -> xs
-	 in
-	 let ts =
-	   let _ =
-	     if !Global.enable_coeff_const (*&& recursive = None*) then
-	       Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string (List.hd ps))) :: !Verifier.masked_params
-	   in
-             (if !Global.enable_coeff_const then [Syntax.make_var (List.hd ps)] else []) @
-(*
-	       let b = recursive <> None && xs = [] && Util.subset bvs' exs in
-*)
-		 List.map2
-		   (fun p x ->
-		      let _ =
-			(*if b then
-			  ()
-			  else*) if recursive <> None then
-			  (if xs = [] then
-			     (if List.mem x exs then
-      				Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params (*this is necessary for l-length_cps-append.ml*))
-			   else if not (List.mem x xs) then
-    			     Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params)
-			    (* how to deal with non-recursive function calls here? *)
-			    (*else
-			      if List.mem x exs then
-      			      Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params*)
-		      in
-			Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
-		   (if !Global.enable_coeff_const then List.tl ps else ps)
-		   bvs'
-         in
-	   if ts = [] then
-             Some(Syntax.make_int 0, i + 1)
-	   else
-             Some(List.fold_left Syntax.make_add (List.hd ts) (List.tl ts), i + 1)
-       else
-         None)
-    0
+  let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
+  let ps =
+    Util.unfold
+      (fun i ->
+         if i < (List.length bvs' + if !Global.enable_coeff_const then 1 else 0) then
+           Some(Id.new_var Flag.extpar_header Type.TInt, i + 1)
+         else
+           None)
+      0
+  in
+  let _ = params := !params @ ps in
+  let xs =
+    match recursive with
+        None -> []
+      | Some(xs) -> xs
+  in
+  let ts =
+    let _ =
+      if !Global.enable_coeff_const (*&& recursive = None*) then
+        Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string (List.hd ps))) :: !Verifier.masked_params
+    in
+    (if !Global.enable_coeff_const then [Syntax.make_var (List.hd ps)] else []) @
+    (*
+    let b = recursive <> None && xs = [] && Util.subset bvs' exs in
+    *)
+    List.map2
+      (fun p x ->
+        let _ =
+          (*if b then
+            ()
+          else*) if recursive <> None then
+          (if xs = [] then
+             (if List.mem x exs then
+               Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params (*this is necessary for l-length_cps-append.ml*))
+          else if not (List.mem x xs) then
+            Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params)
+           (* how to deal with non-recursive function calls here? *)
+          (*else
+            if List.mem x exs then
+              Verifier.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !Verifier.masked_params*)
+        in
+        Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
+      (if !Global.enable_coeff_const then List.tl ps else ps)
+      bvs'
+  in
+  if ts = [] then
+    Some(Syntax.make_int 0, i + 1)
+  else
+    Some(List.fold_left Syntax.make_add (List.hd ts) (List.tl ts), i + 1)
+  else
+    None)
+  0
 
 let rec trans_type typ =
   let xs, tyret = Type.decomp_tfun typ in
@@ -240,13 +240,13 @@ let rec trans_type typ =
           let x' = trans_id x in
           (match x'.Id.typ with
             Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-				          Util.unfold
-				            (fun i ->
-				              if i < !Global.number_of_extra_params then
-				                Some(Id.new_var "ex" Type.TInt, i + 1)
-				              else
-				                None)
-				            0
+              Util.unfold
+                (fun i ->
+                  if i < !Global.number_of_extra_params then
+                    Some(Id.new_var "ex" Type.TInt, i + 1)
+                  else
+                    None)
+                0
           | _ ->
               []) @ [x'])
         xs)
@@ -262,161 +262,157 @@ let insert_extra_param t =
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
-	  Syntax.Unit -> Syntax.Unit
-	| Syntax.True -> Syntax.True
-	| Syntax.False -> Syntax.False
-	| Syntax.Unknown -> Syntax.Unknown
-	| Syntax.Int n -> Syntax.Int n
-	| Syntax.RandInt b -> Syntax.RandInt b
-	| Syntax.RandValue(typ,b) -> Syntax.RandValue(typ,b)
-	| Syntax.Var y -> Syntax.Var (trans_id y)
-	| Syntax.Fun(y, t1) ->
-            let y' = trans_id y in
-            let ys =
-              match y'.Id.typ with
-                  Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-		    Util.unfold
-		      (fun i ->
-			 if i < !Global.number_of_extra_params then
-			   Some(Id.new_var "ex" Type.TInt, i + 1)
-			 else
-			   None)
-		      0
-                | _ ->
-                    []
+        Syntax.Unit -> Syntax.Unit
+      | Syntax.True -> Syntax.True
+      | Syntax.False -> Syntax.False
+      | Syntax.Unknown -> Syntax.Unknown
+      | Syntax.Int n -> Syntax.Int n
+      | Syntax.RandInt b -> Syntax.RandInt b
+      | Syntax.RandValue(typ,b) -> Syntax.RandValue(typ,b)
+      | Syntax.Var y -> Syntax.Var (trans_id y)
+      | Syntax.Fun(y, t1) ->
+          let y' = trans_id y in
+          let ys =
+            match y'.Id.typ with
+              Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
+                Util.unfold
+                  (fun i ->
+                    if i < !Global.number_of_extra_params then
+                      Some(Id.new_var "ex" Type.TInt, i + 1)
+                    else
+                      None)
+                  0
+            | _ ->
+                []
+          in
+          let ys' = ys @ [y'] in
+          let rfs = match rfs with [] -> assert false | (f, xxs, recursive)::rfs' -> (f, xxs @ [y', ys], recursive)::rfs' in
+          let f, _ =
+            List.fold_left
+              (fun (f, ty) y -> (fun t -> f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
+              ((fun t -> t), trans_type t.Syntax.typ)
+              ys'
+          in
+          let bvs, exs =
+            (if true then
+              bvs @ ys'
+            else
+              bvs @ [y']),
+              exs @ ys
+          in
+          (f (aux rfs bvs exs t1)).Syntax.desc
+      | Syntax.App(t1, ts) ->
+          let _ = match t1.Syntax.desc with Syntax.App(_, _) -> assert false | _ -> () in
+          let t1' = aux rfs bvs exs t1 in
+          let recursive, xss =
+            match t1'.Syntax.desc with
+              Syntax.Var(f) ->
+                (try
+                  let _, xxss, _ = List.find (fun (f', _, recursive) -> recursive && Id.same f' f) rfs in
+                  let _ =
+                    if debug then
+                      Format.printf "rec: %a@." Syntax.pp_print_term t1'
+                  in
+                  let xxss = List.take (List.length ts) xxss in
+                  true,
+                  List.map2
+                    (fun t (x, xs) ->
+                      match t.Syntax.typ with
+                        Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
+                          (match t.Syntax.desc with Syntax.Var(y) when Id.same x y ->
+                            let _ = if debug then Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs | _ -> [])
+                      | _ -> [])
+                    ts xxss
+                with Not_found ->
+                  (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
+                  let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
+                  false, [])
+            | _ ->
+                let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
+                false, []
+          in
+          let ts' = List.map (aux rfs bvs exs) ts in
+          let tss =
+            List.mapi
+             (fun i t ->
+               match t.Syntax.typ with
+                 Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
+                   new_params (if recursive then Some(List.nth xss i) else None) bvs exs
+               | _ -> [])
+             ts'
+          in
+          let ts'' = List.flatten (List.map2 (fun ts t -> ts @ [t]) tss ts') in
+        Syntax.App(t1', ts'')
+      | Syntax.If(t1, t2, t3) -> Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
+      | Syntax.Branch(t1, t2) -> Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | Syntax.Let(flag, bindings, t2) ->
+          let bvs' = bvs @ (if flag = Syntax.Nonrecursive then [] else List.map Util.fst3 bindings) in
+          let aux' (f,xs,t) =
+            let f' = trans_id f in
+            let xs' = List.map trans_id xs in
+
+            let xss =
+              List.map
+                (fun x ->
+                   match x.Id.typ with
+                     Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
+                       Util.unfold
+                         (fun i ->
+                           if i < !Global.number_of_extra_params then
+                             Some(Id.new_var "ex" Type.TInt, i + 1)
+                           else
+                             None)
+                         0
+                   | _ ->
+                       [])
+                xs'
             in
-	    let ys' = ys @ [y'] in
-	    let rfs = match rfs with [] -> assert false | (f, xxs, recursive)::rfs' -> (f, xxs @ [y', ys], recursive)::rfs' in
-	    let f, _ =
-	      List.fold_left
-		(fun (f, ty) y -> (fun t -> f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
-		((fun t -> t), trans_type t.Syntax.typ)
-		ys'
-	    in
-	    let bvs, exs =
-	      (if true then
-		 bvs @ ys'
-	       else
-		 bvs @ [y']),
-	      exs @ ys
-	    in
-	      (f (aux rfs bvs exs t1)).Syntax.desc
-
-	| Syntax.App(t1, ts) ->
-	    let _ = match t1.Syntax.desc with Syntax.App(_, _) -> assert false | _ -> () in
-	    let t1' = aux rfs bvs exs t1 in
-	    let recursive, xss =
-	      match t1'.Syntax.desc with
-		  Syntax.Var(f) ->
-		    (try
-		       let _, xxss, _ = List.find (fun (f', _, recursive) -> recursive && Id.same f' f) rfs in
-		       let _ =
-			 if debug then
-			   Format.printf "rec: %a@." Syntax.pp_print_term t1'
-		       in
-		       let xxss = List.take (List.length ts) xxss in
-			 true,
-		       List.map2
-			 (fun t (x, xs) ->
-			    match t.Syntax.typ with
-				Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-				  (match t.Syntax.desc with Syntax.Var(y) when Id.same x y ->
-				     let _ = if debug then Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs | _ -> [])
-			      | _ -> [])
-			 ts xxss
-		     with Not_found ->
-		       (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
-		       let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
-			 false, [])
-		| _ ->
-      		    let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
-		      false, []
-	    in
-	    let ts' = List.map (aux rfs bvs exs) ts in
-	    let tss =
-	      List.mapi
-		(fun i t ->
-		   match t.Syntax.typ with
-		       Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-			 new_params (if recursive then Some(List.nth xss i) else None) bvs exs
-		     | _ -> [])
-		ts'
-	    in
-	    let ts'' = List.flatten (List.map2 (fun ts t -> ts @ [t]) tss ts') in
-	      Syntax.App(t1', ts'')
-
-	| Syntax.If(t1, t2, t3) -> Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
-	| Syntax.Branch(t1, t2) -> Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
-
-	| Syntax.Let(flag, bindings, t2) ->
-	    let bvs' = bvs @ (if flag = Syntax.Nonrecursive then [] else List.map Util.fst3 bindings) in
-	    let aux' (f,xs,t) =
-              let f' = trans_id f in
-              let xs' = List.map trans_id xs in
-
-              let xss =
-                List.map
-                  (fun x ->
-                     match x.Id.typ with
-                         Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-			   Util.unfold
-			     (fun i ->
-				if i < !Global.number_of_extra_params then
-				  Some(Id.new_var "ex" Type.TInt, i + 1)
-				else
-				  None)
-			     0
-                       | _ ->
-                           [])
-                  xs'
-              in
-	      let xs'' = List.flatten (List.map2 (fun xs x -> xs @ [x]) xss xs') in
-	      let bvs, exs =
-		(if true then
-		   bvs' @ xs''
-		 else
-		   bvs' @ xs'),
-		exs @ List.flatten xss
-	      in
-  	      let rfs' = (f, List.map2 (fun xs x -> x, xs) xss xs', flag <> Syntax.Nonrecursive) :: rfs in
-		(*mutual recursion and binding partial applied functions are not supported
-		  let rfs' = (if flag = Flag.Nonrecursive then [] else List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
-		*)
-		f', xs'', aux rfs' bvs exs t
-	    in
-            let bindings' = List.map aux' bindings in
-              Syntax.Let(flag, bindings', aux rfs (bvs @ List.map Util.fst3 bindings') exs t2)
-
-	| Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
-	| Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
-	| Syntax.Event(s,b) -> Syntax.Event(s,b)
-	| Syntax.Record fields -> Syntax.Record (List.map (fun (f,(s,t1)) -> f,(s,aux rfs bvs exs t1)) fields)
-	| Syntax.Proj(i,s,f,t1) -> Syntax.Proj(i,s,f,aux rfs bvs exs t1)
-	| Syntax.SetField(n,i,s,f,t1,t2) -> Syntax.SetField(n,i,s,f,aux rfs bvs exs t1,aux rfs bvs exs t2)
-	| Syntax.Nil -> Syntax.Nil
-	| Syntax.Cons(t1,t2) -> Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)
-	| Syntax.Constr(s,ts) -> Syntax.Constr(s, List.map (aux rfs bvs exs) ts)
-	| Syntax.Match(t1,pats) ->
-	    let aux' (pat, cond, t) =
-              (* ToDo: need to update pat!? *)
-              pat,
-	      aux rfs (bvs @ Syntax.get_vars_pat pat) exs cond,
-	      aux rfs (bvs @ Syntax.get_vars_pat pat) exs t
+            let xs'' = List.flatten (List.map2 (fun xs x -> xs @ [x]) xss xs') in
+            let bvs, exs =
+              (if true then
+                 bvs' @ xs''
+               else
+                 bvs' @ xs'),
+              exs @ List.flatten xss
             in
-	      Syntax.Match(aux rfs bvs exs t1, List.map aux' pats)
-	| Syntax.Raise t -> Syntax.Raise (aux rfs bvs exs t)
-	| Syntax.TryWith(t1,t2) -> Syntax.TryWith(aux rfs bvs exs t1, aux rfs bvs exs t2)
-	| Syntax.Pair(t1,t2) -> Syntax.Pair(aux rfs bvs exs t1, aux rfs bvs exs t2)
-	| Syntax.Fst t -> Syntax.Fst(aux rfs bvs exs t)
-	| Syntax.Snd t -> Syntax.Snd(aux rfs bvs exs t)
-	| Syntax.Bottom -> Syntax.Bottom
-        | Syntax.Label(info,t) -> Syntax.Label(info, aux rfs bvs exs t)
+            let rfs' = (f, List.map2 (fun xs x -> x, xs) xss xs', flag <> Syntax.Nonrecursive) :: rfs in
+            (* mutual recursion and binding partial applied functions are not supported
+              let rfs' = (if flag = Flag.Nonrecursive then [] else List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
+             *)
+            f', xs'', aux rfs' bvs exs t
+          in
+          let bindings' = List.map aux' bindings in
+          Syntax.Let(flag, bindings', aux rfs (bvs @ List.map Util.fst3 bindings') exs t2)
+      | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
+      | Syntax.Event(s,b) -> Syntax.Event(s,b)
+      | Syntax.Record fields -> Syntax.Record (List.map (fun (f,(s,t1)) -> f,(s,aux rfs bvs exs t1)) fields)
+      | Syntax.Proj(i,s,f,t1) -> Syntax.Proj(i,s,f,aux rfs bvs exs t1)
+      | Syntax.SetField(n,i,s,f,t1,t2) -> Syntax.SetField(n,i,s,f,aux rfs bvs exs t1,aux rfs bvs exs t2)
+      | Syntax.Nil -> Syntax.Nil
+      | Syntax.Cons(t1,t2) -> Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | Syntax.Constr(s,ts) -> Syntax.Constr(s, List.map (aux rfs bvs exs) ts)
+      | Syntax.Match(t1,pats) ->
+          let aux' (pat, cond, t) =
+            (* ToDo: need to update pat!? *)
+            pat,
+            aux rfs (bvs @ Syntax.get_vars_pat pat) exs cond,
+            aux rfs (bvs @ Syntax.get_vars_pat pat) exs t
+          in
+          Syntax.Match(aux rfs bvs exs t1, List.map aux' pats)
+      | Syntax.Raise t -> Syntax.Raise (aux rfs bvs exs t)
+      | Syntax.TryWith(t1,t2) -> Syntax.TryWith(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | Syntax.Pair(t1,t2) -> Syntax.Pair(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | Syntax.Fst t -> Syntax.Fst(aux rfs bvs exs t)
+      | Syntax.Snd t -> Syntax.Snd(aux rfs bvs exs t)
+      | Syntax.Bottom -> Syntax.Bottom
+      | Syntax.Label(info,t) -> Syntax.Label(info, aux rfs bvs exs t)
     in
-      {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
+    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
   in
   let res = aux [] [] [] t in
   let _ = add_time tmp Flag.time_parameter_inference in
-    res
+  res
 
 let instantiate_param (typs, fdefs, main as prog) =
   let tmp = get_time() in

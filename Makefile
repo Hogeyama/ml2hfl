@@ -72,7 +72,7 @@ REFINE_CMO = enum.cmo extList.cmo extString.cmo \
 	term.cmo linArith.cmo nonLinArith.cmo parLinArith.cmo \
 	typSubst.cmo formula.cmo fes.cmo fdef.cmo prog.cmo \
 	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo apronInterface.cmo \
-	farkas.cmo \
+	farkas.cmo nonLinConstrSolve.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \

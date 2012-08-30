@@ -11,106 +11,9 @@ let init_coeffs prog =
   let _ = Format.printf "parameters: %a@," Var.pr_list cs in
 		ext_coeffs := List.map (fun c -> c, 0) cs
 
-let pr_coeffs ppf coeffs =
-  let pr_aux ppf (c, n) = Format.fprintf ppf "%a = %d" Var.pr c n in
-		Format.fprintf ppf "@[<v>%a@]" (Util.pr_list pr_aux "@,") coeffs
-
-let elim_univ_quantifiers t =
-  let _ = Global.log_begin "elim_univ_quantifiers" in
-		let ts = Farkas.farkas t in
-  let ts =
-				List.map
-					 (fun t ->
-					   let _ = Global.log (fun () -> Format.printf "new constraint on coefficients:@,  @[<v>%a@]@," Term.pr t) in
-					   if !Global.use_bit_vector then
-					     t
-					   else
-	         let t =
-	           try
-									     let t = Formula.simplify (Formula.linearize t) in
-									     let _ = Format.printf "linearized constraint on coefficients:@,  @[<v>%a@]@," Term.pr t in
-			           t
-	           with Invalid_argument _ ->
-	             t
-	         in
-					     let qft =
-					       if Formula.is_linear t then
-					         Formula.simplify (AtpInterface.integer_qelim t)
-					       else
-					         Formula.simplify (AtpInterface.real_qelim t)
-					     in
-					     let _ = Format.printf "quantifier eliminated constraint on coefficients:@,  @[<v>%a@]@," Term.pr qft in
-					     qft)
-					 ts
-		in
-  let _ = Global.log_end "elim_univ_quantifiers" in
-  ts
-
 exception FailedToRefineExtraParameters
 
-let solve_bv_aux t =
-  let ibs = List.init !Global.bits_threshold (fun i -> i + 1, true) @ List.init (!Global.bits_threshold - 1(*???*)) (fun i -> i + 1, false) in
-		try
-    Util.find_map (fun (bit, only_pos) -> try Cvc3Interface.solve_bv only_pos bit t with Cvc3Interface.Unknown -> raise Not_found) ibs
-		with Not_found ->
-    raise Cvc3Interface.Unknown
-
 let masked_params : Var.t list ref = ref []
-
-let solve_bv t =
-  let _ = Global.log_begin "Verifier.solve_bv" in
-  let sol =
-				try
-				  if !Global.disable_parameter_inference_heuristics then
-						  raise Cvc3Interface.Unknown
-						else
-						  let masked_params = Util.inter !masked_params (Term.coeffs t) in
-								if masked_params = [] then
-								  raise Cvc3Interface.Unknown
-								else
-										let _ = Global.log (fun () -> Format.printf "masked_params: %a@," Var.pr_list masked_params) in
-										let coeffs = List.map (fun c -> c, 0) masked_params in
-										let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
-										coeffs @ solve_bv_aux t'
-				with Cvc3Interface.Unknown ->
-		  		solve_bv_aux t
-  in
-  let _ = Global.log_end "Verifier.solve_bv" in
-  sol
-
-let solve_constrs t =
-		if not !Global.use_bit_vector then
-				List.filter (fun (c, _) -> Var.is_coeff c) (Cvc3Interface.solve t)
-  else
-				let changed = ref false in
-				let t' =
-      Formula.simplify
-        (Term.subst
-          (fun x ->
-            let n = List.assoc x !ext_coeffs in
-            if n = 0 then
-              raise Not_found
-            else (* reuse old solution if possible *)
-														let _ = changed := true in
-              Term.tint (n))
-          t)
-    in
-				let _ = Global.log (fun () -> Format.printf "solving a constraint on coefficients (reusing old solution):@,  @[<v>%a@]@," Term.pr t') in
-				try
-						List.filter (fun (c, _) -> Var.is_coeff c) (solve_bv t')
-				with Cvc3Interface.Unknown ->
-						if not !changed then
-								raise FailedToRefineExtraParameters
-						else
-						  if true then
-  								raise FailedToRefineExtraParameters
-								else
-								  (*a-test-update fails*)
-										let _ = Global.log (fun () -> Format.printf "solving a constraint on coefficients:@,  @[<v>%a@]@," Term.pr t) in
-										try
-		  								List.filter (fun (c, _) -> Var.is_coeff c) (solve_bv t)
-										with Cvc3Interface.Unknown ->
-										  raise FailedToRefineExtraParameters
 
 let elapsed_time = ref 0.0
 let refine_coeffs hcs =
@@ -137,15 +40,20 @@ let refine_coeffs hcs =
 		in
   let _ =
 				if b then
-					 Global.log (fun () -> Format.printf "solutions (not changed):@,  %a@," pr_coeffs !ext_coeffs)
+					 Global.log (fun () -> Format.printf "solutions (not changed):@,  %a@," NonLinConstrSolve.pr_coeffs !ext_coeffs)
 				else
 						let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
 						let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
-		    let ts = elim_univ_quantifiers t in
+		    let ts = NonLinConstrSolve.gen_coeff_constrs t in
 						let _ = ext_constrs := ts @ !ext_constrs in
-						let coeffs = solve_constrs (if not !Global.accumulate_ext_constrs then Formula.band ts else Formula.band !ext_constrs) in
+						let coeffs =
+						  try
+								  NonLinConstrSolve.solve_constrs !masked_params !ext_coeffs (if not !Global.accumulate_ext_constrs then Formula.band ts else Formula.band !ext_constrs)
+								with NonLinConstrSolve.Unknown ->
+								  raise FailedToRefineExtraParameters
+						in
 						let _ = ext_coeffs := coeffs @ List.filter (fun (c, _) -> not (List.mem_assoc c coeffs)) !ext_coeffs in
-					 Global.log (fun () -> Format.printf "solutions:@,  %a@," pr_coeffs !ext_coeffs)
+					 Global.log (fun () -> Format.printf "solutions:@,  %a@," NonLinConstrSolve.pr_coeffs !ext_coeffs)
   in
 		let _ = Cvc3Interface.close_cvc3 (); Cvc3Interface.open_cvc3 () in
 		let _ = elapsed_time := timer () in
@@ -202,7 +110,7 @@ let infer_ref_types fs prog etrs =
 						    hcs, orig_hcs
 						  else
 						    let _ = refine_coeffs hcs in
-										let _ = Format.printf "inferred extra parameters:@,  %a@," pr_coeffs !ext_coeffs in
+										let _ = Format.printf "inferred extra parameters:@,  %a@," NonLinConstrSolve.pr_coeffs !ext_coeffs in
 								  let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
 								  let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
 								  List.map (HornClauseEc.subst_hcs(*_fixed*) hcs1) hcs2,
