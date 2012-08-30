@@ -231,7 +231,7 @@ let infer_ref_types fs prog etrs =
 						  let sol =
           match !Global.predicate_discovery with
 										  Global.ConvexHull -> HcGenSolve.solve true hcs
-										| Global.TemplateBasedConstrintSolving -> HcGenSolve.solve false hcs
+										| Global.TemplateBasedConstraintSolving -> HcGenSolve.solve false hcs
 										| Global.Backward -> HcBwSolve.solve hcs
 								in
 								let _ =

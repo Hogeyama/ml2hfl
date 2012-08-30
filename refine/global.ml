@@ -29,7 +29,7 @@ let refine = (*`IntType *) `RefType
 let extract_atomic_predicates = ref false
 
 (** {6 Options for refinement type inference} *)
-type pd = Backward | ConvexHull | TemplateBasedConstrintSolving
+type pd = Backward | ConvexHull | TemplateBasedConstraintSolving
 let predicate_discovery = ref Backward
 
 let generalize_predicates_simple = ref false
