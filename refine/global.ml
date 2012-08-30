@@ -14,7 +14,7 @@ let timer () =
 let current_log_level = ref 0
 let log_disabled = ref ""
 let log_begin ?(disable = false) str =
-  let _ = log_disabled := if disable then str else "" in
+  let _ = if !log_disabled = "" && disable then log_disabled := str in
   let _ = current_log_level := !current_log_level + 1 in
   if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then Format.printf "begin %s[%d]@,  @[<v>" str !current_log_level
 let log f =
@@ -29,7 +29,7 @@ let refine = (*`IntType *) `RefType
 let extract_atomic_predicates = ref false
 
 (** {6 Options for refinement type inference} *)
-type pd = Backward | FunctionSummarization
+type pd = Backward | ConvexHull | TemplateBasedConstrintSolving
 let predicate_discovery = ref Backward
 
 let generalize_predicates_simple = ref false

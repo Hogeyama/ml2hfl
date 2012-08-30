@@ -255,7 +255,7 @@ let rec redex_of env t =
                 SimType.arity (env ff)
               with Not_found ->
                 raise Not_found (* ff is not a function name *)
-                (*(Format.printf "%a@." Var.pr ff; assert false)*)
+                (*(Format.printf "%a@," Var.pr ff; assert false)*)
             in
             if List.length args >= ar then
               let args1, args2 = List.split_nth ar args in
@@ -306,7 +306,7 @@ let rec tyfvs_ty t ty =
   | Const(a, Const.Mul), [t1; t2] ->
       tyfvs_ty t1 SimType.Int @ tyfvs_ty t2 SimType.Int
   | _->
-      let _ = Format.printf "@.%a@." pr t in
+      let _ = Format.printf "@,%a@," pr t in
       assert false
 
 let fvs_ty ty1 t ty2 =

@@ -39,7 +39,7 @@ and bv_of aty =
   match aty with
     Base(_, bv, _) -> bv
   | Fun(_, _) ->
-      let _ = Format.printf "%a@." pr aty in
+      let _ = Format.printf "%a@," pr aty in
       assert false
 
 let pr_bind ppf (f, sty) = Format.fprintf ppf "%a: %a" Var.pr f pr sty
@@ -139,8 +139,8 @@ let of_interaction_type f sty =
   let ps = [subst sty.IntType.pre; subst sty.IntType.post] in
   let ps' = List.filter (function Term.Const(_, Const.True) -> false | _ -> true) ps in
   let aty,ps'' = trans env ps' [] sty.IntType.shape in
-    if ps''<>[] then Format.printf "Cannot represent as abstraction type:@.";
-    List.iter (Format.printf "%a: %a@." Var.pr f Term.pr) ps'';
+    if ps''<>[] then Format.printf "Cannot be represented as abstraction type:@,";
+    List.iter (Format.printf "%a: %a@," Var.pr f Term.pr) ps'';
     aty
 *)
 

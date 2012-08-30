@@ -17,7 +17,7 @@ let linconstr_of env t =
       | Term.Const(_, Const.False), [] ->
           Const.EqInt, [], 1
       | _ ->
-          let _ = Format.printf "Boolean and unit variables are not supported: %a@." Term.pr t in
+          let _ = Format.printf "Boolean and unit variables are not supported: %a@," Term.pr t in
           assert false)
   in
   let expr = Apron.Linexpr1.make env in
@@ -50,7 +50,7 @@ let int_of_coeff n =
       Apron.Coeff.Scalar(s) ->
         let str = Apron.Scalar.to_string s in
 (*
-        let _ = Format.printf "%s@." str in
+        let _ = Format.printf "%s@," str in
 *)
         (int_of_float (float_of_string str))
     | _ -> assert false

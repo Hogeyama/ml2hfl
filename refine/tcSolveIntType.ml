@@ -39,13 +39,13 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
   let x, uid = fst nd.name, snd nd.name in
 		let _ =
 		  if nd.closed then
-		    Format.printf "computing a postcondition of %a:@.  @[<v>" CallId.pr nd.name
+		    Format.printf "computing a postcondition of %a:@,  @[<v>" CallId.pr nd.name
 		  else
-		    Format.printf "computing a precondition of %a:@.  @[<v>" CallId.pr nd.name
+		    Format.printf "computing a precondition of %a:@,  @[<v>" CallId.pr nd.name
 		in
   let interp =
     match !Global.predicate_discovery with
-      FunctionSummarization ->
+      ConvexHull ->
 						  let trs, ps = rec_calls_of (fst nd.name) loc in
 								let tts, tps = List.split
 								  (List.map2
@@ -74,7 +74,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 								let t1, t2 = if nd.closed then tt, tp else tp, tt in
 		      CsisatInterface.interpolate t1 t2
   in
-  let _ = Format.printf "@]@." in
+  let _ = Format.printf "@]@," in
 		if nd.closed then
 		  (match nd.ret with
 		    None -> [`Post((x, uid), interp)]
@@ -106,7 +106,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
 let summaries_of env constrs0 =
   let rec summaries_of_aux sums constrs =
 (**)
-    let _ = Format.printf "constraints:@.  %a@." pr constrs in
+    let _ = Format.printf "constraints:@,  %a@," pr constrs in
 (**)
     let sums', constrs_opt =
       try

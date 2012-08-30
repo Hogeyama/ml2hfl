@@ -22,7 +22,7 @@ let farkas t =
       (List.map
         (fun t ->
           canonize_aif
-            (try aif_of t with Invalid_argument _ -> Format.printf "%a@." Term.pr t; assert false)))
+            (try aif_of t with Invalid_argument _ -> Format.printf "%a@," Term.pr t; assert false)))
       tss
   in
   let res =

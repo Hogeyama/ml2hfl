@@ -91,7 +91,7 @@ let rec of_term t =
   | Const(_, Const.Minus), [t] ->
       minus (of_term t)
   | _ ->
-      (*let _ = Format.printf "%a@." Term.pr t in*)
+      (*let _ = Format.printf "%a@," Term.pr t in*)
       invalid_arg "NonLinArith.of_term"
 
 let term_of_pterm (n, xs) =
@@ -134,7 +134,7 @@ let rec simplify t =
   | Const(attr, c), ts ->
       apply (Const(attr, c)) (List.map simplify ts)
   | _ ->
-      let _ = Format.printf "not supported: %a@." Term.pr t in
+      let _ = Format.printf "not supported: %a@," Term.pr t in
       raise (Util.NotImplemented "NonLinArith.simplify")
 
 (** {6 Functions on parametric-linear atomic integer formulas} *)
@@ -168,7 +168,7 @@ let aif_of t =
       let pol = of_term (sub t1 t2) in
       div_gcd_aif (c, pol)
   | _ ->
-      (*let _ = Format.printf "%a@." Term.pr t in*)
+      (*let _ = Format.printf "%a@," Term.pr t in*)
       invalid_arg "NonLinArith.aif_of"
 
 let term_of_aif (c, pol) =

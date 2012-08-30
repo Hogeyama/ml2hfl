@@ -147,11 +147,11 @@ let formula_of_backward hcs =
 		          if afs = [] then
 		            t
 		          else
-		            let _ = Format.printf "%a@." pr_elem (Hc(None, afs, t)) in
+		            let _ = Format.printf "%a@," pr_elem (Hc(None, afs, t)) in
 		            assert false)
 		        (List.map (subst_hcs hcs2) hcs1)))
   in
-  let _ = Global.log_begin "formula_of_backward" in
+  let _ = Global.log_end "formula_of_backward" in
   res
 
 

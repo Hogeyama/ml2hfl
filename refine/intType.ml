@@ -171,7 +171,7 @@ let intersect_shapes shs =
 (*
 	 | [] -> assert false
 	 | _ ->
-	     let _ = Format.printf "%a@." (Util.pr_list pr_shape ":") shs in
+	     let _ = Format.printf "%a@," (Util.pr_list pr_shape ":") shs in
 	     assert false
 *)
 
@@ -199,13 +199,13 @@ let shape_env_of env fcs =
     | SimType.Fun(_, _) as ty ->
         let n = SimType.arity ty in
 								(*
-								Format.printf "%a@." Var.pr (Var.T(x, uid, n));
+								Format.printf "%a@," Var.pr (Var.T(x, uid, n));
 								*)
         make_fun_shape
           (List.init n
             (fun i ->
 														(*
-														Format.printf "%a@." Var.pr (Var.T(x, uid, i));
+														Format.printf "%a@," Var.pr (Var.T(x, uid, i));
 														*)
               intersect_shapes (shapes_of (Var.T(x, uid, i)))))
           (intersect_shapes (shapes_of (Var.T(x, uid, n))))

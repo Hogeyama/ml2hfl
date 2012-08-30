@@ -119,7 +119,7 @@ let parse s =
     match ss with
       [] -> x
     | s1::s2::ss ->
-        (try f (T(x, int_of_string s1, int_of_string s2)) ss with _ -> Format.printf "%s,%s@." s1 s2; assert false)
+        (try f (T(x, int_of_string s1, int_of_string s2)) ss with _ -> Format.printf "%s,%s@," s1 s2; assert false)
     | _ -> assert false
   in
   if String.starts_with s vheader then

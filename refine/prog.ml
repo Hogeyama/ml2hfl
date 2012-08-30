@@ -10,7 +10,7 @@ let pr ppf prog =
 let fdefs_of prog id =
   let res = List.find_all (fun fdef -> fdef.Fdef.name = id) prog.fdefs in
   if res = [] then begin
-    Format.printf "function \"%a\" not defined@." Idnt.pr id;
+    Format.printf "function \"%a\" not defined@," Idnt.pr id;
     assert false
   end else
     res
@@ -27,7 +27,7 @@ let rec type_of prog x =
           SimType.Fun(ty, _), 0 -> ty
         | SimType.Fun(_, ty), _ -> f ty (i - 1)
         | SimType.Unit, 0 | SimType.Bool, 0 | SimType.Int, 0 -> ty
-        | _, _ -> begin Format.printf "%a: %a, %d@." Var.pr x SimType.pr ty i; assert false end
+        | _, _ -> begin Format.printf "%a: %a, %d@," Var.pr x SimType.pr ty i; assert false end
       in
       f (type_of prog x) arg
 

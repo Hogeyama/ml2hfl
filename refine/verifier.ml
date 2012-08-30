@@ -230,7 +230,8 @@ let infer_ref_types fs prog etrs =
 						let sol =
 						  let sol =
           match !Global.predicate_discovery with
-										  Global.FunctionSummarization -> HcGenSolve.solve hcs
+										  Global.ConvexHull -> HcGenSolve.solve true hcs
+										| Global.TemplateBasedConstrintSolving -> HcGenSolve.solve false hcs
 										| Global.Backward -> HcBwSolve.solve hcs
 								in
 								let _ =
@@ -322,7 +323,6 @@ let refine fs cexs prog =
 		  try
 		    let _ = Global.log (fun () -> Format.printf "program:@,  %a@," Prog.pr prog) in
 		    let etrs =
-				    let cexs = [List.hd cexs](*???*) in
 				    let _ = Global.log (fun () -> List.iter (fun cex -> Format.printf "counterexample: @[<v>%s@]@," (String.concat ":" (List.map string_of_int cex))) cexs) in
 				    let rt = CompTree.init prog in
 				    let filter cts = List.filter (fun ct -> List.exists (Util.is_prefix ct.CompTree.path) cexs) cts in

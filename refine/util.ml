@@ -20,7 +20,7 @@ let gcd ns =
   let rec aux n1 n2 =
     let _ =
       if not (n1 >= 0 && n2 >= 0) then
-        let _ = Format.printf "%d, %d@." n1 n2 in
+        let _ = Format.printf "%d, %d@," n1 n2 in
         assert false
     in
     if n1 < n2 then

@@ -97,7 +97,7 @@ let rec of_term t =
   | Const(_, Const.Minus), [t] ->
       minus (of_term t)
   | _ ->
-      (*let _ = Format.printf "%a@." Term.pr t in*)
+      (*let _ = Format.printf "%a@," Term.pr t in*)
       invalid_arg "LinArith.of_term"
 
 let term_of (nxs, n) =
@@ -160,7 +160,7 @@ let rec simplify t =
   | Const(attr, c), ts ->
       apply (Const(attr, c)) (List.map simplify ts)
   | _ ->
-      let _ = Format.printf "not supported: %a@." Term.pr t in
+      let _ = Format.printf "not supported: %a@," Term.pr t in
       raise (Util.NotImplemented "LinArith.simplify")
 
 

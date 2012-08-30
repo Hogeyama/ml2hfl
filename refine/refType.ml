@@ -149,7 +149,7 @@ let env_of env sums fcs =
 			     ty
 			 | [] -> assert false (*Fun []*)
 			 | _ ->
-			     let _ = Format.printf ":%a:@." (Util.pr_list pr ":") shs in
+			     let _ = Format.printf ":%a:@," (Util.pr_list pr ":") shs in
 			     assert false
 		in
   let conv_base = function SimType.Unit -> Unit | SimType.Bool -> Bool | SimType.Int -> Int | _ -> assert false in
@@ -167,13 +167,13 @@ let env_of env sums fcs =
         (* ret is of base type *)
         let ret = merge_shapes (shapes_of (Var.T(x, uid, n))) in
 								(*
-								Format.printf "%a@." Var.pr (Var.T(x, uid, n));
+								Format.printf "%a@," Var.pr (Var.T(x, uid, n));
 								*)
         make_fun_shape
           (List.init n
             (fun i ->
 														(*
-														Format.printf "%a@." Var.pr (Var.T(x, uid, i));
+														Format.printf "%a@," Var.pr (Var.T(x, uid, i));
 														*)
               merge_shapes (shapes_of (Var.T(x, uid, i)))))
           ret

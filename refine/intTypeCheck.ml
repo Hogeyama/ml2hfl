@@ -72,7 +72,7 @@ let check_fdef cenv fdef ty =
           sh1::args, ret
       | Unit(_) | Bool(_) | Int(_) ->
           [], sh
-      | _ -> let _ = Format.printf "%a@." pr_shape sh in assert false
+      | _ -> let _ = Format.printf "%a@," pr_shape sh in assert false
     in
     let args, ret = args_ret ty.shape in
     let _ = assert (is_base ret) in
@@ -89,10 +89,10 @@ let check_fdef cenv fdef ty =
   in
   let guard =
     let ty = infer_term cenv env fdef.Fdef.guard in
-    let _ = if not (Term.equiv ty.pre Formula.ttrue) then let _ = Format.printf "%a@." pr ty in assert false in
+    let _ = if not (Term.equiv ty.pre Formula.ttrue) then let _ = Format.printf "%a@," pr ty in assert false in
     match ty.shape with
       Bool(x) -> Term.subst (fun y -> if Var.equiv x y then Formula.ttrue else raise Not_found) ty.post
-    | _ -> let _ = Format.printf "%a@." pr ty in assert false
+    | _ -> let _ = Format.printf "%a@," pr ty in assert false
   in
   (*
   let _ = Format.printf "guard: %a@ " Term.pr guard in

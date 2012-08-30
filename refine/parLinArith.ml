@@ -116,7 +116,7 @@ let rec of_term t =
   | Const(_, Const.Minus), [t] ->
       minus (of_term t)
   | _ ->
-      (*let _ = Format.printf "%a@." Term.pr t in*)
+      (*let _ = Format.printf "%a@," Term.pr t in*)
       invalid_arg "ParLinArith.of_term"
 
 let term_of (nxs, n) =
@@ -192,7 +192,7 @@ let aif_of t =
       let nxs, n = of_term (sub t1 t2) in
       c, nxs, n
   | _ ->
-      (*let _ = Format.printf "%a@." Term.pr t in*)
+      (*let _ = Format.printf "%a@," Term.pr t in*)
       invalid_arg "ParLinArith.aif_of"
 
 (** the result only uses geq and eq

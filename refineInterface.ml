@@ -154,6 +154,7 @@ let infer flags labeled cexs prog =
   let _ = Global.enable_pred_sharing2 := flags land 128 <> 0 in
   let _ = Global.flag_coeff := flags land 256 <> 0 in
 
+  let cexs = if !Flag.accumulate_predicats then [List.hd cexs] else cexs in
   let prog = conv_prog prog in
   let env = Verifier.refine labeled cexs prog in
 		let _ = Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Verifier.elapsed_time in

@@ -87,7 +87,7 @@ let subst_interp closed p interp =
 		  | Path(up, trs1, nd, trs2) ->
         let _ = assert (trs2 = []) in
 				    if Term.equiv interp Formula.ttrue then
-          let _ = Format.printf "stop propagation@." in
+          let _ = Format.printf "stop propagation@," in
 				      None
 				    else
 		        let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
@@ -193,7 +193,7 @@ let summary_of env loc =
   try
     if b then
 						let arg = if nd.closed then ret_of env nd else arg_of env nd in
-						let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+						let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
 		    let interp =
 								let tt =
           Formula.simplify
@@ -208,12 +208,12 @@ let summary_of env loc =
 								let t1, t2 = if nd.closed then tt, tp else tp, tt in
 				    CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
 		    in
-		    let _ = Format.printf "@]@." in
+		    let _ = Format.printf "@]@," in
 						[`P(arg, interp)], Util.opt2list (subst_interp nd.closed p interp)
     else (* necessary try repeat.ml *)
       raise CsisatInterface.NoInterpolant
   with CsisatInterface.NoInterpolant ->
-    let _ = if b then Format.printf "**** quick inference failed ****@]@." in
+    let _ = if b then Format.printf "**** quick inference failed ****@]@," in
     let arg_p_interp_list, ret_interp_list =
 						let arg_p_t_list =
 						  List.map
@@ -227,7 +227,7 @@ let summary_of env loc =
                 (* try neg.ml *)
                 p
             in
-            (*let _ = Format.printf "%a@." pr_path p in*)
+            (*let _ = Format.printf "%a@," pr_path p in*)
 		          let arg = arg_of env (get tr) in
             let t =
               Term.rename_fresh
@@ -239,7 +239,7 @@ let summary_of env loc =
                       (fes_of_nodes (nodes_of_path p)))))
             in
             (*let t = Formula.of_dnf (Term.dnf t) in*)
-						      (**)let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in(**)
+						      (**)let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in(**)
 		          arg, p, t)
 		        locs
       in
@@ -256,18 +256,18 @@ let summary_of env loc =
             in
 								    let t = Term.rename_fresh (RefType.visible ret) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
             (*let t = Formula.of_dnf (Term.dnf t) in*)
-								    (**)let _ = if (get tr).closed then Format.printf "%a: %a@." Var.pr ret Term.pr t in(**)
+								    (**)let _ = if (get tr).closed then Format.printf "%a: %a@," Var.pr ret Term.pr t in(**)
 		          (ret, nds, t), nds)
 								  [] locs
 						in
       if nd.closed then
 								let Some(tr) = prune_tree (fun name -> related nd.name name) (root loc) in
-        (*let _ = Format.printf "context: %a@." pr tr in*)
+        (*let _ = Format.printf "context: %a@," pr tr in*)
         let res =
 								  Util.map_right
 								    (fun ret_nds_t_list (ret, nds, t1) res ->
 						        let interp =
-										 					let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr ret in
+										 					let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
 						          let _, ret_interp_list = List.split res in
                 let t2 =
                   let fes =
@@ -282,13 +282,13 @@ let summary_of env loc =
                   Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
                 in
 																let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
-						  						  let _ = Format.printf "@]@." in
+						  						  let _ = Format.printf "@]@," in
 						          interp
 						        in
 														let arg_p_interp_list =
 																Util.map_left
 																		(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-																				let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+																				let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
 																				let interp =
 																				  let t1 = t in
 																				  let t2 =
@@ -305,7 +305,7 @@ let summary_of env loc =
 																				  in
 																				  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
 																		  in
-																		  let _ = Format.printf "@]@." in
+																		  let _ = Format.printf "@]@," in
 																				(arg, p, interp))
 																		(List.take (List.length ret_nds_t_list + 1) arg_p_t_list)
 														in
@@ -317,7 +317,7 @@ let summary_of env loc =
 								let arg_p_interp_list =
 										Util.map_left
 												(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-														let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+														let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
 														let interp =
 														  let t1 = t in
 														  let t2 =
@@ -335,7 +335,7 @@ let summary_of env loc =
 														  in
 														  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
 												  in
-												  let _ = Format.printf "@]@." in
+												  let _ = Format.printf "@]@," in
 														(arg, p, interp))
 												arg_p_t_list
 								in
@@ -350,7 +350,7 @@ let summary_of env loc =
 								  Util.map_right
 								    (fun ret_nds_t_list (ret, nds, t1) res ->
 						        let interp =
-										 					let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr ret in
+										 					let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
 						          let _, ret_interp_list = List.split res in
                 let t2 =
                   let fes =
@@ -365,13 +365,13 @@ let summary_of env loc =
                   Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
                 in
 																let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
-						  						  let _ = Format.printf "@]@." in
+						  						  let _ = Format.printf "@]@," in
 						          interp
 						        in
 														let arg_p_interp_list =
 																Util.map_left
 																		(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-																				let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+																				let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
 																				let interp =
 																				  let t1 = t in
 																				  let t2 =
@@ -388,7 +388,7 @@ let summary_of env loc =
 																				  in
 																				  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
 																		  in
-																		  let _ = Format.printf "@]@." in
+																		  let _ = Format.printf "@]@," in
 																				(arg, p, interp))
 																		(List.take (List.length ret_nds_t_list + 1) arg_p_t_list)
 														in
@@ -401,7 +401,7 @@ let summary_of env loc =
 								let arg_p_interp_list =
 										Util.map_left
 												(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-														let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+														let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
 														let interp =
 														  let t1 = t in
 														  let t2 =
@@ -418,7 +418,7 @@ let summary_of env loc =
 														  in
 														  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
 												  in
-												  let _ = Format.printf "@]@." in
+												  let _ = Format.printf "@]@," in
 														(arg, p, interp))
 												arg_p_t_list
 								in
@@ -433,7 +433,7 @@ let summary_of env loc =
 let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (*
   let arg = arg_of env nd in
-  let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+  let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
   let parginterps, interp =
     try
       let interp =
@@ -444,7 +444,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 													 (fun tr p ->
 			             let arg = arg_of env (get tr) in
 (*
-			             let _ = Format.printf "%a@." Var.pr arg in
+			             let _ = Format.printf "%a@," Var.pr arg in
 *)
 													   Term.rename_fresh
                   (RefType.visible arg)
@@ -471,7 +471,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 								in
 			     interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
       in
-      let _ = Format.printf "@]@." in
+      let _ = Format.printf "@]@," in
 						[], interp
     with CsisatInterface.NoInterpolant ->
       let _ = Format.printf "*******@ " in
@@ -489,7 +489,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 		      List.map
 		        (fun (arg, p) ->
 		          let t = Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
-		          (*let _ = Format.printf "%a: %a@." Var.pr arg Term.pr t in*)
+		          (*let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in*)
 		          t)
 		        argps
 				  in
@@ -501,7 +501,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 												  (fun tr p ->
 		              let arg = arg_of env (get tr) in
 (*
-		              let _ = Format.printf "%a@." Var.pr arg in
+		              let _ = Format.printf "%a@," Var.pr arg in
 *)
 (* why not compute ts0 and nds? *)
 (*
@@ -529,12 +529,12 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 								in
 		      interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
 		    in
-		    let _ = Format.printf "@]@." in
+		    let _ = Format.printf "@]@," in
 		    let _, parginterps =
   		    let tr = Node(nd, []) in
 				    List.fold_left
 				      (fun (t0::ts0, parginterps) (arg, p) ->
-												let _ = Format.printf "computing a condition of %a:@.  @[<v>" Var.pr arg in
+												let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
 												let interp =
 				          let t1 = t0 in
 				          let t2 =
@@ -543,7 +543,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 				          in
 				          CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
 		          in
-		          let _ = Format.printf "@]@." in
+		          let _ = Format.printf "@]@," in
 				        ts0 @ [interp], (p, arg, interp)::parginterps)
 				      (ts0, []) argps
 		    in
@@ -605,7 +605,7 @@ let summaries_of env constrss0 =
       [] -> sums
    | constrs::constrss' ->
 	    			(**)
-				    let _ = Format.printf "constraints:@.  %a@." pr constrs in
+				    let _ = Format.printf "constraints:@,  %a@," pr constrs in
 				    (**)
 				    let sums', constrss'' =
 				      try
@@ -614,7 +614,7 @@ let summaries_of env constrss0 =
               let locs = List.filter (fun loc -> Util.diff (related_locs loc) locs = []) locs in
               let _ = assert (locs <> []) in
               match !Global.predicate_discovery with
-                FunctionSummarization ->
+                ConvexHull ->
 		                let locs' = List.filter (fun (Loc(Node(nd, []), p) as loc) -> is_recursive nd.name loc) locs in
 		                (match locs' with
 		                  [] -> List.hd locs
@@ -623,7 +623,7 @@ let summaries_of env constrss0 =
                   List.hd locs(*find_leaf constrs*)
             in
             (match !Global.predicate_discovery with
-              FunctionSummarization -> summary_of_widen env loc
+              ConvexHull -> summary_of_widen env loc
             | Backward -> summary_of env loc)
 				      with CsisatInterface.NoInterpolant ->
 				        raise (FeasibleErrorTrace(constrs(**ToDo*)))
@@ -633,7 +633,7 @@ let summaries_of env constrss0 =
 				    | _ ->
 				        summaries_of_aux (sums' @ sums) (constrss'' @ constrss')
 (*
-      Format.printf "@.";
+      Format.printf "@,";
 *)
   in
   summaries_of_aux [] constrss0

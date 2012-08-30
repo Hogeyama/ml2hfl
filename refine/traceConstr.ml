@@ -73,7 +73,7 @@ let get_min_unsat_prefix tr =
 		    Node(nd, trs) ->
         let fes = Fes.make xttys0 (nd.guard::ts0) in
 (*
-        let _ = Format.printf "%a: %a@." CallId.pr nd.name Term.pr (Formula.bnot (Formula.formula_of fes)) in
+        let _ = Format.printf "%a: %a@," CallId.pr nd.name Term.pr (Formula.bnot (Formula.formula_of fes)) in
 *)
         if Cvc3Interface.is_valid (Formula.bnot (Fes.formula_of (Fes.eqelim (fun _ -> false) fes))) then
           fes, make nd.name false nd.guard [] [], true

@@ -30,7 +30,7 @@ let rec of_term t =
 				  | Const.Mod ->
 				      raise (Util.NotImplemented "AtpInterface.of_term"))
   | _ ->
-      let _ = Format.printf "%a@." Term.pr t in
+      let _ = Format.printf "%a@," Term.pr t in
       assert false
 
 let rec of_formula t =
@@ -77,7 +77,7 @@ let rec of_formula t =
   | Exists(_, env, t), [] ->
       List.fold_right (fun (x, _) phi -> Atp_batch.Exists(Var.print x , phi)) env (of_formula t)
   | _ ->
-      let _ = Format.printf "%a@." Term.pr t in
+      let _ = Format.printf "%a@," Term.pr t in
       assert false
 
 let rec term_of = function
@@ -303,7 +303,7 @@ let rec qelim_ufs bvs1 bvs2 fms =
       bvs2, fms
   | bv::bvs ->
 (*
-      let _ = Format.printf "%a,%a@." Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
+      let _ = Format.printf "%a,%a@," Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
 *)
       try
 				    let sub = List.map (fun x -> x, Atp_batch.Var(Id.gen_exp_var ())) (Util.catmap (ufs bv) fms) in
@@ -319,7 +319,7 @@ let rec qelim_ufs bvs1 bvs2 fms =
         qelim_ufs (bvs' @ bvs) bvs2 fms
       with Not_found ->
 (*
-        let _ = Format.printf "%a,%a@." Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
+        let _ = Format.printf "%a,%a@," Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
 *)
         qelim_ufs bvs (bv::bvs2) fms
 
@@ -405,7 +405,7 @@ let rec qelim_lin bvs [] fms =
     [], []
   else begin
 				if !Global.debug_level > 0 then
-						Format.printf "%a@." Fol.pr (formula_of (Atp_batch.list_conj fms));
+						Format.printf "%a@," Fol.pr (formula_of (Atp_batch.list_conj fms));
 				let fms' = Atp_batch.homogenize langs fms in
 				let bvs' = List.unique (Util.diff (Util.catmap Atp_batch.fv fms') (Util.catmap Atp_batch.fv fms)) in
 				let fms_lin, fms_nonlin = partition_linear fms' in
@@ -416,7 +416,7 @@ let rec qelim_lin bvs [] fms =
 								| _ -> true)
 								fms_lin in
 				if !Global.debug_level > 0 then
-						Format.printf "%a@.%a@." Fol.pr (formula_of (Atp_batch.list_conj fms_lin_ineq)) Fol.pr (formula_of (Atp_batch.list_conj fms_lin_eq));
+						Format.printf "%a@,%a@," Fol.pr (formula_of (Atp_batch.list_conj fms_lin_ineq)) Fol.pr (formula_of (Atp_batch.list_conj fms_lin_eq));
 				let fms_lin_eq1, fms_lin_eq2 =
 						List.partition
 								(fun p -> List.exists (fun fv -> List.mem fv (Util.catmap Atp_batch.fv fms_lin_ineq)) (Atp_batch.fv p))
@@ -431,8 +431,8 @@ let rec qelim_lin bvs [] fms =
 							 (fun fms ->
 							   let bvs, fms = qelim_eq bvs' [] (fms @ fms2) in
 							   (if bvs <> [] then
-							     (Format.printf "%a@." (Util.pr_list Id.pr ",") bvs;
-							     Format.printf "%a@." Fol.pr (formula_of (Atp_batch.list_conj fms));
+							     (Format.printf "%a@," (Util.pr_list Id.pr ",") bvs;
+							     Format.printf "%a@," Fol.pr (formula_of (Atp_batch.list_conj fms));
 							     failwith "qelim_lin"));
 							   fms)
 							 (Atp_batch.simpdnf p) in
@@ -445,7 +445,7 @@ let rec qelim_lin bvs [] fms =
 							 let [], fms = qelim_eq bvs' [] (fms @ fms2) in
 							 bvs2, fms
 				| fmss -> (*possible*)
-							 let _ = Format.printf "%a,%a@." Fol.pr (formula_of (Atp_batch.list_conj fms)) Fol.pr (formula_of p) in
+							 let _ = Format.printf "%a,%a@," Fol.pr (formula_of (Atp_batch.list_conj fms)) Fol.pr (formula_of p) in
 							 failwith "qelim_lin"
 		*)
   end
@@ -465,7 +465,7 @@ let is_valid_dnf fms =
   let fms = List.map (fun p -> of_formula (Fol.simplify (formula_of p))) fms in
   let p = Atp_batch.list_disj (List.map (fun p -> Atp_batch.simplify (Atp_batch.Not(p))) fms) in
 (*
-  let _ = Format.printf "%a@." (Fol.pr) (formula_of p) in
+  let _ = Format.printf "%a@," (Fol.pr) (formula_of p) in
 *)
   is_valid p
 
@@ -566,25 +566,25 @@ let qelim bvs p =
             let rec loop bvs fms =
               let old_bvs = bvs in
               ((if !Global.debug_level > 0 then
-                Format.printf "%a;%a@."
+                Format.printf "%a;%a@,"
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !Global.debug_level > 0 then Format.printf "eliminating uninterpreted function symbols@.";
+              if !Global.debug_level > 0 then Format.printf "eliminating uninterpreted function symbols@,";
               let bvs, fms = qelim_ufs bvs [] fms in
               (if !Global.debug_level > 0 then
-                Format.printf "%a;%a@."
+                Format.printf "%a;%a@,"
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !Global.debug_level > 0 then Format.printf "eliminating equalities@.";
+              if !Global.debug_level > 0 then Format.printf "eliminating equalities@,";
               let bvs, fms = qelim_eq bvs [] fms in
               (if !Global.debug_level > 0 then
-                Format.printf "%a;%a@."
+                Format.printf "%a;%a@,"
                   (Util.pr_list Id.pr ",") bvs
                   (Util.pr_list Fol.pr ", ") (List.map formula_of fms));
-              if !Global.debug_level > 0 then Format.printf "eliminating linear inequalities and equalities@.";
+              if !Global.debug_level > 0 then Format.printf "eliminating linear inequalities and equalities@,";
               let bvs, fmss = qelim_lin bvs [] fms in
               (if !Global.debug_level > 0 then
-                Format.printf "%a;%a@."
+                Format.printf "%a;%a@,"
                   (Util.pr_list Id.pr ",") bvs
                   Fol.pr (formula_of (Atp_batch.list_disj (List.map Atp_batch.list_conj fmss))));
 	           		let fmss = List.map remove_trivial fmss in
@@ -606,7 +606,7 @@ let qelim bvs p =
     | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var(bv'); s]))) when bv' = bv && not (List.mem bv (Atp_batch.fvt s)) -> None
     | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Var(bv')]))) when bv' = bv && not (List.mem bv (Atp_batch.fvt s)) -> None
     | p when List.mem bv (Atp_batch.fv p)->
-    		  let _ = Format.printf "%a,%a@." Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
+    		  let _ = Format.printf "%a,%a@," Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
     		  failwith "qelim_eq"
 *)
 
@@ -684,7 +684,7 @@ let interpolate ids phi1 phi2 =
 (*
 		  let phi1 = Fol.And(Fol.Const(Arith.Var("x"), Const.Equal, Arith.Var("z")), Fol.Const(Arith.Var("y"), Const.Equal, Arith.Var("z"))) in
 		  let phi2 = Fol.Imply(Fol.Const(Arith.Var("x"), Const.Equal, Arith.Var("0")), Fol.Const(Arith.Var("y"), Const.Equal, Arith.Var("0"))) in
-		  Format.printf "%a@." Fol.pr (interpolate phi1 phi2)
+		  Format.printf "%a@," Fol.pr (interpolate phi1 phi2)
 *)
 (*let interpolate phi1 phi2 = formula_of (Atp_batch.interpolate (of_formula phi1) (of_formula phi2))*)
 *)

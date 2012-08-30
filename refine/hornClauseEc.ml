@@ -790,7 +790,7 @@ let subst_hcs hcs (Hc(popt, afs, t) as hc) =
 let subst_hcs_fixed hcs hc =
   Util.fixed_point
     (fun hc ->
-      (*Format.printf "%a@." pr_elem hc;*)
+      (*Format.printf "%a@," pr_elem hc;*)
       subst_hcs hcs hc)
     (fun hc1 hc2 ->
       match hc1, hc2 with

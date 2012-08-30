@@ -83,12 +83,12 @@ let init prog =
   make uid [] (Term.Ret([], ret, Term.Call([], Term.make_var (Var.make prog.Prog.main), args), retty)) (ref [])
 
 let emp_fun_env x =
-  let _ = Format.printf "\"%a\" not found@." Var.pr x in
+  let _ = Format.printf "\"%a\" not found@," Var.pr x in
   assert false
 let expand_node prog fenv ct =
   let _ =
     if !(ct.children) <> [] then
-      let _ =  Format.printf "given node is already expanded@." in
+      let _ =  Format.printf "given node is already expanded@," in
       assert false
   in
   try
@@ -104,7 +104,7 @@ let expand_node prog fenv ct =
           let attr, f =
             match func with
               Term.Var(attr, f) -> attr, f
-            | _ -> let _ = Format.printf "%a cannot be applied@." Term.pr red in assert false
+            | _ -> let _ = Format.printf "%a cannot be applied@," Term.pr red in assert false
           in
           let uid = gen_id () in
           let argtys, retty = SimType.args_ret (Prog.type_of prog f) in
@@ -114,8 +114,8 @@ let expand_node prog fenv ct =
             try
               List.combine fargs args
             with _ -> begin
-              Format.printf "formal args: %a@." (Util.pr_list Term.pr ", ") fargs;
-              Format.printf "actual args: %a@." (Util.pr_list Term.pr ", ") args;
+              Format.printf "formal args: %a@," (Util.pr_list Term.pr ", ") fargs;
+              Format.printf "actual args: %a@," (Util.pr_list Term.pr ", ") args;
               assert false
             end
           in
@@ -125,7 +125,7 @@ let expand_node prog fenv ct =
           in
 (*
           let pr ppf (t1, t2) = Format.fprintf ppf "%a: %a" Term.pr t1 Term.pr t2 in
-          let _ = Format.printf "faargs_fun: %a@." (Util.pr_list pr ", ") faargs_fun in
+          let _ = Format.printf "faargs_fun: %a@," (Util.pr_list pr ", ") faargs_fun in
 *)
           let fenv x =
             try
@@ -157,8 +157,8 @@ let expand_node prog fenv ct =
                     try
                       List.combine fargs args
                     with _ -> begin
-                      Format.printf "formal args: %a@." Var.pr_list fargs;
-                      Format.printf "actual args: %a@." Term.pr_list args;
+                      Format.printf "formal args: %a@," Var.pr_list fargs;
+                      Format.printf "actual args: %a@," Term.pr_list args;
                       assert false
                     end
                   in
@@ -172,7 +172,7 @@ let expand_node prog fenv ct =
       | Term.Ret(_, Term.Var(a, ret), t, ty) ->
           fenv, [Ret(ret, t, ty), make (gen_id ()) ct.path (ctx (Term.Var(a, ret))) (ref [])]
       | _ -> begin
-          Format.printf "%a@." Term.pr red;
+          Format.printf "%a@," Term.pr red;
           assert false
          end
     in
