@@ -26,7 +26,7 @@ let check count abst prog =
   let n = List.length prog.defs in
   let tmp = get_time() in
   let () =
-    if Flag.print_progress
+    if !Flag.print_progress
     then
       match count with
           None -> Format.printf "(%d-2) Checking HORS ... @?" !Flag.cegar_loop
@@ -41,7 +41,7 @@ let check count abst prog =
       | Flag.ModelCheck -> check abst n
   in
   let () = add_time tmp Flag.time_mc in
-  let () = if Flag.print_progress then Format.printf "DONE!@.@." in
+  let () = if !Flag.print_progress then Format.printf "DONE!@.@." in
     match result with
         ModelCheck_util.Safe env -> Safe env
       | ModelCheck_util.Unsafe ce -> Unsafe ce

@@ -2,6 +2,15 @@ open Location
 open Stypes
 open Parsetree
 
+let print_position pp pos =
+  if pos = Lexing.dummy_pos then
+    Format.fprintf pp "--"
+  else
+    Format.fprintf pp "%S %d %d %d"
+      pos.Lexing.pos_fname pos.Lexing.pos_lnum
+      pos.Lexing.pos_bol
+      pos.Lexing.pos_cnum
+
 let make loc typ =
   if loc <> Location.none then [loc, typ] else []
 

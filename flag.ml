@@ -41,7 +41,7 @@ let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
 let church_encode = false
-let beta_reduce = true (* do beta reduction before model checking *)
+let beta_reduce = false (* do beta reduction before model checking *)
 let useless_elim = false
 let lift_fv_only = ref false
 let use_filter = ref false
@@ -74,7 +74,7 @@ let print_hors = false
 let print_trecs_output = false
 let print_trace = false
 let print_interpolant = true
-let print_progress = true
+let print_progress = ref true
 let print_constraints = true
 let print_lower_bound = true
 let print_cvc3 = false
@@ -101,6 +101,7 @@ let max_input_size = 65536
 let web = ref false
 let debug = true
 let debug_level = ref 1
+let only_result = ref false
 
 
 (* pretty printer's option *)

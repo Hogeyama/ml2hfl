@@ -129,7 +129,7 @@ let abstract orig_fun_list prog =
 let abstract orig_fun_list force prog =
   let tmp = get_time() in
   let () =
-    if Flag.print_progress
+    if !Flag.print_progress
     then Format.printf "(%d-1) Abstracting ... @?" !Flag.cegar_loop
   in
   let labeled,abst =
@@ -138,7 +138,7 @@ let abstract orig_fun_list force prog =
       | Flag.PredAbst -> abstract orig_fun_list prog
   in
   let () = if false then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in
-  let () = if Flag.print_progress then Format.printf "DONE!@.@." in
+  let () = if !Flag.print_progress then Format.printf "DONE!@.@." in
   let () = Wrapper2.reopen_cvc3 () in
   let () = add_time tmp Flag.time_abstraction in
     labeled,abst

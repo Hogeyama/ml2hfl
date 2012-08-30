@@ -63,9 +63,9 @@ let rec get_prefix ce n =
     | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce {defs=defs; main=main} =
-  let () = if true then Format.printf "Spurious counter-example::@.  %a@." CEGAR_print.ce ce in
+  let () = if !Flag.print_progress then Format.printf "Spurious counter-example::@.  %a@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
-  let () = if Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
+  let () = if !Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
@@ -77,7 +77,7 @@ let check ce {defs=defs; main=main} =
     then Feasible (env', Wrapper2.get_solution env' constr)
     else Infeasible prefix
   in
-    if Flag.print_progress then Format.printf "DONE!@.@.";
+    if !Flag.print_progress then Format.printf "DONE!@.@.";
     add_time time_tmp Flag.time_cegar;
     result
 
