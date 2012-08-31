@@ -19,20 +19,29 @@ let rec uncurry_typ rtyp typ =
         let n = element_num typ1 in
         let exts,xrtyps,rtyp2 = RT.decomp_fun n rtyp in
         let rtyps = List.map snd xrtyps in
-        let rtyp1' = uncurry_typ_arg rtyps typ1 in
+        let map,rtyp1' = uncurry_typ_arg rtyps typ1 in
         let rtyp2' = uncurry_typ rtyp2 typ2 in
         let aux (x,typ1) typ2 = RT.ExtArg(x,typ1,typ2) in
-          List.fold_right aux exts (RT.Fun(fst (List.hd xrtyps), rtyp1', rtyp2'))
+        let x = Id.new_var "x" typ_unknown in
+        let rtyp2'' = List.fold_left (fun typ (x',f) -> RT.subst x' (f x) typ) rtyp2' map in
+          List.fold_right aux exts (RT.Fun(x, rtyp1', rtyp2''))
     | _ -> rtyp
+
+and get_arg_var = function
+    RT.Base(_,x,_) -> x
+  | _ -> Id.new_var "x" typ_unknown
 
 and uncurry_typ_arg rtyps typ =
   match rtyps,typ with
       _, TPair(typ1,typ2) ->
         let rtyps1,rtyps2 = take2 rtyps (element_num typ1) in
-        let rtyp1 = uncurry_typ_arg rtyps1 typ1 in
-        let rtyp2 = uncurry_typ_arg rtyps2 typ2 in
-          RT.Pair(Id.new_var "x" typ_unknown, rtyp1, rtyp2)
-    | [rtyp], _ -> uncurry_typ rtyp typ
+        let map1,rtyp1 = uncurry_typ_arg rtyps1 typ1 in
+        let map2,rtyp2 = uncurry_typ_arg rtyps2 typ2 in
+        let map1' = List.map (fun (x,f) -> x, fun x' -> make_fst (f x')) map1 in
+        let map2' = List.map (fun (x,f) -> x, fun x' -> make_snd (f x')) map1 in
+          map1'@@map2', RT.Pair(get_arg_var rtyp1, rtyp1, rtyp2)
+    | [RT.Base(base,x,p) as rtyp], _ -> [x, fun x' -> make_var x'], uncurry_typ rtyp typ
+    | [rtyp], _ -> [], uncurry_typ rtyp typ
     | _ -> assert false
 
 let uncurry_rtyp t f rtyp =
@@ -1239,6 +1248,8 @@ let rec uncps_ref_type rtyp e etyp =
         let rtyp1' = uncps_ref_type rtyp1 e etyp1 in
         let rtyp2' = uncps_ref_type rtyp2 e etyp2 in
           RT.Pair(x, rtyp1', rtyp2')
+    | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
+        RT.ExtArg(x, rtyp1, uncps_ref_type rtyp2 e etyp)
     | _ ->
         Format.printf "rtyp:%a@.e:%a@.etyp:%a@."
           RT.print rtyp print_effect e print_typ_cps etyp;

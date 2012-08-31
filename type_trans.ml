@@ -41,7 +41,3 @@ let rec ref_of_inter atyp ityp =
     | AT.TBase(AT.TUnit, _), IT.Base (IT.State _) ->
         RT.Base(RT.Unit, "", CS.Const CS.True)
     | _ -> assert false
-
-let ref_of_inter atyp ityp =
-  Id.clear_counter ();
-  ref_of_inter atyp ityp

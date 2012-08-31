@@ -75,3 +75,12 @@ let rec arg_num = function
   | Union (typ::_) -> arg_num typ
   | Fun(_,_,typ2) -> 1 + arg_num typ2
   | ExtArg(_,_,typ2) -> arg_num typ2
+
+let rec subst x t typ =
+  match typ with
+      Base(base,y,p) -> Base(base, y, S.subst x t p)
+    | Fun(y,typ1,typ2) -> Fun(y, subst x t typ1, subst x t typ2)
+    | Pair(y,typ1,typ2) -> Pair(y, subst x t typ1, subst x t typ2)
+    | Inter typs -> Inter (List.map (subst x t) typs)
+    | Union typs -> Union (List.map (subst x t) typs)
+    | ExtArg(y,typ1,typ2) -> ExtArg(y, subst x t typ1, subst x t typ2)
