@@ -14,6 +14,7 @@ type t =
   | Inter of t list
   | Union of t list
   | ExtArg of S.id * t * t
+  | List of S.id * S.typed_term * S.id * S.typed_term * t
 
 let print_base fm = function
     Unit -> Format.pp_print_string fm "unit"
@@ -27,14 +28,21 @@ let rec occur x = function
   | Inter typs
   | Union typs -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
+  | List(_,p_len,_,p_i,typ) ->
+      let aux p =  List.exists (Id.same x) (S.get_fv p) in
+        aux p_len || aux p_i || occur x typ
 
 let rec print fm = function
     Base(base,x,p) when p = S.true_term ->
       Format.fprintf fm "%a" print_base base
+  | Base(Bool,x,p) when S.make_var x = p ->
+      Format.fprintf fm "{true}"
+  | Base(Bool,x,p) when S.make_not (S.make_var x) = p ->
+      Format.fprintf fm "{false}"
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base S.pp_print_term p
   | Fun(x, typ1, typ2) ->
-      if true || occur x typ2
+      if occur x typ2
       then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2
       else Format.fprintf fm "(@[%a@ ->@ %a@])" print typ1 print typ2
   | Pair(x, typ1, typ2) ->
@@ -49,6 +57,25 @@ let rec print fm = function
   | Union typs -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ " false) typs
   | ExtArg(x,typ1,typ2) ->
       Format.fprintf fm "(@[%a where %a:%a@])" print typ2 Id.print x print typ1
+  | List(x,p_len,y,p_i,typ2) ->
+      if List.exists (Id.same x) (S.get_fv p_i) || occur x typ2
+      then
+        if p_len = S.true_term
+        then Format.fprintf fm "(@[list|%a|" Id.print x
+        else Format.fprintf fm "(@[list|%a:%a|" Id.print x S.pp_print_term p_len
+      else
+        if p_len = S.true_term
+        then Format.fprintf fm "(@[list"
+        else Format.fprintf fm "(@[list|%a:%a|" Id.print x S.pp_print_term p_len;
+      if occur y typ2
+      then
+        if p_i = S.true_term
+        then Format.fprintf fm "[%a@]@ %a@])" Id.print y print typ2
+        else Format.fprintf fm "[%a:%a@]@ %a@])" Id.print y S.pp_print_term p_i print typ2
+      else
+        if p_i = S.true_term
+        then Format.fprintf fm " %a@])" print typ2
+        else Format.fprintf fm "[%a:%a]@ %a@])" Id.print y S.pp_print_term p_i print typ2
 
 let rec decomp_fun n typ =
   match typ with

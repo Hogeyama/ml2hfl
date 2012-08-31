@@ -5,6 +5,9 @@ open Type
 open Type_decl
 
 
+module RT = Ref_type
+
+
 module PredSet =
   Set.Make(
     struct
@@ -260,6 +263,42 @@ let rec abstract_mutable t =
 
 
 
+
+let rec get_rtyp_list rtyp typ =
+  match rtyp, typ with
+      RT.Inter rtyps, _ ->
+        RT.Inter (List.map (fun rtyp1 -> get_rtyp_list rtyp1 typ) rtyps)
+    | RT.Union rtyps, _ ->
+        RT.Union (List.map (fun rtyp1 -> get_rtyp_list rtyp1 typ) rtyps)
+    | RT.Pair(x, RT.Base(RT.Int, x', p_len), RT.Fun(y, RT.Base(RT.Int, y', p_i), typ2)), TList typ ->
+        let p_len' = subst x' (make_var x) p_len in
+        let p_i' = subst y' (make_var y) p_i in
+        RT.List(x, p_len', y, p_i', get_rtyp_list typ2 typ)
+    | RT.Pair(x, RT.Base(RT.Int, x', p_len), RT.Inter []), TList typ ->
+        let p_len' = subst x' (make_var x) p_len in
+        RT.List(x, p_len', Id.new_var "" typ_unknown, true_term, RT.Inter [])
+    | _, TList typ ->
+        raise (Fatal "not implemented get_rtyp_list")
+    | RT.Base(b,x,ps), _ -> RT.Base(b,x,ps)
+    | RT.Fun(x,rtyp1,rtyp2), TFun(y,typ2) ->
+        let rtyp1' = get_rtyp_list rtyp1 (Id.typ y) in
+        let rtyp2' = get_rtyp_list rtyp2 typ2 in
+          RT.Fun(x, rtyp1', rtyp2')
+    | RT.Pair(x,rtyp1,rtyp2), TPair(typ1,typ2) ->
+        let rtyp1' = get_rtyp_list rtyp1 typ1 in
+        let rtyp2' = get_rtyp_list rtyp2 typ2 in
+          RT.Pair(x, rtyp1', rtyp2')
+    | RT.ExtArg(x,rtyp1,rtyp2), _ ->
+        RT.ExtArg(x, rtyp1, get_rtyp_list rtyp2 typ)
+    | _ ->
+        Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp pp_print_typ typ;
+        assert false
+
+let get_rtyp_list_of typed f rtyp =
+  let typ = Trans.assoc_typ f typed in
+    get_rtyp_list rtyp typ
+
+
 let make_tl n t =
   let x = Id.new_var "x" TInt in
   let t1 = make_sub (make_fst t) (make_int n) in
@@ -396,7 +435,9 @@ let abstract_list t =
   let () = if false then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
   let () = typ_excep := abst_list_typ !typ_excep in
   let () = Type_check.check t' Type.TUnit in
-    t'
+    t', get_rtyp_list_of t
+
+
 
 
 let rec abst_datatype_typ = function

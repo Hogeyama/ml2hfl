@@ -67,11 +67,12 @@ let preprocess t spec =
         if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
-      let t' = Abstract.abstract_list t in
+      let t',get_rtyp_list = Abstract.abstract_list t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
+      let get_rtyp = get_rtyp_list in
       let t' = Trans.inlined_f spec'.Spec.inlined_f t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
@@ -92,7 +93,7 @@ let preprocess t spec =
         if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
-      let get_rtyp = get_rtyp_cps_trans in
+      let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t',get_rtyp_remove_pair = CPS.remove_pair t in
       let () =
         if false && !Flag.debug_level > 0 && t <> t'
