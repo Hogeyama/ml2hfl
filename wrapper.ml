@@ -597,7 +597,7 @@ let interpolation ts1 ts2 =
       Format.printf "  interpolant: %s@." (CsisatAstUtil.print_pred pred')
   in
   let pred'' =
-    match Trans.normalize_bool_exp (simplify_bool_exp false (from_pred env (CsisatAstUtil.dnf pred'))) with
+    match (*Trans.normalize_bool_exp*) (simplify_bool_exp false (from_pred env (CsisatAstUtil.dnf pred'))) with
         {desc=BinOp(Or, _, _)} as p ->
           let rec f = function
               {desc=BinOp(Or, t1, t2)} ->

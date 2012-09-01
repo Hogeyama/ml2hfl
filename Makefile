@@ -89,10 +89,11 @@ CMO = $(OCAML_CMO) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
+	wrapper.cmo wrapper2.cmo \
 	ref_type.cmo type_check.cmo trans.cmo CEGAR_ref_type.cmo CEGAR_util.cmo \
 	useless_elim.cmo inter_type.cmo type_trans.cmo refineInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	wrapper.cmo wrapper2.cmo abstract.cmo CEGAR_abst_util.cmo \
+	abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
         trecs_parser.cmo trecs_lexer.cmo \
 	$(TRECS)/trecs.cmo dependent_type.cmo trecsInterface.cmo \
