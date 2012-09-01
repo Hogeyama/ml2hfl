@@ -142,10 +142,10 @@ let rec main_loop filename orig parsed =
                     let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
                       try
                         let f' = List.assoc f rmap in
-                          [f', get_rtyp f' rtyp]
+                          [f', Ref_type.rename (get_rtyp f' rtyp)]
                       with
                           Not_found -> []
-                        | _ -> Format.printf "unimplemented or bug@.@."; []
+                        | e -> Format.printf "unimplemented or bug@.@."; []; raise e
                     in
                       rev_map_flatten aux env
                   in

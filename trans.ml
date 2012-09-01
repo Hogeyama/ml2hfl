@@ -764,7 +764,11 @@ let get_rtyp_lift t f rtyp =
       | RT.Fun(x,rtyp1,rtyp2) ->
           if RT.arg_num rtyp = arg_num typ
           then rtyp
-          else RT.ExtArg(x, rtyp1, aux rtyp2 typ)
+          else
+            let rtyp' = aux rtyp2 typ in
+              if RT.occur x rtyp'
+              then RT.ExtArg(x, rtyp1, rtyp')
+              else rtyp'
       | _ -> assert false
   in
     aux rtyp (assoc_typ f t)

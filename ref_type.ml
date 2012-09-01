@@ -43,8 +43,8 @@ let rec print fm = function
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base S.pp_print_term p
   | Fun(x, typ1, typ2) ->
       if occur x typ2
-      then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2
-      else Format.fprintf fm "(@[%a@ ->@ %a@])" print typ1 print typ2
+      then Format.fprintf fm "(@[<hov 4>%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2
+      else Format.fprintf fm "(@[<hov 4>%a@ ->@ %a@])" print typ1 print typ2
   | Pair(x, typ1, typ2) ->
       if occur x typ2
       then Format.fprintf fm "(@[%a:%a@ *@ %a@])" Id.print x print typ1 print typ2
@@ -79,19 +79,20 @@ let rec print fm = function
 
 let rec decomp_fun n typ =
   match typ with
-    Base _
-  | Pair _
-  | Inter _
-  | Union _ -> assert (n=0); [], [], typ
-  | Fun(x,typ1,typ2) ->
-      if n <= 0
-      then [], [], typ
-      else
-        let exts,typs,typ' = decomp_fun (n-1) typ2 in
-          exts, (x,typ1)::typs, typ'
-  | ExtArg(x,typ1,typ2) ->
-      let exts,typs,typ' = decomp_fun n typ2 in
-        (x,typ1)::exts, typs, typ'
+      Base _
+    | Pair _
+    | Inter _
+    | Union _
+    | List _ -> assert (n=0); [], [], typ
+    | Fun(x,typ1,typ2) ->
+        if n <= 0
+        then [], [], typ
+        else
+          let exts,typs,typ' = decomp_fun (n-1) typ2 in
+            exts, (x,typ1)::typs, typ'
+    | ExtArg(x,typ1,typ2) ->
+        let exts,typs,typ' = decomp_fun n typ2 in
+          (x,typ1)::exts, typs, typ'
 
 let rec arg_num = function
     Base _ -> 0
@@ -102,6 +103,7 @@ let rec arg_num = function
   | Union (typ::_) -> arg_num typ
   | Fun(_,_,typ2) -> 1 + arg_num typ2
   | ExtArg(_,_,typ2) -> arg_num typ2
+  | List _ -> 0
 
 let rec subst x t typ =
   match typ with
@@ -111,3 +113,40 @@ let rec subst x t typ =
     | Inter typs -> Inter (List.map (subst x t) typs)
     | Union typs -> Union (List.map (subst x t) typs)
     | ExtArg(y,typ1,typ2) -> ExtArg(y, subst x t typ1, subst x t typ2)
+    | List(y,p_len,z,p_i,typ) ->
+        List(y, S.subst x t p_len, z, S.subst x t p_i, subst x t typ)
+
+let rec rename var = function
+    Base(base, x, p) ->
+      let x' =
+        match var with
+            None -> Id.new_var (Id.name x) (Id.typ x)
+          | Some y -> y
+      in
+        Base(base, x', S.subst x (S.make_var x') p)
+  | Fun(x,typ1,typ2) ->
+      let x' = Id.new_var (Id.name x) (Id.typ x) in
+      let typ2' = subst x (S.make_var x') typ2 in
+        Fun(x', rename (Some x') typ1, rename None typ2')
+  | Pair(x,typ1,typ2) ->
+      let x' = Id.new_var (Id.name x) (Id.typ x) in
+      let typ2' = subst x (S.make_var x') typ2 in
+        Pair(x', rename (Some x') typ1, rename None typ2')
+  | Inter typs -> Inter (List.map (rename var) typs)
+  | Union typs -> Union (List.map (rename var) typs)
+  | ExtArg(x,typ1,typ2) ->
+      let x' = Id.new_var (Id.name x) (Id.typ x) in
+      let typ2' = subst x (S.make_var x') typ2 in
+        ExtArg(x', rename (Some x') typ1, rename None typ2')
+  | List(x,p_len,y,p_i,typ) ->
+      let x' = Id.new_var (Id.name x) (Id.typ x) in
+      let y' = Id.new_var (Id.name y) (Id.typ y) in
+      let p_len' = S.subst x (S.make_var x') p_len in
+      let p_i' = S.subst y (S.make_var y') p_i in
+      let typ' = subst x (S.make_var x') typ in
+      let typ'' = subst y (S.make_var y') typ' in
+        List(x', p_len', y', p_i', rename None typ'')
+
+let rename typ =
+  Id.clear_counter ();
+  rename None typ
