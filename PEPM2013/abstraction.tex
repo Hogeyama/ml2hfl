@@ -161,7 +161,7 @@ previous predicate abstraction.
 %\end{figure}
 
 \begin{figure}[t]
-\begin{minipage}{\textwidth}
+\begin{minipage}{0.5\textwidth}
 \infrule[A-App]
  {x\notin\Dom{E} \andalso \Gamma(x)=(y_1\COL\sigma_1 \to \cdots \to y_n\COL\sigma_n \to\sigma) \\
   \Abst{\Gamma,y_1:\sigma_1,\dots,y_{i-1}:\sigma_{i-1}}{E}{v_i}{[v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\sigma_i}{e_i} \\
@@ -269,9 +269,10 @@ The following is the abstraction of the program with $\Gamma =
 \mathtt{main}\COL\TFun{\INT[]}{\UNIT}$ where $P_e = \Abs{x}{(x
 \mathop{\mathrm{mod}} 2 = 0})$.
 \begin{alltt}
-let rec even b = if (if b then * else false) then true
-                 else if (if b then false else *) then false
-                 else even b
+let rec even b =
+  if (if b then * else false) then true
+  else if (if b then false else *) then false
+  else even b
 let main () = assert (even b)
 \end{alltt}
 The abstracted program is safe.  For comparison, consider
@@ -281,7 +282,8 @@ the case where $\Gamma = \mathtt{even}\COL\TFun{\INT[P_e]}{\BOOL},
 corresponds to our previous approach~\cite{KobayashiPLDI2011} where the predicates for
 \texttt{odd} have not been found yet).
 \begin{alltt}
-let rec even b = if (if b then * else false) then true else odd ()
+let rec even b = if (if b then * else false)
+                 then true else odd ()
     and odd () = if * then false else even *
 let main () = assert (even b)
 \end{alltt}
@@ -310,12 +312,12 @@ abstracted program.
 
 The following property can be proved in the same manner as the soundness
 of the previous predicate abstraction~\cite{KobayashiPLDI2011}.
-\begin{proposition}
+\begin{prop}
  If $\AbstPLDI{\Gamma}{D}{\tau}{D_1}$,
  $\AbstProg{\Gamma}{E}{D}{D_2}$, and
  $\App{\main}{n} \Reds{D_2} \FAIL$, then
  $\App{\main}{n} \Reds{D_1} \FAIL$.
-\end{proposition}
+\end{prop}
 The proposition above states that selective predicate abstraction is
 more precise compared to our previous predicate abstraction.  Here,
 $\AbstPLDI{\Gamma}{D}{\tau}{D_1}$ is the predicate abstraction relation in
