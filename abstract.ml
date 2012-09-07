@@ -277,7 +277,11 @@ let rec get_rtyp_list rtyp typ =
     | RT.Pair(x, RT.Base(RT.Int, x', p_len), RT.Inter []), TList typ ->
         let p_len' = subst x' (make_var x) p_len in
         RT.List(x, p_len', Id.new_var "" typ_unknown, true_term, RT.Inter [])
+    | RT.Pair(x, RT.Base(RT.Int, x', p_len), RT.Inter typs), TList typ ->
+        let typs' = List.map (fun typ -> RT.Pair(x, RT.Base(RT.Int, x', p_len), typ)) typs in
+          get_rtyp_list (RT.Inter typs') (TList typ)
     | _, TList typ ->
+        Format.printf "%a@." RT.print rtyp;
         raise (Fatal "not implemented get_rtyp_list")
     | RT.Base(b,x,ps), _ -> RT.Base(b,x,ps)
     | RT.Fun(x,rtyp1,rtyp2), TFun(y,typ2) ->
