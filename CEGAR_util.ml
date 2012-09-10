@@ -504,9 +504,10 @@ let rename_prog prog =
   let map = List.rev_map make_map_fun prog.env in
   let () =
     if !Flag.print_progress
-    then List.iter (fun (f,f') -> Format.printf "rename: %s ==> %s@." f f') map
+    then
+      (List.iter (fun (f,f') -> Format.printf "rename: %s ==> %s@." f f') map;
+       Format.printf "@.")
   in
-  let () = Format.printf "@." in
   let var_names' = List.map snd map in
   let rename_var map x = List.assoc x map in
   let rename_def (f,xs,t1,e,t2) =

@@ -11,6 +11,7 @@ let symbol = ['(' ')' '*' '?' '|' '+' ',' '!' ';' '.' ':' '#']
 rule header = parse
   "The property is satisfied." { SAFE }
 | "The property is not satisfied." { UNSAFE }
+| "Verification failed (time out)." { TIMEOUT }
 | _ { header lexbuf }
 | eof { failwith "lex error" }
 

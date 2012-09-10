@@ -9,24 +9,6 @@ exception CannotDiscoverPredicate
 
 
 
-let log_filename = ref ""
-let log_cout = ref stdout
-let log_fm = ref Format.std_formatter
-
-let open_log () =
-  log_filename := Filename.basename (Filename.temp_file "log" ".ml");
-  log_cout := open_out (Flag.log_dir ^ !log_filename);
-  log_fm := Format.formatter_of_out_channel !log_cout
-let close_log () =
-  close_out !log_cout
-
-let write_log_string s =
-  Format.fprintf !log_fm "%s\n@." s
-let write_log_term t =
-  Syntax.print_term false !log_fm t;
-  flush !log_cout
-
-
 let print_info () =
   Format.printf "cycle: %d\n" !Flag.cegar_loop;
   Format.printf "total: %.3f sec\n" (get_time());
@@ -119,7 +101,7 @@ let preprocess t spec =
   in
     prog, rmap, get_rtyp, info
 
-let rec main_loop filename orig parsed =
+let rec main_loop orig parsed =
   let () = init () in
   let t = parsed in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
@@ -145,11 +127,16 @@ let rec main_loop filename orig parsed =
                           [f', Ref_type.rename (get_rtyp f' rtyp)]
                       with
                           Not_found -> []
-                        | e -> Format.printf "unimplemented or bug@.@."; []; raise e
+                        | _ -> Format.printf "unimplemented or bug@.@."; []
                     in
                       rev_map_flatten aux env
                   in
-		  let _ = if !Flag.write_annot then WriteAnnot.f filename orig (List.map (fun (id, typ) -> Id.name id, typ) env') in
+		  let () =
+                    if !Flag.write_annot
+                    then
+                      let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
+                        WriteAnnot.f !Flag.filename orig env''
+                  in
                   let pr (f,typ) =
                     Format.printf "%s: %a@." (Id.name f) Ref_type.print typ
                   in
@@ -171,17 +158,17 @@ let rec main_loop filename orig parsed =
 		else
 		  Flag.relative_complete := true;
 		incr Flag.cegar_loop;
-		main_loop filename orig parsed
+		main_loop orig parsed
             | Verifier.FailedToRefineExtraParameters ->
                 RefineInterface.params := [];
                 Verifier.ext_coeffs := [];
                 Verifier.ext_constrs := [];
                 incr Global.number_of_extra_params;
                 incr Flag.cegar_loop;
-                main_loop filename orig parsed
+                main_loop orig parsed
 
 
-let main filename in_channel =
+let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
     let n = my_input in_channel s 0 Flag.max_input_size in
@@ -189,10 +176,9 @@ let main filename in_channel =
       String.sub s 0 n
   in
 
-  let () = if !Flag.web then write_log_string input_string in
   let lb = Lexing.from_string input_string in
   let () = lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename filename;
+    {Lexing.pos_fname = Filename.basename !Flag.filename;
      Lexing.pos_lnum = 1;
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
@@ -203,14 +189,13 @@ let main filename in_channel =
     if true && !Flag.debug_level > 0
     then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term parsed
   in
-    main_loop filename orig parsed
+    main_loop orig parsed
 
 
 let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let arg_spec =
   ["-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
          "<dir>  Add <dir> to the list of include directories";
-   "-web", Arg.Set Flag.web, " Web interface mode";
    "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
    "-only-result",
      Arg.Unit (fun () ->
@@ -275,25 +260,27 @@ let () =
   then ()
   else
     try
-      let filename = ref "" in
       let set_file name =
-        if !filename <> "" then (* unno: is this reachable? *)(Arg.usage arg_spec usage; exit 1);
-        filename := name
+        if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
+        then (Arg.usage arg_spec usage; exit 1);
+        Flag.filename := name
       in
       let () = Arg.parse arg_spec set_file usage in
-      let cin = match !filename with ""|"-" -> stdin | _ -> open_in !filename in
-        if !Flag.web then open_log ();
+      let cin =
+        match !Flag.filename with
+            "" | "-" -> Flag.filename := "stdin"; stdin
+          | _ -> open_in !Flag.filename
+      in
         Wrapper.open_cvc3 ();
         Wrapper2.open_cvc3 ();
         Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
-        main !filename cin;
+        main cin;
         Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
-        print_info ();
-        if !Flag.web then close_log ()
+        print_info ()
     with
         Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
       | LongInput -> Format.printf "Input is too long.@."; exit 1

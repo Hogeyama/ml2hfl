@@ -1238,6 +1238,9 @@ let rec uncps_ref_type rtyp e etyp =
     | RT.Fun(_, RT.Fun(_,rtyp,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_)),
       ECont, _ ->
         uncps_ref_type rtyp ENone etyp
+    | RT.Fun(_, RT.Fun(_,rtyp, RT.Base(RT.Unit,_,_)), RT.Fun(_,_,RT.Base(RT.Unit,_,_))),
+      EExcep, _ -> (* TODO: refine *)
+        uncps_ref_type rtyp ENone etyp
     | RT.Fun(_, RT.Inter rtyps, RT.Base(RT.Unit,_,_)), ECont, _ ->
         let aux = function
             RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type rtyp1 ENone etyp

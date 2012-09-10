@@ -6,6 +6,8 @@ let cvc3 = ref "./cvc3"
 let trecs_log = "log.hors"
 let cvc3_option = "+interactive"
 
+let filename = ref ""
+
 type mode = Reachability | FileAccess
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
 type pred_abst = PredAbst | PredAbstCPS
@@ -98,7 +100,6 @@ let max_input_size = 65536
 
 
 (* mode option *)
-let web = ref false
 let debug = true
 let debug_level = ref 1
 let only_result = ref false

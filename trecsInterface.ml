@@ -312,28 +312,28 @@ let rec verifyFile filename =
 let rec verifyFile filename =
   let default = "empty" in
   let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
-  let result_file = "result" in
+  let result_file = Filename.chop_extension !Flag.filename ^ ".trecs_out" in
   let oc = open_out result_file in
   let () = output_string oc default in
   let () = close_out oc in
   let cmd = Format.sprintf "%s -p %d %d %s > %s" !Flag.trecs p1 p2 filename result_file in
   let cmd' = Format.sprintf "%s | grep -q 'Verification failed (time out).'" cmd in
-  let r = Sys.command cmd' in
-    if r = 0
-    then
-      let () = Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1) in
-      let () = Flag.trecs_param1 := 2 * p1 in
-        verifyFile filename
-    else
-      let ic = open_in result_file in
-      let lb = Lexing.from_channel ic in
-        match Trecs_parser.output Trecs_lexer.token lb with
-          `Safe env ->
-            close_in ic;
-            Safe env
-        | `Unsafe trace ->
-            close_in ic;
-            Unsafe trace
+  let _ = Sys.command cmd' in
+  let ic = open_in result_file in
+  let lb = Lexing.from_channel ic in
+    match Trecs_parser.output Trecs_lexer.token lb with
+        `Safe env ->
+          close_in ic;
+          Safe env
+      | `Unsafe trace ->
+          close_in ic;
+          Unsafe trace
+      | `TimeOut ->
+          if not !Flag.only_result
+          then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
+          Flag.trecs_param1 := 2 * p1;
+          verifyFile filename
+
 
 let write_log filename target =
   let cout = open_out filename in
@@ -346,7 +346,7 @@ let check env target =
   let target' = trans target in
     if !Flag.use_new_trecs
     then
-      let input = "input.hors" in
+      let input = Filename.chop_extension !Flag.filename ^ ".hors" in
         write_log input target';
         verifyFile input
     else

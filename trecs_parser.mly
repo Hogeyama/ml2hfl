@@ -25,6 +25,7 @@ let parse_error _ = print_error_information ()
 %token COMMA
 %token SAFE
 %token UNSAFE
+%token TIMEOUT
 %token THE_ERROR_TRACE_IS
 
 /* priority : low -> high */
@@ -32,13 +33,14 @@ let parse_error _ = print_error_information ()
 %left AND
 
 %start output
-%type <[`Safe of (string * Inter_type.t) list | `Unsafe of (string * int) list ]> output
+%type <[`Safe of (string * Inter_type.t) list | `Unsafe of (string * int) list | `TimeOut]> output
 
 %%
 
 output:
   SAFE env { `Safe $2 }
 | UNSAFE THE_ERROR_TRACE_IS error_trace { `Unsafe $3 }
+| TIMEOUT { `TimeOut }
 
 error_trace:
   DOT
