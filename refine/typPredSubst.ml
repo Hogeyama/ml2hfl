@@ -33,13 +33,13 @@ let lookup (pid, ttys) psub =
   let _ = if !Global.debug then assert (List.mem_assoc pid psub) in
   Formula.simplify
     (Formula.band
-		    (List.map
-		      (fun (_, (xtys, t)) ->
-		        let sub =
-										  List.map2 (fun (x, ty) (t, ty') -> let _ = if !Global.debug then assert (ty = ty') in x, t) xtys ttys
-										in
-		        Term.subst (fun x -> List.assoc x sub) t)
-		      (List.filter (fun (pid', _) -> pid = pid') psub)))
+      (List.map
+        (fun (_, (xtys, t)) ->
+          let sub =
+            List.map2 (fun (x, ty) (t, ty') -> let _ = if !Global.debug then assert (ty = ty') in x, t) xtys ttys
+          in
+          Term.subst (fun x -> List.assoc x sub) t)
+        (List.filter (fun (pid', _) -> pid = pid') psub)))
 
 (** @require fvs psub = [] *)
 let merge psub =
@@ -53,21 +53,21 @@ let merge psub =
 
 (* @raise Not_found *)
 let args_of pid psub =
-		let xtys, _ = List.assoc pid psub in
+  let xtys, _ = List.assoc pid psub in
   xtys
 
 (** @require Util.is_map psub
     @raise Not_found *)
 let lookup_map (pid, ttys) psub =
-		let xtys, t = List.assoc pid psub in
-		let t = Term.fresh (fvs_elem (pid, (xtys, t))) t in
-		let sub = mat xtys ttys in
-		Term.subst (fun x -> List.assoc x sub) t
+  let xtys, t = List.assoc pid psub in
+  let t = Term.fresh (fvs_elem (pid, (xtys, t))) t in
+  let sub = mat xtys ttys in
+  Term.subst (fun x -> List.assoc x sub) t
 
 (** @require Util.is_map psub *)
 let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t) as hc) =
   let _ = Global.log_begin "subst_lhs" in
-		let _ = Global.log (fun () -> Format.printf "input: %a@," HornClause.pr_elem hc) in
+  let _ = Global.log (fun () -> Format.printf "input: %a@," HornClause.pr_elem hc) in
   let ts, ps =
     Util.partition_map
       (fun (pid, ttys) ->
@@ -76,10 +76,10 @@ let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t) as hc) =
         with Not_found ->
           `R(pid, ttys))
       ps
-		in
+  in
   let t = Formula.band (t :: ts) in
   let hc = simplify bvs (Hc(popt, ps, t)) in
-		let _ = Global.log (fun () -> Format.printf "output: %a@," HornClause.pr_elem hc) in
+  let _ = Global.log (fun () -> Format.printf "output: %a@," HornClause.pr_elem hc) in
   let _ = Global.log_end "subst_lhs" in
   hc
 
@@ -91,7 +91,7 @@ let subst ?(bvs = []) psub hc =
       Hc(popt, ps, t)
   | Some(pid, xtys) ->
       (try
-								let t' = lookup_map (Atom.of_pred (pid, xtys)) psub in
+        let t' = lookup_map (Atom.of_pred (pid, xtys)) psub in
         simplify bvs (Hc(None, ps, Formula.band [t; Formula.bnot t']))
       with Not_found ->
         Hc(popt, ps, t))
@@ -102,10 +102,10 @@ let check psub hcs =
     (fun hc ->
       match subst psub hc with
         Hc(None, [], t) ->
-				      if not (Cvc3Interface.is_valid (Formula.bnot t)) then
-				        let _ = Format.printf "%a@,%a => bot@," HornClause.pr_elem hc Term.pr t in
-				        assert false
+          if not (Cvc3Interface.is_valid (Formula.bnot t)) then
+            let _ = Format.printf "%a@,%a => bot@," HornClause.pr_elem hc Term.pr t in
+            assert false
       | _ ->
-		        let _ = Format.printf "%a@," HornClause.pr_elem hc in
-		        assert false)
+          let _ = Format.printf "%a@," HornClause.pr_elem hc in
+          assert false)
     hcs

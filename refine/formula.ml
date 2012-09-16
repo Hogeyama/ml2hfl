@@ -208,90 +208,90 @@ let of_aif (c, nxs, n) =
 
 
 let band_aifs aifs =
-		let aifss =
-		  Util.classify
-		    (fun (_, nxs1, n1) (_, nxs2, n2) ->
-		      LinArith.equiv (nxs1, 0) (nxs2, 0) ||
-		      LinArith.equiv (nxs1, 0) (LinArith.minus (nxs2, 0)))
-		    aifs
-		in
-		Util.concat_map
-		  (fun ((c1, nxs1, n1)::aifs) ->
-		    let cns = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, 0) (nxs2, 0) then c2, -n2 else Const.minus_ibrel c2, n2) aifs in
-		    let cns = Const.candns ((c1, -n1) :: cns) in
-		    List.map (fun (c, n) -> c, nxs1, -n) cns)
-		  aifss
+  let aifss =
+    Util.classify
+      (fun (_, nxs1, n1) (_, nxs2, n2) ->
+        LinArith.equiv (nxs1, 0) (nxs2, 0) ||
+        LinArith.equiv (nxs1, 0) (LinArith.minus (nxs2, 0)))
+      aifs
+  in
+  Util.concat_map
+    (fun ((c1, nxs1, n1)::aifs) ->
+      let cns = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, 0) (nxs2, 0) then c2, -n2 else Const.minus_ibrel c2, n2) aifs in
+      let cns = Const.candns ((c1, -n1) :: cns) in
+      List.map (fun (c, n) -> c, nxs1, -n) cns)
+    aifss
 
 let bor_aifs aifs =
-		let aifss =
-		  Util.classify
-		    (fun (_, nxs1, n1) (_, nxs2, n2) ->
-		      LinArith.equiv (nxs1, 0) (nxs2, 0) ||
-		      LinArith.equiv (nxs1, 0) (LinArith.minus (nxs2, 0)))
-		    aifs
-		in
-		Util.concat_map
-		  (fun ((c1, nxs1, n1)::aifs) ->
-		    let cns = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, 0) (nxs2, 0) then c2, -n2 else Const.minus_ibrel c2, n2) aifs in
-		    let cns = Const.corns ((c1, -n1) :: cns) in
-		    List.map (fun (c, n) -> c, nxs1, -n) cns)
-		  aifss
+  let aifss =
+    Util.classify
+      (fun (_, nxs1, n1) (_, nxs2, n2) ->
+        LinArith.equiv (nxs1, 0) (nxs2, 0) ||
+        LinArith.equiv (nxs1, 0) (LinArith.minus (nxs2, 0)))
+      aifs
+  in
+  Util.concat_map
+    (fun ((c1, nxs1, n1)::aifs) ->
+      let cns = List.map (fun (c2, nxs2, n2) -> if LinArith.equiv (nxs1, 0) (nxs2, 0) then c2, -n2 else Const.minus_ibrel c2, n2) aifs in
+      let cns = Const.corns ((c1, -n1) :: cns) in
+      List.map (fun (c, n) -> c, nxs1, -n) cns)
+    aifss
 
 let band_bts bts =
-		let bts' =
-		  List.filter
-		    (fun t ->
-		      match fun_args t with
-		        Var(_, _), []
-		      | Const(_, Const.Not), [Var(_, _)] ->
-		          true
-		      | _ ->
-		          false)
-		    bts
-		in
-		let pxs, nxs =
-		  Util.partition_map
-		    (fun t ->
-		      match fun_args t with
-		        Var(_, x), [] ->
-		          `L(x)
-		      | Const(_, Const.Not), [Var(_, x)] ->
-		          `R(x)
-		      | _ -> assert false)
-		    bts'
-		in
-		if Util.inter pxs nxs <> [] then
-		  [tfalse]
-		else
-		  bts
+  let bts' =
+    List.filter
+      (fun t ->
+        match fun_args t with
+          Var(_, _), []
+        | Const(_, Const.Not), [Var(_, _)] ->
+            true
+        | _ ->
+            false)
+      bts
+  in
+  let pxs, nxs =
+    Util.partition_map
+      (fun t ->
+        match fun_args t with
+          Var(_, x), [] ->
+            `L(x)
+        | Const(_, Const.Not), [Var(_, x)] ->
+            `R(x)
+        | _ -> assert false)
+      bts'
+  in
+  if Util.inter pxs nxs <> [] then
+    [tfalse]
+  else
+    bts
 
 let bor_bts bts =
-		let bts' =
-		  List.filter
-		    (fun t ->
-		      match fun_args t with
-		        Var(_, _), []
-		      | Const(_, Const.Not), [Var(_, _)] ->
-		          true
-		      | _ ->
-		          false)
-		    bts
-		in
-		let pxs, nxs =
-		  Util.partition_map
-		    (fun t ->
-		      match fun_args t with
-		        Var(_, x), [] ->
-		          `L(x)
-		      | Const(_, Const.Not), [Var(_, x)] ->
-		          `R(x)
-		      | _ -> assert false)
-		    bts'
-		in
-		if Util.inter pxs nxs <> [] then
-		  [ttrue]
-		else
-		  bts
+  let bts' =
+    List.filter
+      (fun t ->
+        match fun_args t with
+          Var(_, _), []
+        | Const(_, Const.Not), [Var(_, _)] ->
+            true
+        | _ ->
+            false)
+      bts
+  in
+  let pxs, nxs =
+    Util.partition_map
+      (fun t ->
+        match fun_args t with
+          Var(_, x), [] ->
+            `L(x)
+        | Const(_, Const.Not), [Var(_, x)] ->
+            `R(x)
+        | _ -> assert false)
+      bts'
+  in
+  if Util.inter pxs nxs <> [] then
+    [ttrue]
+  else
+    bts
 
 
 (** require: t has the type bool
@@ -416,62 +416,62 @@ and simplify_conjuncts ts =
 *)
   let ts = List.unique ts in
   let res =
-		  if ts = [] then
-		    []
-		  else if List.mem tfalse ts then
-		    [tfalse]
-		  else
-		    let ts =
-				    let aifs, bts =
-				      Util.partition_map
-				        (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
-				        (List.filter (fun t -> t <> ttrue) ts)
-				    in
-				    let aifs = band_aifs aifs in
-				    let bts = band_bts bts in
-				    if true then
-								  let sub, ts' =
-				        Util.partition_map
-				          (function
-				            (Const.EqInt, [1, x], n) ->
-				              `L(x, Term.tint (-n))
-				          | (Const.EqInt, [-1, x], n) ->
-				              `L(x, Term.tint n)
-				          | aif ->
-				              `R(LinArith.term_of_aif aif))
-				          aifs
-				      in
-								  List.map (fun (x, t) -> eqInt (make_var x) t) sub @
-				      List.map
-				        (fun t ->
-				          let t' = simplify (subst (fun x -> List.assoc x sub) t) in
-				          if t' = ttrue || t' = tfalse then
+    if ts = [] then
+      []
+    else if List.mem tfalse ts then
+      [tfalse]
+    else
+      let ts =
+        let aifs, bts =
+          Util.partition_map
+            (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
+            (List.filter (fun t -> t <> ttrue) ts)
+        in
+        let aifs = band_aifs aifs in
+        let bts = band_bts bts in
+        if true then
+          let sub, ts' =
+            Util.partition_map
+              (function
+                (Const.EqInt, [1, x], n) ->
+                  `L(x, Term.tint (-n))
+              | (Const.EqInt, [-1, x], n) ->
+                  `L(x, Term.tint n)
+              | aif ->
+                  `R(LinArith.term_of_aif aif))
+              aifs
+          in
+          List.map (fun (x, t) -> eqInt (make_var x) t) sub @
+          List.map
+            (fun t ->
+              let t' = simplify (subst (fun x -> List.assoc x sub) t) in
+              if t' = ttrue || t' = tfalse then
 (*
-				            let _ = Global.log (fun () -> Format.printf "eliminated: %a@," Term.pr t) in
+                let _ = Global.log (fun () -> Format.printf "eliminated: %a@," Term.pr t) in
 *)
-				            t'
-				          else
-				            t)
-				        (ts' @ bts)
-				    else
-				      List.map LinArith.term_of_aif aifs @ bts
-		    in
-						if ts = [] then
-		      []
-		    else if List.mem tfalse ts then
-						  [tfalse]
-				  else
-		      let tss = List.map disjuncts ts in
-		      let ts' = List.fold_left Util.inter (List.hd tss) (List.tl tss) in
-		      if ts' <> [] then
+                t'
+              else
+                t)
+            (ts' @ bts)
+        else
+          List.map LinArith.term_of_aif aifs @ bts
+      in
+      if ts = [] then
+        []
+      else if List.mem tfalse ts then
+        [tfalse]
+      else
+        let tss = List.map disjuncts ts in
+        let ts' = List.fold_left Util.inter (List.hd tss) (List.tl tss) in
+        if ts' <> [] then
 (*
-		        let _ = Global.log (fun () -> Format.printf "shared: %a@," (Util.pr_list Term.pr ", ") ts') in
+          let _ = Global.log (fun () -> Format.printf "shared: %a@," (Util.pr_list Term.pr ", ") ts') in
 *)
-		        let ts = simplify_conjuncts (List.map (fun ts -> simplify (bor (Util.diff ts ts'))) tss) in
-		        let t = simplify (bor ts') in
-		        [bor [t; band ts]]
-		      else
-		        ts
+          let ts = simplify_conjuncts (List.map (fun ts -> simplify (bor (Util.diff ts ts'))) tss) in
+          let t = simplify (bor ts') in
+          [bor [t; band ts]]
+        else
+          ts
   in
 (*
   let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" pr (band res)) in
@@ -479,27 +479,27 @@ and simplify_conjuncts ts =
 *)
   res
 and simplify_disjuncts ts =
-		let ts = List.unique ts in
-		if ts = [] then
+  let ts = List.unique ts in
+  if ts = [] then
     []
   else if List.mem ttrue ts then
-		  [ttrue]
-		else
-		  let ts =
-				  let aifs, bts =
-				    Util.partition_map
-				      (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
-				      (List.filter (fun t -> t <> tfalse) ts)
-				  in
-		    let aifs = bor_aifs aifs in
-				  let bts = bor_bts bts in
-				  List.map LinArith.term_of_aif aifs @ bts
-		  in
+    [ttrue]
+  else
+    let ts =
+      let aifs, bts =
+        Util.partition_map
+          (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t))
+          (List.filter (fun t -> t <> tfalse) ts)
+      in
+      let aifs = bor_aifs aifs in
+      let bts = bor_bts bts in
+      List.map LinArith.term_of_aif aifs @ bts
+    in
     if ts = [] then
       []
-				else if List.mem ttrue ts then
-				  [ttrue]
-				else
+    else if List.mem ttrue ts then
+      [ttrue]
+    else
       let tss = List.map conjuncts ts in
       let ts' = List.fold_left Util.inter (List.hd tss) (List.tl tss) in
       if ts' <> [] then
@@ -511,13 +511,13 @@ and simplify_disjuncts ts =
         ts
       (*List.map
         band
-		      (Util.filter_map_left
-		        (fun tss1 ts tss2 ->
-		          if List.exists (fun ts' -> Util.subset ts' ts) (tss1 @ tss2) then
-		            None
-		          else
-		            Some(ts))
-		        (List.map conjuncts ts))*)
+        (Util.filter_map_left
+          (fun tss1 ts tss2 ->
+            if List.exists (fun ts' -> Util.subset ts' ts) (tss1 @ tss2) then
+              None
+            else
+              Some(ts))
+          (List.map conjuncts ts))*)
 
 
 (** ToDo: first compute the fixed-point of sub *)
@@ -525,12 +525,12 @@ let subst_fixed sub t =
   let _ = Global.log_begin "Formula.subst_fixed" in
   let _ = Global.log (fun () -> Format.printf "input: %a@," pr t) in
   let t =
-		  Util.fixed_point
-		    (fun t ->
-		      let t = simplify (subst sub t) in
-		      t)
-		    equiv
-		    t
+    Util.fixed_point
+      (fun t ->
+        let t = simplify (subst sub t) in
+        t)
+      equiv
+      t
   in
   let _ = Global.log (fun () -> Format.printf "output: %a" pr t) in
   let _ = Global.log_end "Formula.subst_fixed" in
@@ -604,14 +604,14 @@ let of_dnf tss =
 (** ensure: the result does not use =u, (), and unit variables *)
 let elim_unit t =
   let uvs = List.unique (fvs_ty SimType.Unit t SimType.Bool) in
-		let t =
-		  if uvs = [] then
-		    t
-		  else
-		    let sub x = if List.mem x uvs then tunit else raise Not_found in
-		    subst sub t
-		in
-		simplify t
+  let t =
+    if uvs = [] then
+      t
+    else
+      let sub x = if List.mem x uvs then tunit else raise Not_found in
+      subst sub t
+  in
+  simplify t
 
 let rec elim_imply_iff t =
   match fun_args t with
@@ -693,20 +693,20 @@ let elim_boolean ts =
   let bool_vars =
     List.unique
       (Util.concat_map
-						  (fun t -> Term.fvs_ty SimType.Bool t SimType.Bool)
-								ts)
+        (fun t -> Term.fvs_ty SimType.Bool t SimType.Bool)
+        ts)
   in
   if bool_vars = [] then
     [ts],
     function [t] -> t | _ -> assert false
   else
     let subs =
-				  Util.multiply_list_list (@)
-						  (List.map
-								  (fun b ->
-										  [[b, ttrue, SimType.Bool];
-												 [b, tfalse, SimType.Bool]])
-										bool_vars)
+      Util.multiply_list_list (@)
+        (List.map
+          (fun b ->
+            [[b, ttrue, SimType.Bool];
+             [b, tfalse, SimType.Bool]])
+          bool_vars)
     in
     List.map
       (fun sub ->
@@ -714,11 +714,11 @@ let elim_boolean ts =
       subs,
     fun ts ->
       bor
-						  (List.map2
-								  (fun t sub ->
-										  band [t; of_subst sub])
-										ts
-										subs)
+        (List.map2
+          (fun t sub ->
+            band [t; of_subst sub])
+          ts
+          subs)
 
 let rec split_ibrel c ts =
   match ts with
@@ -851,38 +851,38 @@ let rec elim_minus t =
 
 
 let xtty_of p dom t =
-		try
+  try
     ParLinArith.xtty_of_aif p dom (ParLinArith.aif_of t)
-		with Invalid_argument _ ->
-		  (match fun_args t with
-		    Const(_, Const.EqUnit), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      x, t, SimType.Unit
-		  | Const(_, Const.EqUnit), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      x, t, SimType.Unit
-		  | Const(_, Const.EqBool), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      x, t, SimType.Bool
-		  | Const(_, Const.EqBool), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
-		      x, t, SimType.Bool
-		  | Var(_, x), []                    when not (p x) ->
-		      x, ttrue, SimType.Bool
-		  | Const(_, Const.Not), [Var(_, x)] when not (p x) ->
-		      x, tfalse, SimType.Bool
-		  | _ ->
-		      raise Not_found)
+  with Invalid_argument _ ->
+    (match fun_args t with
+      Const(_, Const.EqUnit), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
+        x, t, SimType.Unit
+    | Const(_, Const.EqUnit), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
+        x, t, SimType.Unit
+    | Const(_, Const.EqBool), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
+        x, t, SimType.Bool
+    | Const(_, Const.EqBool), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (fvs t) = [] ->
+        x, t, SimType.Bool
+    | Var(_, x), []                    when not (p x) ->
+        x, ttrue, SimType.Bool
+    | Const(_, Const.Not), [Var(_, x)] when not (p x) ->
+        x, tfalse, SimType.Bool
+    | _ ->
+        raise Not_found)
 
 
 let elim_duplicate_subst xttys =
   let xttys, tss =
     List.split
-		    (List.map
-		      (fun (((_, t1, ty) as xtty)::xttys) ->
+      (List.map
+        (fun (((_, t1, ty) as xtty)::xttys) ->
           let ts =
             List.map
               (fun (_, t2, _) -> eq_ty ty t1 t2)
               xttys
           in
           xtty, ts)
-		      (Util.classify (fun (x1, _, _) (x2, _, _) -> x1 = x2) xttys))
+        (Util.classify (fun (x1, _, _) (x2, _, _) -> x1 = x2) xttys))
   in
   xttys, List.flatten tss
 
@@ -890,27 +890,27 @@ let elim_duplicate_subst xttys =
 (** @param pids specifies the priority *)
 let extract_from pids p t =
   let ts = conjuncts t in
-		let eqcs, ts =
-		  Util.partition_map
-		    (fun t ->
-		      match Term.fun_args t with
-		        Term.Const(_, Const.EqUnit), [Term.Var(_, x1); Term.Var(_, x2)] ->
+  let eqcs, ts =
+    Util.partition_map
+      (fun t ->
+        match Term.fun_args t with
+          Term.Const(_, Const.EqUnit), [Term.Var(_, x1); Term.Var(_, x2)] ->
             `L([x1; x2], SimType.Unit)
-		      | Term.Const(_, Const.EqBool), [Term.Var(_, x1); Term.Var(_, x2)] ->
+        | Term.Const(_, Const.EqBool), [Term.Var(_, x1); Term.Var(_, x2)] ->
             `L([x1; x2], SimType.Bool)
-		      | Term.Const(_, Const.EqInt), [Term.Var(_, x1); Term.Var(_, x2)] ->
+        | Term.Const(_, Const.EqInt), [Term.Var(_, x1); Term.Var(_, x2)] ->
             `L([x1; x2], SimType.Int)
-		      | _ -> `R(t))
-		    ts
-		in
-		let eqcs =
-				let rec aux eqcs1 eqcs2 =
-				  match eqcs2 with
-				    [] -> eqcs1
-				  | eqc2::eqcs2' ->
-				      let eqcs1' =
-				  						let flag = ref false in
-		          let eqcs =
+        | _ -> `R(t))
+      ts
+  in
+  let eqcs =
+    let rec aux eqcs1 eqcs2 =
+      match eqcs2 with
+        [] -> eqcs1
+      | eqc2::eqcs2' ->
+          let eqcs1' =
+            let flag = ref false in
+            let eqcs =
               List.map
                 (fun eqc1 ->
                   if Util.inter (fst eqc2) (fst eqc1) <> [] then
@@ -921,30 +921,30 @@ let extract_from pids p t =
                     eqc1)
                 eqcs1
             in
-				        if !flag then eqcs else eqc2 :: eqcs
-				      in
-				      aux eqcs1' eqcs2'
-				in
+            if !flag then eqcs else eqc2 :: eqcs
+          in
+          aux eqcs1' eqcs2'
+    in
     Util.fixed_point (aux []) (fun eqcs1 eqcs2 -> List.length eqcs1 = List.length eqcs2) eqcs
   in
   let ts', sub =
     Util.flatten_unzip
-		    (List.map
-		      (fun (eqc, ty) ->
-		        let xs1, xs2 = List.partition p eqc in
-		        match xs1 with
-		          [] ->
-		            [], List.map (fun x -> x, Term.make_var (List.hd xs2), ty) (List.tl xs2)
-		        | x::xs ->
-		            let x, xs =
+      (List.map
+        (fun (eqc, ty) ->
+          let xs1, xs2 = List.partition p eqc in
+          match xs1 with
+            [] ->
+              [], List.map (fun x -> x, Term.make_var (List.hd xs2), ty) (List.tl xs2)
+          | x::xs ->
+              let x, xs =
                 try
                   let pid = List.find (fun pid -> List.mem pid xs1) pids in
                   pid , Util.diff xs1 [pid]
                 with Not_found -> x, xs
               in
-		            List.map (fun x' -> eq_ty ty (Term.make_var x) (Term.make_var x')) xs,
-		            List.map (fun x' -> x', Term.make_var x, ty) xs2)
-		      eqcs)
+              List.map (fun x' -> eq_ty ty (Term.make_var x) (Term.make_var x')) xs,
+              List.map (fun x' -> x', Term.make_var x, ty) xs2)
+        eqcs)
   in
   TypSubst.fun_of sub, simplify (band (ts @ ts'))
 
@@ -958,17 +958,17 @@ let extract_from2 pvs p ts =
     | t::ts' ->
         let xttys0, ts0 =
           try
-		          let dom = List.map Util.fst3 xttys0 in
-		          let xtty = xtty_of p dom t in
-		          let xtty =
+            let dom = List.map Util.fst3 xttys0 in
+            let xtty = xtty_of p dom t in
+            let xtty =
               (*Format.printf "xtty: %a@,nlfvs: %a@,pvs: %a@," pr_elem xtty Var.pr_list nlfvs Var.pr_list pvs;*)
-				          if List.mem (Util.fst3 xtty) nlfvs && not (is_linear (Util.snd3 xtty)) ||
+              if List.mem (Util.fst3 xtty) nlfvs && not (is_linear (Util.snd3 xtty)) ||
                  List.mem (Util.fst3 xtty) pvs && Term.coeffs (Util.snd3 xtty) <> [] (*|| t is constant*) then
-				            raise Not_found
-				          else
-				            xtty
-		          in
-		          xtty::xttys0, ts0
+                raise Not_found
+              else
+                xtty
+            in
+            xtty::xttys0, ts0
           with Not_found ->
             xttys0, t::ts0
         in

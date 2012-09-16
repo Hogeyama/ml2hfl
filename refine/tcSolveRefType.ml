@@ -16,29 +16,29 @@ let args_of_tree env tr =
 (** ToDo: not enough for higher-order functions *)
 let ret_of_tree env tr =
   let x, uid = (get tr).name in
-		match (get tr).ret with
-		  None ->
-		    Var.T(x, uid, SimType.arity (env x))
-		| Some(x, uid) ->
-						SimType.find_last_base env (x, uid)
+  match (get tr).ret with
+    None ->
+      Var.T(x, uid, SimType.arity (env x))
+  | Some(x, uid) ->
+      SimType.find_last_base env (x, uid)
 
 let arg_of env nd =
-		SimType.find_last_base env nd.name
+  SimType.find_last_base env nd.name
 
 let ret_of env nd =
   let x, uid = nd.name in
-		match nd.ret with
-				None ->
-				  Var.T(x, uid, SimType.arity (env x))
-		| Some(x, uid) ->
-						SimType.find_last_base env (x, uid)
+  match nd.ret with
+    None ->
+      Var.T(x, uid, SimType.arity (env x))
+  | Some(x, uid) ->
+      SimType.find_last_base env (x, uid)
 
 (** require: all the substituted nodes are closed *)
 let subst_interps env tr ret_interp_list =
   let rec aux (Node(nd, trs) as tr) =
     if trs = [] then
       try
-		      `L(List.assoc (ret_of env nd) ret_interp_list)
+        `L(List.assoc (ret_of env nd) ret_interp_list)
       with Not_found ->
         `R(tr)
     else
@@ -62,10 +62,10 @@ let subst_interps env tr ret_interp_list =
   match aux tr with `R(tr) -> tr | _ -> assert false
 
 let subst_interp closed p interp =
-		if closed then
-		  match p with
-		    Top -> assert false
-		  | Path(up, trs1, nd, trs2) ->
+  if closed then
+    match p with
+      Top -> assert false
+    | Path(up, trs1, nd, trs2) ->
         let ts1, t::ts2 = List.split_nth (List.length trs1) nd.constr in
         let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
         (** must not apply xttys to interp *)
@@ -81,40 +81,40 @@ let subst_interp closed p interp =
         in
         Some(root (Loc(Node({ nd with constr = ts1 @ ts2;
                                       subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))
-		else
-		  match p with
-		    Top -> let _ = assert (interp = Formula.ttrue) in None
-		  | Path(up, trs1, nd, trs2) ->
+  else
+    match p with
+      Top -> let _ = assert (interp = Formula.ttrue) in None
+    | Path(up, trs1, nd, trs2) ->
         let _ = assert (trs2 = []) in
-				    if Term.equiv interp Formula.ttrue then
+        if Term.equiv interp Formula.ttrue then
           let _ = Format.printf "stop propagation@," in
-				      None
-				    else
-		        let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
-		        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
+          None
+        else
+          let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
+          let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
           (** must not apply xttys to interp *)
-		        let interp, xttys =
-		          (* apply xttys to interp: unsound try hrec.ml
-				        let xts = List.map (fun (x, t, _) -> x, t) xttys in
-				        let sub x = List.assoc x xts in
-		          Term.subst sub interp,
+          let interp, xttys =
+            (* apply xttys to interp: unsound try hrec.ml
+            let xts = List.map (fun (x, t, _) -> x, t) xttys in
+            let sub x = List.assoc x xts in
+            Term.subst sub interp,
             []*)
             interp, xttys
-		        in
-		        Some(root (Loc(Node({ nd with (**)ret = None;
-				                                    closed = false;(**)
-				                                    constr = ts1 @ [Formula.band [t; Formula.bnot interp]];
-		                                      subst = xttyss1 @ [xttys] }, trs1), (**)path_set_open(**) up)))
+          in
+          Some(root (Loc(Node({ nd with (**)ret = None;
+                                        closed = false;(**)
+                                        constr = ts1 @ [Formula.band [t; Formula.bnot interp]];
+                                        subst = xttyss1 @ [xttys] }, trs1), (**)path_set_open(**) up)))
 
 let related n1 n2 =
   let tmp = CallId.tlfc_of (Var.T(fst n1, snd n1, (*dummy*)-1)) in
   CallId.ancestor_of tmp n2
 let related_locs loc =
   let Loc(tr, _) = loc in
-		find_all
-		  (fun nd ->
-		    related (get tr).name nd.name)
-		  (root loc)
+  find_all
+    (fun nd ->
+      related (get tr).name nd.name)
+    (root loc)
 
 let rec prune_tree pred (Node(nd, trs)) =
   if pred nd.name then
@@ -152,15 +152,15 @@ let rec prune_path pred p =
         Util.split_at [List.length trs1; 1; List.length trs2] nd.subst
       in
       let (ts1, xttyss1, trs1), xttys1' =
-				    let res, xttys =
-				      List.fold_left
-				       (fun (res, xttys1) (t, xttys2, tr) ->
-				         match tr with
-				           None -> res, xttys1 @ xttys2
-				         | Some(tr) -> res @ [t, xttys1 @ xttys2, tr], [])
-				       ([], [])
-				       (Util.zip3 ts1 xttyss1 trs1)
-				    in
+        let res, xttys =
+          List.fold_left
+           (fun (res, xttys1) (t, xttys2, tr) ->
+             match tr with
+               None -> res, xttys1 @ xttys2
+             | Some(tr) -> res @ [t, xttys1 @ xttys2, tr], [])
+           ([], [])
+           (Util.zip3 ts1 xttyss1 trs1)
+        in
         Util.unzip3 res, xttys
 (*
         Util.unzip3
@@ -169,15 +169,15 @@ let rec prune_path pred p =
 *)
       in
       let (ts2, xttyss2, trs2), xttys2' =
-				    let res, xttys =
-				      List.fold_left
-				       (fun (res, xttys1) (t, xttys2, tr) ->
-				         match tr with
-				           None -> res, xttys1 @ xttys2
-				         | Some(tr) -> res @ [t, xttys1 @ xttys2, tr], [])
-				       ([], [])
-				       (Util.zip3 ts2 xttyss2 trs2)
-				    in
+        let res, xttys =
+          List.fold_left
+           (fun (res, xttys1) (t, xttys2, tr) ->
+             match tr with
+               None -> res, xttys1 @ xttys2
+             | Some(tr) -> res @ [t, xttys1 @ xttys2, tr], [])
+           ([], [])
+           (Util.zip3 ts2 xttyss2 trs2)
+        in
         Util.unzip3 res, xttys
       in
       Path(prune_path pred up, trs1,
@@ -187,38 +187,38 @@ let rec prune_path pred p =
 (** require: all the related locations of loc is a leaf *)
 let summary_of env loc =
   let Loc(Node(nd, []), p) = loc in
-		let _ = if not nd.closed then assert (nd.ret = None) in
-		let locs = related_locs loc in
+  let _ = if not nd.closed then assert (nd.ret = None) in
+  let locs = related_locs loc in
   let b = Global.enable_quick_inference && List.length locs = 1 in
   try
     if b then
-						let arg = if nd.closed then ret_of env nd else arg_of env nd in
-						let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
-		    let interp =
-								let tt =
+      let arg = if nd.closed then ret_of env nd else arg_of env nd in
+      let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
+      let interp =
+        let tt =
           Formula.simplify
             (Fes.formula_of
               (Fes.eqelim (RefType.visible arg) (fes_of_nodes [nd])))
         in
-								let tp =
+        let tp =
           Formula.simplify
             (Fes.formula_of
               (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))
         in
-								let t1, t2 = if nd.closed then tt, tp else tp, tt in
-				    CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
-		    in
-		    let _ = Format.printf "@]@," in
-						[`P(arg, interp)], Util.opt2list (subst_interp nd.closed p interp)
+        let t1, t2 = if nd.closed then tt, tp else tp, tt in
+        CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
+      in
+      let _ = Format.printf "@]@," in
+      [`P(arg, interp)], Util.opt2list (subst_interp nd.closed p interp)
     else (* necessary try repeat.ml *)
       raise CsisatInterface.NoInterpolant
   with CsisatInterface.NoInterpolant ->
     let _ = if b then Format.printf "**** quick inference failed ****@]@," in
     let arg_p_interp_list, ret_interp_list =
-						let arg_p_t_list =
-						  List.map
-						    (fun (Loc(tr, p)) ->
-		          let p = left_of_path p in
+      let arg_p_t_list =
+        List.map
+          (fun (Loc(tr, p)) ->
+            let p = left_of_path p in
             let p =
               if nd.closed then
                 (* try linmax.ml *)
@@ -228,7 +228,7 @@ let summary_of env loc =
                 p
             in
             (*let _ = Format.printf "%a@," pr_path p in*)
-		          let arg = arg_of env (get tr) in
+            let arg = arg_of env (get tr) in
             let t =
               Term.rename_fresh
                 (RefType.visible arg)
@@ -239,88 +239,88 @@ let summary_of env loc =
                       (fes_of_nodes (nodes_of_path p)))))
             in
             (*let t = Formula.of_dnf (Term.dnf t) in*)
-						      (**)let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in(**)
-		          arg, p, t)
-		        locs
+            (**)let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in(**)
+            arg, p, t)
+          locs
       in
-		    let ret_nds_t_list, _ =
-								Util.map_fold_left
-								  (fun res nds0 (Loc(tr, _)) _ ->
-		  		      let arg_p_t_list = List.take (List.length res + 1) arg_p_t_list in
-				        let ret = ret_of env (get tr) in
-		          let nds = nds0 @ nodes_of_tree tr in
+      let ret_nds_t_list, _ =
+        Util.map_fold_left
+          (fun res nds0 (Loc(tr, _)) _ ->
+            let arg_p_t_list = List.take (List.length res + 1) arg_p_t_list in
+            let ret = ret_of env (get tr) in
+            let nds = nds0 @ nodes_of_tree tr in
             let fes =
               Fes.band
                 [Fes.make [] (List.map Util.trd3 arg_p_t_list);
                  fes_of_nodes nds]
             in
-								    let t = Term.rename_fresh (RefType.visible ret) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
+            let t = Term.rename_fresh (RefType.visible ret) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
             (*let t = Formula.of_dnf (Term.dnf t) in*)
-								    (**)let _ = if (get tr).closed then Format.printf "%a: %a@," Var.pr ret Term.pr t in(**)
-		          (ret, nds, t), nds)
-								  [] locs
-						in
+            (**)let _ = if (get tr).closed then Format.printf "%a: %a@," Var.pr ret Term.pr t in(**)
+            (ret, nds, t), nds)
+          [] locs
+      in
       if nd.closed then
-								let Some(tr) = prune_tree (fun name -> related nd.name name) (root loc) in
+        let Some(tr) = prune_tree (fun name -> related nd.name name) (root loc) in
         (*let _ = Format.printf "context: %a@," pr tr in*)
         let res =
-								  Util.map_right
-								    (fun ret_nds_t_list (ret, nds, t1) res ->
-						        let interp =
-										 					let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
-						          let _, ret_interp_list = List.split res in
+          Util.map_right
+            (fun ret_nds_t_list (ret, nds, t1) res ->
+              let interp =
+                let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
+                let _, ret_interp_list = List.split res in
                 let t2 =
                   let fes =
                      Fes.band
-		                     [Fes.make
-		                       []
-		                       ((**)List.map Util.trd3 arg_p_t_list @(**)
-		                       List.map Util.trd3 ret_nds_t_list @
-		                       List.map snd ret_interp_list);
+                       [Fes.make
+                         []
+                         ((**)List.map Util.trd3 arg_p_t_list @(**)
+                         List.map Util.trd3 ret_nds_t_list @
+                         List.map snd ret_interp_list);
                         fes_of_nodes (nodes_of_tree tr)]
                   in
                   Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
                 in
-																let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
-						  						  let _ = Format.printf "@]@," in
-						          interp
-						        in
-														let arg_p_interp_list =
-																Util.map_left
-																		(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-																				let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
-																				let interp =
-																				  let t1 = t in
-																				  let t2 =
+                let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
+                let _ = Format.printf "@]@," in
+                interp
+              in
+              let arg_p_interp_list =
+                Util.map_left
+                  (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
+                    let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
+                    let interp =
+                      let t1 = t in
+                      let t2 =
                         let fes =
                           Fes.band
                             [Fes.make
                               []
-				                          (List.map Util.trd3 arg_p_interp_list @
-				                           List.map Util.trd3 arg_p_t_list @
-				                           [Formula.bnot interp]);
+                              (List.map Util.trd3 arg_p_interp_list @
+                               List.map Util.trd3 arg_p_t_list @
+                               [Formula.bnot interp]);
                              fes_of_nodes nds]
                         in
-																								Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
-																				  in
-																				  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
-																		  in
-																		  let _ = Format.printf "@]@," in
-																				(arg, p, interp))
-																		(List.take (List.length ret_nds_t_list + 1) arg_p_t_list)
-														in
-														arg_p_interp_list,
-		            (ret, interp))
-												ret_nds_t_list
+                        Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
+                      in
+                      CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
+                    in
+                    let _ = Format.printf "@]@," in
+                    (arg, p, interp))
+                  (List.take (List.length ret_nds_t_list + 1) arg_p_t_list)
+              in
+              arg_p_interp_list,
+              (ret, interp))
+            ret_nds_t_list
         in
-				    let arg_p_interp_list_list, ret_interp_list = List.split res in
-								let arg_p_interp_list =
-										Util.map_left
-												(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-														let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
-														let interp =
-														  let t1 = t in
-														  let t2 =
+        let arg_p_interp_list_list, ret_interp_list = List.split res in
+        let arg_p_interp_list =
+          Util.map_left
+            (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
+              let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
+              let interp =
+                let t1 = t in
+                let t2 =
                   let fes =
                     Fes.band
                       [Fes.make
@@ -330,16 +330,16 @@ let summary_of env loc =
                         List.map snd ret_interp_list);
                        fes_of_nodes (nodes_of_tree tr)]
                   in
-  																Formula.simplify
+                  Formula.simplify
                     (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
-														  in
-														  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
-												  in
-												  let _ = Format.printf "@]@," in
-														(arg, p, interp))
-												arg_p_t_list
-								in
-								List.concat arg_p_interp_list_list @ arg_p_interp_list,
+                in
+                CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
+              in
+              let _ = Format.printf "@]@," in
+              (arg, p, interp))
+            arg_p_t_list
+        in
+        List.concat arg_p_interp_list_list @ arg_p_interp_list,
         ret_interp_list
       else
         let ret_nds_t_list, [_, nds0, _] =
@@ -347,82 +347,82 @@ let summary_of env loc =
         in
 (*
         let res =
-								  Util.map_right
-								    (fun ret_nds_t_list (ret, nds, t1) res ->
-						        let interp =
-										 					let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
-						          let _, ret_interp_list = List.split res in
+          Util.map_right
+            (fun ret_nds_t_list (ret, nds, t1) res ->
+              let interp =
+                let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
+                let _, ret_interp_list = List.split res in
                 let t2 =
                   let fes =
                     Fes.band
                       [Fes.make
                         []
-	  	                    ((**)List.map Util.trd3 arg_p_t_list @(**)
-		                       List.map Util.trd3 ret_nds_t_list @
-		                       List.map snd ret_interp_list);
+                        ((**)List.map Util.trd3 arg_p_t_list @(**)
+                         List.map Util.trd3 ret_nds_t_list @
+                         List.map snd ret_interp_list);
                        fes_of_nodes nds0]
                   in
                   Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
                 in
-																let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
-						  						  let _ = Format.printf "@]@," in
-						          interp
-						        in
-														let arg_p_interp_list =
-																Util.map_left
-																		(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-																				let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
-																				let interp =
-																				  let t1 = t in
-																				  let t2 =
-						                  let fes =
-						                    Fes.band
-						                      [Fes.make
-						                        []
-				                          (List.map Util.trd3 arg_p_interp_list @
-				                           List.map Util.trd3 arg_p_t_list @
-				                           Formula.bnot interp;
-						                       fes_of_nodes nds]
-						                  in
-																								Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
-																				  in
-																				  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
-																		  in
-																		  let _ = Format.printf "@]@," in
-																				(arg, p, interp))
-																		(List.take (List.length ret_nds_t_list + 1) arg_p_t_list)
-														in
-														arg_p_interp_list,
-		            (ret, interp))
-												ret_nds_t_list
+                let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
+                let _ = Format.printf "@]@," in
+                interp
+              in
+              let arg_p_interp_list =
+                Util.map_left
+                  (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
+                    let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
+                    let interp =
+                      let t1 = t in
+                      let t2 =
+                        let fes =
+                          Fes.band
+                            [Fes.make
+                              []
+                              (List.map Util.trd3 arg_p_interp_list @
+                               List.map Util.trd3 arg_p_t_list @
+                               Formula.bnot interp;
+                             fes_of_nodes nds]
+                        in
+                        Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
+                      in
+                      CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
+                    in
+                    let _ = Format.printf "@]@," in
+                    (arg, p, interp))
+                  (List.take (List.length ret_nds_t_list + 1) arg_p_t_list)
+              in
+              arg_p_interp_list,
+              (ret, interp))
+            ret_nds_t_list
         in
 *)
-				    let arg_p_interp_list_list, ret_interp_list = [], [](*List.split res*) in
-								let arg_p_interp_list =
-										Util.map_left
-												(fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
-														let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
-														let interp =
-														  let t1 = t in
-														  let t2 =
-						            let fes =
-						              Fes.band
-						                [Fes.make
-						                  []
-				                    (List.map Util.trd3 arg_p_interp_list @
-				                     List.map Util.trd3 arg_p_t_list @
-				                     List.map snd ret_interp_list);
-						                 fes_of_nodes nds0]
-						            in
-																		Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
-														  in
-														  CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
-												  in
-												  let _ = Format.printf "@]@," in
-														(arg, p, interp))
-												arg_p_t_list
-								in
-								List.concat arg_p_interp_list_list @ arg_p_interp_list,
+        let arg_p_interp_list_list, ret_interp_list = [], [](*List.split res*) in
+        let arg_p_interp_list =
+          Util.map_left
+            (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
+              let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
+              let interp =
+                let t1 = t in
+                let t2 =
+                  let fes =
+                    Fes.band
+                      [Fes.make
+                        []
+                        (List.map Util.trd3 arg_p_interp_list @
+                         List.map Util.trd3 arg_p_t_list @
+                         List.map snd ret_interp_list);
+                       fes_of_nodes nds0]
+                  in
+                  Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
+                in
+                CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
+              in
+              let _ = Format.printf "@]@," in
+              (arg, p, interp))
+            arg_p_t_list
+        in
+        List.concat arg_p_interp_list_list @ arg_p_interp_list,
         ret_interp_list
     in
     List.map (fun (ret, interp) -> `P(ret, interp)) ret_interp_list @
@@ -437,123 +437,123 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
   let parginterps, interp =
     try
       let interp =
-								let (tts, tps), xss =
-	  							let trs, ps = (* no need to reverse? *)rec_calls_of (fst nd.name) loc in
-	         List.split
-												(List.map2
-													 (fun tr p ->
-			             let arg = arg_of env (get tr) in
+        let (tts, tps), xss =
+          let trs, ps = (* no need to reverse? *)rec_calls_of (fst nd.name) loc in
+          List.split
+            (List.map2
+              (fun tr p ->
+                let arg = arg_of env (get tr) in
 (*
-			             let _ = Format.printf "%a@," Var.pr arg in
+                let _ = Format.printf "%a@," Var.pr arg in
 *)
-													   Term.rename_fresh
+                Term.rename_fresh
                   (RefType.visible arg)
                   (Formula.simplify
                     (Fes.formula_of
                       (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
-													   Term.rename_fresh
+                Term.rename_fresh
                   (RefType.visible arg)
                   (Formula.simplify
                     (Fes.formula_of
                       (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
-													 trs ps),
-			  		   List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
-								in
-								let tt = List.hd tts in
-								let tp = List.hd tps in
-								let ttw = widen xss tts in
-								let tpw = widen xss tps in
-								let t1, t2, tw1, tw2 =
-										if nd.closed then
-											 tt, tp, ttw, tpw
-										else
-											 tp, tt, tpw, ttw
-								in
-			     interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
+              trs ps),
+          List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
+        in
+        let tt = List.hd tts in
+        let tp = List.hd tps in
+        let ttw = widen xss tts in
+        let tpw = widen xss tps in
+        let t1, t2, tw1, tw2 =
+          if nd.closed then
+            tt, tp, ttw, tpw
+          else
+            tp, tt, tpw, ttw
+        in
+        interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
       in
       let _ = Format.printf "@]@," in
-						[], interp
+      [], interp
     with CsisatInterface.NoInterpolant ->
       let _ = Format.printf "*******@ " in
-		    let argps, nds =
-				    let locs = related_locs loc in
-								List.map
-										(fun (Loc(tr, p)) ->
-												SimType.find_last_base env (get tr).name, left_of_path p)
-										locs,
-								Util.concat_map
-										(fun (Loc(tr, _)) -> nodes_of_tree tr)
-										locs
+      let argps, nds =
+        let locs = related_locs loc in
+        List.map
+          (fun (Loc(tr, p)) ->
+            SimType.find_last_base env (get tr).name, left_of_path p)
+          locs,
+        Util.concat_map
+          (fun (Loc(tr, _)) -> nodes_of_tree tr)
+          locs
       in
-				  let ts0 =
-		      List.map
-		        (fun (arg, p) ->
-		          let t = Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
-		          (*let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in*)
-		          t)
-		        argps
-				  in
-		    let interp =
-								let (tts, tps), xss =
-    						let trs, ps = (* no need to reverse? *)rec_calls_of (fst nd.name) loc in
+      let ts0 =
+        List.map
+          (fun (arg, p) ->
+            let t = Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
+            (*let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in*)
+            t)
+          argps
+      in
+      let interp =
+        let (tts, tps), xss =
+          let trs, ps = (* no need to reverse? *)rec_calls_of (fst nd.name) loc in
           List.split
-												(List.map2
-												  (fun tr p ->
-		              let arg = arg_of env (get tr) in
+            (List.map2
+              (fun tr p ->
+                let arg = arg_of env (get tr) in
 (*
-		              let _ = Format.printf "%a@," Var.pr arg in
+                let _ = Format.printf "%a@," Var.pr arg in
 *)
 (* why not compute ts0 and nds? *)
 (*
                 if nd.closed then
-														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
-  												    let ts, xttys = fes_of_nodes (nds @ nodes_of_path p) in
-														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
+                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
+                  let ts, xttys = fes_of_nodes (nds @ nodes_of_path p) in
+                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
                 else
 *)
-  												    let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
-														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
-														    Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
-												  trs ps),
-				      List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
-								in
-								let tt = List.hd tts in
-								let tp = List.hd tps in
-								let ttw = widen xss tts in
-								let tpw = widen xss tps in
-								let t1, t2, tw1, tw2 =
-										if nd.closed then
-										  tt, tp, ttw, tpw
-										else
-										  tp, tt, tpw, ttw
-								in
-		      interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
-		    in
-		    let _ = Format.printf "@]@," in
-		    let _, parginterps =
-  		    let tr = Node(nd, []) in
-				    List.fold_left
-				      (fun (t0::ts0, parginterps) (arg, p) ->
-												let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
-												let interp =
-				          let t1 = t0 in
-				          let t2 =
-												    let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
-									  					Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) ((if nd.closed then Formula.bnot interp else interp)::ts0 @ ts, xttys)))
-				          in
-				          CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
-		          in
-		          let _ = Format.printf "@]@," in
-				        ts0 @ [interp], (p, arg, interp)::parginterps)
-				      (ts0, []) argps
-		    in
-		    parginterps, interp
+                  let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
+                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
+                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
+              trs ps),
+          List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
+        in
+        let tt = List.hd tts in
+        let tp = List.hd tps in
+        let ttw = widen xss tts in
+        let tpw = widen xss tps in
+        let t1, t2, tw1, tw2 =
+          if nd.closed then
+            tt, tp, ttw, tpw
+          else
+            tp, tt, tpw, ttw
+        in
+        interpolate_widen_bvs (RefType.visible arg) nd.closed t1 t2 tw1 tw2
+      in
+      let _ = Format.printf "@]@," in
+      let _, parginterps =
+        let tr = Node(nd, []) in
+        List.fold_left
+          (fun (t0::ts0, parginterps) (arg, p) ->
+            let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
+            let interp =
+              let t1 = t0 in
+              let t2 =
+                let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
+                Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) ((if nd.closed then Formula.bnot interp else interp)::ts0 @ ts, xttys)))
+              in
+              CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
+            in
+            let _ = Format.printf "@]@," in
+            ts0 @ [interp], (p, arg, interp)::parginterps)
+          (ts0, []) argps
+      in
+      parginterps, interp
   in
-		if nd.closed then
+  if nd.closed then
     `P(arg, interp)::(List.map (fun (_, arg, interp) -> `P(arg, interp)) parginterps),
-		  (match p with
-		    Top -> assert false
-		  | Path(up, trs1, nd, trs2) ->
+    (match p with
+      Top -> assert false
+    | Path(up, trs1, nd, trs2) ->
         let ts1, t::ts2 = List.split_nth (List.length trs1) nd.constr in
         let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
 (*
@@ -568,26 +568,26 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
                                   subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up))))::
     Util.concat_map
       (fun (Path(up, trs1, nd, []), _, interp) ->
-				    if Term.equiv interp Formula.ttrue then
-				      []
-				    else
-		        let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
-		        let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
+        if Term.equiv interp Formula.ttrue then
+          []
+        else
+          let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
+          let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
 (**)
-		        let xts = List.map (fun (x, t, _) -> x, t) xttys in
-		        let sub x = List.assoc x xts in
+          let xts = List.map (fun (x, t, _) -> x, t) xttys in
+          let sub x = List.assoc x xts in
 (**)
-				      [root (Loc(Node({ nd with ret = None;
-				                                closed = false;
-				                                constr = ts1 @ [Formula.band [t; Formula.bnot ((*Term.subst sub*) interp)]];
-				                                subst = xttyss1 @ [(*[]*)(**)xttys(**)] }, trs1), path_set_open up))])
+          [root (Loc(Node({ nd with ret = None;
+                                    closed = false;
+                                    constr = ts1 @ [Formula.band [t; Formula.bnot ((*Term.subst sub*) interp)]];
+                                    subst = xttyss1 @ [(*[]*)(**)xttys(**)] }, trs1), path_set_open up))])
       parginterps
-		else
-		  let _ = assert (nd.ret = None) in
+  else
+    let _ = assert (nd.ret = None) in
     [`P(arg, interp)],
-		  match p with
-		    Top -> let _ = assert (interp = Formula.ttrue) in []
-		  | Path(up, trs1, nd, []) ->
+    match p with
+      Top -> let _ = assert (interp = Formula.ttrue) in []
+    | Path(up, trs1, nd, []) ->
         let ts1, t::[] = List.split_nth (List.length trs1) nd.constr in
         let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
 (**)
@@ -604,34 +604,34 @@ let summaries_of env constrss0 =
     match constrss with
       [] -> sums
    | constrs::constrss' ->
-	    			(**)
-				    let _ = Format.printf "constraints:@,  %a@," pr constrs in
-				    (**)
-				    let sums', constrss'' =
-				      try
+        (**)
+        let _ = Format.printf "constraints:@,  %a@," pr constrs in
+        (**)
+        let sums', constrss'' =
+          try
             let loc =
               let locs = List.rev (find_leaves constrs) in
               let locs = List.filter (fun loc -> Util.diff (related_locs loc) locs = []) locs in
               let _ = assert (locs <> []) in
               match !Global.predicate_discovery with
                 ConvexHull ->
-		                let locs' = List.filter (fun (Loc(Node(nd, []), p) as loc) -> is_recursive nd.name loc) locs in
-		                (match locs' with
-		                  [] -> List.hd locs
-		                | loc::_ -> loc)
+                  let locs' = List.filter (fun (Loc(Node(nd, []), p) as loc) -> is_recursive nd.name loc) locs in
+                  (match locs' with
+                    [] -> List.hd locs
+                  | loc::_ -> loc)
               | Backward ->
                   List.hd locs(*find_leaf constrs*)
             in
             (match !Global.predicate_discovery with
               ConvexHull -> summary_of_widen env loc
             | Backward -> summary_of env loc)
-				      with CsisatInterface.NoInterpolant ->
-				        raise (FeasibleErrorTrace(constrs(**ToDo*)))
-				    in
-				    match constrss with
-				      [] -> sums' @ sums
-				    | _ ->
-				        summaries_of_aux (sums' @ sums) (constrss'' @ constrss')
+          with CsisatInterface.NoInterpolant ->
+            raise (FeasibleErrorTrace(constrs(**ToDo*)))
+        in
+        match constrss with
+          [] -> sums' @ sums
+        | _ ->
+            summaries_of_aux (sums' @ sums) (constrss'' @ constrss')
 (*
       Format.printf "@,";
 *)

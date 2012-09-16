@@ -160,7 +160,7 @@ let infer t ty =
       let _ = assert (SimType.equiv ty SimType.Bool) in
         aux t1 SimType.Int @ aux t2 SimType.Int
     | Term.Forall(_, env, t), []
-		  | Term.Exists(_, env, t), [] ->
+    | Term.Exists(_, env, t), [] ->
         let _ = assert (SimType.equiv ty SimType.Bool) in
         let xs = List.map fst env in
         List.filter (fun (x, _) -> not (List.mem x xs)) (aux t SimType.Bool)
@@ -168,14 +168,14 @@ let infer t ty =
         let _ = Format.printf "%a@," Term.pr t in
         assert false
   in
-		let env =
-		  List.map
-		    (function (x, ty)::xtys ->
-		      let _ = Global.log (fun () -> Format.printf "%a@," (Util.pr_list SimType.pr_bind ",") ((x, ty)::xtys)) in
-		      let _ = assert (List.for_all (fun (_, ty') -> SimType.equiv ty ty') xtys) in
-		      x, ty
-		    | _ -> assert false)
-		    (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))
+  let env =
+    List.map
+      (function (x, ty)::xtys ->
+        let _ = Global.log (fun () -> Format.printf "%a@," (Util.pr_list SimType.pr_bind ",") ((x, ty)::xtys)) in
+        let _ = assert (List.for_all (fun (_, ty') -> SimType.equiv ty ty') xtys) in
+        x, ty
+      | _ -> assert false)
+      (Util.classify (fun (x, _) (y, _) -> Var.equiv x y) (aux t ty))
   in
   let _ = Global.log_end "infer" in
   env
@@ -187,39 +187,39 @@ let is_valid t =
     false
   else
     let _ = Global.log_begin ~disable:true "is_valid" in
-		  let cin = !cvc3in in
-		  let cout = !cvc3out in
-		  let _ = cnt := !cnt + 1 in
-		  let fm = Format.formatter_of_out_channel cout in
-		
-		  let env =
-		    infer t SimType.Bool
-		    (*List.map (fun x -> x, SimType.Int) (Term.fvs t)*)
-		  in
-		  let inp =
-		    "PUSH;" ^
-		    string_of_env env ^ ";" ^
-		    String.concat " "
-		      (List.map (fun t -> "ASSERT " ^ (string_of_term t) ^ "; ") []) ^
-		    "QUERY " ^ string_of_term t ^ ";" ^
-		    "POP;"
-		  in
-		  let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
-		  let _ = Format.fprintf fm "%s\n@?" inp in
-		  let res = input_line cin in
-		  let res =
-				  if Str.string_match (Str.regexp ".*Valid") res 0 then
-				    let _ = Global.log (fun () -> Format.printf "output of CVC3: valid") in
-				    true
-				  else if Str.string_match (Str.regexp ".*Invalid") res 0 then
-				    let _ = Global.log (fun () -> Format.printf "output of CVC3: invalid") in
-				    false
-				  else
-				    let _ = Format.printf "unknown error of CVC3: %s@," res in
-				    assert false
-		  in
+    let cin = !cvc3in in
+    let cout = !cvc3out in
+    let _ = cnt := !cnt + 1 in
+    let fm = Format.formatter_of_out_channel cout in
+  
+    let env =
+      infer t SimType.Bool
+      (*List.map (fun x -> x, SimType.Int) (Term.fvs t)*)
+    in
+    let inp =
+      "PUSH;" ^
+      string_of_env env ^ ";" ^
+      String.concat " "
+        (List.map (fun t -> "ASSERT " ^ (string_of_term t) ^ "; ") []) ^
+      "QUERY " ^ string_of_term t ^ ";" ^
+      "POP;"
+    in
+    let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
+    let _ = Format.fprintf fm "%s\n@?" inp in
+    let res = input_line cin in
+    let res =
+      if Str.string_match (Str.regexp ".*Valid") res 0 then
+        let _ = Global.log (fun () -> Format.printf "output of CVC3: valid") in
+        true
+      else if Str.string_match (Str.regexp ".*Invalid") res 0 then
+        let _ = Global.log (fun () -> Format.printf "output of CVC3: invalid") in
+        false
+      else
+        let _ = Format.printf "unknown error of CVC3: %s@," res in
+        assert false
+    in
     let _ = Global.log_end "is_valid" in
-		  res
+    res
 
 (** check whether the conjunction of ts1 implies that of ts2 *)
 let implies ts1 ts2 =
@@ -296,28 +296,28 @@ let solve t =
   let ss = aux () in
   let _ = close_in cin in
   let _ =
-		  match Unix.close_process (cin, cout) with
-		    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+    match Unix.close_process (cin, cout) with
+      Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
   in
 (*
   let _ = List.iter (fun s -> Format.printf "%s@," s) ss in
 *)
   let res =
-		  List.map
-		    (fun s ->
-		(*
-		      let _ = Format.printf "?: %s@," s in
-		*)
-		      let _, s = String.split s "_" in
-		(*
-		      let _ = Format.printf "%s@," s in
-		*)
-		      let c, n = String.split s " = " in
-		(*
-		      let _ = Format.printf "%s, %s@," c n in
-		*)
-		      Var.parse c, int_of_string n)
-		    ss
+    List.map
+      (fun s ->
+  (*
+        let _ = Format.printf "?: %s@," s in
+  *)
+        let _, s = String.split s "_" in
+  (*
+        let _ = Format.printf "%s@," s in
+  *)
+        let c, n = String.split s " = " in
+  (*
+        let _ = Format.printf "%s, %s@," c n in
+  *)
+        Var.parse c, int_of_string n)
+      ss
   in
   let _ = Global.log_end "solve" in
   res
@@ -427,23 +427,23 @@ let rec string_of_term_bv rbit t =
       "FALSE", -1
   | Term.Const(_, Const.And), [t1; t2] ->
       "(" ^
-						fst (string_of_term_bv rbit t1) ^ " AND " ^
-						fst (string_of_term_bv rbit t2) ^
-						")", -1
+      fst (string_of_term_bv rbit t1) ^ " AND " ^
+      fst (string_of_term_bv rbit t2) ^
+      ")", -1
   | Term.Const(_, Const.Or), [t1; t2] ->
       "(" ^
-						fst (string_of_term_bv rbit t1) ^ " OR " ^
-						fst (string_of_term_bv rbit t2) ^
-						")", -1
+      fst (string_of_term_bv rbit t1) ^ " OR " ^
+      fst (string_of_term_bv rbit t2) ^
+      ")", -1
   | Term.Const(_, Const.Imply), [t1; t2] ->
       "(" ^
-						fst (string_of_term_bv rbit t1) ^ " => " ^
-						fst (string_of_term_bv rbit t2) ^
-						")", -1
+      fst (string_of_term_bv rbit t1) ^ " => " ^
+      fst (string_of_term_bv rbit t2) ^
+      ")", -1
   | Term.Const(_, Const.Iff), [t1; t2] ->
       "(" ^
-						fst (string_of_term_bv rbit t1) ^ " <=> " ^
-						fst (string_of_term_bv rbit t2) ^ ")", -1
+      fst (string_of_term_bv rbit t1) ^ " <=> " ^
+      fst (string_of_term_bv rbit t2) ^ ")", -1
   | Term.Const(_, Const.Not), [t] -> 
       "(NOT " ^ fst (string_of_term_bv rbit t) ^ ")", -1
   | Term.Forall(_, env, t), [] ->
@@ -458,105 +458,105 @@ exception Unknown
 
 let solve_bv only_pos (* find only positive solutions *) rbit t =
   let _ = Global.log_begin "solve_bv" in
-		let t =
-		  if only_pos then
-		    t
-		  else
-		    let ps = List.unique (Term.coeffs t) in
-		    let ppps =
-						  List.map
-								  (fun x ->
-										  x,
-												Var.rename_base (fun id -> Idnt.make (Idnt.string_of id ^ "_pos")) x,
-												Var.rename_base (fun id -> Idnt.make (Idnt.string_of id ^ "_neg")) x)
-										ps
-						in
-		    let sub = List.map (fun (x, y, z) -> x, Term.sub (Term.make_var y) (Term.make_var z)) ppps in
-		    Term.subst (fun x -> List.assoc x sub) t
-		in
-		let t = Formula.elim_minus t in
-		let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
-		let fm = Format.formatter_of_out_channel cout in
-		let _ = cnt := !cnt + 1 in
-		let _ =
+  let t =
+    if only_pos then
+      t
+    else
+      let ps = List.unique (Term.coeffs t) in
+      let ppps =
+        List.map
+          (fun x ->
+            x,
+            Var.rename_base (fun id -> Idnt.make (Idnt.string_of id ^ "_pos")) x,
+            Var.rename_base (fun id -> Idnt.make (Idnt.string_of id ^ "_neg")) x)
+          ps
+      in
+      let sub = List.map (fun (x, y, z) -> x, Term.sub (Term.make_var y) (Term.make_var z)) ppps in
+      Term.subst (fun x -> List.assoc x sub) t
+  in
+  let t = Formula.elim_minus t in
+  let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
+  let fm = Format.formatter_of_out_channel cout in
+  let _ = cnt := !cnt + 1 in
+  let _ =
     let _ = Global.log (fun () -> Format.printf "using %d bit@," rbit) in
-				let inp =
-						"PUSH;" ^
-						(string_of_env_bv rbit (infer t SimType.Bool)) ^ ";" ^
-						"CHECKSAT " ^ fst (string_of_term_bv rbit t) ^ ";" ^
-						"COUNTERMODEL;" ^
-						"POP;\n"
-				in
-				let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
-		  let _ = Format.fprintf fm "%s@?" inp in
-				close_out cout
-		in
-	 let s = input_line cin in
+    let inp =
+      "PUSH;" ^
+      (string_of_env_bv rbit (infer t SimType.Bool)) ^ ";" ^
+      "CHECKSAT " ^ fst (string_of_term_bv rbit t) ^ ";" ^
+      "COUNTERMODEL;" ^
+      "POP;\n"
+    in
+    let _ = Global.log (fun () -> Format.printf "input to CVC3: %s@," inp) in
+    let _ = Format.fprintf fm "%s@?" inp in
+    close_out cout
+  in
+  let s = input_line cin in
   let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
-		if Str.string_match (Str.regexp ".*Unsatisfiable.") s 0 then
-				let _ = close_in cin in
-				let _ =
-						match Unix.close_process (cin, cout) with
-								Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
-				in
+  if Str.string_match (Str.regexp ".*Unsatisfiable.") s 0 then
+    let _ = close_in cin in
+    let _ =
+      match Unix.close_process (cin, cout) with
+        Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+    in
     let _ = Global.log_end "solve_bv" in
     raise Unknown
   else if Str.string_match (Str.regexp ".*Satisfiable.") s 0 then
-				let rec aux () =
-						try
-						  let s = input_line cin in
-						  let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
-						  if Str.string_match (Str.regexp ".*ASSERT") s 0 then
-						    let pos_begin = String.index s '(' + 1 in
-						    let pos_end = String.index s ')' in
-						    let s' = String.sub s pos_begin (pos_end - pos_begin) in
-						    if Str.string_match (Str.regexp "cvc3") s' 0 then
+    let rec aux () =
+      try
+        let s = input_line cin in
+        let _ = Global.log (fun () -> Format.printf "output of CVC3: %s@," s) in
+        if Str.string_match (Str.regexp ".*ASSERT") s 0 then
+          let pos_begin = String.index s '(' + 1 in
+          let pos_end = String.index s ')' in
+          let s' = String.sub s pos_begin (pos_end - pos_begin) in
+          if Str.string_match (Str.regexp "cvc3") s' 0 then
             aux ()
-						    else
+          else
             s' :: aux ()
-						  else
-						    aux ()
-						with End_of_file ->
-    				let _ = close_in cin in
-								let _ =
-										match Unix.close_process (cin, cout) with
-												Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
-								in
-						  []
-				in
-				let ss = aux () in
-				let sol =
-						List.map
-								(fun s ->
-										let _, s = String.split s "_" in
-										let x, n = String.split s " = " in
-										let _ = Global.log (fun () -> Format.printf "%s = %s@," x n) in
-										Var.parse x, int_of_string_bv n)
-								ss
-				in
-				let sol =
-					 if only_pos then
-					   sol
-					 else
-					   let pxs, nxs, xs =
-					     Util.partition_map3
-					       (fun (x, n) ->
-					         let s = Idnt.string_of (Var.base x) in
-					         if String.ends_with s "_pos" then
-					           `A(Var.rename_base (fun _ -> Idnt.make (String.sub s 0 (String.length s - 4))) x, n)
-					         else if String.ends_with s "_neg" then
-					           `B(Var.rename_base (fun _ -> Idnt.make (String.sub s 0 (String.length s - 4))) x, n)
-					         else
-														  `C(x, n)
-														  (*let _ = Format.printf "%s@," s in
-					           assert false*))
-					       sol
-					   in
-					   let _ = if !Global.debug then assert (List.length pxs = List.length nxs) in
-	  		   List.map (fun (x, n) -> x, n - try List.assoc x nxs with Not_found -> assert false) pxs @ xs
-				in
+        else
+          aux ()
+      with End_of_file ->
+        let _ = close_in cin in
+        let _ =
+          match Unix.close_process (cin, cout) with
+            Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
+        in
+        []
+    in
+    let ss = aux () in
+    let sol =
+      List.map
+        (fun s ->
+          let _, s = String.split s "_" in
+          let x, n = String.split s " = " in
+          let _ = Global.log (fun () -> Format.printf "%s = %s@," x n) in
+          Var.parse x, int_of_string_bv n)
+        ss
+    in
+    let sol =
+      if only_pos then
+        sol
+      else
+        let pxs, nxs, xs =
+          Util.partition_map3
+            (fun (x, n) ->
+              let s = Idnt.string_of (Var.base x) in
+              if String.ends_with s "_pos" then
+                `A(Var.rename_base (fun _ -> Idnt.make (String.sub s 0 (String.length s - 4))) x, n)
+              else if String.ends_with s "_neg" then
+                `B(Var.rename_base (fun _ -> Idnt.make (String.sub s 0 (String.length s - 4))) x, n)
+              else
+                `C(x, n)
+                (*let _ = Format.printf "%s@," s in
+                assert false*))
+            sol
+        in
+        let _ = if !Global.debug then assert (List.length pxs = List.length nxs) in
+        List.map (fun (x, n) -> x, n - try List.assoc x nxs with Not_found -> assert false) pxs @ xs
+    in
     let _ = Global.log_end "solve_bv" in
-				sol
+    sol
   else if Str.string_match (Str.regexp ".*Unknown.") s 0 then
     assert false
   else

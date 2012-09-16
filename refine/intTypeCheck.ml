@@ -30,19 +30,19 @@ let rec infer_term cenv env t =
           alpha (List.assoc x cenv)
         with Not_found ->
           (try
-												let copy_cat sh =
-												  let subty = typed_unify Var.new_var [sh] in
+            let copy_cat sh =
+              let subty = typed_unify Var.new_var [sh] in
               let sub = List.map fst subty in
-												  let sh' = rename_shape (fun x -> List.assoc x sub) sh in
-												  make
-												    sh'
+              let sh' = rename_shape (fun x -> List.assoc x sub) sh in
+              make
+                sh'
                 Formula.ttrue
-												    (Formula.band
-												      (List.map
-												        (fun ((x, y), ty) ->
-												          Formula.eq_ty ty (Term.make_var y) (Term.make_var x))
-												        subty))
-		          in
+                (Formula.band
+                  (List.map
+                    (fun ((x, y), ty) ->
+                      Formula.eq_ty ty (Term.make_var y) (Term.make_var x))
+                    subty))
+            in
             copy_cat (List.assoc x env)
           with Not_found ->
             let _ = Format.printf "\"%a\" not found@ " Var.pr x in
@@ -80,10 +80,10 @@ let check_fdef cenv fdef ty =
   in
   let env =
     try
-		    List.map2
-		      (fun x sh -> Var.V(x), sh)
-		      fdef.Fdef.args
-		      args
+      List.map2
+        (fun x sh -> Var.V(x), sh)
+        fdef.Fdef.args
+        args
     with List.Different_list_size(_) ->
       assert false
   in

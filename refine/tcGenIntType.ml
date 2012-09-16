@@ -21,7 +21,7 @@ let cgen etr =
               aux (down loc (CallId.tlfc_of (fst y))) etr
             else if Var.is_neg (fst y) then
               let _ = assert (g = Formula.ttrue) in
-		            aux (up loc) etr
+              aux (up loc) etr
             else assert false
         | Trace.Arg(xttys) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) xttys in

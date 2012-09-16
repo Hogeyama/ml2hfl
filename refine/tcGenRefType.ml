@@ -23,11 +23,11 @@ let cgen etr =
             else if Var.is_neg (fst y) then (* changed *)
               let _ = assert (g = Formula.ttrue) in
               if true then
-		              let nd = get tr in
-		              let nd' = { nd with ret = Some(y) } in
-				            aux (up (Loc(set tr nd', p))) etr
+                let nd = get tr in
+                let nd' = { nd with ret = Some(y) } in
+                aux (up (Loc(set tr nd', p))) etr
               else
-		              aux (insert_down loc (make y true g [] [])) etr
+                aux (insert_down loc (make y true g [] [])) etr
             else assert false
         | Trace.Arg(xttys) ->
             let xttys = List.filter (fun (_, _, ty) -> SimType.is_base ty) xttys in

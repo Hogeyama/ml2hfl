@@ -20,13 +20,13 @@ let compute_lbs hcs =
   let hcs = List.filter (fun hc -> not (is_root hc)) hcs in
   let rec aux hcs lbs =
     let hcs1, hcs2 =
-						let ready_to_compute_lb lbs =
-						  function
-						    (Hc(Some(_), afs, _)) ->
-						       List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) afs
-						  | (Hc(None, _, _)) ->
-						       assert false
-		    in
+      let ready_to_compute_lb lbs =
+        function
+          (Hc(Some(_), afs, _)) ->
+             List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) afs
+        | (Hc(None, _, _)) ->
+             assert false
+      in
       List.partition (ready_to_compute_lb lbs) hcs
     in
     if hcs1 = [] then
@@ -96,18 +96,18 @@ let compute_extlbs hcs =
 let formula_of_forward lbs hcs =
   let _ = Global.log_begin "formula_of_forward" in
   let res =
-		  Formula.simplify
-		    (Formula.bor
-		      (List.map
-		        (fun hc ->
-		          let Hc(None, [], t) = TypPredSubst.subst_lhs lbs hc in
+    Formula.simplify
+      (Formula.bor
+        (List.map
+          (fun hc ->
+            let Hc(None, [], t) = TypPredSubst.subst_lhs lbs hc in
             (*let _ =
-												  if false && Cvc3Interface.satisfiable t then
-														  let _ = Format.printf "%a is satisfiable@," Term.pr t in
-														  assert false
+              if false && Cvc3Interface.satisfiable t then
+                let _ = Format.printf "%a is satisfiable@," Term.pr t in
+                assert false
             in*)
-		          t)
-		        (List.filter is_root hcs)))
+            t)
+          (List.filter is_root hcs)))
   in
   let _ = Global.log_end "formula_of_forward" in
   res
@@ -121,13 +121,13 @@ let formula_of_forward_ext hcs =
   let lbs = compute_extlbs hcs3 in
   let _ = Global.log (fun () -> Format.printf "extended lower bounds:@,  @[<v>%a@]@," (Util.pr_list pr_elem "@,") lbs) in
   let res =
-		  Formula.simplify
-		    (Formula.bor
-		      (List.map
-		        (fun hc ->
-		          let Hc(None, [], t) = subst_hcs hcs2 (subst_hcs lbs hc) in
-		          t)
-		        hcs1))
+    Formula.simplify
+      (Formula.bor
+        (List.map
+          (fun hc ->
+            let Hc(None, [], t) = subst_hcs hcs2 (subst_hcs lbs hc) in
+            t)
+          hcs1))
   in
   let _ = Global.log_end "formula_of_forward_ext" in
   res
@@ -140,16 +140,16 @@ let formula_of_backward hcs =
   let hcs = List.map (subst_hcs_fixed hcs2) hcs1 in
   let hcs1, hcs2 = List.partition is_root hcs in
   let res =
-		  Formula.simplify
-		    (Formula.bor
-		      (List.map
-		        (fun (Hc(None, afs, t)) ->
-		          if afs = [] then
-		            t
-		          else
-		            let _ = Format.printf "%a@," pr_elem (Hc(None, afs, t)) in
-		            assert false)
-		        (List.map (subst_hcs hcs2) hcs1)))
+    Formula.simplify
+      (Formula.bor
+        (List.map
+          (fun (Hc(None, afs, t)) ->
+            if afs = [] then
+              t
+            else
+              let _ = Format.printf "%a@," pr_elem (Hc(None, afs, t)) in
+              assert false)
+          (List.map (subst_hcs hcs2) hcs1)))
   in
   let _ = Global.log_end "formula_of_backward" in
   res
@@ -193,7 +193,7 @@ let inline_backward p hcs =
 
 let compute_ubs_hc lbs ubs (Hc(popt, afs, t) as hc) =
   let _ = Global.log_begin "compute_ubs_hc" in
-		let _ = Global.log (fun () -> Format.printf "input: %a@," HornClause.pr_elem hc) in
+  let _ = Global.log (fun () -> Format.printf "input: %a@," HornClause.pr_elem hc) in
   let t, ubs' =
     match popt with
       None ->
@@ -201,99 +201,99 @@ let compute_ubs_hc lbs ubs (Hc(popt, afs, t) as hc) =
     | Some(pid, xtys) ->
         if List.mem_assoc pid ubs then
           let tpid = TypPredSubst.lookup (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys) ubs in
-										let _ = if !Global.debug then assert (Util.diff (Term.fvs tpid) (List.map fst xtys) = []) in
+          let _ = if !Global.debug then assert (Util.diff (Term.fvs tpid) (List.map fst xtys) = []) in
           Formula.band [t; Formula.bnot tpid], []
         else
           Formula.tfalse, [pid, (xtys, Formula.ttrue)]
   in
-		let ubs =
-		  ubs' @
-				Util.map_left_right
-				  (fun afs1 (pid, ttys) afs2 ->
-				    let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
-				    let Hc(None, [], t) =
-				      TypPredSubst.subst_lhs
-				        ~bvs:(List.map Util.fst3 sub)
-				        lbs
-				        (Hc(None, afs1 @ afs2, Formula.band [t; Formula.of_subst sub]))
-				    in
-				    pid,
-				    (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t))
-				  afs
+  let ubs =
+    ubs' @
+    Util.map_left_right
+      (fun afs1 (pid, ttys) afs2 ->
+        let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
+        let Hc(None, [], t) =
+          TypPredSubst.subst_lhs
+            ~bvs:(List.map Util.fst3 sub)
+            lbs
+            (Hc(None, afs1 @ afs2, Formula.band [t; Formula.of_subst sub]))
+        in
+        pid,
+        (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t))
+      afs
   in
-		let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr ubs) in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr ubs) in
   let _ = Global.log_end "compute_ubs_hc" in
   ubs
 
 
 (** @require is_non_recursive hcs && is_well_defined hcs
     @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs)
-				incorrect in general*)
+    incorrect in general*)
 let compute_ubs_incorrect lbs hcs =
   let _ = Global.log_begin "compute_ubs" in
-		let ubs =
-		  let rec aux hcs ubs =
-		    (** if is_im_sol hc then we can solve hc immediately *)
-		    let is_im_sol =
-		      let lhs_pids = lhs_pids hcs in
-		      function
-		        (Hc(None, _, _)) ->
-		          true
-		      | (Hc(Some(pid, _), _, _)) ->
-		          not (List.mem pid lhs_pids)
-		    in
-		    let hcs1, hcs2 = List.partition is_im_sol hcs in
-		    if hcs1 = [] && hcs2 = [] then
-		      TypPredSubst.merge ubs
-		    else if hcs1 = [] && hcs2 <> [] then
-		      assert false
-		    else
-		      let ubs' = ubs @ (Util.concat_map (compute_ubs_hc lbs ubs) hcs1) in
-		      aux hcs2 ubs'
-		  in
-		  aux hcs []
-		in
+  let ubs =
+    let rec aux hcs ubs =
+      (** if is_im_sol hc then we can solve hc immediately *)
+      let is_im_sol =
+        let lhs_pids = lhs_pids hcs in
+        function
+          (Hc(None, _, _)) ->
+            true
+        | (Hc(Some(pid, _), _, _)) ->
+            not (List.mem pid lhs_pids)
+      in
+      let hcs1, hcs2 = List.partition is_im_sol hcs in
+      if hcs1 = [] && hcs2 = [] then
+        TypPredSubst.merge ubs
+      else if hcs1 = [] && hcs2 <> [] then
+        assert false
+      else
+        let ubs' = ubs @ (Util.concat_map (compute_ubs_hc lbs ubs) hcs1) in
+        aux hcs2 ubs'
+    in
+    aux hcs []
+  in
   let _ = Global.log_end "compute_ubs" in
-		ubs
+  ubs
 
 (** @require is_non_recursive hcs && is_non_disjunctive hcs
     @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs) *)
 let compute_ubs hcs =
   let _ = Global.log_begin "compute_ubs" in
-		let pids = List.unique (pids hcs) in
-		let ubs =
-	  	TypPredSubst.merge
-				  (Util.concat_map
-						  (fun pid ->
-		    		  let hcs = inline_forward (fun pid' -> pid' <> pid) hcs in
-										let lhcs, rhcs =
-										  List.partition
-												  (function Hc(Some(pid', _), _, _) ->
-														  let _ = if !Global.debug then assert (pid' = pid) in true
-														| Hc(None, _, _) -> false)
-												  hcs
-										in
-								  Util.concat_map
-										  (fun (Hc(None, afs, t) as hc) ->
-												  match afs with
-														  [] ->
-																  let Hc(Some(pid, xtys), _, _) = List.hd lhcs in
-																		[pid, (xtys, Formula.ttrue)]
-														| [pid', ttys] ->
-														    let _ = if !Global.debug then assert (pid' = pid) in
-														    let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
-														    let Hc(None, [], t) =
-														      TypPredSubst.subst_lhs
-														        ~bvs:(List.map Util.fst3 sub)
-														        []
-														        (Hc(None, [], Formula.band [t; Formula.of_subst sub]))
-														    in
-														    [pid, (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t)]
-														| _ ->
-														  let _ = Format.printf "%a@," HornClause.pr_elem hc in
-														  raise (Util.NotImplemented "compute_ubs"))
-												rhcs)
-								pids)
-		in
+  let pids = List.unique (pids hcs) in
+  let ubs =
+    TypPredSubst.merge
+      (Util.concat_map
+        (fun pid ->
+          let hcs = inline_forward (fun pid' -> pid' <> pid) hcs in
+          let lhcs, rhcs =
+            List.partition
+              (function Hc(Some(pid', _), _, _) ->
+                let _ = if !Global.debug then assert (pid' = pid) in true
+              | Hc(None, _, _) -> false)
+              hcs
+          in
+          Util.concat_map
+            (fun (Hc(None, afs, t) as hc) ->
+              match afs with
+                [] ->
+                  let Hc(Some(pid, xtys), _, _) = List.hd lhcs in
+                  [pid, (xtys, Formula.ttrue)]
+              | [pid', ttys] ->
+                  let _ = if !Global.debug then assert (pid' = pid) in
+                  let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
+                  let Hc(None, [], t) =
+                    TypPredSubst.subst_lhs
+                      ~bvs:(List.map Util.fst3 sub)
+                      []
+                      (Hc(None, [], Formula.band [t; Formula.of_subst sub]))
+                  in
+                  [pid, (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t)]
+              | _ ->
+                let _ = Format.printf "%a@," HornClause.pr_elem hc in
+                raise (Util.NotImplemented "compute_ubs"))
+            rhcs)
+        pids)
+  in
   let _ = Global.log_end "compute_ubs" in
-		ubs
+  ubs

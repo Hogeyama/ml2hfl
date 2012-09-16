@@ -39,15 +39,15 @@ let expand_until_new_error_trace_found prog ct strategy =
       let _ = if !Global.debug then save_as_dot "compTree.dot" ct (strategy.get ()) in
       let fenv, wl = expand_node prog fenv (strategy.pick ()) in
       let _ = strategy.add wl in
-						let rec lp () =
-						  let _ = Format.printf "expand the computation tree ? (y/n): %!" in
-						  let inp = read_line () in
-						  if inp = "y" then
-						    true
-						  else if inp = "n" then
-						    false
-						  else
-						    lp ()
+      let rec lp () =
+        let _ = Format.printf "expand the computation tree ? (y/n): %!" in
+        let inp = read_line () in
+        if inp = "y" then
+          true
+        else if inp = "n" then
+          false
+        else
+          lp ()
       in
       if List.exists (fun ct -> match ct.term with Term.Error(_) -> true | _ -> false) wl && (not !manual || lp ()) then
         ()

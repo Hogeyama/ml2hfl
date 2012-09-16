@@ -70,11 +70,11 @@ let find_leaves tr =
         [loc]
     | _ ->
         List.concat
-		        (List.init
+          (List.init
             (List.length trs)
-		          (fun i ->
-		            let trs1, tr::trs2 = List.split_nth i trs in
-		            aux (Loc(tr, Path(p, trs1, nd, trs2)))))
+            (fun i ->
+              let trs1, tr::trs2 = List.split_nth i trs in
+              aux (Loc(tr, Path(p, trs1, nd, trs2)))))
   in
   aux (zipper tr)
 

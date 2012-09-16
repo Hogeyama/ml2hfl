@@ -22,13 +22,13 @@ let rec of_term t =
       let t1 = of_term t1 in
       let t2 = of_term t2 in
       (match c with
-				    Const.Add -> Atp_batch.Fn("+", [t1; t2])
-				  | Const.Sub -> Atp_batch.Fn("-", [t1; t2])
-				  | Const.Mul -> Atp_batch.Fn("*", [t1; t2])
-				  | Const.Div ->
-				      raise (Util.NotImplemented "AtpInterface.of_term")
-				  | Const.Mod ->
-				      raise (Util.NotImplemented "AtpInterface.of_term"))
+        Const.Add -> Atp_batch.Fn("+", [t1; t2])
+      | Const.Sub -> Atp_batch.Fn("-", [t1; t2])
+      | Const.Mul -> Atp_batch.Fn("*", [t1; t2])
+      | Const.Div ->
+          raise (Util.NotImplemented "AtpInterface.of_term")
+      | Const.Mod ->
+          raise (Util.NotImplemented "AtpInterface.of_term"))
   | _ ->
       let _ = Format.printf "%a@," Term.pr t in
       assert false
@@ -64,13 +64,13 @@ let rec of_formula t =
           Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [t1; t2])))
       | Const.Lt ->
           Atp_batch.Atom(Atp_batch.R("<", [t1; t2]))
-				  | Const.Gt ->
+      | Const.Gt ->
           Atp_batch.Atom(Atp_batch.R(">", [t1; t2]))
-				  | Const.Leq ->
+      | Const.Leq ->
           Atp_batch.Atom(Atp_batch.R("<=", [t1; t2]))
-				  | Const.Geq ->
+      | Const.Geq ->
           Atp_batch.Atom(Atp_batch.R(">=", [t1; t2]))
-				  (*| Const.Divides -> raise (Util.NotImplemented "AtpInterface.of_formula") (*"divides"*)*)
+      (*| Const.Divides -> raise (Util.NotImplemented "AtpInterface.of_formula") (*"divides"*)*)
       | _ -> assert false)
   | Forall(_, env, t), [] ->
       List.fold_right (fun (x, _) phi -> Atp_batch.Forall(Var.print x , phi)) env (of_formula t)
@@ -158,7 +158,7 @@ let integer_qelim t =
   let t = simplify (formula_of (Atp_batch.integer_qelim (of_formula (elim_eq_neq_boolean t)))) in
   let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]@," Term.pr t) in
   let _ = Global.log_end "integer_qelim" in
-		t
+  t
 
 let real_qelim t =
   simplify (formula_of (Atp_batch.real_qelim (of_formula (elim_eq_neq_boolean t))))
@@ -170,38 +170,38 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
   let _ = Global.log_begin "qelim_fes" in
   let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Fes.pr fes) in
   let ts =
-		  try
-				  let fvs =
-				    let fvs = List.unique (Util.diff (Util.concat_map Term.fvs ts) (bvs @ TypSubst.fvs xttys)) in
-		      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
-				    fvs
-				  in
+    try
+      let fvs =
+        let fvs = List.unique (Util.diff (Util.concat_map Term.fvs ts) (bvs @ TypSubst.fvs xttys)) in
+        let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
+        fvs
+      in
       let t = band ts in
-		    if fvs <> [] && is_linear t then
-		      conjuncts (integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
-		    else
-		      raise (Util.NotImplemented "subst_lbs")
-		  with Util.NotImplemented _ ->
-				  Util.map_left
-				    (fun ts1 t ts2 ->
-				      let fvs =
+      if fvs <> [] && is_linear t then
+        conjuncts (integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
+      else
+        raise (Util.NotImplemented "subst_lbs")
+    with Util.NotImplemented _ ->
+      Util.map_left
+        (fun ts1 t ts2 ->
+          let fvs =
             let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ TypSubst.fvs xttys @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
-	  			      let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
+            let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
             fvs
           in
-				      if fvs <> [] && is_linear t then
-				        let _ = Global.log (fun () -> Format.printf "before:@,  @[%a@]@," Term.pr t) in
-				        let t =
-				          try
-				            integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
-				          with Util.NotImplemented _ ->
-				            t
-				        in
-				        let _ = Global.log (fun () -> Format.printf "after:@,  @[%a@]@," Term.pr t) in
-				        t
-				      else
-				        t)
-				    ts
+          if fvs <> [] && is_linear t then
+            let _ = Global.log (fun () -> Format.printf "before:@,  @[%a@]@," Term.pr t) in
+            let t =
+              try
+                integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t)
+              with Util.NotImplemented _ ->
+                t
+            in
+            let _ = Global.log (fun () -> Format.printf "after:@,  @[%a@]@," Term.pr t) in
+            t
+          else
+            t)
+        ts
   in
   let res = Fes.make xttys ts in
   let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Fes.pr res) in
@@ -306,16 +306,16 @@ let rec qelim_ufs bvs1 bvs2 fms =
       let _ = Format.printf "%a,%a@," Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
 *)
       try
-				    let sub = List.map (fun x -> x, Atp_batch.Var(Id.gen_exp_var ())) (Util.catmap (ufs bv) fms) in
-				    let bvs' = List.map (fun (_, Atp_batch.Var(id)) -> id) sub in
-						  let fms =
-		        (List.filter_map
-								    (function
-								      (Atp_batch.Fn("len", [Atp_batch.Var(_)]), Atp_batch.Var(id)) ->
-								        Some(Atp_batch.Atom(Atp_batch.R(">=", [Atp_batch.Var(id); Atp_batch.Fn(string_of_int 0, [])])))
-								      | _ -> None)
-								    sub) @
-								  (List.map (assign sub) fms) in
+        let sub = List.map (fun x -> x, Atp_batch.Var(Id.gen_exp_var ())) (Util.catmap (ufs bv) fms) in
+        let bvs' = List.map (fun (_, Atp_batch.Var(id)) -> id) sub in
+        let fms =
+          (List.filter_map
+            (function
+              (Atp_batch.Fn("len", [Atp_batch.Var(_)]), Atp_batch.Var(id)) ->
+                Some(Atp_batch.Atom(Atp_batch.R(">=", [Atp_batch.Var(id); Atp_batch.Fn(string_of_int 0, [])])))
+              | _ -> None)
+            sub) @
+          (List.map (assign sub) fms) in
         qelim_ufs (bvs' @ bvs) bvs2 fms
       with Not_found ->
 (*
@@ -325,28 +325,28 @@ let rec qelim_ufs bvs1 bvs2 fms =
 
 let find bv =
   let rec g _s _t =
-  		match _s with
-  				Atp_batch.Var(id) ->
-  						assert (id = bv); _t
-  		| Atp_batch.Fn("+", [s; t]) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
+    match _s with
+      Atp_batch.Var(id) ->
+        assert (id = bv); _t
+    | Atp_batch.Fn("+", [s; t]) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
         g s (Atp_batch.Fn("-", [_t; t]))
     | Atp_batch.Fn("+", [t; s]) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
         g s (Atp_batch.Fn("-", [_t; t]))
-  		| Atp_batch.Fn("-", [s; t]) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
+    | Atp_batch.Fn("-", [s; t]) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
         g s (Atp_batch.Fn("+", [_t; t]))
-  		| Atp_batch.Fn("-", [t; s]) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
+    | Atp_batch.Fn("-", [t; s]) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
         g s (Atp_batch.Fn("-", [t; _t]))
-  		| Atp_batch.Fn("*", [s; Atp_batch.Fn("1", [])]) | Atp_batch.Fn("*", [Atp_batch.Fn("1", []); s]) ->
+    | Atp_batch.Fn("*", [s; Atp_batch.Fn("1", [])]) | Atp_batch.Fn("*", [Atp_batch.Fn("1", []); s]) ->
         g s _t
-  		| Atp_batch.Fn("*", [s; Atp_batch.Fn("-1", [])]) | Atp_batch.Fn("*", [Atp_batch.Fn("-1", []); s]) | Atp_batch.Fn("-", [s]) ->
+    | Atp_batch.Fn("*", [s; Atp_batch.Fn("-1", [])]) | Atp_batch.Fn("*", [Atp_batch.Fn("-1", []); s]) | Atp_batch.Fn("-", [s]) ->
         g s (Atp_batch.Fn("-", [_t]))
-  		| _ -> raise Not_found
+    | _ -> raise Not_found
   in
   function
-  		Atp_batch.Atom(Atp_batch.R("=", [s; t])) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
-  		  (try Some(g s t) with Not_found -> None)
+    Atp_batch.Atom(Atp_batch.R("=", [s; t])) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
+      (try Some(g s t) with Not_found -> None)
   | Atp_batch.Atom(Atp_batch.R("=", [t; s])) when List.mem bv (Atp_batch.fvt s) && not (List.mem bv (Atp_batch.fvt t)) ->
-  		  (try Some(g s t) with Not_found -> None)
+      (try Some(g s t) with Not_found -> None)
   | _ -> None
 
 let rec qelim_eq bvs1 bvs2 fms =
@@ -404,50 +404,50 @@ let rec qelim_lin bvs [] fms =
   if List.mem Atp_batch.False fms then
     [], []
   else begin
-				if !Global.debug_level > 0 then
-						Format.printf "%a@," Fol.pr (formula_of (Atp_batch.list_conj fms));
-				let fms' = Atp_batch.homogenize langs fms in
-				let bvs' = List.unique (Util.diff (Util.catmap Atp_batch.fv fms') (Util.catmap Atp_batch.fv fms)) in
-				let fms_lin, fms_nonlin = partition_linear fms' in
-				(*let [fms_lin; fms_nonlin] = Atp_batch.langpartition langs fms' in*)
-				let fms_lin_ineq, fms_lin_eq =
-						List.partition
-								(function Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var(_); Atp_batch.Var(_)])) -> false
-								| _ -> true)
-								fms_lin in
-				if !Global.debug_level > 0 then
-						Format.printf "%a@,%a@," Fol.pr (formula_of (Atp_batch.list_conj fms_lin_ineq)) Fol.pr (formula_of (Atp_batch.list_conj fms_lin_eq));
-				let fms_lin_eq1, fms_lin_eq2 =
-						List.partition
-								(fun p -> List.exists (fun fv -> List.mem fv (Util.catmap Atp_batch.fv fms_lin_ineq)) (Atp_batch.fv p))
-								fms_lin_eq in
-				let fms1 = fms_lin_ineq @ fms_lin_eq1 in
-				let fms2 = fms_lin_eq2 @ fms_nonlin in
-				let bvs1, bvs2 = List.partition (fun bv -> not (List.mem bv (Util.catmap Atp_batch.fv fms2))) bvs in
-				let p = Atp_batch.list_conj fms1 in
-				let p = Atp_batch.simplify (if bvs1 = [] then p else Atp_batch.integer_qelim (exists bvs1 p)) in
-				let fmss =
-						List.map
-							 (fun fms ->
-							   let bvs, fms = qelim_eq bvs' [] (fms @ fms2) in
-							   (if bvs <> [] then
-							     (Format.printf "%a@," (Util.pr_list Id.pr ",") bvs;
-							     Format.printf "%a@," Fol.pr (formula_of (Atp_batch.list_conj fms));
-							     failwith "qelim_lin"));
-							   fms)
-							 (Atp_batch.simpdnf p) in
-				bvs2, fmss
-		(*
-				match Atp_batch.simpdnf p with
-						[] ->
-							 [], [Atp_batch.False]
-				| [fms] ->
-							 let [], fms = qelim_eq bvs' [] (fms @ fms2) in
-							 bvs2, fms
-				| fmss -> (*possible*)
-							 let _ = Format.printf "%a,%a@," Fol.pr (formula_of (Atp_batch.list_conj fms)) Fol.pr (formula_of p) in
-							 failwith "qelim_lin"
-		*)
+    if !Global.debug_level > 0 then
+      Format.printf "%a@," Fol.pr (formula_of (Atp_batch.list_conj fms));
+    let fms' = Atp_batch.homogenize langs fms in
+    let bvs' = List.unique (Util.diff (Util.catmap Atp_batch.fv fms') (Util.catmap Atp_batch.fv fms)) in
+    let fms_lin, fms_nonlin = partition_linear fms' in
+    (*let [fms_lin; fms_nonlin] = Atp_batch.langpartition langs fms' in*)
+    let fms_lin_ineq, fms_lin_eq =
+      List.partition
+        (function Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var(_); Atp_batch.Var(_)])) -> false
+        | _ -> true)
+        fms_lin in
+    if !Global.debug_level > 0 then
+      Format.printf "%a@,%a@," Fol.pr (formula_of (Atp_batch.list_conj fms_lin_ineq)) Fol.pr (formula_of (Atp_batch.list_conj fms_lin_eq));
+    let fms_lin_eq1, fms_lin_eq2 =
+      List.partition
+        (fun p -> List.exists (fun fv -> List.mem fv (Util.catmap Atp_batch.fv fms_lin_ineq)) (Atp_batch.fv p))
+        fms_lin_eq in
+    let fms1 = fms_lin_ineq @ fms_lin_eq1 in
+    let fms2 = fms_lin_eq2 @ fms_nonlin in
+    let bvs1, bvs2 = List.partition (fun bv -> not (List.mem bv (Util.catmap Atp_batch.fv fms2))) bvs in
+    let p = Atp_batch.list_conj fms1 in
+    let p = Atp_batch.simplify (if bvs1 = [] then p else Atp_batch.integer_qelim (exists bvs1 p)) in
+    let fmss =
+      List.map
+        (fun fms ->
+          let bvs, fms = qelim_eq bvs' [] (fms @ fms2) in
+          (if bvs <> [] then
+            (Format.printf "%a@," (Util.pr_list Id.pr ",") bvs;
+            Format.printf "%a@," Fol.pr (formula_of (Atp_batch.list_conj fms));
+            failwith "qelim_lin"));
+          fms)
+        (Atp_batch.simpdnf p) in
+    bvs2, fmss
+  (*
+    match Atp_batch.simpdnf p with
+      [] ->
+        [], [Atp_batch.False]
+    | [fms] ->
+        let [], fms = qelim_eq bvs' [] (fms @ fms2) in
+        bvs2, fms
+    | fmss -> (*possible*)
+        let _ = Format.printf "%a,%a@," Fol.pr (formula_of (Atp_batch.list_conj fms)) Fol.pr (formula_of p) in
+        failwith "qelim_lin"
+  *)
   end
 
 
@@ -491,29 +491,29 @@ let remove_trivial fms =
   if List.mem Atp_batch.False fms then
     [Atp_batch.False]
   else
-		  List.filter_map
-		    (function
+    List.filter_map
+      (function
 (*
-		    		Atp_batch.Atom(Atp_batch.R("=", [s; t])) when s = t ->
-		        None
-		    | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; t]))) when s = t ->
-		        Some(Atp_batch.False)
+        Atp_batch.Atom(Atp_batch.R("=", [s; t])) when s = t ->
+          None
+      | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; t]))) when s = t ->
+          Some(Atp_batch.False)
 *)
-		      p when is_valid p ->
-		        None
-		    | p when is_valid (Atp_batch.Not(p)) ->
-		        Some(Atp_batch.False)
-		    |	Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("true", []); Atp_batch.Fn("false", [])]))
-		    |	Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("false", []); Atp_batch.Fn("true", [])])) ->
-		        None
-		    |	Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("true", [])])))
-		    |	Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("true", []); s]))) ->
-		        Some(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("false", [])])))
-		    |	Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("false", [])])))
-		    |	Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("false", []); s]))) ->
-		        Some(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("true", [])])))
-		    | p -> Some(p))
-		    fms
+        p when is_valid p ->
+          None
+      | p when is_valid (Atp_batch.Not(p)) ->
+          Some(Atp_batch.False)
+      | Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("true", []); Atp_batch.Fn("false", [])]))
+      | Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("false", []); Atp_batch.Fn("true", [])])) ->
+          None
+      | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("true", [])])))
+      | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("true", []); s]))) ->
+          Some(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("false", [])])))
+      | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("false", [])])))
+      | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("false", []); s]))) ->
+          Some(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Fn("true", [])])))
+      | p -> Some(p))
+      fms
 
 let atp_mini_conj fms =
   let rec loop fms1 fms2 =
@@ -561,8 +561,8 @@ let qelim bvs p =
   else
     let bvss, fms =
       List.split
-  				  (List.map
-		  		    (fun fms ->
+        (List.map
+          (fun fms ->
             let rec loop bvs fms =
               let old_bvs = bvs in
               ((if !Global.debug_level > 0 then
@@ -587,10 +587,10 @@ let qelim bvs p =
                 Format.printf "%a;%a@,"
                   (Util.pr_list Id.pr ",") bvs
                   Fol.pr (formula_of (Atp_batch.list_disj (List.map Atp_batch.list_conj fmss))));
-	           		let fmss = List.map remove_trivial fmss in
+              let fmss = List.map remove_trivial fmss in
               let bvs, fms =
                 if Util.diff old_bvs bvs = [] then
-				              bvs, List.map (fun fms -> Atp_batch.simplify (Atp_batch.list_conj (atp_mini_conj fms))) fmss
+                  bvs, List.map (fun fms -> Atp_batch.simplify (Atp_batch.list_conj (atp_mini_conj fms))) fmss
                 else
                   let bvss, fms = List.split (List.map (loop bvs) fmss) in
                   List.concat bvss, fms
@@ -598,7 +598,7 @@ let qelim bvs p =
               bvs, Atp_batch.list_disj fms)
             in
             loop bvs fms)
-				      (Atp_batch.simpdnf p)) in
+          (Atp_batch.simpdnf p)) in
     List.concat bvss,
     Atp_batch.simplify (Atp_batch.list_disj ((*atp_mini_disj*)fms))
 
@@ -606,8 +606,8 @@ let qelim bvs p =
     | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var(bv'); s]))) when bv' = bv && not (List.mem bv (Atp_batch.fvt s)) -> None
     | Atp_batch.Not(Atp_batch.Atom(Atp_batch.R("=", [s; Atp_batch.Var(bv')]))) when bv' = bv && not (List.mem bv (Atp_batch.fvt s)) -> None
     | p when List.mem bv (Atp_batch.fv p)->
-    		  let _ = Format.printf "%a,%a@," Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
-    		  failwith "qelim_eq"
+        let _ = Format.printf "%a,%a@," Id.pr bv (Util.pr_list Fol.pr ", ") (List.map formula_of fms) in
+        failwith "qelim_eq"
 *)
 
 (*
@@ -632,40 +632,40 @@ let rec qelim_ p =
   let [], p = qelim bvs p in p
 
 let minimize1 p1 p2 =
-		let ps =
-		  (List.map (fun p -> `L(p)) (List.map Atp_batch.list_disj (Atp_batch.simpcnf p1))) @
-		  (List.map (fun p -> `R(p)) (List.map Atp_batch.list_conj (Atp_batch.simpdnf p2))) in
-		let f ps = List.fold_left (fun p -> function `L(q) -> Atp_batch.Or(p, Atp_batch.Not(q)) | `R(q) -> Atp_batch.Or(p, q)) Atp_batch.False ps in
-		let gl ps = List.fold_left (fun p -> function `L(q) -> Atp_batch.And(p, q) | `R(_) -> p) Atp_batch.True ps in
-		let gr ps = List.fold_left (fun p -> function `L(_) -> p | `R(q) -> Atp_batch.Or(p, q)) Atp_batch.False ps in
-		let rec loop ps qs =
-		  if is_valid (f (ps @ qs)) then
-		    (match ps with
-		      p::ps' ->
-		        (try loop ps' qs with Not_found -> loop ps' (p::qs))
-		    | [] ->
-		        let p = Atp_batch.simplify (gr qs) in
-		        Fol.simplify (formula_of p))
-		  else
-		    raise Not_found
-		in loop ps []
+  let ps =
+    (List.map (fun p -> `L(p)) (List.map Atp_batch.list_disj (Atp_batch.simpcnf p1))) @
+    (List.map (fun p -> `R(p)) (List.map Atp_batch.list_conj (Atp_batch.simpdnf p2))) in
+  let f ps = List.fold_left (fun p -> function `L(q) -> Atp_batch.Or(p, Atp_batch.Not(q)) | `R(q) -> Atp_batch.Or(p, q)) Atp_batch.False ps in
+  let gl ps = List.fold_left (fun p -> function `L(q) -> Atp_batch.And(p, q) | `R(_) -> p) Atp_batch.True ps in
+  let gr ps = List.fold_left (fun p -> function `L(_) -> p | `R(q) -> Atp_batch.Or(p, q)) Atp_batch.False ps in
+  let rec loop ps qs =
+    if is_valid (f (ps @ qs)) then
+      (match ps with
+        p::ps' ->
+          (try loop ps' qs with Not_found -> loop ps' (p::qs))
+      | [] ->
+          let p = Atp_batch.simplify (gr qs) in
+          Fol.simplify (formula_of p))
+    else
+      raise Not_found
+  in loop ps []
 
 let minimize2 p1 p2 =
-		let ps = List.map Atp_batch.list_disj (Atp_batch.simpcnf p1) in
-		let rec loop ps qs =
-		  if is_valid (Atp_batch.Imp(Atp_batch.list_conj (ps @ qs), p2)) then
-		    (match ps with
-		      p::ps' ->
-		        (try loop ps' qs with Not_found -> loop ps' (p::qs))
-		    | [] ->
+  let ps = List.map Atp_batch.list_disj (Atp_batch.simpcnf p1) in
+  let rec loop ps qs =
+    if is_valid (Atp_batch.Imp(Atp_batch.list_conj (ps @ qs), p2)) then
+      (match ps with
+        p::ps' ->
+          (try loop ps' qs with Not_found -> loop ps' (p::qs))
+      | [] ->
           let p1' = Atp_batch.simplify (Atp_batch.list_conj qs) in
           let p2' = Atp_batch.simplify p2 in
-		        if List.length qs = 1 && p1' <> Atp_batch.False then
+          if List.length qs = 1 && p1' <> Atp_batch.False then
             Fol.simplify (formula_of p1') (*this is too adhoc*)
           else Fol.simplify (formula_of p2'))
-		  else
-		    raise Not_found
-		in loop ps []
+    else
+      raise Not_found
+  in loop ps []
 
 let interpolate ids phi1 phi2 =
   let ids1 = List.unique (Util.diff (Fol.fv phi1) ids) in
@@ -682,53 +682,53 @@ let interpolate ids phi1 phi2 =
 
 (* integer arithmetics may not supported by Atp_batch.interpolate *)
 (*
-		  let phi1 = Fol.And(Fol.Const(Arith.Var("x"), Const.Equal, Arith.Var("z")), Fol.Const(Arith.Var("y"), Const.Equal, Arith.Var("z"))) in
-		  let phi2 = Fol.Imply(Fol.Const(Arith.Var("x"), Const.Equal, Arith.Var("0")), Fol.Const(Arith.Var("y"), Const.Equal, Arith.Var("0"))) in
-		  Format.printf "%a@," Fol.pr (interpolate phi1 phi2)
+    let phi1 = Fol.And(Fol.Const(Arith.Var("x"), Const.Equal, Arith.Var("z")), Fol.Const(Arith.Var("y"), Const.Equal, Arith.Var("z"))) in
+    let phi2 = Fol.Imply(Fol.Const(Arith.Var("x"), Const.Equal, Arith.Var("0")), Fol.Const(Arith.Var("y"), Const.Equal, Arith.Var("0"))) in
+    Format.printf "%a@," Fol.pr (interpolate phi1 phi2)
 *)
 (*let interpolate phi1 phi2 = formula_of (Atp_batch.interpolate (of_formula phi1) (of_formula phi2))*)
 *)
 
 let test () =
-		let test1 _ =
-		  let p = Atp_batch.interpolate
-		    (Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])])))
-		    (Atp_batch.Atom(Atp_batch.R(">=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])]))) in
-		  Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
+  let test1 _ =
+    let p = Atp_batch.interpolate
+      (Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])])))
+      (Atp_batch.Atom(Atp_batch.R(">=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])]))) in
+    Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
   in
 
-		let test2 _ =
-		  let p = Atp_batch.Exists("x", Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])]))) in
-		  let p = Atp_batch.integer_qelim p in
-		  Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
+  let test2 _ =
+    let p = Atp_batch.Exists("x", Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])]))) in
+    let p = Atp_batch.integer_qelim p in
+    Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
   in
 
-		let test3 _ =
-		  let p = Atp_batch.And(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("y"); Atp_batch.Fn("0", [])])), Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])]))) in
-		  let p = Atp_batch.cnf (Atp_batch.integer_qelim p) in
-		  Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
+  let test3 _ =
+    let p = Atp_batch.And(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("y"); Atp_batch.Fn("0", [])])), Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Fn("0", [])]))) in
+    let p = Atp_batch.cnf (Atp_batch.integer_qelim p) in
+    Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
   in
 
-		let test4 _ =
-		  let p = Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("-", [Atp_batch.Var("x"); Atp_batch.Var("y")]); Atp_batch.Fn("-", [Atp_batch.Var("x")])])) in
-		  Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
+  let test4 _ =
+    let p = Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("-", [Atp_batch.Var("x"); Atp_batch.Var("y")]); Atp_batch.Fn("-", [Atp_batch.Var("x")])])) in
+    Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
 
-		let test5 _ =
-		  let p = Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("-", [Atp_batch.Var("x"); Atp_batch.Var("x")]); Atp_batch.Fn("1", [])])) in
-		  let _ = Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
+  let test5 _ =
+    let p = Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("-", [Atp_batch.Var("x"); Atp_batch.Var("x")]); Atp_batch.Fn("1", [])])) in
+    let _ = Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
     assert (is_valid p)
   in
 
-		let test6 _ =
-		  let p = Atp_batch.Imp(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("false", []); Atp_batch.Fn("true", [])])), Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("true", []); Atp_batch.Fn("false", [])]))) in
-		  let _ = Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
+  let test6 _ =
+    let p = Atp_batch.Imp(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("false", []); Atp_batch.Fn("true", [])])), Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Fn("true", []); Atp_batch.Fn("false", [])]))) in
+    let _ = Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
     assert (is_valid p)
   in
 
-		let test7 _ =
-		  let p = Atp_batch.Exists("x", Atp_batch.And(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Var("y")])), Atp_batch.And(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("y"); Atp_batch.Fn("0", [])])), Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("y"); Atp_batch.Fn("0", [])]))))) in
-		  let _ = Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
-		  let p = Atp_batch.integer_qelim p in
-		  Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
+  let test7 _ =
+    let p = Atp_batch.Exists("x", Atp_batch.And(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("x"); Atp_batch.Var("y")])), Atp_batch.And(Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("y"); Atp_batch.Fn("0", [])])), Atp_batch.Atom(Atp_batch.R("=", [Atp_batch.Var("y"); Atp_batch.Fn("0", [])]))))) in
+    let _ = Atp_batch.print_formula Atp_batch.print_atom p; print_newline() in
+    let p = Atp_batch.integer_qelim p in
+    Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
   in
   ()

@@ -128,7 +128,7 @@ let convex_hull t =
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
   let tss, f = Formula.elim_boolean [Formula.elim_unit t] in
-		let ts =
+  let ts =
     List.map
       (fun [t] ->
         of_linconstrs (Apron.Abstract1.to_lincons_array manpk (polyhedron_of env t)))
@@ -146,26 +146,26 @@ let widen ts =
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
   let tss, f = Formula.elim_boolean (List.map Formula.elim_unit ts) in
   let aux ts =
-		  let ts = List.map (fun t -> polyhedron_of env t) ts in
+    let ts = List.map (fun t -> polyhedron_of env t) ts in
 (*
-		  Format.printf "poly: @[<hv>%a@]@ " (Util.pr_list Apron.Abstract1.print ",@ ") ts;
+    Format.printf "poly: @[<hv>%a@]@ " (Util.pr_list Apron.Abstract1.print ",@ ") ts;
 *)
-		  let widen_aux ts =
-				  match ts with
-				    t::ts ->
-				      let ab = List.fold_left (fun t1 t2 -> widen2 t1 t2) t ts in
+    let widen_aux ts =
+      match ts with
+        t::ts ->
+          let ab = List.fold_left (fun t1 t2 -> widen2 t1 t2) t ts in
 (*
-				      Format.printf "widen: @[%a@]@ " Apron.Abstract1.print ab;
+          Format.printf "widen: @[%a@]@ " Apron.Abstract1.print ab;
 *)
-				      let res = of_linconstrs (Apron.Abstract1.to_lincons_array manpk ab) in
+          let res = of_linconstrs (Apron.Abstract1.to_lincons_array manpk ab) in
 (*
-				      Format.printf "widen_out: @[%a@]" Term.pr res;
+          Format.printf "widen_out: @[%a@]" Term.pr res;
 *)
-				      res
-				  | _ -> assert false
-		  in
-		  widen_aux ts
+          res
+      | _ -> assert false
+    in
+    widen_aux ts
   in
   let res = f (List.map aux tss) in
-		let _ = Format.printf "widen_out: @[%a@]@]@ " Term.pr res in
+  let _ = Format.printf "widen_out: @[%a@]@]@ " Term.pr res in
   res

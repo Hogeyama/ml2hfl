@@ -14,7 +14,7 @@ let coeffs (_, ttys) = Util.concat_map (fun (t, _) -> Term.coeffs t) ttys
 
 (** @return the number of duplicate predicates *)
 let num_dup ps =
-		let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
+  let pss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) ps in
   List.fold_left (+) 0 (List.map (fun ps -> List.length ps - 1) pss)
 
 let simplify (pid, ttys) = pid, List.map (fun (t, ty) -> LinArith.simplify t, ty) ttys

@@ -130,10 +130,10 @@ let subst_var sub x =
   try let Var(_, y) = sub x in y with Not_found -> x
 
 let subst_fixed_var sub x =
-		Util.fixed_point
-		  (fun x -> subst_var sub x)
-		  Var.equiv
-		  x
+  Util.fixed_point
+    (fun x -> subst_var sub x)
+    Var.equiv
+    x
 
 (** ToDo: first compute the fixed-point of sub *)
 let subst_fixed sub t =
@@ -142,15 +142,15 @@ let subst_fixed sub t =
   let _ = Global.log (fun () -> Format.printf "input: %a@," pr t) in
 *)
   let t =
-		  Util.fixed_point
-		    (fun t ->
-		      let t = subst sub t in
-		      t)
-		    equiv
-		    t
+    Util.fixed_point
+      (fun t ->
+        let t = subst sub t in
+        t)
+      equiv
+      t
   in
 (*
-		let _ = Global.log (fun () -> Format.printf "output: %a" pr t) in
+  let _ = Global.log (fun () -> Format.printf "output: %a" pr t) in
   let _ = Global.log_end "Term.subst_fixed" in
 *)
   t
@@ -335,8 +335,8 @@ let rename_fresh bnd t =
     @param fvs free variables
     @require not (Util.is_dup fvs) *)
 let fresh fvs t =
-		let sub = List.map (fun x -> x, make_var (Var.new_var ())) fvs in
-		subst (fun x -> List.assoc x sub) t
+  let sub = List.map (fun x -> x, make_var (Var.new_var ())) fvs in
+  subst (fun x -> List.assoc x sub) t
 
 
 let int_of t =
@@ -348,3 +348,12 @@ let is_int_const t =
   match t with
     Const(_, Const.Int(n)) -> true
   | _ -> false
+
+
+let rec encode_var t =
+  match t with
+    Var(a, x) -> Var(a, Var.make (Idnt.make (Var.print x)))
+  | Const(a, c) -> Const(a, c)
+  | App(a, t1, t2) -> App(a, encode_var t1, encode_var t2)
+  | Call(_, _, _) | Ret(_, _, _, _) | Error(_)
+  | Forall(_, _, _) | Exists(_, _, _) -> assert false

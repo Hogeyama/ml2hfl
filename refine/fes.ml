@@ -17,9 +17,9 @@ let pr ppf fes =
   if true then
     let FES(xttys, ts) = fes in
     let _ = Format.fprintf ppf "%a" TypSubst.pr xttys in
-				let _ =
-		    if xttys <> [] then
-  		    Format.fprintf ppf " && "
+    let _ =
+      if xttys <> [] then
+        Format.fprintf ppf " && "
     in
     Format.fprintf ppf "%a" (Util.pr_list pr " && ") ts
   else if true then
@@ -71,19 +71,19 @@ let simplify (FES(xttys, ts)) =
     ignore equalities on functions *)
 let eqelim p (FES(xttys, ts) as fes) =
   if xttys = [] then
-		  let _ = Global.log (fun () -> Format.printf "skipping eqelim@,") in
+    let _ = Global.log (fun () -> Format.printf "skipping eqelim@,") in
     fes
   else
-		  let _ = Global.log_begin "eqelim" in
-		  let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," pr fes) in
-		  let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
-		  let _ = Global.log (fun () -> Format.printf "substitution: %a@," TypSubst.pr xttys2) in
+    let _ = Global.log_begin "eqelim" in
+    let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," pr fes) in
+    let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
+    let _ = Global.log (fun () -> Format.printf "substitution: %a@," TypSubst.pr xttys2) in
     let sub = TypSubst.fun_of xttys2 in
-		  let ts = List.map (Formula.subst_fixed sub) ts in
-		  let xttys1 = List.map (fun (x, t, ty) -> x, Term.subst_fixed sub t, ty) xttys1 in
-		  let fes = FES(xttys1, ts) in
-		  let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" pr fes) in
-		  let _ = Global.log_end "eqelim" in
-		  fes
+    let ts = List.map (Formula.subst_fixed sub) ts in
+    let xttys1 = List.map (fun (x, t, ty) -> x, Term.subst_fixed sub t, ty) xttys1 in
+    let fes = FES(xttys1, ts) in
+    let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" pr fes) in
+    let _ = Global.log_end "eqelim" in
+    fes
 
-(*				eqelim p (equantify p (make [] ts))*)
+(*    eqelim p (equantify p (make [] ts))*)

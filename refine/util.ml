@@ -404,10 +404,10 @@ let nsubsets n xs =
       yszss
     else
       concat_map
-						  (fun (ys, zs) ->
-								  (** @invariant set_equiv (ys @ zs) xs *)
-								  map_left_right (fun ls y rs -> ls @ rs, y :: zs) ys)
-								(aux (n - 1) yszss)
+        (fun (ys, zs) ->
+          (** @invariant set_equiv (ys @ zs) xs *)
+          map_left_right (fun ls y rs -> ls @ rs, y :: zs) ys)
+        (aux (n - 1) yszss)
   in
   List.map snd (aux n [xs, []])
 

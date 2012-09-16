@@ -56,17 +56,17 @@ let rec rename_base f x =
   match x with
     V(id) ->
       V(f id)
-		| C(id) ->
+  | C(id) ->
       C(f id)
   | T(x, uid, arg) ->
-		    T(rename_base f x, uid, arg)
+      T(rename_base f x, uid, arg)
 
 let rec base x =
   match x with
     V(id) | C(id) ->
       id
   | T(x, _, _) ->
-		    base x
+      base x
 
 let is_top x =
   match x with
@@ -98,21 +98,21 @@ let cheader = "c"
 let separator = "_sep_" (*???*)
 
 let rec print x =
-		match x with
-		  V(id) ->
-		    (try
-		      let _ = String.find (Idnt.string_of id) separator in
-		      assert false
-		    with Invalid_string ->
+  match x with
+    V(id) ->
+      (try
+        let _ = String.find (Idnt.string_of id) separator in
+        assert false
+      with Invalid_string ->
         vheader ^ separator ^ Idnt.string_of id)
-		| C(id) ->
-		    (try
-		      let _ = String.find (Idnt.string_of id) separator in
-		      assert false
-		    with Invalid_string ->
+  | C(id) ->
+      (try
+        let _ = String.find (Idnt.string_of id) separator in
+        assert false
+      with Invalid_string ->
         cheader ^ separator ^ Idnt.string_of id)
-		| T(x, uid, arg) ->
-		    print x ^ separator ^ String.of_int uid ^ separator ^ String.of_int arg
+  | T(x, uid, arg) ->
+      print x ^ separator ^ String.of_int uid ^ separator ^ String.of_int arg
 
 let parse s =
   let rec f x ss =

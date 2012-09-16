@@ -64,11 +64,11 @@ let rec subst sub rty =
   | Fun(xs) ->
       Fun
         (List.map
-		        (fun (rty1, rty2) ->
-		          subst sub rty1,
-		          let sub' y = if is_base rty1 && Var.equiv (bv_of rty1) y then raise Not_found else sub y in
-		          subst sub' rty2)
-		        xs)
+          (fun (rty1, rty2) ->
+            subst sub rty1,
+            let sub' y = if is_base rty1 && Var.equiv (bv_of rty1) y then raise Not_found else sub y in
+            subst sub' rty2)
+          xs)
 
 let set_base_cond rty t =
   match rty with
@@ -84,27 +84,27 @@ let set_base_cond rty t =
 
 let rename sub sty =
   let subst x = Term.make_var (sub x) in
-		let rec aux sty =
-		  match sty with
-		    Base(x, bty, t) ->
+  let rec aux sty =
+    match sty with
+      Base(x, bty, t) ->
         Base((try sub x with Not_found -> x), bty, Term.subst subst t)
-		  | Fun(xs) ->
-		      Fun
-		        (List.map
-		          (fun (sty1, sty2) ->
-		            aux sty1,
-		            aux sty2)
-		          xs)
+    | Fun(xs) ->
+        Fun
+          (List.map
+            (fun (sty1, sty2) ->
+              aux sty1,
+              aux sty2)
+            xs)
   in
   aux sty
 
 let rec fresh_names new_var ty =
-		match ty with
-		  Base(x, bty, t) ->
-		    let y = new_var () in
-		    [x, y]
-		| Fun(xs) ->
-		    Util.concat_map 
+  match ty with
+    Base(x, bty, t) ->
+      let y = new_var () in
+      [x, y]
+  | Fun(xs) ->
+      Util.concat_map 
         (fun (sty1, sty2) ->
           let sub1 = fresh_names new_var sty1 in
           let sub2 = fresh_names new_var sty2 in
@@ -128,30 +128,30 @@ let canonize sty =
 let env_of env sums fcs =
   let tlfcs =
     List.unique
-		    (List.filter
-		      (fun (x, _) -> Var.is_top x)
-		      fcs)
+      (List.filter
+        (fun (x, _) -> Var.is_top x)
+        fcs)
   in
-		let make_fun_shape tys ty =
-		  List.fold_right
-		    (fun ty retty -> Fun [ty, retty])
-		    tys
-		    ty
-		in
-		let merge_shapes shs =
-			 match shs with
-			   Fun(_)::_ ->
-			       Fun
-			         (Util.concat_map
-			           (function (Fun(xs)) -> xs | _ -> assert false)
-			           shs)
-			 | [ty] ->
-			     ty
-			 | [] -> assert false (*Fun []*)
-			 | _ ->
-			     let _ = Format.printf ":%a:@," (Util.pr_list pr ":") shs in
-			     assert false
-		in
+  let make_fun_shape tys ty =
+    List.fold_right
+      (fun ty retty -> Fun [ty, retty])
+      tys
+      ty
+  in
+  let merge_shapes shs =
+    match shs with
+      Fun(_)::_ ->
+          Fun
+            (Util.concat_map
+              (function (Fun(xs)) -> xs | _ -> assert false)
+              shs)
+    | [ty] ->
+        ty
+    | [] -> assert false (*Fun []*)
+    | _ ->
+        let _ = Format.printf ":%a:@," (Util.pr_list pr ":") shs in
+        assert false
+  in
   let conv_base = function SimType.Unit -> Unit | SimType.Bool -> Bool | SimType.Int -> Int | _ -> assert false in
   let rec shape_of (x, uid) =
     match env x with
@@ -166,15 +166,15 @@ let env_of env sums fcs =
         let n = SimType.arity ty in
         (* ret is of base type *)
         let ret = merge_shapes (shapes_of (Var.T(x, uid, n))) in
-								(*
-								Format.printf "%a@," Var.pr (Var.T(x, uid, n));
-								*)
+        (*
+        Format.printf "%a@," Var.pr (Var.T(x, uid, n));
+        *)
         make_fun_shape
           (List.init n
             (fun i ->
-														(*
-														Format.printf "%a@," Var.pr (Var.T(x, uid, i));
-														*)
+              (*
+              Format.printf "%a@," Var.pr (Var.T(x, uid, i));
+              *)
               merge_shapes (shapes_of (Var.T(x, uid, i)))))
           ret
 (*
@@ -190,9 +190,9 @@ let env_of env sums fcs =
         [Base(x, conv_base (env x), p)]
     | SimType.Fun(_, _) as ty ->
         let res =
-		        List.map
-		          (fun uid -> shape_of (x, uid))
-		          (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
+          List.map
+            (fun uid -> shape_of (x, uid))
+            (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
         in
         if res = [] then [of_simple_type ty] else res
   in
@@ -229,15 +229,15 @@ let rec visible x y =
       (match y with
         Var.V(_) -> false
       | Var.T(z', uid', arg') ->
-				      (z = z' && uid = uid' && arg' <= arg) ||
-				      (visible z y))
+          (z = z' && uid = uid' && arg' <= arg) ||
+          (visible z y))
 
 let visible_vars env x =
   let rec aux x =
-		  match x with
-		    Var.V(_) ->
-		      [x]
-		  | Var.T(x, uid, arg) ->
-		      aux x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
+    match x with
+      Var.V(_) ->
+        [x]
+    | Var.T(x, uid, arg) ->
+        aux x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
   in
   List.filter_map (fun x -> if SimType.is_base (env x) then Some(x, env x) else None) (aux x)

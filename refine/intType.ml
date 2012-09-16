@@ -15,19 +15,19 @@ and t = { shape: s; pre: Term.t; post: Term.t }
 let make shape pre post = { shape = shape; pre = pre; post = post }
 
 let make_fun_shape args ret =
-		List.fold_right
-		  (fun arg ret -> Fun(arg, ret))
-		  args
-		  ret
+  List.fold_right
+    (fun arg ret -> Fun(arg, ret))
+    args
+    ret
 
 let of_simple_type sty =
-		let rec aux sty =
-		  match sty with
-		    SimType.Unit -> Unit(Var.make (Idnt.new_id ()))
-		  | SimType.Bool -> Bool(Var.make (Idnt.new_id ()))
-		  | SimType.Int -> Int(Var.make (Idnt.new_id ()))
-		  | SimType.Fun(sty1, sty2) ->
-		      Fun(aux sty1, aux sty2)
+  let rec aux sty =
+    match sty with
+      SimType.Unit -> Unit(Var.make (Idnt.new_id ()))
+    | SimType.Bool -> Bool(Var.make (Idnt.new_id ()))
+    | SimType.Int -> Int(Var.make (Idnt.new_id ()))
+    | SimType.Fun(sty1, sty2) ->
+        Fun(aux sty1, aux sty2)
   in
   make (aux sty) Formula.ttrue Formula.ttrue
 
@@ -98,19 +98,19 @@ let rec typed_unify new_var shs =
   if shs = [] then
     []
   else
-		  match List.hd shs with
-		    Unit(_) ->
-		      let y = new_var () in
-		      List.map (function Unit(x) -> (x, y), SimType.Unit | _ -> assert false) shs
-		  | Bool(_) ->
-		      let y = new_var () in
-		      List.map (function Bool(x) -> (x, y), SimType.Bool | _ -> assert false) shs
-		  | Int(_) ->
-		      let y = new_var () in
-		      List.map (function Int(x) -> (x, y), SimType.Int | _ -> assert false) shs
-		  | Fun(_) ->
-		      let shs1, shs2 = List.split (List.map (function (Fun(sh1, sh2)) -> sh1, sh2 | _ -> assert false) shs) in
-		      typed_unify new_var shs1 @ typed_unify new_var shs2
+    match List.hd shs with
+      Unit(_) ->
+        let y = new_var () in
+        List.map (function Unit(x) -> (x, y), SimType.Unit | _ -> assert false) shs
+    | Bool(_) ->
+        let y = new_var () in
+        List.map (function Bool(x) -> (x, y), SimType.Bool | _ -> assert false) shs
+    | Int(_) ->
+        let y = new_var () in
+        List.map (function Int(x) -> (x, y), SimType.Int | _ -> assert false) shs
+    | Fun(_) ->
+        let shs1, shs2 = List.split (List.map (function (Fun(sh1, sh2)) -> sh1, sh2 | _ -> assert false) shs) in
+        typed_unify new_var shs1 @ typed_unify new_var shs2
     | And(_) ->
         let shss = List.map (function (And(shs)) -> shs | _ -> assert false) shs in
         Util.concat_map (typed_unify new_var) (Util.transpose shss)
@@ -119,24 +119,24 @@ let unify new_var tys =
   List.map fst (typed_unify new_var tys)
 
 let rec fresh_names new_var sh =
-		match sh with
-		  Unit(x)
-		| Bool(x)
-		| Int(x) ->
-		    let y = new_var () in
-		    [x, y]
-		| Fun(sh1, sh2) ->
-		    fresh_names new_var sh1 @
+  match sh with
+    Unit(x)
+  | Bool(x)
+  | Int(x) ->
+      let y = new_var () in
+      [x, y]
+  | Fun(sh1, sh2) ->
+      fresh_names new_var sh1 @
       fresh_names new_var sh2
   | And(shs) ->
-		    Util.concat_map (fresh_names new_var) shs
+      Util.concat_map (fresh_names new_var) shs
 
 let rec env_of sh =
-		match sh with
-		  Unit(x) -> [x, SimType.Unit]
-		| Bool(x) -> [x, SimType.Bool]
-		| Int(x) -> [x, SimType.Int]
-		| Fun(sh1, sh2) ->
+  match sh with
+    Unit(x) -> [x, SimType.Unit]
+  | Bool(x) -> [x, SimType.Bool]
+  | Int(x) -> [x, SimType.Int]
+  | Fun(sh1, sh2) ->
       List.unique (env_of sh1 @ env_of sh2)
   | And(shs) ->
       List.unique (Util.concat_map env_of shs)
@@ -156,31 +156,31 @@ let canonize ty =
 
 let rec flatten sh =
   match sh with
-		  Unit(_) | Bool(_) | Int(_) -> sh
-		| Fun(sh1, sh2) -> Fun(flatten sh1, flatten sh2)
+    Unit(_) | Bool(_) | Int(_) -> sh
+  | Fun(sh1, sh2) -> Fun(flatten sh1, flatten sh2)
   | And(shs) ->
-	     And
-	       (Util.concat_map
-	         (function (And(shs)) -> shs | sh -> [sh])
-	         (List.map flatten shs))
+      And
+        (Util.concat_map
+          (function (And(shs)) -> shs | sh -> [sh])
+          (List.map flatten shs))
 
 let intersect_shapes shs =
   match shs with
     [sh] -> sh
   | _ -> flatten (And(shs))
 (*
-	 | [] -> assert false
-	 | _ ->
-	     let _ = Format.printf "%a@," (Util.pr_list pr_shape ":") shs in
-	     assert false
+  | [] -> assert false
+  | _ ->
+      let _ = Format.printf "%a@," (Util.pr_list pr_shape ":") shs in
+      assert false
 *)
 
 let shape_env_of env fcs =
   let tlfcs =
     List.unique
-		    (List.filter
-		      (fun (x, _) -> Var.is_top x)
-		      fcs)
+      (List.filter
+        (fun (x, _) -> Var.is_top x)
+        fcs)
   in
   let rec shape_of (x, uid) =
     match env x with
@@ -198,15 +198,15 @@ let shape_env_of env fcs =
         Int(x)
     | SimType.Fun(_, _) as ty ->
         let n = SimType.arity ty in
-								(*
-								Format.printf "%a@," Var.pr (Var.T(x, uid, n));
-								*)
+        (*
+        Format.printf "%a@," Var.pr (Var.T(x, uid, n));
+        *)
         make_fun_shape
           (List.init n
             (fun i ->
-														(*
-														Format.printf "%a@," Var.pr (Var.T(x, uid, i));
-														*)
+              (*
+              Format.printf "%a@," Var.pr (Var.T(x, uid, i));
+              *)
               intersect_shapes (shapes_of (Var.T(x, uid, i)))))
           (intersect_shapes (shapes_of (Var.T(x, uid, n))))
 (*
@@ -221,9 +221,9 @@ let shape_env_of env fcs =
     | SimType.Int -> [Int(x)]
     | SimType.Fun(_, _) as ty ->
         let res =
-		        List.map
-		          (fun uid -> shape_of (x, uid))
-		          (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
+          List.map
+            (fun uid -> shape_of (x, uid))
+            (List.filter_map (fun (y, uid) -> if x = y then Some(uid) else None) fcs)
         in
         if res = [] then [(of_simple_type ty).shape] else res
   in
@@ -244,11 +244,11 @@ let of_summaries prog sums fcs =
 let simplify ty =
   match ty.shape with
     And(shs) when List.for_all is_base shs ->
-				  let sub = unify Var.new_var shs in
-				  make
-				    (rename_shape (fun x -> List.assoc x sub) (List.hd shs))
-				    (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.pre)
-				    (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.post)
+      let sub = unify Var.new_var shs in
+      make
+        (rename_shape (fun x -> List.assoc x sub) (List.hd shs))
+        (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.pre)
+        (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.post)
   | _ -> ty
 
 let intersect tys =
@@ -257,13 +257,13 @@ let intersect tys =
   | [ty] -> ty
   | _ ->
       let shs = List.map (fun ty -> ty.shape) tys in
-				  let pres = List.map (fun ty -> ty.pre) tys in
-				  let posts = List.map (fun ty -> ty.post) tys in
+      let pres = List.map (fun ty -> ty.pre) tys in
+      let posts = List.map (fun ty -> ty.post) tys in
       simplify
         (make
-		        (intersect_shapes shs)
-		        (Formula.bor pres)
-		        (Formula.band (List.map2 (fun pre post -> Formula.imply pre post) pres posts)))
+          (intersect_shapes shs)
+          (Formula.bor pres)
+          (Formula.band (List.map2 (fun pre post -> Formula.imply pre post) pres posts)))
 
 let intersect_env env =
   List.map
@@ -364,10 +364,10 @@ let type_of_const c =
       (** ToDo *)
       let x1 = Var.new_var () in
       let x2 = Var.new_var () in
-		    make
-		      (make_fun_shape [Unit(x1)] (Unit(x2)))
+      make
+        (make_fun_shape [Unit(x1)] (Unit(x2)))
         Formula.tfalse
-		      Formula.ttrue
+        Formula.ttrue
   | Const.Event(_) ->
       assert false
   | Const.Unit ->

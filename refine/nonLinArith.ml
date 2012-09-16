@@ -29,17 +29,17 @@ let pr ppf pol =
     [] -> ()
   | tm::tms ->
       let _ = Format.fprintf ppf "%a" pr_pterm tm in
-				  List.iter
-				    (fun (n, xs) ->
-		        if n > 0 then
-		  				    let _ = Format.fprintf ppf " + " in
-		          Format.fprintf ppf "%a" pr_pterm (n, xs)
-		        else if n < 0 then
-		  				    let _ = Format.fprintf ppf " - " in
-		          Format.fprintf ppf "%a" pr_pterm (-n, xs)
+      List.iter
+        (fun (n, xs) ->
+          if n > 0 then
+            let _ = Format.fprintf ppf " + " in
+            Format.fprintf ppf "%a" pr_pterm (n, xs)
+          else if n < 0 then
+            let _ = Format.fprintf ppf " - " in
+            Format.fprintf ppf "%a" pr_pterm (-n, xs)
           else
             assert false)
-				    tms
+        tms
   (*Format.fprintf ppf (Util.pr_list pr_pterm " + ") pol*)
 
 let coeff pol xs =
@@ -50,11 +50,11 @@ let coeff pol xs =
 let canonize pol =
   let pol = List.map (fun (n, xs) -> n, List.sort (List.unique xs)) pol in
   List.filter (fun (n, _) -> n <> 0)
-		  (List.map
-		    (function ((n, xs)::tms) ->
-		      (List.fold_left (+) n (List.map fst tms), xs)
-		    | _ -> assert false)
-		    (Util.classify (fun (_, xs1) (_, xs2) -> xs1 = xs2) pol))
+    (List.map
+      (function ((n, xs)::tms) ->
+        (List.fold_left (+) n (List.map fst tms), xs)
+      | _ -> assert false)
+      (Util.classify (fun (_, xs1) (_, xs2) -> xs1 = xs2) pol))
 
 let mul_coeff_pterm m (n, xs) = m * n, xs
 let mul_coeff m pol = canonize (List.map (mul_coeff_pterm m) pol)
@@ -65,10 +65,10 @@ let add pol1 pol2 = canonize (pol1 @ pol2)
 
 let mul pol1 pol2 =
   canonize
-		  (Util.multiply_list
-		    (fun (n1, xs1) (n2, xs2) -> n1 * n2, xs1 @ xs2)
-		    pol1
-		    pol2)
+    (Util.multiply_list
+      (fun (n1, xs1) (n2, xs2) -> n1 * n2, xs1 @ xs2)
+      pol1
+      pol2)
 
 let equiv pol1 pol2 =
   let xss1 = List.sort (List.map snd pol1) in

@@ -172,90 +172,90 @@ let interpolate t1 t2 =
   else if Cvc3Interface.is_valid (bnot t2) then
     ttrue (*???*)
   else
-		  let p1 = CsisatAstUtil.simplify (of_formula t1) in
-		  let p2 = CsisatAstUtil.simplify (of_formula t2) in
-		  (*
-		  Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
-		  *)
-		  let interp =
-		    try
-		      CsisatInterpolate.interpolate_with_proof p1 p2
-		      (*
-		      if not (implies p1 it && implies it p2) then
-		        let _ = Format.printf "wrong interpolant=%a@," Fol.pr (invert it) in
-		        failwith "CsisatInterface.interpolate"
-		      *)
-		    with CsisatAst.SAT | CsisatAst.SAT_FORMULA(_) ->
-		      raise NoInterpolant
-		    | Failure(msg) ->
-		      let _ = Format.printf "csisat error: %s@," msg in
-		      assert false(*raise NoInterpolant*)
+    let p1 = CsisatAstUtil.simplify (of_formula t1) in
+    let p2 = CsisatAstUtil.simplify (of_formula t2) in
+    (*
+    Format.printf "@[<v>p1: %s@ p2: %s@ @]" (CsisatAstUtil.print_pred p1) (CsisatAstUtil.print_pred p2);
+    *)
+    let interp =
+      try
+        CsisatInterpolate.interpolate_with_proof p1 p2
+        (*
+        if not (implies p1 it && implies it p2) then
+          let _ = Format.printf "wrong interpolant=%a@," Fol.pr (invert it) in
+          failwith "CsisatInterface.interpolate"
+        *)
+      with CsisatAst.SAT | CsisatAst.SAT_FORMULA(_) ->
+        raise NoInterpolant
+      | Failure(msg) ->
+        let _ = Format.printf "csisat error: %s@," msg in
+        assert false(*raise NoInterpolant*)
       | _ ->
         assert false
-		  in
-		  (*Format.printf "%s@," (CsisatAstUtil.print_pred interp);*)
-		  let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
-		  (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
-		  (*this may cause a stack overflow:*) let interp = CsisatAstUtil.dnf interp in
-		  (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
-		  let t = (*Formula.simplify*) (formula_of interp) in
+    in
+    (*Format.printf "%s@," (CsisatAstUtil.print_pred interp);*)
+    let interp = CsisatAstUtil.simplify (CsisatLIUtils.round_coeff interp) in
+    (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
+    (*this may cause a stack overflow:*) let interp = CsisatAstUtil.dnf interp in
+    (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
+    let t = (*Formula.simplify*) (formula_of interp) in
     t
 
 let interpolate t1 t2 =
-		try
-		  let t = interpolate t1 t2 in
-		  (*let _ = Format.printf "interp: %a@," Term.pr t in*)
-		  let t = Formula.simplify t in
-				if true then
-				  let ts = Formula.disjuncts t in
+  try
+    let t = interpolate t1 t2 in
+    (*let _ = Format.printf "interp: %a@," Term.pr t in*)
+    let t = Formula.simplify t in
+    if true then
+      let ts = Formula.disjuncts t in
       let ts =
-								(match ts with
-								  [t] -> [t]
-								| _ ->
-						      let _ = Global.log_begin "minimizing # of disjunctions" in
-						      let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.bor ts)) in
-						      let ts = Util.minimal (fun ts -> Cvc3Interface.implies [t1] [Formula.bor ts]) ts in
-						      let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr (Formula.bor ts)) in
-						      let _ = Global.log_end "minimizing # of disjunctions" in
-								    ts)
+        (match ts with
+          [t] -> [t]
+        | _ ->
+            let _ = Global.log_begin "minimizing # of disjunctions" in
+            let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.bor ts)) in
+            let ts = Util.minimal (fun ts -> Cvc3Interface.implies [t1] [Formula.bor ts]) ts in
+            let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr (Formula.bor ts)) in
+            let _ = Global.log_end "minimizing # of disjunctions" in
+            ts)
       in
       Formula.bor
-		      (List.map
-								  (fun t ->
-		          let ts = Formula.conjuncts t in
-												(match ts with
-												  [t] -> t
-												| _ ->
-										      let _ = Global.log_begin "minimizing # of conjunctions" in
-										      let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.band ts)) in
-										      let ts = Util.minimal (fun ts -> Cvc3Interface.implies ts [Formula.bnot t2]) ts in
-										      let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr (Formula.band ts)) in
-										      let _ = Global.log_end "minimizing # of conjunctions" in
-												    Formula.band ts))
+        (List.map
+          (fun t ->
+            let ts = Formula.conjuncts t in
+            (match ts with
+              [t] -> t
+            | _ ->
+                let _ = Global.log_begin "minimizing # of conjunctions" in
+                let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr (Formula.band ts)) in
+                let ts = Util.minimal (fun ts -> Cvc3Interface.implies ts [Formula.bnot t2]) ts in
+                let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr (Formula.band ts)) in
+                let _ = Global.log_end "minimizing # of conjunctions" in
+                Formula.band ts))
           ts)
-				else
-				  t
-		with NoInterpolant ->
-		  if Cvc3Interface.implies [t1] [Formula.bnot t2] then
-		    raise Unknown
-		  else
-		    raise NoInterpolant
+    else
+      t
+  with NoInterpolant ->
+    if Cvc3Interface.implies [t1] [Formula.bnot t2] then
+      raise Unknown
+    else
+      raise NoInterpolant
 
 let interpolate t1 t2 =
   let _ = Global.log_begin "interpolate" in
   let _ = Global.log (fun () -> Format.printf "input1: @[<v>%a@]@,input2: @[<v>%a@]@," Term.pr t1 Term.pr t2) in
   try
-		  let interp = interpolate t1 t2 in
-		  let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr interp) in
-		  let _ = Global.log_end "interpolate" in
-		  interp
+    let interp = interpolate t1 t2 in
+    let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr interp) in
+    let _ = Global.log_end "interpolate" in
+    interp
   with NoInterpolant ->
-		  let _ = Global.log (fun () -> Format.printf "failed") in
-		  let _ = Global.log_end "interpolate" in
+    let _ = Global.log (fun () -> Format.printf "failed") in
+    let _ = Global.log_end "interpolate" in
     raise NoInterpolant
   | Unknown ->
-		  let _ = Global.log (fun () -> Format.printf "CSIsat does not fully support interpolation of formulas on integers") in
-		  let _ = Global.log_end "interpolate" in
+    let _ = Global.log (fun () -> Format.printf "CSIsat does not fully support interpolation of formulas on integers") in
+    let _ = Global.log_end "interpolate" in
     raise Unknown
 
 

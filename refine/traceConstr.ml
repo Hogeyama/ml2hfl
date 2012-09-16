@@ -32,45 +32,45 @@ let make name closed guard constr subst =
 let rec pr ppf tr =
   match tr with
     Node(nd, trs) ->
-				  let _ =
-						  Format.fprintf ppf "@[<v>%a" CallId.pr nd.name
-				  in
-				  let _ =
-								let _ = Format.fprintf ppf "@,  @[<v>" in
+      let _ =
+        Format.fprintf ppf "@[<v>%a" CallId.pr nd.name
+      in
+      let _ =
+        let _ = Format.fprintf ppf "@,  @[<v>" in
         let _ = (*if nd.guard <> Formula.ttrue then*) Format.fprintf ppf "%a" Term.pr nd.guard in
         let _ =
-						    if nd.subst <> [] then
+          if nd.subst <> [] then
             let _ =
-				          Util.iter3
-				            (fun t xttys tr ->
-														    let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map TypSubst.formula_of_elem xttys) in
+              Util.iter3
+                (fun t xttys tr ->
+                  let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map TypSubst.formula_of_elem xttys) in
                   let _ = if t <> Formula.ttrue then Format.fprintf ppf ", @,%a" Term.pr t in
                   Format.fprintf ppf ", @,%a" pr tr)
-				            (List.take (List.length trs) nd.constr)
-				            (List.take (List.length trs) nd.subst)
-				            trs
+                (List.take (List.length trs) nd.constr)
+                (List.take (List.length trs) nd.subst)
+                trs
             in
             if List.length trs + 1 = List.length nd.subst then
               let _ = Format.fprintf ppf ", @,{%a}" (Util.pr_list Term.pr ", @,") (List.map TypSubst.formula_of_elem (List.last nd.subst)) in
-		            if List.last nd.constr <> Formula.ttrue then
-		              Format.fprintf ppf ", @,%a" Term.pr (List.last nd.constr)
+              if List.last nd.constr <> Formula.ttrue then
+                Format.fprintf ppf ", @,%a" Term.pr (List.last nd.constr)
         in
         Format.fprintf ppf "@]"
-				  in
-				  if nd.closed then
+      in
+      if nd.closed then
         let x, id =
-								  match nd.ret with
-		          None -> nd.name
-		        | Some(x, id) -> x, id
+          match nd.ret with
+            None -> nd.name
+          | Some(x, id) -> x, id
         in
-						  Format.fprintf ppf "@,</%a@@%d>@]"
-								  Var.pr x
-								  id
+        Format.fprintf ppf "@,</%a@@%d>@]"
+          Var.pr x
+          id
 
 let get_min_unsat_prefix tr =
   let rec aux (Fes.FES(xttys0, ts0)) tr =
-		  match tr with
-		    Node(nd, trs) ->
+    match tr with
+      Node(nd, trs) ->
         let fes = Fes.make xttys0 (nd.guard::ts0) in
 (*
         let _ = Format.printf "%a: %a@," CallId.pr nd.name Term.pr (Formula.bnot (Formula.formula_of fes)) in
@@ -78,22 +78,22 @@ let get_min_unsat_prefix tr =
         if Cvc3Interface.is_valid (Formula.bnot (Fes.formula_of (Fes.eqelim (fun _ -> false) fes))) then
           fes, make nd.name false nd.guard [] [], true
         else
-		        let rec aux_aux fes ts xttyss trs =
-		          match ts, xttyss, trs with
-		            [], [], [] ->
+          let rec aux_aux fes ts xttyss trs =
+            match ts, xttyss, trs with
+              [], [], [] ->
                 fes, [], false
             | [t], [xttys], [] ->
                 Fes.band [fes; Fes.make xttys [t]], [], false
-		          | t::ts, xttys::xttyss, tr::trs ->
-						          let fes, tr, fail = aux (Fes.band [fes; Fes.make xttys [t]]) tr in
-				            if fail then
-				              fes, [tr], true
-				            else
-						            let fes, trs, fail = aux_aux fes ts xttyss trs in
-						            fes, tr::trs, fail
+            | t::ts, xttys::xttyss, tr::trs ->
+                let fes, tr, fail = aux (Fes.band [fes; Fes.make xttys [t]]) tr in
+                if fail then
+                  fes, [tr], true
+                else
+                  let fes, trs, fail = aux_aux fes ts xttyss trs in
+                  fes, tr::trs, fail
             | _ -> assert false
-		        in
-		        let fes, trs, fail = aux_aux fes nd.constr nd.subst trs in
+          in
+          let fes, trs, fail = aux_aux fes nd.constr nd.subst trs in
           fes,
           (if fail then
             Node({ nd with constr = List.take (List.length trs) nd.constr;
@@ -113,22 +113,22 @@ let down loc x = Zipper.down loc (fun nd -> nd.name = x)
 
 let rec is_recursive (x, uid) (Loc(tr, _) as loc) =
   (try
-		  is_recursive (x, uid) (up loc)
+    is_recursive (x, uid) (up loc)
   with Not_found ->
     false) ||
-		(let x', uid' = (get tr).name in Var.equiv x' x && uid' <> uid)
+  (let x', uid' = (get tr).name in Var.equiv x' x && uid' <> uid)
 
 let rec rec_calls_of x (Loc(tr, p) as loc) =
   let trs, ps = 
-		  try
-				  rec_calls_of x (up loc)
-		  with Not_found ->
-		    [], []
+    try
+      rec_calls_of x (up loc)
+    with Not_found ->
+      [], []
   in
-		if Var.equiv (fst (get tr).name) x then
-		  tr::trs, p::ps
-		else
-		  trs, ps
+  if Var.equiv (fst (get tr).name) x then
+    tr::trs, p::ps
+  else
+    trs, ps
 
 (** @deprecated use ??? *)
 let rec up_until x_uid (Loc(tr, p)) =
@@ -146,12 +146,12 @@ let tree_of_path p =
   root (Loc(make (Var.make (Idnt.make "hole"), -1) true Formula.ttrue [] [], p))
 
 let pr_path ppf p =
-		Format.fprintf ppf "%a" pr (tree_of_path p)
+  Format.fprintf ppf "%a" pr (tree_of_path p)
 
 let rec path_set_open p =
-		match p with
-		  Top -> Top
-		| Path(up, trs1, nd, trs2) ->
+  match p with
+    Top -> Top
+  | Path(up, trs1, nd, trs2) ->
       Path(path_set_open up, trs1, { nd with ret = None(**ToDo*); closed = false }, trs2)
 
 let rec left_of_path p =

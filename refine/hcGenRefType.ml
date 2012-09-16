@@ -24,106 +24,106 @@ let cgen env etr =
               aux (insert_down loc (make y true (guard, []))) hcs etr
             else if Var.is_neg (fst y) then
               let _ = assert (guard = Formula.ttrue) in
-		            let nd = get tr in
-		            let nd' = { nd with ret = Some(y) } in
-				          aux (up (Loc(set tr nd', p))) hcs etr
+              let nd = get tr in
+              let nd' = { nd with ret = Some(y) } in
+              aux (up (Loc(set tr nd', p))) hcs etr
             else assert false
         | Trace.Arg(xttys) ->
             (try
-						        let target, source, _ =
-								        List.find
-						            (fun (_, _, ty) -> SimType.refinable ty)
-						            (List.rev xttys)
-						        in
-		            let xttys =
-		              List.filter_map
-		                (fun (x, t, ty) ->
-		                  if SimType.is_base ty && ty <> SimType.Unit(*sound???*) then
-		                    Some(x, t, ty)
-		                  else
-		                    None)
-		                xttys
-		            in
+              let target, source, _ =
+                List.find
+                  (fun (_, _, ty) -> SimType.refinable ty)
+                  (List.rev xttys)
+              in
+              let xttys =
+                List.filter_map
+                  (fun (x, t, ty) ->
+                    if SimType.is_base ty && ty <> SimType.Unit(*sound???*) then
+                      Some(x, t, ty)
+                    else
+                      None)
+                  xttys
+              in
               let xttys1, xttys2 = List.partition (fun (_, t, _) -> Term.coeffs t = []) xttys in
               let hcs, ps' =
-														  let ps, locs =
-		                if true then
-																		  let pres x =
-																      List.filter_map
-																        (fun (Loc(tr, _)) ->
-																						    try Some(Atom.of_pid env (SimType.find_last_base2 env (get tr).name)) with Not_found -> None)
-																								(find_all
-																										(fun nd ->
-																												CallId.ancestor_of (try CallId.tlfc_of x with Not_found -> Format.printf "%a@," Var.pr x; assert false) nd.name &&
-																												RefType.visible x (SimType.find_last_base env nd.name))
-																										(root loc))
-																				in
-																				let posts x =
-  																				List.filter_map
-																        (fun (Loc(tr, _)) ->
-																										let Some(xuid) = (get tr).ret in
-																						    try Some(Atom.of_pid env (SimType.find_last_base2 env xuid)) with Not_found -> None)
-																								(find_all
-																										(fun nd ->
-																												match nd.ret with
-																														None -> false
-																												| Some(xuid) ->
-																																CallId.ancestor_of (try CallId.tlfc_of x with Not_found -> Format.printf "%a@," Var.pr x; assert false) xuid &&
-																																RefType.visible x (SimType.find_last_base env xuid))
-																										(root loc))
-																				in
-		      						  				let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) in
-																				List.unique
-																						((try
-																								[Atom.of_pid env (SimType.find_last_base2 env (tlfc_of (get tr).name))]
-																						with Not_found ->
-																								[]) @
-																						(match List.unique (Term.fvs source) with
-																								xs when List.for_all (fun x -> RefType.visible (SimType.find_last_base env (tlfc_of (get tr).name)) x) xs -> []
-																						| [source] -> if Var.is_top source then [] else if Var.is_pos source then posts source else pres source
-																						| _ -> let _ = Format.printf "%a,%a@," Term.pr source Var.pr (SimType.find_last_base env (tlfc_of (get tr).name)) in assert false) @
-																      if Var.is_top target then assert false else if Var.is_pos target then posts target else pres target),
-																				locs
-		                else
-		  						  								let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) (*(Loc(tr, left_of_path p))*) in
-								            Util.concat_map
-								              (fun (Loc(tr, _)) ->
-														          (try [Atom.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
-														          (List.filter_map
-														            (fun tr ->
-														              match (get tr).ret with
-														                None -> assert false
-														              | Some(x_uid) ->
-														                  (try Some(Atom.of_pid env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
-														            (children tr)))
-								              locs,
-																				locs
-										      in
-						      				let t =
-								          Formula.band
-																				(List.map (fun (Loc(tr, _)) -> fst (get tr).data) locs @
-								            List.map Formula.of_subst_elem xttys1)
-      										in
-		              let hcs', ps' =
-		                List.split
-				                (List.map
-				                  (fun (x, t, ty) ->
-				                    let xtys = List.sort (List.map (fun x -> x, SimType.Int) (Term.fvs_ty SimType.Int t ty)) @ [x, ty] in
-		                      let pid =
-		                        if not !Global.flag_coeff then
-		                          Var.make_coeff (Idnt.new_cid ())
-		                        else
-		                          List.hd (List.sort (Term.coeffs t))
-																								in
-				                    Hc(Some(pid, xtys), [], Formula.of_subst_elem (x, t, ty)),
-				                    (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys))
-				                  xttys2)
-		              in
-				            (Hc(Some(Atom.of_pid_vars env target), (Util.concat_map (fun (Loc(tr, _)) -> snd (get tr).data) locs) @ ps' @ ps, t)) :: hcs' @ hcs,
-		              ps'
-		            in
-		  		        let nd = get tr in
-				          aux (Loc(set tr { nd with data = Formula.band (fst nd.data :: List.map Formula.of_subst_elem xttys1), snd nd.data @ ps' }, p)) hcs etr
+                let ps, locs =
+                  if true then
+                    let pres x =
+                      List.filter_map
+                        (fun (Loc(tr, _)) ->
+                          try Some(Atom.of_pid env (SimType.find_last_base2 env (get tr).name)) with Not_found -> None)
+                        (find_all
+                          (fun nd ->
+                            CallId.ancestor_of (try CallId.tlfc_of x with Not_found -> Format.printf "%a@," Var.pr x; assert false) nd.name &&
+                            RefType.visible x (SimType.find_last_base env nd.name))
+                          (root loc))
+                    in
+                    let posts x =
+                      List.filter_map
+                        (fun (Loc(tr, _)) ->
+                          let Some(xuid) = (get tr).ret in
+                          try Some(Atom.of_pid env (SimType.find_last_base2 env xuid)) with Not_found -> None)
+                        (find_all
+                          (fun nd ->
+                            match nd.ret with
+                              None -> false
+                            | Some(xuid) ->
+                                CallId.ancestor_of (try CallId.tlfc_of x with Not_found -> Format.printf "%a@," Var.pr x; assert false) xuid &&
+                                RefType.visible x (SimType.find_last_base env xuid))
+                          (root loc))
+                    in
+                    let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) in
+                    List.unique
+                      ((try
+                        [Atom.of_pid env (SimType.find_last_base2 env (tlfc_of (get tr).name))]
+                      with Not_found ->
+                        []) @
+                      (match List.unique (Term.fvs source) with
+                        xs when List.for_all (fun x -> RefType.visible (SimType.find_last_base env (tlfc_of (get tr).name)) x) xs -> []
+                      | [source] -> if Var.is_top source then [] else if Var.is_pos source then posts source else pres source
+                      | _ -> let _ = Format.printf "%a,%a@," Term.pr source Var.pr (SimType.find_last_base env (tlfc_of (get tr).name)) in assert false) @
+                      if Var.is_top target then assert false else if Var.is_pos target then posts target else pres target),
+                    locs
+                  else
+                    let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) (*(Loc(tr, left_of_path p))*) in
+                    Util.concat_map
+                      (fun (Loc(tr, _)) ->
+                        (try [Atom.of_pid env (SimType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
+                        (List.filter_map
+                          (fun tr ->
+                            match (get tr).ret with
+                              None -> assert false
+                            | Some(x_uid) ->
+                                (try Some(Atom.of_pid env (SimType.find_last_base2 env x_uid)) with Not_found -> None))
+                          (children tr)))
+                      locs,
+                    locs
+                in
+                let t =
+                  Formula.band
+                    (List.map (fun (Loc(tr, _)) -> fst (get tr).data) locs @
+                    List.map Formula.of_subst_elem xttys1)
+                in
+                let hcs', ps' =
+                  List.split
+                    (List.map
+                      (fun (x, t, ty) ->
+                        let xtys = List.sort (List.map (fun x -> x, SimType.Int) (Term.fvs_ty SimType.Int t ty)) @ [x, ty] in
+                        let pid =
+                          if not !Global.flag_coeff then
+                            Var.make_coeff (Idnt.new_cid ())
+                          else
+                            List.hd (List.sort (Term.coeffs t))
+                        in
+                        Hc(Some(pid, xtys), [], Formula.of_subst_elem (x, t, ty)),
+                        (pid, List.map (fun (x, ty) -> Term.make_var x, ty) xtys))
+                      xttys2)
+                in
+                (Hc(Some(Atom.of_pid_vars env target), (Util.concat_map (fun (Loc(tr, _)) -> snd (get tr).data) locs) @ ps' @ ps, t)) :: hcs' @ hcs,
+                ps'
+              in
+              let nd = get tr in
+              aux (Loc(set tr { nd with data = Formula.band (fst nd.data :: List.map Formula.of_subst_elem xttys1), snd nd.data @ ps' }, p)) hcs etr
             with Not_found ->
               if !Global.refine_function then
                 (* ToDo: need function type refinement *)

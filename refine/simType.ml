@@ -54,19 +54,19 @@ let refinable ty = !Global.refine_function || (is_base ty && (!Global.refine_uni
 let find_last_base2 env (x, uid) =
   let rec aux ty i j =
     match ty with
-		    Unit | Bool | Int ->
+      Unit | Bool | Int ->
         j
-		  | Fun(ty1, ty2) ->
-		      aux ty2 (i + 1) (if refinable ty1 then i else j)
+    | Fun(ty1, ty2) ->
+        aux ty2 (i + 1) (if refinable ty1 then i else j)
   in
   let i = aux (env x) 0 (-1) in
-		let _ = if i = -1 then raise Not_found in
-		Var.T(x, uid, i)
+  let _ = if i = -1 then raise Not_found in
+  Var.T(x, uid, i)
 
 let find_last_base env (x, uid) =
   try
     find_last_base2 env (x, uid)
   with Not_found ->
     (* condition must be Term.ttrue *)
-  		Var.T(x, uid, -1)
+    Var.T(x, uid, -1)
 

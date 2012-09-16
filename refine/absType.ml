@@ -52,9 +52,9 @@ let rec subst sub aty =
       Base(bty, x, List.map (Term.subst sub') ts)
   | Fun(aty1, aty2) ->
       Fun
-		      (subst sub aty1,
+        (subst sub aty1,
         let sub' y = if is_base aty1 && Var.equiv (bv_of aty1) y then raise Not_found else sub y in
-		      subst sub' aty2)
+        subst sub' aty2)
 
 let rec merge2 aty1 aty2 =
   match aty1, aty2 with

@@ -156,10 +156,10 @@ let factorize (nxs, n) =
     let _ = assert (d <> 0) in
     let cxs = List.map (fun (c, xopt) -> c / d, xopt) cxs in
     let ts =
-		    tint d ::
-		    NonLinArith.factorize pol @
-		    let nxs, ns = Util.partition_map (function (c, None) -> `R(c) | (c, Some(x)) -> `L(c, x)) cxs in
-		    [LinArith.term_of (nxs, List.fold_left (+) 0 ns)]
+      tint d ::
+      NonLinArith.factorize pol @
+      let nxs, ns = Util.partition_map (function (c, None) -> `R(c) | (c, Some(x)) -> `L(c, x)) cxs in
+      [LinArith.term_of (nxs, List.fold_left (+) 0 ns)]
     in
     List.filter (fun t -> t <> Term.tint 1) ts
   with Not_found ->
@@ -239,25 +239,25 @@ let term_of_aif (c, nxs, n) =
 
 
 let xtty_of_aif p dom (c, nxs, n) =
-		if c = Const.EqInt then
-				let nxs1, (n', x), nxs2 =
-						Util.pick
-						  (fun (n, x) ->
-						    not (p x) &&
-						    (Term.equiv n (tint 1) || Term.equiv n (tint (-1))))
-						  nxs
-				in
+  if c = Const.EqInt then
+    let nxs1, (n', x), nxs2 =
+      Util.pick
+        (fun (n, x) ->
+          not (p x) &&
+          (Term.equiv n (tint 1) || Term.equiv n (tint (-1))))
+        nxs
+    in
     let t =
-						if int_of n' = 1 then
-								term_of (minus (nxs1 @ nxs2, n))
-						else if int_of n' = -1 then
-								term_of (nxs1 @ nxs2, n)
-						else
-								assert false
+      if int_of n' = 1 then
+        term_of (minus (nxs1 @ nxs2, n))
+      else if int_of n' = -1 then
+        term_of (nxs1 @ nxs2, n)
+      else
+        assert false
     in
     if Util.inter dom (fvs t) = [] (* ToDo: check whether substitution is acyclic instead *) then
       x, t, SimType.Int
     else
       raise Not_found
-		else
-				raise Not_found
+  else
+    raise Not_found
