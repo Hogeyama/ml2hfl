@@ -208,7 +208,7 @@ let compute_ubs_hc lbs ubs (Hc(popt, afs, t) as hc) =
   in
   let ubs =
     ubs' @
-    Util.map_left_right
+    Util.maplr
       (fun afs1 (pid, ttys) afs2 ->
         let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
         let Hc(None, [], t) =

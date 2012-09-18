@@ -37,10 +37,10 @@ let interpolate_widen closed t1 t2 tw1 tw2 =
 
 (** require: t1 and t2 share only variables that satisfy p *)
 let interpolate_widen_bvs p closed t1 t2 tw1 tw2 =
-  let t1 = Term.rename_fresh p t1 in
-  let t2 = Term.rename_fresh p t2 in
-  let tw1 = Term.rename_fresh p tw1 in
-  let tw2 = Term.rename_fresh p tw2 in
+  let t1 = Term.fresh p t1 in
+  let t2 = Term.fresh p t2 in
+  let tw1 = Term.fresh p tw1 in
+  let tw2 = Term.fresh p tw2 in
   interpolate_widen closed t1 t2 tw1 tw2
 
 let widen xss ts =

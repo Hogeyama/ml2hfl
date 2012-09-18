@@ -25,7 +25,7 @@ let close_cvc3 () =
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> ()
 
 let string_of_var x =
-  let s = Var.print x in
+  let s = Var.serialize x in
   (** The following excaping is sufficient for identifier in OCaml? *)
   String.map (fun c -> if c = '.' || c = '!' then '_' else c) s
 
@@ -235,8 +235,8 @@ let satisfiable t =
 (*
 (* t1 and t2 share only variables that satisfy p *)
 let implies_bvs p t1 t2 =
-  let t1 = Term.rename_fresh p t1 in
-  let t2 = Term.rename_fresh p t2 in
+  let t1 = Term.fresh p t1 in
+  let t2 = Term.fresh p t2 in
   implies t1 t2
 *)
 
@@ -316,7 +316,7 @@ let solve t =
   (*
         let _ = Format.printf "%s, %s@," c n in
   *)
-        Var.parse c, int_of_string n)
+        Var.deserialize c, int_of_string n)
       ss
   in
   let _ = Global.log_end "solve" in
@@ -531,7 +531,7 @@ let solve_bv only_pos (* find only positive solutions *) rbit t =
           let _, s = String.split s "_" in
           let x, n = String.split s " = " in
           let _ = Global.log (fun () -> Format.printf "%s = %s@," x n) in
-          Var.parse x, int_of_string_bv n)
+          Var.deserialize x, int_of_string_bv n)
         ss
     in
     let sol =
@@ -539,7 +539,7 @@ let solve_bv only_pos (* find only positive solutions *) rbit t =
         sol
       else
         let pxs, nxs, xs =
-          Util.partition_map3
+          Util.partition3_map
             (fun (x, n) ->
               let s = Idnt.string_of (Var.base x) in
               if String.ends_with s "_pos" then

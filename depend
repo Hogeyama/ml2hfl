@@ -17,8 +17,8 @@ refine/extList.cmo: refine/enum.cmi refine/extList.cmi
 refine/extList.cmx: refine/enum.cmx refine/extList.cmi
 refine/extString.cmo: refine/enum.cmi refine/extString.cmi
 refine/extString.cmx: refine/enum.cmx refine/extString.cmi
-refine/util.cmo: refine/extString.cmi refine/extList.cmi
-refine/util.cmx: refine/extString.cmx refine/extList.cmx
+refine/util.cmo: refine/global.cmo refine/extString.cmi refine/extList.cmi
+refine/util.cmx: refine/global.cmx refine/extString.cmx refine/extList.cmx
 refine/zipper.cmo: refine/util.cmo refine/extString.cmi refine/extList.cmi
 refine/zipper.cmx: refine/util.cmx refine/extString.cmx refine/extList.cmx
 refine/global.cmo:
@@ -285,6 +285,12 @@ typing.cmo: utilities.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmi
 typing.cmx: utilities.cmx CEGAR_type.cmx CEGAR_syntax.cmx CEGAR_print.cmx
 type_decl.cmo: utilities.cmo type.cmo syntax.cmi
 type_decl.cmx: utilities.cmx type.cmx syntax.cmx
+wrapper.cmo: utilities.cmo type.cmo syntax.cmi id.cmo flag.cmo wrapper.cmi
+wrapper.cmx: utilities.cmx type.cmx syntax.cmx id.cmx flag.cmx wrapper.cmi
+wrapper2.cmo: utilities.cmo flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
+    CEGAR_print.cmi wrapper2.cmi
+wrapper2.cmx: utilities.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
+    CEGAR_print.cmx wrapper2.cmi
 ref_type.cmo: utilities.cmo syntax.cmi id.cmo
 ref_type.cmx: utilities.cmx syntax.cmx id.cmx
 type_check.cmo: type_decl.cmo type.cmo syntax.cmi id.cmo flag.cmo
@@ -333,12 +339,6 @@ parser_wrapper.cmo: utilities.cmo type_decl.cmo type.cmo trans.cmo syntax.cmi \
     id.cmo flag.cmo
 parser_wrapper.cmx: utilities.cmx type_decl.cmx type.cmx trans.cmx syntax.cmx \
     id.cmx flag.cmx
-wrapper.cmo: utilities.cmo type.cmo syntax.cmi id.cmo flag.cmo wrapper.cmi
-wrapper.cmx: utilities.cmx type.cmx syntax.cmx id.cmx flag.cmx wrapper.cmi
-wrapper2.cmo: utilities.cmo flag.cmo CEGAR_type.cmo CEGAR_syntax.cmo \
-    CEGAR_print.cmi wrapper2.cmi
-wrapper2.cmx: utilities.cmx flag.cmx CEGAR_type.cmx CEGAR_syntax.cmx \
-    CEGAR_print.cmx wrapper2.cmi
 abstract.cmo: utilities.cmo type_decl.cmo type_check.cmo type.cmo trans.cmo \
     syntax.cmi ref_type.cmo id.cmo abstract.cmi
 abstract.cmx: utilities.cmx type_decl.cmx type_check.cmx type.cmx trans.cmx \

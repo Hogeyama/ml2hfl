@@ -11,7 +11,7 @@ let csisat_false = CsisatAst.Application("false", [])
 
 let rec of_term t =
   match fun_args t with
-    Var(_, x), [] -> CsisatAst.Variable(Var.print x)
+    Var(_, x), [] -> CsisatAst.Variable(Var.serialize x)
   | Const(_, c), args -> of_term_aux c args
   | _ -> assert false
 and of_term_aux c args =
@@ -32,7 +32,7 @@ and of_term_aux c args =
 let ih = ref true
 let rec of_formula t =
   match fun_args t with
-    Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(Var.print x), csisat_true)(*???*)
+    Var(_, x), [] -> CsisatAst.Eq(CsisatAst.Variable(Var.serialize x), csisat_true)(*???*)
   | Const(_, c), args -> (if !ih then CsisatAstUtil.integer_heuristic else fun x -> x) (of_formula_aux c args)
   | _ -> assert false
 and of_formula_aux c args =
@@ -83,7 +83,7 @@ let rec term_of s =
     CsisatAst.Constant(f) ->
       tint (int_of_float f), SimType.Int
   | CsisatAst.Variable(id) ->
-      make_var (Var.parse id), SimType.Int(*???*)
+      make_var (Var.deserialize id), SimType.Int(*???*)
   | CsisatAst.Application(_, _) ->
       if s = csisat_unit then
         tunit, SimType.Unit
@@ -263,6 +263,6 @@ let interpolate t1 t2 =
 let interpolate_bvs p t1 t2 =
   let t1 = simplify (band (conjuncts t1)) in
   let t2 = simplify (band (conjuncts t2)) in
-  let t1 = Term.rename_fresh p t1 in
-  let t2 = Term.rename_fresh p t2 in
+  let t1 = Term.fresh p t1 in
+  let t2 = Term.fresh p t2 in
   interpolate t1 t2

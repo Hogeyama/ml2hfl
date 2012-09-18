@@ -24,7 +24,7 @@ let linconstr_of env t =
   Apron.Linexpr1.set_array expr
     (Array.of_list
       (List.map
-        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.print x))
+        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.serialize x))
       nxs))
     (Some ((Apron.Coeff.s_of_int n)));
   let mexpr = Apron.Linexpr1.make env in
@@ -32,7 +32,7 @@ let linconstr_of env t =
   Apron.Linexpr1.set_array mexpr
     (Array.of_list
       (List.map
-        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.print x))
+        (fun (n, x) -> Apron.Coeff.s_of_int n, Apron.Var.of_string (Var.serialize x))
       nxs))
     (Some ((Apron.Coeff.s_of_int n)));
   match c with
@@ -59,7 +59,7 @@ let int_of_coeff n =
 
 let of_linconstr c =
   let nxs = ref [] in
-  Apron.Lincons1.iter (fun n x -> nxs := (int_of_coeff n, Var.parse (Apron.Var.to_string x))::!nxs) c;
+  Apron.Lincons1.iter (fun n x -> nxs := (int_of_coeff n, Var.deserialize (Apron.Var.to_string x))::!nxs) c;
   let t = List.fold_left
     (fun t (n, x) ->
       if n = 0 then
@@ -123,7 +123,7 @@ let widen2 t1 t2 = Apron.Abstract1.widening manpk t1 t2
 let convex_hull t =
   let fvs =
     List.map
-      (fun x -> Apron.Var.of_string (Var.print x))
+      (fun x -> Apron.Var.of_string (Var.serialize x))
       (List.unique (Term.fvs t))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
@@ -140,7 +140,7 @@ let widen ts =
   Format.printf "@[<hov>widen_in: @[<hv>%a@]@ " (Util.pr_list Term.pr ",@ ") ts;
 
   let fvs = List.map
-    (fun x -> Apron.Var.of_string (Var.print x))
+    (fun x -> Apron.Var.of_string (Var.serialize x))
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in

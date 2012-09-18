@@ -54,7 +54,7 @@ let gen_coeff_constrs t =
 let solve_bv_aux t =
   let ibs = List.init !Global.bits_threshold (fun i -> i + 1, true) @ List.init (!Global.bits_threshold - 1(*???*)) (fun i -> i + 1, false) in
   try
-    Util.find_map (fun (bit, only_pos) -> try Cvc3Interface.solve_bv only_pos bit t with Cvc3Interface.Unknown -> raise Not_found) ibs
+    Util.find_app (fun (bit, only_pos) -> try Cvc3Interface.solve_bv only_pos bit t with Cvc3Interface.Unknown -> raise Not_found) ibs
   with Not_found ->
     raise Cvc3Interface.Unknown
 

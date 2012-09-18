@@ -1,5 +1,6 @@
 open ExtList
 open ExtString
+open Util
 open HornClause
 open HcSolve
 
@@ -7,9 +8,13 @@ let template_based_constraint_solving_interpolate pids xtys lbs nubs =
   let _ = Global.log_begin "template_based_constraint_solving_interpolate" in
   let lb = Formula.bor lbs in
   let nub = Formula.bor nubs in
-
-  (*let _ = Format.printf "@[<v>%a@];@,@[<v>%a@]@," Term.pr (Term.encode_var lb) Term.pr (Term.encode_var nub) in*)
-
+  let _ =
+    if false then
+      Format.printf
+        "@[<v>%a@];@,@[<v>%a@]@,"
+        Term.pr (Term.map_var (Var.make -| Idnt.make -| Var.serialize) lb)
+        Term.pr (Term.map_var (Var.make -| Idnt.make -| Var.serialize) nub)
+  in
   let _ = Global.log (fun () -> Format.printf "lb:%a@,nub:%a@," Term.pr lb Term.pr nub) in
   let sol =
     let rec loop num_of_conjuncts =
@@ -124,7 +129,23 @@ let rec solve ch hcs0 =
         let lbs_ubs_of pids =
           let _ = assert (pids <> []) in
           let (xtys, lb, ub) :: rs = List.map lb_ub_of pids in
-          let lbs, ubs = List.split (List.map (fun (xtys', lb', ub') -> Term.rename xtys' xtys lb', Term.rename xtys' xtys ub') rs) in
+          let lbs, ubs =
+            List.split
+              (List.map
+                (fun (xtys', lb', ub') ->
+                  let sub =
+                    List.map2
+                      (fun (x1, ty1) (x2, ty2) ->
+                        let _ =
+                          if !Global.debug then
+                            assert (ty1 = ty2)
+                        in
+                        x1, Term.make_var x2)
+                      xtys' xtys
+                  in
+                  Term.rename sub lb', Term.rename sub ub')
+                rs)
+          in
           xtys, lb :: lbs, ub :: ubs
         in
         (*let _ =

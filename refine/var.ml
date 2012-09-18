@@ -91,13 +91,13 @@ let is_coeff x =
   | V(_) | T(_, _, _) -> false
 
 
-(** {6 Encoding and decoding variables as strings} *)
+(** {6 Serialization/deserialization as strings} *)
 
 let vheader = "v"
 let cheader = "c"
 let separator = "_sep_" (*???*)
 
-let rec print x =
+let rec serialize x =
   match x with
     V(id) ->
       (try
@@ -112,23 +112,27 @@ let rec print x =
       with Invalid_string ->
         cheader ^ separator ^ Idnt.string_of id)
   | T(x, uid, arg) ->
-      print x ^ separator ^ String.of_int uid ^ separator ^ String.of_int arg
+      serialize x ^ separator ^
+      String.of_int uid ^ separator ^
+      String.of_int arg
 
-let parse s =
-  let rec f x ss =
+let deserialize s =
+  let rec aux x ss =
     match ss with
       [] -> x
-    | s1::s2::ss ->
-        (try f (T(x, int_of_string s1, int_of_string s2)) ss with _ -> Format.printf "%s,%s@," s1 s2; assert false)
+    | s1 :: s2 :: ss' ->
+        (try
+          aux (T(x, int_of_string s1, int_of_string s2)) ss'
+        with _ ->
+          Format.printf "%s,%s@," s1 s2; assert false)
     | _ -> assert false
   in
-  if String.starts_with s vheader then
-    match String.nsplit s separator with
-      _::s::ss -> f (V(Idnt.make s)) ss
-    | _ -> assert false
-  else if String.starts_with s cheader then
-    match String.nsplit s separator with
-      _::s::ss -> f (C(Idnt.make s)) ss
-    | _ -> assert false
-  else
-    assert false(*V(Idnt.make s)*)
+  match String.nsplit s separator with
+    h :: s :: ss ->
+      if String.starts_with s vheader then
+        aux (V(Idnt.make s)) ss
+      else if String.starts_with s cheader then
+        aux (C(Idnt.make s)) ss
+      else
+        assert false
+  | _ -> assert false

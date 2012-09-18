@@ -43,7 +43,7 @@ let pr ppf pol =
   (*Format.fprintf ppf (Util.pr_list pr_pterm " + ") pol*)
 
 let coeff pol xs =
-  Util.find_map
+  Util.find_app
     (fun (n, ys) -> if xs = ys then n else raise Not_found)
     pol
 
@@ -126,7 +126,7 @@ let rec simplify t =
   match fun_args t with
     Var(attr, x), [] ->
       Var(attr, x)
-  | Const(_, c), _ when Const.is_iexp c ->
+  | Const(_, c), _ when Const.is_int c ->
       (try
         term_of (of_term t)
       with Invalid_argument _ ->

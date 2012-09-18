@@ -241,3 +241,35 @@ let visible_vars env x =
         aux x @ List.init (arg + 1) (fun i -> Var.T(x, uid, i))
   in
   List.filter_map (fun x -> if SimType.is_base (env x) then Some(x, env x) else None) (aux x)
+
+
+
+let refinable ty =
+  if SimType.is_fun ty then
+    !Global.refine_function
+  else if SimType.is_base ty then
+    if ty = SimType.Unit then
+      !Global.refine_unit
+    else
+      true
+  else
+    assert false
+
+let find_last_base2 env (x, uid) =
+  let rec aux ty i j =
+    match ty with
+      SimType.Unit | SimType.Bool | SimType.Int ->
+        j
+    | SimType.Fun(ty1, ty2) ->
+        aux ty2 (i + 1) (if refinable ty1 then i else j)
+  in
+  let i = aux (env x) 0 (-1) in
+  let _ = if i = -1 then raise Not_found in
+  Var.T(x, uid, i)
+
+let find_last_base env (x, uid) =
+  try
+    find_last_base2 env (x, uid)
+  with Not_found ->
+    (* condition must be Term.ttrue *)
+    Var.T(x, uid, -1)

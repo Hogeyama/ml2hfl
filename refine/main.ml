@@ -22,9 +22,9 @@ let test_sum () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "check") [apply (make_var "sum") [make_var "n"]; make_var "n"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; sum1; sum2; check_geq1; check_geq2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "sum", SimType.tfun [SimType.Int; SimType.Int];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.tfun [SimType.Int; SimType.Unit]]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "sum", SimType.make_ftyp [SimType.Int; SimType.Int];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.make_ftyp [SimType.Int; SimType.Unit]]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -33,9 +33,9 @@ let test_sum_assert () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "assert") [geq (apply (make_var "sum") [make_var "n"]) (make_var "n")] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; sum1; sum2; assert1; assert2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "sum", SimType.tfun [SimType.Int; SimType.Int];
-                             Idnt.make "assert", SimType.tfun [SimType.Bool; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "sum", SimType.make_ftyp [SimType.Int; SimType.Int];
+                             Idnt.make "assert", SimType.make_ftyp [SimType.Bool; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -44,9 +44,9 @@ let test_copy_copy () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "check") [apply (make_var "copy") [apply (make_var "copy") [make_var "n"]]; make_var "n"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; copy1; copy2; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "copy", SimType.tfun [SimType.Int; SimType.Int];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "copy", SimType.make_ftyp [SimType.Int; SimType.Int];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -55,9 +55,9 @@ let test_apply () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "apply") [apply (make_var "check") [make_var "n"]; make_var "n"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; apply1; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "apply", SimType.tfun [SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "apply", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -68,10 +68,10 @@ let test_bar_hoge () =
   let hoge = { Fdef.attr = []; Fdef.name = Idnt.make "hoge"; Fdef.args = [Idnt.make "x"; Idnt.make "y"; Idnt.make "f"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "f") [make_var "x"; make_var "y"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; bar; hoge; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "bar", SimType.tfun [SimType.tfun [SimType.Int; SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "hoge", SimType.tfun [SimType.Int; SimType.Int; SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]; SimType.Unit];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "bar", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "hoge", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]; SimType.Unit];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -82,10 +82,10 @@ let test_checkh () =
   let h = { Fdef.attr = []; Fdef.name = Idnt.make "h"; Fdef.args = [Idnt.make "x"; Idnt.make "un"]; guard = ttrue; Fdef.body = make_var "x"} in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; checkh; check1; check2; h];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "checkh", SimType.tfun [SimType.tfun [SimType.Unit; SimType.Int]; SimType.tfun [SimType.Unit; SimType.Int]; SimType.Unit];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit];
-                             Idnt.make "h", SimType.tfun [SimType.Int; SimType.Unit; SimType.Int]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "checkh", SimType.make_ftyp [SimType.make_ftyp [SimType.Unit; SimType.Int]; SimType.make_ftyp [SimType.Unit; SimType.Int]; SimType.Unit];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit];
+                             Idnt.make "h", SimType.make_ftyp [SimType.Int; SimType.Unit; SimType.Int]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -95,10 +95,10 @@ let test_applyh () =
   let applyh = { Fdef.attr = []; Fdef.name = Idnt.make "applyh"; Fdef.args = [Idnt.make "f"; Idnt.make "g"; Idnt.make "x"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "f") [apply (make_var "g") [make_var "x"]; make_var "x"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; applyh; apply1; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "applyh", SimType.tfun [SimType.tfun [SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit]; SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "apply", SimType.tfun [SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "applyh", SimType.make_ftyp [SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit]; SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "apply", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -108,10 +108,10 @@ let test_applyh2 () =
   let applyh = { Fdef.attr = []; Fdef.name = Idnt.make "applyh"; Fdef.args = [Idnt.make "f"; Idnt.make "g"; Idnt.make "x"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "f") [make_var "g"; make_var "x"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; applyh; apply1; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "applyh", SimType.tfun [SimType.tfun [SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit]; SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "apply", SimType.tfun [SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "applyh", SimType.make_ftyp [SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit]; SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "apply", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -121,9 +121,9 @@ let test_apply_apply () =
   let main = { Fdef.attr = []; Fdef.name = Idnt.make "main"; Fdef.args = [Idnt.make "n"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "apply") [apply (make_var "apply") [apply (make_var "check") [make_var "n"]]; make_var "n"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; apply1; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "apply", SimType.tfun [SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "apply", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -133,10 +133,10 @@ let test_apply_apply2 () =
   let apply2 = { Fdef.attr = []; Fdef.name = Idnt.make "apply2"; Fdef.args = [Idnt.make "f"; Idnt.make "x"; Idnt.make "y"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "f") [make_var "x"; make_var "y"] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; apply1; apply2; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "apply", SimType.tfun [SimType.tfun [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
-                             Idnt.make "apply2", SimType.tfun [SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]; SimType.Int; SimType.Int; SimType.Unit];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "apply", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Unit]; SimType.Int; SimType.Unit];
+                             Idnt.make "apply2", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]; SimType.Int; SimType.Int; SimType.Unit];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog
@@ -147,11 +147,11 @@ let test_foo () =
   let h = { Fdef.attr = []; Fdef.name = Idnt.make "h"; Fdef.args = [Idnt.make "k"]; Fdef.guard = ttrue; Fdef.body = apply (make_var "k") [apply (make_var "k") [tint 0]] } in
   let prog = { Prog.attr = [];
                Prog.fdefs = [main; f; h; inc; check1; check2];
-               Prog.types = [Idnt.make "main", SimType.tfun [SimType.Int; SimType.Unit];
-                             Idnt.make "f", SimType.tfun [SimType.tfun [SimType.tfun [SimType.Int; SimType.Int]; SimType.Int]; SimType.Int];
-                             Idnt.make "h", SimType.tfun [SimType.tfun [SimType.Int; SimType.Int]; SimType.Int];
-                             Idnt.make "inc", SimType.tfun [SimType.Int; SimType.Int];
-                             Idnt.make "check", SimType.tfun [SimType.Int; SimType.Int; SimType.Unit]];
+               Prog.types = [Idnt.make "main", SimType.make_ftyp [SimType.Int; SimType.Unit];
+                             Idnt.make "f", SimType.make_ftyp [SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Int]; SimType.Int]; SimType.Int];
+                             Idnt.make "h", SimType.make_ftyp [SimType.make_ftyp [SimType.Int; SimType.Int]; SimType.Int];
+                             Idnt.make "inc", SimType.make_ftyp [SimType.Int; SimType.Int];
+                             Idnt.make "check", SimType.make_ftyp [SimType.Int; SimType.Int; SimType.Unit]];
                Prog.main = main.Fdef.name } in
   Format.printf "%a" Prog.pr prog;
   prog

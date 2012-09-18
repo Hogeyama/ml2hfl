@@ -7,7 +7,7 @@ exception Nonpresburger
 let rec of_term t =
   match fun_args t with
     Var(_, x), [] ->
-      Atp_batch.Var(Var.print x)
+      Atp_batch.Var(Var.serialize x)
   | Const(_, Const.Event(_)), [] ->
       assert false
   | Const(_, Const.Unit), [] ->
@@ -73,16 +73,16 @@ let rec of_formula t =
       (*| Const.Divides -> raise (Util.NotImplemented "AtpInterface.of_formula") (*"divides"*)*)
       | _ -> assert false)
   | Forall(_, env, t), [] ->
-      List.fold_right (fun (x, _) phi -> Atp_batch.Forall(Var.print x , phi)) env (of_formula t)
+      List.fold_right (fun (x, _) phi -> Atp_batch.Forall(Var.serialize x , phi)) env (of_formula t)
   | Exists(_, env, t), [] ->
-      List.fold_right (fun (x, _) phi -> Atp_batch.Exists(Var.print x , phi)) env (of_formula t)
+      List.fold_right (fun (x, _) phi -> Atp_batch.Exists(Var.serialize x , phi)) env (of_formula t)
   | _ ->
       let _ = Format.printf "%a@," Term.pr t in
       assert false
 
 let rec term_of = function
     Atp_batch.Var(id) ->
-      make_var (Var.parse id)
+      make_var (Var.deserialize id)
   | Atp_batch.Fn(s, []) when Util.is_int s ->
       tint (int_of_string s)
   | Atp_batch.Fn("+", [t1; t2]) ->
@@ -112,9 +112,9 @@ let rec formula_of p =
   | Atp_batch.Iff(p1, p2) ->
       iff (formula_of p1) (formula_of p2)
   | Atp_batch.Forall(x, p) ->
-      assert false(*forall [Var.parse id, SimType.Int???] (formula_of p)*)
+      assert false(*forall [Var.deserialize id, SimType.Int???] (formula_of p)*)
   | Atp_batch.Exists(x, p) ->
-      assert false(*exists [Var.parse id, SimType.Int???] (formula_of p)*)
+      assert false(*exists [Var.deserialize id, SimType.Int???] (formula_of p)*)
   | Atp_batch.Atom(Atp_batch.R("=", [t1; t2])) ->
       eqInt (term_of t1) (term_of t2)
   | Atp_batch.Atom(Atp_batch.R("<", [t1; t2])) ->
@@ -182,7 +182,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
       else
         raise (Util.NotImplemented "subst_lbs")
     with Util.NotImplemented _ ->
-      Util.map_left
+      Util.maplac
         (fun ts1 t ts2 ->
           let fvs =
             let fvs = List.unique (Util.diff (Term.fvs t) (bvs @ TypSubst.fvs xttys @ Util.concat_map Term.fvs ts1 @ Util.concat_map Term.fvs ts2)) in
@@ -355,7 +355,7 @@ let rec qelim_eq bvs1 bvs2 fms =
       bvs2, fms
   | bv::bvs ->
       try
-        let rhs = Util.find_map (find bv) fms in
+        let rhs = Util.find_app (find bv) fms in
         qelim_eq
           bvs
           bvs2

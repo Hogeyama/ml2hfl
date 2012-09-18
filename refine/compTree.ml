@@ -129,7 +129,7 @@ let expand_node prog fenv ct =
 *)
           let fenv x =
             try
-              Util.find_map
+              Util.find_app
                 (function (Term.Var(_, y), aarg) ->
                   if Var.equiv x y then aarg else raise Not_found
                 | _ -> assert false)

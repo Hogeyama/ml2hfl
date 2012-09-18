@@ -24,11 +24,18 @@ let log_end str =
   let _ = current_log_level := !current_log_level - 1 in
   if !log_disabled = str then log_disabled := ""
 
+(** {6 Options for refinement type system} *)
+
+let refine_unit = ref true
+let refine_function = ref false
+
 (** {6 Options for abstraction type inference} *)
+
 let refine = (*`IntType *) `RefType
 let extract_atomic_predicates = ref false
 
 (** {6 Options for refinement type inference} *)
+
 type pd = Backward | ConvexHull | TemplateBasedConstraintSolving
 let predicate_discovery = ref Backward
 
@@ -37,8 +44,6 @@ let find_preds_forward = ref false
 let subst_hcs_inc = ref false
 
 let use_min_unsat_prefix = ref true
-let refine_unit = ref true
-let refine_function = ref false
 let no_inlining = ref false
 let inline_after_ncs = ref false
 let fol_backward = ref false
@@ -55,7 +60,5 @@ let accumulate_ext_constrs = ref false
 let disable_parameter_inference_heuristics = ref false
 
 (** {6 Options for non-linear constraint solving} *)
-let use_bit_vector = ref true
 
-(** {6 Options for deprecated old refinement type inference method} *)
-let enable_quick_inference = false
+let use_bit_vector = ref true

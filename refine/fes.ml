@@ -10,6 +10,15 @@ type t = FES of TypSubst.t * Term.t list
 
 let make xttys ts = FES(xttys, ts)
 
+let subst_var sub x =
+  try let Var(_, y) = sub x in y with Not_found -> x
+
+let subst_fixed_var sub x =
+  Util.fixed_point
+    (fun x -> subst_var sub x)
+    Var.equiv
+    x
+
 (** ignore equalities on functions *)
 let formula_of (FES(xttys, ts)) = Formula.band (Formula.of_subst xttys :: ts)
 

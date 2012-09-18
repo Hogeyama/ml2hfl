@@ -117,7 +117,7 @@ let xttyss_of env q afs1 afs2 =
         afs1
     in
     let xttyss =
-      Util.multiply_list_list
+      Util.product_list
         (fun xttys1 xttys2 -> xttys1 @ xttys2)
         (List.map
           (fun (ttys, tss) ->
@@ -179,8 +179,8 @@ let ignored_vars bvs afs =
       (List.unique
         (Util.concat_map
           (fun ts ->
-            Util.redundant (Util.concat_map (fun t -> List.unique (Term.fvs t)) ts)
-            (*Util.concat_map Term.fvs (Util.redundant ts)*))
+            Util.get_dup_elems (Util.concat_map (fun t -> List.unique (Term.fvs t)) ts)
+            (*Util.concat_map Term.fvs (Util.get_dup_elems ts)*))
           tss))
       bvs
   in
@@ -190,7 +190,7 @@ let ignored_vars bvs afs =
       (Util.concat_map
         (fun (_, ttys) ->
           List.flatten
-            (Util.map_left_right
+            (Util.maplr
               (fun ttys1 (t, _) ttys2 ->
                 let zs = List.unique (Term.fvs t) in
                 if List.length zs > 1 then
@@ -257,7 +257,7 @@ let share_predicates bvs0 _ afs t =
               if preds_of_ec ec = [] then
                 (try
                   let t = Formula.band (terms_of_ec ec) in
-                  let xs = List.unique (Util.diff (Term.fvs_ty SimType.Int t SimType.Bool) bvs) in
+                  let xs = List.unique (Util.diff (TypTerm.fvs_ty SimType.Int (t, SimType.Bool)) bvs) in
                   (*let _ = if xs <> [] then assert false in*)
                   let ts = Formula.conjuncts (AtpInterface.integer_qelim (Formula.exists (List.map (fun x -> x, SimType.Int) xs) t)) in
                   List.map (fun t -> `R(t)) ts
@@ -511,7 +511,7 @@ let share_predicates bvs0 _ afs t =
         else (*a-max‚ªrsn 0‚Å‚È‚¢‚Æ¬Œ÷‚µ‚È‚­‚È‚é intro3‚Írsn0‚ÅOK‚É‚È‚é*)
           try
             let _ = Global.log (fun () -> if zs <> [] then Format.printf "zs: %a@," Var.pr_list zs) in
-            Util.find_map
+            Util.find_app
               (fun xs ->
                 let bvs1 = Util.diff bvs' xs in
                 if List.length bvs1 = List.length bvs' then
@@ -532,7 +532,7 @@ let share_predicates bvs0 _ afs t =
           afs, t
         else
           try
-            Util.find_map
+            Util.find_app
               (fun xs ->
                 let bvs1 = Util.diff bvs' xs in
                 if List.length bvs1 = List.length bvs' then
@@ -553,7 +553,7 @@ let share_predicates bvs0 _ afs t =
 (** integer quantifier elimination of formulas with integers and booleans *)
 let qelim_aux fvs t =
   let _ = Global.log_begin "HornClauseEc.qelim_aux" in
-  let env = List.map (fun x -> x, SimType.Int) (Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) fvs) in
+  let env = List.map (fun x -> x, SimType.Int) (Util.diff (List.unique (TypTerm.fvs_ty SimType.Int (t, SimType.Bool))) fvs) in
   let res =
     if env <> [] && Term.coeffs t = [] then
       let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>t: %a@,env: %a@]@," Term.pr t SimType.pr_env env) in
@@ -597,7 +597,7 @@ let qelim fvs t =
 
 let simplify2 bvs t =
   let t =
-    let xs = Util.diff (List.unique (Term.fvs_ty SimType.Int t SimType.Bool)) bvs in
+    let xs = Util.diff (List.unique (TypTerm.fvs_ty SimType.Int (t, SimType.Bool))) bvs in
     let t =
       let sub, t =
         Formula.extract_from [] (fun x -> not (List.mem x xs)) t
@@ -611,14 +611,14 @@ let simplify2 bvs t =
 (*
   let p x = List.mem x bvs || Var.is_coeff x in
   Formula.band
-    (Util.map_left_right
+    (Util.maplr
       (fun ls t rs ->
         let xs =
           List.filter
             (fun x -> not (p x))
             (Util.diff
-              (Term.fvs_ty SimType.Int t SimType.Bool)
-              (Util.concat_map (fun t -> Term.fvs_ty SimType.Int t SimType.Bool) (ls @ rs)))
+              (TypTerm.fvs_ty SimType.Int (t, SimType.Bool))
+              (Util.concat_map (fun t -> TypTerm.fvs_ty SimType.Int (t, SimType.Bool)) (ls @ rs)))
         in
         if xs <> [] && Term.coeffs t = [] then
           try
@@ -687,7 +687,7 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
       let afs0 = afs(*List.map (Atom.subst (TypSubst.fun_of sub)) afs*) in
       let _ = Global.log (fun () -> Format.printf "!a:%a@," Term.pr t0) in
       afs0,
-      if Term.fvs_ty SimType.Bool t0 SimType.Bool = [] then
+      if TypTerm.fvs_ty SimType.Bool (t0, SimType.Bool) = [] then
         let t' = Formula.elim_eq_neq_boolean t0 in
         let _ = Global.log (fun () -> Format.printf "!b:%a@," Term.pr t') in
         let t' = Formula.elim_imply_iff t' in

@@ -47,7 +47,7 @@ let pr ppf (nxs, n) =
     assert false
 
 let coeff (nxs, _) x =
-  Util.find_map
+  Util.find_app
     (fun (n, y) -> if x = y then n else raise Not_found)
     nxs
 
@@ -152,7 +152,7 @@ let rec simplify t =
   match fun_args t with
     Var(attr, x), [] ->
       Var(attr, x)
-  | Const(_, c), _ when Const.is_iexp c ->
+  | Const(_, c), _ when Const.is_int c ->
       (try
         term_of (of_term t)
       with Invalid_argument _ ->

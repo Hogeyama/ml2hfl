@@ -50,9 +50,9 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
         let tts, tps = List.split
           (List.map2
             (fun tr p ->
-              Term.rename_fresh (visible (get tr).name)
+              Term.fresh (visible (get tr).name)
                 (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_tree tr))))),
-              Term.rename_fresh (visible (get tr).name)
+              Term.fresh (visible (get tr).name)
                 (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_path p))))))
             trs ps)
         in

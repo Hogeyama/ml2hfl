@@ -56,7 +56,7 @@ let pr ppf (nxs, n) =
     Format.fprintf ppf "%a" Term.pr n
 
 let coeff nxs x =
-  Util.find_map
+  Util.find_app
     (fun (n, y) -> if x = y then n else raise Not_found)
     nxs
 

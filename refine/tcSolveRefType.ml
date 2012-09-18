@@ -4,6 +4,11 @@ open Zipper
 open TraceConstr
 open TcSolve
 
+(** {6 Options for deprecated old refinement type inference method} *)
+
+let enable_quick_inference = false
+
+
 (** Trace constraint solving for refinement types
     @deprecated use HcSolveRefType *)
 
@@ -20,10 +25,10 @@ let ret_of_tree env tr =
     None ->
       Var.T(x, uid, SimType.arity (env x))
   | Some(x, uid) ->
-      SimType.find_last_base env (x, uid)
+      RefType.find_last_base env (x, uid)
 
 let arg_of env nd =
-  SimType.find_last_base env nd.name
+  RefType.find_last_base env nd.name
 
 let ret_of env nd =
   let x, uid = nd.name in
@@ -31,7 +36,7 @@ let ret_of env nd =
     None ->
       Var.T(x, uid, SimType.arity (env x))
   | Some(x, uid) ->
-      SimType.find_last_base env (x, uid)
+      RefType.find_last_base env (x, uid)
 
 (** require: all the substituted nodes are closed *)
 let subst_interps env tr ret_interp_list =
@@ -209,7 +214,7 @@ let summary_of env loc =
         CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
       in
       let _ = Format.printf "@]@," in
-      [`P(arg, interp)], Util.opt2list (subst_interp nd.closed p interp)
+      [`P(arg, interp)], Util.list_of_opt (subst_interp nd.closed p interp)
     else (* necessary try repeat.ml *)
       raise CsisatInterface.NoInterpolant
   with CsisatInterface.NoInterpolant ->
@@ -230,7 +235,7 @@ let summary_of env loc =
             (*let _ = Format.printf "%a@," pr_path p in*)
             let arg = arg_of env (get tr) in
             let t =
-              Term.rename_fresh
+              Term.fresh
                 (RefType.visible arg)
                 (Formula.simplify
                   (Fes.formula_of
@@ -244,7 +249,7 @@ let summary_of env loc =
           locs
       in
       let ret_nds_t_list, _ =
-        Util.map_fold_left
+        Util.foldac_left
           (fun res nds0 (Loc(tr, _)) _ ->
             let arg_p_t_list = List.take (List.length res + 1) arg_p_t_list in
             let ret = ret_of env (get tr) in
@@ -254,7 +259,7 @@ let summary_of env loc =
                 [Fes.make [] (List.map Util.trd3 arg_p_t_list);
                  fes_of_nodes nds]
             in
-            let t = Term.rename_fresh (RefType.visible ret) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
+            let t = Term.fresh (RefType.visible ret) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
             (*let t = Formula.of_dnf (Term.dnf t) in*)
             (**)let _ = if (get tr).closed then Format.printf "%a: %a@," Var.pr ret Term.pr t in(**)
             (ret, nds, t), nds)
@@ -264,7 +269,7 @@ let summary_of env loc =
         let Some(tr) = prune_tree (fun name -> related nd.name name) (root loc) in
         (*let _ = Format.printf "context: %a@," pr tr in*)
         let res =
-          Util.map_right
+          Util.maprac
             (fun ret_nds_t_list (ret, nds, t1) res ->
               let interp =
                 let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
@@ -286,7 +291,7 @@ let summary_of env loc =
                 interp
               in
               let arg_p_interp_list =
-                Util.map_left
+                Util.maplac
                   (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
                     let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
                     let interp =
@@ -315,7 +320,7 @@ let summary_of env loc =
         in
         let arg_p_interp_list_list, ret_interp_list = List.split res in
         let arg_p_interp_list =
-          Util.map_left
+          Util.maplac
             (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
               let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
               let interp =
@@ -347,7 +352,7 @@ let summary_of env loc =
         in
 (*
         let res =
-          Util.map_right
+          Util.maprac
             (fun ret_nds_t_list (ret, nds, t1) res ->
               let interp =
                 let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr ret in
@@ -369,7 +374,7 @@ let summary_of env loc =
                 interp
               in
               let arg_p_interp_list =
-                Util.map_left
+                Util.maplac
                   (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
                     let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
                     let interp =
@@ -399,7 +404,7 @@ let summary_of env loc =
 *)
         let arg_p_interp_list_list, ret_interp_list = [], [](*List.split res*) in
         let arg_p_interp_list =
-          Util.map_left
+          Util.maplac
             (fun arg_p_interp_list (arg, p, t) arg_p_t_list ->
               let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
               let interp =
@@ -446,12 +451,12 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (*
                 let _ = Format.printf "%a@," Var.pr arg in
 *)
-                Term.rename_fresh
+                Term.fresh
                   (RefType.visible arg)
                   (Formula.simplify
                     (Fes.formula_of
                       (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
-                Term.rename_fresh
+                Term.fresh
                   (RefType.visible arg)
                   (Formula.simplify
                     (Fes.formula_of
@@ -479,7 +484,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
         let locs = related_locs loc in
         List.map
           (fun (Loc(tr, p)) ->
-            SimType.find_last_base env (get tr).name, left_of_path p)
+            RefType.find_last_base env (get tr).name, left_of_path p)
           locs,
         Util.concat_map
           (fun (Loc(tr, _)) -> nodes_of_tree tr)
@@ -488,7 +493,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
       let ts0 =
         List.map
           (fun (arg, p) ->
-            let t = Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
+            let t = Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
             (*let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in*)
             t)
           argps
@@ -506,14 +511,14 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (* why not compute ts0 and nds? *)
 (*
                 if nd.closed then
-                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
+                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
                   let ts, xttys = fes_of_nodes (nds @ nodes_of_path p) in
-                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
+                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
                 else
 *)
                   let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
-                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
-                  Term.rename_fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
+                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
+                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
               trs ps),
           List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
         in

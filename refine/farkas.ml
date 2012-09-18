@@ -19,7 +19,7 @@ let farkas_conjunct coeffs aifs =
           (fun v ->
             try
               Term.mul l
-                (Util.find_map
+                (Util.find_app
                   (fun (n, x) -> if Var.equiv x v then n else raise Not_found)
                   nxs)
             with Not_found ->

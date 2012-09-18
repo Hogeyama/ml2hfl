@@ -123,6 +123,9 @@ let eq_ty ty t1 t2 =
       let _ = Format.printf "%a@," SimType.pr ty in
       assert false
 *)
+let eq_tyterm (t1, ty1) (t2, ty2) =
+  let _ = if !Global.debug then assert (ty1 = ty2) in
+  eq_ty ty1 t1 t2
 (*let neq t1 t2 = apply (Const([], Const.Not)) [apply (Const([], Const.Eq)) [t1; t2]]*)
 let lt t1 t2 = apply (Const([], Const.Lt)) [t1; t2]
 let gt t1 t2 = apply (Const([], Const.Gt)) [t1; t2]
@@ -603,7 +606,7 @@ let of_dnf tss =
 
 (** ensure: the result does not use =u, (), and unit variables *)
 let elim_unit t =
-  let uvs = List.unique (fvs_ty SimType.Unit t SimType.Bool) in
+  let uvs = List.unique (TypTerm.fvs_ty SimType.Unit (t, SimType.Bool)) in
   let t =
     if uvs = [] then
       t
@@ -693,7 +696,7 @@ let elim_boolean ts =
   let bool_vars =
     List.unique
       (Util.concat_map
-        (fun t -> Term.fvs_ty SimType.Bool t SimType.Bool)
+        (fun t -> TypTerm.fvs_ty SimType.Bool (t, SimType.Bool))
         ts)
   in
   if bool_vars = [] then
@@ -701,7 +704,7 @@ let elim_boolean ts =
     function [t] -> t | _ -> assert false
   else
     let subs =
-      Util.multiply_list_list (@)
+      Util.product_list (@)
         (List.map
           (fun b ->
             [[b, ttrue, SimType.Bool];
@@ -761,7 +764,7 @@ let rec is_linear t =
         true
       with Invalid_argument _ ->
         false)
-  | Const(_, c), [_; _] when Const.is_iexp c -> (*???*)
+  | Const(_, c), [_; _] when Const.is_int c -> (*???*)
       (try
         let _ = LinArith.of_term t in
         true
