@@ -40,7 +40,7 @@ let rec infer_term cenv env t =
                 (Formula.band
                   (List.map
                     (fun ((x, y), ty) ->
-                      Formula.eq_ty ty (Term.make_var y) (Term.make_var x))
+                      Formula.eq_tty (Term.make_var y, ty) (Term.make_var x, ty))
                     subty))
             in
             copy_cat (List.assoc x env)

@@ -2,7 +2,7 @@ open ExtList
 open ExtString
 open Term
 
-(** Simply-typed term expressions with types *)
+(** Typed term expressions *)
 
 (** {6 The type of terms with types} *)
 

@@ -30,7 +30,7 @@ let template_based_constraint_solving_interpolate pids xtys lbs nubs =
             NonLinConstrSolve.solve_constrs [] [] (Formula.band (NonLinConstrSolve.gen_coeff_constrs c))
           in
           let _ = Global.log (fun () -> Format.printf "solutions:@,  %a@," NonLinConstrSolve.pr_coeffs coeffs) in
-          let interp = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) interp) in
+          let interp = FormulaUtil.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) interp) in
           let _ = Global.log (fun () -> Format.printf "interp:%a@," Term.pr interp) in
           List.map (fun pid -> pid, (xtys, interp)) pids
         with NonLinConstrSolve.Unknown ->

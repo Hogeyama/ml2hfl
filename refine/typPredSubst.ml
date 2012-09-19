@@ -31,7 +31,7 @@ let mat xtys ttys =
 (** @require fvs psub = [] *)
 let lookup (pid, ttys) psub =
   let _ = if !Global.debug then assert (List.mem_assoc pid psub) in
-  Formula.simplify
+  FormulaUtil.simplify
     (Formula.band
       (List.map
         (fun (_, (xtys, t)) ->

@@ -92,7 +92,7 @@ let of_linconstrs cs =
       (List.make (Apron.Lincons1.array_length cs) ()))
 
 let polyhedron_of env t =
-  let tss = Formula.dnf t in
+  let tss = FormulaUtil.dnf t in
 (*
   List.iter (fun ts -> Format.printf "cj: @[<hv>%a@]@ " (Util.pr_list Term.pr ",@ ") ts) tss;
 *)
@@ -127,7 +127,7 @@ let convex_hull t =
       (List.unique (Term.fvs t))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let tss, f = Formula.elim_boolean [Formula.elim_unit t] in
+  let tss, f = FormulaUtil.elim_boolean [FormulaUtil.elim_unit t] in
   let ts =
     List.map
       (fun [t] ->
@@ -144,7 +144,7 @@ let widen ts =
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let tss, f = Formula.elim_boolean (List.map Formula.elim_unit ts) in
+  let tss, f = FormulaUtil.elim_boolean (List.map FormulaUtil.elim_unit ts) in
   let aux ts =
     let ts = List.map (fun t -> polyhedron_of env t) ts in
 (*

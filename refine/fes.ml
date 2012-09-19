@@ -47,7 +47,7 @@ let band fess =
         xttys @ xttys', ts @ ts'
   in
   let xttys, ts = aux fess in
-  FES(xttys, Formula.simplify_conjuncts ts)
+  FES(xttys, FormulaUtil.simplify_conjuncts ts)
 
 let subst sub (FES(xttys, ts)) =
   make
@@ -57,7 +57,7 @@ let subst sub (FES(xttys, ts)) =
 let subst_fixed sub (FES(xttys, ts)) =
   make
     (List.map (fun (x, t, ty) -> subst_fixed_var sub x, Term.subst_fixed sub t, ty) xttys)
-    (List.map (Formula.subst_fixed sub) ts)
+    (List.map (FormulaUtil.subst_fixed sub) ts)
 
 
 let fvs (FES(xttys, ts)) = TypSubst.fvs xttys @ Util.concat_map fvs ts
@@ -69,7 +69,7 @@ let coeffs (FES(xttys, ts)) =
   Util.concat_map coeffs ts
 
 let simplify (FES(xttys, ts)) =
-  let ts = Formula.conjuncts (Formula.simplify (Formula.band ts)) in
+  let ts = Formula.conjuncts (FormulaUtil.simplify (Formula.band ts)) in
   if ts = [Formula.tfalse] then
     make [] ts
   else
@@ -88,7 +88,7 @@ let eqelim p (FES(xttys, ts) as fes) =
     let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
     let _ = Global.log (fun () -> Format.printf "substitution: %a@," TypSubst.pr xttys2) in
     let sub = TypSubst.fun_of xttys2 in
-    let ts = List.map (Formula.subst_fixed sub) ts in
+    let ts = List.map (FormulaUtil.subst_fixed sub) ts in
     let xttys1 = List.map (fun (x, t, ty) -> x, Term.subst_fixed sub t, ty) xttys1 in
     let fes = FES(xttys1, ts) in
     let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" pr fes) in

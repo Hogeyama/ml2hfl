@@ -1,7 +1,7 @@
 open ExtList
 open ExtString
 
-(** Simply-typed term expressions *)
+(** Term expressions *)
 
 (** {6 The type of terms} *)
 

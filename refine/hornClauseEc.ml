@@ -35,7 +35,7 @@ let rec subst_formula p afs t =
   else*)
   (*Format.printf "input: %a@," Term.pr t;*)
   let ts = Formula.conjuncts t in
-  let xttys, t = Formula.extract_from2 (Util.concat_map Atom.fvs afs) p ts in
+  let xttys, t = FormulaUtil.extract_from2 (Util.concat_map Atom.fvs afs) p ts in
   (*Format.printf "xttys: %a@,t: %a@," TypSubst.pr xttys Term.pr t;*)
   let afs, t =
     if xttys = [] then
@@ -59,7 +59,7 @@ let matches env xs ttys1 ttys2 =
           if t1 = t2 then
             []
           else if Util.inter (Term.fvs t1) xs = [] then
-            if Cvc3Interface.implies env [Formula.eq_ty ty1 t1 t2] then
+            if Cvc3Interface.implies env [Formula.eq_tty (t1, ty1) (t2, ty2)] then
               []
             else
               let _ = Format.printf "t1: %a@,t2: %a@," Term.pr t1 Term.pr t2 in
@@ -92,7 +92,10 @@ let matches env xs ttys1 ttys2 =
              match xttys with
                [] -> assert false
              | (_, t, ty)::xttys ->
-                 List.for_all (fun (_, t', _) -> Cvc3Interface.implies env [Formula.eq_ty ty t t']) xttys)
+                 List.for_all
+                   (fun (_, t', ty') ->
+                     Cvc3Interface.implies env [Formula.eq_tty (t, ty) (t', ty')])
+                   xttys)
            (Util.classify (fun (x, _, _) (y, _, _) -> x = y) xttys))
   in
   let _ = Global.log_end "HornClauseEc.matches" in
@@ -154,7 +157,7 @@ let xttyss_of env q afs1 afs2 =
                  match xttys with
                    [] -> assert false
                  | (_, t, ty)::xttys ->
-                     List.for_all (fun (_, t', _) -> Cvc3Interface.implies env [Formula.eq_ty ty t t']) xttys)
+                     List.for_all (fun (_, t', ty') -> Cvc3Interface.implies env [Formula.eq_tty (t, ty) (t', ty')]) xttys)
                (Util.classify (fun (x, _, _) (y, _, _) -> x = y) xttys) then
             true
           else
@@ -221,7 +224,7 @@ let changing_vars bvs afs =
 
 let share_predicates bvs0 _ afs t =
   let _ = Global.log_begin ~disable:true "HornClauseEc.share_predicates" in
-  let t = Formula.simplify t in
+  let t = FormulaUtil.simplify t in
   let res =
     if Term.coeffs t <> [] || Atom.num_dup afs = 0 then
       afs, t
@@ -296,7 +299,7 @@ let share_predicates bvs0 _ afs t =
                       Format.printf "succeeded@,"
                     else
                       let _ = Format.printf "ts: %a@," (Util.pr_list Term.pr ",") ts in
-                      let _ = List.iter (fun (pid, ttys, _, _) -> Format.printf "ttys: %a@," (Util.pr_list Term.pr ",") (List.map fst ttys)) pxs in
+                      let _ = List.iter (fun (_, ttys, _, _) -> Format.printf "ttys: %a@," (Util.pr_list Term.pr ",") (List.map fst ttys)) pxs in
                       Format.printf "failed:@,")
                 in
                 b
@@ -348,7 +351,7 @@ let share_predicates bvs0 _ afs t =
                               pid, ttys, xs0, ttyss)
                           pxs)
                     in
-                    let ts = List.map (fun t -> Formula.simplify (Term.subst (TypSubst.fun_of xttys) t)) ts in
+                    let ts = List.map (fun t -> FormulaUtil.simplify (Term.subst (TypSubst.fun_of xttys) t)) ts in
                     let b = aux pxs ts in
                     let _ = Global.log (fun () -> if not b then Format.printf "backtracked@,") in
                     b)
@@ -398,7 +401,7 @@ let share_predicates bvs0 _ afs t =
                        List.map
                          (function
                            `L(p) -> `L(Atom.simplify (Atom.subst (TypSubst.fun_of xttys) p))
-                         | `R(t) -> `R(Formula.simplify (Term.subst (TypSubst.fun_of xttys) t)))
+                         | `R(t) -> `R(FormulaUtil.simplify (Term.subst (TypSubst.fun_of xttys) t)))
                          ec1
                      in
                      let afs1, ts1 = Util.partition_map (fun x -> x) (Util.diff ec1' ec2) in
@@ -558,7 +561,7 @@ let qelim_aux fvs t =
     if env <> [] && Term.coeffs t = [] then
       let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>t: %a@,env: %a@]@," Term.pr t SimType.pr_env env) in
       let ts, f =
-        let tss, f = Formula.elim_boolean [t] in
+        let tss, f = FormulaUtil.elim_boolean [t] in
         List.map (fun [t] -> t) tss, f
       in
       f
@@ -567,12 +570,12 @@ let qelim_aux fvs t =
             try
               let _ = Global.log (fun () -> Format.printf "before: %a@," Term.pr t) in
               let t' =
-                Formula.simplify
+                FormulaUtil.simplify
                   (AtpInterface.integer_qelim
                     (Formula.exists env t))
               in
               let _ = Global.log (fun () -> Format.printf "after: %a@," Term.pr t') in
-              if try Formula.disjunctive t' with Util.NotImplemented _ -> true then
+              if try FormulaUtil.disjunctive t' with Util.NotImplemented _ -> true then
                 t
               else
                 t'
@@ -600,7 +603,7 @@ let simplify2 bvs t =
     let xs = Util.diff (List.unique (TypTerm.fvs_ty SimType.Int (t, SimType.Bool))) bvs in
     let t =
       let sub, t =
-        Formula.extract_from [] (fun x -> not (List.mem x xs)) t
+        FormulaUtil.extract_from [] (fun x -> not (List.mem x xs)) t
       in
       Term.subst sub t
     in
@@ -642,7 +645,7 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
     let _ = Global.log (fun () -> Format.printf "input:@,  @[<v>%a@]@," Term.pr t) in
     let afs, t =
       let sub, t =
-        Formula.extract_from
+        FormulaUtil.extract_from
           (match popt with None -> [] | Some(pid, _) -> [pid])
           (fun x -> List.mem x bvs || Var.is_coeff x) t
       in
@@ -668,10 +671,10 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
               aux ts' (t::ts2)
       in
       if true then aux (Formula.conjuncts t) [] else t*)
-      let sub = List.filter_map (fun t -> try Some(Formula.xtty_of (fun x -> not (List.mem x bvs)) [] t) with Not_found -> None) (Formula.conjuncts t) in
+      let sub = List.filter_map (fun t -> try Some(FormulaUtil.xtty_of (fun x -> not (List.mem x bvs)) [] t) with Not_found -> None) (Formula.conjuncts t) in
       let sub = List.filter (fun (_, t, ty) -> ty = SimType.Bool && (t = Formula.ttrue || t = Formula.tfalse) (*|| ty = SimType.Int && Term.is_int_const t*)) sub in
       let t0 =
-        Formula.simplify
+        FormulaUtil.simplify
           (Formula.band
             (Term.subst (TypSubst.fun_of sub) t ::
             List.map
@@ -688,14 +691,14 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
       let _ = Global.log (fun () -> Format.printf "!a:%a@," Term.pr t0) in
       afs0,
       if TypTerm.fvs_ty SimType.Bool (t0, SimType.Bool) = [] then
-        let t' = Formula.elim_eq_neq_boolean t0 in
+        let t' = FormulaUtil.elim_eq_neq_boolean t0 in
         let _ = Global.log (fun () -> Format.printf "!b:%a@," Term.pr t') in
-        let t' = Formula.elim_imply_iff t' in
+        let t' = FormulaUtil.elim_imply_iff t' in
         let _ = Global.log (fun () -> Format.printf "!c:%a@," Term.pr t') in
         if t0 <> t' then
-          let t' = Formula.of_dnf (Formula.dnf t') in
+          let t' = FormulaUtil.of_dnf (FormulaUtil.dnf t') in
           let _ = Global.log (fun () -> Format.printf "!d:%a@," Term.pr t') in
-          let t' = Formula.simplify t' in
+          let t' = FormulaUtil.simplify t' in
           let _ = Global.log (fun () -> Format.printf "boolean equalities eliminated:@,  @[<v>before: %a@,after: %a@]@," Term.pr t Term.pr t') in
           t'
         else

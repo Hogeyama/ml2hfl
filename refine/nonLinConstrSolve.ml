@@ -32,17 +32,17 @@ let gen_coeff_constrs t =
         else
           let t =
             try
-              let t = Formula.simplify (Formula.linearize t) in
+              let t = FormulaUtil.simplify (FormulaUtil.linearize t) in
               let _ = Format.printf "linearized constraint on coefficients:@,  @[<v>%a@]@," Term.pr t in
               t
             with Invalid_argument _ ->
               t
           in
           let qft =
-            if Formula.is_linear t then
-              Formula.simplify (AtpInterface.integer_qelim t)
+            if FormulaUtil.is_linear t then
+              FormulaUtil.simplify (AtpInterface.integer_qelim t)
             else
-              Formula.simplify (AtpInterface.real_qelim t)
+              FormulaUtil.simplify (AtpInterface.real_qelim t)
           in
           let _ = Format.printf "quantifier eliminated constraint on coefficients:@,  @[<v>%a@]@," Term.pr qft in
           qft)
@@ -73,7 +73,7 @@ let solve_bv mps t =
         else
           let _ = Global.log (fun () -> Format.printf "masked_params: %a@," Var.pr_list masked_params) in
           let coeffs = List.map (fun c -> c, 0) masked_params in
-          let t' = Formula.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
+          let t' = FormulaUtil.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
           coeffs @ solve_bv_aux t'
     with Cvc3Interface.Unknown ->
       solve_bv_aux t
@@ -90,7 +90,7 @@ let solve_constrs mps old_sol t =
   else
     let changed = ref false in
     let t' =
-      Formula.simplify
+      FormulaUtil.simplify
         (Term.subst
           (fun x ->
             let n = List.assoc x old_sol in

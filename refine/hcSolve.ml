@@ -96,7 +96,7 @@ let compute_extlbs hcs =
 let formula_of_forward lbs hcs =
   let _ = Global.log_begin "formula_of_forward" in
   let res =
-    Formula.simplify
+    FormulaUtil.simplify
       (Formula.bor
         (List.map
           (fun hc ->
@@ -121,7 +121,7 @@ let formula_of_forward_ext hcs =
   let lbs = compute_extlbs hcs3 in
   let _ = Global.log (fun () -> Format.printf "extended lower bounds:@,  @[<v>%a@]@," (Util.pr_list pr_elem "@,") lbs) in
   let res =
-    Formula.simplify
+    FormulaUtil.simplify
       (Formula.bor
         (List.map
           (fun hc ->
@@ -140,7 +140,7 @@ let formula_of_backward hcs =
   let hcs = List.map (subst_hcs_fixed hcs2) hcs1 in
   let hcs1, hcs2 = List.partition is_root hcs in
   let res =
-    Formula.simplify
+    FormulaUtil.simplify
       (Formula.bor
         (List.map
           (fun (Hc(None, afs, t)) ->

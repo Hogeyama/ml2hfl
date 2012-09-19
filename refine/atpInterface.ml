@@ -155,13 +155,13 @@ let is_valid p =
 let integer_qelim t =
   let _ = Global.log_begin ~disable:true "integer_qelim" in
   let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr t) in
-  let t = simplify (formula_of (Atp_batch.integer_qelim (of_formula (elim_eq_neq_boolean t)))) in
+  let t = FormulaUtil.simplify (formula_of (Atp_batch.integer_qelim (of_formula (FormulaUtil.elim_eq_neq_boolean t)))) in
   let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]@," Term.pr t) in
   let _ = Global.log_end "integer_qelim" in
   t
 
 let real_qelim t =
-  simplify (formula_of (Atp_batch.real_qelim (of_formula (elim_eq_neq_boolean t))))
+  FormulaUtil.simplify (formula_of (Atp_batch.real_qelim (of_formula (FormulaUtil.elim_eq_neq_boolean t))))
 
 
 
@@ -177,7 +177,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
         fvs
       in
       let t = band ts in
-      if fvs <> [] && is_linear t then
+      if fvs <> [] && FormulaUtil.is_linear t then
         conjuncts (integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
       else
         raise (Util.NotImplemented "subst_lbs")
@@ -189,7 +189,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
             let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
             fvs
           in
-          if fvs <> [] && is_linear t then
+          if fvs <> [] && FormulaUtil.is_linear t then
             let _ = Global.log (fun () -> Format.printf "before:@,  @[%a@]@," Term.pr t) in
             let t =
               try

@@ -51,9 +51,9 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
           (List.map2
             (fun tr p ->
               Term.fresh (visible (get tr).name)
-                (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_tree tr))))),
+                (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_tree tr))))),
               Term.fresh (visible (get tr).name)
-                (Formula.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_path p))))))
+                (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_path p))))))
             trs ps)
         in
         let tt = List.hd tts in
@@ -69,8 +69,8 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
         in
         interpolate_widen nd.closed t1 t2 tw1 tw2
     | Backward ->
-        let tt = Formula.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes [nd]))) in
-        let tp = Formula.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes (nodes_of_path p)))) in
+        let tt = FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes [nd]))) in
+        let tp = FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes (nodes_of_path p)))) in
         let t1, t2 = if nd.closed then tt, tp else tp, tt in
         CsisatInterface.interpolate t1 t2
   in

@@ -3,7 +3,7 @@ SOURCES = enum.ml extList.ml extString.ml \
           global.ml \
           attr.ml idnt.ml const.ml var.ml callId.ml simType.ml \
           term.ml typTerm.ml linArith.ml nonLinArith.ml parLinArith.ml \
-          typSubst.ml formula.ml fes.ml fdef.ml prog.ml \
+          typSubst.ml formula.ml formulaUtil.ml fes.ml fdef.ml prog.ml \
           cvc3Interface.ml csisatInterface.ml atpInterface.ml apronInterface.ml \
           farkas.ml nonLinConstrSolve.ml \
           refType.ml refTypeCheck.ml \

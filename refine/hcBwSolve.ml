@@ -79,7 +79,7 @@ let solve_hc_aux lbs ps t =
           in
           let interp =
             let simplify t =
-              let sub, t = Formula.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
+              let sub, t = FormulaUtil.extract_from [pid] (fun x -> List.mem x xs || Var.is_coeff x) t in
               let t = Term.subst sub t in
               let [], t = subst_formula (fun x -> List.mem x xs || Var.is_coeff x) [] t in
               t
@@ -137,7 +137,7 @@ let solve_hc lbs sol (Hc(popt, ps, t)) =
   in
   ps' @
   (* begin optimization *)
-  if Cvc3Interface.is_valid (Formula.simplify (Formula.bnot t)) then
+  if Cvc3Interface.is_valid (FormulaUtil.simplify (Formula.bnot t)) then
     List.map
       (fun (pid, ttys) ->
         pid,

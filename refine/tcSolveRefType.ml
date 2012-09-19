@@ -201,12 +201,12 @@ let summary_of env loc =
       let _ = Format.printf "computing a condition of %a:@,  @[<v>" Var.pr arg in
       let interp =
         let tt =
-          Formula.simplify
+          FormulaUtil.simplify
             (Fes.formula_of
               (Fes.eqelim (RefType.visible arg) (fes_of_nodes [nd])))
         in
         let tp =
-          Formula.simplify
+          FormulaUtil.simplify
             (Fes.formula_of
               (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))
         in
@@ -237,7 +237,7 @@ let summary_of env loc =
             let t =
               Term.fresh
                 (RefType.visible arg)
-                (Formula.simplify
+                (FormulaUtil.simplify
                   (Fes.formula_of
                     (Fes.eqelim
                       (RefType.visible arg)
@@ -259,7 +259,7 @@ let summary_of env loc =
                 [Fes.make [] (List.map Util.trd3 arg_p_t_list);
                  fes_of_nodes nds]
             in
-            let t = Term.fresh (RefType.visible ret) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
+            let t = Term.fresh (RefType.visible ret) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
             (*let t = Formula.of_dnf (Term.dnf t) in*)
             (**)let _ = if (get tr).closed then Format.printf "%a: %a@," Var.pr ret Term.pr t in(**)
             (ret, nds, t), nds)
@@ -284,7 +284,7 @@ let summary_of env loc =
                          List.map snd ret_interp_list);
                         fes_of_nodes (nodes_of_tree tr)]
                   in
-                  Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
+                  FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
                 in
                 let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
                 let _ = Format.printf "@]@," in
@@ -306,7 +306,7 @@ let summary_of env loc =
                                [Formula.bnot interp]);
                              fes_of_nodes nds]
                         in
-                        Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
+                        FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
                       in
                       CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
                     in
@@ -335,7 +335,7 @@ let summary_of env loc =
                         List.map snd ret_interp_list);
                        fes_of_nodes (nodes_of_tree tr)]
                   in
-                  Formula.simplify
+                  FormulaUtil.simplify
                     (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
                 in
                 CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
@@ -367,7 +367,7 @@ let summary_of env loc =
                          List.map snd ret_interp_list);
                        fes_of_nodes nds0]
                   in
-                  Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
+                  FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))
                 in
                 let interp = CsisatInterface.interpolate_bvs (RefType.visible ret) t1 t2 in
                 let _ = Format.printf "@]@," in
@@ -389,7 +389,7 @@ let summary_of env loc =
                                Formula.bnot interp;
                              fes_of_nodes nds]
                         in
-                        Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
+                        FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
                       in
                       CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
                     in
@@ -419,7 +419,7 @@ let summary_of env loc =
                          List.map snd ret_interp_list);
                        fes_of_nodes nds0]
                   in
-                  Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
+                  FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) fes))
                 in
                 CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
               in
@@ -453,12 +453,12 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 *)
                 Term.fresh
                   (RefType.visible arg)
-                  (Formula.simplify
+                  (FormulaUtil.simplify
                     (Fes.formula_of
                       (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
                 Term.fresh
                   (RefType.visible arg)
-                  (Formula.simplify
+                  (FormulaUtil.simplify
                     (Fes.formula_of
                       (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
               trs ps),
@@ -493,7 +493,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
       let ts0 =
         List.map
           (fun (arg, p) ->
-            let t = Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
+            let t = Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
             (*let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in*)
             t)
           argps
@@ -511,14 +511,14 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (* why not compute ts0 and nds? *)
 (*
                 if nd.closed then
-                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
+                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
                   let ts, xttys = fes_of_nodes (nds @ nodes_of_path p) in
-                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
+                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
                 else
 *)
                   let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
-                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
-                  Term.fresh (RefType.visible arg) (Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
+                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
+                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
               trs ps),
           List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
         in
@@ -544,7 +544,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
               let t1 = t0 in
               let t2 =
                 let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
-                Formula.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) ((if nd.closed then Formula.bnot interp else interp)::ts0 @ ts, xttys)))
+                FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) ((if nd.closed then Formula.bnot interp else interp)::ts0 @ ts, xttys)))
               in
               CsisatInterface.interpolate_bvs (RefType.visible arg) t1 t2
             in

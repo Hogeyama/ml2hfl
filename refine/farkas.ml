@@ -38,22 +38,22 @@ let farkas_conjunct coeffs aifs =
     List.map (fun cs -> eqInt (sum cs) (tint 0)) css
   in
 (*
-  let ts = if !Global.use_bit_vector then ts else Formula.eqelim Var.is_coeff ts in
+  let ts = if !Global.use_bit_vector then ts else FormulaUtil.eqelim Var.is_coeff ts in
 *)
-  Formula.simplify (band ts)
+  FormulaUtil.simplify (band ts)
 
 (** @param t an unsatisfiable formula *)
 let farkas t =
   let _ = Global.log_begin "farkas" in
   let _ = Global.log (fun () -> Format.printf "input: %a@," Term.pr t) in
   let coeffs = List.unique (coeffs t) in
-  let t = Formula.simplify t in
-  let t = if !Global.use_bit_vector then elim_eq_neq_int t else elim_neq_int t in
-  let t = elim_eq_neq_boolean t in
-  let t = elim_imply_iff t in
+  let t = FormulaUtil.simplify t in
+  let t = if !Global.use_bit_vector then FormulaUtil.elim_eq_neq_int t else FormulaUtil.elim_neq_int t in
+  let t = FormulaUtil.elim_eq_neq_boolean t in
+  let t = FormulaUtil.elim_imply_iff t in
   let _ = Global.log (fun () -> Format.printf "imply&iff eliminated:%a@," Term.pr t) in
-  let tss = dnf t in
-  let _ = Global.log (fun () -> Format.printf "dnf: %a@," Term.pr (of_dnf tss)) in
+  let tss = FormulaUtil.dnf t in
+  let _ = Global.log (fun () -> Format.printf "dnf: %a@," Term.pr (FormulaUtil.of_dnf tss)) in
   let aifss =
     List.map
       (List.map

@@ -9,7 +9,10 @@ open HornClause
 let tlfc_of (x, uid) = CallId.tlfc_of (Var.T(x, uid, (*dummy*)-1))
 
 let of_pid_vars env pid =
-  Atom.make pid (RefType.visible_vars env pid)
+  pid, RefType.visible_vars env pid
+
+let atom_of_pid env pid =
+  Atom.make pid (List.map (fun (x, ty) -> Term.make_var x, ty) (RefType.visible_vars env pid))
 
 (** generate a set of constraints from an error trace *)
 let cgen env etr =
@@ -54,7 +57,7 @@ let cgen env etr =
                     let pres x =
                       List.filter_map
                         (fun (Loc(tr, _)) ->
-                          try Some(Atom.of_pid env (RefType.find_last_base2 env (get tr).name)) with Not_found -> None)
+                          try Some(atom_of_pid env (RefType.find_last_base2 env (get tr).name)) with Not_found -> None)
                         (find_all
                           (fun nd ->
                             CallId.ancestor_of (try CallId.tlfc_of x with Not_found -> Format.printf "%a@," Var.pr x; assert false) nd.name &&
@@ -65,7 +68,7 @@ let cgen env etr =
                       List.filter_map
                         (fun (Loc(tr, _)) ->
                           let Some(xuid) = (get tr).ret in
-                          try Some(Atom.of_pid env (RefType.find_last_base2 env xuid)) with Not_found -> None)
+                          try Some(atom_of_pid env (RefType.find_last_base2 env xuid)) with Not_found -> None)
                         (find_all
                           (fun nd ->
                             match nd.ret with
@@ -78,7 +81,7 @@ let cgen env etr =
                     let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) in
                     List.unique
                       ((try
-                        [Atom.of_pid env (RefType.find_last_base2 env (tlfc_of (get tr).name))]
+                        [atom_of_pid env (RefType.find_last_base2 env (tlfc_of (get tr).name))]
                       with Not_found ->
                         []) @
                       (match List.unique (Term.fvs source) with
@@ -91,13 +94,13 @@ let cgen env etr =
                     let locs = find_all (fun nd -> CallId.ancestor_of (tlfc_of (get tr).name) nd.name) (root loc) (*(Loc(tr, left_of_path p))*) in
                     Util.concat_map
                       (fun (Loc(tr, _)) ->
-                        (try [Atom.of_pid env (RefType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
+                        (try [atom_of_pid env (RefType.find_last_base2 env (get tr).name)] with Not_found -> []) @ 
                         (List.filter_map
                           (fun tr ->
                             match (get tr).ret with
                               None -> assert false
                             | Some(x_uid) ->
-                                (try Some(Atom.of_pid env (RefType.find_last_base2 env x_uid)) with Not_found -> None))
+                                (try Some(atom_of_pid env (RefType.find_last_base2 env x_uid)) with Not_found -> None))
                           (children tr)))
                       locs,
                     locs
@@ -150,7 +153,7 @@ let cgen env etr =
             let _ = assert (etr = []) in
             let nd = get tr in
             root (Loc(set tr { nd with closed = false }, path_set_open p)),
-            let ps = try [Atom.of_pid env (RefType.find_last_base2 env (get tr).name)] with Not_found -> [] in
+            let ps = try [atom_of_pid env (RefType.find_last_base2 env (get tr).name)] with Not_found -> [] in
             (* assume that fail is NOT a proper subterm of the function definition *)
             Hc(None, snd nd.data @ ps, fst (get tr).data) :: hcs)
   in

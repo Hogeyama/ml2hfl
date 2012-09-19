@@ -198,14 +198,14 @@ let interpolate t1 t2 =
     (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
     (*this may cause a stack overflow:*) let interp = CsisatAstUtil.dnf interp in
     (*let _ = Format.printf "%s@," (CsisatAstUtil.print_pred interp) in*)
-    let t = (*Formula.simplify*) (formula_of interp) in
+    let t = (*FormulaUtil.simplify*) (formula_of interp) in
     t
 
 let interpolate t1 t2 =
   try
     let t = interpolate t1 t2 in
     (*let _ = Format.printf "interp: %a@," Term.pr t in*)
-    let t = Formula.simplify t in
+    let t = FormulaUtil.simplify t in
     if true then
       let ts = Formula.disjuncts t in
       let ts =
@@ -261,8 +261,8 @@ let interpolate t1 t2 =
 
 (** @param p represents variables shared by t1 and t2 *)
 let interpolate_bvs p t1 t2 =
-  let t1 = simplify (band (conjuncts t1)) in
-  let t2 = simplify (band (conjuncts t2)) in
+  let t1 = FormulaUtil.simplify (band (conjuncts t1)) in
+  let t2 = FormulaUtil.simplify (band (conjuncts t2)) in
   let t1 = Term.fresh p t1 in
   let t2 = Term.fresh p t2 in
   interpolate t1 t2

@@ -4,9 +4,9 @@ open Term
 
 (** Linear arithmetic expressions *)
 
-(** assume that all the expressions are canonized *)
+(** @invariant all the expressions are normalized *)
 
-(** {6 Functions on linear arithmetic expressions} *)
+(** {6 Printers} *)
 
 let pr ppf (nxs, n) =
   let _ =
@@ -46,12 +46,9 @@ let pr ppf (nxs, n) =
   else
     assert false
 
-let coeff (nxs, _) x =
-  Util.find_app
-    (fun (n, y) -> if x = y then n else raise Not_found)
-    nxs
+(** {6 Destructors} *)
 
-let canonize (nxs, n) =
+let normalize (nxs, n) =
   List.filter (fun (n, _) -> n <> 0)
     (List.map
       (function ((n, x)::nxs) ->
@@ -60,12 +57,17 @@ let canonize (nxs, n) =
       (Util.classify (fun (_, x1) (_, x2) -> Var.equiv x1 x2) nxs)),
   n
 
+let coeff (nxs, _) x =
+  Util.find_app
+    (fun (n, y) -> if x = y then n else raise Not_found)
+    nxs
+
 let mul_coeff m (nxs, n) =
-  canonize (List.map (fun (n, x) -> m * n, x) nxs, m * n)
+  normalize (List.map (fun (n, x) -> m * n, x) nxs, m * n)
 
 let minus (nxs, n) = mul_coeff (-1) (nxs, n)
 
-let add (nxs1, n1) (nxs2, n2) = canonize (nxs1 @ nxs2, n1 + n2)
+let add (nxs1, n1) (nxs2, n2) = normalize (nxs1 @ nxs2, n1 + n2)
 
 let mul (nxs1, n1) (nxs2, n2) =
   if nxs1 = [] then
@@ -75,12 +77,22 @@ let mul (nxs1, n1) (nxs2, n2) =
   else
     invalid_arg "LinArith.mul"
 
-let equiv (nxs1, n1) (nxs2, n2) =
-  let xs1 = List.sort (List.map snd nxs1) in
-  let xs2 = List.sort (List.map snd nxs2) in
-  xs1 = xs2 &&
-  (List.for_all (fun x -> coeff (nxs1, n1) x = coeff (nxs2, n2) x) xs1) &&
-  n1 = n2
+let term_of (nxs, n) =
+  let ts =
+    (if n = 0 then [] else [tint n]) @
+    (List.map
+      (fun (n, x) ->
+        if n = 0 then
+          assert false
+        else if n = 1 then
+          make_var x
+        else
+          Term.mul (tint n) (make_var x))
+      nxs)
+  in
+  sum ts
+
+(** {6 Constructors} *)
 
 let rec of_term t =
   match fun_args t with
@@ -100,20 +112,29 @@ let rec of_term t =
       (*let _ = Format.printf "%a@," Term.pr t in*)
       invalid_arg "LinArith.of_term"
 
-let term_of (nxs, n) =
-  let ts =
-    (if n = 0 then [] else [tint n]) @
-    (List.map
-      (fun (n, x) ->
-        if n = 0 then
-          assert false
-        else if n = 1 then
-          make_var x
-        else
-          Term.mul (tint n) (make_var x))
-      nxs)
-  in
-  sum ts
+(** {6 Basic functions} *)
+
+let equiv (nxs1, n1) (nxs2, n2) =
+  let xs1 = List.sort (List.map snd nxs1) in
+  let xs2 = List.sort (List.map snd nxs2) in
+  xs1 = xs2 &&
+  (List.for_all (fun x -> coeff (nxs1, n1) x = coeff (nxs2, n2) x) xs1) &&
+  n1 = n2
+
+let rec simplify t =
+  match fun_args t with
+    Var(attr, x), [] ->
+      Var(attr, x)
+  | Const(_, c), _ when Const.is_int c ->
+      (try
+        term_of (of_term t)
+      with Invalid_argument _ ->
+        t)
+  | Const(attr, c), ts ->
+      apply (Const(attr, c)) (List.map simplify ts)
+  | _ ->
+      let _ = Format.printf "not supported: %a@," Term.pr t in
+      raise (Util.NotImplemented "LinArith.simplify")
 
 (** {6 Functions on linear atomic integer formulas} *)
 
@@ -146,23 +167,7 @@ let term_of_aif (c, nxs, n) =
       [sum ((if n > 0 then [tint n] else []) @ List.map (fun (n, x) -> if n = 1 then make_var x else Term.mul (tint n) (make_var x)) nxs1);
        sum ((if n < 0 then [tint (-n)] else []) @ List.map (fun (n, x) -> if n = -1 then make_var x else Term.mul (tint (-n)) (make_var x)) nxs2)]
 
-(** {6 Other functions} *)
-
-let rec simplify t =
-  match fun_args t with
-    Var(attr, x), [] ->
-      Var(attr, x)
-  | Const(_, c), _ when Const.is_int c ->
-      (try
-        term_of (of_term t)
-      with Invalid_argument _ ->
-        t)
-  | Const(attr, c), ts ->
-      apply (Const(attr, c)) (List.map simplify ts)
-  | _ ->
-      let _ = Format.printf "not supported: %a@," Term.pr t in
-      raise (Util.NotImplemented "LinArith.simplify")
-
+(** {6 Utility functions} *)
 
 let rec nlfvs t =
   match fun_args t with

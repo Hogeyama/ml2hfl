@@ -223,7 +223,7 @@ let is_valid t =
 
 (** check whether the conjunction of ts1 implies that of ts2 *)
 let implies ts1 ts2 =
-  let ts2 = Formula.simplify_conjuncts (Util.diff ts2 ts1) in
+  let ts2 = FormulaUtil.simplify_conjuncts (Util.diff ts2 ts1) in
   if ts2 = [] then
     true
    else
@@ -474,7 +474,7 @@ let solve_bv only_pos (* find only positive solutions *) rbit t =
       let sub = List.map (fun (x, y, z) -> x, Term.sub (Term.make_var y) (Term.make_var z)) ppps in
       Term.subst (fun x -> List.assoc x sub) t
   in
-  let t = Formula.elim_minus t in
+  let t = FormulaUtil.elim_minus t in
   let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
   let fm = Format.formatter_of_out_channel cout in
   let _ = cnt := !cnt + 1 in
@@ -565,7 +565,7 @@ let solve_bv only_pos (* find only positive solutions *) rbit t =
 
 (** @deprecated ?? *)
 let simplify_conjuncts ts =
-  let ts = Formula.simplify_conjuncts ts in
+  let ts = FormulaUtil.simplify_conjuncts ts in
   let aifs, ts = Util.partition_map (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t)) ts in
   let sub, ts' = Util.partition_map (function (Const.EqInt, [1, x], n) -> `L(x, Term.tint (-n)) | aif -> `R(LinArith.term_of_aif aif)) aifs in
   let ts = List.filter (fun t -> not (is_valid (Term.subst (fun x -> List.assoc x sub) t))) (ts' @ ts) in
