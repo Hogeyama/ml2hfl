@@ -19,13 +19,6 @@ let pr ppf psub =
 let fvs_elem (_, (xtys, t)) = Util.diff (List.unique (Term.fvs t)) (List.map fst xtys)
 let fvs psub = Util.concat_map fvs_elem psub
 
-let mat xtys ttys =
-  List.map2
-    (fun (x, ty1) (t, ty2) ->
-      let _ = if !Global.debug then assert (ty1 = ty2) in
-      x, t)
-    xtys ttys
-
 (** {6 Functions on substitutions for predicates} *)
 
 (** @require fvs psub = [] *)
@@ -38,7 +31,7 @@ let lookup (pid, ttys) psub =
           let sub =
             List.map2 (fun (x, ty) (t, ty') -> let _ = if !Global.debug then assert (ty = ty') in x, t) xtys ttys
           in
-          Term.subst (fun x -> List.assoc x sub) t)
+          TypSubst.subst (fun x -> List.assoc x sub) t)
         (List.filter (fun (pid', _) -> pid = pid') psub)))
 
 (** @require fvs psub = [] *)
@@ -60,9 +53,19 @@ let args_of pid psub =
     @raise Not_found ? *)
 let lookup_map (pid, ttys) psub =
   let xtys, t = List.assoc pid psub in
-  let t = Term.fresh_vars (fvs_elem (pid, (xtys, t))) t in
-  let sub = mat xtys ttys in
-  Term.subst (fun x -> List.assoc x sub) t
+  let _ = Format.printf "???: %a@,%a@," Term.pr t SimType.pr_env xtys in
+  let xs = fvs_elem (pid, (xtys, t)) in
+  let _ = Format.printf "???: %a@," Var.pr_list xs in
+  let t = TypSubst.fresh_vars xs t in
+  (*let _ = Format.printf "???: %a@," Term.pr t in*)
+  let sub =
+    List.map2
+      (fun (x, ty1) (t, ty2) ->
+        let _ = if !Global.debug then assert (ty1 = ty2) in
+        x, t)
+      xtys ttys
+  in
+  TypSubst.subst (fun x -> List.assoc x sub) t
 
 (** @require Util.is_map psub *)
 let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t) as hc) =
@@ -78,8 +81,9 @@ let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t) as hc) =
       ps
   in
   let t = Formula.band (t :: ts) in
+  (*let _ = Global.log (fun () -> Format.printf "interm: %a@," Term.pr t) in*)
   let hc = simplify bvs (Hc(popt, ps, t)) in
-  let _ = Global.log (fun () -> Format.printf "output: %a@," HornClause.pr_elem hc) in
+  let _ = Global.log (fun () -> Format.printf "output: %a" HornClause.pr_elem hc) in
   let _ = Global.log_end "subst_lhs" in
   hc
 

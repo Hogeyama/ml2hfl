@@ -73,7 +73,7 @@ let solve_bv mps t =
         else
           let _ = Global.log (fun () -> Format.printf "masked_params: %a@," Var.pr_list masked_params) in
           let coeffs = List.map (fun c -> c, 0) masked_params in
-          let t' = FormulaUtil.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
+          let t' = FormulaUtil.simplify (TypSubst.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
           coeffs @ solve_bv_aux t'
     with Cvc3Interface.Unknown ->
       solve_bv_aux t
@@ -91,7 +91,7 @@ let solve_constrs mps old_sol t =
     let changed = ref false in
     let t' =
       FormulaUtil.simplify
-        (Term.subst
+        (TypSubst.subst
           (fun x ->
             let n = List.assoc x old_sol in
             if n = 0 then

@@ -91,8 +91,8 @@ let rename sub ty =
   let subst x = Term.make_var (sub x) in
   make
     (rename_shape sub ty.shape)
-    (Term.subst subst ty.pre)
-    (Term.subst subst ty.post)
+    (TypSubst.subst subst ty.pre)
+    (TypSubst.subst subst ty.post)
 
 let rec typed_unify new_var shs =
   if shs = [] then
@@ -247,8 +247,8 @@ let simplify ty =
       let sub = unify Var.new_var shs in
       make
         (rename_shape (fun x -> List.assoc x sub) (List.hd shs))
-        (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.pre)
-        (Term.subst (fun x -> Term.make_var (List.assoc x sub)) ty.post)
+        (TypSubst.subst (fun x -> Term.make_var (List.assoc x sub)) ty.pre)
+        (TypSubst.subst (fun x -> Term.make_var (List.assoc x sub)) ty.post)
   | _ -> ty
 
 let intersect tys =
@@ -282,7 +282,7 @@ let rec coerce pos sh1 sh2 phi =
   | [Unit(x)], [Unit(y)]
   | [Bool(x)], [Bool(y)]
   | [Int(x)], [Int(y)] ->
-      Term.subst (fun z -> if Var.equiv x z then Term.make_var y else raise Not_found) phi
+      TypSubst.subst (fun z -> if Var.equiv x z then Term.make_var y else raise Not_found) phi
   | [Fun(sh11, sh12)], [Fun(sh21, sh22)] ->
       coerce (not pos) sh11 sh21 (coerce pos sh12 sh22 phi)
   | shs1, shs2 ->

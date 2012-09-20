@@ -32,10 +32,10 @@ let num_dup atms =
 let simplify (pid, ttys) = pid, List.map (fun (t, ty) -> LinArith.simplify t, ty) ttys
 
 let subst sub (pid, ttys) =
-  pid, List.map (fun (t, ty) -> Term.subst sub t, ty) ttys
+  pid, List.map (fun (t, ty) -> TypSubst.subst sub t, ty) ttys
 
 let subst_fixed sub (pid, ttys) =
-  pid, List.map (fun (t, ty) -> Term.subst_fixed sub t, ty) ttys
+  pid, List.map (fun (t, ty) -> TypSubst.subst_fixed sub t, ty) ttys
 
 let equiv env (pid1, ttys1) (pid2, ttys2) =
   pid1 = pid2 &&

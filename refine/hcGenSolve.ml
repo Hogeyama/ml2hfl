@@ -30,7 +30,7 @@ let template_based_constraint_solving_interpolate pids xtys lbs nubs =
             NonLinConstrSolve.solve_constrs [] [] (Formula.band (NonLinConstrSolve.gen_coeff_constrs c))
           in
           let _ = Global.log (fun () -> Format.printf "solutions:@,  %a@," NonLinConstrSolve.pr_coeffs coeffs) in
-          let interp = FormulaUtil.simplify (Term.subst (fun x -> Term.tint (List.assoc x coeffs)) interp) in
+          let interp = FormulaUtil.simplify (TypSubst.subst (fun x -> Term.tint (List.assoc x coeffs)) interp) in
           let _ = Global.log (fun () -> Format.printf "interp:%a@," Term.pr interp) in
           List.map (fun pid -> pid, (xtys, interp)) pids
         with NonLinConstrSolve.Unknown ->
@@ -84,6 +84,7 @@ let convex_hull_interpolate pids xtys lbs nubs =
           pid, (xtys, interp))
         pids lbs nubs
   in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr sol) in
   let _ = Global.log_end "convex_hull_interpolate" in
   sol
 
@@ -143,7 +144,7 @@ let rec solve ch hcs0 =
                         x1, Term.make_var x2)
                       xtys' xtys
                   in
-                  Term.rename sub lb', Term.rename sub ub')
+                  TypSubst.rename sub lb', TypSubst.rename sub ub')
                 rs)
           in
           xtys, lb :: lbs, ub :: ubs
@@ -228,6 +229,7 @@ let rec solve ch hcs0 =
               let hcs, sol =
                 List.fold_left
                   (fun (hcs, sol) s ->
+                    let _ = Format.printf "!!!:@,  @[<v>%a@]@," TypPredSubst.pr [s] in
                     let hcs' = List.map (TypPredSubst.subst [s]) hcs in
                     let t = HcSolve.formula_of_forward (compute_lbs hcs') hcs' in
                     if Cvc3Interface.is_valid (Formula.bnot t) then

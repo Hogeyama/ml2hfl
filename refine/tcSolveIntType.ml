@@ -50,9 +50,9 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
         let tts, tps = List.split
           (List.map2
             (fun tr p ->
-              Term.fresh (visible (get tr).name)
+              TypSubst.fresh (visible (get tr).name)
                 (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_tree tr))))),
-              Term.fresh (visible (get tr).name)
+              TypSubst.fresh (visible (get tr).name)
                 (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible (get tr).name) (fes_of_nodes (nodes_of_path p))))))
             trs ps)
         in
@@ -86,7 +86,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
         let xttyss1, xttys::xttyss2 = List.split_nth (List.length trs1) nd.subst in
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
-        let ts2 = match ts2 with t'::ts2' -> (Formula.band [t; Term.subst sub interp; t'])::ts2' | [] -> assert false in
+        let ts2 = match ts2 with t'::ts2' -> (Formula.band [t; TypSubst.subst sub interp; t'])::ts2' | [] -> assert false in
         Some(root (Loc(Node({ nd with constr = ts1 @ ts2;
                                       subst = xttyss1 @ xttyss2 }, trs1 @ trs2), up)))
   else
@@ -100,7 +100,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
         let xttyss1, xttys::[] = List.split_nth (List.length trs1) nd.subst in
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
-        Some(root (Loc(Node({ nd with constr = ts1 @ [Formula.band [t; Formula.bnot (Term.subst sub interp)]];
+        Some(root (Loc(Node({ nd with constr = ts1 @ [Formula.band [t; Formula.bnot (TypSubst.subst sub interp)]];
                                       subst = xttyss1 @ [[]]}, trs1 @ trs2), up)))
 
 let summaries_of env constrs0 =

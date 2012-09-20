@@ -129,9 +129,9 @@ let deserialize s =
   in
   match String.nsplit s separator with
     h :: s :: ss ->
-      if String.starts_with s vheader then
+      if String.starts_with h vheader then
         aux (V(Idnt.make s)) ss
-      else if String.starts_with s cheader then
+      else if String.starts_with h cheader then
         aux (C(Idnt.make s)) ss
       else
         assert false

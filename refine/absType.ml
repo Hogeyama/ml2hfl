@@ -49,7 +49,7 @@ let rec subst sub aty =
   match aty with
     Base(bty, x, ts) ->
       let sub' y = if Var.equiv x y then raise Not_found else sub y in
-      Base(bty, x, List.map (Term.subst sub') ts)
+      Base(bty, x, List.map (TypSubst.subst sub') ts)
   | Fun(aty1, aty2) ->
       Fun
         (subst sub aty1,
@@ -63,7 +63,7 @@ let rec merge2 aty1 aty2 =
       let x = Var.new_var () in
       let sub1 y = if y = x1 then Term.make_var x else raise Not_found in
       let sub2 y = if y = x2 then Term.make_var x else raise Not_found in
-      Base(bty1, x, List.unique ((List.map (Term.subst sub1) ts1) @ (List.map (Term.subst sub2) ts2)))
+      Base(bty1, x, List.unique ((List.map (TypSubst.subst sub1) ts1) @ (List.map (TypSubst.subst sub2) ts2)))
   | Fun(aty11, aty12), Fun(aty21, aty22) ->
       let aty1 = merge2 aty11 aty21 in
       let sub1 y = if is_base aty11 && Var.equiv (bv_of aty11) y then Term.make_var (bv_of aty1) else raise Not_found in
@@ -135,7 +135,7 @@ let of_interaction_type f sty =
             Fun(Var.new_var (), aty1, aty2), ps2
   in
   let env = get_env sty.IntType.shape in
-  let subst = Term.subst (fun x -> Term.make_var (List.assoc x env)) in
+  let subst = TypSubst.subst (fun x -> Term.make_var (List.assoc x env)) in
   let ps = [subst sty.IntType.pre; subst sty.IntType.post] in
   let ps' = List.filter (function Term.Const(_, Const.True) -> false | _ -> true) ps in
   let aty,ps'' = trans env ps' [] sty.IntType.shape in

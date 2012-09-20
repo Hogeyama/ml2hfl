@@ -263,6 +263,6 @@ let interpolate t1 t2 =
 let interpolate_bvs p t1 t2 =
   let t1 = FormulaUtil.simplify (band (conjuncts t1)) in
   let t2 = FormulaUtil.simplify (band (conjuncts t2)) in
-  let t1 = Term.fresh p t1 in
-  let t2 = Term.fresh p t2 in
+  let t1 = TypSubst.fresh p t1 in
+  let t2 = TypSubst.fresh p t2 in
   interpolate t1 t2

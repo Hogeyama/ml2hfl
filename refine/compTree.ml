@@ -163,8 +163,8 @@ let expand_node prog fenv ct =
                     end
                   in
                   let sub x = List.assoc x faargs in
-                  Call((g, ct.uid), Term.subst sub fd.Fdef.guard),
-                  make (gen_id ()) (ct.path @ [i]) (ctx (Term.subst sub fd.Fdef.body)) (ref []))
+                  Call((g, ct.uid), TypSubst.subst sub fd.Fdef.guard),
+                  make (gen_id ()) (ct.path @ [i]) (ctx (TypSubst.subst sub fd.Fdef.body)) (ref []))
                 fdefs
           | Var.T(_, _, _) ->
               let f = try fenv g with Not_found -> assert false in

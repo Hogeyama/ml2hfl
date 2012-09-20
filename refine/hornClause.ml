@@ -13,9 +13,13 @@ let pr_elem ppf (Hc(popt, atms, t)) =
   let _ = Format.fprintf ppf "@[<hov>" in
   let _ =
     if atms <> [] then
-      Format.fprintf ppf "%a,@ " (Util.pr_list Atom.pr ",@ ") atms
+      Format.fprintf ppf "%a" (Util.pr_list Atom.pr ",@ ") atms
   in
-  let _ = Format.fprintf ppf "%a@ " Term.pr t in
+  let _ =
+    if not (Term.equiv t Formula.ttrue) then
+      let _ = if atms <> [] then Format.fprintf ppf ",@ " in
+      Format.fprintf ppf "%a@ " Term.pr t
+  in
   match popt with
     None ->
       Format.fprintf ppf "|- bot@]"
@@ -72,7 +76,7 @@ let is_non_redundant hcs =
 
 (** @require not (Util.intersects (Util.dom sub) (fvs popt)) *)
 let subst sub (Hc(popt, atms, t)) =
-  Hc(popt, List.map (Atom.subst sub) atms, Term.subst sub t)
+  Hc(popt, List.map (Atom.subst sub) atms, TypSubst.subst sub t)
 
 (** rename free variables to fresh ones *)
 let fresh (Hc(popt, atms, t) as hc) =
@@ -80,7 +84,7 @@ let fresh (Hc(popt, atms, t) as hc) =
   let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
   Hc(popt,
     List.map (Atom.subst (fun x -> List.assoc x sub)) atms,
-    Term.subst (fun x -> List.assoc x sub) t)
+    TypSubst.subst (fun x -> List.assoc x sub) t)
 
 let mem pid hcs =
   List.exists (function Hc(Some(pid', _), _, _) -> pid = pid' | _ -> false) hcs
@@ -97,6 +101,6 @@ let lookup (pid, ttys) hcs =
       let Hc(_, atms, t) = fresh hc in
       let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
       List.map (Atom.subst (fun x -> List.assoc x sub)) atms,
-      Term.subst (fun x -> List.assoc x sub) t
+      TypSubst.subst (fun x -> List.assoc x sub) t
   | [] -> raise Not_found
   | _ -> assert false

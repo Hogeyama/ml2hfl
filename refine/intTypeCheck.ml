@@ -91,7 +91,7 @@ let check_fdef cenv fdef ty =
     let ty = infer_term cenv env fdef.Fdef.guard in
     let _ = if not (Term.equiv ty.pre Formula.ttrue) then let _ = Format.printf "%a@," pr ty in assert false in
     match ty.shape with
-      Bool(x) -> Term.subst (fun y -> if Var.equiv x y then Formula.ttrue else raise Not_found) ty.post
+      Bool(x) -> TypSubst.subst (fun y -> if Var.equiv x y then Formula.ttrue else raise Not_found) ty.post
     | _ -> let _ = Format.printf "%a@," pr ty in assert false
   in
   (*

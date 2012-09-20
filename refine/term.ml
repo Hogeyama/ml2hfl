@@ -200,37 +200,6 @@ let rec map_var f t =
   | Call(_, _, _) | Ret(_, _, _, _) | Error(_)
   | Forall(_, _, _) | Exists(_, _, _) -> assert false
 
-let rec subst sub t =
-  match t with
-    Var(a, x) -> (try sub x with Not_found -> Var(a, x))
-  | Const(a, c) -> Const(a, c)
-  | App(a, t1, t2) -> App(a, subst sub t1, subst sub t2)
-  | Call(_, _, _) | Ret(_, _, _, _) | Error(_) -> assert false
-  | Forall(a, env, t) ->
-      let xs = List.map fst env in
-      let sub x = if List.mem x xs then raise Not_found else sub x in
-      Forall(a, env, subst sub t)
-  | Exists(a, env, t) ->
-      let xs = List.map fst env in
-      let sub x = if List.mem x xs then raise Not_found else sub x in
-      Exists(a, env, subst sub t)
-
-(** @todo compute the fixed-point of sub first *)
-let subst_fixed sub t =
-  let _ = Global.log_begin ~disable:true "Term.subst_fixed" in
-  let _ = Global.log (fun () -> Format.printf "input: %a@," pr t) in
-  let t =
-    Util.fixed_point
-      (fun t ->
-        let t = subst sub t in
-        t)
-      equiv
-      t
-  in
-  let _ = Global.log (fun () -> Format.printf "output: %a" pr t) in
-  let _ = Global.log_end "Term.subst_fixed" in
-  t
-
 let string_of t =
   Format.fprintf Format.str_formatter "%a" pr_oneliner t;
   Format.flush_str_formatter ()
@@ -293,22 +262,6 @@ let rec redex_of env t =
       with Not_found ->
         (fun t -> t), Ret(a, ret, t, ty))
   | _ -> raise Not_found
-
-let rename sub t =
-  subst (fun x -> List.assoc x sub) t
-
-(** @param p every variable not satisfying p is renamed *)
-let fresh p t =
-  let xs = List.filter (fun x -> not (p x)) (fvs t) in
-  let sub = List.map (fun x -> x, new_var ()) xs in
-  subst (fun x -> List.assoc x sub) t
-
-(** rename given variables to fresh ones
-    @param xs variables to be renamed
-    @require not (Util.is_dup xs) *)
-let fresh_vars xs t =
-  let sub = List.map (fun x -> x, new_var ()) xs in
-  subst (fun x -> List.assoc x sub) t
 
 (** @deprecated attributes are no longer used *)
 let rec set_arity am t =

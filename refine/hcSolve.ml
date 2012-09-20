@@ -45,6 +45,7 @@ let compute_lbs hcs =
       aux hcs2 (lbs @ lbs' (* no need to merge thanks to the assumption "is_non_disjunctive hcs"*))
   in
   let res = aux hcs [] in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr res) in
   let _ = Global.log_end "compute_lbs" in
   res
 
@@ -85,6 +86,7 @@ let compute_extlbs hcs =
       aux hcs2 (extlbs @ extlbs'(* no need to merge thanks to the assumption "is_non_disjunctive hcs" *))
   in
   let res = aux hcs [] in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
   let _ = Global.log_end "compute_extlbs" in
   res
 
@@ -109,6 +111,7 @@ let formula_of_forward lbs hcs =
             t)
           (List.filter is_root hcs)))
   in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" Term.pr res) in
   let _ = Global.log_end "formula_of_forward" in
   res
 
@@ -170,6 +173,7 @@ let inline_forward p hcs =
   in
   let lbs = compute_extlbs hcs1 in
   let res = List.map (subst_hcs lbs) hcs2 in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
   let _ = Global.log_end "inline_forward" in
   res
 
@@ -295,5 +299,6 @@ let compute_ubs hcs =
             rhcs)
         pids)
   in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr ubs) in
   let _ = Global.log_end "compute_ubs" in
   ubs

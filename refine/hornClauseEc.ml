@@ -44,7 +44,7 @@ let rec subst_formula p afs t =
       let sub = TypSubst.fun_of xttys in
       subst_formula p
         (List.map (Atom.subst_fixed sub) afs)
-        (Term.subst_fixed sub t)
+        (TypSubst.subst_fixed sub t)
   in
   (*Format.printf "output: %a@," Term.pr t;*)
   afs, t
@@ -351,7 +351,7 @@ let share_predicates bvs0 _ afs t =
                               pid, ttys, xs0, ttyss)
                           pxs)
                     in
-                    let ts = List.map (fun t -> FormulaUtil.simplify (Term.subst (TypSubst.fun_of xttys) t)) ts in
+                    let ts = List.map (fun t -> FormulaUtil.simplify (TypSubst.subst (TypSubst.fun_of xttys) t)) ts in
                     let b = aux pxs ts in
                     let _ = Global.log (fun () -> if not b then Format.printf "backtracked@,") in
                     b)
@@ -401,7 +401,7 @@ let share_predicates bvs0 _ afs t =
                        List.map
                          (function
                            `L(p) -> `L(Atom.simplify (Atom.subst (TypSubst.fun_of xttys) p))
-                         | `R(t) -> `R(FormulaUtil.simplify (Term.subst (TypSubst.fun_of xttys) t)))
+                         | `R(t) -> `R(FormulaUtil.simplify (TypSubst.subst (TypSubst.fun_of xttys) t)))
                          ec1
                      in
                      let afs1, ts1 = Util.partition_map (fun x -> x) (Util.diff ec1' ec2) in
@@ -605,7 +605,7 @@ let simplify2 bvs t =
       let sub, t =
         FormulaUtil.extract_from [] (fun x -> not (List.mem x xs)) t
       in
-      Term.subst sub t
+      TypSubst.subst sub t
     in
     let [], t = subst_formula (fun x -> not (List.mem x xs)) [] t in
     t
@@ -649,7 +649,7 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
           (match popt with None -> [] | Some(pid, _) -> [pid])
           (fun x -> List.mem x bvs || Var.is_coeff x) t
       in
-      List.map (Atom.subst sub) afs, Term.subst sub t
+      List.map (Atom.subst sub) afs, TypSubst.subst sub t
     in
     let _ = Global.log (fun () -> Format.printf "a:@,  @[<v>%a@]@," Term.pr t) in
     let t =
@@ -676,7 +676,7 @@ let simplify_aux bvs bs (Hc(popt, afs, t)) =
       let t0 =
         FormulaUtil.simplify
           (Formula.band
-            (Term.subst (TypSubst.fun_of sub) t ::
+            (TypSubst.subst (TypSubst.fun_of sub) t ::
             List.map
               (fun (x, t, _) ->
                 if t = Formula.ttrue then

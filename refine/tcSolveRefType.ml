@@ -102,7 +102,7 @@ let subst_interp closed p interp =
             (* apply xttys to interp: unsound try hrec.ml
             let xts = List.map (fun (x, t, _) -> x, t) xttys in
             let sub x = List.assoc x xts in
-            Term.subst sub interp,
+            TypSubst.subst sub interp,
             []*)
             interp, xttys
           in
@@ -235,7 +235,7 @@ let summary_of env loc =
             (*let _ = Format.printf "%a@," pr_path p in*)
             let arg = arg_of env (get tr) in
             let t =
-              Term.fresh
+              TypSubst.fresh
                 (RefType.visible arg)
                 (FormulaUtil.simplify
                   (Fes.formula_of
@@ -259,7 +259,7 @@ let summary_of env loc =
                 [Fes.make [] (List.map Util.trd3 arg_p_t_list);
                  fes_of_nodes nds]
             in
-            let t = Term.fresh (RefType.visible ret) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
+            let t = TypSubst.fresh (RefType.visible ret) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible ret) fes))) in
             (*let t = Formula.of_dnf (Term.dnf t) in*)
             (**)let _ = if (get tr).closed then Format.printf "%a: %a@," Var.pr ret Term.pr t in(**)
             (ret, nds, t), nds)
@@ -451,12 +451,12 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (*
                 let _ = Format.printf "%a@," Var.pr arg in
 *)
-                Term.fresh
+                TypSubst.fresh
                   (RefType.visible arg)
                   (FormulaUtil.simplify
                     (Fes.formula_of
                       (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
-                Term.fresh
+                TypSubst.fresh
                   (RefType.visible arg)
                   (FormulaUtil.simplify
                     (Fes.formula_of
@@ -493,7 +493,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
       let ts0 =
         List.map
           (fun (arg, p) ->
-            let t = Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
+            let t = TypSubst.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))) in
             (*let _ = Format.printf "%a: %a@," Var.pr arg Term.pr t in*)
             t)
           argps
@@ -511,14 +511,14 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (* why not compute ts0 and nds? *)
 (*
                 if nd.closed then
-                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
+                  TypSubst.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_tree tr))))),
                   let ts, xttys = fes_of_nodes (nds @ nodes_of_path p) in
-                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
+                  TypSubst.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys))))
                 else
 *)
                   let ts, xttys = fes_of_nodes (nds @ nodes_of_tree tr) in
-                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
-                  Term.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
+                  TypSubst.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (ts0 @ ts, xttys)))),
+                  TypSubst.fresh (RefType.visible arg) (FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (RefType.visible arg) (fes_of_nodes (nodes_of_path p))))))
               trs ps),
           List.map (fun tr -> args_of_tree env tr @ [ret_of_tree env tr]) trs
         in
@@ -565,7 +565,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
 *)
-        let ts2 = match ts2 with t'::ts2' -> (Formula.band [t; (*Term.subst sub*) interp; t'])::ts2' | [] -> assert false in
+        let ts2 = match ts2 with t'::ts2' -> (Formula.band [t; (*TypSubst.subst sub*) interp; t'])::ts2' | [] -> assert false in
 (**)
         let xttyss2 = match xttyss2 with xttys'::xttyss2' -> (xttys @ xttys')::xttyss2' | [] -> assert false in
 (**)
@@ -584,7 +584,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
 (**)
           [root (Loc(Node({ nd with ret = None;
                                     closed = false;
-                                    constr = ts1 @ [Formula.band [t; Formula.bnot ((*Term.subst sub*) interp)]];
+                                    constr = ts1 @ [Formula.band [t; Formula.bnot ((*TypSubst.subst sub*) interp)]];
                                     subst = xttyss1 @ [(*[]*)(**)xttys(**)] }, trs1), path_set_open up))])
       parginterps
   else
@@ -599,7 +599,7 @@ let summary_of_widen env (Loc(Node(nd, []), p) as loc) = assert false
         let xts = List.map (fun (x, t, _) -> x, t) xttys in
         let sub x = List.assoc x xts in
 (**)
-        [root (Loc(Node({ nd with constr = ts1 @ [Formula.band [t; Formula.bnot ((**)Term.subst sub(**) interp)]];
+        [root (Loc(Node({ nd with constr = ts1 @ [Formula.band [t; Formula.bnot ((**)TypSubst.subst sub(**) interp)]];
                                   subst = xttyss1 @ [[](*xttys*)] }, trs1), up))]
 *)
 

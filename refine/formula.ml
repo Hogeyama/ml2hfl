@@ -130,7 +130,7 @@ let forall_imply conds_envs t =
     (fun (cond, env) t ->
       let sub = List.filter (fun (x, _, _) -> List.mem_assoc x env) (TypSubst.sub_of cond) in
       try
-        subst (TypSubst.fun_of sub) t
+        TypSubst.subst (TypSubst.fun_of sub) t
       with Not_found ->
         forall env (imply cond t))
     conds_envs t

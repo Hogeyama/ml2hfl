@@ -37,10 +37,10 @@ let interpolate_widen closed t1 t2 tw1 tw2 =
 
 (** require: t1 and t2 share only variables that satisfy p *)
 let interpolate_widen_bvs p closed t1 t2 tw1 tw2 =
-  let t1 = Term.fresh p t1 in
-  let t2 = Term.fresh p t2 in
-  let tw1 = Term.fresh p tw1 in
-  let tw2 = Term.fresh p tw2 in
+  let t1 = TypSubst.fresh p t1 in
+  let t2 = TypSubst.fresh p t2 in
+  let tw1 = TypSubst.fresh p tw1 in
+  let tw2 = TypSubst.fresh p tw2 in
   interpolate_widen closed t1 t2 tw1 tw2
 
 let widen xss ts =
@@ -55,7 +55,7 @@ let widen xss ts =
         List.map2
           (fun ys t ->
             let sub = List.combine ys xs in
-            Term.subst (fun x -> Term.make_var (List.assoc x sub)) t)
+            TypSubst.subst (fun x -> Term.make_var (List.assoc x sub)) t)
           xss
           ts
       in

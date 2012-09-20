@@ -23,7 +23,7 @@ let refine_coeffs hcs =
   let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
   let _ = Global.log (fun () -> Format.printf "verification condition:@,  @[<v>%a |= bot@]@," Term.pr t) in
   let b =
-    let t' = FormulaUtil.simplify (Term.subst (fun x -> Term.tint (List.assoc x !ext_coeffs)) t) in
+    let t' = FormulaUtil.simplify (TypSubst.subst (fun x -> Term.tint (List.assoc x !ext_coeffs)) t) in
     let _ = Global.log (fun () -> Format.printf "reuse old solution if:@,  @[<v>%a |= bot@]@," Term.pr t') in
     Cvc3Interface.is_valid (Formula.bnot t')
   in
@@ -158,7 +158,7 @@ let infer_ref_types fs prog etrs =
           let ytys = RefType.visible_vars (Prog.type_of prog) x in
           let _ = assert (List.length xtys = List.length ytys) in
           let sub = List.map2 (fun (x, _) (y, _) -> x, Term.make_var y) xtys ytys in
-          `P(x, Term.subst (fun x -> List.assoc x sub) t))
+          `P(x, TypSubst.subst (fun x -> List.assoc x sub) t))
         sol
   in
   let _ =
