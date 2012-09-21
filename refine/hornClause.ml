@@ -64,6 +64,7 @@ let rhs_pids hcs =
 
 let pids hcs = rhs_pids hcs @ lhs_pids hcs
 
+(** @return false if and only if a subset of hcs is equivalent to a disjunctive constraint like (P(...) or Q(...)) => phi *)
 let is_non_disjunctive hcs =
   let popts = List.map (function Hc(None, _, _) -> None | Hc(Some(pid, _), _, _) -> Some(pid)) hcs in
   not (Util.is_dup popts)

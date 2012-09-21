@@ -9,7 +9,7 @@ type t =
 | And | Or | Imply | Iff
 | EqUnit | NeqUnit | EqBool | NeqBool
 | EqInt | NeqInt | Lt | Gt | Leq | Geq
-| IBTrue | IBFalse (* only used in cand and cor *)
+| IBTrue | IBFalse (* used only in cand and cor *)
 | Add | Sub | Mul
 | Div | Mod
 

@@ -22,8 +22,8 @@ let compute_lbs hcs =
     let hcs1, hcs2 =
       let ready_to_compute_lb lbs =
         function
-          (Hc(Some(_), afs, _)) ->
-             List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) afs
+          (Hc(Some(_), atms, _)) ->
+             List.for_all (fun (pid, _) -> List.mem_assoc pid lbs) atms
         | (Hc(None, _, _)) ->
              assert false
       in
@@ -66,8 +66,8 @@ let compute_extlbs hcs =
         fun pid -> List.mem pid pids
       in
       List.partition
-       (function (Hc(Some(_), afs, _)) ->
-         List.for_all (fun (pid, _) -> ready pid || not_defined pid) afs
+       (function (Hc(Some(_), atms, _)) ->
+         List.for_all (fun (pid, _) -> ready pid || not_defined pid) atms
        | (Hc(None, _, _)) -> assert false)
        hcs
     in
@@ -146,11 +146,11 @@ let formula_of_backward hcs =
     FormulaUtil.simplify
       (Formula.bor
         (List.map
-          (fun (Hc(None, afs, t)) ->
-            if afs = [] then
+          (fun (Hc(None, atms, t)) ->
+            if atms = [] then
               t
             else
-              let _ = Format.printf "%a@," pr_elem (Hc(None, afs, t)) in
+              let _ = Format.printf "%a@," pr_elem (Hc(None, atms, t)) in
               assert false)
           (List.map (subst_hcs hcs2) hcs1)))
   in
@@ -195,7 +195,8 @@ let inline_backward p hcs =
 
 (** {6 Functions for computing upper bounds} *)
 
-let compute_ubs_hc lbs ubs (Hc(popt, afs, t) as hc) =
+(** @deprecated use compute_ubs instead *)
+let compute_ubs_hc lbs ubs (Hc(popt, atms, t) as hc) =
   let _ = Global.log_begin "compute_ubs_hc" in
   let _ = Global.log (fun () -> Format.printf "input: %a@," HornClause.pr_elem hc) in
   let t, ubs' =
@@ -213,24 +214,25 @@ let compute_ubs_hc lbs ubs (Hc(popt, afs, t) as hc) =
   let ubs =
     ubs' @
     Util.maplr
-      (fun afs1 (pid, ttys) afs2 ->
+      (fun atms1 (pid, ttys) atms2 ->
         let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
         let Hc(None, [], t) =
           TypPredSubst.subst_lhs
             ~bvs:(List.map Util.fst3 sub)
             lbs
-            (Hc(None, afs1 @ afs2, Formula.band [t; Formula.of_subst sub]))
+            (Hc(None, atms1 @ atms2, Formula.band [t; Formula.of_subst sub]))
         in
         pid,
         (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t))
-      afs
+      atms
   in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr ubs) in
   let _ = Global.log_end "compute_ubs_hc" in
   ubs
 
 
-(** @require is_non_recursive hcs && is_well_defined hcs
+(** @deprecated use compute_ubs instead
+    @require is_non_recursive hcs && is_well_defined hcs
     @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs)
     incorrect in general*)
 let compute_ubs_incorrect lbs hcs =
@@ -260,30 +262,44 @@ let compute_ubs_incorrect lbs hcs =
   let _ = Global.log_end "compute_ubs" in
   ubs
 
-(** @require is_non_recursive hcs && is_non_disjunctive hcs
-    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs) *)
-let compute_ubs hcs =
-  let _ = Global.log_begin "compute_ubs" in
-  let pids = List.unique (pids hcs) in
-  let ubs =
-    TypPredSubst.merge
-      (Util.concat_map
-        (fun pid ->
-          let hcs = inline_forward (fun pid' -> pid' <> pid) hcs in
-          let lhcs, rhcs =
-            List.partition
-              (function Hc(Some(pid', _), _, _) ->
-                let _ = if !Global.debug then assert (pid' = pid) in true
-              | Hc(None, _, _) -> false)
-              hcs
-          in
-          Util.concat_map
-            (fun (Hc(None, afs, t) as hc) ->
-              match afs with
-                [] ->
-                  let Hc(Some(pid, xtys), _, _) = List.hd lhcs in
-                  [pid, (xtys, Formula.ttrue)]
-              | [pid', ttys] ->
+(** @raise Not_found if the computation of the upper bound for pid fails *)
+let ubs_of_pid hcs pid =
+  let hcs = inline_forward (fun pid' -> pid' <> pid) hcs in
+  let hcs =
+    List.filter
+      (function Hc(None, [], t) ->
+        let _ =
+          if !Global.debug then
+            assert (Cvc3Interface.is_valid (Formula.bnot t))
+        in
+        false
+      | _ -> true)
+      hcs
+  in
+  if List.exists (function Hc(Some(_, _), [], _) | Hc(None, [_], _) -> false | _ -> true) hcs then
+    raise Not_found
+  else
+    let lhcs, rhcs =
+      List.partition
+        (function Hc(Some(pid', _), [], _) ->
+          let _ = if !Global.debug then assert (pid' = pid) in
+          true
+        | Hc(None, [_], _) ->
+          false
+        | _ ->
+          assert false)
+        hcs
+    in
+    if rhcs = [] then
+      let Hc(Some(pid, xtys), _, _) = List.hd lhcs in
+      pid, (xtys, Formula.ttrue)
+    else
+      Util.elem_of_singleton
+        (TypPredSubst.merge
+          (List.map
+            (fun (Hc(None, atms, t) as hc) ->
+              match atms with
+                [pid', ttys] ->
                   let _ = if !Global.debug then assert (pid' = pid) in
                   let sub = List.map (fun (t, ty) -> Var.new_var (), t, ty) ttys in
                   let Hc(None, [], t) =
@@ -292,13 +308,20 @@ let compute_ubs hcs =
                       []
                       (Hc(None, [], Formula.band [t; Formula.of_subst sub]))
                   in
-                  [pid, (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t)]
+                  pid, (List.map (fun (x, _, ty) -> x, ty) sub, Formula.bnot t)
               | _ ->
                 let _ = Format.printf "%a@," HornClause.pr_elem hc in
-                raise (Util.NotImplemented "compute_ubs"))
-            rhcs)
-        pids)
-  in
+                assert false)
+            rhcs))
+
+(** @require is_non_recursive hcs && is_non_disjunctive hcs
+    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs)
+    upper bounds for some predicate variables may not be computed if
+    a subset of hcs is equivalent to a constraint like P(...) and P(...) => phi *)
+let compute_ubs hcs =
+  let _ = Global.log_begin "compute_ubs" in
+  let pids = List.unique (pids hcs) in
+  let ubs, ndpids = Util.partition_map (fun pid -> try `L(ubs_of_pid hcs pid) with Not_found -> `R(pid)) pids in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr ubs) in
   let _ = Global.log_end "compute_ubs" in
-  ubs
+  ubs, ndpids

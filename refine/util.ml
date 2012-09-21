@@ -243,6 +243,13 @@ let rec last xs =
   | [x] -> x
   | x :: xs' -> last xs'
 
+let elem_of_singleton xs =
+  match xs with
+    [x] -> x
+  | _ ->
+      let _ = Format.printf "%d@," (List.length xs) in
+      assert false
+
 let rec remove_one p xs =
   match xs with
     [] ->
@@ -645,8 +652,8 @@ let bv_inc bv =
   let rec aux bv =
     match bv with
       [] -> assert false
-    | 0::bv -> 1 :: bv
-    | 1::bv -> 0 :: aux bv
+    | 0 :: bv -> 1 :: bv
+    | 1 :: bv -> 0 :: aux bv
   in
   List.rev (aux (List.rev bv))
 
@@ -654,8 +661,8 @@ let bv_dec bv =
   let rec aux bv =
     match bv with
       [] -> assert false
-    | 0::bv -> 1 :: aux bv
-    | 1::bv -> 0 :: bv
+    | 0 :: bv -> 1 :: aux bv
+    | 1 :: bv -> 0 :: bv
   in
   List.rev (aux (List.rev bv))
 

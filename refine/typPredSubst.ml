@@ -44,18 +44,18 @@ let merge psub =
       (Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) psub))
 
 
-(* @raise Not_found ? *)
+(* @raise Not_found if pid is not defined in psub *)
 let args_of pid psub =
   let xtys, _ = List.assoc pid psub in
   xtys
 
 (** @require Util.is_map psub
-    @raise Not_found ? *)
+    @raise Not_found if pid is not defined in psub *)
 let lookup_map (pid, ttys) psub =
   let xtys, t = List.assoc pid psub in
-  let _ = Format.printf "???: %a@,%a@," Term.pr t SimType.pr_env xtys in
+  (*let _ = Format.printf "???: %a@,%a@," Term.pr t SimType.pr_env xtys in*)
   let xs = fvs_elem (pid, (xtys, t)) in
-  let _ = Format.printf "???: %a@," Var.pr_list xs in
+  (*let _ = Format.printf "???: %a@," Var.pr_list xs in*)
   let t = TypSubst.fresh_vars xs t in
   (*let _ = Format.printf "???: %a@," Term.pr t in*)
   let sub =
