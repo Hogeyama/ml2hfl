@@ -144,8 +144,10 @@ let rec inv_abst_type aty =
 
 let infer flags labeled cexs prog =
   let _ = Global.print_log := !Flag.debug_level <> 0 in
-  let _ = Global.generalize_predicates_simple := flags land 1 <> 0 in (* Enable predicate generalization heuristics *)
-  let _ = Global.find_preds_forward := flags land 2 <> 0 in
+
+  let _ = Global.enable_syntactic_predicate_generalization := flags land 1 <> 0 in (* Enable predicate generalization heuristics *)
+  let _ = Global.solve_preds_left_to_right := flags land 2 <> 0 in
+
   let _ = Global.subst_hcs_inc := flags land 4 <> 0 in
   let _ = Global.no_inlining := flags land 8 <> 0 || not !Flag.expand_nonrec in
   let _ = Global.inline_after_ncs := flags land 16 <> 0 in
@@ -154,7 +156,7 @@ let infer flags labeled cexs prog =
   let _ = Global.enable_pred_sharing2 := flags land 128 <> 0 in
   let _ = Global.flag_coeff := flags land 256 <> 0 in
 
-  let cexs = if !Flag.accumulate_predicats then [List.hd cexs] else cexs in
+  let cexs = if !Flag.disable_predicate_accumulation then cexs else [List.hd cexs] in
   let prog = conv_prog prog in
   let env = Verifier.refine labeled cexs prog in
   let _ = Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Verifier.elapsed_time in

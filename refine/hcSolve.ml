@@ -1,7 +1,7 @@
 open ExtList
 open ExtString
 open HornClause
-open HornClauseEc
+open HornClauseUtil
 
 (** Solving non-recursive Horn clauses *)
 
@@ -262,7 +262,7 @@ let compute_ubs_incorrect lbs hcs =
   let _ = Global.log_end "compute_ubs" in
   ubs
 
-(** @raise Not_found if the computation of the upper bound for pid fails *)
+(** @raise Not_found if the upper bound for pid cannot be computed *)
 let ubs_of_pid hcs pid =
   let hcs = inline_forward (fun pid' -> pid' <> pid) hcs in
   let hcs =

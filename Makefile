@@ -77,7 +77,7 @@ REFINE_CMO = enum.cmo extList.cmo extString.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
-	callTree.cmo atom.cmo hornClause.cmo hornClauseEc.cmo typPredSubst.cmo \
+	callTree.cmo atom.cmo hornClause.cmo hornClauseEc.cmo hornClauseUtil.cmo typPredSubst.cmo \
 	hcGenRefType.cmo hcSolve.cmo hcBwSolve.cmo hcGenSolve.cmo \
 	verifier.cmo
 #	intType.cmo intTypeCheck.cmo

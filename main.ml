@@ -211,7 +211,7 @@ let arg_spec =
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
    (* CEGAR *)
-   "-nap", Arg.Clear Flag.accumulate_predicats, " Turn off predicate accumulation";
+   "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
    "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
    "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),

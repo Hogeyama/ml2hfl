@@ -201,6 +201,12 @@ refine/hornClauseEc.cmx: refine/var.cmx refine/util.cmx refine/typTerm.cmx \
     refine/formulaUtil.cmx refine/formula.cmx refine/extString.cmx \
     refine/extList.cmx refine/cvc3Interface.cmx refine/atpInterface.cmx \
     refine/atom.cmx
+refine/hornClauseUtil.cmo: refine/var.cmo refine/util.cmo \
+    refine/hornClauseEc.cmo refine/hornClause.cmo refine/global.cmo \
+    refine/formula.cmo refine/extString.cmi refine/extList.cmi
+refine/hornClauseUtil.cmx: refine/var.cmx refine/util.cmx \
+    refine/hornClauseEc.cmx refine/hornClause.cmx refine/global.cmx \
+    refine/formula.cmx refine/extString.cmx refine/extList.cmx
 refine/typPredSubst.cmo: refine/util.cmo refine/typSubst.cmo refine/term.cmo \
     refine/hornClauseEc.cmo refine/hornClause.cmo refine/global.cmo \
     refine/formulaUtil.cmo refine/formula.cmo refine/extList.cmi \
@@ -220,25 +226,13 @@ refine/hcGenRefType.cmx: refine/zipper.cmx refine/var.cmx refine/util.cmx \
     refine/global.cmx refine/formula.cmx refine/extString.cmx \
     refine/extList.cmx refine/callTree.cmx refine/callId.cmx refine/atom.cmx
 refine/hcSolve.cmo: refine/var.cmo refine/util.cmo refine/typPredSubst.cmo \
-    refine/term.cmo refine/hornClauseEc.cmo refine/hornClause.cmo \
+    refine/term.cmo refine/hornClauseUtil.cmo refine/hornClause.cmo \
     refine/global.cmo refine/formulaUtil.cmo refine/formula.cmo \
-    refine/extString.cmi refine/extList.cmi
+    refine/extString.cmi refine/extList.cmi refine/cvc3Interface.cmo
 refine/hcSolve.cmx: refine/var.cmx refine/util.cmx refine/typPredSubst.cmx \
-    refine/term.cmx refine/hornClauseEc.cmx refine/hornClause.cmx \
+    refine/term.cmx refine/hornClauseUtil.cmx refine/hornClause.cmx \
     refine/global.cmx refine/formulaUtil.cmx refine/formula.cmx \
-    refine/extString.cmx refine/extList.cmx
-refine/hcBwSolve.cmo: refine/var.cmo refine/util.cmo refine/typSubst.cmo \
-    refine/typPredSubst.cmo refine/term.cmo refine/linArith.cmo \
-    refine/hornClauseEc.cmo refine/hornClause.cmo refine/hcSolve.cmo \
-    refine/global.cmo refine/formulaUtil.cmo refine/formula.cmo \
-    refine/extString.cmi refine/extList.cmi refine/cvc3Interface.cmo \
-    refine/csisatInterface.cmo refine/const.cmo refine/atom.cmo
-refine/hcBwSolve.cmx: refine/var.cmx refine/util.cmx refine/typSubst.cmx \
-    refine/typPredSubst.cmx refine/term.cmx refine/linArith.cmx \
-    refine/hornClauseEc.cmx refine/hornClause.cmx refine/hcSolve.cmx \
-    refine/global.cmx refine/formulaUtil.cmx refine/formula.cmx \
-    refine/extString.cmx refine/extList.cmx refine/cvc3Interface.cmx \
-    refine/csisatInterface.cmx refine/const.cmx refine/atom.cmx
+    refine/extString.cmx refine/extList.cmx refine/cvc3Interface.cmx
 refine/hcGenSolve.cmo: refine/var.cmo refine/util.cmo refine/typSubst.cmo \
     refine/typPredSubst.cmo refine/term.cmo refine/nonLinConstrSolve.cmo \
     refine/idnt.cmo refine/hornClause.cmo refine/hcSolve.cmo \
@@ -254,21 +248,23 @@ refine/hcGenSolve.cmx: refine/var.cmx refine/util.cmx refine/typSubst.cmx \
 refine/verifier.cmo: refine/var.cmo refine/util.cmo refine/typSubst.cmo \
     refine/typPredSubst.cmo refine/trace.cmo refine/term.cmo \
     refine/refTypeCheck.cmo refine/refType.cmo refine/prog.cmo \
-    refine/nonLinConstrSolve.cmo refine/idnt.cmo refine/hornClauseEc.cmo \
-    refine/hornClause.cmo refine/hcSolve.cmo refine/hcGenSolve.cmo \
-    refine/hcGenRefType.cmo refine/hcBwSolve.cmo refine/global.cmo \
-    refine/formula.cmo refine/extString.cmi refine/extList.cmi \
-    refine/cvc3Interface.cmo refine/compTreeExpander.cmo refine/compTree.cmo \
-    refine/callTree.cmo refine/callId.cmo refine/absType.cmo
+    refine/nonLinConstrSolve.cmo refine/idnt.cmo refine/hornClauseUtil.cmo \
+    refine/hornClauseEc.cmo refine/hornClause.cmo refine/hcSolve.cmo \
+    refine/hcGenSolve.cmo refine/hcGenRefType.cmo refine/hcBwSolve.cmo \
+    refine/global.cmo refine/formula.cmo refine/extString.cmi \
+    refine/extList.cmi refine/cvc3Interface.cmo refine/compTreeExpander.cmo \
+    refine/compTree.cmo refine/callTree.cmo refine/callId.cmo \
+    refine/absType.cmo
 refine/verifier.cmx: refine/var.cmx refine/util.cmx refine/typSubst.cmx \
     refine/typPredSubst.cmx refine/trace.cmx refine/term.cmx \
     refine/refTypeCheck.cmx refine/refType.cmx refine/prog.cmx \
-    refine/nonLinConstrSolve.cmx refine/idnt.cmx refine/hornClauseEc.cmx \
-    refine/hornClause.cmx refine/hcSolve.cmx refine/hcGenSolve.cmx \
-    refine/hcGenRefType.cmx refine/hcBwSolve.cmx refine/global.cmx \
-    refine/formula.cmx refine/extString.cmx refine/extList.cmx \
-    refine/cvc3Interface.cmx refine/compTreeExpander.cmx refine/compTree.cmx \
-    refine/callTree.cmx refine/callId.cmx refine/absType.cmx
+    refine/nonLinConstrSolve.cmx refine/idnt.cmx refine/hornClauseUtil.cmx \
+    refine/hornClauseEc.cmx refine/hornClause.cmx refine/hcSolve.cmx \
+    refine/hcGenSolve.cmx refine/hcGenRefType.cmx refine/hcBwSolve.cmx \
+    refine/global.cmx refine/formula.cmx refine/extString.cmx \
+    refine/extList.cmx refine/cvc3Interface.cmx refine/compTreeExpander.cmx \
+    refine/compTree.cmx refine/callTree.cmx refine/callId.cmx \
+    refine/absType.cmx
 flag.cmo:
 flag.cmx:
 utilities.cmo:

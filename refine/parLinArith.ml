@@ -26,7 +26,7 @@ let pr ppf (nxs, n) =
         List.iter
           (fun (n, x) ->
             try
-              let n = int_of n in
+              let n = int_const_of n in
               if n > 0 then
                 let _ = Format.fprintf ppf " + " in
                 let _ = if n <> 1 then Format.fprintf ppf "%d " n in
@@ -42,7 +42,7 @@ let pr ppf (nxs, n) =
           nxs
   in
   try
-    let n = int_of n in
+    let n = int_const_of n in
     if n > 0 then
       let _ = if nxs <> [] then Format.fprintf ppf " + " in
       Format.fprintf ppf "%d" n
@@ -217,7 +217,7 @@ let canonize_aif (c, nxs, n) =
 
 let term_of_aif (c, nxs, n) =
   if nxs = [] && is_int_const n then
-    if Const.lift_ibrel c (int_of n) 0 then
+    if Const.lift_ibrel c (int_const_of n) 0 then
       Const([], Const.True)
     else
       Const([], Const.False)
@@ -231,11 +231,11 @@ let term_of_aif (c, nxs, n) =
             Some(n, x))
         nxs
     in
-    let nxs1, nxs2 = List.partition (fun (n, _) -> try int_of n > 0 with Not_found -> true) nxs in
+    let nxs1, nxs2 = List.partition (fun (n, _) -> try int_const_of n > 0 with Not_found -> true) nxs in
     apply
       (Const([], c))
-      [sum ((try if int_of n > 0 then [n] else [] with Not_found -> [n]) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint 1) then make_var x else Term.mul n (make_var x)) nxs1);
-       sum ((try if int_of n < 0 then [LinArith.simplify (Term.minus n)] else [] with Not_found -> []) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint (-1)) then make_var x else Term.mul (Term.minus n) (make_var x)) nxs2)]
+      [sum ((try if int_const_of n > 0 then [n] else [] with Not_found -> [n]) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint 1) then make_var x else Term.mul n (make_var x)) nxs1);
+       sum ((try if int_const_of n < 0 then [LinArith.simplify (Term.minus n)] else [] with Not_found -> []) @ List.map (fun (n, x) -> if Term.equiv n (Term.tint (-1)) then make_var x else Term.mul (Term.minus n) (make_var x)) nxs2)]
 
 
 let xtty_of_aif p dom (c, nxs, n) =
@@ -248,9 +248,9 @@ let xtty_of_aif p dom (c, nxs, n) =
         nxs
     in
     let t =
-      if int_of n' = 1 then
+      if int_const_of n' = 1 then
         term_of (minus (nxs1 @ nxs2, n))
-      else if int_of n' = -1 then
+      else if int_const_of n' = -1 then
         term_of (nxs1 @ nxs2, n)
       else
         assert false

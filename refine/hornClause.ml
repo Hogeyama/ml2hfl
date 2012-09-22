@@ -90,7 +90,6 @@ let fresh (Hc(popt, atms, t) as hc) =
 let mem pid hcs =
   List.exists (function Hc(Some(pid', _), _, _) -> pid = pid' | _ -> false) hcs
 
-(** @require is_non_disjunctive hcs *)
 let lookup (pid, ttys) hcs =
   let hcs' =
     List.find_all
@@ -98,10 +97,23 @@ let lookup (pid, ttys) hcs =
       hcs
   in
   match hcs' with
-    [Hc(Some(_, xtys), _, _) as hc] ->
-      let Hc(_, atms, t) = fresh hc in
-      let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
-      List.map (Atom.subst (fun x -> List.assoc x sub)) atms,
-      TypSubst.subst (fun x -> List.assoc x sub) t
-  | [] -> raise Not_found
-  | _ -> assert false
+    [] -> raise Not_found
+  | _ ->
+      let res =
+        List.map
+          (function (Hc(Some(_, xtys), _, _) as hc) ->
+            let Hc(_, atms, t) = fresh hc in
+            let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
+            List.map (Atom.subst (fun x -> List.assoc x sub)) atms,
+            TypSubst.subst (fun x -> List.assoc x sub) t
+          | _ -> assert false)
+          hcs'
+      in
+      if List.for_all (fun (atms, _) -> atms = []) res then
+        [[], Formula.bor (List.map snd res)]
+      else
+        res
+
+(** @require is_non_disjunctive hcs *)
+let lookup_nd (pid, ttys) hcs =
+  Util.elem_of_singleton (lookup (pid, ttys) hcs)

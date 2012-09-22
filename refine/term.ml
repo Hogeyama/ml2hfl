@@ -78,9 +78,14 @@ let rec fun_args t =
   | _ ->
       t, []
 
-let int_of t =
+let int_const_of t =
   match t with
     Const(_, Const.Int(n)) -> n
+  | _ -> raise Not_found
+
+let var_of t =
+  match t with
+    Var(_, x) -> x
   | _ -> raise Not_found
 
 let is_int_const t =

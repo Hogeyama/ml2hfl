@@ -39,8 +39,6 @@ let extract_atomic_predicates = ref false
 type pd = Backward | ConvexHull | TemplateBasedConstraintSolving
 let predicate_discovery = ref Backward
 
-let generalize_predicates_simple = ref false
-let find_preds_forward = ref false
 let subst_hcs_inc = ref false
 
 let use_min_unsat_prefix = ref true
@@ -59,6 +57,11 @@ let bits_threshold = ref 2
 let accumulate_ext_constrs = ref false
 let disable_parameter_inference_heuristics = ref false
 
-(** {6 Options for non-linear constraint solving} *)
+(** {6 Options for solving Horn clauses} *)
+
+let enable_syntactic_predicate_generalization = ref false
+let solve_preds_left_to_right = ref false
+
+(** {6 Options for solving non-linear constraints} *)
 
 let use_bit_vector = ref true

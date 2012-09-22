@@ -272,6 +272,8 @@ let filteri p xs =
   in
   aux 0 xs
 
+let zip = List.combine
+
 let rec zip3 xs ys zs =
   match xs, ys, zs with
     [], [], [] ->
@@ -279,6 +281,8 @@ let rec zip3 xs ys zs =
   | x :: xs', y :: ys', z :: zs' ->
       (x, y, z) :: zip3 xs' ys' zs'
   | _ -> assert false
+
+let unzip = List.split
 
 let rec unzip3 ls =
   match ls with

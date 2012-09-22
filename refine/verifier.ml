@@ -32,7 +32,7 @@ let refine_coeffs hcs =
     let hcs = 
       let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
       let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
-      List.map (HornClauseEc.subst_hcs(*_fixed*) hcs1) hcs2
+      List.map (HornClauseUtil.subst_hcs(*_fixed*) hcs1) hcs2
     in
     let t = if !Global.fol_backward then HcSolve.formula_of_backward hcs else HcSolve.formula_of_forward_ext hcs in
     let _ = Global.log (fun () -> Format.printf "reuse old solution if:@,  @[<v>%a |= bot@]@," Term.pr t) in
@@ -113,11 +113,11 @@ let infer_ref_types fs prog etrs =
           let _ = Format.printf "inferred extra parameters:@,  %a@," NonLinConstrSolve.pr_coeffs !ext_coeffs in
           let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
           let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
-          List.map (HornClauseEc.subst_hcs(*_fixed*) hcs1) hcs2,
+          List.map (HornClauseUtil.subst_hcs(*_fixed*) hcs1) hcs2,
 
           let orig_hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) orig_hcs in
           let orig_hcs1, orig_hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) orig_hcs in
-          List.map (HornClauseEc.subst_hcs(*_fixed*) orig_hcs1) orig_hcs2
+          List.map (HornClauseUtil.subst_hcs(*_fixed*) orig_hcs1) orig_hcs2
       in
       let _ =
         if Util.concat_map HornClause.coeffs hcs <> [] then
@@ -225,28 +225,72 @@ let infer_abst_type fs prog etrs =
 exception FailedToRefineTypes
 
 let refine fs cexs prog =
-  let _ = Global.log_begin "refine" in
-  let _ = Global.log (fun () -> Format.printf "inlined functions: %s@," (String.concat "," fs)) in
+  let _ = Global.log_begin "Verifier.refine" in
+  let _ =
+    Global.log
+      (fun () ->
+        Format.printf "functions to be inlined: %s@," (String.concat "," fs))
+  in
   let env =
     try
-      let _ = Global.log (fun () -> Format.printf "program:@,  %a@," Prog.pr prog) in
-      let etrs =
-        let _ = Global.log (fun () -> List.iter (fun cex -> Format.printf "counterexample: @[<v>%s@]@," (String.concat ":" (List.map string_of_int cex))) cexs) in
+      let _ =
+        Global.log (fun () -> Format.printf "program:@,  %a@," Prog.pr prog)
+      in
+      let etrs_of cexs =
+        let _ =
+          Global.log
+            (fun () ->
+              List.iter
+                (fun cex ->
+                  Format.printf
+                    "counterexample: @[<v>%s@]@,"
+                    (String.concat ":" (List.map string_of_int cex)))
+                cexs)
+        in
         let rt = CompTree.init prog in
-        let filter cts = List.filter (fun ct -> List.exists (Util.is_prefix ct.CompTree.path) cexs) cts in
-        let strategy = CompTreeExpander.filter_strategy filter rt in
-        let _ = CompTreeExpander.expand_all(*expand_until_new_error_trace_found*) prog rt strategy in
+        let strategy =
+          CompTreeExpander.filter_strategy
+          (fun cts ->
+            List.filter
+              (fun ct -> List.exists (Util.is_prefix ct.CompTree.path) cexs)
+              cts)
+          rt
+        in
+        let _ =
+          CompTreeExpander.expand_all
+          (*CompTreeExpander.expand_until_new_error_trace_found*)
+            prog rt strategy
+        in
         CompTree.error_traces_of rt
       in
-      let _ = Global.log (fun () -> Format.printf "error traces:@,  @[<v>%a@]@," (Util.pr_list Trace.pr "@,") etrs) in
-      let env = try infer_abst_type fs prog etrs with HcSolve.NoSolution -> raise FailedToRefineTypes in
-      let _ = if !Global.print_log then Format.printf "abstraction types:@,  %a@," AbsType.pr_env env in
+      let etrs =
+        if true then
+          Util.concat_map (fun cex -> etrs_of [cex]) cexs
+        else
+          etrs_of cexs
+      in
+      let _ =
+        Global.log
+          (fun () ->
+            Format.printf "error traces:@,  @[<v>%a@]@," (Util.pr_list Trace.pr "@,")
+          etrs)
+      in
+      let env =
+        try
+          infer_abst_type fs prog etrs
+        with HcSolve.NoSolution ->
+          raise FailedToRefineTypes
+        in
+      let _ =
+        if !Global.print_log then
+          Format.printf "abstraction types:@,  %a@," AbsType.pr_env env
+      in
       env
     with Util.NotImplemented s ->
       let _ = Format.printf "not implemented in %s@," s in
       assert false
   in
-  let _ = Global.log_end "refine" in
+  let _ = Global.log_end "Verifier.refine" in
   env
 
 
