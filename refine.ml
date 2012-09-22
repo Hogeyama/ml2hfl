@@ -89,9 +89,9 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
         match !Flag.refine with
             Flag.RefineRefType(flags) ->
               (*let is_ext (f,_,_,_,_) = not (is_external f) in*)
-	      let _ = Format.printf "@[<v>" in
-	      let map = RefineInterface.infer flags labeled ces (env,defs,main) in
-	      let _ = Format.printf "@]" in
+      	      let _ = Format.printf "@[<v>" in
+      	      let map = RefineInterface.infer flags labeled ces (env,defs,main) in
+      	      let _ = Format.printf "@]" in
                 (*
                   if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
                 *)
@@ -103,7 +103,7 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
                 RefineDepTyp.infer [List.hd ces] {env=env;defs=defs;main=main}
               with RefineDepTyp.Untypable -> raise CannotRefute
       in
-      let env' = add_preds_env map env in
+      let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";
         Cvc3Interface.close_cvc3 ();
         Cvc3Interface.open_cvc3 ();

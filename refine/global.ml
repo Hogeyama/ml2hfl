@@ -29,10 +29,12 @@ let log_end str =
 let refine_unit = ref true
 let refine_function = ref false
 
-(** {6 Options for abstraction type inference} *)
+(** {6 Options for predicate discovery} *)
 
 let refine = (*`IntType *) `RefType
 let extract_atomic_predicates = ref false
+
+let use_multiple_paths = ref false
 
 (** {6 Options for refinement type inference} *)
 

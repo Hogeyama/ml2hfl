@@ -248,6 +248,7 @@ let arg_spec =
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
           " Use refinement type based predicate discovery (obsolete)";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
+   "-mp", Arg.Set Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    "-gch", Arg.Unit (fun _ -> Global.predicate_discovery := Global.ConvexHull),
      " Generalize constraints of multiple function calls by using convex hull";
    "-gtc", Arg.Unit (fun _ -> Global.predicate_discovery := Global.TemplateBasedConstraintSolving),
