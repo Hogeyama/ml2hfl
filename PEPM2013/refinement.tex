@@ -16,12 +16,13 @@ the safety of the SHP.  Finally, MoCHi extracts abstraction types from
 the refinement types.  The abstraction types contain sufficient enough 
 predicates for refuting the infeasible error path.
 
-In this paper, we extend the refinement type inference 
-method~\cite{Unno2009} so that it can consider information from multiple 
-calling contexts in multiple SHPs to infer a general refinement type 
-that type-checks the multiple calling contexts, while preserving path- 
-and context- sensitivity.  Our method consists of two steps: constraint 
-generation and solving, which are respectively explained in 
+In our new method, we reuse the above framework for abstraction type 
+inference but extend the submodule for refinement type 
+inference~\cite{Unno2009} so that it can consider information from 
+multiple calling contexts in multiple SHPs to infer a general refinement 
+type that type-checks the multiple calling contexts, while preserving 
+path- and context- sensitivity.  Our method consists of two steps: 
+constraint generation and solving, which are respectively explained in 
 Sections~\ref{sec:cg} and \ref{sec:cs}.
 
 \subsection{Constraint Generation}
