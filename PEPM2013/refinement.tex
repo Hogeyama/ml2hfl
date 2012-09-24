@@ -123,12 +123,12 @@ variables whose upper bounds were successfully computed.  We then pick
 an equivalence class \(S_0 \in S / E\) (e.g., the largest one), and find 
 \(S_1\dots,S_n\) such that:
 \begin{itemize}
-\item[(a)] \(S_0 = S_1 \cup \dots \cup S_n\),
-\item[(b)] for each \(i \in \set{1,\dots,n}\), if \(S_i = 
+\item \(S_0 = S_1 \cup \dots \cup S_n\),
+\item for each \(i \in \set{1,\dots,n}\), if \(S_i = 
 \set{Q_1,\dots,Q_{\ell}}\), then \(\phi_{Q_1} \lor \dots \lor 
 \phi_{Q_{\ell}}\) implies \(\phi_{Q_1}' \land \dots \land 
 \phi_{Q_{\ell}}'\), and
-\item[(c)] for any \(i,j \in \set{1,\dots,n}\), if \(i \neq j\) and 
+\item for any \(i,j \in \set{1,\dots,n}\), if \(i \neq j\) and 
 \(S_i \cup S_j = \set{Q_1,\dots,Q_{\ell}}\), then \(\phi_{Q_1} \lor 
 \dots \lor \phi_{Q_{\ell}}\) does not imply \(\phi_{Q_1}' \land \dots 
 \land \phi_{Q_{\ell}}'\).
@@ -159,14 +159,14 @@ respect to the number of disjunctions and conjunctions.  To this end, we
 propose a new operator \(\mathcal{J}\) that combines the convex 
 hull~\cite{} and the logical interpolation~\cite{} \(\mathcal{I}\) 
 operators~\footnote{\todo{explain interpolant is not unique}}.  Let us 
-write \(\mathcal{CH}(\phi)\) to denote the convex hull of \(\phi\).  
+write \(\mathcal{H}(\phi)\) to denote the convex hull of \(\phi\).  
 Given \(\phi_1\) and \(\phi_2\) such that \(\phi_1\) implies \(\phi_2\), 
 the new operator \(\mathcal{J}(\phi_1,\phi_2)\) is defined as follows:
 \begin{eqnarray*}
 \mathcal{J}(\phi_1,\phi_2) =
 \left\{
 \begin{array}{ll}
-\mathcal{I}(\mathcal{CH}(\phi_1),\neg \mathcal{CH}(\neg \phi_2)) & (\mbox{if~}\mathcal{CH}(\phi_1)\mbox{~implies~}\neg \mathcal{CH}(\neg \phi_2)) \\
+\mathcal{I}(\mathcal{H}(\phi_1),\neg \mathcal{H}(\neg \phi_2)) & (\mbox{if~}\mathcal{H}(\phi_1) \Rightarrow \neg \mathcal{H}(\neg \phi_2)) \\
 \mathcal{I}(\phi_1,\phi_2) & (\mbox{otherwise})
 \end{array}
 \right.
