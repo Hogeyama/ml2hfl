@@ -1,2 +1,31 @@
 \section{Predicate Discovery}
 
+In this section, we propose a new predicate discovery method for 
+higher-order programs.  The method is an extension of our previous one 
+used in MoCHi~\cite{KobayashiPLDI2011}, which we briefly overview below.
+
+In MoCHi, predicates for abstracting each term of a given program are 
+specified as a kind of dependent types called abstraction types.  MoCHi 
+infers abstraction types automatically in a counterexample-guided manner. 
+ From an error path of an abstracted program (returned as a result of 
+higher-order model checking), MoCHi generates a straightline 
+higher-order program (SHP) which is safe if and only if the error path 
+is infeasible.  If the path is actually infeasible, MoCHi uses an 
+existing method~\cite{Unno2009} to infer refinement types that witness 
+the safety of the SHP.  Finally, MoCHi extracts abstraction types from 
+the refinement types.  The abstraction types contain sufficient enough 
+predicates for refuting the infeasible error path.
+
+In this paper, we extend the refinement type inference 
+method~\cite{Unno2009} so that it can consider information from multiple 
+calling contexts in multiple SHPs to infer a general refinement type 
+that type-checks the multiple calling contexts, while preserving path- 
+and context- sensitivity.  Our method consists of two steps: constraint 
+generation and solving, which are respectively explained in 
+Sections~\ref{sec:cg} and \ref{sec:cs}.
+
+\subsection{Constraint Generation}
+\label{sec:cg}
+
+\subsection{Constraint Solving}
+\label{sec:cs}
