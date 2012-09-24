@@ -1,0 +1,106 @@
+\newcommand{\todo}[1]{\textcolor{red}{***ToDo: #1***}}
+
+
+
+\newcommand{\aset}[1]{\{{#1}\}}
+\newcommand{\aseq}[1]{\langle#1\rangle}
+\newcommand{\adseq}[1]{\langle\hspace*{-0.1em}\langle{#1}\rangle\hspace*{-0.1em}\rangle}
+\newcommand{\sembrack}[1]{[\hspace*{-0.1em}[#1]\hspace*{-0.1em}]}
+\newcommand{\dom}{\mathop\textit{dom}\nolimits}
+\newcommand{\ran}{\mathop\textit{ran}\nolimits}
+\newcommand{\smallcolon}{\hspace*{-0.2em}:\hspace*{-0.2em}}
+\newcommand{\smallless}{\hspace*{-0.2em}<\hspace*{-0.2em}}
+
+\newcommand{\lvec}{\overrightarrow}
+\newcommand{\emptyseq}{\varepsilon}
+\newcommand{\inttype}{\texttt{int}}
+\newcommand{\unittype}{\texttt{unit}}
+\newcommand{\booltype}{\texttt{bool}}
+\newcommand{\reftype}[2]{\aset{{#1} \mid {#2}}}
+\newcommand{\oldreftype}[3]{\aset{{#1} \smallcolon {#2} \mid {#3}}}
+\newcommand{\funtype}[3]{{#1}\smallcolon{#2}\rightarrow{#3}}
+\newcommand{\sfuntype}[2]{{#1}\rightarrow{#2}}
+\newcommand{\univtype}[3]{\forall{#1}\smallcolon{#2}.{#3}}
+
+\newcommand{\univtobind}[1]{\aseq{{#1}}}
+
+\newcommand{\builttype}{{\it type}}
+\newcommand{\conjoftype}{{\it conj}}
+
+
+\newcommand{\ttst}[2]{\texttt{st}\:{#1}\:{\tt in}\:{#2}}
+\newcommand{\ttlet}[3]{\texttt{let}\:{#1}\,\texttt{=}\,{#2}\:\texttt{in}\:{#3}}
+\newcommand{\ttifndet}[2]{\texttt{if}\:{*}\:{\tt then}\:{#1}\:{\tt else}\:{#2}}
+\newcommand{\ttif}[3]{\texttt{if}\:{#1}\:\texttt{then}\:{#2}\:\texttt{else}\:{#3}}
+\newcommand{\ttfun}[3]{{#1}\,{#2}\:\texttt{=}\:{#3}}
+
+
+\newcommand{\ttlam}[2]{\lambda{#1}.{#2}}
+\newcommand{\ttfix}[2]{\texttt{fix}\:{#1}.{#2}}
+\newcommand{\ttapp}[2]{{#1}\:{#2}}
+\newcommand{\ttassert}[1]{\texttt{assert}\:{#1}}
+\newcommand{\ttassume}[1]{\texttt{assume}\:{#1}}
+\newcommand{\ttfail}{{\sf fail}}
+\newcommand{\ttsafe}{{\sf safe}}
+\newcommand{\ttmain}{{\tt main}}
+
+\newcommand{\tttrue}{1}
+\newcommand{\ttfalse}{0}
+
+\newcommand{\envmapsto}{\mapsto}
+\newcommand{\cpstype}{\star}
+\newcommand{\weak}{\preceq}
+
+%\newcommand{\wellscoped}[1]{{\it closed}({#1})}
+\newcommand{\scopevars}[1]{\textit{sv}({#1})}
+\newcommand{\free}[1]{\textit{fv}({#1})}
+%\newcommand{\wellscopedp}[2]{{\it closed}_{#1}({#2})}
+\newcommand{\latleq}{\preceq}
+\newcommand{\cty}[1]{\textit{ty}({#1})}
+\newcommand{\sty}[1]{\textit{sty}({#1})}
+\newcommand{\tyshape}[1]{\textit{tshape}({#1})}
+\newcommand{\utyshape}[1]{\textit{ushape}({#1})}
+\newcommand{\abs}[1]{\ddot{#1}}
+
+\newcommand{\reduce}[1]{\rightarrow_{#1}}
+
+\newcommand{\trans}[1]{\textit{tr}({#1})}
+
+\newcommand{\wildcard}{\_}
+
+\newcommand{\wpre}{\textit{wpre}}
+\newcommand{\godel}[1]{\lceil#1\rceil}
+
+\newcommand{\basevar}[1]{\underline{#1}}
+
+\newcommand{\evalterm}{\Downarrow_{\it  val}}
+
+\newcommand{\stepfix}{\Psi_{\it wp}}
+
+\newcommand{\wpretype}{{\it wpty}}
+
+\newcommand{\defaultargs}{\lvec{\beta}}
+
+\newcommand{\basedefaultargs}{\lvec{\alpha}}
+
+\newcommand{\args}{{\it args}}
+
+\newcommand{\notargs}{{\it args}^-}
+
+\newcommand{\vdashs}{\vdash^s}
+
+\newcommand{\mochi}{{\sf MoCHi}}
+\newcommand{\maxargs}{{\sf maxargs}}
+
+\newcommand{\head}{x_{\it hd}}
+
+\newcommand{\vdashuni}{\vdash_\forall}
+
+\newcommand{\cand}{\textit{cands}}
+
+\newcommand{\cex}{\leadsto}
+
+\newcommand{\pureintexps}{{\it pureExps}}
+
+\newcommand{\CG}[2]{\textit{cgen}\left(#1 \vdash #2\right)}
+\newcommand{\CS}[3]{\textit{cgen}\left(#1 \vdash #2 \leq #3\right)}
