@@ -65,8 +65,8 @@ variables in \(C_1 \cup \dots \cup C_n\) such that \(P\ E\ Q\) if and
 only if the predicate variables \(P\) and \(Q\) represent (possibly 
 different) refinement predicates for the same argument of the same 
 function in the original program.  \todo{add an example}  The constraint 
-solving algorithm exploits \(E\) to find general solutions for the 
-constraints.
+solving algorithm in Section~\ref{sec:cs} exploits \(E\) to find general 
+solutions for the constraints.
 \end{itemize}
 
 %%%We then use the constraint generation algorithm for terms defined in 
@@ -119,24 +119,22 @@ constraints.
 \subsection{Constraint Solving}
 \label{sec:cs}
 
-In fact, the previous algorithm can solve them 
-by using a technique called 
-interpolation~\cite{Henzinger2004,McMillan2005} from automated theorem 
-proving.
+%%%In fact, the previous algorithm can solve them by using 
 
-\todo{explain a high-level idea of the algorithm.} The constraint 
-solving proceeds as follows.  First, we compute the lower \(\lambda 
-\seq{x}.\phi_P\) and the upper \(\lambda \seq{x}.\phi_P'\) bounds for 
-each predicate variable \(P\) in the constraints (where \(\FV{\phi_P} 
-\subseteq \set{\seq{x}}\) and \(\FV{\phi_P'} \subseteq \set{\seq{x}}\)). 
- The computation of the upper bound for some predicate variable may 
-possibly fail because \todo{}.  Let \(S\) be the set of predicate 
-variables whose upper bounds were successfully computed.  We then pick 
-an equivalence class \(S_0 \in S / E\) (e.g., the largest one), and find 
-\(S_1\dots,S_n\) such that:
+\todo{explain a high-level idea of the algorithm.} Given a set \(C\) of 
+Horn clauses and an equivalence relation on the predicate variables in 
+\(C\), our new constraint solving algorithm proceeds as follows.  First, 
+we compute the lower \(\lambda \seq{x}.\phi_P\) and the upper \(\lambda 
+\seq{x}.\phi_P'\) bounds for each predicate variable \(P\) in \(C\) 
+(where \(\FV{\phi_P} \subseteq \set{\seq{x}}\) and \(\FV{\phi_P'} 
+\subseteq \set{\seq{x}}\)).  The computation of the upper bound for some 
+predicate variable may possibly fail because \todo{}.  Let \(S\) be the 
+set of predicate variables in \(C\) whose upper bounds were successfully 
+computed.  We pick an equivalence class \(S_0 \in S / E\) (e.g., the 
+largest one), and find \(S_1\dots,S_n\) such that:
 \begin{itemize}
 \item \(S_0 = S_1 \cup \dots \cup S_n\),
-\item for each \(i \in \set{1,\dots,n}\), if \(S_i = 
+\item for any \(i \in \set{1,\dots,n}\), if \(S_i = 
 \set{Q_1,\dots,Q_{\ell}}\), then \(\phi_{Q_1} \lor \dots \lor 
 \phi_{Q_{\ell}}\) implies \(\phi_{Q_1}' \land \dots \land 
 \phi_{Q_{\ell}}'\), and
@@ -145,35 +143,40 @@ an equivalence class \(S_0 \in S / E\) (e.g., the largest one), and find
 \dots \lor \phi_{Q_{\ell}}\) does not imply \(\phi_{Q_1}' \land \dots 
 \land \phi_{Q_{\ell}}'\).
 \end{itemize}
-We then pick some \(S_i = \set{Q_1,\dots,Q_{\ell}}\) (e.g., the largest 
-one) and find a formula \(\phi\) such that:
+We then pick some \(S_i = \set{Q_1,\dots,Q_{\ell}} \in 
+\set{S_1,\dots,S_n}\) (e.g., the largest one) and find a formula \(\phi\) 
+such that:
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
 \item \(\FV{\phi} \subseteq \set{\seq{x}}\).
 \end{itemize}
 %Terauchi2010
-The problem of finding such a formula \(\phi\) is a well-known logical 
-interpolation problem~\cite{}.  In other words, such a formula \(\phi\) 
-is obtained as an interpolant \(\mathcal{I}(\phi_{Q_1} \lor \dots \lor 
-\phi_{Q_{\ell}},\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}')\), where 
-an interpolant \(\mathcal{I}(\phi_1,\phi_2)\) of \(\phi_1\) and 
-\(\phi_2\) (such that \(\phi_1\) implies \(\phi_2\)) is a formula 
-\(\phi\) that satisfies the following conditions:
+We can compute such a formula \(\phi\) as an interpolant 
+\(\mathcal{I}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\phi_{Q_1}' 
+\land \dots \land \phi_{Q_{\ell}}')\) by using a technique called 
+interpolation~\cite{Henzinger2004,McMillan2005} from automated theorem 
+proving.  Here, an interpolant \(\mathcal{I}(\phi_1,\phi_2)\) of 
+\(\phi_1\) and \(\phi_2\) (such that \(\phi_1\) implies \(\phi_2\)) is a 
+formula \(\phi\) that satisfies the following conditions:\footnote{Note 
+here that interpolants of \(\phi_1\) and \(\phi_2\) are not unique.  
+Actually, existing theorem 
+provers~\cite{Henzinger2004,McMillan2005,Beyer2008} return one of them.  
+We here denote such an interpolant as \(\mathcal{I}(\phi_1,\phi_2)\).}
 \begin{itemize}
 \item \(\phi_1\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_2\), and
 \item \(\FV{\phi} \subseteq \FV{\phi_1} \cap \FV{\phi_2}\).
 \end{itemize}
-However, the conditions for interpolants are not sufficient for our 
-purpose: We want to obtain as simple interpolant as possible with 
+The above conditions of interpolants, however, are not sufficient for 
+our purpose: We want to obtain as simple interpolant as possible with 
 respect to the number of disjunctions and conjunctions.  To this end, we 
-propose a new operator \(\mathcal{J}\) that combines the convex 
-hull~\cite{} and the logical interpolation~\cite{} \(\mathcal{I}\) 
-operators~\footnote{\todo{explain interpolant is not unique}}.  Let us 
-write \(\mathcal{H}(\phi)\) to denote the convex hull of \(\phi\).  
-Given \(\phi_1\) and \(\phi_2\) such that \(\phi_1\) implies \(\phi_2\), 
-the new operator \(\mathcal{J}(\phi_1,\phi_2)\) is defined as follows:
+propose a new heuristic operator \(\mathcal{J}\) that combines the 
+interpolation \(\mathcal{I}\) and convex hull operators.  Let us write 
+\(\mathcal{H}(\phi)\) to denote the convex hull of \(\phi\).  Given 
+formulas \(\phi_1\) and \(\phi_2\) such that \(\phi_1\) implies 
+\(\phi_2\), the new operator \(\mathcal{J}(\phi_1,\phi_2)\) is defined 
+as follows:
 \begin{eqnarray*}
 \mathcal{J}(\phi_1,\phi_2) =
 \left\{
@@ -183,7 +186,18 @@ the new operator \(\mathcal{J}(\phi_1,\phi_2)\) is defined as follows:
 \end{array}
 \right.
 \end{eqnarray*}
-\todo{explain why it works better in most cases}
+\todo{explain why it works better in most cases}  We thus compute 
+\(\mathcal{J}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\phi_{Q_1}' 
+\land \dots \land \phi_{Q_{\ell}}')\) as a candidate solution for 
+\(Q_1,\dots,Q_{\ell}\).  Note here that it is not always a genuine 
+solution for all the predicates \(Q_1,\dots,Q_{\ell} \in S_i\) because 
+\todo{}.  Therefore, as a post-processing, we find a maximal subset of 
+\(S_i\) such that \(\mathcal{J}(\phi_{Q_1} \lor \dots \lor 
+\phi_{Q_{\ell}},\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}')\) is in 
+fact a solution for every element in the subset.
+
+\todo{add examples}
+
 
 %%%infer a refinement type of each 
 %%%subexpression \(e\) of an ordinary ML type \(\tau\):  The method first 
