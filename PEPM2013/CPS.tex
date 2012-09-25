@@ -3,7 +3,7 @@
 %\TODO{Add discussion about the increase of the order of programs}
 
 This section formalizes selective CPS transformation for abstracted
-programs.  As stated in Sect.~\ref{sec:intro}, the idea of the selective
+programs.  As stated in Section~\ref{sec:intro}, the idea of the selective
 CPS transformation is to distinguish whether a continuation parameter
 should be inserted to each expression or not based on whether it has a
 side-effect.  When a function application has no side-effects, we need
@@ -71,7 +71,7 @@ not.
 %transforms functions with side effects.
 
 We first define the source language of selective CPS transformation.
-The language is the same as the one in Sect.~\ref{sec:language} except: (i) the set
+The language is the same as the one in Section~\ref{sec:language} except: (i) the set
 of terms is extended with non-deterministic branch $\Br{t_1}{t_2}$, and (ii)
 a label $\ell \in \{\NC,\IC\}$ is attached to each function type, like
 $\TFunL{\ell}{\tau_1}{\tau_2}$.
@@ -94,7 +94,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 %will be reduced statically in the translation.
 
 \begin{figure}[tp]
-\begin{minipage}{0.5\textwidth}
+\begin{minipage}{0.47\textwidth}
 
 \infax[CPS-Const]
  {\CPS{\Gamma}{n}{\INT}{\NC}{n}}
@@ -136,8 +136,11 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 \infrule[CPS-AppC]
  {\CPS{\Gamma}{t_0}{\TFunL{\ell}{\tau_1}{\tau}}{\ell_0}{t_0'} \andalso
   \CPS{\Gamma}{t_1}{\tau_1}{\ell_1}{t_1'}}
- {\CPS{\Gamma}{\App{t_0}{t_1}}{\tau}{\IC}
-  {\Abs{k}{\SApp{\ell_0}{t_0'}{\Abs{x_0}{\SApp{\ell_1}{t_1'}{\Abs{x_1}{\SApp{\ell}{\App{x_0}{x_1}}{k}}}}}}}}
+ {
+ \begin{array}{l}
+  \Gamma \p \App{t_0}{t_1} \COL \tau, \IC \leadsto \\
+  \qquad \Abs{k}{\SApp{\ell_0}{t_0'}{\Abs{x_0}{\SApp{\ell_1}{t_1'}{\Abs{x_1}{\SApp{\ell}{\App{x_0}{x_1}}{k}}}}}}
+ \end{array}}
 
 %\medskip
 %
@@ -163,7 +166,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 \medskip
 
 \infrule[CPS-IfN]
- {\CPS{\Gamma}{t_1}{\INT}{\NC}{t_1'} \andalso
+ {\CPS{\Gamma}{t_1}{\INT}{\NC}{t_1'} \\
   \CPS{\Gamma}{t_2}{\tau}{\NC}{t_2'} \andalso
   \CPS{\Gamma}{t_3}{\tau}{\NC}{t_3'}}
  {\CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\NC}
@@ -172,26 +175,29 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 \medskip
 
 \infrule[CPS-IfC]
- {\CPS{\Gamma}{t_1}{\INT}{\ell_1}{t_1'} \andalso
+ {\CPS{\Gamma}{t_1}{\INT}{\ell_1}{t_1'} \\
   \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \andalso
   \CPS{\Gamma}{t_3}{\tau}{\ell_3}{t_3'}}
  {\begin{array}{l}
-   \CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}{} \\\qquad
-   {\Abs{k}{\SApp{\ell_1}{t_1}{\Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}}}}}
+   \CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}{}{\lambda k.\,\mathit{App}^{\ell_1}(t_1,} \\
+   \qquad \Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}})
   \end{array}}
 
 \medskip
 
-\infrule[CPS-Br]
+ \infrule[CPS-Br]
  {\CPS{\Gamma}{t_1}{\tau}{\ell_1}{t_1'} \andalso
   \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'}}
- {\CPS{\Gamma}{\Br{t_1}{t_2}}{\tau}{\IC}
-  {\Abs{k}{\If{\Br{0}{1}}{\SApp{\ell_1}{t_2'}{k}}{\SApp{\ell_2}{t_3'}{k}}}}}
+ {
+ \begin{array}{l}
+  \Gamma \p \Br{t_1}{t_2} \COL \tau, \IC \leadsto \\
+  \qquad \Abs{k}{\If{\Br{0}{1}}{\SApp{\ell_1}{t_2'}{k}}{\SApp{\ell_2}{t_3'}{k}}}
+ \end{array}}
 
 \medskip
 
 \infrule[CPS-Prog]
- {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \andalso
+ {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \\
   t_i \text{ is not of the form } \Abs{x}{t_i'} \\
   \Gamma(f_i) \text{ is of the form } \TFunL{\ell_1}{\tau_{i1}}{\TFunL{\ell_2}{\tau_{i2}}{\TFunL{\ell_{j-1}}{\cdots}{\TFunC{\tau_{ij}}{\tau}}}} \\
   \CPS{\Gamma}{v_i}{\Gamma(f_i)}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
@@ -342,44 +348,46 @@ On the other hand, in (b), a continuation parameter is inserted.
 \begin{minipage}{\textwidth}
 \infer{
 \CPS{\Gamma}
-     {\Abs{x}{\Abs{y}{\assert(x = y)}}}
+     {\Abs{x}{\Abs{y}{t}}}
      {\TFunN{\INT}{\TFunC{\INT}{\INT}}}{\NC}
-     {\Abs{x}{\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}}}
+     {\Abs{x}{\Abs{y}{\Abs{k}{\App{t'}{k}}}}}
 }{
 \infer{
  \CPS{\Gamma_x}
-     {\Abs{y}{\App{\assert}{(x = y)}}}
+     {\Abs{y}{t}}
      {\TFunC{\INT}{\INT}}{\NC}
-     {\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}}
+     {\Abs{y}{\Abs{k}{\App{t'}{k}}}}
 }{
 \infer{
  \CPS{\Gamma_{xy}}
-     {\App{\assert}{(x = y)}}
+     {t}
      {\INT}{\IC}
-     {\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}
+     {\Abs{k}{\App{t'}{k}}}
 }{
  \CPS{\Gamma_{xy}}{\assert}{\TFunC{\INT}{\INT}}{\NC}{\assertcps}
   &
- \infer{\CPS{\Gamma_{xy}}{x=y}{\INT}{\NC}{x=y}}{\vdots}
+ \quad \vdots \quad
 }}}
 (a)
 
 \infer{
- \CPS{\Gamma}
-     {\Abs{x}{\Abs{y}{\assert(x = y)}}}
-     {\TFunC{\INT}{\TFunC{\INT}{\INT}}}{\NC}
-     {\Abs{x}{\Abs{k'}{\App{k'}{(\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}})}}}}
+ \begin{array}{r}
+ \Gamma \p
+ \Abs{x}{\Abs{y}{t}} \COL
+ \TFunC{\INT}{\TFunC{\INT}{\INT}}, \NC \leadsto \qquad \\
+ \Abs{x}{\Abs{k'}{\App{k'}{(\Abs{y}{\Abs{k}{\App{t'}{k}}})}}}
+ \end{array}
 }{
 \infer{
  \CPS{\Gamma_x}
-     {\Abs{y}{\App{\assert}{(x = y)}}}
+     {\Abs{y}{t}}
      {\TFunC{\INT}{\INT}}{\NC}
-     {\Abs{y}{\Abs{k}{\App{\App{\assertcps}{(x=y)}}{k}}}}
+     {\Abs{y}{\Abs{k}{\App{t'}{k}}}}
 }{\vdots}}
 (b)
 \end{minipage}
-\caption{Transformation of $\Abs{x}{\Abs{y}{\assert(x =
-y)}}$. ($\Gamma_x=\Gamma,x\COL\INT$.
+\caption{Transformations of $\Abs{x}{\Abs{y}{\assert(x =
+y)}}$. ($t = \assert(x =y)$, $t' = \assertcps(x =y)$, $\Gamma_x=\Gamma,x\COL\INT$.
 $\Gamma_{xy}=\Gamma_x,y\COL\INT$. $\App{\App{\assertcps}{b}}{k}$ asserts
 $b$ and returns $\App{k}{()}$)} \label{fig:cps-example}
 \end{figure}

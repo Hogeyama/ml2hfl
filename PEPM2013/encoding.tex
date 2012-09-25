@@ -18,7 +18,7 @@ operators.
 % \item Verification for higher-order programs with integers based on our previous framework.
 %\end{enumerate}
 Section~\ref{sec:recdata} formalizes the encoding of recursive data
-structures, and Sect.~\ref{sec:control} introduces the extension for
+structures, and Section~\ref{sec:control} introduces the extension for
 control operations.
 
 \begin{figure}[t]
@@ -93,11 +93,14 @@ as follows.
 \begin{alltt}
 let nil = (0, fun _ -> fail)
 let cons x (len,f) =
-  let f' i = if i = 0 then x else f (i-1) in (len+1, f')
+  let f' i = if i = 0 then x else f (i-1) in
+    (len+1, f')
 let is_nil (len,f) = len = 0
-let head (len,f) = if is_nil (len,f) then fail else f 0
+let head (len,f) =
+  if is_nil (len,f) then fail else f 0
 let tail (len,f) =
-  (if is_nil (len,f) then fail else len-1), fun i -> f (i+1)
+  (if is_nil (len,f) then fail else len-1),
+   fun i -> f (i+1)
 \end{alltt}
 \texttt{nil} is translated into the pair of length $0$ and the
 function that always fails.  \texttt{cons x xs} is translated into the
@@ -268,14 +271,16 @@ $\Node{\LEAF}{\Node{\LEAF}{\LEAF}}$ is encoded into a function $\{[]
 some integers.
 Here is another example, the encoding of a pattern matching.
 \begin{alltt}
-match x with Constr_1(x1, x2, ...) -> t | Constr_2(...) -> ...
+match x with Constr_1(x1, x2, ...) -> t
+           | Constr_2(...) -> ...
 \end{alltt}
 The expression above is encoded to the following expression.
 \begin{alltt}
 let Constr_1 = 1 in ... let Constr_n = n in
-  match x nil with Constr_1 -> let x1 xs = x (cons 1 xs) in ...
-                               let xn xs = x (cons n xs) in t'
-                 | Constr_2 -> ...
+  match x nil with
+      Constr_1 -> let x1 xs = x (cons 1 xs) in ...
+                  let xn xs = x (cons n xs) in t'
+    | Constr_2 -> ...
 \end{alltt}
 Here, \texttt{t'} is the encoding of \texttt{t}. The pattern matching in
 trees is translated to the pattern matching in labels, represented as

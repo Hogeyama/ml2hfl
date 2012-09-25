@@ -35,7 +35,8 @@ resolve the gap between the evaluation strategies of higher-order
 recursion schemes and higher-order boolean programs, we translate the
 call-by-value program into a call-by-name program in Step 2. If the
 abstracted program is safe, the original functional program is also
-safe.  If not, we check whether the original program is in fact unsafe
+safe.  If not, by using a counterexample produced by the higher-order
+model checker, we check whether the original program is in fact unsafe
 or the abstraction is too coarse in Step 4. If the latter, we discover
 new predicates in Step 5.  We repeat these steps until we find whether
 the program is safe or not.
@@ -107,7 +108,7 @@ We discuss each problem and explain our approach below.
       program. As a result, verification of a program did not succeed
       until an appropriate set of predicates is found for every
       function.  For example, consider the program shown in
-      Fig.~\ref{fig:sum}.  The program can be successfully verified if
+      Figure~\ref{fig:sum}.  The program can be successfully verified if
       we abstract the program by using predicates $\Abs{y}{y \geq 0}$
       for the second argument of \texttt{add} and $\Abs{r}{r \geq x}$
       for the return values of \texttt{add} and \texttt{sum}.  The
@@ -115,7 +116,8 @@ We discuss each problem and explain our approach below.
 \begin{figure}[t]
 \begin{alltt}
 let add x y = x + y
-let rec sum x = if x <= 0 then 0 else add x (sum (x-1))
+let rec sum x =
+  if x <= 0 then 0 else add x (sum (x-1))
 let main x = assert (sum x >= x)
 \end{alltt}
 \caption{Example Program for Selective Predicate Abstraction}
@@ -159,7 +161,32 @@ let rec sum () =
 let main () = assert (sum ())
 \end{alltt}
       In this way the selective predicate abstraction improves the
-      precision of abstraction and reduce the number of CEGAR iterations.
+      precision of abstraction and reduces the number of CEGAR iterations.
+
+      Even if we use the selective predicate abstraction, the previous
+      version of MoCHi sometimes cannot verify a program since MoCHi may
+      find too specific predicates.  For example, consider the program
+      shown in Figure~\ref{fig:copy}.
+\begin{figure}[t]
+\begin{alltt}
+let rec copy x = if x=0 then 0 else 1 + copy (x-1)
+let main n = assert (copy (copy n) = n)
+\end{alltt}
+\caption{Example Program for New Predicate Discovery}
+\label{fig:copy}
+\end{figure}
+      The program can be successfully verified if we abstract the
+      program by using predicates $\Abs{r}{r = x}$ for the return values
+      of \texttt{copy}.  The old MoCHi, however, continues to find
+      predicates such as $\Abs{v}{v = 0}$, $\Abs{v}{v = 1}$, ...,
+      infinitely for the argument and the return values.
+
+      To discover general predicates, we introduce a new refinement type
+      inference method for straightline higher-order programs.
+      The method infers general refinement types that type-check
+      multiple call-sites by considering information from the multiple
+      calling contexts in multiple paths.  The new method discovers the
+      predicate $\Abs{r}{r = x}$ for the return values of \texttt{copy}.
 
 %%The first problem increases the number of CEGAR-cycle.
 %To see the first problem, consider the following program.
@@ -212,18 +239,18 @@ let main () = assert (sum ())
 
 \item Another efficiency problem is caused by CPS transformation.  As
       stated above, our approach needs CPS transformation to resolve the
-      gap between the evaluation strategies of higher-order recursion schemes and
-      higher-order boolean programs.  However, CPS transformation increases the
-      order\footnote{The order of program $t$ is the maximum order of
-      the types of functions in $t$.  The order of type $\tau$ is
-      defined by $\mathit{order}(\INT)=0$,
+      gap between the evaluation strategies of higher-order recursion
+      schemes and higher-order boolean programs.  However, CPS
+      transformation increases the order\footnote{The order of program
+      $t$ is the maximum order of the types of functions in $t$.  The
+      order of type $\tau$ is defined by $\mathit{order}(\INT)=0$,
       $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
       \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}
-      of programs and the growth of the order is not bounded by a constant.
-      Since the complexity of model checking of higher-order recursion
-      scheme is $n$-EXPTIME complete for order-$n$ recursion scheme, the
-      increase of the order of an input is crucial to the verification
-      time.
+      of programs and the growth of the order is not bounded by a
+      constant.  Since the complexity of model checking of higher-order
+      recursion scheme is $n$-EXPTIME complete for order-$n$ recursion
+      scheme, the increase of the order of an input is crucial to the
+      verification time.
 %
       For example, consider the following program.
 \begin{alltt}
@@ -326,12 +353,13 @@ The rest of this paper is organized as follows.
 %higher-order programs with integers, which is the base of our framework
 %described in this paper.
 We first formalize the source language of verification in
-Sect.~\ref{sec:language}.  Section~\ref{sec:opt} formalizes the
-selective predicate abstraction and the selective CPS transformation.
-Section~\ref{sec:extension} shows the language extensions for recursive
-data structures and control operations.  Section~\ref{sec:experiments}
-reports experiments.  Section~\ref{sec:related} discusses related work
-and Sect.~\ref{sec:conclusion} concludes the paper.
+Section~\ref{sec:language}.  Section~\ref{sec:opt} formalizes the
+selective predicate abstraction, the new predicate discovery, and the
+selective CPS transformation.  Section~\ref{sec:extension} shows the
+language extensions for recursive data structures and control
+operations.  Section~\ref{sec:experiments} reports experiments.
+Section~\ref{sec:related} discusses related work and
+Section~\ref{sec:conclusion} concludes the paper.
 
 
 

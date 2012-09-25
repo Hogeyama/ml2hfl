@@ -10,7 +10,7 @@ In this section, we introduce the source language of our verification method.
 
 The source language is a simply-typed call-by-value higher-order
 functional language with recursion and integers (a la ``PCF'') with the
-syntax shown in Fig.~\ref{fig:source-syntax}.
+syntax shown in Figure~\ref{fig:source-syntax}.
 %  A program consists a set of top-level functions.
 The meta-variable $\OP$ ranges over the set of operators over integers.
 The expressions are standard except that there is a primitive $\FAIL$
@@ -18,7 +18,7 @@ that aborts a program.  We use $\TRUE$ and $\FALSE$ as aliases of $0$
 and $1$, and we write $\Assert{t}$ for $\If{t}{0}{\FAIL}$,
 $\Let{x}{t_1}{t_2}$ for $(\Abs{x}{t_2})\ t_1$, and $(v_1\ \OP\ v_2)$ for $\Op{v_1,v_2}$.  We
 assume that (i) a program is well-typed in the standard simple type system,
-where the set of types is given in Fig.~\ref{fig:source-syntax}, (ii)
+where the set of types is given in Figure~\ref{fig:source-syntax}, (ii)
 every function in a program $D$ has a function type, and (iii) $D$ contains a
 distinguished function symbol $\main \in \set{f_1,\dots,f_n}$ whose type
 is $\TFun{\INT}{\INT}$.

@@ -5,7 +5,7 @@
 \label{sec:opt}
 
 This section introduces optimizations for each phase of predicate
-abstraction (Step 1) and CPS transformation (Step 2) in Fig.~\ref{fig:cegar}.
+abstraction (Step 1) and CPS transformation (Step 2) in Figure~\ref{fig:cegar}.
 
 \vspace{-2mm}
 
@@ -17,9 +17,9 @@ selective predicate abstraction.
 
 The idea of selective predicate abstraction is to apply predicate
 abstractions only to a certain set of functions and inline the other
-functions.  For example, the program in Fig.~\ref{fig:sum} can
+functions.  For example, the program in Figure~\ref{fig:sum} can
 be verified by abstracting only \texttt{sum} and \texttt{main} as stated
-in Sect.~\ref{sec:intro}.
+in Section~\ref{sec:intro}.
 
 We formalize selective predicate abstraction as an extension of the
 previous predicate abstraction.  In the previous framework, predicate
@@ -161,11 +161,13 @@ previous predicate abstraction.
 %\end{figure}
 
 \begin{figure}[t]
-\begin{minipage}{0.5\textwidth}
+\begin{minipage}{0.47\textwidth}
 \infrule[A-App]
  {x\notin\Dom{E} \andalso \Gamma(x)=(y_1\COL\sigma_1 \to \cdots \to y_n\COL\sigma_n \to\sigma) \\
-  \Abst{\Gamma,y_1:\sigma_1,\dots,y_{i-1}:\sigma_{i-1}}{E}{v_i}{[v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\sigma_i}{e_i} \\
-  \text{for each $i\in\set{1,\ldots,n}$}}
+ \begin{array}{ll}
+  \Gamma,y_1:\sigma_1,\dots,y_{i-1}:\sigma_{i-1}\mid E \vdash \\
+  \quad v_i \COL [v_1/y_1,\ldots,v_{i-1}/y_{i-1}]\sigma_i \leadsto e_i
+ \end{array} \text{for each $i\in\set{1,\ldots,n}$}}
  {\Abst{\Gamma}{E}{\App{x}{\seq{v}}}{[\seq{v}/\seq{y}]\sigma}{
   \Let{y_1}{e_1}{\cdots\Let{y_n}{e_n}{\App{x}{\seq{y}}}}}}
 
@@ -196,7 +198,7 @@ previous predicate abstraction.
 \end{figure}
 
 Figure~\ref{fig:abst-example} shows a part of the abstraction of the
-program shown in Fig.~\ref{fig:sum} with $E =
+program shown in Figure~\ref{fig:sum} with $E =
 (\mathtt{add}=\Abs{x}{\Abs{y}{x+y}})$.  Due to the restriction of the
 source language of previous predicate
 abstraction~\cite{KobayashiPLDI2011}, we translated the term
@@ -207,20 +209,15 @@ inlined since the definition of \texttt{add} is in $E$.
 
 \begin{figure}[t]
 \infer{
- \Abst
-  {\Gamma}
-  {E}
-  {\Let{s}{\App{\mathtt{sum}}{(x-1)}}{\App{\App{\mathtt{add}}{x}}{s}}}
-  {\INT[\Abs{r}{r \geq x}]}{\Let{s}{\App{\mathtt{sum}}{()}}{t}}
+\begin{array}{rr}
+ \Gamma \mid
+ E \vdash
+ \Let{s}{\App{\mathtt{sum}}{(x-1)}}{\App{\App{\mathtt{add}}{x}}{s}} \COL
+ \INT[\Abs{r}{r \geq x}] \leadsto \quad \\
+ \Let{s}{\App{\mathtt{sum}}{()}}{t}
+\end{array}
 }{
-\infer{
- \Abst
-  {\Gamma}
-  {E}
-  {\App{\mathtt{sum}}{(x-1)}}
-  {\INT[\Abs{r}{r \geq x-1}]}
-  {\App{\mathtt{sum}}{()}}}
- {\vdots}
+\vdots \qquad
  &
 \infer{
  \Abst
@@ -247,6 +244,48 @@ inlined since the definition of \texttt{add} is in $E$.
   $t = \If{s}{\TRUE}{*}$.)}
 \label{fig:abst-example}
 \end{figure}
+%\begin{figure}[t]
+%\infer{
+% \Abst
+%  {\Gamma}
+%  {E}
+%  {\Let{s}{\App{\mathtt{sum}}{(x-1)}}{\App{\App{\mathtt{add}}{x}}{s}}}
+%  {\INT[\Abs{r}{r \geq x}]}{\Let{s}{\App{\mathtt{sum}}{()}}{t}}
+%}{
+%\infer{
+% \Abst
+%  {\Gamma}
+%  {E}
+%  {\App{\mathtt{sum}}{(x-1)}}
+%  {\INT[\Abs{r}{r \geq x-1}]}
+%  {\App{\mathtt{sum}}{()}}}
+% {\vdots}
+% &
+%\infer{
+% \Abst
+%  {\Gamma'}
+%  {E}
+%  {\App{\App{\mathtt{add}}{x}}{s}}
+%  {\INT[\Abs{r}{r \geq x}]}
+%  {t}
+%}{
+%\infer{
+% \Abst
+%  {\Gamma'}
+%  {E}
+%  {x + s}
+%  {\INT[\Abs{r}{r \geq x}]}
+%  {t}
+%}{\vdots}}}
+%
+%\caption{Abstraction of $\App{\App{\mathtt{add}}{x}}{(\App{\mathtt{sum}}{(x-1)})}$.
+% ($*$ is a syntactic sugar for $\Br{\TRUE}{\FALSE}$.
+%  $\Gamma = x\COL\INT[], \mathtt{sum}\COL(\TFun{y\COL\INT[]}{\INT[\Abs{r}{r \geq y}]}),~ x>0$.
+%  $\Gamma' = \Gamma,~s\COL\INT[\Abs{s}{s \geq x-1}]$.
+%  $E = (\mathtt{add}=\Abs{x}{\Abs{y}{x+y}})$.
+%  $t = \If{s}{\TRUE}{*}$.)}
+%\label{fig:abst-example}
+%\end{figure}
 
 For some $D$ and $E$, there is $D'$ such that
 $\AbstProg{\Gamma}{E}{D}{D'}$ as long as there is no cyclic definitions

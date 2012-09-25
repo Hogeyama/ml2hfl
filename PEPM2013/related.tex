@@ -1,10 +1,10 @@
 \section{Related Work}
 \label{sec:related}
 
-\TODO{Add UnnoPPDP, DML, other framework based on dependent types}
+\TODO{Add UnnoPPDP, DML, }
 
 There are several
-methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Chin2003}
+methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Chin2003,Unno2009}
 that are aimed at verification of functional programs with data
 structures.
 
@@ -47,6 +47,23 @@ than $i$,'' while they cannot.
 %with the properties of list elements related to its indices like that
 %the $i$-th element of a list is greater than $i$.
 
+Xi and Pfenning~\cite{Xi1999} have proposed a dependently-typed language
+Dependent ML.  Its type system captures program properties such as
+absence of array bounds errors and violations of data structure
+invariants.  Unlike our method, Dependent ML requires users to provide
+dependent types of recursive functions.
+
+Unno and Kobayashi~\cite{Unno2009} have proposed a dependent type
+inference algorithm for a higher-order function language with recursive
+data structures.  Their method prepares templates for dependent types
+and generates constraints.  The constraints are solved by using an
+interpolating theorem prover.
+
+The dependent type checking and inferences stated
+above~\cite{Unno2010,Rondon2008,Kawaguchi2009,Unno2009} does not support
+intersection types that are needed to check usage of
+functions invoked from multiple call-sites, while our method support.
+
 Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
 statically reasoning about containers.  The proposed method is based on
 an abstract interpretation for containers.  Their method is similar to
@@ -55,7 +72,7 @@ locations to values.  They consider only a client-side use of specific
 data structures (i.e. containers) such as primitive data structures and
 those defined in a standard library.  In contrast, our method can deal
 with user-defined data structures.  Moreover, as discussed in
-Sect.~\ref{sec:extension}, our method is strictly more expressive than
+Section~\ref{sec:extension}, our method is strictly more expressive than
 their method.
 
 Chin et al.~\cite{Chin2003} have proposed sized type inference.  Their
@@ -65,6 +82,7 @@ inclusion relation and the membership relation on lists.  For example, their met
 can verify that \texttt{exists x xs} returns true if and only if
 \texttt{xs} has \texttt{x} as an element.  The method, however, cannot
 properly handle higher-order functions.
+
 
 Suter et al.~have proposed a verification method for first-order
 functional programs that manipulate recursive data

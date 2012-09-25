@@ -7,22 +7,23 @@ from a program by CPS transformation~\cite{Nielsen2001}.
 The following program calculates factorial and raises an exception if
 a negative number or zero is given.
 \begin{alltt}
-exception NotPositive
+exception NotPos
 let rec fact n =
-  if n <= 0 then raise NotPositive
-  else try n * fact (n - 1) with NotPositive -> 1
-let main n = try fact n with NotPositive -> assert (n <= 0); 0
+  if n <= 0 then raise NotPos
+  else try n * fact (n - 1) with NotPos -> 1
+let main n = try fact n with
+               NotPos -> assert (n <= 0); 0
 \end{alltt}
 We can translate this program to an exception-free program by CPS transformation as follows:
 \begin{alltt}
-type exc = NotPositive
+type exc = NotPos
 let rec fact n k exn =
-  if n <= 0 then exn NotPositive
-  else let exn' e = match e with NotPositive -> k 1 in
+  if n <= 0 then exn NotPos
+  else let exn' e = match e with NotPos -> k 1 in
          fact (n - 1) (fun r -> k (n * r))) exn'
 let main n k =
-  fact n k (fun e -> match e with NotPositive -> assert (n <= 0); k 0
-                                | _ -> assert false)
+  fact n k (fun e ->
+    match e with NotPos -> assert (n <= 0); k 0)
 \end{alltt}
 Once the exception is removed, we can apply our verification method to the
 program.

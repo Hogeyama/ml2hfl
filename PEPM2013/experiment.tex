@@ -10,7 +10,7 @@ verifier for higher-order programs with lists and exceptions.
 %The verifier takes an OCaml program as input.
 Our verifier uses TRecS~\cite{KobayashiPOPL2009,KobayashiPPDP2009} as
 the underlying higher-order model checker (for Step 3 in
-Fig.~\ref{fig:cegar}), and uses CSIsat~\cite{Beyer2008} for predicate
+Figure~\ref{fig:cegar}), and uses CSIsat~\cite{Beyer2008} for predicate
 discovery (for Step 5).  CVC3~\cite{Barrett2007} is used for unsafety
 check (for Step 4) and predicate abstraction (for Step 1).
 
@@ -27,42 +27,43 @@ can be tested and all programs are available at
 \begin{table}
 \caption{Results of preliminary experiments}
 \label{tbl:exp}
+\small
 \begin{center}
 \begin{tabular}{|l|r|r|r|r|r|r|r|}
 \hline
             &       &    & \multicolumn{4}{|c|}{cycle, time [sec]} \\
 \cline{4-7}
-program    & size & order & none &     C. &   A. &    C. and A. \\
+program    & S & O & none &     C. &   A. &    C. \& A. \\
 \hline
 %intro1     &    27&      2& 1,  0.07 & 1,  0.06 & 0,  0.06 & 0,  0.06 \\
 %intro2     &    29&      2& 1,  0.06 & 1,  0.10 & 0,  0.06 & 0,  0.06 \\
 %intro3     &    30&      2& 1,  0.08 & 1,  0.07 & 0,  0.07 & 0,  0.06 \\
- sum        &    24&      1& 2, 0.14 & 2, 0.13 & 1, 0.09 & 1, 0.08 \\
-\bf  mult       &\bf     31&\bf       1&\bf  5, 48.94 &\bf  4, 42.49 &\bf  3, 0.18 &\bf  2, 0.14 \\
-\bf  max        &\bf     42&\bf       2&\bf  5, 2.17 &\bf  5, 0.85 &\bf  1, 0.20 &\bf  0, 0.08 \\
- mc91       &    32&      1& 2, 0.20 & 2, 0.19 & 2, 0.18 & 2, 0.16 \\
-\bf  ack        &\bf     53&\bf       1&\bf  - &\bf  - &\bf  1, 0.14 &\bf  1, 0.10 \\
+\!sum        &    24&      1& 2, 0.14 & 2, 0.13 & 1, 0.09 & 1, 0.08 \\
+\!\bf  mult       &\bf     31&\bf       1&\bf  5, 48.94 &\bf  4, 42.49 &\bf  3, 0.18 &\bf  2, 0.14 \\
+\!\bf  max        &\bf     42&\bf       2&\bf  5, 2.17 &\bf  5, 0.85 &\bf  1, 0.20 &\bf  0, 0.08 \\
+\!mc91       &    32&      1& 2, 0.20 & 2, 0.19 & 2, 0.18 & 2, 0.16 \\
+\!\bf  ack        &\bf     53&\bf       1&\bf  - &\bf  - &\bf  1, 0.14 &\bf  1, 0.10 \\
 %repeat     &    37&      2&        - &        - &        - &        - \\
 %fhnhn      &    37&      2&  ,       &  ,       &  ,       &  ,       \\
 %hrec       &    34&      2& 2,  0.14 & 2,  0.15 & 1,  0.10 & 1,  0.09 \\
 %neg        &    47&      2& 1,  0.20 & 1,  0.13 & 0,  0.07 & 0,  0.06 \\
 %a-prod     &    70&      2& 8,  2.80 &        - & 4,       &  ,       \\
-\bf  a-cppr     & \bf   149&\bf       2&\bf  13, 359.88 &\bf  12, 10.14 &\bf  6, 1.13 &\bf  6, 1.18 \\
+\!\bf  a-cppr     & \bf   \!149&\bf       2&\bf  \!\!13, 359.88 &\bf  \!\!12, 10.14 &\bf  6, 1.13 &\bf  6, 1.18 \\
 %a-init     &    96&      2&  ,       &  ,       &  ,       &  ,       \\
-\bf  a-max      &\bf     70&\bf       2&\bf  - &\bf  6, 20.02 &\bf  3, 2.04 &\bf  3, 1.29 \\
-\bf l-zipunzip &\bf     81&\bf       2&\bf  - &\bf  6, 1.24 &\bf  - &\bf  2, 0.14 \\
- l-zipmap   &    65&      2& 6, 0.76 & 5, 1.04 & 2, 0.13 & 2, 0.13 \\
- hors       &    64&      2& 2, 0.28 & 2, 0.15 & 1, 0.10 & 1, 0.08 \\
- e-simple   &    27&      2& 1, 0.08 & 1, 0.07 & 0, 0.06 & 0, 0.06 \\
- e-fact     &    55&      2& 2, 0.12 & 2, 0.10 & 2, 0.09 & 2, 0.10 \\
- r-lock     &    54&      1& 6, 0.49 & 6, 0.30 & 0, 0.07 & 0, 0.07 \\
-\bf  r-file     &\bf    168&\bf       1&\bf  - &\bf  13, 5.55 &\bf  - &\bf  7, 0.79 \\
- sum-e      &    26&      1& 0, 0.06 & 0, 0.08 & 0, 0.06 & 0, 0.07 \\
- mult-e     &    33&      1& 1, 0.10 & 1, 0.11 & 0, 0.07 & 1, 0.10 \\
- mc91-e     &    32&      1& 0, 0.08 & 0, 0.08 & 0, 0.07 & 0, 0.08 \\
- repeat-e   &    35&      2& 0, 0.08 & 0, 0.08 & 0, 0.07 & 0, 0.07 \\
- a-max-e    &    70&      2& 3, 0.60 & 3, 0.33 & 2, 0.36 & 2, 0.29 \\
- r-lock-e   &    54&      1& 2, 0.15 & 2, 0.12 & 0, 0.09 & 0, 0.08 \\
+\!\bf  a-max      &\bf     70&\bf       2&\bf  - &\bf  6, 20.02 &\bf  3, 2.04 &\bf  3, 1.29 \\
+\!\bf l-zipunzip &\bf     81&\bf       2&\bf  - &\bf  6, 1.24 &\bf  - &\bf  2, 0.14 \\
+\!l-zipmap   &    65&      2& 6, 0.76 & 5, 1.04 & 2, 0.13 & 2, 0.13 \\
+\!hors       &    64&      2& 2, 0.28 & 2, 0.15 & 1, 0.10 & 1, 0.08 \\
+\!e-simple   &    27&      2& 1, 0.08 & 1, 0.07 & 0, 0.06 & 0, 0.06 \\
+\!e-fact     &    55&      2& 2, 0.12 & 2, 0.10 & 2, 0.09 & 2, 0.10 \\
+\!r-lock     &    54&      1& 6, 0.49 & 6, 0.30 & 0, 0.07 & 0, 0.07 \\
+\!\bf  r-file     &\bf    \!168&\bf       1&\bf  - &\bf  13, 5.55 &\bf  - &\bf  7, 0.79 \\
+\!sum-e      &    26&      1& 0, 0.06 & 0, 0.08 & 0, 0.06 & 0, 0.07 \\
+\!mult-e     &    33&      1& 1, 0.10 & 1, 0.11 & 0, 0.07 & 1, 0.10 \\
+\!mc91-e     &    32&      1& 0, 0.08 & 0, 0.08 & 0, 0.07 & 0, 0.08 \\
+\!repeat-e   &    35&      2& 0, 0.08 & 0, 0.08 & 0, 0.07 & 0, 0.07 \\
+\!a-max-e    &    70&      2& 3, 0.60 & 3, 0.33 & 2, 0.36 & 2, 0.29 \\
+\!r-lock-e   &    54&      1& 2, 0.15 & 2, 0.12 & 0, 0.09 & 0, 0.08 \\
 %excep-e    &    27&      2&  ,       &  ,       &  ,       &  ,       \\
 %\end{tabular}
 %\begin{tabular}{|l|r|r|r|r|r|r|r|}
@@ -71,25 +72,25 @@ program    & size & order & none &     C. &   A. &    C. and A. \\
 %\cline{4-7}
 %program    & size & order & no opt. &     CPS &   abst. &    both \\
 \hline
- sum\_intro        &  33 & 1 & 2, 0.15 & 2, 0.14 & 1, 0.08 & 1, 0.08 \\
-\bf  fold\_right       &\bf   64 &\bf  2 &\bf  5, 4.18 &\bf  6, 3.72 &\bf  2, 0.26 &\bf  2, 0.16 \\
-\bf forall\_eq\_pair  &  55 & 1 & 6, 389.42 & - & 1, 0.14 & 1, 0.15 \\
-\bf  forall\_leq       &\bf   55 &\bf  2 &\bf  4, 1.77 &\bf  4, 0.95 &\bf  1, 0.15 &\bf  1, 0.13 \\
- isnil             &  52 & 1 & 3, 0.23 & 3, 0.19 & 2, 0.15 & 2, 0.16 \\
-\bf  iter              &\bf   59 &\bf  2 &\bf  4, 1.50 &\bf  4, 0.84 &\bf  1, 0.12 &\bf  1, 0.11 \\
+\!sum\_intro        &  33 & 1 & 2, 0.15 & 2, 0.14 & 1, 0.08 & 1, 0.08 \\
+\!\bf  fold\_right       &\bf   64 &\bf  2 &\bf  5, 4.18 &\bf  6, 3.72 &\bf  2, 0.26 &\bf  2, 0.16 \\
+\!\bf forall\_eq  &  55 & 1 & 6, 389.42 & - & 1, 0.14 & 1, 0.15 \\
+\!\bf  forall\_leq       &\bf   55 &\bf  2 &\bf  4, 1.77 &\bf  4, 0.95 &\bf  1, 0.15 &\bf  1, 0.13 \\
+\!isnil             &  52 & 1 & 3, 0.23 & 3, 0.19 & 2, 0.15 & 2, 0.16 \\
+\!\bf  iter              &\bf   59 &\bf  2 &\bf  4, 1.50 &\bf  4, 0.84 &\bf  1, 0.12 &\bf  1, 0.11 \\
 %length3           &  50 & 1 &       - &       - &       - & -, -    \\
- mem               &  74 & 1 & 4, 1.17 & 4, 0.58 & 3, 0.34 & 3, 0.27 \\
- nth0              &  78 & 1 & 3, 0.41 & 3, 0.32 & 3, 0.28 & 3, 0.24 \\
-\bf  harmonic          &\bf  101 &\bf  2 &\bf  5, 6.73 &\bf  5, 2.70 &\bf  1, 0.22 &\bf  1, 0.17 \\
-\bf  fold\_left        &\bf   64 &\bf  2 &\bf  6, 167.54 &\bf  5, 2.30 &\bf  2, 0.31 &\bf  2, 0.17 \\
+\!mem               &  74 & 1 & 4, 1.17 & 4, 0.58 & 3, 0.34 & 3, 0.27 \\
+\!nth0              &  78 & 1 & 3, 0.41 & 3, 0.32 & 3, 0.28 & 3, 0.24 \\
+\!\bf  harmonic          &\bf  \!101 &\bf  2 &\bf  5, 6.73 &\bf  5, 2.70 &\bf  1, 0.22 &\bf  1, 0.17 \\
+\!\bf  fold\_left        &\bf   64 &\bf  2 &\bf  6, 167.54 &\bf  5, 2.30 &\bf  2, 0.31 &\bf  2, 0.17 \\
 %iter\_fun\_list   &  59 & 3 &       - &       - &       - & -, -    \\
-\bf  zip               &\bf   69 &\bf  1 &\bf  - &\bf  - &\bf  - &\bf  2, 0.24 \\
+\!\bf  zip               &\bf   69 &\bf  1 &\bf  - &\bf  - &\bf  - &\bf  2, 0.24 \\
 %map               &  85 & 2 &       - &       - &       - & -, -    \\
-\bf  map\_filter &\bf  111 &\bf  2 &\bf  - &\bf  - &\bf  2, 1.16 &\bf  3, 0.81 \\
-\bf  risers            &\bf   79 &\bf  1 &\bf  - &\bf  - &\bf  4, 1.80 &\bf  4, 1.32 \\
+\!\bf  map\_filter &\bf  \!111 &\bf  2 &\bf  - &\bf  - &\bf  2, 1.16 &\bf  3, 0.81 \\
+\!\bf  risers            &\bf   79 &\bf  1 &\bf  - &\bf  - &\bf  4, 1.80 &\bf  4, 1.32 \\
 %ground  &   - & - & - & - & - & - & - & - \\
- fact\_notpos      &  97 & 3 & 5, 0.35 & 5, 0.22 & 3, 0.16 & 3, 0.13 \\
-\bf  fun\_list         &\bf    94&\bf  3 &\bf  - &\bf  13, 84.79 &\bf  6, 15.70 &\bf  6, 11.12 \\
+\!fact\_notpos      &  97 & 3 & 5, 0.35 & 5, 0.22 & 3, 0.16 & 3, 0.13 \\
+\!\bf  fun\_list         &\bf    94&\bf  3 &\bf  - &\bf  \!\!13, 84.79 &\bf  \!\!6, 15.70 &\bf  \!\!6, 11.12 \\
 \hline
 \end{tabular}
 \end{center}
@@ -102,7 +103,7 @@ The programs used in the experiments are:
 \begin{itemize}
 \item ``r-lock-e'' and above are the programs used in the experiments in
       the previous paper~\cite{KobayashiPLDI2011}.
-\item ``sum\_intro'' is the example program in Sect.~\ref{sec:intro}.
+\item ``sum\_intro'' is the example program in Section~\ref{sec:intro}.
 \item ``map\_head\_filter'' and ``risers'' are examples of Ong and
       Ramsay's verification framework~\cite{Ong2011} for higher-order
       recursion scheme with a \textit{case} construct listed at their
@@ -110,7 +111,7 @@ The programs used in the experiments are:
       \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
       Our framework can verify these programs without a special
       treatment of case constructs unlike in their framework.
-\item ``fact'' is the example program in Sect.~\ref{sec:control}.
+\item ``fact'' is the example program in Section~\ref{sec:control}.
 \item Other programs define generators of lists and functions on lists,
       and assert that the functions work correctly.  For example,
       ``zip'' defines a function that takes two lists and returns a list of corresponding pairs.
