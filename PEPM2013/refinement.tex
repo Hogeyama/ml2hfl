@@ -19,20 +19,69 @@ which is safe if and only if the abstract error path is infeasible .
 MoCHi then uses an existing method~\cite{Unno2009} to infer refinement 
 types that witness the safety of the SHP.  Finally, MoCHi extracts 
 abstraction types from the refinement types, which contain precise 
-enough predicates to refute the infeasible abstract error path.
+enough predicates to refute the infeasible error path.
 
 Our new predicate discovery method is also based on the above framework 
-for abstraction type inference but we extend the component for 
-refinement type inference~\cite{Unno2009} so that it can consider 
-information from multiple calling contexts in multiple abstract error 
-paths.  This enables MoCHi to infer a general refinement type that 
-type-checks the multiple calling contexts, while preserving path- and 
-context- sensitivity.  Our new refinement type inference method consists 
-of two steps: constraint generation and solving, which are respectively 
-explained in Sections~\ref{sec:cg} and \ref{sec:cs}.
+but the component for refinement type inference~\cite{Unno2009} is 
+extended so that it can consider information from multiple calling 
+contexts in multiple abstract error paths.  This enables MoCHi to infer 
+a general refinement type that type-checks the multiple calling contexts, 
+while preserving path- and context- sensitivity.  Our new refinement 
+type inference method consists of two steps: constraint generation and 
+solving, which are respectively explained in Sections~\ref{sec:cg} and 
+\ref{sec:cs}.
 
 \subsection{Constraint Generation}
 \label{sec:cg}
+
+In this section, we extend the constraint generation algorithm used in 
+previous work~\cite{Unno2009,Terauchi2010,KobayashiPLDI2011}.  Thus, we 
+first briefly overview the previous algorithm.  Let us assume that we 
+are given a SHP \(D\) which is typable under a refinement type system 
+(see e.g., \cite{Unno2009} for the definition) if and only if the 
+abstract error trace is infeasible.  From \(D\), we generate 
+Horn-clause-like constraints which are satisfiable if and only if \(D\) 
+is typable.  To this end, for each function in \(D\), we prepare a 
+refinement type template with predicate variables, which act as 
+placeholders of refinement predicates to be inferred.  We then generate 
+a typing derivation of \(D\) under the type environment that associates 
+each function with its type template.  Horn-clause-like constraints on 
+the predicate variables are then extracted from the derivation.  Since 
+the SHP \(D\) is recursion-free and linear (i.e., each function is 
+called exactly once), generated constraints are non-recursive.  This is 
+desirable since constraint solving of non-recursive Horn clauses over 
+linear arithmetic is decidable. \todo{add an example}
+
+We extend the previous algorithm overviewed above as follows.
+\begin{itemize}
+\item For each CEGAR iteration, we infer refinement types from multiple 
+infeasible error paths instead of a single path:  We keep the set 
+\(\set{\pi_1,\cdots,\pi_n}\) of the infeasible error paths found so far, 
+generate the set \(C_i\) of Horn clauses for each path \(\pi_i\), and 
+pass \(C_1 \cup \dots \cup C_n\) to the constraint solving algorithm 
+described in Section~\ref{sec:cs} as an input.
+\item We also pass an equivalence relation \(E\) on the predicate 
+variables in \(C_1 \cup \dots \cup C_n\) such that \(P\ E\ Q\) if and 
+only if the predicate variables \(P\) and \(Q\) represent (possibly 
+different) refinement predicates for the same argument of the same 
+function in the original program.  \todo{add an example}  The constraint 
+solving algorithm exploits \(E\) to find general solutions for the 
+constraints.
+\end{itemize}
+
+%%%We then use the constraint generation algorithm for terms defined in 
+%%%Figure~\ref{fig:cgen} to obtain constraints.  In the figure, 
+%%%$\CG{\Gamma}{e}$ returns a pair of a refinement type $\tau$ and a 
+%%%constraint $\theta$ such that $\Gamma \vdash e : \tau$ is derivable if 
+%%%and only if $\theta$ is valid. Similarly, $\CS{\Gamma}{\tau_1}{\tau_2}$ 
+%%%returns a constraint $\theta$ such that $\Gamma \vdash \tau_1 \leq 
+%%%\tau_2$ is derivable if and only if $\theta$ is valid.
+%%%%
+%%%The algorithm is almost a straightforward modification of the typing and 
+%%%subtyping rules in Section~\ref{sec:reftypesystem} except that the 
+%%%application of the subsumption rule is restricted to the acutal argument 
+%%%of function applications.
+
 
 %%%\begin{figure*}[tbh]
 %%%\begin{eqnarray*}
@@ -65,56 +114,15 @@ explained in Sections~\ref{sec:cg} and \ref{sec:cs}.
 %%%\label{fig:cgen}
 %%%\end{figure*}
 
-In this section, we extend a constraint generation algorithm used in 
-previous work~\cite{Unno2009,Terauchi2010,KobayashiPLDI2011}.  Thus, we 
-first briefly overview the previous algorithm.  Let us assume that we 
-are given a SHP \(d\) which is typable if and only if the abstract error 
-trace is infeasible.  From \(d\), we generate Horn-clause-like 
-constraints which are satisfiable if and only if \(d\) is typable.  To 
-this end, for each function, we prepare a refinement type template with 
-predicate variables, which act as placeholders of refinement predicates 
-to be inferred.  We then generate a typing derivation of \(d\) under the 
-type environment that associates each function with its type template.  
-Horn-clause-like constraints on the predicate variables are then 
-extracted from the derivation.  Since the SHP $d$ is recursion-free and 
-linear (i.e., each function is called exactly once), generated 
-constraints are non-recursive.  \todo{examples}
-
-We extend the above algorithm as follows.
-\begin{itemize}
-\item Instead of a single infeasible error path, we consider multiple 
-paths for predicate discovery:  We keep the set 
-\(\set{\pi_1,\dot,\pi_n}\) of infeasible error paths found so far, 
-generate the set \(C_i\) of Horn clauses for each path \(\pi_i\), and 
-use \(C_1 \cup \dots \cup C_n\) for predicate discovery.
-\item In addition to generating Horn-clause-like constraints, we obtain 
-an equivalence relation \(E\) on the predicate variables such that \(P\ 
-E\ Q\) if and only if the predicate variables \(P\) and \(Q\) represent 
-(possibly different) refinement predicates for the same argument of the 
-same function in the original program.  \todo{an example}  The 
-equivalence relation \(E\) is used to find general solutions for the 
-constraints.
-\end{itemize}
-
-%%%
-%%%We then use the constraint generation algorithm for terms defined in 
-%%%Figure~\ref{fig:cgen} to obtain constraints.  In the figure, 
-%%%$\CG{\Gamma}{e}$ returns a pair of a refinement type $\tau$ and a 
-%%%constraint $\theta$ such that $\Gamma \vdash e : \tau$ is derivable if 
-%%%and only if $\theta$ is valid. Similarly, $\CS{\Gamma}{\tau_1}{\tau_2}$ 
-%%%returns a constraint $\theta$ such that $\Gamma \vdash \tau_1 \leq 
-%%%\tau_2$ is derivable if and only if $\theta$ is valid.
-%%%%
-%%%The algorithm is almost a straightforward modification of the typing and 
-%%%subtyping rules in Section~\ref{sec:reftypesystem} except that the 
-%%%application of the subsumption rule is restricted to the acutal argument 
-%%%of function applications.
-
-
 
 
 \subsection{Constraint Solving}
 \label{sec:cs}
+
+In fact, the previous algorithm can solve them 
+by using a technique called 
+interpolation~\cite{Henzinger2004,McMillan2005} from automated theorem 
+proving.
 
 \todo{explain a high-level idea of the algorithm.} The constraint 
 solving proceeds as follows.  First, we compute the lower \(\lambda 
@@ -177,9 +185,7 @@ the new operator \(\mathcal{J}(\phi_1,\phi_2)\) is defined as follows:
 \end{eqnarray*}
 \todo{explain why it works better in most cases}
 
-%%%The refinement type inference method~\cite{Unno2009} relies on a 
-%%%technique called interpolation~\cite{Henzinger2004,McMillan2005} from 
-%%%automated theorem proving to infer a refinement type of each 
+%%%infer a refinement type of each 
 %%%subexpression \(e\) of an ordinary ML type \(\tau\):  The method first 
 %%%computes the strongest condition \(\phi_{post}\) on the value \(\nu\) of 
 %%%\(e\) and the weakest condition \(\phi_{pre}\) on the value \(\nu\) 
