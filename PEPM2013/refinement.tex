@@ -3,29 +3,33 @@
 \section{Predicate Discovery}
 
 In this section, we propose a new predicate discovery method for 
-higher-order programs.  The method is an extension of our previous one 
-used in MoCHi~\cite{KobayashiPLDI2011}, which we briefly overview below.
+higher-order programs.  The method is based on our previous one used by 
+MoCHi~\cite{KobayashiPLDI2011}.  We briefly overview it below.
 
 In MoCHi, predicates for abstracting each term of a given program are 
 specified as a kind of dependent types called abstraction types.  MoCHi 
-infers abstraction types automatically in a counterexample-guided manner. 
- From an error path of an abstracted program (returned as a result of 
-higher-order model checking), MoCHi generates a straightline 
-higher-order program (SHP) which is safe if and only if the error path 
-is infeasible.  If the path is actually infeasible, MoCHi uses an 
-existing method~\cite{Unno2009} to infer refinement types that witness 
-the safety of the SHP.  Finally, MoCHi extracts abstraction types from 
-the refinement types.  The abstraction types contain sufficient enough 
-predicates for refuting the infeasible error path.
+infers abstraction types automatically in a counterexample-guided manner: 
+ In a CEGAR iteration of MoCHi, if the predicate abstraction at that 
+point is not precise enough to show the safety of the original program, 
+an error path of the abstracted program is returned as a result of 
+higher-order model checking (see Fig.~\ref{fig:cegar}).  If the abstract 
+error path is infeasible (i.e., not a genuine path of the original 
+program), MoCHi generates a straightline higher-order program (SHP) 
+which is safe if and only if the abstract error path is infeasible .  
+MoCHi then uses an existing method~\cite{Unno2009} to infer refinement 
+types that witness the safety of the SHP.  Finally, MoCHi extracts 
+abstraction types from the refinement types, which contain precise 
+enough predicates to refute the infeasible abstract error path.
 
-In our new method, we reuse the above framework for abstraction type 
-inference but extend the submodule for refinement type 
-inference~\cite{Unno2009} so that it can consider information from 
-multiple calling contexts in multiple SHPs to infer a general refinement 
-type that type-checks the multiple calling contexts, while preserving 
-path- and context- sensitivity.  Our method consists of two steps: 
-constraint generation and solving, which are respectively explained in 
-Sections~\ref{sec:cg} and \ref{sec:cs}.
+Our new predicate discovery method is also based on the above framework 
+for abstraction type inference but we extend the component for 
+refinement type inference~\cite{Unno2009} so that it can consider 
+information from multiple calling contexts in multiple abstract error 
+paths.  This enables MoCHi to infer a general refinement type that 
+type-checks the multiple calling contexts, while preserving path- and 
+context- sensitivity.  Our new refinement type inference method consists 
+of two steps: constraint generation and solving, which are respectively 
+explained in Sections~\ref{sec:cg} and \ref{sec:cs}.
 
 \subsection{Constraint Generation}
 \label{sec:cg}
@@ -79,7 +83,7 @@ constraints are non-recursive.  \todo{examples}
 We extend the above algorithm as follows.
 \begin{itemize}
 \item Instead of a single infeasible error path, we consider multiple 
-paths for predicate discovery:  we keep the set 
+paths for predicate discovery:  We keep the set 
 \(\set{\pi_1,\dot,\pi_n}\) of infeasible error paths found so far, 
 generate the set \(C_i\) of Horn clauses for each path \(\pi_i\), and 
 use \(C_1 \cup \dots \cup C_n\) for predicate discovery.
@@ -154,7 +158,7 @@ an interpolant \(\mathcal{I}(\phi_1,\phi_2)\) of \(\phi_1\) and
 \item \(\FV{\phi} \subseteq \FV{\phi_1} \cap \FV{\phi_2}\).
 \end{itemize}
 However, the conditions for interpolants are not sufficient for our 
-purpose: we want to obtain as simple interpolant as possible with 
+purpose: We want to obtain as simple interpolant as possible with 
 respect to the number of disjunctions and conjunctions.  To this end, we 
 propose a new operator \(\mathcal{J}\) that combines the convex 
 hull~\cite{} and the logical interpolation~\cite{} \(\mathcal{I}\) 
