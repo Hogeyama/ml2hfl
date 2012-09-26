@@ -26,19 +26,19 @@ predicate abstraction and CEGAR for a higher-order model checker.
 Figure~\ref{fig:cegar} shows the overall structure of our previous
 method.  First, an input program, written in a simply typed
 call-by-value lambda calculus with recursion and integers, is abstracted
-to a higher-order boolean program by predicate abstraction in Step 1.
+to a higher-order boolean program by predicate abstraction in Step~1.
 The abstracted program is verified by a higher-order model checker,
-where models are described by higher-order recursion schemes, in Step 3.
+where models are described by higher-order recursion schemes, in Step~3.
 Higher-order recursion schemes can be viewed as a simply typed
 call-by-name lambda calculus with finite data domains and recursion.  To
 resolve the gap between the evaluation strategies of higher-order
 recursion schemes and higher-order boolean programs, we translate the
-call-by-value program into a call-by-name program in Step 2. If the
+call-by-value program into a call-by-name program in Step~2. If the
 abstracted program is safe, the original functional program is also
 safe.  If not, by using a counterexample produced by the higher-order
 model checker, we check whether the original program is in fact unsafe
-or the abstraction is too coarse in Step 4. If the latter, we discover
-new predicates in Step 5.  We repeat these steps until we find whether
+or the abstraction is too coarse in Step~4. If the latter, we discover
+new predicates in Step~5.  We repeat these steps until we find whether
 the program is safe or not.
 %Our previous verification framework is a CEGAR-based one on higher-order
 %model checker.  The verification proceeds as follows.  First, an input
@@ -163,7 +163,7 @@ let main () = assert (sum ())
       In this way the selective predicate abstraction improves the
       precision of abstraction and reduces the number of CEGAR iterations.
 
-      Even if we use the selective predicate abstraction, the previous
+\item Even if we use the selective predicate abstraction, the previous
       version of MoCHi sometimes cannot verify a program since MoCHi may
       find too specific predicates.  For example, consider the program
       shown in Figure~\ref{fig:copy}.
@@ -181,12 +181,13 @@ let main n = assert (copy (copy n) = n)
       predicates such as $\Abs{v}{v = 0}$, $\Abs{v}{v = 1}$, ...,
       infinitely for the argument and the return values.
 
-      To discover general predicates, we introduce a new refinement type
-      inference method for straightline higher-order programs.
-      The method infers general refinement types that type-check
-      multiple call-sites by considering information from the multiple
-      calling contexts in multiple paths.  The new method discovers the
-      predicate $\Abs{r}{r = x}$ for the return values of \texttt{copy}.
+      To discover general predicates, we introduce a new predicate
+      discovery method.  The method reduces the number of false errors
+      produced by predicate abstraction, by considering information from
+      multiple calling contexts in multiple paths.
+
+      The new method discovers the predicate $\Abs{r}{r = x}$ for the
+      return values of \texttt{copy}.
 
 %%The first problem increases the number of CEGAR-cycle.
 %To see the first problem, consider the following program.
