@@ -222,29 +222,36 @@ reduced the number of disjunctions in the output of the interpolating
 prover, and hence makes the output more likely to constitute invariants.
 %
 Thus, instead of using the interpolation operator \(\mathcal{I}\) alone, 
-we use the new operator \(\mathcal{J}\) to compute 
-\(\mathcal{J}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg 
-(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'))\) as a candidate 
-solution for \(Q_1,\dots,Q_{\ell}\).  For example, \todo{}
+we use the new operator \(\mathcal{J}\) to compute \(\phi_0 = 
+\mathcal{J}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg (\phi_{Q_1}' 
+\land \dots \land \phi_{Q_{\ell}}'))\) as a candidate solution for 
+\(Q_1,\dots,Q_{\ell}\).  For example, \todo{}
 
-Note, however, that \(\mathcal{J}(\phi_{Q_1} \lor \dots \lor 
-\phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'))\) 
-is not always a genuine solution for all the predicates 
-\(Q_1,\dots,Q_{\ell} \in S_i\) because \(Q_i\) may depend on \(Q_j\) for 
-some \(i \neq j\).  For example, let us consider the following 
-constraints: \todo{}
+Note, however, that \(\phi_0\) is not always a genuine solution for all 
+the predicates \(Q_1,\dots,Q_{\ell} \in S_i\) if \(Q_i\) may depend on 
+\(Q_j\) for some \(i \neq j\).  For example, let us consider the 
+following constraints: \todo{}
 %\begin{eqnarray*}
 %x=0 &\Rightarrow& Q_1(x) \\
 %Q_1(x) \land y=x &\Rightarrow& Q_2(y) \\
 %Q_2(y) &\Rightarrow& y=0
 %\end{eqnarray*}
-Therefore, we find a maximal subset \(M\) of \(S_i\) such that 
-\(\mathcal{J}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg 
-(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'))\) is in fact a 
-solution for every predicate variable in \(M\).  We then substitutes the 
-solution for \(Q_1,\dots,Q_{\ell}\) in \(C\), and repeat the entire 
-constraint solving procedure until every predicate variable in \(C\) is 
-substituted.  \todo{discuss termination?}  \todo{add examples}
+Therefore, we find a maximal subset \(M\) of \(S_i\) such that \(\phi_0\) 
+is in fact a solution for every predicate variable in \(M\).  Formally, 
+we find \(M=\set{R_1,\dots,R_m}\) such that:
+\begin{itemize}
+\item \(M \subseteq S_i\),
+\item \(\theta[\phi_0/R_1,\dots,\phi_0/R_m]C\) is valid for some 
+predicate substitution \(\theta\), and
+\item for any \(R_0 \in S_i \setminus M\), 
+\(\theta[\phi_0/R_0,\phi_0/R_1,\dots,\phi_0/R_m]C\) is not valid for any 
+\(\theta\).
+\end{itemize}
+
+We then substitutes the solution for the predicate variables in \(M\), 
+and repeat the entire constraint solving procedure until every predicate 
+variable in \(C\) is substituted.  \todo{discuss termination?}  
+\todo{add examples}
 
 
 %%%infer a refinement type of each 
