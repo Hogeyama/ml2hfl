@@ -167,7 +167,7 @@ For example, \todo{}
 
 We then pick some \(S_i = \set{Q_1,\dots,Q_{\ell}} \in 
 \set{S_1,\dots,S_n}\) (e.g., the largest one) and find a formula \(\phi\) 
-such that:
+as a candidate solution for \(Q_1,\dots,Q_{\ell}\) such that:
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
@@ -191,9 +191,9 @@ We denote such an interpolant as \(\mathcal{I}(\phi_1,\phi_2)\).}
 \item \(\FV{\phi} \subseteq \FV{\phi_1} \cap \FV{\phi_2}\).
 \end{itemize}
 The above conditions of interpolants, however, are not always sufficient 
-for our purpose to find general predicates;  Actually, we want to obtain 
-as simple interpolant as possible with respect to the number of 
-disjunctions.
+for our purpose to find general predicates which constitute invariants;  
+Actually, we want to obtain as simple interpolant as possible with 
+respect to the number of disjunctions.
 % and conjunctions.
 To this end, we propose a new heuristic operator \(\mathcal{J}\) that 
 combines the interpolation \(\mathcal{I}\) and the convex hull operators. 
@@ -242,16 +242,15 @@ we find \(M=\set{R_1,\dots,R_m}\) such that:
 \begin{itemize}
 \item \(M \subseteq S_i\),
 \item \(\theta[\phi_0/R_1,\dots,\phi_0/R_m]C\) is valid for some 
-predicate substitution \(\theta\), and
+substitution \(\theta\) for predicate variables, and
 \item for any \(R_0 \in S_i \setminus M\), 
 \(\theta[\phi_0/R_0,\phi_0/R_1,\dots,\phi_0/R_m]C\) is not valid for any 
 \(\theta\).
 \end{itemize}
 
-We then substitutes the solution for the predicate variables in \(M\), 
-and repeat the entire constraint solving procedure until every predicate 
+We then substitute the solution \(\phi_0\) for \(R_1,\dots,R_m\), and 
+repeat the entire constraint solving procedure until every predicate 
 variable in \(C\) is substituted.  \todo{discuss termination?}  
-\todo{add examples}
 
 
 %%%infer a refinement type of each 
