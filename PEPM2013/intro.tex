@@ -97,7 +97,7 @@ the program is safe or not.
 %
 %We discuss each problem in more detail and explain our approach below.
 
-In this paper, we address three problems of our previous work.
+In this paper, we address four problems of our previous work.
 We discuss each problem and explain our approach below.
 
 \begin{enumerate}
@@ -181,13 +181,13 @@ let main n = assert (copy (copy n) = n)
       predicates such as $\Abs{v}{v = 0}$, $\Abs{v}{v = 1}$, ...,
       infinitely for the argument and the return values.
 
-      To discover general predicates, we introduce a new predicate
-      discovery method.  The method reduces the number of false errors
-      produced by predicate abstraction, by considering information from
-      multiple calling contexts in multiple paths.
+      To discover general predicates, we introduce a novel predicate
+      discovery method for higher-order functional programs.  The method
+      reduces the number of false errors produced by predicate
+      abstraction, by considering information from multiple calling
+      contexts in multiple paths.
+      \TODO{Explain the novelty of the method.}
 
-      The new method discovers the predicate $\Abs{r}{r = x}$ for the
-      return values of \texttt{copy}.
 
 %%The first problem increases the number of CEGAR-cycle.
 %To see the first problem, consider the following program.
@@ -279,8 +279,11 @@ let main n k = check n (\(\lambda\)g. g f k)
 %let apply x k1 = k1 (\(\lambda\)f.\(\lambda\)k2. f x k2)
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main n k = check n (\(\lambda\)f1. apply n (\(\lambda\)f2. f2 f1 k))
-      We can, however, obtain the following order-3 program instead by omitting the continuation \texttt{k1} of \texttt{check},
-      which is actually unnecessary since a partial application of \texttt{check} in the original program never causes side effects including an assertion failure.
+      We can, however, obtain the following order-3 program instead by
+      omitting the continuation \texttt{k1} of \texttt{check}, which is
+      actually unnecessary since a partial application of \texttt{check}
+      in the original program never causes side effects including an
+      assertion failure.
 \begin{alltt}
 let rec check x f k = f x (\(\lambda\)_.check (x+1) f k)
 let f x k = assert (x >= 0); k ()
@@ -330,13 +333,16 @@ let main n k = check n f k
       structures like lists and trees. Thus, the implementation dealt with
       only integers as infinite data domains.
 
-      To support recursive data structures without relying on interpolating
-      theorem provers for them, we extend our verification framework as follows.
-      As a preprocessing of our CEGAR-based model checking,
-      we translate programs that manipulate recursive data structures into ones that manipulate only integers.
-      The transformation is carried out by encoding recursive data structures using higher-order functions.  For example, a list is
-      encoded to a function that maps an index $i$ to the $i$-th element.
-      In a similar way, we support control operations (e.g., exceptions and \texttt{call/cc}) by using higher-order functions.
+      To support recursive data structures without relying on
+      interpolating theorem provers for them, we extend our verification
+      framework as follows.  As a preprocessing of our CEGAR-based model
+      checking, we translate programs that manipulate recursive data
+      structures into ones that manipulate only integers.  The
+      transformation is carried out by encoding recursive data
+      structures using higher-order functions.  For example, a list is
+      encoded to a function that maps an index $i$ to the $i$-th
+      element.  In a similar way, we support control operations (e.g.,
+      exceptions and \texttt{call/cc}) by using higher-order functions.
 \end{enumerate}
 
 %Our contributions are (i) the formalization of selective predicate

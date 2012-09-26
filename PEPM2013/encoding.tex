@@ -163,8 +163,8 @@ hand, by encoding a list as a function, the same information can be
 represented as a refinement type $\TFun{(i\COL\INT)}{\set{x\COL\INT\mid
 (P_1(i) \to x=v_1) \wedge \dots \wedge (P_n(i) \to x=v_n)}}$.  For
 example, $\set{(1,\Abs{i}{i \mathop{\mathtt{mod}} 2 = 0})}$ is
-represented as $\TFun{(i\COL\INT)}{\set{x\COL\INT\mid i
-\mathop{\mathtt{mod}} 2 = 0 \to x=1}}$.  Moreover, our approach can deal
+represented as $(i\COL\INT) \mathop{\to} \{x\COL\INT \mid i
+\mathop{\mathtt{mod}} 2 = 0 \to x=1\}$.  Moreover, our approach can deal
 with list properties like ``the $i$-th element of a list is greater than
 $i$,'' which cannot be represented by the container abstraction.  Thus,
 our method, i.e., a combination of the encoding and the predicate
