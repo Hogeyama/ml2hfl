@@ -40,11 +40,22 @@ discuss the extension, we briefly overview the previous algorithm.  Let
 us assume that we are given a SHP \(D\) which is typable under a 
 refinement type system (see e.g., \cite{Unno2009} for the definition) if 
 and only if the abstract error trace is infeasible.  For example, for 
-the program and the error trace in Section~\ref{sec:intro}, we obtain 
-the following SHP \(D_0\):\todo{}
-%
+the program in Figure~\ref{fig:copy}, we may obtain the following SHP 
+\(D_{\texttt{copy}}\):
+\begin{alltt}
+let copy1 x = assume (x<>0); 1 + copy2 (x-1)
+let copy2 x = assume (x=0); 0
+let copy3 x = assume (x<>0); 1 + copy4 (x-1)
+let copy4 x = assume (x=0); 0
+let main n = assume (copy3 (copy1 n) <> n); fail
+\end{alltt}
+The SHP corresponds to an infeasible error path where the else-branch of 
+\(\texttt{copy}\) is taken in the first and the third function call of 
+\(\texttt{copy}\), the then-branch is taken in the second and the fourth 
+function calls, and the assertion in the \(\texttt{main}\) function 
+fails.
 
-From the SHP \(D\), we generate Horn-clause-like constraints which are 
+From a SHP \(D\), we generate Horn-clause-like constraints which are 
 satisfiable if and only if \(D\) is typable.  To this end, for each 
 function in \(D\), we prepare a refinement type template with predicate 
 variables, which act as placeholders of refinement predicates to be 
@@ -55,8 +66,27 @@ extracted from the derivation.  Since the SHP \(D\) is recursion-free
 and linear (i.e., each function is called exactly once), generated 
 constraints are non-recursive.  This is desirable since constraint 
 solving of non-recursive Horn clauses over linear arithmetic is 
-decidable.  For the example SHP \(D_0\), we obtain the following Horn 
-clauses:\todo{}
+decidable.  For example, for the SHP \(D_{\texttt{copy}}\), we use the 
+following type templates:\footnote{For the sake of simplicity of the 
+presentation, we here omit the type template of \texttt{main} as well as 
+the refinement predicates for the argument of 
+\texttt{copy1}--\texttt{copy4}.}
+\begin{eqnarray*}
+\texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_1(x,y)}}) \\
+%\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_2(x,y)}}) \\
+%\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_3(x,y)}}) \\
+\vdots\quad &&\qquad\qquad \vdots \\
+\texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_4(x,y)}})
+\end{eqnarray*}
+By using them, we obtain the following set \(C_{\texttt{copy}}\) of 
+constraints:
+\begin{eqnarray*}
+P_2(x-1,y) \land x\neq0 \land z=1+y &\imply& P_1(x,z) \\
+x=0 \land y=0 &\imply& P_2(x,y) \\
+P_4(x-1,y) \land x\neq0 \land z=1+y &\imply& P_3(x,z) \\
+x=0 \land y=0 &\imply& P_4(x,y) \\
+P_1(n,x) \land P_3(x,y) &\imply& y=n
+\end{eqnarray*}
 
 We extend the previous algorithm overviewed above as follows.
 \begin{itemize}
@@ -65,14 +95,16 @@ infeasible error paths instead of a single path:  We keep the set
 \(\set{\pi_1,\cdots,\pi_n}\) of the infeasible error paths found so far, 
 generate the set \(C_i\) of Horn clauses for each path \(\pi_i\), and 
 pass \(C_1 \cup \dots \cup C_n\) to the constraint solving algorithm 
-described in Section~\ref{sec:cs} as an input.  For example, \todo{}
+described in Section~\ref{sec:cs} as an input.  %For example, \todo{}
 \item We also pass an equivalence relation \(E\) on the predicate 
 variables in \(C_1 \cup \dots \cup C_n\) such that \(P\ E\ Q\) if and 
 only if the predicate variables \(P\) and \(Q\) represent (possibly 
 different) refinement predicates for the same argument of the same 
-function in the original program.  The constraint solving algorithm in 
-Section~\ref{sec:cs} exploits \(E\) to find general solutions for the 
-constraints.  For example, \todo{}
+function in the original program.  For example, for the set 
+\(C_{\texttt{copy}}\) of constraints, we obtain an equivalence relation 
+\(E_{\texttt{copy}}=\set{P_1,\dots,P_4} \times \set{P_1,\dots,P_4}\).  
+The constraint solving algorithm in Section~\ref{sec:cs} exploits \(E\) 
+to find general solutions for the constraints.
 \end{itemize}
 
 %%%We then use the constraint generation algorithm for terms defined in 
@@ -145,12 +177,28 @@ represents the value of \(e\).  The strongest lower \(\phi_P\) and the
 weakest upper \(\phi_{P}'\) bounds for \(P\) respectively represent the 
 strongest condition on the value \(\nu\) and the weakest condition on 
 the value \(\nu\) which is required by the context of \(e\).  For 
-example, \todo{}  In general, the computation of the upper bound for 
-some predicate variable may possibly fail because the constraint 
-generation algorithm in Section~\ref{sec:cg} may generate a Horn clause 
-of the form \(P(x) \land P(y) \imply \phi\).  Note here that \(P\) 
-occurs twice in the left hand side of the constraint.  In such a case, 
-the weakest upper bound for \(P\) may not exist.
+example, the strongest lower bounds for \(P_1,\dots,P_4\) in 
+\(C_{\texttt{copy}}\) are respectively:
+\begin{itemize}
+\item \(\phi_{P_1}=\lambda x,y.x=1 \land y=1\), 
+\item \(\phi_{P_2}=\lambda x,y.x=0 \land y=0\),
+\item \(\phi_{P_3}=\lambda x,y.x=1 \land y=1\), and 
+\item \(\phi_{P_4}=\lambda x,y.x=0 \land y=0\).
+\end{itemize}
+The weakest upper bounds for \(P_1,\dots,P_4\) are respectively:
+\begin{itemize}
+\item \(\phi_{P_1}'=\lambda x,y.y=1 \imply x=1\), 
+\item \(\phi_{P_2}'=\lambda x,y.y=0 \imply (x=-1 \lor x=0)\),
+\item \(\phi_{P_3}'=\lambda x,y.x=1 \imply y=1\), and 
+\item \(\phi_{P_4}'=\lambda x,y.x=0 \imply y=0\).
+\end{itemize}
+
+In general, the computation of the upper bound for some predicate 
+variable may possibly fail because the constraint generation algorithm 
+in Section~\ref{sec:cg} may generate a Horn clause of the form \(P(x) 
+\land P(y) \imply \phi\).  Note here that \(P\) occurs twice in the left 
+hand side of the constraint.  In such a case, the weakest upper bound 
+for \(P\) may not exist.
 
 Let \(S\) be the set of predicate variables in \(C\) whose upper bounds 
 were successfully computed.  We then pick an equivalence class \(S_0 \in 
@@ -169,7 +217,9 @@ Formally, we find \(S_1\dots,S_n\) such that:
 \dots \lor \phi_{Q_{\ell}}\) does not imply \(\phi_{Q_1}' \land \dots 
 \land \phi_{Q_{\ell}}'\).
 \end{itemize}
-For example, \todo{}
+For example, for \(C_{\texttt{copy}}\), we get 
+\(S=S_0=S_1=\set{P_1,\dots,P_4}\) since \(\phi_{P_1} \lor \dots \lor 
+\phi_{P_4}\) implies \(\phi_{P_1}' \land \dots \land \phi_{P_4}'\).
 
 We then pick some \(S_i = \set{Q_1,\dots,Q_{\ell}} \in 
 \set{S_1,\dots,S_n}\) (e.g., the largest one) and find a formula \(\phi\) 
@@ -231,7 +281,15 @@ Thus, instead of using the interpolation operator \(\mathcal{I}\) alone,
 we use the new operator \(\mathcal{J}\) to compute \(\phi_0 = 
 \mathcal{J}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg (\phi_{Q_1}' 
 \land \dots \land \phi_{Q_{\ell}}'))\) as a candidate solution for 
-\(Q_1,\dots,Q_{\ell}\).  For example, \todo{}
+\(Q_1,\dots,Q_{\ell}\).  For example, for \(C_{\texttt{copy}}\), we obtain:
+\begin{eqnarray*}
+\phi_0 &=& \mathcal{J}(\phi_{P_1} \lor \dots \lor \phi_{P_4},\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
+&=& \mathcal{I}(\mathcal{H}(\phi_{P_1} \lor \dots \lor \phi_{P_4}),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
+&=& \mathcal{I}(0 \leq x=y \leq 1,\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}'))
+\end{eqnarray*}
+In the experiments in Section~\ref{sec:experiments}, an interpolating 
+prover returned \(x=y\) as a candidate solution \(\phi_0\) for 
+\(P_1,\dots,P_4\).
 
 Note, however, that \(\phi_0\) is not always a genuine solution for all 
 the predicates \(Q_1,\dots,Q_{\ell} \in S_i\) because \(Q_i\) may depend 
@@ -250,8 +308,9 @@ x=1,\neg (-1 \leq x \leq 1 \land 0 \leq x \leq 2))=0 \leq x \leq 1\) as
 a candidate solution for \(Q_1\) and \(Q_2\).  However, \([0 \leq x \leq 
 1/Q_1,0 \leq x \leq 1/Q_2](Q_1(x) \imply Q_2(x+1))\) is not valid.  In 
 this example, actually, we are only allowed to substitute the candidate 
-solution \(0 \leq x \leq 1\) for either \(Q_1\) or \(Q_2\)
-
+solution \(0 \leq x \leq 1\) for either \(Q_1\) or \(Q_2\).  For the 
+running example \(C_{\texttt{copy}}\), \(\phi_0 = x=y\) is a genuine 
+solution for \(P_1,\dots,P_4\).
 
 
 Therefore, we find a maximal subset \(M\) of \(S_i\) such that \(\phi_0\) 
@@ -268,8 +327,17 @@ substitution \(\theta\) for predicate variables, and
 
 We then substitute the solution \(\phi_0\) for \(R_1,\dots,R_m\), and 
 repeat the entire constraint solving procedure until every predicate 
-variable in \(C\) is substituted.  %\todo{discuss termination?}
+variable in \(C\) is substituted.  For the running example 
+\(C_{\texttt{copy}}\), we finally obtain the following types:
+\begin{eqnarray*}
+\texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid x=y}}) \\
+%\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_2(x,y)}}) \\
+%\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_3(x,y)}}) \\
+\vdots\quad &&\qquad\qquad \vdots \\
+\texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid x=y}})
+\end{eqnarray*}
 
+%\todo{discuss termination?}
 
 %%%infer a refinement type of each 
 %%%subexpression \(e\) of an ordinary ML type \(\tau\):
