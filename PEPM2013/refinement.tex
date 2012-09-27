@@ -4,7 +4,7 @@
 
 In this section, we propose a new predicate discovery method for 
 higher-order programs.  The method is based on our previous one used by 
-MoCHi~\cite{KobayashiPLDI2011}.  We briefly overview it below.
+MoCHi~\cite{KobayashiPLDI2011}, which we briefly overview below.
 
 In MoCHi, predicates for abstracting each term of a given program are 
 specified as a kind of dependent types called abstraction types.  MoCHi 
@@ -23,13 +23,13 @@ enough predicates to refute the infeasible error path.
 
 Our new predicate discovery method is based on the above framework but 
 the component for refinement type inference is extended so that it can 
-consider information from multiple calling contexts in multiple 
-infeasible error paths.  This enables MoCHi to infer a general 
-refinement type that type-checks the multiple calling contexts, while 
-preserving the path- and context- sensitivity.  Our new refinement type 
-inference method consists of two steps: constraint generation and 
-solving, which are respectively explained in Sections~\ref{sec:cg} and 
-\ref{sec:cs}.
+merge and generalize information from multiple calling contexts of a 
+function in multiple infeasible error paths.  This enables MoCHi to 
+infer a general refinement type of the function that type-checks the 
+multiple calling contexts, while preserving the path- and context- 
+sensitivity.  Our new refinement type inference method consists of two 
+steps: constraint generation and solving, which are respectively 
+explained in Sections~\ref{sec:cg} and \ref{sec:cs}.
 
 \subsection{Constraint Generation}
 \label{sec:cg}
@@ -39,8 +39,8 @@ previous work~\cite{Unno2009,Terauchi2010,KobayashiPLDI2011}.  Before we
 discuss the extension, we briefly overview the previous algorithm.  Let 
 us assume that we are given a SHP \(D\) which is typable under a 
 refinement type system (see e.g., \cite{Unno2009} for the definition) if 
-and only if the abstract error trace is infeasible.  For example, for 
-the program in Figure~\ref{fig:copy}, we may obtain the following SHP 
+and only if the abstract error path is infeasible.  For example, for the 
+program in Figure~\ref{fig:copy}, we may obtain the following SHP 
 \(D_{\texttt{copy}}\):
 \begin{alltt}
 let copy1 x = assume (x<>0); 1 + copy2 (x-1)
@@ -52,8 +52,8 @@ let main n = assume (copy3 (copy1 n) <> n); fail
 The SHP corresponds to an infeasible error path where the else-branch of 
 \(\texttt{copy}\) is taken in the first and the third function call of 
 \(\texttt{copy}\), the then-branch is taken in the second and the fourth 
-function calls, and the assertion in the \(\texttt{main}\) function 
-fails.
+function calls of \(\texttt{copy}\), and the assertion in the 
+\(\texttt{main}\) function fails.
 
 From a SHP \(D\), we generate Horn-clause-like constraints which are 
 satisfiable if and only if \(D\) is typable.  To this end, for each 
@@ -72,11 +72,11 @@ presentation, we here omit the type template of \texttt{main} as well as
 the refinement predicates for the argument of 
 \texttt{copy1}--\texttt{copy4}.}
 \begin{eqnarray*}
-\texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_1(x,y)}}) \\
-%\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_2(x,y)}}) \\
-%\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_3(x,y)}}) \\
+\texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_1(x,\nu)}}) \\
+%\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_2(x,\nu)}}) \\
+%\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_3(x,\nu)}}) \\
 \vdots\quad &&\qquad\qquad \vdots \\
-\texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_4(x,y)}})
+\texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_4(x,\nu)}})
 \end{eqnarray*}
 By using them, we obtain the following set \(C_{\texttt{copy}}\) of 
 constraints:
@@ -100,8 +100,8 @@ described in Section~\ref{sec:cs} as an input.  %For example, \todo{}
 variables in \(C_1 \cup \dots \cup C_n\) such that \(P\ E\ Q\) if and 
 only if the predicate variables \(P\) and \(Q\) represent (possibly 
 different) refinement predicates for the same argument of the same 
-function in the original program.  For example, for the set 
-\(C_{\texttt{copy}}\) of constraints, we obtain an equivalence relation 
+function in the original program.  For example, for the constraints 
+\(C_{\texttt{copy}}\), we obtain the trivial equivalence relation 
 \(E_{\texttt{copy}}=\set{P_1,\dots,P_4} \times \set{P_1,\dots,P_4}\).  
 The constraint solving algorithm in Section~\ref{sec:cs} exploits \(E\) 
 to find general solutions for the constraints.
@@ -157,14 +157,15 @@ to find general solutions for the constraints.
 \subsection{Constraint Solving}
 \label{sec:cs}
 
-In this section, we propose an algorithm for solving Horn-clause-like 
+In this section, we propose a new algorithm for solving Horn-clause-like 
 constraints.  Given a set \(C\) of Horn clauses and an equivalence 
 relation \(E\) on the predicate variables in \(C\), the algorithm 
 returns a substitution \(\theta\) for predicate variables in \(C\) such 
 that \(\theta C\) is valid.  A distinguishing feature of the algorithm 
-is that it can find the same solution for predicate variables related by 
-\(E\).  This feature enables the algorithm to find general predicates 
-which constitute invariants of the original program.
+is that it find the same solution for predicate variables related by 
+\(E\) when possible.  This feature enables the algorithm to find general 
+predicates, which are more likely to constitute invariants of the 
+original program.
 
 We now explain how the algorithm works.  First, we compute the strongest 
 lower \(\lambda \seq{x}\lambda \nu.\phi_P\) and the weakest upper 
@@ -172,25 +173,25 @@ lower \(\lambda \seq{x}\lambda \nu.\phi_P\) and the weakest upper
 variable \(P\) in \(C\).  Here, \(\FV{\phi_P} \subseteq 
 \set{\seq{x},\nu}\) and \(\FV{\phi_P'} \subseteq \set{\seq{x},\nu}\).  
 Intuitively, \(P\) represents an invariant of some subexpression \(e\) 
-of a SHP such that \(\FV{e} \subseteq \set{\seq{x}}\), and \(\nu\) 
+in the SHPs such that \(\FV{e} \subseteq \set{\seq{x}}\), and \(\nu\) 
 represents the value of \(e\).  The strongest lower \(\phi_P\) and the 
 weakest upper \(\phi_{P}'\) bounds for \(P\) respectively represent the 
-strongest condition on the value \(\nu\) and the weakest condition on 
-the value \(\nu\) which is required by the context of \(e\).  For 
-example, the strongest lower bounds for \(P_1,\dots,P_4\) in 
-\(C_{\texttt{copy}}\) are respectively:
+strongest condition satisfied by the value \(\nu\) and the weakest 
+condition on \(\nu\) required by the context of \(e\).  For example, the 
+strongest lower bounds for \(P_1,\dots,P_4\) in \(C_{\texttt{copy}}\) 
+are respectively:
 \begin{itemize}
-\item \(\phi_{P_1}=\lambda x,y.x=1 \land y=1\), 
-\item \(\phi_{P_2}=\lambda x,y.x=0 \land y=0\),
-\item \(\phi_{P_3}=\lambda x,y.x=1 \land y=1\), and 
-\item \(\phi_{P_4}=\lambda x,y.x=0 \land y=0\).
+\item \(\phi_{P_1}\equiv x=1 \land \nu=1\), 
+\item \(\phi_{P_2}\equiv x=0 \land \nu=0\),
+\item \(\phi_{P_3}\equiv x=1 \land \nu=1\), and 
+\item \(\phi_{P_4}\equiv x=0 \land \nu=0\).
 \end{itemize}
 The weakest upper bounds for \(P_1,\dots,P_4\) are respectively:
 \begin{itemize}
-\item \(\phi_{P_1}'=\lambda x,y.y=1 \imply x=1\), 
-\item \(\phi_{P_2}'=\lambda x,y.y=0 \imply (x=-1 \lor x=0)\),
-\item \(\phi_{P_3}'=\lambda x,y.x=1 \imply y=1\), and 
-\item \(\phi_{P_4}'=\lambda x,y.x=0 \imply y=0\).
+\item \(\phi_{P_1}'\equiv \nu=1 \imply x=1\), 
+\item \(\phi_{P_2}'\equiv \nu=0 \imply (x=-1 \lor x=0)\),
+\item \(\phi_{P_3}'\equiv x=1 \imply \nu=1\), and 
+\item \(\phi_{P_4}'\equiv x=0 \imply \nu=0\).
 \end{itemize}
 
 In general, the computation of the upper bound for some predicate 
@@ -202,8 +203,9 @@ for \(P\) may not exist.
 
 Let \(S\) be the set of predicate variables in \(C\) whose upper bounds 
 were successfully computed.  We then pick an equivalence class \(S_0 \in 
-S / E\) (e.g., the largest one), and classify the predicate variables in 
-\(S_0\) into related groups.  %\todo{explain ``related''?}
+S / E\) (e.g., the largest one), and further classify the predicate 
+variables in \(S_0\) depending on their upper and lower bounds so that 
+predicate variables which never have the same solution are separated.
 %
 Formally, we find \(S_1\dots,S_n\) such that:
 \begin{itemize}
@@ -217,13 +219,14 @@ Formally, we find \(S_1\dots,S_n\) such that:
 \dots \lor \phi_{Q_{\ell}}\) does not imply \(\phi_{Q_1}' \land \dots 
 \land \phi_{Q_{\ell}}'\).
 \end{itemize}
-For example, for \(C_{\texttt{copy}}\), we get 
+For the running example \(C_{\texttt{copy}}\), we get 
 \(S=S_0=S_1=\set{P_1,\dots,P_4}\) since \(\phi_{P_1} \lor \dots \lor 
 \phi_{P_4}\) implies \(\phi_{P_1}' \land \dots \land \phi_{P_4}'\).
 
 We then pick some \(S_i = \set{Q_1,\dots,Q_{\ell}} \in 
-\set{S_1,\dots,S_n}\) (e.g., the largest one) and find a formula \(\phi\) 
-as a candidate solution for \(Q_1,\dots,Q_{\ell}\) such that:
+\set{S_1,\dots,S_n}\) (e.g., the largest one) and find a predicate 
+\(\lambda\seq{x}.\lambda \nu.\phi\) as a candidate solution for 
+\(Q_1,\dots,Q_{\ell}\) such that:
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
@@ -247,7 +250,7 @@ We denote such an interpolant as \(\mathcal{I}(\phi_1,\phi_2)\).}
 \item \(\FV{\phi} \subseteq \FV{\phi_1} \cap \FV{\phi_2}\).
 \end{itemize}
 The above conditions of interpolants, however, are not always sufficient 
-for our purpose to find general predicates which constitute invariants;  
+for our purpose to find general predicates which constitute invariants.  
 Actually, we want to obtain as simple interpolant as possible with 
 respect to the number of disjunctions.
 % and conjunctions.
@@ -277,64 +280,71 @@ In the experiments reported in Section~\ref{sec:experiments}, this often
 reduced the number of disjunctions in the output of the interpolating 
 prover, and hence makes the output more likely to constitute invariants.
 %
-Thus, instead of using the interpolation operator \(\mathcal{I}\) alone, 
-we use the new operator \(\mathcal{J}\) to compute \(\phi_0 = 
-\mathcal{J}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg (\phi_{Q_1}' 
-\land \dots \land \phi_{Q_{\ell}}'))\) as a candidate solution for 
-\(Q_1,\dots,Q_{\ell}\).  For example, for \(C_{\texttt{copy}}\), we obtain:
+Thus, instead of using the interpolation operator \(\mathcal{I}\), we 
+use the new operator \(\mathcal{J}\) to compute \(\lambda\seq{x}.\lambda 
+\nu.\phi_0=\lambda\seq{x}.\lambda \nu.\mathcal{J}(\phi_{Q_1} \lor \dots 
+\lor \phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land 
+\phi_{Q_{\ell}}'))\) as a candidate solution for \(Q_1,\dots,Q_{\ell}\). 
+ For the running example \(C_{\texttt{copy}}\), we obtain:
 \begin{eqnarray*}
 \phi_0 &=& \mathcal{J}(\phi_{P_1} \lor \dots \lor \phi_{P_4},\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(\mathcal{H}(\phi_{P_1} \lor \dots \lor \phi_{P_4}),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
-&=& \mathcal{I}(0 \leq x=y \leq 1,\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}'))
+&=& \mathcal{I}(0 \leq x=\nu \leq 1,\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}'))
 \end{eqnarray*}
-In the experiments in Section~\ref{sec:experiments}, an interpolating 
-prover returned \(x=y\) as a candidate solution \(\phi_0\) for 
-\(P_1,\dots,P_4\).
+An interpolating prover returned \(\lambda x \lambda \nu.\phi_0 \equiv 
+\lambda x \lambda \nu.x=\nu\) as a candidate solution for 
+\(P_1,\dots,P_4\) in the experiments in Section~\ref{sec:experiments}.
 
-Note, however, that \(\phi_0\) is not always a genuine solution for all 
-the predicates \(Q_1,\dots,Q_{\ell} \in S_i\) because \(Q_i\) may depend 
-on \(Q_j\) for some \(i \neq j\).  For example, let us consider the 
-following constraints:
+Note, however, that \(\lambda \seq{x} \lambda \nu.\phi_0\) is not always 
+a genuine solution for all the predicates \(Q_1,\dots,Q_{\ell} \in S_i\) 
+because \(Q_i\) may depend on \(Q_j\) for some \(i \neq j\).  For 
+example, let us consider the following constraints:
 \begin{eqnarray*}
 x=0 &\imply& Q_1(x) \\
 Q_1(x) &\imply& Q_2(x+1) \\
 Q_2(x) &\imply& 0 \leq x \leq 2
 \end{eqnarray*}
 The strongest lower bounds of \(Q_1\) and \(Q_2\) are respectively 
-\(\lambda x.x=0\) and \(\lambda x.x=1\).  The weakest upper bounds of 
-\(Q_1\) and \(Q_2\) are respectively \(\lambda x.-1 \leq x \leq 1\) and 
-\(\lambda x.0 \leq x \leq 2\).  We then obtain \(\mathcal{J}(x=0 \lor 
-x=1,\neg (-1 \leq x \leq 1 \land 0 \leq x \leq 2))=0 \leq x \leq 1\) as 
-a candidate solution for \(Q_1\) and \(Q_2\).  However, \([0 \leq x \leq 
-1/Q_1,0 \leq x \leq 1/Q_2](Q_1(x) \imply Q_2(x+1))\) is not valid.  In 
-this example, actually, we are only allowed to substitute the candidate 
-solution \(0 \leq x \leq 1\) for either \(Q_1\) or \(Q_2\).  For the 
-running example \(C_{\texttt{copy}}\), \(\phi_0 = x=y\) is a genuine 
-solution for \(P_1,\dots,P_4\).
+\(\lambda \nu.\nu=0\) and \(\lambda \nu.\nu=1\).  The weakest upper 
+bounds of \(Q_1\) and \(Q_2\) are respectively \(\lambda \nu.-1 \leq \nu 
+\leq 1\) and \(\lambda \nu.0 \leq \nu \leq 2\).  We then obtain, for 
+example, \(\lambda \nu.\mathcal{J}(\nu=0 \lor \nu=1,\neg (-1 \leq \nu 
+\leq 1 \land 0 \leq \nu \leq 2)) \equiv \lambda \nu.0 \leq \nu \leq 1\) 
+as a candidate solution for \(Q_1\) and \(Q_2\).  However, \([\lambda 
+\nu.0 \leq \nu \leq 1/Q_1,\lambda \nu.0 \leq \nu \leq 1/Q_2](Q_1(x) 
+\imply Q_2(x+1))\) is not valid.  In this example, we are actually only 
+allowed to substitute the candidate solution \(\lambda \nu.0 \leq \nu 
+\leq 1\) for either \(Q_1\) or \(Q_2\).
 
-
-Therefore, we find a maximal subset \(M\) of \(S_i\) such that \(\phi_0\) 
-is in fact a solution for every predicate variable in \(M\).  Formally, 
-we find \(M=\set{R_1,\dots,R_m}\) such that:
+Therefore, we find a maximal subset \(M\) of \(S_i\) such that 
+\(\lambda\seq{x}.\lambda \nu.\phi_0\) is in fact a solution for every 
+predicate variable in \(M\).  Formally, we find \(M=\set{R_1,\dots,R_m}\) 
+such that:
 \begin{itemize}
 \item \(M \subseteq S_i\),
-\item \(\theta[\phi_0/R_1,\dots,\phi_0/R_m]C\) is valid for some 
-substitution \(\theta\) for predicate variables, and
-\item for any \(R_0 \in S_i \setminus M\), 
-\(\theta[\phi_0/R_0,\phi_0/R_1,\dots,\phi_0/R_m]C\) is not valid for any 
-\(\theta\).
+\item \(\theta[\lambda\seq{x}.\lambda 
+\nu.\phi_0/R_1,\dots,\lambda\seq{x}.\lambda \nu.\phi_0/R_m]C\) is valid 
+for some substitution \(\theta\) for predicate variables, and
+\item for any \(R_0 \in S_i \setminus M\) and \(\theta\) the following 
+formula is not valid: \(\theta[\lambda\seq{x}.\lambda 
+\nu.\phi_0/R_0,\lambda\seq{x}.\lambda 
+\nu.\phi_0/R_1,\dots,\lambda\seq{x}.\lambda \nu.\phi_0/R_m]C\).
 \end{itemize}
+For the running example \(C_{\texttt{copy}}\), \(\lambda x \lambda 
+\nu.\phi_0 \equiv \lambda x \lambda \nu.x=\nu\) is actually a genuine 
+solution for \(P_1,\dots,P_4\) (i.e., \(M=S_1\)).
 
-We then substitute the solution \(\phi_0\) for \(R_1,\dots,R_m\), and 
-repeat the entire constraint solving procedure until every predicate 
-variable in \(C\) is substituted.  For the running example 
-\(C_{\texttt{copy}}\), we finally obtain the following types:
+We then substitute the solution \(\lambda x \lambda \nu.\phi_0\) for 
+\(R_1,\dots,R_m \in M\), and repeat the entire constraint solving 
+procedure until every predicate variable in \(C\) is substituted.  For 
+the running example \(C_{\texttt{copy}}\), we finally obtain the 
+following refinement types of \(D_{\texttt{copy}}\):
 \begin{eqnarray*}
-\texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid x=y}}) \\
-%\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_2(x,y)}}) \\
-%\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid P_3(x,y)}}) \\
+\texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
+%\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
+%\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 \vdots\quad &&\qquad\qquad \vdots \\
-\texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{y\COL\INT \mid x=y}})
+\texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}})
 \end{eqnarray*}
 
 %\todo{discuss termination?}
