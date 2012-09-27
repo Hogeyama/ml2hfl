@@ -184,9 +184,11 @@ let main n = assert (copy (copy n) = n)
       To discover general predicates, we introduce a novel predicate
       discovery method for higher-order functional programs.  The method
       reduces the number of false errors produced by predicate
-      abstraction, by considering information from multiple calling
-      contexts in multiple paths.
-      \TODO{Explain the novelty of the method.}
+      abstraction. By considering information from multiple calling
+      contexts in multiple paths, the method discovers predicates that
+      are useful in multiple call-sites of a function, and also
+      discovers predicates to verify path- and context-sensitive
+      conditions.
 
 
 %%The first problem increases the number of CEGAR-cycle.
