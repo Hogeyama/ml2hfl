@@ -101,6 +101,64 @@ In this paper, we address four problems of our previous work.
 We discuss each problem and explain our approach below.
 
 \begin{enumerate}
+\item Another efficiency problem is caused by CPS transformation.  As
+      stated above, our approach needs CPS transformation to resolve the
+      gap between the evaluation strategies of higher-order recursion
+      schemes and higher-order boolean programs.  However, CPS
+      transformation increases the order\footnote{The order of program
+      $t$ is the maximum order of the types of functions in $t$.  The
+      order of type $\tau$ is defined by $\mathit{order}(\INT)=0$,
+      $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
+      \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}
+      of programs and the growth of the order is not bounded by a
+      constant.  Since the complexity of model checking of higher-order
+      recursion scheme is $n$-EXPTIME complete for order-$n$ recursion
+      scheme, the increase of the order of an input is crucial to the
+      verification time.
+%
+      For example, consider the following program.
+\begin{alltt}
+let rec check x f = f x; check (x+1) f
+let f x = assert (x >= 0)
+let main n = check n f
+\end{alltt}
+%Function \texttt{check} may cause an assertion failure only when two arguments are given.
+      The above program is translated into the following program by
+      a na\"{\i}ve call-by-value CPS transformation~\cite{Plotkin1975}.
+\begin{alltt}
+let rec check x k1 =
+  k1 (\(\lambda\)f.\(\lambda\)k2.f x (\(\lambda\)_.check (x+1) (\(\lambda\)g.g f k2)))
+let f x k = assert (x >= 0); k ()
+let main n k = check n (\(\lambda\)g. g f k)
+\end{alltt}
+      To preserve the evaluation order of an original call-by-value program,
+      each function of the translated call-by-name program takes
+      a continuation and passes its return value to the continuation.  Note here that the
+      order of the translated program is increased to 5.
+%\begin{alltt}
+%let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
+%let main k = check (\(\lambda\)f. f n k)
+%\end{alltt}
+%let apply x k1 = k1 (\(\lambda\)f.\(\lambda\)k2. f x k2)
+%let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
+%let main n k = check n (\(\lambda\)f1. apply n (\(\lambda\)f2. f2 f1 k))
+      We can, however, obtain the following order-3 program instead by
+      omitting the continuation \texttt{k1} of \texttt{check}, which is
+      actually unnecessary since a partial application of \texttt{check}
+      in the original program never causes side effects including an
+      assertion failure.
+\begin{alltt}
+let rec check x f k = f x (\(\lambda\)_.check (x+1) f k)
+let f x k = assert (x >= 0); k ()
+let main n k = check n f k
+\end{alltt}
+%This transformation uses the fact that the application to the first
+%argument does not cause an assertion failure and the context of
+%\texttt{call n} is not required to have a continuation.
+      Our CPS transformation avoids such unnecessary insertions of
+      continuations.  We formalize this transformation, called
+      \emph{selective CPS transformation}.
+
 \item The main bottleneck of the previous version of MoCHi was the
       predicate abstraction and discovery (Steps 1 and 5), rather than
       higher-order model checking.  Our previous method for predicate
@@ -239,64 +297,6 @@ let main n = assert (copy (copy n) = n)
 %function \texttt{add} is not abstracted.
 %We abstract programs, intuitively, with extracting functions which is not abstracted.
 %We formalize this abstraction, called selective predicate abstraction.
-
-\item Another efficiency problem is caused by CPS transformation.  As
-      stated above, our approach needs CPS transformation to resolve the
-      gap between the evaluation strategies of higher-order recursion
-      schemes and higher-order boolean programs.  However, CPS
-      transformation increases the order\footnote{The order of program
-      $t$ is the maximum order of the types of functions in $t$.  The
-      order of type $\tau$ is defined by $\mathit{order}(\INT)=0$,
-      $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
-      \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}
-      of programs and the growth of the order is not bounded by a
-      constant.  Since the complexity of model checking of higher-order
-      recursion scheme is $n$-EXPTIME complete for order-$n$ recursion
-      scheme, the increase of the order of an input is crucial to the
-      verification time.
-%
-      For example, consider the following program.
-\begin{alltt}
-let rec check x f = f x; check (x+1) f
-let f x = assert (x >= 0)
-let main n = check n f
-\end{alltt}
-%Function \texttt{check} may cause an assertion failure only when two arguments are given.
-      The above program is translated into the following program by
-      a na\"{\i}ve call-by-value CPS transformation~\cite{Plotkin1975}.
-\begin{alltt}
-let rec check x k1 =
-  k1 (\(\lambda\)f.\(\lambda\)k2.f x (\(\lambda\)_.check (x+1) (\(\lambda\)g.g f k2)))
-let f x k = assert (x >= 0); k ()
-let main n k = check n (\(\lambda\)g. g f k)
-\end{alltt}
-      To preserve the evaluation order of an original call-by-value program,
-      each function of the translated call-by-name program takes
-      a continuation and passes its return value to the continuation.  Note here that the
-      order of the translated program is increased to 5.
-%\begin{alltt}
-%let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
-%let main k = check (\(\lambda\)f. f n k)
-%\end{alltt}
-%let apply x k1 = k1 (\(\lambda\)f.\(\lambda\)k2. f x k2)
-%let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
-%let main n k = check n (\(\lambda\)f1. apply n (\(\lambda\)f2. f2 f1 k))
-      We can, however, obtain the following order-3 program instead by
-      omitting the continuation \texttt{k1} of \texttt{check}, which is
-      actually unnecessary since a partial application of \texttt{check}
-      in the original program never causes side effects including an
-      assertion failure.
-\begin{alltt}
-let rec check x f k = f x (\(\lambda\)_.check (x+1) f k)
-let f x k = assert (x >= 0); k ()
-let main n k = check n f k
-\end{alltt}
-%This transformation uses the fact that the application to the first
-%argument does not cause an assertion failure and the context of
-%\texttt{call n} is not required to have a continuation.
-      Our CPS transformation avoids such unnecessary insertions of
-      continuations.  We formalize this transformation, called
-      \emph{selective CPS transformation}.
 
 %Higher-order model checking (more precisely, the model
 %checking of higher-order recursion schemes) has been studied

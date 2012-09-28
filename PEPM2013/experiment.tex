@@ -1,9 +1,6 @@
-\vspace{-2mm}
 
 \section{Implementation and Preliminary Experiments}
 \label{sec:experiments}
-
-\vspace{-1mm}
 
 To evaluate the extended framework, we have implemented a prototype
 verifier for higher-order programs with lists and exceptions.
@@ -17,84 +14,68 @@ check (in Step 4) and predicate abstraction (in Step 1).
 Table~\ref{tbl:exp} shows the results of the experiments.  The column
 ``size'' shows the word counts of the program.  The last column shows
 the number of CEGAR-cycles and the running time measured.  In the last
-column, ``C.'' and ``A.'' denote the uses of selective CPS
-transformation and selective predicate abstraction, respectively.  The
-programs have been verified correctly.  The experiment was conducted on
-Intel Xeon 5570 CPU with 8 MB cache and 6 GB memory.  The implementation
-can be tested and all programs are available at
-\url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/mochi/}.
+column, ``C.'', ``A.'', and ``D.''  denote the uses of selective CPS
+transformation, selective predicate abstraction, and new predicate
+discovery, respectively.  The programs have been verified correctly.
+The experiment was conducted on Intel Xeon 5570 CPU with 8 MB cache and
+6 GB memory.  The implementation can be tested and all programs are
+available at \url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/mochi/}.
 
-\begin{table}
+\begin{table*}
 \caption{Results of preliminary experiments}
 \label{tbl:exp}
 \small
 \begin{center}
-\begin{tabular}{|l|r|r|r|r|r|r|r|}
+\begin{tabular}{|l|r|r|r|r|r|r|r|r|r|r|r|}
 \hline
-            &       &    & \multicolumn{4}{|c|}{cycle, time [sec]} \\
-\cline{4-7}
-program    & S & O & none &     C. &   A. &    C. \& A. \\
+            &       &    & \multicolumn{5}{|c|}{cycle, time [sec]} \\
+\cline{4-8}
+program    & size & order & none &     C. &   A. &    C. \& A. & C. \& A. \& D. \\
 \hline
-%intro1     &    27&      2& 1,  0.07 & 1,  0.06 & 0,  0.06 & 0,  0.06 \\
-%intro2     &    29&      2& 1,  0.06 & 1,  0.10 & 0,  0.06 & 0,  0.06 \\
-%intro3     &    30&      2& 1,  0.08 & 1,  0.07 & 0,  0.07 & 0,  0.06 \\
-\!sum        &    24&      1& 2, 0.14 & 2, 0.13 & 1, 0.09 & 1, 0.08 \\
-\!\bf  mult       &\bf     31&\bf       1&\bf  5, 48.94 &\bf  4, 42.49 &\bf  3, 0.18 &\bf  2, 0.14 \\
-\!\bf  max        &\bf     42&\bf       2&\bf  5, 2.17 &\bf  5, 0.85 &\bf  1, 0.20 &\bf  0, 0.08 \\
-\!mc91       &    32&      1& 2, 0.20 & 2, 0.19 & 2, 0.18 & 2, 0.16 \\
-\!\bf  ack        &\bf     53&\bf       1&\bf  - &\bf  - &\bf  1, 0.14 &\bf  1, 0.10 \\
-%repeat     &    37&      2&        - &        - &        - &        - \\
-%fhnhn      &    37&      2&  ,       &  ,       &  ,       &  ,       \\
-%hrec       &    34&      2& 2,  0.14 & 2,  0.15 & 1,  0.10 & 1,  0.09 \\
-%neg        &    47&      2& 1,  0.20 & 1,  0.13 & 0,  0.07 & 0,  0.06 \\
-%a-prod     &    70&      2& 8,  2.80 &        - & 4,       &  ,       \\
-\!\bf  a-cppr     & \bf   \!149&\bf       2&\bf  \!\!13, 359.88 &\bf  \!\!12, 10.14 &\bf  6, 1.13 &\bf  6, 1.18 \\
-%a-init     &    96&      2&  ,       &  ,       &  ,       &  ,       \\
-\!\bf  a-max      &\bf     70&\bf       2&\bf  - &\bf  6, 20.02 &\bf  3, 2.04 &\bf  3, 1.29 \\
-\!\bf l-zipunzip &\bf     81&\bf       2&\bf  - &\bf  6, 1.24 &\bf  - &\bf  2, 0.14 \\
-\!l-zipmap   &    65&      2& 6, 0.76 & 5, 1.04 & 2, 0.13 & 2, 0.13 \\
-\!hors       &    64&      2& 2, 0.28 & 2, 0.15 & 1, 0.10 & 1, 0.08 \\
-\!e-simple   &    27&      2& 1, 0.08 & 1, 0.07 & 0, 0.06 & 0, 0.06 \\
-\!e-fact     &    55&      2& 2, 0.12 & 2, 0.10 & 2, 0.09 & 2, 0.10 \\
-\!r-lock     &    54&      1& 6, 0.49 & 6, 0.30 & 0, 0.07 & 0, 0.07 \\
-\!\bf  r-file     &\bf    \!168&\bf       1&\bf  - &\bf  13, 5.55 &\bf  - &\bf  7, 0.79 \\
-\!sum-e      &    26&      1& 0, 0.06 & 0, 0.08 & 0, 0.06 & 0, 0.07 \\
-\!mult-e     &    33&      1& 1, 0.10 & 1, 0.11 & 0, 0.07 & 1, 0.10 \\
-\!mc91-e     &    32&      1& 0, 0.08 & 0, 0.08 & 0, 0.07 & 0, 0.08 \\
-\!repeat-e   &    35&      2& 0, 0.08 & 0, 0.08 & 0, 0.07 & 0, 0.07 \\
-\!a-max-e    &    70&      2& 3, 0.60 & 3, 0.33 & 2, 0.36 & 2, 0.29 \\
-\!r-lock-e   &    54&      1& 2, 0.15 & 2, 0.12 & 0, 0.09 & 0, 0.08 \\
-%excep-e    &    27&      2&  ,       &  ,       &  ,       &  ,       \\
-%\end{tabular}
-%\begin{tabular}{|l|r|r|r|r|r|r|r|}
-%\hline
-%            &       &    & \multicolumn{4}{|c|}{cycle, time [sec]} \\
-%\cline{4-7}
-%program    & size & order & no opt. &     CPS &   abst. &    both \\
+sum               &    24&  1&  2,    0.15 & 2,    0.13 & 1,    0.08 & 1,    0.07 & 1,    0.07 \\
+mult              &    31&  1&           - &          - & 3,    0.17 & 3,    0.14 & 3,    0.16 \\
+max               &    42&  2&  5,    5.03 & 5,    1.67 & 1,    0.18 & 3,    0.83 & 3,    0.91 \\
+mc91              &    32&  1&  2,    0.22 & 2,    0.23 & 2,    0.16 & 2,    0.16 & 2,    0.38 \\
+ack               &    53&  1&           - &          - & 1,    0.11 & 1,    0.10 & 1,    0.10 \\
+a-cppr            &   149&  2&           - &          - & 6,    1.26 & 6,    1.08 & 6,    1.09 \\
+l-zipunzip        &    81&  2&           - &          - &          - & 2,    0.13 & 2,    0.14 \\
+l-zipmap          &    65&  2&           - & 6,    0.54 & 2,    0.10 & 2,    0.12 & 3,    0.18 \\
+hors              &    64&  2&  2,    0.34 & 2,    0.12 & 1,    0.08 & 1,    0.07 & 1,    0.06 \\
+e-simple          &    27&  2&  1,    0.08 & 1,    0.07 & 0,    0.06 & 0,    0.06 & 0,    0.06 \\
+e-fact            &    55&  2&  2,    0.13 & 2,    0.12 & 2,    0.10 & 2,    0.09 & 2,    0.11 \\
+r-lock            &    54&  1&  6,    1.01 & 6,    0.49 & 0,    0.07 & 0,    0.08 & 0,    0.07 \\
+r-file            &   168&  1&           - &          - & 9,    2.78 & 12,   2.17 &          - \\
+sum-e             &    26&  1&  0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.06 \\
+mult-e            &    33&  1&  1,    0.11 & 1,    0.10 & 0,    0.06 & 0,    0.07 & 0,    0.07 \\
+mc91-e            &    32&  1&  0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.07 & 0,    0.07 \\
+repeat-e          &    35&  2&  0,    0.07 & 0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.06 \\
+r-lock-e          &    54&  1&  2,    0.20 & 2,    0.14 & 0,    0.08 & 0,    0.07 & 0,    0.08 \\
 \hline
-\!sum\_intro        &  33 & 1 & 2, 0.15 & 2, 0.14 & 1, 0.08 & 1, 0.08 \\
-\!\bf  fold\_right       &\bf   64 &\bf  2 &\bf  5, 4.18 &\bf  6, 3.72 &\bf  2, 0.26 &\bf  2, 0.16 \\
-\!\bf forall\_eq  &  55 & 1 & 6, 389.42 & - & 1, 0.14 & 1, 0.15 \\
-\!\bf  forall\_leq       &\bf   55 &\bf  2 &\bf  4, 1.77 &\bf  4, 0.95 &\bf  1, 0.15 &\bf  1, 0.13 \\
-\!isnil             &  52 & 1 & 3, 0.23 & 3, 0.19 & 2, 0.15 & 2, 0.16 \\
-\!\bf  iter              &\bf   59 &\bf  2 &\bf  4, 1.50 &\bf  4, 0.84 &\bf  1, 0.12 &\bf  1, 0.11 \\
-%length3           &  50 & 1 &       - &       - &       - & -, -    \\
-\!mem               &  74 & 1 & 4, 1.17 & 4, 0.58 & 3, 0.34 & 3, 0.27 \\
-\!nth0              &  78 & 1 & 3, 0.41 & 3, 0.32 & 3, 0.28 & 3, 0.24 \\
-\!\bf  harmonic          &\bf  \!101 &\bf  2 &\bf  5, 6.73 &\bf  5, 2.70 &\bf  1, 0.22 &\bf  1, 0.17 \\
-\!\bf  fold\_left        &\bf   64 &\bf  2 &\bf  6, 167.54 &\bf  5, 2.30 &\bf  2, 0.31 &\bf  2, 0.17 \\
-%iter\_fun\_list   &  59 & 3 &       - &       - &       - & -, -    \\
-\!\bf  zip               &\bf   69 &\bf  1 &\bf  - &\bf  - &\bf  - &\bf  2, 0.24 \\
-%map               &  85 & 2 &       - &       - &       - & -, -    \\
-\!\bf  map\_filter &\bf  \!111 &\bf  2 &\bf  - &\bf  - &\bf  2, 1.16 &\bf  3, 0.81 \\
-\!\bf  risers            &\bf   79 &\bf  1 &\bf  - &\bf  - &\bf  4, 1.80 &\bf  4, 1.32 \\
-%ground  &   - & - & - & - & - & - & - & - \\
-\!fact\_notpos      &  97 & 3 & 5, 0.35 & 5, 0.22 & 3, 0.16 & 3, 0.13 \\
-\!\bf  fun\_list         &\bf    94&\bf  3 &\bf  - &\bf  \!\!13, 84.79 &\bf  \!\!6, 15.70 &\bf  \!\!6, 11.12 \\
+arith\_exp        &  109 & 2 &           - &          - & 4,    8.58 & 3,    1.66 & 4,    6.35 \\
+sum\_intro        &   33 & 1 &  2,    0.18 & 2,    0.14 & 1,    0.08 & 1,    0.08 & 1,    0.07 \\
+copy\_intro       &   24 & 1 &           - &          - &          - &          - & 2,    0.14 \\
+fold\_right       &   64 & 2 &           - &          - & 2,    0.30 & 2,    0.20 & 2,    0.34 \\
+forall\_eq\_pair  &   55 & 1 &           - &          - & 1,    0.21 & 1,    0.17 & 1,    0.25 \\
+forall\_leq       &   55 & 2 &           - &          - & 1,    0.19 & 1,    0.17 & 1,    0.22 \\
+isnil             &   52 & 1 &  3,    0.29 & 3,    0.25 & 2,    0.12 & 2,    0.12 & 2,    0.12 \\
+iter              &   59 & 2 &           - &          - & 1,    0.16 & 1,    0.14 & 1,    0.18 \\
+mem               &   74 & 1 &  6,    5.68 & 5,    1.74 & 3,    0.41 & 2,    0.35 & 2,    0.31 \\
+nth0              &   78 & 1 &  4,    0.87 & 4,    0.60 & 2,    0.23 & 2,    0.19 & 2,    0.25 \\
+harmonic          &  101 & 2 &           - &          - & 1,    0.32 & 1,    0.18 & 1,    0.31 \\
+fold\_left        &   64 & 2 &           - &          - & 2,    0.35 & 2,    0.18 & 2,    0.34 \\
+zip               &   69 & 1 &           - &          - &          - & 3,    0.38 & 3,    0.35 \\
+map\_filter       &  111 & 2 &           - &          - & 2,    3.21 & 2,    1.87 &          - \\
+risers            &   79 & 1 &           - &          - & 4,    2.50 & 4,    1.66 & 3,    1.98 \\
+fact\_notpos      &   97 & 1 &  1,    0.10 & 1,    0.10 & 1,    0.06 & 1,    0.08 & 1,    0.08 \\
+fun\_list         &    94& 3 &           - &          - &          - &          - &          - \\
+arith\_exp-e      &  109 & 2 &           - &          - & 3,    3.13 & 2,    0.99 & 3,    4.35 \\
+harmonic-e        &  101 & 2 &  1,    0.43 & 1,    0.19 & 0,    0.11 & 0,    0.09 & 0,    0.08 \\
+map\_filter-e     &  111 & 2 &  2,    2.27 & 2,    1.10 & 0,    0.17 & 0,    0.14 & 0,    0.14 \\
+fact\_notpos-e    &   97 & 1 &  0,    0.07 & 0,    0.07 & 0,    0.07 & 0,    0.07 & 0,    0.07 \\
 \hline
 \end{tabular}
 \end{center}
-\end{table}
+\end{table*}
 
 %All programs except ... are list manipulating ones.  Almost programs
 %define a generator of lists and functions on lists, and assert that the
@@ -103,7 +84,7 @@ The programs used in the experiments are:
 \begin{itemize}
 \item ``r-lock-e'' and above are the programs used in the experiments in
       the previous paper~\cite{KobayashiPLDI2011}.
-\item ``sum\_intro'' is the example program in Section~\ref{sec:intro}.
+\item ``sum\_intro'' and ``copy\_intro'' is the example program in Section~\ref{sec:intro}.
 \item ``map\_head\_filter'' and ``risers'' are examples of Ong and
       Ramsay's verification framework~\cite{Ong2011} for higher-order
       recursion scheme with a \textit{case} construct listed at their
@@ -117,6 +98,7 @@ The programs used in the experiments are:
       ``zip'' defines a function that takes two lists and returns a list of corresponding pairs.
       The function fails if the two arguments have different lengths.
       ``zip'' asserts that \texttt{zip xs xs} never fails for all integer lists \texttt{xs}.
+\item A program of name ``xxx-e'' is a buggy version of the program ``xxx''.
 \end{itemize}
 %\begin{itemize}
 %%\item ``fold\_right'' defines
