@@ -51,7 +51,7 @@ let pr ppf (nxs, n) =
 let normalize (nxs, n) =
   List.filter (fun (n, _) -> n <> 0)
     (List.map
-      (function ((n, x)::nxs) ->
+      (function ((n, x) :: nxs) ->
         (List.fold_left (+) n (List.map fst nxs), x)
       | _ -> assert false)
       (Util.classify (fun (_, x1) (_, x2) -> Var.equiv x1 x2) nxs)),
@@ -150,22 +150,97 @@ let aif_of t =
       div_gcd_aif (c, nxs, n)
   | _ -> invalid_arg "LinArith.aif_of"
 
+(** @ensure the result does not contain Const.Minus, Const.Sub,
+            and negative integer constants *)
 let term_of_aif (c, nxs, n) =
   if c = Const.IBTrue then
     Const([], Const.True)
   else if c = Const.IBFalse then
     Const([], Const.False)
-  else if nxs = [] then
-    if Const.lift_ibrel c n 0 then
-      Const([], Const.True)
-    else
-      Const([], Const.False)
   else
-    let nxs1, nxs2 = List.partition (fun (n, _) -> assert (n <> 0); n > 0) nxs in
-    apply
-      (Const([], c))
-      [sum ((if n > 0 then [tint n] else []) @ List.map (fun (n, x) -> if n = 1 then make_var x else Term.mul (tint n) (make_var x)) nxs1);
-       sum ((if n < 0 then [tint (-n)] else []) @ List.map (fun (n, x) -> if n = -1 then make_var x else Term.mul (tint (-n)) (make_var x)) nxs2)]
+    let _ = if !Global.debug then assert (Const.is_ibrel c) in
+    if nxs = [] then
+      if Const.lift_ibrel c n 0 then
+        Const([], Const.True)
+      else
+        Const([], Const.False)
+    else
+      let nxs1, nxs2 =
+        List.partition
+          (fun (n, _) ->
+            let _ = if !Global.debug then assert (n <> 0) in
+            n > 0)
+          nxs
+      in
+      let n1, n2 = if n > 0 then n, 0 else if n < 0 then 0, n else 0, 0 in
+      let tp = term_of (nxs1, n1) in
+      let tm = term_of (minus (nxs2, n2)) in
+      bop c tp tm
+
+(*
+let term_of_aif (c, nxs, n) =
+  match c with
+    Const.EqInt ->
+      eqInt (term_of (nxs, n)) (tint 0)
+  | Const.NeqInt ->
+      neqInt (term_of (nxs, n)) (tint 0)
+  | Const.Lt ->
+      lt (term_of (nxs, n)) (tint 0)
+  | Const.Gt ->
+      gt (term_of (nxs, n)) (tint 0)
+  | Const.Leq ->
+      leq (term_of (nxs, n)) (tint 0)
+  | Const.Geq ->
+      geq (term_of (nxs, n)) (tint 0)
+*)
+
+let simplify_conjuncts_aifs aifs =
+  let aifss =
+    Util.classify
+      (fun (_, nxs1, n1) (_, nxs2, n2) ->
+        equiv (nxs1, 0) (nxs2, 0) ||
+        equiv (nxs1, 0) (minus (nxs2, 0)))
+      aifs
+  in
+  Util.concat_map
+    (fun ((c1, nxs1, n1) :: aifs) ->
+      let cns =
+        (c1, -n1) ::
+        List.map
+          (fun (c2, nxs2, n2) ->
+            if equiv (nxs1, 0) (nxs2, 0) then
+              c2, -n2
+            else
+              Const.minus_ibrel c2, n2)
+          aifs
+      in
+      let cns = Const.candns cns in
+      List.map (fun (c, n) -> c, nxs1, -n) cns)
+    aifss
+
+let simplify_disjuncts_aifs aifs =
+  let aifss =
+    Util.classify
+      (fun (_, nxs1, n1) (_, nxs2, n2) ->
+        equiv (nxs1, 0) (nxs2, 0) ||
+        equiv (nxs1, 0) (minus (nxs2, 0)))
+      aifs
+  in
+  Util.concat_map
+    (fun ((c1, nxs1, n1) :: aifs) ->
+      let cns =
+        (c1, -n1) ::
+        List.map
+          (fun (c2, nxs2, n2) ->
+            if equiv (nxs1, 0) (nxs2, 0) then
+              c2, -n2
+            else
+              Const.minus_ibrel c2, n2)
+          aifs
+      in
+      let cns = Const.corns cns in
+      List.map (fun (c, n) -> c, nxs1, -n) cns)
+    aifss
 
 (** {6 Utility functions} *)
 
@@ -182,5 +257,7 @@ let rec nlfvs t =
       assert false
   | Const(_, c), ts ->
       Util.concat_map nlfvs ts
-  | Call(_, _, _), [] | Ret(_, _, _, _), [] | Error(_), [] -> assert false
-  | Forall(_, env, t), [] | Exists(_, env, t), [] -> Util.diff (nlfvs t) (List.map fst env)
+  | Call(_, _, _), [] | Ret(_, _, _, _), [] | Error(_), [] ->
+      assert false
+  | Forall(_, env, t), [] | Exists(_, env, t), [] ->
+      Util.diff (nlfvs t) (List.map fst env)

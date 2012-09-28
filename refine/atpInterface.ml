@@ -177,7 +177,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
         fvs
       in
       let t = band ts in
-      if fvs <> [] && FormulaUtil.is_linear t then
+      if fvs <> [] && is_linear t then
         conjuncts (integer_qelim (exists (List.map (fun x -> x, SimType.Int(*???*)) fvs) t))
       else
         raise (Util.NotImplemented "subst_lbs")
@@ -189,7 +189,7 @@ let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
             let _ = Global.log (fun () -> Format.printf "bvs: %a@,fvs: %a@," Var.pr_list bvs Var.pr_list fvs) in
             fvs
           in
-          if fvs <> [] && FormulaUtil.is_linear t then
+          if fvs <> [] && is_linear t then
             let _ = Global.log (fun () -> Format.printf "before:@,  @[%a@]@," Term.pr t) in
             let t =
               try

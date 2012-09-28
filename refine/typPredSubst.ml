@@ -1,6 +1,5 @@
 open ExtList
 open HornClause
-open HornClauseEc
 
 (** Typed substitutions for predicates *)
 
@@ -82,7 +81,7 @@ let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t) as hc) =
   in
   let t = Formula.band (t :: ts) in
   (*let _ = Global.log (fun () -> Format.printf "interm: %a@," Term.pr t) in*)
-  let hc = simplify bvs (Hc(popt, ps, t)) in
+  let hc = HornClauseUtil.simplify bvs (Hc(popt, ps, t)) in
   let _ = Global.log (fun () -> Format.printf "output: %a" HornClause.pr_elem hc) in
   let _ = Global.log_end "subst_lhs" in
   hc
@@ -96,12 +95,12 @@ let subst ?(bvs = []) psub hc =
   | Some(pid, xtys) ->
       (try
         let t' = lookup_map (Atom.of_pred (pid, xtys)) psub in
-        simplify bvs (Hc(None, ps, Formula.band [t; Formula.bnot t']))
+        HornClauseUtil.simplify bvs (Hc(None, ps, Formula.band [t; Formula.bnot t']))
       with Not_found ->
         Hc(popt, ps, t))
 
 (** @require fvs psub = [] && Util.is_map psub && Util.subset (pids hcs) (Util.dom psub) *)
-let check psub hcs =
+let check_validity psub hcs =
   List.iter
     (fun hc ->
       match subst psub hc with

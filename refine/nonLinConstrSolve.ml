@@ -39,7 +39,7 @@ let gen_coeff_constrs t =
               t
           in
           let qft =
-            if FormulaUtil.is_linear t then
+            if Formula.is_linear t then
               FormulaUtil.simplify (AtpInterface.integer_qelim t)
             else
               FormulaUtil.simplify (AtpInterface.real_qelim t)

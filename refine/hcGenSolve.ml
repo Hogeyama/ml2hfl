@@ -296,7 +296,7 @@ let rec solve ch hcs0 =
 let solve ch hcs =
   let _ = Global.log_begin "solving Horn clauses" in
   let sol = solve ch hcs in
-  let _ = if !Global.debug then TypPredSubst.check sol hcs in
+  let _ = if !Global.debug then TypPredSubst.check_validity sol hcs in
   let _ = Global.log (fun () -> Format.printf "solution:@,  @[<v>%a@]" TypPredSubst.pr sol) in
   let _ = Global.log_end "solving Horn clauses" in
   sol

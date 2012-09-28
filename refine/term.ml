@@ -26,6 +26,9 @@ let rec apply t ts =
   | t' :: ts' ->
       apply (App([], t, t')) ts'
 
+let uop c t = apply (Const([], c)) [t]
+let bop c t1 t2 = apply (Const([], c)) [t1; t2]
+
 let make_var x = Var([], x)
 let new_var () = make_var (Var.new_var ())
 
@@ -92,6 +95,10 @@ let is_int_const t =
   match t with
     Const(_, Const.Int(n)) -> true
   | _ -> false
+
+let eq_int t n = is_int_const t && int_const_of t = n
+let gt_int t n = is_int_const t && int_const_of t > n
+let lt_int t n = is_int_const t && int_const_of t < n
 
 (** {6 Printers} *)
 

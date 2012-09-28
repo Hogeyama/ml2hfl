@@ -127,7 +127,7 @@ let convex_hull t =
       (List.unique (Term.fvs t))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let tss, f = FormulaUtil.elim_boolean [FormulaUtil.elim_unit t] in
+  let tss, f = FormulaUtil.split_cases_boolean [FormulaUtil.elim_unit t] in
   let ts =
     List.map
       (fun [t] ->
@@ -144,7 +144,7 @@ let widen ts =
     (List.unique (Util.concat_map Term.fvs ts))
   in
   let env = Apron.Environment.make (Array.of_list fvs) [||] in
-  let tss, f = FormulaUtil.elim_boolean (List.map FormulaUtil.elim_unit ts) in
+  let tss, f = FormulaUtil.split_cases_boolean (List.map FormulaUtil.elim_unit ts) in
   let aux ts =
     let ts = List.map (fun t -> polyhedron_of env t) ts in
 (*

@@ -86,7 +86,7 @@ let infer_ref_types fs prog etrs =
       let ctrs, hcss = List.split (List.map (HcGenRefType.cgen (Prog.type_of prog)) etrs) in
       let hcs = List.concat hcss in
       let _ = Global.log (fun () -> Format.printf "call trees:@,  @[<v>%a@]@," (Util.pr_list CallTree.pr "@,") ctrs) in
-      let hcs = List.map (HornClauseEc.simplify []) hcs in
+      let hcs = List.map (HornClauseUtil.simplify []) hcs in
       let _ = Global.log (fun () -> Format.printf "horn clauses:@,  %a@," HornClause.pr hcs) in
       let orig_hcs = hcs in
       let inline pid =
@@ -144,12 +144,12 @@ let infer_ref_types fs prog etrs =
         in
         let _ =
           if !Global.debug && false then
-            let orig_hcs = List.map (HornClauseEc.simplify []) (List.map (TypPredSubst.subst_lhs sol) orig_hcs) in
+            let orig_hcs = List.map (HornClauseUtil.simplify []) (List.map (TypPredSubst.subst_lhs sol) orig_hcs) in
             let lbs = HcSolve.compute_lbs orig_hcs in
-            let orig_hcs = List.map (HornClauseEc.simplify []) (List.map (TypPredSubst.subst_lhs lbs) orig_hcs) in
+            let orig_hcs = List.map (HornClauseUtil.simplify []) (List.map (TypPredSubst.subst_lhs lbs) orig_hcs) in
             let _ = Global.log (fun () -> Format.printf "solved horn clauses:@,  %a@," HornClause.pr orig_hcs) in
             let sol = sol @ List.filter_map (function HornClause.Hc(Some(pid, xtys), [], t) -> Some(pid, (xtys, t)) | _ -> None ) orig_hcs in
-            TypPredSubst.check sol orig_hcs
+            TypPredSubst.check_validity sol orig_hcs
         in
         sol
       in

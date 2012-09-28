@@ -1,4 +1,6 @@
 open ExtList
+open Term
+open Formula
 
 (** Typed substitutions *)
 
@@ -75,3 +77,135 @@ let fresh p t =
 let fresh_vars xs t =
   let sub = List.map (fun x -> x, Term.new_var ()) xs in
   subst (fun x -> List.assoc x sub) t
+
+
+let elim_duplicate xttys =
+  let xttys, tss =
+    List.split
+      (List.map
+        (fun (((_, t1, ty1) as xtty) :: xttys) ->
+          let ts =
+            List.map
+              (fun (_, t2, ty2) -> eq_tty (t1, ty1) (t2, ty2))
+              xttys
+          in
+          xtty, ts)
+        (Util.classify (fun (x1, _, _) (x2, _, _) -> x1 = x2) xttys))
+  in
+  xttys, List.flatten tss
+
+
+
+
+
+let xtty_of p dom t =
+  try
+    ParLinArith.xtty_of_aif p dom (ParLinArith.aif_of t)
+  with Invalid_argument _ ->
+    (match fun_args t with
+      Const(_, Const.EqUnit), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (Term.fvs t) = [] ->
+        x, t, SimType.Unit
+    | Const(_, Const.EqUnit), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (Term.fvs t) = [] ->
+        x, t, SimType.Unit
+    | Const(_, Const.EqBool), [Var(_, x); t] when not (p x) && Util.inter (x::dom) (Term.fvs t) = [] ->
+        x, t, SimType.Bool
+    | Const(_, Const.EqBool), [t; Var(_, x)] when not (p x) && Util.inter (x::dom) (Term.fvs t) = [] ->
+        x, t, SimType.Bool
+    | Var(_, x), []                    when not (p x) ->
+        x, ttrue, SimType.Bool
+    | Const(_, Const.Not), [Var(_, x)] when not (p x) ->
+        x, tfalse, SimType.Bool
+    | _ ->
+        raise Not_found)
+
+
+(** @param pids specifies the priority *)
+let extract_from pids p t =
+  let ts = conjuncts t in
+  let eqcs, ts =
+    Util.partition_map
+      (fun t ->
+        match Term.fun_args t with
+          Term.Const(_, Const.EqUnit), [Term.Var(_, x1); Term.Var(_, x2)] ->
+            `L([x1; x2], SimType.Unit)
+        | Term.Const(_, Const.EqBool), [Term.Var(_, x1); Term.Var(_, x2)] ->
+            `L([x1; x2], SimType.Bool)
+        | Term.Const(_, Const.EqInt), [Term.Var(_, x1); Term.Var(_, x2)] ->
+            `L([x1; x2], SimType.Int)
+        | _ -> `R(t))
+      ts
+  in
+  let eqcs =
+    let rec aux eqcs1 eqcs2 =
+      match eqcs2 with
+        [] -> eqcs1
+      | eqc2::eqcs2' ->
+          let eqcs1' =
+            let flag = ref false in
+            let eqcs =
+              List.map
+                (fun eqc1 ->
+                  if Util.inter (fst eqc2) (fst eqc1) <> [] then
+                    let _ = assert (snd eqc1 = snd eqc2) in
+                    let _ = flag := true in
+                    List.unique (fst eqc1 @ fst eqc2), snd eqc1
+                  else
+                    eqc1)
+                eqcs1
+            in
+            if !flag then eqcs else eqc2 :: eqcs
+          in
+          aux eqcs1' eqcs2'
+    in
+    Util.fixed_point (aux []) (fun eqcs1 eqcs2 -> List.length eqcs1 = List.length eqcs2) eqcs
+  in
+  let ts', sub =
+    Util.flatten_unzip
+      (List.map
+        (fun (eqc, ty) ->
+          let xs1, xs2 = List.partition p eqc in
+          match xs1 with
+            [] ->
+              [], List.map (fun x -> x, Term.make_var (List.hd xs2), ty) (List.tl xs2)
+          | x::xs ->
+              let x, xs =
+                try
+                  let pid = List.find (fun pid -> List.mem pid xs1) pids in
+                  pid , Util.diff xs1 [pid]
+                with Not_found -> x, xs
+              in
+              List.map (fun x' -> eq_tty (Term.make_var x, ty) (Term.make_var x', ty)) xs,
+              List.map (fun x' -> x', Term.make_var x, ty) xs2)
+        eqcs)
+  in
+  fun_of sub, band (ts @ ts')
+
+(** may return a substitution of the form {x -> y, y -> z}
+    unsound for non linear expressions? maybe not *)
+let extract_from2 pvs p ts =
+  let nlfvs = LinArith.nlfvs (band ts) in
+  let rec aux ts xttys0 ts0 =
+    match ts with
+      [] -> xttys0, ts0
+    | t::ts' ->
+        let xttys0, ts0 =
+          try
+            let dom = List.map Util.fst3 xttys0 in
+            let xtty = xtty_of p dom t in
+            let xtty =
+              (*Format.printf "xtty: %a@,nlfvs: %a@,pvs: %a@," pr_elem xtty Var.pr_list nlfvs Var.pr_list pvs;*)
+              if List.mem (Util.fst3 xtty) nlfvs && not (is_linear (Util.snd3 xtty)) ||
+                 List.mem (Util.fst3 xtty) pvs && Term.coeffs (Util.snd3 xtty) <> [] (*|| t is constant*) then
+                raise Not_found
+              else
+                xtty
+            in
+            xtty::xttys0, ts0
+          with Not_found ->
+            xttys0, t::ts0
+        in
+        aux ts' xttys0 ts0
+  in
+  let xttys0, ts0 = aux ts [] [] in
+  let xttys1, ts1 = elim_duplicate xttys0 in
+  xttys1, band (ts0 @ ts1)

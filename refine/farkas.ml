@@ -58,7 +58,7 @@ let farkas t =
     List.map
       (List.map
         (fun t ->
-          canonize_aif
+          normalize_aif
             (try
               aif_of t
             with Invalid_argument _ ->

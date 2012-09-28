@@ -1,9 +1,9 @@
 SOURCES = enum.ml extList.ml extString.ml \
-          util.ml zipper.ml \
           global.ml \
+          util.ml zipper.ml \
           attr.ml idnt.ml const.ml var.ml callId.ml simType.ml \
-          term.ml typTerm.ml typSubst.ml \
-          linArith.ml nonLinArith.ml parLinArith.ml formula.ml formulaUtil.ml fes.ml \
+          term.ml typTerm.ml \
+          linArith.ml poly.ml parLinArith.ml formula.ml typSubst.ml formulaUtil.ml fes.ml \
           fdef.ml prog.ml \
           cvc3Interface.ml csisatInterface.ml atpInterface.ml apronInterface.ml \
           farkas.ml nonLinConstrSolve.ml \

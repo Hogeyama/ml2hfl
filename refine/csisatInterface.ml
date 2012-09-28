@@ -266,3 +266,52 @@ let interpolate_bvs p t1 t2 =
   let t1 = TypSubst.fresh p t1 in
   let t2 = TypSubst.fresh p t2 in
   interpolate t1 t2
+
+(** @todo why this causes verification of file.ml too slow? *)
+let generalize_interpolate pivot p t1 t2 =
+  if Cvc3Interface.is_valid (Formula.bnot t1) then
+    Formula.tfalse(*???*)
+  else
+    let xns, ts1 =
+      Util.partition_map
+        (fun t ->
+          try
+            match LinArith.aif_of t with
+              (Const.EqInt, [1, x], n) ->
+                `L(x, -n)
+            | (Const.EqInt, [-1, x], n) ->
+                `L(x, n)
+            | aif ->
+                `R(LinArith.term_of_aif aif)
+          with Invalid_argument _ ->
+            `R(t))
+        (Formula.conjuncts t1)
+    in
+    match xns with
+      [] -> interpolate_bvs p t1 t2
+    | _ ->
+        (* find a pivot (x, n) *)
+        let (x, n) :: xns =
+          try
+            let xns1, (x, n), xns2 = Util.pick (fun (x, _) -> pivot = x) xns in
+            (x, n) :: xns1 @ xns2
+          with Not_found ->
+            List.sort ~cmp:(fun (_, n1) (_, n2) -> n1 - n2) xns
+        in
+        let ts2 =
+          List.map
+            (fun (x', n') ->
+              Formula.eqInt
+                (Term.make_var x')
+                (Term.add (Term.make_var x) (Term.tint (n' - n))))
+            xns
+        in
+        let t1 =
+          Formula.band
+            (Formula.eqInt (Term.make_var x) (Term.tint n) ::
+             ts1 @ ts2)
+        in
+        try
+          interpolate_bvs p (Formula.band (ts1 @ ts2)) t2
+        with NoInterpolant | Unknown ->
+          interpolate_bvs p t1 t2

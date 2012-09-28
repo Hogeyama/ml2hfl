@@ -9,7 +9,7 @@ type t =
 | And | Or | Imply | Iff
 | EqUnit | NeqUnit | EqBool | NeqBool
 | EqInt | NeqInt | Lt | Gt | Leq | Geq
-| IBTrue | IBFalse (* used only in cand and cor *)
+| IBTrue | IBFalse (* binary true and false operators used only in cand and cor *)
 | Add | Sub | Mul
 | Div | Mod
 
@@ -30,19 +30,23 @@ let rec pr ppf c =
   | Imply -> Format.fprintf ppf "(=>)"
   | Iff -> Format.fprintf ppf "(<=>)"
   | EqUnit -> Format.fprintf ppf "(=u)"
+  | NeqUnit -> Format.fprintf ppf "(<>u)"
   | EqBool -> Format.fprintf ppf "(=b)"
+  | NeqBool -> Format.fprintf ppf "(<>b)"
   | EqInt -> Format.fprintf ppf "(=i)"
-(*
-  | EqUnit | EqBool | EqInt -> Format.fprintf ppf "(=)"
-*)
+  | NeqInt -> Format.fprintf ppf "(<>i)"
   | Lt -> Format.fprintf ppf "(<)"
   | Gt -> Format.fprintf ppf "(>)"
   | Leq -> Format.fprintf ppf "(<=)"
   | Geq -> Format.fprintf ppf "(>=)"
-  | NeqUnit | NeqBool | NeqInt -> Format.fprintf ppf "(<>)"
+  | IBTrue -> assert false
+  | IBFalse -> assert false
   | Add -> Format.fprintf ppf "(+)"
   | Sub -> Format.fprintf ppf "(-)"
   | Mul -> Format.fprintf ppf "(*)"
+  | Div -> Format.fprintf ppf "(/)"
+  | Mod -> Format.fprintf ppf "(mod)"
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 let rec pr_bin ppf c =
   match c with
@@ -59,19 +63,23 @@ let rec pr_bin ppf c =
   | Imply -> Format.fprintf ppf "=>"
   | Iff -> Format.fprintf ppf "<=>"
   | EqUnit -> Format.fprintf ppf "=u"
+  | NeqUnit -> Format.fprintf ppf "<>u"
   | EqBool -> Format.fprintf ppf "=b"
+  | NeqBool -> Format.fprintf ppf "<>b"
   | EqInt -> Format.fprintf ppf "=i"
-(*
-   | EqUnit| EqBool | EqInt -> Format.fprintf ppf "="
-*)
+  | NeqInt -> Format.fprintf ppf "<>i"
   | Lt -> Format.fprintf ppf "<"
   | Gt -> Format.fprintf ppf ">"
   | Leq -> Format.fprintf ppf "<="
   | Geq -> Format.fprintf ppf ">="
-  | NeqUnit | NeqBool | NeqInt -> Format.fprintf ppf "<>"
+  | IBTrue -> assert false
+  | IBFalse -> assert false
   | Add -> Format.fprintf ppf "+"
   | Sub -> Format.fprintf ppf "-"
   | Mul -> Format.fprintf ppf "*"
+  | Div -> Format.fprintf ppf "/"
+  | Mod -> Format.fprintf ppf "mod"
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 (** {6 Basic functions} *)
 
@@ -83,9 +91,39 @@ let rec is_bin c =
   | Unit | True | False | Int(_) | RandInt
   | Not | Minus -> false
   | And | Or | Imply | Iff
-  | EqBool | NeqBool | EqUnit | NeqUnit
-  | Lt | Gt | Leq | Geq | EqInt | NeqInt
-  | Add | Sub | Mul -> true
+  | EqUnit | NeqUnit
+  | EqBool | NeqBool
+  | EqInt | NeqInt | Lt | Gt | Leq | Geq | IBTrue | IBFalse
+  | Add | Sub | Mul | Div | Mod -> true
+  | _ -> let _ = Format.printf "%a" pr c in assert false
+
+(** @param c a constant
+    @return whether c is a binary relation on unit *)
+let is_ubrel c =
+  match c with
+    Event(_)
+  | Unit | True | False | Int(_) | RandInt
+  | Not| Minus
+  | And | Or | Imply | Iff -> false
+  | EqUnit | NeqUnit -> true
+  | EqBool | NeqBool
+  | EqInt | NeqInt | Lt | Gt | Leq | Geq | IBTrue | IBFalse
+  | Add | Sub | Mul | Div | Mod -> false
+  | _ -> let _ = Format.printf "%a" pr c in assert false
+
+(** @param c a constant
+    @return whether c is a binary relation on booleans *)
+let is_bbrel c =
+  match c with
+    Event(_)
+  | Unit | True | False | Int(_) | RandInt
+  | Not| Minus -> false
+  | And | Or | Imply | Iff -> true
+  | EqUnit | NeqUnit -> false
+  | EqBool | NeqBool -> true
+  | EqInt | NeqInt | Lt | Gt | Leq | Geq | IBTrue | IBFalse
+  | Add | Sub | Mul | Div | Mod -> false
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 (** @param c a constant
     @return whether c is a binary relation on integers *)
@@ -94,10 +132,12 @@ let is_ibrel c =
     Event(_)
   | Unit | True | False | Int(_) | RandInt
   | Not| Minus
-  | And | Or | Imply | Iff 
-  | EqBool | NeqBool | EqUnit | NeqUnit
-  | Add | Sub | Mul -> false
-  | EqInt | NeqInt | Lt | Gt | Leq | Geq -> true
+  | And | Or | Imply | Iff
+  | EqUnit | NeqUnit
+  | EqBool | NeqBool -> false
+  | EqInt | NeqInt | Lt | Gt | Leq | Geq | IBTrue | IBFalse -> true
+  | Add | Sub | Mul | Div | Mod -> false
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 (** @return whether c is equality or non-equality *)
 let is_eq_neq c =
@@ -105,10 +145,13 @@ let is_eq_neq c =
     Event(_)
   | Unit | True | False | Int(_) | RandInt
   | Not | Minus
-  | And | Or | Imply | Iff
-  | Lt | Gt | Leq | Geq
-  | Add | Sub | Mul -> false
-  | EqUnit | NeqUnit | EqBool | NeqBool | EqInt | NeqInt -> true
+  | And | Or | Imply | Iff -> false
+  | EqUnit | NeqUnit
+  | EqBool | NeqBool
+  | EqInt | NeqInt -> true
+  | Lt | Gt | Leq | Geq | IBTrue | IBFalse
+  | Add | Sub | Mul | Div | Mod -> false
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 (** @return whether c returns an integer value *)
 let rec is_int c =
@@ -119,21 +162,39 @@ let rec is_int c =
   | Not -> false
   | Minus -> true
   | And | Or | Imply | Iff
-  | EqUnit | NeqUnit | EqBool | NeqBool
-  | EqInt | NeqInt | Lt | Gt | Leq | Geq -> false
-  | Add | Sub | Mul -> true
+  | EqUnit | NeqUnit
+  | EqBool | NeqBool
+  | EqInt | NeqInt | Lt | Gt | Leq | Geq | IBTrue | IBFalse -> false
+  | Add | Sub | Mul | Div | Mod -> true
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 (** @return whether c returns a boolean value *)
 let rec is_bool c =
   match c with
     Event(_)
-  | Unit
-  | Int(_) | RandInt
-  | Minus
-  | Add | Sub | Mul -> false
-  | True | False | Not | And | Or | Imply | Iff
-  | Lt | Gt | Leq | Geq
-  | EqUnit | NeqUnit | EqBool | NeqBool | EqInt | NeqInt -> true
+  | Unit -> false
+  | True | False -> true
+  | Int(_) | RandInt -> false
+  | Not -> true
+  | Minus -> false
+  | And | Or | Imply | Iff
+  | EqUnit | NeqUnit
+  | EqBool | NeqBool
+  | EqInt | NeqInt | Lt | Gt | Leq | Geq | IBTrue | IBFalse -> true
+  | Add | Sub | Mul | Div | Mod -> false
+  | _ -> let _ = Format.printf "%a" pr c in assert false
+
+let bnot_ubrel c =
+  match c with
+    EqUnit -> NeqUnit
+  | NeqUnit -> EqUnit
+  | _ -> let _ = Format.printf "%a" pr c in assert false
+
+let bnot_bbrel c =
+  match c with
+    EqBool -> NeqBool
+  | NeqBool -> EqBool
+  | _ -> let _ = Format.printf "%a" pr c in assert false
 
 let bnot_ibrel c =
   match c with

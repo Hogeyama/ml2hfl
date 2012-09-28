@@ -1,8 +1,9 @@
 open ExtList
 open ExtString
 
-(** Interface to CVC3
-    unit is encoded as 0 *)
+(** Interface to CVC3 *)
+
+(** unit is encoded as 0 *)
 
 let cvc3in = ref stdin
 let cvc3out = ref stdout
