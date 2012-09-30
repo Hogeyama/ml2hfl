@@ -3,11 +3,11 @@ open ExtString
 open HornClause
 open HornClauseUtil
 
-(** Solving non-recursive Horn clauses *)
+(** Utility functions for solving non-recursive Horn clauses *)
 
 exception NoSolution
 
-(** {6 Functions for computing lower bounds} *)
+(** {6 Functions for computing the greatest lower bounds} *)
 
 let compute_lb lbs (Hc(Some(pid, xtys), _, _) as hc) =
   let Hc(_, [], t) = TypPredSubst.subst_lhs lbs hc in
@@ -42,7 +42,7 @@ let compute_lbs hcs =
             lb)
           hcs1
       in
-      aux hcs2 (lbs @ lbs' (* no need to merge thanks to the assumption "is_non_disjunctive hcs"*))
+      aux hcs2 (lbs @ lbs' (* no need to merge here due to the assumption "is_non_disjunctive hcs"*))
   in
   let res = aux hcs [] in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr res) in
@@ -83,7 +83,7 @@ let compute_extlbs hcs =
             extlb)
         hcs1
       in
-      aux hcs2 (extlbs @ extlbs'(* no need to merge thanks to the assumption "is_non_disjunctive hcs" *))
+      aux hcs2 (extlbs @ extlbs'(* no need to merge here due to the assumption "is_non_disjunctive hcs" *))
   in
   let res = aux hcs [] in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
@@ -122,7 +122,13 @@ let formula_of_forward_ext hcs =
   let hcs1, hcs = List.partition is_root hcs in
   let hcs2, hcs3 = List.partition is_coeff hcs in
   let lbs = compute_extlbs hcs3 in
-  let _ = Global.log (fun () -> Format.printf "extended lower bounds:@,  @[<v>%a@]@," (Util.pr_list pr_elem "@,") lbs) in
+  let _ =
+    Global.log
+      (fun () ->
+        Format.printf
+          "extended greatest lower bounds:@,  @[<v>%a@]@,"
+          (Util.pr_list pr_elem "@,") lbs)
+  in
   let res =
     FormulaUtil.simplify
       (Formula.bor
@@ -193,10 +199,10 @@ let inline_backward p hcs =
   res
 
 
-(** {6 Functions for computing upper bounds} *)
+(** {6 Functions for computing the least upper bounds} *)
 
 (** @deprecated use compute_ubs instead *)
-let compute_ubs_hc lbs ubs (Hc(popt, atms, t) as hc) =
+let compute_ubs_incorrect_hc lbs ubs (Hc(popt, atms, t) as hc) =
   let _ = Global.log_begin "compute_ubs_hc" in
   let _ = Global.log (fun () -> Format.printf "input: %a@," HornClause.pr_elem hc) in
   let t, ubs' =
@@ -254,7 +260,7 @@ let compute_ubs_incorrect lbs hcs =
       else if hcs1 = [] && hcs2 <> [] then
         assert false
       else
-        let ubs' = ubs @ (Util.concat_map (compute_ubs_hc lbs ubs) hcs1) in
+        let ubs' = ubs @ (Util.concat_map (compute_ubs_incorrect_hc lbs ubs) hcs1) in
         aux hcs2 ubs'
     in
     aux hcs []
@@ -262,7 +268,8 @@ let compute_ubs_incorrect lbs hcs =
   let _ = Global.log_end "compute_ubs" in
   ubs
 
-(** @raise Not_found if the upper bound for pid cannot be computed *)
+(** compute the least upper bound for pid
+    @raise Not_found if the function fail to compute the least upper bound *)
 let ubs_of_pid hcs pid =
   let hcs = inline_forward (fun pid' -> pid' <> pid) hcs in
   let hcs =
@@ -317,11 +324,19 @@ let ubs_of_pid hcs pid =
 (** @require is_non_recursive hcs && is_non_disjunctive hcs
     @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs)
     upper bounds for some predicate variables may not be computed if
-    a subset of hcs is equivalent to a constraint like P(...) and P(...) => phi *)
+    a subset of hcs is equivalent to a constraint like "P(x) and P(y) => phi" *)
 let compute_ubs hcs =
   let _ = Global.log_begin "compute_ubs" in
   let pids = List.unique (pids hcs) in
-  let ubs, ndpids = Util.partition_map (fun pid -> try `L(ubs_of_pid hcs pid) with Not_found -> `R(pid)) pids in
+  let ubs, ndpids =
+    Util.partition_map
+      (fun pid ->
+        try
+          `L(ubs_of_pid hcs pid)
+        with Not_found ->
+          `R(pid))
+      pids
+  in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr ubs) in
   let _ = Global.log_end "compute_ubs" in
   ubs, ndpids

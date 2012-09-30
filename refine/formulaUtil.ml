@@ -3,7 +3,53 @@ open Term
 open Formula
 open Util
 
-(** Simplifiers for propositional formulas *)
+(** Utility functions on logical formulas *)
+
+(** {6 Basic functions} *)
+
+let rec subst sub t =
+  match t with
+    Var(a, x) ->
+      (try sub x with Not_found -> Var(a, x))
+  | Const(a, c) ->
+      Const(a, c)
+  | App(a, t1, t2) ->
+      App(a, subst sub t1, subst sub t2)
+  | Call(_, _, _) | Ret(_, _, _, _) | Error(_) ->
+      assert false
+  | Forall(a, env, t) ->
+      let xs = List.map fst env in
+      Forall(a, env, subst (TypSubst.subtract_fun sub xs) t)
+  | Exists(a, env, t) ->
+      let xs = List.map fst env in
+      Exists(a, env, subst (TypSubst.subtract_fun sub xs) t)
+
+(** @todo compute the fixed-point of sub first *)
+let subst_fixed ?(simplify = fun t -> t) sub t =
+  let _ = Global.log_begin ~disable:true "FormulaUtil.subst_fixed" in
+  let _ = Global.log (fun () -> Format.printf "input: %a@," Term.pr t) in
+  let t = Util.fixed_point (fun t -> t |> subst sub |> simplify) Term.equiv t in
+  let _ = Global.log (fun () -> Format.printf "output: %a" Term.pr t) in
+  let _ = Global.log_end "FormulaUtil.subst_fixed" in
+  t
+
+let rename sub t =
+  subst (fun x -> List.assoc x sub) t
+
+(** @param p every variable not satisfying p is renamed *)
+let fresh p t =
+  let xs = List.filter (fun x -> not (p x)) (Term.fvs t) in
+  let sub = List.map (fun x -> x, Term.new_var ()) xs in
+  subst (fun x -> List.assoc x sub) t
+
+(** rename given variables to fresh ones
+    @param xs variables to be renamed
+    @require not (Util.is_dup xs) *)
+let fresh_vars xs t =
+  let sub = List.map (fun x -> x, Term.new_var ()) xs in
+  subst (fun x -> List.assoc x sub) t
+
+(** {6 Functions for simplifying propositional formulas} *)
 
 (** @param pfs propositional formulas *)
 let simplify_conjuncts_pfs pfs =
@@ -40,7 +86,7 @@ let simplify_disjuncts_pfs pfs =
   else
     pfs
 
-(** Simplifiers for logical formulas *)
+(** {6 Functions for simplifying logical formulas} *)
 
 let simplify_unit t = t
 
@@ -233,9 +279,9 @@ and simplify_conjuncts_aifs_ts aifs ts =
     Util.partition_map
       (function
         (Const.EqInt, [1, x], n) ->
-          `L(x, Term.tint (-n))
+          `L(x, tint (-n))
       | (Const.EqInt, [-1, x], n) ->
-          `L(x, Term.tint n)
+          `L(x, tint n)
       | aif ->
           `R(LinArith.term_of_aif aif))
       aifs
@@ -243,7 +289,7 @@ and simplify_conjuncts_aifs_ts aifs ts =
   List.map (fun (x, t) -> eqInt (make_var x) t) sub @
   List.map
     (fun t ->
-      let t' = simplify (TypSubst.subst (fun x -> List.assoc x sub) t) in
+      let t' = simplify (subst (fun x -> List.assoc x sub) t) in
       if t' = ttrue || t' = tfalse then
         let _ = Global.log (fun () -> Format.printf "eliminated: %a@," Term.pr t) in
         t'
@@ -322,46 +368,20 @@ and simplify_disjuncts ts =
   let _ = Global.log_end "simplify_disjuncts" in
   ts'
 
-(** Utility functions on logical formulas *)
 
-let forall_imply conds_envs t =
-  List.fold_right
-    (fun (cond, env) t ->
-      let sub = List.filter (fun (x, _, _) -> List.mem_assoc x env) (TypSubst.sub_of cond) in
-      try
-        TypSubst.subst (TypSubst.fun_of sub) t
-      with Not_found ->
-        forall env (imply cond t))
-    conds_envs t
-
-(** @todo first compute the fixed-point of sub *)
-let subst_fixed sub t =
-  let _ = Global.log_begin "FormulaUtil.subst_fixed" in
-  let _ = Global.log (fun () -> Format.printf "input: %a@," pr t) in
-  let t =
-    Util.fixed_point
-      (fun t ->
-        let t = simplify (TypSubst.subst sub t) in
-        t)
-      equiv
-      t
-  in
-  let _ = Global.log (fun () -> Format.printf "output: %a" pr t) in
-  let _ = Global.log_end "FormulaUtil.subst_fixed" in
-  t
 
 (** @ensure the return value does not contain a subexpression of the type unit *)
 let elim_unit t =
   if true then
     simplify t
   else
-    let uvs = List.unique (TypTerm.fvs_ty SimType.Unit (t, SimType.Bool)) in
+    let unit_vars = Formula.fvs_unit t in
     let t =
-      if uvs = [] then
+      if unit_vars = [] then
         t
       else
-        let sub x = if List.mem x uvs then tunit else raise Not_found in
-        TypSubst.subst sub t
+        let sub x = if List.mem x unit_vars then tunit else raise Not_found in
+        subst sub t
     in
     simplify t
 
@@ -485,8 +505,8 @@ let split_cases_boolean ts =
           bool_vars)
     in
     List.map
-      (fun sub ->
-         List.map (fun t -> simplify (TypSubst.subst (TypSubst.fun_of sub) t)) ts)
+      (fun xttys ->
+         List.map (fun t -> simplify (subst (TypSubst.sub_of xttys) t)) ts)
       subs,
     fun ts ->
       bor
@@ -496,8 +516,7 @@ let split_cases_boolean ts =
           ts
           subs)
 
-
-
+(** {6 Utility functions} *)
 
 let rec linearize_linprod c ts =
   match ts with

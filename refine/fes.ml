@@ -51,12 +51,12 @@ let band fess =
 
 let subst sub (FES(xttys, ts)) =
   make
-    (List.map (fun (x, t, ty) -> subst_var sub x, TypSubst.subst sub t, ty) xttys)
-    (List.map (TypSubst.subst sub) ts)
+    (List.map (fun (x, t, ty) -> subst_var sub x, FormulaUtil.subst sub t, ty) xttys)
+    (List.map (FormulaUtil.subst sub) ts)
 
 let subst_fixed sub (FES(xttys, ts)) =
   make
-    (List.map (fun (x, t, ty) -> subst_fixed_var sub x, TypSubst.subst_fixed sub t, ty) xttys)
+    (List.map (fun (x, t, ty) -> subst_fixed_var sub x, FormulaUtil.subst_fixed sub t, ty) xttys)
     (List.map (FormulaUtil.subst_fixed sub) ts)
 
 
@@ -87,9 +87,9 @@ let eqelim p (FES(xttys, ts) as fes) =
     let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," pr fes) in
     let xttys1, xttys2 = List.partition (fun (x, _, _) -> p x) xttys in
     let _ = Global.log (fun () -> Format.printf "substitution: %a@," TypSubst.pr xttys2) in
-    let sub = TypSubst.fun_of xttys2 in
+    let sub = TypSubst.sub_of xttys2 in
     let ts = List.map (FormulaUtil.subst_fixed sub) ts in
-    let xttys1 = List.map (fun (x, t, ty) -> x, TypSubst.subst_fixed sub t, ty) xttys1 in
+    let xttys1 = List.map (fun (x, t, ty) -> x, FormulaUtil.subst_fixed sub t, ty) xttys1 in
     let fes = FES(xttys1, ts) in
     let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" pr fes) in
     let _ = Global.log_end "eqelim" in

@@ -1,8 +1,7 @@
 open ExtList
+open Util
 open Term
 open Formula
-
-exception Nonpresburger
 
 let rec of_term t =
   match fun_args t with
@@ -152,19 +151,105 @@ let is_valid p =
   res
 
 (** {6 Functions on formulas} *)
+
+(** eliminate quantifiers in t *)
 let integer_qelim t =
   let _ = Global.log_begin ~disable:true "integer_qelim" in
   let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," Term.pr t) in
-  let t = FormulaUtil.simplify (formula_of (Atp_batch.integer_qelim (of_formula (FormulaUtil.elim_eq_neq_boolean t)))) in
+  let t =
+    t |>
+    FormulaUtil.elim_eq_neq_boolean |>
+    of_formula |>
+    Atp_batch.integer_qelim |>
+    formula_of |>
+    FormulaUtil.simplify
+  in
   let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]@," Term.pr t) in
   let _ = Global.log_end "integer_qelim" in
   t
 
+
+(** integer quantifier elimination of formulas over integers and booleans
+    boolean variables are supported but not eliminated?
+    @param bvs variables in bvs are not eliminated *)
+let int_bool_qelim bvs t =
+  let _ = Global.log_begin "AtpInterface.int_bool_qelim" in
+  let t =
+    let env =
+      List.map
+        (fun x -> x, SimType.Int)
+        (Util.diff (Formula.fvs_int t) bvs)
+    in
+    if env = [] || Term.coeffs t <> [] then
+      t
+    else
+      let _ = Global.log (fun () ->
+        Format.printf "input:@,  @[<v>t: %a@,env: %a@]@," Term.pr t SimType.pr_env env)
+      in
+      let ts, f =
+        let tss, f = FormulaUtil.split_cases_boolean [t] in
+        List.map Util.elem_of_singleton tss, f
+      in
+      f
+        (List.map
+          (fun t ->
+            try
+              let t' =
+                FormulaUtil.simplify
+                  (integer_qelim
+                    (Formula.exists env t))
+              in
+              if FormulaUtil.is_disjunctive t' then
+                t
+              else
+                t'
+            with Util.NotImplemented _ ->
+              t)
+          ts)
+  in
+  let _ = Global.log_end "AtpInterface.int_bool_qelim" in
+  t
+
+(** {6 Functions for eliminating quantifiers} *)
+
+(** simplify t by quantifier elimination
+    @assume all the free variables in t are universally quantified
+    @param bvs variables in bvs are not eliminated *)
+let simplify bvs t =
+  (*what is a difference from FormulaUtil.simplify (qelim_fes (exists elim_vars t))*)
+  let _ = Global.log_begin "AtpInterface.simplify" in
+  let _ = Global.log (fun () ->
+    Format.printf
+      "input:@,  @[<v>t: %a@,bvs: %a@]@,"
+      Term.pr t
+      Var.pr_list bvs)
+  in
+  let ecs =
+    let rec rel t1 t2 =
+      Util.intersects
+        (Util.diff (Term.fvs t1) bvs)
+        (Util.diff (Term.fvs t2) bvs)
+    in
+    Util.equiv_classes rel (Formula.conjuncts t)
+  in
+  let t =
+    Formula.band
+      (List.map
+        (fun ec ->
+          int_bool_qelim bvs (Formula.band ec))
+        ecs)
+  in
+  let _ = Global.log_end "AtpInterface.simplify" in
+  t
+
+
 let real_qelim t =
-  FormulaUtil.simplify (formula_of (Atp_batch.real_qelim (of_formula (FormulaUtil.elim_eq_neq_boolean t))))
-
-
-
+  t |>
+  FormulaUtil.elim_eq_neq_boolean |>
+  of_formula |>
+  Atp_batch.real_qelim |>
+  formula_of |>
+  FormulaUtil.simplify
 
 let qelim_fes bvs (Fes.FES(xttys, ts) as fes) =
   let _ = Global.log_begin "qelim_fes" in
@@ -355,7 +440,7 @@ let rec qelim_eq bvs1 bvs2 fms =
       bvs2, fms
   | bv::bvs ->
       try
-        let rhs = Util.find_app (find bv) fms in
+        let rhs = Util.find_app (try Some(find bv) with Not_found -> None) fms in
         qelim_eq
           bvs
           bvs2
@@ -627,8 +712,8 @@ let rec qelim_ p =
   let p =
     match p with
       Forall(bv, p) ->
-        simplify (Not(qelim_ (Exists(bv, Not(p)))))
-    | _ -> simplify p in
+        Formula.simplify (Not(qelim_ (Exists(bv, Not(p)))))
+    | _ -> Formula.simplify p in
   let [], p = qelim bvs p in p
 
 let minimize1 p1 p2 =
@@ -732,3 +817,6 @@ let test () =
     Atp_batch.print_formula Atp_batch.print_atom p; print_newline()
   in
   ()
+
+(*exception Nonpresburger*)
+

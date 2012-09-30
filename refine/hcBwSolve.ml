@@ -38,13 +38,13 @@ let solve_preds lbs atms t =
           let interp =
             let t1 =
               try
-                HornClauseUtil.simplify_term pid xs
+                HornClauseUtil.simplify_formula [pid] xs
                   (TypPredSubst.lookup_map (pid, ttys) lbs)
               with Not_found -> assert false
             in
             let t2 =
               try
-                HornClauseUtil.simplify_term pid xs
+                HornClauseUtil.simplify_formula [pid] xs
                   (Formula.band
                     (t ::
                      List.map
@@ -60,7 +60,7 @@ let solve_preds lbs atms t =
                   CsisatInterface.generalize_interpolate pid
                     (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
                 else
-                  CsisatInterface.interpolate_bvs
+                  CsisatInterface.interpolate
                     (fun x -> List.mem x xs || Var.is_coeff x) t1 t2
               with CsisatInterface.NoInterpolant ->
                 raise NoSolution

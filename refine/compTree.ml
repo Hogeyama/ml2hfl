@@ -131,7 +131,7 @@ let expand_node prog fenv ct =
             try
               Util.find_app
                 (function (Term.Var(_, y), aarg) ->
-                  if Var.equiv x y then aarg else raise Not_found
+                  if Var.equiv x y then Some(aarg) else None
                 | _ -> assert false)
                 faargs_fun
             with Not_found ->
@@ -163,8 +163,8 @@ let expand_node prog fenv ct =
                     end
                   in
                   let sub x = List.assoc x faargs in
-                  Call((g, ct.uid), TypSubst.subst sub fd.Fdef.guard),
-                  make (gen_id ()) (ct.path @ [i]) (ctx (TypSubst.subst sub fd.Fdef.body)) (ref []))
+                  Call((g, ct.uid), FormulaUtil.subst sub fd.Fdef.guard),
+                  make (gen_id ()) (ct.path @ [i]) (ctx (FormulaUtil.subst sub fd.Fdef.body)) (ref []))
                 fdefs
           | Var.T(_, _, _) ->
               let f = try fenv g with Not_found -> assert false in

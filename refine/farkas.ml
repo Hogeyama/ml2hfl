@@ -20,7 +20,7 @@ let farkas_conjunct coeffs aifs =
             try
               Term.mul l
                 (Util.find_app
-                  (fun (n, x) -> if Var.equiv x v then n else raise Not_found)
+                  (fun (n, x) -> if Var.equiv x v then Some(n) else None)
                   nxs)
             with Not_found ->
               tint 0)

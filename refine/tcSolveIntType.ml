@@ -72,7 +72,7 @@ let summary_of env (Loc(Node(nd, []), p) as loc) =
         let tt = FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes [nd]))) in
         let tp = FormulaUtil.simplify (Fes.formula_of (Fes.eqelim (visible nd.name) (fes_of_nodes (nodes_of_path p)))) in
         let t1, t2 = if nd.closed then tt, tp else tp, tt in
-        CsisatInterface.interpolate t1 t2
+        CsisatInterface.interpolate_norename t1 t2
   in
   let _ = Format.printf "@]@," in
   if nd.closed then

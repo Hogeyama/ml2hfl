@@ -60,7 +60,7 @@ let rec subst sub rty =
   match rty with
     Base(x, bty, t) ->
       let sub' y = if Var.equiv x y then raise Not_found else sub y in
-      Base(x, bty, TypSubst.subst sub' t)
+      Base(x, bty, FormulaUtil.subst sub' t)
   | Fun(xs) ->
       Fun
         (List.map
@@ -87,7 +87,7 @@ let rename sub sty =
   let rec aux sty =
     match sty with
       Base(x, bty, t) ->
-        Base((try sub x with Not_found -> x), bty, TypSubst.subst subst t)
+        Base((try sub x with Not_found -> x), bty, FormulaUtil.subst subst t)
     | Fun(xs) ->
         Fun
           (List.map

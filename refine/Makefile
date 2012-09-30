@@ -10,7 +10,7 @@ SOURCES = enum.ml extList.ml extString.ml \
           refType.ml refTypeCheck.ml \
           absType.ml \
           trace.ml compTree.ml compTreeExpander.ml \
-          callTree.ml atom.ml hornClause.ml hornClauseEc.ml hornClauseUtil.ml typPredSubst.ml \
+          callTree.ml atom.ml hornClause.ml hornClauseUtil.ml typPredSubst.ml \
           hcGenRefType.ml hcSolve.ml hcBwSolve.ml hcGenSolve.ml \
           verifier.ml \
           main.ml

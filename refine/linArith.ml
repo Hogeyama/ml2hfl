@@ -59,7 +59,7 @@ let normalize (nxs, n) =
 
 let coeff (nxs, _) x =
   Util.find_app
-    (fun (n, y) -> if x = y then n else raise Not_found)
+    (fun (n, y) -> if x = y then Some(n) else None)
     nxs
 
 let mul_coeff m (nxs, n) =
@@ -244,6 +244,7 @@ let simplify_disjuncts_aifs aifs =
 
 (** {6 Utility functions} *)
 
+(** @return the set of free variables in t that may occur in a non-linear integer expression *)
 let rec nlfvs t =
   match fun_args t with
     Var(_, _), [] -> []
@@ -252,7 +253,7 @@ let rec nlfvs t =
         let _ = of_term t in
         []
       with Invalid_argument _ ->
-        fvs t(*???*))
+        fvs t(**@todo*))
   | Const(_, Const.Div), [t1; t2] | Const(_, Const.Mod), [t1; t2] ->
       assert false
   | Const(_, c), ts ->

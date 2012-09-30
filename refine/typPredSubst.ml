@@ -30,7 +30,7 @@ let lookup (pid, ttys) psub =
           let sub =
             List.map2 (fun (x, ty) (t, ty') -> let _ = if !Global.debug then assert (ty = ty') in x, t) xtys ttys
           in
-          TypSubst.subst (fun x -> List.assoc x sub) t)
+          FormulaUtil.subst (fun x -> List.assoc x sub) t)
         (List.filter (fun (pid', _) -> pid = pid') psub)))
 
 (** @require fvs psub = [] *)
@@ -55,7 +55,7 @@ let lookup_map (pid, ttys) psub =
   (*let _ = Format.printf "???: %a@,%a@," Term.pr t SimType.pr_env xtys in*)
   let xs = fvs_elem (pid, (xtys, t)) in
   (*let _ = Format.printf "???: %a@," Var.pr_list xs in*)
-  let t = TypSubst.fresh_vars xs t in
+  let t = FormulaUtil.fresh_vars xs t in
   (*let _ = Format.printf "???: %a@," Term.pr t in*)
   let sub =
     List.map2
@@ -64,7 +64,7 @@ let lookup_map (pid, ttys) psub =
         x, t)
       xtys ttys
   in
-  TypSubst.subst (fun x -> List.assoc x sub) t
+  FormulaUtil.subst (fun x -> List.assoc x sub) t
 
 (** @require Util.is_map psub *)
 let subst_lhs ?(bvs = []) psub (Hc(popt, ps, t) as hc) =

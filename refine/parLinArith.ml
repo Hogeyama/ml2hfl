@@ -27,11 +27,17 @@ let pr ppf (nxs, n) =
           (fun (n, x) ->
             if gt_int n 0 then
               let _ = Format.fprintf ppf " + " in
-              let _ = if int_const_of n <> 1 then Format.fprintf ppf "%d " (int_const_of n) in
+              let _ =
+                if int_const_of n <> 1 then
+                  Format.fprintf ppf "%d " (int_const_of n)
+              in
               Format.fprintf ppf "%a" Var.pr x
             else if lt_int n 0 then
               let _ = Format.fprintf ppf " - " in
-              let _ = if -(int_const_of n) <> 1 then Format.fprintf ppf "%d " (-(int_const_of n)) in
+              let _ =
+                if -(int_const_of n) <> 1 then
+                  Format.fprintf ppf "%d " (-(int_const_of n))
+              in
               Format.fprintf ppf "%a" Var.pr x
             else if eq_int n 0 then
               assert false
@@ -56,7 +62,7 @@ let is_zero (nxs, n) =
 
 let coeff (nxs, n) x =
   Util.find_app
-    (fun (n, y) -> if x = y then n else raise Not_found)
+    (fun (n, y) -> if x = y then Some(n) else None)
     nxs
 
 let normalize (nxs, n) =
@@ -249,28 +255,28 @@ let term_of_aif (c, nxs, n) =
     let tm = term_of (minus (nxs2, n2)) in
     bop c tp tm
 
-(** @todo refactoring *)
-let xtty_of_aif p dom (c, nxs, n) =
+(** @return (x, t, ty)
+    @ensure pred x t ty *)
+let xtty_of_aif pred (c, nxs, n) =
   if c = Const.EqInt then
-    let nxs1, (n', x), nxs2 =
-      Util.pick
-        (fun (n, x) ->
-          not (p x) &&
-          (Term.equiv n (tint 1) || Term.equiv n (tint (-1))))
-        nxs
-    in
-    let t =
-      if int_const_of n' = 1 then
-        term_of (minus (nxs1 @ nxs2, n))
-      else if int_const_of n' = -1 then
-        term_of (nxs1 @ nxs2, n)
-      else
-        assert false
-    in
-    (* @todo check whether substitution is acyclic instead *)
-    if Util.inter dom (fvs t) = [] then
-      x, t, SimType.Int
-    else
-      raise Not_found
+    Util.findlr_app
+      (fun nxs1 (n', x) nxs2 ->
+        if eq_int n' 1 || eq_int n' (-1) then
+          let t =
+            if eq_int n' 1 then
+              term_of (minus (nxs1 @ nxs2, n))
+            else if eq_int n' (-1) then
+              term_of (nxs1 @ nxs2, n)
+            else
+              assert false
+          in
+          let ty = SimType.Int in
+          if pred x t ty then
+            Some(x, t, ty)
+          else
+            None
+        else
+          None)
+      nxs
   else
     raise Not_found

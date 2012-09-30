@@ -30,7 +30,7 @@ let template_based_constraint_solving_interpolate pids xtys lbs nubs =
             NonLinConstrSolve.solve_constrs [] [] (Formula.band (NonLinConstrSolve.gen_coeff_constrs c))
           in
           let _ = Global.log (fun () -> Format.printf "solutions:@,  %a@," NonLinConstrSolve.pr_coeffs coeffs) in
-          let interp = FormulaUtil.simplify (TypSubst.subst (fun x -> Term.tint (List.assoc x coeffs)) interp) in
+          let interp = FormulaUtil.simplify (FormulaUtil.subst (fun x -> Term.tint (List.assoc x coeffs)) interp) in
           let _ = Global.log (fun () -> Format.printf "interp:%a@," Term.pr interp) in
           List.map (fun pid -> pid, (xtys, interp)) pids
         with NonLinConstrSolve.Unknown ->
@@ -43,7 +43,7 @@ let template_based_constraint_solving_interpolate pids xtys lbs nubs =
         (fun pid lb nub ->
           let interp =
             try
-              CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
+              CsisatInterface.interpolate (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
             with CsisatInterface.NoInterpolant ->
               raise NoSolution
             | CsisatInterface.Unknown ->
@@ -65,17 +65,17 @@ let convex_hull_interpolate pids xtys lbs nubs =
   let _ = Global.log (fun () -> Format.printf "lb':%a@,nub':%a@," Term.pr lb' Term.pr nub') in
   let sol =
     try
-      let interp = CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub' in
+      let interp = CsisatInterface.interpolate (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub' in
       List.map (fun pid -> pid, (xtys, interp)) pids
     with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
       Util.map3
         (fun pid lb nub ->
           let interp =
             try
-              CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub
+              CsisatInterface.interpolate (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb' nub
             with CsisatInterface.NoInterpolant | CsisatInterface.Unknown ->
               try
-                CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
+                CsisatInterface.interpolate (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
               with CsisatInterface.NoInterpolant ->
                 raise NoSolution
               | CsisatInterface.Unknown ->
@@ -128,9 +128,9 @@ let rec solve ch hcs0 =
             (fun pids ->
               let pids = Util.diff pids ndpids in
               if pids = [] then
-                raise Not_found
+                None
               else
-                pids)
+                Some(pids))
             pidss
         with Not_found ->
           assert false
@@ -164,7 +164,7 @@ let rec solve ch hcs0 =
                       x1, Term.make_var x2)
                     xtys' xtys
                 in
-                TypSubst.rename sub lb', TypSubst.rename sub ub')
+                FormulaUtil.rename sub lb', FormulaUtil.rename sub ub')
               rs)
         in
         xtys, lb :: lbs, ub :: ubs
@@ -220,7 +220,7 @@ let rec solve ch hcs0 =
           let _ = Global.log (fun () -> Format.printf "lb:%a@,nub:%a@," Term.pr lb Term.pr nub) in
           let interp =
             try
-              CsisatInterface.interpolate_bvs (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
+              CsisatInterface.interpolate (fun x -> List.mem_assoc x xtys || Var.is_coeff x) lb nub
             with CsisatInterface.NoInterpolant ->
               raise NoSolution
             | CsisatInterface.Unknown ->

@@ -54,7 +54,13 @@ let gen_coeff_constrs t =
 let solve_bv_aux t =
   let ibs = List.init !Global.bits_threshold (fun i -> i + 1, true) @ List.init (!Global.bits_threshold - 1(*???*)) (fun i -> i + 1, false) in
   try
-    Util.find_app (fun (bit, only_pos) -> try Cvc3Interface.solve_bv only_pos bit t with Cvc3Interface.Unknown -> raise Not_found) ibs
+    Util.find_app
+      (fun (bit, only_pos) ->
+        try
+          Some(Cvc3Interface.solve_bv only_pos bit t)
+        with Cvc3Interface.Unknown ->
+          None)
+      ibs
   with Not_found ->
     raise Cvc3Interface.Unknown
 
@@ -73,7 +79,7 @@ let solve_bv mps t =
         else
           let _ = Global.log (fun () -> Format.printf "masked_params: %a@," Var.pr_list masked_params) in
           let coeffs = List.map (fun c -> c, 0) masked_params in
-          let t' = FormulaUtil.simplify (TypSubst.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
+          let t' = FormulaUtil.simplify (FormulaUtil.subst (fun x -> Term.tint (List.assoc x coeffs)) t) in
           coeffs @ solve_bv_aux t'
     with Cvc3Interface.Unknown ->
       solve_bv_aux t
@@ -91,7 +97,7 @@ let solve_constrs mps old_sol t =
     let changed = ref false in
     let t' =
       FormulaUtil.simplify
-        (TypSubst.subst
+        (FormulaUtil.subst
           (fun x ->
             let n = List.assoc x old_sol in
             if n = 0 then

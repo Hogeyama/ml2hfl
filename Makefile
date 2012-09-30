@@ -66,18 +66,18 @@ MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
 CMI = $(MLI:.mli=.cmi)
 
 REFINE_CMO = enum.cmo extList.cmo extString.cmo \
-	util.cmo zipper.cmo \
 	global.cmo \
+	util.cmo zipper.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
-	term.cmo typTerm.cmo typSubst.cmo \
-  linArith.cmo nonLinArith.cmo parLinArith.cmo formula.cmo formulaUtil.cmo fes.cmo \
+	term.cmo typTerm.cmo \
+  linArith.cmo poly.cmo parLinArith.cmo formula.cmo typSubst.cmo formulaUtil.cmo fes.cmo \
   fdef.cmo prog.cmo \
 	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo apronInterface.cmo \
 	farkas.cmo nonLinConstrSolve.cmo \
 	refType.cmo refTypeCheck.cmo \
 	absType.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
-	callTree.cmo atom.cmo hornClause.cmo hornClauseEc.cmo hornClauseUtil.cmo typPredSubst.cmo \
+	callTree.cmo atom.cmo hornClause.cmo hornClauseUtil.cmo typPredSubst.cmo \
 	hcGenRefType.cmo hcSolve.cmo hcBwSolve.cmo hcGenSolve.cmo \
 	verifier.cmo
 #	intType.cmo intTypeCheck.cmo

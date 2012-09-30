@@ -49,7 +49,7 @@ let is_coeff (Hc(popt, _, _)) =
 
 (** @require not (Util.intersects (Util.dom sub) (fvs popt)) *)
 let subst sub (Hc(popt, atms, t)) =
-  Hc(popt, List.map (Atom.subst sub) atms, TypSubst.subst sub t)
+  Hc(popt, List.map (Atom.subst sub) atms, FormulaUtil.subst sub t)
 
 (** rename free variables to fresh ones *)
 let fresh (Hc(popt, atms, t) as hc) =
@@ -57,7 +57,7 @@ let fresh (Hc(popt, atms, t) as hc) =
   let sub = List.map (fun x -> x, Term.make_var (Var.new_var ())) fvs in
   Hc(popt,
     List.map (Atom.subst (fun x -> List.assoc x sub)) atms,
-    TypSubst.subst (fun x -> List.assoc x sub) t)
+    FormulaUtil.subst (fun x -> List.assoc x sub) t)
 
 (** {6 Functions on sets of Horn clauses} *)
 
@@ -105,7 +105,7 @@ let lookup (pid, ttys) hcs =
             let Hc(_, atms, t) = fresh hc in
             let sub = List.combine (List.map fst xtys) (List.map fst ttys) in
             List.map (Atom.subst (fun x -> List.assoc x sub)) atms,
-            TypSubst.subst (fun x -> List.assoc x sub) t
+            FormulaUtil.subst (fun x -> List.assoc x sub) t
           | _ -> assert false)
           hcs'
       in

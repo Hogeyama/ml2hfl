@@ -126,6 +126,10 @@ let of_subst sub = band (List.map of_subst_elem sub)
 
 (** {6 Destructors} *)
 
+let fvs_unit t = List.unique (TypTerm.fvs_ty SimType.Unit (t, SimType.Bool))
+let fvs_bool t = List.unique (TypTerm.fvs_ty SimType.Bool (t, SimType.Bool))
+let fvs_int t = List.unique (TypTerm.fvs_ty SimType.Int (t, SimType.Bool))
+
 let rec atoms t =
   match fun_args t with
     Var(_, _), [] ->

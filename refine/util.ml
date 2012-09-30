@@ -10,16 +10,22 @@ exception NotImplemented of string
 
 (** {6 Combinators} *)
 
-(** the compose operator *)
+(** identity function *)
+let id x = x
+
+(** compose operator *)
 let (-|) f g x = f (g x)
 let (-||) f g x y = f (g x y)
 
-(** the reverse compose operator *)
+(** reverse compose operator *)
 let (|-) f g x = g (f x)
 let (||-) f g x y = g (f x y)
 
-(** the pipeline operator *)
+(** pipeline operator *)
 let (|>) x f = f x
+
+(** pairing operator *)
+let (++) f g (x, y) = f x, g y
 
 let rec fixed_point f eq x =
   let x' = f x in
@@ -379,15 +385,54 @@ let rec pick p xs =
         let ls, y, rs = pick p xs' in
         x :: ls, y, rs
 
+let picklr p xs =
+  let rec aux ls rs =
+    match rs with
+      [] -> raise Not_found
+    | x :: rs ->
+        if p ls x rs then
+          ls, x, rs
+        else
+          aux (ls @ [x]) rs
+  in
+  aux [] xs
+
+let picklr_app f xs =
+  let rec aux ls rs =
+    match rs with
+      [] -> raise Not_found
+    | x :: rs ->
+        (match f ls x rs with
+          Some(y) ->
+            ls, y, rs
+        | None ->
+            aux (ls @ [x]) rs)
+  in
+  aux [] xs
+
 let rec find_app f xs =
   match xs with
     [] ->
       raise Not_found
   | x :: xs' ->
-      try
-        f x
-      with Not_found ->
-        find_app f xs'
+      match f x with
+        Some(y) ->
+          y
+      | None ->
+          find_app f xs'
+
+let findlr_app f xs =
+  let rec aux ls rs =
+    match rs with
+      [] -> raise Not_found
+    | x :: rs ->
+        (match f ls x rs with
+          Some(y) ->
+            y
+        | None ->
+            aux (ls @ [x]) rs)
+  in
+  aux [] xs
 
 (** {5 Transformation} *)
 

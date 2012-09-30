@@ -139,6 +139,22 @@ let is_ibrel c =
   | Add | Sub | Mul | Div | Mod -> false
   | _ -> let _ = Format.printf "%a" pr c in assert false
 
+(** @return whether c is equality *)
+let is_eq c =
+  match c with
+    Event(_)
+  | Unit | True | False | Int(_) | RandInt
+  | Not | Minus
+  | And | Or | Imply | Iff -> false
+  | EqUnit -> true
+  | NeqUnit -> false
+  | EqBool -> true
+  | NeqBool -> false
+  | EqInt  -> true
+  | NeqInt | Lt | Gt | Leq | Geq | IBTrue | IBFalse
+  | Add | Sub | Mul | Div | Mod -> false
+  | _ -> let _ = Format.printf "%a" pr c in assert false
+
 (** @return whether c is equality or non-equality *)
 let is_eq_neq c =
   match c with

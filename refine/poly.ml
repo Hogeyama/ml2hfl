@@ -49,7 +49,7 @@ let is_zero pol = pol = []
 
 let coeff pol xs =
   Util.find_app
-    (fun (n, ys) -> if xs = ys then n else raise Not_found)
+    (fun (n, ys) -> if xs = ys then Some(n) else None)
     pol
 
 let normalize pol =

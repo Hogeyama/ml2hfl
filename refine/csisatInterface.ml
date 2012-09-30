@@ -241,31 +241,33 @@ let interpolate t1 t2 =
     else
       raise NoInterpolant
 
-let interpolate t1 t2 =
-  let _ = Global.log_begin "interpolate" in
+let interpolate_norename t1 t2 =
+  let _ = Global.log_begin "interpolate_norename" in
   let _ = Global.log (fun () -> Format.printf "input1: @[<v>%a@]@,input2: @[<v>%a@]@," Term.pr t1 Term.pr t2) in
   try
     let interp = interpolate t1 t2 in
     let _ = Global.log (fun () -> Format.printf "output: @[<v>%a@]" Term.pr interp) in
-    let _ = Global.log_end "interpolate" in
+    let _ = Global.log_end "interpolate_norename" in
     interp
   with NoInterpolant ->
     let _ = Global.log (fun () -> Format.printf "failed") in
-    let _ = Global.log_end "interpolate" in
+    let _ = Global.log_end "interpolate_norename" in
     raise NoInterpolant
   | Unknown ->
     let _ = Global.log (fun () -> Format.printf "CSIsat does not fully support interpolation of formulas on integers") in
-    let _ = Global.log_end "interpolate" in
+    let _ = Global.log_end "interpolate_norename" in
     raise Unknown
 
 
-(** @param p represents variables shared by t1 and t2 *)
-let interpolate_bvs p t1 t2 =
+(** compute an interpolant of t1 an t2
+    @require t1 and t2 are inconsistent
+    @param p {x | p x} is a set of variables shared by t1 and t2 *)
+let interpolate p t1 t2 =
   let t1 = FormulaUtil.simplify (band (conjuncts t1)) in
   let t2 = FormulaUtil.simplify (band (conjuncts t2)) in
-  let t1 = TypSubst.fresh p t1 in
-  let t2 = TypSubst.fresh p t2 in
-  interpolate t1 t2
+  let t1 = FormulaUtil.fresh p t1 in
+  let t2 = FormulaUtil.fresh p t2 in
+  interpolate_norename t1 t2
 
 (** @todo why this causes verification of file.ml too slow? *)
 let generalize_interpolate pivot p t1 t2 =
@@ -288,7 +290,7 @@ let generalize_interpolate pivot p t1 t2 =
         (Formula.conjuncts t1)
     in
     match xns with
-      [] -> interpolate_bvs p t1 t2
+      [] -> interpolate p t1 t2
     | _ ->
         (* find a pivot (x, n) *)
         let (x, n) :: xns =
@@ -312,6 +314,6 @@ let generalize_interpolate pivot p t1 t2 =
              ts1 @ ts2)
         in
         try
-          interpolate_bvs p (Formula.band (ts1 @ ts2)) t2
+          interpolate p (Formula.band (ts1 @ ts2)) t2
         with NoInterpolant | Unknown ->
-          interpolate_bvs p t1 t2
+          interpolate p t1 t2

@@ -105,7 +105,7 @@ let rec string_of_term t =
       let fenv x t y = if x = y then t else raise Not_found in
       let t = List.fold_left
         (fun t (x, _) ->
-          Formula.band [TypSubst.subst (fenv x Formula.ttrue) t; TypSubst.subst (fenv x Formula.tfalse) t])
+          Formula.band [FormulaUtil.subst (fenv x Formula.ttrue) t; FormulaUtil.subst (fenv x Formula.tfalse) t])
         t benv
       in
       "(" ^ (if env = [] then "" else "FORALL (" ^ string_of_env_comma env ^ "): ") ^ string_of_term t ^ ")"
@@ -181,6 +181,7 @@ let infer t ty =
   let _ = Global.log_end "infer" in
   env
 
+(** @return whether t is valid *)
 let is_valid t =
   if t = Formula.ttrue then
     true
@@ -236,8 +237,8 @@ let satisfiable t =
 (*
 (* t1 and t2 share only variables that satisfy p *)
 let implies_bvs p t1 t2 =
-  let t1 = TypSubst.fresh p t1 in
-  let t2 = TypSubst.fresh p t2 in
+  let t1 = FormulaUtil.fresh p t1 in
+  let t2 = FormulaUtil.fresh p t2 in
   implies t1 t2
 *)
 
@@ -473,7 +474,7 @@ let solve_bv only_pos (* find only positive solutions *) rbit t =
           ps
       in
       let sub = List.map (fun (x, y, z) -> x, Term.sub (Term.make_var y) (Term.make_var z)) ppps in
-      TypSubst.subst (fun x -> List.assoc x sub) t
+      FormulaUtil.subst (fun x -> List.assoc x sub) t
   in
   let t = FormulaUtil.elim_minus t in
   let cin, cout = Unix.open_process (cvc3 ^ " +interactive") in
@@ -569,5 +570,5 @@ let simplify_conjuncts ts =
   let ts = FormulaUtil.simplify_conjuncts ts in
   let aifs, ts = Util.partition_map (fun t -> try `L(LinArith.aif_of t) with Invalid_argument _ -> `R(t)) ts in
   let sub, ts' = Util.partition_map (function (Const.EqInt, [1, x], n) -> `L(x, Term.tint (-n)) | aif -> `R(LinArith.term_of_aif aif)) aifs in
-  let ts = List.filter (fun t -> not (is_valid (TypSubst.subst (fun x -> List.assoc x sub) t))) (ts' @ ts) in
+  let ts = List.filter (fun t -> not (is_valid (FormulaUtil.subst (fun x -> List.assoc x sub) t))) (ts' @ ts) in
   List.map (fun (x, t) -> Formula.eqInt (Term.make_var x) t) sub @ ts
