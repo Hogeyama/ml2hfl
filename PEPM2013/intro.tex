@@ -239,14 +239,23 @@ let main n = assert (copy (copy n) = n)
       predicates such as $\Abs{v}{v = 0}$, $\Abs{v}{v = 1}$, ...,
       infinitely for the argument and the return values.
 
-      To discover general predicates, we introduce a novel predicate
-      discovery method for higher-order functional programs.  The method
+      This is due to the path- and context-sensitivity of MoCHi.
+      In Step~5 in Figure~\ref{fig:cegar}, MoCHi first produces a
+      straightline higher-order program (SHP) that corresponds to a
+      single spurious error path.  MoCHi then infers a refinement type
+      of the SHP, and generates predicates from the refinement type.
+      At this time, the method finds predicates for multiple
+      calling contexts of a function separately.  This makes predicates too
+      specific.
+
+      We refine our predicate discovery method for higher-order
+      functional programs to discover general predicates.  By
+      considering information from multiple calling contexts in multiple
+      paths, the method discovers predicates that are useful in multiple
+      call-sites of a function, and also discovers predicates to verify
+      path- and context-sensitive conditions.  The refined method
       reduces the number of false errors produced by predicate
-      abstraction. By considering information from multiple calling
-      contexts in multiple paths, the method discovers predicates that
-      are useful in multiple call-sites of a function, and also
-      discovers predicates to verify path- and context-sensitive
-      conditions.
+      abstraction.
 
 
 %%The first problem increases the number of CEGAR-cycle.
@@ -329,11 +338,13 @@ let main n = assert (copy (copy n) = n)
 %(iii) functional encoding of recursive data structures and control operations to support a larger subset of ML.
 
 \item The third problem is the insufficiency of supported language
-      features.  Our previous framework requires an
-      automated interpolating theorem prover for predicate abstraction and
-      discovery, but practical provers are not available for recursive data
-      structures like lists and trees. Thus, the implementation dealt with
-      only integers as infinite data domains.
+      features.  Our previous framework requires an automated
+      interpolating theorem prover for predicate abstraction and
+      discovery, but existing practical provers are not useful to verify
+      recursive data structures like lists and trees (this is due to
+      the lack of generality of interpolants discovered by the provers.)
+      Thus, the implementation dealt with only integers as infinite data
+      domains.
 
       To support recursive data structures without relying on
       interpolating theorem provers for them, we extend our verification
@@ -363,12 +374,12 @@ The rest of this paper is organized as follows.
 %described in this paper.
 We first formalize the source language of verification in
 Section~\ref{sec:language}.  Section~\ref{sec:opt} formalizes the
-selective predicate abstraction, the new predicate discovery, and the
-selective CPS transformation.  Section~\ref{sec:extension} shows the
-language extensions for recursive data structures and control
-operations.  Section~\ref{sec:experiments} reports experiments.
-Section~\ref{sec:related} discusses related work and
-Section~\ref{sec:conclusion} concludes the paper.
+selective predicate abstraction and the selective CPS transformation.
+Section~\ref{sec:refine} shows the new predicate discovery.
+Section~\ref{sec:extension} describes the language extensions for recursive
+data structures and control operations.  Section~\ref{sec:experiments}
+reports experiments.  Section~\ref{sec:related} discusses related work
+and Section~\ref{sec:conclusion} concludes the paper.
 
 
 

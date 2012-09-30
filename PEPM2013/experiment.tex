@@ -32,46 +32,48 @@ available at \url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/mochi/}.
 \cline{4-8}
 program    & size & order & none &     C. &   A. &    C. \& A. & C. \& A. \& D. \\
 \hline
-sum               &    24&  1&  2,    0.15 & 2,    0.13 & 1,    0.08 & 1,    0.07 & 1,    0.07 \\
-mult              &    31&  1&           - &          - & 3,    0.17 & 3,    0.14 & 3,    0.16 \\
-max               &    42&  2&  5,    5.03 & 5,    1.67 & 1,    0.18 & 3,    0.83 & 3,    0.91 \\
-mc91              &    32&  1&  2,    0.22 & 2,    0.23 & 2,    0.16 & 2,    0.16 & 2,    0.38 \\
-ack               &    53&  1&           - &          - & 1,    0.11 & 1,    0.10 & 1,    0.10 \\
-a-cppr            &   149&  2&           - &          - & 6,    1.26 & 6,    1.08 & 6,    1.09 \\
-l-zipunzip        &    81&  2&           - &          - &          - & 2,    0.13 & 2,    0.14 \\
-l-zipmap          &    65&  2&           - & 6,    0.54 & 2,    0.10 & 2,    0.12 & 3,    0.18 \\
-hors              &    64&  2&  2,    0.34 & 2,    0.12 & 1,    0.08 & 1,    0.07 & 1,    0.06 \\
-e-simple          &    27&  2&  1,    0.08 & 1,    0.07 & 0,    0.06 & 0,    0.06 & 0,    0.06 \\
-e-fact            &    55&  2&  2,    0.13 & 2,    0.12 & 2,    0.10 & 2,    0.09 & 2,    0.11 \\
-r-lock            &    54&  1&  6,    1.01 & 6,    0.49 & 0,    0.07 & 0,    0.08 & 0,    0.07 \\
-r-file            &   168&  1&           - &          - & 9,    2.78 & 12,   2.17 &          - \\
-sum-e             &    26&  1&  0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.06 \\
-mult-e            &    33&  1&  1,    0.11 & 1,    0.10 & 0,    0.06 & 0,    0.07 & 0,    0.07 \\
-mc91-e            &    32&  1&  0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.07 & 0,    0.07 \\
-repeat-e          &    35&  2&  0,    0.07 & 0,    0.06 & 0,    0.06 & 0,    0.06 & 0,    0.06 \\
-r-lock-e          &    54&  1&  2,    0.20 & 2,    0.14 & 0,    0.08 & 0,    0.07 & 0,    0.08 \\
+sum               &    24&  1&  2,    0.14 &  2,    0.14 &  1,    0.06 &  1,    0.07 &  1,    0.08 \\
+mult              &    31&  1&           - &           - &  3,    0.16 &  3,    0.14 &  3,    0.16 \\
+max               &    42&  2&  5,    5.07 &  5,    1.63 &  1,    0.17 &  3,    0.87 &  3,    0.93 \\
+mc91              &    32&  1&  2,    0.21 &  2,    0.21 &  2,    0.16 &  2,    0.16 &  2,    0.36 \\
+ack               &    53&  1&           - &           - &  1,    0.10 &  1,    0.10 &  1,    0.10 \\
+a-cppr            &   149&  2&           - & 12,   33.91 &  6,    1.31 &  6,    1.06 &  6,    1.06 \\
+l-zipunzip        &    81&  2&           - &           - &           - &  2,    0.14 &  2,    0.14 \\
+l-zipmap          &    65&  2&           - &  6,    0.54 &  2,    0.11 &  2,    0.10 &  3,    0.16 \\
+hors              &    64&  2&  2,    0.36 &  2,    0.11 &  1,    0.09 &  1,    0.07 &  1,    0.06 \\
+e-simple          &    27&  2&  1,    0.08 &  1,    0.08 &  0,    0.06 &  0,    0.06 &  0,    0.06 \\
+e-fact            &    55&  2&  2,    0.14 &  2,    0.11 &  2,    0.10 &  2,    0.09 &  2,    0.09 \\
+r-lock            &    54&  1&  6,    1.00 &  6,    0.49 &  0,    0.07 &  0,    0.06 &  0,    0.07 \\
+r-file            &   168&  1&           - &           - &  9,    2.76 & 12,    2.18 & 10,   81.50 \\
+sum-e             &    26&  1&  0,    0.06 &  0,    0.07 &  0,    0.06 &  0,    0.06 &  0,    0.06 \\
+mult-e            &    33&  1&  1,    0.12 &  1,    0.10 &  0,    0.06 &  0,    0.07 &  0,    0.06 \\
+mc91-e            &    32&  1&  0,    0.07 &  0,    0.07 &  0,    0.07 &  0,    0.06 &  0,    0.06 \\
+repeat-e          &    35&  2&  0,    0.07 &  0,    0.06 &  0,    0.06 &  0,    0.06 &  0,    0.05 \\
+r-lock-e          &    54&  1&  2,    0.20 &  2,    0.14 &  0,    0.07 &  0,    0.08 &  0,    0.07 \\
 \hline
-arith\_exp        &  109 & 2 &           - &          - & 4,    8.58 & 3,    1.66 & 4,    6.35 \\
-sum\_intro        &   33 & 1 &  2,    0.18 & 2,    0.14 & 1,    0.08 & 1,    0.08 & 1,    0.07 \\
-copy\_intro       &   24 & 1 &           - &          - &          - &          - & 2,    0.14 \\
-fold\_right       &   64 & 2 &           - &          - & 2,    0.30 & 2,    0.20 & 2,    0.34 \\
-forall\_eq\_pair  &   55 & 1 &           - &          - & 1,    0.21 & 1,    0.17 & 1,    0.25 \\
-forall\_leq       &   55 & 2 &           - &          - & 1,    0.19 & 1,    0.17 & 1,    0.22 \\
-isnil             &   52 & 1 &  3,    0.29 & 3,    0.25 & 2,    0.12 & 2,    0.12 & 2,    0.12 \\
-iter              &   59 & 2 &           - &          - & 1,    0.16 & 1,    0.14 & 1,    0.18 \\
-mem               &   74 & 1 &  6,    5.68 & 5,    1.74 & 3,    0.41 & 2,    0.35 & 2,    0.31 \\
-nth0              &   78 & 1 &  4,    0.87 & 4,    0.60 & 2,    0.23 & 2,    0.19 & 2,    0.25 \\
-harmonic          &  101 & 2 &           - &          - & 1,    0.32 & 1,    0.18 & 1,    0.31 \\
-fold\_left        &   64 & 2 &           - &          - & 2,    0.35 & 2,    0.18 & 2,    0.34 \\
-zip               &   69 & 1 &           - &          - &          - & 3,    0.38 & 3,    0.35 \\
-map\_filter       &  111 & 2 &           - &          - & 2,    3.21 & 2,    1.87 &          - \\
-risers            &   79 & 1 &           - &          - & 4,    2.50 & 4,    1.66 & 3,    1.98 \\
-fact\_notpos      &   97 & 1 &  1,    0.10 & 1,    0.10 & 1,    0.06 & 1,    0.08 & 1,    0.08 \\
-fun\_list         &    94& 3 &           - &          - &          - &          - &          - \\
-arith\_exp-e      &  109 & 2 &           - &          - & 3,    3.13 & 2,    0.99 & 3,    4.35 \\
-harmonic-e        &  101 & 2 &  1,    0.43 & 1,    0.19 & 0,    0.11 & 0,    0.09 & 0,    0.08 \\
-map\_filter-e     &  111 & 2 &  2,    2.27 & 2,    1.10 & 0,    0.17 & 0,    0.14 & 0,    0.14 \\
-fact\_notpos-e    &   97 & 1 &  0,    0.07 & 0,    0.07 & 0,    0.07 & 0,    0.07 & 0,    0.07 \\
+sum\_intro        &   33 & 1 &  2,    0.18 &  2,    0.15 &  1,    0.08 &  1,    0.08 &  1,    0.08 \\
+copy\_intro       &   24 & 1 &           - &           - &           - &           - &  2,    0.14 \\
+fold\_right       &   64 & 2 &  8,  361.07 &  8,  167.05 &  2,    0.31 &  2,    0.18 &  2,    0.34 \\
+forall\_eq\_pair  &   55 & 1 &           - &           - &           - &  1,    0.22 &  1,    0.27 \\
+forall\_leq       &   55 & 2 &           - &  7,   93.28 &  1,    0.20 &  1,    0.16 &  1,    0.24 \\
+isnil             &   52 & 1 &  3,    0.28 &  3,    0.24 &  2,    0.13 &  2,    0.13 &  2,    0.12 \\
+iter              &   59 & 2 &           - &  7,   15.70 &  1,    0.16 &  1,    0.13 &  1,    0.17 \\
+length            &   49 & 1 &           - &           - &           - &           - &  2,    0.14 \\
+mem               &   74 & 1 &  6,    5.45 &  5,    1.74 &  3,    0.41 &  2,    0.34 &  2,    0.31 \\
+nth               &   59 & 1 &           - &           - &           - &           - &  4,    0.58 \\
+nth0              &   78 & 1 &  4,    0.88 &  4,    0.61 &  2,    0.23 &  2,    0.19 &  2,    0.25 \\
+harmonic          &  101 & 2 &           - &           - &  1,    0.32 &  1,    0.18 &  1,    0.29 \\
+fold\_left        &   64 & 2 &           - &           - &  8,  157.05 &  2,    0.35 &  2,    0.36 \\
+zip               &   69 & 1 &           - &           - &           - &  3,    0.37 &  3,    0.35 \\
+map\_filter       &  111 & 2 &           - &           - &  2,    3.23 &  2,    1.87 &  3,   27.51 \\
+risers            &   79 & 1 &           - &           - &  4,    2.51 &  4,    1.69 &  3,    2.07 \\
+arith\_exp        &  109 & 2 &           - &           - &  4,    8.65 &  3,    1.68 &  4,    6.32 \\
+fact\_notpos      &   97 & 1 &  1,    0.11 &  1,    0.11 &  1,    0.08 &  1,    0.09 &  1,    0.08 \\
+fun\_list         &    94& 3 &           - &           - &  6,   23.18 &  6,   12.52 &  8,   33.15 \\
+harmonic-e        &  101 & 2 &  1,    0.44 &  1,    0.22 &  0,    0.11 &  0,    0.08 &  0,    0.08 \\
+map\_filter-e     &  111 & 2 &  2,    2.29 &  2,    1.11 &  0,    0.16 &  0,    0.15 &  0,    0.16 \\
+arith\_exp-e      &  109 & 2 &  7,   22.85 &           - &  3,    3.22 &  2,    1.04 &  3,    4.52 \\
+fact\_notpos-e    &   97 & 1 &  0,    0.07 &  0,    0.08 &  0,    0.08 &  0,    0.06 &  0,    0.08 \\
 \hline
 \end{tabular}
 \end{center}
@@ -92,7 +94,8 @@ The programs used in the experiments are:
       \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
       Our framework can verify these programs without a special
       treatment of case constructs unlike in their framework.
-\item ``fact'' is the example program in Section~\ref{sec:control}.
+\item ``fact\_notpos'' is the example program in Section~\ref{sec:control}.
+\item ``arith\_exp'' is a program that manipulates user-defined data structures.
 \item Other programs define generators of lists and functions on lists,
       and assert that the functions work correctly.  For example,
       ``zip'' defines a function that takes two lists and returns a list of corresponding pairs.
@@ -137,11 +140,13 @@ The programs used in the experiments are:
 %      ascending list.
 %\end{itemize}
 
-The applications of two optimization techniques enable verification of the
-programs such as ``zip'' and ``map\_head\_filter'', and reduce the
-running time.  Especially, the application of selective CPS
-transformation reduces the running time, and selective predicate
-abstraction reduces the number of CEGAR cycles.
+The applications of selective CPS transformation and selective predicate
+abstraction enable verification of the programs such as ``zip'' and
+``map\_head\_filter'', and reduce the running time.  Especially, the
+application of selective CPS transformation reduces the running time,
+and selective predicate abstraction reduces the number of CEGAR cycles.
+The new predicate discovery enables verification of the programs such as
+``length'' and ``nth''.
 
 %\begin{itemize}
 %\item fold\_right

@@ -27,3 +27,8 @@ let main n k =
 \end{alltt}
 Once the exception is removed, we can apply our verification method to the
 program.
+
+We do not treat exceptions that carrying function arguments.
+A program with function-carrying exceptions might be transformed into an
+untyped CPS term (more precisely, a recursively typed term).  A
+higher-order model checking, however, deal only with simply typed terms.

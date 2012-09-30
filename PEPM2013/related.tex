@@ -1,8 +1,10 @@
 \section{Related Work}
 \label{sec:related}
 
+\TODO{Xu PEPM'12, Beyer et al. PLDI'07}
+
 There are several
-methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Chin2003,Unno2009}
+methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Jhala2011,Xi1999,Unno2009,Chin2003}
 that are aimed at verification of functional programs with data
 structures.
 
@@ -45,6 +47,16 @@ than $i$,'' while they cannot.
 %with the properties of list elements related to its indices like that
 %the $i$-th element of a list is greater than $i$.
 
+Jhala et al.~\cite{Jhala2011} have proposed a verification method that
+reduces a safety problem of a higher-order functional program to a safety
+problem of a first-order imperative program.
+They first prepare refinement type templates, and generates constraints.
+Then the constraints are translated to an imperative program.
+The program is verified by an existing verifier for imperative programs.
+Their method treats data structures such as lists and arrays.
+While type templates for data structures must be given in advance,
+they cannot deal with user-defined data structures.
+
 Xi and Pfenning~\cite{Xi1999} have proposed a dependently-typed language
 Dependent ML.  Its type system captures program properties such as
 absence of array bounds errors and violations of data structure
@@ -80,7 +92,6 @@ inclusion relation and the membership relation on lists.  For example, their met
 can verify that \texttt{exists x xs} returns true if and only if
 \texttt{xs} has \texttt{x} as an element.  The method, however, cannot
 properly handle higher-order functions.
-
 
 Suter et al.~have proposed a verification method for first-order
 functional programs that manipulate recursive data

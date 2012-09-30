@@ -109,6 +109,11 @@ f (i-1) \mid i \neq 0\}$ where $f$ is the function part of the encoding of
 element of the list.  \texttt{tail} returns the pair of
 \texttt{(len-1,f')} where $\texttt{f'(i)} = \texttt{f(i+1)}$.
 
+Note that we cannot use Church encoding in order to
+verify lists and other recursive data structures by using a higher-order
+model checker.  While a Church-encoded data structure usually has a {\em recursive type},
+an input of the higher-order model checker must have a {\em simple type}.
+
 %Since \texttt{f(i)} is the element whose position is \texttt{i} in the
 %list, the encoded \texttt{head} returns \texttt{f(0)}, i.e. the $0$-th
 %element of the list.  Function \texttt{tail} returns a pair of
