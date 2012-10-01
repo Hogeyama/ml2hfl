@@ -101,9 +101,10 @@ In this paper, we address four problems of our previous work.
 We discuss each problem and explain our approach below.
 
 \begin{enumerate}
-\item Another efficiency problem is caused by CPS transformation.  As
-      stated above, our approach needs CPS transformation to resolve the
-      gap between the evaluation strategies of higher-order recursion
+\item CPS transformation in Step~2 causes an
+      efficiency problem of the previous version of MoCHi.  As stated
+      above, our approach needs CPS transformation to resolve the gap
+      between the evaluation strategies of higher-order recursion
       schemes and higher-order boolean programs.  However, CPS
       transformation increases the order\footnote{The order of program
       $t$ is the maximum order of the types of functions in $t$.  The
@@ -160,7 +161,7 @@ let main n k = check n f k
       \emph{selective CPS transformation}.
 
 \item The main bottleneck of the previous version of MoCHi was the
-      predicate abstraction and discovery (Steps 1 and 5), rather than
+      predicate abstraction and discovery (Steps~1 and 5), rather than
       higher-order model checking.  Our previous method for predicate
       abstraction tried to abstract \emph{every} function in the
       program. As a result, verification of a program did not succeed
@@ -240,7 +241,7 @@ let main n = assert (copy (copy n) = n)
       infinitely for the argument and the return values.
 
       This is due to the path- and context-sensitivity of MoCHi.
-      In Step~5 in Figure~\ref{fig:cegar}, MoCHi first produces a
+      In Step~5, MoCHi first produces a
       straightline higher-order program (SHP) that corresponds to a
       single spurious error path.  MoCHi then infers a refinement type
       of the SHP, and generates predicates from the refinement type.
@@ -337,7 +338,7 @@ let main n = assert (copy (copy n) = n)
 %\memo{for language extension}
 %(iii) functional encoding of recursive data structures and control operations to support a larger subset of ML.
 
-\item The third problem is the insufficiency of supported language
+\item The fourth problem is the insufficiency of supported language
       features.  Our previous framework requires an automated
       interpolating theorem prover for predicate abstraction and
       discovery, but existing practical provers are not useful to verify

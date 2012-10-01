@@ -100,9 +100,9 @@ can verify that \texttt{exists x xs} returns true if and only if
 \texttt{xs} has \texttt{x} as an element.  The method, however, cannot
 properly handle higher-order functions.
 
-Suter et al.~have proposed a verification method for first-order
+Suter et al.~\cite{Suter2011} have proposed a verification method for first-order
 functional programs that manipulate recursive data
-structures~\cite{Suter2011}.  They use a decision
+structures.  They use a decision
 procedure~\cite{Suter2010} that is complete for recursive functions that
 are sufficiently surjective catamoprhisms.  For example, their method
 can verify that an insertion function preserves invariants of binary
