@@ -1,10 +1,10 @@
 \section{Related Work}
 \label{sec:related}
 
-\TODO{Xu PEPM'12, Beyer et al. PLDI'07}
+\TODO{Beyer et al. PLDI'07}
 
 There are several
-methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Jhala2011,Xi1999,Unno2009,Chin2003}
+methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Jhala2011,Xi1999,Unno2009,Xu2012,Chin2003}
 that are aimed at verification of functional programs with data
 structures.
 
@@ -68,6 +68,13 @@ inference algorithm for a higher-order function language with recursive
 data structures.  Their method prepares templates for dependent types
 and generates constraints.  The constraints are solved by using an
 interpolating theorem prover.
+
+Xu~\cite{Xu2012} has proposed a hybrid contract checking.  It checks the
+satisfaction of contracts or blames the violation of a contract,
+statically or dynamically.  The statically checking is done by symbolic
+simplification.  While the simplification does not see the definitions
+of top-level functions (that include recursive functions), contracts are
+needed for top-level functions in order to verify statically.
 
 The dependent type checking and inferences stated
 above~\cite{Unno2010,Rondon2008,Kawaguchi2009,Unno2009} does not support
