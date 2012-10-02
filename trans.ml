@@ -791,7 +791,7 @@ let rec lift_aux post xs t =
       | Int n -> [], Int n
       | RandInt b -> [], RandInt b
       | Var x -> [], Var x
-      | Fun(x,t1) ->
+      | Fun _ ->
           let f = Id.new_var ("f" ^ post) t.typ in
           let aux f ys t1 t2 =
             let fv = inter' Id.compare (get_fv t1) xs in
@@ -805,7 +805,8 @@ let rec lift_aux post xs t =
             let defs2,t2' = lift_aux post xs (subst f f'' t2) in
               defs1 @ [(f',(ys',t1'))] @ defs2, t2'
           in
-          let defs,t' = aux f [x] t1 (make_var f) in
+          let xs,t1 = decomp_fun t in
+          let defs,t' = aux f xs t1 (make_var f) in
             defs, t'.desc
       | App(t, ts) ->
           let defs,t' = lift_aux post xs t in

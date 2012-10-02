@@ -60,19 +60,19 @@ let rec cegar1 prog0 ces info =
           let ce' = CEGAR_trans.trans_ce ce labeled prog in
             match ces with
                 ce_pre::_ when ce' = ce_pre && not !Flag.use_filter ->
-                  Format.printf "Filter option enabled.@.";
-                  Format.printf "Restart CEGAR-loop.@.";
+                  if !Flag.print_progress then Format.printf "Filter option enabled.@.";
+                  if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   Flag.use_filter := true;
                   cegar1 prog ces info
               | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
-                  Format.printf "Negative-predicate option enabled.@.";
-                  Format.printf "Restart CEGAR-loop.@.";
+                  if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
+                  if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   Flag.use_neg_pred := true;
                   cegar1 prog ces info
               | ce_pre::_ when ce' = ce_pre && !Flag.wp_max_num < 8 ->
                   incr Flag.wp_max_num;
-                  Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
-                  Format.printf "Restart CEGAR-loop.@.";
+                  if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
+                  if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   cegar1 prog ces info
               | ce_pre::_ when ce' = ce_pre ->
                   if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;

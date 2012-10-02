@@ -103,6 +103,7 @@ let max_input_size = 65536
 let debug = true
 let debug_level = ref 1
 let only_result = ref false
+let for_paper = false
 
 
 (* pretty printer's option *)

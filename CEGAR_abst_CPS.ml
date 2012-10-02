@@ -160,7 +160,7 @@ let rec eta_expand_term_aux env t typ =
   match typ with
       TBase _ -> t
     | TFun(typ1,typ2) ->
-        let x = new_id "x" in
+        let x = new_id "x_" in
         let typ2 = typ2 (Var x) in
         let env' = (x,typ1)::env in
         let typ1' =

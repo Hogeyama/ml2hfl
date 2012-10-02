@@ -8,7 +8,7 @@ let ext_constrs = ref ([] : Term.t list)
 
 let init_coeffs prog =
   let cs = List.unique (Prog.coeffs prog) in
-  let _ = Format.printf "parameters: %a@," Var.pr_list cs in
+  let _ = if !Global.debug_level > 0 then Format.printf "parameters: %a@," Var.pr_list cs in
   ext_coeffs := List.map (fun c -> c, 0) cs
 
 exception FailedToRefineExtraParameters
@@ -29,7 +29,7 @@ let refine_coeffs hcs =
   in
   *)
   let b =
-    let hcs = 
+    let hcs =
       let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
       let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
       List.map (HornClauseUtil.subst_hcs(*_fixed*) hcs1) hcs2
@@ -110,7 +110,7 @@ let infer_ref_types fs prog etrs =
           hcs, orig_hcs
         else
           let _ = refine_coeffs hcs in
-          let _ = Format.printf "inferred extra parameters:@,  %a@," NonLinConstrSolve.pr_coeffs !ext_coeffs in
+          let _ = if !Global.debug_level > 0 then Format.printf "inferred extra parameters:@,  %a@," NonLinConstrSolve.pr_coeffs !ext_coeffs in
           let hcs = List.map (HornClause.subst (fun x -> Term.tint (List.assoc x !ext_coeffs))) hcs in
           let hcs1, hcs2 = List.partition (function HornClause.Hc(Some(pid, _), _, _) -> Var.is_coeff pid | _ -> false) hcs in
           List.map (HornClauseUtil.subst_hcs(*_fixed*) hcs1) hcs2,
@@ -336,4 +336,3 @@ let verify fs prog =
   in
   let _ = Global.log_end "verify" in
   ()
-

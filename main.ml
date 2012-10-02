@@ -6,18 +6,30 @@ exception LongInput
 exception NoProgress
 exception CannotDiscoverPredicate
 
-
+let () =
+  if Flag.for_paper
+  then
+    begin
+      Flag.only_result := true;
+      Flag.debug_level := 0;
+      Flag.print_progress := false
+    end
 
 
 let print_info () =
-  Format.printf "cycle: %d\n" !Flag.cegar_loop;
-  Format.printf "total: %.3f sec\n" (get_time());
-  Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
-  Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
-  Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
-  if false && Flag.debug then Format.printf "IP: %.3f sec\n" !Flag.time_interpolant;
-  Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
-  Format.pp_print_flush Format.std_formatter ()
+  if Flag.for_paper
+  then Format.printf " %2d, %7.2f \\&@?" !Flag.cegar_loop (get_time())
+  else
+    begin
+      Format.printf "cycle: %d\n" !Flag.cegar_loop;
+      Format.printf "total: %.3f sec\n" (get_time());
+      Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
+      Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
+      Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
+      if false && Flag.debug then Format.printf "IP: %.3f sec\n" !Flag.time_interpolant;
+      Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
+      Format.pp_print_flush Format.std_formatter ()
+    end
 
 
 
@@ -78,7 +90,7 @@ let preprocess t spec =
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t',get_rtyp_remove_pair = CPS.remove_pair t in
       let () =
-        if false && !Flag.debug_level > 0 && t <> t'
+        if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t'
       in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
@@ -275,7 +287,11 @@ let () =
         Wrapper.open_cvc3 ();
         Wrapper2.open_cvc3 ();
         Cvc3Interface.open_cvc3 ();
-        Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
+        Sys.set_signal Sys.sigalrm
+          (Sys.Signal_handle (fun _ ->
+                                if Flag.for_paper
+                                then Format.printf "           - \\&@?";
+                                raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main cin;
         Cvc3Interface.close_cvc3 ();
@@ -285,7 +301,8 @@ let () =
     with
         Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
       | LongInput -> Format.printf "Input is too long.@."; exit 1
-      | TimeOut -> Format.printf "@.Verification failed (time out).@."; exit 1
+      | TimeOut ->
+          if not Flag.for_paper then Format.printf "@.Verification failed (time out).@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
       | Refine.CannotRefute -> Format.printf "Verification failed (cannot refute an error path).@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
