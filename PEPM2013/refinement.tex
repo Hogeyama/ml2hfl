@@ -327,19 +327,27 @@ same solution for predicate variables related by \(E\) if possible.
 This feature enables the algorithm to find general predicates, which are 
 more likely to constitute invariants of the original program.
 
-\begin{figure}
-\todo{}
-\caption{The Overall Structure of Our Extended Constraint Solving Algorithm}
-\label{fig:extcs}
-\end{figure}
+%%%\begin{figure}
+%%%\todo{}
+%%%\caption{The Overall Structure of Our Extended Constraint Solving Algorithm}
+%%%\label{fig:extcs}
+%%%\end{figure}
 
-We now explain how the algorithm works.  The overall structure of the 
-algorithm is shown in Figure~\ref{fig:extcs}.  First, we compute the 
-greatest lower \(\lambda \seq{x}.\phi_P\) and the least upper \(\lambda 
-\seq{x}.\phi_P'\) bounds for each predicate variable \(P\) in \(C\).  
-Here, \(\FV{\phi_P} \cap \FV{\phi_P'} \subseteq \set{\seq{x}}\) holds.  
-For example, the greatest lower bounds for \(P_1,\dots,P_4\) in 
-\(C_{\texttt{cc}}\) are respectively:
+We now explain how the algorithm works.
+%%%The overall structure of the algorithm is shown in Figure~\ref{fig:extcs}.
+The algorithm finds a set of predicate variables \(S\) that may have the 
+same solution, a candidate solution \(\lambda \set{x}.\phi_0\) for \(S\), 
+and a maximal subset \(S\) of \(M\) such that \(\phi_0\) is in fact a 
+genuine solution for \(M\).  The algorithm then substitute \(\lambda 
+\set{x}.\phi_0\) for \(M\)
+\todo{}
+
+%
+First, we compute the greatest lower \(\lambda \seq{x}.\phi_P\) and the 
+least upper \(\lambda \seq{x}.\phi_P'\) bounds for each predicate 
+variable \(P\) in \(C\).  Here, \(\FV{\phi_P} \cap \FV{\phi_P'} 
+\subseteq \set{\seq{x}}\) holds.  For example, the greatest lower bounds 
+for \(P_1,\dots,P_4\) in \(C_{\texttt{cc}}\) are respectively:
 \begin{itemize}
 \item \(\lambda x.\lambda \nu.\phi_{P_1}\equiv \lambda x.\lambda \nu.x=1 \land \nu=1\),
 \item \(\lambda x.\lambda \nu.\phi_{P_2}\equiv \lambda x.\lambda \nu.x=0 \land \nu=0\),
