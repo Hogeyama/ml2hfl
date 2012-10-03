@@ -1,8 +1,6 @@
 \section{Related Work}
 \label{sec:related}
 
-\TODO{Beyer et al. PLDI'07}
-
 There are several
 methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Jhala2011,Xi1999,Unno2009,Xu2012,Chin2003}
 that are aimed at verification of functional programs with data
@@ -107,6 +105,16 @@ procedure~\cite{Suter2010} that is complete for recursive functions that
 are sufficiently surjective catamoprhisms.  For example, their method
 can verify that an insertion function preserves invariants of binary
 search trees, while our method cannot.
+
+Beyer et al.~\cite{Beyer2007} have proposed a method to discover
+predicates that are useful to verify path-sensitive and path-insensitive
+properties of imperative programs.  The method does not use finite
+infeasible paths (or straightline programs), but full-fledged programs
+(called path programs) as counterexamples.  A path program can be viewed
+as a set of finite paths of counterexamples that are obtained by
+unwinding the path program.  By synthesizing invariants of a path
+program, CEGAR prevents appearance of infinite simple variations of
+counterexamples.
 
 Selective predicate abstraction has some similarity to local type
 inference~\cite{Pierce2000} for reducing type declarations, in the sense

@@ -246,7 +246,7 @@ let main n = assert (copy (copy n) = n)
       single spurious error path.  MoCHi then infers a refinement type
       of the SHP, and generates predicates from the refinement type.
       At this time, the method finds predicates for multiple
-      calling contexts of a function separately.  This makes predicates too
+      calling contexts of a function individually.  This makes predicates too
       specific.
 
       We refine our predicate discovery method for higher-order
