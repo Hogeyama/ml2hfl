@@ -175,29 +175,30 @@ We denote such an interpolant as \(\mathcal{I}(\phi_1,\phi_2)\).}
 \end{itemize}
 %
 For example, for \(C_{\texttt{copy}}\), we obtain the following greatest 
-lower and least upper bounds for \(P_1\):
+lower and least upper bounds for \(P_1\) from \(C_{\texttt{copy}}\):
 \begin{itemize}
-\item \(\lambda x,\nu.\phi_{P_1}\equiv \lambda x,\nu.x=1 \land \nu=1\) and
-\item \(\lambda x,\nu.\phi_{P_1}'\equiv \lambda x,\nu.\nu=x\).
+\item \(\lambda x.\lambda \nu.\phi_{P_1}\equiv \lambda x.\lambda \nu.x=1 \land \nu=1\) and
+\item \(\lambda x.\lambda \nu.\phi_{P_1}'\equiv \lambda x.\lambda \nu.\nu=x\).
 \end{itemize}
 We then obtain, for example, the following solution for \(P_1\):
 \begin{eqnarray*}
-\lambda x,\nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg \nu=x) \equiv \lambda x,\nu.\nu=x.
+\lambda x.\lambda \nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg \nu=x) \equiv \lambda x.\lambda \nu.\nu=x.
 \end{eqnarray*}
-By substituting this for \(P_1\) in \(C_{\texttt{copy}}\), we get:
+By substituting this for \(P_1\) in \(C_{\texttt{copy}}\), we get 
+\(C_{\texttt{copy}}'\):
 \begin{eqnarray*}
 P_2(x-1,y) \land x\neq0 \land z=1+y &\imply& z=x \\
 x=0 \land y=0 &\imply& P_2(x,y)
 \end{eqnarray*}
 We then get the following greatest lower and least upper bounds for 
-\(P_2\):
+\(P_2\) from \(C_{\texttt{copy}}'\):
 \begin{itemize}
-\item \(\lambda x,\nu. \phi_{P_2}' \equiv \lambda x,\nu. x+1\neq0 \imply \nu=x\) and
-\item \(\lambda x,\nu.\phi_{P_2} \equiv \lambda x,\nu.x=0 \land \nu=0\).
+\item \(\lambda x.\lambda \nu. \phi_{P_2}' \equiv \lambda x.\lambda \nu. x+1\neq0 \imply \nu=x\) and
+\item \(\lambda x.\lambda \nu. \phi_{P_2} \equiv \lambda x.\lambda \nu. x=0 \land \nu=0\).
 \end{itemize}
 We then obtain, for example, the following solution for \(P_2\):
 \begin{eqnarray*}
-\lambda x,\nu.\mathcal{I}(\nu.x=0 \land \nu=0,\neg (x+1\neq0 \imply \nu=x)) \equiv \lambda x,\nu.\nu=x.
+\lambda x.\lambda \nu.\mathcal{I}(\nu.x=0 \land \nu=0,\neg (x+1\neq0 \imply \nu=x)) \equiv \lambda x.\lambda \nu.\nu=x.
 \end{eqnarray*}
 We thus obtain the following refinement types for \(D_{\texttt{copy}}\):
 \begin{eqnarray*}
@@ -242,25 +243,28 @@ P_1(n,x) \land P_3(x,y) &\imply& y=n
 \end{eqnarray*}
 
 We then find a solution for \(P_3\) as follows.  The greatest lower and 
-the least upper bounds of \(P_3\) are respectively \(\lambda x,\nu.x=1 
-\land \nu=1\) and \(\lambda x,n=1 \land x=1 \imply \nu=n\).  Existing 
-interpolating proves such as \cite{Beyer2008} then returns the following 
-solution for \(P_3\):
+the least upper bounds of \(P_3\) are respectively \(\lambda x.\lambda 
+\nu.x=1 \land \nu=1\) and \(\lambda x.\lambda \nu.x=1 \imply \nu=1\).
+%\(\lambda x,n=1 \land x=1 \imply \nu=n\).
+%
+Existing interpolating proves such as \cite{Beyer2008} then returns the 
+following solution for \(P_3\):
 \begin{eqnarray*}
-&&\lambda x,\nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg (n=1 \land x=1 \imply \nu=n)) \\
-&\equiv& \lambda x,\nu.x=1 \land \nu=1.
+%&&\lambda x.\lambda \nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg (n=1 \land x=1 \imply \nu=n)) \\
+&&\lambda x.\lambda \nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg (x=1 \imply \nu=1)) \\
+&\equiv& \lambda x.\lambda \nu.x=1 \land \nu=1.
 \end{eqnarray*}
 Note here that the solution is specific to the calling context of the 
 particular function \texttt{copy3}, and cannot be used as a solution for 
 \(P_2\) and \(P_4\).  We here want to get more general predicates like 
-\(\lambda x,\nu.\nu=x\) which are more likely to constitute an invariant 
+\(\lambda x.\lambda \nu.\nu=x\) which are more likely to constitute an invariant 
 of the function \texttt{copy} in the original program.  For this purpose, 
 we observe it is desirable to find the same solution (if possible) for 
 ``related'' predicate variables which represent (possibly different) 
 refinement predicates for the same argument or return value of the same 
 function in the original program.  For the above example, we want to 
 obtain the same solution for \(P_1,\dots,P_4\), and \(\lambda 
-x,\nu.\nu=x\) in fact satisfies this extra constraint.
+x.\lambda \nu.\nu=x\) in fact satisfies this extra constraint.
 
 \subsection{Extended Method}
 \label{sec:ext}
@@ -323,75 +327,80 @@ same solution for predicate variables related by \(E\) if possible.
 This feature enables the algorithm to find general predicates, which are 
 more likely to constitute invariants of the original program.
 
-We now explain how the algorithm works.  First, we compute the greatest 
-lower \(\lambda \seq{x}.\phi_P\) and the least upper \(\lambda 
+\begin{figure}
+\todo{}
+\caption{The Overall Structure of Our Extended Constraint Solving Algorithm}
+\label{fig:extcs}
+\end{figure}
+
+We now explain how the algorithm works.  The overall structure of the 
+algorithm is shown in Figure~\ref{fig:extcs}.  First, we compute the 
+greatest lower \(\lambda \seq{x}.\phi_P\) and the least upper \(\lambda 
 \seq{x}.\phi_P'\) bounds for each predicate variable \(P\) in \(C\).  
-Here, \(\FV{\phi_P} \subseteq\set{\seq{x},\nu}\) and \(\FV{\phi_P'} 
-\subseteq \set{\seq{x},\nu}\).  For example, the strongest lower bounds 
-for \(P_1,\dots,P_4\) in \(C_{\texttt{copy}}\) are respectively:
+Here, \(\FV{\phi_P} \cap \FV{\phi_P'} \subseteq \set{\seq{x}}\) holds.  
+For example, the greatest lower bounds for \(P_1,\dots,P_4\) in 
+\(C_{\texttt{cc}}\) are respectively:
 \begin{itemize}
-\item \(\phi_{P_1}\equiv x=1 \land \nu=1\),
-\item \(\phi_{P_2}\equiv x=0 \land \nu=0\),
-\item \(\phi_{P_3}\equiv x=1 \land \nu=1\), and
-\item \(\phi_{P_4}\equiv x=0 \land \nu=0\).
+\item \(\lambda x.\lambda \nu.\phi_{P_1}\equiv \lambda x.\lambda \nu.x=1 \land \nu=1\),
+\item \(\lambda x.\lambda \nu.\phi_{P_2}\equiv \lambda x.\lambda \nu.x=0 \land \nu=0\),
+\item \(\lambda x.\lambda \nu.\phi_{P_3}\equiv \lambda x.\lambda \nu.x=1 \land \nu=1\), and
+\item \(\lambda x.\lambda \nu.\phi_{P_4}\equiv \lambda x.\lambda \nu.x=0 \land \nu=0\).
 \end{itemize}
-The weakest upper bounds for \(P_1,\dots,P_4\) are respectively:
+The least upper bounds for \(P_1,\dots,P_4\) are respectively:
 \begin{itemize}
-\item \(\phi_{P_1}'\equiv \nu=1 \imply x=1\),
-\item \(\phi_{P_2}'\equiv \nu=0 \imply (x=-1 \lor x=0)\),
-\item \(\phi_{P_3}'\equiv x=1 \imply \nu=1\), and
-\item \(\phi_{P_4}'\equiv x=0 \imply \nu=0\).
+\item \(\lambda x.\lambda \nu.\phi_{P_1}'\equiv \lambda x.\lambda \nu.\nu=1 \imply x=1\),
+\item \(\lambda x.\lambda \nu.\phi_{P_2}'\equiv \lambda x.\lambda \nu.\nu=0 \imply (x=-1 \lor x=0)\),
+\item \(\lambda x.\lambda \nu.\phi_{P_3}'\equiv \lambda x.\lambda \nu.x=1 \imply \nu=1\), and
+\item \(\lambda x.\lambda \nu.\phi_{P_4}'\equiv \lambda x.\lambda \nu.x=0 \imply \nu=0\).
 \end{itemize}
 
-In general, the computation of the upper bound for some predicate
-variable may possibly fail because the constraint generation algorithm
-in Section~\ref{sec:cg} may generate a Horn clause of the form \(P(x)
-\land P(y) \imply \phi\).  Note here that \(P\) occurs twice in the left
-hand side of the constraint.  In such a case, the weakest upper bound
-for \(P\) may not exist.
+In general, the computation of the least upper bound for some predicate 
+variable may possibly fail because the constraint generation algorithm 
+in Section~\ref{sec:extcg} may generate a Horn clause of the form 
+\(P(x)\land P(y) \imply \phi\).  Note here that \(P\) occurs twice in 
+the left hand side of the constraint.  In such a case, the least upper 
+bound for \(P\) may not exist.
 
-Let \(S\) be the set of predicate variables in \(C\) whose upper bounds
-were successfully computed.  We then pick an equivalence class \(S_0 \in
-S / E\) (e.g., the largest one), and further classify the predicate
-variables in \(S_0\) depending on their upper and lower bounds so that
-predicate variables which never have the same solution are separated.
+Let \(S\) be the set of predicate variables in \(C\) whose least upper 
+bounds were successfully computed.  We then pick an equivalence class 
+\(S_0 \in S / E\) (e.g., the largest one), and further classify the 
+predicate variables in \(S_0\) depending on their upper and lower bounds 
+so that predicate variables which never have the same solution are 
+separated.
 %
 Formally, we find \(S_1\dots,S_n\) such that:
 \begin{itemize}
 \item \(S_0 = S_1 \cup \dots \cup S_n\),
-\item for any \(i \in \set{1,\dots,n}\), if \(S_i =
-\set{Q_1,\dots,Q_{\ell}}\), then \(\phi_{Q_1} \lor \dots \lor
-\phi_{Q_{\ell}}\) implies \(\phi_{Q_1}' \land \dots \land
-\phi_{Q_{\ell}}'\), and
-\item for any \(i,j \in \set{1,\dots,n}\), if \(i \neq j\) and
-\(S_i \cup S_j = \set{Q_1,\dots,Q_{\ell}}\), then \(\phi_{Q_1} \lor
-\dots \lor \phi_{Q_{\ell}}\) does not imply \(\phi_{Q_1}' \land \dots
-\land \phi_{Q_{\ell}}'\).
+\item for any \(i \in \set{1,\dots,n}\), if \(S_i 
+=\set{Q_1,\dots,Q_{\ell}}\), then \(\phi_{Q_1} \lor \dots \lor 
+\phi_{Q_{\ell}}\) implies \(\phi_{Q_1}' \land \dots \land 
+\phi_{Q_{\ell}}'\), and \item for any \(i,j \in \set{1,\dots,n}\), if 
+\(i \neq j\) and \(S_i \cup S_j = \set{Q_1,\dots,Q_{\ell}}\), then 
+\(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) does not imply 
+\(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\).
 \end{itemize}
-For the running example \(C_{\texttt{copy}}\), we get
-\(S=S_0=S_1=\set{P_1,\dots,P_4}\) since \(\phi_{P_1} \lor \dots \lor
-\phi_{P_4}\) implies \(\phi_{P_1}' \land \dots \land \phi_{P_4}'\).
+For the running example \(C_{\texttt{cc}}\), we get 
+\(S=S_0=S_1=\set{P_1,\dots,P_4}\) since \(\phi_{P_1} \lor \dots 
+\lor\phi_{P_4}\) implies \(\phi_{P_1}' \land \dots \land \phi_{P_4}'\).
 
-We then pick some \(S_i = \set{Q_1,\dots,Q_{\ell}} \in
-\set{S_1,\dots,S_n}\) (e.g., the largest one) and find a predicate
-\(\lambda\seq{x}.\lambda \nu.\phi\) as a candidate solution for
+We then pick some \(S_i = \set{Q_1,\dots,Q_{\ell}} \in 
+\set{S_1,\dots,S_n}\) (e.g., the largest one) and find a predicate 
+\(\lambda\seq{x}.\phi\) as a candidate solution for 
 \(Q_1,\dots,Q_{\ell}\) such that:
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
-\item \(\FV{\phi} \subseteq \set{\seq{x},\nu}\).
+\item \(\FV{\phi} \subseteq \set{\seq{x}}\).
 \end{itemize}
 %Terauchi2010
-We can compute such a formula \(\phi\) as an interpolant
-\(\mathcal{I}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg
-(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'))\) 
+We can compute such a formula \(\phi\) as an interpolant 
+\(\mathcal{I}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg 
+(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'))\).
 
-
-
-The above conditions of interpolants, however, are not always sufficient
-for our purpose to find general predicates which constitute invariants.
-Actually, we want to obtain as simple interpolant as possible with
-respect to the number of disjunctions.
+The three conditions of interpolants, however, are not always sufficient 
+for our purpose to find general predicates.  Actually, we want to obtain 
+as simple interpolant as possible with respect to the number of 
+disjunctions.
 % and conjunctions.
 To this end, we propose a new heuristic operator \(\mathcal{J}\) that
 combines the interpolation \(\mathcal{I}\) and the convex hull operators.
@@ -419,65 +428,71 @@ In the experiments reported in Section~\ref{sec:experiments}, this often
 reduced the number of disjunctions in the output of the interpolating
 prover, and hence makes the output more likely to constitute invariants.
 %
-Thus, instead of using the interpolation operator \(\mathcal{I}\), we
-use the new operator \(\mathcal{J}\) to compute \(\lambda\seq{x}.\lambda
-\nu.\phi_0=\lambda\seq{x}.\lambda \nu.\mathcal{J}(\phi_{Q_1} \lor \dots
-\lor \phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land
-\phi_{Q_{\ell}}'))\) as a candidate solution for \(Q_1,\dots,Q_{\ell}\).
- For the running example \(C_{\texttt{copy}}\), we obtain:
+Thus, instead of using the interpolation operator \(\mathcal{I}\), we 
+use the new operator \(\mathcal{J}\) to compute \(\lambda \seq{x}. 
+\phi_0=\lambda\seq{x}.\mathcal{J}(\phi_{Q_1} \lor \dots\lor 
+\phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land\phi_{Q_{\ell}}'))\) 
+as a candidate solution for \(Q_1,\dots,Q_{\ell}\).  For the running 
+example \(C_{\texttt{cc}}\), we obtain:
 \begin{eqnarray*}
 \phi_0 &=& \mathcal{J}(\phi_{P_1} \lor \dots \lor \phi_{P_4},\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(\mathcal{H}(\phi_{P_1} \lor \dots \lor \phi_{P_4}),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
+&=& \mathcal{I}(\mathcal{H}(x=0 \land \nu=0 \lor x=1 \land \nu=1),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(0 \leq x=\nu \leq 1,\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}'))
 \end{eqnarray*}
 An interpolating prover returned \(\lambda x \lambda \nu.\phi_0 \equiv
 \lambda x \lambda \nu.x=\nu\) as a candidate solution for
 \(P_1,\dots,P_4\) in the experiments in Section~\ref{sec:experiments}.
 
-Note, however, that \(\lambda \seq{x} \lambda \nu.\phi_0\) is not always
-a genuine solution for all the predicates \(Q_1,\dots,Q_{\ell} \in S_i\)
-because \(Q_i\) may depend on \(Q_j\) for some \(i \neq j\).  For
-example, let us consider the following constraints:
+Note, however, that \(\lambda \seq{x}.\phi_0\) is not always a genuine 
+solution for all the predicates \(Q_1,\dots,Q_{\ell} \in S_i\) because 
+\(Q_i\) may depend on \(Q_j\) for some \(i \neq j\).  For example, let 
+us consider the following constraints:
 \begin{eqnarray*}
 x=0 &\imply& Q_1(x) \\
 Q_1(x) &\imply& Q_2(x+1) \\
 Q_2(x) &\imply& 0 \leq x \leq 2
 \end{eqnarray*}
-The strongest lower bounds of \(Q_1\) and \(Q_2\) are respectively
-\(\lambda \nu.\nu=0\) and \(\lambda \nu.\nu=1\).  The weakest upper
-bounds of \(Q_1\) and \(Q_2\) are respectively \(\lambda \nu.-1 \leq \nu
-\leq 1\) and \(\lambda \nu.0 \leq \nu \leq 2\).  We then obtain, for
-example, \(\lambda \nu.\mathcal{J}(\nu=0 \lor \nu=1,\neg (-1 \leq \nu
-\leq 1 \land 0 \leq \nu \leq 2)) \equiv \lambda \nu.0 \leq \nu \leq 1\)
-as a candidate solution for \(Q_1\) and \(Q_2\).  However, \([\lambda
-\nu.0 \leq \nu \leq 1/Q_1,\lambda \nu.0 \leq \nu \leq 1/Q_2](Q_1(x)
-\imply Q_2(x+1))\) is not valid.  In this example, we are actually only
-allowed to substitute the candidate solution \(\lambda \nu.0 \leq \nu
-\leq 1\) for either \(Q_1\) or \(Q_2\).
+The greatest lower bounds of \(Q_1\) and \(Q_2\) are respectively 
+\(\lambda \nu.\nu=0\) and \(\lambda \nu.\nu=1\).  The least upper bounds 
+of \(Q_1\) and \(Q_2\) are respectively \(\lambda \nu.-1 \leq \nu\leq 1\) 
+and \(\lambda \nu.0 \leq \nu \leq 2\).  We then obtain, for example, 
+\(\lambda \nu.\mathcal{J}(\nu=0 \lor \nu=1,\neg (-1 \leq \nu\leq 1 \land 
+0 \leq \nu \leq 2)) \equiv \lambda \nu.0 \leq \nu \leq 1\) as a 
+candidate solution for \(Q_1\) and \(Q_2\).  However, \([\lambda\nu.0 
+\leq \nu \leq 1/Q_1,\lambda \nu.0 \leq \nu \leq 1/Q_2](Q_1(x) \imply 
+Q_2(x+1))\) is not valid.  In this example, we are actually only allowed 
+to substitute the candidate solution \(\lambda \nu.0 \leq \nu\leq 1\) 
+for either \(Q_1\) or \(Q_2\).
 
-Therefore, we find a maximal subset \(M\) of \(S_i\) such that
-\(\lambda\seq{x}.\lambda \nu.\phi_0\) is in fact a solution for every
-predicate variable in \(M\).  Formally, we find \(M=\set{R_1,\dots,R_m}\)
-such that:
-\begin{itemize}
-\item \(M \subseteq S_i\),
-\item \(\theta[\lambda\seq{x}.\lambda
-\nu.\phi_0/R_1,\dots,\lambda\seq{x}.\lambda \nu.\phi_0/R_m]C\) is valid
-for some substitution \(\theta\) for predicate variables, and
-\item for any \(R_0 \in S_i \setminus M\) and \(\theta\) the following
-formula is not valid: \(\theta[\lambda\seq{x}.\lambda
-\nu.\phi_0/R_0,\lambda\seq{x}.\lambda
-\nu.\phi_0/R_1,\dots,\lambda\seq{x}.\lambda \nu.\phi_0/R_m]C\).
-\end{itemize}
-For the running example \(C_{\texttt{copy}}\), \(\lambda x \lambda
-\nu.\phi_0 \equiv \lambda x \lambda \nu.x=\nu\) is actually a genuine
+Therefore, we find a maximal subset \(M=\set{R_1,\dots,R_m} \neq 
+\emptyset\) of \(S_i\) such that 
+\([\lambda\seq{x}.\phi_0/R_1,\dots,\lambda\seq{x}.\phi_0/R_m]C\) is 
+equisatisfiable with \(C\).  As a result, the candidate solution 
+\(\lambda\seq{x}.\phi_0\) is in fact a genuine solution for 
+\(R_1,\dots,R_m\).
+%
+%%%such that \(\lambda\seq{x}.\phi_0\) is in fact a solution for every predicate variable in \(M\).
+%
+%%%Formally, we find \(M=\set{R_1,\dots,R_m}\) such that:
+%%%\begin{itemize}
+%%%\item \(M \subseteq S_i\),
+%%%\item \(\theta[\lambda \seq{x}.\phi_0/R_1,\dots,\lambda 
+%%%\seq{x}.\phi_0/R_m]C\) is valid for some substitution \(\theta\) for 
+%%%predicate variables, and
+%%%\item for any \(R_0 \in S_i \setminus M\) and \(\theta\) the following 
+%%%formula is not valid: \(\theta[\lambda \seq{x}.\phi_0/R_0,\lambda 
+%%%\seq{x}.\phi_0/R_1,\dots,\lambda \seq{x}.\phi_0/R_m]C\).
+%%%\end{itemize}
+For the running example \(C_{\texttt{cc}}\), \(\lambda x \lambda 
+\nu.\phi_0 \equiv \lambda x \lambda \nu.x=\nu\) is in fact a genuine 
 solution for \(P_1,\dots,P_4\) (i.e., \(M=S_1\)).
 
-We then substitute the solution \(\lambda x \lambda \nu.\phi_0\) for
-\(R_1,\dots,R_m \in M\), and repeat the entire constraint solving
-procedure until every predicate variable in \(C\) is substituted.  For
-the running example \(C_{\texttt{copy}}\), we finally obtain the
-following refinement types of \(D_{\texttt{copy}}\):
+We then substitute the solution \(\lambda \seq{x}.\phi_0\) for 
+\(R_1,\dots,R_m \in M\), and repeat the entire constraint solving 
+procedure until every predicate variable in \(C\) is substituted.  For 
+the running example \(C_{\texttt{cc}}\), we finally obtain the following 
+refinement types of \(D_{\texttt{cc}}\):
 \begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 %\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
