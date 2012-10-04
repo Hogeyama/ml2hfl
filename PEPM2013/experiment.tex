@@ -15,7 +15,7 @@ Table~\ref{tbl:exp} shows the results of the experiments.  The column
 ``size'' shows the word counts of the program.  The last column shows
 the number of CEGAR-cycles and the running time measured.  In the last
 column, ``C.'', ``A.'', and ``D.''  denote the uses of selective CPS
-transformation, selective predicate abstraction, and new predicate
+transformation, selective predicate abstraction, and refinde predicate
 discovery, respectively.  The programs have been verified correctly.
 The experiment was conducted on Intel Xeon 5570 CPU with 8 MB cache and
 6 GB memory.  The implementation can be tested and all programs are
@@ -48,6 +48,7 @@ r-file            &   168&  1&           & - &           & - &  9, &    2.76 & 1
 \hline
 sum\_intro        &   33 & 1 &  2, &    0.18 &  2, &    0.15 &  1, &    0.08 &  1, &    0.08 &  1, &    0.08 \\
 copy\_intro       &   24 & 1 &           & - &           & - &           & - &           & - &  2, &    0.14 \\
+fact\_notpos      &   97 & 1 &  1, &    0.11 &  1, &    0.11 &  1, &    0.08 &  1, &    0.09 &  1, &    0.08 \\
 fold\_right       &   64 & 2 &  8, &  361.07 &  8, &  167.05 &  2, &    0.31 &  2, &    0.18 &  2, &    0.34 \\
 forall\_eq\_pair  &   55 & 1 &           & - &           & - &           & - &  1, &    0.22 &  1, &    0.27 \\
 forall\_leq       &   55 & 2 &           & - &  7, &   93.28 &  1, &    0.20 &  1, &    0.16 &  1, &    0.24 \\
@@ -64,8 +65,7 @@ isort\_geq        &   97 & 1 &           & - &           & - &           & - &  
 map\_filter       &  111 & 2 &           & - &           & - &  2, &    3.23 &  2, &    1.87 &  3, &   27.51 \\
 risers            &   79 & 1 &           & - &           & - &  4, &    2.51 &  4, &    1.69 &  3, &    2.07 \\
 arith\_exp        &  109 & 2 &           & - &           & - &  4, &    8.65 &  3, &    1.68 &  4, &    6.32 \\
-fact\_notpos      &   97 & 1 &  1, &    0.11 &  1, &    0.11 &  1, &    0.08 &  1, &    0.09 &  1, &    0.08 \\
-fun\_list         &    94& 3 &           & - &           & - &  6, &   23.18 &  6, &   12.52 &  8, &   33.15 \\
+fun\_list         &   94 & 3 &           & - &           & - &  6, &   23.18 &  6, &   12.52 &  8, &   33.15 \\
 harmonic-e        &  101 & 2 &  1, &    0.44 &  1, &    0.22 &  0, &    0.11 &  0, &    0.08 &  0, &    0.08 \\
 map\_filter-e     &  111 & 2 &  2, &    2.29 &  2, &    1.11 &  0, &    0.16 &  0, &    0.15 &  0, &    0.16 \\
 arith\_exp-e      &  109 & 2 &  7, &   22.85 &           & - &  3, &    3.22 &  2, &    1.04 &  3, &    4.52 \\
@@ -79,10 +79,12 @@ fact\_notpos-e    &   97 & 1 &  0, &    0.07 &  0, &    0.08 &  0, &    0.08 &  
 %define a generator of lists and functions on lists, and assert that the
 %functions work correctly.
 The programs used in the experiments are:
+\vspace{-5pt}
 \begin{itemize}
-\item ``r-lock-e'' and above are the programs used in the experiments in
+\item ``r-file'' and above are the programs used in the experiments in
       the previous paper~\cite{KobayashiPLDI2011}.
-\item ``sum\_intro'' and ``copy\_intro'' are the example programs in Section~\ref{sec:intro}.
+\item ``sum\_intro'', ``copy\_intro'', and ``fact\_notpos'' are the example programs in
+      Section~\ref{sec:intro} and Section{sec:control}.
 \item ``map\_head\_filter'' and ``risers'' are examples of Ong and
       Ramsay's verification framework~\cite{Ong2011} for higher-order
       recursion scheme with a \textit{case} construct listed at their
@@ -90,7 +92,6 @@ The programs used in the experiments are:
       \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
       Our framework can verify these programs without a special
       treatment of case constructs unlike in their framework.
-\item ``fact\_notpos'' is the example program in Section~\ref{sec:control}.
 \item ``arith\_exp'' is a program that manipulates user-defined data structures.
 \item Other programs define generators of lists and functions on lists,
       and assert that the functions work correctly.  For example,
@@ -99,6 +100,7 @@ The programs used in the experiments are:
       ``zip'' asserts that \texttt{zip xs xs} never fails for all integer lists \texttt{xs}.
 \item A program of name ``xxx-e'' is a buggy version of the program ``xxx''.
 \end{itemize}
+\vspace{-5pt}
 %\begin{itemize}
 %%\item ``fold\_right'' defines
 %\item ``forall\_eq\_pair'' defines a generator of lists of the form

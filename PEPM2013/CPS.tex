@@ -1,3 +1,4 @@
+\vspace{-5pt}
 \section{Optimizations}
 \label{sec:opt}
 
@@ -107,39 +108,39 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 \infax[CPS-Const]
  {\CPS{\Gamma}{n}{\INT}{\NC}{n}}
 
-\medskip
+\smallskip
 
 \infax[CPS-Var]
  {\CPS{\Gamma,x\COL\tau}{x}{\tau}{\NC}{x}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-Op]
  {\CPS{\Gamma}{v_i}{\INT}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
  {\CPS{\Gamma}{\Op{v_1,\dots,v_n}}{\INT}{\NC}{\Op{v_1',\dots,v_n'}}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-AbsN]
  {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{\NC}{t'}}
  {\CPS{\Gamma}{\Abs{x}{t}}{\TFunN{\tau_1}{\tau_2}}{\NC}{\Abs{x}{t'}}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-AbsC]
  {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{\ell}{t'}}
  {\CPS{\Gamma}{\Abs{x}{t}}{\TFunL{C}{\tau_1}{\tau_2}}{\NC}
   {\Abs{x}{\Abs{k}{\SApp{\ell}{t'}{k}}}}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-AppN]
- {\CPS{\Gamma}{t_0}{\TFunN{\tau_1}{\tau}}{\NC}{t_0'} \andalso
+ {\CPS{\Gamma}{t_0}{\TFunN{\tau_1}{\tau}}{\NC}{t_0'} \quad
   \CPS{\Gamma}{t_1}{\tau_1}{\NC}{t_1'}}
  {\CPS{\Gamma}{\App{t_0}{t_1}}{\tau}{\NC}
   {\App{t_0'}{t_1'}}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-AppC]
  {\CPS{\Gamma}{t_0}{\TFunL{\ell}{\tau_1}{\tau}}{\ell_0}{t_0'} \andalso
@@ -150,7 +151,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
   \qquad \Abs{k}{\SApp{\ell_0}{t_0'}{\Abs{x_0}{\SApp{\ell_1}{t_1'}{\Abs{x_1}{\SApp{\ell}{\App{x_0}{x_1}}{k}}}}}}
  \end{array}}
 
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-AppN]
 % {\CPS{\Gamma}{t_0}{\TFunN{\tau_1}{\TFunN{\cdots}{\TFunN{\tau_n}{\tau}}}}{\NC}{t_0'} \andalso
@@ -158,7 +159,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 % {\CPS{\Gamma}{\App{\App{\App{t_0}{t_1}}{\dots}}{t_n}}{\tau}{\NC}
 %  {\App{\App{\App{t_0'}{t_1'}}{\ldots}}{t_n'}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-AppC]
 % {\CPS{\Gamma}{t_0}{\TFunL{l_1}{\tau_1}{\TFunL{l_{n-1}}{\cdots}{\TFunL{l_n}{\tau_n}{\tau}}}}{l_0}{t_0'} \andalso
@@ -166,32 +167,32 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 % {\CPS{\Gamma}{\App{\App{\App{t_0}{t_1}}{\dots}}{t_n}}{\tau}{\IC}
 %  {\Abs{k}{\SApp{l_0}{t_0'}{\Abs{x_0}{\SApp{l_1}{t_1'}{\Abs{x_1}{\cdots\SApp{l_n}{t_n'}{\Abs{x_n}{\App{\App{\App{\App{x_0}{x_1}}{\ldots}}{x_n}}{k}}}\cdots}}}}}}}
 %
-\medskip
+\smallskip
 
 \infax[CPS-Fail]
  {\CPS{\Gamma}{\FAIL}{\tau}{\IC}{\Abs{k}{\FAIL}}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-IfN]
- {\CPS{\Gamma}{t_1}{\INT}{\NC}{t_1'} \\
-  \CPS{\Gamma}{t_2}{\tau}{\NC}{t_2'} \andalso
+ {\CPS{\Gamma}{t_1}{\INT}{\NC}{t_1'} \quad
+  \CPS{\Gamma}{t_2}{\tau}{\NC}{t_2'} \quad
   \CPS{\Gamma}{t_3}{\tau}{\NC}{t_3'}}
  {\CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\NC}
   {\If{t_1'}{t_2'}{t_3'}}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-IfC]
- {\CPS{\Gamma}{t_1}{\INT}{\ell_1}{t_1'} \\
-  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \andalso
+ {\CPS{\Gamma}{t_1}{\INT}{\ell_1}{t_1'} \quad
+  \CPS{\Gamma}{t_2}{\tau}{\ell_2}{t_2'} \quad
   \CPS{\Gamma}{t_3}{\tau}{\ell_3}{t_3'}}
  {\begin{array}{l}
    \CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{\IC}{}{\lambda k.\,\mathit{App}^{\ell_1}(t_1,} \\
    \qquad \Abs{m}{\If{m}{\SApp{\ell_2}{t_2'}{k}}{\SApp{\ell_3}{t_3'}{k}}})
   \end{array}}
 
-\medskip
+\smallskip
 
  \infrule[CPS-Br]
  {\CPS{\Gamma}{t_1}{\tau}{\ell_1}{t_1'} \andalso
@@ -202,7 +203,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
   \qquad \Abs{k}{\If{\Br{0}{1}}{\SApp{\ell_1}{t_2'}{k}}{\SApp{\ell_2}{t_3'}{k}}}
  \end{array}}
 
-\medskip
+\smallskip
 
 \infrule[CPS-Prog]
  {v_i \text{ is of the form } \Abs{x_1}{\Abs{x_2}{\dots\Abs{x_j}{t_i}}} \\
@@ -211,10 +212,9 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
   \CPS{\Gamma}{v_i}{\Gamma(f_i)}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
  {\CPSprog{\Gamma}{\{f_1=v_1,\dots,f_n=v_n\}}{\{f_1=v_1',\dots,f_n=v_n'\}}}
 
-\begin{eqnarray*}
- \SApp{\NC}{t}{k} &=& \App{k}{t} \\
- \SApp{\IC}{t}{k} &=& \App{t}{k}
-\end{eqnarray*}
+\begin{center}
+$\SApp{\NC}{t}{k} = \App{k}{t}$, \quad $\SApp{\IC}{t}{k} = \App{t}{k}$
+\end{center}
 
 \end{minipage}
 \caption{Selective CPS transformation}
@@ -226,31 +226,31 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 %\infax[CPS-Const]
 % {\CPS{\Gamma}{n}{\INT}{\NC}{\Abs{\kappa}{\App{\kappa}{n}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infax[CPS-Var]
 % {\CPS{\Gamma,x\COL\tau}{x}{\tau}{\NC}{\Abs{\kappa}{\App{\kappa}{x}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infax[CPS-Op]
 % {\CPS{\Gamma}{\Op{v_1,\dots,v_n}}{\INT}{\NC}{\Abs{\kappa}{\App{\kappa}{(\Op{v_1,\dots,v_n})}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-AbsN]
 % {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{\NC}{t'}}
 % {\CPS{\Gamma}{\Abs{x}{t}}{\TFunN{\tau_1}{\tau_2}}{\NC}
 %  {\Abs{\kappa}{\Abs{x}{\App{t'}{(\Abs{m}{\App{\kappa}{m}})}}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-AbsC]
 % {\CPS{\Gamma, x\COL\tau_1}{t}{\tau_2}{\IC}{t'}}
 % {\CPS{\Gamma}{\Abs{x}{t}}{\TFunC{\tau_1}{\tau_2}}{\NC}
 %  {\Abs{\kappa}{\App{\kappa}{(\Abs{x}{\Abs{k}{\App{t'}{(\Abs{m}{\App{k}{m}})}}})}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-AppN]
 % {\text{$t_0$ is not of the form $\App{\App{\App{f}{t_{00}}}{\ldots}}{t_{0k}}$} \\
@@ -259,7 +259,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 % {\CPS{\Gamma}{\App{\App{\App{t_0}{t_1}}{\dots}}{t_n}}{\tau}{\NC}
 %  {\Abs{\kappa}{\App{\kappa}{(\App{t_0'}{(\Abs{x_0}{\App{t_1'}{(\Abs{x_1}{\cdots(\Abs{x_n}{\App{\App{\App{x_0}{x_1}}{\ldots}}{x_n}})\cdots})}})})}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-AppC]
 % {\CPS{\Gamma}{t_0}{\TFunL{l_1}{\tau_1}{\TFunL{l_{n-1}}{\cdots}{\TFunC{\tau_n}{\tau}}}}{l}{t_0'} \andalso
@@ -267,12 +267,12 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 % {\CPS{\Gamma}{\App{\App{\App{t_0}{t_1}}{\dots}}{t_n}}{\tau}{\IC}
 %  {\Abs{\kappa}{\App{t_0'}{(\Abs{x_0}{\App{t_1'}{(\Abs{x_1}{\cdots(\Abs{x_n}{\App{\App{\App{\App{x_0}{x_1}}{\ldots}}{x_n}}{(\Abs{r}{\App{\kappa}{r}})}})\cdots})}})}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infax[CPS-Fail]
 % {\CPS{\Gamma}{\FAIL}{\tau}{\IC}{\Abs{\kappa}{\FAIL}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-If]
 % {\CPS{\Gamma}{t_1}{\INT}{l}{t_1'} \andalso
@@ -281,7 +281,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 % {\CPS{\Gamma}{\If{t_1}{t_2}{t_3}}{\tau}{l}
 %  {\Abs{\kappa}{\App{t_1}{(\Abs{m}{\If{m}{\App{t_2'}{\kappa}}{\App{t_3'}{\kappa}}})}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-Br]
 % {\CPS{\Gamma}{t_1}{\tau}{l_1}{t_1'} \andalso
@@ -289,7 +289,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 % {\CPS{\Gamma}{\Br{t_1}{t_2}}{\tau}{\IC}
 %  {\Abs{\kappa}{\If{\Br{0}{1}}{\App{t_2'}{\kappa}}{\App{t_3'}{\kappa}}}}}
 %
-%\medskip
+%\smallskip
 %
 %\infrule[CPS-Prog]
 % {\CPS{\Gamma}{v_i}{\Gamma(f_i)}{\NC}{v_i'} \quad \text{for each $i \in \set{1,\dots,n}$}}
@@ -310,11 +310,15 @@ $\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$ holds, and the transformed
 term $t'$ has type $\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
 $\CPS{\Gamma}{t}{\tau}{C}{t'}$ holds, where $\AT$ is the answer type and
 $\CPSty{\tau}$ is defined by:
-\begin{eqnarray*}
+\vspace{-5pt}
+\[
+\begin{array}{rcl}
  \CPSty{\INT} &=& \INT \\
  \CPSty{\TFunN{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\CPSty{\tau_2}} \\
  \CPSty{\TFunC{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\TFun{(\TFun{\CPSty{\tau_2}}{\AT})}{\AT}}
-\end{eqnarray*}
+\end{array}
+\]
+
 This shows the intuition that a term of a type $\TFunC{\tau_1}{\tau_2}$
 should be inserted a continuation, and another term remains in direct
 style.
@@ -354,6 +358,10 @@ On the other hand, in (b), a continuation parameter is inserted.
 
 \begin{figure}[tp]
 \begin{minipage}{\textwidth}
+\begin{minipage}{0.03\textwidth}
+(a)
+\end{minipage}
+\begin{minipage}{0.9\textwidth}
 \infer{
 \CPS{\Gamma}
      {\Abs{x}{\Abs{y}{t}}}
@@ -376,8 +384,13 @@ On the other hand, in (b), a continuation parameter is inserted.
   &
  \quad \vdots \quad
 }}}
-(a)
+\end{minipage}
 
+\begin{minipage}{\textwidth}
+\begin{minipage}{0.05\textwidth}
+(b)
+\end{minipage}
+\begin{minipage}{0.9\textwidth}
 \infer{
  \begin{array}{r}
  \Gamma \p
@@ -392,7 +405,8 @@ On the other hand, in (b), a continuation parameter is inserted.
      {\TFunC{\INT}{\INT}}{\NC}
      {\Abs{y}{\Abs{k}{\App{t'}{k}}}}
 }{\vdots}}
-(b)
+\end{minipage}
+\end{minipage}
 \end{minipage}
 \caption{Transformations of $\Abs{x}{\Abs{y}{\assert(x =
 y)}}$. ($t = \assert(x =y)$, $t' = \assertcps(x =y)$, $\Gamma_x=\Gamma,x\COL\INT$.

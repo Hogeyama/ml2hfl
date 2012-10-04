@@ -1,3 +1,4 @@
+\vspace{-5pt}
 \section{Language Extensions}
 \label{sec:extension}
 
@@ -23,7 +24,7 @@ control operations.
  \begin{center}
   \includegraphics[scale=0.35]{extension.eps}
  \end{center}
-\caption{The verification framework for recursive data structures and control operators}
+\caption{The Verification Framework for Recursive Data Structures and Control Operators}
 \label{fig:extension}
 \end{figure}
 
@@ -88,18 +89,17 @@ $[2;3;5]$ is encoded into the pair $(3,f)$ where $f(0) = 2$, $f(1) = 3$, and
 $f(2) = 5$.  The primitive operations \texttt{nil}, \texttt{cons},
 \texttt{is\_nil}, \texttt{head}, and \texttt{tail} for lists are defined
 as follows.
+\vspace{-5pt}
 \begin{alltt}
-let nil = (0, fun _ -> fail)
-let cons x (len,f) =
-  let f' i = if i = 0 then x else f (i-1) in
-    (len+1, f')
-let is_nil (len,f) = len = 0
-let head (len,f) =
-  if is_nil (len,f) then fail else f 0
-let tail (len,f) =
-  (if is_nil (len,f) then fail else len-1),
-   fun i -> f (i+1)
+ let nil = (0, fun _ -> fail)
+ let cons x (len,f) = (len+1,
+   \(\lambda\)i. if i = 0 then x else f (i-1))
+ let is_nil (len,f) = len = 0
+ let head (len,f) = if len=0 then fail else f 0
+ let tail (len,f) =
+   ((if len=0 then fail else len-1), \(\lambda\)i.f(i+1))
 \end{alltt}
+\vspace{-5pt}
 \texttt{nil} is translated into the pair of length $0$ and the
 function that always fails.  \texttt{cons x xs} is translated into the
 pair of its length and the function $\{0 \mapsto \mathtt{x}\} \cup \{i \mapsto
@@ -263,28 +263,34 @@ lists by encoding recursive data structures to functions which map paths
 of nodes to labels.  Here, a path and a label are represented as a list
 of integers and an integer respectively.  For example, consider binary trees defined
 as follows.
+\vspace{-5pt}
 \begin{alltt}
-type btree = Leaf | Node of btree * btree
+ type btree = Leaf | Node of btree * btree
 \end{alltt}
+\vspace{-5pt}
 A binary tree is encoded into a term of the type
 $\TFun{\List\INT}{\INT}$.  For example, a binary tree
 $\Node{\LEAF}{\Node{\LEAF}{\LEAF}}$ is encoded into a function $\{[]
 \mapsto \NODE, [1] \mapsto \LEAF, [2] \mapsto \NODE, [2,1] \mapsto
 \LEAF, [2,2] \mapsto \LEAF\}$ where $\LEAF$ and $\NODE$ are defined as
 some integers.
-Here is another example, the encoding of a pattern matching.
+Here is another example.
+\vspace{-5pt}
 \begin{alltt}
-match x with Constr_1(x1, x2, ...) -> t
-           | Constr_2(...) -> ...
+ match x with Constr1(x1, x2, ...) -> t
+            | Constr2(...) -> ...
 \end{alltt}
+\vspace{-5pt}
 The expression above is encoded to the following expression.
+\vspace{-5pt}
 \begin{alltt}
-let Constr_1 = 1 in ... let Constr_n = n in
-  match x nil with
-      Constr_1 -> let x1 xs = x (cons 1 xs) in ...
+ let Constr1 = 1 in ... let Constrn = n in
+   match x nil with
+       Constr1 -> let x1 xs = x (cons 1 xs) in ...
                   let xn xs = x (cons n xs) in t'
-    | Constr_2 -> ...
+     | Constr2 -> ...
 \end{alltt}
+\vspace{-5pt}
 Here, \texttt{t'} is the encoding of \texttt{t}. The pattern matching in
 trees is translated to the pattern matching in labels, represented as
 integers.  A subterm of a tree is obtained by adding the index to the head of the path.
