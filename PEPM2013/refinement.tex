@@ -336,15 +336,15 @@ which are more likely to constitute invariants of the original program.
 %%%\end{figure}
 
 %%%The overall structure of the algorithm is shown in Figure~\ref{fig:extcs}.
-The extended algorithm proceeds as follows:
+The extended constraint solving algorithm proceeds as follows:
 \begin{enumerate}
 \item Find a set \(S\) of predicate variables related by \(E\) that may 
 have the same solution in \(C\).
 \item Find a candidate solution \(\lambda \seq{x}.\phi\) for the 
 predicate variables in \(S\).
-\item Substitute \(\lambda \seq{x}.\phi\) for some predicate variables 
-in \(S\) that occur in \(C\) to get \(C'\) and repeat the entire 
-procedure if \(C'\) still contains a predicate variable.
+\item Substitute \(\lambda \seq{x}.\phi\) for \(S\) in \(C\) to get 
+\(C'\) and repeat the entire procedure if \(C'\) still contains a 
+predicate variable.
 \end{enumerate}
 
 \paragraph{Finding a set \(S\) of predicate variables:}
@@ -398,7 +398,7 @@ For the running example \(C_{\texttt{cc}}\), we get
 \(S=S_0=S_1=\set{P_1,\dots,P_4}\) since \(\phi_{P_1} \lor \dots 
 \lor\phi_{P_4}\) implies \(\phi_{P_1}' \land \dots \land \phi_{P_4}'\).
 
-\paragraph{Finding a candidate solution \(\lambda \seq{x}.\phi\):}
+\paragraph{Finding a candidate solution \(\lambda \seq{x}.\phi\) for \(S\):}
 We find a candidate solution \(\lambda \seq{x}.\phi\) for \(S = 
 \set{Q_1,\dots,Q_{\ell}}\) such that:
 \begin{itemize}
@@ -456,8 +456,8 @@ An interpolating prover returned \(\lambda x \lambda \nu.x=\nu\) as a
 candidate solution for \(P_1,\dots,P_4\) in the experiments in 
 Section~\ref{sec:experiments}.
 
-\paragraph{Substituting the candidate solution \(\lambda \seq{x}.\phi\) to \(C\):}
-Note that we cannot always substitute all the predicates 
+\paragraph{Substituting \(\lambda \seq{x}.\phi\) for \(S\) in \(C\):}
+Note here that we cannot always substitute all the predicates 
 \(Q_1,\dots,Q_{\ell} \in S\) with the candidate solution \(\lambda 
 \seq{x}.\phi\) because \(Q_i\) may depend on \(Q_j\) for some \(i \neq 
 j\).  For example, let us consider the following constraints:
@@ -475,12 +475,11 @@ and \(\lambda \nu.0 \leq \nu \leq 2\).  We then obtain, for example,
 candidate solution for \(Q_1\) and \(Q_2\).  However, \([\lambda\nu.0 
 \leq \nu \leq 1/Q_1,\lambda \nu.0 \leq \nu \leq 1/Q_2](Q_1(x) \imply 
 Q_2(x+1))\) is not valid.  In this example, we can only safely 
-substitute the candidate solution \(\lambda \nu.0 \leq \nu\leq 1\) for 
-either \(Q_1\) or \(Q_2\).
+substitute \(\lambda \nu.0 \leq \nu\leq 1\) for either \(Q_1\) or \(Q_2\).
 
-Therefore, we find a maximal nonempty subset \(\{R_1,\dots,R_m\}\) of 
-\(S\) for which we can safely substitute \(\lambda\seq{x}.\phi\) (i.e., 
-the substituted set of constraints 
+Therefore, we find and substitute a maximal nonempty subset 
+\(\{R_1,\dots,R_m\}\) of \(S\) for which we can safely substitute 
+\(\lambda\seq{x}.\phi\) (i.e., 
 \([\lambda\seq{x}.\phi/R_1,\dots,\lambda\seq{x}.\phi/R_m]C\) is 
 equisatisfiable with \(C\)).
 %
