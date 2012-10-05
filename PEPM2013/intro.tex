@@ -8,7 +8,8 @@ construct a fully-automated program verification tool (so called a
 simply-typed lambda calculus with recursion and integers.
 The framework is an extension of higher-order model checker
 (more precisely, the model checker for higher-order recursion scheme)
-for infinite data domains such as integers by the techniques of
+for infinite data domains such as integers, obtained by 
+combining the techniques of
 predicate abstraction and CEGAR.  This can be viewed as a higher-order
 counterpart of previous software model checkers for imperative languages
 like BLAST~\cite{Henzinger2002} and SLAM~\cite{Ball2002}.
@@ -25,12 +26,12 @@ framework.
 Our previous verification framework~\cite{KobayashiPLDI2011} is based on
 predicate abstraction and CEGAR for a higher-order model checker.
 Figure~\ref{fig:cegar} shows the overall structure of our previous
-method.  First, an input program, written in a simply typed
+method.  In Step~1, an input program, written in a simply typed
 call-by-value lambda calculus with recursion and integers, is abstracted
-to a higher-order boolean program by predicate abstraction in Step~1.
+to a higher-order boolean program by predicate abstraction.
 The abstracted program is verified by a higher-order model checker,
 where models are described by higher-order recursion schemes, in Step~3.
-Higher-order recursion schemes can be viewed as a simply typed
+Higher-order recursion schemes~\cite{Ong2006} can be viewed as a simply typed
 call-by-name lambda calculus with finite data domains and recursion.  To
 resolve the gap between the evaluation strategies of higher-order
 recursion schemes and higher-order boolean programs, we translate the
@@ -98,23 +99,25 @@ the program is safe or not.
 %
 %We discuss each problem in more detail and explain our approach below.
 
-In this paper, we address four problems of our previous work.
+In this paper, we address several limitations of our previous work.
 We discuss each problem and explain our approach below.
 
 \vspace{-5pt}
 \begin{enumerate}
-\item CPS transformation in Step~2 causes an
-      efficiency problem of the previous version of MoCHi.  As stated
-      above, our approach needs CPS transformation to resolve the gap
+\item CPS transformation in Step~2 caused an
+      efficiency problem for the previous version of MoCHi.  As stated
+      above, our approach requires CPS transformation to resolve the gap
       between the evaluation strategies of higher-order recursion
       schemes and higher-order boolean programs.  However, CPS
-      transformation increases the order\footnote{The order of program
+      transformation significantly 
+    increases the order\footnote{The order of program
       $t$ is the maximum order of the types of functions in $t$.  The
       order of type $\tau$ is defined by $\mathit{order}(\INT)=0$,
       $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
       \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}
-      of programs and the growth of the order is not bounded by a
-      constant.  Since the complexity of model checking of higher-order
+      of programs.
+%% and the growth of the order is not bounded by a constant.  
+   Since the complexity of model checking of higher-order
       recursion scheme is $n$-EXPTIME complete for order-$n$ recursion
       scheme, the increase of the order of an input is crucial to the
       verification time.
@@ -141,7 +144,7 @@ We discuss each problem and explain our approach below.
       To preserve the evaluation order of an original call-by-value program,
       each function of the translated call-by-name program takes
       a continuation and passes its return value to the continuation.  Note here that the
-      order of the translated program is increased to 5.
+      order of the translated program has increased to 5.
 %\begin{alltt}
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main k = check (\(\lambda\)f. f n k)
@@ -149,11 +152,11 @@ We discuss each problem and explain our approach below.
 %let apply x k1 = k1 (\(\lambda\)f.\(\lambda\)k2. f x k2)
 %let check x k1 = k1 (\(\lambda\)y.\(\lambda\)k2. assert (x = y); k2 ())
 %let main n k = check n (\(\lambda\)f1. apply n (\(\lambda\)f2. f2 f1 k))
-      We can, however, obtain the following order-3 program instead by
-      omitting the continuation \texttt{k1} of \texttt{check}, which is
-      actually unnecessary since a partial application of \texttt{check}
+ The continuation \texttt{k1} of \texttt{check} can actually be omitted
+ however, since a partial application of \texttt{check}
       in the original program never causes side effects including an
       assertion failure.
+      We can, therefore, obtain the following order-3 program.
 \vspace{-5pt}
 \begin{alltt}
  letrec check x f k = f x (\(\lambda\)_.check (x+1) f k)
@@ -164,7 +167,7 @@ We discuss each problem and explain our approach below.
 %This transformation uses the fact that the application to the first
 %argument does not cause an assertion failure and the context of
 %\texttt{call n} is not required to have a continuation.
-      Our CPS transformation avoids such unnecessary insertions of
+      Our CPS transformation avoids such unnecessary insertion of
       continuations.  We formalize this transformation, called
       \emph{selective CPS transformation}.
 
@@ -179,7 +182,8 @@ We discuss each problem and explain our approach below.
       we abstract the program by using predicates $\Abs{y}{y \geq 0}$
       for the second argument of \texttt{add} and $\Abs{r}{r \geq x}$
       for the return values of \texttt{add} and \texttt{sum}.  The
-      following is the abstracted program using the above predicates.
+      following is the abstracted program obtained 
+  by using the above predicates.
 \begin{figure}[t]
 \vspace{-5pt}
 \begin{alltt}
@@ -200,11 +204,11 @@ We discuss each problem and explain our approach below.
 \end{alltt}
 \vspace{-5pt}
       Here, * means a non-deterministic boolean value.  The argument
-      \texttt{b} denotes whether $\mathtt{y} \geq 0$ or not.
+      \texttt{b} denotes whether $\mathtt{y} \geq 0$ holds or not.
 %      Automatically finding all such appropriate predicates is difficult.
       In the previous paper~\cite{KobayashiPLDI2011}, we have adapted
       CEGAR to find such predicates, but the technique is necessarily
-      heuristic, and often fails.  Suppose if we could not find the
+      heuristic, and often fails.  If we cannot find the
       predicates for \texttt{add}, we get the following abstracted
       program.
 \vspace{-5pt}
@@ -216,7 +220,7 @@ We discuss each problem and explain our approach below.
 \end{alltt}
 \vspace{-5pt}
       Since the return value of \texttt{add} is non-informative, the
-      abstraction is too coarse to prove the safety of the original program.
+      abstraction is too coarse for proving the safety of the original program.
 
       To reduce the burden to the predicate discovery phase, we introduce
       a refinement of predicate abstraction called \emph{selective
@@ -237,9 +241,9 @@ We discuss each problem and explain our approach below.
       In this way the selective predicate abstraction improves the
       precision of abstraction and reduces the number of CEGAR iterations.
 
-\item Even if we use the selective predicate abstraction, the previous
-      version of MoCHi sometimes cannot verify a program since MoCHi may
-      find too specific predicates.  For example, consider the program
+\item Even with the selective predicate abstraction, the previous
+      version of MoCHi sometimes failed to discover an appropriate
+      set of predicates. For example, consider the program
       shown in Figure~\ref{fig:copy}.
 \begin{figure}[t]
 \vspace{-5pt}
@@ -252,28 +256,52 @@ We discuss each problem and explain our approach below.
 \label{fig:copy}
 \end{figure}
       The program can be successfully verified if we abstract the
-      program by using predicates $\Abs{r}{r = x}$ for the return values
-      of \texttt{copy}.  The old MoCHi, however, continues to find
-      predicates such as $\Abs{v}{v = 0}$, $\Abs{v}{v = 1}$, ...,
-      infinitely for the argument and the return values.
+      program by using the predicate \(r=x\) on the argument \(x\) and
+      the return value \(r\) of \texttt{copy}.  
+     The old version of MoCHi, however, continued to find
+      too specific predicates such as 
+      \(x=0\land r=0\), \(x=1\land r=1\), ...,
+      infinitely.
+      This is due to the too much path- and context-sensitivity of MoCHi.
+      In Step~5, MoCHi first prepares a template of a refinement type
+      for \emph{each} function call in the spurious error path.
+     For example, if there are two calls of the \texttt{copy} function,
+      we prepare two templates \(x\COL\set{x\COL\INT \mid P_1(x)}\ra
+       \set{r\COL\INT \mid Q_1(x,r)}\) and 
+    \(x\COL\set{x\COL\INT \mid P_2(x)}\ra
+       \set{r\COL\INT \mid Q_2(x,r)}\).
+     MoCHi then generates and solve
+      constraints on the predicate variables in the template.
+     The advantages of the approach are the context-sensitivty (different
+   types can be assigned to different calls) and the existence of
+   a complete algorithm (modulo certain assumptions) to solve the constraints,
+    but the disadvantage is that the inferred constraints are often too
+    specific.
 
-      This is due to the path- and context-sensitivity of MoCHi.
-      In Step~5, MoCHi first produces a
-      straightline higher-order program (SHP) that corresponds to a
-      single spurious error path.  MoCHi then infers a refinement type
-      of the SHP, and generates predicates from the refinement type.
-      At this time, the method finds predicates for multiple
-      calling contexts of a function individually.  This makes predicates too
-      specific.
+%%%produces a
+%%%      straightline higher-order program (SHP) that corresponds to a
+%%%      single spurious error path.  MoCHi then infers a refinement type
+%%      of the SHP, and generates predicates from the refinement type.
+%%      At this time, the method finds predicates for multiple
+%%      calling contexts of a function individually.  This makes predicates too
+%%      specific.
 
-      We refine our predicate discovery method for higher-order
-      functional programs to discover general predicates.  By
-      considering information from multiple calling contexts in multiple
-      paths, the method discovers predicates that are useful in multiple
-      call-sites of a function, and also discovers predicates to verify
-      path- and context-sensitive conditions.  The refined method
-      reduces the number of false errors produced by predicate
-      abstraction.
+ To address this problem, 
+    we refine our predicate discovery method by merging information about
+   multiple calls of the same function as much as possible; in the example
+ above, we merge \(P_1\) with \(P_2\), and \(Q_1\) with \(Q_2\) as long
+  as the resulting constraints are satisfiable. Combined with some heuristic
+  for using an underlying theorem prover, the refined method tends to
+  discover a better set of predicates, as confirmed by experiments.
+
+%%% for higher-order
+%%%      functional programs to discover general predicates.  By
+%%%      considering information from multiple calling contexts in multiple
+%%%      paths, the method discovers predicates that are useful in multiple
+%%%      call-sites of a function, and also discovers predicates to verify
+%%%      path- and context-sensitive conditions.  The refined method
+%%%      reduces the number of false errors produced by predicate
+%%%      abstraction.
 
 
 %%The first problem increases the number of CEGAR-cycle.
@@ -355,25 +383,40 @@ We discuss each problem and explain our approach below.
 %\memo{for language extension}
 %(iii) functional encoding of recursive data structures and control operations to support a larger subset of ML.
 
-\item The fourth problem is the insufficiency of supported language
-      features.  Our previous framework requires an automated
-      interpolating theorem prover for predicate abstraction and
-      discovery, but existing practical provers are not useful to verify
-      recursive data structures like lists and trees (this is due to
-      the lack of generality of interpolants discovered by the provers.)
-      Thus, the implementation dealt with only integers as infinite data
-      domains.
+\item Another limitation was that many important language
+  features such as recursive data structures and exceptions were not supported.
+  Predicate abstraction can in principle be applied to recursive data structures, but there is not a good practical (interpolating) theorem prover 
+ that can be used for finding appropriate predicates on 
+ recursive data structures.%
+\footnote{One approach would be to treat data constructors as uninterpreted
+  function (UF) symbols, and use an interpolating theorem prover that handles
+  UF. It cannot, however, be used for finding inductive predicates such as
+  ``a list \(\ell\) is a sequence of the form \((ab)^*\)''.}
+%%%  The reason for the lack of support of recursive data structures
+%%%  was that there
+%%%    Our framework requires an automated
+%%%      interpolating theorem prover for predicate abstraction and
+%%%      discovery, but existing practical provers are not useful to verify
+%%%      recursive data structures like lists and trees (this is due to
+%%%      the lack of generality of interpolants discovered by the provers.)
+%%%      Thus, the implementation dealt with only integers as infinite data
+%%%      domains.
 
       To support recursive data structures without relying on
-      interpolating theorem provers for them, we extend our verification
-      framework as follows.  As a preprocessing of our CEGAR-based model
-      checking, we translate programs that manipulate recursive data
-      structures into ones that manipulate only integers.  The
-      transformation is carried out by encoding recursive data
-      structures using higher-order functions.  For example, a list is
+      an interpolating theorem prover for them, 
+%%%we extend our verification
+%%%      framework as follows.  As a preprocessing of our CEGAR-based model
+%%%      checking, 
+%%%      we translate programs that manipulate recursive data
+%%%      structures into ones that manipulate only integers.  The
+%%%      transformation is carried out by 
+      we encode recursive data structures using higher-order functions
+   and reduce verification of programs manipulating data structures
+   to that of programs manipulating integers.  For example, a list is
       encoded to a function that maps an index $i$ to the $i$-th
-      element.  In a similar way, we support control operations (e.g.,
-      exceptions and \texttt{call/cc}) by using higher-order functions.
+      element.  Similarly, we support control operations (e.g.,
+      exceptions and \texttt{call/cc}) by encoding them 
+    using higher-order functions.
 \end{enumerate}
 \vspace{-5pt}
 
