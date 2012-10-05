@@ -10,7 +10,7 @@ structures.
 
 Ong and Ramsay~\cite{Ong2011} have proposed a verification method for
 recursion schemes with recursive data structures, called Pattern Matching
-Recursion Schemes (PMRSs).  The method cannot express regular properties
+Recursion Schemes (PMRS).  The method cannot express regular properties
 (such as ``a and b occur alternately'') and numerical properties (such
 as ``$x+y \leq z$'' where $x,y,z$ are the length of lists).
 %regular properties. For example, the method cannot
@@ -47,15 +47,29 @@ than $i$,'' while they cannot.
 %with the properties of list elements related to its indices like that
 %the $i$-th element of a list is greater than $i$.
 
-Jhala et al.~\cite{Jhala2011} have proposed a verification method that
-reduces a safety problem of a higher-order functional program to a safety
-problem of a first-order imperative program.
-They first prepare refinement type templates, and generates constraints.
-Then the constraints are translated to an imperative program.
-The program is verified by an existing verifier for imperative programs.
-Their method treats data structures such as lists and arrays.
-While type templates for data structures must be given in advance,
-they cannot deal with user-defined data structures.
+%%%Jhala et al.~\cite{Jhala2011} have proposed a verification method that
+%%%reduces a safety problem of a higher-order functional program to a safety
+%%%problem of a first-order imperative program.
+%%%They first prepare refinement type templates, and generates constraints.
+%%%Then the constraints are translated to an imperative program.
+%%%The program is verified by an existing verifier for imperative programs.
+%%%Their method treats data structures such as lists and arrays.
+%%%While type templates for data structures must be given in advance,
+%%%they cannot deal with user-defined data structures.
+
+Jhala et al.~\cite{Jhala2011} proposed a method for refinement type inference
+based on reduction to verification of first-order imperative programs.
+Their approach does not support refinement intersection types, so
+the resulting verification method is less precise.
+%%%They first prepare refinement type templates, and generates constraints.
+%%%Then the constraints are translated to an imperative program.
+%%%The program is verified by an existing verifier for imperative programs.
+Their method can deal with data structures such as lists and arrays
+as long as type templates for the data structures are given a priori.
+Compared with our ``data structures as functions'' approach, however,
+the supported properties seem to be limited; for example, their method
+cannot reason about a relation between a list index and the corresponding
+element (like ``the \(i\)-th element is greater than \(i\)'').
 
 Xi and Pfenning~\cite{Xi1999} have proposed a dependently-typed language
 Dependent ML.  Its type system captures program properties such as
@@ -69,17 +83,18 @@ data structures.  Their method prepares templates for dependent types
 and generates constraints.  The constraints are solved by using an
 interpolating theorem prover.
 
-Xu~\cite{Xu2012} has proposed a hybrid contract checking.  It checks the
+Xu~\cite{Xu2012} has proposed a method for hybrid contract checking.  It checks the
 satisfaction of contracts or blames the violation of a contract,
-statically or dynamically.  The statically checking is done by symbolic
+statically or dynamically.  The static checking is performed by symbolic
 simplification.  While the simplification does not see the definitions
 of top-level functions (that include recursive functions), contracts are
-needed for top-level functions in order to verify statically.
+needed for top-level functions for static verification.
 
-The dependent type checking and inferences stated
+Unlike our method,
+the dependent type checking and inference stated
 above~\cite{Unno2010,Rondon2008,Kawaguchi2009,Unno2009} does not support
-intersection types that are needed to check usage of
-functions invoked from multiple call-sites, while our method support.
+intersection types that are needed for precise, context-sensitive analysis
+of higher-order functions.
 
 Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
 statically reasoning about containers.  The proposed method is based on
@@ -104,12 +119,12 @@ Suter et al.~\cite{Suter2011} have proposed a verification method for first-orde
 functional programs that manipulate recursive data
 structures.  They use a decision
 procedure~\cite{Suter2010} that is complete for recursive functions that
-are sufficiently surjective catamoprhisms.  For example, their method
+are sufficiently surjective catamorphisms.  For example, their method
 can verify that an insertion function preserves invariants of binary
 search trees, while our method cannot.
 
-Beyer et al.~\cite{Beyer2007} have proposed a method to discover
-predicates that are useful to verify path-sensitive and path-insensitive
+Beyer et al.~\cite{Beyer2007} proposed a method for discovering
+predicates that are useful for verification of path-sensitive and path-insensitive
 properties of imperative programs.  The method does not use finite
 infeasible paths (or straightline programs), but full-fledged programs
 (called path programs) as counterexamples.  A path program can be viewed
