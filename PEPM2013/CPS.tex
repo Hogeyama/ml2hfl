@@ -7,6 +7,7 @@ transformation (Step 2) and predicate abstraction (Step 1) in
 Figure~\ref{fig:cegar}.
 
 
+\vspace{-2pt}
 \subsection{Selective CPS transformation}
 \label{sec:CPS}
 %\TODO{Add discussion about the increase of the order of programs}
@@ -103,6 +104,7 @@ $\ell=\IC$, and (iii) $t$ has no side-effect if $\ell=\NC$.
 %will be reduced statically in the translation.
 
 \begin{figure}[tp]
+\small
 \begin{minipage}{0.47\textwidth}
 
 \infax[CPS-Const]
@@ -310,7 +312,7 @@ $\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$ holds, and the transformed
 term $t'$ has type $\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
 $\CPS{\Gamma}{t}{\tau}{C}{t'}$ holds, where $\AT$ is the answer type and
 $\CPSty{\tau}$ is defined by:
-\vspace{-5pt}
+\vspace{-2pt}
 \[
 \begin{array}{rcl}
  \CPSty{\INT} &=& \INT \\
@@ -358,7 +360,8 @@ On the other hand, in (b), a continuation parameter is inserted.
 
 \begin{figure}[tp]
 \begin{minipage}{\textwidth}
-\begin{minipage}{0.03\textwidth}
+\small
+\begin{minipage}{0.05\textwidth}
 (a)
 \end{minipage}
 \begin{minipage}{0.9\textwidth}
@@ -387,7 +390,7 @@ On the other hand, in (b), a continuation parameter is inserted.
 \end{minipage}
 
 \begin{minipage}{\textwidth}
-\begin{minipage}{0.05\textwidth}
+\begin{minipage}{0.07\textwidth}
 (b)
 \end{minipage}
 \begin{minipage}{0.9\textwidth}

@@ -1,5 +1,6 @@
 \input{macro}
 
+\vspace{-5pt}
 \section{Predicate Discovery}
 \label{sec:refine}
 
@@ -10,6 +11,7 @@ method in Section~\ref{sec:prev} and then discuss its limitation in
 Section~\ref{sec:limit}. Section~\ref{sec:ext} explains the extension of
 the method, which remedies the limitation.
 
+\vspace{-2pt}
 \subsection{Previous Method}
 \label{sec:prev}
 
@@ -34,6 +36,7 @@ method~\cite{Unno2009,Terauchi2010,KobayashiPLDI2011}, which consists of
 two steps: constraint generation and solving.  We review the two steps
 respectively in Sections~\ref{sec:cg} and \ref{sec:cs}.
 
+\vspace{-2pt}
 \subsubsection{Constraint Generation}
 \label{sec:cg}
 
@@ -53,9 +56,9 @@ consider the program in Figure~\ref{fig:copy2}, which is a simplified
 version of the one in Figure~\ref{fig:copy}.  In the course of its
 verification, we may obtain the following SHP \(D_{\texttt{copy}}\):
 \begin{alltt}
-let copy1 x = assume (x<>0); 1 + copy2 (x-1)
-let copy2 x = assume (x=0); 0
-let main n = assume (copy1 n <> n); fail
+ let copy1 x = assume (x<>0); 1 + copy2 (x-1)
+ let copy2 x = assume (x=0); 0
+ let main n = assume (copy1 n <> n); fail
 \end{alltt}
 The SHP corresponds to an infeasible error path where the else- and the
 then-branches of \(\texttt{copy}\) are respectively taken in the first
@@ -79,17 +82,22 @@ decidable.  For example, for the SHP \(D_{\texttt{copy}}\), we prepare
 the following type templates:\footnote{For the sake of simplicity, we
 here omit the type template of \texttt{main} as well as the refinement
 predicates for the argument of \texttt{copy1} and \texttt{copy2}.}
-\begin{eqnarray*}
+\vspace{-2pt}
+\[
+\begin{array}{rcl}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_1(x,\nu)}}) \\
 \texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_2(x,\nu)}})
-\end{eqnarray*}
+\end{array}
+\]
 By using them, we obtain the following set \(C_{\texttt{copy}}\) of
 constraints:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
 P_2(x-1,y) \land x\neq0 \land z=1+y &\imply& P_1(x,z) \\
 x=0 \land y=0 &\imply& P_2(x,y) \\
 P_1(n,x) &\imply& x=n
-\end{eqnarray*}
+\end{array}
+\]
 
 %%%We then use the constraint generation algorithm for terms defined in
 %%%Figure~\ref{fig:cgen} to obtain constraints.  In the figure,
@@ -135,6 +143,7 @@ P_1(n,x) &\imply& x=n
 %%%\label{fig:cgen}
 %%%\end{figure*}
 
+\vspace{-2pt}
 \subsubsection{Constraint Solving}
 \label{sec:cs}
 
@@ -170,18 +179,22 @@ conditions:\footnote{Note here that interpolants of \(\phi_1\) and
 \(\phi_2\) are not unique.  Actually, existing theorem
 provers~\cite{Henzinger2004,McMillan2005,Beyer2008} return one of them.
 We denote such an interpolant as \(\mathcal{I}(\phi_1,\phi_2)\).}
+\vspace{-4pt}
 \begin{itemize}
 \item \(\phi_1\) implies \(\phi\),
 \item \(\phi\) and \(\phi_2\) are inconsistent, and
 \item \(\FV{\phi} \subseteq \FV{\phi_1} \cap \FV{\phi_2}\).
 \end{itemize}
+\vspace{-4pt}
 %
 For example, for \(C_{\texttt{copy}}\), we obtain the following greatest
 lower and least upper bounds for \(P_1\) from \(C_{\texttt{copy}}\):
+\vspace{-4pt}
 \begin{itemize}
 \item \(\lambda x.\lambda \nu.\phi_{P_1}\equiv \lambda x.\lambda \nu.x=1 \land \nu=1\) and
 \item \(\lambda x.\lambda \nu.\phi_{P_1}'\equiv \lambda x.\lambda \nu.\nu=x\).
 \end{itemize}
+\vspace{-4pt}
 We then obtain, for example, the following solution for \(P_1\):
 \begin{eqnarray*}
 \lambda x.\lambda \nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg \nu=x) \equiv \lambda x.\lambda \nu.\nu=x.
@@ -194,10 +207,12 @@ x=0 \land y=0 &\imply& P_2(x,y)
 \end{eqnarray*}
 We then get the following greatest lower and least upper bounds for
 \(P_2\) from \(C_{\texttt{copy}}'\):
+\vspace{-4pt}
 \begin{itemize}
 \item \(\lambda x.\lambda \nu. \phi_{P_2}' \equiv \lambda x.\lambda \nu. x+1\neq0 \imply \nu=x\) and
 \item \(\lambda x.\lambda \nu. \phi_{P_2} \equiv \lambda x.\lambda \nu. x=0 \land \nu=0\).
 \end{itemize}
+\vspace{-4pt}
 We then obtain, for example, the following solution for \(P_2\):
 \begin{eqnarray*}
 \lambda x.\lambda \nu.\mathcal{I}(\nu.x=0 \land \nu=0,\neg (x+1\neq0 \imply \nu=x)) \equiv \lambda x.\lambda \nu.\nu=x.
@@ -208,6 +223,7 @@ We thus obtain the following refinement types for \(D_{\texttt{copy}}\):
 \texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}})
 \end{eqnarray*}
 
+\vspace{-2pt}
 \subsection{Limitation of Previous Method}
 \label{sec:limit}
 
@@ -228,21 +244,25 @@ calls of \(\texttt{copy}\), and the assertion in the \(\texttt{main}\)
 function fails.
 
 For the SHP \(D_{\texttt{cc}}\), we use the following type templates:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_1(x,\nu)}}) \\
 %\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_2(x,\nu)}}) \\
 %\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_3(x,\nu)}}) \\
 \vdots\quad &&\qquad\qquad \vdots \\
 \texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_4(x,\nu)}})
-\end{eqnarray*}
+\end{array}
+\]
 And, we get the following set \(C_{\texttt{cc}}\) of constraints:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
 P_2(x-1,y) \land x\neq0 \land z=1+y &\imply& P_1(x,z) \\
 x=0 \land y=0 &\imply& P_2(x,y) \\
 P_4(x-1,y) \land x\neq0 \land z=1+y &\imply& P_3(x,z) \\
 x=0 \land y=0 &\imply& P_4(x,y) \\
 P_1(n,x) \land P_3(x,y) &\imply& y=n
-\end{eqnarray*}
+\end{array}
+\]
 
 We then find a solution for \(P_3\) as follows.  The greatest lower and
 the least upper bounds of \(P_3\) are respectively \(\lambda x.\lambda
@@ -251,11 +271,13 @@ the least upper bounds of \(P_3\) are respectively \(\lambda x.\lambda
 %
 Existing interpolating proves such as \cite{Beyer2008} then returns the
 following solution for \(P_3\):
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
 %&&\lambda x.\lambda \nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg (n=1 \land x=1 \imply \nu=n)) \\
 &&\lambda x.\lambda \nu.\mathcal{I}(\nu.x=1 \land \nu=1,\neg (x=1 \imply \nu=1)) \\
 &\equiv& \lambda x.\lambda \nu.x=1 \land \nu=1.
-\end{eqnarray*}
+\end{array}
+\]
 Note here that the solution is specific to the calling context of the
 particular function \texttt{copy3}, and cannot be used as a solution for
 \(P_2\) and \(P_4\).  We here want to get more general predicates like
@@ -268,6 +290,7 @@ function in the original program.  For the above example, we want to
 obtain the same solution for \(P_1,\dots,P_4\), and \(\lambda
 x.\lambda \nu.\nu=x\) in fact satisfies this extra constraint.
 
+\vspace{-2pt}
 \subsection{Extended Method}
 \label{sec:ext}
 
@@ -285,11 +308,13 @@ infeasible error paths (see Section~\ref{sec:extcg}), and tries to find
 the same solution (if possible) for related predicate variables (see
 Section~\ref{sec:extcs}).
 
+\vspace{-2pt}
 \subsubsection{Extensions of Constraint Generation}
 \label{sec:extcg}
 
 We extend the previous constraint generation algorithm overviewed in
 Section~\ref{sec:cg} as follows.
+\vspace{-4pt}
 \begin{itemize}
 \item For each CEGAR iteration, we generate constraints from multiple
 infeasible error paths instead of a single path:  We keep the set
@@ -309,6 +334,7 @@ equivalence relation \(E_{\texttt{cc}}=\set{P_1,\dots,P_4} \times
 Section~\ref{sec:extcs} exploits \(E\) to find general solutions for the
 constraints.
 \end{itemize}
+\vspace{-4pt}
 Thus, the extended algorithm generates a pair \((C,E)\) of Horn clauses
 \(C\) for multiple paths and an equivalence relation \(E\) on the
 predicate variables in \(C\) unlike the previous algorithm which
@@ -316,6 +342,7 @@ generates only Horn clauses for a single path.  Here, the pair \((C,E)\)
 can be viewed as hierarchical constraints where \(C\) must be always
 satisfied and \(E\) should be satisfied if possible.
 
+\vspace{-2pt}
 \subsubsection{Extensions of Constraint Solving}
 \label{sec:extcs}
 
@@ -356,17 +383,21 @@ same solution in \(C\).  Note that \(\FV{\phi_P} \cap \FV{\phi_P'}
 %
 For example, the greatest lower bounds for \(P_1,\dots,P_4\) in
 \(C_{\texttt{cc}}\) are:
+\vspace{-4pt}
 \begin{itemize}
 \item \(\lambda x.\lambda \nu.\phi_{P_1} \equiv \lambda x.\lambda \nu.\phi_{P_3} \equiv \lambda x.\lambda \nu.x=1 \land \nu=1\) and
 \item \(\lambda x.\lambda \nu.\phi_{P_2} \equiv \lambda x.\lambda \nu.\phi_{P_4} \equiv \lambda x.\lambda \nu.x=0 \land \nu=0\).
 \end{itemize}
+\vspace{-4pt}
 The least upper bounds for \(P_1,\dots,P_4\) are:
+\vspace{-4pt}
 \begin{itemize}
 \item \(\lambda x.\lambda \nu.\phi_{P_1}'\equiv \lambda x.\lambda \nu.\nu=1 \imply x=1\),
 \item \(\lambda x.\lambda \nu.\phi_{P_2}'\equiv \lambda x.\lambda \nu.\nu=0 \imply (x=-1 \lor x=0)\),
 \item \(\lambda x.\lambda \nu.\phi_{P_3}'\equiv \lambda x.\lambda \nu.x=1 \imply \nu=1\), and
 \item \(\lambda x.\lambda \nu.\phi_{P_4}'\equiv \lambda x.\lambda \nu.x=0 \imply \nu=0\).
 \end{itemize}
+\vspace{-4pt}
 
 In general, the computation of the least upper bound for some predicate
 variable may possibly fail because the constraint generation algorithm
@@ -382,6 +413,7 @@ using the greatest upper and the least lower bounds so that predicate
 variables which never have the same solution are separated.
 %
 Formally, we find \(S_1\dots,S_n\) such that:
+\vspace{-4pt}
 \begin{itemize}
 \item \(S_0 = S_1 \cup \dots \cup S_n\),
 \item for any \(i \in \set{1,\dots,n}\), if \(S_i
@@ -392,6 +424,7 @@ Formally, we find \(S_1\dots,S_n\) such that:
 \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) does not imply
 \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\).
 \end{itemize}
+\vspace{-4pt}
 We then pick some \(S \in \set{S_1,\dots,S_n}\) (e.g., the largest one).
 %
 For the running example \(C_{\texttt{cc}}\), we get
@@ -401,11 +434,13 @@ For the running example \(C_{\texttt{cc}}\), we get
 \paragraph{Finding a candidate solution \(\lambda \seq{x}.\phi\) for \(S\):}
 We find a candidate solution \(\lambda \seq{x}.\phi\) for \(S =
 \set{Q_1,\dots,Q_{\ell}}\) such that:
+\vspace{-4pt}
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
 \item \(\FV{\phi} \subseteq \set{\seq{x}}\).
 \end{itemize}
+\vspace{-4pt}
 %Terauchi2010
 We can compute such a formula \(\phi\) as an interpolant
 \(\mathcal{I}(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}},\neg
@@ -420,7 +455,7 @@ combines the interpolation \(\mathcal{I}\) and the convex hull operators.
  For formulas \(\phi_1\) and \(\phi_2\) (such that \(\phi_1\) and
 \(\phi_2\) are inconsistent), the new operator
 \(\mathcal{J}(\phi_1,\phi_2)\) is defined as follows:
-\begin{eqnarray*}
+\[
 \mathcal{J}(\phi_1,\phi_2) =
 \left\{
 \begin{array}{ll}
@@ -430,7 +465,7 @@ combines the interpolation \(\mathcal{I}\) and the convex hull operators.
 \mathcal{I}(\phi_1,\phi_2) & (\mbox{otherwise})
 \end{array}
 \right.
-\end{eqnarray*}
+\]
 Here, we write \(\phi_1 \INCON \phi_2\) to denote that \(\phi_1\) and
 \(\phi_2\) are inconsistent.  Note that the use of the convex hull
 operator enables us to eliminate disjunctions in \(\phi_1\) and
@@ -446,12 +481,14 @@ use the new operator \(\mathcal{J}\) to compute \(\lambda \seq{x}.
 \phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land\phi_{Q_{\ell}}'))\)
 as a candidate solution for \(Q_1,\dots,Q_{\ell}\).  For the running
 example \(C_{\texttt{cc}}\), we obtain:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
 \phi &=& \mathcal{J}(\phi_{P_1} \lor \dots \lor \phi_{P_4},\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(\mathcal{H}(\phi_{P_1} \lor \dots \lor \phi_{P_4}),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(\mathcal{H}(x=0 \land \nu=0 \lor x=1 \land \nu=1),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(0 \leq x=\nu \leq 1,\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}'))
-\end{eqnarray*}
+\end{array}
+\]
 An interpolating prover returned \(\lambda x \lambda \nu.x=\nu\) as a
 candidate solution for \(P_1,\dots,P_4\) in the experiments in
 Section~\ref{sec:experiments}.
@@ -461,11 +498,13 @@ Note here that we cannot always substitute all the predicates
 \(Q_1,\dots,Q_{\ell} \in S\) with the candidate solution \(\lambda
 \seq{x}.\phi\) because \(Q_i\) may depend on \(Q_j\) for some \(i \neq
 j\).  For example, let us consider the following constraints:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
 x=0 &\imply& Q_1(x) \\
 Q_1(x) &\imply& Q_2(x+1) \\
 Q_2(x) &\imply& 0 \leq x \leq 2
-\end{eqnarray*}
+\end{array}
+\]
 The greatest lower bounds of \(Q_1\) and \(Q_2\) are respectively
 \(\lambda \nu.\nu=0\) and \(\lambda \nu.\nu=1\).  The least upper bounds
 of \(Q_1\) and \(Q_2\) are respectively \(\lambda \nu.-1 \leq \nu\leq 1\)
@@ -500,13 +539,16 @@ solution \(\lambda x \lambda \nu.x=\nu\) for \(P_1,\dots,P_4\) safely
 (i.e., \(M=S\)).  As a result, every predicate variable in
 \(C_{\texttt{cc}}\) is substituted, and thus we obtain the following
 refinement types for \(D_{\texttt{cc}}\):
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 %\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 %\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 \vdots\quad &&\qquad\qquad \vdots \\
 \texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}})
-\end{eqnarray*}
+\end{array}
+\]
+
 
 %\todo{discuss termination?}
 

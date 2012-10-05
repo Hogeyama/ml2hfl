@@ -1,4 +1,5 @@
 
+\vspace{-2pt}
 \subsection{Selective Predicate Abstraction}
 
 We introduce an optimization technique for predicate abstraction, called
@@ -152,6 +153,7 @@ previous predicate abstraction.
 
 \begin{figure}[t]
 \begin{minipage}{0.47\textwidth}
+\small
 \infrule[A-App]
  {x\notin\Dom{E} \andalso \Gamma(x)=(y_1\COL\sigma_1 \to \cdots \to y_n\COL\sigma_n \to\sigma) \\
  \begin{array}{ll}
@@ -198,6 +200,7 @@ In the abstraction of $\App{\App{\mathtt{add}}{x}}{s}$, \texttt{add} is
 inlined since the definition of \texttt{add} is in $E$.
 
 \begin{figure}[t]
+\small
 \infer{
 \begin{array}{rr}
  \Gamma \mid
