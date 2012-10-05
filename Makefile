@@ -69,8 +69,7 @@ REFINE_CMO = enum.cmo extList.cmo extString.cmo \
 	global.cmo \
 	util.cmo zipper.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
-	term.cmo typTerm.cmo \
-  linArith.cmo poly.cmo parLinArith.cmo formula.cmo typSubst.cmo formulaUtil.cmo fes.cmo \
+	term.cmo linArith.cmo poly.cmo parLinArith.cmo typTerm.cmo formula.cmo typSubst.cmo formulaUtil.cmo fes.cmo \
   fdef.cmo prog.cmo \
 	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo apronInterface.cmo \
 	farkas.cmo nonLinConstrSolve.cmo \

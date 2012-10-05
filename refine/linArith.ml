@@ -48,6 +48,8 @@ let pr ppf (nxs, n) =
 
 (** {6 Destructors} *)
 
+let fvs (nxs, n) = List.map snd nxs
+
 let normalize (nxs, n) =
   List.filter (fun (n, _) -> n <> 0)
     (List.map
@@ -121,21 +123,6 @@ let equiv (nxs1, n1) (nxs2, n2) =
   (List.for_all (fun x -> coeff (nxs1, n1) x = coeff (nxs2, n2) x) xs1) &&
   n1 = n2
 
-let rec simplify t =
-  match fun_args t with
-    Var(attr, x), [] ->
-      Var(attr, x)
-  | Const(_, c), _ when Const.is_int c ->
-      (try
-        term_of (of_term t)
-      with Invalid_argument _ ->
-        t)
-  | Const(attr, c), ts ->
-      apply (Const(attr, c)) (List.map simplify ts)
-  | _ ->
-      let _ = Format.printf "not supported: %a@," Term.pr t in
-      raise (Util.NotImplemented "LinArith.simplify")
-
 (** {6 Functions on linear atomic integer formulas} *)
 
 let div_gcd_aif (c, nxs, n) =
@@ -194,6 +181,8 @@ let term_of_aif (c, nxs, n) =
       geq (term_of (nxs, n)) (tint 0)
 *)
 
+(** @ensure for any aifs, simplify_conjuncts_aifs (simplify_conjuncts_aifs aifs) = simplify_conjuncts_aifs aifs
+    @todo check whether the function in fact satisfies the above condition *)
 let simplify_conjuncts_aifs aifs =
   let aifss =
     Util.classify
@@ -214,10 +203,12 @@ let simplify_conjuncts_aifs aifs =
               Const.minus_ibrel c2, n2)
           aifs
       in
-      let cns = Const.candns cns in
+      let cns = Const.candns (List.sort cns) in
       List.map (fun (c, n) -> c, nxs1, -n) cns)
     aifss
 
+(** @ensure for any aifs, simplify_disjuncts_aifs (simplify_disjuncts_aifs aifs) = simplify_disjuncts_aifs aifs
+    @todo check whether the function in fact satisfies the above condition *)
 let simplify_disjuncts_aifs aifs =
   let aifss =
     Util.classify
@@ -238,13 +229,29 @@ let simplify_disjuncts_aifs aifs =
               Const.minus_ibrel c2, n2)
           aifs
       in
-      let cns = Const.corns cns in
+      let cns = Const.corns (List.sort cns) in
       List.map (fun (c, n) -> c, nxs1, -n) cns)
     aifss
 
 (** {6 Utility functions} *)
 
-(** @return the set of free variables in t that may occur in a non-linear integer expression *)
+let rec simplify t =
+  match fun_args t with
+    Var(attr, x), [] ->
+      Var(attr, x)
+  | Const(_, c), _ when Const.is_int c ->
+      (try
+        term_of (of_term t)
+      with Invalid_argument _ ->
+        t)
+  | Const(attr, c), ts ->
+      apply (Const(attr, c)) (List.map simplify ts)
+  | _ ->
+      let _ = Format.printf "not supported: %a@," Term.pr t in
+      raise (Util.NotImplemented "LinArith.simplify")
+
+(** @return the set of free variables in t that may occur in a non-linear integer expression
+    @todo we should expand integer expressions first? *)
 let rec nlfvs t =
   match fun_args t with
     Var(_, _), [] -> []
@@ -253,7 +260,7 @@ let rec nlfvs t =
         let _ = of_term t in
         []
       with Invalid_argument _ ->
-        fvs t(**@todo*))
+        Term.fvs t)
   | Const(_, Const.Div), [t1; t2] | Const(_, Const.Mod), [t1; t2] ->
       assert false
   | Const(_, c), ts ->
@@ -262,3 +269,27 @@ let rec nlfvs t =
       assert false
   | Forall(_, env, t), [] | Exists(_, env, t), [] ->
       Util.diff (nlfvs t) (List.map fst env)
+
+(** matching a term t with a pattern (nxs, n):
+    @require Util.inter (Term.fvs t) xs = []
+    @return xttys such that Term.subst (TypSubst.sub_of xttys) (term_of (nxs, n)) = t
+    @ensure Util.subset (TypSubst.dom xttys) (Util.inter (fvs (nxs, n)) xs) *)
+let matches env xs t (nxs, n) =
+  try
+    Util.findlr_app
+      (fun nxs1 (n', x) nxs2 ->
+        if List.mem x xs && n' = 1 || n' = -1 then
+          let t' =
+            if n' = 1 then
+              term_of (minus (nxs1 @ nxs2, n))
+            else if n' = -1 then
+              term_of (nxs1 @ nxs2, n)
+            else
+              assert false
+          in
+          Some([x, simplify (Term.add t t'), SimType.Int])
+        else
+          None)
+      nxs
+  with Not_found ->
+    raise MayNotMatch

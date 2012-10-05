@@ -57,3 +57,54 @@ let rec env_of (t, ty) =
 
 let fvs_ty ty tty =
   List.filter_map (fun (x, ty') -> if ty' = ty then Some(x) else None) (env_of tty)
+
+(** {6 Utility functions} *)
+
+(** matching a term t1 with a pattern t2:
+    @require Util.inter (Term.fvs t1) xs = []
+    @require if imply t1 t2, then t1 implies t2 but if not (imply t1 t2), t1 may imply t2
+    @return xttys such that Term.subst (TypSubst.sub_of xttys) t2 = t1
+    @ensure Util.subset (TypSubst.dom xttys) (Util.inter (Term.fvs t2) xs) *)
+let matches ?(imply = fun ts1 ts2 -> false) env xs (t1, ty1) (t2, ty2) =
+  let _ = Global.log_begin ~disable:true "TypTerm.matches" in
+  let _ = Global.log (fun () -> Format.printf "t1: %a@,t2: %a@," Term.pr t1 Term.pr t2) in
+  let _ = if !Global.debug then assert (ty1 = ty2) in
+  let xttys =
+    if t1 = t2 then
+      []
+    else if Util.inter (Term.fvs t2) xs = [] then
+      let eq = (*Formula.eq_tty (t1, ty1) (t2, ty2)*)
+        match ty1 with
+          SimType.Unit ->
+            bop Const.EqUnit t1 t2
+        | SimType.Bool ->
+            bop Const.EqBool t1 t2
+        | SimType.Int ->
+            bop Const.EqInt t1 t2
+        | _ -> assert false
+      in
+      if imply env [eq] then
+        []
+      else
+        let _ = Global.log_end "TypTerm.matches" in
+        raise MayNotMatch
+    else
+      match t2 with
+        Term.Var(_, x) when List.mem x xs ->
+          [x, t1, ty1]
+      | _ ->
+          (try
+            LinArith.matches env xs t1 (LinArith.of_term t2)
+          with Invalid_argument _ ->
+            let _ = Global.log (fun () -> Format.printf "t1: %a@,t2: %a@," Term.pr t1 Term.pr t2) in
+            let _ = Global.log_end "TypTerm.matches" in
+            raise MayNotMatch
+          | MayNotMatch ->
+            let _ = Global.log_end "TypTerm.matches" in
+            raise MayNotMatch
+          | NeverMatch ->
+            let _ = Global.log_end "TypTerm.matches" in
+            raise NeverMatch)
+  in
+  let _ = Global.log_end "TypTerm.matches" in
+  xttys

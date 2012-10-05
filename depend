@@ -43,18 +43,18 @@ refine/term.cmo: refine/var.cmo refine/util.cmo refine/simType.cmo \
 refine/term.cmx: refine/var.cmx refine/util.cmx refine/simType.cmx \
     refine/idnt.cmx refine/extString.cmx refine/extList.cmx refine/const.cmx \
     refine/attr.cmx
-refine/typTerm.cmo: refine/var.cmo refine/term.cmo refine/simType.cmo \
-    refine/global.cmo refine/extString.cmi refine/extList.cmi \
-    refine/const.cmo
-refine/typTerm.cmx: refine/var.cmx refine/term.cmx refine/simType.cmx \
-    refine/global.cmx refine/extString.cmx refine/extList.cmx \
-    refine/const.cmx
+refine/typTerm.cmo: refine/var.cmo refine/util.cmo refine/term.cmo \
+    refine/simType.cmo refine/linArith.cmo refine/global.cmo \
+    refine/extString.cmi refine/extList.cmi refine/const.cmo
+refine/typTerm.cmx: refine/var.cmx refine/util.cmx refine/term.cmx \
+    refine/simType.cmx refine/linArith.cmx refine/global.cmx \
+    refine/extString.cmx refine/extList.cmx refine/const.cmx
 refine/linArith.cmo: refine/var.cmo refine/util.cmo refine/term.cmo \
-    refine/global.cmo refine/extString.cmi refine/extList.cmi \
-    refine/const.cmo
+    refine/simType.cmo refine/global.cmo refine/extString.cmi \
+    refine/extList.cmi refine/const.cmo
 refine/linArith.cmx: refine/var.cmx refine/util.cmx refine/term.cmx \
-    refine/global.cmx refine/extString.cmx refine/extList.cmx \
-    refine/const.cmx
+    refine/simType.cmx refine/global.cmx refine/extString.cmx \
+    refine/extList.cmx refine/const.cmx
 refine/poly.cmo: refine/var.cmo refine/util.cmo refine/term.cmo \
     refine/global.cmo refine/extString.cmi refine/extList.cmi \
     refine/const.cmo
@@ -203,12 +203,14 @@ refine/hornClauseUtil.cmo: refine/var.cmo refine/util.cmo refine/typTerm.cmo \
     refine/typSubst.cmo refine/term.cmo refine/simType.cmo \
     refine/linArith.cmo refine/hornClause.cmo refine/global.cmo \
     refine/formulaUtil.cmo refine/formula.cmo refine/extString.cmi \
-    refine/extList.cmi refine/atpInterface.cmo refine/atom.cmo
+    refine/extList.cmi refine/cvc3Interface.cmo refine/atpInterface.cmo \
+    refine/atom.cmo
 refine/hornClauseUtil.cmx: refine/var.cmx refine/util.cmx refine/typTerm.cmx \
     refine/typSubst.cmx refine/term.cmx refine/simType.cmx \
     refine/linArith.cmx refine/hornClause.cmx refine/global.cmx \
     refine/formulaUtil.cmx refine/formula.cmx refine/extString.cmx \
-    refine/extList.cmx refine/atpInterface.cmx refine/atom.cmx
+    refine/extList.cmx refine/cvc3Interface.cmx refine/atpInterface.cmx \
+    refine/atom.cmx
 refine/typPredSubst.cmo: refine/util.cmo refine/term.cmo \
     refine/hornClauseUtil.cmo refine/hornClause.cmo refine/global.cmo \
     refine/formulaUtil.cmo refine/formula.cmo refine/extList.cmi \

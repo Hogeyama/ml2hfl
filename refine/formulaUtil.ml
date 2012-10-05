@@ -24,11 +24,12 @@ let rec subst sub t =
       let xs = List.map fst env in
       Exists(a, env, subst (TypSubst.subtract_fun sub xs) t)
 
-(** @todo compute the fixed-point of sub first *)
+(** @todo compute the fixed-point of sub first
+    @require for any t, simplify (simplify t) = simplify t *)
 let subst_fixed ?(simplify = fun t -> t) sub t =
   let _ = Global.log_begin ~disable:true "FormulaUtil.subst_fixed" in
   let _ = Global.log (fun () -> Format.printf "input: %a@," Term.pr t) in
-  let t = Util.fixed_point (fun t -> t |> subst sub |> simplify) Term.equiv t in
+  let t = Util.fixed_point (subst sub |- simplify) Term.equiv t in
   let _ = Global.log (fun () -> Format.printf "output: %a" Term.pr t) in
   let _ = Global.log_end "FormulaUtil.subst_fixed" in
   t
@@ -158,7 +159,8 @@ and simplify_ibrel t=
         assert false
 (** @param t a formula
     @require t does not contain Const.Imply and Const.Iff
-    @ensure the return value does not contain a subexpression of the type unit *)
+    @ensure the return value does not contain a subexpression of the type unit
+    @todo ensure that for any t, simplify (simplify t) = simplify t *)
 and simplify t =
   match fun_args t with
     Var(_, _), [] ->
@@ -311,6 +313,7 @@ and simplify_conjuncts ts =
   let _ = Global.log_begin ~disable:true "simplify_conjuncts" in
   let _ = Global.log (fun () -> Format.printf "input: @[<v>%a@]@," pr (band ts)) in
   let ts' =
+    let ts = simplify_conjuncts_fast ts in
     let aifs, pfs, ts =
       Util.partition3_map
         (fun t ->
@@ -323,7 +326,7 @@ and simplify_conjuncts ts =
                 `B(t)
             | _ ->
                 `C(t))
-        (simplify_conjuncts_fast ts)
+        ts
     in
     let ts =
       let aifs = LinArith.simplify_conjuncts_aifs aifs in

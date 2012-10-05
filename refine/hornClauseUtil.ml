@@ -15,40 +15,38 @@ let rec qelim_aux p atms t =
   else
     let _ = Global.log_begin "HornClauseUtil.qelim_aux" in
     let _ = Global.log (fun () -> Format.printf "input: %a@," Term.pr t) in
-      (Formula.conjuncts t)
-    |>
-      (fun ts ->
-        let pvs = Util.concat_map Atom.fvs atms in
-        let nlfvs = LinArith.nlfvs t in
-        let pred x t ty=
-          not (p x) &&
-          not
-            (List.mem x nlfvs && not (Formula.is_linear t) ||
-             List.mem x pvs && Term.coeffs t <> [] ||
-             false(*???t is constant*))
+    let ts = Formula.conjuncts t in
+    let xttys, t =
+      let pvs = Util.concat_map Atom.fvs atms in
+      let nlfvs = LinArith.nlfvs t in
+      let pred x t ty=
+        not (p x) &&
+        (if Term.coeffs t <> [] then not (List.mem x pvs) else true) &&
+        (** avoid substituting a non-linear integer expression to other one
+            raising the order of parameters for parametric linear expressions sometimes
+            causes a failure of the bit-vector-based non-linear constraint solving *)
+        (if List.mem x nlfvs then Formula.is_linear t else true)
+      in
+      let xttys, t = TypSubst.xttys_of pred ts in
+      let _ = Global.log (fun () ->
+        Format.printf "xttys: %a@,t: %a@," TypSubst.pr xttys Term.pr t)
+      in
+      xttys, t
+    in
+    let atms, t =
+      if xttys = [] then
+        atms, t
+      else
+        let sub = TypSubst.sub_of xttys in
+        let atms = List.map (Atom.subst_fixed sub) atms in
+        let t = (* may not terminate *)
+          FormulaUtil.subst_fixed ~simplify:FormulaUtil.simplify sub t
         in
-        let xttys, t = TypSubst.xttys_of pred ts in
-        let _ = Global.log (fun () ->
-          Format.printf
-            "xttys: %a@,t: %a@,"
-            TypSubst.pr xttys
-            Term.pr t)
-        in
-        xttys, t)
-    |>
-      (fun (xttys, t) ->
-        let atms, t =
-          if xttys = [] then
-            atms, t
-          else
-            let sub = TypSubst.sub_of xttys in
-            let atms = List.map (Atom.subst_fixed sub) atms in
-            let ts = FormulaUtil.subst_fixed ~simplify:FormulaUtil.simplify sub t in
-            qelim_aux p atms ts
-        in
-        let _ = Global.log (fun () -> Format.printf "output: %a@," Term.pr t) in
-        let _ = Global.log_end "HornClauseUtil.qelim_aux" in
-        atms, t)
+        qelim_aux p atms t
+    in
+    let _ = Global.log (fun () -> Format.printf "output: %a@," Term.pr t) in
+    let _ = Global.log_end "HornClauseUtil.qelim_aux" in
+    atms, t
 
 (** @param bvs variables in bvs are not eliminated *)
 let qelim bvs pids atms t =
@@ -245,59 +243,6 @@ let rec rel bvs xs1 xs2 =
       Util.intersects
         (Util.diff (Term.fvs t1) bvs)
         (Util.diff (Term.fvs t2) bvs)
-
-
-let matches env xs ttys1 ttys2 =
-  let _ = Global.log_begin "HornClause.matches" in
-  let xttys =
-    (*try*)
-      Util.concat_map2
-        (fun (t1, ty1) (t2, ty2) ->
-          let _ = if !Global.debug then assert (ty1 = ty2) in
-          if t1 = t2 then
-            []
-          else if Util.inter (Term.fvs t1) xs = [] then
-            if Cvc3Interface.implies env [Formula.eq_tty (t1, ty1) (t2, ty2)] then
-              []
-            else
-              let _ = Format.printf "t1: %a@,t2: %a@," Term.pr t1 Term.pr t2 in
-              assert false
-          else
-            match t1 with
-              Term.Var(_, x) when List.mem x xs ->
-                [x, t2, ty1]
-            | _ ->
-                (try
-                  let nxs, n' = LinArith.of_term t1 in
-                  match nxs with
-                    [n, x] when n = 1 && List.mem x xs ->
-                      [x, LinArith.simplify (Term.sub t2 (Term.tint n')), ty1]
-                  | _ ->
-                      raise (Invalid_argument "")
-                with Invalid_argument _ ->
-                  let _ = Global.log (fun () -> Format.printf "??t1: %a@,??t2: %a@," Term.pr t1 Term.pr t2) in
-                  [](*raise Not_found*)(*assert false*)))
-        ttys1 ttys2
-      (*with Not_found ->
-        []*)
-  in
-  let _ =
-    if !Global.debug then
-      let xttys = List.unique xttys in
-      assert
-        (List.for_all
-           (fun xttys ->
-             match xttys with
-               [] -> assert false
-             | (_, t, ty)::xttys ->
-                 List.for_all
-                   (fun (_, t', ty') ->
-                     Cvc3Interface.implies env [Formula.eq_tty (t, ty) (t', ty')])
-                   xttys)
-           (Util.classify (fun (x, _, _) (y, _, _) -> x = y) xttys))
-  in
-  let _ = Global.log_end "HornClause.matches" in
-  xttys
 
 let xttyss_of env q atms1 atms2 =
   try
@@ -524,7 +469,38 @@ let share_predicates bvs0 atms t =
                 let xttyss =
                   List.filter_map
                     (fun ttys' ->
-                      match matches env xs ttys ttys' with
+                      let xttys =
+                        Util.concat_map2
+                          (fun tty1 tty2 ->
+                            try
+                              TypTerm.matches ~imply:Cvc3Interface.implies env xs tty1 tty2
+                            with Term.MayNotMatch ->
+                              []
+                            | Term.NeverMatch ->
+                              assert false)
+                          ttys' ttys
+                      in
+                      let _ =
+                        if !Global.debug then
+                          let _ = Format.printf "env: %a@," Term.pr (Formula.band env) in
+                          assert
+                            (List.for_all
+                               (function
+                                 [] -> assert false
+                               | (_, t, ty) :: xttys ->
+                                   let _ = Format.printf "ts: %a, " Term.pr t in
+                                   let b =
+                                     List.for_all
+                                       (fun (_, t', ty') ->
+                                         let _ = Format.printf "%a, " Term.pr t' in
+                                         Cvc3Interface.implies env [Formula.eq_tty (t, ty) (t', ty')])
+                                       xttys
+                                   in
+                                   let _ = Format.printf "@," in
+                                   b)
+                               (Util.classify (fun (x, _, _) (y, _, _) -> x = y) (List.unique xttys)))
+                      in
+                      match xttys with
                         [] -> None
                       | xttys -> Some(xttys)
                       (*match xttyss_of env (fun x -> List.mem x xs) [pid, ttys] [pid, ttys'] with

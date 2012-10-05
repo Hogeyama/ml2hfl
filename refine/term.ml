@@ -3,6 +3,11 @@ open ExtString
 
 (** Term expressions *)
 
+(** {6 Exceptions} *)
+
+exception NeverMatch
+exception MayNotMatch
+
 (** {6 The type of terms} *)
 
 type t =

@@ -356,7 +356,7 @@ let rec candn (c1, n1) (c2, n2) =
   | EqInt, Geq -> if n1 < n2 then [IBFalse, 0] else [EqInt, n1]
 
   | NeqInt, EqInt -> candn (c2, n2) (c1, n1)
-  | NeqInt, NeqInt -> if n1 = n2 then [NeqInt, n1] else [NeqInt, n1; NeqInt, n2]
+  | NeqInt, NeqInt -> if n1 = n2 then [NeqInt, n1] (*else if n1 + 1 = n2 then [Lt, n1 or Gt, n2] else if n2 + 1 = n1 then [Lt, n2 or Gt, n1]*) else [NeqInt, n1; NeqInt, n2]
   | NeqInt, Lt -> if n1 + 1 = n2 then [Lt, n1](*integer!*) else if n1 >= n2 then [Lt, n2] else [NeqInt, n1; Lt, n2]
   | NeqInt, Gt -> if n1 = n2 + 1 then [Gt, n1](*integer!*) else if n1 <= n2 then [Gt, n2] else [NeqInt, n1; Gt, n2]
 
@@ -397,14 +397,15 @@ let rec candn (c1, n1) (c2, n2) =
 
   | _ -> assert false
 
+(** candns (candns cns) may not be equivalent to candns cns *)
 let rec candns cns =
   match cns with
     [] -> assert false
   | [cn] -> [cn]
-  | cn::cns' ->
+  | cn :: cns' ->
       let cns'' = candns cns' in
       let cns''' = List.unique (Util.concat_map (candn cn) cns'') in
-      if Util.set_equiv cns''' (cn::cns'') then
+      if Util.set_equiv cns''' (cn :: cns'') then
         cns'''
       else
         candns cns'''
@@ -413,7 +414,7 @@ let rec candns cns =
 (** x c1 n1 or x c2 n2 *)
 let rec corn (c1, n1) (c2, n2) =
   match c1, c2 with
-  | EqInt, EqInt -> if n1 = n2 then [EqInt, n1] else [EqInt, n1; EqInt, n2]
+  | EqInt, EqInt -> if n1 = n2 then [EqInt, n1] (*else if n1 + 1 = n2 then [Geq, n1 and Leq, n2] else if n2 + 1 = n1 then [Geq, n2 and Leq, n1]*) else [EqInt, n1; EqInt, n2]
   | EqInt, NeqInt -> if n1 = n2 then [IBTrue, 0] else [NeqInt, n2]
   | EqInt, Lt -> if n1 = n2 then [Leq, n1] else if n1 < n2 then [Lt, n2] else [EqInt, n1; Lt, n2]
   | EqInt, Gt -> if n1 = n2 then [Geq, n1] else if n1 > n2 then [Gt, n2] else [EqInt, n1; Gt, n2]
@@ -461,15 +462,15 @@ let rec corn (c1, n1) (c2, n2) =
 
   | _ -> assert false
 
-
+(** corns (corns cns) may not be equivalent to corns cns *)
 let rec corns cns =
   match cns with
     [] -> assert false
   | [cn] -> [cn]
-  | cn::cns' ->
+  | cn :: cns' ->
       let cns'' = corns cns' in
       let cns''' = List.unique (Util.concat_map (corn cn) cns'') in
-      if Util.set_equiv cns''' (cn::cns'') then
+      if Util.set_equiv cns''' (cn :: cns'') then
         cns'''
       else
         corns cns'''
