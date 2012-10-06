@@ -24,9 +24,14 @@ safety of the original program, an error path of the abstracted program
 is returned as a result of higher-order model checking.  If the abstract 
 error path is infeasible (i.e., not a genuine path of the original 
 program), MoCHi generates a straightline higher-order program (SHP) 
-which is safe if and only if the abstract error path is infeasible . 
+which is safe if and only if the abstract error path is infeasible.  
 MoCHi then uses an existing method~\cite{Unno2009} to infer refinement 
-types that witness the safety of the SHP.  Finally, MoCHi extracts 
+types that witness the safety of the SHP.  Here, to make the inference 
+context-sensitive and complete as discussed in Section~\ref{sec:intro}, 
+MoCHi ensures that the generated SHP is linear (i.e., each function is 
+called exactly once) and recursion-free by duplicating and renaming the 
+functions called multiple times in the infeasible error path (see 
+\cite{KobayashiPLDI2011} for more details).  Finally, MoCHi extracts 
 abstraction types from the refinement types, which contain precise 
 enough predicates to refute the infeasible error path.
 
@@ -49,39 +54,39 @@ let main n = assert (copy n = n)
 \end{figure}
 
 Let us assume that we are given a SHP \(D\) which is typable under a 
-refinement type system (see \cite{Unno2009} for the definition of the 
-system) if and only if the abstract error path is infeasible.  For 
-example, let us consider the program in Figure~\ref{fig:copy2}, which is 
-a simplified version of the one in Figure~\ref{fig:copy}.  In the course 
-of its verification, we may obtain the following SHP 
-\(D_{\texttt{copy}}\):
+refinement type system (see, for example, \cite{Unno2009} for the 
+definition of the system) if and only if the abstract error path is 
+infeasible.  For example, let us consider the program in 
+Figure~\ref{fig:copy2}, which is a simplified version of the one in 
+Figure~\ref{fig:copy}.  In the course of its verification, we may obtain 
+the following SHP \(D_{\texttt{copy}}\):
 \begin{alltt}
  let copy1 x = assume (x<>0); 1 + copy2 (x-1)
  let copy2 x = assume (x=0); 0
  let main n = assume (copy1 n <> n); fail
 \end{alltt}
-The SHP corresponds to an infeasible error path where the else- and the
-then-branches of \(\texttt{copy}\) are respectively taken in the first
-and the second function call of \(\texttt{copy}\), and the assertion in
-the \(\texttt{main}\) function fails.  Note here that
-\(D_{\texttt{copy}}\) is safe (i.e., \texttt{fail} is not reachable),
-and hence is typable under the refinement type system~\cite{Unno2009}.
+The SHP corresponds to an infeasible error path where the else- and the 
+then-branches of \(\texttt{copy}\) are respectively taken in the first 
+and the second function call of \(\texttt{copy}\), and the assertion in 
+the \(\texttt{main}\) function fails.  Note here that 
+\(D_{\texttt{copy}}\) is safe (i.e., \texttt{fail} is not reachable), 
+and hence is typable under the refinement type system.
 
-From a SHP \(D\), we generate Horn-clause-like constraints which are
-satisfiable if and only if \(D\) is typable.  To this end, for each
-function in \(D\), we prepare a refinement type template with predicate
-variables, which act as placeholders of refinement predicates to be
-inferred.  We then generate a typing derivation for \(D\) under the type
-environment that associates each function with its type template.
-Horn-clause-like constraints on the predicate variables are then
-extracted from the derivation.  Since the SHP \(D\) is recursion-free
-and linear (i.e., each function is called exactly once), generated
-constraints are non-recursive.  This is desirable since constraint
-solving of non-recursive Horn clauses over linear arithmetic is
-decidable.  For example, for the SHP \(D_{\texttt{copy}}\), we prepare
-the following type templates:\footnote{For the sake of simplicity, we
-here omit the type template of \texttt{main} as well as the refinement
-predicates for the argument of \texttt{copy1} and \texttt{copy2}.}
+From a SHP \(D\), we generate Horn-clause-like constraints which are 
+satisfiable if and only if \(D\) is typable.  To this end, for each 
+function in \(D\), we prepare a refinement type template with predicate 
+variables, which act as placeholders of refinement predicates to be 
+inferred.  We then generate a typing derivation for \(D\) under the type 
+environment that associates each function with its type template.  
+Horn-clause-like constraints on the predicate variables are then 
+extracted from the derivation.  Since the SHP \(D\) is linear and 
+recursion-free, generated constraints are non-recursive.  This is 
+desirable since constraint solving of non-recursive Horn clauses over 
+linear arithmetic is decidable.  For example, for the SHP 
+\(D_{\texttt{copy}}\), we prepare the following type 
+templates:\footnote{For the sake of simplicity, we here omit the type 
+template of \texttt{main} as well as the refinement predicates for the 
+argument of \texttt{copy1} and \texttt{copy2}.}
 \vspace{-2pt}
 \[
 \begin{array}{rcl}
