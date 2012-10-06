@@ -8,7 +8,7 @@ construct a fully-automated program verification tool (so called a
 simply-typed lambda calculus with recursion and integers.
 The framework is an extension of higher-order model checker
 (more precisely, the model checker for higher-order recursion scheme)
-for infinite data domains such as integers, obtained by 
+for infinite data domains such as integers, obtained by
 combining the techniques of
 predicate abstraction and CEGAR.  This can be viewed as a higher-order
 counterpart of previous software model checkers for imperative languages
@@ -109,14 +109,14 @@ We discuss each problem and explain our approach below.
       above, our approach requires CPS transformation to resolve the gap
       between the evaluation strategies of higher-order recursion
       schemes and higher-order boolean programs.  However, CPS
-      transformation significantly 
+      transformation significantly
     increases the order\footnote{The order of program
       $t$ is the maximum order of the types of functions in $t$.  The
       order of type $\tau$ is defined by $\mathit{order}(\INT)=0$,
       $\mathit{order}(\TFun{\tau_1}{\tau_2}) =
       \mathit{max}(\mathit{order}(\tau_1)+1, \mathit{order}(\tau_2))$.}
       of programs.
-%% and the growth of the order is not bounded by a constant.  
+%% and the growth of the order is not bounded by a constant.
    Since the complexity of model checking of higher-order
       recursion scheme is $n$-EXPTIME complete for order-$n$ recursion
       scheme, the increase of the order of an input is crucial to the
@@ -182,7 +182,7 @@ We discuss each problem and explain our approach below.
       we abstract the program by using predicates $\Abs{y}{y \geq 0}$
       for the second argument of \texttt{add} and $\Abs{r}{r \geq x}$
       for the return values of \texttt{add} and \texttt{sum}.  The
-      following is the abstracted program obtained 
+      following is the abstracted program obtained
   by using the above predicates.
 \begin{figure}[t]
 \vspace{-5pt}
@@ -257,9 +257,9 @@ We discuss each problem and explain our approach below.
 \end{figure}
       The program can be successfully verified if we abstract the
       program by using the predicate \(r=x\) on the argument \(x\) and
-      the return value \(r\) of \texttt{copy}.  
+      the return value \(r\) of \texttt{copy}.
      The old version of MoCHi, however, continued to find
-      too specific predicates such as 
+      too specific predicates such as
       \(x=0\land r=0\), \(x=1\land r=1\), ...,
       infinitely.
       This is due to the too much path- and context-sensitivity of MoCHi.
@@ -267,12 +267,12 @@ We discuss each problem and explain our approach below.
       for \emph{each} function call in the spurious error path.
      For example, if there are two calls of the \texttt{copy} function,
       we prepare two templates \(x\COL\set{x\COL\INT \mid P_1(x)}\ra
-       \set{r\COL\INT \mid Q_1(x,r)}\) and 
+       \set{r\COL\INT \mid Q_1(x,r)}\) and
     \(x\COL\set{x\COL\INT \mid P_2(x)}\ra
        \set{r\COL\INT \mid Q_2(x,r)}\).
      MoCHi then generates and solve
       constraints on the predicate variables in the template.
-     The advantages of the approach are the context-sensitivty (different
+     The advantages of the approach are the context-sensitivity (different
    types can be assigned to different calls) and the existence of
    a complete algorithm (modulo certain assumptions) to solve the constraints,
     but the disadvantage is that the inferred constraints are often too
@@ -286,7 +286,7 @@ We discuss each problem and explain our approach below.
 %%      calling contexts of a function individually.  This makes predicates too
 %%      specific.
 
- To address this problem, 
+ To address this problem,
     we refine our predicate discovery method by merging information about
    multiple calls of the same function as much as possible; in the example
  above, we merge \(P_1\) with \(P_2\), and \(Q_1\) with \(Q_2\) as long
@@ -385,8 +385,8 @@ We discuss each problem and explain our approach below.
 
 \item Another limitation was that many important language
   features such as recursive data structures and exceptions were not supported.
-  Predicate abstraction can in principle be applied to recursive data structures, but there is not a good practical (interpolating) theorem prover 
- that can be used for finding appropriate predicates on 
+  Predicate abstraction can in principle be applied to recursive data structures, but there is not a good practical (interpolating) theorem prover
+ that can be used for finding appropriate predicates on
  recursive data structures.%
 \footnote{One approach would be to treat data constructors as uninterpreted
   function (UF) symbols, and use an interpolating theorem prover that handles
@@ -403,19 +403,19 @@ We discuss each problem and explain our approach below.
 %%%      domains.
 
       To support recursive data structures without relying on
-      an interpolating theorem prover for them, 
+      an interpolating theorem prover for them,
 %%%we extend our verification
 %%%      framework as follows.  As a preprocessing of our CEGAR-based model
-%%%      checking, 
+%%%      checking,
 %%%      we translate programs that manipulate recursive data
 %%%      structures into ones that manipulate only integers.  The
-%%%      transformation is carried out by 
+%%%      transformation is carried out by
       we encode recursive data structures using higher-order functions
    and reduce verification of programs manipulating data structures
    to that of programs manipulating integers.  For example, a list is
       encoded to a function that maps an index $i$ to the $i$-th
       element.  Similarly, we support control operations (e.g.,
-      exceptions and \texttt{call/cc}) by encoding them 
+      exceptions and \texttt{call/cc}) by encoding them
     using higher-order functions.
 \end{enumerate}
 \vspace{-5pt}
