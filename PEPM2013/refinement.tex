@@ -341,8 +341,8 @@ The extended constraint solving algorithm proceeds as follows:
 \begin{enumerate}
 \item Find a set \(S\) of predicate variables which are related by \(E\) 
 and may have the same solution in \(C\).
-\item Find a candidate solution \(\lambda \seq{x}.\phi\) for all \(P \in 
-S\).
+\item Find a candidate solution \(\lambda \seq{x}.\phi\) for all 
+predicate variable \(Q \in S\).
 \item Substitute \(\lambda \seq{x}.\phi\) for predicate variables \(S\) 
 in \(C\) and repeat the entire procedure if the result still contains a 
 predicate variable.
@@ -401,10 +401,10 @@ We then pick some \(S \in \set{S_1,\dots,S_n}\) (e.g., the largest one).
 \lor\phi_{P_4}\) implies \(\phi_{P_1}' \land \dots \land \phi_{P_4}'\).
 
 \paragraph{Finding a candidate solution \(\lambda \seq{x}.\phi\) for \(S\):}
-We find a candidate solution \(\lambda \seq{x}.\phi\) that satisfies the 
-following conditions, for all the predicate variables 
-\(Q_1,\dots,Q_{\ell} \in S\), by simultaneously solving 
-\(C_{Q_1},\dots,C_{Q_{\ell}}\) unlike the previous method:
+We find a single candidate solution \(\lambda \seq{x}.\phi\) for all the 
+predicate variables \(Q_1,\dots,Q_{\ell} \in S\) by simultaneously 
+solving \(C_{Q_1},\dots,C_{Q_{\ell}}\) unlike the previous method.  
+Formally, we find \(\phi\) such that:
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
