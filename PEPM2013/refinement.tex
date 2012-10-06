@@ -451,8 +451,7 @@ to compute \(\lambda \seq{x}. \mathcal{J}(\phi_{Q_1} \lor \dots\lor
 as a candidate solution \(\lambda \seq{x}. \phi\) for all the predicate 
 variables \(Q_1,\dots,Q_{\ell} \in S\).  For the running example 
 \(C_{\texttt{cc}}\), we obtain, for example, the following candidate 
-solution \(\lambda (x, \nu). \phi\) for all the predicate variables 
-\(P_1,\dots,P_4\):
+solution \(\lambda (x, \nu). \phi\) for \(P_1,\dots,P_4\):
 %an interpolating prover returned ... in the experiments reported in Section~\ref{sec:experiments}:
 \begin{eqnarray*}
 \phi&=& \mathcal{J}(\phi_{P_1} \lor \dots \lor \phi_{P_4},\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
@@ -505,11 +504,10 @@ with \(C\)).
 %%%\seq{x}.\phi/R_1,\dots,\lambda \seq{x}.\phi/R_m]C\).
 %%%\end{itemize}
 For the running example \(C_{\texttt{cc}}\), it is in fact safe to 
-substitute the candidate solution \(x=\nu\) for 
-\(P_1(x,\nu),\dots,P_4(x,\nu)\) (i.e., \(M=S\)).  As a result of the 
-substitution, all the predicate variables in \(C_{\texttt{cc}}\) are 
-eliminated.  Thus, we obtain the following refinement types for 
-\(D_{\texttt{cc}}\):
+substitute the candidate solution \(\lambda (x,\nu). x=\nu\) for 
+\(P_1,\dots,P_4\) (i.e., \(M=S\)).  As a result of the substitution, all 
+the predicate variables in \(C_{\texttt{cc}}\) are eliminated.  Thus, we 
+obtain the following refinement types for \(D_{\texttt{cc}}\):
 \begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 %\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
