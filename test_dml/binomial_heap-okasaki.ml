@@ -28,17 +28,19 @@ withtype {n:nat} tree(n) -> int(n)
 
 let root = function Node(_, x, _) -> x
 
-let link (Node(r, x1, c1) as t1) = function
-    Node(_, x2, c2) as t2 ->
-      if (x1 <= x2) then Node(r+1, x1, Tcons(t2, c1)) else Node(r+1, x2, Tcons(t1, c2))
+let link (Node(r, x1, c1)) = function
+    Node(r', x2, c2) ->
+      if (x1 <= x2)
+      then Node(r+1, x1, Tcons(Node(r', x2, c2), c1))
+      else Node(r+1, x2, Tcons(Node(r, x1, c1), c2))
 (*
 withtype {r:nat} tree(r) -> tree(r) -> tree(r+1)
 *)
 
 let rec insTree t = function
     Hempty -> Hcons(t, Hempty)
-  | Hcons(t', ts') as ts ->
-    if lt_int (rank t) (rank t') then Hcons(t, ts) else insTree (link t t') ts'
+  | Hcons(t', ts') ->
+    if (rank t) < (rank t') then Hcons(t, Hcons(t', ts')) else insTree (link t t') ts'
 (*
 withtype {r:nat}{n:nat | n = 0 \/ r < n}
          tree(r) -> heap(n) -> [l:nat | l > r] heap(l)
@@ -52,9 +54,9 @@ withtype int -> [n:nat] heap(n) -> [n:nat | n > 0] heap(n)
 let rec merge = function
     (hp1, Hempty) -> hp1
   | (Hempty, hp2) -> hp2
-  | (Hcons(t1, hp1') as hp1), (Hcons(t2, hp2') as hp2) ->
-    if lt_int (rank t1) (rank t2) then Hcons(t1, merge(hp1', hp2))
-    else if gt_int (rank t1) (rank t2) then Hcons(t2, merge(hp1, hp2'))
+  | (Hcons(t1, hp1')), (Hcons(t2, hp2')) ->
+    if (rank t1) < (rank t2) then Hcons(t1, merge(hp1', Hcons(t2, hp2')))
+    else if (rank t1) > (rank t2) then Hcons(t2, merge(Hcons(t1, hp1'), hp2'))
     else let hp = merge(hp1', hp2') in insTree (link t1 t2) hp
 (*
 withtype {m:nat}{n:nat} heap(m) * heap(n) ->
@@ -86,3 +88,5 @@ withtype {m:nat}{n:nat | m = 0 \/ m > n} heap(m) -> treelist(n) -> heap
 let deleteMin hp =
   let (Node(_, x, ts), hp) = removeMinTree hp
   in merge (to_heap Hempty ts, hp)
+
+let main (n:int) = ()

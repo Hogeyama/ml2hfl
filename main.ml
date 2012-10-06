@@ -18,7 +18,7 @@ let () =
 
 let print_info () =
   if Flag.for_paper
-  then Format.printf " %2d, %7.2f \\&@?" !Flag.cegar_loop (get_time())
+  then Format.printf " %2d, %7.2f  &@?" !Flag.cegar_loop (get_time())
   else
     begin
       Format.printf "cycle: %d\n" !Flag.cegar_loop;
@@ -73,14 +73,14 @@ let preprocess t spec =
         then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t =
-        if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
-          let t = Trans.lift_fst_snd t in
-          let t = RefineInterface.insert_extra_param t in
-          if true then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-            (List.length !RefineInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
-            t
-          else
-            t
+	if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
+	  let t = Trans.lift_fst_snd t in
+	  let t = RefineInterface.insert_extra_param t in
+	    if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+	      (List.length !RefineInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+	    t
+	else
+	  t
       in
       let t',get_rtyp_cps_trans = CPS.trans t in
       let () =
@@ -91,10 +91,9 @@ let preprocess t spec =
       let t',get_rtyp_remove_pair = CPS.remove_pair t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t'
-      in
+        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
-        fun_list, t', get_rtyp
+	fun_list, t', get_rtyp
     else Syntax.get_top_funs t, t, fun _ typ -> typ
   in
 
@@ -132,52 +131,62 @@ let rec main_loop orig parsed =
       | Flag.CEGAR_DependentType ->
           try
             match CEGAR.cegar prog info with
-              prog', CEGAR.Safe env ->
-                let env' =
-                  let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
-                    try
-                      let f' = List.assoc f rmap in
-                        [f', Ref_type.rename (get_rtyp f' rtyp)]
-                    with
-                        Not_found -> []
-                      | _ -> Format.printf "unimplemented or bug@.@."; []
+                prog', CEGAR.Safe env ->
+                  let env' =
+                    let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
+                      try
+                        let f' = List.assoc f rmap in
+                          [f', Ref_type.rename (get_rtyp f' rtyp)]
+                      with
+                          Not_found -> []
+                        | _ -> Format.printf "unimplemented or bug@.@."; []
+                    in
+                      rev_map_flatten aux env
                   in
-                    rev_map_flatten aux env
-                in
-                let () =
-                  if !Flag.write_annot
+		  let () =
+                    if !Flag.write_annot
+                    then
+                      let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
+                        WriteAnnot.f !Flag.filename orig env''
+                  in
+                  let pr (f,typ) =
+                    Format.printf "%s: %a@." (Id.name f) Ref_type.print typ
+                  in
+                    if not Flag.for_paper
+                    then
+                      begin
+                        Format.printf "Safe!@.@.";
+                        if env' <> [] then Format.printf "Refinement Types:@.";
+                        List.iter pr env';
+                        if env' <> [] then Format.printf "@."
+                      end
+              | _, CEGAR.Unsafe ce ->
+                  if not Flag.for_paper
                   then
-                    let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
-                      WriteAnnot.f !Flag.filename orig env''
-                in
-                let pr (f,typ) =
-                  Format.printf "%s: %a@." (Id.name f) Ref_type.print typ
-                in
-                  Format.printf "Safe!@.@.";
-                  if env' <> [] then Format.printf "Refinement Types:@.";
-                  List.iter pr env';
-                  if env' <> [] then Format.printf "@."
-            | _, CEGAR.Unsafe ce ->
-                Format.printf "Unsafe!@.@.";
-                if main_fun <> ""
-                then
-                  Format.printf "Input for %s:@.  %a@." main_fun
-                    (print_list Format.pp_print_int "; " false) (take ce arg_num);
-                Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
-          with Verifier.FailedToRefineTypes ->
-            if !Flag.relative_complete then
-              assert false
-            else
-              Flag.relative_complete := true;
-              incr Flag.cegar_loop;
-              main_loop orig parsed
-          | Verifier.FailedToRefineExtraParameters ->
-              RefineInterface.params := [];
-              Verifier.ext_coeffs := [];
-              Verifier.ext_constrs := [];
-              incr Global.number_of_extra_params;
-              incr Flag.cegar_loop;
-              main_loop orig parsed
+                    begin
+                      Format.printf "Unsafe!@.@.";
+                      if main_fun <> ""
+                      then
+                        Format.printf "Input for %s:@.  %a@." main_fun
+                          (print_list Format.pp_print_int "; " false) (take ce arg_num);
+                      Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
+                    end
+          with
+              Verifier.FailedToRefineTypes ->
+                (Format.printf "           - \\&@?"; assert false); (* for paper *)
+                if !Flag.relative_complete then
+		  assert false
+		else
+		  Flag.relative_complete := true;
+		incr Flag.cegar_loop;
+		main_loop orig parsed
+            | Verifier.FailedToRefineExtraParameters ->
+                RefineInterface.params := [];
+                Verifier.ext_coeffs := [];
+                Verifier.ext_constrs := [];
+                incr Global.number_of_extra_params;
+                incr Flag.cegar_loop;
+                main_loop orig parsed
 
 
 let main in_channel =
