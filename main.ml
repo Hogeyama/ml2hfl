@@ -310,8 +310,7 @@ let () =
     with
         Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
       | LongInput -> Format.printf "Input is too long.@."; exit 1
-      | TimeOut ->
-          if not Flag.for_paper then Format.printf "@.Verification failed (time out).@."; exit 1
+      | TimeOut -> if not Flag.for_paper then Format.printf "@.Verification failed (time out).@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
       | Refine.CannotRefute -> Format.printf "Verification failed (cannot refute an error path).@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1

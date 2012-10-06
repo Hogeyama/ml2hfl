@@ -4,12 +4,14 @@ open Utilities
 
 module RT = Ref_type
 
+let debug = false
+
 let rec element_num = function
     TPair(typ1,typ2) -> element_num typ1 + element_num typ2
   | _ -> 1
 
 let rec uncurry_typ rtyp typ =
-  if false then Format.printf "rtyp:%a@.typ:%a@.@."
+  if debug then Format.printf "rtyp:%a@.typ:%a@.@."
     RT.print rtyp pp_print_typ typ;
   match rtyp,typ with
       RT.Inter rtyps, _ ->
@@ -47,7 +49,7 @@ and uncurry_typ_arg rtyps typ =
 let uncurry_rtyp t f rtyp =
   let typ = Trans.assoc_typ f t in
   let rtyp' = uncurry_typ rtyp typ in
-    if false then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
+    if debug then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
       Id.print f RT.print rtyp pp_print_typ typ RT.print rtyp';
     rtyp'
 
@@ -465,6 +467,7 @@ let rec infer_effect env t =
           constraints := CGeqVar(e, typed2.effect) :: !constraints;
           constraints := CGeqVar(e, typed3.effect) :: !constraints;
           constraints := CGeq(e, ECont) :: !constraints; (* for TRecS *)
+          unify typed2.typ_cps typed3.typ_cps;
           {t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typed2.typ_cps; typ_orig=t.typ; effect=e}
     | Let(flag, bindings, t1) ->
         let make_env (f,_,_) = Id.to_string f, infer_effect_typ (Id.typ f) in
@@ -558,7 +561,7 @@ let rec infer_effect env t =
 exception Loop of effect_var list
 
 let solve_constraints constrs =
-  if false then
+  if debug then
     begin
       Format.printf "@.CONSTRAINTS:@.";
       List.iter (Format.printf " %a@." print_econstr) constrs;
@@ -573,6 +576,20 @@ let solve_constraints constrs =
   let cgeqs' = List.map (function CGeq(x,e) -> x,e | _ -> assert false) cgeqs in
   let () = List.iter (fun (x,y) -> tbl.(x) <- `CVar y::tbl.(x)) cgeqvars'' in
   let () = List.iter (fun (x,e) -> tbl.(x) <- `CConst e::tbl.(x)) cgeqs' in
+  let pr_elem = function
+      `CVar x -> Format.printf " %a" print_evar x
+    | `CConst e -> Format.printf " %a" print_effect e
+  in
+  let pr_constr i xs =
+    Format.printf " %a :>" print_evar i;
+    List.iter pr_elem xs;
+    Format.printf "@."
+  in
+  let pr_constrs s =
+    Format.printf "%s:@." s;
+    Array.iteri pr_constr tbl;
+    Format.printf "@."
+  in
   let rec elim_loop x =
     if x < num
     then
@@ -587,7 +604,7 @@ let solve_constraints constrs =
           elim_loop (x+1)
         with Loop xs ->
           assert (List.hd xs = x);
-          if false then
+          if debug then
             begin
               Format.printf " LOOP:";
               List.iter (Format.printf " %a" print_evar) xs;
@@ -598,48 +615,12 @@ let solve_constraints constrs =
           let cs = List.filter (fun c -> not (List.exists (fun y -> c = `CVar y) xs)) cs in
             tbl.(x) <- cs;
             List.iter (fun y -> tbl.(y) <- [`CVar x]) xs';
-  if false then
-    begin
-      Format.printf "eliminate:@.";
-      Array.iteri (fun i xs ->
-                    Format.printf " %a :>" print_evar i;
-                    List.iter (function
-                                   `CVar x -> Format.printf " %a" print_evar x
-                                 | `CConst e -> Format.printf " %a" print_effect e) xs;
-                    Format.printf "@."
-                  )
-        tbl;
-      Format.printf "@."
-    end;
+            if debug then pr_constrs "eliminate";
             elim_loop x
   in
-  if false then
-    begin
-      Format.printf "before eliminate:@.";
-      Array.iteri (fun i xs ->
-                    Format.printf " %a :>" print_evar i;
-                    List.iter (function
-                                   `CVar x -> Format.printf " %a" print_evar x
-                                 | `CConst e -> Format.printf " %a" print_effect e) xs;
-                    Format.printf "@."
-                  )
-        tbl;
-      Format.printf "@."
-    end;
+  let () = if debug then pr_constrs "before eliminate" in
   let () = elim_loop 0 in
-  if false then
-    begin
-      Format.printf "CONSTRAINTS:@.";
-      Array.iteri (fun i xs ->
-                    Format.printf " %a :>" print_evar i;
-                    List.iter (function
-                                   `CVar x -> Format.printf " %a" print_evar x
-                                 | `CConst e -> Format.printf " %a" print_effect e) xs;
-                    Format.printf "@."
-                  )
-        tbl;
-      Format.printf "@."
-    end;
+  let () = if debug then pr_constrs "CONSTRAINTS" in
   let rec solve x =
     match sol.(x) with
         None ->
@@ -655,6 +636,57 @@ let solve_constraints constrs =
           None -> ENone
         | Some e -> e
 
+(*
+let solve_constraints constrs =
+  if debug then
+    begin
+      Format.printf "@.CONSTRAINTS:@.";
+      List.iter (Format.printf " %a@." print_econstr) constrs;
+      Format.printf "@."
+    end;
+  let num = !counter + 1 in
+  let tbl = Array.make num [] in
+  let sol = Array.make num None in
+  let cgeqs,cgeqvars = List.partition (function CGeq _ -> true | CGeqVar _ -> false) constrs in
+  let cgeqvars' = List.map (function CGeqVar(x,y) -> x,y | _ -> assert false) cgeqvars in
+  let cgeqvars'' = List.filter (fun (x,y) -> x <> y) cgeqvars' in
+  let cgeqs' = List.map (function CGeq(x,e) -> x,e | _ -> assert false) cgeqs in
+  let () = List.iter (fun (x,y) -> tbl.(y) <- `CVar x::tbl.(y)) cgeqvars'' in
+  let eexceps = List.fold_left (fun acc (x,e) -> match e with Excep -> x::acc | _ -> acc) [] cgeqs' in
+  let () = List.iter (fun (x,e) -> tbl.(x) <- `CConst e::tbl.(x)) cgeqs' in
+  let pr_elem = function
+      `CVar x -> Format.printf " %a" print_evar x
+    | `CConst e -> Format.printf " %a" print_effect e
+  in
+  let pr_constr i xs =
+    Format.printf " %a :>" print_evar i;
+    List.iter pr_elem xs;
+    Format.printf "@."
+  in
+  let pr_constrs s =
+    Format.printf "%s:@." s;
+    Array.iteri pr_constr tbl;
+    Format.printf "@."
+  in
+
+  let () = if debug then pr_constrs "before eliminate" in
+  let () = elim_loop 0 in
+  let () = if debug then pr_constrs "CONSTRAINTS" in
+  let rec solve x =
+    match sol.(x) with
+        None ->
+          let es = List.map (function `CConst e -> e | `CVar y -> solve y) tbl.(x) in
+          let e = List.fold_right effect_max es ENone in
+            sol.(x) <- Some e; e
+      | Some e -> e
+  in
+    Array.iteri (fun x _ -> ignore (solve x)) tbl;
+    sol.(0) <- Some ECont;
+    fun e ->
+      match sol.(e) with
+          None -> ENone
+        | Some e -> e
+*)
 
 
 
@@ -788,6 +820,8 @@ let make_app_excep e t k h =
     | EExcep -> make_app t [k; h]
 
 let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
+  if debug then Format.printf "TRANS: @[%a@.@."
+      print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e};
   let r =
     match t, !sol e with
         UnitCPS, ENone -> unit_term
@@ -880,8 +914,8 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
           let k' = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
           let b = Id.new_var "b" (trans_typ t1.typ_orig t1.typ_cps) in
-            make_let [k', [], make_var k]
-              (make_fun k
+            make_fun k
+              (make_let [k', [], make_var k]
                  (make_app_cont t1.effect t1'
                     (make_fun b
                        (make_if (make_var b)
@@ -1128,7 +1162,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                           (make_var h)))))
       | t, e -> (Format.printf "%a, %a@." print_t_cps t print_effect e; assert false)
   in
-    if false then Format.printf "%a@. ===>@. %a@.@."
+    if debug then Format.printf "%a@. ===>@. %a@.@."
       print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e}
       pp_print_term r;
     r
@@ -1230,7 +1264,7 @@ let assoc_typ_cps f typed =
 
 
 let rec uncps_ref_type rtyp e etyp =
-  if false then Format.printf "rtyp:%a@.e:%a@.etyp:%a@.@."
+  if debug then Format.printf "rtyp:%a@.e:%a@.etyp:%a@.@."
     RT.print rtyp print_effect e print_typ_cps etyp;
   match rtyp, e, etyp with
       RT.Inter rtyps, ENone, _ ->
@@ -1265,7 +1299,7 @@ let rec uncps_ref_type rtyp e etyp =
 
 let get_rtyp_of typed f rtyp =
   let etyp = assoc_typ_cps f typed in
-  if false then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
+  if debug then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
     Id.print f RT.print rtyp print_typ_cps etyp;
     uncps_ref_type rtyp ENone etyp
 
@@ -1278,16 +1312,16 @@ let trans t =
   let () = counter := 0 in
   let () = constraints := [] in
   let typed = infer_effect [] t in
-  let () = if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
+  let () = if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
   let () = sol := solve_constraints !constraints in
-  let () = if false then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
+  let () = if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
   let x = Id.new_var "x" TUnit in
   let t = transform "" typed in
   let e = Id.new_var "e" !typ_excep in
   let k = make_fun x (make_var x) in
   let h = make_fun e (make_app fail_term [unit_term]) in
   let t = make_app_excep typed.effect t k h in
-  let () = if false then Format.printf "CPS:@.%a@." pp_print_term' t in
+  let () = if debug then Format.printf "CPS:@.%a@." pp_print_term' t in
   let t = Trans.propagate_typ_arg t in
   let t = Trans.eta_reduce t in
   let t = Trans.expand_let_val t in
