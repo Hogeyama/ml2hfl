@@ -4,11 +4,11 @@
 
 %Terauchi2010
 There are several
-methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Jhala2011,Xi1999,Unno2009,Xu2012,Chin2003}
+methods~\cite{Ong2011,Kobayashi2010,Unno2010,Rondon2008,Kawaguchi2009,Jhala2011,Xi1999,Unno2009,Xu2009,Xu2012,Chin2003}
 that are aimed at verification of functional programs with data
 structures.
 
-Ong and Ramsay~\cite{Ong2011} have proposed a verification method for
+Ong and Ramsay~\cite{Ong2011} proposed a verification method for
 recursion schemes with recursive data structures, called Pattern Matching
 Recursion Schemes (PMRS).  The method cannot express regular properties
 (such as ``a and b occur alternately'') and numerical properties (such
@@ -20,7 +20,7 @@ as ``$x+y \leq z$'' where $x,y,z$ are the length of lists).
 %let rec id x = match x with nil -> nil | cons x xs -> cons x (id xs)
 %\end{alltt}
 
-Unno et al.~\cite{Unno2010} have also proposed a verification method for
+Unno et al.~\cite{Unno2010} also proposed a verification method for
 higher-order tree processing functional programs, which is based on a
 verification method for higher-order multi-tree
 transducers~\cite{Kobayashi2010}. Their method requires certain
@@ -57,7 +57,7 @@ than $i$,'' while they cannot.
 %%%While type templates for data structures must be given in advance,
 %%%they cannot deal with user-defined data structures.
 
-Jhala et al.~\cite{Jhala2011} proposed a method for refinement type inference
+Jhala et al.~\cite{Jhala2011} proposed a method for dependent type inference
 based on reduction to verification of first-order imperative programs.
 Their approach does not support refinement intersection types, so
 the resulting verification method is less precise.
@@ -71,32 +71,30 @@ the supported properties seem to be limited; for example, their method
 cannot reason about a relation between a list index and the corresponding
 element (like ``the \(i\)-th element is greater than \(i\)'').
 
-Xi and Pfenning~\cite{Xi1999} have proposed a dependently-typed language
-Dependent ML.  Its type system captures program properties such as
-absence of array bounds errors and violations of data structure
-invariants.  Unlike our method, Dependent ML requires that users provide
-dependent types of recursive functions.
-
-Unno and Kobayashi~\cite{Unno2009} have proposed a dependent type
+Unno and Kobayashi~\cite{Unno2009} also proposed a dependent type
 inference algorithm for a higher-order function language with recursive
 data structures.  Their method prepares templates for dependent types
 and generates constraints.  The constraints are solved by using an
 interpolating theorem prover.
 
-Xu~\cite{Xu2012} has proposed a method for hybrid contract checking.  It checks the
-satisfaction of contracts or blames the violation of a contract,
-statically or dynamically.  The static checking is performed by symbolic
-simplification.  While the simplification does not see the definitions
-of top-level functions (that include recursive functions), contracts are
-needed for top-level functions for static verification.
+Xi and Pfenning~\cite{Xi1999} proposed a dependently-typed language
+Dependent ML.  Its type system captures program properties such as
+absence of array bounds errors and violations of data structure
+invariants.  Unlike our method, Dependent ML requires that users provide
+dependent types of recursive functions.
 
-Unlike our method,
-the dependent type checking and inference stated
-above~\cite{Unno2010,Rondon2008,Kawaguchi2009,Unno2009} does not support
-intersection types that are needed for precise, context-sensitive analysis
-of higher-order functions.
+Xu~\cite{Xu2009,Xu2012} proposed a method for hybrid contract
+checking.  It checks the satisfaction of contracts or blames the
+violation of a contract.  The static checking is performed by symbolic
+simplification.  For the static checking to succeed, contracts must be
+declared for top-level functions.
 
-Dillig et al.~\cite{Dillig2011} have proposed an automatic technique for
+Unlike our method, the dependent type checking and inference stated
+above~\cite{Rondon2008,Kawaguchi2009,Unno2009} does not support
+intersection types that are needed for precise, context-sensitive
+analysis of higher-order functions.
+
+Dillig et al.~\cite{Dillig2011} proposed an automatic technique for
 statically reasoning about containers.  The proposed method is based on
 an abstract interpretation for containers.  Their method is similar to
 our method in the sense that they model containers as mappings from
@@ -107,7 +105,7 @@ with user-defined data structures.  Moreover, as discussed in
 Section~\ref{sec:extension}, our method is strictly more expressive than
 their method.
 
-Chin et al.~\cite{Chin2003} have proposed sized type inference.  Their
+Chin et al.~\cite{Chin2003} proposed sized type inference.  Their
 method infers invariant of recursive functions by fix-point computation.
 By abstracting lists as multisets, their method can deal with the
 inclusion relation and the membership relation on lists.  For example, their method
@@ -115,25 +113,29 @@ can verify that \texttt{exists x xs} returns true if and only if
 \texttt{xs} has \texttt{x} as an element.  The method, however, cannot
 properly handle higher-order functions.
 
-Suter et al.~\cite{Suter2011} have proposed a verification method for first-order
-functional programs that manipulate recursive data
-structures.  They use a decision
-procedure~\cite{Suter2010} that is complete for recursive functions that
-are sufficiently surjective catamorphisms.  For example, their method
-can verify that an insertion function preserves invariants of binary
-search trees, while our method cannot.
+Suter et al.~\cite{Suter2011} proposed a verification method for
+first-order functional programs that manipulate recursive data
+structures.  They use a decision procedure~\cite{Suter2010} that is
+complete for recursive functions that are sufficiently surjective
+catamorphisms.  For example, their method can verify that an insertion
+function preserves invariants of binary search trees, while our method
+cannot.  On the other hand, there method cannot deal with general
+recursive functions such as McCarthy 91 function, while our method can.
 
 Beyer et al.~\cite{Beyer2007} proposed a method for discovering
-predicates that are useful for verification of path-sensitive and path-insensitive
-properties of imperative programs.  The method does not use finite
-infeasible paths (or straightline programs), but full-fledged programs
-(called path programs) as counterexamples.  A path program can be viewed
-as a set of finite paths of counterexamples that are obtained by
-unwinding the path program.  By synthesizing invariants of a path
+predicates that are useful for verification of path-sensitive and
+-insensitive properties of imperative programs.  The method does not use
+finite infeasible paths (or straightline programs), but full-fledged
+programs (called path programs) as counterexamples.  A path program can
+be viewed as a set of finite paths of counterexamples that are obtained
+by unwinding the path program.  By synthesizing invariants of a path
 program, CEGAR prevents appearance of infinite simple variations of
-counterexamples.
+counterexamples.  As compared to this method, our method has the
+advantage of being able to discover predicates for verifying
+context-sensitive and -insensitive properties that are problematic in
+the higher-order situation.
 
-Selective predicate abstraction has some similarity to local type
-inference~\cite{Pierce2000} for reducing type declarations, in the sense
-that the types of non-recursive functions are inferred from the types of
-recursive functions.
+%Selective predicate abstraction has some similarity to local type
+%inference~\cite{Pierce2000} for reducing type declarations, in the sense
+%that the types of non-recursive functions are inferred from the types of
+%recursive functions.
