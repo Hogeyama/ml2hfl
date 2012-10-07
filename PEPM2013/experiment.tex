@@ -148,13 +148,14 @@ The new predicate discovery enables verification of the programs such as
 ``length'' and ``nth''.
 
 Note that the column of ``C. \& A. \& D.'' is evaluated using a
-predicate discovery which uses only a single infeasible error
-path instead of multiple infeasible error paths.  While consideration of
-multiple paths enhances the precision of predicate abstraction, it slows
-down verifications for some programs (such as ``map\_filter'') since the
-implementation is preliminary.  However, there are programs which can be
-verified by using multiple paths, and not be verified by using a single path.
-The following is such a program.
+predicate discovery which uses only a single infeasible error path
+instead of multiple infeasible error paths, unlike the method described
+in Section~\ref{sec:refine}.  While consideration of multiple paths
+enhances the precision of predicate abstraction, it slows down
+verifications of some programs (such as ``map\_filter'') since the
+implementation is preliminary.  There are programs which can be verified
+when using multiple paths, and cannot be verified when using only a single
+path.  The following is such a program.
 \begin{alltt}
 let rec length acc xs = match xs with [] -> acc
                       | _::xs' -> length (acc+1) xs'
@@ -162,11 +163,12 @@ let rec make_list n = if n = 0 then []
                       else n :: make_list (n-1)
 let main n = assert (length 0 (make_list n) = n)
 \end{alltt}
-For the verification of this program, we need the predicate
+The program can be successfully verified if we use a predicate
 $\LENGTH(\mathtt{acc}) + \LENGTH(\mathtt{xs}) = \LENGTH(\mathtt{r})$ on
 the argument $\mathtt{acc}$, $\mathtt{xs}$ and the return value
-$\mathtt{r}$ argement of \texttt{length}.  Actually, we verified
-the program in 0.36 seconds with 3 CEGAR-cycles by using multiple paths.
+$\mathtt{r}$ of \texttt{length}.  MoCHi discovered the predicate and
+verified the program in 0.36 seconds with 3 CEGAR-cycles when using
+multiple paths.
 
 %\begin{itemize}
 %\item fold\_right
