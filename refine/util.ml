@@ -91,6 +91,7 @@ let is_int s =
 (** {6 Functions on options} *)
 
 let list_of_opt = function None -> [] | Some(x) -> [x]
+let opt_of_list = function [] -> None | xs -> Some(xs)
 
 let rec pr_opt epr none ppf opt =
   match opt with

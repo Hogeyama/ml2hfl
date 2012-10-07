@@ -13,6 +13,9 @@ type t = Term.t * SimType.t
 let pr ppf (t, ty) =
   Format.fprintf ppf "%a:%a" Term.pr t SimType.pr ty
 
+let pr_list ppf ttys =
+  Format.fprintf ppf "%a" (Util.pr_list pr ",") ttys
+
 (** {6 Basic functions} *)
 
 let fvs (t, _) = Term.fvs t

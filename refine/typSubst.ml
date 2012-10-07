@@ -33,6 +33,29 @@ let subtract xttys xs =
 let subtract_fun sub xs =
   fun x -> if List.mem x xs then raise Not_found else sub x
 
+(** @require is_valid t iff t is valid *)
+let non_dup ?(is_valid = fun t -> assert false) xttys =
+  let _ = Global.log_begin ~disable:true "TypSubst.is_dup" in
+  let b =
+    List.for_all
+      (function
+        [] -> assert false
+      | (_, t, ty) :: xttys ->
+          let _ = Global.log (fun () -> Format.printf "ts: %a, " Term.pr t) in
+          let b =
+            List.for_all
+              (fun (_, t', ty') ->
+                let _ = Global.log (fun () -> Format.printf "%a, " Term.pr t') in
+                is_valid (Formula.eq_tty (t, ty) (t', ty')))
+              xttys
+          in
+          let _ = Global.log (fun () -> Format.printf "@,") in
+          b)
+      (Util.classify (fun (x, _, _) (y, _, _) -> x = y) (List.unique xttys))
+  in
+  let _ = Global.log_end "TypSubst.non_dup" in
+  b
+
 let elim_duplicate xttys =
   let xttys, tss =
     List.split
