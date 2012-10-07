@@ -25,10 +25,14 @@ let log f =
 let log_end str =
   let _ =
     if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then
-      let tm' :: tms' = !tms in
-      let tm = tm' () in
-      let _ = tms := tms' in
-      Format.printf "@]@,end %s[%d] (%f sec.)@," str !current_log_level tm
+      match !tms with
+        [] ->
+          (* bug!! *)
+          Format.printf "@]@,end %s[%d]@," str !current_log_level
+      | tm' :: tms' ->
+          let tm = tm' () in
+          let _ = tms := tms' in
+          Format.printf "@]@,end %s[%d] (%f sec.)@," str !current_log_level tm
   in
   let _ = current_log_level := !current_log_level - 1 in
   if !log_disabled = str then log_disabled := ""

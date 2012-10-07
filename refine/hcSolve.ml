@@ -14,7 +14,7 @@ let compute_lb lbs (Hc(Some(pid, xtys), _, _) as hc) =
   pid, (xtys, t)
 
 (** @require is_non_recursive hcs && is_non_disjunctive hcs && is_well_defined hcs
-    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs) *)
+    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (HornClause.pids hcs) *)
 let compute_lbs hcs =
   let _ = Global.log_begin "compute_lbs" in
   let hcs = List.filter (fun hc -> not (is_root hc)) hcs in
@@ -50,7 +50,7 @@ let compute_lbs hcs =
   res
 
 (** @require is_non_recursive hcs && is_non_disjunctive hcs
-    @ensure Util.is_map ret && (is_well_defined hcs => Util.set_equiv (Util.dom ret) (pids hcs))
+    @ensure Util.is_map ret && (is_well_defined hcs => Util.set_equiv (Util.dom ret) (HornClause.pids hcs))
     a predicate not in the domain of ret should have the solution false *)
 let compute_extlbs hcs =
   let _ = Global.log_begin "compute_extlbs" in
@@ -239,7 +239,7 @@ let compute_ubs_incorrect_hc lbs ubs (Hc(popt, atms, t) as hc) =
 
 (** @deprecated use compute_ubs instead
     @require is_non_recursive hcs && is_well_defined hcs
-    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs)
+    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (HornClause.pids hcs)
     incorrect in general*)
 let compute_ubs_incorrect lbs hcs =
   let _ = Global.log_begin "compute_ubs" in
@@ -322,12 +322,11 @@ let ubs_of_pid hcs pid =
             rhcs))
 
 (** @require is_non_recursive hcs && is_non_disjunctive hcs
-    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) (pids hcs)
+    @ensure Util.is_map ret && Util.set_equiv (Util.dom ret) pids
     upper bounds for some predicate variables may not be computed if
     a subset of hcs is equivalent to a constraint like "P(x) and P(y) => phi" *)
-let compute_ubs hcs =
-  let _ = Global.log_begin "compute_ubs" in
-  let pids = List.unique (pids hcs) in
+let compute_ubs_pids pids hcs =
+  let _ = Global.log_begin "compute_ubs_pids" in
   let ubs, ndpids =
     Util.partition_map
       (fun pid ->
@@ -338,5 +337,12 @@ let compute_ubs hcs =
       pids
   in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" TypPredSubst.pr ubs) in
-  let _ = Global.log_end "compute_ubs" in
+  let _ = Global.log_end "compute_ubs_pids" in
+  ubs, ndpids
+
+let compute_ubs hcs =
+  let _ = Global.log_begin "compute_ubs" in
+  let pids = List.unique (HornClause.pids hcs) in
+  let ubs, ndpids = compute_ubs_pids pids hcs in
+  let _ = Global.log_end "compute_ubs_pids" in
   ubs, ndpids
