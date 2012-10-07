@@ -257,26 +257,22 @@ We discuss each problem and explain our approach below.
 \end{figure}
       The program can be successfully verified if we abstract the
       program by using the predicate \(r=x\) on the argument \(x\) and
-      the return value \(r\) of \texttt{copy}.
-     The old version of MoCHi, however, continued to find
-      too specific predicates such as
-      \(x=0\land r=0\), \(x=1\land r=1\), ...,
-      infinitely.
-      This is due to the too much path- and context-sensitivity of MoCHi.
-      In Step~5, MoCHi first prepares a template of a refinement type
-      for \emph{each} function call in the spurious error path.
-     For example, if there are two calls of the \texttt{copy} function,
-      we prepare two templates \(x\COL\set{x\COL\INT \mid P_1(x)}\ra
-       \set{r\COL\INT \mid Q_1(x,r)}\) and
-    \(x\COL\set{x\COL\INT \mid P_2(x)}\ra
-       \set{r\COL\INT \mid Q_2(x,r)}\).
-     MoCHi then generates and solve
-      constraints on the predicate variables in the template.
-     The advantages of the approach are the context-sensitivity (different
-   types can be assigned to different calls) and the existence of
-   a complete algorithm (modulo certain assumptions) to solve the constraints,
-    but the disadvantage is that the inferred constraints are often too
-    specific.
+      the return value \(r\) of \texttt{copy}.  The old version of
+      MoCHi, however, continued to find too specific predicates such as
+      \(x=0\land r=0\), \(x=1\land r=1\), ..., infinitely.  This is due
+      to the too much path- and context-sensitivity of MoCHi.  In
+      Step~5, MoCHi first prepares a template of a refinement type for
+      \emph{each} function call in the spurious error path.  For
+      example, if there are two calls of the \texttt{copy} function, we
+      prepare two templates \(x\COL\set{x\COL\INT \mid P_1(x)}\ra
+      \set{r\COL\INT \mid Q_1(x,r)}\) and \(x\COL\set{x\COL\INT \mid
+      P_2(x)}\ra \set{r\COL\INT \mid Q_2(x,r)}\).  MoCHi then generates
+      and solves constraints on the predicate variables in the template.
+      The advantages of the approach are the context-sensitivity
+      (different types can be assigned to different calls) and the
+      existence of a complete algorithm (modulo certain assumptions) to
+      solve the constraints, but the disadvantage is that the inferred
+      constraints are often too specific.
 
 %%%produces a
 %%%      straightline higher-order program (SHP) that corresponds to a

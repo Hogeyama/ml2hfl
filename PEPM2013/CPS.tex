@@ -318,11 +318,11 @@ $\CPSty{\tau}$ is defined by:
  \CPSty{\TFunN{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\CPSty{\tau_2}} \\
  \CPSty{\TFunC{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\TFun{(\TFun{\CPSty{\tau_2}}{\AT})}{\AT}}
 \end{eqnarray*}
-
-
-This shows the intuition that a term of a type $\TFunC{\tau_1}{\tau_2}$
-should be inserted a continuation, and another term remains in direct
-style.
+Thus, a continuation should be inserted only for functions of type
+$\TFunC{\tau_1}{\tau_2}$, not for functions of type $\TFunN{\tau_1}{\tau_2}$.
+%This shows the intuition that a term of a type $\TFunC{\tau_1}{\tau_2}$
+%should be inserted a continuation, and another term remains in direct
+%style.
 
 In the rule \rn{CPS-AbsC}, a term $\Abs{x}{t}$ is transformed in a
 standard way, i.e. a continuation parameter $k$ is inserted and $t'$,
@@ -354,7 +354,7 @@ $\Abs{x}{\Abs{y}{\assert(x = y)}}$ with type
 $\TFunN{\INT}{\TFunC{\INT}{\INT}}$ for (a) and
 $\TFunC{\INT}{\TFunC{\INT}{\INT}}$ for (b).
 The transformation of $\Abs{y}{\assert(x = y)}$ in (b) is the same as the one in (a).
-In (a), there is no need to insert a continuation parameter to the back of $x$.
+In (a), there is no need to insert a continuation parameter after $x$.
 On the other hand, in (b), a continuation parameter is inserted.
 
 \begin{figure}[tp]

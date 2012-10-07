@@ -13,29 +13,29 @@ the method, which remedies the limitation.
 \subsection{Previous Method}
 \label{sec:prev}
 
-In MoCHi, predicates for abstracting each term of a given program are 
-specified as a kind of dependent types called abstraction types.  MoCHi 
-infers abstraction types automatically in a counterexample-guided manner 
-(see Figure~\ref{fig:cegar}): In a CEGAR iteration of MoCHi, if the 
-predicate abstraction at that point is not precise enough to show the 
-safety of the original program, an error path of the abstracted program 
-is returned as a result of higher-order model checking.  If the abstract 
-error path is infeasible (i.e., not a genuine path of the original 
-program), MoCHi generates a straightline higher-order program (SHP) 
-which is safe if and only if the abstract error path is infeasible.  
-MoCHi then uses an existing method~\cite{Unno2009} to infer refinement 
-types that witness the safety of the SHP.  Here, to make the inference 
-context-sensitive and complete as discussed in Section~\ref{sec:intro}, 
-MoCHi ensures the generated SHP to be linear (i.e., each function is 
-called exactly once) and recursion-free by duplicating and renaming the 
-functions called multiple times in the infeasible error path (see 
-\cite{KobayashiPLDI2011} for more details).  Finally, MoCHi extracts 
-abstraction types from the refinement types, which contain precise 
+In MoCHi, predicates for abstracting each term of a given program are
+specified as a kind of dependent types called abstraction types.  MoCHi
+infers abstraction types automatically in a counterexample-guided manner
+(recall Figure~\ref{fig:cegar}): In a CEGAR iteration of MoCHi, if the
+predicate abstraction at that point is not precise enough to show the
+safety of the original program, an error path of the abstracted program
+is returned as a result of higher-order model checking.  If the abstract
+error path is infeasible (i.e., not a genuine path of the original
+program), MoCHi generates a straightline higher-order program (SHP)
+that is safe if and only if the abstract error path is infeasible.
+MoCHi then uses an existing method~\cite{Unno2009} to infer refinement
+types that witness the safety of the SHP.  Here, to make the inference
+context-sensitive and complete as discussed in Section~\ref{sec:intro},
+MoCHi ensures the generated SHP to be linear (i.e., each function is
+called exactly once) and recursion-free by duplicating and renaming the
+functions called multiple times in the infeasible error path (see
+\cite{KobayashiPLDI2011} for more details).  Finally, MoCHi extracts
+abstraction types from the refinement types, which contain precise
 enough predicates to refute the infeasible error path.
 
-The key ingredient of the above predicate discovery procedure is the 
-refinement type inference method~\cite{Unno2009}, which consists of two 
-steps: constraint generation and solving.  We review the two steps 
+The key ingredient of the above predicate discovery procedure is the
+refinement type inference method~\cite{Unno2009}, which consists of two
+steps: constraint generation and solving.  We review the two steps
 respectively in Sections~\ref{sec:cg} and \ref{sec:cs}.
 
 \subsubsection{Constraint Generation}
@@ -50,39 +50,39 @@ let main n = assert (copy n = n)
 \label{fig:copy2}
 \end{figure}
 
-Let us assume that we are given a SHP \(D\) which is typable under a 
-refinement type system (see, for example, \cite{Unno2009} for the 
-definition of the system) if and only if the abstract error path is 
-infeasible.  For example, let us consider the program in 
-Figure~\ref{fig:copy2}, which is a simplified version of the one in 
-Figure~\ref{fig:copy}.  In the course of its verification, we may obtain 
+Let us assume that we are given a SHP \(D\) which is typable under a
+refinement type system (see, for example, \cite{Unno2009} for the
+definition of the system) if and only if the abstract error path is
+infeasible.  For example, let us consider the program in
+Figure~\ref{fig:copy2}, which is a simplified version of the one in
+Figure~\ref{fig:copy}.  In the course of its verification, we may obtain
 the following SHP \(D_{\texttt{copy}}\):
 \begin{alltt}
  let copy1 x = assume (x<>0); 1 + copy2 (x-1)
  let copy2 x = assume (x=0); 0
  let main n = assume (copy1 n <> n); fail
 \end{alltt}
-The SHP corresponds to an infeasible error path where the else- and the 
-then-branches of \(\texttt{copy}\) are respectively taken in the first 
-and the second function call of \(\texttt{copy}\), and the assertion in 
-the \(\texttt{main}\) function fails.  Note here that 
-\(D_{\texttt{copy}}\) is safe (i.e., \texttt{fail} is not reachable), 
+The SHP corresponds to an infeasible error path where the else- and the
+then-branches of \(\texttt{copy}\) are respectively taken in the first
+and the second function call of \(\texttt{copy}\), and the assertion in
+the \(\texttt{main}\) function fails.  Note here that
+\(D_{\texttt{copy}}\) is safe (i.e., \texttt{fail} is not reachable),
 and hence is typable under the refinement type system.
 
-From a SHP \(D\), we generate Horn-clause-like constraints which are 
-satisfiable if and only if \(D\) is typable.  To this end, for each 
-function in \(D\), we prepare a refinement type template with predicate 
-variables, which act as placeholders of refinement predicates to be 
-inferred.  We then generate a typing derivation for \(D\) under the type 
-environment that associates each function with its type template.  
-Horn-clause-like constraints on the predicate variables are then 
-extracted from the derivation.  Since the SHP \(D\) is linear and 
-recursion-free, generated constraints are non-recursive.  This is 
-desirable since constraint solving of non-recursive Horn clauses over 
-decidable underlying theories (e.g., linear arithmetic) is decidable.  
-For the running example \(D_{\texttt{copy}}\), we use the following 
-templates:\footnote{For the sake of simplicity, we here omit the type 
-template of \texttt{main} as well as the refinement predicates for the 
+From a SHP \(D\), we generate Horn-clause-like constraints which are
+satisfiable if and only if \(D\) is typable.  To this end, for each
+function in \(D\), we prepare a refinement type template with predicate
+variables, which act as placeholders of refinement predicates to be
+inferred.  We then generate a typing derivation for \(D\) under the type
+environment that associates each function with its type template.
+Horn-clause-like constraints on the predicate variables are then
+extracted from the derivation.  Since the SHP \(D\) is linear and
+recursion-free, generated constraints are non-recursive.  This is
+desirable since constraint solving of non-recursive Horn clauses over
+decidable underlying theories (e.g., linear arithmetic) is decidable.
+For the running example \(D_{\texttt{copy}}\), we use the following
+templates:\footnote{For the sake of simplicity, we here omit the type
+template of \texttt{main} as well as the refinement predicates for the
 argument of \texttt{copy1} and \texttt{copy2}.}
 \begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_1(x,\nu)}}) \\
@@ -147,32 +147,32 @@ Given a set \(C\) of non-recursive Horn clauses, our previous constraint
 solving algorithm returns a substitution \(\theta\) for predicate
 variables in \(C\) such that \(\theta C\) is valid.
 %in a backward manner
-The algorithm iteratively finds a solution for each predicate variable 
-\(P\) in \(C\) as follows:  The algorithm first computes equisatisfiable 
-constraints \(C_P\) of the following form by eliminating the other 
+The algorithm iteratively finds a solution for each predicate variable
+\(P\) in \(C\) as follows:  The algorithm first computes equi-satisfiable
+constraints \(C_P\) of the following form by eliminating the other
 predicate variables in \(C\) than \(P\):
 \begin{eqnarray*}
 \phi_{P} \imply P(\seq{x}) \qquad
 P(\seq{x}) \imply \phi_{P}'
 \end{eqnarray*}
-Here, \(\FV{\phi_{P}} \cap \FV{\phi_{P}'} \subseteq \set{\seq{x}}\) 
-always holds.  Intuitively, the predicate \(P(\seq{x})\) represents an 
-invariant of some subexpression \(e\) in the SHP, where some variable 
-\(\nu \in\set{\seq{x}}\) represents the value of \(e\) and each variable 
-in \(\set{\seq{x}} \setminus \set{\nu}\) represents a free variable in 
-\(e\).  \(\phi_P\) and \(\phi_{P}'\) respectively represent the 
-strongest condition satisfied by the value \(\nu\) and the weakest 
+Here, \(\FV{\phi_{P}} \cap \FV{\phi_{P}'} \subseteq \set{\seq{x}}\)
+always holds.  Intuitively, the predicate \(P(\seq{x})\) represents an
+invariant of some subexpression \(e\) in the SHP, where some variable
+\(\nu \in\set{\seq{x}}\) represents the value of \(e\) and each variable
+in \(\set{\seq{x}} \setminus \set{\nu}\) represents a free variable in
+\(e\).  \(\phi_P\) and \(\phi_{P}'\) respectively represent the
+strongest condition satisfied by the value \(\nu\) and the weakest
 condition on \(\nu\) required by the context of \(e\).
 %
-The algorithm then computes \(\mathcal{I}(\phi_P,\neg \phi_P')\) as a 
-solution for \(P(\seq{x})\) with the help of a technique called 
-interpolation~\cite{McMillan2005,Beyer2008} from automated theorem 
-proving.  Here, an interpolant \(\mathcal{I}(\phi_1,\phi_2)\) of 
-\(\phi_1\) and \(\phi_2\) (such that \(\phi_1\) and \(\phi_2\) are 
-inconsistent) is a formula \(\phi\) that satisfies the following 
-conditions:\footnote{Note that interpolants of \(\phi_1\) and \(\phi_2\) 
-are not unique.  Actually, existing theorem 
-provers~\cite{McMillan2005,Beyer2008} return one of them, which is 
+The algorithm then computes \(\mathcal{I}(\phi_P,\neg \phi_P')\) as a
+solution for \(P(\seq{x})\) with the help of a technique called
+interpolation~\cite{McMillan2005,Beyer2008} from automated theorem
+proving.  Here, an interpolant \(\mathcal{I}(\phi_1,\phi_2)\) of
+\(\phi_1\) and \(\phi_2\) (such that \(\phi_1\) and \(\phi_2\) are
+inconsistent) is a formula \(\phi\) that satisfies the following
+conditions:\footnote{Note that interpolants of \(\phi_1\) and \(\phi_2\)
+are not unique.  Actually, existing theorem
+provers~\cite{McMillan2005,Beyer2008} return one of them, which is
 denoted by \(\mathcal{I}(\phi_1,\phi_2)\).}
 \begin{itemize}
 \item \(\phi_1\) implies \(\phi\),
@@ -180,7 +180,7 @@ denoted by \(\mathcal{I}(\phi_1,\phi_2)\).}
 \item \(\FV{\phi} \subseteq \FV{\phi_1} \cap \FV{\phi_2}\).
 \end{itemize}
 %
-For the running example \(C_{\texttt{copy}}\), we obtain the following 
+For the running example \(C_{\texttt{copy}}\), we obtain the following
 constraints by eliminating the other predicate variables than \(P_1\):
 \begin{eqnarray*}
 x=1 \land y=0 \land x\neq0 \land \nu=1+y &\imply& P_1(x,\nu) \\
@@ -210,8 +210,8 @@ We thus obtain the following refinement types for \(D_{\texttt{copy}}\):
 \subsection{Limitation of Previous Method}
 \label{sec:limit}
 
-We now explain the limitation of the previous method by using the 
-program in Figure~\ref{fig:copy}.  Let us consider the following SHP 
+We now explain the limitation of the previous method by using the
+program in Figure~\ref{fig:copy}.  Let us consider the following SHP
 \(D_{\texttt{cc}}\):
 \begin{alltt}
 let copy1 x = assume (x<>0); 1 + copy2 (x-1)
@@ -243,48 +243,48 @@ P_4(x-1,y) \land x\neq0 \land z=1+y &\imply& P_3(x,z) \\
 P_1(n,x) \land P_3(x,y) &\imply& y=n
 \end{eqnarray*}
 
-By eliminating the other predicate variables than \(P_3\) (and with some 
+By eliminating the other predicate variables than \(P_3\) (and with some
 simplification), we get the following constraints \(C_{P_3}\):
 \begin{eqnarray*}
 x=1 \land \nu=1 &\imply& P_3(x,\nu) \\
 %P_3(x,\nu) &\imply& (n=1 \land x=1 \imply \nu=n)
 P_3(x,\nu) &\imply& (x=1 \imply \nu=1)
 \end{eqnarray*}
-Existing interpolating proves such as \cite{Beyer2008} returns the 
+Existing interpolating proves such as \cite{Beyer2008} returns the
 following solution for \(P_3(x,\nu)\):
 \begin{eqnarray*}
 %&&\mathcal{I}(x=1 \land \nu=1,\neg (n=1 \land x=1 \imply \nu=n)) \\
 \mathcal{I}(x=1 \land \nu=1,\neg (x=1 \imply \nu=1))
 \equiv x=1 \land \nu=1.
 \end{eqnarray*}
-Note here that the solution is specific to the calling context of the 
-particular function \texttt{copy3}, and cannot be used as a solution for 
-\(P_2\) and \(P_4\).  We here want to get more general solutions like 
-\(\lambda (\nu,x).\nu=x\) which are more likely to constitute an 
-invariant of the function \texttt{copy} in the original program.  For 
-this purpose, we believe it is desirable to find the same solution (if 
-possible) for ``related'' predicate variables which represent (possibly 
-different) refinement predicates for the same argument or return value 
-of the same function in the original program.  For the running example 
-\(C_{\texttt{cc}}\), we want to get the same solution for 
-\(P_1,\dots,P_4\), and \(\lambda (\nu,x).\nu=x\) in fact satisfies this 
+Note here that the solution is specific to the calling context of the
+particular function \texttt{copy3}, and cannot be used as a solution for
+\(P_2\) and \(P_4\).  We here want to get more general solutions like
+\(\lambda (\nu,x).\nu=x\) which are more likely to constitute an
+invariant of the function \texttt{copy} in the original program.  For
+this purpose, we believe it is desirable to find the same solution (if
+possible) for ``related'' predicate variables which represent (possibly
+different) refinement predicates for the same argument or return value
+of the same function in the original program.  For the running example
+\(C_{\texttt{cc}}\), we want to get the same solution for
+\(P_1,\dots,P_4\), and \(\lambda (\nu,x).\nu=x\) in fact satisfies this
 extra constraint.
 
 \subsection{Extended Method}
 \label{sec:ext}
 
-We now explain our extension of the previous method to remedy the 
-limitation discussed in Section~\ref{sec:limit}.  The extended predicate 
-discovery method is based on the framework of the previous method 
-overviewed in Section~\ref{sec:prev}, but the component for refinement 
-type inference is extended so that it can merge and generalize 
-information from multiple calling contexts of a function in multiple 
-infeasible error paths.  This enables MoCHi to infer a general 
-refinement type of the function that type-checks the multiple calling 
-contexts, while preserving the path- and context-sensitivity.  In other 
-words, the extended method generates constraints from multiple 
-infeasible error paths (see Section~\ref{sec:extcg}), and tries to find 
-the same solution (if possible) for related predicate variables (see 
+We now explain our extension of the previous method to remedy the
+limitation discussed in Section~\ref{sec:limit}.  The extended predicate
+discovery method is based on the framework of the previous method
+overviewed in Section~\ref{sec:prev}, but the component for refinement
+type inference is extended so that it can merge and generalize
+information from multiple calling contexts of a function in multiple
+infeasible error paths.  This enables MoCHi to infer a general
+refinement type of the function that type-checks the multiple calling
+contexts, while preserving the path- and context-sensitivity.  In other
+words, the extended method generates constraints from multiple
+infeasible error paths (see Section~\ref{sec:extcg}), and tries to find
+the same solution (if possible) for related predicate variables (see
 Section~\ref{sec:extcs}).
 
 \subsubsection{Extensions of Constraint Generation}
@@ -300,34 +300,34 @@ generate the set \(C_i\) of Horn clauses for each path \(\pi_i\), and
 pass \(C=C_1 \cup \dots \cup C_n\) to the extended constraint solving
 algorithm described in Section~\ref{sec:extcs} as an input.
 %For example, \todo{}
-\item We also construct and pass an equivalence relation \(E\) on the 
-predicate variables in \(C\) such that \(P\ E\ Q\) if and only if the 
-predicate variables \(P\) and \(Q\) represent (possibly different) 
-refinement predicates for the same argument or return value of the same 
-function in the original program.  For example, we obtain the trivial 
-equivalence relation \(E_{\texttt{cc}}=\set{P_1,\dots,P_4} 
-\times\set{P_1,\dots,P_4}\) for \(C_{\texttt{cc}}\).  The constraint 
-solving algorithm in Section~\ref{sec:extcs} exploits \(E\) to find 
+\item We also construct and pass an equivalence relation \(E\) on the
+predicate variables in \(C\) such that \(P\ E\ Q\) if and only if the
+predicate variables \(P\) and \(Q\) represent (possibly different)
+refinement predicates for the same argument or return value of the same
+function in the original program.  For example, we obtain the trivial
+equivalence relation \(E_{\texttt{cc}}=\set{P_1,\dots,P_4}
+\times\set{P_1,\dots,P_4}\) for \(C_{\texttt{cc}}\).  The constraint
+solving algorithm in Section~\ref{sec:extcs} exploits \(E\) to find
 general solutions for \(C\).
 \end{itemize}
-Thus, the extended algorithm generates a pair \((C,E)\) of Horn clauses 
-\(C\) for multiple paths and an equivalence relation \(E\) on the 
-predicate variables in \(C\) unlike the previous algorithm which 
-generates only Horn clauses for a single path.  Here, the pair \((C,E)\) 
-of constraints can be viewed as hierarchical constraints where \(C\) 
+Thus, the extended algorithm generates a pair \((C,E)\) of Horn clauses
+\(C\) for multiple paths and an equivalence relation \(E\) on the
+predicate variables in \(C\) unlike the previous algorithm which
+generates only Horn clauses for a single path.  Here, the pair \((C,E)\)
+of constraints can be viewed as hierarchical constraints where \(C\)
 must be always satisfied and \(E\) should be satisfied if possible.
 
 \subsubsection{Extensions of Constraint Solving}
 \label{sec:extcs}
 
-In this section, we extend the previous constraint solving algorithm 
-overviewed in Section~\ref{sec:cs}.  Given a pair \((C,E)\) of Horn 
-clauses \(C\) and an equivalence relation \(E\) on the predicate 
-variables in \(C\), the algorithm returns a substitution \(\theta\) for 
-the predicate variables in \(C\) such that \(\theta C\) is valid.  A 
-distinguishing feature of the algorithm is that it tries to find the 
-same solution for predicate variables related by \(E\) if possible.  
-This enables the algorithm to obtain general predicates, which are more 
+In this section, we extend the previous constraint solving algorithm
+overviewed in Section~\ref{sec:cs}.  Given a pair \((C,E)\) of Horn
+clauses \(C\) and an equivalence relation \(E\) on the predicate
+variables in \(C\), the algorithm returns a substitution \(\theta\) for
+the predicate variables in \(C\) such that \(\theta C\) is valid.  A
+distinguishing feature of the algorithm is that it tries to find the
+same solution for predicate variables related by \(E\) if possible.
+This enables the algorithm to obtain general predicates, which are more
 likely to constitute invariants. % of the original program.
 
 %%%\begin{figure}
@@ -339,19 +339,19 @@ likely to constitute invariants. % of the original program.
 %%%The overall structure of the algorithm is shown in Figure~\ref{fig:extcs}.
 The extended constraint solving algorithm proceeds as follows:
 \begin{enumerate}
-\item Find a set \(S\) of predicate variables which are related by \(E\) 
+\item Find a set \(S\) of predicate variables which are related by \(E\)
 and may have the same solution in \(C\).
-\item Find a candidate solution \(\lambda \seq{x}.\phi\) for all 
+\item Find a candidate solution \(\lambda \seq{x}.\phi\) for all
 predicate variable \(Q \in S\).
-\item Substitute \(\lambda \seq{x}.\phi\) for predicate variables \(S\) 
-in \(C\) and repeat the entire procedure if the result still contains a 
+\item Substitute \(\lambda \seq{x}.\phi\) for predicate variables \(S\)
+in \(C\) and repeat the entire procedure if the result still contains a
 predicate variable.
 \end{enumerate}
 
 \paragraph{Finding a set \(S\) of predicate variables:}
-To find a set of predicate variables that may have the same solution in 
-\(C\), for each predicate variable \(P\) in \(C\), we compute 
-constraints \(C_P\) from \(C\) by eliminating the other predicate 
+To find a set of predicate variables that may have the same solution in
+\(C\), for each predicate variable \(P\) in \(C\), we compute
+constraints \(C_P\) from \(C\) by eliminating the other predicate
 variables than \(P\).
 %
 For the running example \(C_{\texttt{cc}}\), we obtain:
@@ -366,64 +366,64 @@ C_{P_4}&=&\{x=0 \land \nu=0 \imply P_4(x,\nu), \\
 &&\ P_4(x,\nu) \imply (x=0 \imply \nu=0)\}.
 \end{eqnarray*}
 
-%%%In general, the least upper bound of some predicate variable may not 
-%%%exist because the constraint generation algorithm in 
-%%%Section~\ref{sec:extcg} may generate a Horn clause of the form 
-%%%\(P(x)\land P(y) \imply \phi\).  Note here that \(P\) occurs twice in 
-%%%the left hand side of the constraint.  In such a case, the least upper 
+%%%In general, the least upper bound of some predicate variable may not
+%%%exist because the constraint generation algorithm in
+%%%Section~\ref{sec:extcg} may generate a Horn clause of the form
+%%%\(P(x)\land P(y) \imply \phi\).  Note here that \(P\) occurs twice in
+%%%the left hand side of the constraint.  In such a case, the least upper
 %%%bound for \(P\) may not exist.
 
 Let \(\set{P_1,\dots,P_m}\) be the set of predicate variables in \(C\).
 %which have the least upper bound.
-We pick an equivalence class \(S_0 \in \set{P_1,\dots,P_m} / E\) (e.g., 
-the largest one), and further classify \(S_0\) by using 
-\(C_{P_1},\dots,C_{P_m}\) so that predicate variables which never have 
+We pick an equivalence class \(S_0 \in \set{P_1,\dots,P_m} / E\) (e.g.,
+the largest one), and further classify \(S_0\) by using
+\(C_{P_1},\dots,C_{P_m}\) so that predicate variables which never have
 the same solution are separated.
 %
 Formally, we find \(S_1\dots,S_n\) such that:
 \begin{itemize}
 \item \(S_0 = S_1 \cup \dots \cup S_n\),
-\item \(\phi_{P_{i,1}} \lor \dots \lor\phi_{P_{i,\ell_i}}\) implies 
-\(\phi_{P_{i,1}}' \land \dots \land\phi_{P_{i,\ell_i}}'\) for each \(i 
-\in \set{1,\dots,n}\), and 
-\item \(\phi_{P_{i,1}} \lor \dots \lor\phi_{P_{i,\ell_i}} \lor 
-\phi_{P_{j,1}} \lor \dots \lor\phi_{P_{j,\ell_j}}\) does not imply 
-\(\phi_{P_{i,1}}' \land \dots \land\phi_{P_{i,\ell_i}}' \land 
-\phi_{P_{j,1}}' \land \dots \land\phi_{P_{j,\ell_j}}'\) for each \(i,j 
+\item \(\phi_{P_{i,1}} \lor \dots \lor\phi_{P_{i,\ell_i}}\) implies
+\(\phi_{P_{i,1}}' \land \dots \land\phi_{P_{i,\ell_i}}'\) for each \(i
+\in \set{1,\dots,n}\), and
+\item \(\phi_{P_{i,1}} \lor \dots \lor\phi_{P_{i,\ell_i}} \lor
+\phi_{P_{j,1}} \lor \dots \lor\phi_{P_{j,\ell_j}}\) does not imply
+\(\phi_{P_{i,1}}' \land \dots \land\phi_{P_{i,\ell_i}}' \land
+\phi_{P_{j,1}}' \land \dots \land\phi_{P_{j,\ell_j}}'\) for each \(i,j
 \in \set{1,\dots,n}\) such that \(i \neq j\).
 \end{itemize}
-Here, \(C_{P}=\set{\phi_{P} \imply P(\seq{x}),P(\seq{x}) \imply 
+Here, \(C_{P}=\set{\phi_{P} \imply P(\seq{x}),P(\seq{x}) \imply
 \phi_{P}'}\) and \(S_i=\set{P_{i,1},\dots,P_{i,\ell_i}}\).
 
-We then pick some \(S \in \set{S_1,\dots,S_n}\) (e.g., the largest one). 
- For the running example \(C_{\texttt{cc}}\), we get 
-\(S=S_0=S_1=\set{P_1,\dots,P_4}\) since \(\phi_{P_1} \lor \dots 
+We then pick some \(S \in \set{S_1,\dots,S_n}\) (e.g., the largest one).
+ For the running example \(C_{\texttt{cc}}\), we get
+\(S=S_0=S_1=\set{P_1,\dots,P_4}\) since \(\phi_{P_1} \lor \dots
 \lor\phi_{P_4}\) implies \(\phi_{P_1}' \land \dots \land \phi_{P_4}'\).
 
 \paragraph{Finding a candidate solution \(\lambda \seq{x}.\phi\) for \(S\):}
-We find a single candidate solution \(\lambda \seq{x}.\phi\) for all the 
-predicate variables \(Q_1,\dots,Q_{\ell} \in S\) by simultaneously 
-solving \(C_{Q_1},\dots,C_{Q_{\ell}}\) unlike the previous method.  
+We find a single candidate solution \(\lambda \seq{x}.\phi\) for all the
+predicate variables \(Q_1,\dots,Q_{\ell} \in S\) by simultaneously
+solving \(C_{Q_1},\dots,C_{Q_{\ell}}\) unlike the previous method.
 Formally, we find \(\phi\) such that:
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
 \item \(\FV{\phi} \subseteq \set{\seq{x}}\).
 \end{itemize}
-Here, \(C_{Q_i}=\set{\phi_{Q_i} \imply Q_i(\seq{x}),Q_i(\seq{x}) \imply 
-\phi_{Q_i}'}\).  We can compute such a formula \(\phi\) as an 
-interpolant \(\mathcal{I}(\phi_{Q_1} \lor \dots \lor 
-\phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'))\) 
-but the three conditions of interpolants are not always sufficient for 
-our purpose to find general predicates.  Actually, we want to obtain as 
-simple interpolant as possible with respect to the number of 
+Here, \(C_{Q_i}=\set{\phi_{Q_i} \imply Q_i(\seq{x}),Q_i(\seq{x}) \imply
+\phi_{Q_i}'}\).  We can compute such a formula \(\phi\) as an
+interpolant \(\mathcal{I}(\phi_{Q_1} \lor \dots \lor
+\phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'))\)
+but the three conditions of interpolants are not always sufficient for
+our purpose to find general predicates.  Actually, we want to obtain as
+simple interpolant as possible with respect to the number of
 disjunctions.
 % and conjunctions.
-To this end, we propose a new heuristic operator \(\mathcal{J}\) that 
-combines the interpolation \(\mathcal{I}\) and convex hull operators.  
-Let us write \(\mathcal{H}(\phi)\) to denote the convex hull of \(\phi\). 
- For formulas \(\phi_1\) and \(\phi_2\) (such that \(\phi_1\) and 
-\(\phi_2\) are inconsistent), the new operator 
+To this end, we propose a new heuristic operator \(\mathcal{J}\) that
+combines the interpolation \(\mathcal{I}\) and convex hull operators.
+Let us write \(\mathcal{H}(\phi)\) to denote the convex hull of \(\phi\).
+ For formulas \(\phi_1\) and \(\phi_2\) (such that \(\phi_1\) and
+\(\phi_2\) are inconsistent), the new operator
 \(\mathcal{J}(\phi_1,\phi_2)\) is defined as follows:
 \[
 \mathcal{J}(\phi_1,\phi_2) =
@@ -436,21 +436,21 @@ Let us write \(\mathcal{H}(\phi)\) to denote the convex hull of \(\phi\).
 \end{array}
 \right.
 \]
-Here, we write \(\phi_1 \INCON \phi_2\) to denote that \(\phi_1\) and 
-\(\phi_2\) are inconsistent.  Note here that the use of the convex hull 
-operator enables us to eliminate disjunctions in \(\phi_1\) and 
+Here, we write \(\phi_1 \INCON \phi_2\) to denote that \(\phi_1\) and
+\(\phi_2\) are inconsistent.  Note here that the use of the convex hull
+operator enables us to eliminate disjunctions in \(\phi_1\) and
 \(\phi_2\), which are passed to an interpolating theorem prover.
 %the interpolation operator \(\mathcal{I}\).
 In the experiments reported in Section~\ref{sec:experiments}, this often
 reduced the number of disjunctions in the output of the interpolating
 prover, and hence makes the output more likely to constitute invariants.
 %
-Thus, we use the new operator \(\mathcal{J}\) instead of \(\mathcal{I}\) 
-to compute \(\lambda \seq{x}. \mathcal{J}(\phi_{Q_1} \lor \dots\lor 
-\phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land\phi_{Q_{\ell}}'))\) 
-as a candidate solution \(\lambda \seq{x}. \phi\) for all the predicate 
-variables \(Q_1,\dots,Q_{\ell} \in S\).  For the running example 
-\(C_{\texttt{cc}}\), we obtain, for example, the following candidate 
+Thus, we use the new operator \(\mathcal{J}\) instead of \(\mathcal{I}\)
+to compute \(\lambda \seq{x}. \mathcal{J}(\phi_{Q_1} \lor \dots\lor
+\phi_{Q_{\ell}},\neg (\phi_{Q_1}' \land \dots \land\phi_{Q_{\ell}}'))\)
+as a candidate solution \(\lambda \seq{x}. \phi\) for all the predicate
+variables \(Q_1,\dots,Q_{\ell} \in S\).  For the running example
+\(C_{\texttt{cc}}\), we obtain, for example, the following candidate
 solution \(\lambda (x, \nu). \phi\) for \(P_1,\dots,P_4\):
 %an interpolating prover returned ... in the experiments reported in Section~\ref{sec:experiments}:
 \begin{eqnarray*}
@@ -462,11 +462,11 @@ solution \(\lambda (x, \nu). \phi\) for \(P_1,\dots,P_4\):
 \end{eqnarray*}
 
 \paragraph{Substituting \(\lambda \seq{x}.\phi\) for \(S\) in \(C\):}
-We then substitute the candidate solution \(\lambda \seq{x}.\phi\) for 
-\(S=\set{Q_1,\dots,Q_{\ell}}\) in \(C\).  Note, however, that we cannot 
-always substitute all the predicate variables in \(S\) with the 
-candidate solution \(\lambda\seq{x}.\phi\) because \(Q_i\) may depend on 
-\(Q_j\) for some \(i \neq j\).  For example, let us consider the 
+We then substitute the candidate solution \(\lambda \seq{x}.\phi\) for
+\(S=\set{Q_1,\dots,Q_{\ell}}\) in \(C\).  Note, however, that we cannot
+always substitute all the predicate variables in \(S\) with the
+candidate solution \(\lambda\seq{x}.\phi\) because \(Q_i\) may depend on
+\(Q_j\) for some \(i \neq j\).  For example, let us consider the
 following constraints:
 \begin{eqnarray*}
 x=0 \imply Q_1(x), \quad
@@ -478,17 +478,17 @@ From the constraints, we get:
 C_{Q_1}&=&\{\nu=0 \imply Q_1(\nu), Q_1(\nu) \imply -1 \leq \nu\leq 1\}, \\
 C_{Q_2}&=&\{\nu=1 \imply Q_2(\nu), Q_2(\nu) \imply 0 \leq \nu \leq 2\}.
 \end{eqnarray*}
-Thus, we obtain, for example, \(\mathcal{J}(\nu=0 \lor \nu=1,\neg (-1 
-\leq \nu\leq 1 \land 0 \leq \nu \leq 2)) \equiv 0 \leq \nu \leq 1\) as a 
-candidate solution for \(Q_1(\nu)\) and \(Q_2(\nu)\).  However, 
-\([\lambda\nu.0 \leq \nu \leq 1/Q_1,\lambda \nu.0 \leq \nu \leq 
-1/Q_2](Q_1(x) \imply Q_2(x+1))\) is not valid.  Actually, it is only 
-safe to substitute \(\lambda \nu.0 \leq \nu\leq 1\) for either \(Q_1\) 
+Thus, we obtain, for example, \(\mathcal{J}(\nu=0 \lor \nu=1,\neg (-1
+\leq \nu\leq 1 \land 0 \leq \nu \leq 2)) \equiv 0 \leq \nu \leq 1\) as a
+candidate solution for \(Q_1(\nu)\) and \(Q_2(\nu)\).  However,
+\([\lambda\nu.0 \leq \nu \leq 1/Q_1,\lambda \nu.0 \leq \nu \leq
+1/Q_2](Q_1(x) \imply Q_2(x+1))\) is not valid.  Actually, it is only
+safe to substitute \(\lambda \nu.0 \leq \nu\leq 1\) for either \(Q_1\)
 or \(Q_2\).
 
-Therefore, we find and substitute only a maximal nonempty subset \(M\) 
-of \(S\) for which we can safely substitute \(\lambda\seq{x}.\phi\) (i.e., 
-\(\set{R \mapsto \lambda\seq{x}.\phi \mid R \in M}C\) is equisatisfiable 
+Therefore, we find and substitute only a maximal nonempty subset \(M\)
+of \(S\) for which we can safely substitute \(\lambda\seq{x}.\phi\) (i.e.,
+\(\set{R \mapsto \lambda\seq{x}.\phi \mid R \in M}C\) is equisatisfiable
 with \(C\)).
 %
 %%%such that \(\lambda\seq{x}.\phi\) is in fact a solution for every predicate variable in \(M\).
@@ -503,10 +503,10 @@ with \(C\)).
 %%%formula is not valid: \(\theta[\lambda \seq{x}.\phi/R_0,\lambda
 %%%\seq{x}.\phi/R_1,\dots,\lambda \seq{x}.\phi/R_m]C\).
 %%%\end{itemize}
-For the running example \(C_{\texttt{cc}}\), it is in fact safe to 
-substitute the candidate solution \(\lambda (x,\nu). x=\nu\) for 
-\(P_1,\dots,P_4\) (i.e., \(M=S\)).  As a result of the substitution, all 
-the predicate variables in \(C_{\texttt{cc}}\) are eliminated.  Thus, we 
+For the running example \(C_{\texttt{cc}}\), it is in fact safe to
+substitute the candidate solution \(\lambda (x,\nu). x=\nu\) for
+\(P_1,\dots,P_4\) (i.e., \(M=S\)).  As a result of the substitution, all
+the predicate variables in \(C_{\texttt{cc}}\) are eliminated.  Thus, we
 obtain the following refinement types for \(D_{\texttt{cc}}\):
 \begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
