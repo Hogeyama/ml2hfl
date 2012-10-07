@@ -33,44 +33,43 @@ available at \url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/mochi/}.
 \cline{4-13}
 program    & size & order & \multicolumn{2}{c}{none} &     \multicolumn{2}{|c|}{C.} &   \multicolumn{2}{|c|}{A.} & \multicolumn{2}{|c|}{C. \& A.} & \multicolumn{2}{|c|}{C. \& A. \& D.} \\
 \hline
-sum               &    24&  1&  2, &    0.14 &  2, &    0.14 &  1, &    0.06 &  1, &    0.07 &  1, &    0.08 \\
-\bf mult              & \bf    31& \bf  1& \bf     & \bf       - & \bf     & \bf       - & \bf  3, & \bf    0.16 & \bf  3, & \bf    0.14 & \bf  3, & \bf    0.16 \\
-max               &    42&  2&  5, &    5.07 &  5, &    1.63 &  1, &    0.17 &  3, &    0.87 &  3, &    0.93 \\
-mc91              &    32&  1&  2, &    0.21 &  2, &    0.21 &  2, &    0.16 &  2, &    0.16 &  2, &    0.36 \\
-\bf ack               & \bf    53& \bf  1& \bf     & \bf       - & \bf     & \bf       - & \bf  1, & \bf    0.10 & \bf  1, & \bf    0.10 & \bf  1, & \bf    0.10 \\
-\bf a-cppr            & \bf   149& \bf  2& \bf     & \bf       - & \bf 12, & \bf   33.91 & \bf  6, & \bf    1.31 & \bf  6, & \bf    1.06 & \bf  6, & \bf    1.06 \\
-\bf l-zipunzip        & \bf    81& \bf  2& \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    0.14 & \bf  2, & \bf    0.14 \\
-\bf l-zipmap          & \bf    65& \bf  2& \bf     & \bf       - & \bf  6, & \bf    0.54 & \bf  2, & \bf    0.11 & \bf  2, & \bf    0.10 & \bf  3, & \bf    0.16 \\
-hors              &    64&  2&  2, &    0.36 &  2, &    0.11 &  1, &    0.09 &  1, &    0.07 &  1, &    0.06 \\
-e-simple          &    27&  2&  1, &    0.08 &  1, &    0.08 &  0, &    0.06 &  0, &    0.06 &  0, &    0.06 \\
-e-fact            &    55&  2&  2, &    0.14 &  2, &    0.11 &  2, &    0.10 &  2, &    0.09 &  2, &    0.09 \\
-r-lock            &    54&  1&  6, &    1.00 &  6, &    0.49 &  0, &    0.07 &  0, &    0.06 &  0, &    0.07 \\
-\bf r-file            & \bf   168& \bf  1& \bf     & \bf       - & \bf     & \bf       - & \bf  9, & \bf    2.76 & \bf 12, & \bf    2.18 & \bf 10, & \bf   81.50 \\
+sum               &    24&  1&  2,&    0.12  &  2,&    0.12  &  1,&    0.07  &  1,&    0.07  &  1,&    0.08  \\
+\bf mult              & \bf    31& \bf  1& \bf    & \bf       -  & \bf    & \bf       -  & \bf  3,& \bf    0.15  & \bf  2,& \bf    0.14  & \bf  3,& \bf    0.17  \\
+max               &    42&  2&  5,&    3.82  &  5,&    1.02  &  1,&    0.17  &  0,&    0.08  &  0,&    0.08  \\
+mc91              &    32&  1&  2,&    0.18  &  2,&    0.18  &  2,&    0.18  &  2,&    0.18  &  2,&    0.40  \\
+\bf ack               & \bf    53& \bf  1& \bf    & \bf       -  & \bf    & \bf       -  & \bf  1,& \bf    0.10  & \bf  1,& \bf    0.10  & \bf  1,& \bf    0.13  \\
+\bf a-cppr            & \bf   149& \bf  2& \bf    & \bf       -  & \bf    & \bf       -  & \bf  8,& \bf    2.61  & \bf  6,& \bf    2.27  & \bf  6,& \bf    1.19  \\
+\bf l-zipunzip        & \bf    81& \bf  2& \bf    & \bf       -  & \bf  5,& \bf    3.19  & \bf    & \bf       -  & \bf  2,& \bf    0.13  & \bf  2,& \bf    0.14  \\
+l-zipmap          &    65&  2&  7,&    1.28  &  6,&    0.42  &  2,&    0.12  &  2,&    0.10  &  4,&    0.25  \\
+hors              &    64&  2&  2,&    0.34  &  2,&    0.10  &  1,&    0.08  &  1,&    0.07  &  1,&    0.07  \\
+e-simple          &    27&  2&  1,&    0.07  &  1,&    0.07  &  0,&    0.06  &  0,&    0.07  &  0,&    0.07  \\
+e-fact            &    55&  2&  2,&    0.12  &  2,&    0.10  &  2,&    0.09  &  2,&    0.09  &  2,&    0.11  \\
+r-lock            &    54&  1&  6,&    0.81  &  6,&    0.38  &  0,&    0.07  &  0,&    0.06  &  0,&    0.08  \\
+\bf r-file            & \bf   168& \bf  1& \bf    & \bf       -  & \bf    & \bf       -  & \bf 10,& \bf    6.92  & \bf  7,& \bf    0.97  & \bf  6,& \bf    1.58  \\
 \hline
-sum\_intro        &   33 & 1 &  2, &    0.18 &  2, &    0.15 &  1, &    0.08 &  1, &    0.08 &  1, &    0.08 \\
-\bf copy\_intro       & \bf   24 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    0.14 \\
-fact\_notpos      &   97 & 1 &  1, &    0.11 &  1, &    0.11 &  1, &    0.08 &  1, &    0.09 &  1, &    0.08 \\
-fold\_right       &   64 & 2 &  8, &  361.07 &  8, &  167.05 &  2, &    0.31 &  2, &    0.18 &  2, &    0.34 \\
-\bf forall\_eq\_pair  & \bf   55 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  1, & \bf    0.22 & \bf  1, & \bf    0.27 \\
-\bf forall\_leq       & \bf   55 & \bf 2 & \bf     & \bf       - & \bf  7, & \bf   93.28 & \bf  1, & \bf    0.20 & \bf  1, & \bf    0.16 & \bf  1, & \bf    0.24 \\
-isnil             &   52 & 1 &  3, &    0.28 &  3, &    0.24 &  2, &    0.13 &  2, &    0.13 &  2, &    0.12 \\
-\bf iter              & \bf   59 & \bf 2 & \bf     & \bf       - & \bf  7, & \bf   15.70 & \bf  1, & \bf    0.16 & \bf  1, & \bf    0.13 & \bf  1, & \bf    0.17 \\
-\bf length            & \bf   49 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    0.14 \\
-mem               &   74 & 1 &  6, &    5.45 &  5, &    1.74 &  3, &    0.41 &  2, &    0.34 &  2, &    0.31 \\
-\bf nth               & \bf   59 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  4, & \bf    0.58 \\
-nth0              &   78 & 1 &  4, &    0.88 &  4, &    0.61 &  2, &    0.23 &  2, &    0.19 &  2, &    0.25 \\
-\bf harmonic          & \bf  101 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  1, & \bf    0.32 & \bf  1, & \bf    0.18 & \bf  1, & \bf    0.29 \\
-\bf fold\_left        & \bf   64 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  8, & \bf  157.05 & \bf  2, & \bf    0.35 & \bf  2, & \bf    0.36 \\
-\bf zip               & \bf   69 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  3, & \bf    0.37 & \bf  3, & \bf    0.35 \\
-\bf isort\_geq        & \bf   97 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  7, & \bf   97.59 \\
-\bf map\_filter       & \bf  111 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    3.23 & \bf  2, & \bf    1.87 & \bf  3, & \bf   27.51 \\
-\bf risers            & \bf   79 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf  4, & \bf    2.51 & \bf  4, & \bf    1.69 & \bf  3, & \bf    2.07 \\
-\bf arith\_exp        & \bf  109 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  4, & \bf    8.65 & \bf  3, & \bf    1.68 & \bf  4, & \bf    6.32 \\
-\bf fun\_list         & \bf   94 & \bf 3 & \bf     & \bf       - & \bf     & \bf       - & \bf  6, & \bf   23.18 & \bf  6, & \bf   12.52 & \bf  8, & \bf   33.15 \\
-harmonic-e        &  101 & 2 &  1, &    0.44 &  1, &    0.22 &  0, &    0.11 &  0, &    0.08 &  0, &    0.08 \\
-map\_filter-e     &  111 & 2 &  2, &    2.29 &  2, &    1.11 &  0, &    0.16 &  0, &    0.15 &  0, &    0.16 \\
-arith\_exp-e      &  109 & 2 &  7, &   22.85 &     &       - &  3, &    3.22 &  2, &    1.04 &  3, &    4.52 \\
-fact\_notpos-e    &   97 & 1 &  0, &    0.07 &  0, &    0.08 &  0, &    0.08 &  0, &    0.06 &  0, &    0.08 \\
+sum\_intro        &   33 & 1 &  2,&    0.16  &  2,&    0.14  &  1,&    0.08  &  1,&    0.07  &  1,&    0.08  \\
+\bf copy\_intro       & \bf   24 & \bf 1 & \bf    & \bf       -  & \bf    & \bf       -  & \bf    & \bf       -  & \bf    & \bf       -  & \bf  2,& \bf    0.14  \\
+fact\_notpos      &   97 & 1 &  1,&    0.11  &  1,&    0.10  &  1,&    0.07  &  1,&    0.10  &  1,&    0.08  \\
+\bf fold\_right       & \bf   64 & \bf 2 & \bf    & \bf       -  & \bf    & \bf       -  & \bf  2,& \bf    0.32  & \bf  2,& \bf    0.20  & \bf  2,& \bf    0.29  \\
+\bf forall\_eq\_pair  & \bf   55 & \bf 1 & \bf    & \bf       -  & \bf    & \bf       -  & \bf  2,& \bf    0.40  & \bf  1,& \bf    0.20  & \bf  1,& \bf    0.24  \\
+\bf forall\_leq       & \bf   55 & \bf 2 & \bf    & \bf       -  & \bf    & \bf       -  & \bf  2,& \bf    0.38  & \bf  1,& \bf    0.21  & \bf  1,& \bf    0.23  \\
+isnil             &   52 & 1 &  3,&    0.20  &  3,&    0.17  &  2,&    0.13  &  2,&    0.12  &  2,&    0.11  \\
+\bf iter              & \bf   59 & \bf 2 & \bf    & \bf       -  & \bf    & \bf       -  & \bf  1,& \bf    0.18  & \bf  1,& \bf    0.16  & \bf  1,& \bf    0.18  \\
+\bf length            & \bf   49 & \bf 1 & \bf    & \bf       -  & \bf    & \bf       -  & \bf    & \bf       -  & \bf    & \bf       -  & \bf  2,& \bf    0.14  \\
+mem               &   74 & 1 &  5,&    3.34  &  4,&    0.69  &  3,&    0.40  &  3,&    0.32  &  4,&    0.39  \\
+\bf nth               & \bf   59 & \bf 1 & \bf    & \bf       -  & \bf    & \bf       -  & \bf    & \bf       -  & \bf    & \bf       -  & \bf  4,& \bf    0.43  \\
+nth0              &   78 & 1 &  3,&    0.48  &  3,&    0.30  &  3,&    0.26  &  3,&    0.24  &  3,&    0.25  \\
+\bf harmonic          & \bf  101 & \bf 2 & \bf    & \bf       -  & \bf    & \bf       -  & \bf  1,& \bf    0.30  & \bf  1,& \bf    0.20  & \bf  1,& \bf    0.26  \\
+\bf fold\_left        & \bf   64 & \bf 2 & \bf    & \bf       -  & \bf    & \bf       -  & \bf  2,& \bf    0.33  & \bf  2,& \bf    0.23  & \bf  2,& \bf    0.30  \\
+\bf zip               & \bf   69 & \bf 1 & \bf    & \bf       -  & \bf    & \bf       -  & \bf   ,& \bf        - & \bf  6,& \bf   26.45  & \bf  8,& \bf   24.19  \\
+\bf map\_filter       & \bf  111 & \bf 2 & \bf    & \bf       -  & \bf    & \bf       -  & \bf   ,& \bf        - & \bf  3,& \bf   43.61  & \bf  3,& \bf    7.02  \\
+\bf risers            & \bf   79 & \bf 1 & \bf    & \bf       -  & \bf    & \bf       -  & \bf   ,& \bf        - & \bf    & \bf       -  & \bf  8,& \bf   10.46  \\
+\bf search            & \bf  109 & \bf 2 & \bf    & \bf       -  & \bf    & \bf       -  & \bf  4,& \bf    1.23  & \bf  3,& \bf    0.64  & \bf  8,& \bf   10.48  \\
+\bf fold\_fun\_list   & \bf   78 & \bf 3 & \bf    & \bf       -  & \bf    & \bf       -  & \bf   ,& \bf        - & \bf    & \bf       -  & \bf  2,& \bf    2.90  \\
+fact\_notpos-e    &   97 & 1 &  0,&    0.07  &  0,&    0.07  &  0,&    0.07  &  0,&    0.07  &  0,&    0.08  \\
+harmonic-e        &  101 & 2 &  0,&    0.11  &  1,&    0.18  &  0,&    0.10  &  0,&    0.10  &  0,&    0.09  \\
+map\_filter-e     &  111 & 2 &  4,&    8.11  &  2,&    0.82  &  3,&    2.14  &  0,&    0.15  &  0,&    0.16  \\
+\bf search-e          & \bf   78 & \bf 2 & \bf    & \bf       -  & \bf  4,& \bf    0.76  & \bf  2,& \bf    0.37  & \bf  1,& \bf    0.18  & \bf  4,& \bf    1.41  \\
 \hline
 \end{tabular}
 \end{center}
@@ -86,14 +85,14 @@ The programs used in the experiments are:
       the previous paper~\cite{KobayashiPLDI2011}.
 \item ``sum\_intro'', ``copy\_intro'', and ``fact\_notpos'' are the example programs in
       Section~\ref{sec:intro} and Section{sec:control}.
-\item ``map\_head\_filter'' and ``risers'' are examples of Ong and
+\item ``map\_filter'' and ``risers'' are examples of Ong and
       Ramsay's verification framework~\cite{Ong2011} for higher-order
       recursion scheme with a \textit{case} construct listed at their
       web page
       \url{http://mjolnir.cs.ox.ac.uk/cgi-bin/horsc/recheck-horsc/input}.
       Our framework can verify these programs without a special
       treatment of case constructs unlike in their framework.
-\item ``arith\_exp'' is a program that manipulates user-defined data structures.
+\item ``search'' is a program that manipulates user-defined data structures.
 \item Other programs define generators of lists and functions on lists,
       and assert that the functions work correctly.  For example,
       ``zip'' defines a function that takes two lists and returns a list of corresponding pairs.
@@ -139,21 +138,22 @@ The programs used in the experiments are:
 %      ascending list.
 %\end{itemize}
 
-The applications of selective CPS transformation and selective predicate 
-abstraction enable verification of the programs such as ``zip'' and 
-``map\_head\_filter'', and reduce the running time.  Especially, the 
-application of selective CPS transformation reduces the running time, 
-and selective predicate abstraction reduces the number of CEGAR cycles. 
-The refined predicate discovery method enables verification of the 
+The applications of selective CPS transformation and selective predicate
+abstraction enable verification of the programs such as ``zip'' and
+``map\_head\_filter'', and reduce the running time.  Especially, the
+application of selective CPS transformation reduces the running time,
+and selective predicate abstraction reduces the number of CEGAR cycles.
+The refined predicate discovery method enables verification of the
 programs such as ``length'' and ``nth''.
 
-Note that the column ``C. \& A. \& D.'' shows the experimental results 
-of using the refined predicate discovery method in 
-Section~\ref{sec:refine} but without using the feature of merging 
-multiple infeasible paths.  The feature actually slowed down 
-verification of some programs (such as ``map\_filter'') but improved the 
-analysis precision of MoCHi.  In particular, the feature enabled us to 
+Note that the column ``C. \& A. \& D.'' shows the experimental results
+of using the refined predicate discovery method in
+Section~\ref{sec:refine} but without using the feature of merging
+multiple infeasible paths.  The feature actually slowed down
+verification of some programs (such as ``map\_filter'') but improved the
+analysis precision of MoCHi.  In particular, the feature enabled us to
 verify the following program in 0.36 seconds with 3 CEGAR-cycles:
+\vspace{-5pt}
 \begin{alltt}
 let rec length acc xs = match xs with [] -> acc
                       | _::xs' -> length (acc+1) xs'
@@ -161,10 +161,10 @@ let rec make_list n = if n = 0 then []
                       else n :: make_list (n-1)
 let main n = assert (length 0 (make_list n) = n)
 \end{alltt}
-For the success of verification, an abstraction predicate 
-$\LENGTH(\mathtt{r}) = \LENGTH(\mathtt{acc}) + \LENGTH(\mathtt{xs})$ on 
-the return value $\mathtt{r}$ and the arguments $\mathtt{acc}$, 
-$\mathtt{xs}$ of \texttt{length} was essential.  The predicate could 
+For the success of verification, an abstraction predicate
+$\LENGTH(\mathtt{r}) = \LENGTH(\mathtt{acc}) + \LENGTH(\mathtt{xs})$ on
+the return value $\mathtt{r}$ and the arguments $\mathtt{acc}$,
+$\mathtt{xs}$ of \texttt{length} was essential.  The predicate could
 only be found if the feature of merging multiple paths was enabled.
 
 %\begin{itemize}
