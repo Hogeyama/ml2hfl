@@ -161,7 +161,7 @@ let rec make_list n = if n = 0 then []
                       else n :: make_list (n-1)
 let main n = assert (length 0 (make_list n) = n)
 \end{alltt}
-For the success of verification, the abstraction predicate 
+For the success of verification, an abstraction predicate 
 $\LENGTH(\mathtt{r}) = \LENGTH(\mathtt{acc}) + \LENGTH(\mathtt{xs})$ on 
 the return value $\mathtt{r}$ and the arguments $\mathtt{acc}$, 
 $\mathtt{xs}$ of \texttt{length} was essential.  The predicate could 
