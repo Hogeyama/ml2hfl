@@ -84,17 +84,25 @@ For the running example \(D_{\texttt{copy}}\), we use the following
 templates:\footnote{For the sake of simplicity, we here omit the type
 template of \texttt{main} as well as the refinement predicates for the
 argument of \texttt{copy1} and \texttt{copy2}.}
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_1(x,\nu)}}) \\
 \texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_2(x,\nu)}})
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 By using them, we obtain the following set \(C_{\texttt{copy}}\) of
 constraints:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 x=0 \land y=0 &\imply& P_2(x,y) \\
 P_2(x-1,y) \land x\neq0 \land z=1+y &\imply& P_1(x,z) \\
 P_1(n,x) &\imply& x=n
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 
 %%%We then use the constraint generation algorithm for terms defined in
 %%%Figure~\ref{fig:cgen} to obtain constraints.  In the figure,
@@ -174,38 +182,56 @@ conditions:\footnote{Note that interpolants of \(\phi_1\) and \(\phi_2\)
 are not unique.  Actually, existing theorem
 provers~\cite{McMillan2005,Beyer2008} return one of them, which is
 denoted by \(\mathcal{I}(\phi_1,\phi_2)\).}
+\vspace{-5pt}
 \begin{itemize}
 \item \(\phi_1\) implies \(\phi\),
 \item \(\phi\) and \(\phi_2\) are inconsistent, and
 \item \(\FV{\phi} \subseteq \FV{\phi_1} \cap \FV{\phi_2}\).
 \end{itemize}
+\vspace{-3pt}
 %
 For the running example \(C_{\texttt{copy}}\), we obtain the following
 constraints by eliminating the other predicate variables than \(P_1\):
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 x=1 \land y=0 \land x\neq0 \land \nu=1+y &\imply& P_1(x,\nu) \\
 P_1(x,\nu) &\imply& \nu=x
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 We then obtain, for example, the following solution for \(P_1(x,\nu)\):
 \begin{eqnarray*}
 \mathcal{I}(x=1 \land y=0 \land x\neq0 \land \nu=1+y,\neg \nu=x)
 \equiv \nu=x.
 \end{eqnarray*}
 By substituting this for \(P_1\) in \(C_{\texttt{copy}}\), we get:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 x=0 \land \nu=0 &\imply& P_2(x,\nu) \\
 P_2(x,\nu) &\imply& (x+1\neq0 \land z=1+\nu \imply z=x+1)
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 We then get, for example, the following solution for \(P_2(x,\nu)\):
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 &&\mathcal{I}(x=0 \land \nu=0,\neg (x+1\neq0 \land z=1+\nu \imply z=x+1)) \\
 &\equiv& \nu=x.
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 We thus obtain the following refinement types for \(D_{\texttt{copy}}\):
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 \texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}})
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 
 \subsection{Limitation of Previous Method}
 \label{sec:limit}
@@ -214,11 +240,11 @@ We now explain the limitation of the previous method by using the
 program in Figure~\ref{fig:copy}.  Let us consider the following SHP
 \(D_{\texttt{cc}}\):
 \begin{alltt}
-let copy1 x = assume (x<>0); 1 + copy2 (x-1)
-let copy2 x = assume (x=0); 0
-let copy3 x = assume (x<>0); 1 + copy4 (x-1)
-let copy4 x = assume (x=0); 0
-let main n = assume (copy3 (copy1 n) <> n); fail
+ let copy1 x = assume (x<>0); 1 + copy2 (x-1)
+ let copy2 x = assume (x=0); 0
+ let copy3 x = assume (x<>0); 1 + copy4 (x-1)
+ let copy4 x = assume (x=0); 0
+ let main n = assume (copy3 (copy1 n) <> n); fail
 \end{alltt}
 The SHP corresponds to an infeasible error path where the else-branch of
 \(\texttt{copy}\) is taken in the first and the third calls of
@@ -227,29 +253,41 @@ calls of \(\texttt{copy}\), and the assertion in the \(\texttt{main}\)
 function fails.
 
 For the SHP \(D_{\texttt{cc}}\), we use the following type templates:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_1(x,\nu)}}) \\
 %\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_2(x,\nu)}}) \\
 %\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_3(x,\nu)}}) \\
 \vdots\quad &&\qquad\qquad \vdots \\
 \texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid P_4(x,\nu)}})
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 And, we get the following set \(C_{\texttt{cc}}\) of constraints:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 x=0 \land y=0 &\imply& P_2(x,y) \\
 P_2(x-1,y) \land x\neq0 \land z=1+y &\imply& P_1(x,z) \\
 x=0 \land y=0 &\imply& P_4(x,y) \\
 P_4(x-1,y) \land x\neq0 \land z=1+y &\imply& P_3(x,z) \\
 P_1(n,x) \land P_3(x,y) &\imply& y=n
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 
 By eliminating the other predicate variables than \(P_3\) (and with some
 simplification), we get the following constraints \(C_{P_3}\):
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 x=1 \land \nu=1 &\imply& P_3(x,\nu) \\
 %P_3(x,\nu) &\imply& (n=1 \land x=1 \imply \nu=n)
 P_3(x,\nu) &\imply& (x=1 \imply \nu=1)
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 Existing interpolating proves such as \cite{Beyer2008} returns the
 following solution for \(P_3(x,\nu)\):
 \begin{eqnarray*}
@@ -292,6 +330,7 @@ Section~\ref{sec:extcs}).
 
 We extend the previous constraint generation algorithm overviewed in
 Section~\ref{sec:cg} as follows.
+\vspace{-5pt}
 \begin{itemize}
 \item For each CEGAR iteration, we generate constraints from multiple
 infeasible error paths instead of a single path:  We keep the set
@@ -310,6 +349,7 @@ equivalence relation \(E_{\texttt{cc}}=\set{P_1,\dots,P_4}
 solving algorithm in Section~\ref{sec:extcs} exploits \(E\) to find
 general solutions for \(C\).
 \end{itemize}
+\vspace{-5pt}
 Thus, the extended algorithm generates a pair \((C,E)\) of Horn clauses
 \(C\) for multiple paths and an equivalence relation \(E\) on the
 predicate variables in \(C\) unlike the previous algorithm which
@@ -338,6 +378,7 @@ likely to constitute invariants. % of the original program.
 
 %%%The overall structure of the algorithm is shown in Figure~\ref{fig:extcs}.
 The extended constraint solving algorithm proceeds as follows:
+\vspace{-10pt}
 \begin{enumerate}
 \item Find a set \(S\) of predicate variables which are related by \(E\)
 and may have the same solution in \(C\).
@@ -347,6 +388,7 @@ predicate variable \(Q \in S\).
 in \(C\) and repeat the entire procedure if the result still contains a
 predicate variable.
 \end{enumerate}
+\vspace{-10pt}
 
 \paragraph{Finding a set \(S\) of predicate variables:}
 To find a set of predicate variables that may have the same solution in
@@ -355,7 +397,9 @@ constraints \(C_P\) from \(C\) by eliminating the other predicate
 variables than \(P\).
 %
 For the running example \(C_{\texttt{cc}}\), we obtain:
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 C_{P_1}&=&\{x=1 \land \nu=1 \imply P_1(x,\nu), \\
 &&\ P_1(x,\nu) \imply (\nu=1 \imply x=1)\}, \\
 C_{P_2}&=&\{x=0 \land \nu=0 \imply P_2(x,\nu), \\
@@ -364,7 +408,9 @@ C_{P_3}&=&\{x=1 \land \nu=1 \imply P_3(x,\nu), \\
 &&\ P_3(x,\nu) \imply (x=1 \imply \nu=1)\}, \\
 C_{P_4}&=&\{x=0 \land \nu=0 \imply P_4(x,\nu), \\
 &&\ P_4(x,\nu) \imply (x=0 \imply \nu=0)\}.
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 
 %%%In general, the least upper bound of some predicate variable may not
 %%%exist because the constraint generation algorithm in
@@ -405,6 +451,7 @@ We find a single candidate solution \(\lambda \seq{x}.\phi\) for all the
 predicate variables \(Q_1,\dots,Q_{\ell} \in S\) by simultaneously
 solving \(C_{Q_1},\dots,C_{Q_{\ell}}\) unlike the previous method.
 Formally, we find \(\phi\) such that:
+\vspace{-5pt}
 \begin{itemize}
 \item \(\phi_{Q_1} \lor \dots \lor \phi_{Q_{\ell}}\) implies \(\phi\),
 \item \(\phi\) implies \(\phi_{Q_1}' \land \dots \land \phi_{Q_{\ell}}'\), and
@@ -453,13 +500,18 @@ variables \(Q_1,\dots,Q_{\ell} \in S\).  For the running example
 \(C_{\texttt{cc}}\), we obtain, for example, the following candidate
 solution \(\lambda (x, \nu). \phi\) for \(P_1,\dots,P_4\):
 %an interpolating prover returned ... in the experiments reported in Section~\ref{sec:experiments}:
-\begin{eqnarray*}
+\vspace{-5pt}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 \phi&=& \mathcal{J}(\phi_{P_1} \lor \dots \lor \phi_{P_4},\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 %&=& \mathcal{I}(\mathcal{H}(\phi_{P_1} \lor \dots \lor \phi_{P_4}),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(\mathcal{H}(x=\nu=0 \lor x=\nu=1),\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &=& \mathcal{I}(0 \leq x=\nu \leq 1,\neg (\phi_{P_1}' \land \dots \land \phi_{P_4}')) \\
 &\equiv& x=\nu
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 
 \paragraph{Substituting \(\lambda \seq{x}.\phi\) for \(S\) in \(C\):}
 We then substitute the candidate solution \(\lambda \seq{x}.\phi\) for
@@ -508,13 +560,18 @@ substitute the candidate solution \(\lambda (x,\nu). x=\nu\) for
 \(P_1,\dots,P_4\) (i.e., \(M=S\)).  As a result of the substitution, all
 the predicate variables in \(C_{\texttt{cc}}\) are eliminated.  Thus, we
 obtain the following refinement types for \(D_{\texttt{cc}}\):
-\begin{eqnarray*}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
 \texttt{copy1}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 %\texttt{copy2}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 %\texttt{copy3}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}}) \\
 \vdots\quad &&\qquad\qquad \vdots \\
 \texttt{copy4}&\COL&(x\COL\TFun{\INT}{\set{\nu\COL\INT \mid x=\nu}})
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
+
 
 %\todo{discuss termination?}
 

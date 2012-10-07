@@ -312,12 +312,16 @@ $\CPSty{\tau}$ if $\CPS{\Gamma}{t}{\tau}{N}{t'}$ holds, and the transformed
 term $t'$ has type $\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
 $\CPS{\Gamma}{t}{\tau}{C}{t'}$ holds, where $\AT$ is the answer type and
 $\CPSty{\tau}$ is defined by:
-\vspace{-2pt}
-\begin{eqnarray*}
+\vspace{-5pt}
+\[
+\begin{array}{rcl}
+%\begin{eqnarray*}
  \CPSty{\INT} &=& \INT \\
  \CPSty{\TFunN{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\CPSty{\tau_2}} \\
  \CPSty{\TFunC{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\TFun{(\TFun{\CPSty{\tau_2}}{\AT})}{\AT}}
-\end{eqnarray*}
+%\end{eqnarray*}
+\end{array}
+\]
 Thus, a continuation should be inserted only for functions of type
 $\TFunC{\tau_1}{\tau_2}$, not for functions of type $\TFunN{\tau_1}{\tau_2}$.
 %This shows the intuition that a term of a type $\TFunC{\tau_1}{\tau_2}$
