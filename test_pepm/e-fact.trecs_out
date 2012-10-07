@@ -1,0 +1,42 @@
+TRecS 1.34: Type-based model checker for higher-order recursion schemes
+analyzing test_pepm/e-fact.hors...
+The number of rewrite rules: 11
+The size of recursion scheme: 85
+The number of states: 2
+The property is satisfied.
+Bottom0 : 
+  
+Exn_3 : 
+  
+F_469 : 
+  
+F_472 : 
+  Top -> 0 -> Top -> q0 -> q0
+  
+F_485 : 
+  0 -> q0
+  1 -> q0
+  
+F_488 : 
+  Top -> q0 -> 1 -> q0
+  (0 -> Top -> q0 -> q0) -> q0 -> 0 -> q0
+  
+F_491 : 
+  Top -> q0 -> 0 -> q0
+  (0 -> Top -> q0 -> q0) -> q0 -> 1 -> q0
+  
+F_494 : 
+  Top -> q0 -> 0 -> q0
+  
+F_497 : 
+  Top -> q0 -> 0 -> q0
+  
+Fact : 
+  0 -> Top -> q0 -> q0
+  1 -> (0 -> Top -> q0 -> q0) -> q0 -> q0
+  
+Main_1 : 
+  q0
+  
+The number of expansions: 470
+Elapsed Time: 0.008sec

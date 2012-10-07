@@ -1,0 +1,20 @@
+"ack.ml" 1 0 8 "ack.ml" 1 0 17
+type(
+  ((int -> (int -> int)) /\ (int -> (x_5:int -> {x_6:int | x_5 <= x_6 - 1})))
+)
+"ack.ml" 5 65 69 "ack.ml" 5 65 78
+type(
+  ((int -> (int -> int)) /\ (int -> (x_5:int -> {x_6:int | x_5 <= x_6 - 1})))
+)
+"ack.ml" 7 94 98 "ack.ml" 7 94 107
+type(
+  ((int -> (int -> int)) /\ (int -> (x_5:int -> {x_6:int | x_5 <= x_6 - 1})))
+)
+"ack.ml" 7 94 115 "ack.ml" 7 94 124
+type(
+  ((int -> (int -> int)) /\ (int -> (x_5:int -> {x_6:int | x_5 <= x_6 - 1})))
+)
+"ack.ml" 8 134 180 "ack.ml" 8 134 189
+type(
+  ((int -> (int -> int)) /\ (int -> (x_5:int -> {x_6:int | x_5 <= x_6 - 1})))
+)

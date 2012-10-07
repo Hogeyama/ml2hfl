@@ -1,0 +1,26 @@
+%BEGING
+Main_1  -> br (F_351 0  ) (F_351 1  ) .
+Ackermann k_ackermann  -> br (F_356 k_ackermann  0  ) (F_356 k_ackermann  1  ) .
+F_318 x_306  -> F_354 x_306  .
+F_321 k_ackermann_320 x__316  -> F_360 k_ackermann_320  x__316  .
+F_324 k_ackermann_323 x_280  -> Ackermann (F_328 k_ackermann_323  x_280  ) .
+F_328 k_ackermann_326 x_327 x__315  -> F_365 k_ackermann_326  x_327  x__315  .
+F_351 b_329  -> _case 2 b_329  (l0 (br (F_352 0  ) (F_352 1  ) ) ) (l1 (l1 unit  ) ) .
+F_352 b_331  -> _case 2 b_331  (l0 (Ackermann F_318  ) ) (l1 unit  ) .
+F_353 b_333  -> _case 2 b_333  (l0 unit  ) (l1 (Fail 0  unit  ) ) .
+F_354 b_335  -> _case 2 b_335  (F_353 0  ) (br (F_353 0  ) (F_353 1  ) ) .
+F_356 k_ackermann_355 b_337  -> _case 2 b_337  (l0 (k_ackermann_355 0  ) ) (l1 (br (F_358 k_ackermann_355  0  ) (F_358 k_ackermann_355  1  ) ) ) .
+F_358 k_ackermann_357 b_339  -> _case 2 b_339  (l0 (Ackermann (F_321 k_ackermann_357  ) ) ) (l1 (Ackermann (F_324 k_ackermann_357  ) ) ) .
+F_360 k_ackermann_359 b_343  -> _case 2 b_343  (k_ackermann_359 0  ) (br (k_ackermann_359 0  ) (k_ackermann_359 1  ) ) .
+F_362 k_ackermann_361 b_347  -> _case 2 b_347  (k_ackermann_361 0  ) (br (k_ackermann_361 0  ) (k_ackermann_361 1  ) ) .
+F_365 k_ackermann_363 x_364 b_349  -> _case 2 b_349  (F_362 k_ackermann_363  x_364  ) (F_362 k_ackermann_363  1  ) .
+Fail b k  -> event_fail k  .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

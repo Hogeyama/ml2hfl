@@ -1,0 +1,30 @@
+"mem.ml" 2 1 9 "mem.ml" 2 1 12
+type(
+  ((int -> ((list|x_3:x_3 >= 1 && x_3 <> 0| Bottom) -> Bottom)) /\ 
+   (x_5:int ->
+        ((list|x_8:x_8 >= 1 && x_8 <> 0| {x_10:int | x_5 = x_10}) -> {true})))
+)
+"mem.ml" 5 60 86 "mem.ml" 5 60 89
+type(
+  ((int -> ((list|x_3:x_3 >= 1 && x_3 <> 0| Bottom) -> Bottom)) /\ 
+   (x_5:int ->
+        ((list|x_8:x_8 >= 1 && x_8 <> 0| {x_10:int | x_5 = x_10}) -> {true})))
+)
+"mem.ml" 7 96 104 "mem.ml" 7 96 113
+type(
+  (int -> (x_2:int -> (list|x_3:x_3 >= 0| {x_5:int | x_2 = x_5})))
+)
+"mem.ml" 10 147 159 "mem.ml" 10 147 168
+type(
+  (int -> (x_2:int -> (list|x_3:x_3 >= 0| {x_5:int | x_2 = x_5})))
+)
+"mem.ml" 18 271 282 "mem.ml" 18 271 291
+type(
+  (int -> (x_2:int -> (list|x_3:x_3 >= 0| {x_5:int | x_2 = x_5})))
+)
+"mem.ml" 19 299 324 "mem.ml" 19 299 327
+type(
+  ((int -> ((list|x_3:x_3 >= 1 && x_3 <> 0| Bottom) -> Bottom)) /\ 
+   (x_5:int ->
+        ((list|x_8:x_8 >= 1 && x_8 <> 0| {x_10:int | x_5 = x_10}) -> {true})))
+)

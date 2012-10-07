@@ -1,0 +1,16 @@
+%BEGING
+Main_1  -> Repeat F_34  (br (F_39 0  ) (F_39 1  ) ) .
+F_34 k_succ_28  -> k_succ_28 .
+F_39 b_35  -> _case 2 b_35  (l0 unit  ) (l1 (Fail 0  unit  ) ) .
+F_42 f_40 k_repeat_41 b_37  -> _case 2 b_37  (l0 k_repeat_41  ) (l1 (Repeat f_40  (f_40 k_repeat_41  ) ) ) .
+Fail b k  -> event_fail k  .
+Repeat f k_repeat  -> br (F_42 f  k_repeat  0  ) (F_42 f  k_repeat  1  ) .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

@@ -1,0 +1,63 @@
+%BEGING
+Main_1  -> Make_list F_13500  .
+Bottom0  -> unit .
+F_13500 x2_12922  -> Risers x2_12922  F_13502  .
+F_13502 x1_12641 x2_12642  -> unit .
+F_13504 k_make_list_12929  -> Bottom0 .
+F_13507 k_make_list_13506 x2_12937  -> k_make_list_13506 (F_13510 x2_12937  ) .
+F_13510 x2_13509 k_make_list_cons_make_list_12648  -> br (F_13620 x2_13509  k_make_list_cons_make_list_12648  0  ) (F_13620 x2_13509  k_make_list_cons_make_list_12648  1  ) .
+F_13512 k_risers_13084  -> Bottom0 .
+F_13514 k_risers_cons_risers_12816  -> br (F_13691 k_risers_cons_risers_12816  0  ) (F_13691 k_risers_cons_risers_12816  1  ) .
+F_13516 k_risers_cons_risers_12842  -> br (F_13693 k_risers_cons_risers_12842  0  ) (F_13693 k_risers_cons_risers_12842  1  ) .
+F_13519 x2_13518 k_risers_cons_risers_12868  -> br (F_13667 x2_13518  k_risers_cons_risers_12868  0  ) (F_13667 x2_13518  k_risers_cons_risers_12868  1  ) .
+F_13522 k_risers_13521 x1_13218 x2_13219  -> F_13682 k_risers_13521  x1_13218  x2_13219  x1_13218  .
+F_13526 k_risers_13524 x2_13525 x2_13042  -> l0 (x2_13525 (F_13530 k_risers_13524  x2_13525  ) ) .
+F_13530 k_risers_13528 x2_13529 x2_13059  -> br (k_risers_13528 0  (F_13534 x2_13529  x2_13059  ) ) (k_risers_13528 1  (F_13534 x2_13529  x2_13059  ) ) .
+F_13534 x2_13532 x2_13533 k_risersThen_cons_risersThen_12760  -> br (F_13689 x2_13532  x2_13533  k_risersThen_cons_risersThen_12760  0  ) (F_13689 x2_13532  x2_13533  k_risersThen_cons_risersThen_12760  1  ) .
+F_13537 x2_13536 k_risersThen_cons_risersThen_12789  -> br (F_13685 x2_13536  k_risersThen_cons_risersThen_12789  0  ) (F_13685 x2_13536  k_risersThen_cons_risersThen_12789  1  ) .
+F_13540 x2_13539 k_risers_cons_risers_12898  -> br (F_13664 x2_13539  k_risers_cons_risers_12898  0  ) (F_13664 x2_13539  k_risers_cons_risers_12898  1  ) .
+F_13543 k_risers_13542 x1_13243 x2_13244  -> F_13661 k_risers_13542  x1_13243  x2_13244  x1_13243  .
+F_13548 k_risers_13545 x1_13546 x2_13547 x2_12965  -> l0 (x2_13547 (F_13553 k_risers_13545  x1_13546  x2_13547  ) ) .
+F_13553 k_risers_13550 x1_13551 x2_13552 x2_12982  -> F_13634 k_risers_13550  x1_13551  (F_13557 x2_13552  x2_12982  ) .
+F_13557 x2_13555 x2_13556 k_risersElse_cons_risersElse_12670  -> br (F_13638 x2_13555  x2_13556  k_risersElse_cons_risersElse_12670  0  ) (F_13638 x2_13555  x2_13556  k_risersElse_cons_risersElse_12670  1  ) .
+F_13559 k_risersElse_cons_risersElse_12699  -> br (F_13644 k_risersElse_cons_risersElse_12699  0  ) (F_13644 k_risersElse_cons_risersElse_12699  1  ) .
+F_13617 k_make_list_13616 b_13560  -> _case 2 b_13560  (l0 (k_make_list_13616 F_13504  ) ) (l1 (Make_list (F_13507 k_make_list_13616  ) ) ) .
+F_13620 x2_13618 k_make_list_cons_make_list_13619 b_13562  -> _case 2 b_13562  (l0 k_make_list_cons_make_list_13619  ) (l1 (x2_13618 k_make_list_cons_make_list_13619  ) ) .
+F_13623 x2_13621 k_risers_13622 b_13564  -> _case 2 b_13564  (l0 (k_risers_13622 0  F_13512  ) ) (l1 (br (F_13626 x2_13621  k_risers_13622  0  ) (F_13626 x2_13621  k_risers_13622  1  ) ) ) .
+F_13626 x2_13624 k_risers_13625 b_13566  -> _case 2 b_13566  (l0 (br (F_13629 x2_13624  k_risers_13625  0  ) (F_13629 x2_13624  k_risers_13625  1  ) ) ) (l1 (l1 (l1 (l1 (l1 Bottom0  ) ) ) ) ) .
+F_13629 x2_13627 k_risers_13628 b_13568  -> _case 2 b_13568  (l0 (x2_13627 (l0 (x2_13627 (k_risers_13628 0  F_13514  ) ) ) ) ) (l1 (l1 (l0 (x2_13627 (x2_13627 (l0 (x2_13627 (x2_13627 (br (F_13632 x2_13627  k_risers_13628  0  ) (F_13632 x2_13627  k_risers_13628  1  ) ) ) ) ) ) ) ) ) ) .
+F_13632 x2_13630 k_risers_13631 b_13570  -> _case 2 b_13570  (l0 (Risers (F_13519 x2_13630  ) (F_13522 k_risers_13631  ) ) ) (l1 (Risers (F_13540 x2_13630  ) (F_13543 k_risers_13631  ) ) ) .
+F_13634 k_risers_13633 b_13574 x_13694  -> _case 2 b_13574  (k_risers_13633 0  x_13694  ) (F_13698 k_risers_13633  x_13694  ) .
+F_13638 x2_13635 x2_13636 k_risersElse_cons_risersElse_13637 b_13576  -> _case 2 b_13576  (l0 (k_risersElse_cons_risersElse_13637 F_13559  ) ) (l1 (br (F_13642 x2_13635  x2_13636  k_risersElse_cons_risersElse_13637  0  ) (F_13642 x2_13635  x2_13636  k_risersElse_cons_risersElse_13637  1  ) ) ) .
+F_13642 x2_13639 x2_13640 k_risersElse_cons_risersElse_13641 b_13578  -> _case 2 b_13578  (l0 (k_risersElse_cons_risersElse_13641 x2_13640  ) ) (l1 (x2_13639 k_risersElse_cons_risersElse_13641  ) ) .
+F_13644 k_risersElse_cons_risersElse_13643 b_13580  -> _case 2 b_13580  (l0 k_risersElse_cons_risersElse_13643  ) (l1 Bottom0  ) .
+F_13648 k_risers_13645 x1_13646 x2_13647 b_13582  -> _case 2 b_13582  (l0 (F_13649 x1_13646  ) ) (l1 (F_13657 k_risers_13645  x1_13646  x2_13647  x1_13646  ) ) .
+F_13649 b_13584  -> _case 2 b_13584  Bottom0  (Fail_83 Bottom0  ) .
+F_13653 k_risers_13650 x1_13651 x2_13652 b_13586  -> _case 2 b_13586  (l0 (x2_13652 (F_13548 k_risers_13650  x1_13651  x2_13652  ) ) ) (l1 (l1 Bottom0  ) ) .
+F_13657 k_risers_13654 x1_13655 x2_13656 b_13588  -> _case 2 b_13588  (F_13653 k_risers_13654  x1_13655  x2_13656  0  ) (br (F_13653 k_risers_13654  x1_13655  x2_13656  0  ) (F_13653 k_risers_13654  x1_13655  x2_13656  1  ) ) .
+F_13661 k_risers_13658 x1_13659 x2_13660 b_13590  -> _case 2 b_13590  (F_13648 k_risers_13658  x1_13659  x2_13660  1  ) (br (F_13648 k_risers_13658  x1_13659  x2_13660  0  ) (F_13648 k_risers_13658  x1_13659  x2_13660  1  ) ) .
+F_13664 x2_13662 k_risers_cons_risers_13663 b_13592  -> _case 2 b_13592  (l0 k_risers_cons_risers_13663  ) (l1 (x2_13662 k_risers_cons_risers_13663  ) ) .
+F_13667 x2_13665 k_risers_cons_risers_13666 b_13594  -> _case 2 b_13594  (l0 k_risers_cons_risers_13666  ) (l1 (x2_13665 k_risers_cons_risers_13666  ) ) .
+F_13671 k_risers_13668 x1_13669 x2_13670 b_13596  -> _case 2 b_13596  (l0 (F_13672 x1_13669  ) ) (l1 (F_13678 k_risers_13668  x2_13670  x1_13669  ) ) .
+F_13672 b_13598  -> _case 2 b_13598  Bottom0  (Fail_84 Bottom0  ) .
+F_13675 k_risers_13673 x2_13674 b_13600  -> _case 2 b_13600  (l0 (x2_13674 (F_13526 k_risers_13673  x2_13674  ) ) ) (l1 (l1 Bottom0  ) ) .
+F_13678 k_risers_13676 x2_13677 b_13602  -> _case 2 b_13602  (F_13675 k_risers_13676  x2_13677  0  ) (br (F_13675 k_risers_13676  x2_13677  0  ) (F_13675 k_risers_13676  x2_13677  1  ) ) .
+F_13682 k_risers_13679 x1_13680 x2_13681 b_13604  -> _case 2 b_13604  (F_13671 k_risers_13679  x1_13680  x2_13681  1  ) (br (F_13671 k_risers_13679  x1_13680  x2_13681  0  ) (F_13671 k_risers_13679  x1_13680  x2_13681  1  ) ) .
+F_13685 x2_13683 k_risersThen_cons_risersThen_13684 b_13606  -> _case 2 b_13606  (l0 k_risersThen_cons_risersThen_13684  ) (l1 (x2_13683 k_risersThen_cons_risersThen_13684  ) ) .
+F_13689 x2_13686 x2_13687 k_risersThen_cons_risersThen_13688 b_13608  -> _case 2 b_13608  (l0 (k_risersThen_cons_risersThen_13688 (F_13537 x2_13687  ) ) ) (l1 (x2_13686 k_risersThen_cons_risersThen_13688  ) ) .
+F_13691 k_risers_cons_risers_13690 b_13612  -> _case 2 b_13612  (l0 (k_risers_cons_risers_13690 F_13516  ) ) (l1 Bottom0  ) .
+F_13693 k_risers_cons_risers_13692 b_13614  -> _case 2 b_13614  (l0 k_risers_cons_risers_13692  ) (l1 Bottom0  ) .
+F_13698 k_risers_13697 x_13695  -> br (k_risers_13697 0  x_13695  ) (k_risers_13697 1  x_13695  ) .
+Fail_83 k  -> event_fail k  .
+Fail_84 k  -> event_fail k  .
+Make_list k_make_list  -> br (F_13617 k_make_list  0  ) (F_13617 k_make_list  1  ) .
+Risers x2 k_risers  -> br (F_13623 x2  k_risers  0  ) (F_13623 x2  k_risers  1  ) .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

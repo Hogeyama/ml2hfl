@@ -1,0 +1,16 @@
+"copy_intro.ml" 1 0 8 "copy_intro.ml" 1 0 12
+type(
+  (x_1:int -> {x_2:int | x_1 = x_2})
+)
+"copy_intro.ml" 1 0 40 "copy_intro.ml" 1 0 44
+type(
+  (x_1:int -> {x_2:int | x_1 = x_2})
+)
+"copy_intro.ml" 2 52 73 "copy_intro.ml" 2 52 77
+type(
+  (x_1:int -> {x_2:int | x_1 = x_2})
+)
+"copy_intro.ml" 2 52 79 "copy_intro.ml" 2 52 83
+type(
+  (x_1:int -> {x_2:int | x_1 = x_2})
+)

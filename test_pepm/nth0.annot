@@ -1,0 +1,27 @@
+"nth0.ml" 6 78 86 "nth0.ml" 6 78 89
+type(
+  ((int -> ((list|x_3:x_3 >= 1 && x_3 <> 0| Bottom) -> Bottom)) /\ 
+   (x_5:int -> ((list|x_8:x_8 >= 1 && x_8 <> 0| {x_10:int | x_5 = 0}) -> int)))
+)
+"nth0.ml" 9 149 186 "nth0.ml" 9 149 189
+type(
+  ((int -> ((list|x_3:x_3 >= 1 && x_3 <> 0| Bottom) -> Bottom)) /\ 
+   (x_5:int -> ((list|x_8:x_8 >= 1 && x_8 <> 0| {x_10:int | x_5 = 0}) -> int)))
+)
+"nth0.ml" 11 201 209 "nth0.ml" 11 201 218
+type(
+  (int -> (list|x_2:x_2 >= 0| int))
+)
+"nth0.ml" 14 244 256 "nth0.ml" 14 244 265
+type(
+  (int -> (list|x_2:x_2 >= 0| int))
+)
+"nth0.ml" 17 286 297 "nth0.ml" 17 286 306
+type(
+  (int -> (list|x_2:x_2 >= 0| int))
+)
+"nth0.ml" 20 340 349 "nth0.ml" 20 340 352
+type(
+  ((int -> ((list|x_3:x_3 >= 1 && x_3 <> 0| Bottom) -> Bottom)) /\ 
+   (x_5:int -> ((list|x_8:x_8 >= 1 && x_8 <> 0| {x_10:int | x_5 = 0}) -> int)))
+)

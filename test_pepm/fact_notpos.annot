@@ -1,0 +1,12 @@
+"fact_notpos.ml" 3 23 31 "fact_notpos.ml" 3 23 35
+type(
+  ((int -> int) /\ (int -> int))
+)
+"fact_notpos.ml" 9 96 106 "fact_notpos.ml" 9 96 110
+type(
+  ((int -> int) /\ (int -> int))
+)
+"fact_notpos.ml" 14 163 167 "fact_notpos.ml" 14 163 171
+type(
+  ((int -> int) /\ (int -> int))
+)

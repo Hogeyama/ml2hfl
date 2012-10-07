@@ -1,0 +1,95 @@
+TRecS 1.34: Type-based model checker for higher-order recursion schemes
+analyzing test_pepm/l-zipmap.hors...
+The number of rewrite rules: 31
+The size of recursion scheme: 226
+The number of states: 2
+The property is satisfied.
+Bottom0 : 
+  
+F_1001 : 
+  
+F_1005 : 
+  0 -> Top -> Top -> 0 -> q0
+  
+F_1007 : 
+  (0 -> Top -> q0) -> 0 -> q0
+  (0 -> Top -> q0) -> 1 -> q0
+  
+F_1010 : 
+  (0 -> Top -> q0) -> 0 -> Top -> q0
+  
+F_1012 : 
+  (0 -> Top -> q0) -> 0 -> Top -> q0
+  
+F_1015 : 
+  (0 -> Top -> q0) -> 0 -> 0 -> q0
+  
+F_1019 : 
+  (0 -> Top -> q0) -> 0 -> Top -> 0 -> q0
+  
+F_1022 : 
+  0 -> (0 -> Top -> q0) -> 0 -> q0
+  0 -> (0 -> Top -> q0) -> 1 -> q0
+  
+F_1024 : 
+  (0 -> Top -> q0) -> 0 -> q0
+  
+F_1026 : 
+  (0 -> Top -> q0) -> 0 -> q0
+  
+F_1029 : 
+  0 -> (0 -> Top -> q0) -> 1 -> q0
+  
+F_1030 : 
+  0 -> (0 -> Top -> q0) -> q0
+  
+F_1033 : 
+  0 -> (0 -> Top -> q0) -> 0 -> q0
+  
+F_1035 : 
+  (0 -> Top -> q0) -> 0 -> Top -> q0
+  
+F_1044 : 
+  
+F_1046 : 
+  
+F_1049 : 
+  
+F_944 : 
+  0 -> Top -> q0
+  
+F_948 : 
+  0 -> Top -> 0 -> Top -> q0
+  
+F_951 : 
+  (0 -> Top -> q0) -> 0 -> Top -> q0
+  
+F_954 : 
+  (0 -> Top -> q0) -> 0 -> Top -> q0
+  
+F_995 : 
+  0 -> q0
+  
+F_996 : 
+  0 -> q0
+  
+F_999 : 
+  Top -> Top -> 0 -> q0
+  
+Fail_15 : 
+  
+Fail_16 : 
+  
+Fail_17 : 
+  
+Main_1 : 
+  q0
+  
+Map : 
+  (0 -> Top -> q0) -> q0
+  
+Zip : 
+  0 -> (0 -> Top -> q0) -> q0
+  
+The number of expansions: 492
+Elapsed Time: 0.008sec

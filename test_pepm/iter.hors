@@ -1,0 +1,41 @@
+%BEGING
+Main_1  -> Make_list F_755  .
+Bottom0  -> unit .
+F_755 x2_725  -> Iter F_757  (F_760 x2_725  ) unit  .
+F_757 x_639 k_check_640  -> F_831 k_check_640  x_639  .
+F_760 x2_759 x__740  -> x2_759 (F_763 x__740  ) .
+F_763 x__762 x__741  -> F_827 x__762  x__741  .
+F_768 f_765 xs2_766 k_iter_767 x_691  -> l0 (xs2_766 (F_773 f_765  xs2_766  k_iter_767  ) ) .
+F_773 f_770 xs2_771 k_iter_772 x_707  -> F_845 f_770  x_707  (Iter (F_776 f_770  ) (F_779 xs2_771  ) k_iter_772  ) .
+F_776 f_775 x__750 x_853  -> F_841 f_775  x__750  x_853  .
+F_779 xs2_778 k_iter_xs_prime__721  -> xs2_778 (F_782 k_iter_xs_prime__721  ) .
+F_782 k_iter_xs_prime__781 x__749  -> F_843 k_iter_xs_prime__781  x__749  .
+F_784 k_make_list_732  -> Bottom0 .
+F_787 k_make_list_786 x2_736  -> k_make_list_786 (F_790 x2_736  ) .
+F_790 x2_789 k_make_list_cons_make_list_658  -> br (F_850 x2_789  k_make_list_cons_make_list_658  0  ) (F_850 x2_789  k_make_list_cons_make_list_658  1  ) .
+F_793 k_make_list_cons_make_list_792 x__753  -> F_852 k_make_list_cons_make_list_792  x__753  .
+F_827 x__826 b_796  -> _case 2 b_796  (x__826 0  ) (br (x__826 0  ) (x__826 1  ) ) .
+F_829 k_check_828 b_798  -> _case 2 b_798  (l0 k_check_828  ) (l1 (Fail 0  k_check_828  ) ) .
+F_831 k_check_830 b_800  -> _case 2 b_800  (F_829 k_check_830  0  ) (br (F_829 k_check_830  0  ) (F_829 k_check_830  1  ) ) .
+F_835 f_832 xs2_833 k_iter_834 b_802  -> _case 2 b_802  (l0 k_iter_834  ) (l1 (br (F_839 f_832  xs2_833  k_iter_834  0  ) (F_839 f_832  xs2_833  k_iter_834  1  ) ) ) .
+F_839 f_836 xs2_837 k_iter_838 b_804  -> _case 2 b_804  (l0 (xs2_837 (F_768 f_836  xs2_837  k_iter_838  ) ) ) (l1 (l1 Bottom0  ) ) .
+F_841 f_840 b_808 x_854  -> _case 2 b_808  (f_840 0  x_854  ) (F_860 f_840  x_854  ) .
+F_843 k_iter_xs_prime__842 b_812  -> _case 2 b_812  (k_iter_xs_prime__842 0  ) (br (k_iter_xs_prime__842 0  ) (k_iter_xs_prime__842 1  ) ) .
+F_845 f_844 b_816 x_856  -> _case 2 b_816  (f_844 0  x_856  ) (F_863 f_844  x_856  ) .
+F_847 k_make_list_846 b_818  -> _case 2 b_818  (l0 (k_make_list_846 F_784  ) ) (l1 (Make_list (F_787 k_make_list_846  ) ) ) .
+F_850 x2_848 k_make_list_cons_make_list_849 b_820  -> _case 2 b_820  (l0 (k_make_list_cons_make_list_849 0  ) ) (l1 (x2_848 (F_793 k_make_list_cons_make_list_849  ) ) ) .
+F_852 k_make_list_cons_make_list_851 b_824  -> _case 2 b_824  (k_make_list_cons_make_list_851 0  ) (br (k_make_list_cons_make_list_851 0  ) (k_make_list_cons_make_list_851 1  ) ) .
+F_860 f_859 x_855  -> br (f_859 0  x_855  ) (f_859 1  x_855  ) .
+F_863 f_862 x_857  -> br (f_862 0  x_857  ) (f_862 1  x_857  ) .
+Fail b k  -> event_fail k  .
+Iter f xs2 k_iter  -> br (F_835 f  xs2  k_iter  0  ) (F_835 f  xs2  k_iter  1  ) .
+Make_list k_make_list  -> br (F_847 k_make_list  0  ) (F_847 k_make_list  1  ) .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

@@ -1,0 +1,18 @@
+%BEGING
+Main_1  -> F_2 F_295  0  unit  .
+Bottom0  -> unit .
+F_2 x q k_f  -> br (F_305 x  q  k_f  0  ) (F_305 x  q  k_f  1  ) .
+F_295 k_c_260  -> k_c_260 .
+F_305 x_302 q_303 k_f_304 b_296  -> _case 2 b_296  (l0 (x_302 k_f_304  ) ) (l1 (F_311 x_302  k_f_304  q_303  ) ) .
+F_308 x_306 k_f_307 b_298  -> _case 2 b_298  (l0 (x_306 (F_2 x_306  0  k_f_307  ) ) ) (l1 (Fail 0  Bottom0  ) ) .
+F_311 x_309 k_f_310 b_300  -> _case 2 b_300  (F_308 x_309  k_f_310  0  ) (br (F_308 x_309  k_f_310  0  ) (F_308 x_309  k_f_310  1  ) ) .
+Fail b_1 k  -> event_fail k  .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

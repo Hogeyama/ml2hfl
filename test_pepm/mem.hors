@@ -1,0 +1,51 @@
+%BEGING
+Main_1  -> Make_list F_1840  .
+Bottom0  -> unit .
+F_1840 x1_1714 x2_1715  -> br (F_1931 x1_1714  x2_1715  0  ) (F_1931 x1_1714  x2_1715  1  ) .
+F_1843 x2_1842 x__1829  -> x2_1842 (F_1846 x__1829  ) .
+F_1846 x__1845 x__1830  -> F_1934 x__1845  x__1830  .
+F_1848 b_1742  -> F_1936 b_1742  .
+F_1850 k_make_list_1757  -> Bottom0 .
+F_1853 k_make_list_1852 x1_1761 x2_1762  -> F_1940 k_make_list_1852  x1_1761  (F_1856 x2_1762  ) .
+F_1856 x2_1855 k_make_list_cons_make_list_1692  -> br (F_1943 x2_1855  k_make_list_cons_make_list_1692  0  ) (F_1943 x2_1855  k_make_list_cons_make_list_1692  1  ) .
+F_1859 k_make_list_cons_make_list_1858 x__1834  -> F_1945 k_make_list_cons_make_list_1858  x__1834  .
+F_1863 xs2_1861 k_mem_1862 x_1786  -> l0 (xs2_1861 (F_1867 xs2_1861  k_mem_1862  ) ) .
+F_1867 xs2_1865 k_mem_1866 x_1802  -> F_1974 xs2_1865  k_mem_1866  x_1802  .
+F_1870 xs2_1869 k_mem_xs_1821  -> xs2_1869 (F_1873 k_mem_xs_1821  ) .
+F_1873 k_mem_xs_1872 x__1838  -> F_1967 k_mem_xs_1872  x__1838  .
+F_1876 k_mem_1875 x__1837  -> F_1965 k_mem_1875  x__1837  .
+F_1931 x1_1929 x2_1930 b_1877  -> _case 2 b_1877  (l0 (l0 (l0 unit  ) ) ) (l1 (l1 (F_1932 x1_1929  0  (F_1843 x2_1930  ) F_1848  ) ) ) .
+F_1932 b_1881 x_1975 x_1976 x_1977  -> _case 2 b_1881  (Mem 0  x_1975  x_1976  x_1977  ) (F_1991 x_1975  x_1976  x_1977  ) .
+F_1934 x__1933 b_1885  -> _case 2 b_1885  (x__1933 0  ) (br (x__1933 0  ) (x__1933 1  ) ) .
+F_1935 b_1887  -> _case 2 b_1887  (l0 unit  ) (l1 (Fail 0  unit  ) ) .
+F_1936 b_1889  -> _case 2 b_1889  (F_1935 0  ) (br (F_1935 0  ) (F_1935 1  ) ) .
+F_1938 k_make_list_1937 b_1891  -> _case 2 b_1891  (l0 (k_make_list_1937 0  F_1850  ) ) (l1 (Make_list (F_1853 k_make_list_1937  ) ) ) .
+F_1940 k_make_list_1939 b_1895 x_1981  -> _case 2 b_1895  (k_make_list_1939 0  x_1981  ) (F_1994 k_make_list_1939  x_1981  ) .
+F_1943 x2_1941 k_make_list_cons_make_list_1942 b_1897  -> _case 2 b_1897  (l0 (k_make_list_cons_make_list_1942 0  ) ) (l1 (x2_1941 (F_1859 k_make_list_cons_make_list_1942  ) ) ) .
+F_1945 k_make_list_cons_make_list_1944 b_1901  -> _case 2 b_1901  (k_make_list_cons_make_list_1944 0  ) (br (k_make_list_cons_make_list_1944 0  ) (k_make_list_cons_make_list_1944 1  ) ) .
+F_1949 xs10__1946 xs2_1947 k_mem_1948 b_1903  -> _case 2 b_1903  (l0 (k_mem_1948 1  ) ) (l1 (F_1955 xs2_1947  k_mem_1948  xs10__1946  ) ) .
+F_1952 xs2_1950 k_mem_1951 b_1905  -> _case 2 b_1905  (l0 (xs2_1950 (F_1863 xs2_1950  k_mem_1951  ) ) ) (l1 (l1 Bottom0  ) ) .
+F_1955 xs2_1953 k_mem_1954 b_1907  -> _case 2 b_1907  (F_1952 xs2_1953  k_mem_1954  0  ) (br (F_1952 xs2_1953  k_mem_1954  0  ) (F_1952 xs2_1953  k_mem_1954  1  ) ) .
+F_1959 xs10__1956 xs2_1957 k_mem_1958 b_1909  -> _case 2 b_1909  (F_1949 xs10__1956  xs2_1957  k_mem_1958  1  ) (br (F_1949 xs10__1956  xs2_1957  k_mem_1958  0  ) (F_1949 xs10__1956  xs2_1957  k_mem_1958  1  ) ) .
+F_1963 xs10__1960 xs2_1961 k_mem_1962 b_1911  -> _case 2 b_1911  (F_1959 xs10__1960  xs2_1961  k_mem_1962  0  ) (F_1959 xs10__1960  xs2_1961  k_mem_1962  xs10__1960  ) .
+F_1965 k_mem_1964 b_1915  -> _case 2 b_1915  (k_mem_1964 0  ) (br (k_mem_1964 0  ) (k_mem_1964 1  ) ) .
+F_1967 k_mem_xs_1966 b_1919  -> _case 2 b_1919  (k_mem_xs_1966 0  ) (br (k_mem_xs_1966 0  ) (k_mem_xs_1966 1  ) ) .
+F_1970 xs2_1968 k_mem_1969 b_1921  -> _case 2 b_1921  (l0 (k_mem_1969 0  ) ) (l1 (F_1996 (F_1870 xs2_1968  ) (F_1876 k_mem_1969  ) ) ) .
+F_1971 b_1923 x_1985 x_1986  -> F_1998 b_1923  x_1985  x_1986  .
+F_1974 xs2_1972 k_mem_1973 b_1927  -> _case 2 b_1927  (F_1970 xs2_1972  k_mem_1973  0  ) (br (F_1970 xs2_1972  k_mem_1973  0  ) (F_1970 xs2_1972  k_mem_1973  1  ) ) .
+F_1991 x_1978 x_1979 x_1980  -> br (Mem 0  x_1978  x_1979  x_1980  ) (Mem 1  x_1978  x_1979  x_1980  ) .
+F_1994 k_make_list_1993 x_1982  -> br (k_make_list_1993 0  x_1982  ) (k_make_list_1993 1  x_1982  ) .
+F_1996 x_1983 x_1984  -> br (F_1971 0  x_1983  x_1984  ) (F_1971 1  x_1983  x_1984  ) .
+F_1998 x_1987 x_1988 x_1989  -> br (Mem 0  x_1987  x_1988  x_1989  ) (Mem 1  x_1987  x_1988  x_1989  ) .
+Fail b k  -> event_fail k  .
+Make_list k_make_list  -> br (F_1938 k_make_list  0  ) (F_1938 k_make_list  1  ) .
+Mem xs10_ xs11_ xs2 k_mem  -> F_1963 xs10_  xs2  k_mem  xs11_  .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

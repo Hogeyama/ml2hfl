@@ -1,0 +1,12 @@
+"sum.ml" 1 0 8 "sum.ml" 1 0 11
+type(
+  (x_1:int -> {x_2:int | x_1 <= x_2})
+)
+"sum.ml" 5 46 54 "sum.ml" 5 46 57
+type(
+  (x_1:int -> {x_2:int | x_1 <= x_2})
+)
+"sum.ml" 6 64 90 "sum.ml" 6 64 93
+type(
+  (x_1:int -> {x_2:int | x_1 <= x_2})
+)

@@ -1,0 +1,221 @@
+%BEGING
+Main_1  -> F_2 .
+Bottom0  -> unit .
+Cons_filter b x2 xs2 k_filter_cons_filter  -> k_filter_cons_filter (F_4510 b  x2  xs2  ) .
+Cons_make_list xs2 k_make_list_cons_make_list  -> k_make_list_cons_make_list (F_cons_make_list_6 xs2  ) .
+Cons_make_list_list x2 xs1 xs2 k_make_list_list_cons_make_list_list  -> F_4512 k_make_list_list_cons_make_list_list  xs1  (F_cons_make_list_list_8 x2  xs2  ) .
+Cons_map b xs2 k_map_cons_map  -> k_map_cons_map (F_4513 b  xs2  ) .
+F_2  -> Main_58 F_3  .
+F_3 x2  -> unit .
+F_4294 p_4291 x2_4292 k_filter_4293 x__3689  -> F_4527 p_4291  x2_4292  k_filter_4293  x__3689  .
+F_4297 k_filter_4296 x__3697  -> F_4529 k_filter_4296  x__3697  .
+F_4301 x2_4299 k_head_4300 x__3897  -> F_4548 x2_4299  k_head_4300  x__3897  .
+F_4304 k_head_4303 x__3901  -> F_4550 k_head_4303  x__3901  .
+F_4307 k_make_list_list_4306 x__3986 x_4706  -> F_4561 k_make_list_list_4306  x__3986  x__3986  x_4706  .
+F_4310 k_make_list_list_4309 x__3996 x_4714  -> F_4563 k_make_list_list_4309  x__3996  x_4714  .
+F_4314 k_make_list_list_4312 x2_4313 x_0_4022 x_1_4022 x_4717  -> F_4573 k_make_list_list_4312  x2_4313  x_1_4022  x_0_4022  x_4717  .
+F_4317 k_make_list_list_4316 x__4013 x_4722  -> F_4575 k_make_list_list_4316  x__4013  x_4722  .
+F_4320 k_make_list_list_4319 x__4031 x_4731  -> F_4581 k_make_list_list_4319  x__4031  x_4731  .
+F_4325 f_4322 x2_4323 k_map_4324 x__4091  -> F_4589 f_4322  x2_4323  k_map_4324  x__4091  .
+F_4328 k_map_4327 x__4099  -> F_4591 k_map_4327  x__4099  .
+F_4332 x2_4330 k_ne_4331 x__4204  -> F_4602 x2_4330  k_ne_4331  x__4204  .
+F_4335 k_ne_4334 x__4208  -> F_4604 k_ne_4334  x__4208  .
+F_4338 k_main_4337 x_0_4244 x_1_4244 x_4758  -> F_4610 k_main_4337  x_1_4244  x_4758  .
+F_4341 k_make_list_list_4340 x_0_4258 x_1_4258 x_4762  -> F_4623 k_make_list_list_4340  x_0_4258  x_1_4258  x_1_4258  x_4762  .
+F_4510 b_4344 x_4624 x_4625 x_4626  -> _case 2 b_4344  (F_cons_filter_4 0  x_4624  x_4625  x_4626  ) (F_4773 x_4624  x_4625  x_4626  ) .
+F_4512 k_make_list_list_cons_make_list_list_4511 b_4348 x_4630  -> _case 2 b_4348  (k_make_list_list_cons_make_list_list_4511 0  x_4630  ) (F_4776 k_make_list_list_cons_make_list_list_4511  x_4630  ) .
+F_4513 b_4352 x_4632 x_4633  -> _case 2 b_4352  (F_cons_map_10 0  x_4632  x_4633  ) (F_4778 x_4632  x_4633  ) .
+F_4514 b_4356 x_4636 x_4637 x_4638  -> _case 2 b_4356  (F_cons_filter_5 0  x_4636  x_4637  x_4638  ) (F_4780 x_4636  x_4637  x_4638  ) .
+F_4515 b_4360 x_4642 x_4643  -> _case 2 b_4360  (F_cons_map_11 0  x_4642  x_4643  ) (F_4782 x_4642  x_4643  ) .
+F_4517 k_filter_4516 b_4362  -> _case 2 b_4362  Bottom0  (l0 (k_filter_4516 F_filter_13  ) ) .
+F_4518 b_4366 x_4646 x_4647 x_4648  -> _case 2 b_4366  (F_filter_14 0  x_4646  x_4647  x_4648  ) (F_4784 x_4646  x_4647  x_4648  ) .
+F_4519 b_4370 x_4652 x_4653  -> _case 2 b_4370  (F_filter_15 0  x_4652  x_4653  ) (F_4786 x_4652  x_4653  ) .
+F_4523 p_4520 x2_4521 k_filter_4522 b_4372  -> F_filter_17 k_filter_4522  p_4520  x2_4521  b_4372  .
+F_4527 p_4524 x2_4525 k_filter_4526 b_4374  -> _case 2 b_4374  (F_4523 p_4524  x2_4525  k_filter_4526  0  ) (br (F_4523 p_4524  x2_4525  k_filter_4526  0  ) (F_4523 p_4524  x2_4525  k_filter_4526  1  ) ) .
+F_4529 k_filter_4528 b_4378  -> _case 2 b_4378  (k_filter_4528 0  ) (br (k_filter_4528 0  ) (k_filter_4528 1  ) ) .
+F_4531 k_filter_4530 b_4380  -> _case 2 b_4380  Bottom0  (l1 (k_filter_4530 1  ) ) .
+F_4532 b_4382  -> _case 2 b_4382  Bottom0  (l1 Bottom0  ) .
+F_4533 b_4386 x_4656 x_4657 x_4658 x_4659  -> _case 2 b_4386  (F_filter_19 0  x_4656  x_4657  x_4658  x_4659  ) (F_4788 x_4656  x_4657  x_4658  x_4659  ) .
+F_4534 b_4390 x_4664 x_4665 x_4666 x_4667  -> _case 2 b_4390  (F_filter_20 0  x_4664  x_4665  x_4666  x_4667  ) (F_4790 x_4664  x_4665  x_4666  x_4667  ) .
+F_4536 p_4535 b_4400 x_4678 x_4679  -> Filter p_4535  b_4400  x_4678  x_4679  .
+F_4537 b_4398 x_4674 x_4675  -> _case 2 b_4398  (F_filter_21 0  x_4674  x_4675  ) (F_4795 x_4674  x_4675  ) .
+F_4538 b_4394 x_4680 x_4681 x_4682  -> _case 2 b_4394  (F_filter_22 0  x_4680  x_4681  x_4682  ) (F_4797 x_4680  x_4681  x_4682  ) .
+F_4540 p_4539 b_4406 x_4692 x_4693  -> Filter p_4539  b_4406  x_4692  x_4693  .
+F_4541 b_4404 x_4688 x_4689  -> _case 2 b_4404  (F_filter_23 0  x_4688  x_4689  ) (F_4802 x_4688  x_4689  ) .
+F_4542 b_4410 x_4694 x_4695 x_4696  -> _case 2 b_4410  (Cons_filter 0  x_4694  x_4695  x_4696  ) (F_4804 x_4694  x_4695  x_4696  ) .
+F_4545 x2_4543 k_head_4544 b_4412  -> F_head_29 k_head_4544  x2_4543  b_4412  .
+F_4548 x2_4546 k_head_4547 b_4414  -> _case 2 b_4414  (F_4545 x2_4546  k_head_4547  0  ) (br (F_4545 x2_4546  k_head_4547  0  ) (F_4545 x2_4546  k_head_4547  1  ) ) .
+F_4550 k_head_4549 b_4418  -> _case 2 b_4418  (k_head_4549 0  ) (br (k_head_4549 0  ) (k_head_4549 1  ) ) .
+F_4551 b_4420  -> _case 2 b_4420  Bottom0  (l1 Bottom0  ) .
+F_4552 b_4422 x_4700 x_4701  -> Filter Ne  b_4422  x_4700  x_4701  .
+F_4553 b_4424 x_4702 x_4703  -> _case 2 b_4424  (F_4552 0  x_4702  x_4703  ) (F_4806 x_4702  x_4703  ) .
+F_4556 k_make_list_list_4554 x__4555 b_4426 x_4707  -> F_4558 k_make_list_list_4554  x__4555  b_4426  x_4707  .
+F_4558 k_make_list_list_4557 b_4430 x_4708 x_4709  -> _case 2 b_4430  (k_make_list_list_4557 0  x_4708  x_4709  ) (F_4809 k_make_list_list_4557  x_4708  x_4709  ) .
+F_4561 k_make_list_list_4559 x__4560 b_4432 x_4712  -> _case 2 b_4432  (F_4556 k_make_list_list_4559  x__4560  0  x_4712  ) (F_4813 k_make_list_list_4559  x__4560  x_4712  ) .
+F_4563 k_make_list_list_4562 b_4436 x_4715  -> _case 2 b_4436  (k_make_list_list_4562 0  x_4715  ) (F_4816 k_make_list_list_4562  x_4715  ) .
+F_4566 k_make_list_list_4564 x2_4565 b_4438 x_4718  -> F_make_list_list_41 (F_4317 k_make_list_list_4564  ) x2_4565  b_4438  x_4718  .
+F_4569 k_make_list_list_4567 x2_4568 b_4440 x_4719  -> _case 2 b_4440  (F_4566 k_make_list_list_4567  x2_4568  0  x_4719  ) (F_4820 k_make_list_list_4567  x2_4568  x_4719  ) .
+F_4573 k_make_list_list_4570 x2_4571 x_1_4572 b_4442 x_4721  -> _case 2 b_4442  (F_4569 k_make_list_list_4570  x2_4571  0  x_4721  ) (F_4569 k_make_list_list_4570  x2_4571  x_1_4572  x_4721  ) .
+F_4575 k_make_list_list_4574 b_4446 x_4723  -> _case 2 b_4446  (k_make_list_list_4574 0  x_4723  ) (F_4823 k_make_list_list_4574  x_4723  ) .
+F_4577 x2_4576 b_4448 x_4725 x_4726  -> Cons_make_list_list x2_4576  b_4448  x_4725  x_4726  .
+F_4579 x2_4578 b_4450 x_4727 x_4728  -> _case 2 b_4450  (F_4577 x2_4578  0  x_4727  x_4728  ) (F_4826 x2_4578  x_4727  x_4728  ) .
+F_4581 k_make_list_list_4580 b_4454 x_4732  -> _case 2 b_4454  (k_make_list_list_4580 0  x_4732  ) (F_4829 k_make_list_list_4580  x_4732  ) .
+F_4585 f_4582 x2_4583 k_map_4584 b_4456  -> F_map_47 f_4582  k_map_4584  x2_4583  b_4456  .
+F_4589 f_4586 x2_4587 k_map_4588 b_4458  -> _case 2 b_4458  (F_4585 f_4586  x2_4587  k_map_4588  0  ) (br (F_4585 f_4586  x2_4587  k_map_4588  0  ) (F_4585 f_4586  x2_4587  k_map_4588  1  ) ) .
+F_4591 k_map_4590 b_4462  -> _case 2 b_4462  (k_map_4590 0  ) (br (k_map_4590 0  ) (k_map_4590 1  ) ) .
+F_4592 b_4464  -> _case 2 b_4464  Bottom0  (l1 Bottom0  ) .
+F_4593 b_4468 x_4734 x_4735 x_4736  -> _case 2 b_4468  (F_map_49 0  x_4734  x_4735  x_4736  ) (F_4831 x_4734  x_4735  x_4736  ) .
+F_4594 b_4476 x_4740 x_4741  -> _case 2 b_4476  (F_map_50 0  x_4740  x_4741  ) (F_4833 x_4740  x_4741  ) .
+F_4595 b_4472 x_4744 x_4745  -> _case 2 b_4472  (F_map_51 0  x_4744  x_4745  ) (F_4835 x_4744  x_4745  ) .
+F_4596 b_4480 x_4748 x_4749  -> _case 2 b_4480  (Cons_map 0  x_4748  x_4749  ) (F_4837 x_4748  x_4749  ) .
+F_4599 x2_4597 k_ne_4598 b_4482  -> F_ne_56 k_ne_4598  x2_4597  b_4482  .
+F_4602 x2_4600 k_ne_4601 b_4484  -> _case 2 b_4484  (F_4599 x2_4600  k_ne_4601  0  ) (br (F_4599 x2_4600  k_ne_4601  0  ) (F_4599 x2_4600  k_ne_4601  1  ) ) .
+F_4604 k_ne_4603 b_4488  -> _case 2 b_4488  (k_ne_4603 0  ) (br (k_ne_4603 0  ) (k_ne_4603 1  ) ) .
+F_4605 b_4490  -> _case 2 b_4490  Bottom0  (l1 Bottom0  ) .
+F_4606 b_4494 x_4752 x_4753 x_4754  -> _case 2 b_4494  (F_filter_12 0  x_4752  x_4753  x_4754  ) (F_4839 x_4752  x_4753  x_4754  ) .
+F_4608 k_main_4607 b_4496 x_4759  -> F_main_31 k_main_4607  b_4496  x_4759  .
+F_4610 k_main_4609 b_4498 x_4760  -> _case 2 b_4498  (F_4608 k_main_4609  0  x_4760  ) (F_4842 k_main_4609  x_4760  ) .
+F_4614 k_make_list_list_4611 x_0_4612 x_1_4613 b_4500 x_4763  -> F_4619 k_make_list_list_4611  x_1_4613  x_0_4612  b_4500  x_4763  .
+F_4616 k_make_list_list_4615 b_4504 x_4766 x_4767  -> _case 2 b_4504  (k_make_list_list_4615 0  x_4766  x_4767  ) (F_4845 k_make_list_list_4615  x_4766  x_4767  ) .
+F_4619 k_make_list_list_4617 x_1_4618 b_4506 x_4764 x_4765  -> _case 2 b_4506  (F_4616 k_make_list_list_4617  0  x_4764  x_4765  ) (F_4616 k_make_list_list_4617  x_1_4618  x_4764  x_4765  ) .
+F_4623 k_make_list_list_4620 x_0_4621 x_1_4622 b_4508 x_4770  -> _case 2 b_4508  (F_4614 k_make_list_list_4620  x_0_4621  x_1_4622  0  x_4770  ) (F_4850 k_make_list_list_4620  x_0_4621  x_1_4622  x_4770  ) .
+F_4773 x_4627 x_4628 x_4629  -> br (F_cons_filter_4 0  x_4627  x_4628  x_4629  ) (F_cons_filter_4 1  x_4627  x_4628  x_4629  ) .
+F_4776 k_make_list_list_cons_make_list_list_4775 x_4631  -> br (k_make_list_list_cons_make_list_list_4775 0  x_4631  ) (k_make_list_list_cons_make_list_list_4775 1  x_4631  ) .
+F_4778 x_4634 x_4635  -> br (F_cons_map_10 0  x_4634  x_4635  ) (F_cons_map_10 1  x_4634  x_4635  ) .
+F_4780 x_4639 x_4640 x_4641  -> br (F_cons_filter_5 0  x_4639  x_4640  x_4641  ) (F_cons_filter_5 1  x_4639  x_4640  x_4641  ) .
+F_4782 x_4644 x_4645  -> br (F_cons_map_11 0  x_4644  x_4645  ) (F_cons_map_11 1  x_4644  x_4645  ) .
+F_4784 x_4649 x_4650 x_4651  -> br (F_filter_14 0  x_4649  x_4650  x_4651  ) (F_filter_14 1  x_4649  x_4650  x_4651  ) .
+F_4786 x_4654 x_4655  -> br (F_filter_15 0  x_4654  x_4655  ) (F_filter_15 1  x_4654  x_4655  ) .
+F_4788 x_4660 x_4661 x_4662 x_4663  -> br (F_filter_19 0  x_4660  x_4661  x_4662  x_4663  ) (F_filter_19 1  x_4660  x_4661  x_4662  x_4663  ) .
+F_4790 x_4668 x_4669 x_4670 x_4671  -> br (F_filter_20 0  x_4668  x_4669  x_4670  x_4671  ) (F_filter_20 1  x_4668  x_4669  x_4670  x_4671  ) .
+F_4793 p_4792 x_4672 x_4673  -> br (F_4536 p_4792  0  x_4672  x_4673  ) (F_4536 p_4792  1  x_4672  x_4673  ) .
+F_4795 x_4676 x_4677  -> br (F_filter_21 0  x_4676  x_4677  ) (F_filter_21 1  x_4676  x_4677  ) .
+F_4797 x_4683 x_4684 x_4685  -> br (F_filter_22 0  x_4683  x_4684  x_4685  ) (F_filter_22 1  x_4683  x_4684  x_4685  ) .
+F_4800 p_4799 x_4686 x_4687  -> br (F_4540 p_4799  0  x_4686  x_4687  ) (F_4540 p_4799  1  x_4686  x_4687  ) .
+F_4802 x_4690 x_4691  -> br (F_filter_23 0  x_4690  x_4691  ) (F_filter_23 1  x_4690  x_4691  ) .
+F_4804 x_4697 x_4698 x_4699  -> br (Cons_filter 0  x_4697  x_4698  x_4699  ) (Cons_filter 1  x_4697  x_4698  x_4699  ) .
+F_4806 x_4704 x_4705  -> br (F_4552 0  x_4704  x_4705  ) (F_4552 1  x_4704  x_4705  ) .
+F_4809 k_make_list_list_4808 x_4710 x_4711  -> br (k_make_list_list_4808 0  x_4710  x_4711  ) (k_make_list_list_4808 1  x_4710  x_4711  ) .
+F_4813 k_make_list_list_4811 x__4812 x_4713  -> br (F_4556 k_make_list_list_4811  x__4812  0  x_4713  ) (F_4556 k_make_list_list_4811  x__4812  1  x_4713  ) .
+F_4816 k_make_list_list_4815 x_4716  -> br (k_make_list_list_4815 0  x_4716  ) (k_make_list_list_4815 1  x_4716  ) .
+F_4820 k_make_list_list_4818 x2_4819 x_4720  -> br (F_4566 k_make_list_list_4818  x2_4819  0  x_4720  ) (F_4566 k_make_list_list_4818  x2_4819  1  x_4720  ) .
+F_4823 k_make_list_list_4822 x_4724  -> br (k_make_list_list_4822 0  x_4724  ) (k_make_list_list_4822 1  x_4724  ) .
+F_4826 x2_4825 x_4729 x_4730  -> br (F_4577 x2_4825  0  x_4729  x_4730  ) (F_4577 x2_4825  1  x_4729  x_4730  ) .
+F_4829 k_make_list_list_4828 x_4733  -> br (k_make_list_list_4828 0  x_4733  ) (k_make_list_list_4828 1  x_4733  ) .
+F_4831 x_4737 x_4738 x_4739  -> br (F_map_49 0  x_4737  x_4738  x_4739  ) (F_map_49 1  x_4737  x_4738  x_4739  ) .
+F_4833 x_4742 x_4743  -> br (F_map_50 0  x_4742  x_4743  ) (F_map_50 1  x_4742  x_4743  ) .
+F_4835 x_4746 x_4747  -> br (F_map_51 0  x_4746  x_4747  ) (F_map_51 1  x_4746  x_4747  ) .
+F_4837 x_4750 x_4751  -> br (Cons_map 0  x_4750  x_4751  ) (Cons_map 1  x_4750  x_4751  ) .
+F_4839 x_4755 x_4756 x_4757  -> br (F_filter_12 0  x_4755  x_4756  x_4757  ) (F_filter_12 1  x_4755  x_4756  x_4757  ) .
+F_4842 k_main_4841 x_4761  -> br (F_4608 k_main_4841  0  x_4761  ) (F_4608 k_main_4841  1  x_4761  ) .
+F_4845 k_make_list_list_4844 x_4768 x_4769  -> br (k_make_list_list_4844 0  x_4768  x_4769  ) (k_make_list_list_4844 1  x_4768  x_4769  ) .
+F_4850 k_make_list_list_4847 x_0_4848 x_1_4849 x_4771  -> br (F_4614 k_make_list_list_4847  x_0_4848  x_1_4849  0  x_4771  ) (F_4614 k_make_list_list_4847  x_0_4848  x_1_4849  1  x_4771  ) .
+F_cons_filter_4 b x2 xs2 k_filter_cons_filter  -> F_4514 b  x2  xs2  k_filter_cons_filter  .
+F_cons_filter_4851 b x2 xs2 k_filter_cons_filter  -> l0 (k_filter_cons_filter x2  ) .
+F_cons_filter_4852 b x2 xs2 k_filter_cons_filter  -> l1 (xs2 k_filter_cons_filter  ) .
+F_cons_filter_5 b x2 xs2 k_filter_cons_filter  -> br (F_cons_filter_4852 b  x2  xs2  k_filter_cons_filter  ) (F_cons_filter_4851 b  x2  xs2  k_filter_cons_filter  ) .
+F_cons_make_list_4853 xs2 k_make_list_cons_make_list  -> l0 k_make_list_cons_make_list  .
+F_cons_make_list_4854 xs2 k_make_list_cons_make_list  -> l1 (xs2 k_make_list_cons_make_list  ) .
+F_cons_make_list_6 xs2 k_make_list_cons_make_list  -> F_cons_make_list_7 xs2  k_make_list_cons_make_list  .
+F_cons_make_list_7 xs2 k_make_list_cons_make_list  -> br (F_cons_make_list_4854 xs2  k_make_list_cons_make_list  ) (F_cons_make_list_4853 xs2  k_make_list_cons_make_list  ) .
+F_cons_make_list_list_4855 x2 xs2 k_make_list_list_cons_make_list_list  -> l0 (k_make_list_list_cons_make_list_list x2  ) .
+F_cons_make_list_list_4856 x2 xs2 k_make_list_list_cons_make_list_list  -> l1 (xs2 k_make_list_list_cons_make_list_list  ) .
+F_cons_make_list_list_8 x2 xs2 k_make_list_list_cons_make_list_list  -> F_cons_make_list_list_9 x2  xs2  k_make_list_list_cons_make_list_list  .
+F_cons_make_list_list_9 x2 xs2 k_make_list_list_cons_make_list_list  -> br (F_cons_make_list_list_4856 x2  xs2  k_make_list_list_cons_make_list_list  ) (F_cons_make_list_list_4855 x2  xs2  k_make_list_list_cons_make_list_list  ) .
+F_cons_map_10 b xs2 k_map_cons_map  -> F_4515 b  xs2  k_map_cons_map  .
+F_cons_map_11 b xs2 k_map_cons_map  -> br (F_cons_map_4858 b  xs2  k_map_cons_map  ) (F_cons_map_4857 b  xs2  k_map_cons_map  ) .
+F_cons_map_4857 b xs2 k_map_cons_map  -> l0 k_map_cons_map  .
+F_cons_map_4858 b xs2 k_map_cons_map  -> l1 (xs2 k_map_cons_map  ) .
+F_filter_12 x1 p x2 k_filter  -> br (F_filter_4860 x1  p  x2  k_filter  ) (F_filter_4859 x1  p  x2  k_filter  ) .
+F_filter_13 k_filter  -> Bottom0 .
+F_filter_14 x1 p x2 k_filter  -> F_4519 x1  x2  (F_4294 p  x2  k_filter  ) .
+F_filter_15 x1 x2 k_filter  -> br (F_filter_4862 x1  x2  k_filter  ) (F_filter_4861 x1  x2  k_filter  ) .
+F_filter_16 k_filter x2  -> k_filter 0  .
+F_filter_17 k_filter p x2 b  -> br (F_filter_4864 k_filter  p  x2  b  ) (F_filter_4863 k_filter  p  x2  b  ) .
+F_filter_18 b k_filter p x2_2 x2_4  -> F_4533 b  p  x2_4  x2_2  k_filter  .
+F_filter_19 b p x2_3 x2_4 k_filter  -> p x2_3  (F_4534 b  k_filter  p  x2_3  x2_4  ) .
+F_filter_20 b k_filter p x2_3 x2_4  -> br (F_filter_4866 b  k_filter  p  x2_3  x2_4  ) (F_filter_4865 b  k_filter  p  x2_3  x2_4  ) .
+F_filter_21 b x2 k_filter_xs  -> x2 k_filter_xs  .
+F_filter_22 b k_filter x2_3 x2_5  -> F_4542 b  x2_3  x2_5  k_filter  .
+F_filter_23 b x2 k_filter_xs  -> x2 k_filter_xs  .
+F_filter_4859 x1 p x2 k_filter  -> F_4517 k_filter  x1  .
+F_filter_4860 x1 p x2 k_filter  -> l1 (F_4518 x1  p  x2  k_filter  ) .
+F_filter_4861 x1 x2 k_filter  -> l0 (x2 (F_filter_16 (F_4297 k_filter  ) ) ) .
+F_filter_4862 x1 x2 k_filter  -> F_4531 k_filter  x1  .
+F_filter_4863 k_filter p x2 b  -> l0 (x2 (F_filter_18 0  k_filter  p  x2  ) ) .
+F_filter_4864 k_filter p x2 b  -> F_4532 b  .
+F_filter_4865 b k_filter p x2_3 x2_4  -> l0 (F_4793 p  (F_4537 b  x2_4  ) (F_4538 b  k_filter  x2_3  ) ) .
+F_filter_4866 b k_filter p x2_3 x2_4  -> l1 (F_4800 p  (F_4541 b  x2_4  ) k_filter  ) .
+F_head_24 x2 k_head  -> br (F_head_4868 x2  k_head  ) (F_head_4867 x2  k_head  ) .
+F_head_25  -> Bottom0 .
+F_head_26 x2 k_head  -> F_head_27 x2  (F_4301 x2  k_head  ) .
+F_head_27 x2 k_head  -> br (F_head_4870 x2  k_head  ) (F_head_4869 x2  k_head  ) .
+F_head_28 k_head  -> k_head 0  .
+F_head_29 k_head x2 b  -> br (F_head_4872 k_head  x2  b  ) (F_head_4871 k_head  x2  b  ) .
+F_head_30 b k_head  -> k_head .
+F_head_4867 x2 k_head  -> l0 (Fail 0  F_head_25  ) .
+F_head_4868 x2 k_head  -> l1 (F_head_26 x2  k_head  ) .
+F_head_4869 x2 k_head  -> l0 (x2 (F_head_28 (F_4304 k_head  ) ) ) .
+F_head_4870 x2 k_head  -> l1 (k_head 1  ) .
+F_head_4871 k_head x2 b  -> l0 (x2 (F_head_30 0  k_head  ) ) .
+F_head_4872 k_head x2 b  -> F_4551 b  .
+F_main_31 k_main x1 x2  -> F_4553 x1  x2  (F_main_32 k_main  ) .
+F_main_32 k_main x2  -> Map Head  x2  k_main  .
+F_make_list_33 k_make_list  -> br (F_make_list_4874 k_make_list  ) (F_make_list_4873 k_make_list  ) .
+F_make_list_34 k_make_list  -> Bottom0 .
+F_make_list_35 k_make_list  -> Make_list (F_make_list_36 k_make_list  ) .
+F_make_list_36 k_make_list x2  -> Cons_make_list x2  k_make_list  .
+F_make_list_4873 k_make_list  -> l0 (k_make_list F_make_list_34  ) .
+F_make_list_4874 k_make_list  -> l1 (F_make_list_35 k_make_list  ) .
+F_make_list_list_37 k_make_list_list  -> br (F_make_list_list_4876 k_make_list_list  ) (F_make_list_list_4875 k_make_list_list  ) .
+F_make_list_list_38 k_make_list_list  -> Bottom0 .
+F_make_list_list_39 k_make_list_list  -> Make_list (F_make_list_list_40 (F_4310 k_make_list_list  ) ) .
+F_make_list_list_40 k_make_list_list x2  -> Make_list_list (F_4314 k_make_list_list  x2  ) .
+F_make_list_list_41 k_make_list_list x2_2 x1_3 x2_4  -> F_4579 x2_2  x1_3  x2_4  (F_4320 k_make_list_list  ) .
+F_make_list_list_4875 k_make_list_list  -> l0 (k_make_list_list 0  1  F_make_list_list_38  ) .
+F_make_list_list_4876 k_make_list_list  -> l1 (F_make_list_list_39 (F_4307 k_make_list_list  ) ) .
+F_map_42 f x2 k_map  -> br (F_map_4878 f  x2  k_map  ) (F_map_4877 f  x2  k_map  ) .
+F_map_43 k_map  -> Bottom0 .
+F_map_44 f x2 k_map  -> F_map_45 x2  (F_4325 f  x2  k_map  ) .
+F_map_45 x2 k_map  -> br (F_map_4880 x2  k_map  ) (F_map_4879 x2  k_map  ) .
+F_map_46 k_map x2  -> k_map 0  .
+F_map_47 f k_map x2 b  -> br (F_map_4882 f  k_map  x2  b  ) (F_map_4881 f  k_map  x2  b  ) .
+F_map_48 b f k_map x2_2 x2_4  -> f x2_4  (F_4593 b  f  k_map  x2_2  ) .
+F_map_4877 f x2 k_map  -> l0 (k_map F_map_43  ) .
+F_map_4878 f x2 k_map  -> l1 (F_map_44 f  x2  k_map  ) .
+F_map_4879 x2 k_map  -> l0 (x2 (F_map_46 (F_4328 k_map  ) ) ) .
+F_map_4880 x2 k_map  -> l1 (k_map 1  ) .
+F_map_4881 f k_map x2 b  -> l0 (x2 (F_map_48 0  f  k_map  x2  ) ) .
+F_map_4882 f k_map x2 b  -> F_4592 b  .
+F_map_49 b f k_map x2  -> Map f  (F_4594 b  x2  ) (F_4595 b  k_map  ) .
+F_map_50 b x2 k_map_xs  -> x2 k_map_xs  .
+F_map_51 b k_map x2  -> F_4596 b  x2  k_map  .
+F_ne_4883 x2 k_ne  -> l0 k_ne  .
+F_ne_4884 x2 k_ne  -> l1 (F_ne_53 x2  k_ne  ) .
+F_ne_4885 x2 k_ne  -> l0 (x2 (F_ne_55 (F_4335 k_ne  ) ) ) .
+F_ne_4886 x2 k_ne  -> l1 (k_ne 1  ) .
+F_ne_4887 k_ne x2 b  -> l0 (x2 (F_ne_57 0  k_ne  ) ) .
+F_ne_4888 k_ne x2 b  -> F_4605 b  .
+F_ne_52 x2 k_ne  -> br (F_ne_4884 x2  k_ne  ) (F_ne_4883 x2  k_ne  ) .
+F_ne_53 x2 k_ne  -> F_ne_54 x2  (F_4332 x2  k_ne  ) .
+F_ne_54 x2 k_ne  -> br (F_ne_4886 x2  k_ne  ) (F_ne_4885 x2  k_ne  ) .
+F_ne_55 k_ne  -> k_ne 0  .
+F_ne_56 k_ne x2 b  -> br (F_ne_4888 k_ne  x2  b  ) (F_ne_4887 k_ne  x2  b  ) .
+F_ne_57 b k_ne  -> k_ne .
+Fail b k  -> event_fail k  .
+Filter p x1 x2 k_filter  -> F_4606 x1  p  x2  k_filter  .
+Head x2 k_head  -> F_head_24 x2  k_head  .
+Main_58 k_main  -> Make_list_list (F_4338 k_main  ) .
+Make_list k_make_list  -> F_make_list_33 k_make_list  .
+Make_list_list k_make_list_list  -> F_make_list_list_37 (F_4341 k_make_list_list  ) .
+Map f x2 k_map  -> F_map_42 f  x2  k_map  .
+Ne x2 k_ne  -> F_ne_52 x2  k_ne  .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

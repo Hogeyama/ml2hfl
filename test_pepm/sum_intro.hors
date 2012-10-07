@@ -1,0 +1,19 @@
+%BEGING
+Main_1  -> Sum F_151  .
+F_151 x_137  -> F_166 x_137  .
+F_154 k_sum_153 x_147  -> F_170 k_sum_153  x_147  .
+F_165 b_155  -> _case 2 b_155  (l0 unit  ) (l1 (Fail 0  unit  ) ) .
+F_166 b_157  -> _case 2 b_157  (F_165 0  ) (br (F_165 0  ) (F_165 1  ) ) .
+F_168 k_sum_167 b_159  -> _case 2 b_159  (l0 (k_sum_167 0  ) ) (l1 (Sum (F_154 k_sum_167  ) ) ) .
+F_170 k_sum_169 b_163  -> _case 2 b_163  (k_sum_169 0  ) (br (k_sum_169 0  ) (k_sum_169 1  ) ) .
+Fail b k  -> event_fail k  .
+Sum k_sum  -> br (F_168 k_sum  0  ) (F_168 k_sum  1  ) .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

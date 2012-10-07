@@ -1,0 +1,30 @@
+"forall_leq.ml" 2 1 9 "forall_leq.ml" 2 1 16
+type(
+  ((Top -> ((list Bottom) -> {true})) /\ 
+   (({x_12:int | x_12 >= 0} -> {true}) ->
+        ((list {x_11:int | x_11 >= 0}) -> {true})))
+)
+"forall_leq.ml" 6 84 99 "forall_leq.ml" 6 84 106
+type(
+  ((Top -> ((list Bottom) -> {true})) /\ 
+   (({x_12:int | x_12 >= 0} -> {true}) ->
+        ((list {x_11:int | x_11 >= 0}) -> {true})))
+)
+"forall_leq.ml" 10 140 148 "forall_leq.ml" 10 140 157
+type(
+  (int -> (list {x_4:int | x_4 >= 0}))
+)
+"forall_leq.ml" 13 183 195 "forall_leq.ml" 13 183 204
+type(
+  (int -> (list {x_4:int | x_4 >= 0}))
+)
+"forall_leq.ml" 15 212 233 "forall_leq.ml" 15 212 240
+type(
+  ((Top -> ((list Bottom) -> {true})) /\ 
+   (({x_12:int | x_12 >= 0} -> {true}) ->
+        ((list {x_11:int | x_11 >= 0}) -> {true})))
+)
+"forall_leq.ml" 15 212 248 "forall_leq.ml" 15 212 257
+type(
+  (int -> (list {x_4:int | x_4 >= 0}))
+)

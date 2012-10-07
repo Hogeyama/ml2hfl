@@ -1,0 +1,33 @@
+"l-zipunzip.ml" 2 38 46 "l-zipunzip.ml" 2 38 51
+type(
+  (int ->
+       (((x_4:int -> ({x_5:int | x_4 = x_5 && x_4 = 0} -> int)) /\ 
+         (x_7:int -> ({x_8:int | x_7 = x_8 && x_7 <> 0} -> int))) -> int))
+)
+"l-zipunzip.ml" 6 89 93 "l-zipunzip.ml" 6 89 98
+type(
+  (int ->
+       (((x_4:int -> ({x_5:int | x_4 = x_5 && x_4 = 0} -> int)) /\ 
+         (x_7:int -> ({x_8:int | x_7 = x_8 && x_7 <> 0} -> int))) -> int))
+)
+"l-zipunzip.ml" 7 113 121 "l-zipunzip.ml" 7 113 124
+type(
+  ((x_1:int -> ({x_2:int | x_1 = x_2 && x_1 = 0} -> int)) /\ 
+   (x_4:int -> ({x_5:int | x_4 = x_5 && x_4 <> 0} -> int)))
+)
+"l-zipunzip.ml" 17 254 264 "l-zipunzip.ml" 17 254 267
+type(
+  ((x_1:int -> ({x_2:int | x_1 = x_2 && x_1 = 0} -> int)) /\ 
+   (x_4:int -> ({x_5:int | x_4 = x_5 && x_4 <> 0} -> int)))
+)
+"l-zipunzip.ml" 18 284 297 "l-zipunzip.ml" 18 284 302
+type(
+  (int ->
+       (((x_4:int -> ({x_5:int | x_4 = x_5 && x_4 = 0} -> int)) /\ 
+         (x_7:int -> ({x_8:int | x_7 = x_8 && x_7 <> 0} -> int))) -> int))
+)
+"l-zipunzip.ml" 18 284 305 "l-zipunzip.ml" 18 284 308
+type(
+  ((x_1:int -> ({x_2:int | x_1 = x_2 && x_1 = 0} -> int)) /\ 
+   (x_4:int -> ({x_5:int | x_4 = x_5 && x_4 <> 0} -> int)))
+)

@@ -1,0 +1,30 @@
+"forall_eq_pair.ml" 2 1 9 "forall_eq_pair.ml" 2 1 16
+type(
+  ((Top -> ((list Bottom) -> {true})) /\ 
+   (((x_15:int * {x_16:int | x_15 = x_16}) -> {true}) ->
+        ((list (x_11:int * {x_12:int | x_11 = x_12})) -> {true})))
+)
+"forall_eq_pair.ml" 6 90 105 "forall_eq_pair.ml" 6 90 112
+type(
+  ((Top -> ((list Bottom) -> {true})) /\ 
+   (((x_15:int * {x_16:int | x_15 = x_16}) -> {true}) ->
+        ((list (x_11:int * {x_12:int | x_11 = x_12})) -> {true})))
+)
+"forall_eq_pair.ml" 10 163 171 "forall_eq_pair.ml" 10 163 180
+type(
+  (int -> (list (x_4:int * {x_5:int | x_4 = x_5})))
+)
+"forall_eq_pair.ml" 13 206 222 "forall_eq_pair.ml" 13 206 231
+type(
+  (int -> (list (x_4:int * {x_5:int | x_4 = x_5})))
+)
+"forall_eq_pair.ml" 15 239 260 "forall_eq_pair.ml" 15 239 267
+type(
+  ((Top -> ((list Bottom) -> {true})) /\ 
+   (((x_15:int * {x_16:int | x_15 = x_16}) -> {true}) ->
+        ((list (x_11:int * {x_12:int | x_11 = x_12})) -> {true})))
+)
+"forall_eq_pair.ml" 15 239 277 "forall_eq_pair.ml" 15 239 286
+type(
+  (int -> (list (x_4:int * {x_5:int | x_4 = x_5})))
+)

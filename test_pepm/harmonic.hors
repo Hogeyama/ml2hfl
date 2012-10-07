@@ -1,0 +1,51 @@
+%BEGING
+Main  -> Range 0  F_1033  .
+Bottom0  -> unit .
+Div y k_div  -> F_1140 y  k_div  y  .
+F_1033 x2_987  -> Fold_left F_1035  (F_1038 x2_987  ) unit  .
+F_1035 k_991 x_1167  -> F_1128 k_991  x_1167  .
+F_1038 x2_1037 x__1017  -> x2_1037 (F_1041 x__1017  ) .
+F_1041 x__1040 x__1018  -> F_1127 x__1040  x__1018  .
+F_1046 f_1043 xs2_1044 k_fold_left_1045 x_948  -> l0 (xs2_1044 (F_1051 f_1043  xs2_1044  k_fold_left_1045  ) ) .
+F_1051 f_1048 xs2_1049 k_fold_left_1050 x_967  -> F_1154 f_1048  x_967  (Fold_left (F_1054 f_1048  ) (F_1057 xs2_1049  ) k_fold_left_1050  ) .
+F_1054 f_1053 x__1028 x_1172  -> F_1150 f_1053  x__1028  x_1172  .
+F_1057 xs2_1056 k_fold_left_xs_prime__983  -> xs2_1056 (F_1060 k_fold_left_xs_prime__983  ) .
+F_1060 k_fold_left_xs_prime__1059 x__1026  -> F_1152 k_fold_left_xs_prime__1059  x__1026  .
+F_1062 k_range_1008  -> Bottom0 .
+F_1066 j_1064 k_range_1065 x2_1013  -> k_range_1065 (F_1070 j_1064  x2_1013  ) .
+F_1070 j_1068 x2_1069 k_range_cons_range_882  -> br (F_1162 j_1068  x2_1069  k_range_cons_range_882  0  ) (F_1162 j_1068  x2_1069  k_range_cons_range_882  1  ) .
+F_1073 k_range_cons_range_1072 x__1031  -> F_1166 k_range_cons_range_1072  x__1031  .
+F_1127 x__1126 b_1076  -> _case 2 b_1076  (x__1126 0  ) (br (x__1126 0  ) (x__1126 1  ) ) .
+F_1128 b_1080 x_1168  -> _case 2 b_1080  (Div 0  x_1168  ) (F_1180 x_1168  ) .
+F_1131 y_1129 k_div_1130 b_1082  -> _case 2 b_1082  (l0 (br (F_1134 y_1129  k_div_1130  0  ) (F_1134 y_1129  k_div_1130  1  ) ) ) (l1 (Fail 0  (br (F_1137 k_div_1130  0  ) (F_1137 k_div_1130  1  ) ) ) ) .
+F_1134 y_1132 k_div_1133 b_1084  -> _case 2 b_1084  (l0 k_div_1133  ) (l1 (F_1135 y_1132  k_div_1133  ) ) .
+F_1135 b_1088 x_1170  -> _case 2 b_1088  (Div 0  x_1170  ) (F_1182 x_1170  ) .
+F_1137 k_div_1136 b_1090  -> _case 2 b_1090  (l0 k_div_1136  ) (l1 (Div 1  k_div_1136  ) ) .
+F_1140 y_1138 k_div_1139 b_1092  -> _case 2 b_1092  (F_1131 y_1138  k_div_1139  0  ) (br (F_1131 y_1138  k_div_1139  0  ) (F_1131 y_1138  k_div_1139  1  ) ) .
+F_1144 f_1141 xs2_1142 k_fold_left_1143 b_1094  -> _case 2 b_1094  (l0 k_fold_left_1143  ) (l1 (br (F_1148 f_1141  xs2_1142  k_fold_left_1143  0  ) (F_1148 f_1141  xs2_1142  k_fold_left_1143  1  ) ) ) .
+F_1148 f_1145 xs2_1146 k_fold_left_1147 b_1096  -> _case 2 b_1096  (l0 (xs2_1146 (F_1046 f_1145  xs2_1146  k_fold_left_1147  ) ) ) (l1 (l1 Bottom0  ) ) .
+F_1150 f_1149 b_1100 x_1173  -> _case 2 b_1100  (f_1149 0  x_1173  ) (F_1185 f_1149  x_1173  ) .
+F_1152 k_fold_left_xs_prime__1151 b_1104  -> _case 2 b_1104  (k_fold_left_xs_prime__1151 0  ) (br (k_fold_left_xs_prime__1151 0  ) (k_fold_left_xs_prime__1151 1  ) ) .
+F_1154 f_1153 b_1108 x_1175  -> _case 2 b_1108  (f_1153 0  x_1175  ) (F_1188 f_1153  x_1175  ) .
+F_1157 j_1155 k_range_1156 b_1110  -> _case 2 b_1110  (l0 (k_range_1156 F_1062  ) ) (l1 (F_1158 j_1155  (F_1066 j_1155  k_range_1156  ) ) ) .
+F_1158 b_1114 x_1177  -> _case 2 b_1114  (Range 0  x_1177  ) (F_1190 x_1177  ) .
+F_1162 j_1159 x2_1160 k_range_cons_range_1161 b_1116  -> _case 2 b_1116  (l0 (F_1164 k_range_cons_range_1161  j_1159  ) ) (l1 (x2_1160 (F_1073 k_range_cons_range_1161  ) ) ) .
+F_1164 k_range_cons_range_1163 b_1120  -> _case 2 b_1120  (k_range_cons_range_1163 0  ) (br (k_range_cons_range_1163 0  ) (k_range_cons_range_1163 1  ) ) .
+F_1166 k_range_cons_range_1165 b_1124  -> _case 2 b_1124  (k_range_cons_range_1165 0  ) (br (k_range_cons_range_1165 0  ) (k_range_cons_range_1165 1  ) ) .
+F_1180 x_1169  -> br (Div 0  x_1169  ) (Div 1  x_1169  ) .
+F_1182 x_1171  -> br (Div 0  x_1171  ) (Div 1  x_1171  ) .
+F_1185 f_1184 x_1174  -> br (f_1184 0  x_1174  ) (f_1184 1  x_1174  ) .
+F_1188 f_1187 x_1176  -> br (f_1187 0  x_1176  ) (f_1187 1  x_1176  ) .
+F_1190 x_1178  -> br (Range 0  x_1178  ) (Range 1  x_1178  ) .
+Fail b k  -> event_fail k  .
+Fold_left f xs2 k_fold_left  -> br (F_1144 f  xs2  k_fold_left  0  ) (F_1144 f  xs2  k_fold_left  1  ) .
+Range j k_range  -> br (F_1157 j  k_range  0  ) (F_1157 j  k_range  1  ) .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

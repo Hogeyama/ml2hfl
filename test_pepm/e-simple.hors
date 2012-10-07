@@ -1,0 +1,13 @@
+%BEGING
+Main_1  -> br (F_23 0  ) (F_23 1  ) .
+F_23 b_21  -> _case 2 b_21  (l0 unit  ) (l1 (l0 unit  ) ) .
+Fail b k  -> event_fail k  .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

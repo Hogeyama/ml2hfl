@@ -1,0 +1,157 @@
+TRecS 1.34: Type-based model checker for higher-order recursion schemes
+analyzing test_pepm/max.hors...
+The number of rewrite rules: 44
+The size of recursion scheme: 600
+The number of states: 2
+The property is satisfied.
+F_1160 : 
+  Top -> Top -> 0 -> Top -> q0
+  Top -> 0 -> 1 -> 0 -> q0
+  
+F_1165 : 
+  Top -> 0 -> Top -> Top -> 0 -> Top -> Top -> q0
+  0 -> 1 -> Top -> Top -> 0 -> 0 -> Top -> q0
+  0 -> 1 -> 0 -> Top -> 0 -> 0 -> Top -> q0
+  0 -> 1 -> 0 -> Top -> 0 -> 1 -> 0 -> q0
+  
+F_1173 : 
+  Top -> Top -> Top -> Top -> Top -> Top -> 0 -> Top -> Top -> Top -> q0
+  Top -> Top -> 0 -> Top -> Top -> 0 -> 0 -> Top -> Top -> Top -> q0
+  Top -> Top -> 0 -> Top -> Top -> 0 -> 1 -> Top -> Top -> 0 -> q0
+  
+F_1258 : 
+  Top -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  0 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1259 : 
+  0 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1261 : 
+  0 -> 0 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1265 : 
+  Top -> Top -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  1 -> 0 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1269 : 
+  1 -> 0 -> 0 -> 0 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1274 : 
+  Top -> Top -> Top -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  1 -> 0 -> 1 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1278 : 
+  1 -> 0 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1283 : 
+  Top -> Top -> Top -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  1 -> 0 -> 1 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1288 : 
+  1 -> 0 -> 1 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+F_1294 : 
+  Top -> Top -> Top -> Top -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  Top -> 1 -> 0 -> 1 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  0 -> Top -> Top -> 0 -> Top -> 1 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  
+F_1300 : 
+  Top -> 1 -> 0 -> 1 -> 0 -> 1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  0 -> Top -> Top -> Top -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  
+F_1306 : 
+  Top -> 0 -> Top -> Top -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  Top -> 1 -> 0 -> 1 -> 0 -> 0 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  0 -> 1 -> Top -> 0 -> Top -> 0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  
+F_1307 : 
+  0 -> q0
+  
+F_1316 : 
+  Top -> Top -> Top -> Top -> Top -> Top -> Top -> Top -> 0 -> q0
+  
+F_1317 : 
+  
+F_1321 : 
+  
+F_1323 : 
+  
+F_1326 : 
+  
+F_1332 : 
+  
+F_1337 : 
+  
+F_1343 : 
+  
+F_1349 : 
+  
+F_1355 : 
+  
+F_1361 : 
+  
+F_1368 : 
+  
+F_1375 : 
+  
+F_1382 : 
+  
+F_1390 : 
+  
+F_1397 : 
+  
+F_1405 : 
+  
+F_1413 : 
+  
+F_1421 : 
+  
+F_1430 : 
+  Top -> Top -> Top -> Top -> Top -> Top -> Top -> Top -> 0 -> q0
+  Top -> Top -> 0 -> Top -> Top -> 0 -> Top -> Top -> 0 -> q0
+  Top -> Top -> 0 -> Top -> Top -> 0 -> Top -> 0 -> 1 -> q0
+  
+F_1439 : 
+  Top -> Top -> 0 -> Top -> Top -> Top -> Top -> Top -> 0 -> q0
+  
+F_1448 : 
+  Top -> Top -> 0 -> Top -> Top -> 0 -> Top -> Top -> 0 -> q0
+  
+F_1450 : 
+  (Top -> Top -> 0 -> Top -> q0) -> 1 -> q0
+  (Top -> 0 -> Top -> Top -> q0) -> 0 -> q0
+  (Top -> 0 -> Top -> Top -> q0) -> 1 -> q0
+  (Top -> 0 -> 0 -> Top -> q0) -> 1 -> q0
+  (Top -> 0 -> 1 -> 0 -> q0) -> 0 -> q0
+  (0 -> Top -> Top -> Top -> q0) -> 1 -> q0
+  (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> 0 -> q0
+  
+F_1452 : 
+  (Top -> Top -> 0 -> Top -> q0) -> 0 -> q0
+  (Top -> Top -> 0 -> Top -> q0)/\(Top -> 0 -> 1 -> 0 -> q0) -> 1 -> q0
+  (Top -> 0 -> Top -> Top -> q0) -> 0 -> q0
+  (Top -> 0 -> Top -> Top -> q0) -> 1 -> q0
+  (Top -> 0 -> 0 -> Top -> q0) -> 0 -> q0
+  (Top -> 0 -> 0 -> Top -> q0)/\(Top -> 0 -> 1 -> 0 -> q0) -> 1 -> q0
+  (0 -> Top -> Top -> Top -> q0) -> 0 -> q0
+  (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> 1 -> q0
+  
+F_1467 : 
+  
+F_2 : 
+  0 -> (Top -> Top -> 0 -> Top -> q0) -> q0
+  0 -> (Top -> 0 -> Top -> Top -> q0) -> q0
+  0 -> (Top -> 0 -> 0 -> Top -> q0) -> q0
+  0 -> (0 -> Top -> Top -> Top -> q0) -> q0
+  1 -> (Top -> Top -> 0 -> Top -> q0)/\(Top -> 0 -> 1 -> 0 -> q0) -> q0
+  1 -> (Top -> 0 -> Top -> Top -> q0) -> q0
+  1 -> (Top -> 0 -> 0 -> Top -> q0)/\(Top -> 0 -> 1 -> 0 -> q0) -> q0
+  1 -> (0 -> Top -> Top -> Top -> q0)/\(1 -> Top -> Top -> 0 -> q0) -> q0
+  
+Fail : 
+  
+Main_1 : 
+  q0
+  
+The number of expansions: 182
+Elapsed Time: 0.012sec

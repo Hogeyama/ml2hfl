@@ -1,0 +1,50 @@
+%BEGING
+Main_1  -> Make_list F_892  .
+Bottom0  -> unit .
+F_1001 f_998 xs2_999 k_for_all_1000 b_956  -> _case 2 b_956  (l0 (k_for_all_1000 0  ) ) (l1 (br (F_1005 f_998  xs2_999  k_for_all_1000  0  ) (F_1005 f_998  xs2_999  k_for_all_1000  1  ) ) ) .
+F_1005 f_1002 xs2_1003 k_for_all_1004 b_958  -> _case 2 b_958  (l0 (xs2_1003 (F_907 f_1002  xs2_1003  k_for_all_1004  ) ) ) (l1 (l1 Bottom0  ) ) .
+F_1007 k_for_all_xs_prime__1006 b_962  -> _case 2 b_962  (k_for_all_xs_prime__1006 0  ) (br (k_for_all_xs_prime__1006 0  ) (k_for_all_xs_prime__1006 1  ) ) .
+F_1009 f_1008 b_966 x_1031  -> _case 2 b_966  (f_1008 0  x_1031  ) (F_1037 f_1008  x_1031  ) .
+F_1011 x__1010 b_970  -> _case 2 b_970  (x__1010 0  ) (br (x__1010 0  ) (x__1010 1  ) ) .
+F_1013 k_for_all_1012 b_974  -> _case 2 b_974  (k_for_all_1012 0  ) (br (k_for_all_1012 0  ) (k_for_all_1012 1  ) ) .
+F_1017 f_1014 xs2_1015 k_for_all_1016 b_976  -> _case 2 b_976  (l0 (For_all (F_920 f_1014  ) (F_926 xs2_1015  ) (F_932 k_for_all_1016  ) ) ) (l1 (k_for_all_1016 1  ) ) .
+F_1021 f_1018 xs2_1019 k_for_all_1020 b_978  -> _case 2 b_978  (F_1017 f_1018  xs2_1019  k_for_all_1020  0  ) (br (F_1017 f_1018  xs2_1019  k_for_all_1020  0  ) (F_1017 f_1018  xs2_1019  k_for_all_1020  1  ) ) .
+F_1023 f_1022 b_982 x_1033  -> _case 2 b_982  (f_1022 0  x_1033  ) (F_1040 f_1022  x_1033  ) .
+F_1025 k_make_list_1024 b_984  -> _case 2 b_984  (l0 (k_make_list_1024 F_934  ) ) (l1 (Make_list (F_937 k_make_list_1024  ) ) ) .
+F_1028 x2_1026 k_make_list_cons_make_list_1027 b_986  -> _case 2 b_986  (l0 (k_make_list_cons_make_list_1027 0  ) ) (l1 (x2_1026 (F_943 k_make_list_cons_make_list_1027  ) ) ) .
+F_1030 k_make_list_cons_make_list_1029 b_990  -> _case 2 b_990  (k_make_list_cons_make_list_1029 0  ) (br (k_make_list_cons_make_list_1029 0  ) (k_make_list_cons_make_list_1029 1  ) ) .
+F_1037 f_1036 x_1032  -> br (f_1036 0  x_1032  ) (f_1036 1  x_1032  ) .
+F_1040 f_1039 x_1034  -> br (f_1039 0  x_1034  ) (f_1039 1  x_1034  ) .
+F_892 x2_855  -> For_all F_894  (F_897 x2_855  ) F_902  .
+F_894 x_758 k_check_759  -> F_995 k_check_759  x_758  .
+F_897 x2_896 x__878  -> x2_896 (F_900 x__878  ) .
+F_900 x__899 x__879  -> F_993 x__899  x__879  .
+F_902 b_859  -> F_997 b_859  .
+F_907 f_904 xs2_905 k_for_all_906 x_806  -> l0 (xs2_905 (F_912 f_904  xs2_905  k_for_all_906  ) ) .
+F_912 f_909 xs2_910 k_for_all_911 x_822  -> F_1023 f_909  x_822  (F_917 f_909  xs2_910  k_for_all_911  ) .
+F_917 f_914 xs2_915 k_for_all_916 b_835  -> F_1021 f_914  xs2_915  k_for_all_916  b_835  .
+F_920 f_919 x__887 x__888  -> F_1009 f_919  x__887  (F_923 x__888  ) .
+F_923 x__922 x__889  -> F_1011 x__922  x__889  .
+F_926 xs2_925 k_for_all_xs_prime__849  -> xs2_925 (F_929 k_for_all_xs_prime__849  ) .
+F_929 k_for_all_xs_prime__928 x__886  -> F_1007 k_for_all_xs_prime__928  x__886  .
+F_932 k_for_all_931 x__885  -> F_1013 k_for_all_931  x__885  .
+F_934 k_make_list_870  -> Bottom0 .
+F_937 k_make_list_936 x2_874  -> k_make_list_936 (F_940 x2_874  ) .
+F_940 x2_939 k_make_list_cons_make_list_773  -> br (F_1028 x2_939  k_make_list_cons_make_list_773  0  ) (F_1028 x2_939  k_make_list_cons_make_list_773  1  ) .
+F_943 k_make_list_cons_make_list_942 x__890  -> F_1030 k_make_list_cons_make_list_942  x__890  .
+F_993 x__992 b_946  -> _case 2 b_946  (x__992 0  ) (br (x__992 0  ) (x__992 1  ) ) .
+F_995 k_check_994 b_950  -> _case 2 b_950  (k_check_994 0  ) (br (k_check_994 0  ) (k_check_994 1  ) ) .
+F_996 b_952  -> _case 2 b_952  (l0 unit  ) (l1 (Fail 0  unit  ) ) .
+F_997 b_954  -> _case 2 b_954  (F_996 0  ) (br (F_996 0  ) (F_996 1  ) ) .
+Fail b k  -> event_fail k  .
+For_all f xs2 k_for_all  -> br (F_1001 f  xs2  k_for_all  0  ) (F_1001 f  xs2  k_for_all  1  ) .
+Make_list k_make_list  -> br (F_1025 k_make_list  0  ) (F_1025 k_make_list  1  ) .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

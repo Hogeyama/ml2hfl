@@ -1,0 +1,50 @@
+%BEGING
+Main_1  -> Make_list F_1031  .
+Bottom0  -> unit .
+F_1031 x2_988  -> For_all F_1033  (F_1036 x2_988  ) F_1041  .
+F_1033 x2_884 k_eq_pair_885  -> F_1134 k_eq_pair_885  x2_884  .
+F_1036 x2_1035 x__1011  -> x2_1035 (F_1039 x__1011  ) .
+F_1039 x__1038 x__1013  -> F_1132 x__1038  x__1013  .
+F_1041 b_992  -> F_1136 b_992  .
+F_1046 f_1043 xs2_1044 k_for_all_1045 x2_934  -> l0 (xs2_1044 (F_1051 f_1043  xs2_1044  k_for_all_1045  ) ) .
+F_1051 f_1048 xs2_1049 k_for_all_1050 x2_951  -> F_1162 f_1048  x2_951  (F_1056 f_1048  xs2_1049  k_for_all_1050  ) .
+F_1056 f_1053 xs2_1054 k_for_all_1055 b_966  -> F_1160 f_1053  xs2_1054  k_for_all_1055  b_966  .
+F_1059 f_1058 x__1025 x__1026  -> F_1148 f_1058  x__1025  (F_1062 x__1026  ) .
+F_1062 x__1061 x__1027  -> F_1150 x__1061  x__1027  .
+F_1065 xs2_1064 k_for_all_xs_prime__982  -> xs2_1064 (F_1068 k_for_all_xs_prime__982  ) .
+F_1068 k_for_all_xs_prime__1067 x__1023  -> F_1146 k_for_all_xs_prime__1067  x__1023  .
+F_1071 k_for_all_1070 x__1021  -> F_1152 k_for_all_1070  x__1021  .
+F_1073 k_make_list_1003  -> Bottom0 .
+F_1076 k_make_list_1075 x2_1007  -> k_make_list_1075 (F_1079 x2_1007  ) .
+F_1079 x2_1078 k_make_list_cons_make_list_895  -> br (F_1167 x2_1078  k_make_list_cons_make_list_895  0  ) (F_1167 x2_1078  k_make_list_cons_make_list_895  1  ) .
+F_1082 k_make_list_cons_make_list_1081 x__1029  -> F_1169 k_make_list_cons_make_list_1081  x__1029  .
+F_1132 x__1131 b_1085  -> _case 2 b_1085  (x__1131 0  ) (br (x__1131 0  ) (x__1131 1  ) ) .
+F_1134 k_eq_pair_1133 b_1089  -> _case 2 b_1089  (k_eq_pair_1133 0  ) (br (k_eq_pair_1133 0  ) (k_eq_pair_1133 1  ) ) .
+F_1135 b_1091  -> _case 2 b_1091  (l0 unit  ) (l1 (Fail 0  unit  ) ) .
+F_1136 b_1093  -> _case 2 b_1093  (F_1135 0  ) (br (F_1135 0  ) (F_1135 1  ) ) .
+F_1140 f_1137 xs2_1138 k_for_all_1139 b_1095  -> _case 2 b_1095  (l0 (k_for_all_1139 0  ) ) (l1 (br (F_1144 f_1137  xs2_1138  k_for_all_1139  0  ) (F_1144 f_1137  xs2_1138  k_for_all_1139  1  ) ) ) .
+F_1144 f_1141 xs2_1142 k_for_all_1143 b_1097  -> _case 2 b_1097  (l0 (xs2_1142 (F_1046 f_1141  xs2_1142  k_for_all_1143  ) ) ) (l1 (l1 Bottom0  ) ) .
+F_1146 k_for_all_xs_prime__1145 b_1101  -> _case 2 b_1101  (k_for_all_xs_prime__1145 0  ) (br (k_for_all_xs_prime__1145 0  ) (k_for_all_xs_prime__1145 1  ) ) .
+F_1148 f_1147 b_1105 x_1170  -> _case 2 b_1105  (f_1147 0  x_1170  ) (F_1176 f_1147  x_1170  ) .
+F_1150 x__1149 b_1109  -> _case 2 b_1109  (x__1149 0  ) (br (x__1149 0  ) (x__1149 1  ) ) .
+F_1152 k_for_all_1151 b_1113  -> _case 2 b_1113  (k_for_all_1151 0  ) (br (k_for_all_1151 0  ) (k_for_all_1151 1  ) ) .
+F_1156 f_1153 xs2_1154 k_for_all_1155 b_1115  -> _case 2 b_1115  (l0 (For_all (F_1059 f_1153  ) (F_1065 xs2_1154  ) (F_1071 k_for_all_1155  ) ) ) (l1 (k_for_all_1155 1  ) ) .
+F_1160 f_1157 xs2_1158 k_for_all_1159 b_1117  -> _case 2 b_1117  (F_1156 f_1157  xs2_1158  k_for_all_1159  0  ) (br (F_1156 f_1157  xs2_1158  k_for_all_1159  0  ) (F_1156 f_1157  xs2_1158  k_for_all_1159  1  ) ) .
+F_1162 f_1161 b_1121 x_1172  -> _case 2 b_1121  (f_1161 0  x_1172  ) (F_1179 f_1161  x_1172  ) .
+F_1164 k_make_list_1163 b_1123  -> _case 2 b_1123  (l0 (k_make_list_1163 F_1073  ) ) (l1 (Make_list (F_1076 k_make_list_1163  ) ) ) .
+F_1167 x2_1165 k_make_list_cons_make_list_1166 b_1125  -> _case 2 b_1125  (l0 (k_make_list_cons_make_list_1166 0  ) ) (l1 (x2_1165 (F_1082 k_make_list_cons_make_list_1166  ) ) ) .
+F_1169 k_make_list_cons_make_list_1168 b_1129  -> _case 2 b_1129  (k_make_list_cons_make_list_1168 0  ) (br (k_make_list_cons_make_list_1168 0  ) (k_make_list_cons_make_list_1168 1  ) ) .
+F_1176 f_1175 x_1171  -> br (f_1175 0  x_1171  ) (f_1175 1  x_1171  ) .
+F_1179 f_1178 x_1173  -> br (f_1178 0  x_1173  ) (f_1178 1  x_1173  ) .
+Fail b k  -> event_fail k  .
+For_all f xs2 k_for_all  -> br (F_1140 f  xs2  k_for_all  0  ) (F_1140 f  xs2  k_for_all  1  ) .
+Make_list k_make_list  -> br (F_1164 k_make_list  0  ) (F_1164 k_make_list  1  ) .
+%ENDG
+
+%BEGINA
+q0 br -> q0 q0 .
+q0 event_fail -> q1 .
+q0 l0 -> q0 .
+q0 l1 -> q0 .
+q0 unit -> .
+%ENDA

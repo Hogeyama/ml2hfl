@@ -1,0 +1,36 @@
+"fold_right.ml" 2 1 9 "fold_right.ml" 2 1 19
+type(
+  ((Top -> ((list Bottom) -> (x_3:int -> {x_4:int | x_3 <= x_4}))) /\ 
+   ((x_14:int -> (x_15:{x_15:int | x_14 >= 0} -> {x_16:int | x_15 <= x_16}))
+        ->
+        ((list {x_13:int | x_13 >= 0}) ->
+             (x_9:int -> {x_10:int | x_9 <= x_10}))))
+)
+"fold_right.ml" 5 77 96 "fold_right.ml" 5 77 106
+type(
+  ((Top -> ((list Bottom) -> (x_3:int -> {x_4:int | x_3 <= x_4}))) /\ 
+   ((x_14:int -> (x_15:{x_15:int | x_14 >= 0} -> {x_16:int | x_15 <= x_16}))
+        ->
+        ((list {x_13:int | x_13 >= 0}) ->
+             (x_9:int -> {x_10:int | x_9 <= x_10}))))
+)
+"fold_right.ml" 7 119 127 "fold_right.ml" 7 119 136
+type(
+  (int -> (list {x_4:int | x_4 >= 0}))
+)
+"fold_right.ml" 10 162 174 "fold_right.ml" 10 162 183
+type(
+  (int -> (list {x_4:int | x_4 >= 0}))
+)
+"fold_right.ml" 15 227 238 "fold_right.ml" 15 227 247
+type(
+  (int -> (list {x_4:int | x_4 >= 0}))
+)
+"fold_right.ml" 16 253 265 "fold_right.ml" 16 253 275
+type(
+  ((Top -> ((list Bottom) -> (x_3:int -> {x_4:int | x_3 <= x_4}))) /\ 
+   ((x_14:int -> (x_15:{x_15:int | x_14 >= 0} -> {x_16:int | x_15 <= x_16}))
+        ->
+        ((list {x_13:int | x_13 >= 0}) ->
+             (x_9:int -> {x_10:int | x_9 <= x_10}))))
+)
