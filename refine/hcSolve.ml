@@ -104,7 +104,7 @@ let formula_of_forward lbs hcs =
           (fun hc ->
             let Hc(None, [], t) = TypPredSubst.subst_lhs lbs hc in
             (*let _ =
-              if false && Cvc3Interface.satisfiable t then
+              if false && Cvc3Interface.is_satisfiable t then
                 let _ = Format.printf "%a is satisfiable@," Term.pr t in
                 assert false
             in*)
@@ -166,6 +166,32 @@ let formula_of_backward hcs =
 
 (** {6 Functions for inlining Horn clauses} *)
 
+let inline_other_than pid hcs =
+  let _ = Global.log_begin "inline_other_than" in
+  let hcs0 = backward_depend [pid] hcs in
+  let hcs1, hcs2 =
+    List.partition
+      (function Hc(Some(pid', _), _, _) ->
+        pid' <> pid
+      | _ -> false)
+      hcs
+  in
+  let lbs = compute_extlbs (Util.inter hcs0 hcs1) in
+  let res =
+    List.filter
+      (function Hc(None, [], t) ->
+        if Cvc3Interface.is_satisfiable t then
+          true (*???*)
+        else
+          false
+      | _ ->
+          true)
+      (List.map (subst_hcs lbs) hcs2)
+  in
+  let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
+  let _ = Global.log_end "inline_other_than" in
+  res
+
 (** inline predicates that satisfy p
     @require is_non_recursive hcs *)
 let inline_forward p hcs =
@@ -178,7 +204,17 @@ let inline_forward p hcs =
       hcs
   in
   let lbs = compute_extlbs hcs1 in
-  let res = List.map (subst_hcs lbs) hcs2 in
+  let res =
+    List.filter
+      (function Hc(None, [], t) ->
+        if Cvc3Interface.is_satisfiable t then
+          true (* assert false if hcs is assumed to be satisfiable *)
+        else
+          false
+      | _ ->
+          true)
+      (List.map (subst_hcs lbs) hcs2)
+  in
   let _ = Global.log (fun () -> Format.printf "output:@,  @[<v>%a@]" pr res) in
   let _ = Global.log_end "inline_forward" in
   res
@@ -269,15 +305,22 @@ let compute_ubs_incorrect lbs hcs =
   ubs
 
 (** compute the least upper bound for pid
+    @require hcs is satifiable (see (1))
     @raise Not_found if the function fail to compute the least upper bound *)
 let ubs_of_pid hcs pid =
-  let hcs = inline_forward (fun pid' -> pid' <> pid) hcs in
+  let hcs =
+    if false then
+      inline_other_than pid hcs
+    else
+      inline_forward (fun pid' -> pid' <> pid) hcs
+  in
   let hcs =
     List.filter
       (function Hc(None, [], t) ->
         let _ =
           if !Global.debug then
-            assert (Cvc3Interface.is_valid (Formula.bnot t))
+            let _ = Format.printf "%a@," Term.pr t in
+            assert (Cvc3Interface.is_valid (Formula.bnot t)) (* (1) *)
         in
         false
       | _ -> true)
@@ -344,5 +387,5 @@ let compute_ubs hcs =
   let _ = Global.log_begin "compute_ubs" in
   let pids = List.unique (HornClause.pids hcs) in
   let ubs, ndpids = compute_ubs_pids pids hcs in
-  let _ = Global.log_end "compute_ubs_pids" in
+  let _ = Global.log_end "compute_ubs" in
   ubs, ndpids

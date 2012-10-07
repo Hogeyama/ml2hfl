@@ -2,7 +2,7 @@
 
 let print_log = ref true
 let debug = ref true
-let debug_level = ref 10
+let debug_level = ref 30
 
 let timer () =
   let st = Unix.times () in

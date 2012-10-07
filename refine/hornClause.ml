@@ -117,3 +117,30 @@ let lookup (pid, ttys) hcs =
 (** @require is_non_disjunctive hcs *)
 let lookup_nd (pid, ttys) hcs =
   Util.elem_of_singleton (lookup (pid, ttys) hcs)
+
+
+
+let rec depend pids0 hcs =
+  let hcs1, hcs2 =
+    List.partition
+      (fun hc -> Util.intersects pids0 (pids [hc]))
+      hcs
+  in
+  let pids1 = Util.diff (List.unique (pids hcs1)) pids0 in
+  if pids1 = [] then
+    hcs1
+  else
+    hcs1 @ depend pids1 hcs2
+
+(** find Horn clauses which depend backward to the predicate variables in pids0 or roots *)
+let rec backward_depend pids0 hcs =
+  let hcs1, hcs2 =
+    List.partition
+      (fun hc -> is_root hc || Util.intersects pids0 (rhs_pids [hc]))
+      hcs
+  in
+  let pids1 = List.unique (lhs_pids hcs1) in
+  if pids1 = [] then
+    hcs1
+  else
+    hcs1 @ backward_depend pids1 hcs2

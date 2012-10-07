@@ -231,7 +231,7 @@ let implies ts1 ts2 =
    else
     is_valid (Formula.imply (Formula.band ts1) (Formula.band ts2))
 
-let satisfiable t =
+let is_satisfiable t =
   not (is_valid (Formula.bnot t))
 
 (*
