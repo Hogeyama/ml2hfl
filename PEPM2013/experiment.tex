@@ -139,23 +139,21 @@ The programs used in the experiments are:
 %      ascending list.
 %\end{itemize}
 
-The applications of selective CPS transformation and selective predicate
-abstraction enable verification of the programs such as ``zip'' and
-``map\_head\_filter'', and reduce the running time.  Especially, the
-application of selective CPS transformation reduces the running time,
-and selective predicate abstraction reduces the number of CEGAR cycles.
-The new predicate discovery enables verification of the programs such as
-``length'' and ``nth''.
+The applications of selective CPS transformation and selective predicate 
+abstraction enable verification of the programs such as ``zip'' and 
+``map\_head\_filter'', and reduce the running time.  Especially, the 
+application of selective CPS transformation reduces the running time, 
+and selective predicate abstraction reduces the number of CEGAR cycles. 
+The refined predicate discovery method enables verification of the 
+programs such as ``length'' and ``nth''.
 
-Note that the column of ``C. \& A. \& D.'' is evaluated using a
-predicate discovery which uses only a single infeasible error path
-instead of multiple infeasible error paths, unlike the method described
-in Section~\ref{sec:refine}.  While consideration of multiple paths
-enhances the precision of predicate abstraction, it slows down
-verifications of some programs (such as ``map\_filter'') since the
-implementation is preliminary.  There are programs which can be verified
-when using multiple paths, and cannot be verified when using only a single
-path.  The following is such a program.
+Note that the column ``C. \& A. \& D.'' shows the experimental results 
+of using the refined predicate discovery method in 
+Section~\ref{sec:refine} but without using the feature of merging 
+multiple infeasible paths.  The feature actually slowed down 
+verification of some programs (such as ``map\_filter'') but improved the 
+analysis precision of MoCHi.  In particular, the feature enabled us to 
+verify the following program in 0.36 seconds with 3 CEGAR-cycles:
 \begin{alltt}
 let rec length acc xs = match xs with [] -> acc
                       | _::xs' -> length (acc+1) xs'
@@ -163,12 +161,11 @@ let rec make_list n = if n = 0 then []
                       else n :: make_list (n-1)
 let main n = assert (length 0 (make_list n) = n)
 \end{alltt}
-The program can be successfully verified if we use a predicate
-$\LENGTH(\mathtt{acc}) + \LENGTH(\mathtt{xs}) = \LENGTH(\mathtt{r})$ on
-the argument $\mathtt{acc}$, $\mathtt{xs}$ and the return value
-$\mathtt{r}$ of \texttt{length}.  MoCHi discovered the predicate and
-verified the program in 0.36 seconds with 3 CEGAR-cycles when using
-multiple paths.
+For the success of verification, the abstraction predicate 
+$\LENGTH(\mathtt{r}) = \LENGTH(\mathtt{acc}) + \LENGTH(\mathtt{xs})$ on 
+the return value $\mathtt{r}$ and the arguments $\mathtt{acc}$, 
+$\mathtt{xs}$ of \texttt{length} is essential.  The predicate could only 
+be found if the feature of merging multiple paths was enabled.
 
 %\begin{itemize}
 %\item fold\_right
