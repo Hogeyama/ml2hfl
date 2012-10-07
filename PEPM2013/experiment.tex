@@ -23,7 +23,7 @@ The experiment was conducted on Intel Xeon 5570 CPU with 8 MB cache and
 available at \url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/mochi/}.
 
 \begin{table*}
-\caption{Results of preliminary experiments \TODO{emphasize}}
+\caption{Results of preliminary experiments}
 \label{tbl:exp}
 \small
 \begin{center}
@@ -34,42 +34,42 @@ available at \url{http://www.kb.ecei.tohoku.ac.jp/~ryosuke/mochi/}.
 program    & size & order & \multicolumn{2}{c}{none} &     \multicolumn{2}{|c|}{C.} &   \multicolumn{2}{|c|}{A.} & \multicolumn{2}{|c|}{C. \& A.} & \multicolumn{2}{|c|}{C. \& A. \& D.} \\
 \hline
 sum               &    24&  1&  2, &    0.14 &  2, &    0.14 &  1, &    0.06 &  1, &    0.07 &  1, &    0.08 \\
-mult              &    31&  1&           & - &           & - &  3, &    0.16 &  3, &    0.14 &  3, &    0.16 \\
+\bf mult              & \bf    31& \bf  1& \bf     & \bf       - & \bf     & \bf       - & \bf  3, & \bf    0.16 & \bf  3, & \bf    0.14 & \bf  3, & \bf    0.16 \\
 max               &    42&  2&  5, &    5.07 &  5, &    1.63 &  1, &    0.17 &  3, &    0.87 &  3, &    0.93 \\
 mc91              &    32&  1&  2, &    0.21 &  2, &    0.21 &  2, &    0.16 &  2, &    0.16 &  2, &    0.36 \\
-ack               &    53&  1&           & - &           & - &  1, &    0.10 &  1, &    0.10 &  1, &    0.10 \\
-a-cppr            &   149&  2&           & - & 12, &   33.91 &  6, &    1.31 &  6, &    1.06 &  6, &    1.06 \\
-l-zipunzip        &    81&  2&           & - &           & - &           & - &  2, &    0.14 &  2, &    0.14 \\
-l-zipmap          &    65&  2&           & - &  6, &    0.54 &  2, &    0.11 &  2, &    0.10 &  3, &    0.16 \\
+\bf ack               & \bf    53& \bf  1& \bf     & \bf       - & \bf     & \bf       - & \bf  1, & \bf    0.10 & \bf  1, & \bf    0.10 & \bf  1, & \bf    0.10 \\
+\bf a-cppr            & \bf   149& \bf  2& \bf     & \bf       - & \bf 12, & \bf   33.91 & \bf  6, & \bf    1.31 & \bf  6, & \bf    1.06 & \bf  6, & \bf    1.06 \\
+\bf l-zipunzip        & \bf    81& \bf  2& \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    0.14 & \bf  2, & \bf    0.14 \\
+\bf l-zipmap          & \bf    65& \bf  2& \bf     & \bf       - & \bf  6, & \bf    0.54 & \bf  2, & \bf    0.11 & \bf  2, & \bf    0.10 & \bf  3, & \bf    0.16 \\
 hors              &    64&  2&  2, &    0.36 &  2, &    0.11 &  1, &    0.09 &  1, &    0.07 &  1, &    0.06 \\
 e-simple          &    27&  2&  1, &    0.08 &  1, &    0.08 &  0, &    0.06 &  0, &    0.06 &  0, &    0.06 \\
 e-fact            &    55&  2&  2, &    0.14 &  2, &    0.11 &  2, &    0.10 &  2, &    0.09 &  2, &    0.09 \\
 r-lock            &    54&  1&  6, &    1.00 &  6, &    0.49 &  0, &    0.07 &  0, &    0.06 &  0, &    0.07 \\
-r-file            &   168&  1&           & - &           & - &  9, &    2.76 & 12, &    2.18 & 10, &   81.50 \\
+\bf r-file            & \bf   168& \bf  1& \bf     & \bf       - & \bf     & \bf       - & \bf  9, & \bf    2.76 & \bf 12, & \bf    2.18 & \bf 10, & \bf   81.50 \\
 \hline
 sum\_intro        &   33 & 1 &  2, &    0.18 &  2, &    0.15 &  1, &    0.08 &  1, &    0.08 &  1, &    0.08 \\
-copy\_intro       &   24 & 1 &           & - &           & - &           & - &           & - &  2, &    0.14 \\
+\bf copy\_intro       & \bf   24 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    0.14 \\
 fact\_notpos      &   97 & 1 &  1, &    0.11 &  1, &    0.11 &  1, &    0.08 &  1, &    0.09 &  1, &    0.08 \\
 fold\_right       &   64 & 2 &  8, &  361.07 &  8, &  167.05 &  2, &    0.31 &  2, &    0.18 &  2, &    0.34 \\
-forall\_eq\_pair  &   55 & 1 &           & - &           & - &           & - &  1, &    0.22 &  1, &    0.27 \\
-forall\_leq       &   55 & 2 &           & - &  7, &   93.28 &  1, &    0.20 &  1, &    0.16 &  1, &    0.24 \\
+\bf forall\_eq\_pair  & \bf   55 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  1, & \bf    0.22 & \bf  1, & \bf    0.27 \\
+\bf forall\_leq       & \bf   55 & \bf 2 & \bf     & \bf       - & \bf  7, & \bf   93.28 & \bf  1, & \bf    0.20 & \bf  1, & \bf    0.16 & \bf  1, & \bf    0.24 \\
 isnil             &   52 & 1 &  3, &    0.28 &  3, &    0.24 &  2, &    0.13 &  2, &    0.13 &  2, &    0.12 \\
-iter              &   59 & 2 &           & - &  7, &   15.70 &  1, &    0.16 &  1, &    0.13 &  1, &    0.17 \\
-length            &   49 & 1 &           & - &           & - &           & - &           & - &  2, &    0.14 \\
+\bf iter              & \bf   59 & \bf 2 & \bf     & \bf       - & \bf  7, & \bf   15.70 & \bf  1, & \bf    0.16 & \bf  1, & \bf    0.13 & \bf  1, & \bf    0.17 \\
+\bf length            & \bf   49 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    0.14 \\
 mem               &   74 & 1 &  6, &    5.45 &  5, &    1.74 &  3, &    0.41 &  2, &    0.34 &  2, &    0.31 \\
-nth               &   59 & 1 &           & - &           & - &           & - &           & - &  4, &    0.58 \\
+\bf nth               & \bf   59 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  4, & \bf    0.58 \\
 nth0              &   78 & 1 &  4, &    0.88 &  4, &    0.61 &  2, &    0.23 &  2, &    0.19 &  2, &    0.25 \\
-harmonic          &  101 & 2 &           & - &           & - &  1, &    0.32 &  1, &    0.18 &  1, &    0.29 \\
-fold\_left        &   64 & 2 &           & - &           & - &  8, &  157.05 &  2, &    0.35 &  2, &    0.36 \\
-zip               &   69 & 1 &           & - &           & - &           & - &  3, &    0.37 &  3, &    0.35 \\
-isort\_geq        &   97 & 1 &           & - &           & - &           & - &           & - &  7, &   97.59 \\
-map\_filter       &  111 & 2 &           & - &           & - &  2, &    3.23 &  2, &    1.87 &  3, &   27.51 \\
-risers            &   79 & 1 &           & - &           & - &  4, &    2.51 &  4, &    1.69 &  3, &    2.07 \\
-arith\_exp        &  109 & 2 &           & - &           & - &  4, &    8.65 &  3, &    1.68 &  4, &    6.32 \\
-fun\_list         &   94 & 3 &           & - &           & - &  6, &   23.18 &  6, &   12.52 &  8, &   33.15 \\
+\bf harmonic          & \bf  101 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  1, & \bf    0.32 & \bf  1, & \bf    0.18 & \bf  1, & \bf    0.29 \\
+\bf fold\_left        & \bf   64 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  8, & \bf  157.05 & \bf  2, & \bf    0.35 & \bf  2, & \bf    0.36 \\
+\bf zip               & \bf   69 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  3, & \bf    0.37 & \bf  3, & \bf    0.35 \\
+\bf isort\_geq        & \bf   97 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf     & \bf       - & \bf  7, & \bf   97.59 \\
+\bf map\_filter       & \bf  111 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  2, & \bf    3.23 & \bf  2, & \bf    1.87 & \bf  3, & \bf   27.51 \\
+\bf risers            & \bf   79 & \bf 1 & \bf     & \bf       - & \bf     & \bf       - & \bf  4, & \bf    2.51 & \bf  4, & \bf    1.69 & \bf  3, & \bf    2.07 \\
+\bf arith\_exp        & \bf  109 & \bf 2 & \bf     & \bf       - & \bf     & \bf       - & \bf  4, & \bf    8.65 & \bf  3, & \bf    1.68 & \bf  4, & \bf    6.32 \\
+\bf fun\_list         & \bf   94 & \bf 3 & \bf     & \bf       - & \bf     & \bf       - & \bf  6, & \bf   23.18 & \bf  6, & \bf   12.52 & \bf  8, & \bf   33.15 \\
 harmonic-e        &  101 & 2 &  1, &    0.44 &  1, &    0.22 &  0, &    0.11 &  0, &    0.08 &  0, &    0.08 \\
 map\_filter-e     &  111 & 2 &  2, &    2.29 &  2, &    1.11 &  0, &    0.16 &  0, &    0.15 &  0, &    0.16 \\
-arith\_exp-e      &  109 & 2 &  7, &   22.85 &           & - &  3, &    3.22 &  2, &    1.04 &  3, &    4.52 \\
+arith\_exp-e      &  109 & 2 &  7, &   22.85 &     &       - &  3, &    3.22 &  2, &    1.04 &  3, &    4.52 \\
 fact\_notpos-e    &   97 & 1 &  0, &    0.07 &  0, &    0.08 &  0, &    0.08 &  0, &    0.06 &  0, &    0.08 \\
 \hline
 \end{tabular}
@@ -146,6 +146,8 @@ application of selective CPS transformation reduces the running time,
 and selective predicate abstraction reduces the number of CEGAR cycles.
 The new predicate discovery enables verification of the programs such as
 ``length'' and ``nth''.
+
+%Note that the result of ``C. \& A. \& D.''
 
 %\begin{itemize}
 %\item fold\_right

@@ -18,8 +18,8 @@ a negative number or zero is given.
 \vspace{-5pt}
 We can translate this program to an exception-free program by CPS transformation as follows:
 \vspace{-5pt}
+% type exc = NotPos
 \begin{alltt}
- type exc = NotPos
  letrec fact n k exn =
    if n <= 0 then exn NotPos
    else let exn' e = match e with NotPos -> k 1 in

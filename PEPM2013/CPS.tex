@@ -313,13 +313,12 @@ term $t'$ has type $\TFun{(\TFun{\CPSty{\tau}}{\AT})}{\AT}$ if
 $\CPS{\Gamma}{t}{\tau}{C}{t'}$ holds, where $\AT$ is the answer type and
 $\CPSty{\tau}$ is defined by:
 \vspace{-2pt}
-\[
-\begin{array}{rcl}
+\begin{eqnarray*}
  \CPSty{\INT} &=& \INT \\
  \CPSty{\TFunN{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\CPSty{\tau_2}} \\
  \CPSty{\TFunC{\tau_1}{\tau_2}} &=& \TFun{\CPSty{\tau_1}}{\TFun{(\TFun{\CPSty{\tau_2}}{\AT})}{\AT}}
-\end{array}
-\]
+\end{eqnarray*}
+
 
 This shows the intuition that a term of a type $\TFunC{\tau_1}{\tau_2}$
 should be inserted a continuation, and another term remains in direct
