@@ -35,7 +35,7 @@ let subtract_fun sub xs =
 
 (** @require is_valid t iff t is valid *)
 let non_dup ?(is_valid = fun t -> assert false) xttys =
-  let _ = Global.log_begin ~disable:true "TypSubst.is_dup" in
+  let _ = Global.log_begin ~disable:true "TypSubst.non_dup" in
   let b =
     List.for_all
       (function

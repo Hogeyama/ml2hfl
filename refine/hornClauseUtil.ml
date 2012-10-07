@@ -219,7 +219,7 @@ let qelim bvs pids atms t =
 (** {6 Predicate sharing} *)
 
 let ignored_vars bvs atms =
-  let _ = Global.log_begin "HornClause.ignored_vars" in
+  let _ = Global.log_begin "HornClauseUtil.ignored_vars" in
   let tss =
     let atmss = Util.classify (fun (pid1, _) (pid2, _) -> pid1 = pid2) atms in
     Util.concat_map
@@ -254,7 +254,7 @@ let ignored_vars bvs atms =
   in
   let _ = Global.log (fun () -> Format.printf "ys: %a@," Var.pr_list ys) in
   let res = xs @ ys in
-  let _ = Global.log_end "HornClause.ignored_vars" in
+  let _ = Global.log_end "HornClauseUtil.ignored_vars" in
   res
 
 let changing_vars bvs atms =
@@ -512,11 +512,11 @@ let share_predicates_aux bvs0 cvs bvs atms t =
 
 (** @param bvs0 *)
 let share_predicates bvs0 atms t =
-  let _ = Global.log_begin ~disable:true "HornClauseUtil.share_predicates" in
   let t = FormulaUtil.simplify t in
   if Atom.num_dup atms = 0 || Term.coeffs t <> [] then
     atms, t
   else
+    let _ = Global.log_begin "HornClauseUtil.share_predicates" in
       (atms, t)
     |>
       (fun (atms, t) ->

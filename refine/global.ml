@@ -13,14 +13,23 @@ let timer () =
 
 let current_log_level = ref 0
 let log_disabled = ref ""
+let tms = ref []
 let log_begin ?(disable = false) str =
   let _ = if !log_disabled = "" && disable then log_disabled := str in
   let _ = current_log_level := !current_log_level + 1 in
-  if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then Format.printf "begin %s[%d]@,  @[<v>" str !current_log_level
+  if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then
+    let _ = Format.printf "begin %s[%d]@,  @[<v>" str !current_log_level in
+    tms := timer () :: !tms
 let log f =
   if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then f ()
 let log_end str =
-  let _ = if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then Format.printf "@]@,end %s[%d]@," str !current_log_level in
+  let _ =
+    if !print_log && !debug && !debug_level >= !current_log_level && !log_disabled = "" then
+      let tm' :: tms' = !tms in
+      let tm = tm' () in
+      let _ = tms := tms' in
+      Format.printf "@]@,end %s[%d] (%f sec.)@," str !current_log_level tm
+  in
   let _ = current_log_level := !current_log_level - 1 in
   if !log_disabled = str then log_disabled := ""
 
