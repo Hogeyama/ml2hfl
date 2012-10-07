@@ -15,9 +15,9 @@ let rec map f e =
       Const n -> Const (f n)
     | Add(e1,e2) -> Add(map f e1, map f e2)
 
-let abs x = if x >= 0 then x else -x
+let abs x = if x <= 0 then x else -x
 
 let main () =
   let e = make_exp () in
   let e' = map abs e in
-    assert (eval e' > 0)
+    assert (eval e' >= 0)
