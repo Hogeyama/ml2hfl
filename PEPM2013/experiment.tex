@@ -147,8 +147,8 @@ and selective predicate abstraction reduces the number of CEGAR cycles.
 The new predicate discovery enables verification of the programs such as
 ``length'' and ``nth''.
 
-Note that the column of ``C. \& A. \& D.'' is evaluated using the
-refined predicate discovery that uses only a single infeasible error
+Note that the column of ``C. \& A. \& D.'' is evaluated using a
+predicate discovery that uses only a single infeasible error
 path instead of multiple infeasible error paths.  While consideration of
 multiple paths enhances the precision of predicate abstraction, it slows
 down verifications for some programs (such as ``map\_filter'') since the
@@ -156,25 +156,16 @@ implementation is preliminary.  However, there are programs which can be
 verified by using multiple paths, and not be verified by using a single path.
 The following is such a program.
 \begin{alltt}
-let rec length_aux acc (xs:int list) =
-  match xs with
-      [] -> acc
-    | _::xs' -> length_aux (acc+1) xs'
-let length xs = length_aux 0 xs
-
-let rec make_list n =
-  if n = 0
-  then []
-  else n :: make_list (n-1)
-
-let main n =
-  let xs = make_list n in
-    assert (length xs = n)
+let rec length acc xs = match xs with [] -> acc
+                      | _::xs' -> length (acc+1) xs'
+let rec make_list n = if n = 0 then []
+                      else n :: make_list (n-1)
+let main n = assert (length 0 (make_list n) = n)
 \end{alltt}
 For the verification of this program, we need the predicate
 $\LENGTH(\mathtt{acc}) + \LENGTH(\mathtt{xs}) = \LENGTH(\mathtt{r})$ on
 the argument $\mathtt{acc}$, $\mathtt{xs}$ and the return value
-$\mathtt{r}$ argement of \texttt{length\_aux}.  Actually, we verified
+$\mathtt{r}$ argement of \texttt{length}.  Actually, we verified
 the program in 0.36 seconds with 3 CEGAR-cycles by using multiple paths.
 
 %\begin{itemize}
