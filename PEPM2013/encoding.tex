@@ -318,7 +318,7 @@ integers.  A subterm of a tree is obtained by adding the index to the head of th
 %        (t1, t2)
 %\end{alltt}
 
-For recursive data types, we impose a restriction that
+For recursive data types, we impose a restriction where
 recursive type variables cannot occur under function constructors. Thus,
 $\RecType{\alpha}{\UNIT+(\TFun{\INT}{\INT})*\alpha}$ (which corresponds
 to $\List{(\TFun{\INT}{\INT})}$) is OK, but neither
