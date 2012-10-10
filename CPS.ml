@@ -4,7 +4,7 @@ open Utilities
 
 module RT = Ref_type
 
-let debug = false
+let debug = true
 
 let rec element_num = function
     TPair(typ1,typ2) -> element_num typ1 + element_num typ2
@@ -574,119 +574,30 @@ let solve_constraints constrs =
   let cgeqvars' = List.map (function CGeqVar(x,y) -> x,y | _ -> assert false) cgeqvars in
   let cgeqvars'' = List.filter (fun (x,y) -> x <> y) cgeqvars' in
   let cgeqs' = List.map (function CGeq(x,e) -> x,e | _ -> assert false) cgeqs in
-  let () = List.iter (fun (x,y) -> tbl.(x) <- `CVar y::tbl.(x)) cgeqvars'' in
-  let () = List.iter (fun (x,e) -> tbl.(x) <- `CConst e::tbl.(x)) cgeqs' in
-  let pr_elem = function
-      `CVar x -> Format.printf " %a" print_evar x
-    | `CConst e -> Format.printf " %a" print_effect e
+  let () = List.iter (fun (x,y) -> tbl.(y) <- x::tbl.(y)) cgeqvars'' in
+  let cgeqs_excep, cgeqs'' = List.partition (fun xe -> snd xe = EExcep) cgeqs' in
+  let cgeqs_excep' = List.map fst cgeqs_excep in
+  let cgeqs_cont, cgeqs''' = List.partition (fun xe -> snd xe = ECont) cgeqs'' in
+  let cgeqs_cont' = List.map fst cgeqs_cont in
+  let () = assert (cgeqs''' = []) in
+  let solve_const c inits =
+    let rec aux x =
+      match sol.(x) with
+          None ->
+            sol.(x) <- Some c;
+            List.iter aux tbl.(x)
+        | Some e -> ()
+    in
+      List.iter aux inits ;
   in
-  let pr_constr i xs =
-    Format.printf " %a :>" print_evar i;
-    List.iter pr_elem xs;
-    Format.printf "@."
-  in
-  let pr_constrs s =
-    Format.printf "%s:@." s;
-    Array.iteri pr_constr tbl;
-    Format.printf "@."
-  in
-  let rec elim_loop x =
-    if x < num
-    then
-      let rec reachable x y acc =
-        if x = y && acc <> [] then raise (Loop acc);
-        let xs = rev_map_flatten (function `CConst e -> [] | `CVar y -> [y]) tbl.(x) in
-        let xs = List.filter (fun x -> not (List.mem x acc)) xs in
-          List.iter (fun x -> reachable x y (x::acc)) xs
-      in
-        try
-          reachable x x [];
-          elim_loop (x+1)
-        with Loop xs ->
-          assert (List.hd xs = x);
-          if debug then
-            begin
-              Format.printf " LOOP:";
-              List.iter (Format.printf " %a" print_evar) xs;
-              Format.printf "@."
-            end;
-          let xs' = List.tl xs in
-          let cs = rev_map_flatten (fun x -> tbl.(x)) xs in
-          let cs = List.filter (fun c -> not (List.exists (fun y -> c = `CVar y) xs)) cs in
-            tbl.(x) <- cs;
-            List.iter (fun y -> tbl.(y) <- [`CVar x]) xs';
-            if debug then pr_constrs "eliminate";
-            elim_loop x
-  in
-  let () = if debug then pr_constrs "before eliminate" in
-  let () = elim_loop 0 in
-  let () = if debug then pr_constrs "CONSTRAINTS" in
-  let rec solve x =
-    match sol.(x) with
-        None ->
-          let es = List.map (function `CConst e -> e | `CVar y -> solve y) tbl.(x) in
-          let e = List.fold_right effect_max es ENone in
-            sol.(x) <- Some e; e
-      | Some e -> e
-  in
-    Array.iteri (fun x _ -> ignore (solve x)) tbl;
+    solve_const EExcep cgeqs_excep';
+    solve_const ECont cgeqs_cont';
     sol.(0) <- Some ECont;
     fun e ->
       match sol.(e) with
           None -> ENone
         | Some e -> e
 
-(*
-let solve_constraints constrs =
-  if debug then
-    begin
-      Format.printf "@.CONSTRAINTS:@.";
-      List.iter (Format.printf " %a@." print_econstr) constrs;
-      Format.printf "@."
-    end;
-  let num = !counter + 1 in
-  let tbl = Array.make num [] in
-  let sol = Array.make num None in
-  let cgeqs,cgeqvars = List.partition (function CGeq _ -> true | CGeqVar _ -> false) constrs in
-  let cgeqvars' = List.map (function CGeqVar(x,y) -> x,y | _ -> assert false) cgeqvars in
-  let cgeqvars'' = List.filter (fun (x,y) -> x <> y) cgeqvars' in
-  let cgeqs' = List.map (function CGeq(x,e) -> x,e | _ -> assert false) cgeqs in
-  let () = List.iter (fun (x,y) -> tbl.(y) <- `CVar x::tbl.(y)) cgeqvars'' in
-  let eexceps = List.fold_left (fun acc (x,e) -> match e with Excep -> x::acc | _ -> acc) [] cgeqs' in
-  let () = List.iter (fun (x,e) -> tbl.(x) <- `CConst e::tbl.(x)) cgeqs' in
-  let pr_elem = function
-      `CVar x -> Format.printf " %a" print_evar x
-    | `CConst e -> Format.printf " %a" print_effect e
-  in
-  let pr_constr i xs =
-    Format.printf " %a :>" print_evar i;
-    List.iter pr_elem xs;
-    Format.printf "@."
-  in
-  let pr_constrs s =
-    Format.printf "%s:@." s;
-    Array.iteri pr_constr tbl;
-    Format.printf "@."
-  in
-
-  let () = if debug then pr_constrs "before eliminate" in
-  let () = elim_loop 0 in
-  let () = if debug then pr_constrs "CONSTRAINTS" in
-  let rec solve x =
-    match sol.(x) with
-        None ->
-          let es = List.map (function `CConst e -> e | `CVar y -> solve y) tbl.(x) in
-          let e = List.fold_right effect_max es ENone in
-            sol.(x) <- Some e; e
-      | Some e -> e
-  in
-    Array.iteri (fun x _ -> ignore (solve x)) tbl;
-    sol.(0) <- Some ECont;
-    fun e ->
-      match sol.(e) with
-          None -> ENone
-        | Some e -> e
-*)
 
 
 
