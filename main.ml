@@ -173,7 +173,6 @@ let rec main_loop orig parsed =
                     end
           with
               Verifier.FailedToRefineTypes ->
-                (Format.printf "           - \\&@?"; assert false); (* for paper *)
                 if !Flag.relative_complete then
 		  assert false
 		else
