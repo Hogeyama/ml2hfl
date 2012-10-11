@@ -4,7 +4,7 @@ open Utilities
 
 module RT = Ref_type
 
-let debug = true
+let debug = false
 
 let rec element_num = function
     TPair(typ1,typ2) -> element_num typ1 + element_num typ2
