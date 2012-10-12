@@ -29,15 +29,13 @@ let hd = function
 
 
 
-exception PolymorphicType
-
 let rec abst_recdata_typ = function
     TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> assert false
   | TInt -> TInt
   | TRInt _ -> assert false
-  | TVar{contents=None} -> raise PolymorphicType
+  | TVar({contents=None} as r) -> assert false
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
@@ -54,11 +52,7 @@ let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 let abst_label c = make_int (1 + Type_decl.constr_pos c)
 
 let rec abst_recdata_pat p =
-  let typ =
-    try
-      abst_recdata_typ p.pat_typ
-    with PolymorphicType -> raise (Fatal "Polymorphic types occur! (Abstract.abst_rectdata_typ)")
-  in
+  let typ = abst_recdata_typ p.pat_typ in
   let desc,cond,bind =
     match p.pat_desc with
         PAny -> PAny, true_term, []
@@ -114,13 +108,7 @@ let rec abst_recdata_pat p =
     {pat_desc=desc; pat_typ=typ}, cond, bind
 
 let rec abst_recdata t =
-  let typ' =
-    try
-      abst_recdata_typ t.typ
-    with PolymorphicType ->
-      Format.printf "@.%a : %a@." pp_print_term t print_typ t.typ;
-      raise (Fatal "PolymorphicType types occur! (Abstract.abst_rectdata_typ)")
-  in
+  let typ' = abst_recdata_typ t.typ in
   let desc =
     match t.desc with
         Unit -> Unit

@@ -75,7 +75,7 @@ let preprocess t spec =
       let t =
 	if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
 	  let t = Trans.lift_fst_snd t in
-	  let t = RefineInterface.insert_extra_param t in
+	  let t = RefineInterface.insert_extra_param t in (* THERE IS A BUG *)
 	    if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
 	      (List.length !RefineInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
 	    t
@@ -173,10 +173,10 @@ let rec main_loop orig parsed =
                     end
           with
               Verifier.FailedToRefineTypes ->
-                if !Flag.relative_complete then
-		  assert false
-		else
-		  Flag.relative_complete := true;
+                assert (not !Flag.relative_complete);
+                Format.printf "@.REFINEMENT FAILED!@.";
+                Format.printf "Restart with relative_complete := true!@.@.";
+		Flag.relative_complete := true;
 		incr Flag.cegar_loop;
 		main_loop orig parsed
             | Verifier.FailedToRefineExtraParameters ->

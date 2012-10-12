@@ -302,6 +302,83 @@ and flatten_tvar t =
 
 
 
+let rec inst_tvar_tunit_typ = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> TAbsBool
+  | TInt -> TInt
+  | TRInt _ -> assert false
+  | TVar({contents=None} as r) -> r := Some TUnit; TUnit
+  | TVar{contents=Some typ} -> inst_tvar_tunit_typ typ
+  | TFun(x,typ) -> TFun(Id.set_typ x (inst_tvar_tunit_typ (Id.typ x)), inst_tvar_tunit_typ typ)
+  | TList typ -> TList (inst_tvar_tunit_typ typ)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TPair(typ1,typ2) -> TPair(inst_tvar_tunit_typ typ1, inst_tvar_tunit_typ typ2)
+  | TPred(typ,ps) -> TPred(inst_tvar_tunit_typ typ, ps)
+
+and inst_tvar_tunit_var x =
+  Id.set_typ x (inst_tvar_tunit_typ (Id.typ x))
+
+and inst_tvar_tunit_pat p =
+  let typ = inst_tvar_tunit_typ p.pat_typ in
+  let desc =
+    match p.pat_desc with
+        PAny -> PAny
+      | PVar x -> PVar (inst_tvar_tunit_var x)
+      | PConst t -> PConst (inst_tvar_tunit t)
+      | PConstruct(c,ps) -> PConstruct(c, List.map inst_tvar_tunit_pat ps)
+      | PNil -> PNil
+      | PCons(p1,p2) -> PCons(inst_tvar_tunit_pat p1, inst_tvar_tunit_pat p2)
+      | PRecord _ -> assert false
+      | POr _ -> assert false
+      | PPair(p1,p2) -> PPair(inst_tvar_tunit_pat  p1, inst_tvar_tunit_pat p2)
+  in
+    {pat_desc=desc; pat_typ=typ}
+
+and inst_tvar_tunit t =
+  let typ' = inst_tvar_tunit_typ t.typ in
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | Var x -> Var (inst_tvar_tunit_var x)
+      | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
+      | Fun(x,t) -> Fun(inst_tvar_tunit_var x, inst_tvar_tunit t)
+      | App(t, ts) -> App(inst_tvar_tunit t, List.map inst_tvar_tunit ts)
+      | If(t1, t2, t3) -> If(inst_tvar_tunit t1, inst_tvar_tunit t2, inst_tvar_tunit t3)
+      | Branch(t1, t2) -> Branch(inst_tvar_tunit t1, inst_tvar_tunit t2)
+      | Let(flag, bindings, t) ->
+          let aux (f,xs,t) = inst_tvar_tunit_var f, List.map inst_tvar_tunit_var xs, inst_tvar_tunit t in
+          let bindings' = List.map aux bindings in
+            Let(flag, bindings', inst_tvar_tunit t)
+      | BinOp(op, t1, t2) -> BinOp(op, inst_tvar_tunit t1, inst_tvar_tunit t2)
+      | Not t -> Not (inst_tvar_tunit t)
+      | Event(s,b) -> Event(s,b)
+      | Record _ -> assert false
+      | Proj _ -> assert false
+      | SetField _ -> assert false
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(inst_tvar_tunit t1, inst_tvar_tunit t2)
+      | Constr(c,ts) -> Constr(c, List.map inst_tvar_tunit ts)
+      | Match(t1,pats) ->
+          let aux (p,t1,t2) = inst_tvar_tunit_pat p, inst_tvar_tunit t1, inst_tvar_tunit t2 in
+          Match(inst_tvar_tunit t1, List.map aux pats)
+      | Raise t -> Raise (inst_tvar_tunit t)
+      | TryWith(t1,t2) -> TryWith(inst_tvar_tunit t1, inst_tvar_tunit t2)
+      | Bottom -> Bottom
+      | Pair(t1,t2) -> Pair(inst_tvar_tunit t1, inst_tvar_tunit t2)
+      | Fst t -> Fst (inst_tvar_tunit t)
+      | Snd t -> Snd (inst_tvar_tunit t)
+      | Label(info,t) -> Label(info, inst_tvar_tunit t)
+  in
+    {desc=desc; typ=typ'}
+
+
+
 let rec rename_tvar_typ map = function
     TUnit -> TUnit
   | TBool -> TBool
@@ -397,14 +474,14 @@ let rec get_tvars typ =
       | TPred(typ,_) -> get_tvars typ
 
 
-let rec rename_poly_funs f map t =
-  let rename_poly_funs_list map ts =
-    let aux t (map,ts) =
-      let map',t' = rename_poly_funs f map t in
-        map', t'::ts
-    in
-      List.fold_right aux ts (map,[])
+let rec rename_poly_funs_list f map ts =
+  let aux t (map,ts) =
+    let map',t' = rename_poly_funs f map t in
+      map', t'::ts
   in
+    List.fold_right aux ts (map,[])
+
+and rename_poly_funs f map t =
   let map',desc =
     match t.desc with
         Unit
@@ -439,7 +516,7 @@ let rec rename_poly_funs f map t =
             else
               Id.new_var_id x
           in
-          let map',ts' = rename_poly_funs_list map ts in
+          let map',ts' = rename_poly_funs_list f map ts in
           let check (_,f') = Type.can_unify (Id.typ f') (Id.typ x') in
             if List.exists check map'
             then
@@ -447,10 +524,10 @@ let rec rename_poly_funs f map t =
                 map', App(make_var x'', ts')
             else (x,x')::map', App(make_var x', ts')
       | App({desc=Var x}, ts) ->
-          let map',ts' = rename_poly_funs_list map ts in
+          let map',ts' = rename_poly_funs_list f map ts in
             map', App(make_var x, ts')
       | App(t, ts) ->
-          let map',ts' = rename_poly_funs_list map ts in
+          let map',ts' = rename_poly_funs_list f map ts in
           let map'',t' = rename_poly_funs f map' t in
             map'', App(t',ts')
       | If(t1, t2, t3) ->
@@ -487,7 +564,7 @@ let rec rename_poly_funs f map t =
           let map2,t2' = rename_poly_funs f map1 t2 in
             map2, Cons(t1', t2')
       | Constr(s,ts) ->
-          let map',ts' = rename_poly_funs_list map ts in
+          let map',ts' = rename_poly_funs_list f map ts in
             map', Constr(s, ts')
       | Match(t,pats) ->
           let aux (p,c,t) (map,bindings) =
@@ -596,8 +673,9 @@ let rec copy_poly_funs t =
 
 let copy_poly_funs t =
   let t' = flatten_tvar (copy_poly_funs t) in
-  let () = Type_check.check t' Type.TUnit in
-    t'
+  let t'' = inst_tvar_tunit t' in
+  let () = Type_check.check t'' Type.TUnit in
+    t''
 
 
 
