@@ -3,7 +3,6 @@ open Utilities
 
 exception TimeOut
 exception LongInput
-exception NoProgress
 exception CannotDiscoverPredicate
 
 let () =
@@ -173,7 +172,7 @@ let rec main_loop orig parsed =
                     end
           with
               Verifier.FailedToRefineTypes ->
-                assert (not !Flag.relative_complete);
+                if not !Flag.relative_complete then raise Verifier.FailedToRefineTypes;
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true!@.@.";
 		Flag.relative_complete := true;
@@ -308,10 +307,11 @@ let () =
         print_info ()
     with
         Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
-      | LongInput -> Format.printf "Input is too long.@."; exit 1
-      | TimeOut -> if not Flag.for_paper then Format.printf "@.Verification failed (time out).@."; exit 1
-      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found).@."; exit 1
-      | Refine.CannotRefute -> Format.printf "Verification failed (cannot refute an error path).@."; exit 1
+      | LongInput -> Format.printf "Input is too long@."; exit 1
+      | TimeOut -> if not Flag.for_paper then Format.printf "@.Verification failed (time out)@."; exit 1
+      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
+      | Verifier.FailedToRefineTypes ->
+          Format.printf "Verification failed (cannot refute an error path)@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
       | Typemod.Error(_,e) -> Format.printf "%a@." Typemod.report_error e; exit 1
       | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1
