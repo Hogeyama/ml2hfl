@@ -628,7 +628,7 @@ let rec copy_poly_funs t =
                 Format.printf "@.";
               end;
             if map = []
-            then Let(flag, [f, xs, copy_poly_funs t1], t2')
+            then (inst_tvar_tunit (make_let_f flag [f, xs, copy_poly_funs t1] t2')).desc
             else
               let aux t (_,f') =
                 let tvar_map = List.map (fun v -> v, ref None) tvars in
