@@ -613,10 +613,12 @@ let rec copy_poly_funs t =
       | If(t1, t2, t3) -> If(copy_poly_funs t1, copy_poly_funs t2, copy_poly_funs t3)
       | Branch(t1, t2) -> Branch(copy_poly_funs t1, copy_poly_funs t2)
       | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
+            Format.printf "POLY: %a:@." pp_print_term' t;
           let tvars = get_tvars (Id.typ f) in
           let () = assert (tvars > []) in
           let t2' = copy_poly_funs t2 in
           let map,t2'' = rename_poly_funs f t2' in
+          let t2''' = inst_tvar_tunit t2'' in
           let n = List.length map in
             if n >= 2
             then
@@ -642,7 +644,7 @@ let rec copy_poly_funs t =
                 let t1 = copy_poly_funs t1 in
                   make_let_f flag [f', xs', t1] t
               in
-                (List.fold_left aux t2'' map).desc
+                (List.fold_left aux t2''' map).desc
       | Let(flag, defs, t) ->
           if List.for_all (fun (f,_,_) -> not (is_poly_typ (Id.typ f))) defs
           then
@@ -673,9 +675,8 @@ let rec copy_poly_funs t =
 
 let copy_poly_funs t =
   let t' = flatten_tvar (copy_poly_funs t) in
-  let t'' = inst_tvar_tunit t' in
-  let () = Type_check.check t'' Type.TUnit in
-    t''
+  let () = Type_check.check t' Type.TUnit in
+    t'
 
 
 
