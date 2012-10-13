@@ -14,7 +14,7 @@ let rec check t typ =
   if false then Format.printf "CHECK: %a, %a@." pp_print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
-  match t with
+  match {desc=t.desc; typ=remove_top_pred t.typ} with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
     | {desc=Int _; typ=(TInt _ | TRInt _)} -> ()

@@ -2455,7 +2455,7 @@ let rec insert_param_funarg_typ = function
   | TList typ -> TList(insert_param_funarg_typ typ)
   | TPair(typ1,typ2) -> TPair(insert_param_funarg_typ typ1, insert_param_funarg_typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TPred(typ,ps) -> raise (Fatal "Not implemented (insert_param_funarg_typ: TPred)")
+  | TPred(typ,ps) -> TPred(insert_param_funarg_typ typ, ps)
 
 and insert_param_funarg_var x = Id.set_typ x (insert_param_funarg_typ (Id.typ x))
 

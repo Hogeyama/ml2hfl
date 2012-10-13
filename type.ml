@@ -225,3 +225,7 @@ let rec to_id_string = function
   | TPair(typ1,typ2) -> to_id_string typ1 ^ "__" ^ to_id_string typ2
   | TConstr(s,_) -> s
   | TPred(typ,_) -> to_id_string typ
+
+let rec remove_top_pred = function
+    TPred(typ,_) -> typ
+  | typ -> typ
