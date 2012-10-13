@@ -448,7 +448,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           in
           let x = Id.new_var "e" !typ_excep in
           let pats' = List.map aux pats in
-          let pats'' = pats' (*@ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'}]*) in
+          let pats'' = pats' @ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'}] in
             {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pats''); typ=typ'}); typ=typ'}
       | Texp_tuple(e::es) ->
           let t = from_expression e in

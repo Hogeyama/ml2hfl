@@ -187,13 +187,12 @@ and remove_pair_aux t typ_opt =
             t'
       | _ -> (Format.printf "%a@." pp_print_term t; assert false)
 
-and remove_pair t =
-  let t' = root (remove_pair_aux t None) in
-  let () = Type_check.check t' TUnit in
-    t'
+and remove_pair t = root (remove_pair_aux t None)
 
 let remove_pair t =
-  remove_pair t, uncurry_rtyp t
+  let t' = remove_pair t in
+  let () = Type_check.check t' TUnit in
+    t', uncurry_rtyp t
 
 
 

@@ -84,7 +84,7 @@ let preprocess t spec =
       let t',get_rtyp_cps_trans = CPS.trans t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term t' in
+        then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t',get_rtyp_remove_pair = CPS.remove_pair t in
@@ -92,6 +92,12 @@ let preprocess t spec =
         if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
+      let t = t' in
+      let t' = Trans.insert_param_funarg t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
+      in
 	fun_list, t', get_rtyp
     else Syntax.get_top_funs t, t, fun _ typ -> typ
   in
@@ -174,7 +180,7 @@ let rec main_loop orig parsed =
               Verifier.FailedToRefineTypes ->
                 if not !Flag.relative_complete then raise Verifier.FailedToRefineTypes;
                 Format.printf "@.REFINEMENT FAILED!@.";
-                Format.printf "Restart with relative_complete := true!@.@.";
+                Format.printf "Restart with relative_complete := true@.@.";
 		Flag.relative_complete := true;
 		incr Flag.cegar_loop;
 		main_loop orig parsed

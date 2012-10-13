@@ -613,7 +613,6 @@ let rec copy_poly_funs t =
       | If(t1, t2, t3) -> If(copy_poly_funs t1, copy_poly_funs t2, copy_poly_funs t3)
       | Branch(t1, t2) -> Branch(copy_poly_funs t1, copy_poly_funs t2)
       | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
-            Format.printf "POLY: %a:@." pp_print_term' t;
           let tvars = get_tvars (Id.typ f) in
           let () = assert (tvars > []) in
           let t2' = copy_poly_funs t2 in
@@ -2433,3 +2432,93 @@ let rec simplify_match t =
       | Label _ -> assert false
   in
     {desc=desc; typ=t.typ}
+
+
+let should_insert typs = List.for_all (function TFun _ -> true | _ -> false) typs
+
+let rec insert_param_funarg_typ = function
+    TUnit -> TUnit
+  | TBool -> TBool
+  | TAbsBool -> TAbsBool
+  | TInt -> TInt
+  | TRInt p -> TRInt p
+  | TVar _ -> assert false
+  | TFun _ as typ ->
+      let xs,typ' = decomp_tfun typ in
+      let xs' = List.map insert_param_funarg_var xs in
+      let xs'' =
+        if should_insert (List.map Id.typ xs)
+        then (Id.new_var "u" TUnit) :: xs'
+        else xs'
+      in
+        List.fold_right (fun x typ -> TFun(x,typ)) xs'' (insert_param_funarg_typ typ')
+  | TList typ -> TList(insert_param_funarg_typ typ)
+  | TPair(typ1,typ2) -> TPair(insert_param_funarg_typ typ1, insert_param_funarg_typ typ2)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TPred(typ,ps) -> raise (Fatal "Not implemented (insert_param_funarg_typ: TPred)")
+
+and insert_param_funarg_var x = Id.set_typ x (insert_param_funarg_typ (Id.typ x))
+
+(* Insert extra parameters into functions with only function arguments.
+   Input must be CPS *)
+and insert_param_funarg t =
+  let typ = insert_param_funarg_typ t.typ in
+  let desc =
+    match t.desc with
+        Unit -> Unit
+      | True -> True
+      | False -> False
+      | Unknown -> Unknown
+      | Int n -> Int n
+      | RandInt b -> RandInt b
+      | Var x -> Var (insert_param_funarg_var x)
+      | Fun _ ->
+          let xs,t' = decomp_fun t in
+          let xs' = List.map insert_param_funarg_var xs in
+          let xs'' =
+            if should_insert (List.map Id.typ xs)
+            then (Id.new_var "u" TUnit) :: xs'
+            else xs'
+          in
+            (List.fold_right make_fun xs'' (insert_param_funarg t')).desc
+      | App(t1, ts) ->
+          let ts' = List.map (insert_param_funarg) ts in
+          let ts'' =
+            if should_insert (get_argtyps t1.typ)
+            then unit_term :: ts'
+            else ts'
+          in
+            App(insert_param_funarg t1, ts'')
+      | If(t1, t2, t3) -> If(insert_param_funarg t1, insert_param_funarg t2, insert_param_funarg t3)
+      | Branch(t1, t2) -> Branch(insert_param_funarg t1, insert_param_funarg t2)
+      | Let(flag, defs, t) ->
+          let aux (f,xs,t) =
+            let xs' = List.map insert_param_funarg_var xs in
+            let xs'' =
+              if should_insert (List.map Id.typ xs)
+              then Id.new_var "u" TUnit :: xs'
+              else xs'
+            in
+              insert_param_funarg_var f, xs'', insert_param_funarg t
+          in
+            Let(flag, List.map aux defs, insert_param_funarg t)
+      | BinOp(op, t1, t2) -> BinOp(op, insert_param_funarg t1, insert_param_funarg t2)
+      | Not t -> Not (insert_param_funarg t)
+      | Event(s,b) -> Event(s,b)
+      | Record fields -> Record (List.map (fun (f,(s,t)) -> f,(s,insert_param_funarg t)) fields)
+      | Proj(i,s,f,t) -> Proj(i,s,f,insert_param_funarg t)
+      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,insert_param_funarg t1,insert_param_funarg t2)
+      | Nil -> Nil
+      | Cons(t1,t2) -> Cons(insert_param_funarg t1, insert_param_funarg t2)
+      | Constr(s,ts) -> Constr(s, List.map (insert_param_funarg) ts)
+      | Match(t,pats) -> Match(insert_param_funarg t, List.map (fun (pat,cond,t) -> pat,cond,insert_param_funarg t) pats)
+      | Raise t -> Raise (insert_param_funarg t)
+      | TryWith(t1,t2) -> TryWith(insert_param_funarg t1, insert_param_funarg t2)
+      | Bottom -> Bottom
+      | Pair(t1,t2) -> Pair(insert_param_funarg t1, insert_param_funarg t2)
+      | Fst t -> Fst (insert_param_funarg t)
+      | Snd t -> Snd (insert_param_funarg t)
+      | RandValue (_, _) -> assert false
+      | Label _ -> assert false
+  in
+    {desc=desc; typ=typ}
