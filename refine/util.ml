@@ -31,6 +31,12 @@ let rec fixed_point f eq x =
   let x' = f x in
   if eq x x' then x else fixed_point f eq x'
 
+let rec until pred f x =
+  if pred x then
+    x
+  else
+    until pred f (f x)
+
 (** {6 Functions on integers} *)
 
 let sum ns = List.fold_left (+) 0 ns
