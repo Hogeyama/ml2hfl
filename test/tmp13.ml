@@ -1,0 +1,9 @@
+let mynil c n = n in
+let mycons x y c n = c x (y c n) in
+let rec mk_list n =
+ if n=0 then mynil else mycons n (mk_list (n-1)) in
+let fold l c n = l c n in
+let mymap f l = fun c -> fun n -> l (fun x -> fun z -> c (f x) z) n in
+let succ x n = n+1 in
+let length l = fold l succ 0 in
+ assert (length (mk_list n) >= n)

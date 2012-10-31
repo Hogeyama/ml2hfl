@@ -1,0 +1,33 @@
+%BEGING
+S_106  -> Filter_45 F_43 X_74.
+Fail_85 k_86 u_87 -> fail.
+F_43 x_51 -> x_51 Branch_8.
+F_50 f_76 x_53 -> Branch_8 (true x_53) (false (f_76 (X_66 f_76 x_53))).
+X_64 x_84 x_65 -> x_65 x_84.
+X_58 x_82 -> x_82.
+X_60 x_81 x_61 -> x_61 (X_58 x_81).
+X_66 f_77 x_79 x_67 -> x_67 (true (Filter_45 f_77 (X_60 x_79))) (false (Filter_45 f_77 (X_64 x_79))).
+Filter_45 f_46 x_52 -> x_52 (F_50 f_46).
+X_72  -> Branch_8 (true end) (false (Fail_85 end X_68)).
+X_68 x_69 -> x_69.
+X_74 x_75 -> x_75 X_72.
+Assume_40 b_41 x_42 -> b_41 x_42 end.
+Nondet_38 x_39 -> br (x_39 True_2) (x_39 False_5).
+If_34 b_35 x_36 y_37 -> b_35 y_37 (Branch_8 x_36 y_37).
+If_30 b_31 x_32 y_33 -> b_31 x_32 (Branch_8 x_32 y_33).
+If_25 b_26 b_27 x_28 y_29 -> b_26 x_28 (b_27 y_29 (Branch_8 x_28 y_29)).
+Not_21 b_22 x_23 y_24 -> b_22 y_24 x_23.
+Or_16 b_17 b_18 x_19 y_20 -> b_17 x_19 (b_18 x_19 y_20).
+And_11 b_12 b_13 x_14 y_15 -> b_12 (b_13 x_14 y_15) y_15.
+Branch_8 x_9 y_10 -> br x_9 y_10.
+False_5 x_6 y_7 -> y_7.
+True_2 x_3 y_4 -> x_3.
+%ENDG
+
+%BEGINA
+q0 true -> q0.
+q0 false -> q0.
+q0 br -> q0 q0.
+q0 end -> .
+%ENDA
+
