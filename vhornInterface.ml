@@ -145,7 +145,7 @@ let rec inv_abst_type aty =
 let infer flags labeled cexs prog =
   let _ = Global.print_log := !Flag.debug_level <> 0 in
 
-  let _ = Global.enable_syntactic_predicate_generalization := flags land 1 <> 0 in (* Enable predicate generalization heuristics *)
+  let _ = if flags land 1 <> 0 && !Global.interp_prover = Global.CSIsat then Global.interp_prover := Global.GCSIsat in
   let _ = Global.solve_preds_left_to_right := flags land 2 <> 0 in
 
   let _ = Global.subst_hcs_inc := flags land 4 <> 0 in

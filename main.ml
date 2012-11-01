@@ -148,7 +148,7 @@ let rec main_loop orig parsed =
                     in
                       rev_map_flatten aux env
                   in
-		  let () =
+                  let () =
                     if !Flag.write_annot
                     then
                       let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
@@ -278,6 +278,9 @@ let arg_spec =
      " Generalize constraints of multiple function calls by using convex hull";
    "-gtc", Arg.Unit (fun _ -> Global.predicate_discovery := Global.TemplateBasedConstraintSolving),
      " Generalize constraints of multiple function calls by using template-based constraint solving";
+   (* interpolating prover *)
+   "-yint", Arg.Unit (fun _ -> Global.interp_prover := Global.Yint),
+          " Use Yint interpolating prover";
   ]
 
 
