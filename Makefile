@@ -69,7 +69,7 @@ VHORN_CMO = \
 	enum.cmo extList.cmo extString.cmo \
 	global.cmo util.cmo zipper.cmo \
 	attr.cmo idnt.cmo const.cmo var.cmo simType.cmo term.cmo linArith.cmo poly.cmo parLinArith.cmo typTerm.cmo formula.cmo typSubst.cmo formulaUtil.cmo \
-	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo apronInterface.cmo \
+	cvc3Interface.cmo interpProver.cmo csisatInterface.cmo yintInterface.cmo atpInterface.cmo apronInterface.cmo \
 	atom.cmo hornClause.cmo hornClauseUtil.cmo typPredSubst.cmo \
 	farkas.cmo nonLinConstrSolve.cmo \
 	hcSolve.cmo hcBwSolve.cmo hcGenSolve.cmo \
@@ -99,7 +99,7 @@ CMO = $(OCAML_CMO) \
 	writeAnnot.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma gmp.cma apron.cma polka.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma $(YINT)/yint.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 

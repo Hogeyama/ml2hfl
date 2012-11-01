@@ -23,56 +23,60 @@ trecs_parser.cmi: inter_type.cmo
 ../VHorn/util.cmx:
 ../VHorn/zipper.cmo:
 ../VHorn/zipper.cmx:
-../VHorn/attr.cmo:
-../VHorn/attr.cmx:
+../VHorn/attr.cmo: ../VHorn/attr.cmi
+../VHorn/attr.cmx: ../VHorn/attr.cmi
 ../VHorn/idnt.cmo:
 ../VHorn/idnt.cmx:
-../VHorn/const.cmo:
-../VHorn/const.cmx:
-../VHorn/var.cmo:
-../VHorn/var.cmx:
+../VHorn/const.cmo: ../VHorn/const.cmi
+../VHorn/const.cmx: ../VHorn/const.cmi
+../VHorn/var.cmo: ../VHorn/var.cmi
+../VHorn/var.cmx: ../VHorn/var.cmi
 ../VHorn/simType.cmo:
 ../VHorn/simType.cmx:
-../VHorn/term.cmo:
-../VHorn/term.cmx:
-../VHorn/linArith.cmo:
-../VHorn/linArith.cmx:
-../VHorn/poly.cmo:
-../VHorn/poly.cmx:
-../VHorn/parLinArith.cmo:
-../VHorn/parLinArith.cmx:
-../VHorn/typTerm.cmo:
-../VHorn/typTerm.cmx:
-../VHorn/formula.cmo:
-../VHorn/formula.cmx:
-../VHorn/typSubst.cmo:
-../VHorn/typSubst.cmx:
+../VHorn/term.cmo: ../VHorn/term.cmi
+../VHorn/term.cmx: ../VHorn/term.cmi
+../VHorn/linArith.cmo: ../VHorn/linArith.cmi
+../VHorn/linArith.cmx: ../VHorn/linArith.cmi
+../VHorn/poly.cmo: ../VHorn/poly.cmi
+../VHorn/poly.cmx: ../VHorn/poly.cmi
+../VHorn/parLinArith.cmo: ../VHorn/parLinArith.cmi
+../VHorn/parLinArith.cmx: ../VHorn/parLinArith.cmi
+../VHorn/typTerm.cmo: ../VHorn/typTerm.cmi
+../VHorn/typTerm.cmx: ../VHorn/typTerm.cmi
+../VHorn/formula.cmo: ../VHorn/formula.cmi
+../VHorn/formula.cmx: ../VHorn/formula.cmi
+../VHorn/typSubst.cmo: ../VHorn/typSubst.cmi
+../VHorn/typSubst.cmx: ../VHorn/typSubst.cmi
 ../VHorn/formulaUtil.cmo:
 ../VHorn/formulaUtil.cmx:
-../VHorn/cvc3Interface.cmo:
-../VHorn/cvc3Interface.cmx:
-../VHorn/csisatInterface.cmo:
-../VHorn/csisatInterface.cmx:
-../VHorn/atpInterface.cmo:
-../VHorn/atpInterface.cmx:
+../VHorn/cvc3Interface.cmo: ../VHorn/cvc3Interface.cmi
+../VHorn/cvc3Interface.cmx: ../VHorn/cvc3Interface.cmi
+../VHorn/interpProver.cmo: ../VHorn/interpProver.cmi
+../VHorn/interpProver.cmx: ../VHorn/interpProver.cmi
+../VHorn/csisatInterface.cmo: ../VHorn/csisatInterface.cmi
+../VHorn/csisatInterface.cmx: ../VHorn/csisatInterface.cmi
+../VHorn/yintInterface.cmo:
+../VHorn/yintInterface.cmx:
+../VHorn/atpInterface.cmo: ../VHorn/atpInterface.cmi
+../VHorn/atpInterface.cmx: ../VHorn/atpInterface.cmi
 ../VHorn/apronInterface.cmo:
 ../VHorn/apronInterface.cmx:
-../VHorn/atom.cmo:
-../VHorn/atom.cmx:
+../VHorn/atom.cmo: ../VHorn/atom.cmi
+../VHorn/atom.cmx: ../VHorn/atom.cmi
 ../VHorn/hornClause.cmo:
 ../VHorn/hornClause.cmx:
-../VHorn/hornClauseUtil.cmo:
-../VHorn/hornClauseUtil.cmx:
-../VHorn/typPredSubst.cmo:
-../VHorn/typPredSubst.cmx:
+../VHorn/hornClauseUtil.cmo: ../VHorn/hornClauseUtil.cmi
+../VHorn/hornClauseUtil.cmx: ../VHorn/hornClauseUtil.cmi
+../VHorn/typPredSubst.cmo: ../VHorn/typPredSubst.cmi
+../VHorn/typPredSubst.cmx: ../VHorn/typPredSubst.cmi
 ../VHorn/farkas.cmo:
 ../VHorn/farkas.cmx:
 ../VHorn/nonLinConstrSolve.cmo:
 ../VHorn/nonLinConstrSolve.cmx:
-../VHorn/hcSolve.cmo:
-../VHorn/hcSolve.cmx:
-../VHorn/hcBwSolve.cmo:
-../VHorn/hcBwSolve.cmx:
+../VHorn/hcSolve.cmo: ../VHorn/hcSolve.cmi
+../VHorn/hcSolve.cmx: ../VHorn/hcSolve.cmi
+../VHorn/hcBwSolve.cmo: ../VHorn/hcBwSolve.cmi
+../VHorn/hcBwSolve.cmx: ../VHorn/hcBwSolve.cmi
 ../VHorn/hcGenSolve.cmo:
 ../VHorn/hcGenSolve.cmx:
 ../VHorn/fdef.cmo:
