@@ -34,7 +34,7 @@ INCLUDES = -I /usr/lib \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray \
-	-I ./refine \
+	-I $(VHORN) \
 	-I $(TRECS)
 #	-I $(OCAMLLIB)
 OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
@@ -65,33 +65,30 @@ MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
 	spec_parser.mli trecs_parser.mli
 CMI = $(MLI:.mli=.cmi)
 
-REFINE_CMO = enum.cmo extList.cmo extString.cmo \
-	global.cmo \
-	util.cmo zipper.cmo \
-	attr.cmo idnt.cmo const.cmo var.cmo callId.cmo simType.cmo \
-	term.cmo linArith.cmo poly.cmo parLinArith.cmo typTerm.cmo formula.cmo typSubst.cmo formulaUtil.cmo fes.cmo \
-  fdef.cmo prog.cmo \
+VHORN_CMO = \
+	enum.cmo extList.cmo extString.cmo \
+	global.cmo util.cmo zipper.cmo \
+	attr.cmo idnt.cmo const.cmo var.cmo simType.cmo term.cmo linArith.cmo poly.cmo parLinArith.cmo typTerm.cmo formula.cmo typSubst.cmo formulaUtil.cmo \
 	cvc3Interface.cmo csisatInterface.cmo atpInterface.cmo apronInterface.cmo \
+	atom.cmo hornClause.cmo hornClauseUtil.cmo typPredSubst.cmo \
 	farkas.cmo nonLinConstrSolve.cmo \
-	refType.cmo refTypeCheck.cmo \
-	absType.cmo \
+	hcSolve.cmo hcBwSolve.cmo hcGenSolve.cmo \
+	fdef.cmo prog.cmo \
+	callId.cmo callTree.cmo \
 	trace.cmo compTree.cmo compTreeExpander.cmo \
-	callTree.cmo atom.cmo hornClause.cmo hornClauseUtil.cmo typPredSubst.cmo \
-	hcGenRefType.cmo hcSolve.cmo hcBwSolve.cmo hcGenSolve.cmo \
-	verifier.cmo
-#	intType.cmo intTypeCheck.cmo
-#	traceConstr.cmo tcGenIntType.cmo tcGenRefType.cmo
-#	tcSolve.cmo tcSolveIntType.cmo  tcSolveRefType.cmo
+	paramSubstInfer.cmo \
+	refType.cmo hcGenRefType.cmo refTypeInfer.cmo \
+	absType.cmo absTypeInfer.cmo
 
 CMO = $(OCAML_CMO) \
 	$(ATP)/atp_batch.cmo \
-	$(addprefix refine/,$(REFINE_CMO)) \
+	$(addprefix $(VHORN)/,$(VHORN_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	wrapper.cmo wrapper2.cmo \
 	ref_type.cmo type_check.cmo trans.cmo CEGAR_ref_type.cmo CEGAR_util.cmo \
-	useless_elim.cmo inter_type.cmo type_trans.cmo refineInterface.cmo \
+	useless_elim.cmo inter_type.cmo type_trans.cmo vhornInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
@@ -168,6 +165,9 @@ ocaml: $(OCAML_SOURCE)/config/Makefile
 csisat:
 	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
 
+vhorn:
+	cd $(VHORN) && make all
+
 atp:
 	-patch -d atp -N < atp_patch
 	cd $(ATP) && make compiled bytecode
@@ -192,7 +192,7 @@ trecs-byte::
 # distribution
 
 dist:
-	tar czvf dist.tar.gz *.ml *.mli refine/*.ml refine/*.mli Makefile depend
+	tar czvf dist.tar.gz *.ml *.mli Makefile depend
 
 
 ################################################################################
@@ -208,7 +208,7 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[iox] *.o refine/*.cm[iox] refine/*.o *.a *.annot *~
+	rm -f *.cm[iox] *.o *.a *.annot *~
 	rm -f $(NAME).byte $(NAME).opt
 
 clean-ocaml:
@@ -270,6 +270,6 @@ SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend::
-	$(OCAMLDEP) -I refine $(MLI) $(SRC_MOCHI) > depend
+	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
