@@ -36,7 +36,7 @@ let rec cegar1 prog0 ces info =
   let prog =
     if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete
     then
-      let env,defs,main = RefineInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
+      let env,defs,main = VhornInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
         {env=env; defs=defs; main=main}
     else prog0
   in

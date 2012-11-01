@@ -74,9 +74,9 @@ let preprocess t spec =
       let t =
 	if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
 	  let t = Trans.lift_fst_snd t in
-	  let t = RefineInterface.insert_extra_param t in (* THERE IS A BUG *)
+	  let t = VhornInterface.insert_extra_param t in (* THERE IS A BUG *)
 	    if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-	      (List.length !RefineInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+	      (List.length !VhornInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
 	    t
 	else
 	  t
@@ -132,7 +132,7 @@ let rec main_loop orig parsed =
   let prog, rmap, get_rtyp, info = preprocess t spec in
     match !Flag.cegar with
         Flag.CEGAR_InteractionType ->
-          RefineInterface.verify [] prog
+          VhornInterface.verify [] prog
       | Flag.CEGAR_DependentType ->
           try
             match CEGAR.cegar prog info with
@@ -177,17 +177,17 @@ let rec main_loop orig parsed =
                       Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
                     end
           with
-              Verifier.FailedToRefineTypes ->
-                if not !Flag.relative_complete then raise Verifier.FailedToRefineTypes;
+              AbsTypeInfer.FailedToRefineTypes ->
+                if not !Flag.relative_complete then raise AbsTypeInfer.FailedToRefineTypes;
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true@.@.";
-		Flag.relative_complete := true;
-		incr Flag.cegar_loop;
-		main_loop orig parsed
-            | Verifier.FailedToRefineExtraParameters ->
-                RefineInterface.params := [];
-                Verifier.ext_coeffs := [];
-                Verifier.ext_constrs := [];
+                Flag.relative_complete := true;
+                incr Flag.cegar_loop;
+                main_loop orig parsed
+            | ParamSubstInfer.FailedToRefineExtraParameters ->
+                VhornInterface.params := [];
+                ParamSubstInfer.ext_coeffs := [];
+                ParamSubstInfer.ext_constrs := [];
                 incr Global.number_of_extra_params;
                 incr Flag.cegar_loop;
                 main_loop orig parsed
@@ -316,7 +316,7 @@ let () =
       | LongInput -> Format.printf "Input is too long@."; exit 1
       | TimeOut -> if not Flag.for_paper then Format.printf "@.Verification failed (time out)@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
-      | Verifier.FailedToRefineTypes ->
+      | AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed (cannot refute an error path)@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
       | Typemod.Error(_,e) -> Format.printf "%a@." Typemod.report_error e; exit 1
