@@ -54,7 +54,7 @@ byte: $(NAME).byte
 opt: $(NAME).opt
 byte2: $(NAME).byte2
 opt2: $(NAME).opt2
-lib: ocaml csisat trecs atp
+lib: ocaml csisat trecs atp vhorn yint
 
 
 ################################################################################
@@ -165,12 +165,16 @@ ocaml: $(OCAML_SOURCE)/config/Makefile
 csisat:
 	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
 
-vhorn:
-	cd $(VHORN) && make all
-
 atp:
 	-patch -d atp -N < atp_patch
 	cd $(ATP) && make compiled bytecode
+
+vhorn:
+	cd $(VHORN) && make all
+
+yint:
+	cd $(YINT) && make all
+
 
 # TODO: refine & write rule for bytecode
 trecs::
@@ -270,6 +274,6 @@ SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend::
-	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
+	$(OCAMLDEP) -I $(VHORN) $(YINT) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
