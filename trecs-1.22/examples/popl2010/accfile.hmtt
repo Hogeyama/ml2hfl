@@ -1,4 +1,0 @@
-AccFile cmds = case cmds of
-	| e => close
-	| r cmds' => read(AccFile cmds')
-	| w cmds' => write(AccFile cmds').

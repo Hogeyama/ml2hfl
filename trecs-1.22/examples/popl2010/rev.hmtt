@@ -1,6 +1,0 @@
-Rev x = RevSub x e.
-RevSub x z = case x of
-	| e => z
-	| a x' => RevSub x' (a z)
-	| b x' => RevSub x' (b z)
-.

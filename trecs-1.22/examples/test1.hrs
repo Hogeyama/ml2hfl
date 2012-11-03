@@ -1,9 +1,0 @@
-/*** Examples 2.1 and 2.2 ***/
-
-%BEGING
-S -> end.
-%ENDG
-
-%BEGINA
-q0 end -> .
-%ENDA
