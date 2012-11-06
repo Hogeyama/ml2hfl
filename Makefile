@@ -35,6 +35,7 @@ INCLUDES = -I /usr/lib \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray \
 	-I $(VHORN) \
+	-I $(YINT) \
 	-I $(TRECS)
 #	-I $(OCAMLLIB)
 OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
