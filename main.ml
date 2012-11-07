@@ -274,10 +274,12 @@ let arg_spec =
           " Use refinement type based predicate discovery (obsolete)";
    "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
    "-mp", Arg.Set Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
-   "-gch", Arg.Unit (fun _ -> Global.predicate_discovery := Global.ConvexHull),
-     " Generalize constraints of multiple function calls by using convex hull";
-   "-gtc", Arg.Unit (fun _ -> Global.predicate_discovery := Global.TemplateBasedConstraintSolving),
-     " Generalize constraints of multiple function calls by using template-based constraint solving";
+   "-gi", Arg.Unit (fun _ -> Global.predicate_discovery := Global.GenInterpolation),
+     " Generalize constraints of multiple function calls by interpolation";
+   "-gchi", Arg.Unit (fun _ -> Global.predicate_discovery := Global.GenConvexHullInterpolation),
+     " Generalize constraints of multiple function calls by convex hull and interpolation";
+   "-gtc", Arg.Unit (fun _ -> Global.predicate_discovery := Global.GenTemplateBasedConstraintSolving),
+     " Generalize constraints of multiple function calls by template-based constraint solving";
    (* interpolating prover *)
    "-yint", Arg.Unit (fun _ -> Global.interp_prover := Global.Yint),
           " Use Yint interpolating prover";
