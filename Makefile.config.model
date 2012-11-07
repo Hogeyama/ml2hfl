@@ -5,3 +5,4 @@ VHORN = ../VHorn
 ATP = /usr/lib/ocaml/atp
 APRON = /usr/local/lib
 GMP = /usr/lib
+YINT = ../Yint
