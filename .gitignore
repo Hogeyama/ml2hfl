@@ -1,2 +1,14 @@
+Makefile.config
 depend
-*.cm*
+*lexer.ml
+*parser.ml
+*parser.mli
+*parser.output
+*.annot
+*.cmi
+*.cmo
+*.cmx
+*.o
+cvc3
+trecs
+mochi.opt
