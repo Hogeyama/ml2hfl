@@ -53,6 +53,7 @@ let expand_nonrec = ref true
 let expand_nonrec_init = ref true
 let cps_simpl = ref false
 let bool_init_empty = ref false
+let insert_param_funarg = ref false
 
 let mode = ref Reachability
 let init_trans = ref true

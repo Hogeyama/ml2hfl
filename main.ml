@@ -93,7 +93,7 @@ let preprocess t spec =
         then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
       let t = t' in
-      let t' = Trans.insert_param_funarg t in
+      let t' = if !Flag.insert_param_funarg then Trans.insert_param_funarg t else t in
       let () =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
@@ -177,13 +177,19 @@ let rec main_loop orig parsed =
                       Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
                     end
           with
-              AbsTypeInfer.FailedToRefineTypes ->
-                if not !Flag.relative_complete then raise AbsTypeInfer.FailedToRefineTypes;
+              AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete ->
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
                 incr Flag.cegar_loop;
                 main_loop orig parsed
+            | AbsTypeInfer.FailedToRefineTypes
+            | Assert_failure("hcSolve.ml", 329, 12) when not !Flag.insert_param_funarg ->
+                Flag.insert_param_funarg := true;
+                incr Flag.cegar_loop;
+                main_loop orig parsed
+            | AbsTypeInfer.FailedToRefineTypes ->
+                raise AbsTypeInfer.FailedToRefineTypes;
             | ParamSubstInfer.FailedToRefineExtraParameters ->
                 VhornInterface.params := [];
                 ParamSubstInfer.ext_coeffs := [];
@@ -232,6 +238,7 @@ let arg_spec =
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
+   "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
    (* verifier *)
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
