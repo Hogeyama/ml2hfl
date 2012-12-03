@@ -60,8 +60,13 @@ let rec check t typ =
         check t1 t1.typ;
         check t2 t2.typ;
     | {desc=BinOp((Lt|Gt|Leq|Geq),t1,t2); typ=TBool} ->
+        assert (Type.can_unify t1.typ t2.typ);
+        check t1 t1.typ;
+        check t2 t2.typ;
+(*
         check t1 TInt;
         check t2 TInt
+*)
     | {desc=BinOp((And|Or),t1,t2); typ=TBool} ->
         check t1 TBool;
         check t2 TBool

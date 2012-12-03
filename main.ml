@@ -121,6 +121,10 @@ let preprocess t spec =
 let rec main_loop orig parsed =
   let () = init () in
   let t = parsed in
+  let () =
+    if false && !Flag.debug_level > 0
+    then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' t
+  in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in
   let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
