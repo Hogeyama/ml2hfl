@@ -238,6 +238,7 @@ let arg_spec =
                  Flag.debug_level := 0;
                  Flag.print_progress := false),
      " Show only result";
+   "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
    (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
