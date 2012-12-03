@@ -887,7 +887,7 @@ and subst x t t' =
           let aux (f,xs,t1) =
             subst_var x t f,
             List.map (subst_var x t) xs,
-            if List.exists (Id.same x) xs then t else subst x t t1 in
+            if List.exists (Id.same x) xs then t1 else subst x t t1 in
           let bindings' = List.map aux bindings in
           let t2' =
             if List.exists (fun (f,_,_) -> Id.same f x) bindings
@@ -900,9 +900,7 @@ and subst x t t' =
           let aux (f,xs,t1) =
             subst_var x t f,
             List.map (subst_var x t) xs,
-            if List.exists (Id.same x) xs
-            then t
-            else subst x t t1
+            if List.exists (Id.same x) xs then t1 else subst x t t1
           in
           let bindings' = List.map aux bindings in
           let t2' = subst x t t2 in
