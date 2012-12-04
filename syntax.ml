@@ -317,6 +317,10 @@ and print_term pri typ fm t =
         fprintf fm "(@[label %a %a@])" Id.print x (print_term 80 typ) t
     | Label(InfoString s, t) ->
         fprintf fm "(@[label %s %a@])" s (print_term 80 typ) t
+    | Label(InfoInt n, t) ->
+        fprintf fm "(@[label %d %a@])" n (print_term 80 typ) t
+    | Label(InfoTerm t', t) ->
+        fprintf fm "(@[label %a %a@])" (print_term 80 typ) t' (print_term 80 typ) t
     | Label _ -> assert false
 
 

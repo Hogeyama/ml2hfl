@@ -63,7 +63,7 @@ let rec subst_arg x t t' =
     | Cons(t1,t2) -> {desc=Cons(subst_arg x t t1, subst_arg x t t2); typ=t'.typ}
     | Constr(s,ts) -> {desc=Constr(s, List.map (subst_arg x t) ts); typ=t'.typ}
     | Match(t1,pats) ->
-        let aux (pat,cond,t1) = pat, cond, subst_arg x t t1 in
+        let aux (pat,cond,t1) = pat, subst_arg x t cond, subst_arg x t t1 in
           {desc=Match(subst_arg x t t1, List.map aux pats); typ=t'.typ}
     | Raise t1 -> {desc=Raise(subst_arg x t t1); typ=t'.typ}
     | TryWith(t1,t2) -> {desc=TryWith(subst_arg x t t1, subst_arg x t t2); typ=t'.typ}
@@ -312,4 +312,6 @@ let print fm (ce, t) =
   try
     ignore (eval_print fm ce t);
     assert false
-  with EventFail -> Format.fprintf fm "@\nFAIL!@."
+  with
+    RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@."
+  | EventFail -> Format.fprintf fm "@\nFAIL!@."
