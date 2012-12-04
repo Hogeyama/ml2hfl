@@ -181,15 +181,15 @@ let rec main_loop orig parsed =
                       Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
                     end
           with
-              AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete ->
+              AbsTypeInfer.FailedToRefineTypes
+            | Assert_failure("hcSolve.ml", 329, 12) when not !Flag.insert_param_funarg ->
+                Flag.insert_param_funarg := true;
+                incr Flag.cegar_loop;
+                main_loop orig parsed
+            | AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete ->
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
-                incr Flag.cegar_loop;
-                main_loop orig parsed
-            | AbsTypeInfer.FailedToRefineTypes
-            | Assert_failure("hcSolve.ml", 329, 12) when not !Flag.insert_param_funarg ->
-                Flag.insert_param_funarg := true;
                 incr Flag.cegar_loop;
                 main_loop orig parsed
             | AbsTypeInfer.FailedToRefineTypes ->
