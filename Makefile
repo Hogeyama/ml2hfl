@@ -9,12 +9,13 @@ include Makefile.config
 # OCAMLLIB     = $(OCAML_SOURCE)/stdlib
 # OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
 # OCAMLYACC    = $(OCAML_SOURCE)/yacc/ocamlyacc.opt
-OCAMLC       = ocamlc
-OCAMLOPT     = ocamlopt
+OCAMLC       = $(shell if which ocamlc.opt 2> /dev/null > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
+OCAMLOPT     = $(shell if which ocamlopt.opt 2> /dev/null > /dev/null ; then echo ocamlopt.opt; else echo ocamlopt; fi)
 OCAMLMKTOP   = ocamlmktop
-OCAMLDEP     = ocamldep
-OCAMLLEX     = ocamllex
-OCAMLYACC    = ocamlyacc
+OCAMLDEP     = $(shell if which ocamldep.opt 2> /dev/null > /dev/null ; then echo ocamldep.opt; else echo ocamldep; fi)
+OCAMLLEX     = $(shell if which ocamllex.opt 2> /dev/null > /dev/null ; then echo ocamllex.opt; else echo ocamllex; fi)
+OCAMLYACC    = $(shell if which menhir 2> /dev/null > /dev/null ; then echo menhir; else echo ocamlyacc; fi)
+
 
 CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
