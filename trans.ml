@@ -771,8 +771,8 @@ let set_target t =
             in
             let bindings = List.map aux args in
             let main = make_app (make_var f) (List.map (fun (x,_,_) -> make_var x) bindings) in
-            let main = make_letrec defs main in
             let main = make_lets bindings main in
+            let main = make_letrec defs main in
             let u = Id.new_var "main" main.typ in
             let main = make_let [u, [], main] unit_term in
               replace_main main t
