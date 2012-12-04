@@ -154,6 +154,15 @@ and remove_pair_aux t typ_opt =
           let t' = root (remove_pair_aux t None) in
             Leaf (make_let_f flag bindings' t')
       | BinOp(op, t1, t2) ->
+          begin
+            match op with
+              Eq | Lt | Gt | Leq | Geq ->
+                if t1.typ <> TUnit && t1.typ <> TBool && t1.typ <> TInt && t1.typ <> typ_abst
+                then
+                  (Format.printf "%a@." pp_print_typ t1.typ;
+                  raise (Fatal "Unsupported (polymorphic comparison)"))
+            | _ -> ()
+          end;
           let t1' = root (remove_pair_aux t1 None) in
           let t2' = root (remove_pair_aux t2 None) in
             Leaf {desc=BinOp(op, t1', t2'); typ=root typs}
