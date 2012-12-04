@@ -38,9 +38,9 @@ let parse_error _ = print_error_information ()
 %%
 
 output:
-  SAFE env { `Safe $2 }
-| UNSAFE THE_ERROR_TRACE_IS error_trace { `Unsafe $3 }
-| TIMEOUT { `TimeOut }
+  SAFE env EOF { `Safe $2 }
+| UNSAFE THE_ERROR_TRACE_IS error_trace EOF { `Unsafe $3 }
+| TIMEOUT EOF { `TimeOut }
 
 error_trace:
   DOT
