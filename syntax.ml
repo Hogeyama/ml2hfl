@@ -852,9 +852,6 @@ let rec subst_var x t y = Id.set_typ y (subst_type x t (Id.typ y))
 
 (* [x |-> t], [t/x] *)
 and subst x t t' =
-(*
-  let t'' =
-*)
     match t'.desc with
         Unit -> t'
       | True -> t'
@@ -920,7 +917,7 @@ and subst x t t' =
       | Cons(t1,t2) -> {desc=Cons(subst x t t1, subst x t t2); typ=t'.typ}
       | Constr(s,ts) -> {desc=Constr(s, List.map (subst x t) ts); typ=t'.typ}
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, cond, subst x t t1 in
+          let aux (pat,cond,t1) = pat, subst x t cond, subst x t t1 in
             {desc=Match(subst x t t1, List.map aux pats); typ=t'.typ}
       | Raise t1 -> {desc=Raise(subst x t t1); typ=t'.typ}
       | TryWith(t1,t2) -> {desc=TryWith(subst x t t1, subst x t t2); typ=t'.typ}
