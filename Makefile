@@ -22,6 +22,7 @@ CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 INCLUDES = -I /usr/lib \
 	-I /usr/lib/ocaml \
 	-I /usr/local/lib \
+	-I $(Z3) \
 	-I $(GMP) \
 	-I $(ATP) \
 	-I $(APRON) \
@@ -101,7 +102,7 @@ CMO = $(OCAML_CMO) \
 	writeAnnot.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma $(YINT)/yint.cma gmp.cma apron.cma polka.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma z3.cma $(YINT)/yint.cma gmp.cma apron.cma polka.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 
