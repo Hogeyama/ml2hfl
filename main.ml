@@ -181,8 +181,7 @@ let rec main_loop orig parsed =
                       Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
                     end
           with
-              AbsTypeInfer.FailedToRefineTypes
-            | Assert_failure("hcSolve.ml", 329, 12) when not !Flag.insert_param_funarg ->
+              AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
                 incr Flag.cegar_loop;
                 main_loop orig parsed
