@@ -827,8 +827,8 @@ let rec get_vars_pat pat =
     | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
     | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
     | POr(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PPair _ -> assert false
-    | PCons _ -> assert false
+    | PPair(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PCons(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
     | PNil -> []
 
 
@@ -921,7 +921,12 @@ and subst x t t' =
       | Cons(t1,t2) -> {desc=Cons(subst x t t1, subst x t t2); typ=t'.typ}
       | Constr(s,ts) -> {desc=Constr(s, List.map (subst x t) ts); typ=t'.typ}
       | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, subst x t cond, subst x t t1 in
+          let aux (pat,cond,t1) =
+            let xs = get_vars_pat pat in
+            if List.exists (Id.same x) xs
+            then pat, cond, t1
+            else pat, subst x t cond, subst x t t1
+          in
             {desc=Match(subst x t t1, List.map aux pats); typ=t'.typ}
       | Raise t1 -> {desc=Raise(subst x t t1); typ=t'.typ}
       | TryWith(t1,t2) -> {desc=TryWith(subst x t t1, subst x t t2); typ=t'.typ}
