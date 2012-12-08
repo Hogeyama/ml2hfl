@@ -1,10 +1,11 @@
-open ExtList
 
 open Utilities
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
 open CEGAR_util
+open VHorn
+open VHorn.ExtList
 
 let conv_const c =
   match c with

@@ -1,5 +1,6 @@
 
 open Utilities
+open VHorn
 
 exception TimeOut
 exception LongInput
@@ -291,6 +292,8 @@ let arg_spec =
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtc", Arg.Unit (fun _ -> Global.predicate_discovery := Global.GenTemplateBasedConstraintSolving),
      " Generalize constraints of multiple function calls by template-based constraint solving";
+   "-yhorn", Arg.Unit (fun _ -> Global.predicate_discovery := Global.YHorn),
+     " Solve Horn clauses by using Yint";
    (* interpolating prover *)
    "-yint", Arg.Unit (fun _ -> Global.interp_prover := Global.Yint),
           " Use Yint interpolating prover";

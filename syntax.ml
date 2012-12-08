@@ -2,7 +2,7 @@
 open Format
 open Utilities
 open Type
-open ExtString
+open VHorn.ExtString
 
 type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult

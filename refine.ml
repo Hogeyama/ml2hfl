@@ -3,7 +3,7 @@ open Utilities
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
-
+open VHorn
 
 exception CannotRefute
 
