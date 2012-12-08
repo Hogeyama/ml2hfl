@@ -151,7 +151,9 @@ let rec main_loop orig parsed =
                           Not_found -> []
                         | _ -> Format.printf "unimplemented or bug@.@."; []
                     in
-                      rev_map_flatten aux env
+                    if !Flag.insert_param_funarg
+                    then []
+                    else rev_map_flatten aux env
                   in
                   let () =
                     if !Flag.write_annot
