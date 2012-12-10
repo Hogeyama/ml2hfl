@@ -1,7 +1,7 @@
 
 open Utilities
 open CEGAR_type
-open ExtString
+open VHorn.ExtString
 
 type var = string
 

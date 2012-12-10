@@ -36,8 +36,9 @@ INCLUDES = -I /usr/lib \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray \
-	-I $(VHORN) \
+	-I $(OCAMLGRAPH) \
 	-I $(YINT) \
+	-I $(VHORN) \
 	-I $(TRECS)
 #	-I $(OCAMLLIB)
 OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
@@ -68,24 +69,7 @@ MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
 	spec_parser.mli trecs_parser.mli
 CMI = $(MLI:.mli=.cmi)
 
-VHORN_CMO = \
-	enum.cmo extList.cmo extString.cmo \
-	global.cmo util.cmo zipper.cmo \
-	attr.cmo idnt.cmo const.cmo var.cmo simType.cmo term.cmo linArith.cmo poly.cmo parLinArith.cmo typTerm.cmo formula.cmo typSubst.cmo formulaUtil.cmo \
-	cvc3Interface.cmo interpProver.cmo csisatInterface.cmo yintInterface.cmo atpInterface.cmo apronInterface.cmo \
-	atom.cmo hornClause.cmo hornClauseUtil.cmo typPredSubst.cmo \
-	farkas.cmo nonLinConstrSolve.cmo \
-	hcSolve.cmo hcBwSolve.cmo hcGenSolve.cmo \
-	fdef.cmo prog.cmo \
-	callId.cmo callTree.cmo \
-	trace.cmo compTree.cmo compTreeExpander.cmo \
-	paramSubstInfer.cmo \
-	refType.cmo hcGenRefType.cmo refTypeInfer.cmo \
-	absType.cmo absTypeInfer.cmo
-
 CMO = $(OCAML_CMO) \
-	$(ATP)/atp_batch.cmo \
-	$(addprefix $(VHORN)/,$(VHORN_CMO)) \
 	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
@@ -102,7 +86,7 @@ CMO = $(OCAML_CMO) \
 	writeAnnot.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma z3.cma $(YINT)/yint.cma gmp.cma apron.cma polka.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma z3.cma graph.cma $(YINT)/yint.cma gmp.cma apron.cma polka.cma atp_batch.cma vhorn.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 
@@ -277,6 +261,6 @@ SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend::
-	$(OCAMLDEP) -I $(VHORN) $(MLI) $(SRC_MOCHI) > depend
+	$(OCAMLDEP) -I $(MLI) $(SRC_MOCHI) > depend
 
 -include depend

@@ -2,7 +2,7 @@
 open Utilities
 open Syntax
 open Type
-
+open VHorn
 
 module RT = Ref_type
 

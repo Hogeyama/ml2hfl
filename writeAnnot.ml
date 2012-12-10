@@ -1,6 +1,7 @@
 open Location
 open Stypes
 open Parsetree
+open VHorn
 
 let print_position pp pos =
   if pos = Lexing.dummy_pos then
