@@ -56,8 +56,6 @@ all: lib depend main
 
 byte: $(NAME).byte
 opt: $(NAME).opt
-byte2: $(NAME).byte2
-opt2: $(NAME).opt2
 lib: ocaml csisat trecs atp vhorn yint
 
 
@@ -86,7 +84,7 @@ CMO = $(OCAML_CMO) \
 	writeAnnot.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma z3.cma graph.cma $(YINT)/yint.cma gmp.cma apron.cma polka.cma atp_batch.cma vhorn.cma
+CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma z3.cma graph.cma $(YINT)/yint.cma gmp.cma apron.cma polka.cma atp_batch.cma vHorn.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 
