@@ -5,30 +5,15 @@ exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
 
-let () =
-  if Flag.for_paper
-  then
-    begin
-      Flag.only_result := true;
-      Flag.debug_level := 0;
-      Flag.print_progress := false
-    end
-
-
 let print_info () =
-  if Flag.for_paper
-  then Format.printf " %2d, %7.2f  &@?" !Flag.cegar_loop (get_time())
-  else
-    begin
-      Format.printf "cycle: %d\n" !Flag.cegar_loop;
-      Format.printf "total: %.3f sec\n" (get_time());
-      Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
-      Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
-      Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
-      if false && Flag.debug then Format.printf "IP: %.3f sec\n" !Flag.time_interpolant;
-      Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
-      Format.pp_print_flush Format.std_formatter ()
-    end
+  Format.printf "cycle: %d\n" !Flag.cegar_loop;
+  Format.printf "total: %.3f sec\n" (get_time());
+  Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
+  Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
+  Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
+  if false && Flag.debug then Format.printf "IP: %.3f sec\n" !Flag.time_interpolant;
+  Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
+  Format.pp_print_flush Format.std_formatter ()
 
 
 
@@ -163,25 +148,17 @@ let rec main_loop orig parsed =
                   let pr (f,typ) =
                     Format.printf "%s: %a@." (Id.name f) Ref_type.print typ
                   in
-                    if not Flag.for_paper
-                    then
-                      begin
-                        Format.printf "Safe!@.@.";
-                        if env' <> [] then Format.printf "Refinement Types:@.";
-                        List.iter pr env';
-                        if env' <> [] then Format.printf "@."
-                      end
+                  Format.printf "Safe!@.@.";
+                  if env' <> [] then Format.printf "Refinement Types:@.";
+                  List.iter pr env';
+                  if env' <> [] then Format.printf "@."
               | _, CEGAR.Unsafe ce ->
-                  if not Flag.for_paper
-                  then
-                    begin
-                      Format.printf "Unsafe!@.@.";
-                      if main_fun <> ""
-                      then
-                        Format.printf "Input for %s:@.  %a@." main_fun
-                          (print_list Format.pp_print_int "; " false) (take ce arg_num);
-                      Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
-                    end
+                Format.printf "Unsafe!@.@.";
+                if main_fun <> ""
+                then
+                  Format.printf "Input for %s:@.  %a@." main_fun
+                    (print_list Format.pp_print_int "; " false) (take ce arg_num);
+                Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
           with
               AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
@@ -318,11 +295,7 @@ let () =
         Wrapper.open_cvc3 ();
         Wrapper2.open_cvc3 ();
         Cvc3Interface.open_cvc3 ();
-        Sys.set_signal Sys.sigalrm
-          (Sys.Signal_handle (fun _ ->
-                                if Flag.for_paper
-                                then Format.printf "           - \\&@?";
-                                raise TimeOut));
+        Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         main cin;
         Cvc3Interface.close_cvc3 ();
@@ -332,7 +305,7 @@ let () =
     with
         Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
       | LongInput -> Format.printf "Input is too long@."; exit 1
-      | TimeOut -> if not Flag.for_paper then Format.printf "@.Verification failed (time out)@."; exit 1
+      | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
       | AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed (cannot refute an error path)@."; exit 1
