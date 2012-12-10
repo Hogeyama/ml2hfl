@@ -44,6 +44,8 @@ INCLUDES = -I /usr/lib \
 OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
 OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
 
+DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml
+
 DOC = doc
 
 ################################################################################
@@ -213,7 +215,7 @@ clean-doc:
 	rm -rf doc
 
 clean-all: clean clean-doc clean-ocaml clean-csisat
-	rm -f .depend
+	rm -f depend
 
 
 ################################################################################
@@ -258,7 +260,7 @@ test-byte: byte
 SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
-depend::
-	$(OCAMLDEP) -I $(MLI) $(SRC_MOCHI) > depend
+depend:: $(DEPEND)
+	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
