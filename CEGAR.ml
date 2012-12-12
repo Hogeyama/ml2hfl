@@ -46,7 +46,7 @@ let rec cegar1 prog0 ces info =
     then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog
   in
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
-  let result = ModelCheck.check None abst prog in
+  let result = ModelCheck.check abst prog in
     match result with
         ModelCheck.Safe env ->
           let aux (x,ityp) =

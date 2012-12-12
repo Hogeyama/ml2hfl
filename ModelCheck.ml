@@ -7,7 +7,7 @@ open ModelCheck_util
 
 type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
-let check prog n =
+let check_aux prog n =
   let prog = CEGAR_CPS.trans prog true in
   let () = if true then Format.printf "CPS:\n%a@." CEGAR_print.prog prog in
   let prog = eta_expand prog in
@@ -22,15 +22,12 @@ let check prog n =
         Assert_failure(s,_,_) as e when s <> "" -> raise e
       | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
-let check count abst prog =
+let check abst prog =
   let n = List.length prog.defs in
   let tmp = get_time() in
   let () =
     if !Flag.print_progress
-    then
-      match count with
-          None -> Format.printf "(%d-2) Checking HORS ... @?" !Flag.cegar_loop
-        | Some c -> Format.printf "(%d-2-%d) Checking HORS ... @?" !Flag.cegar_loop c
+    then Format.printf "(%d-2) Checking HORS ... @?" !Flag.cegar_loop
   in
   let result =
     match !Flag.model_check with
@@ -38,7 +35,7 @@ let check count abst prog =
           if not (List.mem Flag.CPS !Flag.form)
           then failwith "Program must be in CPS @ ModelCheckCPS";
           ModelCheck_CPS.check abst n
-      | Flag.ModelCheck -> check abst n
+      | Flag.ModelCheck -> check_aux abst n
   in
   let () = add_time tmp Flag.time_mc in
   let () = if !Flag.print_progress then Format.printf "DONE!@.@." in
