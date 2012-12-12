@@ -252,7 +252,6 @@ let arg_spec =
    (* higher-order model checking *)
    "-trecs", Arg.String (fun cmd -> Flag.trecs := cmd),
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
-   "-old-trecs", Arg.Clear Flag.use_new_trecs, " Use old trecs (temporary option)";
    "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
    (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,

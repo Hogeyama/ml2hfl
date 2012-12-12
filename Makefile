@@ -80,7 +80,7 @@ CMO = $(OCAML_CMO) \
 	abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
         trecs_parser.cmo trecs_lexer.cmo \
-	$(TRECS)/trecs.cmo dependent_type.cmo trecsInterface.cmo \
+	trecs_syntax.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
 	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
 	writeAnnot.cmo \
