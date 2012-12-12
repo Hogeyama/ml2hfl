@@ -141,7 +141,7 @@ let rec eta_expand_term env = function
   | App(App(App(Const If, Const RandBool), t2), t3) ->
       let typ = get_typ env t2 in
       let xs = Array.to_list (Array.init (arg_num typ) (fun _ -> new_id "x")) in
-      let aux t = List.fold_left (fun t x -> App(t, Var x)) t xs in
+      let aux t = List.fold_left (fun t x -> App(t, Var x)) (eta_expand_term env t) xs in
       let t = make_if (Const RandBool) (aux t2) (aux t3) in
         List.fold_right (fun x t -> Fun(x,None,t)) xs t
   | App(t1, t2) -> App(eta_expand_term env t1, eta_expand_term env t2)
