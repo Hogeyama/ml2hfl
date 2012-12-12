@@ -17,8 +17,6 @@ rule token = parse
       token lexbuf }
 | '(' { LPAREN }
 | ')' { RPAREN }
-| '{' { LCURLY }
-| '}' { RCURLY }
 | '[' { LSQUAR }
 | ']' { RSQUAR }
 | '=' { EQUAL }
@@ -32,33 +30,15 @@ rule token = parse
 | '+' { PLUS }
 | '-' { MINUS }
 | '*' { TIMES }
-| '|' { BAR }
 | "inline" { INLINE }
 | "inlinef" { INLINEF }
-| "type" { TYPE }
 | "unit" { TUNIT }
 | "bool" { TBOOL }
 | "int" { TINT }
 | "list" { LIST }
-| "true" { TRUE }
-| "false" { FALSE }
-| "fail" { FAIL }
-| "***" { UNKNOWN }
-| "begin" { BEGIN }
-| "end" { END }
-| "fun" { FUN }
 | "->" { ARROW }
-| "let" { LET }
-| "rec" { REC }
-| "if" { IF }
-| "then" { THEN }
-| "else" { ELSE }
-| "in" { IN }
 | ';' { SEMI }
 | ':' { COLON }
-| ',' { COMMA }
-| '.' { PERIOD }
-| '\"' { STRING (string lexbuf) }
 | digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 (*| lower (digit|lower|upper|'_')* *)

@@ -18,43 +18,21 @@ let make_id_typ typ = Id.make 0 "" typ
 let orig_id x = {x with Id.id = 0}
 %}
 
-%token EOF
 %token <string> IDENT
 %token <int> INT
-%token <string> STRING
 %token LPAREN
 %token RPAREN
-%token LCURLY
-%token RCURLY
 %token LSQUAR
 %token RSQUAR
-%token DOT
-%token BEGIN
-%token END
-%token FUN
-%token REC
 %token ARROW
-%token LET
-%token FIX
-%token IN
-%token LBRACKET
-%token RBRACKET
 %token SEMI
 %token COLON
-%token COMMA
-%token PERIOD
-%token IF
-%token THEN
-%token ELSE
-%token TYPE
 %token INLINE
 %token INLINEF
 %token TUNIT
 %token TBOOL
 %token TINT
 %token LIST
-%token TRUE
-%token FALSE
 %token EQUAL
 %token LTHAN
 %token GTHAN
@@ -66,18 +44,13 @@ let orig_id x = {x with Id.id = 0}
 %token PLUS
 %token MINUS
 %token TIMES
-%token BAR
-%token FAIL
-%token ASSERT
-%token QUESTION
-%token UNKNOWN
+%token EOF
 
 /* priority : low -> high */
 %left OR
 %left AND
 %nonassoc EQUAL LTHAN GTHAN LEQ GEQ
 %left PLUS MINUS
-%left prec_app
 
 
 %start spec
@@ -131,12 +104,15 @@ id:
 | IDENT { make_id $1 }
 
 spec:
+  spec_list EOF { $1 }
+
+spec_list:
   { Spec.init }
-| typedef spec
+| typedef spec_list
   { {$2 with Spec.abst_env = $1::$2.Spec.abst_env} }
-| inline spec
+| inline spec_list
   { {$2 with Spec.inlined = $1::$2.Spec.inlined} }
-| inlinef spec
+| inlinef spec_list
   { {$2 with Spec.inlined_f = $1::$2.Spec.inlined_f} }
 
 inline:
