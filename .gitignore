@@ -1,3 +1,6 @@
+cvc3
+trecs
+mochi.opt
 Makefile.config
 depend
 *lexer.ml
@@ -9,6 +12,8 @@ depend
 *.cmo
 *.cmx
 *.o
-cvc3
-trecs
-mochi.opt
+*.log
+*.trecs_out
+*.hors
+*parser.automaton
+*~
