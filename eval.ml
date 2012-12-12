@@ -97,6 +97,7 @@ let rec print_value fm t =
             | _ -> assert false
         in
           Format.fprintf fm "[%a]" (print_list print_value ";" false) (aux t)
+    | Pair(t_1,t_2) -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
     | _ -> pp_print_term fm t
 
 
