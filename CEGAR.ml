@@ -17,10 +17,10 @@ let pre () =
 let post () =
   incr Flag.cegar_loop;
   (**)
-  Wrapper.reopen_cvc3 ()(*;
+  Wrapper.reopen_cvc3 ();
   (**)
   Id.reset_counter ()
-*)
+
 
 let inlined_functions orig_fun_list force {defs=defs;main=main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in

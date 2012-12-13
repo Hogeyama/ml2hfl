@@ -8,6 +8,8 @@ open VHorn
 exception CannotRefute
 
 
+let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
+
 let add env ps p =
   if List.exists (Wrapper2.equiv env [] p) ps
   then ps
@@ -17,7 +19,7 @@ let rec merge_typ env typ typ' =
   match typ,typ' with
       TBase(b1,ps1),TBase(b2,ps2) ->
         assert (b1 = b2);
-        let x = new_id "x" in
+        let x = new_id' "x" in
         let env' = (x,typ)::env in
         let ps1' = ps1 (Var x) in
         let ps2' = ps2 (Var x) in
@@ -25,7 +27,7 @@ let rec merge_typ env typ typ' =
         let ps t = List.map (subst x t) ps in
           TBase(b1, ps)
     | TFun(typ11,typ12), TFun(typ21,typ22) ->
-        let x = new_id "x" in
+        let x = new_id' "x" in
         let env' = (x,typ11)::env in
         let typ12 = typ12 (Var x) in
         let typ22 = typ22 (Var x) in
