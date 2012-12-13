@@ -1,16 +1,10 @@
 #!/bin/bash
 
-TEST="kmp fact_exn array_init array_max file rev_append rev_accum rev_tricky map_map ack recursive intro1 intro2 intro3 sum mult max mc91 repeat fhnhn2 lock neg4 sum-e mult-e max-e mc91-e repeat-e lock-e repeat2"
-
-TEST="intro1 intro2 intro3 sum mult max mc91 ack repeat fhnhn hrec neg a-prod a-cppr a-init l-zipunzip l-zipmap hors e-simple e-fact r-lock r-file sum-e mult-e max-e mc91-e repeat-e lock-e excep-e"
-
-LIMIT=120
-OPTION=
+TEST="sum mult max mc91 ack a-cppr l-zipunzip l-zipmap hors e-simple e-fact r-lock r-file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e"
 
 for i in $TEST
 do
-#ls -l test_list/$i
 echo $i
-timeout -s 14 $LIMIT ./mochi.opt test_new/$i.ml $OPTION | grep afe
+./mochi.opt test_pepm/$i.ml -gchi -only-result 2> /dev/null || echo VERIFICATION FAILED!!!
 echo
 done
