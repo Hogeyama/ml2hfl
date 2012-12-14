@@ -311,13 +311,19 @@ let () =
         Wrapper.close_cvc3 ();
         print_info ()
     with
-        Syntaxerr.Error err -> Format.printf "%a@." Syntaxerr.report_error err; exit 1
+        Syntaxerr.Error err ->
+          Format.printf "%a@." Syntaxerr.report_error err; exit 1
+      | Typecore.Error(loc,err) ->
+          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err; exit 1
+      | Typemod.Error(loc,err) ->
+          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err; exit 1
+      | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1
+      | Typetexp.Error(loc,err) ->
+          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err; exit 1
+      | Lexer.Error(err, loc) ->
+          Format.printf "%a%a@." Location.print_error loc Lexer.report_error err; exit 1
       | LongInput -> Format.printf "Input is too long@."; exit 1
       | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
       | VHorn.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed (cannot refute an error path)@."; exit 1
-      | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
-      | Typemod.Error(_,e) -> Format.printf "%a@." Typemod.report_error e; exit 1
-      | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1
-      | Typetexp.Error(_,e) -> Format.printf "%a@." Typetexp.report_error e; exit 1
