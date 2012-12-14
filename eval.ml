@@ -1,4 +1,4 @@
-open Utilities
+open Util
 open Syntax
 
 exception RaiseExcep of int list * typed_term

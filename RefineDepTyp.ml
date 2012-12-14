@@ -1,6 +1,6 @@
 open Syntax
 open Type
-open Utilities
+open Util
 
 exception Untypable
 
@@ -1000,7 +1000,7 @@ let get_pid c = List.map
   (List.filter (function Cpred(_) -> true | _ -> false) c)
 
 let save_as_dot filename cs =
-  let es = Utilities.uniq (List.concat (List.map
+  let es = uniq (List.concat (List.map
     (fun ac ->
       match ac with
         Cimp(c1, c2) ->
@@ -1012,8 +1012,8 @@ let save_as_dot filename cs =
        | _ -> assert false)
     cs))
   in
-  let vs = Utilities.uniq (List.concat (List.map (fun (x, y, _) -> [x, y]) es)) in
-  Utilities.save_as_dot filename vs es
+  let vs = uniq (List.concat (List.map (fun (x, y, _) -> [x, y]) es)) in
+  save_as_dot filename vs es
 let save_as_dot _ _ = ()
 
 let rec term_of c =
@@ -1035,7 +1035,7 @@ and term_of_ac ac =
   | Cfalse -> false_term
 
 let int_gen ts =
-  let ints = (*List.filter (fun x -> x <> 0)*) (Utilities.rev_map_flatten get_int ts) in
+  let ints = (*List.filter (fun x -> x <> 0)*) (rev_map_flatten get_int ts) in
   if Flag.print_refine_log then Format.printf "ints: ";
   if Flag.print_refine_log then List.iter (fun int -> Format.printf "%d," int) ints;
   if Flag.print_refine_log then Format.printf "@.";
@@ -1146,7 +1146,7 @@ and simplify_ac ac =
       let fv1 = List.flatten (List.map get_fv terms) in
       let rec aux c1 c2 =
         let fv2 = fv c2 in
-        let c11, c12 = List.partition (fun ac -> Utilities.inter (fv_ac ac) (fv1 @ fv2) <> []) c1 in
+        let c11, c12 = List.partition (fun ac -> inter (fv_ac ac) (fv1 @ fv2) <> []) c1 in
         if c11 = [] then
           c2
         else
@@ -1209,18 +1209,18 @@ let rec subst_ac lbs ac =
           False
       end
         let ids, c = get_lb pid terms lbs in
-        let fv = Utilities.uniq (Utilities.diff (fv c) ids) in
+        let fv = uniq (diff (fv c) ids) in
           substc (List.combine ids terms) (substc (List.map (fun id -> id, new_var ()) fv) c)
             (*if pos then [Cimp(eqs ids terms, c)] else (eqs ids terms) @ c*)
 *)
     | Csub(rty1,rty2) -> assert false
     | Cterm t -> [t]
     | Cimp(c1,c2) -> assert false
-                   (*imply (and_list (Utilities.uniq (List.map (fun ac -> subst_ac lbs ac) c1)))
-                           (and_list (Utilities.uniq (List.map (fun ac -> subst_ac lbs ac) c2)))*)
+                   (*imply (and_list (uniq (List.map (fun ac -> subst_ac lbs ac) c1)))
+                           (and_list (uniq (List.map (fun ac -> subst_ac lbs ac) c2)))*)
     | Cfalse -> [false_term]
 
-(*let subst_constr lbs c = Utilities.uniq (List.concat (List.map (fun ac -> subst_ac lbs ac) c))*)
+(*let subst_constr lbs c = uniq (List.concat (List.map (fun ac -> subst_ac lbs ac) c))*)
 
 let rec compute_lbs c lbs =
   let c1, c2 = List.partition
@@ -1242,12 +1242,12 @@ let rec compute_lbs c lbs =
                                                | _ -> assert false)
                                             c1)
             in
-            let eqs = Utilities.uniq (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
+            let eqs = uniq (List.filter (fun (t1, t2) -> t1 <> t2) (List.concat eqss)) in
               (if Flag.debug then
                  (*id,t1 in eqs and id,t2 in eqs => t1=t2*)
-                 let tmp = Utilities.classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
+                 let tmp = classify (fun (t11, t12) (t21, t22) -> t11 = t21) eqs in
                    List.iter (fun l ->
-                                let tmp = Utilities.uniq (List.map snd l) in
+                                let tmp = uniq (List.map snd l) in
                                   if List.length tmp <> 1 then
                                     let _ = List.iter (fun t -> Format.printf "%a@." Syntax.pp_print_term t) tmp in
                                       assert false)
@@ -1256,7 +1256,7 @@ let rec compute_lbs c lbs =
               let sub = List.map (function ({desc=Var(id)}, t) -> id, t | _ -> assert false) eqs1 in
               let cond = (List.map (function Cterm(t) -> subst_map sub t | _ -> assert false) c2) @
                 (List.concat conds) in
-              let cond = Utilities.uniq (List.filter (fun t -> t.desc <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
+              let cond = uniq (List.filter (fun t -> t.desc <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
               let eqs2 = List.map (fun (t1, t2) -> subst_map sub t1, t2) eqs2 in
               let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
               let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in
@@ -1277,7 +1277,7 @@ let rec compute_lbs c lbs =
                     c
                     in
                     let sub, eqs = eqs ids terms in
-                    pid, (ids, elim ids (Utilities.uniq (substc sub ((subst_constr lbs cl) @ eqs))))
+                    pid, (ids, elim ids (uniq (substc sub ((subst_constr lbs cl) @ eqs))))
                   *)
         | _ -> assert false
       in
@@ -1293,7 +1293,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
                let id = {(new_id ()) with Id.typ = t.typ} in ids @ [id])
         [] terms'
       in
-      let _ = if Flag.debug then assert (List.length ids' = List.length (Utilities.uniq ids')) in
+      let _ = if Flag.debug then assert (List.length ids' = List.length (uniq ids')) in
       let eqs = List.concat (List.map2 (fun id term -> if Var(id) = term.desc then [] else [{desc=Var(id);typ=Id.typ id}, term]) ids' terms') in
         (if not !pr_flag && Flag.debug && Flag.print_refine_log then
            begin
@@ -1317,12 +1317,12 @@ let rec solve_aux' lbs ac ubs nubs sol = function
 
         let dubs = List.map
           (fun ac ->
-             let ts = Utilities.uniq (subst_ac lbs ac) in
+             let ts = uniq (subst_ac lbs ac) in
                (*without this recursive.ml could not be verified*)
                and_list ts)
           c
         in
-        let nubs' = Utilities.uniq ((List.map (fun (t1, t2) -> {desc=BinOp(Eq, t1, t2);typ=TBool}) eqs) @ nubs) in
+        let nubs' = uniq ((List.map (fun (t1, t2) -> {desc=BinOp(Eq, t1, t2);typ=TBool}) eqs) @ nubs) in
           (*
             let ids', lb = get_lb pid' terms' lbs in
             let sub, eqs = eqs ids' terms' in
@@ -1352,10 +1352,10 @@ let rec solve_aux' lbs ac ubs nubs sol = function
               let aux t ts =
                 match t.desc with
                     (BinOp(Eq, t, {desc=Var(id)})) ->
-                      List.mem id (ids' @ Utilities.rev_map_flatten get_fv (t::ts))
+                      List.mem id (ids' @ rev_map_flatten get_fv (t::ts))
                   | _ -> true
               in
-              let _lbs = Utilities.filterwo aux _lbs in
+              let _lbs = filterwo aux _lbs in
               let lb = [Cterm(and_list _lbs)] in
               let dubs = List.map rename_nint dubs in
               let nubs' = List.map rename_nint nubs' in
@@ -1440,7 +1440,7 @@ let rec solve_aux' lbs ac ubs nubs sol = function
           (*
             solve_aux' (imply (and_list (t::(List.map2 (fun id term -> BinOp(Eq, Var(id), term)) ids' terms'))) cub) sol c
           *)
-        let nubs = Utilities.uniq ((subst_map (List.combine ids' terms') t)::nubs) in
+        let nubs = uniq ((subst_map (List.combine ids' terms') t)::nubs) in
           solve_aux' lbs ac ubs nubs sol c
   | _ -> assert false
 
@@ -1683,7 +1683,7 @@ let rec get_sol typ1 typ2 =
         get_sol rtyp1 (rtyp2 (make_var x))
     | TFun(x,rtyp1), RTfun(typs, rtyp2) ->
         let typ = Id.typ x in
-        (Utilities.rev_flatten_map (fun typ' -> get_sol typ typ') typs) @
+        (rev_flatten_map (fun typ' -> get_sol typ typ') typs) @
         (get_sol rtyp1 rtyp2)
     | _, _ ->
         Format.printf "%a and " print_typ typ1;
@@ -1728,11 +1728,11 @@ let test tdefs s defs traces pred =
          let _ = if not !pr_flag && Flag.debug && Flag.print_constraints then print_string2 "\n" in
 
        (**)
-     let sol = Utilities.rev_flatten_map
+     let sol = rev_flatten_map
        (fun (x, rtys) ->
           try
             let _, ty = List.find (fun (y, ty) -> Id.same x y) tdefs in
-              Utilities.rev_flatten_map (get_sol ty) rtys
+              rev_flatten_map (get_sol ty) rtys
           with Not_found -> [])
        rte
      in
@@ -1772,7 +1772,7 @@ let test tdefs s defs traces pred =
        let _ = print_string2 "\n" in
      *)
      let c''', pids = (if !Flag.filter_forward then filter_forward else (fun x -> x, [])) (filter_backward c'') in
-     let c''' = List.rev (Utilities.uniq (filter_backward c''')) in
+     let c''' = List.rev (uniq (filter_backward c''')) in
      let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_string2 "\nFiltered constraints:\n" in
      let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_constraint c''' in
      let _ = if !pr_flag || Flag.debug && Flag.print_constraints then print_string2 "\n" in

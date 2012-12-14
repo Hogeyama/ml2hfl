@@ -248,7 +248,7 @@ let elim ((env,defs,main):prog) : prog =
     Typing.infer ([],defs',main)
 
 *)
-open Utilities
+open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util

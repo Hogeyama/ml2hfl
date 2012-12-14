@@ -1,4 +1,4 @@
-open Utilities
+open Util
 
 module S = Syntax
 

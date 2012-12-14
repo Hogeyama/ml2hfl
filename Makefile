@@ -70,7 +70,7 @@ MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
-	flag.cmo utilities.cmo id.cmo type.cmo automata.cmo \
+	flag.cmo util.cmo id.cmo type.cmo automata.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	wrapper.cmo wrapper2.cmo \

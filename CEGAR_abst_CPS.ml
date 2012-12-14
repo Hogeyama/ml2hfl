@@ -1,4 +1,4 @@
-open Utilities
+open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
@@ -17,7 +17,7 @@ let abst_arg x typ =
           match ps (Var x) with
               [] -> []
             | [_] -> [x]
-            | ps -> Utilities.mapi (fun i _ -> add_name x (string_of_int i)) ps
+            | ps -> mapi (fun i _ -> add_name x (string_of_int i)) ps
         end
     | _ -> [x]
 let make_pts x typ =

@@ -1,6 +1,6 @@
 
 open Format
-open Utilities
+open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util

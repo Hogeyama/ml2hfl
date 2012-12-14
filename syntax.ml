@@ -1,8 +1,7 @@
 
 open Format
-open Utilities
+open Util
 open Type
-open VHorn.ExtString
 
 type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
@@ -321,7 +320,6 @@ and print_term pri typ fm t =
         fprintf fm "(@[label %d %a@])" n (print_term 80 typ) t
     | Label(InfoTerm t', t) ->
         fprintf fm "(@[label %a %a@])" (print_term 80 typ) t' (print_term 80 typ) t
-    | Label _ -> assert false
 
 
 and print_pattern fm pat =
@@ -1180,7 +1178,7 @@ let rec max_label_num t =
 
 
 let is_external x = String.contains (Id.name x) '.'
-let is_parameter x = String.starts_with (Id.name x) Flag.extpar_header
+let is_parameter x = VHorn.ExtString.String.starts_with (Id.name x) Flag.extpar_header
 
 
 let rec is_value t =

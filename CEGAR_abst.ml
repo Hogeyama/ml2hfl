@@ -1,5 +1,5 @@
 
-open Utilities
+open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
@@ -15,7 +15,7 @@ let abst_arg x typ =
       | _ -> []
   in
   let n = List.length ps in
-    Utilities.mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
+    mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
 
 
 

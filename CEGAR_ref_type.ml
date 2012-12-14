@@ -1,4 +1,4 @@
-open Utilities
+open Util
 
 module CS = CEGAR_syntax
 

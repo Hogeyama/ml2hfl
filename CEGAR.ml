@@ -1,9 +1,8 @@
 
-open Utilities
+open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
-open VHorn.ExtList
 
 exception NoProgress
 exception CannotDiscoverPredicate
@@ -24,8 +23,7 @@ let post () =
 
 let inlined_functions orig_fun_list force {defs=defs;main=main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
-  List.unique fs
-(*Util.diff (List.map (fun (f, _, _, _, _) -> f) defs) *)
+  VHorn.ExtList.List.unique fs
 
 let rec cegar1 prog0 ces info =
   pre ();

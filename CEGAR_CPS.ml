@@ -3,7 +3,7 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
 open CEGAR_util
-open Utilities
+open Util
 
 let is_head_tuple t =
   match decomp_app t with

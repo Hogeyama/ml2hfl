@@ -1,4 +1,4 @@
-open Utilities
+open Util
 
 type 'a t = {id:int; name:string; typ:'a}
 

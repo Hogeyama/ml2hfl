@@ -1,6 +1,6 @@
 open Syntax
 open Type
-open Utilities
+open Util
 
 module RT = Ref_type
 

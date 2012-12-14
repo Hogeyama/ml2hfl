@@ -1,9 +1,9 @@
 
-open Utilities
+open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
-open VHorn
+
 
 exception CannotRefute
 
@@ -107,12 +107,12 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";
-        Cvc3Interface.close_cvc3 ();
-        Cvc3Interface.open_cvc3 ();
+        VHorn.Cvc3Interface.close_cvc3 ();
+        VHorn.Cvc3Interface.open_cvc3 ();
         add_time tmp Flag.time_cegar;
         map, {env=env';defs=defs;main=main}
     with e ->
-      Cvc3Interface.close_cvc3 ();
-      Cvc3Interface.open_cvc3 ();
+      VHorn.Cvc3Interface.close_cvc3 ();
+      VHorn.Cvc3Interface.open_cvc3 ();
       add_time tmp Flag.time_cegar;
       raise e

@@ -1,5 +1,5 @@
 
-open Utilities
+open Util
 open Syntax
 
 type spec = {abst_env : (id * typ) list; inlined : id list; inlined_f : id list}

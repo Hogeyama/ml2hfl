@@ -1,7 +1,7 @@
 
 open Syntax
 open Type
-open Utilities
+open Util
 
 type kind =
     TKVariant of (string * typ list) list

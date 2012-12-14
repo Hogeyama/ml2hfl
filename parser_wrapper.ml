@@ -1,5 +1,5 @@
 
-open Utilities
+open Util
 open Asttypes
 open Typedtree
 open Types

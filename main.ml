@@ -1,6 +1,5 @@
 
-open Utilities
-open VHorn
+open Util
 
 exception TimeOut
 exception LongInput
@@ -164,21 +163,21 @@ let rec main_loop orig parsed =
                 Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target);
                 false
           with
-              AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
+              VHorn.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
                 main_loop orig parsed
-            | AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete ->
+            | VHorn.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete ->
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
                 main_loop orig parsed
-            | AbsTypeInfer.FailedToRefineTypes ->
-                raise AbsTypeInfer.FailedToRefineTypes
-            | ParamSubstInfer.FailedToRefineExtraParameters ->
+            | VHorn.AbsTypeInfer.FailedToRefineTypes ->
+                raise VHorn.AbsTypeInfer.FailedToRefineTypes
+            | VHorn.ParamSubstInfer.FailedToRefineExtraParameters ->
                 VhornInterface.params := [];
-                ParamSubstInfer.ext_coeffs := [];
-                ParamSubstInfer.ext_constrs := [];
-                incr Global.number_of_extra_params;
+                VHorn.ParamSubstInfer.ext_coeffs := [];
+                VHorn.ParamSubstInfer.ext_constrs := [];
+                incr VHorn.Global.number_of_extra_params;
                 main_loop orig parsed
 
 
@@ -237,15 +236,15 @@ let arg_spec =
    "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
    (* relatively complete verification *)
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
-   "-nex", Arg.Int (fun n -> Global.number_of_extra_params := n),
+   "-nex", Arg.Int (fun n -> VHorn.Global.number_of_extra_params := n),
           " Number of inserted extra parameters for each functional argument";
-   "-tbit", Arg.Int (fun n -> Global.bits_threshold := n),
+   "-tbit", Arg.Int (fun n -> VHorn.Global.bits_threshold := n),
           " Threshold on the number of bits used in the bit-vector modeling";
-   "-cc", Arg.Set Global.enable_coeff_const,
+   "-cc", Arg.Set VHorn.Global.enable_coeff_const,
           " Disable constant terms of extra parameters";
-   "-aec", Arg.Set Global.accumulate_ext_constrs,
+   "-aec", Arg.Set VHorn.Global.accumulate_ext_constrs,
           " Accumulate constraints on the coefficients of extra parameters";
-   "-dph", Arg.Set Global.disable_parameter_inference_heuristics,
+   "-dph", Arg.Set VHorn.Global.disable_parameter_inference_heuristics,
           " Disable heuristics of instantiation parameter inference";
    (* predicate abstraction *)
    "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
@@ -269,18 +268,18 @@ let arg_spec =
           "<num>  Use refinement type based predicate discovery";
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
           " Use refinement type based predicate discovery (obsolete)";
-   "-eap", Arg.Set Global.extract_atomic_predicates, " Extract atomic predicates";
-   "-mp", Arg.Set Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
-   "-gi", Arg.Unit (fun _ -> Global.predicate_discovery := Global.GenInterpolation),
+   "-eap", Arg.Set VHorn.Global.extract_atomic_predicates, " Extract atomic predicates";
+   "-mp", Arg.Set VHorn.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
+   "-gi", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenInterpolation),
      " Generalize constraints of multiple function calls by interpolation";
-   "-gchi", Arg.Unit (fun _ -> Global.predicate_discovery := Global.GenConvexHullInterpolation),
+   "-gchi", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenConvexHullInterpolation),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
-   "-gtc", Arg.Unit (fun _ -> Global.predicate_discovery := Global.GenTemplateBasedConstraintSolving),
+   "-gtc", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenTemplateBasedConstraintSolving),
      " Generalize constraints of multiple function calls by template-based constraint solving";
-   "-yhorn", Arg.Unit (fun _ -> Global.predicate_discovery := Global.YHorn),
+   "-yhorn", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.YHorn),
      " Solve Horn clauses by using Yint";
    (* interpolating prover *)
-   "-yint", Arg.Unit (fun _ -> Global.interp_prover := Global.Yint),
+   "-yint", Arg.Unit (fun _ -> VHorn.Global.interp_prover := VHorn.Global.Yint),
           " Use Yint interpolating prover";
   ]
 
@@ -303,11 +302,11 @@ let () =
       in
         Wrapper.open_cvc3 ();
         Wrapper2.open_cvc3 ();
-        Cvc3Interface.open_cvc3 ();
+        VHorn.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         ignore (main cin);
-        Cvc3Interface.close_cvc3 ();
+        VHorn.Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
         print_info ()
@@ -316,7 +315,7 @@ let () =
       | LongInput -> Format.printf "Input is too long@."; exit 1
       | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
-      | AbsTypeInfer.FailedToRefineTypes ->
+      | VHorn.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed (cannot refute an error path)@."; exit 1
       | Typecore.Error (_,e) -> Format.printf "%a@." Typecore.report_error e; exit 1
       | Typemod.Error(_,e) -> Format.printf "%a@." Typemod.report_error e; exit 1
