@@ -122,7 +122,8 @@ let rec main_loop orig parsed =
   let prog, rmap, get_rtyp, info = preprocess t spec in
     match !Flag.cegar with
         Flag.CEGAR_InteractionType ->
-          VhornInterface.verify [] prog
+          VhornInterface.verify [] prog;
+          assert false;
       | Flag.CEGAR_DependentType ->
           try
             match CEGAR.cegar prog info with
@@ -152,33 +153,32 @@ let rec main_loop orig parsed =
                   Format.printf "Safe!@.@.";
                   if env' <> [] then Format.printf "Refinement Types:@.";
                   List.iter pr env';
-                  if env' <> [] then Format.printf "@."
+                  if env' <> [] then Format.printf "@.";
+                  true
               | _, CEGAR.Unsafe ce ->
                 Format.printf "Unsafe!@.@.";
                 if main_fun <> ""
                 then
                   Format.printf "Input for %s:@.  %a@." main_fun
                     (print_list Format.pp_print_int "; " false) (take ce arg_num);
-                Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
+                Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target);
+                false
           with
               AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
-                incr Flag.cegar_loop;
                 main_loop orig parsed
             | AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete ->
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
-                incr Flag.cegar_loop;
                 main_loop orig parsed
             | AbsTypeInfer.FailedToRefineTypes ->
-                raise AbsTypeInfer.FailedToRefineTypes;
+                raise AbsTypeInfer.FailedToRefineTypes
             | ParamSubstInfer.FailedToRefineExtraParameters ->
                 VhornInterface.params := [];
                 ParamSubstInfer.ext_coeffs := [];
                 ParamSubstInfer.ext_constrs := [];
                 incr Global.number_of_extra_params;
-                incr Flag.cegar_loop;
                 main_loop orig parsed
 
 
@@ -203,6 +203,12 @@ let main in_channel =
     if true && !Flag.debug_level > 0
     then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term parsed
   in
+  if !Flag.split_assert
+  then
+    let paths = Trans.search_fail parsed in
+    let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
+    List.for_all (main_loop orig) (List.rev ts);
+  else
     main_loop orig parsed
 
 
@@ -227,11 +233,8 @@ let arg_spec =
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
    (* CEGAR *)
+   "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs (each program has only one assertion)";
    "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
-   "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
-   "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
-   "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
-            " Expand non-recursive functions except those in the original program";
    (* relatively complete verification *)
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
    "-nex", Arg.Int (fun n -> Global.number_of_extra_params := n),
@@ -245,6 +248,10 @@ let arg_spec =
    "-dph", Arg.Set Global.disable_parameter_inference_heuristics,
           " Disable heuristics of instantiation parameter inference";
    (* predicate abstraction *)
+   "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
+   "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
+   "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
+            " Expand non-recursive functions except those in the original program";
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
    "-neg-pred-on", Arg.Set Flag.use_neg_pred, " Use negative predicates for abstraction";
    "-neg-pred-off", Arg.Unit (fun _ -> Flag.use_neg_pred := false; Flag.never_use_neg_pred := true),
@@ -299,7 +306,7 @@ let () =
         Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
-        main cin;
+        ignore (main cin);
         Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();

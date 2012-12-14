@@ -2522,3 +2522,132 @@ and insert_param_funarg t =
       | Label _ -> assert false
   in
     {desc=desc; typ=typ}
+
+
+let rec search_fail path t =
+  match t.desc with
+    Unit -> []
+  | True -> []
+  | False -> []
+  | Unknown -> []
+  | Int n -> []
+  | RandInt b -> []
+  | Var x -> []
+  | Fun(x,t) -> search_fail path t
+  | App(t1, ts) ->
+    let rec aux acc i ts =
+      match ts with
+        [] -> acc
+      | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
+    in
+    aux [] 0 (t1::ts)
+  | If(t1, t2, t3) -> search_fail (1::path) t1 @ search_fail (2::path) t2 @ search_fail (3::path) t3
+  | Branch(t1, t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
+  | Let(_, defs, t) ->
+    let rec aux acc i ts =
+      match ts with
+        [] -> acc
+      | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
+    in
+    let ts = List.map (fun (_,_,t) -> t) defs in
+    aux [] 0 (ts@[t])
+  | BinOp(_, t1, t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
+  | Not t -> search_fail path t
+  | Event("fail",_) -> [path]
+  | Event(s,b) -> []
+  | Record fields -> assert false
+  | Proj(i,s,f,t) -> assert false
+  | SetField(n,i,s,f,t1,t2) -> assert false
+  | Nil -> []
+  | Cons(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
+  | Constr(_,ts) ->
+    let rec aux acc i ts =
+      match ts with
+        [] -> acc
+      | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
+    in
+    aux [] 0 ts
+  | Match(t,pats) ->
+    let rec aux acc i ts =
+      match ts with
+        [] -> acc
+      | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
+    in
+    let ts = rev_flatten_map (fun (_,cond,t) -> [t;cond]) pats in
+    aux [] 0 (t::ts)
+  | Raise t -> search_fail path t
+  | TryWith(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
+  | Bottom -> []
+  | Pair(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
+  | Fst t -> search_fail path t
+  | Snd t -> search_fail path t
+  | RandValue _ -> []
+  | Label(_,t) -> search_fail path t
+
+let search_fail t = search_fail [] t
+
+
+let rec screen_fail path target t =
+  let desc =
+  match t.desc with
+    Unit -> t.desc
+  | True -> t.desc
+  | False -> t.desc
+  | Unknown -> t.desc
+  | Int n -> t.desc
+  | RandInt b -> t.desc
+  | Var x -> t.desc
+  | Fun(x,t) -> t.desc
+  | App(t1, ts) ->
+    let aux i t = screen_fail (i::path) target t in
+    let t1ts' = mapi aux (t1::ts) in
+    App(List.hd t1ts', List.tl t1ts')
+  | If(t1, t2, t3) ->
+    let aux i t = screen_fail (i::path) target t in
+    If(aux 1 t1, aux 2 t2, aux 3 t3)
+  | Branch(t1, t2) ->
+    let aux i t = screen_fail (i::path) target t in
+    Branch(aux 1 t1, aux 2 t2)
+  | Let(flag, defs, t) ->
+    let aux i t = screen_fail (i::path) target t in
+    let aux_def i (f,xs,t) = f, xs, aux i t in
+    Let(flag, mapi aux_def defs, aux (List.length defs) t)
+  | BinOp(op, t1, t2) ->
+    let aux i t = screen_fail (i::path) target t in
+    BinOp(op, aux 1 t1, aux 2 t2)
+  | Not t -> Not (screen_fail path target t)
+  | Event("fail",_) ->
+    if path = target
+    then t.desc
+    else Bottom
+  | Event(s,b) -> t.desc
+  | Record fields -> assert false
+  | Proj(i,s,f,t) -> assert false
+  | SetField(n,i,s,f,t1,t2) -> assert false
+  | Nil -> t.desc
+  | Cons(t1,t2) ->
+    let aux i t = screen_fail (i::path) target t in
+    Cons(aux 1 t1, aux 2 t2)
+  | Constr(s,ts) ->
+    let aux i t = screen_fail (i::path) target t in
+    Constr(s, mapi aux ts)
+  | Match(t,pats) ->
+    let aux i t = screen_fail (i::path) target t in
+    let aux_pat i (p,cond,t) = p, aux (2*i+1) cond, aux (2*i+2) t in
+    Match(aux 0 t, mapi aux_pat pats)
+  | Raise t -> Raise (screen_fail path target t)
+  | TryWith(t1,t2) ->
+    let aux i t = screen_fail (i::path) target t in
+    TryWith(aux 1 t1, aux 2 t2)
+  | Bottom -> t.desc
+  | Pair(t1,t2) ->
+    let aux i t = screen_fail (i::path) target t in
+    Pair(aux 1 t1, aux 2 t2)
+  | Fst t -> Fst (screen_fail path target t)
+  | Snd t -> Snd (screen_fail path target t)
+  | RandValue _ -> t.desc
+  | Label(info,t) -> Label(info, screen_fail path target t)
+  in
+  {desc=desc; typ=t.typ}
+
+let screen_fail target t = screen_fail [] target t

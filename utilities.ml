@@ -246,10 +246,14 @@ let tabulate n f = tabulate n f []
 
 
 let rec mapi f n = function
-  [] -> []
+    [] -> []
   | x::xs -> f n x :: mapi f (n+1) xs
-let mapi f = mapi f 0
+let mapi f xs = mapi f 0 xs
 
+let rec iteri f n = function
+    [] -> ()
+  | x::xs -> f n x; iteri f (n+1) xs
+let iteri f xs = iteri f 0 xs
 
 
 

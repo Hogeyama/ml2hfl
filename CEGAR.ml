@@ -55,6 +55,7 @@ let rec cegar1 prog0 ces info =
             with Not_found -> []
           in
           let env' = rev_map_flatten aux env in
+            post ();
             prog, Safe env'
       | ModelCheck.Unsafe ce ->
           if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce;
@@ -64,18 +65,22 @@ let rec cegar1 prog0 ces info =
                   if !Flag.print_progress then Format.printf "Filter option enabled.@.";
                   if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   Flag.use_filter := true;
+                  post ();
                   cegar1 prog ces info
               | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
                   if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
                   if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   Flag.use_neg_pred := true;
+                  post ();
                   cegar1 prog ces info
               | ce_pre::_ when ce' = ce_pre && !Flag.wp_max_num < 8 ->
                   incr Flag.wp_max_num;
                   if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
                   if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+                  post ();
                   cegar1 prog ces info
               | ce_pre::_ when ce' = ce_pre ->
+                  post ();
                   if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
                   raise NoProgress
               | _ ->
@@ -94,4 +99,9 @@ let rec cegar1 prog0 ces info =
 
 
 
-let cegar prog orig_fun_list = cegar1 prog [] orig_fun_list
+let cegar prog orig_fun_list =
+  try
+    cegar1 prog [] orig_fun_list
+  with e ->
+    if e <> NoProgress then incr Flag.cegar_loop;
+    raise e
