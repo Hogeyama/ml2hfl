@@ -42,7 +42,7 @@ let rec abst_recdata_typ = function
   | TConstr(s,true) ->
       let typs = TInt :: get_ground_types s in
       let r_typ = List.fold_right (fun typ1 typ2 -> TPair(typ1,typ2)) (init typs) (last typs) in
-        TFun(Id.new_var "path" (TList TInt), r_typ)
+        TPair(TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
   | TConstr(s,false) -> TInt
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
   | TPred(typ,ps) -> TPred(abst_recdata_typ typ, ps)
@@ -73,10 +73,11 @@ let rec abst_recdata_pat p =
                 in
                 let j = find 0 ground_types in
                   make_nth (1 + j) (1 + List.length ground_types)
-                    (make_app (make_var f) [make_cons (make_int i) (make_nil TInt)])
+                    (make_app (make_snd (make_var f)) [make_cons (make_int i) (make_nil TInt)])
               else
                 let path = Id.new_var "path" (TList TInt) in
-                  make_fun path (make_app (make_var f) [make_cons (make_int i) (make_var path)])
+                  make_pair unit_term
+                    (make_fun path (make_app (make_snd (make_var f)) [make_cons (make_int i) (make_var path)]))
             in
               t, p'
           in
@@ -89,7 +90,7 @@ let rec abst_recdata_pat p =
           in
           let conds' = List.map2 make_cond binds ppcbs in
           let cond0 = make_eq (make_nth 0 (1 + List.length ground_types)
-                                 (make_app (make_var f) [make_nil TInt])) (abst_label c) in
+                                 (make_app (make_snd (make_var f)) [make_nil TInt])) (abst_label c) in
           let cond = List.fold_left make_and true_term (cond0 :: conds') in
           let bind = binds @ flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
             PVar f, cond, bind
@@ -157,13 +158,13 @@ let rec abst_recdata t =
             let t =
               if List.mem typ ground_types
               then make_return None typ (make_var x)
-              else make_app (make_var x) [make_var path']
+              else make_app (make_snd (make_var x)) [make_var path']
             in
               make_pcons (make_pconst (make_int i)) (make_pvar path'), true_term, t
           in
           let pats = mapi make_pat xtyps in
           let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
-            (make_lets defs (make_fun path (make_match (make_var path) (pat0::pats)))).desc
+            (make_lets defs (make_pair unit_term (make_fun path (make_match (make_var path) (pat0::pats))))).desc
       | Match(t1,pats) ->
           let aux (p,c,t) =
             let p',c',bind = abst_recdata_pat p in
