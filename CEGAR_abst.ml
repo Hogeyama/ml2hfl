@@ -139,6 +139,5 @@ let abstract orig_fun_list force prog =
   in
   let () = if false then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in
   let () = if !Flag.print_progress then Format.printf "DONE!@.@." in
-  let () = Wrapper2.reopen_cvc3 () in
   let () = add_time tmp Flag.time_abstraction in
     labeled,abst

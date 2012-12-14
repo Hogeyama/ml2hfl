@@ -1,11 +1,6 @@
 
 (** 外部ツール (CVC3, CSIsat) のラッパー *)
 
-(**
-TODO:
- - cvc3 で 同じコンストラクタを使えるようにする
-*)
-
 exception Satisfiable
 
 val open_cvc3 : unit -> unit
@@ -13,9 +8,6 @@ val open_cvc3 : unit -> unit
 
 val close_cvc3 : unit -> unit
 (** cvc3 を閉じる．*)
-
-val reopen_cvc3 : unit -> unit
-(** equivalent to (close_cvc3 . open_cvc3) *)
 
 val set_datatype_cvc3 : ?cout:out_channel -> Syntax.typed_term -> unit
 
