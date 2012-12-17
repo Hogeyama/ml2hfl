@@ -6,7 +6,7 @@ exception LongInput
 exception CannotDiscoverPredicate
 
 let print_info () =
-  Format.printf "cycle: %d\n" !Flag.cegar_loop;
+  Format.printf "cycle: %d\n" (!Flag.cegar_loop);
   Format.printf "total: %.3f sec\n" (get_time());
   Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
@@ -305,7 +305,7 @@ let () =
         VHorn.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
-        ignore (main cin);
+        if main cin then decr Flag.cegar_loop;
         VHorn.Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
