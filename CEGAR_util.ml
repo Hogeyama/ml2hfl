@@ -2,6 +2,7 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
+
 let const_of_bool b = if b then True else False
 
 
@@ -921,9 +922,10 @@ let rec has_bottom = function
 
 
 
-let rec normalize_bool_term = function
+let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
     Const c -> Const c
   | Var x -> Var x
+  | App(Const Not, App(Const Not, t1)) -> normalize_bool_term ~imply t1
   | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
       let op' =
         match op with
@@ -933,8 +935,36 @@ let rec normalize_bool_term = function
           | Geq -> Lt
           | _ -> assert false
       in
-        normalize_bool_term (App(App(Const op', t1), t2))
-  | App(App(Const EqBool, Const True), t) -> normalize_bool_term t
+        normalize_bool_term ~imply (App(App(Const op', t1), t2))
+  | App(App(Const EqBool, Const True), t) -> normalize_bool_term ~imply t
+  | App(App(Const And, _), _) as t ->
+      let rec decomp = function
+          App(App(Const And, t1), t2) -> decomp t1 @@ decomp t2
+        | t -> [normalize_bool_term ~imply t]
+      in
+      let rec aux ts1 = function
+          [] -> List.rev ts1
+        | t::ts2 ->
+            if imply (ts1@@ts2) t
+            then aux ts1 ts2
+            else aux (t::ts1) ts2
+      in
+      let ts' = aux [] (decomp t) in
+        List.fold_left make_and (List.hd ts') (List.tl ts')
+  | App(App(Const Or, _), _) as t ->
+      let rec decomp = function
+          App(App(Const Or, t1), t2) -> decomp t1 @@ decomp t2
+        | t -> [normalize_bool_term ~imply t]
+      in
+      let rec aux ts1 = function
+          [] -> ts1
+        | t::ts2 ->
+            if imply (ts1@@ts2) t
+            then aux ts1 ts2
+            else aux (t::ts1) ts2
+      in
+      let ts' = aux [] (decomp t) in
+        List.fold_left make_or (List.hd ts') (List.tl ts')
   | App(App(Const (EqInt|Lt|Gt|Leq|Geq) as op, t1), t2) ->
       let neg xs = List.map (fun (x,n) -> x,-n) xs in
       let rec decomp = function
@@ -952,7 +982,8 @@ let rec normalize_bool_term = function
               begin
                 match not_const xns1, not_const xns2 with
                     true, true ->
-                      Format.printf "Nonlinear expression not supported: %a@." CEGAR_print.term (make_app op [t1;t2]);
+                      Format.printf "Nonlinear expression not supported: %a@."
+                        CEGAR_print.term (make_app op [t1;t2]);
                       assert false
                   | false, true ->
                       let k = reduce xns1 in
@@ -1026,9 +1057,10 @@ let rec normalize_bool_term = function
           op', t1, t2
       in
         make_app op' [t1'; t2']
-  | App(t1, t2) -> App(normalize_bool_term t1, normalize_bool_term t2)
+  | App(t1, t2) -> App(normalize_bool_term ~imply t1, normalize_bool_term ~imply t2)
   | Let _ -> assert false
   | Fun _ -> assert false
+
 
 
 
