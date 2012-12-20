@@ -9,11 +9,11 @@ include Makefile.config
 # OCAMLLIB     = $(OCAML_SOURCE)/stdlib
 # OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
 # OCAMLYACC    = $(OCAML_SOURCE)/yacc/ocamlyacc.opt
-OCAMLC       = $(shell if which ocamlc.opt 2> /dev/null > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
-OCAMLOPT     = $(shell if which ocamlopt.opt 2> /dev/null > /dev/null ; then echo ocamlopt.opt; else echo ocamlopt; fi)
+OCAMLC       = $(shell if which ocamlc.opt > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
+OCAMLOPT     = $(shell if which ocamlopt.opt > /dev/null ; then echo ocamlopt.opt; else echo ocamlopt; fi)
 OCAMLMKTOP   = ocamlmktop
-OCAMLDEP     = $(shell if which ocamldep.opt 2> /dev/null > /dev/null ; then echo ocamldep.opt; else echo ocamldep; fi)
-OCAMLLEX     = $(shell if which ocamllex.opt 2> /dev/null > /dev/null ; then echo ocamllex.opt; else echo ocamllex; fi)
+OCAMLDEP     = $(shell if which ocamldep.opt > /dev/null ; then echo ocamldep.opt; else echo ocamldep; fi)
+OCAMLLEX     = $(shell if which ocamllex.opt > /dev/null ; then echo ocamllex.opt; else echo ocamllex; fi)
 OCAMLYACC    = $(shell if which menhir 2> /dev/null > /dev/null ; then echo menhir; else echo ocamlyacc; fi)
 
 
@@ -41,8 +41,8 @@ INCLUDES = -I /usr/lib \
 	-I $(VHORN) \
 	-I $(TRECS)
 #	-I $(OCAMLLIB)
-OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
-OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
+OCAMLFLAGS = -g -annot $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
+OCAMLOPTFLAGS = -annot $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
 
 DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml
 
@@ -199,7 +199,7 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[iox] *.o *.a *.annot *~ spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
+	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~ spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
 
 clean-ocaml:
@@ -230,24 +230,6 @@ test: opt
 	do echo $$i; \
 	timeout -s 14 $(LIMIT) ./$(NAME).opt $(OPTION) $$i 2>&1 | \
 	  egrep 'Safe|Unsafe|cycle:|Verification|Fatal' | \
-	  grep -v File | \
-	  grep -v Warning; \
-	echo; \
-	done
-test2: opt
-	for i in $(TEST); \
-	do echo $$i; \
-	(ulimit -t $(LIMIT); \
-	./$(NAME).opt $(OPTION) $$i 2>&1 | \
-	  egrep 'Safe|Unsafe|cycle:|Verification|Fatal') | \
-	  grep -v File | \
-	  grep -v Warning; \
-	echo; \
-	done
-test-byte: byte
-	for i in $(TEST); \
-	do echo $$i; \
-	(ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | \
 	  grep -v File | \
 	  grep -v Warning; \
 	echo; \
