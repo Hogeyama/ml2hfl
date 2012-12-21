@@ -137,7 +137,7 @@ let rec get_fv vars t =
     | Raise t -> get_fv vars t
     | RandValue _ -> assert false
     | Label _ -> assert false
-let get_fv t = uniq ~cmp:Id.compare (get_fv [] t)
+let get_fv ?(cmp=Id.compare) t = uniq ~cmp (get_fv [] t)
 
 
 let rec occur (x:id) = function
@@ -244,10 +244,10 @@ and print_term pri typ fm t =
         let b = ref true in
         let print_binding fm (f,xs,t1) =
           let pre = if !b then "let" ^ s_rec else "and" in
-            Format.printf "%s %a=@ %a@ " pre p_ids (f::xs) (print_term p typ) t1;
+            Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term p typ) t1;
             b := false
         in
-        let print_bindings fm = List.iter (print_binding fm) in
+        let print_bindings = print_list print_binding "" false in
           begin
             match t2.desc with
                 Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
@@ -580,6 +580,7 @@ let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
   {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Int 0;typ=TInt}); typ=TBool}
 let abst_term = {desc=Constr("Abst",[]); typ=typ_abst}
+let make_abst typ = {desc=Constr("Abst",[]); typ=typ}
 let make_bottom typ = {desc=Bottom;typ=typ}
 let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}

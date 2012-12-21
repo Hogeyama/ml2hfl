@@ -679,59 +679,60 @@ let copy_poly_funs t =
 
 
 let rec inst_randvalue env defs typ =
-  match typ with
-      _ when List.mem_assoc typ env ->
-        env, defs, make_app (make_var (List.assoc typ env)) [unit_term]
-    | TUnit -> env, defs, unit_term
-    | TBool -> env, defs, randbool_unit_term
-    | TInt -> env, defs, randint_unit_term
-    | TVar({contents=None} as r) -> r := Some typ_abst; inst_randvalue env defs typ_abst
-    | TVar{contents=Some typ} -> inst_randvalue env defs typ
-    | TFun(x,typ) ->
-        let env',defs',t = inst_randvalue env defs typ in
+  if List.mem_assoc typ env
+  then env, defs, make_app (make_var (List.assoc typ env)) [unit_term]
+  else
+    match typ with
+      | TUnit -> env, defs, unit_term
+      | TBool -> env, defs, randbool_unit_term
+      | TInt -> env, defs, randint_unit_term
+      | TVar({contents=None} as r) -> r := Some typ_abst; inst_randvalue env defs typ_abst
+      | TVar{contents=Some typ} -> inst_randvalue env defs typ
+      | TFun(x,typ) ->
+          let env',defs',t = inst_randvalue env defs typ in
           env', defs', make_fun x t
-    | TList (TVar({contents=None} as r)) ->
-        r := Some typ_abst; inst_randvalue env defs typ
-    | TList typ' ->
-        let u = Id.new_var "u" TUnit in
-        let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
-        let env' = (typ,f)::env in
-        let env'',defs',t_typ' = inst_randvalue env' defs typ' in
-        let t_typ =
-          make_if randbool_unit_term (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term]))
-        in
+      | TList (TVar({contents=None} as r)) ->
+          r := Some typ_abst; inst_randvalue env defs typ
+      | TList typ' ->
+          let u = Id.new_var "u" TUnit in
+          let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
+          let env' = (typ,f)::env in
+          let env'',defs',t_typ' = inst_randvalue env' defs typ' in
+          let t_typ =
+            make_if randbool_unit_term (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term]))
+          in
           env'', (f,[u],t_typ)::defs', make_app (make_var f) [unit_term]
-    | TPair(typ1,typ2) ->
-        let env',defs',t1 = inst_randvalue env defs typ1 in
-        let env'',defs'',t2 = inst_randvalue env' defs' typ2 in
+      | TPair(typ1,typ2) ->
+          let env',defs',t1 = inst_randvalue env defs typ1 in
+          let env'',defs'',t2 = inst_randvalue env' defs' typ2 in
           env'', defs'', make_pair t1 t2
-    | TConstr(s,false) -> env, defs, abst_term
-    | TConstr(s,true) ->
-        let u = Id.new_var "u" TUnit in
-        let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
-        let env' = (typ,f)::env in
-        let env'',defs',t =
-          match Type_decl.assoc_typ s with
-              Type_decl.TKVariant stypss ->
-                let n = List.length stypss in
-                let aux1 (s,typs) (env,defs,itss,i) =
-                  let aux2 typ (env,defs,ts) =
-                    let env', defs',t = inst_randvalue env defs typ in
+      | TConstr(s,false) -> env, defs, make_abst typ
+      | TConstr(s,true) ->
+          let u = Id.new_var "u" TUnit in
+          let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
+          let env' = (typ,f)::env in
+          let env'',defs',t =
+            match Type_decl.assoc_typ s with
+                Type_decl.TKVariant stypss ->
+                  let n = List.length stypss in
+                  let aux1 (s,typs) (env,defs,itss,i) =
+                    let aux2 typ (env,defs,ts) =
+                      let env', defs',t = inst_randvalue env defs typ in
                       env', defs', t::ts
-                  in
-                  let env',defs',ts' = List.fold_right aux2 typs (env,defs,[]) in
+                    in
+                    let env',defs',ts' = List.fold_right aux2 typs (env,defs,[]) in
                     env', defs', (i-1,ts')::itss, i-1
-                in
-                let env'',defs',itss,_ = List.fold_right aux1 stypss (env',defs,[],n) in
-                let aux (s,typs) (i,ts) =
-                  let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
+                  in
+                  let env'',defs',itss,_ = List.fold_right aux1 stypss (env',defs,[],n) in
+                  let aux (s,typs) (i,ts) =
+                    let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
                     p, true_term, {desc=Constr(s,ts); typ=typ}
-                in
+                  in
                   env'', defs', make_match randint_unit_term (List.map2 aux stypss itss)
-            | Type_decl.TKRecord sftyps -> raise (Fatal "Not implemented: inst_randvalue(TKRecord)")
-        in
+              | Type_decl.TKRecord sftyps -> raise (Fatal "Not implemented: inst_randvalue(TKRecord)")
+          in
           env'', (f,[u],t)::defs', make_app (make_var f) [unit_term]
-    | _ -> Format.printf "inst_randvalue: %a@." print_typ typ; assert false
+      | _ -> Format.printf "inst_randvalue: %a@." print_typ typ; assert false
 
 
 let rec get_last_definition f t =
@@ -2588,65 +2589,200 @@ let search_fail t = search_fail [] t
 
 let rec screen_fail path target t =
   let desc =
-  match t.desc with
-    Unit -> t.desc
-  | True -> t.desc
-  | False -> t.desc
-  | Unknown -> t.desc
-  | Int n -> t.desc
-  | RandInt b -> t.desc
-  | Var x -> t.desc
-  | Fun(x,t) -> t.desc
-  | App(t1, ts) ->
-    let aux i t = screen_fail (i::path) target t in
-    let t1ts' = mapi aux (t1::ts) in
-    App(List.hd t1ts', List.tl t1ts')
-  | If(t1, t2, t3) ->
-    let aux i t = screen_fail (i::path) target t in
-    If(aux 1 t1, aux 2 t2, aux 3 t3)
-  | Branch(t1, t2) ->
-    let aux i t = screen_fail (i::path) target t in
-    Branch(aux 1 t1, aux 2 t2)
-  | Let(flag, defs, t) ->
-    let aux i t = screen_fail (i::path) target t in
-    let aux_def i (f,xs,t) = f, xs, aux i t in
-    Let(flag, mapi aux_def defs, aux (List.length defs) t)
-  | BinOp(op, t1, t2) ->
-    let aux i t = screen_fail (i::path) target t in
-    BinOp(op, aux 1 t1, aux 2 t2)
-  | Not t -> Not (screen_fail path target t)
-  | Event("fail",_) ->
-    if path = target
-    then t.desc
-    else Bottom
-  | Event(s,b) -> t.desc
-  | Record fields -> assert false
-  | Proj(i,s,f,t) -> assert false
-  | SetField(n,i,s,f,t1,t2) -> assert false
-  | Nil -> t.desc
-  | Cons(t1,t2) ->
-    let aux i t = screen_fail (i::path) target t in
-    Cons(aux 1 t1, aux 2 t2)
-  | Constr(s,ts) ->
-    let aux i t = screen_fail (i::path) target t in
-    Constr(s, mapi aux ts)
-  | Match(t,pats) ->
-    let aux i t = screen_fail (i::path) target t in
-    let aux_pat i (p,cond,t) = p, aux (2*i+1) cond, aux (2*i+2) t in
-    Match(aux 0 t, mapi aux_pat pats)
-  | Raise t -> Raise (screen_fail path target t)
-  | TryWith(t1,t2) ->
-    let aux i t = screen_fail (i::path) target t in
-    TryWith(aux 1 t1, aux 2 t2)
-  | Bottom -> t.desc
-  | Pair(t1,t2) ->
-    let aux i t = screen_fail (i::path) target t in
-    Pair(aux 1 t1, aux 2 t2)
-  | Fst t -> Fst (screen_fail path target t)
-  | Snd t -> Snd (screen_fail path target t)
-  | RandValue _ -> t.desc
-  | Label(info,t) -> Label(info, screen_fail path target t)
+    match t.desc with
+        Unit -> t.desc
+      | True -> t.desc
+      | False -> t.desc
+      | Unknown -> t.desc
+      | Int n -> t.desc
+      | RandInt b -> t.desc
+      | Var x -> t.desc
+      | Fun(x,t) -> t.desc
+      | App(t1, ts) ->
+          let aux i t = screen_fail (i::path) target t in
+          let t1ts' = mapi aux (t1::ts) in
+          App(List.hd t1ts', List.tl t1ts')
+      | If(t1, t2, t3) ->
+          let aux i t = screen_fail (i::path) target t in
+          If(aux 1 t1, aux 2 t2, aux 3 t3)
+      | Branch(t1, t2) ->
+          let aux i t = screen_fail (i::path) target t in
+          Branch(aux 1 t1, aux 2 t2)
+      | Let(flag, defs, t) ->
+          let aux i t = screen_fail (i::path) target t in
+          let aux_def i (f,xs,t) = f, xs, aux i t in
+          Let(flag, mapi aux_def defs, aux (List.length defs) t)
+      | BinOp(op, t1, t2) ->
+          let aux i t = screen_fail (i::path) target t in
+          BinOp(op, aux 1 t1, aux 2 t2)
+      | Not t -> Not (screen_fail path target t)
+      | Event("fail",_) ->
+          if path = target
+          then t.desc
+          else Bottom
+      | Event(s,b) -> t.desc
+      | Record fields -> assert false
+      | Proj(i,s,f,t) -> assert false
+      | SetField(n,i,s,f,t1,t2) -> assert false
+      | Nil -> t.desc
+      | Cons(t1,t2) ->
+          let aux i t = screen_fail (i::path) target t in
+          Cons(aux 1 t1, aux 2 t2)
+      | Constr(s,ts) ->
+          let aux i t = screen_fail (i::path) target t in
+          Constr(s, mapi aux ts)
+      | Match(t,pats) ->
+          let aux i t = screen_fail (i::path) target t in
+          let aux_pat i (p,cond,t) = p, aux (2*i+1) cond, aux (2*i+2) t in
+          Match(aux 0 t, mapi aux_pat pats)
+      | Raise t -> Raise (screen_fail path target t)
+      | TryWith(t1,t2) ->
+          let aux i t = screen_fail (i::path) target t in
+          TryWith(aux 1 t1, aux 2 t2)
+      | Bottom -> t.desc
+      | Pair(t1,t2) ->
+          let aux i t = screen_fail (i::path) target t in
+          Pair(aux 1 t1, aux 2 t2)
+      | Fst t -> Fst (screen_fail path target t)
+      | Snd t -> Snd (screen_fail path target t)
+      | RandValue _ -> t.desc
+      | Label(info,t) -> Label(info, screen_fail path target t)
   in
   {desc=desc; typ=t.typ}
 
 let screen_fail target t = screen_fail [] target t
+
+
+
+
+
+let rec rename_ext_funs_list funs map ts =
+  let aux t (map,ts) =
+    let map',t' = rename_ext_funs funs map t in
+    map', t'::ts
+  in
+  List.fold_right aux ts (map,[])
+
+and rename_ext_funs funs map t =
+  let map',desc =
+    match t.desc with
+        Unit
+      | True
+      | False
+      | Unknown
+      | Int _
+      | RandInt _ -> map, t.desc
+      | Var x when Id.mem x funs ->
+          begin
+            try
+              let x' = List.find (fun f' -> Type.can_unify (Id.typ f') (Id.typ x)) map in
+              map, Var x'
+            with Not_found ->
+              let x' = Id.new_var_id x in
+              x'::map, Var x'
+          end
+      | Var x -> map, Var x
+      | Fun(x, t) ->
+          let map',t' = rename_ext_funs funs map t in
+          map', Fun(x, t')
+      | App(t, ts) ->
+          let map',ts' = rename_ext_funs_list funs map ts in
+          let map'',t' = rename_ext_funs funs map' t in
+          map'', App(t',ts')
+      | If(t1, t2, t3) ->
+          let map1,t1' = rename_ext_funs funs map t1 in
+          let map2,t2' = rename_ext_funs funs map1 t2 in
+          let map3,t3' = rename_ext_funs funs map2 t3 in
+          map3, If(t1', t2', t3')
+      | Branch(t1, t2) ->
+          let map1,t1' = rename_ext_funs funs map t1 in
+          let map2,t2' = rename_ext_funs funs map1 t2 in
+          map2, Branch(t1', t2')
+      | Let(flag, bindings, t2) ->
+          let aux (g,xs,t) (map,bindings) =
+            let map',t' = rename_ext_funs funs map t in
+            map', (g,xs,t')::bindings
+          in
+          let map',bindings' = List.fold_right aux bindings (map,[]) in
+          let map'',t2' = rename_ext_funs funs map' t2 in
+          map'', Let(flag, bindings', t2')
+      | BinOp(op, t1, t2) ->
+          let map1,t1' = rename_ext_funs funs map t1 in
+          let map2,t2' = rename_ext_funs funs map1 t2 in
+          map2, BinOp(op, t1', t2')
+      | Not t ->
+          let map',t' = rename_ext_funs funs map t in
+          map', Not t'
+      | Event(s,b) -> map, Event(s,b)
+      | Record fields -> assert false
+      | Proj(i,s,f,t) -> assert false
+      | SetField(n,i,s,f,t1,t2) -> assert false
+      | Nil -> map, Nil
+      | Cons(t1,t2) ->
+          let map1,t1' = rename_ext_funs funs map t1 in
+          let map2,t2' = rename_ext_funs funs map1 t2 in
+          map2, Cons(t1', t2')
+      | Constr(s,ts) ->
+          let map',ts' = rename_ext_funs_list funs map ts in
+          map', Constr(s, ts')
+      | Match(t,pats) ->
+          let aux (p,c,t) (map,bindings) =
+            let map',t' = rename_ext_funs funs map t in
+            map', (p,c,t')::bindings
+          in
+          let map',pats' = List.fold_right aux pats (map,[]) in
+          let map'',t' = rename_ext_funs funs map' t in
+          map'', Match(t', pats')
+      | Raise t ->
+          let map',t' = rename_ext_funs funs map t in
+          map', Raise t'
+      | TryWith(t1,t2) ->
+          let map1,t1' = rename_ext_funs funs map t1 in
+          let map2,t2' = rename_ext_funs funs map1 t2 in
+          map2, TryWith(t1', t2')
+      | Bottom -> map, Bottom
+      | Pair(t1,t2) ->
+          let map1,t1' = rename_ext_funs funs map t1 in
+          let map2,t2' = rename_ext_funs funs map1 t2 in
+          map2, Pair(t1', t2')
+      | Fst t ->
+          let map',t' = rename_ext_funs funs map t in
+          map', Fst t'
+      | Snd t ->
+          let map',t' = rename_ext_funs funs map t in
+          map', Snd t'
+      | RandValue (_, _) -> assert false
+      | Label _ -> assert false
+  in
+  map', {desc=desc; typ=t.typ}
+let rename_ext_funs funs t = rename_ext_funs funs [] t
+
+let make_ext_fun_def f =
+  let xs,typ' = decomp_tfun (Id.typ f) in
+  let xs' = List.map Id.new_var_id xs in
+  let make_fun_arg_call f (env,defs,t) =
+    let xs,typ = decomp_tfun (Id.typ f) in
+    let aux typ (env,defs,args) =
+      let env',defs',arg = inst_randvalue env defs typ in
+      env', defs', arg::args
+    in
+    let env',defs',args = List.fold_right aux (List.map Id.typ xs) (env,defs,[]) in
+    if xs = []
+    then env',defs',t
+    else
+      let u = Id.new_var "u" TUnit in
+      let x = Id.new_var "x" typ in
+      let t' = make_if randbool_unit_term unit_term (make_let [x,[],make_app (make_var f) args] unit_term) in
+      env', defs', make_let [u,[],t'] t
+  in
+  let env,defs,t = inst_randvalue [] [] typ' in
+  let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
+  f, xs', make_letrec defs' t'
+
+let make_ext_funs t =
+  let funs = get_fv t in
+  if List.exists (fun x -> is_poly_typ (Id.typ x)) funs
+  then raise (Fatal "Not implemented: Trans.make_ext_funs funs");
+  let map,t' = rename_ext_funs funs t in
+  let defs = List.map make_ext_fun_def map in
+  make_let defs t'

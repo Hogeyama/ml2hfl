@@ -30,12 +30,13 @@ let prim_typs =
   ["unit", TUnit;
    "bool", TBool;
    "int", TInt;
-   "string", TInt;
-   "Pervasives.in_channel", TUnit]
+(*
+   "Pervasives.in_channel", TUnit
+*)]
 
 let conv_primitive_var x =
   match Id.name x with
-      "Pervasives.stdin" -> unit_term
+(*      "Pervasives.stdin" -> unit_term*)
     | _ -> make_var x
 
 let conv_primitive_app t ts typ =

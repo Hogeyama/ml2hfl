@@ -92,6 +92,7 @@ val randint_term : typed_term
 val randbool_unit_term : typed_term
 val randint_unit_term : typed_term
 val abst_term : typed_term
+val make_abst : typ -> typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
@@ -154,7 +155,7 @@ val subst_map : (id * typed_term) list -> typed_term -> typed_term
 val subst_type : id -> typed_term -> typ -> typ
 val get_nint : typed_term -> id list
 val get_int : typed_term -> int list
-val get_fv : typed_term -> id list
+val get_fv : ?cmp:(id -> id -> int) -> typed_term -> id list
 val get_args : typ -> id list
 val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
