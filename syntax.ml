@@ -103,7 +103,7 @@ let rec get_fv vars t =
     | Unknown -> []
     | Int n -> []
     | RandInt _ -> []
-    | Var x -> if List.mem x vars then [] else [x]
+    | Var x -> if Id.mem x vars then [] else [x]
     | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
     | If(t1, t2, t3) -> get_fv vars t1 @@ get_fv vars t2 @@ get_fv vars t3
     | Branch(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
