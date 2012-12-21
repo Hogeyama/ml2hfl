@@ -83,6 +83,18 @@ type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 
 
+let rec get_vars_pat pat =
+  match pat.pat_desc with
+      PAny -> []
+    | PVar x -> [x]
+    | PConst _ -> []
+    | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
+    | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
+    | POr(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PPair(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PCons(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PNil -> []
+
 let rec get_fv vars t =
   match t.desc with
       Unit -> []
@@ -112,7 +124,10 @@ let rec get_fv vars t =
     | Cons(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
     | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = get_fv vars(* no need to update? *) t @@ acc in
+        let aux acc (pat,cond,t) =
+          let vars' = get_vars_pat pat @@ vars in
+          get_fv vars' cond @@ get_fv vars' t @@ acc
+        in
           List.fold_left aux (get_fv vars t) pats
     | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
     | Bottom -> []
@@ -817,17 +832,6 @@ let rec get_int t =
     | Label _ -> assert false
 let get_int t = uniq (get_int t)
 
-let rec get_vars_pat pat =
-  match pat.pat_desc with
-      PAny -> []
-    | PVar x -> [x]
-    | PConst _ -> []
-    | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
-    | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
-    | POr(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PPair(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PCons(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PNil -> []
 
 
 
