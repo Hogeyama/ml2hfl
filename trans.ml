@@ -28,6 +28,7 @@ and id___pat p =
     match p.pat_desc with
         PAny -> PAny
       | PVar x -> PVar (id___var x)
+      | PAlias(p,x) -> PAlias(id___pat p, id___var x)
       | PConst t -> PConst (id__ t)
       | PConstruct(s,ps) -> PConstruct(s, List.map id___pat ps)
       | PNil -> PNil
@@ -111,6 +112,7 @@ and id2___pat env p =
     match p.pat_desc with
         PAny -> PAny
       | PVar x -> PVar (id2___var env x)
+      | PAlias(p,x) -> PAlias(id2___pat env p, id2___var env x)
       | PConst t -> PConst (id2__ env t)
       | PConstruct(s,ps) -> PConstruct(s, List.map (id2___pat env) ps)
       | PNil -> PNil
@@ -243,6 +245,7 @@ and flatten_tvar_pat p =
     match p.pat_desc with
         PAny -> PAny
       | PVar x -> PVar (flatten_tvar_var x)
+      | PAlias(p,x) -> PAlias(flatten_tvar_pat p, flatten_tvar_var x)
       | PConst t -> PConst (flatten_tvar t)
       | PConstruct(s,ps) -> PConstruct(s, List.map flatten_tvar_pat ps)
       | PNil -> PNil
@@ -324,6 +327,7 @@ and inst_tvar_tunit_pat p =
     match p.pat_desc with
         PAny -> PAny
       | PVar x -> PVar (inst_tvar_tunit_var x)
+      | PAlias(p,x) -> PAlias(inst_tvar_tunit_pat p, inst_tvar_tunit_var x)
       | PConst t -> PConst (inst_tvar_tunit t)
       | PConstruct(c,ps) -> PConstruct(c, List.map inst_tvar_tunit_pat ps)
       | PNil -> PNil
@@ -401,6 +405,7 @@ and rename_tvar_pat map p =
     match p.pat_desc with
         PAny -> PAny
       | PVar x -> PVar (rename_tvar_var map x)
+      | PAlias(p,x) -> PAlias(rename_tvar_pat map p, rename_tvar_var map x)
       | PConst t -> PConst (rename_tvar map t)
       | PConstruct(s,ps) -> PConstruct(s, List.map (rename_tvar_pat map) ps)
       | PNil -> PNil

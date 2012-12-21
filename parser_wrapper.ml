@@ -269,7 +269,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     match desc with
         Tpat_any -> PAny
       | Tpat_var x -> PVar(from_ident x typ')
-      | Tpat_alias _ -> unsupported "pattern match (alias)"
+      | Tpat_alias(p,x) -> PAlias(from_pattern p, from_ident x typ')
       | Tpat_constant(Const_int n) -> PConst {desc=Int n;typ=typ'}
       | Tpat_constant(Const_char c) -> unsupported "pattern match (char constant)"
       | Tpat_constant(Const_string s) -> unsupported "pattern match (string constant)"

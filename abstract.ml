@@ -57,6 +57,9 @@ let rec abst_recdata_pat p =
     match p.pat_desc with
         PAny -> PAny, true_term, []
       | PVar x -> PVar (abst_recdata_var x), true_term, []
+      | PAlias(p,x) ->
+          let p',cond,bind = abst_recdata_pat p in
+            PAlias(p', abst_recdata_var x), cond, bind
       | PConst t -> PConst t, true_term, []
       | PConstruct(c,ps) ->
           let f = Id.new_var "f" (abst_recdata_typ p.pat_typ) in
@@ -322,6 +325,9 @@ and get_match_bind_cond t p =
   match p.pat_desc with
       PAny -> [], true_term
     | PVar x -> [abst_list_var x, t], true_term
+    | PAlias(p,x) ->
+        let bind,cond = get_match_bind_cond t p in
+        (abst_list_var x, t)::bind, cond
     | PConst {desc=Unit} -> [], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false

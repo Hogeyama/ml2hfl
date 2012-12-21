@@ -63,6 +63,7 @@ and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =
     PAny
   | PVar of id
+  | PAlias of typed_pattern * id
   | PConst of typed_term
   | PConstruct of string * typed_pattern list
   | PNil
@@ -87,6 +88,7 @@ let rec get_vars_pat pat =
   match pat.pat_desc with
       PAny -> []
     | PVar x -> [x]
+    | PAlias(p,x) -> x :: get_vars_pat p
     | PConst _ -> []
     | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
     | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
@@ -341,6 +343,7 @@ and print_pattern fm pat =
   match pat.pat_desc with
       PAny -> pp_print_string fm "_"
     | PVar x -> print_id fm x
+    | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
     | PConst c -> print_term 1 false fm c
     | PConstruct(c,pats) ->
         let aux' = function
@@ -494,6 +497,7 @@ and print_pattern' fm pat =
     match pat.pat_desc with
         PAny -> pp_print_string fm "_"
       | PVar x -> print_id_typ fm x
+      | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
       | PConst c -> print_term' 1 fm c
       | PConstruct(c,pats) ->
           let aux' = function

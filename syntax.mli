@@ -57,6 +57,7 @@ and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =
     PAny
   | PVar of id
+  | PAlias of typed_pattern * id
   | PConst of typed_term
   | PConstruct of string * typed_pattern list
   | PNil
