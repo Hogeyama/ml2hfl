@@ -950,7 +950,11 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
             else aux (t::ts1) ts2
       in
       let ts' = aux [] (decomp t) in
-        List.fold_left make_and (List.hd ts') (List.tl ts')
+      begin
+        match ts' with
+            [] -> Const True
+          | t'::ts'' -> List.fold_left make_and t' ts''
+      end
   | App(App(Const Or, _), _) as t ->
       let rec decomp = function
           App(App(Const Or, t1), t2) -> decomp t1 @@ decomp t2
@@ -959,12 +963,16 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
       let rec aux ts1 = function
           [] -> ts1
         | t::ts2 ->
-            if imply (ts1@@ts2) t
+            if imply (ts1@@ts2) (make_not t)
             then aux ts1 ts2
             else aux (t::ts1) ts2
       in
       let ts' = aux [] (decomp t) in
-        List.fold_left make_or (List.hd ts') (List.tl ts')
+      begin
+        match ts' with
+            [] -> Const False
+          | t'::ts'' -> List.fold_left make_or t' ts''
+      end
   | App(App(Const (EqInt|Lt|Gt|Leq|Geq) as op, t1), t2) ->
       let neg xs = List.map (fun (x,n) -> x,-n) xs in
       let rec decomp = function
