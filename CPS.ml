@@ -433,8 +433,7 @@ let rec infer_effect env t =
 	  try
 	    List.assoc (Id.to_string x) env
 	  with
-	      Not_found when is_external x -> infer_effect_typ t.typ
-	    | Not_found when is_parameter x -> TBaseCPS(TInt)
+	      Not_found when is_parameter x -> TBaseCPS(TInt)
 	    | Not_found -> Format.printf "%a@." print_id x; assert false
         in
           {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}

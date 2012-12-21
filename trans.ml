@@ -1971,7 +1971,7 @@ let elim_fun t = elim_fun "f" t
 
 
 
-let rec make_ext_env t =
+let rec make_ext_env funs t =
   match t.desc with
       Unit -> []
     | True -> []
@@ -1979,34 +1979,38 @@ let rec make_ext_env t =
     | Unknown -> []
     | Int n -> []
     | RandInt _ -> []
-    | Var x -> if is_external x then [x, Id.typ x] else []
-    | App(t, ts) -> make_ext_env t @@ (rev_map_flatten (make_ext_env) ts)
-    | If(t1, t2, t3) -> make_ext_env t1 @@ make_ext_env t2 @@ make_ext_env t3
-    | Branch(t1, t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Var x -> if List.mem x funs then [x, Id.typ x] else []
+    | App(t, ts) -> make_ext_env funs t @@ (rev_map_flatten (make_ext_env funs) ts)
+    | If(t1, t2, t3) -> make_ext_env funs t1 @@ make_ext_env funs t2 @@ make_ext_env funs t3
+    | Branch(t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
     | Let(flag, bindings, t2) ->
-        let aux fv (_,xs,t) = make_ext_env t @@ fv in
-          List.fold_left aux (make_ext_env t2) bindings
-    | BinOp(op, t1, t2) -> make_ext_env t1 @@ make_ext_env t2
-    | Not t -> make_ext_env t
-    | Fun(x,t) -> make_ext_env t
+        let aux fv (_,xs,t) = make_ext_env funs t @@ fv in
+          List.fold_left aux (make_ext_env funs t2) bindings
+    | BinOp(op, t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | Not t -> make_ext_env funs t
+    | Fun(x,t) -> make_ext_env funs t
     | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env t @@ acc) [] fields
-    | Proj(_,_,_,t) -> make_ext_env t
-    | SetField(_,_,_,_,t1,t2) -> make_ext_env t1 @@ make_ext_env t2
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env funs t @@ acc) [] fields
+    | Proj(_,_,_,t) -> make_ext_env funs t
+    | SetField(_,_,_,_,t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
     | Nil -> []
-    | Cons(t1, t2) -> make_ext_env t1 @@ make_ext_env t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env t @@ acc) [] ts
+    | Cons(t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env funs t @@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = make_ext_env t @@ acc in
-          List.fold_left aux (make_ext_env t) pats
-    | TryWith(t1,t2) -> make_ext_env t1 @@ make_ext_env t2
+        let aux acc (_,_,t) = make_ext_env funs t @@ acc in
+          List.fold_left aux (make_ext_env funs t) pats
+    | TryWith(t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
     | Bottom -> []
-    | Pair(t1,t2) -> make_ext_env t1 @@ make_ext_env t2
-    | Fst t -> make_ext_env t
-    | Snd t -> make_ext_env t
-    | Raise t -> make_ext_env t
+    | Pair(t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | Fst t -> make_ext_env funs t
+    | Snd t -> make_ext_env funs t
+    | Raise t -> make_ext_env funs t
     | RandValue _ -> assert false
     | Label _ -> assert false
+
+let make_ext_env t =
+  let funs = get_fv ~cmp:compare t in
+  make_ext_env funs t
 
 
 

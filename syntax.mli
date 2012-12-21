@@ -165,7 +165,6 @@ val get_vars_pat : typed_pattern -> id list
 
 val max_pat_num : typed_term -> int
 val max_label_num : typed_term -> int
-val is_external : id -> bool
 val is_parameter : id -> bool
 val is_value : typed_term -> bool
 val get_top_funs : typed_term -> id list

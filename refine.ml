@@ -92,13 +92,9 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       let map =
         match !Flag.refine with
             Flag.RefineRefType(flags) ->
-              (*let is_ext (f,_,_,_,_) = not (is_external f) in*)
       	      let _ = Format.printf "@[<v>" in
       	      let map = VhornInterface.infer flags labeled ces (env,defs,main) in
       	      let _ = Format.printf "@]" in
-                (*
-                  if !Flag.print_rd_constraints then RefineDepTyp.infer_and_print [List.hd ces] (env,defs,main);
-                *)
                 map
           | Flag.RefineRefTypeOld ->
               if not (List.mem Flag.CPS !Flag.form)

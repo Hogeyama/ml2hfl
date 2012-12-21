@@ -495,11 +495,7 @@ let rename_prog prog =
       else rename_id x
   in
   let make_map_fun (f,_) =
-    let f' =
-      if is_external f
-      then f
-      else rename_id' f var_names
-    in
+    let f' = rename_id' f var_names in
       f, f'
   in
   let map = List.rev_map make_map_fun prog.env in
@@ -524,7 +520,7 @@ let rename_prog prog =
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
   let prog = {env=env; defs=defs; main=main} in
-  let () = try ignore (Typing.infer prog) with Typing.External -> () in
+  let () = ignore (Typing.infer prog) in
   let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
     prog, map, rmap
 
