@@ -871,8 +871,8 @@ let rec lift_aux post xs t =
       | Fun _ ->
           let f = Id.new_var ("f" ^ post) t.typ in
           let aux f ys t1 t2 =
-            let fv = inter' Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
+            let fv = inter ~cmp:Id.compare (get_fv t1) xs in
+            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
             let fv = List.sort compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
@@ -900,8 +900,8 @@ let rec lift_aux post xs t =
             defs1 @ defs2, Branch(t1',t2')
       | Let(Nonrecursive,bindings,t2) ->
           let aux (f,ys,t1) =
-            let fv = inter' Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
+            let fv = inter ~cmp:Id.compare (get_fv t1) xs in
+            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
             let fv = List.sort compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
@@ -916,8 +916,8 @@ let rec lift_aux post xs t =
             List.flatten defss @ defs2, t2'.desc
       | Let(Recursive,bindings,t2) ->
           let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
-          let fv = inter' Id.compare (uniq' Id.compare fv) xs in
-          let fv = if !Flag.lift_fv_only then fv else uniq' Id.compare (filter_base xs @@ fv) in
+          let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
+          let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
           let fv = List.sort compare_id fv in
           let aux (f,_,_) =
             let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in

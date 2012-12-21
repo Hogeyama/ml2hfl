@@ -515,7 +515,7 @@ let rename_prog prog =
     let () = Id.clear_counter () in
     let var_names'' = List.rev_map id_name xs @@ var_names' in
     let arg_map = List.map (fun x -> x, rename_id' x var_names'') xs in
-    let arg_map = uniq' (fun (x,_) (y,_) -> compare x y) arg_map in
+    let arg_map = uniq ~cmp:(fun (x,_) (y,_) -> compare x y) arg_map in
     let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@ map) in
     let rename_term t = subst_map smap t in
       rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2

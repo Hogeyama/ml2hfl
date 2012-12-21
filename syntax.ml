@@ -137,7 +137,7 @@ let rec get_fv vars t =
     | Raise t -> get_fv vars t
     | RandValue _ -> assert false
     | Label _ -> assert false
-let get_fv t = uniq (get_fv [] t)
+let get_fv t = uniq ~cmp:Id.compare (get_fv [] t)
 
 
 let rec occur (x:id) = function
