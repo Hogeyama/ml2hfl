@@ -261,6 +261,6 @@ SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend:: $(DEPEND)
-	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
+	$(OCAMLDEP) -I $(VHORN) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend

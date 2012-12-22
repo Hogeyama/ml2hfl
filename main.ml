@@ -276,6 +276,8 @@ let arg_spec =
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtc", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenTemplateBasedConstraintSolving),
      " Generalize constraints of multiple function calls by template-based constraint solving";
+   "-ieb", Arg.Unit (fun _ -> VHorn.Global.encode_boolean := true),
+     " Enable integer encoding of booleans";
    "-yhorn", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.YHorn),
      " Solve Horn clauses by using Yint";
    (* interpolating prover *)
