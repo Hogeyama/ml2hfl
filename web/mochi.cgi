@@ -21,7 +21,7 @@ open FILE, '>', $filename;
 print FILE $q->param('input');
 close FILE;
 
-$cmd = 'ulimit -t 30 -v 100000; /home/ryosuke/mochi/mochi.opt -gch -margin 80 ' . $filename;
+$cmd = 'ulimit -t 30 -v 100000; /home/ryosuke/mochi/mochi.opt -gchi -margin 80 ' . $filename;
 if ($q->param('verbose') ne 'checked') {
     $cmd .= ' -only-result';
 }
