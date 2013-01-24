@@ -144,8 +144,6 @@ let rec inv_abst_type aty =
 
 
 let infer flags labeled cexs prog =
-  let _ = Global.print_log := !Flag.debug_level <> 0 in
-
   let _ = if flags land 1 <> 0 && !Global.interp_prover = Global.CSIsat then Global.interp_prover := Global.GCSIsat in
   let _ = Global.solve_preds_left_to_right := flags land 2 <> 0 in
 
@@ -234,6 +232,10 @@ let new_params recursive bvs exs =
     None)
   0
 
+let gen_id =
+  let cnt = ref 0 in
+  fun () -> cnt := !cnt + 1; string_of_int !cnt
+
 let rec trans_type typ =
   let xs, tyret = Type.decomp_tfun typ in
   let xs' =
@@ -260,7 +262,7 @@ and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
 let insert_extra_param t =
   let tmp = get_time() in
-  let debug = !Global.debug in
+  let debug = !Flag.debug_level > 0 in
   let _ = ParamSubstInfer.masked_params := [] in
   let rec aux rfs bvs exs t =
     let desc =
@@ -281,7 +283,7 @@ let insert_extra_param t =
                 Util.unfold
                   (fun i ->
                     if i < !Global.number_of_extra_params then
-                      Some(Id.new_var "ex" Type.TInt, i + 1)
+                      Some(Id.new_var ("ex" ^ gen_id ()) Type.TInt, i + 1)
                     else
                       None)
                   0
@@ -362,7 +364,7 @@ let insert_extra_param t =
                        Util.unfold
                          (fun i ->
                            if i < !Global.number_of_extra_params then
-                             Some(Id.new_var "ex" Type.TInt, i + 1)
+                             Some(Id.new_var ("ex" ^ gen_id ()) Type.TInt, i + 1)
                            else
                              None)
                          0
@@ -421,6 +423,47 @@ let instantiate_param (typs, fdefs, main as prog) =
   let tmp = get_time() in
   let _ = if !ParamSubstInfer.ext_coeffs = [] then ParamSubstInfer.init_coeffs (conv_prog prog) in
   let map = List.map (fun (x, n) -> Var.string_of x, inv_term (Term.tint n)) !ParamSubstInfer.ext_coeffs in
-  let res = (typs, List.map (fun (f, args, guard, events, body) -> (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body)) fdefs, main) in
+  let res =
+		  typs,
+				List.map
+				  (fun (f, args, guard, events, body) ->
+						  (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body))
+						fdefs,
+				main
+  in
   let _ = add_time tmp Flag.time_parameter_inference in
   res
+
+
+
+
+
+let simplify_term t =
+  if false then
+	  let _, t = trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
+	  let t = conv_term t in
+	  let t = FormulaUtil.simplify t in
+			let t = inv_term t in
+	  (trans_inv_term t).Syntax.desc
+  else
+    t
+
+let simplify_typed_term p =
+  { p with Syntax.desc = simplify_term p.Syntax.desc }
+
+let rec simplify typ =
+  match typ with
+    Ref_type.Base(base, x, p) ->
+        Ref_type.Base(base, x, simplify_typed_term p)
+  | Ref_type.Fun(x,typ1,typ2) ->
+        Ref_type.Fun(x, simplify typ1, simplify typ2)
+  | Ref_type.Pair(x,typ1,typ2) ->
+        Ref_type.Pair(x, simplify typ1, simplify typ2)
+  | Ref_type.Inter typs ->
+		      Ref_type.Inter (List.map simplify typs)
+  | Ref_type.Union typs ->
+		      Ref_type.Union (List.map simplify typs)
+  | Ref_type.ExtArg(x,typ1,typ2) ->
+        Ref_type.ExtArg(x, simplify typ1, simplify typ2)
+  | Ref_type.List(x,p_len,y,p_i,typ) ->
+        Ref_type.List(x, simplify_typed_term p_len, y, simplify_typed_term p_i, typ)

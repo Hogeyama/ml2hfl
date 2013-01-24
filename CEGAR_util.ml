@@ -307,6 +307,8 @@ and trans_term post xs env t =
           | Type.TBool -> EqBool
           | Type.TInt -> EqInt
           | Type.TPred(typ,_) -> aux typ
+										| Type.TConstr("???", false) ->
+										    EqInt(*???assert false*)
           | typ -> Format.printf "trans_term: %a@." Syntax.print_typ typ; assert false
         in
         let op = aux t1.Syntax.typ in
@@ -321,7 +323,9 @@ and trans_term post xs env t =
     | Syntax.Fun _ -> assert false
     | Syntax.Event _ -> assert false
     | Syntax.Bottom -> [], Const Bottom
-    | _ -> assert false
+    | _ ->
+        Format.printf "%a@.@.@." Syntax.pp_print_term t;
+								assert false
 
 let rec formula_of t =
   match t.Syntax.desc with

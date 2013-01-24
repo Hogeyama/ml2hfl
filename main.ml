@@ -6,7 +6,7 @@ exception LongInput
 exception CannotDiscoverPredicate
 
 let print_info () =
-  Format.printf "cycle: %d\n" !Flag.cegar_loop;
+  Format.printf "iterations: %d\n" !Flag.cegar_loop;
   Format.printf "total: %.3f sec\n" (get_time());
   Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
@@ -56,16 +56,16 @@ let preprocess t spec =
         if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
-      let t =
-	if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
-	  let t = Trans.lift_fst_snd t in
-	  let t = VhornInterface.insert_extra_param t in (* THERE IS A BUG *)
-	    if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-	      (List.length !VhornInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
-	    t
-	else
-	  t
-      in
+      (*let t =
+        if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
+          let t = Trans.lift_fst_snd t in
+          let t = VhornInterface.insert_extra_param t in (* THERE IS A BUG *)
+            if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+              (List.length !VhornInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+            t
+        else
+          t
+      in*)
       let t',get_rtyp_cps_trans = CPS.trans t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
@@ -83,7 +83,7 @@ let preprocess t spec =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
       in
-	fun_list, t', get_rtyp
+ fun_list, t', get_rtyp
     else Syntax.get_top_funs t, t, fun _ typ -> typ
   in
 
@@ -118,7 +118,21 @@ let rec main_loop orig parsed =
     if true && !Flag.debug_level > 0
     then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t
   in
-  let prog, rmap, get_rtyp, info = preprocess t spec in
+  (** Unno: I temporally placed the following code here
+            so that we can infer refinement types for a safe program
+            with extra parameters added *)
+  let t0 =
+    if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
+      let t = Trans.lift_fst_snd t in
+      let t = VhornInterface.insert_extra_param t in (* THERE IS A BUG *)
+        if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+          (List.length !VhornInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+        t
+    else
+      t
+  in
+  (**)
+  let prog, rmap, get_rtyp, info = preprocess t0 spec in
     match !Flag.cegar with
         Flag.CEGAR_InteractionType ->
           VhornInterface.verify [] prog;
@@ -138,7 +152,14 @@ let rec main_loop orig parsed =
                     in
                     if !Flag.insert_param_funarg
                     then []
-                    else rev_map_flatten aux env
+                    else
+																				  if !Flag.relative_complete then
+																						  let _ = Flag.web := true in
+																								let res = rev_map_flatten aux env in
+																						  let _ = Flag.web := false in
+																								res
+																						else
+  																				  rev_map_flatten aux env
                   in
                   let () =
                     if !Flag.write_annot
@@ -146,11 +167,28 @@ let rec main_loop orig parsed =
                       let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
                         WriteAnnot.f !Flag.filename orig env''
                   in
-                  let pr (f,typ) =
-                    Format.printf "%s: %a@." (Id.name f) Ref_type.print typ
-                  in
                   Format.printf "Safe!@.@.";
+                  let () =
+                    if !Flag.relative_complete then begin
+																				  let map =
+																						  List.map
+																								  (fun (x, n) ->
+																										  Id.make (-1) (VHorn.Var.string_of x) Type.TInt,
+																												CEGAR_util.trans_inv_term (VhornInterface.inv_term (VHorn.Term.tint n)))
+																										!VHorn.ParamSubstInfer.ext_coeffs
+																						in
+                      let t = Syntax.subst_map map t0 in
+		                    Format.printf "Program with Quantifiers Added:@.";
+																						Flag.web := true;
+		                    Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
+																						Flag.web := false
+																				end
+                  in
                   if env' <> [] then Format.printf "Refinement Types:@.";
+                  let env' = List.map (fun (f, typ) -> f, VhornInterface.simplify typ) env' in
+                  let pr (f,typ) =
+                    Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ
+                  in
                   List.iter pr env';
                   if env' <> [] then Format.printf "@.";
                   true
@@ -166,7 +204,7 @@ let rec main_loop orig parsed =
               VHorn.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
                 main_loop orig parsed
-            | VHorn.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete ->
+            | VHorn.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
@@ -235,7 +273,8 @@ let arg_spec =
    "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs (each program has only one assertion)";
    "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
    (* relatively complete verification *)
-   "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification";
+   "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
+   "-disable-rc", Arg.Set Flag.disable_relatively_complete_verification, " Disable relatively complete verification";
    "-nex", Arg.Int (fun n -> VHorn.Global.number_of_extra_params := n),
           " Number of inserted extra parameters for each functional argument";
    "-tbit", Arg.Int (fun n -> VHorn.Global.bits_threshold := n),
@@ -297,6 +336,7 @@ let () =
         Flag.filename := name
       in
       let () = Arg.parse arg_spec set_file usage in
+      let () = VHorn.Global.print_log := !Flag.debug_level <> 0 in
       let cin =
         match !Flag.filename with
             "" | "-" -> Flag.filename := "stdin"; stdin
@@ -328,4 +368,4 @@ let () =
       | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
       | VHorn.AbsTypeInfer.FailedToRefineTypes ->
-          Format.printf "Verification failed (cannot refute an error path)@."; exit 1
+          Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."; exit 1
