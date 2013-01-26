@@ -102,8 +102,8 @@ let max_input_size = 65536
 
 
 (* mode option *)
-let debug = false
-let debug_level = ref 0
+let debug = true
+let debug_level = ref 1
 let only_result = ref false
 
 

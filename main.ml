@@ -6,7 +6,7 @@ exception LongInput
 exception CannotDiscoverPredicate
 
 let print_info () =
-  Format.printf "iterations: %d\n" !Flag.cegar_loop;
+  Format.printf "cycles: %d\n" !Flag.cegar_loop;
   Format.printf "total: %.3f sec\n" (get_time());
   Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
@@ -313,8 +313,10 @@ let arg_spec =
      " Generalize constraints of multiple function calls by interpolation";
    "-gchi", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenConvexHullInterpolation),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
-   "-gtc", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenTemplateBasedConstraintSolving),
+   "-gtcs", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenTemplateBasedConstraintSolving),
      " Generalize constraints of multiple function calls by template-based constraint solving";
+   "-gssi", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenSolutionSpaceBasedInterpolation),
+     " Generalize constraints of multiple function calls by solution space-based interpolation";
    "-ieb", Arg.Unit (fun _ -> VHorn.Global.encode_boolean := true),
      " Enable integer encoding of booleans";
    "-yhorn", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.YHorn),
