@@ -8,3 +8,5 @@ GMP = /usr/lib
 Z3 = ../z3
 OCAMLGRAPH = /usr/lib/ocaml/ocamlgraph
 YHORN = ../yhorn
+LIB = /usr/local/lib
+OCAML_LIB = /usr/local/lib/ocaml

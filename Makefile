@@ -19,9 +19,8 @@ OCAMLYACC    = $(shell if which menhir 2> /dev/null > /dev/null ; then echo menh
 
 CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
-INCLUDES = -I /usr/lib \
-	-I /usr/lib/ocaml \
-	-I /usr/local/lib \
+INCLUDES = -I $(LIB) \
+	-I $(OCAML_LIB) \
 	-I $(Z3) \
 	-I $(GMP) \
 	-I $(ATP) \
@@ -44,7 +43,7 @@ INCLUDES = -I /usr/lib \
 OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
 OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
 
-DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml
+DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 
 DOC = doc
 
@@ -116,7 +115,6 @@ $(NAME).opt: $(CMX) $(CMI)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
 
 
-
 spec_parser.ml spec_parser.mli: spec_parser.mly
 	$(OCAMLYACC) -v $<
 spec_lexer.ml: spec_lexer.mll
@@ -146,8 +144,18 @@ trecs_lexer.ml: trecs_lexer.mll
 
 $(OCAML_SOURCE)/config/Makefile:
 	cd $(OCAML_SOURCE) && ./configure
-ocaml: $(OCAML_SOURCE)/config/Makefile
-	cd $(OCAML_SOURCE) && make world opt world.opt opt.opt
+$(OCAML_SOURCE)/utils/config.ml: $(OCAML_SOURCE)/config/Makefile
+	cd $(OCAML_SOURCE); make utils/config.ml
+$(OCAML_SOURCE)/parsing/lexer.ml:
+	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/lexer.mll
+$(OCAML_SOURCE)/parsing/linenum.ml:
+	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/linenum.mll
+$(OCAML_SOURCE)/parsing/parser.mli parsing/parser.ml:
+	cd $(OCAML_SOURCE); $(OCAMLYACC) -v parsing/parser.mly
+$(OCAML_SOURCE)/bytecomp/opcodes.ml:
+	cd $(OCAML_SOURCE); \
+	sed -n -e '/^enum/p' -e 's/,//g' -e '/^  /p' byterun/instruct.h | \
+	awk -f tools/make-opcodes > bytecomp/opcodes.ml
 
 csisat:
 	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
@@ -201,9 +209,6 @@ doc:
 clean:
 	rm -f *.cm[iox] *.o *.a *.annot *~ spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
-
-clean-ocaml:
-	cd $(OCAML_SOURCE); make clean
 
 clean-csisat:
 	cd $(CSISAT); make clean
@@ -264,3 +269,4 @@ depend:: $(DEPEND)
 	$(OCAMLDEP) -I $(VHORN) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
+-include ocaml.depend
