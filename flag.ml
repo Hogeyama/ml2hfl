@@ -48,6 +48,7 @@ let lift_fv_only = ref false
 let use_filter = ref false
 let disable_predicate_accumulation = ref false
 let relative_complete = ref false
+let disable_relatively_complete_verification = ref false
 let expand_nonrec = ref true
 let expand_nonrec_init = ref true
 let cps_simpl = ref false
@@ -86,7 +87,7 @@ let print_eval_abst = ref false
 let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
 
-
+let web = ref false
 
 (* variables for log *)
 let time_abstraction = ref 0.

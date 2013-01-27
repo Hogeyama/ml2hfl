@@ -21,11 +21,13 @@ open FILE, '>', $filename;
 print FILE $q->param('input');
 close FILE;
 
-$cmd = 'ulimit -t 30 -v 100000; ./mochi.opt -gchi -margin 80 ' . $filename;
+$cmd = 'ulimit -t 30 -v 100000; ./mochi.opt -gchi -no-enr -margin 80 ' . $filename;
 if ($q->param('verbose') ne 'checked') {
     $cmd .= ' -only-result';
 }
-if ($q->param('complete') eq 'checked') {
+if ($q->param('complete') ne 'checked') {
+    $cmd .= ' -disable-rc';
+} else {
     $cmd .= ' -rc';
 }
 
