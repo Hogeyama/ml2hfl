@@ -16,6 +16,12 @@ type t =
   | ExtArg of S.id * t * t
   | List of S.id * S.typed_term * S.id * S.typed_term * t
 
+let is_fun_typ = function
+    Fun(_,_,_) ->
+      true
+  | _ ->
+      false
+
 let print_base fm = function
     Unit -> Format.pp_print_string fm "unit"
   | Bool -> Format.pp_print_string fm "bool"
@@ -124,6 +130,10 @@ let rec rename var = function
           | Some y -> y
       in
         Base(base, x', S.subst x (S.make_var x') p)
+  | Fun(x, typ1, (Fun(_, typ, _) as typ2)) when !Flag.web && is_fun_typ typ ->
+      let x' = Id.new_var ("@" ^ Id.name x) (Id.typ x) in
+      let typ2' = subst x (S.make_var x') typ2 in
+        Fun(x', rename (Some x') typ1, rename None typ2')
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var (Id.name x) (Id.typ x) in
       let typ2' = subst x (S.make_var x') typ2 in

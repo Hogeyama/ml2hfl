@@ -161,9 +161,28 @@ let rec occur (x:id) = function
 (*** PRINTING FUNCTIONS ***)
 
 let rec print_typ t = Type.print ~occur (print_term 0 false) t
-and print_ids fm = function
-    [] -> ()
-  | x::xs -> fprintf fm "%a %a" Id.print x print_ids xs
+and print_ids fm xs =
+		if !Flag.web then
+		  let rec aux xs =
+				  match xs with
+				    [] -> ()
+				  | [x] ->
+				  				fprintf fm "%a" Id.print x
+		    | x1 :: x2 :: xs ->
+						    let _ =
+												if is_fun_typ x2.Id.typ then
+					  			    fprintf fm "$%a$ " Id.print x1
+												else
+				  				    fprintf fm "%a " Id.print x1
+										in
+										aux (x2 :: xs)
+				in
+				aux xs
+		else
+		  match xs with
+		    [] -> ()
+		  | x::xs ->
+				    fprintf fm "%a %a" Id.print x print_ids xs
 
 (*
   and print_id fm x = fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
@@ -193,17 +212,36 @@ and paren pri p = if pri < p then "","" else "(",")"
 
 and print_binop fm = function
     Eq -> fprintf fm "="
-  | Lt -> fprintf fm "<"
-  | Gt -> fprintf fm ">"
-  | Leq -> fprintf fm "<="
-  | Geq -> fprintf fm ">="
-  | And -> fprintf fm "&&"
+  | Lt -> (*if !Flag.web then fprintf fm "&lt;" else*) fprintf fm "<"
+  | Gt -> (*if !Flag.web then fprintf fm "&gt;" else*) fprintf fm ">"
+  | Leq -> (*if !Flag.web then fprintf fm "&lt;=" else*) fprintf fm "<="
+  | Geq -> (*if !Flag.web then fprintf fm "&gt;=" else*) fprintf fm ">="
+  | And -> (*if !Flag.web then fprintf fm "&amp;&amp;" else*) fprintf fm "&&"
   | Or -> fprintf fm "||"
   | Add -> fprintf fm "+"
   | Sub -> fprintf fm "-"
   | Mult -> fprintf fm "*"
 
-and print_termlist pri typ fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term pri typ) bd)
+and print_termlist pri typ fm ts =
+  if !Flag.web then
+    let rec aux ts =
+      match ts with
+						  [] -> ()
+						| [t] -> fprintf fm "@ %a" (print_term pri typ) t
+						| t1 :: t2 :: ts' ->
+						    let _ =
+								    if is_fun_typ t2.typ then
+												  fprintf fm "@ $%a$" (print_term pri typ) t1
+		          else
+												  fprintf fm "@ %a" (print_term pri typ) t1
+										in
+										aux (t2 :: ts')
+				in
+				aux ts
+  else
+		  List.iter
+		    (fun bd ->
+		      fprintf fm "@ %a" (print_term pri typ) bd) ts
 and print_term pri typ fm t =
   match t.desc with
       Unit -> fprintf fm "()"
@@ -227,7 +265,7 @@ and print_term pri typ fm t =
     | If(t1, t2, t3) ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
-          fprintf fm "%s@[if@ %a@ @[<hov 2>then@ %a@]@ @[<hov 2>else@ %a@]@]%s"
+          fprintf fm "%s@[<v>if %a then@   @[%a@]@ else@   @[%a@]@]%s"
             s1 (print_term p typ) t1 (print_term p typ) t2 (print_term p typ) t3 s2
     | Branch(t1, t2) ->
         let p = 80 in

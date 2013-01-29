@@ -18,6 +18,11 @@ type 'a t =
 
 let typ_unknown = TConstr("???", false)
 
+let is_fun_typ = function
+    TFun(_,_) ->
+      true
+  | _ ->
+      false
 
 let rec is_base_typ = function
     TUnit

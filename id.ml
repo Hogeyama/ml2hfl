@@ -22,10 +22,17 @@ let name x = x.name
 let typ x = x.typ
 
 let to_string x =
-  let n = id x in
-    if n <= 0
-    then name x
-    else name x ^ "_" ^ string_of_int n
+  let s =
+		  let n = id x in
+		  if n <= 0 then
+						name x
+		  else
+				  name x ^ "_" ^ string_of_int n
+  in
+		if s.[0] = '@' then
+				"$" ^ String.sub s 1 (String.length s - 1) ^ "$"
+		else
+    s
 
 let from_string s typ =
   try
@@ -57,6 +64,11 @@ let rec mem_assoc x = function
   | (a, b) :: l -> same a x || mem_assoc x l
 
 let print fm x =
-  let s = to_string x in
-    assert (s <> "");
-    Format.pp_print_string fm s
+  let s =
+		  if !Flag.web then
+				  name x
+				else
+				  to_string x
+		in
+  assert (s <> "");
+  Format.pp_print_string fm s

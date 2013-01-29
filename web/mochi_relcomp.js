@@ -91,7 +91,7 @@ function ex(form) {
 function run() {
     $('#result').html('<h2>Now verifying...</h2>');
     $.post(
-        '../cgi-bin/mochi.cgi',
+        '../cgi-bin/mochi_relcomp.cgi',
         {'input':$('#input').val(), 'verbose':$("#verbose").attr("checked"), 'complete':$("#complete").attr("checked")},
         function(result){
             $('#result').html(result);

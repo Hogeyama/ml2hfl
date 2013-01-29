@@ -754,6 +754,10 @@ let rec replace_main main t =
     | Fun _ -> assert false
     | _ -> main
 
+let gen_id =
+  let cnt = ref 0 in
+  fun () -> cnt := !cnt + 1; string_of_int !cnt
+
 let set_target t =
   match get_last_definition None t with
       None ->
@@ -771,7 +775,7 @@ let set_target t =
             in
             let _,defs,args = List.fold_right aux xs ([],[],[]) in
             let aux arg =
-              let x = Id.new_var "arg" arg.typ in
+              let x = Id.new_var ("arg" ^ gen_id ()) arg.typ in
                 x, [], arg
             in
             let bindings = List.map aux args in
@@ -2094,7 +2098,7 @@ let rec inlined_f inlined fs t =
                Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
                  let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
                  let ts = List.map (inlined_f inlined fs) ts in
-                 let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | Var _ -> `L(t) | _ -> `R(Id.new_var "arg" t.typ)) ts in
+                 let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | Var _ -> `L(t) | _ -> `R(Id.new_var ("arg" ^ gen_id ()) t.typ)) ts in
                  let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else VHorn.ExtList.List.split_nth (List.length xs) ys in
                  let xs1, xs2 = VHorn.ExtList.List.split_nth (List.length ys1) xs in
                  let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
