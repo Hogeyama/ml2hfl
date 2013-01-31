@@ -1,14 +1,7 @@
 include Makefile.config
 
-.PHONY: main all byte opt lib ocaml csisat atp clean clean-doc clean-ocaml clean-csisat clean-all doc test
+.PHONY: main all byte opt lib csisat atp clean doc test
 
-# OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
-# OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
-# OCAMLMKTOP   = $(OCAML_SOURCE)/tools/ocamlmktop
-# OCAMLDEP     = $(OCAML_SOURCE)/tools/ocamldep.opt
-# OCAMLLIB     = $(OCAML_SOURCE)/stdlib
-# OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
-# OCAMLYACC    = $(OCAML_SOURCE)/yacc/ocamlyacc.opt
 OCAMLC       = $(shell if which ocamlc.opt > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
 OCAMLOPT     = $(shell if which ocamlopt.opt > /dev/null ; then echo ocamlopt.opt; else echo ocamlopt; fi)
 OCAMLMKTOP   = ocamlmktop
@@ -39,7 +32,6 @@ INCLUDES = -I $(LIB) \
 	-I $(YHORN) \
 	-I $(VHORN) \
 	-I $(TRECS)
-#	-I $(OCAMLLIB)
 OCAMLFLAGS = -g -annot $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
 OCAMLOPTFLAGS = -annot $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
 
@@ -171,27 +163,11 @@ yhorn:
 	cd $(YHORN) && make all
 
 
-# TODO: refine & write rule for bytecode
-trecs::
-	cd $(TRECS) && ocamlyacc parser.mly
-	cd $(TRECS) && ocamllex lexer.mll
-	cd $(TRECS) && ocamlopt -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml
-	cd $(TRECS) && ocamlopt -pack -o trecs.cmx utilities.cmx syntax.cmx parser.cmx lexer.cmx grammar.cmx automaton.cmx conversion.cmx typing.cmx stype.cmx reduce.cmx generalize.cmx
-
-trecs-byte::
-	cd $(TRECS) && ocamlyacc parser.mly
-	cd $(TRECS) && ocamllex lexer.mll
-	cd $(TRECS) && ocamlc -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml
-	cd $(TRECS) && ocamlc -pack -o trecs.cmo utilities.cmo syntax.cmo parser.cmo lexer.cmo grammar.cmo automaton.cmo conversion.cmo typing.cmo stype.cmo reduce.cmo generalize.cmo
-
-
-
-
 ################################################################################
 # distribution
 
 dist:
-	tar czvf dist.tar.gz *.ml *.mli Makefile depend
+	tar czvf dist.tar.gz *.ml *.mli Makefile
 
 
 ################################################################################
@@ -207,20 +183,9 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~ spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
+	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~
+	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
-
-clean-csisat:
-	cd $(CSISAT); make clean
-
-clean-trecs:
-	cd $(TRECS); make clean
-
-clean-doc:
-	rm -rf doc
-
-clean-all: clean clean-doc clean-ocaml clean-csisat
-	rm -f depend
 
 
 ################################################################################

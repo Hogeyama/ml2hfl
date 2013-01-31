@@ -9,6 +9,14 @@ What do you need?
 - CVC3 binary
 - TRecS binary
 
+
+Before building atp
+===================
+
+Patch 'atp_patch' to atp (e.g., run 'patch -d atp -N < atp_patch')
+Or use 'make atp' to compile atp
+
+
 How to build MoCHi
 ==================
 
