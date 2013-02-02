@@ -5,7 +5,6 @@ open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 open VHorn
-open VHorn.ExtList
 
 let conv_const c =
   match c with
@@ -91,13 +90,13 @@ let conv_event e = (***)
 let conv_fdef (f, args, guard, events, body) =
   { Fdef.attr = [];
     Fdef.name = Idnt.make f;
-    Fdef.args = List.map Idnt.make args;
+    Fdef.args = VHorn.Util.List.map Idnt.make args;
     Fdef.guard = conv_term guard;
-    Fdef.body = List.fold_right (fun e t -> Term.apply (conv_event e) [Term.Const([],Const.Unit)]) events (conv_term body) } (***)
+    Fdef.body = VHorn.Util.List.fold_right (fun e t -> Term.apply (conv_event e) [Term.Const([],Const.Unit)]) events (conv_term body) } (***)
 
 let inv_fdef fdef =
   Idnt.string_of fdef.Fdef.name,
-  List.map Idnt.string_of fdef.Fdef.args,
+  VHorn.Util.List.map Idnt.string_of fdef.Fdef.args,
   inv_term fdef.Fdef.guard,
   [],
   inv_term fdef.Fdef.body
@@ -116,8 +115,8 @@ let rec conv_typ ty =
 
 let conv_prog (typs, fdefs, main) =
   { Prog.attr = [];
-    Prog.fdefs = List.map conv_fdef fdefs;
-    Prog.types = List.map (fun (x, ty) -> Idnt.make x, conv_typ ty) typs;
+    Prog.fdefs = VHorn.Util.List.map conv_fdef fdefs;
+    Prog.types = VHorn.Util.List.map (fun (x, ty) -> Idnt.make x, conv_typ ty) typs;
     Prog.main = Idnt.make main }
 
 let verify fs (*cexs*) prog =
@@ -131,13 +130,13 @@ let rec inv_abst_type aty =
   match aty with
     AbsType.Base(AbsType.Unit, x, ts) ->
       let x = Var.string_of x in
-      TBase(TUnit, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
+      TBase(TUnit, fun s -> VHorn.Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(AbsType.Bool, x, ts) ->
       let x = Var.string_of x in
-      TBase(TBool, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
+      TBase(TBool, fun s -> VHorn.Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(AbsType.Int, x, ts) ->
       let x = Var.string_of x in
-      TBase(TInt, fun s -> List.map (fun t -> subst x s (inv_term t)) ts)
+      TBase(TInt, fun s -> VHorn.Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(aty1, aty2) ->
       let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
@@ -155,19 +154,19 @@ let infer flags labeled cexs prog =
   let _ = Global.enable_pred_sharing2 := flags land 128 <> 0 in
   let _ = Global.flag_coeff := flags land 256 <> 0 in
 
-  let cexs = if !Global.use_multiple_paths then cexs else [List.hd cexs] in
+  let cexs = if !Global.use_multiple_paths then cexs else [VHorn.Util.List.hd cexs] in
   let prog = conv_prog prog in
   let env = AbsTypeInfer.refine labeled cexs prog in
   let _ = Flag.time_parameter_inference := !Flag.time_parameter_inference +. !ParamSubstInfer.elapsed_time in
-  List.map
+  VHorn.Util.List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty | _ -> assert false)
    env
 (*
-  List.map
+  VHorn.Util.List.map
     (fun (f, _) ->
       try
-        f, conv_siz_type (List.assoc (Var.make f) env)
+        f, conv_siz_type (VHorn.Util.List.assoc (Var.make f) env)
       with Not_found ->
         assert false)
     prog.Prog.types
@@ -176,14 +175,14 @@ let infer flags labeled cexs prog =
 let params = ref []
 (** ToDo: exs may contain extra parameters that are not related to the recursive call *)
 let new_params recursive bvs exs =
-  Util.unfold
+  VHorn.Util.List.unfold
     (fun i ->
        if i < !Global.number_of_extra_params then
-  let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
+  let bvs' = VHorn.Util.List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
   let ps =
-    Util.unfold
+    VHorn.Util.List.unfold
       (fun i ->
-         if i < (List.length bvs' + if !Global.enable_coeff_const then 1 else 0) then
+         if i < (VHorn.Util.List.length bvs' + if !Global.enable_coeff_const then 1 else 0) then
            Some(Id.new_var Flag.extpar_header Type.TInt, i + 1)
          else
            None)
@@ -198,36 +197,36 @@ let new_params recursive bvs exs =
   let ts =
     let _ =
       if !Global.enable_coeff_const (*&& recursive = None*) then
-        ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string (List.hd ps))) :: !ParamSubstInfer.masked_params
+        ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string (VHorn.Util.List.hd ps))) :: !ParamSubstInfer.masked_params
     in
-    (if !Global.enable_coeff_const then [Syntax.make_var (List.hd ps)] else []) @
+    (if !Global.enable_coeff_const then [Syntax.make_var (VHorn.Util.List.hd ps)] else []) @
     (*
-    let b = recursive <> None && xs = [] && Util.subset bvs' exs in
+    let b = recursive <> None && xs = [] && VHorn.Util.Set.subset bvs' exs in
     *)
-    List.map2
+    VHorn.Util.List.map2
       (fun p x ->
         let _ =
           (*if b then
             ()
           else*) if recursive <> None then
           (if xs = [] then
-             (if List.mem x exs then
+             (if VHorn.Util.List.mem x exs then
                ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !ParamSubstInfer.masked_params (*this is necessary for l-length_cps-append.ml*))
-          else if not (List.mem x xs) then
+          else if not (VHorn.Util.List.mem x xs) then
             ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !ParamSubstInfer.masked_params)
            (* how to deal with non-recursive function calls here? *)
           (*else
-            if List.mem x exs then
+            if VHorn.Util.List.mem x exs then
               ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !ParamSubstInfer.masked_params*)
         in
         Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
-      (if !Global.enable_coeff_const then List.tl ps else ps)
+      (if !Global.enable_coeff_const then VHorn.Util.List.tl ps else ps)
       bvs'
   in
   if ts = [] then
     Some(Syntax.make_int 0, i + 1)
   else
-    Some(List.fold_left Syntax.make_add (List.hd ts) (List.tl ts), i + 1)
+    Some(VHorn.Util.List.fold_left Syntax.make_add (VHorn.Util.List.hd ts) (VHorn.Util.List.tl ts), i + 1)
   else
     None)
   0
@@ -239,13 +238,13 @@ let gen_id =
 let rec trans_type typ =
   let xs, tyret = Type.decomp_tfun typ in
   let xs' =
-    List.flatten
-      (List.map
+    VHorn.Util.List.flatten
+      (VHorn.Util.List.map
         (fun x ->
           let x' = trans_id x in
           (match x'.Id.typ with
             Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-              Util.unfold
+              VHorn.Util.List.unfold
                 (fun i ->
                   if i < !Global.number_of_extra_params then
                     Some(Id.new_var "ex" Type.TInt, i + 1)
@@ -256,7 +255,7 @@ let rec trans_type typ =
               []) @ [x'])
         xs)
   in
-  List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
+  VHorn.Util.List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
 and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
 
@@ -280,7 +279,7 @@ let insert_extra_param t =
           let ys =
             match y'.Id.typ with
               Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-                Util.unfold
+                VHorn.Util.List.unfold
                   (fun i ->
                     if i < !Global.number_of_extra_params then
                       Some(Id.new_var ("ex" ^ gen_id ()) Type.TInt, i + 1)
@@ -293,7 +292,7 @@ let insert_extra_param t =
           let ys' = ys @ [y'] in
           let rfs = match rfs with [] -> assert false | (f, xxs, recursive)::rfs' -> (f, xxs @ [y', ys], recursive)::rfs' in
           let f, _ =
-            List.fold_left
+            VHorn.Util.List.fold_left
               (fun (f, ty) y -> (fun t -> f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
               ((fun t -> t), trans_type t.Syntax.typ)
               ys'
@@ -313,14 +312,14 @@ let insert_extra_param t =
             match t1'.Syntax.desc with
               Syntax.Var(f) ->
                 (try
-                  let _, xxss, _ = List.find (fun (f', _, recursive) -> recursive && Id.same f' f) rfs in
+                  let _, xxss, _ = VHorn.Util.List.find (fun (f', _, recursive) -> recursive && Id.same f' f) rfs in
                   let _ =
                     if debug then
                       Format.printf "rec: %a@." Syntax.pp_print_term t1'
                   in
-                  let xxss = List.take (List.length ts) xxss in
+                  let xxss = VHorn.Util.List.take (VHorn.Util.List.length ts) xxss in
                   true,
-                  List.map2
+                  VHorn.Util.List.map2
                     (fun t (x, xs) ->
                       match t.Syntax.typ with
                         Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
@@ -329,39 +328,39 @@ let insert_extra_param t =
                       | _ -> [])
                     ts xxss
                 with Not_found ->
-                  (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
+                  (*let _ = VHorn.Util.List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
                   let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
                   false, [])
             | _ ->
                 let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
                 false, []
           in
-          let ts' = List.map (aux rfs bvs exs) ts in
+          let ts' = VHorn.Util.List.map (aux rfs bvs exs) ts in
           let tss =
-            List.mapi
+            VHorn.Util.List.mapi
              (fun i t ->
                match t.Syntax.typ with
                  Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-                   new_params (if recursive then Some(List.nth xss i) else None) bvs exs
+                   new_params (if recursive then Some(VHorn.Util.List.nth xss i) else None) bvs exs
                | _ -> [])
              ts'
           in
-          let ts'' = List.flatten (List.map2 (fun ts t -> ts @ [t]) tss ts') in
+          let ts'' = VHorn.Util.List.flatten (VHorn.Util.List.map2 (fun ts t -> ts @ [t]) tss ts') in
         Syntax.App(t1', ts'')
       | Syntax.If(t1, t2, t3) -> Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
       | Syntax.Branch(t1, t2) -> Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Let(flag, bindings, t2) ->
-          let bvs' = bvs @ (if flag = Syntax.Nonrecursive then [] else List.map Util.fst3 bindings) in
+          let bvs' = bvs @ (if flag = Syntax.Nonrecursive then [] else VHorn.Util.List.map VHorn.Util.Tuple.fst3 bindings) in
           let aux' (f,xs,t) =
             let f' = trans_id f in
-            let xs' = List.map trans_id xs in
+            let xs' = VHorn.Util.List.map trans_id xs in
 
             let xss =
-              List.map
+              VHorn.Util.List.map
                 (fun x ->
                    match x.Id.typ with
                      Type.TFun(_, _) | Type.TPair(_, _)(* ToDo: fix it *) ->
-                       Util.unfold
+                       VHorn.Util.List.unfold
                          (fun i ->
                            if i < !Global.number_of_extra_params then
                              Some(Id.new_var ("ex" ^ gen_id ()) Type.TInt, i + 1)
@@ -372,31 +371,31 @@ let insert_extra_param t =
                        [])
                 xs'
             in
-            let xs'' = List.flatten (List.map2 (fun xs x -> xs @ [x]) xss xs') in
+            let xs'' = VHorn.Util.List.flatten (VHorn.Util.List.map2 (fun xs x -> xs @ [x]) xss xs') in
             let bvs, exs =
               (if true then
                  bvs' @ xs''
                else
                  bvs' @ xs'),
-              exs @ List.flatten xss
+              exs @ VHorn.Util.List.flatten xss
             in
-            let rfs' = (f, List.map2 (fun xs x -> x, xs) xss xs', flag <> Syntax.Nonrecursive) :: rfs in
+            let rfs' = (f, VHorn.Util.List.map2 (fun xs x -> x, xs) xss xs', flag <> Syntax.Nonrecursive) :: rfs in
             (* mutual recursion and binding partial applied functions are not supported
-              let rfs' = (if flag = Flag.Nonrecursive then [] else List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
+              let rfs' = (if flag = Flag.Nonrecursive then [] else VHorn.Util.List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
              *)
             f', xs'', aux rfs' bvs exs t
           in
-          let bindings' = List.map aux' bindings in
-          Syntax.Let(flag, bindings', aux rfs (bvs @ List.map Util.fst3 bindings') exs t2)
+          let bindings' = VHorn.Util.List.map aux' bindings in
+          Syntax.Let(flag, bindings', aux rfs (bvs @ VHorn.Util.List.map VHorn.Util.Tuple.fst3 bindings') exs t2)
       | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
       | Syntax.Event(s,b) -> Syntax.Event(s,b)
-      | Syntax.Record fields -> Syntax.Record (List.map (fun (f,(s,t1)) -> f,(s,aux rfs bvs exs t1)) fields)
+      | Syntax.Record fields -> Syntax.Record (VHorn.Util.List.map (fun (f,(s,t1)) -> f,(s,aux rfs bvs exs t1)) fields)
       | Syntax.Proj(i,s,f,t1) -> Syntax.Proj(i,s,f,aux rfs bvs exs t1)
       | Syntax.SetField(n,i,s,f,t1,t2) -> Syntax.SetField(n,i,s,f,aux rfs bvs exs t1,aux rfs bvs exs t2)
       | Syntax.Nil -> Syntax.Nil
       | Syntax.Cons(t1,t2) -> Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)
-      | Syntax.Constr(s,ts) -> Syntax.Constr(s, List.map (aux rfs bvs exs) ts)
+      | Syntax.Constr(s,ts) -> Syntax.Constr(s, VHorn.Util.List.map (aux rfs bvs exs) ts)
       | Syntax.Match(t1,pats) ->
           let aux' (pat, cond, t) =
             (* ToDo: need to update pat!? *)
@@ -404,7 +403,7 @@ let insert_extra_param t =
             aux rfs (bvs @ Syntax.get_vars_pat pat) exs cond,
             aux rfs (bvs @ Syntax.get_vars_pat pat) exs t
           in
-          Syntax.Match(aux rfs bvs exs t1, List.map aux' pats)
+          Syntax.Match(aux rfs bvs exs t1, VHorn.Util.List.map aux' pats)
       | Syntax.Raise t -> Syntax.Raise (aux rfs bvs exs t)
       | Syntax.TryWith(t1,t2) -> Syntax.TryWith(aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Pair(t1,t2) -> Syntax.Pair(aux rfs bvs exs t1, aux rfs bvs exs t2)
@@ -422,10 +421,10 @@ let insert_extra_param t =
 let instantiate_param (typs, fdefs, main as prog) =
   let tmp = get_time() in
   let _ = if !ParamSubstInfer.ext_coeffs = [] then ParamSubstInfer.init_coeffs (conv_prog prog) in
-  let map = List.map (fun (x, n) -> Var.string_of x, inv_term (Term.tint n)) !ParamSubstInfer.ext_coeffs in
+  let map = VHorn.Util.List.map (fun (x, n) -> Var.string_of x, inv_term (Term.tint n)) !ParamSubstInfer.ext_coeffs in
   let res =
 		  typs,
-				List.map
+				VHorn.Util.List.map
 				  (fun (f, args, guard, events, body) ->
 						  (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body))
 						fdefs,
@@ -442,7 +441,7 @@ let simplify_term t =
   if false then
 	  let _, t = trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
 	  let t = conv_term t in
-	  let t = FormulaUtil.simplify t in
+	  let t = VHorn.FormulaUtil.simplify t in
 			let t = inv_term t in
 	  (trans_inv_term t).Syntax.desc
   else
@@ -460,9 +459,9 @@ let rec simplify typ =
   | Ref_type.Pair(x,typ1,typ2) ->
         Ref_type.Pair(x, simplify typ1, simplify typ2)
   | Ref_type.Inter typs ->
-		      Ref_type.Inter (List.map simplify typs)
+		      Ref_type.Inter (VHorn.Util.List.map simplify typs)
   | Ref_type.Union typs ->
-		      Ref_type.Union (List.map simplify typs)
+		      Ref_type.Union (VHorn.Util.List.map simplify typs)
   | Ref_type.ExtArg(x,typ1,typ2) ->
         Ref_type.ExtArg(x, simplify typ1, simplify typ2)
   | Ref_type.List(x,p_len,y,p_i,typ) ->

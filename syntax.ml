@@ -1211,7 +1211,7 @@ let rec max_label_num t =
 
 
 let is_external x = String.contains (Id.name x) '.'
-let is_parameter x = VHorn.ExtString.String.starts_with (Id.name x) Flag.extpar_header
+let is_parameter x = VHorn.Util.String.starts_with (Id.name x) Flag.extpar_header
 
 
 let rec is_value t =

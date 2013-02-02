@@ -50,28 +50,28 @@ and process_expression env e =
     | Pexp_constant _ ->
 	[]
     | Pexp_let(_, pats, e) ->
-	VHorn.Util.concat_map (process_pat env) pats @
+	VHorn.Util.List.concat_map (process_pat env) pats @
 	  process_expression env e
     | Pexp_function(_, eopt, pats) ->
 	process_expopt env eopt @
-	  VHorn.Util.concat_map (process_pat env) pats
+	  VHorn.Util.List.concat_map (process_pat env) pats
     | Pexp_apply(e, les) ->
 	process_expression env e @
-	  VHorn.Util.concat_map (fun (_, e) -> process_expression env e) les
+	  VHorn.Util.List.concat_map (fun (_, e) -> process_expression env e) les
     | Pexp_match(e ,pats) ->
 	process_expression env e @
-	  VHorn.Util.concat_map (process_pat env) pats
+	  VHorn.Util.List.concat_map (process_pat env) pats
     | Pexp_try(e, pats) ->
 	process_expression env e @
-	  VHorn.Util.concat_map (process_pat env) pats
+	  VHorn.Util.List.concat_map (process_pat env) pats
     | Pexp_tuple es ->
-	VHorn.Util.concat_map (process_expression env) es
+	VHorn.Util.List.concat_map (process_expression env) es
     | Pexp_construct(_, eopt, _) ->
 	process_expopt env eopt
     | Pexp_variant(_, eopt) ->
 	process_expopt env eopt
     | Pexp_record(fields, eopt) ->
-	VHorn.Util.concat_map (fun (_, e) -> process_expression env e) fields @
+	VHorn.Util.List.concat_map (fun (_, e) -> process_expression env e) fields @
 	  process_expopt env eopt
     | Pexp_field(e, _) ->
 	process_expression env e
@@ -79,7 +79,7 @@ and process_expression env e =
 	process_expression env e1 @
 	  process_expression env e2
     | Pexp_array(es) ->
-	VHorn.Util.concat_map (process_expression env) es
+	VHorn.Util.List.concat_map (process_expression env) es
     | Pexp_ifthenelse(e1, e2, eopt) ->
 	process_expression env e1 @
 	  process_expression env e2 @
@@ -106,7 +106,7 @@ and process_expression env e =
     | Pexp_setinstvar(_, e) ->
 	process_expression env e
     | Pexp_override(ies) ->
-	VHorn.Util.concat_map (fun (_, e) -> process_expression env e) ies
+	VHorn.Util.List.concat_map (fun (_, e) -> process_expression env e) ies
     | Pexp_letmodule(_, _, e) ->
         raise (VHorn.Util.NotImplemented "writeAnnot")
     | Pexp_assert(e) ->
@@ -135,7 +135,7 @@ let process_top_level_phrase env = function
 	    Pstr_eval e ->
 	      process_expression env e
 	  | Pstr_value(_, pats) ->
-	      VHorn.Util.concat_map (process_pat env) pats
+	      VHorn.Util.List.concat_map (process_pat env) pats
 	  | Pstr_primitive _ -> []
 	  | Pstr_type decls -> []
 	  | Pstr_exception(x,exc_decl) -> []
@@ -148,7 +148,7 @@ let process_top_level_phrase env = function
 	  | Pstr_class_type _ -> []
 	  | Pstr_include _ -> []
       in
-        VHorn.Util.concat_map aux struc
+        VHorn.Util.List.concat_map aux struc
 
 let f filename orig env =
   let filename = Misc.chop_extension_if_any filename ^ ".annot" in
@@ -162,4 +162,4 @@ let f filename orig env =
 	   let _ = Format.fprintf oc "@.type(@.  " in
 	   let _ = Format.fprintf oc "%a" Ref_type.print typ in
 	     Format.fprintf oc "@.)@.")
-      (VHorn.Util.concat_map (process_top_level_phrase env) orig)
+      (VHorn.Util.List.concat_map (process_top_level_phrase env) orig)

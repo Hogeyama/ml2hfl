@@ -145,5 +145,5 @@ let rec decomp_tfun = function
 
 
 
-let is_external x = String.contains x '.'
-let is_parameter x = VHorn.ExtString.String.starts_with x Flag.extpar_header
+let is_external x = VHorn.Util.String.contains x '.'
+let is_parameter x = VHorn.Util.String.starts_with x Flag.extpar_header
