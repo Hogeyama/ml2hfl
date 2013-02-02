@@ -1,0 +1,25 @@
+What do you need?
+=================
+
+- OCaml binary 3.12.1 or up (http://www.caml.org)
+- OCaml source code 3.12.1
+- VHorn library
+- YHorn library
+- CSI-sat library
+- CVC3 binary
+- TRecS binary
+
+
+Before building atp
+===================
+
+Patch 'atp_patch' to atp (e.g., run 'patch -d atp -N < atp_patch')
+Or use 'make atp' to compile atp
+
+
+How to build MoCHi
+==================
+
+1. Copy Makefile.config.model to Makefile.config
+2. Edit Makefile.config
+3. Run 'make'

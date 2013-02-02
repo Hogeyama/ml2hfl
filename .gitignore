@@ -15,5 +15,7 @@ depend
 *.log
 *.trecs_out
 *.hors
+*.cmt
+*.cmti
 *parser.automaton
 *~

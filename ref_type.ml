@@ -76,8 +76,8 @@ let rec print fm = function
       if occur y typ2
       then
         if p_i = S.true_term
-        then Format.fprintf fm "[%a@]@ %a@])" Id.print y print typ2
-        else Format.fprintf fm "[%a:%a@]@ %a@])" Id.print y S.pp_print_term p_i print typ2
+        then Format.fprintf fm "[%a]@ %a@])" Id.print y print typ2
+        else Format.fprintf fm "[%a:%a]@ %a@])" Id.print y S.pp_print_term p_i print typ2
       else
         if p_i = S.true_term
         then Format.fprintf fm " %a@])" print typ2

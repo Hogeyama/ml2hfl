@@ -2,6 +2,7 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
+
 let const_of_bool b = if b then True else False
 
 
@@ -498,11 +499,7 @@ let rename_prog prog =
       else rename_id x
   in
   let make_map_fun (f,_) =
-    let f' =
-      if is_external f
-      then f
-      else rename_id' f var_names
-    in
+    let f' = rename_id' f var_names in
       f, f'
   in
   let map = List.rev_map make_map_fun prog.env in
@@ -518,7 +515,7 @@ let rename_prog prog =
     let () = Id.clear_counter () in
     let var_names'' = List.rev_map id_name xs @@ var_names' in
     let arg_map = List.map (fun x -> x, rename_id' x var_names'') xs in
-    let arg_map = uniq' (fun (x,_) (y,_) -> compare x y) arg_map in
+    let arg_map = uniq ~cmp:(fun (x,_) (y,_) -> compare x y) arg_map in
     let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@ map) in
     let rename_term t = subst_map smap t in
       rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2
@@ -527,7 +524,7 @@ let rename_prog prog =
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
   let prog = {env=env; defs=defs; main=main} in
-  let () = try ignore (Typing.infer prog) with Typing.External -> () in
+  let () = ignore (Typing.infer prog) in
   let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
     prog, map, rmap
 
@@ -925,9 +922,10 @@ let rec has_bottom = function
 
 
 
-let rec normalize_bool_term = function
+let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
     Const c -> Const c
   | Var x -> Var x
+  | App(Const Not, App(Const Not, t1)) -> normalize_bool_term ~imply t1
   | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
       let op' =
         match op with
@@ -937,8 +935,44 @@ let rec normalize_bool_term = function
           | Geq -> Lt
           | _ -> assert false
       in
-        normalize_bool_term (App(App(Const op', t1), t2))
-  | App(App(Const EqBool, Const True), t) -> normalize_bool_term t
+        normalize_bool_term ~imply (App(App(Const op', t1), t2))
+  | App(App(Const EqBool, Const True), t) -> normalize_bool_term ~imply t
+  | App(App(Const And, _), _) as t ->
+      let rec decomp = function
+          App(App(Const And, t1), t2) -> decomp t1 @@ decomp t2
+        | t -> [normalize_bool_term ~imply t]
+      in
+      let rec aux ts1 = function
+          [] -> List.rev ts1
+        | t::ts2 ->
+            if imply (ts1@@ts2) t
+            then aux ts1 ts2
+            else aux (t::ts1) ts2
+      in
+      let ts' = aux [] (decomp t) in
+      begin
+        match ts' with
+            [] -> Const True
+          | t'::ts'' -> List.fold_left make_and t' ts''
+      end
+  | App(App(Const Or, _), _) as t ->
+      let rec decomp = function
+          App(App(Const Or, t1), t2) -> decomp t1 @@ decomp t2
+        | t -> [normalize_bool_term ~imply t]
+      in
+      let rec aux ts1 = function
+          [] -> ts1
+        | t::ts2 ->
+            if imply (ts1@@ts2) (make_not t)
+            then aux ts1 ts2
+            else aux (t::ts1) ts2
+      in
+      let ts' = aux [] (decomp t) in
+      begin
+        match ts' with
+            [] -> Const False
+          | t'::ts'' -> List.fold_left make_or t' ts''
+      end
   | App(App(Const (EqInt|Lt|Gt|Leq|Geq) as op, t1), t2) ->
       let neg xs = List.map (fun (x,n) -> x,-n) xs in
       let rec decomp = function
@@ -956,7 +990,8 @@ let rec normalize_bool_term = function
               begin
                 match not_const xns1, not_const xns2 with
                     true, true ->
-                      Format.printf "Nonlinear expression not supported: %a@." CEGAR_print.term (make_app op [t1;t2]);
+                      Format.printf "Nonlinear expression not supported: %a@."
+                        CEGAR_print.term (make_app op [t1;t2]);
                       assert false
                   | false, true ->
                       let k = reduce xns1 in
@@ -1030,9 +1065,10 @@ let rec normalize_bool_term = function
           op', t1, t2
       in
         make_app op' [t1'; t2']
-  | App(t1, t2) -> App(normalize_bool_term t1, normalize_bool_term t2)
+  | App(t1, t2) -> App(normalize_bool_term ~imply t1, normalize_bool_term ~imply t2)
   | Let _ -> assert false
   | Fun _ -> assert false
+
 
 
 

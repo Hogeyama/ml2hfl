@@ -63,6 +63,7 @@ and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =
     PAny
   | PVar of id
+  | PAlias of typed_pattern * id
   | PConst of typed_term
   | PConstruct of string * typed_pattern list
   | PNil
@@ -83,6 +84,19 @@ type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
 
 
 
+let rec get_vars_pat pat =
+  match pat.pat_desc with
+      PAny -> []
+    | PVar x -> [x]
+    | PAlias(p,x) -> x :: get_vars_pat p
+    | PConst _ -> []
+    | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
+    | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
+    | POr(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PPair(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PCons(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PNil -> []
+
 let rec get_fv vars t =
   match t.desc with
       Unit -> []
@@ -91,7 +105,7 @@ let rec get_fv vars t =
     | Unknown -> []
     | Int n -> []
     | RandInt _ -> []
-    | Var x -> if List.mem x vars then [] else [x]
+    | Var x -> if Id.mem x vars then [] else [x]
     | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
     | If(t1, t2, t3) -> get_fv vars t1 @@ get_fv vars t2 @@ get_fv vars t3
     | Branch(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
@@ -112,7 +126,10 @@ let rec get_fv vars t =
     | Cons(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
     | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = get_fv vars(* no need to update? *) t @@ acc in
+        let aux acc (pat,cond,t) =
+          let vars' = get_vars_pat pat @@ vars in
+          get_fv vars' cond @@ get_fv vars' t @@ acc
+        in
           List.fold_left aux (get_fv vars t) pats
     | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
     | Bottom -> []
@@ -122,7 +139,7 @@ let rec get_fv vars t =
     | Raise t -> get_fv vars t
     | RandValue _ -> assert false
     | Label _ -> assert false
-let get_fv t = uniq (get_fv [] t)
+let get_fv ?(cmp=Id.compare) t = uniq ~cmp (get_fv [] t)
 
 
 let rec occur (x:id) = function
@@ -267,12 +284,17 @@ and print_term pri typ fm t =
         let b = ref true in
         let print_binding fm (f,xs,t1) =
           let pre = if !b then "let" ^ s_rec else "and" in
-            Format.printf "%s %a=@ %a@ " pre p_ids (f::xs) (print_term p typ) t1;
+            Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term p typ) t1;
             b := false
         in
-        let print_bindings fm = List.iter (print_binding fm) in
-        fprintf fm "%s@[<v>@[<hov 2>%a@]in@ %a@]%s"
-          s1 print_bindings bindings (print_term p typ) t2 s2
+        let print_bindings = print_list print_binding "" false in
+          begin
+            match t2.desc with
+                Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
+                  s1 print_bindings bindings (print_term p typ) t2 s2
+              | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
+                  s1 print_bindings bindings (print_term p typ) t2 s2
+          end
     | Not{desc = BinOp(Eq, t1, t2)} ->
         let p = 50 in
         let s1,s2 = paren pri p in
@@ -359,6 +381,7 @@ and print_pattern fm pat =
   match pat.pat_desc with
       PAny -> pp_print_string fm "_"
     | PVar x -> print_id fm x
+    | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
     | PConst c -> print_term 1 false fm c
     | PConstruct(c,pats) ->
         let aux' = function
@@ -512,6 +535,7 @@ and print_pattern' fm pat =
     match pat.pat_desc with
         PAny -> pp_print_string fm "_"
       | PVar x -> print_id_typ fm x
+      | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
       | PConst c -> print_term' 1 fm c
       | PConstruct(c,pats) ->
           let aux' = function
@@ -598,6 +622,7 @@ let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
   {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Int 0;typ=TInt}); typ=TBool}
 let abst_term = {desc=Constr("Abst",[]); typ=typ_abst}
+let make_abst typ = {desc=Constr("Abst",[]); typ=typ}
 let make_bottom typ = {desc=Bottom;typ=typ}
 let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
@@ -850,17 +875,6 @@ let rec get_int t =
     | Label _ -> assert false
 let get_int t = uniq (get_int t)
 
-let rec get_vars_pat pat =
-  match pat.pat_desc with
-      PAny -> []
-    | PVar x -> [x]
-    | PConst _ -> []
-    | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
-    | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
-    | POr(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PPair(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PCons(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PNil -> []
 
 
 
@@ -1210,7 +1224,6 @@ let rec max_label_num t =
     | Label _ -> assert false
 
 
-let is_external x = String.contains (Id.name x) '.'
 let is_parameter x = VHorn.Util.String.starts_with (Id.name x) Flag.extpar_header
 
 

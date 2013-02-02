@@ -223,11 +223,11 @@ let rec to_id_string = function
   | TAbsBool _ -> assert false
   | TInt -> "int"
   | TRInt _ -> assert false
-  | TVar{contents=None} -> assert false
+  | TVar{contents=None} -> "abst"
   | TVar{contents=Some typ} -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
   | TList typ -> to_id_string typ ^ "_list"
-  | TPair(typ1,typ2) -> to_id_string typ1 ^ "__" ^ to_id_string typ2
+  | TPair(typ1,typ2) -> to_id_string typ1 ^ "_x_" ^ to_id_string typ2
   | TConstr(s,_) -> s
   | TPred(typ,_) -> to_id_string typ
 

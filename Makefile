@@ -1,27 +1,19 @@
 include Makefile.config
 
-.PHONY: main all byte opt lib ocaml csisat atp clean clean-doc clean-ocaml clean-csisat clean-all doc test
+.PHONY: main all byte opt lib csisat atp clean doc test
 
-# OCAMLC       = $(OCAML_SOURCE)/ocamlc.opt
-# OCAMLOPT     = $(OCAML_SOURCE)/ocamlopt.opt
-# OCAMLMKTOP   = $(OCAML_SOURCE)/tools/ocamlmktop
-# OCAMLDEP     = $(OCAML_SOURCE)/tools/ocamldep.opt
-# OCAMLLIB     = $(OCAML_SOURCE)/stdlib
-# OCAMLLEX     = $(OCAML_SOURCE)/lex/ocamllex.opt
-# OCAMLYACC    = $(OCAML_SOURCE)/yacc/ocamlyacc.opt
-OCAMLC       = $(shell if which ocamlc.opt 2> /dev/null > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
-OCAMLOPT     = $(shell if which ocamlopt.opt 2> /dev/null > /dev/null ; then echo ocamlopt.opt; else echo ocamlopt; fi)
+OCAMLC       = $(shell if which ocamlc.opt > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
+OCAMLOPT     = $(shell if which ocamlopt.opt > /dev/null ; then echo ocamlopt.opt; else echo ocamlopt; fi)
 OCAMLMKTOP   = ocamlmktop
-OCAMLDEP     = $(shell if which ocamldep.opt 2> /dev/null > /dev/null ; then echo ocamldep.opt; else echo ocamldep; fi)
-OCAMLLEX     = $(shell if which ocamllex.opt 2> /dev/null > /dev/null ; then echo ocamllex.opt; else echo ocamllex; fi)
+OCAMLDEP     = $(shell if which ocamldep.opt > /dev/null ; then echo ocamldep.opt; else echo ocamldep; fi)
+OCAMLLEX     = $(shell if which ocamllex.opt > /dev/null ; then echo ocamllex.opt; else echo ocamllex; fi)
 OCAMLYACC    = $(shell if which menhir 2> /dev/null > /dev/null ; then echo menhir; else echo ocamlyacc; fi)
 
 
 CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
-INCLUDES = -I /usr/lib \
-	-I /usr/lib/ocaml \
-	-I /usr/local/lib \
+INCLUDES = -I $(LIB) \
+	-I $(OCAML_LIB) \
 	-I $(Z3) \
 	-I $(GMP) \
 	-I $(ATP) \
@@ -40,11 +32,10 @@ INCLUDES = -I /usr/lib \
 	-I $(YHORN) \
 	-I $(VHORN) \
 	-I $(TRECS)
-#	-I $(OCAMLLIB)
-OCAMLFLAGS = -g -dtypes $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
-OCAMLOPTFLAGS = -dtypes $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
+OCAMLFLAGS = -g -annot $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
+OCAMLOPTFLAGS = -annot $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
 
-DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml
+DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 
 DOC = doc
 
@@ -116,7 +107,6 @@ $(NAME).opt: $(CMX) $(CMI)
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
 
 
-
 spec_parser.ml spec_parser.mli: spec_parser.mly
 	$(OCAMLYACC) -v $<
 spec_lexer.ml: spec_lexer.mll
@@ -146,8 +136,18 @@ trecs_lexer.ml: trecs_lexer.mll
 
 $(OCAML_SOURCE)/config/Makefile:
 	cd $(OCAML_SOURCE) && ./configure
-ocaml: $(OCAML_SOURCE)/config/Makefile
-	cd $(OCAML_SOURCE) && make world opt world.opt opt.opt
+$(OCAML_SOURCE)/utils/config.ml: $(OCAML_SOURCE)/config/Makefile
+	cd $(OCAML_SOURCE); make utils/config.ml
+$(OCAML_SOURCE)/parsing/lexer.ml:
+	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/lexer.mll
+$(OCAML_SOURCE)/parsing/linenum.ml:
+	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/linenum.mll
+$(OCAML_SOURCE)/parsing/parser.mli parsing/parser.ml:
+	cd $(OCAML_SOURCE); $(OCAMLYACC) -v parsing/parser.mly
+$(OCAML_SOURCE)/bytecomp/opcodes.ml:
+	cd $(OCAML_SOURCE); \
+	sed -n -e '/^enum/p' -e 's/,//g' -e '/^  /p' byterun/instruct.h | \
+	awk -f tools/make-opcodes > bytecomp/opcodes.ml
 
 csisat:
 	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
@@ -163,27 +163,11 @@ yhorn:
 	cd $(YHORN) && make all
 
 
-# TODO: refine & write rule for bytecode
-trecs::
-	cd $(TRECS) && ocamlyacc parser.mly
-	cd $(TRECS) && ocamllex lexer.mll
-	cd $(TRECS) && ocamlopt -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml
-	cd $(TRECS) && ocamlopt -pack -o trecs.cmx utilities.cmx syntax.cmx parser.cmx lexer.cmx grammar.cmx automaton.cmx conversion.cmx typing.cmx stype.cmx reduce.cmx generalize.cmx
-
-trecs-byte::
-	cd $(TRECS) && ocamlyacc parser.mly
-	cd $(TRECS) && ocamllex lexer.mll
-	cd $(TRECS) && ocamlc -for-pack Trecs -c utilities.ml syntax.ml parser.mli parser.ml lexer.ml grammar.ml automaton.ml conversion.ml typing.ml stype.ml reduce.ml generalize.ml
-	cd $(TRECS) && ocamlc -pack -o trecs.cmo utilities.cmo syntax.cmo parser.cmo lexer.cmo grammar.cmo automaton.cmo conversion.cmo typing.cmo stype.cmo reduce.cmo generalize.cmo
-
-
-
-
 ################################################################################
 # distribution
 
 dist:
-	tar czvf dist.tar.gz *.ml *.mli Makefile depend
+	tar czvf dist.tar.gz *.ml *.mli Makefile
 
 
 ################################################################################
@@ -199,57 +183,23 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[iox] *.o *.a *.annot *~ spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
+	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~
+	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
-
-clean-ocaml:
-	cd $(OCAML_SOURCE); make clean
-
-clean-csisat:
-	cd $(CSISAT); make clean
-
-clean-trecs:
-	cd $(TRECS); make clean
-
-clean-doc:
-	rm -rf doc
-
-clean-all: clean clean-doc clean-ocaml clean-csisat
-	rm -f depend
 
 
 ################################################################################
 # test
 
-TEST=test_new/*.ml
-LIMIT=120
-OPTION=
+TEST = sum mult max mc91 ack a-cppr l-zipunzip l-zipmap hors e-simple e-fact r-lock r-file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e
+LIMIT = 120
+OPTION = -gchi -only-result
 
 test: opt
 	for i in $(TEST); \
-	do echo $$i; \
-	timeout -s 14 $(LIMIT) ./$(NAME).opt $(OPTION) $$i 2>&1 | \
-	  egrep 'Safe|Unsafe|cycle:|Verification|Fatal' | \
-	  grep -v File | \
-	  grep -v Warning; \
-	echo; \
-	done
-test2: opt
-	for i in $(TEST); \
-	do echo $$i; \
-	(ulimit -t $(LIMIT); \
-	./$(NAME).opt $(OPTION) $$i 2>&1 | \
-	  egrep 'Safe|Unsafe|cycle:|Verification|Fatal') | \
-	  grep -v File | \
-	  grep -v Warning; \
-	echo; \
-	done
-test-byte: byte
-	for i in $(TEST); \
-	do echo $$i; \
-	(ulimit -t $(LIMIT); ./$(NAME).byte $$i | egrep 'Safe|Unsafe|cycle:') 2>&1 | \
-	  grep -v File | \
-	  grep -v Warning; \
+	do \
+	echo $$i; \
+	(./mochi.opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
 	echo; \
 	done
 
@@ -264,3 +214,4 @@ depend:: $(DEPEND)
 	$(OCAMLDEP) -I $(VHORN) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
+-include ocaml.depend

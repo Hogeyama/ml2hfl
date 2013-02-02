@@ -194,29 +194,21 @@ let hash2list h =
 (******************)
 
 
-let rec uniq_aux acc = function
+let rec uniq_aux ?(cmp=compare) acc = function
     [] -> acc
-  | x1::x2::xs when x1=x2 -> uniq_aux acc (x2::xs)
-  | x::xs -> uniq_aux (x::acc) xs
-let uniq xs = uniq_aux [] (List.sort compare xs)
-let uniq_sorted xs = uniq_aux [] xs
-
-let rec uniq_aux' compare acc = function
-    [] -> acc
-  | x1::x2::xs when compare x1 x2 = 0 -> uniq_aux' compare acc (x2::xs)
-  | x::xs -> uniq_aux' compare (x::acc) xs
-let uniq' compare xs = uniq_aux' compare [] (List.sort compare xs)
+  | x1::x2::xs when cmp x1 x2 = 0 -> uniq_aux ~cmp acc (x2::xs)
+  | x::xs -> uniq_aux ~cmp (x::acc) xs
+let uniq ?(cmp=compare) xs = uniq_aux ~cmp [] (List.sort cmp xs)
+let uniq_sorted ?(cmp=compare) xs = uniq_aux ~cmp [] xs
 
 let (@@) = List.rev_append
 
 
 let diff l1 l2 = List.filter (fun x -> not(List.mem x l2)) l1
-let inter l1 l2 = List.filter (fun x -> List.mem x l2) l1
+let inter ?(cmp=compare) l1 l2 = List.filter (fun x -> List.exists (fun y -> cmp x y = 0) l2) l1
 let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
 let set_eq l1 l2 = subset l1 l2 && subset l2 l1
-let union l1 l2 = List.fold_left (fun l x -> if List.mem x l then l else x::l) l2 l1
-let inter' compare l1 l2 = List.filter (fun x -> List.exists (fun y -> compare x y = 0) l2) l1
-let union' compare l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> compare x y = 0) l then l else x::l) l2 l1
+let union ?(cmp=compare) l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
 
 
 
@@ -286,7 +278,7 @@ let assoc_exn k kts t =
 
 
 
-let uniq_flatten_map compare f xs = uniq' compare (rev_map_flatten f xs)
+let uniq_flatten_map cmp f xs = uniq ~cmp (rev_map_flatten f xs)
 
 
 

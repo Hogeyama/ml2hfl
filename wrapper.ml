@@ -204,7 +204,7 @@ let check pre p =
     (**)
   let fm = Format.formatter_of_out_channel cout in
     (**)
-  let fv = uniq' Id.compare (get_fv p @@ List.flatten (List.rev_map get_fv pre)) in
+  let fv = uniq ~cmp:Id.compare (get_fv p @@ List.flatten (List.rev_map get_fv pre)) in
   let types = List.fold_left (fun str x -> str ^ env_of_id x) "" fv in
   let assertion = List.fold_left (fun str p -> str ^ "ASSERT " ^ (string_of_term p) ^ "; ") "" pre in
   let query = "QUERY " ^ string_of_term p ^ ";" in
@@ -231,7 +231,7 @@ let checksat p =
   let cout = !cvc3out in
   let fm = Format.formatter_of_out_channel cout in
 
-  let fv = uniq' Id.compare (get_fv p) in
+  let fv = uniq ~cmp:Id.compare (get_fv p) in
 (*
   let env = List.map (fun v -> Typing.new_var v) fv in
   let p, _  = Typing.infer env p in
@@ -276,7 +276,7 @@ let get_solution p t =
 
 
   let fm = Format.formatter_of_out_channel cout in
-  let fv = uniq' compare (get_fv p) in
+  let fv = get_fv p in
 
   let types = List.fold_left (fun str x -> str ^ env_of_id x) "" fv in
   let query = "CHECKSAT " ^ string_of_term p ^ "; COUNTERMODEL;" in

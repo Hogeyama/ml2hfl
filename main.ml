@@ -27,6 +27,11 @@ let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
+      let t' = Trans.make_ext_funs t in
+      let () =
+        if true && !Flag.debug_level > 0 && t <> t'
+        then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
       let t' = Trans.copy_poly_funs t in
       let fun_list = Syntax.get_top_funs t' in
       let () =
@@ -349,7 +354,7 @@ let () =
         VHorn.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
-        ignore (main cin);
+        if main cin then decr Flag.cegar_loop;
         VHorn.Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();

@@ -109,8 +109,7 @@ let rec infer_term env = function
         try
           List.assoc x env
         with
-            Not_found when is_external x -> raise External
-          | Not_found when is_parameter x -> TInt
+            Not_found when is_parameter x -> TInt
           | Not_found -> Format.printf "Not_found VAR: %s@." x; assert false
       in
         typ
