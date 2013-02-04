@@ -23,9 +23,9 @@ let conv_const c =
   | EqInt -> Const.EqInt
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
-  | Add -> Const.Add
-  | Sub -> Const.Sub
-  | Mul -> Const.Mul
+  | Add -> Const.IAdd
+  | Sub -> Const.ISub
+  | Mul -> Const.IMul
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -57,9 +57,9 @@ let inv_const c =
   | Const.EqInt -> EqInt
   | Const.Int(n) -> Int(n)
   | Const.RandInt -> RandInt
-  | Const.Add -> Add
-  | Const.Sub -> Sub
-  | Const.Mul -> Mul
+  | Const.IAdd -> Add
+  | Const.ISub -> Sub
+  | Const.IMul -> Mul
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =
