@@ -117,6 +117,13 @@ trecs_parser.ml trecs_parser.mli: trecs_parser.mly
 trecs_lexer.ml: trecs_lexer.mll
 	$(OCAMLLEX) $<
 
+
+# Dependencies
+DEP_VHORN = CEGAR CEGAR_syntax main refine syntax trans vhornInterface writeAnnot
+$(addsuffix .cmo,$(DEP_VHORN)): $(VHORN)/vHorn.cmi
+$(addsuffix .cmx,$(DEP_VHORN)): $(VHORN)/vHorn.cmi
+
+
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
@@ -211,7 +218,7 @@ SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
 
 depend:: $(DEPEND)
-	$(OCAMLDEP) -I $(VHORN) $(MLI) $(SRC_MOCHI) > depend
+	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
 -include ocaml.depend
