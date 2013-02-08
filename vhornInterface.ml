@@ -350,7 +350,14 @@ let insert_extra_param t =
       | Syntax.If(t1, t2, t3) -> Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
       | Syntax.Branch(t1, t2) -> Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Let(flag, bindings, t2) ->
-          let bvs' = bvs @ (if flag = Syntax.Nonrecursive then [] else VHorn.Util.List.map VHorn.Util.Tuple.fst3 bindings) in
+          let bvs' =
+            bvs @
+            (if flag = Syntax.Nonrecursive then
+              []
+            else
+              VHorn.Util.List.map
+                VHorn.Util.Triple.fst bindings)
+          in
           let aux' (f,xs,t) =
             let f' = trans_id f in
             let xs' = VHorn.Util.List.map trans_id xs in
@@ -386,7 +393,14 @@ let insert_extra_param t =
             f', xs'', aux rfs' bvs exs t
           in
           let bindings' = VHorn.Util.List.map aux' bindings in
-          Syntax.Let(flag, bindings', aux rfs (bvs @ VHorn.Util.List.map VHorn.Util.Tuple.fst3 bindings') exs t2)
+          Syntax.Let
+            (flag, bindings',
+            aux rfs
+              (bvs @
+              VHorn.Util.List.map
+                VHorn.Util.Triple.fst
+                bindings')
+              exs t2)
       | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
       | Syntax.Event(s,b) -> Syntax.Event(s,b)
