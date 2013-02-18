@@ -434,17 +434,27 @@ let insert_extra_param t =
 
 let instantiate_param (typs, fdefs, main as prog) =
   let tmp = get_time() in
-  let _ = if !ParamSubstInfer.ext_coeffs = [] then ParamSubstInfer.init_coeffs (conv_prog prog) in
-  let map = VHorn.Util.List.map (fun (x, n) -> Var.string_of x, inv_term (Term.tint n)) !ParamSubstInfer.ext_coeffs in
+  (if !ParamSubstInfer.ext_coeffs = [] then
+    ParamSubstInfer.init_coeffs (conv_prog prog));
+  let map =
+    VHorn.Util.List.map
+      (fun (x, n) ->
+        Var.string_of x, inv_term (IntTerm.make n))
+      !ParamSubstInfer.ext_coeffs
+  in
   let res =
 		  typs,
 				VHorn.Util.List.map
 				  (fun (f, args, guard, events, body) ->
-						  (f, args, CEGAR_util.subst_map map guard, events, CEGAR_util.subst_map map body))
+						  (f,
+               args,
+               CEGAR_util.subst_map map guard,
+               events,
+               CEGAR_util.subst_map map body))
 						fdefs,
 				main
   in
-  let _ = add_time tmp Flag.time_parameter_inference in
+  add_time tmp Flag.time_parameter_inference;
   res
 
 

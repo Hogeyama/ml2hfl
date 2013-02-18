@@ -88,7 +88,7 @@ let preprocess t spec =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
       in
- fun_list, t', get_rtyp
+      fun_list, t', get_rtyp
     else Syntax.get_top_funs t, t, fun _ typ -> typ
   in
 
@@ -158,13 +158,13 @@ let rec main_loop orig parsed =
                     if !Flag.insert_param_funarg
                     then []
                     else
-																				  if !Flag.relative_complete then
-																						  let _ = Flag.web := true in
-																								let res = rev_map_flatten aux env in
-																						  let _ = Flag.web := false in
-																								res
-																						else
-  																				  rev_map_flatten aux env
+                      if !Flag.relative_complete then
+                        let _ = Flag.web := true in
+                        let res = rev_map_flatten aux env in
+                        let _ = Flag.web := false in
+                        res
+                      else
+                        rev_map_flatten aux env
                   in
                   let () =
                     if !Flag.write_annot
@@ -175,19 +175,21 @@ let rec main_loop orig parsed =
                   Format.printf "Safe!@.@.";
                   let () =
                     if !Flag.relative_complete then begin
-																				  let map =
-																						  List.map
-																								  (fun (x, n) ->
-																										  Id.make (-1) (VHorn.Var.string_of x) Type.TInt,
-																												CEGAR_util.trans_inv_term (VhornInterface.inv_term (VHorn.Term.tint n)))
-																										!VHorn.ParamSubstInfer.ext_coeffs
-																						in
+                      let map =
+                        List.map
+                          (fun (x, n) ->
+                            Id.make (-1) (VHorn.Var.string_of x) Type.TInt,
+                            CEGAR_util.trans_inv_term
+                              (VhornInterface.inv_term
+                                (VHorn.IntTerm.make n)))
+                          !VHorn.ParamSubstInfer.ext_coeffs
+                      in
                       let t = Syntax.subst_map map t0 in
-		                    Format.printf "Program with Quantifiers Added:@.";
-																						Flag.web := true;
-		                    Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
-																						Flag.web := false
-																				end
+                      Format.printf "Program with Quantifiers Added:@.";
+                      Flag.web := true;
+                      Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
+                      Flag.web := false
+                    end
                   in
                   if env' <> [] then Format.printf "Refinement Types:@.";
                   let env' = List.map (fun (f, typ) -> f, VhornInterface.simplify typ) env' in
