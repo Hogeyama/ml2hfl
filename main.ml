@@ -323,7 +323,9 @@ let arg_spec =
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtcs", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenTemplateBasedConstraintSolving),
      " Generalize constraints of multiple function calls by template-based constraint solving";
-   "-gssi", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenSolutionSpaceBasedInterpolation),
+   "-gssi", Arg.Unit (fun _ ->
+     VHorn.Global.predicate_discovery := VHorn.Global.GenSolutionSpaceBasedInterpolation;
+     VHorn.Global.interp_prover := VHorn.Global.Yint),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
    "-ieb", Arg.Unit (fun _ -> VHorn.Global.encode_boolean := true),
      " Enable integer encoding of booleans";
