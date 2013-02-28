@@ -337,19 +337,19 @@ let abstract_def env (f,xs,t1,e,t2) =
 let abstract orig_fun_list force prog =
   let labeled,prog = add_label prog in
   let prog = if !Flag.expand_nonrec then expand_nonrec orig_fun_list force prog else prog in
-  let () = if false && !Flag.expand_nonrec then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog prog in
+  let () = if debug && !Flag.expand_nonrec then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog prog in
   let prog = eta_expand prog in
-  let () = if false then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog prog in
   let defs = flatten_map (abstract_def prog.env) prog.defs in
   let prog = {env=[]; defs=defs; main=prog.main} in
-  let () = if false then Format.printf "ABST:@\n%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "ABST:@\n%a@." CEGAR_print.prog prog in
   let prog = Typing.infer prog in
   let prog = lift2 prog in
-  let () = if false then Format.printf "LIFT:@\n%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "LIFT:@\n%a@." CEGAR_print.prog prog in
   let prog = trans_eager prog in
-  let () = if false then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
-  let () = if false then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog prog in
   let prog = lift2 prog in
     labeled, prog

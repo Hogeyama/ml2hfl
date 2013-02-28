@@ -124,7 +124,11 @@ let rec verifyFile filename =
 let rec verifyFile filename =
   let default = "empty" in
   let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
-  let result_file = Filename.chop_extension !Flag.filename ^ ".trecs_out" in
+  let result_file =
+    try
+      Filename.chop_extension !Flag.filename ^ ".trecs_out"
+    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".trecs_out"
+  in
   let oc = open_out result_file in
   let () = output_string oc default in
   let () = close_out oc in
@@ -155,6 +159,12 @@ let write_log filename target =
 
 let check env target =
   let target' = trans target in
-  let input = Filename.chop_extension !Flag.filename ^ ".hors" in
+  let input =
+    try
+      Filename.chop_extension !Flag.filename ^ ".hors"
+    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".trecs_out"
+  in
+  try
     write_log input target';
     verifyFile input
+  with Failure("lex error") -> assert false
