@@ -1,6 +1,6 @@
 diff -c atp_old/limitations.ml atp_new/limitations.ml
-*** atp_old/limitations.ml	2012-08-04 14:56:12.763707376 +0900
---- atp_new/limitations.ml	2012-04-04 16:18:08.991960830 +0900
+*** atp_old/limitations.ml	2008-10-24 01:47:28.000000000 +0900
+--- atp_new/limitations.ml	2013-03-12 23:07:26.210272499 +0900
 ***************
 *** 116,125 ****
   (* ------------------------------------------------------------------------- *)
@@ -24,9 +24,30 @@ diff -c atp_old/limitations.ml atp_new/limitations.ml
   (* ------------------------------------------------------------------------- *)
   (* Diagonalization and quasi-diagonalization of formulas.                    *)
   (* ------------------------------------------------------------------------- *)
+diff -c atp_old/Makefile atp_new/Makefile
+*** atp_old/Makefile	2010-12-03 04:25:29.000000000 +0900
+--- atp_new/Makefile	2013-03-12 23:03:20.926278297 +0900
+***************
+*** 11,17 ****
+  # Use camlp5 for versions of OCaml >= 3.10
+  # Download this from http://pauillac.inria.fr/~ddr/camlp5/
+  
+! USE_CAMLP5=test `ocamlc -version | cut -c3` != "0"
+  
+  MLFILES = initialization.ml lib.ml intro.ml formulas.ml prop.ml propexamples.ml           \
+            defcnf.ml dp.ml stal.ml bdd.ml fol.ml skolem.ml               \
+--- 11,18 ----
+  # Use camlp5 for versions of OCaml >= 3.10
+  # Download this from http://pauillac.inria.fr/~ddr/camlp5/
+  
+! VERSION=$(shell ocamlc -version | cut -c 1-4)
+! USE_CAMLP5=test `echo '$(VERSION) >= 3.10' | bc` != "0"
+  
+  MLFILES = initialization.ml lib.ml intro.ml formulas.ml prop.ml propexamples.ml           \
+            defcnf.ml dp.ml stal.ml bdd.ml fol.ml skolem.ml               \
 diff -c atp_old/tableaux.ml atp_new/tableaux.ml
-*** atp_old/tableaux.ml	2012-08-04 14:56:12.763707376 +0900
---- atp_new/tableaux.ml	2012-04-04 16:18:08.987960774 +0900
+*** atp_old/tableaux.ml	2007-08-05 16:46:45.000000000 +0900
+--- atp_new/tableaux.ml	2013-03-12 23:07:26.214272499 +0900
 ***************
 *** 130,137 ****
         with Failure _ -> tableau (unexp,fm::lits,n) cont (env,k);;
@@ -47,8 +68,8 @@ diff -c atp_old/tableaux.ml atp_new/tableaux.ml
   
   let tabrefute fms =
 diff -c atp_old/tactics.ml atp_new/tactics.ml
-*** atp_old/tactics.ml	2012-08-04 14:56:12.763707376 +0900
---- atp_new/tactics.ml	2012-08-04 15:07:15.474200732 +0900
+*** atp_old/tactics.ml	2008-09-18 05:21:43.000000000 +0900
+--- atp_new/tactics.ml	2013-03-12 23:07:26.218272499 +0900
 ***************
 *** 293,299 ****
   
