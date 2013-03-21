@@ -149,7 +149,7 @@ $(OCAML_SOURCE)/parsing/lexer.ml:
 	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/lexer.mll
 $(OCAML_SOURCE)/parsing/linenum.ml:
 	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/linenum.mll
-$(OCAML_SOURCE)/parsing/parser.mli parsing/parser.ml:
+$(OCAML_SOURCE)/parsing/parser.mli $(OCAML_SOURCE)/parsing/parser.ml:
 	cd $(OCAML_SOURCE); $(OCAMLYACC) -v parsing/parser.mly
 $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 	cd $(OCAML_SOURCE); \
