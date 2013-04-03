@@ -13,9 +13,7 @@ let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 let add env ps p =
   if List.exists (Wrapper2.equiv env [] p) ps
   then ps
-  else
-    let imply ts t = Wrapper2.check env ts t in
-      normalize_bool_term ~imply p :: ps
+  else normalize_bool_term p :: ps
 
 let rec merge_typ env typ typ' =
   match typ,typ' with
