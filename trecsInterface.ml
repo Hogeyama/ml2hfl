@@ -162,7 +162,7 @@ let check env target =
   let input =
     try
       Filename.chop_extension !Flag.filename ^ ".hors"
-    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".trecs_out"
+    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".hors"
   in
   try
     write_log input target';
