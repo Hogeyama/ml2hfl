@@ -3,7 +3,6 @@ let ocaml_lib = [""; "/usr/lib/ocaml"]
 let log_dir = "./log"
 let trecs = ref "./trecs"
 let cvc3 = ref "./cvc3"
-let trecs_log = "log.hors"
 let cvc3_option = "+interactive"
 
 let filename = ref ""
