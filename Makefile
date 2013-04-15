@@ -2,24 +2,15 @@ include Makefile.config
 
 .PHONY: main all byte opt lib csisat atp clean doc test
 
-OCAMLC       = $(shell if which ocamlc.opt > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
-OCAMLOPT     = $(shell if which ocamlopt.opt > /dev/null ; then echo ocamlopt.opt; else echo ocamlopt; fi)
-OCAMLMKTOP   = ocamlmktop
-OCAMLDEP     = $(shell if which ocamldep.opt > /dev/null ; then echo ocamldep.opt; else echo ocamldep; fi)
-OCAMLLEX     = $(shell if which ocamllex.opt > /dev/null ; then echo ocamllex.opt; else echo ocamllex; fi)
-OCAMLYACC    = $(shell if which menhir 2> /dev/null > /dev/null ; then echo menhir; else echo ocamlyacc; fi)
+CSISAT_LIBS = -lcamlpico -lpicosat -lcamlglpk -lglpk
 
-
-CSISAT_LIB = -lcamlpico -lpicosat -lcamlglpk -lglpk
-
-INCLUDES = -I $(LIB) \
-	-I $(OCAML_LIB) \
+INCLUDES = -I $(OCAML_LIB) \
 	-I $(Z3) \
 	-I $(GMP) \
 	-I $(ATP) \
 	-I $(APRON) \
-	-I $(CSISAT)/lib \
-	-I $(CSISAT)/obj \
+	-I $(CSISAT) \
+	-I $(CSISAT_LIB) \
 	-I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/driver \
 	-I $(OCAML_SOURCE)/parsing \
@@ -30,10 +21,9 @@ INCLUDES = -I $(LIB) \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray \
 	-I $(OCAMLGRAPH) \
 	-I $(YHORN) \
-	-I $(VHORN) \
-	-I $(TRECS)
-OCAMLFLAGS = -g -annot $(INCLUDES) -custom -cclib '$(CSISAT_LIB)' -nostdlib -w -14
-OCAMLOPTFLAGS = -annot $(INCLUDES) -cclib '$(CSISAT_LIB)' -w -14
+	-I $(VHORN)
+OCAMLFLAGS = -g -annot $(INCLUDES) -custom -cclib '$(CSISAT_LIBS)' -nostdlib -w -14
+OCAMLOPTFLAGS = -annot $(INCLUDES) -cclib '$(CSISAT_LIBS)' -w -14
 
 DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 
@@ -156,18 +146,18 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 	sed -n -e '/^enum/p' -e 's/,//g' -e '/^  /p' byterun/instruct.h | \
 	awk -f tools/make-opcodes > bytecomp/opcodes.ml
 
-csisat:
-	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
-
-atp:
-	-patch -d atp -N < atp_patch
-	cd $(ATP) && make compiled bytecode
-
-vhorn:
-	cd $(VHORN) && make all
-
-yhorn:
-	cd $(YHORN) && make all
+#csisat:
+#	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
+#
+#atp:
+#	-patch -d atp -N < atp_patch
+#	cd $(ATP) && make compiled bytecode
+#
+#vhorn:
+#	cd $(VHORN) && make all
+#
+#yhorn:
+#	cd $(YHORN) && make all
 
 
 ################################################################################
@@ -215,7 +205,7 @@ test: opt
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(TRECS)%, $(filter-out $(OCAML_SOURCE)%, $(SRC))))
+SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(OCAML_SOURCE)%, $(SRC)))
 
 depend:: $(DEPEND)
 	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
