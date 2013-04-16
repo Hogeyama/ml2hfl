@@ -18,7 +18,7 @@
 </style>
 
 <script type="text/javascript" src="jquery.js"></script>
-<script type="text/javascript" src="jquery.elastic.js"></script>
+<script type="text/javascript" src="jquery.autosize.js"></script>
 <script type="text/javascript" src="mochi.js"></script>
 
 </head>
@@ -47,35 +47,6 @@ To use another interface which does not require JavaScript, move to <a href="wit
 
   <form action="run()">
     <select size="1" onchange="ex(this.form)" id="program">
-      <option selected value="0">------------------------------------------</option>
-      <option value="4">summation function</option>
-      <option value="59">apply function</option>
-      <option value="60">apply function with the arguments swapped</option>
-      <option value="58">repeat function</option>
-      <option selected value="0">------------------------------------------</option>
-      <option value="61">intro-ord2</option>
-      <option value="62">intro-ord3</option>
-      <option value="63">fhnhn</option>
-      <option value="64">repeat-add</option>
-      <option value="65">app-leq</option>
-      <option value="66">app-lin-ord2</option>
-      <option value="67">app-lin-ord3</option>
-      <option value="68">app-succ</option>
-      <option value="69">a-test-update</option>
-      <option value="70">a-checksum</option>
-      <option value="71">a-max</option>
-      <option value="72">l-forall-leq</option>
-      <option value="73">l-length-append</option>
-      <option selected value="0">------------------------------------------</option>
-      <option value="78">app-succ0</option>
-      <option value="79">l-isort</option>
-      <option selected value="0">------------------------------------------</option>
-      <option value="80">app-nonrec</option>
-      <option value="81">app-rec</option>
-      <option value="82">app-succ-leq</option>
-      <option value="83">fhnhn-leq</option>
-      <option value="84">twice-add</option>
-      <option value="85">comp-add-add</option>
       <option selected value="0">------------------------------------------</option>
       <option value="56">fold_div</option>
       <option value="50">search</option>
@@ -136,7 +107,6 @@ To use another interface which does not require JavaScript, move to <a href="wit
     <input value="verify" name="submit" onclick="run()" onkeypress="run()" type="button">
     <input value="clear" onclick="clear_form(this.form)" onkeypress="clear_form(this.form)" type="button">
     <input value="vm" name="verbose" id="verbose" type="checkbox">verbose mode
-    <input value="rc" name="complete" id="complete" type="checkbox">enable relatively complete verification
     <br>
     <textarea name="input" id="input" cols="40" rows="6"></textarea>
   </form>
@@ -144,4 +114,18 @@ To use another interface which does not require JavaScript, move to <a href="wit
 
 <div id="result"><hr></div>
 
-</body></html>
+</body>
+
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-36813596-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+</html>

@@ -1,4 +1,4 @@
-#!c:\cygwin\bin\perl
+#!/usr/bin/perl
 
 use CGI;
 $q = new CGI;
@@ -16,17 +16,15 @@ $date = sprintf("%04d%02d%02d_%02d%02d%02d",$year+1900,$mon+1,$mday,$hour,$min,$
 $base = sprintf("%s_%08d.ml",$date,rand(100000000));
 $log_dir = "./log/";
 $filename = $log_dir . $base;
-
 open FILE, '>', $filename;
 print FILE $q->param('input');
 close FILE;
 
-$cmd = 'ulimit -t 30 -v 100000; ./mochi.opt -gchi -margin 80 ' . $filename;
 if ($q->param('verbose') ne 'checked') {
-    $cmd .= ' -only-result';
+    $cmd = "(ulimit -t 3 -v 100000; /home/ryosuke/repos/mochi/mochi.opt -margin 80 $filename -only-result) || (ulimit -t 30 -v 100000; /home/ryosuke/repos/mochi/mochi.opt -gchi -margin 80 $filename -only-result) || echo TIMEOUT";
 }
-if ($q->param('complete') eq 'checked') {
-    $cmd .= ' -rc';
+else {
+    $cmd = "(ulimit -t 3 -v 100000; /home/ryosuke/repos/mochi/mochi.opt -margin 80 $filename) || (ulimit -t 30 -v 100000; /home/ryosuke/repos/mochi/mochi.opt -gchi -margin 80 $filename) || echo TIMEOUT";
 }
 
 $result = `$cmd`;
@@ -34,8 +32,6 @@ $result = CGI::escapeHTML($result);
 $result =~ s/Safe!/<span class="h2">Safe!<\/span>/;
 $result =~ s/Unsafe!/<span class="h2">Unsafe!<\/span>/;
 $result =~ s/Refinement Types:/<span class="h3">Refinement Types:<\/span>/;
-$result =~ s/Program with Quantifiers Added:/<span class="h3">Program with <font color="#FF0000">Quantifiers<\/font> Added:<\/span>/;
-$result =~ s/\$(.*?)\$/<font color="#FF0000">$1<\/font><\/span>/g;
 
 print $result;
 
@@ -44,9 +40,9 @@ print <<EOF;
 EOF
 
 if ($result =~ /Safe/) {
-    system ("cd $log_dir; caml2html -body " . $base);
+    system ("cd $log_dir; ./caml2html -body " . $base);
 
-    print "<p>Hover the mouse cursor over variables to see refinement types.<p>";
+    print "<p>Hover the mouse cursor over variables to see refinement types.</p>";
 
     open FILE, '<', ($filename . ".html");
     while ($line = <FILE>) {

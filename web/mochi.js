@@ -56,43 +56,19 @@ var program = {
 "54": "type option = None | Some of int\n\nlet rec exists test f n m =\n  if n < m\n  then\n    if test (f n)\n    then Some n\n    else exists test f (n+1) m\n  else\n    None\n\nlet mult3 n = 3 * n\n\nlet main n m =\n  let test x = x = m in\n    match exists test mult3 0 n with\n        None -> ()\n      | Some x -> assert (0 < x && x < n)",
 "55": "let make_array n i = assert (0 <= i && i < n); 0\nlet update i a x j :int= if j > i-1 && j <= i then x else a (j)\nlet rec init i n a =\n  if i >= n then a else init (i + 1) n (update i a 1)\nlet main k n i =\n  if k >= 0 && k <= 0 then\n    let x = init k n (make_array n) in\n      if 0 <= i && i < n then\n        assert (x i >= 1)",
 "56": "exception DivisionByZero\n\nlet rec fold_left (f:int->int->int) acc xs =\n  match xs with\n      [] -> acc\n    | x::xs' -> fold_left f (f acc x) xs'\n\nlet rec randpos() =\n let n = Random.int(0) in\n  if n>0 then n else randpos()\n\nlet rec make_list n =\n  if n <= 0\n  then []\n  else randpos() :: make_list (n-1)\n\nlet div x y =\n  if y=0 then raise DivisionByZero\n  else Random.int(0) (* \"/\" is unsupported *)\n\nlet main n m =\n  let xs = make_list n in\n    fold_left div m xs",
-"57": "exception DivisionByZero\n\nlet rec fold_left (f:int->int->int) acc xs =\n  match xs with\n      [] -> acc\n    | x::xs' -> fold_left f (f acc x) xs'\n\nlet rec randpos() =\n let n = Random.int(0) in\n  if n>=0 then n else randpos()\n\nlet rec make_list n =\n  if n <= 0\n  then []\n  else randpos() :: make_list (n-1)\n\nlet div x y =\n  if y=0 then raise DivisionByZero\n  else Random.int(0) (* \"/\" is unsupported *)\n\nlet main n m =\n  let xs = make_list n in\n    fold_left div m xs",
-"58": "let add x1 x2 = x1 + x2\nlet rec repeat f k x =\n  if k <= 0 then x else f (repeat f (k - 1) x)\nlet main n k =\n  if n >= 0 && k > 0 then assert (repeat (add n) k 0 >= n)",
-"59": "let apply x (f:int -> unit) = f x\nlet check x y = assert (x = y)\nlet main i = apply i (check i)",
-"60": "let apply_sw (f:int -> unit) x = f x\nlet check x y = assert (x = y)\nlet main i = apply_sw (check i) i",
-"61": "let rec app f x = if Random.bool () then app f (x + 1) else f x\nlet check x y = if x <= y then () else assert false\nlet main i = app (check i) i",
-"62": "let succ f x = f (x + 1)\nlet rec app3 f g = if Random.bool () then app3 (succ f) g else g f\nlet app x f = f x\nlet check x y = if x <= y then () else assert false\nlet main i = app3 (check i) (app i)",
-"63": "let f x y = assert (x () = y ())\nlet h (x:int) u = x\nlet main n = f (h n) (h n)",
-"64": "let add x1 x2 = x1 + x2\nlet rec repeat f k x = if k <= 0 then x else f (repeat f (k - 1) x)\nlet main n k = if n >= 0 && k > 0 then assert (repeat (add n) k 0 >= n)",
-"65": "let app f x = f x\nlet check x y = assert (x = y)\nlet main (a:int) b = app (check (a <= b)) (a <= b)",
-"66": "let app f x = f x\nlet check x y = assert (x = y)\nlet main a b = app (check (4 * a + 2 * b)) (4 * a + 2 * b)",
-"67": "let app f g = f g\nlet f x k = k x\nlet check x y = assert (x = y)\nlet main a b = app (f (4 * a + 2 * b)) (check (4 * a + 2 * b))",
-"68": "let succ f x = f (x + 1)\nlet rec app f x = if Random.bool () then app (succ f) (x - 1) else f x\nlet check x y = if x = y then () else assert false\nlet main n = app (check n) n",
-"69": "let make_array n = (n, fun i -> assert (0 <= i && i < n); 0)\nlet update (n, ar) i x =\n  assert (0 <= i && i < n);\n  (n, fun j -> if j = i then x else ar j)\n\nlet check (n, ar) i x = assert (ar i = x)\nlet main n i x =\n  if 0 <= i && i < n then\n    check (update (make_array n) i x) i x",
-"70": "let make_array n = (n, fun i -> assert (0 <= i && i < n); 0)\nlet update (n, ar) i x =\n  assert (0 <= i && i < n);\n  (n, fun j -> if j = i then x else ar j)\n\nlet checksum (n, ar) x = assert ((ar 0) + (ar 1) = x)\nlet main a b = \n  checksum (update (update (make_array 2) 0 a) 1 b) (a + b)",
-"71": "let rec array_max i n ar m =\n  if i >= n then\n    m\n  else\n    let x = ar i in\n    let z = if x > m then x else m in\n    array_max (i + 1) n ar z\nlet rec rand_array x i = Random.int (x + 1)\nlet main n x =\n  if n > 0 && x >= 0 then\n    let m = array_max 0 n (rand_array x) (-1) in\n    assert (m <= x)",
-"72": "let hd (len, l) = l 0\nlet tl (len, l) = (len - 1, fun i -> l (i + 1))\nlet is_nil (len, l) = len = 0\n\nlet rec for_all f xs =\n  if is_nil xs then\n    true\n  else\n    f (hd xs) && for_all f (tl xs)\nlet main len =\n  assert (for_all (fun x -> x <= len) (len, fun i -> len - i))",
-"73": "let cons a (len, l) =\n  (len + 1, fun i -> if i = 0 then a else l (i - 1))\nlet hd (len, l) = l 0\nlet tl (len, l) = (len - 1, fun i -> l (i + 1))\nlet is_nil (len, l) = len = 0\n\nlet rec append xs1 xs2 =\n  if is_nil xs1 then\n    xs2\n  else\n    let xs = append (tl xs1) xs2 in\n    cons (hd xs1) xs\nlet rec length_cps k xs =\n  if is_nil xs then\n    k 0\n  else\n    length_cps\n      (fun len -> k (len + 1))\n      (tl xs)\nlet main len1 len2 =\n  length_cps\n    (fun len -> assert (len <= len1 + len2))\n    (append (len1, fun i -> true) (len2, fun i -> false))",
-"78": "let succ f x = f (x + 1)\nlet rec app f x = if Random.bool () then app (succ f) (x - 1) else f x\nlet check x y = if x = y then () else assert false\nlet main (u:unit) = app (check 0) 0",
-"79": "let nil = (0, fun i -> assert false)\nlet cons a (len, l) =\n  (len + 1, fun i -> if i = 0 then a else l (i - 1))\nlet hd (len, l) = l 0\nlet tl (len, l) = (len - 1, fun i -> l (i + 1))\nlet is_nil (len, l) = len = 0\n\nlet rec insert (x:int) ys =\n  if is_nil ys then\n    cons x nil\n  else\n    if x <= hd ys then\n      cons x ys\n    else\n      cons (hd ys) (insert x (tl ys))\n\nlet rec isort xs =\n  if is_nil xs then\n    nil\n  else\n    insert (hd xs) (isort (tl xs))\n\nlet rec make_list n =\n  if n = 0 then\n    nil\n  else\n    cons n (make_list (n - 1))\n\nlet rec ordered xs =\n  if is_nil xs then\n    true\n  else if is_nil (tl xs) then\n    true\n  else\n    hd xs <= hd (tl xs) && ordered (tl xs)\n\nlet main len = assert (ordered (isort (len, fun i -> len - i)))",
-"80": "let apply f x = f x\nlet check x y = assert (x = y)\nlet main (n:int) = apply (check n) n",
-"81": "let apply f x = f x\nlet check x y = assert (x = y)\nlet rec loop n : unit = apply (check n) n; loop (n + 1)\nlet main (x:int) = loop x",
-"82": "let succ f x = f (x + 1)\nlet rec app x f = if Random.bool () then app x (succ f) else f x\nlet check x y = if x <= y then () else assert false\nlet main i = app i (check i)",
-"83": "let f x y = assert (not ((x () > 0) && (y () <= 0)))\nlet h (x:int) u = x\nlet main n = f (h n) (h n)",
-"84": "let add x1 x2 = x1 + x2\nlet twice f x = f (f x)\nlet main n = assert (twice (add n) 0 >= 2 * n)",
-"85": "let add x1 x2 = x1 + x2\nlet comp f g x = f (g x)\nlet main n = assert (comp (add n) (add n) 0 >= 2 * n)"}
+"57": "exception DivisionByZero\n\nlet rec fold_left (f:int->int->int) acc xs =\n  match xs with\n      [] -> acc\n    | x::xs' -> fold_left f (f acc x) xs'\n\nlet rec randpos() =\n let n = Random.int(0) in\n  if n>=0 then n else randpos()\n\nlet rec make_list n =\n  if n <= 0\n  then []\n  else randpos() :: make_list (n-1)\n\nlet div x y =\n  if y=0 then raise DivisionByZero\n  else Random.int(0) (* \"/\" is unsupported *)\n\nlet main n m =\n  let xs = make_list n in\n    fold_left div m xs"
+}
 
 function ex(form) {
     form.input.value = program[form.program.value];
-    $('#result').text('');
-    $('textarea').elastic();
+    $('textarea').trigger('autosize');
 }
 
 function run() {
     $('#result').html('<h2>Now verifying...</h2>');
     $.post(
-        '../cgi-bin/mochi.cgi',
-        {'input':$('#input').val(), 'verbose':$("#verbose").attr("checked"), 'complete':$("#complete").attr("checked")},
+        '../cegar/mochi.cgi',
+        {'input':$('#input').val(), 'verbose':$("#verbose").attr("checked")},
         function(result){
             $('#result').html(result);
         }
@@ -106,6 +82,5 @@ function clear_form(form) {
 
 $(document).ready(function(){
     $('#demo_body').css('display', 'block');
-    $('textarea').elastic();
-    $('textarea').trigger('update');
+    $('textarea').autosize();
 })
