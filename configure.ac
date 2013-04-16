@@ -132,14 +132,14 @@ if test -z "$HAVE_OCAML_SRC"; then
 fi
 AC_MSG_CHECKING([for OCaml source version])
 if test ! -e "$OCAML_SRC/VERSION"; then
-  AC_MSG_RESULT([fail])
+  AC_MSG_RESULT([no])
   AC_MSG_ERROR([OCaml VERSION file not found])
 fi
 if test "`head -1 $OCAML_SRC/VERSION`" != "3.12.1"; then
-  AC_MSG_RESULT([fail])
+  AC_MSG_RESULT([no])
   AC_MSG_ERROR([OCaml 3.12.1 is required])
 fi
-AC_MSG_RESULT([found])
+AC_MSG_RESULT([yes])
 AC_SUBST(OCAML_SRC)
 
 AC_PATH_TOOL(CVC3, cvc3, [no], [$PATH:$PWD])
