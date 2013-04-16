@@ -1,7 +1,9 @@
 AC_INIT(MoCHi,0.1)
-#AM_INIT_AUTOMAKE
 
 AC_PROG_CC
+
+BUILD_DIR=$PWD
+AC_SUBST(BUILD_DIR)
 
 AC_PROG_OCAML
 if test "$OCAMLC" = "no"; then
@@ -140,11 +142,17 @@ fi
 AC_MSG_RESULT([found])
 AC_SUBST(OCAML_SRC)
 
+AC_PATH_TOOL(CVC3, cvc3, [no], [$PATH:$PWD])
+if test "$CVC3" = "no"; then
+  AC_MSG_ERROR([CVC3 not found])
+fi
+AC_SUBST(CVC3)
 
-#AC_CHECK_OCAML_PKG([lablgtk2])
-#if test "$OCAML_PKG_lablgtk2" = "no"; then
-#  AC_MSG_ERROR([Please install OCaml findlib module 'lablgtk2'.])
-#fi
+AC_PATH_TOOL(TRECS, trecs, [no], [$PATH:$PWD])
+if test "$TRECS" = "no"; then
+  AC_MSG_ERROR([TRecS not found])
+fi
+AC_SUBST(TRECS)
 
-AC_CONFIG_FILES([Makefile.config])
+AC_CONFIG_FILES([Makefile.config environment.ml])
 AC_OUTPUT

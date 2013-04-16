@@ -37,8 +37,8 @@ NAME = mochi
 main: opt
 all: lib depend main
 
-byte: $(NAME).byte
-opt: $(NAME).opt
+byte: $(NAME).byte pervasives.cmi
+opt: $(NAME).opt pervasives.cmi
 lib: ocaml csisat trecs atp vhorn yhorn
 
 
@@ -51,7 +51,7 @@ MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
-	flag.cmo util.cmo id.cmo type.cmo automata.cmo \
+	environment.cmo flag.cmo util.cmo id.cmo type.cmo automata.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	wrapper.cmo wrapper2.cmo \
@@ -131,18 +131,22 @@ $(addsuffix .cmx,$(DEP_VHORN)): $(VHORN)/vHorn.cmi
 ################################################################################
 # libraries
 
+pervasives.cmi: $(OCAML_SOURCE)/config/Makefile
+	cd $(OCAML_SOURCE) && make coldstart
+	cp $(OCAML_SOURCE)/stdlib/pervasives.cmi .
+	cd $(OCAML_SOURCE) && make clean
 $(OCAML_SOURCE)/config/Makefile:
 	cd $(OCAML_SOURCE) && ./configure
-$(OCAML_SOURCE)/utils/config.ml: $(OCAML_SOURCE)/config/Makefile
-	cd $(OCAML_SOURCE); make utils/config.ml
-$(OCAML_SOURCE)/parsing/lexer.ml:
-	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/lexer.mll
-$(OCAML_SOURCE)/parsing/linenum.ml:
-	cd $(OCAML_SOURCE); $(OCAMLLEX) parsing/linenum.mll
-$(OCAML_SOURCE)/parsing/parser.mli $(OCAML_SOURCE)/parsing/parser.ml:
-	cd $(OCAML_SOURCE); $(OCAMLYACC) -v parsing/parser.mly
-$(OCAML_SOURCE)/bytecomp/opcodes.ml:
-	cd $(OCAML_SOURCE); \
+$(OCAML_SOURCE)/utils/config.ml: $(OCAML_SOURCE)/config/Makefile pervasives.cmi
+	cd $(OCAML_SOURCE) && make utils/config.ml
+$(OCAML_SOURCE)/parsing/lexer.ml: pervasives.cmi
+	cd $(OCAML_SOURCE) && $(OCAMLLEX) parsing/lexer.mll
+$(OCAML_SOURCE)/parsing/linenum.ml: pervasives.cmi
+	cd $(OCAML_SOURCE) && $(OCAMLLEX) parsing/linenum.mll
+$(OCAML_SOURCE)/parsing/parser.mli $(OCAML_SOURCE)/parsing/parser.ml: pervasives.cmi
+	cd $(OCAML_SOURCE) && $(OCAMLYACC) -v parsing/parser.mly
+$(OCAML_SOURCE)/bytecomp/opcodes.ml: pervasives.cmi
+	cd $(OCAML_SOURCE) && \
 	sed -n -e '/^enum/p' -e 's/,//g' -e '/^  /p' byterun/instruct.h | \
 	awk -f tools/make-opcodes > bytecomp/opcodes.ml
 
@@ -180,9 +184,9 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~
-	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
-	rm -f $(NAME).byte $(NAME).opt
+	-rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~
+	-rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
+	-rm -f $(NAME).byte $(NAME).opt
 
 
 ################################################################################

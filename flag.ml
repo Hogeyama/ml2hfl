@@ -1,8 +1,7 @@
 
-let ocaml_lib = [""; "/usr/lib/ocaml"]
-let log_dir = "./log"
-let trecs = ref "./trecs"
-let cvc3 = ref "./cvc3"
+let ocaml_lib = [Environment.build_dir]
+let trecs = ref Environment.trecs
+let cvc3 = ref Environment.cvc3
 let cvc3_option = "+interactive"
 
 let filename = ref ""
