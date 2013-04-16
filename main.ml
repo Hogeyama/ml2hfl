@@ -349,6 +349,7 @@ let () =
       in
       let () = Arg.parse arg_spec set_file usage in
       let () = VHorn.Global.print_log := !Flag.debug_level <> 0 in
+      let () = VHorn.Global.cvc3 := !Flag.cvc3 in
       let cin =
         match !Flag.filename with
             "" | "-" -> Flag.filename := "stdin"; stdin
