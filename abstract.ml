@@ -416,7 +416,11 @@ and abst_list post t =
           let aux (p,cond,t) t' =
             let bind,cond' = get_match_bind_cond (make_var x) p in
             let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
-            let t_cond = add_bind (abst_list post cond) in
+            let t_cond =
+              if cond = true_term
+              then cond
+              else add_bind (abst_list post cond)
+            in
               make_if (make_and cond' t_cond) (add_bind (abst_list post t)) t'
           in
           let t_pats = List.fold_right aux pats (make_bottom typ') in
