@@ -168,7 +168,7 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 # distribution
 
 dist:
-	tar czvf dist.tar.gz *.ml *.mli Makefile
+	git archive HEAD -o dist.tar.gz
 
 
 ################################################################################
