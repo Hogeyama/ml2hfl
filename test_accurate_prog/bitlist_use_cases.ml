@@ -26,4 +26,7 @@ let rec encode n =
   then []
   else (n mod 2 = 1) :: encode (n / 2)
 
-let main () = assert (eq (encode 2) [false;true] && eq (encode 3) [true;true] && eq (encode 8) [true;false;false])
+let main () =
+  assert (eq (encode 2) [false;true]);
+  assert (eq (encode 3) [true;true]);
+  assert (eq (encode 8) [true;false;false])
