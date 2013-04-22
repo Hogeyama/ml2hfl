@@ -160,6 +160,9 @@ let rec trans_ce_aux labeled ce acc defs t k =
     | Const RandInt -> assert false
     | Const c -> k ce acc (Const c)
     | Var x -> k ce acc (Var x)
+    | App(Const Not, t) ->
+        trans_ce_aux labeled ce acc defs t (fun ce acc t ->
+          k ce acc (make_app (Const Not) [t]))
     | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
         trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
         trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->

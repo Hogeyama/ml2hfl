@@ -22,6 +22,9 @@ let rec check_aux pr ce sat n constr env defs t k =
     | Const RandInt -> assert false
     | Const c -> k ce sat n constr env (Const c)
     | Var x -> k ce sat n constr env (Var x)
+    | App(Const Not, t) ->
+        check_aux pr ce sat n constr env defs t (fun ce sat n constr env t ->
+          k ce sat n constr env (make_app (Const Not) [t]))
     | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
         check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
         check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
