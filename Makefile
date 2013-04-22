@@ -205,7 +205,7 @@ test: opt
 	for i in $(TEST); \
 	do \
 	echo $$i; \
-	(./mochi.opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
 	echo; \
 	done
 
