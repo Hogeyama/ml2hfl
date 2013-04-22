@@ -792,10 +792,10 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let x2 = Id.new_var "x" (trans_typ t2.typ_orig t2.typ_cps) in
           let e0 = get_tfun_effect t1.typ_cps in
             make_fun k
-              (make_app_cont t1.effect t1'
-                 (make_fun x1
-                    (make_app_cont t2.effect t2'
-                       (make_fun x2
+              (make_app_cont t2.effect t2'
+                 (make_fun x2
+                    (make_app_cont t1.effect t1'
+                       (make_fun x1
                           (make_app_cont e0 (make_app (make_var x1) [make_var x2]) (make_var k))))))
       | AppCPS(t1, t2), EExcep ->
           let t1' = transform k_post t1 in

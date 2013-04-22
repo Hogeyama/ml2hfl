@@ -201,7 +201,7 @@ let rec main_loop orig parsed =
                   true
               | _, CEGAR.Unsafe ce ->
                 Format.printf "Unsafe!@.@.";
-                if main_fun <> ""
+                if main_fun <> "" && arg_num <> 0
                 then
                   Format.printf "Input for %s:@.  %a@." main_fun
                     (print_list Format.pp_print_int "; " false) (take ce arg_num);
