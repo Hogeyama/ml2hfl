@@ -496,7 +496,7 @@ and rename_poly_funs f map t =
       | RandInt _ -> map, t.desc
       | Var x when Id.same x f ->
           if is_poly_typ t.typ
-          then raise (Fatal "Not implemented: Trans.rename_poly_funs")
+          then raise (Fatal "Cannot occur? @ Trans.rename_poly_funs")
           else
             begin
               try
@@ -512,7 +512,7 @@ and rename_poly_funs f map t =
             map', Fun(x, t')
       | App({desc=Var x}, ts) when Id.same x f ->
           let x' =
-            if is_poly_typ (Id.typ x)
+            if is_poly_typ (Id.typ f)
             then
               let xs = take (get_args (Id.typ f)) (List.length ts) in
               let typ = List.fold_right2 (fun t x typ -> TFun(Id.set_typ x t.typ, typ)) ts xs t.typ in
@@ -525,6 +525,7 @@ and rename_poly_funs f map t =
             if List.exists check map'
             then
               let _,x'' = List.find check map' in
+              unify (Id.typ x') (Id.typ x'');
                 map', App(make_var x'', ts')
             else (x,x')::map', App(make_var x', ts')
       | App({desc=Var x}, ts) ->
@@ -620,8 +621,8 @@ let rec copy_poly_funs t =
           let tvars = get_tvars (Id.typ f) in
           let () = assert (tvars > []) in
           let t2' = copy_poly_funs t2 in
-          let map,t2'' = rename_poly_funs f t2' in
-          let t2''' = inst_tvar_tunit t2'' in
+          let t2'' = inst_tvar_tunit t2' in
+          let map,t2''' = rename_poly_funs f t2'' in
           let n = List.length map in
             if n >= 2
             then
