@@ -20,7 +20,6 @@ let print_info () =
 let spec_file = ref ""
 
 let init () =
-  Id.clear_counter ();
   Syntax.typ_excep := Type.TConstr("exn",true)
 
 let preprocess t spec =
