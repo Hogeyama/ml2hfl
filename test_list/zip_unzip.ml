@@ -1,11 +1,3 @@
-
-let rec unzip (xys:(int*int) list) =
-  match xys with
-      [] -> [], []
-    | (x,y)::xys' ->
-        let xs,ys = unzip xys' in
-          x::xs, y::ys
-
 let rec zip (xs:int list) (ys:int list) =
   match xs with
       [] ->
@@ -19,14 +11,19 @@ let rec zip (xs:int list) (ys:int list) =
             [] -> assert false
           | y::ys' -> (x,y)::zip xs' ys'
 
+let rec unzip xs =
+  match xs with
+      [] -> [], []
+    | (y,z)::xs' ->
+       let ys,zs = unzip xs' in
+         y::ys, z::zs
+
 let rec make_list n =
   if n < 0
   then []
-  else (n,n) :: make_list (n-1)
+  else (Random.int 0, Random.int 0) :: make_list (n-1)
 
 let main n =
   let xs = make_list n in
-  let xs1,xs2 = unzip xs in
-    zip xs1 xs2
-
-
+  let ys,zs = unzip xs in
+     zip ys zs
