@@ -114,6 +114,14 @@ let rec main_loop orig parsed =
     if false && !Flag.debug_level > 0
     then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' t
   in
+  let () =
+    if !Flag.use_spec && !spec_file = ""
+    then
+      try
+        let spec = Filename.chop_extension !Flag.filename ^ ".spec" in
+        if Sys.file_exists spec then spec_file := spec
+      with Invalid_argument "Filename.chop_extension" -> ()
+  in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
   let () = Spec.print spec in
   let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
@@ -276,6 +284,7 @@ let arg_spec =
    (* verifier *)
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
+   "-use-spec", Arg.Unit (fun _ -> Flag.use_spec := true), " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
    (* CEGAR *)
    "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs (each program has only one assertion)";
    "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";

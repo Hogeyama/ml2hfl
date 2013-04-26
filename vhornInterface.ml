@@ -78,6 +78,12 @@ let rec inv_term t =
   | Term.Ret (_, _, _, _) -> assert false
   | Term.Call (_, _, _) -> assert false
   | Term.Exists (_, _, _) -> assert false
+  | Term.If (_, _, _, _) -> assert false
+  | Term.LetVal (_, _, _, _) -> assert false
+  | Term.LetFun (_, _, _, _, _) -> assert false
+  | Term.LetRec (_, _, _, _) -> assert false
+  | Term.Lambda (_, _, _) -> assert false
+
 
 
 let conv_event e = (***)

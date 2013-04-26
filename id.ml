@@ -29,7 +29,7 @@ let to_string x =
     else
       name x ^ "_" ^ string_of_int n
   in
-  if s.[0] = '@' then
+  if s<>"" && s.[0] = '@' then
     "$" ^ String.sub s 1 (String.length s - 1) ^ "$"
   else
     s
