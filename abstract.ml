@@ -45,7 +45,7 @@ let rec abst_recdata_typ = function
         TPair(TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
   | TConstr(s,false) -> TInt
   | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
-  | TPred(typ,ps) -> TPred(abst_recdata_typ typ, ps)
+  | TPred(x,ps) -> TPred(Id.set_typ x (abst_recdata_typ (Id.typ x)), ps)
 
 let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
@@ -315,9 +315,9 @@ let rec abst_list_typ = function
   | TList typ -> TPair(TInt, TFun(Id.new_var "x" TInt, abst_list_typ typ))
   | TConstr(s,b) -> TConstr(s,b)
   | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
-  | TPred(typ,ps) ->
+  | TPred(x,ps) ->
       let ps' = List.map (abst_list "") ps in
-        TPred(abst_list_typ typ, ps')
+        TPred(Id.set_typ x (abst_list_typ (Id.typ x)), ps')
 
 and abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -457,7 +457,7 @@ let rec abst_datatype_typ = function
   | TPair _ -> assert false
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
-  | TPred(typ,ps) -> TPred(abst_datatype_typ typ, ps)
+  | TPred(x,ps) -> TPred(Id.set_typ x (abst_datatype_typ (Id.typ x)), ps)
 
 let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Immutable, t))::fields, i+1) ([],0) ts in

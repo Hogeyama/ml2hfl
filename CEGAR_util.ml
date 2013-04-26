@@ -209,22 +209,33 @@ let rec trans_typ = function
   | Type.TRInt _  -> assert false
   | Type.TVar{contents=None} -> assert false
   | Type.TVar{contents=Some typ} -> trans_typ typ
-  | Type.TFun({Id.typ=Type.TBool|Type.TPred(Type.TBool,_)} as x,typ) ->
-      let ps = match Id.typ x with Type.TPred(_,ps) -> ps | _ -> [] in
+  | Type.TFun({Id.typ=Type.TBool|Type.TPred({Id.typ=Type.TBool},_)} as x,typ) ->
       let x' = trans_var x in
-      let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term "" [] [] p)) in
-      let typ1 =
-        if !Flag.bool_init_empty
-        then TBase(TBool, fun z -> List.map (aux z) ps)
-        else TBase(TBool, fun z -> z :: List.map (aux z) ps)
+      let ps' =
+        match Id.typ x with
+          Type.TPred(y,ps) ->
+            fun z ->
+              List.map (fun p -> subst (trans_var y) z (snd (trans_term "" [] [] p))) ps
+        | _ -> fun _ -> []
       in
+      let ps'' =
+        if !Flag.bool_init_empty
+        then fun z -> ps' z
+        else fun z -> z :: ps' z
+      in
+      let typ1 = TBase(TBool, ps'') in
       let typ2 = trans_typ typ in
         TFun(typ1, fun y -> subst_typ x' y typ2)
-  | Type.TFun({Id.typ=Type.TInt|Type.TPred(Type.TInt,_)} as x,typ) ->
-      let ps = match Id.typ x with Type.TPred(_,ps) -> ps | _ -> [] in
+  | Type.TFun({Id.typ=Type.TInt|Type.TPred({Id.typ=Type.TInt},_)} as x,typ) ->
       let x' = trans_var x in
-      let aux z p = subst (trans_var Syntax.abst_var) z (snd (trans_term "" [] [] p)) in
-      let typ1 = TBase(TInt, fun z -> List.map (aux z) ps) in
+      let ps' =
+        match Id.typ x with
+          Type.TPred(y,ps) ->
+            fun z ->
+              List.map (fun p -> subst (trans_var y) z (snd (trans_term "" [] [] p))) ps
+        | _ -> fun _ -> []
+      in
+      let typ1 = TBase(TInt, ps') in
       let typ2 = trans_typ typ in
         TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun(x,typ) ->
@@ -235,7 +246,7 @@ let rec trans_typ = function
   | Type.TConstr("event",_) -> assert false
   | Type.TConstr _ -> assert false
   | Type.TPair _ -> assert false
-  | Type.TPred(typ,ps) -> trans_typ typ
+  | Type.TPred(x,ps) -> trans_typ (Id.typ x)
 
 
 and trans_binop = function
@@ -307,9 +318,8 @@ and trans_term post xs env t =
             Type.TUnit -> EqUnit
           | Type.TBool -> EqBool
           | Type.TInt -> EqInt
-          | Type.TPred(typ,_) -> aux typ
-										| Type.TConstr("???", false) ->
-										    EqInt(*???assert false*)
+          | Type.TPred(x,_) -> aux (Id.typ x)
+	  | Type.TConstr("???", false) -> EqInt(*???assert false*)
           | typ -> Format.printf "trans_term: %a@." Syntax.print_typ typ; assert false
         in
         let op = aux t1.Syntax.typ in

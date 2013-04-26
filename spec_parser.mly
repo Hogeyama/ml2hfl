@@ -7,14 +7,15 @@ let print_error_information () =
   let en = Parsing.symbol_end_pos () in
   print_string ("File \"" ^ st.Lexing.pos_fname);
   Format.printf "\", line %d" st.Lexing.pos_lnum;
-  Format.printf ", characters %d-%d:\n"
+  Format.printf ", characters %d-:\n"
     (st.Lexing.pos_cnum - st.Lexing.pos_bol)
-    (en.Lexing.pos_cnum - en.Lexing.pos_bol)
+(*    (en.Lexing.pos_cnum - en.Lexing.pos_bol)*)
 
 let parse_error _ = print_error_information ()
 
-let make_id s = Id.make 0 s TInt
-let make_id_typ typ = Id.make 0 "" typ
+let make_tmp_id s = Id.make 0 s typ_unknown
+let make_id_typ s typ = Id.make 0 s typ
+let make_self_id typ = Id.new_var "x" typ
 let orig_id x = {x with Id.id = 0}
 %}
 
@@ -44,13 +45,19 @@ let orig_id x = {x with Id.id = 0}
 %token PLUS
 %token MINUS
 %token TIMES
+%token VAL
 %token EOF
 
 /* priority : low -> high */
+%right ARROW
 %left OR
 %left AND
+%nonassoc NOT
 %nonassoc EQUAL LTHAN GTHAN LEQ GEQ
 %left PLUS MINUS
+%left LIST
+%left TIMES
+
 
 
 %start spec
@@ -101,7 +108,7 @@ exp:
 
 
 id:
-| IDENT { make_id $1 }
+| IDENT { make_tmp_id $1 }
 
 spec:
   spec_list EOF { $1 }
@@ -115,6 +122,10 @@ spec_list:
 | inlinef spec_list
   { {$2 with Spec.inlined_f = $1::$2.Spec.inlined_f} }
 
+typedef:
+| VAL id COLON typ
+  { $2, Id.typ $4 }
+
 inline:
 | INLINE id
   { $2 }
@@ -123,62 +134,42 @@ inlinef:
 | INLINEF id
   { $2 }
 
-typedef:
-| id COLON typ
-  { $1, snd $3 }
+simple_type_core:
+| TUNIT { TUnit }
+| TBOOL { TBool }
+| TINT { TInt }
+| LPAREN typ LIST RPAREN { TList(Id.typ $2) }
 
-typ_aux:
-| TUNIT
-  { TUnit }
-| TBOOL
-  { TBool }
-| TBOOL LSQUAR pred_list RSQUAR
-  { TPred(TBool, $3) }
-| TINT
-  { TInt }
-| TINT LSQUAR pred_list RSQUAR
-  { TPred(TInt, $3) }
-| typ LIST
-  { TList (snd $1) }
-| typ LIST LSQUAR pred_list RSQUAR
-  { TPred(TList(snd $1), $4) }
-| LPAREN typ LIST LSQUAR pred_list RSQUAR RPAREN
-  { TPred(TList(snd $2), $5) }
+id_simple_type:
+| simple_type_core { make_self_id $1 }
+| simple_type_core LSQUAR pred_list RSQUAR { make_self_id (TPred(make_self_id $1, $3)) }
+| id COLON simple_type_core { Id.set_typ $1 $3 }
+| id COLON simple_type_core LSQUAR pred_list RSQUAR
+  {
+    let x = $1 in
+    let typ = $3 in
+    let ps = $5 in
+    let x' = Id.new_var (Id.name x) typ in
+    let ps' = List.map (subst x (make_var (Id.set_typ x' (elim_tpred typ)))) ps in
+      make_self_id (TPred(x', ps'))
+  }
 
 typ:
-| LPAREN typ RPAREN
-  { $2 }
-| id COLON typ_aux
-  {
-    let x = Id.new_var (Id.name $1) $3 in
-    let v =
-      match elim_tpred $3 with
-          TBool -> abst_var_bool
-        | TInt -> abst_var_int
-        | _ -> abst_var
-    in
-    let typ = subst_type $1 (make_var v) $3 in
-      Some (Id.set_typ x typ), typ
-  }
-| typ_aux
-  { None, $1 }
-| typ TIMES typ
-  { None, TPair(snd $1, snd $3) }
+| LPAREN typ RPAREN { $2 }
+| id_simple_type { $1 }
+| typ TIMES typ { make_self_id (TPair(Id.typ $1, Id.typ $3)) }
 | typ ARROW typ
   {
-    let x1,typ1 = $1 in
-    let x2,typ2 = $3 in
-    let x1',typ2' =
-      match x1 with
-          None -> make_id_typ typ1, typ2
-        | Some x1' ->
-            let typ2' = subst_type (orig_id x1') (make_var x1') typ2 in
-              if typ2 = typ2'
-              then make_id_typ typ1, typ2
-              else x1', typ2'
-    in
-      None, TFun(x1', typ2')
+    let x = $1 in
+    let r = $3 in
+    let typ1 = Id.typ x in
+    let typ2 = Id.typ r in
+    let typ2' = subst_type (orig_id x) (make_var (Id.set_typ x (elim_tpred typ1))) typ2 in
+    let typ2'' = subst_type r (make_var (Id.set_typ abst_var (elim_tpred typ2))) typ2' in
+      make_self_id (TFun(x, typ2''))
   }
+| typ LIST
+  { make_self_id (TList(Id.typ $1)) }
 
 pred_list:
   { [] }

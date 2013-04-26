@@ -18,7 +18,7 @@ let rec id___typ = function
   | TList typ -> TList (id___typ typ)
   | TPair(typ1,typ2) -> TPair(id___typ typ1, id___typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TPred(typ,ps) -> TPred(id___typ typ, List.map id__ ps)
+  | TPred(x,ps) -> TPred(id___var x, List.map id__ ps)
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
 
@@ -102,7 +102,7 @@ let rec id2___typ env = function
   | TList typ -> TList (id2___typ env typ)
   | TPair(typ1,typ2) -> TPair(id2___typ env typ1, id2___typ env typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TPred(typ,ps) -> TPred(id2___typ env typ, List.map (id2__ env) ps)
+  | TPred(x,ps) -> TPred(id2___var env x, List.map (id2__ env) ps)
 
 and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
 
@@ -235,7 +235,7 @@ let rec flatten_tvar_typ = function
   | TList typ -> TList(flatten_tvar_typ typ)
   | TPair(typ1,typ2) -> TPair(flatten_tvar_typ typ1, flatten_tvar_typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TPred(typ,ps) -> TPred(flatten_tvar_typ typ, List.map flatten_tvar ps)
+  | TPred(x,ps) -> TPred(flatten_tvar_var x, List.map flatten_tvar ps)
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
 
@@ -312,11 +312,11 @@ let rec inst_tvar_tunit_typ = function
   | TRInt _ -> assert false
   | TVar({contents=None} as r) -> r := Some TUnit; TUnit
   | TVar{contents=Some typ} -> inst_tvar_tunit_typ typ
-  | TFun(x,typ) -> TFun(Id.set_typ x (inst_tvar_tunit_typ (Id.typ x)), inst_tvar_tunit_typ typ)
+  | TFun(x,typ) -> TFun(inst_tvar_tunit_var x, inst_tvar_tunit_typ typ)
   | TList typ -> TList (inst_tvar_tunit_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPair(typ1,typ2) -> TPair(inst_tvar_tunit_typ typ1, inst_tvar_tunit_typ typ2)
-  | TPred(typ,ps) -> TPred(inst_tvar_tunit_typ typ, ps)
+  | TPred(x,ps) -> TPred(inst_tvar_tunit_var x, ps)
 
 and inst_tvar_tunit_var x =
   Id.set_typ x (inst_tvar_tunit_typ (Id.typ x))
@@ -391,11 +391,11 @@ let rec rename_tvar_typ map = function
   | TVar({contents=None} as x) when List.mem_assq x map -> TVar (List.assq x map)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> rename_tvar_typ map typ
-  | TFun(x,typ) -> TFun(Id.set_typ x (rename_tvar_typ map (Id.typ x)), rename_tvar_typ map typ)
+  | TFun(x,typ) -> TFun(rename_tvar_var map x, rename_tvar_typ map typ)
   | TList typ -> TList(rename_tvar_typ map typ)
   | TPair(typ1,typ2) -> TPair(rename_tvar_typ map typ1, rename_tvar_typ map typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TPred(typ,ps) -> TPred(rename_tvar_typ map typ, ps)
+  | TPred(x,ps) -> TPred(rename_tvar_var map x, ps)
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
 
@@ -475,7 +475,7 @@ let rec get_tvars typ =
       | TList typ -> get_tvars typ
       | TPair(typ1,typ2) -> get_tvars typ1 @@@ get_tvars typ2
       | TConstr(s,b) -> []
-      | TPred(typ,_) -> get_tvars typ
+      | TPred(x,_) -> get_tvars (Id.typ x)
 
 
 let rec rename_poly_funs_list f map ts =
@@ -1473,7 +1473,7 @@ let rec replace_typ_aux env t =
               if not (Type.can_unify (Id.typ f) (Id.typ f'))
               then
                 let () = Format.printf "Prog: %a@.Spec: %a@." print_id_typ f print_id_typ f' in
-                let msg = Format.sprintf "Type of %s in spec. is wrong!" (Id.name f) in
+                let msg = Format.sprintf "Type of %s in %s is wrong? (please specify monomorphic types if polymorphic types exist)" (Id.name f) !Flag.spec_file in
                   raise (Fatal msg)
             in
             let xs' =
@@ -2469,7 +2469,7 @@ let rec insert_param_funarg_typ = function
   | TList typ -> TList(insert_param_funarg_typ typ)
   | TPair(typ1,typ2) -> TPair(insert_param_funarg_typ typ1, insert_param_funarg_typ typ2)
   | TConstr(s,b) -> TConstr(s,b)
-  | TPred(typ,ps) -> TPred(insert_param_funarg_typ typ, ps)
+  | TPred(x,ps) -> TPred(insert_param_funarg_var x, ps)
 
 and insert_param_funarg_var x = Id.set_typ x (insert_param_funarg_typ (Id.typ x))
 

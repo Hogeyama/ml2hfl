@@ -94,17 +94,15 @@ let rec remove_pair_typ = function
   | TPair(typ1,typ2) -> Node(remove_pair_typ typ1, remove_pair_typ typ2)
   | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
   | TConstr(s,b) -> Leaf (TConstr(s,b))
-  | TPred(TPair(typ1,typ2),ps) ->
-      let ps' = List.map remove_pair ps in
-        remove_pair_typ (TPair(TPred(typ1,ps'),typ2))
-  | TPred(typ,ps) ->
+  | TPred({Id.typ=TPair _}, ps) -> assert false
+  | TPred(x,ps) ->
       let ps' = List.map remove_pair ps in
       let typ' =
-        match remove_pair_typ typ with
+        match remove_pair_typ (Id.typ x) with
             Leaf typ -> typ
           | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
-        Leaf (TPred(typ', ps'))
+        Leaf (TPred(Id.set_typ x typ', ps'))
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
@@ -160,6 +158,7 @@ and remove_pair_aux t typ_opt =
                 if t1.typ <> TUnit && t1.typ <> TBool && t1.typ <> TInt && t1.typ <> typ_abst
                 then
                   (Format.printf "%a@." pp_print_typ t1.typ;
+                  Format.printf "%a@." pp_print_term' t;
                   raise (Fatal "Unsupported (polymorphic comparison)"))
             | _ -> ()
           end;
@@ -402,7 +401,7 @@ let rec infer_effect_typ typ =
           (match typ2 with TFun _ -> () | _ -> constraints := CGeq(e, ECont) :: !constraints);
           TFunCPS(e, infer_effect_typ typ1, infer_effect_typ typ2)
     | TPair(typ1,typ2) -> TPairCPS(infer_effect_typ typ1, infer_effect_typ typ2)
-    | TPred(typ,ps) -> infer_effect_typ typ
+    | TPred(x,ps) -> infer_effect_typ (Id.typ x)
     | _ -> Format.printf "%a@." print_typ typ; assert false
 
 let new_var x = {id_cps=x; id_typ=infer_effect_typ (Id.typ x)}
@@ -712,7 +711,7 @@ let rec trans_typ typ_orig typ =
           TFun(x, typ2')
     | TPair(typ_orig1,typ_orig2), TPairCPS(typ1,typ2) ->
         TPair(trans_typ typ_orig1 typ1, trans_typ typ_orig2 typ2)
-    | TPred(typ1,ps), typ2 -> TPred(trans_typ typ1 typ2, ps)
+    | TPred(x,ps), typ -> TPred(Id.set_typ x (trans_typ (Id.typ x) typ), ps)
     | _ ->
         Format.printf "%a,%a@." print_typ typ_orig print_typ_cps typ;
         raise (Fatal "bug? (CPS.trans_typ)")

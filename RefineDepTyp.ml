@@ -1674,7 +1674,7 @@ let rec get_sol typ1 typ2 =
     | TInt _, _ -> assert false
     | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
-    | TFun({Id.typ=TInt|TPred(TInt,_)} as x,rtyp1), RTifun(pred, rtyp2) ->
+    | TFun({Id.typ=TInt|TPred({Id.typ=TInt},_)} as x,rtyp1), RTifun(pred, rtyp2) ->
         get_sol rtyp1 (rtyp2 (make_var x))
     | TFun({Id.typ=TRInt p},rtyp1), RTifun(pred, rtyp2) ->
         let Pred(pid, terms) = pred (make_var abst_var_int) in
@@ -1927,7 +1927,7 @@ let rec add_preds_typ sol typ1 typ2 =
 *)
     | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
-    | TFun({Id.typ=TInt|TPred(TInt,_)} as x,rtyp1), RTifun(pred, rtyp2) ->
+    | TFun({Id.typ=TInt|TPred({Id.typ=TInt},_)} as x,rtyp1), RTifun(pred, rtyp2) ->
         let ps = match Id.typ x with TInt -> [] | TPred(_,ps) -> ps | _ -> assert false in
         let Pred(pid, terms) = pred (make_var abst_var_int) in
         let typ =
@@ -1948,13 +1948,13 @@ let rec add_preds_typ sol typ1 typ2 =
               let p' = Trans.merge_geq_leq (Trans.normalize_bool_exp p) in
                 List.fold_left aux ps [p']
             in
-              TPred(TInt, ps)
+              TPred(Id.set_typ x TInt, ps)
           with Not_found -> (*assert false*)
-            TPred(TInt, ps)
+            TPred(Id.set_typ x TInt, ps)
         in
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (make_var x)) in
           TFun(Id.set_typ x typ, rtyp)
-    | TFun({Id.typ=TBool|TPred(TBool,_)} as x,rtyp1), RTbfun(pred, rtyp2) ->
+    | TFun({Id.typ=TBool|TPred({Id.typ=TBool},_)} as x,rtyp1), RTbfun(pred, rtyp2) ->
         let ps = match Id.typ x with TBool -> [] | TPred(_,ps) -> ps | _ -> assert false in
         let Pred(pid, terms) = pred (make_var abst_var_bool) in
         let typ =
@@ -1975,9 +1975,9 @@ let rec add_preds_typ sol typ1 typ2 =
               let p' = Trans.merge_geq_leq (Trans.normalize_bool_exp p) in
                 List.fold_left aux ps [p']
             in
-              TPred(TBool, ps)
+              TPred(Id.set_typ x TBool, ps)
           with Not_found -> (*assert false*)
-            TPred(TBool, ps)
+            TPred(Id.set_typ x TBool, ps)
         in
         let rtyp = add_preds_typ sol rtyp1 (rtyp2 (make_var x)) in
           TFun(Id.set_typ x typ, rtyp)

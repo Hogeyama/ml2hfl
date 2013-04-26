@@ -3,7 +3,7 @@ open Syntax
 open Spec_parser
 }
 
-let space = [' ' '\t' '\n' '\r']
+let space = [' ' '\t' '\r']
 let digit = ['0'-'9']
 let lower = ['a'-'z' '_']
 let upper = ['A'-'Z']
@@ -12,6 +12,9 @@ let symbol = ['(' ')' '*' '?' '|' '+' ',' '!' ';' '.' ':' '#']
 rule token = parse
 | space+
     { token lexbuf }
+| '\n'
+    { Lexing.new_line lexbuf;
+      token lexbuf }
 | "(*"
     { comment lexbuf;
       token lexbuf }
@@ -39,6 +42,7 @@ rule token = parse
 | "->" { ARROW }
 | ';' { SEMI }
 | ':' { COLON }
+| "val" { VAL }
 | digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 (*| lower (digit|lower|upper|'_')* *)
@@ -59,6 +63,9 @@ and comment = parse
     { () }
 | "(*"
     { comment lexbuf;
+      comment lexbuf }
+| '\n'
+    { Lexing.new_line lexbuf;
       comment lexbuf }
 | eof
     { failwith "unterminated comment" }

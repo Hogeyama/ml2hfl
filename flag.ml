@@ -5,6 +5,7 @@ let cvc3 = ref Environment.cvc3
 let cvc3_option = "+interactive"
 
 let filename = ref ""
+let spec_file = ref ""
 
 type mode = Reachability | FileAccess
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
