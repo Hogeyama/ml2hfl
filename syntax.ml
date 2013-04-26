@@ -715,7 +715,7 @@ let make_if_ t1 t2 t3 =
             | false, true -> t3.typ
             | true, true ->
                 if t2.typ <> t3.typ
-                then Format.printf "make_if_ (%a) (%a)@." pp_print_typ t2.typ pp_print_typ t3.typ;
+                then Format.printf "@[<hv 2>Warning: if-branches have different types:@ %a,@ %a@]@." pp_print_typ t2.typ pp_print_typ t3.typ;
                 t2.typ
         in
           {desc=If(t1, t2, t3); typ=typ}
