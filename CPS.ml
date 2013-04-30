@@ -7,7 +7,7 @@ module RT = Ref_type
 let debug = false
 
 let rec element_num = function
-    TPair(typ1,typ2) -> element_num typ1 + element_num typ2
+    TPair(x,typ) -> element_num (Id.typ x) + element_num typ
   | _ -> 1
 
 let rec uncurry_typ rtyp typ =
@@ -35,10 +35,10 @@ and get_arg_var = function
 
 and uncurry_typ_arg rtyps typ =
   match rtyps,typ with
-      _, TPair(typ1,typ2) ->
-        let rtyps1,rtyps2 = take2 rtyps (element_num typ1) in
-        let map1,rtyp1 = uncurry_typ_arg rtyps1 typ1 in
-        let map2,rtyp2 = uncurry_typ_arg rtyps2 typ2 in
+      _, TPair(x,typ) ->
+        let rtyps1,rtyps2 = take2 rtyps (element_num (Id.typ x)) in
+        let map1,rtyp1 = uncurry_typ_arg rtyps1 (Id.typ x) in
+        let map2,rtyp2 = uncurry_typ_arg rtyps2 typ in
         let map1' = List.map (fun (x,f) -> x, fun x' -> make_fst (f x')) map1 in
         let map2' = List.map (fun (x,f) -> x, fun x' -> make_snd (f x')) map1 in
           map1'@@map2', RT.Pair(get_arg_var rtyp1, rtyp1, rtyp2)
@@ -88,13 +88,26 @@ let rec remove_pair_typ = function
   | TVar _ -> assert false
   | TFun _ as typ ->
       let xs,typ' = decomp_tfun typ in
-      let aux x = flatten (remove_pair_var x) in
-      let xs' = List.flatten (List.map aux xs) in
+      let xs' = flatten_map (fun y -> flatten (remove_pair_var y)) xs in
         Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
-  | TPair(typ1,typ2) -> Node(remove_pair_typ typ1, remove_pair_typ typ2)
+  | TPair(x,typ) -> Node(remove_pair_typ (Id.typ x), remove_pair_typ typ)
   | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
   | TConstr(s,b) -> Leaf (TConstr(s,b))
-  | TPred({Id.typ=TPair _}, ps) -> assert false
+  | TPred({Id.typ=TPair(x, typ)} as y, ps) ->
+      begin
+        match typ with (* Function types cannot have predicates *)
+          TFun _ ->
+            let x1 = Id.new_var (Id.name x) (elim_tpred (Id.typ x)) in
+            let x2 = Id.new_var "f" typ in
+            let ps' = List.map (subst y (make_pair (make_var x1) (make_var x2))) ps in
+            let x' = Id.set_typ x (TPred(x1,ps')) in
+              remove_pair_typ (TPair(x', typ))
+        | _ ->
+            let y' = Id.set_typ y typ in
+            let ps' = List.map (subst y (make_pair (make_var x) (make_var y'))) ps in
+            let typ' = TPred(y', ps') in
+              remove_pair_typ (TPair(x, typ'))
+      end
   | TPred(x,ps) ->
       let ps' = List.map remove_pair ps in
       let typ' =
@@ -153,9 +166,10 @@ and remove_pair_aux t typ_opt =
             Leaf (make_let_f flag bindings' t')
       | BinOp(op, t1, t2) ->
           begin
-            match op with
-              Eq | Lt | Gt | Leq | Geq ->
-                if t1.typ <> TUnit && t1.typ <> TBool && t1.typ <> TInt && t1.typ <> typ_abst
+            match op, elim_tpred t1.typ with
+              (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt) -> ()
+            | (Eq | Lt | Gt | Leq | Geq), _ ->
+                if t1.typ <> typ_abst
                 then
                   (Format.printf "%a@." pp_print_typ t1.typ;
                   Format.printf "%a@." pp_print_term' t;
@@ -400,7 +414,7 @@ let rec infer_effect_typ typ =
         let e = new_evar () in
           (match typ2 with TFun _ -> () | _ -> constraints := CGeq(e, ECont) :: !constraints);
           TFunCPS(e, infer_effect_typ typ1, infer_effect_typ typ2)
-    | TPair(typ1,typ2) -> TPairCPS(infer_effect_typ typ1, infer_effect_typ typ2)
+    | TPair(x,typ) -> TPairCPS(infer_effect_typ (Id.typ x), infer_effect_typ typ)
     | TPred(x,ps) -> infer_effect_typ (Id.typ x)
     | _ -> Format.printf "%a@." print_typ typ; assert false
 
@@ -709,8 +723,8 @@ let rec trans_typ typ_orig typ =
         let x = Id.new_var "x" typ1' in
         let typ2' = subst_type x_orig (make_var x) (trans_typ typ typ2) in
           TFun(x, typ2')
-    | TPair(typ_orig1,typ_orig2), TPairCPS(typ1,typ2) ->
-        TPair(trans_typ typ_orig1 typ1, trans_typ typ_orig2 typ2)
+    | TPair(x,typ_orig), TPairCPS(typ1,typ2) ->
+        TPair(Id.set_typ x (trans_typ (Id.typ x) typ1), trans_typ typ_orig typ2)
     | TPred(x,ps), typ -> TPred(Id.set_typ x (trans_typ (Id.typ x) typ), ps)
     | _ ->
         Format.printf "%a,%a@." print_typ typ_orig print_typ_cps typ;

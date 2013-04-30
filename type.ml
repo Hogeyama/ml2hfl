@@ -10,7 +10,7 @@ type 'a t =
   | TVar of 'a t option ref
   | TFun of ('a t Id.t) * 'a t
   | TList of 'a t
-  | TPair of 'a t * 'a t
+  | TPair of ('a t Id.t) * 'a t
   | TConstr of string * bool
   | TPred of ('a t Id.t) * 'a list
 (*| TLabel of 'a t Id.t * 'a t*)
@@ -55,7 +55,7 @@ let rec can_unify typ1 typ2 =
     | TRInt _,TRInt _ -> true
     | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
     | TList typ1, TList typ2 -> can_unify typ1 typ2
-    | TPair(typ11,typ12), TPair(typ21,typ22) -> can_unify typ11 typ21 && can_unify typ12 typ22
+    | TPair(x1,typ1), TPair(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
     | TConstr("event",_), TFun _ -> true
     | TFun _, TConstr("event",_) -> true
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
@@ -87,7 +87,10 @@ let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
           then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print' (Id.typ x) print' typ
           else Format.fprintf fm "(@[%a@ ->@ %a@])" print' (Id.typ x) print' typ
       | TList typ -> Format.fprintf fm "@[%a list@]" print' typ
-      | TPair(typ1,typ2) -> Format.fprintf fm "(@[%a@ *@ %a@])" print' typ1 print' typ2
+      | TPair(x,typ) ->
+          if occur x typ
+          then Format.fprintf fm "(@[%a:%a@ *@ %a@])" Id.print x print' (Id.typ x) print' typ
+          else Format.fprintf fm "(@[%a@ *@ %a@])" print' (Id.typ x) print' typ
       | TConstr(s,_) -> Format.pp_print_string fm s
       | TPred(x,ps) -> Format.fprintf fm "@[%a[\\%a. %a]@]" print' (Id.typ x) Id.print x print_preds ps
 
@@ -111,7 +114,7 @@ let rec occurs r typ =
     | TVar{contents=Some typ} -> assert false
     | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
     | TList typ -> occurs r typ
-    | TPair(typ1,typ2) -> occurs r typ1 || occurs r typ2
+    | TPair(x,typ) -> occurs r (Id.typ x) || occurs r typ
     | TConstr(s,b) -> false
     | TPred(x,_) -> occurs r (Id.typ x)
 
@@ -127,9 +130,9 @@ let rec unify typ1 typ2 =
         unify (Id.typ x1) (Id.typ x2);
         unify typ1 typ2
     | TList typ1, TList typ2 -> unify typ1 typ2
-    | TPair(typ11,typ12), TPair(typ21,typ22) ->
-        unify typ11 typ21;
-        unify typ12 typ22
+    | TPair(x1, typ1), TPair(x2, typ2) ->
+        unify (Id.typ x1) (Id.typ x2);
+        unify typ1 typ2
     | TVar r1, TVar r2 when r1 == r2 -> ()
     | TVar({contents = None} as r), typ
     | typ, TVar({contents = None} as r) ->
@@ -159,7 +162,7 @@ let rec same_shape typ1 typ2 =
     | TVar{contents=Some typ1},TVar{contents=Some typ2} -> same_shape typ1 typ2
     | TFun(x1,typ1),TFun(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
     | TList typ1, TList typ2 -> same_shape typ1 typ2
-    | TPair(typ11,typ12),TPair(typ21,typ22) -> same_shape typ11 typ21 && same_shape typ12 typ22
+    | TPair(x1,typ1),TPair(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
     | _ -> Format.printf "%a,%a@.Type.same_shape" print_typ_init typ1 print_typ_init typ2; assert false
 
@@ -174,7 +177,7 @@ let rec is_poly_typ = function
   | TVar{contents=Some typ} -> is_poly_typ typ
   | TFun(x,typ) -> is_poly_typ (Id.typ x) || is_poly_typ typ
   | TList typ -> is_poly_typ typ
-  | TPair(typ1,typ2) -> is_poly_typ typ1 || is_poly_typ typ2
+  | TPair(x,typ) -> is_poly_typ (Id.typ x) || is_poly_typ typ
   | TConstr _ -> false
   | TPred(x,_) -> is_poly_typ (Id.typ x)
 
@@ -194,7 +197,7 @@ let rec app_typ typ typs =
 
 let fst_typ typ =
   match typ with
-    TPair(typ1, _) -> typ1
+    TPair(x, _) -> Id.typ x
   | _ -> assert false
 
 let snd_typ typ =
@@ -212,7 +215,7 @@ let rec has_pred = function
   | TVar{contents=Some typ} -> has_pred typ
   | TFun(x,typ) -> has_pred (Id.typ x) || has_pred typ
   | TList typ -> has_pred typ
-  | TPair(typ1,typ2) -> has_pred typ1 || has_pred typ2
+  | TPair(x,typ) -> has_pred (Id.typ x) || has_pred typ
   | TConstr _ -> false
   | TPred(x,ps) -> has_pred (Id.typ x) || ps <> []
 
@@ -226,6 +229,6 @@ let rec to_id_string = function
   | TVar{contents=Some typ} -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
   | TList typ -> to_id_string typ ^ "_list"
-  | TPair(typ1,typ2) -> to_id_string typ1 ^ "_x_" ^ to_id_string typ2
+  | TPair(x,typ) -> to_id_string (Id.typ x) ^ "_x_" ^ to_id_string typ
   | TConstr(s,_) -> s
   | TPred(x,_) -> to_id_string (Id.typ x)

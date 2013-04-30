@@ -1,4 +1,4 @@
-init :
+val init :
   i:int ->
   n:int ->
   (j:int[0<=j; j<i] -> r:int[r >= 1]) ->

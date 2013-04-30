@@ -3,11 +3,20 @@ open Type
 open Syntax
 
 let print_error_information () =
-  let st = Parsing.symbol_start_pos () in
+
+  let st =try
+ Parsing.symbol_start_pos ()
+with _ ->
+ Parsing.symbol_start ();
+  assert false
+  in
+(*
   let en = Parsing.symbol_end_pos () in
-  print_string ("File \"" ^ st.Lexing.pos_fname);
-  Format.printf "\", line %d" st.Lexing.pos_lnum;
-  Format.printf ", characters %d-:\n"
+*)
+
+  Format.printf "File \"%s\", line %d, characters %d-:\n"
+    st.Lexing.pos_fname
+    st.Lexing.pos_lnum
     (st.Lexing.pos_cnum - st.Lexing.pos_bol)
 (*    (en.Lexing.pos_cnum - en.Lexing.pos_bol)*)
 
@@ -42,6 +51,7 @@ let orig_id x = {x with Id.id = 0}
 %token OR
 %token AND
 %token NOT
+%token LENGTH
 %token PLUS
 %token MINUS
 %token TIMES
@@ -52,7 +62,7 @@ let orig_id x = {x with Id.id = 0}
 %right ARROW
 %left OR
 %left AND
-%nonassoc NOT
+%nonassoc NOT LENGTH
 %nonassoc EQUAL LTHAN GTHAN LEQ GEQ
 %left PLUS MINUS
 %left LIST
@@ -96,14 +106,10 @@ exp:
   { make_sub $1 $3 }
 | NOT exp
   { make_not $2 }
-| id id /* for length l */
+| id id /* for length */
   {
-    let x =
-      if Id.name $1 = "length"
-      then length_var
-      else $2
-    in
-      make_app (make_var x) [make_var $2]
+    if (Id.name $1 <> "length") then raise Parse_error;
+    make_app (make_var length_var) [make_var $2]
   }
 
 
@@ -143,7 +149,7 @@ simple_type_core:
 id_simple_type:
 | simple_type_core { make_self_id $1 }
 | simple_type_core LSQUAR pred_list RSQUAR { make_self_id (TPred(make_self_id $1, $3)) }
-| id COLON simple_type_core { Id.set_typ $1 $3 }
+| id COLON simple_type_core { Id.new_var (Id.name $1) $3 }
 | id COLON simple_type_core LSQUAR pred_list RSQUAR
   {
     let x = $1 in
@@ -151,13 +157,13 @@ id_simple_type:
     let ps = $5 in
     let x' = Id.new_var (Id.name x) typ in
     let ps' = List.map (subst x (make_var (Id.set_typ x' (elim_tpred typ)))) ps in
-      make_self_id (TPred(x', ps'))
+      Id.new_var (Id.name x) (TPred(x', ps'))
   }
 
 typ:
 | LPAREN typ RPAREN { $2 }
 | id_simple_type { $1 }
-| typ TIMES typ { make_self_id (TPair(Id.typ $1, Id.typ $3)) }
+| typ TIMES typ { make_self_id (TPair($1, Id.typ $3)) }
 | typ ARROW typ
   {
     let x = $1 in

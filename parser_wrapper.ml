@@ -93,7 +93,7 @@ let rec from_type_expr tenv typ =
       | Ttuple (typ::typs) ->
           let aux typ_pair typ =
             let typ' = from_type_expr tenv typ in
-              TPair(typ_pair,typ')
+              TPair(Id.new_var "x" typ_pair,typ')
           in
             List.fold_left aux (from_type_expr tenv typ) typs
       | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs ->
@@ -281,7 +281,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
       | Tpat_tuple(p::ps) ->
           let aux p1 p2 =
             let p2' = from_pattern p2 in
-              {pat_desc=PPair(p1,p2'); pat_typ=TPair(p1.pat_typ,p2'.pat_typ)}
+              {pat_desc=PPair(p1,p2'); pat_typ=TPair(Id.new_var "x" p1.pat_typ, p2'.pat_typ)}
           in
             (List.fold_left aux (from_pattern p) ps).pat_desc
       | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "()" -> PConst {desc=Unit;typ=typ'}

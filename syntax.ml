@@ -143,7 +143,7 @@ let get_fv ?(cmp=Id.compare) t = uniq ~cmp (get_fv [] t)
 
 
 let rec occur (x:id) = function
-TUnit -> false
+    TUnit -> false
   | TBool -> false
   | TAbsBool -> false
   | TInt -> false
@@ -152,7 +152,7 @@ TUnit -> false
   | TVar{contents=Some typ} -> occur x typ
   | TFun(y,typ) -> occur x (Id.typ y) || occur x typ
   | TList typ -> occur x typ
-  | TPair(typ1,typ2) -> occur x typ1 || occur x typ2
+  | TPair(y,typ) -> occur x (Id.typ y) || occur x typ
   | TConstr(s,b) -> false
   | TPred(y,ps) ->
     List.exists (fun p -> List.exists (Id.same x) (get_fv p)) ps || occur x (Id.typ y)
@@ -640,7 +640,8 @@ let rec make_app t ts =
     | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
         assert (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ);
         make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
-    | {typ=TFun(x,typ)}, t2::ts ->
+    | {typ=TFun(x,typ)}, t2::ts
+    | {typ=TPred({Id.typ=TFun(x,typ)},_)}, t2::ts ->
         if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
         then (Format.printf "make_app:@ %a@ <=/=>@ %a,@ %a@."
                 print_typ (Id.typ x)
@@ -650,7 +651,7 @@ let rec make_app t ts =
         make_app {desc=App(t,[t2]); typ=typ} ts
     | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
     | _ ->
-        Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=typ_unknown};
+        Format.printf "Untypable(make_app): %a@." pp_print_term' {desc=App(t,ts);typ=typ_unknown};
         assert false
 let make_lets bindings t2 =
   List.fold_right
@@ -747,7 +748,7 @@ let make_geq t1 t2 =
 let make_fst t =
   let typ =
     match elim_tpred t.typ with
-        TPair(typ,_) -> typ
+        TPair(x,_) -> Id.typ x
       | typ when typ = typ_unknown -> typ_unknown
       | typ -> Format.printf "make_fst: %a@." print_typ typ; assert false
   in
@@ -760,7 +761,7 @@ let make_snd t =
       | typ -> Format.printf "make_snd: %a@." print_typ typ; assert false
   in
     {desc=Snd t; typ=typ}
-let make_pair t1 t2 = {desc=Pair(t1,t2); typ=TPair(t1.typ,t2.typ)}
+let make_pair ?(s="x") t1 t2 = {desc=Pair(t1,t2); typ=TPair(Id.new_var s t1.typ, t2.typ)}
 let make_tuple = function
     [] -> unit_term
   | [t] -> t
@@ -1136,7 +1137,10 @@ and subst_type x t = function
         TFun(y', typ')
   | TList typ -> TList (subst_type x t typ)
   | TConstr(s,b) -> TConstr(s,b)
-  | TPair(typ1,typ2) -> TPair(subst_type x t typ1, subst_type x t typ2)
+  | TPair(y,typ) ->
+      let y' = Id.set_typ y (subst_type x t (Id.typ y)) in
+      let typ' = subst_type x t typ in
+        TPair(y', typ')
 
 
 
@@ -1261,7 +1265,11 @@ let rec merge_typ typ1 typ2 =
         let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
           TFun(x, typ)
     | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
-    | TPair(typ11,typ12), TPair(typ21,typ22) -> TPair(merge_typ typ11 typ21, merge_typ typ12 typ22)
+    | TPair(x1,typ1), TPair(x2,typ2) ->
+        let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
+        let x = Id.new_var (Id.name x1) x_typ in
+        let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
+          TPair(x, typ)
     | _ when typ1 = typ_unknown -> typ2
     | _ when typ2 = typ_unknown -> typ1
     | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
@@ -1315,6 +1323,6 @@ let rec get_typ_default = function
   | TVar _ -> assert false
   | TFun(x,typ) -> make_fun x (get_typ_default typ)
   | TList typ -> make_nil typ
-  | TPair(typ1,typ2) -> make_pair (get_typ_default typ1) (get_typ_default typ2)
+  | TPair(x,typ) -> make_pair ~s:(Id.name x) (get_typ_default (Id.typ x)) (get_typ_default typ)
   | TConstr(s,b) -> assert false
   | TPred _ -> assert false

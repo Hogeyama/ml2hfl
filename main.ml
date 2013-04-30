@@ -77,7 +77,7 @@ let preprocess t spec =
       let t',get_rtyp_remove_pair = CPS.remove_pair t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
+        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
       let t = t' in
       let t' = if !Flag.insert_param_funarg then Trans.insert_param_funarg t else t in
