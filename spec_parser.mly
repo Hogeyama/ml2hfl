@@ -51,7 +51,6 @@ let orig_id x = {x with Id.id = 0}
 %token OR
 %token AND
 %token NOT
-%token LENGTH
 %token PLUS
 %token MINUS
 %token TIMES
@@ -62,11 +61,11 @@ let orig_id x = {x with Id.id = 0}
 %right ARROW
 %left OR
 %left AND
-%nonassoc NOT LENGTH
+%nonassoc NOT
 %nonassoc EQUAL LTHAN GTHAN LEQ GEQ
 %left PLUS MINUS
-%left LIST
 %left TIMES
+%left LIST
 
 
 

@@ -388,3 +388,5 @@ let () =
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
       | VHorn.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."; exit 1
+      | Util.Fatal s ->
+          Format.printf "Fatal error: %s@." s; exit 1
