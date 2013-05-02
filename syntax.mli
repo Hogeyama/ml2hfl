@@ -125,7 +125,7 @@ val make_leq : typed_term -> typed_term -> typed_term
 val make_geq : typed_term -> typed_term -> typed_term
 val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
-val make_pair : typed_term -> typed_term -> typed_term
+val make_pair : ?s:string -> typed_term -> typed_term -> typed_term
 val make_tuple : typed_term list -> typed_term
 val make_nil : typ -> typed_term
 val make_nil2 : typ -> typed_term

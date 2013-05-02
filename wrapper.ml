@@ -17,7 +17,7 @@ and print_id fm x =
   let rec aux = function
       TInt -> Format.fprintf fm "%a_i" Id.print x
     | TBool -> Format.fprintf fm "%a_b" Id.print x
-    | TPred(typ,_) -> aux typ
+    | TPred(y,_) -> aux (Id.typ y)
     | typ -> Format.printf "print_id: %a: %a@." Id.print x pp_print_typ typ; assert false
   in
     aux (Id.typ x)
@@ -58,7 +58,7 @@ and print_term fm t =
         (match t1.desc with Int(_) -> false | _ -> (match t2.desc with Int(_) -> false | _ -> true)) ->
         Format.printf "Nonlinear expression not supported.@.";
           assert false
-    | BinOp(Eq, ({typ=TBool|TPred(TBool,_)} as t1), t2) ->
+    | BinOp(Eq, ({typ=TBool|TPred({Id.typ=TBool},_)} as t1), t2) ->
         Format.fprintf fm "(%a <=> %a)" print_term t1 print_term t2
     | BinOp(op, t1, t2) ->
         Format.fprintf fm "(%a %a %a)" print_term t1 (print_binop t1.typ) op print_term t2
@@ -94,7 +94,7 @@ let rec string_of_typ = function
     TInt -> "INT"
   | TBool -> "BOOLEAN"
   | TVar({contents = Some(typ)}) -> string_of_typ typ
-  | TPred(typ,_) -> string_of_typ typ
+  | TPred(x,_) -> string_of_typ (Id.typ x)
   | typ -> (Format.printf "%a@." print_typ typ; assert false)
 
 let env_of_id x = string_of_ident x ^ ":" ^ string_of_typ (Id.typ x) ^ "; "
@@ -676,10 +676,10 @@ let rec congruent cond typ1 typ2 =
     | TBool, TBool -> true
     | TAbsBool, TAbsBool -> true
     | TInt, TInt -> true
-    | TPred(typ1,ps1), TPred(typ2,ps2) ->
+    | TPred(x1,ps1), TPred(x2,ps2) ->
         List.length ps1 = List.length ps2 &&
         List.for_all2 (equiv cond) ps1 ps2 &&
-        congruent cond typ1 typ2
+        congruent cond (Id.typ x1) (Id.typ x2)
     | TFun(x1,typ1), TFun(x2,typ2) ->
         let cond' =
           match Id.typ x1 with

@@ -17,8 +17,6 @@ let print_info () =
 
 
 
-let spec_file = ref ""
-
 let init () =
   Syntax.typ_excep := Type.TConstr("exn",true)
 
@@ -52,7 +50,7 @@ let preprocess t spec =
       let t',get_rtyp_list = Abstract.abstract_list t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
+        then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let get_rtyp = get_rtyp_list in
       let t' = Trans.inlined_f spec'.Spec.inlined_f t in
@@ -79,7 +77,7 @@ let preprocess t spec =
       let t',get_rtyp_remove_pair = CPS.remove_pair t in
       let () =
         if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term t' in
+        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
       let t = t' in
       let t' = if !Flag.insert_param_funarg then Trans.insert_param_funarg t else t in
@@ -115,14 +113,14 @@ let rec main_loop orig parsed =
     then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' t
   in
   let () =
-    if !Flag.use_spec && !spec_file = ""
+    if !Flag.use_spec && !Flag.spec_file = ""
     then
       try
         let spec = Filename.chop_extension !Flag.filename ^ ".spec" in
-        if Sys.file_exists spec then spec_file := spec
+        if Sys.file_exists spec then Flag.spec_file := spec
       with Invalid_argument "Filename.chop_extension" -> ()
   in
-  let spec = Spec.parse Spec_parser.spec Spec_lexer.token !spec_file in
+  let spec = Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file in
   let () = Spec.print spec in
   let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
   let set_target = t in
@@ -278,22 +276,22 @@ let arg_spec =
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
    (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
-   "-lift-fv", Arg.Unit (fun _ -> Flag.lift_fv_only := true), " Lift variables which occur in a body";
+   "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
    "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
    (* verifier *)
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
-   "-spec", Arg.String (fun file -> spec_file := file), "<filename>  use <filename> as a specification";
-   "-use-spec", Arg.Unit (fun _ -> Flag.use_spec := true), " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
+   "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
+   "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
    (* CEGAR *)
    "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs (each program has only one assertion)";
    "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
    (* relatively complete verification *)
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
    "-disable-rc", Arg.Set Flag.disable_relatively_complete_verification, " Disable relatively complete verification";
-   "-nex", Arg.Int (fun n -> VHorn.Global.number_of_extra_params := n),
+   "-nex", Arg.Set_int VHorn.Global.number_of_extra_params,
           " Number of inserted extra parameters for each functional argument";
-   "-tbit", Arg.Int (fun n -> VHorn.Global.bits_threshold := n),
+   "-tbit", Arg.Set_int VHorn.Global.bits_threshold,
           " Threshold on the number of bits used in the bit-vector modeling";
    "-cc", Arg.Set VHorn.Global.enable_coeff_const,
           " Disable constant terms of extra parameters";
@@ -311,9 +309,9 @@ let arg_spec =
    "-neg-pred-off", Arg.Unit (fun _ -> Flag.use_neg_pred := false; Flag.never_use_neg_pred := true),
                     " Never use negative predicates for abstraction";
    (* higher-order model checking *)
-   "-trecs", Arg.String (fun cmd -> Flag.trecs := cmd),
+   "-trecs", Arg.Set_string Flag.trecs,
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
-   "-ea", Arg.Unit (fun _ -> Flag.print_eval_abst := true), " Print evaluation of abstacted program";
+   "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
    (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
                       " Use an empty set as the initial sets of predicates for booleans";
@@ -335,7 +333,7 @@ let arg_spec =
      VHorn.Global.predicate_discovery := VHorn.Global.GenSolutionSpaceBasedInterpolation;
      VHorn.Global.interp_prover := VHorn.Global.Yint),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
-   "-ieb", Arg.Unit (fun _ -> VHorn.Global.encode_boolean := true),
+   "-ieb", Arg.Set VHorn.Global.encode_boolean,
      " Enable integer encoding of booleans";
    "-yhorn", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.YHorn),
      " Solve Horn clauses by using Yint";
@@ -390,3 +388,5 @@ let () =
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
       | VHorn.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."; exit 1
+      | Util.Fatal s ->
+          Format.printf "Fatal error: %s@." s; exit 1

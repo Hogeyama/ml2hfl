@@ -1,4 +1,4 @@
-array_max :
+val array_max :
   n:int ->
   i:int ->
   (j:int[j <= 0] -> r:int[r >= n - j; r >= n]) ->

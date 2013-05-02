@@ -41,13 +41,13 @@ let rec abst_recdata_typ = function
   | TList typ -> TList (abst_recdata_typ typ)
   | TConstr(s,true) ->
       let typs = TInt :: get_ground_types s in
-      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(typ1,typ2)) (init typs) (last typs) in
-        TPair(TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
+      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(Id.new_var "x" typ1,typ2)) (init typs) (last typs) in
+        TPair(Id.new_var "u" TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
   | TConstr(s,false) -> TInt
-  | TPair(typ1,typ2) -> TPair(abst_recdata_typ typ1, abst_recdata_typ typ2)
-  | TPred(typ,ps) -> TPred(abst_recdata_typ typ, ps)
+  | TPair(x,typ) -> TPair(abst_recdata_var x, abst_recdata_typ typ)
+  | TPred(x,ps) -> TPred(Id.set_typ x (abst_recdata_typ (Id.typ x)), ps)
 
-let abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
+and abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
 let abst_label c = make_int (1 + Type_decl.constr_pos c)
 
@@ -257,7 +257,7 @@ let rec abstract_mutable t =
 
 
 let rec get_rtyp_list rtyp typ =
-  match rtyp, typ with
+  match rtyp, elim_tpred typ with
       RT.Inter rtyps, _ ->
         RT.Inter (List.map (fun rtyp1 -> get_rtyp_list rtyp1 typ) rtyps)
     | RT.Union rtyps, _ ->
@@ -280,9 +280,9 @@ let rec get_rtyp_list rtyp typ =
         let rtyp1' = get_rtyp_list rtyp1 (Id.typ y) in
         let rtyp2' = get_rtyp_list rtyp2 typ2 in
           RT.Fun(x, rtyp1', rtyp2')
-    | RT.Pair(x,rtyp1,rtyp2), TPair(typ1,typ2) ->
-        let rtyp1' = get_rtyp_list rtyp1 typ1 in
-        let rtyp2' = get_rtyp_list rtyp2 typ2 in
+    | RT.Pair(x,rtyp1,rtyp2), TPair(y,typ) ->
+        let rtyp1' = get_rtyp_list rtyp1 (Id.typ y) in
+        let rtyp2' = get_rtyp_list rtyp2 typ in
           RT.Pair(x, rtyp1', rtyp2')
     | RT.ExtArg(x,rtyp1,rtyp2), _ ->
         RT.ExtArg(x, rtyp1, get_rtyp_list rtyp2 typ)
@@ -312,12 +312,12 @@ let rec abst_list_typ = function
   | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
   | TVar{contents=Some typ} -> abst_list_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_list_typ (Id.typ x)), abst_list_typ typ)
-  | TList typ -> TPair(TInt, TFun(Id.new_var "x" TInt, abst_list_typ typ))
+  | TList typ -> TPair(Id.new_var "l" TInt, TFun(Id.new_var "i" TInt, abst_list_typ typ))
   | TConstr(s,b) -> TConstr(s,b)
-  | TPair(typ1,typ2) -> TPair(abst_list_typ typ1, abst_list_typ typ2)
-  | TPred(typ,ps) ->
+  | TPair(x,typ) -> TPair(abst_list_var x, abst_list_typ typ)
+  | TPred(x,ps) ->
       let ps' = List.map (abst_list "") ps in
-        TPred(abst_list_typ typ, ps')
+        TPred(Id.set_typ x (abst_list_typ (Id.typ x)), ps')
 
 and abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -381,6 +381,7 @@ and abst_list post t =
       | RandInt b -> randint_term
       | RandValue(typ,b) -> raise (Fatal "Not implemented (Abstract.abst_list)")
       | Fun(x,t) -> make_fun (abst_list_var x) (abst_list post t)
+      | App({desc=Var x}, [t]) when x = length_var -> make_fst (abst_list post t)
       | App(t, ts) -> make_app (abst_list post t) (List.map (abst_list post) ts)
       | If(t1, t2, t3) -> make_if (abst_list post t1) (abst_list post t2) (abst_list post t3)
       | Branch(t1, t2) -> make_branch (abst_list post t1) (abst_list post t2)
@@ -457,7 +458,7 @@ let rec abst_datatype_typ = function
   | TPair _ -> assert false
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
-  | TPred(typ,ps) -> TPred(abst_datatype_typ typ, ps)
+  | TPred(x,ps) -> TPred(Id.set_typ x (abst_datatype_typ (Id.typ x)), ps)
 
 let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Immutable, t))::fields, i+1) ([],0) ts in

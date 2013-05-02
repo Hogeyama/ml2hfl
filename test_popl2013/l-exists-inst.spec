@@ -1,4 +1,4 @@
-exists :
+val exists :
   len:int[len > 0] ->
   i:int[0 <= i] ->
   j:int[i <= j; j - i < len] ->

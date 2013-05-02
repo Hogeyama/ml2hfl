@@ -14,7 +14,7 @@ let rec check t typ =
   if false then Format.printf "CHECK: %a, %a@." pp_print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
-  match {desc=t.desc; typ=remove_top_pred t.typ} with
+  match {desc=t.desc; typ=elim_tpred t.typ} with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
     | {desc=Int _; typ=(TInt _ | TRInt _)} -> ()
@@ -77,15 +77,23 @@ let rec check t typ =
         check t TBool
     | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event)
     | {desc=Event(_,true); typ=typ'} -> assert (typ' = typ_event_cps)
-    | {desc=Pair(t1,t2); typ=TPair(typ1,typ2)} ->
-        check t1 typ1;
-        check t2 typ2
+    | {desc=Pair(t1,t2); typ=TPair(x,typ)} ->
+        check t1 (Id.typ x);
+        check t2 typ
     | {desc=Fst t; typ=typ} ->
-        let typ1 = match t.typ with TPair(typ1,_) -> typ1 | _ -> assert false in
+        let typ1 =
+          match elim_tpred t.typ with
+            TPair(x,_) -> Id.typ x
+          | _ -> Format.printf "%a@." pp_print_typ t.typ; assert false
+        in
           assert (Type.can_unify typ typ1);
           check t t.typ
     | {desc=Snd t; typ=typ} ->
-        let typ2 = match t.typ with TPair(_,typ2) -> typ2 | _ -> assert false in
+        let typ2 =
+          match elim_tpred t.typ with
+            TPair(_,typ2) -> typ2
+          | _ -> assert false
+        in
           assert (Type.can_unify typ typ2);
           check t t.typ
     | {desc=Record _} -> assert false

@@ -1,2 +1,2 @@
-make_list : x:int -> l:_:int list[length l = x]
-length : l:_:int list -> r:int[length l = r]
+val make_list : x:int -> l:(int list)[length l = x]
+val length : l:(int list) -> r:int[length l = r]
