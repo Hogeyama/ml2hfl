@@ -257,7 +257,7 @@ let rec abstract_mutable t =
 
 
 let rec get_rtyp_list rtyp typ =
-  match rtyp, typ with
+  match rtyp, elim_tpred typ with
       RT.Inter rtyps, _ ->
         RT.Inter (List.map (fun rtyp1 -> get_rtyp_list rtyp1 typ) rtyps)
     | RT.Union rtyps, _ ->

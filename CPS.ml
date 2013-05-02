@@ -6,9 +6,10 @@ module RT = Ref_type
 
 let debug = false
 
-let rec element_num = function
-    TPair(x,typ) -> element_num (Id.typ x) + element_num typ
-  | _ -> 1
+let rec element_num typ =
+  match elim_tpred typ with
+      TPair(x,typ) -> element_num (Id.typ x) + element_num typ
+    | _ -> 1
 
 let rec uncurry_typ rtyp typ =
   if debug then Format.printf "rtyp:%a@.typ:%a@.@."
@@ -34,7 +35,9 @@ and get_arg_var = function
   | _ -> Id.new_var "x" typ_unknown
 
 and uncurry_typ_arg rtyps typ =
-  match rtyps,typ with
+  if debug then Format.printf "rtyps:%a@.typ:%a@.@."
+    (print_list RT.print ";" true) rtyps pp_print_typ typ;
+  match rtyps, elim_tpred typ with
       _, TPair(x,typ) ->
         let rtyps1,rtyps2 = take2 rtyps (element_num (Id.typ x)) in
         let map1,rtyp1 = uncurry_typ_arg rtyps1 (Id.typ x) in
