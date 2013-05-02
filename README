@@ -9,9 +9,9 @@ What do you need?
 - CSI-sat library
 - CVC3 binary
 - TRecS binary
-- Apron library
-- ATP library
-- Z3 library
+- Apron library (required for VHorn)
+- ATP library (required for VHorn)
+- Z3 library (required for YHorn)
 
 
 How to build MoCHi
