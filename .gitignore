@@ -22,4 +22,5 @@ autom4te.cache
 *.cmt
 *.cmti
 *parser.automaton
+*parser.conflict
 *~
