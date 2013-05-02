@@ -57,16 +57,18 @@ else
   AC_SUBST([GMP])
 fi
 
+AC_ARG_VAR(LIB_PATH, [          library search paths (separated by spaces)])
+
 AC_ARG_WITH(csisat_obj,
-   [  --with-csisat-obj=DIR  CSIsat object directory ],
+   [  --with-csisat-obj=DIR   CSIsat object directory ],
    [CSISAT_DIR="$withval"])
 AC_ARG_WITH(csisat_lib,
-   [  --with-csisat-lib=DIR  CSIsat lib directory ], [
+   [  --with-csisat-lib=DIR   CSIsat lib directory ], [
    LDFLAGS="$LDFLAGS -L$withval"
    CSISAT_LIB_DIR="$withval"
   ])
 AC_ARG_WITH(csisat,
-   [  --with-csisat=DIR      CSIsat build directory ], [
+   [  --with-csisat=DIR       CSIsat build directory ], [
    if test -z "$with_csisat_obj" && test -z "$with_csisat_lib" ; then
       CSISAT_DIR="$withval/obj"
       LDFLAGS="$LDFLAGS -L$withval/lib"
@@ -76,7 +78,7 @@ AC_ARG_WITH(csisat,
    fi
   ])
 
-AC_CHECK_OCAML_MODULE(CSISAT,CSIsat,[CsisatAst],[./csisat/obj ../csisat/obj ./csisat-read-only/obj ../csisat-read-only/obj $CSISAT_DIR])
+AC_CHECK_OCAML_MODULE(CSISAT,CSIsat,[CsisatAst],[./csisat/obj ../csisat/obj ./csisat-read-only/obj ../csisat-read-only/obj $CSISAT_DIR $LIB_PATH])
 if test "$CSISAT" = "no"; then
   AC_MSG_ERROR([CSIsat not found])
 fi
@@ -95,23 +97,23 @@ AC_CHECK_LIB(picosat, abort, , [AC_MSG_ERROR(libpicosat not found)])
 AC_CHECK_LIB(camlglpk, free, , [AC_MSG_ERROR(libcamlglpk not found)])
 AC_SUBST(CSISAT_LIB)
 
-AC_CHECK_OCAML_MODULE(ATP,ATP,[Atp_batch],[./atp ../atp ./vhorn/atp ../vhorn/atp ./VHorn/atp ../VHorn/atp])
+AC_CHECK_OCAML_MODULE(ATP,ATP,[Atp_batch],[./atp ../atp ./vhorn/atp ../vhorn/atp ./VHorn/atp ../VHorn/atp $LIB_PATH])
 if test "$ATP" = "no"; then
   AC_MSG_ERROR([ATP not found])
 fi
 
-AC_CHECK_OCAML_MODULE(VHORN,VHorn,[VHorn],[./vhorn ../vhorn ./VHorn ../VHorn])
+AC_CHECK_OCAML_MODULE(VHORN,VHorn,[VHorn],[./vhorn ../vhorn ./VHorn ../VHorn $LIB_PATH])
 if test "$VHORN" = "no"; then
   AC_MSG_ERROR([VHorn not found])
 fi
 
-AC_CHECK_OCAML_MODULE(YHORN,Yhorn,[Yhorn],[./yint ../yint ./Yint ../Yint ./yhorn ../yhorn ./Yhorn ../Yhorn])
+AC_CHECK_OCAML_MODULE(YHORN,Yhorn,[Yhorn],[./yint ../yint ./Yint ../Yint ./yhorn ../yhorn ./Yhorn ../Yhorn $LIB_PATH])
 if test "$YHORN" = "no"; then
   AC_MSG_ERROR([YHorn not found])
 fi
 
 AC_ARG_WITH(ocaml_src,
-   [  --ocaml-src=DIR        OCaml source ],
+   [  --with-ocaml-src=DIR    OCaml source directory],
    [OCAML_SRC="$withval"])
 if test -n "$OCAML_SRC"; then
   AC_CHECK_FILE($OCAML_SRC/configure, [HAVE_OCAML_SRC=1])

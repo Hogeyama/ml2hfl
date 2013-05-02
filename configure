@@ -591,6 +591,7 @@ VHORN
 ATP
 CSISAT_LIB
 CSISAT
+LIB_PATH
 GMP
 OCAML_PKG_gmp
 APRON
@@ -677,7 +678,8 @@ CC
 CFLAGS
 LDFLAGS
 LIBS
-CPPFLAGS'
+CPPFLAGS
+LIB_PATH'
 
 
 # Initialize some variables set by options.
@@ -1286,10 +1288,10 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-csisat-obj=DIR  CSIsat object directory
-  --with-csisat-lib=DIR  CSIsat lib directory
-  --with-csisat=DIR      CSIsat build directory
-  --ocaml-src=DIR        OCaml source
+  --with-csisat-obj=DIR   CSIsat object directory
+  --with-csisat-lib=DIR   CSIsat lib directory
+  --with-csisat=DIR       CSIsat build directory
+  --with-ocaml-src=DIR    OCaml source directory
 
 Some influential environment variables:
   CC          C compiler command
@@ -1299,6 +1301,7 @@ Some influential environment variables:
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
+  LIB_PATH    library search paths (separated by spaces)
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -4130,6 +4133,8 @@ else
 fi
 
 
+
+
 # Check whether --with-csisat_obj was given.
 if test "${with_csisat_obj+set}" = set; then :
   withval=$with_csisat_obj; CSISAT_DIR="$withval"
@@ -4169,7 +4174,7 @@ $as_echo_n "checking for OCaml module CSIsat... " >&6; }
 open CsisatAst
 EOF
   unset found
-  for CSISAT in $CSISAT ./csisat/obj ../csisat/obj ./csisat-read-only/obj ../csisat-read-only/obj $CSISAT_DIR ; do
+  for CSISAT in $CSISAT ./csisat/obj ../csisat/obj ./csisat-read-only/obj ../csisat-read-only/obj $CSISAT_DIR $LIB_PATH ; do
     if $OCAMLC -c -I "$CSISAT" conftest.ml >&5 2>&5 ; then
       found=yes
       break
@@ -4350,7 +4355,7 @@ $as_echo_n "checking for OCaml module ATP... " >&6; }
 open Atp_batch
 EOF
   unset found
-  for ATP in $ATP ./atp ../atp ./vhorn/atp ../vhorn/atp ./VHorn/atp ../VHorn/atp ; do
+  for ATP in $ATP ./atp ../atp ./vhorn/atp ../vhorn/atp ./VHorn/atp ../VHorn/atp $LIB_PATH ; do
     if $OCAMLC -c -I "$ATP" conftest.ml >&5 2>&5 ; then
       found=yes
       break
@@ -4378,7 +4383,7 @@ $as_echo_n "checking for OCaml module VHorn... " >&6; }
 open VHorn
 EOF
   unset found
-  for VHORN in $VHORN ./vhorn ../vhorn ./VHorn ../VHorn ; do
+  for VHORN in $VHORN ./vhorn ../vhorn ./VHorn ../VHorn $LIB_PATH ; do
     if $OCAMLC -c -I "$VHORN" conftest.ml >&5 2>&5 ; then
       found=yes
       break
@@ -4406,7 +4411,7 @@ $as_echo_n "checking for OCaml module Yhorn... " >&6; }
 open Yhorn
 EOF
   unset found
-  for YHORN in $YHORN ./yint ../yint ./Yint ../Yint ./yhorn ../yhorn ./Yhorn ../Yhorn ; do
+  for YHORN in $YHORN ./yint ../yint ./Yint ../Yint ./yhorn ../yhorn ./Yhorn ../Yhorn $LIB_PATH ; do
     if $OCAMLC -c -I "$YHORN" conftest.ml >&5 2>&5 ; then
       found=yes
       break
@@ -4509,17 +4514,17 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml source version" >&5
 $as_echo_n "checking for OCaml source version... " >&6; }
 if test ! -e "$OCAML_SRC/VERSION"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: fail" >&5
-$as_echo "fail" >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
   as_fn_error $? "OCaml VERSION file not found" "$LINENO" 5
 fi
 if test "`head -1 $OCAML_SRC/VERSION`" != "3.12.1"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: fail" >&5
-$as_echo "fail" >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
   as_fn_error $? "OCaml 3.12.1 is required" "$LINENO" 5
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: found" >&5
-$as_echo "found" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
 
 
 if test -n "$ac_tool_prefix"; then
