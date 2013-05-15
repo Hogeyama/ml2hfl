@@ -363,6 +363,8 @@ let () =
       in
         Wrapper.open_cvc3 ();
         Wrapper2.open_cvc3 ();
+        VHorn.Cvc3Interface.init ();
+        VHorn.AtpInterface.init ();
         VHorn.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
