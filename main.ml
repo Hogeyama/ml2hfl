@@ -1,13 +1,10 @@
-
-open Util
-
 exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
 
 let print_info () =
   Format.printf "cycles: %d\n" !Flag.cegar_loop;
-  Format.printf "total: %.3f sec\n" (get_time());
+  Format.printf "total: %.3f sec\n" (Util.get_time());
   Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
   Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
@@ -98,7 +95,7 @@ let preprocess t spec =
       let aux x =
         try [List.assoc (CEGAR_util.trans_var x) map] with Not_found -> []
       in
-        rev_flatten_map aux fun_list
+        Util.rev_flatten_map aux fun_list
     in
     let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
       {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
@@ -165,11 +162,11 @@ let rec main_loop orig parsed =
                     else
                       if !Flag.relative_complete then
                         let _ = Flag.web := true in
-                        let res = rev_map_flatten aux env in
+                        let res = Util.rev_map_flatten aux env in
                         let _ = Flag.web := false in
                         res
                       else
-                        rev_map_flatten aux env
+                        Util.rev_map_flatten aux env
                   in
                   let () =
                     if !Flag.write_annot
@@ -209,7 +206,7 @@ let rec main_loop orig parsed =
                 if main_fun <> "" && arg_num <> 0
                 then
                   Format.printf "Input for %s:@.  %a@." main_fun
-                    (print_list Format.pp_print_int "; " false) (take ce arg_num);
+                    (Util.print_list Format.pp_print_int "; " false) (Util.take ce arg_num);
                 Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target);
                 false
           with
@@ -234,7 +231,7 @@ let rec main_loop orig parsed =
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
-    let n = my_input in_channel s 0 Flag.max_input_size in
+    let n = Util.my_input in_channel s 0 Flag.max_input_size in
       if n = Flag.max_input_size then raise LongInput;
       String.sub s 0 n
   in
@@ -323,23 +320,48 @@ let arg_spec =
           " Use refinement type based predicate discovery (obsolete)";
    "-eap", Arg.Set VHorn.Global.extract_atomic_predicates, " Extract atomic predicates";
    "-mp", Arg.Set VHorn.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
-   "-gi", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenInterpolation),
+   (* Horn clause solver *)
+   "-gi",
+     Arg.Unit (fun _ ->
+       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
+       VHorn.InterpProver.ext_gen_interpolate := VHorn.ApronInterface.convex_hull_interpolate_fresh false),
      " Generalize constraints of multiple function calls by interpolation";
-   "-gchi", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenConvexHullInterpolation),
+   "-gchi",
+     Arg.Unit (fun _ ->
+       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
+       VHorn.InterpProver.ext_gen_interpolate := VHorn.ApronInterface.convex_hull_interpolate_fresh true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
-   "-gtcs", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.GenTemplateBasedConstraintSolving),
+   "-gtcs",
+     Arg.Unit (fun _ ->
+       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
+       VHorn.InterpProver.ext_gen_interpolate := VHorn.InterpProver.template_based_constraint_solving_interpolate_fresh),
      " Generalize constraints of multiple function calls by template-based constraint solving";
-   "-gssi", Arg.Unit (fun _ ->
-     VHorn.Global.predicate_discovery := VHorn.Global.GenSolutionSpaceBasedInterpolation;
-     VHorn.Global.interp_prover := VHorn.Global.Yint),
+   "-gssi",
+     Arg.Unit (fun _ ->
+       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
+       VHorn.InterpProver.ext_gen_interpolate := VHorn.YintInterface.solution_space_based_interpolate_fresh;
+       VHorn.InterpProver.ext_interpolate := VHorn.YintInterface.interpolate_fresh),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
+   "-yhorn",
+     Arg.Unit (fun _ ->
+       VHorn.HcSolver.ext_solve := VHorn.YhornInterface.solve),
+     " Solve Horn clauses by using Yint";
+
    "-ieb", Arg.Set VHorn.Global.encode_boolean,
      " Enable integer encoding of booleans";
-   "-yhorn", Arg.Unit (fun _ -> VHorn.Global.predicate_discovery := VHorn.Global.YHorn),
-     " Solve Horn clauses by using Yint";
    (* interpolating prover *)
-   "-yint", Arg.Unit (fun _ -> VHorn.Global.interp_prover := VHorn.Global.Yint),
-          " Use Yint interpolating prover";
+   "-csisat",
+     Arg.Unit (fun _ ->
+       VHorn.InterpProver.ext_interpolate := VHorn.CsisatInterface.interpolate_fresh),
+     " Use CSIsat interpolating prover";
+   "-gcsisat",
+     Arg.Unit (fun _ ->
+       VHorn.InterpProver.ext_interpolate := VHorn.CsisatInterface.generalize_interpolate_fresh),
+     " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
+   "-yint",
+     Arg.Unit (fun _ ->
+       VHorn.InterpProver.ext_interpolate := VHorn.YintInterface.interpolate_fresh),
+     " Use Yint interpolating prover";
   ]
 
 
@@ -353,6 +375,10 @@ let () =
         then (Arg.usage arg_spec usage; exit 1);
         Flag.filename := name
       in
+      (* default interpolating prover *)
+      VHorn.InterpProver.ext_interpolate := VHorn.CsisatInterface.interpolate_fresh;
+      (* default Horn clause solver *)
+      VHorn.HcSolver.ext_solve := VHorn.HcBwSolver.solve;
       let () = Arg.parse arg_spec set_file usage in
       let () = VHorn.Global.print_log := !Flag.debug_level <> 0 in
       let () = VHorn.Global.cvc3 := !Flag.cvc3 in
