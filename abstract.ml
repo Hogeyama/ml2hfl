@@ -292,7 +292,9 @@ let rec get_rtyp_list rtyp typ =
 
 let get_rtyp_list_of typed f rtyp =
   let typ = Trans.assoc_typ f typed in
-    get_rtyp_list rtyp typ
+  let rtyp' = get_rtyp_list rtyp typ in
+  if Flag.print_ref_typ then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  rtyp'
 
 
 let make_tl n t =

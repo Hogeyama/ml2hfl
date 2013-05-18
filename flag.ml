@@ -86,6 +86,7 @@ let print_refine_log = true
 let print_eval_abst = ref false
 let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
+let print_ref_typ = false
 
 let web = ref false
 

@@ -45,6 +45,13 @@ let rec cegar1 prog0 ces info =
   let result = ModelCheck.check abst prog in
     match result with
         ModelCheck.Safe env ->
+          if Flag.print_ref_typ
+          then
+            begin
+              Format.printf "Intersection types:@.";
+              List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f Inter_type.print typ) env;
+              Format.printf "@."
+            end;
           let aux (x,ityp) =
             try
               [x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp]

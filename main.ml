@@ -148,6 +148,13 @@ let rec main_loop orig parsed =
           try
             match CEGAR.cegar prog info with
                 prog', CEGAR.Safe env ->
+                  if Flag.print_ref_typ
+                  then
+                    begin
+                      Format.printf "Refinement types:@.";
+                      List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f CEGAR_ref_type.print typ) env;
+                      Format.printf "@."
+                    end;
                   let env' =
                     let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
                       try

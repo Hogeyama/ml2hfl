@@ -861,7 +861,10 @@ let get_rtyp_lift t f rtyp =
   in
     aux rtyp (assoc_typ f t)
 
-
+let get_rtyp_lift t f rtyp =
+  let rtyp' = get_rtyp_lift t f rtyp in
+  if Flag.print_ref_typ then Format.printf "LIFT: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  rtyp'
 
 let filter_base = List.filter (fun x -> is_base_typ (Id.typ x))
 

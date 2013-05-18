@@ -54,7 +54,8 @@ let uncurry_rtyp t f rtyp =
   let rtyp' = uncurry_typ rtyp typ in
     if debug then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
       Id.print f RT.print rtyp pp_print_typ typ RT.print rtyp';
-    rtyp'
+  if Flag.print_ref_typ then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  rtyp'
 
 type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
 
@@ -1235,7 +1236,9 @@ let get_rtyp_of typed f rtyp =
   let etyp = assoc_typ_cps f typed in
   if debug then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
     Id.print f RT.print rtyp print_typ_cps etyp;
-    uncps_ref_type rtyp ENone etyp
+  let rtyp' = uncps_ref_type rtyp ENone etyp in
+  if Flag.print_ref_typ then Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  rtyp'
 
 
 
