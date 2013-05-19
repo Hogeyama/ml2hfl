@@ -2,7 +2,7 @@ include Makefile.config
 
 .PHONY: main all byte opt clean doc test
 
-PACKAGES = fpat,yhorn,str,unix,csisat
+PACKAGES = fpat,str,unix,csisat
 
 INCLUDES = \
 	-I $(CSISAT) \
