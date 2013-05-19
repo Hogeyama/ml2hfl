@@ -58,9 +58,9 @@ let preprocess t spec =
       (*let t =
         if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
           let t = Trans.lift_fst_snd t in
-          let t = VhornInterface.insert_extra_param t in (* THERE IS A BUG *)
+          let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
             if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-              (List.length !VhornInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+              (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
             t
         else
           t
@@ -131,9 +131,9 @@ let rec main_loop orig parsed =
   let t0 =
     if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
       let t = Trans.lift_fst_snd t in
-      let t = VhornInterface.insert_extra_param t in (* THERE IS A BUG *)
+      let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
         if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-          (List.length !VhornInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+          (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
         t
     else
       t
@@ -142,7 +142,7 @@ let rec main_loop orig parsed =
   let prog, rmap, get_rtyp, info = preprocess t0 spec in
     match !Flag.cegar with
         Flag.CEGAR_InteractionType ->
-          VhornInterface.verify [] prog;
+          FpatInterface.verify [] prog;
           assert false;
       | Flag.CEGAR_DependentType ->
           try
@@ -187,11 +187,11 @@ let rec main_loop orig parsed =
                       let map =
                         List.map
                           (fun (x, n) ->
-                            Id.make (-1) (VHorn.Var.string_of x) Type.TInt,
+                            Id.make (-1) (Fpat.Var.string_of x) Type.TInt,
                             CEGAR_util.trans_inv_term
-                              (VhornInterface.inv_term
-                                (VHorn.IntTerm.make n)))
-                          !VHorn.ParamSubstInfer.ext_coeffs
+                              (FpatInterface.inv_term
+                                (Fpat.IntTerm.make n)))
+                          !Fpat.ParamSubstInfer.ext_coeffs
                       in
                       let t = Syntax.subst_map map t0 in
                       Format.printf "Program with Quantifiers Added:@.";
@@ -201,7 +201,7 @@ let rec main_loop orig parsed =
                     end
                   in
                   if env' <> [] then Format.printf "Refinement Types:@.";
-                  let env' = List.map (fun (f, typ) -> f, VhornInterface.simplify typ) env' in
+                  let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
                   let pr (f,typ) =
                     Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ
                   in
@@ -217,21 +217,21 @@ let rec main_loop orig parsed =
                 Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target);
                 false
           with
-              VHorn.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
+              Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
                 main_loop orig parsed
-            | VHorn.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+            | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
                 Format.printf "@.REFINEMENT FAILED!@.";
                 Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
                 main_loop orig parsed
-            | VHorn.AbsTypeInfer.FailedToRefineTypes ->
-                raise VHorn.AbsTypeInfer.FailedToRefineTypes
-            | VHorn.ParamSubstInfer.FailedToRefineExtraParameters ->
-                VhornInterface.params := [];
-                VHorn.ParamSubstInfer.ext_coeffs := [];
-                VHorn.ParamSubstInfer.ext_constrs := [];
-                incr VHorn.Global.number_of_extra_params;
+            | Fpat.AbsTypeInfer.FailedToRefineTypes ->
+                raise Fpat.AbsTypeInfer.FailedToRefineTypes
+            | Fpat.ParamSubstInfer.FailedToRefineExtraParameters ->
+                FpatInterface.params := [];
+                Fpat.ParamSubstInfer.ext_coeffs := [];
+                Fpat.ParamSubstInfer.ext_constrs := [];
+                incr Fpat.Global.number_of_extra_params;
                 main_loop orig parsed
 
 
@@ -293,15 +293,15 @@ let arg_spec =
    (* relatively complete verification *)
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
    "-disable-rc", Arg.Set Flag.disable_relatively_complete_verification, " Disable relatively complete verification";
-   "-nex", Arg.Set_int VHorn.Global.number_of_extra_params,
+   "-nex", Arg.Set_int Fpat.Global.number_of_extra_params,
           " Number of inserted extra parameters for each functional argument";
-   "-tbit", Arg.Set_int VHorn.Global.bits_threshold,
+   "-tbit", Arg.Set_int Fpat.Global.bits_threshold,
           " Threshold on the number of bits used in the bit-vector modeling";
-   "-cc", Arg.Set VHorn.Global.enable_coeff_const,
+   "-cc", Arg.Set Fpat.Global.enable_coeff_const,
           " Disable constant terms of extra parameters";
-   "-aec", Arg.Set VHorn.Global.accumulate_ext_constrs,
+   "-aec", Arg.Set Fpat.Global.accumulate_ext_constrs,
           " Accumulate constraints on the coefficients of extra parameters";
-   "-dph", Arg.Set VHorn.Global.disable_parameter_inference_heuristics,
+   "-dph", Arg.Set Fpat.Global.disable_parameter_inference_heuristics,
           " Disable heuristics of instantiation parameter inference";
    (* predicate abstraction *)
    "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
@@ -325,49 +325,49 @@ let arg_spec =
           "<num>  Use refinement type based predicate discovery";
    "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
           " Use refinement type based predicate discovery (obsolete)";
-   "-eap", Arg.Set VHorn.Global.extract_atomic_predicates, " Extract atomic predicates";
-   "-mp", Arg.Set VHorn.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
+   "-eap", Arg.Set Fpat.Global.extract_atomic_predicates, " Extract atomic predicates";
+   "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* Horn clause solver *)
    "-gi",
      Arg.Unit (fun _ ->
-       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
-       VHorn.InterpProver.ext_gen_interpolate := VHorn.ApronInterface.convex_hull_interpolate_fresh false),
+       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
+       Fpat.InterpProver.ext_gen_interpolate := Fpat.ApronInterface.convex_hull_interpolate_fresh false),
      " Generalize constraints of multiple function calls by interpolation";
    "-gchi",
      Arg.Unit (fun _ ->
-       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
-       VHorn.InterpProver.ext_gen_interpolate := VHorn.ApronInterface.convex_hull_interpolate_fresh true),
+       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
+       Fpat.InterpProver.ext_gen_interpolate := Fpat.ApronInterface.convex_hull_interpolate_fresh true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtcs",
      Arg.Unit (fun _ ->
-       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
-       VHorn.InterpProver.ext_gen_interpolate := VHorn.InterpProver.template_based_constraint_solving_interpolate_fresh),
+       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
+       Fpat.InterpProver.ext_gen_interpolate := Fpat.InterpProver.template_based_constraint_solving_interpolate_fresh),
      " Generalize constraints of multiple function calls by template-based constraint solving";
    "-gssi",
      Arg.Unit (fun _ ->
-       VHorn.HcSolver.ext_solve := VHorn.HcGenSolver.solve;
-       VHorn.InterpProver.ext_gen_interpolate := VHorn.YintInterface.solution_space_based_interpolate_fresh;
-       VHorn.InterpProver.ext_interpolate := VHorn.YintInterface.interpolate_fresh),
+       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
+       Fpat.InterpProver.ext_gen_interpolate := Fpat.YintInterface.solution_space_based_interpolate_fresh;
+       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate_fresh),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
    "-yhorn",
      Arg.Unit (fun _ ->
-       VHorn.HcSolver.ext_solve := VHorn.YhornInterface.solve),
+       Fpat.HcSolver.ext_solve := Fpat.YhornInterface.solve),
      " Solve Horn clauses by using Yint";
 
-   "-ieb", Arg.Set VHorn.Global.encode_boolean,
+   "-ieb", Arg.Set Fpat.Global.encode_boolean,
      " Enable integer encoding of booleans";
    (* interpolating prover *)
    "-csisat",
      Arg.Unit (fun _ ->
-       VHorn.InterpProver.ext_interpolate := VHorn.CsisatInterface.interpolate_fresh),
+       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate_fresh),
      " Use CSIsat interpolating prover";
    "-gcsisat",
      Arg.Unit (fun _ ->
-       VHorn.InterpProver.ext_interpolate := VHorn.CsisatInterface.generalize_interpolate_fresh),
+       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.generalize_interpolate_fresh),
      " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
    "-yint",
      Arg.Unit (fun _ ->
-       VHorn.InterpProver.ext_interpolate := VHorn.YintInterface.interpolate_fresh),
+       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate_fresh),
      " Use Yint interpolating prover";
   ]
 
@@ -383,12 +383,12 @@ let () =
         Flag.filename := name
       in
       (* default interpolating prover *)
-      VHorn.InterpProver.ext_interpolate := VHorn.CsisatInterface.interpolate_fresh;
+      Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate_fresh;
       (* default Horn clause solver *)
-      VHorn.HcSolver.ext_solve := VHorn.HcBwSolver.solve;
+      Fpat.HcSolver.ext_solve := Fpat.HcBwSolver.solve;
       let () = Arg.parse arg_spec set_file usage in
-      let () = VHorn.Global.print_log := !Flag.debug_level <> 0 in
-      let () = VHorn.Global.cvc3 := !Flag.cvc3 in
+      let () = Fpat.Global.print_log := !Flag.debug_level <> 0 in
+      let () = Fpat.Global.cvc3 := !Flag.cvc3 in
       let cin =
         match !Flag.filename with
             "" | "-" -> Flag.filename := "stdin"; stdin
@@ -396,13 +396,13 @@ let () =
       in
         Wrapper.open_cvc3 ();
         Wrapper2.open_cvc3 ();
-        VHorn.Cvc3Interface.init ();
-        VHorn.AtpInterface.init ();
-        VHorn.Cvc3Interface.open_cvc3 ();
+        Fpat.Cvc3Interface.init ();
+        Fpat.AtpInterface.init ();
+        Fpat.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
         if main cin then decr Flag.cegar_loop;
-        VHorn.Cvc3Interface.close_cvc3 ();
+        Fpat.Cvc3Interface.close_cvc3 ();
         Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
         print_info ()
@@ -421,7 +421,7 @@ let () =
       | LongInput -> Format.printf "Input is too long@."; exit 1
       | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
-      | VHorn.AbsTypeInfer.FailedToRefineTypes ->
+      | Fpat.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."; exit 1
       | Util.Fatal s ->
           Format.printf "Fatal error: %s@." s; exit 1

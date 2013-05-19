@@ -1,16 +1,11 @@
 include Makefile.config
 
-.PHONY: main all byte opt lib csisat atp clean doc test
+.PHONY: main all byte opt clean doc test
 
-CSISAT_LIBS = -lcamlpico -lpicosat -lcamlglpk -lglpk
+PACKAGES = fpat,yhorn,str,unix,csisat
 
-INCLUDES = -I $(OCAML_LIB) \
-	-I $(Z3) \
-	-I $(GMP) \
-	-I $(ATP) \
-	-I $(APRON) \
+INCLUDES = \
 	-I $(CSISAT) \
-	-I $(CSISAT_LIB) \
 	-I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/driver \
 	-I $(OCAML_SOURCE)/parsing \
@@ -18,14 +13,12 @@ INCLUDES = -I $(OCAML_LIB) \
 	-I $(OCAML_SOURCE)/utils \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
 	-I $(OCAML_SOURCE)/otherlibs/str \
-	-I $(OCAML_SOURCE)/otherlibs/bigarray \
-	-I $(OCAMLGRAPH) \
-	-I $(YHORN) \
-	-I $(VHORN)
-OCAMLFLAGS = -g -annot $(INCLUDES) -custom -cclib '$(CSISAT_LIBS)' -nostdlib -w -14
-OCAMLOPTFLAGS = -annot $(INCLUDES) -cclib '$(CSISAT_LIBS)' -w -14
+	-I $(OCAML_SOURCE)/otherlibs/bigarray
 
-DEPEND += spec_parser.ml spec_lexer.ml trecs_parser.ml trecs_lexer.ml $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
+OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -w -14
+OCAMLOPTFLAGS = -annot $(INCLUDES) -package $(PACKAGES) -w -14
+
+DEPEND += $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 
 DOC = doc
 
@@ -35,28 +28,27 @@ DOC = doc
 NAME = mochi
 
 main: opt
-all: lib depend main
+all: depend byte opt
 
 byte: $(NAME).byte
 opt: $(NAME).opt
-lib: ocaml csisat trecs atp vhorn yhorn
 
 
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli automata.mli feasibility.mli refine.mli syntax.mli \
+MLI = CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
 	wrapper.mli wrapper2.mli CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
 	spec_parser.mli trecs_parser.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
-	environment.cmo flag.cmo util.cmo id.cmo type.cmo automata.cmo \
+	environment.cmo flag.cmo util.cmo id.cmo type.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	wrapper.cmo wrapper2.cmo \
 	ref_type.cmo type_check.cmo trans.cmo CEGAR_ref_type.cmo CEGAR_util.cmo \
-	useless_elim.cmo inter_type.cmo type_trans.cmo vhornInterface.cmo \
+	useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
@@ -67,7 +59,7 @@ CMO = $(OCAML_CMO) \
 	writeAnnot.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = str.cma unix.cma libcsisat.cma bigarray.cma nums.cma z3.cma graph.cma $(YHORN)/yhorn.cma gmp.cma apron.cma polkaMPQ.cma atp_batch.cma vHorn.cma
+CMA =
 CMXA = $(CMA:.cma=.cmxa)
 
 
@@ -91,10 +83,10 @@ OCAML_CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 
 
 $(NAME).byte: $(CMO) $(CMI)
-	$(OCAMLC) $(OCAMLFLAGS) -o $@ $(CMA) $(CMO)
+	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -linkpkg -o $@ $(CMO)
 
 $(NAME).opt: $(CMX) $(CMI)
-	$(OCAMLOPT) $(OCAMLOPTFLAGS) -o $@ $(CMXA) $(CMX)
+	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -linkpkg -o $@ $(CMXA) $(CMX)
 
 
 spec_parser.ml spec_parser.mli: spec_parser.mly
@@ -109,22 +101,22 @@ trecs_lexer.ml: trecs_lexer.mll
 
 
 # Dependencies
-DEP_VHORN = CEGAR CEGAR_syntax main refine syntax trans vhornInterface writeAnnot
-$(addsuffix .cmo,$(DEP_VHORN)): $(VHORN)/vHorn.cmi
-$(addsuffix .cmx,$(DEP_VHORN)): $(VHORN)/vHorn.cmi
+DEP_FPAT = CEGAR CEGAR_syntax main refine syntax trans fpatInterface writeAnnot
+$(addsuffix .cmo,$(DEP_FPAT)): $(FPAT)/fpat.cmi
+$(addsuffix .cmx,$(DEP_FPAT)): $(FPAT)/fpat.cmi
 
 
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
 .ml.cmo:
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
+	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -c $<
 
 .mli.cmi:
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
+	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -c $<
 
 .ml.cmx:
-	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $<
+	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -c $<
 
 
 
@@ -150,19 +142,6 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 	sed -n -e '/^enum/p' -e 's/,//g' -e '/^  /p' byterun/instruct.h | \
 	awk -f tools/make-opcodes > bytecomp/opcodes.ml
 
-#csisat:
-#	cd $(CSISAT) && make all GLPK="-cclib '-lglpk'"
-#
-#atp:
-#	-patch -d atp -N < atp_patch
-#	cd $(ATP) && make compiled bytecode
-#
-#vhorn:
-#	cd $(VHORN) && make all
-#
-#yhorn:
-#	cd $(YHORN) && make all
-
 
 ################################################################################
 # distribution
@@ -176,7 +155,7 @@ dist:
 
 doc:
 	mkdir -p $(DOC)
-	ocamldoc -html -d $(DOC) $(MLI)
+	$(OCAMLFIND) ocamldoc -html -d $(DOC) $(MLI)
 	perl -pi -e 's/charset=iso-8859-1/charset=utf8/' $(DOC)/*.html
 
 
@@ -214,10 +193,10 @@ test: opt
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-SRC_MOCHI = $(filter-out $(ATP)%, $(filter-out $(OCAML_SOURCE)%, $(SRC)))
+SRC_MOCHI = $(filter-out $(OCAML_SOURCE)%, $(SRC))
 
-depend:: $(DEPEND)
-	$(OCAMLDEP) $(MLI) $(SRC_MOCHI) > depend
+depend:: $(SRC_MOCHI) $(DEPEND)
+	$(OCAMLFIND) ocamldep $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
 -include ocaml.depend

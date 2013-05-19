@@ -2104,8 +2104,8 @@ let rec inlined_f inlined fs t =
                  let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
                  let ts = List.map (inlined_f inlined fs) ts in
                  let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | Var _ -> `L(t) | _ -> `R(Id.new_var ("arg" ^ gen_id ()) t.typ)) ts in
-                 let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else VHorn.Util.List.split_nth (List.length xs) ys in
-                 let xs1, xs2 = VHorn.Util.List.split_nth (List.length ys1) xs in
+                 let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else Fpat.Util.List.split_nth (List.length xs) ys in
+                 let xs1, xs2 = Fpat.Util.List.split_nth (List.length ys1) xs in
                  let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
                  let t' = subst_map map t in
                  let f, _ =
@@ -2114,7 +2114,7 @@ let rec inlined_f inlined fs t =
                      ((fun t -> t), Type.app_typ t1.typ (List.map (fun t -> t.typ) ts))
                      xs2
                  in
-                 let bindings = VHorn.Util.List.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, [], t)) ys ts in
+                 let bindings = Fpat.Util.List.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, [], t)) ys ts in
                    (make_lets bindings (make_app (f t') (List.map (fun y -> match y with `L(t) -> t | `R(y) -> make_var y) ys2))).desc
              | _ ->
                  let t1' = inlined_f inlined fs t1 in
@@ -2136,7 +2136,7 @@ let rec inlined_f inlined fs t =
                 if List.exists (fun f' -> Id.same f' f) inlined then
                   let t' = inlined_f inlined fs t in
                   let xs', t' = lift t' in
-                    (*let _ = Format.printf "inlined: %a, %a, %a@." print_id f (VHorn.Util.List.pr print_id ",") xs pp_print_term t' in*)
+                    (*let _ = Format.printf "inlined: %a, %a, %a@." print_id f (Fpat.Util.List.pr print_id ",") xs pp_print_term t' in*)
                     `R(f, xs @ xs', t')
                 else if xs = [] && (match t.desc with Fst(t) | Snd(t) -> (match t.desc with Var _ -> true | _ -> false) | _ -> false) then
                   (*let _ = Format.printf "fst/snd: %a@." print_id f in*)
@@ -2148,7 +2148,7 @@ let rec inlined_f inlined fs t =
               else
                 `L(f, xs, inlined_f inlined fs t)
           in
-          let bindings', fs' = VHorn.Util.List.partition_map aux bindings in
+          let bindings', fs' = Fpat.Util.List.partition_map aux bindings in
           let t2' = inlined_f inlined (fs @ fs') t2 in
             if bindings' = [] then
               t2'.desc
@@ -2215,7 +2215,7 @@ let rec lift_fst_snd fs t =
                               f, xs,
                                 let fs' =
                                   List.flatten
-                                      (VHorn.Util.List.filter_map
+                                      (Fpat.Util.List.filter_map
                                           (fun x ->
                                               match x.Id.typ with
                                                   TPair(_, _) ->

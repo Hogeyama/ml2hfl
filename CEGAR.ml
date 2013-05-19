@@ -21,7 +21,7 @@ let post () =
 
 let inlined_functions orig_fun_list force {defs=defs;main=main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
-  VHorn.Util.List.unique fs
+  Fpat.Util.List.unique fs
 
 let rec cegar1 prog0 ces info =
   pre ();
@@ -33,7 +33,7 @@ let rec cegar1 prog0 ces info =
   let prog =
     if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete
     then
-      let env,defs,main = VhornInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
+      let env,defs,main = FpatInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
         {env=env; defs=defs; main=main}
     else prog0
   in

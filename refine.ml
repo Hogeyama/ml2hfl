@@ -91,7 +91,7 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
         match !Flag.refine with
             Flag.RefineRefType(flags) ->
       	      let _ = Format.printf "@[<v>" in
-      	      let map = VhornInterface.infer flags labeled ces (env,defs,main) in
+      	      let map = FpatInterface.infer flags labeled ces (env,defs,main) in
       	      let _ = Format.printf "@]" in
                 map
           | Flag.RefineRefTypeOld ->
@@ -103,12 +103,12 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";
-        VHorn.Cvc3Interface.close_cvc3 ();
-        VHorn.Cvc3Interface.open_cvc3 ();
+        Fpat.Cvc3Interface.close_cvc3 ();
+        Fpat.Cvc3Interface.open_cvc3 ();
         add_time tmp Flag.time_cegar;
         map, {env=env';defs=defs;main=main}
     with e ->
-      VHorn.Cvc3Interface.close_cvc3 ();
-      VHorn.Cvc3Interface.open_cvc3 ();
+      Fpat.Cvc3Interface.close_cvc3 ();
+      Fpat.Cvc3Interface.open_cvc3 ();
       add_time tmp Flag.time_cegar;
       raise e

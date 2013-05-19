@@ -145,4 +145,4 @@ let rec decomp_tfun = function
 
 
 
-let is_parameter x = VHorn.Util.String.starts_with x Flag.extpar_header
+let is_parameter x = Fpat.Util.String.starts_with x Flag.extpar_header

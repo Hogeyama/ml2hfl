@@ -586,19 +586,9 @@ LIBOBJS
 TRECS
 CVC3
 OCAML_SRC
-YHORN
-VHORN
-ATP
-CSISAT_LIB
+FPAT
+OCAML_PKG_fpat
 CSISAT
-LIB_PATH
-GMP
-OCAML_PKG_gmp
-APRON
-OCAML_PKG_apron
-Z3
-OCAML_PKG_z3
-OCAMLGRAPH
 OCAML_PKG_ocamlgraph
 OCAMLYACC
 OCAMLLEXDOTOPT
@@ -667,7 +657,6 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_csisat_obj
-with_csisat_lib
 with_csisat
 with_ocaml_src
 '
@@ -678,8 +667,7 @@ CC
 CFLAGS
 LDFLAGS
 LIBS
-CPPFLAGS
-LIB_PATH'
+CPPFLAGS'
 
 
 # Initialize some variables set by options.
@@ -1289,7 +1277,6 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-csisat-obj=DIR   CSIsat object directory
-  --with-csisat-lib=DIR   CSIsat lib directory
   --with-csisat=DIR       CSIsat build directory
   --with-ocaml-src=DIR    OCaml source directory
 
@@ -1301,7 +1288,6 @@ Some influential environment variables:
   LIBS        libraries to pass to the linker, e.g. -l<library>
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
-  LIB_PATH    library search paths (separated by spaces)
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -1420,52 +1406,6 @@ fi
   as_fn_set_status $ac_retval
 
 } # ac_fn_c_try_compile
-
-# ac_fn_c_try_link LINENO
-# -----------------------
-# Try to link conftest.$ac_ext, and return whether this succeeded.
-ac_fn_c_try_link ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  rm -f conftest.$ac_objext conftest$ac_exeext
-  if { { ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
-$as_echo "$ac_try_echo"; } >&5
-  (eval "$ac_link") 2>conftest.err
-  ac_status=$?
-  if test -s conftest.err; then
-    grep -v '^ *+' conftest.err >conftest.er1
-    cat conftest.er1 >&5
-    mv -f conftest.er1 conftest.err
-  fi
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext && {
-	 test "$cross_compiling" = yes ||
-	 test -x conftest$ac_exeext
-       }; then :
-  ac_retval=0
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_retval=1
-fi
-  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
-  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
-  # interfere with the next link command; also delete a directory that is
-  # left behind by Apple's compiler.  We do this before executing the actions.
-  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
-  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
-  as_fn_set_status $ac_retval
-
-} # ac_fn_c_try_link
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -3611,7 +3551,7 @@ fi
 
 
 if test "$OCAMLC" = "no"; then
-  as_fn_error $? "Please install the OCaml compiler" "$LINENO" 5
+  as_fn_error $? "OCaml compiler not found" "$LINENO" 5
 fi
 
 
@@ -3711,7 +3651,7 @@ fi
 
 
 if test "$OCAMLFIND" = "no"; then
-  as_fn_error $? "Please install OCaml findlib (the ocamlfind command)" "$LINENO" 5
+  as_fn_error $? "ocamlfind not found" "$LINENO" 5
 fi
 
   # checking for ocamllex
@@ -3907,7 +3847,7 @@ fi
 
 
 if test "$OCAMLLEX" = "no"; then
-  as_fn_error $? "Please install ocamllex" "$LINENO" 5
+  as_fn_error $? "ocamllex not found" "$LINENO" 5
 fi
 
   if test -n "$ac_tool_prefix"; then
@@ -4005,7 +3945,7 @@ fi
 
 
 if test "$OCAMLYACC" = "no"; then
-  as_fn_error $? "Please install ocamlyacc" "$LINENO" 5
+  as_fn_error $? "ocamlyacc not found" "$LINENO" 5
 fi
 
 
@@ -4033,137 +3973,20 @@ $as_echo "not found" >&6; }
 
 
 if test "$OCAML_PKG_ocamlgraph" = "no"; then
-  as_fn_error $? "Please install ocamlgraph" "$LINENO" 5
-else
-  OCAMLGRAPH=`$OCAMLFIND query ocamlgraph`
-
+  as_fn_error $? "ocamlgraph not found" "$LINENO" 5
 fi
 
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml findlib package z3" >&5
-$as_echo_n "checking for OCaml findlib package z3... " >&6; }
-
-  unset found
-  unset pkg
-  found=no
-  for pkg in z3  ; do
-    if $OCAMLFIND query $pkg >/dev/null 2>/dev/null; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: found" >&5
-$as_echo "found" >&6; }
-      OCAML_PKG_z3=$pkg
-      found=yes
-      break
-    fi
-  done
-  if test "$found" = "no" ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
-$as_echo "not found" >&6; }
-    OCAML_PKG_z3=no
-  fi
-
-
-
-if test "$OCAML_PKG_z3" = "no"; then
-  as_fn_error $? "Please install z3" "$LINENO" 5
-else
-  Z3=`$OCAMLFIND query z3`
-
-fi
-
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml findlib package apron" >&5
-$as_echo_n "checking for OCaml findlib package apron... " >&6; }
-
-  unset found
-  unset pkg
-  found=no
-  for pkg in apron  ; do
-    if $OCAMLFIND query $pkg >/dev/null 2>/dev/null; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: found" >&5
-$as_echo "found" >&6; }
-      OCAML_PKG_apron=$pkg
-      found=yes
-      break
-    fi
-  done
-  if test "$found" = "no" ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
-$as_echo "not found" >&6; }
-    OCAML_PKG_apron=no
-  fi
-
-
-
-if test "$OCAML_PKG_apron" = "no"; then
-  as_fn_error $? "Please install apron" "$LINENO" 5
-else
-  APRON=`$OCAMLFIND query apron`
-
-fi
-
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml findlib package gmp" >&5
-$as_echo_n "checking for OCaml findlib package gmp... " >&6; }
-
-  unset found
-  unset pkg
-  found=no
-  for pkg in gmp  ; do
-    if $OCAMLFIND query $pkg >/dev/null 2>/dev/null; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: found" >&5
-$as_echo "found" >&6; }
-      OCAML_PKG_gmp=$pkg
-      found=yes
-      break
-    fi
-  done
-  if test "$found" = "no" ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
-$as_echo "not found" >&6; }
-    OCAML_PKG_gmp=no
-  fi
-
-
-
-if test "$OCAML_PKG_gmp" = "no"; then
-  as_fn_error $? "Please install mlgmpidl" "$LINENO" 5
-else
-  GMP=`$OCAMLFIND query gmp`
-
-fi
-
-
-
+CSISAT_DIRS="./csisat/obj ../csisat/obj ./csisat-read-only/obj ../csisat-read-only/obj"
 
 # Check whether --with-csisat_obj was given.
 if test "${with_csisat_obj+set}" = set; then :
-  withval=$with_csisat_obj; CSISAT_DIR="$withval"
-fi
-
-
-# Check whether --with-csisat_lib was given.
-if test "${with_csisat_lib+set}" = set; then :
-  withval=$with_csisat_lib;
-   LDFLAGS="$LDFLAGS -L$withval"
-   CSISAT_LIB_DIR="$withval"
-
+  withval=$with_csisat_obj; CSISAT_DIRS="$withval"
 fi
 
 
 # Check whether --with-csisat was given.
 if test "${with_csisat+set}" = set; then :
-  withval=$with_csisat;
-   if test -z "$with_csisat_obj" && test -z "$with_csisat_lib" ; then
-      CSISAT_DIR="$withval/obj"
-      LDFLAGS="$LDFLAGS -L$withval/lib"
-      CSISAT_LIB_DIR="$withval/lib"
-   else
-      { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "Do not use --with-csisat and --with-csisat-include/--with-csisat-lib options simultaneously.
-See \`config.log' for more details" "$LINENO" 5; }
-   fi
-
+  withval=$with_csisat; CSISAT_DIRS="$withval/obj"
 fi
 
 
@@ -4174,7 +3997,7 @@ $as_echo_n "checking for OCaml module CSIsat... " >&6; }
 open CsisatAst
 EOF
   unset found
-  for CSISAT in $CSISAT ./csisat/obj ../csisat/obj ./csisat-read-only/obj ../csisat-read-only/obj $CSISAT_DIR $LIB_PATH ; do
+  for CSISAT in $CSISAT $CSISAT_DIRS ; do
     if $OCAMLC -c -I "$CSISAT" conftest.ml >&5 2>&5 ; then
       found=yes
       break
@@ -4196,240 +4019,35 @@ if test "$CSISAT" = "no"; then
 fi
 
 
-if test -z "$CSISAT_LIB" && test -n "$CSISAT"; then
-  CSISAT_LIB_TMP=`echo $CSISAT | sed 's/obj$/lib/'`
-  if test "$CSISAT_LIB" != "$CSISAT"; then
-    CSISAT_LIB=$CSISAT_LIB_TMP
-    LDFLAGS="$LDFLAGS -L$CSISAT_LIB"
-  fi
-fi
 
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml findlib package fpat" >&5
+$as_echo_n "checking for OCaml findlib package fpat... " >&6; }
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for abort in -lcamlpico" >&5
-$as_echo_n "checking for abort in -lcamlpico... " >&6; }
-if ${ac_cv_lib_camlpico_abort+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcamlpico  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char abort ();
-int
-main ()
-{
-return abort ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_camlpico_abort=yes
-else
-  ac_cv_lib_camlpico_abort=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_camlpico_abort" >&5
-$as_echo "$ac_cv_lib_camlpico_abort" >&6; }
-if test "x$ac_cv_lib_camlpico_abort" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBCAMLPICO 1
-_ACEOF
-
-  LIBS="-lcamlpico $LIBS"
-
-else
-  as_fn_error $? "libcamlpico not found" "$LINENO" 5
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for abort in -lpicosat" >&5
-$as_echo_n "checking for abort in -lpicosat... " >&6; }
-if ${ac_cv_lib_picosat_abort+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lpicosat  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char abort ();
-int
-main ()
-{
-return abort ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_picosat_abort=yes
-else
-  ac_cv_lib_picosat_abort=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_picosat_abort" >&5
-$as_echo "$ac_cv_lib_picosat_abort" >&6; }
-if test "x$ac_cv_lib_picosat_abort" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBPICOSAT 1
-_ACEOF
-
-  LIBS="-lpicosat $LIBS"
-
-else
-  as_fn_error $? "libpicosat not found" "$LINENO" 5
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for free in -lcamlglpk" >&5
-$as_echo_n "checking for free in -lcamlglpk... " >&6; }
-if ${ac_cv_lib_camlglpk_free+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcamlglpk  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char free ();
-int
-main ()
-{
-return free ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_camlglpk_free=yes
-else
-  ac_cv_lib_camlglpk_free=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_camlglpk_free" >&5
-$as_echo "$ac_cv_lib_camlglpk_free" >&6; }
-if test "x$ac_cv_lib_camlglpk_free" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBCAMLGLPK 1
-_ACEOF
-
-  LIBS="-lcamlglpk $LIBS"
-
-else
-  as_fn_error $? "libcamlglpk not found" "$LINENO" 5
-fi
-
-
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml module ATP" >&5
-$as_echo_n "checking for OCaml module ATP... " >&6; }
-
-  cat > conftest.ml <<EOF
-open Atp_batch
-EOF
   unset found
-  for ATP in $ATP ./atp ../atp ./vhorn/atp ../vhorn/atp ./VHorn/atp ../VHorn/atp $LIB_PATH ; do
-    if $OCAMLC -c -I "$ATP" conftest.ml >&5 2>&5 ; then
+  unset pkg
+  found=no
+  for pkg in fpat  ; do
+    if $OCAMLFIND query $pkg >/dev/null 2>/dev/null; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: found" >&5
+$as_echo "found" >&6; }
+      OCAML_PKG_fpat=$pkg
       found=yes
       break
     fi
   done
-
-  if test "$found" ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ATP" >&5
-$as_echo "$ATP" >&6; }
-  else
+  if test "$found" = "no" ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
 $as_echo "not found" >&6; }
-    ATP=no
+    OCAML_PKG_fpat=no
   fi
 
 
-if test "$ATP" = "no"; then
-  as_fn_error $? "ATP not found" "$LINENO" 5
-fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml module VHorn" >&5
-$as_echo_n "checking for OCaml module VHorn... " >&6; }
+if test "$OCAML_PKG_fpat" = "no"; then
+  as_fn_error $? "fpat not found" "$LINENO" 5
+else
+  FPAT=`$OCAMLFIND query fpat`
 
-  cat > conftest.ml <<EOF
-open VHorn
-EOF
-  unset found
-  for VHORN in $VHORN ./vhorn ../vhorn ./VHorn ../VHorn $LIB_PATH ; do
-    if $OCAMLC -c -I "$VHORN" conftest.ml >&5 2>&5 ; then
-      found=yes
-      break
-    fi
-  done
-
-  if test "$found" ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $VHORN" >&5
-$as_echo "$VHORN" >&6; }
-  else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
-$as_echo "not found" >&6; }
-    VHORN=no
-  fi
-
-
-if test "$VHORN" = "no"; then
-  as_fn_error $? "VHorn not found" "$LINENO" 5
-fi
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCaml module Yhorn" >&5
-$as_echo_n "checking for OCaml module Yhorn... " >&6; }
-
-  cat > conftest.ml <<EOF
-open Yhorn
-EOF
-  unset found
-  for YHORN in $YHORN ./yint ../yint ./Yint ../Yint ./yhorn ../yhorn ./Yhorn ../Yhorn $LIB_PATH ; do
-    if $OCAMLC -c -I "$YHORN" conftest.ml >&5 2>&5 ; then
-      found=yes
-      break
-    fi
-  done
-
-  if test "$found" ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $YHORN" >&5
-$as_echo "$YHORN" >&6; }
-  else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
-$as_echo "not found" >&6; }
-    YHORN=no
-  fi
-
-
-if test "$YHORN" = "no"; then
-  as_fn_error $? "YHorn not found" "$LINENO" 5
 fi
 
 
