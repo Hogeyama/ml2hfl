@@ -4,20 +4,13 @@ What do you need?
 - OCaml binary 3.12.1 or up (http://www.caml.org)
 - OCaml source 3.12.1
 - ocamlfind/findlib
-- VHorn library
-- YHorn library
+- Fpat library
 - CSI-sat library
 - CVC3 binary
 - TRecS binary
-- Apron library (required for VHorn)
-- ATP library (required for VHorn)
-- Z3 library (required for YHorn)
 
 
 How to build MoCHi
 ==================
 
  Run './configure && make'
-
- If OCaml libraries cannot be found, use LIB_PATH to add search paths like this:
- './configure LIB_PATH="dir1 dir2 dir3"'
