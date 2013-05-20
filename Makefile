@@ -82,10 +82,10 @@ OCAML_CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO))
 
 
-$(NAME).byte: $(CMO) $(CMI)
+$(NAME).byte: $(CMO)
 	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -linkpkg -o $@ $(CMO)
 
-$(NAME).opt: $(CMX) $(CMI)
+$(NAME).opt: $(CMX)
 	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -linkpkg -o $@ $(CMXA) $(CMX)
 
 
