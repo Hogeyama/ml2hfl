@@ -205,7 +205,7 @@ let rec trans_typ = function
       then TBase(TBool, nil)
       else TBase(TBool, fun x -> [x])
   | Type.TAbsBool -> assert false
-  | Type.TInt _ -> TBase(TInt, nil)
+  | Type.TInt -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false
   | Type.TVar{contents=None} -> assert false
   | Type.TVar{contents=Some typ} -> trans_typ typ
@@ -599,11 +599,11 @@ exception TypeBottom
 
 
 let rec get_const_typ = function
-  | Unit _ -> TBase(TUnit, nil)
-  | True _ -> typ_bool()
-  | False _ -> typ_bool()
-  | RandInt _ -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
-  | RandBool _ -> TBase(TBool,nil)
+  | Unit -> TBase(TUnit, nil)
+  | True -> typ_bool()
+  | False -> typ_bool()
+  | RandInt -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
+  | RandBool -> TBase(TBool,nil)
   | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
   | Or -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
   | Not -> TFun(TBase(TInt,nil), fun x -> typ_bool())
@@ -626,7 +626,7 @@ let rec get_const_typ = function
                      TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
   | Tuple _ -> assert false
   | Proj _ -> assert false
-  | If _ -> assert false
+  | If -> assert false
   | Bottom -> raise TypeBottom
   | Label _ -> assert false
   | Temp _ -> assert false

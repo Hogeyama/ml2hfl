@@ -17,7 +17,7 @@ let rec check t typ =
   match {desc=t.desc; typ=elim_tpred t.typ} with
       {desc=Unit; typ=TUnit} -> ()
     | {desc=True|False|Unknown; typ=TBool} -> ()
-    | {desc=Int _; typ=(TInt _ | TRInt _)} -> ()
+    | {desc=Int _; typ=(TInt | TRInt _)} -> ()
     | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
     | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->
@@ -70,7 +70,7 @@ let rec check t typ =
     | {desc=BinOp((And|Or),t1,t2); typ=TBool} ->
         check t1 TBool;
         check t2 TBool
-    | {desc=BinOp((Add|Sub|Mult),t1,t2); typ=TInt _} ->
+    | {desc=BinOp((Add|Sub|Mult),t1,t2); typ=TInt} ->
         check t1 TInt;
         check t2 TInt
     | {desc=Not t; typ=TBool} ->

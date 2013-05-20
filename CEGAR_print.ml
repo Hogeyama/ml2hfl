@@ -37,7 +37,7 @@ and print_typ_base fm = function
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
   | TTuple n -> Format.fprintf fm "tuple"
-  | TList _ -> assert false
+  | TList -> assert false
 
 and print_typ_aux var fm = function
     TBase(b,ps) ->

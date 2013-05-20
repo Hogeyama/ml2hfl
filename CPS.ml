@@ -411,7 +411,7 @@ let rec lift_letrec_typ typed =
 let rec infer_effect_typ typ =
   match typ with
       TUnit
-    | TInt _
+    | TInt
     | TBool -> TBaseCPS typ
     | TFun(x,typ2) ->
         let typ1 = Id.typ x in

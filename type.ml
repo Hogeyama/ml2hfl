@@ -28,7 +28,7 @@ let rec is_base_typ = function
     TUnit
   | TBool
   | TAbsBool
-  | TInt _
+  | TInt
   | TRInt _ -> true
   | TPred(x,_) -> is_base_typ (Id.typ x)
   | _ -> false
@@ -51,7 +51,7 @@ let rec can_unify typ1 typ2 =
     | typ, TPred(x,_) -> can_unify (Id.typ x) typ
     | TUnit,TUnit -> true
     | (TBool|TAbsBool),(TBool|TAbsBool) -> true
-    | TInt _,TInt _ -> true
+    | TInt,TInt -> true
     | TRInt _,TRInt _ -> true
     | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
     | TList typ1, TList typ2 -> can_unify typ1 typ2
@@ -124,7 +124,7 @@ let rec unify typ1 typ2 =
   match flatten typ1, flatten typ2 with
       TUnit, TUnit
     | TBool, TBool
-    | TInt _, TInt _ -> ()
+    | TInt, TInt -> ()
     | TRInt _, TRInt _ -> ()
     | TFun(x1, typ1), TFun(x2, typ2) ->
         unify (Id.typ x1) (Id.typ x2);
@@ -156,7 +156,7 @@ let rec same_shape typ1 typ2 =
       TUnit,TUnit -> true
     | TBool,TBool -> true
     | TAbsBool,TAbsBool -> true
-    | TInt _,TInt _ -> true
+    | TInt,TInt -> true
     | TRInt _, TRInt _ -> true
     | TVar{contents=None}, TVar{contents=None} -> true
     | TVar{contents=Some typ1},TVar{contents=Some typ2} -> same_shape typ1 typ2
@@ -222,7 +222,7 @@ let rec has_pred = function
 let rec to_id_string = function
     TUnit -> "unit"
   | TBool -> "bool"
-  | TAbsBool _ -> assert false
+  | TAbsBool -> assert false
   | TInt -> "int"
   | TRInt _ -> assert false
   | TVar{contents=None} -> "abst"

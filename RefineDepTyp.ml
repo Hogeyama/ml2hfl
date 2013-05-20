@@ -172,7 +172,7 @@ and tinfo2ty typ tinfo =
   in
      if ty1=[] then
          match typ with
-            TInt _ -> [ATint(0)]
+            TInt -> [ATint(0)]
           | TRInt _ -> [ATint(0)]
           | TBool -> [ATbool(0)]
           | _ -> ty1
@@ -1671,7 +1671,7 @@ let rec get_sol typ1 typ2 =
       TUnit, RTunit _ -> []
     | TAbsBool, RTbool _ -> []
     | TBool, RTbool _ -> []
-    | TInt _, _ -> assert false
+    | TInt, _ -> assert false
     | TRInt _, _ -> assert false
     | TVar _, _ -> assert false
     | TFun({Id.typ=TInt|TPred({Id.typ=TInt},_)} as x,rtyp1), RTifun(pred, rtyp2) ->

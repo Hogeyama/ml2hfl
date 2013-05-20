@@ -4,12 +4,7 @@ open Syntax
 
 let print_error_information () =
 
-  let st =try
- Parsing.symbol_start_pos ()
-with _ ->
- Parsing.symbol_start ();
-  assert false
-  in
+  let st =  Parsing.symbol_start_pos () in
 (*
   let en = Parsing.symbol_end_pos () in
 *)

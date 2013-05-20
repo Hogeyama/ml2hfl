@@ -636,7 +636,7 @@ let make_randint_cps typ =
     {desc=RandInt true; typ=TFun(u,TFun(k,typ))}
 let rec make_app t ts =
   match t,ts with
-    | t,[]_ -> t
+    | t,[] -> t
     | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
         assert (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ);
         make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2

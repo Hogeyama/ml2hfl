@@ -111,11 +111,11 @@ let rec from_type_expr tenv typ =
             TConstr(Path.name path, b)
       | Tobject _ -> unsupported "Tobject"
       | Tfield _ -> unsupported "Tfield"
-      | Tnil _ -> unsupported "Tnil"
+      | Tnil -> unsupported "Tnil"
       | Tlink _ -> unsupported "Tlink"
       | Tsubst _ -> unsupported "Tsubst"
       | Tvariant _ -> unsupported "Tvariant"
-      | Tunivar _ -> unsupported "Tunivar"
+      | Tunivar -> unsupported "Tunivar"
       | Tpoly _ -> unsupported "Tpoly"
       | Tpackage _ -> unsupported "Tpackage"
 
@@ -343,7 +343,7 @@ let from_value_kind = function
   | Types.Val_ivar _ -> Format.printf "Val_ivar@."; assert false
   | Types.Val_self _ -> Format.printf "Val_self@."; assert false
   | Types.Val_anc _ -> Format.printf "Val_anc@."; assert false
-  | Types.Val_unbound _ -> Format.printf "Val_unbound@."; assert false
+  | Types.Val_unbound -> Format.printf "Val_unbound@."; assert false
 
 let from_constant = function
     Const_int n -> make_int n
@@ -532,7 +532,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_override _ -> unsupported "expression (override)"
       | Texp_letmodule _ -> unsupported "expression (module)"
       | Texp_assert e -> make_if (from_expression e) unit_term (make_app fail_term [unit_term])
-      | Texp_assertfalse _ ->
+      | Texp_assertfalse ->
           let u = Id.new_var "u" TUnit in
             make_let [u, [], make_app fail_term [unit_term]] (make_bottom typ')
       | Texp_lazy e -> assert false

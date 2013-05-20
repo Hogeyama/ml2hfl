@@ -317,7 +317,7 @@ let get_solution p t =
 
 
 let isTInt = function
-    TInt _ -> true
+    TInt -> true
   | _ -> false
 
 
@@ -430,7 +430,7 @@ let rec simplify_bool_exp precise t =
           if n <= m then True else False
       | BinOp(Geq, {desc=Int n}, {desc=Int m}) ->
           if n >= m then True else False
-      | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) when (function TInt _|TRInt _->true | _->false) t1.typ ->
+      | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) when (function TInt|TRInt _->true | _->false) t1.typ ->
           (*
             let t1 = simplify_exp t1 in
             let t2 = simplify_exp t2 in
@@ -683,7 +683,7 @@ let rec congruent cond typ1 typ2 =
     | TFun(x1,typ1), TFun(x2,typ2) ->
         let cond' =
           match Id.typ x1 with
-              TInt _ -> {desc=BinOp(Eq, {desc=Var x1;typ=Id.typ x1}, {desc=Var x2;typ=Id.typ x2});typ=TBool}::cond
+              TInt -> {desc=BinOp(Eq, {desc=Var x1;typ=Id.typ x1}, {desc=Var x2;typ=Id.typ x2});typ=TBool}::cond
             | _ -> cond
         in
           congruent cond (Id.typ x1) (Id.typ x2) && congruent cond' typ1 typ2
