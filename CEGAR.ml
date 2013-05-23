@@ -90,7 +90,13 @@ let rec cegar1 prog0 ces info =
               | _ ->
                   if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
                   match Feasibility.check ce' prog with
-                      Feasibility.Feasible (env, sol) -> prog, Unsafe sol
+                      Feasibility.Feasible (env, sol) ->
+                        if true then begin
+                          (* termination analysis *)
+                          Refine.refine_term ce' prog0;
+                          assert false
+                        end else
+                          prog, Unsafe sol
                     | Feasibility.Infeasible prefix ->
                         let ces' = ce'::ces in
                         let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in

@@ -90,10 +90,11 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       let map =
         match !Flag.refine with
             Flag.RefineRefType(flags) ->
-      	      let _ = Format.printf "@[<v>" in
-      	      let map = FpatInterface.infer flags labeled ces (env,defs,main) in
-      	      let _ = Format.printf "@]" in
-                map
+      	      Format.printf "@[<v>";
+              let ces = if !Fpat.Global.use_multiple_paths then ces else [Fpat.Util.List.hd ces] in
+      	      let map = FpatInterface.infer flags labeled ces (env, defs, main) in
+      	      Format.printf "@]";
+              map
           | Flag.RefineRefTypeOld ->
               if not (List.mem Flag.CPS !Flag.form)
               then failwith "Program must be in CPS @ ModelCheckCPS";
@@ -107,6 +108,30 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
         Fpat.Cvc3Interface.open_cvc3 ();
         add_time tmp Flag.time_cegar;
         map, {env=env';defs=defs;main=main}
+    with e ->
+      Fpat.Cvc3Interface.close_cvc3 ();
+      Fpat.Cvc3Interface.open_cvc3 ();
+      add_time tmp Flag.time_cegar;
+      raise e
+
+
+
+let refine_term ce { env=env; defs=defs; main=main } =
+  let tmp = get_time () in
+    try
+      if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
+      let rf =
+        Format.printf "@[<v>";
+        let spc, env = FpatInterface.compute_strongest_post (env, defs, main) ce in
+        let rf = assert false (* compute a ranking function to refute ce here *) in
+        Format.printf "@]";
+        rf
+      in
+      if !Flag.print_progress then Format.printf "DONE!@.@.";
+      Fpat.Cvc3Interface.close_cvc3 ();
+      Fpat.Cvc3Interface.open_cvc3 ();
+      add_time tmp Flag.time_cegar;
+      raise rf
     with e ->
       Fpat.Cvc3Interface.close_cvc3 ();
       Fpat.Cvc3Interface.open_cvc3 ();

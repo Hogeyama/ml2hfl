@@ -19,3 +19,4 @@ val remove_preds : Syntax.typed_term -> Syntax.typed_term
 *)
 
 
+val refine_term : CEGAR_syntax.ce -> CEGAR_syntax.prog -> unit
