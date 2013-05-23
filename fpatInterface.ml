@@ -116,7 +116,7 @@ let rec conv_typ ty =
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
   | _ ->
-      let _ = Format.printf "%a@." CEGAR_print.typ ty in
+      Format.printf "%a@." CEGAR_print.typ ty;
       assert false
 
 let conv_prog (typs, fdefs, main) =
@@ -129,7 +129,7 @@ let verify fs (*cexs*) prog =
   let prog = prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main in
   let prog = conv_prog prog in
   Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Prog.pr prog;
-  let _ = assert false(*Verifier.verify fs prog*) in
+  assert false(*Verifier.verify fs prog*);
   Format.printf "END verification@,@]"
 
 let rec inv_abst_type aty =
@@ -149,20 +149,18 @@ let rec inv_abst_type aty =
 
 
 let infer flags labeled cexs prog =
-  let _ = Global.solve_preds_left_to_right := flags land 2 <> 0 in
+  Global.solve_preds_left_to_right := flags land 2 <> 0;
+  Global.subst_hcs_inc := flags land 4 <> 0;
+  Global.no_inlining := flags land 8 <> 0 || not !Flag.expand_nonrec;
+  Global.inline_after_ncs := flags land 16 <> 0;
+  Global.fol_backward := flags land 32 <> 0;
+  Global.disable_pred_sharing1 := flags land 64 <> 0;
+  Global.enable_pred_sharing2 := flags land 128 <> 0;
+  Global.flag_coeff := flags land 256 <> 0;
 
-  let _ = Global.subst_hcs_inc := flags land 4 <> 0 in
-  let _ = Global.no_inlining := flags land 8 <> 0 || not !Flag.expand_nonrec in
-  let _ = Global.inline_after_ncs := flags land 16 <> 0 in
-  let _ = Global.fol_backward := flags land 32 <> 0 in
-  let _ = Global.disable_pred_sharing1 := flags land 64 <> 0 in
-  let _ = Global.enable_pred_sharing2 := flags land 128 <> 0 in
-  let _ = Global.flag_coeff := flags land 256 <> 0 in
-
-  let cexs = if !Global.use_multiple_paths then cexs else [Util.List.hd cexs] in
   let prog = conv_prog prog in
-  let env = AbsTypeInfer.refine labeled cexs prog in
-  let _ = Flag.time_parameter_inference := !Flag.time_parameter_inference +. !ParamSubstInfer.elapsed_time in
+  let env = AbsTypeInfer.refine prog labeled cexs in
+  Flag.time_parameter_inference := !Flag.time_parameter_inference +. !ParamSubstInfer.elapsed_time;
   Util.List.map
    (fun (f, rty) ->
      match f with Var.V(id) -> Idnt.string_of id, inv_abst_type rty | _ -> assert false)
@@ -193,17 +191,15 @@ let new_params recursive bvs exs =
            None)
       0
   in
-  let _ = params := !params @ ps in
+  params := !params @ ps;
   let xs =
     match recursive with
         None -> []
       | Some(xs) -> xs
   in
   let ts =
-    let _ =
-      if !Global.enable_coeff_const (*&& recursive = None*) then
-        ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string (Util.List.hd ps))) :: !ParamSubstInfer.masked_params
-    in
+    (if !Global.enable_coeff_const (*&& recursive = None*) then
+      ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string (Util.List.hd ps))) :: !ParamSubstInfer.masked_params);
     (if !Global.enable_coeff_const then [Syntax.make_var (Util.List.hd ps)] else []) @
     (*
     let b = recursive <> None && xs = [] && Util.Set.subset bvs' exs in
@@ -267,7 +263,7 @@ and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 let insert_extra_param t =
   let tmp = get_time() in
   let debug = !Flag.debug_level > 0 in
-  let _ = ParamSubstInfer.masked_params := [] in
+  ParamSubstInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
@@ -311,17 +307,15 @@ let insert_extra_param t =
           in
           (f (aux rfs bvs exs t1)).Syntax.desc
       | Syntax.App(t1, ts) ->
-          let _ = match t1.Syntax.desc with Syntax.App(_, _) -> assert false | _ -> () in
+          (match t1.Syntax.desc with Syntax.App(_, _) -> assert false | _ -> ());
           let t1' = aux rfs bvs exs t1 in
           let recursive, xss =
             match t1'.Syntax.desc with
               Syntax.Var(f) ->
                 (try
                   let _, xxss, _ = Util.List.find (fun (f', _, recursive) -> recursive && Id.same f' f) rfs in
-                  let _ =
-                    if debug then
-                      Format.printf "rec: %a@." Syntax.pp_print_term t1'
-                  in
+                  (if debug then
+                    Format.printf "rec: %a@." Syntax.pp_print_term t1');
                   let xxss = Util.List.take (Util.List.length ts) xxss in
                   true,
                   Util.List.map2
@@ -495,3 +489,19 @@ let rec simplify typ =
         Ref_type.ExtArg(x, simplify typ1, simplify typ2)
   | Ref_type.List(x,p_len,y,p_i,typ) ->
         Ref_type.List(x, simplify_typed_term p_len, y, simplify_typed_term p_i, typ)
+
+
+
+let compute_strongest_post prog ce =
+  let prog = conv_prog prog in
+  let [etr] = CompTreeExpander.error_traces_of prog [ce] in
+  let _, hcs = HcGenRefType.cgen (Prog.type_of prog) etr in
+  let hcs = List.map (HornClauseUtil.simplify []) hcs in
+  Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
+  let lbs = HcSolver.compute_lbs hcs in
+  let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
+  let spc = TypPredSubst.lookup_map_fresh atm lbs in
+  let env = SimType.visible_vars (Prog.type_of prog) (fst atm) in
+  Format.printf "strongest post condition:@,  %a@," Term.pr spc;
+  Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
+  env, spc
