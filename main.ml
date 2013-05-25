@@ -330,24 +330,24 @@ let arg_spec =
    (* Horn clause solver *)
    "-gi",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
-       Fpat.InterpProver.ext_gen_interpolate := Fpat.ApronInterface.convex_hull_interpolate_fresh false),
+       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
+       Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate false),
      " Generalize constraints of multiple function calls by interpolation";
    "-gchi",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
-       Fpat.InterpProver.ext_gen_interpolate := Fpat.ApronInterface.convex_hull_interpolate_fresh true),
+       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
+       Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtcs",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
-       Fpat.InterpProver.ext_gen_interpolate := Fpat.InterpProver.template_based_constraint_solving_interpolate_fresh),
+       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
+       Fpat.GenInterpProver.ext_interpolate := Fpat.TemplateBasedGenInterpProver.interpolate),
      " Generalize constraints of multiple function calls by template-based constraint solving";
    "-gssi",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.HcGenSolver.solve;
-       Fpat.InterpProver.ext_gen_interpolate := Fpat.YintInterface.solution_space_based_interpolate_fresh;
-       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate_fresh),
+       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
+       Fpat.GenInterpProver.ext_interpolate := Fpat.YintInterface.solution_space_based_interpolate;
+       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
    "-yhorn",
      Arg.Unit (fun _ ->
@@ -359,15 +359,15 @@ let arg_spec =
    (* interpolating prover *)
    "-csisat",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate_fresh),
+       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate),
      " Use CSIsat interpolating prover";
    "-gcsisat",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.generalize_interpolate_fresh),
+       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate ~generalize:true ),
      " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
    "-yint",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate_fresh),
+       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Use Yint interpolating prover";
   ]
 
@@ -383,12 +383,12 @@ let () =
         Flag.filename := name
       in
       (* default interpolating prover *)
-      Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate_fresh;
+      Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate;
       (* default Horn clause solver *)
-      Fpat.HcSolver.ext_solve := Fpat.HcBwSolver.solve;
-      let () = Arg.parse arg_spec set_file usage in
-      let () = Fpat.Global.print_log := !Flag.debug_level <> 0 in
-      let () = Fpat.Global.cvc3 := !Flag.cvc3 in
+      Fpat.HcSolver.ext_solve := Fpat.BwHcSolver.solve;
+      Arg.parse arg_spec set_file usage;
+      Fpat.Global.print_log := !Flag.debug_level <> 0;
+      Fpat.Global.cvc3 := !Flag.cvc3;
       let cin =
         match !Flag.filename with
             "" | "-" -> Flag.filename := "stdin"; stdin
