@@ -5,6 +5,7 @@ open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 open Fpat
+open Fpat.Combinator
 
 let conv_const c =
   match c with
@@ -502,7 +503,7 @@ let compute_strongest_post prog ce =
   let env, spc =
     let is_fail pid = Idnt.string_of (Var.base pid) = "fail" in
     if List.exists is_fail (HornClause.rhs_pids hcs) then
-      let [HornClause.Hc(_, atms, t) as hc] =
+      let [HornClause.Hc(Some(_), [atm], t) as hc] =
         List.filter
           (function
             HornClause.Hc(Some(pred), _, _) when is_fail (Pred.pid_of pred) ->
@@ -511,22 +512,33 @@ let compute_strongest_post prog ce =
               false)
           hcs
       in
-      Util.List.concat_map (fun atm -> SimType.visible_vars (Prog.type_of prog) (fst atm)) atms,
-      let ts =
-        Util.List.map
-          (fun (pid, ttys) ->
-            try
-              TypPredSubst.lookup_map_fresh (pid, ttys) lbs
-            with Not_found ->
-              assert false)
-          atms
+      SimType.visible_vars (Prog.type_of prog) (fst atm),
+      let t' =
+        try
+          TypPredSubst.lookup_map_fresh atm lbs
+        with Not_found ->
+          assert false
       in
-      FormulaUtil.simplify (Formula.band (t :: ts))
+      FormulaUtil.simplify (Formula.band [t; t'])
     else
       let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
       SimType.visible_vars (Prog.type_of prog) (fst atm),
       TypPredSubst.lookup_map_fresh atm lbs
   in
+  let f = Var.base (fst (Util.List.hd env)) in
+  let typ = Prog.type_of prog (Var.make f) in
+  let targs, _ = SimType.args_ret typ in
+  let fdef = Util.List.hd (Prog.fdefs_of prog f) in
+  let args =
+    Util.List.filter_map2
+      (fun x ty -> if SimType.is_base ty then Some(x) else None)
+      fdef.Fdef.args
+      targs
+  in
+  assert (Util.List.length args = Util.List.length env);
+  let map = Util.List.combine (Util.List.map fst env) (Util.List.map (Var.make >> Term.make_var) args) in
+  let spc = Term.subst map spc in
+  let env = Util.List.map2 (fun (_, ty) x -> Var.make x, ty) env args in
   Format.printf "strongest post condition:@,  %a@," Term.pr spc;
   Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
   env, spc
