@@ -543,6 +543,7 @@ let compute_strongest_post prog ce =
   let fvs_bool = Util.Set.diff (Formula.fvs_bool spc) (List.map fst env) in (* require that only free variable is <fail:??:0> or prev_set_flag_* *)
   let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.Bool) env) in
   let env = List.filter (fun (_, ty) -> ty <> SimType.Bool) env in
+  let env = List.filter (fun (_, ty) -> ty <> SimType.Unit) env in
   let spc = FormulaUtil.elim_unit spc in
   let spc = FormulaUtil.eqelim_boolean (fvs_bool @ bvs_bool) spc in
   Format.printf "strongest post condition:@,  %a@," Term.pr spc;
