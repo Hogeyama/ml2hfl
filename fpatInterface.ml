@@ -499,9 +499,34 @@ let compute_strongest_post prog ce =
   let hcs = List.map (HornClauseUtil.simplify []) hcs in
   Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
   let lbs = HcSolver.compute_lbs hcs in
-  let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
-  let spc = TypPredSubst.lookup_map_fresh atm lbs in
-  let env = SimType.visible_vars (Prog.type_of prog) (fst atm) in
+  let env, spc =
+    let is_fail pid = Idnt.string_of (Var.base pid) = "fail" in
+    if List.exists is_fail (HornClause.rhs_pids hcs) then
+      let [HornClause.Hc(_, atms, t) as hc] =
+        List.filter
+          (function
+            HornClause.Hc(Some(pred), _, _) when is_fail (Pred.pid_of pred) ->
+              true
+          | _ ->
+              false)
+          hcs
+      in
+      Util.List.concat_map (fun atm -> SimType.visible_vars (Prog.type_of prog) (fst atm)) atms,
+      let ts =
+        Util.List.map
+          (fun (pid, ttys) ->
+            try
+              TypPredSubst.lookup_map_fresh (pid, ttys) lbs
+            with Not_found ->
+              assert false)
+          atms
+      in
+      FormulaUtil.simplify (Formula.band (t :: ts))
+    else
+      let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
+      SimType.visible_vars (Prog.type_of prog) (fst atm),
+      TypPredSubst.lookup_map_fresh atm lbs
+  in
   Format.printf "strongest post condition:@,  %a@," Term.pr spc;
   Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
   env, spc
