@@ -114,24 +114,23 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       add_time tmp Flag.time_cegar;
       raise e
 
-
+exception PostCondition of Fpat.Term.t
 
 let refine_term ce { env=env; defs=defs; main=main } =
   let tmp = get_time () in
     try
       if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
-      let rf =
+      let spc =
         Format.printf "@[<v>";
-        let spc, env = FpatInterface.compute_strongest_post (env, defs, main) ce in
-        let rf = assert false (* compute a ranking function to refute ce here *) in
+        let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce in
         Format.printf "@]";
-        rf
+        spc
       in
       if !Flag.print_progress then Format.printf "DONE!@.@.";
       Fpat.Cvc3Interface.close_cvc3 ();
       Fpat.Cvc3Interface.open_cvc3 ();
       add_time tmp Flag.time_cegar;
-      raise rf
+      raise (PostCondition spc)
     with e ->
       Fpat.Cvc3Interface.close_cvc3 ();
       Fpat.Cvc3Interface.open_cvc3 ();

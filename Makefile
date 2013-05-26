@@ -39,7 +39,7 @@ opt: $(NAME).opt
 
 MLI = CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
 	wrapper.mli wrapper2.mli CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
-	spec_parser.mli trecs_parser.mli
+	spec_parser.mli trecs_parser.mli BRA_transform.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
@@ -57,6 +57,7 @@ CMO = $(OCAML_CMO) \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
 	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
 	writeAnnot.cmo \
+	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo \
 	eval.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
