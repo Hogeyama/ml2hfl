@@ -26,6 +26,9 @@ type predicate_info = { variables : Syntax.id list
 		      ; coefficients : int list list
 		      }
 
+let updated_predicate_info ({coefficients = old_coeffs} as pr) new_coeffs =
+  { pr with coefficients = new_coeffs :: old_coeffs }
+
 type holed_program = { program : Syntax.typed_term
 		     ; verified : function_info
 		     ; state : state

@@ -279,20 +279,34 @@ let rec termination_loop predicate_que holed =
 		     ; Formula.geq linear_template (IntTerm.make 0)]
       in
       let constraints = imply spc ranking_constraints in
-               (************ BUG!: obtain no coeffs ************)
       let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
       let coefficients =
         try
           NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
         with NonLinConstr.Unknown ->
+	  Format.printf "Failed to solve the constraints...@.@.";
           assert false(* failed to solve the constraints *)
+      in
+      let ((correspondence_, const_part) as ranking_function) = ParLinExp.parlinexp_of (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) linear_template)
+      in
+      let correspondence =
+	let cor dict x =
+	  try List.assoc x dict with Not_found -> 0 in
+	let formatter (n, v) = (v, IntTerm.int_of n) in
+	List.map (cor (List.map formatter correspondence_)) arg_vars
+      in
+      let new_predicate_info =
+	BRA_types.updated_predicate_info
+	  predicate_info
+	  (correspondence @ [IntTerm.int_of const_part])
       in
       Format.printf "Linear template:@.  %a@." Term.pr linear_template;
       Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
       Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
-      Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
-      Format.printf "Unsafe!@.@.";
-      false
+      Format.printf "Inferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
+      Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
+      let _ = Queue.push new_predicate_info predicate_que in
+      termination_loop predicate_que holed
 	
 let main in_channel =
   let input_string =
@@ -326,7 +340,11 @@ let main in_channel =
     let functions = BRA_transform.extract_functions parsed in
     let holed_list = BRA_transform.to_holed_programs parsed functions in
     List.for_all (fun holed ->
-      let init_predicate_info = { BRA_types.variables = []; BRA_types.prev_variables = []; BRA_types.coefficients = []} in
+      CEGAR.false_embedded := None;
+      let init_predicate_info =
+	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+	; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
+	; BRA_types.coefficients = []} in
       let predicate_que = Queue.create () in
       let _ = Queue.add init_predicate_info predicate_que in
       termination_loop predicate_que holed) holed_list
