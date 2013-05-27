@@ -280,10 +280,16 @@ let rec termination_loop predicate_que holed =
       in
       let constraints = imply spc ranking_constraints in
                (************ BUG!: obtain no coeffs ************)
-      let coefficients = BRA_util.concat_map (NonLinConstr.solve_constrs [] []) (NonLinConstr.gen_coeff_constrs constraints) in
+      let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
+      let coefficients =
+        try
+          NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
+        with NonLinConstr.Unknown ->
+          assert false(* failed to solve the constraints *)
+      in
       Format.printf "Linear template:@.  %a@." Term.pr linear_template;
       Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
-      Format.printf "Constraint:@.  %a@." Term.pr_list (NonLinConstr.gen_coeff_constrs constraints);
+      Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
       Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
       Format.printf "Unsafe!@.@.";
       false
