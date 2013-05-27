@@ -86,7 +86,6 @@ and show_binop = function
   | Mult -> "*"
 
 let retyping t =
-  let _ = print_endline (show_typed_term t) in
   let lb = t |> show_typed_term
              |> Lexing.from_string
   in
@@ -98,6 +97,10 @@ let retyping t =
   in
   let orig = Parse.use_file lb in
   let parsed = Parser_wrapper.from_use_file orig in
+  let _ =
+    if true && !Flag.debug_level > 0
+    then Format.printf "transformed::@. @[%a@.@." Syntax.pp_print_term parsed
+  in
   (orig, parsed)
 
 let extract_functions (target_program : typed_term) =
@@ -108,7 +111,6 @@ let extract_functions (target_program : typed_term) =
       | t -> []
   in
   let extracted = iter (regularization target_program) in
-  List.iter (fun f -> print_endline (f.id.Id.name)) extracted;
   extracted
 
 let rec transform_function_definitions f term =
@@ -223,7 +225,7 @@ let construct_LLRF {variables = variables_; prev_variables = prev_variables_; co
 			     (make_mul (List.hd vs) (List.hd cs))
 			     (List.tl vs)
 			     (List.tl cs)
-    with Invalid_argument _ -> raise (Invalid_argument "Transition_invariant.build_TI:rank")
+    with Invalid_argument _ -> raise (Invalid_argument "construct_LLRF")
   in
   let rec iter addition = function
     | [c] ->
