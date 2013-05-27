@@ -255,10 +255,7 @@ let rec termination_loop predicate_que holed =
     let orig, transformed = BRA_transform.retyping transformed in
     try
       main_loop orig transformed
-    with Refine.PostCondition spc ->
-
-      let spc = Fpat.Formula.ttrue in (* temporary shodowing *)
-
+    with Refine.PostCondition (_, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
       let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in 
@@ -281,16 +278,13 @@ let rec termination_loop predicate_que holed =
 	Formula.band [ Formula.gt linear_template_prev linear_template
 		     ; Formula.geq linear_template (IntTerm.make 0)]
       in
-      let constraints =
-	Formula.forall
-	  (arg_env@prev_env)
-	  (imply spc ranking_constraints) in
-      (* gen_coeff_constrs呼び出し時点でエラー
-         Fatal error: exception Assert_failure("typTerm.ml", 58, 6) *)
-      (* let coefficients = BRA_util.concat_map (NonLinConstr.solve_constrs [] []) (NonLinConstr.gen_coeff_constrs constraints) in *)
-      Format.printf "linear template:@.  %a@." Term.pr linear_template;
+      let constraints = imply spc ranking_constraints in
+               (************ BUG!: obtain no coeffs ************)
+      let coefficients = BRA_util.concat_map (NonLinConstr.solve_constrs [] []) (NonLinConstr.gen_coeff_constrs constraints) in
+      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
       Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
-(*      Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients; *)
+      Format.printf "Constraint:@.  %a@." Term.pr_list (NonLinConstr.gen_coeff_constrs constraints);
+      Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
       Format.printf "Unsafe!@.@.";
       false
 	

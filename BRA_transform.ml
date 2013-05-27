@@ -190,13 +190,13 @@ let to_holed_programs (target_program : typed_term) (defined_functions : functio
 	    make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
 	  in
 	  make_let
-	    [(extract_id update_flag, [], randbool_unit_term)]
+	    [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 	    (make_let
-		[(extract_id set_flag, [], make_or update_flag prev_set_flag)]
-		(fold_left3 add_update_statement 
-		   (make_let
-		      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
-		      body) prev_statevars statevars argvars))
+	       [(extract_id update_flag, [], randbool_unit_term)]
+	       (make_let
+		  [(extract_id set_flag, [], make_or update_flag prev_set_flag)]
+		  (fold_left3 add_update_statement 
+		     body prev_statevars statevars argvars)))
 	else body
       in (id, args, body')
     in
