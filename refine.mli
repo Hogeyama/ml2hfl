@@ -18,5 +18,6 @@ val remove_preds : Syntax.typed_term -> Syntax.typed_term
 (** [remove_preds t] で， [t] 中の述語を削除する *)
 *)
 
+exception PostCondition of (Fpat.Var.t * Fpat.SimType.t) list * Fpat.Term.t
 
 val refine_term : CEGAR_syntax.ce -> CEGAR_syntax.prog -> unit

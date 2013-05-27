@@ -91,7 +91,7 @@ let rec cegar1 prog0 ces info =
                   if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
                   match Feasibility.check ce' prog with
                       Feasibility.Feasible (env, sol) ->
-                        if false then begin
+                        if !Flag.termination then begin
                           (* termination analysis *)
                           let prog' = prog0 (* Here, the hole of prog0 must be replaced with false *) in
                           Refine.refine_term ce' prog';

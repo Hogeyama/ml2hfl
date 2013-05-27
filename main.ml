@@ -235,6 +235,59 @@ let rec main_loop orig parsed =
                 main_loop orig parsed
 
 
+(***** termination *****)
+let threshold = ref 5
+
+exception FailedToFindLLRF
+
+let rec termination_loop predicate_que holed =
+  let _ =
+    begin
+      threshold := !threshold - 1;
+      if !threshold < 0 then (raise FailedToFindLLRF)
+    end
+  in
+  if Queue.is_empty predicate_que then (raise FailedToFindLLRF)
+  else
+    let predicate_info = Queue.pop predicate_que in
+    let predicate = BRA_transform.construct_LLRF predicate_info in
+    let transformed = BRA_transform.pluging holed predicate in
+    let orig, transformed = BRA_transform.retyping transformed in
+    try
+      main_loop orig transformed
+    with Refine.PostCondition (_, spc) ->
+      let open Fpat in
+      let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
+      let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in 
+
+      let arg_vars =
+	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
+	  (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified) in
+      let arg_var_terms = List.map Term.make_var arg_vars in
+      let prev_vars =
+	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
+	  (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified) in
+      let prev_var_terms = List.map Term.make_var prev_vars in
+      let arg_env = List.map (fun a -> (a, SimType.Int)) arg_vars in
+      let prev_env = List.map (fun a -> (a, SimType.Int)) prev_vars in
+
+      let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
+      let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
+
+      let ranking_constraints =
+	Formula.band [ Formula.gt linear_template_prev linear_template
+		     ; Formula.geq linear_template (IntTerm.make 0)]
+      in
+      let constraints = imply spc ranking_constraints in
+               (************ BUG!: obtain no coeffs ************)
+      let coefficients = BRA_util.concat_map (NonLinConstr.solve_constrs [] []) (NonLinConstr.gen_coeff_constrs constraints) in
+      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
+      Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
+      Format.printf "Constraint:@.  %a@." Term.pr_list (NonLinConstr.gen_coeff_constrs constraints);
+      Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
+      Format.printf "Unsafe!@.@.";
+      false
+	
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
@@ -261,6 +314,16 @@ let main in_channel =
     let paths = Trans.search_fail parsed in
     let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
     List.for_all (main_loop orig) (List.rev ts);
+  else if !Flag.termination then 
+    let open BRA_util in
+    let parsed = BRA_transform.regularization parsed in
+    let functions = BRA_transform.extract_functions parsed in
+    let holed_list = BRA_transform.to_holed_programs parsed functions in
+    List.for_all (fun holed ->
+      let init_predicate_info = { BRA_types.variables = []; BRA_types.prev_variables = []; BRA_types.coefficients = []} in
+      let predicate_que = Queue.create () in
+      let _ = Queue.add init_predicate_info predicate_que in
+      termination_loop predicate_que holed) holed_list
   else
     main_loop orig parsed
 
@@ -369,6 +432,11 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Use Yint interpolating prover";
+   (* termination mode *)
+   "-termination",
+     Arg.Unit (fun _ ->
+       Flag.termination := true),
+     " Check termination";
   ]
 
 
