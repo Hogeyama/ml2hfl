@@ -23,9 +23,6 @@ let inlined_functions orig_fun_list force {defs=defs;main=main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   Fpat.Util.List.unique fs
 
-(***** For termination-mode, ref for false-embedded program *****)
-let false_embedded = ref None
-
 let rec cegar1 prog0 ces info =
   pre ();
   let pr =
@@ -95,14 +92,7 @@ let rec cegar1 prog0 ces info =
                       Feasibility.Feasible (env, sol) ->
                         if !Flag.termination then begin
                           (* termination analysis *)
-                          let prog' =
-			    match !false_embedded with
-			      | None ->
-				false_embedded := Some prog0;
-				prog0
-			      | Some p -> p
-			  in
-                          Refine.refine_term ce' prog';
+                          Refine.refine_term ce' prog0;
                           assert false
                         end else
                           prog, Unsafe sol

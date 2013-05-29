@@ -2,8 +2,12 @@ exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
 
+(***** information of LRF *****)
+let lrf = ref (Syntax.make_int 0)
+
 let print_info () =
   Format.printf "cycles: %d\n" !Flag.cegar_loop;
+  if !Flag.termination then Format.printf "ranking function: %s\n" (BRA_transform.show_typed_term !lrf);
   Format.printf "total: %.3f sec\n" (Util.get_time());
   Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
@@ -251,6 +255,7 @@ let rec termination_loop predicate_que holed =
   else
     let predicate_info = Queue.pop predicate_que in
     let predicate = BRA_transform.construct_LLRF predicate_info in
+    lrf := predicate;
     let transformed = BRA_transform.pluging holed predicate in
     let orig, transformed = BRA_transform.retyping transformed in
     try
@@ -273,13 +278,18 @@ let rec termination_loop predicate_que holed =
 
       let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
       let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
+      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
 
       let ranking_constraints =
 	Formula.band [ Formula.gt linear_template_prev linear_template
 		     ; Formula.geq linear_template (IntTerm.make 0)]
       in
       let constraints = imply spc ranking_constraints in
+      Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
+
       let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
+      Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
+
       let coefficients =
         try
           NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
@@ -300,9 +310,6 @@ let rec termination_loop predicate_que holed =
 	  predicate_info
 	  (correspondence @ [IntTerm.int_of const_part])
       in
-      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
-      Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
-      Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
       Format.printf "Inferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
       Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
       let _ = Queue.push new_predicate_info predicate_que in
@@ -340,7 +347,6 @@ let main in_channel =
     let functions = BRA_transform.extract_functions parsed in
     let holed_list = BRA_transform.to_holed_programs parsed functions in
     List.for_all (fun holed ->
-      CEGAR.false_embedded := None;
       let init_predicate_info =
 	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
 	; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)

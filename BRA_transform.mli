@@ -8,6 +8,8 @@ val everywhere_expr : (Syntax.typed_term -> Syntax.typed_term) -> Syntax.typed_t
 
 val regularization : Syntax.typed_term -> Syntax.typed_term
 
+val show_typed_term : Syntax.typed_term -> string
+
 val retyping : Syntax.typed_term -> (Parsetree.toplevel_phrase list * Syntax.typed_term)
 
 val extract_functions : Syntax.typed_term -> BRA_types.function_info list
