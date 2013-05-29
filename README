@@ -13,4 +13,4 @@ What do you need?
 How to build MoCHi
 ==================
 
- Run './configure && make'
+ Run 'autoconf && ./configure && make'
