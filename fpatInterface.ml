@@ -512,7 +512,7 @@ let compute_strongest_post prog ce =
               false)
           hcs
       in
-      SimType.visible_vars (Prog.type_of prog) (fst atm),
+      RefType.visible_vars (Prog.type_of prog) (fst atm),
       let t' =
         try
           TypPredSubst.lookup_map_fresh atm lbs
@@ -522,7 +522,7 @@ let compute_strongest_post prog ce =
       FormulaUtil.simplify (Formula.band [t; t'])
     else
       let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
-      SimType.visible_vars (Prog.type_of prog) (fst atm),
+      RefType.visible_vars (Prog.type_of prog) (fst atm),
       TypPredSubst.lookup_map_fresh atm lbs
   in
   let f = Var.base (fst (Util.List.hd env)) in
