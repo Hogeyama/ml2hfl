@@ -3,7 +3,6 @@ trecs
 mochi.opt
 Makefile.config
 depend
-aclocal.m4
 config.status
 environment.ml
 autom4te.cache
