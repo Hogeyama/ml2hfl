@@ -217,9 +217,9 @@ let to_holed_programs (target_program : typed_term) (defined_functions : functio
   in state_inserted_programs
 
 let construct_LLRF {variables = variables_; prev_variables = prev_variables_; coefficients = coefficients_} =
-  let variables = (List.map make_var variables_) @ [make_int 1] in
-  let prev_variables = (List.map make_var prev_variables_) @ [make_int 1] in
-  let coefficients = List.map (List.map make_int) coefficients_ in
+  let variables = (make_int 1) :: (List.map make_var variables_) in
+  let prev_variables = (make_int 1) :: (List.map make_var prev_variables_) in
+  let coefficients = List.map (fun {coeffs = cs; constant = c} -> List.map make_int (c::cs)) coefficients_ in
   let rec rank vs cs = try List.fold_left2
 			     (fun rk t1 t2 -> make_add rk (make_mul t1 t2))
 			     (make_mul (List.hd vs) (List.hd cs))

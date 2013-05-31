@@ -3,11 +3,17 @@ exception LongInput
 exception CannotDiscoverPredicate
 
 (***** information of LRF *****)
-let lrf = ref (Syntax.make_int 0)
+let lrf = ref []
 
 let print_info () =
   Format.printf "cycles: %d\n" !Flag.cegar_loop;
-  if !Flag.termination then Format.printf "ranking function: %s\n" (BRA_transform.show_typed_term !lrf);
+  if !Flag.termination then
+    begin
+      List.iter
+	(fun (f_name, pred) ->
+	  Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
+	!lrf
+    end;
   Format.printf "total: %.3f sec\n" (Util.get_time());
   Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
@@ -255,7 +261,7 @@ let rec termination_loop predicate_que holed =
   else
     let predicate_info = Queue.pop predicate_que in
     let predicate = BRA_transform.construct_LLRF predicate_info in
-    lrf := predicate;
+    lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf;
     let transformed = BRA_transform.pluging holed predicate in
     let orig, transformed = BRA_transform.retyping transformed in
     try
@@ -308,7 +314,7 @@ let rec termination_loop predicate_que holed =
       let new_predicate_info =
 	BRA_types.updated_predicate_info
 	  predicate_info
-	  (correspondence @ [IntTerm.int_of const_part])
+	  {BRA_types.coeffs = correspondence; BRA_types.constant = IntTerm.int_of const_part}
       in
       Format.printf "Inferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
       Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;

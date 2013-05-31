@@ -10,3 +10,6 @@ let rec fold_left3 f acc xs ys zs =
 
 let first f (a, b) = (f a, b)
 let second f (a, b) = (a, f b)
+
+let update_assoc (key, value) associates =
+  (key, value) :: (List.remove_assoc key associates)
