@@ -5,6 +5,7 @@ Makefile.config
 depend
 config.status
 environment.ml
+aclocal.m4
 autom4te.cache
 *lexer.ml
 *parser.ml
