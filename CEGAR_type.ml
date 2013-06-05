@@ -7,6 +7,7 @@ type base =
   | TBool
   | TList
   | TTuple of int
+  | TAbst
 
 type 'a t =
     TBase of base * ('a -> 'a list)

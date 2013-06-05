@@ -11,6 +11,7 @@ type typ =
     TUnit
   | TBool
   | TInt
+  | TAbst
   | TVar of typ option ref
   | TFun of typ * typ
   | TTuple of typ list
@@ -19,6 +20,7 @@ let rec print_typ fm = function
     TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
+  | TAbst -> Format.fprintf fm "abst"
   | TVar{contents=Some typ} -> print_typ fm typ
   | TVar{contents=None} -> Format.fprintf fm "?"
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
@@ -39,6 +41,7 @@ let rec unify typ1 typ2 =
     | TUnit, TUnit -> ()
     | TBool, TBool -> ()
     | TInt, TInt -> ()
+    | TAbst, TAbst -> ()
     | TFun(typ11, typ12), TFun(typ21, typ22) ->
         unify typ11 typ21;
         unify typ12 typ22
@@ -69,6 +72,7 @@ let get_typ_const = function
   | Unit -> TUnit
   | True -> TBool
   | False -> TBool
+  | UnInt _ -> TAbst
   | RandBool -> TBool
   | RandInt ->
       let typ = new_tvar () in
@@ -76,6 +80,7 @@ let get_typ_const = function
   | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
   | EqBool -> TFun(TBool,TFun(TBool,TBool))
+  | EqPoly -> TFun(TAbst,TFun(TAbst,TBool))
   | And -> TFun(TBool,TFun(TBool,TBool))
   | Or -> TFun(TBool,TFun(TBool,TBool))
   | Not -> TFun(TBool,TBool)

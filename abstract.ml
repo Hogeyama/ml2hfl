@@ -43,7 +43,7 @@ let rec abst_recdata_typ = function
       let typs = TInt :: get_ground_types s in
       let r_typ = List.fold_right (fun typ1 typ2 -> TPair(Id.new_var "x" typ1,typ2)) (init typs) (last typs) in
         TPair(Id.new_var "u" TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
-  | TConstr(s,false) -> TInt
+  | TConstr(s,false) -> TConstr(s,false)
   | TPair(x,typ) -> TPair(abst_recdata_var x, abst_recdata_typ typ)
   | TPred(x,ps) -> TPred(Id.set_typ x (abst_recdata_typ (Id.typ x)), ps)
 
@@ -368,11 +368,8 @@ and make_cons post t1 t2 =
 and abst_list post t =
   let typ' = abst_list_typ t.typ in
     match t.desc with
-        Const Unit -> unit_term
-      | Const True -> true_term
-      | Const False -> false_term
+        Const c -> t
       | Unknown -> assert false
-      | Const (Int n) -> make_int n
       | Var x -> make_var (abst_list_var x)
       | RandInt b -> randint_term
       | RandValue(typ,b) -> raise (Fatal "Not implemented (Abstract.abst_list)")

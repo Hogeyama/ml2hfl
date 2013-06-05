@@ -76,6 +76,7 @@ and print_const fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
+  | UnInt s -> Format.fprintf fm "%s" s
   | RandBool -> Format.fprintf fm "rand_bool"
   | RandInt -> Format.fprintf fm "rand_int"
   | And -> Format.fprintf fm "&&"
@@ -88,6 +89,7 @@ and print_const fm = function
   | EqUnit -> Format.fprintf fm "="
   | EqInt -> Format.fprintf fm "="
   | EqBool -> Format.fprintf fm "<=>"
+  | EqPoly -> Format.fprintf fm "="
   | Int n -> Format.fprintf fm "%d" n
   | Add -> Format.fprintf fm "+"
   | Sub -> Format.fprintf fm "-"
@@ -104,7 +106,7 @@ and print_term fm = function
   | Var x -> print_var fm x
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
-  | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
+  | App(App(Const ((EqInt|EqBool|EqPoly|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(@[%a@ %a@ %a@])" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in

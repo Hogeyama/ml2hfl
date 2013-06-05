@@ -186,6 +186,7 @@ val print_ids : Format.formatter -> id list -> unit
 val print_id_typ : Format.formatter -> id -> unit
 val print_ids_typ : Format.formatter -> id list -> unit
 val print_termlist : int -> bool -> Format.formatter -> typed_term list -> unit
+val string_of_const : const -> string
 val string_of_node : node -> string
 val print_pattern : Format.formatter -> typed_pattern -> unit
 val print_constr : Format.formatter -> literal -> unit

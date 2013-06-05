@@ -264,6 +264,7 @@ and trans_term post xs env t =
       Syntax.Const Syntax.Unit -> [], Const Unit
     | Syntax.Const Syntax.True -> [], Const True
     | Syntax.Const Syntax.False -> [], Const False
+    | Syntax.Const c -> [], Const (UnInt (Syntax.string_of_const c))
     | Syntax.Unknown -> assert false
     | Syntax.Const (Syntax.Int n) -> [], Const (Int n)
     | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Const Syntax.Unit}]) ->
@@ -316,7 +317,7 @@ and trans_term post xs env t =
           | Type.TBool -> EqBool
           | Type.TInt -> EqInt
           | Type.TPred(x,_) -> aux (Id.typ x)
-	  | Type.TConstr("???", false) -> EqInt(*???assert false*)
+	  | Type.TConstr(_, false) -> EqPoly
           | typ -> Format.printf "trans_term: %a@." Syntax.print_typ typ; assert false
         in
         let op = aux t1.Syntax.typ in
@@ -332,8 +333,8 @@ and trans_term post xs env t =
     | Syntax.Event _ -> assert false
     | Syntax.Bottom -> [], Const Bottom
     | _ ->
-        Format.printf "%a@.@.@." Syntax.pp_print_term t;
-								assert false
+        Format.printf "%a@." Syntax.pp_print_term t;
+        assert false
 
 let rec formula_of t =
   match t.Syntax.desc with
@@ -611,6 +612,7 @@ let rec get_const_typ = function
   | EqUnit -> TFun(TBase(TUnit,nil), fun x -> TFun(TBase(TUnit,nil), fun y -> typ_bool()))
   | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool()))
   | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
+  | EqPoly -> TFun(TBase(TAbst,nil), fun x -> TFun(TBase(TAbst,nil), fun y -> typ_bool()))
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
   | Add -> TFun(TBase(TInt,nil), fun x ->
                 TFun(TBase(TInt,nil), fun y ->

@@ -168,13 +168,11 @@ and remove_pair_aux t typ_opt =
       | BinOp(op, t1, t2) ->
           begin
             match op, elim_tpred t1.typ with
-              (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt) -> ()
+              (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TConstr(_,false)) -> ()
             | (Eq | Lt | Gt | Leq | Geq), _ ->
-                if t1.typ <> typ_abst
-                then
-                  (Format.printf "%a@." pp_print_typ t1.typ;
-                  Format.printf "%a@." pp_print_term' t;
-                  raise (Fatal "Unsupported (polymorphic comparison)"))
+                Format.printf "%a@." pp_print_typ t1.typ;
+                Format.printf "%a@." pp_print_term' t;
+                raise (Fatal "Unsupported (polymorphic comparison)")
             | _ -> ()
           end;
           let t1' = root (remove_pair_aux t1 None) in
@@ -403,7 +401,8 @@ let rec infer_effect_typ typ =
   match typ with
       TUnit
     | TInt
-    | TBool -> TBaseCPS typ
+    | TBool
+    | TConstr(_,false)-> TBaseCPS typ
     | TFun(x,typ2) ->
         let typ1 = Id.typ x in
         let e = new_evar () in
@@ -744,10 +743,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e};
   let r =
     match t, !sol e with
-        ConstCPS Unit, ENone -> unit_term
-      | ConstCPS True, ENone -> true_term
-      | ConstCPS False, ENone -> false_term
-      | ConstCPS (Int n), ENone -> make_int n
+        ConstCPS c, ENone -> {desc=Const c; typ=typ_orig}
       | BottomCPS, ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
           let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
