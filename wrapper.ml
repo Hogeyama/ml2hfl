@@ -48,14 +48,14 @@ and print_binop typ fm op =
 
 and print_term fm t =
   match t.desc with
-      Const Unit -> Format.fprintf fm "unit"
-    | Const True -> Format.fprintf fm "TRUE"
-    | Const False -> Format.fprintf fm "FALSE"
-    | Const (Int n) -> Format.fprintf fm "%d" n
+      Unit -> Format.fprintf fm "unit"
+    | True -> Format.fprintf fm "TRUE"
+    | False -> Format.fprintf fm "FALSE"
+    | Int n -> Format.fprintf fm "%d" n
     | RandInt _ -> assert false
     | Var x -> print_id fm x
     | BinOp(Mult, t1, t2) when
-        (match t1.desc with Const(Int(_)) -> false | _ -> (match t2.desc with Const(Int(_)) -> false | _ -> true)) ->
+        (match t1.desc with Int(_) -> false | _ -> (match t2.desc with Int(_) -> false | _ -> true)) ->
         Format.printf "Nonlinear expression not supported.@.";
           assert false
     | BinOp(Eq, ({typ=TBool|TPred({Id.typ=TBool},_)} as t1), t2) ->
@@ -105,14 +105,14 @@ let iff t1 t2 = CsisatAst.Or [CsisatAst.And[t1; t2]; CsisatAst.And[CsisatAst.Not
 
 let rec to_exp t =
   match t.desc with
-      Const True -> CsisatAst.Variable "tru"
-    | Const False -> CsisatAst.Variable "fls"
-    | Const (Int n) -> CsisatAst.Constant (float_of_int n)
+      True -> CsisatAst.Variable "tru"
+    | False -> CsisatAst.Variable "fls"
+    | Int n -> CsisatAst.Constant (float_of_int n)
     | Var x -> CsisatAst.Variable (Id.to_string x)
     | RandInt t -> assert false
     | BinOp(Add, t1, t2) -> CsisatAst.Sum [to_exp t1; to_exp t2]
     | BinOp(Sub, t1, t2) -> CsisatAst.Sum [to_exp t1; CsisatAst.Coeff(-1., to_exp t2)]
-    | BinOp(Mult, {desc=Const (Int n)}, t2) | BinOp(Mult, t2, {desc=Const(Int n)}) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
+    | BinOp(Mult, {desc=Int n}, t2) | BinOp(Mult, t2, {desc=Int n}) -> CsisatAst.Coeff(float_of_int n, to_exp t2)
     | BinOp(Mult, t1, t2) ->
       Format.printf "Nonlinear expression not supported: %a@." pp_print_term t;
       assert false
@@ -120,8 +120,8 @@ let rec to_exp t =
     | _ -> Format.printf "@.%a@." pp_print_term t; assert false
 let rec to_pred t =
   match t.desc with
-    Const True -> CsisatAst.True
-  | Const False -> CsisatAst.False
+    True -> CsisatAst.True
+  | False -> CsisatAst.False
   | Var x -> CsisatAst.Eq (to_exp t, CsisatAst.Variable "tru")
   | BinOp(Eq, t1, t2) ->
       if t1.typ = TBool
@@ -149,8 +149,8 @@ let parse_ident s =
 
 let rec from_exp map = function
     CsisatAst.Constant x -> make_int (int_of_float x)
-  | CsisatAst.Variable "tru" -> {desc=Const True; typ=TBool}
-  | CsisatAst.Variable "fls" -> {desc=Const False; typ=TBool}
+  | CsisatAst.Variable "tru" -> {desc=True; typ=TBool}
+  | CsisatAst.Variable "fls" -> {desc=False; typ=TBool}
   | CsisatAst.Variable "nil" -> assert false
 (*
   | CsisatAst.Variable x when x.[0] = '_' -> NInt (parse_ident (String.sub x 1 (String.length x - 1)))
@@ -162,12 +162,12 @@ let rec from_exp map = function
   | CsisatAst.Sum(e::es) ->
       let aux t e = {desc=BinOp(Add, t, from_exp map e); typ=TInt} in
         List.fold_left aux (from_exp map e) es
-  | CsisatAst.Coeff(x,e) -> {desc=BinOp(Mult, {desc=Const(Int(int_of_float x));typ=TInt}, from_exp map e); typ=TInt}
+  | CsisatAst.Coeff(x,e) -> {desc=BinOp(Mult, {desc=Int(int_of_float x);typ=TInt}, from_exp map e); typ=TInt}
   | CsisatAst.Application _
   | CsisatAst.Sum _ -> assert false
 let rec from_pred map = function
-    CsisatAst.True -> {desc=Const True; typ=TBool}
-  | CsisatAst.False -> {desc=Const False; typ=TBool}
+    CsisatAst.True -> {desc=True; typ=TBool}
+  | CsisatAst.False -> {desc=True; typ=TBool}
   | CsisatAst.And(p::ps) ->
       List.fold_left (fun t p -> {desc=BinOp(And, from_pred map p, t); typ=TBool}) (from_pred map p) ps
   | CsisatAst.Or(p::ps) ->
@@ -331,9 +331,9 @@ let rec gcd_arith_exp prev curr =
   then
     let aux t =
       match t.desc with
-          Const (Int n) -> abs n
-        | BinOp(Mult, {desc=Const(Int n)}, t)
-        | BinOp(Mult, t, {desc=Const(Int n)}) -> abs n
+          Int n -> abs n
+        | BinOp(Mult, {desc=Int n}, t)
+        | BinOp(Mult, t, {desc=Int n}) -> abs n
         | _ -> 1
     in
     List.fold_left gcd 0 (List.rev_map aux curr)
@@ -350,15 +350,15 @@ let gcd_arith_exp ts = gcd_arith_exp [] ts
 let rec div_arith_exp n t =
   let desc =
     match t.desc with
-        Const (Int m) -> assert (m mod n = 0); Const (Int (m/n))
+        Int m -> assert (m mod n = 0); Int (m/n)
       | BinOp(Add, t1, t2) ->
         let t1' = div_arith_exp n t1 in
         let t2' = div_arith_exp n t2 in
         BinOp(Add, t1', t2')
-      | BinOp(Mult, {desc=Const(Int m)}, t)
-      | BinOp(Mult, t, {desc=Const(Int m)}) ->
+      | BinOp(Mult, {desc=Int m}, t)
+      | BinOp(Mult, t, {desc=Int m}) ->
         assert (m mod n = 0);
-        BinOp(Mult, {desc=Const(Int(m/n));typ=TInt}, t)
+        BinOp(Mult, {desc=Int(m/n);typ=TInt}, t)
       | _ -> Format.printf "@.%a@." pp_print_term t; assert false
   in
   {desc=desc; typ=TInt}
@@ -372,64 +372,64 @@ let rec simplify_bool_exp precise t =
   assert (t.typ = TBool);
   let desc =
     match t.desc with
-        Const True
-      | Const False
+        True
+      | False
       | Var _ -> t.desc
       | BinOp(And|Or as op, t1, t2) ->
           if precise && equiv [] t t1 then (simplify_bool_exp precise t1).desc
           else if precise && equiv [] t t2 then (simplify_bool_exp precise t2).desc
           else BinOp(op, simplify_bool_exp precise t1, simplify_bool_exp precise t2)
-      | BinOp(_, {desc=Const(True|False)}, _) -> t.desc
-      | BinOp(_, _, {desc=Const(True|False)}) -> t.desc
+      | BinOp(_, {desc=True|False}, _) -> t.desc
+      | BinOp(_, _, {desc=True|False}) -> t.desc
       | BinOp(Eq, {desc=BinOp(op1, t11, t12)}, {desc=BinOp(op2, t21, t22)}) when op1 = op2 && t12 = t22 ->
           (simplify_bool_exp precise {desc=BinOp(Eq, t11, t21);typ=TBool}).desc
-      | BinOp(Eq, {desc=Const(Int 0)}, {desc=BinOp(Mult, {desc=Const(Int n)}, t)})
-      | BinOp(Eq, {desc=BinOp(Mult, {desc=Const(Int n)}, t)}, {desc=Const(Int 0)}) ->
+      | BinOp(Eq, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)})
+      | BinOp(Eq, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0}) ->
           if n = 0
-          then Const True
-          else BinOp(Eq, simplify_exp t, {desc=Const(Int 0);typ=TInt})
-      | BinOp(Lt, {desc=Const(Int 0)}, {desc=BinOp(Mult, {desc=Const(Int n)}, t)})
-      | BinOp(Gt, {desc=BinOp(Mult, {desc=Const(Int n)}, t)}, {desc=Const(Int 0)}) ->
+          then True
+          else BinOp(Eq, simplify_exp t, {desc=Int 0;typ=TInt})
+      | BinOp(Lt, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)})
+      | BinOp(Gt, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0}) ->
           if n > 0 then
-            BinOp(Lt, {desc=Const(Int 0);typ=TInt}, simplify_exp t)
+            BinOp(Lt, {desc=Int 0;typ=TInt}, simplify_exp t)
           else if n < 0 then
-            BinOp(Lt, simplify_exp t, {desc=Const(Int 0);typ=TInt})
+            BinOp(Lt, simplify_exp t, {desc=Int 0;typ=TInt})
           else
-            Const False
-      | BinOp(Lt, {desc=BinOp(Mult, {desc=Const(Int n)}, t)}, {desc=Const(Int 0)})
-      | BinOp(Gt, {desc=Const(Int 0)}, {desc=BinOp(Mult, {desc=Const(Int n)}, t)}) ->
+            False
+      | BinOp(Lt, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0})
+      | BinOp(Gt, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)}) ->
           if n > 0 then
-            BinOp(Lt, simplify_exp t, {desc=Const(Int 0);typ=TInt})
+            BinOp(Lt, simplify_exp t, {desc=Int 0;typ=TInt})
           else if n < 0 then
-            BinOp(Lt, {desc=Const(Int 0);typ=TInt}, simplify_exp t)
+            BinOp(Lt, {desc=Int 0;typ=TInt}, simplify_exp t)
           else
-            Const False
-      | BinOp(Leq, {desc=Const(Int 0)}, {desc=BinOp(Mult, {desc=Const(Int n)}, t)})
-      | BinOp(Geq, {desc=BinOp(Mult, {desc=Const(Int n)}, t)}, {desc=Const(Int 0)}) ->
+            False
+      | BinOp(Leq, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)})
+      | BinOp(Geq, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0}) ->
           if n > 0 then
-            BinOp(Leq, {desc=Const(Int 0);typ=TInt}, simplify_exp t)
+            BinOp(Leq, {desc=Int 0;typ=TInt}, simplify_exp t)
           else if n < 0 then
-            BinOp(Leq, simplify_exp t, {desc=Const(Int 0);typ=TInt})
+            BinOp(Leq, simplify_exp t, {desc=Int 0;typ=TInt})
           else
-            Const True
-      | BinOp(Leq, {desc=BinOp(Mult, {desc=Const(Int n)}, t)}, {desc=Const(Int 0)})
-      | BinOp(Geq, {desc=Const(Int 0)}, {desc=BinOp(Mult, {desc=Const(Int n)}, t)}) ->
+            True
+      | BinOp(Leq, {desc=BinOp(Mult, {desc=Int n}, t)}, {desc=Int 0})
+      | BinOp(Geq, {desc=Int 0}, {desc=BinOp(Mult, {desc=Int n}, t)}) ->
           if n > 0 then
-            BinOp(Leq, simplify_exp t, {desc=Const(Int 0);typ=TInt})
+            BinOp(Leq, simplify_exp t, {desc=Int 0;typ=TInt})
           else if n < 0 then
-            BinOp(Leq, {desc=Const(Int 0);typ=TInt}, simplify_exp t)
+            BinOp(Leq, {desc=Int 0;typ=TInt}, simplify_exp t)
           else
-            Const True
-      | BinOp(Eq, {desc=Const(Int n)}, {desc=Const(Int m)}) ->
-          if n = m then Const True else Const False
-      | BinOp(Lt, {desc=Const(Int n)}, {desc=Const(Int m)}) ->
-          if n < m then Const True else Const False
-      | BinOp(Gt, {desc=Const(Int n)}, {desc=Const(Int m)}) ->
-          if n > m then Const True else Const False
-      | BinOp(Leq, {desc=Const(Int n)}, {desc=Const(Int m)}) ->
-          if n <= m then Const True else Const False
-      | BinOp(Geq, {desc=Const(Int n)}, {desc=Const(Int m)}) ->
-          if n >= m then Const True else Const False
+            True
+      | BinOp(Eq, {desc=Int n}, {desc=Int m}) ->
+          if n = m then True else False
+      | BinOp(Lt, {desc=Int n}, {desc=Int m}) ->
+          if n < m then True else False
+      | BinOp(Gt, {desc=Int n}, {desc=Int m}) ->
+          if n > m then True else False
+      | BinOp(Leq, {desc=Int n}, {desc=Int m}) ->
+          if n <= m then True else False
+      | BinOp(Geq, {desc=Int n}, {desc=Int m}) ->
+          if n >= m then True else False
       | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) when (function TInt|TRInt _->true | _->false) t1.typ ->
           (*
             let t1 = simplify_exp t1 in
@@ -443,8 +443,8 @@ let rec simplify_bool_exp precise t =
               let t2' = div_arith_exp d t2 in
                 BinOp(op, simplify_exp t1', simplify_exp t2')
       | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
-      | Not {desc=Const True} -> Const False
-      | Not {desc=Const False} -> Const True
+      | Not {desc=True} -> False
+      | Not {desc=False} -> True
       | Not{desc=BinOp(Lt, t1, t2)} ->
           BinOp(Geq, simplify_exp t1, simplify_exp t2)
       | Not{desc=BinOp(Gt, t1, t2)} ->
@@ -461,7 +461,7 @@ and simplify_exp t =
   let desc =
     match t.desc with
         Var _ -> t.desc
-      | Const (Int _) -> t.desc
+      | Int _ -> t.desc
       | RandInt t ->
           assert (not t);
           RandInt false
@@ -469,24 +469,24 @@ and simplify_exp t =
           let t1' = simplify_exp t1 in
           let t2' = simplify_exp t2 in
             (match t1'.desc, t2'.desc with
-                 Const(Int n), Const(Int m) -> Const (Int(n+m))
-               | Const(Int 0), t | t, Const (Int 0) -> t
+                 Int(n), Int(m) -> Int(n+m)
+               | Int(0), t | t, Int(0) -> t
                | _, _ -> BinOp(Add, t1', t2'))
       | BinOp(Sub, t1, t2) ->
           let t1' = simplify_exp t1 in
           let t2' = simplify_exp t2 in
             (match t1'.desc, t2'.desc with
-                 Const (Int(n)), Const (Int(m)) -> Const (Int(n-m))
-               | Const (Int(0)), _ -> BinOp(Mult, {desc=Const (Int(-1));typ=TInt}, t2')
-               | t, Const (Int(0)) -> t
+                 Int(n), Int(m) -> Int(n-m)
+               | Int(0), _ -> BinOp(Mult, {desc=Int(-1);typ=TInt}, t2')
+               | t, Int(0) -> t
                | _, _ -> BinOp(Sub, t1', t2'))
       | BinOp(Mult, t1, t2) ->
           let t1' = simplify_exp t1 in
           let t2' = simplify_exp t2 in
             (match t1'.desc, t2'.desc with
-                 Const (Int(n)), Const (Int(m)) -> Const (Int(n * m))
-               | Const (Int(0)), t | t, Const (Int(0)) -> Const (Int(0))
-               | Const (Int(1)), t | t, Const (Int(1)) -> t
+                 Int(n), Int(m) -> Int(n * m)
+               | Int(0), t | t, Int(0) -> Int(0)
+               | Int(1), t | t, Int(1) -> t
                | _, _ -> BinOp(Mult, t1', t2'))
       | Nil
       | Cons _ -> t.desc
@@ -553,19 +553,19 @@ let interpolation ts1 ts2 =
       let rec trans t =
         let desc =
           match t.desc with
-              Const True
-            | Const False
+              True
+            | False
             | Var _ -> t.desc
             | BinOp(And|Or as op, t1, t2) ->
                 let t1' = trans t1 in
                 let t2' = trans t2 in
                   BinOp(op, t1', t2')
-            | BinOp(_, {desc=Const(True|False)}, _) -> t.desc
-            | BinOp(_, _, {desc=Const(True|False)}) -> t.desc
+            | BinOp(_, {desc=True|False}, _) -> t.desc
+            | BinOp(_, _, {desc=True|False}) -> t.desc
             | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) ->
                 BinOp(op, t1, t2)
             | Not{desc=BinOp(Eq, t1, t2)} ->
-                let n1 = {desc=Const (Int 1); typ=TInt} in
+                let n1 = {desc=Int 1; typ=TInt} in
                 let t1' = {desc=BinOp(Leq, t1, {desc=BinOp(Sub, t2, n1);typ=TInt}); typ=TBool} in
                 let t2' = {desc=BinOp(Leq, {desc=BinOp(Add, t2, n1);typ=TInt}, t1); typ=TBool} in
                   BinOp(Or, t1', t2')

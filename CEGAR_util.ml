@@ -123,8 +123,11 @@ let eta_expand prog =
 let rec make_arg_let t =
   let desc =
     match t.Syntax.desc with
-        Syntax.Const c -> Syntax.Const c
+        Syntax.Unit -> Syntax.Unit
+      | Syntax.True -> Syntax.True
+      | Syntax.False -> Syntax.False
       | Syntax.Unknown -> assert false
+      | Syntax.Int n -> Syntax.Int n
       | Syntax.Var x -> Syntax.Var x
       | Syntax.App(t, ts) ->
           let f = Id.new_var "f__" (t.Syntax.typ) in
@@ -261,12 +264,12 @@ and trans_binop = function
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
   match t.Syntax.desc with
-      Syntax.Const Syntax.Unit -> [], Const Unit
-    | Syntax.Const Syntax.True -> [], Const True
-    | Syntax.Const Syntax.False -> [], Const False
+      Syntax.Unit -> [], Const Unit
+    | Syntax.True -> [], Const True
+    | Syntax.False -> [], Const False
     | Syntax.Unknown -> assert false
-    | Syntax.Const (Syntax.Int n) -> [], Const (Int n)
-    | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Const Syntax.Unit}]) ->
+    | Syntax.Int n -> [], Const (Int n)
+    | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Unit}]) ->
         let k = new_id ("k" ^ post) in
           [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
     | Syntax.App({Syntax.desc=Syntax.RandInt true}, [t1;t2]) ->
@@ -337,11 +340,11 @@ and trans_term post xs env t =
 
 let rec formula_of t =
   match t.Syntax.desc with
-      Syntax.Const Syntax.Unit -> Const Unit
-    | Syntax.Const Syntax.True -> Const True
-    | Syntax.Const Syntax.False -> Const False
+      Syntax.Unit -> Const Unit
+    | Syntax.True -> Const True
+    | Syntax.False -> Const False
     | Syntax.Unknown -> assert false
-    | Syntax.Const (Syntax.Int n) -> Const (Int n)
+    | Syntax.Int n -> Const (Int n)
     | Syntax.RandInt false -> raise Not_found
     | Syntax.Var x ->
         let x' = trans_var x in

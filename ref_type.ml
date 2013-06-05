@@ -45,8 +45,8 @@ let rec print fm = function
       Format.fprintf fm "{true}"
   | Base(Bool,x,p) when S.make_not (S.make_var x) = p ->
       Format.fprintf fm "{false}"
-  | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, {S.desc=S.Const(S.Int n)})})
-  | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
+  | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, {S.desc=S.Int n})})
+  | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Int n}, {S.desc=S.Var y})}) when x = y ->
       Format.fprintf fm "{%d}" n
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base S.pp_print_term p

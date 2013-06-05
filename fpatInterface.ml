@@ -268,8 +268,11 @@ let insert_extra_param t =
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
-        Syntax.Const c -> Syntax.Const c
+        Syntax.Unit -> Syntax.Unit
+      | Syntax.True -> Syntax.True
+      | Syntax.False -> Syntax.False
       | Syntax.Unknown -> Syntax.Unknown
+      | Syntax.Int n -> Syntax.Int n
       | Syntax.RandInt b -> Syntax.RandInt b
       | Syntax.RandValue(typ,b) -> Syntax.RandValue(typ,b)
       | Syntax.Var y -> Syntax.Var (trans_id y)

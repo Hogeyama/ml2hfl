@@ -283,7 +283,7 @@ let rec process_term trace term traces env pcounter =
     end;
 
   match term.desc with
-      Const Unit ->
+      Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
           let trace = trace @ [EventNode "unit"] in
           let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
@@ -356,13 +356,13 @@ let rec process_term trace term traces env pcounter =
     | BinOp(_) ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
-    | Const (Int _) ->
+    | Int _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
-    | Const True ->
+    | True ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
-    | Const False ->
+    | False ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
     | Not(_) ->
@@ -396,7 +396,7 @@ let rec process_term trace term traces env pcounter =
     | Constr _ ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces] (*???*)
-    | App({desc=RandInt false}, [{desc=Const Unit}]) ->
+    | App({desc=RandInt false}, [{desc=Unit}]) ->
         let _ = if pcounter <> invalid_counter then register_branches trace pcounter in
           [MyTerm(term, new_tinfo()), trace, traces]
     | Bottom ->
@@ -711,7 +711,7 @@ let rec chk_term rtenv term id trace traces =
   (**)
 *)
   match term.desc with
-      Const Unit ->
+      Unit ->
         if List.for_all (function [EventNode "unit"] -> true | _ -> false) traces then
           []
         else if List.for_all (function [FailNode] -> true | _ -> false) traces then
@@ -792,7 +792,7 @@ let rec chk_term rtenv term id trace traces =
                     snd (List.fold_left aux (0,[]) pats)
           end
     | Var x -> chk_term rtenv ({desc=App({desc=Var x;typ=Id.typ x}, []);typ=Id.typ x}) id trace traces
-    | Const (True | False) -> assert false
+    | True | False -> assert false
     | Not(t) -> (*???*)
         chk_term rtenv t id trace traces
     | App(t, []) -> chk_term rtenv t id trace traces
@@ -821,7 +821,7 @@ and chk_args rtenv rty terms =
 and chk_term_rty rtenv term rty =
   let id = id_of_rty(rty) in
     match term.desc with
-        Const Unit ->
+        Unit ->
           (match rty with
                RTunit(_) -> []
              | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-unit type")
@@ -839,7 +839,7 @@ and chk_term_rty rtenv term rty =
       | If(t1,t2,t3) -> assert false
       | Var x -> chk_term_rty rtenv ({desc=App({desc=Var x;typ=Id.typ x}, []);typ=Id.typ x}) rty
       | Event("fail",false) -> [Cfalse]
-      | Const (True | False) -> (*???*)
+      | True | False -> (*???*)
           (match rty with
                RTbool(_) -> []
              | _ -> raise (Fatal "chk_term_rty: () cannot be used as a non-boolean type")
@@ -1043,10 +1043,10 @@ let int_gen ts =
     [] -> ts
   | int::ints ->
       let minint = List.fold_left (fun i1 i2 -> min i1 i2) int ints in
-      let ts1, ts2 = List.partition (function {desc=BinOp(Eq, t, {desc=Const (Int(n))})} -> minint = n | _ -> false) ts in
+      let ts1, ts2 = List.partition (function {desc=BinOp(Eq, t, {desc=Int(n)})} -> minint = n | _ -> false) ts in
       match ts1 with
         [] -> ts
-      | ({desc=BinOp(Eq, t, {desc=Const (Int(n))})} as tt)::ts ->
+      | ({desc=BinOp(Eq, t, {desc=Int(n)})} as tt)::ts ->
           tt :: List.map (subst_int n t) (ts @ ts2)
       | _ -> assert false
 
@@ -1256,7 +1256,7 @@ let rec compute_lbs c lbs =
               let sub = List.map (function ({desc=Var(id)}, t) -> id, t | _ -> assert false) eqs1 in
               let cond = (List.map (function Cterm(t) -> subst_map sub t | _ -> assert false) c2) @
                 (List.concat conds) in
-              let cond = uniq (List.filter (fun t -> t.desc <> Const True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
+              let cond = uniq (List.filter (fun t -> t.desc <> True) (List.map (fun t -> Wrapper.simplify_bool_exp true t) cond)) in
               let eqs2 = List.map (fun (t1, t2) -> subst_map sub t1, t2) eqs2 in
               let eqs2 = List.map (fun (t1, t2) -> Wrapper.simplify_exp t1, Wrapper.simplify_exp t2) eqs2 in
               let eqs2 = List.filter (fun (t1, t2) -> t1 <> t2) eqs2 in

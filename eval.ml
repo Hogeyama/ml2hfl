@@ -18,8 +18,11 @@ let fun_info f v = fun_info [] f v
 
 let rec subst_arg x t t' =
   match t'.desc with
-      Const c -> t'
+      Unit -> t'
+    | True -> t'
+    | False -> t'
     | Unknown -> t'
+    | Int n -> t'
     | Bottom -> t'
     | RandInt _ -> t'
     | Var y -> make_var y
@@ -84,7 +87,7 @@ let subst' x t t1 = subst x t (subst_arg x t t1)
 
 let rec print_value fm t =
   match t.desc with
-      Const (Int n) when n < 0 -> Format.fprintf fm "(%d)" n
+      Int n when n < 0 -> Format.fprintf fm "(%d)" n
     | Fun _ -> Format.pp_print_string fm "<fun>"
     | Cons _ ->
         let rec aux t =
@@ -102,8 +105,11 @@ let rec eval_print fm rands t =
   if false then Format.printf "EVAL:%a@.RANDS:%a@.@." pp_print_term t
     (print_list Format.pp_print_int ";" false) rands;
   match t.desc with
-      Const c -> rands, t
+      Unit -> rands, t
+    | True -> rands, t
+    | False -> rands, t
     | Unknown -> assert false
+    | Int _ -> rands, t
     | RandInt false ->
         let x = Id.new_var "" Type.TUnit in
           List.tl rands, make_fun x (make_int (List.hd rands))
@@ -127,8 +133,8 @@ let rec eval_print fm rands t =
         let rands', v = eval_print fm rands t1 in
         let b =
           match v.desc with
-              Const True -> true
-            | Const False -> false
+              True -> true
+            | False -> false
             | _ -> assert false
         in
           Format.fprintf fm "@\nif %b then ... ->" b;
@@ -152,16 +158,16 @@ let rec eval_print fm rands t =
         let rands',v1 = eval_print fm rands t1 in
           begin
             match v1.desc with
-                Const False -> rands', false_term
-              | Const True -> eval_print fm rands' t2
+                False -> rands', false_term
+              | True -> eval_print fm rands' t2
               | _ -> assert false
           end
     | BinOp(Or, t1, t2) ->
         let rands',v1 = eval_print fm rands t1 in
           begin
             match v1.desc with
-                Const True -> rands', true_term
-              | Const False -> eval_print fm rands' t2
+                True -> rands', true_term
+              | False -> eval_print fm rands' t2
               | _ -> assert false
           end
     | BinOp(op, t1, t2) ->
@@ -170,13 +176,13 @@ let rec eval_print fm rands t =
         let v =
           match op, v1.desc, v2.desc with
               Eq, v1, v2 -> if v1 = v2 then true_term else false_term
-            | Lt, Const (Int n1), Const (Int n2) -> if n1 < n2 then true_term else false_term
-            | Gt, Const (Int n1), Const (Int n2) -> if n1 > n2 then true_term else false_term
-            | Leq, Const (Int n1), Const (Int n2) -> if n1 <= n2 then true_term else false_term
-            | Geq, Const (Int n1), Const (Int n2) -> if n1 >= n2 then true_term else false_term
-            | Add, Const (Int n1), Const (Int n2) -> make_int (n1 + n2)
-            | Sub, Const (Int n1), Const (Int n2) -> make_int (n1 - n2)
-            | Mult, Const (Int n1), Const (Int n2) -> make_int (n1 * n2)
+            | Lt, Int n1, Int n2 -> if n1 < n2 then true_term else false_term
+            | Gt, Int n1, Int n2 -> if n1 > n2 then true_term else false_term
+            | Leq, Int n1, Int n2 -> if n1 <= n2 then true_term else false_term
+            | Geq, Int n1, Int n2 -> if n1 >= n2 then true_term else false_term
+            | Add, Int n1, Int n2 -> make_int (n1 + n2)
+            | Sub, Int n1, Int n2 -> make_int (n1 - n2)
+            | Mult, Int n1, Int n2 -> make_int (n1 * n2)
             | _ -> assert false
         in
           rands'', v
@@ -184,8 +190,8 @@ let rec eval_print fm rands t =
         let rands',v1 = eval_print fm rands t1 in
         let v =
           match v1.desc with
-              Const True -> false_term
-            | Const False -> true_term
+              True -> false_term
+            | False -> true_term
             | _ -> assert false
         in
           rands', v
@@ -258,8 +264,8 @@ let rec eval_print fm rands t =
               | Some f ->
                   let rands'',v = eval_print fm rands' (f cond) in
                     match v.desc with
-                        Const True -> eval_print fm rands'' (f t)
-                      | Const False -> eval_print fm rands'' (make_match v pats)
+                        True -> eval_print fm rands'' (f t)
+                      | False -> eval_print fm rands'' (make_match v pats)
                       | _ -> assert false
           end
     | Match(t1,[]) -> assert false

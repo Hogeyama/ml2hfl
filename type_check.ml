@@ -15,9 +15,9 @@ let rec check t typ =
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
-      {desc=Const Unit; typ=TUnit} -> ()
-    | {desc=Const (True|False)|Unknown; typ=TBool} -> ()
-    | {desc=Const (Int _); typ=(TInt | TRInt _)} -> ()
+      {desc=Unit; typ=TUnit} -> ()
+    | {desc=True|False|Unknown; typ=TBool} -> ()
+    | {desc=Int _; typ=(TInt | TRInt _)} -> ()
     | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
     | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->

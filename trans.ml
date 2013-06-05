@@ -45,18 +45,15 @@ and id___info = function
   | InfoId x -> InfoId (id___var x)
   | InfoTerm t -> InfoTerm (id__ t)
 
-and id___const = function
-    Unit -> Unit
-  | True -> True
-  | False -> False
-  | Int n -> Int n
-
 and id__ t =
   let typ = id___typ t.typ in
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(id___typ typ,b)
       | Var y -> Var (id___var y)
@@ -132,18 +129,15 @@ and id2___info env = function
   | InfoId x -> InfoId (id2___var env x)
   | InfoTerm t -> InfoTerm (id2__ env t)
 
-and id2___const env = function
-    Unit -> Unit
-  | True -> True
-  | False -> False
-  | Int n -> Int n
-
 and id2__ env t =
   let typ = id2___typ env t.typ in
   let desc =
     match t.desc with
-        Const c -> Const (id2___const env c)
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(id2___typ env typ,b)
       | Var y -> Var (id2___var env y)
@@ -182,8 +176,11 @@ and id2__ env t =
 
 let rec assoc_typ f t =
   match t.desc with
-      Const _ -> []
+      Unit -> []
+    | True -> []
+    | False -> []
     | Unknown -> []
+    | Int _ -> []
     | RandInt _ -> []
     | RandValue _ -> []
     | Var _ -> []
@@ -263,8 +260,11 @@ and flatten_tvar t =
   let typ = flatten_tvar_typ t.typ in
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(flatten_tvar_typ typ,b)
       | Var y -> Var (flatten_tvar_var y)
@@ -342,8 +342,11 @@ and inst_tvar_tunit t =
   let typ' = inst_tvar_tunit_typ t.typ in
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | Var x -> Var (inst_tvar_tunit_var x)
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
@@ -417,8 +420,11 @@ and rename_tvar map t =
   let typ = rename_tvar_typ map t.typ in
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(rename_tvar_typ map typ,b)
       | Var y -> Var (rename_tvar_var map y)
@@ -482,8 +488,11 @@ let rec rename_poly_funs_list f map ts =
 and rename_poly_funs f map t =
   let map',desc =
     match t.desc with
-        Const _
+        Unit
+      | True
+      | False
       | Unknown
+      | Int _
       | RandInt _ -> map, t.desc
       | Var x when Id.same x f ->
           if is_poly_typ t.typ
@@ -597,8 +606,11 @@ let rename_poly_funs f t = rename_poly_funs f [] t
 let rec copy_poly_funs t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, copy_poly_funs t)
@@ -792,8 +804,11 @@ let set_target t =
 let rec merge_let_fun t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | Var x -> Var x
       | App(t, ts) -> App(merge_let_fun t, List.map merge_let_fun ts)
@@ -860,8 +875,11 @@ let compare_id x y =
 let rec lift_aux post xs t =
   let defs,desc =
     match t.desc with
-        Const c -> [], Const c
+        Unit -> [], Unit
+      | True -> [], True
+      | False -> [], False
       | Unknown -> [], Unknown
+      | Int n -> [], Int n
       | RandInt b -> [], RandInt b
       | Var x -> [], Var x
       | Fun _ ->
@@ -991,8 +1009,11 @@ let lift t =
 let rec canonize t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | Var x -> Var x
       | App(t, ts) ->
@@ -1106,11 +1127,14 @@ let part_eval t =
           else None
     | _ -> None
   in
-  let () = ignore (is_alias [] (Const True)) in
+  let () = ignore (is_alias [] True) in
   let rec aux apply t =
     let desc =
       match t.desc with
-          Const c -> Const c
+          Unit -> Unit
+        | True -> True
+        | False -> False
+        | Int n -> Int n
         | RandInt b -> RandInt b
         | Var x ->
             begin
@@ -1142,15 +1166,15 @@ let part_eval t =
             else
               begin
                 match ts with
-                    [{desc=Const(True|False)}] -> (aux apply (subst x (List.hd ts) t)).desc
+                    [{desc=True|False}] -> (aux apply (subst x (List.hd ts) t)).desc
                   | _ ->
                       let t' = aux apply t in
                       let ts' = List.map (aux apply) ts in
                         App({desc=Fun(x,t');typ=typ'}, ts')
               end
         | App(t, ts) -> App(aux apply t, List.map (aux apply) ts)
-        | If({desc=Const True}, t2, _) -> (aux apply t2).desc
-        | If({desc=Const False}, _, t3) -> (aux apply t3).desc
+        | If({desc=True}, t2, _) -> (aux apply t2).desc
+        | If({desc=False}, _, t3) -> (aux apply t3).desc
         | If({desc=Not t1}, t2, t3) -> If(aux apply t1, aux apply t3, aux apply t2)
         | If(t1, t2, t3) ->
             if t2 = t3
@@ -1307,8 +1331,11 @@ let part_eval2 t =
 let rec trans_let t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | Var y -> Var y
       | Fun(y, t) -> Fun(y, trans_let t)
@@ -1365,11 +1392,11 @@ let rec trans_let t =
 
 let rec propagate_typ_arg t =
   match t.desc with
-      Const Unit -> unit_term
-    | Const True -> true_term
-    | Const False -> false_term
+      Unit -> unit_term
+    | True -> true_term
+    | False -> false_term
     | Unknown -> assert false
-    | Const (Int n) -> make_int n
+    | Int n -> make_int n
     | RandInt b -> {desc=RandInt b; typ=t.typ}
     | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t.typ}
     | Var y -> make_var y
@@ -1430,8 +1457,11 @@ let replace_typ_var env x =
 let rec replace_typ_aux env t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -1504,17 +1534,20 @@ let replace_typ env t =
 let rec eval t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | Var x -> Var x
       | App({desc=Fun(x, t)}, t'::ts) ->
           (eval ({desc=App(subst_map [x, t'] t, ts);typ=t.typ})).desc
       | App(t, []) -> (eval t).desc
       | App(t, ts) ->
           App(eval t, List.map eval ts)
-      | If({desc=Const True}, t2, t3) ->
+      | If({desc=True}, t2, t3) ->
           (eval t2).desc
-      | If({desc=Const False}, t2, t3) ->
+      | If({desc=False}, t2, t3) ->
           (eval t3).desc
       | If(t1, t2, t3) ->
           If(eval t1, eval t2, eval t3)
@@ -1537,13 +1570,13 @@ let rec eval t =
             else*)
             Let(flag, f, xs, eval t1, eval t2)
           *)
-      | BinOp(Add, {desc=Const (Int 0)}, t) ->
+      | BinOp(Add, {desc=Int 0}, t) ->
           (eval t).desc
-      | BinOp(Mult, {desc=Const (Int 1)}, t) ->
+      | BinOp(Mult, {desc=Int 1}, t) ->
           (eval t).desc
       | BinOp(Sub, t1, t2) ->
           (eval (make_add (eval t1) (eval (make_mul (make_int (-1)) t2)))).desc
-      | BinOp(Mult, {desc=Const (Int n)}, {desc=BinOp(Mult, {desc=Const (Int m)}, t)}) ->
+      | BinOp(Mult, {desc=Int n}, {desc=BinOp(Mult, {desc=Int m}, t)}) ->
           (eval (make_mul (make_int (n*m)) t)).desc
       | BinOp(op, t1, t2) ->
           BinOp(op, eval t1, eval t2)
@@ -1592,8 +1625,11 @@ let rec eval t =
 let rec eta_reduce t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, eta_reduce t)
@@ -1631,7 +1667,7 @@ let normalize_binop_exp op t1 t2 =
   let neg xs = List.map (fun (x,n) -> x,-n) xs in
   let rec decomp t =
     match t.desc with
-        Const (Int n) -> [None, n]
+        Int n -> [None, n]
       | Var x -> [Some {desc=Var x;typ=Id.typ x}, 1]
       | BinOp(Add, t1, t2) ->
           decomp t1 @@ decomp t2
@@ -1684,7 +1720,7 @@ let normalize_binop_exp op t1 t2 =
         [] -> assert false
       | (x,n)::xns ->
           let aux :typed_term option * int -> typed_term= function
-              None,n -> {desc=Const (Int n); typ=TInt}
+              None,n -> {desc=Int n; typ=TInt}
             | Some x,n -> if n=1 then x else make_mul (make_int n) x
           in
           let t1,xns',op' =
@@ -1714,10 +1750,10 @@ let normalize_binop_exp op t1 t2 =
   let rec simplify t =
     let desc =
       match t.desc with
-          BinOp(Add, t1, {desc=BinOp(Mult, {desc=Const (Int n)}, t2)}) when n < 0 ->
+          BinOp(Add, t1, {desc=BinOp(Mult, {desc=Int n}, t2)}) when n < 0 ->
             let t1' = simplify t1 in
               BinOp(Sub, t1', make_mul (make_int (-n)) t2)
-        | BinOp(Add, t1, {desc=Const (Int n)}) when n < 0 ->
+        | BinOp(Add, t1, {desc=Int n}) when n < 0 ->
             let t1' = simplify t1 in
               BinOp(Sub, t1', make_int (-n))
         | BinOp(Add, t1, t2) ->
@@ -1732,22 +1768,22 @@ let normalize_binop_exp op t1 t2 =
 let rec normalize_bool_exp t =
   let desc =
     match t.desc with
-        Const True -> Const True
-      | Const False -> Const False
+        True -> True
+      | False -> False
       | Unknown -> Unknown
       | Var x -> Var x
       | BinOp(Or|And as op, t1, t2) ->
           let t1' = normalize_bool_exp t1 in
           let t2' = normalize_bool_exp t2 in
             BinOp(op, t1', t2')
-      | BinOp(Eq, {desc=Const(True|False)|Unknown}, _)
-      | BinOp(Eq, _, {desc=Const(True|False)|Unknown})
+      | BinOp(Eq, {desc=True|False|Unknown}, _)
+      | BinOp(Eq, _, {desc=True|False|Unknown})
       | BinOp(Eq, {desc=Nil|Cons _}, _)
       | BinOp(Eq, _, {desc=Nil|Cons _}) as t -> t
       | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> normalize_binop_exp op t1 t2
       | Not t -> Not (normalize_bool_exp t)
-      | Const Unit
-      | Const (Int _)
+      | Unit
+      | Int _
       | Fun _
       | App _
       | If _
@@ -1778,15 +1814,15 @@ let rec normalize_bool_exp t =
 
 let rec get_and_list t =
   match t.desc with
-      Const True -> [{desc=Const True; typ=t.typ}]
-    | Const False -> [{desc=Const False; typ=t.typ}]
+      True -> [{desc=True; typ=t.typ}]
+    | False -> [{desc=False; typ=t.typ}]
     | Unknown -> [{desc=Unknown; typ=t.typ}]
     | Var x -> [{desc=Var x; typ=t.typ}]
     | BinOp(And, t1, t2) -> get_and_list t1 @@ get_and_list t2
     | BinOp(op, t1, t2) -> [{desc=BinOp(op, t1, t2); typ=t.typ}]
     | Not t -> [{desc=Not t; typ=t.typ}]
-    | Const Unit
-    | Const (Int _)
+    | Unit
+    | Int _
     | Fun _
     | App _
     | If _
@@ -1813,8 +1849,8 @@ let rec get_and_list t =
 let rec merge_geq_leq t =
   let desc =
     match t.desc with
-        Const True -> Const True
-      | Const False -> Const False
+        True -> True
+      | False -> False
       | Unknown -> Unknown
       | Var x -> Var x
       | BinOp(And, t1, t2) ->
@@ -1853,8 +1889,8 @@ let rec merge_geq_leq t =
             BinOp(Or, t1', t2')
       | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
       | Not t -> Not (merge_geq_leq t)
-      | Const Unit
-      | Const (Int _)
+      | Unit
+      | Int _
       | Fun _
       | App _
       | If _
@@ -1894,8 +1930,11 @@ let rec merge_geq_leq t =
 let rec elim_fun fun_name t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -1943,8 +1982,11 @@ let elim_fun t = elim_fun "f" t
 
 let rec make_ext_env funs t =
   match t.desc with
-      Const c -> []
+      Unit -> []
+    | True -> []
+    | False -> []
     | Unknown -> []
+    | Int n -> []
     | RandInt _ -> []
     | Var x -> if List.mem x funs then [x, Id.typ x] else []
     | App(t, ts) -> make_ext_env funs t @@ (rev_map_flatten (make_ext_env funs) ts)
@@ -1984,11 +2026,14 @@ let make_ext_env t =
 let rec init_rand_int t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | Var x -> Var x
       | RandInt false -> assert false
-      | App({desc=RandInt false},[{desc=Const Unit}]) -> Var (Id.new_var "_r" TInt)
+      | App({desc=RandInt false},[{desc=Unit}]) -> Var (Id.new_var "_r" TInt)
       | Fun(x,t) -> Fun(x, init_rand_int t)
       | App(t,ts) -> App(init_rand_int t, List.map init_rand_int ts)
       | If(t1,t2,t3) -> If(init_rand_int t1, init_rand_int t2, init_rand_int t3)
@@ -2024,8 +2069,11 @@ let rec init_rand_int t =
 let rec inlined_f inlined fs t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y ->
@@ -2055,7 +2103,7 @@ let rec inlined_f inlined fs t =
                Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
                  let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
                  let ts = List.map (inlined_f inlined fs) ts in
-                 let ys = List.map (fun t -> match t.desc with Const (Unit | True | False | Int _) | Var _ -> `L(t) | _ -> `R(Id.new_var ("arg" ^ gen_id ()) t.typ)) ts in
+                 let ys = List.map (fun t -> match t.desc with Unit | True | False | Int _ | Var _ -> `L(t) | _ -> `R(Id.new_var ("arg" ^ gen_id ()) t.typ)) ts in
                  let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else Fpat.Util.List.split_nth (List.length xs) ys in
                  let xs1, xs2 = Fpat.Util.List.split_nth (List.length ys1) xs in
                  let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
@@ -2148,8 +2196,11 @@ let inlined_f inlined t = inlined_f inlined [] t
 let rec lift_fst_snd fs t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -2236,8 +2287,11 @@ let lift_fst_snd t = lift_fst_snd [] t
 let rec expand_let_val t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -2283,8 +2337,11 @@ let rec expand_let_val t =
 let rec simplify_match t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -2339,8 +2396,11 @@ let rec simplify_match t =
 let rec simplify_match t =
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -2423,8 +2483,11 @@ and insert_param_funarg t =
   let typ = insert_param_funarg_typ t.typ in
   let desc =
     match t.desc with
-        Const c -> Const c
+        Unit -> Unit
+      | True -> True
+      | False -> False
       | Unknown -> Unknown
+      | Int n -> Int n
       | RandInt b -> RandInt b
       | Var x -> Var (insert_param_funarg_var x)
       | Fun _ ->
@@ -2481,8 +2544,11 @@ and insert_param_funarg t =
 
 let rec search_fail path t =
   match t.desc with
-    Const c -> []
+    Unit -> []
+  | True -> []
+  | False -> []
   | Unknown -> []
+  | Int n -> []
   | RandInt b -> []
   | Var x -> []
   | Fun(x,t) -> search_fail path t
@@ -2542,8 +2608,11 @@ let search_fail t = search_fail [] t
 let rec screen_fail path target t =
   let desc =
     match t.desc with
-        Const c -> t.desc
+        Unit -> t.desc
+      | True -> t.desc
+      | False -> t.desc
       | Unknown -> t.desc
+      | Int n -> t.desc
       | RandInt b -> t.desc
       | Var x -> t.desc
       | Fun(x,t) -> t.desc
@@ -2615,8 +2684,11 @@ let rec rename_ext_funs_list funs map ts =
 and rename_ext_funs funs map t =
   let map',desc =
     match t.desc with
-        Const _
+        Unit
+      | True
+      | False
       | Unknown
+      | Int _
       | RandInt _ -> map, t.desc
       | Var x when Id.mem x funs ->
           begin
