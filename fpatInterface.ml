@@ -6,6 +6,8 @@ open CEGAR_print
 open CEGAR_util
 open Fpat
 open Fpat.Combinator
+open Fpat.ExtFormula
+open Fpat.ExtHornClause
 
 let conv_const c =
   match c with
@@ -462,7 +464,7 @@ let simplify_term t =
   if false then
 	  let _, t = trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
 	  let t = conv_term t in
-	  let t = FormulaUtil.simplify t in
+	  let t = Formula.simplify t in
 			let t = inv_term t in
 	  (trans_inv_term t).Syntax.desc
   else
@@ -494,7 +496,7 @@ let compute_strongest_post prog ce =
   let prog = conv_prog prog in
   let [etr] = CompTreeExpander.error_traces_of prog [ce] in
   let _, hcs = HcGenRefType.cgen (Prog.type_of prog) etr in
-  let hcs = List.map (HornClauseUtil.simplify []) hcs in
+  let hcs = List.map (HornClause.simplify []) hcs in
   Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
   let lbs = HcSolver.compute_lbs hcs in
   let env, spc =
@@ -516,7 +518,7 @@ let compute_strongest_post prog ce =
         with Not_found ->
           assert false
       in
-      FormulaUtil.simplify (Formula.band [t; t'])
+      Formula.simplify (Formula.band [t; t'])
     else
       let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
       RefType.visible_vars (Prog.type_of prog) (fst atm),
@@ -541,8 +543,8 @@ let compute_strongest_post prog ce =
   let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.Bool) env) in
   let env = List.filter (fun (_, ty) -> ty <> SimType.Bool) env in
   let env = List.filter (fun (_, ty) -> ty <> SimType.Unit) env in
-  let spc = FormulaUtil.elim_unit spc in
-  let spc = FormulaUtil.eqelim_boolean (fvs_bool @ bvs_bool) spc in
+  let spc = Formula.elim_unit spc in
+  let spc = Formula.eqelim_boolean (fvs_bool @ bvs_bool) spc in
   Format.printf "strongest post condition:@,  %a@," Term.pr spc;
   Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
   env, spc
