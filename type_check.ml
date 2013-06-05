@@ -18,6 +18,7 @@ let rec check t typ =
       {desc=Const Unit; typ=TUnit} -> ()
     | {desc=Const (True|False)|Unknown; typ=TBool} -> ()
     | {desc=Const (Int _); typ=(TInt | TRInt _)} -> ()
+    | {desc=Const _; typ=TConstr _} -> ()
     | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
     | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->
@@ -121,37 +122,6 @@ let rec check t typ =
           check t1 typ;
           check t2 (TFun(e,typ))
     | {desc=Bottom} -> ()
-    | _ ->(*
-            match t.desc with
-            Unit -> assert false
-            | True -> assert false
-            | False -> assert false
-            | Unknown -> assert false
-            | Int n -> assert false
-            | NInt y -> assert false
-            | RandInt None -> assert false
-            | RandInt (Some t1) -> assert false
-            | Var y -> assert false
-            | Fun(y, t1) -> assert false
-            | App(t1, ts) -> assert false
-            | If(t1, t2, t3) -> assert false
-            | Branch(t1, t2) -> assert false
-            | Let(Flag.Nonrecursive, f, xs, t1, t2) -> assert false
-            | Let(Flag.Recursive, f, xs, t1, t2) -> assert false
-            | BinOp(op, t1, t2) -> assert false
-            | Not t1 -> assert false
-            | Fail -> assert false
-            | Label(b, t1) -> assert false
-            | LabelInt(n, t1) -> assert false
-            | Event s -> assert false
-            | Record(b,fields) -> assert false
-            | Proj(n,i,s,f,t1) -> assert false
-            | SetField(n,i,s,f,t1,t2) -> assert false
-            | Nil -> assert false
-            | Cons(t1,t2) -> assert false
-            | Constr(s,ts) -> assert false
-            | Match(t1,pats) -> assert false
-            | TryWith(t1,pats) -> assert false
-          *)          Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
+    | _ -> Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ

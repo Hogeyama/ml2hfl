@@ -1370,6 +1370,7 @@ let rec propagate_typ_arg t =
     | Const False -> false_term
     | Unknown -> assert false
     | Const (Int n) -> make_int n
+    | Const c -> t
     | RandInt b -> {desc=RandInt b; typ=t.typ}
     | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t.typ}
     | Var y -> make_var y

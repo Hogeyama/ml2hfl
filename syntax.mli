@@ -6,7 +6,17 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 and typed_term = {desc:term; typ:typ}
-and const = Unit | True | False | Int of int (* only base type constants *)
+and const = (* only base type constants *)
+    Unit
+  | True
+  | False
+  | Int of int
+  | Char of char
+  | String of string
+  | Float of string
+  | Int32 of int32
+  | Int64 of int64
+  | Nativeint of nativeint
 and term =
     Const of const
   | Unknown

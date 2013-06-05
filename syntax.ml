@@ -9,7 +9,17 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 
-and const = Unit | True | False | Int of int (* only base type constants *)
+and const = (* only base type constants *)
+    Unit
+  | True
+  | False
+  | Int of int
+  | Char of char
+  | String of string
+  | Float of string
+  | Int32 of int32
+  | Int64 of int64
+  | Nativeint of nativeint
 
 and typed_term = {desc:term; typ:typ}
 and term =
@@ -244,6 +254,13 @@ and print_const fm = function
   | True -> fprintf fm "true"
   | False -> fprintf fm "false"
   | Int n -> fprintf fm "%d" n
+  | Char c -> fprintf fm "%c" c
+  | String s -> fprintf fm "%S" s
+  | Float s -> fprintf fm "%s" s
+  | Int32 n -> fprintf fm "%ldl" n
+  | Int64 n -> fprintf fm "%LdL" n
+  | Nativeint n -> fprintf fm "%ndn" n
+
 and print_term pri typ fm t =
   match t.desc with
     Const c -> print_const fm c
