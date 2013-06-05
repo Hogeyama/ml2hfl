@@ -30,7 +30,7 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 
 (* regularization of program form *)
 let rec regularization = function
-  | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Unit; typ = TUnit})}
+  | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Const Unit; typ = TUnit})}
       -> body
   | t -> t
 (*
@@ -48,10 +48,10 @@ and (set_main : Syntax.typed_term -> Syntax.typed_term) = function
 let parens s = "(" ^ s ^ ")"
 let rec show_typed_term t = show_term t.desc
 and show_term = function
-  | Unit -> "()"
-  | True -> "true"
-  | False -> "false"
-  | Int n -> string_of_int n
+  | Const Unit -> "()"
+  | Const True -> "true"
+  | Const False -> "false"
+  | Const (Int n) -> string_of_int n
   | App ({desc=RandInt _}, _) -> "Random.int 0"
   | Var v -> v.Id.name
   | Fun (f, body) -> "fun " ^ f.Id.name ^ " -> " ^ show_typed_term body
@@ -115,7 +115,7 @@ let extract_functions (target_program : typed_term) =
 
 let rec transform_function_definitions f term =
   let sub ((_, args, _) as binding) = if args <> [] then f binding else binding in
-  match term with 
+  match term with
     | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
@@ -195,7 +195,7 @@ let to_holed_programs (target_program : typed_term) (defined_functions : functio
 	       [(extract_id update_flag, [], randbool_unit_term)]
 	       (make_let
 		  [(extract_id set_flag, [], make_or update_flag prev_set_flag)]
-		  (fold_left3 add_update_statement 
+		  (fold_left3 add_update_statement
 		     body prev_statevars statevars argvars)))
 	else body
       in (id, args, body')
@@ -205,14 +205,14 @@ let to_holed_programs (target_program : typed_term) (defined_functions : functio
       | t -> t
     }
   in
-  let hole_inserted_programs = 
-    List.map (fun f -> 
+  let hole_inserted_programs =
+    List.map (fun f ->
       let f_state = state_template f in
       { program = everywhere_expr (hole_insert f f_state) target_program
       ; verified = f
       ; state = f_state}) defined_functions
   in
-  let state_inserted_programs = 
+  let state_inserted_programs =
     List.map transform_program_by_call hole_inserted_programs
   in state_inserted_programs
 
