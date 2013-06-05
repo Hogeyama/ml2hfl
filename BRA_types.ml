@@ -45,7 +45,7 @@ let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
     else s ^ string_of_int const
   in
   match coefficients with
-    | [] -> Format.fprintf fm "false"
+    | [] -> Format.fprintf fm "0"
     | c::cs -> Format.fprintf fm "%s" (List.fold_left (fun acc c' -> acc ^ ", " ^ show_ranking_function c') (show_ranking_function c) cs)
 
 type holed_program = { program : Syntax.typed_term

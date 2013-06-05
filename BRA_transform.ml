@@ -4,6 +4,15 @@ open Syntax
 open BRA_types
 open BRA_state
 
+type inputForm = Definitions | Expr
+
+let connector f = if f = Definitions then "\n" else " in "
+
+let rec is_form_of = function
+  | {desc = Let (Nonrecursive, [id, args, body], u); typ = t} when id.Id.name = "main" -> Definitions
+  | {desc = Let (rec_flag, bindings, body)} as t -> is_form_of body
+  | t -> Expr
+
 (***** Constants *****)
 
 let hole_term = make_var (Id.new_var "__HOLE__" TBool)
@@ -30,7 +39,7 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 
 (* regularization of program form *)
 let rec regularization = function
-  | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Unit; typ = TUnit})}
+  | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Unit; typ = TUnit})} when top_id.Id.name <> "main"
       -> body
   | t -> t
 (*
@@ -46,32 +55,38 @@ and (set_main : Syntax.typed_term -> Syntax.typed_term) = function
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
-let rec show_typed_term t = show_term t.desc
-and show_term = function
+let rec show_typed_term form t = show_term form t.desc
+and show_term form = function
   | Unit -> "()"
   | True -> "true"
   | False -> "false"
   | Int n -> string_of_int n
   | App ({desc=RandInt _}, _) -> "Random.int 0"
   | Var v -> v.Id.name
-  | Fun (f, body) -> "fun " ^ f.Id.name ^ " -> " ^ show_typed_term body
+  | Fun (f, body) -> "fun " ^ f.Id.name ^ " -> " ^ show_typed_term form body
   | App ({desc=Event("fail", _)}, _) -> "assert false"
-  | App (f, args) -> show_typed_term f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_typed_term a)) "" args
-  | If (t1, t2, t3) -> "if " ^ show_typed_term t1 ^ " then " ^ show_typed_term t2 ^ " else " ^ show_typed_term t3
+  | App (f, args) -> show_typed_term form f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_typed_term form a)) "" args
+  | If (t1, t2, t3) -> "if " ^ show_typed_term form t1 ^ " then " ^ show_typed_term form t2 ^ " else " ^ show_typed_term form t3
   | Let (_, [], _) -> assert false
+  | Let (Nonrecursive, [id, args, body], {desc=Unit; typ=TUnit}) when id.Id.name = "main" ->
+    let show_args args = List.fold_left (fun acc a -> acc ^ " " ^ a.Id.name) "" args in
+    "let main "
+    ^ show_args args
+    ^ " = "
+    ^ show_typed_term form body
   | Let (rec_flag, b::bs, t) ->
     let show_bind (x, args, body) =
       x.Id.name
       ^ (List.fold_left (fun acc a -> acc ^ " " ^ a.Id.name) "" args)
       ^ "="
-      ^ show_typed_term body in
+      ^ show_typed_term Expr body in
     (if rec_flag = Nonrecursive then "let " else "let rec ")
     ^ show_bind b
     ^ List.fold_left (fun acc x -> acc ^ " and " ^ show_bind x) "" bs
-    ^ " in "
-    ^ show_typed_term t
-  | BinOp (binop, t1, t2) -> parens (show_typed_term t1) ^ show_binop binop ^ parens (show_typed_term t2)
-  | Not t -> "not " ^ parens (show_typed_term t)
+    ^ (connector form)
+    ^ show_typed_term form t
+  | BinOp (binop, t1, t2) -> parens (show_typed_term form t1) ^ show_binop binop ^ parens (show_typed_term form t2)
+  | Not t -> "not " ^ parens (show_typed_term form t)
   | t -> raise (Invalid_argument "show_term")
 and show_binop = function
   | Eq -> "="
@@ -86,7 +101,8 @@ and show_binop = function
   | Mult -> "*"
 
 let retyping t =
-  let lb = t |> show_typed_term
+  Format.eprintf "@.%s@." (show_typed_term (is_form_of t) t);
+  let lb = t |> show_typed_term (is_form_of t)
              |> Lexing.from_string
   in
   let () = lb.Lexing.lex_curr_p <-
@@ -107,6 +123,7 @@ let extract_functions (target_program : typed_term) =
   let ext acc (id, args, body) = if args = [] then acc else {id=id; args=args}::acc in
   let rec iter t =
     match t.desc with
+      | Let (_, [id, _, _], _) when id.Id.name = "main" -> []
       | Let (_, bindings, body) -> List.fold_left ext [] bindings @ iter body
       | t -> []
   in
@@ -116,10 +133,12 @@ let extract_functions (target_program : typed_term) =
 let rec transform_function_definitions f term =
   let sub ((_, args, _) as binding) = if args <> [] then f binding else binding in
   match term with 
+    | {desc = Let (Nonrecursive, [id, _, _], _)} as t when id.Id.name = "main" -> t
     | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
 let rec transform_main_expr f = function
+  | {desc = Let (Nonrecursive, [id, args, body], u); typ = t} when id.Id.name = "main" -> {desc = Let (Nonrecursive, [id, args, everywhere_expr f body], u); typ = t}
   | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, bindings, transform_main_expr f body) }
   | t -> everywhere_expr f t
 
