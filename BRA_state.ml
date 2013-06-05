@@ -4,11 +4,11 @@ open BRA_util
 
 let rec default_val t = {Syntax.desc = default_val' t; Syntax.typ = t}
 and default_val' =
-  let open Syntax in 
+  let open Syntax in
   let open Type in function
-    | TUnit -> Unit
-    | TBool -> False
-    | TInt -> Int 0
+    | TUnit -> Const Unit
+    | TBool -> Const False
+    | TInt -> Const (Int 0)
     | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var "_" t1, default_val t2)
     | TPred (t, _) -> default_val' (Id.typ t)
     | TConstr (_, _) -> raise (Invalid_argument "default_val: not yet implemented syntax(Tconstr)")
@@ -64,7 +64,7 @@ let build_record {id = {Id.name = f_name}; args = f_args} =
   let open Flag in
   let _ = record := filter_non_integer !record in
   !record
-      
+
 let build_state function_infos target =
   { initial_state = Syntax.false_term :: List.map (fun {Syntax.typ = t} -> default_val t) (build_record target).argvars
   ; statetable = List.fold_left (fun map function_info -> InnerState.add function_info.id (build_record function_info) map) InnerState.empty function_infos
@@ -89,4 +89,3 @@ let propagated_statevars {BRA_types.verified = verified; BRA_types.state = state
   table.set_flag :: table.statevars
 
 let find_state {BRA_types.state = state} f = InnerState.find f.id state.statetable
-
