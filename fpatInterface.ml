@@ -494,11 +494,12 @@ let rec simplify typ =
 
 
 let compute_strongest_post prog ce =
+  let debug = !Flag.debug_level > 0 in
   let prog = conv_prog prog in
   let [etr] = CompTreeExpander.error_traces_of prog [ce] in
   let _, hcs = HcGenRefType.cgen (Prog.type_of prog) etr in
   let hcs = List.map (HornClauseUtil.simplify []) hcs in
-  Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
+  if debug then Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
   let lbs = HcSolver.compute_lbs hcs in
   let env, spc =
     let is_fail pid = Idnt.string_of (Var.base pid) = "fail" in
@@ -546,6 +547,6 @@ let compute_strongest_post prog ce =
   let env = List.filter (fun (_, ty) -> ty <> SimType.Unit) env in
   let spc = FormulaUtil.elim_unit spc in
   let spc = FormulaUtil.eqelim_boolean (fvs_bool @ bvs_bool) spc in
-  Format.printf "strongest post condition:@,  %a@," Term.pr spc;
-  Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
+  if debug then Format.printf "strongest post condition:@,  %a@," Term.pr spc;
+  if debug then Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
   env, spc

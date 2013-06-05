@@ -2,11 +2,11 @@ exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
 
-(***** information of LRF *****)
+(***** information *****)
 let lrf = ref []
+let verified_function = ref ""
 
 let print_info () =
-  Format.printf "cycles: %d\n" !Flag.cegar_loop;
   if !Flag.termination then
     begin
       List.iter
@@ -14,6 +14,7 @@ let print_info () =
 	  Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
 	!lrf
     end;
+  Format.printf "cycles: %d\n" !Flag.cegar_loop;
   Format.printf "total: %.3f sec\n" (Util.get_time());
   Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
@@ -191,7 +192,10 @@ let rec main_loop orig parsed =
                       let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
                         WriteAnnot.f !Flag.filename orig env''
                   in
-                  Format.printf "Safe!@.@.";
+                  (if !Flag.termination then
+		      Format.printf "Terminating!(%s)@.@." !verified_function
+		   else
+                      Format.printf "Safe!@.@.");
                   let () =
                     if !Flag.relative_complete then begin
                       let map =
@@ -219,7 +223,10 @@ let rec main_loop orig parsed =
                   if env' <> [] then Format.printf "@.";
                   true
               | _, CEGAR.Unsafe ce ->
-                Format.printf "Unsafe!@.@.";
+                (if !Flag.termination then
+		    Format.printf "Possibly non-terminating!(%s)@.@." !verified_function
+		 else
+                    Format.printf "UnSafe!@.@.");
                 if main_fun <> "" && arg_num <> 0
                 then
                   Format.printf "Input for %s:@.  %a@." main_fun
@@ -251,6 +258,7 @@ let threshold = ref 5
 exception FailedToFindLLRF
 
 let rec termination_loop predicate_que holed =
+  let debug = !Flag.debug_level > 0 in
   let _ =
     begin
       threshold := !threshold - 1;
@@ -284,17 +292,17 @@ let rec termination_loop predicate_que holed =
 
       let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
       let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
-      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
+      if debug then Format.printf "Linear template:@.  %a@." Term.pr linear_template;
 
       let ranking_constraints =
 	Formula.band [ Formula.gt linear_template_prev linear_template
 		     ; Formula.geq linear_template (IntTerm.make 0)]
       in
       let constraints = imply spc ranking_constraints in
-      Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
+      if debug then Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
 
       let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
-      Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
+      if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
 
       let coefficients =
         try
@@ -316,8 +324,8 @@ let rec termination_loop predicate_que holed =
 	  predicate_info
 	  {BRA_types.coeffs = correspondence; BRA_types.constant = IntTerm.int_of const_part}
       in
-      Format.printf "Inferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
-      Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
+      if debug then Format.printf "\nInferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
+      if debug then Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
       let _ = Queue.push new_predicate_info predicate_que in
       termination_loop predicate_que holed
 	
@@ -353,6 +361,7 @@ let main in_channel =
     let functions = BRA_transform.extract_functions parsed in
     let holed_list = BRA_transform.to_holed_programs parsed functions in
     List.for_all (fun holed ->
+      verified_function := holed.BRA_types.verified.BRA_types.id.Id.name;
       let init_predicate_info =
 	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
 	; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
