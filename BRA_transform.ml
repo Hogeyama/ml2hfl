@@ -206,14 +206,30 @@ let to_holed_programs (target_program : typed_term) (defined_functions : functio
 	  let statevars = get_statevars state target in
 	  let argvars = get_argvars state target in
 	  let add_update_statement cont prev_statevar statevar argvar =
+            (* let s_x = if * then
+                           x
+                         else
+                           s_prev_x *)
 	    make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
 	  in
+          (* let _ = if prev_set_flag then
+                       if __HOLE__ then
+                         ()
+                       else
+                         fail
+             in *)
 	  make_let
 	    [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+
+            (* let update_flag = Random.int 0 in *)
 	    (make_let
 	       [(extract_id update_flag, [], randbool_unit_term)]
+
+	       (* let set_flag = update_flag || prev_set_flag in *)
 	       (make_let
 		  [(extract_id set_flag, [], make_or update_flag prev_set_flag)]
+
+		  (* each statrvars update *)
 		  (fold_left3 add_update_statement 
 		     body prev_statevars statevars argvars)))
 	else body
