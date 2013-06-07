@@ -13,9 +13,24 @@ let print_info () =
   Format.pp_print_flush Format.std_formatter ()
 
 
-
 let init () =
   Syntax.typ_excep := Type.TConstr("exn",true)
+
+
+let print_env () =
+  let build =
+    try
+      let cin = open_in "COMMIT" in
+      let s = input_line cin in
+      close_in cin;
+      Format.sprintf "(Build: %s)" s
+    with Sys_error _ | End_of_file -> ""
+  in
+  Format.printf "MoCHi %s@." build;
+  Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
+  Format.printf "  OCaml version: %s@." Sys.ocaml_version;
+  Format.printf "@."; ()
+
 
 let preprocess t spec =
   let fun_list,t,get_rtyp =
@@ -451,6 +466,7 @@ let () =
   then ()
   else
     try
+      print_env ();
       let set_file name =
         if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
         then (Arg.usage arg_spec usage; exit 1);
