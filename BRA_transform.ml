@@ -196,32 +196,54 @@ let to_holed_programs (target_program : typed_term) (defined_functions : functio
 	  let statevars = get_statevars state target in
 	  let argvars = get_argvars state target in
 	  let add_update_statement cont prev_statevar statevar argvar =
-            (* let s_x = if * then
-                           x
-                         else
-                           s_prev_x *)
-	    make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
+	    if !Flag.disjunctive then
+              (* let s_x = if * then
+                             x
+                           else
+                             s_prev_x *)
+	      make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
+	    else
+              (* let s_x = x *)
+  	      make_let [extract_id statevar, [], restore_type state argvar] cont
 	  in
-          (* let _ = if prev_set_flag then
-                       if __HOLE__ then
-                         ()
-                       else
-                         fail
-             in *)
-	  make_let
-	    [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
-
-            (* let update_flag = Random.int 0 in *)
-	    (make_let
-	       [(extract_id update_flag, [], randbool_unit_term)]
-
-	       (* let set_flag = update_flag || prev_set_flag in *)
-	       (make_let
-		  [(extract_id set_flag, [], make_or update_flag prev_set_flag)]
-
-		  (* each statrvars update *)
-		  (fold_left3 add_update_statement 
-		     body prev_statevars statevars argvars)))
+	  if !Flag.disjunctive then
+            (* let _ = if prev_set_flag then
+                         if __HOLE__ then
+                           ()
+                         else
+                           fail
+               in *)
+            make_let
+	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      
+              (* let update_flag = Random.int 0 in *)
+	      (make_let
+		 [(extract_id update_flag, [], randbool_unit_term)]
+		 
+		 (* let set_flag = update_flag || prev_set_flag in *)
+		 (make_let
+		    [(extract_id set_flag, [], make_or update_flag prev_set_flag)]
+		    
+		    (* each statevars update *)
+		    (fold_left3 add_update_statement 
+		       body prev_statevars statevars argvars)))
+	  else
+            (* let _ = if prev_set_flag then
+                         if __HOLE__ then
+                           ()
+                         else
+                           fail
+               in *)
+            make_let
+	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      
+	      (* let set_flag = true in *)
+	      (make_let
+		 [(extract_id set_flag, [], true_term)]
+		 
+		 (* each statevars update *)
+		 (fold_left3 add_update_statement 
+		    body prev_statevars statevars argvars))
 	else body
       in (id, args, body')
     in
@@ -252,18 +274,20 @@ let construct_LLRF {variables = variables_; prev_variables = prev_variables_; co
 			     (List.tl cs)
     with Invalid_argument _ -> raise (Invalid_argument "construct_LLRF")
   in
-  let rec iter addition = function
+  let rec iter = function
     | [c] ->
-      addition (make_and (make_gt (rank prev_variables c) (rank variables c))
-		  (make_geq (rank variables c) (make_int 0)))
+      (* c*prev_x > c*x && c*x >= 0 *)
+      make_and (make_gt (rank prev_variables c) (rank variables c))
+	(make_geq (rank variables c) (make_int 0))
     | c::cs ->
+      (* c*prev_x > c*x && c*x >= 0 || ... *)
       make_or
-	(addition (make_and (make_gt (rank prev_variables c) (rank variables c))
-		     (make_geq (rank variables c) (make_int 0))))
-	(iter (fun t -> make_and (make_eq (rank prev_variables c) (rank variables c)) t) cs)
+        (make_and (make_gt (rank prev_variables c) (rank variables c))
+	   (make_geq (rank variables c) (make_int 0)))
+	(iter cs)
     | [] -> false_term
   in
-  iter (fun t -> t) coefficients
+  iter coefficients
 
 (* plug holed program with predicate *)
 let pluging (holed_program : holed_program) (predicate : typed_term) =

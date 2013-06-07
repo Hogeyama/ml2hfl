@@ -118,6 +118,6 @@ let write_annot = ref true
 (* termination-mode option *)
 let termination = ref false
 
-let flag_disjunctive = ref false
+let disjunctive = ref false
 let flag_remove_functional = ref true
 let flag_rec_occur = ref false

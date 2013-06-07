@@ -478,6 +478,11 @@ let arg_spec =
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Use Yint interpolating prover";
    (* termination mode *)
+   "-termination-disj",
+     Arg.Unit (fun _ ->
+       Flag.termination := true;
+       Flag.disjunctive := true),
+     " Check termination by finding disjunctive well-founded relation";
    "-termination",
      Arg.Unit (fun _ ->
        Flag.termination := true),
