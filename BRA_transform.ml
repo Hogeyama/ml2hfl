@@ -267,27 +267,33 @@ let construct_LLRF {variables = variables_; prev_variables = prev_variables_; co
   let variables = (make_int 1) :: (List.map make_var variables_) in
   let prev_variables = (make_int 1) :: (List.map make_var prev_variables_) in
   let coefficients = List.map (fun {coeffs = cs; constant = c} -> List.map make_int (c::cs)) coefficients_ in
-  let rec rank vs cs = try List.fold_left2
+  let rec rank cs vs = try List.fold_left2
 			     (fun rk t1 t2 -> make_add rk (make_mul t1 t2))
-			     (make_mul (List.hd vs) (List.hd cs))
-			     (List.tl vs)
+			     (make_mul (List.hd cs) (List.hd vs))
 			     (List.tl cs)
+			     (List.tl vs)
     with Invalid_argument _ -> raise (Invalid_argument "construct_LLRF")
   in
-  let rec iter = function
-    | [c] ->
-      (* c*prev_x > c*x && c*x >= 0 *)
-      make_and (make_gt (rank prev_variables c) (rank variables c))
-	(make_geq (rank variables c) (make_int 0))
-    | c::cs ->
-      (* c*prev_x > c*x && c*x >= 0 || ... *)
+  let rec iter aux = function
+    | [r] ->
+      (* r(prev_x) > r(x) && r(x) >= 0 *)
+      aux (make_and (make_gt (r prev_variables) (r variables))
+	     (make_geq (r variables) (make_int 0)))
+    | r::rs ->
+      let aux_next cond =
+	if !Flag.disjunctive then
+	  cond
+	else
+	  make_and (make_eq (r prev_variables) (r variables)) (aux cond)
+      in
+      (* r(prev_x) > r(x) && r(x) >= 0 || ... *)
       make_or
-        (make_and (make_gt (rank prev_variables c) (rank variables c))
-	   (make_geq (rank variables c) (make_int 0)))
-	(iter cs)
+        (aux (make_and (make_gt (r prev_variables) (r variables))
+		(make_geq (r variables) (make_int 0))))
+	(iter aux_next rs)
     | [] -> false_term
   in
-  iter coefficients
+  iter (fun x -> x) (List.map rank coefficients)
 
 (* plug holed program with predicate *)
 let pluging (holed_program : holed_program) (predicate : typed_term) =
