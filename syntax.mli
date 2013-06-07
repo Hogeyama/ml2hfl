@@ -17,6 +17,7 @@ and const = (* only base type constants *)
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
+  | Abst
 and term =
     Const of const
   | Unknown
@@ -100,8 +101,6 @@ val fail_term : typed_term
 val randint_term : typed_term
 val randbool_unit_term : typed_term
 val randint_unit_term : typed_term
-val abst_term : typed_term
-val make_abst : typ -> typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
@@ -187,6 +186,8 @@ val print_id_typ : Format.formatter -> id -> unit
 val print_ids_typ : Format.formatter -> id list -> unit
 val print_termlist : int -> bool -> Format.formatter -> typed_term list -> unit
 val string_of_const : const -> string
+val string_of_binop : binop -> string
+val string_of_typ : typ -> string
 val string_of_node : node -> string
 val print_pattern : Format.formatter -> typed_pattern -> unit
 val print_constr : Format.formatter -> literal -> unit

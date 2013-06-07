@@ -258,7 +258,7 @@ let rec termination_loop predicate_que holed =
     with Refine.PostCondition (_, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
-      let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in 
+      let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in
 
       let arg_vars =
 	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
@@ -293,7 +293,7 @@ let rec termination_loop predicate_que holed =
       Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
       Format.printf "Unsafe!@.@.";
       false
-	
+
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
@@ -320,7 +320,7 @@ let main in_channel =
     let paths = Trans.search_fail parsed in
     let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
     List.for_all (main_loop orig) (List.rev ts);
-  else if !Flag.termination then 
+  else if !Flag.termination then
     let open BRA_util in
     let parsed = BRA_transform.regularization parsed in
     let functions = BRA_transform.extract_functions parsed in
@@ -482,20 +482,24 @@ let () =
         print_info ()
     with
         Syntaxerr.Error err ->
-          Format.printf "%a@." Syntaxerr.report_error err; exit 1
+          Format.printf "%a@." Syntaxerr.report_error err
       | Typecore.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err; exit 1
+          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err
       | Typemod.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err; exit 1
-      | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1
+          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err
+      | Env.Error e -> Format.printf "%a@." Env.report_error e
       | Typetexp.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err; exit 1
+          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err
       | Lexer.Error(err, loc) ->
-          Format.printf "%a%a@." Location.print_error loc Lexer.report_error err; exit 1
-      | LongInput -> Format.printf "Input is too long@."; exit 1
-      | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
-      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
+          Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
+      | LongInput -> Format.printf "Input is too long@."
+      | TimeOut -> Format.printf "@.Verification failed (time out)@."
+      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-          Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."; exit 1
+          Format.printf "Verification failed:@.";
+          Format.printf "   MoCHi could not refute an infeasible error path @.";
+          Format.printf "   due to the incompleteness of the refinement type system@."
       | Util.Fatal s ->
-          Format.printf "Fatal error: %s@." s; exit 1
+          Format.printf "Fatal error: %s@." s
+      | Util.Unsupported s ->
+          Format.printf "Unsupported: %s@." s

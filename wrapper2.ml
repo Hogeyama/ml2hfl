@@ -148,6 +148,7 @@ let rec string_of_term env = function
     Const True -> "TRUE"
   | Const False -> "FALSE"
   | Const (Int n) -> string_of_int n
+  | Const (Abst (_,s)) -> s
   | Var x -> string_of_var env x
   | App(App(Const And, t1), t2) -> "(" ^ string_of_term env t1 ^ " AND " ^ string_of_term env t2 ^ ")"
   | App(App(Const Or, t1), t2) -> "(" ^ string_of_term env t1 ^ " OR " ^ string_of_term env t2 ^ ")"
@@ -159,6 +160,11 @@ let rec string_of_term env = function
   | App(App(Const EqUnit, t1), t2) -> "TRUE"
   | App(App(Const EqBool, t1), t2) -> "(" ^ string_of_term env t1 ^ "<=>" ^ string_of_term env t2 ^ ")"
   | App(App(Const EqInt, t1), t2) ->  "(" ^ string_of_term env t1 ^ "=" ^ string_of_term env t2 ^ ")"
+  | App(App(Const (CmpPoly(typ,s)), t1), t2) ->
+      Format.printf "@\nWarning: @[A polymorphic comparison is occured: %s.@\n"
+        (string_of_term env t1 ^ " " ^ s ^ " " ^ string_of_term env t2);
+      Format.printf "It is replaced with FALSE@]@\n";
+        "FALSE"
   | App(App(Const Add, t1), t2) -> "(" ^ string_of_term env t1 ^ " + " ^ string_of_term env t2 ^ ")"
   | App(App(Const Sub, t1), t2) -> "(" ^ string_of_term env t1 ^ " - " ^ string_of_term env t2 ^ ")"
   | App(App(Const Mul, t1), t2) -> "(" ^ string_of_term env t1 ^ " * " ^ string_of_term env t2 ^ ")"
@@ -327,7 +333,7 @@ let get_solution env p =
   in
   let ts' = List.sort compare (List.filter aux ts) in
   let aux t =
-    let b = Str.string_match (Str.regexp "^.+ = \(-?[0-9]+\)$") t 0 in
+    let b = Str.string_match (Str.regexp "^.+ = \\(-?[0-9]+\\)$") t 0 in
     let n = String.sub t (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1) in
       assert b;
       int_of_string n

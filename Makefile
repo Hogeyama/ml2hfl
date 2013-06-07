@@ -15,8 +15,8 @@ INCLUDES = \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray
 
-OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -w -14
-OCAMLOPTFLAGS = -annot $(INCLUDES) -package $(PACKAGES) -w -14
+OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
+OCAMLOPTFLAGS = -annot $(INCLUDES) -package $(PACKAGES)
 
 DEPEND += $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 

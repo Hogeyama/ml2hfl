@@ -20,6 +20,7 @@ and const = (* only base type constants *)
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
+  | Abst
 
 and typed_term = {desc:term; typ:typ}
 and term =
@@ -218,7 +219,7 @@ and print_ids_typ fm = function
 and paren pri p = if pri < p then "","" else "(",")"
 
 and print_binop fm = function
-Eq -> fprintf fm "="
+    Eq -> fprintf fm "="
   | Lt -> fprintf fm "<"
   | Gt -> fprintf fm ">"
   | Leq -> fprintf fm "<="
@@ -260,6 +261,7 @@ and print_const fm = function
   | Int32 n -> fprintf fm "%ldl" n
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
+  | Abst -> fprintf fm "Abst"
 
 and print_term pri typ fm t =
   match t.desc with
@@ -585,6 +587,12 @@ let pp_print_term' = print_term'
 let string_of_const c =
   print_const str_formatter c;
   flush_str_formatter ()
+let string_of_binop op =
+  print_binop str_formatter op;
+  flush_str_formatter ()
+let string_of_typ typ =
+  print_typ str_formatter typ;
+  flush_str_formatter ()
 let string_of_node = function
     BrNode -> assert false
   | LabNode true -> "then"
@@ -637,8 +645,6 @@ let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt)}
 let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
   {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Const(Int 0);typ=TInt}); typ=TBool}
-let abst_term = {desc=Constr("Abst",[]); typ=typ_abst}
-let make_abst typ = {desc=Constr("Abst",[]); typ=typ}
 let make_bottom typ = {desc=Bottom;typ=typ}
 let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}

@@ -50,6 +50,13 @@ and id___const = function
   | True -> True
   | False -> False
   | Int n -> Int n
+  | Char c -> Char c
+  | String s -> String s
+  | Float s -> Float s
+  | Int32 n -> Int32 n
+  | Int64 n -> Int64 n
+  | Nativeint n -> Nativeint n
+  | Abst -> Abst
 
 and id__ t =
   let typ = id___typ t.typ in
@@ -137,6 +144,13 @@ and id2___const env = function
   | True -> True
   | False -> False
   | Int n -> Int n
+  | Char c -> Char c
+  | String s -> String s
+  | Float s -> Float s
+  | Int32 n -> Int32 n
+  | Int64 n -> Int64 n
+  | Nativeint n -> Nativeint n
+  | Abst -> Abst
 
 and id2__ env t =
   let typ = id2___typ env t.typ in
@@ -700,7 +714,7 @@ let rec inst_randvalue env defs typ =
           let env',defs',t1 = inst_randvalue env defs (Id.typ x) in
           let env'',defs'',t2 = inst_randvalue env' defs' typ in
           env'', defs'', make_pair t1 t2
-      | TConstr(s,false) -> env, defs, make_abst typ
+      | TConstr(s,false) -> env, defs, {desc=Const Abst; typ=typ}
       | TConstr(s,true) ->
           let u = Id.new_var "u" TUnit in
           let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
@@ -1747,8 +1761,7 @@ let rec normalize_bool_exp t =
       | BinOp(Eq, _, {desc=Nil|Cons _}) as t -> t
       | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> normalize_binop_exp op t1 t2
       | Not t -> Not (normalize_bool_exp t)
-      | Const Unit
-      | Const (Int _)
+      | Const _
       | Fun _
       | App _
       | If _
@@ -1786,8 +1799,7 @@ let rec get_and_list t =
     | BinOp(And, t1, t2) -> get_and_list t1 @@ get_and_list t2
     | BinOp(op, t1, t2) -> [{desc=BinOp(op, t1, t2); typ=t.typ}]
     | Not t -> [{desc=Not t; typ=t.typ}]
-    | Const Unit
-    | Const (Int _)
+    | Const _
     | Fun _
     | App _
     | If _
@@ -1854,8 +1866,7 @@ let rec merge_geq_leq t =
             BinOp(Or, t1', t2')
       | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
       | Not t -> Not (merge_geq_leq t)
-      | Const Unit
-      | Const (Int _)
+      | Const _
       | Fun _
       | App _
       | If _

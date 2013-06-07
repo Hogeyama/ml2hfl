@@ -2,6 +2,7 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
+module S = Syntax
 
 let const_of_bool b = if b then True else False
 
@@ -122,38 +123,38 @@ let eta_expand prog =
 
 let rec make_arg_let t =
   let desc =
-    match t.Syntax.desc with
-        Syntax.Const c -> Syntax.Const c
-      | Syntax.Unknown -> assert false
-      | Syntax.Var x -> Syntax.Var x
-      | Syntax.App(t, ts) ->
-          let f = Id.new_var "f__" (t.Syntax.typ) in
-          let xts = List.map (fun t -> Id.new_var "x" (t.Syntax.typ), t) ts in
+    match t.S.desc with
+        S.Const c -> S.Const c
+      | S.Unknown -> assert false
+      | S.Var x -> S.Var x
+      | S.App(t, ts) ->
+          let f = Id.new_var "f__" (t.S.typ) in
+          let xts = List.map (fun t -> Id.new_var "x" (t.S.typ), t) ts in
           let t' =
-            {Syntax.desc=Syntax.App(Syntax.make_var f, List.map (fun (x,_) -> Syntax.make_var x) xts);
-             Syntax.typ=Type.typ_unknown}
+            {S.desc=S.App(S.make_var f, List.map (fun (x,_) -> S.make_var x) xts);
+             S.typ=Type.typ_unknown}
           in
-            (List.fold_left (fun t2 (x,t1) -> Syntax.make_let [x,[],t1] t2) t' ((f,t)::xts)).Syntax.desc
-      | Syntax.If(t1, t2, t3) ->
+            (List.fold_left (fun t2 (x,t1) -> S.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
+      | S.If(t1, t2, t3) ->
           let t1' = make_arg_let t1 in
           let t2' = make_arg_let t2 in
           let t3' = make_arg_let t3 in
-            Syntax.If(t1',t2',t3')
-      | Syntax.Branch(t1, t2) -> assert false
-      | Syntax.Let(flag,bindings,t2) ->
+            S.If(t1',t2',t3')
+      | S.Branch(t1, t2) -> assert false
+      | S.Let(flag,bindings,t2) ->
           let bindings' = List.map (fun (f,xs,t) -> f, xs, make_arg_let t) bindings in
           let t2' = make_arg_let t2 in
-            Syntax.Let(flag,bindings',t2')
-      | Syntax.BinOp(op, t1, t2) ->
+            S.Let(flag,bindings',t2')
+      | S.BinOp(op, t1, t2) ->
           let t1' = make_arg_let t1 in
           let t2' = make_arg_let t2 in
-            Syntax.BinOp(op, t1', t2')
-      | Syntax.Not t -> Syntax.Not (make_arg_let t)
-      | Syntax.Fun(x,t) -> assert false
-      | Syntax.Event _ -> assert false
+            S.BinOp(op, t1', t2')
+      | S.Not t -> S.Not (make_arg_let t)
+      | S.Fun(x,t) -> assert false
+      | S.Event _ -> assert false
       | _ -> assert false
   in
-    {Syntax.desc=desc; Syntax.typ=t.Syntax.typ}
+    {S.desc=desc; S.typ=t.S.typ}
 
 
 let nil _ = []
@@ -165,32 +166,32 @@ let trans_inv_var s = Id.from_string s Type.typ_unknown
 
 (* for predicates *)
 let rec trans_inv_term = function
-    Const True -> Syntax.true_term
-  | Const False -> Syntax.false_term
-  | Const (Int n) -> Syntax.make_int n
-  | Var x -> Syntax.make_var (trans_inv_var x)
+    Const True -> S.true_term
+  | Const False -> S.false_term
+  | Const (Int n) -> S.make_int n
+  | Var x -> S.make_var (trans_inv_var x)
   | App(App(Const And, t1), t2) ->
-      Syntax.make_and (trans_inv_term t1) (trans_inv_term t2)
+      S.make_and (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Or, t1), t2) ->
-      Syntax.make_or (trans_inv_term t1) (trans_inv_term t2)
+      S.make_or (trans_inv_term t1) (trans_inv_term t2)
   | App(Const Not, t) ->
-      Syntax.make_not (trans_inv_term t)
+      S.make_not (trans_inv_term t)
   | App(App(Const Lt, t1), t2) ->
-      Syntax.make_lt (trans_inv_term t1) (trans_inv_term t2)
+      S.make_lt (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Gt, t1), t2) ->
-      Syntax.make_gt (trans_inv_term t1) (trans_inv_term t2)
+      S.make_gt (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Leq, t1), t2) ->
-      Syntax.make_leq (trans_inv_term t1) (trans_inv_term t2)
+      S.make_leq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Geq, t1), t2) ->
-      Syntax.make_geq (trans_inv_term t1) (trans_inv_term t2)
+      S.make_geq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const (EqInt|EqBool), t1), t2) ->
-      Syntax.make_eq (trans_inv_term t1) (trans_inv_term t2)
+      S.make_eq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Add, t1), t2) ->
-      Syntax.make_add (trans_inv_term t1) (trans_inv_term t2)
+      S.make_add (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Sub, t1), t2) ->
-      Syntax.make_sub (trans_inv_term t1) (trans_inv_term t2)
+      S.make_sub (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Mul, t1), t2) ->
-      Syntax.make_mul (trans_inv_term t1) (trans_inv_term t2)
+      S.make_mul (trans_inv_term t1) (trans_inv_term t2)
   | t -> Format.printf "%a@." CEGAR_print.term t; assert false
 
 
@@ -240,67 +241,77 @@ let rec trans_typ = function
       let typ2 = trans_typ typ in
         TFun(typ1, fun _ -> typ2)
   | Type.TList _ -> assert false
-  | Type.TConstr("event",_) -> assert false
+  | Type.TConstr(s, false) -> TBase(TAbst s, nil)
   | Type.TConstr _ -> assert false
   | Type.TPair _ -> assert false
   | Type.TPred(x,ps) -> trans_typ (Id.typ x)
 
 
 and trans_binop = function
-    Syntax.Eq -> assert false
-  | Syntax.Lt -> Const Lt
-  | Syntax.Gt -> Const Gt
-  | Syntax.Leq -> Const Leq
-  | Syntax.Geq -> Const Geq
-  | Syntax.And -> Const And
-  | Syntax.Or -> Const Or
-  | Syntax.Add -> Const Add
-  | Syntax.Sub -> Const Sub
-  | Syntax.Mult -> Const Mul
+    S.Eq -> assert false
+  | S.Lt -> Const Lt
+  | S.Gt -> Const Gt
+  | S.Leq -> Const Leq
+  | S.Geq -> Const Geq
+  | S.And -> Const And
+  | S.Or -> Const Or
+  | S.Add -> Const Add
+  | S.Sub -> Const Sub
+  | S.Mult -> Const Mul
+
+and trans_const c typ =
+  match c with
+    S.Unit -> Unit
+  | S.True -> True
+  | S.False -> False
+  | S.Int n -> Int n
+  | S.Char _
+  | S.String _
+  | S.Float _
+  | S.Int32 _
+  | S.Int64 _
+  | S.Nativeint _
+  | S.Abst -> Abst(S.string_of_typ typ, S.string_of_const c)
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
-  match t.Syntax.desc with
-      Syntax.Const Syntax.Unit -> [], Const Unit
-    | Syntax.Const Syntax.True -> [], Const True
-    | Syntax.Const Syntax.False -> [], Const False
-    | Syntax.Const c -> [], Const (UnInt (Syntax.string_of_const c))
-    | Syntax.Unknown -> assert false
-    | Syntax.Const (Syntax.Int n) -> [], Const (Int n)
-    | Syntax.App({Syntax.desc=Syntax.RandInt false}, [{Syntax.desc=Syntax.Const Syntax.Unit}]) ->
+  match t.S.desc with
+    | S.Const c -> [], Const (trans_const c t.S.typ)
+    | S.Unknown -> assert false
+    | S.App({S.desc=S.RandInt false}, [{S.desc=S.Const S.Unit}]) ->
         let k = new_id ("k" ^ post) in
           [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
-    | Syntax.App({Syntax.desc=Syntax.RandInt true}, [t1;t2]) ->
-        assert (t1 = Syntax.unit_term);
+    | S.App({S.desc=S.RandInt true}, [t1;t2]) ->
+        assert (t1 = S.unit_term);
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, App(Const RandInt, t2')
-    | Syntax.RandInt _ -> assert false
-    | Syntax.Var x ->
+    | S.RandInt _ -> assert false
+    | S.Var x ->
         let x' = trans_var x in
           [], Var x'
-    | Syntax.App({Syntax.desc=Syntax.Event(s,false)}, [t]) ->
+    | S.App({S.desc=S.Event(s,false)}, [t]) ->
         let k = new_id "k" in
         let defs,t' = trans_term post xs env t in
         let xs = diff (get_fv t') (List.map fst env) in
         let defs' = (k, TFun(typ_unit, fun _ -> typ_unit), xs@["u"], Const True, [], t')::defs in
           defs', App(Const (Temp s), make_app (Var k) (List.map (fun x -> Var x) xs))
-    | Syntax.App({Syntax.desc=Syntax.Event(s,true)}, [t1;t2]) ->
-        assert (t1 = Syntax.unit_term);
+    | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
+        assert (t1 = S.unit_term);
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, App(Const (Temp s), t2')
-    | Syntax.App(t, ts) ->
+    | S.App(t, ts) ->
         let defs,t' = trans_term post xs env t in
         let defss,ts' = List.split (List.map (trans_term post xs env) ts) in
           defs @ (List.flatten defss), make_app t' ts'
-    | Syntax.If(t1, t2, t3) ->
+    | S.If(t1, t2, t3) ->
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
         let defs3,t3' = trans_term post xs env t3 in
         let f = new_id ("br" ^ post) in
         let x = new_id "b" in
-        let typ0 = trans_typ t2.Syntax.typ in
+        let typ0 = trans_typ t2.S.typ in
         let aux x typ2 = TFun(List.assoc x env, fun y -> subst_typ x y typ2) in
         let typ = List.fold_right aux xs typ0 in
         let typ' = TFun(typ_bool(), fun _ -> typ) in
@@ -308,69 +319,87 @@ and trans_term post xs env t =
         let def2 = f, typ', x::xs, make_not (Var x), [], t3' in
         let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
           def1::def2::defs1@defs2@defs3, t
-    | Syntax.Let _ -> assert false
-    | Syntax.BinOp(Syntax.Eq, t1, t2) ->
+    | S.Let _ -> assert false
+    | S.BinOp(S.Eq, t1, t2) ->
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
-        let rec aux = function
+        let op =
+          match Type.elim_tpred t1.S.typ with
             Type.TUnit -> EqUnit
           | Type.TBool -> EqBool
           | Type.TInt -> EqInt
-          | Type.TPred(x,_) -> aux (Id.typ x)
-	  | Type.TConstr(_, false) -> EqPoly
-          | typ -> Format.printf "trans_term: %a@." Syntax.print_typ typ; assert false
+          | Type.TConstr(typ, false) -> CmpPoly(typ, "=")
+          | typ -> Format.printf "trans_term: %a@." S.print_typ typ; assert false
         in
-        let op = aux t1.Syntax.typ in
-          defs1@defs2, make_app (Const op) [t1'; t2']
-    | Syntax.BinOp(op, t1, t2) ->
+        defs1@defs2, make_app (Const op) [t1'; t2']
+    | S.BinOp(op, t1, t2) ->
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
-          defs1@defs2, make_app (trans_binop op) [t1'; t2']
-    | Syntax.Not t ->
+        let op' =
+          match t1.S.typ with
+            Type.TConstr(typ, false) -> Const (CmpPoly(typ, S.string_of_binop op))
+          | _ -> trans_binop op
+        in
+        defs1@defs2, make_app op' [t1'; t2']
+    | S.Not t ->
         let defs,t' = trans_term post xs env t in
           defs, App(Const Not, t')
-    | Syntax.Fun _ -> assert false
-    | Syntax.Event _ -> assert false
-    | Syntax.Bottom -> [], Const Bottom
+    | S.Fun _ -> assert false
+    | S.Event _ -> assert false
+    | S.Bottom -> [], Const Bottom
     | _ ->
-        Format.printf "%a@." Syntax.pp_print_term t;
+        Format.printf "%a@." S.pp_print_term t;
         assert false
 
 let rec formula_of t =
-  match t.Syntax.desc with
-      Syntax.Const Syntax.Unit -> Const Unit
-    | Syntax.Const Syntax.True -> Const True
-    | Syntax.Const Syntax.False -> Const False
-    | Syntax.Unknown -> assert false
-    | Syntax.Const (Syntax.Int n) -> Const (Int n)
-    | Syntax.RandInt false -> raise Not_found
-    | Syntax.Var x ->
+  match t.S.desc with
+      S.Const c -> Const (trans_const c t.S.typ)
+    | S.Unknown -> assert false
+    | S.RandInt false -> raise Not_found
+    | S.RandInt true -> assert false
+    | S.Var x ->
         let x' = trans_var x in
           Var x'
-    | Syntax.App(t, ts) -> raise Not_found
-    | Syntax.If(t1, t2, t3) -> raise Not_found
-    | Syntax.Let _ -> assert false
-    | Syntax.BinOp(Syntax.Eq, t1, t2) ->
+    | S.App(t, ts) -> raise Not_found
+    | S.If(t1, t2, t3) -> raise Not_found
+    | S.Let _ -> assert false
+    | S.BinOp(S.Eq, t1, t2) ->
         let t1' = formula_of t1 in
         let t2' = formula_of t2 in
         let op =
-          match Type.elim_tpred t1.Syntax.typ with
+          match Type.elim_tpred t1.S.typ with
               Type.TUnit -> EqUnit
             | Type.TBool -> EqBool
             | Type.TInt -> EqInt
-            | _ -> Format.printf "%a@." Syntax.print_typ t1.Syntax.typ; assert false
+            | Type.TConstr(typ, false) -> CmpPoly(typ, "=")
+            | _ -> Format.printf "%a@." S.print_typ t1.S.typ; assert false
         in
           make_app (Const op) [t1'; t2']
-    | Syntax.BinOp(op, t1, t2) ->
+    | S.BinOp(op, t1, t2) ->
         let t1' = formula_of t1 in
         let t2' = formula_of t2 in
           App(App(trans_binop op, t1'), t2')
-    | Syntax.Not t ->
+    | S.Not t ->
         let t' = formula_of t in
           App(Const Not, t')
-    | Syntax.Fun _
-    | Syntax.Event _ -> assert false
-    | _ -> assert false
+    | S.Fun _ -> assert false
+    | S.Event _ -> assert false
+    | S.RandValue (_, _) -> assert false
+    | S.Branch (_, _) -> assert false
+    | S.Record _ -> assert false
+    | S.Proj (_, _, _, _) -> assert false
+    | S.SetField (_, _, _, _, _, _) -> assert false
+    | S.Nil -> assert false
+    | S.Cons (_, _) -> assert false
+    | S.Constr (_, _) -> assert false
+    | S.Match (_, _) -> assert false
+    | S.Raise _ -> assert false
+    | S.TryWith (_, _) -> assert false
+    | S.Pair (_, _) -> assert false
+    | S.Fst _ -> assert false
+    | S.Snd _ -> assert false
+    | S.Bottom -> assert false
+    | S.Label (_, _) -> assert false
 
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in
@@ -384,8 +413,8 @@ let trans_def (f,(xs,t)) =
   in
   let env = List.map2 aux xs' xs in
     try
-      (match t.Syntax.desc with
-	   Syntax.If(t1, t2, t3) ->
+      (match t.S.desc with
+	   S.If(t1, t2, t3) ->
 	     let t1' = formula_of t1 in
 	     let defs2,t2' = trans_term post xs' env t2 in
 	     let defs3,t3' = trans_term post xs' env t3 in
@@ -402,15 +431,13 @@ let trans_def (f,(xs,t)) =
 let get_var_arity f env = get_typ_arity (List.assoc f env)
 
 let rec is_CPS_value env = function
-    Const Unit
-  | Const True
-  | Const False
-  | Const (Int _)
+    Const _
   | Var _ -> true
   | App(App(Const And, t1), t2)
   | App(App(Const EqUnit, t1), t2)
   | App(App(Const EqInt, t1), t2)
   | App(App(Const EqBool, t1), t2)
+  | App(App(Const (CmpPoly _), t1), t2)
   | App(App(Const Or, t1), t2)
   | App(App(Const Lt, t1), t2)
   | App(App(Const Gt, t1), t2)
@@ -426,7 +453,6 @@ let rec is_CPS_value env = function
         n > List.length ts && List.for_all (is_CPS_value env) ts
   | Let _ -> assert false
   | Fun _ -> assert false
-  | _ -> false
 let is_CPS_def env (f,xs,cond,es,t) =
   let env' = get_arg_env (List.assoc f env) xs @@ env in
   let b1 = is_CPS_value env' cond in
@@ -550,6 +576,7 @@ let rec trans_ref_type = function
             CRT.Unit -> RT.Unit
           | CRT.Bool -> RT.Bool
           | CRT.Int -> RT.Int
+          | CRT.Abst s -> RT.Abst s
       in
         RT.Base(b', trans_inv_var x, trans_inv_term p)
   | CRT.Fun(x,typ1,typ2) ->
@@ -560,9 +587,9 @@ let rec trans_ref_type = function
 
 let trans_prog t =
   let ext_env = List.map (fun (x,typ) -> trans_var x, trans_typ typ) (Trans.make_ext_env t) in
-  let () = if false then Format.printf "BEFORE:@.%a@.@.@." Syntax.pp_print_term t in
+  let () = if false then Format.printf "BEFORE:@.%a@.@.@." S.pp_print_term t in
   let t = Trans.trans_let t in
-  let () = if false then Format.printf "AFTER:@.%a@.@.@." Syntax.pp_print_term t in
+  let () = if false then Format.printf "AFTER:@.%a@.@.@." S.pp_print_term t in
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Trans.lift t in
   let defs_t,t_main' = trans_term "" [] [] t_main in
@@ -612,7 +639,8 @@ let rec get_const_typ = function
   | EqUnit -> TFun(TBase(TUnit,nil), fun x -> TFun(TBase(TUnit,nil), fun y -> typ_bool()))
   | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool()))
   | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
-  | EqPoly -> TFun(TBase(TAbst,nil), fun x -> TFun(TBase(TAbst,nil), fun y -> typ_bool()))
+  | CmpPoly(typ,_) -> TFun(TBase(TAbst typ,nil), fun x -> TFun(TBase(TAbst typ,nil), fun y -> typ_bool()))
+  | Abst(typ,s) -> TBase(TAbst typ, nil)
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
   | Add -> TFun(TBase(TInt,nil), fun x ->
                 TFun(TBase(TInt,nil), fun y ->

@@ -38,6 +38,7 @@ and print_typ_base fm = function
   | TInt -> Format.fprintf fm "int"
   | TTuple n -> Format.fprintf fm "tuple"
   | TList -> assert false
+  | TAbst s -> Format.pp_print_string fm s
 
 and print_typ_aux var fm = function
     TBase(b,ps) ->
@@ -76,7 +77,7 @@ and print_const fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
-  | UnInt s -> Format.fprintf fm "%s" s
+  | Abst(typ,s) -> Format.fprintf fm "%s" s
   | RandBool -> Format.fprintf fm "rand_bool"
   | RandInt -> Format.fprintf fm "rand_int"
   | And -> Format.fprintf fm "&&"
@@ -89,7 +90,7 @@ and print_const fm = function
   | EqUnit -> Format.fprintf fm "="
   | EqInt -> Format.fprintf fm "="
   | EqBool -> Format.fprintf fm "<=>"
-  | EqPoly -> Format.fprintf fm "="
+  | CmpPoly(typ,s) -> Format.pp_print_string fm s
   | Int n -> Format.fprintf fm "%d" n
   | Add -> Format.fprintf fm "+"
   | Sub -> Format.fprintf fm "-"
@@ -106,7 +107,7 @@ and print_term fm = function
   | Var x -> print_var fm x
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
-  | App(App(Const ((EqInt|EqBool|EqPoly|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
+  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(@[%a@ %a@ %a@])" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
@@ -288,6 +289,8 @@ and print_const_ML fm = function
   | Bottom -> Format.fprintf fm "()"
   | EqUnit -> assert false
   | Label _ -> assert false
+  | Abst _ -> assert false
+  | CmpPoly _ -> assert false
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
@@ -320,6 +323,7 @@ let rec print_base_typ_as_tree fm = function
   | TBool -> Format.fprintf fm "TBool"
   | TList -> Format.fprintf fm "TList"
   | TTuple n -> Format.fprintf fm "(TTuple %d)" n
+  | TAbst s -> Format.fprintf fm "%s" s
 
 and print_typ_as_tree fm = function
     TBase(b,ps) ->
@@ -359,6 +363,8 @@ and print_const_as_tree fm = function
   | Bottom -> Format.fprintf fm "Bottom"
   | EqUnit -> assert false
   | Label _ -> assert false
+  | Abst _ -> assert false
+  | CmpPoly _ -> assert false
 
 and print_term_as_tree fm = function
     Const c -> Format.fprintf fm "(Const %a)" print_const_as_tree c

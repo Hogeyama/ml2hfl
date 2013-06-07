@@ -11,7 +11,7 @@ type typ =
     TUnit
   | TBool
   | TInt
-  | TAbst
+  | TAbst of string
   | TVar of typ option ref
   | TFun of typ * typ
   | TTuple of typ list
@@ -20,7 +20,7 @@ let rec print_typ fm = function
     TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TAbst -> Format.fprintf fm "abst"
+  | TAbst typ -> Format.fprintf fm "%s" typ
   | TVar{contents=Some typ} -> print_typ fm typ
   | TVar{contents=None} -> Format.fprintf fm "?"
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
@@ -41,7 +41,7 @@ let rec unify typ1 typ2 =
     | TUnit, TUnit -> ()
     | TBool, TBool -> ()
     | TInt, TInt -> ()
-    | TAbst, TAbst -> ()
+    | TAbst typ1, TAbst typ2 when typ1 = typ2 -> ()
     | TFun(typ11, typ12), TFun(typ21, typ22) ->
         unify typ11 typ21;
         unify typ12 typ22
@@ -67,12 +67,13 @@ let rec trans_typ = function
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> CEGAR_type.TFun(trans_typ typ1, fun _ -> trans_typ typ2)
   | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
+  | TAbst typ -> TBase(CEGAR_type.TAbst typ, nil)
 
 let get_typ_const = function
   | Unit -> TUnit
   | True -> TBool
   | False -> TBool
-  | UnInt _ -> TAbst
+  | Abst(typ, _) -> TAbst typ
   | RandBool -> TBool
   | RandInt ->
       let typ = new_tvar () in
@@ -80,7 +81,7 @@ let get_typ_const = function
   | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
   | EqBool -> TFun(TBool,TFun(TBool,TBool))
-  | EqPoly -> TFun(TAbst,TFun(TAbst,TBool))
+  | CmpPoly(typ, _) -> TFun(TAbst typ,TFun(TAbst typ,TBool))
   | And -> TFun(TBool,TFun(TBool,TBool))
   | Or -> TFun(TBool,TFun(TBool,TBool))
   | Not -> TFun(TBool,TBool)

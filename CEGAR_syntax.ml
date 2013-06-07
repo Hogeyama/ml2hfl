@@ -10,7 +10,7 @@ type const =
   | Unit
   | True
   | False
-  | UnInt of string
+  | Abst of (string * string)
   | RandInt
   | RandBool
   | And
@@ -23,7 +23,7 @@ type const =
   | EqUnit
   | EqBool
   | EqInt
-  | EqPoly
+  | CmpPoly of string * string
   | Int of int
   | Add
   | Sub

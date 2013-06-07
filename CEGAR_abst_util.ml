@@ -252,7 +252,7 @@ let decomp_tbase = function
   | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
 
 let rec is_base_term env = function
-    Const (Unit | True | False | Int _ | RandInt) -> true
+    Const (Unit | True | False | Int _ | RandInt | Abst _) -> true
   | Const _ -> false
   | Var x ->
       let typ =
@@ -265,7 +265,7 @@ let rec is_base_term env = function
               TBase _ -> true
             | _ -> false
         end
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|Add|Sub|Mul),t1),t2) ->
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|CmpPoly _|Add|Sub|Mul),t1),t2) ->
       assert (is_base_term env t1);
       assert (is_base_term env t2);
       true

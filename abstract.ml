@@ -136,7 +136,7 @@ let rec abst_recdata t =
       | SetField _ -> assert false
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abst_recdata t1, abst_recdata t2)
-      | Constr("Abst",[]) -> (make_app randint_term [unit_term]).desc
+      | Constr("Abst",[]) -> Constr("Abst",[])
       | Constr(c,ts) ->
           let ts' = List.map abst_recdata ts in
           let typ_name = match t.typ with TConstr(s,true) -> s | _ -> assert false in
@@ -398,6 +398,7 @@ and abst_list post t =
           let t1' = abst_list post t1 in
           let t2' = abst_list post t2 in
             make_cons post t1' t2'
+      | Constr("Abst",[]) -> t
       | Constr(s,ts) -> assert false
       | Match(t1,pats) ->
           let x,bindx =
