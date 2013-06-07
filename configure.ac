@@ -96,5 +96,8 @@ if test "$TRECS" = "no"; then
 fi
 AC_SUBST(TRECS)
 
+AC_CHECK_PROG(GIT, git, git)
+AC_SUBST(GIT)
+
 AC_CONFIG_FILES([Makefile.config environment.ml])
 AC_OUTPUT

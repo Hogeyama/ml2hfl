@@ -27,11 +27,18 @@ DOC = doc
 
 NAME = mochi
 
-main: opt
+main: opt COMMIT
 all: depend byte opt
 
 byte: $(NAME).byte
 opt: $(NAME).opt
+
+
+COMMIT: depend
+	rm -f COMMIT
+	GIT=$(GIT); if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
+	git log -1 --oneline | cut -d ' ' -f1 >> COMMIT
+
 
 
 ################################################################################

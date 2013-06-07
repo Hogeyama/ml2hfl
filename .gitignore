@@ -2,9 +2,11 @@ cvc3
 trecs
 mochi.opt
 Makefile.config
+COMMIT
 depend
 config.status
 environment.ml
+configure
 aclocal.m4
 autom4te.cache
 *lexer.ml
