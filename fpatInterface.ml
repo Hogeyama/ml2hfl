@@ -28,7 +28,7 @@ let conv_const c =
   | Abst((typ:string),(name:string)) ->
       assert false
       (* for add_const,
-         e.g. "2L < 3L" ==> App(App(CmpPoly("int64", "="), Abst("int64", "2L")), Abst("int64", "3L")) *)
+         e.g. "2L <= 3L" ==> App(App(CmpPoly("int64", "<="), Abst("int64", "2L")), Abst("int64", "3L")) *)
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
   | Add -> Const.IAdd
