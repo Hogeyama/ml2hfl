@@ -34,10 +34,12 @@ byte: $(NAME).byte
 opt: $(NAME).opt
 
 
-COMMIT: depend
+ifdef GIT
+COMMIT: depend .git/index
 	rm -f COMMIT
 	GIT=$(GIT); if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
 	git log -1 --oneline | cut -d ' ' -f1 >> COMMIT
+endif
 
 
 
