@@ -24,6 +24,11 @@ let conv_const c =
   | EqUnit -> Const.EqUnit
   | EqBool -> Const.EqBool
   | EqInt -> Const.EqInt
+  | CmpPoly((typ:string),(name:string)) -> assert false (* for add_const *)
+  | Abst((typ:string),(name:string)) ->
+      assert false
+      (* for add_const,
+         e.g. "2L < 3L" ==> App(App(CmpPoly("int64", "="), Abst("int64", "2L")), Abst("int64", "3L")) *)
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
   | Add -> Const.IAdd
@@ -63,6 +68,10 @@ let inv_const c =
   | Const.IAdd -> Add
   | Const.ISub -> Sub
   | Const.IMul -> Mul
+(* for add_const
+  | Const. ... -> CmpPoly(..., ...)
+  | Const. ... -> Abst(..., ...)
+*)
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =
@@ -115,6 +124,7 @@ let rec conv_typ ty =
     TBase(TUnit, _) -> SimType.Unit
   | TBase(TInt, _) -> SimType.Int
   | TBase(TBool, _) -> SimType.Bool
+  | TBase(TAbst (typ:string), _) -> assert false (* for add_const *)
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
@@ -149,6 +159,9 @@ let rec inv_abst_type aty =
   | AbsType.Fun(aty1, aty2) ->
       let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
+(* for add_const
+  | AbsType. ... -> TBase(TAbst ..., ...)
+*)
 
 
 let infer flags labeled cexs prog =
