@@ -42,16 +42,6 @@ let rec regularization = function
   | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Unit; typ = TUnit})} when top_id.Id.name <> "main"
       -> body
   | t -> t
-(*
-and (set_main : Syntax.typed_term -> Syntax.typed_term) = function
-  | {desc = Let (rec_flag, args, body); typ = typ} ->
-    {desc = Let (rec_flag, args, set_main body); typ = typ}
-  | {typ = typ} as t ->
-    let main_id = Id.new_var "main" typ in
-    let main_var = make_var main_id in
-    {t with desc = Let (Nonrecursive, [main_id, [Id.new_var "_" TUnit], t],
-			{desc = App (main_var, [{desc = Unit; typ = TUnit}]); typ = typ})}
-*)
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
