@@ -27,7 +27,7 @@ DOC = doc
 
 NAME = mochi
 
-main: opt COMMIT
+main: opt
 all: depend byte opt
 
 byte: $(NAME).byte
@@ -35,6 +35,7 @@ opt: $(NAME).opt
 
 
 ifdef GIT
+main: COMMIT
 COMMIT: depend .git/index
 	rm -f COMMIT
 	GIT=$(GIT); if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
