@@ -91,7 +91,7 @@ and show_binop = function
   | Mult -> "*"
 
 let retyping t =
-  Format.eprintf "@.%s@." (show_typed_term (is_form_of t) t);
+  (*Format.eprintf "@.%s@." (show_typed_term (is_form_of t) t);*)
   let lb = t |> show_typed_term (is_form_of t)
              |> Lexing.from_string
   in

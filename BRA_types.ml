@@ -27,11 +27,12 @@ type coefficient_info = { coeffs : int list
 
 type predicate_info = { variables : Syntax.id list
 		      ; prev_variables : Syntax.id list
+		      ; error_paths : Fpat.Term.t list
 		      ; coefficients : coefficient_info list
 		      }
 
-let updated_predicate_info ({coefficients = old_coeffs} as pr) new_coeffs =
-  { pr with coefficients = new_coeffs :: old_coeffs } 
+let updated_predicate_info pr new_coeffs new_error_paths =
+  { pr with coefficients = new_coeffs; error_paths = new_error_paths }
 
 let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
   let show_ranking_function {coeffs = cs; constant = const} =

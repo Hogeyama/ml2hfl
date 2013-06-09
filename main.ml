@@ -258,7 +258,7 @@ let threshold = ref 5
 exception FailedToFindLLRF
 
 let rec termination_loop predicate_que holed =
-  let debug = !Flag.debug_level > 0 in
+  let debug = true (*!Flag.debug_level > 0 *)in
   let _ =
     begin
       threshold := !threshold - 1;
@@ -269,16 +269,15 @@ let rec termination_loop predicate_que holed =
   else
     let predicate_info = Queue.pop predicate_que in
     let predicate = BRA_transform.construct_LLRF predicate_info in
-    lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf;
+    lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf; (* result log update here *)
     let transformed = BRA_transform.pluging holed predicate in
     let orig, transformed = BRA_transform.retyping transformed in
     try
       main_loop orig transformed
-    with Refine.PostCondition (_, spc) ->
+    with Refine.PostCondition (env, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
       let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in 
-
       let arg_vars =
 	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
 	  (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified) in
@@ -289,45 +288,126 @@ let rec termination_loop predicate_que holed =
       let prev_var_terms = List.map Term.make_var prev_vars in
       let arg_env = List.map (fun a -> (a, SimType.Int)) arg_vars in
       let prev_env = List.map (fun a -> (a, SimType.Int)) prev_vars in
+      
+      if !Flag.disjunctive then
+	(* make templates *)
+	let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
+	let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
+	if debug then Format.printf "Linear template:@.  %a@." Term.pr linear_template;
 
-      let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
-      let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
-      if debug then Format.printf "Linear template:@.  %a@." Term.pr linear_template;
+	(* spc => R(x_prev) > R(x) && R(x) >= 0 *)
+	let ranking_constraints =
+	  Formula.band [ Formula.gt linear_template_prev linear_template
+		       ; Formula.geq linear_template (IntTerm.make 0)]
+	in
+	let constraints = imply spc ranking_constraints in
+	let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
+	if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
+	
+        (* solve constraints and obtain coefficients of a ranking function *)
+	let coefficients =
+          try
+            NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
+          with NonLinConstr.Unknown ->
+	    Format.printf "Failed to solve the constraints...@.@.";
+            assert false(* failed to solve the constraints *)
+	in
+	let ((correspondence_, const_part) as ranking_function) = ParLinExp.parlinexp_of (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) linear_template)
+	in
+	let correspondence =
+	  let cor dict x =
+	    try List.assoc x dict with Not_found -> 0 in
+	  let formatter (n, v) = (v, IntTerm.int_of n) in
+	  List.map (cor (List.map formatter correspondence_)) arg_vars
+	in
 
-      let ranking_constraints =
-	Formula.band [ Formula.gt linear_template_prev linear_template
-		     ; Formula.geq linear_template (IntTerm.make 0)]
-      in
-      let constraints = imply spc ranking_constraints in
-      if debug then Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
+        (* update predicate *)
+	let new_predicate_info =
+	  BRA_types.updated_predicate_info
+	    predicate_info
+	    ({BRA_types.coeffs = correspondence; BRA_types.constant = IntTerm.int_of const_part} :: predicate_info.BRA_types.coefficients)
+	    (spc :: predicate_info.BRA_types.error_paths)
+	in
+	if debug then Format.printf "\nInferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
+	if debug then Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
+	let _ = Queue.push new_predicate_info predicate_que in
+	termination_loop predicate_que holed
+      else
+	(* all order constructed by <spc_1, spc_2, ..., spc_n> and newly obtained spc *)
+	let spc_sequences =
+	  let rec go l = function
+	    | [] -> [l@[spc]]
+	    | x::xs as r -> (l@[spc]@r) :: go (l@[x]) xs
+	  in go [] predicate_info.BRA_types.error_paths
+	in
+	
+	let successes = BRA_util.concat_map (fun error_paths ->
+	  (* make templates *)
+	  (** R(x)とR(x_prev)を作成 → いまは1つだけだが、これをn個用意する必要がある。linear_templates = {R1(x) .. Rn(x)}, linear_templates = {R1(x_prev) .. Rn(x_prev)} **)
+	  let linear_templates = List.mapi (fun i _ -> unwrap_template (NonLinConstr.gen_template arg_env)) error_paths in
+	  let linear_templates_prev = List.mapi (fun i lt -> Term.subst (List.combine arg_vars prev_var_terms) lt) linear_templates in
+	  if debug then List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linear_templates;
+	  (** 作るべき制約は、
+	      [φ1 ⇒ R1(x_prev)＞R1(x) ∧ R1(x)≧0]
+	      ∧ [φ2 ⇒ R1(x_prev)＝R1(x) ∧ R2(x_prev)＞R2(x) ∧ R2(x)≧0]
+	      ∧ [φ3 ⇒ R1(x_prev)＝R1(x) ∧ R2(x_prev)＝R2(x) ∧ R3(x_prev)＞R3(x) ∧ R3(x)≧0]
+	      ...
+	  **)
+	  let all_vars = List.map fst env in
+	  let subst_ith i = Term.subst (List.combine all_vars (List.map (fun v -> Term.make_var (Var.rename_base (fun (Idnt.Id v) -> Idnt.Id (v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH")) v)) all_vars)) in
+	  let nth_constraints n nth_error_path =
+	    let rec go i = 
+	      let ith_ltp, ith_lt = List.nth linear_templates_prev i, List.nth linear_templates i in
+	      if i < n then
+		Formula.eqInt ith_ltp ith_lt :: go (i+1)
+	      else
+		[Formula.gt ith_ltp ith_lt; Formula.geq ith_lt (IntTerm.make 0)]
+	    in
+	    subst_ith n (imply nth_error_path (Formula.band (go 0)))
+	  in
+	  let constraints = Formula.bor (List.mapi nth_constraints error_paths)in
+	  let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
+	  if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
+	  if debug then Format.printf "Constraints(Transformed by NonLinConstr.gen_coeff_constrs):@.  %a@." Term.pr_list coeff_constrs;
+	  
+	  try
+	    (** 制約を解いて各テンプレートに代入。ここで手に入るのは全てのテンプレートに対する全ての引数の置換を含む代入である。 **)
+	    let coefficients = NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs) in
+	    if coefficients = [] then (Format.printf "@.Invalid ordered.@."; raise NonLinConstr.Unknown);
+	    if debug then Format.printf "@.Inferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
 
-      let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
-      if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
-
-      let coefficients =
-        try
-          NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
-        with NonLinConstr.Unknown ->
-	  Format.printf "Failed to solve the constraints...@.@.";
-          assert false(* failed to solve the constraints *)
-      in
-      let ((correspondence_, const_part) as ranking_function) = ParLinExp.parlinexp_of (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) linear_template)
-      in
-      let correspondence =
-	let cor dict x =
-	  try List.assoc x dict with Not_found -> 0 in
-	let formatter (n, v) = (v, IntTerm.int_of n) in
-	List.map (cor (List.map formatter correspondence_)) arg_vars
-      in
-      let new_predicate_info =
-	BRA_types.updated_predicate_info
-	  predicate_info
-	  {BRA_types.coeffs = correspondence; BRA_types.constant = IntTerm.int_of const_part}
-      in
-      if debug then Format.printf "\nInferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
-      if debug then Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
-      let _ = Queue.push new_predicate_info predicate_que in
-      termination_loop predicate_que holed
+	    let coefficient_infos = List.mapi (fun i ith_lt ->
+	      let ((correspondence_, const_part) as ranking_function) = ParLinExp.parlinexp_of (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) ith_lt)
+	      in
+	      (** 引数の変数との対応関係を考え、linear ranking functionを係数情報に変換 **)
+	      let correspondence =
+		let cor dict x =
+		  try List.assoc x dict with Not_found -> 0 in
+		let formatter (n, v) = (v, IntTerm.int_of n) in
+		List.map (cor (List.map formatter correspondence_)) arg_vars
+	      in
+	      if debug then Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
+	      {BRA_types.coeffs = correspondence; BRA_types.constant = IntTerm.int_of const_part}
+	    ) linear_templates
+	    in
+	    (************* ここまでは「各テンプレートについての」correspondenceを求める。 ************)
+	    (** 新しい述語情報を生成 **)
+	    let new_predicate_info =
+	      BRA_types.updated_predicate_info
+		predicate_info
+		coefficient_infos
+		error_paths
+	    in
+	    Format.printf "@.Found ranking function: %a@." BRA_types.pr_ranking_function new_predicate_info;
+	    [new_predicate_info]
+	  with NonLinConstr.Unknown ->
+	    Format.printf "Failed to solve the constraints...@.@.";
+            [] (* failed to solve the constraints *)
+	) spc_sequences	
+	in
+	let _ = List.iter (fun pred -> Queue.push pred predicate_que) (List.rev successes) in
+	termination_loop predicate_que holed
+	
 	
 let main in_channel =
   let input_string =
@@ -365,7 +445,8 @@ let main in_channel =
       let init_predicate_info =
 	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
 	; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
-	; BRA_types.coefficients = []} in
+	; BRA_types.coefficients = []
+	; BRA_types.error_paths = [] } in
       let predicate_que = Queue.create () in
       let _ = Queue.add init_predicate_info predicate_que in
       termination_loop predicate_que holed) holed_list
