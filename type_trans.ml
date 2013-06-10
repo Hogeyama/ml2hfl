@@ -11,6 +11,7 @@ let ref_base_of_abs_base = function
   | AT.TList -> assert false
   | AT.TTuple _ -> assert false
   | AT.TAbst s -> RT.Abst s
+  | AT.TResult -> RT.Unit
 
 
 let rec ref_of_inter env cond atyp ityp =

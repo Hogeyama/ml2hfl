@@ -14,6 +14,7 @@ type 'a t =
   | TConstr of string * bool
   | TPred of ('a t Id.t) * 'a list
 (*| TLabel of 'a t Id.t * 'a t*)
+  | TResult
 
 
 let typ_unknown = TConstr("???", false)
@@ -53,18 +54,13 @@ let rec can_unify typ1 typ2 =
     | (TBool|TAbsBool),(TBool|TAbsBool) -> true
     | TInt,TInt -> true
     | TRInt _,TRInt _ -> true
+    | TResult, TResult -> true
     | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
     | TList typ1, TList typ2 -> can_unify typ1 typ2
     | TPair(x1,typ1), TPair(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
     | TConstr("event",_), TFun _ -> true
     | TFun _, TConstr("event",_) -> true
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
-(*
-    | TVariant stypss1,TVariant stypss2 ->
-        let aux (s1,typs1) (s2,typs2) = s1=s2 && List.for_all2 can_unify typs1 typs2 in
-          List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
-    | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && can_unify typ1 typ2) fields1 fields2
-*)
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
     | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
@@ -93,6 +89,7 @@ let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
           else Format.fprintf fm "(@[%a@ *@ %a@])" print' (Id.typ x) print' typ
       | TConstr(s,_) -> Format.pp_print_string fm s
       | TPred(x,ps) -> Format.fprintf fm "@[%a[\\%a. %a]@]" print' (Id.typ x) Id.print x print_preds ps
+      | TResult -> Format.fprintf fm "X"
 
 
 let print_typ_init typ = print (fun _ -> assert false) typ
@@ -117,6 +114,7 @@ let rec occurs r typ =
     | TPair(x,typ) -> occurs r (Id.typ x) || occurs r typ
     | TConstr(s,b) -> false
     | TPred(x,_) -> occurs r (Id.typ x)
+    | TResult -> false
 
 exception CannotUnify
 
@@ -180,6 +178,7 @@ let rec is_poly_typ = function
   | TPair(x,typ) -> is_poly_typ (Id.typ x) || is_poly_typ typ
   | TConstr _ -> false
   | TPred(x,_) -> is_poly_typ (Id.typ x)
+  | TResult -> false
 
 
 let rec copy = function
@@ -210,6 +209,7 @@ let rec has_pred = function
   | TBool -> false
   | TAbsBool -> false
   | TInt -> false
+  | TResult -> false
   | TRInt _ -> assert false
   | TVar{contents=None} -> false
   | TVar{contents=Some typ} -> has_pred typ
@@ -232,3 +232,4 @@ let rec to_id_string = function
   | TPair(x,typ) -> to_id_string (Id.typ x) ^ "_x_" ^ to_id_string typ
   | TConstr(s,_) -> s
   | TPred(x,_) -> to_id_string (Id.typ x)
+  | TResult -> "x"

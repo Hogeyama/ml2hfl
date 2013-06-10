@@ -19,6 +19,7 @@ let rec id___typ = function
   | TPair(x,typ) -> TPair(id___var x, id___typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(id___var x, List.map id__ ps)
+  | TResult -> TResult
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
 
@@ -56,7 +57,7 @@ and id___const = function
   | Int32 n -> Int32 n
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
-  | Abst -> Abst
+  | CPS_result -> CPS_result
 
 and id__ t =
   let typ = id___typ t.typ in
@@ -113,6 +114,7 @@ let rec id2___typ env = function
   | TPair(x,typ) -> TPair(id2___var env x, id2___typ env typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(id2___var env x, List.map (id2__ env) ps)
+  | TResult -> TResult
 
 and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
 
@@ -150,7 +152,7 @@ and id2___const env = function
   | Int32 n -> Int32 n
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
-  | Abst -> Abst
+  | CPS_result -> CPS_result
 
 and id2__ env t =
   let typ = id2___typ env t.typ in
@@ -253,6 +255,7 @@ let rec flatten_tvar_typ = function
   | TPair(x,typ) -> TPair(flatten_tvar_var x, flatten_tvar_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(flatten_tvar_var x, List.map flatten_tvar ps)
+  | TResult -> TResult
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
 
@@ -331,6 +334,7 @@ let rec inst_tvar_tunit_typ = function
   | TConstr(s,b) -> TConstr(s,b)
   | TPair(x,typ) -> TPair(inst_tvar_tunit_var x, inst_tvar_tunit_typ typ)
   | TPred(x,ps) -> TPred(inst_tvar_tunit_var x, ps)
+  | TResult -> TResult
 
 and inst_tvar_tunit_var x =
   Id.set_typ x (inst_tvar_tunit_typ (Id.typ x))
@@ -407,6 +411,7 @@ let rec rename_tvar_typ map = function
   | TPair(x,typ) -> TPair(rename_tvar_var map x, rename_tvar_typ map typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(rename_tvar_var map x, ps)
+  | TResult -> TResult
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
 
@@ -484,6 +489,7 @@ let rec get_tvars typ =
       | TPair(x,typ) -> get_tvars (Id.typ x) @@@ get_tvars typ
       | TConstr(s,b) -> []
       | TPred(x,_) -> get_tvars (Id.typ x)
+      | TResult -> []
 
 
 let rec rename_poly_funs_list f map ts =
@@ -694,13 +700,13 @@ let rec inst_randvalue env defs typ =
       | TUnit -> env, defs, unit_term
       | TBool -> env, defs, randbool_unit_term
       | TInt -> env, defs, randint_unit_term
-      | TVar({contents=None} as r) -> r := Some typ_abst; inst_randvalue env defs typ_abst
+      | TVar({contents=None} as r) -> r := Some TUnit; inst_randvalue env defs TUnit
       | TVar{contents=Some typ} -> inst_randvalue env defs typ
       | TFun(x,typ) ->
           let env',defs',t = inst_randvalue env defs typ in
           env', defs', make_fun x t
       | TList (TVar({contents=None} as r)) ->
-          r := Some typ_abst; inst_randvalue env defs typ
+          r := Some TUnit; inst_randvalue env defs typ
       | TList typ' ->
           let u = Id.new_var "u" TUnit in
           let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
@@ -714,7 +720,6 @@ let rec inst_randvalue env defs typ =
           let env',defs',t1 = inst_randvalue env defs (Id.typ x) in
           let env'',defs'',t2 = inst_randvalue env' defs' typ in
           env'', defs'', make_pair t1 t2
-      | TConstr(s,false) -> env, defs, {desc=Const Abst; typ=typ}
       | TConstr(s,true) ->
           let u = Id.new_var "u" TUnit in
           let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
@@ -2426,6 +2431,7 @@ let rec insert_param_funarg_typ = function
   | TPair(x,typ) -> TPair(insert_param_funarg_var x, insert_param_funarg_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(insert_param_funarg_var x, ps)
+  | TResult -> TResult
 
 and insert_param_funarg_var x = Id.set_typ x (insert_param_funarg_typ (Id.typ x))
 

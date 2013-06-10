@@ -132,6 +132,7 @@ let string_of_var env x =
         TBase(TUnit,_) -> "_u"
       | TBase(TInt,_) -> "_i"
       | TBase(TBool,_) -> "_b"
+      | TBase(TAbst _,_) -> "_a"
       | _ -> Format.printf "%s@." x; assert false
   in
     x ^ post
@@ -141,6 +142,7 @@ let string_of_typ env x =
       TBase(TUnit,_) -> "INT"
     | TBase(TInt,_) -> "INT"
     | TBase(TBool,_) -> "BOOLEAN"
+    | TBase(TAbst _,_) -> "INT"
     | _ -> assert false
 
 
@@ -148,7 +150,7 @@ let rec string_of_term env = function
     Const True -> "TRUE"
   | Const False -> "FALSE"
   | Const (Int n) -> string_of_int n
-  | Const (Abst (_,s)) -> s
+  | Const c -> CEGAR_print.string_of_const c
   | Var x -> string_of_var env x
   | App(App(Const And, t1), t2) -> "(" ^ string_of_term env t1 ^ " AND " ^ string_of_term env t2 ^ ")"
   | App(App(Const Or, t1), t2) -> "(" ^ string_of_term env t1 ^ " OR " ^ string_of_term env t2 ^ ")"
@@ -163,7 +165,7 @@ let rec string_of_term env = function
   | App(App(Const (CmpPoly(typ,s)), t1), t2) ->
       Format.printf "@\nWarning: @[A polymorphic comparison is occured: %s.@\n"
         (string_of_term env t1 ^ " " ^ s ^ " " ^ string_of_term env t2);
-      Format.printf "It is replaced with FALSE@]@\n";
+      Format.printf "It is replaced with FALSE.@]@\n";
         "FALSE"
   | App(App(Const Add, t1), t2) -> "(" ^ string_of_term env t1 ^ " + " ^ string_of_term env t2 ^ ")"
   | App(App(Const Sub, t1), t2) -> "(" ^ string_of_term env t1 ^ " - " ^ string_of_term env t2 ^ ")"
