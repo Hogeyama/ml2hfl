@@ -37,8 +37,8 @@ ifdef GIT
 main: COMMIT
 COMMIT: depend .git/index
 	rm -f COMMIT
-	GIT=$(GIT); if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
-	git log -1 --oneline | cut -d ' ' -f1 >> COMMIT
+	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
+	$(GIT) rev-parse HEAD >> COMMIT
 endif
 
 
@@ -155,8 +155,10 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 ################################################################################
 # distribution
 
+ifdef GIT
 dist:
-	git archive HEAD -o dist.tar.gz
+	$(GIT) archive HEAD -o dist.tar.gz
+endif
 
 
 ################################################################################
