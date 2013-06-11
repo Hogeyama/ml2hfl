@@ -484,7 +484,6 @@ let () =
             "" | "-" -> Flag.filename := "stdin"; stdin
           | _ -> open_in !Flag.filename
       in
-        Wrapper.open_cvc3 ();
         Fpat.Cvc3Interface.init ();
         Fpat.AtpInterface.init ();
         Fpat.Cvc3Interface.open_cvc3 ();
@@ -493,7 +492,6 @@ let () =
         if not !Flag.only_result then print_env ();
         if main cin then decr Flag.cegar_loop;
         Fpat.Cvc3Interface.close_cvc3 ();
-        Wrapper.close_cvc3 ();
         print_info ()
     with
         Syntaxerr.Error err ->
