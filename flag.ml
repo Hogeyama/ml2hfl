@@ -2,7 +2,6 @@
 let ocaml_lib = [Environment.build_dir ^ "/stdlib"]
 let trecs = ref Environment.trecs
 let cvc3 = ref Environment.cvc3
-let cvc3_option = "+interactive"
 
 let filename = ref ""
 let spec_file = ref ""
@@ -81,7 +80,6 @@ let print_interpolant = true
 let print_progress = ref true
 let print_constraints = true
 let print_lower_bound = true
-let print_cvc3 = false
 let print_refine_log = true
 let print_eval_abst = ref false
 let print_fun_arg_typ = ref true

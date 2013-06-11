@@ -66,7 +66,7 @@ CMO = $(OCAML_CMO) \
 	feasibility.cmo refine.cmo CEGAR.cmo \
 	writeAnnot.cmo \
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo \
-	eval.cmo main.cmo
+	eval.cmo main_loop.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)
@@ -92,7 +92,7 @@ OCAML_CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 
 
 $(NAME).byte: $(CMO)
-	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -linkpkg -o $@ $(CMO)
+	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -linkpkg -o $@ $(CMA) $(CMO)
 
 $(NAME).opt: $(CMX)
 	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -linkpkg -o $@ $(CMXA) $(CMX)
