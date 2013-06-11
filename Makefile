@@ -204,7 +204,7 @@ test: opt
 SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(OCAML_SOURCE)%, $(SRC))
 
-depend:: $(SRC_MOCHI) $(DEPEND)
+depend: $(SRC_MOCHI) $(DEPEND)
 	$(OCAMLFIND) ocamldep $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
