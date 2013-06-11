@@ -2,6 +2,7 @@ exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
 
+
 let print_info () =
   Format.printf "cycles: %d\n" !Flag.cegar_loop;
   Format.printf "total: %.3f sec\n" (Util.get_time());
@@ -25,7 +26,7 @@ let print_env () =
   let trecs_version = TrecsInterface.version () in
   Format.printf "MoCHi: Model Checker for Higher-Order Programs@.";
   if commit <> "" then Format.printf "  Build: %s@." commit;
-  if trecs_version <> "" then Format.printf "  TRecS: %s@." trecs_version;
+  if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
   Format.printf "@."; ()
@@ -106,6 +107,7 @@ let main in_channel =
      Lexing.pos_bol = 0};
   in
   let orig = Parse.use_file lb in
+  Id.set_counter (Ident.current_time () + 1);
   let parsed = Parser_wrapper.from_use_file orig in
   let () =
     if true && !Flag.debug_level > 0
