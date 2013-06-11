@@ -410,8 +410,6 @@ let arg_spec =
           " Use refinement type based predicate discovery (same as -rsn 0)";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
           "<num>  Use refinement type based predicate discovery";
-   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
-          " Use refinement type based predicate discovery (obsolete)";
    "-eap", Arg.Set Fpat.Global.extract_atomic_predicates, " Extract atomic predicates";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* Horn clause solver *)

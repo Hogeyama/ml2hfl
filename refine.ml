@@ -100,7 +100,6 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       	      let map = FpatInterface.infer flags labeled ces (env, defs, main) in
       	      Format.printf "@]";
               map
-          | Flag.RefineRefTypeOld -> unsupported "RefineRefTypeOld"
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";

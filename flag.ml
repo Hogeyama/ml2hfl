@@ -11,7 +11,7 @@ type mode = Reachability | FileAccess
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
 type pred_abst = PredAbst | PredAbstCPS
 type model_check = ModelCheck | ModelCheckCPS
-type refine = RefineRefType of int | RefineRefTypeOld
+type refine = RefineRefType of int
 type form = CPS
 
 (* TRecS option *)
