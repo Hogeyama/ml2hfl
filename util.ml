@@ -1,5 +1,7 @@
 exception Fatal of string
 
+let (|>) x f = f x
+
 let table_create n = Hashtbl.create n;;
 let table_find tab x = Hashtbl.find tab x
 let table_add tab a b = Hashtbl.add tab a b

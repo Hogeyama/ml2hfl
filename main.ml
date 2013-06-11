@@ -469,7 +469,6 @@ let () =
   then ()
   else
     try
-      print_env ();
       let set_file name =
         if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
         then (Arg.usage arg_spec usage; exit 1);
@@ -488,15 +487,14 @@ let () =
           | _ -> open_in !Flag.filename
       in
         Wrapper.open_cvc3 ();
-        Wrapper2.open_cvc3 ();
         Fpat.Cvc3Interface.init ();
         Fpat.AtpInterface.init ();
         Fpat.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
+        if not !Flag.only_result then print_env ();
         if main cin then decr Flag.cegar_loop;
         Fpat.Cvc3Interface.close_cvc3 ();
-        Wrapper2.close_cvc3 ();
         Wrapper.close_cvc3 ();
         print_info ()
     with

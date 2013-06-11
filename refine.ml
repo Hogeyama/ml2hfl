@@ -7,11 +7,16 @@ open CEGAR_util
 
 exception CannotRefute
 
+let equiv env t1 t2 =
+  let t1' = FpatInterface.conv_term t1 in
+  let t2' = FpatInterface.conv_term t2 in
+  Fpat.Cvc3Interface.implies [t1'] [t2'] && Fpat.Cvc3Interface.implies [t1'] [t2']
+
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 
 let add env ps p =
-  if List.exists (Wrapper2.equiv env [] p) ps
+  if List.exists (equiv env p) ps
   then ps
   else normalize_bool_term p :: ps
 

@@ -33,7 +33,6 @@ let rec ref_of_inter env cond atyp ityp =
         let ts = rev_flatten (List.map2 aux ps' ityps) in
         let p = List.fold_left CS.make_and (CS.Const CS.True) ts in
         let cond' = p::cond in
-        let imply ts t = Wrapper2.check env' (cond@@ts) t in
         let p' = CEGAR_util.normalize_bool_term p in
         let rtyp = ref_of_inter env' cond' (atyp2 (CS.Var x)) ityp' in
           RT.Fun(x, RT.Base(b',x,p'), rtyp)
