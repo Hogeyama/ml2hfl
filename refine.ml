@@ -100,12 +100,7 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       	      let map = FpatInterface.infer flags labeled ces (env, defs, main) in
       	      Format.printf "@]";
               map
-          | Flag.RefineRefTypeOld ->
-              if not (List.mem Flag.CPS !Flag.form)
-              then failwith "Program must be in CPS @ ModelCheckCPS";
-              try
-                RefineDepTyp.infer [List.hd ces] {env=env;defs=defs;main=main}
-              with RefineDepTyp.Untypable -> raise CannotRefute
+          | Flag.RefineRefTypeOld -> unsupported "RefineRefTypeOld"
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";
