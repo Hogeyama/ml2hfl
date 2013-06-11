@@ -5,7 +5,6 @@ include Makefile.config
 PACKAGES = fpat,str,unix,csisat
 
 INCLUDES = \
-	-I $(CSISAT) \
 	-I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/driver \
 	-I $(OCAML_SOURCE)/parsing \
