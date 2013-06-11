@@ -327,7 +327,7 @@ let get_solution env p =
   in
   let ts' = List.sort compare (List.filter aux ts) in
   let aux t =
-    let b = Str.string_match (Str.regexp "^.+ = \(-?[0-9]+\)$") t 0 in
+    let b = Str.string_match (Str.regexp "^.+ = \\(-?[0-9]+\\)$") t 0 in
     let n = String.sub t (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1) in
       assert b;
       int_of_string n

@@ -18,17 +18,20 @@ let init () =
 
 
 let print_env () =
-  let build =
+  let commit =
     try
       let cin = open_in "COMMIT" in
       let s = input_line cin in
       close_in cin;
-      Format.sprintf "(Build: %s)" s
+      s
     with Sys_error _ | End_of_file -> ""
   in
-  Format.printf "MoCHi %s@." build;
-  Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
+  let trecs_version = TrecsInterface.version () in
+  Format.printf "MoCHi: Model Checker for Higher-Order Programs@.";
+  if commit <> "" then Format.printf "  Build: %s@." commit;
+  if trecs_version <> "" then Format.printf "  TRecS: %s@." trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
+  Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
   Format.printf "@."; ()
 
 
