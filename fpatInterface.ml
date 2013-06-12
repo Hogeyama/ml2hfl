@@ -35,7 +35,7 @@ let conv_const c =
   | Add -> Const.Add SimType.Int
   | Sub -> Const.Sub SimType.Int
   | Mul -> Const.Mul SimType.Int
-  | CPS_result -> Const.Unint(SimType.Ext (Idnt.Id "Result"), Idnt.Id "end")
+  | CPS_result -> Const.Unint(SimType.Ext (Idnt.Id "X"), Idnt.Id "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -76,7 +76,7 @@ let inv_const c =
   | Const.Gt (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,">")
   | Const.Leq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"<=")
   | Const.Geq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,">=")
-  | Const.Unint(SimType.Ext (Idnt.Id "Result"), Idnt.Id "end") -> CPS_result
+  | Const.Unint(SimType.Ext (Idnt.Id "X"), Idnt.Id "end") -> CPS_result
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =

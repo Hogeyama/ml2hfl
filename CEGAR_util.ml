@@ -605,10 +605,10 @@ let trans_prog t =
   let defs' =
     match !Flag.cegar with
         Flag.CEGAR_InteractionType ->
-          let typ = TFun(TBase(TUnit,fun _ -> []), fun _ -> TBase(TUnit,fun _ -> [])) in
+          let typ = TFun(typ_unit, fun _ -> typ_unit) in
             (main,typ,["u"],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
       | Flag.CEGAR_DependentType ->
-          let typ = TBase(TUnit,fun _ -> []) in
+          let typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
             (main,typ,[],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
