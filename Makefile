@@ -5,7 +5,6 @@ include Makefile.config
 PACKAGES = fpat,str,unix,csisat
 
 INCLUDES = \
-	-I $(CSISAT) \
 	-I $(OCAML_SOURCE)/bytecomp \
 	-I $(OCAML_SOURCE)/driver \
 	-I $(OCAML_SOURCE)/parsing \
@@ -27,7 +26,7 @@ DOC = doc
 
 NAME = mochi
 
-main: opt COMMIT
+main: opt
 all: depend byte opt
 
 byte: $(NAME).byte
@@ -35,10 +34,11 @@ opt: $(NAME).opt
 
 
 ifdef GIT
+main: COMMIT
 COMMIT: depend .git/index
 	rm -f COMMIT
-	GIT=$(GIT); if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
-	git log -1 --oneline | cut -d ' ' -f1 >> COMMIT
+	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
+	$(GIT) rev-parse HEAD >> COMMIT
 endif
 
 
@@ -47,7 +47,7 @@ endif
 # bytecode and native-code compilation
 
 MLI = CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
-	wrapper.mli wrapper2.mli CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
+	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
 	spec_parser.mli trecs_parser.mli BRA_transform.mli
 CMI = $(MLI:.mli=.cmi)
 
@@ -55,7 +55,6 @@ CMO = $(OCAML_CMO) \
 	environment.cmo flag.cmo util.cmo id.cmo type.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
-	wrapper.cmo wrapper2.cmo \
 	ref_type.cmo type_check.cmo trans.cmo CEGAR_ref_type.cmo CEGAR_util.cmo \
 	useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
@@ -64,10 +63,10 @@ CMO = $(OCAML_CMO) \
         trecs_parser.cmo trecs_lexer.cmo \
 	trecs_syntax.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
-	feasibility.cmo RefineDepTyp.cmo refine.cmo CEGAR.cmo \
+	feasibility.cmo refine.cmo CEGAR.cmo \
 	writeAnnot.cmo \
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo \
-	eval.cmo main.cmo
+	eval.cmo main_loop.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)
@@ -93,7 +92,7 @@ OCAML_CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
 
 
 $(NAME).byte: $(CMO)
-	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -linkpkg -o $@ $(CMO)
+	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -linkpkg -o $@ $(CMA) $(CMO)
 
 $(NAME).opt: $(CMX)
 	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -linkpkg -o $@ $(CMXA) $(CMX)
@@ -156,8 +155,10 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 ################################################################################
 # distribution
 
+ifdef GIT
 dist:
-	git archive HEAD -o dist.tar.gz
+	$(GIT) archive HEAD -o dist.tar.gz
+endif
 
 
 ################################################################################
@@ -205,7 +206,7 @@ test: opt
 SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(OCAML_SOURCE)%, $(SRC))
 
-depend:: $(SRC_MOCHI) $(DEPEND)
+depend: $(SRC_MOCHI) $(DEPEND)
 	$(OCAMLFIND) ocamldep $(MLI) $(SRC_MOCHI) > depend
 
 -include depend

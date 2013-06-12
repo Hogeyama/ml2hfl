@@ -85,10 +85,14 @@ let rec inv_term t =
   | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, Term.App(_, t1, t2), t3) ->
       (match t1 with
-        Term.Const(_, Const.Neq SimType.Unit) -> App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.Neq SimType.Bool) -> App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.Neq SimType.Int) -> App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
-      | _ -> App(App(inv_term t1, inv_term t2), inv_term t3))
+        Term.Const(_, Const.Neq SimType.Unit) ->
+          App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.Neq SimType.Bool) ->
+          App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.Neq SimType.Int) ->
+          App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
+      | _ ->
+          App(App(inv_term t1, inv_term t2), inv_term t3))
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
   | Term.Forall (_, _, _) -> assert false
   | Term.Error _ -> assert false

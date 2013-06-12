@@ -9,6 +9,12 @@ type result =
     Feasible of (string * CEGAR_syntax.typ) list * int list
   | Infeasible of CEGAR_syntax.ce
 
+let checksat env t =
+  Fpat.Cvc3Interface.is_satisfiable (FpatInterface.conv_term t)
+
+let get_solution env t =
+  t |> FpatInterface.conv_term |> Fpat.Cvc3Interface.solve |> List.sort compare |> List.map snd
+
 let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env
 
 let assoc_def defs n t =
@@ -49,7 +55,7 @@ let rec check_aux pr ce sat n constr env defs t k =
               let constr' = make_and tf1' constr in
               let ce' = List.tl ce in
               let n' = if sat then n+1 else n in
-              let sat' = sat && Wrapper2.checksat env constr' in
+              let sat' = sat && checksat env constr' in
                 assert (List.length xs = List.length ts);
                 assert (ts2 = []);
                 pr t1' (List.hd ce) num e;
@@ -76,8 +82,8 @@ let check ce {defs=defs; main=main} =
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
   let result =
-    if Wrapper2.checksat env' constr
-    then Feasible (env', Wrapper2.get_solution env' constr)
+    if checksat env' constr
+    then Feasible (env', get_solution env' constr)
     else Infeasible prefix
   in
     if !Flag.print_progress then Format.printf "DONE!@.@.";

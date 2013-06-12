@@ -568,6 +568,12 @@ let rename_prog prog =
   let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
     prog, map, rmap
 
+let id_prog prog =
+  let map = List.rev_map (fun (f,_) -> f, f) prog.env in
+  let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
+  prog, map, rmap
+
+
 
 module CRT = CEGAR_ref_type
 module RT = Ref_type
@@ -614,8 +620,8 @@ let trans_prog t =
   let prog = eta_expand prog in
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = pop_main prog in
-  let () = if true then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
-  let prog,map,rmap = rename_prog prog in
+  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
+  let prog,map,rmap = id_prog prog in
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
     prog,map,rmap,get_rtyp
 
