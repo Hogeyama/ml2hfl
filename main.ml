@@ -279,11 +279,11 @@ let rec termination_loop predicate_que holed =
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
       let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in 
       let arg_vars =
-	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
+	List.map (fun v -> Var.of_string (Id.to_string (BRA_transform.extract_id v)))
 	  (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified) in
       let arg_var_terms = List.map Term.make_var arg_vars in
       let prev_vars =
-	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
+	List.map (fun v -> Var.of_string (Id.to_string (BRA_transform.extract_id v)))
 	  (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified) in
       let prev_var_terms = List.map Term.make_var prev_vars in
       let arg_env = List.map (fun a -> (a, SimType.Int)) arg_vars in

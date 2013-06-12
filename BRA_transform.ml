@@ -32,6 +32,8 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 	  Let (flag, List.map fmap bindings, ev e)
 	| BinOp (op, e1, e2) -> BinOp (op, ev e1, ev e2)
 	| Not e -> Not (ev e)
+	| Fun (f, body) -> Fun (f, ev body)
+	| Match (e, mclauses) -> Match (ev e, List.map (fun (p, t1, t2) -> (p, ev t1, ev t2)) mclauses)
 	| e -> e
     end
   in f { desc = expr
@@ -45,6 +47,7 @@ let rec regularization = function
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
+let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
 let rec show_typed_term form t = show_term form t.desc
 and show_term form = function
   | Unit -> "()"
@@ -52,22 +55,22 @@ and show_term form = function
   | False -> "false"
   | Int n -> string_of_int n
   | App ({desc=RandInt _}, _) -> "Random.int 0"
-  | Var v -> v.Id.name
-  | Fun (f, body) -> "fun " ^ f.Id.name ^ " -> " ^ show_typed_term form body
+  | Var v -> modify_id v
+  | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_typed_term form body
   | App ({desc=Event("fail", _)}, _) -> "assert false"
   | App (f, args) -> show_typed_term form f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_typed_term form a)) "" args
   | If (t1, t2, t3) -> "if " ^ show_typed_term form t1 ^ " then " ^ show_typed_term form t2 ^ " else " ^ show_typed_term form t3
   | Let (_, [], _) -> assert false
   | Let (Nonrecursive, [id, args, body], {desc=Unit; typ=TUnit}) when id.Id.name = "main" ->
-    let show_args args = List.fold_left (fun acc a -> acc ^ " " ^ a.Id.name) "" args in
+    let show_args args = List.fold_left (fun acc a -> acc ^ " " ^ modify_id a) "" args in
     "let main "
     ^ show_args args
     ^ " = "
     ^ show_typed_term form body
   | Let (rec_flag, b::bs, t) ->
     let show_bind (x, args, body) =
-      x.Id.name
-      ^ (List.fold_left (fun acc a -> acc ^ " " ^ a.Id.name) "" args)
+      modify_id x
+      ^ (List.fold_left (fun acc a -> acc ^ " " ^ modify_id a) "" args)
       ^ "="
       ^ show_typed_term Expr body in
     (if rec_flag = Nonrecursive then "let " else "let rec ")
@@ -90,6 +93,23 @@ and show_binop = function
   | Sub -> "-"
   | Mult -> "*"
 
+let restore_ids = 
+  let trans_id ({Id.name = name_; Id.typ = typ} as orig) =
+    try
+      let i = String.rindex name_ '_' in
+      let name = String.sub name_ 0 i in
+      let id = int_of_string (String.sub name_ (i+1) (String.length name_ - i - 1)) in
+      {Id.name = name; Id.id = id; Id.typ = typ}
+    with _ -> orig
+  in
+  let sub = function
+    | {desc = Let (rec_flag, bindings, cont); typ = t} ->
+      {desc = Let (rec_flag, List.map (fun (f, args, body) -> (trans_id f, List.map trans_id args, body)) bindings, cont); typ = t}
+    | {desc = Fun (f, body); typ = t} -> {desc = Fun (trans_id f, body); typ = t}
+    | {desc = Var v; typ = t} -> {desc = Var (trans_id v); typ = t}
+    | t -> t
+  in everywhere_expr sub
+
 let retyping t =
   (*Format.eprintf "@.%s@." (show_typed_term (is_form_of t) t);*)
   let lb = t |> show_typed_term (is_form_of t)
@@ -103,6 +123,7 @@ let retyping t =
   in
   let orig = Parse.use_file lb in
   let parsed = Parser_wrapper.from_use_file orig in
+  let parsed = restore_ids parsed in
   let _ =
     if true && !Flag.debug_level > 0
     then Format.printf "transformed::@. @[%a@.@." Syntax.pp_print_term parsed
