@@ -164,6 +164,10 @@ let nil _ = []
 let trans_var x = Id.to_string x
 let trans_inv_var s = Id.from_string s Type.typ_unknown
 
+let id_prog prog =
+  let map = List.rev_map (fun (f,_) -> f, f) prog.env in
+  let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
+  prog, map, rmap
 
 
 (* for predicates *)
@@ -587,7 +591,7 @@ let trans_prog t =
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = pop_main prog in
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
-  let prog,map,rmap = rename_prog prog in
+  let prog,map,rmap = id_prog prog in
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
     if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
     prog,map,rmap,get_rtyp
