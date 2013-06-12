@@ -3,4 +3,4 @@
 val lift :
   Syntax.typed_term ->
   ((Syntax.typ Id.t * (Syntax.id list * Syntax.typed_term)) list * Syntax.typed_term) *
-  ('a Id.t -> Ref_type.t -> Ref_type.t)
+  (Syntax.typ Id.t -> Ref_type.t -> Ref_type.t)

@@ -178,7 +178,7 @@ and print_ids fm xs =
 	fprintf fm "%a" Id.print x
       | x1 :: x2 :: xs ->
 	let _ =
-	  if is_fun_typ x2.Id.typ then
+	  if is_fun_typ (Id.typ x2) then
 	    fprintf fm "$%a$ " Id.print x1
 	  else
 	    fprintf fm "%a " Id.print x1

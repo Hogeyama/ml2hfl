@@ -48,7 +48,7 @@ endif
 
 MLI = lift.mli CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
-	spec_parser.mli trecs_parser.mli BRA_transform.mli CEGAR_lift.mli
+	spec_parser.mli trecs_parser.mli BRA_transform.mli CEGAR_lift.mli id.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
