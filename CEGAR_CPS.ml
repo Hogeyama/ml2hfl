@@ -194,7 +194,7 @@ let trans {env=env;defs=defs;main=main} lift_opt =
   let prog = {env=env; defs=defs; main=main} in
   let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.prog prog in
   let _ = Typing.infer prog in
-  let prog = if lift_opt then lift prog else lift2 prog in
+  let prog = if lift_opt then CEGAR_lift.lift prog else CEGAR_lift.lift2 prog in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog prog in
     extract_tuple prog
 

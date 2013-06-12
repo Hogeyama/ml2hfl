@@ -600,7 +600,7 @@ let trans_prog t =
   let t = Trans.trans_let t in
   let () = if false then Format.printf "AFTER:@.%a@.@.@." S.pp_print_term t in
   let main = new_id "main" in
-  let (defs,t_main),get_rtyp = Trans.lift t in
+  let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term "" [] [] t_main in
   let defs' =
     match !Flag.cegar with
@@ -718,112 +718,6 @@ let map_defs f defs =
   in
     rev_map_flatten aux defs
 
-(*
-let rec extract_temp_if = function
-    Const If -> assert false
-  | Const c -> [], Const c
-  | Var x -> [], Var x
-  | App(App(App(Const If, t1), t2), t3) ->
-      let defs1,t1' = extract_temp_if t1 in
-      let defs2,t2' = extract_temp_if t2 in
-      let defs3,t3' = extract_temp_if t3 in
-      let f = new_id "f" in
-      let x = new_id "b" in
-      let xs = uniq (get_fv t2 @@ get_fv t3) in
-      let def1 = f, x::xs, Var x, t2 in
-      let def2 = f, x::xs, make_not (Var x), t3 in
-      let defs,t = [def1;def2], App(List.fold_left (fun t x -> App(t,Var x)) (Var f) xs, t1) in
-        defs@@defs1@@defs2@@defs3, t
-  | App(t1,t2) ->
-      let defs1,t1' = extract_temp_if t1 in
-      let defs2,t2' = extract_temp_if t2 in
-        defs1@@defs2, App(t1',t2')
-  | _ -> assert false
-let extract_temp_if defs = map_defs extract_temp_if defs
-*)
-
-
-
-let rec lift_term xs = function
-    Const c -> [], Const c
-  | Var x -> [], Var x
-  | App(t1,t2) ->
-      let defs1,t1' = lift_term xs t1 in
-      let defs2,t2' = lift_term xs t2 in
-        defs1@@defs2, App(t1',t2')
-  | Let(f,t1,t2) ->
-      let ys,t1' = decomp_fun t1 in
-      let ys' = List.map (fun x -> if List.mem x xs then rename_id x else x) ys in
-      let f' = rename_id f in
-      let f'' = make_app (Var f') (List.map (fun x -> Var x) xs) in
-      let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' ys ys' in
-      let xs' = xs@ys' in
-      let defs1,t1''' = lift_term xs' t1'' in
-      let defs2,t2' = lift_term xs (subst f f'' t2) in
-        (f',xs@ys',Const True,[],t1''') :: defs1 @ defs2, t2'
-  | Fun _ as t ->
-      let ys,t' = decomp_fun t in
-      let f = new_id "f" in
-      let ys' = List.map (fun x -> if List.mem x xs then rename_id x else x) ys in
-      let t'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t' ys ys' in
-      let xs' = xs@ys' in
-      let f' = make_app (Var f) (List.map (fun x -> Var x) xs) in
-      let defs,t''' = lift_term xs' t'' in
-        (f,xs',Const True,[],t''')::defs, f'
-let lift_def (f,xs,t1,e,t2) =
-  let ys,t2' = decomp_fun t2 in
-  let xs' = xs@ys in
-  let defs1,t1' = lift_term xs t1 in
-  let defs2,t2'' = lift_term xs' t2' in
-    (f, xs', t1', e, t2'')::defs1@defs2
-let lift {defs=defs; main=main} =
-  let defs' = rev_flatten_map lift_def defs in
-    Typing.infer {env=[];defs=defs';main=main}
-
-
-
-
-let rec lift_term2 xs = function
-    Const c -> [], Const c
-  | Var x -> [], Var x
-  | App(t1,t2) ->
-      let defs1,t1' = lift_term2 xs t1 in
-      let defs2,t2' = lift_term2 xs t2 in
-        defs1@@defs2, App(t1',t2')
-  | Let(f,t1,t2) ->
-      let ys,t1' = decomp_fun t1 in
-      let fv = inter xs (diff (get_fv t1) ys) in
-      let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
-      let ys' = fv' @ ys in
-      let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' fv fv' in
-      let f' = rename_id f in
-      let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
-      let defs1,t1''' = lift_term2 ys' t1'' in
-      let defs2,t2' = lift_term2 xs (subst f f'' t2) in
-        (f',ys',Const True,[],t1''') :: defs1 @ defs2, t2'
-  | Fun _ as t ->
-      let f = new_id "f" in
-      let ys,t1 = decomp_fun t in
-      let fv = inter xs (diff (get_fv t1) ys) in
-      let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
-      let ys' = fv' @ ys in
-      let t1' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1 fv fv' in
-      let f' = rename_id f in
-      let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
-      let defs1,t1'' = lift_term2 ys' t1' in
-        (f',ys',Const True,[],t1'') :: defs1, f''
-
-
-let lift_def2 (f,xs,t1,e,t2) =
-  let ys,t2' = decomp_fun t2 in
-  let defs1,t1' = lift_term2 xs t1 in
-  let defs2,t2'' = lift_term2 xs t2' in
-    (f, xs@ys, t1', e, t2'')::defs1@defs2
-let lift2 ({defs=defs; main=main} as prog) =
-  let defs = flatten_map lift_def2 defs in
-  let env = get_ext_fun_env prog in
-  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog {env=[];defs=defs;main=main} in
-    Typing.infer {env=env;defs=defs;main=main}
 
 
 

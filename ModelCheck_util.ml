@@ -160,7 +160,7 @@ let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
     f, xs@ys, t1, e, t2''
 
-let eta_expand prog = lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
+let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
 

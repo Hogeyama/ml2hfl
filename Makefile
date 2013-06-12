@@ -46,16 +46,16 @@ endif
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
+MLI = lift.mli CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
-	spec_parser.mli trecs_parser.mli BRA_transform.mli
+	spec_parser.mli trecs_parser.mli BRA_transform.mli CEGAR_lift.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
 	environment.cmo flag.cmo util.cmo id.cmo type.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
-	ref_type.cmo type_check.cmo trans.cmo CEGAR_ref_type.cmo CEGAR_util.cmo \
+	ref_type.cmo type_check.cmo trans.cmo lift.cmo CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo \
 	useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
 	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	abstract.cmo CEGAR_abst_util.cmo \

@@ -347,12 +347,12 @@ let abstract orig_fun_list force prog =
   let prog = Typing.infer prog in
   let prog = add_ext_funs prog in
   let () = if debug then Format.printf "ADD_EXT_FUNS:@.%a@." CEGAR_print.prog prog in
-  let prog = lift2 prog in
+  let prog = CEGAR_lift.lift2 prog in
   let () = if debug then Format.printf "LIFT:@\n%a@." CEGAR_print.prog prog in
   let prog = trans_eager prog in
   let () = if debug then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog prog in
   let prog = put_into_if prog in
   let _ = Typing.infer prog in
   let () = if debug then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog prog in
-  let prog = lift2 prog in
+  let prog = CEGAR_lift.lift2 prog in
     labeled, prog
