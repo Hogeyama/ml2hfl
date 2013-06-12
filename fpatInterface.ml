@@ -502,7 +502,10 @@ let compute_strongest_post prog ce =
   if debug then Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
   let lbs = HcSolver.compute_lbs hcs in
   let env, spc =
-    let is_fail pid = Idnt.string_of (Var.base pid) = "fail" in
+    let is_fail pid =
+      let s = (Idnt.string_of (Var.base pid)) in
+        String.length s >= 4 && String.sub s 0 4 = "fail"
+    in
     if List.exists is_fail (HornClause.rhs_pids hcs) then
       let [HornClause.Hc(Some(_), [atm], t) as hc] =
         List.filter
