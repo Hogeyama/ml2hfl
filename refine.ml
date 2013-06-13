@@ -7,11 +7,16 @@ open CEGAR_util
 
 exception CannotRefute
 
+let equiv env t1 t2 =
+  let t1' = FpatInterface.conv_term t1 in
+  let t2' = FpatInterface.conv_term t2 in
+  Fpat.Cvc3Interface.implies [t1'] [t2'] && Fpat.Cvc3Interface.implies [t1'] [t2']
+
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 
 let add env ps p =
-  if List.exists (Wrapper2.equiv env [] p) ps
+  if List.exists (equiv env p) ps
   then ps
   else normalize_bool_term p :: ps
 
@@ -95,12 +100,6 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
       	      let map = FpatInterface.infer flags labeled ces (env, defs, main) in
       	      Format.printf "@]";
               map
-          | Flag.RefineRefTypeOld ->
-              if not (List.mem Flag.CPS !Flag.form)
-              then failwith "Program must be in CPS @ ModelCheckCPS";
-              try
-                RefineDepTyp.infer [List.hd ces] {env=env;defs=defs;main=main}
-              with RefineDepTyp.Untypable -> raise CannotRefute
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";

@@ -16,14 +16,16 @@ let rec check t typ =
   then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
       {desc=Const Unit; typ=TUnit} -> ()
+    | {desc=Const Unit; typ=TResult} -> ()
     | {desc=Const (True|False)|Unknown; typ=TBool} -> ()
     | {desc=Const (Int _); typ=(TInt | TRInt _)} -> ()
+    | {desc=Const CPS_result; typ=TResult} -> ()
     | {desc=Const _; typ=TConstr _} -> ()
     | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
-    | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->
+    | {desc=RandInt true; typ=TFun(x,TFun(k,TResult))} ->
         check_var x TUnit;
-        check_var k (TFun(Id.new_var "" TInt, TUnit))
+        check_var k (TFun(Id.new_var "" TInt, TResult))
     | {desc=Var x; typ=typ'} ->
         check_var x typ'
     | {desc=Fun(x,t); typ=TFun(y,typ')} ->
@@ -76,7 +78,7 @@ let rec check t typ =
         check t2 TInt
     | {desc=Not t; typ=TBool} ->
         check t TBool
-    | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event)
+    | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event || typ' = typ_event')
     | {desc=Event(_,true); typ=typ'} -> assert (typ' = typ_event_cps)
     | {desc=Pair(t1,t2); typ=TPair(x,typ)} ->
         check t1 (Id.typ x);

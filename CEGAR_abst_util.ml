@@ -14,9 +14,17 @@ let hd = function
   | [x] -> x
   | _ -> assert false
 
+let check_aux env cond p =
+  let cond' = List.map FpatInterface.conv_term cond in
+  let p' = FpatInterface.conv_term p in
+  Fpat.Cvc3Interface.implies cond' [p']
+
 let check env cond pbs p =
   let ps,_ = List.split pbs in
-    Wrapper2.check env (cond@@ps) p
+  check_aux env (cond@@ps) p
+
+let equiv env cond t1 t2 =
+  check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
 
 let make_conj pbs =
   match pbs with
@@ -212,14 +220,10 @@ let abst env cond pbs p =
   then Const Bottom
   else
     let tt, ff = weakest env cond pbs p in
-(*
-    let env' = List.map (function _, Var x -> x,TBase(TBool,fun _ -> []) | _ -> assert false) pbs in
-      if Wrapper2.equiv env' cond (make_not tt) ff
-*)
-  if debug then Format.printf "tt:%a@.ff:%a@." CEGAR_print.term tt CEGAR_print.term ff;
-      if make_not tt = ff || tt = make_not ff
-      then tt
-      else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
+    if debug then Format.printf "tt:%a@.ff:%a@." CEGAR_print.term tt CEGAR_print.term ff;
+    if make_not tt = ff || tt = make_not ff
+    then tt
+    else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
 let assume env cond pbs t1 t2 =
@@ -237,7 +241,7 @@ let rec congruent env cond typ1 typ2 =
         let env' = (x,typ1)::env in
         let ps1' = ps1 (Var x) in
         let ps2' = ps2 (Var x) in
-          List.length ps1' = List.length ps2' && List.for_all2 (Wrapper2.equiv env' cond) ps1' ps2'
+          List.length ps1' = List.length ps2' && List.for_all2 (equiv env' cond) ps1' ps2'
     | TFun(typ11,typ12), TFun(typ21,typ22) ->
         let x = new_id "x_abst" in
         let typ12 = typ12 (Var x) in
@@ -252,7 +256,7 @@ let decomp_tbase = function
   | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
 
 let rec is_base_term env = function
-    Const (Unit | True | False | Int _ | RandInt | Abst _) -> true
+    Const (Unit | True | False | Int _ | RandInt | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> true
   | Const _ -> false
   | Var x ->
       let typ =
@@ -337,3 +341,31 @@ let rec add_label {env=env;defs=defs;main=main} =
   let defs' = aux defs in
   let labeled = uniq (rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs') in
     labeled, {env=env;defs=defs';main=main}
+
+
+
+(* assume that a continuation is in the first position of arguments *)
+let rec use_arg x typ t =
+  match typ with
+    TBase _ -> t
+  | TFun(typ1,typ2) ->
+      let u = new_id "u" in
+      let t' = make_br (Const Unit) (App(Var x, make_ext_fun typ1)) in
+      App(Fun(u, None, t), t')
+  | _ -> assert false
+
+and make_ext_fun = function
+    TBase(TUnit, _) -> Const Unit
+  | TBase(TBool, _) -> make_br (Const True) (Const False)
+  | TFun(typ1,typ2) ->
+      let x = new_id "x" in
+      Fun(x, None, use_arg x typ1 (make_ext_fun (typ2 (Const Unit))))
+  | _ -> assert false
+
+
+let add_ext_funs prog =
+  let env = get_ext_fun_env prog in
+  let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun typ) env in
+  let defs' = defs@prog.defs in
+  let _ = Typing.infer {env=[]; defs=defs'; main=prog.main} in
+  {prog with defs=defs'}

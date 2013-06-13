@@ -17,23 +17,25 @@ let conv_const c =
   | And -> Const.And
   | Or -> Const.Or
   | Not -> Const.Not
-  | Lt -> Const.Lt
-  | Gt -> Const.Gt
-  | Leq -> Const.Leq
-  | Geq -> Const.Geq
-  | EqUnit -> Const.EqUnit
-  | EqBool -> Const.EqBool
-  | EqInt -> Const.EqInt
-  | CmpPoly((typ:string),(name:string)) -> assert false (* for add_const *)
-  | Abst((typ:string),(name:string)) ->
-      assert false
-      (* for add_const,
-         e.g. "2L <= 3L" ==> App(App(CmpPoly("int64", "<="), Abst("int64", "2L")), Abst("int64", "3L")) *)
+  | Lt -> Const.Lt SimType.Int
+  | Gt -> Const.Gt SimType.Int
+  | Leq -> Const.Leq SimType.Int
+  | Geq -> Const.Geq SimType.Int
+  | EqUnit -> Const.Eq SimType.Unit
+  | EqBool -> Const.Eq SimType.Bool
+  | EqInt -> Const.Eq SimType.Int
+  | CmpPoly(typ,"=") -> Const.Eq (SimType.Ext (Idnt.Id typ))
+  | CmpPoly(typ,"<>") -> Const.Neq (SimType.Ext (Idnt.Id typ))
+  | CmpPoly(typ,"<") -> Const.Lt (SimType.Ext (Idnt.Id typ))
+  | CmpPoly(typ,">") -> Const.Gt (SimType.Ext (Idnt.Id typ))
+  | CmpPoly(typ,"<=") -> Const.Leq (SimType.Ext (Idnt.Id typ))
+  | CmpPoly(typ,">=") -> Const.Geq (SimType.Ext (Idnt.Id typ))
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
-  | Add -> Const.IAdd
-  | Sub -> Const.ISub
-  | Mul -> Const.IMul
+  | Add -> Const.Add SimType.Int
+  | Sub -> Const.Sub SimType.Int
+  | Mul -> Const.Mul SimType.Int
+  | CPS_result -> Const.Unint(SimType.Ext (Idnt.Id "X"), Idnt.Id "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -57,21 +59,24 @@ let inv_const c =
   | Const.And -> And
   | Const.Or -> Or
   | Const.Not -> Not
-  | Const.Lt -> Lt
-  | Const.Gt -> Gt
-  | Const.Leq -> Leq
-  | Const.Geq -> Geq
-  | Const.EqBool -> EqBool
-  | Const.EqInt -> EqInt
+  | Const.Lt SimType.Int -> Lt
+  | Const.Gt SimType.Int -> Gt
+  | Const.Leq SimType.Int -> Leq
+  | Const.Geq SimType.Int -> Geq
+  | Const.Eq SimType.Bool -> EqBool
+  | Const.Eq SimType.Int -> EqInt
   | Const.Int(n) -> Int(n)
   | Const.RandInt -> RandInt
-  | Const.IAdd -> Add
-  | Const.ISub -> Sub
-  | Const.IMul -> Mul
-(* for add_const
-  | Const. ... -> CmpPoly(..., ...)
-  | Const. ... -> Abst(..., ...)
-*)
+  | Const.Add SimType.Int -> Add
+  | Const.Sub SimType.Int -> Sub
+  | Const.Mul SimType.Int -> Mul
+  | Const.Eq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"=")
+  | Const.Neq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"<>")
+  | Const.Lt (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"<")
+  | Const.Gt (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,">")
+  | Const.Leq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"<=")
+  | Const.Geq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,">=")
+  | Const.Unint(SimType.Ext (Idnt.Id "X"), Idnt.Id "end") -> CPS_result
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =
@@ -80,10 +85,14 @@ let rec inv_term t =
   | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, Term.App(_, t1, t2), t3) ->
       (match t1 with
-        Term.Const(_, Const.NeqUnit) -> App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.NeqBool) -> App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.NeqInt) -> App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
-      | _ -> App(App(inv_term t1, inv_term t2), inv_term t3))
+        Term.Const(_, Const.Neq SimType.Unit) ->
+          App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.Neq SimType.Bool) ->
+          App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.Neq SimType.Int) ->
+          App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
+      | _ ->
+          App(App(inv_term t1, inv_term t2), inv_term t3))
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
   | Term.Forall (_, _, _) -> assert false
   | Term.Error _ -> assert false
@@ -125,6 +134,7 @@ let rec conv_typ ty =
   | TBase(TInt, _) -> SimType.Int
   | TBase(TBool, _) -> SimType.Bool
   | TBase(TAbst (typ:string), _) -> assert false (* for add_const *)
+  | TBase(TResult, _) -> SimType.Ext (Idnt.Id "result")
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)

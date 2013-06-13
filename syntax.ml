@@ -20,7 +20,7 @@ and const = (* only base type constants *)
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | Abst
+  | CPS_result
 
 and typed_term = {desc:term; typ:typ}
 and term =
@@ -161,8 +161,8 @@ let rec occur (x:id) = function
   | TList typ -> occur x typ
   | TPair(y,typ) -> occur x (Id.typ y) || occur x typ
   | TConstr(s,b) -> false
-  | TPred(y,ps) ->
-    List.exists (fun p -> List.exists (Id.same x) (get_fv p)) ps || occur x (Id.typ y)
+  | TPred(y,ps) -> List.exists (fun p -> List.exists (Id.same x) (get_fv p)) ps || occur x (Id.typ y)
+  | TResult -> false
 
 
 
@@ -178,7 +178,7 @@ and print_ids fm xs =
 	fprintf fm "%a" Id.print x
       | x1 :: x2 :: xs ->
 	let _ =
-	  if is_fun_typ x2.Id.typ then
+	  if is_fun_typ (Id.typ x2) then
 	    fprintf fm "$%a$ " Id.print x1
 	  else
 	    fprintf fm "%a " Id.print x1
@@ -255,13 +255,13 @@ and print_const fm = function
   | True -> fprintf fm "true"
   | False -> fprintf fm "false"
   | Int n -> fprintf fm "%d" n
-  | Char c -> fprintf fm "%c" c
+  | Char c -> fprintf fm "%C" c
   | String s -> fprintf fm "%S" s
   | Float s -> fprintf fm "%s" s
   | Int32 n -> fprintf fm "%ldl" n
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
-  | Abst -> fprintf fm "Abst"
+  | CPS_result -> fprintf fm "end"
 
 and print_term pri typ fm t =
   match t.desc with
@@ -621,13 +621,13 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 (*** TERM CONSTRUCTORS ***)
 
 let typ_event = TFun(Id.new_var "" TUnit, TUnit)
+let typ_event' = TFun(Id.new_var "" TUnit, TResult)
 let typ_event_cps =
   let u = Id.new_var "" TUnit in
   let r = Id.new_var "" TUnit in
-  let k = Id.new_var "" (TFun(r,TUnit)) in
-    TFun(u, TFun(k, TUnit))
+  let k = Id.new_var "" (TFun(r,TResult)) in
+    TFun(u, TFun(k, TResult))
 let typ_excep = ref (TConstr("exn",true))
-let typ_abst = TConstr("abst",false)
 
 let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
@@ -640,7 +640,9 @@ let length_var =
 let unit_term = {desc=Const Unit; typ=TUnit}
 let true_term = {desc=Const True;typ=TBool}
 let false_term = {desc=Const False;typ=TBool}
+let cps_result = {desc=Const CPS_result; typ=TResult}
 let fail_term = {desc=Event("fail",false);typ=typ_event}
+let fail_term_cps = {desc=Event("fail",false);typ=typ_event'}
 let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt)}
 let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
@@ -659,15 +661,23 @@ let rec make_app t ts =
   match t,ts with
     | t,[] -> t
     | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-        assert (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ);
+        if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
+        then
+          begin
+            Format.printf "make_app:@ %a@ <=/=>@ %a@."
+              print_typ (Id.typ x)
+              print_typ t2.typ;
+            assert false
+          end;
         make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
     | {typ=TFun(x,typ)}, t2::ts
     | {typ=TPred({Id.typ=TFun(x,typ)},_)}, t2::ts ->
         if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
-        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@ %a@."
+        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@.fun:%a@.arg:%a@."
                 print_typ (Id.typ x)
                 print_typ t2.typ
-                pp_print_term {desc=App(t,ts);typ=TUnit};
+                pp_print_term t
+                pp_print_term' t2;
               assert false);
         make_app {desc=App(t,[t2]); typ=typ} ts
     | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
@@ -1139,6 +1149,7 @@ and subst_type x t = function
         TPred(y', ps')
   | TRInt t' -> TRInt (subst x t t')
   | TVar y -> TVar y
+  | TResult -> TResult
   | TFun(y,typ) ->
       let y' = Id.set_typ y (subst_type x t (Id.typ y)) in
       let typ' = subst_type x t typ in
@@ -1251,6 +1262,7 @@ let rec merge_typ typ1 typ2 =
     | TVar({contents=None}), _ -> typ2
     | _, TVar({contents=None}) -> typ1
     | TUnit, TUnit -> TUnit
+    | TResult, TResult -> TResult
     | TBool, TBool -> TBool
     | TInt, TInt -> TInt
     | TPred(x1,ps1), TPred(x2,ps2) ->
@@ -1287,26 +1299,6 @@ let make_if t1 t2 t3 =
       Const True -> t2
     | Const False -> t3
     | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ}
-(*
-let rec make_app t ts =
-  match t,ts with
-    | t,[]_ -> t
-    | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-        let typ' = subst_type x t2 typ in
-          assert (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ);
-          make_app {desc=App(t1,ts1@[t2]); typ=typ'} ts2
-    | {typ=TFun(x,typ)}, t2::ts ->
-        let typ' = subst_type x t2 typ in
-          if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
-          then (Format.printf "make_app: %a <=/=> %a, %a@."
-                  print_typ (Id.typ x)
-                  print_typ t2.typ
-                  pp_print_term {desc=App(t,ts);typ=TUnit};
-                assert false);
-          make_app {desc=App(t,[t2]); typ=typ'} ts
-    | _ when not Flag.check_typ -> {desc=App(t,ts); typ=TUnknown}
-    | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=TUnknown}; assert false
-*)
 
 let rec get_top_funs acc = function
     {desc=Let(flag, defs, t)} ->
@@ -1328,3 +1320,4 @@ let rec get_typ_default = function
   | TPair(x,typ) -> make_pair ~s:(Id.name x) (get_typ_default (Id.typ x)) (get_typ_default typ)
   | TConstr(s,b) -> assert false
   | TPred _ -> assert false
+  | TResult -> assert false

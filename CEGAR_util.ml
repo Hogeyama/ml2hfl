@@ -198,6 +198,7 @@ let rec trans_inv_term = function
 
 let rec trans_typ = function
     Type.TUnit -> TBase(TUnit, nil)
+  | Type.TResult -> TBase(TResult, nil)
   | Type.TBool ->
       if !Flag.bool_init_empty
       then TBase(TBool, nil)
@@ -265,13 +266,13 @@ and trans_const c typ =
   | S.True -> True
   | S.False -> False
   | S.Int n -> Int n
-  | S.Char _
-  | S.String _
-  | S.Float _
-  | S.Int32 _
-  | S.Int64 _
-  | S.Nativeint _
-  | S.Abst -> Abst(S.string_of_typ typ, S.string_of_const c)
+  | S.Char c -> Char c
+  | S.String s -> String s
+  | S.Float s -> Float s
+  | S.Int32 n -> Int32 n
+  | S.Int64 n -> Int64 n
+  | S.Nativeint n -> Nativeint n
+  | S.CPS_result -> CPS_result
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
@@ -292,10 +293,10 @@ and trans_term post xs env t =
           [], Var x'
     | S.App({S.desc=S.Event(s,false)}, [t]) ->
         let k = new_id "k" in
-        let defs,t' = trans_term post xs env t in
-        let xs = diff (get_fv t') (List.map fst env) in
-        let defs' = (k, TFun(typ_unit, fun _ -> typ_unit), xs@["u"], Const True, [], t')::defs in
-          defs', App(Const (Temp s), make_app (Var k) (List.map (fun x -> Var x) xs))
+        assert (t = S.unit_term);
+        let ret_typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
+        let defs = [k, TFun(typ_unit, fun _ -> ret_typ), ["u"], Const True, [], Const CPS_result] in
+        defs, App(Const (Temp s), Var k)
     | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
         assert (t1 = S.unit_term);
         let defs1,t1' = trans_term post xs env t1 in
@@ -480,7 +481,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as prog) =
             [], [f, xs, t1, [Event s], App(t2', Const Unit)]
         | App(Const (Temp s), t2') ->
             let g = new_id s in
-              [g, TFun(typ_bool(),fun _ -> TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit))],
+              [g, TFun(typ_bool(),fun _ -> TFun(TFun(typ_unit, fun _ -> typ_result), fun _ -> typ_result))],
               (* cannot refute if b is eliminated, because k can have no predicates in current impl. *)
               [g, ["b"; "k"], Const True, [Event s], App(Var "k", Const Unit);
                f, xs, t1, [], App(App(Var g, Const True), t2')]
@@ -527,7 +528,7 @@ let rename_prog prog =
   let var_names = List.rev_map id_name (uniq vars) in
   let rename_id' x var_names =
     let x_name = id_name x in
-      if List.length (List.filter ((=) x_name) var_names) = 1 &&
+      if List.length (List.filter ((=) x_name) var_names) <= 1 &&
         x_name <> "l0" && x_name <> "l1" (* for labels in model-checking *)
       then x_name
       else rename_id x
@@ -561,9 +562,17 @@ let rename_prog prog =
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
   let prog = {env=env; defs=defs; main=main} in
-  let () = ignore (Typing.infer prog) in
+  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
+  let is_cps = List.mem Flag.CPS !Flag.form in
+  let () = ignore (Typing.infer ~is_cps prog) in
   let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
     prog, map, rmap
+
+let id_prog prog =
+  let map = List.rev_map (fun (f,_) -> f, f) prog.env in
+  let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
+  prog, map, rmap
+
 
 
 module CRT = CEGAR_ref_type
@@ -591,15 +600,15 @@ let trans_prog t =
   let t = Trans.trans_let t in
   let () = if false then Format.printf "AFTER:@.%a@.@.@." S.pp_print_term t in
   let main = new_id "main" in
-  let (defs,t_main),get_rtyp = Trans.lift t in
+  let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term "" [] [] t_main in
   let defs' =
     match !Flag.cegar with
         Flag.CEGAR_InteractionType ->
-          let typ = TFun(TBase(TUnit,fun _ -> []), fun _ -> TBase(TUnit,fun _ -> [])) in
+          let typ = TFun(typ_unit, fun _ -> typ_unit) in
             (main,typ,["u"],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
       | Flag.CEGAR_DependentType ->
-          let typ = TBase(TUnit,fun _ -> []) in
+          let typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
             (main,typ,[],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
@@ -612,9 +621,8 @@ let trans_prog t =
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = pop_main prog in
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
-  let prog,map,rmap = rename_prog prog in
+  let prog,map,rmap = id_prog prog in
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
-    if is_CPS prog then Flag.form := Flag.CPS :: !Flag.form;
     prog,map,rmap,get_rtyp
 
 
@@ -624,9 +632,15 @@ exception TypeBottom
 
 
 let rec get_const_typ = function
-  | Unit -> TBase(TUnit, nil)
+  | Unit -> typ_unit
   | True -> typ_bool()
   | False -> typ_bool()
+  | Char _ -> typ_abst "char"
+  | String _ -> typ_abst "string"
+  | Float _ -> typ_abst "float"
+  | Int32 _ -> typ_abst "int32"
+  | Int64 _ -> typ_abst "int64"
+  | Nativeint _ -> typ_abst "nativeint"
   | RandInt -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
   | RandBool -> TBase(TBool,nil)
   | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
@@ -640,7 +654,6 @@ let rec get_const_typ = function
   | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool()))
   | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
   | CmpPoly(typ,_) -> TFun(TBase(TAbst typ,nil), fun x -> TFun(TBase(TAbst typ,nil), fun y -> typ_bool()))
-  | Abst(typ,s) -> TBase(TAbst typ, nil)
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
   | Add -> TFun(TBase(TInt,nil), fun x ->
                 TFun(TBase(TInt,nil), fun y ->
@@ -657,6 +670,8 @@ let rec get_const_typ = function
   | Bottom -> raise TypeBottom
   | Label _ -> assert false
   | Temp _ -> assert false
+  | CPS_result -> typ_result
+
 
 
 let rec get_typ env = function
@@ -703,111 +718,6 @@ let map_defs f defs =
   in
     rev_map_flatten aux defs
 
-(*
-let rec extract_temp_if = function
-    Const If -> assert false
-  | Const c -> [], Const c
-  | Var x -> [], Var x
-  | App(App(App(Const If, t1), t2), t3) ->
-      let defs1,t1' = extract_temp_if t1 in
-      let defs2,t2' = extract_temp_if t2 in
-      let defs3,t3' = extract_temp_if t3 in
-      let f = new_id "f" in
-      let x = new_id "b" in
-      let xs = uniq (get_fv t2 @@ get_fv t3) in
-      let def1 = f, x::xs, Var x, t2 in
-      let def2 = f, x::xs, make_not (Var x), t3 in
-      let defs,t = [def1;def2], App(List.fold_left (fun t x -> App(t,Var x)) (Var f) xs, t1) in
-        defs@@defs1@@defs2@@defs3, t
-  | App(t1,t2) ->
-      let defs1,t1' = extract_temp_if t1 in
-      let defs2,t2' = extract_temp_if t2 in
-        defs1@@defs2, App(t1',t2')
-  | _ -> assert false
-let extract_temp_if defs = map_defs extract_temp_if defs
-*)
-
-
-
-let rec lift_term xs = function
-    Const c -> [], Const c
-  | Var x -> [], Var x
-  | App(t1,t2) ->
-      let defs1,t1' = lift_term xs t1 in
-      let defs2,t2' = lift_term xs t2 in
-        defs1@@defs2, App(t1',t2')
-  | Let(f,t1,t2) ->
-      let ys,t1' = decomp_fun t1 in
-      let ys' = List.map (fun x -> if List.mem x xs then rename_id x else x) ys in
-      let f' = rename_id f in
-      let f'' = make_app (Var f') (List.map (fun x -> Var x) xs) in
-      let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' ys ys' in
-      let xs' = xs@ys' in
-      let defs1,t1''' = lift_term xs' t1'' in
-      let defs2,t2' = lift_term xs (subst f f'' t2) in
-        (f',xs@ys',Const True,[],t1''') :: defs1 @ defs2, t2'
-  | Fun _ as t ->
-      let ys,t' = decomp_fun t in
-      let f = new_id "f" in
-      let ys' = List.map (fun x -> if List.mem x xs then rename_id x else x) ys in
-      let t'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t' ys ys' in
-      let xs' = xs@ys' in
-      let f' = make_app (Var f) (List.map (fun x -> Var x) xs) in
-      let defs,t''' = lift_term xs' t'' in
-        (f,xs',Const True,[],t''')::defs, f'
-let lift_def (f,xs,t1,e,t2) =
-  let ys,t2' = decomp_fun t2 in
-  let xs' = xs@ys in
-  let defs1,t1' = lift_term xs t1 in
-  let defs2,t2'' = lift_term xs' t2' in
-    (f, xs', t1', e, t2'')::defs1@defs2
-let lift {defs=defs; main=main} =
-  let defs' = rev_flatten_map lift_def defs in
-    Typing.infer {env=[];defs=defs';main=main}
-
-
-
-
-let rec lift_term2 xs = function
-    Const c -> [], Const c
-  | Var x -> [], Var x
-  | App(t1,t2) ->
-      let defs1,t1' = lift_term2 xs t1 in
-      let defs2,t2' = lift_term2 xs t2 in
-        defs1@@defs2, App(t1',t2')
-  | Let(f,t1,t2) ->
-      let ys,t1' = decomp_fun t1 in
-      let fv = inter xs (diff (get_fv t1) ys) in
-      let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
-      let ys' = fv' @ ys in
-      let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' fv fv' in
-      let f' = rename_id f in
-      let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
-      let defs1,t1''' = lift_term2 ys' t1'' in
-      let defs2,t2' = lift_term2 xs (subst f f'' t2) in
-        (f',ys',Const True,[],t1''') :: defs1 @ defs2, t2'
-  | Fun _ as t ->
-      let f = new_id "f" in
-      let ys,t1 = decomp_fun t in
-      let fv = inter xs (diff (get_fv t1) ys) in
-      let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
-      let ys' = fv' @ ys in
-      let t1' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1 fv fv' in
-      let f' = rename_id f in
-      let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
-      let defs1,t1'' = lift_term2 ys' t1' in
-        (f',ys',Const True,[],t1'') :: defs1, f''
-
-
-let lift_def2 (f,xs,t1,e,t2) =
-  let ys,t2' = decomp_fun t2 in
-  let defs1,t1' = lift_term2 xs t1 in
-  let defs2,t2'' = lift_term2 xs t2' in
-    (f, xs@ys, t1', e, t2'')::defs1@defs2
-let lift2 {defs=defs; main=main} =
-  let defs = flatten_map lift_def2 defs in
-  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog {env=[];defs=defs;main=main} in
-    Typing.infer {env=[];defs=defs;main=main}
 
 
 
@@ -815,141 +725,6 @@ let lift2 {defs=defs; main=main} =
 
 
 
-
-
-exception EvalBottom
-
-let eval_prog_cbn (env,defs,main) =
-  let get_int_value = function
-      Const (Int n) -> n
-    | Const RandInt -> Random.int 100
-    | Const Bottom -> raise EvalBottom
-    | _ -> assert false
-  in
-  let rec step_eval = function
-      Const c -> Const c
-    | Var x ->
-        let defs' = List.filter (fun (f,_,t1,_,_) -> f = x && eval t1 = Const True) defs in
-        let _,_,_,_,t = List.nth defs' (Random.int (List.length defs')) in
-        let () = if List.length defs' > 2 then Format.printf " *** non-deterministic branch ***@." in
-          t
-    | App(App(Const And, t1), t2) ->
-        if eval t1 = Const False
-        then Const False
-        else eval t2
-    | App(App(Const Or, t1), t2) ->
-        if eval t1 = Const True
-        then Const True
-        else eval t2
-    | App(Const Not, t) ->
-        if eval t = Const True
-        then Const False
-        else Const True
-    | App(App(Const Lt, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (const_of_bool (n1 < n2))
-    | App(App(Const Gt, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (const_of_bool (n1 > n2))
-    | App(App(Const Leq, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (const_of_bool (n1 <= n2))
-    | App(App(Const Geq, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (const_of_bool (n1 >= n2))
-    | App(App(Const EqInt, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (const_of_bool (n1 > n2))
-    | App(App(Const Add, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (Int (n1 + n2))
-    | App(App(Const Sub, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (Int (n1 - n2))
-    | App(App(Const Mul, t1), t2) ->
-        let n1 = get_int_value (eval t1) in
-        let n2 = get_int_value (eval t2) in
-          Const (Int (n1 * n2))
-    | App(App(App(Const If, t1), t2), t3) ->
-        begin
-          match eval t1 with
-              Const True -> t2
-            | Const False -> t3
-            | _ -> assert false
-        end
-    | App(Fun(x,_,t1),t2) -> subst x t2 t1
-    | App _ as t ->
-        let t1,ts = decomp_app t in
-        let f = match t1 with Var f -> f | _ -> assert false in
-        let aux xs t =
-          let n = List.length xs in
-          let () = assert (n <= List.length ts) in
-          let ts' = take ts n in
-            List.fold_right2 subst xs ts' t
-        in
-        let defs' = List.filter (fun (g,xs,t1,_,_) -> g = f && eval (aux xs t1) = Const True) defs in
-        let _,xs,_,_,t' = List.nth defs' (Random.int (List.length defs')) in
-        let () = if List.length defs' > 2 then Format.printf " *** non-deterministic branch ***@." in
-        let _,ts2 = take2 ts (List.length xs) in
-          make_app (aux xs t') ts2
-    | Let(x,t1,t2) -> subst x t1 t2
-    | Fun(x,typ,t) -> Fun(x,typ,t)
-  and eval t =
-    let t' = step_eval t in
-      if t = t'
-      then t
-      else eval t'
-  in
-  let rec eval_and_print t =
-    let hd,b =
-      match t with
-          Const c -> Const c, false
-        | Var x -> Var x, false
-        | App _ -> fst (decomp_app t), true
-        | _ -> assert false
-    in
-      Format.printf "%a%s ->@." CEGAR_print.term hd (if b then " ..." else "");
-      let t' =
-        try Some (step_eval t) with EvalBottom -> None
-      in
-      let rec aux = function
-          None
-        | Some (Const Bottom) -> Format.printf "diverge.\n@."
-        | Some t' when t = t' -> Format.printf "terminated.\n@."
-        | Some t' -> eval_and_print t'
-      in
-        aux t'
-  in
-    eval_and_print (Var main)
-
-
-
-(*
-let eval_prog (env,defs,main) =
-  let eval = function
-      Const c -> Const c
-    | Var x -> assert false
-    | App(t1, t2) as t ->
-        let t1' = eval t1 in
-          if t1 <> t1'
-          then App(t1',t2)
-          else
-            let t2' = eval t2 in
-              if t2 <> t2'
-              then App(t1',t2')
-              else
-                let t1,ts = decomp_app t in
-                let _,xs,cond,_ = List.find ()
-  in
-    Format.printf "%a ->@." print_term t;
-*)
 
 
 let rec has_bottom = function

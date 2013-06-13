@@ -19,6 +19,7 @@ let rec id___typ = function
   | TPair(x,typ) -> TPair(id___var x, id___typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(id___var x, List.map id__ ps)
+  | TResult -> TResult
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
 
@@ -56,7 +57,7 @@ and id___const = function
   | Int32 n -> Int32 n
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
-  | Abst -> Abst
+  | CPS_result -> CPS_result
 
 and id__ t =
   let typ = id___typ t.typ in
@@ -113,6 +114,7 @@ let rec id2___typ env = function
   | TPair(x,typ) -> TPair(id2___var env x, id2___typ env typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(id2___var env x, List.map (id2__ env) ps)
+  | TResult -> TResult
 
 and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
 
@@ -150,7 +152,7 @@ and id2___const env = function
   | Int32 n -> Int32 n
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
-  | Abst -> Abst
+  | CPS_result -> CPS_result
 
 and id2__ env t =
   let typ = id2___typ env t.typ in
@@ -194,52 +196,6 @@ and id2__ env t =
 
 
 
-let rec assoc_typ f t =
-  match t.desc with
-      Const _ -> []
-    | Unknown -> []
-    | RandInt _ -> []
-    | RandValue _ -> []
-    | Var _ -> []
-    | Fun(_, t) -> assoc_typ f t
-    | App(t1, ts) -> assoc_typ f t1 @@ rev_flatten_map (assoc_typ f) ts
-    | If(t1, t2, t3) -> assoc_typ f t1 @@ assoc_typ f t2 @@ assoc_typ f t3
-    | Branch(t1, t2) -> assoc_typ f t1 @@ assoc_typ f t2
-    | Let(flag, bindings, t1) ->
-        let aux (g,_,t) =
-          let typs1 = if Id.same f g then [Id.typ g] else [] in
-            typs1 @@ assoc_typ f t
-        in
-          assoc_typ f t1 @@ rev_flatten_map aux bindings
-    | BinOp(_, t1, t2) -> assoc_typ f t1 @@ assoc_typ f t2
-    | Not t1 -> assoc_typ f t1
-    | Event _ -> []
-    | Record fields -> rev_flatten_map (fun (_,(_,t1)) -> assoc_typ f t1) fields
-    | Proj(_,_,_,t1) -> assoc_typ f t1
-    | SetField(_,_,_,_,t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
-    | Nil -> []
-    | Cons(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
-    | Constr(s,ts) -> rev_flatten_map (assoc_typ f) ts
-    | Match(t1,pats) ->
-        let aux (_,cond,t) = assoc_typ f cond @@ assoc_typ f t in
-          assoc_typ f t1 @@ rev_flatten_map aux pats
-    | Raise t -> assoc_typ f t
-    | TryWith(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
-    | Pair(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
-    | Fst t -> assoc_typ f t
-    | Snd t -> assoc_typ f t
-    | Bottom -> []
-    | Label(_,t) -> assoc_typ f t
-
-let assoc_typ f t =
-  let typs = assoc_typ f t in
-    match typs with
-        [] -> raise Not_found
-      | [typ] -> typ
-      | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f pp_print_term t; assert false
-
-
-
 let rec flatten_tvar_typ = function
     TUnit -> TUnit
   | TBool -> TBool
@@ -253,6 +209,7 @@ let rec flatten_tvar_typ = function
   | TPair(x,typ) -> TPair(flatten_tvar_var x, flatten_tvar_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(flatten_tvar_var x, List.map flatten_tvar ps)
+  | TResult -> TResult
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
 
@@ -331,6 +288,7 @@ let rec inst_tvar_tunit_typ = function
   | TConstr(s,b) -> TConstr(s,b)
   | TPair(x,typ) -> TPair(inst_tvar_tunit_var x, inst_tvar_tunit_typ typ)
   | TPred(x,ps) -> TPred(inst_tvar_tunit_var x, ps)
+  | TResult -> TResult
 
 and inst_tvar_tunit_var x =
   Id.set_typ x (inst_tvar_tunit_typ (Id.typ x))
@@ -407,6 +365,7 @@ let rec rename_tvar_typ map = function
   | TPair(x,typ) -> TPair(rename_tvar_var map x, rename_tvar_typ map typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(rename_tvar_var map x, ps)
+  | TResult -> TResult
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
 
@@ -484,6 +443,7 @@ let rec get_tvars typ =
       | TPair(x,typ) -> get_tvars (Id.typ x) @@@ get_tvars typ
       | TConstr(s,b) -> []
       | TPred(x,_) -> get_tvars (Id.typ x)
+      | TResult -> []
 
 
 let rec rename_poly_funs_list f map ts =
@@ -694,13 +654,13 @@ let rec inst_randvalue env defs typ =
       | TUnit -> env, defs, unit_term
       | TBool -> env, defs, randbool_unit_term
       | TInt -> env, defs, randint_unit_term
-      | TVar({contents=None} as r) -> r := Some typ_abst; inst_randvalue env defs typ_abst
+      | TVar({contents=None} as r) -> r := Some TUnit; inst_randvalue env defs TUnit
       | TVar{contents=Some typ} -> inst_randvalue env defs typ
       | TFun(x,typ) ->
           let env',defs',t = inst_randvalue env defs typ in
           env', defs', make_fun x t
       | TList (TVar({contents=None} as r)) ->
-          r := Some typ_abst; inst_randvalue env defs typ
+          r := Some TUnit; inst_randvalue env defs typ
       | TList typ' ->
           let u = Id.new_var "u" TUnit in
           let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
@@ -714,7 +674,6 @@ let rec inst_randvalue env defs typ =
           let env',defs',t1 = inst_randvalue env defs (Id.typ x) in
           let env'',defs'',t2 = inst_randvalue env' defs' typ in
           env'', defs'', make_pair t1 t2
-      | TConstr(s,false) -> env, defs, {desc=Const Abst; typ=typ}
       | TConstr(s,true) ->
           let u = Id.new_var "u" TUnit in
           let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
@@ -840,165 +799,6 @@ let rec merge_let_fun t =
       | Label _ -> assert false
   in
     {desc=desc; typ=t.typ}
-
-
-
-let get_rtyp_lift t f rtyp =
-  let rec aux rtyp typ =
-    match rtyp with
-        RT.Inter rtyps -> RT.Inter (List.map (fun rtyp1 -> aux rtyp1 typ) rtyps)
-      | RT.Union rtyps -> RT.Union (List.map (fun rtyp1 -> aux rtyp1 typ) rtyps)
-      | RT.Fun(x,rtyp1,rtyp2) ->
-          if RT.arg_num rtyp = arg_num typ
-          then rtyp
-          else
-            let rtyp' = aux rtyp2 typ in
-              if RT.occur x rtyp'
-              then RT.ExtArg(x, rtyp1, rtyp')
-              else rtyp'
-      | _ -> assert false
-  in
-    aux rtyp (assoc_typ f t)
-
-let get_rtyp_lift t f rtyp =
-  let rtyp' = get_rtyp_lift t f rtyp in
-  if Flag.print_ref_typ then Format.printf "LIFT: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
-  rtyp'
-
-let filter_base = List.filter (fun x -> is_base_typ (Id.typ x))
-
-let compare_id x y =
-  let aux x = not (is_base_typ (Id.typ x)), Id.to_string x in
-    compare (aux x) (aux y)
-
-let rec lift_aux post xs t =
-  let defs,desc =
-    match t.desc with
-        Const c -> [], Const c
-      | Unknown -> [], Unknown
-      | RandInt b -> [], RandInt b
-      | Var x -> [], Var x
-      | Fun _ ->
-          let f = Id.new_var ("f" ^ post) t.typ in
-          let aux f ys t1 t2 =
-            let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
-            let fv = List.sort compare_id fv in
-            let ys' = fv @ ys in
-            let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
-            let f' = Id.set_typ f typ in
-            let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-            let defs1,t1' = lift_aux post ys' t1 in
-            let defs2,t2' = lift_aux post xs (subst f f'' t2) in
-              defs1 @ [(f',(ys',t1'))] @ defs2, t2'
-          in
-          let xs,t1 = decomp_fun t in
-          let defs,t' = aux f xs t1 (make_var f) in
-            defs, t'.desc
-      | App(t, ts) ->
-          let defs,t' = lift_aux post xs t in
-          let defss,ts' = List.split (List.map (lift_aux post xs) ts) in
-            defs @ (List.flatten defss), App(t', ts')
-      | If(t1,t2,t3) ->
-          let defs1,t1' = lift_aux post xs t1 in
-          let defs2,t2' = lift_aux post xs t2 in
-          let defs3,t3' = lift_aux post xs t3 in
-            defs1 @ defs2 @ defs3, If(t1',t2',t3')
-      | Branch(t1,t2) ->
-          let defs1,t1' = lift_aux post xs t1 in
-          let defs2,t2' = lift_aux post xs t2 in
-            defs1 @ defs2, Branch(t1',t2')
-      | Let(Nonrecursive,bindings,t2) ->
-          let aux (f,ys,t1) =
-            let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
-            let fv = List.sort compare_id fv in
-            let ys' = fv @ ys in
-            let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
-            let f' = Id.set_typ f typ in
-            let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-            let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' t1 in
-              (f',(ys',t1'))::defs1,  f''
-          in
-          let defss,fs = List.split (List.map aux bindings) in
-          let subst_f t = List.fold_left2 (fun t f'' (f,_,_) -> subst f f'' t) t fs bindings in
-          let defs2,t2' = lift_aux post xs (subst_f t2) in
-            List.flatten defss @ defs2, t2'.desc
-      | Let(Recursive,bindings,t2) ->
-          let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
-          let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
-          let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
-          let fv = List.sort compare_id fv in
-          let aux (f,_,_) =
-            let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in
-              f, (f', List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv)
-          in
-          let fs = List.map aux bindings in
-          let subst_f t = List.fold_left2 (fun t (_,(_,f'')) (f,_,_) -> subst f f'' t) t fs bindings in
-          let aux (f,ys,t1) =
-            let ys' = fv @ ys in
-            let f' = fst (List.assoc f fs) in
-            let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' (subst_f t1) in
-              (f',(ys',t1'))::defs1
-          in
-          let defs = flatten_map aux bindings in
-          let defs2,t2' = lift_aux post xs (subst_f t2) in
-            defs @ defs2, t2'.desc
-      | BinOp(op,t1,t2) ->
-          let defs1,t1' = lift_aux post xs t1 in
-          let defs2,t2' = lift_aux post xs t2 in
-            defs1 @ defs2, BinOp(op,t1',t2')
-      | Not t ->
-          let defs,t' = lift_aux post xs t in
-            defs, Not t'
-      | Event(s,b) -> [], Event(s,b)
-      | Record fields ->
-          let aux (s,(f,t)) =
-            let defs,t' = lift_aux post xs t in
-              defs, (s,(f,t'))
-          in
-          let defss,fields' = List.split (List.map aux fields) in
-            List.flatten defss, Record fields'
-      | Proj(i,s,f,t) ->
-          let defs,t' = lift_aux post xs t in
-            defs, Proj(i,s,f,t')
-      | Nil -> [], Nil
-      | Cons(t1,t2) ->
-          let defs1,t1' = lift_aux post xs t1 in
-          let defs2,t2' = lift_aux post xs t2 in
-            defs1 @ defs2, Cons(t1',t2')
-      | Constr(c,ts) ->
-          let defss,ts' = List.split (List.map (lift_aux post xs) ts) in
-            List.flatten defss, Constr(c,ts')
-      | Match(t,pats) ->
-          let defs,t' = lift_aux post xs t in
-          let aux (pat,cond,t) (defs,pats) =
-            let xs' = get_vars_pat pat @@ xs in
-            let defs',cond' = lift_aux post xs' t in
-            let defs'',t' = lift_aux post xs' t in
-              defs''@defs'@defs, (pat,cond',t')::pats
-          in
-          let defs',pats' = List.fold_right aux pats (defs,[]) in
-            defs', Match(t',pats')
-      | Pair(t1,t2) ->
-          let defs1,t1' = lift_aux post xs t1 in
-          let defs2,t2' = lift_aux post xs t2 in
-            defs1 @ defs2, Pair(t1',t2')
-      | Fst t ->
-          let defs,t' = lift_aux post xs t in
-            defs, Fst t'
-      | Snd t ->
-          let defs,t' = lift_aux post xs t in
-            defs, Snd t'
-      | Bottom -> [], Bottom
-      | _ -> Format.printf "lift: %a@." pp_print_term t; assert false
-  in
-    defs, {desc=desc; typ=t.typ}
-
-(** [lift t] で，[t] をlambda-lift する．
-    the definitions of let expressions must be side-effect free *)
-let lift t =
-  lift_aux "" [](*(get_fv2 t)*) t, get_rtyp_lift t
 
 
 
@@ -2426,6 +2226,7 @@ let rec insert_param_funarg_typ = function
   | TPair(x,typ) -> TPair(insert_param_funarg_var x, insert_param_funarg_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(insert_param_funarg_var x, ps)
+  | TResult -> TResult
 
 and insert_param_funarg_var x = Id.set_typ x (insert_param_funarg_typ (Id.typ x))
 
@@ -2744,3 +2545,48 @@ let make_ext_funs t =
   let map,t' = rename_ext_funs funs t in
   let defs = List.map make_ext_fun_def map in
   make_let defs t'
+
+
+let rec assoc_typ f t =
+  match t.desc with
+      Const _ -> []
+    | Unknown -> []
+    | RandInt _ -> []
+    | RandValue _ -> []
+    | Var _ -> []
+    | Fun(_, t) -> assoc_typ f t
+    | App(t1, ts) -> assoc_typ f t1 @@ rev_flatten_map (assoc_typ f) ts
+    | If(t1, t2, t3) -> assoc_typ f t1 @@ assoc_typ f t2 @@ assoc_typ f t3
+    | Branch(t1, t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | Let(flag, bindings, t1) ->
+        let aux (g,_,t) =
+          let typs1 = if Id.same f g then [Id.typ g] else [] in
+            typs1 @@ assoc_typ f t
+        in
+          assoc_typ f t1 @@ rev_flatten_map aux bindings
+    | BinOp(_, t1, t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | Not t1 -> assoc_typ f t1
+    | Event _ -> []
+    | Record fields -> rev_flatten_map (fun (_,(_,t1)) -> assoc_typ f t1) fields
+    | Proj(_,_,_,t1) -> assoc_typ f t1
+    | SetField(_,_,_,_,t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | Nil -> []
+    | Cons(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | Constr(s,ts) -> rev_flatten_map (assoc_typ f) ts
+    | Match(t1,pats) ->
+        let aux (_,cond,t) = assoc_typ f cond @@ assoc_typ f t in
+          assoc_typ f t1 @@ rev_flatten_map aux pats
+    | Raise t -> assoc_typ f t
+    | TryWith(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | Pair(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | Fst t -> assoc_typ f t
+    | Snd t -> assoc_typ f t
+    | Bottom -> []
+    | Label(_,t) -> assoc_typ f t
+
+let assoc_typ f t =
+  let typs = assoc_typ f t in
+    match typs with
+        [] -> raise Not_found
+      | [typ] -> typ
+      | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f pp_print_term t; assert false

@@ -168,3 +168,18 @@ let check env target =
     write_log input target';
     verifyFile input
   with Failure("lex error") -> assert false
+
+
+(* returen "" if the version cannot be obtained *)
+let version () =
+  let cin,cout = Unix.open_process (Format.sprintf "%s -help" !Flag.trecs) in
+  let v =
+    try
+      let s = input_line cin in
+      if Str.string_match (Str.regexp "TRecS \\([.0-9]+\\)") s 0
+      then String.sub s (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1)
+      else ""
+    with Sys_error _ | End_of_file -> ""
+  in
+  match Unix.close_process (cin, cout) with
+    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v

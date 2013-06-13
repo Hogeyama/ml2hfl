@@ -17,7 +17,7 @@ and const = (* only base type constants *)
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | Abst
+  | CPS_result
 and term =
     Const of const
   | Unknown
@@ -89,15 +89,17 @@ val abst_var_bool : id
 val length_var : id
 
 val typ_event : typ
+val typ_event' : typ
 val typ_event_cps : typ
 val typ_excep : typ ref
-val typ_abst : typ
 
 (** {6 Term constructor} *)
 val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term
+val cps_result : typed_term
 val fail_term : typed_term
+val fail_term_cps : typed_term
 val randint_term : typed_term
 val randbool_unit_term : typed_term
 val randint_unit_term : typed_term

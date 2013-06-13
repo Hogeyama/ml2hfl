@@ -113,6 +113,7 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 let abstract orig_fun_list prog =
+  Format.printf "Warning: Abstraction for non-CPS programs is unmaintained.@.";
   let prog = make_arg_let prog in
   let labeled,prog = add_label prog in
   let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog in
