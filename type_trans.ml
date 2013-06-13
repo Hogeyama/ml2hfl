@@ -43,8 +43,9 @@ let rec ref_of_inter env cond atyp ityp =
         let rtyp1 = ref_of_inter env cond atyp1 ityp1 in
         let rtyp2 = ref_of_inter env cond (atyp2 (CS.Var x)) ityp2 in
           RT.Fun(x, rtyp1, rtyp2)
-    | AT.TBase(AT.TUnit, _), IT.Base (IT.State _) ->
+    | AT.TBase(AT.TUnit, _), IT.Base (IT.State _)
+    | AT.TBase(AT.TResult, _), IT.Base (IT.State _) ->
         RT.Base(RT.Unit, "", CS.Const CS.True)
-    | _ -> assert false
+    | _ -> Format.printf "atyp:%a@.ityp:%a@." CEGAR_print.typ atyp IT.print ityp; assert false
 
 let ref_of_inter atyp ityp = ref_of_inter [] [] atyp ityp
