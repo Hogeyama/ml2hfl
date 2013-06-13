@@ -17,25 +17,25 @@ let conv_const c =
   | And -> Const.And
   | Or -> Const.Or
   | Not -> Const.Not
-  | Lt -> Const.Lt SimType.Int
-  | Gt -> Const.Gt SimType.Int
-  | Leq -> Const.Leq SimType.Int
-  | Geq -> Const.Geq SimType.Int
-  | EqUnit -> Const.Eq SimType.Unit
-  | EqBool -> Const.Eq SimType.Bool
-  | EqInt -> Const.Eq SimType.Int
-  | CmpPoly(typ,"=") -> Const.Eq (SimType.Ext (Idnt.Id typ))
-  | CmpPoly(typ,"<>") -> Const.Neq (SimType.Ext (Idnt.Id typ))
-  | CmpPoly(typ,"<") -> Const.Lt (SimType.Ext (Idnt.Id typ))
-  | CmpPoly(typ,">") -> Const.Gt (SimType.Ext (Idnt.Id typ))
-  | CmpPoly(typ,"<=") -> Const.Leq (SimType.Ext (Idnt.Id typ))
-  | CmpPoly(typ,">=") -> Const.Geq (SimType.Ext (Idnt.Id typ))
+  | Lt -> Const.Lt SimType.int_type
+  | Gt -> Const.Gt SimType.int_type
+  | Leq -> Const.Leq SimType.int_type
+  | Geq -> Const.Geq SimType.int_type
+  | EqUnit -> Const.Eq SimType.unit_type
+  | EqBool -> Const.Eq SimType.bool_type
+  | EqInt -> Const.Eq SimType.int_type
+  | CmpPoly(typ,"=") -> Const.Eq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
+  | CmpPoly(typ,"<>") -> Const.Neq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
+  | CmpPoly(typ,"<") -> Const.Lt (SimType.Base(BaseType.Ext (Idnt.Id typ)))
+  | CmpPoly(typ,">") -> Const.Gt (SimType.Base(BaseType.Ext (Idnt.Id typ)))
+  | CmpPoly(typ,"<=") -> Const.Leq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
+  | CmpPoly(typ,">=") -> Const.Geq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
-  | Add -> Const.Add SimType.Int
-  | Sub -> Const.Sub SimType.Int
-  | Mul -> Const.Mul SimType.Int
-  | CPS_result -> Const.Unint(SimType.Ext (Idnt.Id "X"), Idnt.Id "end")
+  | Add -> Const.Add SimType.int_type
+  | Sub -> Const.Sub SimType.int_type
+  | Mul -> Const.Mul SimType.int_type
+  | CPS_result -> Const.Unint(SimType.Base(BaseType.Ext (Idnt.Id "X")), Idnt.Id "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -59,24 +59,24 @@ let inv_const c =
   | Const.And -> And
   | Const.Or -> Or
   | Const.Not -> Not
-  | Const.Lt SimType.Int -> Lt
-  | Const.Gt SimType.Int -> Gt
-  | Const.Leq SimType.Int -> Leq
-  | Const.Geq SimType.Int -> Geq
-  | Const.Eq SimType.Bool -> EqBool
-  | Const.Eq SimType.Int -> EqInt
+  | Const.Lt (SimType.Base BaseType.Int) -> Lt
+  | Const.Gt (SimType.Base BaseType.Int) -> Gt
+  | Const.Leq (SimType.Base BaseType.Int) -> Leq
+  | Const.Geq (SimType.Base BaseType.Int) -> Geq
+  | Const.Eq (SimType.Base BaseType.Bool) -> EqBool
+  | Const.Eq (SimType.Base BaseType.Int) -> EqInt
   | Const.Int(n) -> Int(n)
   | Const.RandInt -> RandInt
-  | Const.Add SimType.Int -> Add
-  | Const.Sub SimType.Int -> Sub
-  | Const.Mul SimType.Int -> Mul
-  | Const.Eq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"=")
-  | Const.Neq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"<>")
-  | Const.Lt (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"<")
-  | Const.Gt (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,">")
-  | Const.Leq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,"<=")
-  | Const.Geq (SimType.Ext (Idnt.Id typ)) -> CmpPoly(typ,">=")
-  | Const.Unint(SimType.Ext (Idnt.Id "X"), Idnt.Id "end") -> CPS_result
+  | Const.Add (SimType.Base BaseType.Int) -> Add
+  | Const.Sub (SimType.Base BaseType.Int) -> Sub
+  | Const.Mul (SimType.Base BaseType.Int) -> Mul
+  | Const.Eq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"=")
+  | Const.Neq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"<>")
+  | Const.Lt (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"<")
+  | Const.Gt (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,">")
+  | Const.Leq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"<=")
+  | Const.Geq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,">=")
+  | Const.Unint(SimType.Base(BaseType.Ext (Idnt.Id "X")), Idnt.Id "end") -> CPS_result
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =
@@ -85,11 +85,11 @@ let rec inv_term t =
   | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, Term.App(_, t1, t2), t3) ->
       (match t1 with
-        Term.Const(_, Const.Neq SimType.Unit) ->
+        Term.Const(_, Const.Neq (SimType.Base BaseType.Unit)) ->
           App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.Neq SimType.Bool) ->
+      | Term.Const(_, Const.Neq (SimType.Base BaseType.Bool)) ->
           App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.Neq SimType.Int) ->
+      | Term.Const(_, Const.Neq (SimType.Base BaseType.Int)) ->
           App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
       | _ ->
           App(App(inv_term t1, inv_term t2), inv_term t3))
@@ -130,11 +130,11 @@ let inv_fdef fdef =
 
 let rec conv_typ ty =
   match ty with
-    TBase(TUnit, _) -> SimType.Unit
-  | TBase(TInt, _) -> SimType.Int
-  | TBase(TBool, _) -> SimType.Bool
+    TBase(TUnit, _) -> SimType.unit_type
+  | TBase(TInt, _) -> SimType.int_type
+  | TBase(TBool, _) -> SimType.bool_type
   | TBase(TAbst (typ:string), _) -> assert false (* for add_const *)
-  | TBase(TResult, _) -> SimType.Ext (Idnt.Id "result")
+  | TBase(TResult, _) -> SimType.Base(BaseType.Ext (Idnt.Id "result"))
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
@@ -157,15 +157,18 @@ let verify fs (*cexs*) prog =
 
 let rec inv_abst_type aty =
   match aty with
-    AbsType.Base(AbsType.Unit, x, ts) ->
+    AbsType.Base(BaseType.Unit, x, ts) ->
       let x = Var.string_of x in
       TBase(TUnit, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
-  | AbsType.Base(AbsType.Bool, x, ts) ->
+  | AbsType.Base(BaseType.Bool, x, ts) ->
       let x = Var.string_of x in
       TBase(TBool, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
-  | AbsType.Base(AbsType.Int, x, ts) ->
+  | AbsType.Base(BaseType.Int, x, ts) ->
       let x = Var.string_of x in
       TBase(TInt, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(BaseType.Ext(id), x, ts) ->
+      let x = Var.string_of x in
+      TBase(TAbst(Idnt.string_of id), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(aty1, aty2) ->
       let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
@@ -563,9 +566,9 @@ let compute_strongest_post prog ce =
   let env = Util.List.map2 (fun (_, ty) x -> Var.make x, ty) env args in
   let env = List.filter (fun (x, _) -> not (Util.String.starts_with (Idnt.string_of (Var.base x)) "prev_set_flag")) env in
   let fvs_bool = Util.Set.diff (Formula.fvs_bool spc) (List.map fst env) in (* require that only free variable is <fail:??:0> or prev_set_flag_* *)
-  let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.Bool) env) in
-  let env = List.filter (fun (_, ty) -> ty <> SimType.Bool) env in
-  let env = List.filter (fun (_, ty) -> ty <> SimType.Unit) env in
+  let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.bool_type) env) in
+  let env = List.filter (fun (_, ty) -> ty <> SimType.bool_type) env in
+  let env = List.filter (fun (_, ty) -> ty <> SimType.unit_type) env in
   let spc = Formula.elim_unit spc in
   let spc = Formula.eqelim_boolean (fvs_bool @ bvs_bool) spc in
   Format.printf "strongest post condition:@,  %a@," Term.pr spc;
