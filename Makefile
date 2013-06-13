@@ -203,7 +203,7 @@ test-error: opt
 	for i in $(TEST); \
 	do \
 	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null 2> /dev/stdout); \
+	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null); \
 	echo; \
 	done
 
