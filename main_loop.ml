@@ -6,6 +6,11 @@ let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
+      let t' = Trans.make_ext_funs t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
       let t' = Trans.copy_poly_funs t in
       let fun_list = Syntax.get_top_funs t' in
       let () =
@@ -53,7 +58,7 @@ let preprocess t spec =
         then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
       in
       let t = t' in
-      let () = Type_check.check t Type.TResult in
+      let () = Type_check.check t Syntax.typ_result in
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in

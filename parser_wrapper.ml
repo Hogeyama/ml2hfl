@@ -270,12 +270,12 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
       | Tpat_var x -> PVar(from_ident x typ')
       | Tpat_alias(p,x) -> PAlias(from_pattern p, from_ident x typ')
       | Tpat_constant(Const_int n) -> PConst {desc=Const(Int n);typ=typ'}
-      | Tpat_constant(Const_char c) -> unsupported "pattern match (char constant)"
-      | Tpat_constant(Const_string s) -> unsupported "pattern match (string constant)"
-      | Tpat_constant(Const_float x) -> unsupported "pattern match (float constant)"
-      | Tpat_constant(Const_int32 n) -> unsupported "pattern match (int32 constant)"
-      | Tpat_constant(Const_int64 n) -> unsupported "pattern match (int64 constant)"
-      | Tpat_constant(Const_nativeint n) -> unsupported "pattern match (nativeint constant)"
+      | Tpat_constant(Const_char c) -> PConst {desc=Const(Char c);typ=typ'}
+      | Tpat_constant(Const_string s) -> PConst {desc=Const(String s);typ=typ'}
+      | Tpat_constant(Const_float s) -> PConst {desc=Const(Float s);typ=typ'}
+      | Tpat_constant(Const_int32 n) -> PConst {desc=Const(Int32 n);typ=typ'}
+      | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'}
+      | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'}
       | Tpat_tuple [] -> assert false
       | Tpat_tuple(p::ps) ->
           let aux p1 p2 =

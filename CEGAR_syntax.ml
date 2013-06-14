@@ -18,6 +18,7 @@ type const =
   | Nativeint of nativeint
   | RandInt
   | RandBool
+  | RandVal of string
   | And
   | Or
   | Not
@@ -39,6 +40,7 @@ type const =
   | Bottom
   | Label of int
   | CPS_result
+  | Abst
 
 
 

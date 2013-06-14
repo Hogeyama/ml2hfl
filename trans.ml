@@ -19,7 +19,6 @@ let rec id___typ = function
   | TPair(x,typ) -> TPair(id___var x, id___typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(id___var x, List.map id__ ps)
-  | TResult -> TResult
 
 and id___var x = Id.set_typ x (id___typ (Id.typ x))
 
@@ -114,7 +113,6 @@ let rec id2___typ env = function
   | TPair(x,typ) -> TPair(id2___var env x, id2___typ env typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(id2___var env x, List.map (id2__ env) ps)
-  | TResult -> TResult
 
 and id2___var env x = Id.set_typ x (id2___typ env (Id.typ x))
 
@@ -209,7 +207,6 @@ let rec flatten_tvar_typ = function
   | TPair(x,typ) -> TPair(flatten_tvar_var x, flatten_tvar_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(flatten_tvar_var x, List.map flatten_tvar ps)
-  | TResult -> TResult
 
 and flatten_tvar_var x = Id.set_typ x (flatten_tvar_typ (Id.typ x))
 
@@ -288,7 +285,6 @@ let rec inst_tvar_tunit_typ = function
   | TConstr(s,b) -> TConstr(s,b)
   | TPair(x,typ) -> TPair(inst_tvar_tunit_var x, inst_tvar_tunit_typ typ)
   | TPred(x,ps) -> TPred(inst_tvar_tunit_var x, ps)
-  | TResult -> TResult
 
 and inst_tvar_tunit_var x =
   Id.set_typ x (inst_tvar_tunit_typ (Id.typ x))
@@ -365,7 +361,6 @@ let rec rename_tvar_typ map = function
   | TPair(x,typ) -> TPair(rename_tvar_var map x, rename_tvar_typ map typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(rename_tvar_var map x, ps)
-  | TResult -> TResult
 
 and rename_tvar_var map x = Id.set_typ x (rename_tvar_typ map (Id.typ x))
 
@@ -443,7 +438,6 @@ let rec get_tvars typ =
       | TPair(x,typ) -> get_tvars (Id.typ x) @@@ get_tvars typ
       | TConstr(s,b) -> []
       | TPred(x,_) -> get_tvars (Id.typ x)
-      | TResult -> []
 
 
 let rec rename_poly_funs_list f map ts =
@@ -617,7 +611,7 @@ let rec copy_poly_funs t =
             let defs' = List.map (fun (f,xs,t) -> f, xs, copy_poly_funs t) defs in
               Let(flag, defs', copy_poly_funs t)
           else
-            raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic type")
+            raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic type.\nPlease use type annotations.")
       | BinOp(op, t1, t2) -> BinOp(op, copy_poly_funs t1, copy_poly_funs t2)
       | Not t -> Not (copy_poly_funs t)
       | Event(s,b) -> Event(s,b)
@@ -634,7 +628,7 @@ let rec copy_poly_funs t =
       | Pair(t1,t2) -> Pair(copy_poly_funs t1, copy_poly_funs t2)
       | Fst t -> Fst (copy_poly_funs t)
       | Snd t -> Snd (copy_poly_funs t)
-      | RandValue (_, _) -> assert false
+      | RandValue(typ, b) -> RandValue(typ, b)
       | Label _ -> assert false
   in
     {desc=desc; typ=t.typ}
@@ -674,6 +668,7 @@ let rec inst_randvalue env defs typ =
           let env',defs',t1 = inst_randvalue env defs (Id.typ x) in
           let env'',defs'',t2 = inst_randvalue env' defs' typ in
           env'', defs'', make_pair t1 t2
+      | TConstr(s,false) -> env, defs, make_randvalue typ
       | TConstr(s,true) ->
           let u = Id.new_var "u" TUnit in
           let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
@@ -1121,10 +1116,11 @@ let part_eval2 t =
 let rec trans_let t =
   let desc =
     match t.desc with
-        Const c -> Const c
-      | Unknown -> Unknown
-      | RandInt b -> RandInt b
-      | Var y -> Var y
+        Const _
+      | Unknown
+      | RandInt _
+      | RandValue _
+      | Var _ -> t.desc
       | Fun(y, t) -> Fun(y, trans_let t)
       | App(t1, ts) ->
           let t1' = trans_let t1 in
@@ -1169,7 +1165,6 @@ let rec trans_let t =
       | Snd t -> Snd(trans_let t)
       | Bottom -> Bottom
       | Raise _ -> assert false
-      | RandValue _ -> assert false
       | Label _ -> assert false
   in
     {desc=desc; typ=t.typ}
@@ -1410,6 +1405,7 @@ let rec eta_reduce t =
         Const c -> Const c
       | Unknown -> Unknown
       | RandInt b -> RandInt b
+      | RandValue(typ,b) -> RandValue(typ,b)
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, eta_reduce t)
       | App(t, []) -> (eta_reduce t).desc
@@ -1758,6 +1754,7 @@ let rec make_ext_env funs t =
       Const c -> []
     | Unknown -> []
     | RandInt _ -> []
+    | RandValue _ -> []
     | Var x -> if List.mem x funs then [x, Id.typ x] else []
     | App(t, ts) -> make_ext_env funs t @@ (rev_map_flatten (make_ext_env funs) ts)
     | If(t1, t2, t3) -> make_ext_env funs t1 @@ make_ext_env funs t2 @@ make_ext_env funs t3
@@ -1784,7 +1781,6 @@ let rec make_ext_env funs t =
     | Fst t -> make_ext_env funs t
     | Snd t -> make_ext_env funs t
     | Raise t -> make_ext_env funs t
-    | RandValue _ -> assert false
     | Label _ -> assert false
 
 let make_ext_env t =
@@ -2226,7 +2222,6 @@ let rec insert_param_funarg_typ = function
   | TPair(x,typ) -> TPair(insert_param_funarg_var x, insert_param_funarg_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(insert_param_funarg_var x, ps)
-  | TResult -> TResult
 
 and insert_param_funarg_var x = Id.set_typ x (insert_param_funarg_typ (Id.typ x))
 

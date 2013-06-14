@@ -8,7 +8,6 @@ type base =
   | TList
   | TTuple of int
   | TAbst of string
-  | TResult (* only for abstraction of CPS *)
 
 type 'a t =
     TBase of base * ('a -> 'a list)
@@ -17,7 +16,8 @@ type 'a t =
   | TFun of 'a t * ('a -> 'a t)
 
 
-let typ_result = TBase(TResult, fun _ -> [])
+let typ_result_base = TAbst "X"
+let typ_result = TBase(typ_result_base, fun _ -> [])
 let typ_unit = TBase(TUnit, fun _ -> [])
 let typ_bool_empty = TBase(TBool, fun x -> [])
 let typ_bool_id = TBase(TBool, fun x -> [x])

@@ -37,10 +37,11 @@ let compare_id x y =
 let rec lift_aux post xs t =
   let defs,desc =
     match t.desc with
-        Const c -> [], Const c
-      | Unknown -> [], Unknown
-      | RandInt b -> [], RandInt b
-      | Var x -> [], Var x
+        Const _
+      | Unknown
+      | RandInt _
+      | RandValue _
+      | Var _ -> [], t.desc
       | Fun _ ->
           let f = Id.new_var ("f" ^ post) t.typ in
           let aux f ys t1 t2 =

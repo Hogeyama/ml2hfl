@@ -32,7 +32,6 @@ let new_tvar () = TVar (ref None)
 
 let rec from_typ = function
     T.TBase(T.TUnit, _) -> TUnit
-  | T.TBase(T.TResult, _) -> TResult
   | T.TBase(T.TInt, _) -> TInt
   | T.TBase(T.TBool, _) -> TBool
   | T.TBase(T.TList, _) -> assert false
@@ -85,7 +84,7 @@ let rec trans_typ = function
   | TFun(typ1,typ2) -> T.TFun(trans_typ typ1, fun _ -> trans_typ typ2)
   | TTuple typs -> T.make_tapp (T.TBase(T.TTuple (List.length typs),nil)) (List.map trans_typ typs)
   | TAbst typ -> T.TBase(T.TAbst typ, nil)
-  | TResult -> T.TBase(T.TResult, nil)
+  | TResult -> T.typ_result
 
 let get_typ_const = function
   | Unit -> TUnit
@@ -102,6 +101,7 @@ let get_typ_const = function
   | RandInt ->
       let typ = new_tvar () in
         TFun(TFun(TInt,typ),typ)
+  | RandVal s -> TAbst s
   | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
   | EqBool -> TFun(TBool,TFun(TBool,TBool))

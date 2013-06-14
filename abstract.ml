@@ -46,7 +46,6 @@ let rec abst_recdata_typ = function
   | TConstr(s,false) -> TConstr(s,false)
   | TPair(x,typ) -> TPair(abst_recdata_var x, abst_recdata_typ typ)
   | TPred(x,ps) -> TPred(Id.set_typ x (abst_recdata_typ (Id.typ x)), ps)
-  | TResult -> assert false
 
 and abst_recdata_var x = Id.set_typ x (abst_recdata_typ (Id.typ x))
 
@@ -315,7 +314,6 @@ let rec abst_list_typ = function
   | TPred(x,ps) ->
       let ps' = List.map (abst_list "") ps in
         TPred(Id.set_typ x (abst_list_typ (Id.typ x)), ps')
-  | TResult -> assert false
 
 and abst_list_var x = Id.set_typ x (abst_list_typ (Id.typ x))
 
@@ -374,7 +372,7 @@ and abst_list post t =
       | Unknown -> assert false
       | Var x -> make_var (abst_list_var x)
       | RandInt b -> randint_term
-      | RandValue(typ,b) -> raise (Fatal "Not implemented (Abstract.abst_list)")
+      | RandValue(typ,b) -> t
       | Fun(x,t) -> make_fun (abst_list_var x) (abst_list post t)
       | App({desc=Var x}, [t]) when x = length_var -> make_fst (abst_list post t)
       | App(t, ts) -> make_app (abst_list post t) (List.map (abst_list post) ts)
@@ -455,7 +453,6 @@ let rec abst_datatype_typ = function
   | TConstr(s,false) -> assert false
   | TConstr(s,true) -> assert false
   | TPred(x,ps) -> TPred(Id.set_typ x (abst_datatype_typ (Id.typ x)), ps)
-  | TResult -> assert false
 
 let record_of_term_list ts =
   let fields,_ = List.fold_left (fun (fields,i) t -> (string_of_int i, (Immutable, t))::fields, i+1) ([],0) ts in

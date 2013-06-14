@@ -24,23 +24,30 @@ let conv_const c =
   | EqUnit -> Const.Eq SimType.unit_type
   | EqBool -> Const.Eq SimType.bool_type
   | EqInt -> Const.Eq SimType.int_type
-  | CmpPoly(typ,"=") -> Const.Eq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
-  | CmpPoly(typ,"<>") -> Const.Neq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
-  | CmpPoly(typ,"<") -> Const.Lt (SimType.Base(BaseType.Ext (Idnt.Id typ)))
-  | CmpPoly(typ,">") -> Const.Gt (SimType.Base(BaseType.Ext (Idnt.Id typ)))
-  | CmpPoly(typ,"<=") -> Const.Leq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
-  | CmpPoly(typ,">=") -> Const.Geq (SimType.Base(BaseType.Ext (Idnt.Id typ)))
+  | CmpPoly(typ,"=") -> Const.Eq (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,"<>") -> Const.Neq (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,"<") -> Const.Lt (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,">") -> Const.Gt (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,"<=") -> Const.Leq (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,">=") -> Const.Geq (SimType.Base(BaseType.Ext (Idnt.make typ)))
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
   | Add -> Const.Add SimType.int_type
   | Sub -> Const.Sub SimType.int_type
   | Mul -> Const.Mul SimType.int_type
-  | CPS_result -> Const.Unint(SimType.Base(BaseType.Ext (Idnt.Id "X")), Idnt.Id "end")
+  | Char c -> Const.Int (int_of_char c)
+  | String s -> Const.String s
+  | Float s -> Const.Float (float_of_string s)
+  | Int32 n -> Const.Int (Int32.to_int n)
+  | Int64 n -> Const.Int (Int64.to_int n)
+  | Nativeint n -> Const.Int (Nativeint.to_int n)
+  | CPS_result -> Const.Unint(SimType.Base(BaseType.Ext (Idnt.make "X")), Idnt.make "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
   match t with
   | Const(Bottom) -> Term.make_var (Var.make (Idnt.make "bottom")) (***)
+  | Const(RandVal s) -> Term.make_var (Var.make (Idnt.make (new_id "r"))) (***)
   | Const(c) -> Term.Const([], conv_const c)
   | Var(x) ->
       if is_parameter x then
@@ -76,6 +83,8 @@ let inv_const c =
   | Const.Gt (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,">")
   | Const.Leq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"<=")
   | Const.Geq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,">=")
+  | Const.String s -> String s
+  | Const.Float x -> Float (string_of_float x)
   | Const.Unint(SimType.Base(BaseType.Ext (Idnt.Id "X")), Idnt.Id "end") -> CPS_result
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
@@ -133,8 +142,7 @@ let rec conv_typ ty =
     TBase(TUnit, _) -> SimType.unit_type
   | TBase(TInt, _) -> SimType.int_type
   | TBase(TBool, _) -> SimType.bool_type
-  | TBase(TAbst (typ:string), _) -> assert false (* for add_const *)
-  | TBase(TResult, _) -> SimType.Base(BaseType.Ext (Idnt.Id "result"))
+  | TBase(TAbst s, _) -> SimType.Base(BaseType.Ext (Idnt.make s))
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)

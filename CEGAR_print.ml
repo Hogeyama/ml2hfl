@@ -39,7 +39,6 @@ and print_typ_base fm = function
   | TTuple n -> Format.fprintf fm "tuple"
   | TList -> assert false
   | TAbst s -> Format.pp_print_string fm s
-  | TResult -> Format.fprintf fm "X"
 
 and print_typ_aux var fm = function
     TBase(b,ps) ->
@@ -86,6 +85,7 @@ and print_const fm = function
   | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "rand_bool"
   | RandInt -> Format.fprintf fm "rand_int"
+  | RandVal s -> Format.fprintf fm "rand_%s" s
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"
   | Not -> Format.fprintf fm "not"
@@ -337,7 +337,6 @@ let rec print_base_typ_as_tree fm = function
   | TList -> Format.fprintf fm "TList"
   | TTuple n -> Format.fprintf fm "(TTuple %d)" n
   | TAbst s -> Format.fprintf fm "%s" s
-  | TResult -> Format.fprintf fm "X"
 
 and print_typ_as_tree fm = function
     TBase(b,ps) ->

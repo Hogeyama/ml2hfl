@@ -16,16 +16,21 @@ let rec check t typ =
   then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
       {desc=Const Unit; typ=TUnit} -> ()
-    | {desc=Const Unit; typ=TResult} -> ()
+    | {desc=Const CPS_result; typ=typ} when typ = typ_result -> ()
     | {desc=Const (True|False)|Unknown; typ=TBool} -> ()
     | {desc=Const (Int _); typ=(TInt | TRInt _)} -> ()
-    | {desc=Const CPS_result; typ=TResult} -> ()
     | {desc=Const _; typ=TConstr _} -> ()
     | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
-    | {desc=RandInt true; typ=TFun(x,TFun(k,TResult))} ->
+    | {desc=RandInt true; typ=TFun(x,TFun(k,rtyp))} ->
+        assert (rtyp = typ_result);
         check_var x TUnit;
-        check_var k (TFun(Id.new_var "" TInt, TResult))
+        check_var k (TFun(Id.new_var "" TInt, typ_result))
+    | {desc=RandValue(typ1,false); typ=typ2} -> assert (typ1 = typ2)
+    | {desc=RandValue(typ1,true); typ=TFun({Id.typ=TFun(x,rtyp1)},rtyp2)} ->
+        assert (rtyp1 = typ_result);
+        assert (rtyp2 = typ_result);
+        assert (typ1 = Id.typ x)
     | {desc=Var x; typ=typ'} ->
         check_var x typ'
     | {desc=Fun(x,t); typ=TFun(y,typ')} ->

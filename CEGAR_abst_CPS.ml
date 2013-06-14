@@ -245,10 +245,10 @@ let rec abstract_term must env cond pts t typ =
   match t with
       Const CPS_result -> [Const Unit]
     | Const Bottom ->
-        assert (fst (decomp_tbase typ) = TResult); [Const Bottom]
+        assert (fst (decomp_tbase typ) = typ_result_base); [Const Bottom]
     | (Var _ | Const _ | App _) when is_base_term env t ->
         let btyp,ps = decomp_tbase typ in
-          if btyp = TResult
+          if btyp = typ_result_base
           then [Const Unit]
           else List.map (abst env cond pts) (ps t)
     | Var x when congruent env cond (List.assoc x env) typ ->
@@ -264,7 +264,7 @@ let rec abstract_term must env cond pts t typ =
         let t1,ts = decomp_app t in
         let rec aux ts typ =
           match ts,typ with
-              [], _ when fst (decomp_tbase typ) = TResult -> []
+              [], _ when fst (decomp_tbase typ) = typ_result_base -> []
             | t::ts', TFun(typ1,typ2) ->
                 abstract_term None env cond pts t typ1 @ aux ts' (typ2 t)
             | _,typ -> Format.printf "@.%a@.typ:%a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
@@ -291,7 +291,7 @@ let rec abstract_term must env cond pts t typ =
 
 
 let rec abstract_typ = function
-    TBase(TResult,ps) -> [typ_unit]
+    TBase(base,ps) when base = typ_result_base -> [typ_unit]
   | TBase(_,ps) -> List.map (fun _ -> typ_bool_empty) (ps (Const Unit))
   | TFun(typ1,typ2) ->
       let typ2 = typ2 (Const Unit) in
@@ -334,6 +334,55 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
+let make_br' t1 t2 =
+  if t1 = Const Unit then t2
+  else if t2 = Const Unit then t1
+  else make_br t1 t2
+
+type typ_cps = X | TFun1 of typ_cps | TFun2 of typ_cps * typ_cps
+
+let rec trans_typ typ =
+  match decomp_tfun typ with
+    [], TBase(TUnit, _) -> X
+  | [typ1], TBase(TUnit, _) -> TFun1 (trans_typ typ1)
+  | [typ1;typ2], TBase(TUnit, _) -> TFun2(trans_typ typ1, trans_typ typ2)
+  | typs,typ -> Format.printf "%a@." CEGAR_print.typ typ; assert false
+
+(* Assume that
+   - a continuation is in the last position of arguments
+   - not the form of selective CPS
+   - external functions have no predicates
+*)
+
+let rec make_arg ks = function
+    X -> []
+  | TFun1 typ -> [make_ext_fun_cps ks typ]
+  | TFun2(typ1,typ2) -> [make_ext_fun_cps ks typ1; make_ext_fun_cps ks typ2]
+
+and add_ks k typ ks = if typ = X then k::ks else ks
+
+and make_ext_fun_cps ks = function
+    X -> List.fold_left (fun t x -> make_br' t (Var x)) (Const Unit) ks
+  | TFun1 typ ->
+      let k = new_id "k" in
+      let ks' = add_ks k typ ks in
+      Fun(k, None, make_app (Var k) (make_arg ks' typ))
+  | TFun2(typ1,typ2) ->
+      let f = new_id "f" in
+      let k = new_id "k" in
+      let ks' = ks |> add_ks f typ1 |> add_ks k typ2 in
+      let t1 = make_app (Var f) (make_arg ks' typ1) in
+      let t2 = make_app (Var k) (make_arg ks' typ2) in
+      Fun(f, None, Fun(k, None, make_br t1 t2))
+
+let add_ext_funs_cps prog =
+  let env = get_ext_fun_env prog in
+  let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun_cps [] (trans_typ typ)) env in
+  let defs' = defs @ prog.defs in
+  let _ = Typing.infer {env=[]; defs=defs'; main=prog.main} in
+  {prog with defs=defs'}
+
+
 let abstract orig_fun_list force prog =
   let env = List.map (fun f -> f, abstract_typ (List.assoc f prog.env)) (get_ext_funs prog) in
   let labeled,prog = add_label prog in
@@ -345,8 +394,6 @@ let abstract orig_fun_list force prog =
   let prog = {env=env; defs=defs; main=prog.main} in
   let () = if debug then Format.printf "ABST:@\n%a@." CEGAR_print.prog_typ prog in
   let prog = Typing.infer prog in
-  let prog = add_ext_funs prog in
-  let () = if debug then Format.printf "ADD_EXT_FUNS:@.%a@." CEGAR_print.prog prog in
   let prog = CEGAR_lift.lift2 prog in
   let () = if debug then Format.printf "LIFT:@\n%a@." CEGAR_print.prog prog in
   let prog = trans_eager prog in

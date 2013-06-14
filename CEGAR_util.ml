@@ -198,7 +198,6 @@ let rec trans_inv_term = function
 
 let rec trans_typ = function
     Type.TUnit -> TBase(TUnit, nil)
-  | Type.TResult -> TBase(TResult, nil)
   | Type.TBool ->
       if !Flag.bool_init_empty
       then TBase(TBool, nil)
@@ -288,6 +287,9 @@ and trans_term post xs env t =
         let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, App(Const RandInt, t2')
     | S.RandInt _ -> assert false
+    | S.App({S.desc=S.RandValue(Type.TConstr(s,false), true)}, [t1]) ->
+        let defs1,t1' = trans_term post xs env t1 in
+          defs1, App(t1', Const (RandVal s))
     | S.Var x ->
         let x' = trans_var x in
           [], Var x'

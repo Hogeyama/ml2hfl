@@ -88,6 +88,7 @@ val abst_var_int : id
 val abst_var_bool : id
 val length_var : id
 
+val typ_result : typ
 val typ_event : typ
 val typ_event' : typ
 val typ_event_cps : typ
@@ -108,7 +109,9 @@ val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term
-val make_randint_cps : typ -> typed_term
+val make_randvalue : typ -> typed_term
+val make_randvalue_cps : typ -> typed_term
+val make_randint_cps : unit -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term

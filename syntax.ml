@@ -144,7 +144,7 @@ let rec get_fv vars t =
     | Fst t -> get_fv vars t
     | Snd t -> get_fv vars t
     | Raise t -> get_fv vars t
-    | RandValue _ -> assert false
+    | RandValue _ -> []
     | Label _ -> assert false
 let get_fv ?(cmp=Id.compare) t = uniq ~cmp (get_fv [] t)
 
@@ -162,7 +162,6 @@ let rec occur (x:id) = function
   | TPair(y,typ) -> occur x (Id.typ y) || occur x typ
   | TConstr(s,b) -> false
   | TPred(y,ps) -> List.exists (fun p -> List.exists (Id.same x) (get_fv p)) ps || occur x (Id.typ y)
-  | TResult -> false
 
 
 
@@ -269,7 +268,7 @@ and print_term pri typ fm t =
   | Unknown -> fprintf fm "***"
   | RandInt false -> fprintf fm "rand_int"
   | RandInt true -> fprintf fm "rand_int_cps"
-  | RandValue(typ',false) -> fprintf fm "rand_val[%a]()" print_typ typ'
+  | RandValue(typ',false) -> fprintf fm "rand_val[%a] ()" print_typ typ'
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
   | Var x -> print_id fm x
   | Fun(x, t) ->
@@ -442,7 +441,7 @@ let rec print_term' pri fm t =
       | RandValue(typ',true) ->
           let p = 8 in
           let s1,s2 = paren pri p in
-            fprintf fm "%srand_val(%a)%s" s1 print_typ typ' s2
+            fprintf fm "%srand_val_cps(%a)%s" s1 print_typ typ' s2
       | Var x -> print_id_typ fm x
       | Fun(x, t) ->
           let p = 2 in
@@ -620,13 +619,14 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 
 (*** TERM CONSTRUCTORS ***)
 
+let typ_result = TConstr("X", false)
 let typ_event = TFun(Id.new_var "" TUnit, TUnit)
-let typ_event' = TFun(Id.new_var "" TUnit, TResult)
+let typ_event' = TFun(Id.new_var "" TUnit, typ_result)
 let typ_event_cps =
   let u = Id.new_var "" TUnit in
   let r = Id.new_var "" TUnit in
-  let k = Id.new_var "" (TFun(r,TResult)) in
-    TFun(u, TFun(k, TResult))
+  let k = Id.new_var "" (TFun(r,typ_result)) in
+    TFun(u, TFun(k, typ_result))
 let typ_excep = ref (TConstr("exn",true))
 
 let dummy_var = Id.make (-1) "" TInt
@@ -640,7 +640,7 @@ let length_var =
 let unit_term = {desc=Const Unit; typ=TUnit}
 let true_term = {desc=Const True;typ=TBool}
 let false_term = {desc=Const False;typ=TBool}
-let cps_result = {desc=Const CPS_result; typ=TResult}
+let cps_result = {desc=Const CPS_result; typ=typ_result}
 let fail_term = {desc=Event("fail",false);typ=typ_event}
 let fail_term_cps = {desc=Event("fail",false);typ=typ_event'}
 let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt)}
@@ -652,11 +652,16 @@ let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
 let make_var x = {desc=Var x; typ=Id.typ x}
 let make_int n = {desc=Const(Int n); typ=TInt}
-let make_randint_cps typ =
+let make_randvalue typ = {desc=RandValue(typ,false); typ=typ}
+let make_randvalue_cps typ =
+  let r = Id.new_var "" typ in
+  let k = Id.new_var "" (TFun(r,typ_result)) in
+  {desc=RandValue(typ,true); typ=TFun(k,typ_result)}
+let make_randint_cps () =
   let u = Id.new_var "" TUnit in
   let r = Id.new_var "" TInt in
-  let k = Id.new_var "" (TFun(r,typ)) in
-    {desc=RandInt true; typ=TFun(u,TFun(k,typ))}
+  let k = Id.new_var "" (TFun(r,typ_result)) in
+    {desc=RandInt true; typ=TFun(u,TFun(k,typ_result))}
 let rec make_app t ts =
   match t,ts with
     | t,[] -> t
@@ -1003,7 +1008,7 @@ and subst x t t' =
       | Pair(t1,t2) -> make_pair (subst x t t1) (subst x t t2)
       | Fst t1 -> make_fst (subst x t t1)
       | Snd t1 -> make_snd (subst x t t1)
-      | RandValue _ -> assert false
+      | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t'.typ}
       | Label(info, t1) -> make_label info (subst x t t1)
 
 
@@ -1149,7 +1154,6 @@ and subst_type x t = function
         TPred(y', ps')
   | TRInt t' -> TRInt (subst x t t')
   | TVar y -> TVar y
-  | TResult -> TResult
   | TFun(y,typ) ->
       let y' = Id.set_typ y (subst_type x t (Id.typ y)) in
       let typ' = subst_type x t typ in
@@ -1262,7 +1266,6 @@ let rec merge_typ typ1 typ2 =
     | TVar({contents=None}), _ -> typ2
     | _, TVar({contents=None}) -> typ1
     | TUnit, TUnit -> TUnit
-    | TResult, TResult -> TResult
     | TBool, TBool -> TBool
     | TInt, TInt -> TInt
     | TPred(x1,ps1), TPred(x2,ps2) ->
@@ -1320,4 +1323,3 @@ let rec get_typ_default = function
   | TPair(x,typ) -> make_pair ~s:(Id.name x) (get_typ_default (Id.typ x)) (get_typ_default typ)
   | TConstr(s,b) -> assert false
   | TPred _ -> assert false
-  | TResult -> assert false

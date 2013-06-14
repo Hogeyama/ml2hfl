@@ -256,7 +256,7 @@ let decomp_tbase = function
   | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
 
 let rec is_base_term env = function
-    Const (Unit | True | False | Int _ | RandInt | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> true
+    Const (Unit | True | False | Int _ | RandInt | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _ | RandVal _) -> true
   | Const _ -> false
   | Var x ->
       let typ =
@@ -344,7 +344,6 @@ let rec add_label {env=env;defs=defs;main=main} =
 
 
 
-(* assume that a continuation is in the first position of arguments *)
 let rec use_arg x typ t =
   match typ with
     TBase _ -> t
