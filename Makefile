@@ -204,8 +204,8 @@ test-web: opt
 	for i in $(TEST_WEB); \
 	do \
 	  echo $$i; \
-	  (ulimit -t 3; ulimit -v 100000; ./$(NAME).opt -margin 80 test_web/$$i.ml -only-result) || \
-	  (ulimit -t 30; ulimit -v 100000; ./$(NAME).opt -gchi -margin 80 test_web/$$i.ml -only-result) || \
+	  (ulimit -t 3; ulimit -v 1000000; ./$(NAME).opt -margin 80 test_web/$$i.ml -only-result) || \
+	  (ulimit -t 30; ulimit -v 1000000; ./$(NAME).opt -gchi -margin 80 test_web/$$i.ml -only-result) || \
 	  echo ERROR or TIMEOUT; \
 	  echo; \
 	done
