@@ -5,7 +5,6 @@ What do you need?
 - OCaml source 3.12.1
 - ocamlfind/findlib
 - Fpat library
-- CSI-sat library
 - CVC3 binary
 - TRecS binary
 
