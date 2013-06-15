@@ -65,8 +65,8 @@ let rec termination_loop predicate_que holed =
 	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
 	  (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified) in
       let prev_var_terms = List.map Term.make_var prev_vars in
-      let arg_env = List.map (fun a -> (a, SimType.Int)) arg_vars in
-      let prev_env = List.map (fun a -> (a, SimType.Int)) prev_vars in
+      let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
+      let prev_env = List.map (fun a -> (a, SimType.int_type)) prev_vars in
 
       let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
       let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
