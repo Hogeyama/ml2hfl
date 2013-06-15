@@ -13,7 +13,9 @@ let checksat env t =
   Fpat.Cvc3Interface.is_satisfiable (FpatInterface.conv_term t)
 
 let get_solution env t =
-  t |> FpatInterface.conv_term |> Fpat.Cvc3Interface.solve |> List.sort compare |> List.map snd
+  let trans_sol (x,r) = Fpat.Var.string_of x, r in
+  let sol = t |> FpatInterface.conv_term |> Fpat.Cvc3Interface.solve |> List.map trans_sol in
+  List.map (fun (x,_) -> try List.assoc x sol with Not_found -> 0) env
 
 let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env
 
@@ -22,6 +24,7 @@ let assoc_def defs n t =
     List.length defs', List.nth defs' n
 
 (* sat=true denotes constr is satisfiable *)
+(* env is order sensitive *)
 let rec check_aux pr ce sat n constr env defs t k =
   if false then Format.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
@@ -37,7 +40,7 @@ let rec check_aux pr ce sat n constr env defs t k =
           k ce sat n constr env (make_app (Const op) [t1;t2])))
     | App(Const RandInt, t) ->
         let r = new_id "r" in
-        let env' = (r,typ_int)::env in
+        let env' = env @ [r,typ_int] in
           check_aux pr ce sat n constr env' defs (App(t,Var r)) k
     | App(t1,t2) ->
         check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
