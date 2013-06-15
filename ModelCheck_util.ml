@@ -58,7 +58,10 @@ let uncapitalize_var = String.uncapitalize
 let capitalize {env=env;defs=defs;main=main} =
   let env' = List.map (fun (f,typ) -> capitalize_var f, typ) env in
   let map = List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
-  let aux (f,xs,t1,e,t2) = capitalize_var f, xs, subst_map map t1, e, subst_map map t2 in
+  let aux (f,xs,t1,e,t2) =
+    let map' = List.filter (fun (f,_) -> not (List.mem f xs)) map in
+    capitalize_var f, xs, subst_map map' t1, e, subst_map map' t2
+  in
   let defs' = List.map aux defs in
   let main' = capitalize_var main in
     {env=env'; defs=defs'; main=main'}
