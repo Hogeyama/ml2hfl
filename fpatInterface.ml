@@ -142,7 +142,10 @@ let rec conv_typ ty =
     TBase(TUnit, _) -> SimType.unit_type
   | TBase(TInt, _) -> SimType.int_type
   | TBase(TBool, _) -> SimType.bool_type
-  | TBase(TAbst s, _) -> SimType.Base(BaseType.Ext (Idnt.make s))
+  | TBase(TAbst "string", _) -> SimType.string_type
+  | TBase(TAbst "float", _) -> SimType.float_type
+  | TBase(TAbst s, _) ->
+      SimType.Base(BaseType.Ext (Idnt.make s))
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
@@ -165,7 +168,10 @@ let verify fs (*cexs*) prog =
 
 let rec inv_abst_type aty =
   match aty with
-    AbsType.Base(BaseType.Unit, x, ts) ->
+    AbsType.Base(BaseType.Ext(id), x, ts) ->
+      let x = Var.string_of x in
+      TBase(TAbst(Idnt.string_of id), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(BaseType.Unit, x, ts) ->
       let x = Var.string_of x in
       TBase(TUnit, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(BaseType.Bool, x, ts) ->
@@ -174,12 +180,18 @@ let rec inv_abst_type aty =
   | AbsType.Base(BaseType.Int, x, ts) ->
       let x = Var.string_of x in
       TBase(TInt, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
-  | AbsType.Base(BaseType.Ext(id), x, ts) ->
+  | AbsType.Base(BaseType.Float, x, ts) ->
       let x = Var.string_of x in
-      TBase(TAbst(Idnt.string_of id), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
+      TBase(TAbst("float"), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(BaseType.String, x, ts) ->
+      let x = Var.string_of x in
+      TBase(TAbst("string"), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(aty1, aty2) ->
       let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
+  | _ ->
+      Format.printf "%a@." AbsType.pr aty;
+      assert false
 (* for add_const
   | AbsType. ... -> TBase(TAbst ..., ...)
 *)
