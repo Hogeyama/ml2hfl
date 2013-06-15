@@ -16,7 +16,7 @@ let rec make_list n =
 
 let div x y =
   if y=0 then raise DivisionByZero
-  else Random.int(0) (* \"/\" is unsupported *)
+  else Random.int(0) (* "/" is unsupported *)
 
 let main n m =
   let xs = make_list n in
