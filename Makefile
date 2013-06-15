@@ -194,10 +194,22 @@ OPTION = -gchi -only-result
 test: opt
 	for i in $(TEST); \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./$(NAME).opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
 	done
+
+TEST_WEB = 56 50 42 41 27 28 29 30 31 48 32 49 33 34 35 36 58 37 38 47 57 51 52 53 54 26 46 39 1 2 3 4 5 6 7 8 9 10 55 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+test-web: opt
+	for i in $(TEST_WEB); \
+	do \
+	  echo $$i; \
+	  (ulimit -t 3; ulimit -v 100000; ./$(NAME).opt -margin 80 test_web/$$i.ml -only-result) || \
+	  (ulimit -t 30; ulimit -v 100000; ./$(NAME).opt -gchi -margin 80 test_web/$$i.ml -only-result) || \
+	  echo ERROR or TIMEOUT; \
+	  echo; \
+	done
+
 
 
 ################################################################################
