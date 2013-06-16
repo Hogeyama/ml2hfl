@@ -293,6 +293,6 @@ let () =
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."
       | Fpat.InterpProver.Fail ->
-          Format.printf "Fail: interpolation@." s
+          Format.printf "Fail: interpolation@."
       | Util.Fatal s ->
           Format.printf "Fatal error: %s@." s
