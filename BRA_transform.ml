@@ -55,6 +55,9 @@ and show_term form = function
   | False -> "false"
   | Int n -> string_of_int n
   | App ({desc=RandInt _}, _) -> "Random.int 0"
+  | Var v when v.Id.typ = TUnit -> "(" ^ modify_id v ^ " : unit)"
+  | Var v when v.Id.typ = TBool -> "(" ^ modify_id v ^ " : bool)"
+  | Var v when v.Id.typ = TInt -> "(" ^ modify_id v ^ " : int)"
   | Var v -> modify_id v
   | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_typed_term form body
   | App ({desc=Event("fail", _)}, _) -> "assert false"
