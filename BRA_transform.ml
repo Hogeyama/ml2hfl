@@ -6,8 +6,6 @@ open BRA_state
 
 type inputForm = Definitions | Expr
 
-let connector f = if f = Definitions then "\n" else " in "
-
 let rec is_form_of = function
   | {desc = Let (Nonrecursive, [id, args, body], u); typ = t} when id.Id.name = "main" -> Definitions
   | {desc = Let (rec_flag, bindings, body)} as t -> is_form_of body
@@ -58,30 +56,30 @@ and show_term = function
   | Var v when v.Id.typ = TBool -> "(" ^ modify_id v ^ " : bool)"
   | Var v when v.Id.typ = TInt -> "(" ^ modify_id v ^ " : int)"
   | Var v -> modify_id v
-  | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_typed_term form body
+  | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_typed_term body
   | App ({desc=Event("fail", _)}, _) -> "assert false"
-  | App (f, args) -> show_typed_term form f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_typed_term form a)) "" args
-  | If (t1, t2, t3) -> "if " ^ show_typed_term form t1 ^ " then " ^ show_typed_term form t2 ^ " else " ^ show_typed_term form t3
+  | App (f, args) -> show_typed_term f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_typed_term a)) "" args
+  | If (t1, t2, t3) -> "if " ^ show_typed_term t1 ^ " then " ^ show_typed_term t2 ^ " else " ^ show_typed_term t3
   | Let (_, [], _) -> assert false
-  | Let (Nonrecursive, [id, args, body], {desc=Unit; typ=TUnit}) when id.Id.name = "main" ->
+  | Let (Nonrecursive, [id, args, body], {desc=Const Unit; typ=TUnit}) when id.Id.name = "main" ->
     let show_args args = List.fold_left (fun acc a -> acc ^ " " ^ modify_id a) "" args in
     "let main "
     ^ show_args args
     ^ " = "
-    ^ show_typed_term form body
+    ^ show_typed_term body
   | Let (rec_flag, b::bs, t) ->
     let show_bind (x, args, body) =
       modify_id x
       ^ (List.fold_left (fun acc a -> acc ^ " " ^ modify_id a) "" args)
       ^ "="
-      ^ show_typed_term Expr body in
+      ^ show_typed_term body in
     (if rec_flag = Nonrecursive then "let " else "let rec ")
     ^ show_bind b
     ^ List.fold_left (fun acc x -> acc ^ " and " ^ show_bind x) "" bs
-    ^ (connector form)
-    ^ show_typed_term form t
-  | BinOp (binop, t1, t2) -> parens (show_typed_term form t1) ^ show_binop binop ^ parens (show_typed_term form t2)
-  | Not t -> "not " ^ parens (show_typed_term form t)
+    ^ " in "
+    ^ show_typed_term t
+  | BinOp (binop, t1, t2) -> parens (show_typed_term t1) ^ show_binop binop ^ parens (show_typed_term t2)
+  | Not t -> "not " ^ parens (show_typed_term t)
   | t -> raise (Invalid_argument "show_term")
 and show_binop = function
   | Eq -> "="
@@ -114,7 +112,7 @@ let restore_ids =
 
 let retyping t =
   (*Format.eprintf "@.%s@." (show_typed_term (is_form_of t) t);*)
-  let lb = t |> show_typed_term (is_form_of t)
+  let lb = t |> show_typed_term
              |> Lexing.from_string
   in
   let () = lb.Lexing.lex_curr_p <-

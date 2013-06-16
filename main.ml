@@ -2,12 +2,9 @@ exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
 
-<<<<<<< HEAD
 (***** information *****)
 let lrf = ref []
 let verified_function = ref ""
-=======
->>>>>>> master
 
 let print_info () =
   if !Flag.termination then
@@ -36,109 +33,6 @@ let print_env () =
       s
     with Sys_error _ | End_of_file -> ""
   in
-<<<<<<< HEAD
-  (**)
-  let prog, rmap, get_rtyp, info = preprocess t0 spec in
-    match !Flag.cegar with
-        Flag.CEGAR_InteractionType ->
-          FpatInterface.verify [] prog;
-          assert false;
-      | Flag.CEGAR_DependentType ->
-          try
-            match CEGAR.cegar prog info with
-                prog', CEGAR.Safe env ->
-                  if Flag.print_ref_typ
-                  then
-                    begin
-                      Format.printf "Refinement types:@.";
-                      List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f CEGAR_ref_type.print typ) env;
-                      Format.printf "@."
-                    end;
-                  let env' =
-                    let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
-                      try
-                        let f' = List.assoc f rmap in
-                          [f', Ref_type.rename (get_rtyp f' rtyp)]
-                      with
-                          Not_found -> []
-                        | _ -> Format.printf "unimplemented or bug@.@."; []
-                    in
-                    if !Flag.insert_param_funarg
-                    then []
-                    else
-                      if !Flag.relative_complete then
-                        let _ = Flag.web := true in
-                        let res = Util.rev_map_flatten aux env in
-                        let _ = Flag.web := false in
-                        res
-                      else
-                        Util.rev_map_flatten aux env
-                  in
-                  let () =
-                    if !Flag.write_annot
-                    then
-                      let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
-                        WriteAnnot.f !Flag.filename orig env''
-                  in
-                  (if !Flag.termination then
-		      Format.printf "Terminating!(%s)@.@." !verified_function
-		   else
-                      Format.printf "Safe!@.@.");
-                  let () =
-                    if !Flag.relative_complete then begin
-                      let map =
-                        List.map
-                          (fun (x, n) ->
-                            Id.make (-1) (Fpat.Var.string_of x) Type.TInt,
-                            CEGAR_util.trans_inv_term
-                              (FpatInterface.inv_term
-                                (Fpat.IntTerm.make n)))
-                          !Fpat.ParamSubstInfer.ext_coeffs
-                      in
-                      let t = Syntax.subst_map map t0 in
-                      Format.printf "Program with Quantifiers Added:@.";
-                      Flag.web := true;
-                      Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
-                      Flag.web := false
-                    end
-                  in
-                  if env' <> [] then Format.printf "Refinement Types:@.";
-                  let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
-                  let pr (f,typ) =
-                    Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ
-                  in
-                  List.iter pr env';
-                  if env' <> [] then Format.printf "@.";
-                  true
-              | _, CEGAR.Unsafe ce ->
-                (if !Flag.termination then
-		    Format.printf "Possibly non-terminating!(%s)@.@." !verified_function
-		 else
-                    Format.printf "UnSafe!@.@.");
-                if main_fun <> "" && arg_num <> 0
-                then
-                  Format.printf "Input for %s:@.  %a@." main_fun
-                    (Util.print_list Format.pp_print_int "; " false) (Util.take ce arg_num);
-                Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target);
-                false
-          with
-              Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
-                Flag.insert_param_funarg := true;
-                main_loop orig parsed
-            | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
-                Format.printf "@.REFINEMENT FAILED!@.";
-                Format.printf "Restart with relative_complete := true@.@.";
-                Flag.relative_complete := true;
-                main_loop orig parsed
-            | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-                raise Fpat.AbsTypeInfer.FailedToRefineTypes
-            | Fpat.ParamSubstInfer.FailedToRefineExtraParameters ->
-                FpatInterface.params := [];
-                Fpat.ParamSubstInfer.ext_coeffs := [];
-                Fpat.ParamSubstInfer.ext_constrs := [];
-                incr Fpat.Global.number_of_extra_params;
-                main_loop orig parsed
-=======
   let trecs_version = TrecsInterface.version () in
   Format.printf "MoCHi: Model Checker for Higher-Order Programs@.";
   if commit <> "" then Format.printf "  Build: %s@." commit;
@@ -146,7 +40,6 @@ let print_env () =
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
   Format.printf "@."; ()
->>>>>>> master
 
 
 (***** termination *****)
@@ -170,20 +63,11 @@ let rec termination_loop predicate_que holed =
     let transformed = BRA_transform.pluging holed predicate in
     let orig, transformed = BRA_transform.retyping transformed in
     try
-<<<<<<< HEAD
-      main_loop orig transformed
+      Main_loop.run orig transformed
     with Refine.PostCondition (env, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
-      let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in 
-=======
-      Main_loop.run orig transformed
-    with Refine.PostCondition (_, spc) ->
-      let open Fpat in
-      let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
       let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in
-
->>>>>>> master
       let arg_vars =
 	List.map (fun v -> Var.of_string (Id.to_string (BRA_transform.extract_id v)))
 	  (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified) in
@@ -192,8 +76,8 @@ let rec termination_loop predicate_que holed =
 	List.map (fun v -> Var.of_string (Id.to_string (BRA_transform.extract_id v)))
 	  (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified) in
       let prev_var_terms = List.map Term.make_var prev_vars in
-      let arg_env = List.map (fun a -> (a, SimType.Int)) arg_vars in
-      let prev_env = List.map (fun a -> (a, SimType.Int)) prev_vars in
+      let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
+      let prev_env = List.map (fun a -> (a, SimType.int_type)) prev_vars in
       
       if !Flag.disjunctive then
 	(* make templates *)
@@ -218,7 +102,7 @@ let rec termination_loop predicate_que holed =
 	    Format.printf "Failed to solve the constraints...@.@.";
             assert false(* failed to solve the constraints *)
 	in
-	let ((correspondence_, const_part) as ranking_function) = ParLinExp.parlinexp_of (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) linear_template)
+	let ((correspondence_, const_part) as ranking_function) = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) linear_template)
 	in
 	let correspondence =
 	  let cor dict x =
@@ -226,8 +110,6 @@ let rec termination_loop predicate_que holed =
 	  let formatter (n, v) = (v, IntTerm.int_of n) in
 	  List.map (cor (List.map formatter correspondence_)) arg_vars
 	in
-
-<<<<<<< HEAD
         (* update predicate *)
 	let new_predicate_info =
 	  BRA_types.updated_predicate_info
@@ -236,7 +118,6 @@ let rec termination_loop predicate_que holed =
 	    (spc :: predicate_info.BRA_types.error_paths)
 	in
 	if debug then Format.printf "\nInferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
-	if debug then Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
 	let _ = Queue.push new_predicate_info predicate_que in
 	termination_loop predicate_que holed
       else
@@ -266,7 +147,7 @@ let rec termination_loop predicate_que holed =
 	    let rec go i = 
 	      let ith_ltp, ith_lt = List.nth linear_templates_prev i, List.nth linear_templates i in
 	      if i < n then
-		Formula.eqInt ith_ltp ith_lt :: go (i+1)
+		Formula.eq ith_ltp ith_lt :: go (i+1)
 	      else
 		[Formula.gt ith_ltp ith_lt; Formula.geq ith_lt (IntTerm.make 0)]
 	    in
@@ -284,7 +165,7 @@ let rec termination_loop predicate_que holed =
 	    if debug then Format.printf "@.Inferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
 
 	    let coefficient_infos = List.mapi (fun i ith_lt ->
-	      let ((correspondence_, const_part) as ranking_function) = ParLinExp.parlinexp_of (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) ith_lt)
+	      let ((correspondence_, const_part) as ranking_function) = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) ith_lt)
 	      in
 	      (** 引数の変数との対応関係を考え、linear ranking functionを係数情報に変換 **)
 	      let correspondence =
@@ -293,7 +174,6 @@ let rec termination_loop predicate_que holed =
 		let formatter (n, v) = (v, IntTerm.int_of n) in
 		List.map (cor (List.map formatter correspondence_)) arg_vars
 	      in
-	      if debug then Format.printf "Ranking function:@.  %a@." ParLinExp.pr ranking_function;
 	      {BRA_types.coeffs = correspondence; BRA_types.constant = IntTerm.int_of const_part}
 	    ) linear_templates
 	    in
@@ -314,30 +194,7 @@ let rec termination_loop predicate_que holed =
 	in
 	let _ = List.iter (fun pred -> Queue.push pred predicate_que) (List.rev successes) in
 	termination_loop predicate_que holed
-	
-	
-=======
-      let ranking_constraints =
-	Formula.band [ Formula.gt linear_template_prev linear_template
-		     ; Formula.geq linear_template (IntTerm.make 0)]
-      in
-      let constraints = imply spc ranking_constraints in
-               (************ BUG!: obtain no coeffs ************)
-      let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
-      let coefficients =
-        try
-          NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
-        with NonLinConstr.Unknown ->
-          assert false(* failed to solve the constraints *)
-      in
-      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
-      Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
-      Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
-      Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
-      Format.printf "Unsafe!@.@.";
-      false
 
->>>>>>> master
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
