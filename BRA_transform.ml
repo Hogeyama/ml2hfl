@@ -41,19 +41,18 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 
 (* regularization of program form *)
 let rec regularization = function
-  | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Unit; typ = TUnit})} when top_id.Id.name <> "main"
-      -> body
+  | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Const Unit; typ = TUnit})} when top_id.Id.name <> "main" -> body
   | t -> t
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
 let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
-let rec show_typed_term form t = show_term form t.desc
-and show_term form = function
-  | Unit -> "()"
-  | True -> "true"
-  | False -> "false"
-  | Int n -> string_of_int n
+let rec show_typed_term t = show_term t.desc
+and show_term = function
+  | Const Unit -> "()"
+  | Const True -> "true"
+  | Const False -> "false"
+  | Const (Int n) -> string_of_int n
   | App ({desc=RandInt _}, _) -> "Random.int 0"
   | Var v when v.Id.typ = TUnit -> "(" ^ modify_id v ^ " : unit)"
   | Var v when v.Id.typ = TBool -> "(" ^ modify_id v ^ " : bool)"
@@ -276,14 +275,14 @@ let to_holed_programs (target_program : typed_term) (defined_functions : functio
       | t -> t
     }
   in
-  let hole_inserted_programs = 
-    List.map (fun f -> 
+  let hole_inserted_programs =
+    List.map (fun f ->
       let f_state = state_template f in
       { program = everywhere_expr (hole_insert f f_state) target_program
       ; verified = f
       ; state = f_state}) defined_functions
   in
-  let state_inserted_programs = 
+  let state_inserted_programs =
     List.map transform_program_by_call hole_inserted_programs
   in state_inserted_programs
 

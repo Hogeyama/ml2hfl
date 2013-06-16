@@ -30,20 +30,6 @@ if test "$OCAML_PKG_ocamlgraph" = "no"; then
   AC_MSG_ERROR([ocamlgraph not found])
 fi
 
-CSISAT_DIRS="./csisat/obj ../csisat/obj ./csisat-read-only/obj ../csisat-read-only/obj"
-AC_ARG_WITH(csisat_obj,
-   [  --with-csisat-obj=DIR   CSIsat object directory ],
-   [CSISAT_DIRS="$withval"])
-AC_ARG_WITH(csisat,
-   [  --with-csisat=DIR       CSIsat build directory ],
-   [CSISAT_DIRS="$withval/obj"])
-
-AC_CHECK_OCAML_MODULE(CSISAT,CSIsat,[CsisatAst],[$CSISAT_DIRS])
-if test "$CSISAT" = "no"; then
-  AC_MSG_ERROR([CSIsat not found])
-fi
-AC_SUBST(CSISAT)
-
 AC_CHECK_OCAML_PKG([fpat])
 if test "$OCAML_PKG_fpat" = "no"; then
   AC_MSG_ERROR([fpat not found])
@@ -95,6 +81,9 @@ if test "$TRECS" = "no"; then
   AC_MSG_ERROR([TRecS not found])
 fi
 AC_SUBST(TRECS)
+
+AC_CHECK_PROG(GIT, git, git)
+AC_SUBST(GIT)
 
 AC_CONFIG_FILES([Makefile.config environment.ml])
 AC_OUTPUT

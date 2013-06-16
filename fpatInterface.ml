@@ -6,6 +6,8 @@ open CEGAR_print
 open CEGAR_util
 open Fpat
 open Fpat.Combinator
+open Fpat.ExtFormula
+open Fpat.ExtHornClause
 
 let conv_const c =
   match c with
@@ -15,18 +17,18 @@ let conv_const c =
   | And -> Const.And
   | Or -> Const.Or
   | Not -> Const.Not
-  | Lt -> Const.Lt
-  | Gt -> Const.Gt
-  | Leq -> Const.Leq
-  | Geq -> Const.Geq
-  | EqUnit -> Const.EqUnit
-  | EqBool -> Const.EqBool
-  | EqInt -> Const.EqInt
+  | Lt -> Const.Lt(SimType.Int)
+  | Gt -> Const.Gt(SimType.Int)
+  | Leq -> Const.Leq(SimType.Int)
+  | Geq -> Const.Geq(SimType.Int)
+  | EqUnit -> Const.Eq(SimType.Unit)
+  | EqBool -> Const.Eq(SimType.Bool)
+  | EqInt -> Const.Eq(SimType.Int)
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
-  | Add -> Const.IAdd
-  | Sub -> Const.ISub
-  | Mul -> Const.IMul
+  | Add -> Const.Add(SimType.Int)
+  | Sub -> Const.Sub(SimType.Int)
+  | Mul -> Const.Mul(SimType.Int)
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -50,17 +52,17 @@ let inv_const c =
   | Const.And -> And
   | Const.Or -> Or
   | Const.Not -> Not
-  | Const.Lt -> Lt
-  | Const.Gt -> Gt
-  | Const.Leq -> Leq
-  | Const.Geq -> Geq
-  | Const.EqBool -> EqBool
-  | Const.EqInt -> EqInt
+  | Const.Lt(SimType.Int) -> Lt
+  | Const.Gt(SimType.Int) -> Gt
+  | Const.Leq(SimType.Int) -> Leq
+  | Const.Geq(SimType.Int) -> Geq
+  | Const.Eq(SimType.Bool) -> EqBool
+  | Const.Eq(SimType.Int) -> EqInt
   | Const.Int(n) -> Int(n)
   | Const.RandInt -> RandInt
-  | Const.IAdd -> Add
-  | Const.ISub -> Sub
-  | Const.IMul -> Mul
+  | Const.Add(SimType.Int) -> Add
+  | Const.Sub(SimType.Int) -> Sub
+  | Const.Mul(SimType.Int) -> Mul
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =
@@ -69,10 +71,14 @@ let rec inv_term t =
   | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, Term.App(_, t1, t2), t3) ->
       (match t1 with
-        Term.Const(_, Const.NeqUnit) -> App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.NeqBool) -> App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.NeqInt) -> App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
-      | _ -> App(App(inv_term t1, inv_term t2), inv_term t3))
+        Term.Const(_, Const.Neq(SimType.Unit)) ->
+          App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.Neq(SimType.Bool)) ->
+          App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
+      | Term.Const(_, Const.Neq(SimType.Int)) ->
+          App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
+      | _ ->
+          App(App(inv_term t1, inv_term t2), inv_term t3))
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
   | Term.Forall (_, _, _) -> assert false
   | Term.Error _ -> assert false
@@ -268,11 +274,8 @@ let insert_extra_param t =
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
-        Syntax.Unit -> Syntax.Unit
-      | Syntax.True -> Syntax.True
-      | Syntax.False -> Syntax.False
+        Syntax.Const c -> Syntax.Const c
       | Syntax.Unknown -> Syntax.Unknown
-      | Syntax.Int n -> Syntax.Int n
       | Syntax.RandInt b -> Syntax.RandInt b
       | Syntax.RandValue(typ,b) -> Syntax.RandValue(typ,b)
       | Syntax.Var y -> Syntax.Var (trans_id y)
@@ -465,7 +468,7 @@ let simplify_term t =
   if false then
 	  let _, t = trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
 	  let t = conv_term t in
-	  let t = FormulaUtil.simplify t in
+	  let t = Formula.simplify t in
 			let t = inv_term t in
 	  (trans_inv_term t).Syntax.desc
   else
@@ -498,8 +501,13 @@ let compute_strongest_post prog ce =
   let prog = conv_prog prog in
   let [etr] = CompTreeExpander.error_traces_of prog [ce] in
   let _, hcs = HcGenRefType.cgen (Prog.type_of prog) etr in
+<<<<<<< HEAD
   let hcs = List.map (HornClauseUtil.simplify []) hcs in
   if debug then Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
+=======
+  let hcs = List.map (HornClause.simplify []) hcs in
+  Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
+>>>>>>> master
   let lbs = HcSolver.compute_lbs hcs in
   let env, spc =
     let is_fail pid =
@@ -523,7 +531,7 @@ let compute_strongest_post prog ce =
         with Not_found ->
           assert false
       in
-      FormulaUtil.simplify (Formula.band [t; t'])
+      Formula.simplify (Formula.band [t; t'])
     else
       let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
       RefType.visible_vars (Prog.type_of prog) (fst atm),
@@ -548,8 +556,15 @@ let compute_strongest_post prog ce =
   let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.Bool) env) in
   let env = List.filter (fun (_, ty) -> ty <> SimType.Bool) env in
   let env = List.filter (fun (_, ty) -> ty <> SimType.Unit) env in
+<<<<<<< HEAD
   let spc = FormulaUtil.elim_unit spc in
   let spc = FormulaUtil.eqelim_boolean (fvs_bool @ bvs_bool) spc in
   if debug then Format.printf "strongest post condition:@,  %a@," Term.pr spc;
   if debug then Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
+=======
+  let spc = Formula.elim_unit spc in
+  let spc = Formula.eqelim_boolean (fvs_bool @ bvs_bool) spc in
+  Format.printf "strongest post condition:@,  %a@," Term.pr spc;
+  Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
+>>>>>>> master
   env, spc

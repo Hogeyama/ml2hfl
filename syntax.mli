@@ -6,12 +6,10 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 and typed_term = {desc:term; typ:typ}
+and const = Unit | True | False | Int of int (* only base type constants *)
 and term =
-    Unit
-  | True
-  | False
+    Const of const
   | Unknown
-  | Int of int
   | RandInt of bool (** true denotes CPS-term *)
   | RandValue of typ * bool (** true denotes CPS-term *)
   | Var of id
@@ -185,6 +183,7 @@ val print_constr_list : Format.formatter -> literal list -> unit
 val pp_print_typ : Format.formatter -> typ -> unit
 (** Same as [print_typ] *)
 
+val print_const : Format.formatter -> const -> unit
 val print_term : bool -> Format.formatter -> typed_term -> unit
 val print_term' : Format.formatter -> typed_term -> unit
 val pp_print_term : Format.formatter -> typed_term -> unit

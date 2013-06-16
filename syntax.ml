@@ -9,13 +9,12 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 
+and const = Unit | True | False | Int of int (* only base type constants *)
+
 and typed_term = {desc:term; typ:typ}
 and term =
-    Unit
-  | True
-  | False
+    Const of const
   | Unknown
-  | Int of int
   | RandInt of bool
   | RandValue of typ * bool
   | Var of id
@@ -99,11 +98,8 @@ let rec get_vars_pat pat =
 
 let rec get_fv vars t =
   match t.desc with
-      Unit -> []
-    | True -> []
-    | False -> []
+      Const _ -> []
     | Unknown -> []
-    | Int n -> []
     | RandInt _ -> []
     | Var x -> if Id.mem x vars then [] else [x]
     | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
@@ -213,11 +209,11 @@ and paren pri p = if pri < p then "","" else "(",")"
 
 and print_binop fm = function
 Eq -> fprintf fm "="
-  | Lt -> (*if !Flag.web then fprintf fm "&lt;" else*) fprintf fm "<"
-  | Gt -> (*if !Flag.web then fprintf fm "&gt;" else*) fprintf fm ">"
-  | Leq -> (*if !Flag.web then fprintf fm "&lt;=" else*) fprintf fm "<="
-  | Geq -> (*if !Flag.web then fprintf fm "&gt;=" else*) fprintf fm ">="
-  | And -> (*if !Flag.web then fprintf fm "&amp;&amp;" else*) fprintf fm "&&"
+  | Lt -> fprintf fm "<"
+  | Gt -> fprintf fm ">"
+  | Leq -> fprintf fm "<="
+  | Geq -> fprintf fm ">="
+  | And -> fprintf fm "&&"
   | Or -> fprintf fm "||"
   | Add -> fprintf fm "+"
   | Sub -> fprintf fm "-"
@@ -243,13 +239,15 @@ and print_termlist pri typ fm ts =
     List.iter
       (fun bd ->
 	fprintf fm "@ %a" (print_term pri typ) bd) ts
-and print_term pri typ fm t =
-  match t.desc with
+and print_const fm = function
     Unit -> fprintf fm "()"
   | True -> fprintf fm "true"
   | False -> fprintf fm "false"
-  | Unknown -> fprintf fm "***"
   | Int n -> fprintf fm "%d" n
+and print_term pri typ fm t =
+  match t.desc with
+    Const c -> print_const fm c
+  | Unknown -> fprintf fm "***"
   | RandInt false -> fprintf fm "rand_int"
   | RandInt true -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]()" print_typ typ'
@@ -300,7 +298,7 @@ and print_term pri typ fm t =
     let p = 50 in
     let s1,s2 = paren pri p in
     fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
-  | BinOp(Mult, {desc=Int -1}, {desc=Var x}) ->
+  | BinOp(Mult, {desc=Const (Int -1)}, {desc=Var x}) ->
     let p = 60 in
     let s1,s2 = paren pri p in
     fprintf fm "%s@[-%a@]%s" s1 print_id x s2
@@ -340,7 +338,7 @@ and print_term pri typ fm t =
     let p = 10 in
     let s1,s2 = paren pri p in
     let aux = function
-    (pat,{desc=True},t) -> fprintf fm "@ @[<hov 4>| @[<hov 2>%a ->@ %a@]@]"
+    (pat,{desc=Const True},t) -> fprintf fm "@ @[<hov 4>| @[<hov 2>%a ->@ %a@]@]"
       print_pattern pat (print_term p typ) t
       | (pat,cond,t) -> fprintf fm "@ @[<hov 4>| @[<hov 2>%a @[<hov 2>when@ %a@] ->@ %a@]@]"
         print_pattern pat (print_term p typ) cond (print_term p typ) t
@@ -414,11 +412,8 @@ let print_term typ fm = print_term 0 typ fm
 let rec print_term' pri fm t =
   fprintf fm "(";(
     match t.desc with
-        Unit -> fprintf fm "unit"
-      | True -> fprintf fm "true"
-      | False -> fprintf fm "false"
+        Const c -> print_const fm c
       | Unknown -> fprintf fm "***"
-      | Int n -> fprintf fm "%d" n
       | RandInt false -> fprintf fm "rand_int"
       | RandInt true -> fprintf fm "rand_int_cps"
       | RandValue(typ',false) ->
@@ -503,7 +498,7 @@ let rec print_term' pri fm t =
           let p = 1 in
           let s1,s2 = paren pri (p+1) in
           let aux = function
-              (pat,{desc=True},t) -> fprintf fm "%a -> %a@ " print_pattern' pat (print_term' p) t
+              (pat,{desc=Const True},t) -> fprintf fm "%a -> %a@ " print_pattern' pat (print_term' p) t
             | (pat,cond,t) -> fprintf fm "%a when %a -> %a@ "
                 print_pattern' pat (print_term' p) cond (print_term' p) t
           in
@@ -614,21 +609,21 @@ let length_var =
   let x = Id.make (-1) "l" (TList typ_unknown) in
     Id.make (-1) "length" (TFun(x, TInt))
 
-let unit_term = {desc=Unit; typ=TUnit}
-let true_term = {desc=True;typ=TBool}
-let false_term = {desc=False;typ=TBool}
+let unit_term = {desc=Const Unit; typ=TUnit}
+let true_term = {desc=Const True;typ=TBool}
+let false_term = {desc=Const False;typ=TBool}
 let fail_term = {desc=Event("fail",false);typ=typ_event}
 let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt)}
 let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
-  {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Int 0;typ=TInt}); typ=TBool}
+  {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Const(Int 0);typ=TInt}); typ=TBool}
 let abst_term = {desc=Constr("Abst",[]); typ=typ_abst}
 let make_abst typ = {desc=Constr("Abst",[]); typ=typ}
 let make_bottom typ = {desc=Bottom;typ=typ}
 let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
 let make_var x = {desc=Var x; typ=Id.typ x}
-let make_int n = {desc=Int n; typ=TInt}
+let make_int n = {desc=Const(Int n); typ=TInt}
 let make_randint_cps typ =
   let u = Id.new_var "" TUnit in
   let r = Id.new_var "" TInt in
@@ -707,8 +702,8 @@ let make_if_ t1 t2 t3 =
   assert (not Flag.check_typ || Type.can_unify t1.typ TBool);
   assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
   match t1.desc with
-      True -> t2
-    | False -> t3
+      Const True -> t2
+    | Const False -> t3
     | _ ->
         let typ =
           match has_pred t2.typ, has_pred t3.typ with
@@ -792,7 +787,7 @@ let make_label info t = {desc=Label(info,t); typ=t.typ}
 
 let imply t1 t2 = {desc=BinOp(Or, {desc=Not t1;typ=TBool}, t2); typ=TBool}
 let and_list ts = match ts with
-    [] -> {desc=True; typ=TBool}
+    [] -> {desc=Const True; typ=TBool}
   | [t] -> t
   | t::ts -> List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TBool}) t ts
 
@@ -810,11 +805,8 @@ let rec decomp_fun = function
 
 let rec get_nint t =
   match t.desc with
-      Unit -> []
-    | True -> []
-    | False -> []
+      Const _ -> []
     | Unknown -> []
-    | Int n -> []
     | Var x -> []
     | App(t, ts) -> get_nint t @@ (rev_map_flatten get_nint ts)
     | If(t1, t2, t3) -> get_nint t1 @@ get_nint t2 @@ get_nint t3
@@ -844,11 +836,9 @@ let get_nint t = uniq (get_nint t)
 
 let rec get_int t =
   match t.desc with
-      Unit -> []
-    | True -> []
-    | False -> []
+      Const (Int n) -> [n]
+    | Const _ -> []
     | Unknown -> []
-    | Int n -> [n]
     | Var x -> []
     | App(t, ts) -> get_int t @@ (rev_map_flatten get_int ts)
     | If(t1, t2, t3) -> get_int t1 @@ get_int t2 @@ get_int t3
@@ -904,11 +894,8 @@ let rec subst_var x t y = Id.set_typ y (subst_type x t (Id.typ y))
 (* [x |-> t], [t/x] *)
 and subst x t t' =
     match t'.desc with
-        Unit -> t'
-      | True -> t'
-      | False -> t'
+        Const _ -> t'
       | Unknown -> t'
-      | Int n -> t'
       | Bottom -> t'
       | RandInt _ -> t'
       | Var y when Id.same x y -> t
@@ -987,11 +974,9 @@ and subst x t t' =
 and subst_int n t t' =
   let desc =
     match t'.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
+        Const (Int m) -> if n = m then t.desc else BinOp(Add, t, {desc=Const(Int(m-n)); typ=TInt})
+      | Const c -> Const c
       | Unknown -> Unknown
-      | Int m -> if n = m then t.desc else BinOp(Add, t, {desc=Int(m-n); typ=TInt})
       | Var y -> Var y
       | Bottom -> Bottom
       | Fun(y, t1) -> Fun(y, subst_int n t t1)
@@ -1052,11 +1037,8 @@ and subst_int n t t' =
 
 and subst_map map t =
   match t.desc with
-      Unit -> t
-    | True -> t
-    | False -> t
+      Const c -> t
     | Unknown -> t
-    | Int n -> t
     | Bottom -> t
     | RandInt _ -> t
     | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
@@ -1155,11 +1137,8 @@ and subst_type x t = function
 
 let rec max_pat_num t =
   match t.desc with
-      Unit -> 0
-    | True -> 0
-    | False -> 0
+      Const _ -> 0
     | Unknown -> 0
-    | Int _ -> 0
     | Var _ -> 0
     | Fun(_, t) -> max_pat_num t
     | App(t, ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) (max_pat_num t) ts
@@ -1193,11 +1172,8 @@ let rec max_pat_num t =
 
 let rec max_label_num t =
   match t.desc with
-      Unit -> -1
-    | True -> -1
-    | False -> -1
+      Const _ -> -1
     | Unknown -> -1
-    | Int _ -> -1
     | RandInt _ -> -1
     | Var _ -> -1
     | Fun(_, t) -> max_label_num t
@@ -1237,7 +1213,7 @@ let is_parameter x = Fpat.Util.String.starts_with (Id.name x) Flag.extpar_header
 
 let rec is_value t =
   match t.desc with
-      Unit | True | False | Int _ | Var _ | Nil -> true
+      Const _ | Var _ | Nil -> true
     | _ -> false
 
 
@@ -1282,8 +1258,8 @@ let make_if t1 t2 t3 =
   then Format.printf "%a <=/=> %a@." print_typ t2.typ print_typ t3.typ;
   assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
   match t1.desc with
-      True -> t2
-    | False -> t3
+      Const True -> t2
+    | Const False -> t3
     | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ}
 (*
 let rec make_app t ts =

@@ -14,9 +14,17 @@ let hd = function
   | [x] -> x
   | _ -> assert false
 
+let check_aux env cond p =
+  let cond' = List.map FpatInterface.conv_term cond in
+  let p' = FpatInterface.conv_term p in
+  Fpat.Cvc3Interface.implies cond' [p']
+
 let check env cond pbs p =
   let ps,_ = List.split pbs in
-    Wrapper2.check env (cond@@ps) p
+  check_aux env (cond@@ps) p
+
+let equiv env cond t1 t2 =
+  check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
 
 let make_conj pbs =
   match pbs with
@@ -212,14 +220,10 @@ let abst env cond pbs p =
   then Const Bottom
   else
     let tt, ff = weakest env cond pbs p in
-(*
-    let env' = List.map (function _, Var x -> x,TBase(TBool,fun _ -> []) | _ -> assert false) pbs in
-      if Wrapper2.equiv env' cond (make_not tt) ff
-*)
-  if debug then Format.printf "tt:%a@.ff:%a@." CEGAR_print.term tt CEGAR_print.term ff;
-      if make_not tt = ff || tt = make_not ff
-      then tt
-      else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
+    if debug then Format.printf "tt:%a@.ff:%a@." CEGAR_print.term tt CEGAR_print.term ff;
+    if make_not tt = ff || tt = make_not ff
+    then tt
+    else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
 let assume env cond pbs t1 t2 =
@@ -237,7 +241,7 @@ let rec congruent env cond typ1 typ2 =
         let env' = (x,typ1)::env in
         let ps1' = ps1 (Var x) in
         let ps2' = ps2 (Var x) in
-          List.length ps1' = List.length ps2' && List.for_all2 (Wrapper2.equiv env' cond) ps1' ps2'
+          List.length ps1' = List.length ps2' && List.for_all2 (equiv env' cond) ps1' ps2'
     | TFun(typ11,typ12), TFun(typ21,typ22) ->
         let x = new_id "x_abst" in
         let typ12 = typ12 (Var x) in

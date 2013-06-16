@@ -115,11 +115,8 @@ let rec abst_recdata t =
   let typ' = abst_recdata_typ t.typ in
   let desc =
     match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
+        Const c -> Const c
       | Unknown -> Unknown
-      | Int n -> Int n
       | Var x -> Var (abst_recdata_var x)
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
@@ -213,11 +210,8 @@ let abstract_recdata t =
 let rec abstract_mutable t =
   let desc =
     match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
+        Const c -> Const c
       | Unknown -> Unknown
-      | Int n -> Int n
       | RandInt b -> RandInt b
       | Var x -> Var x
       | Fun(x, t) -> Fun(x, abstract_mutable t)
@@ -330,7 +324,7 @@ and get_match_bind_cond t p =
     | PAlias(p,x) ->
         let bind,cond = get_match_bind_cond t p in
         (abst_list_var x, t)::bind, cond
-    | PConst {desc=Unit} -> [], true_term
+    | PConst {desc=Const Unit} -> [], true_term
     | PConst t' -> [], make_eq t t'
     | PConstruct _ -> assert false
     | PNil -> [], make_eq (make_fst t) (make_int 0)
@@ -374,11 +368,11 @@ and make_cons post t1 t2 =
 and abst_list post t =
   let typ' = abst_list_typ t.typ in
     match t.desc with
-        Unit -> unit_term
-      | True -> true_term
-      | False -> false_term
+        Const Unit -> unit_term
+      | Const True -> true_term
+      | Const False -> false_term
       | Unknown -> assert false
-      | Int n -> make_int n
+      | Const (Int n) -> make_int n
       | Var x -> make_var (abst_list_var x)
       | RandInt b -> randint_term
       | RandValue(typ,b) -> raise (Fatal "Not implemented (Abstract.abst_list)")

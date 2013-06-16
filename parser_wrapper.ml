@@ -57,8 +57,8 @@ let conv_primitive_app t ts typ =
     | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
     | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
     | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ}
-    | Var {Id.name="Random.bool"}, [{desc=Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
-    | Var {Id.name="Random.int"}, [{desc=Int 0}] -> make_app randint_term [unit_term]
+    | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
+    | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> make_app randint_term [unit_term]
     | Var {Id.name="Random.int"}, [t] ->
         let x = Id.new_var "ni" TInt in
           make_let [x, [], make_app randint_term [unit_term]]
@@ -66,7 +66,7 @@ let conv_primitive_app t ts typ =
                (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
                (make_var x)
                (make_loop TInt))
-    | Var {Id.name="Pervasives.open_in"}, [{desc=Int _}] -> make_app (make_event "newr") [unit_term]
+    | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_app (make_event "newr") [unit_term]
     | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
     | _ -> make_app t ts
 
@@ -270,7 +270,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
         Tpat_any -> PAny
       | Tpat_var x -> PVar(from_ident x typ')
       | Tpat_alias(p,x) -> PAlias(from_pattern p, from_ident x typ')
-      | Tpat_constant(Const_int n) -> PConst {desc=Int n;typ=typ'}
+      | Tpat_constant(Const_int n) -> PConst {desc=Const(Int n);typ=typ'}
       | Tpat_constant(Const_char c) -> unsupported "pattern match (char constant)"
       | Tpat_constant(Const_string s) -> unsupported "pattern match (string constant)"
       | Tpat_constant(Const_float x) -> unsupported "pattern match (float constant)"
@@ -284,7 +284,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
               {pat_desc=PPair(p1,p2'); pat_typ=TPair(Id.new_var "x" p1.pat_typ, p2'.pat_typ)}
           in
             (List.fold_left aux (from_pattern p) ps).pat_desc
-      | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "()" -> PConst {desc=Unit;typ=typ'}
+      | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "()" -> PConst {desc=Const Unit;typ=typ'}
       | Tpat_construct(cstr_desc, []) when get_constr_name cstr_desc typ env = "[]" -> PNil
       | Tpat_construct(cstr_desc, [p1;p2]) when get_constr_name cstr_desc typ env = "::" ->
           PCons(from_pattern p1, from_pattern p2)
@@ -458,9 +458,9 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_construct(desc,es) ->
           let desc =
             match get_constr_name desc typ env, es with
-                "()",[] -> Unit
-              | "true",[] -> True
-              | "false",[] -> False
+                "()",[] -> Const Unit
+              | "true",[] -> Const True
+              | "false",[] -> Const False
               | "[]",[] -> Nil
               | "::",[e1;e2] -> Cons(from_expression e1, from_expression e2)
               | name,es ->
@@ -513,7 +513,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
           let t2 = from_expression e2 in
           let t3 =
             match e3 with
-                None -> {desc=Unit; typ=TUnit}
+                None -> {desc=Const Unit; typ=TUnit}
               | Some e3 -> from_expression e3
           in
             make_if t1 t2 t3
@@ -595,5 +595,5 @@ let from_use_file ast =
     | Decl_type _ -> t
     | Decl_exc _ -> t
   in
-  let t = List.fold_left aux {desc=Unit;typ=TUnit} defs in
+  let t = List.fold_left aux {desc=Const Unit;typ=TUnit} defs in
     Trans.merge_let_fun t

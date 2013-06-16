@@ -130,10 +130,7 @@ and remove_pair_aux t typ_opt =
   let typ = match typ_opt with None -> t.typ | Some typ -> typ in
   let typs = remove_pair_typ typ in
     match t.desc with
-        Unit
-      | True
-      | False
-      | Int _
+        Const _
       | RandInt _
       | Event _ -> Leaf t
       | Bottom -> map (fun _ -> make_bottom) typs
@@ -245,11 +242,8 @@ let new_evar () = incr counter; !counter
 type typed_term = {t_cps:t_cps; typ_cps:typ_cps; typ_orig:typ; effect:effect_var}
 and typed_ident = {id_cps:id; id_typ:typ_cps}
 and t_cps =
-    UnitCPS
-  | TrueCPS
-  | FalseCPS
+    ConstCPS of const
   | UnknownCPS
-  | IntCPS of int
   | BottomCPS
   | RandIntCPS
   | VarCPS of typed_ident
@@ -317,11 +311,8 @@ and print_typed_term fm {t_cps=t; typ_cps=typ; effect=e} =
     | _ -> Format.fprintf fm "(%a : %a)" print_t_cps t print_typ_cps typ
 
 and print_t_cps fm = function
-    UnitCPS -> Format.fprintf fm "unit"
-  | TrueCPS -> Format.fprintf fm "true"
-  | FalseCPS -> Format.fprintf fm "false"
+    ConstCPS c -> Format.fprintf fm "%a" Syntax.print_const c
   | UnknownCPS -> Format.fprintf fm "***"
-  | IntCPS n -> Format.fprintf fm "%d" n
   | BottomCPS -> Format.fprintf fm "_|_"
   | RandIntCPS -> Format.fprintf fm "rand_int"
   | VarCPS x -> print_id fm x.id_cps
@@ -430,11 +421,8 @@ let _TFunCPS(e, typ1, typ2) =
 
 let rec infer_effect env t =
   match t.desc with
-      Unit -> {t_cps=UnitCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=new_evar()}
-    | True -> {t_cps=TrueCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=new_evar()}
-    | False -> {t_cps=FalseCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=new_evar()}
+      Const c -> {t_cps=ConstCPS c; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=new_evar()}
     | Unknown -> assert false (*{t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}*)
-    | Int n -> {t_cps=IntCPS n; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=new_evar()}
     | Bottom ->
         let e = new_evar () in
           constraints := CGeq(e, ECont) :: !constraints;
@@ -638,11 +626,8 @@ let rec app_typ typ typs =
 let rec add_preds_cont_aux k t =
   let desc =
     match t.desc with
-        Unit -> Unit
-      | True -> True
-      | False -> False
+        Const c -> Const c
       | Unknown -> Unknown
-      | Int n -> Int n
       | RandInt b -> RandInt b
       | RandValue(typ,b) -> RandValue(typ,b)
       | Var y -> Var y
@@ -759,10 +744,10 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e};
   let r =
     match t, !sol e with
-        UnitCPS, ENone -> unit_term
-      | TrueCPS, ENone -> true_term
-      | FalseCPS, ENone -> false_term
-      | IntCPS n, ENone -> make_int n
+        ConstCPS Unit, ENone -> unit_term
+      | ConstCPS True, ENone -> true_term
+      | ConstCPS False, ENone -> false_term
+      | ConstCPS (Int n), ENone -> make_int n
       | BottomCPS, ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
           let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
@@ -1112,11 +1097,8 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
 let rec short_circuit_eval t =
   let desc =
     match t.desc with
-        Unit
-      | True
-      | False
+        Const _
       | Unknown
-      | Int _
       | RandInt _
       | RandValue _
       | Var _ -> t.desc
@@ -1155,10 +1137,7 @@ let rec short_circuit_eval t =
 
 let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
   match t with
-      UnitCPS -> []
-    | TrueCPS -> []
-    | FalseCPS -> []
-    | IntCPS n -> []
+      ConstCPS _ -> []
     | BottomCPS -> []
     | RandIntCPS -> []
     | VarCPS x -> []

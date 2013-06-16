@@ -2,9 +2,12 @@ exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
 
+<<<<<<< HEAD
 (***** information *****)
 let lrf = ref []
 let verified_function = ref ""
+=======
+>>>>>>> master
 
 let print_info () =
   if !Flag.termination then
@@ -24,131 +27,16 @@ let print_info () =
   Format.pp_print_flush Format.std_formatter ()
 
 
-
-let init () =
-  Syntax.typ_excep := Type.TConstr("exn",true)
-
-let preprocess t spec =
-  let fun_list,t,get_rtyp =
-    if !Flag.init_trans
-    then
-      let t' = Trans.make_ext_funs t in
-      let () =
-        if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t' = Trans.copy_poly_funs t in
-      let fun_list = Syntax.get_top_funs t' in
-      let () =
-        if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let spec' = Spec.rename spec t in
-      let () = Spec.print spec' in
-      let t' = Trans.replace_typ spec'.Spec.abst_env t in
-      let () =
-        if true && !Flag.debug_level > 0 && spec <> Spec.init
-        then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t' = Abstract.abstract_recdata t in
-      let () =
-        if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
-      let t = t' in
-      let t',get_rtyp_list = Abstract.abstract_list t in
-      let () =
-        if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let get_rtyp = get_rtyp_list in
-      let t' = Trans.inlined_f spec'.Spec.inlined_f t in
-      let () =
-        if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      (*let t =
-        if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
-          let t = Trans.lift_fst_snd t in
-          let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
-            if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-              (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
-            t
-        else
-          t
-      in*)
-      let t',get_rtyp_cps_trans = CPS.trans t in
-      let () =
-        if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
-      let t',get_rtyp_remove_pair = CPS.remove_pair t in
-      let () =
-        if true && !Flag.debug_level > 0 && t <> t'
-        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
-      let t = t' in
-      let t' = if !Flag.insert_param_funarg then Trans.insert_param_funarg t else t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
-      in
-      fun_list, t', get_rtyp
-    else Syntax.get_top_funs t, t, fun _ typ -> typ
+let print_env () =
+  let commit =
+    try
+      let cin = open_in "COMMIT" in
+      let s = input_line cin in
+      close_in cin;
+      s
+    with Sys_error _ | End_of_file -> ""
   in
-
-  let () = Type_check.check t Type.TUnit in
-  let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
-  let get_rtyp f typ = get_rtyp f (get_rtyp_trans f typ) in
-
-  let info =
-    let fun_list =
-      let aux x =
-        try [List.assoc (CEGAR_util.trans_var x) map] with Not_found -> []
-      in
-        Util.rev_flatten_map aux fun_list
-    in
-    let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
-      {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
-  in
-    prog, rmap, get_rtyp, info
-
-let rec main_loop orig parsed =
-  let () = init () in
-  let t = parsed in
-  let () =
-    if false && !Flag.debug_level > 0
-    then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' t
-  in
-  let () =
-    if !Flag.use_spec && !Flag.spec_file = ""
-    then
-      try
-        let spec = Filename.chop_extension !Flag.filename ^ ".spec" in
-        if Sys.file_exists spec then Flag.spec_file := spec
-      with Invalid_argument "Filename.chop_extension" -> ()
-  in
-  let spec = Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file in
-  let () = Spec.print spec in
-  let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
-  let set_target = t in
-  let () =
-    if true && !Flag.debug_level > 0
-    then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t
-  in
-  (** Unno: I temporally placed the following code here
-            so that we can infer refinement types for a safe program
-            with extra parameters added *)
-  let t0 =
-    if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete then
-      let t = Trans.lift_fst_snd t in
-      let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
-        if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-          (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
-        t
-    else
-      t
-  in
+<<<<<<< HEAD
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in
     match !Flag.cegar with
@@ -250,6 +138,15 @@ let rec main_loop orig parsed =
                 Fpat.ParamSubstInfer.ext_constrs := [];
                 incr Fpat.Global.number_of_extra_params;
                 main_loop orig parsed
+=======
+  let trecs_version = TrecsInterface.version () in
+  Format.printf "MoCHi: Model Checker for Higher-Order Programs@.";
+  if commit <> "" then Format.printf "  Build: %s@." commit;
+  if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
+  Format.printf "  OCaml version: %s@." Sys.ocaml_version;
+  Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
+  Format.printf "@."; ()
+>>>>>>> master
 
 
 (***** termination *****)
@@ -273,11 +170,20 @@ let rec termination_loop predicate_que holed =
     let transformed = BRA_transform.pluging holed predicate in
     let orig, transformed = BRA_transform.retyping transformed in
     try
+<<<<<<< HEAD
       main_loop orig transformed
     with Refine.PostCondition (env, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
       let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in 
+=======
+      Main_loop.run orig transformed
+    with Refine.PostCondition (_, spc) ->
+      let open Fpat in
+      let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
+      let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in
+
+>>>>>>> master
       let arg_vars =
 	List.map (fun v -> Var.of_string (Id.to_string (BRA_transform.extract_id v)))
 	  (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified) in
@@ -321,6 +227,7 @@ let rec termination_loop predicate_que holed =
 	  List.map (cor (List.map formatter correspondence_)) arg_vars
 	in
 
+<<<<<<< HEAD
         (* update predicate *)
 	let new_predicate_info =
 	  BRA_types.updated_predicate_info
@@ -409,6 +316,28 @@ let rec termination_loop predicate_que holed =
 	termination_loop predicate_que holed
 	
 	
+=======
+      let ranking_constraints =
+	Formula.band [ Formula.gt linear_template_prev linear_template
+		     ; Formula.geq linear_template (IntTerm.make 0)]
+      in
+      let constraints = imply spc ranking_constraints in
+               (************ BUG!: obtain no coeffs ************)
+      let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
+      let coefficients =
+        try
+          NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
+        with NonLinConstr.Unknown ->
+          assert false(* failed to solve the constraints *)
+      in
+      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
+      Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
+      Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
+      Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
+      Format.printf "Unsafe!@.@.";
+      false
+
+>>>>>>> master
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
@@ -425,6 +354,7 @@ let main in_channel =
      Lexing.pos_bol = 0};
   in
   let orig = Parse.use_file lb in
+  Id.set_counter (Ident.current_time () + 1);
   let parsed = Parser_wrapper.from_use_file orig in
   let () =
     if true && !Flag.debug_level > 0
@@ -434,8 +364,8 @@ let main in_channel =
   then
     let paths = Trans.search_fail parsed in
     let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
-    List.for_all (main_loop orig) (List.rev ts);
-  else if !Flag.termination then 
+    List.for_all (Main_loop.run orig) (List.rev ts);
+  else if !Flag.termination then
     let open BRA_util in
     let parsed = BRA_transform.regularization parsed in
     let functions = BRA_transform.extract_functions parsed in
@@ -451,11 +381,13 @@ let main in_channel =
       let _ = Queue.add init_predicate_info predicate_que in
       termination_loop predicate_que holed) holed_list
   else
-    main_loop orig parsed
+    Main_loop.run orig parsed
 
 
 
-let usage =  "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
+let usage =
+  "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
+    "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let arg_spec =
   ["-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
          "<dir>  Add <dir> to the list of include directories";
@@ -512,8 +444,6 @@ let arg_spec =
           " Use refinement type based predicate discovery (same as -rsn 0)";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
           "<num>  Use refinement type based predicate discovery";
-   "-rd", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefTypeOld),
-          " Use refinement type based predicate discovery (obsolete)";
    "-eap", Arg.Set Fpat.Global.extract_atomic_predicates, " Extract atomic predicates";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* Horn clause solver *)
@@ -593,17 +523,14 @@ let () =
             "" | "-" -> Flag.filename := "stdin"; stdin
           | _ -> open_in !Flag.filename
       in
-        Wrapper.open_cvc3 ();
-        Wrapper2.open_cvc3 ();
         Fpat.Cvc3Interface.init ();
         Fpat.AtpInterface.init ();
         Fpat.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
         ignore (Unix.alarm Flag.time_limit);
+        if not !Flag.only_result then print_env ();
         if main cin then decr Flag.cegar_loop;
         Fpat.Cvc3Interface.close_cvc3 ();
-        Wrapper2.close_cvc3 ();
-        Wrapper.close_cvc3 ();
         print_info ()
     with
         Syntaxerr.Error err ->
