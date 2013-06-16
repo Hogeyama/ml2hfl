@@ -277,20 +277,22 @@ let () =
         print_info ()
     with
         Syntaxerr.Error err ->
-          Format.printf "%a@." Syntaxerr.report_error err; exit 1
+          Format.printf "%a@." Syntaxerr.report_error err
       | Typecore.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err; exit 1
+          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err
       | Typemod.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err; exit 1
-      | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1
+          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err
+      | Env.Error e -> Format.printf "%a@." Env.report_error e
       | Typetexp.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err; exit 1
+          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err
       | Lexer.Error(err, loc) ->
-          Format.printf "%a%a@." Location.print_error loc Lexer.report_error err; exit 1
-      | LongInput -> Format.printf "Input is too long@."; exit 1
-      | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
-      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
+          Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
+      | LongInput -> Format.printf "Input is too long@."
+      | TimeOut -> Format.printf "@.Verification failed (time out)@."
+      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-          Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."; exit 1
+          Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."
+      | Fpat.InterpProver.Fail ->
+          Format.printf "Fail: interpolation@." s
       | Util.Fatal s ->
-          Format.printf "Fatal error: %s@." s; exit 1
+          Format.printf "Fatal error: %s@." s
