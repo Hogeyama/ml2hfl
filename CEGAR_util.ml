@@ -427,7 +427,7 @@ let rec is_CPS_value env = function
   | Fun _ -> assert false
   | _ -> false
 let is_CPS_def env (f,xs,cond,es,t) =
-  let env' = get_arg_env (List.assoc f env) xs @@ env in
+  let env' = get_arg_env (List.assoc f env) xs @@@ env in
   let b1 = is_CPS_value env' cond in
   let b2 =
     match t with
@@ -460,13 +460,13 @@ let event_of_temp ({env=env;defs=defs;main=main} as prog) =
         | _ -> [], [f, xs, t1, [], t2]
     in
     let envs,defss = List.split (List.map make_event defs) in
-      {env=List.flatten envs @@ env; defs=List.flatten defss; main=main}
+      {env=List.flatten envs @@@ env; defs=List.flatten defss; main=main}
   else
     let rec aux = function
         Const (Temp e) -> [e]
       | Const c -> []
       | Var x -> []
-      | App(t1, t2) -> aux t1 @@ aux t2
+      | App(t1, t2) -> aux t1 @@@ aux t2
       | Fun _ -> assert false
       | Let _ -> assert false
     in
@@ -483,7 +483,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as prog) =
       | Let _ -> assert false
     in
     let defs' = List.map (apply_body_def aux) defs in
-      {env=evt_env@@env; defs=evt_defs@@defs'; main=main}
+      {env=evt_env@@@env; defs=evt_defs@@@defs'; main=main}
 
 
 let rec uniq_env = function
@@ -521,10 +521,10 @@ let rename_prog prog =
   let rename_def (f,xs,t1,e,t2) =
     let counter = Id.get_counter () in
     let () = Id.clear_counter () in
-    let var_names'' = List.rev_map id_name xs @@ var_names' in
+    let var_names'' = List.rev_map id_name xs @@@ var_names' in
     let arg_map = List.map (fun x -> x, rename_id' x var_names'') xs in
     let arg_map = uniq ~cmp:(fun (x,_) (y,_) -> compare x y) arg_map in
-    let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@ map) in
+    let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@@ map) in
     let rename_term t = subst_map smap t in
     let def = rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2 in
     if Id.get_counter () > counter then Id.save_counter ();
@@ -581,7 +581,7 @@ let trans_prog t =
             (main,typ,[],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
-  let env' = uniq_env (ext_env @@ env) in
+  let env' = uniq_env (ext_env @@@ env) in
   let prog = {env=env'; defs=defs''; main=main} in
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
   let prog = event_of_temp prog in
@@ -675,7 +675,7 @@ let map_defs f defs =
   let aux (g,xs,t1,t2) =
     let defs1,t1' = f t1 in
     let defs2,t2' = f t2 in
-      (g,xs,t1',t2')::defs1@@defs2
+      (g,xs,t1',t2')::defs1@@@defs2
   in
     rev_map_flatten aux defs
 
@@ -690,15 +690,15 @@ let rec extract_temp_if = function
       let defs3,t3' = extract_temp_if t3 in
       let f = new_id "f" in
       let x = new_id "b" in
-      let xs = uniq (get_fv t2 @@ get_fv t3) in
+      let xs = uniq (get_fv t2 @@@ get_fv t3) in
       let def1 = f, x::xs, Var x, t2 in
       let def2 = f, x::xs, make_not (Var x), t3 in
       let defs,t = [def1;def2], App(List.fold_left (fun t x -> App(t,Var x)) (Var f) xs, t1) in
-        defs@@defs1@@defs2@@defs3, t
+        defs@@@defs1@@@defs2@@@defs3, t
   | App(t1,t2) ->
       let defs1,t1' = extract_temp_if t1 in
       let defs2,t2' = extract_temp_if t2 in
-        defs1@@defs2, App(t1',t2')
+        defs1@@@defs2, App(t1',t2')
   | _ -> assert false
 let extract_temp_if defs = map_defs extract_temp_if defs
 *)
@@ -711,7 +711,7 @@ let rec lift_term xs = function
   | App(t1,t2) ->
       let defs1,t1' = lift_term xs t1 in
       let defs2,t2' = lift_term xs t2 in
-        defs1@@defs2, App(t1',t2')
+        defs1@@@defs2, App(t1',t2')
   | Let(f,t1,t2) ->
       let ys,t1' = decomp_fun t1 in
       let ys' = List.map (fun x -> if List.mem x xs then rename_id x else x) ys in
@@ -750,7 +750,7 @@ let rec lift_term2 xs = function
   | App(t1,t2) ->
       let defs1,t1' = lift_term2 xs t1 in
       let defs2,t2' = lift_term2 xs t2 in
-        defs1@@defs2, App(t1',t2')
+        defs1@@@defs2, App(t1',t2')
   | Let(f,t1,t2) ->
       let ys,t1' = decomp_fun t1 in
       let fv = inter xs (diff (get_fv t1) ys) in
@@ -955,13 +955,13 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
   | App(App(Const EqBool, Const True), t) -> normalize_bool_term ~imply t
   | App(App(Const And, _), _) as t ->
       let rec decomp = function
-          App(App(Const And, t1), t2) -> decomp t1 @@ decomp t2
+          App(App(Const And, t1), t2) -> decomp t1 @@@ decomp t2
         | t -> [normalize_bool_term ~imply t]
       in
       let rec aux ts1 = function
           [] -> List.rev ts1
         | t::ts2 ->
-            if imply (ts1@@ts2) t
+            if imply (ts1@@@ts2) t
             then aux ts1 ts2
             else aux (t::ts1) ts2
       in
@@ -973,13 +973,13 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
       end
   | App(App(Const Or, _), _) as t ->
       let rec decomp = function
-          App(App(Const Or, t1), t2) -> decomp t1 @@ decomp t2
+          App(App(Const Or, t1), t2) -> decomp t1 @@@ decomp t2
         | t -> [normalize_bool_term ~imply t]
       in
       let rec aux ts1 = function
           [] -> ts1
         | t::ts2 ->
-            if imply (ts1@@ts2) (make_not t)
+            if imply (ts1@@@ts2) (make_not t)
             then aux ts1 ts2
             else aux (t::ts1) ts2
       in
@@ -995,9 +995,9 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
           Const (Int n) -> [None, n]
         | Var x -> [Some (Var x), 1]
         | App(App(Const Add, t1), t2) ->
-            decomp t1 @@ decomp t2
+            decomp t1 @@@ decomp t2
         | App(App(Const Sub, t1), t2) ->
-            decomp t1 @@ neg (decomp t2)
+            decomp t1 @@@ neg (decomp t2)
         | App(App(Const Mul, t1), t2) ->
             let xns1 = decomp t1 in
             let xns2 = decomp t2 in
@@ -1030,7 +1030,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
         in
           compare (aux x1) (aux x2)
       in
-      let xns = List.sort compare (xns1 @@ (neg xns2)) in
+      let xns = List.sort compare (xns1 @@@ (neg xns2)) in
       let d = List.fold_left (fun d (_,n) -> gcd d (abs n)) 0 xns in
       let xns' = List.map (fun (x,n) -> assert (n mod d = 0); x, n/d) xns in
       let rec aux = function
@@ -1110,10 +1110,10 @@ let assoc_fun_def defs f =
 let get_nonrec defs main orig_fun_list force =
   let check (f,xs,t1,e,t2) =
     let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
-    let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@ get_fv t2)) defs in
+    let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@@ get_fv t2)) defs in
       List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
         f <> main &&
-        (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@ get_fv t2) xs) defs' ||
+        (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
          (1 >= List.length (uniq (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
          2 >= List.length defs')
   in

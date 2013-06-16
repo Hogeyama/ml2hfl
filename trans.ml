@@ -188,30 +188,30 @@ let rec assoc_typ f t =
     | RandValue _ -> []
     | Var _ -> []
     | Fun(_, t) -> assoc_typ f t
-    | App(t1, ts) -> assoc_typ f t1 @@ rev_flatten_map (assoc_typ f) ts
-    | If(t1, t2, t3) -> assoc_typ f t1 @@ assoc_typ f t2 @@ assoc_typ f t3
-    | Branch(t1, t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | App(t1, ts) -> assoc_typ f t1 @@@ rev_flatten_map (assoc_typ f) ts
+    | If(t1, t2, t3) -> assoc_typ f t1 @@@ assoc_typ f t2 @@@ assoc_typ f t3
+    | Branch(t1, t2) -> assoc_typ f t1 @@@ assoc_typ f t2
     | Let(flag, bindings, t1) ->
         let aux (g,_,t) =
           let typs1 = if Id.same f g then [Id.typ g] else [] in
-            typs1 @@ assoc_typ f t
+            typs1 @@@ assoc_typ f t
         in
-          assoc_typ f t1 @@ rev_flatten_map aux bindings
-    | BinOp(_, t1, t2) -> assoc_typ f t1 @@ assoc_typ f t2
+          assoc_typ f t1 @@@ rev_flatten_map aux bindings
+    | BinOp(_, t1, t2) -> assoc_typ f t1 @@@ assoc_typ f t2
     | Not t1 -> assoc_typ f t1
     | Event _ -> []
     | Record fields -> rev_flatten_map (fun (_,(_,t1)) -> assoc_typ f t1) fields
     | Proj(_,_,_,t1) -> assoc_typ f t1
-    | SetField(_,_,_,_,t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | SetField(_,_,_,_,t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
     | Nil -> []
-    | Cons(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | Cons(t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
     | Constr(s,ts) -> rev_flatten_map (assoc_typ f) ts
     | Match(t1,pats) ->
-        let aux (_,cond,t) = assoc_typ f cond @@ assoc_typ f t in
-          assoc_typ f t1 @@ rev_flatten_map aux pats
+        let aux (_,cond,t) = assoc_typ f cond @@@ assoc_typ f t in
+          assoc_typ f t1 @@@ rev_flatten_map aux pats
     | Raise t -> assoc_typ f t
-    | TryWith(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
-    | Pair(t1,t2) -> assoc_typ f t1 @@ assoc_typ f t2
+    | TryWith(t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
+    | Pair(t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
     | Fst t -> assoc_typ f t
     | Snd t -> assoc_typ f t
     | Bottom -> []
@@ -456,7 +456,6 @@ and rename_tvar map t =
 
 
 let rec get_tvars typ =
-  let (@@@) xs ys = List.fold_left (fun xs y -> if List.memq y xs then xs else y::xs) xs ys in
     match typ with
         TUnit -> []
       | TBool -> []
@@ -470,6 +469,10 @@ let rec get_tvars typ =
       | TPair(x,typ) -> get_tvars (Id.typ x) @@@ get_tvars typ
       | TConstr(s,b) -> []
       | TPred(x,_) -> get_tvars (Id.typ x)
+
+let get_tvars typ =
+  let xs = get_tvars typ in
+  List.fold_left (fun xs x -> if List.memq x xs then xs else x::xs) [] xs
 
 
 let rec rename_poly_funs_list f map ts =
@@ -868,7 +871,7 @@ let rec lift_aux post xs t =
           let f = Id.new_var ("f" ^ post) t.typ in
           let aux f ys t1 t2 =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
+            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
             let fv = List.sort compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
@@ -897,7 +900,7 @@ let rec lift_aux post xs t =
       | Let(Nonrecursive,bindings,t2) ->
           let aux (f,ys,t1) =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
+            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
             let fv = List.sort compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
@@ -913,7 +916,7 @@ let rec lift_aux post xs t =
       | Let(Recursive,bindings,t2) ->
           let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
           let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
-          let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
+          let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
           let fv = List.sort compare_id fv in
           let aux (f,_,_) =
             let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in
@@ -959,7 +962,7 @@ let rec lift_aux post xs t =
       | Match(t,pats) ->
           let defs,t' = lift_aux post xs t in
           let aux (pat,cond,t) (defs,pats) =
-            let xs' = get_vars_pat pat @@ xs in
+            let xs' = get_vars_pat pat @@@ xs in
             let defs',cond' = lift_aux post xs' t in
             let defs'',t' = lift_aux post xs' t in
               defs''@defs'@defs, (pat,cond',t')::pats
@@ -1634,9 +1637,9 @@ let normalize_binop_exp op t1 t2 =
         Const (Int n) -> [None, n]
       | Var x -> [Some {desc=Var x;typ=Id.typ x}, 1]
       | BinOp(Add, t1, t2) ->
-          decomp t1 @@ decomp t2
+          decomp t1 @@@ decomp t2
       | BinOp(Sub, t1, t2) ->
-          decomp t1 @@ neg (decomp t2)
+          decomp t1 @@@ neg (decomp t2)
       | BinOp(Mult, t1, t2) ->
           let xns1 = decomp t1 in
           let xns2 = decomp t2 in
@@ -1669,7 +1672,7 @@ let normalize_binop_exp op t1 t2 =
     in
       compare (aux x1) (aux x2)
   in
-  let xns = List.sort compare (xns1 @@ (neg xns2)) in
+  let xns = List.sort compare (xns1 @@@ (neg xns2)) in
   let rec aux = function
       [] -> []
     | (x,n)::xns ->
@@ -1782,7 +1785,7 @@ let rec get_and_list t =
     | Const False -> [{desc=Const False; typ=t.typ}]
     | Unknown -> [{desc=Unknown; typ=t.typ}]
     | Var x -> [{desc=Var x; typ=t.typ}]
-    | BinOp(And, t1, t2) -> get_and_list t1 @@ get_and_list t2
+    | BinOp(And, t1, t2) -> get_and_list t1 @@@ get_and_list t2
     | BinOp(op, t1, t2) -> [{desc=BinOp(op, t1, t2); typ=t.typ}]
     | Not t -> [{desc=Not t; typ=t.typ}]
     | Const Unit
@@ -1947,28 +1950,28 @@ let rec make_ext_env funs t =
     | Unknown -> []
     | RandInt _ -> []
     | Var x -> if List.mem x funs then [x, Id.typ x] else []
-    | App(t, ts) -> make_ext_env funs t @@ (rev_map_flatten (make_ext_env funs) ts)
-    | If(t1, t2, t3) -> make_ext_env funs t1 @@ make_ext_env funs t2 @@ make_ext_env funs t3
-    | Branch(t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | App(t, ts) -> make_ext_env funs t @@@ (rev_map_flatten (make_ext_env funs) ts)
+    | If(t1, t2, t3) -> make_ext_env funs t1 @@@ make_ext_env funs t2 @@@ make_ext_env funs t3
+    | Branch(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Let(flag, bindings, t2) ->
-        let aux fv (_,xs,t) = make_ext_env funs t @@ fv in
+        let aux fv (_,xs,t) = make_ext_env funs t @@@ fv in
           List.fold_left aux (make_ext_env funs t2) bindings
-    | BinOp(op, t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | BinOp(op, t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Not t -> make_ext_env funs t
     | Fun(x,t) -> make_ext_env funs t
     | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env funs t @@ acc) [] fields
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env funs t @@@ acc) [] fields
     | Proj(_,_,_,t) -> make_ext_env funs t
-    | SetField(_,_,_,_,t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | SetField(_,_,_,_,t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Nil -> []
-    | Cons(t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env funs t @@ acc) [] ts
+    | Cons(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env funs t @@@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = make_ext_env funs t @@ acc in
+        let aux acc (_,_,t) = make_ext_env funs t @@@ acc in
           List.fold_left aux (make_ext_env funs t) pats
-    | TryWith(t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | TryWith(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Bottom -> []
-    | Pair(t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | Pair(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Fst t -> make_ext_env funs t
     | Snd t -> make_ext_env funs t
     | Raise t -> make_ext_env funs t

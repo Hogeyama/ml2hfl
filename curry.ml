@@ -44,7 +44,7 @@ and uncurry_typ_arg rtyps typ =
         let map2,rtyp2 = uncurry_typ_arg rtyps2 typ in
         let map1' = List.map (fun (x,f) -> x, fun x' -> make_fst (f x')) map1 in
         let map2' = List.map (fun (x,f) -> x, fun x' -> make_snd (f x')) map1 in
-          map1'@@map2', RT.Pair(get_arg_var rtyp1, rtyp1, rtyp2)
+          map1'@@@map2', RT.Pair(get_arg_var rtyp1, rtyp1, rtyp2)
     | [RT.Base(base,x,p) as rtyp], _ -> [x, fun x' -> make_var x'], uncurry_typ rtyp typ
     | [rtyp], _ -> [], uncurry_typ rtyp typ
     | _ -> assert false

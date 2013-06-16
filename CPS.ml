@@ -254,7 +254,7 @@ let rec infer_effect env t =
     | Let(flag, bindings, t1) ->
         let make_env (f,_,_) = Id.to_string f, infer_effect_typ (Id.typ f) in
         let env_f = List.map make_env bindings in
-        let env' = env_f @@ env in
+        let env' = env_f @@@ env in
         let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
         let aux (f, xs, t1) =
           let f' = {id_cps=f; id_typ=List.assoc (Id.to_string f) env_f} in
@@ -914,17 +914,17 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
     | FunCPS(x, t1) ->
         assoc_typ_cps f t1
     | AppCPS(t1, t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | IfCPS(t1, t2, t3) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2 @@ assoc_typ_cps f t3
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2 @@@ assoc_typ_cps f t3
     | LetCPS(flag, bindings, t1) ->
         let aux (g,t) =
           let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
-            typs1 @@ assoc_typ_cps f t
+            typs1 @@@ assoc_typ_cps f t
         in
-          assoc_typ_cps f t1 @@ rev_flatten_map aux bindings
+          assoc_typ_cps f t1 @@@ rev_flatten_map aux bindings
     | BinOpCPS(op, t1, t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | NotCPS t1 ->
         assoc_typ_cps f t1
     | UnknownCPS -> []
@@ -934,11 +934,11 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
     | SndCPS t1 ->
         assoc_typ_cps f t1
     | PairCPS(t1,t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | RaiseCPS t1 ->
         assoc_typ_cps f t1
     | TryWithCPS(t1,t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
 
 let assoc_typ_cps f typed =
   match assoc_typ_cps f typed with

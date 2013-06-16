@@ -47,7 +47,7 @@ let make_spec n =
           let spec = make_file_spec () in
           let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
           let spec' = rev_flatten_map (fun i -> make_base_spec n i) (Array.to_list (Array.init (qm+1) (fun i -> i))) in
-            spec @@ spec'
+            spec @@@ spec'
   in
     List.sort compare spec
 
@@ -88,7 +88,7 @@ let make_bottom {env=env;defs=defs;main=main} =
   let bottoms = ref [] in
   let aux_def (f,xs,t1,e,t2) =
     let f_typ = List.assoc f env in
-    let env' = get_arg_env f_typ xs @@ env in
+    let env' = get_arg_env f_typ xs @@@ env in
     let make_bottom n =
       let x = "Bottom" ^ string_of_int n in
         bottoms := (x,n)::!bottoms;
@@ -138,7 +138,7 @@ let make_bottom {env=env;defs=defs;main=main} =
   in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (uniq !bottoms) in
-    {env=env; defs=bottom_defs@@defs'; main=main}
+    {env=env; defs=bottom_defs@@@defs'; main=main}
 
 
 let rec eta_expand_term env = function
@@ -158,7 +158,7 @@ let rec eta_expand_term env = function
 let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
-  let t2' = eta_expand_term (get_arg_env (List.assoc f env) xs @@ env) t2 in
+  let t2' = eta_expand_term (get_arg_env (List.assoc f env) xs @@@ env) t2 in
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
     f, xs@ys, t1, e, t2''
 
@@ -262,7 +262,7 @@ let beta_reduce_term flag ((f,_,_,_,_) as def) t =
 let beta_reduce_aux {env=env;defs=defs;main=main} =
   let rec aux defs1 = function
       [] -> defs1
-    | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@def::defs2) ->
+    | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@@def::defs2) ->
         let flag = ref false in
         let reduce_def (f',xs',t1',es',t2') = f', xs', t1', es', beta_reduce_term flag def t2' in
         let defs1' = List.map reduce_def defs1 in
