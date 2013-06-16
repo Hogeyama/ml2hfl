@@ -17,18 +17,18 @@ let conv_const c =
   | And -> Const.And
   | Or -> Const.Or
   | Not -> Const.Not
-  | Lt -> Const.Lt(SimType.Int)
-  | Gt -> Const.Gt(SimType.Int)
-  | Leq -> Const.Leq(SimType.Int)
-  | Geq -> Const.Geq(SimType.Int)
-  | EqUnit -> Const.Eq(SimType.Unit)
-  | EqBool -> Const.Eq(SimType.Bool)
-  | EqInt -> Const.Eq(SimType.Int)
+  | Lt -> Const.Lt(SimType.Base(BaseType.Int))
+  | Gt -> Const.Gt(SimType.Base(BaseType.Int))
+  | Leq -> Const.Leq(SimType.Base(BaseType.Int))
+  | Geq -> Const.Geq(SimType.Base(BaseType.Int))
+  | EqUnit -> Const.Eq(SimType.Base(BaseType.Unit))
+  | EqBool -> Const.Eq(SimType.Base(BaseType.Bool))
+  | EqInt -> Const.Eq(SimType.Base(BaseType.Int))
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
-  | Add -> Const.Add(SimType.Int)
-  | Sub -> Const.Sub(SimType.Int)
-  | Mul -> Const.Mul(SimType.Int)
+  | Add -> Const.Add(SimType.Base(BaseType.Int))
+  | Sub -> Const.Sub(SimType.Base(BaseType.Int))
+  | Mul -> Const.Mul(SimType.Base(BaseType.Int))
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -52,17 +52,17 @@ let inv_const c =
   | Const.And -> And
   | Const.Or -> Or
   | Const.Not -> Not
-  | Const.Lt(SimType.Int) -> Lt
-  | Const.Gt(SimType.Int) -> Gt
-  | Const.Leq(SimType.Int) -> Leq
-  | Const.Geq(SimType.Int) -> Geq
-  | Const.Eq(SimType.Bool) -> EqBool
-  | Const.Eq(SimType.Int) -> EqInt
+  | Const.Lt(SimType.Base(BaseType.Int)) -> Lt
+  | Const.Gt(SimType.Base(BaseType.Int)) -> Gt
+  | Const.Leq(SimType.Base(BaseType.Int)) -> Leq
+  | Const.Geq(SimType.Base(BaseType.Int)) -> Geq
+  | Const.Eq(SimType.Base(BaseType.Bool)) -> EqBool
+  | Const.Eq(SimType.Base(BaseType.Int)) -> EqInt
   | Const.Int(n) -> Int(n)
   | Const.RandInt -> RandInt
-  | Const.Add(SimType.Int) -> Add
-  | Const.Sub(SimType.Int) -> Sub
-  | Const.Mul(SimType.Int) -> Mul
+  | Const.Add(SimType.Base(BaseType.Int)) -> Add
+  | Const.Sub(SimType.Base(BaseType.Int)) -> Sub
+  | Const.Mul(SimType.Base(BaseType.Int)) -> Mul
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =
@@ -71,11 +71,11 @@ let rec inv_term t =
   | Term.Var(_, x) -> Var(Var.string_of x)
   | Term.App(_, Term.App(_, t1, t2), t3) ->
       (match t1 with
-        Term.Const(_, Const.Neq(SimType.Unit)) ->
+        Term.Const(_, Const.Neq(SimType.Base(BaseType.Unit))) ->
           App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.Neq(SimType.Bool)) ->
+      | Term.Const(_, Const.Neq(SimType.Base(BaseType.Bool))) ->
           App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
-      | Term.Const(_, Const.Neq(SimType.Int)) ->
+      | Term.Const(_, Const.Neq(SimType.Base(BaseType.Int))) ->
           App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
       | _ ->
           App(App(inv_term t1, inv_term t2), inv_term t3))
@@ -116,9 +116,9 @@ let inv_fdef fdef =
 
 let rec conv_typ ty =
   match ty with
-    TBase(TUnit, _) -> SimType.Unit
-  | TBase(TInt, _) -> SimType.Int
-  | TBase(TBool, _) -> SimType.Bool
+    TBase(TUnit, _) -> SimType.Base(BaseType.Unit)
+  | TBase(TInt, _) -> SimType.Base(BaseType.Int)
+  | TBase(TBool, _) -> SimType.Base(BaseType.Bool)
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
@@ -141,13 +141,13 @@ let verify fs (*cexs*) prog =
 
 let rec inv_abst_type aty =
   match aty with
-    AbsType.Base(AbsType.Unit, x, ts) ->
+    AbsType.Base(BaseType.Unit, x, ts) ->
       let x = Var.string_of x in
       TBase(TUnit, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
-  | AbsType.Base(AbsType.Bool, x, ts) ->
+  | AbsType.Base(BaseType.Bool, x, ts) ->
       let x = Var.string_of x in
       TBase(TBool, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
-  | AbsType.Base(AbsType.Int, x, ts) ->
+  | AbsType.Base(BaseType.Int, x, ts) ->
       let x = Var.string_of x in
       TBase(TInt, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(aty1, aty2) ->
@@ -501,13 +501,8 @@ let compute_strongest_post prog ce =
   let prog = conv_prog prog in
   let [etr] = CompTreeExpander.error_traces_of prog [ce] in
   let _, hcs = HcGenRefType.cgen (Prog.type_of prog) etr in
-<<<<<<< HEAD
-  let hcs = List.map (HornClauseUtil.simplify []) hcs in
-  if debug then Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
-=======
   let hcs = List.map (HornClause.simplify []) hcs in
   Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
->>>>>>> master
   let lbs = HcSolver.compute_lbs hcs in
   let env, spc =
     let is_fail pid =
@@ -553,18 +548,11 @@ let compute_strongest_post prog ce =
   let env = Util.List.map2 (fun (_, ty) x -> Var.make x, ty) env args in
   let env = List.filter (fun (x, _) -> not (Util.String.starts_with (Idnt.string_of (Var.base x)) "prev_set_flag")) env in
   let fvs_bool = Util.Set.diff (Formula.fvs_bool spc) (List.map fst env) in (* require that only free variable is <fail:??:0> or prev_set_flag_* *)
-  let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.Bool) env) in
-  let env = List.filter (fun (_, ty) -> ty <> SimType.Bool) env in
-  let env = List.filter (fun (_, ty) -> ty <> SimType.Unit) env in
-<<<<<<< HEAD
-  let spc = FormulaUtil.elim_unit spc in
-  let spc = FormulaUtil.eqelim_boolean (fvs_bool @ bvs_bool) spc in
-  if debug then Format.printf "strongest post condition:@,  %a@," Term.pr spc;
-  if debug then Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
-=======
+  let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.Base(BaseType.Bool)) env) in
+  let env = List.filter (fun (_, ty) -> ty <> SimType.Base(BaseType.Bool)) env in
+  let env = List.filter (fun (_, ty) -> ty <> SimType.Base(BaseType.Unit)) env in
   let spc = Formula.elim_unit spc in
   let spc = Formula.eqelim_boolean (fvs_bool @ bvs_bool) spc in
-  Format.printf "strongest post condition:@,  %a@," Term.pr spc;
-  Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
->>>>>>> master
+  if debug then Format.printf "strongest post condition:@,  %a@," Term.pr spc;
+  if debug then Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
   env, spc
