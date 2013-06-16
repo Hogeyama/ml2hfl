@@ -81,7 +81,7 @@ let rec termination_loop predicate_que holed =
       
       if !Flag.disjunctive then
 	(* make templates *)
-	let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
+	let linear_template = unwrap_template (PolyConstrSolver.gen_template arg_env) in
 	let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
 	if debug then Format.printf "Linear template:@.  %a@." Term.pr linear_template;
 
@@ -91,14 +91,14 @@ let rec termination_loop predicate_que holed =
 		       ; Formula.geq linear_template (IntTerm.make 0)]
 	in
 	let constraints = imply spc ranking_constraints in
-	let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
+	let coeff_constrs = PolyConstrSolver.gen_coeff_constrs constraints in
 	if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
 	
         (* solve constraints and obtain coefficients of a ranking function *)
 	let coefficients =
           try
-            NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
-          with NonLinConstr.Unknown ->
+            PolyConstrSolver.solve (Formula.band coeff_constrs)
+          with PolyConstrSolver.Unknown ->
 	    Format.printf "Failed to solve the constraints...@.@.";
             assert false(* failed to solve the constraints *)
 	in
@@ -117,7 +117,7 @@ let rec termination_loop predicate_que holed =
 	    ({BRA_types.coeffs = correspondence; BRA_types.constant = IntTerm.int_of const_part} :: predicate_info.BRA_types.coefficients)
 	    (spc :: predicate_info.BRA_types.error_paths)
 	in
-	if debug then Format.printf "\nInferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
+	if debug then Format.printf "\nInferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs coefficients;
 	let _ = Queue.push new_predicate_info predicate_que in
 	termination_loop predicate_que holed
       else
@@ -132,9 +132,9 @@ let rec termination_loop predicate_que holed =
 	let successes = BRA_util.concat_map (fun error_paths ->
 	  (* make templates *)
 	  (** R(x)とR(x_prev)を作成 → いまは1つだけだが、これをn個用意する必要がある。linear_templates = {R1(x) .. Rn(x)}, linear_templates = {R1(x_prev) .. Rn(x_prev)} **)
-	  let linear_templates = List.mapi (fun i _ -> unwrap_template (NonLinConstr.gen_template arg_env)) error_paths in
-	  let linear_templates_prev = List.mapi (fun i lt -> Term.subst (List.combine arg_vars prev_var_terms) lt) linear_templates in
-	  if debug then List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linear_templates;
+	  let linear_templates = Fpat.ExtList.List.mapi (fun i _ -> unwrap_template (PolyConstrSolver.gen_template arg_env)) error_paths in
+	  let linear_templates_prev = Fpat.ExtList.List.mapi (fun i lt -> Term.subst (List.combine arg_vars prev_var_terms) lt) linear_templates in
+	  if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linear_templates;
 	  (** 作るべき制約は、
 	      [φ1 ⇒ R1(x_prev)＞R1(x) ∧ R1(x)≧0]
 	      ∧ [φ2 ⇒ R1(x_prev)＝R1(x) ∧ R2(x_prev)＞R2(x) ∧ R2(x)≧0]
@@ -153,18 +153,18 @@ let rec termination_loop predicate_que holed =
 	    in
 	    subst_ith n (imply nth_error_path (Formula.band (go 0)))
 	  in
-	  let constraints = Formula.bor (List.mapi nth_constraints error_paths)in
-	  let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
+	  let constraints = Formula.bor (Fpat.ExtList.List.mapi nth_constraints error_paths)in
+	  let coeff_constrs = PolyConstrSolver.gen_coeff_constrs constraints in
 	  if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
-	  if debug then Format.printf "Constraints(Transformed by NonLinConstr.gen_coeff_constrs):@.  %a@." Term.pr_list coeff_constrs;
+	  if debug then Format.printf "Constraints(Transformed by PolyConstrSolver.gen_coeff_constrs):@.  %a@." Term.pr_list coeff_constrs;
 	  
 	  try
 	    (** 制約を解いて各テンプレートに代入。ここで手に入るのは全てのテンプレートに対する全ての引数の置換を含む代入である。 **)
-	    let coefficients = NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs) in
-	    if coefficients = [] then (Format.printf "@.Invalid ordered.@."; raise NonLinConstr.Unknown);
-	    if debug then Format.printf "@.Inferred coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
+	    let coefficients = PolyConstrSolver.solve (Formula.band coeff_constrs) in
+	    if coefficients = [] then (Format.printf "@.Invalid ordered.@."; raise PolyConstrSolver.Unknown);
+	    if debug then Format.printf "@.Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs coefficients;
 
-	    let coefficient_infos = List.mapi (fun i ith_lt ->
+	    let coefficient_infos = Fpat.ExtList.List.mapi (fun i ith_lt ->
 	      let ((correspondence_, const_part) as ranking_function) = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) ith_lt)
 	      in
 	      (** 引数の変数との対応関係を考え、linear ranking functionを係数情報に変換 **)
@@ -187,7 +187,7 @@ let rec termination_loop predicate_que holed =
 	    in
 	    Format.printf "@.Found ranking function: %a@." BRA_types.pr_ranking_function new_predicate_info;
 	    [new_predicate_info]
-	  with NonLinConstr.Unknown ->
+	  with PolyConstrSolver.Unknown ->
 	    Format.printf "Failed to solve the constraints...@.@.";
             [] (* failed to solve the constraints *)
 	) spc_sequences	
@@ -345,6 +345,17 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Use Yint interpolating prover";
+   (* polynomial constraint solver *)
+   "-bitvec",
+     Arg.Unit (fun _ ->
+       Fpat.Global.use_bit_vector := true;
+       Fpat.BvPolyConstrSolver.init ()),
+     " Use a polynomial constraint solver based on bit-vector modeling and SAT";
+   "-cad",
+     Arg.Unit (fun _ ->
+       Fpat.Global.use_bit_vector := false;
+       Fpat.CadPolyConstrSolver.init ()),
+     " Use a polynomial constraint solver based on CAD";
    (* termination mode *)
    "-termination-disj",
      Arg.Unit (fun _ ->
@@ -372,6 +383,10 @@ let () =
       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate;
       (* default Horn clause solver *)
       Fpat.HcSolver.ext_solve := Fpat.BwHcSolver.solve;
+      (* default Polynomial constraint solver *)
+      Fpat.PolyConstrSolver.ext_solve := Fpat.CadPolyConstrSolver.bv_cad_solve;
+      (*Fpat.BvPolyConstrSolver.init ();*)
+
       Arg.parse arg_spec set_file usage;
       Fpat.Global.print_log := !Flag.debug_level <> 0;
       Fpat.Global.cvc3 := !Flag.cvc3;
