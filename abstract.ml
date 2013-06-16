@@ -35,7 +35,7 @@ let rec abst_recdata_typ = function
   | TAbsBool -> assert false
   | TInt -> TInt
   | TRInt _ -> assert false
-  | TVar{contents=None} -> assert false
+  | TVar{contents=None} -> TUnit (* This case occurs only for the term of the form "let _ = (t:'a)"? *)
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
