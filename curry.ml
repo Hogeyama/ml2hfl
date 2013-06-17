@@ -54,7 +54,8 @@ let uncurry_rtyp t f rtyp =
   let rtyp' = uncurry_typ rtyp typ in
     if debug then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
       Id.print f RT.print rtyp pp_print_typ typ RT.print rtyp';
-  if Flag.print_ref_typ then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if Flag.print_ref_typ_debug
+  then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree

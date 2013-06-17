@@ -84,7 +84,8 @@ let print_refine_log = true
 let print_eval_abst = ref false
 let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
-let print_ref_typ = false
+let print_ref_typ = ref true
+let print_ref_typ_debug = false
 
 let web = ref false
 
@@ -104,6 +105,8 @@ let max_input_size = 65536
 let debug = true
 let debug_level = ref 1
 let only_result = ref false
+let exp = ref false
+
 
 
 (* pretty printer's option *)

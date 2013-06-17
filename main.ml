@@ -4,14 +4,28 @@ exception CannotDiscoverPredicate
 
 
 let print_info () =
-  Format.printf "cycles: %d\n" !Flag.cegar_loop;
-  Format.printf "total: %.3f sec\n" (Util.get_time());
-  Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
-  Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
-  Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
-  if false && Flag.debug then Format.printf "IP: %.3f sec\n" !Flag.time_interpolant;
-  Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
-  Format.pp_print_flush Format.std_formatter ()
+  if !Flag.exp
+  then
+    begin
+      Format.printf "{";
+      Format.printf "\"cycles\": %d, " !Flag.cegar_loop;
+      Format.printf "\"total\": %.3f, " (Util.get_time());
+      Format.printf "\"abst\": %.3f, " !Flag.time_abstraction;
+      Format.printf "\"mc\": %.3f, " !Flag.time_mc;
+      Format.printf "\"refine\": %.3f, " !Flag.time_cegar;
+      Format.printf "\"exparam\": %.3f" !Flag.time_parameter_inference;
+      Format.printf "}@."
+    end
+  else
+    begin
+      Format.printf "cycles: %d\n" !Flag.cegar_loop;
+      Format.printf "total: %.3f sec\n" (Util.get_time());
+      Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
+      Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
+      Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
+      Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
+      Format.pp_print_flush Format.std_formatter ()
+    end
 
 
 let print_env () =
@@ -147,7 +161,12 @@ let arg_spec =
                  Flag.print_progress := false),
      " Show only result";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
-   "-exp", Arg.Set Flag.exp, " For experiments";
+   "-exp", Arg.Unit (fun () ->
+                       Flag.only_result := true;
+                       Flag.debug_level := 0;
+                       Flag.print_progress := false;
+                       Flag.exp := true),
+     " For experiments";
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
@@ -290,7 +309,7 @@ let () =
       | Lexer.Error(err, loc) ->
           Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
       | LongInput -> Format.printf "Input is too long@."
-      | TimeOut -> Format.printf "@.Verification failed (time out)@."
+      | TimeOut -> Format.printf "Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."

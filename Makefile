@@ -189,13 +189,13 @@ clean-all: clean
 
 TEST = sum mult max mc91 ack a-cppr l-zipunzip l-zipmap hors e-simple e-fact r-lock r-file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e
 LIMIT = 120
-OPTION = -gchi -only-result
+OPTION = -gchi -only-result -limit $(LIMIT)
 
 test: opt
 	for i in $(TEST); \
 	do \
 	  echo $$i; \
-	  (ulimit -t $(LIMIT); ./$(NAME).opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  ./$(NAME).opt test_pepm/$$i.ml $(OPTION) 2> /dev/null; \
 	  echo; \
 	done
 

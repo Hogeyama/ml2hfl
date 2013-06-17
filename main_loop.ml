@@ -1,3 +1,5 @@
+open Util
+
 let init () =
   Syntax.typ_excep := Type.TConstr("exn",true)
 
@@ -79,6 +81,72 @@ let preprocess t spec =
 
 
 
+let report_safe env rmap get_rtyp orig t0 =
+  if Flag.print_ref_typ_debug
+  then
+    begin
+      Format.printf "Refinement types:@.";
+      List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f CEGAR_ref_type.print typ) env;
+      Format.printf "@."
+    end;
+  let env' =
+    let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
+      try
+        let f' = List.assoc f rmap in
+        [f', Ref_type.rename (get_rtyp f' rtyp)]
+      with
+        Not_found -> []
+      | _ -> Format.printf "unimplemented or bug@.@."; []
+    in
+    if !Flag.insert_param_funarg
+    then []
+    else
+      if !Flag.relative_complete then
+        let _ = Flag.web := true in
+        let res = Util.rev_map_flatten aux env in
+        let _ = Flag.web := false in
+        res
+      else
+        Util.rev_map_flatten aux env
+  in
+  if !Flag.write_annot
+  then
+    env' |> List.map (fun (id, typ) -> Id.name id, typ)
+         |> WriteAnnot.f !Flag.filename orig;
+  Format.printf "Safe!@.@.";
+  if !Flag.relative_complete then begin
+    let map =
+      List.map
+        (fun (x, n) ->
+          Id.make (-1) (Fpat.Var.string_of x) Type.TInt,
+          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
+        !Fpat.ParamSubstInfer.ext_coeffs
+    in
+    let t = Syntax.subst_map map t0 in
+    Format.printf "Program with Quantifiers Added:@.";
+    Flag.web := true;
+    Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
+    Flag.web := false
+  end;
+  if env' <> [] then Format.printf "Refinement Types:@.";
+  let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
+  let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
+  List.iter pr env';
+  if env' <> [] then Format.printf "@."
+
+
+let report_unsafe main_fun arg_num ce set_target =
+  Format.printf "Unsafe!@.@.";
+  if main_fun <> "" && arg_num <> 0
+  then
+    Format.printf "Input for %s:@.  %a@." main_fun
+      (Util.print_list Format.pp_print_int "; " false) (Util.take ce arg_num);
+  Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
+
+
+
+
+
 let rec run orig parsed =
   let () = init () in
   let t = parsed in
@@ -124,74 +192,13 @@ let rec run orig parsed =
       | Flag.CEGAR_DependentType ->
           try
             match CEGAR.cegar prog info with
-                prog', CEGAR.Safe env ->
-                  if Flag.print_ref_typ
-                  then
-                    begin
-                      Format.printf "Refinement types:@.";
-                      List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f CEGAR_ref_type.print typ) env;
-                      Format.printf "@."
-                    end;
-                  let env' =
-                    let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
-                      try
-                        let f' = List.assoc f rmap in
-                          [f', Ref_type.rename (get_rtyp f' rtyp)]
-                      with
-                          Not_found -> []
-                        | _ -> Format.printf "unimplemented or bug@.@."; []
-                    in
-                    if !Flag.insert_param_funarg
-                    then []
-                    else
-                      if !Flag.relative_complete then
-                        let _ = Flag.web := true in
-                        let res = Util.rev_map_flatten aux env in
-                        let _ = Flag.web := false in
-                        res
-                      else
-                        Util.rev_map_flatten aux env
-                  in
-                  let () =
-                    if !Flag.write_annot
-                    then
-                      let env'' = List.map (fun (id, typ) -> Id.name id, typ) env' in
-                        WriteAnnot.f !Flag.filename orig env''
-                  in
-                  Format.printf "Safe!@.@.";
-                  let () =
-                    if !Flag.relative_complete then begin
-                      let map =
-                        List.map
-                          (fun (x, n) ->
-                            Id.make (-1) (Fpat.Var.string_of x) Type.TInt,
-                            CEGAR_util.trans_inv_term
-                              (FpatInterface.inv_term
-                                (Fpat.IntTerm.make n)))
-                          !Fpat.ParamSubstInfer.ext_coeffs
-                      in
-                      let t = Syntax.subst_map map t0 in
-                      Format.printf "Program with Quantifiers Added:@.";
-                      Flag.web := true;
-                      Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
-                      Flag.web := false
-                    end
-                  in
-                  if env' <> [] then Format.printf "Refinement Types:@.";
-                  let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
-                  let pr (f,typ) =
-                    Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ
-                  in
-                  List.iter pr env';
-                  if env' <> [] then Format.printf "@.";
-                  true
-              | _, CEGAR.Unsafe ce ->
-                Format.printf "Unsafe!@.@.";
-                if main_fun <> "" && arg_num <> 0
-                then
-                  Format.printf "Input for %s:@.  %a@." main_fun
-                    (Util.print_list Format.pp_print_int "; " false) (Util.take ce arg_num);
-                Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target);
+              _, CEGAR.Safe env ->
+                if not !Flag.exp
+                then report_safe env rmap get_rtyp orig t0;
+                true
+            | _, CEGAR.Unsafe ce ->
+                if not !Flag.exp
+                then report_unsafe main_fun arg_num ce set_target;
                 false
           with
               Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->

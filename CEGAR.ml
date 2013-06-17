@@ -46,7 +46,7 @@ let rec cegar1 prog0 ces info =
   let result = ModelCheck.check abst prog in
     match result with
         ModelCheck.Safe env ->
-          if Flag.print_ref_typ
+          if Flag.print_ref_typ_debug
           then
             begin
               Format.printf "Intersection types:@.";

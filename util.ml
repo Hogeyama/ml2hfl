@@ -1,6 +1,7 @@
 exception Fatal of string
 
 let (|>) x f = f x
+let (@@) f x = f x
 
 let table_create n = Hashtbl.create n;;
 let table_find tab x = Hashtbl.find tab x
