@@ -424,7 +424,6 @@ and rename_tvar map t =
 
 
 let rec get_tvars typ =
-  let (@@@) xs ys = List.fold_left (fun xs y -> if List.memq y xs then xs else y::xs) xs ys in
     match typ with
         TUnit -> []
       | TBool -> []
@@ -438,6 +437,10 @@ let rec get_tvars typ =
       | TPair(x,typ) -> get_tvars (Id.typ x) @@@ get_tvars typ
       | TConstr(s,b) -> []
       | TPred(x,_) -> get_tvars (Id.typ x)
+
+let get_tvars typ =
+  let xs = get_tvars typ in
+  List.fold_left (fun xs x -> if List.memq x xs then xs else x::xs) [] xs
 
 
 let rec rename_poly_funs_list f map ts =
@@ -1445,9 +1448,9 @@ let normalize_binop_exp op t1 t2 =
         Const (Int n) -> [None, n]
       | Var x -> [Some {desc=Var x;typ=Id.typ x}, 1]
       | BinOp(Add, t1, t2) ->
-          decomp t1 @@ decomp t2
+          decomp t1 @@@ decomp t2
       | BinOp(Sub, t1, t2) ->
-          decomp t1 @@ neg (decomp t2)
+          decomp t1 @@@ neg (decomp t2)
       | BinOp(Mult, t1, t2) ->
           let xns1 = decomp t1 in
           let xns2 = decomp t2 in
@@ -1480,7 +1483,7 @@ let normalize_binop_exp op t1 t2 =
     in
       compare (aux x1) (aux x2)
   in
-  let xns = List.sort compare (xns1 @@ (neg xns2)) in
+  let xns = List.sort compare (xns1 @@@ (neg xns2)) in
   let rec aux = function
       [] -> []
     | (x,n)::xns ->
@@ -1592,7 +1595,7 @@ let rec get_and_list t =
     | Const False -> [{desc=Const False; typ=t.typ}]
     | Unknown -> [{desc=Unknown; typ=t.typ}]
     | Var x -> [{desc=Var x; typ=t.typ}]
-    | BinOp(And, t1, t2) -> get_and_list t1 @@ get_and_list t2
+    | BinOp(And, t1, t2) -> get_and_list t1 @@@ get_and_list t2
     | BinOp(op, t1, t2) -> [{desc=BinOp(op, t1, t2); typ=t.typ}]
     | Not t -> [{desc=Not t; typ=t.typ}]
     | Const _
@@ -1756,28 +1759,28 @@ let rec make_ext_env funs t =
     | RandInt _ -> []
     | RandValue _ -> []
     | Var x -> if List.mem x funs then [x, Id.typ x] else []
-    | App(t, ts) -> make_ext_env funs t @@ (rev_map_flatten (make_ext_env funs) ts)
-    | If(t1, t2, t3) -> make_ext_env funs t1 @@ make_ext_env funs t2 @@ make_ext_env funs t3
-    | Branch(t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | App(t, ts) -> make_ext_env funs t @@@ (rev_map_flatten (make_ext_env funs) ts)
+    | If(t1, t2, t3) -> make_ext_env funs t1 @@@ make_ext_env funs t2 @@@ make_ext_env funs t3
+    | Branch(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Let(flag, bindings, t2) ->
-        let aux fv (_,xs,t) = make_ext_env funs t @@ fv in
+        let aux fv (_,xs,t) = make_ext_env funs t @@@ fv in
           List.fold_left aux (make_ext_env funs t2) bindings
-    | BinOp(op, t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | BinOp(op, t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Not t -> make_ext_env funs t
     | Fun(x,t) -> make_ext_env funs t
     | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env funs t @@ acc) [] fields
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env funs t @@@ acc) [] fields
     | Proj(_,_,_,t) -> make_ext_env funs t
-    | SetField(_,_,_,_,t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | SetField(_,_,_,_,t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Nil -> []
-    | Cons(t1, t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env funs t @@ acc) [] ts
+    | Cons(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env funs t @@@ acc) [] ts
     | Match(t,pats) ->
-        let aux acc (_,_,t) = make_ext_env funs t @@ acc in
+        let aux acc (_,_,t) = make_ext_env funs t @@@ acc in
           List.fold_left aux (make_ext_env funs t) pats
-    | TryWith(t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | TryWith(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Bottom -> []
-    | Pair(t1,t2) -> make_ext_env funs t1 @@ make_ext_env funs t2
+    | Pair(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
     | Fst t -> make_ext_env funs t
     | Snd t -> make_ext_env funs t
     | Raise t -> make_ext_env funs t

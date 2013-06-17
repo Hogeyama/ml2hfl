@@ -46,7 +46,7 @@ endif
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = lift.mli CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
+MLI = lift.mli CPS.mli curry.mli abstract.mli feasibility.mli refine.mli syntax.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
 	spec_parser.mli trecs_parser.mli BRA_transform.mli CEGAR_lift.mli id.mli
 CMI = $(MLI:.mli=.cmi)
@@ -57,7 +57,7 @@ CMO = $(OCAML_CMO) \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	ref_type.cmo type_check.cmo trans.cmo lift.cmo CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo \
 	useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
-	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
+	CPS.cmo curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
         trecs_parser.cmo trecs_lexer.cmo \
@@ -194,9 +194,9 @@ OPTION = -gchi -only-result
 test: opt
 	for i in $(TEST); \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./$(NAME).opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
 	done
 
 test-error: opt
@@ -206,6 +206,18 @@ test-error: opt
 	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null); \
 	echo; \
 	done
+
+TEST_WEB = 56 50 42 41 27 28 29 30 31 48 32 49 33 34 35 36 58 37 38 47 57 51 52 53 54 26 46 39 1 2 3 4 5 6 7 8 9 10 55 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+test-web: opt
+	for i in $(TEST_WEB); \
+	do \
+	  echo $$i; \
+	  (ulimit -t 3; ulimit -v 1000000; ./$(NAME).opt -margin 80 test_web/$$i.ml -only-result) || \
+	  (ulimit -t 30; ulimit -v 1000000; ./$(NAME).opt -gchi -margin 80 test_web/$$i.ml -only-result) || \
+	  echo ERROR or TIMEOUT; \
+	  echo; \
+	done
+
 
 
 ################################################################################

@@ -294,6 +294,8 @@ let () =
           Format.printf "Verification failed:@.";
           Format.printf "   MoCHi could not refute an infeasible error path @.";
           Format.printf "   due to the incompleteness of the refinement type system@."
+      | Fpat.InterpProver.Fail ->
+          Format.printf "Fail: interpolation@."
       | Util.Fatal s ->
           Format.printf "Fatal error: %s@." s
       | Util.Unsupported s ->

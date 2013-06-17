@@ -46,7 +46,7 @@ let preprocess t spec =
         then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
-      let t',get_rtyp_remove_pair = CPS.remove_pair t in
+      let t',get_rtyp_remove_pair = Curry.remove_pair t in
       let () =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in

@@ -208,7 +208,7 @@ let rec uniq_aux ?(cmp=compare) acc = function
 let uniq ?(cmp=compare) xs = uniq_aux ~cmp [] (List.sort cmp xs)
 let uniq_sorted ?(cmp=compare) xs = uniq_aux ~cmp [] xs
 
-let (@@) = List.rev_append
+let (@@@) = List.rev_append
 
 
 let diff l1 l2 = List.filter (fun x -> not(List.mem x l2)) l1
@@ -264,7 +264,7 @@ let rec fold_left2_neq f acc xs ys =
 
 
 
-let rev_map_flatten f xs = List.fold_left (fun acc x -> f x @@ acc) [] xs
+let rev_map_flatten f xs = List.fold_left (fun acc x -> f x @@@ acc) [] xs
 let rev_flatten_map = rev_map_flatten
 let flatten_map f xs = List.rev (rev_map_flatten f xs)
 

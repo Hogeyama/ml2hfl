@@ -35,7 +35,7 @@ let rec abst_recdata_typ = function
   | TAbsBool -> assert false
   | TInt -> TInt
   | TRInt _ -> assert false
-  | TVar{contents=None} -> assert false
+  | TVar{contents=None} -> TUnit (* This case occurs only for the term of the form "let _ = (t:'a)"? *)
   | TVar{contents=Some typ} -> abst_recdata_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (abst_recdata_typ (Id.typ x)), abst_recdata_typ typ)
   | TList typ -> TList (abst_recdata_typ typ)
@@ -340,7 +340,7 @@ and get_match_bind_cond t p =
             [] -> bind, cond
           | p::ps ->
               let bind',cond' = get_match_bind_cond (make_app (make_snd t) [make_int i]) p in
-                aux (bind'@@bind) (make_and cond cond') (i+1) ps
+                aux (bind'@@@bind) (make_and cond cond') (i+1) ps
         in
         let len = List.length ps in
         let bind, cond = get_match_bind_cond (make_tl len t) p' in
@@ -350,7 +350,7 @@ and get_match_bind_cond t p =
     | PPair(p1,p2) ->
         let bind1,cond1 = get_match_bind_cond (make_fst t) p1 in
         let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
-          bind1@@bind2, make_and cond1 cond2
+          bind1@@@bind2, make_and cond1 cond2
 
 and make_cons post t1 t2 =
   let i = Id.new_var "i" TInt in
