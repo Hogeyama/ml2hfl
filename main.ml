@@ -147,6 +147,8 @@ let arg_spec =
                  Flag.print_progress := false),
      " Show only result";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
+   "-exp", Arg.Set Flag.exp, " For experiments";
+   "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
@@ -270,7 +272,7 @@ let () =
         Fpat.AtpInterface.init ();
         Fpat.Cvc3Interface.open_cvc3 ();
         Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
-        ignore (Unix.alarm Flag.time_limit);
+        ignore (Unix.alarm !Flag.time_limit);
         if not !Flag.only_result then print_env ();
         if main cin then decr Flag.cegar_loop;
         Fpat.Cvc3Interface.close_cvc3 ();
