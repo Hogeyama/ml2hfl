@@ -140,7 +140,7 @@ let report_unsafe main_fun arg_num ce set_target =
   if main_fun <> "" && arg_num <> 0
   then
     Format.printf "Input for %s:@.  %a@." main_fun
-      (Util.print_list Format.pp_print_int "; " false) (Util.take ce arg_num);
+      (Util.print_list Format.pp_print_int "; ") (Util.take ce arg_num);
   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
 
 

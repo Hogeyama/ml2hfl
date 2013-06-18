@@ -101,7 +101,7 @@ and print_t_cps fm = function
           !head print_id f.id_cps print_typ_cps f.id_typ print_typed_term t;
         head := "and"
       in
-        Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "" false) bindings print_typed_term t
+        Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "") bindings print_typed_term t
   | BinOpCPS(op, t1, t2) ->
       let op =
         match op with

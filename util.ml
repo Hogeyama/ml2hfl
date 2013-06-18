@@ -386,15 +386,20 @@ let apply_opt f = function
 let rec print_list_aux print punc last fm xs =
   match xs with
       [] -> ()
-    | [x] when last -> Format.fprintf fm ("%a"^^punc) print x
+    | [x] when last ->
+        Format.fprintf fm "%a" print x;
+        Format.fprintf fm punc
     | [x] -> print fm x
     | x::xs ->
         Format.fprintf fm "%a" print x;
         Format.fprintf fm punc;
         Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
-let print_list print punc last fm xs =
+let print_list print ?(first=false) ?(last=false) punc fm xs =
   let punc' = format_of_string punc in
-    Format.fprintf fm "@[%a@]" (print_list_aux print punc' last) xs
+    Format.fprintf fm "@[";
+    if first then Format.fprintf fm punc';
+    Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
+    Format.fprintf fm "@]"
 
 
 let get_opt_val = function

@@ -50,7 +50,7 @@ let print_env () =
   if commit <> "" then Format.printf "  Build: %s@." commit;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  Format.printf "  Command: %a@." (print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
+  Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") (Array.to_list Sys.argv);
   Format.printf "@."; ()
 
 
@@ -89,15 +89,7 @@ let main in_channel =
     let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
     List.for_all (Main_loop.run orig) (List.rev ts);
   else if !Flag.termination then
-    let open BRA_util in
-    let parsed = BRA_transform.regularization parsed in
-    let functions = BRA_transform.extract_functions parsed in
-    let holed_list = BRA_transform.to_holed_programs parsed functions in
-    List.for_all (fun holed ->
-      let init_predicate_info = { BRA_types.variables = []; BRA_types.prev_variables = []; BRA_types.coefficients = []} in
-      let predicate_que = Queue.create () in
-      let _ = Queue.add init_predicate_info predicate_que in
-      termination_loop predicate_que holed) holed_list
+    unsupported "termination"
   else
     Main_loop.run orig parsed
 

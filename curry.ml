@@ -36,7 +36,7 @@ and get_arg_var = function
 
 and uncurry_typ_arg rtyps typ =
   if debug then Format.printf "rtyps:%a@.typ:%a@.@."
-    (print_list RT.print ";" true) rtyps pp_print_typ typ;
+    (print_list RT.print ";" ~last:true) rtyps pp_print_typ typ;
   match rtyps, elim_tpred typ with
       _, TPair(x,typ) ->
         let rtyps1,rtyps2 = take2 rtyps (element_num (Id.typ x)) in

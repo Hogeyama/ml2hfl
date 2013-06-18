@@ -22,7 +22,7 @@ let rec print_typ fm = function
   | TVar{contents=Some typ} -> print_typ fm typ
   | TVar{contents=None} -> Format.fprintf fm "?"
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
-  | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * " false) typs
+  | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * ") typs
 
 let new_tvar () = TVar (ref None)
 

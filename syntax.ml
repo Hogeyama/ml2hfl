@@ -286,7 +286,7 @@ and print_term pri typ fm t =
       Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term p typ) t1;
       b := false
     in
-    let print_bindings = print_list print_binding "" false in
+    let print_bindings bs = print_list print_binding "" bs in
     begin
       match t2.desc with
         Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
@@ -333,7 +333,7 @@ and print_term pri typ fm t =
     let s1,s2 = paren pri p in
     if ts = []
     then pp_print_string fm s
-    else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (print_term 20 typ) "," false) ts s2
+    else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (print_term 20 typ) ",") ts s2
   | Match(t,pats) ->
     let p = 10 in
     let s1,s2 = paren pri p in
