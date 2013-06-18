@@ -1,6 +1,6 @@
 include Makefile.config
 
-.PHONY: main all byte opt dist clean doc test
+.PHONY: main all byte opt clean doc test
 
 PACKAGES = fpat,str,unix,csisat
 
@@ -156,6 +156,8 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 # distribution
 
 ifdef GIT
+.PHONY: dist
+
 dist:
 	$(GIT) archive HEAD -o dist.tar.gz
 endif
