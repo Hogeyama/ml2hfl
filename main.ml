@@ -59,59 +59,7 @@ let threshold = ref 5
 
 exception FailedToFindLLRF
 
-let rec termination_loop predicate_que holed =
-  let _ =
-    begin
-      threshold := !threshold - 1;
-      if !threshold < 0 then (raise FailedToFindLLRF)
-    end
-  in
-  if Queue.is_empty predicate_que then (raise FailedToFindLLRF)
-  else
-    let predicate_info = Queue.pop predicate_que in
-    let predicate = BRA_transform.construct_LLRF predicate_info in
-    let transformed = BRA_transform.pluging holed predicate in
-    let orig, transformed = BRA_transform.retyping transformed in
-    try
-      Main_loop.run orig transformed
-    with Refine.PostCondition (_, spc) ->
-      let open Fpat in
-      let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
-      let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in
-
-      let arg_vars =
-	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
-	  (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified) in
-      let arg_var_terms = List.map Term.make_var arg_vars in
-      let prev_vars =
-	List.map (fun v -> Var.of_string (Id.name (BRA_transform.extract_id v)))
-	  (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified) in
-      let prev_var_terms = List.map Term.make_var prev_vars in
-      let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
-      let prev_env = List.map (fun a -> (a, SimType.int_type)) prev_vars in
-
-      let linear_template = unwrap_template (NonLinConstr.gen_template arg_env) in
-      let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
-
-      let ranking_constraints =
-	Formula.band [ Formula.gt linear_template_prev linear_template
-		     ; Formula.geq linear_template (IntTerm.make 0)]
-      in
-      let constraints = imply spc ranking_constraints in
-               (************ BUG!: obtain no coeffs ************)
-      let coeff_constrs = NonLinConstr.gen_coeff_constrs constraints in
-      let coefficients =
-        try
-          NonLinConstr.solve_constrs [] [] (Formula.band coeff_constrs)
-        with NonLinConstr.Unknown ->
-          assert false(* failed to solve the constraints *)
-      in
-      Format.printf "Linear template:@.  %a@." Term.pr linear_template;
-      Format.printf "LLRF constraint:@.  %a@." Term.pr constraints;
-      Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
-      Format.printf "Infered coefficients:@.  %a@." NonLinConstr.pr_coeffs coefficients;
-      Format.printf "Unsafe!@.@.";
-      false
+let rec termination_loop _ = unsupported "termination"
 
 let main in_channel =
   let input_string =
@@ -307,7 +255,13 @@ let () =
         Fpat.Cvc3Interface.close_cvc3 ();
         print_info ()
     with
-        Syntaxerr.Error err ->
+        Fpat.AbsTypeInfer.FailedToRefineTypes ->
+          Format.printf "Verification failed:@.";
+          Format.printf "  MoCHi could not refute an infeasible error path @.";
+          Format.printf "  due to the incompleteness of the refinement type system@."
+      | e when FpatInterface.is_fpat_exception e ->
+          Format.printf "FPAT: %a@." report_error e
+      | Syntaxerr.Error err ->
           Format.printf "%a@." Syntaxerr.report_error err
       | Typecore.Error(loc,err) ->
           Format.printf "%a%a@." Location.print_error loc Typecore.report_error err
@@ -326,11 +280,5 @@ let () =
           Format.printf "}@."
       | TimeOut -> Format.printf "Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
-      | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-          Format.printf "Verification failed:@.";
-          Format.printf "  MoCHi could not refute an infeasible error path @.";
-          Format.printf "  due to the incompleteness of the refinement type system@."
-      | Fpat.InterpProver.Fail ->
-          Format.printf "Fail: interpolation@."
       | Fatal s ->
           Format.printf "Fatal error: %s@." s

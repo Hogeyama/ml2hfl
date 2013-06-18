@@ -555,3 +555,31 @@ let compute_strongest_post prog ce =
   Format.printf "strongest post condition:@,  %a@," Term.pr spc;
   Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
   env, spc
+
+
+let report_error ppf = function
+    AbsTypeInfer.FailedToRefineTypes ->
+      Format.fprintf ppf "Failure of abstraction type refinement"
+  | ExtFormula.Formula.Unknown ->
+      Format.fprintf ppf "Failure of SMT prover"
+  | InterpProver.Fail ->
+      Format.fprintf ppf "Failure of interpolating prover (integer domain not fully supported)"
+  | InterpProver.Unknown ->
+      Format.fprintf ppf "Failure of interpolating prover"
+  | ParamSubstInfer.FailedToRefineExtraParameters ->
+      Format.fprintf ppf  "Failure of parameter substitution refinement"
+  | PolyConstrSolver.Unknown ->
+      Format.fprintf ppf "Failure of polynomial constraint solver"
+  | Util.NotImplemented msg ->
+      Format.fprintf ppf "Not implemented: %s" msg
+  | _ -> raise Not_found
+
+let is_fpat_exception = function
+    AbsTypeInfer.FailedToRefineTypes
+  | ExtFormula.Formula.Unknown
+  | InterpProver.Fail
+  | InterpProver.Unknown
+  | ParamSubstInfer.FailedToRefineExtraParameters
+  | PolyConstrSolver.Unknown
+  | Util.NotImplemented _ -> true
+  | _ -> false

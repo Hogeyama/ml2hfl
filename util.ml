@@ -1,4 +1,7 @@
 exception Fatal of string
+exception Unsupported of string
+
+let unsupported s = raise (Unsupported s)
 
 let (|>) x f = f x
 let (@@) f x = f x
