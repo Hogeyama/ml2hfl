@@ -1,6 +1,6 @@
 include Makefile.config
 
-.PHONY: main all byte opt clean doc test
+.PHONY: main all byte opt dist clean doc test
 
 PACKAGES = fpat,str,unix,csisat
 
