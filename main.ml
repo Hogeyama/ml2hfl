@@ -8,6 +8,8 @@ let print_info () =
   then
     begin
       Format.printf "{";
+      Format.printf "\"filename\": \"%s\", " !Flag.filename;
+      Format.printf "\"result\": \"%s\", " !Flag.result;
       Format.printf "\"cycles\": %d, " !Flag.cegar_loop;
       Format.printf "\"total\": %.3f, " (Util.get_time());
       Format.printf "\"abst\": %.3f, " !Flag.time_abstraction;
@@ -309,10 +311,17 @@ let () =
       | Lexer.Error(err, loc) ->
           Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
       | LongInput -> Format.printf "Input is too long@."
+      | TimeOut when !Flag.exp ->
+          Format.printf "{";
+          Format.printf "\"filename\": \"%s\", " !Flag.filename;
+          Format.printf "\"result\": \"Timeout\"";
+          Format.printf "}@."
       | TimeOut -> Format.printf "Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-          Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."
+          Format.printf "Verification failed:@.";
+          Format.printf "  MoCHi could not refute an infeasible error path @.";
+          Format.printf "  due to the incompleteness of the refinement type system@."
       | Fpat.InterpProver.Fail ->
           Format.printf "Fail: interpolation@."
       | Util.Fatal s ->

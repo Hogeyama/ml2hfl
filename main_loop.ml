@@ -193,10 +193,12 @@ let rec run orig parsed =
           try
             match CEGAR.cegar prog info with
               _, CEGAR.Safe env ->
+                Flag.result := "Safe";
                 if not !Flag.exp
                 then report_safe env rmap get_rtyp orig t0;
                 true
             | _, CEGAR.Unsafe ce ->
+                Flag.result := "Unsafe";
                 if not !Flag.exp
                 then report_unsafe main_fun arg_num ce set_target;
                 false
