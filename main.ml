@@ -260,7 +260,7 @@ let () =
           Format.printf "  MoCHi could not refute an infeasible error path @.";
           Format.printf "  due to the incompleteness of the refinement type system@."
       | e when FpatInterface.is_fpat_exception e ->
-          Format.printf "FPAT: %a@." report_error e
+          Format.printf "FPAT: %a@." FpatInterface.report_error e
       | Syntaxerr.Error err ->
           Format.printf "%a@." Syntaxerr.report_error err
       | Typecore.Error(loc,err) ->

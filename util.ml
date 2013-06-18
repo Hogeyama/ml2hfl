@@ -1,6 +1,7 @@
 exception Fatal of string
 exception Unsupported of string
 
+let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
 
 let (|>) x f = f x
