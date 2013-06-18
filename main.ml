@@ -1,3 +1,5 @@
+open Util
+
 exception TimeOut
 exception LongInput
 exception CannotDiscoverPredicate
@@ -11,7 +13,7 @@ let print_info () =
       Format.printf "\"filename\": \"%s\", " !Flag.filename;
       Format.printf "\"result\": \"%s\", " !Flag.result;
       Format.printf "\"cycles\": %d, " !Flag.cegar_loop;
-      Format.printf "\"total\": %.3f, " (Util.get_time());
+      Format.printf "\"total\": %.3f, " (get_time());
       Format.printf "\"abst\": %.3f, " !Flag.time_abstraction;
       Format.printf "\"mc\": %.3f, " !Flag.time_mc;
       Format.printf "\"refine\": %.3f, " !Flag.time_cegar;
@@ -21,7 +23,7 @@ let print_info () =
   else
     begin
       Format.printf "cycles: %d\n" !Flag.cegar_loop;
-      Format.printf "total: %.3f sec\n" (Util.get_time());
+      Format.printf "total: %.3f sec\n" (get_time());
       Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
       Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
       Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
@@ -30,21 +32,25 @@ let print_info () =
     end
 
 
+let get_commit_hash () =
+  try
+    let cin = open_in "COMMIT" in
+    let s = input_line cin in
+    close_in cin;
+    s
+  with Sys_error _ | End_of_file -> ""
+
+let print_commit_hash () =
+  Format.printf "%s@." @@ get_commit_hash ()
+
 let print_env () =
-  let commit =
-    try
-      let cin = open_in "COMMIT" in
-      let s = input_line cin in
-      close_in cin;
-      s
-    with Sys_error _ | End_of_file -> ""
-  in
+  let commit = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   Format.printf "MoCHi: Model Checker for Higher-Order Programs@.";
   if commit <> "" then Format.printf "  Build: %s@." commit;
-  if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
+  if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
+  Format.printf "  Command: %a@." (print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
   Format.printf "@."; ()
 
 
@@ -110,7 +116,7 @@ let rec termination_loop predicate_que holed =
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
-    let n = Util.my_input in_channel s 0 Flag.max_input_size in
+    let n = my_input in_channel s 0 Flag.max_input_size in
       if n = Flag.max_input_size then raise LongInput;
       String.sub s 0 n
   in
@@ -169,6 +175,8 @@ let arg_spec =
                        Flag.print_progress := false;
                        Flag.exp := true),
      " For experiments";
+   "-v", Arg.Unit (fun () -> print_commit_hash (); exit 0), " Print the version shortly";
+   "-version", Arg.Unit (fun () -> print_env (); exit 0), " Print the version";
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
@@ -324,5 +332,5 @@ let () =
           Format.printf "  due to the incompleteness of the refinement type system@."
       | Fpat.InterpProver.Fail ->
           Format.printf "Fail: interpolation@."
-      | Util.Fatal s ->
+      | Fatal s ->
           Format.printf "Fatal error: %s@." s
