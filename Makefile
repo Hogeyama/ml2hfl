@@ -38,7 +38,11 @@ main: COMMIT
 COMMIT: depend .git/index
 	rm -f COMMIT
 	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
-	$(GIT) rev-parse HEAD >> COMMIT
+	echo -n `$(GIT) rev-parse --short HEAD` >> COMMIT
+	echo -n ' (' >> COMMIT
+	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
+	git log --date=iso --pretty=format:"%ad" -1 >> COMMIT
+	echo ')' >> COMMIT
 endif
 
 
