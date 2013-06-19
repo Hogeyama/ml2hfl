@@ -43,7 +43,7 @@ let get_latest n =
   else last exps
 
 let mochi_env () =
-  let cmd = Format.sprintf "%s -version" Env.mochi in
+  let cmd = Format.sprintf "%s -version" @@ Env.mochi () in
   let cin = Unix.open_process_in cmd in
   let s_rev = ref [] in
   let rec read () : unit =
@@ -81,7 +81,7 @@ let run_mochi n programs =
   let filename = commit_filename_json n in
   let wiki_filename = Env.wiki_dir ^ filename in
   let option = Options.assoc n in
-  Format.printf "Run: %s %s <program>@." Env.mochi option;
+  Format.printf "Run: %s %s <program>@." (Env.mochi()) option;
   Format.printf "Output to: %s@." wiki_filename;
   assert (command ("echo -n > " ^ wiki_filename) = 0);
   let rec iter programs =
@@ -90,7 +90,7 @@ let run_mochi n programs =
     | p::programs' ->
         let exp_num () = List.length @@ read_list_from_file filename in
         let n = exp_num () in
-        let cmd = Format.sprintf "%s %s %s | tee -a %s" Env.mochi option p wiki_filename in
+        let cmd = Format.sprintf "%s %s %s | tee -a %s" (Env.mochi()) option p wiki_filename in
         assert (command cmd = 0);
         if n+1 <> exp_num ()
         then (Format.printf "Rerun@."; iter programs)
@@ -117,7 +117,7 @@ let make_commit_table n assocs =
   let table = Table(head',pos,body) in
   let env = mochi_env () in
   let option = Options.assoc n in
-  let env' = Format.sprintf "Option:%s %s" Env.default_option option :: env in
+  let env' = Format.sprintf "Option:%s %s" (Env.default_option()) option :: env in
   let env'' = UnorderedList (List.map (fun s -> [Text s]) env') in
   [env''; table]
 

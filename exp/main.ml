@@ -63,6 +63,7 @@ let () =
        "-update", Arg.String Programs.update, "<program>  Update <program>";
        "-list", Arg.Unit Programs.list, " List all programs";
        "-add-option", Arg.String Options.add, "<option>  Add <option> to the option list";
-       "-list-option", Arg.Unit Options.list, " List all options"]
+       "-list-option", Arg.Unit Options.list, " List all options";
+       "-limit", Arg.Set_int Env.limit, "<n>  Set time limit"]
     in
     Arg.parse arg_spec (fun _ -> Arg.usage arg_spec usage) usage
