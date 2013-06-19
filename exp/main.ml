@@ -4,8 +4,6 @@ open Markdown
 
 module JSON = Yojson.Basic
 
-let mochi_option = ref ""
-
 (*
 REQUIREMENTS:
  - Run in the directory of MoCHi
