@@ -215,6 +215,21 @@ let arg_spec =
   ]
 
 
+let string_of_exception = function
+    Fpat.AbsTypeInfer.FailedToRefineTypes -> "Fpat.AbsTypeInfer.FailedToRefineTypes"
+  | e when FpatInterface.is_fpat_exception e -> "Exception:Fpat"
+  | Syntaxerr.Error err -> "Syntaxerr.Error"
+  | Typecore.Error(loc,err) -> "Typecore.Error"
+  | Typemod.Error(loc,err) -> "Typemod.Error"
+  | Env.Error e -> "Env.Error"
+  | Typetexp.Error(loc,err) -> "Typetexp.Error"
+  | Lexer.Error(err, loc) -> "Lexer.Error"
+  | LongInput -> "LongInput"
+  | TimeOut -> "TimeOut"
+  | CEGAR.NoProgress -> "CEGAR.NoProgress"
+  | Fatal s -> "Fatal"
+
+
 let () =
   if !Sys.interactive
   then ()
@@ -247,7 +262,12 @@ let () =
         Fpat.Cvc3Interface.close_cvc3 ();
         print_info ()
     with
-        Fpat.AbsTypeInfer.FailedToRefineTypes ->
+      | e when !Flag.exp ->
+          Format.printf "{";
+          Format.printf "\"filename\": \"%s\", " !Flag.filename;
+          Format.printf "\"result\": \"%s\"" @@ string_of_exception e;
+          Format.printf "}@."
+      | Fpat.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.";
           Format.printf "  MoCHi could not refute an infeasible error path @.";
           Format.printf "  due to the incompleteness of the refinement type system@."
@@ -265,11 +285,6 @@ let () =
       | Lexer.Error(err, loc) ->
           Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
       | LongInput -> Format.printf "Input is too long@."
-      | TimeOut when !Flag.exp ->
-          Format.printf "{";
-          Format.printf "\"filename\": \"%s\", " !Flag.filename;
-          Format.printf "\"result\": \"Timeout\"";
-          Format.printf "}@."
       | TimeOut -> Format.printf "Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
       | Fatal s ->
