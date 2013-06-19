@@ -228,6 +228,8 @@ let string_of_exception = function
   | TimeOut -> "TimeOut"
   | CEGAR.NoProgress -> "CEGAR.NoProgress"
   | Fatal s -> "Fatal"
+  | Assert_failure _ -> "Assert_failure"
+  | _ -> "Exception"
 
 
 let () =
