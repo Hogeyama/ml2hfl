@@ -207,8 +207,8 @@ let rec run orig parsed =
                 Flag.insert_param_funarg := true;
                 run orig parsed
             | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
-                Format.printf "@.REFINEMENT FAILED!@.";
-                Format.printf "Restart with relative_complete := true@.@.";
+                if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
+                if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
                 run orig parsed
             | Fpat.AbsTypeInfer.FailedToRefineTypes ->
