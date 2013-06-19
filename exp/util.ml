@@ -7,6 +7,8 @@ let unsupported s = raise (Unsupported s)
 let (|>) x f = f x
 let (@@) f x = f x
 
+let snoc xs x = xs @ [x]
+
 let table_create n = Hashtbl.create n;;
 let table_find tab x = Hashtbl.find tab x
 let table_add tab a b = Hashtbl.add tab a b

@@ -267,7 +267,8 @@ let () =
       | e when !Flag.exp ->
           Format.printf "{";
           Format.printf "\"filename\": \"%s\", " !Flag.filename;
-          Format.printf "\"result\": \"%s\"" @@ string_of_exception e;
+          Format.printf "\"result\": \"%s\", " @@ string_of_exception e;
+          Format.printf "\"cycles\": \"%d\"" !Flag.cegar_loop;
           Format.printf "}@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.";

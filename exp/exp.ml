@@ -118,7 +118,8 @@ let make_commit_table n assocs =
   let env = mochi_env () in
   let option = Options.assoc n in
   let env = Format.sprintf "Option:%s %s" (Env.default_option()) option :: env in
-  let env = env @ [Format.sprintf "FPAT version: %s" @@ fpat_commit_hash_short ()] in
+  let env = snoc env @@ Format.sprintf "FPAT version: %s" @@ fpat_commit_hash_short () in
+  let env = snoc env @@ Format.sprintf "CSI-sat revision: %s" @@ csisat_revision () in
   let env' = UnorderedList (List.map (fun s -> [Text s]) env) in
   [env'; table]
 

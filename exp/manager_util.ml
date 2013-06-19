@@ -127,6 +127,13 @@ let fpat_commit_hash () =
 let fpat_commit_hash_short () =
   get_commit_hash_aux Env.fpat_dir "--short"
 
+let csisat_revision () =
+  let cmd = Format.sprintf "cd %s && svnversion" Env.csisat_dir in
+  let cin = Unix.open_process_in cmd in
+  let s = input_line cin in
+  ignore @@ Unix.close_process_in cin;
+  s
+
 let trunc_quote s =
   let n = String.length s in
   if n < 2 || s.[0] <> '"' || s.[n-1] <> '"' then raise (Invalid_argument "trunc_quote");

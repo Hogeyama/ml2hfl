@@ -12,6 +12,11 @@ REQUIREMENTS:
  - Git is installed
 *)
 
+(*
+TODO:
+ - To be able to write a comment on generated pages
+*)
+
 
 let make_home () =
   let exps = Options.get ()

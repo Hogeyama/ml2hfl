@@ -8,3 +8,4 @@ let option_list = "option.list"
 let exp_list = "exp.list"
 let run_force = ref false
 let fpat_dir = "../fpat/"
+let csisat_dir = "../csisat/"
