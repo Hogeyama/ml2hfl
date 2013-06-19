@@ -12,12 +12,12 @@ let print_info () =
       Format.printf "{";
       Format.printf "\"filename\": \"%s\", " !Flag.filename;
       Format.printf "\"result\": \"%s\", " !Flag.result;
-      Format.printf "\"cycles\": %d, " !Flag.cegar_loop;
-      Format.printf "\"total\": %.3f, " (get_time());
-      Format.printf "\"abst\": %.3f, " !Flag.time_abstraction;
-      Format.printf "\"mc\": %.3f, " !Flag.time_mc;
-      Format.printf "\"refine\": %.3f, " !Flag.time_cegar;
-      Format.printf "\"exparam\": %.3f" !Flag.time_parameter_inference;
+      Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
+      Format.printf "\"total\": \"%.3f\", " (get_time());
+      Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
+      Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
+      Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
+      Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
       Format.printf "}@."
     end
   else

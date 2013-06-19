@@ -74,7 +74,7 @@ let assoc name program =
         `String program = List.assoc "filename" dict
       with Not_found -> assert false
     in
-    List.hd @@ List.filter check results
+    List.find check results
   else raise Not_found
 
 let run_mochi n programs =
@@ -102,14 +102,14 @@ let run_mochi n programs =
 
 let make_commit_table n assocs =
   let open Markdown in
-  let head = ["filename"; "cycles"; "total"; "abst"; "mc";  "refine"] in
+  let head = ["filename"; "result"; "cycles"; "total"; "abst"; "mc";  "refine"] in
+  let pos =  [ Left;       Right;    Right;    Right;   Right;  Right; Right] in
   let head' = List.map (fun h -> [Text h]) head in
-  let pos =  [ Left;       Right;    Right;   Right;  Right; Right] in
   let assoc h xs =
     try
-      let r = JSON.to_string @@ List.assoc h xs in
+      let r = trunc_quote @@ JSON.to_string @@ List.assoc h xs in
       if h = "filename"
-      then [make_link @@ trunc_quote r]
+      then [make_link r]
       else [Text r]
     with Not_found -> [Text "-"]
   in
@@ -117,9 +117,10 @@ let make_commit_table n assocs =
   let table = Table(head',pos,body) in
   let env = mochi_env () in
   let option = Options.assoc n in
-  let env' = Format.sprintf "Option:%s %s" (Env.default_option()) option :: env in
-  let env'' = UnorderedList (List.map (fun s -> [Text s]) env') in
-  [env''; table]
+  let env = Format.sprintf "Option:%s %s" (Env.default_option()) option :: env in
+  let env = env @ [Format.sprintf "FPAT version: %s" @@ fpat_commit_hash_short ()] in
+  let env' = UnorderedList (List.map (fun s -> [Text s]) env) in
+  [env'; table]
 
 
 let make_commit_page n programs =
@@ -136,13 +137,13 @@ let exists_option n =
   0 <> List.length @@ List.filter (is_option_n n) @@ get ()
 
 let run cont n =
-  if not @@ Options.exists n
+  if not !Env.run_force && not @@ Options.exists n
   then
     Format.printf "Unregistered option: %d@." n
-  else if not @@ mochi_commited ()
+  else if not !Env.run_force && not @@ mochi_commited ()
   then
     Format.printf "Please, commit your changes of MoCHi or stash them.@."
-  else if Str.string_match (Str.regexp_string (mochi_commit_hash ())) (read_COMMIT ()) 0
+  else if not !Env.run_force && Str.string_match (Str.regexp_string (mochi_commit_hash ())) (read_COMMIT ()) 0
   then
     Format.printf "Please, recompile MoCHi.@."
   else

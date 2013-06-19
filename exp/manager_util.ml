@@ -1,11 +1,9 @@
 open Util
 
-let debug = false
-
 let command s =
-  if debug then Format.printf "COMMAND: %s@." s;
+  if !Env.debug then Format.printf "COMMAND: %s@." s;
   let r = Sys.command s in
-  if debug then Format.printf "RETURN:  %d@." r;
+  if !Env.debug then Format.printf "RETURN:  %d@." r;
   r
 
 let encode_filename s =
@@ -78,7 +76,7 @@ let push () =
     if r <> 0 then fatal ("Failure: " ^ cmd)
 
 let commit msg =
-  if 0 = command (Format.sprintf "cd %s && test $(git status -s | wc -w) = 0" Env.wiki_dir)
+  if 0 = command (Format.sprintf "cd %s && test $(git status -s --untracked-files=no | wc -w) = 0" Env.wiki_dir)
   then ()
   else
     let cmd = Format.sprintf "cd %s && git commit -m \"%s\"" Env.wiki_dir msg in
@@ -104,24 +102,30 @@ let delete_page name =
   if r <> 0 then fatal ("Failure: " ^ cmd);
   commit ("Remove " ^ name)
 
-let get_commit_hash_aux cd option =
-  let cmd = Format.sprintf "%s git rev-parse %s HEAD" cd option in
+let get_commit_hash_aux dir option =
+  let cmd = Format.sprintf "cd %s && git rev-parse %s HEAD" dir option in
   let cin = Unix.open_process_in cmd in
   let s = input_line cin in
   ignore @@ Unix.close_process_in cin;
   s
 
 let wiki_commit_hash () =
-  get_commit_hash_aux (Format.sprintf "cd %s &&" Env.wiki_dir) ""
+  get_commit_hash_aux Env.wiki_dir ""
 
 let wiki_commit_hash_short () =
-  get_commit_hash_aux (Format.sprintf "cd %s &&" Env.wiki_dir) "--short"
+  get_commit_hash_aux Env.wiki_dir "--short"
 
 let mochi_commit_hash () =
-  get_commit_hash_aux "" ""
+  get_commit_hash_aux "./" ""
 
 let mochi_commit_hash_short () =
-  get_commit_hash_aux "" "--short"
+  get_commit_hash_aux "./" "--short"
+
+let fpat_commit_hash () =
+  get_commit_hash_aux Env.fpat_dir ""
+
+let fpat_commit_hash_short () =
+  get_commit_hash_aux Env.fpat_dir "--short"
 
 let trunc_quote s =
   let n = String.length s in
