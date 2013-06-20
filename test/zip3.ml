@@ -1,4 +1,4 @@
-let rec loop x = loop () in
+let rec loop x = loop ()
 let rec zip x y =
   if x = 0
   then
@@ -9,5 +9,6 @@ let rec zip x y =
     if y = 0
     then loop ()
     else 1 + zip (x-1) (y-1)
-in
+
+let main n =
   assert (zip n n = n)

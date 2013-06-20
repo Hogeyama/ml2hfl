@@ -3,10 +3,11 @@ let rec zip x y =
   then
     if y = 0
     then 0
-    else fail ()
+    else assert false
   else
     if y = 0
-    then fail ()
+    then assert false
     else 1 + zip (x-1) (y-1)
-in
+
+let main n =
   assert (zip n n = n)
