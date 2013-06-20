@@ -9,17 +9,14 @@ let rec filter f xs =
         else filter f xs'
 *)
 
-let f n = n < 0 in
+let f n = n < 0
 let rec filter f n =
   if n = 0
   then 0
   else
-    if ***
+    if Random.bool ()
     then 1 + filter f (n-1)
     else filter f (n-1)
-in
-let n = ?n? in
-  if filter f n <= n
-  then ()
-  else fail ()
 
+let main n =
+  assert (filter f n <= n)

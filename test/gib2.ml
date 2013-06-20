@@ -15,4 +15,4 @@ let rec gib a b n =
 
 let main n a b =
 if a >= 0 && b >= 0 then
-  assert (gib 0 1 n >= 0)
+  assert (gib a b n >= 0)

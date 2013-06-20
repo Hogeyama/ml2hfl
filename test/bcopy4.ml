@@ -1,7 +1,7 @@
 
-let array1 i = 0 in
-let array2 i = 0 in
-let update a i x j = if j=i then x else a j in
+let array1 i = 0
+let array2 i = 0
+let update a i x j = if j=i then x else a j
 
 let rec bcopy_aux m src des i =
   if i >= m
@@ -12,6 +12,7 @@ let rec bcopy_aux m src des i =
       let des = update des i (src i) in
         bcopy_aux m src des (i+1)
     end
-in
-let bcopy src des = bcopy_aux n src des 0 in
+
+let main n =
+  let bcopy src des = bcopy_aux n src des 0 in
   bcopy array1 array2
