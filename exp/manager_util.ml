@@ -6,8 +6,21 @@ let command s =
   if !Env.debug then Format.printf "RETURN:  %d@." r;
   r
 
+let command_assert s =
+  if command s <> 0
+  then fatal ("Failure: " ^ s)
+
 let encode_filename s =
   Str.global_replace (Str.regexp_string "/") "__" s
+
+let dummy_header =
+  Markdown.Normal [Markdown.Image("DO NOT EDIT BELOW THIS LINE", Env.dummy_image)]
+
+let dummy_footer =
+  Markdown.Normal [Markdown.Image("DO NOT EDIT ABOVE THIS LINE", Env.dummy_image)]
+
+let make_link s =
+  Markdown.Link(s, encode_filename s)
 
 let file_exists ?(prefix=Env.wiki_dir) filename =
   Sys.file_exists @@ prefix ^ filename
@@ -47,60 +60,76 @@ let read_list_from_file ?(prefix=Env.wiki_dir) filename =
 let write_to_file ?(prefix=Env.wiki_dir) filename s =
   let cout = open_out @@ prefix ^ filename in
   output_string cout s;
-  flush cout;
   close_out cout
 
 let write_list_to_file ?(prefix=Env.wiki_dir) filename ss =
   let cout = open_out @@ prefix ^ filename in
   List.iter (fun s -> output_string cout (s ^ "\n")) ss;
-  flush cout;
   close_out cout
 
 let append_to_file ?(prefix=Env.wiki_dir) filename s =
   let cout = open_out_gen [Open_creat;Open_append] 0o664 @@ prefix ^ filename in
   output_string cout (s ^ "\n");
-  flush cout;
   close_out cout
 
 let add filename =
-  let cmd = Format.sprintf "cd %s && git add %s" Env.wiki_dir filename in
-  let r = command cmd in
-  if r <> 0 then fatal ("Failure: " ^ cmd)
+  command_assert @@ Format.sprintf "cd %s && git add %s" Env.wiki_dir filename
+
+let diff_origin () =
+  0 <> command (Format.sprintf "cd %s && test $(git diff HEAD origin/HEAD | wc -w) = 0" Env.wiki_dir)
 
 let push () =
-  if 0 = command (Format.sprintf "cd %s && test $(git diff HEAD origin/HEAD | wc -w) = 0" Env.wiki_dir)
-  then ()
-  else
-    let cmd = Format.sprintf "cd %s && git push" Env.wiki_dir in
-    let r = command cmd in
-    if r <> 0 then fatal ("Failure: " ^ cmd)
+  if diff_origin ()
+  then command_assert @@ Format.sprintf "cd %s && git push" Env.wiki_dir
+
+let fetch () =
+  Format.printf "Fetching ...@.";
+  command_assert @@ Format.sprintf "cd %s && git fetch" Env.wiki_dir
+
+let pull () =
+  command_assert @@ Format.sprintf "cd %s && git pull" Env.wiki_dir
 
 let commit msg =
   if 0 = command (Format.sprintf "cd %s && test $(git status -s --untracked-files=no | wc -w) = 0" Env.wiki_dir)
   then ()
   else
-    let cmd = Format.sprintf "cd %s && git commit -m \"%s\"" Env.wiki_dir msg in
-    let r = command cmd in
-    if r <> 0 then fatal ("Failure: " ^ cmd);
+    command_assert @@ Format.sprintf "cd %s && git commit -m \"%s\"" Env.wiki_dir msg;
     push ()
 
 let update_page name body =
-  let name' = encode_filename name in
-  let filename = name' ^ ".md" in
+  let filename = encode_filename name ^ ".md" in
   let s = Markdown.string_of_paragraphs body in
   write_to_file filename s;
-  let cmd = Format.sprintf "cd %s && git add %s" Env.wiki_dir filename in
-  let r = command cmd in
-  if r <> 0 then fatal ("Failure: " ^ cmd);
+  command_assert @@ Format.sprintf "cd %s && git add %s" Env.wiki_dir filename;
   commit ("Update " ^ name)
 
 let delete_page name =
-  let name' = encode_filename name in
-  let filename = name' ^ ".md" in
-  let cmd = Format.sprintf "cd %s && git rm %s" Env.wiki_dir filename in
-  let r = command cmd in
-  if r <> 0 then fatal ("Failure: " ^ cmd);
+  let filename = encode_filename name ^ ".md" in
+  command_assert @@ Format.sprintf "cd %s && git rm %s" Env.wiki_dir filename;
   commit ("Remove " ^ name)
+
+let parse_generated lines =
+  let s_header = Markdown.string_of_paragraph dummy_header in
+  let s_footer = Markdown.string_of_paragraph dummy_footer in
+  let aux line (state,(header,contents,footer)) =
+    match state with
+      `Footer ->
+        if line = s_footer
+        then `Contents, (header, contents, footer)
+        else `Footer, (header, contents, line::footer)
+    | `Contents ->
+        if line = s_header
+        then `Header, (header, contents, footer)
+        else `Contents, (header, line::contents, footer)
+    | `Header ->
+        `Header, (line::header, contents, footer)
+  in
+  snd @@ List.fold_right aux lines (`Footer, ([],[],[]))
+
+let read_page name =
+  let filename = encode_filename name ^ ".md" in
+  let lines = read_list_from_file filename in
+  parse_generated lines
 
 let get_commit_hash_aux dir option =
   let cmd = Format.sprintf "cd %s && git rev-parse %s HEAD" dir option in
@@ -144,6 +173,3 @@ let mochi_commited () =
 
 let read_COMMIT () =
   List.hd @@ read_list_from_file ~prefix:"" "COMMIT"
-
-let make_link s =
-  Markdown.Link(s, encode_filename s)

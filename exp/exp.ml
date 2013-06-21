@@ -121,7 +121,7 @@ let make_commit_table n assocs =
   let env = snoc env @@ Format.sprintf "FPAT version: %s" @@ fpat_commit_hash_short () in
   let env = snoc env @@ Format.sprintf "CSI-sat revision: %s" @@ csisat_revision () in
   let env' = UnorderedList (List.map (fun s -> [Text s]) env) in
-  [env'; table]
+  [dummy_header; env'; table; dummy_footer]
 
 
 let make_commit_page n programs =
@@ -137,7 +137,7 @@ let make_item_table n item = assert false
 let exists_option n =
   0 <> List.length @@ List.filter (is_option_n n) @@ get ()
 
-let run cont n =
+let run k n =
   if not !Env.run_force && not @@ Options.exists n
   then
     Format.printf "Unregistered option: %d@." n
@@ -155,4 +155,4 @@ let run cont n =
     if not @@ exists name then append_to_file Env.exp_list name;
     Manager_util.add Env.exp_list;
     Manager_util.commit ("Update " ^ Env.exp_list);
-    cont ()
+    k ()

@@ -74,6 +74,10 @@ let rec print_paragraph ppf = function
       List.iter print_line body
 
 let print_paragraphs ppf ps = List.iter (Format.fprintf ppf "%a@.@." print_paragraph) ps
+
+let string_of_paragraph p =
+  print_paragraph Format.str_formatter p;
+  Format.flush_str_formatter ()
 let string_of_paragraphs ps =
   print_paragraphs Format.str_formatter ps;
   Format.flush_str_formatter ()

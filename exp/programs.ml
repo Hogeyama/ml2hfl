@@ -27,7 +27,7 @@ let add filename =
   let s = read_from_file ~prefix:"" filename in
   let body = Code(Some "ocaml", s) in
   let header = Header(1, [Text filename]) in
-  let ps = [header; body] in
+  let ps = [dummy_header; header; body; dummy_footer] in
   write_list_to_file Env.program_list @@ insert filename @@ get ();
   Manager_util.add Env.program_list;
   update_page (encode_filename filename) ps;
