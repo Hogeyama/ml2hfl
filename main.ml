@@ -246,7 +246,7 @@ let () =
       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate;
       (* default Horn clause solver *)
       Fpat.HcSolver.ext_solve := Fpat.BwHcSolver.solve;
-      Arg.parse arg_spec set_file usage;
+      Arg.parse (Arg.align arg_spec) set_file usage;
       Fpat.Global.print_log := !Flag.debug_level <> 0;
       Fpat.Global.cvc3 := !Flag.cvc3;
       let cin =
