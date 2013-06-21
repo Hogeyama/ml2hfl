@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as risers
+FROM: Example of [Ong and Ramsay, 2011]
+*)
 
 let rec make_list m =
   if m <= 0

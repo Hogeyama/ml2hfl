@@ -1,3 +1,6 @@
+(*
+USED: PEPM2013 as forall_leq
+*)
 
 let rec for_all f (xs:int list) =
   match xs with
@@ -13,6 +16,3 @@ let rec make_list n =
   else n :: make_list (n-1)
 
 let main n = assert (for_all check (make_list n))
-
-
-

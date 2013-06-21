@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as search-e
+*)
+
 type option = None | Some of int
 
 let rec exists test f n m =
@@ -15,4 +19,4 @@ let main n m =
   let test x = x = m in
     match exists test mult3 0 n with
         None -> ()
-      | Some x -> assert (0 <= x && x < n)
+      | Some x -> assert (0 < x && x < n)

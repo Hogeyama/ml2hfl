@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as sum_intro
+*)
+
 let add x y = x + y
 let rec sum n =
   if n <= 0 then

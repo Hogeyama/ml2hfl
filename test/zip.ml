@@ -1,3 +1,6 @@
+(*
+USED: PEPM2013 as zip
+*)
 
 let rec zip (xs:int list) (ys:int list) =
   match xs with
@@ -20,5 +23,3 @@ let rec make_list n =
 let main n =
   let xs = make_list n in
     zip xs xs
-
-

@@ -1,7 +1,6 @@
-let is_nil (xs:int list) =
-  match xs with
-      [] -> true
-    | _ -> false
+(*
+USED: PEPM2013 as nth
+*)
 
 let rec nth n (xs:int list) =
   match xs with
@@ -14,7 +13,6 @@ let rec make_list n =
   else n :: make_list (n-1)
 
 let main n =
-  let xs = make_list n in
-    if is_nil xs
-    then 0
-    else nth 0 xs
+  if n > 0
+  then nth (n-1) (make_list n)
+  else 0

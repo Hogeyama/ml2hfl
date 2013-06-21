@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as iter.ml
+*)
+
 let rec iter (f:int -> unit) xs =
   match xs with
       [] -> ()
@@ -13,6 +17,3 @@ let check x = assert (x >= 0)
 let main n =
   let xs = make_list n in
     iter check xs
-
-
-

@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as fact_notpos-e
+*)
+
 exception NotPositive
 
 let rec fact n =
@@ -12,4 +16,4 @@ let rec fact n =
 let main n =
   try
     fact n
-  with NotPositive -> assert (n <= 0) ; 0
+  with NotPositive -> assert (n < 0) ; 0

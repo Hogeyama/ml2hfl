@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as harmonic
+*)
+
 let rec div x y =
   assert (y <> 0);
   if x < y

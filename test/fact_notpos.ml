@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as fact_notpos
+*)
+
 exception NotPositive
 
 let rec fact n =

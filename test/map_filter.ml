@@ -1,3 +1,7 @@
+(*
+USED: PEPM2013 as map_filter
+FROM: Example of [Ong and Ramsay, 2011]
+*)
 
 let rec make_list m =
   if m <= 0
@@ -14,8 +18,8 @@ let head = function
   | x::xs -> x
 
 let ne = function
-    [] -> 1
-  | x::xs -> 0
+    [] -> 0
+  | x::xs -> 1
 
 let rec filter p = function
     [] -> []

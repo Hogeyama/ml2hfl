@@ -184,6 +184,9 @@ clean:
 	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
 
+clean-test:
+	rm */*.trecs_out */*.hors */*.annot
+
 clean-all: clean
 	cd $(OCAML_SOURCE) && make clean
 	rm -f $(OCAML_SOURCE)/config/Makefile

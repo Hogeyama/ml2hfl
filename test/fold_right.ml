@@ -1,3 +1,6 @@
+(*
+USED: PEPM2013 as fold_right
+*)
 
 let rec fold_right (f:int->int->int) xs acc =
   match xs with
