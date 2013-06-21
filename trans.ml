@@ -615,7 +615,7 @@ let rec copy_poly_funs t =
           let t2'' = inst_tvar_tunit t2' in
           let map,t2''' = rename_poly_funs f t2'' in
           let n = List.length map in
-            if n >= 2
+            if !Flag.debug_level > 0 && n >= 2
             then
               begin
                 Format.printf "COPY: @[";

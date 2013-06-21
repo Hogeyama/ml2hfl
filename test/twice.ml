@@ -1,5 +1,5 @@
-let twice f x = f (f x) in
-let f x = 2 * x in
+let twice f x = f (f x)
+let f x = 2 * x
 
 let main n =
   if n > 0

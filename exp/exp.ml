@@ -108,7 +108,7 @@ let make_commit_table n assocs =
   let head' = List.map (fun h -> [Text h]) head in
   let assoc h xs =
     try
-      let r = trunc_quote @@ JSON.to_string @@ List.assoc h xs in
+      let r = unescape @@ JSON.to_string @@ List.assoc h xs in
       if h = "filename"
       then [make_link r]
       else [Text r]

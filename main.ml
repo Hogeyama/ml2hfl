@@ -10,8 +10,8 @@ let print_info () =
   then
     begin
       Format.printf "{";
-      Format.printf "\"filename\": \"%s\", " !Flag.filename;
-      Format.printf "\"result\": \"%s\", " !Flag.result;
+      Format.printf "\"filename\": %S, " !Flag.filename;
+      Format.printf "\"result\": %S, " !Flag.result;
       Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
       Format.printf "\"total\": \"%.3f\", " (get_time());
       Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
@@ -216,8 +216,7 @@ let arg_spec =
 
 
 let string_of_exception = function
-    Fpat.AbsTypeInfer.FailedToRefineTypes -> "Fpat.AbsTypeInfer.FailedToRefineTypes"
-  | e when FpatInterface.is_fpat_exception e -> "Exception:Fpat"
+    e when FpatInterface.is_fpat_exception e -> FpatInterface.string_of_error e
   | Syntaxerr.Error err -> "Syntaxerr.Error"
   | Typecore.Error(loc,err) -> "Typecore.Error"
   | Typemod.Error(loc,err) -> "Typemod.Error"
@@ -228,8 +227,7 @@ let string_of_exception = function
   | TimeOut -> "TimeOut"
   | CEGAR.NoProgress -> "CEGAR.NoProgress"
   | Fatal s -> "Fatal"
-  | Assert_failure _ -> "Assert_failure"
-  | _ -> "Exception"
+  | e -> Printexc.to_string e
 
 
 let () =
@@ -266,8 +264,8 @@ let () =
     with
       | e when !Flag.exp ->
           Format.printf "{";
-          Format.printf "\"filename\": \"%s\", " !Flag.filename;
-          Format.printf "\"result\": \"%s\", " @@ string_of_exception e;
+          Format.printf "\"filename\": %S, " !Flag.filename;
+          Format.printf "\"result\": %S, " @@ string_of_exception e;
           Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
           Format.printf "\"total\": \"%.3f\"" (get_time());
           Format.printf "}@."

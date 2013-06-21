@@ -79,15 +79,18 @@ let diff_origin () =
   0 <> command (Format.sprintf "cd %s && test $(git diff HEAD origin/HEAD | wc -w) = 0" Env.wiki_dir)
 
 let push () =
-  if diff_origin ()
+  if not !Env.ignore_remote && diff_origin ()
   then command_assert @@ Format.sprintf "cd %s && git push" Env.wiki_dir
 
 let fetch () =
-  Format.printf "Fetching ...@.";
-  command_assert @@ Format.sprintf "cd %s && git fetch" Env.wiki_dir
+  if not !Env.ignore_remote
+  then
+    (Format.printf "Fetching ...@.";
+     command_assert @@ Format.sprintf "cd %s && git fetch" Env.wiki_dir)
 
 let pull () =
-  command_assert @@ Format.sprintf "cd %s && git pull" Env.wiki_dir
+  if not !Env.ignore_remote
+  then command_assert @@ Format.sprintf "cd %s && git pull" Env.wiki_dir
 
 let commit msg =
   if 0 = command (Format.sprintf "cd %s && test $(git status -s --untracked-files=no | wc -w) = 0" Env.wiki_dir)
@@ -124,7 +127,16 @@ let parse_generated lines =
     | `Header ->
         `Header, (line::header, contents, footer)
   in
-  snd @@ List.fold_right aux lines (`Footer, ([],[],[]))
+  let _,(header,contents,footer) =  List.fold_right aux lines (`Footer, ([],[],[])) in
+  let rec trunc_blank ss =
+    match ss with
+      ""::""::ss' -> trunc_blank @@ ""::ss'
+    | _ -> ss
+  in
+  let header' = header |> trunc_blank |> List.rev |> trunc_blank |> List.rev in
+  let contents' = contents |> trunc_blank |> List.rev |> trunc_blank |> List.rev in
+  let footer' = footer |> trunc_blank |> List.rev |> trunc_blank |> List.rev in
+  header', contents', footer'
 
 let read_page name =
   let filename = encode_filename name ^ ".md" in
@@ -173,11 +185,6 @@ let csisat_revision () =
   let s = input_line cin in
   ignore @@ Unix.close_process_in cin;
   s
-
-let trunc_quote s =
-  let n = String.length s in
-  if n < 2 || s.[0] <> '"' || s.[n-1] <> '"' then raise (Invalid_argument "trunc_quote");
-  String.sub s 1 (n-2)
 
 let mochi_commited () =
   command "test $(git diff | wc -w) = 0" = 0

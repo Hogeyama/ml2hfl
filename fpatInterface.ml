@@ -574,6 +574,8 @@ let report_error ppf = function
       Format.fprintf ppf "Not implemented: %s" msg
   | _ -> raise Not_found
 
+let string_of_error = make_string_of report_error
+
 let is_fpat_exception = function
     AbsTypeInfer.FailedToRefineTypes
   | ExtFormula.Formula.Unknown

@@ -15,3 +15,4 @@ let limit = ref 120
 let default_option () = Format.sprintf " -limit %d" !limit
 let mochi () = "./mochi.opt -exp" ^ default_option ()
 let run_force = ref false
+let ignore_remote = ref false

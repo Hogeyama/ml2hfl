@@ -37,7 +37,7 @@ let update_home () =
       try
         Exp.assoc exp p |> List.assoc "result"
                         |> JSON.to_string
-                        |> trunc_quote
+                        |> unescape
       with Not_found -> "-"
     in
     [Text s]
@@ -75,7 +75,8 @@ let () =
        "-list-option", Arg.Unit (set_cmd Options.list), " List all options";
        "-limit", Arg.Set_int Env.limit, "<n>  Set time limit";
        "-f", Arg.Set Env.run_force, "";
-       "-debug", Arg.Set Env.debug, " Debug mode"]
+       "-debug", Arg.Set Env.debug, " Debug mode";
+       "-ignore-remote", Arg.Set Env.ignore_remote, " Do not push, fetch, and pull"]
     in
     Arg.parse (Arg.align arg_spec) ignore usage;
     fetch ();

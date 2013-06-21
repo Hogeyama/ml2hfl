@@ -1,4 +1,4 @@
-let succ x = x + 1 in
+let succ x = x + 1
 let rec repeat f n =
   if n = 0
   then 0

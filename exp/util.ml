@@ -426,3 +426,13 @@ let count_list f xs =
   List.fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
 let insert x xs = List.merge compare [x] xs
+
+let make_string_of pp =
+  fun x ->
+    pp Format.str_formatter x;
+    Format.flush_str_formatter ()
+
+let unescape s =
+  try
+    Scanf.sscanf s "%S" (fun s -> s)
+  with Scanf.Scan_failure _ -> raise (Invalid_argument "unescape")
