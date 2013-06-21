@@ -88,11 +88,12 @@ let run_mochi n programs =
     match programs with
       [] -> ()
     | p::programs' ->
-        let exp_num () = List.length @@ read_list_from_file filename in
-        let n = exp_num () in
+        if not @@ file_exists ~prefix:"" p then fatal ("Not found: " ^ p);
+        let result_num () = List.length @@ read_list_from_file filename in
+        let n = result_num () in
         let cmd = Format.sprintf "%s %s %s | tee -a %s" (Env.mochi()) option p wiki_filename in
         assert (command cmd = 0);
-        if n+1 <> exp_num ()
+        if n+1 <> result_num ()
         then (Format.printf "Rerun@."; iter programs)
         else iter programs'
   in
