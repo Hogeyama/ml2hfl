@@ -64,7 +64,7 @@ let () =
     let usage = "Test manager for MoCHi\noptions are:" in
     let arg_spec =
       ["-exp", Arg.Int (set_cmd @@ Exp.run update_home),
-         "<n>  Run MoCHi with option <n> for all programs and update exp page";
+         "<n>  Run MoCHi with option<n> for all programs and update exp page";
        "-add", Arg.String (set_cmd Programs.add), "<program>  Create wiki page for <program>";
        "-del", Arg.String (set_cmd Programs.delete), "<program>  Delete <program>";
        "-update", Arg.String (set_cmd Programs.update), "<program>  Update <program>";
@@ -73,7 +73,7 @@ let () =
        "-list-option", Arg.Unit (set_cmd Options.list), " List all options";
        "-limit", Arg.Set_int Env.limit, "<n>  Set time limit";
        "-f", Arg.Set Env.run_force, "";
-       "-debug", Arg.Set Env.debug, "Debug mode"]
+       "-debug", Arg.Set Env.debug, " Debug mode"]
     in
     Arg.parse (Arg.align arg_spec) (fun _ -> Arg.usage arg_spec usage) usage;
     fetch ();
