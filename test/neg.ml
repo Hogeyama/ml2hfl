@@ -1,6 +1,10 @@
-let g (x:int) (y:unit) = x
-let twice f (x:unit->int) (y:unit) = f (f x) y
-let neg x (y:unit) = - x ()
+(*
+USED: PLDI2011 as neg
+*)
+
+let g x y = x
+let twice f x y = f (f x) y
+let neg x y = - x ()
 let main n =
   if n>=0 then
     let z = twice neg (g n) () in

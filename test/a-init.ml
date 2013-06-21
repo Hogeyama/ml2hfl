@@ -1,3 +1,7 @@
+(*
+USED: PLDI2011 as a-init
+*)
+
 let make_array n i = assert (0 <= i && i < n); 0
 let update i a x j :int= if j > i-1 && j <= i then x else a (j)
 let rec init i n a =

@@ -1,3 +1,7 @@
+(*
+USED: PLDI2011 as a-prod
+*)
+
 let make_array n i = assert (0 <= i && i < n); 0
 let rec dotprod n v1 v2 i sum =
   if i >= n then

@@ -1,3 +1,8 @@
+(*
+USED: PLDI2011 as l-zipmap
+USED: PEPM2013 as l-zipmap
+*)
+
 let rec zip x y =
   if x = 0 then
     if y = 0 then
@@ -13,4 +18,3 @@ let rec map x =
   if x = 0 then x else 1 + map (x - 1)
 let main n =
   assert (map (zip n n) = n)
-

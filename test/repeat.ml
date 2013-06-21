@@ -1,5 +1,9 @@
+(*
+USED: PLDI2011 as repeat
+*)
+
 let succ x = x + 1
-let rec repeat (f:int->int) n s : int =
+let rec repeat f n s =
   if n = 0 then
     s
   else

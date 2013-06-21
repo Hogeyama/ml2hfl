@@ -1,3 +1,9 @@
+(*
+USED: PLDI2011 as r-file
+USED: PEPM2013 as r-file
+KEYWORD: resource
+*)
+
 let rec loop x : unit = loop ()
 let init = 0
 let opened = 1

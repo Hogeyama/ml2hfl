@@ -94,7 +94,7 @@ let run_mochi n programs =
         let cmd = Format.sprintf "%s %s %s | tee -a %s" (Env.mochi()) option p wiki_filename in
         assert (command cmd = 0);
         if n+1 <> result_num ()
-        then (Format.printf "Rerun@."; iter programs)
+        then (Format.printf "Rerun: %s@." p; iter programs)
         else iter programs'
   in
   iter programs;

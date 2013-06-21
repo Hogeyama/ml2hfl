@@ -1,3 +1,7 @@
+(*
+USED: PLDI2011 as a-max-e
+*)
+
 let make_array n i = n-i
 let rec array_max (n:int) i (a:int->int) m =
   if i >= n then
