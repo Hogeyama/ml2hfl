@@ -8,7 +8,7 @@ let get () =
   else []
 
 let num () = List.length @@ get ()
-let exists n = num () >= n
+let exists n = 0 <= n && n <= num ()
 let assoc n = List.nth (get ()) (n-1)
 
 let add option =

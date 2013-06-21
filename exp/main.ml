@@ -64,7 +64,9 @@ let () =
     let usage = "Test manager for MoCHi\noptions are:" in
     let arg_spec =
       ["-exp", Arg.Int (set_cmd @@ Exp.run update_home),
-         "<n>  Run MoCHi with option<n> for all programs and update exp page";
+         "<n>  Run MoCHi with option<n> for all programs";
+       "-exp-all", Arg.Unit (set_cmd @@ Exp.run_all update_home),
+         " Run MoCHi for all programs with each option";
        "-add", Arg.String (set_cmd Programs.add), "<program>  Create wiki page for <program>";
        "-del", Arg.String (set_cmd Programs.delete), "<program>  Delete <program>";
        "-update", Arg.String (set_cmd Programs.update), "<program>  Update <program>";
@@ -75,7 +77,7 @@ let () =
        "-f", Arg.Set Env.run_force, "";
        "-debug", Arg.Set Env.debug, " Debug mode"]
     in
-    Arg.parse (Arg.align arg_spec) (fun _ -> Arg.usage arg_spec usage) usage;
+    Arg.parse (Arg.align arg_spec) ignore usage;
     fetch ();
     if diff_origin () then pull ();
     !cmd ()

@@ -81,7 +81,7 @@ let run_mochi n programs =
   let filename = commit_filename_json n in
   let wiki_filename = Env.wiki_dir ^ filename in
   let option = Options.assoc n in
-  Format.printf "Run: %s %s <program>@." (Env.mochi()) option;
+  Format.printf "Run: %s %s%s<program>@." (Env.mochi()) option (if option="" then "" else " ");
   Format.printf "Output to: %s@." wiki_filename;
   assert (command ("echo -n > " ^ wiki_filename) = 0);
   let rec iter programs =
@@ -157,3 +157,12 @@ let run k n =
     Manager_util.add Env.exp_list;
     Manager_util.commit ("Update " ^ Env.exp_list);
     k ()
+
+let run_all k () =
+  let n = List.length @@ Options.get () in
+  let rec make_runs i k =
+    if i = 0
+    then k
+    else make_runs (i-1) (fun () -> run k i)
+  in
+  make_runs n k ()

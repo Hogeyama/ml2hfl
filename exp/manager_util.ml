@@ -138,6 +138,13 @@ let get_commit_hash_aux dir option =
   ignore @@ Unix.close_process_in cin;
   s
 
+let get_commit_date dir hash =
+  let cmd = Format.sprintf "cd %s && git log --date=iso --pretty=format:\"%%ad\" %s -1" dir hash in
+  let cin = Unix.open_process_in cmd in
+  let s = input_line cin in
+  ignore @@ Unix.close_process_in cin;
+  s
+
 let wiki_commit_hash () =
   get_commit_hash_aux Env.wiki_dir ""
 
@@ -155,6 +162,10 @@ let fpat_commit_hash () =
 
 let fpat_commit_hash_short () =
   get_commit_hash_aux Env.fpat_dir "--short"
+
+let fpat_version () =
+  let hash = fpat_commit_hash_short () in
+  Format.sprintf "%s (%s)" hash @@ get_commit_date Env.fpat_dir hash
 
 let csisat_revision () =
   let cmd = Format.sprintf "cd %s && svnversion" Env.csisat_dir in
