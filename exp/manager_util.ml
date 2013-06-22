@@ -147,7 +147,7 @@ let update_page name body =
   let to_text s = Markdown.Text (s ^ "\n") in
   let header' = Markdown.Normal (List.map to_text header) in
   let footer' = Markdown.Normal (List.map to_text footer) in
-  let body' = header' :: body @ [footer'] in
+  let body' = header' :: dummy_header :: body @ [dummy_footer; footer'] in
   let s = Markdown.string_of_paragraphs body' in
   write_to_file filename s;
   command_assert @@ Format.sprintf "cd %s && git add %s" Env.wiki_dir filename;
