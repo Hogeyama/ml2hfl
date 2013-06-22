@@ -46,7 +46,7 @@ let update_home () =
   let make_head exp =
     let i,commit = Exp.parse_name exp in
     let s = Options.assoc i in
-    Link(Format.sprintf "option%d: \"%s\" @@ %s" i s commit, exp)
+    Link(Format.sprintf "option%d: %s @@ %s" i s commit, exp)
   in
   let head = List.map make_head exps in
   let head' = List.map (fun t -> [t]) @@ (Text "program" :: head) in
@@ -72,7 +72,7 @@ let update_home () =
     [Link(Format.sprintf "%s: %s" name s, name)]
   in
   let opt_list = UnorderedList (mapi make_opt_list @@ Options.get ()) in
-  let header_opt_list = Header(1, [Text "List of experimental results"]) in
+  let header_opt_list = Header(1, [Text "List of options"]) in
   let exp_list = UnorderedList (List.map (fun e -> [make_head e]) @@ Exp.get ()) in
   let header_exp_list = Header(1, [Text "List of experimental results"]) in
   let ps = [header_result; table;

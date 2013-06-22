@@ -134,9 +134,12 @@ let parse_generated lines =
   header', contents', footer'
 
 let read_page name =
-  let filename = encode_filename name ^ ".md" in
-  let lines = read_list_from_file filename in
-  parse_generated lines
+  if file_exists name
+  then
+    let filename = encode_filename name ^ ".md" in
+    let lines = read_list_from_file filename in
+    parse_generated lines
+  else [],[],[]
 
 let update_page name body =
   let filename = encode_filename name ^ ".md" in
