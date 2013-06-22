@@ -40,7 +40,7 @@ let get_latest n =
   let exps = List.filter (is_option_n n) @@ get () in
   if exps = []
   then raise Not_found
-  else last exps
+  else List.hd exps
 
 let mochi_env () =
   let cmd = Format.sprintf "%s -version" @@ Env.mochi () in
@@ -103,9 +103,7 @@ let run_mochi n programs =
 
 let make_commit_table n assocs =
   let open Markdown in
-  let head = ["filename"; "result"; "cycles"; "total"; "abst"; "mc";  "refine"] in
-  let pos =  [ Left;       Right;    Right;    Right;   Right;  Right; Right] in
-  let head' = List.map (fun h -> [Text h]) head in
+  let head' = List.map (fun (h,_) -> [Text h]) Env.items in
   let assoc h xs =
     try
       let r = unescape @@ JSON.to_string @@ List.assoc h xs in
@@ -114,7 +112,8 @@ let make_commit_table n assocs =
       else [Text r]
     with Not_found -> [Text "-"]
   in
-  let body = List.map (fun xs -> List.map (fun h -> assoc h xs) head) assocs in
+  let body = List.map (fun xs -> List.map (fun (h,_) -> assoc h xs) Env.items) assocs in
+  let pos = List.map snd Env.items in
   let table = Table(head',pos,body) in
   let env = mochi_env () in
   let option = Options.assoc n in
@@ -122,14 +121,13 @@ let make_commit_table n assocs =
   let env = snoc env @@ Format.sprintf "FPAT version: %s" @@ fpat_commit_hash_short () in
   let env = snoc env @@ Format.sprintf "CSI-sat revision: %s" @@ csisat_revision () in
   let env' = UnorderedList (List.map (fun s -> [Text s]) env) in
-  [dummy_header; env'; table; dummy_footer]
+  [env'; table]
 
 
 let make_commit_page n programs =
-  let result_json_file =commit_filename_json n in
-  let result_file = commit_filename n in
-  let result = parse_result result_json_file in
-  update_page result_file @@ make_commit_table n result
+  let filename = commit_filename n in
+  let result = parse_result @@ commit_filename_json n in
+  update_page filename @@ make_commit_table n result
 
 
 let make_item_table n item = assert false
@@ -138,7 +136,7 @@ let make_item_table n item = assert false
 let exists_option n =
   0 <> List.length @@ List.filter (is_option_n n) @@ get ()
 
-let run k n =
+let run n =
   if not !Env.run_force && not @@ Options.exists n
   then
     Format.printf "Unregistered option: %d@." n
@@ -153,16 +151,15 @@ let run k n =
     let programs = Programs.get () in
     run_mochi n programs;
     make_commit_page n programs;
-    if not @@ exists name then append_to_file Env.exp_list name;
+    let cmp hash1 hash2 =
+      let aux hash = get_commit_date "./" @@ snd @@ parse_name hash in
+      compare (aux hash2) (aux hash1)
+    in
+    if not @@ exists name
+    then write_list_to_file Env.exp_list @@ insert ~cmp name @@ get ();
     Manager_util.add Env.exp_list;
     Manager_util.commit ("Update " ^ Env.exp_list);
-    k ()
+    Env.updated := n :: !Env.updated
 
-let run_all k () =
-  let n = List.length @@ Options.get () in
-  let rec make_runs i k =
-    if i = 0
-    then k
-    else make_runs (i-1) (fun () -> run k i)
-  in
-  make_runs n k ()
+let run_all () =
+  List.iter run @@ mapi (fun i _ -> i+1) @@ Options.get ()

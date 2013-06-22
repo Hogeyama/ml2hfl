@@ -10,6 +10,13 @@ let command_assert s =
   if command s <> 0
   then fatal ("Failure: " ^ s)
 
+let open_process_in s =
+  if !Env.debug then Format.printf "OPEN_PROCESS: %s@." s;
+  Unix.open_process_in s
+
+let close_process_in cin =
+  ignore @@ Unix.close_process_in cin
+
 let encode_filename s =
   Str.global_replace (Str.regexp_string "/") "__" s
 
@@ -99,18 +106,6 @@ let commit msg =
     command_assert @@ Format.sprintf "cd %s && git commit -m \"%s\"" Env.wiki_dir msg;
     push ()
 
-let update_page name body =
-  let filename = encode_filename name ^ ".md" in
-  let s = Markdown.string_of_paragraphs body in
-  write_to_file filename s;
-  command_assert @@ Format.sprintf "cd %s && git add %s" Env.wiki_dir filename;
-  commit ("Update " ^ name)
-
-let delete_page name =
-  let filename = encode_filename name ^ ".md" in
-  command_assert @@ Format.sprintf "cd %s && git rm %s" Env.wiki_dir filename;
-  commit ("Remove " ^ name)
-
 let parse_generated lines =
   let s_header = Markdown.string_of_paragraph dummy_header in
   let s_footer = Markdown.string_of_paragraph dummy_footer in
@@ -143,18 +138,35 @@ let read_page name =
   let lines = read_list_from_file filename in
   parse_generated lines
 
+let update_page name body =
+  let filename = encode_filename name ^ ".md" in
+  let header,_,footer = read_page name in
+  let to_text s = Markdown.Text (s ^ "\n") in
+  let header' = Markdown.Normal (List.map to_text header) in
+  let footer' = Markdown.Normal (List.map to_text footer) in
+  let body' = header' :: body @ [footer'] in
+  let s = Markdown.string_of_paragraphs body' in
+  write_to_file filename s;
+  command_assert @@ Format.sprintf "cd %s && git add %s" Env.wiki_dir filename;
+  commit ("Update " ^ name)
+
+let delete_page name =
+  let filename = encode_filename name ^ ".md" in
+  command_assert @@ Format.sprintf "cd %s && git rm %s" Env.wiki_dir filename;
+  commit ("Remove " ^ name)
+
 let get_commit_hash_aux dir option =
   let cmd = Format.sprintf "cd %s && git rev-parse %s HEAD" dir option in
-  let cin = Unix.open_process_in cmd in
+  let cin = open_process_in cmd in
   let s = input_line cin in
-  ignore @@ Unix.close_process_in cin;
+  close_process_in cin;
   s
 
 let get_commit_date dir hash =
   let cmd = Format.sprintf "cd %s && git log --date=iso --pretty=format:\"%%ad\" %s -1" dir hash in
-  let cin = Unix.open_process_in cmd in
+  let cin = open_process_in cmd in
   let s = input_line cin in
-  ignore @@ Unix.close_process_in cin;
+  close_process_in cin;
   s
 
 let wiki_commit_hash () =
@@ -181,9 +193,9 @@ let fpat_version () =
 
 let csisat_revision () =
   let cmd = Format.sprintf "cd %s && svnversion" Env.csisat_dir in
-  let cin = Unix.open_process_in cmd in
+  let cin = open_process_in cmd in
   let s = input_line cin in
-  ignore @@ Unix.close_process_in cin;
+  close_process_in cin;
   s
 
 let mochi_commited () =

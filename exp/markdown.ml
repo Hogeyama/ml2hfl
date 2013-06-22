@@ -23,6 +23,7 @@ type paragraph =
   | Code of string option * string
   | HorizontalLine
   | Table of element list * pos list * element list list
+  | TOC
 
 let print_text ppf = function
     Text s -> Format.fprintf ppf "%s@?" s
@@ -72,6 +73,7 @@ let rec print_paragraph ppf = function
       print_line head;
       print_line @@ List.map string_of_pos pos;
       List.iter print_line body
+  | TOC -> Format.fprintf ppf "[TOC]"
 
 let print_paragraphs ppf ps = List.iter (Format.fprintf ppf "%a@.@." print_paragraph) ps
 

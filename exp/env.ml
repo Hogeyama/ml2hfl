@@ -16,3 +16,15 @@ let default_option () = Format.sprintf " -limit %d" !limit
 let mochi () = "./mochi.opt -exp" ^ default_option ()
 let run_force = ref false
 let ignore_remote = ref false
+
+let items =
+  ["filename", Markdown.Left;
+   "result", Markdown.Left;
+   "cycles", Markdown.Right;
+   "total", Markdown.Right;
+   "abst", Markdown.Right;
+   "mc", Markdown.Right;
+   "refine", Markdown.Right]
+
+(* FLAGS *)
+let updated : int list ref = ref []

@@ -425,7 +425,7 @@ let count_line s =
 let count_list f xs =
   List.fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
-let insert x xs = List.merge compare [x] xs
+let insert ?(cmp=compare) x xs = List.merge cmp [x] xs
 
 let make_string_of pp =
   fun x ->

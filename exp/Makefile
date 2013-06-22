@@ -14,7 +14,7 @@ OCAMLOPTFLAGS = -annot $(INCLUDES) -package $(PACKAGES)
 
 NAME = manager
 
-main: opt
+main: depend opt
 all: depend byte opt
 
 byte: $(NAME).byte
@@ -28,7 +28,7 @@ opt: $(NAME).opt
 MLI =
 CMI = $(MLI:.mli=.cmi)
 
-CMO = util.cmo markdown.cmo env.cmo manager_util.cmo programs.cmo options.cmo exp.cmo main.cmo
+CMO = util.cmo markdown.cmo env.cmo manager_util.cmo programs.cmo options.cmo exp.cmo pages.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)
