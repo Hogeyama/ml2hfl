@@ -24,16 +24,30 @@ let conv_const c =
   | EqUnit -> Const.Eq SimType.unit_type
   | EqBool -> Const.Eq SimType.bool_type
   | EqInt -> Const.Eq SimType.int_type
+  | CmpPoly(typ,"=") -> Const.Eq (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,"<>") -> Const.Neq (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,"<") -> Const.Lt (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,">") -> Const.Gt (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,"<=") -> Const.Leq (SimType.Base(BaseType.Ext (Idnt.make typ)))
+  | CmpPoly(typ,">=") -> Const.Geq (SimType.Base(BaseType.Ext (Idnt.make typ)))
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
   | Add -> Const.Add SimType.int_type
   | Sub -> Const.Sub SimType.int_type
   | Mul -> Const.Mul SimType.int_type
+  | Char c -> Const.Int (int_of_char c)
+  | String s -> Const.String s
+  | Float s -> Const.Float (float_of_string s)
+  | Int32 n -> Const.Int (Int32.to_int n)
+  | Int64 n -> Const.Int (Int64.to_int n)
+  | Nativeint n -> Const.Int (Nativeint.to_int n)
+  | CPS_result -> Const.Unint(SimType.Base(BaseType.Ext (Idnt.make "X")), Idnt.make "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
   match t with
   | Const(Bottom) -> Term.make_var (Var.make (Idnt.make "bottom")) (***)
+  | Const(RandVal s) -> Term.make_var (Var.make (Idnt.make (new_id "r"))) (***)
   | Const(c) -> Term.Const([], conv_const c)
   | Var(x) ->
       if is_parameter x then
@@ -63,6 +77,15 @@ let inv_const c =
   | Const.Add (SimType.Base BaseType.Int) -> Add
   | Const.Sub (SimType.Base BaseType.Int) -> Sub
   | Const.Mul (SimType.Base BaseType.Int) -> Mul
+  | Const.Eq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"=")
+  | Const.Neq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"<>")
+  | Const.Lt (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"<")
+  | Const.Gt (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,">")
+  | Const.Leq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,"<=")
+  | Const.Geq (SimType.Base(BaseType.Ext (Idnt.Id typ))) -> CmpPoly(typ,">=")
+  | Const.String s -> String s
+  | Const.Float x -> Float (string_of_float x)
+  | Const.Unint(SimType.Base(BaseType.Ext (Idnt.Id "X")), Idnt.Id "end") -> CPS_result
   | _ -> Format.printf "%a@." Const.pr c; assert false
 
 let rec inv_term t =
@@ -119,6 +142,10 @@ let rec conv_typ ty =
     TBase(TUnit, _) -> SimType.unit_type
   | TBase(TInt, _) -> SimType.int_type
   | TBase(TBool, _) -> SimType.bool_type
+  | TBase(TAbst "string", _) -> SimType.string_type
+  | TBase(TAbst "float", _) -> SimType.float_type
+  | TBase(TAbst s, _) ->
+      SimType.Base(BaseType.Ext (Idnt.make s))
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
       SimType.Fun(conv_typ ty1, conv_typ ty2)
@@ -141,7 +168,10 @@ let verify fs (*cexs*) prog =
 
 let rec inv_abst_type aty =
   match aty with
-    AbsType.Base(BaseType.Unit, x, ts) ->
+    AbsType.Base(BaseType.Ext(id), x, ts) ->
+      let x = Var.string_of x in
+      TBase(TAbst(Idnt.string_of id), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(BaseType.Unit, x, ts) ->
       let x = Var.string_of x in
       TBase(TUnit, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(BaseType.Bool, x, ts) ->
@@ -150,9 +180,18 @@ let rec inv_abst_type aty =
   | AbsType.Base(BaseType.Int, x, ts) ->
       let x = Var.string_of x in
       TBase(TInt, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(BaseType.Float, x, ts) ->
+      let x = Var.string_of x in
+      TBase(TAbst("float"), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
+  | AbsType.Base(BaseType.String, x, ts) ->
+      let x = Var.string_of x in
+      TBase(TAbst("string"), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(aty1, aty2) ->
       let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
+  | _ ->
+      Format.printf "%a@." AbsType.pr aty;
+      assert false
 (* for add_const
   | AbsType. ... -> TBase(TAbst ..., ...)
 *)

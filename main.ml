@@ -291,8 +291,12 @@ let () =
       | TimeOut -> Format.printf "@.Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-          Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."
+          Format.printf "Verification failed:@.";
+          Format.printf "   MoCHi could not refute an infeasible error path @.";
+          Format.printf "   due to the incompleteness of the refinement type system@."
       | Fpat.InterpProver.Fail ->
           Format.printf "Fail: interpolation@."
       | Util.Fatal s ->
           Format.printf "Fatal error: %s@." s
+      | Util.Unsupported s ->
+          Format.printf "Unsupported: %s@." s

@@ -109,7 +109,7 @@ let rec eval_print fm rands t =
           List.tl rands, make_fun x (make_int (List.hd rands))
     | RandInt true -> assert false
     | RandValue _ -> assert false
-    | Var y -> assert false
+    | Var y -> unsupported "error trace with external funcitons"
     | Fun _ -> rands, t
     | App(t1, ts) ->
         let aux t (rands,vs) =

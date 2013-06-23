@@ -10,6 +10,7 @@ let ref_base_of_abs_base = function
   | AT.TBool -> RT.Bool
   | AT.TList -> assert false
   | AT.TTuple _ -> assert false
+  | AT.TAbst s -> RT.Abst s
 
 
 let rec ref_of_inter env cond atyp ityp =
@@ -43,6 +44,8 @@ let rec ref_of_inter env cond atyp ityp =
           RT.Fun(x, rtyp1, rtyp2)
     | AT.TBase(AT.TUnit, _), IT.Base (IT.State _) ->
         RT.Base(RT.Unit, "", CS.Const CS.True)
-    | _ -> assert false
+    | AT.TBase(base, _), IT.Base (IT.State _) when base = AT.typ_result_base ->
+        RT.Base(RT.Unit, "", CS.Const CS.True)
+    | _ -> Format.printf "atyp:%a@.ityp:%a@." CEGAR_print.typ atyp IT.print ityp; assert false
 
 let ref_of_inter atyp ityp = ref_of_inter [] [] atyp ityp

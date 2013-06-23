@@ -10,8 +10,15 @@ type const =
   | Unit
   | True
   | False
+  | Char of char
+  | String of string
+  | Float of string
+  | Int32 of int32
+  | Int64 of int64
+  | Nativeint of nativeint
   | RandInt
   | RandBool
+  | RandVal of string
   | And
   | Or
   | Not
@@ -22,6 +29,7 @@ type const =
   | EqUnit
   | EqBool
   | EqInt
+  | CmpPoly of string * string
   | Int of int
   | Add
   | Sub
@@ -31,6 +39,8 @@ type const =
   | If (* for abstraction and model-checking *)
   | Bottom
   | Label of int
+  | CPS_result
+  | Abst
 
 
 
@@ -146,3 +156,13 @@ let rec decomp_tfun = function
 
 
 let is_parameter x = Fpat.Util.String.starts_with x Flag.extpar_header
+
+
+let get_ext_funs {env=env; defs=defs} =
+  env |>
+  List.filter (fun (f,_) -> not (List.exists (fun (g,_,_,_,_) -> f = g) defs)) |>
+  List.map fst
+
+let get_ext_fun_env prog =
+  let ext_funs = get_ext_funs prog in
+  List.map (fun f -> f, List.assoc f prog.env) ext_funs

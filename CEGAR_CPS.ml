@@ -90,7 +90,6 @@ let rec trans_simpl c = function
         c (Fun(x, None, Fun(k, None, trans_simpl (fun x -> App(Var k, x)) t)))
 
 let trans_simpl_def (f,xs,t1,e,t2) =
-  if f =  "mult_70" then () else ();
   assert (xs = []);
   let t2 = trans_simpl (fun x -> x) t2 in
   if false then Format.printf "TRANS: %a@." CEGAR_print.term t2;
@@ -171,6 +170,6 @@ let trans {env=env;defs=defs;main=main} lift_opt =
   let prog = {env=env; defs=defs; main=main} in
   let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.prog prog in
   let _ = Typing.infer prog in
-  let prog = if lift_opt then lift prog else lift2 prog in
+  let prog = if lift_opt then CEGAR_lift.lift prog else CEGAR_lift.lift2 prog in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog prog in
     extract_tuple prog
