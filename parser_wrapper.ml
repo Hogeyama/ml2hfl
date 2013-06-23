@@ -25,6 +25,7 @@ let prim_typs =
   ["unit", TUnit;
    "bool", TBool;
    "int", TInt;
+   "Pervasives.format", TConstr("string", false);
 (*
    "Pervasives.in_channel", TUnit
 *)]
@@ -86,7 +87,7 @@ let rec from_type_expr tenv typ =
               TPair(Id.new_var "x" typ_pair,typ')
           in
             List.fold_left aux (from_type_expr tenv typ) typs
-      | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs ->
+      | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
           List.assoc (Path.name path) prim_typs
       | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
           TList (from_type_expr tenv type_expr)
