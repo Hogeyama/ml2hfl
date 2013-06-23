@@ -10,7 +10,7 @@ exception CannotRefute
 let equiv env t1 t2 =
   let t1' = FpatInterface.conv_term t1 in
   let t2' = FpatInterface.conv_term t2 in
-  Fpat.Cvc3Interface.implies [t1'] [t2'] && Fpat.Cvc3Interface.implies [t2'] [t1']
+  Fpat.Cvc3Interface.implies [t1'] [t2'] && Fpat.Cvc3Interface.implies [t1'] [t2']
 
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
@@ -55,6 +55,17 @@ let add_preds_env map env =
   let aux (f,typ) =
     try
       f, merge_typ [] typ (List.assoc f map)
+    with Not_found -> f, typ
+  in
+    List.map aux env
+
+let add_preds_env map env =
+  let aux (f,typ) =
+    try
+      let typ1 = typ in
+      let typ2 = List.assoc f map in
+      let typ' = merge_typ [] typ1 typ2 in
+        f, typ'
     with Not_found -> f, typ
   in
     List.map aux env

@@ -21,7 +21,7 @@ let check_aux env cond p =
 
 let check env cond pbs p =
   let ps,_ = List.split pbs in
-  check_aux env (cond@@@ps) p
+  check_aux env (cond@@ps) p
 
 let equiv env cond t1 t2 =
   check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
@@ -53,7 +53,7 @@ let weakest env cond ds p =
     Const False, Const True
   else
     let fvp = get_fv p in
-    let ts = cond @@@ List.map fst ds in
+    let ts = cond @@ List.map fst ds in
     let ds =
       let rec fixp xs =
         let xs' =
@@ -194,7 +194,7 @@ let filter env cond pbs must t =
       in
       let rec loop bottoms cands width =
         let cands' = uniq (rev_flatten_map (aux bottoms) cands) in
-        let bottoms' = List.filter (fun (pbs,_) -> check pbs) cands' @@@ bottoms in
+        let bottoms' = List.filter (fun (pbs,_) -> check pbs) cands' @@ bottoms in
           if width >= !Flag.wp_max_num
           then bottoms'
           else loop bottoms' cands' (width+1)
@@ -313,7 +313,7 @@ let rec reduce_let env = function
         | _ -> assert false
 
 let make_arg_let_def env (f,xs,t1,e,t2) =
-    f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@@ env) (make_arg_let_term t2)
+    f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)
 
 let make_arg_let prog =
   {prog with defs = List.map (make_arg_let_def prog.env) prog.defs}

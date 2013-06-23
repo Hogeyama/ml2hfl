@@ -26,7 +26,7 @@ let rec coerce env cond pts typ1 typ2 t =
         let var = match t with Var x -> Some x | _ -> None in
         let x = match var with None -> new_id "x" | Some x -> x in
         let env' = (x,typ1)::env in
-        let pts' = abst_arg x typ1 @@@ pts in
+        let pts' = abst_arg x typ1 @@ pts in
         let ts = List.map (abst env' cond pts') (ps2 (Var x)) in
           begin
             match var with
@@ -77,7 +77,7 @@ let rec abstract_term env cond pbs t typ =
         let typ' = get_typ env t1 in
         let t1' = abstract_term env cond pbs t1 typ' in
         let env' = (x,typ')::env in
-        let pbs' = abst_arg x typ' @@@ pbs in
+        let pbs' = abst_arg x typ' @@ pbs in
         let t2' = abstract_term env' cond pbs' t2 typ in
           Let(x,t1',t2')
     | Fun _ -> assert false

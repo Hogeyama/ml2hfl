@@ -317,8 +317,8 @@ let rec template = function
 let rec reduce_constraint typ1 typ2 =
   match typ1,typ2 with
       TFun(typ11,typ12), TFun(typ21,typ22) ->
-        reduce_constraint typ11 typ21 @@@
-        reduce_constraint typ21 typ11 @@@
+        reduce_constraint typ11 typ21 @@
+        reduce_constraint typ21 typ11 @@
         reduce_constraint typ12 typ22
     | TFun _, _ -> assert false
     | _, TFun _ -> assert false
@@ -330,11 +330,11 @@ let rec constraints_term env_orig env t typ =
     | Const _ -> assert false
     | Var x -> reduce_constraint (List.assoc x env) typ
     | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul), t1), t2) ->
-        (TBase,typ) :: constraints_term env_orig env t1 TBase @@@
+        (TBase,typ) :: constraints_term env_orig env t1 TBase @@
                              constraints_term env_orig env t2 TBase
     | App(App(App(Const If, t1), t2), t3) ->
-        constraints_term env_orig env t1 TBase @@@
-        constraints_term env_orig env t2 typ @@@
+        constraints_term env_orig env t1 TBase @@
+        constraints_term env_orig env t2 typ @@
         constraints_term env_orig env t3 typ
     | App(t1,t2) ->
         let typ1,typ2 =
@@ -342,8 +342,8 @@ let rec constraints_term env_orig env t typ =
               TFun(typ1,typ2) -> typ1,typ2
             | _ -> assert false
         in
-          reduce_constraint typ2 typ @@@
-          constraints_term env_orig env t1 (TFun(typ1,typ2)) @@@
+          reduce_constraint typ2 typ @@
+          constraints_term env_orig env t1 (TFun(typ1,typ2)) @@
           constraints_term env_orig env t2 typ1
     | Let _ -> assert false
     | Fun _ -> assert false
@@ -354,7 +354,7 @@ let new_env env x =
 
 let constraints_def env_orig env (f,xs,t1,_,t2)  =
   let f_typ_orig = List.assoc f env_orig in
-  let env_orig' = get_arg_env f_typ_orig xs @@@ env_orig in
+  let env_orig' = get_arg_env f_typ_orig xs @@ env_orig in
   let f_typ = List.assoc f env in
   let env' = List.map (new_env env_orig') xs in
   let r_typ =
@@ -363,9 +363,9 @@ let constraints_def env_orig env (f,xs,t1,_,t2)  =
       template (List.fold_right (fun typ1 typ2 -> CEGAR_type.TFun(typ1,fun _ ->typ2)) typs' typr)
   in
   let fun_typ = List.fold_right (fun (_,typ1) typ2 -> TFun(typ1,typ2)) env' r_typ in
-  let env'' = env' @@@ env in
-    reduce_constraint fun_typ f_typ @@@
-    constraints_term env_orig' env'' t1 TBase @@@
+  let env'' = env' @@ env in
+    reduce_constraint fun_typ f_typ @@
+    constraints_term env_orig' env'' t1 TBase @@
     constraints_term env_orig' env'' t2 r_typ
 
 let print_constraint (typ1,typ2) = Format.printf "%a <: %a@." print_typ typ1 print_typ typ2
@@ -467,7 +467,7 @@ let elim_def env (f,xs,t1,es,t2) =
             | TVar _, _ -> assert false
             | _ -> []
         in
-        let env' = get_arg_env f_typ xs @@@ env in
+        let env' = get_arg_env f_typ xs @@ env in
           [f, xs', elim_term env' t1, es, elim_term env' t2]
 
 (** call-by-name *)
