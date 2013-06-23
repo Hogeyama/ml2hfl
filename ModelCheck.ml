@@ -8,7 +8,6 @@ open ModelCheck_util
 type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
 let check_aux prog n =
-  Format.printf "Warning: model checking for non-CPS programs is unmaintained.@.";
   let prog = CEGAR_CPS.trans prog true in
   let () = if true then Format.printf "CPS:\n%a@." CEGAR_print.prog prog in
   let prog = eta_expand prog in

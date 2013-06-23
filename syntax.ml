@@ -9,18 +9,7 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 
-and const = (* only base type constants *)
-    Unit
-  | True
-  | False
-  | Int of int
-  | Char of char
-  | String of string
-  | Float of string
-  | Int32 of int32
-  | Int64 of int64
-  | Nativeint of nativeint
-  | CPS_result
+and const = Unit | True | False | Int of int (* only base type constants *)
 
 and typed_term = {desc:term; typ:typ}
 and term =
@@ -144,7 +133,7 @@ let rec get_fv vars t =
     | Fst t -> get_fv vars t
     | Snd t -> get_fv vars t
     | Raise t -> get_fv vars t
-    | RandValue _ -> []
+    | RandValue _ -> assert false
     | Label _ -> assert false
 let get_fv ?(cmp=Id.compare) t = uniq ~cmp (get_fv [] t)
 
@@ -161,7 +150,8 @@ let rec occur (x:id) = function
   | TList typ -> occur x typ
   | TPair(y,typ) -> occur x (Id.typ y) || occur x typ
   | TConstr(s,b) -> false
-  | TPred(y,ps) -> List.exists (fun p -> List.exists (Id.same x) (get_fv p)) ps || occur x (Id.typ y)
+  | TPred(y,ps) ->
+    List.exists (fun p -> List.exists (Id.same x) (get_fv p)) ps || occur x (Id.typ y)
 
 
 
@@ -177,7 +167,7 @@ and print_ids fm xs =
 	fprintf fm "%a" Id.print x
       | x1 :: x2 :: xs ->
 	let _ =
-	  if is_fun_typ (Id.typ x2) then
+	  if is_fun_typ x2.Id.typ then
 	    fprintf fm "$%a$ " Id.print x1
 	  else
 	    fprintf fm "%a " Id.print x1
@@ -218,7 +208,7 @@ and print_ids_typ fm = function
 and paren pri p = if pri < p then "","" else "(",")"
 
 and print_binop fm = function
-    Eq -> fprintf fm "="
+Eq -> fprintf fm "="
   | Lt -> fprintf fm "<"
   | Gt -> fprintf fm ">"
   | Leq -> fprintf fm "<="
@@ -254,21 +244,13 @@ and print_const fm = function
   | True -> fprintf fm "true"
   | False -> fprintf fm "false"
   | Int n -> fprintf fm "%d" n
-  | Char c -> fprintf fm "%C" c
-  | String s -> fprintf fm "%S" s
-  | Float s -> fprintf fm "%s" s
-  | Int32 n -> fprintf fm "%ldl" n
-  | Int64 n -> fprintf fm "%LdL" n
-  | Nativeint n -> fprintf fm "%ndn" n
-  | CPS_result -> fprintf fm "end"
-
 and print_term pri typ fm t =
   match t.desc with
     Const c -> print_const fm c
   | Unknown -> fprintf fm "***"
   | RandInt false -> fprintf fm "rand_int"
   | RandInt true -> fprintf fm "rand_int_cps"
-  | RandValue(typ',false) -> fprintf fm "rand_val[%a] ()" print_typ typ'
+  | RandValue(typ',false) -> fprintf fm "rand_val[%a]()" print_typ typ'
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
   | Var x -> print_id fm x
   | Fun(x, t) ->
@@ -441,7 +423,7 @@ let rec print_term' pri fm t =
       | RandValue(typ',true) ->
           let p = 8 in
           let s1,s2 = paren pri p in
-            fprintf fm "%srand_val_cps(%a)%s" s1 print_typ typ' s2
+            fprintf fm "%srand_val(%a)%s" s1 print_typ typ' s2
       | Var x -> print_id_typ fm x
       | Fun(x, t) ->
           let p = 2 in
@@ -583,15 +565,6 @@ and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term'
 let print_term' fm = print_term' 0 fm
 let pp_print_term' = print_term'
 
-let string_of_const c =
-  print_const str_formatter c;
-  flush_str_formatter ()
-let string_of_binop op =
-  print_binop str_formatter op;
-  flush_str_formatter ()
-let string_of_typ typ =
-  print_typ str_formatter typ;
-  flush_str_formatter ()
 let string_of_node = function
     BrNode -> assert false
   | LabNode true -> "then"
@@ -619,15 +592,14 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 
 (*** TERM CONSTRUCTORS ***)
 
-let typ_result = TConstr("X", false)
 let typ_event = TFun(Id.new_var "" TUnit, TUnit)
-let typ_event' = TFun(Id.new_var "" TUnit, typ_result)
 let typ_event_cps =
   let u = Id.new_var "" TUnit in
   let r = Id.new_var "" TUnit in
-  let k = Id.new_var "" (TFun(r,typ_result)) in
-    TFun(u, TFun(k, typ_result))
+  let k = Id.new_var "" (TFun(r,TUnit)) in
+    TFun(u, TFun(k, TUnit))
 let typ_excep = ref (TConstr("exn",true))
+let typ_abst = TConstr("abst",false)
 
 let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
@@ -640,49 +612,36 @@ let length_var =
 let unit_term = {desc=Const Unit; typ=TUnit}
 let true_term = {desc=Const True;typ=TBool}
 let false_term = {desc=Const False;typ=TBool}
-let cps_result = {desc=Const CPS_result; typ=typ_result}
 let fail_term = {desc=Event("fail",false);typ=typ_event}
-let fail_term_cps = {desc=Event("fail",false);typ=typ_event'}
 let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt)}
 let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
   {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Const(Int 0);typ=TInt}); typ=TBool}
+let abst_term = {desc=Constr("Abst",[]); typ=typ_abst}
+let make_abst typ = {desc=Constr("Abst",[]); typ=typ}
 let make_bottom typ = {desc=Bottom;typ=typ}
 let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
 let make_var x = {desc=Var x; typ=Id.typ x}
 let make_int n = {desc=Const(Int n); typ=TInt}
-let make_randvalue typ = {desc=RandValue(typ,false); typ=typ}
-let make_randvalue_cps typ =
-  let r = Id.new_var "" typ in
-  let k = Id.new_var "" (TFun(r,typ_result)) in
-  {desc=RandValue(typ,true); typ=TFun(k,typ_result)}
-let make_randint_cps () =
+let make_randint_cps typ =
   let u = Id.new_var "" TUnit in
   let r = Id.new_var "" TInt in
-  let k = Id.new_var "" (TFun(r,typ_result)) in
-    {desc=RandInt true; typ=TFun(u,TFun(k,typ_result))}
+  let k = Id.new_var "" (TFun(r,typ)) in
+    {desc=RandInt true; typ=TFun(u,TFun(k,typ))}
 let rec make_app t ts =
   match t,ts with
     | t,[] -> t
     | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-        if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
-        then
-          begin
-            Format.printf "make_app:@ %a@ <=/=>@ %a@."
-              print_typ (Id.typ x)
-              print_typ t2.typ;
-            assert false
-          end;
+        assert (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ);
         make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
     | {typ=TFun(x,typ)}, t2::ts
     | {typ=TPred({Id.typ=TFun(x,typ)},_)}, t2::ts ->
         if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
-        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@.fun:%a@.arg:%a@."
+        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@ %a@."
                 print_typ (Id.typ x)
                 print_typ t2.typ
-                pp_print_term t
-                pp_print_term' t2;
+                pp_print_term {desc=App(t,ts);typ=TUnit};
               assert false);
         make_app {desc=App(t,[t2]); typ=typ} ts
     | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
@@ -1008,7 +967,7 @@ and subst x t t' =
       | Pair(t1,t2) -> make_pair (subst x t t1) (subst x t t2)
       | Fst t1 -> make_fst (subst x t t1)
       | Snd t1 -> make_snd (subst x t t1)
-      | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t'.typ}
+      | RandValue _ -> assert false
       | Label(info, t1) -> make_label info (subst x t t1)
 
 
@@ -1302,6 +1261,26 @@ let make_if t1 t2 t3 =
       Const True -> t2
     | Const False -> t3
     | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ}
+(*
+let rec make_app t ts =
+  match t,ts with
+    | t,[]_ -> t
+    | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
+        let typ' = subst_type x t2 typ in
+          assert (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ);
+          make_app {desc=App(t1,ts1@[t2]); typ=typ'} ts2
+    | {typ=TFun(x,typ)}, t2::ts ->
+        let typ' = subst_type x t2 typ in
+          if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
+          then (Format.printf "make_app: %a <=/=> %a, %a@."
+                  print_typ (Id.typ x)
+                  print_typ t2.typ
+                  pp_print_term {desc=App(t,ts);typ=TUnit};
+                assert false);
+          make_app {desc=App(t,[t2]); typ=typ'} ts
+    | _ when not Flag.check_typ -> {desc=App(t,ts); typ=TUnknown}
+    | _ -> Format.printf "Untypable(make_app): %a@." pp_print_term {desc=App(t,ts);typ=TUnknown}; assert false
+*)
 
 let rec get_top_funs acc = function
     {desc=Let(flag, defs, t)} ->

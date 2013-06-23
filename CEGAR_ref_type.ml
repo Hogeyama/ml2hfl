@@ -6,7 +6,6 @@ type base =
     Unit
   | Bool
   | Int
-  | Abst of string
 
 type t =
     Base of base * CS.var * CS.t
@@ -17,7 +16,6 @@ let print_base fm = function
     Unit -> Format.pp_print_string fm "unit"
   | Bool -> Format.pp_print_string fm "bool"
   | Int -> Format.pp_print_string fm "int"
-  | Abst s -> Format.pp_print_string fm s
 
 let rec occur x = function
     Base(_,_,p) -> List.mem x (CS.get_fv p)

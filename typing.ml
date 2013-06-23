@@ -1,7 +1,7 @@
 
 open Util
 open CEGAR_syntax
-module T = CEGAR_type
+open CEGAR_type
 
 
 exception CannotUnify
@@ -9,37 +9,22 @@ exception External
 
 type typ =
     TUnit
-  | TResult
   | TBool
   | TInt
-  | TAbst of string
   | TVar of typ option ref
   | TFun of typ * typ
   | TTuple of typ list
 
 let rec print_typ fm = function
     TUnit -> Format.fprintf fm "unit"
-  | TResult -> Format.fprintf fm "X"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TAbst typ -> Format.fprintf fm "%s" typ
   | TVar{contents=Some typ} -> print_typ fm typ
   | TVar{contents=None} -> Format.fprintf fm "?"
   | TFun(typ1,typ2) -> Format.fprintf fm "(%a -> %a)" print_typ typ1 print_typ typ2
   | TTuple typs -> Format.fprintf fm "(%a)" (print_list print_typ " * " false) typs
 
 let new_tvar () = TVar (ref None)
-
-let rec from_typ = function
-    T.TBase(T.TUnit, _) -> TUnit
-  | T.TBase(T.TInt, _) -> TInt
-  | T.TBase(T.TBool, _) -> TBool
-  | T.TBase(T.TList, _) -> assert false
-  | T.TBase(T.TTuple _, _) -> assert false
-  | T.TBase(T.TAbst s, _) -> TAbst s
-  | T.TAbs _ -> assert false
-  | T.TApp _ -> assert false
-  | T.TFun(typ1, typ2) -> TFun(from_typ typ1, from_typ (typ2 (Const Unit)))
 
 let rec occurs r = function
     TVar{contents = Some typ} -> occurs r typ
@@ -54,10 +39,6 @@ let rec unify typ1 typ2 =
     | TUnit, TUnit -> ()
     | TBool, TBool -> ()
     | TInt, TInt -> ()
-    | TResult, TResult -> ()
-    | TAbst typ1, TAbst typ2 when typ1 = typ2 -> ()
-    | TAbst "string", TAbst "Pervasives.format"
-    | TAbst "Pervasives.format", TAbst "string" -> ()
     | TFun(typ11, typ12), TFun(typ21, typ22) ->
         unify typ11 typ21;
         unify typ12 typ22
@@ -76,36 +57,25 @@ let rec unify typ1 typ2 =
 let nil = fun _ -> []
 
 let rec trans_typ = function
-    TUnit -> T.TBase(T.TUnit,nil)
-  | TBool -> T.TBase(T.TBool,nil)
-  | TInt -> T.TBase(T.TInt,nil)
-  | TVar{contents=None} -> T.TBase(T.TUnit,nil)
+    TUnit -> TBase(CEGAR_type.TUnit,nil)
+  | TBool -> TBase(CEGAR_type.TBool,nil)
+  | TInt -> TBase(CEGAR_type.TInt,nil)
+  | TVar{contents=None} -> TBase(CEGAR_type.TUnit,nil)
   | TVar{contents=Some typ} -> trans_typ typ
-  | TFun(typ1,typ2) -> T.TFun(trans_typ typ1, fun _ -> trans_typ typ2)
-  | TTuple typs -> T.make_tapp (T.TBase(T.TTuple (List.length typs),nil)) (List.map trans_typ typs)
-  | TAbst typ -> T.TBase(T.TAbst typ, nil)
-  | TResult -> T.typ_result
+  | TFun(typ1,typ2) -> CEGAR_type.TFun(trans_typ typ1, fun _ -> trans_typ typ2)
+  | TTuple typs -> make_tapp (TBase(CEGAR_type.TTuple (List.length typs),nil)) (List.map trans_typ typs)
 
 let get_typ_const = function
   | Unit -> TUnit
   | True -> TBool
   | False -> TBool
-  | Char _ -> TAbst "char"
-  | String _ -> TAbst "string"
-  | Float _ -> TAbst "float"
-  | Int32 _ -> TAbst "int32"
-  | Int64 _ -> TAbst "int64"
-  | Nativeint _ -> TAbst "nativeint"
-  | CPS_result -> TResult
   | RandBool -> TBool
   | RandInt ->
       let typ = new_tvar () in
         TFun(TFun(TInt,typ),typ)
-  | RandVal s -> TAbst s
   | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
   | EqBool -> TFun(TBool,TFun(TBool,TBool))
-  | CmpPoly(typ, _) -> TFun(TAbst typ,TFun(TAbst typ,TBool))
   | And -> TFun(TBool,TFun(TBool,TBool))
   | Or -> TFun(TBool,TFun(TBool,TBool))
   | Not -> TFun(TBool,TBool)
@@ -173,14 +143,9 @@ let infer_def env (f,xs,t1,_,t2) =
     unify typ typ'
 
 
-let infer ?(is_cps=false) ({defs=defs;main=main;env=env} as prog) =
-  if false then Format.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
-  let ext_funs = get_ext_funs prog in
-  let ext_env = List.map (fun f -> f, from_typ (List.assoc f env)) ext_funs in
+let infer {defs=defs;main=main} =
   let env = List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
-  let env = env @ ext_env in
-  let main_typ = if is_cps then TResult else TUnit in
-  unify main_typ (List.assoc main env);
-  List.iter (infer_def env) defs;
+  let () = unify TUnit (List.assoc main env) in
+  let () = List.iter (infer_def env) defs in
   let env' = List.map (fun (f,_) -> f, trans_typ (List.assoc f env)) env in
     {env=env'; defs=defs; main=main}

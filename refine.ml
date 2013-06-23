@@ -20,13 +20,6 @@ let add env ps p =
   then ps
   else normalize_bool_term p :: ps
 
-let print_typ_base fm = function
-    TUnit -> Format.fprintf fm "unit"
-  | TBool -> Format.fprintf fm "bool"
-  | TInt -> Format.fprintf fm "int"
-  | TTuple n -> Format.fprintf fm "tuple"
-  | TList -> assert false
-  | TAbst s -> Format.pp_print_string fm s
 let rec merge_typ env typ typ' =
   match typ,typ' with
       TBase(b1,ps1),TBase(b2,ps2) ->

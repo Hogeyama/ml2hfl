@@ -8,47 +8,47 @@ let preprocess t spec =
     then
       let t' = Trans.make_ext_funs t in
       let () =
-        if !Flag.debug_level > 0 && t <> t'
+        if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Trans.copy_poly_funs t in
       let fun_list = Syntax.get_top_funs t' in
       let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+        if true && !Flag.debug_level > 0 && t <> t'
+        then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term' t' in
       let t = t' in
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
       let t' = Trans.replace_typ spec'.Spec.abst_env t in
       let () =
-        if !Flag.debug_level > 0 && spec <> Spec.init
+        if true && !Flag.debug_level > 0 && spec <> Spec.init
         then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Abstract.abstract_recdata t in
       let () =
-        if !Flag.debug_level > 0 && t <> t'
+        if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
       let t',get_rtyp_list = Abstract.abstract_list t in
       let () =
-        if !Flag.debug_level > 0 && t <> t'
+        if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let get_rtyp = get_rtyp_list in
       let t' = Trans.inlined_f spec'.Spec.inlined_f t in
       let () =
-        if !Flag.debug_level > 0 && t <> t'
+        if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t',get_rtyp_cps_trans = CPS.trans t in
       let () =
-        if !Flag.debug_level > 0 && t <> t'
+        if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t',get_rtyp_remove_pair = Curry.remove_pair t in
       let () =
-        if !Flag.debug_level > 0 && t <> t'
+        if true && !Flag.debug_level > 0 && t <> t'
         then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
       let t = t' in
@@ -57,14 +57,11 @@ let preprocess t spec =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
       in
-      let t = t' in
-      let () = Type_check.check t Syntax.typ_result in
-      fun_list, t, get_rtyp
-    else
-      let () = Type_check.check t Type.TUnit in
-      Syntax.get_top_funs t, t, fun _ typ -> typ
+      fun_list, t', get_rtyp
+    else Syntax.get_top_funs t, t, fun _ typ -> typ
   in
 
+  let () = Type_check.check t Type.TUnit in
   let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
   let get_rtyp f typ = get_rtyp f (get_rtyp_trans f typ) in
 

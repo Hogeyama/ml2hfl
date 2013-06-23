@@ -9,7 +9,7 @@ type node = UnitNode | BrNode | LineNode of int | EventNode of string
 type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
 
-let debug = false
+let debug = true
 
 
 let make_line_spec n q =
@@ -67,8 +67,7 @@ let capitalize {env=env;defs=defs;main=main} =
     {env=env'; defs=defs'; main=main'}
 
 
-let elim_non_det ({defs=defs;main=main} as prog) =
-  let env = get_ext_fun_env prog in
+let elim_non_det {defs=defs;main=main} =
   let check f (g,_,_,_,_) = f = g in
   let mem f defs = List.exists (check f) defs in
   let rec elim_non_det_def = function
@@ -83,7 +82,7 @@ let elim_non_det ({defs=defs;main=main} as prog) =
           (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
     | def::defs -> def :: elim_non_det_def defs
   in
-    Typing.infer {env=env; defs=elim_non_det_def defs; main=main}
+    Typing.infer {env=[]; defs=elim_non_det_def defs; main=main}
 
 let make_bottom {env=env;defs=defs;main=main} =
   let bottoms = ref [] in
@@ -163,7 +162,7 @@ let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
     f, xs@ys, t1, e, t2''
 
-let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
+let eta_expand prog = lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
 

@@ -38,7 +38,6 @@ and print_typ_base fm = function
   | TInt -> Format.fprintf fm "int"
   | TTuple n -> Format.fprintf fm "tuple"
   | TList -> assert false
-  | TAbst s -> Format.pp_print_string fm s
 
 and print_typ_aux var fm = function
     TBase(b,ps) ->
@@ -77,15 +76,8 @@ and print_const fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
-  | Char c -> Format.fprintf fm "%C" c
-  | String s -> Format.fprintf fm "%S" s
-  | Float s -> Format.fprintf fm "%s" s
-  | Int32 n -> Format.fprintf fm "%ldl" n
-  | Int64 n -> Format.fprintf fm "%LdL" n
-  | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "rand_bool"
   | RandInt -> Format.fprintf fm "rand_int"
-  | RandVal s -> Format.fprintf fm "rand_%s" s
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"
   | Not -> Format.fprintf fm "not"
@@ -96,7 +88,6 @@ and print_const fm = function
   | EqUnit -> Format.fprintf fm "="
   | EqInt -> Format.fprintf fm "="
   | EqBool -> Format.fprintf fm "<=>"
-  | CmpPoly(typ,s) -> Format.pp_print_string fm s
   | Int n -> Format.fprintf fm "%d" n
   | Add -> Format.fprintf fm "+"
   | Sub -> Format.fprintf fm "-"
@@ -107,14 +98,13 @@ and print_const fm = function
   | Bottom -> Format.fprintf fm "_|_"
   | Temp s -> Format.fprintf fm "Temp{%s}" s
   | Label n -> Format.fprintf fm "l%d" n
-  | CPS_result -> Format.fprintf fm "end"
 
 and print_term fm = function
     Const c -> print_const fm c
   | Var x -> print_var fm x
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
-  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
+  | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(@[%a@ %a@ %a@])" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
@@ -271,12 +261,6 @@ and print_const_ML fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
-  | Char c -> Format.fprintf fm "%C" c
-  | String s -> Format.fprintf fm "%S" s
-  | Float s -> Format.fprintf fm "%s" s
-  | Int32 n -> Format.fprintf fm "%ldl" n
-  | Int64 n -> Format.fprintf fm "%LdL" n
-  | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "(Random.bool())"
   | RandInt -> Format.fprintf fm "rand_int()"
   | And -> Format.fprintf fm "(&&)"
@@ -302,8 +286,6 @@ and print_const_ML fm = function
   | Bottom -> Format.fprintf fm "()"
   | EqUnit -> assert false
   | Label _ -> assert false
-  | CmpPoly _ -> assert false
-  | CPS_result -> Format.fprintf fm "end"
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
@@ -336,7 +318,6 @@ let rec print_base_typ_as_tree fm = function
   | TBool -> Format.fprintf fm "TBool"
   | TList -> Format.fprintf fm "TList"
   | TTuple n -> Format.fprintf fm "(TTuple %d)" n
-  | TAbst s -> Format.fprintf fm "%s" s
 
 and print_typ_as_tree fm = function
     TBase(b,ps) ->
@@ -354,12 +335,6 @@ and print_const_as_tree fm = function
   | Unit -> Format.fprintf fm "Unit"
   | True -> Format.fprintf fm "True"
   | False -> Format.fprintf fm "False"
-  | Char c -> Format.fprintf fm "%C" c
-  | String s -> Format.fprintf fm "%S" s
-  | Float s -> Format.fprintf fm "%s" s
-  | Int32 n -> Format.fprintf fm "%ldl" n
-  | Int64 n -> Format.fprintf fm "%LdL" n
-  | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "RandBool"
   | RandInt -> Format.fprintf fm "RandInt"
   | And -> Format.fprintf fm "And"
@@ -382,8 +357,6 @@ and print_const_as_tree fm = function
   | Bottom -> Format.fprintf fm "Bottom"
   | EqUnit -> assert false
   | Label _ -> assert false
-  | CmpPoly _ -> assert false
-  | CPS_result -> Format.fprintf fm "End"
 
 and print_term_as_tree fm = function
     Const c -> Format.fprintf fm "(Const %a)" print_const_as_tree c
@@ -447,8 +420,3 @@ let ce = print_ce
 let env = print_env
 let prog = print_prog
 let prog_typ = print_prog_typ
-
-
-let string_of_const c =
-  print_const Format.str_formatter c;
-  Format.flush_str_formatter ()

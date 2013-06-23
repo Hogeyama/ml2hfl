@@ -59,6 +59,12 @@ let rec can_unify typ1 typ2 =
     | TConstr("event",_), TFun _ -> true
     | TFun _, TConstr("event",_) -> true
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
+(*
+    | TVariant stypss1,TVariant stypss2 ->
+        let aux (s1,typs1) (s2,typs2) = s1=s2 && List.for_all2 can_unify typs1 typs2 in
+          List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
+    | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && can_unify typ1 typ2) fields1 fields2
+*)
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
     | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
