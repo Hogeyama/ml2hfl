@@ -29,8 +29,11 @@ let dummy_footer =
 let make_link s =
   Markdown.Link(s, encode_filename s)
 
-let file_exists ?(prefix=Env.wiki_dir) filename =
+let file_exists ?(prefix="") filename =
   Sys.file_exists @@ prefix ^ filename
+
+let page_exists name =
+  file_exists ~prefix:Env.wiki_dir @@ encode_filename name ^ ".md"
 
 let read_from_file ?(prefix=Env.wiki_dir) filename =
   let cin = open_in @@ prefix ^ filename in
@@ -134,7 +137,7 @@ let parse_generated lines =
   header', contents', footer'
 
 let read_page name =
-  if file_exists name
+  if page_exists name
   then
     let filename = encode_filename name ^ ".md" in
     let lines = read_list_from_file filename in

@@ -5,7 +5,7 @@ open Markdown
 module JSON = Yojson.Basic
 
 let get () =
-  if file_exists Env.exp_list
+  if file_exists ~prefix:Env.wiki_dir Env.exp_list
   then read_list_from_file Env.exp_list
   else []
 
@@ -88,7 +88,7 @@ let run_mochi n programs =
     match programs with
       [] -> ()
     | p::programs' ->
-        if not @@ file_exists ~prefix:"" p then fatal ("Not found: " ^ p);
+        if not @@ file_exists p then fatal ("Not found: " ^ p);
         let result_num () = List.length @@ read_list_from_file filename in
         let n = result_num () in
         let cmd = Format.sprintf "%s %s %s | tee -a %s" (Env.mochi()) option p wiki_filename in

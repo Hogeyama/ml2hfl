@@ -3,7 +3,7 @@ open Manager_util
 open Markdown
 
 let get () =
-  if file_exists Env.option_list
+  if file_exists ~prefix:Env.wiki_dir Env.option_list
   then read_list_from_file Env.option_list
   else []
 

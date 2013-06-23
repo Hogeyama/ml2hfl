@@ -3,7 +3,7 @@ open Manager_util
 open Markdown
 
 let get () =
-  if file_exists Env.program_list
+  if file_exists ~prefix:Env.wiki_dir Env.program_list
   then read_list_from_file Env.program_list
   else []
 
@@ -29,7 +29,7 @@ let make_contents_from_file filename =
 
 let add filename =
   if exists filename then fatal "Already registered.";
-  if not @@ file_exists ~prefix:"" filename then fatal ("Not found: " ^ filename);
+  if not @@ file_exists filename then fatal ("Not found: " ^ filename);
   write_list_to_file Env.program_list @@ insert filename @@ get ();
   Manager_util.add Env.program_list;
   update_page (encode_filename filename) @@ make_contents_from_file filename;
@@ -37,6 +37,6 @@ let add filename =
 
 let update filename =
   if not @@ exists filename then fatal "Not registered.";
-  if not @@ file_exists ~prefix:"" filename then fatal ("Not found: " ^ filename);
+  if not @@ file_exists filename then fatal ("Not found: " ^ filename);
   update_page (encode_filename filename) @@ make_contents_from_file filename;
   Format.printf "Program \"%s\" is updated.@." filename
