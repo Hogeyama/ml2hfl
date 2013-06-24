@@ -158,7 +158,7 @@ let rec extract_tuple_term env = function
 
 
 let extract_tuple_def env (f,xs,t1,e,t2) =
-  let env' = get_arg_env (List.assoc f env) xs @@ env in
+  let env' = get_arg_env (List.assoc f env) xs @@@ env in
   let xs' = List.flatten (List.map (extract_tuple_var env') xs) in
   let t1' = hd (extract_tuple_term env t1) in
   let t2' = hd (extract_tuple_term env' t2) in
@@ -397,7 +397,7 @@ let rec infer_cont_pos env = function
       let typ_args = List.map (fun _ -> new_tvar ()) xs in
       let xs' = List.map2 (fun x typ -> {id_cps=x; id_typ=typ}) xs typ_args in
       let env2 = (f, typ_f) :: env in
-      let env1 = List.combine xs typ_args @@ env in
+      let env1 = List.combine xs typ_args @@@ env in
       let typed1 = infer_cont_pos env1 t1 in
       let typed2 = infer_cont_pos env2 t2 in
       let b = ref true in

@@ -25,7 +25,8 @@ let get_rtyp_lift t f rtyp =
 
 let get_rtyp_lift t f rtyp =
   let rtyp' = get_rtyp_lift t f rtyp in
-  if Flag.print_ref_typ then Format.printf "LIFT: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if !Flag.print_ref_typ
+  then Format.printf "LIFT: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 let filter_base = List.filter (fun x -> is_base_typ (Id.typ x))
@@ -46,7 +47,7 @@ let rec lift_aux post xs t =
           let f = Id.new_var ("f" ^ post) t.typ in
           let aux f ys t1 t2 =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
+            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
             let fv = List.sort compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
@@ -75,7 +76,7 @@ let rec lift_aux post xs t =
       | Let(Nonrecursive,bindings,t2) ->
           let aux (f,ys,t1) =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
+            let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
             let fv = List.sort compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
@@ -91,7 +92,7 @@ let rec lift_aux post xs t =
       | Let(Recursive,bindings,t2) ->
           let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
           let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
-          let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@ fv) in
+          let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
           let fv = List.sort compare_id fv in
           let aux (f,_,_) =
             let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in
@@ -137,7 +138,7 @@ let rec lift_aux post xs t =
       | Match(t,pats) ->
           let defs,t' = lift_aux post xs t in
           let aux (pat,cond,t) (defs,pats) =
-            let xs' = get_vars_pat pat @@ xs in
+            let xs' = get_vars_pat pat @@@ xs in
             let defs',cond' = lift_aux post xs' t in
             let defs'',t' = lift_aux post xs' t in
               defs''@defs'@defs, (pat,cond',t')::pats

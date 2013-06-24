@@ -100,11 +100,11 @@ let rec get_vars_pat pat =
     | PVar x -> [x]
     | PAlias(p,x) -> x :: get_vars_pat p
     | PConst _ -> []
-    | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@ acc) [] pats
-    | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@ acc) [] pats
-    | POr(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PPair(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
-    | PCons(p1,p2) -> get_vars_pat p1 @@ get_vars_pat p2
+    | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@@ acc) [] pats
+    | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@@ acc) [] pats
+    | POr(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
+    | PPair(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
+    | PCons(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
     | PNil -> []
 
 let rec get_fv vars t =
@@ -113,34 +113,34 @@ let rec get_fv vars t =
     | Unknown -> []
     | RandInt _ -> []
     | Var x -> if Id.mem x vars then [] else [x]
-    | App(t, ts) -> get_fv vars t @@ (rev_map_flatten (get_fv vars) ts)
-    | If(t1, t2, t3) -> get_fv vars t1 @@ get_fv vars t2 @@ get_fv vars t3
-    | Branch(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
+    | App(t, ts) -> get_fv vars t @@@ rev_map_flatten (get_fv vars) ts
+    | If(t1, t2, t3) -> get_fv vars t1 @@@ get_fv vars t2 @@@ get_fv vars t3
+    | Branch(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Let(flag, bindings, t2) ->
         let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
         let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
-        let aux fv (_,xs,t) = get_fv (xs@@vars') t @@ fv in
+        let aux fv (_,xs,t) = get_fv (xs@@@vars') t @@@ fv in
         let fv_t2 = get_fv vars_with_fun t2 in
           List.fold_left aux fv_t2 bindings
-    | BinOp(op, t1, t2) -> get_fv vars t1 @@ get_fv vars t2
+    | BinOp(op, t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Not t -> get_fv vars t
     | Fun(x,t) -> get_fv (x::vars) t
     | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@ acc) [] fields
+    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
     | Proj(_,_,_,t) -> get_fv vars t
-    | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@ get_fv vars t2
+    | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Nil -> []
-    | Cons(t1, t2) -> get_fv vars t1 @@ get_fv vars t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@ acc) [] ts
+    | Cons(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
+    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@@ acc) [] ts
     | Match(t,pats) ->
         let aux acc (pat,cond,t) =
-          let vars' = get_vars_pat pat @@ vars in
-          get_fv vars' cond @@ get_fv vars' t @@ acc
+          let vars' = get_vars_pat pat @@@ vars in
+          get_fv vars' cond @@@ get_fv vars' t @@@ acc
         in
           List.fold_left aux (get_fv vars t) pats
-    | TryWith(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
+    | TryWith(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Bottom -> []
-    | Pair(t1,t2) -> get_fv vars t1 @@ get_fv vars t2
+    | Pair(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Fst t -> get_fv vars t
     | Snd t -> get_fv vars t
     | Raise t -> get_fv vars t
@@ -304,7 +304,7 @@ and print_term pri typ fm t =
       Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term p typ) t1;
       b := false
     in
-    let print_bindings = print_list print_binding "" false in
+    let print_bindings bs = print_list print_binding "" bs in
     begin
       match t2.desc with
         Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
@@ -351,7 +351,7 @@ and print_term pri typ fm t =
     let s1,s2 = paren pri p in
     if ts = []
     then pp_print_string fm s
-    else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (print_term 20 typ) "," false) ts s2
+    else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (print_term 20 typ) ",") ts s2
   | Match(t,pats) ->
     let p = 10 in
     let s1,s2 = paren pri p in
@@ -849,16 +849,16 @@ let rec get_nint t =
       Const _ -> []
     | Unknown -> []
     | Var x -> []
-    | App(t, ts) -> get_nint t @@ (rev_map_flatten get_nint ts)
-    | If(t1, t2, t3) -> get_nint t1 @@ get_nint t2 @@ get_nint t3
-    | Branch(t1, t2) -> get_nint t1 @@ get_nint t2
-    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_nint t @@ acc) (get_nint t2) bindings
-    | BinOp(op, t1, t2) -> get_nint t1 @@ get_nint t2
+    | App(t, ts) -> get_nint t @@@ (rev_map_flatten get_nint ts)
+    | If(t1, t2, t3) -> get_nint t1 @@@ get_nint t2 @@@ get_nint t3
+    | Branch(t1, t2) -> get_nint t1 @@@ get_nint t2
+    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_nint t @@@ acc) (get_nint t2) bindings
+    | BinOp(op, t1, t2) -> get_nint t1 @@@ get_nint t2
     | Not t -> get_nint t
     | Fun(x,t) -> diff (get_nint t) [x]
     | Event _ -> []
     | Nil -> []
-    | Cons(t1,t2) -> get_nint t1 @@ get_nint t2
+    | Cons(t1,t2) -> get_nint t1 @@@ get_nint t2
     | RandInt _ -> []
     | Fst _ -> assert false
     | Snd _ -> assert false
@@ -881,17 +881,17 @@ let rec get_int t =
     | Const _ -> []
     | Unknown -> []
     | Var x -> []
-    | App(t, ts) -> get_int t @@ (rev_map_flatten get_int ts)
-    | If(t1, t2, t3) -> get_int t1 @@ get_int t2 @@ get_int t3
-    | Branch(t1, t2) -> get_int t1 @@ get_int t2
-    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@ acc) (get_int t2) bindings
+    | App(t, ts) -> get_int t @@@ (rev_map_flatten get_int ts)
+    | If(t1, t2, t3) -> get_int t1 @@@ get_int t2 @@@ get_int t3
+    | Branch(t1, t2) -> get_int t1 @@@ get_int t2
+    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@@ acc) (get_int t2) bindings
     | BinOp(Mult, t1, t2) -> [] (* non-linear expressions not supported *)
-    | BinOp(_, t1, t2) -> get_int t1 @@ get_int t2
+    | BinOp(_, t1, t2) -> get_int t1 @@@ get_int t2
     | Not t -> get_int t
     | Fun(_,t) -> get_int t
     | Event _ -> []
     | Nil -> []
-    | Cons(t1,t2) -> get_int t1 @@ get_int t2
+    | Cons(t1,t2) -> get_int t1 @@@ get_int t2
     | RandInt _ -> []
     | Snd _ -> assert false
     | Fst _ -> assert false
@@ -1273,7 +1273,7 @@ let rec merge_typ typ1 typ2 =
         let x1' = Id.set_typ x1 typ in
         let x1_no_pred = Id.set_typ x1 (elim_tpred typ) in
         let ps2' = List.map (subst x2 (make_var x1_no_pred)) ps2 in
-          TPred(x1', ps1 @@ ps2')
+          TPred(x1', ps1 @@@ ps2')
     | TPred(x, ps), typ
     | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
     | TFun(x1,typ1), TFun(x2,typ2) ->

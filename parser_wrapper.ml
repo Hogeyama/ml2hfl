@@ -584,7 +584,7 @@ let from_top_level_phrase (env,defs) = function
         | Tstr_cltype _ -> unsupported "class"
         | Tstr_include _ -> unsupported "include"
       in
-        env', rev_map_flatten aux2 struc @@ defs
+        env', rev_map_flatten aux2 struc @@@ defs
 
 
 let from_use_file ast =

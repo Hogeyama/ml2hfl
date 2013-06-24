@@ -1,15 +1,14 @@
-let open x = 1 in
-let close fp = 0 in
-let read fp = if fp = 0 then fail () else () in
+let open_ x = 1
+let close fp = 0
+let read fp = assert (fp = 0)
 let rec read_n fp n =
   if n <= 0
   then fp
   else
     (read fp;
      read_n fp (n-1))
-in
-let n = ?n? in
-let fp = open () in
-let fp = read_n fp n in
-  if fp = 0 then () else fail ()
 
+let main n =
+  let fp = open_ () in
+  let fp = read_n fp n in
+  assert (fp = 0)

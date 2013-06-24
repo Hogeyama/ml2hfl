@@ -67,7 +67,7 @@ let rec can_unify typ1 typ2 =
 
 let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
   let print' = print ~occur print_pred in
-  let print_preds = print_list print_pred "; " false in
+  let print_preds ps = print_list print_pred "; " ps in
     match typ with
         TUnit -> Format.fprintf fm "unit"
       | TAbsBool -> Format.fprintf fm "abool"

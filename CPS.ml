@@ -36,7 +36,7 @@ and get_arg_var = function
 
 and uncurry_typ_arg rtyps typ =
   if debug then Format.printf "rtyps:%a@.typ:%a@.@."
-    (print_list RT.print ";" true) rtyps pp_print_typ typ;
+    (print_list RT.print ";" ~last:true) rtyps pp_print_typ typ;
   match rtyps, elim_tpred typ with
       _, TPair(x,typ) ->
         let rtyps1,rtyps2 = take2 rtyps (element_num (Id.typ x)) in
@@ -44,7 +44,7 @@ and uncurry_typ_arg rtyps typ =
         let map2,rtyp2 = uncurry_typ_arg rtyps2 typ in
         let map1' = List.map (fun (x,f) -> x, fun x' -> make_fst (f x')) map1 in
         let map2' = List.map (fun (x,f) -> x, fun x' -> make_snd (f x')) map1 in
-          map1'@@map2', RT.Pair(get_arg_var rtyp1, rtyp1, rtyp2)
+          map1'@@@map2', RT.Pair(get_arg_var rtyp1, rtyp1, rtyp2)
     | [RT.Base(base,x,p) as rtyp], _ -> [x, fun x' -> make_var x'], uncurry_typ rtyp typ
     | [rtyp], _ -> [], uncurry_typ rtyp typ
     | _ -> assert false
@@ -54,7 +54,8 @@ let uncurry_rtyp t f rtyp =
   let rtyp' = uncurry_typ rtyp typ in
     if debug then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
       Id.print f RT.print rtyp pp_print_typ typ RT.print rtyp';
-  if Flag.print_ref_typ then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if !Flag.print_ref_typ
+  then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
@@ -334,7 +335,7 @@ and print_t_cps fm = function
           !head print_id f.id_cps print_typ_cps f.id_typ print_typed_term t;
         head := "and"
       in
-        Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "" false) bindings print_typed_term t
+        Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "") bindings print_typed_term t
   | BinOpCPS(op, t1, t2) ->
       let op =
         match op with
@@ -488,7 +489,7 @@ let rec infer_effect env t =
     | Let(flag, bindings, t1) ->
         let make_env (f,_,_) = Id.to_string f, infer_effect_typ (Id.typ f) in
         let env_f = List.map make_env bindings in
-        let env' = env_f @@ env in
+        let env' = env_f @@@ env in
         let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
         let aux (f, xs, t1) =
           let f' = {id_cps=f; id_typ=List.assoc (Id.to_string f) env_f} in
@@ -1151,17 +1152,17 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
     | FunCPS(x, t1) ->
         assoc_typ_cps f t1
     | AppCPS(t1, t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | IfCPS(t1, t2, t3) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2 @@ assoc_typ_cps f t3
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2 @@@ assoc_typ_cps f t3
     | LetCPS(flag, bindings, t1) ->
         let aux (g,t) =
           let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
-            typs1 @@ assoc_typ_cps f t
+            typs1 @@@ assoc_typ_cps f t
         in
-          assoc_typ_cps f t1 @@ rev_flatten_map aux bindings
+          assoc_typ_cps f t1 @@@ rev_flatten_map aux bindings
     | BinOpCPS(op, t1, t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | NotCPS t1 ->
         assoc_typ_cps f t1
     | UnknownCPS -> []
@@ -1171,11 +1172,11 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
     | SndCPS t1 ->
         assoc_typ_cps f t1
     | PairCPS(t1,t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | RaiseCPS t1 ->
         assoc_typ_cps f t1
     | TryWithCPS(t1,t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
 
 let assoc_typ_cps f typed =
   match assoc_typ_cps f typed with
@@ -1239,7 +1240,8 @@ let get_rtyp_of typed f rtyp =
   if debug then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
     Id.print f RT.print rtyp print_typ_cps etyp;
   let rtyp' = uncps_ref_type rtyp ENone etyp in
-  if Flag.print_ref_typ then Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if Flag.print_ref_typ_debug
+  then Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 

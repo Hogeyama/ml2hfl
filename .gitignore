@@ -1,6 +1,5 @@
 cvc3
 trecs
-mochi.opt
 Makefile.config
 COMMIT
 depend
@@ -9,11 +8,14 @@ environment.ml
 configure
 aclocal.m4
 autom4te.cache
+*.opt
+*.byte
 *lexer.ml
 *parser.ml
 *parser.mli
 *parser.output
 *.annot
+*.cma
 *.cmi
 *.cmo
 *.cmx
@@ -26,3 +28,4 @@ autom4te.cache
 *parser.automaton
 *parser.conflicts
 *~
+wiki/

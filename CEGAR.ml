@@ -11,7 +11,7 @@ type result = Safe of (var * CEGAR_ref_type.t) list | Unsafe of int list
 type info = {orig_fun_list:var list; inlined:var list}
 
 let pre () =
-  Id.reset_counter ()
+  ()
 
 let post () =
   incr Flag.cegar_loop
@@ -46,7 +46,7 @@ let rec cegar1 prog0 ces info =
   let result = ModelCheck.check abst prog in
     match result with
         ModelCheck.Safe env ->
-          if Flag.print_ref_typ
+          if Flag.print_ref_typ_debug
           then
             begin
               Format.printf "Intersection types:@.";

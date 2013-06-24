@@ -15,14 +15,14 @@ let print_kind fm = function
       let aux fm (s,typs) =
         if typs = []
         then Format.fprintf fm "%s" s
-        else Format.fprintf fm "%s of %a" s (print_list print_typ " * " false) typs
+        else Format.fprintf fm "%s of %a" s (print_list print_typ " * ") typs
       in
-        print_list aux " | " false fm stypss
+        print_list aux " | " fm stypss
   | TKRecord sftyps ->
       let aux fm (s,(f,typ)) =
         Format.fprintf fm "%s%s:%a" (if f = Mutable then "mutable " else "") s print_typ typ
       in
-        Format.fprintf fm "@[{%a}@]" (print_list aux "; " false) sftyps
+        Format.fprintf fm "@[{%a}@]" (print_list aux "; ") sftyps
 
 let in_typ_decls s = List.mem_assoc s !typ_decls
 

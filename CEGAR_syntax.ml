@@ -121,8 +121,8 @@ let make_label n t = make_app (Const (Label n)) [t]
 let rec get_fv = function
     Const _ -> []
   | Var x -> [x]
-  | App(t1, t2) -> get_fv t1 @@ get_fv t2
-  | Let(x,t1,t2) -> get_fv t1 @@ diff (get_fv t2) [x]
+  | App(t1, t2) -> get_fv t1 @@@ get_fv t2
+  | Let(x,t1,t2) -> get_fv t1 @@@ diff (get_fv t2) [x]
   | Fun(x,_,t) -> diff (get_fv t) [x]
 let get_fv t = uniq (get_fv t)
 

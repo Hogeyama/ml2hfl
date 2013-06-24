@@ -38,7 +38,11 @@ main: COMMIT
 COMMIT: depend .git/index
 	rm -f COMMIT
 	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
-	$(GIT) rev-parse HEAD >> COMMIT
+	echo -n `$(GIT) rev-parse --short HEAD` >> COMMIT
+	echo -n ' (' >> COMMIT
+	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
+	git log --date=iso --pretty=format:"%ad" -1 >> COMMIT
+	echo ')' >> COMMIT
 endif
 
 
@@ -156,6 +160,8 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 # distribution
 
 ifdef GIT
+.PHONY: dist
+
 dist:
 	$(GIT) archive HEAD -o dist.tar.gz
 endif
@@ -178,6 +184,9 @@ clean:
 	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
 
+clean-test:
+	rm */*.trecs_out */*.hors */*.annot
+
 clean-all: clean
 	cd $(OCAML_SOURCE) && make clean
 	rm -f $(OCAML_SOURCE)/config/Makefile
@@ -189,13 +198,13 @@ clean-all: clean
 
 TEST = sum mult max mc91 ack a-cppr l-zipunzip l-zipmap hors e-simple e-fact r-lock r-file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e
 LIMIT = 120
-OPTION = -gchi -only-result
+OPTION = -gchi -only-result -limit $(LIMIT)
 
 test: opt
 	for i in $(TEST); \
 	do \
 	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	(ulimit -t $(LIMIT); ./mochi.opt test/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
 	echo; \
 	done
 

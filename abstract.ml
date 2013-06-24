@@ -287,7 +287,8 @@ let rec get_rtyp_list rtyp typ =
 let get_rtyp_list_of typed f rtyp =
   let typ = Trans.assoc_typ f typed in
   let rtyp' = get_rtyp_list rtyp typ in
-  if Flag.print_ref_typ then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if Flag.print_ref_typ_debug
+  then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 
@@ -340,7 +341,7 @@ and get_match_bind_cond t p =
             [] -> bind, cond
           | p::ps ->
               let bind',cond' = get_match_bind_cond (make_app (make_snd t) [make_int i]) p in
-                aux (bind'@@bind) (make_and cond cond') (i+1) ps
+                aux (bind'@@@bind) (make_and cond cond') (i+1) ps
         in
         let len = List.length ps in
         let bind, cond = get_match_bind_cond (make_tl len t) p' in
@@ -350,7 +351,7 @@ and get_match_bind_cond t p =
     | PPair(p1,p2) ->
         let bind1,cond1 = get_match_bind_cond (make_fst t) p1 in
         let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
-          bind1@@bind2, make_and cond1 cond2
+          bind1@@@bind2, make_and cond1 cond2
 
 and make_cons post t1 t2 =
   let i = Id.new_var "i" TInt in

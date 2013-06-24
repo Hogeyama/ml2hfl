@@ -84,7 +84,8 @@ let print_refine_log = true
 let print_eval_abst = ref false
 let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
-let print_ref_typ = false
+let print_ref_typ = ref false
+let print_ref_typ_debug = false
 
 let web = ref false
 
@@ -94,9 +95,10 @@ let time_mc = ref 0.
 let time_cegar = ref 0.
 let time_interpolant = ref 0.
 let time_parameter_inference = ref 0.
+let result = ref ""
 
 let cegar_loop = ref 0
-let time_limit = 0
+let time_limit = ref 0
 let max_input_size = 65536
 
 
@@ -104,6 +106,8 @@ let max_input_size = 65536
 let debug = true
 let debug_level = ref 1
 let only_result = ref false
+let exp = ref false
+
 
 
 (* pretty printer's option *)
