@@ -91,7 +91,7 @@ let run_mochi n programs =
         if not @@ file_exists p then fatal ("Not found: " ^ p);
         let result_num () = List.length @@ read_list_from_file filename in
         let n = result_num () in
-        let cmd = Format.sprintf "%s %s %s | tee -a %s" (Env.mochi()) option p wiki_filename in
+        let cmd = Format.sprintf "%s %s %s | tail -1 | tee -a %s" (Env.mochi()) option p wiki_filename in
         assert (command cmd = 0);
         if n+1 <> result_num ()
         then (Format.printf "Rerun: %s@." p; iter programs)
