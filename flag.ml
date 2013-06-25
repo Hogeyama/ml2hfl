@@ -107,7 +107,8 @@ let debug = true
 let debug_level = ref 1
 let only_result = ref false
 let exp = ref false
-
+let ignore_conf = ref false
+let args = ref [""]
 
 
 (* pretty printer's option *)

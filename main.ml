@@ -50,7 +50,7 @@ let print_env () =
   if commit <> "" then Format.printf "  Build: %s@." commit;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") (Array.to_list Sys.argv);
+  Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
   Format.printf "@."; ()
 
 
@@ -102,6 +102,7 @@ let arg_spec =
                  Flag.print_progress := false),
      " Show only result";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
+   "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
    "-exp", Arg.Unit (fun () ->
                        Flag.only_result := true;
                        Flag.debug_level := 0;
@@ -223,21 +224,42 @@ let string_of_exception = function
   | e -> Printexc.to_string e
 
 
+let parse_arg () =
+  let set_file name =
+    if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
+    then (Arg.usage arg_spec usage; exit 1);
+    Flag.filename := name
+  in
+  Arg.parse (Arg.align arg_spec) set_file usage;
+  Flag.args := Array.to_list Sys.argv;
+  if !Flag.ignore_conf
+  then ()
+  else
+    try
+      let cin = open_in "option.conf" in
+      let s = input_line cin in
+      close_in cin;
+      let args = Str.split (Str.regexp "[ \t]+") s in
+      Arg.current := 0;
+      Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) (Arg.align arg_spec) set_file usage;
+      Flag.args := !Flag.args @ args
+    with
+      Arg.Bad s
+    | Arg.Help s -> Format.printf "%s@." s; exit 1
+    | Sys_error _
+    | End_of_file -> ()
+
+
 let () =
   if !Sys.interactive
   then ()
   else
     try
-      let set_file name =
-        if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
-        then (Arg.usage arg_spec usage; exit 1);
-        Flag.filename := name
-      in
       (* default interpolating prover *)
       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate;
       (* default Horn clause solver *)
       Fpat.HcSolver.ext_solve := Fpat.BwHcSolver.solve;
-      Arg.parse (Arg.align arg_spec) set_file usage;
+      parse_arg ();
       Fpat.Global.print_log := !Flag.debug_level <> 0;
       Fpat.Global.cvc3 := !Flag.cvc3;
       let cin =
