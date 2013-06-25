@@ -259,8 +259,8 @@ let () =
           Format.printf "{";
           Format.printf "\"filename\": %S, " !Flag.filename;
           Format.printf "\"result\": %S, " @@ string_of_exception e;
-          Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
-          Format.printf "\"total\": \"%.3f\"" (get_time());
+          Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
+          Format.printf "\"total\": \"(%.3f)\"" (get_time());
           Format.printf "}@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.";
