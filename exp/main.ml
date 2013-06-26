@@ -31,7 +31,7 @@ let () =
        "-add-option", Arg.String (set_cmd Options.add), "<option>  Add <option> to the option list";
        "-list-option", Arg.Unit (set_cmd Options.list), " List all options";
        "-limit", Arg.Set_int Env.limit, "<n>  Set time limit";
-       "-f", Arg.Set Env.run_force, "";
+       "-f", Arg.Set Env.run_force, " Run even if MoCHi is not committed";
        "-debug", Arg.Set Env.debug, " Debug mode";
        "-ignore-remote", Arg.Set Env.ignore_remote, " Do not push, fetch, and pull"]
     in

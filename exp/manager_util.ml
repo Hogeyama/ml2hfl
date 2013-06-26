@@ -126,14 +126,15 @@ let parse_generated lines =
         `Header, (line::header, contents, footer)
   in
   let _,(header,contents,footer) =  List.fold_right aux lines (`Footer, ([],[],[])) in
-  let rec trunc_blank ss =
+  let rec trunc_head_blank ss =
     match ss with
-      ""::""::ss' -> trunc_blank @@ ""::ss'
+      ""::ss' -> trunc_head_blank ss'
     | _ -> ss
   in
-  let header' = header |> trunc_blank |> List.rev |> trunc_blank |> List.rev in
-  let contents' = contents |> trunc_blank |> List.rev |> trunc_blank |> List.rev in
-  let footer' = footer |> trunc_blank |> List.rev |> trunc_blank |> List.rev in
+  let trunc_blank x = x |> trunc_head_blank |> List.rev |> trunc_head_blank |> List.rev in
+  let header' = trunc_blank header in
+  let contents' = trunc_blank contents in
+  let footer' = trunc_blank footer in
   header', contents', footer'
 
 let read_page name =
