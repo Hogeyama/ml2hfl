@@ -43,7 +43,7 @@ let get_latest n =
   else List.hd exps
 
 let mochi_env () =
-  let cmd = Format.sprintf "%s -version" @@ Env.mochi () in
+  let cmd = Format.sprintf "%s -version" Env.mochi in
   let cin = Unix.open_process_in cmd in
   let s_rev = ref [] in
   let rec read () : unit =
@@ -81,7 +81,8 @@ let run_mochi n programs =
   let filename = commit_filename_json n in
   let wiki_filename = Env.wiki_dir ^ filename in
   let option = Options.assoc n in
-  Format.printf "Run: %s %s%s<program>@." (Env.mochi()) option (if option="" then "" else " ");
+  Format.printf "Run: %s %s%s<program>@." Env.mochi option (if option="" then "" else " ");
+  Format.printf "Limit: %d sec@." !Env.limit;
   Format.printf "Output to: %s@." wiki_filename;
   assert (command ("echo -n > " ^ wiki_filename) = 0);
   let rec iter programs =
@@ -91,7 +92,11 @@ let run_mochi n programs =
         if not @@ file_exists p then fatal ("Not found: " ^ p);
         let result_num () = List.length @@ read_list_from_file filename in
         let n = result_num () in
-        let cmd = Format.sprintf "%s %s %s | tail -1 | tee -a %s" (Env.mochi()) option p wiki_filename in
+        let cmd_limit = Format.sprintf "ulimit -t %d" !Env.limit in
+        let cmd_mochi = Format.sprintf "%s %s %s" Env.mochi option p in
+        let cmd_timeout = Format.sprintf "echo '{\"filename\": %S, \"result\": \"TimeOut\"}'" p in
+        let cmd = Format.sprintf "(%s; %s || %s) | tail -1 | tee -a %s"
+          cmd_limit cmd_mochi cmd_timeout wiki_filename in
         assert (command cmd = 0);
         if n+1 <> result_num ()
         then (Format.printf "Rerun: %s@." p; iter programs)
@@ -117,7 +122,8 @@ let make_commit_table n assocs =
   let table = Table(head',pos,body) in
   let env = mochi_env () in
   let option = Options.assoc n in
-  let env = Format.sprintf "Option:%s %s ([option%d](option%d))" (Env.default_option()) option n n :: env in
+  let env = Format.sprintf "Option: %s ([option%d](option%d))" option n n :: env in
+  let env = Format.sprintf "Limit: %d sec" !Env.limit :: env in
   let env = snoc env @@ Format.sprintf "FPAT version: %s" @@ fpat_commit_hash_short () in
   let env = snoc env @@ Format.sprintf "CSI-sat revision: %s" @@ csisat_revision () in
   let env' = UnorderedList (List.map (fun s -> [Text s]) env) in

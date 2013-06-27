@@ -41,7 +41,7 @@ COMMIT: depend .git/index
 	echo -n `$(GIT) rev-parse --short HEAD` >> COMMIT
 	echo -n ' (' >> COMMIT
 	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
-	git log --date=iso --pretty=format:"%ad" -1 >> COMMIT
+	$(GIT) log --date=iso --pretty=format:"%ad" -1 >> COMMIT
 	echo ')' >> COMMIT
 endif
 
