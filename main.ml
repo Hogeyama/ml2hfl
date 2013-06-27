@@ -232,7 +232,7 @@ let parse_arg () =
   in
   Arg.parse (Arg.align arg_spec) set_file usage;
   Flag.args := Array.to_list Sys.argv;
-  if !Flag.ignore_conf
+  if not !Flag.ignore_conf
   then
     begin
       try
