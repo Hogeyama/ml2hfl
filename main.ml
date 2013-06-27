@@ -233,21 +233,38 @@ let parse_arg () =
   Arg.parse (Arg.align arg_spec) set_file usage;
   Flag.args := Array.to_list Sys.argv;
   if !Flag.ignore_conf
-  then ()
-  else
-    try
-      let cin = open_in "option.conf" in
-      let s = input_line cin in
-      close_in cin;
-      let args = Str.split (Str.regexp "[ \t]+") s in
-      Arg.current := 0;
-      Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) (Arg.align arg_spec) set_file usage;
-      Flag.args := !Flag.args @ args
-    with
-      Arg.Bad s
-    | Arg.Help s -> Format.printf "%s@." s; exit 1
-    | Sys_error _
-    | End_of_file -> ()
+  then
+    begin
+      try
+        let cin = open_in "option.conf" in
+        let s = input_line cin in
+        close_in cin;
+        let args = Str.split (Str.regexp "[ \t]+") s in
+        Arg.current := 0;
+        Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) (Arg.align arg_spec) set_file usage;
+        Flag.args := !Flag.args @ args
+      with
+        Arg.Bad s
+      | Arg.Help s -> Format.printf "%s@." s; exit 1
+      | Sys_error _
+      | End_of_file -> ()
+    end;
+  match !Flag.filename with
+    "" | "-" -> Flag.filename := "stdin"; stdin
+  | _ -> open_in !Flag.filename
+
+
+let fpat_init () =
+  let open Fpat in
+  (* default interpolating prover *)
+  InterpProver.ext_interpolate := CsisatInterface.interpolate;
+  (* default Horn clause solver *)
+  HcSolver.ext_solve := BwHcSolver.solve;
+  Global.print_log := !Flag.debug_level <> 0;
+  Global.cvc3 := !Flag.cvc3;
+  Cvc3Interface.init ();
+  AtpInterface.init ();
+  Cvc3Interface.open_cvc3 ()
 
 
 let () =
@@ -255,27 +272,14 @@ let () =
   then ()
   else
     try
-      (* default interpolating prover *)
-      Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate;
-      (* default Horn clause solver *)
-      Fpat.HcSolver.ext_solve := Fpat.BwHcSolver.solve;
-      parse_arg ();
-      Fpat.Global.print_log := !Flag.debug_level <> 0;
-      Fpat.Global.cvc3 := !Flag.cvc3;
-      let cin =
-        match !Flag.filename with
-            "" | "-" -> Flag.filename := "stdin"; stdin
-          | _ -> open_in !Flag.filename
-      in
-        Fpat.Cvc3Interface.init ();
-        Fpat.AtpInterface.init ();
-        Fpat.Cvc3Interface.open_cvc3 ();
-        Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
-        ignore (Unix.alarm !Flag.time_limit);
-        if not !Flag.only_result then print_env ();
-        if main cin then decr Flag.cegar_loop;
-        Fpat.Cvc3Interface.close_cvc3 ();
-        print_info ()
+      Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
+      ignore (Unix.alarm !Flag.time_limit);
+      let cin = parse_arg () in
+      fpat_init ();
+      if not !Flag.only_result then print_env ();
+      if main cin then decr Flag.cegar_loop;
+      Fpat.Cvc3Interface.close_cvc3 ();
+      print_info ()
     with
       | e when !Flag.exp ->
           Format.printf "{";
