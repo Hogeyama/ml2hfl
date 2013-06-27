@@ -93,7 +93,7 @@ let run_mochi n programs =
         let result_num () = List.length @@ read_list_from_file filename in
         let n = result_num () in
         let cmd_limit = Format.sprintf "ulimit -t %d" !Env.limit in
-        let cmd_mochi = Format.sprintf "%s %s %s" Env.mochi option p in
+        let cmd_mochi = Format.sprintf "%s -limit %d %s %s" Env.mochi !Env.limit option p in
         let cmd_timeout = Format.sprintf "echo '{\"filename\": %S, \"result\": \"TimeOut\"}'" p in
         let cmd = Format.sprintf "(%s; %s || %s) | tail -1 | tee -a %s"
           cmd_limit cmd_mochi cmd_timeout wiki_filename in
