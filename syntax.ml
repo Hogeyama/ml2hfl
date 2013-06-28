@@ -844,37 +844,6 @@ let rec decomp_fun = function
         x::xs, t'
   | t -> [], t
 
-let rec get_nint t =
-  match t.desc with
-      Const _ -> []
-    | Unknown -> []
-    | Var x -> []
-    | App(t, ts) -> get_nint t @@@ (rev_map_flatten get_nint ts)
-    | If(t1, t2, t3) -> get_nint t1 @@@ get_nint t2 @@@ get_nint t3
-    | Branch(t1, t2) -> get_nint t1 @@@ get_nint t2
-    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_nint t @@@ acc) (get_nint t2) bindings
-    | BinOp(op, t1, t2) -> get_nint t1 @@@ get_nint t2
-    | Not t -> get_nint t
-    | Fun(x,t) -> diff (get_nint t) [x]
-    | Event _ -> []
-    | Nil -> []
-    | Cons(t1,t2) -> get_nint t1 @@@ get_nint t2
-    | RandInt _ -> []
-    | Fst _ -> assert false
-    | Snd _ -> assert false
-    | Pair _ -> assert false
-    | TryWith _ -> assert false
-    | Raise _ -> assert false
-    | Match _ -> assert false
-    | Constr _ -> assert false
-    | SetField _ -> assert false
-    | Proj _ -> assert false
-    | Record _ -> assert false
-    | RandValue _ -> assert false
-    | Bottom -> []
-    | Label _ -> assert false
-let get_nint t = uniq (get_nint t)
-
 let rec get_int t =
   match t.desc with
       Const (Int n) -> [n]

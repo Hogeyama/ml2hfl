@@ -157,7 +157,16 @@ id_simple_type:
 typ:
 | LPAREN typ RPAREN { $2 }
 | id_simple_type { $1 }
-| typ TIMES typ { make_self_id (TPair($1, Id.typ $3)) }
+| typ TIMES typ
+  {
+    let x = $1 in
+    let r = $3 in
+    let typ1 = Id.typ x in
+    let typ2 = Id.typ r in
+    let typ2' = subst_type (orig_id x) (make_var (Id.set_typ x (elim_tpred typ1))) typ2 in
+    let typ2'' = subst_type r (make_var (Id.set_typ abst_var (elim_tpred typ2))) typ2' in
+      make_self_id (TPair(x, typ2''))
+  }
 | typ ARROW typ
   {
     let x = $1 in

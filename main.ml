@@ -2,7 +2,6 @@ open Util
 
 exception TimeOut
 exception LongInput
-exception CannotDiscoverPredicate
 
 
 let print_info () =

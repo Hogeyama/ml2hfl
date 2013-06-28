@@ -40,7 +40,6 @@ type const =
   | Bottom
   | Label of int
   | CPS_result
-  | Abst
 
 
 

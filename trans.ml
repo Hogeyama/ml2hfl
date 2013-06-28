@@ -1255,7 +1255,8 @@ let rec replace_typ_aux env t =
             let () =
               if not (Type.can_unify (Id.typ f) (Id.typ f'))
               then
-                let () = Format.printf "Prog: %a@.Spec: %a@." print_id_typ f print_id_typ f' in
+                let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
+                let () = Format.printf "Prog: %a@.Spec: %a@." print_id_typ f print_id_typ f'' in
                 let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
                 let msg = msg ^ " (please specify monomorphic types if polymorphic types exist)" in
                   raise (Fatal msg)

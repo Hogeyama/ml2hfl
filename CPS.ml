@@ -95,6 +95,7 @@ let rec remove_pair_typ = function
       let xs,typ' = decomp_tfun typ in
       let xs' = flatten_map (fun y -> flatten (remove_pair_var y)) xs in
         Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
+  | TPair(x,typ) when occur x typ -> unsupported "spec: dependent sum types"
   | TPair(x,typ) -> Node(remove_pair_typ (Id.typ x), remove_pair_typ typ)
   | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
   | TConstr(s,b) -> Leaf (TConstr(s,b))
@@ -1148,6 +1149,7 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       ConstCPS _ -> []
     | BottomCPS -> []
     | RandIntCPS -> []
+    | RandValueCPS -> []
     | VarCPS x -> []
     | FunCPS(x, t1) ->
         assoc_typ_cps f t1

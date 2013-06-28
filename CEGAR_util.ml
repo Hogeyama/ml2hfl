@@ -645,6 +645,7 @@ let rec get_const_typ = function
   | Nativeint _ -> typ_abst "nativeint"
   | RandInt -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
   | RandBool -> TBase(TBool,nil)
+  | RandVal s -> TBase(TAbst s,nil)
   | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
   | Or -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
   | Not -> TFun(TBase(TInt,nil), fun x -> typ_bool())

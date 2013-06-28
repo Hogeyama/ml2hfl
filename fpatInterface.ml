@@ -192,9 +192,7 @@ let rec inv_abst_type aty =
   | _ ->
       Format.printf "%a@." AbsType.pr aty;
       assert false
-(* for add_const
-  | AbsType. ... -> TBase(TAbst ..., ...)
-*)
+
 
 
 let infer flags labeled cexs prog =

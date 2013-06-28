@@ -46,11 +46,6 @@ let rename {abst_env=aenv; inlined=inlined; inlined_f=inlined_f} t =
   let funs = get_top_funs t in
   let rename_id f = (* temporal implementation *)
     List.find (fun f' -> Id.name f = Id.name f') funs
-(*
-    try
-      List.find (fun f' -> Id.name f = Id.name f') funs
-    with Not_found -> raise (Fatal ("SPEC: " ^ Id.name f ^ " not found"))
-*)
   in
   let aenv' = flatten_map (fun (f,typ) -> try [rename_id f, typ] with Not_found -> []) aenv in
   let inlined' = flatten_map (fun f -> try [rename_id f] with Not_found -> []) inlined in

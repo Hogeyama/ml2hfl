@@ -166,7 +166,6 @@ val subst : id -> typed_term -> typed_term -> typed_term
 val subst_int : int -> typed_term -> typed_term -> typed_term
 val subst_map : (id * typed_term) list -> typed_term -> typed_term
 val subst_type : id -> typed_term -> typ -> typ
-val get_nint : typed_term -> id list
 val get_int : typed_term -> int list
 val get_fv : ?cmp:(id -> id -> int) -> typed_term -> id list
 val get_args : typ -> id list
@@ -180,6 +179,7 @@ val max_label_num : typed_term -> int
 val is_parameter : id -> bool
 val is_value : typed_term -> bool
 val get_top_funs : typed_term -> id list
+val occur : id -> typ -> bool
 
 
 (** {6 Printing} *)

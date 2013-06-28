@@ -279,6 +279,7 @@ and print_const_ML fm = function
   | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "(Random.bool())"
   | RandInt -> Format.fprintf fm "rand_int()"
+  | RandVal s -> Format.fprintf fm "rand_%s()" s
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
   | Not -> Format.fprintf fm "(not)"
@@ -362,6 +363,7 @@ and print_const_as_tree fm = function
   | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "RandBool"
   | RandInt -> Format.fprintf fm "RandInt"
+  | RandVal s -> Format.fprintf fm "Rand_%s" s
   | And -> Format.fprintf fm "And"
   | Or -> Format.fprintf fm "Or"
   | Not -> Format.fprintf fm "Not"

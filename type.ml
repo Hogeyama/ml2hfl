@@ -37,6 +37,24 @@ let elim_tpred = function
     TPred(x,_) -> Id.typ x
   | typ -> typ
 
+let rec elim_tpred_all = function
+    TUnit -> TUnit
+  | TAbsBool -> TAbsBool
+  | TBool -> TBool
+  | TInt -> TInt
+  | TRInt p -> TRInt p
+  | TVar{contents=Some typ} -> elim_tpred_all typ
+  | TVar r -> TVar r
+  | TFun(x, typ) ->
+      let x = Id.set_typ x @@ elim_tpred_all @@ Id.typ x in
+      TFun(x, elim_tpred_all typ)
+  | TList typ -> TList (elim_tpred_all typ)
+  | TPair(x,typ) ->
+      let x = Id.set_typ x @@ elim_tpred_all @@ Id.typ x in
+      TPair(x, elim_tpred_all typ)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TPred(x,_) -> elim_tpred_all @@ Id.typ x
+
 let rec decomp_tfun = function
     TFun(x,typ) ->
       let xs,typ = decomp_tfun typ in
