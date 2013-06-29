@@ -91,7 +91,7 @@ let rec termination_loop predicate_que holed =
 		       ; Formula.geq linear_template (IntTerm.make 0)]
 	in
 	let constraints = imply spc ranking_constraints in
-	let coeff_constrs = PolyConstrSolver.gen_coeff_constrs constraints in
+	let coeff_constrs = PolyConstrSolver.generate constraints in
 	if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
 	
         (* solve constraints and obtain coefficients of a ranking function *)
@@ -154,9 +154,9 @@ let rec termination_loop predicate_que holed =
 	    subst_ith n (imply nth_error_path (Formula.band (go 0)))
 	  in
 	  let constraints = Formula.bor (Fpat.ExtList.List.mapi nth_constraints error_paths)in
-	  let coeff_constrs = PolyConstrSolver.gen_coeff_constrs constraints in
+	  let coeff_constrs = PolyConstrSolver.generate constraints in
 	  if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
-	  if debug then Format.printf "Constraints(Transformed by PolyConstrSolver.gen_coeff_constrs):@.  %a@." Term.pr_list coeff_constrs;
+	  if debug then Format.printf "Constraints(Transformed by PolyConstrSolver.generate):@.  %a@." Term.pr_list coeff_constrs;
 	  
 	  try
 	    (** 制約を解いて各テンプレートに代入。ここで手に入るのは全てのテンプレートに対する全ての引数の置換を含む代入である。 **)
@@ -348,14 +348,16 @@ let arg_spec =
    (* polynomial constraint solver *)
    "-bitvec",
      Arg.Unit (fun _ ->
-       Fpat.Global.use_bit_vector := true;
        Fpat.BvPolyConstrSolver.init ()),
      " Use a polynomial constraint solver based on bit-vector modeling and SAT";
    "-cad",
      Arg.Unit (fun _ ->
-       Fpat.Global.use_bit_vector := false;
        Fpat.CadPolyConstrSolver.init ()),
      " Use a polynomial constraint solver based on CAD";
+   "-z3",
+     Arg.Unit (fun _ ->
+       Fpat.Z3Interface.init ()),
+     " Use a polynomial constraint solver of Z3 SMT solver";
    (* termination mode *)
    "-termination-disj",
      Arg.Unit (fun _ ->
@@ -384,8 +386,7 @@ let () =
       (* default Horn clause solver *)
       Fpat.HcSolver.ext_solve := Fpat.BwHcSolver.solve;
       (* default Polynomial constraint solver *)
-      Fpat.PolyConstrSolver.ext_solve := Fpat.CadPolyConstrSolver.bv_cad_solve;
-      (*Fpat.BvPolyConstrSolver.init ();*)
+      Fpat.BvPolyConstrSolver.init ();
 
       Arg.parse arg_spec set_file usage;
       Fpat.Global.print_log := !Flag.debug_level <> 0;
