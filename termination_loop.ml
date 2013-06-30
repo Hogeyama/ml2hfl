@@ -50,7 +50,7 @@ let rec run predicate_que holed =
 		       ; Formula.geq linear_template (IntTerm.make 0)]
 	in
 	let constraints = imply spc ranking_constraints in
-	let coeff_constrs = PolyConstrSolver.generate constraints in
+	let coeff_constrs = PolyConstrSolver.generate ~linear:true constraints in
 	if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
 	
         (* solve constraints and obtain coefficients of a ranking function *)
@@ -113,7 +113,7 @@ let rec run predicate_que holed =
 	    subst_ith n (imply nth_error_path (Formula.band (go 0)))
 	  in
 	  let constraints = Formula.bor (Fpat.ExtList.List.mapi nth_constraints error_paths)in
-	  let coeff_constrs = PolyConstrSolver.generate constraints in
+	  let coeff_constrs = PolyConstrSolver.generate ~linear:true constraints in
 	  if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
 	  if debug then Format.printf "Constraints(Transformed by PolyConstrSolver.generate):@.  %a@." Term.pr_list coeff_constrs;
 	  
