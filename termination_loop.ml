@@ -6,6 +6,12 @@ let threshold = ref 5
 
 exception FailedToFindLLRF
 
+let verify_with holed pred =
+  (* combine holed program and predicate *)
+  let transformed = BRA_transform.pluging holed pred in
+  let orig, transformed = BRA_transform.retyping transformed in
+  Main_loop.run orig transformed
+
 let rec run predicate_que holed =
   let debug = !Flag.debug_level > 0 in
   let _ =
@@ -17,14 +23,15 @@ let rec run predicate_que holed =
   if Queue.is_empty predicate_que then (raise FailedToFindLLRF)
   else
     let predicate_info = Queue.pop predicate_que in
-    (* build predicate expression with predicate_info *)
-    let predicate = BRA_transform.construct_LLRF predicate_info in
     lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf; (* result log update here *)
-    (* combine holed program and predicate *)
-    let transformed = BRA_transform.pluging holed predicate in
-    let orig, transformed = BRA_transform.retyping transformed in
     try
-      Main_loop.run orig transformed
+      if !Flag.separate_pred then
+	let pred_decrease = BRA_transform.construct_decrease predicate_info in
+	let preds_boundedness = BRA_transform.construct_boundedness predicate_info in
+	verify_with holed pred_decrease && List.for_all (verify_with holed) preds_boundedness
+      else
+	let predicate = BRA_transform.construct_LLRF predicate_info in
+	verify_with holed predicate
     with Refine.PostCondition (env, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in

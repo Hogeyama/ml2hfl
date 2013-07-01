@@ -316,6 +316,48 @@ let construct_LLRF {variables = variables_; prev_variables = prev_variables_; co
   in
   iter (fun x -> x) (List.map rank coefficients)
 
+let construct_decrease {variables = variables_; prev_variables = prev_variables_; coefficients = coefficients_} =
+  let variables = (make_int 1) :: (List.map make_var variables_) in
+  let prev_variables = (make_int 1) :: (List.map make_var prev_variables_) in
+  let coefficients = List.map (fun {coeffs = cs; constant = c} -> List.map make_int (c::cs)) coefficients_ in
+  let rec rank cs vs = try List.fold_left2
+			     (fun rk t1 t2 -> make_add rk (make_mul t1 t2))
+			     (make_mul (List.hd cs) (List.hd vs))
+			     (List.tl cs)
+			     (List.tl vs)
+    with Invalid_argument _ -> raise (Invalid_argument "construct_decrease")
+  in
+  let rec iter aux = function
+    | [r] ->
+      (* r(prev_x) > r(x) *)
+      aux (make_gt (r prev_variables) (r variables))
+    | r::rs ->
+      let aux_next cond =
+	if !Flag.disjunctive then
+	  cond
+	else
+	  make_and (make_geq (r prev_variables) (r variables)) (aux cond)
+      in
+      (* r(prev_x) > r(x) || ... *)
+      make_or
+        (aux (make_gt (r prev_variables) (r variables)))
+	(iter aux_next rs)
+    | [] -> false_term
+  in
+  iter (fun x -> x) (List.map rank coefficients)
+
+let construct_boundedness {variables = variables_; coefficients = coefficients_} =
+  let variables = (make_int 1) :: (List.map make_var variables_) in
+  let coefficients = List.map (fun {coeffs = cs; constant = c} -> List.map make_int (c::cs)) coefficients_ in
+  let rec rank cs vs = try List.fold_left2
+			     (fun rk t1 t2 -> make_add rk (make_mul t1 t2))
+			     (make_mul (List.hd cs) (List.hd vs))
+			     (List.tl cs)
+			     (List.tl vs)
+    with Invalid_argument _ -> raise (Invalid_argument "construct_boundedness")
+  in
+  List.map (fun r -> make_geq (r variables) (make_int 0)) (List.map rank coefficients)
+
 (* plug holed program with predicate *)
 let pluging (holed_program : holed_program) (predicate : typed_term) =
   let hole2pred = function
