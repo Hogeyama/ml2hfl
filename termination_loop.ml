@@ -96,8 +96,8 @@ let rec run predicate_que holed =
 	  if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linear_templates;
 	  (** 作るべき制約は、
 	      [φ1 ⇒ R1(x_prev)＞R1(x) ∧ R1(x)≧0]
-	      ∧ [φ2 ⇒ R1(x_prev)＝R1(x) ∧ R2(x_prev)＞R2(x) ∧ R2(x)≧0]
-	      ∧ [φ3 ⇒ R1(x_prev)＝R1(x) ∧ R2(x_prev)＝R2(x) ∧ R3(x_prev)＞R3(x) ∧ R3(x)≧0]
+	      ∧ [φ2 ⇒ R1(x_prev)≧R1(x) ∧ R2(x_prev)＞R2(x) ∧ R2(x)≧0]
+	      ∧ [φ3 ⇒ R1(x_prev)≧R1(x) ∧ R2(x_prev)＝R2(x) ∧ R3(x_prev)＞R3(x) ∧ R3(x)≧0]
 	      ...
 	  **)
 	  let all_vars = List.map fst env in
@@ -106,7 +106,7 @@ let rec run predicate_que holed =
 	    let rec go i = 
 	      let ith_ltp, ith_lt = List.nth linear_templates_prev i, List.nth linear_templates i in
 	      if i < n then
-		Formula.eq ith_ltp ith_lt :: go (i+1)
+		Formula.geq ith_ltp ith_lt :: go (i+1)
 	      else
 		[Formula.gt ith_ltp ith_lt; Formula.geq ith_lt (IntTerm.make 0)]
 	    in
