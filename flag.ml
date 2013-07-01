@@ -117,4 +117,4 @@ let write_annot = ref true
 let termination = ref false
 
 let disjunctive = ref false
-let separate_pred = ref true
+let separate_pred = ref false
