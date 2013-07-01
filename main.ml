@@ -209,11 +209,6 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Flag.termination := true),
      " Check termination";
-   "-termination-sep",
-     Arg.Unit (fun _ ->
-       Flag.termination := true;
-       Flag.separate_pred := true),
-     " Check termination with separating {decrease, boundedness} verification";
   ]
 
 

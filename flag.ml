@@ -117,4 +117,5 @@ let write_annot = ref true
 let termination = ref false
 
 let disjunctive = ref false
-let separate_pred = ref false
+let flag_remove_functional = ref true
+let flag_rec_occur = ref false

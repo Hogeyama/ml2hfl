@@ -11,7 +11,7 @@ type result = Safe of (var * CEGAR_ref_type.t) list | Unsafe of int list
 type info = {orig_fun_list:var list; inlined:var list}
 
 let pre () =
-  ()
+  Id.reset_counter ()
 
 let post () =
   incr Flag.cegar_loop
