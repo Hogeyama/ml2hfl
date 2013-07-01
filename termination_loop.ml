@@ -7,7 +7,7 @@ let threshold = ref 5
 exception FailedToFindLLRF
 
 let rec run predicate_que holed =
-  let debug = true (*!Flag.debug_level > 0 *)in
+  let debug = !Flag.debug_level > 0 in
   let _ =
     begin
       threshold := !threshold - 1;
@@ -17,8 +17,10 @@ let rec run predicate_que holed =
   if Queue.is_empty predicate_que then (raise FailedToFindLLRF)
   else
     let predicate_info = Queue.pop predicate_que in
+    (* build predicate expression with predicate_info *)
     let predicate = BRA_transform.construct_LLRF predicate_info in
     lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf; (* result log update here *)
+    (* combine holed program and predicate *)
     let transformed = BRA_transform.pluging holed predicate in
     let orig, transformed = BRA_transform.retyping transformed in
     try

@@ -305,7 +305,7 @@ let construct_LLRF {variables = variables_; prev_variables = prev_variables_; co
 	if !Flag.disjunctive then
 	  cond
 	else
-	  make_and (make_eq (r prev_variables) (r variables)) (aux cond)
+	  make_and (make_geq (r prev_variables) (r variables)) (aux cond)
       in
       (* r(prev_x) > r(x) && r(x) >= 0 || ... *)
       make_or
