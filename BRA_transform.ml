@@ -39,7 +39,13 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
+let show_base_typ = function
+  | TUnit -> " : unit"
+  | TBool -> " : bool"
+  | TInt -> " : int"
+  | _ -> ""
 let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
+let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string v ^ show_base_typ (Id.typ v))
 let rec show_typed_term t = show_term t.desc
 and show_term = function
   | Const Unit -> "()"
@@ -47,25 +53,16 @@ and show_term = function
   | Const False -> "false"
   | Const (Int n) -> string_of_int n
   | App ({desc=RandInt _}, _) -> "Random.int 0"
-  | Var v when v.Id.typ = TUnit -> "(" ^ modify_id v ^ " : unit)"
-  | Var v when v.Id.typ = TBool -> "(" ^ modify_id v ^ " : bool)"
-  | Var v when v.Id.typ = TInt -> "(" ^ modify_id v ^ " : int)"
-  | Var v -> modify_id v
+  | Var v -> modify_id_typ v
   | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_typed_term body
   | App ({desc=Event("fail", _)}, _) -> "assert false"
   | App (f, args) -> show_typed_term f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_typed_term a)) "" args
   | If (t1, t2, t3) -> "if " ^ show_typed_term t1 ^ " then " ^ show_typed_term t2 ^ " else " ^ show_typed_term t3
   | Let (_, [], _) -> assert false
-  | Let (Nonrecursive, [id, args, body], {desc=Const Unit; typ=TUnit}) when id.Id.name = "main" ->
-    let show_args args = List.fold_left (fun acc a -> acc ^ " " ^ modify_id a) "" args in
-    "let main "
-    ^ show_args args
-    ^ " = "
-    ^ show_typed_term body
   | Let (rec_flag, b::bs, t) ->
     let show_bind (x, args, body) =
       modify_id x
-      ^ (List.fold_left (fun acc a -> acc ^ " " ^ modify_id a) "" args)
+      ^ (List.fold_left (fun acc a -> acc ^ " " ^ modify_id_typ a) "" args)
       ^ "="
       ^ show_typed_term body in
     (if rec_flag = Nonrecursive then "let " else "let rec ")
@@ -106,7 +103,7 @@ let restore_ids =
   in everywhere_expr sub
 
 let retyping t =
-  (*Format.eprintf "@.%s@." (show_typed_term (is_form_of t) t);*)
+  (*Format.eprintf "@.%s@." (show_typed_term t);*)
   let lb = t |> show_typed_term
              |> Lexing.from_string
   in
