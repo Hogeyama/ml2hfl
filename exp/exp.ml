@@ -9,10 +9,6 @@ let get () =
   then read_list_from_file Env.exp_list
   else []
 
-let list () =
-  Format.printf "Experiments:@.";
-  List.iter (Format.printf "  %s@.") (get ())
-
 let exists name =
   List.mem name @@ get ()
 
@@ -33,11 +29,18 @@ let parse_name s =
   assert (Str.string_match (Str.regexp "option\\([0-9]+\\)\\.\\([^.]+\\)") s 0);
   int_of_string (get_matched 1), get_matched 2
 
-let is_option_n n name =
+let get_commit_date name =
+  get_commit_date "./" @@ snd @@ parse_name name
+
+let list () =
+  Format.printf "Experiments:@.";
+  List.iter (fun name -> Format.printf "  %s (%s)@." name (get_commit_date name)) (get ())
+
+let is_option n name =
   n = fst @@ parse_name name
 
 let get_latest n =
-  let exps = List.filter (is_option_n n) @@ get () in
+  let exps = List.filter (is_option n) @@ get () in
   if exps = []
   then raise Not_found
   else List.hd exps
@@ -136,11 +139,17 @@ let make_commit_page n programs =
   update_page filename @@ make_commit_table n result
 
 
-let make_item_table n item = assert false
-
-
 let exists_option n =
-  0 <> List.length @@ List.filter (is_option_n n) @@ get ()
+  0 <> List.length @@ List.filter (is_option n) @@ get ()
+
+let delete name =
+  if not @@ exists name then fatal "Not exist.";
+  let n,_ = parse_name name in
+  write_list_to_file Env.exp_list @@ List.filter ((<>) name) @@ get ();
+  Manager_util.add Env.exp_list;
+  delete_page name;
+  Format.printf "Experiment \"%s\" is removed.@." name;
+  Env.updated := n :: !Env.updated
 
 let run n =
   if not !Env.run_force && not @@ Options.exists n
@@ -157,10 +166,7 @@ let run n =
     let programs = Programs.get () in
     run_mochi n programs;
     make_commit_page n programs;
-    let cmp hash1 hash2 =
-      let aux hash = get_commit_date "./" @@ snd @@ parse_name hash in
-      compare (aux hash2) (aux hash1)
-    in
+    let cmp name1 name2 = compare (get_commit_date name2) (get_commit_date name1) in
     if not @@ exists name
     then write_list_to_file Env.exp_list @@ insert ~cmp name @@ get ();
     Manager_util.add Env.exp_list;

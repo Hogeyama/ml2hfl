@@ -27,7 +27,7 @@ let make_option_table exps (item,p) =
 
 let update_option n =
   let header = Header(1, [Text (Format.sprintf "Option%d: %s" n @@ Options.assoc n)]) in
-  let exps = List.filter (Exp.is_option_n n) @@ Exp.get () in
+  let exps = List.filter (Exp.is_option n) @@ Exp.get () in
   let tables = List.flatten @@ List.map (make_option_table exps) @@ List.tl Env.items in
   let ps = TOC :: header :: tables in
   let name = "option" ^ string_of_int n in
