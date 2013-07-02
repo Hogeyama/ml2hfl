@@ -99,15 +99,20 @@ let fetch () =
      command_assert @@ Format.sprintf "cd %s && git fetch" Env.wiki_dir)
 
 let pull () =
-  if not !Env.ignore_remote
+  fetch ();
+  if not !Env.ignore_remote && diff_origin ()
   then command_assert @@ Format.sprintf "cd %s && git pull" Env.wiki_dir
 
+let diff_work () =
+  0 <> command (Format.sprintf "cd %s && test $(git status -s --untracked-files=no | wc -w) = 0" Env.wiki_dir)
+
 let commit msg =
-  if 0 = command (Format.sprintf "cd %s && test $(git status -s --untracked-files=no | wc -w) = 0" Env.wiki_dir)
-  then ()
-  else
-    command_assert @@ Format.sprintf "cd %s && git commit -m \"%s\"" Env.wiki_dir msg;
-    push ()
+  if diff_work ()
+  then
+    begin
+      command_assert @@ Format.sprintf "cd %s && git commit -m \"%s\"" Env.wiki_dir msg;
+      push ()
+    end
 
 let parse_generated lines =
   let s_header = Markdown.string_of_paragraph dummy_header in

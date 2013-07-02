@@ -40,7 +40,6 @@ let () =
        "-ignore-remote", Arg.Set Env.ignore_remote, " Do not push, fetch, and pull"]
     in
     Arg.parse (Arg.align arg_spec) ignore usage;
-    fetch ();
-    if diff_origin () then pull ();
+    pull ();
     !cmd ();
     Pages.update ()

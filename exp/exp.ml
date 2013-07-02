@@ -12,12 +12,12 @@ let get () =
 let exists name =
   List.mem name @@ get ()
 
-let commit_filename n =
+let get_commit_filename n =
   let commit = Manager_util.mochi_commit_hash_short () in
   Format.sprintf "option%d.%s" n commit
 
-let commit_filename_json n =
-  commit_filename n ^ ".json"
+let get_commit_filename_json n =
+  get_commit_filename n ^ ".json"
 
 let item_filename n item =
   Format.sprintf "option%d.%s.json" n item
@@ -81,7 +81,7 @@ let assoc name program =
   else raise Not_found
 
 let run_mochi n programs =
-  let filename = commit_filename_json n in
+  let filename = get_commit_filename_json n in
   let wiki_filename = Env.wiki_dir ^ filename in
   let option = Options.assoc n in
   Format.printf "Run: %s %s%s<program>@." Env.mochi option (if option="" then "" else " ");
@@ -134,8 +134,8 @@ let make_commit_table n assocs =
 
 
 let make_commit_page n programs =
-  let filename = commit_filename n in
-  let result = parse_result @@ commit_filename_json n in
+  let filename = get_commit_filename n in
+  let result = parse_result @@ get_commit_filename_json n in
   update_page filename @@ make_commit_table n result
 
 
@@ -162,7 +162,7 @@ let run n =
   then
     Format.printf "Please, recompile MoCHi.@."
   else
-    let name = commit_filename n in
+    let name = get_commit_filename n in
     let programs = Programs.get () in
     run_mochi n programs;
     make_commit_page n programs;
