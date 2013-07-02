@@ -37,11 +37,6 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
   in f { desc = expr
        ; typ = typ }
 
-(* regularization of program form *)
-let rec regularization = function
-  | {desc = Let (Nonrecursive, [top_id, _, body], {desc = Const Unit; typ = TUnit})} when top_id.Id.name <> "main" -> body
-  | t -> t
-
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
 let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
@@ -134,12 +129,11 @@ let extract_functions (target_program : typed_term) =
   let ext acc (id, args, body) = if args = [] then acc else {id=id; args=args}::acc in
   let rec iter t =
     match t.desc with
-      | Let (_, [id, _, _], _) when id.Id.name = "main" -> []
       | Let (_, bindings, body) -> List.fold_left ext [] bindings @ iter body
       | t -> []
   in
-  let extracted = iter (regularization target_program) in
-  extracted
+  let extracted = iter target_program in
+  List.filter (fun {id=id} -> Id.name id <> "main") extracted
 
 let rec transform_function_definitions f term =
   let sub ((_, args, _) as binding) = if args <> [] then f binding else binding in
@@ -152,6 +146,41 @@ let rec transform_main_expr f = function
   | {desc = Let (Nonrecursive, [id, args, body], u); typ = t} when id.Id.name = "main" -> {desc = Let (Nonrecursive, [id, args, everywhere_expr f body], u); typ = t}
   | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, bindings, transform_main_expr f body) }
   | t -> everywhere_expr f t
+
+(*
+[Example] f : int -> bool -> int
+   randomized_application f (int -> bool -> int)
+=> aux (f, [], int -> bool -> int)
+=> aux (f, [(Random.int 0)], bool -> int)
+=> aux (f, [(Random.int 0), (Random.int 0 = 0)], int)
+=> f (Random.int 0) (Random.int 0 = 0)
+*)
+let randomized_application f t = 
+  let rec aux f args = function
+    | t when is_base_typ t -> {desc = App (f, args); typ = t}
+    | TFun ({Id.typ = t1}, t2) ->
+      let r =
+	match t1 with
+	  | TUnit -> unit_term
+	  | TBool -> randbool_unit_term
+	  | TInt -> randint_unit_term
+	  | _ -> assert false
+      in
+      aux f (args@[r]) t2
+  in aux f [] t
+
+(* regularization of program form *)
+let rec regularization e =
+  match Trans.get_last_definition None e with
+    | Some ({Id.name = "main"} as f) -> 
+      let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
+      let aux _ = main_expr in
+      transform_main_expr aux e
+    | _ ->
+      (match e.desc with
+	| Let (rec_flag, (_, _, main_expr)::bs, _) -> {e with desc = Let (rec_flag, bs, main_expr)}
+	| _ -> assert false)
+
 
 let extract_id = function
   | {desc = (Var v)} -> v
@@ -238,7 +267,7 @@ let to_holed_programs (target_program : typed_term) =
             make_let
 	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 	      
-              (* let update_flag = Random.int 0 in *)
+              (* let update_flag = Random.int 0 = 0 in *)
 	      (make_let
 		 [(extract_id update_flag, [], randbool_unit_term)]
 		 
