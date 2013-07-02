@@ -26,9 +26,8 @@ let rec run predicate_que holed =
     lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf; (* result log update here *)
     try
       if !Flag.separate_pred then
-	let pred_decrease = BRA_transform.construct_decrease predicate_info in
-	let preds_boundedness = BRA_transform.construct_boundedness predicate_info in
-	verify_with holed pred_decrease && List.for_all (verify_with holed) preds_boundedness
+	let predicates = BRA_transform.separate_to_CNF (BRA_transform.construct_LLRF predicate_info) in
+        List.for_all (verify_with holed) predicates
       else
 	let predicate = BRA_transform.construct_LLRF predicate_info in
 	verify_with holed predicate
