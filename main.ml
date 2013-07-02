@@ -67,8 +67,7 @@ let main in_channel =
   else if !Flag.termination then
     let open BRA_util in
     let parsed = BRA_transform.regularization parsed in
-    let functions = BRA_transform.extract_functions parsed in
-    let holed_list = BRA_transform.to_holed_programs parsed functions in
+    let holed_list = BRA_transform.to_holed_programs parsed in
     List.for_all (fun holed ->
       let init_predicate_info =
 	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)

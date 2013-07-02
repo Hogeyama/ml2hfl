@@ -204,7 +204,8 @@ let restore_type state = function
     in restore_type' e 0 t
   | _ -> raise (Invalid_argument "restore_type")
 
-let to_holed_programs (target_program : typed_term) (defined_functions : function_info list) =
+let to_holed_programs (target_program : typed_term) =
+  let defined_functions = extract_functions target_program in
   let state_template = build_state defined_functions in
   let hole_insert target state typed =
     let sub (id, args, body) =
