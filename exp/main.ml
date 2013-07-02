@@ -24,12 +24,12 @@ let () =
          "<n>  Run MoCHi with option<n> for all programs";
        "-exp-all", Arg.Unit (set_cmd Exp.run_all),
          " Run MoCHi for all programs with each option";
-       "-rm-exp", Arg.String (set_cmd Exp.delete), "<exp>  Delete <exp>";
-       "-del-exp", Arg.String (set_cmd Exp.delete), " Same as -rm-exp";
+       "-rm-exp", Arg.String (set_cmd Exp.delete), "<exp>  Remove <exp>";
+       "-del-exp", Arg.String (set_cmd Exp.delete), "<exp>  Same as -rm-exp";
        "-list-exp", Arg.Unit (set_cmd Exp.list), " List all experiments";
-       "-add", Arg.String (set_cmd Programs.add), "<program>  Create wiki page for <program>";
-       "-rm", Arg.String (set_cmd Programs.delete), "<program>  Delete <program>";
-       "-del", Arg.String (set_cmd Programs.delete), " Same as -rm";
+       "-add", Arg.String (set_cmd Programs.add), "<program>  Add <program>";
+       "-rm", Arg.String (set_cmd Programs.delete), "<program>  Remove <program>";
+       "-del", Arg.String (set_cmd Programs.delete), "<program>  Same as -rm";
        "-update", Arg.String (set_cmd Programs.update), "<program>  Update <program>";
        "-list", Arg.Unit (set_cmd Programs.list), " List all programs";
        "-add-option", Arg.String (set_cmd Options.add), "<option>  Add <option> to the option list";
