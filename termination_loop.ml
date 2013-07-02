@@ -1,8 +1,10 @@
-(***** termination *****)
-
 (***** information *****)
+
 let lrf = ref []
-let threshold = ref 5
+let max_threshold = 5
+let threshold = ref max_threshold
+
+let init_threshold () = threshold := max_threshold
 
 exception FailedToFindLLRF
 
