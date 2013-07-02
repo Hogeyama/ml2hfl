@@ -75,7 +75,8 @@ let update_home () =
   let header_opt_list = Header(1, [Text "List of options"]) in
   let exp_list = UnorderedList (List.map (fun e -> [make_head e]) @@ Exp.get ()) in
   let header_exp_list = Header(1, [Text "List of experimental results"]) in
-  let ps = [header_result; table;
+  let ps = [TOC;
+            header_result; table;
             header_opt_list; opt_list;
             header_exp_list; exp_list]
   in
