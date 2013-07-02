@@ -18,6 +18,8 @@ val to_holed_programs : Syntax.typed_term (* target program *) -> BRA_types.func
 
 (* construct linear lexicographic ranking function *)
 val construct_LLRF : BRA_types.predicate_info -> Syntax.typed_term
+val construct_decrease : BRA_types.predicate_info -> Syntax.typed_term
+val construct_boundedness : BRA_types.predicate_info -> Syntax.typed_term list
 
 (* plug holed program with predicate *)
 val pluging : BRA_types.holed_program -> Syntax.typed_term -> Syntax.typed_term
