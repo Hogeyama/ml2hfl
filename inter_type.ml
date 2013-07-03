@@ -31,7 +31,7 @@ let rec print fm = function
   | Inter [] -> Format.fprintf fm "Top"
   | Inter typs ->
       Format.fprintf fm "(@[<v>";
-      print_list print " /\\@ " false fm typs;
+      print_list print " /\\@ " fm typs;
       Format.fprintf fm "@])"
   | Fun(typ1,typ2) ->
       Format.fprintf fm "(@[<hov 2>%a ->@ %a@])" print typ1 print typ2

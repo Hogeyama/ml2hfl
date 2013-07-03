@@ -9,7 +9,7 @@ type node = UnitNode | BrNode | LineNode of int | EventNode of string
 type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
 
-let debug = true
+let debug = false
 
 
 let make_line_spec n q =
@@ -47,7 +47,7 @@ let make_spec n =
           let spec = make_file_spec () in
           let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
           let spec' = rev_flatten_map (fun i -> make_base_spec n i) (Array.to_list (Array.init (qm+1) (fun i -> i))) in
-            spec @@ spec'
+            spec @@@ spec'
   in
     List.sort compare spec
 
@@ -64,7 +64,8 @@ let capitalize {env=env;defs=defs;main=main} =
     {env=env'; defs=defs'; main=main'}
 
 
-let elim_non_det {defs=defs;main=main} =
+let elim_non_det ({defs=defs;main=main} as prog) =
+  let env = get_ext_fun_env prog in
   let check f (g,_,_,_,_) = f = g in
   let mem f defs = List.exists (check f) defs in
   let rec elim_non_det_def = function
@@ -79,13 +80,13 @@ let elim_non_det {defs=defs;main=main} =
           (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
     | def::defs -> def :: elim_non_det_def defs
   in
-    Typing.infer {env=[]; defs=elim_non_det_def defs; main=main}
+    Typing.infer {env=env; defs=elim_non_det_def defs; main=main}
 
 let make_bottom {env=env;defs=defs;main=main} =
   let bottoms = ref [] in
   let aux_def (f,xs,t1,e,t2) =
     let f_typ = List.assoc f env in
-    let env' = get_arg_env f_typ xs @@ env in
+    let env' = get_arg_env f_typ xs @@@ env in
     let make_bottom n =
       let x = "Bottom" ^ string_of_int n in
         bottoms := (x,n)::!bottoms;
@@ -135,7 +136,7 @@ let make_bottom {env=env;defs=defs;main=main} =
   in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (uniq !bottoms) in
-    {env=env; defs=bottom_defs@@defs'; main=main}
+    {env=env; defs=bottom_defs@@@defs'; main=main}
 
 
 let rec eta_expand_term env = function
@@ -155,11 +156,11 @@ let rec eta_expand_term env = function
 let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
-  let t2' = eta_expand_term (get_arg_env (List.assoc f env) xs @@ env) t2 in
+  let t2' = eta_expand_term (get_arg_env (List.assoc f env) xs @@@ env) t2 in
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
     f, xs@ys, t1, e, t2''
 
-let eta_expand prog = lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
+let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
 
@@ -259,7 +260,7 @@ let beta_reduce_term flag ((f,_,_,_,_) as def) t =
 let beta_reduce_aux {env=env;defs=defs;main=main} =
   let rec aux defs1 = function
       [] -> defs1
-    | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@def::defs2) ->
+    | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@@def::defs2) ->
         let flag = ref false in
         let reduce_def (f',xs',t1',es',t2') = f', xs', t1', es', beta_reduce_term flag def t2' in
         let defs1' = List.map reduce_def defs1 in

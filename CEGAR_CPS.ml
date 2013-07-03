@@ -105,7 +105,6 @@ let rec trans_simpl c = function
         c (Fun(x, None, Fun(k, None, trans_simpl (fun x -> App(Var k, x)) t)))
 
 let trans_simpl_def (f,xs,t1,e,t2) =
-  if f =  "mult_70" then () else ();
   assert (xs = []);
   let t2 = trans_simpl (fun x -> x) t2 in
   if false then Format.printf "TRANS: %a@." CEGAR_print.term t2;
@@ -159,7 +158,7 @@ let rec extract_tuple_term env = function
 
 
 let extract_tuple_def env (f,xs,t1,e,t2) =
-  let env' = get_arg_env (List.assoc f env) xs @@ env in
+  let env' = get_arg_env (List.assoc f env) xs @@@ env in
   let xs' = List.flatten (List.map (extract_tuple_var env') xs) in
   let t1' = hd (extract_tuple_term env t1) in
   let t2' = hd (extract_tuple_term env' t2) in
@@ -194,7 +193,7 @@ let trans {env=env;defs=defs;main=main} lift_opt =
   let prog = {env=env; defs=defs; main=main} in
   let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.prog prog in
   let _ = Typing.infer prog in
-  let prog = if lift_opt then lift prog else lift2 prog in
+  let prog = if lift_opt then CEGAR_lift.lift prog else CEGAR_lift.lift2 prog in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog prog in
     extract_tuple prog
 
@@ -398,7 +397,7 @@ let rec infer_cont_pos env = function
       let typ_args = List.map (fun _ -> new_tvar ()) xs in
       let xs' = List.map2 (fun x typ -> {id_cps=x; id_typ=typ}) xs typ_args in
       let env2 = (f, typ_f) :: env in
-      let env1 = List.combine xs typ_args @@ env in
+      let env1 = List.combine xs typ_args @@@ env in
       let typed1 = infer_cont_pos env1 t1 in
       let typed2 = infer_cont_pos env2 t2 in
       let b = ref true in

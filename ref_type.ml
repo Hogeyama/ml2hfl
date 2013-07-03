@@ -6,6 +6,7 @@ type base =
     Unit
   | Bool
   | Int
+  | Abst of string
 
 type t =
     Base of base * S.id * S.typed_term
@@ -26,6 +27,7 @@ let print_base fm = function
     Unit -> Format.pp_print_string fm "unit"
   | Bool -> Format.pp_print_string fm "bool"
   | Int -> Format.pp_print_string fm "int"
+  | Abst s -> Format.pp_print_string fm s
 
 let rec occur x = function
     Base(_,_,p) -> List.exists (Id.same x) (S.get_fv p)
@@ -60,10 +62,10 @@ let rec print fm = function
       else Format.fprintf fm "(@[%a@ *@ %a@])" print typ1 print typ2
   | Inter [] -> Format.fprintf fm "Top"
   | Inter [typ] -> print fm typ
-  | Inter typs -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ " false) typs
+  | Inter typs -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
   | Union [] -> Format.fprintf fm "Bottom"
   | Union [typ] -> print fm typ
-  | Union typs -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ " false) typs
+  | Union typs -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ ") typs
   | ExtArg(x,typ1,typ2) ->
       Format.fprintf fm "(@[%a where %a:%a@])" print typ2 Id.print x print typ1
   | List(x,p_len,y,p_i,typ2) ->

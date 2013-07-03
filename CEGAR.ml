@@ -31,7 +31,7 @@ let rec cegar1 prog0 ces info =
     else CEGAR_print.prog_typ
   in
   let prog =
-    if (match !Flag.refine with Flag.RefineRefType(_) -> true | _ -> false) && !Flag.relative_complete
+    if !Flag.relative_complete
     then
       let env,defs,main = FpatInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
         {env=env; defs=defs; main=main}
@@ -45,7 +45,7 @@ let rec cegar1 prog0 ces info =
   let result = ModelCheck.check abst prog in
     match result with
         ModelCheck.Safe env ->
-          if Flag.print_ref_typ
+          if Flag.print_ref_typ_debug
           then
             begin
               Format.printf "Intersection types:@.";

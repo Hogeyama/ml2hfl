@@ -6,6 +6,7 @@ type base =
     Unit
   | Bool
   | Int
+  | Abst of string
 
 type t =
     Base of base * CS.var * CS.t
@@ -16,6 +17,7 @@ let print_base fm = function
     Unit -> Format.pp_print_string fm "unit"
   | Bool -> Format.pp_print_string fm "bool"
   | Int -> Format.pp_print_string fm "int"
+  | Abst s -> Format.pp_print_string fm s
 
 let rec occur x = function
     Base(_,_,p) -> List.mem x (CS.get_fv p)
@@ -33,7 +35,7 @@ let rec print fm = function
       else Format.fprintf fm "(@[%a@ ->@ %a@])" print typ1 print typ2
   | Inter [] -> Format.fprintf fm "Top"
   | Inter [typ] -> print fm typ
-  | Inter typs -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ " false) typs
+  | Inter typs -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
 
 
 let rec decomp_fun n typ =

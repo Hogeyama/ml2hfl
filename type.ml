@@ -37,6 +37,24 @@ let elim_tpred = function
     TPred(x,_) -> Id.typ x
   | typ -> typ
 
+let rec elim_tpred_all = function
+    TUnit -> TUnit
+  | TAbsBool -> TAbsBool
+  | TBool -> TBool
+  | TInt -> TInt
+  | TRInt p -> TRInt p
+  | TVar{contents=Some typ} -> elim_tpred_all typ
+  | TVar r -> TVar r
+  | TFun(x, typ) ->
+      let x = Id.set_typ x @@ elim_tpred_all @@ Id.typ x in
+      TFun(x, elim_tpred_all typ)
+  | TList typ -> TList (elim_tpred_all typ)
+  | TPair(x,typ) ->
+      let x = Id.set_typ x @@ elim_tpred_all @@ Id.typ x in
+      TPair(x, elim_tpred_all typ)
+  | TConstr(s,b) -> TConstr(s,b)
+  | TPred(x,_) -> elim_tpred_all @@ Id.typ x
+
 let rec decomp_tfun = function
     TFun(x,typ) ->
       let xs,typ = decomp_tfun typ in
@@ -59,12 +77,6 @@ let rec can_unify typ1 typ2 =
     | TConstr("event",_), TFun _ -> true
     | TFun _, TConstr("event",_) -> true
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
-(*
-    | TVariant stypss1,TVariant stypss2 ->
-        let aux (s1,typs1) (s2,typs2) = s1=s2 && List.for_all2 can_unify typs1 typs2 in
-          List.length stypss1 = List.length stypss2 && List.for_all2 aux stypss1 stypss2
-    | TRecord(_,fields1),TRecord(_,fields2) -> List.for_all2 (fun (s1,(_,typ1)) (s2,(_,typ2)) -> s1=s2 && can_unify typ1 typ2) fields1 fields2
-*)
     | TVar{contents=None}, _ -> true
     | _, TVar{contents=None} -> true
     | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
@@ -73,7 +85,7 @@ let rec can_unify typ1 typ2 =
 
 let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
   let print' = print ~occur print_pred in
-  let print_preds = print_list print_pred "; " false in
+  let print_preds ps = print_list print_pred "; " ps in
     match typ with
         TUnit -> Format.fprintf fm "unit"
       | TAbsBool -> Format.fprintf fm "abool"

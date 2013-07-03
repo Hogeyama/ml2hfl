@@ -1,12 +1,25 @@
-let rec zip x y =
-  if x = 0
-  then
-    if y = 0
-    then 0
-    else fail ()
-  else
-    if y = 0
-    then fail ()
-    else 1 + zip (x-1) (y-1)
-in
-  assert (zip n n = n)
+(*
+USED: PEPM2013 as zip
+*)
+
+let rec zip (xs:int list) (ys:int list) =
+  match xs with
+      [] ->
+        begin
+          match ys with
+              [] -> []
+            | _ -> assert false
+        end
+    | x::xs' ->
+        match ys with
+            [] -> assert false
+          | y::ys' -> (x,y)::zip xs' ys'
+
+let rec make_list n =
+  if n < 0
+  then []
+  else n :: make_list (n-1)
+
+let main n =
+  let xs = make_list n in
+    zip xs xs

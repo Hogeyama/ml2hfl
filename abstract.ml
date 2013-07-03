@@ -43,7 +43,7 @@ let rec abst_recdata_typ = function
       let typs = TInt :: get_ground_types s in
       let r_typ = List.fold_right (fun typ1 typ2 -> TPair(Id.new_var "x" typ1,typ2)) (init typs) (last typs) in
         TPair(Id.new_var "u" TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
-  | TConstr(s,false) -> TInt
+  | TConstr(s,false) -> TConstr(s,false)
   | TPair(x,typ) -> TPair(abst_recdata_var x, abst_recdata_typ typ)
   | TPred(x,ps) -> TPred(Id.set_typ x (abst_recdata_typ (Id.typ x)), ps)
 
@@ -136,7 +136,7 @@ let rec abst_recdata t =
       | SetField _ -> assert false
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(abst_recdata t1, abst_recdata t2)
-      | Constr("Abst",[]) -> (make_app randint_term [unit_term]).desc
+      | Constr("Abst",[]) -> Constr("Abst",[])
       | Constr(c,ts) ->
           let ts' = List.map abst_recdata ts in
           let typ_name = match t.typ with TConstr(s,true) -> s | _ -> assert false in
@@ -287,7 +287,8 @@ let rec get_rtyp_list rtyp typ =
 let get_rtyp_list_of typed f rtyp =
   let typ = Trans.assoc_typ f typed in
   let rtyp' = get_rtyp_list rtyp typ in
-  if Flag.print_ref_typ then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if Flag.print_ref_typ_debug
+  then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 
@@ -340,7 +341,7 @@ and get_match_bind_cond t p =
             [] -> bind, cond
           | p::ps ->
               let bind',cond' = get_match_bind_cond (make_app (make_snd t) [make_int i]) p in
-                aux (bind'@@bind) (make_and cond cond') (i+1) ps
+                aux (bind'@@@bind) (make_and cond cond') (i+1) ps
         in
         let len = List.length ps in
         let bind, cond = get_match_bind_cond (make_tl len t) p' in
@@ -350,7 +351,7 @@ and get_match_bind_cond t p =
     | PPair(p1,p2) ->
         let bind1,cond1 = get_match_bind_cond (make_fst t) p1 in
         let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
-          bind1@@bind2, make_and cond1 cond2
+          bind1@@@bind2, make_and cond1 cond2
 
 and make_cons post t1 t2 =
   let i = Id.new_var "i" TInt in
@@ -368,14 +369,11 @@ and make_cons post t1 t2 =
 and abst_list post t =
   let typ' = abst_list_typ t.typ in
     match t.desc with
-        Const Unit -> unit_term
-      | Const True -> true_term
-      | Const False -> false_term
+        Const c -> t
       | Unknown -> assert false
-      | Const (Int n) -> make_int n
       | Var x -> make_var (abst_list_var x)
       | RandInt b -> randint_term
-      | RandValue(typ,b) -> raise (Fatal "Not implemented (Abstract.abst_list)")
+      | RandValue(typ,b) -> t
       | Fun(x,t) -> make_fun (abst_list_var x) (abst_list post t)
       | App({desc=Var x}, [t]) when x = length_var -> make_fst (abst_list post t)
       | App(t, ts) -> make_app (abst_list post t) (List.map (abst_list post) ts)
@@ -401,6 +399,7 @@ and abst_list post t =
           let t1' = abst_list post t1 in
           let t2' = abst_list post t2 in
             make_cons post t1' t2'
+      | Constr("Abst",[]) -> t
       | Constr(s,ts) -> assert false
       | Match(t1,pats) ->
           let x,bindx =

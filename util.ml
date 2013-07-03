@@ -1,6 +1,11 @@
 exception Fatal of string
+exception Unsupported of string
+
+let fatal s = raise (Fatal s)
+let unsupported s = raise (Unsupported s)
 
 let (|>) x f = f x
+let (@@) f x = f x
 
 let table_create n = Hashtbl.create n;;
 let table_find tab x = Hashtbl.find tab x
@@ -203,7 +208,7 @@ let rec uniq_aux ?(cmp=compare) acc = function
 let uniq ?(cmp=compare) xs = uniq_aux ~cmp [] (List.sort cmp xs)
 let uniq_sorted ?(cmp=compare) xs = uniq_aux ~cmp [] xs
 
-let (@@) = List.rev_append
+let (@@@) = List.rev_append
 
 
 let diff l1 l2 = List.filter (fun x -> not(List.mem x l2)) l1
@@ -259,7 +264,7 @@ let rec fold_left2_neq f acc xs ys =
 
 
 
-let rev_map_flatten f xs = List.fold_left (fun acc x -> f x @@ acc) [] xs
+let rev_map_flatten f xs = List.fold_left (fun acc x -> f x @@@ acc) [] xs
 let rev_flatten_map = rev_map_flatten
 let flatten_map f xs = List.rev (rev_map_flatten f xs)
 
@@ -381,15 +386,20 @@ let apply_opt f = function
 let rec print_list_aux print punc last fm xs =
   match xs with
       [] -> ()
-    | [x] when last -> Format.fprintf fm ("%a"^^punc) print x
+    | [x] when last ->
+        Format.fprintf fm "%a" print x;
+        Format.fprintf fm punc
     | [x] -> print fm x
     | x::xs ->
         Format.fprintf fm "%a" print x;
         Format.fprintf fm punc;
         Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
-let print_list print punc last fm xs =
+let print_list print ?(first=false) ?(last=false) punc fm xs =
   let punc' = format_of_string punc in
-    Format.fprintf fm "@[%a@]" (print_list_aux print punc' last) xs
+    Format.fprintf fm "@[";
+    if first then Format.fprintf fm punc';
+    Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
+    Format.fprintf fm "@]"
 
 
 let get_opt_val = function
@@ -411,3 +421,8 @@ let count_line s =
 
 let count_list f xs =
   List.fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
+
+let make_string_of pp =
+  fun x ->
+    pp Format.str_formatter x;
+    Format.flush_str_formatter ()

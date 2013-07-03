@@ -1,7 +1,7 @@
-let lamp x = x in
+let lamp x = x
 let f =
   let id x = x in
-  let unused = id fail in
+  let unused = id (fun _ -> assert false) in
     lamp
-in
-  f ()
+
+let main = f ()

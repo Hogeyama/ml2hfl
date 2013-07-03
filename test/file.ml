@@ -1,13 +1,24 @@
-(* camlp4/boot/camlp4boot.ml *)
+(*
+USED: PLDI2011 as r-file
+USED: PEPM2013 as r-file
+KEYWORD: resource
+*)
 
-let open q x = if q=0 then x (stdin+1) 1 else fail() in
-let read ci q x = if ci=stdin || q=1 then x q else fail() in
-let close ci q x = if not(ci=stdin) && q=1 then x 0 else fail() in
-let fin q = if q=0 then () else fail() in
-
-let rec f2 ci q = if name = -1 then fin q else close ci q fin in
-let rec f1 n ci q = if n<=0 then f2 ci q else read ci q (f1 (n-1) ci) in
-let main n q = if name = -1 then f1 n stdin q else open q (f1 n) in
-  main n 0
-
-
+let rec loop x : unit = loop ()
+let init = 0
+let opened = 1
+let closed = 2
+let ignore = 3
+let readit st =
+  if st = opened then opened else (if st = ignore then st else assert false)
+let read_ x st =
+  if x then readit st else st
+let closeit st =
+  if st = opened then closed else (if st = ignore then st else (loop (); 0))
+let close_ x st =
+  if x then closeit st else st
+let rec f x y st : unit =
+  close_ y (close_ x st); f x y (read_ y (read_ x st))
+let next st = if st=init then opened else ignore
+let g b3 x st = if b3 > 0 then f x true (next st) else f x false st
+let main b2 b3 = (if b2 > 0 then g b3 true opened else g b3 false init); ()

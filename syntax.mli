@@ -6,7 +6,18 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 and typed_term = {desc:term; typ:typ}
-and const = Unit | True | False | Int of int (* only base type constants *)
+and const = (* only base type constants *)
+    Unit
+  | True
+  | False
+  | Int of int
+  | Char of char
+  | String of string
+  | Float of string
+  | Int32 of int32
+  | Int64 of int64
+  | Nativeint of nativeint
+  | CPS_result
 and term =
     Const of const
   | Unknown
@@ -77,27 +88,30 @@ val abst_var_int : id
 val abst_var_bool : id
 val length_var : id
 
+val typ_result : typ
 val typ_event : typ
+val typ_event' : typ
 val typ_event_cps : typ
 val typ_excep : typ ref
-val typ_abst : typ
 
 (** {6 Term constructor} *)
 val unit_term : typed_term
 val true_term : typed_term
 val false_term : typed_term
+val cps_result : typed_term
 val fail_term : typed_term
+val fail_term_cps : typed_term
 val randint_term : typed_term
 val randbool_unit_term : typed_term
 val randint_unit_term : typed_term
-val abst_term : typed_term
-val make_abst : typ -> typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term
-val make_randint_cps : typ -> typed_term
+val make_randvalue : typ -> typed_term
+val make_randvalue_cps : typ -> typed_term
+val make_randint_cps : unit -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term
@@ -152,7 +166,6 @@ val subst : id -> typed_term -> typed_term -> typed_term
 val subst_int : int -> typed_term -> typed_term -> typed_term
 val subst_map : (id * typed_term) list -> typed_term -> typed_term
 val subst_type : id -> typed_term -> typ -> typ
-val get_nint : typed_term -> id list
 val get_int : typed_term -> int list
 val get_fv : ?cmp:(id -> id -> int) -> typed_term -> id list
 val get_args : typ -> id list
@@ -166,6 +179,7 @@ val max_label_num : typed_term -> int
 val is_parameter : id -> bool
 val is_value : typed_term -> bool
 val get_top_funs : typed_term -> id list
+val occur : id -> typ -> bool
 
 
 (** {6 Printing} *)
@@ -176,6 +190,9 @@ val print_ids : Format.formatter -> id list -> unit
 val print_id_typ : Format.formatter -> id -> unit
 val print_ids_typ : Format.formatter -> id list -> unit
 val print_termlist : int -> bool -> Format.formatter -> typed_term list -> unit
+val string_of_const : const -> string
+val string_of_binop : binop -> string
+val string_of_typ : typ -> string
 val string_of_node : node -> string
 val print_pattern : Format.formatter -> typed_pattern -> unit
 val print_constr : Format.formatter -> literal -> unit

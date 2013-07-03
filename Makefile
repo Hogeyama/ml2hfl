@@ -14,8 +14,8 @@ INCLUDES = \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray
 
-OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -w -14
-OCAMLOPTFLAGS = -annot $(INCLUDES) -package $(PACKAGES) -w -14
+OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
+OCAMLOPTFLAGS = -annot $(INCLUDES) -package $(PACKAGES)
 
 DEPEND += $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 
@@ -38,7 +38,11 @@ main: COMMIT
 COMMIT: depend .git/index
 	rm -f COMMIT
 	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
-	$(GIT) rev-parse HEAD >> COMMIT
+	echo -n `$(GIT) rev-parse --short HEAD` >> COMMIT
+	echo -n ' (' >> COMMIT
+	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
+	$(GIT) log --date=iso --pretty=format:"%ad" -1 >> COMMIT
+	echo ')' >> COMMIT
 endif
 
 
@@ -46,18 +50,18 @@ endif
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = CPS.mli abstract.mli feasibility.mli refine.mli syntax.mli \
+MLI = lift.mli CPS.mli curry.mli abstract.mli feasibility.mli refine.mli syntax.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
-	spec_parser.mli trecs_parser.mli BRA_transform.mli
+	spec_parser.mli trecs_parser.mli BRA_transform.mli CEGAR_lift.mli id.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
 	environment.cmo flag.cmo util.cmo id.cmo type.cmo \
 	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
-	ref_type.cmo type_check.cmo trans.cmo CEGAR_ref_type.cmo CEGAR_util.cmo \
+	ref_type.cmo type_check.cmo trans.cmo lift.cmo CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo \
 	useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
-	CPS.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
+	CPS.cmo curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	abstract.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
         trecs_parser.cmo trecs_lexer.cmo \
@@ -156,6 +160,8 @@ $(OCAML_SOURCE)/bytecomp/opcodes.ml:
 # distribution
 
 ifdef GIT
+.PHONY: dist
+
 dist:
 	$(GIT) archive HEAD -o dist.tar.gz
 endif
@@ -178,6 +184,9 @@ clean:
 	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
 
+clean-test:
+	rm */*.trecs_out */*.hors */*.annot
+
 clean-all: clean
 	cd $(OCAML_SOURCE) && make clean
 	rm -f $(OCAML_SOURCE)/config/Makefile
@@ -189,13 +198,21 @@ clean-all: clean
 
 TEST = sum mult max mc91 ack a-cppr l-zipunzip l-zipmap hors e-simple e-fact r-lock r-file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e
 LIMIT = 120
-OPTION = -gchi -only-result
+OPTION = -gchi -only-result -limit $(LIMIT)
 
 test: opt
 	for i in $(TEST); \
 	do \
 	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	(ulimit -t $(LIMIT); ./mochi.opt test/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	echo; \
+	done
+
+test-error: opt
+	for i in $(TEST); \
+	do \
+	echo $$i; \
+	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null); \
 	echo; \
 	done
 

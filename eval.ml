@@ -93,14 +93,14 @@ let rec print_value fm t =
             | Cons(t1,t2) -> t1 :: aux t2
             | _ -> assert false
         in
-          Format.fprintf fm "[%a]" (print_list print_value ";" false) (aux t)
+          Format.fprintf fm "[%a]" (print_list print_value ";") (aux t)
     | Pair(t_1,t_2) -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
     | _ -> pp_print_term fm t
 
 
 let rec eval_print fm rands t =
   if false then Format.printf "EVAL:%a@.RANDS:%a@.@." pp_print_term t
-    (print_list Format.pp_print_int ";" false) rands;
+    (print_list Format.pp_print_int ";") rands;
   match t.desc with
       Const c -> rands, t
     | Unknown -> assert false
@@ -109,7 +109,7 @@ let rec eval_print fm rands t =
           List.tl rands, make_fun x (make_int (List.hd rands))
     | RandInt true -> assert false
     | RandValue _ -> assert false
-    | Var y -> assert false
+    | Var y -> unsupported "error trace with external funcitons"
     | Fun _ -> rands, t
     | App(t1, ts) ->
         let aux t (rands,vs) =
@@ -296,7 +296,7 @@ let rec eval_print fm rands t =
         let args,t' = take_args t in
         let () =
           Format.fprintf fm "@\n@[<v 2>%s %a ->"
-            f (print_list print_value " " false) args
+            f (print_list print_value " ") args
         in
         let r = eval_print fm rands t' in
           Format.fprintf fm "@]";

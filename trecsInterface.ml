@@ -4,10 +4,11 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
+exception LexError
+
 type result = Safe of (var * Inter_type.t) list | Unsafe of (string * int) list
 
 module TS = Trecs_syntax
-
 
 let string_of_parseresult (prerules, tr) =
   (TS.string_of_prerules prerules)^"\n"^(TS.string_of_transitions tr)
@@ -167,7 +168,7 @@ let check env target =
   try
     write_log input target';
     verifyFile input
-  with Failure("lex error") -> assert false
+  with Failure("lex error") -> raise LexError
 
 
 (* returen "" if the version cannot be obtained *)
