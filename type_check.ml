@@ -16,13 +16,21 @@ let rec check t typ =
   then (Format.printf "check: %a, %a@." print_term' t Syntax.print_typ typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
       {desc=Const Unit; typ=TUnit} -> ()
+    | {desc=Const CPS_result; typ=typ} when typ = typ_result -> ()
     | {desc=Const (True|False)|Unknown; typ=TBool} -> ()
     | {desc=Const (Int _); typ=(TInt | TRInt _)} -> ()
+    | {desc=Const _; typ=TConstr _} -> ()
     | {desc=RandInt false; typ=TFun(x,TInt)} ->
         check_var x TUnit
-    | {desc=RandInt true; typ=TFun(x,TFun(k,TUnit))} ->
+    | {desc=RandInt true; typ=TFun(x,TFun(k,rtyp))} ->
+        assert (rtyp = typ_result);
         check_var x TUnit;
-        check_var k (TFun(Id.new_var "" TInt, TUnit))
+        check_var k (TFun(Id.new_var "" TInt, typ_result))
+    | {desc=RandValue(typ1,false); typ=typ2} -> assert (typ1 = typ2)
+    | {desc=RandValue(typ1,true); typ=TFun({Id.typ=TFun(x,rtyp1)},rtyp2)} ->
+        assert (rtyp1 = typ_result);
+        assert (rtyp2 = typ_result);
+        assert (typ1 = Id.typ x)
     | {desc=Var x; typ=typ'} ->
         check_var x typ'
     | {desc=Fun(x,t); typ=TFun(y,typ')} ->
@@ -75,7 +83,7 @@ let rec check t typ =
         check t2 TInt
     | {desc=Not t; typ=TBool} ->
         check t TBool
-    | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event)
+    | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event || typ' = typ_event')
     | {desc=Event(_,true); typ=typ'} -> assert (typ' = typ_event_cps)
     | {desc=Pair(t1,t2); typ=TPair(x,typ)} ->
         check t1 (Id.typ x);
@@ -121,37 +129,6 @@ let rec check t typ =
           check t1 typ;
           check t2 (TFun(e,typ))
     | {desc=Bottom} -> ()
-    | _ ->(*
-            match t.desc with
-            Unit -> assert false
-            | True -> assert false
-            | False -> assert false
-            | Unknown -> assert false
-            | Int n -> assert false
-            | NInt y -> assert false
-            | RandInt None -> assert false
-            | RandInt (Some t1) -> assert false
-            | Var y -> assert false
-            | Fun(y, t1) -> assert false
-            | App(t1, ts) -> assert false
-            | If(t1, t2, t3) -> assert false
-            | Branch(t1, t2) -> assert false
-            | Let(Flag.Nonrecursive, f, xs, t1, t2) -> assert false
-            | Let(Flag.Recursive, f, xs, t1, t2) -> assert false
-            | BinOp(op, t1, t2) -> assert false
-            | Not t1 -> assert false
-            | Fail -> assert false
-            | Label(b, t1) -> assert false
-            | LabelInt(n, t1) -> assert false
-            | Event s -> assert false
-            | Record(b,fields) -> assert false
-            | Proj(n,i,s,f,t1) -> assert false
-            | SetField(n,i,s,f,t1,t2) -> assert false
-            | Nil -> assert false
-            | Cons(t1,t2) -> assert false
-            | Constr(s,ts) -> assert false
-            | Match(t1,pats) -> assert false
-            | TryWith(t1,pats) -> assert false
-          *)          Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
+    | _ -> Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ

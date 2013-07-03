@@ -6,236 +6,6 @@ module RT = Ref_type
 
 let debug = false
 
-let rec element_num typ =
-  match elim_tpred typ with
-      TPair(x,typ) -> element_num (Id.typ x) + element_num typ
-    | _ -> 1
-
-let rec uncurry_typ rtyp typ =
-  if debug then Format.printf "rtyp:%a@.typ:%a@.@."
-    RT.print rtyp pp_print_typ typ;
-  match rtyp,typ with
-      RT.Inter rtyps, _ ->
-        RT.Inter (List.map (fun rtyp -> uncurry_typ rtyp typ) rtyps)
-    | _, TFun(x,typ2) ->
-        let typ1 = Id.typ x in
-        let n = element_num typ1 in
-        let exts,xrtyps,rtyp2 = RT.decomp_fun n rtyp in
-        let rtyps = List.map snd xrtyps in
-        let map,rtyp1' = uncurry_typ_arg rtyps typ1 in
-        let rtyp2' = uncurry_typ rtyp2 typ2 in
-        let aux (x,typ1) typ2 = RT.ExtArg(x,typ1,typ2) in
-        let x = Id.new_var "x" typ_unknown in
-        let rtyp2'' = List.fold_left (fun typ (x',f) -> RT.subst x' (f x) typ) rtyp2' map in
-          List.fold_right aux exts (RT.Fun(x, rtyp1', rtyp2''))
-    | _ -> rtyp
-
-and get_arg_var = function
-    RT.Base(_,x,_) -> x
-  | _ -> Id.new_var "x" typ_unknown
-
-and uncurry_typ_arg rtyps typ =
-  if debug then Format.printf "rtyps:%a@.typ:%a@.@."
-    (print_list RT.print ";" true) rtyps pp_print_typ typ;
-  match rtyps, elim_tpred typ with
-      _, TPair(x,typ) ->
-        let rtyps1,rtyps2 = take2 rtyps (element_num (Id.typ x)) in
-        let map1,rtyp1 = uncurry_typ_arg rtyps1 (Id.typ x) in
-        let map2,rtyp2 = uncurry_typ_arg rtyps2 typ in
-        let map1' = List.map (fun (x,f) -> x, fun x' -> make_fst (f x')) map1 in
-        let map2' = List.map (fun (x,f) -> x, fun x' -> make_snd (f x')) map1 in
-          map1'@@map2', RT.Pair(get_arg_var rtyp1, rtyp1, rtyp2)
-    | [RT.Base(base,x,p) as rtyp], _ -> [x, fun x' -> make_var x'], uncurry_typ rtyp typ
-    | [rtyp], _ -> [], uncurry_typ rtyp typ
-    | _ -> assert false
-
-let uncurry_rtyp t f rtyp =
-  let typ = Trans.assoc_typ f t in
-  let rtyp' = uncurry_typ rtyp typ in
-    if debug then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
-      Id.print f RT.print rtyp pp_print_typ typ RT.print rtyp';
-  if Flag.print_ref_typ then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
-  rtyp'
-
-type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
-
-let root = function
-    Leaf t -> t
-  | Node _ -> assert false
-let rec flatten = function
-    Leaf f -> [f]
-  | Node(lhs,rhs) -> flatten lhs @ flatten rhs
-
-let rec map f path = function
-    Leaf t -> Leaf (f path t)
-  | Node(t1,t2) -> Node(map f (path@[1]) t1, map f (path@[2]) t2)
-let map f t = map f [] t
-
-let rec fold f_node f_leaf = function
-    Leaf typ -> f_leaf typ
-  | Node(t1,t2) -> f_node (fold f_node f_leaf t1) (fold f_node f_leaf t2)
-
-let rec proj path t =
-  match path,t with
-      [],_ -> t
-    | 1::path',Node(t',_) -> proj path' t'
-    | 2::path',Node(_,t') -> proj path' t'
-    | _ -> assert false
-
-
-let rec remove_pair_typ = function
-    TUnit -> Leaf TUnit
-  | TBool -> Leaf TBool
-  | TAbsBool -> Leaf TAbsBool
-  | TInt -> Leaf TInt
-  | TRInt p -> Leaf (TRInt p)
-  | TVar _ -> assert false
-  | TFun _ as typ ->
-      let xs,typ' = decomp_tfun typ in
-      let xs' = flatten_map (fun y -> flatten (remove_pair_var y)) xs in
-        Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
-  | TPair(x,typ) -> Node(remove_pair_typ (Id.typ x), remove_pair_typ typ)
-  | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
-  | TConstr(s,b) -> Leaf (TConstr(s,b))
-  | TPred({Id.typ=TPair(x, typ)} as y, ps) ->
-      begin
-        match typ with (* Function types cannot have predicates *)
-          TFun _ ->
-            let x1 = Id.new_var (Id.name x) (elim_tpred (Id.typ x)) in
-            let x2 = Id.new_var "f" typ in
-            let ps' = List.map (subst y (make_pair (make_var x1) (make_var x2))) ps in
-            let x' = Id.set_typ x (TPred(x1,ps')) in
-              remove_pair_typ (TPair(x', typ))
-        | _ ->
-            let y' = Id.set_typ y typ in
-            let ps' = List.map (subst y (make_pair (make_var x) (make_var y'))) ps in
-            let typ' = TPred(y', ps') in
-              remove_pair_typ (TPair(x, typ'))
-      end
-  | TPred(x,ps) ->
-      let ps' = List.map remove_pair ps in
-      let typ' =
-        match remove_pair_typ (Id.typ x) with
-            Leaf typ -> typ
-          | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
-      in
-        Leaf (TPred(Id.set_typ x typ', ps'))
-
-and remove_pair_var x =
-  let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
-  let aux path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
-    map aux (remove_pair_typ (Id.typ x))
-
-and remove_pair_aux t typ_opt =
-  let typ = match typ_opt with None -> t.typ | Some typ -> typ in
-  let typs = remove_pair_typ typ in
-    match t.desc with
-        Const _
-      | RandInt _
-      | Event _ -> Leaf t
-      | Bottom -> map (fun _ -> make_bottom) typs
-      | Var x -> map (fun _ x -> make_var x) (remove_pair_var x)
-      | Fun(x, t) ->
-          let xs = flatten (remove_pair_var x) in
-          let t' = root (remove_pair_aux t None) in
-            Leaf (List.fold_right make_fun xs t')
-      | App(t1, ts) ->
-          let typs = get_argtyps t1.typ in
-          let () = assert (List.length typs >= List.length ts) in
-          let typs' = take typs (List.length ts) in
-          let t' = root (remove_pair_aux t1 None) in
-          let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t (Some typ))) ts typs') in
-            Leaf (make_app t' ts')
-      | If(t1, t2, t3) ->
-          let t1' = root (remove_pair_aux t1 None) in
-          let t2' = root (remove_pair_aux t2 None) in
-          let t3' = root (remove_pair_aux t3 None) in
-            Leaf (make_if t1' t2' t3')
-      | Branch(t1, t2) ->
-          let t1' = root (remove_pair_aux t1 None) in
-          let t2' = root (remove_pair_aux t2 None) in
-            Leaf {desc=Branch(t1',t2'); typ=t1'.typ}
-      | Let(flag, bindings, t) ->
-          let aux (f,xs,t) =
-            let f' = root (remove_pair_var f) in
-            let xs' = List.flatten (List.map (fun x -> flatten (remove_pair_var x)) xs) in
-            let t' = root (remove_pair_aux t None) in
-              f', xs', t'
-          in
-          let bindings' = List.map aux bindings in
-          let t' = root (remove_pair_aux t None) in
-            Leaf (make_let_f flag bindings' t')
-      | BinOp(op, t1, t2) ->
-          begin
-            match op, elim_tpred t1.typ with
-              (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt) -> ()
-            | (Eq | Lt | Gt | Leq | Geq), _ ->
-                if t1.typ <> typ_abst
-                then
-                  (Format.printf "%a@." pp_print_typ t1.typ;
-                  Format.printf "%a@." pp_print_term' t;
-                  raise (Fatal "Unsupported (polymorphic comparison)"))
-            | _ -> ()
-          end;
-          let t1' = root (remove_pair_aux t1 None) in
-          let t2' = root (remove_pair_aux t2 None) in
-            Leaf {desc=BinOp(op, t1', t2'); typ=root typs}
-      | Not t1 ->
-          let t1' = root (remove_pair_aux t1 None) in
-            Leaf (make_not t1')
-      | Record fields -> assert false
-      | Proj(i,s,f,t1) -> assert false
-      | SetField(n,i,s,f,t1,t2) -> assert false
-      | Nil -> assert false
-      | Cons(t1,t2) -> assert false
-      | Constr(s,ts) -> assert false
-      | Match(t1,pats) -> assert false
-      | TryWith(t1,t2) -> assert false
-      | Pair(t1,t2) -> Node(remove_pair_aux t1 None, remove_pair_aux t2 None)
-      | Fst {desc=Var x} when x = abst_var -> Leaf (make_var x) (* for predicates *)
-      | Fst t ->
-          let t' =
-            match remove_pair_aux t None with
-                Leaf _ -> Format.printf "%a@." pp_print_term t;assert false
-              | Node(t',_) -> t'
-          in
-            t'
-      | Snd {desc=Var x} when x = abst_var -> Leaf (make_var x) (* for predicates *)
-      | Snd t ->
-          let t' =
-            match remove_pair_aux t None with
-                Leaf _ -> assert false
-              | Node(_,t') -> t'
-          in
-            t'
-      | _ -> (Format.printf "%a@." pp_print_term t; assert false)
-
-and remove_pair t = root (remove_pair_aux t None)
-
-let remove_pair t =
-  let t' = remove_pair t in
-  let () = Type_check.check t' TUnit in
-    t', uncurry_rtyp t
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 let counter = ref 0
 let new_evar () = incr counter; !counter
 
@@ -246,6 +16,7 @@ and t_cps =
   | UnknownCPS
   | BottomCPS
   | RandIntCPS
+  | RandValueCPS
   | VarCPS of typed_ident
   | FunCPS of typed_ident * typed_term
   | AppCPS of typed_term * typed_term
@@ -278,7 +49,9 @@ let effect_max x y =
     | ECont, _ -> ECont
     | EExcep, _ -> EExcep
 
-let sol = ref (fun (n:int) -> EUnknown)
+let effect_cont = 0
+let init_sol n = if n = 0 then ECont else EUnknown
+let sol = ref init_sol
 
 let rec print_typ_cps' fm = function
     TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
@@ -315,6 +88,7 @@ and print_t_cps fm = function
   | UnknownCPS -> Format.fprintf fm "***"
   | BottomCPS -> Format.fprintf fm "_|_"
   | RandIntCPS -> Format.fprintf fm "rand_int"
+  | RandValueCPS -> Format.fprintf fm "rand_value ()"
   | VarCPS x -> print_id fm x.id_cps
   | FunCPS(x, t) ->
       Format.fprintf fm "@[<hov 2>fun %a : %a ->@ %a@]" print_id x.id_cps print_typ_cps x.id_typ print_typed_term t
@@ -331,7 +105,7 @@ and print_t_cps fm = function
           !head print_id f.id_cps print_typ_cps f.id_typ print_typed_term t;
         head := "and"
       in
-        Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "" false) bindings print_typed_term t
+        Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "") bindings print_typed_term t
   | BinOpCPS(op, t1, t2) ->
       let op =
         match op with
@@ -403,7 +177,8 @@ let rec infer_effect_typ typ =
   match typ with
       TUnit
     | TInt
-    | TBool -> TBaseCPS typ
+    | TBool
+    | TConstr(_,false)-> TBaseCPS typ
     | TFun(x,typ2) ->
         let typ1 = Id.typ x in
         let e = new_evar () in
@@ -461,15 +236,15 @@ let rec infer_effect env t =
     | App(t1, [t2]) ->
         let typed1 = infer_effect env t1 in
         let typed2 = infer_effect env t2 in
-        let typ_result = infer_effect_typ t.typ in
+        let rtyp = infer_effect_typ t.typ in
         let e0 = new_evar () in
-        let typ = _TFunCPS(e0, typed2.typ_cps, typ_result) in
+        let typ = _TFunCPS(e0, typed2.typ_cps, rtyp) in
         let e = new_evar () in
           constraints := CGeqVar(e, typed1.effect) :: !constraints;
           constraints := CGeqVar(e, typed2.effect) :: !constraints;
           constraints := CGeqVar(e, e0) :: !constraints;
           unify typed1.typ_cps typ;
-          {t_cps=AppCPS(typed1,typed2); typ_cps=typ_result; typ_orig=t.typ; effect=e}
+          {t_cps=AppCPS(typed1,typed2); typ_cps=rtyp; typ_orig=t.typ; effect=e}
     | If(t1, t2, t3) ->
         let typed1 = infer_effect env t1 in
         let typed2 = infer_effect env t2 in
@@ -484,7 +259,7 @@ let rec infer_effect env t =
     | Let(flag, bindings, t1) ->
         let make_env (f,_,_) = Id.to_string f, infer_effect_typ (Id.typ f) in
         let env_f = List.map make_env bindings in
-        let env' = env_f @@ env in
+        let env' = env_f @@@ env in
         let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
         let aux (f, xs, t1) =
           let f' = {id_cps=f; id_typ=List.assoc (Id.to_string f) env_f} in
@@ -565,6 +340,7 @@ let rec infer_effect env t =
     | Proj (_, _, _, _) -> assert false
     | Record _ -> assert false
     | Branch (_, _) -> assert false
+    | RandValue(typ, false) -> {t_cps=RandValueCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=effect_cont}
     | RandValue (_, _) -> assert false
     | Nil -> assert false
     | Label _ -> assert false
@@ -687,7 +463,7 @@ let add_preds_cont k t =
 
 let rec force_cont = function
     TBaseCPS typ -> TBaseCPS typ
-  | TFunCPS(e,typ1,typ2) -> TFunCPS(0, force_cont typ1, force_cont typ2)
+  | TFunCPS(e,typ1,typ2) -> TFunCPS(effect_cont, force_cont typ1, force_cont typ2)
   | TPairCPS(typ1,typ2) -> TPairCPS(force_cont typ1, force_cont typ2)
 
 let rec trans_typ typ_orig typ =
@@ -697,16 +473,16 @@ let rec trans_typ typ_orig typ =
         let typ1' = trans_typ (Id.typ x_orig) typ1 in
         let x = Id.new_var "x" typ1' in
         let r = Id.new_var "r" (subst_type x_orig (make_var x) (trans_typ typ typ2)) in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
+        let k = Id.new_var "k" (TFun(r,typ_result)) in
         let e = Id.new_var "e" !typ_excep in
-        let h = Id.new_var "h" (TFun(e,TUnit)) in
-          TFun(x, TFun(k, TFun(h, TUnit)))
+        let h = Id.new_var "h" (TFun(e,typ_result)) in
+          TFun(x, TFun(k, TFun(h, typ_result)))
     | TFun(x_orig,typ), TFunCPS(e,typ1,typ2) when !sol e = ECont ->
         let typ1' = trans_typ (Id.typ x_orig) typ1 in
         let x = Id.new_var "x" typ1' in
         let r = Id.new_var "r" (subst_type x_orig (make_var x) (trans_typ typ typ2)) in
-        let k = Id.new_var "k" (TFun(r,TUnit)) in
-          TFun(x, TFun(k, TUnit))
+        let k = Id.new_var "k" (TFun(r,typ_result)) in
+          TFun(x, TFun(k, typ_result))
     | TFun(x_orig,typ), TFunCPS(_,typ1,typ2) ->
         let typ1' = trans_typ (Id.typ x_orig) typ1 in
         let x = Id.new_var "x" typ1' in
@@ -744,25 +520,27 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e};
   let r =
     match t, !sol e with
-        ConstCPS Unit, ENone -> unit_term
-      | ConstCPS True, ENone -> true_term
-      | ConstCPS False, ENone -> false_term
-      | ConstCPS (Int n), ENone -> make_int n
+        ConstCPS c, ENone -> {desc=Const c; typ=typ_orig}
       | BottomCPS, ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
-            make_fun k (make_bottom TUnit)
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
+            make_fun k (make_bottom typ_result)
       | RandIntCPS, ENone ->
           let e = get_tfun_effect typ in
             begin
               match !sol e with
-                  ECont -> make_randint_cps TUnit
+                  ECont -> make_randint_cps ()
                 | EExcep ->
                     let e = Id.new_var "e" !typ_excep in
-                    let h = Id.new_var "h" (TFun(e,TUnit)) in
-                      make_fun h (make_randint_cps TUnit)
+                    let h = Id.new_var "h" (TFun(e,typ_result)) in
+                      make_fun h (make_randint_cps ())
                 | _ -> assert false
             end
+      | RandValueCPS, ECont ->
+          let typ' = trans_typ typ_orig typ in
+          let r = Id.new_var "r" typ' in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
+          make_fun k (make_app (make_randvalue_cps typ') [make_var k])
       | VarCPS x, ENone -> make_var (trans_var x)
       | FunCPS(x, t1), ENone when !sol (get_tfun_effect typ) = ENone ->
           let x' = trans_var x in
@@ -770,15 +548,15 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       | FunCPS(x, t1), ENone when !sol (get_tfun_effect typ) = ECont ->
           let x' = trans_var x in
           let r = Id.new_var "r" (trans_typ t1.typ_orig t1.typ_cps) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let t1' = transform k_post t1 in
             make_fun x' (make_fun k (make_app_cont t1.effect t1' (make_var k)))
       | FunCPS(x, t1), ENone when !sol (get_tfun_effect typ) = EExcep ->
           let x' = trans_var x in
           let r = Id.new_var "r" (trans_typ t1.typ_orig t1.typ_cps) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
             make_fun x' (make_fun k (make_fun h (make_app_excep t1.effect t1' (make_var k) (make_var h))))
       | AppCPS(t1, t2), ENone ->
@@ -789,7 +567,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let t1' = transform k_post t1 in
           let t2' = transform k_post t2 in
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let x1 = Id.new_var "x" (trans_typ t1.typ_orig t1.typ_cps) in
           let x2 = Id.new_var "x" (trans_typ t2.typ_orig t2.typ_cps) in
           let e0 = get_tfun_effect t1.typ_cps in
@@ -803,12 +581,12 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let t1' = transform k_post t1 in
           let t2' = transform k_post t2 in
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let x1 = Id.new_var "x" (trans_typ t1.typ_orig t1.typ_cps) in
           let x2 = Id.new_var "x" (trans_typ t2.typ_orig t2.typ_cps) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
-          let h' = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
+          let h' = Id.new_var "h" (TFun(e,typ_result)) in
           let e0 = get_tfun_effect t1.typ_cps in
             make_fun k
               (make_fun h
@@ -831,8 +609,8 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let t2' = transform k_post t2 in
           let t3' = transform k_post t3 in
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
-          let k' = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
+          let k' = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let b = Id.new_var "b" (trans_typ t1.typ_orig t1.typ_cps) in
             make_fun k
               (make_let [k', [], make_var k]
@@ -846,12 +624,12 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let t2' = transform k_post t2 in
           let t3' = transform k_post t3 in
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
-          let k' = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
+          let k' = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let b = Id.new_var "b" (trans_typ t1.typ_orig t1.typ_cps) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
-          let h' = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
+          let h' = Id.new_var "h" (TFun(e,typ_result)) in
             make_fun k
               (make_let [k', [], make_var k] (* to prevent the increase of code size in eta-reduction *)
                  (make_fun h
@@ -872,7 +650,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             make_let_f flag bindings' t1'
       | LetCPS(flag, bindings, t1), ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let xs = List.map (fun (_,t) -> Id.new_var "x" (trans_typ t.typ_orig t.typ_cps)) bindings in
           let bindings' = List.map2 (fun x (f,_) -> trans_var f, [], make_var x) xs bindings in
           let aux (f,t) =
@@ -885,10 +663,10 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             make_fun k (List.fold_right2 (fun x (e,t) t' -> make_app_cont e t (make_fun x t')) xs ets t0)
       | LetCPS(flag, bindings, t1), EExcep ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
-          let h' = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
+          let h' = Id.new_var "h" (TFun(e,typ_result)) in
           let xs = List.map (fun (_,t) -> Id.new_var "x" (trans_typ t.typ_orig t.typ_cps)) bindings in
           let bindings' = List.map2 (fun x (f,_) -> trans_var f, [], make_var x) xs bindings in
           let aux (f,t) =
@@ -909,7 +687,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             {desc=BinOp(op, t1', t2'); typ=typ_orig}
       | BinOpCPS(op, t1, t2), ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let x1 = Id.new_var "x" (trans_typ t1.typ_orig t1.typ_cps) in
           let x2 = Id.new_var "x" (trans_typ t2.typ_orig t2.typ_cps) in
           let t1' = transform k_post t1 in
@@ -922,12 +700,12 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                           (make_app (make_var k) [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig}])))))
       | BinOpCPS(op, t1, t2), EExcep ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let x1 = Id.new_var "x" (trans_typ t1.typ_orig t1.typ_cps) in
           let x2 = Id.new_var "x" (trans_typ t2.typ_orig t2.typ_cps) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
-          let h' = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
+          let h' = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
           let t2' = transform k_post t2 in
             make_fun k
@@ -946,16 +724,16 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             make_not t1'
       | NotCPS t1, ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let b = Id.new_var "b" (trans_typ t1.typ_orig t1.typ_cps) in
           let t1' = transform k_post t1 in
             make_fun k (make_app_cont t1.effect t1' (make_fun b (make_app (make_var k) [make_not (make_var b)])))
       | NotCPS t1, EExcep ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let b = Id.new_var "b" (trans_typ t1.typ_orig t1.typ_cps) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
             make_fun k
               (make_fun h
@@ -969,16 +747,16 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             make_fst t1'
       | FstCPS t1, ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let p = Id.new_var "p" (trans_typ t1.typ_orig t1.typ_cps) in
           let t1' = transform k_post t1 in
             make_fun k (make_app_cont t1.effect t1' (make_fun p (make_app (make_var k) [make_fst (make_var p)])))
       | FstCPS t1, EExcep ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let p = Id.new_var "p" (trans_typ t1.typ_orig t1.typ_cps) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
             make_fun k
               (make_fun h
@@ -991,16 +769,16 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             make_snd t1'
       | SndCPS t1, ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let p = Id.new_var "p" (trans_typ t1.typ_orig t1.typ_cps) in
           let t1' = transform k_post t1 in
             make_fun k (make_app_cont t1.effect t1' (make_fun p (make_app (make_var k) [make_snd (make_var p)])))
       | SndCPS t1, EExcep ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let p = Id.new_var "p" (trans_typ t1.typ_orig t1.typ_cps) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
             make_fun k
               (make_fun h
@@ -1014,7 +792,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             make_pair t1' t2'
       | PairCPS(t1,t2), ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let x1 = Id.new_var "x" (trans_typ t1.typ_orig t1.typ_cps) in
           let x2 = Id.new_var "x" (trans_typ t2.typ_orig t2.typ_cps) in
           let t1' = transform k_post t1 in
@@ -1027,12 +805,12 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                           (make_app (make_var k) [make_pair (make_var x1) (make_var x2)])))))
       | PairCPS(t1,t2), EExcep ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
-          let k = Id.new_var ("k" ^ k_post) (TFun(r,TUnit)) in
+          let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let x1 = Id.new_var "x" (trans_typ t1.typ_orig t1.typ_cps) in
           let x2 = Id.new_var "x" (trans_typ t2.typ_orig t2.typ_cps) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
-          let h' = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
+          let h' = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
           let t2' = transform k_post t2 in
             make_fun k
@@ -1047,10 +825,10 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                        (make_var h'))))
       | RaiseCPS t1, EExcep ->
           let u = Id.new_var "u" (trans_typ typ_orig typ) in
-          let k = Id.new_var "k" (TFun(u,TUnit)) in
+          let k = Id.new_var "k" (TFun(u,typ_result)) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
-          let h' = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
+          let h' = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
             make_fun k
               (make_fun h
@@ -1063,9 +841,9 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       | TryWithCPS(t1,t2), EExcep ->
           let r = Id.new_var "r" (trans_typ t1.typ_orig t1.typ_cps) in
           let f = Id.new_var "h" (trans_typ t2.typ_orig t2.typ_cps) in
-          let k = Id.new_var "k" (TFun(r,TUnit)) in
+          let k = Id.new_var "k" (TFun(r,typ_result)) in
           let e = Id.new_var "e" !typ_excep in
-          let h = Id.new_var "h" (TFun(e,TUnit)) in
+          let h = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
           let t2' = transform k_post t2 in
             assert (!sol t2.effect = ENone); (* bind h' to h when eliminating this assertion *)
@@ -1140,21 +918,22 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       ConstCPS _ -> []
     | BottomCPS -> []
     | RandIntCPS -> []
+    | RandValueCPS -> []
     | VarCPS x -> []
     | FunCPS(x, t1) ->
         assoc_typ_cps f t1
     | AppCPS(t1, t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | IfCPS(t1, t2, t3) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2 @@ assoc_typ_cps f t3
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2 @@@ assoc_typ_cps f t3
     | LetCPS(flag, bindings, t1) ->
         let aux (g,t) =
           let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
-            typs1 @@ assoc_typ_cps f t
+            typs1 @@@ assoc_typ_cps f t
         in
-          assoc_typ_cps f t1 @@ rev_flatten_map aux bindings
+          assoc_typ_cps f t1 @@@ rev_flatten_map aux bindings
     | BinOpCPS(op, t1, t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | NotCPS t1 ->
         assoc_typ_cps f t1
     | UnknownCPS -> []
@@ -1164,11 +943,11 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
     | SndCPS t1 ->
         assoc_typ_cps f t1
     | PairCPS(t1,t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | RaiseCPS t1 ->
         assoc_typ_cps f t1
     | TryWithCPS(t1,t2) ->
-        assoc_typ_cps f t1 @@ assoc_typ_cps f t2
+        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
 
 let assoc_typ_cps f typed =
   match assoc_typ_cps f typed with
@@ -1211,35 +990,53 @@ let rec uncps_ref_type rtyp e etyp =
           RT.print rtyp print_effect e print_typ_cps etyp;
         assert false
 
+let infer_effect t =
+  let cmp x y =
+    let r = Id.compare x y in
+    if r <> 0 then r
+    else if can_unify (Id.typ x) (Id.typ y) then 0 else compare (Id.typ x) (Id.typ y)
+  in
+  let ext_funs = get_fv ~cmp t in
+  let env = List.map (fun x -> Id.to_string x, x |> Id.typ |> infer_effect_typ |> force_cont) ext_funs in
+  if List.length ext_funs <> List.length (uniq ~cmp:Id.compare ext_funs)
+  then
+    begin
+      List.iter (fun x -> Format.printf "%a: %a@." Id.print x pp_print_typ (Id.typ x)) ext_funs;
+      unsupported "polymorphic use of external functions";
+    end;
+  infer_effect env t
+
 let get_rtyp_of typed f rtyp =
   let etyp = assoc_typ_cps f typed in
   if debug then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
     Id.print f RT.print rtyp print_typ_cps etyp;
   let rtyp' = uncps_ref_type rtyp ENone etyp in
-  if Flag.print_ref_typ then Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if Flag.print_ref_typ_debug
+  then Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 
 
 let trans t =
-  let () = sol := fun (n:int) -> if n = 0 then ECont else EUnknown in
+  let () = sol := init_sol in
   let () = typ_excep := trans_typ !typ_excep (force_cont (infer_effect_typ !typ_excep)) in
   let t = short_circuit_eval t in
   let () = counter := 0 in
   let () = constraints := [] in
-  let typed = infer_effect [] t in
+  let typed = infer_effect t in
   let () = if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
   let () = sol := solve_constraints !constraints in
   let () = if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
   let x = Id.new_var "x" TUnit in
   let t = transform "" typed in
   let e = Id.new_var "e" !typ_excep in
-  let k = make_fun x (make_var x) in
-  let h = make_fun e (make_app fail_term [unit_term]) in
+  let k = make_fun x cps_result in
+  let h = make_fun e (make_app fail_term_cps [unit_term]) in
   let t = make_app_excep typed.effect t k h in
   let () = if debug then Format.printf "CPS:@.%a@." pp_print_term' t in
   let t = Trans.propagate_typ_arg t in
   let t = Trans.eta_reduce t in
   let t = Trans.expand_let_val t in
-    Type_check.check t TUnit;
+    Type_check.check t typ_result;
+    Flag.form := Flag.CPS :: !Flag.form;
     t, get_rtyp_of typed

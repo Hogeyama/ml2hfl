@@ -8,5 +8,6 @@ let rec f x y =
       f (x + 1) (y + 1)
   else
     y
-in
- if f 0 50 = 100 then () else fail ()
+
+let main =
+ assert (not (f 0 50 = 100))

@@ -21,7 +21,7 @@ let check_aux env cond p =
 
 let check env cond pbs p =
   let ps,_ = List.split pbs in
-  check_aux env (cond@@ps) p
+  check_aux env (cond@@@ps) p
 
 let equiv env cond t1 t2 =
   check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
@@ -53,7 +53,7 @@ let weakest env cond ds p =
     Const False, Const True
   else
     let fvp = get_fv p in
-    let ts = cond @@ List.map fst ds in
+    let ts = cond @@@ List.map fst ds in
     let ds =
       let rec fixp xs =
         let xs' =
@@ -194,7 +194,7 @@ let filter env cond pbs must t =
       in
       let rec loop bottoms cands width =
         let cands' = uniq (rev_flatten_map (aux bottoms) cands) in
-        let bottoms' = List.filter (fun (pbs,_) -> check pbs) cands' @@ bottoms in
+        let bottoms' = List.filter (fun (pbs,_) -> check pbs) cands' @@@ bottoms in
           if width >= !Flag.wp_max_num
           then bottoms'
           else loop bottoms' cands' (width+1)
@@ -210,17 +210,20 @@ let filter env cond pbs must t =
 
 
 
+let print_pb fm (p,b) =
+  Format.fprintf fm "%a := %a;" CEGAR_print.term b CEGAR_print.term p
+
 let print_pbs fm pbs =
-  List.iter (fun (p,_) -> Format.printf "%a;" CEGAR_print.term p) pbs
+  print_list print_pb ";@\n" fm pbs
 
 
 let abst env cond pbs p =
-  if debug then Format.printf "pbs:%a@.p:%a@." print_pbs pbs CEGAR_print.term p;
+  if debug then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs CEGAR_print.term p;
   if has_bottom p
   then Const Bottom
   else
     let tt, ff = weakest env cond pbs p in
-    if debug then Format.printf "tt:%a@.ff:%a@." CEGAR_print.term tt CEGAR_print.term ff;
+    if debug then Format.printf "tt:%a@.ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
     if make_not tt = ff || tt = make_not ff
     then tt
     else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
@@ -256,7 +259,7 @@ let decomp_tbase = function
   | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
 
 let rec is_base_term env = function
-    Const (Unit | True | False | Int _ | RandInt) -> true
+    Const (Unit | True | False | Int _ | RandInt | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _ | RandVal _) -> true
   | Const _ -> false
   | Var x ->
       let typ =
@@ -269,7 +272,7 @@ let rec is_base_term env = function
               TBase _ -> true
             | _ -> false
         end
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|Add|Sub|Mul),t1),t2) ->
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|CmpPoly _|Add|Sub|Mul),t1),t2) ->
       assert (is_base_term env t1);
       assert (is_base_term env t2);
       true
@@ -313,7 +316,7 @@ let rec reduce_let env = function
         | _ -> assert false
 
 let make_arg_let_def env (f,xs,t1,e,t2) =
-    f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@ env) (make_arg_let_term t2)
+    f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@@ env) (make_arg_let_term t2)
 
 let make_arg_let prog =
   {prog with defs = List.map (make_arg_let_def prog.env) prog.defs}
@@ -341,3 +344,30 @@ let rec add_label {env=env;defs=defs;main=main} =
   let defs' = aux defs in
   let labeled = uniq (rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs') in
     labeled, {env=env;defs=defs';main=main}
+
+
+
+let rec use_arg x typ t =
+  match typ with
+    TBase _ -> t
+  | TFun(typ1,typ2) ->
+      let u = new_id "u" in
+      let t' = make_br (Const Unit) (App(Var x, make_ext_fun typ1)) in
+      App(Fun(u, None, t), t')
+  | _ -> assert false
+
+and make_ext_fun = function
+    TBase(TUnit, _) -> Const Unit
+  | TBase(TBool, _) -> make_br (Const True) (Const False)
+  | TFun(typ1,typ2) ->
+      let x = new_id "x" in
+      Fun(x, None, use_arg x typ1 (make_ext_fun (typ2 (Const Unit))))
+  | _ -> assert false
+
+
+let add_ext_funs prog =
+  let env = get_ext_fun_env prog in
+  let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun typ) env in
+  let defs' = defs@prog.defs in
+  let _ = Typing.infer {env=[]; defs=defs'; main=prog.main} in
+  {prog with defs=defs'}

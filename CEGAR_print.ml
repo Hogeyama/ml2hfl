@@ -38,6 +38,7 @@ and print_typ_base fm = function
   | TInt -> Format.fprintf fm "int"
   | TTuple n -> Format.fprintf fm "tuple"
   | TList -> assert false
+  | TAbst s -> Format.pp_print_string fm s
 
 and print_typ_aux var fm = function
     TBase(b,ps) ->
@@ -45,7 +46,7 @@ and print_typ_aux var fm = function
       let preds = ps (Var x) in
         if occur || List.mem x (rev_flatten_map get_fv preds) then Format.fprintf fm "%a:" print_var x;
         Format.fprintf fm "%a" print_typ_base b;
-        if preds <> [] then Format.fprintf fm "[@[%a@]]" (print_list print_linear_exp ";@ " false) preds
+        if preds <> [] then Format.fprintf fm "[@[%a@]]" (print_list print_linear_exp ";@ ") preds
   | TFun _ as typ ->
       let rec aux b fm = function
           TFun(typ1, typ2) ->
@@ -62,7 +63,7 @@ and print_typ_aux var fm = function
         aux true fm typ
   | TApp _ as typ ->
       let typ,typs = decomp_tapp typ in
-        Format.fprintf fm "(%a)" (print_list (print_typ_aux None) " " false) (typ::typs)
+        Format.fprintf fm "(%a)" (print_list (print_typ_aux None) " ") (typ::typs)
   | TAbs _ -> assert false
 
 and print_typ fm typ =
@@ -76,8 +77,15 @@ and print_const fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
+  | Char c -> Format.fprintf fm "%C" c
+  | String s -> Format.fprintf fm "%S" s
+  | Float s -> Format.fprintf fm "%s" s
+  | Int32 n -> Format.fprintf fm "%ldl" n
+  | Int64 n -> Format.fprintf fm "%LdL" n
+  | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "rand_bool"
   | RandInt -> Format.fprintf fm "rand_int"
+  | RandVal s -> Format.fprintf fm "rand_%s" s
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"
   | Not -> Format.fprintf fm "not"
@@ -88,6 +96,7 @@ and print_const fm = function
   | EqUnit -> Format.fprintf fm "="
   | EqInt -> Format.fprintf fm "="
   | EqBool -> Format.fprintf fm "<=>"
+  | CmpPoly(typ,s) -> Format.pp_print_string fm s
   | Int n -> Format.fprintf fm "%d" n
   | Add -> Format.fprintf fm "+"
   | Sub -> Format.fprintf fm "-"
@@ -98,13 +107,14 @@ and print_const fm = function
   | Bottom -> Format.fprintf fm "_|_"
   | Temp s -> Format.fprintf fm "Temp{%s}" s
   | Label n -> Format.fprintf fm "l%d" n
+  | CPS_result -> Format.fprintf fm "end"
 
 and print_term fm = function
     Const c -> print_const fm c
   | Var x -> print_var fm x
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
-  | App(App(Const ((EqInt|EqBool|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
+  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(@[%a@ %a@ %a@])" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
@@ -116,7 +126,7 @@ and print_term fm = function
   | Let(x,t1,t2) ->
       let xs,t1 = decomp_fun t1 in
         Format.fprintf fm "(@[let %a %a@ =@ %a@ in@ %a@])"
-          print_var x (print_list print_var " " false) xs print_term t1 print_term t2
+          print_var x (print_list print_var " ") xs print_term t1 print_term t2
   | Fun _ as t ->
       let env,t' = decomp_annot_fun t in
       let pr fm (x,typ) =
@@ -124,7 +134,7 @@ and print_term fm = function
             Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
           | _ -> print_var fm x
       in
-        Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " " false) env print_term t'
+        Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env print_term t'
 
 and print_fun_def fm (f,xs,t1,es,t2) =
   let aux s = function
@@ -135,18 +145,18 @@ and print_fun_def fm (f,xs,t1,es,t2) =
     if t1 = Const True
     then
       let ys,t2 = decomp_fun t2 in
-        Format.fprintf fm "@[<hov 4>%a ->%s@ %a@]" (print_list print_var " " false) (f::xs@ys) s print_term t2
-    else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]" (print_list print_var " " false) (f::xs) print_term t1 s print_term t2
+        Format.fprintf fm "@[<hov 4>%a ->%s@ %a@]" (print_list print_var " ") (f::xs@ys) s print_term t2
+    else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
 
 and print_prog fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@]@?"
     print_var prog.main
-    (print_list print_fun_def "@\n" false) prog.defs
+    (print_list print_fun_def "@\n") prog.defs
 
 and print_prog_typ fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@\n@]@[Types:@\n  @[%a@]@]@?"
     print_var prog.main
-    (print_list print_fun_def "@\n" false) prog.defs
+    (print_list print_fun_def "@\n") prog.defs
     print_env prog.env
 
 
@@ -217,8 +227,8 @@ and print_linearArithTerm_list fm ts =
     | -1, Some x -> Format.fprintf fm "-%a" print_var x
     | n, Some x -> Format.fprintf fm "%d*%a" n print_var x
   in
-    pr_head fm (List.hd ts);
-    print_list pr_tail "" false fm (List.tl ts)
+    pr_head fm @@ List.hd ts;
+    print_list pr_tail "" fm @@ List.tl ts
 
 and print_linearBoolTerm fm = function
     BBoolTerm t -> print_term fm t
@@ -244,9 +254,9 @@ and print_prop fm = function
             PropOr _ -> Format.fprintf fm "(@[%a@])" print_prop p
           | _ -> print_prop fm p
       in
-        print_list aux " && " false fm ps
+        print_list aux " && " fm ps
   | PropOr ps ->
-      print_list print_prop " || " false fm ps
+      print_list print_prop " || " fm ps
 
 and print_linear_exp fm t =
   try
@@ -261,8 +271,15 @@ and print_const_ML fm = function
   | Unit -> Format.fprintf fm "()"
   | True -> Format.fprintf fm "true"
   | False -> Format.fprintf fm "false"
+  | Char c -> Format.fprintf fm "%C" c
+  | String s -> Format.fprintf fm "%S" s
+  | Float s -> Format.fprintf fm "%s" s
+  | Int32 n -> Format.fprintf fm "%ldl" n
+  | Int64 n -> Format.fprintf fm "%LdL" n
+  | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "(Random.bool())"
   | RandInt -> Format.fprintf fm "rand_int()"
+  | RandVal s -> Format.fprintf fm "rand_%s()" s
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
   | Not -> Format.fprintf fm "(not)"
@@ -286,6 +303,8 @@ and print_const_ML fm = function
   | Bottom -> Format.fprintf fm "()"
   | EqUnit -> assert false
   | Label _ -> assert false
+  | CmpPoly _ -> assert false
+  | CPS_result -> Format.fprintf fm "end"
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
@@ -296,14 +315,14 @@ and print_term_ML fm = function
       Format.fprintf fm "(%a %a)" print_term_ML t1 print_term_ML t2
   | Let(x,t1,t2) ->
       let xs,t1 = decomp_fun t1 in
-        Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " true) xs print_term_ML t1 print_term_ML t2
+        Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " ~last:true) xs print_term_ML t1 print_term_ML t2
   | Fun(x,_,t) ->
       Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
 
 and print_fun_def_ML fm (f,xs,t1,_,t2) =
   if t1 = Const True
-  then Format.fprintf fm "and %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t2
-  else Format.fprintf fm "%a when %a = %a@." (print_list print_var " " false) (f::xs) print_term_ML t1 print_term_ML t2
+  then Format.fprintf fm "and %a = %a@." (print_list print_var " ") (f::xs) print_term_ML t2
+  else Format.fprintf fm "%a when %a = %a@." (print_list print_var " ") (f::xs) print_term_ML t1 print_term_ML t2
 
 and print_prog_ML fm (env,defs,s) =
   Format.fprintf fm "let rec f x = f x@.";
@@ -318,6 +337,7 @@ let rec print_base_typ_as_tree fm = function
   | TBool -> Format.fprintf fm "TBool"
   | TList -> Format.fprintf fm "TList"
   | TTuple n -> Format.fprintf fm "(TTuple %d)" n
+  | TAbst s -> Format.fprintf fm "%s" s
 
 and print_typ_as_tree fm = function
     TBase(b,ps) ->
@@ -335,8 +355,15 @@ and print_const_as_tree fm = function
   | Unit -> Format.fprintf fm "Unit"
   | True -> Format.fprintf fm "True"
   | False -> Format.fprintf fm "False"
+  | Char c -> Format.fprintf fm "%C" c
+  | String s -> Format.fprintf fm "%S" s
+  | Float s -> Format.fprintf fm "%s" s
+  | Int32 n -> Format.fprintf fm "%ldl" n
+  | Int64 n -> Format.fprintf fm "%LdL" n
+  | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "RandBool"
   | RandInt -> Format.fprintf fm "RandInt"
+  | RandVal s -> Format.fprintf fm "Rand_%s" s
   | And -> Format.fprintf fm "And"
   | Or -> Format.fprintf fm "Or"
   | Not -> Format.fprintf fm "Not"
@@ -357,6 +384,8 @@ and print_const_as_tree fm = function
   | Bottom -> Format.fprintf fm "Bottom"
   | EqUnit -> assert false
   | Label _ -> assert false
+  | CmpPoly _ -> assert false
+  | CPS_result -> Format.fprintf fm "End"
 
 and print_term_as_tree fm = function
     Const c -> Format.fprintf fm "(Const %a)" print_const_as_tree c
@@ -369,26 +398,26 @@ and print_event_as_tree fm = function
     Event s -> Format.fprintf fm "(Event \"%s\")" s
   | Branch n -> Format.fprintf fm "(Branch %d)" n
 
-and print_list_as_tree (pr:Format.formatter -> 'a -> unit) fm xs = Format.fprintf fm "[%a]" (print_list pr ";" false) xs
+and print_list_as_tree (pr:Format.formatter -> 'a -> unit) fm xs = Format.fprintf fm "[%a]" (print_list pr ";") xs
 
 and print_fun_def_as_tree fm (f,xs,t1,es,t2) =
   Format.fprintf fm "%a,%a,%a,%a,%a"
     print_var_as_tree f
-    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_var_as_tree ";" false) xs) xs
+    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_var_as_tree ";") xs) xs
 (*(print_list_as_tree Format.pp_print_string) xs
 *)
     print_term_as_tree t1
-    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_event_as_tree ";" false) xs) es
+    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_event_as_tree ";") xs) es
     print_term_as_tree t2
 
 and print_env_as_tree fm env =
   let aux fm (f,typ) = Format.printf "%a,%a" print_var_as_tree f print_typ_as_tree typ in
-    Format.fprintf fm "[%a]" (print_list aux ";" false) env
+    Format.fprintf fm "[%a]" (print_list aux ";") env
 
 and print_prog_as_tree fm (env,defs,s) =
   Format.fprintf fm "(%a,%a,%a)"
     print_env_as_tree env
-    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_fun_def_as_tree ";" false) xs) defs
+    (fun fm xs -> Format.fprintf fm "[%a]" (print_list print_fun_def_as_tree ";") xs) defs
     print_var_as_tree s
 
 
@@ -405,7 +434,7 @@ let print_node fm = function
 let print_node = Format.pp_print_int
 
 
-let print_ce = print_list print_node "; " false
+let print_ce = print_list print_node "; "
 
 
 
@@ -420,3 +449,8 @@ let ce = print_ce
 let env = print_env
 let prog = print_prog
 let prog_typ = print_prog_typ
+
+
+let string_of_const c =
+  print_const Format.str_formatter c;
+  Format.flush_str_formatter ()

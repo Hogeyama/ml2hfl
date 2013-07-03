@@ -13,11 +13,6 @@ type declaration =
   | Decl_exc of string * typ list
 
 
-exception Unsupported of string
-
-let unsupported s = raise (Unsupported s)
-
-
 (*
 let () = Compile.init_path ()
 *)
@@ -30,14 +25,10 @@ let prim_typs =
   ["unit", TUnit;
    "bool", TBool;
    "int", TInt;
+   "Pervasives.format", TConstr("string", false);
 (*
    "Pervasives.in_channel", TUnit
 *)]
-
-let conv_primitive_var x =
-  match Id.name x with
-(*      "Pervasives.stdin" -> unit_term*)
-    | _ -> make_var x
 
 let conv_primitive_app t ts typ =
   match t.desc,ts with
@@ -96,7 +87,7 @@ let rec from_type_expr tenv typ =
               TPair(Id.new_var "x" typ_pair,typ')
           in
             List.fold_left aux (from_type_expr tenv typ) typs
-      | Tconstr(path, [], _) when List.mem_assoc (Path.name path) prim_typs ->
+      | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
           List.assoc (Path.name path) prim_typs
       | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
           TList (from_type_expr tenv type_expr)
@@ -163,7 +154,16 @@ let sign_to_letters s =
     then trans "op" s
     else s
 
-let from_ident x typ = Id.make (Ident.binding_time x) (sign_to_letters (Ident.name x)) typ
+let from_ident_aux name binding_time typ =
+  let name = sign_to_letters name in
+  let name = if name.[0] = '_' then "x" ^ name else name in
+    Id.make binding_time name typ
+
+let from_ident x typ =
+  from_ident_aux (Ident.name x) (Ident.binding_time x) typ
+
+let from_ident_path path typ =
+  from_ident_aux (Path.name path) (Path.binding_time path) typ
 
 
 let get_constr_name desc typ env =
@@ -271,12 +271,12 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
       | Tpat_var x -> PVar(from_ident x typ')
       | Tpat_alias(p,x) -> PAlias(from_pattern p, from_ident x typ')
       | Tpat_constant(Const_int n) -> PConst {desc=Const(Int n);typ=typ'}
-      | Tpat_constant(Const_char c) -> unsupported "pattern match (char constant)"
-      | Tpat_constant(Const_string s) -> unsupported "pattern match (string constant)"
-      | Tpat_constant(Const_float x) -> unsupported "pattern match (float constant)"
-      | Tpat_constant(Const_int32 n) -> unsupported "pattern match (int32 constant)"
-      | Tpat_constant(Const_int64 n) -> unsupported "pattern match (int64 constant)"
-      | Tpat_constant(Const_nativeint n) -> unsupported "pattern match (nativeint constant)"
+      | Tpat_constant(Const_char c) -> PConst {desc=Const(Char c);typ=typ'}
+      | Tpat_constant(Const_string s) -> PConst {desc=Const(String s);typ=typ'}
+      | Tpat_constant(Const_float s) -> PConst {desc=Const(Float s);typ=typ'}
+      | Tpat_constant(Const_int32 n) -> PConst {desc=Const(Int32 n);typ=typ'}
+      | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'}
+      | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'}
       | Tpat_tuple [] -> assert false
       | Tpat_tuple(p::ps) ->
           let aux p1 p2 =
@@ -346,13 +346,13 @@ let from_value_kind = function
   | Types.Val_unbound -> Format.printf "Val_unbound@."; assert false
 
 let from_constant = function
-    Const_int n -> make_int n
-  | Const_char _ -> unsupported "constant (char)"
-  | Const_string s -> Scanf.sscanf (String.sub (Digest.to_hex (Digest.string s)) 0 6) "%x" make_int
-  | Const_float _ -> unsupported "constant (float)"
-  | Const_int32 _ -> unsupported "constant (int32)"
-  | Const_int64 _ -> unsupported "constant (int64)"
-  | Const_nativeint _ -> unsupported "constant (nativeint)"
+    Const_int n -> Int n
+  | Const_char c -> Char c
+  | Const_string s -> String s
+  | Const_float x -> Float x
+  | Const_int32 n -> Int32 n
+  | Const_int64 n -> Int64 n
+  | Const_nativeint n -> Nativeint n
 
 
 let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
@@ -360,8 +360,9 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   let typ' = from_type_expr env typ in
     match exp_desc with
         Texp_ident(path, _) ->
-          conv_primitive_var (Id.make (Path.binding_time path) (sign_to_letters (Path.name path)) typ')
-      | Texp_constant c -> from_constant c
+          make_var (from_ident_path path typ')
+      | Texp_constant c ->
+          {desc = Const (from_constant c); typ = typ'}
       | Texp_let(rec_flag, [p,e1], e2)
             when (function {pat_desc=PVar _} -> false | _ -> true) (from_pattern p) ->
           let p' = from_pattern p in
@@ -583,7 +584,7 @@ let from_top_level_phrase (env,defs) = function
         | Tstr_cltype _ -> unsupported "class"
         | Tstr_include _ -> unsupported "include"
       in
-        env', rev_map_flatten aux2 struc @@ defs
+        env', rev_map_flatten aux2 struc @@@ defs
 
 
 let from_use_file ast =

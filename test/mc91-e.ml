@@ -1,8 +1,10 @@
-let rec m x =
-  if x > 100
-  then x - 10
-  else m (m (x + 11))
-in
-  if n <= 102
-  then assert (m n = 91)
-  else ()
+(*
+USED: PLDI2011 as mc91-e
+*)
+
+let rec mc91 x =
+  if x > 100 then
+    x - 10
+  else
+    mc91 (mc91 (x + 11))
+let main n = if n <= 102 then assert (mc91 n = 91)

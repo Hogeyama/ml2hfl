@@ -1,46 +1,69 @@
+open Util
+
 exception TimeOut
 exception LongInput
-exception CannotDiscoverPredicate
 
 let print_info () =
-  if !Flag.termination then
+  if !Flag.exp
+  then
     begin
-      List.iter
-	(fun (f_name, pred) ->
-	  Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
-	!Termination_loop.lrf
-    end;
-  Format.printf "cycles: %d\n" !Flag.cegar_loop;
-  Format.printf "total: %.3f sec\n" (Util.get_time());
-  Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
-  Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
-  Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
-  if false && Flag.debug then Format.printf "IP: %.3f sec\n" !Flag.time_interpolant;
-  Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
-  Format.pp_print_flush Format.std_formatter ()
+      Format.printf "{";
+      Format.printf "\"filename\": %S, " !Flag.filename;
+      Format.printf "\"result\": %S, " !Flag.result;
+      Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
+      Format.printf "\"total\": \"%.3f\", " (get_time());
+      Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
+      Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
+      Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
+      Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
+      Format.printf "}@."
+    end
+  else
+    begin
+      if !Flag.termination then
+        begin
+          List.iter
+            (fun (f_name, pred) ->
+	      Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
+	  !Termination_loop.lrf
+        end;
+      Format.printf "cycles: %d\n" !Flag.cegar_loop;
+      Format.printf "total: %.3f sec\n" (get_time());
+      Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
+      Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
+      Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
+      Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
+      Format.pp_print_flush Format.std_formatter ()
+    end
 
+
+let get_commit_hash () =
+  try
+    let cin = open_in "COMMIT" in
+    let s = input_line cin in
+    close_in cin;
+    s
+  with Sys_error _ | End_of_file -> ""
+
+let print_commit_hash () =
+  Format.printf "%s@." @@ get_commit_hash ()
 
 let print_env () =
-  let commit =
-    try
-      let cin = open_in "COMMIT" in
-      let s = input_line cin in
-      close_in cin;
-      s
-    with Sys_error _ | End_of_file -> ""
-  in
+  let commit = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   Format.printf "MoCHi: Model Checker for Higher-Order Programs@.";
   if commit <> "" then Format.printf "  Build: %s@." commit;
-  if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
+  if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  Format.printf "  Command: %a@." (Util.print_list Format.pp_print_string " " false) (Array.to_list Sys.argv);
+  Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
   Format.printf "@."; ()
+
+
 
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
-    let n = Util.my_input in_channel s 0 Flag.max_input_size in
+    let n = my_input in_channel s 0 Flag.max_input_size in
       if n = Flag.max_input_size then raise LongInput;
       String.sub s 0 n
   in
@@ -102,6 +125,16 @@ let arg_spec =
                  Flag.print_progress := false),
      " Show only result";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
+   "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
+   "-exp", Arg.Unit (fun () ->
+                       Flag.only_result := true;
+                       Flag.debug_level := 0;
+                       Flag.print_progress := false;
+                       Flag.exp := true),
+     " For experiments";
+   "-v", Arg.Unit (fun () -> print_commit_hash (); exit 0), " Print the version shortly";
+   "-version", Arg.Unit (fun () -> print_env (); exit 0), " Print the version";
+   "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
@@ -222,56 +255,106 @@ let arg_spec =
   ]
 
 
+let string_of_exception = function
+    e when FpatInterface.is_fpat_exception e -> FpatInterface.string_of_error e
+  | Syntaxerr.Error err -> "Syntaxerr.Error"
+  | Typecore.Error(loc,err) -> "Typecore.Error"
+  | Typemod.Error(loc,err) -> "Typemod.Error"
+  | Env.Error e -> "Env.Error"
+  | Typetexp.Error(loc,err) -> "Typetexp.Error"
+  | Lexer.Error(err, loc) -> "Lexer.Error"
+  | LongInput -> "LongInput"
+  | TimeOut -> "TimeOut"
+  | CEGAR.NoProgress -> "CEGAR.NoProgress"
+  | Fatal s -> "Fatal"
+  | e -> Printexc.to_string e
+
+
+let parse_arg () =
+  let set_file name =
+    if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
+    then (Arg.usage arg_spec usage; exit 1);
+    Flag.filename := name
+  in
+  Arg.parse (Arg.align arg_spec) set_file usage;
+  Flag.args := Array.to_list Sys.argv;
+  if not !Flag.ignore_conf
+  then
+    begin
+      try
+        let cin = open_in "option.conf" in
+        let s = input_line cin in
+        close_in cin;
+        let args = Str.split (Str.regexp "[ \t]+") s in
+        Arg.current := 0;
+        Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) (Arg.align arg_spec) set_file usage;
+        Flag.args := !Flag.args @ args
+      with
+        Arg.Bad s
+      | Arg.Help s -> Format.printf "%s@." s; exit 1
+      | Sys_error _
+      | End_of_file -> ()
+    end;
+  match !Flag.filename with
+    "" | "-" -> Flag.filename := "stdin"; stdin
+  | _ -> open_in !Flag.filename
+
+
+let fpat_init () =
+  let open Fpat in
+  (* default interpolating prover *)
+  InterpProver.ext_interpolate := CsisatInterface.interpolate;
+  (* default Horn clause solver *)
+  HcSolver.ext_solve := BwHcSolver.solve;
+  Global.print_log := !Flag.debug_level <> 0;
+  Global.cvc3 := !Flag.cvc3;
+  Cvc3Interface.init ();
+  AtpInterface.init ();
+  Cvc3Interface.open_cvc3 ()
+
+
 let () =
   if !Sys.interactive
   then ()
   else
     try
-      let set_file name =
-        if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
-        then (Arg.usage arg_spec usage; exit 1);
-        Flag.filename := name
-      in
-      (* default interpolating prover *)
-      Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate;
-      (* default Horn clause solver *)
-      Fpat.HcSolver.ext_solve := Fpat.BwHcSolver.solve;
-      (* default Polynomial constraint solver *)
-      Fpat.BvPolyConstrSolver.init ();
-
-      Arg.parse arg_spec set_file usage;
-      Fpat.Global.print_log := !Flag.debug_level <> 0;
-      Fpat.Global.cvc3 := !Flag.cvc3;
-      let cin =
-        match !Flag.filename with
-            "" | "-" -> Flag.filename := "stdin"; stdin
-          | _ -> open_in !Flag.filename
-      in
-        Fpat.Cvc3Interface.init ();
-        Fpat.AtpInterface.init ();
-        Fpat.Cvc3Interface.open_cvc3 ();
-        Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
-        ignore (Unix.alarm Flag.time_limit);
-        if not !Flag.only_result then print_env ();
-        if main cin then decr Flag.cegar_loop;
-        Fpat.Cvc3Interface.close_cvc3 ();
-        print_info ()
+      Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
+      ignore (Unix.alarm !Flag.time_limit);
+      let cin = parse_arg () in
+      fpat_init ();
+      if not !Flag.only_result then print_env ();
+      if main cin then decr Flag.cegar_loop;
+      Fpat.Cvc3Interface.close_cvc3 ();
+      print_info ()
     with
-        Syntaxerr.Error err ->
-          Format.printf "%a@." Syntaxerr.report_error err; exit 1
-      | Typecore.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err; exit 1
-      | Typemod.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err; exit 1
-      | Env.Error e -> Format.printf "%a@." Env.report_error e; exit 1
-      | Typetexp.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err; exit 1
-      | Lexer.Error(err, loc) ->
-          Format.printf "%a%a@." Location.print_error loc Lexer.report_error err; exit 1
-      | LongInput -> Format.printf "Input is too long@."; exit 1
-      | TimeOut -> Format.printf "@.Verification failed (time out)@."; exit 1
-      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."; exit 1
+      | e when !Flag.exp ->
+          Format.printf "{";
+          Format.printf "\"filename\": %S, " !Flag.filename;
+          Format.printf "\"result\": %S, " @@ string_of_exception e;
+          Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
+          Format.printf "\"total\": \"(%.3f)\"" (get_time());
+          Format.printf "}@."
       | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-          Format.printf "Verification failed:@.  MoCHi could not refute an infeasible error path @.  due to the incompleteness of the refinement type system@."; exit 1
-      | Util.Fatal s ->
-          Format.printf "Fatal error: %s@." s; exit 1
+          Format.printf "Verification failed:@.";
+          Format.printf "  MoCHi could not refute an infeasible error path @.";
+          Format.printf "  due to the incompleteness of the refinement type system@."
+      | e when FpatInterface.is_fpat_exception e ->
+          Format.printf "FPAT: %a@." FpatInterface.report_error e
+      | Syntaxerr.Error err ->
+          Format.printf "%a@." Syntaxerr.report_error err
+      | Typecore.Error(loc,err) ->
+          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err
+      | Typemod.Error(loc,err) ->
+          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err
+      | Env.Error e -> Format.printf "%a@." Env.report_error e
+      | Typetexp.Error(loc,err) ->
+          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err
+      | Lexer.Error(err, loc) ->
+          Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
+      | LongInput -> Format.printf "Input is too long@."
+      | TimeOut -> Format.printf "Verification failed (time out)@."
+      | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
+      | Fatal s ->
+          Format.printf "Fatal error: %s@." s
+      | Util.Unsupported s ->
+          Format.printf "Unsupported: %s@." s

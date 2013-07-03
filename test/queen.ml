@@ -1,8 +1,8 @@
-let make_array n s i = assert (0 <= i && i < n); s in
-let update i n a x = a i; let a j = if i=j then x else a j in a in
+let make_array n s i = assert (0 <= i && i < n); s
+let update i n a x = a i; let a j = if i=j then x else a j in a
 
-let print_string s = () in
-let abs x = if x < 0 then -x else x in
+let print_string s = ()
+let abs x = if x < 0 then -x else x
 
 let queen size =
   let queenArray = make_array size 0 in
@@ -40,7 +40,6 @@ let queen size =
       end
   in
     loop 0 queenArray
-in
+
+let main n =
   if n>0 then (queen n; ()) else ()
-
-
