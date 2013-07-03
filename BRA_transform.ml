@@ -183,9 +183,18 @@ let randomized_application f t =
       aux f (args@[r]) t2
   in aux f [] t
 
+let rec find_main_function = function
+  | {desc = Let (_, bindings, body)} -> 
+    let rec aux = function
+      | [] -> find_main_function body
+      | ({Id.name = "main"} as main_func , _, _) :: _ -> Some main_func
+      | _ :: bs -> aux bs
+    in aux bindings
+  | _ -> None
+
 (* regularization of program form *)
 let rec regularization e =
-  match Trans.get_last_definition None e with
+  match find_main_function e with
     | Some ({Id.name = "main"} as f) -> 
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
       let aux _ = main_expr in
