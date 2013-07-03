@@ -45,6 +45,7 @@ let get_commit_hash () =
     s
   with Sys_error _ | End_of_file -> ""
 
+
 let print_commit_hash () =
   Format.printf "%s@." @@ get_commit_hash ()
 
@@ -57,7 +58,6 @@ let print_env () =
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
   Format.printf "@."; ()
-
 
 
 let main in_channel =
@@ -89,8 +89,8 @@ let main in_channel =
     List.for_all (Main_loop.run orig) (List.rev ts);
   else if !Flag.termination then
     let open BRA_util in
-    let parsed = 
-      let (bindings, mainE) , _ = Trans.lift parsed in
+    let parsed =
+      let (bindings, mainE) , _ = Lift.lift parsed in
       {Syntax.desc = Syntax.Let (Syntax.Recursive, List.map (fun (a, (b, c)) -> (a, b, c)) bindings, mainE); Syntax.typ = mainE.Syntax.typ} in
     let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = BRA_transform.regularization parsed in
