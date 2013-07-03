@@ -11,7 +11,7 @@ exception FailedToFindLLRF
 let verify_with holed pred =
   (* combine holed program and predicate *)
   let transformed = BRA_transform.pluging holed pred in
-  let orig, transformed = BRA_transform.retyping transformed in
+  let orig, transformed = BRA_transform.retyping transformed (BRA_state.type_of_state holed) in
   Main_loop.run orig transformed
 
 let rec run predicate_que holed =

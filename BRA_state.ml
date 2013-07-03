@@ -89,3 +89,5 @@ let propagated_statevars {BRA_types.verified = verified; BRA_types.state = state
   table.set_flag :: table.statevars
 
 let find_state {BRA_types.state = state} f = InnerState.find f.id state.statetable
+
+let type_of_state {BRA_types.state = {BRA_types.initial_state = inits}} = List.map (fun {Syntax.typ = t} -> t) inits

@@ -8,7 +8,7 @@ val everywhere_expr : (Syntax.typed_term -> Syntax.typed_term) -> Syntax.typed_t
 
 val regularization : Syntax.typed_term -> Syntax.typed_term
 
-val retyping : Syntax.typed_term -> (Parsetree.toplevel_phrase list * Syntax.typed_term)
+val retyping : Syntax.typed_term -> Syntax.typ list -> (Parsetree.toplevel_phrase list * Syntax.typed_term)
 
 val extract_id : Syntax.typed_term -> Syntax.id
 

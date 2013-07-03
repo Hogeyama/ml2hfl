@@ -14,6 +14,7 @@ let rec is_form_of = function
 (***** Constants *****)
 
 let hole_term = make_var (Id.new_var "__HOLE__" TBool)
+let stateType = ref []
 
 (***** Functions *****)
 
@@ -39,13 +40,27 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
-let show_base_typ = function
-  | TUnit -> " : unit"
-  | TBool -> " : bool"
-  | TInt -> " : int"
-  | _ -> ""
+let rec show_typ t = 
+  let rec aux = function
+    | TUnit -> ["unit"]
+    | TBool -> ["bool"]
+    | TInt -> ["int"]
+    | TFun ({Id.typ = t1}, t2) -> !stateType @ [show_typ t1] @ aux t2
+    | _ -> []
+  in
+  let rec aux2 = function
+    | [] -> ""
+    | [x] -> x
+    | x::xs -> x ^ " -> " ^ aux2 xs
+  in
+  parens (aux2 (aux t))
+
+let place_signature = function
+  | "" -> ""
+  | signature -> " : " ^ signature
+
 let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
-let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string v ^ show_base_typ (Id.typ v))
+let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string v ^ place_signature (show_typ (Id.typ v)))
 let rec show_typed_term t = show_term t.desc
 and show_term = function
   | Const Unit -> "()"
@@ -53,6 +68,7 @@ and show_term = function
   | Const False -> "false"
   | Const (Int n) -> string_of_int n
   | App ({desc=RandInt _}, _) -> "Random.int 0"
+  | App ({desc=Var {Id.name = div}}, [n; m]) when div = "Pervasives./" -> parens (show_typed_term n ^ " / " ^ show_typed_term m)
   | Var v -> modify_id_typ v
   | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_typed_term body
   | App ({desc=Event("fail", _)}, _) -> "assert false"
@@ -102,7 +118,8 @@ let restore_ids =
     | t -> t
   in everywhere_expr sub
 
-let retyping t =
+let retyping t type_of_state  =
+  stateType := List.map show_typ type_of_state;
   (*Format.eprintf "@.%s@." (show_typed_term t);*)
   let lb = t |> show_typed_term
              |> Lexing.from_string
@@ -185,7 +202,7 @@ let extract_id = function
 
 let implement_recieving ({program = program; state = state} as holed) =
   let passed = passed_statevars holed in
-  let placeholders f = List.map (fun v -> Id.new_var "_" (Id.typ (extract_id v))) (passed f) in (* (expl) placeholders 4 = " _ _ _ _ " *)
+  let placeholders f = List.map (fun v -> Id.new_var "v_DO_NOT_CARE" (Id.typ (extract_id v))) (passed f) in (* (expl) placeholders 4 = " _ _ _ _ " *)
   let rec set_state f = function
     | [] -> []
     | [arg] -> (List.map extract_id (passed f))@[arg]
