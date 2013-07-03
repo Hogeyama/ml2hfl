@@ -89,7 +89,7 @@ let main in_channel =
   else if !Flag.termination then
     let open BRA_util in
     let parsed =
-      let (bindings, mainE) , _ = Trans.lift parsed in
+      let (bindings, mainE) , _ = Lift.lift parsed in
       {Syntax.desc = Syntax.Let (Syntax.Recursive, List.map (fun (a, (b, c)) -> (a, b, c)) bindings, mainE); Syntax.typ = mainE.Syntax.typ} in
     let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = BRA_transform.regularization parsed in
