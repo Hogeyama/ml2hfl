@@ -460,21 +460,27 @@ let rec print_term' pri fm t =
           let p = 8 in
           let s1,s2 = paren pri p in
             fprintf fm "%sbr %a %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
-      | Let(flag, [f, xs, t1], t2) ->
+      | Let(flag, bindings, t2) ->
           let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
-          let p = 1 in
+          let p = 10 in
           let s1,s2 = paren pri (p+1) in
-          let p_ids fm () =
-            fprintf fm "%a" print_ids_typ (f::xs)
+          let p_ids fm xs =
+            fprintf fm "%a" print_ids_typ xs
           in
-            begin
-              match t2.desc with
-                  Let _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a@]@ in@ %a@]%s"
-                    s1 s_rec p_ids () (print_term' p) t1 (print_term' p) t2 s2
-                | _ -> fprintf fm "%s@[<v>@[<hov 2>let%s %a= @,%a @]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
-                    s1 s_rec p_ids () (print_term' p) t1 (print_term' p) t2 s2
-            end
-      | Let _ -> assert false
+          let b = ref true in
+          let print_binding fm (f,xs,t1) =
+            let pre = if !b then "let" ^ s_rec else "and" in
+            Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term' p) t1;
+            b := false
+          in
+          let print_bindings bs = print_list print_binding "" bs in
+          begin
+            match t2.desc with
+              Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
+                s1 print_bindings bindings (print_term' p) t2 s2
+            | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
+                s1 print_bindings bindings (print_term' p) t2 s2
+          end
       | BinOp(op, t1, t2) ->
           let p = match op with Add|Sub|Mult -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
           let s1,s2 = paren pri p in

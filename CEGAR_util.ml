@@ -472,13 +472,13 @@ let is_CPS_def env (f,xs,cond,es,t) =
       | Fun _ -> assert false
   in
     b1 && b2
-
 let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 
 
 
+
 let event_of_temp ({env=env;defs=defs;main=main} as prog) =
-  if is_CPS prog
+  if List.mem Flag.CPS !Flag.form
   then
     let make_event (f,xs,t1,e,t2) =
       assert (e = []);
@@ -601,10 +601,11 @@ let rec trans_ref_type = function
 
 
 let trans_prog t =
+  let debug = false in
   let ext_env = List.map (fun (x,typ) -> trans_var x, trans_typ typ) (Trans.make_ext_env t) in
-  let () = if false then Format.printf "BEFORE:@.%a@.@.@." S.pp_print_term t in
+  let () = if debug then Format.printf "BEFORE:@.%a@.@.@." S.pp_print_term t in
   let t = Trans.trans_let t in
-  let () = if false then Format.printf "AFTER:@.%a@.@.@." S.pp_print_term t in
+  let () = if debug then Format.printf "AFTER:@.%a@.@.@." S.pp_print_term t in
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term "" [] [] t_main in
@@ -620,13 +621,13 @@ let trans_prog t =
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
   let env' = uniq_env (ext_env @@@ env) in
   let prog = {env=env'; defs=defs''; main=main} in
-  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
   let prog = event_of_temp prog in
-  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
   let prog = eta_expand prog in
-  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
   let prog = pop_main prog in
-  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog prog in
+  let () = if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
   let prog,map,rmap = id_prog prog in
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
     prog,map,rmap,get_rtyp
