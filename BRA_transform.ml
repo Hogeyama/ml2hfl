@@ -209,12 +209,7 @@ let rec regularization e =
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
       let aux _ = main_expr in
       transform_main_expr aux e
-    | _ -> e(*
-    | _ ->
-      (match e.desc with
-	| Let (rec_flag, (_, _, main_expr)::bs, _) -> {e with desc = Let (rec_flag, bs, main_expr)}
-	| _ -> assert false)*)
-
+    | _ -> e
 
 let extract_id = function
   | {desc = (Var v)} -> v
@@ -357,10 +352,40 @@ let to_holed_programs (target_program : typed_term) =
       ; verified_no_checking_ver = !no_checking_function
       ; state = f_state}) defined_functions
   in
-  List.iter (fun {program = p} -> Format.printf "%a@." Syntax.pp_print_term p) hole_inserted_programs;
   let state_inserted_programs =
     List.map transform_program_by_call hole_inserted_programs
   in state_inserted_programs
+
+let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver = f_no_} as holed) =
+  let f_no = match f_no_ with Some {id = x} -> x | None -> assert false in
+  let counter = ref 0 in
+  let replace_index = ref (-1) in
+  let is_update = ref true in
+  let aux_subst_each = function
+    | {desc = Var v} as e when Id.same v f ->
+      let v' = if !counter = !replace_index then (is_update := true; f) else f_no in
+      begin
+	counter := !counter + 1;
+	{e with desc = Var v'}
+      end
+    | t -> t
+  in
+  let rec subst_each t =
+      begin
+	is_update := false;
+	counter := 0;
+	replace_index := !replace_index + 1;
+	let holed' = {holed with program = everywhere_expr aux_subst_each t} in
+	Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Syntax.pp_print_term holed'.program;
+	Format.printf "is_update: %s@." (string_of_bool !is_update);
+	Format.printf "counter: %s@." (string_of_int !counter);
+	Format.printf "replace_index: %s@." (string_of_int !replace_index);
+	if !is_update then
+	  holed' :: subst_each t
+	else
+	  []
+      end
+  in subst_each t
 
 let construct_LLRF {variables = variables_; prev_variables = prev_variables_; coefficients = coefficients_} =
   let variables = (make_int 1) :: (List.map make_var variables_) in
