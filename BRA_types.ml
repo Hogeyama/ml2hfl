@@ -53,5 +53,6 @@ let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
 
 type holed_program = { program : Syntax.typed_term
 		     ; verified : function_info
+		     ; verified_no_checking_ver : function_info option
 		     ; state : state
 		     }

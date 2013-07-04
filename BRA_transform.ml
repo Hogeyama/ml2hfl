@@ -259,8 +259,10 @@ let restore_type state = function
 let to_holed_programs (target_program : typed_term) =
   let defined_functions = extract_functions target_program in
   let state_template = build_state defined_functions in
+  let no_checking_function = ref None in (** split-callsite **)
   let hole_insert target state typed =
     let sub (id, args, body) =
+      let id' = Id.new_var (Id.name id ^ "_without_checking") (Id.typ id) in (** split-callsite **)
       let body' =
 	if id = target.id then
 	  let prev_set_flag = get_prev_set_flag state target in
@@ -302,6 +304,12 @@ let to_holed_programs (target_program : typed_term) =
 		    (fold_left3 add_update_statement 
 		       body prev_statevars statevars argvars)))
 	  else
+	    let body =
+	      if !Flag.split_callsite then
+		{desc = App (make_var id', List.map make_var args); typ = Id.typ id}
+	      else
+		body
+	    in
             (* let _ = if prev_set_flag then
                          if __HOLE__ then
                            ()
@@ -319,10 +327,14 @@ let to_holed_programs (target_program : typed_term) =
 		 (fold_left3 add_update_statement 
 		    body prev_statevars statevars argvars))
 	else body
-      in (id, args, body')
+      in if id = target.id && !Flag.split_callsite then
+	  (no_checking_function := Some ({id = id'; args = args} : function_info);
+	   [(id, args, body'); (id', args, body)])
+	else
+	  [(id, args, body')]
     in
     { typed with desc = match typed.desc with
-      | Let (rec_flag, bindings, body) -> Let (rec_flag, List.map sub bindings, body)
+      | Let (rec_flag, bindings, body) -> Let (rec_flag, BRA_util.concat_map sub bindings, body)
       | t -> t
     }
   in
@@ -331,8 +343,10 @@ let to_holed_programs (target_program : typed_term) =
       let f_state = state_template f in
       { program = everywhere_expr (hole_insert f f_state) target_program
       ; verified = f
+      ; verified_no_checking_ver = !no_checking_function
       ; state = f_state}) defined_functions
   in
+  List.iter (fun {program = p} -> Format.printf "%a@." Syntax.pp_print_term p) hole_inserted_programs;
   let state_inserted_programs =
     List.map transform_program_by_call hole_inserted_programs
   in state_inserted_programs

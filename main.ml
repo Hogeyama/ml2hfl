@@ -252,6 +252,11 @@ let arg_spec =
        Flag.termination := true;
        Flag.separate_pred := true),
      " Check termination with separating {decrease, boundedness} verification";
+   "-termination-split-callsite",
+     Arg.Unit (fun _ ->
+       Flag.termination := true;
+       Flag.split_callsite := true),
+     " Check termination for each callsite of functions";
   ]
 
 

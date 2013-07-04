@@ -123,3 +123,4 @@ let termination = ref false
 
 let disjunctive = ref false
 let separate_pred = ref false
+let split_callsite = ref false
