@@ -150,7 +150,7 @@ let extract_functions (target_program : typed_term) =
   List.filter (fun {id=id} -> Id.name id <> "main") extracted
 
 let rec transform_function_definitions f term =
-  let sub ((_, args, _) as binding) = if args <> [] then f binding else binding in
+  let sub ((id, args, _) as binding) = if args <> [] then f binding else binding in
   match term with 
     | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
@@ -232,13 +232,13 @@ let implement_transform_initial_application ({program = program; state = state} 
   in
   { holed with program = transform_main_expr sub program }
 
-let implement_propagation ({program = program; state = state} as holed) =
+let implement_propagation ({program = program; state = state; verified = verified} as holed) =
   let propagated = propagated_statevars holed in
   let sub = function
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> propagated@[arg]) args)}
     | t -> t
   in
-  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, args, everywhere_expr sub body)) program }
+  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, args, if !Flag.split_callsite && id = verified.id then body else everywhere_expr sub body)) program }
 
 let transform_program_by_call holed =
   holed |> implement_recieving
@@ -269,25 +269,25 @@ let to_holed_programs (target_program : typed_term) =
   let hole_insert target state typed =
     let sub (id, args, body) =
       let id' = Id.new_var (Id.name id ^ "_without_checking") (Id.typ id) in (** split-callsite **)
+      let prev_set_flag = get_prev_set_flag state target in
+      let set_flag = get_set_flag state target in
+      let update_flag = get_update_flag state target in
+      let prev_statevars = get_prev_statevars state target in
+      let statevars = get_statevars state target in
+      let argvars = get_argvars state target in
+      let add_update_statement cont prev_statevar statevar argvar =
+	if !Flag.disjunctive then
+              (* let s_x = if * then
+                 x
+                 else
+                 s_prev_x *)
+	  make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
+	else
+              (* let s_x = x *)
+  	  make_let [extract_id statevar, [], restore_type state argvar] cont
+      in
       let body' =
 	if id = target.id then
-	  let prev_set_flag = get_prev_set_flag state target in
-	  let set_flag = get_set_flag state target in
-	  let update_flag = get_update_flag state target in
-	  let prev_statevars = get_prev_statevars state target in
-	  let statevars = get_statevars state target in
-	  let argvars = get_argvars state target in
-	  let add_update_statement cont prev_statevar statevar argvar =
-	    if !Flag.disjunctive then
-              (* let s_x = if * then
-                             x
-                           else
-                             s_prev_x *)
-	      make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
-	    else
-              (* let s_x = x *)
-  	      make_let [extract_id statevar, [], restore_type state argvar] cont
-	  in
 	  if !Flag.disjunctive then
             (* let _ = if prev_set_flag then
                          if __HOLE__ then
@@ -310,12 +310,6 @@ let to_holed_programs (target_program : typed_term) =
 		    (fold_left3 add_update_statement 
 		       body prev_statevars statevars argvars)))
 	  else
-	    let body =
-	      if !Flag.split_callsite then
-		{desc = App (make_var id', List.map make_var args); typ = Id.typ id}
-	      else
-		body
-	    in
             (* let _ = if prev_set_flag then
                          if __HOLE__ then
                            ()
@@ -334,8 +328,21 @@ let to_holed_programs (target_program : typed_term) =
 		    body prev_statevars statevars argvars))
 	else body
       in if id = target.id && !Flag.split_callsite then
+	  let body_update =
+	    (* let set_flag = true in *)
+	    make_let
+	      [(extract_id set_flag, [], true_term)]
+	      (* each statevars update *)
+	      (fold_left3 add_update_statement 
+		 body prev_statevars statevars argvars)
+	  in
+	  let app_assert =
+	    make_let
+	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      {desc = App (make_var id', BRA_util.concat_map (fun arg -> prev_set_flag::prev_statevars@[make_var arg]) args); typ = Id.typ id'}
+	  in
 	  (no_checking_function := Some ({id = id'; args = args} : function_info);
-	   [(id, args, body'); (id', args, body)])
+	   [(id, args, app_assert); (id', args, body_update)])
 	else
 	  [(id, args, body')]
     in

@@ -89,6 +89,7 @@ let main in_channel =
     List.for_all (Main_loop.run orig) (List.rev ts);
   else if !Flag.termination then
     let open BRA_util in
+    (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
     let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
     let _ = if !Flag.debug_level > (-1) then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = BRA_transform.regularization parsed in
