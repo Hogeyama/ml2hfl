@@ -8,9 +8,14 @@ let init_threshold () = threshold := max_threshold
 
 exception FailedToFindLLRF
 
+let counter = ref 0
+let get_now () = (counter := !counter + 1; !counter - 1)
+let reset_counter () = counter := 0
+
 let verify_with holed pred =
   (* combine holed program and predicate *)
   let transformed = BRA_transform.pluging holed pred in
+  Format.printf "[%d]@.%a@." (get_now ()) Syntax.pp_print_term transformed;
   let orig, transformed = BRA_transform.retyping transformed (BRA_state.type_of_state holed) in
   Main_loop.run orig transformed
 
@@ -30,6 +35,11 @@ let rec run predicate_que holed =
       if !Flag.separate_pred then
 	let predicates = BRA_transform.separate_to_CNF (BRA_transform.construct_LLRF predicate_info) in
         List.for_all (verify_with holed) predicates
+      else if !Flag.split_callsite then
+	let predicate = BRA_transform.construct_LLRF predicate_info in
+	let splited = BRA_transform.callsite_split holed in
+	reset_counter ();
+	List.for_all (fun h -> verify_with h predicate) splited
       else
 	let predicate = BRA_transform.construct_LLRF predicate_info in
 	verify_with holed predicate

@@ -150,14 +150,12 @@ let extract_functions (target_program : typed_term) =
   List.filter (fun {id=id} -> Id.name id <> "main") extracted
 
 let rec transform_function_definitions f term =
-  let sub ((_, args, _) as binding) = if args <> [] then f binding else binding in
+  let sub ((id, args, _) as binding) = if args <> [] then f binding else binding in
   match term with 
-    | {desc = Let (Nonrecursive, [id, _, _], _)} as t when id.Id.name = "main" -> t
     | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
 let rec transform_main_expr f = function
-  | {desc = Let (Nonrecursive, [id, args, body], u); typ = t} when id.Id.name = "main" -> {desc = Let (Nonrecursive, [id, args, everywhere_expr f body], u); typ = t}
   | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, bindings, transform_main_expr f body) }
   | t -> everywhere_expr f t
 
@@ -192,6 +190,18 @@ let rec find_main_function = function
     in aux bindings
   | _ -> None
 
+let remove_unit_wraping = function
+  | {desc = Let (Nonrecursive, [{Id.name="u"}, [], t], {desc = Const Unit; typ = TUnit})} -> t
+  | t -> t
+
+let rec lambda_lift t = 
+  let lift_binding (id, args, body) =
+    let (sub_bindings, body') , _ = Lift.lift body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
+  in
+  match t with
+    | {desc = Let (rec_flag, bindings, rest)} -> {t with desc = Let (Recursive, BRA_util.concat_map lift_binding bindings, lambda_lift rest)}
+    | _ -> t
+
 (* regularization of program form *)
 let rec regularization e =
   match find_main_function e with
@@ -199,11 +209,7 @@ let rec regularization e =
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
       let aux _ = main_expr in
       transform_main_expr aux e
-    | _ ->
-      (match e.desc with
-	| Let (rec_flag, (_, _, main_expr)::bs, _) -> {e with desc = Let (rec_flag, bs, main_expr)}
-	| _ -> assert false)
-
+    | _ -> e
 
 let extract_id = function
   | {desc = (Var v)} -> v
@@ -226,13 +232,13 @@ let implement_transform_initial_application ({program = program; state = state} 
   in
   { holed with program = transform_main_expr sub program }
 
-let implement_propagation ({program = program; state = state} as holed) =
+let implement_propagation ({program = program; state = state; verified = verified} as holed) =
   let propagated = propagated_statevars holed in
   let sub = function
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> propagated@[arg]) args)}
     | t -> t
   in
-  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, args, everywhere_expr sub body)) program }
+  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, args, if !Flag.split_callsite && id = verified.id then body else everywhere_expr sub body)) program }
 
 let transform_program_by_call holed =
   holed |> implement_recieving
@@ -263,25 +269,25 @@ let to_holed_programs (target_program : typed_term) =
   let hole_insert target state typed =
     let sub (id, args, body) =
       let id' = Id.new_var (Id.name id ^ "_without_checking") (Id.typ id) in (** split-callsite **)
+      let prev_set_flag = get_prev_set_flag state target in
+      let set_flag = get_set_flag state target in
+      let update_flag = get_update_flag state target in
+      let prev_statevars = get_prev_statevars state target in
+      let statevars = get_statevars state target in
+      let argvars = get_argvars state target in
+      let add_update_statement cont prev_statevar statevar argvar =
+	if !Flag.disjunctive then
+              (* let s_x = if * then
+                 x
+                 else
+                 s_prev_x *)
+	  make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
+	else
+              (* let s_x = x *)
+  	  make_let [extract_id statevar, [], restore_type state argvar] cont
+      in
       let body' =
 	if id = target.id then
-	  let prev_set_flag = get_prev_set_flag state target in
-	  let set_flag = get_set_flag state target in
-	  let update_flag = get_update_flag state target in
-	  let prev_statevars = get_prev_statevars state target in
-	  let statevars = get_statevars state target in
-	  let argvars = get_argvars state target in
-	  let add_update_statement cont prev_statevar statevar argvar =
-	    if !Flag.disjunctive then
-              (* let s_x = if * then
-                             x
-                           else
-                             s_prev_x *)
-	      make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
-	    else
-              (* let s_x = x *)
-  	      make_let [extract_id statevar, [], restore_type state argvar] cont
-	  in
 	  if !Flag.disjunctive then
             (* let _ = if prev_set_flag then
                          if __HOLE__ then
@@ -304,12 +310,6 @@ let to_holed_programs (target_program : typed_term) =
 		    (fold_left3 add_update_statement 
 		       body prev_statevars statevars argvars)))
 	  else
-	    let body =
-	      if !Flag.split_callsite then
-		{desc = App (make_var id', List.map make_var args); typ = Id.typ id}
-	      else
-		body
-	    in
             (* let _ = if prev_set_flag then
                          if __HOLE__ then
                            ()
@@ -328,8 +328,21 @@ let to_holed_programs (target_program : typed_term) =
 		    body prev_statevars statevars argvars))
 	else body
       in if id = target.id && !Flag.split_callsite then
+	  let body_update =
+	    (* let set_flag = true in *)
+	    make_let
+	      [(extract_id set_flag, [], true_term)]
+	      (* each statevars update *)
+	      (fold_left3 add_update_statement 
+		 body prev_statevars statevars argvars)
+	  in
+	  let app_assert =
+	    make_let
+	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      {desc = App (make_var id', BRA_util.concat_map (fun arg -> prev_set_flag::prev_statevars@[make_var arg]) args); typ = Id.typ id'}
+	  in
 	  (no_checking_function := Some ({id = id'; args = args} : function_info);
-	   [(id, args, body'); (id', args, body)])
+	   [(id, args, app_assert); (id', args, body_update)])
 	else
 	  [(id, args, body')]
     in
@@ -346,10 +359,40 @@ let to_holed_programs (target_program : typed_term) =
       ; verified_no_checking_ver = !no_checking_function
       ; state = f_state}) defined_functions
   in
-  List.iter (fun {program = p} -> Format.printf "%a@." Syntax.pp_print_term p) hole_inserted_programs;
   let state_inserted_programs =
     List.map transform_program_by_call hole_inserted_programs
   in state_inserted_programs
+
+let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver = f_no_} as holed) =
+  let f_no = match f_no_ with Some {id = x} -> x | None -> assert false in
+  let counter = ref 0 in
+  let replace_index = ref (-1) in
+  let is_update = ref true in
+  let aux_subst_each = function
+    | {desc = Var v} as e when Id.same v f ->
+      let v' = if !counter = !replace_index then (is_update := true; f) else f_no in
+      begin
+	counter := !counter + 1;
+	{e with desc = Var v'}
+      end
+    | t -> t
+  in
+  let rec subst_each t =
+      begin
+	is_update := false;
+	counter := 0;
+	replace_index := !replace_index + 1;
+	let holed' = {holed with program = everywhere_expr aux_subst_each t} in
+	Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Syntax.pp_print_term holed'.program;
+	Format.printf "is_update: %s@." (string_of_bool !is_update);
+	Format.printf "counter: %s@." (string_of_int !counter);
+	Format.printf "replace_index: %s@." (string_of_int !replace_index);
+	if !is_update then
+	  holed' :: subst_each t
+	else
+	  []
+      end
+  in subst_each t
 
 let construct_LLRF {variables = variables_; prev_variables = prev_variables_; coefficients = coefficients_} =
   let variables = (make_int 1) :: (List.map make_var variables_) in
