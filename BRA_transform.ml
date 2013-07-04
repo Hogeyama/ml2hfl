@@ -215,15 +215,15 @@ let extract_id = function
   | {desc = (Var v)} -> v
   | _ -> assert false
 
-let implement_recieving ({program = program; state = state} as holed) =
+let implement_recieving ({program = program; state = state; verified = verified} as holed) =
   let passed = passed_statevars holed in
-  let placeholders f = List.map (fun v -> Id.new_var "v_DO_NOT_CARE" (Id.typ (extract_id v))) (passed f) in (* (expl) placeholders 4 = " _ _ _ _ " *)
+  let placeholders f = List.map (fun v -> Id.new_var "x_DO_NOT_CARE" (Id.typ (extract_id v))) (passed f) in (* (expl) placeholders 4 = " _ _ _ _ " *)
   let rec set_state f = function
     | [] -> []
     | [arg] -> (List.map extract_id (passed f))@[arg]
     | arg::args -> (placeholders f)@[arg]@(set_state f) args
   in
-  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, set_state id args, body)) program }
+  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, (if !Flag.split_callsite && id = verified.id then args else set_state id args), body)) program }
 
 let implement_transform_initial_application ({program = program; state = state} as holed) =
   let sub = function
@@ -272,7 +272,9 @@ let to_holed_programs (target_program : typed_term) =
   let no_checking_function = ref None in (** split-callsite **)
   let hole_insert target state typed =
     let sub (id, args, body) =
+
       let id' = Id.new_var (Id.name id ^ "_without_checking") (Id.typ id) in (** split-callsite **)
+
       let prev_set_flag = get_prev_set_flag state target in
       let set_flag = get_set_flag state target in
       let update_flag = get_update_flag state target in
@@ -340,13 +342,23 @@ let to_holed_programs (target_program : typed_term) =
 	      (fold_left3 add_update_statement 
 		 body prev_statevars statevars argvars)
 	  in
+
+	  let placeholders = List.map (fun v -> Id.new_var "x_DO_NOT_CARE" (Id.typ (extract_id v))) (prev_set_flag::prev_statevars) in
+	  let rec set_state = function
+	    | [] -> []
+	    | [arg] -> (extract_id prev_set_flag)::(List.map extract_id prev_statevars)@[arg]
+	    | arg::args -> placeholders@[arg]@(set_state args)
+	  in
+	  let args' = set_state args
+	  in
+
 	  let app_assert =
 	    make_let
 	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
-	      {desc = App (make_var id', BRA_util.concat_map (fun arg -> prev_set_flag::prev_statevars@[make_var arg]) args); typ = Id.typ id'}
+	      {desc = App (make_var id', List.map make_var args'); typ = Id.typ id'}
 	  in
 	  (no_checking_function := Some ({id = id'; args = args} : function_info);
-	   [(id, args, app_assert); (id', args, body_update)])
+	   [(id, args', app_assert); (id', args, body_update)])
 	else
 	  [(id, args, body')]
     in
