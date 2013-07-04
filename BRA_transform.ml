@@ -227,6 +227,8 @@ let implement_recieving ({program = program; state = state} as holed) =
 
 let implement_transform_initial_application ({program = program; state = state} as holed) =
   let sub = function
+    | {desc = App ({desc=Event("fail", _)}, _)}
+    | {desc = App ({desc=RandInt _}, _)} as t -> t
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> state.BRA_types.initial_state@[arg]) args)}
     | t -> t
   in
@@ -235,6 +237,8 @@ let implement_transform_initial_application ({program = program; state = state} 
 let implement_propagation ({program = program; state = state; verified = verified} as holed) =
   let propagated = propagated_statevars holed in
   let sub = function
+    | {desc = App ({desc=Event("fail", _)}, _)}
+    | {desc = App ({desc=RandInt _}, _)} as t -> t
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> propagated@[arg]) args)}
     | t -> t
   in
