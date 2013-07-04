@@ -442,9 +442,15 @@ let construct_LLRF {variables = variables_; prev_variables = prev_variables_; co
   in
   iter (fun x -> x) (List.map rank coefficients)
 
-let separate_to_CNF pred = 
-  Format.printf "predicate separation is not implemented.@.";
-  [pred]
+let rec separate_to_CNF = function
+  | {desc = BinOp (Or, {desc = BinOp (And, t1, t2)}, t3)} as t ->
+    separate_to_CNF {t with desc = BinOp (Or, t1, t3)}
+    @ separate_to_CNF {t with desc = BinOp (Or, t2, t3)}
+  | {desc = BinOp (Or, t1, {desc = BinOp (And, t2, t3)})} as t ->
+    separate_to_CNF {t with desc = BinOp (Or, t1, t2)}
+    @ separate_to_CNF {t with desc = BinOp (Or, t1, t3)}
+  | {desc = BinOp (And, t1, t2)} as t -> [t1; t2]
+  | t -> [t]
 
 (* plug holed program with predicate *)
 let pluging (holed_program : holed_program) (predicate : typed_term) =
