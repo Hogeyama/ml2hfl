@@ -253,18 +253,22 @@ let parse_arg () =
   | _ -> open_in !Flag.filename
 
 
-let fpat_init () =
+(* called before parsing options *)
+let fpat_init1 () =
   let open Fpat in
   (* default interpolating prover *)
   InterpProver.ext_interpolate := CsisatInterface.interpolate;
   (* default Horn clause solver *)
-  HcSolver.ext_solve := BwHcSolver.solve;
+  HcSolver.ext_solve := BwHcSolver.solve
+
+(* called after parsing options *)
+let fpat_init2 () =
+  let open Fpat in
   Global.print_log := !Flag.debug_level <> 0;
   Global.cvc3 := !Flag.cvc3;
   Cvc3Interface.init ();
   AtpInterface.init ();
   Cvc3Interface.open_cvc3 ()
-
 
 let () =
   if !Sys.interactive
@@ -273,8 +277,9 @@ let () =
     try
       Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
       ignore (Unix.alarm !Flag.time_limit);
+      fpat_init1 ();
       let cin = parse_arg () in
-      fpat_init ();
+      fpat_init2 ();
       if not !Flag.only_result then print_env ();
       if main cin then decr Flag.cegar_loop;
       Fpat.Cvc3Interface.close_cvc3 ();
