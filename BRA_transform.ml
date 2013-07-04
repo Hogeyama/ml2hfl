@@ -152,12 +152,10 @@ let extract_functions (target_program : typed_term) =
 let rec transform_function_definitions f term =
   let sub ((_, args, _) as binding) = if args <> [] then f binding else binding in
   match term with 
-    | {desc = Let (Nonrecursive, [id, _, _], _)} as t when id.Id.name = "main" -> t
     | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
 let rec transform_main_expr f = function
-  | {desc = Let (Nonrecursive, [id, args, body], u); typ = t} when id.Id.name = "main" -> {desc = Let (Nonrecursive, [id, args, everywhere_expr f body], u); typ = t}
   | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, bindings, transform_main_expr f body) }
   | t -> everywhere_expr f t
 
@@ -192,6 +190,18 @@ let rec find_main_function = function
     in aux bindings
   | _ -> None
 
+let remove_unit_wraping = function
+  | {desc = Let (Nonrecursive, [{Id.name="u"}, [], t], {desc = Const Unit; typ = TUnit})} -> t
+  | t -> t
+
+let rec lambda_lift t = 
+  let lift_binding (id, args, body) =
+    let (sub_bindings, body') , _ = Lift.lift body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
+  in
+  match t with
+    | {desc = Let (rec_flag, bindings, rest)} -> {t with desc = Let (Recursive, BRA_util.concat_map lift_binding bindings, lambda_lift rest)}
+    | _ -> t
+
 (* regularization of program form *)
 let rec regularization e =
   match find_main_function e with
@@ -199,10 +209,11 @@ let rec regularization e =
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
       let aux _ = main_expr in
       transform_main_expr aux e
+    | _ -> e(*
     | _ ->
       (match e.desc with
 	| Let (rec_flag, (_, _, main_expr)::bs, _) -> {e with desc = Let (rec_flag, bs, main_expr)}
-	| _ -> assert false)
+	| _ -> assert false)*)
 
 
 let extract_id = function
