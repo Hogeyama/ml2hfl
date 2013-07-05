@@ -107,9 +107,9 @@ let main in_channel =
       Termination_loop.run predicate_que holed) holed_list
     in
     if result then
-      (Format.printf "Terminating!@."; result)
+      (if not !Flag.exp then Format.printf "Terminating!@."; result)
     else
-      (Format.printf "Possibly Non-Terminating.@."; result)
+      (if not !Flag.exp then Format.printf "Possibly Non-Terminating.@."; result)
   else
     Main_loop.run orig parsed
 

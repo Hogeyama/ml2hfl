@@ -542,7 +542,7 @@ let compute_strongest_post prog ce =
   let [etr] = CompTreeExpander.error_traces_of prog [ce] in
   let _, hcs = HcGenRefType.cgen (Prog.type_of prog) etr in
   let hcs = List.map (HornClause.simplify []) hcs in
-  Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
+  if debug then Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
   let lbs = HcSolver.compute_lbs hcs in
   let env, spc =
     let is_fail pid =

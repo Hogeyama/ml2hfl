@@ -46,9 +46,9 @@ let rec run predicate_que holed =
 	  verify_with holed predicate
       in
       if result then
-	(Format.printf "%s is terminating.@." holed.BRA_types.verified.BRA_types.id.Id.name ; result)
+	(if not !Flag.exp then Format.printf "%s is terminating.@." holed.BRA_types.verified.BRA_types.id.Id.name ; result)
       else
-	(Format.printf "%s is possibly non-terminating.@." holed.BRA_types.verified.BRA_types.id.Id.name ; result)
+	(if not !Flag.exp then Format.printf "%s is possibly non-terminating.@." holed.BRA_types.verified.BRA_types.id.Id.name ; result)
     with Refine.PostCondition (env, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
@@ -169,7 +169,7 @@ let rec run predicate_que holed =
 		coefficient_infos
 		error_paths
 	    in
-	    Format.printf "@.Found ranking function: %a@." BRA_types.pr_ranking_function new_predicate_info;
+	    if debug then Format.printf "@.Found ranking function: %a@." BRA_types.pr_ranking_function new_predicate_info;
 	    [new_predicate_info]
 	  with PolyConstrSolver.Unknown ->
 	    Format.printf "Failed to solve the constraints...@.@.";

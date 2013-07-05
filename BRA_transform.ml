@@ -120,7 +120,7 @@ let restore_ids =
 
 let retyping t type_of_state  =
   stateType := List.map show_typ type_of_state;
-  Format.eprintf "@.%s@." (show_typed_term t);
+  (* Format.eprintf "@.%s@." (show_typed_term t); *)
   let lb = t |> show_typed_term
              |> Lexing.from_string
   in
