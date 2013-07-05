@@ -367,8 +367,16 @@ let to_holed_programs (target_program : typed_term) =
 	else
 	  [(id, args, body')]
     in
+    let update_rec_flag bindings rec_flag =
+      if !Flag.split_callsite && List.length bindings > 1 then
+	Recursive
+      else
+	rec_flag
+    in
     { typed with desc = match typed.desc with
-      | Let (rec_flag, bindings, body) -> Let (rec_flag, BRA_util.concat_map sub bindings, body)
+      | Let (rec_flag, bindings, body) -> 
+	let bindings' = BRA_util.concat_map sub bindings in
+	Let (update_rec_flag bindings' rec_flag, bindings', body)
       | t -> t
     }
   in
