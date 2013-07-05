@@ -306,6 +306,8 @@ let fpat_init1 () =
   InterpProver.ext_interpolate := CsisatInterface.interpolate;
   (* default Horn clause solver *)
   HcSolver.ext_solve := BwHcSolver.solve
+  (* default Polynomial constraint solver *)
+  Fpat.BvPolyConstrSolver.init ()
 
 (* called after parsing options *)
 let fpat_init2 () =
