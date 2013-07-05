@@ -91,11 +91,11 @@ let main in_channel =
     let open BRA_util in
     (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
     let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-    let _ = if !Flag.debug_level > (-1) then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = BRA_transform.regularization parsed in
-    let _ = if !Flag.debug_level > (-1) then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
-    List.for_all (fun holed ->
+    let result = List.for_all (fun holed ->
       let init_predicate_info =
 	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
 	; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
@@ -105,6 +105,11 @@ let main in_channel =
       let _ = Queue.add init_predicate_info predicate_que in
       Termination_loop.init_threshold ();
       Termination_loop.run predicate_que holed) holed_list
+    in
+    if result then
+      (Format.printf "Terminating!@."; result)
+    else
+      (Format.printf "Possibly Non-Terminating.@."; result)
   else
     Main_loop.run orig parsed
 

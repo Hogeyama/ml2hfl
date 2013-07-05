@@ -13,9 +13,10 @@ let get_now () = (counter := !counter + 1; !counter - 1)
 let reset_counter () = counter := 0
 
 let verify_with holed pred =
+  let debug = !Flag.debug_level > 0 in
   (* combine holed program and predicate *)
   let transformed = BRA_transform.pluging holed pred in
-  Format.printf "[%d]@.%a@." (get_now ()) Syntax.pp_print_term transformed;
+  if debug then Format.printf "[%d]@.%a@." (get_now ()) Syntax.pp_print_term transformed;
   let orig, transformed = BRA_transform.retyping transformed (BRA_state.type_of_state holed) in
   Main_loop.run orig transformed
 
@@ -32,17 +33,22 @@ let rec run predicate_que holed =
     let predicate_info = Queue.pop predicate_que in
     lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf; (* result log update here *)
     try
-      if !Flag.separate_pred then
-	let predicates = BRA_transform.separate_to_CNF (BRA_transform.construct_LLRF predicate_info) in
-        List.for_all (verify_with holed) predicates
-      else if !Flag.split_callsite then
-	let predicate = BRA_transform.construct_LLRF predicate_info in
-	let splited = BRA_transform.callsite_split holed in
-	reset_counter ();
-	List.for_all (fun h -> verify_with h predicate) splited
+      let result = if !Flag.separate_pred then
+	  let predicates = BRA_transform.separate_to_CNF (BRA_transform.construct_LLRF predicate_info) in
+          List.for_all (verify_with holed) predicates
+	else if !Flag.split_callsite then
+	  let predicate = BRA_transform.construct_LLRF predicate_info in
+	  let splited = BRA_transform.callsite_split holed in
+	  reset_counter ();
+	  List.for_all (fun h -> verify_with h predicate) splited
+	else
+	  let predicate = BRA_transform.construct_LLRF predicate_info in
+	  verify_with holed predicate
+      in
+      if result then
+	(Format.printf "%s is terminating.@." holed.BRA_types.verified.BRA_types.id.Id.name ; result)
       else
-	let predicate = BRA_transform.construct_LLRF predicate_info in
-	verify_with holed predicate
+	(Format.printf "%s is possibly non-terminating.@." holed.BRA_types.verified.BRA_types.id.Id.name ; result)
     with Refine.PostCondition (env, spc) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in

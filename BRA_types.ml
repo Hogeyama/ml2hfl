@@ -44,7 +44,8 @@ let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
 	else show_plus c ^ string_of_int c ^ v.Id.name)
     in
     let s = List.fold_left2 fold_by "" vs cs in
-    if const = 0 then String.sub s 1 (String.length s - 1)
+    let s = if s.[0] = '+' then String.sub s 1 (String.length s - 1) else s in
+    if const = 0 then s
     else s ^ show_plus const ^ string_of_int const
   in
   match coefficients with
