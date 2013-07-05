@@ -36,14 +36,17 @@ let updated_predicate_info pr new_coeffs new_error_paths =
 
 let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
   let show_ranking_function {coeffs = cs; constant = const} =
+    let show_plus c = if c > 0 then "+" else "" in
     let fold_by acc v c =
       acc ^ (if c = 0 then ""
-	else if c = 1 then v.Id.name ^ "+"
-	else string_of_int c ^ v.Id.name ^ "+")
+	else if c = 1 then "+" ^ v.Id.name
+	else if c = (-1) then "-" ^ v.Id.name
+	else show_plus c ^ string_of_int c ^ v.Id.name)
     in
     let s = List.fold_left2 fold_by "" vs cs in
-    if const = 0 then String.sub s 0 (String.length s - 1)
-    else s ^ string_of_int const
+    let s = if s.[0] = '+' then String.sub s 1 (String.length s - 1) else s in
+    if const = 0 then s
+    else s ^ show_plus const ^ string_of_int const
   in
   match coefficients with
     | [] -> Format.fprintf fm "0"
@@ -51,5 +54,6 @@ let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
 
 type holed_program = { program : Syntax.typed_term
 		     ; verified : function_info
+		     ; verified_no_checking_ver : function_info option
 		     ; state : state
 		     }

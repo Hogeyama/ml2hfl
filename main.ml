@@ -20,13 +20,13 @@ let print_info () =
     end
   else
     begin
-  if !Flag.termination then
-    begin
-      List.iter
-	(fun (f_name, pred) ->
-	  Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
-	!Termination_loop.lrf
-    end;
+      if !Flag.termination then
+        begin
+          List.iter
+            (fun (f_name, pred) ->
+	      Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
+	  !Termination_loop.lrf
+        end;
       Format.printf "cycles: %d\n" !Flag.cegar_loop;
       Format.printf "total: %.3f sec\n" (get_time());
       Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
@@ -59,6 +59,7 @@ let print_env () =
   Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
   Format.printf "@."; ()
 
+
 let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
@@ -88,14 +89,13 @@ let main in_channel =
     List.for_all (Main_loop.run orig) (List.rev ts);
   else if !Flag.termination then
     let open BRA_util in
-    let parsed =
-      let (bindings, mainE) , _ = Lift.lift parsed in
-      {Syntax.desc = Syntax.Let (Syntax.Recursive, List.map (fun (a, (b, c)) -> (a, b, c)) bindings, mainE); Syntax.typ = mainE.Syntax.typ} in
+    (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
+    let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
     let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = BRA_transform.regularization parsed in
     let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
-    List.for_all (fun holed ->
+    let result = List.for_all (fun holed ->
       let init_predicate_info =
 	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
 	; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
@@ -105,6 +105,11 @@ let main in_channel =
       let _ = Queue.add init_predicate_info predicate_que in
       Termination_loop.init_threshold ();
       Termination_loop.run predicate_que holed) holed_list
+    in
+    if result then
+      (if not !Flag.exp then Format.printf "Terminating!@."; result)
+    else
+      (if not !Flag.exp then Format.printf "Possibly Non-Terminating.@."; result)
   else
     Main_loop.run orig parsed
 
@@ -251,6 +256,11 @@ let arg_spec =
        Flag.termination := true;
        Flag.separate_pred := true),
      " Check termination with separating {decrease, boundedness} verification";
+   "-termination-split-callsite",
+     Arg.Unit (fun _ ->
+       Flag.termination := true;
+       Flag.split_callsite := true),
+     " Check termination for each callsite of functions";
   ]
 
 
