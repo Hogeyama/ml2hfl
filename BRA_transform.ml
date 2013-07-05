@@ -120,7 +120,7 @@ let restore_ids =
 
 let retyping t type_of_state  =
   stateType := List.map show_typ type_of_state;
-  (*Format.eprintf "@.%s@." (show_typed_term t);*)
+  Format.eprintf "@.%s@." (show_typed_term t);
   let lb = t |> show_typed_term
              |> Lexing.from_string
   in
@@ -155,9 +155,11 @@ let rec transform_function_definitions f term =
     | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
-let rec transform_main_expr f = function
-  | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, bindings, transform_main_expr f body) }
-  | t -> everywhere_expr f t
+let rec transform_main_expr f term =
+  let sub ((id, args, body) as binding) = if args = [] then (id, args, everywhere_expr f body) else binding in
+  match term with 
+    | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_main_expr f body) }
+    | t -> everywhere_expr f t
 
 (*
 [Example] f : int -> bool -> int
@@ -199,7 +201,10 @@ let rec lambda_lift t =
     let (sub_bindings, body') , _ = Lift.lift body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
   in
   match t with
-    | {desc = Let (rec_flag, bindings, rest)} -> {t with desc = Let (Recursive, BRA_util.concat_map lift_binding bindings, lambda_lift rest)}
+    | {desc = Let (rec_flag, bindings, rest)} ->
+      let next_bindings = BRA_util.concat_map lift_binding bindings in
+      let next_rec_flag = if rec_flag = Nonrecursive && List.length next_bindings = 1 then Nonrecursive else Recursive in
+      {t with desc = Let (next_rec_flag, next_bindings, lambda_lift rest)}
     | _ -> t
 
 (* regularization of program form *)
