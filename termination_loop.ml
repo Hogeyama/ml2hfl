@@ -176,5 +176,5 @@ let rec run predicate_que holed =
             [] (* failed to solve the constraints *)
 	) spc_sequences	
 	in
-	let _ = List.iter (fun pred -> Queue.push pred predicate_que) (List.rev successes) in
+	let _ = List.iter (fun pred -> Queue.push pred predicate_que) successes in
 	run predicate_que holed
