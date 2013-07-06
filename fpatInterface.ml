@@ -8,6 +8,7 @@ open Fpat
 open Fpat.Combinator
 open Fpat.ExtFormula
 open Fpat.ExtHornClause
+open Fpat.ExtHornClauseSet
 
 let conv_const c =
   match c with
@@ -70,6 +71,7 @@ let inv_const c =
   | Const.Gt (SimType.Base BaseType.Int) -> Gt
   | Const.Leq (SimType.Base BaseType.Int) -> Leq
   | Const.Geq (SimType.Base BaseType.Int) -> Geq
+  | Const.Eq (SimType.Base BaseType.Unit) -> EqUnit
   | Const.Eq (SimType.Base BaseType.Bool) -> EqBool
   | Const.Eq (SimType.Base BaseType.Int) -> EqInt
   | Const.Int(n) -> Int(n)
@@ -536,65 +538,7 @@ let rec simplify typ =
 
 
 let compute_strongest_post prog ce =
-  let debug = !Flag.debug_level > 0 in
-  let prog = conv_prog prog in
-  let [etr] = CompTreeExpander.error_traces_of prog [ce] in
-  let _, hcs = HcGenRefType.cgen (Prog.type_of prog) etr in
-  let hcs = List.map (HornClause.simplify []) hcs in
-  if debug then Format.printf "Horn clauses:@,  %a@," HornClause.pr hcs;
-  let lbs = HcSolver.compute_lbs hcs in
-  let env, spc =
-    let is_fail pid =
-      let s = (Idnt.string_of (Var.base pid)) in
-        String.length s >= 4 && String.sub s 0 4 = "fail"
-    in
-    if List.exists is_fail (HornClause.rhs_pids hcs) then
-      let [HornClause.Hc(Some(_), [atm], t) as hc] =
-        List.filter
-          (function
-            HornClause.Hc(Some(pred), _, _) when is_fail (Pred.pid_of pred) ->
-              true
-          | _ ->
-              false)
-          hcs
-      in
-      RefType.visible_vars (Prog.type_of prog) (fst atm),
-      let t' =
-        try
-          TypPredSubst.lookup_map_fresh atm lbs
-        with Not_found ->
-          assert false
-      in
-      Formula.simplify (Formula.band [t; t'])
-    else
-      let [HornClause.Hc(None, [atm], _)] = List.filter HornClause.is_root hcs in
-      RefType.visible_vars (Prog.type_of prog) (fst atm),
-      TypPredSubst.lookup_map_fresh atm lbs
-  in
-  let f = Var.base (fst (Util.List.hd env)) in
-  let typ = Prog.type_of prog (Var.make f) in
-  let targs, _ = SimType.args_ret typ in
-  let fdef = Util.List.hd (Prog.fdefs_of prog f) in
-  let args =
-    Util.List.filter_map2
-      (fun x ty -> if SimType.is_base ty then Some(x) else None)
-      fdef.Fdef.args
-      targs
-  in
-  assert (Util.List.length args = Util.List.length env);
-  let map = Util.List.combine (Util.List.map fst env) (Util.List.map (Var.make >> Term.make_var) args) in
-  let spc = Term.subst map spc in
-  let env = Util.List.map2 (fun (_, ty) x -> Var.make x, ty) env args in
-  let env = List.filter (fun (x, _) -> not (Util.String.starts_with (Idnt.string_of (Var.base x)) "prev_set_flag")) env in
-  let fvs_bool = Util.Set.diff (Formula.fvs_bool spc) (List.map fst env) in (* require that only free variable is <fail:??:0> or prev_set_flag_* *)
-  let bvs_bool = List.map fst (List.filter (fun (_, ty) -> ty = SimType.bool_type) env) in
-  let env = List.filter (fun (_, ty) -> ty <> SimType.bool_type) env in
-  let env = List.filter (fun (_, ty) -> ty <> SimType.unit_type) env in
-  let spc = Formula.elim_unit spc in
-  let spc = Formula.eqelim_boolean (fvs_bool @ bvs_bool) spc in
-  if debug then Format.printf "strongest post condition:@,  %a@," Term.pr spc;
-  if debug then Format.printf "variables in the scope:@,  %a@," TypEnv.pr env;
-  env, spc
+  RankFunInfer.compute_strongest_post (conv_prog prog) ce
 
 
 let report_error ppf = function
