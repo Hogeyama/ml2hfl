@@ -212,8 +212,12 @@ let rec regularization e =
   match find_main_function e with
     | Some ({Id.name = "main"} as f) -> 
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
-      let aux _ = main_expr in
-      transform_main_expr aux e
+      let rec aux = function
+	| {desc = Let (rec_flag, bindings, rest)} as t -> {t with desc = Let (rec_flag, bindings, aux rest)}
+	| {desc = Const Unit} -> main_expr
+	| _ -> assert false
+      in
+      aux e
     | _ -> e
 
 let extract_id = function
