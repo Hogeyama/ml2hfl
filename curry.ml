@@ -134,6 +134,7 @@ and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
   let aux1 path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
   let aux2 y path typ = y in
+  let aux2 y path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
     map aux1 aux2 (remove_pair_typ (Id.typ x))
 
 and remove_pair_aux t typ_opt =
