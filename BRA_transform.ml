@@ -4,13 +4,6 @@ open Syntax
 open BRA_types
 open BRA_state
 
-type inputForm = Definitions | Expr
-
-let rec is_form_of = function
-  | {desc = Let (Nonrecursive, [id, args, body], u); typ = t} when id.Id.name = "main" -> Definitions
-  | {desc = Let (rec_flag, bindings, body)} as t -> is_form_of body
-  | t -> Expr
-
 (***** Constants *****)
 
 let hole_term = make_var (Id.new_var "__HOLE__" TBool)
