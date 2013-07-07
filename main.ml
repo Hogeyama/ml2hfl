@@ -16,7 +16,7 @@ let print_info () =
 	    Format.printf "\"ranking\": {";
 	    List.iter
               (fun (f_name, pred) ->
-		Format.printf "\"%s\": %a, " f_name BRA_types.pr_ranking_function pred)
+		Format.printf "\"%s\": \"%a\", " f_name BRA_types.pr_ranking_function pred)
 	      !Termination_loop.lrf;
 	    Format.printf "\"_\":\"dummy\"}, "
 	  end
