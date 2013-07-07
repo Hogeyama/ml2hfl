@@ -390,6 +390,7 @@ let to_holed_programs (target_program : typed_term) =
   in state_inserted_programs
 
 let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver = f_no_} as holed) =
+  let debug = !Flag.debug_level > 0 in
   let f_no = match f_no_ with Some {id = x} -> x | None -> assert false in
   let counter = ref 0 in
   let replace_index = ref (-1) in
@@ -409,10 +410,10 @@ let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver 
 	counter := 0;
 	replace_index := !replace_index + 1;
 	let holed' = {holed with program = everywhere_expr aux_subst_each t} in
-	Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Syntax.pp_print_term holed'.program;
-	Format.printf "is_update: %s@." (string_of_bool !is_update);
-	Format.printf "counter: %s@." (string_of_int !counter);
-	Format.printf "replace_index: %s@." (string_of_int !replace_index);
+	if debug then Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Syntax.pp_print_term holed'.program;
+	if debug then Format.printf "is_update: %s@." (string_of_bool !is_update);
+	if debug then Format.printf "counter: %s@." (string_of_int !counter);
+	if debug then Format.printf "replace_index: %s@." (string_of_int !replace_index);
 	if !is_update then
 	  holed' :: subst_each t
 	else

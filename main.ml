@@ -11,6 +11,16 @@ let print_info () =
       Format.printf "\"filename\": %S, " !Flag.filename;
       Format.printf "\"result\": %S, " !Flag.result;
       Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
+      (if !Flag.termination then
+	  begin
+	    Format.printf "\"ranking\": {";
+	    List.iter
+              (fun (f_name, pred) ->
+		Format.printf "\"%s\": %a, " f_name BRA_types.pr_ranking_function pred)
+	      !Termination_loop.lrf;
+	    Format.printf "\"_\":\"dummy\"}, "
+	  end
+       else ());
       Format.printf "\"total\": \"%.3f\", " (get_time());
       Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
       Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
@@ -25,7 +35,7 @@ let print_info () =
           List.iter
             (fun (f_name, pred) ->
 	      Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
-	  !Termination_loop.lrf
+	    !Termination_loop.lrf
         end;
       Format.printf "cycles: %d\n" !Flag.cegar_loop;
       Format.printf "total: %.3f sec\n" (get_time());
