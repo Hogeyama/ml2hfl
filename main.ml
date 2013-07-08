@@ -185,6 +185,7 @@ let arg_spec =
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
           "<num>  Use refinement type based predicate discovery";
    "-eap", Arg.Set Fpat.Global.extract_atomic_predicates, " Extract atomic predicates";
+   "-enable-cp", Arg.Set Fpat.Global.cut_points_only, " Enable cut-points only mode";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* Horn clause solver *)
    "-gi",

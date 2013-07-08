@@ -94,7 +94,7 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled prefix ces {env=env;defs=defs;main=main} =
+let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
   let tmp = get_time () in
     try
       if !Flag.print_progress then Format.printf "(%d-4) Discovering predicates ... @." !Flag.cegar_loop;
@@ -104,7 +104,7 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
             Flag.RefineRefType(flags) ->
       	      Format.printf "@[<v>";
               let ces = if !Fpat.Global.use_multiple_paths then ces else [Fpat.Util.List.hd ces] in
-      	      let map = FpatInterface.infer flags labeled ces (env, defs, main) in
+      	      let map = FpatInterface.infer flags labeled is_cp ces (env, defs, main) in
       	      Format.printf "@]";
               map
       in
@@ -122,7 +122,7 @@ let refine labeled prefix ces {env=env;defs=defs;main=main} =
 
 exception PostCondition of (Fpat.Var.t * Fpat.SimType.t) list * Fpat.Term.t
 
-let refine_term ce { env=env; defs=defs; main=main } =
+let refine_rank_fun ce { env=env; defs=defs; main=main } =
   let tmp = get_time () in
     try
       if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;

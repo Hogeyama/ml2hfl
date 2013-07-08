@@ -23,7 +23,7 @@ let inlined_functions orig_fun_list force {defs=defs;main=main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   Fpat.Util.List.unique fs
 
-let rec cegar1 prog0 ces info =
+let rec cegar1 prog0 is_cp ces info =
   pre ();
   let pr =
     if !Flag.expand_nonrec
@@ -69,19 +69,19 @@ let rec cegar1 prog0 ces info =
                   if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   Flag.use_filter := true;
                   post ();
-                  cegar1 prog ces info
+                  cegar1 prog is_cp ces info
               | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
                   if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
                   if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   Flag.use_neg_pred := true;
                   post ();
-                  cegar1 prog ces info
+                  cegar1 prog is_cp ces info
               | ce_pre::_ when ce' = ce_pre && !Flag.wp_max_num < 8 ->
                   incr Flag.wp_max_num;
                   if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
                   if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
                   post ();
-                  cegar1 prog ces info
+                  cegar1 prog is_cp ces info
               | ce_pre::_ when ce' = ce_pre ->
                   post ();
                   if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
@@ -92,25 +92,26 @@ let rec cegar1 prog0 ces info =
                       Feasibility.Feasible (env, sol) ->
                         if !Flag.termination then begin
                           (* termination analysis *)
-                          Refine.refine_term ce' prog0;
+                          Refine.refine_rank_fun ce' prog0;
                           assert false
                         end else
                           prog, Unsafe sol
                     | Feasibility.Infeasible prefix ->
                         let ces' = ce'::ces in
                         let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-                        let _,prog' = Refine.refine inlined_functions prefix ces' prog0 in
+                        let _,prog' = Refine.refine inlined_functions is_cp prefix ces' prog0 in
                           if !Flag.debug_level > 0 then
                             Format.printf "Prefix of spurious counter-example::@.%a@.@."
                               CEGAR_print.ce prefix;
                           post ();
-                          cegar1 prog' ces' info
+                          cegar1 prog' is_cp ces' info
 
 
 
 let cegar prog orig_fun_list =
   try
-    cegar1 prog [] orig_fun_list
+    let is_cp = FpatInterface.is_cp prog in
+    cegar1 prog is_cp [] orig_fun_list
   with e ->
     if e <> NoProgress then incr Flag.cegar_loop;
     raise e

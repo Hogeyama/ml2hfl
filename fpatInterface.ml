@@ -12,6 +12,7 @@ open Fpat.ExtHornClauseSet
 
 let conv_const c =
   match c with
+  | Bottom -> Const.Bot
   | Unit -> Const.Unit
   | True -> Const.True
   | False -> Const.False
@@ -47,7 +48,6 @@ let conv_const c =
 
 let rec conv_term t =
   match t with
-  | Const(Bottom) -> Term.make_var (Var.make (Idnt.make "bottom")) (***)
   | Const(RandVal s) -> Term.make_var (Var.make (Idnt.make (new_id "r"))) (***)
   | Const(c) -> Term.Const([], conv_const c)
   | Var(x) ->
@@ -196,8 +196,11 @@ let rec inv_abst_type aty =
       assert false
 
 
+let is_cp {env=env;defs=defs;main=main} =
+  let prog = conv_prog (env, defs, main) in
+  RefTypeInfer.is_cp prog
 
-let infer flags labeled cexs prog =
+let infer flags labeled is_cp cexs prog =
   Global.solve_preds_left_to_right := flags land 2 <> 0;
   Global.subst_hcs_inc := flags land 4 <> 0;
   Global.no_inlining := flags land 8 <> 0 || not !Flag.expand_nonrec;
@@ -207,7 +210,7 @@ let infer flags labeled cexs prog =
   Global.flag_coeff := flags land 256 <> 0;
 
   let prog = conv_prog prog in
-  let env = AbsTypeInfer.refine prog labeled cexs in
+  let env = AbsTypeInfer.refine prog labeled is_cp cexs in
   Flag.time_parameter_inference := !Flag.time_parameter_inference +. !ParamSubstInfer.elapsed_time;
   Util.List.map
    (fun (f, rty) ->

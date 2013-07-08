@@ -5,6 +5,7 @@ exception CannotRefute
 
 val refine :
   string list ->
+  (Fpat.Var.t -> bool) ->
   CEGAR_syntax.ce -> CEGAR_syntax.ce list ->
   CEGAR_syntax.prog ->
   (CEGAR_syntax.var * CEGAR_syntax.typ) list * CEGAR_syntax.prog
@@ -20,4 +21,4 @@ val remove_preds : Syntax.typed_term -> Syntax.typed_term
 
 exception PostCondition of (Fpat.Var.t * Fpat.SimType.t) list * Fpat.Term.t
 
-val refine_term : CEGAR_syntax.ce -> CEGAR_syntax.prog -> unit
+val refine_rank_fun : CEGAR_syntax.ce -> CEGAR_syntax.prog -> unit
