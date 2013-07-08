@@ -4,3 +4,9 @@ val lift :
   ?args:Syntax.id list -> Syntax.typed_term ->
   ((Syntax.typ Id.t * (Syntax.id list * Syntax.typed_term)) list * Syntax.typed_term) *
   (Syntax.typ Id.t -> Ref_type.t -> Ref_type.t)
+
+(* lambda lifting for preprocess of termination mode *)
+val lift' :
+  ?args:Syntax.id list -> Syntax.typed_term ->
+  ((Syntax.typ Id.t * (Syntax.id list * Syntax.typed_term)) list * Syntax.typed_term) *
+  (Syntax.typ Id.t -> Ref_type.t -> Ref_type.t)

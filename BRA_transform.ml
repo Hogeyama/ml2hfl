@@ -191,7 +191,7 @@ let remove_unit_wraping = function
 
 let rec lambda_lift t =
   let lift_binding (id, args, body) =
-    let (sub_bindings, body') , _ = Lift.lift ~args body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
+    let (sub_bindings, body') , _ = Lift.lift' ~args body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
   in
   match t with
     | {desc = Let (rec_flag, bindings, rest)} ->

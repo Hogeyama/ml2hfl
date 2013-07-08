@@ -1,7 +1,7 @@
 (***** information *****)
 
 let lrf = ref []
-let max_threshold = 5
+let max_threshold = 15
 
 exception FailedToFindLLRF
 
