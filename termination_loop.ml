@@ -2,15 +2,16 @@
 
 let lrf = ref []
 let max_threshold = 5
-let threshold = ref max_threshold
-
-let init_threshold () = threshold := max_threshold
 
 exception FailedToFindLLRF
 
 let counter = ref 0
 let get_now () = (counter := !counter + 1; !counter - 1)
 let reset_counter () = counter := 0
+
+let cycle_counter = ref 0
+let incr_cycle () = cycle_counter := !cycle_counter + 1
+let reset_cycle () = cycle_counter := 0
 
 let verify_with holed pred =
   let debug = !Flag.debug_level > 0 in
@@ -24,14 +25,14 @@ let rec run predicate_que holed =
   let debug = !Flag.debug_level > 0 in
   let _ =
     begin
-      threshold := !threshold - 1;
-      if !threshold < 0 then (raise FailedToFindLLRF)
+      incr_cycle ();
+      if !cycle_counter > max_threshold then (raise FailedToFindLLRF)
     end
   in
   if Queue.is_empty predicate_que then (raise FailedToFindLLRF)
   else
     let predicate_info = Queue.pop predicate_que in
-    lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, predicate_info) !lrf; (* result log update here *)
+    lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, !cycle_counter, predicate_info) !lrf; (* result log update here *)
     try
       let result = if !Flag.separate_pred then
 	  let predicates = BRA_transform.separate_to_CNF (BRA_transform.construct_LLRF predicate_info) in

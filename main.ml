@@ -15,10 +15,10 @@ let print_info () =
 	  begin
 	    Format.printf "\"ranking\": {";
 	    List.iter
-              (fun (f_name, pred) ->
-		Format.printf "\"%s\": \"%a\", " f_name BRA_types.pr_ranking_function pred)
+              (fun (f_name, (cycles, pred)) ->
+		Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
 	      !Termination_loop.lrf;
-	    Format.printf "\"_\":\"dummy\"}, "
+	    Format.printf " \"_\":{} }, "
 	  end
        else ());
       Format.printf "\"total\": \"%.3f\", " (get_time());
@@ -33,8 +33,8 @@ let print_info () =
       if !Flag.termination then
         begin
           List.iter
-            (fun (f_name, pred) ->
-	      Format.printf "ranking function(%s): %a\n" f_name BRA_types.pr_ranking_function pred)
+            (fun (f_name, (cycles, pred)) ->
+	      Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred)
 	    !Termination_loop.lrf
         end;
       Format.printf "cycles: %d\n" !Flag.cegar_loop;
@@ -105,21 +105,26 @@ let main in_channel =
     let parsed = BRA_transform.regularization parsed in
     let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
-    let result = List.for_all (fun holed ->
-      let init_predicate_info =
-	{ BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
-	; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
-	; BRA_types.coefficients = []
-	; BRA_types.error_paths = [] } in
-      let predicate_que = Queue.create () in
-      let _ = Queue.add init_predicate_info predicate_que in
-      Termination_loop.init_threshold ();
-      Termination_loop.run predicate_que holed) holed_list
+    let result =
+      try
+	List.for_all (fun holed ->
+	  let init_predicate_info =
+	    { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+	    ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
+	    ; BRA_types.coefficients = []
+	    ; BRA_types.error_paths = [] } in
+	  let predicate_que = Queue.create () in
+	  let _ = Queue.add init_predicate_info predicate_que in
+	  Termination_loop.reset_cycle ();
+	  Termination_loop.run predicate_que holed) holed_list
+      with
+	| Fpat.PolyConstrSolver.NoSolution
+	| Termination_loop.FailedToFindLLRF -> false
     in
     if result then
-      (if not !Flag.exp then Format.printf "Terminating!@."; result)
+      (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
     else
-      (if not !Flag.exp then Format.printf "Possibly Non-Terminating.@."; result)
+      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Possibly Non-Terminating.@."; result)
   else
     Main_loop.run orig parsed
 
