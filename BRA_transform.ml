@@ -33,7 +33,7 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
-let rec show_typ t = 
+let rec show_typ t =
   let rec aux = function
     | TUnit -> ["unit"]
     | TBool -> ["bool"]
@@ -94,7 +94,7 @@ and show_binop = function
   | Sub -> "-"
   | Mult -> "*"
 
-let restore_ids = 
+let restore_ids =
   let trans_id ({Id.name = name_; Id.typ = typ} as orig) =
     try
       let i = String.rindex name_ '_' in
@@ -144,13 +144,13 @@ let extract_functions (target_program : typed_term) =
 
 let rec transform_function_definitions f term =
   let sub ((id, args, _) as binding) = if args <> [] then f binding else binding in
-  match term with 
+  match term with
     | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
 let rec transform_main_expr f term =
   let sub ((id, args, body) as binding) = if args = [] then (id, args, everywhere_expr f body) else binding in
-  match term with 
+  match term with
     | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_main_expr f body) }
     | t -> everywhere_expr f t
 
@@ -162,7 +162,7 @@ let rec transform_main_expr f term =
 => aux (f, [(Random.int 0), (Random.int 0 = 0)], int)
 => f (Random.int 0) (Random.int 0 = 0)
 *)
-let randomized_application f t = 
+let randomized_application f t =
   let rec aux f args = function
     | t when is_base_typ t -> {desc = App (f, args); typ = t}
     | TFun ({Id.typ = t1}, t2) ->
@@ -177,7 +177,7 @@ let randomized_application f t =
   in aux f [] t
 
 let rec find_main_function = function
-  | {desc = Let (_, bindings, body)} -> 
+  | {desc = Let (_, bindings, body)} ->
     let rec aux = function
       | [] -> find_main_function body
       | ({Id.name = "main"} as main_func , _, _) :: _ -> Some main_func
@@ -189,9 +189,9 @@ let remove_unit_wraping = function
   | {desc = Let (Nonrecursive, [{Id.name="u"}, [], t], {desc = Const Unit; typ = TUnit})} -> t
   | t -> t
 
-let rec lambda_lift t = 
+let rec lambda_lift t =
   let lift_binding (id, args, body) =
-    let (sub_bindings, body') , _ = Lift.lift body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
+    let (sub_bindings, body') , _ = Lift.lift ~args body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
   in
   match t with
     | {desc = Let (rec_flag, bindings, rest)} ->
@@ -203,7 +203,7 @@ let rec lambda_lift t =
 (* regularization of program form *)
 let rec regularization e =
   match find_main_function e with
-    | Some ({Id.name = "main"} as f) -> 
+    | Some ({Id.name = "main"} as f) ->
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
       let rec aux = function
 	| {desc = Let (rec_flag, bindings, rest)} as t -> {t with desc = Let (rec_flag, bindings, aux rest)}
@@ -305,17 +305,17 @@ let to_holed_programs (target_program : typed_term) =
                in *)
             make_let
 	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
-	      
+
               (* let update_flag = Random.int 0 = 0 in *)
 	      (make_let
 		 [(extract_id update_flag, [], randbool_unit_term)]
-		 
+
 		 (* let set_flag = update_flag || prev_set_flag in *)
 		 (make_let
 		    [(extract_id set_flag, [], make_or update_flag prev_set_flag)]
-		    
+
 		    (* each statevars update *)
-		    (fold_left3 add_update_statement 
+		    (fold_left3 add_update_statement
 		       body prev_statevars statevars argvars)))
 	  else
             (* let _ = if prev_set_flag then
@@ -326,13 +326,13 @@ let to_holed_programs (target_program : typed_term) =
                in *)
             make_let
 	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
-	      
+
 	      (* let set_flag = true in *)
 	      (make_let
 		 [(extract_id set_flag, [], true_term)]
-		 
+
 		 (* each statevars update *)
-		 (fold_left3 add_update_statement 
+		 (fold_left3 add_update_statement
 		    body prev_statevars statevars argvars))
 	else body
       in if id = target.id && !Flag.split_callsite then
@@ -341,7 +341,7 @@ let to_holed_programs (target_program : typed_term) =
 	    make_let
 	      [(extract_id set_flag, [], true_term)]
 	      (* each statevars update *)
-	      (fold_left3 add_update_statement 
+	      (fold_left3 add_update_statement
 		 body prev_statevars statevars argvars)
 	  in
 
@@ -371,7 +371,7 @@ let to_holed_programs (target_program : typed_term) =
 	rec_flag
     in
     { typed with desc = match typed.desc with
-      | Let (rec_flag, bindings, body) -> 
+      | Let (rec_flag, bindings, body) ->
 	let bindings' = BRA_util.concat_map sub bindings in
 	Let (update_rec_flag bindings' rec_flag, bindings', body)
       | t -> t

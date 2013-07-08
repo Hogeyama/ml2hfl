@@ -160,5 +160,5 @@ let rec lift_aux post xs t =
   in
     defs, {desc=desc; typ=t.typ}
 
-let lift t =
-  lift_aux "" [](*(get_fv2 t)*) t, get_rtyp_lift t
+let lift ?(args=[]) t =
+  lift_aux "" args(*(get_fv2 t)*) t, get_rtyp_lift t
