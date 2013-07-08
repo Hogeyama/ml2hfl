@@ -224,6 +224,9 @@ let arg_spec =
        Fpat.GenInterpProver.ext_interpolate := Fpat.YintInterface.solution_space_based_interpolate;
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
+   "-linfarkas",
+     Arg.Set Fpat.Global.linear_farkas,
+     " Enable linear Farkas";
    "-yhorn",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.YhornInterface.solve),
@@ -240,6 +243,10 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate ~generalize:true ),
      " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
+   "-tcs",
+     Arg.Unit (fun _ ->
+       Fpat.InterpProver.ext_interpolate := Fpat.TemplateBasedInterpProver.interpolate),
+     " Use an interpolating prover based on template based constraint solving";
    "-yint",
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),

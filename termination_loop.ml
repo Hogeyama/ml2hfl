@@ -83,7 +83,15 @@ let rec run predicate_que holed =
         (* solve constraints and obtain coefficients of a ranking function *)
 	let coefficients =
           try
-            PolyConstrSolver.solve (Formula.band coeff_constrs)
+            (* always use Z3 for ranking function inference *)
+            let tmp1 = !PolyConstrSolver.ext_generate in
+            let tmp2 = !PolyConstrSolver.ext_solve in
+            PolyConstrSolver.ext_generate := PolyConstrSolver.gen_coeff_constrs ~nat:false;
+            PolyConstrSolver.ext_solve := Fpat.Z3Interface.solve;
+            let sol = PolyConstrSolver.solve (Formula.band coeff_constrs) in
+            PolyConstrSolver.ext_generate := tmp1;
+            PolyConstrSolver.ext_solve := tmp2;
+            sol
           with PolyConstrSolver.Unknown ->
 	    Format.printf "Failed to solve the constraints...@.@.";
             assert false(* failed to solve the constraints *)
