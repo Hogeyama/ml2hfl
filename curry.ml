@@ -58,25 +58,22 @@ let uncurry_rtyp t f rtyp =
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
-type ('a,'b) tree = Leaf of 'b option * 'a | Node of ('a,'b) tree * ('a,'b) tree
-
-let leaf x = Leaf(None, x)
+type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
 
 let root = function
-    Leaf(_, t) -> t
+    Leaf t -> t
   | Node _ -> assert false
 let rec flatten = function
-    Leaf(_, f) -> [f]
+    Leaf t -> [t]
   | Node(lhs,rhs) -> flatten lhs @ flatten rhs
 
-let rec map f g path = function
-    Leaf(None, t) -> Leaf(None, f path t)
-  | Leaf(Some x, t) -> Leaf(Some x, g x path t)
-  | Node(t1,t2) -> Node(map f g (path@[1]) t1, map f g (path@[2]) t2)
-let map f g t = map f g [] t
+let rec map f path = function
+    Leaf t -> Leaf (f path t)
+  | Node(t1,t2) -> Node(map f (path@[1]) t1, map f (path@[2]) t2)
+let map f t = map f [] t
 
 let rec fold f_node f_leaf = function
-    Leaf(_, typ) -> f_leaf typ
+    Leaf typ -> f_leaf typ
   | Node(t1,t2) -> f_node (fold f_node f_leaf t1) (fold f_node f_leaf t2)
 
 let rec proj path t =
@@ -87,25 +84,19 @@ let rec proj path t =
     | _ -> assert false
 
 let rec remove_pair_typ = function
-    TUnit -> leaf TUnit
-  | TBool -> leaf TBool
-  | TAbsBool -> leaf TAbsBool
-  | TInt -> leaf TInt
-  | TRInt p -> leaf (TRInt p)
+    TUnit -> Leaf TUnit
+  | TBool -> Leaf TBool
+  | TAbsBool -> Leaf TAbsBool
+  | TInt -> Leaf TInt
+  | TRInt p -> Leaf (TRInt p)
   | TVar _ -> assert false
   | TFun _ as typ ->
       let xs,typ' = decomp_tfun typ in
       let xs' = flatten_map (fun y -> flatten (remove_pair_var y)) xs in
-        leaf @@ List.fold_right (fun x typ -> TFun(x,typ)) xs' typ'
-  | TPair(x,typ) ->
-      let lhs =
-        match remove_pair_typ (Id.typ x) with
-          Leaf(_, typ) -> Leaf(Some x, typ)
-        | Node _ as lhs -> lhs
-      in
-      Node(lhs, remove_pair_typ typ)
-  | TList typ -> leaf @@ TList (root (remove_pair_typ typ))
-  | TConstr(s,b) -> leaf @@ TConstr(s,b)
+        Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
+  | TPair(x,typ) -> Node(remove_pair_typ (Id.typ x), remove_pair_typ typ)
+  | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
+  | TConstr(s,b) -> Leaf (TConstr(s,b))
   | TPred({Id.typ=TPair(x, typ)} as y, ps) ->
       begin
         match typ with (* Function types cannot have predicates *)
@@ -125,17 +116,15 @@ let rec remove_pair_typ = function
       let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ (Id.typ x) with
-            Leaf(_, typ) -> typ
+            Leaf typ -> typ
           | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
-        leaf @@ TPred(Id.set_typ x typ', ps')
+        Leaf (TPred(Id.set_typ x typ', ps'))
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
-  let aux1 path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
-  let aux2 y path typ = y in
-  let aux2 y path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
-    map aux1 aux2 (remove_pair_typ (Id.typ x))
+  let aux path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
+  map aux (remove_pair_typ (Id.typ x))
 
 and remove_pair_aux t typ_opt =
   let typ = match typ_opt with None -> t.typ | Some typ -> typ in
@@ -144,29 +133,29 @@ and remove_pair_aux t typ_opt =
         Const _
       | RandInt _
       | Event _
-      | RandValue _ -> leaf t
-      | Bottom -> map (fun _ -> make_bottom) (fun _ _ -> make_bottom) typs
-      | Var x -> map (fun _ -> make_var) (fun _ _ -> make_var) (remove_pair_var x)
+      | RandValue _ -> Leaf t
+      | Bottom -> map (fun _ -> make_bottom) typs
+      | Var x -> map (fun _ -> make_var) (remove_pair_var x)
       | Fun(x, t) ->
           let xs = flatten (remove_pair_var x) in
           let t' = root (remove_pair_aux t None) in
-            leaf @@ List.fold_right make_fun xs t'
+            Leaf (List.fold_right make_fun xs t')
       | App(t1, ts) ->
           let typs = get_argtyps t1.typ in
           let () = assert (List.length typs >= List.length ts) in
           let typs' = take typs (List.length ts) in
           let t' = root (remove_pair_aux t1 None) in
           let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t (Some typ))) ts typs') in
-            leaf @@ make_app t' ts'
+            Leaf (make_app t' ts')
       | If(t1, t2, t3) ->
           let t1' = root (remove_pair_aux t1 None) in
           let t2' = root (remove_pair_aux t2 None) in
           let t3' = root (remove_pair_aux t3 None) in
-            leaf @@ make_if t1' t2' t3'
+            Leaf (make_if t1' t2' t3')
       | Branch(t1, t2) ->
           let t1' = root (remove_pair_aux t1 None) in
           let t2' = root (remove_pair_aux t2 None) in
-            leaf {desc=Branch(t1',t2'); typ=t1'.typ}
+            Leaf {desc=Branch(t1',t2'); typ=t1'.typ}
       | Let(flag, bindings, t) ->
           let aux (f,xs,t) =
             let f' = root (remove_pair_var f) in
@@ -176,7 +165,7 @@ and remove_pair_aux t typ_opt =
           in
           let bindings' = List.map aux bindings in
           let t' = root (remove_pair_aux t None) in
-            leaf @@ make_let_f flag bindings' t'
+            Leaf (make_let_f flag bindings' t')
       | BinOp(op, t1, t2) ->
           begin
             match op, elim_tpred t1.typ with
@@ -189,10 +178,10 @@ and remove_pair_aux t typ_opt =
           end;
           let t1' = root (remove_pair_aux t1 None) in
           let t2' = root (remove_pair_aux t2 None) in
-            leaf {desc=BinOp(op, t1', t2'); typ=root typs}
+            Leaf {desc=BinOp(op, t1', t2'); typ=root typs}
       | Not t1 ->
           let t1' = root (remove_pair_aux t1 None) in
-            leaf @@ make_not t1'
+            Leaf (make_not t1')
       | Record fields -> assert false
       | Proj(i,s,f,t1) -> assert false
       | SetField(n,i,s,f,t1,t2) -> assert false
@@ -202,7 +191,7 @@ and remove_pair_aux t typ_opt =
       | Match(t1,pats) -> assert false
       | TryWith(t1,t2) -> assert false
       | Pair(t1,t2) -> Node(remove_pair_aux t1 None, remove_pair_aux t2 None)
-      | Fst {desc=Var x} when x = abst_var -> leaf @@ make_var x (* for predicates *)
+      | Fst {desc=Var x} when x = abst_var -> Leaf (make_var x) (* for predicates *)
       | Fst t ->
           let t' =
             match remove_pair_aux t None with
@@ -210,7 +199,7 @@ and remove_pair_aux t typ_opt =
               | Node(t',_) -> t'
           in
             t'
-      | Snd {desc=Var x} when x = abst_var -> leaf @@ make_var x (* for predicates *)
+      | Snd {desc=Var x} when x = abst_var -> Leaf (make_var x) (* for predicates *)
       | Snd t ->
           let t' =
             match remove_pair_aux t None with
