@@ -345,11 +345,11 @@ let to_holed_programs (target_program : typed_term) =
 		 body prev_statevars statevars argvars)
 	  in
 
-	  let placeholders = List.map (fun v -> Id.new_var "x_DO_NOT_CARE" (Id.typ (extract_id v))) (prev_set_flag::prev_statevars) in
+	  let placeholders () = List.map (fun v -> Id.new_var "x_DO_NOT_CARE" (Id.typ (extract_id v))) (prev_set_flag::prev_statevars) in
 	  let rec set_state = function
 	    | [] -> []
 	    | [arg] -> (extract_id prev_set_flag)::(List.map extract_id prev_statevars)@[arg]
-	    | arg::args -> placeholders@[arg]@(set_state args)
+	    | arg::args -> (placeholders ())@[arg]@(set_state args)
 	  in
 	  let args' = set_state args
 	  in
