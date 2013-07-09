@@ -77,17 +77,19 @@ let rec run predicate_que holed =
 		       ; Formula.geq linear_template (IntTerm.make 0)]
 	in
 	let constraints = imply spc ranking_constraints in
+
+  (* always use Z3 for ranking function inference *)
+  let tmp1 = !PolyConstrSolver.ext_generate in
+  let tmp2 = !PolyConstrSolver.ext_solve in
+  PolyConstrSolver.ext_generate := PolyConstrSolver.gen_coeff_constrs ~nat:false;
+  PolyConstrSolver.ext_solve := Fpat.Z3Interface.solve;
+
 	let coeff_constrs = PolyConstrSolver.generate ~linear:true constraints in
 	if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
 	
         (* solve constraints and obtain coefficients of a ranking function *)
 	let coefficients =
           try
-            (* always use Z3 for ranking function inference *)
-            let tmp1 = !PolyConstrSolver.ext_generate in
-            let tmp2 = !PolyConstrSolver.ext_solve in
-            PolyConstrSolver.ext_generate := PolyConstrSolver.gen_coeff_constrs ~nat:false;
-            PolyConstrSolver.ext_solve := Fpat.Z3Interface.solve;
             let sol = PolyConstrSolver.solve (Formula.band coeff_constrs) in
             PolyConstrSolver.ext_generate := tmp1;
             PolyConstrSolver.ext_solve := tmp2;
@@ -148,6 +150,13 @@ let rec run predicate_que holed =
 	    subst_ith n (imply nth_error_path (Formula.band (go 0)))
 	  in
 	  let constraints = Formula.bor (Fpat.ExtList.List.mapi nth_constraints error_paths)in
+
+    (* always use Z3 for ranking function inference *)
+    let tmp1 = !PolyConstrSolver.ext_generate in
+    let tmp2 = !PolyConstrSolver.ext_solve in
+    PolyConstrSolver.ext_generate := PolyConstrSolver.gen_coeff_constrs ~nat:false;
+    PolyConstrSolver.ext_solve := Fpat.Z3Interface.solve;
+
 	  let coeff_constrs = PolyConstrSolver.generate ~linear:true constraints in
 	  if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
 	  if debug then Format.printf "Constraints(Transformed by PolyConstrSolver.generate):@.  %a@." Term.pr_list coeff_constrs;
@@ -155,6 +164,10 @@ let rec run predicate_que holed =
 	  try
 	    (** solve constraints and obtain coefficients **)
 	    let coefficients = PolyConstrSolver.solve (Formula.band coeff_constrs) in
+
+      PolyConstrSolver.ext_generate := tmp1;
+      PolyConstrSolver.ext_solve := tmp2;
+
 	    if coefficients = [] then (Format.printf "@.Invalid ordered.@."; raise PolyConstrSolver.Unknown);
 	    if debug then Format.printf "@.Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs coefficients;
 
