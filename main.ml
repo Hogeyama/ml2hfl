@@ -265,6 +265,16 @@ let arg_spec =
        Fpat.Z3Interface.init ()),
      " Use a polynomial constraint solver of Z3 SMT solver";
    (* termination mode *)
+   "-z3-rank",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true;
+       Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve),
+     " Use Z3 for ranking function inference";
+   "-bv-rank",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:true ~linear:true;
+       Fpat.RankFunInfer.ext_solve := Fpat.BvPolyConstrSolver.solve [] []),
+     " Use bit-vector-based ranking function inference";
    "-termination-disj",
      Arg.Unit (fun _ ->
        Flag.termination := true;
@@ -340,7 +350,10 @@ let fpat_init1 () =
   (* default Horn clause solver *)
   HcSolver.ext_solve := BwHcSolver.solve;
   (* default Polynomial constraint solver *)
-  Fpat.BvPolyConstrSolver.init ()
+  Fpat.BvPolyConstrSolver.init ();
+  (* default Polynomial constraint solver for ranking function inference *)
+  Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true;
+  Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve
 
 (* called after parsing options *)
 let fpat_init2 () =

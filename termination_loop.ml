@@ -78,22 +78,13 @@ let rec run predicate_que holed =
 	in
 	let constraints = imply spc ranking_constraints in
 
-  (* always use Z3 for ranking function inference *)
-  let tmp1 = !PolyConstrSolver.ext_generate in
-  let tmp2 = !PolyConstrSolver.ext_solve in
-  PolyConstrSolver.ext_generate := PolyConstrSolver.gen_coeff_constrs ~nat:false;
-  PolyConstrSolver.ext_solve := Fpat.Z3Interface.solve;
-
-	let coeff_constrs = PolyConstrSolver.generate ~linear:true constraints in
+	let coeff_constrs = Fpat.RankFunInfer.generate constraints in
 	if debug then Format.printf "Constraint:@.  %a@." Term.pr_list coeff_constrs;
 	
         (* solve constraints and obtain coefficients of a ranking function *)
 	let coefficients =
           try
-            let sol = PolyConstrSolver.solve (Formula.band coeff_constrs) in
-            PolyConstrSolver.ext_generate := tmp1;
-            PolyConstrSolver.ext_solve := tmp2;
-            sol
+            Fpat.RankFunInfer.solve (Formula.band coeff_constrs)
           with PolyConstrSolver.Unknown ->
 	    if debug then Format.printf "Failed to solve the constraints...@.@.";
             raise FailedToFindLLRF(* failed to solve the constraints *)
@@ -151,22 +142,13 @@ let rec run predicate_que holed =
 	  in
 	  let constraints = Formula.bor (Fpat.ExtList.List.mapi nth_constraints error_paths)in
 
-    (* always use Z3 for ranking function inference *)
-    let tmp1 = !PolyConstrSolver.ext_generate in
-    let tmp2 = !PolyConstrSolver.ext_solve in
-    PolyConstrSolver.ext_generate := PolyConstrSolver.gen_coeff_constrs ~nat:false;
-    PolyConstrSolver.ext_solve := Fpat.Z3Interface.solve;
-
-	  let coeff_constrs = PolyConstrSolver.generate ~linear:true constraints in
+	  let coeff_constrs = Fpat.RankFunInfer.generate constraints in
 	  if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
-	  if debug then Format.printf "Constraints(Transformed by PolyConstrSolver.generate):@.  %a@." Term.pr_list coeff_constrs;
+	  if debug then Format.printf "Constraints(Transformed by RankFunInfer.generate):@.  %a@." Term.pr_list coeff_constrs;
 	  
 	  try
 	    (** solve constraints and obtain coefficients **)
-	    let coefficients = PolyConstrSolver.solve (Formula.band coeff_constrs) in
-
-      PolyConstrSolver.ext_generate := tmp1;
-      PolyConstrSolver.ext_solve := tmp2;
+	    let coefficients = Fpat.RankFunInfer.solve (Formula.band coeff_constrs) in
 
 	    if coefficients = [] then (Format.printf "@.Invalid ordered.@."; raise PolyConstrSolver.Unknown);
 	    if debug then Format.printf "@.Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs coefficients;
