@@ -204,7 +204,7 @@ let rec lift_aux' post xs t =
             defs1 @ defs2, Branch(t1',t2')
       | Let(Nonrecursive,[x, [], t1],t2) ->
           let defs1, t1' = lift_aux' post xs t1 in
-	  let defs2, t2' = lift_aux' post xs t2 in
+	  let defs2, t2' = lift_aux' post (x::xs) t2 in
             defs1 @ defs2, Let(Nonrecursive,[x, [], t1'],t2')
       | Let(Nonrecursive,bindings,t2) ->
           let aux (f,ys,t1) =

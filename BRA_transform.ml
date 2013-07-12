@@ -59,7 +59,7 @@ and show_term = function
   | Const Unit -> "()"
   | Const True -> "true"
   | Const False -> "false"
-  | Const (Int n) -> string_of_int n
+  | Const (Int n) -> parens (string_of_int n)
   | App ({desc=RandInt _}, _) -> "Random.int 0"
   | App ({desc=Var {Id.name = div}}, [n; m]) when div = "Pervasives./" -> parens (show_typed_term n ^ " / " ^ show_typed_term m)
   | Var v -> modify_id_typ v

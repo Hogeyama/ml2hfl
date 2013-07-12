@@ -95,8 +95,8 @@ let rec run predicate_que holed =
             PolyConstrSolver.ext_solve := tmp2;
             sol
           with PolyConstrSolver.Unknown ->
-	    Format.printf "Failed to solve the constraints...@.@.";
-            assert false(* failed to solve the constraints *)
+	    if debug then Format.printf "Failed to solve the constraints...@.@.";
+            raise FailedToFindLLRF(* failed to solve the constraints *)
 	in
 	let ((correspondence_, const_part) as ranking_function) = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) coefficients) linear_template)
 	in
@@ -193,8 +193,8 @@ let rec run predicate_que holed =
 	    in
 	    if debug then Format.printf "@.Found ranking function: %a@." BRA_types.pr_ranking_function new_predicate_info;
 	    [new_predicate_info]
-	  with PolyConstrSolver.Unknown ->
-	    Format.printf "Failed to solve the constraints...@.@.";
+	  with _ (* | PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
+	    if debug then Format.printf "Failed to solve the constraints...@.@.";
             [] (* failed to solve the constraints *)
 	) spc_sequences	
 	in
