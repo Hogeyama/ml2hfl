@@ -275,6 +275,10 @@ let arg_spec =
        Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:true ~linear:true;
        Fpat.RankFunInfer.ext_solve := Fpat.BvPolyConstrSolver.solve [] []),
      " Use bit-vector-based ranking function inference";
+    (* use this with Z3 otherwise..*)
+   "-rbf",
+     Arg.Set Fpat.Global.rank_bounded_first,
+     " Try to infer a ranking function with small coefficients";
    "-termination-disj",
      Arg.Unit (fun _ ->
        Flag.termination := true;
