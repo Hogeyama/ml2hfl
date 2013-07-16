@@ -4,7 +4,7 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
-exception LexError
+exception UnknownOutput
 
 type result = Safe of (var * Inter_type.t) list | Unsafe of (string * int) list
 
@@ -168,7 +168,7 @@ let check env target =
   try
     write_log input target';
     verifyFile input
-  with Failure("lex error") -> raise LexError
+  with Failure("lex error") -> raise UnknownOutput
 
 
 (* returen "" if the version cannot be obtained *)
