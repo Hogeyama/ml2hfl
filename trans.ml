@@ -469,16 +469,8 @@ and rename_poly_funs f map t =
       | Fun(x, t) ->
           let map',t' = rename_poly_funs f map t in
             map', Fun(x, t')
-      | App({desc=Var x}, ts) when Id.same x f ->
-          let x' =
-            if is_poly_typ (Id.typ f)
-            then
-              let xs = take (get_args (Id.typ f)) (List.length ts) in
-              let typ = List.fold_right2 (fun t x typ -> TFun(Id.set_typ x t.typ, typ)) ts xs t.typ in
-                Id.new_var (Id.name x) typ
-            else
-              Id.new_var_id x
-          in
+      | App({desc=Var x; typ=typ}, ts) when Id.same x f ->
+          let x' = Id.new_var (Id.name x) typ in
           let map',ts' = rename_poly_funs_list f map ts in
           let check (_,f') = Type.can_unify (Id.typ f') (Id.typ x') in
             if List.exists check map'
