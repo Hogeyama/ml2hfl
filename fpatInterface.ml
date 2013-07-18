@@ -105,16 +105,14 @@ let rec inv_term t =
       | _ ->
           App(App(inv_term t1, inv_term t2), inv_term t3))
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
-  | Term.Forall (_, _, _) -> assert false
+  | Term.Binder(_, _, _, _) -> assert false
   | Term.Error _ -> assert false
   | Term.Ret (_, _, _, _) -> assert false
   | Term.Call (_, _, _) -> assert false
-  | Term.Exists (_, _, _) -> assert false
   | Term.If (_, _, _, _) -> assert false
   | Term.LetVal (_, _, _, _) -> assert false
   | Term.LetFun (_, _, _, _, _) -> assert false
   | Term.LetRec (_, _, _, _) -> assert false
-  | Term.Lambda (_, _, _) -> assert false
 
 
 
