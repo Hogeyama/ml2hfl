@@ -118,14 +118,12 @@ let rec run predicate_que holed =
 	
 	let successes = BRA_util.concat_map (fun error_paths ->
 	  (* make templates *)
-	  (** R(x)とR(x_prev)を作成 → いまは1つだけだが、これをn個用意する必要がある。linear_templates = {R1(x) .. Rn(x)}, linear_templates = {R1(x_prev) .. Rn(x_prev)} **)
 	  let linear_templates = Fpat.ExtList.List.mapi (fun i _ -> unwrap_template (PolyConstrSolver.gen_template arg_env)) error_paths in
 	  let linear_templates_prev = Fpat.ExtList.List.mapi (fun i lt -> Term.subst (List.combine arg_vars prev_var_terms) lt) linear_templates in
 	  if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linear_templates;
-	  (** 作るべき制約は、
-	      [φ1 ⇒ R1(x_prev)＞R1(x) ∧ R1(x)≧0]
-	      ∧ [φ2 ⇒ R1(x_prev)≧R1(x) ∧ R2(x_prev)＞R2(x) ∧ R2(x)≧0]
-	      ∧ [φ3 ⇒ R1(x_prev)≧R1(x) ∧ R2(x_prev)＝R2(x) ∧ R3(x_prev)＞R3(x) ∧ R3(x)≧0]
+	  (** [spc1 => R1(x_prev) > R1(x) /\ R1(x)≧0]
+	      /\ [spc2 => R1(x_prev) >= R1(x) /\ R2(x_prev) > R2(x) /\ R2(x) >= 0]
+	      /\ [spc3 => R1(x_prev) >= R1(x) /\ R2(x_prev) = R2(x) /\ R3(x_prev) > R3(x) /\ R3(x) >= 0]
 	      ...
 	  **)
 	  let all_vars = List.map fst env in
