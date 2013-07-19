@@ -114,7 +114,8 @@ trecs_lexer.ml: trecs_lexer.mll
 
 
 # Dependencies
-DEP_FPAT = CEGAR CEGAR_syntax main refine syntax trans fpatInterface writeAnnot
+DEP_FPAT = CEGAR CEGAR_syntax CEGAR_abst_util feasibility main \
+	main_loop termination_loop refine syntax trans fpatInterface writeAnnot BRA_types
 $(addsuffix .cmo,$(DEP_FPAT)): $(FPAT)/fpat.cmi
 $(addsuffix .cmx,$(DEP_FPAT)): $(FPAT)/fpat.cmi
 
