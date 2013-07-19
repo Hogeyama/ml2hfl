@@ -88,11 +88,6 @@ type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode 
 exception Feasible of typed_term
 exception Infeasible
 
-type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
-
-
-
-
 
 let rec get_vars_pat pat =
   match pat.pat_desc with
@@ -599,11 +594,6 @@ let string_of_node = function
   | FailNode -> "fail"
   | PatNode n -> "br" ^ string_of_int n
   | EventNode s -> s
-
-let print_constr fm = function
-    Cond t -> print_term false fm t
-  | Pred(f,n,x,ts) -> Format.printf "P_{%a_%d}^%a(%a)" print_id f n print_id x (print_termlist 0 false) ts
-let print_constr_list fm = List.iter (fun c -> Format.fprintf fm "@ [%a]" print_constr c)
 
 let pp_print_typ = print_typ
 let pp_print_term = print_term false

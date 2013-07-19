@@ -76,8 +76,6 @@ and pattern =
   | POr of typed_pattern * typed_pattern
 type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode of int
 
-type literal = Cond of typed_term | Pred of (id * int * id * typed_term list)
-
 exception Feasible of typed_term
 exception Infeasible
 
@@ -195,8 +193,6 @@ val string_of_binop : binop -> string
 val string_of_typ : typ -> string
 val string_of_node : node -> string
 val print_pattern : Format.formatter -> typed_pattern -> unit
-val print_constr : Format.formatter -> literal -> unit
-val print_constr_list : Format.formatter -> literal list -> unit
 val pp_print_typ : Format.formatter -> typ -> unit
 (** Same as [print_typ] *)
 
