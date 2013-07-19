@@ -589,15 +589,9 @@ and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term'
 let print_term' fm = print_term' 0 fm
 let pp_print_term' = print_term'
 
-let string_of_const c =
-  print_const str_formatter c;
-  flush_str_formatter ()
-let string_of_binop op =
-  print_binop str_formatter op;
-  flush_str_formatter ()
-let string_of_typ typ =
-  print_typ str_formatter typ;
-  flush_str_formatter ()
+let string_of_const = make_string_of print_const
+let string_of_binop = make_string_of print_binop
+let string_of_typ = make_string_of print_typ
 let string_of_node = function
     BrNode -> assert false
   | LabNode true -> "then"

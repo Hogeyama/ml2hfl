@@ -451,6 +451,4 @@ let prog = print_prog
 let prog_typ = print_prog_typ
 
 
-let string_of_const c =
-  print_const Format.str_formatter c;
-  Format.flush_str_formatter ()
+let string_of_const = make_string_of print_const
