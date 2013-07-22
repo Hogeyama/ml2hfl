@@ -69,24 +69,23 @@ let rec print fm = function
   | ExtArg(x,typ1,typ2) ->
       Format.fprintf fm "(@[%a where %a:%a@])" print typ2 Id.print x print typ1
   | List(x,p_len,y,p_i,typ2) ->
-      if List.exists (Id.same x) (S.get_fv p_i) || occur x typ2
-      then
-        if p_len = S.true_term
-        then Format.fprintf fm "(@[list|%a|" Id.print x
-        else Format.fprintf fm "(@[list|%a:%a|" Id.print x S.pp_print_term p_len
-      else
-        if p_len = S.true_term
-        then Format.fprintf fm "(@[list"
-        else Format.fprintf fm "(@[list|%a:%a|" Id.print x S.pp_print_term p_len;
+      Format.fprintf fm "(@[";
       if occur y typ2
       then
         if p_i = S.true_term
-        then Format.fprintf fm "[%a]@ %a@])" Id.print y print typ2
-        else Format.fprintf fm "[%a:%a]@ %a@])" Id.print y S.pp_print_term p_i print typ2
+        then Format.fprintf fm "[%a]@ %a" Id.print y print typ2
+        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.pp_print_term p_i print typ2
       else
         if p_i = S.true_term
-        then Format.fprintf fm " %a@])" print typ2
-        else Format.fprintf fm "[%a:%a]@ %a@])" Id.print y S.pp_print_term p_i print typ2
+        then Format.fprintf fm "%a" print typ2
+        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.pp_print_term p_i print typ2;
+      Format.fprintf fm " list";
+      if p_len <> S.true_term
+      then Format.fprintf fm "|%a:%a|" Id.print x S.pp_print_term p_len
+      else
+        if List.exists (Id.same x) (S.get_fv p_i) || occur x typ2
+        then Format.fprintf fm "|%a|" Id.print x;
+      Format.fprintf fm "@])"
 
 let rec decomp_fun n typ =
   match typ with
