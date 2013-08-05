@@ -46,37 +46,9 @@ let mapi f xs =
     aux 1 xs
 
 
-let weakest env cond ds p =
-  if check env cond [] p then (*???*)
-    Const True, Const False
-  else if check env cond [] (make_not p) then (*???*)
-    Const False, Const True
-  else
+let weakest_aux env cond ds p =
     let fvp = get_fv p in
-    let ts = cond @@@ List.map fst ds in
-    let ds =
-      let rec fixp xs =
-        let xs' =
-          uniq
-            (xs @
-               (List.flatten
-                  (List.map
-                     (fun p ->
-                        let fv = get_fv p in
-                          if inter fv xs = []
-                          then []
-                          else fv)
-                     ts)))
-        in
-          if List.length xs = List.length xs'
-          then xs
-          else fixp xs'
-      in
-      let fv = fixp fvp in
-        List.filter (fun (p, _) -> subset (get_fv p) fv) ds
-    in
     let nds = List.map (fun (p, b) -> make_not p, make_not b) ds in
-
     let f pbs =
       List.map
         (fun i ->
@@ -175,43 +147,60 @@ let weakest env cond ds p =
     in
     let xs, nxs = loop [] [] [] pbss in
     let pbss = List.map f xs in
-    let pbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) pbss in
     let npbss = List.map f nxs in
+    pbss, npbss
+
+
+let weakest env cond ds p =
+  if check env cond [] p then (*???*)
+    Const True, Const False
+  else if check env cond [] (make_not p) then (*???*)
+    Const False, Const True
+  else
+    let fvp = get_fv p in
+    let ts = cond @@@ List.map fst ds in
+    let ds =
+      let rec fixp xs =
+        let xs' =
+          uniq
+            (xs @
+               (List.flatten
+                  (List.map
+                     (fun p ->
+                        let fv = get_fv p in
+                          if inter fv xs = []
+                          then []
+                          else fv)
+                     ts)))
+        in
+          if List.length xs = List.length xs'
+          then xs
+          else fixp xs'
+      in
+      let fv = fixp fvp in
+        List.filter (fun (p, _) -> subset (get_fv p) fv) ds
+    in
+    let pbss,npbss = weakest_aux env cond ds p in
+    let pbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) pbss in
     let npbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) npbss in
       make_dnf pbss, make_dnf npbss
 
 
 
+let weakest2 env cond ds p =
+    let pbss,npbss = weakest_aux env cond ds p in
+      make_dnf pbss, make_dnf npbss
+
+
+
 let filter env cond pbs must t =
-  let have pbs' (pbs,_) = List.exists (fun pb -> List.mem pb pbs') pbs in
-  let check pbs = check env cond pbs (Const False) in
-    if not (check pbs)
-    then t
-    else
-      let aux bottoms (pbs, rest) =
-        let cands = List.map (fun pb -> List.merge compare [pb] pbs, diff rest [pb]) rest in
-          List.filter (fun (pbs,_) -> not (List.exists (fun (pbs',_) -> subset pbs' pbs) bottoms)) cands
-      in
-      let rec loop bottoms cands width =
-        let cands' = uniq (rev_flatten_map (aux bottoms) cands) in
-        let bottoms' = List.filter (fun (pbs,_) -> check pbs) cands' @@@ bottoms in
-          if width >= !Flag.wp_max_num
-          then bottoms'
-          else loop bottoms' cands' (width+1)
-      in
-      let bottoms = loop [] [[],pbs] 0 in
-      let bottoms' =
-        match must with
-            None -> bottoms
-          | Some pbs' -> List.filter (have pbs') bottoms
-      in
-      let ff = make_dnf (List.map fst bottoms') in
-        make_if ff (Const Bottom) t
+  let tt,_ = weakest2 env cond pbs (Const False) in
+  make_if tt (Const Bottom) t
 
 
 
 let print_pb fm (p,b) =
-  Format.fprintf fm "%a := %a;" CEGAR_print.term b CEGAR_print.term p
+  Format.fprintf fm "%a := %a" CEGAR_print.term b CEGAR_print.term p
 
 let print_pbs fm pbs =
   print_list print_pb ";@\n" fm pbs

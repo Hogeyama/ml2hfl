@@ -22,7 +22,7 @@ let check_fun_arg_typ = false
 let check_typ = true
 
 (* method option *)
-let wp_max_num = ref 3
+let wp_max_num = ref 30
 let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
@@ -103,7 +103,6 @@ let max_input_size = 65536
 
 
 (* mode option *)
-let debug = true
 let debug_level = ref 1
 let only_result = ref false
 let exp = ref false

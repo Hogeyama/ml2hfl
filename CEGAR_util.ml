@@ -477,7 +477,7 @@ let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 
 
 
-let event_of_temp ({env=env;defs=defs;main=main} as prog) =
+let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
   if List.mem Flag.CPS !Flag.form
   then
     let make_event (f,xs,t1,e,t2) =
