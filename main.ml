@@ -104,6 +104,8 @@ let main in_channel =
     let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = BRA_transform.regularization parsed in
     let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
+    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
     let result =
       try
@@ -298,6 +300,10 @@ let arg_spec =
        Flag.termination := true;
        Flag.split_callsite := true),
      " Check termination for each callsite of functions";
+   "-add-cd",
+     Arg.Unit (fun _ ->
+       Flag.add_closure_depth := true),
+     " Insert extra parameters for representing depth of closures"
   ]
 
 
