@@ -19,7 +19,7 @@ let dynamicGreaterThan a b =
 let rec dynamicMaximum = function
   | [x] -> x
   | x::xs ->
-    let freshVarId = Id.new_var "TMP_DEPTH" TInt in
+    let freshVarId = Id.new_var "tmp_DEPTH" TInt in
     let freshVar = make_var freshVarId in
     make_let
       [(freshVarId, [], dynamicMaximum xs)]
