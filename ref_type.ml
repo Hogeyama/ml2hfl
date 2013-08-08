@@ -162,5 +162,8 @@ let rec rename var = function
         List(x', p_len', y', p_i', rename None typ'')
 
 let rename typ =
+  Id.save_counter ();
   Id.clear_counter ();
-  rename None typ
+  let typ' = rename None typ in
+  Id.reset_counter ();
+  typ'
