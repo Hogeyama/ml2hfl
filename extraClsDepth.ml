@@ -47,7 +47,14 @@ let incrementDepth = function
 
 let rec closureDepth varToDepth expr =
   match expr.desc with
-    | Var v when is_fun_typ (Id.typ v) -> List.assoc (Id.to_string v) varToDepth
+    | Var v when is_fun_typ (Id.typ v) ->
+      begin
+	try
+	  List.assoc (Id.to_string v) varToDepth
+	with Not_found ->
+	  print_endline (Id.to_string v);
+	  (raise Not_found)
+      end
     | Const _
     | Unknown
     | RandInt _
@@ -95,18 +102,27 @@ let rec insertClsDepth varToDepth expr =
 		   (insertClsDepth varToDepth elseClause))}
     | Branch (_, _) -> assert false (* ? *)
     | Let (flag, bindings, e) ->
-      let insertClsDepthBinding (varToDepth', bindings') = function
-	| (x, [], body) when is_base_typ (Id.typ x) ->
-	  (varToDepth', (x, [], insertClsDepth varToDepth body)::bindings')
+      let makeBaseEnv varToDepth = function
+	| (x, [], body) when is_base_typ (Id.typ x) -> varToDepth
 	| (x, [], body) when is_fun_typ (Id.typ x) ->
 	  let x_depthId = Id.new_var ((Id.name x) ^ "_DEPTH") TInt in
 	  let x_depth = make_var x_depthId in
-	  let varToDepth =
-	    if flag = Nonrecursive then
-	      varToDepth
-	    else
-	      (Id.to_string x, x_depth)::varToDepth
+	  (Id.to_string x, x_depth)::varToDepth
+	| (x, args, body) -> (Id.to_string x, make_int 0)::varToDepth
+      in
+      let insertClsDepthBinding varToDepth (varToDepth', bindings') = function
+	| (x, [], body) when is_base_typ (Id.typ x) ->
+	  (varToDepth', (x, [], insertClsDepth varToDepth body)::bindings')
+	| (x, [], body) when is_fun_typ (Id.typ x) ->
+	  let x_depthId = 
+	    begin
+	      try
+		BRA_transform.extract_id (List.assoc (Id.to_string x) varToDepth)
+	      with Not_found ->
+	        Id.new_var ((Id.name x) ^ "_DEPTH") TInt
+	    end
 	  in
+	  let x_depth = make_var x_depthId in
 	  ( (Id.to_string x, x_depth)::varToDepth'
 	  , (x_depthId, [], closureDepth varToDepth body)::({x with Id.typ = transType x.Id.typ}, [], insertClsDepth varToDepth body)::bindings')
 	| (x, args, body) ->
@@ -117,12 +133,6 @@ let rec insertClsDepth varToDepth expr =
 	      ((Id.to_string t, make_var t_depthId)::vtd, ags@[t_depthId; {t with Id.typ = transType t.Id.typ}])
 	    | _ -> assert false
 	  in
-	  let varToDepth =
-	    if flag = Nonrecursive then
-	      varToDepth
-	    else
-	      (Id.to_string x, make_int 0)::varToDepth
-	  in
 	  let (varToDepth, args) =
 	    List.fold_left
 	      insertToArgs
@@ -131,8 +141,9 @@ let rec insertClsDepth varToDepth expr =
 	  in
 	  ((Id.to_string x, make_int 0)::varToDepth', ({x with Id.typ = transType x.Id.typ}, args, insertClsDepth varToDepth body)::bindings')
       in
+      let varToDepth' = if flag = Recursive then List.fold_left makeBaseEnv varToDepth bindings else varToDepth in
       let (varToDepth, bindings) =
-	List.fold_left insertClsDepthBinding (varToDepth, []) bindings
+	List.fold_left (insertClsDepthBinding varToDepth') (varToDepth, []) bindings
       in
       { expr with
 	desc = Let (flag, bindings, insertClsDepth varToDepth e)}
