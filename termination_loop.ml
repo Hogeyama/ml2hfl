@@ -32,7 +32,7 @@ let rec run predicate_que holed =
   if Queue.is_empty predicate_que then (raise FailedToFindLLRF)
   else
     let predicate_info = Queue.pop predicate_que in
-    lrf := BRA_util.update_assoc (holed.BRA_types.verified.BRA_types.id.Id.name, !cycle_counter, predicate_info) !lrf; (* result log update here *)
+    lrf := BRA_util.update_assoc (Id.to_string holed.BRA_types.verified.BRA_types.id, !cycle_counter, predicate_info) !lrf; (* result log update here *)
     try
       let result = if !Flag.separate_pred then
 	  let predicates = BRA_transform.separate_to_CNF (BRA_transform.construct_LLRF predicate_info) in
