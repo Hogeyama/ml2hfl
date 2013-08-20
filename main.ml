@@ -106,6 +106,8 @@ let main in_channel =
     let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
     let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
+    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
     let result =
       try
