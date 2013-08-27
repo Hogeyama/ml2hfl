@@ -3,64 +3,40 @@ open Util
 let init () =
   Syntax.typ_excep := Type.TConstr("exn",true)
 
+let id x = x
+
+let trans_and_print f desc proj ?(option=true) ?(typ=true) t =
+  let r = f t in
+  let t' = proj r in
+  let pr = if typ then Syntax.pp_print_term_typ else Syntax.pp_print_term in
+  if !Flag.debug_level > 0 && t <> t' && option
+  then Format.printf "%s::@. @[%a@.@." desc pr t';
+  r
 
 let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
-      let t' = Trans.make_ext_funs t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t' = Trans.copy_poly_funs t in
-      let fun_list = Syntax.get_top_funs t' in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
+      let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
+      let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
+      let fun_list = Syntax.get_top_funs t in
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
-      let t' = Trans.replace_typ spec'.Spec.abst_env t in
-      let () =
-        if !Flag.debug_level > 0 && spec <> Spec.init
-        then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t' = Abstract.abstract_recdata t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
-      let t = t' in
-      let t',get_rtyp_list = Abstract.abstract_list t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~option:(spec<>Spec.init) t in
+      let t = trans_and_print Abstract.abstract_recdata ~typ:false "abst_recdata" id t in
+      let t,get_rtyp_list = trans_and_print Abstract.abstract_list "abst_list" fst t in
       let get_rtyp = get_rtyp_list in
-      let t' = Trans.inlined_f spec'.Spec.inlined_f t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t',get_rtyp_cps_trans = CPS.trans t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
+      let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
+      let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
-      let t',get_rtyp_remove_pair = Curry.remove_pair t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
-      let t = t' in
-      let t' = if !Flag.insert_param_funarg then Trans.insert_param_funarg t else t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
+      let t =
+        if !Flag.insert_param_funarg
+        then trans_and_print Trans.insert_param_funarg "insert unit param" id t
+        else t
       in
-      let t = t' in
-      let () = Type_check.check t Syntax.typ_result in
+      Type_check.check t Syntax.typ_result;
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in
@@ -209,7 +185,8 @@ let rec run orig parsed =
               Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
                 run orig parsed
-            | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+            | Fpat.AbsTypeInfer.FailedToRefineTypes
+                when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
                 if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
                 if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;
