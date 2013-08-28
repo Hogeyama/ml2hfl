@@ -1,6 +1,8 @@
 open Syntax
 open Type
 
+let withExparam = ref (Syntax.make_int 0)
+
 let rec transType = function
   | TFun ({Id.name=t1Name; Id.typ=t1} as t1Id, t2) when is_fun_typ t1 ->
     let t1 = transType t1 in
@@ -83,12 +85,33 @@ let rec insertExparam scope expr =
 	desc = Not (insertExparam scope e)}
     | _ -> assert false (* unimplemented *)
 
+let isEX_COEFFS id =
+  let len = (String.length id) in
+  len > 12 && String.sub id (len - 12) 12 = "_COEFFICIENT"
+
+let rec removeDummySubstitutions = function
+  | { desc = Let (Recursive, [id, [], {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
+  | e -> e
+
+let substituteZero e =
+  let toZero = function
+    | { desc = Var id } when isEX_COEFFS (Id.name id) -> make_int 0
+    | e -> e
+  in
+  BRA_transform.everywhere_expr toZero e
+
+let initPreprocessForExparam e =
+  let e = removeDummySubstitutions e in
+  let _ = withExparam := e in
+  substituteZero e
+
 let addTemplate prog =
   let _ = counter := 0 in
   let prog = insertExparam [] prog in
   let maxIndex = !counter - 1 in
   let rec tmp = function
     | (-1) -> prog
-    | n -> make_let [(List.nth !nthCoefficient n), [], (make_int 0)] (tmp (n-1))
+    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_int 0] (tmp (n-1))
+(*    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_var (List.nth !nthCoefficient n)] (tmp (n-1))*)
   in
   tmp maxIndex

@@ -114,6 +114,7 @@ let main in_channel =
 	List.for_all (fun holed ->
 	  let init_predicate_info =
 	    { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+	    ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x) 
 	    ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
 	    ; BRA_types.coefficients = []
 	    ; BRA_types.error_paths = [] } in
@@ -305,7 +306,11 @@ let arg_spec =
    "-add-cd",
      Arg.Unit (fun _ ->
        Flag.add_closure_depth := true),
-     " Insert extra parameters for representing depth of closures"
+     " Insert extra parameters for representing depth of closures";
+   "-infer-ranking-exparam",
+     Arg.Unit (fun _ ->
+       Flag.add_closure_exparam := true),
+     " Infer extra ranking parameters for closures for termination verification"
   ]
 
 
