@@ -85,8 +85,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       in
       {coeffs = coefficients; constant = IntTerm.int_of const_part}
      ) linear_templates,
-     let is_EXCOEFFS = (flip (Str.string_match (Str.regexp "*COEFFICIENT*"))) 0 in 
-     let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Var.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Var.string_of |> is_EXCOEFFS) correspondenceVars) in
+     let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Var.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Var.string_of |> ExtraParamInfer.isEX_COEFFS) correspondenceVars) in
      let substToVar = function
        | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> Syntax.make_var x)
        | t -> t
@@ -134,7 +133,8 @@ let rec run predicate_que holed =
     let predicate_info = Queue.pop predicate_que in
     (* result log update here *)
     lrf := BRA_util.update_assoc (Id.to_string holed.verified.id, !cycle_counter, predicate_info) !lrf;
-    
+
+    (* set subst. to coeffs. of exparams (use in Main_loop.run as preprocess) *)    
     BRA_types.preprocessForTerminationVerification := predicate_info.substToCoeffs;
 
     try
@@ -157,17 +157,14 @@ let rec run predicate_que holed =
     with Refine.PostCondition (env, spc, spcWithExparam) ->
       let open Fpat in
       let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
-      let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in
       let arg_vars =
 	List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
 	  (BRA_state.get_argvars holed.state holed.verified) in
-      let arg_var_terms = List.map Term.make_var arg_vars in
       let prev_vars =
 	List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
 	  (BRA_state.get_prev_statevars holed.state holed.verified) in
       let prev_var_terms = List.map Term.make_var prev_vars in
       let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
-      let prev_env = List.map (fun a -> (a, SimType.int_type)) prev_vars in
       
       if !Flag.disjunctive then
 	(* make templates *)

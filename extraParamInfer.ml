@@ -85,9 +85,7 @@ let rec insertExparam scope expr =
 	desc = Not (insertExparam scope e)}
     | _ -> assert false (* unimplemented *)
 
-let isEX_COEFFS id =
-  let len = (String.length id) in
-  len > 12 && String.sub id (len - 12) 12 = "_COEFFICIENT"
+let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 let rec removeDummySubstitutions = function
   | { desc = Let (Recursive, [id, [], {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
@@ -108,10 +106,10 @@ let initPreprocessForExparam e =
 let addTemplate prog =
   let _ = counter := 0 in
   let prog = insertExparam [] prog in
-  let maxIndex = !counter - 1 in
-  let rec tmp = function
+  let _ = counter := !counter - 1 in
+  let rec dummySubst = function
     | (-1) -> prog
-    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_int 0] (tmp (n-1))
+    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_int 0] (dummySubst (n-1))
 (*    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_var (List.nth !nthCoefficient n)] (tmp (n-1))*)
   in
-  tmp maxIndex
+  dummySubst !counter
