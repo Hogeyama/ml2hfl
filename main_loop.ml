@@ -3,7 +3,6 @@ open Util
 let init () =
   Syntax.typ_excep := Type.TConstr("exn",true)
 
-
 let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
@@ -61,11 +60,19 @@ let preprocess t spec =
       in
       let t = t' in
       let () = Type_check.check t Syntax.typ_result in
+
+      (* preprocess for termination mode *)
+      let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
+
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in
       Syntax.get_top_funs t, t, fun _ typ -> typ
   in
+
+  (* ill-formed program *)
+  Refine.progWithExparam := (let p, _, _, _ = CEGAR_util.trans_prog !ExtraParamInfer.withExparam in p);
+  (**********************)
 
   let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
   let get_rtyp f typ = get_rtyp f (get_rtyp_trans f typ) in
@@ -80,7 +87,11 @@ let preprocess t spec =
     let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
       {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
+  begin
+    if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
+    if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
     prog, rmap, get_rtyp, info
+  end
 
 
 
