@@ -15,8 +15,8 @@ let hd = function
   | _ -> assert false
 
 let check_aux env cond p =
-  let cond' = List.map FpatInterface.conv_term cond in
-  let p' = FpatInterface.conv_term p in
+  let cond' = List.map FpatInterface.conv_formula cond in
+  let p' = FpatInterface.conv_formula p in
   Fpat.Cvc3Interface.implies cond' [p']
 
 let check env cond pbs p =

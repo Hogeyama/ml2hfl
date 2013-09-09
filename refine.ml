@@ -8,8 +8,8 @@ open CEGAR_util
 exception CannotRefute
 
 let equiv env t1 t2 =
-  let t1' = FpatInterface.conv_term t1 in
-  let t2' = FpatInterface.conv_term t2 in
+  let t1' = FpatInterface.conv_formula t1 in
+  let t2' = FpatInterface.conv_formula t2 in
   Fpat.Cvc3Interface.implies [t1'] [t2'] && Fpat.Cvc3Interface.implies [t2'] [t1']
 
 
@@ -120,7 +120,7 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
       add_time tmp Flag.time_cegar;
       raise e
 
-exception PostCondition of (Fpat.Var.t * Fpat.SimType.t) list * Fpat.Term.t
+exception PostCondition of (Fpat.Var.t * Fpat.SimType.t) list * Fpat.Formula.t
 
 let refine_rank_fun ce { env=env; defs=defs; main=main } =
   let tmp = get_time () in

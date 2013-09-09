@@ -70,7 +70,7 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
   let debug = !Flag.debug_level > 0 in
   let open Fpat in
   let lenSpcSequence = List.length spcSequence in
-  let subst_ith i = Term.subst (List.map (fun v -> (v, Term.make_var (Var.rename_base (fun (Idnt.Id v) -> Idnt.Id (v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH")) v))) variables) in
+  let subst_ith i = Formula.subst (List.map (fun v -> (v, Term.make_var (Var.rename_base (fun (Idnt.Id v) -> Idnt.Id (v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH")) v))) variables) in
   let nth_constraints n =
     let rec go i = 
       let ith_ltp, ith_lt = List.nth prevLinearTemplates i, List.nth linearTemplates i in
@@ -115,7 +115,7 @@ let rec run predicate_que holed =
 	(if not !Flag.exp then Format.printf "%s is possibly non-terminating.@." holed.BRA_types.verified.BRA_types.id.Id.name ; result)
     with Refine.PostCondition (env, spc) ->
       let open Fpat in
-      let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
+      let unwrap_template t = match Formula.term_of t with (Term.App ([], Term.App ([], _, t), _)) -> t in
       let imply t1 t2 = Formula.band [t1; Formula.bnot t2] in
       let arg_vars =
 	List.map (fun v -> Var.of_string (Id.to_string (BRA_transform.extract_id v)))
@@ -140,7 +140,7 @@ let rec run predicate_que holed =
 	    (Formula.band [ Formula.gt linear_template_prev linear_template
 			  ; Formula.geq linear_template (IntTerm.make 0)])]
 	in
-	if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
+	if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	
         (* solve constraints and obtain coefficients of a ranking function *)
 	let newPredicateInfo =
@@ -177,7 +177,7 @@ let rec run predicate_que holed =
 
 	  (* make a constraint *)
 	  let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence allSpcSequences in
-	  if debug then Format.printf "Constraint:@.  %a@." Term.pr constraints;
+	  if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	  
 	  try
 	    (* solve constraint and obtain coefficients *)

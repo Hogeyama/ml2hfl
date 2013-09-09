@@ -27,7 +27,7 @@ type coefficient_info = { coeffs : int list
 
 type predicate_info = { variables : Syntax.id list
 		      ; prev_variables : Syntax.id list
-		      ; error_paths : Fpat.Term.t list
+		      ; error_paths : Fpat.Formula.t list
 		      ; coefficients : coefficient_info list
 		      }
 
