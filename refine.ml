@@ -147,21 +147,21 @@ let refine_rank_fun ce { env=env; defs=defs; main=main } =
       in
 
       let spcWithExparam =
-	let {env=envWithExparam; defs=defsWithExparam; main=mainWithExparam} = !progWithExparam in
+        let {env=envWithExparam; defs=defsWithExparam; main=mainWithExparam} = !progWithExparam in
         Format.printf "@[<v>";
         let _, spcWithExparam =
-	  if !Flag.add_closure_exparam then
-	    FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce
-	  else
-	    [], spc (* dummy *)
-	in
+          if !Flag.add_closure_exparam then
+            FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce
+          else
+            [], spc (* dummy *)
+        in
         Format.printf "@]";
         spcWithExparam
       in
 
       (* TEMPORARY *)
-      (*Format.printf "[exparam]@.%a@." Fpat.Term.pr spcWithExparam;
-      Format.printf "[instantiated]@.%a@." Fpat.Term.pr spc;*)
+      (*Format.printf "[exparam]@.%a@." Fpat.Formula.pr spcWithExparam;
+      Format.printf "[instantiated]@.%a@." Fpat.Formula.pr spc;*)
 
       if !Flag.print_progress then Format.printf "DONE!@.@.";
       Fpat.Cvc3Interface.close_cvc3 ();

@@ -85,15 +85,13 @@ let rec insertExparam scope expr =
 	desc = Not (insertExparam scope e)}
     | _ -> assert false (* unimplemented *)
 
-let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
-
 let rec removeDummySubstitutions = function
   | { desc = Let (Recursive, [id, [], {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
   | e -> e
 
 let substituteZero e =
   let toZero = function
-    | { desc = Var id } when isEX_COEFFS (Id.name id) -> make_int 0
+    | { desc = Var id } when CEGAR_syntax.isEX_COEFFS (Id.name id) -> make_int 0
     | e -> e
   in
   BRA_transform.everywhere_expr toZero e

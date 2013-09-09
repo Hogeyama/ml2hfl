@@ -51,7 +51,7 @@ let rec conv_term t =
   | Const(RandVal s) -> Term.make_var (Var.make (Idnt.make (new_id "r"))) (***)
   | Const(c) -> Term.Const([], conv_const c)
   | Var(x) ->
-      if is_parameter x then
+      if is_parameter x || isEX_COEFFS x then
         Term.make_var (Var.make_coeff (Idnt.make x))
       else
         Term.make_var (Var.make (Idnt.make x))

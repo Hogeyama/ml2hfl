@@ -49,7 +49,7 @@ let inferCoeffs argumentVariables linear_templates constraints =
     
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
-      let ((correspondenceCoeffs, const_part) as ranking_function) = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) correspondenceVars) linTemp)
+      let ((correspondenceCoeffs, const_part) as ranking_function) = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.mk_const (Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
@@ -74,7 +74,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
     
     (List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
-      let correspondenceCoeffs, const_part = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.make_const (Const.Int c))) correspondenceVars) linTemp)
+      let correspondenceCoeffs, const_part = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.mk_const (Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
@@ -85,7 +85,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       in
       {coeffs = coefficients; constant = IntTerm.int_of const_part}
      ) linear_templates,
-     let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Var.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Var.string_of |> ExtraParamInfer.isEX_COEFFS) correspondenceVars) in
+     let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Var.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Var.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
      let substToVar = function
        | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> Syntax.make_var x)
        | t -> t
