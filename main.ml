@@ -131,6 +131,7 @@ let main in_channel =
     Main_loop.run orig parsed
 
 
+let print_option_and_exit = ref (fun () -> ())
 
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
@@ -156,6 +157,7 @@ let arg_spec =
    "-v", Arg.Unit (fun () -> print_commit_hash (); exit 0), " Print the version shortly";
    "-version", Arg.Unit (fun () -> print_env (); exit 0), " Print the version";
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
+   "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
    (* preprocessing *)
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
@@ -306,6 +308,8 @@ let arg_spec =
      " Insert extra parameters for representing depth of closures"
   ]
 
+let () = print_option_and_exit := fun () ->
+  List.iter (fun (s,_,_) -> Format.printf "%s " s) arg_spec; exit 0
 
 let string_of_exception = function
     e when FpatInterface.is_fpat_exception e -> FpatInterface.string_of_error e
