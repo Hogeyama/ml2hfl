@@ -30,11 +30,16 @@ let print_info () =
     end
   else
     begin
+      if !Flag.add_closure_exparam then
+	Format.printf "exparam inserted program:@. %a@." Syntax.pp_print_term !ExtraParamInfer.origWithExparam;
       if !Flag.termination then
         begin
           List.iter
             (fun (f_name, (cycles, pred)) ->
-	      Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred)
+	      Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
+	      if !Flag.add_closure_exparam then
+		let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
+		if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
 	    !Termination_loop.lrf
         end;
       Format.printf "cycles: %d\n" !Flag.cegar_loop;

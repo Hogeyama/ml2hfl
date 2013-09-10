@@ -1,6 +1,25 @@
 open Syntax
 open Type
 
+let origWithExparam = ref (Syntax.make_int 0)
+let exCoefficients = ref []
+
+let to_string_CoeffInfos f =
+  let g {desc = Var v} = Id.name v in
+  let h = function
+    | {desc = Const (Int n)} -> string_of_int n
+    | _ -> raise (Invalid_argument "")
+  in
+  let areAllZero = List.for_all (fun {desc=Const (Int n)} -> n = 0) (List.map f !exCoefficients) in
+  try
+    if areAllZero then "" else
+      List.fold_left2
+	(fun s c v -> s ^ "\t" ^ g c ^ " = " ^ h v ^ "\n")
+	""
+	(List.rev !exCoefficients)
+	(List.rev_map f !exCoefficients)
+  with _ -> ""
+
 let withExparam = ref (Syntax.make_int 0)
 
 let rec transType = function
@@ -18,7 +37,8 @@ let freshCoefficient () =
   let freshName = "c" ^ string_of_int (!counter - 1) ^ "_COEFFICIENT" in
   let freshId = Id.new_var freshName TInt in
   let _ = nthCoefficient := !nthCoefficient @ [freshId] in
-  make_var freshId
+  let freshCoeff = make_var freshId in
+  (exCoefficients := freshCoeff :: !exCoefficients; freshCoeff)
 
 let rec makeTemplate = function
   | [] -> freshCoefficient ()
@@ -110,4 +130,7 @@ let addTemplate prog =
     | n -> make_letrec [(List.nth !nthCoefficient n), [], make_int 0] (dummySubst (n-1))
 (*    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_var (List.nth !nthCoefficient n)] (tmp (n-1))*)
   in
-  dummySubst !counter
+  begin
+    origWithExparam := prog;
+    dummySubst !counter
+  end
