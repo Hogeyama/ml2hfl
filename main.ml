@@ -272,12 +272,12 @@ let arg_spec =
    (* termination mode *)
    "-z3-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false (*~linear:true*);
+       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false (*~linear:true*)(*~linear:!Global.linear_farkas*);
        Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve),
      " Use Z3 for ranking function inference";
    "-bv-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:true (*~linear:true*);
+       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:true (*~linear:true*)(*~linear:!Global.linear_farkas*);
        Fpat.RankFunInfer.ext_solve := Fpat.BvPolyConstrSolver.solve),
      " Use bit-vector-based ranking function inference";
     (* use this with Z3 otherwise..*)
@@ -369,7 +369,7 @@ let fpat_init1 () =
   (* default Polynomial constraint solver *)
   Fpat.BvPolyConstrSolver.init ();
   (* default Polynomial constraint solver for ranking function inference *)
-  Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true;
+  Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false (*~linear:true*)(*~linear:!Global.linear_farkas*);
   Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve
 
 (* called after parsing options *)
