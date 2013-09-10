@@ -65,9 +65,11 @@ let inferCoeffs argumentVariables linear_templates constraints =
 
 let inferCoeffsAndExparams argumentVariables linear_templates constraints =
   let debug = !Flag.debug_level > 0 in
+  let printAnd s f x = (Format.printf "%s@." s;f x) in
   let open Fpat in
   (** solve constraint and obtain coefficients **)
-  let correspondenceVars = constraints |> RankFunInfer.generate |> Formula.band |> RankFunInfer.solve in
+  if debug then Format.printf "Constraint:@.  %a@." Formula.pr (Formula.band (RankFunInfer.generate constraints));
+  let correspondenceVars = constraints |> printAnd "RankFunInfer.generate" RankFunInfer.generate |> printAnd "Formula.band" Formula.band |> printAnd "RankFunInfer.solve" RankFunInfer.solve in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise PolyConstrSolver.Unknown);
     if debug then Format.printf "Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs correspondenceVars;
@@ -94,7 +96,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
     )
   end
 
-let makeLexicographicConstraints variables linearTemplates prevLinearTemplates failedSpc spcSequence =
+let makeLexicographicConstraints variables linearTemplates prevLinearTemplates failedSpc =
   (** make a constraint:
          [spc1 => R1(x_prev) > R1(x) /\ R1(x) >= 0]
       /\ [spc2 => R1(x_prev) >= R1(x)
@@ -106,7 +108,7 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
   **)
   let debug = !Flag.debug_level > 0 in
   let open Fpat in
-  let lenSpcSequence = List.length spcSequence in
+  let lenSpcSequence = List.length failedSpc in
   let subst_ith i = Formula.subst (List.map (fun v -> (v, Term.make_var (Var.rename_base (fun (Idnt.Id v) -> Idnt.Id (v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH")) v))) variables) in
   let nth_constraints n =
     let rec go i = 
@@ -214,7 +216,7 @@ let rec run predicate_que holed =
 	let numberOfSpcSequences = List.length allSpcSequences in
 	let allVars = List.map fst env in
 	
-	let successes = (flip mapOption) allSpcSequences (fun spcSequence ->
+	let successes = (flip mapOption) (List.combine allSpcSequences allSpcSequencesWithExparam) (fun (spcSequence, spcSequenceWithExparam) ->
 	  (* make templates (for arguments and previous arguments) *)
 	  let linearTemplates = Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (PolyConstrSolver.gen_template arg_env), i+1) else None) 0 in
 	  let prevLinearTemplates = List.map (Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
@@ -224,7 +226,7 @@ let rec run predicate_que holed =
 	  
 	  try
 	    (* make a constraint *)
-	    let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence allSpcSequences in
+	    let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
 	    if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 
 	    (* solve constraint and obtain coefficients *)
@@ -239,7 +241,7 @@ let rec run predicate_que holed =
 
 	    try
 	      (* make a constraint *)
-	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence allSpcSequencesWithExparam in
+	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequenceWithExparam in
 	      if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	      
 	      (* solve constraint and obtain coefficients *)
@@ -249,8 +251,13 @@ let rec run predicate_que holed =
 	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; error_paths = spcSequence } in
 	      if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	      Some newPredicateInfo
-            with _ ->
-	      None (* failed to solve the constraints *)
+            with
+	      | PolyConstrSolver.NoSolution ->
+		if debug then Format.printf "Failed to find LLRF...@.";
+		None (* failed to solve the constraints *)
+	      | e -> 
+		if debug then Format.printf "Unknown error: %s@." (Printexc.to_string e);
+		None (* failed to solve the constraints *)
 	)
 	in
 	let _ = List.iter (fun pred -> Queue.push pred predicate_que) successes in
