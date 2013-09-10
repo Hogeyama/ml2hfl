@@ -39,10 +39,14 @@ let verify_with holed pred =
   Main_loop.run orig transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
+  (* reduce to linear constraint solving *)
+  let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true in
+  try
   let debug = !Flag.debug_level > 0 in
   let open Fpat in
   (** solve constraint and obtain coefficients **)
   let correspondenceVars = constraints |> RankFunInfer.generate |> Formula.band |> RankFunInfer.solve in
+  let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:false in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise PolyConstrSolver.Unknown);
     if debug then Format.printf "Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs correspondenceVars;
@@ -61,15 +65,18 @@ let inferCoeffs argumentVariables linear_templates constraints =
       {coeffs = coefficients; constant = IntTerm.int_of const_part}
     ) linear_templates
   end
-
+  with
+    | e ->
+      begin
+	let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:false in
+	raise e
+      end
 
 let inferCoeffsAndExparams argumentVariables linear_templates constraints =
   let debug = !Flag.debug_level > 0 in
-  let printAnd s f x = (Format.printf "%s@." s;f x) in
   let open Fpat in
   (** solve constraint and obtain coefficients **)
-  if debug then Format.printf "Constraint:@.  %a@." Formula.pr (Formula.band (RankFunInfer.generate constraints));
-  let correspondenceVars = constraints |> printAnd "RankFunInfer.generate" RankFunInfer.generate |> printAnd "Formula.band" Formula.band |> printAnd "RankFunInfer.solve" RankFunInfer.solve in
+  let correspondenceVars = constraints |> RankFunInfer.generate |> Formula.band |> RankFunInfer.solve in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise PolyConstrSolver.Unknown);
     if debug then Format.printf "Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs correspondenceVars;
