@@ -1,0 +1,1858 @@
+MoCHi: Model Checker for Higher-Order Programs
+  TRecS version: 1.33
+  OCaml version: 4.00.1
+  Command: ./mochi.opt -gchi -termination-split-callsite -infer-ranking-exparam ./test_esop2014/indirectTripled.ml
+
+parsed::
+ let ign_1030 u_1031 = () 
+ in
+ let app_1032 g_1033 u_1034 = g_1033 u_1034 
+ in
+ let main_1035 u_1036 = app_1032 (app_1032 (app_1032 ign_1030)) () 
+ in
+   ()
+
+lambda-lifted::
+ let ign_1030 u_1031 = () 
+ in
+ let app_1032 g_1033 u_1034 = g_1033 u_1034 
+ in
+ let main_1035 u_1036 = app_1032 (app_1032 (app_1032 ign_1030)) () 
+ in
+   ()
+
+regularized::
+ let ign_1030 u_1031 = () 
+ in
+ let app_1032 g_1033 u_1034 = g_1033 u_1034 
+ in
+ let main_1035 u_1036 = app_1032 (app_1032 (app_1032 ign_1030)) () 
+ in
+   main_1035 ()
+
+closure exparam inserted::
+ let rec c2_COEFFICIENT_1065 = 0 
+ in
+ let rec c1_COEFFICIENT_1063 = 0 
+ in
+ let rec c0_COEFFICIENT_1061 = 0 
+ in
+ let ign_1030 u_1031 = () 
+ in
+ let app_1032 g_EXPARAM_1067 g_1033 u_1034 = g_1033 u_1034 
+ in
+ let main_1035 u_1036 =
+   app_1032 c2_COEFFICIENT_1065 (app_1032 c1_COEFFICIENT_1063 (app_1032 c0_COEFFICIENT_1061 ign_1030)) () 
+ in
+   main_1035 ()
+
+HOLED[ign_1030 -> ign_without_checking_1090]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let rec ign_1030 prev_set_flag_ign_1071 u_1031 =
+                                               let __1092 =
+                                                 if prev_set_flag_ign_1071 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 
+                                             and ign_without_checking_1090 set_flag_ign_1072 u_1031 =
+                                               let set_flag_ign_1072 = true 
+                                               in
+                                                 () 
+                                             in
+                                             let app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 =
+                                               g_1033 set_flag_ign_1072 u_1034 
+                                             in
+                                             let main_1035 set_flag_ign_1072 u_1036 =
+                                               app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+                                                 (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+                                                   (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072
+                                                     ign_1030)) set_flag_ign_1072 () 
+                                             in
+                                               main_1035 false ()
+is_update: true
+counter: 1
+replace_index: 0
+HOLED[ign_1030 -> ign_without_checking_1090]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let rec ign_1030 prev_set_flag_ign_1071 u_1031 =
+                                               let __1092 =
+                                                 if prev_set_flag_ign_1071 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 
+                                             and ign_without_checking_1090 set_flag_ign_1072 u_1031 =
+                                               let set_flag_ign_1072 = true 
+                                               in
+                                                 () 
+                                             in
+                                             let app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 =
+                                               g_1033 set_flag_ign_1072 u_1034 
+                                             in
+                                             let main_1035 set_flag_ign_1072 u_1036 =
+                                               app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+                                                 (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+                                                   (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072
+                                                     ign_without_checking_1090)) set_flag_ign_1072 () 
+                                             in
+                                               main_1035 false ()
+is_update: false
+counter: 1
+replace_index: 1
+[0]
+let rec c2_COEFFICIENT_1065 = 0 
+in
+let rec c1_COEFFICIENT_1063 = 0 
+in
+let rec c0_COEFFICIENT_1061 = 0 
+in
+let rec ign_1030 prev_set_flag_ign_1071 u_1031 =
+  let __1092 = if prev_set_flag_ign_1071 then
+                 if false then
+                   ()
+                 else
+                   {fail} ()
+               else
+                 () 
+  in
+    ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 
+and ign_without_checking_1090 set_flag_ign_1072 u_1031 = let set_flag_ign_1072 = true 
+                                                         in
+                                                           () 
+in
+let app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 =
+  g_1033 set_flag_ign_1072 u_1034 
+in
+let main_1035 set_flag_ign_1072 u_1036 =
+  app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+    (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+      (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072 ign_1030)) set_flag_ign_1072 () 
+in
+  main_1035 false ()
+transformed::
+ let u_1275 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let rec ign_1030 prev_set_flag_ign_1071 u_1031 =
+     (match if prev_set_flag_ign_1071 then
+              let u_1145 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ -> ign_without_checking_1090 prev_set_flag_ign_1071 u_1031
+        | _ -> let u_1148 = {fail} 
+               in
+                 _|_) 
+   and ign_without_checking_1090 set_flag_ign_1072 u_1031 = let set_flag_ign_1072 = true 
+                                                            in
+                                                              () 
+   in
+   let app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 =
+     g_1033 set_flag_ign_1072 u_1034 
+   in
+   let main_1035 set_flag_ign_1072 u_1036 =
+     app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+       (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+         (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072 ign_1030)) set_flag_ign_1072 () 
+   in
+     main_1035 false () 
+ in
+   ()
+
+set_target::
+ let u_1275 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let rec ign_1030 prev_set_flag_ign_1071 u_1031 =
+     (match if prev_set_flag_ign_1071 then
+              let u_1145 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ -> ign_without_checking_1090 prev_set_flag_ign_1071 u_1031
+        | _ -> let u_1148 = {fail} 
+               in
+                 _|_) 
+   and ign_without_checking_1090 set_flag_ign_1072 u_1031 = let set_flag_ign_1072 = true 
+                                                            in
+                                                              () 
+   in
+   let app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 =
+     g_1033 set_flag_ign_1072 u_1034 
+   in
+   let main_1035 set_flag_ign_1072 u_1036 =
+     app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+       (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+         (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072 ign_1030)) set_flag_ign_1072 () 
+   in
+     main_1035 false () 
+ in
+   u_1275
+
+abst_recdata::
+ let u_1275 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let rec ign_1030 prev_set_flag_ign_1071 u_1031 =
+     let u_1276 = if prev_set_flag_ign_1071 then
+                    let u_1145 = {fail} () 
+                    in
+                      _|_
+                  else
+                    () 
+     in
+       ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 
+   and ign_without_checking_1090 set_flag_ign_1072 u_1031 = let set_flag_ign_1072 = true 
+                                                            in
+                                                              () 
+   in
+   let app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 =
+     g_1033 set_flag_ign_1072 u_1034 
+   in
+   let main_1035 set_flag_ign_1072 u_1036 =
+     app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+       (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+         (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072 ign_1030)) set_flag_ign_1072 () 
+   in
+     main_1035 false () 
+ in
+   u_1275
+
+CPS::
+ let rec c2_COEFFICIENT_1065 = 0 
+ in
+ let rec c1_COEFFICIENT_1063 = 0 
+ in
+ let rec c0_COEFFICIENT_1061 = 0 
+ in
+ let rec ign_1030 (prev_set_flag_ign_1071:bool) (u_1031:unit) (k_u_ign_1325:(
+   unit -> X)) =
+   let k_u_ign_u_1343 (x_1328:unit) = ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 
+   in
+     if prev_set_flag_ign_1071 then
+       {|fail|} () (fun x_1331 -> _|_)
+     else
+       k_u_ign_u_1343 () 
+ and ign_without_checking_1090 (set_flag_ign_1072:bool) (u_1031:unit) (k_u_ign_without_checking_1361:(
+   unit -> X)) = k_u_ign_without_checking_1361 () 
+ in
+ let app_1032
+   (x_DO_NOT_CARE_1132:bool) (g_EXPARAM_1067:int) (x_DO_NOT_CARE_1131:bool) (g_1033:(
+   bool -> (unit -> ((unit -> X) -> X)))) (set_flag_ign_1072:bool) (u_1034:unit) (k_u_app_1406:(
+   unit -> X)) = g_1033 set_flag_ign_1072 u_1034 k_u_app_1406 
+ in
+ let main_1035 (set_flag_ign_1072:bool) (u_1036:unit) (k_u_main_1434:(
+   unit -> X)) =
+   app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+     (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+       (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072 ign_1030)) set_flag_ign_1072 () k_u_main_1434 
+ in
+   main_1035 false () (fun x_1290 -> end)
+
+[before]***************
+    Main: main_1494
+      main_1494 -> (main_1035 false () f_1496)
+      app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 k_u_app_1406 ->
+          (g_1033 set_flag_ign_1072 u_1034 k_u_app_1406)
+      f_1496 x_1290 -> end
+      f_ign_1495 prev_set_flag_ign_1071 u_1031 x_1331 -> _|_
+      fail_1497 b k -> {fail} => (k ())
+      ign_1030 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 when prev_set_flag_ign_1071 ->
+          (fail_1497 true (f_ign_1495 prev_set_flag_ign_1071 u_1031))
+      ign_1030 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 when (not prev_set_flag_ign_1071) ->
+          (k_u_ign_u_1343 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 ())
+      ign_without_checking_1090 set_flag_ign_1072 u_1031 k_u_ign_without_checking_1361 ->
+          (k_u_ign_without_checking_1361 ())
+      k_u_ign_u_1343 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 x_1328 ->
+          (ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 k_u_ign_1325)
+      main_1035 set_flag_ign_1072 u_1036 k_u_main_1434 ->
+          (app_1032 set_flag_ign_1072 c2_COEFFICIENT_1065 set_flag_ign_1072
+            (app_1032 set_flag_ign_1072 c1_COEFFICIENT_1063 set_flag_ign_1072
+              (app_1032 set_flag_ign_1072 c0_COEFFICIENT_1061 set_flag_ign_1072 ign_1030)) set_flag_ign_1072 ()
+            k_u_main_1434)
+    Types:
+      main_1494 : X
+      c0_COEFFICIENT_1061 : int
+      c1_COEFFICIENT_1063 : int
+      c2_COEFFICIENT_1065 : int
+      fail_1497 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+[after]***************
+    Main: main_1498
+      main_1498 -> (main_1035 false () f_1500)
+      app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 k_u_app_1406 ->
+          (g_1033 set_flag_ign_1072 u_1034 k_u_app_1406)
+      f_1500 x_1290 -> end
+      f_ign_1499 prev_set_flag_ign_1071 u_1031 x_1331 -> _|_
+      fail_1501 b k -> {fail} => (k ())
+      ign_1030 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 when prev_set_flag_ign_1071 ->
+          (fail_1501 true (f_ign_1499 prev_set_flag_ign_1071 u_1031))
+      ign_1030 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 when (not prev_set_flag_ign_1071) ->
+          (k_u_ign_u_1343 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 ())
+      ign_without_checking_1090 set_flag_ign_1072 u_1031 k_u_ign_without_checking_1361 ->
+          (k_u_ign_without_checking_1361 ())
+      k_u_ign_u_1343 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 x_1328 ->
+          (ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 k_u_ign_1325)
+      main_1035 set_flag_ign_1072 u_1036 k_u_main_1434 ->
+          (app_1032 set_flag_ign_1072 0 set_flag_ign_1072
+            (app_1032 set_flag_ign_1072 0 set_flag_ign_1072 (app_1032 set_flag_ign_1072 0 set_flag_ign_1072 ign_1030))
+            set_flag_ign_1072 () k_u_main_1434)
+    Types:
+      main_1498 : X
+      fail_1501 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+Program with abstraction types (CEGAR-cycle 0)::
+Main: main_1498
+  main_1498 -> (main_1035 false () f_1500)
+  app_1032 x_DO_NOT_CARE_1132 g_EXPARAM_1067 x_DO_NOT_CARE_1131 g_1033 set_flag_ign_1072 u_1034 k_u_app_1406 ->
+      (g_1033 set_flag_ign_1072 u_1034 k_u_app_1406)
+  f_1500 x_1290 -> end
+  f_ign_1499 prev_set_flag_ign_1071 u_1031 x_1331 -> _|_
+  fail_1501 b k -> {fail} => (k ())
+  ign_1030 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 when prev_set_flag_ign_1071 ->
+      (fail_1501 true (f_ign_1499 prev_set_flag_ign_1071 u_1031))
+  ign_1030 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 when (not prev_set_flag_ign_1071) ->
+      (k_u_ign_u_1343 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 ())
+  ign_without_checking_1090 set_flag_ign_1072 u_1031 k_u_ign_without_checking_1361 ->
+      (k_u_ign_without_checking_1361 ())
+  k_u_ign_u_1343 prev_set_flag_ign_1071 u_1031 k_u_ign_1325 x_1328 ->
+      (ign_without_checking_1090 prev_set_flag_ign_1071 u_1031 k_u_ign_1325)
+  main_1035 set_flag_ign_1072 u_1036 k_u_main_1434 ->
+      (app_1032 set_flag_ign_1072 0 set_flag_ign_1072
+        (app_1032 set_flag_ign_1072 0 set_flag_ign_1072 (app_1032 set_flag_ign_1072 0 set_flag_ign_1072 ign_1030))
+        set_flag_ign_1072 () k_u_main_1434)
+Types:
+  main_1498 : X
+  fail_1501 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  
+(0-1) Abstracting ... DONE!
+
+(0-2) Checking HORS ... DONE!
+
+Safe!
+
+ign is terminating.
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 c2_COEFFICIENT_1065 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061
+                                                     set_flag_app_1108 s_app_g_EXPARAM_1101 ign_1030))
+                                                 set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: true
+counter: 3
+replace_index: 0
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 c2_COEFFICIENT_1065 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063
+                                                   set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: true
+counter: 3
+replace_index: 1
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065
+                                                 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: true
+counter: 3
+replace_index: 2
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 c2_COEFFICIENT_1065 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: false
+counter: 3
+replace_index: 3
+[0]
+let rec c2_COEFFICIENT_1065 = 0 
+in
+let rec c1_COEFFICIENT_1063 = 0 
+in
+let rec c0_COEFFICIENT_1061 = 0 
+in
+let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+in
+let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+  let __1126 = if prev_set_flag_app_1107 then
+                 if false then
+                   ()
+                 else
+                   {fail} ()
+               else
+                 () 
+  in
+    app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+      x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+  let set_flag_app_1108 = true 
+  in
+  let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+  in
+    g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+in
+let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+  app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+    s_app_g_EXPARAM_1101
+    (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+      s_app_g_EXPARAM_1101
+      (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+        ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+in
+  main_1035 false 0 ()
+transformed::
+ let u_1990 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     (match if prev_set_flag_app_1107 then
+              let u_1766 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ ->
+            app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+        | _ -> let u_1782 = {fail} 
+               in
+                 _|_) 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+         s_app_g_EXPARAM_1101
+         (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+           ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   ()
+
+set_target::
+ let u_1990 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     (match if prev_set_flag_app_1107 then
+              let u_1766 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ ->
+            app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+        | _ -> let u_1782 = {fail} 
+               in
+                 _|_) 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+         s_app_g_EXPARAM_1101
+         (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+           ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   u_1990
+
+abst_recdata::
+ let u_1990 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     let u_1991 = if prev_set_flag_app_1107 then
+                    let u_1766 = {fail} () 
+                    in
+                      _|_
+                  else
+                    () 
+     in
+       app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+         x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+         s_app_g_EXPARAM_1101
+         (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+           ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   u_1990
+
+CPS::
+ let rec c2_COEFFICIENT_1065 = 0 
+ in
+ let rec c1_COEFFICIENT_1063 = 0 
+ in
+ let rec c0_COEFFICIENT_1061 = 0 
+ in
+ let ign_1030 (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1031:unit) (k_u_ign_2034:(
+   unit -> X)) = k_u_ign_2034 () 
+ in
+ let rec app_1032
+   (x_DO_NOT_CARE_1124:bool) (x_DO_NOT_CARE_1125:int) (g_EXPARAM_1067:int) (x_DO_NOT_CARE_1122:bool) (x_DO_NOT_CARE_1123:int) (g_1033:(
+   bool -> (int -> (unit -> ((unit -> X) -> X))))) (prev_set_flag_app_1107:bool) (s_prev_app_g_EXPARAM_1104:int) (u_1034:unit) (k_u_app_2125:(
+   unit -> X)) =
+   let k_u_app_u_2143 (x_2128:unit) =
+     app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+       x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 
+   in
+     if prev_set_flag_app_1107 then
+       {|fail|} () (fun x_2131 -> _|_)
+     else
+       k_u_app_u_2143 () 
+ and app_without_checking_1120
+   (x_DO_NOT_CARE_1135:bool) (x_DO_NOT_CARE_1136:int) (g_EXPARAM_1067:int) (x_DO_NOT_CARE_1133:bool) (x_DO_NOT_CARE_1134:int) (g_1033:(
+   bool -> (int -> (unit -> ((unit -> X) -> X))))) (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1034:unit) (k_u_app_without_checking_2195:(
+   unit -> X)) = g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_2195 
+ in
+ let main_1035 (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1036:unit) (k_u_main_2233:(
+   unit -> X)) =
+   app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+     s_app_g_EXPARAM_1101
+     (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+         ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_2233 
+ in
+   main_1035 false 0 () (fun x_2005 -> end)
+
+[before]***************
+    Main: main_2307
+      main_2307 -> (main_1035 false 0 () f_2309)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when prev_set_flag_app_1107 ->
+          (fail_2310 true
+            (f_app_2308 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when (
+          not prev_set_flag_app_1107) ->
+          (k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 ())
+      app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 
+      x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_2195 ->
+          (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_2195)
+      f_2309 x_2005 -> end
+      f_app_2308 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_2131 -> _|_
+      fail_2310 b k -> {fail} => (k ())
+      ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_2034 -> (k_u_ign_2034 ())
+      k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 x_2128 ->
+          (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125)
+      main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_2233 ->
+          (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+            s_app_g_EXPARAM_1101
+            (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+              s_app_g_EXPARAM_1101
+              (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+                s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_2233)
+    Types:
+      main_2307 : X
+      c0_COEFFICIENT_1061 : int
+      c1_COEFFICIENT_1063 : int
+      c2_COEFFICIENT_1065 : int
+      fail_2310 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+[after]***************
+    Main: main_2311
+      main_2311 -> (main_1035 false 0 () f_2313)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when prev_set_flag_app_1107 ->
+          (fail_2314 true
+            (f_app_2312 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when (
+          not prev_set_flag_app_1107) ->
+          (k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 ())
+      app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 
+      x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_2195 ->
+          (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_2195)
+      f_2313 x_2005 -> end
+      f_app_2312 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_2131 -> _|_
+      fail_2314 b k -> {fail} => (k ())
+      ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_2034 -> (k_u_ign_2034 ())
+      k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 x_2128 ->
+          (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125)
+      main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_2233 ->
+          (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 0 set_flag_app_1108 s_app_g_EXPARAM_1101
+            (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 0 set_flag_app_1108 s_app_g_EXPARAM_1101
+              (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 0 set_flag_app_1108 s_app_g_EXPARAM_1101 ign_1030))
+            set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_2233)
+    Types:
+      main_2311 : X
+      fail_2314 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+Program with abstraction types (CEGAR-cycle 1)::
+Main: main_2311
+  main_2311 -> (main_1035 false 0 () f_2313)
+  app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when prev_set_flag_app_1107 ->
+      (fail_2314 true
+        (f_app_2312 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+          x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+  app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when (
+      not prev_set_flag_app_1107) ->
+      (k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 ())
+  app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 
+  g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_2195 ->
+      (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_2195)
+  f_2313 x_2005 -> end
+  f_app_2312 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_2131 -> _|_
+  fail_2314 b k -> {fail} => (k ())
+  ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_2034 -> (k_u_ign_2034 ())
+  k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 x_2128 ->
+      (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125)
+  main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_2233 ->
+      (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 0 set_flag_app_1108 s_app_g_EXPARAM_1101
+        (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 0 set_flag_app_1108 s_app_g_EXPARAM_1101
+          (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 0 set_flag_app_1108 s_app_g_EXPARAM_1101 ign_1030))
+        set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_2233)
+Types:
+  main_2311 : X
+  fail_2314 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  
+(1-1) Abstracting ... DONE!
+
+(1-2) Checking HORS ... DONE!
+
+Error trace::
+  main_2311 ... --> 
+  main_1035 ... --> 
+  app_without_checking_1120 ... --> 
+  app_without_checking_1120 ... --> 
+  app_1032 [1/2] ... --> 
+  fail_2314 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 0; 0
+
+(1-3) Checking counter-example ... DONE!
+
+(1-4) Discovering ranking function ... 
+DONE!
+
+Linear template(0):
+  (var6 + (var5 * g_EXPARAM_1067))
+Constraint:
+  (((g_EXPARAM_1067_IN_0TH_ERRORPATH = 0) &&
+    ((x_DO_NOT_CARE_1125_IN_0TH_ERRORPATH = 0) &&
+     ((s_prev_app_g_EXPARAM_1104_IN_0TH_ERRORPATH = 0) &&
+      (x_DO_NOT_CARE_1123_IN_0TH_ERRORPATH = x_DO_NOT_CARE_1125_IN_0TH_ERRORPATH)))) &&
+   (not
+      (((var6 + (var5 * s_prev_app_g_EXPARAM_1104_IN_0TH_ERRORPATH)) >
+        (var6 + (var5 * g_EXPARAM_1067_IN_0TH_ERRORPATH))) && ((var6 + (var5 * g_EXPARAM_1067_IN_0TH_ERRORPATH)) >= 0))))
+Try to update extra parameters...
+
+Constraint:
+  (((x_DO_NOT_CARE_1125_IN_0TH_ERRORPATH = 0) &&
+    ((g_EXPARAM_1067_IN_0TH_ERRORPATH = c0_COEFFICIENT_1061) &&
+     ((c1_COEFFICIENT_1063 = s_prev_app_g_EXPARAM_1104_IN_0TH_ERRORPATH) &&
+      (x_DO_NOT_CARE_1123_IN_0TH_ERRORPATH = x_DO_NOT_CARE_1125_IN_0TH_ERRORPATH)))) &&
+   (not
+      (((var6 + (var5 * s_prev_app_g_EXPARAM_1104_IN_0TH_ERRORPATH)) >
+        (var6 + (var5 * g_EXPARAM_1067_IN_0TH_ERRORPATH))) && ((var6 + (var5 * g_EXPARAM_1067_IN_0TH_ERRORPATH)) >= 0))))
+Inferred coefficients:
+  var6 = 0
+  var17 = -8
+  var5 = -2
+  var13 = 6
+  c1_COEFFICIENT_1063 = -2
+  var12 = 6
+  c0_COEFFICIENT_1061 = -1
+  var20 = 4
+  var15 = 3
+  var16 = 0
+  var11 = 0
+  var19 = 0
+  var18 = 0
+  var14 = 0
+Found ranking function: -2g_EXPARAM
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 c2_COEFFICIENT_1065 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061
+                                                     set_flag_app_1108 s_app_g_EXPARAM_1101 ign_1030))
+                                                 set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: true
+counter: 3
+replace_index: 0
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 c2_COEFFICIENT_1065 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063
+                                                   set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: true
+counter: 3
+replace_index: 1
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065
+                                                 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: true
+counter: 3
+replace_index: 2
+HOLED[app_1032 -> app_without_checking_1120]:let rec c2_COEFFICIENT_1065 = 0 
+                                             in
+                                             let rec c1_COEFFICIENT_1063 = 0 
+                                             in
+                                             let rec c0_COEFFICIENT_1061 = 0 
+                                             in
+                                             let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+                                             in
+                                             let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+                                               let __1126 =
+                                                 if prev_set_flag_app_1107 then
+                                                   if __HOLE___7 then
+                                                     ()
+                                                   else
+                                                     {fail} ()
+                                                 else
+                                                   () 
+                                               in
+                                                 app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125
+                                                   g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+                                                   prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+                                             and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+                                               let set_flag_app_1108 = true 
+                                               in
+                                               let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+                                               in
+                                                 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+                                             in
+                                             let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+                                               app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 c2_COEFFICIENT_1065 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                 (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                   (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+                                                     ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+                                             in
+                                               main_1035 false 0 ()
+is_update: false
+counter: 3
+replace_index: 3
+[0]
+let rec c2_COEFFICIENT_1065 = 0 
+in
+let rec c1_COEFFICIENT_1063 = 0 
+in
+let rec c0_COEFFICIENT_1061 = 0 
+in
+let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+in
+let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+  let __1126 =
+    if prev_set_flag_app_1107 then
+      if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+         (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+        ()
+      else
+        {fail} ()
+    else
+      () 
+  in
+    app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+      x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+  let set_flag_app_1108 = true 
+  in
+  let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+  in
+    g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+in
+let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+  app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+    s_app_g_EXPARAM_1101
+    (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+      s_app_g_EXPARAM_1101
+      (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+        ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+in
+  main_1035 false 0 ()
+transformed::
+ let u_2955 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     (match if prev_set_flag_app_1107 then
+              if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+                 (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+                ()
+              else
+                let u_2731 = {fail} () 
+                in
+                  _|_
+            else
+              () with
+        | _ ->
+            app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+        | _ -> let u_2747 = {fail} 
+               in
+                 _|_) 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+         s_app_g_EXPARAM_1101
+         (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+           ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   ()
+
+set_target::
+ let u_2955 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     (match if prev_set_flag_app_1107 then
+              if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+                 (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+                ()
+              else
+                let u_2731 = {fail} () 
+                in
+                  _|_
+            else
+              () with
+        | _ ->
+            app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+        | _ -> let u_2747 = {fail} 
+               in
+                 _|_) 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+         s_app_g_EXPARAM_1101
+         (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+           ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   u_2955
+
+abst_recdata::
+ let u_2955 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     let u_2956 =
+       if prev_set_flag_app_1107 then
+         if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+            (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+           ()
+         else
+           let u_2731 = {fail} () 
+           in
+             _|_
+       else
+         () 
+     in
+       app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+         x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+         s_app_g_EXPARAM_1101
+         (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+           ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   u_2955
+
+CPS::
+ let rec c2_COEFFICIENT_1065 = 0 
+ in
+ let rec c1_COEFFICIENT_1063 = 0 
+ in
+ let rec c0_COEFFICIENT_1061 = 0 
+ in
+ let ign_1030 (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1031:unit) (k_u_ign_2999:(
+   unit -> X)) = k_u_ign_2999 () 
+ in
+ let rec app_1032
+   (x_DO_NOT_CARE_1124:bool) (x_DO_NOT_CARE_1125:int) (g_EXPARAM_1067:int) (x_DO_NOT_CARE_1122:bool) (x_DO_NOT_CARE_1123:int) (g_1033:(
+   bool -> (int -> (unit -> ((unit -> X) -> X))))) (prev_set_flag_app_1107:bool) (s_prev_app_g_EXPARAM_1104:int) (u_1034:unit) (k_u_app_3090:(
+   unit -> X)) =
+   let k_u_app_u_3116 (x_3093:unit) =
+     app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+       x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 
+   in
+     if prev_set_flag_app_1107 then
+       let k_u_app_u_3096 (b_3113:bool) = if b_3113 then
+                                            k_u_app_u_3116 ()
+                                          else
+                                            {|fail|} () (fun x_3100 -> _|_) 
+       in
+         if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) then
+           k_u_app_u_3096 ((0 * 1) + (-2 * g_EXPARAM_1067) >= 0)
+         else
+           k_u_app_u_3096 false
+     else
+       k_u_app_u_3116 () 
+ and app_without_checking_1120
+   (x_DO_NOT_CARE_1135:bool) (x_DO_NOT_CARE_1136:int) (g_EXPARAM_1067:int) (x_DO_NOT_CARE_1133:bool) (x_DO_NOT_CARE_1134:int) (g_1033:(
+   bool -> (int -> (unit -> ((unit -> X) -> X))))) (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1034:unit) (k_u_app_without_checking_3168:(
+   unit -> X)) = g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_3168 
+ in
+ let main_1035 (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1036:unit) (k_u_main_3206:(
+   unit -> X)) =
+   app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+     s_app_g_EXPARAM_1101
+     (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108 s_app_g_EXPARAM_1101
+         ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_3206 
+ in
+   main_1035 false 0 () (fun x_2970 -> end)
+
+[before]***************
+    Main: main_3280
+      main_3280 -> (main_1035 false 0 () f_3282)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when prev_set_flag_app_1107 ->
+          (fail_3283 true
+            (f_app_3281 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when (
+          not prev_set_flag_app_1107) ->
+          (k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 ())
+      app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 
+      x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_2195 ->
+          (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_2195)
+      f_3282 x_2005 -> end
+      f_app_3281 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_2131 -> _|_
+      fail_3283 b k -> {fail} => (k ())
+      ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_2034 -> (k_u_ign_2034 ())
+      k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 x_2128 ->
+          (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125)
+      main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_2233 ->
+          (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+            s_app_g_EXPARAM_1101
+            (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+              s_app_g_EXPARAM_1101
+              (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+                s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_2233)
+    Types:
+      main_3280 : X
+      c0_COEFFICIENT_1061 : int
+      c1_COEFFICIENT_1063 : int
+      c2_COEFFICIENT_1065 : int
+      fail_3283 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+[after]***************
+    Main: main_3284
+      main_3284 -> (main_1035 false 0 () f_3286)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when prev_set_flag_app_1107 ->
+          (br_app_3287 (((0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104)) > ((0 * 1) + (-2 * g_EXPARAM_1067)))
+            x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+            prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when (
+          not prev_set_flag_app_1107) ->
+          (k_u_app_u_3116 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 ())
+      app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 
+      x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_3168 ->
+          (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_3168)
+      br_app_3287 b_3288 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 
+      g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when b_3288 ->
+          (k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090
+            (((0 * 1) + (-2 * g_EXPARAM_1067)) >= 0))
+      br_app_3287 b_3288 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 
+      g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when (
+          not b_3288) ->
+          (k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 false)
+      c0_COEFFICIENT_1061 -> 0
+      c1_COEFFICIENT_1063 -> 0
+      c2_COEFFICIENT_1065 -> 0
+      f_3286 x_2970 -> end
+      f_k_u_app_u_3285 b_3113 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+      x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_3100 -> _|_
+      fail_3289 b k -> {fail} => (k ())
+      ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_2999 -> (k_u_ign_2999 ())
+      k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 b_3113 when b_3113 ->
+          (k_u_app_u_3116 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 ())
+      k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 b_3113 when (
+          not b_3113) ->
+          (fail_3289 true
+            (f_k_u_app_u_3285 b_3113 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+              x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+      k_u_app_u_3116 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 x_3093 ->
+          (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090)
+      main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_3206 ->
+          (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+            s_app_g_EXPARAM_1101
+            (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 -2 set_flag_app_1108 s_app_g_EXPARAM_1101
+              (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 -1 set_flag_app_1108 s_app_g_EXPARAM_1101 ign_1030))
+            set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_3206)
+    Types:
+      main_3284 : X
+      fail_3289 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      k_u_app_u_3116 : (int ->
+                        x_2:bool[x_2] ->
+                        int ->
+                        unit ->
+                        x_5:bool[x_5] ->
+                        int ->
+                        x_7:bool[x_7] ->
+                        int -> (x_10:bool[x_10] -> int -> unit -> (unit -> X) -> X) -> (unit -> X) -> unit -> X)
+      
+Program with abstraction types (CEGAR-cycle 2)::
+Main: main_3284
+  main_3284 -> (main_1035 false 0 () f_3286)
+  app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when prev_set_flag_app_1107 ->
+      (br_app_3287 (((0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104)) > ((0 * 1) + (-2 * g_EXPARAM_1067)))
+        x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+        prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090)
+  app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when (
+      not prev_set_flag_app_1107) ->
+      (k_u_app_u_3116 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 ())
+  app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 
+  g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_3168 ->
+      (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_3168)
+  br_app_3287 b_3288 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when b_3288 ->
+      (k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090
+        (((0 * 1) + (-2 * g_EXPARAM_1067)) >= 0))
+  br_app_3287 b_3288 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090 when (
+      not b_3288) ->
+      (k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 false)
+  c0_COEFFICIENT_1061 -> 0
+  c1_COEFFICIENT_1063 -> 0
+  c2_COEFFICIENT_1065 -> 0
+  f_3286 x_2970 -> end
+  f_k_u_app_u_3285 b_3113 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_3100 -> _|_
+  fail_3289 b k -> {fail} => (k ())
+  ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_2999 -> (k_u_ign_2999 ())
+  k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 b_3113 when b_3113 ->
+      (k_u_app_u_3116 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 ())
+  k_u_app_u_3096 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 b_3113 when (
+      not b_3113) ->
+      (fail_3289 true
+        (f_k_u_app_u_3285 b_3113 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+          x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+  k_u_app_u_3116 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_3090 x_3093 ->
+      (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_3090)
+  main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_3206 ->
+      (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+        s_app_g_EXPARAM_1101
+        (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 -2 set_flag_app_1108 s_app_g_EXPARAM_1101
+          (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 -1 set_flag_app_1108 s_app_g_EXPARAM_1101 ign_1030))
+        set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_3206)
+Types:
+  main_3284 : X
+  fail_3289 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  k_u_app_u_3116 : (int ->
+                    x_2:bool[x_2] ->
+                    int ->
+                    unit ->
+                    x_5:bool[x_5] ->
+                    int ->
+                    x_7:bool[x_7] ->
+                    int -> (x_10:bool[x_10] -> int -> unit -> (unit -> X) -> X) -> (unit -> X) -> unit -> X)
+  
+(2-1) Abstracting ... DONE!
+
+(2-2) Checking HORS ... DONE!
+
+Safe!
+
+[1]
+let rec c2_COEFFICIENT_1065 = 0 
+in
+let rec c1_COEFFICIENT_1063 = 0 
+in
+let rec c0_COEFFICIENT_1061 = 0 
+in
+let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+in
+let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+  let __1126 =
+    if prev_set_flag_app_1107 then
+      if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+         (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+        ()
+      else
+        {fail} ()
+    else
+      () 
+  in
+    app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+      x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+  let set_flag_app_1108 = true 
+  in
+  let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+  in
+    g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+in
+let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+  app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+    s_app_g_EXPARAM_1101
+    (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+      (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+        s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+in
+  main_1035 false 0 ()
+transformed::
+ let u_4053 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     (match if prev_set_flag_app_1107 then
+              if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+                 (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+                ()
+              else
+                let u_3829 = {fail} () 
+                in
+                  _|_
+            else
+              () with
+        | _ ->
+            app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+        | _ -> let u_3845 = {fail} 
+               in
+                 _|_) 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+         (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+           s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   ()
+
+set_target::
+ let u_4053 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     (match if prev_set_flag_app_1107 then
+              if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+                 (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+                ()
+              else
+                let u_3829 = {fail} () 
+                in
+                  _|_
+            else
+              () with
+        | _ ->
+            app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+        | _ -> let u_3845 = {fail} 
+               in
+                 _|_) 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+         (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+           s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   u_4053
+
+abst_recdata::
+ let u_4053 =
+   let rec c2_COEFFICIENT_1065 = 0 
+   in
+   let rec c1_COEFFICIENT_1063 = 0 
+   in
+   let rec c0_COEFFICIENT_1061 = 0 
+   in
+   let ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 = () 
+   in
+   let rec app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 =
+     let u_4054 =
+       if prev_set_flag_app_1107 then
+         if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) &&
+            (0 * 1) + (-2 * g_EXPARAM_1067) >= 0 then
+           ()
+         else
+           let u_3829 = {fail} () 
+           in
+             _|_
+       else
+         () 
+     in
+       app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+         x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+   and app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 =
+     let set_flag_app_1108 = true 
+     in
+     let s_app_g_EXPARAM_1101 = g_EXPARAM_1067 
+     in
+       g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 
+   in
+   let main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 =
+     app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+       s_app_g_EXPARAM_1101
+       (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+         (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+           s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () 
+   in
+     main_1035 false 0 () 
+ in
+   u_4053
+
+CPS::
+ let rec c2_COEFFICIENT_1065 = 0 
+ in
+ let rec c1_COEFFICIENT_1063 = 0 
+ in
+ let rec c0_COEFFICIENT_1061 = 0 
+ in
+ let ign_1030 (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1031:unit) (k_u_ign_4097:(
+   unit -> X)) = k_u_ign_4097 () 
+ in
+ let rec app_1032
+   (x_DO_NOT_CARE_1124:bool) (x_DO_NOT_CARE_1125:int) (g_EXPARAM_1067:int) (x_DO_NOT_CARE_1122:bool) (x_DO_NOT_CARE_1123:int) (g_1033:(
+   bool -> (int -> (unit -> ((unit -> X) -> X))))) (prev_set_flag_app_1107:bool) (s_prev_app_g_EXPARAM_1104:int) (u_1034:unit) (k_u_app_4188:(
+   unit -> X)) =
+   let k_u_app_u_4214 (x_4191:unit) =
+     app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+       x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 
+   in
+     if prev_set_flag_app_1107 then
+       let k_u_app_u_4194 (b_4211:bool) = if b_4211 then
+                                            k_u_app_u_4214 ()
+                                          else
+                                            {|fail|} () (fun x_4198 -> _|_) 
+       in
+         if (0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104) > (0 * 1) + (-2 * g_EXPARAM_1067) then
+           k_u_app_u_4194 ((0 * 1) + (-2 * g_EXPARAM_1067) >= 0)
+         else
+           k_u_app_u_4194 false
+     else
+       k_u_app_u_4214 () 
+ and app_without_checking_1120
+   (x_DO_NOT_CARE_1135:bool) (x_DO_NOT_CARE_1136:int) (g_EXPARAM_1067:int) (x_DO_NOT_CARE_1133:bool) (x_DO_NOT_CARE_1134:int) (g_1033:(
+   bool -> (int -> (unit -> ((unit -> X) -> X))))) (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1034:unit) (k_u_app_without_checking_4266:(
+   unit -> X)) = g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_4266 
+ in
+ let main_1035 (set_flag_app_1108:bool) (s_app_g_EXPARAM_1101:int) (u_1036:unit) (k_u_main_4304:(
+   unit -> X)) =
+   app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+     s_app_g_EXPARAM_1101
+     (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108 s_app_g_EXPARAM_1101
+       (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+         s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_4304 
+ in
+   main_1035 false 0 () (fun x_4068 -> end)
+
+[before]***************
+    Main: main_4378
+      main_4378 -> (main_1035 false 0 () f_4380)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when prev_set_flag_app_1107 ->
+          (fail_4381 true
+            (f_app_4379 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+              x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125 when (
+          not prev_set_flag_app_1107) ->
+          (k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 ())
+      app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 
+      x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_2195 ->
+          (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_2195)
+      f_4380 x_2005 -> end
+      f_app_4379 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_2131 -> _|_
+      fail_4381 b k -> {fail} => (k ())
+      ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_2034 -> (k_u_ign_2034 ())
+      k_u_app_u_2143 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_2125 x_2128 ->
+          (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_2125)
+      main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_2233 ->
+          (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+            s_app_g_EXPARAM_1101
+            (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c1_COEFFICIENT_1063 set_flag_app_1108
+              s_app_g_EXPARAM_1101
+              (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 c0_COEFFICIENT_1061 set_flag_app_1108
+                s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_2233)
+    Types:
+      main_4378 : X
+      c0_COEFFICIENT_1061 : int
+      c1_COEFFICIENT_1063 : int
+      c2_COEFFICIENT_1065 : int
+      fail_4381 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+[after]***************
+    Main: main_4382
+      main_4382 -> (main_1035 false 0 () f_4384)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when prev_set_flag_app_1107 ->
+          (br_app_4385 (((0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104)) > ((0 * 1) + (-2 * g_EXPARAM_1067)))
+            x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+            prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188)
+      app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+      prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when (
+          not prev_set_flag_app_1107) ->
+          (k_u_app_u_4214 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 ())
+      app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 
+      x_DO_NOT_CARE_1134 g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_4266 ->
+          (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_4266)
+      br_app_4385 b_4386 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 
+      g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when b_4386 ->
+          (k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188
+            (((0 * 1) + (-2 * g_EXPARAM_1067)) >= 0))
+      br_app_4385 b_4386 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 
+      g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when (
+          not b_4386) ->
+          (k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 false)
+      c0_COEFFICIENT_1061 -> 0
+      c1_COEFFICIENT_1063 -> 0
+      c2_COEFFICIENT_1065 -> 0
+      f_4384 x_4068 -> end
+      f_k_u_app_u_4383 b_4211 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 
+      x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_4198 -> _|_
+      fail_4387 b k -> {fail} => (k ())
+      ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_4097 -> (k_u_ign_4097 ())
+      k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 b_4211 when b_4211 ->
+          (k_u_app_u_4214 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 ())
+      k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 b_4211 when (
+          not b_4211) ->
+          (fail_4387 true
+            (f_k_u_app_u_4383 b_4211 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+              x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+      k_u_app_u_4214 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+      x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 x_4191 ->
+          (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+            x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188)
+      main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_4304 ->
+          (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+            s_app_g_EXPARAM_1101
+            (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 -2 set_flag_app_1108 s_app_g_EXPARAM_1101
+              (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 -1 set_flag_app_1108
+                s_app_g_EXPARAM_1101 ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_4304)
+    Types:
+      main_4382 : X
+      fail_4387 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      k_u_app_u_4214 : (int ->
+                        x_2:bool[x_2] ->
+                        int ->
+                        unit ->
+                        x_5:bool[x_5] ->
+                        int ->
+                        x_7:bool[x_7] ->
+                        int -> (x_10:bool[x_10] -> int -> unit -> (unit -> X) -> X) -> (unit -> X) -> unit -> X)
+      
+Program with abstraction types (CEGAR-cycle 3)::
+Main: main_4382
+  main_4382 -> (main_1035 false 0 () f_4384)
+  app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when prev_set_flag_app_1107 ->
+      (br_app_4385 (((0 * 1) + (-2 * s_prev_app_g_EXPARAM_1104)) > ((0 * 1) + (-2 * g_EXPARAM_1067)))
+        x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033
+        prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188)
+  app_1032 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when (
+      not prev_set_flag_app_1107) ->
+      (k_u_app_u_4214 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 ())
+  app_without_checking_1120 x_DO_NOT_CARE_1135 x_DO_NOT_CARE_1136 g_EXPARAM_1067 x_DO_NOT_CARE_1133 x_DO_NOT_CARE_1134 
+  g_1033 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1034 k_u_app_without_checking_4266 ->
+      (g_1033 true g_EXPARAM_1067 u_1034 k_u_app_without_checking_4266)
+  br_app_4385 b_4386 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when b_4386 ->
+      (k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188
+        (((0 * 1) + (-2 * g_EXPARAM_1067)) >= 0))
+  br_app_4385 b_4386 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 g_1033 
+  prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188 when (
+      not b_4386) ->
+      (k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 false)
+  c0_COEFFICIENT_1061 -> 0
+  c1_COEFFICIENT_1063 -> 0
+  c2_COEFFICIENT_1065 -> 0
+  f_4384 x_4068 -> end
+  f_k_u_app_u_4383 b_4211 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 x_4198 -> _|_
+  fail_4387 b k -> {fail} => (k ())
+  ign_1030 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1031 k_u_ign_4097 -> (k_u_ign_4097 ())
+  k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 b_4211 when b_4211 ->
+      (k_u_app_u_4214 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 ())
+  k_u_app_u_4194 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 b_4211 when (
+      not b_4211) ->
+      (fail_4387 true
+        (f_k_u_app_u_4383 b_4211 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034
+          x_DO_NOT_CARE_1122 x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125))
+  k_u_app_u_4214 g_EXPARAM_1067 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 x_DO_NOT_CARE_1122 
+  x_DO_NOT_CARE_1123 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_1033 k_u_app_4188 x_4191 ->
+      (app_without_checking_1120 x_DO_NOT_CARE_1124 x_DO_NOT_CARE_1125 g_EXPARAM_1067 x_DO_NOT_CARE_1122
+        x_DO_NOT_CARE_1123 g_1033 prev_set_flag_app_1107 s_prev_app_g_EXPARAM_1104 u_1034 k_u_app_4188)
+  main_1035 set_flag_app_1108 s_app_g_EXPARAM_1101 u_1036 k_u_main_4304 ->
+      (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 c2_COEFFICIENT_1065 set_flag_app_1108
+        s_app_g_EXPARAM_1101
+        (app_1032 set_flag_app_1108 s_app_g_EXPARAM_1101 -2 set_flag_app_1108 s_app_g_EXPARAM_1101
+          (app_without_checking_1120 set_flag_app_1108 s_app_g_EXPARAM_1101 -1 set_flag_app_1108 s_app_g_EXPARAM_1101
+            ign_1030)) set_flag_app_1108 s_app_g_EXPARAM_1101 () k_u_main_4304)
+Types:
+  main_4382 : X
+  fail_4387 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  k_u_app_u_4214 : (int ->
+                    x_2:bool[x_2] ->
+                    int ->
+                    unit ->
+                    x_5:bool[x_5] ->
+                    int ->
+                    x_7:bool[x_7] ->
+                    int -> (x_10:bool[x_10] -> int -> unit -> (unit -> X) -> X) -> (unit -> X) -> unit -> X)
+  
+(3-1) Abstracting ... DONE!
+
+(3-2) Checking HORS ... DONE!
+
+Error trace::
+  main_4382 ... --> 
+  main_1035 ... --> 
+  app_without_checking_1120 ... --> 
+  app_1032 [1/2] ... --> 
+  br_app_4385 [2/2] ... --> 
+  k_u_app_u_4194 [2/2] ... --> 
+  fail_4387 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 1; 1; 0
+
+(3-3) Checking counter-example ... DONE!
+
+(3-4) Discovering ranking function ... 
+Fatal error: exception Match_failure("rankFunInfer.ml", 31, 6)

@@ -1,0 +1,2621 @@
+MoCHi: Model Checker for Higher-Order Programs
+  TRecS version: 1.33
+  OCaml version: 4.00.1
+  Command: ./mochi.opt -gchi -termination-split-callsite -infer-ranking-exparam ./test_esop2014/example7_2.ml
+
+parsed::
+ let succ_1030 n_1031 = n_1031 + 1 
+ in
+ let g_1032 r_1033 a_1034 = r_1033 (r_1033 a_1034) 
+ in
+ let rec f_1035 n_1036 = if n_1036 = 0 then
+                           succ_1030
+                         else
+                           g_1032 (f_1035 (n_1036 - 1)) 
+ in
+ let main_1037 n_1038 x_1039 = if n_1038 >= 0 && x_1039 >= 0 then
+                                 f_1035 n_1038 x_1039
+                               else
+                                 0 
+ in
+   ()
+
+lambda-lifted::
+ let succ_1030 n_1031 = n_1031 + 1 
+ in
+ let g_1032 r_1033 a_1034 = r_1033 (r_1033 a_1034) 
+ in
+ let rec f_1035 n_1036 = if n_1036 = 0 then
+                           succ_1030
+                         else
+                           g_1032 (f_1035 (n_1036 - 1)) 
+ in
+ let main_1037 n_1038 x_1039 = if n_1038 >= 0 && x_1039 >= 0 then
+                                 f_1035 n_1038 x_1039
+                               else
+                                 0 
+ in
+   ()
+
+regularized::
+ let succ_1030 n_1031 = n_1031 + 1 
+ in
+ let g_1032 r_1033 a_1034 = r_1033 (r_1033 a_1034) 
+ in
+ let rec f_1035 n_1036 = if n_1036 = 0 then
+                           succ_1030
+                         else
+                           g_1032 (f_1035 (n_1036 - 1)) 
+ in
+ let main_1037 n_1038 x_1039 = if n_1038 >= 0 && x_1039 >= 0 then
+                                 f_1035 n_1038 x_1039
+                               else
+                                 0 
+ in
+   main_1037 (rand_int ()) (rand_int ())
+
+closure exparam inserted::
+ let rec c1_COEFFICIENT_1086 = 0 
+ in
+ let rec c0_COEFFICIENT_1085 = 0 
+ in
+ let succ_1030 n_1031 = n_1031 + 1 
+ in
+ let g_1032 r_EXPARAM_1088 r_1033 a_1034 = r_1033 (r_1033 a_1034) 
+ in
+ let rec f_1035 n_1036 =
+   if n_1036 = 0 then
+     succ_1030
+   else
+     g_1032 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) (f_1035 (n_1036 - 1)) 
+ in
+ let main_1037 n_1038 x_1039 = if n_1038 >= 0 && x_1039 >= 0 then
+                                 f_1035 n_1038 x_1039
+                               else
+                                 0 
+ in
+   main_1037 (rand_int ()) (rand_int ())
+
+HOLED[succ_1030 -> succ_without_checking_1117]:let rec c1_COEFFICIENT_1086 = 0 
+                                               in
+                                               let rec c0_COEFFICIENT_1085 = 0 
+                                               in
+                                               let rec succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 =
+                                                 let __1119 =
+                                                   if prev_set_flag_succ_1092 then
+                                                     if __HOLE___7 then
+                                                       ()
+                                                     else
+                                                       {fail} ()
+                                                   else
+                                                     () 
+                                                 in
+                                                   succ_without_checking_1117 prev_set_flag_succ_1092
+                                                     s_prev_succ_n_1091 n_1031 
+                                               and succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 =
+                                                 let set_flag_succ_1093 = true 
+                                                 in
+                                                 let s_succ_n_1090 = n_1031 
+                                                 in
+                                                   n_1031 + 1 
+                                               in
+                                               let g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034 =
+                                                 r_1033 set_flag_succ_1093 s_succ_n_1090
+                                                   (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034) 
+                                               in
+                                               let rec f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 =
+                                                 if n_1036 = 0 then
+                                                   succ_1030
+                                                 else
+                                                   g_1032 set_flag_succ_1093 s_succ_n_1090
+                                                     ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+                                                     set_flag_succ_1093 s_succ_n_1090
+                                                     (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)) 
+                                               in
+                                               let main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 =
+                                                 if n_1038 >= 0 && x_1039 >= 0 then
+                                                   f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038 set_flag_succ_1093
+                                                     s_succ_n_1090 x_1039
+                                                 else
+                                                   0 
+                                               in
+                                                 main_1037 false 0 (rand_int ()) false 0 (rand_int ())
+is_update: true
+counter: 1
+replace_index: 0
+HOLED[succ_1030 -> succ_without_checking_1117]:let rec c1_COEFFICIENT_1086 = 0 
+                                               in
+                                               let rec c0_COEFFICIENT_1085 = 0 
+                                               in
+                                               let rec succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 =
+                                                 let __1119 =
+                                                   if prev_set_flag_succ_1092 then
+                                                     if __HOLE___7 then
+                                                       ()
+                                                     else
+                                                       {fail} ()
+                                                   else
+                                                     () 
+                                                 in
+                                                   succ_without_checking_1117 prev_set_flag_succ_1092
+                                                     s_prev_succ_n_1091 n_1031 
+                                               and succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 =
+                                                 let set_flag_succ_1093 = true 
+                                                 in
+                                                 let s_succ_n_1090 = n_1031 
+                                                 in
+                                                   n_1031 + 1 
+                                               in
+                                               let g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034 =
+                                                 r_1033 set_flag_succ_1093 s_succ_n_1090
+                                                   (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034) 
+                                               in
+                                               let rec f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 =
+                                                 if n_1036 = 0 then
+                                                   succ_without_checking_1117
+                                                 else
+                                                   g_1032 set_flag_succ_1093 s_succ_n_1090
+                                                     ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+                                                     set_flag_succ_1093 s_succ_n_1090
+                                                     (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)) 
+                                               in
+                                               let main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 =
+                                                 if n_1038 >= 0 && x_1039 >= 0 then
+                                                   f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038 set_flag_succ_1093
+                                                     s_succ_n_1090 x_1039
+                                                 else
+                                                   0 
+                                               in
+                                                 main_1037 false 0 (rand_int ()) false 0 (rand_int ())
+is_update: false
+counter: 1
+replace_index: 1
+[0]
+let rec c1_COEFFICIENT_1086 = 0 
+in
+let rec c0_COEFFICIENT_1085 = 0 
+in
+let rec succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 =
+  let __1119 = if prev_set_flag_succ_1092 then
+                 if false then
+                   ()
+                 else
+                   {fail} ()
+               else
+                 () 
+  in
+    succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 
+and succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 =
+  let set_flag_succ_1093 = true 
+  in
+  let s_succ_n_1090 = n_1031 
+  in
+    n_1031 + 1 
+in
+let g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034 =
+  r_1033 set_flag_succ_1093 s_succ_n_1090 (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034) 
+in
+let rec f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 =
+  if n_1036 = 0 then
+    succ_1030
+  else
+    g_1032 set_flag_succ_1093 s_succ_n_1090 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_succ_1093
+      s_succ_n_1090 (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)) 
+in
+let main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 =
+  if n_1038 >= 0 && x_1039 >= 0 then
+    f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039
+  else
+    0 
+in
+  main_1037 false 0 (rand_int ()) false 0 (rand_int ())
+transformed::
+ let u_1567 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let rec succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 =
+     (match if prev_set_flag_succ_1092 then
+              let u_1232 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ -> succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031
+        | _ -> let u_1236 = {fail} 
+               in
+                 _|_) 
+   and succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 =
+     let set_flag_succ_1093 = true 
+     in
+     let s_succ_n_1090 = n_1031 
+     in
+       n_1031 + 1 
+   in
+   let g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034 =
+     r_1033 set_flag_succ_1093 s_succ_n_1090 (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034) 
+   in
+   let rec f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_succ_1093 s_succ_n_1090 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_succ_1093 s_succ_n_1090 (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 (rand_int ()) false 0 (rand_int ()) 
+ in
+   ()
+
+set_target::
+ let u_1567 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let rec succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 =
+     (match if prev_set_flag_succ_1092 then
+              let u_1232 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ -> succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031
+        | _ -> let u_1236 = {fail} 
+               in
+                 _|_) 
+   and succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 =
+     let set_flag_succ_1093 = true 
+     in
+     let s_succ_n_1090 = n_1031 
+     in
+       n_1031 + 1 
+   in
+   let g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034 =
+     r_1033 set_flag_succ_1093 s_succ_n_1090 (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034) 
+   in
+   let rec f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_succ_1093 s_succ_n_1090 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_succ_1093 s_succ_n_1090 (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 (rand_int ()) false 0 (rand_int ()) 
+ in
+ let main_1568 = u_1567 
+ in
+   ()
+
+abst_recdata::
+ let u_1567 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let rec succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 =
+     let u_1572 = if prev_set_flag_succ_1092 then
+                    let u_1232 = {fail} () 
+                    in
+                      _|_
+                  else
+                    () 
+     in
+       succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 
+   and succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 =
+     let set_flag_succ_1093 = true 
+     in
+     let s_succ_n_1090 = n_1031 
+     in
+       n_1031 + 1 
+   in
+   let g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034 =
+     r_1033 set_flag_succ_1093 s_succ_n_1090 (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034) 
+   in
+   let rec f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_succ_1093 s_succ_n_1090 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_succ_1093 s_succ_n_1090 (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 (rand_int ()) false 0 (rand_int ()) 
+ in
+ let main_1568 = u_1567 
+ in
+   ()
+
+abst_list::
+ let u_1567 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let rec succ_1030 (prev_set_flag_succ_1092:bool) (s_prev_succ_n_1091:int) (n_1031:int) =
+     let u_1572 = if prev_set_flag_succ_1092 then
+                    let u_1232 = {fail} () 
+                    in
+                      _|_
+                  else
+                    () 
+     in
+       succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 
+   and succ_without_checking_1117 (set_flag_succ_1093:bool) (s_succ_n_1090:int) (n_1031:int) =
+     let set_flag_succ_1093 = true 
+     in
+     let s_succ_n_1090 = n_1031 
+     in
+       n_1031 + 1 
+   in
+   let g_1032
+     (x_DO_NOT_CARE_1200:bool) (x_DO_NOT_CARE_1201:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1198:bool) (x_DO_NOT_CARE_1199:int) (r_1033:(
+     bool -> (int -> (int -> int)))) (set_flag_succ_1093:bool) (s_succ_n_1090:int) (a_1034:int) =
+     r_1033 set_flag_succ_1093 s_succ_n_1090 (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034) 
+   in
+   let rec f_1035 (set_flag_succ_1093:bool) (s_succ_n_1090:int) (n_1036:int) =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_succ_1093 s_succ_n_1090 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_succ_1093 s_succ_n_1090 (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)) 
+   in
+   let main_1037
+     (x_DO_NOT_CARE_1196:bool) (x_DO_NOT_CARE_1197:int) (n_1038:int) (set_flag_succ_1093:bool) (s_succ_n_1090:int) (x_1039:int) =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 (rand_int ()) false 0 (rand_int ()) 
+ in
+ let main_1568 = u_1567 
+ in
+   ()
+
+CPS::
+ let rec c1_COEFFICIENT_1086 = 0 
+ in
+ let rec c0_COEFFICIENT_1085 = 0 
+ in
+ let rec succ_1030 (prev_set_flag_succ_1092:bool) (s_prev_succ_n_1091:int) (n_1031:int) (k_u_succ_1626:(
+   int -> X)) =
+   let k_u_succ_u_1644 (x_1629:unit) =
+     succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 
+   in
+     if prev_set_flag_succ_1092 then
+       {|fail|} () (fun x_1632 -> _|_)
+     else
+       k_u_succ_u_1644 () 
+ and succ_without_checking_1117
+   (set_flag_succ_1093:bool) (s_succ_n_1090:int) (n_1031:int) (k_u_succ_without_checking_1664:(
+   int -> X)) = k_u_succ_without_checking_1664 (n_1031 + 1) 
+ in
+ let g_1032
+   (x_DO_NOT_CARE_1200:bool) (x_DO_NOT_CARE_1201:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1198:bool) (x_DO_NOT_CARE_1199:int) (r_1033:(
+   bool -> (int -> (int -> ((int -> X) -> X))))) (set_flag_succ_1093:bool) (s_succ_n_1090:int) (a_1034:int) (k_u_g_1722:(
+   int -> X)) =
+   r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034
+     (fun x_1746 -> r_1033 set_flag_succ_1093 s_succ_n_1090 x_1746 k_u_g_1722) 
+ in
+ let rec f_1035
+   (set_flag_succ_1093:bool) (s_succ_n_1090:int) (n_1036:int) (k_u_f_1786:(
+   (bool -> (int -> (int -> ((int -> X) -> X)))) -> X)) =
+   if n_1036 = 0 then
+     k_u_f_1786 succ_1030
+   else
+     f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)
+       (fun x_1859 ->
+          k_u_f_1786
+            (g_1032 set_flag_succ_1093 s_succ_n_1090 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+              set_flag_succ_1093 s_succ_n_1090 x_1859)) 
+ in
+ let main_1037
+   (x_DO_NOT_CARE_1196:bool) (x_DO_NOT_CARE_1197:int) (n_1038:int) (set_flag_succ_1093:bool) (s_succ_n_1090:int) (x_1039:int) (k_u_main_1897:(
+   int -> X)) =
+   let k_u_main_1900 (b_1963:bool) =
+     if b_1963 then
+       f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038
+         (fun x_1940 -> x_1940 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897)
+     else
+       k_u_main_1897 0 
+   in
+     if n_1038 >= 0 then
+       k_u_main_1900 (x_1039 >= 0)
+     else
+       k_u_main_1900 false 
+ in
+   rand_int_cps ()
+     (fun x_2037 -> rand_int_cps () (fun x_1996 -> main_1037 false 0 x_1996 false 0 x_2037 (fun x_1589 -> end)))
+
+[before]***************
+    Main: main_2045
+      main_2045 -> (rand_int f_2050)
+      f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (n_1036 = 0) -> (k_u_f_1786 succ_1030)
+      f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (
+          not (n_1036 = 0)) ->
+          (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)
+            (f_f_2048 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786))
+      f_2050 x_2037 -> (rand_int (f_2051 x_2037))
+      f_2051 x_2037 x_1996 -> (main_1037 false 0 x_1996 false 0 x_2037 (f_2052 x_1996 x_2037))
+      f_2052 x_1996 x_2037 x_1589 -> end
+      f_f_2048 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786 x_1859 ->
+          (k_u_f_1786
+            (g_1032 set_flag_succ_1093 s_succ_n_1090 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+              set_flag_succ_1093 s_succ_n_1090 x_1859))
+      f_g_2047 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 
+      x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033 x_1746 ->
+          (r_1033 set_flag_succ_1093 s_succ_n_1090 x_1746 k_u_g_1722)
+      f_k_u_main_2049 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 
+      k_u_main_1897 x_1940 -> (x_1940 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897)
+      f_succ_2046 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 x_1632 -> _|_
+      fail_2053 b k -> {fail} => (k ())
+      g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 
+      set_flag_succ_1093 s_succ_n_1090 a_1034 k_u_g_1722 ->
+          (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034
+            (f_g_2047 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199
+              x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033))
+      k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+      b_1963 when b_1963 ->
+          (f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038
+            (f_k_u_main_2049 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196
+              x_DO_NOT_CARE_1197 k_u_main_1897))
+      k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+      b_1963 when (not b_1963) -> (k_u_main_1897 0)
+      k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 x_1629 ->
+          (succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626)
+      main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+          n_1038 >= 0) ->
+          (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197
+            k_u_main_1897 (x_1039 >= 0))
+      main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+          not (n_1038 >= 0)) ->
+          (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197
+            k_u_main_1897 false)
+      succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when prev_set_flag_succ_1092 ->
+          (fail_2053 true (f_succ_2046 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091))
+      succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when (
+          not prev_set_flag_succ_1092) ->
+          (k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 ())
+      succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 k_u_succ_without_checking_1664 ->
+          (k_u_succ_without_checking_1664 (n_1031 + 1))
+    Types:
+      main_2045 : X
+      c0_COEFFICIENT_1085 : int
+      c1_COEFFICIENT_1086 : int
+      f_1035 : (x_1:bool[x_1] -> int -> int -> ((x_6:bool[x_6] -> int -> int -> (int -> X) -> X) -> X) -> X)
+      fail_2053 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+[after]***************
+    Main: main_2054
+      main_2054 -> (rand_int f_2059)
+      f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (n_1036 = 0) -> (k_u_f_1786 succ_1030)
+      f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (
+          not (n_1036 = 0)) ->
+          (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)
+            (f_f_2057 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786))
+      f_2059 x_2037 -> (rand_int (f_2060 x_2037))
+      f_2060 x_2037 x_1996 -> (main_1037 false 0 x_1996 false 0 x_2037 (f_2061 x_1996 x_2037))
+      f_2061 x_1996 x_2037 x_1589 -> end
+      f_f_2057 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786 x_1859 ->
+          (k_u_f_1786
+            (g_1032 set_flag_succ_1093 s_succ_n_1090 ((0 * n_1036) + 0) set_flag_succ_1093 s_succ_n_1090 x_1859))
+      f_g_2056 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 
+      x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033 x_1746 ->
+          (r_1033 set_flag_succ_1093 s_succ_n_1090 x_1746 k_u_g_1722)
+      f_k_u_main_2058 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 
+      k_u_main_1897 x_1940 -> (x_1940 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897)
+      f_succ_2055 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 x_1632 -> _|_
+      fail_2062 b k -> {fail} => (k ())
+      g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 
+      set_flag_succ_1093 s_succ_n_1090 a_1034 k_u_g_1722 ->
+          (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034
+            (f_g_2056 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199
+              x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033))
+      k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+      b_1963 when b_1963 ->
+          (f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038
+            (f_k_u_main_2058 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196
+              x_DO_NOT_CARE_1197 k_u_main_1897))
+      k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+      b_1963 when (not b_1963) -> (k_u_main_1897 0)
+      k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 x_1629 ->
+          (succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626)
+      main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+          n_1038 >= 0) ->
+          (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197
+            k_u_main_1897 (x_1039 >= 0))
+      main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+          not (n_1038 >= 0)) ->
+          (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197
+            k_u_main_1897 false)
+      succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when prev_set_flag_succ_1092 ->
+          (fail_2062 true (f_succ_2055 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091))
+      succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when (
+          not prev_set_flag_succ_1092) ->
+          (k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 ())
+      succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 k_u_succ_without_checking_1664 ->
+          (k_u_succ_without_checking_1664 (n_1031 + 1))
+    Types:
+      main_2054 : X
+      f_1035 : (x_1:bool[x_1] -> int -> int -> ((x_6:bool[x_6] -> int -> int -> (int -> X) -> X) -> X) -> X)
+      fail_2062 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+Program with abstraction types (CEGAR-cycle 0)::
+Main: main_2054
+  main_2054 -> (rand_int f_2059)
+  f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (n_1036 = 0) -> (k_u_f_1786 succ_1030)
+  f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (not (n_1036 = 0)) ->
+      (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)
+        (f_f_2057 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786))
+  f_2059 x_2037 -> (rand_int (f_2060 x_2037))
+  f_2060 x_2037 x_1996 -> (main_1037 false 0 x_1996 false 0 x_2037 (f_2061 x_1996 x_2037))
+  f_2061 x_1996 x_2037 x_1589 -> end
+  f_f_2057 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786 x_1859 ->
+      (k_u_f_1786 (g_1032 set_flag_succ_1093 s_succ_n_1090 ((0 * n_1036) + 0) set_flag_succ_1093 s_succ_n_1090 x_1859))
+  f_g_2056 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 
+  x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033 x_1746 ->
+      (r_1033 set_flag_succ_1093 s_succ_n_1090 x_1746 k_u_g_1722)
+  f_k_u_main_2058 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 
+  k_u_main_1897 x_1940 -> (x_1940 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897)
+  f_succ_2055 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 x_1632 -> _|_
+  fail_2062 b k -> {fail} => (k ())
+  g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 
+  set_flag_succ_1093 s_succ_n_1090 a_1034 k_u_g_1722 ->
+      (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034
+        (f_g_2056 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199
+          x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033))
+  k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+  b_1963 when b_1963 ->
+      (f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038
+        (f_k_u_main_2058 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197
+          k_u_main_1897))
+  k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+  b_1963 when (not b_1963) -> (k_u_main_1897 0)
+  k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 x_1629 ->
+      (succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626)
+  main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+      n_1038 >= 0) ->
+      (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897
+        (x_1039 >= 0))
+  main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+      not (n_1038 >= 0)) ->
+      (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897
+        false)
+  succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when prev_set_flag_succ_1092 ->
+      (fail_2062 true (f_succ_2055 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091))
+  succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when (
+      not prev_set_flag_succ_1092) ->
+      (k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 ())
+  succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 k_u_succ_without_checking_1664 ->
+      (k_u_succ_without_checking_1664 (n_1031 + 1))
+Types:
+  main_2054 : X
+  f_1035 : (x_1:bool[x_1] -> int -> int -> ((x_6:bool[x_6] -> int -> int -> (int -> X) -> X) -> X) -> X)
+  fail_2062 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  
+(0-1) Abstracting ... DONE!
+
+(0-2) Checking HORS ... DONE!
+
+Error trace::
+  main_2054 ... --> 
+  f_2059 ... --> 
+  f_2060 ... --> 
+  main_1037 [1/2] ... --> 
+  k_u_main_1900 [1/2] ... --> 
+  f_1035 [1/2] ... --> 
+  f_k_u_main_2058 ... --> 
+  succ_1030 [1/2] ... --> 
+  fail_2062 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 0; 0; 0; 0; 0
+
+(0-3) Checking counter-example ... DONE!
+
+(0-4) Discovering predicates ... 
+DONE!
+
+Prefix of spurious counter-example::
+0; 0; 0; 0; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 1)::
+Main: main_2054
+  main_2054 -> (rand_int f_2059)
+  f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (n_1036 = 0) -> (k_u_f_1786 succ_1030)
+  f_1035 set_flag_succ_1093 s_succ_n_1090 n_1036 k_u_f_1786 when (not (n_1036 = 0)) ->
+      (f_1035 set_flag_succ_1093 s_succ_n_1090 (n_1036 - 1)
+        (f_f_2057 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786))
+  f_2059 x_2037 -> (rand_int (f_2060 x_2037))
+  f_2060 x_2037 x_1996 -> (main_1037 false 0 x_1996 false 0 x_2037 (f_2061 x_1996 x_2037))
+  f_2061 x_1996 x_2037 x_1589 -> end
+  f_f_2057 n_1036 s_succ_n_1090 set_flag_succ_1093 k_u_f_1786 x_1859 ->
+      (k_u_f_1786 (g_1032 set_flag_succ_1093 s_succ_n_1090 ((0 * n_1036) + 0) set_flag_succ_1093 s_succ_n_1090 x_1859))
+  f_g_2056 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 
+  x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033 x_1746 ->
+      (r_1033 set_flag_succ_1093 s_succ_n_1090 x_1746 k_u_g_1722)
+  f_k_u_main_2058 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 
+  k_u_main_1897 x_1940 -> (x_1940 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897)
+  f_succ_2055 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 x_1632 -> _|_
+  fail_2062 b k -> {fail} => (k ())
+  g_1032 x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 r_EXPARAM_1088 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199 r_1033 
+  set_flag_succ_1093 s_succ_n_1090 a_1034 k_u_g_1722 ->
+      (r_1033 set_flag_succ_1093 s_succ_n_1090 a_1034
+        (f_g_2056 a_1034 r_EXPARAM_1088 s_succ_n_1090 set_flag_succ_1093 x_DO_NOT_CARE_1198 x_DO_NOT_CARE_1199
+          x_DO_NOT_CARE_1200 x_DO_NOT_CARE_1201 k_u_g_1722 r_1033))
+  k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+  b_1963 when b_1963 ->
+      (f_1035 set_flag_succ_1093 s_succ_n_1090 n_1038
+        (f_k_u_main_2058 b_1963 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197
+          k_u_main_1897))
+  k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897 
+  b_1963 when (not b_1963) -> (k_u_main_1897 0)
+  k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 x_1629 ->
+      (succ_without_checking_1117 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626)
+  main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+      n_1038 >= 0) ->
+      (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897
+        (x_1039 >= 0))
+  main_1037 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 n_1038 set_flag_succ_1093 s_succ_n_1090 x_1039 k_u_main_1897 when (
+      not (n_1038 >= 0)) ->
+      (k_u_main_1900 n_1038 s_succ_n_1090 set_flag_succ_1093 x_1039 x_DO_NOT_CARE_1196 x_DO_NOT_CARE_1197 k_u_main_1897
+        false)
+  succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when prev_set_flag_succ_1092 ->
+      (fail_2062 true (f_succ_2055 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091))
+  succ_1030 prev_set_flag_succ_1092 s_prev_succ_n_1091 n_1031 k_u_succ_1626 when (
+      not prev_set_flag_succ_1092) ->
+      (k_u_succ_u_1644 n_1031 prev_set_flag_succ_1092 s_prev_succ_n_1091 k_u_succ_1626 ())
+  succ_without_checking_1117 set_flag_succ_1093 s_succ_n_1090 n_1031 k_u_succ_without_checking_1664 ->
+      (k_u_succ_without_checking_1664 (n_1031 + 1))
+Types:
+  main_2054 : X
+  f_1035 : (x_1:bool[x_1] -> int -> int -> ((x_6:bool[x_6] -> int -> int[(not x_6)] -> (int -> X) -> X) -> X) -> X)
+  fail_2062 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  
+(1-1) Abstracting ... DONE!
+
+(1-2) Checking HORS ... DONE!
+
+Safe!
+
+Refinement Types:
+  f: (({true} -> (int -> (int -> (x_4:{false} -> (int -> ({x_6:int | not x_4} -> int)))))) /\ 
+      ({false} -> (int -> (int -> (x_11:{false} -> (int -> ({x_13:int | not x_11} -> int)))))))
+
+succ is terminating.
+HOLED[g_1032 -> g_without_checking_1152]:let rec c1_COEFFICIENT_1086 = 0 
+                                         in
+                                         let rec c0_COEFFICIENT_1085 = 0 
+                                         in
+                                         let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 =
+                                           n_1031 + 1 
+                                         in
+                                         let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+                                           let __1160 =
+                                             if prev_set_flag_g_1133 then
+                                               if __HOLE___7 then
+                                                 ()
+                                               else
+                                                 {fail} ()
+                                             else
+                                               () 
+                                           in
+                                             g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+                                               x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155
+                                               x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+                                               s_prev_g_a_1132 a_1034 
+                                         and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+                                           let set_flag_g_1134 = true 
+                                           in
+                                           let s_g_a_1129 = a_1034 
+                                           in
+                                           let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+                                           in
+                                             r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+                                         in
+                                         let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+                                           if n_1036 = 0 then
+                                             succ_1030
+                                           else
+                                             g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134
+                                               s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+                                         in
+                                         let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+                                           if n_1038 >= 0 && x_1039 >= 0 then
+                                             f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+                                               set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+                                           else
+                                             0 
+                                         in
+                                           main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ())
+is_update: true
+counter: 1
+replace_index: 0
+HOLED[g_1032 -> g_without_checking_1152]:let rec c1_COEFFICIENT_1086 = 0 
+                                         in
+                                         let rec c0_COEFFICIENT_1085 = 0 
+                                         in
+                                         let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 =
+                                           n_1031 + 1 
+                                         in
+                                         let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+                                           let __1160 =
+                                             if prev_set_flag_g_1133 then
+                                               if __HOLE___7 then
+                                                 ()
+                                               else
+                                                 {fail} ()
+                                             else
+                                               () 
+                                           in
+                                             g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+                                               x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155
+                                               x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+                                               s_prev_g_a_1132 a_1034 
+                                         and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+                                           let set_flag_g_1134 = true 
+                                           in
+                                           let s_g_a_1129 = a_1034 
+                                           in
+                                           let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+                                           in
+                                             r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+                                         in
+                                         let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+                                           if n_1036 = 0 then
+                                             succ_1030
+                                           else
+                                             g_without_checking_1152 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134
+                                               s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+                                         in
+                                         let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+                                           if n_1038 >= 0 && x_1039 >= 0 then
+                                             f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+                                               set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+                                           else
+                                             0 
+                                         in
+                                           main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ())
+is_update: false
+counter: 1
+replace_index: 1
+[0]
+let rec c1_COEFFICIENT_1086 = 0 
+in
+let rec c0_COEFFICIENT_1085 = 0 
+in
+let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+in
+let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+  let __1160 = if prev_set_flag_g_1133 then
+                 if false then
+                   ()
+                 else
+                   {fail} ()
+               else
+                 () 
+  in
+    g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+  let set_flag_g_1134 = true 
+  in
+  let s_g_a_1129 = a_1034 
+  in
+  let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+  in
+    r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+in
+let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+  if n_1036 = 0 then
+    succ_1030
+  else
+    g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+      set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+in
+let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+  if n_1038 >= 0 && x_1039 >= 0 then
+    f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+  else
+    0 
+in
+  main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ())
+transformed::
+ let u_3966 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+   in
+   let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+     (match if prev_set_flag_g_1133 then
+              let u_3468 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ ->
+            g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+              s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034
+        | _ -> let u_3489 = {fail} 
+               in
+                 _|_) 
+   and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+   ()
+
+set_target::
+ let u_3966 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+   in
+   let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+     (match if prev_set_flag_g_1133 then
+              let u_3468 = {fail} () 
+              in
+                _|_
+            else
+              () with
+        | _ ->
+            g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+              s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034
+        | _ -> let u_3489 = {fail} 
+               in
+                 _|_) 
+   and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+ let main_3967 = u_3966 
+ in
+   ()
+
+abst_recdata::
+ let u_3966 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+   in
+   let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+     let u_3972 = if prev_set_flag_g_1133 then
+                    let u_3468 = {fail} () 
+                    in
+                      _|_
+                  else
+                    () 
+     in
+       g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+         x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+         s_prev_g_a_1132 a_1034 
+   and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+ let main_3967 = u_3966 
+ in
+   ()
+
+abst_list::
+ let u_3966 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1031:int) = n_1031 + 1 
+   in
+   let rec g_1032
+     (x_DO_NOT_CARE_1157:bool) (x_DO_NOT_CARE_1158:int) (x_DO_NOT_CARE_1159:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1154:bool) (x_DO_NOT_CARE_1155:int) (x_DO_NOT_CARE_1156:int) (r_1033:(
+     bool -> (int -> (int -> (int -> int))))) (prev_set_flag_g_1133:bool) (s_prev_g_r_EXPARAM_1130:int) (s_prev_g_a_1132:int) (a_1034:int) =
+     let u_3972 = if prev_set_flag_g_1133 then
+                    let u_3468 = {fail} () 
+                    in
+                      _|_
+                  else
+                    () 
+     in
+       g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+         x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+         s_prev_g_a_1132 a_1034 
+   and g_without_checking_1152
+     (x_DO_NOT_CARE_1208:bool) (x_DO_NOT_CARE_1209:int) (x_DO_NOT_CARE_1210:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1205:bool) (x_DO_NOT_CARE_1206:int) (x_DO_NOT_CARE_1207:int) (r_1033:(
+     bool -> (int -> (int -> (int -> int))))) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (a_1034:int) =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1036:int) =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037
+     (x_DO_NOT_CARE_1202:bool) (x_DO_NOT_CARE_1203:int) (x_DO_NOT_CARE_1204:int) (n_1038:int) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (x_1039:int) =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+ let main_3967 = u_3966 
+ in
+   ()
+
+CPS::
+ let rec c1_COEFFICIENT_1086 = 0 
+ in
+ let rec c0_COEFFICIENT_1085 = 0 
+ in
+ let succ_1030
+   (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1031:int) (k_u_succ_4019:(
+   int -> X)) = k_u_succ_4019 (n_1031 + 1) 
+ in
+ let rec g_1032
+   (x_DO_NOT_CARE_1157:bool) (x_DO_NOT_CARE_1158:int) (x_DO_NOT_CARE_1159:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1154:bool) (x_DO_NOT_CARE_1155:int) (x_DO_NOT_CARE_1156:int) (r_1033:(
+   bool -> (int -> (int -> (int -> ((int -> X) -> X)))))) (prev_set_flag_g_1133:bool) (s_prev_g_r_EXPARAM_1130:int) (s_prev_g_a_1132:int) (a_1034:int) (k_u_g_4131:(
+   int -> X)) =
+   let k_u_g_u_4149 (x_4134:unit) =
+     g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154
+       x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034
+       k_u_g_4131 
+   in
+     if prev_set_flag_g_1133 then
+       {|fail|} () (fun x_4137 -> _|_)
+     else
+       k_u_g_u_4149 () 
+ and g_without_checking_1152
+   (x_DO_NOT_CARE_1208:bool) (x_DO_NOT_CARE_1209:int) (x_DO_NOT_CARE_1210:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1205:bool) (x_DO_NOT_CARE_1206:int) (x_DO_NOT_CARE_1207:int) (r_1033:(
+   bool -> (int -> (int -> (int -> ((int -> X) -> X)))))) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (a_1034:int) (k_u_g_without_checking_4211:(
+   int -> X)) =
+   r_1033 true r_EXPARAM_1088 a_1034 a_1034
+     (fun x_4246 -> r_1033 true r_EXPARAM_1088 a_1034 x_4246 k_u_g_without_checking_4211) 
+ in
+ let rec f_1035
+   (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1036:int) (k_u_f_4293:(
+   (bool -> (int -> (int -> (int -> ((int -> X) -> X))))) -> X)) =
+   if n_1036 = 0 then
+     k_u_f_4293 succ_1030
+   else
+     f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+       (fun x_4379 ->
+          k_u_f_4293
+            (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              x_4379)) 
+ in
+ let main_1037
+   (x_DO_NOT_CARE_1202:bool) (x_DO_NOT_CARE_1203:int) (x_DO_NOT_CARE_1204:int) (n_1038:int) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (x_1039:int) (k_u_main_4424:(
+   int -> X)) =
+   let k_u_main_4427 (b_4509:bool) =
+     if b_4509 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+         (fun x_4473 -> x_4473 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_4424)
+     else
+       k_u_main_4424 0 
+   in
+     if n_1038 >= 0 then
+       k_u_main_4427 (x_1039 >= 0)
+     else
+       k_u_main_4427 false 
+ in
+   rand_int_cps ()
+     (fun x_4602 -> rand_int_cps () (fun x_4546 -> main_1037 false 0 0 x_4546 false 0 0 x_4602 (fun x_3990 -> end)))
+
+[before]***************
+    Main: main_4610
+      main_4610 -> (rand_int f_4615)
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+          n_1036 = 0) -> (k_u_f_4293 succ_1030)
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+          not (n_1036 = 0)) ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+            (f_f_4613 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293))
+      f_4615 x_4602 -> (rand_int (f_4616 x_4602))
+      f_4616 x_4602 x_4546 -> (main_1037 false 0 0 x_4546 false 0 0 x_4602 (f_4617 x_4546 x_4602))
+      f_4617 x_4546 x_4602 x_3990 -> end
+      f_f_4613 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293 x_4379 ->
+          (k_u_f_4293
+            (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              x_4379))
+      f_g_4611 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 x_4137 -> _|_
+      f_g_without_checking_4612 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+      x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+      k_u_g_without_checking_4211 r_1033 x_4246 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 x_4246 k_u_g_without_checking_4211)
+      f_k_u_main_4614 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+      x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 x_4473 ->
+          (x_4473 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_4424)
+      fail_4618 b k -> {fail} => (k ())
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_4131 when prev_set_flag_g_1133 ->
+          (fail_4618 true
+            (f_g_4611 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+              x_DO_NOT_CARE_1159))
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_4131 when (not prev_set_flag_g_1133) ->
+          (k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 ())
+      g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 
+      x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 
+      a_1034 k_u_g_without_checking_4211 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+            (f_g_without_checking_4612 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+              x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+              x_DO_NOT_CARE_1210 k_u_g_without_checking_4211 r_1033))
+      k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+      x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 
+      x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 x_4134 ->
+          (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+            s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_4131)
+      k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when b_4509 ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+            (f_k_u_main_4614 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+              x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424))
+      k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when (not b_4509) -> (k_u_main_4424 0)
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_4424 when (n_1038 >= 0) ->
+          (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 (x_1039 >= 0))
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_4424 when (not (n_1038 >= 0)) ->
+          (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 false)
+      succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_4019 -> (k_u_succ_4019 (n_1031 + 1))
+    Types:
+      main_4610 : X
+      c0_COEFFICIENT_1085 : int
+      c1_COEFFICIENT_1086 : int
+      f_1035 : (x_1:bool[x_1] ->
+                int -> int -> int -> ((x_7:bool[x_7] -> int -> int -> int -> (int -> X) -> X) -> X) -> X)
+      fail_4618 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+[after]***************
+    Main: main_4619
+      main_4619 -> (rand_int f_4624)
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+          n_1036 = 0) -> (k_u_f_4293 succ_1030)
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+          not (n_1036 = 0)) ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+            (f_f_4622 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293))
+      f_4624 x_4602 -> (rand_int (f_4625 x_4602))
+      f_4625 x_4602 x_4546 -> (main_1037 false 0 0 x_4546 false 0 0 x_4602 (f_4626 x_4546 x_4602))
+      f_4626 x_4546 x_4602 x_3990 -> end
+      f_f_4622 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293 x_4379 ->
+          (k_u_f_4293
+            (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((0 * n_1036) + 0) set_flag_g_1134 s_g_r_EXPARAM_1127
+              s_g_a_1129 x_4379))
+      f_g_4620 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 x_4137 -> _|_
+      f_g_without_checking_4621 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+      x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+      k_u_g_without_checking_4211 r_1033 x_4246 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 x_4246 k_u_g_without_checking_4211)
+      f_k_u_main_4623 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+      x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 x_4473 ->
+          (x_4473 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_4424)
+      fail_4627 b k -> {fail} => (k ())
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_4131 when prev_set_flag_g_1133 ->
+          (fail_4627 true
+            (f_g_4620 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+              x_DO_NOT_CARE_1159))
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_4131 when (not prev_set_flag_g_1133) ->
+          (k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 ())
+      g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 
+      x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 
+      a_1034 k_u_g_without_checking_4211 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+            (f_g_without_checking_4621 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+              x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+              x_DO_NOT_CARE_1210 k_u_g_without_checking_4211 r_1033))
+      k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+      x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 
+      x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 x_4134 ->
+          (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+            s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_4131)
+      k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when b_4509 ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+            (f_k_u_main_4623 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+              x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424))
+      k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when (not b_4509) -> (k_u_main_4424 0)
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_4424 when (n_1038 >= 0) ->
+          (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 (x_1039 >= 0))
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_4424 when (not (n_1038 >= 0)) ->
+          (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 false)
+      succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_4019 -> (k_u_succ_4019 (n_1031 + 1))
+    Types:
+      main_4619 : X
+      f_1035 : (x_1:bool[x_1] ->
+                int -> int -> int -> ((x_7:bool[x_7] -> int -> int -> int -> (int -> X) -> X) -> X) -> X)
+      fail_4627 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+Program with abstraction types (CEGAR-cycle 2)::
+Main: main_4619
+  main_4619 -> (rand_int f_4624)
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (n_1036 = 0) -> (k_u_f_4293 succ_1030)
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+      not (n_1036 = 0)) ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+        (f_f_4622 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293))
+  f_4624 x_4602 -> (rand_int (f_4625 x_4602))
+  f_4625 x_4602 x_4546 -> (main_1037 false 0 0 x_4546 false 0 0 x_4602 (f_4626 x_4546 x_4602))
+  f_4626 x_4546 x_4602 x_3990 -> end
+  f_f_4622 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293 x_4379 ->
+      (k_u_f_4293
+        (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((0 * n_1036) + 0) set_flag_g_1134 s_g_r_EXPARAM_1127
+          s_g_a_1129 x_4379))
+  f_g_4620 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 x_4137 -> _|_
+  f_g_without_checking_4621 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+  k_u_g_without_checking_4211 r_1033 x_4246 -> (r_1033 true r_EXPARAM_1088 a_1034 x_4246 k_u_g_without_checking_4211)
+  f_k_u_main_4623 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+  x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 x_4473 ->
+      (x_4473 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_4424)
+  fail_4627 b k -> {fail} => (k ())
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_4131 when prev_set_flag_g_1133 ->
+      (fail_4627 true
+        (f_g_4620 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154
+          x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159))
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_4131 when (
+      not prev_set_flag_g_1133) ->
+      (k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 ())
+  g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 
+  k_u_g_without_checking_4211 ->
+      (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+        (f_g_without_checking_4621 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+          x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+          x_DO_NOT_CARE_1210 k_u_g_without_checking_4211 r_1033))
+  k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 
+  x_4134 ->
+      (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+        s_prev_g_a_1132 a_1034 k_u_g_4131)
+  k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when b_4509 ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+        (f_k_u_main_4623 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+          x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424))
+  k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when (not b_4509) -> (k_u_main_4424 0)
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_4424 when (n_1038 >= 0) ->
+      (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_4424 (x_1039 >= 0))
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_4424 when (not (n_1038 >= 0)) ->
+      (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_4424 false)
+  succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_4019 -> (k_u_succ_4019 (n_1031 + 1))
+Types:
+  main_4619 : X
+  f_1035 : (x_1:bool[x_1] -> int -> int -> int -> ((x_7:bool[x_7] -> int -> int -> int -> (int -> X) -> X) -> X) -> X)
+  fail_4627 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  
+(2-1) Abstracting ... DONE!
+
+(2-2) Checking HORS ... DONE!
+
+Error trace::
+  main_4619 ... --> 
+  f_4624 ... --> 
+  f_4625 ... --> 
+  main_1037 [1/2] ... --> 
+  k_u_main_4427 [1/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [1/2] ... --> 
+  f_f_4622 ... --> 
+  f_f_4622 ... --> 
+  f_k_u_main_4623 ... --> 
+  g_1032 [1/2] ... --> 
+  fail_4627 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 0; 0
+
+(2-3) Checking counter-example ... DONE!
+
+(2-4) Discovering predicates ... 
+DONE!
+
+Prefix of spurious counter-example::
+0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 3)::
+Main: main_4619
+  main_4619 -> (rand_int f_4624)
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (n_1036 = 0) -> (k_u_f_4293 succ_1030)
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+      not (n_1036 = 0)) ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+        (f_f_4622 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293))
+  f_4624 x_4602 -> (rand_int (f_4625 x_4602))
+  f_4625 x_4602 x_4546 -> (main_1037 false 0 0 x_4546 false 0 0 x_4602 (f_4626 x_4546 x_4602))
+  f_4626 x_4546 x_4602 x_3990 -> end
+  f_f_4622 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293 x_4379 ->
+      (k_u_f_4293
+        (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((0 * n_1036) + 0) set_flag_g_1134 s_g_r_EXPARAM_1127
+          s_g_a_1129 x_4379))
+  f_g_4620 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 x_4137 -> _|_
+  f_g_without_checking_4621 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+  k_u_g_without_checking_4211 r_1033 x_4246 -> (r_1033 true r_EXPARAM_1088 a_1034 x_4246 k_u_g_without_checking_4211)
+  f_k_u_main_4623 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+  x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 x_4473 ->
+      (x_4473 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_4424)
+  fail_4627 b k -> {fail} => (k ())
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_4131 when prev_set_flag_g_1133 ->
+      (fail_4627 true
+        (f_g_4620 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154
+          x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159))
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_4131 when (
+      not prev_set_flag_g_1133) ->
+      (k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 ())
+  g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 
+  k_u_g_without_checking_4211 ->
+      (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+        (f_g_without_checking_4621 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+          x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+          x_DO_NOT_CARE_1210 k_u_g_without_checking_4211 r_1033))
+  k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 
+  x_4134 ->
+      (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+        s_prev_g_a_1132 a_1034 k_u_g_4131)
+  k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when b_4509 ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+        (f_k_u_main_4623 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+          x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424))
+  k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when (not b_4509) -> (k_u_main_4424 0)
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_4424 when (n_1038 >= 0) ->
+      (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_4424 (x_1039 >= 0))
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_4424 when (not (n_1038 >= 0)) ->
+      (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_4424 false)
+  succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_4019 -> (k_u_succ_4019 (n_1031 + 1))
+Types:
+  main_4619 : X
+  f_1035 : (x_1:bool[x_1] ->
+            int -> int -> int -> ((x_7:bool[x_7] -> int -> int -> int[(not x_7)] -> (int -> X) -> X) -> X) -> X)
+  fail_4627 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  
+(3-1) Abstracting ... DONE!
+
+(3-2) Checking HORS ... DONE!
+
+Error trace::
+  main_4619 ... --> 
+  f_4624 ... --> 
+  f_4625 ... --> 
+  main_1037 [1/2] ... --> 
+  k_u_main_4427 [1/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [1/2] ... --> 
+  f_f_4622 ... --> 
+  f_f_4622 ... --> 
+  f_k_u_main_4623 ... --> 
+  g_1032 [2/2] ... --> 
+  k_u_g_u_4149 ... --> 
+  g_without_checking_1152 ... --> 
+  g_1032 [1/2] ... --> 
+  fail_4627 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 1; 0; 0; 0; 0
+
+(3-3) Checking counter-example ... DONE!
+
+(3-4) Discovering ranking function ... 
+DONE!
+
+Linear template(0):
+  (var363 + ((var361 * r_EXPARAM_1088) + (var362 * a_1034)))
+Constraint:
+  (((r_EXPARAM_1088_IN_0TH_ERRORPATH = 0) &&
+    ((s_prev_g_r_EXPARAM_1130_IN_0TH_ERRORPATH = 0) &&
+     ((x_DO_NOT_CARE_1158_IN_0TH_ERRORPATH = 0) &&
+      ((x_DO_NOT_CARE_1159_IN_0TH_ERRORPATH = 0) &&
+       ((a_1034_IN_0TH_ERRORPATH >= 0) &&
+        ((x_DO_NOT_CARE_1159_IN_0TH_ERRORPATH = x_DO_NOT_CARE_1156_IN_0TH_ERRORPATH) &&
+         ((x_DO_NOT_CARE_1158_IN_0TH_ERRORPATH = x_DO_NOT_CARE_1155_IN_0TH_ERRORPATH) &&
+          (a_1034_IN_0TH_ERRORPATH = s_prev_g_a_1132_IN_0TH_ERRORPATH)))))))) &&
+   (not
+      (((var363 + ((var361 * s_prev_g_r_EXPARAM_1130_IN_0TH_ERRORPATH) + (var362 * s_prev_g_a_1132_IN_0TH_ERRORPATH))) >
+        (var363 + ((var361 * r_EXPARAM_1088_IN_0TH_ERRORPATH) + (var362 * a_1034_IN_0TH_ERRORPATH)))) &&
+       ((var363 + ((var361 * r_EXPARAM_1088_IN_0TH_ERRORPATH) + (var362 * a_1034_IN_0TH_ERRORPATH))) >= 0))))
+Try to update extra parameters...
+
+Constraint:
+  (((x_DO_NOT_CARE_1158_IN_0TH_ERRORPATH = 0) &&
+    ((x_DO_NOT_CARE_1159_IN_0TH_ERRORPATH = 0) &&
+     ((a_1034_IN_0TH_ERRORPATH >= 0) &&
+      ((x_DO_NOT_CARE_1159_IN_0TH_ERRORPATH = x_DO_NOT_CARE_1156_IN_0TH_ERRORPATH) &&
+       ((x_DO_NOT_CARE_1158_IN_0TH_ERRORPATH = x_DO_NOT_CARE_1155_IN_0TH_ERRORPATH) &&
+        ((a_1034_IN_0TH_ERRORPATH = s_prev_g_a_1132_IN_0TH_ERRORPATH) &&
+         ((var357 > 0) &&
+          ((var358 > 0) &&
+           ((var359 > 0) &&
+            ((var360 > 0) &&
+             ((((-1 * c1_COEFFICIENT_1086) + (r_EXPARAM_1088_IN_0TH_ERRORPATH + ((-1 * c0_COEFFICIENT_1085) * var357))) =
+               0) &&
+              (((((-1 * c1_COEFFICIENT_1086) + (-1 * c0_COEFFICIENT_1085)) +
+                 (s_prev_g_r_EXPARAM_1130_IN_0TH_ERRORPATH + ((-1 * c0_COEFFICIENT_1085) * var357))) = 0) &&
+               ((((-1 * c1_COEFFICIENT_1086) +
+                  (s_prev_g_r_EXPARAM_1130_IN_0TH_ERRORPATH + ((-1 * c0_COEFFICIENT_1085) * var358))) = 0) &&
+                ((((-1 * c1_COEFFICIENT_1086) +
+                   (s_prev_g_r_EXPARAM_1130_IN_0TH_ERRORPATH + ((-1 * c0_COEFFICIENT_1085) * var359))) = 0) &&
+                 (((-1 * c1_COEFFICIENT_1086) +
+                   (s_prev_g_r_EXPARAM_1130_IN_0TH_ERRORPATH + ((-1 * c0_COEFFICIENT_1085) * var360))) = 0))))))))))))))) &&
+   (not
+      (((var363 + ((var361 * s_prev_g_r_EXPARAM_1130_IN_0TH_ERRORPATH) + (var362 * s_prev_g_a_1132_IN_0TH_ERRORPATH))) >
+        (var363 + ((var361 * r_EXPARAM_1088_IN_0TH_ERRORPATH) + (var362 * a_1034_IN_0TH_ERRORPATH)))) &&
+       ((var363 + ((var361 * r_EXPARAM_1088_IN_0TH_ERRORPATH) + (var362 * a_1034_IN_0TH_ERRORPATH))) >= 0))))
+Inferred coefficients:
+  var363 = 0
+  var406 = -3
+  var385 = 0
+  var362 = 0
+  var361 = -1
+  c0_COEFFICIENT_1085 = -4
+  var391 = -4
+  var394 = 0
+  var393 = 0
+  var392 = 0
+  var390 = 4
+  c1_COEFFICIENT_1086 = -1
+  var410 = -1
+  var409 = -1
+  var408 = -1
+  var407 = 3
+  var411 = 3
+  var405 = 4
+  var404 = 4
+  var403 = 4
+  var402 = 0
+  var398 = 0
+  var395 = 4
+  var389 = 0
+  var388 = 0
+  var387 = 0
+  var386 = 0
+  var382 = 0
+  var396 = 0
+  var397 = 0
+  var380 = 0
+  var381 = 0
+  var401 = 0
+  var400 = 0
+  var399 = 0
+  var384 = 0
+  var383 = 0
+Found ranking function: -r_EXPARAM
+HOLED[g_1032 -> g_without_checking_1152]:let rec c1_COEFFICIENT_1086 = 0 
+                                         in
+                                         let rec c0_COEFFICIENT_1085 = 0 
+                                         in
+                                         let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 =
+                                           n_1031 + 1 
+                                         in
+                                         let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+                                           let __1160 =
+                                             if prev_set_flag_g_1133 then
+                                               if __HOLE___7 then
+                                                 ()
+                                               else
+                                                 {fail} ()
+                                             else
+                                               () 
+                                           in
+                                             g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+                                               x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155
+                                               x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+                                               s_prev_g_a_1132 a_1034 
+                                         and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+                                           let set_flag_g_1134 = true 
+                                           in
+                                           let s_g_a_1129 = a_1034 
+                                           in
+                                           let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+                                           in
+                                             r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+                                         in
+                                         let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+                                           if n_1036 = 0 then
+                                             succ_1030
+                                           else
+                                             g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134
+                                               s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+                                         in
+                                         let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+                                           if n_1038 >= 0 && x_1039 >= 0 then
+                                             f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+                                               set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+                                           else
+                                             0 
+                                         in
+                                           main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ())
+is_update: true
+counter: 1
+replace_index: 0
+HOLED[g_1032 -> g_without_checking_1152]:let rec c1_COEFFICIENT_1086 = 0 
+                                         in
+                                         let rec c0_COEFFICIENT_1085 = 0 
+                                         in
+                                         let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 =
+                                           n_1031 + 1 
+                                         in
+                                         let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+                                           let __1160 =
+                                             if prev_set_flag_g_1133 then
+                                               if __HOLE___7 then
+                                                 ()
+                                               else
+                                                 {fail} ()
+                                             else
+                                               () 
+                                           in
+                                             g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+                                               x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155
+                                               x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+                                               s_prev_g_a_1132 a_1034 
+                                         and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+                                           let set_flag_g_1134 = true 
+                                           in
+                                           let s_g_a_1129 = a_1034 
+                                           in
+                                           let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+                                           in
+                                             r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+                                         in
+                                         let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+                                           if n_1036 = 0 then
+                                             succ_1030
+                                           else
+                                             g_without_checking_1152 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+                                               ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134
+                                               s_g_r_EXPARAM_1127 s_g_a_1129
+                                               (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+                                         in
+                                         let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+                                           if n_1038 >= 0 && x_1039 >= 0 then
+                                             f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+                                               set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+                                           else
+                                             0 
+                                         in
+                                           main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ())
+is_update: false
+counter: 1
+replace_index: 1
+[0]
+let rec c1_COEFFICIENT_1086 = 0 
+in
+let rec c0_COEFFICIENT_1085 = 0 
+in
+let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+in
+let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+  let __1160 =
+    if prev_set_flag_g_1133 then
+      if ((0 * 1) + (-s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132) > ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034)
+         && ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) >= 0 then
+        ()
+      else
+        {fail} ()
+    else
+      () 
+  in
+    g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+  let set_flag_g_1134 = true 
+  in
+  let s_g_a_1129 = a_1034 
+  in
+  let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+  in
+    r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+in
+let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+  if n_1036 = 0 then
+    succ_1030
+  else
+    g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+      set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+in
+let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+  if n_1038 >= 0 && x_1039 >= 0 then
+    f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+  else
+    0 
+in
+  main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ())
+transformed::
+ let u_6911 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+   in
+   let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+     (match if prev_set_flag_g_1133 then
+              if ((0 * 1) + (-s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132) >
+                 ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) && ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) >= 0 then
+                ()
+              else
+                let u_6413 = {fail} () 
+                in
+                  _|_
+            else
+              () with
+        | _ ->
+            g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+              s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034
+        | _ -> let u_6434 = {fail} 
+               in
+                 _|_) 
+   and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+   ()
+
+set_target::
+ let u_6911 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+   in
+   let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+     (match if prev_set_flag_g_1133 then
+              if ((0 * 1) + (-s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132) >
+                 ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) && ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) >= 0 then
+                ()
+              else
+                let u_6413 = {fail} () 
+                in
+                  _|_
+            else
+              () with
+        | _ ->
+            g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+              s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034
+        | _ -> let u_6434 = {fail} 
+               in
+                 _|_) 
+   and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+ let main_6912 = u_6911 
+ in
+   ()
+
+abst_recdata::
+ let u_6911 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 = n_1031 + 1 
+   in
+   let rec g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 =
+     let u_6917 =
+       if prev_set_flag_g_1133 then
+         if ((0 * 1) + (-s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132) >
+            ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) && ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) >= 0 then
+           ()
+         else
+           let u_6413 = {fail} () 
+           in
+             _|_
+       else
+         () 
+     in
+       g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+         x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+         s_prev_g_a_1132 a_1034 
+   and g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+ let main_6912 = u_6911 
+ in
+   ()
+
+abst_list::
+ let u_6911 =
+   let rec c1_COEFFICIENT_1086 = 0 
+   in
+   let rec c0_COEFFICIENT_1085 = 0 
+   in
+   let succ_1030 (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1031:int) = n_1031 + 1 
+   in
+   let rec g_1032
+     (x_DO_NOT_CARE_1157:bool) (x_DO_NOT_CARE_1158:int) (x_DO_NOT_CARE_1159:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1154:bool) (x_DO_NOT_CARE_1155:int) (x_DO_NOT_CARE_1156:int) (r_1033:(
+     bool -> (int -> (int -> (int -> int))))) (prev_set_flag_g_1133:bool) (s_prev_g_r_EXPARAM_1130:int) (s_prev_g_a_1132:int) (a_1034:int) =
+     let u_6917 =
+       if prev_set_flag_g_1133 then
+         if ((0 * 1) + (-s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132) >
+            ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) && ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) >= 0 then
+           ()
+         else
+           let u_6413 = {fail} () 
+           in
+             _|_
+       else
+         () 
+     in
+       g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+         x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+         s_prev_g_a_1132 a_1034 
+   and g_without_checking_1152
+     (x_DO_NOT_CARE_1208:bool) (x_DO_NOT_CARE_1209:int) (x_DO_NOT_CARE_1210:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1205:bool) (x_DO_NOT_CARE_1206:int) (x_DO_NOT_CARE_1207:int) (r_1033:(
+     bool -> (int -> (int -> (int -> int))))) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (a_1034:int) =
+     let set_flag_g_1134 = true 
+     in
+     let s_g_a_1129 = a_1034 
+     in
+     let s_g_r_EXPARAM_1127 = r_EXPARAM_1088 
+     in
+       r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034) 
+   in
+   let rec f_1035 (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1036:int) =
+     if n_1036 = 0 then
+       succ_1030
+     else
+       g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086)
+         set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+         (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)) 
+   in
+   let main_1037
+     (x_DO_NOT_CARE_1202:bool) (x_DO_NOT_CARE_1203:int) (x_DO_NOT_CARE_1204:int) (n_1038:int) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (x_1039:int) =
+     if n_1038 >= 0 && x_1039 >= 0 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039
+     else
+       0 
+   in
+     main_1037 false 0 0 (rand_int ()) false 0 0 (rand_int ()) 
+ in
+ let main_6912 = u_6911 
+ in
+   ()
+
+CPS::
+ let rec c1_COEFFICIENT_1086 = 0 
+ in
+ let rec c0_COEFFICIENT_1085 = 0 
+ in
+ let succ_1030
+   (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1031:int) (k_u_succ_6964:(
+   int -> X)) = k_u_succ_6964 (n_1031 + 1) 
+ in
+ let rec g_1032
+   (x_DO_NOT_CARE_1157:bool) (x_DO_NOT_CARE_1158:int) (x_DO_NOT_CARE_1159:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1154:bool) (x_DO_NOT_CARE_1155:int) (x_DO_NOT_CARE_1156:int) (r_1033:(
+   bool -> (int -> (int -> (int -> ((int -> X) -> X)))))) (prev_set_flag_g_1133:bool) (s_prev_g_r_EXPARAM_1130:int) (s_prev_g_a_1132:int) (a_1034:int) (k_u_g_7076:(
+   int -> X)) =
+   let k_u_g_u_7102 (x_7079:unit) =
+     g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154
+       x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034
+       k_u_g_7076 
+   in
+     if prev_set_flag_g_1133 then
+       let k_u_g_u_7082 (b_7099:bool) = if b_7099 then
+                                          k_u_g_u_7102 ()
+                                        else
+                                          {|fail|} () (fun x_7086 -> _|_) 
+       in
+         if ((0 * 1) + (-s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132) >
+            ((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) then
+           k_u_g_u_7082 (((0 * 1) + (-r_EXPARAM_1088)) + (0 * a_1034) >= 0)
+         else
+           k_u_g_u_7082 false
+     else
+       k_u_g_u_7102 () 
+ and g_without_checking_1152
+   (x_DO_NOT_CARE_1208:bool) (x_DO_NOT_CARE_1209:int) (x_DO_NOT_CARE_1210:int) (r_EXPARAM_1088:int) (x_DO_NOT_CARE_1205:bool) (x_DO_NOT_CARE_1206:int) (x_DO_NOT_CARE_1207:int) (r_1033:(
+   bool -> (int -> (int -> (int -> ((int -> X) -> X)))))) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (a_1034:int) (k_u_g_without_checking_7164:(
+   int -> X)) =
+   r_1033 true r_EXPARAM_1088 a_1034 a_1034
+     (fun x_7199 -> r_1033 true r_EXPARAM_1088 a_1034 x_7199 k_u_g_without_checking_7164) 
+ in
+ let rec f_1035
+   (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (n_1036:int) (k_u_f_7246:(
+   (bool -> (int -> (int -> (int -> ((int -> X) -> X))))) -> X)) =
+   if n_1036 = 0 then
+     k_u_f_7246 succ_1030
+   else
+     f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+       (fun x_7332 ->
+          k_u_f_7246
+            (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              x_7332)) 
+ in
+ let main_1037
+   (x_DO_NOT_CARE_1202:bool) (x_DO_NOT_CARE_1203:int) (x_DO_NOT_CARE_1204:int) (n_1038:int) (set_flag_g_1134:bool) (s_g_r_EXPARAM_1127:int) (s_g_a_1129:int) (x_1039:int) (k_u_main_7377:(
+   int -> X)) =
+   let k_u_main_7380 (b_7462:bool) =
+     if b_7462 then
+       f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+         (fun x_7426 -> x_7426 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_7377)
+     else
+       k_u_main_7377 0 
+   in
+     if n_1038 >= 0 then
+       k_u_main_7380 (x_1039 >= 0)
+     else
+       k_u_main_7380 false 
+ in
+   rand_int_cps ()
+     (fun x_7555 -> rand_int_cps () (fun x_7499 -> main_1037 false 0 0 x_7499 false 0 0 x_7555 (fun x_6935 -> end)))
+
+[before]***************
+    Main: main_7563
+      main_7563 -> (rand_int f_7568)
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+          n_1036 = 0) -> (k_u_f_4293 succ_1030)
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_4293 when (
+          not (n_1036 = 0)) ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+            (f_f_7566 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293))
+      f_7568 x_4602 -> (rand_int (f_7569 x_4602))
+      f_7569 x_4602 x_4546 -> (main_1037 false 0 0 x_4546 false 0 0 x_4602 (f_7570 x_4546 x_4602))
+      f_7570 x_4546 x_4602 x_3990 -> end
+      f_f_7566 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_4293 x_4379 ->
+          (k_u_f_4293
+            (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              ((c0_COEFFICIENT_1085 * n_1036) + c1_COEFFICIENT_1086) set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129
+              x_4379))
+      f_g_7564 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 x_4137 -> _|_
+      f_g_without_checking_7565 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+      x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+      k_u_g_without_checking_4211 r_1033 x_4246 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 x_4246 k_u_g_without_checking_4211)
+      f_k_u_main_7567 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+      x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 x_4473 ->
+          (x_4473 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_4424)
+      fail_7571 b k -> {fail} => (k ())
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_4131 when prev_set_flag_g_1133 ->
+          (fail_7571 true
+            (f_g_7564 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+              x_DO_NOT_CARE_1159))
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_4131 when (not prev_set_flag_g_1133) ->
+          (k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 ())
+      g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 
+      x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 
+      a_1034 k_u_g_without_checking_4211 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+            (f_g_without_checking_7565 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+              x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+              x_DO_NOT_CARE_1210 k_u_g_without_checking_4211 r_1033))
+      k_u_g_u_4149 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+      x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 
+      x_DO_NOT_CARE_1159 k_u_g_4131 r_1033 x_4134 ->
+          (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+            s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_4131)
+      k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when b_4509 ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+            (f_k_u_main_7567 b_4509 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+              x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424))
+      k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_4424 b_4509 when (not b_4509) -> (k_u_main_4424 0)
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_4424 when (n_1038 >= 0) ->
+          (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 (x_1039 >= 0))
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_4424 when (not (n_1038 >= 0)) ->
+          (k_u_main_4427 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_4424 false)
+      succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_4019 -> (k_u_succ_4019 (n_1031 + 1))
+    Types:
+      main_7563 : X
+      c0_COEFFICIENT_1085 : int
+      c1_COEFFICIENT_1086 : int
+      f_1035 : (x_1:bool[x_1] ->
+                int -> int -> int -> ((x_7:bool[x_7] -> int -> int -> int -> (int -> X) -> X) -> X) -> X)
+      fail_7571 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      
+[after]***************
+    Main: main_7572
+      main_7572 -> (rand_int f_7577)
+      br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_7076 when b_7581 ->
+          (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ((((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034)) >= 0))
+      br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_7076 when (not b_7581) ->
+          (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 false)
+      c0_COEFFICIENT_1085 -> 0
+      c1_COEFFICIENT_1086 -> 0
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (
+          n_1036 = 0) -> (k_u_f_7246 succ_1030)
+      f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (
+          not (n_1036 = 0)) ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+            (f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246))
+      f_7577 x_7555 -> (rand_int (f_7578 x_7555))
+      f_7578 x_7555 x_7499 -> (main_1037 false 0 0 x_7499 false 0 0 x_7555 (f_7579 x_7499 x_7555))
+      f_7579 x_7499 x_7555 x_6935 -> end
+      f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246 x_7332 ->
+          (k_u_f_7246
+            (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((-4 * n_1036) + -1) set_flag_g_1134
+              s_g_r_EXPARAM_1127 s_g_a_1129 x_7332))
+      f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+      x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+      k_u_g_without_checking_7164 r_1033 x_7199 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 x_7199 k_u_g_without_checking_7164)
+      f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+      x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 
+      x_DO_NOT_CARE_1159 x_7086 -> _|_
+      f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+      x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377 x_7426 ->
+          (x_7426 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_7377)
+      fail_7582 b k -> {fail} => (k ())
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_7076 when prev_set_flag_g_1133 ->
+          (br_g_7580
+            ((((0 * 1) + (-1 * s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132)) >
+             (((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034))) x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033
+            prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076)
+      g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+      x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+      k_u_g_7076 when (not prev_set_flag_g_1133) ->
+          (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+      g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 
+      x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 
+      a_1034 k_u_g_without_checking_7164 ->
+          (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+            (f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+              x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+              x_DO_NOT_CARE_1210 k_u_g_without_checking_7164 r_1033))
+      k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+      x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 
+      x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 b_7099 when b_7099 ->
+          (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+            x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+      k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+      x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 
+      x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 b_7099 when (not b_7099) ->
+          (fail_7582 true
+            (f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+              x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+              x_DO_NOT_CARE_1159))
+      k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+      x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 
+      x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 x_7079 ->
+          (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+            x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+            s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076)
+      k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when b_7462 ->
+          (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+            (f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+              x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377))
+      k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+      x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when (not b_7462) -> (k_u_main_7377 0)
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_7377 when (n_1038 >= 0) ->
+          (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377 (x_1039 >= 0))
+      main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+      s_g_a_1129 x_1039 k_u_main_7377 when (not (n_1038 >= 0)) ->
+          (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+            x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377 false)
+      succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_6964 -> (k_u_succ_6964 (n_1031 + 1))
+    Types:
+      main_7572 : X
+      f_1035 : (x_1:bool[x_1] ->
+                int -> int -> int -> ((x_7:bool[x_7] -> int -> int -> int -> (int -> X) -> X) -> X) -> X)
+      fail_7582 : (x_1:bool[x_1] -> (unit -> X) -> X)
+      k_u_g_u_7102 : (int ->
+                      x_2:bool[x_2] ->
+                      int ->
+                      int ->
+                      int ->
+                      x_6:bool[x_6] ->
+                      int ->
+                      int ->
+                      x_9:bool[x_9] ->
+                      int ->
+                      int -> (int -> X) -> (x_16:bool[x_16] -> int -> int -> int -> (int -> X) -> X) -> unit -> X)
+      
+Program with abstraction types (CEGAR-cycle 4)::
+Main: main_7572
+  main_7572 -> (rand_int f_7577)
+  br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+  k_u_g_7076 when b_7581 ->
+      (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ((((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034)) >= 0))
+  br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+  k_u_g_7076 when (not b_7581) ->
+      (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 false)
+  c0_COEFFICIENT_1085 -> 0
+  c1_COEFFICIENT_1086 -> 0
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (n_1036 = 0) -> (k_u_f_7246 succ_1030)
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (
+      not (n_1036 = 0)) ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+        (f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246))
+  f_7577 x_7555 -> (rand_int (f_7578 x_7555))
+  f_7578 x_7555 x_7499 -> (main_1037 false 0 0 x_7499 false 0 0 x_7555 (f_7579 x_7499 x_7555))
+  f_7579 x_7499 x_7555 x_6935 -> end
+  f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246 x_7332 ->
+      (k_u_f_7246
+        (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((-4 * n_1036) + -1) set_flag_g_1134 s_g_r_EXPARAM_1127
+          s_g_a_1129 x_7332))
+  f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+  k_u_g_without_checking_7164 r_1033 x_7199 -> (r_1033 true r_EXPARAM_1088 a_1034 x_7199 k_u_g_without_checking_7164)
+  f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+  x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 
+  x_7086 -> _|_
+  f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+  x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377 x_7426 ->
+      (x_7426 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_7377)
+  fail_7582 b k -> {fail} => (k ())
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076 when prev_set_flag_g_1133 ->
+      (br_g_7580
+        ((((0 * 1) + (-1 * s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132)) >
+         (((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034))) x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159
+        r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+        s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076)
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076 when (
+      not prev_set_flag_g_1133) ->
+      (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+  g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 
+  k_u_g_without_checking_7164 ->
+      (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+        (f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+          x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+          x_DO_NOT_CARE_1210 k_u_g_without_checking_7164 r_1033))
+  k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  b_7099 when b_7099 ->
+      (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+  k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  b_7099 when (not b_7099) ->
+      (fail_7582 true
+        (f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+          x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+          x_DO_NOT_CARE_1159))
+  k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  x_7079 ->
+      (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+        s_prev_g_a_1132 a_1034 k_u_g_7076)
+  k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when b_7462 ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+        (f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+          x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377))
+  k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when (not b_7462) -> (k_u_main_7377 0)
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_7377 when (n_1038 >= 0) ->
+      (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_7377 (x_1039 >= 0))
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_7377 when (not (n_1038 >= 0)) ->
+      (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_7377 false)
+  succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_6964 -> (k_u_succ_6964 (n_1031 + 1))
+Types:
+  main_7572 : X
+  f_1035 : (x_1:bool[x_1] -> int -> int -> int -> ((x_7:bool[x_7] -> int -> int -> int -> (int -> X) -> X) -> X) -> X)
+  fail_7582 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  k_u_g_u_7102 : (int ->
+                  x_2:bool[x_2] ->
+                  int ->
+                  int ->
+                  int ->
+                  x_6:bool[x_6] ->
+                  int ->
+                  int ->
+                  x_9:bool[x_9] ->
+                  int -> int -> (int -> X) -> (x_16:bool[x_16] -> int -> int -> int -> (int -> X) -> X) -> unit -> X)
+  
+(4-1) Abstracting ... DONE!
+
+(4-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7572 ... --> 
+  f_7577 ... --> 
+  f_7578 ... --> 
+  main_1037 [1/2] ... --> 
+  k_u_main_7380 [1/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [1/2] ... --> 
+  f_f_7575 ... --> 
+  f_f_7575 ... --> 
+  f_k_u_main_7576 ... --> 
+  g_1032 [1/2] ... --> 
+  br_g_7580 [1/2] ... --> 
+  k_u_g_u_7082 [1/2] ... --> 
+  k_u_g_u_7102 ... --> 
+  g_without_checking_1152 ... --> 
+  g_1032 [1/2] ... --> 
+  br_g_7580 [2/2] ... --> 
+  k_u_g_u_7082 [2/2] ... --> 
+  fail_7582 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 1; 0
+
+(4-3) Checking counter-example ... DONE!
+
+(4-4) Discovering predicates ... 
+DONE!
+
+Prefix of spurious counter-example::
+0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 5)::
+Main: main_7572
+  main_7572 -> (rand_int f_7577)
+  br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+  k_u_g_7076 when b_7581 ->
+      (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ((((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034)) >= 0))
+  br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+  k_u_g_7076 when (not b_7581) ->
+      (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 false)
+  c0_COEFFICIENT_1085 -> 0
+  c1_COEFFICIENT_1086 -> 0
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (n_1036 = 0) -> (k_u_f_7246 succ_1030)
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (
+      not (n_1036 = 0)) ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+        (f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246))
+  f_7577 x_7555 -> (rand_int (f_7578 x_7555))
+  f_7578 x_7555 x_7499 -> (main_1037 false 0 0 x_7499 false 0 0 x_7555 (f_7579 x_7499 x_7555))
+  f_7579 x_7499 x_7555 x_6935 -> end
+  f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246 x_7332 ->
+      (k_u_f_7246
+        (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((-4 * n_1036) + -1) set_flag_g_1134 s_g_r_EXPARAM_1127
+          s_g_a_1129 x_7332))
+  f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+  k_u_g_without_checking_7164 r_1033 x_7199 -> (r_1033 true r_EXPARAM_1088 a_1034 x_7199 k_u_g_without_checking_7164)
+  f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+  x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 
+  x_7086 -> _|_
+  f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+  x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377 x_7426 ->
+      (x_7426 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_7377)
+  fail_7582 b k -> {fail} => (k ())
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076 when prev_set_flag_g_1133 ->
+      (br_g_7580
+        ((((0 * 1) + (-1 * s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132)) >
+         (((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034))) x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159
+        r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+        s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076)
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076 when (
+      not prev_set_flag_g_1133) ->
+      (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+  g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 
+  k_u_g_without_checking_7164 ->
+      (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+        (f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+          x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+          x_DO_NOT_CARE_1210 k_u_g_without_checking_7164 r_1033))
+  k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  b_7099 when b_7099 ->
+      (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+  k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  b_7099 when (not b_7099) ->
+      (fail_7582 true
+        (f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+          x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+          x_DO_NOT_CARE_1159))
+  k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  x_7079 ->
+      (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+        s_prev_g_a_1132 a_1034 k_u_g_7076)
+  k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when b_7462 ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+        (f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+          x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377))
+  k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when (not b_7462) -> (k_u_main_7377 0)
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_7377 when (n_1038 >= 0) ->
+      (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_7377 (x_1039 >= 0))
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_7377 when (not (n_1038 >= 0)) ->
+      (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_7377 false)
+  succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_6964 -> (k_u_succ_6964 (n_1031 + 1))
+Types:
+  main_7572 : X
+  f_1035 : (x_1:bool[x_1] ->
+            int ->
+            int ->
+            x_4:int -> ((x_7:bool[x_7] -> x_8:int -> int -> int[4*x_4 <= -x_8 - 5] -> (int -> X) -> X) -> X) -> X)
+  fail_7582 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  k_u_g_u_7102 : (int ->
+                  x_2:bool[x_2] ->
+                  x_3:int ->
+                  int ->
+                  int ->
+                  x_6:bool[x_6] ->
+                  int ->
+                  int ->
+                  x_9:bool[x_9] ->
+                  int ->
+                  int ->
+                  (int -> X) ->
+                  (x_16:bool[x_16] -> x_17:int -> int -> int[x_3 >= x_17] -> (int -> X) -> X) -> unit -> X)
+  
+(5-1) Abstracting ... DONE!
+
+(5-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7572 ... --> 
+  f_7577 ... --> 
+  f_7578 ... --> 
+  main_1037 [1/2] ... --> 
+  k_u_main_7380 [1/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [1/2] ... --> 
+  f_f_7575 ... --> 
+  f_f_7575 ... --> 
+  f_k_u_main_7576 ... --> 
+  g_1032 [1/2] ... --> 
+  br_g_7580 [1/2] ... --> 
+  k_u_g_u_7082 [1/2] ... --> 
+  k_u_g_u_7102 ... --> 
+  g_without_checking_1152 ... --> 
+  g_1032 [1/2] ... --> 
+  br_g_7580 [1/2] ... --> 
+  k_u_g_u_7082 [2/2] ... --> 
+  fail_7582 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0
+
+(5-3) Checking counter-example ... DONE!
+
+(5-4) Discovering predicates ... 
+DONE!
+
+Prefix of spurious counter-example::
+0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 6)::
+Main: main_7572
+  main_7572 -> (rand_int f_7577)
+  br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+  k_u_g_7076 when b_7581 ->
+      (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ((((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034)) >= 0))
+  br_g_7580 b_7581 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 
+  k_u_g_7076 when (not b_7581) ->
+      (k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 false)
+  c0_COEFFICIENT_1085 -> 0
+  c1_COEFFICIENT_1086 -> 0
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (n_1036 = 0) -> (k_u_f_7246 succ_1030)
+  f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1036 k_u_f_7246 when (
+      not (n_1036 = 0)) ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 (n_1036 - 1)
+        (f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246))
+  f_7577 x_7555 -> (rand_int (f_7578 x_7555))
+  f_7578 x_7555 x_7499 -> (main_1037 false 0 0 x_7499 false 0 0 x_7555 (f_7579 x_7499 x_7555))
+  f_7579 x_7499 x_7555 x_6935 -> end
+  f_f_7575 n_1036 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 k_u_f_7246 x_7332 ->
+      (k_u_f_7246
+        (g_1032 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 ((-4 * n_1036) + -1) set_flag_g_1134 s_g_r_EXPARAM_1127
+          s_g_a_1129 x_7332))
+  f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 
+  k_u_g_without_checking_7164 r_1033 x_7199 -> (r_1033 true r_EXPARAM_1088 a_1034 x_7199 k_u_g_without_checking_7164)
+  f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 
+  x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 
+  x_7086 -> _|_
+  f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 
+  x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377 x_7426 ->
+      (x_7426 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 x_1039 k_u_main_7377)
+  fail_7582 b k -> {fail} => (k ())
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076 when prev_set_flag_g_1133 ->
+      (br_g_7580
+        ((((0 * 1) + (-1 * s_prev_g_r_EXPARAM_1130)) + (0 * s_prev_g_a_1132)) >
+         (((0 * 1) + (-1 * r_EXPARAM_1088)) + (0 * a_1034))) x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159
+        r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133
+        s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076)
+  g_1032 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088 x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 
+  x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130 s_prev_g_a_1132 a_1034 k_u_g_7076 when (
+      not prev_set_flag_g_1133) ->
+      (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+  g_without_checking_1152 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209 x_DO_NOT_CARE_1210 r_EXPARAM_1088 x_DO_NOT_CARE_1205 
+  x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 r_1033 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 a_1034 
+  k_u_g_without_checking_7164 ->
+      (r_1033 true r_EXPARAM_1088 a_1034 a_1034
+        (f_g_without_checking_7574 a_1034 r_EXPARAM_1088 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134
+          x_DO_NOT_CARE_1205 x_DO_NOT_CARE_1206 x_DO_NOT_CARE_1207 x_DO_NOT_CARE_1208 x_DO_NOT_CARE_1209
+          x_DO_NOT_CARE_1210 k_u_g_without_checking_7164 r_1033))
+  k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  b_7099 when b_7099 ->
+      (k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+        x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 ())
+  k_u_g_u_7082 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  b_7099 when (not b_7099) ->
+      (fail_7582 true
+        (f_k_u_g_u_7573 a_1034 b_7099 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130
+          x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158
+          x_DO_NOT_CARE_1159))
+  k_u_g_u_7102 a_1034 prev_set_flag_g_1133 r_EXPARAM_1088 s_prev_g_a_1132 s_prev_g_r_EXPARAM_1130 x_DO_NOT_CARE_1154 
+  x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 k_u_g_7076 r_1033 
+  x_7079 ->
+      (g_without_checking_1152 x_DO_NOT_CARE_1157 x_DO_NOT_CARE_1158 x_DO_NOT_CARE_1159 r_EXPARAM_1088
+        x_DO_NOT_CARE_1154 x_DO_NOT_CARE_1155 x_DO_NOT_CARE_1156 r_1033 prev_set_flag_g_1133 s_prev_g_r_EXPARAM_1130
+        s_prev_g_a_1132 a_1034 k_u_g_7076)
+  k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when b_7462 ->
+      (f_1035 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1038
+        (f_k_u_main_7576 b_7462 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202
+          x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 k_u_main_7377))
+  k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 
+  x_DO_NOT_CARE_1204 k_u_main_7377 b_7462 when (not b_7462) -> (k_u_main_7377 0)
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_7377 when (n_1038 >= 0) ->
+      (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_7377 (x_1039 >= 0))
+  main_1037 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203 x_DO_NOT_CARE_1204 n_1038 set_flag_g_1134 s_g_r_EXPARAM_1127 
+  s_g_a_1129 x_1039 k_u_main_7377 when (not (n_1038 >= 0)) ->
+      (k_u_main_7380 n_1038 s_g_a_1129 s_g_r_EXPARAM_1127 set_flag_g_1134 x_1039 x_DO_NOT_CARE_1202 x_DO_NOT_CARE_1203
+        x_DO_NOT_CARE_1204 k_u_main_7377 false)
+  succ_1030 set_flag_g_1134 s_g_r_EXPARAM_1127 s_g_a_1129 n_1031 k_u_succ_6964 -> (k_u_succ_6964 (n_1031 + 1))
+Types:
+  main_7572 : X
+  f_1035 : (x_1:bool[x_1] ->
+            int ->
+            int ->
+            x_4:int ->
+            ((x_7:bool[x_7] -> x_8:int -> int -> int[(not x_7); 4*x_4 <= -x_8 - 5] -> (int -> X) -> X) -> X) -> X)
+  fail_7582 : (x_1:bool[x_1] -> (unit -> X) -> X)
+  k_u_g_u_7102 : (int ->
+                  x_2:bool[x_2] ->
+                  x_3:int ->
+                  int ->
+                  int ->
+                  x_6:bool[x_6] ->
+                  int ->
+                  int ->
+                  x_9:bool[x_9] ->
+                  int ->
+                  int ->
+                  (int -> X) ->
+                  (x_16:bool[x_16] -> x_17:int -> int -> int[x_3 >= x_17] -> (int -> X) -> X) -> unit -> X)
+  
+(6-1) Abstracting ... DONE!
+
+(6-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7572 ... --> 
+  f_7577 ... --> 
+  f_7578 ... --> 
+  main_1037 [1/2] ... --> 
+  k_u_main_7380 [1/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [2/2] ... --> 
+  f_1035 [1/2] ... --> 
+  f_f_7575 ... --> 
+  f_f_7575 ... --> 
+  f_k_u_main_7576 ... --> 
+  g_1032 [2/2] ... --> 
+  k_u_g_u_7102 ... --> 
+  g_without_checking_1152 ... --> 
+  g_1032 [1/2] ... --> 
+  br_g_7580 [1/2] ... --> 
+  k_u_g_u_7082 [2/2] ... --> 
+  fail_7582 ... --> fail -->
+  ERROR!
+
+Spurious counter-example::
+  0; 0; 0; 0; 0; 1; 1; 0; 0; 0; 0; 1; 0; 0; 0; 0; 1; 0
+
+(6-3) Checking counter-example ... DONE!
+
+(6-4) Discovering predicates ... 
+Fatal error: exception Assert_failure("genHcSolver.ml", 289, 16)
