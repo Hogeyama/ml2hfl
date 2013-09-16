@@ -116,14 +116,14 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
   let debug = !Flag.debug_level > 0 in
   let open Fpat in
   let lenSpcSequence = List.length failedSpc in
-  let subst_ith i = Formula.subst (List.map (fun v -> (v, Term.make_var (Var.rename_base (fun (Idnt.Id v) -> Idnt.Id (v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH")) v))) variables) in
+  let subst_ith i = Formula.subst (List.map (fun v -> (v, Term.mk_var (Var.rename_base (fun (Idnt.Id v) -> Idnt.Id (v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH")) v))) variables) in
   let nth_constraints n =
     let rec go i = 
       let ith_ltp, ith_lt = List.nth prevLinearTemplates i, List.nth linearTemplates i in
       if i < n then
-	Formula.geq ith_ltp ith_lt :: go (i+1)
+	NumFormula.geq ith_ltp ith_lt :: go (i+1)
       else
-	[Formula.gt ith_ltp ith_lt; Formula.geq ith_lt (IntTerm.make 0)]
+	[NumFormula.gt ith_ltp ith_lt; NumFormula.geq ith_lt (IntTerm.make 0)]
     in
     subst_ith n (Formula.band [List.nth failedSpc n; Formula.bnot (Formula.band (go 0))])
   in
@@ -173,7 +173,7 @@ let rec run predicate_que holed =
       let prev_vars =
 	List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
 	  (BRA_state.get_prev_statevars holed.state holed.verified) in
-      let prev_var_terms = List.map Term.make_var prev_vars in
+      let prev_var_terms = List.map Term.mk_var prev_vars in
       let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
       
       if !Flag.disjunctive then
@@ -185,8 +185,8 @@ let rec run predicate_que holed =
 	(* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
 	let constraints =
 	  Formula.band [spc; Formula.bnot
-	    (Formula.band [ Formula.gt linear_template_prev linear_template
-			  ; Formula.geq linear_template (IntTerm.make 0)])]
+	    (Formula.band [ NumFormula.gt linear_template_prev linear_template
+			  ; NumFormula.geq linear_template (IntTerm.make 0)])]
 	in
 	if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	

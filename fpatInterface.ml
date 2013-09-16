@@ -48,13 +48,13 @@ let conv_const c =
 
 let rec conv_term t =
   match t with
-  | Const(RandVal s) -> Term.make_var (Var.make (Idnt.make (new_id "r"))) (***)
+  | Const(RandVal s) -> Term.mk_var (Var.make (Idnt.make (new_id "r"))) (***)
   | Const(c) -> Term.Const([], conv_const c)
   | Var(x) ->
       if is_parameter x || isEX_COEFFS x then
-        Term.make_var (Var.make_coeff (Idnt.make x))
+        Term.mk_var (Var.make_coeff (Idnt.make x))
       else
-        Term.make_var (Var.make (Idnt.make x))
+        Term.mk_var (Var.make (Idnt.make x))
   | App(t1, t2) -> Term.apply (conv_term t1) [conv_term t2]
   | Fun _ -> assert false
   | Let _ -> assert false
