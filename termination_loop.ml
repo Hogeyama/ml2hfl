@@ -100,7 +100,11 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
        | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> if CEGAR_syntax.isEX_COEFFS x.Id.name then Syntax.make_int 0 else Syntax.make_var x)
        | t -> t
      in
-     BRA_transform.everywhere_expr substToVar
+     let preprocessForExparam e =
+       let e = ExtraParamInfer.removeDummySubstitutions e in
+       let _ = ExtraParamInfer.withExparam := e in
+       BRA_transform.everywhere_expr substToVar e
+     in preprocessForExparam
     )
   end
 
