@@ -1,7 +1,7 @@
 open Syntax
 open Type
 
-let origWithExparam = ref (Syntax.make_int 0)
+let origWithExparam = ref (make_int 0)
 let exCoefficients = ref []
 
 let to_string_CoeffInfos f =
@@ -10,7 +10,12 @@ let to_string_CoeffInfos f =
     | {desc = Const (Int n)} -> string_of_int n
     | _ -> raise (Invalid_argument "")
   in
-  let areAllZero = List.for_all (fun {desc=Const (Int n)} -> n = 0) (List.map f !exCoefficients) in
+  let isZero = function
+    | {desc=Const (Int n)} -> n = 0
+    | {desc=Var v} -> CEGAR_syntax.isEX_COEFFS v.Id.name
+    | t -> (Format.printf "%a@." pp_print_term t;raise (Invalid_argument ""))
+  in
+  let areAllZero = List.for_all isZero (List.map f !exCoefficients) in
   try
     if areAllZero then "" else
       List.fold_left2

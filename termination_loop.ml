@@ -97,7 +97,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
      ) linear_templates,
      let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Var.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Var.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
      let substToVar = function
-       | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> Syntax.make_var x)
+       | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> if CEGAR_syntax.isEX_COEFFS x.Id.name then Syntax.make_int 0 else Syntax.make_var x)
        | t -> t
      in
      BRA_transform.everywhere_expr substToVar
