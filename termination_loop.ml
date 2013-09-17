@@ -1,5 +1,6 @@
 open BRA_types
 open BRA_transform
+open Fpat.ExtAtom
 
 let (|>) = BRA_util.(|>)
 
@@ -121,9 +122,9 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
     let rec go i = 
       let ith_ltp, ith_lt = List.nth prevLinearTemplates i, List.nth linearTemplates i in
       if i < n then
-	NumFormula.geq ith_ltp ith_lt :: go (i+1)
+	ExtAtom.Atom.geq ith_ltp ith_lt :: go (i+1)
       else
-	[NumFormula.gt ith_ltp ith_lt; NumFormula.geq ith_lt (IntTerm.make 0)]
+	[ExtAtom.Atom.gt ith_ltp ith_lt; ExtAtom.Atom.geq ith_lt (IntTerm.make 0)]
     in
     subst_ith n (Formula.band [List.nth failedSpc n; Formula.bnot (Formula.band (go 0))])
   in
@@ -185,8 +186,8 @@ let rec run predicate_que holed =
 	(* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
 	let constraints =
 	  Formula.band [spc; Formula.bnot
-	    (Formula.band [ NumFormula.gt linear_template_prev linear_template
-			  ; NumFormula.geq linear_template (IntTerm.make 0)])]
+	    (Formula.band [ ExtAtom.Atom.gt linear_template_prev linear_template
+			  ; ExtAtom.Atom.geq linear_template (IntTerm.make 0)])]
 	in
 	if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	
