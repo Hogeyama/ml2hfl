@@ -545,7 +545,7 @@ let compute_strongest_post prog ce =
 let report_error ppf = function
     AbsTypeInfer.FailedToRefineTypes ->
       Format.fprintf ppf "Failure of abstraction type refinement"
-  | ExtFormula.Formula.Unknown ->
+  | SMTProver.Unknown ->
       Format.fprintf ppf "Failure of SMT prover"
   | InterpProver.Fail ->
       Format.fprintf ppf "Failure of interpolating prover (integer domain not fully supported)"
@@ -563,7 +563,7 @@ let string_of_error = make_string_of report_error
 
 let is_fpat_exception = function
     AbsTypeInfer.FailedToRefineTypes
-  | ExtFormula.Formula.Unknown
+  | SMTProver.Unknown
   | InterpProver.Fail
   | InterpProver.Unknown
   | ParamSubstInfer.FailedToRefineExtraParameters
