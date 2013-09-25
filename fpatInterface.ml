@@ -401,7 +401,7 @@ let insert_extra_param t =
               []
             else
               Util.List.map
-                Util.Triple.fst bindings)
+                Triple.fst bindings)
           in
           let aux' (f,xs,t) =
             let f' = trans_id f in
@@ -443,7 +443,7 @@ let insert_extra_param t =
             aux rfs
               (bvs @
               Util.List.map
-                Util.Triple.fst
+                Triple.fst
                 bindings')
               exs t2)
       | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
