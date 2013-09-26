@@ -202,6 +202,9 @@ let arg_spec =
    "-trecs", Arg.Set_string Flag.trecs,
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
    "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
+   (* FPAT option *)
+   "-flog", Arg.Set Fpat.Global._force,
+                      " Force printing log messages";
    (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
                       " Use an empty set as the initial sets of predicates for booleans";
@@ -218,6 +221,10 @@ let arg_spec =
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate false),
      " Generalize constraints of multiple function calls by interpolation";
+   "-bdag",
+     Arg.Unit (fun _ ->
+       Fpat.HcSolver.ext_solve := Fpat.BeautifulHcSolver.solve),
+     " Use Horn clause solver based on beautiful DAG interpolation";
    "-gchi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
