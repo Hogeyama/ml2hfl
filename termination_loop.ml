@@ -199,8 +199,8 @@ let rec run predicate_que holed =
 	let newPredicateInfo =
 	  try
 	    let coefficientInfos = inferCoeffs arg_vars [linear_template] constraints in
-	    (* update predicate *)
-	    updated_predicate_info predicate_info (coefficientInfos @ predicate_info.coefficients) (spc :: predicate_info.error_paths)
+	    (* return updated predicate *)
+	    { predicate_info with coefficients = coefficientInfos @ predicate_info.coefficients; errorPaths = spc :: predicate_info.errorPaths }
           with PolyConstrSolver.Unknown ->
 	    if debug then Format.printf "Failed to solve the constraints...@.@.";
 	    
@@ -217,13 +217,13 @@ let rec run predicate_que holed =
 	  let rec go l = function
 	    | [] -> [l@[spc]]
 	    | x::xs as r -> (l@[spc]@r) :: go (l@[x]) xs
-	  in go [] predicate_info.error_paths
+	  in go [] predicate_info.errorPaths
 	in
 	let allSpcSequencesWithExparam =
 	  let rec go l = function
 	    | [] -> [l@[spcWithExparam]]
 	    | x::xs as r -> (l@[spcWithExparam]@r) :: go (l@[x]) xs
-	  in go [] predicate_info.error_paths
+	  in go [] predicate_info.errorPathsWithExparam
 	in
 	let numberOfSpcSequences = List.length allSpcSequences in
 	let allVars = List.map fst env in
@@ -245,7 +245,7 @@ let rec run predicate_que holed =
 	    let coefficientInfos = inferCoeffs arg_vars linearTemplates constraints in
 
             (* return new predicate information (coeffcients + error paths) *)
-	    let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; error_paths = spcSequence } in
+	    let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
 	    if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	    Some newPredicateInfo
 	  with _ (* | PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
@@ -260,7 +260,7 @@ let rec run predicate_que holed =
 	      let coefficientInfos, exparamInfo = inferCoeffsAndExparams arg_vars linearTemplates constraints in
 	      
               (* return new predicate information (coeffcients + error paths) *)
-	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; error_paths = spcSequence } in
+	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam } in
 	      if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	      Some newPredicateInfo
             with

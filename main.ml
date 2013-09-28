@@ -122,7 +122,8 @@ let main in_channel =
 	    ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x) 
 	    ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
 	    ; BRA_types.coefficients = []
-	    ; BRA_types.error_paths = [] } in
+	    ; BRA_types.errorPaths = []
+	    ; BRA_types.errorPathsWithExparam = [] } in
 	  let predicate_que = Queue.create () in
 	  let _ = Queue.add init_predicate_info predicate_que in
 	  Termination_loop.reset_cycle ();
