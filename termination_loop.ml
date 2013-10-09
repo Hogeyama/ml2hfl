@@ -22,6 +22,7 @@ let max_threshold = 15
 let preprocessForTerminationVerification = ref (fun (x : Syntax.typed_term) -> x)
 
 exception FailedToFindLLRF
+exception InferenceFailure
 
 let counter = ref 0
 let get_now () = (counter := !counter + 1; !counter - 1)
@@ -134,6 +135,12 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
   in
   Formula.bor (Util.List.unfold (fun i -> if i < lenSpcSequence then Some (nth_constraints i, i+1) else None) 0)
 
+let rec enqueueNextPredicateInfo que =
+  if Queue.is_empty que then None
+  else
+    let nextGen = Queue.pop que in
+    try Some (nextGen ()) with _ -> enqueueNextPredicateInfo que
+
 let rec run predicate_que holed =
   let debug = !Flag.debug_level > 0 in
   let _ =
@@ -142,15 +149,15 @@ let rec run predicate_que holed =
       if !cycle_counter > max_threshold then (raise FailedToFindLLRF)
     end
   in
-  if Queue.is_empty predicate_que then (raise FailedToFindLLRF)
-  else
-    let predicate_info = Queue.pop predicate_que in
-    (* result log update here *)
-    lrf := BRA_util.update_assoc (Id.to_string holed.verified.id, !cycle_counter, predicate_info) !lrf;
-
-    (* set subst. to coeffs. of exparams (use in Main_loop.run as preprocess) *)    
-    BRA_types.preprocessForTerminationVerification := predicate_info.substToCoeffs;
-
+  match enqueueNextPredicateInfo predicate_que with
+    | None -> (raise FailedToFindLLRF)
+    | Some predicate_info ->
+      (* result log update here *)
+      lrf := BRA_util.update_assoc (Id.to_string holed.verified.id, !cycle_counter, predicate_info) !lrf;
+      
+      (* set subst. to coeffs. of exparams (use in Main_loop.run as preprocess) *)    
+      BRA_types.preprocessForTerminationVerification := predicate_info.substToCoeffs;
+      
     try
       let result = if !Flag.separate_pred then
 	  let predicates = separate_to_CNF (construct_LLRF predicate_info) in
@@ -196,7 +203,7 @@ let rec run predicate_que holed =
 	if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	
         (* solve constraints and obtain coefficients of a ranking function *)
-	let newPredicateInfo =
+	let newPredicateInfo _ =
 	  try
 	    let coefficientInfos = inferCoeffs arg_vars [linear_template] constraints in
 	    (* return updated predicate *)
@@ -228,7 +235,7 @@ let rec run predicate_que holed =
 	let numberOfSpcSequences = List.length allSpcSequences in
 	let allVars = List.map fst env in
 	
-	let successes = (flip mapOption) (List.combine allSpcSequences allSpcSequencesWithExparam) (fun (spcSequence, spcSequenceWithExparam) ->
+	let successes = (flip List.map) (List.combine allSpcSequences allSpcSequencesWithExparam) (fun (spcSequence, spcSequenceWithExparam) -> fun _ ->
 	  (* make templates (for arguments and previous arguments) *)
 	  let linearTemplates = Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (PolyConstrSolver.gen_template arg_env), i+1) else None) 0 in
 	  let prevLinearTemplates = List.map (Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
@@ -247,7 +254,7 @@ let rec run predicate_que holed =
             (* return new predicate information (coeffcients + error paths) *)
 	    let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
 	    if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
-	    Some newPredicateInfo
+	    newPredicateInfo
 	  with _ (* | PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
 	    if debug then Format.printf "Try to update extra parameters...@.@.";
 
@@ -262,14 +269,14 @@ let rec run predicate_que holed =
               (* return new predicate information (coeffcients + error paths) *)
 	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam } in
 	      if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
-	      Some newPredicateInfo
+	      newPredicateInfo
             with
 	      | PolyConstrSolver.NoSolution ->
 		if debug then Format.printf "Failed to find LLRF...@.";
-		None (* failed to solve the constraints *)
+		raise InferenceFailure (* failed to solve the constraints *)
 	      | e -> 
 		if debug then Format.printf "Unknown error: %s@." (Printexc.to_string e);
-		None (* failed to solve the constraints *)
+		raise InferenceFailure (* failed to solve the constraints *)
 	)
 	in
 	let _ = List.iter (fun pred -> Queue.push pred predicate_que) successes in

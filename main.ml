@@ -125,7 +125,7 @@ let main in_channel =
 	    ; BRA_types.errorPaths = []
 	    ; BRA_types.errorPathsWithExparam = [] } in
 	  let predicate_que = Queue.create () in
-	  let _ = Queue.add init_predicate_info predicate_que in
+	  let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
 	  Termination_loop.reset_cycle ();
 	  Termination_loop.run predicate_que holed) holed_list
       with
