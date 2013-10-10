@@ -30,9 +30,9 @@ let print_info () =
     end
   else
     begin
-      if !Flag.add_closure_exparam then
+      if !Flag.add_closure_exparam && !Flag.result = "terminating" then
 	Format.printf "exparam inserted program:@. %a@." Syntax.pp_print_term !ExtraParamInfer.origWithExparam;
-      if !Flag.termination then
+      if !Flag.termination && !Flag.result = "terminating" then
         begin
           List.iter
             (fun (f_name, (cycles, pred)) ->
