@@ -135,7 +135,7 @@ let main in_channel =
     if result then
       (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
     else
-      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Possibly Non-Terminating.@."; result)
+      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
   else
     Main_loop.run orig parsed
 

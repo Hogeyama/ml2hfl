@@ -158,126 +158,125 @@ let rec run predicate_que holed =
       (* set subst. to coeffs. of exparams (use in Main_loop.run as preprocess) *)    
       BRA_types.preprocessForTerminationVerification := predicate_info.substToCoeffs;
       
-    try
-      let result = if !Flag.separate_pred then
-	  let predicates = separate_to_CNF (construct_LLRF predicate_info) in
-          List.for_all (verify_with holed) predicates
-	else if !Flag.split_callsite then
-	  let predicate = construct_LLRF predicate_info in
-	  let splited = callsite_split holed in
-	  reset_counter ();
-	  List.for_all (fun h -> verify_with h predicate) splited
+      try
+	let result = if !Flag.separate_pred then
+	    let predicates = separate_to_CNF (construct_LLRF predicate_info) in
+            List.for_all (verify_with holed) predicates
+	  else if !Flag.split_callsite then
+	    let predicate = construct_LLRF predicate_info in
+	    let splited = callsite_split holed in
+	    reset_counter ();
+	    List.for_all (fun h -> verify_with h predicate) splited
+	  else
+	    let predicate = construct_LLRF predicate_info in
+	    verify_with holed predicate
+	in
+	if result then
+	  (if debug then Format.printf "%s is terminating.@." holed.verified.id.Id.name ; result)
 	else
-	  let predicate = construct_LLRF predicate_info in
-	  verify_with holed predicate
-      in
-      if result then
-	(if not !Flag.exp then Format.printf "%s is terminating.@." holed.verified.id.Id.name ; result)
-      else
-	(if not !Flag.exp then Format.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
-    with Refine.PostCondition (env, spc, spcWithExparam) ->
-      let open Fpat in
-      let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
-      let unwrap_template t = unwrap_template (Formula.term_of t) in
-      let arg_vars =
-	List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
-	  (BRA_state.get_argvars holed.state holed.verified) in
-      let prev_vars =
-	List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
-	  (BRA_state.get_prev_statevars holed.state holed.verified) in
-      let prev_var_terms = List.map Term.mk_var prev_vars in
-      let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
-      
-      if !Flag.disjunctive then
-	(* make templates *)
-	let linear_template = unwrap_template (PolyConstrSolver.gen_template arg_env) in
-	let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
-	if debug then Format.printf "Linear template:@.  %a@." Term.pr linear_template;
-
-	(* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
-	let constraints =
-	  Formula.band [spc; Formula.bnot
-	    (Formula.band [ ExtAtom.Atom.gt linear_template_prev linear_template
-			  ; ExtAtom.Atom.geq linear_template (IntTerm.make 0)])]
-	in
-	if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
+	  (if debug then Format.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
+      with Refine.PostCondition (env, spc, spcWithExparam) ->
+	let open Fpat in
+	let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
+	let unwrap_template t = unwrap_template (Formula.term_of t) in
+	let arg_vars =
+	  List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
+	    (BRA_state.get_argvars holed.state holed.verified) in
+	let prev_vars =
+	  List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
+	    (BRA_state.get_prev_statevars holed.state holed.verified) in
+	let prev_var_terms = List.map Term.mk_var prev_vars in
+	let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
 	
-        (* solve constraints and obtain coefficients of a ranking function *)
-	let newPredicateInfo _ =
-	  try
-	    let coefficientInfos = inferCoeffs arg_vars [linear_template] constraints in
-	    (* return updated predicate *)
-	    { predicate_info with coefficients = coefficientInfos @ predicate_info.coefficients; errorPaths = spc :: predicate_info.errorPaths }
-          with PolyConstrSolver.Unknown ->
-	    if debug then Format.printf "Failed to solve the constraints...@.@.";
+	if !Flag.disjunctive then
+	  (* make templates *)
+	  let linear_template = unwrap_template (PolyConstrSolver.gen_template arg_env) in
+	  let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
+	  if debug then Format.printf "Linear template:@.  %a@." Term.pr linear_template;
+	  
+	  (* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
+	  let constraints =
+	    Formula.band [spc; Formula.bnot
+	      (Formula.band [ ExtAtom.Atom.gt linear_template_prev linear_template
+			    ; ExtAtom.Atom.geq linear_template (IntTerm.make 0)])]
+	  in
+	  if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
+	  
+          (* solve constraints and obtain coefficients of a ranking function *)
+	  let newPredicateInfo _ =
+	    try
+	      let coefficientInfos = inferCoeffs arg_vars [linear_template] constraints in
+	      (* return updated predicate *)
+	      { predicate_info with coefficients = coefficientInfos @ predicate_info.coefficients; errorPaths = spc :: predicate_info.errorPaths }
+            with PolyConstrSolver.Unknown ->
+	      if debug then Format.printf "Failed to solve the constraints...@.@.";
+	      
+	      (* Failed to infer a new ranking predicate -> Update extra parameters *)
+	      (** UPDATE [not implemented] **)
+              
+              raise FailedToFindLLRF (* failed to solve the constraints *)
+	  in
+	  let _ = Queue.push newPredicateInfo predicate_que in
+	  run predicate_que holed
+	else
+	  (* all order constructed by <spc_1, spc_2, ..., spc_n> and newly obtained spc *)
+	  let allSpcSequences =
+	    let rec go l = function
+	      | [] -> [l@[spc]]
+	      | x::xs as r -> (l@[spc]@r) :: go (l@[x]) xs
+	    in go [] predicate_info.errorPaths
+	  in
+	  let allSpcSequencesWithExparam =
+	    let rec go l = function
+	      | [] -> [l@[spcWithExparam]]
+	      | x::xs as r -> (l@[spcWithExparam]@r) :: go (l@[x]) xs
+	    in go [] predicate_info.errorPathsWithExparam
+	  in
+	  let numberOfSpcSequences = List.length allSpcSequences in
+	  let allVars = List.map fst env in
+	  
+	  let successes = (flip List.map) (List.combine allSpcSequences allSpcSequencesWithExparam) (fun (spcSequence, spcSequenceWithExparam) -> fun _ ->
+	    (* make templates (for arguments and previous arguments) *)
+	    let linearTemplates = Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (PolyConstrSolver.gen_template arg_env), i+1) else None) 0 in
+	    let prevLinearTemplates = List.map (Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
+	    if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linearTemplates;
 	    
-	    (* Failed to infer a new ranking predicate -> Update extra parameters *)
-	    (** UPDATE [not implemented] **)
-            
-            raise FailedToFindLLRF (* failed to solve the constraints *)
-	in
-	let _ = Queue.push newPredicateInfo predicate_que in
-	run predicate_que holed
-      else
-	(* all order constructed by <spc_1, spc_2, ..., spc_n> and newly obtained spc *)
-	let allSpcSequences =
-	  let rec go l = function
-	    | [] -> [l@[spc]]
-	    | x::xs as r -> (l@[spc]@r) :: go (l@[x]) xs
-	  in go [] predicate_info.errorPaths
-	in
-	let allSpcSequencesWithExparam =
-	  let rec go l = function
-	    | [] -> [l@[spcWithExparam]]
-	    | x::xs as r -> (l@[spcWithExparam]@r) :: go (l@[x]) xs
-	  in go [] predicate_info.errorPathsWithExparam
-	in
-	let numberOfSpcSequences = List.length allSpcSequences in
-	let allVars = List.map fst env in
-	
-	let successes = (flip List.map) (List.combine allSpcSequences allSpcSequencesWithExparam) (fun (spcSequence, spcSequenceWithExparam) -> fun _ ->
-	  (* make templates (for arguments and previous arguments) *)
-	  let linearTemplates = Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (PolyConstrSolver.gen_template arg_env), i+1) else None) 0 in
-	  let prevLinearTemplates = List.map (Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
-	  if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linearTemplates;
-
-	  
-	  
-	  try
-	    (* make a constraint *)
-	    let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
-	    if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
-
-	    (* solve constraint and obtain coefficients *)
-	    let coefficientInfos = inferCoeffs arg_vars linearTemplates constraints in
-
-            (* return new predicate information (coeffcients + error paths) *)
-	    let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
-	    if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
-	    newPredicateInfo
-	  with _ (* | PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
-	    if debug then Format.printf "Try to update extra parameters...@.@.";
-
 	    try
 	      (* make a constraint *)
-	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequenceWithExparam in
+	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
 	      if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	      
 	      (* solve constraint and obtain coefficients *)
-	      let coefficientInfos, exparamInfo = inferCoeffsAndExparams arg_vars linearTemplates constraints in
+	      let coefficientInfos = inferCoeffs arg_vars linearTemplates constraints in
 	      
               (* return new predicate information (coeffcients + error paths) *)
-	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam } in
+	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
 	      if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	      newPredicateInfo
-            with
-	      | PolyConstrSolver.NoSolution ->
-		if debug then Format.printf "Failed to find LLRF...@.";
-		raise InferenceFailure (* failed to solve the constraints *)
-	      | e -> 
-		if debug then Format.printf "Unknown error: %s@." (Printexc.to_string e);
-		raise InferenceFailure (* failed to solve the constraints *)
-	)
-	in
-	let _ = List.iter (fun pred -> Queue.push pred predicate_que) successes in
-	run predicate_que holed
+	    with _ (* | PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
+	      if debug then Format.printf "Try to update extra parameters...@.@.";
+	      
+	      try
+		(* make a constraint *)
+		let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequenceWithExparam in
+		if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
+		
+		(* solve constraint and obtain coefficients *)
+		let coefficientInfos, exparamInfo = inferCoeffsAndExparams arg_vars linearTemplates constraints in
+		
+		(* return new predicate information (coeffcients + error paths) *)
+		let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam } in
+		if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
+		newPredicateInfo
+              with
+		| PolyConstrSolver.NoSolution ->
+		  if debug then Format.printf "Failed to find LLRF...@.";
+		  raise InferenceFailure (* failed to solve the constraints *)
+		| e -> 
+		  if debug then Format.printf "error: %s@." (Printexc.to_string e);
+		  raise InferenceFailure (* failed to solve the constraints *)
+	  )
+	  in
+	  let _ = List.iter (fun pred -> Queue.push pred predicate_que) successes in
+	  run predicate_que holed
+	    

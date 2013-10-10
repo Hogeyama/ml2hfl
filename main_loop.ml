@@ -88,8 +88,10 @@ let preprocess t spec =
       {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
   begin
-    if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
-    if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
+    (*
+      if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
+      if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
+    *)
     prog, rmap, get_rtyp, info
   end
 
@@ -127,7 +129,8 @@ let report_safe env rmap get_rtyp orig t0 =
   then
     env' |> List.map (fun (id, typ) -> Id.name id, typ)
          |> WriteAnnot.f !Flag.filename orig;
-  Format.printf "Safe!@.@.";
+  let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
+  if not only_result_termination then Format.printf "Safe!@.@.";
   if !Flag.relative_complete then begin
     let map =
       List.map
@@ -142,11 +145,11 @@ let report_safe env rmap get_rtyp orig t0 =
     Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
     Flag.web := false
   end;
-  if env' <> [] then Format.printf "Refinement Types:@.";
+  if env' <> [] && not only_result_termination then Format.printf "Refinement Types:@.";
   let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
   let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
-  List.iter pr env';
-  if env' <> [] then Format.printf "@."
+  if not only_result_termination then List.iter pr env';
+  if env' <> [] && not only_result_termination then Format.printf "@."
 
 
 let report_unsafe main_fun arg_num ce set_target =
