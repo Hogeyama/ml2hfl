@@ -282,12 +282,22 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.Z3Interface.init ()),
      " Use a polynomial constraint solver of Z3 SMT solver";
+   "-cqp",
+     Arg.Int (fun n ->
+       Fpat.Global.cqp_mode := n;
+       if n < 2 then Fpat.CQPLinConstrSolver.init () else Fpat.CQPLinConstrSolver.init_nat ()),
+     " Use a polynomial constraint solver based on convex quadratic programming";
    (* termination mode *)
    "-z3-rank",
      Arg.Unit (fun _ ->
        Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false (*~linear:true*)(*~linear:!Global.linear_farkas*);
        Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve),
      " Use Z3 for ranking function inference";
+   "-cqp-rank",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+       Fpat.RankFunInfer.ext_solve := Fpat.CQPLinConstrSolver.solve),
+     " Use convex quadratic programming based ranking function inference";
    "-bv-rank",
      Arg.Unit (fun _ ->
        Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true (*~linear:true*)(*~linear:!Global.linear_farkas*);
