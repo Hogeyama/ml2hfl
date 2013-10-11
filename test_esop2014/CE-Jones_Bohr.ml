@@ -1,9 +1,8 @@
-(* @from Call-by-value termination in the untyped lambda-calculus
-         Jones and Bohr
-         LMCS-4 2008
-         AND
-         Termination analysis and call graph construction for higher-order functional programs
-         Sereni
-         ICFP 2007 *)
+let f1 (u:unit) (c:unit->unit) (d:unit) = d
+let f2 (u:unit) (a:((unit->unit)->unit->unit)->unit->unit) (b:unit->unit) = a (f1 u) 
+let f3 (u:unit) (a:((unit->unit)->unit->unit)->unit->unit) = a (f2 u a) 
+let f4 (u:unit) (v:unit) = v 
+let f5 (u:unit) (e:(unit->unit)->(unit->unit)) = e (f4 u) 
 let main (u:unit) =
-  (fun a -> a (fun b -> a (fun (c:unit->unit) (d:unit) -> d))) (fun e -> e (fun (f:unit) -> f))
+  let zz_1032 = f3 u (f5 u) in
+  ()

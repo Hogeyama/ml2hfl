@@ -30,9 +30,9 @@ let print_info () =
     end
   else
     begin
-      if !Flag.add_closure_exparam then
+      if !Flag.add_closure_exparam && !Flag.result = "terminating" then
 	Format.printf "exparam inserted program:@. %a@." Syntax.pp_print_term !ExtraParamInfer.origWithExparam;
-      if !Flag.termination then
+      if !Flag.termination && !Flag.result = "terminating" then
         begin
           List.iter
             (fun (f_name, (cycles, pred)) ->
@@ -125,7 +125,7 @@ let main in_channel =
 	    ; BRA_types.errorPaths = []
 	    ; BRA_types.errorPathsWithExparam = [] } in
 	  let predicate_que = Queue.create () in
-	  let _ = Queue.add init_predicate_info predicate_que in
+	  let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
 	  Termination_loop.reset_cycle ();
 	  Termination_loop.run predicate_que holed) holed_list
       with
@@ -135,7 +135,7 @@ let main in_channel =
     if result then
       (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
     else
-      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Possibly Non-Terminating.@."; result)
+      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
   else
     Main_loop.run orig parsed
 
