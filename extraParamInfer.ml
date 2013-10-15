@@ -75,12 +75,12 @@ let rec insertExparam scope expr =
 		   (insertExparam scope elseClause))}
     | Branch (_, _) -> assert false (* ? *)
     | Let (flag, bindings, e) ->
+      let rec extend sc = function
+	| [] -> sc
+	| (x, [], body) :: bs when (Id.typ x) = TInt -> extend (x :: sc) bs
+	| _ :: bs -> extend sc bs
+      in
       let scope =
-	let rec extend sc = function
-	  | [] -> sc
-	  | (x, [], body) :: bs when (Id.typ x) = TInt -> extend (x :: sc) bs
-	  | _ :: bs -> extend sc bs
-	in
 	if flag = Nonrecursive then scope else extend scope bindings
       in
       let insertExparamBinding (x, args, body) = 
@@ -101,7 +101,7 @@ let rec insertExparam scope expr =
 	({x with Id.typ = transType x.Id.typ}, args, insertExparam scope body)
       in
       { expr with
-	desc = Let (flag, List.map insertExparamBinding bindings, insertExparam scope e)}
+	desc = Let (flag, List.map insertExparamBinding bindings, insertExparam (extend scope bindings) e)}
     | BinOp (op, expr1, expr2) ->
       { expr with
 	desc = BinOp (op, insertExparam scope expr1, insertExparam scope expr2)}
