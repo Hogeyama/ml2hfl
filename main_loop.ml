@@ -3,7 +3,6 @@ open Util
 let init () =
   Syntax.typ_excep := Type.TConstr("exn",true)
 
-
 let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
@@ -61,11 +60,19 @@ let preprocess t spec =
       in
       let t = t' in
       let () = Type_check.check t Syntax.typ_result in
+
+      (* preprocess for termination mode *)
+      let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
+
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in
       Syntax.get_top_funs t, t, fun _ typ -> typ
   in
+
+  (* ill-formed program *)
+  Refine.progWithExparam := (let p, _, _, _ = CEGAR_util.trans_prog !ExtraParamInfer.withExparam in p);
+  (**********************)
 
   let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
   let get_rtyp f typ = get_rtyp f (get_rtyp_trans f typ) in
@@ -80,7 +87,13 @@ let preprocess t spec =
     let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
       {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
+  begin
+    (*
+      if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
+      if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
+    *)
     prog, rmap, get_rtyp, info
+  end
 
 
 
@@ -116,7 +129,8 @@ let report_safe env rmap get_rtyp orig t0 =
   then
     env' |> List.map (fun (id, typ) -> Id.name id, typ)
          |> WriteAnnot.f !Flag.filename orig;
-  Format.printf "Safe!@.@.";
+  let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
+  if not only_result_termination then Format.printf "Safe!@.@.";
   if !Flag.relative_complete then begin
     let map =
       List.map
@@ -131,11 +145,11 @@ let report_safe env rmap get_rtyp orig t0 =
     Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
     Flag.web := false
   end;
-  if env' <> [] then Format.printf "Refinement Types:@.";
+  if env' <> [] && not only_result_termination then Format.printf "Refinement Types:@.";
   let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
   let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
-  List.iter pr env';
-  if env' <> [] then Format.printf "@."
+  if not only_result_termination then List.iter pr env';
+  if env' <> [] && not only_result_termination then Format.printf "@."
 
 
 let report_unsafe main_fun arg_num ce set_target =
