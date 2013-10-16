@@ -249,7 +249,7 @@ let new_params recursive bvs exs =
   let ts =
     (if !Global.enable_coeff_const (*&& recursive = None*) then
       ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string (Util.List.hd ps))) :: !ParamSubstInfer.masked_params);
-    (if !Global.enable_coeff_const then [Syntax.make_var (Util.List.hd ps)] else []) @
+    (if !Global.enable_coeff_const then [Term_util.make_var (Util.List.hd ps)] else []) @
     (*
     let b = recursive <> None && xs = [] && Util.Set.subset bvs' exs in
     *)
@@ -269,14 +269,14 @@ let new_params recursive bvs exs =
             if Util.List.mem x exs then
               ParamSubstInfer.masked_params := Var.make_coeff (Idnt.make (Id.to_string p)) :: !ParamSubstInfer.masked_params*)
         in
-        Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
+        Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
       (if !Global.enable_coeff_const then Util.List.tl ps else ps)
       bvs'
   in
   if ts = [] then
-    Some(Syntax.make_int 0, i + 1)
+    Some(Term_util.make_int 0, i + 1)
   else
-    Some(Util.List.fold_left Syntax.make_add (Util.List.hd ts) (Util.List.tl ts), i + 1)
+    Some(Util.List.fold_left Term_util.make_add (Util.List.hd ts) (Util.List.tl ts), i + 1)
   else
     None)
   0

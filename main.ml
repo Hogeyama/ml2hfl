@@ -159,6 +159,7 @@ let arg_spec =
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
    (* preprocessing *)
+   "-list-opt", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";

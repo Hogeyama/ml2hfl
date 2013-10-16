@@ -1,6 +1,7 @@
 
 open Util
 open Syntax
+open Term_util
 
 type spec = {abst_env : (id * typ) list; inlined : id list; inlined_f : id list}
 

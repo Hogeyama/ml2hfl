@@ -1,6 +1,7 @@
 %{
 open Type
 open Syntax
+open Term_util
 
 let print_error_information () =
 

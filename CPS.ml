@@ -1,4 +1,5 @@
 open Syntax
+open Term_util
 open Type
 open Util
 

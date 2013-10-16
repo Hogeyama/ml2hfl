@@ -3,6 +3,7 @@ open CEGAR_syntax
 open CEGAR_type
 
 module S = Syntax
+module U = Term_util
 
 let const_of_bool b = if b then True else False
 
@@ -131,10 +132,10 @@ let rec make_arg_let t =
           let f = Id.new_var "f__" (t.S.typ) in
           let xts = List.map (fun t -> Id.new_var "x" (t.S.typ), t) ts in
           let t' =
-            {S.desc=S.App(S.make_var f, List.map (fun (x,_) -> S.make_var x) xts);
+            {S.desc=S.App(U.make_var f, List.map (fun (x,_) -> U.make_var x) xts);
              S.typ=Type.typ_unknown}
           in
-            (List.fold_left (fun t2 (x,t1) -> S.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
+            (List.fold_left (fun t2 (x,t1) -> U.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
       | S.If(t1, t2, t3) ->
           let t1' = make_arg_let t1 in
           let t2' = make_arg_let t2 in
@@ -170,32 +171,32 @@ let id_prog prog =
 
 (* for predicates *)
 let rec trans_inv_term = function
-    Const True -> S.true_term
-  | Const False -> S.false_term
-  | Const (Int n) -> S.make_int n
-  | Var x -> S.make_var (trans_inv_var x)
+    Const True -> U.true_term
+  | Const False -> U.false_term
+  | Const (Int n) -> U.make_int n
+  | Var x -> U.make_var (trans_inv_var x)
   | App(App(Const And, t1), t2) ->
-      S.make_and (trans_inv_term t1) (trans_inv_term t2)
+      U.make_and (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Or, t1), t2) ->
-      S.make_or (trans_inv_term t1) (trans_inv_term t2)
+      U.make_or (trans_inv_term t1) (trans_inv_term t2)
   | App(Const Not, t) ->
-      S.make_not (trans_inv_term t)
+      U.make_not (trans_inv_term t)
   | App(App(Const Lt, t1), t2) ->
-      S.make_lt (trans_inv_term t1) (trans_inv_term t2)
+      U.make_lt (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Gt, t1), t2) ->
-      S.make_gt (trans_inv_term t1) (trans_inv_term t2)
+      U.make_gt (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Leq, t1), t2) ->
-      S.make_leq (trans_inv_term t1) (trans_inv_term t2)
+      U.make_leq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Geq, t1), t2) ->
-      S.make_geq (trans_inv_term t1) (trans_inv_term t2)
+      U.make_geq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const (EqInt|EqBool), t1), t2) ->
-      S.make_eq (trans_inv_term t1) (trans_inv_term t2)
+      U.make_eq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Add, t1), t2) ->
-      S.make_add (trans_inv_term t1) (trans_inv_term t2)
+      U.make_add (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Sub, t1), t2) ->
-      S.make_sub (trans_inv_term t1) (trans_inv_term t2)
+      U.make_sub (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Mul, t1), t2) ->
-      S.make_mul (trans_inv_term t1) (trans_inv_term t2)
+      U.make_mul (trans_inv_term t1) (trans_inv_term t2)
   | t -> Format.printf "%a@." CEGAR_print.term t; assert false
 
 
@@ -286,7 +287,7 @@ and trans_term post xs env t =
         let k = new_id ("k" ^ post) in
           [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
     | S.App({S.desc=S.RandInt true}, [t1;t2]) ->
-        assert (t1 = S.unit_term);
+        assert (t1 = U.unit_term);
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, App(Const RandInt, t2')
@@ -299,12 +300,12 @@ and trans_term post xs env t =
           [], Var x'
     | S.App({S.desc=S.Event(s,false)}, [t]) ->
         let k = new_id "k" in
-        assert (t = S.unit_term);
+        assert (t = U.unit_term);
         let ret_typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
         let defs = [k, TFun(typ_unit, fun _ -> ret_typ), ["u"], Const True, [], Const CPS_result] in
         defs, App(Const (Temp s), Var k)
     | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
-        assert (t1 = S.unit_term);
+        assert (t1 = U.unit_term);
         let defs1,t1' = trans_term post xs env t1 in
         let defs2,t2' = trans_term post xs env t2 in
           defs1@defs2, App(Const (Temp s), t2')

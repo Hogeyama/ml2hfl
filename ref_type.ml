@@ -1,6 +1,7 @@
 open Util
 
 module S = Syntax
+module U = Term_util
 
 type base =
     Unit
@@ -30,22 +31,22 @@ let print_base fm = function
   | Abst s -> Format.pp_print_string fm s
 
 let rec occur x = function
-    Base(_,_,p) -> List.exists (Id.same x) (S.get_fv p)
+    Base(_,_,p) -> List.exists (Id.same x) (U.get_fv p)
   | Fun(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | Pair(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | Inter typs
   | Union typs -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | List(_,p_len,_,p_i,typ) ->
-      let aux p =  List.exists (Id.same x) (S.get_fv p) in
+      let aux p =  List.exists (Id.same x) (U.get_fv p) in
         aux p_len || aux p_i || occur x typ
 
 let rec print fm = function
-    Base(base,x,p) when p = S.true_term ->
+    Base(base,x,p) when p = U.true_term ->
       Format.fprintf fm "%a" print_base base
-  | Base(Bool,x,p) when S.make_var x = p ->
+  | Base(Bool,x,p) when U.make_var x = p ->
       Format.fprintf fm "{true}"
-  | Base(Bool,x,p) when S.make_not (S.make_var x) = p ->
+  | Base(Bool,x,p) when U.make_not (U.make_var x) = p ->
       Format.fprintf fm "{false}"
   | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, {S.desc=S.Const(S.Int n)})})
   | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
@@ -72,18 +73,18 @@ let rec print fm = function
       Format.fprintf fm "(@[";
       if occur y typ2
       then
-        if p_i = S.true_term
+        if p_i = U.true_term
         then Format.fprintf fm "[%a]@ %a" Id.print y print typ2
         else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.pp_print_term p_i print typ2
       else
-        if p_i = S.true_term
+        if p_i = U.true_term
         then Format.fprintf fm "%a" print typ2
         else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.pp_print_term p_i print typ2;
       Format.fprintf fm " list";
-      if p_len <> S.true_term
+      if p_len <> U.true_term
       then Format.fprintf fm "|%a:%a|" Id.print x S.pp_print_term p_len
       else
-        if List.exists (Id.same x) (S.get_fv p_i) || occur x typ2
+        if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;
       Format.fprintf fm "@])"
 
@@ -117,14 +118,14 @@ let rec arg_num = function
 
 let rec subst x t typ =
   match typ with
-      Base(base,y,p) -> Base(base, y, S.subst x t p)
+      Base(base,y,p) -> Base(base, y, U.subst x t p)
     | Fun(y,typ1,typ2) -> Fun(y, subst x t typ1, subst x t typ2)
     | Pair(y,typ1,typ2) -> Pair(y, subst x t typ1, subst x t typ2)
     | Inter typs -> Inter (List.map (subst x t) typs)
     | Union typs -> Union (List.map (subst x t) typs)
     | ExtArg(y,typ1,typ2) -> ExtArg(y, subst x t typ1, subst x t typ2)
     | List(y,p_len,z,p_i,typ) ->
-        List(y, S.subst x t p_len, z, S.subst x t p_i, subst x t typ)
+        List(y, U.subst x t p_len, z, U.subst x t p_i, subst x t typ)
 
 let rec rename var = function
     Base(base, x, p) ->
@@ -133,32 +134,32 @@ let rec rename var = function
             None -> Id.new_var (Id.name x) (Id.typ x)
           | Some y -> y
       in
-        Base(base, x', S.subst x (S.make_var x') p)
+        Base(base, x', U.subst x (U.make_var x') p)
   | Fun(x, typ1, (Fun(_, typ, _) as typ2)) when !Flag.web && is_fun_typ typ ->
       let x' = Id.new_var ("@" ^ Id.name x) (Id.typ x) in
-      let typ2' = subst x (S.make_var x') typ2 in
+      let typ2' = subst x (U.make_var x') typ2 in
         Fun(x', rename (Some x') typ1, rename None typ2')
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var (Id.name x) (Id.typ x) in
-      let typ2' = subst x (S.make_var x') typ2 in
+      let typ2' = subst x (U.make_var x') typ2 in
         Fun(x', rename (Some x') typ1, rename None typ2')
   | Pair(x,typ1,typ2) ->
       let x' = Id.new_var (Id.name x) (Id.typ x) in
-      let typ2' = subst x (S.make_var x') typ2 in
+      let typ2' = subst x (U.make_var x') typ2 in
         Pair(x', rename (Some x') typ1, rename None typ2')
   | Inter typs -> Inter (List.map (rename var) typs)
   | Union typs -> Union (List.map (rename var) typs)
   | ExtArg(x,typ1,typ2) ->
       let x' = Id.new_var (Id.name x) (Id.typ x) in
-      let typ2' = subst x (S.make_var x') typ2 in
+      let typ2' = subst x (U.make_var x') typ2 in
         ExtArg(x', rename (Some x') typ1, rename None typ2')
   | List(x,p_len,y,p_i,typ) ->
       let x' = Id.new_var (Id.name x) (Id.typ x) in
       let y' = Id.new_var (Id.name y) (Id.typ y) in
-      let p_len' = S.subst x (S.make_var x') p_len in
-      let p_i' = S.subst y (S.make_var y') p_i in
-      let typ' = subst x (S.make_var x') typ in
-      let typ'' = subst y (S.make_var y') typ' in
+      let p_len' = U.subst x (U.make_var x') p_len in
+      let p_i' = U.subst y (U.make_var y') p_i in
+      let typ' = subst x (U.make_var x') typ in
+      let typ'' = subst y (U.make_var y') typ' in
         List(x', p_len', y', p_i', rename None typ'')
 
 let rename typ =

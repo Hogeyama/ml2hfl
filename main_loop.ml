@@ -1,15 +1,15 @@
 open Util
 
 let init () =
-  Syntax.typ_excep := Type.TConstr("exn",true)
+  Term_util.typ_excep := Type.TConstr("exn",true)
 
 let id x = x
 
-let trans_and_print f desc proj ?(option=true) ?(typ=true) t =
+let trans_and_print f desc proj ?(opt=true) ?(typ=true) t =
   let r = f t in
   let t' = proj r in
   let pr = if typ then Syntax.pp_print_term_typ else Syntax.pp_print_term in
-  if !Flag.debug_level > 0 && t <> t' && option
+  if !Flag.debug_level > 0 && t <> t' && opt
   then Format.printf "%s::@. @[%a@.@." desc pr t';
   r
 
@@ -19,14 +19,15 @@ let preprocess t spec =
     then
       let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
-      let fun_list = Syntax.get_top_funs t in
+      let fun_list = Term_util.get_top_funs t in
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~option:(spec<>Spec.init) t in
-      let t = trans_and_print Abstract.abstract_recdata ~typ:false "abst_recdata" id t in
-      let t,get_rtyp_list = trans_and_print Abstract.abstract_list "abst_list" fst t in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
+      let t = trans_and_print Encode_rec.trans ~typ:false "abst_recdata" id t in
+      let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let get_rtyp = get_rtyp_list in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
+      let t = trans_and_print Tupling.trans "tupling" id t in
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
@@ -36,11 +37,11 @@ let preprocess t spec =
         then trans_and_print Trans.insert_param_funarg "insert unit param" id t
         else t
       in
-      Type_check.check t Syntax.typ_result;
+      Type_check.check t Term_util.typ_result;
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in
-      Syntax.get_top_funs t, t, fun _ typ -> typ
+      Term_util.get_top_funs t, t, fun _ typ -> typ
   in
 
   let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
@@ -101,7 +102,7 @@ let report_safe env rmap get_rtyp orig t0 =
           CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
         !Fpat.ParamSubstInfer.ext_coeffs
     in
-    let t = Syntax.subst_map map t0 in
+    let t = Term_util.subst_map map t0 in
     Format.printf "Program with Quantifiers Added:@.";
     Flag.web := true;
     Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;

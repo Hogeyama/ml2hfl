@@ -50,19 +50,19 @@ endif
 ################################################################################
 # bytecode and native-code compilation
 
-MLI = lift.mli CPS.mli curry.mli abstract.mli feasibility.mli refine.mli syntax.mli \
+MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli feasibility.mli refine.mli syntax.mli term_util.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
-	spec_parser.mli trecs_parser.mli BRA_transform.mli CEGAR_lift.mli id.mli
+	spec_parser.mli trecs_parser.mli BRA_transform.mli CEGAR_lift.mli tupling.mli trans.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
 	environment.cmo flag.cmo util.cmo id.cmo type.cmo \
-	syntax.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
+	syntax.cmo term_util.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	ref_type.cmo type_check.cmo trans.cmo lift.cmo CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo \
 	useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
 	CPS.cmo curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
-	abstract.cmo CEGAR_abst_util.cmo \
+	encode_list.cmo encode_rec.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
         trecs_parser.cmo trecs_lexer.cmo \
 	trecs_syntax.cmo trecsInterface.cmo \
@@ -225,7 +225,7 @@ test-error: opt
 SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(OCAML_SOURCE)%, $(SRC))
 
-depend: $(SRC_MOCHI) $(DEPEND)
+depend: $(MLI) $(SRC_MOCHI) $(DEPEND)
 	$(OCAMLFIND) ocamldep $(MLI) $(SRC_MOCHI) > depend
 
 -include depend

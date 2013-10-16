@@ -1,5 +1,6 @@
 
 open Syntax
+open Term_util
 open Type
 open Type_decl
 
@@ -59,7 +60,11 @@ let rec check t typ =
         let rec aux t = function
             x::xs,TFun(y,typ) -> check_var x (Id.typ y); aux t (xs,typ)
           | [],typ -> check t typ
-          | _ -> assert false
+          | x::[],typ ->
+            let f =(fun [f,_,_] -> f) bindings in
+            Format.printf "%a %a@." Id.print f print_typ (Id.typ f);
+            Format.printf "[%a] %a@." Id.print x print_typ typ; assert false
+          | x::xs,typ -> Format.printf "%a %a@." Id.print x print_typ typ; assert false
         in
           List.iter (fun (f,xs,t) -> aux t (xs, Id.typ f)) bindings;
           check t2 typ'

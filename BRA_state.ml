@@ -43,7 +43,7 @@ let filter_non_integer =
   in
   state_transducer (List.filter is_integer) (List.filter is_integer) (List.filter is_integer)
 
-let build_var name typ = Syntax.make_var (Id.new_var name typ)
+let build_var name typ = Term_util.make_var (Id.new_var name typ)
 let make_prev_statevar_name function_name baseId = "s_prev_" ^ function_name ^ "_" ^ baseId.Id.name
 let make_prev_statevar_id function_name baseId = Id.new_var (make_prev_statevar_name function_name baseId) baseId.Id.typ
 let make_prev_statevar function_name baseId = build_var (make_prev_statevar_name function_name baseId) baseId.Id.typ
@@ -59,14 +59,14 @@ let build_record {id = {Id.name = f_name}; args = f_args} =
 	; prev_set_flag  = build_var ("prev_set_flag_" ^ f_name) TBool
 	; prev_statevars = List.map (make_prev_statevar f_name) f_args
 	; statevars      = List.map (make_statevar f_name) f_args
-	; argvars        = List.map Syntax.make_var f_args
+	; argvars        = List.map Term_util.make_var f_args
 	} in
   let open Flag in
   let _ = record := filter_non_integer !record in
   !record
 
 let build_state function_infos target =
-  { initial_state = Syntax.false_term :: List.map (fun {Syntax.typ = t} -> default_val t) (build_record target).argvars
+  { initial_state = Term_util.false_term :: List.map (fun {Syntax.typ = t} -> default_val t) (build_record target).argvars
   ; statetable = List.fold_left (fun map function_info -> InnerState.add function_info.id (build_record function_info) map) InnerState.empty function_infos
   }
 

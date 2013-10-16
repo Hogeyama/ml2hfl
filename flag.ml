@@ -53,6 +53,7 @@ let cps_simpl = ref false
 let bool_init_empty = ref false
 let insert_param_funarg = ref false
 let split_assert = ref false
+let encode_list_opt = ref false
 
 let mode = ref Reachability
 let init_trans = ref true

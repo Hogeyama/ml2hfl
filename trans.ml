@@ -1,310 +1,11 @@
 
 open Util
 open Syntax
+open Term_util
 open Type
 
 
-
-
-
-
-
-
-
-type trans =
-  {mutable tr_term: typed_term -> typed_term;
-   mutable tr_term_rec: typed_term -> typed_term;
-   mutable tr_desc: term -> term;
-   mutable tr_desc_rec: term -> term;
-   mutable tr_typ: typ -> typ;
-   mutable tr_typ_rec: typ -> typ;
-   mutable tr_var: id -> id;
-   mutable tr_var_rec: id -> id;
-   mutable tr_pat: typed_pattern -> typed_pattern;
-   mutable tr_pat_rec: typed_pattern -> typed_pattern;
-   mutable tr_info: info -> info;
-   mutable tr_info_rec: info -> info;
-   mutable tr_const: const -> const;
-   mutable tr_const_rec: const -> const}
-
-let trans_rec_typ trans = function
-    TUnit -> TUnit
-  | TBool -> TBool
-  | TAbsBool -> TAbsBool
-  | TInt -> TInt
-  | TRInt p -> TRInt (trans.tr_term p)
-  | TVar({contents=None} as x) -> TVar x
-  | TVar{contents=Some typ} -> trans.tr_typ typ
-  | TFun(x,typ) -> TFun(Id.set_typ x (trans.tr_typ (Id.typ x)), trans.tr_typ typ)
-  | TList typ -> TList (trans.tr_typ typ)
-  | TPair(x,typ) -> TPair(trans.tr_var x, trans.tr_typ typ)
-  | TConstr(s,b) -> TConstr(s,b)
-  | TPred(x,ps) -> TPred(trans.tr_var x, List.map trans.tr_term ps)
-
-let trans_rec_var trans x = Id.set_typ x (trans.tr_typ (Id.typ x))
-
-let trans_rec_pat trans p =
-  let typ = trans.tr_typ p.pat_typ in
-  let desc =
-    match p.pat_desc with
-        PAny -> PAny
-      | PVar x -> PVar (trans.tr_var x)
-      | PAlias(p,x) -> PAlias(trans.tr_pat p, trans.tr_var x)
-      | PConst t -> PConst (trans.tr_term t)
-      | PConstruct(s,ps) -> PConstruct(s, List.map trans.tr_pat ps)
-      | PNil -> PNil
-      | PCons(p1,p2) -> PCons(trans.tr_pat p1, trans.tr_pat p2)
-      | PPair(p1,p2) -> PPair(trans.tr_pat p1, trans.tr_pat p2)
-      | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,trans.tr_pat p)) pats)
-      | POr(p1,p2) -> POr(trans.tr_pat p1, trans.tr_pat p2)
-  in
-    {pat_desc=desc; pat_typ=typ}
-
-let trans_rec_info trans = function
-    InfoInt n -> InfoInt n
-  | InfoString s -> InfoString s
-  | InfoId x -> InfoId (trans.tr_var x)
-  | InfoTerm t -> InfoTerm (trans.tr_term t)
-
-let trans_rec_const trans = function
-    Unit -> Unit
-  | True -> True
-  | False -> False
-  | Int n -> Int n
-  | Char c -> Char c
-  | String s -> String s
-  | Float s -> Float s
-  | Int32 n -> Int32 n
-  | Int64 n -> Int64 n
-  | Nativeint n -> Nativeint n
-  | CPS_result -> CPS_result
-
-let trans_rec_desc trans = function
-    Const c -> Const c
-  | Unknown -> Unknown
-  | RandInt b -> RandInt b
-  | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
-  | Var y -> Var (trans.tr_var y)
-  | Fun(y, t) -> Fun(trans.tr_var y, trans.tr_term t)
-  | App(t1, ts) -> App(trans.tr_term t1, List.map trans.tr_term ts)
-  | If(t1, t2, t3) -> If(trans.tr_term t1, trans.tr_term t2, trans.tr_term t3)
-  | Branch(t1, t2) -> Branch(trans.tr_term t1, trans.tr_term t2)
-  | Let(flag, bindings, t2) ->
-Format.printf "LET@.";
-      let bindings' = List.map (fun (f,xs,t) -> trans.tr_var f, List.map trans.tr_var xs, trans.tr_term t) bindings in
-      let t2' = trans.tr_term t2 in
-        Let(flag, bindings', t2')
-  | BinOp(op, t1, t2) -> BinOp(op, trans.tr_term t1, trans.tr_term t2)
-  | Not t1 -> Not (trans.tr_term t1)
-  | Event(s,b) -> Event(s,b)
-  | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,trans.tr_term t1)) fields)
-  | Proj(i,s,f,t1) -> Proj(i,s,f,trans.tr_term t1)
-  | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans.tr_term t1,trans.tr_term t2)
-  | Nil -> Nil
-  | Cons(t1,t2) -> Cons(trans.tr_term t1, trans.tr_term t2)
-  | Constr(s,ts) -> Constr(s, List.map trans.tr_term ts)
-  | Match(t1,pats) ->
-      let aux (pat,cond,t1) = trans.tr_pat pat, trans.tr_term cond, trans.tr_term t1 in
-        Match(trans.tr_term t1, List.map aux pats)
-  | Raise t -> Raise (trans.tr_term t)
-  | TryWith(t1,t2) -> TryWith(trans.tr_term t1, trans.tr_term t2)
-  | Pair(t1,t2) -> Pair(trans.tr_term t1, trans.tr_term t2)
-  | Fst t -> Fst(trans.tr_term t)
-  | Snd t -> Snd(trans.tr_term t)
-  | Bottom -> Bottom
-  | Label(info, t) -> Label(trans.tr_info info, trans.tr_term t)
-
-let trans_rec_term trans t =
-Format.printf "%a@." pp_print_term t;
-  let r = trans.tr_desc t.desc in
-Format.printf "a@.";
- {desc = r; typ = trans.tr_typ t.typ}
-
-
-
-let make_trans () =
-  let trans =
-    {tr_term = id;
-     tr_term_rec = id;
-     tr_desc = id;
-     tr_desc_rec = id;
-     tr_typ = id;
-     tr_typ_rec = id;
-     tr_var = id;
-     tr_var_rec = id;
-     tr_pat = id;
-     tr_pat_rec = id;
-     tr_info = id;
-     tr_info_rec = id;
-     tr_const = id;
-     tr_const_rec = id}
-  in
-  trans.tr_term <- trans_rec_term trans;
-  trans.tr_term_rec <- trans_rec_term trans;
-  trans.tr_desc <- trans_rec_desc trans;
-  trans.tr_desc_rec <- trans_rec_desc trans;
-  trans.tr_typ <- trans_rec_typ trans;
-  trans.tr_typ_rec <- trans_rec_typ trans;
-  trans.tr_var <- trans_rec_var trans;
-  trans.tr_var_rec <- trans_rec_var trans;
-  trans.tr_pat <- trans_rec_pat trans;
-  trans.tr_pat_rec <- trans_rec_pat trans;
-  trans.tr_info <- trans_rec_info trans;
-  trans.tr_info_rec <- trans_rec_info trans;
-  trans.tr_const <- trans_rec_const trans;
-  trans.tr_const_rec <- trans_rec_const trans;
-  trans
-
-
-
-
-
-
-
-type 'a trans2 =
-  {mutable tr2_term: 'a -> typed_term -> typed_term;
-   mutable tr2_term_rec: 'a -> typed_term -> typed_term;
-   mutable tr2_desc: 'a -> term -> term;
-   mutable tr2_desc_rec: 'a -> term -> term;
-   mutable tr2_typ: 'a -> typ -> typ;
-   mutable tr2_typ_rec: 'a -> typ -> typ;
-   mutable tr2_var: 'a -> id -> id;
-   mutable tr2_var_rec: 'a -> id -> id;
-   mutable tr2_pat: 'a -> typed_pattern -> typed_pattern;
-   mutable tr2_pat_rec: 'a -> typed_pattern -> typed_pattern;
-   mutable tr2_info: 'a -> info -> info;
-   mutable tr2_info_rec: 'a -> info -> info;
-   mutable tr2_const: 'a -> const -> const;
-   mutable tr2_const_rec: 'a -> const -> const}
-
-let trans2_gen_typ tr env = function
-    TUnit -> TUnit
-  | TBool -> TBool
-  | TAbsBool -> TAbsBool
-  | TInt -> TInt
-  | TRInt p -> TRInt (tr.tr2_term env p)
-  | TVar({contents=None} as x) -> TVar x
-  | TVar{contents=Some typ} -> tr.tr2_typ env typ
-  | TFun(x,typ) -> TFun(Id.set_typ x (tr.tr2_typ env (Id.typ x)), tr.tr2_typ env typ)
-  | TList typ -> TList (tr.tr2_typ env typ)
-  | TPair(x,typ) -> TPair(tr.tr2_var env x, tr.tr2_typ env typ)
-  | TConstr(s,b) -> TConstr(s,b)
-  | TPred(x,ps) -> TPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
-
-let trans2_gen_var tr env x = Id.set_typ x (tr.tr2_typ env (Id.typ x))
-
-let trans2_gen_pat tr env p =
-  let typ = tr.tr2_typ env p.pat_typ in
-  let desc =
-    match p.pat_desc with
-        PAny -> PAny
-      | PVar x -> PVar (tr.tr2_var env x)
-      | PAlias(p,x) -> PAlias(tr.tr2_pat env p, tr.tr2_var env x)
-      | PConst t -> PConst (tr.tr2_term env t)
-      | PConstruct(s,ps) -> PConstruct(s, List.map (tr.tr2_pat env) ps)
-      | PNil -> PNil
-      | PCons(p1,p2) -> PCons(tr.tr2_pat env p1, tr.tr2_pat env p2)
-      | PPair(p1,p2) -> PPair(tr.tr2_pat env p1, tr.tr2_pat env p2)
-      | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,tr.tr2_pat env p)) pats)
-      | POr(p1,p2) -> POr(tr.tr2_pat env p1, tr.tr2_pat env p2)
-  in
-    {pat_desc=desc; pat_typ=typ}
-
-let trans2_gen_info tr env = function
-    InfoInt n -> InfoInt n
-  | InfoString s -> InfoString s
-  | InfoId x -> InfoId (tr.tr2_var env x)
-  | InfoTerm t -> InfoTerm (tr.tr2_term env t)
-
-let trans2_gen_const tr env = function
-    Unit -> Unit
-  | True -> True
-  | False -> False
-  | Int n -> Int n
-  | Char c -> Char c
-  | String s -> String s
-  | Float s -> Float s
-  | Int32 n -> Int32 n
-  | Int64 n -> Int64 n
-  | Nativeint n -> Nativeint n
-  | CPS_result -> CPS_result
-
-let trans2_gen_desc tr env = function
-    Const c -> Const c
-  | Unknown -> Unknown
-  | RandInt b -> RandInt b
-  | RandValue(typ,b) -> RandValue(tr.tr2_typ env typ, b)
-  | Var y -> Var (tr.tr2_var env y)
-  | Fun(y, t) -> Fun(tr.tr2_var env y, tr.tr2_term env t)
-  | App(t1, ts) -> App(tr.tr2_term env t1, List.map (tr.tr2_term env) ts)
-  | If(t1, t2, t3) -> If(tr.tr2_term env t1, tr.tr2_term env t2, tr.tr2_term env t3)
-  | Branch(t1, t2) -> Branch(tr.tr2_term env t1, tr.tr2_term env t2)
-  | Let(flag, bindings, t2) ->
-      let aux (f,xs,t) = tr.tr2_var env f, List.map (tr.tr2_var env) xs, tr.tr2_term env t in
-      Let(flag, List.map aux bindings, tr.tr2_term env t2)
-  | BinOp(op, t1, t2) -> BinOp(op, tr.tr2_term env t1, tr.tr2_term env t2)
-  | Not t1 -> Not (tr.tr2_term env t1)
-  | Event(s,b) -> Event(s,b)
-  | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,tr.tr2_term env t1)) fields)
-  | Proj(i,s,f,t1) -> Proj(i,s,f,tr.tr2_term env t1)
-  | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,tr.tr2_term env t1,tr.tr2_term env t2)
-  | Nil -> Nil
-  | Cons(t1,t2) -> Cons(tr.tr2_term env t1, tr.tr2_term env t2)
-  | Constr(s,ts) -> Constr(s, List.map (tr.tr2_term env) ts)
-  | Match(t1,pats) ->
-      let aux (pat,cond,t1) = tr.tr2_pat env pat, tr.tr2_term env cond, tr.tr2_term env t1 in
-        Match(tr.tr2_term env t1, List.map aux pats)
-  | Raise t -> Raise (tr.tr2_term env t)
-  | TryWith(t1,t2) -> TryWith(tr.tr2_term env t1, tr.tr2_term env t2)
-  | Pair(t1,t2) -> Pair(tr.tr2_term env t1, tr.tr2_term env t2)
-  | Fst t -> Fst(tr.tr2_term env t)
-  | Snd t -> Snd(tr.tr2_term env t)
-  | Bottom -> Bottom
-  | Label(info, t) -> Label(tr.tr2_info env info, tr.tr2_term env t)
-
-let trans2_gen_term tr env t = {desc = tr.tr2_desc env t.desc; typ = tr.tr2_typ env t.typ}
-
-
-let make_trans2 () =
-  let id' env = id in
-  let tr =
-    {tr2_term = id';
-     tr2_term_rec = id';
-     tr2_desc = id';
-     tr2_desc_rec = id';
-     tr2_typ = id';
-     tr2_typ_rec = id';
-     tr2_var = id';
-     tr2_var_rec = id';
-     tr2_pat = id';
-     tr2_pat_rec = id';
-     tr2_info = id';
-     tr2_info_rec = id';
-     tr2_const = id';
-     tr2_const_rec = id'}
-  in
-  tr.tr2_term <- trans2_gen_term tr;
-  tr.tr2_term_rec <- trans2_gen_term tr;
-  tr.tr2_desc <- trans2_gen_desc tr;
-  tr.tr2_desc_rec <- trans2_gen_desc tr;
-  tr.tr2_typ <- trans2_gen_typ tr;
-  tr.tr2_typ_rec <- trans2_gen_typ tr;
-  tr.tr2_var <- trans2_gen_var tr;
-  tr.tr2_var_rec <- trans2_gen_var tr;
-  tr.tr2_pat <- trans2_gen_pat tr;
-  tr.tr2_pat_rec <- trans2_gen_pat tr;
-  tr.tr2_info <- trans2_gen_info tr;
-  tr.tr2_info_rec <- trans2_gen_info tr;
-  tr.tr2_const <- trans2_gen_const tr;
-  tr.tr2_const_rec <- trans2_gen_const tr;
-  tr
-
-
-
-
 let flatten_tvar = (make_trans ()).tr_term
-
-
 
 
 
@@ -2356,8 +2057,156 @@ let let2fun_desc desc =
       let bindings' = List.map aux bindings in
       let t2' = let2fun.tr_term t2 in
       Let(flag, bindings', t2')
-  | _ -> let2fun.tr_desc desc
+  | _ -> let2fun.tr_desc_rec desc
 
 let () = let2fun.tr_desc <- let2fun_desc
 
 let let2fun = let2fun.tr_term
+
+
+
+(* This function does not insert new let-expressions. *)
+let fun2let = make_trans ()
+
+let fun2let_desc desc =
+  match desc with
+    Let(flag, bindings, t2) ->
+      let aux (f,xs,t) =
+        let ys,t' = decomp_fun t in
+        fun2let.tr_var f, xs@ys, fun2let.tr_term t'
+      in
+      let bindings' = List.map aux bindings in
+      let t2' = fun2let.tr_term t2 in
+      Let(flag, bindings', t2')
+  | _ -> fun2let.tr_desc_rec desc
+
+let () = fun2let.tr_desc <- fun2let_desc
+
+let fun2let = fun2let.tr_term
+
+
+
+let inline_no_effect = make_trans2 ()
+
+let inline_no_effect_desc top desc =
+  match desc with
+    Let(Nonrecursive, [x,[],t], t2) when not top && has_no_effect t ->
+      let t' = inline_no_effect.tr2_term top t in
+      let t2' = inline_no_effect.tr2_term top t2 in
+      (subst x t' t2').desc
+  | Let(flag, bindings, t) ->
+      let aux (f,xs,t) =
+        inline_no_effect.tr2_var false f,
+        List.map (inline_no_effect.tr2_var false) xs,
+        inline_no_effect.tr2_term false t
+      in
+      let bindings' = List.map aux bindings in
+      let t' = inline_no_effect.tr2_term top t in
+      Let(flag, bindings', t')
+  | _ -> inline_no_effect.tr2_desc_rec top desc
+
+let () = inline_no_effect.tr2_desc <- inline_no_effect_desc
+
+let inline_no_effect = inline_no_effect.tr2_term true
+
+
+
+
+let beta_no_effect = make_trans ()
+
+let beta_no_effect_desc desc =
+  match desc with
+    App(t1, [t2]) ->
+      let t1' = beta_no_effect.tr_term t1 in
+      let t2' = beta_no_effect.tr_term t2 in
+      begin
+        match t1'.desc with
+          Fun(x,t1'') when has_no_effect t2' -> (subst x t2' t1'').desc
+        | _ -> App(t1', [t2'])
+      end
+  | _ -> beta_no_effect.tr_desc_rec desc
+
+let () = beta_no_effect.tr_desc <- beta_no_effect_desc
+
+let beta_no_effect = beta_no_effect.tr_term
+
+
+
+let rec diff_terms t1 t2 =
+  match t1.desc, t2.desc with
+    Const c1, Const c2 -> if c1 = c2 then [] else [t1,t2]
+  | Unknown, Unknown -> []
+  | RandInt b1, RandInt b2 -> if b1 = b2 then [] else [t1,t2]
+  | RandValue(typ1,b1), RandValue(typ2,b2) ->
+      if Type.same_shape typ1 typ2 && b1 = b2
+      then []
+      else [t1,t2]
+  | Var x1, Var x2 -> if Id.same x1 x2 then [] else [t1,t2]
+  | Fun _, Fun _ -> [t1,t2]
+  | App(t11,[t12]), App(t21,[t22]) -> diff_terms t11 t21 @ diff_terms t12 t22
+  | App(t1,ts1), App(t2,ts2) ->
+      let ts1',t12 = decomp_snoc ts1 in
+      let ts2',t22 = decomp_snoc ts2 in
+      let t1' = {desc=App(make_app t1 ts1', [t12]); typ=t1.typ} in
+      let t2' = {desc=App(make_app t2 ts2', [t22]); typ=t2.typ} in
+      diff_terms t1' t2'
+  | If(t11,t12,t13), If(t21,t22,t23) ->
+      diff_terms t11 t21 @ diff_terms t12 t22 @ diff_terms t13 t23
+  | Branch(t11,t12), Branch(t21,t22) ->
+      diff_terms t11 t21 @ diff_terms t12 t22
+  | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) -> [t1,t2]
+  | BinOp(op1,t11,t12), BinOp(op2,t21,t22) ->
+      if op1 = op2
+      then diff_terms t11 t21 @ diff_terms t12 t22
+      else [t1,t2]
+  | Not t1, Not t2 -> diff_terms t1 t2
+  | Event(s1,b1), Event(s2,b2) -> if s1 = s2 && b1 = b2 then [] else [t1,t2]
+  | Record _, Record _ -> [t1,t2] (* Not implemented *)
+  | Proj _, Proj _ -> [t1,t2] (* Not implemented *)
+  | SetField _, SetField _ -> [t1,t2] (* Not implemented *)
+  | Nil, Nil -> []
+  | Cons(t11,t12), Cons(t21,t22) ->
+      diff_terms t11 t21 @ diff_terms t12 t22
+  | Constr _, Constr _ -> [t1,t2] (* Not implemented *)
+  | Match _, Match _ -> [t1,t2] (* Not implemented *)
+  | Raise _, Raise _ -> [t1,t2] (* Not implemented *)
+  | TryWith _, TryWith _ -> [t1,t2] (* Not implemented *)
+  | Pair(t11,t12), Pair(t21,t22) -> diff_terms t11 t21 @ diff_terms t12 t22
+  | Fst t1, Fst t2 -> diff_terms t1 t2
+  | Snd t1, Snd t2 -> diff_terms t1 t2
+  | Bottom, Bottom -> []
+  | Label _, Label _ -> [t1,t2]
+  | _ -> [t1, t2]
+
+
+
+
+let subst_let_xy = make_trans ()
+
+let subst_let_xy_desc desc =
+  let desc' = subst_let_xy.tr_desc_rec desc in
+  match desc with
+    Let(Nonrecursive, bindings, t) ->
+      let bindings',t' =
+        match desc' with
+          Let(Nonrecursive, bindings', t') -> bindings', t'
+        | _ -> assert false
+      in
+      let sbst bind t =
+        match bind with
+          (x, [], ({desc=Var y} as t')) -> subst x t' t
+        | _ -> raise Not_found
+      in
+      let check bind =
+        try
+          ignore (sbst bind unit_term);
+          true
+        with Not_found -> false
+      in
+      let bindings1,bindings2 = List.partition check bindings' in
+      (make_let bindings2 @@ List.fold_right sbst bindings1 t').desc
+  | _ -> desc'
+
+let () = subst_let_xy.tr_desc <- subst_let_xy_desc
+
+let subst_let_xy = subst_let_xy.tr_term

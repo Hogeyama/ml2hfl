@@ -1,4 +1,5 @@
 open Syntax
+open Term_util
 open Type
 
 (* h -> h_DEPTH *)
@@ -26,7 +27,7 @@ let rec dynamicMaximum = function
       (dynamicGreaterThan freshVar x)
   | [] -> assert false
 
-(* f g (h g) i (g, h: toplevel) 
+(* f g (h g) i (g, h: toplevel)
 -> DEPTH: (if i_DEPTH > 1 then i_DEPTH else 1) *)
 let maxDepthOf depthList =
   match
@@ -84,7 +85,7 @@ let rec insertClsDepth varToDepth expr =
     | Unknown
     | RandInt _
     | RandValue _ -> expr
-    | Var v -> 
+    | Var v ->
       let typ = transType v.Id.typ in
       {desc = Var {v with Id.typ = typ}; typ = typ}
     | Fun (x, e) -> assert false (* ? *)
@@ -114,7 +115,7 @@ let rec insertClsDepth varToDepth expr =
 	| (x, [], body) when is_base_typ (Id.typ x) ->
 	  (varToDepth', (x, [], insertClsDepth varToDepth body)::bindings')
 	| (x, [], body) when is_fun_typ (Id.typ x) ->
-	  let x_depthId = 
+	  let x_depthId =
 	    begin
 	      try
 		BRA_transform.extract_id (List.assoc (Id.to_string x) varToDepth)

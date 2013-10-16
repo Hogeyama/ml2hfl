@@ -1,6 +1,7 @@
 open BRA_util
 open Type
 open Syntax
+open Term_util
 open BRA_types
 open BRA_state
 

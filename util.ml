@@ -315,15 +315,17 @@ let print_time () =
 
 
 
-let rec last = function
-    [] -> failwith "last"
-  | [x] -> x
-  | x::xs -> last xs
+let rec decomp_snoc = function
+    [] -> failwith "dcomp_snoc"
+  | [x] -> [], x
+  | x::xs ->
+      let xs',y = decomp_snoc xs in
+      x::xs', y
 
-let rec init = function
-    [] -> failwith "init"
-  | [x] -> []
-  | x::xs -> x :: init xs
+let last xs = snd @@ decomp_snoc xs
+let init xs = fst @@ decomp_snoc xs
+
+
 
 
 
@@ -426,3 +428,12 @@ let make_string_of pp =
   fun x ->
     pp Format.str_formatter x;
     Format.flush_str_formatter ()
+
+
+let print_begin_end str1 exp str2 =
+  Format.printf "%s@?" str1;
+  let r = Lazy.force exp in
+  Format.printf "%s@?" str2;
+  r
+
+let do_and_return f x = f x; x

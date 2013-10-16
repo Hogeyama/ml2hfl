@@ -1,6 +1,7 @@
 
 open Util
 open Syntax
+open Term_util
 open Type
 
 module RT = Ref_type

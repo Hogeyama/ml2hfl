@@ -1,6 +1,7 @@
 cvc3
 trecs
 Makefile.config
+DONE
 COMMIT
 depend
 config.status
@@ -30,3 +31,7 @@ option.conf
 *parser.conflicts
 *~
 wiki/
+*.omc
+.omakedb
+.omakedb.lock
+\#*

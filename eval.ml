@@ -1,5 +1,6 @@
 open Util
 open Syntax
+open Term_util
 
 exception RaiseExcep of int list * typed_term
 exception EventFail

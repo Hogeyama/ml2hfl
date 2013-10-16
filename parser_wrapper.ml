@@ -4,6 +4,7 @@ open Asttypes
 open Typedtree
 open Types
 open Syntax
+open Term_util
 open Type
 
 
@@ -518,11 +519,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
               | Some e3 -> from_expression e3
           in
             make_if t1 t2 t3
-      | Texp_sequence(e1,e2) ->
-          let t1 = from_expression e1 in
-          let t2 = from_expression e2 in
-          let u = Id.new_var "u" t1.typ in
-            make_let [u, [], t1] t2
+      | Texp_sequence(e1,e2) -> make_seq (from_expression e1) (from_expression e2)
       | Texp_while _ -> unsupported "expression (while)"
       | Texp_for _ -> unsupported "expression (for)"
       | Texp_when _ -> unsupported "expression (when)"
@@ -532,16 +529,9 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
       | Texp_override _ -> unsupported "expression (override)"
       | Texp_letmodule _ -> unsupported "expression (module)"
-      | Texp_assert e -> make_if (from_expression e) unit_term (make_app fail_term [unit_term])
-      | Texp_assertfalse ->
-          let u = Id.new_var "u" TUnit in
-            make_let [u, [], make_app fail_term [unit_term]] (make_bottom typ')
+      | Texp_assert e -> make_assert (from_expression e)
+      | Texp_assertfalse -> make_seq (make_assert false_term) (make_bottom typ')
       | Texp_lazy e -> assert false
-          (*
-            let u = Id.new_var "u" TUnit in
-            Fun(u, from_expression e);
-            from_expression e
-          *)
       | Texp_object _ -> unsupported "expression (class)"
       | Texp_pack _ -> unsupported "expression (pack)"
 
