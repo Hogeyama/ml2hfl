@@ -26,9 +26,8 @@ type coefficient_info = { coeffs : int list
 			}
 
 type predicate_info = { variables : Syntax.id list
-		      ; substToCoeffs : Syntax.typed_term -> Syntax.typed_term
 		      ; prev_variables : Syntax.id list
-		      ; error_paths : Fpat.Formula.t list
+		      ; error_paths : Fpat.Term.t list
 		      ; coefficients : coefficient_info list
 		      }
 
@@ -52,8 +51,6 @@ let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
   match coefficients with
     | [] -> Format.fprintf fm "0"
     | c::cs -> Format.fprintf fm "%s" (List.fold_left (fun acc c' -> acc ^ ", " ^ show_ranking_function c') (show_ranking_function c) cs)
-
-let preprocessForTerminationVerification = ref (fun (x : Syntax.typed_term) -> x)
 
 type holed_program = { program : Syntax.typed_term
 		     ; verified : function_info

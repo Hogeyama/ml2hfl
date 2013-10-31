@@ -125,4 +125,3 @@ let disjunctive = ref false
 let separate_pred = ref false
 let split_callsite = ref false
 let add_closure_depth = ref false
-let add_closure_exparam = ref false

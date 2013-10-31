@@ -48,18 +48,16 @@ let conv_const c =
 
 let rec conv_term t =
   match t with
-  | Const(RandVal s) -> Term.mk_var (Var.make (Idnt.make (new_id "r"))) (***)
+  | Const(RandVal s) -> Term.make_var (Var.make (Idnt.make (new_id "r"))) (***)
   | Const(c) -> Term.Const([], conv_const c)
   | Var(x) ->
-      if is_parameter x || isEX_COEFFS x then
-        Term.mk_var (Var.make_coeff (Idnt.make x))
+      if is_parameter x then
+        Term.make_var (Var.make_coeff (Idnt.make x))
       else
-        Term.mk_var (Var.make (Idnt.make x))
+        Term.make_var (Var.make (Idnt.make x))
   | App(t1, t2) -> Term.apply (conv_term t1) [conv_term t2]
   | Fun _ -> assert false
   | Let _ -> assert false
-
-let conv_formula t = t |> conv_term |> Formula.of_term
 
 let inv_const c =
   match c with
@@ -108,12 +106,14 @@ let rec inv_term t =
           App(App(inv_term t1, inv_term t2), inv_term t3))
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
   | Term.Binder(_, _, _, _) -> assert false
+  | Term.Error _ -> assert false
+  | Term.Ret (_, _, _, _) -> assert false
+  | Term.Call (_, _, _) -> assert false
   | Term.If (_, _, _, _) -> assert false
   | Term.LetVal (_, _, _, _) -> assert false
   | Term.LetFun (_, _, _, _, _) -> assert false
   | Term.LetRec (_, _, _, _) -> assert false
 
-let inv_formula t = t |> Formula.term_of |> inv_term
 
 
 let conv_event e = (***)
@@ -127,13 +127,13 @@ let conv_fdef (f, args, guard, events, body) =
   { Fdef.attr = [];
     Fdef.name = Idnt.make f;
     Fdef.args = Util.List.map Idnt.make args;
-    Fdef.guard = conv_formula guard;
+    Fdef.guard = conv_term guard;
     Fdef.body = Util.List.fold_right (fun e t -> Term.apply (conv_event e) [Term.Const([],Const.Unit)]) events (conv_term body) } (***)
 
 let inv_fdef fdef =
   Idnt.string_of fdef.Fdef.name,
   Util.List.map Idnt.string_of fdef.Fdef.args,
-  inv_formula fdef.Fdef.guard,
+  inv_term fdef.Fdef.guard,
   [],
   inv_term fdef.Fdef.body
 
@@ -170,22 +170,22 @@ let rec inv_abst_type aty =
   match aty with
     AbsType.Base(BaseType.Ext(id), x, ts) ->
       let x = Var.string_of x in
-      TBase(TAbst(Idnt.string_of id), fun s -> Util.List.map (fun t -> subst x s (inv_formula t)) ts)
+      TBase(TAbst(Idnt.string_of id), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(BaseType.Unit, x, ts) ->
       let x = Var.string_of x in
-      TBase(TUnit, fun s -> Util.List.map (fun t -> subst x s (inv_formula t)) ts)
+      TBase(TUnit, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(BaseType.Bool, x, ts) ->
       let x = Var.string_of x in
-      TBase(TBool, fun s -> Util.List.map (fun t -> subst x s (inv_formula t)) ts)
+      TBase(TBool, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(BaseType.Int, x, ts) ->
       let x = Var.string_of x in
-      TBase(TInt, fun s -> Util.List.map (fun t -> subst x s (inv_formula t)) ts)
+      TBase(TInt, fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(BaseType.Float, x, ts) ->
       let x = Var.string_of x in
-      TBase(TAbst("float"), fun s -> Util.List.map (fun t -> subst x s (inv_formula t)) ts)
+      TBase(TAbst("float"), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Base(BaseType.String, x, ts) ->
       let x = Var.string_of x in
-      TBase(TAbst("string"), fun s -> Util.List.map (fun t -> subst x s (inv_formula t)) ts)
+      TBase(TAbst("string"), fun s -> Util.List.map (fun t -> subst x s (inv_term t)) ts)
   | AbsType.Fun(aty1, aty2) ->
       let x = if AbsType.is_base aty1 then Var.string_of (AbsType.bv_of aty1) else "_dummy" in
       TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
@@ -401,7 +401,7 @@ let insert_extra_param t =
               []
             else
               Util.List.map
-                Triple.fst bindings)
+                Util.Triple.fst bindings)
           in
           let aux' (f,xs,t) =
             let f' = trans_id f in
@@ -443,7 +443,7 @@ let insert_extra_param t =
             aux rfs
               (bvs @
               Util.List.map
-                Triple.fst
+                Util.Triple.fst
                 bindings')
               exs t2)
       | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
@@ -509,9 +509,9 @@ let instantiate_param (typs, fdefs, main as prog) =
 let simplify_term t =
   if false then
 	  let _, t = trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
-	  let t = conv_formula t in
+	  let t = conv_term t in
 	  let t = Formula.simplify t in
-			let t = inv_formula t in
+			let t = inv_term t in
 	  (trans_inv_term t).Syntax.desc
   else
     t
@@ -545,7 +545,7 @@ let compute_strongest_post prog ce =
 let report_error ppf = function
     AbsTypeInfer.FailedToRefineTypes ->
       Format.fprintf ppf "Failure of abstraction type refinement"
-  | SMTProver.Unknown ->
+  | ExtFormula.Formula.Unknown ->
       Format.fprintf ppf "Failure of SMT prover"
   | InterpProver.Fail ->
       Format.fprintf ppf "Failure of interpolating prover (integer domain not fully supported)"
@@ -563,7 +563,7 @@ let string_of_error = make_string_of report_error
 
 let is_fpat_exception = function
     AbsTypeInfer.FailedToRefineTypes
-  | SMTProver.Unknown
+  | ExtFormula.Formula.Unknown
   | InterpProver.Fail
   | InterpProver.Unknown
   | ParamSubstInfer.FailedToRefineExtraParameters

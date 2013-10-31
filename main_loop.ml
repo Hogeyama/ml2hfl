@@ -40,20 +40,12 @@ let preprocess t spec =
         then trans_and_print Trans.insert_param_funarg "insert unit param" id t
         else t
       in
-      let () = Type_check.check t Term_util.typ_result in
-
-      (* preprocess for termination mode *)
-      let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
-
+      Type_check.check t Term_util.typ_result;
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in
       Term_util.get_top_funs t, t, fun _ typ -> typ
   in
-
-  (* ill-formed program *)
-  Refine.progWithExparam := (let p, _, _, _ = CEGAR_util.trans_prog !ExtraParamInfer.withExparam in p);
-  (**********************)
 
   let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
   let get_rtyp f typ = get_rtyp f (get_rtyp_trans f typ) in
@@ -68,11 +60,7 @@ let preprocess t spec =
     let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
       {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
-  begin
-    if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
-    if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
     prog, rmap, get_rtyp, info
-  end
 
 
 
