@@ -68,7 +68,7 @@ CMO = $(OCAML_CMO) \
 	trecs_syntax.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
 	feasibility.cmo refine.cmo CEGAR.cmo \
-	writeAnnot.cmo tupling.cmo \
+	writeAnnot.cmo tupling.cmo ret_fun.cmo \
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo \
 	extraClsDepth.cmo \
 	eval.cmo main_loop.cmo termination_loop.cmo main.cmo

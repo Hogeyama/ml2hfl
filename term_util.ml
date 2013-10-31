@@ -663,6 +663,23 @@ let and_list ts = match ts with
 
 
 
+let rec make_term typ =
+  match typ with
+    TUnit -> unit_term
+  | TBool -> true_term
+  | TInt -> make_int 0
+  | TFun(x,typ) -> make_fun x (make_term typ)
+  | TPair(x,typ) -> make_pair (make_term @@ Id.typ x) (make_term typ)
+  | _ -> Format.printf "ERROR:@.%a@." Syntax.pp_print_typ typ; assert false
+
+let opt_typ typ = TPair(Id.new_var "x" TInt, typ)
+let make_none typ = make_pair (make_int 0) (make_term typ)
+let make_some t = make_pair (make_int 1) t
+let make_is_none t = make_eq (make_fst t) (make_int 0)
+let make_is_some t = make_not (make_is_none t)
+let make_get_val t = make_snd t
+
+
 
 
 (*** AUXILIARY FUNCTIONS ***)

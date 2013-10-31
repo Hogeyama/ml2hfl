@@ -137,3 +137,5 @@ let rec check t typ =
     | _ -> Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ
+
+let check_and_return typ t = if Flag.check_typ then check t typ; t

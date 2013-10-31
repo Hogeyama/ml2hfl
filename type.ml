@@ -244,3 +244,20 @@ let rec to_id_string = function
   | TPair(x,typ) -> to_id_string (Id.typ x) ^ "_x_" ^ to_id_string typ
   | TConstr(s,_) -> s
   | TPred(x,_) -> to_id_string (Id.typ x)
+
+
+(* order of simpl types *)
+let rec order typ =
+  match typ with
+    TUnit -> 0
+  | TBool -> 0
+  | TAbsBool -> 0
+  | TInt -> 0
+  | TRInt _ -> 0
+  | TVar{contents=None} -> assert false
+  | TVar{contents=Some typ} -> order typ
+  | TFun(x,typ) -> max (order (Id.typ x) + 1) (order typ)
+  | TList typ -> assert false
+  | TPair(x,typ) -> max (order (Id.typ x)) (order typ)
+  | TConstr(s,_) -> assert false
+  | TPred(x,_) -> order @@ Id.typ x

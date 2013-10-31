@@ -4,6 +4,8 @@ open Syntax
 open Term_util
 
 
+
+
 let is_none_term t =
   match t.desc with
     Pair(t1,t2) -> t1 = true_term && t2.desc = Const (Int 0)
@@ -106,9 +108,13 @@ Format.printf "compose_let_same_arg@.";
   let x = Id.new_var "r" (TPair(Id.new_var "l" t1.typ, t2.typ)) in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
-  let app = make_app (make_var fg) ts in
-  let pat = make_ppair (make_pvar x1) (make_pvar x2) in
-  make_lets_f before @@ make_single_match app pat @@ make_lets_f after @@ make_pair t1' t2'
+  let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
+  let pat =
+    [p,  [], make_app (make_var fg) ts;
+     x1, [], make_fst @@ make_var p;
+     x2, [], make_snd @@ make_var p]
+  in
+  make_lets_f before @@ make_let pat @@ make_lets_f after @@ make_pair t1' t2'
 
 let compose_non_recursive first t1 t2 =
   let bindings,t = decomp_let (if first then t1 else t2) in
@@ -372,8 +378,9 @@ let trans t = t
   |> Trans.let2fun
   |> do_and_return (Format.printf "BEFORE:@.%a@.@." pp_print_term)
   |> Trans.inline_no_effect
-  |> Trans.beta_no_effect
   |> do_and_return (Format.printf "INLINE:@.%a@.@." pp_print_term)
+  |> Trans.beta_no_effect
+  |> do_and_return (Format.printf "BETA:@.%a@.@." pp_print_term)
   |> tupling
   |> pair_let
   |> do_and_return (Format.printf "???:@.%a@.@." pp_print_term)
@@ -388,3 +395,94 @@ let trans t = t
   |> compose_app
   |> tupling
 *)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let inst_var x typ bb t = t
+
+
+
+let trans2 = make_trans2 ()
+
+let trans_desc (tt,bb) desc =
+  match desc with
+    Let(Nonrecursive, [x,[],({desc=App({desc=Var x1},[{desc=Var x2}])} as t1)], t) ->
+      let t1' = trans2.tr2_term (tt,bb) t1 in
+      let bb' = (x,t1)::bb in
+      let t' = trans2.tr2_term (tt,bb') t in
+      let t'' =
+        make_let [x,[],t1'] t' |>
+          inst_var x2 (tt x2) bb' |>
+          inst_var x1 (tt x1) bb'
+      in
+      t''.desc
+  | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
+      let x1' = trans2.tr2_var (tt,bb) x1 in
+      let x2' = trans2.tr2_var (tt,bb) x2 in
+      let bb' = (x,t1)::bb in
+      let t' = trans2.tr2_term (tt,bb') t in
+      let t1' =
+        match Id.typ x1', Id.typ x2' with
+          TFun(x11,_), TFun(x21,_) ->
+            let y = Id.new_var "x" (TPair(x11, Id.typ x21)) in
+            let t1 = make_app (make_var x1') [make_fst @@ make_var y] in
+            let t2 = make_app (make_var x2') [make_snd @@ make_var y] in
+            make_fun y (make_pair t1 t2)
+        | TFun(x11,_), _ ->
+            let y = Id.new_var_id x11 in
+            let t1 = make_app (make_var x1') [make_var y] in
+            let t2 = make_var x2' in
+            make_fun y (make_pair t1 t2)
+        | _, TFun(x21,_) ->
+            let y = Id.new_var_id x21 in
+            let t1 = make_var x1' in
+            let t2 = make_app (make_var x2') [make_var y] in
+            make_fun y (make_pair t1 t2)
+        | _, _ -> make_pair (make_var x1') (make_var x2')
+      in
+      (make_let [x,[],t1'] t').desc
+  | Let(Nonrecursive, [x,[],({desc=Fst{desc=Var x1}} as t1)], t) ->
+      let x1' = trans2.tr2_var (tt,bb) x1 in
+      let bb' = (x,t1)::bb in
+      let t' = trans2.tr2_term (tt,bb') t in
+      let t1' =
+        match Id.typ x1 with
+        | TPair({Id.typ=TFun _}, TFun _) ->
+            let y,typ1 = match Id.typ x1' with TFun({Id.typ=TPair(y,typ1)},_) -> y,typ1 | _ -> assert false in
+            let y' = Id.new_var_id y in
+            make_fun y' @@ make_fst @@ make_app (make_var x1') [make_pair (make_var y') (make_none typ1)]
+        | TPair({Id.typ=TFun _}, _) ->
+            let y = match Id.typ x1' with TFun(y,_) -> y | _ -> assert false in
+            let y' = Id.new_var_id y in
+            make_fun y' @@ make_fst @@ make_app (make_var x1') [make_var y']
+        | TPair(_, TFun _) ->
+            let typ = match Id.typ x1' with TFun(y,_) -> Id.typ y | _ -> assert false in
+            make_fst @@ make_app (make_var x1') [make_none @@ typ]
+        | TPair _ ->
+            make_fst @@ make_var x1'
+        | _ -> assert false
+      in
+      (make_let [x,[],t1'] t').desc
+  | _ -> trans2.tr2_desc_rec (tt,bb) desc
+
+let () = trans2.tr2_desc <- trans_desc
+
+let trans2 tt t = trans2.tr2_term (tt,[]) t

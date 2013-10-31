@@ -133,6 +133,13 @@ val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 val imply : typed_term -> typed_term -> typed_term
 val and_list : typed_term list -> typed_term
 val get_typ_default : typ -> typed_term
+val opt_typ : typ -> typ
+val make_none : typ -> typed_term
+val make_some : typed_term -> typed_term
+val make_is_none : typed_term -> typed_term
+val make_is_some : typed_term -> typed_term
+val make_get_val : typed_term -> typed_term
+
 
 (** {6 Term destructor} *)
 val decomp_fun : typed_term -> id list * typed_term

@@ -1,16 +1,33 @@
-let rec make_term (u:unit) : (int list) -> int =
+(*
+type t = Var of int | Cst of int | App of t * t
 
-match Random.int 0 with
+let rec sumConstants = function
+    Cst n -> n
+  | Var _ -> assert false
+  | App(t1,t2) -> sumConstants t1 + sumConstants t2
+
+let rec groundTerm = function
+    Cst n -> true
+  | Var _ -> false
+  | App(t1,t2) -> groundTerm t1 && groundTerm t2
+
+let main m = if groundTerm m then sumConstants m else 0
+*)
+
+
+let rec make_term (u:unit) =
+  match Random.int 0 with
       0 ->
         let x = Random.int 0 in
-          (function [] -> 0 | _ -> x)
+          (function [] -> 0 | [1] -> x)
     | 1 ->
         let x = Random.int 0 in
-          (function [] -> 1 | _ -> x)
+          (function [] -> 1 | [1] -> x)
     | _ ->
         let t1 = make_term () in
-          (function [] -> 2 | _::ns -> t1 ns)
-
+        let t2 = make_term () in
+          (function [] -> 2 | 1::ns -> t1 ns | 2::ns -> t2 ns)
+    
 
 let rec sumConstants f =
   match f [] with
@@ -18,23 +35,18 @@ let rec sumConstants f =
     | 1 -> assert false
     | _ ->
         let f1 ns = f (1::ns) in
-          sumConstants f1
+        let f2 ns = f (2::ns) in
+          sumConstants f1 + sumConstants f2
 
 let rec groundTerm f =
   match f [] with
-      0 -> true, f
-    | 1 -> false, f
-    | i ->
+      0 -> true
+    | 1 -> false
+    | _ ->
         let f1 ns = f (1::ns) in
-        let b1, f1' = groundTerm f1 in
-        let f' ns =
-          match ns with
-              [] -> i
-            | _::ns' -> f1' ns'
-        in
-          b1, f'
+        let f2 ns = f (2::ns) in
+          groundTerm f1 && groundTerm f2
 
 let main (m:unit) =
   let m = make_term () in
-  let b,m' = groundTerm m in
-    if b then sumConstants m' else 0
+    if groundTerm m then sumConstants m else 0
