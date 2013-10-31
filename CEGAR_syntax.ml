@@ -155,6 +155,7 @@ let rec decomp_tfun = function
 
 
 let is_parameter x = Fpat.Util.String.starts_with x Flag.extpar_header
+let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 
 let get_ext_funs {env=env; defs=defs} =

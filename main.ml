@@ -30,11 +30,16 @@ let print_info () =
     end
   else
     begin
+      if !Flag.add_closure_exparam then
+	Format.printf "exparam inserted program:@. %a@." Syntax.pp_print_term !ExtraParamInfer.origWithExparam;
       if !Flag.termination then
         begin
           List.iter
             (fun (f_name, (cycles, pred)) ->
-	      Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred)
+	      Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
+	      if !Flag.add_closure_exparam then
+		let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
+		if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
 	    !Termination_loop.lrf
         end;
       Format.printf "cycles: %d\n" !Flag.cegar_loop;
@@ -106,12 +111,15 @@ let main in_channel =
     let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
     let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
+    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
     let result =
       try
 	List.for_all (fun holed ->
 	  let init_predicate_info =
 	    { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+	    ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
 	    ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
 	    ; BRA_types.coefficients = []
 	    ; BRA_types.error_paths = [] } in
@@ -197,6 +205,9 @@ let arg_spec =
    "-trecs", Arg.Set_string Flag.trecs,
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
    "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
+   (* FPAT option *)
+   "-flog", Arg.Set Fpat.Global._force,
+                      " Force printing log messages";
    (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
                       " Use an empty set as the initial sets of predicates for booleans";
@@ -213,6 +224,10 @@ let arg_spec =
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate false),
      " Generalize constraints of multiple function calls by interpolation";
+   "-bdag",
+     Arg.Unit (fun _ ->
+       Fpat.HcSolver.ext_solve := Fpat.BeautifulHcSolver.solve),
+     " Use Horn clause solver based on beautiful DAG interpolation";
    "-gchi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
@@ -223,20 +238,23 @@ let arg_spec =
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.TemplateBasedGenInterpProver.interpolate),
      " Generalize constraints of multiple function calls by template-based constraint solving";
+(*
    "-gssi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.YintInterface.solution_space_based_interpolate;
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
+*)
    "-linfarkas",
      Arg.Set Fpat.Global.linear_farkas,
      " Enable linear Farkas";
+(*
    "-yhorn",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.YhornInterface.solve),
      " Solve Horn clauses by using Yint";
-
+*)
    "-ieb", Arg.Set Fpat.Global.encode_boolean,
      " Enable integer encoding of booleans";
    (* interpolating prover *)
@@ -252,10 +270,12 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.TemplateBasedInterpProver.interpolate),
      " Use an interpolating prover based on template based constraint solving";
+(*
    "-yint",
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Use Yint interpolating prover";
+*)
    (* polynomial constraint solver *)
    "-bitvec",
      Arg.Unit (fun _ ->
@@ -272,13 +292,13 @@ let arg_spec =
    (* termination mode *)
    "-z3-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true;
+       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false (*~linear:true*)(*~linear:!Global.linear_farkas*);
        Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve),
      " Use Z3 for ranking function inference";
    "-bv-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:true ~linear:true;
-       Fpat.RankFunInfer.ext_solve := Fpat.BvPolyConstrSolver.solve [] []),
+       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:true (*~linear:true*)(*~linear:!Global.linear_farkas*);
+       Fpat.RankFunInfer.ext_solve := Fpat.BvPolyConstrSolver.solve),
      " Use bit-vector-based ranking function inference";
     (* use this with Z3 otherwise..*)
    "-rbf",
@@ -306,7 +326,11 @@ let arg_spec =
    "-add-cd",
      Arg.Unit (fun _ ->
        Flag.add_closure_depth := true),
-     " Insert extra parameters for representing depth of closures"
+     " Insert extra parameters for representing depth of closures";
+   "-infer-ranking-exparam",
+     Arg.Unit (fun _ ->
+       Flag.add_closure_exparam := true),
+     " Infer extra ranking parameters for closures for termination verification"
   ]
 
 let () = print_option_and_exit := fun () ->
@@ -367,7 +391,7 @@ let fpat_init1 () =
   (* default Polynomial constraint solver *)
   Fpat.BvPolyConstrSolver.init ();
   (* default Polynomial constraint solver for ranking function inference *)
-  Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true;
+  Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false (*~linear:true*)(*~linear:!Global.linear_farkas*);
   Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve
 
 (* called after parsing options *)
