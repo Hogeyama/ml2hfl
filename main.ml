@@ -205,10 +205,10 @@ let arg_spec =
    "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
    (* FPAT option *)
    "-flog", Arg.Set Fpat.Global._force,
-                      " Force printing log messages";
+            " Force printing log messages";
    (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
-                      " Use an empty set as the initial sets of predicates for booleans";
+                       " Use an empty set as the initial sets of predicates for booleans";
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
           " Use refinement type based predicate discovery (same as -rsn 0)";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
@@ -242,9 +242,6 @@ let arg_spec =
        Fpat.GenInterpProver.ext_interpolate := Fpat.YintInterface.solution_space_based_interpolate;
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
-   "-linfarkas",
-     Arg.Set Fpat.Global.linear_farkas,
-     " Enable linear Farkas";
    "-yhorn",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.YhornInterface.solve),
@@ -269,42 +266,100 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Use Yint interpolating prover";
-   (* polynomial constraint solver *)
-   "-bitvec",
+   (* SMT solver *)
+   "-z3", Arg.Unit (fun _ -> Fpat.Z3Interface.init ()),
+     " Use Z3 SMT solver";
+   "-cvc3", Arg.Unit (fun _ -> Fpat.Cvc3Interface.init ()),
+     " Use CVC3 SMT solver";
+   (* template based inference *)
+   "-z3-template",
      Arg.Unit (fun _ ->
-       Fpat.BvPolyConstrSolver.init ()),
-     " Use a polynomial constraint solver based on bit-vector modeling and SAT";
-   "-cad",
+       Fpat.Template.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+       Fpat.Template.ext_solve :=
+         Fpat.Z3Interface.solve),
+     " Use Z3 SMT solver for template based inference";
+   "-z3-template-lin",
      Arg.Unit (fun _ ->
-       Fpat.CadPolyConstrSolver.init ()),
-     " Use a polynomial constraint solver based on CAD";
-   "-z3",
+       Fpat.Template.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+       Fpat.Template.ext_solve :=
+         Fpat.Z3Interface.solve),
+     " Use Z3 SMT solver for template based inference (norec)";
+   "-mip-template",
      Arg.Unit (fun _ ->
-       Fpat.Z3Interface.init ()),
-     " Use a polynomial constraint solver of Z3 SMT solver";
-   "-cqp",
+         Fpat.Template.ext_generate :=
+           Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
+         Fpat.Template.ext_solve :=
+           Fpat.MIPLinConstrSolver.solve),
+     " Use a template based inference based on mixed integer linear programming (norec)";
+   "-cqp-template",
      Arg.Int (fun n ->
        Fpat.Global.cqp_mode := n;
-       if n < 2 then Fpat.CQPLinConstrSolver.init () else Fpat.CQPLinConstrSolver.init_nat ()),
-     " Use a polynomial constraint solver based on convex quadratic programming";
+       if n < 2 then begin
+         Fpat.Template.ext_generate :=
+           Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+         Fpat.Template.ext_solve :=
+           Fpat.CQPLinConstrSolver.solve
+       end else begin
+         Fpat.Template.ext_generate :=
+           Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
+         Fpat.Template.ext_solve :=
+           Fpat.CQPLinConstrSolver.solve
+       end),
+     " Use a template based inference based on convex quadratic programming (norec)";
+   (* relatively complete verification *)
+   "-bv-exparm",
+     Arg.Unit (fun _ ->
+       Fpat.ParamSubstInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true;
+       Fpat.ParamSubstInfer.ext_solve :=
+         Fpat.BvPolyConstrSolver.solve),
+     " Use a bit-vector-based extra parameter inference";
+   "-z3-exparam",
+     Arg.Unit (fun _ ->
+       Fpat.ParamSubstInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+       Fpat.ParamSubstInfer.ext_solve :=
+         Fpat.Z3Interface.solve),
+     " Use Z3 SMT solver for extra parameter inference";
    (* termination mode *)
    "-z3-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false (*~linear:true*)(*~linear:!Global.linear_farkas*);
-       Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve),
-     " Use Z3 for ranking function inference";
-   "-cqp-rank",
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.Z3Interface.solve),
+     " Use Z3 SMT solver for ranking function inference";
+   "-z3-rank-lin",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
-       Fpat.RankFunInfer.ext_solve := Fpat.CQPLinConstrSolver.solve),
-     " Use convex quadratic programming based ranking function inference";
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.Z3Interface.solve),
+     " Use Z3 SMT solver for ranking function inference (no exparam)";
+   "-cqp-rank-lin",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.CQPLinConstrSolver.solve),
+     " Use convex quadratic programming based ranking function inference (no exparam)";
+   "-bv-rank-lin",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.BvPolyConstrSolver.solve),
+     " Use bit-vector-based ranking function inference (no exparam)";
    "-bv-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true (*~linear:true*)(*~linear:!Global.linear_farkas*);
-       Fpat.RankFunInfer.ext_solve := Fpat.BvPolyConstrSolver.solve),
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true (*~linear:true*);
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.BvPolyConstrSolver.solve),
      " Use bit-vector-based ranking function inference";
-    (* use this with Z3 otherwise..*)
-   "-rbf",
+   "-rbf", (* use this with Z3 otherwise... *)
      Arg.Set Fpat.Global.rank_bounded_first,
      " Try to infer a ranking function with small coefficients";
    "-termination-disj",
@@ -385,23 +440,39 @@ let parse_arg () =
 (* called before parsing options *)
 let fpat_init1 () =
   let open Fpat in
+
   (* default interpolating prover *)
   InterpProver.ext_interpolate := CsisatInterface.interpolate;
+
   (* default Horn clause solver *)
   HcSolver.ext_solve := BwHcSolver.solve;
-  (* default Polynomial constraint solver *)
-  Fpat.BvPolyConstrSolver.init ();
-  (* default Polynomial constraint solver for ranking function inference *)
-  Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false (*~linear:true*)(*~linear:!Global.linear_farkas*);
-  Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve
+
+  (* default solver for parameter substitution inference *)
+  Fpat.ParamSubstInfer.ext_generate :=
+    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+  Fpat.ParamSubstInfer.ext_solve :=
+    Fpat.Z3Interface.solve;
+
+  (* default solver for ranking function inference *)
+  Fpat.RankFunInfer.ext_generate :=
+    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false (*~linear:true*);
+  Fpat.RankFunInfer.ext_solve :=
+    Fpat.Z3Interface.solve;
+
+  (* default solver for template based inference *)
+  Fpat.Template.ext_generate :=
+    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+  Fpat.Template.ext_solve :=
+    Fpat.Z3Interface.solve;
+
+  (* default SMT solver *)
+  Fpat.Z3Interface.init ()
 
 (* called after parsing options *)
 let fpat_init2 () =
   let open Fpat in
   Global.print_log := !Flag.debug_level <> 0;
   Global.cvc3 := !Flag.cvc3;
-  Cvc3Interface.init ();
-  AtpInterface.init ();
   Cvc3Interface.open_cvc3 ()
 
 let () =

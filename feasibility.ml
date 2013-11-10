@@ -10,7 +10,7 @@ type result =
   | Infeasible of CEGAR_syntax.ce
 
 let checksat env t =
-  Fpat.Cvc3Interface.is_satisfiable (FpatInterface.conv_formula t)
+  Fpat.Cvc3Interface.is_sat (FpatInterface.conv_formula t)
 
 let get_solution env t =
   t |> FpatInterface.conv_formula |> Fpat.Cvc3Interface.solve |> List.sort compare |> List.map snd
