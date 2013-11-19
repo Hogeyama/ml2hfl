@@ -291,7 +291,7 @@ let arg_spec =
          Fpat.Template.ext_generate :=
            Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
          Fpat.Template.ext_solve :=
-           Fpat.MIPLinConstrSolver.solve),
+           Fpat.GLPKInterface.solve),
      " Use a template based inference based on mixed integer linear programming (norec)";
    "-cqp-template",
      Arg.Int (fun n ->
@@ -300,12 +300,12 @@ let arg_spec =
          Fpat.Template.ext_generate :=
            Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
          Fpat.Template.ext_solve :=
-           Fpat.CQPLinConstrSolver.solve
+           Fpat.GSLInterface.solve_int
        end else begin
          Fpat.Template.ext_generate :=
            Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
          Fpat.Template.ext_solve :=
-           Fpat.CQPLinConstrSolver.solve
+           Fpat.GSLInterface.solve_int
        end),
      " Use a template based inference based on convex quadratic programming (norec)";
    (* relatively complete verification *)
@@ -343,7 +343,7 @@ let arg_spec =
        Fpat.RankFunInfer.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
        Fpat.RankFunInfer.ext_solve :=
-         Fpat.CQPLinConstrSolver.solve),
+         Fpat.GSLInterface.solve_int),
      " Use convex quadratic programming based ranking function inference (no exparam)";
    "-bv-rank-lin",
      Arg.Unit (fun _ ->
