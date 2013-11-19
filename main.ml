@@ -220,7 +220,7 @@ let arg_spec =
    "-gi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate false),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron false),
      " Generalize constraints of multiple function calls by interpolation";
    "-bdag",
      Arg.Unit (fun _ ->
@@ -229,7 +229,7 @@ let arg_spec =
    "-gchi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate true),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtcs",
      Arg.Unit (fun _ ->
@@ -239,12 +239,12 @@ let arg_spec =
    "-gssi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.YintInterface.solution_space_based_interpolate;
-       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_yint;
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_yint),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
    "-yhorn",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.YhornInterface.solve),
+       Fpat.HcSolver.ext_solve := Fpat.HcSolver.solve_yhorn),
      " Solve Horn clauses by using Yint";
 
    "-ieb", Arg.Set Fpat.Global.encode_boolean,
@@ -252,11 +252,11 @@ let arg_spec =
    (* interpolating prover *)
    "-csisat",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate),
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat),
      " Use CSIsat interpolating prover";
    "-gcsisat",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate ~generalize:true ),
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat_gen),
      " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
    "-tcs",
      Arg.Unit (fun _ ->
@@ -264,27 +264,29 @@ let arg_spec =
      " Use an interpolating prover based on template based constraint solving";
    "-yint",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_yint),
      " Use Yint interpolating prover";
    (* SMT solver *)
-   "-z3", Arg.Unit (fun _ -> Fpat.Z3Interface.init ()),
+   "-z3", Arg.Unit (fun _ ->
+       Fpat.SMTProver.init_z3 ();
+       Fpat.PolyConstrSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3),
      " Use Z3 SMT solver";
-   "-cvc3", Arg.Unit (fun _ -> Fpat.Cvc3Interface.init ()),
+   "-cvc3", Arg.Unit (fun _ ->
+       Fpat.SMTProver.init_cvc3 ();
+       Fpat.PolyConstrSolver.ext_solve := Fpat.PolyConstrSolver.solve_cvc3),
      " Use CVC3 SMT solver";
    (* template based inference *)
    "-z3-template",
      Arg.Unit (fun _ ->
        Fpat.Template.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-       Fpat.Template.ext_solve :=
-         Fpat.Z3Interface.solve),
+       Fpat.Template.ext_solve := Fpat.PolyConstrSolver.solve_z3),
      " Use Z3 SMT solver for template based inference";
    "-z3-template-lin",
      Arg.Unit (fun _ ->
        Fpat.Template.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
-       Fpat.Template.ext_solve :=
-         Fpat.Z3Interface.solve),
+       Fpat.Template.ext_solve := Fpat.PolyConstrSolver.solve_z3),
      " Use Z3 SMT solver for template based inference (norec)";
    "-mip-template",
      Arg.Unit (fun _ ->
@@ -320,23 +322,20 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.ParamSubstInfer.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-       Fpat.ParamSubstInfer.ext_solve :=
-         Fpat.Z3Interface.solve),
+       Fpat.ParamSubstInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3),
      " Use Z3 SMT solver for extra parameter inference";
    (* termination mode *)
    "-z3-rank",
      Arg.Unit (fun _ ->
        Fpat.RankFunInfer.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-       Fpat.RankFunInfer.ext_solve :=
-         Fpat.Z3Interface.solve),
+       Fpat.RankFunInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3),
      " Use Z3 SMT solver for ranking function inference";
    "-z3-rank-lin",
      Arg.Unit (fun _ ->
        Fpat.RankFunInfer.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
-       Fpat.RankFunInfer.ext_solve :=
-         Fpat.Z3Interface.solve),
+       Fpat.RankFunInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3),
      " Use Z3 SMT solver for ranking function inference (no exparam)";
    "-cqp-rank-lin",
      Arg.Unit (fun _ ->
@@ -442,7 +441,7 @@ let fpat_init1 () =
   let open Fpat in
 
   (* default interpolating prover *)
-  InterpProver.ext_interpolate := CsisatInterface.interpolate;
+  InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat;
 
   (* default Horn clause solver *)
   HcSolver.ext_solve := BwHcSolver.solve;
@@ -450,30 +449,30 @@ let fpat_init1 () =
   (* default solver for parameter substitution inference *)
   Fpat.ParamSubstInfer.ext_generate :=
     Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-  Fpat.ParamSubstInfer.ext_solve :=
-    Fpat.Z3Interface.solve;
+  Fpat.ParamSubstInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3;
 
   (* default solver for ranking function inference *)
   Fpat.RankFunInfer.ext_generate :=
     Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false (*~linear:true*);
-  Fpat.RankFunInfer.ext_solve :=
-    Fpat.Z3Interface.solve;
+  Fpat.RankFunInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3;
 
   (* default solver for template based inference *)
   Fpat.Template.ext_generate :=
     Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-  Fpat.Template.ext_solve :=
-    Fpat.Z3Interface.solve;
+  Fpat.Template.ext_solve := Fpat.PolyConstrSolver.solve_z3;
+
+  (* default polynomial constraint solver *)
+  Fpat.PolyConstrSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3;
 
   (* default SMT solver *)
-  Fpat.Z3Interface.init ()
+  Fpat.SMTProver.init_z3 ()
 
 (* called after parsing options *)
 let fpat_init2 () =
   let open Fpat in
   Global.print_log := !Flag.debug_level <> 0;
   Global.cvc3 := !Flag.cvc3;
-  Cvc3Interface.open_cvc3 ()
+  Fpat.SMTProver.open_ ()
 
 let () =
   if !Sys.interactive
@@ -487,7 +486,7 @@ let () =
       fpat_init2 ();
       if not !Flag.only_result then print_env ();
       if main cin then decr Flag.cegar_loop;
-      Fpat.Cvc3Interface.close_cvc3 ();
+      Fpat.SMTProver.close ();
       print_info ()
     with
       | e when !Flag.exp ->

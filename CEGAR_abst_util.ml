@@ -17,7 +17,7 @@ let hd = function
 let check_aux env cond p =
   let cond' = List.map FpatInterface.conv_formula cond in
   let p' = FpatInterface.conv_formula p in
-  Fpat.ExtFormula.Formula.implies cond' [p']
+  Fpat.SMTProver.implies cond' [p']
 
 let check env cond pbs p =
   let ps,_ = List.split pbs in

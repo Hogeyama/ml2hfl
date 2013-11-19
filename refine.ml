@@ -10,7 +10,8 @@ exception CannotRefute
 let equiv env t1 t2 =
   let t1' = FpatInterface.conv_formula t1 in
   let t2' = FpatInterface.conv_formula t2 in
-  Fpat.Cvc3Interface.implies [t1'] [t2'] && Fpat.Cvc3Interface.implies [t2'] [t1']
+  Fpat.SMTProver.implies [t1'] [t2'] &&
+  Fpat.SMTProver.implies [t2'] [t1']
 
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
@@ -110,13 +111,13 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";
-        Fpat.Cvc3Interface.close_cvc3 ();
-        Fpat.Cvc3Interface.open_cvc3 ();
+        Fpat.SMTProver.close ();
+        Fpat.SMTProver.open_ ();
         add_time tmp Flag.time_cegar;
         map, {env=env';defs=defs;main=main}
     with e ->
-      Fpat.Cvc3Interface.close_cvc3 ();
-      Fpat.Cvc3Interface.open_cvc3 ();
+      Fpat.SMTProver.close ();
+      Fpat.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise e
 
@@ -164,12 +165,12 @@ let refine_rank_fun ce { env=env; defs=defs; main=main } =
       Format.printf "[instantiated]@.%a@." Fpat.Formula.pr spc;*)
 
       if !Flag.print_progress then Format.printf "DONE!@.@.";
-      Fpat.Cvc3Interface.close_cvc3 ();
-      Fpat.Cvc3Interface.open_cvc3 ();
+      Fpat.SMTProver.close ();
+      Fpat.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise (PostCondition (env, spc, spcWithExparam))
     with e ->
-      Fpat.Cvc3Interface.close_cvc3 ();
-      Fpat.Cvc3Interface.open_cvc3 ();
+      Fpat.SMTProver.close ();
+      Fpat.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise e
