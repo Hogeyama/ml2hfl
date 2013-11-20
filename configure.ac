@@ -10,6 +10,11 @@ if test "$OCAMLC" = "no"; then
   AC_MSG_ERROR([OCaml compiler not found])
 fi
 
+AC_PROG_FINDLIB
+if test "$OCAMLFIND" = "no"; then
+  AC_MSG_ERROR([ocamlfind not found])
+fi
+
 AC_PROG_OCAMLLEX
 if test "$OCAMLLEX" = "no"; then
   AC_MSG_ERROR([ocamllex not found])
@@ -23,6 +28,14 @@ fi
 AC_CHECK_OCAML_PKG([ocamlgraph])
 if test "$OCAML_PKG_ocamlgraph" = "no"; then
   AC_MSG_ERROR([ocamlgraph not found])
+fi
+
+AC_CHECK_OCAML_PKG([fpat])
+if test "$OCAML_PKG_fpat" = "no"; then
+  AC_MSG_ERROR([fpat not found])
+else
+  FPAT=`$OCAMLFIND query fpat`
+  AC_SUBST(FPAT)
 fi
 
 AC_ARG_WITH(ocaml_src,
