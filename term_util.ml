@@ -504,10 +504,10 @@ let rec make_app t ts =
     | {typ=TFun(x,typ)}, t2::ts
     | {typ=TPred({Id.typ=TFun(x,typ)},_)}, t2::ts ->
         if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
-        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@.fun:%a@.arg:%a@."
+        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@.fun: %a@.arg: %a@."
                 print_typ (Id.typ x)
                 print_typ t2.typ
-                pp_print_term t
+                pp_print_term' t
                 pp_print_term' t2;
               assert false);
         make_app {desc=App(t,[t2]); typ=typ} ts
@@ -673,9 +673,27 @@ let rec make_term typ =
   | _ -> Format.printf "ERROR:@.%a@." Syntax.pp_print_typ typ; assert false
 
 let opt_typ typ = TPair(Id.new_var "x" TInt, typ)
+let get_opt_typ typ = snd_typ typ
+let is_none t =
+  match t.desc with
+    Pair(t1,t2) -> t1 = make_int 0
+  | _ -> false
 let make_none typ = make_pair (make_int 0) (make_term typ)
 let make_some t = make_pair (make_int 1) t
 let make_is_none t = make_eq (make_fst t) (make_int 0)
+let make_is_some t = make_not (make_is_none t)
+let make_get_val t = make_snd t
+
+
+let opt_typ typ = TPair(Id.new_var "x" TBool, typ)
+let get_opt_typ typ = snd_typ typ
+let is_none t =
+  match t.desc with
+    Pair(t1,t2) -> t1 = false_term
+  | _ -> false
+let make_none typ = make_pair false_term (make_term typ)
+let make_some t = make_pair true_term t
+let make_is_none t = make_eq (make_fst t) false_term
 let make_is_some t = make_not (make_is_none t)
 let make_get_val t = make_snd t
 
@@ -1166,8 +1184,8 @@ let rec has_no_effect t =
   match t.desc with
     Const _ -> true
   | Unknown -> false
-  | RandInt _ -> false
-  | RandValue _ -> false
+  | RandInt _ -> true
+  | RandValue _ -> true
   | Var _ -> true
   | Fun _ -> true
   | App _ -> false
@@ -1177,7 +1195,7 @@ let rec has_no_effect t =
       has_no_effect t && List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect t) bindings
   | BinOp(op, t1, t2) -> has_no_effect t1 && has_no_effect t2
   | Not t -> has_no_effect t
-  | Event _ -> false
+  | Event _ -> true
   | Record _ -> false
   | Proj _ -> false
   | SetField _ -> false

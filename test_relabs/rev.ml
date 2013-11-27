@@ -9,10 +9,7 @@ let rec rev acc xs =
     [] -> acc
   | x::xs -> rev (x::acc) xs
 
-let rev_rev xs ys =
-  rev xs, rev ys
-
 let main xs =
   let ys = rev xs in
-  let zs = rev_rev xs xs in
-  assert (list_eq xs ys)
+  let zs = rev ys in
+  assert (list_eq xs zs)

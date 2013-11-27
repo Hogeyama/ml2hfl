@@ -2,6 +2,7 @@ open Syntax
 open Term_util
 open Type
 open Util
+open Tree
 
 module RT = Ref_type
 
@@ -58,31 +59,6 @@ let uncurry_rtyp t f rtyp =
   if !Flag.print_ref_typ
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
-
-type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
-
-let root = function
-    Leaf t -> t
-  | Node _ -> assert false
-let rec flatten = function
-    Leaf t -> [t]
-  | Node(lhs,rhs) -> flatten lhs @ flatten rhs
-
-let rec map f path = function
-    Leaf t -> Leaf (f path t)
-  | Node(t1,t2) -> Node(map f (path@[1]) t1, map f (path@[2]) t2)
-let map f t = map f [] t
-
-let rec fold f_node f_leaf = function
-    Leaf typ -> f_leaf typ
-  | Node(t1,t2) -> f_node (fold f_node f_leaf t1) (fold f_node f_leaf t2)
-
-let rec proj path t =
-  match path,t with
-      [],_ -> t
-    | 1::path',Node(t',_) -> proj path' t'
-    | 2::path',Node(_,t') -> proj path' t'
-    | _ -> assert false
 
 let rec remove_pair_typ = function
     TUnit -> Leaf TUnit

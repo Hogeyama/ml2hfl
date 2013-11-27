@@ -2090,7 +2090,9 @@ let inline_no_effect = make_trans2 ()
 
 let inline_no_effect_desc top desc =
   match desc with
-    Let(Nonrecursive, [x,[],t], t2) when not top && has_no_effect t ->
+    Let(Nonrecursive, [x,[],t], {desc=Var y}) when x = y ->
+      (inline_no_effect.tr2_term top t).desc
+  | Let(Nonrecursive, [x,[],t], t2) when not top && has_no_effect t ->
       let t' = inline_no_effect.tr2_term top t in
       let t2' = inline_no_effect.tr2_term top t2 in
       (subst x t' t2').desc
@@ -2210,3 +2212,25 @@ let subst_let_xy_desc desc =
 let () = subst_let_xy.tr_desc <- subst_let_xy_desc
 
 let subst_let_xy = subst_let_xy.tr_term
+
+
+
+
+let flatten_let = make_trans ()
+
+let flatten_let_desc desc =
+  match desc with
+    Let(Nonrecursive, [x,[],t1], t2) ->
+      let t1' = flatten_let.tr_term t1 in
+      let t2' = flatten_let.tr_term t2 in
+      begin match t1'.desc with
+        Let(flag,bindings,t11) ->
+Format.printf "t11:%a@.@." pp_print_term t11;
+ Let(Nonrecursive, [x,[],t2'], make_let bindings t11)
+      | _ -> Let(Nonrecursive, [x,[],t1'], t2')
+      end
+  | _ -> flatten_let.tr_desc_rec desc
+
+let () = flatten_let.tr_desc <- flatten_let_desc
+
+let flatten_let = flatten_let.tr_term

@@ -26,7 +26,8 @@ let preprocess t spec =
       let t = trans_and_print Encode_rec.trans ~typ:false "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let t = trans_and_print Ret_fun.trans "ret_fun" id t in
-      let t = trans_and_print (Tupling.trans2 (fun _ -> assert false)) "tupling" id t in
+      let t = trans_and_print (Ref_trans.trans (fun _ -> assert false)) "ref_trans" id t in
+          Type_check.check t Type.TUnit;
       let t = trans_and_print Tupling.trans "tupling?" id t in
       let get_rtyp = get_rtyp_list in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in

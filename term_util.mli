@@ -134,6 +134,8 @@ val imply : typed_term -> typed_term -> typed_term
 val and_list : typed_term list -> typed_term
 val get_typ_default : typ -> typed_term
 val opt_typ : typ -> typ
+val get_opt_typ : typ -> typ
+val is_none : typed_term -> bool
 val make_none : typ -> typed_term
 val make_some : typed_term -> typed_term
 val make_is_none : typed_term -> typed_term
