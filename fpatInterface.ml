@@ -19,13 +19,13 @@ let conv_const c =
   | And -> Const.And
   | Or -> Const.Or
   | Not -> Const.Not
-  | Lt -> Const.Lt SimType.int_type
-  | Gt -> Const.Gt SimType.int_type
-  | Leq -> Const.Leq SimType.int_type
-  | Geq -> Const.Geq SimType.int_type
-  | EqUnit -> Const.Eq SimType.unit_type
-  | EqBool -> Const.Eq SimType.bool_type
-  | EqInt -> Const.Eq SimType.int_type
+  | Lt -> Const.Lt SimType.mk_int
+  | Gt -> Const.Gt SimType.mk_int
+  | Leq -> Const.Leq SimType.mk_int
+  | Geq -> Const.Geq SimType.mk_int
+  | EqUnit -> Const.Eq SimType.mk_unit
+  | EqBool -> Const.Eq SimType.mk_bool
+  | EqInt -> Const.Eq SimType.mk_int
   | CmpPoly(typ,"=") -> Const.Eq (SimType.Base(BaseType.Ext (Idnt.make typ)))
   | CmpPoly(typ,"<>") -> Const.Neq (SimType.Base(BaseType.Ext (Idnt.make typ)))
   | CmpPoly(typ,"<") -> Const.Lt (SimType.Base(BaseType.Ext (Idnt.make typ)))
@@ -34,9 +34,9 @@ let conv_const c =
   | CmpPoly(typ,">=") -> Const.Geq (SimType.Base(BaseType.Ext (Idnt.make typ)))
   | Int(n) -> Const.Int(n)
   | RandInt -> Const.RandInt
-  | Add -> Const.Add SimType.int_type
-  | Sub -> Const.Sub SimType.int_type
-  | Mul -> Const.Mul SimType.int_type
+  | Add -> Const.Add SimType.mk_int
+  | Sub -> Const.Sub SimType.mk_int
+  | Mul -> Const.Mul SimType.mk_int
   | Char c -> Const.Int (int_of_char c)
   | String s -> Const.String s
   | Float s -> Const.Float (float_of_string s)
@@ -108,10 +108,6 @@ let rec inv_term t =
           App(App(inv_term t1, inv_term t2), inv_term t3))
   | Term.App(_, t1, t2) -> App(inv_term t1, inv_term t2)
   | Term.Binder(_, _, _, _) -> assert false
-  | Term.If (_, _, _, _) -> assert false
-  | Term.LetVal (_, _, _, _) -> assert false
-  | Term.LetFun (_, _, _, _, _) -> assert false
-  | Term.LetRec (_, _, _, _) -> assert false
 
 let inv_formula t = t |> Formula.term_of |> inv_term
 
@@ -139,11 +135,11 @@ let inv_fdef fdef =
 
 let rec conv_typ ty =
   match ty with
-    TBase(TUnit, _) -> SimType.unit_type
-  | TBase(TInt, _) -> SimType.int_type
-  | TBase(TBool, _) -> SimType.bool_type
-  | TBase(TAbst "string", _) -> SimType.string_type
-  | TBase(TAbst "float", _) -> SimType.float_type
+    TBase(TUnit, _) -> SimType.mk_unit
+  | TBase(TInt, _) -> SimType.mk_int
+  | TBase(TBool, _) -> SimType.mk_bool
+  | TBase(TAbst "string", _) -> SimType.mk_string
+  | TBase(TAbst "float", _) -> SimType.mk_float
   | TBase(TAbst s, _) ->
       SimType.Base(BaseType.Ext (Idnt.make s))
   | TFun(ty1,tmp) ->
@@ -484,7 +480,7 @@ let instantiate_param (typs, fdefs, main as prog) =
   let map =
     Util.List.map
       (fun (x, n) ->
-        Var.string_of x, inv_term (IntTerm.make n))
+        Var.string_of x, inv_term (IntExp.make n))
       !ParamSubstInfer.ext_coeffs
   in
   let res =

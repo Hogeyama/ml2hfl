@@ -1,6 +1,5 @@
 open BRA_types
 open BRA_transform
-open Fpat.ExtAtom
 
 let (|>) = BRA_util.(|>)
 
@@ -61,10 +60,10 @@ let inferCoeffs argumentVariables linear_templates constraints =
       let coefficients =
 	let cor dict x =
 	  try List.assoc x dict with Not_found -> 0 in
-	let formatter (n, v) = (v, IntTerm.int_of n) in
+	let formatter (n, v) = (v, IntExp.int_of n) in
 	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
       in
-      {coeffs = coefficients; constant = IntTerm.int_of const_part}
+      {coeffs = coefficients; constant = IntExp.int_of const_part}
     ) linear_templates
   end
   with
@@ -91,10 +90,10 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       let coefficients =
 	let cor dict x =
 	  try List.assoc x dict with Not_found -> 0 in
-	let formatter (n, v) = (v, IntTerm.int_of n) in
+	let formatter (n, v) = (v, IntExp.int_of n) in
 	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
       in
-      {coeffs = coefficients; constant = IntTerm.int_of const_part}
+      {coeffs = coefficients; constant = IntExp.int_of const_part}
      ) linear_templates,
      let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Var.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Var.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
      let substToVar = function
@@ -127,9 +126,9 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
     let rec go i = 
       let ith_ltp, ith_lt = List.nth prevLinearTemplates i, List.nth linearTemplates i in
       if i < n then
-	ExtAtom.Atom.geq ith_ltp ith_lt :: go (i+1)
+        IntAtom.geq ith_ltp ith_lt :: go (i+1)
       else
-	[ExtAtom.Atom.gt ith_ltp ith_lt; ExtAtom.Atom.geq ith_lt (IntTerm.make 0)]
+        [IntAtom.gt ith_ltp ith_lt; IntAtom.geq ith_lt (IntExp.make 0)]
     in
     subst_ith n (Formula.band [List.nth failedSpc n; Formula.bnot (Formula.band (go 0))])
   in
@@ -186,7 +185,7 @@ let rec run predicate_que holed =
 	  List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
 	    (BRA_state.get_prev_statevars holed.state holed.verified) in
 	let prev_var_terms = List.map Term.mk_var prev_vars in
-	let arg_env = List.map (fun a -> (a, SimType.int_type)) arg_vars in
+	let arg_env = List.map (fun a -> (a, SimType.mk_int)) arg_vars in
 	
 	if !Flag.disjunctive then
 	  (* make templates *)
@@ -197,8 +196,8 @@ let rec run predicate_que holed =
 	  (* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
 	  let constraints =
 	    Formula.band [spc; Formula.bnot
-	      (Formula.band [ ExtAtom.Atom.gt linear_template_prev linear_template
-			    ; ExtAtom.Atom.geq linear_template (IntTerm.make 0)])]
+	      (Formula.band [ IntAtom.gt linear_template_prev linear_template
+			    ; IntAtom.geq linear_template (IntExp.make 0)])]
 	  in
 	  if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
 	  
