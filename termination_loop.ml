@@ -44,26 +44,25 @@ let inferCoeffs argumentVariables linear_templates constraints =
   let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true in
   try
   let debug = !Flag.debug_level > 0 in
-  let open Fpat in
   (** solve constraint and obtain coefficients **)
-  let correspondenceVars = constraints |> RankFunInfer.generate |> RankFunInfer.solve in
+  let correspondenceVars = constraints |> Fpat.RankFunInfer.generate |> Fpat.RankFunInfer.solve in
   let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:false in
   begin
-    if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise PolyConstrSolver.Unknown);
-    if debug then Format.printf "Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs correspondenceVars;
+    if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
+    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr_coeffs correspondenceVars;
     
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
-      let ((correspondenceCoeffs, const_part) as ranking_function) = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.mk_const (Const.Int c))) correspondenceVars) linTemp)
+      let ((correspondenceCoeffs, const_part) as ranking_function) = Fpat.LinIntTermExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
 	let cor dict x =
 	  try List.assoc x dict with Not_found -> 0 in
-	let formatter (n, v) = (v, IntExp.int_of n) in
+	let formatter (n, v) = (v, Fpat.IntExp.int_of n) in
 	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
       in
-      {coeffs = coefficients; constant = IntExp.int_of const_part}
+      {coeffs = coefficients; constant = Fpat.IntExp.int_of const_part}
     ) linear_templates
   end
   with
@@ -75,27 +74,26 @@ let inferCoeffs argumentVariables linear_templates constraints =
 
 let inferCoeffsAndExparams argumentVariables linear_templates constraints =
   let debug = !Flag.debug_level > 0 in
-  let open Fpat in
   (** solve constraint and obtain coefficients **)
-  let correspondenceVars = constraints |> RankFunInfer.generate |> RankFunInfer.solve in
+  let correspondenceVars = constraints |> Fpat.RankFunInfer.generate |> Fpat.RankFunInfer.solve in
   begin
-    if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise PolyConstrSolver.Unknown);
-    if debug then Format.printf "Inferred coefficients:@.  %a@." PolyConstrSolver.pr_coeffs correspondenceVars;
+    if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
+    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr_coeffs correspondenceVars;
     
     (List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
-      let correspondenceCoeffs, const_part = LinIntTermExp.of_term (Term.subst (List.map (fun (v, c) -> (v, Term.mk_const (Const.Int c))) correspondenceVars) linTemp)
+      let correspondenceCoeffs, const_part = Fpat.LinIntTermExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
 	let cor dict x =
 	  try List.assoc x dict with Not_found -> 0 in
-	let formatter (n, v) = (v, IntExp.int_of n) in
+	let formatter (n, v) = (v, Fpat.IntExp.int_of n) in
 	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
       in
-      {coeffs = coefficients; constant = IntExp.int_of const_part}
+      {coeffs = coefficients; constant = Fpat.IntExp.int_of const_part}
      ) linear_templates,
-     let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Var.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Var.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
+     let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Idnt.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
      let substToVar = function
        | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> if CEGAR_syntax.isEX_COEFFS x.Id.name then Syntax.make_int 0 else Syntax.make_var x)
        | t -> t
@@ -119,20 +117,25 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
       ...
   **)
   let debug = !Flag.debug_level > 0 in
-  let open Fpat in
   let lenSpcSequence = List.length failedSpc in
-  let subst_ith i = Formula.subst (List.map (fun v -> (v, Term.mk_var (Var.rename_base (fun (Idnt.Id v) -> Idnt.Id (v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH")) v))) variables) in
+  let subst_ith i =
+    Fpat.Formula.subst
+      (List.map
+        (fun v -> (v, Fpat.Term.mk_var (Fpat.Idnt.rename_base (fun v -> v ^ "_IN_" ^ string_of_int i ^ "TH_ERRORPATH") v)))
+        variables)
+  in
   let nth_constraints n =
     let rec go i = 
       let ith_ltp, ith_lt = List.nth prevLinearTemplates i, List.nth linearTemplates i in
       if i < n then
-        IntAtom.geq ith_ltp ith_lt :: go (i+1)
+        (Fpat.NumAtom.geq Fpat.MLType.mk_int ith_ltp ith_lt |> Fpat.Formula.of_atom) :: go (i+1)
       else
-        [IntAtom.gt ith_ltp ith_lt; IntAtom.geq ith_lt (IntExp.make 0)]
+        [Fpat.NumAtom.gt Fpat.MLType.mk_int ith_ltp ith_lt |> Fpat.Formula.of_atom;
+         Fpat.NumAtom.geq Fpat.MLType.mk_int ith_lt (Fpat.IntExp.make 0) |> Fpat.Formula.of_atom]
     in
-    subst_ith n (Formula.band [List.nth failedSpc n; Formula.bnot (Formula.band (go 0))])
+    subst_ith n (Fpat.Formula.band [List.nth failedSpc n; Fpat.Formula.bnot (Fpat.Formula.band (go 0))])
   in
-  Formula.bor (Util.List.unfold (fun i -> if i < lenSpcSequence then Some (nth_constraints i, i+1) else None) 0)
+  Fpat.Formula.bor (Fpat.Util.List.unfold (fun i -> if i < lenSpcSequence then Some (nth_constraints i, i+1) else None) 0)
 
 let rec enqueueNextPredicateInfo que =
   if Queue.is_empty que then None
@@ -175,31 +178,30 @@ let rec run predicate_que holed =
 	else
 	  (if debug then Format.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
       with Refine.PostCondition (env, spc, spcWithExparam) ->
-	let open Fpat in
-	let unwrap_template (Term.App ([], Term.App ([], _, t), _)) = t in
-	let unwrap_template t = unwrap_template (Formula.term_of t) in
+	let unwrap_template (Fpat.Term.App (Fpat.Term.App (_, t), _)) = t in
+	let unwrap_template t = unwrap_template (Fpat.Formula.term_of t) in
 	let arg_vars =
-	  List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
+	  List.map (fun v -> Fpat.Idnt.make (Id.to_string (extract_id v)))
 	    (BRA_state.get_argvars holed.state holed.verified) in
 	let prev_vars =
-	  List.map (fun v -> Var.of_string (Id.to_string (extract_id v)))
+	  List.map (fun v -> Fpat.Idnt.make (Id.to_string (extract_id v)))
 	    (BRA_state.get_prev_statevars holed.state holed.verified) in
-	let prev_var_terms = List.map Term.mk_var prev_vars in
-	let arg_env = List.map (fun a -> (a, SimType.mk_int)) arg_vars in
+	let prev_var_terms = List.map Fpat.Term.mk_var prev_vars in
+	let arg_env = List.map (fun a -> (a, Fpat.MLType.mk_int)) arg_vars in
 	
 	if !Flag.disjunctive then
 	  (* make templates *)
-	  let linear_template = unwrap_template (Template.make_atom arg_env) in
-	  let linear_template_prev = Term.subst (List.combine arg_vars prev_var_terms) linear_template in
-	  if debug then Format.printf "Linear template:@.  %a@." Term.pr linear_template;
+	  let linear_template = unwrap_template (Fpat.Template.make_atom arg_env) in
+	  let linear_template_prev = Fpat.Term.subst (List.combine arg_vars prev_var_terms) linear_template in
+	  if debug then Format.printf "Linear template:@.  %a@." Fpat.Term.pr linear_template;
 	  
 	  (* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
 	  let constraints =
-	    Formula.band [spc; Formula.bnot
-	      (Formula.band [ IntAtom.gt linear_template_prev linear_template
-			    ; IntAtom.geq linear_template (IntExp.make 0)])]
+	    Fpat.Formula.band [spc; Fpat.Formula.bnot
+	      (Fpat.Formula.band [ Fpat.NumAtom.gt Fpat.MLType.mk_int linear_template_prev linear_template |> Fpat.Formula.of_atom
+			    ; Fpat.NumAtom.geq Fpat.MLType.mk_int linear_template (Fpat.IntExp.make 0) |> Fpat.Formula.of_atom])]
 	  in
-	  if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
+	  if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 	  
           (* solve constraints and obtain coefficients of a ranking function *)
 	  let newPredicateInfo _ =
@@ -207,7 +209,7 @@ let rec run predicate_que holed =
 	      let coefficientInfos = inferCoeffs arg_vars [linear_template] constraints in
 	      (* return updated predicate *)
 	      { predicate_info with coefficients = coefficientInfos @ predicate_info.coefficients; errorPaths = spc :: predicate_info.errorPaths }
-            with PolyConstrSolver.Unknown ->
+            with Fpat.PolyConstrSolver.Unknown ->
 	      if debug then Format.printf "Failed to solve the constraints...@.@.";
 	      
 	      (* Failed to infer a new ranking predicate -> Update extra parameters *)
@@ -236,14 +238,14 @@ let rec run predicate_que holed =
 	  
 	  let successes = (flip List.map) (List.combine allSpcSequences allSpcSequencesWithExparam) (fun (spcSequence, spcSequenceWithExparam) -> fun _ ->
 	    (* make templates (for arguments and previous arguments) *)
-	    let linearTemplates = Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Template.make_atom arg_env), i+1) else None) 0 in
-	    let prevLinearTemplates = List.map (Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
-	    if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Term.pr lt) linearTemplates;
+	    let linearTemplates = Fpat.Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Fpat.Template.make_atom arg_env), i+1) else None) 0 in
+	    let prevLinearTemplates = List.map (Fpat.Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
+	    if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;
 	    
 	    try
 	      (* make a constraint *)
 	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
-	      if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
+	      if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 	      
 	      (* solve constraint and obtain coefficients *)
 	      let coefficientInfos = inferCoeffs arg_vars linearTemplates constraints in
@@ -252,13 +254,13 @@ let rec run predicate_que holed =
 	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
 	      if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	      newPredicateInfo
-	    with _ (* | PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
+	    with _ (* | Fpat.PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
 	      if debug then Format.printf "Try to update extra parameters...@.@.";
 	      
 	      try
 		(* make a constraint *)
 		let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequenceWithExparam in
-		if debug then Format.printf "Constraint:@.  %a@." Formula.pr constraints;
+		if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 		
 		(* solve constraint and obtain coefficients *)
 		let coefficientInfos, exparamInfo = inferCoeffsAndExparams arg_vars linearTemplates constraints in
@@ -268,7 +270,7 @@ let rec run predicate_que holed =
 		if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 		newPredicateInfo
               with
-		| PolyConstrSolver.NoSolution ->
+		| Fpat.PolyConstrSolver.NoSolution ->
 		  if debug then Format.printf "Failed to find LLRF...@.";
 		  raise InferenceFailure (* failed to solve the constraints *)
 		| e -> 

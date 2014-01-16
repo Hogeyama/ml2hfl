@@ -121,7 +121,7 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
       add_time tmp Flag.time_cegar;
       raise e
 
-exception PostCondition of (Fpat.Var.t * Fpat.SimType.t) list * Fpat.Formula.t * Fpat.Formula.t
+exception PostCondition of (Fpat.Idnt.t * Fpat.MLType.t) list * Fpat.Formula.t * Fpat.Formula.t
 
 let print_list fm = function
   | [] -> Format.fprintf fm "[]@."

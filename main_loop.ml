@@ -135,7 +135,7 @@ let report_safe env rmap get_rtyp orig t0 =
     let map =
       List.map
         (fun (x, n) ->
-          Id.make (-1) (Fpat.Var.string_of x) Type.TInt,
+          Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
           CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntExp.make n)
         !Fpat.ParamSubstInfer.ext_coeffs
     in
