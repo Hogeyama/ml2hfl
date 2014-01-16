@@ -5,7 +5,7 @@ exception CannotRefute
 
 val refine :
   string list ->
-  (Fpat.Var.t -> bool) ->
+  (Fpat.Idnt.t -> bool) ->
   CEGAR_syntax.ce -> CEGAR_syntax.ce list ->
   CEGAR_syntax.prog ->
   (CEGAR_syntax.var * CEGAR_syntax.typ) list * CEGAR_syntax.prog
@@ -19,7 +19,7 @@ val remove_preds : Syntax.typed_term -> Syntax.typed_term
 (** [remove_preds t] で， [t] 中の述語を削除する *)
 *)
 
-exception PostCondition of (Fpat.Var.t * Fpat.SimType.t) list * Fpat.Formula.t * Fpat.Formula.t
+exception PostCondition of (Fpat.Idnt.t * Fpat.MLType.t) list * Fpat.Formula.t * Fpat.Formula.t
 
 val progWithExparam : CEGAR_syntax.prog ref
 
