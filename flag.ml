@@ -54,6 +54,7 @@ let bool_init_empty = ref false
 let insert_param_funarg = ref false
 let split_assert = ref false
 let encode_list_opt = ref false
+let tupling = ref true
 
 let mode = ref Reachability
 let init_trans = ref true
@@ -113,6 +114,8 @@ let args = ref [""]
 
 (* pretty printer's option *)
 let () = Format.set_margin 120
+let color = ref false
+let color_always = ref false
 
 let extpar_header = "_ep"
 

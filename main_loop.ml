@@ -10,7 +10,7 @@ let trans_and_print f desc proj ?(opt=true) ?(typ=true) t =
   let t' = proj r in
   let pr = if typ then Syntax.pp_print_term_typ else Syntax.pp_print_term in
   if !Flag.debug_level > 0 && t <> t' && opt
-  then Format.printf "%s::@. @[%a@.@." desc pr t';
+  then Format.printf "%a%s:%t@. @[%a@.@." Color.set "Red" desc Color.reset pr t';
   r
 
 let preprocess t spec =
@@ -25,16 +25,24 @@ let preprocess t spec =
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Encode_rec.trans ~typ:false "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
-      let t = trans_and_print Ret_fun.trans "ret_fun" id t in
-      let t = trans_and_print (Ref_trans.trans (fun _ -> assert false)) "ref_trans" id t in
+      let t =
+        if !Flag.tupling
+        then
+          let t = trans_and_print Ret_fun.trans "ret_fun" id t in
+          let t = trans_and_print (Ref_trans.trans (fun _ -> assert false)) "ref_trans" id t in
           Type_check.check t Type.TUnit;
-      let t = trans_and_print Tupling.trans "tupling?" id t in
+          let t = trans_and_print Tupling.trans "tupling?" id t in
+          t
+        else t
+      in
+
       let get_rtyp = get_rtyp_list in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
       let () = Type_check.check t Type.TUnit in
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
+      let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
       let t =
         if !Flag.insert_param_funarg
@@ -80,7 +88,7 @@ let report_safe env rmap get_rtyp orig t0 =
         [f', Ref_type.rename (get_rtyp f' rtyp)]
       with
         Not_found -> []
-      | _ -> Format.printf "unimplemented or bug@.@."; []
+      | _ -> Format.printf "Printing refinement types: unimplemented or bug@.@."; []
     in
     if !Flag.insert_param_funarg
     then []

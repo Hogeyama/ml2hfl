@@ -211,7 +211,7 @@ let uniq_sorted ?(cmp=compare) xs = uniq_aux ~cmp [] xs
 let (@@@) = List.rev_append
 
 
-let diff l1 l2 = List.filter (fun x -> not(List.mem x l2)) l1
+let diff ?(cmp=compare)  l1 l2 = List.filter (fun x -> List.for_all (fun y -> cmp x y <> 0) l2) l1
 let inter ?(cmp=compare) l1 l2 = List.filter (fun x -> List.exists (fun y -> cmp x y = 0) l2) l1
 let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
 let set_eq l1 l2 = subset l1 l2 && subset l2 l1
@@ -430,10 +430,11 @@ let make_string_of pp =
     Format.flush_str_formatter ()
 
 
-let print_begin_end str1 exp str2 =
+let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
   Format.printf "%s@?" str1;
-  let r = Lazy.force exp in
+  let r = f () in
   Format.printf "%s@?" str2;
   r
 
 let do_and_return f x = f x; x
+let (|@>) x f = do_and_return f x

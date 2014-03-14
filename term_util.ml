@@ -318,7 +318,7 @@ let col_typ col = function
   | TAbsBool -> col.col_empty
   | TInt -> col.col_empty
   | TRInt p -> col.col_empty
-  | TVar({contents=None} as x) -> col.col_empty
+  | TVar{contents=None} -> col.col_empty
   | TVar{contents=Some typ} -> col.col_typ typ
   | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
   | TList typ -> col.col_typ typ
@@ -439,6 +439,151 @@ let make_col empty app =
 
 
 
+type ('a,'b) col2 =
+  {mutable col2_term: 'b -> typed_term -> 'a;
+   mutable col2_term_rec: 'b -> typed_term -> 'a;
+   mutable col2_desc: 'b -> term -> 'a;
+   mutable col2_desc_rec: 'b -> term -> 'a;
+   mutable col2_typ: 'b -> typ -> 'a;
+   mutable col2_typ_rec: 'b -> typ -> 'a;
+   mutable col2_var: 'b -> id -> 'a;
+   mutable col2_var_rec: 'b -> id -> 'a;
+   mutable col2_pat: 'b -> typed_pattern -> 'a;
+   mutable col2_pat_rec: 'b -> typed_pattern -> 'a;
+   mutable col2_info: 'b -> info -> 'a;
+   mutable col2_info_rec: 'b -> info -> 'a;
+   mutable col2_const: 'b -> const -> 'a;
+   mutable col2_const_rec: 'b -> const -> 'a;
+   mutable col2_app: 'a -> 'a -> 'a;
+   mutable col2_empty: 'a}
+
+let col2_typ col env = function
+    TUnit -> col.col2_empty
+  | TBool -> col.col2_empty
+  | TAbsBool -> col.col2_empty
+  | TInt -> col.col2_empty
+  | TRInt p -> col.col2_empty
+  | TVar{contents=None} -> col.col2_empty
+  | TVar{contents=Some typ} -> col.col2_typ env typ
+  | TFun(x,typ) -> col.col2_app (col.col2_typ env (Id.typ x)) (col.col2_typ env typ)
+  | TList typ -> col.col2_typ env typ
+  | TPair(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
+  | TConstr(s,b) -> col.col2_empty
+  | TPred(x,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_term env p) (col.col2_var env x) ps
+
+let col2_var col env x = col.col2_typ env (Id.typ x)
+
+let col2_pat col env p =
+  let r1 = col.col2_typ env p.pat_typ in
+  let r2 =
+    match p.pat_desc with
+        PAny -> col.col2_empty
+      | PVar x -> col.col2_var env x
+      | PAlias(p,x) -> col.col2_app (col.col2_pat env p) (col.col2_var env x)
+      | PConst t -> col.col2_term env t
+      | PConstruct(s,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
+      | PNil -> col.col2_empty
+      | PCons(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
+      | PPair(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
+      | PRecord pats -> List.fold_left (fun acc (i,(s,f,p)) -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty pats
+      | POr(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
+  in
+  col.col2_app r1 r2
+
+let col2_info col env = function
+    InfoInt n -> col.col2_empty
+  | InfoString s -> col.col2_empty
+  | InfoId x -> col.col2_var env x
+  | InfoTerm t -> col.col2_term env t
+
+let col2_const col _ _ = col.col2_empty
+
+let col2_desc col env = function
+    Const c -> col.col2_empty
+  | Unknown -> col.col2_empty
+  | RandInt b -> col.col2_empty
+  | RandValue(typ,b) -> col.col2_typ env typ
+  | Var y -> col.col2_var env y
+  | Fun(y, t) -> col.col2_app (col.col2_var env y) (col.col2_term env t)
+  | App(t1, ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) (col.col2_term env t1) ts
+  | If(t1, t2, t3) -> col.col2_app (col.col2_term env t1) @@ col.col2_app (col.col2_term env t2) (col.col2_term env t3)
+  | Branch(t1, t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | Let(flag, bindings, t2) ->
+      let aux acc (f,xs,t) =
+        col.col2_app acc @@
+        col.col2_app (col.col2_var env f) @@
+        List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) (col.col2_term env t) xs
+      in
+      List.fold_left aux (col.col2_term env t2) bindings
+  | BinOp(op, t1, t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | Not t1 -> col.col2_term env t1
+  | Event(s,b) -> col.col2_empty
+  | Record fields -> List.fold_left (fun acc (f,(s,t1)) -> col.col2_app acc @@ col.col2_term env t1) col.col2_empty fields
+  | Proj(i,s,f,t1) -> col.col2_term env t1
+  | SetField(n,i,s,f,t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | Nil -> col.col2_empty
+  | Cons(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | Constr(s,ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) col.col2_empty ts
+  | Match(t1,pats) ->
+      let aux acc (pat,cond,t1) =
+        col.col2_app acc @@
+        col.col2_app (col.col2_pat env pat) @@
+        col.col2_app (col.col2_term env cond) @@
+        col.col2_term env t1
+      in
+      List.fold_left aux (col.col2_term env t1) pats
+  | Raise t -> col.col2_term env t
+  | TryWith(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | Pair(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | Fst t -> col.col2_term env t
+  | Snd t -> col.col2_term env t
+  | Bottom -> col.col2_empty
+  | Label(info, t) -> col.col2_app (col.col2_info env info) (col.col2_term env t)
+
+let col2_term col env t = col.col2_app (col.col2_desc env t.desc) (col.col2_typ env t.typ)
+
+
+let make_col2 empty app =
+  let f _ _ = empty in
+  let col =
+    {col2_term = f;
+     col2_term_rec = f;
+     col2_desc = f;
+     col2_desc_rec = f;
+     col2_typ = f;
+     col2_typ_rec = f;
+     col2_var = f;
+     col2_var_rec = f;
+     col2_pat = f;
+     col2_pat_rec = f;
+     col2_info = f;
+     col2_info_rec = f;
+     col2_const = f;
+     col2_const_rec = f;
+     col2_app = app;
+     col2_empty = empty}
+  in
+  col.col2_term <- col2_term col;
+  col.col2_term_rec <- col2_term col;
+  col.col2_desc <- col2_desc col;
+  col.col2_desc_rec <- col2_desc col;
+  col.col2_typ <- col2_typ col;
+  col.col2_typ_rec <- col2_typ col;
+  col.col2_var <- col2_var col;
+  col.col2_var_rec <- col2_var col;
+  col.col2_pat <- col2_pat col;
+  col.col2_pat_rec <- col2_pat col;
+  col.col2_info <- col2_info col;
+  col.col2_info_rec <- col2_info col;
+  col.col2_const <- col2_const col;
+  col.col2_const_rec <- col2_const col;
+  col
+
+
+
+
+
+
 let occur = Syntax.occur
 let get_vars_pat = Syntax.get_vars_pat
 let get_fv = Syntax.get_fv
@@ -495,9 +640,11 @@ let rec make_app t ts =
         if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
         then
           begin
-            Format.printf "make_app:@ %a@ <=/=>@ %a@."
+            Format.printf "make_app:@ %a@ <=/=>@ %a@.%a@.%a@."
               print_typ (Id.typ x)
-              print_typ t2.typ;
+              print_typ t2.typ
+              pp_print_term t
+              pp_print_term t2;
             assert false
           end;
         make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
@@ -672,19 +819,33 @@ let rec make_term typ =
   | TPair(x,typ) -> make_pair (make_term @@ Id.typ x) (make_term typ)
   | _ -> Format.printf "ERROR:@.%a@." Syntax.pp_print_typ typ; assert false
 
-let opt_typ typ = TPair(Id.new_var "x" TInt, typ)
+let none_flag = make_int 0
+let some_flag = make_int 1
+let opt_typ typ = TPair(Id.new_var "x" none_flag.typ, typ)
 let get_opt_typ typ = snd_typ typ
 let is_none t =
   match t.desc with
-    Pair(t1,t2) -> t1 = make_int 0
+    Pair(t1,t2) -> t1 = none_flag
   | _ -> false
-let make_none typ = make_pair (make_int 0) (make_term typ)
-let make_some t = make_pair (make_int 1) t
-let make_is_none t = make_eq (make_fst t) (make_int 0)
+let make_none typ = make_pair none_flag (make_term typ)
+let make_some t = make_pair some_flag t
+let make_is_none t = make_eq (make_fst t) none_flag
 let make_is_some t = make_not (make_is_none t)
 let make_get_val t = make_snd t
+let is_is_none t =
+  match t.desc with
+    BinOp(Eq, {desc=Fst t1}, t2) when t2 = none_flag -> Some t1
+  | _ -> None
+let is_get_val t =
+  match t.desc with
+    Snd t -> Some t
+  | _ -> None
+let is_some t =
+  match t.desc with
+    Pair(t1,t2) when t1 = some_flag -> Some t2
+  | _ -> None
 
-
+(*
 let opt_typ typ = TPair(Id.new_var "x" TBool, typ)
 let get_opt_typ typ = snd_typ typ
 let is_none t =
@@ -696,7 +857,7 @@ let make_some t = make_pair true_term t
 let make_is_none t = make_eq (make_fst t) false_term
 let make_is_some t = make_not (make_is_none t)
 let make_get_val t = make_snd t
-
+*)
 
 
 
@@ -1210,3 +1371,27 @@ let rec has_no_effect t =
   | Snd t -> has_no_effect t
   | Bottom -> false
   | Label _ -> false
+
+
+let rec is_simple_aexp t =
+  if t.typ <> TInt
+  then false
+  else
+    match t.desc with
+      Const _ -> true
+    | Var _ -> true
+    | BinOp(_, t1, t2) -> is_simple_aexp t1 && is_simple_aexp t2
+    | _ -> false
+
+and is_simple_bexp t =
+  if t.typ <> TInt
+  then false
+  else
+    match t.desc with
+      Const _ -> true
+    | Var _ -> true
+    | BinOp(_, t1, t2) ->
+        is_simple_bexp t1 && is_simple_bexp t2 ||
+        is_simple_aexp t1 && is_simple_aexp t2
+    | Not t -> is_simple_bexp t
+    | _ -> false

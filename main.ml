@@ -147,6 +147,8 @@ let arg_spec =
                  Flag.print_progress := false),
      " Show only result";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
+   "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
+   "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
    "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
    "-exp", Arg.Unit (fun () ->
                        Flag.only_result := true;
@@ -164,6 +166,7 @@ let arg_spec =
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
    "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
+   "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling), "Toggle tupling";
    (* verifier *)
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
@@ -208,34 +211,42 @@ let arg_spec =
    "-enable-cp", Arg.Set Fpat.Global.cut_points_only, " Enable cut-points only mode";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* Horn clause solver *)
+(*
    "-gi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate false),
      " Generalize constraints of multiple function calls by interpolation";
+*)
+(*
    "-gchi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
+*)
    "-gtcs",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.TemplateBasedGenInterpProver.interpolate),
      " Generalize constraints of multiple function calls by template-based constraint solving";
+(*
    "-gssi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.YintInterface.solution_space_based_interpolate;
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
+*)
    "-linfarkas",
      Arg.Set Fpat.Global.linear_farkas,
      " Enable linear Farkas";
+(*
    "-yhorn",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.YhornInterface.solve),
      " Solve Horn clauses by using Yint";
+*)
 
    "-ieb", Arg.Set Fpat.Global.encode_boolean,
      " Enable integer encoding of booleans";
@@ -252,10 +263,12 @@ let arg_spec =
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.TemplateBasedInterpProver.interpolate),
      " Use an interpolating prover based on template based constraint solving";
+(*
    "-yint",
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
      " Use Yint interpolating prover";
+*)
    (* polynomial constraint solver *)
    "-bitvec",
      Arg.Unit (fun _ ->
@@ -380,6 +393,7 @@ let fpat_init2 () =
   Cvc3Interface.open_cvc3 ()
 
 let () =
+      assert false;
   if !Sys.interactive
   then ()
   else
@@ -389,6 +403,7 @@ let () =
       fpat_init1 ();
       let cin = parse_arg () in
       fpat_init2 ();
+      Color.init ();
       if not !Flag.only_result then print_env ();
       if main cin then decr Flag.cegar_loop;
       Fpat.Cvc3Interface.close_cvc3 ();

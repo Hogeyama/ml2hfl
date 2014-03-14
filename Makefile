@@ -54,11 +54,11 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli \
 	feasibility.mli refine.mli syntax.mli term_util.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
 	spec_parser.mli trecs_parser.mli BRA_transform.mli \
-	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli
+	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \
-	environment.cmo flag.cmo util.cmo tree.cmo id.cmo type.cmo \
+	environment.cmo flag.cmo util.cmo color.cmo tree.cmo id.cmo type.cmo \
 	syntax.cmo term_util.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	ref_type.cmo type_check.cmo trans.cmo lift.cmo CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo \
@@ -73,7 +73,7 @@ CMO = $(OCAML_CMO) \
 	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo \
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo \
 	extraClsDepth.cmo \
-	eval.cmo main_loop.cmo termination_loop.cmo main.cmo
+	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)

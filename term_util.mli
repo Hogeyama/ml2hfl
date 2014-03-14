@@ -50,9 +50,28 @@ type 'a col =
    mutable col_app: 'a -> 'a -> 'a;
    mutable col_empty: 'a}
 
+type ('a,'b) col2 =
+  {mutable col2_term: 'b -> typed_term -> 'a;
+   mutable col2_term_rec: 'b -> typed_term -> 'a;
+   mutable col2_desc: 'b -> term -> 'a;
+   mutable col2_desc_rec: 'b -> term -> 'a;
+   mutable col2_typ: 'b -> typ -> 'a;
+   mutable col2_typ_rec: 'b -> typ -> 'a;
+   mutable col2_var: 'b -> id -> 'a;
+   mutable col2_var_rec: 'b -> id -> 'a;
+   mutable col2_pat: 'b -> typed_pattern -> 'a;
+   mutable col2_pat_rec: 'b -> typed_pattern -> 'a;
+   mutable col2_info: 'b -> info -> 'a;
+   mutable col2_info_rec: 'b -> info -> 'a;
+   mutable col2_const: 'b -> const -> 'a;
+   mutable col2_const_rec: 'b -> const -> 'a;
+   mutable col2_app: 'a -> 'a -> 'a;
+   mutable col2_empty: 'a}
+
 val make_trans : unit -> trans
 val make_trans2 : unit -> 'a trans2
 val make_col : 'a -> ('a -> 'a -> 'a) -> 'a col
+val make_col2 : 'a -> ('a -> 'a -> 'a) -> ('a,'b) col2
 
 val dummy_var : id
 val abst_var : id
@@ -141,6 +160,9 @@ val make_some : typed_term -> typed_term
 val make_is_none : typed_term -> typed_term
 val make_is_some : typed_term -> typed_term
 val make_get_val : typed_term -> typed_term
+val is_is_none : typed_term -> typed_term option
+val is_get_val : typed_term -> typed_term option
+val is_some : typed_term -> typed_term option
 
 
 (** {6 Term destructor} *)
@@ -167,3 +189,5 @@ val occur : id -> typ -> bool
 val get_vars_pat : typed_pattern -> id list
 val get_fv : ?cmp:(id -> id -> int) -> typed_term -> id list
 val has_no_effect : typed_term -> bool
+val is_simple_aexp : typed_term -> bool
+val is_simple_bexp : typed_term -> bool
