@@ -10,10 +10,10 @@ type result =
   | Infeasible of CEGAR_syntax.ce
 
 let checksat env t =
-  Fpat.Cvc3Interface.is_satisfiable (FpatInterface.conv_term t)
+  Fpat.SMTProver.is_sat (FpatInterface.conv_formula t)
 
 let get_solution env t =
-  t |> FpatInterface.conv_term |> Fpat.Cvc3Interface.solve |> List.sort compare |> List.map snd
+  t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort compare |> List.map snd
 
 let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env
 
@@ -74,9 +74,7 @@ let rec get_prefix ce n =
 let check ce {defs=defs; main=main} =
   let () = if !Flag.print_progress then Format.printf "Spurious counter-example::@.  %a@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
-  let () =
-    if !Flag.print_progress
-    then Color.wrap "Green" (fun _ -> Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop) in
+  let () = if !Flag.print_progress then Format.printf "\n(%d-3) Checking counter-example ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
@@ -88,7 +86,7 @@ let check ce {defs=defs; main=main} =
     then Feasible (env', get_solution env' constr)
     else Infeasible prefix
   in
-    if !Flag.print_progress then Color.wrap "Green" (fun _ -> Format.printf "DONE!@.@.");
+    if !Flag.print_progress then Format.printf "DONE!@.@.";
     add_time time_tmp Flag.time_cegar;
     result
 

@@ -1,60 +1,78 @@
 open Util
 
 let init () =
-  Term_util.typ_excep := Type.TConstr("exn",true)
-
-let id x = x
-
-let trans_and_print f desc proj ?(opt=true) ?(typ=true) t =
-  let r = f t in
-  let t' = proj r in
-  let pr = if typ then Syntax.pp_print_term_typ else Syntax.pp_print_term in
-  if !Flag.debug_level > 0 && t <> t' && opt
-  then Format.printf "%a%s:%t@. @[%a@.@." Color.set "Red" desc Color.reset pr t';
-  r
+  Syntax.typ_excep := Type.TConstr("exn",true)
 
 let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
-      let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
-      let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
-      let fun_list = Term_util.get_top_funs t in
+      let t' = Trans.make_ext_funs t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
+      let t' = Trans.copy_poly_funs t in
+      let fun_list = Syntax.get_top_funs t' in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
-      let t = trans_and_print Encode_rec.trans ~typ:false "abst_recdata" id t in
-      let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
-      let t =
-        if !Flag.tupling
-        then
-          let t = trans_and_print Ret_fun.trans "ret_fun" id t in
-          let t = trans_and_print (Ref_trans.trans (fun _ -> assert false)) "ref_trans" id t in
-          Type_check.check t Type.TUnit;
-          let t = trans_and_print Tupling.trans "tupling?" id t in
-          t
-        else t
-      in
-
+      let t' = Trans.replace_typ spec'.Spec.abst_env t in
+      let () =
+        if !Flag.debug_level > 0 && spec <> Spec.init
+        then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
+      let t' = Abstract.abstract_recdata t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
+      let t = t' in
+      let t',get_rtyp_list = Abstract.abstract_list t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
       let get_rtyp = get_rtyp_list in
-      let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
-      let () = Type_check.check t Type.TUnit in
-      let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
+      let t' = Trans.inlined_f spec'.Spec.inlined_f t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
+      let t',get_rtyp_cps_trans = CPS.trans t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
+      let t = t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
-      let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
-      let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
+      let t',get_rtyp_remove_pair = Curry.remove_pair t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
-      let t =
-        if !Flag.insert_param_funarg
-        then trans_and_print Trans.insert_param_funarg "insert unit param" id t
-        else t
+      let t = t' in
+      let t' = if !Flag.insert_param_funarg then Trans.insert_param_funarg t else t in
+      let () =
+        if !Flag.debug_level > 0 && t <> t'
+        then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
       in
-      Type_check.check t Term_util.typ_result;
+      let t = t' in
+      let () = Type_check.check t Syntax.typ_result in
+
+      (* preprocess for termination mode *)
+      let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
+
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in
-      Term_util.get_top_funs t, t, fun _ typ -> typ
+      Syntax.get_top_funs t, t, fun _ typ -> typ
   in
+
+  (* ill-formed program *)
+  Refine.progWithExparam := (let p, _, _, _ = CEGAR_util.trans_prog !ExtraParamInfer.withExparam in p);
+  (**********************)
 
   let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
   let get_rtyp f typ = get_rtyp f (get_rtyp_trans f typ) in
@@ -69,7 +87,13 @@ let preprocess t spec =
     let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
       {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
+  begin
+    (*
+      if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
+      if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
+    *)
     prog, rmap, get_rtyp, info
+  end
 
 
 
@@ -88,7 +112,7 @@ let report_safe env rmap get_rtyp orig t0 =
         [f', Ref_type.rename (get_rtyp f' rtyp)]
       with
         Not_found -> []
-      | _ -> Format.printf "Printing refinement types: unimplemented or bug@.@."; []
+      | _ -> Format.printf "unimplemented or bug@.@."; []
     in
     if !Flag.insert_param_funarg
     then []
@@ -105,26 +129,27 @@ let report_safe env rmap get_rtyp orig t0 =
   then
     env' |> List.map (fun (id, typ) -> Id.name id, typ)
          |> WriteAnnot.f !Flag.filename orig;
-  Format.printf "Safe!@.@.";
+  let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
+  if not only_result_termination then Format.printf "Safe!@.@.";
   if !Flag.relative_complete then begin
     let map =
       List.map
         (fun (x, n) ->
-          Id.make (-1) (Fpat.Var.string_of x) Type.TInt,
-          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
+          Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
+          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntExp.make n)
         !Fpat.ParamSubstInfer.ext_coeffs
     in
-    let t = Term_util.subst_map map t0 in
+    let t = Syntax.subst_map map t0 in
     Format.printf "Program with Quantifiers Added:@.";
     Flag.web := true;
     Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
     Flag.web := false
   end;
-  if env' <> [] then Format.printf "Refinement Types:@.";
+  if env' <> [] && not only_result_termination then Format.printf "Refinement Types:@.";
   let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
   let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
-  List.iter pr env';
-  if env' <> [] then Format.printf "@."
+  if not only_result_termination then List.iter pr env';
+  if env' <> [] && not only_result_termination then Format.printf "@."
 
 
 let report_unsafe main_fun arg_num ce set_target =
@@ -198,8 +223,7 @@ let rec run orig parsed =
               Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
                 Flag.insert_param_funarg := true;
                 run orig parsed
-            | Fpat.AbsTypeInfer.FailedToRefineTypes
-                when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+            | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
                 if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
                 if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
                 Flag.relative_complete := true;

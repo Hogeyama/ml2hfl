@@ -30,11 +30,16 @@ let print_info () =
     end
   else
     begin
-      if !Flag.termination then
+      if !Flag.add_closure_exparam && !Flag.result = "terminating" then
+	Format.printf "exparam inserted program:@. %a@." Syntax.pp_print_term !ExtraParamInfer.origWithExparam;
+      if !Flag.termination && !Flag.result = "terminating" then
         begin
           List.iter
             (fun (f_name, (cycles, pred)) ->
-	      Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred)
+	      Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
+	      if !Flag.add_closure_exparam then
+		let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
+		if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
 	    !Termination_loop.lrf
         end;
       Format.printf "cycles: %d\n" !Flag.cegar_loop;
@@ -106,17 +111,21 @@ let main in_channel =
     let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
     let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
     let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
+    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
     let result =
       try
 	List.for_all (fun holed ->
 	  let init_predicate_info =
 	    { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+	    ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x) 
 	    ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
 	    ; BRA_types.coefficients = []
-	    ; BRA_types.error_paths = [] } in
+	    ; BRA_types.errorPaths = []
+	    ; BRA_types.errorPathsWithExparam = [] } in
 	  let predicate_que = Queue.create () in
-	  let _ = Queue.add init_predicate_info predicate_que in
+	  let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
 	  Termination_loop.reset_cycle ();
 	  Termination_loop.run predicate_que holed) holed_list
       with
@@ -126,12 +135,11 @@ let main in_channel =
     if result then
       (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
     else
-      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Possibly Non-Terminating.@."; result)
+      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
   else
     Main_loop.run orig parsed
 
 
-let print_option_and_exit = ref (fun () -> ())
 
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
@@ -147,8 +155,6 @@ let arg_spec =
                  Flag.print_progress := false),
      " Show only result";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
-   "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
-   "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
    "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
    "-exp", Arg.Unit (fun () ->
                        Flag.only_result := true;
@@ -159,14 +165,11 @@ let arg_spec =
    "-v", Arg.Unit (fun () -> print_commit_hash (); exit 0), " Print the version shortly";
    "-version", Arg.Unit (fun () -> print_env (); exit 0), " Print the version";
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
-   "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
    (* preprocessing *)
-   "-list-opt", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
    "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
-   "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling), "Toggle tupling";
    (* verifier *)
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
@@ -200,9 +203,12 @@ let arg_spec =
    "-trecs", Arg.Set_string Flag.trecs,
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
    "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
+   (* FPAT option *)
+   "-flog", Arg.Set Fpat.Global._force,
+            " Force printing log messages";
    (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
-                      " Use an empty set as the initial sets of predicates for booleans";
+                       " Use an empty set as the initial sets of predicates for booleans";
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
           " Use refinement type based predicate discovery (same as -rsn 0)";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
@@ -211,90 +217,148 @@ let arg_spec =
    "-enable-cp", Arg.Set Fpat.Global.cut_points_only, " Enable cut-points only mode";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* Horn clause solver *)
-(*
    "-gi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate false),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron false),
      " Generalize constraints of multiple function calls by interpolation";
-*)
-(*
+   "-bdag",
+     Arg.Unit (fun _ ->
+       Fpat.HcSolver.ext_solve := Fpat.BeautifulHcSolver.solve),
+     " Use Horn clause solver based on beautiful DAG interpolation";
    "-gchi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.ApronInterface.convex_hull_interpolate true),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
-*)
    "-gtcs",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.TemplateBasedGenInterpProver.interpolate),
      " Generalize constraints of multiple function calls by template-based constraint solving";
-(*
    "-gssi",
      Arg.Unit (fun _ ->
        Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.YintInterface.solution_space_based_interpolate;
-       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_yint;
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_yint),
      " Generalize constraints of multiple function calls by solution space-based interpolation";
-*)
-   "-linfarkas",
-     Arg.Set Fpat.Global.linear_farkas,
-     " Enable linear Farkas";
-(*
    "-yhorn",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.YhornInterface.solve),
+       Fpat.HcSolver.ext_solve := Fpat.HcSolver.solve_yhorn),
      " Solve Horn clauses by using Yint";
-*)
 
    "-ieb", Arg.Set Fpat.Global.encode_boolean,
      " Enable integer encoding of booleans";
    (* interpolating prover *)
    "-csisat",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate),
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat),
      " Use CSIsat interpolating prover";
    "-gcsisat",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.CsisatInterface.interpolate ~generalize:true ),
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat_gen),
      " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
    "-tcs",
      Arg.Unit (fun _ ->
        Fpat.InterpProver.ext_interpolate := Fpat.TemplateBasedInterpProver.interpolate),
      " Use an interpolating prover based on template based constraint solving";
-(*
    "-yint",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.YintInterface.interpolate),
+       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_yint),
      " Use Yint interpolating prover";
-*)
-   (* polynomial constraint solver *)
-   "-bitvec",
+   (* SMT solver *)
+   "-z3", Arg.Unit (fun _ ->
+       Fpat.SMTProver.init_z3 ();
+       Fpat.PolyConstrSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3),
+     " Use Z3 SMT solver";
+   "-cvc3", Arg.Unit (fun _ ->
+       Fpat.SMTProver.init_cvc3 ();
+       Fpat.PolyConstrSolver.ext_solve := Fpat.PolyConstrSolver.solve_cvc3),
+     " Use CVC3 SMT solver";
+   (* template based inference *)
+   "-z3-template",
      Arg.Unit (fun _ ->
-       Fpat.BvPolyConstrSolver.init ()),
-     " Use a polynomial constraint solver based on bit-vector modeling and SAT";
-   "-cad",
+       Fpat.Template.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+       Fpat.Template.ext_solve := Fpat.PolyConstrSolver.solve_z3),
+     " Use Z3 SMT solver for template based inference";
+   "-z3-template-lin",
      Arg.Unit (fun _ ->
-       Fpat.CadPolyConstrSolver.init ()),
-     " Use a polynomial constraint solver based on CAD";
-   "-z3",
+       Fpat.Template.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+       Fpat.Template.ext_solve := Fpat.PolyConstrSolver.solve_z3),
+     " Use Z3 SMT solver for template based inference (norec)";
+   "-mip-template",
      Arg.Unit (fun _ ->
-       Fpat.Z3Interface.init ()),
-     " Use a polynomial constraint solver of Z3 SMT solver";
+         Fpat.Template.ext_generate :=
+           Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
+         Fpat.Template.ext_solve :=
+           Fpat.PolyConstrSolver.solve_glpk),
+     " Use a template based inference based on mixed integer linear programming (norec)";
+   "-cqp-template",
+     Arg.Int (fun n ->
+       Fpat.Global.cqp_mode := n;
+       if n < 2 then begin
+         Fpat.Template.ext_generate :=
+           Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+         Fpat.Template.ext_solve :=
+           Fpat.PolyConstrSolver.solve_gsl
+       end else begin
+         Fpat.Template.ext_generate :=
+           Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
+         Fpat.Template.ext_solve :=
+           Fpat.PolyConstrSolver.solve_gsl
+       end),
+     " Use a template based inference based on convex quadratic programming (norec)";
+   (* relatively complete verification *)
+   "-bv-exparm",
+     Arg.Unit (fun _ ->
+       Fpat.ParamSubstInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true;
+       Fpat.ParamSubstInfer.ext_solve :=
+         Fpat.BvPolyConstrSolver.solve),
+     " Use a bit-vector-based extra parameter inference";
+   "-z3-exparam",
+     Arg.Unit (fun _ ->
+       Fpat.ParamSubstInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+       Fpat.ParamSubstInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3),
+     " Use Z3 SMT solver for extra parameter inference";
    (* termination mode *)
    "-z3-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true;
-       Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve),
-     " Use Z3 for ranking function inference";
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+       Fpat.RankFunInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3),
+     " Use Z3 SMT solver for ranking function inference";
+   "-z3-rank-lin",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+       Fpat.RankFunInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3),
+     " Use Z3 SMT solver for ranking function inference (no exparam)";
+   "-cqp-rank-lin",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.PolyConstrSolver.solve_gsl),
+     " Use convex quadratic programming based ranking function inference (no exparam)";
+   "-bv-rank-lin",
+     Arg.Unit (fun _ ->
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true ~linear:true;
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.BvPolyConstrSolver.solve),
+     " Use bit-vector-based ranking function inference (no exparam)";
    "-bv-rank",
      Arg.Unit (fun _ ->
-       Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:true ~linear:true;
-       Fpat.RankFunInfer.ext_solve := Fpat.BvPolyConstrSolver.solve [] []),
+       Fpat.RankFunInfer.ext_generate :=
+         Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true (*~linear:true*);
+       Fpat.RankFunInfer.ext_solve :=
+         Fpat.BvPolyConstrSolver.solve),
      " Use bit-vector-based ranking function inference";
-    (* use this with Z3 otherwise..*)
-   "-rbf",
+   "-rbf", (* use this with Z3 otherwise... *)
      Arg.Set Fpat.Global.rank_bounded_first,
      " Try to infer a ranking function with small coefficients";
    "-termination-disj",
@@ -319,11 +383,13 @@ let arg_spec =
    "-add-cd",
      Arg.Unit (fun _ ->
        Flag.add_closure_depth := true),
-     " Insert extra parameters for representing depth of closures"
+     " Insert extra parameters for representing depth of closures";
+   "-infer-ranking-exparam",
+     Arg.Unit (fun _ ->
+       Flag.add_closure_exparam := true),
+     " Infer extra ranking parameters for closures for termination verification"
   ]
 
-let () = print_option_and_exit := fun () ->
-  List.iter (fun (s,_,_) -> Format.printf "%s " s) arg_spec; exit 0
 
 let string_of_exception = function
     e when FpatInterface.is_fpat_exception e -> FpatInterface.string_of_error e
@@ -373,27 +439,42 @@ let parse_arg () =
 (* called before parsing options *)
 let fpat_init1 () =
   let open Fpat in
+
   (* default interpolating prover *)
-  InterpProver.ext_interpolate := CsisatInterface.interpolate;
+  InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat;
+
   (* default Horn clause solver *)
   HcSolver.ext_solve := BwHcSolver.solve;
-  (* default Polynomial constraint solver *)
-  Fpat.BvPolyConstrSolver.init ();
-  (* default Polynomial constraint solver for ranking function inference *)
-  Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constrs ~nat:false ~linear:true;
-  Fpat.RankFunInfer.ext_solve := Fpat.Z3Interface.solve
+
+  (* default solver for parameter substitution inference *)
+  Fpat.ParamSubstInfer.ext_generate :=
+    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+  Fpat.ParamSubstInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3;
+
+  (* default solver for ranking function inference *)
+  Fpat.RankFunInfer.ext_generate :=
+    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false (*~linear:true*);
+  Fpat.RankFunInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3;
+
+  (* default solver for template based inference *)
+  Fpat.Template.ext_generate :=
+    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
+  Fpat.Template.ext_solve := Fpat.PolyConstrSolver.solve_z3;
+
+  (* default polynomial constraint solver *)
+  Fpat.PolyConstrSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3;
+
+  (* default SMT solver *)
+  Fpat.SMTProver.init_z3 ()
 
 (* called after parsing options *)
 let fpat_init2 () =
   let open Fpat in
   Global.print_log := !Flag.debug_level <> 0;
   Global.cvc3 := !Flag.cvc3;
-  Cvc3Interface.init ();
-  AtpInterface.init ();
-  Cvc3Interface.open_cvc3 ()
+  Fpat.SMTProver.open_ ()
 
 let () =
-      assert false;
   if !Sys.interactive
   then ()
   else
@@ -403,10 +484,9 @@ let () =
       fpat_init1 ();
       let cin = parse_arg () in
       fpat_init2 ();
-      Color.init ();
       if not !Flag.only_result then print_env ();
       if main cin then decr Flag.cegar_loop;
-      Fpat.Cvc3Interface.close_cvc3 ();
+      Fpat.SMTProver.close ();
       print_info ()
     with
       | e when !Flag.exp ->
