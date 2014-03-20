@@ -1,5 +1,6 @@
 open Syntax
 open Type
+open Term_util
 
 let origWithExparam = ref (make_int 0)
 let exCoefficients = ref []
@@ -25,7 +26,7 @@ let to_string_CoeffInfos f =
 	(List.rev_map f !exCoefficients)
   with _ -> ""
 
-let withExparam = ref (Syntax.make_int 0)
+let withExparam = ref (make_int 0)
 
 let rec transType = function
   | TFun ({Id.name=t1Name; Id.typ=t1} as t1Id, t2) when is_fun_typ t1 ->
@@ -37,7 +38,7 @@ let rec transType = function
 let counter = ref 0
 let nthCoefficient = ref []
 
-let freshCoefficient () = 
+let freshCoefficient () =
   let _ = counter := !counter + 1 in
   let freshName = "c" ^ string_of_int (!counter - 1) ^ "_COEFFICIENT" in
   let freshId = Id.new_var freshName TInt in
@@ -57,7 +58,7 @@ let rec insertExparam scope expr =
     | Unknown
     | RandInt _
     | RandValue _ -> expr
-    | Var v -> 
+    | Var v ->
       let typ = transType v.Id.typ in
       {desc = Var {v with Id.typ = typ}; typ = typ}
     | Fun (x, e) -> assert false (* ? *)
@@ -83,7 +84,7 @@ let rec insertExparam scope expr =
       let scope =
 	if flag = Nonrecursive then scope else extend scope bindings
       in
-      let insertExparamBinding (x, args, body) = 
+      let insertExparamBinding (x, args, body) =
 	let insertExparamArgs (sc, ags) = function
 	  | t when Id.typ t = TInt -> (t::sc, ags@[t])
 	  | t when is_base_typ (Id.typ t) -> (sc, ags@[t])

@@ -119,7 +119,7 @@ let main in_channel =
 	List.for_all (fun holed ->
 	  let init_predicate_info =
 	    { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
-	    ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x) 
+	    ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
 	    ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
 	    ; BRA_types.coefficients = []
 	    ; BRA_types.errorPaths = []
@@ -141,6 +141,8 @@ let main in_channel =
 
 
 
+let print_option_and_exit = ref (fun () -> ())
+
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
@@ -155,6 +157,8 @@ let arg_spec =
                  Flag.print_progress := false),
      " Show only result";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
+   "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
+   "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
    "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
    "-exp", Arg.Unit (fun () ->
                        Flag.only_result := true;
@@ -165,7 +169,9 @@ let arg_spec =
    "-v", Arg.Unit (fun () -> print_commit_hash (); exit 0), " Print the version shortly";
    "-version", Arg.Unit (fun () -> print_env (); exit 0), " Print the version";
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
+   "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
    (* preprocessing *)
+   "-list-opt", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
@@ -390,6 +396,8 @@ let arg_spec =
      " Infer extra ranking parameters for closures for termination verification"
   ]
 
+let () = print_option_and_exit := fun () ->
+  List.iter (fun (s,_,_) -> Format.printf "%s " s) arg_spec; exit 0
 
 let string_of_exception = function
     e when FpatInterface.is_fpat_exception e -> FpatInterface.string_of_error e
@@ -484,6 +492,7 @@ let () =
       fpat_init1 ();
       let cin = parse_arg () in
       fpat_init2 ();
+      Color.init ();
       if not !Flag.only_result then print_env ();
       if main cin then decr Flag.cegar_loop;
       Fpat.SMTProver.close ();

@@ -250,7 +250,7 @@ let new_params recursive bvs exs =
       Fpat.ParamSubstInfer.masked_params :=
         Fpat.Idnt.mk_coeff (Id.to_string (Fpat.Util.List.hd ps)) ::
         !Fpat.ParamSubstInfer.masked_params);
-    (if !Fpat.Global.enable_coeff_const then [Syntax.make_var (Fpat.Util.List.hd ps)] else []) @
+    (if !Fpat.Global.enable_coeff_const then [Term_util.make_var (Fpat.Util.List.hd ps)] else []) @
     (*
     let b = recursive <> None && xs = [] && Fpat.Util.Set.subset bvs' exs in
     *)
@@ -274,14 +274,14 @@ let new_params recursive bvs exs =
             if Fpat.Util.List.mem x exs then
               Fpat.ParamSubstInfer.masked_params := Fpat.Idnt.mk_coeff (Fpat.Idnt.make (Id.to_string p)) :: !Fpat.ParamSubstInfer.masked_params*)
         in
-        Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
+        Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
       (if !Fpat.Global.enable_coeff_const then Fpat.Util.List.tl ps else ps)
       bvs'
   in
   if ts = [] then
-    Some(Syntax.make_int 0, i + 1)
+    Some(Term_util.make_int 0, i + 1)
   else
-    Some(Fpat.Util.List.fold_left Syntax.make_add (Fpat.Util.List.hd ts) (Fpat.Util.List.tl ts), i + 1)
+    Some(Fpat.Util.List.fold_left Term_util.make_add (Fpat.Util.List.hd ts) (Fpat.Util.List.tl ts), i + 1)
   else
     None)
   0

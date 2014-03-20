@@ -1,7 +1,7 @@
 open Util
 
 let init () =
-  Syntax.typ_excep := Type.TConstr("exn",true)
+  Term_util.typ_excep := Type.TConstr("exn",true)
 
 let preprocess t spec =
   let fun_list,t,get_rtyp =
@@ -13,7 +13,7 @@ let preprocess t spec =
         then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
       let t' = Trans.copy_poly_funs t in
-      let fun_list = Syntax.get_top_funs t' in
+      let fun_list = Term_util.get_top_funs t' in
       let () =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
@@ -25,12 +25,12 @@ let preprocess t spec =
         if !Flag.debug_level > 0 && spec <> Spec.init
         then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
       let t = t' in
-      let t' = Abstract.abstract_recdata t in
+      let t' = Encode_rec.trans t in
       let () =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
       let t = t' in
-      let t',get_rtyp_list = Abstract.abstract_list t in
+      let t',get_rtyp_list = Encode_list.trans t in
       let () =
         if !Flag.debug_level > 0 && t <> t'
         then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t' in
@@ -59,7 +59,7 @@ let preprocess t spec =
         then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
       in
       let t = t' in
-      let () = Type_check.check t Syntax.typ_result in
+      let () = Type_check.check t Term_util.typ_result in
 
       (* preprocess for termination mode *)
       let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
@@ -67,7 +67,7 @@ let preprocess t spec =
       fun_list, t, get_rtyp
     else
       let () = Type_check.check t Type.TUnit in
-      Syntax.get_top_funs t, t, fun _ typ -> typ
+      Term_util.get_top_funs t, t, fun _ typ -> typ
   in
 
   (* ill-formed program *)
@@ -139,7 +139,7 @@ let report_safe env rmap get_rtyp orig t0 =
           CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntExp.make n)
         !Fpat.ParamSubstInfer.ext_coeffs
     in
-    let t = Syntax.subst_map map t0 in
+    let t = Term_util.subst_map map t0 in
     Format.printf "Program with Quantifiers Added:@.";
     Flag.web := true;
     Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;

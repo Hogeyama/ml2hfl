@@ -21,10 +21,10 @@ let get_args = get_args.col2_term
 let same_term env t1 t2 =
   if is_simple_aexp t1 && is_simple_aexp t2
   then
-    let conv t = FpatInterface.conv_term @@ snd @@ CEGAR_util.trans_term "" [] [] t in
+    let conv t = FpatInterface.conv_formula @@ snd @@ CEGAR_util.trans_term "" [] [] t in
     let env' = List.map conv env in
     let p' = conv @@ make_eq t1 t2 in
-    Fpat.ExtFormula.Formula.implies env' [p']
+    Fpat.SMTProver.implies env' [p']
   else t1.desc = t2.desc
 
 let make_all xs =

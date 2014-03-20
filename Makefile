@@ -72,7 +72,7 @@ CMO = $(OCAML_CMO) \
 	feasibility.cmo refine.cmo CEGAR.cmo \
 	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo \
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo \
-	extraClsDepth.cmo \
+	extraClsDepth.cmo extraParamInfer.cmo \
 	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
