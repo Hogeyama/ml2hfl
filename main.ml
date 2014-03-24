@@ -176,6 +176,7 @@ let arg_spec =
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
    "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
+   "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling), "Toggle tupling";
    (* verifier *)
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
