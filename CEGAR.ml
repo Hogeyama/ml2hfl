@@ -101,7 +101,7 @@ let rec cegar1 prog0 is_cp ces info =
                         let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
                         let _,prog' = Refine.refine inlined_functions is_cp prefix ces' prog0 in
                           if !Flag.debug_level > 0 then
-                            Format.printf "Prefix of spurious counter-example::@.%a@.@."
+                            Format.printf "Prefix of spurious counterexample::@.%a@.@."
                               CEGAR_print.ce prefix;
                           post ();
                           cegar1 prog' is_cp ces' info
