@@ -1,6 +1,7 @@
 
 type color =
-    Blue
+    Default
+  | Blue
   | Red
   | Green
   | Cyan

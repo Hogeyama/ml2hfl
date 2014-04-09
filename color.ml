@@ -1,19 +1,21 @@
 open Util
 
 type color =
-    Blue
+    Default
+  | Blue
   | Red
   | Green
   | Cyan
 
 let color_table =
-  [Blue, 34;
+  [Default, 0;
+   Blue, 34;
    Red, 31;
    Green, 32;
    Cyan, 36]
 
-let rec zeros = 0::zeros
-let history = ref zeros
+let rec init_colors = (List.assoc Default color_table)::init_colors
+let history = ref init_colors
 
 let init () =
   if Unix.isatty Unix.stdout
