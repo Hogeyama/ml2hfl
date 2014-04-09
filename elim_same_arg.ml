@@ -141,12 +141,9 @@ let trans_desc env desc =
     let xs' = elim_nth elim_args xs in
     let t1' = t1
       |> trans.tr2_term (make_env xs same_args @ env)
-      |@> (fun n -> Format.printf "???1@?")
       |> subst_map @@ List.map (fun (i,j) -> List.nth xs j, make_var @@ List.nth xs i) same_args
-      |@> (fun n -> Format.printf "???2@?")
       |> elim_arg f elim_args
       |> subst f (make_var f')
-      |@> (fun n -> Format.printf "???3@.")
     in
     let t2' = t2
       |> trans.tr2_term env

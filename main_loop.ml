@@ -3,62 +3,53 @@ open Util
 let init () =
   Term_util.typ_excep := Type.TConstr("exn",true)
 
+let id x = x
+
+let trans_and_print f desc proj ?(opt=true) ?(typ=true) t =
+  let r = f t in
+  let t' = proj r in
+  let pr = if typ then Syntax.pp_print_term_typ else Syntax.pp_print_term in
+  if !Flag.debug_level > 0 && t <> t' && opt
+  then Format.printf "%a%s:%t@. @[%a@.@." Color.set "Red" desc Color.reset pr t';
+  r
+
 let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
-      let t' = Trans.make_ext_funs t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "make_ext_funs::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t' = Trans.copy_poly_funs t in
-      let fun_list = Term_util.get_top_funs t' in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "copy_poly::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
+      let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
+      let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
+      let fun_list = Term_util.get_top_funs t in
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
-      let t' = Trans.replace_typ spec'.Spec.abst_env t in
-      let () =
-        if !Flag.debug_level > 0 && spec <> Spec.init
-        then Format.printf "add_preds::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t' = Encode_rec.trans t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "abst_recdata::@. @[%a@.@." Syntax.pp_print_term t' in
-      let t = t' in
-      let t',get_rtyp_list = Encode_list.trans t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let get_rtyp = get_rtyp_list in
-      let t' = Trans.inlined_f spec'.Spec.inlined_f t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "inlined::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let t',get_rtyp_cps_trans = CPS.trans t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "CPS::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let t = t' in
-      let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
-      let t',get_rtyp_remove_pair = Curry.remove_pair t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "remove_pair::@. @[%a@.@." Syntax.pp_print_term_typ t' in
-      let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
-      let t = t' in
-      let t' = if !Flag.insert_param_funarg then Trans.insert_param_funarg t else t in
-      let () =
-        if !Flag.debug_level > 0 && t <> t'
-        then Format.printf "insert unit param::@. @[%a@.@." Syntax.pp_print_term t'
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init)
+t in
+      let t = trans_and_print Encode_rec.trans ~typ:false "abst_recdata" id t in
+      let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
+      let t =
+        if !Flag.tupling
+        then
+          let t = trans_and_print Ret_fun.trans "ret_fun" id t in
+          let t = trans_and_print (Ref_trans.trans (fun _ -> assert false)) "ref_trans" id t in
+          Type_check.check t Type.TUnit;
+          let t = trans_and_print Tupling.trans "tupling?" id t in
+          t
+        else t
       in
-      let t = t' in
+
+      let get_rtyp = get_rtyp_list in
+      let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
+      let () = Type_check.check t Type.TUnit in
+      let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
+      let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
+      let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
+      let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
+      let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
+      let t =
+        if !Flag.insert_param_funarg
+        then trans_and_print Trans.insert_param_funarg "insert unit param" id t
+        else t
+      in
       let () = Type_check.check t Term_util.typ_result in
 
       (* preprocess for termination mode *)

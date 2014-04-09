@@ -479,7 +479,7 @@ let fpat_init1 () =
 (* called after parsing options *)
 let fpat_init2 () =
   let open Fpat in
-  Global.print_log := !Flag.debug_level <> 0;
+  Global.print_log := !Flag.debug_level > 1;
   Global.cvc3 := !Flag.cvc3;
   Fpat.SMTProver.open_ ()
 

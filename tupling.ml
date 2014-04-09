@@ -724,6 +724,8 @@ let compose_app_term t =
           (Nonrecursive,(x,[],{desc=Snd({desc=App({desc=Var f},[{desc=Pair(t11,t12)}])})}))::
           (Nonrecursive,(y,[],{desc=Fst({desc=App({desc=Var g},[{desc=Pair(t21,t22)}])})}))::bindings'
             when Id.same f g && is_none_term t11 && is_some_term t12 && is_some_term t21 && is_none_term t22 ->
+          Format.printf "%a, %a@." Id.print f Id.print g;
+          assert false;
               let p = Id.new_var "p" (TPair(x, (Id.typ y))) in
               let bindings'' =
                 [p, [], make_app (make_var f) [make_pair t12 t21];
@@ -770,6 +772,7 @@ let trans t = t
   |> tupling
   |> do_and_return (Format.printf "AFTER!:@.%a@.@." pp_print_term)
   |> Trans.inline_no_effect
+            |> fun x ->assert false
 (*
   |> do_and_return (Format.printf "BEFORE!:@.%a@.@." pp_print_term)
   |> Trans.let2fun
