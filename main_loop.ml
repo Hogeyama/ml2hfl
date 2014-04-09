@@ -103,7 +103,7 @@ let report_safe env rmap get_rtyp orig t0 =
         [f', Ref_type.rename (get_rtyp f' rtyp)]
       with
         Not_found -> []
-      | _ -> Format.printf "unimplemented or bug@.@."; []
+      | _ -> Format.printf "Some refinement types cannot be shown (unimplemented or bug)@.@."; []
     in
     if !Flag.insert_param_funarg
     then []
