@@ -193,7 +193,7 @@ and print_id = Id.print
 
 and print_id_typ fm x =
   let typ = Id.typ x in
-  fprintf fm "(%a:%a%a%t)" Id.print x Color.set "Cyan" print_typ typ Color.reset
+  fprintf fm "(%a:%a%a%t)" Id.print x Color.set Color.Cyan print_typ typ Color.reset
 
 and print_ids_typ fm = function
 [] -> ()

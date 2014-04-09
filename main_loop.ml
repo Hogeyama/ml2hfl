@@ -10,7 +10,7 @@ let trans_and_print f desc proj ?(opt=true) ?(typ=true) t =
   let t' = proj r in
   let pr = if typ then Syntax.pp_print_term_typ else Syntax.pp_print_term in
   if !Flag.debug_level > 0 && t <> t' && opt
-  then Format.printf "%a%s:%t@. @[%a@.@." Color.set "Red" desc Color.reset pr t';
+  then Format.printf "%a:@. @[%a@.@." Color.red desc pr t';
   r
 
 let preprocess t spec =

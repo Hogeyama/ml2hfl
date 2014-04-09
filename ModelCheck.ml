@@ -28,7 +28,7 @@ let check abst prog =
   let tmp = get_time() in
   let () =
     if !Flag.print_progress
-    then Color.wrap "Green" (fun _ -> Format.printf "(%d-2) Checking HORS ... @?" !Flag.cegar_loop)
+    then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop
   in
   let result =
     match !Flag.model_check with
@@ -39,7 +39,7 @@ let check abst prog =
       | Flag.ModelCheck -> check_aux abst n
   in
   let () = add_time tmp Flag.time_mc in
-  let () = if !Flag.print_progress then Color.wrap "Green" (fun _ -> Format.printf "DONE!@.@.") in
+  let () = if !Flag.print_progress then Color.printf Color.Green "DONE!@.@." in
     match result with
         ModelCheck_util.Safe env -> Safe env
       | ModelCheck_util.Unsafe ce -> Unsafe ce

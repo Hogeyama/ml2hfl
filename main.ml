@@ -95,7 +95,7 @@ let main in_channel =
   let parsed = Parser_wrapper.from_use_file orig in
   let () =
     if true && !Flag.debug_level > 0
-    then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term parsed
+    then Format.printf "%a:@. @[%a@.@." Color.red "parsed" Syntax.pp_print_term parsed
   in
   if !Flag.split_assert
   then
