@@ -438,3 +438,29 @@ let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
 
 let do_and_return f x = f x; x
 let (|@>) x f = do_and_return f x
+let assert_false _ = assert false
+
+
+let exists_loop tbl =
+  let checked = Hashtbl.create (Hashtbl.length tbl) in
+  let f x xs =
+    if Hashtbl.mem checked x
+    then ()
+    else
+      let rec aux visited y =
+        if List.mem y visited
+        then raise Exit
+        else
+          let visited' = y::visited in
+          let ys = try Hashtbl.find tbl y with Not_found -> [] in
+          if ys = []
+          then visited'
+          else List.flatten @@ List.map (aux visited') ys
+      in
+      let loop_free = aux [] x in
+      List.iter (fun y -> Hashtbl.add checked y ()) loop_free
+  in
+  try
+    Hashtbl.iter f tbl;
+    false
+  with Exit -> true

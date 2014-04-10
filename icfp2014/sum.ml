@@ -13,7 +13,7 @@ let rec sum_acc (n, a) =
 
 let ssa = sum, sum_acc
 
-let sum' = fst ssa
+let sum = fst ssa
 let sum_acc = snd ssa
 
 let main n a =

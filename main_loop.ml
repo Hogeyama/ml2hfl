@@ -22,8 +22,7 @@ let preprocess t spec =
       let fun_list = Term_util.get_top_funs t in
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init)
-t in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Encode_rec.trans ~typ:false "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let t =
@@ -103,7 +102,7 @@ let report_safe env rmap get_rtyp orig t0 =
         [f', Ref_type.rename (get_rtyp f' rtyp)]
       with
         Not_found -> []
-      | _ -> Format.printf "Some refinement types cannot be shown (unimplemented or bug)@.@."; []
+      | _ -> Format.printf "Some refinement types cannot be shown (unimplemented)@.@."; []
     in
     if !Flag.insert_param_funarg
     then []
@@ -172,24 +171,23 @@ let rec run orig parsed =
   in
   let spec = Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file in
   let () = Spec.print spec in
-  let main_fun,arg_num,t = if !Flag.cegar = Flag.CEGAR_DependentType then Trans.set_target t else "",0,t in
-  let set_target = t in
-  let () =
-    if true && !Flag.debug_level > 0
-    then Format.printf "set_target::@. @[%a@.@." Syntax.pp_print_term t
+  let main_fun,arg_num,set_target =
+    if !Flag.cegar = Flag.CEGAR_DependentType
+    then trans_and_print Trans.set_target "set_target" (fun (_,_,t) -> t) t
+    else "",0,t
   in
   (** Unno: I temporally placed the following code here
             so that we can infer refinement types for a safe program
             with extra parameters added *)
   let t0 =
     if !Flag.relative_complete then
-      let t = Trans.lift_fst_snd t in
+      let t = Trans.lift_fst_snd set_target in
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
         if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
           (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
         t
     else
-      t
+      set_target
   in
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in

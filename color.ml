@@ -1,18 +1,53 @@
-open Util
 
 type color =
     Default
-  | Blue
+  | Bright
+  | Dim
+  | Underscore
+  | Blink
+  | Reverse
+  | Hidden
+  | Black
   | Red
   | Green
+  | Yellow
+  | Blue
+  | Magenta
   | Cyan
+  | White
+  | BG_Black
+  | BG_Red
+  | BG_Green
+  | BG_Yellow
+  | BG_Blue
+  | BG_Magenta
+  | BG_Cyan
+  | BG_White
 
 let color_table =
   [Default, 0;
-   Blue, 34;
+   Bright, 1;
+   Dim, 2;
+   Underscore, 4;
+   Blink, 5;
+   Reverse, 7;
+   Hidden, 8;
+   Black, 30;
    Red, 31;
    Green, 32;
-   Cyan, 36]
+   Yellow, 33;
+   Blue, 34;
+   Magenta, 35;
+   Cyan, 36;
+   White, 37;
+   BG_Black, 40;
+   BG_Red, 41;
+   BG_Green, 42;
+   BG_Yellow, 43;
+   BG_Blue, 44;
+   BG_Magenta, 45;
+   BG_Cyan, 46;
+   BG_White, 47]
 
 let rec init_colors = (List.assoc Default color_table)::init_colors
 let history = ref init_colors

@@ -223,14 +223,15 @@ let trans_desc (tt,bb) desc =
       let x1' = trans.tr2_var (tt,bb) x1 in
       let t11' = trans.tr2_term (tt,bb) t11 in
       let bb' = (x,t1)::bb in
-(*
 Format.printf "B: ";
 List.iter (fun (x,t) -> Format.printf "%a = %a; " Id.print x pp_print_term t) bb';
 Format.printf "@.";
-*)
       let t' = trans.tr2_term (tt,bb') t in
-      let t1' = inst_var_fun x1 tt bb' t11' in
-      (make_let [x,[],t1'] t').desc
+      let tx = inst_var_fun x1 tt bb' t11' in
+Color.printf Color.Green "x1: %a@." Id.print x1;
+Color.printf Color.Green "t11: %a@." pp_print_term t11;
+Color.printf Color.Green "tx: %a@." pp_print_term tx;
+      (make_let [x,[],tx] t').desc
 (*
   | Let(flag, [f,[],{desc=Fun _}], t) -> assert false
   | Let(flag, [f,[x],t1], t) ->

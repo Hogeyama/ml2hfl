@@ -1395,3 +1395,47 @@ and is_simple_bexp t =
         is_simple_aexp t1 && is_simple_aexp t2
     | Not t -> is_simple_bexp t
     | _ -> false
+
+
+
+let same_list same xs ys = List.length xs = List.length ys && List.for_all2 same xs ys
+
+let rec same_const = (=)
+and same_term t1 t2 = same_desc t1.desc t2.desc
+and same_desc t1 t2 =
+  match t1,t2 with
+    Const c1, Const c2 -> same_const c1 c2
+  | Unknown, Unknown -> true
+  | RandInt b1, RandInt b2 -> b1 = b2
+  | RandValue _, RandValue _ -> unsupported "same_term"
+  | Var x, Var y -> Id.same x y
+  | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
+  | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
+  | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
+  | Branch(t11,t12), Branch(t21,t22) -> same_term t11 t21 && same_term t12 t22
+  | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) ->
+     let same_binding (f,xs,t1) (g,ys,t2) = Id.same f g && same_list Id.same xs ys && same_term t1 t2 in
+     flag1 = flag1 && same_list same_binding bindings1 bindings2 && same_term t1 t2
+  | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
+  | Not t1, Not t2 -> same_term t1 t2
+  | Event(s1,b1), Event(s2,b2) -> s1 = s2 && b1 = b2
+  | Record _, Record _ -> unsupported "same_term"
+  | Proj _, Proj _ -> unsupported "same_term"
+  | SetField _, SetField _ -> unsupported "same_term"
+  | Nil, Nil -> true
+  | Cons _, Cons _ -> unsupported "same_term"
+  | Constr _, Constr _ -> unsupported "same_term"
+  | Match _, Match _ -> unsupported "same_term"
+  | Raise _, Raise _ -> unsupported "same_term"
+  | TryWith _, TryWith _ -> unsupported "same_term"
+  | Pair(t11,t12), Pair(t21,t22) -> same_term t11 t21 && same_term t12 t22
+  | Fst t1, Fst t2 -> same_term t1 t2
+  | Snd t1, Snd t2 -> same_term t1 t2
+  | Bottom _, Bottom _ -> unsupported "same_term"
+  | Label _, Label _ -> unsupported "same_term"
+
+and same_info i1 i2 = unsupported "same_term"
+and same_type_kind k1 k2 = unsupported "same_term"
+
+and same_typed_pattern p1 p2 = same_pattern p1.desc p2.desc
+and same_pattern p1 p2 = unsupported "same_term"

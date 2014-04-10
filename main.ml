@@ -67,7 +67,7 @@ let print_commit_hash () =
 let print_env () =
   let commit = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
-  Format.printf "MoCHi: Model Checker for Higher-Order Programs@.";
+  Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if commit <> "" then Format.printf "  Build: %s@." commit;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;

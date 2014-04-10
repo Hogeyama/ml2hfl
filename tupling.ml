@@ -748,31 +748,78 @@ let compose_app = compose_app.tr_term
 
 
 
+let rec decomp_let_app t =
+  match t.desc with
+    Let(Nonrecursive, [x,[], ({desc=App _} as t1)], t2) ->
+      let bindings,t' = decomp_let_app t2 in
+      (x,[],t1)::bindings, t'
+  | _ -> [], t
 
+let is_depend t x = List.mem x @@ get_fv t
 
 let let_normalize = make_trans ()
-(*
-let compose_app_term t =
-  match t.desc with
-    Let _ ->
-      let bindings,t' = decomp_let t in
-  | _ -> compose_app.tr_term_rec t
 
-let () = compose_app.tr_term <- compose_app_term
-*)
+let let_normalize_desc desc =
+  match desc with
+    Let(Nonrecursive, [x,[],{desc=App _}], _) -> let_normalize.tr_desc_rec desc
+  | Let(Nonrecursive, [x,[],t1], t2) ->
+      let t1' = let_normalize.tr_term t1 in
+      let t2' = let_normalize.tr_term t2 in
+      let bindings,t2'' = decomp_let_app t2' in
+      let rec aux acc bindings =
+        match bindings with
+          [] -> acc,[]
+        | (_,_,t)::bindings' when is_depend t x -> acc, bindings
+        | (y,_,t)::bindings' -> aux (acc@[y,[],t]) bindings'
+      in
+      let bindings1,bindings2 = aux [] bindings in
+      if bindings1 = []
+      then Let(Nonrecursive, [x,[],t1'], t2')
+      else
+        let t2''' = make_lets bindings2 t2'' in
+        (make_lets bindings1 @@ make_lets [x,[],t1'] t2''').desc
+  | _ -> let_normalize.tr_desc_rec desc
+
+let () = let_normalize.tr_desc <- let_normalize_desc
+
 let let_normalize = let_normalize.tr_term
+
+
+
+let elim_check t1 t2 =
+Color.printf Color.Yellow "%a, %a@." pp_print_term t1 pp_print_term t2;
+  match t1.desc, t2.desc with
+    App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g && List.length ts1 = List.length ts2 ->
+      List.for_all2 (fun t1 t2 -> same_term t1 t2 || is_none t1) ts1 ts2
+  | _ -> false
+
+let elim_same_app = make_trans ()
+
+let elim_same_app_desc desc =
+  match desc with
+    Let(Nonrecursive, [x,[],t1],
+        {desc = Let(Nonrecursive, [y,[],t2], t)}) when not (is_depend t2 x) && elim_check t1 t2 ->
+      let t' = subst x (make_var y) t in
+      elim_same_app.tr_desc @@ Let(Nonrecursive, [y,[],t2], t')
+  | _ -> elim_same_app.tr_desc_rec desc
+
+let () = elim_same_app.tr_desc <- elim_same_app_desc
+
+let elim_same_app = elim_same_app.tr_term
 
 
 
 
 let trans t = t
   |> inline_wrapped.tr_term
+  |> Trans.flatten_let
   |> let_normalize
-  |> do_and_return (Format.printf "BEFORE!:@.%a@.@." pp_print_term)
+  |@> Format.printf "%a:@.%a@.@." Color.red "normalize let" pp_print_term
+  |> elim_same_app
+  |@> Format.printf "%a:@.%a@.@." Color.red "elim_same_app" pp_print_term
   |> tupling
-  |> do_and_return (Format.printf "AFTER!:@.%a@.@." pp_print_term)
+  |@> Format.printf "%a:@.%a@.@." Color.red "tupled" pp_print_term
   |> Trans.inline_no_effect
-            |> fun x ->assert false
 (*
   |> do_and_return (Format.printf "BEFORE!:@.%a@.@." pp_print_term)
   |> Trans.let2fun

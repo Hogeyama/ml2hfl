@@ -191,3 +191,4 @@ val get_fv : ?cmp:(id -> id -> int) -> typed_term -> id list
 val has_no_effect : typed_term -> bool
 val is_simple_aexp : typed_term -> bool
 val is_simple_bexp : typed_term -> bool
+val same_term : typed_term -> typed_term -> bool
