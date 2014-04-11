@@ -71,7 +71,8 @@ let get_diff_args_desc (env,(f:id)) desc =
             let diff' = List.flatten diff in
             aux (diff' @ acc) its'
       in
-      aux [] its
+      let diff_args = List.flatten @@ List.map (get_diff_args.col2_term (env,f)) ts in
+      aux diff_args its
   | Let(Nonrecursive, bindings, t)
   | Let(Recursive, ([_] as bindings), t) ->
       let aux (g,xs,t') =
@@ -133,6 +134,9 @@ let trans_desc env desc =
     Let(_, [f,xs,{desc=Fun _}], t2) -> assert false
   | Let(flag, [f,xs,t1], t2) ->
     let same_args = get_same_args env f t2 @@ make_all xs in
+    Color.printf Color.Reverse "[";
+    List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args;
+    Color.printf Color.Reverse "]@.";
     let elim_args = List.map snd same_args in
     let f' =
       let typ = elim_arg_typ elim_args @@ Id.typ f in

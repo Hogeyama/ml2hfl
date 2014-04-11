@@ -119,8 +119,13 @@ in
 Format.printf "TREE: %a@." (Tree.print pr) tree';
 Format.printf "r': %a:%a@." Id.print r' pp_print_typ (Id.typ r');
         let trees = make_trees tree' in
-        let args = List.map Tree.flatten trees in
+Format.printf "|trees|': %d@." (List.length trees);
+Format.printf "hd trees: %a@." (Tree.print pp_print_term) (List.hd trees);
+        let argss = List.map Tree.flatten trees in
+Color.printf Color.Red "BEGIN@.";
+        let args = List.map (fun args -> [make_tuple args]) argss in
         let apps = List.map (make_app (make_var r')) args in
+Color.printf Color.Red "END@.";
 (*
         Format.printf "TREE(%a --%a-- %a):%d@." Id.print r (print_list Format.pp_print_int "") path Id.print x @@ List.length apps;
         List.iter (Format.printf "  %a@." pp_print_term) apps;
@@ -202,6 +207,26 @@ let trans_typ' (tt,bb) typ =
 
 let trans_typ (tt,bb) typ = fst (trans_typ' (tt,bb) typ)
 
+let trans_typ (tt,bb) typ =
+  match typ with
+    TPair _ ->
+      let typs = decomp_ttuple typ in
+      let decomp typ =
+        match typ with
+          TFun(x,typ') -> Some (x,typ')
+        | _ -> None
+      in
+      let xtyps = List.map decomp typs in
+      if List.mem None xtyps
+      then trans.tr2_typ_rec (tt,bb) typ
+      else
+        let xtyps' = List.map get_opt_val xtyps in
+        let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
+        let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
+        let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
+        TFun(Id.new_var name @@ make_ttuple arg_typs, make_ttuple ret_typs)
+  | _ -> trans.tr2_typ_rec (tt,bb) typ
+
 (*
 let trans_typ ttbb typ =
   trans_typ ttbb typ
@@ -210,15 +235,6 @@ let trans_typ ttbb typ =
 
 let trans_desc (tt,bb) desc =
   match desc with
-(*
-    Let(Nonrecursive, [x,[],({desc=App({desc=Var x1},[t11])} as t1)], t) ->
-      let x1' = trans.tr2_var (tt,bb) x1 in
-      let t11' = trans.tr2_term (tt,bb) t11 in
-      let bb' = (x,t1)::bb in
-      let t' = trans.tr2_term (tt,bb') t in
-      let t1' = inst_var_fun x1 tt bb' t11' in
-      (make_let [x,[],t1'] t').desc
-*)
   | Let(Nonrecursive, [x,[],({desc=App({desc=Var x1},[t11])} as t1)], t) ->
       let x1' = trans.tr2_var (tt,bb) x1 in
       let t11' = trans.tr2_term (tt,bb) t11 in
@@ -232,19 +248,29 @@ Color.printf Color.Green "x1: %a@." Id.print x1;
 Color.printf Color.Green "t11: %a@." pp_print_term t11;
 Color.printf Color.Green "tx: %a@." pp_print_term tx;
       (make_let [x,[],tx] t').desc
-(*
-  | Let(flag, [f,[],{desc=Fun _}], t) -> assert false
-  | Let(flag, [f,[x],t1], t) ->
-      let f' = trans.tr2_var (tt,bb) f in
-      let x' =
-        match Id.typ f' with
-          TFun(y,_) -> Id.new_var (Id.name x) (Id.typ y)
-        | _ -> assert false
+  | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
+      let x' =  trans.tr2_var (tt,bb) x in
+      let x1' = trans.tr2_var (tt,bb) x1 in
+      let x2' = trans.tr2_var (tt,bb) x2 in
+      let bb' = (x,t1)::bb in
+      let t' = trans.tr2_term (tt,bb') t in
+      let t1' =
+        match trans_typ (tt,bb) @@ Id.typ x with
+          TFun(y, _) ->
+            let y' = Id.new_var_id y in
+            let ty1 = make_fst (make_var y') in
+            let ty2 = make_snd (make_var y') in
+            let y1 = Id.new_var (Id.name y ^ "1") ty1.typ in
+            let y2 = Id.new_var (Id.name y ^ "2") ty2.typ in
+Color.printf Color.Yellow "y1=%a, y2=%a@." print_id_typ y1 print_id_typ y2;
+            let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y1] in
+            let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
+            let t2 = make_some @@ make_app (make_var x2') [make_get_val @@ make_var y2] in
+            let t2' = make_if (make_is_none @@ make_var y2) (make_none @@ get_opt_typ t2.typ) t2 in
+            make_fun y' @@ make_lets [y1,[],ty1; y2,[],ty2] @@ make_pair t1' t2'
+        | _ -> make_pair (make_var x1') (make_var x2')
       in
-      let t' = trans.tr2_term (tt,bb) t in
-      let t1' = trans.tr2_term (tt,bb) t1 in
-      Let(flag, [f',[x'],t1'], t')
-*)
+      (make_let [x',[],t1'] t').desc
   | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
@@ -256,6 +282,7 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
         | Some [typ1;typ2] ->
             let y1 = Id.new_var "x" typ1 in
             let y2 = Id.new_var "x" typ2 in
+Color.printf Color.Yellow "y1:%a, y2:%a@." Id.print y1 Id.print y2;
             let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y1] in
             let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
             let t2 = make_some @@ make_app (make_var x2') [make_get_val @@ make_var y2] in
@@ -277,7 +304,7 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
         | TFun _ ->
             let x11 = match Id.typ x1' with TFun(x11,_) -> x11 | _ -> assert false in
             let y = Id.new_var "x" @@ opt_typ @@ Id.typ x11 in
-      Format.printf "   GEGE %a: %a@." Id.print y pp_print_typ (Id.typ y);
+Format.printf "   GEGE %a: %a@." Id.print y pp_print_typ (Id.typ y);
             let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y] in
             let t1' = make_if (make_is_none (make_var y)) (make_none @@ get_opt_typ t1.typ) t1 in
             make_fun y (make_pair t1' t2')
@@ -287,40 +314,9 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
   | Let(Nonrecursive, [x,[],({desc=Fst{desc=Var x1}} as t1)], t) ->
       let bb' = (x,t1)::bb in
       (trans.tr2_term (tt,bb') t).desc
-(*
-  | Let(Nonrecursive, [x,[],({desc=Fst{desc=Var x1}} as t1)], t) ->
-      let x1' = trans.tr2_var (tt,bb) x1 in
-      let bb' = (x,t1)::bb in
-      let t' = trans.tr2_term (tt,bb') t in
-      let t1' =
-        match t1.typ with
-        | TFun _ ->
-            let typ = match Id.typ x1' with TFun(y,_) -> get_opt_typ @@ Id.typ y | _ -> assert false in
-            let z = Id.new_var "x" typ in
-            make_fun z @@ make_get_val @@ make_fst @@ make_app (make_var x1') [make_some @@ make_var z]
-        | _ ->
-            make_fst @@ make_var x1'
-      in
-      (make_let [x,[],t1'] t').desc
-*)
   | Let(Nonrecursive, [x,[],({desc=Snd{desc=Var x1}} as t1)], t) ->
       let bb' = (x,t1)::bb in
       (trans.tr2_term (tt,bb') t).desc
-(*
-  | Let(Nonrecursive, [x,[],({desc=Snd{desc=Var x1}} as t1)], t) ->
-      let x1' = trans.tr2_var (tt,bb) x1 in
-      let bb' = (x,t1)::bb in
-      let t' = trans.tr2_term (tt,bb') t in
-      let t1' =
-        match fst_typ @@ Id.typ x1 with
-        | TFun _ ->
-            let typ = match Id.typ x1' with TFun(y,_) -> get_opt_typ @@ Id.typ y | _ -> assert false in
-            make_snd @@ make_app (make_var x1') [make_none typ]
-        | _ ->
-            make_snd @@ make_var x1'
-      in
-      (make_let [x,[],t1'] t').desc
-*)
   | _ -> trans.tr2_desc_rec (tt,bb) desc
 
 let () = trans.tr2_desc <- trans_desc

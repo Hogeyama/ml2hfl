@@ -772,11 +772,8 @@ let make_snd t =
       | typ -> Format.printf "make_snd: %a@." print_typ typ; assert false
   in
     {desc=Snd t; typ=typ}
-let make_pair ?(s="x") t1 t2 = {desc=Pair(t1,t2); typ=TPair(Id.new_var s t1.typ, t2.typ)}
-let make_tuple = function
-    [] -> unit_term
-  | [t] -> t
-  | _::_ as ts -> List.fold_right (make_pair) (init ts) (last ts)
+let make_tpair ?(s="x") typ1 typ2 = TPair(Id.new_var s typ1, typ2)
+let make_pair ?(s="x") t1 t2 = {desc=Pair(t1,t2); typ=make_tpair ~s t1.typ t2.typ}
 let make_nil typ = {desc=Nil; typ=TList typ}
 let make_nil2 typ = {desc=Nil; typ=typ}
 let make_cons t1 t2 =
@@ -845,19 +842,29 @@ let is_some t =
     Pair(t1,t2) when t1 = some_flag -> Some t2
   | _ -> None
 
-(*
-let opt_typ typ = TPair(Id.new_var "x" TBool, typ)
-let get_opt_typ typ = snd_typ typ
-let is_none t =
+let make_tuple ts =
+  match ts with
+    []
+  | [_] -> raise (Invalid_argument "make_tuple")
+  | t::ts' -> List.fold_left (make_pair) t ts'
+let rec decomp_tuple top t =
   match t.desc with
-    Pair(t1,t2) -> t1 = false_term
-  | _ -> false
-let make_none typ = make_pair false_term (make_term typ)
-let make_some t = make_pair true_term t
-let make_is_none t = make_eq (make_fst t) false_term
-let make_is_some t = make_not (make_is_none t)
-let make_get_val t = make_snd t
-*)
+    Pair(t1,t2) -> t1 :: decomp_tuple false t2
+  | _ when top -> raise (Invalid_argument "make_tuple")
+  | _ -> [t]
+let decomp_tuple = decomp_tuple true
+
+let make_ttuple typs =
+  match typs with
+    []
+  | [_] -> raise (Invalid_argument "tuple_typ")
+  | typ::typs' -> List.fold_left (make_tpair) typ typs'
+let rec decomp_ttuple top typ =
+  match typ with
+    TPair(x,typ) -> Id.typ x :: decomp_ttuple false typ
+  | _ when top -> raise (Invalid_argument "make_tuple")
+  | _ -> [typ]
+let decomp_ttuple = decomp_ttuple true
 
 
 

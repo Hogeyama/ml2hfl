@@ -9,8 +9,10 @@ type result =
     Feasible of (string * CEGAR_syntax.typ) list * int list
   | Infeasible of CEGAR_syntax.ce
 
+let debug = false
+
 let checksat env t =
-  Fpat.SMTProver.is_sat (FpatInterface.conv_formula t)
+  Fpat.SMTProver.is_sat @@ FpatInterface.conv_formula t
 
 let get_solution env t =
   t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort compare |> List.map snd
@@ -23,7 +25,7 @@ let assoc_def defs n t =
 
 (* sat=true denotes constr is satisfiable *)
 let rec check_aux pr ce sat n constr env defs t k =
-  if false then Format.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
+  if debug then Format.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
     | Const RandInt -> assert false
     | Const c -> k ce sat n constr env (Const c)
@@ -56,12 +58,12 @@ let rec check_aux pr ce sat n constr env defs t k =
               let ce' = List.tl ce in
               let n' = if sat then n+1 else n in
               let sat' = sat && checksat env constr' in
-                assert (List.length xs = List.length ts);
-                assert (ts2 = []);
-                pr t1' (List.hd ce) num e;
-                if e = [Event "fail"]
-                then init_cont ce' sat' n' constr' env tf2'
-                else (assert (e=[]); check_aux pr ce' sat' n' constr' env defs tf2' k)))
+              assert (List.length xs = List.length ts);
+              assert (ts2 = []);
+              pr t1' (List.hd ce) num e;
+              if e = [Event "fail"]
+              then init_cont ce' sat' n' constr' env tf2'
+              else (assert (e=[]); check_aux pr ce' sat' n' constr' env defs tf2' k)))
     | Let _ -> assert false
     | Fun _ -> assert false
 
@@ -110,7 +112,7 @@ let assoc_def defs n t ce_br =
     ce_br', List.nth defs' n
 
 let rec trans_ce ce ce_br env defs t k =
-  if false then Format.printf "trans_ce[%d]: %a@." (List.length ce) CEGAR_print.term t;
+  if debug then Format.printf "trans_ce[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
       Const RandInt -> assert false
     | Const c -> k ce ce_br env (Const c)
@@ -131,24 +133,24 @@ let rec trans_ce ce ce_br env defs t k =
         trans_ce ce ce_br env defs t2 (fun ce ce_br env t2 ->
           let t1',ts = decomp_app (App(t1,t2)) in
           let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
-            if List.length xs > List.length ts
-            then k ce ce_br env (App(t1,t2))
-            else
-              let ce_br',(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' ce_br in
-              let ts1,ts2 = take2 ts (List.length xs) in
-              let aux = List.fold_right2 subst xs ts1 in
-              let tf2' = make_app (aux tf2) ts2 in
-              let ce' = List.tl ce in
-                assert (List.length xs = List.length ts);
-                assert (ts2 = []);
-                if e = [Event "fail"]
-                then init_cont ce' ce_br' env tf2'
-                else (assert (e=[]); trans_ce ce' ce_br' env defs tf2' k)))
+          if List.length xs > List.length ts
+          then k ce ce_br env (App(t1,t2))
+          else
+            let ce_br',(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' ce_br in
+            let ts1,ts2 = take2 ts (List.length xs) in
+            let aux = List.fold_right2 subst xs ts1 in
+            let tf2' = make_app (aux tf2) ts2 in
+            let ce' = List.tl ce in
+            assert (List.length xs = List.length ts);
+            assert (ts2 = []);
+            if e = [Event "fail"]
+            then init_cont ce' ce_br' env tf2'
+            else (assert (e=[]); trans_ce ce' ce_br' env defs tf2' k)))
     | Let _ -> assert false
     | Fun _ -> assert false
 
 let trans_ce ce {defs=defs;main=main} =
-  if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
+  if debug then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let ce_br = trans_ce ce' [] [] defs t init_cont in

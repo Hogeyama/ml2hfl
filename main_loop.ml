@@ -5,10 +5,9 @@ let init () =
 
 let id x = x
 
-let trans_and_print f desc proj ?(opt=true) ?(typ=true) t =
+let trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.pp_print_term_typ) t =
   let r = f t in
   let t' = proj r in
-  let pr = if typ then Syntax.pp_print_term_typ else Syntax.pp_print_term in
   if !Flag.debug_level > 0 && t <> t' && opt
   then Format.printf "%a:@. @[%a@.@." Color.red desc pr t';
   r
@@ -23,7 +22,7 @@ let preprocess t spec =
       let spec' = Spec.rename spec t in
       let () = Spec.print spec' in
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
-      let t = trans_and_print Encode_rec.trans ~typ:false "abst_recdata" id t in
+      let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let t =
         if !Flag.tupling
@@ -120,7 +119,7 @@ let report_safe env rmap get_rtyp orig t0 =
     env' |> List.map (fun (id, typ) -> Id.name id, typ)
          |> WriteAnnot.f !Flag.filename orig;
   let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
-  if not only_result_termination then Format.printf "Safe!@.@.";
+  if not only_result_termination then (Color.printf Color.Bright "Safe!"; Format.printf "@.@.");
   if !Flag.relative_complete then begin
     let map =
       List.map
@@ -143,7 +142,8 @@ let report_safe env rmap get_rtyp orig t0 =
 
 
 let report_unsafe main_fun arg_num ce set_target =
-  Format.printf "Unsafe!@.@.";
+  Color.printf Color.Bright "Unsafe!";
+  Format.printf "@.@.";
   if main_fun <> "" && arg_num <> 0
   then
     Format.printf "Input for %s:@.  %a@." main_fun

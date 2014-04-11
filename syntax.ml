@@ -257,8 +257,10 @@ and print_const fm = function
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result -> fprintf fm "end"
 
-and print_term pri typ fm t =
-  match t.desc with
+and print_term pri typ fm t = print_desc pri typ fm t.desc
+
+and print_desc pri typ fm desc =
+  match desc with
     Const c -> print_const fm c
   | Unknown -> fprintf fm "***"
   | RandInt false -> fprintf fm "rand_int"
@@ -584,6 +586,7 @@ and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term'
 let print_term' fm = print_term' 0 fm
 let pp_print_term' = print_term'
 
+
 let string_of_const = make_string_of print_const
 let string_of_binop = make_string_of print_binop
 let string_of_typ = make_string_of print_typ
@@ -597,6 +600,7 @@ let string_of_node = function
 
 let pp_print_typ = print_typ
 let pp_print_term = print_term false
+let print_desc = print_desc 0 false
 let pp_print_term_typ = print_term true
 
 let print_defs fm (defs:(id * (id list * typed_term)) list) =

@@ -81,9 +81,9 @@ let is_higher x = order (Id.typ x) > 0
 let trans_typ typ =
   match typ with
     TFun(x,typ) when is_higher x ->
-      let x' = Id.set_typ x @@ trans.tr_typ @@ Id.typ x in
-      let y = Id.new_var_id x' in
-      TFun(x, TPair(y, trans.tr_typ typ))
+      let x' = trans.tr_var x in
+      let r = Id.new_var "r" @@ trans.tr_typ typ in
+      TFun(x', TPair(r, Id.typ x'))
   | _ -> trans.tr_typ_rec typ
 
 let trans_desc desc =
@@ -93,9 +93,11 @@ let trans_desc desc =
       let x1' = trans.tr_var x1 in
       let x2' = trans.tr_var x2 in
       let t1' = trans.tr_term t1 in
+      Color.printf Color.Yellow "x1: @[<hov 4>%a %a@ %a@." pp_print_typ (Id.typ x1) Color.red "=>" pp_print_typ (Id.typ x1');
+      Color.printf Color.Yellow "x2: @[<hov 4>%a %a@ %a@." pp_print_typ (Id.typ x2) Color.red "=>" pp_print_typ (Id.typ x2');
       let t = make_app (make_var x1') [make_var x2'] in
       let p = Id.new_var "x" t.typ in
-      let y = Id.new_var_id x' in
+      let y = Id.new_var_id x2' in
       let t' =
         make_lets [p,  [], t;
                    x', [], make_fst @@ make_var p;
@@ -103,10 +105,13 @@ let trans_desc desc =
       in
       t'.desc
   | Fun(x,t) when is_higher x ->
+      let x' = trans.tr_var x in
       let t' = trans.tr_term t in
-      (make_fun x @@ make_pair t' (make_var x)).desc
+      (make_fun x' @@ make_pair t' (make_var x')).desc
   | Let(flag,bindings,t) ->
-      let aux (f,xs,t) = f, [], trans.tr_term @@ List.fold_right make_fun xs t in
+      let aux (f,xs,t) =
+        trans.tr_var f, [], trans.tr_term @@ List.fold_right make_fun (List.map trans.tr_var xs) t
+      in
       let bindings' = List.map aux bindings in
       let t' = trans.tr_term t in
       (make_let_f flag bindings' t').desc
@@ -127,9 +132,9 @@ let () = trans.tr_typ <- trans_typ
 
 let trans t = t
   |> normalize.tr_term
-  |> do_and_return (Format.printf "AAA:@.%a@." pp_print_term)
-  |> Type_check.check_and_return TUnit
+  |@> Format.printf "AAA:@.%a@." pp_print_term
+  |@> Type_check.check_flip TUnit
   |> trans.tr_term
-  |> do_and_return (Format.printf "BBB:@.%a@." pp_print_term)
-  |> Type_check.check_and_return TUnit
+  |@> Format.printf "BBB:@.%a@." pp_print_term
+  |@> Type_check.check_flip TUnit
   |> Trans.inline_no_effect

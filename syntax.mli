@@ -102,6 +102,7 @@ val pp_print_typ : Format.formatter -> typ -> unit
 
 val print_const : Format.formatter -> const -> unit
 val print_term : bool -> Format.formatter -> typed_term -> unit
+val print_desc : Format.formatter -> term -> unit
 val print_term' : Format.formatter -> typed_term -> unit
 val pp_print_term : Format.formatter -> typed_term -> unit
 val pp_print_term' : Format.formatter -> typed_term -> unit

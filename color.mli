@@ -30,6 +30,7 @@ val reset : Format.formatter -> unit
 
 val fprintf : Format.formatter -> color -> ('a, Format.formatter, unit) format -> 'a
 val printf : color -> ('a, Format.formatter, unit) format -> 'a
+(** Partial application does not work *)
 
 val blue : Format.formatter -> string -> unit
 val red : Format.formatter -> string -> unit

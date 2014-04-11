@@ -786,19 +786,33 @@ let let_normalize = let_normalize.tr_term
 
 
 
+let rec tree_of_pair t =
+  match t.desc with
+    Pair({desc=Const n},_) -> Tree.Leaf t
+  | Pair(t1,t2) -> Tree.Node(tree_of_pair t1, tree_of_pair t2)
+  | _ -> Tree.Leaf t
+
 let elim_check t1 t2 =
 Color.printf Color.Yellow "%a, %a@." pp_print_term t1 pp_print_term t2;
   match t1.desc, t2.desc with
-    App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g && List.length ts1 = List.length ts2 ->
-      List.for_all2 (fun t1 t2 -> same_term t1 t2 || is_none t1) ts1 ts2
+    App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
+      let check t1 t2 =
+        try
+          let tree1 = tree_of_pair t1 in
+          let tree2 = tree_of_pair t2 in
+          let tts = Tree.flatten @@ Tree.zip tree1 tree2 in
+          List.for_all (fun (t1, t2) -> same_term t1 t2 || (Color.printf Color.BG_Blue "???"; is_none t1)) tts
+        with Invalid_argument "Tree.zip" -> false
+      in
+      List.for_all2 check ts1 ts2
   | _ -> false
 
 let elim_same_app = make_trans ()
 
 let elim_same_app_desc desc =
   match desc with
-    Let(Nonrecursive, [x,[],t1],
-        {desc = Let(Nonrecursive, [y,[],t2], t)}) when not (is_depend t2 x) && elim_check t1 t2 ->
+    Let(Nonrecursive, [x,[],t1], {desc = Let(Nonrecursive, [y,[],t2], t)})
+       when not (is_depend t2 x) && elim_check t1 t2 ->
       let t' = subst x (make_var y) t in
       elim_same_app.tr_desc @@ Let(Nonrecursive, [y,[],t2], t')
   | _ -> elim_same_app.tr_desc_rec desc

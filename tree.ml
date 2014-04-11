@@ -1,4 +1,4 @@
-type 'a tree = Leaf of 'a | Node of 'a tree * 'a tree
+type 'a t = Leaf of 'a | Node of 'a t * 'a t
 type path = int list
 
 let root = function
@@ -43,3 +43,9 @@ let rec update path t' t =
   | 1::path', Node(t1,t2) -> Node(update path' t' t1, t2)
   | 2::path', Node(t1,t2) -> Node(t1, update path' t' t2)
   | _ -> failwith "Tree.update"
+
+let rec zip t1 t2 =
+  match t1, t2 with
+    Leaf x, Leaf y -> Leaf (x,y)
+  | Node(t11,t12), Node(t21,t22) -> Node(zip t11 t21, zip t12 t22)
+  | _ -> raise (Invalid_argument "Tree.zip")

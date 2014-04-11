@@ -58,13 +58,15 @@ let rec check t typ =
         check t2 typ'
     | {desc=Let(flag, bindings, t2); typ=typ'} ->
         let rec aux t = function
-            x::xs,TFun(y,typ) -> check_var x (Id.typ y); aux t (xs,typ)
+            x::xs,TFun(y,typ) ->
+              check_var x (Id.typ y); aux t (xs,typ)
           | [],typ -> check t typ
           | x::[],typ ->
-            let f =(fun [f,_,_] -> f) bindings in
-            Format.printf "%a %a@." Id.print f print_typ (Id.typ f);
-            Format.printf "[%a] %a@." Id.print x print_typ typ; assert false
-          | x::xs,typ -> Format.printf "%a %a@." Id.print x print_typ typ; assert false
+              let f =(fun [f,_,_] -> f) bindings in
+              Format.printf "%a %a@." Id.print f print_typ (Id.typ f);
+              Format.printf "[%a] %a@." Id.print x print_typ typ; assert false
+          | x::xs,typ ->
+              Format.printf "%a %a@." Id.print x print_typ typ; assert false
         in
           List.iter (fun (f,xs,t) -> aux t (xs, Id.typ f)) bindings;
           check t2 typ'
@@ -137,5 +139,4 @@ let rec check t typ =
     | _ -> Format.printf "check: %a, %a@." print_term' t Syntax.print_typ t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ
-
-let check_and_return typ t = if Flag.check_typ then check t typ; t
+let check_flip typ t = check t typ
