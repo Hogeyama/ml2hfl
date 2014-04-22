@@ -69,7 +69,7 @@ Format.printf "PB: x:%a@." Id.print x;
   let bindings,t' = decomp_let t in
   let check t =
     if List.mem x (get_fv t)
-    then (assert false;raise Cannot_compose)
+    then (raise Cannot_compose)
   in
   let aux (flag,(f,xs,t)) (before,app_x,after) =
     match app_x, xs, t with
@@ -536,11 +536,12 @@ let same_arg_map xs1 xs2 =
     None
 
 let assoc_env f env =
+Color.printf Color.Reverse "%a@." Id.print f;
   let _,xs,t = Id.assoc f env in
   let ys,t' = decomp_fun t in
   match xs@ys with
-    [x] -> x, t'
-  | _ -> assert false
+    x::xs' -> x, List.fold_right make_fun xs' t'
+  | _ -> raise Not_found
 
 
 
@@ -640,30 +641,33 @@ let new_funs = ref ([] : (id list * (id * id list * typed_term)) list)
 let tupling_term env t =
   match t.desc with
     Pair(t1, t2) when is_some t1 <> None && is_some t2 <> None ->
-      Format.printf "PAIR: %a, %a@." pp_print_term t1 pp_print_term t2;
-      begin match (get_opt_val @@ is_some t1).desc, (get_opt_val @@ is_some t2).desc with
-         App({desc = Var f}, [{desc = Snd {desc = Var x}}]),
-         App({desc = Var g}, [{desc = Snd {desc = Var y}}]) ->
-           let z1,t1 = assoc_env f env in
-           let z2,t2 = assoc_env g env in
-           let x' = Id.new_var (Id.name x) @@ get_opt_typ @@ Id.typ x in
-           let y' = Id.new_var (Id.name y) @@ get_opt_typ @@ Id.typ y in
-           let t1' = subst z1 (make_var x') @@ pair_let t1 in
-           let t2' = subst z2 (make_var y') @@ pair_let t2 in
-           let typ =
-             match t.typ with
-               TPair(x,typ2) -> TPair(Id.new_var (Id.name x) @@ get_opt_typ @@ Id.typ x, get_opt_typ typ2)
-             | _ -> assert false
-           in
-           let fg = Id.new_var (Id.name f ^ "_" ^ Id.name g) @@ TFun(x', TFun(y', typ)) in
-           let t_body = subst_map [x, make_var x'; y, make_var y'] @@ compose fg f t1' g t2' in
-           let r = Id.new_var "r" typ in
-           let t_app = make_app (make_var fg) [make_snd @@ make_var x; make_snd @@ make_var y] in
-           let t_pair = make_pair (make_some @@ make_fst @@ make_var r) (make_some @@ make_snd @@ make_var r) in
-           new_funs := ([f;g], (fg, [x';y'], t_body)) :: !new_funs;
-           Format.printf "ADD: %a@." Id.print fg;
-           make_let [r, [], t_app] t_pair
-      | _ -> tupling.tr2_term_rec env t
+      begin try
+        Format.printf "PAIR: %a, %a@." pp_print_term t1 pp_print_term t2;
+        begin match (get_opt_val @@ is_some t1).desc, (get_opt_val @@ is_some t2).desc with
+           App({desc = Var f}, [{desc = Snd {desc = Var x}}]),
+           App({desc = Var g}, [{desc = Snd {desc = Var y}}]) ->
+             let z1,t1 = assoc_env f env in
+             let z2,t2 = assoc_env g env in
+             let x' = Id.new_var (Id.name x) @@ get_opt_typ @@ Id.typ x in
+             let y' = Id.new_var (Id.name y) @@ get_opt_typ @@ Id.typ y in
+             let t1' = subst z1 (make_var x') @@ pair_let t1 in
+             let t2' = subst z2 (make_var y') @@ pair_let t2 in
+             let typ =
+               match t.typ with
+                 TPair(x,typ2) -> TPair(Id.new_var (Id.name x) @@ get_opt_typ @@ Id.typ x, get_opt_typ typ2)
+               | _ -> assert false
+             in
+             let fg = Id.new_var (Id.name f ^ "_" ^ Id.name g) @@ TFun(x', TFun(y', typ)) in
+             let t_body = subst_map [x, make_var x'; y, make_var y'] @@ compose fg f t1' g t2' in
+             let r = Id.new_var "r" typ in
+             let t_app = make_app (make_var fg) [make_snd @@ make_var x; make_snd @@ make_var y] in
+             let t_pair = make_pair (make_some @@ make_fst @@ make_var r) (make_some @@ make_snd @@ make_var r) in
+             new_funs := ([f;g], (fg, [x';y'], t_body)) :: !new_funs;
+             Format.printf "ADD: %a@." Id.print fg;
+             make_let [r, [], t_app] t_pair
+        | _ -> tupling.tr2_term_rec env t
+        end
+        with Not_found -> tupling.tr2_term_rec env t
       end
   | Let(flag, bindings, t) ->
       let bindings' = List.map (fun (f,xs,t) -> f, xs, tupling.tr2_term env t) bindings in
@@ -755,7 +759,7 @@ let rec decomp_let_app t =
       (x,[],t1)::bindings, t'
   | _ -> [], t
 
-let is_depend t x = List.mem x @@ get_fv t
+let is_depend t x = Id.mem x @@ get_fv t
 
 let let_normalize = make_trans ()
 
@@ -777,6 +781,8 @@ let let_normalize_desc desc =
       then Let(Nonrecursive, [x,[],t1'], t2')
       else
         let t2''' = make_lets bindings2 t2'' in
+Color.printf Color.Yellow "NORMALIZE: %a@." Id.print x;
+Color.printf Color.Reverse "[%a]@." (print_list Id.print ";") @@ List.map (fun (x,_,_) -> x) bindings;
         (make_lets bindings1 @@ make_lets [x,[],t1'] t2''').desc
   | _ -> let_normalize.tr_desc_rec desc
 
@@ -827,6 +833,7 @@ let elim_same_app = elim_same_app.tr_term
 let trans t = t
   |> inline_wrapped.tr_term
   |> Trans.flatten_let
+  |@> Format.printf "%a:@.%a@.@." Color.red "flatten_let" pp_print_term
   |> let_normalize
   |@> Format.printf "%a:@.%a@.@." Color.red "normalize let" pp_print_term
   |> elim_same_app

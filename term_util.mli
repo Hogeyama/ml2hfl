@@ -168,6 +168,7 @@ val is_is_none : typed_term -> typed_term option
 val is_get_val : typed_term -> typed_term option
 val is_some : typed_term -> typed_term option
 val decomp_fun : typed_term -> id list * typed_term
+val decomp_let : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
 val decomp_tuple : typed_term -> typed_term list
 val decomp_ttuple : typ -> typ list
 
@@ -195,3 +196,5 @@ val has_no_effect : typed_term -> bool
 val is_simple_aexp : typed_term -> bool
 val is_simple_bexp : typed_term -> bool
 val same_term : typed_term -> typed_term -> bool
+val var_name_of_term : typed_term -> string
+val var_of_term : typed_term -> id

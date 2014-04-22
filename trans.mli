@@ -43,3 +43,6 @@ val beta_no_effect : typed_term -> typed_term
 val diff_terms : typed_term -> typed_term -> (typed_term * typed_term) list
 val subst_let_xy : typed_term -> typed_term
 val flatten_let : typed_term -> typed_term
+val normalize_let : typed_term -> typed_term
+val inline_let_var : typed_term -> typed_term
+val remove_label : typed_term -> typed_term

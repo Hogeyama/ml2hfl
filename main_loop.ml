@@ -20,7 +20,7 @@ let preprocess t spec =
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
       let fun_list = Term_util.get_top_funs t in
       let spec' = Spec.rename spec t in
-      let () = Spec.print spec' in
+      Spec.print spec';
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
@@ -31,16 +31,20 @@ let preprocess t spec =
           let t = trans_and_print (Ref_trans.trans (fun _ -> assert false)) "ref_trans" id t in
           Type_check.check t Type.TUnit;
           let t = trans_and_print Tupling.trans "tupling?" id t in
+          Type_check.check t TUnit;
           t
         else t
       in
 
       let get_rtyp = get_rtyp_list in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
-      let () = Type_check.check t Type.TUnit in
+      Type_check.check t Type.TUnit;
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
+      let spec'' = Spec.rename spec t in
+      Spec.print spec';
+      let t = trans_and_print (Trans.replace_typ spec''.Spec.abst_cps_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
       let t =
@@ -48,7 +52,7 @@ let preprocess t spec =
         then trans_and_print Trans.insert_param_funarg "insert unit param" id t
         else t
       in
-      let () = Type_check.check t Term_util.typ_result in
+      Type_check.check t Term_util.typ_result;
 
       (* preprocess for termination mode *)
       let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
@@ -152,8 +156,6 @@ let report_unsafe main_fun arg_num ce set_target =
 
 
 
-
-
 let rec run orig parsed =
   let () = init () in
   let t = parsed in
@@ -169,7 +171,9 @@ let rec run orig parsed =
         if Sys.file_exists spec then Flag.spec_file := spec
       with Invalid_argument "Filename.chop_extension" -> ()
   in
-  let spec = Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file in
+  let spec1 = Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file in
+  let spec2 = Spec.parse_comment Spec_parser.spec Spec_lexer.token !Flag.filename in
+  let spec = Spec.merge spec1 spec2 in
   let () = Spec.print spec in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType

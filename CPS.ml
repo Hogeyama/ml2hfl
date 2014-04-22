@@ -525,17 +525,16 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       | BottomCPS, ECont ->
           let r = Id.new_var "r" (trans_typ typ_orig typ) in
           let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
-            make_fun k (make_bottom typ_result)
+          make_fun k (make_bottom typ_result)
       | RandIntCPS, ENone ->
           let e = get_tfun_effect typ in
-            begin
-              match !sol e with
-                  ECont -> make_randint_cps ()
-                | EExcep ->
-                    let e = Id.new_var "e" !typ_excep in
-                    let h = Id.new_var "h" (TFun(e,typ_result)) in
-                      make_fun h (make_randint_cps ())
-                | _ -> assert false
+            begin match !sol e with
+              ECont -> make_randint_cps ()
+            | EExcep ->
+                let e = Id.new_var "e" !typ_excep in
+                let h = Id.new_var "h" (TFun(e,typ_result)) in
+                  make_fun h (make_randint_cps ())
+            | _ -> assert false
             end
       | RandValueCPS, ECont ->
           let typ' = trans_typ typ_orig typ in
@@ -545,13 +544,13 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       | VarCPS x, ENone -> make_var (trans_var x)
       | FunCPS(x, t1), ENone when !sol (get_tfun_effect typ) = ENone ->
           let x' = trans_var x in
-            make_fun x' (transform k_post t1)
+          make_fun x' (transform k_post t1)
       | FunCPS(x, t1), ENone when !sol (get_tfun_effect typ) = ECont ->
           let x' = trans_var x in
           let r = Id.new_var "r" (trans_typ t1.typ_orig t1.typ_cps) in
           let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in
           let t1' = transform k_post t1 in
-            make_fun x' (make_fun k (make_app_cont t1.effect t1' (make_var k)))
+          make_fun x' (make_fun k (make_app_cont t1.effect t1' (make_var k)))
       | FunCPS(x, t1), ENone when !sol (get_tfun_effect typ) = EExcep ->
           let x' = trans_var x in
           let r = Id.new_var "r" (trans_typ t1.typ_orig t1.typ_cps) in
@@ -559,11 +558,11 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let e = Id.new_var "e" !typ_excep in
           let h = Id.new_var "h" (TFun(e,typ_result)) in
           let t1' = transform k_post t1 in
-            make_fun x' (make_fun k (make_fun h (make_app_excep t1.effect t1' (make_var k) (make_var h))))
+          make_fun x' (make_fun k (make_fun h (make_app_excep t1.effect t1' (make_var k) (make_var h))))
       | AppCPS(t1, t2), ENone ->
           let t1' = transform k_post t1 in
           let t2' = transform k_post t2 in
-            make_app t1' [t2']
+          make_app t1' [t2']
       | AppCPS(t1, t2), ECont ->
           let t1' = transform k_post t1 in
           let t2' = transform k_post t2 in

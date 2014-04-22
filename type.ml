@@ -15,6 +15,7 @@ type 'a t =
   | TPred of ('a t Id.t) * 'a list
 (*| TLabel of 'a t Id.t * 'a t*)
 
+exception CannotUnify
 
 let typ_unknown = TConstr("???", false)
 
@@ -130,7 +131,6 @@ let rec occurs r typ =
     | TConstr(s,b) -> false
     | TPred(x,_) -> occurs r (Id.typ x)
 
-exception CannotUnify
 
 let rec unify typ1 typ2 =
   match flatten typ1, flatten typ2 with
@@ -261,3 +261,8 @@ let rec order typ =
   | TPair(x,typ) -> max (order (Id.typ x)) (order typ)
   | TConstr(s,_) -> assert false
   | TPred(x,_) -> order @@ Id.typ x
+
+let arg_var typ =
+  match typ with
+    TFun(x,_) -> x
+  | _ -> raise (Invalid_argument "arg_var")

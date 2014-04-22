@@ -36,6 +36,7 @@ let orig_id x = {x with Id.id = 0}
 %token INLINE
 %token INLINEF
 %token TUNIT
+%token TRESULT
 %token TBOOL
 %token TINT
 %token LIST
@@ -51,6 +52,7 @@ let orig_id x = {x with Id.id = 0}
 %token MINUS
 %token TIMES
 %token VAL
+%token VALCPS
 %token EOF
 
 /* priority : low -> high */
@@ -118,6 +120,8 @@ spec_list:
   { Spec.init }
 | typedef spec_list
   { {$2 with Spec.abst_env = $1::$2.Spec.abst_env} }
+| typedef_cps spec_list
+  { {$2 with Spec.abst_cps_env = $1::$2.Spec.abst_cps_env} }
 | inline spec_list
   { {$2 with Spec.inlined = $1::$2.Spec.inlined} }
 | inlinef spec_list
@@ -125,6 +129,10 @@ spec_list:
 
 typedef:
 | VAL id COLON typ
+  { $2, Id.typ $4 }
+
+typedef_cps:
+| VALCPS id COLON typ
   { $2, Id.typ $4 }
 
 inline:
@@ -137,6 +145,7 @@ inlinef:
 
 simple_type_core:
 | TUNIT { TUnit }
+| TRESULT { typ_result }
 | TBOOL { TBool }
 | TINT { TInt }
 | LPAREN typ LIST RPAREN { TList(Id.typ $2) }

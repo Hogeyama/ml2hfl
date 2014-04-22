@@ -196,7 +196,7 @@ and print_id_typ fm x =
   fprintf fm "(%a:%a%a%t)" Id.print x Color.set Color.Cyan print_typ typ Color.reset
 
 and print_ids_typ fm = function
-[] -> ()
+    [] -> ()
   | x::xs -> fprintf fm "%a %a" print_id_typ x print_ids_typ xs
 
 (* priority (low -> high)
@@ -269,13 +269,14 @@ and print_desc pri typ fm desc =
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
   | Var x -> print_id fm x
   | Fun(x, t) ->
-    let p = 20 in
-    let s1,s2 = paren pri (p+1) in
-    fprintf fm "%s@[<hov 2>fun %a ->@ %a%s@]" s1 print_id x (print_term p typ) t s2
+      let p = 20 in
+      let s1,s2 = paren pri (p+1) in
+      let p_id = if typ then print_id_typ else print_id in
+      fprintf fm "%s@[<hov 2>fun %a ->@ %a%s@]" s1 p_id x (print_term p typ) t s2
   | App(t, ts) ->
-    let p = 80 in
-    let s1,s2 = paren pri p in
-    fprintf fm "@[<hov 2>%s%a%a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
+      let p = 80 in
+      let s1,s2 = paren pri p in
+      fprintf fm "@[<hov 2>%s%a%a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
   | If(t1, t2, t3) ->
     let p = 10 in
     let s1,s2 = paren pri (p+1) in
@@ -298,7 +299,7 @@ and print_desc pri typ fm desc =
     let b = ref true in
     let print_binding fm (f,xs,t1) =
       let pre = if !b then "let" ^ s_rec else "and" in
-      Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term p typ) t1;
+      Format.printf "@[<hov 2>%s@ %a=@ %a@ @]" pre p_ids (f::xs) (print_term p typ) t1;
       b := false
     in
     let print_bindings bs = print_list print_binding "" bs in
@@ -324,7 +325,7 @@ and print_desc pri typ fm desc =
   | Not t ->
     let p = 60 in
     let s1,s2 = paren pri p in
-    fprintf fm "%s@[not %a@]%s" s1 (print_term p typ) t s2
+    fprintf fm "%s@[not@ %a@]%s" s1 (print_term p typ) t s2
   | Event(s,false) -> fprintf fm "{%s}" s
   | Event(s,true) -> fprintf fm "{|%s|}" s
   | Record fields ->
@@ -333,11 +334,11 @@ and print_desc pri typ fm desc =
       | (s,(f,t))::fields ->
         if fields=[]
         then fprintf fm "%s=%a" s (print_term 0 typ) t
-        else fprintf fm "%s=%a; %a" s (print_term 0 typ) t aux fields
+        else fprintf fm "%s=%a;@ %a" s (print_term 0 typ) t aux fields
     in
     fprintf fm "{%a}" aux fields
   | Proj(_,s,_,t) -> fprintf fm "%a.%s" (print_term 9 typ) t s
-  | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
+  | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
     let p = 70 in

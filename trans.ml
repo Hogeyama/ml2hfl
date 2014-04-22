@@ -2086,30 +2086,30 @@ let fun2let = fun2let.tr_term
 
 
 
-let inline_no_effect = make_trans2 ()
+let inline_no_effect = make_trans ()
 
-let inline_no_effect_desc top desc =
+let inline_no_effect_desc desc =
   match desc with
     Let(Nonrecursive, [x,[],t], {desc=Var y}) when x = y ->
-      (inline_no_effect.tr2_term top t).desc
-  | Let(Nonrecursive, [x,[],t], t2) when not top && has_no_effect t ->
-      let t' = inline_no_effect.tr2_term top t in
-      let t2' = inline_no_effect.tr2_term top t2 in
+      (inline_no_effect.tr_term t).desc
+  | Let(Nonrecursive, [x,[],t], t2) when Id.mem x (get_fv t2) && has_no_effect t ->
+      let t' = inline_no_effect.tr_term t in
+      let t2' = inline_no_effect.tr_term t2 in
       (subst x t' t2').desc
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) =
-        inline_no_effect.tr2_var false f,
-        List.map (inline_no_effect.tr2_var false) xs,
-        inline_no_effect.tr2_term false t
+        inline_no_effect.tr_var f,
+        List.map inline_no_effect.tr_var xs,
+        inline_no_effect.tr_term t
       in
       let bindings' = List.map aux bindings in
-      let t' = inline_no_effect.tr2_term top t in
+      let t' = inline_no_effect.tr_term t in
       Let(flag, bindings', t')
-  | _ -> inline_no_effect.tr2_desc_rec top desc
+  | _ -> inline_no_effect.tr_desc_rec desc
 
-let () = inline_no_effect.tr2_desc <- inline_no_effect_desc
+let () = inline_no_effect.tr_desc <- inline_no_effect_desc
 
-let inline_no_effect = inline_no_effect.tr2_term true
+let inline_no_effect = inline_no_effect.tr_term
 
 
 
@@ -2216,6 +2216,8 @@ let subst_let_xy = subst_let_xy.tr_term
 
 
 
+
+
 let flatten_let = make_trans ()
 
 let flatten_let_term t =
@@ -2224,12 +2226,102 @@ let flatten_let_term t =
       let t1' = flatten_let.tr_term t1 in
       let t2' = flatten_let.tr_term t2 in
       begin match t1'.desc with
-        Let(flag,bindings,t11) ->
-          make_lets (bindings@[x,[],t11]) t2'
-      | _ -> make_let [x,[],t1'] t2'
+      | Let _ ->
+          let fbindings,t12 = decomp_let t1' in
+          let fbindings' = fbindings@[Nonrecursive,[x,[],t12]] in
+          List.fold_right (uncurry make_let_f) fbindings' t2'
+      | _ ->
+          make_let [x,[],t1'] t2'
       end
   | _ -> flatten_let.tr_term_rec t
 
 let () = flatten_let.tr_term <- flatten_let_term
 
 let flatten_let = flatten_let.tr_term
+
+
+let normalize_let = make_trans ()
+
+let normalize_let_aux t =
+  let post t' =
+    match t'.desc with
+      BinOp _ | App _ | Pair _ | Fst _ | Snd _ ->
+        let y = Id.new_var "x" t'.typ in
+        make_lets [y,[],t'] @@ make_var y
+    | _ -> t'
+  in
+  match t.desc with
+    Var x -> x, post
+  | _ ->
+     let x = Id.new_var "x" t.typ in
+     let t' = normalize_let.tr_term t in
+     let post' t'' = make_let [x,[],t'] @@ post t'' in
+     x, post'
+
+let normalize_let_term t =
+  match t.desc with
+  | BinOp(op,t1,t2) ->
+      let x1,post1 = normalize_let_aux t1 in
+      let x2,post2 = normalize_let_aux t2 in
+      post1 @@ post2 @@ {desc=BinOp(op, make_var x1, make_var x2); typ=t.typ}
+  | App(t, ts) ->
+     let ts' = List.map normalize_let.tr_term ts in
+     let x,post = normalize_let_aux t in
+     post @@ make_app (make_var x) ts'
+  | Pair(t1, t2) ->
+      let x1,post1 = normalize_let_aux t1 in
+      let x2,post2 = normalize_let_aux t2 in
+      let r = post1 @@ post2 @@ make_pair (make_var x1) (make_var x2)in
+      Color.printf Color.Reverse "%a ==> %a@." pp_print_term t pp_print_term r;r
+  | Fst t ->
+     let x,post = normalize_let_aux t in
+     post @@ make_fst @@ make_var x
+  | Snd t ->
+     let x,post = normalize_let_aux t in
+     post @@ make_snd @@ make_var x
+  | Let(flag,bindings,t1) ->
+      let aux (f,xs,t) = f, xs, normalize_let.tr_term t in
+      let bindings' = List.map aux bindings in
+      let t1' = normalize_let.tr_term t1 in
+      let t1'' =
+        match t1.desc with
+          BinOp _ | App _ | Pair _ ->
+            let x = Id.new_var "x" t1.typ in
+            make_let [x,[],t1'] (make_var x)
+        | _ -> t1'
+      in
+      make_let_f flag bindings' t1'
+  | _ -> normalize_let.tr_term_rec t
+
+let () = normalize_let.tr_term <- normalize_let_term
+
+let normalize_let = normalize_let.tr_term
+
+
+
+let inline_let_var = make_trans ()
+
+let inline_let_var_term t =
+  match t.desc with
+    Let(Nonrecursive, [x,[],{desc=Var y}], t) ->
+      let t' = inline_let_var.tr_term t in
+      subst x (make_var y) t'
+  | _ -> inline_let_var.tr_term_rec t
+
+let () = inline_let_var.tr_term <- inline_let_var_term
+
+let inline_let_var = inline_let_var.tr_term
+
+
+
+
+let remove_label = make_trans ()
+
+let remove_label_term t =
+  match t.desc with
+    Label(_, t) -> remove_label.tr_term t
+  | _ -> remove_label.tr_term_rec t
+
+let () = remove_label.tr_term <- remove_label_term
+
+let remove_label = remove_label.tr_term

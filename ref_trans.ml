@@ -38,15 +38,18 @@ let rec find_app x bb =
 
 
 let rec make_tree x bb =
+  Color.printf Color.Red "make_tree: %a@." Id.print x;
   match find_fst x bb, find_snd x bb, find_app x bb with
     Some lhs, Some rhs, _ -> Tree.Node(make_tree lhs bb, make_tree rhs bb)
   | None, None, args ->
       let typ =
-        match Id.typ x with
-          TFun(x,_) -> Some (Id.typ x)
-        | _ -> None
+        try
+          Some (Id.typ @@ arg_var @@ Id.typ x)
+        with Invalid_argument "arg_var" -> None
       in
       Tree.Leaf(typ, args)
+  | Some _, None, _ -> raise (Fatal "not implemented: make_tree")
+  | None, Some _, _ -> raise (Fatal "not implemented: make_tree")
   | _ -> assert false
 
 let rec make_trees tree =
@@ -156,7 +159,6 @@ Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.
             in
             List.fold_left aux t' same_arg_apps
           in
-          let t' = (*List.fold_left () t'' bs*)t' in
           List.fold_left2 (fun t x app -> make_let [x,[],app] t) t' xs apps
         in
         let x' = Id.new_var_id x in
@@ -187,6 +189,7 @@ let rec elim_none t =
     | None, Some t -> Some t
     | Some t1, Some t2 -> Some (Tree.Node(t1,t2))
 
+(*
 let trans_typ' (tt,bb) typ =
   match typ with
     TPair _ ->
@@ -206,36 +209,37 @@ let trans_typ' (tt,bb) typ =
   | _ -> trans.tr2_typ_rec (tt,bb) typ, None
 
 let trans_typ (tt,bb) typ = fst (trans_typ' (tt,bb) typ)
+*)
+
+let decomp_tfun_ttuple typ =
+  let typs = decomp_ttuple typ in
+  let decomp typ =
+    match typ with
+      TFun(x,typ') -> Some (x,typ')
+    | _ -> None
+  in
+  let xtyps = List.map decomp typs in
+  if List.mem None xtyps
+  then None
+  else Some (List.map get_opt_val xtyps)
 
 let trans_typ (tt,bb) typ =
   match typ with
-    TPair _ ->
-      let typs = decomp_ttuple typ in
-      let decomp typ =
-        match typ with
-          TFun(x,typ') -> Some (x,typ')
-        | _ -> None
-      in
-      let xtyps = List.map decomp typs in
-      if List.mem None xtyps
-      then trans.tr2_typ_rec (tt,bb) typ
-      else
-        let xtyps' = List.map get_opt_val xtyps in
-        let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
-        let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
-        let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
-        TFun(Id.new_var name @@ make_ttuple arg_typs, make_ttuple ret_typs)
+  | TPair _ ->
+      begin match decomp_tfun_ttuple typ with
+      | None -> trans.tr2_typ_rec (tt,bb) typ
+      | Some xtyps ->
+          let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps in
+          let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps in
+          let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps) "" in
+          TFun(Id.new_var name @@ make_ttuple arg_typs, make_ttuple ret_typs)
+      end
   | _ -> trans.tr2_typ_rec (tt,bb) typ
-
-(*
-let trans_typ ttbb typ =
-  trans_typ ttbb typ
-  |@> Format.printf "  trans_typ: %a ==> %a@." pp_print_typ typ pp_print_typ
-*)
 
 let trans_desc (tt,bb) desc =
   match desc with
   | Let(Nonrecursive, [x,[],({desc=App({desc=Var x1},[t11])} as t1)], t) ->
+      let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let t11' = trans.tr2_term (tt,bb) t11 in
       let bb' = (x,t1)::bb in
@@ -243,12 +247,13 @@ Format.printf "B: ";
 List.iter (fun (x,t) -> Format.printf "%a = %a; " Id.print x pp_print_term t) bb';
 Format.printf "@.";
       let t' = trans.tr2_term (tt,bb') t in
-      let tx = inst_var_fun x1 tt bb' t11' in
+      let tx = inst_var_fun x1' tt bb' t11' in
 Color.printf Color.Green "x1: %a@." Id.print x1;
 Color.printf Color.Green "t11: %a@." pp_print_term t11;
 Color.printf Color.Green "tx: %a@." pp_print_term tx;
-      (make_let [x,[],tx] t').desc
+      (make_let [x',[],tx] t').desc
   | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
+Color.printf Color.Reverse "x1=%a, x2=%a@." print_id_typ x1 print_id_typ x2;
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let x2' = trans.tr2_var (tt,bb) x2 in
@@ -271,6 +276,7 @@ Color.printf Color.Yellow "y1=%a, y2=%a@." print_id_typ y1 print_id_typ y2;
         | _ -> make_pair (make_var x1') (make_var x2')
       in
       (make_let [x',[],t1'] t').desc
+(*
   | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
@@ -292,40 +298,59 @@ Color.printf Color.Yellow "y1:%a, y2:%a@." Id.print y1 Id.print y2;
         | None -> make_pair (make_var x1') (make_var x2')
       in
       (make_let [x',[],t1'] t').desc
-  | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},t2)} as t1)], t) ->
-    assert false;
-      let x' =  trans.tr2_var (tt,bb) x in
+*)
+  | Let(Nonrecursive, [x,[],({desc=Fst{desc=Var x1}} as t1)], t) ->
+      let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
-      let t2' = trans.tr2_term (tt,bb) t2 in
       let bb' = (x,t1)::bb in
       let t' = trans.tr2_term (tt,bb') t in
       let t1' =
-        match Id.typ x1 with
-        | TFun _ ->
-            let x11 = match Id.typ x1' with TFun(x11,_) -> x11 | _ -> assert false in
-            let y = Id.new_var "x" @@ opt_typ @@ Id.typ x11 in
-Format.printf "   GEGE %a: %a@." Id.print y pp_print_typ (Id.typ y);
-            let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y] in
-            let t1' = make_if (make_is_none (make_var y)) (make_none @@ get_opt_typ t1.typ) t1 in
-            make_fun y (make_pair t1' t2')
-        | _ -> make_pair (make_var x1') t2'
+        match Id.typ x1' with
+        | TPair _ -> make_fst @@ make_var x1'
+        | TFun(y,typ) ->
+            begin match decomp_tfun_ttuple @@ Id.typ x1 with
+            | None -> assert false
+            | Some [z1,typ1; z2,typ2] ->
+                let z = Id.new_var_id z1 in
+                make_fun z @@ make_get_val @@ make_fst @@ make_app (make_var x1') [make_pair (make_some @@ make_var z) (make_none @@ Id.typ z2)]
+            | Some xtyps -> assert false (* Not implemented *)
+            end
+        | _ -> assert false
       in
       (make_let [x',[],t1'] t').desc
-  | Let(Nonrecursive, [x,[],({desc=Fst{desc=Var x1}} as t1)], t) ->
-      let bb' = (x,t1)::bb in
-      (trans.tr2_term (tt,bb') t).desc
   | Let(Nonrecursive, [x,[],({desc=Snd{desc=Var x1}} as t1)], t) ->
+      let x' = trans.tr2_var (tt,bb) x in
+      let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
-      (trans.tr2_term (tt,bb') t).desc
+      let t' = trans.tr2_term (tt,bb') t in
+      let t1' =
+        match Id.typ x1' with
+        | TPair _ -> make_snd @@ make_var x1'
+        | TFun(y,typ) ->
+            begin match decomp_tfun_ttuple @@ Id.typ x1 with
+            | None -> assert false
+            | Some [z1,typ1; z2,typ2] ->
+                let z = Id.new_var_id z2 in
+                make_fun z @@ make_get_val @@ make_snd @@ make_app (make_var x1') [make_pair (make_none @@ Id.typ z1) (make_some @@ make_var z)]
+            | Some xtyps -> assert false (* Not implemented *)
+            end
+        | _ -> assert false
+      in
+      (make_let [x',[],t1'] t').desc
   | _ -> trans.tr2_desc_rec (tt,bb) desc
 
 let () = trans.tr2_desc <- trans_desc
 let () = trans.tr2_typ <- trans_typ
 
 let trans tt t = t
-  |@> Format.printf "BEFORE1: %a@." pp_print_term
+  |@> Format.printf "INPUT: %a@." pp_print_term
   |> Trans.inline_no_effect
-  |@> Format.printf "BEFORE2: %a@." pp_print_term
+  |@> Format.printf "inline_no_effect: %a@." pp_print_term_typ
+  |> Trans.normalize_let
+  |@> Format.printf "normalize_let: %a@." pp_print_term_typ
   |> Trans.flatten_let
-  |@> Format.printf "BEFORE: %a@." pp_print_term
+  |@> Format.printf "flatten_let: %a@." pp_print_term_typ
+  |@> flip Type_check.check TUnit
   |> trans.tr2_term (tt,[])
+  |> Trans.inline_no_effect
+  |@> Format.printf "ref_trans: %a@." pp_print_term'

@@ -15,7 +15,7 @@ INCLUDES = \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray
 
 OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
-OCAMLOPTFLAGS = -annot $(INCLUDES) -package $(PACKAGES)
+OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
 
 DEPEND += $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 
@@ -54,7 +54,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli \
 	feasibility.mli refine.mli syntax.mli term_util.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
 	spec_parser.mli trecs_parser.mli BRA_transform.mli \
-	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli
+	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli type.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \

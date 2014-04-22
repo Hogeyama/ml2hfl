@@ -7,6 +7,10 @@ let unsupported s = raise (Unsupported s)
 let (|>) x f = f x
 let (@@) f x = f x
 
+let flip f x y = f y x
+let curry f x y = f (x,y)
+let uncurry f (x,y) = f x y
+
 let table_create n = Hashtbl.create n;;
 let table_find tab x = Hashtbl.find tab x
 let table_add tab a b = Hashtbl.add tab a b
@@ -438,6 +442,9 @@ let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
 
 let do_and_return f x = f x; x
 let (|@>) x f = do_and_return f x
+let (|*@>) x f = x
+let (|@*>) x f = x
+let assert_ f x = assert (f x)
 let assert_false _ = assert false
 
 

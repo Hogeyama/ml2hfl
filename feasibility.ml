@@ -76,7 +76,7 @@ let rec get_prefix ce n =
 let check ce {defs=defs; main=main} =
   let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
-  let () = if !Flag.print_progress then Format.printf "\n(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
+  let () = if !Flag.print_progress then Color.printf Color.Green "\n(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in

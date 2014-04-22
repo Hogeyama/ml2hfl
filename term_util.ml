@@ -808,7 +808,7 @@ let and_list ts = match ts with
 
 
 let rec make_term typ =
-  match typ with
+  match elim_tpred typ with
     TUnit -> unit_term
   | TBool -> true_term
   | TInt -> make_int 0
@@ -875,6 +875,14 @@ let rec decomp_fun = function
       let xs,t' = decomp_fun t in
         x::xs, t'
   | t -> [], t
+
+let rec decomp_let t =
+  match t.desc with
+    Let(flag, bindings, t2) ->
+      let fbindings,t2' = decomp_let t2 in
+      (flag,bindings)::fbindings, t2'
+  | _ -> [], t
+
 
 let rec get_int t =
   match t.desc with
@@ -1446,3 +1454,20 @@ and same_type_kind k1 k2 = unsupported "same_term"
 
 and same_typed_pattern p1 p2 = same_pattern p1.desc p2.desc
 and same_pattern p1 p2 = unsupported "same_term"
+
+
+let rec var_name_of_term t =
+  match t.desc, elim_tpred t.typ with
+    Var x, _ -> Id.name x
+  | _,     TUnit _ -> "u"
+  | _,     TBool _ -> "b"
+  | _,     TInt _  -> "n"
+  | _,     TFun _  -> "f"
+  | _,     TPair _ -> "p"
+  | App _, _       -> "r"
+  | Fst t, _       -> var_name_of_term t ^ "_l"
+  | Snd _, _       -> var_name_of_term t ^ "_r"
+  | Fun _, _       -> assert false
+  | _,     _       -> "x"
+
+let var_of_term t = Id.new_var (var_name_of_term t) t.typ

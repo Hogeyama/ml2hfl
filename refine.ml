@@ -98,7 +98,7 @@ let rec add_pred n path typ =
 let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
   let tmp = get_time () in
     try
-      if !Flag.print_progress then Format.printf "(%d-4) Discovering predicates ... @." !Flag.cegar_loop;
+      if !Flag.print_progress then Color.printf Color.Green "(%d-4) Discovering predicates ... @." !Flag.cegar_loop;
       if Flag.use_prefix_trace then raise (Fatal "Not implemented: Flag.use_prefix_trace");
       let map =
         match !Flag.refine with

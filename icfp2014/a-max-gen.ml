@@ -1,3 +1,15 @@
+
+(*{SPEC}
+
+(* "i <= j && j < n" should not be splitted because of cartesian abstraction *)
+valcps array_max :
+  i:int ->
+  n:int ->
+  (int->(int->X)->X) ->
+  (m:int -> (j:int-> (r:int[not (i <= j && j < n) || m >= r] -> X) -> X) -> X) -> X
+
+{SPEC}*)
+
 let rec loop x = loop x
 
 let make_array n =
@@ -10,18 +22,18 @@ let make_array n =
   in
     aux 0 loop
 
-let rec array_max i n array k =
+let rec array_max i n array =
+  if i < 0 then loop () else
   if i >= n
-  then k 0 array
+  then 0
   else
-    array_max (i+1) n array (fun m array' ->
-    let x = array' i in
-    let array'' j = if j = i then x else array' j in
-    k (if x > m then x else m) array'')
+    let m = array_max (i+1) n array in
+    let x = array i in
+    if x > m then x else m
 
 let main i n =
   if 0 <= i && i < n
   then
     let array = make_array n in
-    array_max 0 n array (fun m array' ->
-    assert (array' i <= m))
+    let m = array_max 0 n array in
+    assert (array i <= m)

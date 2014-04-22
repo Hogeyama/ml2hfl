@@ -36,6 +36,7 @@ rule token = parse
 | "inline" { INLINE }
 | "inlinef" { INLINEF }
 | "unit" { TUNIT }
+| "X" { TRESULT }
 | "bool" { TBOOL }
 | "int" { TINT }
 | "list" { LIST }
@@ -43,6 +44,7 @@ rule token = parse
 | ';' { SEMI }
 | ':' { COLON }
 | "val" { VAL }
+| "valcps" { VALCPS }
 | digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 (*| lower (digit|lower|upper|'_')* *)

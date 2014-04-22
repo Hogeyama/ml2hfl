@@ -60,9 +60,17 @@ let rec get_same_args env f t args =
   then args
   else get_same_args env f t same_args
 
-let get_diff_args_desc (env,(f:id)) desc =
+let is_partial f ts =
+  let xs,_ = decomp_tfun @@ Id.typ f in
+  List.length xs = List.length ts
+
+let get_diff_args_desc (env,f) desc =
   match desc with
-    App({desc=Var g}, ts) when Id.same f g ->
+    Var g when Id.same f g ->
+     make_all @@ fst @@ decomp_tfun @@ Id.typ g
+  | App({desc=Var g}, ts) when Id.same f g && is_partial g ts ->
+     make_all @@ fst @@ decomp_tfun @@ Id.typ g
+  | App({desc=Var g}, ts) when Id.same f g ->
       let its = mapi (fun i t -> i,t) ts in
       let rec aux acc = function
           [] -> acc
@@ -134,7 +142,7 @@ let trans_desc env desc =
     Let(_, [f,xs,{desc=Fun _}], t2) -> assert false
   | Let(flag, [f,xs,t1], t2) ->
     let same_args = get_same_args env f t2 @@ make_all xs in
-    Color.printf Color.Reverse "[";
+    Color.printf Color.Reverse "%a: [" Id.print f;
     List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args;
     Color.printf Color.Reverse "]@.";
     let elim_args = List.map snd same_args in
