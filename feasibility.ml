@@ -10,7 +10,7 @@ type result =
   | Infeasible of CEGAR_syntax.ce
 
 let checksat env t =
-  Fpat.SMTProver.is_sat (FpatInterface.conv_formula t)
+  Fpat.SMTProver.is_sat_dyn (FpatInterface.conv_formula t)
 
 let get_solution env t =
   t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort compare |> List.map snd

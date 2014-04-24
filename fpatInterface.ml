@@ -6,8 +6,6 @@ open CEGAR_print
 open CEGAR_util
 open Fpat.Combinator
 open Fpat.ExtFormula
-open Fpat.ExtHornClause
-open Fpat.ExtHornClauseSet
 
 let conv_const c =
   match c with
@@ -18,31 +16,31 @@ let conv_const c =
   | And -> Fpat.Const.And
   | Or -> Fpat.Const.Or
   | Not -> Fpat.Const.Not
-  | Lt -> Fpat.Const.Lt Fpat.MLType.mk_int
-  | Gt -> Fpat.Const.Gt Fpat.MLType.mk_int
-  | Leq -> Fpat.Const.Leq Fpat.MLType.mk_int
-  | Geq -> Fpat.Const.Geq Fpat.MLType.mk_int
-  | EqUnit -> Fpat.Const.Eq Fpat.MLType.mk_unit
-  | EqBool -> Fpat.Const.Eq Fpat.MLType.mk_bool
-  | EqInt -> Fpat.Const.Eq Fpat.MLType.mk_int
-  | CmpPoly(typ,"=") -> Fpat.Const.Eq (Fpat.MLType.mk_const (Fpat.TypConst.Ext typ))
-  | CmpPoly(typ,"<>") -> Fpat.Const.Neq (Fpat.MLType.mk_const (Fpat.TypConst.Ext typ))
-  | CmpPoly(typ,"<") -> Fpat.Const.Lt (Fpat.MLType.mk_const (Fpat.TypConst.Ext typ))
-  | CmpPoly(typ,">") -> Fpat.Const.Gt (Fpat.MLType.mk_const (Fpat.TypConst.Ext typ))
-  | CmpPoly(typ,"<=") -> Fpat.Const.Leq (Fpat.MLType.mk_const (Fpat.TypConst.Ext typ))
-  | CmpPoly(typ,">=") -> Fpat.Const.Geq (Fpat.MLType.mk_const (Fpat.TypConst.Ext typ))
+  | Lt -> Fpat.Const.Lt Fpat.Type.mk_int
+  | Gt -> Fpat.Const.Gt Fpat.Type.mk_int
+  | Leq -> Fpat.Const.Leq Fpat.Type.mk_int
+  | Geq -> Fpat.Const.Geq Fpat.Type.mk_int
+  | EqUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
+  | EqBool -> Fpat.Const.Eq Fpat.Type.mk_bool
+  | EqInt -> Fpat.Const.Eq Fpat.Type.mk_int
+  | CmpPoly(typ,"=") -> Fpat.Const.Eq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+  | CmpPoly(typ,"<>") -> Fpat.Const.Neq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+  | CmpPoly(typ,"<") -> Fpat.Const.Lt (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+  | CmpPoly(typ,">") -> Fpat.Const.Gt (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+  | CmpPoly(typ,"<=") -> Fpat.Const.Leq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+  | CmpPoly(typ,">=") -> Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
   | Int(n) -> Fpat.Const.Int(n)
   | RandInt -> Fpat.Const.RandInt
-  | Add -> Fpat.Const.Add Fpat.MLType.mk_int
-  | Sub -> Fpat.Const.Sub Fpat.MLType.mk_int
-  | Mul -> Fpat.Const.Mul Fpat.MLType.mk_int
+  | Add -> Fpat.Const.Add Fpat.Type.mk_int
+  | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
+  | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
   | Char c -> Fpat.Const.Int (int_of_char c)
   | String s -> Fpat.Const.String s
   | Float s -> Fpat.Const.Float (float_of_string s)
   | Int32 n -> Fpat.Const.Int (Int32.to_int n)
   | Int64 n -> Fpat.Const.Int (Int64.to_int n)
   | Nativeint n -> Fpat.Const.Int (Nativeint.to_int n)
-  | CPS_result -> Fpat.Const.Unint(Fpat.MLType.mk_const (Fpat.TypConst.Ext "X"), "end")
+  | CPS_result -> Fpat.Const.Unint(Fpat.Type.mk_const (Fpat.TypConst.Ext "X"), "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -68,27 +66,27 @@ let inv_const c =
   | Fpat.Const.And -> And
   | Fpat.Const.Or -> Or
   | Fpat.Const.Not -> Not
-  | Fpat.Const.Lt ty when Fpat.MLType.is_int ty -> Lt
-  | Fpat.Const.Gt ty when Fpat.MLType.is_int ty -> Gt
-  | Fpat.Const.Leq ty when Fpat.MLType.is_int ty -> Leq
-  | Fpat.Const.Geq ty when Fpat.MLType.is_int ty -> Geq
-  | Fpat.Const.Eq ty when Fpat.MLType.is_unit ty -> EqUnit
-  | Fpat.Const.Eq ty when Fpat.MLType.is_bool ty -> EqBool
-  | Fpat.Const.Eq ty when Fpat.MLType.is_int ty -> EqInt
+  | Fpat.Const.Lt ty when Fpat.Type.is_int ty -> Lt
+  | Fpat.Const.Gt ty when Fpat.Type.is_int ty -> Gt
+  | Fpat.Const.Leq ty when Fpat.Type.is_int ty -> Leq
+  | Fpat.Const.Geq ty when Fpat.Type.is_int ty -> Geq
+  | Fpat.Const.Eq ty when Fpat.Type.is_unit ty -> EqUnit
+  | Fpat.Const.Eq ty when Fpat.Type.is_bool ty -> EqBool
+  | Fpat.Const.Eq ty when Fpat.Type.is_int ty -> EqInt
   | Fpat.Const.Int(n) -> Int(n)
   | Fpat.Const.RandInt -> RandInt
-  | Fpat.Const.Add ty when Fpat.MLType.is_int ty -> Add
-  | Fpat.Const.Sub ty when Fpat.MLType.is_int ty -> Sub
-  | Fpat.Const.Mul ty when Fpat.MLType.is_int ty -> Mul
-  | Fpat.Const.Eq ty when Fpat.MLType.is_ext ty -> Fpat.MLType.let_ext ty (fun typ -> CmpPoly(typ,"="))
-  | Fpat.Const.Neq ty when Fpat.MLType.is_ext ty -> Fpat.MLType.let_ext ty (fun typ -> CmpPoly(typ,"<>"))
-  | Fpat.Const.Lt ty when Fpat.MLType.is_ext ty -> Fpat.MLType.let_ext ty (fun typ -> CmpPoly(typ,"<"))
-  | Fpat.Const.Gt ty when Fpat.MLType.is_ext ty -> Fpat.MLType.let_ext ty (fun typ -> CmpPoly(typ,">"))
-  | Fpat.Const.Leq ty when Fpat.MLType.is_ext ty -> Fpat.MLType.let_ext ty (fun typ -> CmpPoly(typ,"<="))
-  | Fpat.Const.Geq ty when Fpat.MLType.is_ext ty -> Fpat.MLType.let_ext ty (fun typ -> CmpPoly(typ,">="))
+  | Fpat.Const.Add ty when Fpat.Type.is_int ty -> Add
+  | Fpat.Const.Sub ty when Fpat.Type.is_int ty -> Sub
+  | Fpat.Const.Mul ty when Fpat.Type.is_int ty -> Mul
+  | Fpat.Const.Eq ty when Fpat.Type.is_ext ty -> Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"="))
+  | Fpat.Const.Neq ty when Fpat.Type.is_ext ty -> Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"<>"))
+  | Fpat.Const.Lt ty when Fpat.Type.is_ext ty -> Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"<"))
+  | Fpat.Const.Gt ty when Fpat.Type.is_ext ty -> Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">"))
+  | Fpat.Const.Leq ty when Fpat.Type.is_ext ty -> Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"<="))
+  | Fpat.Const.Geq ty when Fpat.Type.is_ext ty -> Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">="))
   | Fpat.Const.String s -> String s
   | Fpat.Const.Float x -> Float (string_of_float x)
-  | Fpat.Const.Unint(ty, "end") when Fpat.MLType.is_ext ty && Fpat.MLType.let_ext ty ((=) "X") -> CPS_result
+  | Fpat.Const.Unint(ty, "end") when Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") -> CPS_result
   | _ -> Format.printf "%s@." (Fpat.Const.string_of c); assert false
 
 let rec inv_term t =
@@ -97,11 +95,11 @@ let rec inv_term t =
   | Fpat.Term.Var(x) -> Var(Fpat.Idnt.string_of x)
   | Fpat.Term.App(Fpat.Term.App(t1, t2), t3) ->
       (match t1 with
-        Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.MLType.is_unit ty ->
+        Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.Type.is_unit ty ->
           App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
-      | Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.MLType.is_bool ty ->
+      | Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.Type.is_bool ty ->
           App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
-      | Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.MLType.is_int ty ->
+      | Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.Type.is_int ty ->
           App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
       | _ ->
           App(App(inv_term t1, inv_term t2), inv_term t3))
@@ -139,16 +137,16 @@ let inv_fdef fdef =
 
 let rec conv_typ ty =
   match ty with
-    TBase(TUnit, _) -> Fpat.MLType.mk_unit
-  | TBase(TInt, _) -> Fpat.MLType.mk_int
-  | TBase(TBool, _) -> Fpat.MLType.mk_bool
-  | TBase(TAbst "string", _) -> Fpat.MLType.mk_string
-  | TBase(TAbst "float", _) -> Fpat.MLType.mk_float
+    TBase(TUnit, _) -> Fpat.Type.mk_unit
+  | TBase(TInt, _) -> Fpat.Type.mk_int
+  | TBase(TBool, _) -> Fpat.Type.mk_bool
+  | TBase(TAbst "string", _) -> Fpat.Type.mk_string
+  | TBase(TAbst "float", _) -> Fpat.Type.mk_float
   | TBase(TAbst s, _) ->
-      Fpat.MLType.mk_const (Fpat.TypConst.Ext s)
+      Fpat.Type.mk_const (Fpat.TypConst.Ext s)
   | TFun(ty1,tmp) ->
       let ty2 = tmp (Const True) in
-      Fpat.MLType.mk_fun [conv_typ ty1; conv_typ ty2]
+      Fpat.Type.mk_fun [conv_typ ty1; conv_typ ty2]
   | _ ->
       Format.printf "%a@." CEGAR_print.typ ty;
       assert false
@@ -195,10 +193,10 @@ let rec inv_abst_type aty =
 
 let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in
-  Fpat.RefTypeInfer.is_cp prog
+  Fpat.RefTypeInfer.is_cut_point prog
 
 let infer flags labeled is_cp cexs prog =
-  Fpat.Global.solve_preds_left_to_right := flags land 2 <> 0;
+  Fpat.Global.solve_rhs_left_to_right := flags land 2 <> 0;
   Fpat.Global.subst_hcs_inc := flags land 4 <> 0;
   Fpat.Global.no_inlining := flags land 8 <> 0 || not !Flag.expand_nonrec;
   Fpat.Global.fol_backward := flags land 32 <> 0;
@@ -208,7 +206,7 @@ let infer flags labeled is_cp cexs prog =
 
   let prog = conv_prog prog in
   let env = Fpat.AbsTypeInfer.refine prog labeled is_cp cexs in
-  Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Fpat.ParamSubstInfer.elapsed_time;
+  Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
   Fpat.Util.List.map
    (fun (f, rty) ->
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
@@ -247,9 +245,9 @@ let new_params recursive bvs exs =
   in
   let ts =
     (if !Fpat.Global.enable_coeff_const (*&& recursive = None*) then
-      Fpat.ParamSubstInfer.masked_params :=
+      Fpat.RefTypeInfer.masked_params :=
         Fpat.Idnt.mk_coeff (Id.to_string (Fpat.Util.List.hd ps)) ::
-        !Fpat.ParamSubstInfer.masked_params);
+        !Fpat.RefTypeInfer.masked_params);
     (if !Fpat.Global.enable_coeff_const then [Syntax.make_var (Fpat.Util.List.hd ps)] else []) @
     (*
     let b = recursive <> None && xs = [] && Fpat.Util.Set.subset bvs' exs in
@@ -262,17 +260,17 @@ let new_params recursive bvs exs =
           else*) if recursive <> None then
           (if xs = [] then
              (if Fpat.Util.List.mem x exs then
-               Fpat.ParamSubstInfer.masked_params :=
+               Fpat.RefTypeInfer.masked_params :=
                  Fpat.Idnt.mk_coeff (Id.to_string p) ::
-                 !Fpat.ParamSubstInfer.masked_params (*this is necessary for l-length_cps-append.ml*))
+                 !Fpat.RefTypeInfer.masked_params (*this is necessary for l-length_cps-append.ml*))
           else if not (Fpat.Util.List.mem x xs) then
-            Fpat.ParamSubstInfer.masked_params :=
+            Fpat.RefTypeInfer.masked_params :=
               Fpat.Idnt.mk_coeff (Id.to_string p) ::
-              !Fpat.ParamSubstInfer.masked_params)
+              !Fpat.RefTypeInfer.masked_params)
            (* how to deal with non-recursive function calls here? *)
           (*else
             if Fpat.Util.List.mem x exs then
-              Fpat.ParamSubstInfer.masked_params := Fpat.Idnt.mk_coeff (Fpat.Idnt.make (Id.to_string p)) :: !Fpat.ParamSubstInfer.masked_params*)
+              Fpat.RefTypeInfer.masked_params := Fpat.Idnt.mk_coeff (Fpat.Idnt.make (Id.to_string p)) :: !Fpat.RefTypeInfer.masked_params*)
         in
         Syntax.make_mul (Syntax.make_var p) (Syntax.make_var x))
       (if !Fpat.Global.enable_coeff_const then Fpat.Util.List.tl ps else ps)
@@ -317,7 +315,7 @@ and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 let insert_extra_param t =
   let tmp = get_time() in
   let debug = !Flag.debug_level > 0 in
-  Fpat.ParamSubstInfer.masked_params := [];
+  Fpat.RefTypeInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
@@ -484,13 +482,13 @@ let insert_extra_param t =
 
 let instantiate_param (typs, fdefs, main as prog) =
   let tmp = get_time() in
-  (if !Fpat.ParamSubstInfer.ext_coeffs = [] then
-    Fpat.ParamSubstInfer.init_coeffs (conv_prog prog));
+  (if !Fpat.RefTypeInfer.prev_sol = [] then
+    Fpat.RefTypeInfer.init_sol (conv_prog prog));
   let map =
     Fpat.Util.List.map
       (fun (x, n) ->
-        Fpat.Idnt.string_of x, inv_term (Fpat.IntExp.make n))
-      !Fpat.ParamSubstInfer.ext_coeffs
+        Fpat.Idnt.string_of x, inv_term (Fpat.IntTerm.make n))
+      !Fpat.RefTypeInfer.prev_sol
   in
   let res =
 		  typs,
@@ -556,7 +554,7 @@ let report_error ppf = function
       Format.fprintf ppf "Failure of interpolating prover (integer domain not fully supported)"
   | Fpat.InterpProver.Unknown ->
       Format.fprintf ppf "Failure of interpolating prover"
-  | Fpat.ParamSubstInfer.FailedToRefineExtraParameters ->
+  | Fpat.RefTypeInfer.FailedToRefineExtraParameters ->
       Format.fprintf ppf  "Failure of parameter substitution refinement"
   | Fpat.PolyConstrSolver.Unknown ->
       Format.fprintf ppf "Failure of polynomial constraint solver"
@@ -571,7 +569,7 @@ let is_fpat_exception = function
   | Fpat.SMTProver.Unknown
   | Fpat.InterpProver.Fail
   | Fpat.InterpProver.Unknown
-  | Fpat.ParamSubstInfer.FailedToRefineExtraParameters
+  | Fpat.RefTypeInfer.FailedToRefineExtraParameters
   | Fpat.PolyConstrSolver.Unknown
   | Fpat.Util.NotImplemented _ -> true
   | _ -> false

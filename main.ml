@@ -214,38 +214,51 @@ let arg_spec =
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
           "<num>  Use refinement type based predicate discovery";
    "-eap", Arg.Set Fpat.Global.extract_atomic_predicates, " Extract atomic predicates";
-   "-enable-cp", Arg.Set Fpat.Global.cut_points_only, " Enable cut-points only mode";
+   "-enable-cp", Arg.Set Fpat.Global.exploit_cut_points, " Exploit cut-points";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
-   (* Horn clause solver *)
+   (* HCCS solver *)
    "-gi",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
+       Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron false),
      " Generalize constraints of multiple function calls by interpolation";
+
+   "-size",
+     Arg.Unit (fun _ ->
+       Fpat.HCCSSolver.link_solver Fpat.BeautifulHCCSSolver.size),
+     " measuing solution size";
+
+   "-oldbdag",
+     Arg.Unit (fun _ ->
+       Fpat.HCCSSolver.link_solver Fpat.BeautifulHCCSSolver.solve),
+     " Use beautiful dag HCCS solver (with old sampling-based beautiful tree HCCS solver)";
    "-bdag",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.BeautifulHcSolver.solve),
-     " Use Horn clause solver based on beautiful DAG interpolation";
+       Fpat.HCCSSolver.link_solver (Fpat.BeautifulDagHCCSSolver.solve_wo_sampling Fpat.BeautifulTreeHCCSSolver.solve)),
+     " Use beautiful dag HCCS solver (with beautiful tree HCCS solver)";
+   "-bdagm",
+     Arg.Unit (fun _ ->
+       Fpat.HCCSSolver.link_solver (Fpat.BeautifulDagHCCSSolver.solve_wo_sampling Fpat.BwHCCSSolver.solve)),
+     " Use beautiful dag HCCS solver (with backward tree HCCS solver)";
+   "-unwind",
+     Arg.Unit (fun _ ->
+       Fpat.HCCSSolver.link_solver (Fpat.UnwindDagHCCSSolver.solve Fpat.BwHCCSSolver.solve)),
+     " Use dag HCCS solver based on dag unwinding (with backward tree HCCS solver)";
+   "-unwindp",
+     Arg.Unit (fun _ ->
+       Fpat.HCCSSolver.link_solver (Fpat.UnwindDagHCCSSolver.solve Fpat.BeautifulTreeHCCSSolver.solve)),
+     " Use dag HCCS solver based on dag unwinding (with beautiful tree HCCS solver)";
    "-gchi",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
+       Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtcs",
      Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
+       Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.TemplateBasedGenInterpProver.interpolate),
      " Generalize constraints of multiple function calls by template-based constraint solving";
-   "-gssi",
-     Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.GenHcSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_yint;
-       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_yint),
-     " Generalize constraints of multiple function calls by solution space-based interpolation";
-   "-yhorn",
-     Arg.Unit (fun _ ->
-       Fpat.HcSolver.ext_solve := Fpat.HcSolver.solve_yhorn),
-     " Solve Horn clauses by using Yint";
+(* add option to disable simplification interp_simplify := false*)
 
    "-ieb", Arg.Set Fpat.Global.encode_boolean,
      " Enable integer encoding of booleans";
@@ -260,12 +273,8 @@ let arg_spec =
      " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
    "-tcs",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.TemplateBasedInterpProver.interpolate),
+       Fpat.InterpProver.ext_interpolate := Fpat.TemplateBasedInterpProver.interpolate Fpat.HornClause.qelim_full),
      " Use an interpolating prover based on template based constraint solving";
-   "-yint",
-     Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_yint),
-     " Use Yint interpolating prover";
    (* SMT solver *)
    "-z3", Arg.Unit (fun _ ->
        Fpat.SMTProver.init_z3 ();
@@ -313,16 +322,16 @@ let arg_spec =
    (* relatively complete verification *)
    "-bv-exparm",
      Arg.Unit (fun _ ->
-       Fpat.ParamSubstInfer.ext_generate :=
+       Fpat.EHCCSSolver.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:true;
-       Fpat.ParamSubstInfer.ext_solve :=
+       Fpat.EHCCSSolver.ext_solve :=
          Fpat.BvPolyConstrSolver.solve),
      " Use a bit-vector-based extra parameter inference";
    "-z3-exparam",
      Arg.Unit (fun _ ->
-       Fpat.ParamSubstInfer.ext_generate :=
+       Fpat.EHCCSSolver.ext_generate :=
          Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-       Fpat.ParamSubstInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3),
+       Fpat.EHCCSSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3),
      " Use Z3 SMT solver for extra parameter inference";
    (* termination mode *)
    "-z3-rank",
@@ -444,12 +453,12 @@ let fpat_init1 () =
   InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat;
 
   (* default Horn clause solver *)
-  HcSolver.ext_solve := BwHcSolver.solve;
+  HCCSSolver.link_solver BwHCCSSolver.solve;
 
   (* default solver for parameter substitution inference *)
-  Fpat.ParamSubstInfer.ext_generate :=
+  Fpat.EHCCSSolver.ext_generate :=
     Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-  Fpat.ParamSubstInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3;
+  Fpat.EHCCSSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3;
 
   (* default solver for ranking function inference *)
   Fpat.RankFunInfer.ext_generate :=

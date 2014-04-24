@@ -136,8 +136,8 @@ let report_safe env rmap get_rtyp orig t0 =
       List.map
         (fun (x, n) ->
           Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
-          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntExp.make n)
-        !Fpat.ParamSubstInfer.ext_coeffs
+          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
+        !Fpat.RefTypeInfer.prev_sol
     in
     let t = Syntax.subst_map map t0 in
     Format.printf "Program with Quantifiers Added:@.";
@@ -230,9 +230,9 @@ let rec run orig parsed =
                 run orig parsed
             | Fpat.AbsTypeInfer.FailedToRefineTypes ->
                 raise Fpat.AbsTypeInfer.FailedToRefineTypes
-            | Fpat.ParamSubstInfer.FailedToRefineExtraParameters ->
+            | Fpat.RefTypeInfer.FailedToRefineExtraParameters ->
                 FpatInterface.params := [];
-                Fpat.ParamSubstInfer.ext_coeffs := [];
-                Fpat.ParamSubstInfer.ext_constrs := [];
+                Fpat.RefTypeInfer.prev_sol := [];
+                Fpat.RefTypeInfer.prev_constrs := [];
                 incr Fpat.Global.number_of_extra_params;
                 run orig parsed

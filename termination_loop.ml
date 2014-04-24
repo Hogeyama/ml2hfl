@@ -49,7 +49,7 @@ let inferCoeffs argumentVariables linear_templates constraints =
   let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:false in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
-    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr_coeffs correspondenceVars;
+    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
     
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
@@ -59,10 +59,10 @@ let inferCoeffs argumentVariables linear_templates constraints =
       let coefficients =
 	let cor dict x =
 	  try List.assoc x dict with Not_found -> 0 in
-	let formatter (n, v) = (v, Fpat.IntExp.int_of n) in
+	let formatter (n, v) = (v, Fpat.IntTerm.int_of n) in
 	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
       in
-      {coeffs = coefficients; constant = Fpat.IntExp.int_of const_part}
+      {coeffs = coefficients; constant = Fpat.IntTerm.int_of const_part}
     ) linear_templates
   end
   with
@@ -78,7 +78,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
   let correspondenceVars = constraints |> Fpat.RankFunInfer.generate |> Fpat.RankFunInfer.solve in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
-    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr_coeffs correspondenceVars;
+    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
     
     (List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
@@ -88,10 +88,10 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       let coefficients =
 	let cor dict x =
 	  try List.assoc x dict with Not_found -> 0 in
-	let formatter (n, v) = (v, Fpat.IntExp.int_of n) in
+	let formatter (n, v) = (v, Fpat.IntTerm.int_of n) in
 	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
       in
-      {coeffs = coefficients; constant = Fpat.IntExp.int_of const_part}
+      {coeffs = coefficients; constant = Fpat.IntTerm.int_of const_part}
      ) linear_templates,
      let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.TInt, Syntax.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Idnt.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
      let substToVar = function
@@ -128,10 +128,10 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
     let rec go i = 
       let ith_ltp, ith_lt = List.nth prevLinearTemplates i, List.nth linearTemplates i in
       if i < n then
-        (Fpat.NumAtom.geq Fpat.MLType.mk_int ith_ltp ith_lt |> Fpat.Formula.of_atom) :: go (i+1)
+        (Fpat.NumAtom.geq Fpat.Type.mk_int ith_ltp ith_lt |> Fpat.Formula.of_atom) :: go (i+1)
       else
-        [Fpat.NumAtom.gt Fpat.MLType.mk_int ith_ltp ith_lt |> Fpat.Formula.of_atom;
-         Fpat.NumAtom.geq Fpat.MLType.mk_int ith_lt (Fpat.IntExp.make 0) |> Fpat.Formula.of_atom]
+        [Fpat.NumAtom.gt Fpat.Type.mk_int ith_ltp ith_lt |> Fpat.Formula.of_atom;
+         Fpat.NumAtom.geq Fpat.Type.mk_int ith_lt (Fpat.IntTerm.make 0) |> Fpat.Formula.of_atom]
     in
     subst_ith n (Fpat.Formula.band [List.nth failedSpc n; Fpat.Formula.bnot (Fpat.Formula.band (go 0))])
   in
@@ -187,7 +187,7 @@ let rec run predicate_que holed =
 	  List.map (fun v -> Fpat.Idnt.make (Id.to_string (extract_id v)))
 	    (BRA_state.get_prev_statevars holed.state holed.verified) in
 	let prev_var_terms = List.map Fpat.Term.mk_var prev_vars in
-	let arg_env = List.map (fun a -> (a, Fpat.MLType.mk_int)) arg_vars in
+	let arg_env = List.map (fun a -> (a, Fpat.Type.mk_int)) arg_vars in
 	
 	if !Flag.disjunctive then
 	  (* make templates *)
@@ -198,8 +198,8 @@ let rec run predicate_que holed =
 	  (* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
 	  let constraints =
 	    Fpat.Formula.band [spc; Fpat.Formula.bnot
-	      (Fpat.Formula.band [ Fpat.NumAtom.gt Fpat.MLType.mk_int linear_template_prev linear_template |> Fpat.Formula.of_atom
-			    ; Fpat.NumAtom.geq Fpat.MLType.mk_int linear_template (Fpat.IntExp.make 0) |> Fpat.Formula.of_atom])]
+	      (Fpat.Formula.band [ Fpat.NumAtom.gt Fpat.Type.mk_int linear_template_prev linear_template |> Fpat.Formula.of_atom
+			    ; Fpat.NumAtom.geq Fpat.Type.mk_int linear_template (Fpat.IntTerm.make 0) |> Fpat.Formula.of_atom])]
 	  in
 	  if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 	  
