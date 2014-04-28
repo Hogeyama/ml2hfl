@@ -3,7 +3,7 @@ type path = int list
 
 let root = function
     Leaf t -> t
-  | Node _ -> assert false
+  | Node _ -> raise (Invalid_argument "Tree.root")
 let rec flatten = function
     Leaf t -> [t]
   | Node(lhs,rhs) -> flatten lhs @ flatten rhs

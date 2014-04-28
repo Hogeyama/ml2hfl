@@ -64,6 +64,7 @@ let model_check = ref ModelCheckCPS
 let refine = ref (RefineRefType 0)
 let form : form list ref = ref []
 let use_spec = ref false
+let comment_spec = ref true
 
 
 

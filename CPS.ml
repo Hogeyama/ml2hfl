@@ -1016,27 +1016,28 @@ let get_rtyp_of typed f rtyp =
   rtyp'
 
 
-
 let trans t =
-  let () = sol := init_sol in
-  let () = typ_excep := trans_typ !typ_excep (force_cont (infer_effect_typ !typ_excep)) in
+  sol := init_sol;
+  typ_excep := trans_typ !typ_excep (force_cont (infer_effect_typ !typ_excep));
   let t = short_circuit_eval t in
-  let () = counter := 0 in
-  let () = constraints := [] in
+  counter := 0;
+  constraints := [];
   let typed = infer_effect t in
-  let () = if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
-  let () = sol := solve_constraints !constraints in
-  let () = if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed in
-  let x = Id.new_var "x" TUnit in
+  if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
+  sol := solve_constraints !constraints;
+  if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
   let t = transform "" typed in
-  let e = Id.new_var "e" !typ_excep in
-  let k = make_fun x cps_result in
-  let h = make_fun e (make_app fail_term_cps [unit_term]) in
-  let t = make_app_excep typed.effect t k h in
-  let () = if debug then Format.printf "CPS:@.%a@." pp_print_term' t in
+  let t =
+    let x = Id.new_var "x" TUnit in
+    let e = Id.new_var "e" !typ_excep in
+    let k = make_fun x cps_result in
+    let h = make_fun e (make_app fail_term_cps [unit_term]) in
+    make_app_excep typed.effect t k h
+  in
+  if debug then Format.printf "CPS:@.%a@." pp_print_term' t;
   let t = Trans.propagate_typ_arg t in
   let t = Trans.eta_reduce t in
   let t = Trans.expand_let_val t in
-    Type_check.check t typ_result;
-    Flag.form := Flag.CPS :: !Flag.form;
-    t, get_rtyp_of typed
+  Type_check.check t typ_result;
+  Flag.form := Flag.CPS :: !Flag.form;
+  t, get_rtyp_of typed

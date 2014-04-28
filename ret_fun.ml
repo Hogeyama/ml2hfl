@@ -44,7 +44,7 @@ let normalize_term t =
       let t2' = normalize.tr_term t2 in
       let x1 = var_of_term t1 in
       let x2 = var_of_term t2 in
-      make_lets [x2,[],t2'; x1,[],t1'] @@ make_pair t1 t2
+      make_lets [x2,[],t2'; x1,[],t1'] @@ make_pair (make_var x1) (make_var x2)
   | Fst t1 ->
       let t1' = normalize.tr_term t1 in
       let x = var_of_term t1' in

@@ -223,18 +223,25 @@ let decomp_tfun_ttuple typ =
   then None
   else Some (List.map get_opt_val xtyps)
 
-let trans_typ (tt,bb) typ =
+let trans_typ ttbb typ =
   match typ with
   | TPair _ ->
       begin match decomp_tfun_ttuple typ with
-      | None -> trans.tr2_typ_rec (tt,bb) typ
+      | None -> trans.tr2_typ_rec ttbb typ
       | Some xtyps ->
-          let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps in
-          let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps in
-          let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps) "" in
+          let xtyps' = List.map (fun (x,typ) -> trans.tr2_var ttbb x, trans.tr2_typ ttbb typ) xtyps in
+          let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
+          let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
+          let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
           TFun(Id.new_var name @@ make_ttuple arg_typs, make_ttuple ret_typs)
       end
-  | _ -> trans.tr2_typ_rec (tt,bb) typ
+  | _ -> trans.tr2_typ_rec ttbb typ
+
+(*
+let trans_typ ttbb typ =
+  trans_typ ttbb typ |@>
+  Color.printf Color.Yellow "%a@ ===>@ @[%a@]@.@." print_typ typ print_typ
+*)
 
 let trans_desc (tt,bb) desc =
   match desc with
@@ -353,4 +360,4 @@ let trans tt t = t
   |@> flip Type_check.check TUnit
   |> trans.tr2_term (tt,[])
   |> Trans.inline_no_effect
-  |@> Format.printf "ref_trans: %a@." pp_print_term'
+  |*@> Format.printf "ref_trans: %a@." pp_print_term'

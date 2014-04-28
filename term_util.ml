@@ -651,7 +651,7 @@ let rec make_app t ts =
     | {typ=TFun(x,typ)}, t2::ts
     | {typ=TPred({Id.typ=TFun(x,typ)},_)}, t2::ts ->
         if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
-        then (Format.printf "make_app:@ %a@ <=/=>@ %a,@.fun: %a@.arg: %a@."
+        then (Color.printf Color.Red "make_app:@ %a@ <=/=>@ %a,@.fun: %a@.arg: %a@."
                 print_typ (Id.typ x)
                 print_typ t2.typ
                 pp_print_term' t
@@ -816,8 +816,13 @@ let rec make_term typ =
   | TPair(x,typ) -> make_pair (make_term @@ Id.typ x) (make_term typ)
   | _ -> Format.printf "ERROR:@.%a@." Syntax.pp_print_typ typ; assert false
 
+
+let none_flag = false_term
+let some_flag = true_term
+(*
 let none_flag = make_int 0
 let some_flag = make_int 1
+*)
 let opt_typ typ = TPair(Id.new_var "x" none_flag.typ, typ)
 let get_opt_typ typ = snd_typ typ
 let is_none t =

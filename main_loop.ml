@@ -18,6 +18,7 @@ let preprocess t spec =
     then
       let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
+      let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" id t in
       let fun_list = Term_util.get_top_funs t in
       let spec' = Spec.rename spec t in
       Spec.print spec';
@@ -42,8 +43,7 @@ let preprocess t spec =
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
-      let spec'' = Spec.rename spec t in
-      Spec.print spec';
+      let spec'' = Spec.rename spec t |@> Spec.print in
       let t = trans_and_print (Trans.replace_typ spec''.Spec.abst_cps_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
@@ -78,7 +78,7 @@ let preprocess t spec =
         Util.rev_flatten_map aux fun_list
     in
     let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
-      {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
+    {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
   begin
     (*
@@ -129,8 +129,8 @@ let report_safe env rmap get_rtyp orig t0 =
       List.map
         (fun (x, n) ->
           Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
-          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntExp.make n)
-        !Fpat.ParamSubstInfer.ext_coeffs
+          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
+        !Fpat.RefTypeInfer.prev_sol
     in
     let t = Term_util.subst_map map t0 in
     Format.printf "Program with Quantifiers Added:@.";
@@ -157,24 +157,30 @@ let report_unsafe main_fun arg_num ce set_target =
 
 
 let rec run orig parsed =
-  let () = init () in
+  init ();
   let t = parsed in
-  let () =
-    if false && !Flag.debug_level > 0
-    then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' t
+  if false && !Flag.debug_level > 0
+  then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' t;
+  let spec =
+    let spec1 =
+      begin
+        if !Flag.use_spec && !Flag.spec_file = ""
+        then
+          try
+            let spec = Filename.chop_extension !Flag.filename ^ ".spec" in
+            if Sys.file_exists spec then Flag.spec_file := spec
+          with Invalid_argument "Filename.chop_extension" -> ()
+      end;
+      Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file
+    in
+    let spec2 =
+      if !Flag.comment_spec
+      then Spec.parse_comment Spec_parser.spec Spec_lexer.token !Flag.filename
+      else Spec.init
+    in
+    Spec.merge spec1 spec2
+    |@> Spec.print
   in
-  let () =
-    if !Flag.use_spec && !Flag.spec_file = ""
-    then
-      try
-        let spec = Filename.chop_extension !Flag.filename ^ ".spec" in
-        if Sys.file_exists spec then Flag.spec_file := spec
-      with Invalid_argument "Filename.chop_extension" -> ()
-  in
-  let spec1 = Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file in
-  let spec2 = Spec.parse_comment Spec_parser.spec Spec_lexer.token !Flag.filename in
-  let spec = Spec.merge spec1 spec2 in
-  let () = Spec.print spec in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType
     then trans_and_print Trans.set_target "set_target" (fun (_,_,t) -> t) t
@@ -195,37 +201,37 @@ let rec run orig parsed =
   in
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in
-    match !Flag.cegar with
-        Flag.CEGAR_InteractionType ->
-          FpatInterface.verify [] prog;
-          assert false;
-      | Flag.CEGAR_DependentType ->
-          try
-            match CEGAR.cegar prog info with
-              _, CEGAR.Safe env ->
-                Flag.result := "Safe";
-                if not !Flag.exp
-                then report_safe env rmap get_rtyp orig t0;
-                true
-            | _, CEGAR.Unsafe ce ->
-                Flag.result := "Unsafe";
-                if not !Flag.exp
-                then report_unsafe main_fun arg_num ce set_target;
-                false
-          with
-              Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
-                Flag.insert_param_funarg := true;
-                run orig parsed
-            | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
-                if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
-                if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
-                Flag.relative_complete := true;
-                run orig parsed
-            | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-                raise Fpat.AbsTypeInfer.FailedToRefineTypes
-            | Fpat.ParamSubstInfer.FailedToRefineExtraParameters ->
-                FpatInterface.params := [];
-                Fpat.ParamSubstInfer.ext_coeffs := [];
-                Fpat.ParamSubstInfer.ext_constrs := [];
-                incr Fpat.Global.number_of_extra_params;
-                run orig parsed
+  match !Flag.cegar with
+  | Flag.CEGAR_InteractionType ->
+      FpatInterface.verify [] prog;
+      assert false;
+  | Flag.CEGAR_DependentType ->
+      try
+        match CEGAR.cegar prog info with
+        | _, CEGAR.Safe env ->
+            Flag.result := "Safe";
+            if not !Flag.exp
+            then report_safe env rmap get_rtyp orig t0;
+            true
+        | _, CEGAR.Unsafe ce ->
+            Flag.result := "Unsafe";
+            if not !Flag.exp
+            then report_unsafe main_fun arg_num ce set_target;
+            false
+      with
+      | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
+          Flag.insert_param_funarg := true;
+          run orig parsed
+      | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+          if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
+          if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
+          Flag.relative_complete := true;
+          run orig parsed
+      | Fpat.AbsTypeInfer.FailedToRefineTypes ->
+          raise Fpat.AbsTypeInfer.FailedToRefineTypes
+      | Fpat.RefTypeInfer.FailedToRefineExtraParameters ->
+          FpatInterface.params := [];
+          Fpat.RefTypeInfer.prev_sol := [];
+          Fpat.RefTypeInfer.prev_constrs := [];
+          incr Fpat.Global.number_of_extra_params;
+          run orig parsed

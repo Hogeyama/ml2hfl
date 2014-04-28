@@ -11,28 +11,28 @@ let print {abst_env=aenv; abst_cps_env=cpsenv; inlined=inlined; inlined_f=inline
   if aenv <> []
   then
     begin
-      Color.printf Color.Red "spec (abstraction type environment)::@. @[";
+      Color.printf Color.Red "spec (abstraction type environment):@. @[";
       List.iter (fun (x,typ) -> Format.printf "@[%a: %a%a%t@]@\n" Syntax.print_id x Color.set Color.Blue Syntax.print_typ typ Color.reset) aenv;
       Format.printf "@."
     end;
   if cpsenv <> []
   then
     begin
-      Color.printf Color.Red "spec (abstraction type environment for CPS transformed program)::@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a%a%t@]@\n" Syntax.print_id x Color.set Color.Blue Syntax.print_typ typ Color.reset) aenv;
+      Color.printf Color.Red "spec (abstraction type environment for CPS transformed program):@. @[";
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a%a%t@]@\n" Syntax.print_id x Color.set Color.Blue Syntax.print_typ typ Color.reset) cpsenv;
       Format.printf "@."
     end;
   if inlined <> []
   then
     begin
-      Color.printf Color.Red "spec (inlined functions)::@. @[";
+      Color.printf Color.Red "spec (inlined functions):@. @[";
       List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined;
       Format.printf "@."
     end;
   if inlined_f <> []
   then
     begin
-      Color.printf Color.Red "spec (force inlined functions)::@. @[";
+      Color.printf Color.Red "spec (force inlined functions):@. @[";
       List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined_f;
       Format.printf "@."
     end
@@ -41,13 +41,13 @@ let parse parser lexer filename =
   if filename = ""
   then init
   else
-    let lb = Lexing.from_channel (open_in filename) in
-      lb.Lexing.lex_curr_p <-
-        {Lexing.pos_fname = Filename.basename filename;
-         Lexing.pos_lnum = 1;
-         Lexing.pos_cnum = 0;
-         Lexing.pos_bol = 0};
-      parser lexer lb
+    let lb = Lexing.from_channel @@ open_in filename in
+    lb.Lexing.lex_curr_p <-
+      {Lexing.pos_fname = Filename.basename filename;
+       Lexing.pos_lnum = 1;
+       Lexing.pos_cnum = 0;
+       Lexing.pos_bol = 0};
+    parser lexer lb
 
 
 let parse_comment parser lexer filename =
@@ -58,7 +58,7 @@ let parse_comment parser lexer filename =
       None -> str
     | Some s when Str.string_match (Str.regexp "(\\*{SPEC}") s 0 -> loop true str
     | Some s when Str.string_match (Str.regexp "{SPEC}\\*)") s 0 -> loop false str
-    | Some s when flag -> loop true (str ^ s)
+    | Some s when flag -> loop true (str ^ "\n" ^ s)
     | _ -> loop false str
   in
   parser lexer @@ Lexing.from_string @@ loop false ""

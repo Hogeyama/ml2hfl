@@ -14,7 +14,9 @@ let check_var x typ =
 let rec check t typ =
   if false then Format.printf "CHECK: %a, %a@." pp_print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
-  then (Format.printf "check: %a, %a%a%t@." print_term' t Color.set Color.Yellow Syntax.print_typ typ Color.reset; assert false);
+  then (Format.printf "check: %a%a%t, %a%a%t@."
+                      Color.set Color.Red print_term' t Color.reset
+                      Color.set Color.Yellow Syntax.print_typ typ Color.reset; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
       {desc=Const Unit; typ=TUnit} -> ()
     | {desc=Const CPS_result; typ=typ} when typ = typ_result -> ()

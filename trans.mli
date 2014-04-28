@@ -46,3 +46,4 @@ val flatten_let : typed_term -> typed_term
 val normalize_let : typed_term -> typed_term
 val inline_let_var : typed_term -> typed_term
 val remove_label : typed_term -> typed_term
+val decomp_pair_eq : typed_term -> typed_term

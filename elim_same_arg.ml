@@ -4,6 +4,9 @@ open Term_util
 open Type
 
 
+let debug = true
+
+
 let get_args = make_col2 [] List.rev_append
 
 let get_args_desc (f:id) desc =
@@ -24,7 +27,7 @@ let same_term env t1 t2 =
     let conv t = FpatInterface.conv_formula @@ snd @@ CEGAR_util.trans_term "" [] [] t in
     let env' = List.map conv env in
     let p' = conv @@ make_eq t1 t2 in
-    Fpat.SMTProver.implies env' [p']
+    Fpat.SMTProver.implies_dyn env' [p']
   else t1.desc = t2.desc
 
 let make_all xs =
@@ -62,7 +65,7 @@ let rec get_same_args env f t args =
 
 let is_partial f ts =
   let xs,_ = decomp_tfun @@ Id.typ f in
-  List.length xs = List.length ts
+  List.length xs <> List.length ts
 
 let get_diff_args_desc (env,f) desc =
   match desc with
@@ -142,9 +145,11 @@ let trans_desc env desc =
     Let(_, [f,xs,{desc=Fun _}], t2) -> assert false
   | Let(flag, [f,xs,t1], t2) ->
     let same_args = get_same_args env f t2 @@ make_all xs in
-    Color.printf Color.Reverse "%a: [" Id.print f;
-    List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args;
-    Color.printf Color.Reverse "]@.";
+    if debug then begin
+      Color.printf Color.Reverse "%a: [" Id.print f;
+      List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args;
+      Color.printf Color.Reverse "]@."
+    end;
     let elim_args = List.map snd same_args in
     let f' =
       let typ = elim_arg_typ elim_args @@ Id.typ f in

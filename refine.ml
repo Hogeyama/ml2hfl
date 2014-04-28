@@ -10,8 +10,8 @@ exception CannotRefute
 let equiv env t1 t2 =
   let t1' = FpatInterface.conv_formula t1 in
   let t2' = FpatInterface.conv_formula t2 in
-  Fpat.SMTProver.implies [t1'] [t2'] &&
-  Fpat.SMTProver.implies [t2'] [t1']
+  Fpat.SMTProver.implies_dyn [t1'] [t2'] &&
+  Fpat.SMTProver.implies_dyn [t2'] [t1']
 
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
@@ -121,7 +121,7 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
       add_time tmp Flag.time_cegar;
       raise e
 
-exception PostCondition of (Fpat.Idnt.t * Fpat.MLType.t) list * Fpat.Formula.t * Fpat.Formula.t
+exception PostCondition of (Fpat.Idnt.t * Fpat.Type.t) list * Fpat.Formula.t * Fpat.Formula.t
 
 let print_list fm = function
   | [] -> Format.fprintf fm "[]@."

@@ -21,10 +21,8 @@ let new_id x =
     x'
 
 let rec occur_arg_pred x = function
-    TBase(_,ps) -> List.mem x (rev_flatten_map get_fv (ps (Const Unit)))
-  | TFun(typ1,typ2) ->
-      let typ2 = typ2 (Const Unit) in
-        occur_arg_pred x typ1 || occur_arg_pred x typ2
+  | TBase(_,ps) -> List.mem x (rev_flatten_map get_fv (ps (Const Unit)))
+  | TFun(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x @@ typ2 (Const Unit)
   | TAbs _ -> assert false
   | TApp(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x typ2
 
@@ -33,7 +31,7 @@ let rec print_var = Format.pp_print_string
 and print_var_typ env fm x = Format.fprintf fm "(%a:%a)" print_var x print_typ (List.assoc x env)
 
 and print_typ_base fm = function
-    TUnit -> Format.fprintf fm "unit"
+  | TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
   | TTuple n -> Format.fprintf fm "tuple"
@@ -41,7 +39,7 @@ and print_typ_base fm = function
   | TAbst s -> Format.pp_print_string fm s
 
 and print_typ_aux var fm = function
-    TBase(b,ps) ->
+  | TBase(b,ps) ->
       let x,occur = match var with None -> new_id "x", false | Some(x,occur) -> x, occur in
       let preds = ps (Var x) in
         if occur || List.mem x (rev_flatten_map get_fv preds) then Format.fprintf fm "%a:" print_var x;
@@ -49,15 +47,16 @@ and print_typ_aux var fm = function
         if preds <> [] then Format.fprintf fm "[@[%a%a%t@]]" Color.set Color.Blue (print_list print_linear_exp ";@ ") preds Color.reset
   | TFun _ as typ ->
       let rec aux b fm = function
-          TFun(typ1, typ2) ->
+        | TFun(typ1, typ2) ->
             let x = new_id "x" in
             let typ2 = typ2 (Var x) in
             let s1,s2 = if b then "(",")" else "","" in
             let var' = Some(x, occur_arg_pred x typ2) in
-            let b' = match typ2 with TFun _ -> true | _ -> false in
-              if b'
-              then Format.fprintf fm "%s@[%a ->@ %a@]%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
-              else Format.fprintf fm "%s%a -> %a%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+            begin
+              match typ2 with
+              | TFun _ -> Format.fprintf fm "%s@[%a@ ->@ %a@]%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+              | _ -> Format.fprintf fm "%s%a@ ->@ %a%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+            end
         | typ -> print_typ_aux None fm typ
       in
         aux true fm typ
@@ -71,7 +70,8 @@ and print_typ fm typ =
   print_typ_aux None fm typ
 
 and print_env fm env =
-  List.iter (fun (f,typ) -> Format.fprintf fm "@[%a%a%t : %a@]@\n" Color.set Color.Yellow print_var f Color.reset print_typ typ) env
+  let pr (f,typ) = Format.fprintf fm "  %a%a%t : @[%a@]@." Color.set Color.Yellow print_var f Color.reset print_typ typ in
+  List.iter pr env
 
 and print_const fm = function
   | Unit -> Format.fprintf fm "()"
@@ -149,15 +149,13 @@ and print_fun_def fm (f,xs,t1,es,t2) =
     else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
 
 and print_prog fm prog =
-  Format.fprintf fm "@[Main: %a@\n  @[%a@]@]@?"
+  Format.fprintf fm "@[Main: %a@\n  @[%a@]@."
     print_var prog.main
     (print_list print_fun_def "@\n") prog.defs
 
 and print_prog_typ fm prog =
-  Format.fprintf fm "@[Main: %a@\n  @[%a@]@\n@]@[Types:@\n  @[%a@]@]@?"
-    print_var prog.main
-    (print_list print_fun_def "@\n") prog.defs
-    print_env prog.env
+  print_prog fm prog;
+  Format.fprintf fm "Types:@.@[%a@]@?" print_env prog.env
 
 
 

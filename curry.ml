@@ -191,4 +191,4 @@ and remove_pair t = root (remove_pair_aux t None)
 let remove_pair t =
   let t' = remove_pair t in
   let () = Type_check.check t' typ_result in
-    t', uncurry_rtyp t
+  t', uncurry_rtyp t

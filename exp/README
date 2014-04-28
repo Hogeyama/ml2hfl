@@ -1,0 +1,20 @@
+exp/manager.opt is a benchmark manager for MoCHi.
+
+Notes:
+- This program assume that the current directory is the MoCHi directory".
+- This program uses git and Unix commands.
+- All data are stored as wiki pages.
+  You can see the registered programs and benchmark results on the wiki of MoCHi in BitBucket.
+  If you want to add comments of programs and results, write comments directly on the (top or bottom of) wiki page.
+
+Basic usage:
+1. Use "exp/manager.opt -add <program>" to register <program> as a benchmark program.
+2. Use "exp/manager.opt -add-option <options>" to register <options> as an option of MoCHi.
+3. Run the benchmark by "exp/manager.opt -exp <n>".
+   Here, <n> is the option number that can be seen by "exp/manager.opt -list-option"
+
+Other commands:
+- "exp/manager.opt -exp-all" runs the benchmark for each option
+- "exp/manager.opt -list" shows all the registered programs
+- "exp/manager.opt -rm <program>" removes <program>
+- "exp/manager.opt -help" lists all the options

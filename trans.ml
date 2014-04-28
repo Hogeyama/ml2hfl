@@ -794,10 +794,10 @@ let rec replace_typ_aux env t =
               if not (Type.can_unify (Id.typ f) (Id.typ f'))
               then
                 let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
-                let () = Format.printf "Prog: %a@.Spec: %a@." print_id_typ f print_id_typ f'' in
+                Format.printf "Prog: %a@.Spec: %a@." print_id_typ f print_id_typ f'';
                 let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
                 let msg = msg ^ " (please specify monomorphic types if polymorphic types exist)" in
-                  raise (Fatal msg)
+                raise (Fatal msg)
             in
             let xs' =
               let ys = take (get_args (Id.typ f')) (List.length xs) in
@@ -2319,9 +2319,38 @@ let remove_label = make_trans ()
 
 let remove_label_term t =
   match t.desc with
-    Label(_, t) -> remove_label.tr_term t
+  | Label(_, t) -> remove_label.tr_term t
   | _ -> remove_label.tr_term_rec t
 
 let () = remove_label.tr_term <- remove_label_term
 
 let remove_label = remove_label.tr_term
+
+
+
+let decomp_pair_eq = make_trans ()
+
+let decomp_pair_eq_term t =
+  match t.desc with
+  | BinOp(Eq, t1, t2) ->
+      begin match t1.typ with
+      | TPair(x,typ2) ->
+          let aux t =
+            match t with
+            | {desc=Var y} -> y, id
+            | _ ->
+                let y = var_of_term t in
+                y, make_let [y,[],t]
+          in
+          let y1,post1 = aux t1 in
+          let y2,post2 = aux t2 in
+          let t1 = make_eq (make_fst @@ make_var y1) (make_fst @@ make_var y2) in
+          let t2 = make_eq (make_snd @@ make_var y1) (make_snd @@ make_var y2) in
+          post2 @@ post1 @@ decomp_pair_eq.tr_term @@ make_and t1 t2
+      | _ -> decomp_pair_eq.tr_term_rec t
+      end
+  | _ -> decomp_pair_eq.tr_term_rec t
+
+let () = decomp_pair_eq.tr_term <- decomp_pair_eq_term
+
+let decomp_pair_eq = decomp_pair_eq.tr_term

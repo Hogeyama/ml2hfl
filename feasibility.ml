@@ -12,7 +12,7 @@ type result =
 let debug = false
 
 let checksat env t =
-  Fpat.SMTProver.is_sat @@ FpatInterface.conv_formula t
+  Fpat.SMTProver.is_sat_dyn @@ FpatInterface.conv_formula t
 
 let get_solution env t =
   t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort compare |> List.map snd
@@ -74,9 +74,9 @@ let rec get_prefix ce n =
     | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce {defs=defs; main=main} =
-  let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@." CEGAR_print.ce ce in
+  let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
-  let () = if !Flag.print_progress then Color.printf Color.Green "\n(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
+  let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
   let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
@@ -88,9 +88,9 @@ let check ce {defs=defs; main=main} =
     then Feasible (env', get_solution env' constr)
     else Infeasible prefix
   in
-    if !Flag.print_progress then Format.printf "DONE!@.@.";
-    add_time time_tmp Flag.time_cegar;
-    result
+  if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
+  add_time time_tmp Flag.time_cegar;
+  result
 
 
 
