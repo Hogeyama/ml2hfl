@@ -193,7 +193,7 @@ and print_id = Id.print
 
 and print_id_typ fm x =
   let typ = Id.typ x in
-  fprintf fm "(%a:%a)" Id.print x (Color.wrap Color.Cyan print_typ) typ
+  fprintf fm "(%a:%a)" Id.print x (Color.cyan print_typ) typ
 
 and print_ids_typ fm xs = print_list print_id_typ "@ " ~last:true fm xs
 

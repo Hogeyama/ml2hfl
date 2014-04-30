@@ -81,7 +81,7 @@ and print_typed_termlist fm = List.iter (fun bd -> Format.fprintf fm "@;%a" prin
 and print_typed_term fm {t_cps=t; typ_cps=typ; effect=e} =
   match true, !sol e with
       true, EUnknown -> Format.fprintf fm "(%a :%a: %a)" print_t_cps t print_evar e print_typ_cps typ
-    | true, e -> Format.fprintf fm "(%a :%a: %a)" print_t_cps t (Color.wrap Color.Green print_effect) e (Color.wrap Color.Cyan print_typ_cps) typ
+    | true, e -> Format.fprintf fm "(%a :%a: %a)" print_t_cps t (Color.green print_effect) e (Color.cyan print_typ_cps) typ
     | _ -> Format.fprintf fm "(%a : %a)" print_t_cps t print_typ_cps typ
 
 and print_t_cps fm = function

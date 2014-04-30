@@ -15,8 +15,8 @@ let rec check t typ =
   if false then Format.printf "CHECK: %a, %a@." pp_print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@."
-                      (Color.wrap Color.Red print_term') t
-                      (Color.wrap Color.Yellow Syntax.print_typ) typ; assert false);
+                      (Color.red print_term') t
+                      (Color.yellow Syntax.print_typ) typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
       {desc=Const Unit; typ=TUnit} -> ()
     | {desc=Const CPS_result; typ=typ} when typ = typ_result -> ()
@@ -138,6 +138,6 @@ let rec check t typ =
           check t1 typ;
           check t2 (TFun(e,typ))
     | {desc=Bottom} -> ()
-    | _ -> Format.printf "check': %a, %a@." print_term' t (Color.wrap Color.Yellow Syntax.print_typ) t.typ; assert false
+    | _ -> Format.printf "check': %a, %a@." print_term' t (Color.yellow Syntax.print_typ) t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ

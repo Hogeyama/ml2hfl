@@ -33,7 +33,14 @@ val fprintf : Format.formatter -> color -> ('a, Format.formatter, unit) format -
 val printf : color -> ('a, Format.formatter, unit) format -> 'a
 (** Partial application does not work *)
 
-val blue : Format.formatter -> string -> unit
-val red : Format.formatter -> string -> unit
-val green : Format.formatter -> string -> unit
-val cyan : Format.formatter -> string -> unit
+val blue : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+val red : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+val green : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+val cyan : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+val yellow : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
+
+val s_blue : Format.formatter -> string -> unit
+val s_red : Format.formatter -> string -> unit
+val s_green : Format.formatter -> string -> unit
+val s_cyan : Format.formatter -> string -> unit
+val s_yellow : Format.formatter -> string -> unit

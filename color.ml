@@ -1,6 +1,6 @@
 
 type color =
-    Default
+  | Default
   | Bright
   | Dim
   | Underscore
@@ -76,9 +76,16 @@ let fprintf ppf c =
   Format.kfprintf (fun _ -> reset ppf) ppf
 let printf c = fprintf Format.std_formatter c
 
-let blue ppf s = fprintf ppf Blue "%s" s
-let red ppf s = fprintf ppf Red "%s" s
-let green ppf s = fprintf ppf Green "%s" s
-let cyan ppf s = fprintf ppf Cyan "%s" s
+let wrap c pr ppf x = fprintf ppf c "%a" pr x
 
-let wrap c pr fm x = fprintf fm c "%a" pr x
+let blue pr ppf x = wrap Blue pr ppf x
+let red pr ppf x = wrap Red pr ppf x
+let green pr ppf x = wrap Green pr ppf x
+let cyan pr ppf x = wrap Cyan pr ppf x
+let yellow pr ppf x = wrap Yellow pr ppf x
+
+let s_blue ppf s = fprintf ppf Blue "%s" s
+let s_red ppf s = fprintf ppf Red "%s" s
+let s_green ppf s = fprintf ppf Green "%s" s
+let s_cyan ppf s = fprintf ppf Cyan "%s" s
+let s_yellow ppf s = fprintf ppf Yellow "%s" s

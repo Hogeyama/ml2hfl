@@ -12,14 +12,14 @@ let print {abst_env=aenv; abst_cps_env=cpsenv; inlined=inlined; inlined_f=inline
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.wrap Color.Blue Syntax.print_typ) typ) aenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) aenv;
       Format.printf "@."
     end;
   if cpsenv <> []
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment for CPS transformed program):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.wrap Color.Blue Syntax.print_typ) typ) cpsenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) cpsenv;
       Format.printf "@."
     end;
   if inlined <> []
