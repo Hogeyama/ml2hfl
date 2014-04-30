@@ -83,6 +83,7 @@ val typ_result : typ
 val typ_event : typ
 val typ_event' : typ
 val typ_event_cps : typ
+val typ_excep_init : typ
 val typ_excep : typ ref
 
 (** {6 Term constructor} *)
@@ -198,3 +199,4 @@ val is_simple_bexp : typed_term -> bool
 val same_term : typed_term -> typed_term -> bool
 val var_name_of_term : typed_term -> string
 val var_of_term : typed_term -> id
+val make_term : typ -> typed_term

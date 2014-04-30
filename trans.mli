@@ -17,7 +17,7 @@ val trans_let : typed_term -> typed_term
 val propagate_typ_arg : typed_term -> typed_term
 val replace_typ : (Syntax.id * Syntax.typ) list -> typed_term -> typed_term
 val eval : typed_term -> typed_term
-val eta_reduce : typed_term -> typed_term
+val beta_reduce : typed_term -> typed_term
 val normalize_binop_exp : binop -> typed_term -> typed_term -> term
 val normalize_bool_exp : typed_term -> typed_term
 val get_and_list : typed_term -> typed_term list
@@ -47,3 +47,4 @@ val normalize_let : typed_term -> typed_term
 val inline_let_var : typed_term -> typed_term
 val remove_label : typed_term -> typed_term
 val decomp_pair_eq : typed_term -> typed_term
+val elim_unused_let : typed_term -> typed_term

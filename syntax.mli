@@ -109,3 +109,4 @@ val pp_print_term' : Format.formatter -> typed_term -> unit
 (** Same as [print_term'] *)
 val pp_print_term_typ : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
+val print_constr : Format.formatter -> typed_term -> unit

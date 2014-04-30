@@ -598,7 +598,8 @@ let typ_event_cps =
   let r = Id.new_var "" TUnit in
   let k = Id.new_var "" (TFun(r,typ_result)) in
     TFun(u, TFun(k, typ_result))
-let typ_excep = ref (TConstr("exn",true))
+let typ_excep_init = TConstr("exn",true)
+let typ_excep = ref typ_excep_init
 
 let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
@@ -814,6 +815,7 @@ let rec make_term typ =
   | TInt -> make_int 0
   | TFun(x,typ) -> make_fun x (make_term typ)
   | TPair(x,typ) -> make_pair (make_term @@ Id.typ x) (make_term typ)
+  | TConstr("X", false) -> cps_result
   | _ -> Format.printf "ERROR:@.%a@." Syntax.pp_print_typ typ; assert false
 
 
@@ -1427,7 +1429,7 @@ and same_desc t1 t2 =
     Const c1, Const c2 -> same_const c1 c2
   | Unknown, Unknown -> true
   | RandInt b1, RandInt b2 -> b1 = b2
-  | RandValue _, RandValue _ -> unsupported "same_term"
+  | RandValue _, RandValue _ -> unsupported "same_term 1 "
   | Var x, Var y -> Id.same x y
   | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
   | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
@@ -1439,20 +1441,21 @@ and same_desc t1 t2 =
   | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
   | Not t1, Not t2 -> same_term t1 t2
   | Event(s1,b1), Event(s2,b2) -> s1 = s2 && b1 = b2
-  | Record _, Record _ -> unsupported "same_term"
-  | Proj _, Proj _ -> unsupported "same_term"
-  | SetField _, SetField _ -> unsupported "same_term"
+  | Record _, Record _ -> unsupported "same_term 2"
+  | Proj _, Proj _ -> unsupported "same_term 3"
+  | SetField _, SetField _ -> unsupported "same_term 4"
   | Nil, Nil -> true
-  | Cons _, Cons _ -> unsupported "same_term"
-  | Constr _, Constr _ -> unsupported "same_term"
-  | Match _, Match _ -> unsupported "same_term"
-  | Raise _, Raise _ -> unsupported "same_term"
-  | TryWith _, TryWith _ -> unsupported "same_term"
+  | Cons _, Cons _ -> unsupported "same_term 5"
+  | Constr _, Constr _ -> unsupported "same_term 6"
+  | Match _, Match _ -> unsupported "same_term 7"
+  | Raise _, Raise _ -> unsupported "same_term 8"
+  | TryWith _, TryWith _ -> unsupported "same_term 9"
   | Pair(t11,t12), Pair(t21,t22) -> same_term t11 t21 && same_term t12 t22
   | Fst t1, Fst t2 -> same_term t1 t2
   | Snd t1, Snd t2 -> same_term t1 t2
-  | Bottom _, Bottom _ -> unsupported "same_term"
-  | Label _, Label _ -> unsupported "same_term"
+  | Bottom, Bottom -> true
+  | Label _, Label _ -> unsupported "same_term 11"
+  | _ -> false
 
 and same_info i1 i2 = unsupported "same_term"
 and same_type_kind k1 k2 = unsupported "same_term"

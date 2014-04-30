@@ -62,7 +62,7 @@ CMO = $(OCAML_CMO) \
 	syntax.cmo term_util.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
 	ref_type.cmo type_check.cmo trans.cmo lift.cmo CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo \
-	useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
+	slicer.cmo useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
 	CPS.cmo curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	encode_list.cmo encode_rec.cmo CEGAR_abst_util.cmo \
 	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \

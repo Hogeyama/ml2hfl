@@ -87,25 +87,25 @@ let rec can_unify typ1 typ2 =
 let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
   let print' = print ~occur print_pred in
   let print_preds ps = print_list print_pred "; " ps in
-    match typ with
-        TUnit -> Format.fprintf fm "unit"
-      | TAbsBool -> Format.fprintf fm "abool"
-      | TBool -> Format.fprintf fm "bool"
-      | TInt -> Format.fprintf fm "int"
-      | TRInt p -> assert false (*Format.fprintf fm "{ %a | %a }" Id.print abst_var print_preds [p]*)
-      | TVar{contents=Some typ} -> print' fm typ
-      | TVar _ -> Format.fprintf fm "!!!"
-      | TFun(x, typ) ->
-          if occur x typ
-          then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" Id.print x print' (Id.typ x) print' typ
-          else Format.fprintf fm "(@[%a@ ->@ %a@])" print' (Id.typ x) print' typ
-      | TList typ -> Format.fprintf fm "@[%a list@]" print' typ
-      | TPair(x,typ) ->
-          if occur x typ
-          then Format.fprintf fm "(@[%a:%a@ *@ %a@])" Id.print x print' (Id.typ x) print' typ
-          else Format.fprintf fm "(@[%a@ *@ %a@])" print' (Id.typ x) print' typ
-      | TConstr(s,_) -> Format.pp_print_string fm s
-      | TPred(x,ps) -> Format.fprintf fm "@[%a[\\%a. %a]@]" print' (Id.typ x) Id.print x print_preds ps
+  match typ with
+  | TUnit -> Format.fprintf fm "unit"
+  | TAbsBool -> Format.fprintf fm "abool"
+  | TBool -> Format.fprintf fm "bool"
+  | TInt -> Format.fprintf fm "int"
+  | TRInt p -> assert false (*Format.fprintf fm "{ %a | %a }" Id.print abst_var print_preds [p]*)
+  | TVar{contents=Some typ} -> print' fm typ
+  | TVar _ -> Format.fprintf fm "!!!"
+  | TFun(x, typ) when occur x typ ->
+      Format.fprintf fm "(@[<hov 2>%a:%a@ ->@ %a@])" Id.print x print' (Id.typ x) print' typ
+  | TFun(x, typ) ->
+      Format.fprintf fm "(@[<hov 2>%a@ ->@ %a@])" print' (Id.typ x) print' typ
+  | TList typ -> Format.fprintf fm "@[%a list@]" print' typ
+  | TPair(x,typ) when occur x typ ->
+      Format.fprintf fm "(@[<hov 2>%a:%a@ *@ %a@])" Id.print x print' (Id.typ x) print' typ
+  | TPair(x,typ) ->
+      Format.fprintf fm "(@[<hov 2>%a@ *@ %a@])" print' (Id.typ x) print' typ
+  | TConstr(s,_) -> Format.pp_print_string fm s
+  | TPred(x,ps) -> Format.fprintf fm "@[%a[\\%a. %a]@]" print' (Id.typ x) Id.print x print_preds ps
 
 
 let print_typ_init typ = print (fun _ -> assert false) typ

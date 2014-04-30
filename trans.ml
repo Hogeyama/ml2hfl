@@ -193,46 +193,46 @@ let copy_poly_funs = make_trans ()
 
 let copy_poly_funs_desc desc =
   match desc with
-      Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
-        let tvars = get_tvars (Id.typ f) in
-        let () = assert (tvars <> []) in
-        let t2' = copy_poly_funs.tr_term t2 in
-        let t2'' = inst_tvar_tunit t2' in
-        let map,t2''' = rename_poly_funs f t2'' in
-        let n = List.length map in
-          if !Flag.debug_level > 0 && n >= 2
-          then
-            begin
-              Format.printf "COPY: @[";
-              List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
-              Format.printf "@.";
-            end;
-          if map = []
-          then (inst_tvar_tunit (make_let_f flag [f, xs, copy_poly_funs.tr_term t1] t2')).desc
-          else
-            let aux t (_,f') =
-              let tvar_map = List.map (fun v -> v, ref None) tvars in
-              let () = Type.unify (rename_tvar.tr2_typ tvar_map (Id.typ f)) (Id.typ f') in
-              let xs = List.map (rename_tvar.tr2_var tvar_map) xs in
-              let t1 = rename_tvar.tr2_term tvar_map t1 in
-              let xs' = xs in
-              let t1 =
-                match flag with
-                    Nonrecursive -> t1
-                  | Recursive -> subst f (make_var f') t1
-              in
-              let t1 = copy_poly_funs.tr_term t1 in
-                make_let_f flag [f', xs', t1] t
-            in
-              (List.fold_left aux t2''' map).desc
-    | Let(flag, defs, t) ->
-        if List.for_all (fun (f,_,_) -> not (is_poly_typ (Id.typ f))) defs
-        then
-          let defs' = List.map (fun (f,xs,t) -> f, xs, copy_poly_funs.tr_term t) defs in
-            Let(flag, defs', copy_poly_funs.tr_term t)
-        else
-          raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic type.\nPlease use type annotations.")
-    | _ -> copy_poly_funs.tr_desc_rec desc
+  | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
+      let tvars = get_tvars (Id.typ f) in
+      assert (tvars <> []);
+      let t2' = copy_poly_funs.tr_term t2 in
+      let t2'' = inst_tvar_tunit t2' in
+      let map,t2''' = rename_poly_funs f t2'' in
+      let n = List.length map in
+      if !Flag.debug_level > 0 && n >= 2
+      then
+        begin
+          Format.printf "COPY: @[";
+          List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
+          Format.printf "@.";
+        end;
+      if map = []
+      then (inst_tvar_tunit (make_let_f flag [f, xs, copy_poly_funs.tr_term t1] t2')).desc
+      else
+        let aux t (_,f') =
+          let tvar_map = List.map (fun v -> v, ref None) tvars in
+          let () = Type.unify (rename_tvar.tr2_typ tvar_map (Id.typ f)) (Id.typ f') in
+          let xs = List.map (rename_tvar.tr2_var tvar_map) xs in
+          let t1 = rename_tvar.tr2_term tvar_map t1 in
+          let xs' = xs in
+          let t1 =
+            match flag with
+              Nonrecursive -> t1
+            | Recursive -> subst f (make_var f') t1
+          in
+          let t1 = copy_poly_funs.tr_term t1 in
+          make_let_f flag [f', xs', t1] t
+        in
+        (List.fold_left aux t2''' map).desc
+  | Let(flag, defs, t) ->
+      if List.for_all (fun (f,_,_) -> not (is_poly_typ (Id.typ f))) defs
+      then
+        let defs' = List.map (fun (f,xs,t) -> f, xs, copy_poly_funs.tr_term t) defs in
+        Let(flag, defs', copy_poly_funs.tr_term t)
+      else
+        raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic type.\nPlease use type annotations.")
+  | _ -> copy_poly_funs.tr_desc_rec desc
 
 let () = copy_poly_funs.tr_desc <- copy_poly_funs_desc
 
@@ -938,40 +938,41 @@ let rec eval t =
 
 (* reduce only terms of the form "(fun x -> t1) t2" *)
 (* t is assumed to be a CBN-program *)
-let rec eta_reduce t =
+let rec beta_reduce t =
   let desc =
     match t.desc with
-        Const c -> Const c
-      | Unknown -> Unknown
-      | RandInt b -> RandInt b
-      | RandValue(typ,b) -> RandValue(typ,b)
-      | Var x -> Var x
-      | Fun(x, t) -> Fun(x, eta_reduce t)
-      | App(t, []) -> (eta_reduce t).desc
-      | App(t1, t2::ts) ->
-          begin
-            match eta_reduce t1 with
-                {desc=Fun(x,t1')} ->
-                  (eta_reduce {desc=App(subst x t2 t1', ts); typ=t.typ}).desc
-              | t1' ->
-                  let ts' = List.map eta_reduce (t2::ts) in
-                    (make_app t1' ts').desc
-          end
-      | If(t1, t2, t3) -> If(eta_reduce t1, eta_reduce t2, eta_reduce t3)
-      | Let(flag,bindings,t) ->
-          let bindings' = List.map (fun (f,xs,t) -> f, xs, eta_reduce t) bindings in
-            Let(flag, bindings', eta_reduce t)
-      | BinOp(op, t1, t2) -> BinOp(op, eta_reduce t1, eta_reduce t2)
-      | Not t1 -> Not (eta_reduce t1)
-      | Event(s,b) -> Event(s,b)
-      | Pair(t1,t2) -> Pair(eta_reduce t1, eta_reduce t2)
-      | Fst t1 -> Fst (eta_reduce t1)
-      | Snd t1 -> Snd (eta_reduce t1)
-      | Bottom -> Bottom
-      | _ -> Format.printf "%a@." pp_print_term t; assert false
+    | Const c -> Const c
+    | Unknown -> Unknown
+    | RandInt b -> RandInt b
+    | RandValue(typ,b) -> RandValue(typ,b)
+    | Var x -> Var x
+    | Fun(x, t) -> Fun(x, beta_reduce t)
+    | App(t, []) -> (beta_reduce t).desc
+    | App(t1, t2::ts) ->
+        begin
+          match beta_reduce t1 with
+          | {desc=Fun(x,t1')} ->
+              (beta_reduce {desc=App(subst x t2 t1', ts); typ=t.typ}).desc
+          | t1' ->
+              let ts' = List.map beta_reduce (t2::ts) in
+              (make_app t1' ts').desc
+        end
+    | If(t1, t2, t3) -> If(beta_reduce t1, beta_reduce t2, beta_reduce t3)
+    | Let(flag,bindings,t) ->
+        let bindings' = List.map (fun (f,xs,t) -> f, xs, beta_reduce t) bindings in
+        Let(flag, bindings', beta_reduce t)
+    | BinOp(op, t1, t2) -> BinOp(op, beta_reduce t1, beta_reduce t2)
+    | Not t1 -> Not (beta_reduce t1)
+    | Event(s,b) -> Event(s,b)
+    | Pair(t1,t2) -> Pair(beta_reduce t1, beta_reduce t2)
+    | Fst t1 -> Fst (beta_reduce t1)
+    | Snd t1 -> Snd (beta_reduce t1)
+    | Bottom -> Bottom
+    | _ -> Format.printf "%a@." pp_print_term t; assert false
   in
-    if false then Format.printf "%a ===> %a@." pp_print_term t pp_print_term {desc=desc; typ=t.typ};
-    {desc=desc; typ=t.typ}
+  let t' = {desc=desc; typ=t.typ} in
+  if false && t<>t' then Format.printf "%a ===> %a@.@." pp_print_term t pp_print_term t';
+  t'
 
 
 
@@ -2354,3 +2355,19 @@ let decomp_pair_eq_term t =
 let () = decomp_pair_eq.tr_term <- decomp_pair_eq_term
 
 let decomp_pair_eq = decomp_pair_eq.tr_term
+
+
+
+let elim_unused_let = make_trans ()
+
+let elim_unused_let_term t =
+  match t.desc with
+  | Let(Nonrecursive, bindings, t) ->
+      let fv = get_fv t in
+      let bindings' = List.filter (fun (f,_,_) -> Id.mem f fv) bindings in
+      make_let bindings' t
+  | _ -> elim_unused_let.tr_term_rec t
+
+let () = elim_unused_let.tr_term <- elim_unused_let_term
+
+let elim_unused_let = elim_unused_let.tr_term

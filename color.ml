@@ -80,3 +80,5 @@ let blue ppf s = fprintf ppf Blue "%s" s
 let red ppf s = fprintf ppf Red "%s" s
 let green ppf s = fprintf ppf Green "%s" s
 let cyan ppf s = fprintf ppf Cyan "%s" s
+
+let wrap c pr fm x = fprintf fm c "%a" pr x

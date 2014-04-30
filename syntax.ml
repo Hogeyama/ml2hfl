@@ -193,15 +193,14 @@ and print_id = Id.print
 
 and print_id_typ fm x =
   let typ = Id.typ x in
-  fprintf fm "(%a:%a%a%t)" Id.print x Color.set Color.Cyan print_typ typ Color.reset
+  fprintf fm "(%a:%a)" Id.print x (Color.wrap Color.Cyan print_typ) typ
 
-and print_ids_typ fm = function
-    [] -> ()
-  | x::xs -> fprintf fm "%a %a" print_id_typ x print_ids_typ xs
+and print_ids_typ fm xs = print_list print_id_typ "@ " ~last:true fm xs
 
 (* priority (low -> high)
    10 : Let, Letrec, If, Match, TryWith
-   20 : Fun
+   15 : Fun
+   20 : Pair
    30 : Or
    40 : And
    50 : Eq, Lt, Gt, Leq, Geq
@@ -253,7 +252,7 @@ and print_const fm = function
   | Int32 n -> fprintf fm "%ldl" n
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
-  | CPS_result -> fprintf fm "end"
+  | CPS_result -> fprintf fm "{end}"
 
 and print_term pri typ fm t = print_desc pri typ fm t.desc
 
@@ -291,7 +290,7 @@ and print_desc pri typ fm desc =
       let p_ids fm xs =
         if typ
         then fprintf fm "%a@ %a" print_id (List.hd xs) print_ids_typ (List.tl xs)
-        else fprintf fm "%a" print_ids xs
+        else print_ids fm xs
       in
       let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
       let b = ref true in
@@ -603,3 +602,37 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
     fprintf fm "%a %a-> %a.\n" print_id f print_ids xs pp_print_term t
   in
     List.iter print_fundef defs
+
+
+
+let string_of_constr t =
+  match t.desc with
+  | Const _ -> "Const"
+  | Unknown -> "Unknown"
+  | RandInt _ -> "RandInt"
+  | RandValue _ -> "RandValue"
+  | Var _ -> "Var"
+  | Fun _ -> "Fun"
+  | App _ -> "App"
+  | If _ -> "If"
+  | Branch _ -> "Branch"
+  | Let _ -> "Let"
+  | BinOp _ -> "BinOp"
+  | Not _ -> "Not"
+  | Event _ -> "Event"
+  | Record _ -> "Record"
+  | Proj _ -> "Proj"
+  | SetField _ -> "SetField"
+  | Nil -> "Nil"
+  | Cons _ -> "Cons"
+  | Constr _ -> "Constr"
+  | Match _ -> "Match"
+  | Raise _ -> "Raise"
+  | TryWith _ -> "TryWith"
+  | Pair _ -> "Pair"
+  | Fst _ -> "Fst"
+  | Snd _ -> "Snd"
+  | Bottom -> "Bottom"
+  | Label _ -> "Label"
+
+let print_constr fm t = pp_print_string fm @@ string_of_constr t

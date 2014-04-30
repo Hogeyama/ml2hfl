@@ -44,7 +44,7 @@ and print_typ_aux var fm = function
       let preds = ps (Var x) in
         if occur || List.mem x (rev_flatten_map get_fv preds) then Format.fprintf fm "%a:" print_var x;
         Format.fprintf fm "%a" print_typ_base b;
-        if preds <> [] then Format.fprintf fm "[@[%a%a%t@]]" Color.set Color.Blue (print_list print_linear_exp ";@ ") preds Color.reset
+        if preds <> [] then Format.fprintf fm "[@[%a@]]" (Color.wrap Color.Blue @@ print_list print_linear_exp ";@ ") preds
   | TFun _ as typ ->
       let rec aux b fm = function
         | TFun(typ1, typ2) ->
@@ -70,7 +70,7 @@ and print_typ fm typ =
   print_typ_aux None fm typ
 
 and print_env fm env =
-  let pr (f,typ) = Format.fprintf fm "  %a%a%t : @[%a@]@." Color.set Color.Yellow print_var f Color.reset print_typ typ in
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.wrap Color.Yellow print_var) f print_typ typ in
   List.iter pr env
 
 and print_const fm = function

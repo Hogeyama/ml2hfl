@@ -27,6 +27,7 @@ type color =
 val init : unit -> unit
 val set : Format.formatter -> color -> unit
 val reset : Format.formatter -> unit
+val wrap : color -> (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a -> unit
 
 val fprintf : Format.formatter -> color -> ('a, Format.formatter, unit) format -> 'a
 val printf : color -> ('a, Format.formatter, unit) format -> 'a
