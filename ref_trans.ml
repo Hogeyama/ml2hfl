@@ -14,7 +14,11 @@ let rec root x bb path_rev =
   in
   try
     let y,dir = get_opt_val @@ List.find ((<>) None) @@ List.map aux bb in
-    root y bb (dir::path_rev)
+    begin
+      match elim_tpred @@ fst_typ @@ Id.typ y with
+      | TFun _ -> root y bb (dir::path_rev)
+      | _ -> raise Not_found
+    end
   with Not_found -> x, List.rev path_rev
 let root x bb = root x bb []
 
@@ -105,7 +109,7 @@ let same_arg t1 t2 = same_arg [] t1 t2
 
 let inst_var_fun x tt bb t =
   match Id.typ x with
-    TFun(y,_) ->
+  | TFun(y,_) ->
       let y' = Id.new_var_id y in
       Format.printf "x: %a, y': %a@." Id.print x Id.print y';
       let r,path = root x bb in
@@ -121,7 +125,8 @@ let inst_var_fun x tt bb t =
 let pr _ (_,ts) =
   Format.printf "[%a]" (print_list pp_print_term' "; ") ts
 in
-Format.printf "TREE: %a@." (Tree.print pr) tree';
+Format.printf "TREE: %a@." (Tree.print pr) tree;
+Format.printf "TREE': %a@." (Tree.print pr) tree';
 Format.printf "r': %a:%a@." Id.print r' pp_print_typ (Id.typ r');
         let trees = make_trees tree' in
 Format.printf "|trees|': %d@." (List.length trees);
@@ -256,9 +261,10 @@ Format.printf "B: ";
 List.iter (fun (x,t) -> Format.printf "%a = %a; " Id.print x pp_print_term t) bb';
 Format.printf "@.";
       let t' = trans.tr2_term (tt,bb') t in
-      let tx = inst_var_fun x1' tt bb' t11' in
-Color.printf Color.Green "x1: %a@." Id.print x1;
+Color.printf Color.Green "x1: %a:%a@." Id.print x1 print_typ (Id.typ x1);
+Color.printf Color.Green "x1': %a:%a@." Id.print x1' print_typ (Id.typ x1');
 Color.printf Color.Green "t11: %a@." pp_print_term t11;
+      let tx = inst_var_fun x1' tt bb' t11' in
 Color.printf Color.Green "tx: %a@." pp_print_term tx;
       (make_let [x',[],tx] t').desc
   | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->

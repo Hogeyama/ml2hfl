@@ -6,7 +6,7 @@ valcps array_max :
   i:int ->
   n:int ->
   (int->(int->X)->X) ->
-  (m:int -> (j:int-> (r:int[not i <= j; not j < n] -> X) -> X) -> X) -> X
+  (m:int -> (j:int-> (r:int[not (i <= j && j < n) || m >= r] -> X) -> X) -> X) -> X
 
 {SPEC}*)
 
