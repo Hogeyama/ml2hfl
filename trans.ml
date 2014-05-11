@@ -2365,7 +2365,9 @@ let elim_unused_let_term t =
   | Let(Nonrecursive, bindings, t) ->
       let fv = get_fv t in
       let bindings' = List.filter (fun (f,_,_) -> Id.mem f fv) bindings in
-      make_let bindings' t
+      let bindings'' = List.map (fun (f,xs,t) -> f, xs, elim_unused_let.tr_term t) bindings' in
+      let t' = elim_unused_let.tr_term t in
+      make_let bindings'' t'
   | _ -> elim_unused_let.tr_term_rec t
 
 let () = elim_unused_let.tr_term <- elim_unused_let_term

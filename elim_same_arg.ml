@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug = false
+let debug = true
 
 
 let get_args = make_col2 [] List.rev_append
@@ -151,10 +151,7 @@ let trans_desc env desc =
       Color.printf Color.Reverse "]@."
     end;
     let elim_args = List.map snd same_args in
-    let f' =
-      let typ = elim_arg_typ elim_args @@ Id.typ f in
-      Id.set_typ f typ
-    in
+    let f' = Id.set_typ f @@ elim_arg_typ elim_args @@ Id.typ f in
     let xs' = elim_nth elim_args xs in
     let t1' = t1
       |> trans.tr2_term (make_env xs same_args @ env)

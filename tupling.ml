@@ -644,23 +644,23 @@ let tupling_term env t =
       begin try
         Format.printf "PAIR: %a, %a@." pp_print_term t1 pp_print_term t2;
         begin match (get_opt_val @@ is_some t1).desc, (get_opt_val @@ is_some t2).desc with
-           App({desc = Var f}, [{desc = Snd {desc = Var x}}]),
-           App({desc = Var g}, [{desc = Snd {desc = Var y}}]) ->
+           App({desc = Var f}, [{desc = Snd tx}]),
+           App({desc = Var g}, [{desc = Snd ty}]) ->
              let z1,t1 = assoc_env f env in
              let z2,t2 = assoc_env g env in
-             let x' = Id.new_var (Id.name x) @@ get_opt_typ @@ Id.typ x in
-             let y' = Id.new_var (Id.name y) @@ get_opt_typ @@ Id.typ y in
+             let x' = Id.new_var "x" @@ get_opt_typ @@ tx.typ in
+             let y' = Id.new_var "y" @@ get_opt_typ @@ ty.typ in
              let t1' = subst z1 (make_var x') @@ pair_let t1 in
              let t2' = subst z2 (make_var y') @@ pair_let t2 in
              let typ =
                match t.typ with
-                 TPair(x,typ2) -> TPair(Id.new_var (Id.name x) @@ get_opt_typ @@ Id.typ x, get_opt_typ typ2)
+                 TPair(x,typ2) -> TPair(Id.new_var "x" @@ get_opt_typ @@ Id.typ x, get_opt_typ typ2)
                | _ -> assert false
              in
              let fg = Id.new_var (Id.name f ^ "_" ^ Id.name g) @@ TFun(x', TFun(y', typ)) in
-             let t_body = subst_map [x, make_var x'; y, make_var y'] @@ compose fg f t1' g t2' in
+             let t_body = (*subst_map [x, make_var x'; y, make_var y'] @@*) compose fg f t1' g t2' in
              let r = Id.new_var "r" typ in
-             let t_app = make_app (make_var fg) [make_snd @@ make_var x; make_snd @@ make_var y] in
+             let t_app = make_app (make_var fg) [make_snd @@ tx; make_snd @@ ty] in
              let t_pair = make_pair (make_some @@ make_fst @@ make_var r) (make_some @@ make_snd @@ make_var r) in
              new_funs := ([f;g], (fg, [x';y'], t_body)) :: !new_funs;
              Format.printf "ADD: %a@." Id.print fg;

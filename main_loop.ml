@@ -40,7 +40,7 @@ let preprocess t spec =
       let get_rtyp = get_rtyp_list in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
       Type_check.check t Type.TUnit;
-(*
+
 let check t =
   let typ = !Term_util.typ_excep in
   let b =
@@ -54,8 +54,8 @@ let check t =
    Term_util.typ_excep:=typ;
    b
 in
-let t = Slicer.repeat_trial check t in
-*)
+let t = if false then Slicer.repeat_trial check t else t in
+
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in

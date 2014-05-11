@@ -166,3 +166,15 @@ let get_ext_funs {env=env; defs=defs} =
 let get_ext_fun_env prog =
   let ext_funs = get_ext_funs prog in
   List.map (fun f -> f, List.assoc f prog.env) ext_funs
+
+
+let rec size t =
+  match t with
+  | Const _ -> 1
+  | Var _ -> 1
+  | App(t1, t2) -> 1 + size t1 + size t2
+  | Let _ -> unsupported "CEGAR_syntax.size Let"
+  | Fun(_,_,t) -> 1 + size t
+
+let prog_size prog =
+  List.fold_left (fun sum (f,xs,t1,e,t2) -> sum + List.length xs + size t1 + size t2) 0 prog.defs

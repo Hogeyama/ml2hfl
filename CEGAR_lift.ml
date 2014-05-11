@@ -43,12 +43,12 @@ let lift {defs=defs; main=main} =
 
 
 let rec lift_term2 xs = function
-    Const c -> [], Const c
+  | Const c -> [], Const c
   | Var x -> [], Var x
   | App(t1,t2) ->
       let defs1,t1' = lift_term2 xs t1 in
       let defs2,t2' = lift_term2 xs t2 in
-        defs1@@@defs2, App(t1',t2')
+      defs1@@@defs2, App(t1',t2')
   | Let(f,t1,t2) ->
       let ys,t1' = decomp_fun t1 in
       let fv = inter xs (diff (get_fv t1) ys) in
@@ -59,7 +59,7 @@ let rec lift_term2 xs = function
       let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
       let defs1,t1''' = lift_term2 ys' t1'' in
       let defs2,t2' = lift_term2 xs (subst f f'' t2) in
-        (f',ys',Const True,[],t1''') :: defs1 @ defs2, t2'
+      (f',ys',Const True,[],t1''') :: defs1 @ defs2, t2'
   | Fun _ as t ->
       let f = new_id "f" in
       let ys,t1 = decomp_fun t in
@@ -70,7 +70,7 @@ let rec lift_term2 xs = function
       let f' = rename_id f in
       let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
       let defs1,t1'' = lift_term2 ys' t1' in
-        (f',ys',Const True,[],t1'') :: defs1, f''
+      (f',ys',Const True,[],t1'') :: defs1, f''
 
 
 let lift_def2 (f,xs,t1,e,t2) =

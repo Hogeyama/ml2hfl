@@ -111,8 +111,10 @@ let inst_var_fun x tt bb t =
       let r,path = root x bb in
       if Id.same x r
       then
+        let () = Format.printf "THIS IS ROOT@." in
         make_app (make_var x) [t]
       else
+        let () = Format.printf "THIS IS NOT ROOT@." in
         let r' = trans.tr2_var (tt,bb) r in
         let tree = make_tree r bb in
         let tree' = Tree.update path (Tree.Leaf(Some (Id.typ y'), [make_var y'])) tree in
@@ -351,11 +353,12 @@ let () = trans.tr2_typ <- trans_typ
 
 let trans tt t = t
   |@> Format.printf "INPUT: %a@." pp_print_term
-  |> Trans.inline_no_effect
+  |@> Trans.inline_no_effect
   |@> Format.printf "inline_no_effect: %a@." pp_print_term_typ
   |> Trans.normalize_let
   |@> Format.printf "normalize_let: %a@." pp_print_term_typ
   |> Trans.flatten_let
+  |> Trans.inline_let_var
   |@> Format.printf "flatten_let: %a@." pp_print_term_typ
   |@> flip Type_check.check TUnit
   |> trans.tr2_term (tt,[])

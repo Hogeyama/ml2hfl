@@ -190,5 +190,7 @@ let trans t = t
   |@> Format.printf "CCC:@.%a@.@." pp_print_term_typ
   |> Trans.remove_label
   |@> Format.printf "DDD:@.%a@.@." pp_print_term_typ
+(*
   |> Trans.inline_no_effect
+ *)
   |@> flip Type_check.check TUnit
