@@ -1,3 +1,13 @@
+(*{SPEC}
+valcps append :
+   (int -> (bool -> int -> X) -> X) ->
+   ((bool ->
+     (int -> (bool -> int -> X) -> X) ->
+     bool -> int ->
+     (bool ->
+      (bool -> i:int -> bool -> j:int[i=j] -> (bool -> bool -> x:int -> bool -> bool -> y:int[x=y] -> X) -> X) ->
+      bool -> bool -> int -> X) -> X) -> X) -> X
+{SPEC}*)
 let rec append xs ys =
   match xs with
     [] -> ys
@@ -6,14 +16,21 @@ let rec append xs ys =
 let rec make_list n =
   if n < 0
   then []
-  else Random.int 0 :: make_list n
+  else n :: make_list n
 
-let rec list_eq xs ys =
-  match xs, ys with
-    0, 0 -> true
-  | x::xs', y::ys' -> x = y && list_eq xs' ys'
+(*{SPEC}
+valcps list_eq :
+   ((bool -> i:int -> bool -> j:int[i=j] -> (bool -> bool -> x:int -> bool -> bool -> y:int[x=y] -> X) -> X) ->
+    (bool ->
+     (bool -> int -> bool -> int -> (bool -> bool -> int -> bool -> bool -> int -> X) -> X)
+     -> X) -> X)
+{SPEC}*)
+let rec list_eq xsys =
+  match xsys with
+    [], [] -> true
+  | x::xs', y::ys' -> x = y && list_eq (xs', ys')
   | _ -> false
 
 let main n =
   let xs = make_list n in
-  assert (list_eq xs (append [] xs))
+  assert (list_eq (append [] xs, xs))

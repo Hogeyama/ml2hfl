@@ -471,3 +471,15 @@ let exists_loop tbl =
     Hashtbl.iter f tbl;
     false
   with Exit -> true
+
+
+let rec insert compare x xs =
+  match xs with
+  | [] -> [x]
+  | x'::xs' when compare x x' > 0 -> x'::insert compare x xs'
+  | _ -> x::xs
+
+let rec insert_sort compare xs =
+  match xs with
+  | [] -> []
+  | x::xs' -> insert compare x @@ insert_sort compare xs'

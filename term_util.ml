@@ -824,7 +824,7 @@ let some_flag = true_term
 (*
 let none_flag = make_int 0
 let some_flag = make_int 1
-*)
+ *)
 let opt_typ typ = TPair(Id.new_var "x" none_flag.typ, typ)
 let get_opt_typ typ = snd_typ typ
 let is_none t =
@@ -1479,3 +1479,5 @@ let rec var_name_of_term t =
   | _,     _       -> "x"
 
 let var_of_term t = Id.new_var (var_name_of_term t) t.typ
+
+let is_dependend t x = Id.mem x @@ get_fv t

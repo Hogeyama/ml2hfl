@@ -48,3 +48,4 @@ val inline_let_var : typed_term -> typed_term
 val remove_label : typed_term -> typed_term
 val decomp_pair_eq : typed_term -> typed_term
 val elim_unused_let : typed_term -> typed_term
+val alpha_rename : typed_term -> typed_term

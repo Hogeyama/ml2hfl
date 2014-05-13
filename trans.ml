@@ -2373,3 +2373,35 @@ let elim_unused_let_term t =
 let () = elim_unused_let.tr_term <- elim_unused_let_term
 
 let elim_unused_let = elim_unused_let.tr_term
+
+
+
+let alpha_rename = make_trans ()
+
+let alpha_rename_term t =
+  match t.desc with
+  | Let(flag, bindings, t) ->
+      let bindings',map =
+        let aux (f,xs,t) =
+          let f' = Id.new_var_id f in
+          let xs' = List.map Id.new_var_id xs in
+          let t' = subst f (make_var f') t in
+          let t'' = List.fold_left2 (fun t x x' -> subst x (make_var x') t) t' xs xs' in
+          (f', xs', t''), (f, f')
+        in
+        List.split @@ List.map aux bindings
+      in
+      let sbst t = List.fold_left (fun t' (f,f') -> subst f (make_var f') t') t map in
+      let bindings'' = List.map (fun (f,xs,t) -> f, xs, sbst t) bindings' in
+      let t' = sbst @@ alpha_rename.tr_term t in
+      make_let_f flag bindings'' t'
+  | Fun(x, t) ->
+      let x' = Id.new_var_id x in
+      let t' = alpha_rename.tr_term t in
+      let t'' = subst x (make_var x') t' in
+      make_fun x' t''
+  | _ -> alpha_rename.tr_term_rec t
+
+let () = alpha_rename.tr_term <- alpha_rename_term
+
+let alpha_rename = alpha_rename.tr_term

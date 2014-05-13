@@ -8,7 +8,6 @@ open CEGAR_util
 
 let debug = false
 
-
 let hd = function
     [] -> assert false
   | [x] -> x

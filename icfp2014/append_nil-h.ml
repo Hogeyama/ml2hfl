@@ -79,10 +79,6 @@ let rec make_list n =
   then nil
   else cons (Random.int 0) (make_list (n-1))
 
-(*{SPEC}
-valcps list_eq :
-  (i:int -> j:int[i=j] -> (int -> x:int -> int -> y:int[x=y] -> X) -> X) -> (bool -> X) -> X
-{SPEC}*)
 let rec list_eq xsys =
   let x,y = xsys (0,0) in
   let b1 = is_none x in
@@ -96,12 +92,6 @@ let rec list_eq xsys =
     list_eq xsys'
   else false
 
-(*{SPEC}
-valcps append :
-  (i:int -> ((x:int[i=0; x=0]) -> int -> X) -> X) ->
-  (i:int -> j:int[i=j] -> (int -> x:int -> int -> y:int[x=y] -> X) -> X) ->
-  ((i:int -> j:int[i=j] -> (int -> x:int -> int -> y:int[x=y] -> X) -> X) -> X) -> X
-{SPEC}*)
 let rec append xs ysys =
   if is_none (xs 0)
   then ysys
@@ -145,10 +135,6 @@ let rec make_list n =
   then nil
   else cons (Random.int 0) (make_list (n-1))
 
-(*{SPEC}
-valcps list_eq :
-  (i:int -> j:int[i=j] -> (int -> x:int -> int -> y:int[x=y] -> X) -> X) -> (bool -> X) -> X
-{SPEC}*)
 let rec list_eq xsys =
   let x,y = xsys (0,0) in
   let b1 = is_none x in
@@ -163,12 +149,6 @@ let rec list_eq xsys =
     list_eq xsys'
   else false
 
-(*{SPEC}
-valcps append :
-  (i:int -> ((x:int[i=0; x=0]) -> int -> X) -> X) ->
-  (i:int -> j:int[i=j] -> (int -> x:int -> int -> y:int[x=y] -> X) -> X) ->
-  ((i:int -> j:int[i=j] -> (int -> x:int -> int -> y:int[x=y] -> X) -> X) -> X) -> X
-{SPEC}*)
 let rec append xs ysys =
   if is_none (xs 0)
   then ysys

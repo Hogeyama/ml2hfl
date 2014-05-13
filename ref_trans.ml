@@ -267,6 +267,34 @@ Color.printf Color.Green "t11: %a@." pp_print_term t11;
       let tx = inst_var_fun x1' tt bb' t11' in
 Color.printf Color.Green "tx: %a@." pp_print_term tx;
       (make_let [x',[],tx] t').desc
+  | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) when Id.same x1 x2 ->
+      let x' =  trans.tr2_var (tt,bb) x in
+      let x1' = trans.tr2_var (tt,bb) x1 in
+      let bb' = (x,t1)::bb in
+      let t' = trans.tr2_term (tt,bb') t in
+      let t1' =
+        match trans_typ (tt,bb) @@ Id.typ x with
+          TFun(y, _) ->
+            let y' = Id.new_var_id y in
+            let ty1 = make_fst (make_var y') in
+            let ty2 = make_snd (make_var y') in
+            let y1 = Id.new_var (Id.name y ^ "1") ty1.typ in
+            let y2 = Id.new_var (Id.name y ^ "2") ty2.typ in
+            let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y1] in
+            let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
+            let t2 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y2] in
+            let t2' = make_if (make_is_none @@ make_var y2) (make_none @@ get_opt_typ t2.typ) t2 in
+            let t_neq = make_pair t1' t2' in
+            let z = Id.new_var "r" t1.typ in
+            let t_eq = make_let [z,[],t1] @@ make_pair (make_var z) (make_var z) in
+            let cond1 = make_and (make_is_some @@ make_var y1) (make_is_some @@ make_var y2) in
+            let cond2 = make_eq (make_get_val @@ make_var y1) (make_get_val @@ make_var y2) in
+Format.printf "t_eq: @[%a@." pp_print_term t_eq;
+Format.printf "t_neq: @[%a@." pp_print_term t_neq;
+            make_fun y' @@ make_lets [y1,[],ty1; y2,[],ty2] @@ make_if (make_and cond1 cond2) t_eq t_neq
+        | _ -> make_pair (make_var x1') (make_var x1')
+      in
+      (make_let [x',[],t1'] t').desc
   | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
 Color.printf Color.Reverse "x1=%a, x2=%a@." print_id_typ x1 print_id_typ x2;
       let x' =  trans.tr2_var (tt,bb) x in
@@ -357,6 +385,45 @@ Color.printf Color.Yellow "y1:%a, y2:%a@." Id.print y1 Id.print y2;
 let () = trans.tr2_desc <- trans_desc
 let () = trans.tr2_typ <- trans_typ
 
+
+
+let rec decomp_simple_let t =
+  match t.desc with
+  | Let(Nonrecursive,[x,[],t1],t2) ->
+      let bindings,t2' = decomp_simple_let t2 in
+      (x,t1)::bindings, t2'
+  | _ -> [], t
+
+let sort_let = make_trans ()
+
+let sort_let_aux x t =
+  let bindings,t' = decomp_simple_let t in
+  let bindings' = List.map (fun (x,t) -> x, [], sort_let.tr_term t) bindings in
+  let is_proj (_,_,t) =
+    match t.desc with
+    | Fst {desc=Var y}
+    | Snd {desc=Var y} -> Id.same x y
+    | _ -> false
+  in
+  let bindings1,bindings2 = List.partition is_proj bindings' in
+  let t'' = sort_let.tr_term t' in
+  make_lets bindings1 @@ make_lets bindings2 t''
+
+let sort_let_term t =
+  match t.desc with
+  | Let(Nonrecursive,[x,[],({desc=Pair _} as t1)],t2) ->
+      let t2' = sort_let_aux x t2 in
+      make_let [x,[],t1] t2'
+  | Let(flag,[f,xs,t1],t2) ->
+      let t1' = sort_let.tr_term t1 in
+      let t2' = sort_let.tr_term t2 in
+      let t1'' = List.fold_right sort_let_aux xs t1' in
+      make_let_f flag [f,xs,t1''] t2'
+  | _ -> sort_let.tr_term_rec t
+
+let () = sort_let.tr_term <- sort_let_term
+
+
 let trans tt t = t
   |@> Format.printf "INPUT: %a@." pp_print_term
   |@> Trans.inline_no_effect
@@ -366,6 +433,8 @@ let trans tt t = t
   |> Trans.flatten_let
   |> Trans.inline_let_var
   |@> Format.printf "flatten_let: %a@." pp_print_term_typ
+  |> sort_let.tr_term
+  |@> Format.printf "sort_let: %a@." pp_print_term_typ
   |@> flip Type_check.check TUnit
   |> trans.tr2_term (tt,[])
   |> Trans.inline_no_effect

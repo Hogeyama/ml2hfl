@@ -95,10 +95,16 @@ let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
   | TRInt p -> assert false (*Format.fprintf fm "{ %a | %a }" Id.print abst_var print_preds [p]*)
   | TVar{contents=Some typ} -> print' fm typ
   | TVar _ -> Format.fprintf fm "!!!"
-  | TFun(x, typ) when occur x typ ->
-      Format.fprintf fm "(@[<hov 2>%a:%a@ ->@ %a@])" Id.print x print' (Id.typ x) print' typ
-  | TFun(x, typ) ->
-      Format.fprintf fm "(@[<hov 2>%a@ ->@ %a@])" print' (Id.typ x) print' typ
+  | TFun _ ->
+      let rec aux fm (xs, typ) =
+        match xs with
+        | [] -> print' fm typ
+        | x::xs' ->
+            if occur x typ || List.exists (occur x) (List.map Id.typ xs)
+            then Format.fprintf fm "@[<hov 2>%a:%a@ ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
+            else Format.fprintf fm "@[<hov 2>%a@ ->@ %a@]" print' (Id.typ x) aux (xs',typ)
+      in
+      Format.fprintf fm "(%a)" aux @@ decomp_tfun typ
   | TList typ -> Format.fprintf fm "@[%a list@]" print' typ
   | TPair(x,typ) when occur x typ ->
       Format.fprintf fm "(@[<hov 2>%a:%a@ *@ %a@])" Id.print x print' (Id.typ x) print' typ

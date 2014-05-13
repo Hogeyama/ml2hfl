@@ -7,6 +7,8 @@ module U = Term_util
 
 let const_of_bool b = if b then True else False
 
+let typ_bool () = TBase(TBool, fun x -> [x; CEGAR_syntax.App(CEGAR_syntax.Const CEGAR_syntax.Not, x)])
+
 
 
 let apply_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
@@ -203,10 +205,7 @@ let rec trans_inv_term = function
 
 let rec trans_typ = function
     Type.TUnit -> TBase(TUnit, nil)
-  | Type.TBool ->
-      if !Flag.bool_init_empty
-      then TBase(TBool, nil)
-      else TBase(TBool, fun x -> [x])
+  | Type.TBool -> typ_bool ()
   | Type.TAbsBool -> assert false
   | Type.TInt -> TBase(TInt, nil)
   | Type.TRInt _  -> assert false

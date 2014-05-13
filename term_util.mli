@@ -200,3 +200,4 @@ val same_term : typed_term -> typed_term -> bool
 val var_name_of_term : typed_term -> string
 val var_of_term : typed_term -> id
 val make_term : typ -> typed_term
+val is_dependend : typed_term -> id -> bool

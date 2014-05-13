@@ -74,6 +74,45 @@ let normalize_term t =
 let () = normalize.tr_term <- normalize_term
 
 
+let get_same_pair env y z =
+  let fsts = List.filter (function (y', Some p, None) -> Id.same y y' | _ -> false) env in
+  let snds = List.filter (function (z', None, Some p) -> Id.same z z' | _ -> false) env in
+  try
+    let (_, p, _) = List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (get_opt_val p) (get_opt_val p')) snds) fsts in
+    p
+  with Not_found -> None
+
+let pair_eta_reduce = make_trans2 ()
+
+let pair_eta_reduce_term env t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],{desc=Fst {desc=Var y}}], t2) ->
+      pair_eta_reduce.tr2_term_rec ((x, Some y, None)::env) t
+  | Let(Nonrecursive, [x,[],{desc=Snd {desc=Var y}}], t2) ->
+      pair_eta_reduce.tr2_term_rec ((x, None, Some y)::env) t
+  | Let(Nonrecursive, [x,[],{desc=Pair({desc=Var y}, {desc=Var z})}], t2) ->
+(*
+      ignore (get_same_pair env y z);
+      if Id.id x = 1504 then
+        (Format.printf "ETA: %a = (%a, %a)@." Id.print x Id.print y Id.print z;
+         List.iter (function
+                     | (x,Some y,None) -> Format.printf "%a = fst %a@." Id.print x Id.print y
+                     | (x,None, Some z) -> Format.printf "%a = snd %a@." Id.print x Id.print z
+                     | (x,Some y,Some z) -> Format.printf "%a = (%a, %a)@." Id.print x Id.print y Id.print z
+                     | _ -> assert false
+                   ) env;assert false);
+ *)
+      begin
+        match get_same_pair env y z with
+        | None -> pair_eta_reduce.tr2_term_rec env t
+        | Some p -> subst x (make_var p) @@ pair_eta_reduce.tr2_term env t2
+      end
+  | _ -> pair_eta_reduce.tr2_term_rec env t
+
+let () = pair_eta_reduce.tr2_term <- pair_eta_reduce_term
+
+let pair_eta_reduce = pair_eta_reduce.tr2_term []
+
 
 let make_deep_pair = make_trans2 ()
 
@@ -193,4 +232,7 @@ let trans t = t
 (*
   |> Trans.inline_no_effect
  *)
+  |> Trans.inline_let_var
+  |@> Format.printf "EEE:@.%a@.@." pp_print_term_typ
+  |> pair_eta_reduce
   |@> flip Type_check.check TUnit

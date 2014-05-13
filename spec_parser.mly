@@ -20,7 +20,7 @@ let parse_error _ = print_error_information ()
 
 let make_tmp_id s = Id.make 0 s typ_unknown
 let make_id_typ s typ = Id.make 0 s typ
-let make_self_id typ = Id.new_var "x" typ
+let make_self_id typ = Id.new_var "_" typ
 let orig_id x = {x with Id.id = 0}
 %}
 
