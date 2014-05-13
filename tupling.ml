@@ -4,7 +4,7 @@ open Syntax
 open Term_util
 
 
-
+let debug = false
 
 let is_none_term t =
   match t.desc with
@@ -65,7 +65,7 @@ let rec decomp_let t =
     [Nonrecursive, (r,[],t)], make_var r
 
 let partition_bindings x t =
-Format.printf "PB: x:%a@." Id.print x;
+  if debug then Format.printf "PB: x:%a@." Id.print x;
   let bindings,t' = decomp_let t in
   let check t =
     if List.mem x (get_fv t)
@@ -77,7 +77,7 @@ Format.printf "PB: x:%a@." Id.print x;
         assert (flag = Nonrecursive);
         before, Some (f,ts), after
     | None, _, _ ->
-Format.printf "CHECK: %a@." pp_print_term t;
+        if debug then Format.printf "CHECK: %a@." pp_print_term t;
         check t;
         before, app_x, (flag,(f,xs,t))::after
     | Some _, _, {desc=App({desc=Var y}, ts)} when Id.same x y ->
@@ -99,7 +99,7 @@ let classify f t =
   | Cannot_compose -> FOther
 
 let compose_let_same_arg map fg f t1 g t2 =
-Format.printf "compose_let_same_arg@.";
+  if debug then Format.printf "compose_let_same_arg@.";
   let before1,(x1,ts1),after1,t1' = partition_bindings f t1 in
   let before2,(x2,ts2),after2,t2' = partition_bindings g t2 in
   let aux ts_small ts_big map =
@@ -155,7 +155,7 @@ let compose_let_diff_arg fg f t1 g t2 =
   make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
 
 let compose_let map f t1 g t2 =
-Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f pp_print_term t1 Id.print g pp_print_term t2;
+  if debug then Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f pp_print_term t1 Id.print g pp_print_term t2;
   match classify f t1, classify g t2, map with
     FNonRec,    _,          _ -> compose_non_recursive true t1 t2
   | _,          FNonRec,    _ -> compose_non_recursive false t1 t2
@@ -167,7 +167,7 @@ Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f pp_print_term t1 Id.p
       compose_let_diff_arg fg f t1 g t2
 
 let rec compose f t1 g t2 =
-Format.printf "compose@.";
+  if debug then Format.printf "compose@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), _ ->
       make_if t11 (compose f t12 g t2) (compose f t13 g t2)
@@ -176,7 +176,7 @@ Format.printf "compose@.";
   | _ -> raise Cannot_compose
 
 let rec compose_same_arg map fg f t1 g t2 =
-Format.printf "compose_same_arg@.";
+  if debug then Format.printf "compose_same_arg@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), If(t21, t22, t23) when t11 = t21 ->
       let t2' = compose_same_arg map fg f t12 g t22 in
@@ -399,7 +399,7 @@ Format.printf "desc: %a@." pp_print_term {desc=desc;typ=TUnit};
             in
             if diffs' <> [] && List.for_all check diffs'
             then
-              let t' = List.fold_left (fun t (t1,t2) -> Format.printf "[%a |-> %a](%a)@." pp_print_term t2 pp_print_term t1 pp_print_term t; replace_term t2 t1 t) t diffs' in
+              let t' = List.fold_left (fun t (t1,t2) -> replace_term t2 t1 t) t diffs' in
               let cond1 = make_eq (make_fst (make_fst (make_var x))) (make_fst (make_snd (make_var x))) in
               let cond2 = make_eq (make_snd (make_fst (make_var x))) (make_snd (make_snd (make_var x))) in
               let cond = make_and cond1 cond2 in
