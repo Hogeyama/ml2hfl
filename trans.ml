@@ -2272,8 +2272,7 @@ let normalize_let_term t =
   | Pair(t1, t2) ->
       let x1,post1 = normalize_let_aux t1 in
       let x2,post2 = normalize_let_aux t2 in
-      let r = post1 @@ post2 @@ make_pair (make_var x1) (make_var x2)in
-      Color.printf Color.Reverse "%a ==> %a@." pp_print_term t pp_print_term r;r
+      post1 @@ post2 @@ make_pair (make_var x1) (make_var x2)
   | Fst t ->
      let x,post = normalize_let_aux t in
      post @@ make_fst @@ make_var x

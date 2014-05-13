@@ -442,6 +442,7 @@ let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
 
 let do_and_return f x = f x; x
 let (|@>) x f = do_and_return f x
+let (|*>) x f = x
 let (|*@>) x f = x
 let (|@*>) x f = x
 let assert_ f x = assert (f x)
@@ -483,3 +484,9 @@ let rec insert_sort compare xs =
   match xs with
   | [] -> []
   | x::xs' -> insert compare x @@ insert_sort compare xs'
+
+
+let rec repeat f n s =
+  if n <= 0
+  then s
+  else repeat f (n-1) (f s)

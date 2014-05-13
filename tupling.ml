@@ -418,7 +418,7 @@ Format.printf "desc: %a@." pp_print_term {desc=desc;typ=TUnit};
       let t' =
         match get_comb_pair t1 t2 with
           None -> compose_non_recursive false t1' t2'
-        | Some t -> Format.printf "COMB: %a@." pp_print_term t; t
+        | Some t -> if debug then Format.printf "COMB: %a@." pp_print_term t; t
       in
       t'.desc
   | _ -> tupling.tr2_desc_rec env desc
@@ -459,7 +459,7 @@ let classify f t =
   | Cannot_compose -> FOther
 
 let compose_let_same_arg map fg f t1 g t2 =
-Format.printf "compose_let_same_arg@.";
+  if debug then Format.printf "compose_let_same_arg@.";
   let before1,(x1,ts1),after1,t1' = partition_bindings f t1 in
   let before2,(x2,ts2),after2,t2' = partition_bindings g t2 in
   let aux ts_small ts_big map =
@@ -495,7 +495,7 @@ let compose_non_recursive first t1 t2 =
   make_lets_f (bindings @ [Nonrecursive,(r,[],t)]) t'
 
 let rec compose f t1 g t2 =
-Format.printf "compose@.";
+  if debug then Format.printf "compose@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), _ ->
       make_if t11 (compose f t12 g t2) (compose f t13 g t2)
@@ -504,7 +504,7 @@ Format.printf "compose@.";
   | _ -> raise Cannot_compose
 
 let rec compose_same_arg map fg f t1 g t2 =
-Format.printf "compose_same_arg@.";
+  if debug then Format.printf "compose_same_arg@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), If(t21, t22, t23) when t11 = t21 ->
       let t2' = compose_same_arg map fg f t12 g t22 in
@@ -536,7 +536,7 @@ let same_arg_map xs1 xs2 =
     None
 
 let assoc_env f env =
-Color.printf Color.Reverse "%a@." Id.print f;
+  if debug then Color.printf Color.Reverse "%a@." Id.print f;
   let _,xs,t = Id.assoc f env in
   let ys,t' = decomp_fun t in
   match xs@ys with
@@ -592,7 +592,7 @@ Color.printf Color.Reverse "%a@." Id.print f;
 
 
 let compose_non_recursive first t1 t2 =
-Format.printf "compose_non_recursive@.";
+  if debug then Format.printf "compose_non_recursive@.";
   let bindings,t = decomp_let (if first then t1 else t2) in
   let r = Id.new_var "r" (if first then t1.typ else t2.typ) in
   let t' =
@@ -628,7 +628,7 @@ let compose_simple_rec fg f t1 g t2 =
   make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
 
 let compose_let fg f t1 g t2 =
-Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f pp_print_term t1 Id.print g pp_print_term t2;
+  if debug then Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f pp_print_term t1 Id.print g pp_print_term t2;
   match classify f t1, classify g t2 with
     FNonRec,    _          -> compose_non_recursive true t1 t2
   | _,          FNonRec    -> compose_non_recursive false t1 t2
@@ -637,7 +637,7 @@ Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f pp_print_term t1 Id.p
   | FSimpleRec, FSimpleRec -> compose_simple_rec fg f t1 g t2
 
 let rec compose fg f t1 g t2 =
-Format.printf "compose@.";
+  if debug then Format.printf "compose@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), _ ->
       make_if t11 (compose fg f t12 g t2) (compose fg f t13 g t2)
@@ -652,7 +652,7 @@ let tupling_term env t =
   match t.desc with
     Pair(t1, t2) when is_some t1 <> None && is_some t2 <> None ->
       begin try
-        Format.printf "PAIR: %a, %a@." pp_print_term t1 pp_print_term t2;
+        if debug then Format.printf "PAIR: %a, %a@." pp_print_term t1 pp_print_term t2;
         begin match (get_opt_val @@ is_some t1).desc, (get_opt_val @@ is_some t2).desc with
            App({desc = Var f}, [{desc = Snd tx}]),
            App({desc = Var g}, [{desc = Snd ty}]) ->
@@ -673,7 +673,7 @@ let tupling_term env t =
              let t_app = make_app (make_var fg) [make_snd @@ tx; make_snd @@ ty] in
              let t_pair = make_pair (make_some @@ make_fst @@ make_var r) (make_some @@ make_snd @@ make_var r) in
              new_funs := ([f;g], (fg, [x';y'], t_body)) :: !new_funs;
-             Format.printf "ADD: %a@." Id.print fg;
+             if debug then Format.printf "ADD: %a@." Id.print fg;
              make_let [r, [], t_app] t_pair
         | _ -> tupling.tr2_term_rec env t
         end
@@ -738,7 +738,7 @@ let compose_app_term t =
           (Nonrecursive,(x,[],{desc=Snd({desc=App({desc=Var f},[{desc=Pair(t11,t12)}])})}))::
           (Nonrecursive,(y,[],{desc=Fst({desc=App({desc=Var g},[{desc=Pair(t21,t22)}])})}))::bindings'
             when Id.same f g && is_none_term t11 && is_some_term t12 && is_some_term t21 && is_none_term t22 ->
-          Format.printf "%a, %a@." Id.print f Id.print g;
+          if debug then Format.printf "%a, %a@." Id.print f Id.print g;
           assert false;
               let p = Id.new_var "p" (TPair(x, (Id.typ y))) in
               let bindings'' =
@@ -791,8 +791,8 @@ let let_normalize_desc desc =
       then Let(Nonrecursive, [x,[],t1'], t2')
       else
         let t2''' = make_lets bindings2 t2'' in
-Color.printf Color.Yellow "NORMALIZE: %a@." Id.print x;
-Color.printf Color.Reverse "[%a]@." (print_list Id.print ";") @@ List.map (fun (x,_,_) -> x) bindings;
+        if debug then Color.printf Color.Yellow "NORMALIZE: %a@." Id.print x;
+        if debug then Color.printf Color.Reverse "[%a]@." (print_list Id.print ";") @@ List.map (fun (x,_,_) -> x) bindings;
         (make_lets bindings1 @@ make_lets [x,[],t1'] t2''').desc
   | _ -> let_normalize.tr_desc_rec desc
 
@@ -809,7 +809,7 @@ let rec tree_of_pair t =
   | _ -> Tree.Leaf t
 
 let elim_check t1 t2 =
-Color.printf Color.Yellow "%a, %a@." pp_print_term t1 pp_print_term t2;
+  if debug then Color.printf Color.Yellow "%a, %a@." pp_print_term t1 pp_print_term t2;
   match t1.desc, t2.desc with
     App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
       let check t1 t2 =
@@ -817,7 +817,7 @@ Color.printf Color.Yellow "%a, %a@." pp_print_term t1 pp_print_term t2;
           let tree1 = tree_of_pair t1 in
           let tree2 = tree_of_pair t2 in
           let tts = Tree.flatten @@ Tree.zip tree1 tree2 in
-          List.for_all (fun (t1, t2) -> same_term t1 t2 || (Color.printf Color.BG_Blue "???"; is_none t1)) tts
+          List.for_all (fun (t1, t2) -> same_term t1 t2 || is_none t1) tts
         with Invalid_argument "Tree.zip" -> false
       in
       List.for_all2 check ts1 ts2
@@ -843,34 +843,11 @@ let elim_same_app = elim_same_app.tr_term
 let trans t = t
   |> inline_wrapped.tr_term
   |> Trans.flatten_let
-  |@> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" pp_print_term
+  |*@> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" pp_print_term
   |> let_normalize
-  |@> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" pp_print_term
+  |*@> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" pp_print_term
   |> elim_same_app
-  |@> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" pp_print_term
+  |*@> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" pp_print_term
   |> tupling
-  |@> Format.printf "%a:@.%a@.@." Color.s_red "tupled" pp_print_term
+  |*@> Format.printf "%a:@.%a@.@." Color.s_red "tupled" pp_print_term
   |> Trans.inline_no_effect
-(*
-  |> do_and_return (Format.printf "BEFORE!:@.%a@.@." pp_print_term)
-  |> Trans.let2fun
-  |> do_and_return (Format.printf "BEFORE:@.%a@.@." pp_print_term)
-  |> Trans.inline_no_effect
-  |> do_and_return (Format.printf "INLINE:@.%a@.@." pp_print_term)
-  |> Trans.beta_no_effect
-  |> do_and_return (Format.printf "BETA:@.%a@.@." pp_print_term)
-  |> tupling
-  |> pair_let
-  |> do_and_return (Format.printf "???:@.%a@.@." pp_print_term)
-  |> tupling
-  |> Trans.inline_no_effect
-  |> tupling
-*)
-(*
-  |> Trans.inline_no_effect
-  |> Trans.beta_no_effect
-  |> print_and_return (Format.printf "!!!:@.%a@.@." pp_print_term)
-  |> tupling
-  |> compose_app
-  |> tupling
-*)

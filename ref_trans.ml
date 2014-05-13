@@ -4,6 +4,8 @@ open Syntax
 open Term_util
 
 
+let debug = false
+
 let trans = make_trans2 ()
 
 let rec root x bb path_rev =
@@ -42,7 +44,7 @@ let rec find_app x bb =
 
 
 let rec make_tree x bb =
-  Color.printf Color.Red "make_tree: %a@." Id.print x;
+  if debug then Color.printf Color.Red "make_tree: %a@." Id.print x;
   match find_fst x bb, find_snd x bb, find_app x bb with
     Some lhs, Some rhs, _ -> Tree.Node(make_tree lhs bb, make_tree rhs bb)
   | None, None, args ->
@@ -111,31 +113,33 @@ let inst_var_fun x tt bb t =
   match Id.typ x with
   | TFun(y,_) ->
       let y' = Id.new_var_id y in
-      Format.printf "x: %a, y': %a@." Id.print x Id.print y';
+      if debug then Format.printf "x: %a, y': %a@." Id.print x Id.print y';
       let r,path = root x bb in
       if Id.same x r
       then
-        let () = Format.printf "THIS IS ROOT@." in
+        let () = if debug then Format.printf "THIS IS ROOT@." in
         make_app (make_var x) [t]
       else
-        let () = Format.printf "THIS IS NOT ROOT@." in
+        let () = if debug then Format.printf "THIS IS NOT ROOT@." in
         let r' = trans.tr2_var (tt,bb) r in
         let tree = make_tree r bb in
         let tree' = Tree.update path (Tree.Leaf(Some (Id.typ y'), [make_var y'])) tree in
+(*
 let pr _ (_,ts) =
   Format.printf "[%a]" (print_list pp_print_term' "; ") ts
 in
 Format.printf "TREE: %a@." (Tree.print pr) tree;
 Format.printf "TREE': %a@." (Tree.print pr) tree';
 Format.printf "r': %a:%a@." Id.print r' pp_print_typ (Id.typ r');
+*)
         let trees = make_trees tree' in
+(*
 Format.printf "|trees|': %d@." (List.length trees);
 Format.printf "hd trees: %a@." (Tree.print pp_print_term) (List.hd trees);
+*)
         let argss = List.map Tree.flatten trees in
-Color.printf Color.Red "BEGIN@.";
         let args = List.map (fun args -> [make_tuple args]) argss in
         let apps = List.map (make_app (make_var r')) args in
-Color.printf Color.Red "END@.";
 (*
         Format.printf "TREE(%a --%a-- %a):%d@." Id.print r (print_list Format.pp_print_int "") path Id.print x @@ List.length apps;
         List.iter (Format.printf "  %a@." pp_print_term) apps;
@@ -154,8 +158,10 @@ Color.printf Color.Red "END@.";
           aux 0 trees []
         in
         let xs = List.map (fun t -> Id.new_var "x" t.typ) apps in
+(*
 Format.printf "root: %a, %a@." Id.print r pp_print_typ (Id.typ r);
 Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.hd xs);
+*)
         let t' =
           let t' = proj_of_path path @@ make_var @@ List.hd xs in
           let t' =
@@ -257,15 +263,21 @@ let trans_desc (tt,bb) desc =
       let x1' = trans.tr2_var (tt,bb) x1 in
       let t11' = trans.tr2_term (tt,bb) t11 in
       let bb' = (x,t1)::bb in
+(*
 Format.printf "B: ";
 List.iter (fun (x,t) -> Format.printf "%a = %a; " Id.print x pp_print_term t) bb';
 Format.printf "@.";
+*)
       let t' = trans.tr2_term (tt,bb') t in
+(*
 Color.printf Color.Green "x1: %a:%a@." Id.print x1 print_typ (Id.typ x1);
 Color.printf Color.Green "x1': %a:%a@." Id.print x1' print_typ (Id.typ x1');
 Color.printf Color.Green "t11: %a@." pp_print_term t11;
+*)
       let tx = inst_var_fun x1' tt bb' t11' in
+(*
 Color.printf Color.Green "tx: %a@." pp_print_term tx;
+*)
       (make_let [x',[],tx] t').desc
   | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) when Id.same x1 x2 ->
       let x' =  trans.tr2_var (tt,bb) x in
@@ -289,14 +301,11 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
             let t_eq = make_let [z,[],t1] @@ make_pair (make_var z) (make_var z) in
             let cond1 = make_and (make_is_some @@ make_var y1) (make_is_some @@ make_var y2) in
             let cond2 = make_eq (make_get_val @@ make_var y1) (make_get_val @@ make_var y2) in
-Format.printf "t_eq: @[%a@." pp_print_term t_eq;
-Format.printf "t_neq: @[%a@." pp_print_term t_neq;
             make_fun y' @@ make_lets [y1,[],ty1; y2,[],ty2] @@ make_if (make_and cond1 cond2) t_eq t_neq
         | _ -> make_pair (make_var x1') (make_var x1')
       in
       (make_let [x',[],t1'] t').desc
   | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
-Color.printf Color.Reverse "x1=%a, x2=%a@." print_id_typ x1 print_id_typ x2;
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let x2' = trans.tr2_var (tt,bb) x2 in
@@ -310,7 +319,6 @@ Color.printf Color.Reverse "x1=%a, x2=%a@." print_id_typ x1 print_id_typ x2;
             let ty2 = make_snd (make_var y') in
             let y1 = Id.new_var (Id.name y ^ "1") ty1.typ in
             let y2 = Id.new_var (Id.name y ^ "2") ty2.typ in
-Color.printf Color.Yellow "y1=%a, y2=%a@." print_id_typ y1 print_id_typ y2;
             let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y1] in
             let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
             let t2 = make_some @@ make_app (make_var x2') [make_get_val @@ make_var y2] in
@@ -425,17 +433,206 @@ let () = sort_let.tr_term <- sort_let_term
 
 
 let trans tt t = t
-  |@> Format.printf "INPUT: %a@." pp_print_term
+  |*@> Format.printf "INPUT: %a@." pp_print_term
   |@> Trans.inline_no_effect
-  |@> Format.printf "inline_no_effect: %a@." pp_print_term_typ
+  |*@> Format.printf "inline_no_effect: %a@." pp_print_term_typ
   |> Trans.normalize_let
-  |@> Format.printf "normalize_let: %a@." pp_print_term_typ
+  |*@> Format.printf "normalize_let: %a@." pp_print_term_typ
   |> Trans.flatten_let
   |> Trans.inline_let_var
-  |@> Format.printf "flatten_let: %a@." pp_print_term_typ
+  |*@> Format.printf "flatten_let: %a@." pp_print_term_typ
   |> sort_let.tr_term
-  |@> Format.printf "sort_let: %a@." pp_print_term_typ
+  |*@> Format.printf "sort_let: %a@." pp_print_term_typ
   |@> flip Type_check.check TUnit
   |> trans.tr2_term (tt,[])
   |> Trans.inline_no_effect
   |*@> Format.printf "ref_trans: %a@." pp_print_term'
+
+
+
+
+
+
+
+
+
+
+
+let col_assert = make_col [] List.rev_append
+
+let col_assert_desc desc =
+(*Format.printf "CAD: %a@." print_constr {desc=desc; typ=TUnit};*)
+  match desc with
+  | If(t1, t2, t3) when same_term t2 unit_term && same_term t3 (make_app fail_term [unit_term]) ->
+      [t1]
+  | Let(Nonrecursive, [x,[],t1], t2) ->
+      let ts1 = col_assert.col_term t1 in
+      let ts2 = col_assert.col_term t2 in
+      let ts2' = List.map (subst x t1) ts2 in
+      ts1 @ ts2'
+  | _ -> col_assert.col_desc_rec desc
+
+let () = col_assert.col_desc <- col_assert_desc
+
+let col_assert = col_assert.col_term
+
+
+let has_rand = make_col false (||)
+
+let has_rand_desc desc =
+  match desc with
+  | RandInt _ -> true
+  | RandValue _ -> true
+  | _ -> has_rand.col_desc_rec desc
+
+let () = has_rand.col_desc <- has_rand_desc
+
+let has_rand = has_rand.col_term
+
+
+let col_rand_funs = make_col [] List.rev_append
+
+let col_rand_funs_desc desc =
+  match desc with
+  | Let(_, bindings, t2) ->
+      let aux (f,_,t) = if has_rand t then [f] else [] in
+      let funs1 = flatten_map aux bindings in
+      let funs2 = col_rand_funs.col_term_rec t2 in
+      funs1 @ funs2
+  | _ -> col_rand_funs.col_desc_rec desc
+
+let () = col_rand_funs.col_desc <- col_rand_funs_desc
+
+let col_rand_funs = col_rand_funs.col_term
+
+
+let col_app_head = make_col [] List.rev_append
+
+let col_app_head_desc desc =
+  match desc with
+  | App({desc=Var f}, _) -> [f]
+  | _ -> col_app_head.col_desc_rec desc
+
+let () = col_app_head.col_desc <- col_app_head_desc
+
+let col_app_head = col_app_head.col_term
+
+
+let compare_pair (x1,x2) (y1,y2) =
+  if Id.same x1 y2 && Id.same x2 y1 then
+    0
+  else
+    let r1 = compare x1 y1 in
+    if r1 <> 0 then
+      r1
+    else
+      compare x2 y2
+
+
+let col_fun_arg = make_col [] (union ~cmp:compare_pair)
+
+let col_fun_arg_desc desc =
+  match desc with
+  | App({desc=Var f}, ts) ->
+      let funs = flatten_map col_app_head ts in
+      List.map (fun g -> f, g) funs
+  | _ -> col_fun_arg.col_desc_rec desc
+
+let () = col_fun_arg.col_desc <- col_fun_arg_desc
+
+let col_fun_arg = col_fun_arg.col_term
+
+
+
+let col_app_terms = make_col2 [] List.rev_append
+
+let col_app_terms_term fs t =
+  match t.desc with
+  | App({desc=Var f}, ts) when Id.mem f fs ->
+      t :: flatten_map (col_app_terms.col2_term fs) ts
+  | _ -> col_app_terms.col2_term_rec fs t
+
+let () = col_app_terms.col2_term <- col_app_terms_term
+
+let col_app_terms = col_app_terms.col2_term
+
+
+
+let replace_head fs fs' t =
+  let ts = col_app_terms fs t in
+  let rec aux fs ts =
+    match fs with
+    | [] ->
+        if ts <> [] then
+          unsupported "replace_head"
+        else
+          []
+    | f::fs' ->
+        let ts1,ts2 = List.partition (fun t -> Id.mem f @@ get_fv t) ts in
+        List.hd ts1 :: aux fs' (List.tl ts1 @ ts2)
+  in
+  let ts' = aux fs ts in
+  let xs = List.map (fun t -> Id.new_var "x" t.typ) ts' in
+  let t' = List.fold_right2 subst_rev ts' xs t in
+  if debug then Format.printf "t':@.%a@.@." pp_print_term t';
+  let ts'' = List.map2 (fun t (f,f') -> subst f (make_var f') t) ts' @@ List.combine fs fs' in
+  let t'' = List.fold_right2 subst xs ts'' t' in
+  if debug then Format.printf "t'':@.%a@.@." pp_print_term t'';
+  t''
+
+
+
+let add_fun_tuple = make_trans2 ()
+
+let defined fs env = List.for_all (fun f -> Id.mem f env) fs
+
+let add_fun_tuple_term (funs,env) t =
+  match t.desc with
+  | Let(flag,[f,xs,t1],t2) ->
+      let env' = f::env in
+      let funs1,funs2 = List.partition (fun fs -> defined fs env') funs in
+      let t1' = add_fun_tuple.tr2_term (funs2,env') t1 in
+      let t2' = add_fun_tuple.tr2_term (funs2,env') t2 in
+      let aux t fs =
+        let name = List.fold_left (fun s x -> Id.name x ^ "_" ^ s) (Id.name @@ List.hd fs) @@ List.tl fs in
+        let fg = Id.new_var name @@ make_ttuple @@ List.map Id.typ fs in
+        let projs = mapi (fun i g -> Id.new_var_id g, [], make_proj (i+1) (make_var fg)) fs in
+        let t' = replace_head fs (List.map (fun (f,_,_) -> f) projs) t in
+        let defs = (fg, [], make_tuple @@ List.map make_var fs)::projs in
+        make_lets defs t'
+      in
+      make_let_f flag [f,xs,t1'] @@ List.fold_left aux t2' funs1
+  | Let(flag,_,_) -> unsupported "add_fun_tuple (let (rec) ... and ...)"
+  | _ -> add_fun_tuple.tr2_term_rec (funs,env) t
+
+let () = add_fun_tuple.tr2_term <- add_fun_tuple_term
+let add_fun_tuple rel_funs t = add_fun_tuple.tr2_term (rel_funs,[]) t
+
+
+let make_fun_tuple t =
+  let asserts = col_assert t in
+  if debug then List.iter (Format.printf "ASSERT: %a@." Syntax.pp_print_term) asserts;
+  let rand_funs = col_rand_funs t in
+  if debug then List.iter (Format.printf "RAND: %a@." Id.print) rand_funs;
+  let aux assrt =
+    let funs = col_app_head assrt in
+    if debug then List.iter (Format.printf "FUN: %a@." Id.print) funs;
+    let funs' = diff ~cmp:Id.compare funs rand_funs in
+    if debug then List.iter (Format.printf "FUN': %a@." Id.print) funs';
+    let rec get_pairs acc fs =
+      match fs with
+      | [] -> acc
+      | f::fs' -> get_pairs (List.map (fun g -> (f,g)) fs' @ acc) fs'
+    in
+    let all_fun_pairs = get_pairs [] funs' in
+    if debug then List.iter (fun (f,g) -> Format.printf "ALL_FUN_ARG: %a, %a@." Id.print f Id.print g) all_fun_pairs;
+    let fun_args = col_fun_arg assrt in
+    if debug then List.iter (fun (f,g) -> Format.printf "FUN_ARG: %a, %a@." Id.print f Id.print g) fun_args;
+    let rel_funs = diff ~cmp:compare_pair all_fun_pairs fun_args in
+    if debug then List.iter (fun (f,g) -> Format.printf "FUN_ARG': %a, %a@." Id.print f Id.print g) rel_funs;
+    List.map (fun (f,g) -> [f;g]) rel_funs
+  in
+  let rel_funs = flatten_map aux asserts in
+  let t' = add_fun_tuple rel_funs t in
+  if debug then Format.printf "@.@.%a@." pp_print_term t';
+  t'

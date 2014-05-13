@@ -161,6 +161,7 @@ val make_is_none : typed_term -> typed_term
 val make_is_some : typed_term -> typed_term
 val make_get_val : typed_term -> typed_term
 val make_tuple : typed_term list -> typed_term
+val make_proj : int -> typed_term -> typed_term
 val make_ttuple : typ list -> typ
 
 (** {6 Term destructor} *)

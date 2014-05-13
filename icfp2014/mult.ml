@@ -10,11 +10,6 @@ let rec mult_acc (n, m, a) =
   then a
   else mult_acc (n, m-1, n+a)
 
-let mma = mult, mult_acc
-
-let mult = fst mma
-let mult_acc = snd mma
-
 let main n m a =
   let s1 = mult (n, m) in
   let s2 = mult_acc (n, m, a) in

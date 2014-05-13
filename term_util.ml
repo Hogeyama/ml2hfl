@@ -857,7 +857,7 @@ let make_tuple ts =
 let rec decomp_tuple top t =
   match t.desc with
     Pair(t1,t2) -> t1 :: decomp_tuple false t2
-  | _ when top -> raise (Invalid_argument "make_tuple")
+  | _ when top -> raise (Invalid_argument "decomp_tuple")
   | _ -> [t]
 let decomp_tuple = decomp_tuple true
 
@@ -873,6 +873,10 @@ let rec decomp_ttuple top typ =
   | _ -> [typ]
 let decomp_ttuple = decomp_ttuple true
 
+let make_proj i t =
+  let n = List.length @@ decomp_ttuple t.typ in
+  let t' = repeat make_fst (n-i) t in
+  if i = 1 then t' else make_snd t'
 
 
 (*** AUXILIARY FUNCTIONS ***)

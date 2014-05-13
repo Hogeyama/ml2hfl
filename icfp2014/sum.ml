@@ -11,11 +11,6 @@ let rec sum_acc (n, a) =
   then a
   else sum_acc (n - 1, n + a)
 
-let ssa = sum, sum_acc
-
-let sum = fst ssa
-let sum_acc = snd ssa
-
 let main n a =
   let s1 = sum n in
   let s2 = sum_acc (n, a) in

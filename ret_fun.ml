@@ -223,16 +223,14 @@ let trans t = t
   |> Trans.inline_let_var
   |*@> Format.printf "AAA:@.%a@.@." pp_print_term
   |> Trans.flatten_let
-  |@> Format.printf "BBB:@.%a@.@." pp_print_term
+  |*@> Format.printf "BBB:@.%a@.@." pp_print_term
   |@> flip Type_check.check TUnit
   |> trans.tr2_term []
-  |@> Format.printf "CCC:@.%a@.@." pp_print_term_typ
+  |*@> Format.printf "CCC:@.%a@.@." pp_print_term_typ
   |> Trans.remove_label
-  |@> Format.printf "DDD:@.%a@.@." pp_print_term_typ
-(*
-  |> Trans.inline_no_effect
- *)
+  |*@> Format.printf "DDD:@.%a@.@." pp_print_term_typ
+  |*> Trans.inline_no_effect
   |> Trans.inline_let_var
-  |@> Format.printf "EEE:@.%a@.@." pp_print_term_typ
+  |*@> Format.printf "EEE:@.%a@.@." pp_print_term_typ
   |> pair_eta_reduce
-  |@> flip Type_check.check TUnit
+  |*@> flip Type_check.check TUnit
