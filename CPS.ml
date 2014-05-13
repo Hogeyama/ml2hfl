@@ -1021,6 +1021,8 @@ let initialize () =
   sol := init_sol;
   constraints := []
 
+
+
 let trans t =
   initialize ();
   typ_excep := trans_typ !typ_excep (force_cont (infer_effect_typ !typ_excep));

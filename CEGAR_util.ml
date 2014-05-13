@@ -7,8 +7,6 @@ module U = Term_util
 
 let const_of_bool b = if b then True else False
 
-let typ_bool () = TBase(TBool, fun x -> [x; CEGAR_syntax.App(CEGAR_syntax.Const CEGAR_syntax.Not, x)])
-
 
 
 let apply_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2

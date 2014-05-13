@@ -192,7 +192,32 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
 
 and remove_pair t = root (remove_pair_aux t None)
 
+
+
+let add_pred = make_trans ()
+
+let add_pred_typ typ =
+  match typ with
+  | TFun(b1,TFun(b2,TFun(x,TFun(c1,TFun(c2,TFun(y,typ')))))) ->
+      begin
+        match Id.typ b1, Id.typ b2, Id.typ x, Id.typ c1, Id.typ c2, Id.typ y with
+        | TBool, TBool, TInt, TBool, TBool, TInt ->
+            let pred = make_eq (make_var x) (make_var y) in
+            let y' = Id.set_typ y @@ TPred(y, [pred]) in
+            TFun(b1,TFun(b2,TFun(x,TFun(c1,TFun(c2,TFun(y',typ'))))))
+        | _ -> add_pred.tr_typ_rec typ
+      end
+  | _ -> add_pred.tr_typ_rec typ
+
+let () = add_pred.tr_typ <- add_pred_typ
+
+let add_pred = add_pred.tr_term
+
+
+
+
 let remove_pair t =
   let t' = remove_pair t in
   Type_check.check t' typ_result;
-  t', uncurry_rtyp t
+  let t'' = add_pred t' in
+  t'', uncurry_rtyp t
