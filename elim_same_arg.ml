@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug = true
+let debug = false
 
 
 let get_args = make_col2 [] List.rev_append

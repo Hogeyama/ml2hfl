@@ -194,6 +194,7 @@ let rec run orig parsed =
       then Spec.parse_comment Spec_parser.spec Spec_lexer.token !Flag.filename
       else Spec.init
     in
+    if spec2 <> Spec.init then Flag.use_filter := true;
     Spec.merge spec1 spec2
     |@> Spec.print
   in

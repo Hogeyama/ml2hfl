@@ -640,7 +640,7 @@ let rec compose fg f t1 g t2 =
 Format.printf "compose@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), _ ->
-      make_if t11 (compose fg f t12 g t1) (compose fg f t13 g t2)
+      make_if t11 (compose fg f t12 g t2) (compose fg f t13 g t2)
   | _, If(t21, t22, t23) ->
       make_if t21 (compose fg f t1 g t22) (compose fg f t1 g t23)
   | _ -> compose_let fg f t1 g t2
