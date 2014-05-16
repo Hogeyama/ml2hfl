@@ -38,6 +38,11 @@ else
   AC_SUBST(FPAT)
 fi
 
+AC_CHECK_OCAML_PKG([extlib])
+if test "$OCAML_PKG_extlib" = "no"; then
+  AC_MSG_ERROR([extlib not found])
+fi
+
 AC_ARG_WITH(ocaml_src,
    [  --with-ocaml-src=DIR    OCaml source directory],
    [OCAML_SRC="$withval"])
