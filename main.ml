@@ -182,13 +182,13 @@ let arg_spec =
    "-disable-rc", Arg.Set Flag.disable_relatively_complete_verification, " Disable relatively complete verification";
    "-nex", Arg.Set_int Fpat.Global.number_of_extra_params,
           " Number of inserted extra parameters for each functional argument";
-   "-tbit", Arg.Set_int Fpat.Global.bits_threshold,
+   "-tbit", Arg.Set_int Fpat.BvPolyConstrSolver.bits_threshold,
           " Threshold on the number of bits used in the bit-vector modeling";
    "-cc", Arg.Set Fpat.Global.enable_coeff_const,
           " Disable constant terms of extra parameters";
-   "-aec", Arg.Set Fpat.Global.accumulate_ext_constrs,
+   "-aec", Arg.Set Fpat.EHCCSSolver.accumulate_ext_constrs,
           " Accumulate constraints on the coefficients of extra parameters";
-   "-dph", Arg.Set Fpat.Global.disable_parameter_inference_heuristics,
+   "-dph", Arg.Set Fpat.PolyConstrSolver.disable_parameter_inference_heuristics,
           " Disable heuristics of instantiation parameter inference";
    (* predicate abstraction *)
    "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
@@ -213,8 +213,8 @@ let arg_spec =
           " Use refinement type based predicate discovery (same as -rsn 0)";
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
           "<num>  Use refinement type based predicate discovery";
-   "-eap", Arg.Set Fpat.Global.extract_atomic_predicates, " Extract atomic predicates";
-   "-enable-cp", Arg.Set Fpat.Global.exploit_cut_points, " Exploit cut-points";
+   "-eap", Arg.Set Fpat.AbsType.extract_atomic_predicates, " Extract atomic predicates";
+   "-enable-cp", Arg.Set Fpat.RefTypeInfer.exploit_cut_points, " Exploit cut-points";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* HCCS solver *)
    "-gi",
@@ -368,7 +368,7 @@ let arg_spec =
          Fpat.BvPolyConstrSolver.solve),
      " Use bit-vector-based ranking function inference";
    "-rbf", (* use this with Z3 otherwise... *)
-     Arg.Set Fpat.Global.rank_bounded_first,
+     Arg.Set Fpat.RankFunInfer.rank_bounded_first,
      " Try to infer a ranking function with small coefficients";
    "-termination-disj",
      Arg.Unit (fun _ ->

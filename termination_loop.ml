@@ -240,7 +240,7 @@ let rec run predicate_que holed =
 	    (* make templates (for arguments and previous arguments) *)
 	    let linearTemplates = Fpat.Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Fpat.Template.make_atom arg_env), i+1) else None) 0 in
 	    let prevLinearTemplates = List.map (Fpat.Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
-	    if debug then Fpat.ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;
+	    if debug then Fpat.Util.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;
 	    
 	    try
 	      (* make a constraint *)
