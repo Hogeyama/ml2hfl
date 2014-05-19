@@ -6,4 +6,4 @@ let rec sum n =
 
 let main n m =
   if n < m
-  then assert (sum n <= sum n)
+  then assert (sum n <= sum m)

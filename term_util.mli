@@ -123,6 +123,7 @@ val make_neg : typed_term -> typed_term
 val make_if : typed_term -> typed_term -> typed_term -> typed_term
 val make_branch : typed_term -> typed_term -> typed_term
 val make_eq : typed_term -> typed_term -> typed_term
+val make_eq_dec : typed_term -> typed_term -> typed_term
 val make_neq : typed_term -> typed_term -> typed_term
 val make_lt : typed_term -> typed_term -> typed_term
 val make_gt : typed_term -> typed_term -> typed_term
@@ -202,3 +203,4 @@ val var_name_of_term : typed_term -> string
 val var_of_term : typed_term -> id
 val make_term : typ -> typed_term
 val is_dependend : typed_term -> id -> bool
+val col_same_term : typed_term -> typed_term -> typed_term list

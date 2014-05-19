@@ -4,7 +4,7 @@ open Syntax
 open Term_util
 
 
-let debug = false
+let debug = true
 
 let is_none_term t =
   match t.desc with
@@ -843,11 +843,12 @@ let elim_same_app = elim_same_app.tr_term
 let trans t = t
   |> inline_wrapped.tr_term
   |> Trans.flatten_let
-  |*@> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" pp_print_term
+  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" pp_print_term
   |> let_normalize
-  |*@> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" pp_print_term
+  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" pp_print_term
   |> elim_same_app
-  |*@> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" pp_print_term
+  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" pp_print_term
+            |> assert_false
   |> tupling
-  |*@> Format.printf "%a:@.%a@.@." Color.s_red "tupled" pp_print_term
+  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" pp_print_term
   |> Trans.inline_no_effect

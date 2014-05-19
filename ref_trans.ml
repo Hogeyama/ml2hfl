@@ -4,7 +4,7 @@ open Syntax
 open Term_util
 
 
-let debug = false
+let debug = true
 
 let trans = make_trans2 ()
 
@@ -168,7 +168,7 @@ Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.
             let aux t (i,j,path) =
               let t1 = make_var (List.nth xs i) in
               let t2 = make_var (List.nth xs j) in
-              make_assume (make_eq t1 t2) t
+              make_assume (make_eq_dec t1 t2) t
             in
             List.fold_left aux t' same_arg_apps
           in
@@ -402,11 +402,11 @@ let rec decomp_simple_let t =
       (x,t1)::bindings, t2'
   | _ -> [], t
 
-let sort_let = make_trans ()
+let sort_let_pair = make_trans ()
 
-let sort_let_aux x t =
+let sort_let_pair_aux x t =
   let bindings,t' = decomp_simple_let t in
-  let bindings' = List.map (fun (x,t) -> x, [], sort_let.tr_term t) bindings in
+  let bindings' = List.map (fun (x,t) -> x, [], sort_let_pair.tr_term t) bindings in
   let is_proj (_,_,t) =
     match t.desc with
     | Fst {desc=Var y}
@@ -414,39 +414,76 @@ let sort_let_aux x t =
     | _ -> false
   in
   let bindings1,bindings2 = List.partition is_proj bindings' in
-  let t'' = sort_let.tr_term t' in
+  let t'' = sort_let_pair.tr_term t' in
   make_lets bindings1 @@ make_lets bindings2 t''
 
-let sort_let_term t =
+let sort_let_pair_term t =
   match t.desc with
   | Let(Nonrecursive,[x,[],({desc=Pair _} as t1)],t2) ->
-      let t2' = sort_let_aux x t2 in
+      let t2' = sort_let_pair_aux x t2 in
       make_let [x,[],t1] t2'
   | Let(flag,[f,xs,t1],t2) ->
-      let t1' = sort_let.tr_term t1 in
-      let t2' = sort_let.tr_term t2 in
-      let t1'' = List.fold_right sort_let_aux xs t1' in
+      let t1' = sort_let_pair.tr_term t1 in
+      let t2' = sort_let_pair.tr_term t2 in
+      let t1'' = List.fold_right sort_let_pair_aux xs t1' in
       make_let_f flag [f,xs,t1''] t2'
-  | _ -> sort_let.tr_term_rec t
+  | _ -> sort_let_pair.tr_term_rec t
 
-let () = sort_let.tr_term <- sort_let_term
+let () = sort_let_pair.tr_term <- sort_let_pair_term
+
+
+
+let move_proj = make_trans ()
+
+let rec move_proj_aux x t =
+  match Id.typ x with
+  | TPair _ ->
+      Format.printf "MPJ: %a@." Id.print x;
+      let t1 = make_fst @@ make_var x in
+      let t2 = make_snd @@ make_var x in
+      let x1 = Id.new_var (Id.name x ^ "1") t1.typ in
+      let x2 = Id.new_var (Id.name x ^ "2") t2.typ in
+      let subst_rev' t1 x t2 =
+        let ts = col_same_term t1 t2 in
+List.iter (Format.printf "%a@." pp_print_term') ts;
+        List.fold_right (fun t1 t2 -> subst_rev t1 x t2) ts t2
+      in
+      make_lets [x1,[],t1; x2,[],t2] @@ move_proj_aux x2 @@ move_proj_aux x1 @@ subst_rev' t2 x2 @@ subst_rev' t1 x1 t
+  | _ -> t
+
+let move_proj_term t =
+  match t.desc with
+  | Let(flag,bindings,t2) ->
+      let bindings' = List.map (fun (f,xs,t) -> f, xs, move_proj.tr_term t) bindings in
+      let bindings'' = List.map (fun (f,xs,t) -> f, xs, List.fold_right move_proj_aux xs t) bindings' in
+      let t2' = move_proj.tr_term t2 in
+      let t2'' = List.fold_right (fun (x,_,_) t -> move_proj_aux x t) bindings t2' in
+      make_let_f flag bindings'' t2''
+  | Fun(x,t1) -> make_fun x @@ move_proj_aux x t1
+  | _ -> move_proj.tr_term_rec t
+
+let () = move_proj.tr_term <- move_proj_term
+
+
 
 
 let trans tt t = t
-  |*@> Format.printf "INPUT: %a@." pp_print_term
+  |@debug&> Format.printf "INPUT: %a@." pp_print_term
+  |> move_proj.tr_term
+  |@debug&> Format.printf "move_proj: %a@." pp_print_term_typ
   |@> Trans.inline_no_effect
-  |*@> Format.printf "inline_no_effect: %a@." pp_print_term_typ
+  |@debug&> Format.printf "inline_no_effect: %a@." pp_print_term_typ
   |> Trans.normalize_let
-  |*@> Format.printf "normalize_let: %a@." pp_print_term_typ
+  |@debug&> Format.printf "normalize_let: %a@." pp_print_term_typ
   |> Trans.flatten_let
   |> Trans.inline_let_var
-  |*@> Format.printf "flatten_let: %a@." pp_print_term_typ
-  |> sort_let.tr_term
-  |*@> Format.printf "sort_let: %a@." pp_print_term_typ
+  |@debug&> Format.printf "flatten_let: %a@." pp_print_term_typ
+  |> sort_let_pair.tr_term
+  |@debug&> Format.printf "sort_let_pair: %a@." pp_print_term_typ
   |@> flip Type_check.check TUnit
   |> trans.tr2_term (tt,[])
   |> Trans.inline_no_effect
-  |*@> Format.printf "ref_trans: %a@." pp_print_term'
+  |@debug&> Format.printf "ref_trans: %a@." pp_print_term
 
 
 
@@ -561,13 +598,10 @@ let col_app_terms = col_app_terms.col2_term
 let replace_head fs fs' t =
   let ts = col_app_terms fs t in
   let rec aux fs ts =
-    match fs with
-    | [] ->
-        if ts <> [] then
-          unsupported "replace_head"
-        else
-          []
-    | f::fs' ->
+    match fs,ts with
+    | [], [] -> []
+    | [], _ -> unsupported "replace_head"
+    | f::fs', _ ->
         let ts1,ts2 = List.partition (fun t -> Id.mem f @@ get_fv t) ts in
         List.hd ts1 :: aux fs' (List.tl ts1 @ ts2)
   in

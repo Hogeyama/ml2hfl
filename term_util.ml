@@ -806,6 +806,24 @@ let and_list ts = match ts with
   | [t] -> t
   | t::ts -> List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TBool}) t ts
 
+let make_eq_dec t1 t2 =
+  assert (not Flag.check_typ || Type.can_unify t1.typ t2.typ);
+  let aux t =
+    match t.desc with
+    | Var x -> make_var x, id
+    | _ ->
+        let x = Id.new_var "x" t.typ in
+        make_var x, make_let [x,[],t]
+  in
+  let rec make t1 t2 =
+    match t1.typ with
+    | TBool
+    | TInt -> make_eq t1 t2
+    | TPair _ -> make_and (make (make_fst t1) (make_fst t2)) (make (make_snd t1) (make_snd t2))
+  in
+  let t1',k1 = aux t1 in
+  let t2',k2 = aux t2 in
+  k1 @@ k2 @@ make t1' t2'
 
 
 let rec make_term typ =
@@ -1485,3 +1503,15 @@ let rec var_name_of_term t =
 let var_of_term t = Id.new_var (var_name_of_term t) t.typ
 
 let is_dependend t x = Id.mem x @@ get_fv t
+
+
+
+let col_same_term = make_col2 [] List.rev_append
+
+let col_same_term_term t1 t2 =
+  let b = try same_term t1 t2 with _ -> false in
+  if b then [t2] else col_same_term.col2_term_rec t1 t2
+
+let () = col_same_term.col2_term <- col_same_term_term
+
+let col_same_term = col_same_term.col2_term
