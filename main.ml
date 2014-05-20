@@ -154,6 +154,7 @@ let arg_spec =
                  Flag.debug_level := 0;
                  Flag.print_progress := false),
      " Show only result";
+   "-verbose", Arg.Set Fpat.Global.verbose, "Verbose mode";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
    "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
    "-exp", Arg.Unit (fun () ->
@@ -203,9 +204,6 @@ let arg_spec =
    "-trecs", Arg.Set_string Flag.trecs,
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
    "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
-   (* FPAT option *)
-   "-flog", Arg.Set Fpat.Global._force,
-            " Force printing log messages";
    (* predicate discovery *)
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
                        " Use an empty set as the initial sets of predicates for booleans";
@@ -220,7 +218,7 @@ let arg_spec =
    "-gi",
      Arg.Unit (fun _ ->
        Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron false),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.CHGenInterpProver.interpolate false),
      " Generalize constraints of multiple function calls by interpolation";
 
    "-size",
@@ -251,7 +249,7 @@ let arg_spec =
    "-gchi",
      Arg.Unit (fun _ ->
        Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.GenInterpProver.interpolate_apron true),
+       Fpat.GenInterpProver.ext_interpolate := Fpat.CHGenInterpProver.interpolate true),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtcs",
      Arg.Unit (fun _ ->
@@ -273,7 +271,8 @@ let arg_spec =
      " Use CSIsat interpolating prover with an ad hoc generalization heuristics";
    "-tcs",
      Arg.Unit (fun _ ->
-       Fpat.InterpProver.ext_interpolate := Fpat.TemplateBasedInterpProver.interpolate Fpat.HornClause.qelim_full),
+       Fpat.InterpProver.ext_interpolate :=
+         Fpat.TemplateBasedInterpProver.interpolate (Fpat.Qelim.simplify_eqint_full [])),
      " Use an interpolating prover based on template based constraint solving";
    (* SMT solver *)
    "-z3", Arg.Unit (fun _ ->
