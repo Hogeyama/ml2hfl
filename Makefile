@@ -225,8 +225,8 @@ test-error: opt
 SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(OCAML_SOURCE)%, $(SRC))
 
-depend: $(SRC_MOCHI) $(DEPEND)
-	$(OCAMLFIND) ocamldep $(MLI) $(SRC_MOCHI) > depend
+depend: $(SRC_MOCHI) $(DEPEND) Makefile
+	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
 -include ocaml.depend
