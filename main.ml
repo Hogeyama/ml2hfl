@@ -212,7 +212,7 @@ let arg_spec =
    "-rsn", Arg.Int (fun n -> Flag.refine := Flag.RefineRefType(n)),
           "<num>  Use refinement type based predicate discovery";
    "-eap", Arg.Set Fpat.AbsType.extract_atomic_predicates, " Extract atomic predicates";
-   "-enable-cp", Arg.Set Fpat.RefTypeInfer.exploit_cut_points, " Exploit cut-points";
+   "-enable-cp", Arg.Set Fpat.RefTypInfer.exploit_cut_points, " Exploit cut-points";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* HCCS solver *)
    "-gi",
@@ -504,7 +504,7 @@ let () =
           Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
           Format.printf "\"total\": \"(%.3f)\"" (get_time());
           Format.printf "}@."
-      | Fpat.AbsTypeInfer.FailedToRefineTypes ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.";
           Format.printf "  MoCHi could not refute an infeasible error path @.";
           Format.printf "  due to the incompleteness of the refinement type system@."
