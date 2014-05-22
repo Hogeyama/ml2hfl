@@ -117,6 +117,7 @@ trecs_lexer.ml: trecs_lexer.mll
 # Dependencies
 DEP_FPAT = CEGAR CEGAR_syntax CEGAR_abst_util feasibility main \
 	main_loop termination_loop refine syntax trans fpatInterface writeAnnot BRA_types
+$(addsuffix .cmi,$(DEP_FPAT)): $(FPAT)/fpat.cmi
 $(addsuffix .cmo,$(DEP_FPAT)): $(FPAT)/fpat.cmi
 $(addsuffix .cmx,$(DEP_FPAT)): $(FPAT)/fpat.cmi
 
@@ -225,8 +226,8 @@ test-error: opt
 SRC = $(CMO:.cmo=.ml)
 SRC_MOCHI = $(filter-out $(OCAML_SOURCE)%, $(SRC))
 
-depend: $(SRC_MOCHI) $(DEPEND)
-	$(OCAMLFIND) ocamldep $(MLI) $(SRC_MOCHI) > depend
+depend: $(SRC_MOCHI) $(DEPEND) Makefile
+	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC_MOCHI) > depend
 
 -include depend
 -include ocaml.depend
