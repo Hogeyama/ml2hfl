@@ -125,7 +125,7 @@ let report_safe env rmap get_rtyp orig t0 =
         (fun (x, n) ->
           Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
           CEGAR_trans.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
-        !Fpat.RefTypeInfer.prev_sol
+        !Fpat.RefTypInfer.prev_sol
     in
     let t = Term_util.subst_map map t0 in
     Format.printf "Program with Quantifiers Added:@.";
@@ -215,19 +215,19 @@ let rec run orig parsed =
             then report_unsafe main_fun arg_num ce set_target;
             false
       with
-      | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
           Flag.insert_param_funarg := true;
           run orig parsed
-      | Fpat.AbsTypeInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
           run orig parsed
-      | Fpat.AbsTypeInfer.FailedToRefineTypes ->
-          raise Fpat.AbsTypeInfer.FailedToRefineTypes
-      | Fpat.RefTypeInfer.FailedToRefineExtraParameters ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes ->
+          raise Fpat.AbsTypInfer.FailedToRefineTypes
+      | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
           FpatInterface.params := [];
-          Fpat.RefTypeInfer.prev_sol := [];
-          Fpat.RefTypeInfer.prev_constrs := [];
+          Fpat.RefTypInfer.prev_sol := [];
+          Fpat.RefTypInfer.prev_constrs := [];
           incr Fpat.Global.number_of_extra_params;
           run orig parsed

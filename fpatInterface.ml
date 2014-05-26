@@ -193,7 +193,7 @@ let rec inv_abst_type aty =
 
 let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in
-  Fpat.RefTypeInfer.is_cut_point prog
+  Fpat.RefTypInfer.is_cut_point prog
 
 let infer flags labeled is_cp cexs prog =
   (*
@@ -207,7 +207,7 @@ let infer flags labeled is_cp cexs prog =
    *)
 
   let prog = conv_prog prog in
-  let env = Fpat.AbsTypeInfer.refine prog labeled is_cp cexs in
+  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs in
   Flag.time_parameter_inference := !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
   Fpat.Util.List.map
     (fun (f, rty) ->
@@ -247,9 +247,9 @@ let new_params recursive bvs exs =
        in
        let ts =
          (if !Fpat.Global.enable_coeff_const (*&& recursive = None*) then
-            Fpat.RefTypeInfer.masked_params :=
+            Fpat.RefTypInfer.masked_params :=
               Fpat.Idnt.mk_coeff (Id.to_string (Fpat.Util.List.hd ps)) ::
-                !Fpat.RefTypeInfer.masked_params);
+                !Fpat.RefTypInfer.masked_params);
          (if !Fpat.Global.enable_coeff_const then [Term_util.make_var (Fpat.Util.List.hd ps)] else []) @
            (*
     let b = recursive <> None && xs = [] && Fpat.Util.Set.subset bvs' exs in
@@ -262,17 +262,17 @@ let new_params recursive bvs exs =
           else*) if recursive <> None then
                   (if xs = [] then
                      (if Fpat.Util.List.mem x exs then
-                        Fpat.RefTypeInfer.masked_params :=
+                        Fpat.RefTypInfer.masked_params :=
                           Fpat.Idnt.mk_coeff (Id.to_string p) ::
-                            !Fpat.RefTypeInfer.masked_params (*this is necessary for l-length_cps-append.ml*))
+                            !Fpat.RefTypInfer.masked_params (*this is necessary for l-length_cps-append.ml*))
                    else if not (Fpat.Util.List.mem x xs) then
-                     Fpat.RefTypeInfer.masked_params :=
+                     Fpat.RefTypInfer.masked_params :=
                        Fpat.Idnt.mk_coeff (Id.to_string p) ::
-                         !Fpat.RefTypeInfer.masked_params)
+                         !Fpat.RefTypInfer.masked_params)
               (* how to deal with non-recursive function calls here? *)
               (*else
             if Fpat.Util.List.mem x exs then
-              Fpat.RefTypeInfer.masked_params := Fpat.Idnt.mk_coeff (Fpat.Idnt.make (Id.to_string p)) :: !Fpat.RefTypeInfer.masked_params*)
+              Fpat.RefTypInfer.masked_params := Fpat.Idnt.mk_coeff (Fpat.Idnt.make (Id.to_string p)) :: !Fpat.RefTypInfer.masked_params*)
               in
               Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
              (if !Fpat.Global.enable_coeff_const then Fpat.Util.List.tl ps else ps)
@@ -318,7 +318,7 @@ and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 let insert_extra_param t =
   let tmp = get_time() in
   let debug = !Flag.debug_level > 0 in
-  Fpat.RefTypeInfer.masked_params := [];
+  Fpat.RefTypInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
@@ -494,13 +494,13 @@ let insert_extra_param t =
 
 let instantiate_param (typs, fdefs, main as prog) =
   let tmp = get_time() in
-  (if !Fpat.RefTypeInfer.prev_sol = [] then
-     Fpat.RefTypeInfer.init_sol (conv_prog prog));
+  (if !Fpat.RefTypInfer.prev_sol = [] then
+     Fpat.RefTypInfer.init_sol (conv_prog prog));
   let map =
     Fpat.Util.List.map
       (fun (x, n) ->
        Fpat.Idnt.string_of x, inv_term (Fpat.IntTerm.make n))
-      !Fpat.RefTypeInfer.prev_sol
+      !Fpat.RefTypInfer.prev_sol
   in
   let res =
 	typs,
@@ -560,7 +560,7 @@ let compute_strongest_post prog ce =
 
 
 let report_error ppf = function
-  | Fpat.AbsTypeInfer.FailedToRefineTypes ->
+  | Fpat.AbsTypInfer.FailedToRefineTypes ->
      Format.fprintf ppf "Failure of abstraction type refinement"
   | Fpat.SMTProver.Unknown ->
      Format.fprintf ppf "Failure of SMT prover"
@@ -568,7 +568,7 @@ let report_error ppf = function
      Format.fprintf ppf "Failure of interpolating prover (integer domain not fully supported)"
   | Fpat.InterpProver.Unknown ->
      Format.fprintf ppf "Failure of interpolating prover"
-  | Fpat.RefTypeInfer.FailedToRefineExtraParameters ->
+  | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
      Format.fprintf ppf  "Failure of parameter substitution refinement"
   | Fpat.PolyConstrSolver.Unknown ->
      Format.fprintf ppf "Failure of polynomial constraint solver"
@@ -579,11 +579,11 @@ let report_error ppf = function
 let string_of_error = make_string_of report_error
 
 let is_fpat_exception = function
-  | Fpat.AbsTypeInfer.FailedToRefineTypes
+  | Fpat.AbsTypInfer.FailedToRefineTypes
   | Fpat.SMTProver.Unknown
   | Fpat.InterpProver.Fail
   | Fpat.InterpProver.Unknown
-  | Fpat.RefTypeInfer.FailedToRefineExtraParameters
+  | Fpat.RefTypInfer.FailedToRefineExtraParameters
   | Fpat.PolyConstrSolver.Unknown
   | Fpat.Util.NotImplemented _ -> true
   | _ -> false
@@ -595,30 +595,3 @@ let is_sat = Fpat.SMTProver.is_sat_dyn
 module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
-
-module AbsType = Fpat.AbsType
-module AbsTypeInfer = Fpat.AbsTypeInfer
-module BeautifulDagHCCSSolver = Fpat.BeautifulDagHCCSSolver
-module BeautifulHCCSSolver = Fpat.BeautifulHCCSSolver
-module BeautifulTreeHCCSSolver = Fpat.BeautifulTreeHCCSSolver
-module BvPolyConstrSolver = Fpat.BvPolyConstrSolver
-module BwHCCSSolver = Fpat.BwHCCSSolver
-module CHGenInterpProver = Fpat.CHGenInterpProver
-module EHCCSSolver = Fpat.EHCCSSolver
-module GenHCCSSolver = Fpat.GenHCCSSolver
-module GenInterpProver = Fpat.GenInterpProver
-module Global = Fpat.Global
-module HCCSSolver = Fpat.HCCSSolver
-module InterpProver = Fpat.InterpProver
-module PolyConstrSolver = Fpat.PolyConstrSolver
-module Qelim = Fpat.Qelim
-module RankFunInfer = Fpat.RankFunInfer
-module RefTypeInfer = Fpat.RefTypeInfer
-module SMTProver = Fpat.SMTProver
-module Template = Fpat.Template
-module TemplateBasedGenInterpProver = Fpat.TemplateBasedGenInterpProver
-module TemplateBasedInterpProver = Fpat.TemplateBasedInterpProver
-module UnwindDagHCCSSolver = Fpat.UnwindDagHCCSSolver
-module Idnt = Fpat.Idnt
-module Type = Fpat.Type
-module Formula = Fpat.Formula

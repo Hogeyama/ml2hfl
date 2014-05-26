@@ -53,7 +53,7 @@ let inferCoeffs argumentVariables linear_templates constraints =
 
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
-      let ((correspondenceCoeffs, const_part) as ranking_function) = Fpat.LinIntTermExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
+      let ((correspondenceCoeffs, const_part) as ranking_function) = Fpat.LinTermIntExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
@@ -82,7 +82,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
 
     (List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
-      let correspondenceCoeffs, const_part = Fpat.LinIntTermExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
+      let correspondenceCoeffs, const_part = Fpat.LinTermIntExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =

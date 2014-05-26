@@ -64,24 +64,24 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
         match !Flag.refine with
             Flag.RefineRefType(flags) ->
       	      Format.printf "@[<v>";
-              let ces = if !FpatInterface.Global.use_multiple_paths then ces else [FpatInterface.List.hd ces] in
+              let ces = if !Fpat.Global.use_multiple_paths then ces else [FpatInterface.List.hd ces] in
       	      let map = FpatInterface.infer flags labeled is_cp ces (env, defs, main) in
       	      Format.printf "@]";
               map
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";
-        FpatInterface.SMTProver.close ();
-        FpatInterface.SMTProver.open_ ();
+        Fpat.SMTProver.close ();
+        Fpat.SMTProver.open_ ();
         add_time tmp Flag.time_cegar;
         map, {env=env';defs=defs;main=main}
     with e ->
-      FpatInterface.SMTProver.close ();
-      FpatInterface.SMTProver.open_ ();
+      Fpat.SMTProver.close ();
+      Fpat.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise e
 
-exception PostCondition of (FpatInterface.Idnt.t * FpatInterface.Type.t) list * FpatInterface.Formula.t * FpatInterface.Formula.t
+exception PostCondition of (Fpat.Idnt.t * Fpat.Type.t) list * Fpat.Formula.t * Fpat.Formula.t
 
 let print_list fm = function
   | [] -> Format.fprintf fm "[]@."
@@ -125,12 +125,12 @@ let refine_rank_fun ce { env=env; defs=defs; main=main } =
       Format.printf "[instantiated]@.%a@." FpatInterface.Formula.pr spc;*)
 
       if !Flag.print_progress then Format.printf "DONE!@.@.";
-      FpatInterface.SMTProver.close ();
-      FpatInterface.SMTProver.open_ ();
+      Fpat.SMTProver.close ();
+      Fpat.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise (PostCondition (env, spc, spcWithExparam))
     with e ->
-      FpatInterface.SMTProver.close ();
-      FpatInterface.SMTProver.open_ ();
+      Fpat.SMTProver.close ();
+      Fpat.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise e
