@@ -3,59 +3,19 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
+open CEGAR_trans
 
 
 exception CannotRefute
 
-let equiv env t1 t2 =
-  let t1' = FpatInterface.conv_formula t1 in
-  let t2' = FpatInterface.conv_formula t2 in
-  Fpat.SMTProver.implies_dyn [t1'] [t2'] &&
-  Fpat.SMTProver.implies_dyn [t2'] [t1']
 
 
-let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 
-let add env ps p =
-  if List.exists (equiv env p) ps
-  then ps
-  else normalize_bool_term p :: ps
-
-let print_typ_base fm = function
-    TUnit -> Format.fprintf fm "unit"
-  | TBool -> Format.fprintf fm "bool"
-  | TInt -> Format.fprintf fm "int"
-  | TTuple n -> Format.fprintf fm "tuple"
-  | TList -> assert false
-  | TAbst s -> Format.pp_print_string fm s
-let rec merge_typ env typ typ' =
-  match typ,typ' with
-      TBase(b1,ps1),TBase(b2,ps2) ->
-        assert (b1 = b2);
-        let x = new_id' "x" in
-        let env' = (x,typ)::env in
-        let ps1' = ps1 (Var x) in
-        let ps2' = ps2 (Var x) in
-        let ps = List.fold_left (add env') ps1' ps2' in
-        let ps t = List.map (subst x t) ps in
-          TBase(b1, ps)
-    | TFun(typ11,typ12), TFun(typ21,typ22) ->
-        let x = new_id' "x" in
-        let env' = (x,typ11)::env in
-        let typ12 = typ12 (Var x) in
-        let typ22 = typ22 (Var x) in
-        let typ1 = merge_typ env typ11 typ21 in
-        let typ2 = merge_typ env' typ12 typ22 in
-          TFun(typ1, fun t -> subst_typ x t typ2)
-    | TBase _, _
-    | TFun _, _
-    | TAbs _, _
-    | TApp _, _ -> Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ'; assert false
 
 let add_preds_env map env =
   let aux (f,typ) =
     try
-      f, merge_typ [] typ (List.assoc f map)
+      f, merge_typ typ (List.assoc f map)
     with Not_found -> f, typ
   in
     List.map aux env
@@ -65,7 +25,7 @@ let add_preds_env map env =
     try
       let typ1 = typ in
       let typ2 = List.assoc f map in
-      let typ' = merge_typ [] typ1 typ2 in
+      let typ' = merge_typ typ1 typ2 in
         f, typ'
     with Not_found -> f, typ
   in
@@ -77,21 +37,21 @@ let add_preds map prog =
 
 let rec add_to_path path typ1 typ2 =
   match path,typ2 with
-      [],_ -> merge_typ [] typ1 typ2
-    | 0::path',TFun(typ21,typ22) -> TFun(add_to_path path' typ1 typ21, typ22)
-    | 1::path',TFun(typ21,typ22) -> TFun(typ21, fun x -> add_to_path path' typ1 (typ22 x))
-    | _ -> Format.printf "%a@." CEGAR_print.typ typ2; assert false
+  | [],_ -> merge_typ typ1 typ2
+  | 0::path',TFun(typ21,typ22) -> TFun(add_to_path path' typ1 typ21, typ22)
+  | 1::path',TFun(typ21,typ22) -> TFun(typ21, fun x -> add_to_path path' typ1 (typ22 x))
+  | _ -> Format.printf "%a@." CEGAR_print.typ typ2; assert false
 
 let rec add_pred n path typ =
   match typ with
-      TBase _ -> assert false
-    | TFun(typ1,typ2) when n=0 ->
-        TFun(typ1, fun x -> add_to_path (List.tl path) typ1 (typ2 x))
-    | TFun(typ1,typ2) ->
-        assert (List.hd path = 1);
-        TFun(typ1, fun x -> add_pred (n-1) (List.tl path) (typ2 x))
-    | TAbs _ -> assert false
-    | TApp _ -> assert false
+  | TBase _ -> assert false
+  | TFun(typ1,typ2) when n=0 ->
+      TFun(typ1, fun x -> add_to_path (List.tl path) typ1 (typ2 x))
+  | TFun(typ1,typ2) ->
+      assert (List.hd path = 1);
+      TFun(typ1, fun x -> add_pred (n-1) (List.tl path) (typ2 x))
+  | TAbs _ -> assert false
+  | TApp _ -> assert false
 
 
 
@@ -104,24 +64,24 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
         match !Flag.refine with
             Flag.RefineRefType(flags) ->
       	      Format.printf "@[<v>";
-              let ces = if !Fpat.Global.use_multiple_paths then ces else [Fpat.Util.List.hd ces] in
+              let ces = if !FpatInterface.Global.use_multiple_paths then ces else [FpatInterface.List.hd ces] in
       	      let map = FpatInterface.infer flags labeled is_cp ces (env, defs, main) in
       	      Format.printf "@]";
               map
       in
       let env' = if !Flag.disable_predicate_accumulation then map else add_preds_env map env in
         if !Flag.print_progress then Format.printf "DONE!@.@.";
-        Fpat.SMTProver.close ();
-        Fpat.SMTProver.open_ ();
+        FpatInterface.SMTProver.close ();
+        FpatInterface.SMTProver.open_ ();
         add_time tmp Flag.time_cegar;
         map, {env=env';defs=defs;main=main}
     with e ->
-      Fpat.SMTProver.close ();
-      Fpat.SMTProver.open_ ();
+      FpatInterface.SMTProver.close ();
+      FpatInterface.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise e
 
-exception PostCondition of (Fpat.Idnt.t * Fpat.Type.t) list * Fpat.Formula.t * Fpat.Formula.t
+exception PostCondition of (FpatInterface.Idnt.t * FpatInterface.Type.t) list * FpatInterface.Formula.t * FpatInterface.Formula.t
 
 let print_list fm = function
   | [] -> Format.fprintf fm "[]@."
@@ -161,16 +121,16 @@ let refine_rank_fun ce { env=env; defs=defs; main=main } =
       in
 
       (* TEMPORARY *)
-      (*Format.printf "[exparam]@.%a@." Fpat.Formula.pr spcWithExparam;
-      Format.printf "[instantiated]@.%a@." Fpat.Formula.pr spc;*)
+      (*Format.printf "[exparam]@.%a@." FpatInterface.Formula.pr spcWithExparam;
+      Format.printf "[instantiated]@.%a@." FpatInterface.Formula.pr spc;*)
 
       if !Flag.print_progress then Format.printf "DONE!@.@.";
-      Fpat.SMTProver.close ();
-      Fpat.SMTProver.open_ ();
+      FpatInterface.SMTProver.close ();
+      FpatInterface.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise (PostCondition (env, spc, spcWithExparam))
     with e ->
-      Fpat.SMTProver.close ();
-      Fpat.SMTProver.open_ ();
+      FpatInterface.SMTProver.close ();
+      FpatInterface.SMTProver.open_ ();
       add_time tmp Flag.time_cegar;
       raise e

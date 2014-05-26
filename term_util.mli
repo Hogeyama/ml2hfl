@@ -154,6 +154,8 @@ val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 val imply : typed_term -> typed_term -> typed_term
 val and_list : typed_term list -> typed_term
 val get_typ_default : typ -> typed_term
+val none_flag : typed_term
+val some_flag : typed_term
 val opt_typ : typ -> typ
 val get_opt_typ : typ -> typ
 val make_none : typ -> typed_term
@@ -167,9 +169,9 @@ val make_ttuple : typ list -> typ
 
 (** {6 Term destructor} *)
 val is_none : typed_term -> bool
-val is_is_none : typed_term -> typed_term option
-val is_get_val : typed_term -> typed_term option
-val is_some : typed_term -> typed_term option
+val decomp_some : typed_term -> typed_term option
+val decomp_is_none : typed_term -> typed_term option
+val decomp_get_val : typed_term -> typed_term option
 val decomp_fun : typed_term -> id list * typed_term
 val decomp_let : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
 val decomp_tuple : typed_term -> typed_term list
@@ -204,3 +206,4 @@ val var_of_term : typed_term -> id
 val make_term : typ -> typed_term
 val is_dependend : typed_term -> id -> bool
 val col_same_term : typed_term -> typed_term -> typed_term list
+val col_info_id : typed_term -> id list

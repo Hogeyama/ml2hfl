@@ -12,10 +12,10 @@ type result =
 let debug = false
 
 let checksat env t =
-  Fpat.SMTProver.is_sat_dyn @@ FpatInterface.conv_formula t
+  FpatInterface.is_sat @@ FpatInterface.conv_formula t
 
 let get_solution env t =
-  t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort compare |> List.map snd
+  t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort |> List.map snd
 
 let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env
 

@@ -314,7 +314,7 @@ let rec inst_randvalue env defs typ =
 let rec get_last_definition f t =
   match t.desc with
       Let(_, bindings, t2) ->
-        let f,_,_ = last bindings in
+        let f,_,_ = List.last bindings in
           get_last_definition (Some f) t2
     | Fun _ -> assert false
     | _ -> f
@@ -1020,7 +1020,7 @@ let normalize_binop_exp op t1 t2 =
     in
       compare (aux x1) (aux x2)
   in
-  let xns = List.sort compare (xns1 @@@ (neg xns2)) in
+  let xns = List.sort (xns1 @@@ (neg xns2)) in
   let rec aux = function
       [] -> []
     | (x,n)::xns ->
@@ -1291,41 +1291,39 @@ let elim_fun t = elim_fun "f" t
 
 let rec make_ext_env funs t =
   match t.desc with
-      Const c -> []
-    | Unknown -> []
-    | RandInt _ -> []
-    | RandValue _ -> []
-    | Var x -> if List.mem x funs then [x, Id.typ x] else []
-    | App(t, ts) -> make_ext_env funs t @@@ (rev_map_flatten (make_ext_env funs) ts)
-    | If(t1, t2, t3) -> make_ext_env funs t1 @@@ make_ext_env funs t2 @@@ make_ext_env funs t3
-    | Branch(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
-    | Let(flag, bindings, t2) ->
-        let aux fv (_,xs,t) = make_ext_env funs t @@@ fv in
-          List.fold_left aux (make_ext_env funs t2) bindings
-    | BinOp(op, t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
-    | Not t -> make_ext_env funs t
-    | Fun(x,t) -> make_ext_env funs t
-    | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env funs t @@@ acc) [] fields
-    | Proj(_,_,_,t) -> make_ext_env funs t
-    | SetField(_,_,_,_,t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
-    | Nil -> []
-    | Cons(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env funs t @@@ acc) [] ts
-    | Match(t,pats) ->
-        let aux acc (_,_,t) = make_ext_env funs t @@@ acc in
-          List.fold_left aux (make_ext_env funs t) pats
-    | TryWith(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
-    | Bottom -> []
-    | Pair(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
-    | Fst t -> make_ext_env funs t
-    | Snd t -> make_ext_env funs t
-    | Raise t -> make_ext_env funs t
-    | Label _ -> assert false
+  | Const c -> []
+  | Unknown -> []
+  | RandInt _ -> []
+  | RandValue _ -> []
+  | Var x -> if List.mem x funs then [x, Id.typ x] else []
+  | App(t, ts) -> make_ext_env funs t @@@ (rev_map_flatten (make_ext_env funs) ts)
+  | If(t1, t2, t3) -> make_ext_env funs t1 @@@ make_ext_env funs t2 @@@ make_ext_env funs t3
+  | Branch(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+  | Let(flag, bindings, t2) ->
+      let aux fv (_,xs,t) = make_ext_env funs t @@@ fv in
+      List.fold_left aux (make_ext_env funs t2) bindings
+  | BinOp(op, t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+  | Not t -> make_ext_env funs t
+  | Fun(x,t) -> make_ext_env funs t
+  | Event(s,_) -> []
+  | Record fields -> List.fold_left (fun acc (_,(_,t)) -> make_ext_env funs t @@@ acc) [] fields
+  | Proj(_,_,_,t) -> make_ext_env funs t
+  | SetField(_,_,_,_,t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+  | Nil -> []
+  | Cons(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+  | Constr(_,ts) -> List.fold_left (fun acc t -> make_ext_env funs t @@@ acc) [] ts
+  | Match(t,pats) ->
+      let aux acc (_,_,t) = make_ext_env funs t @@@ acc in
+      List.fold_left aux (make_ext_env funs t) pats
+  | TryWith(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+  | Bottom -> []
+  | Pair(t1,t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
+  | Fst t -> make_ext_env funs t
+  | Snd t -> make_ext_env funs t
+  | Raise t -> make_ext_env funs t
+  | Label _ -> assert false
 
-let make_ext_env t =
-  let funs = get_fv ~cmp:compare t in
-  make_ext_env funs t
+let make_ext_env t = make_ext_env (get_fv t) t
 
 
 
@@ -1725,20 +1723,9 @@ let insert_param_funarg_term t =
 let () = insert_param_funarg.tr_typ <- insert_param_funarg_typ
 let () = insert_param_funarg.tr_term <- insert_param_funarg_term
 
-let insert_param_funarg = insert_param_funarg.tr_term
-
-
-
-
-
-
-
-
-
-
-
-
-
+let insert_param_funarg t = t
+  |> insert_param_funarg.tr_term
+  |@> flip Type_check.check Term_util.typ_result
 
 
 
@@ -2357,21 +2344,22 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 
 
 
-let elim_unused_let = make_trans ()
+let elim_unused_let = make_trans2 ()
 
-let elim_unused_let_term t =
+let elim_unused_let_term cbv t =
   match t.desc with
   | Let(Nonrecursive, bindings, t) ->
       let fv = get_fv t in
-      let bindings' = List.filter (fun (f,_,_) -> Id.mem f fv) bindings in
-      let bindings'' = List.map (fun (f,xs,t) -> f, xs, elim_unused_let.tr_term t) bindings' in
-      let t' = elim_unused_let.tr_term t in
+      let check (f,xs,t) = Id.mem f fv || (cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t) in
+      let bindings' = List.filter check bindings in
+      let bindings'' = List.map (fun (f,xs,t) -> f, xs, elim_unused_let.tr2_term cbv t) bindings' in
+      let t' = elim_unused_let.tr2_term cbv t in
       make_let bindings'' t'
-  | _ -> elim_unused_let.tr_term_rec t
+  | _ -> elim_unused_let.tr2_term_rec cbv t
 
-let () = elim_unused_let.tr_term <- elim_unused_let_term
+let () = elim_unused_let.tr2_term <- elim_unused_let_term
 
-let elim_unused_let = elim_unused_let.tr_term
+let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
 
 
 
@@ -2404,3 +2392,30 @@ let alpha_rename_term t =
 let () = alpha_rename.tr_term <- alpha_rename_term
 
 let alpha_rename = alpha_rename.tr_term
+
+
+
+let elim_unused_branch = make_trans ()
+
+let elim_unused_branch_term t =
+  match t.desc with
+  | If({desc=BinOp(Eq,{desc=Var x},{desc=Var y})}, t1, t2) when Id.same x y -> elim_unused_branch.tr_term t1
+  | _ -> elim_unused_branch.tr_term_rec t
+
+let () = elim_unused_branch.tr_term <- elim_unused_branch_term
+
+let elim_unused_branch = elim_unused_branch.tr_term
+
+
+
+let inline_simple_exp = make_trans ()
+
+let inline_simple_exp_term t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],t1],t2) when is_simple_aexp t1 || is_simple_bexp t1 ->
+      inline_simple_exp.tr_term @@ subst x t1 t2
+  | _ -> inline_simple_exp.tr_term_rec t
+
+let () = inline_simple_exp.tr_term <- inline_simple_exp_term
+
+let inline_simple_exp = inline_simple_exp.tr_term

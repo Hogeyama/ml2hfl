@@ -42,8 +42,9 @@ let rec abst_recdata_typ = function
   | TList typ -> TList (abst_recdata_typ typ)
   | TConstr(s,true) ->
       let typs = TInt :: get_ground_types s in
-      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(Id.new_var "x" typ1,typ2)) (init typs) (last typs) in
-        TPair(Id.new_var "u" TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
+      let typs',typ = decomp_snoc typs in
+      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(Id.new_var "x" typ1,typ2)) typs' typ in
+      TPair(Id.new_var "u" TUnit, TFun(Id.new_var "path" (TList TInt), r_typ))
   | TConstr(s,false) -> TConstr(s,false)
   | TPair(x,typ) -> TPair(abst_recdata_var x, abst_recdata_typ typ)
   | TPred(x,ps) -> TPred(Id.set_typ x (abst_recdata_typ (Id.typ x)), ps)

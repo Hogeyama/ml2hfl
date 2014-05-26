@@ -854,34 +854,34 @@ let make_some t = make_pair some_flag t
 let make_is_none t = make_eq (make_fst t) none_flag
 let make_is_some t = make_not (make_is_none t)
 let make_get_val t = make_snd t
-let is_is_none t =
+let decomp_is_none t =
   match t.desc with
-    BinOp(Eq, {desc=Fst t1}, t2) when t2 = none_flag -> Some t1
+  | BinOp(Eq, {desc=Fst t1}, t2) when t2 = none_flag -> Some t1
   | _ -> None
-let is_get_val t =
+let decomp_get_val t =
   match t.desc with
-    Snd t -> Some t
+  | Snd t -> Some t
   | _ -> None
-let is_some t =
+let decomp_some t =
   match t.desc with
-    Pair(t1,t2) when t1 = some_flag -> Some t2
+  | Pair(t1,t2) when t1 = some_flag -> Some t2
   | _ -> None
 
 let make_tuple ts =
   match ts with
-    []
+  | []
   | [_] -> raise (Invalid_argument "make_tuple")
   | t::ts' -> List.fold_left (make_pair) t ts'
 let rec decomp_tuple top t =
   match t.desc with
-    Pair(t1,t2) -> t1 :: decomp_tuple false t2
+  | Pair(t1,t2) -> t1 :: decomp_tuple false t2
   | _ when top -> raise (Invalid_argument "decomp_tuple")
   | _ -> [t]
 let decomp_tuple = decomp_tuple true
 
 let make_ttuple typs =
   match typs with
-    []
+  | []
   | [_] -> raise (Invalid_argument "tuple_typ")
   | typ::typs' -> List.fold_left (make_tpair) typ typs'
 let rec decomp_ttuple top typ =
@@ -893,8 +893,8 @@ let decomp_ttuple = decomp_ttuple true
 
 let make_proj i t =
   let n = List.length @@ decomp_ttuple t.typ in
-  let t' = repeat make_fst (n-i) t in
-  if i = 1 then t' else make_snd t'
+  let t' = repeat make_snd (i-1) t in
+  if i = n then t' else make_fst t'
 
 
 (*** AUXILIARY FUNCTIONS ***)
@@ -1365,26 +1365,6 @@ let rec get_typ_default = function
 
 
 
-let subst_rev = make_trans2 ()
-
-(* [t1 |-> x] *)
-let subst_rev_term (t1,x) t2 =
-  if t1 = t2
-  then make_var x
-  else subst_rev.tr2_term_rec (t1,x) t2
-
-let () = subst_rev.tr2_term <- subst_rev_term
-
-let subst_rev t1 x t2 = subst_rev.tr2_term (t1,x) t2
-
-
-(* replace t1 with t2 in t3 *)
-let replace_term t1 t2 t3 =
-  let x = Id.new_var "x" t1.typ in
-  subst x t2 @@ subst_rev t1 x t3
-
-
-
 let rec has_no_effect t =
   match t.desc with
     Const _ -> true
@@ -1485,6 +1465,8 @@ and same_type_kind k1 k2 = unsupported "same_term"
 and same_typed_pattern p1 p2 = same_pattern p1.desc p2.desc
 and same_pattern p1 p2 = unsupported "same_term"
 
+let same_term' t1 t2 = try same_term t1 t2 with _ -> false
+
 
 let rec var_name_of_term t =
   match t.desc, elim_tpred t.typ with
@@ -1506,7 +1488,7 @@ let is_dependend t x = Id.mem x @@ get_fv t
 
 
 
-let col_same_term = make_col2 [] List.rev_append
+let col_same_term = make_col2 [] (@@@)
 
 let col_same_term_term t1 t2 =
   let b = try same_term t1 t2 with _ -> false in
@@ -1515,3 +1497,36 @@ let col_same_term_term t1 t2 =
 let () = col_same_term.col2_term <- col_same_term_term
 
 let col_same_term = col_same_term.col2_term
+
+
+
+let col_info_id = make_col [] (@@@)
+
+let col_info_id_desc desc =
+  match desc with
+  | Label(InfoId x, t) -> x::col_info_id.col_term t
+  | _ -> col_info_id.col_desc_rec desc
+
+let () = col_info_id.col_desc <- col_info_id_desc
+
+let col_info_id = col_info_id.col_term
+
+
+
+let subst_rev = make_trans2 ()
+
+(* [t1 |-> x] *)
+let subst_rev_term (t1,x) t2 =
+  if same_term' t1 t2 || t1 = t2
+  then make_var x
+  else subst_rev.tr2_term_rec (t1,x) t2
+
+let () = subst_rev.tr2_term <- subst_rev_term
+
+let subst_rev t1 x t2 = subst_rev.tr2_term (t1,x) t2
+
+
+(* replace t1 with t2 in t3 *)
+let replace_term t1 t2 t3 =
+  let x = Id.new_var "x" t1.typ in
+  subst x t2 @@ subst_rev t1 x t3

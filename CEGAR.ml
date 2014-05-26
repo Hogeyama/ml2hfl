@@ -21,7 +21,7 @@ let post () =
 
 let inlined_functions orig_fun_list force {defs=defs;main=main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
-  Fpat.Util.List.unique fs
+  FpatInterface.List.unique fs
 
 let rec cegar1 prog0 is_cp ces info =
   pre ();

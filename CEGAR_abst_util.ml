@@ -16,7 +16,7 @@ let hd = function
 let check_aux env cond p =
   let cond' = List.map FpatInterface.conv_formula cond in
   let p' = FpatInterface.conv_formula p in
-  Fpat.SMTProver.implies_dyn cond' [p']
+  FpatInterface.implies cond' [p']
 
 let check env cond pbs p =
   let ps,_ = List.split pbs in
@@ -105,8 +105,7 @@ let weakest_aux env cond ds p =
                 (fun y1 ->
                    List.map
                      (fun y2 ->
-                        List.sort compare
-                          (uniq (y1 @ y2)))
+                        List.sort (uniq (y1 @ y2)))
                      ys)
                 ys))
       in

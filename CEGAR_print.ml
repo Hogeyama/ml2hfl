@@ -419,7 +419,6 @@ and print_prog_as_tree fm (env,defs,s) =
     print_var_as_tree s
 
 
-
 (*
 let print_node fm = function
     BranchNode n -> Format.fprintf fm "#%d" n
@@ -430,7 +429,6 @@ let print_node fm = function
   | EventNode s -> Format.fprintf fm "EventNode %S" s
 *)
 let print_node = Format.pp_print_int
-
 
 let print_ce = print_list print_node "; "
 
@@ -443,6 +441,7 @@ let fun_def = print_fun_def
 let term = print_term
 let var = print_var
 let typ = print_typ
+let typ_base = print_typ_base
 let ce = print_ce
 let env = print_env
 let prog = print_prog

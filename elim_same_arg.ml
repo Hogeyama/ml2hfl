@@ -24,10 +24,10 @@ let get_args = get_args.col2_term
 let same_term env t1 t2 =
   if is_simple_aexp t1 && is_simple_aexp t2
   then
-    let conv t = FpatInterface.conv_formula @@ snd @@ CEGAR_util.trans_term "" [] [] t in
+    let conv t = FpatInterface.conv_formula @@ snd @@ CEGAR_trans.trans_term t in
     let env' = List.map conv env in
     let p' = conv @@ make_eq t1 t2 in
-    Fpat.SMTProver.implies_dyn env' [p']
+    FpatInterface.implies env' [p']
   else t1.desc = t2.desc
 
 let make_all xs =
@@ -54,7 +54,7 @@ let make_env xs same_args =
 
 
 
-let get_diff_args = make_col2 [] List.rev_append
+let get_diff_args = make_col2 [] (@@@)
 
 let rec get_same_args env f t args =
   let diff_args = get_diff_args.col2_term (env,f) t in
@@ -69,7 +69,7 @@ let is_partial f ts =
 
 let get_diff_args_desc (env,f) desc =
   match desc with
-    Var g when Id.same f g ->
+  | Var g when Id.same f g ->
      make_all @@ fst @@ decomp_tfun @@ Id.typ g
   | App({desc=Var g}, ts) when Id.same f g && is_partial g ts ->
      make_all @@ fst @@ decomp_tfun @@ Id.typ g
@@ -111,7 +111,7 @@ let elim_nth ns xs = xs
 
 let elim_arg = make_trans2 ()
 
-let elim_arg_desc ((f:id),args) desc =
+let elim_arg_desc (f,args) desc =
   match desc with
     App({desc=Var g}, ts) when Id.same f g ->
       let ts' = List.map (elim_arg.tr2_term (f,args)) @@ elim_nth args ts in
@@ -127,7 +127,7 @@ let elim_arg f args t = elim_arg.tr2_term (f,args) t
 
 let elim_arg_typ args typ =
   match typ with
-    TFun _ ->
+  | TFun _ ->
       let xs,typ' = decomp_tfun typ in
       let xs' = elim_nth args xs in
       List.fold_right (fun x typ -> TFun(x,typ)) xs' typ'
@@ -142,32 +142,46 @@ let trans = make_trans2 ()
 
 let trans_desc env desc =
   match desc with
-    Let(_, [f,xs,{desc=Fun _}], t2) -> assert false
+  | Let(_, [f,xs,{desc=Fun _}], t2) -> assert false
   | Let(flag, [f,xs,t1], t2) ->
-    let same_args = get_same_args env f t2 @@ make_all xs in
-    if debug then begin
-      Color.printf Color.Reverse "%a: [" Id.print f;
-      List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args;
-      Color.printf Color.Reverse "]@."
-    end;
-    let elim_args = List.map snd same_args in
-    let f' = Id.set_typ f @@ elim_arg_typ elim_args @@ Id.typ f in
-    let xs' = elim_nth elim_args xs in
-    let t1' = t1
-      |> trans.tr2_term (make_env xs same_args @ env)
-      |> subst_map @@ List.map (fun (i,j) -> List.nth xs j, make_var @@ List.nth xs i) same_args
-      |> elim_arg f elim_args
-      |> subst f (make_var f')
-    in
-    let t2' = t2
-      |> trans.tr2_term env
-      |> elim_arg f elim_args
-      |> subst f (make_var f')
-    in
-    Let(flag, [f',xs',t1'], t2')
+      let same_args = get_same_args env f t2 @@ make_all xs in
+      let same_args' =
+        if flag = Nonrecursive then
+          same_args
+        else
+          let rec aux same_args =
+            let env' = make_env xs same_args @@@ env in
+            let same_args' = get_same_args env f t1 same_args in
+            if same_args = same_args'
+            then same_args
+            else aux same_args'
+          in
+          aux same_args
+      in
+      if debug then
+        begin
+          Color.printf Color.Reverse "%a: [" Id.print f;
+          List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args';
+          Color.printf Color.Reverse "]@."
+        end;
+      let elim_args = List.map snd same_args' in
+      let f' = Id.set_typ f @@ elim_arg_typ elim_args @@ Id.typ f in
+      let xs' = elim_nth elim_args xs in
+      let t1' = t1
+                |> trans.tr2_term (make_env xs same_args' @ env)
+                |> subst_map @@ List.map (fun (i,j) -> List.nth xs j, make_var @@ List.nth xs i) same_args'
+                |> elim_arg f elim_args
+                |> subst f (make_var f')
+      in
+      let t2' = t2
+                |> trans.tr2_term env
+                |> elim_arg f elim_args
+                |> subst f (make_var f')
+      in
+      Let(flag, [f',xs',t1'], t2')
   | _ -> trans.tr2_desc_rec env desc
 
 let () = trans.tr2_desc <- trans_desc
 
 (** Assume that the input is in CPS *)
-let trans = trans.tr2_term []
+let trans t = trans.tr2_term [] t

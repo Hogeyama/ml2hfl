@@ -53,6 +53,7 @@ let orig_id x = {x with Id.id = 0}
 %token TIMES
 %token VAL
 %token VALCPS
+%token VALCEGAR
 %token EOF
 
 /* priority : low -> high */
@@ -122,6 +123,8 @@ spec_list:
   { {$2 with Spec.abst_env = $1::$2.Spec.abst_env} }
 | typedef_cps spec_list
   { {$2 with Spec.abst_cps_env = $1::$2.Spec.abst_cps_env} }
+| typedef_cegar spec_list
+  { {$2 with Spec.abst_cegar_env = $1::$2.Spec.abst_cegar_env} }
 | inline spec_list
   { {$2 with Spec.inlined = $1::$2.Spec.inlined} }
 | inlinef spec_list
@@ -133,6 +136,10 @@ typedef:
 
 typedef_cps:
 | VALCPS id COLON typ
+  { $2, Id.typ $4 }
+
+typedef_cegar:
+| VALCEGAR id COLON typ
   { $2, Id.typ $4 }
 
 inline:

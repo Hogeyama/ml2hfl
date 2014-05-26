@@ -522,13 +522,15 @@ let instantiate_param (typs, fdefs, main as prog) =
 
 
 let simplify_term t =
+(*
   if false then
-	let _, t = trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
+	let _, t = CEGAR_trans.trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
 	let t = conv_formula t in
 	let t = Formula.simplify t in
 	let t = inv_formula t in
-	(trans_inv_term t).Syntax.desc
+	(CEGAR_trans.trans_inv_term t).Syntax.desc
   else
+ *)
     t
 
 let simplify_typed_term p =
@@ -585,3 +587,38 @@ let is_fpat_exception = function
   | Fpat.PolyConstrSolver.Unknown
   | Fpat.Util.NotImplemented _ -> true
   | _ -> false
+
+
+let implies = Fpat.SMTProver.implies_dyn
+let is_sat = Fpat.SMTProver.is_sat_dyn
+
+module String = Fpat.Util.String
+module List = Fpat.Util.List
+module Array = Fpat.Util.Array
+
+module AbsType = Fpat.AbsType
+module AbsTypeInfer = Fpat.AbsTypeInfer
+module BeautifulDagHCCSSolver = Fpat.BeautifulDagHCCSSolver
+module BeautifulHCCSSolver = Fpat.BeautifulHCCSSolver
+module BeautifulTreeHCCSSolver = Fpat.BeautifulTreeHCCSSolver
+module BvPolyConstrSolver = Fpat.BvPolyConstrSolver
+module BwHCCSSolver = Fpat.BwHCCSSolver
+module CHGenInterpProver = Fpat.CHGenInterpProver
+module EHCCSSolver = Fpat.EHCCSSolver
+module GenHCCSSolver = Fpat.GenHCCSSolver
+module GenInterpProver = Fpat.GenInterpProver
+module Global = Fpat.Global
+module HCCSSolver = Fpat.HCCSSolver
+module InterpProver = Fpat.InterpProver
+module PolyConstrSolver = Fpat.PolyConstrSolver
+module Qelim = Fpat.Qelim
+module RankFunInfer = Fpat.RankFunInfer
+module RefTypeInfer = Fpat.RefTypeInfer
+module SMTProver = Fpat.SMTProver
+module Template = Fpat.Template
+module TemplateBasedGenInterpProver = Fpat.TemplateBasedGenInterpProver
+module TemplateBasedInterpProver = Fpat.TemplateBasedInterpProver
+module UnwindDagHCCSSolver = Fpat.UnwindDagHCCSSolver
+module Idnt = Fpat.Idnt
+module Type = Fpat.Type
+module Formula = Fpat.Formula

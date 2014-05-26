@@ -5,7 +5,7 @@ open Spec_parser
 
 let space = [' ' '\t' '\r']
 let digit = ['0'-'9']
-let lower = ['a'-'z' '_']
+let lower = ['a'-'z' '_' '\'']
 let upper = ['A'-'Z']
 let symbol = ['(' ')' '*' '?' '|' '+' ',' '!' ';' '.' ':' '#']
 
@@ -45,6 +45,7 @@ rule token = parse
 | ':' { COLON }
 | "val" { VAL }
 | "valcps" { VALCPS }
+| "valcegar" { VALCEGAR }
 | digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 (*| lower (digit|lower|upper|'_')* *)

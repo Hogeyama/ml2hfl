@@ -4,7 +4,7 @@ open Syntax
 open Term_util
 
 
-let debug = true
+let debug = false
 
 let trans = make_trans2 ()
 
@@ -39,14 +39,19 @@ let rec find_snd x bb =
 let rec find_app x bb =
   match bb with
     [] -> []
-  | (_,{desc=App({desc=Var y},[t])})::bb' when Id.same x y -> t::find_app x bb'
+  | (_,{desc=App({desc=Var y},[t])})::bb' when Id.same x y ->
+      let args = find_app x bb' in
+      if List.exists (same_term t) args then
+        args
+      else
+        t::args
   | _::bb' -> find_app x bb'
 
 
 let rec make_tree x bb =
   if debug then Color.printf Color.Red "make_tree: %a@." Id.print x;
   match find_fst x bb, find_snd x bb, find_app x bb with
-    Some lhs, Some rhs, _ -> Tree.Node(make_tree lhs bb, make_tree rhs bb)
+  | Some lhs, Some rhs, _ -> Tree.Node(make_tree lhs bb, make_tree rhs bb)
   | None, None, args ->
       let typ =
         try
@@ -124,19 +129,15 @@ let inst_var_fun x tt bb t =
         let r' = trans.tr2_var (tt,bb) r in
         let tree = make_tree r bb in
         let tree' = Tree.update path (Tree.Leaf(Some (Id.typ y'), [make_var y'])) tree in
-(*
-let pr _ (_,ts) =
-  Format.printf "[%a]" (print_list pp_print_term' "; ") ts
-in
-Format.printf "TREE: %a@." (Tree.print pr) tree;
-Format.printf "TREE': %a@." (Tree.print pr) tree';
-Format.printf "r': %a:%a@." Id.print r' pp_print_typ (Id.typ r');
-*)
+        let pr _ (_,ts) =
+          Format.printf "[%a]" (print_list pp_print_term' "; ") ts
+        in
+        if debug then Format.printf "TREE: %a@." (Tree.print pr) tree;
+        if debug then Format.printf "TREE': %a@." (Tree.print pr) tree';
+        if debug then Format.printf "r': %a:%a@." Id.print r' pp_print_typ (Id.typ r');
         let trees = make_trees tree' in
-(*
-Format.printf "|trees|': %d@." (List.length trees);
-Format.printf "hd trees: %a@." (Tree.print pp_print_term) (List.hd trees);
-*)
+        if debug then Format.printf "|trees|': %d@." (List.length trees);
+        if debug then List.iter (Format.printf "  tree: %a@." (Tree.print pp_print_term)) trees;
         let argss = List.map Tree.flatten trees in
         let args = List.map (fun args -> [make_tuple args]) argss in
         let apps = List.map (make_app (make_var r')) args in
@@ -168,7 +169,7 @@ Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.
             let aux t (i,j,path) =
               let t1 = make_var (List.nth xs i) in
               let t2 = make_var (List.nth xs j) in
-              make_assume (make_eq_dec t1 t2) t
+              make_assume (make_eq t1 t2) t
             in
             List.fold_left aux t' same_arg_apps
           in
@@ -438,14 +439,12 @@ let move_proj = make_trans ()
 let rec move_proj_aux x t =
   match Id.typ x with
   | TPair _ ->
-      Format.printf "MPJ: %a@." Id.print x;
       let t1 = make_fst @@ make_var x in
       let t2 = make_snd @@ make_var x in
       let x1 = Id.new_var (Id.name x ^ "1") t1.typ in
       let x2 = Id.new_var (Id.name x ^ "2") t2.typ in
       let subst_rev' t1 x t2 =
         let ts = col_same_term t1 t2 in
-List.iter (Format.printf "%a@." pp_print_term') ts;
         List.fold_right (fun t1 t2 -> subst_rev t1 x t2) ts t2
       in
       make_lets [x1,[],t1; x2,[],t2] @@ move_proj_aux x2 @@ move_proj_aux x1 @@ subst_rev' t2 x2 @@ subst_rev' t1 x1 t
@@ -467,13 +466,14 @@ let () = move_proj.tr_term <- move_proj_term
 
 
 
-let trans tt t = t
+let trans t = t
   |@debug&> Format.printf "INPUT: %a@." pp_print_term
   |> move_proj.tr_term
   |@debug&> Format.printf "move_proj: %a@." pp_print_term_typ
   |@> Trans.inline_no_effect
   |@debug&> Format.printf "inline_no_effect: %a@." pp_print_term_typ
   |> Trans.normalize_let
+  |> Trans.inline_simple_exp
   |@debug&> Format.printf "normalize_let: %a@." pp_print_term_typ
   |> Trans.flatten_let
   |> Trans.inline_let_var
@@ -481,9 +481,10 @@ let trans tt t = t
   |> sort_let_pair.tr_term
   |@debug&> Format.printf "sort_let_pair: %a@." pp_print_term_typ
   |@> flip Type_check.check TUnit
-  |> trans.tr2_term (tt,[])
+  |> trans.tr2_term (assert_false,[])
   |> Trans.inline_no_effect
   |@debug&> Format.printf "ref_trans: %a@." pp_print_term
+  |@> flip Type_check.check Type.TUnit
 
 
 
@@ -495,7 +496,7 @@ let trans tt t = t
 
 
 
-let col_assert = make_col [] List.rev_append
+let col_assert = make_col [] (@@@)
 
 let col_assert_desc desc =
 (*Format.printf "CAD: %a@." print_constr {desc=desc; typ=TUnit};*)
@@ -527,7 +528,7 @@ let () = has_rand.col_desc <- has_rand_desc
 let has_rand = has_rand.col_term
 
 
-let col_rand_funs = make_col [] List.rev_append
+let col_rand_funs = make_col [] (@@@)
 
 let col_rand_funs_desc desc =
   match desc with
@@ -543,7 +544,7 @@ let () = col_rand_funs.col_desc <- col_rand_funs_desc
 let col_rand_funs = col_rand_funs.col_term
 
 
-let col_app_head = make_col [] List.rev_append
+let col_app_head = make_col [] (@@@)
 
 let col_app_head_desc desc =
   match desc with
@@ -581,7 +582,7 @@ let col_fun_arg = col_fun_arg.col_term
 
 
 
-let col_app_terms = make_col2 [] List.rev_append
+let col_app_terms = make_col2 [] (@@@)
 
 let col_app_terms_term fs t =
   match t.desc with

@@ -1,6 +1,12 @@
 exception Fatal of string
 exception Unsupported of string
 
+module List = ExtList.List
+module Array = ExtArray.Array
+module Hashtbl = ExtHashtbl.Hashtbl
+module String = ExtString.String
+
+
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
 
@@ -12,10 +18,12 @@ let (|*>) x f = x
 let (|*@>) x f = x
 let (|@*>) x f = x
 let assert_ f x = assert (f x)
-let assert_false _ = assert false
+let assert_false _ = fatal "assert_false"
 let (|@) x b f = if b then f x; x
+let (|&) x b f = if b then f x else x
 let (&>) f x = f x
 (* usage: x |@flag&> print *)
+(* usage: x |&flag&> trans *)
 
 let flip f x y = f y x
 let curry f x y = f (x,y)
@@ -93,8 +101,8 @@ let rec delete_duplication l =
                else x::(delete_duplication (y::l));;
 
 let delete_duplication_unsorted c =
-  let c' = List.sort compare c in
-    delete_duplication c';;
+  let c' = List.sort c in
+  delete_duplication c';;
 
 let rec delete_duplication2 comp comb l =
   match l with
@@ -219,7 +227,7 @@ let rec uniq_aux ?(cmp=compare) acc = function
     [] -> acc
   | x1::x2::xs when cmp x1 x2 = 0 -> uniq_aux ~cmp acc (x2::xs)
   | x::xs -> uniq_aux ~cmp (x::acc) xs
-let uniq ?(cmp=compare) xs = uniq_aux ~cmp [] (List.sort cmp xs)
+let uniq ?(cmp=compare) xs = uniq_aux ~cmp [] (List.sort ~cmp xs)
 let uniq_sorted ?(cmp=compare) xs = uniq_aux ~cmp [] xs
 
 let (@@@) = List.rev_append
@@ -336,8 +344,6 @@ let rec decomp_snoc = function
       let xs',y = decomp_snoc xs in
       x::xs', y
 
-let last xs = snd @@ decomp_snoc xs
-let init xs = fst @@ decomp_snoc xs
 
 
 

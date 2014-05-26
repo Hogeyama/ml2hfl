@@ -12,15 +12,13 @@ let trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.pp_print_term_typ) t =
   then Format.printf "%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
+let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
+
 let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
-      let t =
-        if !Flag.tupling
-        then trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" id t
-        else t
-      in
+      let t = t |& !Flag.tupling &> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" id in
       let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" id t in
@@ -32,49 +30,24 @@ let preprocess t spec =
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let t =
         if !Flag.tupling
-        then
-          let t = trans_and_print Ret_fun.trans "ret_fun" id t in
-          let t = trans_and_print (Ref_trans.trans (fun _ -> assert false)) "ref_trans" id t in
-          Type_check.check t Type.TUnit;
-          let t = trans_and_print Tupling.trans "tupling?" id t in
-          Type_check.check t TUnit;
-          t
+        then t
+          |> trans_and_print Ret_fun.trans "ret_fun" id
+          |> trans_and_print Ref_trans.trans "ref_trans" id
+          |> trans_and_print Tupling.trans "tupling" id
         else t
       in
-
       let get_rtyp = get_rtyp_list in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
       Type_check.check t Type.TUnit;
-
-let check t =
-  let typ = !Term_util.typ_excep in
-  let b =
- try
-   let t',_ = CPS.trans t in
-   Curry.remove_pair t';
-   false
- with Invalid_argument _ -> true
-    | _ -> false
-  in
-   Term_util.typ_excep:=typ;
-   b
-in
-let t = if false then Slicer.repeat_trial check t else t in
-
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
-      let get_rtyp f typ = get_rtyp f (get_rtyp_cps_trans f typ) in
+      let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_cps_trans in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
       let spec' = Spec.rename spec t in
       if not !Flag.only_result then Spec.print spec';
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
-      let get_rtyp f typ = get_rtyp f (get_rtyp_remove_pair f typ) in
-      let t =
-        if !Flag.insert_param_funarg
-        then trans_and_print Trans.insert_param_funarg "insert unit param" id t
-        else t
-      in
-      Type_check.check t Term_util.typ_result;
+      let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_remove_pair in
+      let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
 
       (* preprocess for termination mode *)
       let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
@@ -86,29 +59,29 @@ let t = if false then Slicer.repeat_trial check t else t in
   in
 
   (* ill-formed program *)
-  Refine.progWithExparam := (let p, _, _, _ = CEGAR_util.trans_prog !ExtraParamInfer.withExparam in p);
+  Refine.progWithExparam := (let p, _, _, _ = CEGAR_trans.trans_prog !ExtraParamInfer.withExparam in p);
   (**********************)
 
-  let prog,map,rmap,get_rtyp_trans = CEGAR_util.trans_prog t in
-  let get_rtyp f typ = get_rtyp f (get_rtyp_trans f typ) in
+  let spec' = Spec.rename spec t in
+  if not !Flag.only_result then Spec.print spec';
+  let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:spec'.Spec.abst_cegar_env t in
+  let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_trans in
 
   let info =
     let fun_list =
       let aux x =
-        try [List.assoc (CEGAR_util.trans_var x) map] with Not_found -> []
+        try [List.assoc (CEGAR_trans.trans_var x) map] with Not_found -> []
       in
-        Util.rev_flatten_map aux fun_list
+      rev_flatten_map aux fun_list
     in
-    let inlined = List.map CEGAR_util.trans_var spec.Spec.inlined in
+    let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
-  begin
-    (*
-      if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
-      if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
-    *)
-    prog, rmap, get_rtyp, info
-  end
+   (*
+    if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
+    if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
+  *)
+  prog, rmap, get_rtyp, info
 
 
 
@@ -134,11 +107,11 @@ let report_safe env rmap get_rtyp orig t0 =
     else
       if !Flag.relative_complete then
         let _ = Flag.web := true in
-        let res = Util.rev_map_flatten aux env in
+        let res = rev_map_flatten aux env in
         let _ = Flag.web := false in
         res
       else
-        Util.rev_map_flatten aux env
+        rev_map_flatten aux env
   in
   if !Flag.write_annot
   then
@@ -151,7 +124,7 @@ let report_safe env rmap get_rtyp orig t0 =
       List.map
         (fun (x, n) ->
           Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
-          CEGAR_util.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
+          CEGAR_trans.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
         !Fpat.RefTypeInfer.prev_sol
     in
     let t = Term_util.subst_map map t0 in
@@ -173,7 +146,7 @@ let report_unsafe main_fun arg_num ce set_target =
   if main_fun <> "" && arg_num <> 0
   then
     Format.printf "Input for %s:@.  %a@." main_fun
-      (Util.print_list Format.pp_print_int "; ") (Util.take ce arg_num);
+      (print_list Format.pp_print_int "; ") (take ce arg_num);
   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
 
 
@@ -201,9 +174,8 @@ let rec run orig parsed =
       else Spec.init
     in
     if spec2 <> Spec.init then Flag.use_filter := true;
-    let spec = Spec.merge spec1 spec2 in
-    if not !Flag.only_result then Spec.print spec;
-    spec
+    Spec.merge spec1 spec2
+    |@ not !Flag.only_result &> Spec.print
   in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType

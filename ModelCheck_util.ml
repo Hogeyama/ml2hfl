@@ -49,7 +49,7 @@ let make_spec n =
           let spec' = rev_flatten_map (fun i -> make_base_spec n i) (Array.to_list (Array.init (qm+1) (fun i -> i))) in
             spec @@@ spec'
   in
-    List.sort compare spec
+  List.sort spec
 
 
 let capitalize_var = String.capitalize

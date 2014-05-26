@@ -34,7 +34,7 @@ let filter_base = List.filter (fun x -> is_base_typ (Id.typ x))
 
 let compare_id x y =
   let aux x = not (is_base_typ (Id.typ x)), Id.to_string x in
-    compare (aux x) (aux y)
+  compare (aux x) (aux y)
 
 let rec lift_aux post xs t =
   let defs,desc =
@@ -49,7 +49,7 @@ let rec lift_aux post xs t =
           let aux f ys t1 t2 =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
             let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
-            let fv = List.sort compare_id fv in
+            let fv = List.sort ~cmp:compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
             let f' = Id.set_typ f typ in
@@ -78,7 +78,7 @@ let rec lift_aux post xs t =
           let aux (f,ys,t1) =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
             let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
-            let fv = List.sort compare_id fv in
+            let fv = List.sort ~cmp:compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
             let f' = Id.set_typ f typ in
@@ -94,7 +94,7 @@ let rec lift_aux post xs t =
           let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
           let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
           let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
-          let fv = List.sort compare_id fv in
+          let fv = List.sort ~cmp:compare_id fv in
           let aux (f,_,_) =
             let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in
               f, (f', List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv)
@@ -178,7 +178,7 @@ let rec lift_aux' post xs t =
           let aux f ys t1 t2 =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
             let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
-            let fv = List.sort compare_id fv in
+            let fv = List.sort ~cmp:compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
             let f' = Id.set_typ f typ in
@@ -211,7 +211,7 @@ let rec lift_aux' post xs t =
           let aux (f,ys,t1) =
             let fv = inter ~cmp:Id.compare (get_fv t1) xs in
             let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
-            let fv = List.sort compare_id fv in
+            let fv = List.sort ~cmp:compare_id fv in
             let ys' = fv @ ys in
             let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
             let f' = Id.set_typ f typ in
@@ -227,7 +227,7 @@ let rec lift_aux' post xs t =
           let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
           let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
           let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
-          let fv = List.sort compare_id fv in
+          let fv = List.sort ~cmp:compare_id fv in
           let aux (f,_,_) =
             let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in
               f, (f', List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv)

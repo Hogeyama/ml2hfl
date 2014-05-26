@@ -472,7 +472,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             {desc=desc; typ=typ'}
       | Texp_variant _ -> unsupported "expression (variant)"
       | Texp_record(fields,None) ->
-          let fields' = List.sort (fun (lbl1,_) (lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
+          let fields' = List.sort ~cmp:(fun (lbl1,_) (lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
           let aux (label,e) =
             get_label_name label env, (from_mutable_flag label.lbl_mut, from_expression e)
           in

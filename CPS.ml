@@ -1047,6 +1047,6 @@ let trans t =
   if debug then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" pp_print_term t;
   Type_check.check t typ_result;
   Flag.form := Flag.CPS :: !Flag.form;
-  let t = Trans.elim_unused_let t in
+  let t = Trans.elim_unused_let ~cbv:false t in
   if debug then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" pp_print_term t;
   t, get_rtyp_of typed

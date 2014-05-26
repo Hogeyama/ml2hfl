@@ -140,7 +140,7 @@ let rec get_fv vars t =
     | Snd t -> get_fv vars t
     | Raise t -> get_fv vars t
     | RandValue _ -> []
-    | Label _ -> assert false
+    | Label(_,t) -> get_fv vars t
 let get_fv ?(cmp=Id.compare) t = uniq ~cmp (get_fv [] t)
 
 
