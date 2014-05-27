@@ -23,27 +23,19 @@ let preprocess t spec =
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" id t in
       let fun_list = Term_util.get_top_funs t in
-      let spec' = Spec.rename spec t in
-      if not !Flag.only_result then Spec.print spec';
+      let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
-      let t =
-        if !Flag.tupling
-        then t
-          |> trans_and_print Ret_fun.trans "ret_fun" id
-          |> trans_and_print Ref_trans.trans "ref_trans" id
-          |> trans_and_print Tupling.trans "tupling" id
-        else t
-      in
       let get_rtyp = get_rtyp_list in
+      let t = t |& !Flag.tupling &> trans_and_print Ret_fun.trans "ret_fun" id in
+      let t = t |& !Flag.tupling &> trans_and_print Ref_trans.trans "ref_trans" id in
+      let t = t |& !Flag.tupling &> trans_and_print Tupling.trans "tupling" id in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
-      Type_check.check t Type.TUnit;
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_cps_trans in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
-      let spec' = Spec.rename spec t in
-      if not !Flag.only_result then Spec.print spec';
+      let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec<>Spec.init) t in
       let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
       let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_remove_pair in
@@ -54,18 +46,21 @@ let preprocess t spec =
 
       fun_list, t, get_rtyp
     else
-      let () = Type_check.check t Type.TUnit in
       Term_util.get_top_funs t, t, fun _ typ -> typ
   in
-
+(*
   (* ill-formed program *)
   Refine.progWithExparam := (let p, _, _, _ = CEGAR_trans.trans_prog !ExtraParamInfer.withExparam in p);
   (**********************)
+ *)
 
-  let spec' = Spec.rename spec t in
-  if not !Flag.only_result then Spec.print spec';
+  let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:spec'.Spec.abst_cegar_env t in
   let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_trans in
+   (*
+    if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
+    if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
+  *)
 
   let info =
     let fun_list =
@@ -77,10 +72,6 @@ let preprocess t spec =
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
   in
-   (*
-    if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
-    if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
-  *)
   prog, rmap, get_rtyp, info
 
 
@@ -100,7 +91,9 @@ let report_safe env rmap get_rtyp orig t0 =
         [f', Ref_type.rename (get_rtyp f' rtyp)]
       with
         Not_found -> []
-      | _ -> if not !Flag.tupling then Format.printf "Some refinement types cannot be shown (unimplemented)@.@."; []
+      | _ ->
+          if not !Flag.tupling then Format.printf "Some refinement types cannot be shown (unimplemented)@.@.";
+          []
     in
     if !Flag.insert_param_funarg
     then []
@@ -153,34 +146,11 @@ let report_unsafe main_fun arg_num ce set_target =
 
 let rec run orig parsed =
   init ();
-  let t = parsed in
-  if false && !Flag.debug_level > 0
-  then Format.printf "parsed::@. @[%a@.@." Syntax.pp_print_term' t;
-  let spec =
-    let spec1 =
-      begin
-        if !Flag.use_spec && !Flag.spec_file = ""
-        then
-          try
-            let spec = Filename.chop_extension !Flag.filename ^ ".spec" in
-            if Sys.file_exists spec then Flag.spec_file := spec
-          with Invalid_argument "Filename.chop_extension" -> ()
-      end;
-      Spec.parse Spec_parser.spec Spec_lexer.token !Flag.spec_file
-    in
-    let spec2 =
-      if !Flag.comment_spec
-      then Spec.parse_comment Spec_parser.spec Spec_lexer.token !Flag.filename
-      else Spec.init
-    in
-    if spec2 <> Spec.init then Flag.use_filter := true;
-    Spec.merge spec1 spec2
-    |@ not !Flag.only_result &> Spec.print
-  in
+  let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType
-    then trans_and_print Trans.set_target "set_target" (fun (_,_,t) -> t) t
-    else "",0,t
+    then trans_and_print Trans.set_target "set_target" (fun (_,_,t) -> t) parsed
+    else "",0,parsed
   in
   (** Unno: I temporally placed the following code here
             so that we can infer refinement types for a safe program

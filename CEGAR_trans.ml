@@ -10,6 +10,7 @@ exception EvalSkip
 exception EvalRestart
 exception EvalTerminate
 
+let debug = false
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 
@@ -490,7 +491,6 @@ let rec trans_ref_type = function
 let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
-  let debug = false in
   let ext_env = List.map (fun (x,typ) -> trans_var x, trans_typ typ) (Trans.make_ext_env t) in
   let () = if debug then Format.printf "BEFORE:@.%a@.@.@." S.pp_print_term t in
   let t = Trans.trans_let t in

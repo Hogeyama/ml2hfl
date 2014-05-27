@@ -84,14 +84,41 @@ let merge spec1 spec2 =
    inlined_f = spec1.inlined_f @ spec2.inlined_f}
 
 
+exception My_not_found of id
+
 let rename {abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined=inlined; inlined_f=inlined_f} t =
-  let funs = get_top_funs t in
-  let rename_id f = (* temporal implementation *)
-    List.find (fun f' -> Id.name f = Id.name f') funs
+  try
+    let funs = get_top_funs t in
+    let rename_id f = (* temporal implementation *)
+      List.find_exc (fun f' -> Id.name f = Id.name f') (My_not_found f) funs
+    in
+    let aux1 (f,typ) = [rename_id f, typ] in
+    let aux2 f = [rename_id f] in
+    let aenv' = flatten_map aux1 aenv in
+    let cpsenv' = flatten_map aux1 cpsenv in
+    let cegarenv' = flatten_map aux1 cegarenv in
+    let inlined' = flatten_map aux2 inlined in
+    let inlined_f' = flatten_map aux2 inlined_f in
+    {abst_env=aenv'; abst_cps_env=cpsenv'; abst_cegar_env=cegarenv'; inlined=inlined'; inlined_f=inlined_f'}
+  with My_not_found f -> fatal (Format.sprintf "Unbound value %s" @@ Id.to_string f)
+
+
+let read parser lexer =
+  let spec1 =
+    begin
+      if !Flag.use_spec && !Flag.spec_file = ""
+      then
+        try
+          let spec = Filename.chop_extension !Flag.filename ^ ".spec" in
+          if Sys.file_exists spec then Flag.spec_file := spec
+        with Invalid_argument "Filename.chop_extension" -> ()
+    end;
+    parse parser lexer !Flag.spec_file
   in
-  let aenv' = flatten_map (fun (f,typ) -> try [rename_id f, typ] with Not_found -> []) aenv in
-  let cpsenv' = flatten_map (fun (f,typ) -> try [rename_id f, typ] with Not_found -> []) cpsenv in
-  let cegarenv' = flatten_map (fun (f,typ) -> try [rename_id f, typ] with Not_found -> []) cegarenv in
-  let inlined' = flatten_map (fun f -> try [rename_id f] with Not_found -> []) inlined in
-  let inlined_f' = flatten_map (fun f -> try [rename_id f] with Not_found -> []) inlined_f in
-  {abst_env=aenv'; abst_cps_env=cpsenv'; abst_cegar_env=cegarenv'; inlined=inlined'; inlined_f=inlined_f'}
+  let spec2 =
+    if !Flag.comment_spec
+    then parse_comment parser lexer !Flag.filename
+    else init
+  in
+  if spec2 <> init then Flag.use_filter := true;
+  merge spec1 spec2
