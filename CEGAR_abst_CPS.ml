@@ -262,8 +262,7 @@ let rec abstract_term ?(orig="") must env cond pts t typ =
       [make_if t1' t2' t3']
   | App(Const (Label n), t) -> [make_label n (hd (abstract_term ~orig:"Label" must env cond pts t typ))]
   | App(Const RandInt, t) -> abstract_term ~orig:"RandInt" must env cond pts t (TFun(typ_int, fun _ -> typ))
-(*
-  | App _ ->
+  | App _ when false ->
       let t1,ts = decomp_app t in
       let rec get_args ts typ =
         match ts,typ with
@@ -285,7 +284,6 @@ let rec abstract_term ?(orig="") must env cond pts t typ =
       if !Flag.use_filter
       then [filter env cond pts must t']
       else [t']
- *)
   | App _ ->
       let t1,ts = decomp_app t in
       let rec aux ts typ =
