@@ -251,6 +251,7 @@ let rec abstract_term ?(orig="") must env cond pts t typ =
       let btyp,ps = decomp_tbase typ in
       if btyp = typ_result_base
       then [Const Unit]
+
       else List.map (abst env cond pts) (ps t)
   | Var x when congruent env cond (List.assoc x env) typ ->
       List.map (fun x -> Var x) (abst_arg x typ)
@@ -261,6 +262,7 @@ let rec abstract_term ?(orig="") must env cond pts t typ =
       [make_if t1' t2' t3']
   | App(Const (Label n), t) -> [make_label n (hd (abstract_term ~orig:"Label" must env cond pts t typ))]
   | App(Const RandInt, t) -> abstract_term ~orig:"RandInt" must env cond pts t (TFun(typ_int, fun _ -> typ))
+(*
   | App _ ->
       let t1,ts = decomp_app t in
       let rec get_args ts typ =
@@ -283,6 +285,7 @@ let rec abstract_term ?(orig="") must env cond pts t typ =
       if !Flag.use_filter
       then [filter env cond pts must t']
       else [t']
+ *)
   | App _ ->
       let t1,ts = decomp_app t in
       let rec aux ts typ =
