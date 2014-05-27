@@ -540,7 +540,7 @@ let rec print_term' pri fm t =
             fprintf fm "%ssnd %a%s" s1 (print_term' 1) t s2
       | Bottom -> fprintf fm "_|_"
       | Label _ -> assert false
-  );fprintf fm ":%a)" print_typ t.typ
+  );fprintf fm ":%a)" (Color.cyan print_typ) t.typ
 and print_pattern' fm pat =
   let rec aux fm pat =
     match pat.pat_desc with

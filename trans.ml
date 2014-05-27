@@ -5,6 +5,9 @@ open Term_util
 open Type
 
 
+let debug = true
+
+
 let flatten_tvar = (make_trans ()).tr_term
 
 
@@ -179,12 +182,25 @@ let rename_poly_funs f t = rename_poly_funs f [] t
 
 
 
+let unify_pattern_var = make_col () (fun _ _ -> ())
 
+let unify_pattern_var_term t =
+  match t.desc with
+  | Match(t, pats) ->
+      let aux1 (pat,t1,t2) =
+        let aux2 x =
+          get_fv t1 @@@ get_fv t2
+          |> List.filter (Id.same x)
+          |> List.iter (fun y -> unify (Id.typ x) (Id.typ y))
+        in
+        List.iter aux2 @@ get_vars_pat pat
+      in
+      List.iter aux1 pats
+  | _ -> unify_pattern_var.col_term_rec t
 
+let () = unify_pattern_var.col_term <- unify_pattern_var_term
 
-
-
-
+let unify_pattern_var = unify_pattern_var.col_term
 
 
 
@@ -200,7 +216,7 @@ let copy_poly_funs_desc desc =
       let t2'' = inst_tvar_tunit t2' in
       let map,t2''' = rename_poly_funs f t2'' in
       let n = List.length map in
-      if !Flag.debug_level > 0 && n >= 2
+      if debug && n >= 1
       then
         begin
           Format.printf "COPY: @[";
@@ -237,9 +253,11 @@ let copy_poly_funs_desc desc =
 let () = copy_poly_funs.tr_desc <- copy_poly_funs_desc
 
 let copy_poly_funs t =
-  let t' = flatten_tvar (copy_poly_funs.tr_term t) in
-  Type_check.check t' Type.TUnit;
-  t'
+  t
+  |@> unify_pattern_var
+  |> copy_poly_funs.tr_term
+  |> flatten_tvar
+  |@> flip Type_check.check Type.TUnit
 
 
 
@@ -337,40 +355,33 @@ let gen_id =
 
 let set_target t =
   match get_last_definition None t with
-      None ->
-        let u = Id.new_var "main" t.typ in
-          "", 0, make_let [u, [], t] unit_term
-    | Some f ->
-        let xs = get_args (Id.typ f) in
-        let main =
-          if xs = [] && Id.typ f = TUnit
-          then replace_main (make_var f) t
-          else
-            let rec aux x (env,defs,args) =
-              let env',defs',arg = inst_randvalue [] defs (Id.typ x) in
-                env',defs', arg::args
-            in
-            let _,defs,args = List.fold_right aux xs ([],[],[]) in
-            let aux arg =
-              let x = Id.new_var ("arg" ^ gen_id ()) arg.typ in
-                x, [], arg
-            in
-            let bindings = List.map aux args in
-            let main = make_app (make_var f) (List.map (fun (x,_,_) -> make_var x) bindings) in
-            let main = make_lets bindings main in
-            let main = make_letrec defs main in
-            let u = Id.new_var "main" main.typ in
-            let main = make_let [u, [], main] unit_term in
-              replace_main main t
-        in
-          Id.name f, List.length xs, main
-
-
-
-
-
-
-
+  | None ->
+      let u = Id.new_var "main" t.typ in
+      "", 0, make_let [u, [], t] unit_term
+  | Some f ->
+      let xs = get_args (Id.typ f) in
+      let main =
+        if xs = [] && Id.typ f = TUnit
+        then replace_main (make_var f) t
+        else
+          let rec aux x (env,defs,args) =
+            let env',defs',arg = inst_randvalue [] defs (Id.typ x) in
+            env',defs', arg::args
+          in
+          let _,defs,args = List.fold_right aux xs ([],[],[]) in
+          let aux arg =
+            let x = Id.new_var ("arg" ^ gen_id ()) arg.typ in
+            x, [], arg
+          in
+          let bindings = List.map aux args in
+          let main = make_app (make_var f) (List.map (fun (x,_,_) -> make_var x) bindings) in
+          let main = make_lets bindings main in
+          let main = make_letrec defs main in
+          let u = Id.new_var "main" main.typ in
+          let main = make_let [u, [], main] unit_term in
+          replace_main main t
+      in
+      Id.name f, List.length xs, main
 
 
 
