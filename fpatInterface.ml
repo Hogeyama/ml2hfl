@@ -524,7 +524,7 @@ let instantiate_param (typs, fdefs, main as prog) =
 let simplify_term t =
 (*
   if false then
-	let _, t = CEGAR_trans.trans_term "" [] [] {Syntax.desc = t; Syntax.typ = Type.TBool } in
+	let _, t = CEGAR_trans.trans_term {Syntax.desc = t; Syntax.typ = Type.TBool } in
 	let t = conv_formula t in
 	let t = Formula.simplify t in
 	let t = inv_formula t in

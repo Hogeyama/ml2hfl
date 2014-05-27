@@ -263,6 +263,7 @@ let arg_spec =
        Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
        Fpat.GenInterpProver.ext_interpolate := Fpat.TemplateBasedGenInterpProver.interpolate),
      " Generalize constraints of multiple function calls by template-based constraint solving";
+(* add option to disable simplification interp_simplify := false*)
 
    "-ieb", Arg.Set Fpat.Global.encode_boolean,
      " Enable integer encoding of booleans";

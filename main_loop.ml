@@ -189,11 +189,11 @@ let rec run orig parsed =
     if !Flag.relative_complete then
       let t = Trans.lift_fst_snd set_target in
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
-        if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-          (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
-        t
-    else
-      set_target
+      if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+                                                          (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+      t
+      else
+        set_target
   in
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in

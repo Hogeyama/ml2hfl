@@ -53,7 +53,10 @@ let inferCoeffs argumentVariables linear_templates constraints =
 
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
-      let ((correspondenceCoeffs, const_part) as ranking_function) = Fpat.LinTermIntExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
+      let ((correspondenceCoeffs, const_part) as ranking_function) =
+        Fpat.LinTermIntExp.of_term
+          (Fpat.Term.subst
+             (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
@@ -82,7 +85,9 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
 
     (List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
-      let correspondenceCoeffs, const_part = Fpat.LinTermIntExp.of_term (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
+      let correspondenceCoeffs, const_part =
+        Fpat.LinTermIntExp.of_term
+          (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
@@ -240,9 +245,7 @@ let rec run predicate_que holed =
 	    (* make templates (for arguments and previous arguments) *)
 	    let linearTemplates = Fpat.Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Fpat.Template.make_atom arg_env), i+1) else None) 0 in
 	    let prevLinearTemplates = List.map (Fpat.Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
-	    if debug then ExtList.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;
-
-	    try
+	    if debug then Fpat.Util.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;	    try
 	      (* make a constraint *)
 	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
 	      if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;

@@ -9,9 +9,6 @@ open CEGAR_trans
 exception CannotRefute
 
 
-
-
-
 let add_preds_env map env =
   let aux (f,typ) =
     try

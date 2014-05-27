@@ -12,7 +12,7 @@ type result =
 let debug = false
 
 let checksat env t =
-  FpatInterface.is_sat @@ FpatInterface.conv_formula t
+  Fpat.SMTProver.is_sat_dyn (FpatInterface.conv_formula t)
 
 let get_solution env t =
   t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort |> List.map snd
