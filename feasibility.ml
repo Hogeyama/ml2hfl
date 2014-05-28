@@ -50,7 +50,7 @@ let rec check_aux pr ce sat n constr env defs t k =
             then k ce sat n constr env (App(t1,t2))
             else
               let num,(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' in
-              let ts1,ts2 = take2 ts (List.length xs) in
+              let ts1,ts2 = List.split_nth (List.length xs) ts in
               let aux = List.fold_right2 subst xs ts1 in
               let tf1' = aux tf1 in
               let tf2' = make_app (aux tf2) ts2 in
@@ -137,7 +137,7 @@ let rec trans_ce ce ce_br env defs t k =
           then k ce ce_br env (App(t1,t2))
           else
             let ce_br',(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' ce_br in
-            let ts1,ts2 = take2 ts (List.length xs) in
+            let ts1,ts2 = List.split_nth (List.length xs) ts in
             let aux = List.fold_right2 subst xs ts1 in
             let tf2' = make_app (aux tf2) ts2 in
             let ce' = List.tl ce in

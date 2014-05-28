@@ -64,11 +64,13 @@ let rec check t typ =
               check_var x (Id.typ y); aux t (xs,typ)
           | [],typ -> check t typ
           | x::[],typ ->
-              let f =(fun [f,_,_] -> f) bindings in
+              let f,_,_ = List.hd bindings in
               Format.printf "%a %a@." Id.print f print_typ (Id.typ f);
-              Format.printf "[%a] %a@." Id.print x print_typ typ; assert false
+              Format.printf "[%a] %a@." Id.print x print_typ typ;
+              assert false
           | x::xs,typ ->
-              Format.printf "%a %a@." Id.print x print_typ typ; assert false
+              Format.printf "%a %a@." Id.print x print_typ typ;
+              assert false
         in
           List.iter (fun (f,xs,t) -> aux t (xs, Id.typ f)) bindings;
           check t2 typ'

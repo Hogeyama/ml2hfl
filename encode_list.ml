@@ -317,12 +317,13 @@ let () = abst_list_opt.tr_term <- abst_list_opt_term
 
 let trans_opt t =
   let t' = abst_list_opt.tr_term t in
-  let t'' = Trans.subst_let_xy t' in
-  let t'' = t' in
-  let () = if false then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t'' in
+(*
+  let t' = Trans.subst_let_xy t' in
+*)
+  let () = if false then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t' in
   let () = typ_excep := abst_list_opt.tr_typ !typ_excep in
-  let () = Type_check.check t'' Type.TUnit in
-  t'', get_rtyp_list_of t
+  let () = Type_check.check t' Type.TUnit in
+  t', get_rtyp_list_of t
 
 
 

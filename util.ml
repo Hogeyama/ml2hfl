@@ -1,7 +1,10 @@
 exception Fatal of string
 exception Unsupported of string
 
-module List = ExtList.List
+module List = struct
+  include ExtList.List
+end
+
 module Array = ExtArray.Array
 module Hashtbl = ExtHashtbl.Hashtbl
 module String = ExtString.String
@@ -241,47 +244,19 @@ let union ?(cmp=compare) l1 l2 = List.fold_left (fun l x -> if List.exists (fun 
 
 
 
-let rec take xs n =
-  match xs,n with
-      _,0 -> []
-    | [],_ -> []
-    | x::xs',_ -> x::(take xs' (n-1))
-
-let rec take2 xs n acc =
-  match xs,n with
-      _,0
-    | [],_ -> List.rev acc, xs
-    | x::xs',_ -> take2 xs' (n-1) (x::acc)
-let take2 xs n = take2 xs n []
-
-
-
-
 let rec tabulate n f acc =
-  if n < 0 then assert false
+  if n < 0 then raise (Invalid_argument "tabulate")
   else
-  match n with
-      0 -> List.rev acc
+    match n with
+    | 0 -> List.rev acc
     | _ -> tabulate (n-1) f (f n::acc)
 let tabulate n f = tabulate n f []
 
 
-let rec mapi f n = function
-    [] -> []
-  | x::xs -> f n x :: mapi f (n+1) xs
-let mapi f xs = mapi f 0 xs
-
-let rec iteri f n = function
-    [] -> ()
-  | x::xs -> f n x; iteri f (n+1) xs
-let iteri f xs = iteri f 0 xs
-
-
-
 let rec fold_left2_neq f acc xs ys =
   match xs, ys with
-      x::xs, y::ys -> fold_left2_neq f (f acc x y) xs ys
-    | _ -> acc
+  | x::xs, y::ys -> fold_left2_neq f (f acc x y) xs ys
+  | _ -> acc
 
 
 
@@ -305,27 +280,17 @@ let assoc_exn k kts t =
 
 
 
-
-
 let uniq_flatten_map cmp f xs = uniq ~cmp (rev_map_flatten f xs)
 
 
-
-let is_uppercase c =
-  'A' <= c && c <= 'Z'
-
-
-
+let is_uppercase c = 'A' <= c && c <= 'Z'
 
 
 let get_time () =
   let times = Unix.times() in
   times.Unix.tms_utime +. times.Unix.tms_cutime
 
-
 let add_time tmp t = t := !t +. get_time () -. tmp
-
-
 
 
 let print_err s =
@@ -335,17 +300,12 @@ let print_time () =
 
 
 
-
-
 let rec decomp_snoc = function
     [] -> failwith "dcomp_snoc"
   | [x] -> [], x
   | x::xs ->
       let xs',y = decomp_snoc xs in
       x::xs', y
-
-
-
 
 
 
@@ -400,10 +360,6 @@ let rec my_input ic s ofs len acc =
       else acc
 let my_input ic s ofs len = my_input ic s ofs len 0
 
-let apply_opt f = function
-    None -> None
-  | Some x -> Some (f x)
-
 
 let rec print_list_aux print punc last fm xs =
   match xs with
@@ -422,11 +378,6 @@ let print_list print ?(first=false) ?(last=false) punc fm xs =
     if first then Format.fprintf fm punc';
     Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
     Format.fprintf fm "@]"
-
-
-let get_opt_val = function
-    None -> raise (Failure "get_opt_val")
-  | Some t -> t
 
 
 let is_prefix_string pre s =

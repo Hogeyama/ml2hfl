@@ -74,7 +74,7 @@ let get_diff_args_desc (env,f) desc =
   | App({desc=Var g}, ts) when Id.same f g && is_partial g ts ->
      make_all @@ fst @@ decomp_tfun @@ Id.typ g
   | App({desc=Var g}, ts) when Id.same f g ->
-      let its = mapi (fun i t -> i,t) ts in
+      let its = List.mapi (fun i t -> i,t) ts in
       let rec aux acc = function
           [] -> acc
         | (i,t)::its' ->
@@ -104,7 +104,7 @@ let get_diff_args env f t = get_diff_args.col2_term (env,f) t
 
 
 let elim_nth ns xs = xs
-  |> mapi (fun i x -> if List.mem i ns then [] else [x])
+  |> List.mapi (fun i x -> if List.mem i ns then [] else [x])
   |> List.flatten
 
 

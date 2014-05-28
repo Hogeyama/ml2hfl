@@ -24,7 +24,7 @@ let preprocess t spec =
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" id t in
       let fun_list = Term_util.get_top_funs t in
       let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec<>Spec.init) t in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec.Spec.abst_env<>[]) t in
       let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let get_rtyp = get_rtyp_list in
@@ -36,7 +36,7 @@ let preprocess t spec =
       let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_cps_trans in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
       let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec<>Spec.init) t in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec.Spec.abst_cps_env<>[]) t in
       let t = trans_and_print Elim_same_arg.trans "eliminate same arguments" id t in
       let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_remove_pair in
       let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
@@ -138,7 +138,7 @@ let report_unsafe main_fun arg_num ce set_target =
   if main_fun <> "" && arg_num <> 0
   then
     Format.printf "Input for %s:@.  %a@." main_fun
-      (print_list Format.pp_print_int "; ") (take ce arg_num);
+      (print_list Format.pp_print_int "; ") (List.take arg_num ce);
   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
 
 

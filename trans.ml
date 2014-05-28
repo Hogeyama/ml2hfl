@@ -739,7 +739,7 @@ let rec propagate_typ_arg t =
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
         let xs' =
-          let ys = take (get_args (Id.typ f)) (List.length xs) in
+          let ys = List.take (List.length xs) (get_args (Id.typ f)) in
           let aux x y ys =
             let ys' = List.map (fun z -> Id.set_typ z (subst_type y (make_var x) (Id.typ z))) ys in
             Id.set_typ x (Id.typ y) :: ys'
@@ -811,7 +811,7 @@ let rec replace_typ_aux env t =
               raise (Fatal msg)
             end;
           let xs' =
-            let ys = take (get_args (Id.typ f')) (List.length xs) in
+            let ys = List.take (List.length xs) (get_args (Id.typ f')) in
             List.map2 (fun x y -> Id.set_typ x (Id.typ y)) xs ys
           in
           let t' = replace_typ_aux env t in
@@ -1023,15 +1023,17 @@ let normalize_binop_exp op t1 t2 =
   in
   let xns1 = decomp t1 in
   let xns2 = decomp t2 in
-  let compare (x1,_) (x2,_) =
-    let aux = function
-      | None -> "\255"
-      | Some {desc=Var x} -> Id.to_string x
-      | _ -> assert false
+  let xns =
+    let compare (x1,_) (x2,_) =
+      let aux = function
+        | None -> "\255"
+        | Some {desc=Var x} -> Id.to_string x
+        | _ -> assert false
+      in
+      compare (aux x2) (aux x1)
     in
-    compare (aux x1) (aux x2)
+    List.sort ~cmp:compare (xns1 @@@ (neg xns2))
   in
-  let xns = List.sort (xns1 @@@ (neg xns2)) in
   let rec aux = function
     | [] -> []
     | (x,n)::xns ->
@@ -1041,37 +1043,36 @@ let normalize_binop_exp op t1 t2 =
   in
   let xns' = aux xns in
   let xns'' = List.filter (fun (x,n) -> n<>0) xns' in
+  let x,n = List.hd xns'' in
+  let xns = List.rev @@ List.tl xns'' in
   let op',t1',t2' =
-    match xns'' with
-    | [] -> assert false
-    | (x,n)::xns ->
-        let aux :typed_term option * int -> typed_term= function
-            None,n -> {desc=Const (Int n); typ=TInt}
-          | Some x,n -> if n=1 then x else make_mul (make_int n) x
+    let aux :typed_term option * int -> typed_term= function
+        None,n -> {desc=Const (Int n); typ=TInt}
+      | Some x,n -> if n=1 then x else make_mul (make_int n) x
+    in
+    let t1,xns',op' =
+      if n<0
+      then
+        let op' =
+          match op with
+          | Eq -> Eq
+          | Lt -> Gt
+          | Gt -> Lt
+          | Leq -> Geq
+          | Geq -> Leq
+          | _ -> assert false
         in
-        let t1,xns',op' =
-          if n<0
-          then
-            let op' =
-              match op with
-              | Eq -> Eq
-              | Lt -> Gt
-              | Gt -> Lt
-              | Leq -> Geq
-              | Geq -> Leq
-              | _ -> assert false
-            in
-            aux (x,-n), xns, op'
-          else
-            aux (x,n), neg xns, op
-        in
-        let ts = List.map aux xns' in
-        let t2 =
-          match ts with
-          | [] -> make_int 0
-          | t::ts' -> List.fold_left make_add t ts'
-        in
-        op', t1, t2
+        aux (x,-n), xns, op'
+      else
+        aux (x,n), neg xns, op
+    in
+    let ts = List.map aux xns' in
+    let t2 =
+      match ts with
+      | [] -> make_int 0
+      | t::ts' -> List.fold_left make_add t ts'
+    in
+    op', t1, t2
   in
   let rec simplify t =
     let desc =
@@ -1815,7 +1816,7 @@ let rec screen_fail path target t =
     | Fun(x,t) -> t.desc
     | App(t1, ts) ->
         let aux i t = screen_fail (i::path) target t in
-        let t1ts' = mapi aux (t1::ts) in
+        let t1ts' = List.mapi aux (t1::ts) in
         App(List.hd t1ts', List.tl t1ts')
     | If(t1, t2, t3) ->
         let aux i t = screen_fail (i::path) target t in
@@ -1826,7 +1827,7 @@ let rec screen_fail path target t =
     | Let(flag, defs, t) ->
         let aux i t = screen_fail (i::path) target t in
         let aux_def i (f,xs,t) = f, xs, aux i t in
-        Let(flag, mapi aux_def defs, aux (List.length defs) t)
+        Let(flag, List.mapi aux_def defs, aux (List.length defs) t)
     | BinOp(op, t1, t2) ->
         let aux i t = screen_fail (i::path) target t in
         BinOp(op, aux 1 t1, aux 2 t2)
@@ -1845,11 +1846,11 @@ let rec screen_fail path target t =
         Cons(aux 1 t1, aux 2 t2)
     | Constr(s,ts) ->
         let aux i t = screen_fail (i::path) target t in
-        Constr(s, mapi aux ts)
+        Constr(s, List.mapi aux ts)
     | Match(t,pats) ->
         let aux i t = screen_fail (i::path) target t in
         let aux_pat i (p,cond,t) = p, aux (2*i+1) cond, aux (2*i+2) t in
-        Match(aux 0 t, mapi aux_pat pats)
+        Match(aux 0 t, List.mapi aux_pat pats)
     | Raise t -> Raise (screen_fail path target t)
     | TryWith(t1,t2) ->
         let aux i t = screen_fail (i::path) target t in
@@ -2282,13 +2283,6 @@ let normalize_let_term t =
       let aux (f,xs,t) = f, xs, normalize_let.tr_term t in
       let bindings' = List.map aux bindings in
       let t1' = normalize_let.tr_term t1 in
-      let t1'' =
-        match t1.desc with
-        | BinOp _ | App _ | Pair _ ->
-            let x = Id.new_var "x" t1.typ in
-            make_let [x,[],t1'] (make_var x)
-        | _ -> t1'
-      in
       make_let_f flag bindings' t1'
   | _ -> normalize_let.tr_term_rec t
 

@@ -41,7 +41,7 @@ and uncurry_typ_arg rtyps typ =
     Format.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps pp_print_typ typ;
   match rtyps, elim_tpred typ with
   | _, TPair(x,typ) ->
-      let rtyps1,rtyps2 = take2 rtyps (element_num (Id.typ x)) in
+      let rtyps1,rtyps2 = List.split_nth (element_num @@ Id.typ x) rtyps in
       let map1,rtyp1 = uncurry_typ_arg rtyps1 (Id.typ x) in
       let map2,rtyp2 = uncurry_typ_arg rtyps2 typ in
       let map1' = List.map (fun (x,f) -> x, fun x' -> make_fst (f x')) map1 in
@@ -120,7 +120,7 @@ and remove_pair_aux t typ_opt =
   | App(t1, ts) ->
       let typs = get_argtyps t1.typ in
       let () = assert (List.length typs >= List.length ts) in
-      let typs' = take typs (List.length ts) in
+      let typs' = List.take (List.length ts) typs in
       let t' = root (remove_pair_aux t1 None) in
       let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t (Some typ))) ts typs') in
       Leaf (make_app t' ts')

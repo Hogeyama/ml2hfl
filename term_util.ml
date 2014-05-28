@@ -820,6 +820,7 @@ let make_eq_dec t1 t2 =
     | TBool
     | TInt -> make_eq t1 t2
     | TPair _ -> make_and (make (make_fst t1) (make_fst t2)) (make (make_snd t1) (make_snd t2))
+    | _ -> assert false
   in
   let t1',k1 = aux t1 in
   let t2',k2 = aux t2 in
@@ -1470,10 +1471,10 @@ let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
 let rec var_name_of_term t =
   match t.desc, elim_tpred t.typ with
-    Var x, _ -> Id.name x
-  | _,     TUnit _ -> "u"
-  | _,     TBool _ -> "b"
-  | _,     TInt _  -> "n"
+  | Var x, _       -> Id.name x
+  | _,     TUnit   -> "u"
+  | _,     TBool   -> "b"
+  | _,     TInt    -> "n"
   | _,     TFun _  -> "f"
   | _,     TPair _ -> "p"
   | App _, _       -> "r"

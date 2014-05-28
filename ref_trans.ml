@@ -15,7 +15,7 @@ let rec root x bb path_rev =
     | _ -> None
   in
   try
-    let y,dir = get_opt_val @@ List.find ((<>) None) @@ List.map aux bb in
+    let y,dir = Option.get @@ List.find ((<>) None) @@ List.map aux bb in
     begin
       match elim_tpred @@ fst_typ @@ Id.typ y with
       | TFun _ -> root y bb (dir::path_rev)
@@ -61,7 +61,6 @@ let rec make_tree x bb =
       Tree.Leaf(typ, args)
   | Some _, None, _ -> raise (Fatal "not implemented: make_tree")
   | None, Some _, _ -> raise (Fatal "not implemented: make_tree")
-  | _ -> assert false
 
 let rec make_trees tree =
   match tree with
@@ -164,18 +163,17 @@ Format.printf "root: %a, %a@." Id.print r pp_print_typ (Id.typ r);
 Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.hd xs);
 *)
         let t' =
-          let t' = proj_of_path path @@ make_var @@ List.hd xs in
-          let t' =
+          let t1 = proj_of_path path @@ make_var @@ List.hd xs in
+          let t2 =
             let aux t (i,j,path) =
               let t1 = make_var (List.nth xs i) in
               let t2 = make_var (List.nth xs j) in
               make_assume (make_eq t1 t2) t
             in
-            List.fold_left aux t' same_arg_apps
+            List.fold_left aux t1 same_arg_apps
           in
-          List.fold_left2 (fun t x app -> make_let [x,[],app] t) t' xs apps
+          List.fold_left2 (fun t x app -> make_let [x,[],app] t) t2 xs apps
         in
-        let x' = Id.new_var_id x in
         subst y' t t'
   | _ -> make_app (make_var x) [t] (* negligence *)
 
@@ -194,14 +192,14 @@ let rec typ_of_tree t =
 
 let rec elim_none t =
   match t with
-    Tree.Leaf None -> None
+  | Tree.Leaf None -> None
   | Tree.Leaf (Some typ) -> Some (Tree.Leaf (opt_typ typ))
   | Tree.Node(t1,t2) ->
-    match elim_none t1, elim_none t2 with
-      None, None -> None
-    | Some t, None
-    | None, Some t -> Some t
-    | Some t1, Some t2 -> Some (Tree.Node(t1,t2))
+      match elim_none t1, elim_none t2 with
+      | None, None -> None
+      | Some t, None
+      | None, Some t -> Some t
+      | Some t1, Some t2 -> Some (Tree.Node(t1,t2))
 
 (*
 let trans_typ' (tt,bb) typ =
@@ -229,13 +227,13 @@ let decomp_tfun_ttuple typ =
   let typs = decomp_ttuple typ in
   let decomp typ =
     match typ with
-      TFun(x,typ') -> Some (x,typ')
+    | TFun(x,typ') -> Some (x,typ')
     | _ -> None
   in
   let xtyps = List.map decomp typs in
   if List.mem None xtyps
   then None
-  else Some (List.map get_opt_val xtyps)
+  else Some (List.map Option.get xtyps)
 
 let trans_typ ttbb typ =
   match typ with
@@ -287,7 +285,7 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
       let t' = trans.tr2_term (tt,bb') t in
       let t1' =
         match trans_typ (tt,bb) @@ Id.typ x with
-          TFun(y, _) ->
+        | TFun(y, _) ->
             let y' = Id.new_var_id y in
             let ty1 = make_fst (make_var y') in
             let ty2 = make_snd (make_var y') in
@@ -314,7 +312,7 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
       let t' = trans.tr2_term (tt,bb') t in
       let t1' =
         match trans_typ (tt,bb) @@ Id.typ x with
-          TFun(y, _) ->
+        | TFun(y, _) ->
             let y' = Id.new_var_id y in
             let ty1 = make_fst (make_var y') in
             let ty2 = make_snd (make_var y') in
@@ -631,7 +629,7 @@ let add_fun_tuple_term (funs,env) t =
       let aux t fs =
         let name = List.fold_left (fun s x -> Id.name x ^ "_" ^ s) (Id.name @@ List.hd fs) @@ List.tl fs in
         let fg = Id.new_var name @@ make_ttuple @@ List.map Id.typ fs in
-        let projs = mapi (fun i g -> Id.new_var_id g, [], make_proj (i+1) (make_var fg)) fs in
+        let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj (i+1) (make_var fg)) fs in
         let t' = replace_head fs (List.map (fun (f,_,_) -> f) projs) t in
         let defs = (fg, [], make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'

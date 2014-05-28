@@ -36,117 +36,93 @@ let make_dnf pbss =
     | pbs::pbss' -> List.fold_left (fun t pbs -> make_or t (make_conj pbs)) (make_conj pbs) pbss'
 
 
-let mapi f xs =
-  let rec aux i xs =
-    match xs with
-        [] -> []
-      | x::xs' -> (f i x) ::(aux (i + 1) xs')
-  in
-    aux 1 xs
-
-
 let weakest_aux env cond ds p =
-    let fvp = get_fv p in
-    let nds = List.map (fun (p, b) -> make_not p, make_not b) ds in
-    let f pbs =
-      List.map
-        (fun i ->
-           if i > 0 then
-             List.nth ds (i - 1)
-           else
-             List.nth nds (-i - 1))
-        pbs
-    in
-    let pbss =
-      if !Flag.use_neg_pred
-      then mapi (fun i _ -> [i]) ds @ mapi (fun i _ -> [-i]) ds
-      else mapi (fun i _ -> [i]) ds
-    in
-    let rec loop xs' nxs' ys' pbss =
-      let xs, qs = List.partition
+  let fvp = get_fv p in
+  let nds = List.map (fun (p, b) -> make_not p, make_not b) ds in
+  let f pbs =
+    List.map
+      (fun i ->
+       if i > 0 then
+         List.nth ds (i - 1)
+       else
+         List.nth nds (-i - 1))
+      pbs
+  in
+  let pbss =
+    if !Flag.use_neg_pred
+    then List.mapi (fun i _ -> [i+1]) ds @ List.mapi (fun i _ -> [1-i]) ds
+    else List.mapi (fun i _ -> [i+1]) ds
+  in
+  let rec loop xs' nxs' ys' pbss =
+    let xs, qs =
+      List.partition
         (fun pbs ->
-           let pbs = f pbs in
-           let fvs =
-             List.flatten
-               (List.map
-                  (fun (p, _) ->
-                     get_fv p)
-                  pbs)
-           in
-             if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
-               false
-             else
-               check env cond pbs p)
+         let pbs = f pbs in
+         let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs in
+         if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
+           false
+         else
+           check env cond pbs p)
         pbss
-      in
-      let nxs, ys = List.partition
+    in
+    let nxs, ys =
+      List.partition
         (fun pbs ->
-           let pbs = f pbs in
-           let fvs =
-             List.flatten
-               (List.map
-                  (fun (p, _) ->
-                     get_fv p)
-                  pbs)
-           in
-             if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
-               false
-             else
-               check env cond pbs (make_not p))
+         let pbs' = f pbs in
+         let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs' in
+         if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
+           false
+         else
+           check env cond pbs' (make_not p))
         pbss
-      in
-      let xs = uniq (xs' @ xs) in
-      let nxs = uniq (nxs' @ nxs) in
-      let ys = uniq (ys' @ ys) in
-      let ws =
-        uniq
-          (List.flatten
-             (List.map
-                (fun y1 ->
-                   List.map
-                     (fun y2 ->
-                        List.sort (uniq (y1 @ y2)))
-                     ys)
-                ys))
-      in
-      let ws =
-        let ok w =
-          if List.length w > !Flag.wp_max_num then
-            false
-          else
-            let rec ok w =
-              match w with
-                  [] -> true
-                | a::b -> not (List.mem (-a) b) && ok b
-            in
-              ok w
-        in
-          List.filter ok ws
-      in
-      let ws =
-        if false then
-          diff ws ys
+    in
+    let xs = uniq (xs' @ xs) in
+    let nxs = uniq (nxs' @ nxs) in
+    let ys = uniq (ys' @ ys) in
+    let ws =
+      uniq @@
+        List.flatten @@
+          List.map (fun y1 -> List.map (fun y2 -> List.sort (uniq (y1 @ y2))) ys) ys
+    in
+    let ws =
+      let ok w =
+        if List.length w > !Flag.wp_max_num then
+          false
         else
-          List.filter (fun w -> not (List.exists (fun x -> diff w x = []) ys)) ws
+          let rec ok w =
+            match w with
+            | [] -> true
+            | a::b -> not (List.mem (-a) b) && ok b
+          in
+          ok w
       in
-      let ws = List.filter
-        (fun w -> not (List.exists (fun x -> diff x w = []) xs) &&
-           not (List.exists (fun x -> diff x w = []) nxs)) ws in
-      let ws =
-        let rec aux xs =
-          match xs with
-              [] -> []
-            | x::xs' ->
-                if List.exists (fun y -> diff y x = []) xs' then aux xs' else x::(aux xs')
-        in
-          aux ws
-      in
-        if ws = [] then xs, nxs else loop xs nxs ys ws
+      List.filter ok ws
     in
-    let xs, nxs = loop [] [] [] pbss in
-    let pbss = List.map f xs in
-    let npbss = List.map f nxs in
-    pbss, npbss
+    let ws =
+      if false then
+        diff ws ys
+      else
+        List.filter (fun w -> not (List.exists (fun x -> diff w x = []) ys)) ws
+    in
+    let ws =
+      List.filter
+        (fun w -> not (List.exists (fun x -> diff x w = []) xs) &&
+                  not (List.exists (fun x -> diff x w = []) nxs)) ws in
+    let ws =
+      let rec aux xs =
+        match xs with
+        | [] -> []
+        | x::xs' ->
+            if List.exists (fun y -> diff y x = []) xs' then aux xs' else x::(aux xs')
+      in
+      aux ws
+    in
+    if ws = [] then xs, nxs else loop xs nxs ys ws
+  in
+  let xs, nxs = loop [] [] [] pbss in
+  let pbss = List.map f xs in
+  let npbss = List.map f nxs in
+  pbss, npbss
 
 
 let weakest env cond ds p =
@@ -159,41 +135,30 @@ let weakest env cond ds p =
     let ts = cond @@@ List.map fst ds in
     let ds =
       let rec fixp xs =
-        let xs' =
-          uniq
-            (xs @
-               (List.flatten
-                  (List.map
-                     (fun p ->
-                        let fv = get_fv p in
-                          if inter fv xs = []
-                          then []
-                          else fv)
-                     ts)))
+        let aux p =
+          let fv = get_fv p in
+          if inter fv xs = []
+          then []
+          else fv
         in
-          if List.length xs = List.length xs'
-          then xs
-          else fixp xs'
+        let xs' = uniq (xs @ (List.flatten @@ List.map aux ts)) in
+        if List.length xs = List.length xs'
+        then xs
+        else fixp xs'
       in
       let fv = fixp fvp in
-        List.filter (fun (p, _) -> subset (get_fv p) fv) ds
+      List.filter (fun (p, _) -> subset (get_fv p) fv) ds
     in
     let pbss,npbss = weakest_aux env cond ds p in
-    let pbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) pbss in
-    let npbss = List.filter (fun pbs -> not (check env cond pbs (Const False))) npbss in
-      make_dnf pbss, make_dnf npbss
-
-
-
-let weakest2 env cond ds p =
-    let pbss,npbss = weakest_aux env cond ds p in
-      make_dnf pbss, make_dnf npbss
+    let pbss = List.filter (fun pbs -> not @@ check env cond pbs (Const False)) pbss in
+    let npbss = List.filter (fun pbs -> not @@ check env cond pbs (Const False)) npbss in
+    make_dnf pbss, make_dnf npbss
 
 
 
 let filter env cond pbs must t =
-  let tt,_ = weakest2 env cond pbs (Const False) in
-  make_if tt (Const Bottom) t
+  let pbss,_ = weakest_aux env cond pbs (Const False) in
+  make_if (make_dnf pbss) (Const Bottom) t
 
 
 

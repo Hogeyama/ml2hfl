@@ -359,8 +359,8 @@ let constraints_def env_orig env (f,xs,t1,_,t2)  =
   let env' = List.map (new_env env_orig') xs in
   let r_typ =
     let typs,typr = CEGAR_syntax.decomp_tfun f_typ_orig in
-    let _,typs' = take2 typs (List.length xs) in
-      template (List.fold_right (fun typ1 typ2 -> CEGAR_type.TFun(typ1,fun _ ->typ2)) typs' typr)
+    let _,typs' = List.split_nth (List.length xs) typs in
+    template (List.fold_right (fun typ1 typ2 -> CEGAR_type.TFun(typ1,fun _ ->typ2)) typs' typr)
   in
   let fun_typ = List.fold_right (fun (_,typ1) typ2 -> TFun(typ1,typ2)) env' r_typ in
   let env'' = env' @@@ env in
@@ -428,12 +428,12 @@ let infer {env=env;defs=defs;main=main} =
 let use_of_typ typ =
   let typs,_ = decomp_tfun typ in
   let rec aux i = function
-      TBase -> [i]
+    | TBase -> [i]
     | TTop -> []
     | TFun(_,typ) -> aux i typ
     | TVar _ -> assert false
   in
-    List.flatten (mapi aux typs)
+  List.flatten (List.mapi aux typs)
 
 let rec elim_term env = function
     Const c -> Const c

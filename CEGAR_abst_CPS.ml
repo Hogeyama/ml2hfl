@@ -17,7 +17,7 @@ let abst_arg x typ =
         match ps (Var x) with
         | [] -> []
         | [_] -> [x]
-        | ps -> mapi (fun i _ -> add_name x (string_of_int i)) ps
+        | ps -> List.mapi (fun i _ -> add_name x @@ string_of_int @@ i+1) ps
       end
   | _ -> [x]
 let make_pts x typ =
@@ -250,7 +250,6 @@ let rec abstract_term must env cond pts t typ =
       let btyp,ps = decomp_tbase typ in
       if btyp = typ_result_base
       then [Const Unit]
-
       else List.map (abst env cond pts) (ps t)
   | Var x when congruent env cond (List.assoc x env) typ ->
       List.map (fun x -> Var x) (abst_arg x typ)
@@ -298,7 +297,7 @@ let rec abstract_term must env cond pts t typ =
       else [t']
   | Fun _ ->
       let env',t' = decomp_annot_fun t in
-      let env' = List.map (fun (x,typ) -> x, get_opt_val typ) env' in
+      let env' = List.map (fun (x,typ) -> x, Option.get typ) env' in
       let pts' = flatten_map (fun (x,typ) -> make_pts x typ) env' in
       let pts'' = pts' @@@ pts in
       let xs' = flatten_map (fun (x,typ) -> abst_arg x typ) env' in
@@ -404,24 +403,27 @@ let add_ext_funs_cps prog =
   let _ = Typing.infer {env=[]; defs=defs'; main=prog.main} in
   {prog with defs=defs'}
 
+let abstract_prog prog =
+  let env = List.map (fun f -> f, abstract_typ (List.assoc f prog.env)) (get_ext_funs prog) in
+  let defs = flatten_map (abstract_def prog.env) prog.defs in
+  {env=env; defs=defs; main=prog.main}
 
 let abstract orig_fun_list force prog =
-  let env = List.map (fun f -> f, abstract_typ (List.assoc f prog.env)) (get_ext_funs prog) in
   let labeled,prog = add_label prog in
-  let prog = if !Flag.expand_nonrec then expand_nonrec orig_fun_list force prog else prog in
-  let () = if debug && !Flag.expand_nonrec then Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog prog in
-  let prog = eta_expand prog in
-  let () = if debug then Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog prog in
-  let defs = flatten_map (abstract_def prog.env) prog.defs in
-  let prog = {env=env; defs=defs; main=prog.main} in
-  let () = if debug then Format.printf "ABST:@\n%a@." CEGAR_print.prog_typ prog in
-  let prog = Typing.infer prog in
-  let prog = CEGAR_lift.lift2 prog in
-  let () = if debug then Format.printf "LIFT:@\n%a@." CEGAR_print.prog prog in
-  let prog = trans_eager prog in
-  let () = if debug then Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog prog in
-  let prog = put_into_if prog in
-  let _ = Typing.infer prog in
-  let () = if debug then Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog prog in
-  let prog = CEGAR_lift.lift2 prog in
-    labeled, prog
+  prog
+  |& !Flag.expand_nonrec &> expand_nonrec orig_fun_list force
+  |@ (debug && !Flag.expand_nonrec) &> Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog
+  |> eta_expand
+  |@ debug &> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
+  |> abstract_prog
+  |@ debug &> Format.printf "ABST:@\n%a@." CEGAR_print.prog_typ
+  |> Typing.infer
+  |> CEGAR_lift.lift2
+  |@ debug &> Format.printf "LIFT:@\n%a@." CEGAR_print.prog
+  |> trans_eager
+  |@ debug &> Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog
+  |> put_into_if
+  |@> Typing.infer
+  |@ debug &> Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog
+  |> CEGAR_lift.lift2
+  |> fun prog -> labeled, prog

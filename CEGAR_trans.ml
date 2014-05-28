@@ -558,43 +558,43 @@ let rec read_bool () =
     | s -> read_bool ()
 
 let rec step_eval_abst_cbn ce labeled env_abst defs = function
-    Const Bottom -> raise TypeBottom
+  | Const Bottom -> raise TypeBottom
   | Const RandBool ->
       let t =
         if read_bool ()
         then Const True
         else Const False
       in
-        ce, t
+      ce, t
   | Const Unit -> ce, Const Unit
   | Var x ->
       let ce',(f,xs,tf1,es,tf2) = assoc_def labeled (Var x) ce defs in
-        assert (tf1 = Const True);
-        if List.mem (Event "fail") es then raise EvalFail;
-        ce', tf2
+      assert (tf1 = Const True);
+      if List.mem (Event "fail") es then raise EvalFail;
+      ce', tf2
   | App(App(App(Const If, Const True), t2), _) -> ce, t2
   | App(App(App(Const If, Const False), _), t3) -> ce, t3
   | App(App(App(Const If, t1), t2), t3) ->
       let ce',t1' = step_eval_abst_cbn ce labeled env_abst defs t1 in
-        ce', App(App(App(Const If, t1'), t2), t3)
+      ce', App(App(App(Const If, t1'), t2), t3)
   | App(Const (Label n), t) ->
       step_eval_abst_cbn ce labeled env_abst defs t
   | App _ as t ->
       let t1,ts = decomp_app t in
-        if t1 = Const If
-        then
-          match ts with
-              t1::t2::t3::ts' ->
-                let t2' = make_app t2 ts' in
-                let t3' = make_app t3 ts' in
-                  step_eval_abst_cbn ce labeled env_abst defs (make_if t1 t2' t3')
-            | _ -> assert false
-        else
-          let ce',(f,xs,tf1,es,tf2) = assoc_def labeled t1 ce defs in
-          let ts1,ts2 = take2 ts (List.length xs) in
-            assert (tf1 = Const True);
-            if List.mem (Event "fail") es then raise EvalFail;
-            ce', make_app (List.fold_right2 subst xs ts1 tf2) ts2
+      if t1 = Const If
+      then
+        match ts with
+          t1::t2::t3::ts' ->
+          let t2' = make_app t2 ts' in
+          let t3' = make_app t3 ts' in
+          step_eval_abst_cbn ce labeled env_abst defs (make_if t1 t2' t3')
+        | _ -> assert false
+      else
+        let ce',(f,xs,tf1,es,tf2) = assoc_def labeled t1 ce defs in
+        let ts1,ts2 = List.split_nth (List.length xs) ts in
+        assert (tf1 = Const True);
+        if List.mem (Event "fail") es then raise EvalFail;
+        ce', make_app (List.fold_right2 subst xs ts1 tf2) ts2
   | _ -> assert false
 
 let rec eval_abst_cbn prog labeled abst ce =
@@ -692,13 +692,13 @@ let rec trans_ce_aux labeled ce acc defs t k =
             then k ce acc (App(t1,t2))
             else
               let ce',acc',(f,xs,tf1,e,tf2) = assoc_def labeled defs ce acc t1' in
-              let ts1,ts2 = take2 ts (List.length xs) in
+              let ts1,ts2 = List.split_nth (List.length xs) ts in
               let aux = List.fold_right2 subst xs ts1 in
               let tf2' = make_app (aux tf2) ts2 in
-                assert (List.length xs = List.length ts);
-                if e = [Event "fail"]
-                then init_cont ce' acc' tf2'
-                else trans_ce_aux labeled ce' acc' defs tf2' k))
+              assert (List.length xs = List.length ts);
+              if e = [Event "fail"]
+              then init_cont ce' acc' tf2'
+              else trans_ce_aux labeled ce' acc' defs tf2' k))
     | Let _ -> assert false
     | Fun _ -> assert false
 

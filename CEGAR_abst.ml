@@ -15,33 +15,33 @@ let abst_arg x typ =
       | _ -> []
   in
   let n = List.length ps in
-    mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
+  List.mapi (fun i p -> p, App(Const (Proj(n,i+1)), Var x)) ps
 
 
 
 let rec coerce env cond pts typ1 typ2 t =
   match typ1,typ2 with
-      _ when congruent env cond typ1 typ2 -> Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;t
-    | TBase(_,ps1),TBase(_,ps2) ->
-        let var = match t with Var x -> Some x | _ -> None in
-        let x = match var with None -> new_id "x" | Some x -> x in
-        let env' = (x,typ1)::env in
-        let pts' = abst_arg x typ1 @@@ pts in
-        let ts = List.map (abst env' cond pts') (ps2 (Var x)) in
-          begin
-            match var with
-                None -> Let(x, t, make_app (Const (Tuple (List.length ts))) ts)
-              | Some _ -> make_app (Const (Tuple (List.length ts))) ts
-          end
-    | TFun(typ11,typ12), TFun(typ21,typ22) ->
-        let x = new_id "x" in
-        let typ12 = typ12 (Var x) in
-        let typ22 = typ22 (Var x) in
-        let env' = (x,typ11)::env in
-        let t1 = coerce env' cond pts typ21 typ11 (Var x) in
-        let t2 = coerce env' cond pts typ12 typ22 (App(t, t1)) in
-          Fun(x, None, t2)
-    | _ -> Format.printf "COERCE: %a, %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
+  | _ when congruent env cond typ1 typ2 -> Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;t
+  | TBase(_,ps1),TBase(_,ps2) ->
+      let var = match t with Var x -> Some x | _ -> None in
+      let x = match var with None -> new_id "x" | Some x -> x in
+      let env' = (x,typ1)::env in
+      let pts' = abst_arg x typ1 @@@ pts in
+      let ts = List.map (abst env' cond pts') (ps2 (Var x)) in
+      begin
+        match var with
+        | None -> Let(x, t, make_app (Const (Tuple (List.length ts))) ts)
+        | Some _ -> make_app (Const (Tuple (List.length ts))) ts
+      end
+  | TFun(typ11,typ12), TFun(typ21,typ22) ->
+      let x = new_id "x" in
+      let typ12 = typ12 (Var x) in
+      let typ22 = typ22 (Var x) in
+      let env' = (x,typ11)::env in
+      let t1 = coerce env' cond pts typ21 typ11 (Var x) in
+      let t2 = coerce env' cond pts typ12 typ22 (App(t, t1)) in
+      Fun(x, None, t2)
+  | _ -> Format.printf "COERCE: %a, %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 let coerce env cond pts typ1 typ2 =
   if false then Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;

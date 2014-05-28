@@ -78,7 +78,7 @@ let get_same_pair env y z =
   let fsts = List.filter (function (y', Some p, None) -> Id.same y y' | _ -> false) env in
   let snds = List.filter (function (z', None, Some p) -> Id.same z z' | _ -> false) env in
   try
-    let (_, p, _) = List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (get_opt_val p) (get_opt_val p')) snds) fsts in
+    let (_, p, _) = List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (Option.get p) (Option.get p')) snds) fsts in
     p
   with Not_found -> None
 

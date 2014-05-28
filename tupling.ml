@@ -6,6 +6,16 @@ open Term_util
 
 let debug = false
 
+
+type form =
+  | FSimpleRec
+  | FNonRec
+  | FOther
+
+exception Cannot_compose
+exception Not_recursive
+
+
 let is_none_term t =
   match t.desc with
   | Pair(t1,t2) -> t1 = true_term && t2.desc = Const (Int 0)
@@ -34,14 +44,6 @@ let () = pair_let.tr_desc <- pair_let_desc
 let pair_let = pair_let.tr_term
 
 
-
-type form =
-  | FSimpleRec
-  | FNonRec
-  | FOther
-
-exception Cannot_compose
-exception Not_recursive
 
 let assoc_env f env =
   let _,xs,t = Id.assoc f env in
@@ -107,7 +109,6 @@ let compose_let_same_arg map fg f t1 g t2 =
       `Subset map' -> aux ts1 ts2 map'
     | `Supset map' -> aux ts2 ts1 map'
   in
-  let x = Id.new_var "r" (TPair(Id.new_var "l" t1.typ, t2.typ)) in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
   let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
@@ -137,7 +138,6 @@ let compose_typ typ1 typ2 =
 let compose_let_diff_arg fg f t1 g t2 =
   let before1,(x1,ts1),after1,t1' = partition_bindings f t1 in
   let before2,(x2,ts2),after2,t2' = partition_bindings g t2 in
-  let x = Id.new_var "r" (TPair(Id.new_var "l" t1.typ, t2.typ)) in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
   let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
@@ -160,123 +160,12 @@ let compose_let map f t1 g t2 =
       let fg = Id.new_var (Id.name f ^ "_" ^ Id.name g) @@ compose_typ (Id.typ f) (Id.typ g) in
       compose_let_diff_arg fg f t1 g t2
 
-let rec compose f t1 g t2 =
-  if debug then Format.printf "compose@.";
-  match t1.desc, t2.desc with
-    If(t11, t12, t13), _ ->
-      make_if t11 (compose f t12 g t2) (compose f t13 g t2)
-  | _, If(t21, t22, t23) ->
-      make_if t21 (compose f t1 g t22) (compose f t1 g t23)
-  | _ -> raise Cannot_compose
-
-let rec compose_same_arg map fg f t1 g t2 =
-  if debug then Format.printf "compose_same_arg@.";
-  match t1.desc, t2.desc with
-    If(t11, t12, t13), If(t21, t22, t23) when t11 = t21 ->
-      let t2' = compose_same_arg map fg f t12 g t22 in
-      let t3' = compose_same_arg map fg f t13 g t23 in
-      make_if t11 t2' t3'
-  | If(t11, t12, t13), _ ->
-      let t2' = compose_same_arg map fg f t12 g t2 in
-      let t3' = compose_same_arg map fg f t13 g t2 in
-      make_if t11 t2' t3'
-  | _, If(t21, t22, t23) ->
-      make_if t21 (compose_same_arg map fg f t1 g t22) (compose_same_arg map fg f t1 g t23)
-  | _ -> compose_let (Some (map, fg)) f t1 g t2
-
-
-let same_arg_map xs1 xs2 =
-  let rec find i x xs =
-    match xs with
-      [] -> None
-    | x'::xs' when Id.same x x' -> Some i
-    | _::xs' -> find (i+1) x xs'
-  in
-  let find x xs = find 0 x xs in
-  let make_map xs1 xs2 = List.map (fun x -> find x xs1) xs2 in
-  if subset xs1 xs2 then
-    Some (`Subset (make_map xs1 xs2))
-  else if subset xs2 xs1 then
-    Some (`Supset (make_map xs2 xs1))
-  else
-    None
-
-let get_comb_pair t1 t2 =
-  let diff = Trans.diff_terms t1 t2 in
-(*
-  if List.length diff > 2 then
-      (Format.printf "t1:%a@.t2:%a@." pp_print_term t1 pp_print_term t2;
-       List.iter (fun (t1,t2) -> Format.printf "DIFF %a, %a@."  pp_print_term t1 pp_print_term t2) diff;
-       Format.printf "@.");
-*)
-  let check (t1',t2') =
-    match t1'.desc, t2'.desc with
-      Fst t1'', Snd t2'' ->
-        begin
-        let diff = Trans.diff_terms t1'' t2'' in
-        if diff = []
-        then Some []
-        else
-          match t1''.desc, t2''.desc with
-            App({desc=Var f}, [{desc=Pair(t11,t12)}]), App({desc=Var g}, [{desc=Pair(t21,t22)}])
-              when Id.same f g && is_some_term t11 && is_none_term t12 && is_none_term t21 && is_some_term t22 ->
-                let x = Id.new_var "x" t1''.typ in
-                let t1''' = subst_rev t1'' x t1 in
-                let t2''' = subst_rev t2'' x t2 in
-                if has_no_effect t1''' && has_no_effect t2'''
-                then
-                  let t = make_app (make_var f) [make_pair t11 t22] in
-                  Some [make_lets [x,[],t] @@ make_pair t1''' t2''']
-                else None
-          | _ -> None
-        end
-    | _ -> None
-  in
-  let diff' = List.map check diff in
-  if List.exists ((=) None) diff'
-  then None
-  else
-    match List.filter (function Some [_] -> true | _ -> false) diff' with
-      [] -> None
-    | [Some [t]] -> Some t
-    | _ -> assert false
-
-
-let get_comb_pairs env =
-  let aux (_,(_,xs,t)) =
-    match t.desc with
-      Fun _ -> []
-    | _ when xs <> [] -> []
-    | _ -> [t]
-  in
-  let ts = flatten_map aux env in
-  let rec diffs ts =
-    match ts with
-      [] -> []
-    | t::ts' -> List.map (get_comb_pair t) ts'
-  in
-  diffs ts
-
-
-
-let get_pair_diffs = make_col [] List.rev_append
-
-let get_pair_diffs_desc desc =
-  match desc with
-  | Pair(t1,t2) -> Trans.diff_terms t1 t2
-  | _ -> get_pair_diffs.col_desc_rec desc
-
-let () = get_pair_diffs.col_desc <- get_pair_diffs_desc
-
-let get_pair_diffs = get_pair_diffs.col_term
-
-
 
 let tupling = make_trans2 ()
 
 let is_wrapped t =
   match t.desc with
-  | If(t1,t2,t3) when is_none t2 -> apply_opt (fun t1' -> t1', t3) @@ decomp_is_none t1
+  | If(t1,t2,t3) when is_none t2 -> Option.map (fun t1' -> t1', t3) @@ decomp_is_none t1
   | _ -> None
 
 let inline_wrapped = make_trans ()
@@ -298,142 +187,6 @@ let inline_wrapped_desc desc =
   | _ -> inline_wrapped.tr_desc_rec desc
 
 let () = inline_wrapped.tr_desc <- inline_wrapped_desc
-
-
-let tupling_desc env desc =
-(*
-Format.printf "desc: %a@." pp_print_term {desc=desc;typ=TUnit};
-*)
-  match desc with
-  | Let(Nonrecursive, [fg,[],({desc=Fun _} as t1)], t2) ->
-      begin
-        match decomp_fun t1 with
-          xs, {desc=Pair({desc=App({desc=Var f}, ts1)}, {desc=App({desc=Var g}, ts2)})} ->
-            begin
-              try
-                let tupling_args = function {desc=Var x} -> x | _ -> raise Cannot_compose in
-                let xs1 = List.map tupling_args ts1 in
-                let xs2 = List.map tupling_args ts2 in
-                let get_body env f ts =
-                  let xs,t = assoc_env f env in
-                  List.fold_right2 subst xs ts t
-                in
-                let t' =
-                  match same_arg_map xs1 xs2 with
-                    None -> None
-                  | Some map ->
-                      try
-                        Some (compose_same_arg map fg f (get_body env f ts1) g (get_body env g ts2))
-                      with Cannot_compose -> None
-                in
-                let xs',t'' =
-                  match t' with
-                    None ->
-                      xs1@xs2, compose f (get_body env f ts1) g (get_body env g ts2)
-                  | Some t'' -> xs, t''
-                in
-                let t1' = List.fold_right make_fun xs' t'' in
-                let t2' = tupling.tr2_term env t2 in
-                Let(Recursive, [fg,[],t1'], t2')
-              with Cannot_compose -> tupling.tr2_desc_rec env desc
-            end
-        | _ -> tupling.tr2_desc_rec env desc
-      end
-  | Let(Nonrecursive, [fg,[],({desc=Fun _} as t1)], t2) ->
-      begin
-        match decomp_fun t1 with
-          xs, {desc=Pair({desc=App({desc=Var f}, ts1)}, {desc=App({desc=Var g}, ts2)})} ->
-            begin
-              try
-                let tupling_args = function {desc=Var x} -> x | _ -> raise Cannot_compose in
-                let xs1 = List.map tupling_args ts1 in
-                let xs2 = List.map tupling_args ts2 in
-                let get_body env f ts =
-                  let xs,t = assoc_env f env in
-                  List.fold_right2 subst xs ts t
-                in
-                let t' =
-                  match same_arg_map xs1 xs2 with
-                    None -> None
-                  | Some map ->
-                      try
-                        Some (compose_same_arg map fg f (get_body env f ts1) g (get_body env g ts2))
-                      with Cannot_compose -> None
-                in
-                let xs',t'' =
-                  match t' with
-                    None ->
-                      xs1@xs2, compose f (get_body env f ts1) g (get_body env g ts2)
-                  | Some t'' -> xs, t''
-                in
-                let t1' = List.fold_right make_fun xs' t'' in
-                let t2' = tupling.tr2_term env t2 in
-                Let(Recursive, [fg,[],t1'], t2')
-              with Cannot_compose -> tupling.tr2_desc_rec env desc
-            end
-        | _ -> tupling.tr2_desc_rec env desc
-      end
-  | Fun(x,t) ->
-      begin
-        match Id.typ x with
-          TPair({Id.typ=TPair _}, TPair _) ->
-            let diffs = get_pair_diffs t in
-(*
-            let diffs' = List.filter (fun (t1,t2) -> Id.mem x @@ get_fv t1 || Id.mem x @@ get_fv t2) diffs in
-*)
-            let diffs' = diffs in
-            let check (t1,t2) =
-              match t1.desc, t2.desc with
-                Fst {desc=Var x}, Snd {desc=Var y} -> Id.same x y
-              | _ -> false
-            in
-            if diffs' <> [] && List.for_all check diffs'
-            then
-              let t' = List.fold_left (fun t (t1,t2) -> replace_term t2 t1 t) t diffs' in
-              let cond1 = make_eq (make_fst (make_fst (make_var x))) (make_fst (make_snd (make_var x))) in
-              let cond2 = make_eq (make_snd (make_fst (make_var x))) (make_snd (make_snd (make_var x))) in
-              let cond = make_and cond1 cond2 in
-              let t'' = make_seq (make_assert cond) t' in
-              (make_fun x t'').desc
-            else tupling.tr2_desc_rec env desc
-        | _ -> tupling.tr2_desc_rec env desc
-      end
-  | Let(flag, bindings, t) ->
-      let bindings' = List.map (fun (f,xs,t) -> f, xs, tupling.tr2_term env t) bindings in
-      let env' = List.map (fun (f,xs,t) -> f,(f,xs,t)) bindings' @ env in
-      Let(flag, bindings', tupling.tr2_term env' t)
-  | Pair(t1, t2) ->
-      let t1' = tupling.tr2_term env t1 in
-      let t2' = tupling.tr2_term env t2 in
-      let t' =
-        match get_comb_pair t1 t2 with
-          None -> compose_non_recursive false t1' t2'
-        | Some t -> if debug then Format.printf "COMB: %a@." pp_print_term t; t
-      in
-      t'.desc
-  | _ -> tupling.tr2_desc_rec env desc
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -463,7 +216,6 @@ let compose_let_same_arg map fg f t1 g t2 =
       `Subset map' -> aux ts1 ts2 map'
     | `Supset map' -> aux ts2 ts1 map'
   in
-  let x = Id.new_var "r" (TPair(Id.new_var "l" t1.typ, t2.typ)) in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
   let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
@@ -606,7 +358,6 @@ let compose_simple_rec fg f t1 g t2 =
   let t1'' = sbst1 t1' in
   let t2'' = sbst2 t2' in
    *)
-  let x = Id.new_var "r" (TPair(Id.new_var "l" t1.typ, t2.typ)) in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
   let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
@@ -644,7 +395,7 @@ let tupling_term env t =
       begin
         try
           if debug then Format.printf "PAIR: %a, %a@." pp_print_term t1 pp_print_term t2;
-          begin match (get_opt_val @@ decomp_some t1).desc, (get_opt_val @@ decomp_some t2).desc with
+          begin match (Option.get @@ decomp_some t1).desc, (Option.get @@ decomp_some t2).desc with
                   App({desc = Var f}, [{desc = Snd tx}]),
                   App({desc = Var g}, [{desc = Snd ty}]) ->
                   let z1,t1 = assoc_env f env in
@@ -917,7 +668,7 @@ let rec decomp_let_app_option f t =
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [t])} as binding], t2) when Id.same f g ->
       let ts = decomp_option_tuple t in
       let ts' = List.map decomp_some ts in
-      let args = List.flatten @@ mapi (fun i t -> match t with None -> [] | Some t' -> [i+1, x, t']) ts' in
+      let args = List.flatten @@ List.mapi (fun i t -> match t with None -> [] | Some t' -> [i+1, x, t']) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
   | _ -> [], [], t

@@ -86,7 +86,7 @@ let rec abst_recdata_pat p =
             in
               t, p'
           in
-          let binds = mapi make_bind ppcbs in
+          let binds = List.mapi make_bind ppcbs in
           let make_cond (t,pt) (_,(p,cond,_)) =
             match p.pat_desc with
                 PAny
@@ -164,7 +164,7 @@ let rec abst_recdata t =
             in
               make_pcons (make_pconst (make_int i)) (make_pvar path'), true_term, t
           in
-          let pats = mapi make_pat xtyps in
+          let pats = List.mapi make_pat xtyps in
           let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
             (make_lets defs (make_pair unit_term (make_fun path (make_match (make_var path) (pat0::pats))))).desc
       | Match(t1,pats) ->

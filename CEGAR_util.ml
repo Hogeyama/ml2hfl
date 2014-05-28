@@ -355,25 +355,28 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in
-      let compare (x1,_) (x2,_) =
-        let aux = function
-          | None -> true, ""
-          | Some (Var x) -> false, x
-          | _ -> assert false
+      let xns =
+        let compare (x1,_) (x2,_) =
+          let aux = function
+            | None -> true, ""
+            | Some (Var x) -> false, x
+            | _ -> assert false
+          in
+          compare (aux x2) (aux x1)
         in
-        compare (aux x1) (aux x2)
+        List.sort ~cmp:compare (xns1 @@@ (neg xns2))
       in
-      let xns = List.sort ~cmp:(fun x y -> -compare x y) (xns1 @@@ (neg xns2)) in
       let d = List.fold_left (fun d (_,n) -> gcd d (abs n)) 0 xns in
       let xns' = List.map (fun (x,n) -> assert (n mod d = 0); x, n/d) xns in
-      let rec aux = function
-        | [] -> []
-        | (x,n)::xns ->
-            let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
-            let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
-            (x,n') :: aux xns2
-      in
-      let xns'' = aux xns' in
+      let xns'' =
+        let rec aux = function
+          | [] -> []
+          | (x,n)::xns ->
+              let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
+              let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
+              (x,n') :: aux xns2
+        in
+        aux xns' in
       let xns''' = List.filter (fun (_,n) -> n<>0) xns'' in
       let x,n = List.hd xns''' in
       let xns = List.rev @@ List.tl xns''' in
