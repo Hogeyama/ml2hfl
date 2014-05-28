@@ -94,11 +94,11 @@ let rename {abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined
     in
     let aux1 (f,typ) = [rename_id f, typ] in
     let aux2 f = [rename_id f] in
-    let aenv' = flatten_map aux1 aenv in
-    let cpsenv' = flatten_map aux1 cpsenv in
-    let cegarenv' = flatten_map aux1 cegarenv in
-    let inlined' = flatten_map aux2 inlined in
-    let inlined_f' = flatten_map aux2 inlined_f in
+    let aenv' = List.flatten_map aux1 aenv in
+    let cpsenv' = List.flatten_map aux1 cpsenv in
+    let cegarenv' = List.flatten_map aux1 cegarenv in
+    let inlined' = List.flatten_map aux2 inlined in
+    let inlined_f' = List.flatten_map aux2 inlined_f in
     {abst_env=aenv'; abst_cps_env=cpsenv'; abst_cegar_env=cegarenv'; inlined=inlined'; inlined_f=inlined_f'}
   with My_not_found f -> fatal (Format.sprintf "Unbound value %s" @@ Id.to_string f)
 

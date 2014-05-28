@@ -31,7 +31,7 @@ let rec ref_of_inter env cond atyp ityp =
             | _ -> assert false
         in
         let b' = ref_base_of_abs_base b in
-        let ts = rev_flatten (List.map2 aux ps' ityps) in
+        let ts = List.rev_flatten @@ List.map2 aux ps' ityps in
         let p = List.fold_left CS.make_and (CS.Const CS.True) ts in
         let cond' = p::cond in
         let p' = CEGAR_util.normalize_bool_term p in

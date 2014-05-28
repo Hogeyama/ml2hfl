@@ -932,7 +932,7 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
             typs1 @@@ assoc_typ_cps f t
         in
-          assoc_typ_cps f t1 @@@ rev_flatten_map aux bindings
+          assoc_typ_cps f t1 @@@ List.rev_flatten_map aux bindings
     | BinOpCPS(op, t1, t2) ->
         assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
     | NotCPS t1 ->

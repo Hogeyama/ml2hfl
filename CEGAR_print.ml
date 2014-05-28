@@ -21,7 +21,7 @@ let new_id x =
     x'
 
 let rec occur_arg_pred x = function
-  | TBase(_,ps) -> List.mem x (rev_flatten_map get_fv (ps (Const Unit)))
+  | TBase(_,ps) -> List.mem x @@ List.rev_flatten_map get_fv @@ ps (Const Unit)
   | TFun(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x @@ typ2 (Const Unit)
   | TAbs _ -> assert false
   | TApp(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x typ2
@@ -42,9 +42,9 @@ and print_typ_aux var fm = function
   | TBase(b,ps) ->
       let x,occur = match var with None -> new_id "x", false | Some(x,occur) -> x, occur in
       let preds = ps (Var x) in
-        if occur || List.mem x (rev_flatten_map get_fv preds) then Format.fprintf fm "%a:" print_var x;
-        Format.fprintf fm "%a" print_typ_base b;
-        if preds <> [] then Format.fprintf fm "[@[%a@]]" (Color.blue @@ print_list print_linear_exp ";@ ") preds
+      if occur || List.mem x @@ List.rev_flatten_map get_fv preds then Format.fprintf fm "%a:" print_var x;
+      Format.fprintf fm "%a" print_typ_base b;
+      if preds <> [] then Format.fprintf fm "[@[%a@]]" (Color.blue @@ print_list print_linear_exp ";@ ") preds
   | TFun _ as typ ->
       let rec aux b fm = function
         | TFun(typ1, typ2) ->

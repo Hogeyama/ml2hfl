@@ -64,18 +64,18 @@ let rec make_tree x bb =
 
 let rec make_trees tree =
   match tree with
-    Tree.Leaf(None, []) -> assert false
+  | Tree.Leaf(None, []) -> assert false
   | Tree.Leaf(None, _) -> assert false
   | Tree.Leaf(Some typ, []) -> [Tree.Leaf (make_none typ)]
   | Tree.Leaf(Some _, args) -> List.map (fun t -> Tree.Leaf (make_some t)) args
   | Tree.Node(lhs,rhs) ->
       let trees1 = make_trees lhs in
       let trees2 = make_trees rhs in
-      flatten_map (fun t1 -> List.map (fun t2 -> Tree.Node(t1, t2)) trees2) trees1
+      List.flatten_map (fun t1 -> List.map (fun t2 -> Tree.Node(t1, t2)) trees2) trees1
 
 let rec term_of_tree tree =
   match tree with
-    Tree.Leaf t -> t
+  | Tree.Leaf t -> t
   | Tree.Node(t1,t2) -> make_pair (term_of_tree t1) (term_of_tree t2)
 
 (*
@@ -532,7 +532,7 @@ let col_rand_funs_desc desc =
   match desc with
   | Let(_, bindings, t2) ->
       let aux (f,_,t) = if has_rand t then [f] else [] in
-      let funs1 = flatten_map aux bindings in
+      let funs1 = List.flatten_map aux bindings in
       let funs2 = col_rand_funs.col_term_rec t2 in
       funs1 @ funs2
   | _ -> col_rand_funs.col_desc_rec desc
@@ -570,7 +570,7 @@ let col_fun_arg = make_col [] (union ~cmp:compare_pair)
 let col_fun_arg_desc desc =
   match desc with
   | App({desc=Var f}, ts) ->
-      let funs = flatten_map col_app_head ts in
+      let funs = List.flatten_map col_app_head ts in
       List.map (fun g -> f, g) funs
   | _ -> col_fun_arg.col_desc_rec desc
 
@@ -585,7 +585,7 @@ let col_app_terms = make_col2 [] (@@@)
 let col_app_terms_term fs t =
   match t.desc with
   | App({desc=Var f}, ts) when Id.mem f fs ->
-      t :: flatten_map (col_app_terms.col2_term fs) ts
+      t :: List.flatten_map (col_app_terms.col2_term fs) ts
   | _ -> col_app_terms.col2_term_rec fs t
 
 let () = col_app_terms.col2_term <- col_app_terms_term
@@ -665,7 +665,7 @@ let make_fun_tuple t =
     if debug then List.iter (fun (f,g) -> Format.printf "FUN_ARG': %a, %a@." Id.print f Id.print g) rel_funs;
     List.map (fun (f,g) -> [f;g]) rel_funs
   in
-  let rel_funs = flatten_map aux asserts in
+  let rel_funs = List.flatten_map aux asserts in
   let t' = add_fun_tuple rel_funs t in
   if debug then Format.printf "@.@.%a@." pp_print_term t';
   t'

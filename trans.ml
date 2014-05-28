@@ -882,20 +882,20 @@ let rec eval t =
         Branch(eval t1, eval t2)
     | Let _ -> assert false
     (*
-            | Let(flag, f, xs, t1, t2) -> (*** assume that evaluation of t1 does not fail ***)
-            if flag = Flag.Nonrecursive
-            then
-            if (*safe t1*)true then
+    | Let(flag, f, xs, t1, t2) -> (*** assume that evaluation of t1 does not fail ***)
+        if flag = Flag.Nonrecursive
+        then
+          if (*safe t1*)true then
             let t1' = List.fold_right (fun x t -> {desc=Fun(x, t);typ=TFun(x,t.typ)}) xs (eval t1) in
             (eval (subst_map [f, t1'] t2)).desc
-            else
+          else
             Let(flag, f, xs, eval t1, eval t2)
-            else
+        else
           (*if not (List.mem f (get_fv t1)) then
             let t1' = List.fold_right (fun x t -> Fun(x, t)) xs (eval t1) in
             eval (subst_map [f, t1'] t2)
             else*)
-            Let(flag, f, xs, eval t1, eval t2)
+          Let(flag, f, xs, eval t1, eval t2)
      *)
     | BinOp(Add, {desc=Const (Int 0)}, t) ->
         (eval t).desc
@@ -909,17 +909,14 @@ let rec eval t =
         BinOp(op, eval t1, eval t2)
     | Not t ->
         Not(eval t)
-    | Fun(x,{desc=App(t,ts);typ=typ}) ->
+    | Fun(x, {desc=App(t,ts)}) ->
         let t' = eval t in
         let ts' = List.map eval ts in
-        if ts' <> [] then
-          let l, r = list_last_and_rest ts' in
-          if l.desc = Var x && List.for_all (fun t -> not (List.mem x (get_fv t))) (t'::r) then
-            (eval {desc=App(t', r);typ=t.typ}).desc
-          else
-            Fun(x,{desc=App(t', ts');typ=typ})
+        let ts'',t_last = decomp_snoc ts' in
+        if t_last.desc = Var x && not @@ List.mem x @@ get_fv @@ make_app t' ts'' then
+          (eval @@ make_app t' ts'').desc
         else
-          Fun(x,{desc=App(t', ts');typ=typ})
+          Fun(x, make_app t' ts')
     | Fun(x,t) ->
         Fun(x, eval t)
     | Event(s,b) -> Event(s,b)
@@ -1309,7 +1306,7 @@ let rec make_ext_env funs t =
   | RandInt _ -> []
   | RandValue _ -> []
   | Var x -> if List.mem x funs then [x, Id.typ x] else []
-  | App(t, ts) -> make_ext_env funs t @@@ (rev_map_flatten (make_ext_env funs) ts)
+  | App(t, ts) -> make_ext_env funs t @@@ List.rev_map_flatten (make_ext_env funs) ts
   | If(t1, t2, t3) -> make_ext_env funs t1 @@@ make_ext_env funs t2 @@@ make_ext_env funs t3
   | Branch(t1, t2) -> make_ext_env funs t1 @@@ make_ext_env funs t2
   | Let(flag, bindings, t2) ->
@@ -1792,7 +1789,7 @@ let rec search_fail path t =
           [] -> acc
         | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
       in
-      let ts = rev_flatten_map (fun (_,cond,t) -> [t;cond]) pats in
+      let ts = List.rev_flatten_map (fun (_,cond,t) -> [t;cond]) pats in
       aux [] 0 (t::ts)
   | Raise t -> search_fail path t
   | TryWith(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
@@ -2009,7 +2006,7 @@ let rec assoc_typ f t =
   | RandValue _ -> []
   | Var _ -> []
   | Fun(_, t) -> assoc_typ f t
-  | App(t1, ts) -> assoc_typ f t1 @@@ rev_flatten_map (assoc_typ f) ts
+  | App(t1, ts) -> assoc_typ f t1 @@@ List.rev_flatten_map (assoc_typ f) ts
   | If(t1, t2, t3) -> assoc_typ f t1 @@@ assoc_typ f t2 @@@ assoc_typ f t3
   | Branch(t1, t2) -> assoc_typ f t1 @@@ assoc_typ f t2
   | Let(flag, bindings, t1) ->
@@ -2017,19 +2014,19 @@ let rec assoc_typ f t =
         let typs1 = if Id.same f g then [Id.typ g] else [] in
         typs1 @@@ assoc_typ f t
       in
-      assoc_typ f t1 @@@ rev_flatten_map aux bindings
+      assoc_typ f t1 @@@ List.rev_flatten_map aux bindings
   | BinOp(_, t1, t2) -> assoc_typ f t1 @@@ assoc_typ f t2
   | Not t1 -> assoc_typ f t1
   | Event _ -> []
-  | Record fields -> rev_flatten_map (fun (_,(_,t1)) -> assoc_typ f t1) fields
+  | Record fields -> List.rev_flatten_map (fun (_,(_,t1)) -> assoc_typ f t1) fields
   | Proj(_,_,_,t1) -> assoc_typ f t1
   | SetField(_,_,_,_,t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
   | Nil -> []
   | Cons(t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
-  | Constr(s,ts) -> rev_flatten_map (assoc_typ f) ts
+  | Constr(s,ts) -> List.rev_flatten_map (assoc_typ f) ts
   | Match(t1,pats) ->
       let aux (_,cond,t) = assoc_typ f cond @@@ assoc_typ f t in
-      assoc_typ f t1 @@@ rev_flatten_map aux pats
+      assoc_typ f t1 @@@ List.rev_flatten_map aux pats
   | Raise t -> assoc_typ f t
   | TryWith(t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
   | Pair(t1,t2) -> assoc_typ f t1 @@@ assoc_typ f t2
@@ -2040,10 +2037,10 @@ let rec assoc_typ f t =
 
 let assoc_typ f t =
   let typs = assoc_typ f t in
-    match typs with
-        [] -> raise Not_found
-      | [typ] -> typ
-      | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f pp_print_term t; assert false
+  match typs with
+  | [] -> raise Not_found
+  | [typ] -> typ
+  | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f pp_print_term t; assert false
 
 
 
@@ -2330,7 +2327,7 @@ let decomp_pair_eq_term t =
       | TPair(x,typ2) ->
           let aux t =
             match t with
-            | {desc=Var y} -> y, id
+            | {desc=Var y} -> y, Std.identity
             | _ ->
                 let y = var_of_term t in
                 y, make_let [y,[],t]

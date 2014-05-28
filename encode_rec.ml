@@ -97,7 +97,7 @@ let rec abst_recdata_pat p =
           let cond0 = make_eq (make_nth 0 (1 + List.length ground_types)
                                  (make_app (make_snd (make_var f)) [make_nil TInt])) (abst_label c) in
           let cond = List.fold_left make_and true_term (cond0 :: conds') in
-          let bind = binds @ flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
+          let bind = binds @ List.flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
             PVar f, cond, bind
       | PNil -> PNil, true_term, []
       | PCons(p1,p2) ->

@@ -248,9 +248,9 @@ let map_defs f defs =
   let aux (g,xs,t1,t2) =
     let defs1,t1' = f t1 in
     let defs2,t2' = f t2 in
-      (g,xs,t1',t2')::defs1@@@defs2
+    (g,xs,t1',t2')::defs1@@@defs2
   in
-    rev_map_flatten aux defs
+  List.rev_map_flatten aux defs
 
 
 

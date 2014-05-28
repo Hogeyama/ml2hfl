@@ -59,7 +59,7 @@ let weakest_aux env cond ds p =
         (fun pbs ->
          let pbs = f pbs in
          let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs in
-         if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
+         if inter fvp fvs = [] && inter (List.rev_map_flatten get_fv cond) fvs = [] then
            false
          else
            check env cond pbs p)
@@ -70,7 +70,7 @@ let weakest_aux env cond ds p =
         (fun pbs ->
          let pbs' = f pbs in
          let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs' in
-         if inter fvp fvs = [] && inter (rev_map_flatten get_fv cond) fvs = [] then
+         if inter fvp fvs = [] && inter (List.rev_map_flatten get_fv cond) fvs = [] then
            false
          else
            check env cond pbs' (make_not p))
@@ -294,8 +294,8 @@ let rec add_label {env=env;defs=defs;main=main} =
           defs' @ aux defs2
   in
   let defs' = aux defs in
-  let labeled = uniq (rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs') in
-    labeled, {env=env;defs=defs';main=main}
+  let labeled = uniq @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs' in
+  labeled, {env=env;defs=defs';main=main}
 
 
 

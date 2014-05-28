@@ -74,7 +74,7 @@ let constr_pos s =
       _, TKVariant stypss -> List.map fst stypss
     | _, TKRecord _ -> []
   in
-  let constrs = flatten_map aux !typ_decls in
+  let constrs = List.flatten_map aux !typ_decls in
   let rec search i = function
       [] -> Format.printf "Not found: constructor %s@." s; assert false
     | c::_ when c = s -> i
@@ -111,7 +111,7 @@ let get_ground_types s =
           | TPred _ -> assert false
   in
   let aux = function
-      TKVariant styps -> rev_map_flatten snd styps
+      TKVariant styps -> List.rev_map_flatten snd styps
     | TKRecord sftyps -> List.map (fun (_,(_,typ)) -> typ) sftyps
   in
-    elim_and_decomp [] (rev_map_flatten aux (List.map snd decls))
+    elim_and_decomp [] @@ List.rev_map_flatten aux @@ List.map snd decls

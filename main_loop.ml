@@ -66,7 +66,7 @@ let preprocess t spec =
       let aux x =
         try [List.assoc (CEGAR_trans.trans_var x) map] with Not_found -> []
       in
-      rev_flatten_map aux fun_list
+      List.rev_flatten_map aux fun_list
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
@@ -84,47 +84,49 @@ let report_safe env rmap get_rtyp orig t0 =
       Format.printf "@."
     end;
   let env' =
-    let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
-      try
-        let f' = List.assoc f rmap in
-        [f', Ref_type.rename (get_rtyp f' rtyp)]
-      with
-        Not_found -> []
-      | _ ->
-          if not !Flag.tupling then Format.printf "Some refinement types cannot be shown (unimplemented)@.@.";
-          []
-    in
     if !Flag.insert_param_funarg
     then []
     else
+      let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
+        try
+          let f' = List.assoc f rmap in
+          [f', Ref_type.rename (get_rtyp f' rtyp)]
+        with
+          Not_found -> []
+        | _ ->
+            if not !Flag.tupling then Format.printf "Some refinement types cannot be shown (unimplemented)@.@.";
+            []
+      in
       if !Flag.relative_complete then
         let _ = Flag.web := true in
-        let res = rev_map_flatten aux env in
+        let res = List.rev_map_flatten aux env in
         let _ = Flag.web := false in
         res
       else
-        rev_map_flatten aux env
+        List.rev_map_flatten aux env
   in
   if !Flag.write_annot
   then
-    env' |> List.map (fun (id, typ) -> Id.name id, typ)
-         |> WriteAnnot.f !Flag.filename orig;
+    env'
+    |> List.map (fun (id, typ) -> Id.name id, typ)
+    |> WriteAnnot.f !Flag.filename orig;
   let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
   if not only_result_termination then (Color.printf Color.Bright "Safe!"; Format.printf "@.@.");
-  if !Flag.relative_complete then begin
-    let map =
-      List.map
-        (fun (x, n) ->
-          Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
-          CEGAR_trans.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
-        !Fpat.RefTypInfer.prev_sol
-    in
-    let t = Term_util.subst_map map t0 in
-    Format.printf "Program with Quantifiers Added:@.";
-    Flag.web := true;
-    Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
-    Flag.web := false
-  end;
+  if !Flag.relative_complete then
+    begin
+      let map =
+        List.map
+          (fun (x, n) ->
+           Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
+           CEGAR_trans.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
+          !Fpat.RefTypInfer.prev_sol
+      in
+      let t = Term_util.subst_map map t0 in
+      Format.printf "Program with Quantifiers Added:@.";
+      Flag.web := true;
+      Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
+      Flag.web := false
+    end;
   if env' <> [] && not only_result_termination then Format.printf "Refinement Types:@.";
   let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
   let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
@@ -158,8 +160,9 @@ let rec run orig parsed =
     if !Flag.relative_complete then
       let t = Trans.lift_fst_snd set_target in
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
-      if true && !Flag.debug_level > 0 then Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-                                                          (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+      if true && !Flag.debug_level > 0 then
+        Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+                      (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
       t
       else
         set_target

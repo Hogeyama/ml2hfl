@@ -298,9 +298,9 @@ let rec abstract_term must env cond pts t typ =
   | Fun _ ->
       let env',t' = decomp_annot_fun t in
       let env' = List.map (fun (x,typ) -> x, Option.get typ) env' in
-      let pts' = flatten_map (fun (x,typ) -> make_pts x typ) env' in
+      let pts' = List.flatten_map (fun (x,typ) -> make_pts x typ) env' in
       let pts'' = pts' @@@ pts in
-      let xs' = flatten_map (fun (x,typ) -> abst_arg x typ) env' in
+      let xs' = List.flatten_map (fun (x,typ) -> abst_arg x typ) env' in
       let env'' = env' @@@ env in
       let typ' = CEGAR_type.app typ (List.map (fun (x,_) -> Var x) env') in
       let t'' = hd (abstract_term (Some pts') env'' cond pts'' t' typ') in
@@ -336,8 +336,8 @@ let abstract_def env (f,xs,t1,e,t2) =
   let typ,env' = decomp_typ (try List.assoc f env with Not_found -> assert false) xs in
   if debug then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@@ env in
-  let pts = flatten_map (fun (x,typ) -> make_pts x typ) env' in
-  let xs' = flatten_map (fun (x,typ) -> abst_arg x typ) env' in
+  let pts = List.flatten_map (fun (x,typ) -> make_pts x typ) env' in
+  let xs' = List.flatten_map (fun (x,typ) -> abst_arg x typ) env' in
   if debug then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
   if debug then Flag.print_fun_arg_typ := true;
   if debug then Format.printf "%s:: %a@." f CEGAR_print.term t2;
@@ -405,7 +405,7 @@ let add_ext_funs_cps prog =
 
 let abstract_prog prog =
   let env = List.map (fun f -> f, abstract_typ (List.assoc f prog.env)) (get_ext_funs prog) in
-  let defs = flatten_map (abstract_def prog.env) prog.defs in
+  let defs = List.flatten_map (abstract_def prog.env) prog.defs in
   {env=env; defs=defs; main=prog.main}
 
 let abstract orig_fun_list force prog =

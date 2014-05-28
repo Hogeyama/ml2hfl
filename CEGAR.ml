@@ -34,7 +34,7 @@ let rec cegar1 prog0 is_cp ces info =
     if !Flag.relative_complete
     then
       let env,defs,main = FpatInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
-        {env=env; defs=defs; main=main}
+      {env=env; defs=defs; main=main}
     else prog0
   in
   let () =
@@ -43,68 +43,69 @@ let rec cegar1 prog0 is_cp ces info =
   in
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   let result = ModelCheck.check abst prog in
-    match result with
-        ModelCheck.Safe env ->
-          if Flag.print_ref_typ_debug
-          then
-            begin
-              Format.printf "Intersection types:@.";
-              List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f Inter_type.print typ) env;
-              Format.printf "@."
-            end;
-          let aux (x,ityp) =
-            try
-              [x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp]
-            with Not_found -> []
-          in
-          let env' = rev_map_flatten aux env in
-            post ();
-            prog, Safe env'
-      | ModelCheck.Unsafe ce ->
-          if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce;
-          let ce' = CEGAR_trans.trans_ce ce labeled prog in
-            match ces with
-                ce_pre::_ when ce' = ce_pre && not !Flag.use_filter ->
-                  if !Flag.print_progress then Format.printf "Filter option enabled.@.";
-                  if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-                  Flag.use_filter := true;
-                  post ();
-                  cegar1 prog is_cp ces info
-              | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
-                  if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
-                  if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-                  Flag.use_neg_pred := true;
-                  post ();
-                  cegar1 prog is_cp ces info
-              | ce_pre::_ when ce' = ce_pre && !Flag.wp_max_num < 8 ->
-                  incr Flag.wp_max_num;
-                  if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
-                  if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-                  post ();
-                  cegar1 prog is_cp ces info
-              | ce_pre::_ when ce' = ce_pre ->
-                  post ();
-                  if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
-                  raise NoProgress
-              | _ ->
-                  if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
-                  match Feasibility.check ce' prog with
-                      Feasibility.Feasible (env, sol) ->
-                        if !Flag.termination then begin
-                          (* termination analysis *)
-                          Refine.refine_rank_fun ce' prog0;
-                          assert false
-                        end else
-                          prog, Unsafe sol
-                    | Feasibility.Infeasible prefix ->
-                        let ces' = ce'::ces in
-                        let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-                        let _,prog' = Refine.refine inlined_functions is_cp prefix ces' prog0 in
-                          if !Flag.debug_level > 0 then
-                            Format.printf "Prefix of spurious counterexample::@.%a@.@."
+  match result with
+  | ModelCheck.Safe env ->
+      if Flag.print_ref_typ_debug
+      then
+        begin
+          Format.printf "Intersection types:@.";
+          List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f Inter_type.print typ) env;
+          Format.printf "@."
+        end;
+      let aux (x,ityp) =
+        try
+          [x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp]
+        with Not_found -> []
+      in
+      let env' = List.rev_map_flatten aux env in
+      post ();
+      prog, Safe env'
+  | ModelCheck.Unsafe ce ->
+      if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce;
+      let ce' = CEGAR_trans.trans_ce ce labeled prog in
+      match ces with
+      | ce_pre::_ when ce' = ce_pre && not !Flag.use_filter ->
+          if !Flag.print_progress then Format.printf "Filter option enabled.@.";
+          if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+          Flag.use_filter := true;
+          post ();
+          cegar1 prog is_cp ces info
+      | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Flag.use_neg_pred ->
+          if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
+          if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+          Flag.use_neg_pred := true;
+          post ();
+          cegar1 prog is_cp ces info
+      | ce_pre::_ when ce' = ce_pre && !Flag.wp_max_num < 8 ->
+          incr Flag.wp_max_num;
+          if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
+          if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+          post ();
+          cegar1 prog is_cp ces info
+      | ce_pre::_ when ce' = ce_pre ->
+          post ();
+          if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
+          raise NoProgress
+      | _ ->
+          if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
+          match Feasibility.check ce' prog with
+          | Feasibility.Feasible (env, sol) ->
+              if !Flag.termination then
+                begin
+                  (* termination analysis *)
+                  Refine.refine_rank_fun ce' prog0;
+                  assert false
+                end else
+                prog, Unsafe sol
+          | Feasibility.Infeasible prefix ->
+              let ces' = ce'::ces in
+              let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+              let _,prog' = Refine.refine inlined_functions is_cp prefix ces' prog0 in
+              if !Flag.debug_level > 0 then
+                Format.printf "Prefix of spurious counterexample::@.%a@.@."
                               CEGAR_print.ce prefix;
-                          post ();
-                          cegar1 prog' is_cp ces' info
+              post ();
+              cegar1 prog' is_cp ces' info
 
 
 

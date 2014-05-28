@@ -392,7 +392,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
       | Fun _ -> assert false
       | Let _ -> assert false
     in
-    let evts = uniq (rev_map_flatten (fun (_,_,_,_,t) -> aux t) defs) in
+    let evts = uniq @@ List.rev_map_flatten (fun (_,_,_,_,t) -> aux t) defs in
     let map = List.map (fun e -> e, new_id e) evts in
     let evt_env = List.map (fun (_,f) -> f, TFun(typ_unit, fun _ -> typ_unit)) map in
     let evt_defs = List.map (fun (e,f) -> f,["u"],Const True,[Event e],Const Unit) map in
@@ -502,10 +502,10 @@ let trans_prog ?(spec=[]) t =
     match !Flag.cegar with
     | Flag.CEGAR_InteractionType ->
         let typ = TFun(typ_unit, fun _ -> typ_unit) in
-        (main,typ,["u"],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
+        (main,typ,["u"],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
     | Flag.CEGAR_DependentType ->
         let typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
-        (main,typ,[],Const True,[],t_main') :: defs_t @ flatten_map trans_def defs
+        (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
   in
   let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
   let env' =

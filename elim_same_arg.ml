@@ -37,8 +37,8 @@ let make_all xs =
       TInt, TInt -> [i,j]
     | _ -> []
   in
-  fromto 1 n
-  |> List.map (fun i -> List.flatten @@ List.map (aux (i-1)) @@ fromto i n)
+  List.fromto 1 n
+  |> List.map (fun i -> List.flatten @@ List.map (aux (i-1)) @@ List.fromto i n)
   |> List.flatten
 
 let make_env xs same_args =

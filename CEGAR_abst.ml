@@ -87,27 +87,27 @@ let rec abstract_term env cond pbs t typ =
 let abstract_def env (f,xs,t1,e,t2) =
   let rec aux typ xs env =
     match xs with
-        [] -> typ, env
-      | x::xs' ->
-          let typ1,typ2 =
-            match typ with
-                TFun(typ1,typ2) -> typ1, typ2 (Var x)
-              | _ -> assert false
-          in
-          let env' = (x,typ1)::env in
-            aux typ2 xs' env'
+    | [] -> typ, env
+    | x::xs' ->
+        let typ1,typ2 =
+          match typ with
+          | TFun(typ1,typ2) -> typ1, typ2 (Var x)
+          | _ -> assert false
+        in
+        let env' = (x,typ1)::env in
+        aux typ2 xs' env'
   in
   let typ,env' = aux (List.assoc f env) xs env in
-  let pbs = rev_flatten_map (fun (x,typ) -> abst_arg x typ) env' in
+  let pbs = List.rev_flatten_map (fun (x,typ) -> abst_arg x typ) env' in
   let t2' = abstract_term env' [t1] pbs t2 typ in
-    if e <> [] && t1 <> Const True
-    then
-      let g = new_id "f" in
-      let fv = diff (get_fv t2') (List.map fst env) in
-      let t = assume env' [] pbs t1 (make_app (Var g) (List.map (fun x -> Var x) fv)) in
-        [g,fv,Const True,e,t2'; f,xs,Const True,[],t]
-    else
-        [f, xs, Const True, e, assume env' [] pbs t1 t2']
+  if e <> [] && t1 <> Const True
+  then
+    let g = new_id "f" in
+    let fv = diff (get_fv t2') (List.map fst env) in
+    let t = assume env' [] pbs t1 (make_app (Var g) (List.map (fun x -> Var x) fv)) in
+    [g,fv,Const True,e,t2'; f,xs,Const True,[],t]
+  else
+    [f, xs, Const True, e, assume env' [] pbs t1 t2']
 
 
 
@@ -118,11 +118,11 @@ let abstract orig_fun_list prog =
   let labeled,prog = add_label prog in
   let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog in
   let _ = Typing.infer prog in
-  let defs = rev_flatten_map (abstract_def prog.env) prog.defs in
+  let defs = List.rev_flatten_map (abstract_def prog.env) prog.defs in
   let prog = {env=[]; defs=defs; main=prog.main} in
   let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.prog prog in
   let prog = Typing.infer prog in
-    labeled, prog
+  labeled, prog
 
 
 

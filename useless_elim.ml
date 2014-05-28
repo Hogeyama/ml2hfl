@@ -384,11 +384,11 @@ let rec subst x y = function
 let subst_constr x y (typ1,typ2) = subst x y typ1, subst x y typ2
 
 let rec calc_eq constrs =
-  let edges = rev_flatten_map (function (TVar x, TVar y) -> [x,y] | _ -> []) constrs in
+  let edges = List.rev_flatten_map (function (TVar x, TVar y) -> [x,y] | _ -> []) constrs in
   let max = List.fold_left (fun acc (x,y) -> max acc (max x y)) 0 edges in
   let min = List.fold_left (fun acc (x,y) -> min acc (min x y)) max edges in
   let sccs = calc_scc min (max-min+1) edges in
-    List.map (fun scc -> List.hd scc, List.tl scc) sccs
+  List.map (fun scc -> List.hd scc, List.tl scc) sccs
 
 
 let solve_constraints constrs env eqs =
@@ -421,9 +421,9 @@ let print_env _ env =
 
 let infer {env=env;defs=defs;main=main} =
   let env' = List.map (fun (f,_) -> (new_env env) f) env in
-  let constrs = (List.assoc main env', TBase) :: rev_flatten_map (constraints_def env env') defs in
+  let constrs = (List.assoc main env', TBase) :: List.rev_flatten_map (constraints_def env env') defs in
   let eqs = calc_eq constrs in
-    solve_constraints constrs env' eqs
+  solve_constraints constrs env' eqs
 
 let use_of_typ typ =
   let typs,_ = decomp_tfun typ in
@@ -473,8 +473,8 @@ let elim_def env (f,xs,t1,es,t2) =
 (** call-by-name *)
 let elim {env=env;defs=defs;main=main} =
   let env' = infer {env=env;defs=defs;main=main} in
-  let defs' = flatten_map (elim_def env') defs in
-    Format.printf "BEFORE:@.%a@.@.%a@.AFTER:@.%a@."
-      CEGAR_print.prog {env=env;defs=defs;main=main} print_env env'
-      CEGAR_print.prog {env=env;defs=defs';main=main};
-    Typing.infer {env=[];defs=defs';main=main}
+  let defs' = List.flatten_map (elim_def env') defs in
+  Format.printf "BEFORE:@.%a@.@.%a@.AFTER:@.%a@."
+                CEGAR_print.prog {env=env;defs=defs;main=main} print_env env'
+                CEGAR_print.prog {env=env;defs=defs';main=main};
+  Typing.infer {env=[];defs=defs';main=main}

@@ -91,7 +91,7 @@ let rec lift_aux post xs t =
           let defs2,t2' = lift_aux post xs (subst_f t2) in
             List.flatten defss @ defs2, t2'.desc
       | Let(Recursive,bindings,t2) ->
-          let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
+          let fv = List.rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
           let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
           let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
           let fv = List.sort ~cmp:compare_id fv in
@@ -107,7 +107,7 @@ let rec lift_aux post xs t =
             let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' (subst_f t1) in
               (f',(ys',t1'))::defs1
           in
-          let defs = flatten_map aux bindings in
+          let defs = List.flatten_map aux bindings in
           let defs2,t2' = lift_aux post xs (subst_f t2) in
             defs @ defs2, t2'.desc
       | BinOp(op,t1,t2) ->
@@ -224,7 +224,7 @@ let rec lift_aux' post xs t =
           let defs2,t2' = lift_aux' post xs (subst_f t2) in
             List.flatten defss @ defs2, t2'.desc
       | Let(Recursive,bindings,t2) ->
-          let fv = rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
+          let fv = List.rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
           let fv = inter ~cmp:Id.compare (uniq ~cmp:Id.compare fv) xs in
           let fv = if !Flag.lift_fv_only then fv else uniq ~cmp:Id.compare (filter_base xs @@@ fv) in
           let fv = List.sort ~cmp:compare_id fv in
@@ -240,7 +240,7 @@ let rec lift_aux' post xs t =
             let defs1,t1' = lift_aux' ("_" ^ Id.name f) ys' (subst_f t1) in
               (f',(ys',t1'))::defs1
           in
-          let defs = flatten_map aux bindings in
+          let defs = List.flatten_map aux bindings in
           let defs2,t2' = lift_aux' post xs (subst_f t2) in
             defs @ defs2, t2'.desc
       | BinOp(op,t1,t2) ->

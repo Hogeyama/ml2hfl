@@ -114,20 +114,20 @@ let trans_term trans t =
 
 let make_trans () =
   let trans =
-    {tr_term = id;
-     tr_term_rec = id;
-     tr_desc = id;
-     tr_desc_rec = id;
-     tr_typ = id;
-     tr_typ_rec = id;
-     tr_var = id;
-     tr_var_rec = id;
-     tr_pat = id;
-     tr_pat_rec = id;
-     tr_info = id;
-     tr_info_rec = id;
-     tr_const = id;
-     tr_const_rec = id}
+    {tr_term = Std.identity;
+     tr_term_rec = Std.identity;
+     tr_desc = Std.identity;
+     tr_desc_rec = Std.identity;
+     tr_typ = Std.identity;
+     tr_typ_rec = Std.identity;
+     tr_var = Std.identity;
+     tr_var_rec = Std.identity;
+     tr_pat = Std.identity;
+     tr_pat_rec = Std.identity;
+     tr_info = Std.identity;
+     tr_info_rec = Std.identity;
+     tr_const = Std.identity;
+     tr_const_rec = Std.identity}
   in
   trans.tr_term <- trans_term trans;
   trans.tr_term_rec <- trans_term trans;
@@ -256,7 +256,7 @@ let trans2_gen_term tr env t = {desc = tr.tr2_desc env t.desc; typ = tr.tr2_typ 
 
 
 let make_trans2 () =
-  let id' env = id in
+  let id' env = Std.identity in
   let tr =
     {tr2_term = id';
      tr2_term_rec = id';
@@ -810,7 +810,7 @@ let make_eq_dec t1 t2 =
   assert (not Flag.check_typ || Type.can_unify t1.typ t2.typ);
   let aux t =
     match t.desc with
-    | Var x -> make_var x, id
+    | Var x -> make_var x, Std.identity
     | _ ->
         let x = Id.new_var "x" t.typ in
         make_var x, make_let [x,[],t]
@@ -920,7 +920,7 @@ let rec get_int t =
     | Const _ -> []
     | Unknown -> []
     | Var x -> []
-    | App(t, ts) -> get_int t @@@ (rev_map_flatten get_int ts)
+    | App(t, ts) -> get_int t @@@ List.rev_map_flatten get_int ts
     | If(t1, t2, t3) -> get_int t1 @@@ get_int t2 @@@ get_int t3
     | Branch(t1, t2) -> get_int t1 @@@ get_int t2
     | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@@ acc) (get_int t2) bindings

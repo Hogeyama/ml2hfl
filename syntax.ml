@@ -108,7 +108,7 @@ let rec get_fv vars t =
     | Unknown -> []
     | RandInt _ -> []
     | Var x -> if Id.mem x vars then [] else [x]
-    | App(t, ts) -> get_fv vars t @@@ rev_map_flatten (get_fv vars) ts
+    | App(t, ts) -> get_fv vars t @@@ List.rev_map_flatten (get_fv vars) ts
     | If(t1, t2, t3) -> get_fv vars t1 @@@ get_fv vars t2 @@@ get_fv vars t3
     | Branch(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
     | Let(flag, bindings, t2) ->

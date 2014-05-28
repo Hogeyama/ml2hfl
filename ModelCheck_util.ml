@@ -46,8 +46,8 @@ let make_spec n =
       | Flag.FileAccess ->
           let spec = make_file_spec () in
           let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
-          let spec' = rev_flatten_map (fun i -> make_base_spec n i) (Array.to_list (Array.init (qm+1) (fun i -> i))) in
-            spec @@@ spec'
+          let spec' = List.rev_flatten_map (fun i -> make_base_spec n i) @@ List.init (qm+1) Std.identity in
+          spec @@@ spec'
   in
   List.sort spec
 
@@ -168,13 +168,13 @@ let trans_ce ce =
   let take s n = snd (split_string s n) in
   let aux (s,_) =
     match s with
-        "unit" -> []
-      | "br" -> []
-      | s when s.[0] = 'l' -> [int_of_string (take s 1)]
-      | s when is_prefix_string "event_" s -> []
-      | _ -> assert false
+    | "unit" -> []
+    | "br" -> []
+    | s when s.[0] = 'l' -> [int_of_string (take s 1)]
+    | s when is_prefix_string "event_" s -> []
+    | _ -> assert false
   in
-    flatten_map aux ce
+  List.flatten_map aux ce
 
 
 let true_var = "True"
@@ -221,7 +221,7 @@ let should_reduce (f,xs,t1,es,t2) env defs =
   let n = arg_num (List.assoc f env) in
     t1 = Const True && es = [] &&
     List.length (List.filter (fun (g,_,_,_,_) -> f=g) defs) = 1 &&
-    List.length (rev_flatten_map (fun (_,_,_,_,t) -> List.filter ((=) f) (get_fv t)) defs) = 1 &&
+    List.length (List.rev_flatten_map (fun (_,_,_,_,t) -> List.filter ((=) f) (get_fv t)) defs) = 1 &&
     List.for_all (fun (_,_,_,_,t2) -> full_app f n t2) defs
 
 let rec get_head_count f = function

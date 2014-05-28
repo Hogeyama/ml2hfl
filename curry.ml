@@ -69,7 +69,7 @@ let rec remove_pair_typ = function
   | TVar _ -> assert false
   | TFun _ as typ ->
       let xs,typ' = decomp_tfun typ in
-      let xs' = flatten_map (fun y -> flatten (remove_pair_var y)) xs in
+      let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
       Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
   | TPair(x,typ) -> Node(remove_pair_typ (Id.typ x), remove_pair_typ typ)
   | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
