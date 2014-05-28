@@ -48,11 +48,10 @@ let preprocess t spec =
     else
       Term_util.get_top_funs t, t, fun _ typ -> typ
   in
-(*
+
   (* ill-formed program *)
   Refine.progWithExparam := (let p, _, _, _ = CEGAR_trans.trans_prog !ExtraParamInfer.withExparam in p);
   (**********************)
- *)
 
   let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:spec'.Spec.abst_cegar_env t in

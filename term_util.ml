@@ -1292,43 +1292,43 @@ let is_parameter x = Fpat.Util.String.starts_with (Id.name x) Flag.extpar_header
 
 let rec is_value t =
   match t.desc with
-      Const _ | Var _ | Nil -> true
-    | _ -> false
+  | Const _ | Var _ | Nil -> true
+  | _ -> false
 
 
 
 let rec merge_typ typ1 typ2 =
   match typ1,typ2 with
-      TVar{contents=Some typ1}, typ2
-    | typ1, TVar{contents=Some typ2} -> merge_typ typ1 typ2
-    | TVar({contents=None}), _ -> typ2
-    | _, TVar({contents=None}) -> typ1
-    | TUnit, TUnit -> TUnit
-    | TBool, TBool -> TBool
-    | TInt, TInt -> TInt
-    | TPred(x1,ps1), TPred(x2,ps2) ->
-        let typ = merge_typ (Id.typ x1) (Id.typ x2) in
-        let x1' = Id.set_typ x1 typ in
-        let x1_no_pred = Id.set_typ x1 (elim_tpred typ) in
-        let ps2' = List.map (subst x2 (make_var x1_no_pred)) ps2 in
-          TPred(x1', ps1 @@@ ps2')
-    | TPred(x, ps), typ
-    | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
-    | TFun(x1,typ1), TFun(x2,typ2) ->
-        let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
-        let x = Id.new_var (Id.name x1) x_typ in
-        let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
-          TFun(x, typ)
-    | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
-    | TPair(x1,typ1), TPair(x2,typ2) ->
-        let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
-        let x = Id.new_var (Id.name x1) x_typ in
-        let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
-          TPair(x, typ)
-    | _ when typ1 = typ_unknown -> typ2
-    | _ when typ2 = typ_unknown -> typ1
-    | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
-    | _ -> Format.printf "typ1:%a, typ2:%a@." pp_print_typ typ1 pp_print_typ typ2; assert false
+  | TVar{contents=Some typ1}, typ2
+  | typ1, TVar{contents=Some typ2} -> merge_typ typ1 typ2
+  | TVar({contents=None}), _ -> typ2
+  | _, TVar({contents=None}) -> typ1
+  | TUnit, TUnit -> TUnit
+  | TBool, TBool -> TBool
+  | TInt, TInt -> TInt
+  | TPred(x1,ps1), TPred(x2,ps2) ->
+      let typ = merge_typ (Id.typ x1) (Id.typ x2) in
+      let x1' = Id.set_typ x1 typ in
+      let x1_no_pred = Id.set_typ x1 (elim_tpred typ) in
+      let ps2' = List.map (subst x2 (make_var x1_no_pred)) ps2 in
+      TPred(x1', ps1 @@@ ps2')
+  | TPred(x, ps), typ
+  | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
+  | TFun(x1,typ1), TFun(x2,typ2) ->
+      let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
+      let x = Id.new_var (Id.name x1) x_typ in
+      let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
+      TFun(x, typ)
+  | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
+  | TPair(x1,typ1), TPair(x2,typ2) ->
+      let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
+      let x = Id.new_var (Id.name x1) x_typ in
+      let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
+      TPair(x, typ)
+  | _ when typ1 = typ_unknown -> typ2
+  | _ when typ2 = typ_unknown -> typ1
+  | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
+  | _ -> Format.printf "typ1:%a, typ2:%a@." pp_print_typ typ1 pp_print_typ typ2; assert false
 
 
 let make_if t1 t2 t3 =

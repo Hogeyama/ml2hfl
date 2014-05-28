@@ -262,7 +262,7 @@ let map_defs f defs =
 
 
 let rec has_bottom = function
-    Var _ -> false
+  | Var _ -> false
   | Const Bottom -> true
   | Const _ -> false
   | App(t1, t2) -> has_bottom t1 || has_bottom t2
@@ -272,27 +272,27 @@ let rec has_bottom = function
 
 
 let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
-    Const c -> Const c
+  | Const c -> Const c
   | Var x -> Var x
   | App(Const Not, App(Const Not, t1)) -> normalize_bool_term ~imply t1
   | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
       let op' =
         match op with
-            Lt -> Geq
-          | Gt -> Leq
-          | Leq -> Gt
-          | Geq -> Lt
-          | _ -> assert false
+          Lt -> Geq
+        | Gt -> Leq
+        | Leq -> Gt
+        | Geq -> Lt
+        | _ -> assert false
       in
-        normalize_bool_term ~imply (App(App(Const op', t1), t2))
+      normalize_bool_term ~imply (App(App(Const op', t1), t2))
   | App(App(Const EqBool, Const True), t) -> normalize_bool_term ~imply t
   | App(App(Const And, _), _) as t ->
       let rec decomp = function
-          App(App(Const And, t1), t2) -> decomp t1 @@@ decomp t2
+        | App(App(Const And, t1), t2) -> decomp t1 @@@ decomp t2
         | t -> [normalize_bool_term ~imply t]
       in
       let rec aux ts1 = function
-          [] -> List.rev ts1
+        | [] -> List.rev ts1
         | t::ts2 ->
             if imply (ts1@@@ts2) t
             then aux ts1 ts2
@@ -301,16 +301,16 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
       let ts' = aux [] (decomp t) in
       begin
         match ts' with
-            [] -> Const True
-          | t'::ts'' -> List.fold_left make_and t' ts''
+          [] -> Const True
+        | t'::ts'' -> List.fold_left make_and t' ts''
       end
   | App(App(Const Or, _), _) as t ->
       let rec decomp = function
-          App(App(Const Or, t1), t2) -> decomp t1 @@@ decomp t2
+        | App(App(Const Or, t1), t2) -> decomp t1 @@@ decomp t2
         | t -> [normalize_bool_term ~imply t]
       in
       let rec aux ts1 = function
-          [] -> ts1
+        | [] -> ts1
         | t::ts2 ->
             if imply (ts1@@@ts2) (make_not t)
             then aux ts1 ts2
@@ -319,13 +319,13 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
       let ts' = aux [] (decomp t) in
       begin
         match ts' with
-            [] -> Const False
-          | t'::ts'' -> List.fold_left make_or t' ts''
+        | [] -> Const False
+        | t'::ts'' -> List.fold_left make_or t' ts''
       end
   | App(App(Const (EqInt|Lt|Gt|Leq|Geq) as op, t1), t2) ->
       let neg xs = List.map (fun (x,n) -> x,-n) xs in
       let rec decomp = function
-          Const (Int n) -> [None, n]
+        | Const (Int n) -> [None, n]
         | Var x -> [Some (Var x), 1]
         | App(App(Const Add, t1), t2) ->
             decomp t1 @@@ decomp t2
@@ -336,50 +336,50 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
             let xns2 = decomp t2 in
             let reduce xns = List.fold_left (fun acc (_,n) -> acc+n) 0 xns in
             let not_const xns = List.exists (fun (x,_) -> x <> None) xns in
-              begin
-                match not_const xns1, not_const xns2 with
-                    true, true ->
-                      Format.printf "Nonlinear expression not supported: %a@."
-                        CEGAR_print.term (make_app op [t1;t2]);
-                      assert false
-                  | false, true ->
-                      let k = reduce xns1 in
-                        List.rev_map (fun (x,n) -> x,n*k) xns2
-                  | true, false ->
-                      let k = reduce xns2 in
-                        List.rev_map (fun (x,n) -> x,n*k) xns1
-                  | false, false ->
-                      [None, reduce xns1 + reduce xns2]
-              end
+            begin
+              match not_const xns1, not_const xns2 with
+              | true, true ->
+                  Format.printf "Nonlinear expression not supported: %a@."
+                                CEGAR_print.term (make_app op [t1;t2]);
+                  assert false
+              | false, true ->
+                  let k = reduce xns1 in
+                  List.rev_map (fun (x,n) -> x,n*k) xns2
+              | true, false ->
+                  let k = reduce xns2 in
+                  List.rev_map (fun (x,n) -> x,n*k) xns1
+              | false, false ->
+                  [None, reduce xns1 + reduce xns2]
+            end
         | _ -> assert false
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in
       let compare (x1,_) (x2,_) =
         let aux = function
-            None -> true, ""
+          | None -> true, ""
           | Some (Var x) -> false, x
           | _ -> assert false
         in
-          compare (aux x1) (aux x2)
+        compare (aux x1) (aux x2)
       in
-      let xns = List.sort (xns1 @@@ (neg xns2)) in
+      let xns = List.sort ~cmp:(fun x y -> -compare x y) (xns1 @@@ (neg xns2)) in
       let d = List.fold_left (fun d (_,n) -> gcd d (abs n)) 0 xns in
       let xns' = List.map (fun (x,n) -> assert (n mod d = 0); x, n/d) xns in
       let rec aux = function
-          [] -> []
+        | [] -> []
         | (x,n)::xns ->
             let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
             let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
-              (x,n') :: aux xns2
+            (x,n') :: aux xns2
       in
       let xns'' = aux xns' in
       let xns''' = List.filter (fun (_,n) -> n<>0) xns'' in
       let x,n = List.hd xns''' in
-      let xns = List.tl xns''' in
+      let xns = List.rev @@ List.tl xns''' in
       let op',t1',t2' =
         let aux = function
-            None, n -> Const (Int n)
+          | None, n -> Const (Int n)
           | Some x, 1 -> x
           | Some x, n -> make_mul (make_int n) x
         in
@@ -388,32 +388,33 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
           then
             let op' =
               match op with
-                  Const EqInt -> Const EqInt
-                | Const Lt -> Const Gt
-                | Const Gt -> Const Lt
-                | Const Leq -> Const Geq
-                | Const Geq -> Const Leq
-                | _ -> assert false
+              | Const EqInt -> Const EqInt
+              | Const Lt -> Const Gt
+              | Const Gt -> Const Lt
+              | Const Leq -> Const Geq
+              | Const Geq -> Const Leq
+              | _ -> assert false
             in
-              aux (x,-n), xns, op'
+            aux (x,-n), xns, op'
           else
             aux (x,n), neg xns, op
         in
         let ts = List.map aux xns' in
-        let make_add_sub t1 t2 =
-          match t2 with
-              Const (Int n) when n < 0 -> make_sub t1 (make_int (-n))
-            | App(App(Const Mul, Const (Int n)), t2') when n < 0 -> make_sub t1 (make_mul (make_int (-n)) t2')
-            | _ -> make_add t1 t2
-        in
         let t2 =
           match ts with
-              [] -> Const (Int 0)
-            | t::ts' -> List.fold_left make_add_sub t ts'
+          | [] -> Const (Int 0)
+          | t::ts' ->
+              let make_add_sub t1 t2 =
+                match t2 with
+                | Const (Int n) when n < 0 -> make_sub t1 (make_int (-n))
+                | App(App(Const Mul, Const (Int n)), t2') when n < 0 -> make_sub t1 (make_mul (make_int (-n)) t2')
+                | _ -> make_add t1 t2
+              in
+              List.fold_left make_add_sub t ts'
         in
-          op', t1, t2
+        op', t1, t2
       in
-        make_app op' [t1'; t2']
+      make_app op' [t1'; t2']
   | App(t1, t2) -> App(normalize_bool_term ~imply t1, normalize_bool_term ~imply t2)
   | Let _ -> assert false
   | Fun _ -> assert false
