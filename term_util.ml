@@ -945,7 +945,7 @@ let rec get_int t =
     | RandValue (_, _) -> assert false
     | Bottom -> []
     | Label _ -> assert false
-let get_int t = uniq (get_int t)
+let get_int t = List.unique @@ get_int t
 
 
 

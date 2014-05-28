@@ -392,7 +392,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
       | Fun _ -> assert false
       | Let _ -> assert false
     in
-    let evts = uniq @@ List.rev_map_flatten (fun (_,_,_,_,t) -> aux t) defs in
+    let evts = List.unique @@ List.rev_map_flatten (fun (_,_,_,_,t) -> aux t) defs in
     let map = List.map (fun e -> e, new_id e) evts in
     let evt_env = List.map (fun (_,f) -> f, TFun(typ_unit, fun _ -> typ_unit)) map in
     let evt_defs = List.map (fun (e,f) -> f,["u"],Const True,[Event e],Const Unit) map in
@@ -419,7 +419,7 @@ let rec uniq_env = function
 let rename_prog prog =
   let () = Id.clear_counter () in
   let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
-  let var_names = List.rev_map id_name (uniq vars) in
+  let var_names = List.rev_map id_name (List.unique vars) in
   let rename_id' x var_names =
     let x_name = id_name x in
       if List.length (List.filter ((=) x_name) var_names) <= 1 &&
@@ -445,7 +445,7 @@ let rename_prog prog =
     let () = Id.clear_counter () in
     let var_names'' = List.rev_map id_name xs @@@ var_names' in
     let arg_map = List.map (fun x -> x, rename_id' x var_names'') xs in
-    let arg_map = uniq ~cmp:(fun (x,_) (y,_) -> compare x y) arg_map in
+    let arg_map = List.unique ~cmp:(fun (x,_) (y,_) -> x = y) arg_map in
     let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@@ map) in
     let rename_term t = subst_map smap t in
     let def = rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2 in

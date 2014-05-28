@@ -1,4 +1,5 @@
 {
+open Util
 open Trecs_parser
 }
 
@@ -23,9 +24,9 @@ and token = parse
 | 'q' digit+
     {
       let s = Lexing.lexeme lexbuf in
-      let s1,s2 = Util.split_string s 1 in
-        assert (s1 = "q");
-        STATE (int_of_string s2)
+      let s1,s2 = String.split_nth s 1 in
+      assert (s1 = "q");
+      STATE (int_of_string s2)
     }
 | '(' { LPAREN }
 | ')' { RPAREN }

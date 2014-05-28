@@ -451,7 +451,7 @@ let get_nonrec defs main orig_fun_list force =
       List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
         f <> main &&
         (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
-         (1 >= List.length (uniq (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
+         (1 >= List.length (List.unique (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
          2 >= List.length defs')
   in
   let defs' = List.filter check defs in

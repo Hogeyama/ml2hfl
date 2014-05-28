@@ -76,13 +76,13 @@ let weakest_aux env cond ds p =
            check env cond pbs' (make_not p))
         pbss
     in
-    let xs = uniq (xs' @ xs) in
-    let nxs = uniq (nxs' @ nxs) in
-    let ys = uniq (ys' @ ys) in
+    let xs = List.unique (xs' @ xs) in
+    let nxs = List.unique (nxs' @ nxs) in
+    let ys = List.unique (ys' @ ys) in
     let ws =
-      uniq @@
+      List.unique @@
         List.flatten @@
-          List.map (fun y1 -> List.map (fun y2 -> List.sort (uniq (y1 @ y2))) ys) ys
+          List.map (fun y1 -> List.map (fun y2 -> List.sort (List.unique (y1 @ y2))) ys) ys
     in
     let ws =
       let ok w =
@@ -141,7 +141,7 @@ let weakest env cond ds p =
           then []
           else fv
         in
-        let xs' = uniq (xs @ (List.flatten @@ List.map aux ts)) in
+        let xs' = List.unique (xs @ (List.flatten @@ List.map aux ts)) in
         if List.length xs = List.length xs'
         then xs
         else fixp xs'
@@ -294,7 +294,7 @@ let rec add_label {env=env;defs=defs;main=main} =
           defs' @ aux defs2
   in
   let defs' = aux defs in
-  let labeled = uniq @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs' in
+  let labeled = List.unique @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs' in
   labeled, {env=env;defs=defs';main=main}
 
 

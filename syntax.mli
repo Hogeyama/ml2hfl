@@ -82,7 +82,7 @@ exception Infeasible
 
 val occur : id -> typ -> bool
 val get_vars_pat : typed_pattern -> id list
-val get_fv : ?cmp:(id -> id -> int) -> typed_term -> id list
+val get_fv : ?cmp:(id -> id -> bool) -> typed_term -> id list
 
 (** {6 Printing} *)
 

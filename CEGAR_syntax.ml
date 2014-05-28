@@ -123,7 +123,7 @@ let rec get_fv = function
   | App(t1, t2) -> get_fv t1 @@@ get_fv t2
   | Let(x,t1,t2) -> get_fv t1 @@@ diff (get_fv t2) [x]
   | Fun(x,_,t) -> diff (get_fv t) [x]
-let get_fv t = uniq (get_fv t)
+let get_fv t = List.unique @@ get_fv t
 
 
 let rec get_typ_arity = function

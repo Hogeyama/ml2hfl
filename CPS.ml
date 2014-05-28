@@ -993,13 +993,14 @@ let rec uncps_ref_type rtyp e etyp =
 
 let infer_effect t =
   let cmp x y =
-    let r = Id.compare x y in
-    if r <> 0 then r
-    else if can_unify (Id.typ x) (Id.typ y) then 0 else compare (Id.typ x) (Id.typ y)
+    if not @@ Id.same x y then
+      false
+    else
+      can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y
   in
   let ext_funs = get_fv ~cmp t in
   let env = List.map (fun x -> Id.to_string x, x |> Id.typ |> infer_effect_typ |> force_cont) ext_funs in
-  if List.length ext_funs <> List.length (uniq ~cmp:Id.compare ext_funs)
+  if List.length ext_funs <> List.length (List.unique ~cmp:Id.same ext_funs)
   then
     begin
       List.iter (fun x -> Format.printf "%a: %a@." Id.print x pp_print_typ (Id.typ x)) ext_funs;

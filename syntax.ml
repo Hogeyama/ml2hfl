@@ -104,44 +104,44 @@ let rec get_vars_pat pat =
 
 let rec get_fv vars t =
   match t.desc with
-      Const _ -> []
-    | Unknown -> []
-    | RandInt _ -> []
-    | Var x -> if Id.mem x vars then [] else [x]
-    | App(t, ts) -> get_fv vars t @@@ List.rev_map_flatten (get_fv vars) ts
-    | If(t1, t2, t3) -> get_fv vars t1 @@@ get_fv vars t2 @@@ get_fv vars t3
-    | Branch(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
-    | Let(flag, bindings, t2) ->
-        let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-        let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
-        let aux fv (_,xs,t) = get_fv (xs@@@vars') t @@@ fv in
-        let fv_t2 = get_fv vars_with_fun t2 in
-          List.fold_left aux fv_t2 bindings
-    | BinOp(op, t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
-    | Not t -> get_fv vars t
-    | Fun(x,t) -> get_fv (x::vars) t
-    | Event(s,_) -> []
-    | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
-    | Proj(_,_,_,t) -> get_fv vars t
-    | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
-    | Nil -> []
-    | Cons(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
-    | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@@ acc) [] ts
-    | Match(t,pats) ->
-        let aux acc (pat,cond,t) =
-          let vars' = get_vars_pat pat @@@ vars in
-          get_fv vars' cond @@@ get_fv vars' t @@@ acc
-        in
-          List.fold_left aux (get_fv vars t) pats
-    | TryWith(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
-    | Bottom -> []
-    | Pair(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
-    | Fst t -> get_fv vars t
-    | Snd t -> get_fv vars t
-    | Raise t -> get_fv vars t
-    | RandValue _ -> []
-    | Label(_,t) -> get_fv vars t
-let get_fv ?(cmp=Id.compare) t = uniq ~cmp (get_fv [] t)
+  | Const _ -> []
+  | Unknown -> []
+  | RandInt _ -> []
+  | Var x -> if Id.mem x vars then [] else [x]
+  | App(t, ts) -> get_fv vars t @@@ List.rev_map_flatten (get_fv vars) ts
+  | If(t1, t2, t3) -> get_fv vars t1 @@@ get_fv vars t2 @@@ get_fv vars t3
+  | Branch(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
+  | Let(flag, bindings, t2) ->
+      let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
+      let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
+      let aux fv (_,xs,t) = get_fv (xs@@@vars') t @@@ fv in
+      let fv_t2 = get_fv vars_with_fun t2 in
+      List.fold_left aux fv_t2 bindings
+  | BinOp(op, t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
+  | Not t -> get_fv vars t
+  | Fun(x,t) -> get_fv (x::vars) t
+  | Event(s,_) -> []
+  | Record fields -> List.fold_left (fun acc (_,(_,t)) -> get_fv vars t @@@ acc) [] fields
+  | Proj(_,_,_,t) -> get_fv vars t
+  | SetField(_,_,_,_,t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
+  | Nil -> []
+  | Cons(t1, t2) -> get_fv vars t1 @@@ get_fv vars t2
+  | Constr(_,ts) -> List.fold_left (fun acc t -> get_fv vars t @@@ acc) [] ts
+  | Match(t,pats) ->
+      let aux acc (pat,cond,t) =
+        let vars' = get_vars_pat pat @@@ vars in
+        get_fv vars' cond @@@ get_fv vars' t @@@ acc
+      in
+      List.fold_left aux (get_fv vars t) pats
+  | TryWith(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
+  | Bottom -> []
+  | Pair(t1,t2) -> get_fv vars t1 @@@ get_fv vars t2
+  | Fst t -> get_fv vars t
+  | Snd t -> get_fv vars t
+  | Raise t -> get_fv vars t
+  | RandValue _ -> []
+  | Label(_,t) -> get_fv vars t
+let get_fv ?(cmp=Id.same) t = List.unique ~cmp @@ get_fv [] t
 
 
 let rec occur (x:id) = function

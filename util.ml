@@ -35,49 +35,60 @@ module List = struct
     else
       m :: fromto (m+1) n
 
-  let rev_map_flatten f xs = List.fold_left (fun acc x -> f x @@@ acc) [] xs
+  let rev_map_flatten f xs = fold_left (fun acc x -> f x @@@ acc) [] xs
   let rev_flatten_map = rev_map_flatten
-  let flatten_map f xs = List.rev @@ rev_map_flatten f xs
+  let flatten_map f xs = rev @@ rev_map_flatten f xs
   let rev_flatten xs = rev_map_flatten Std.identity xs
+
+  let rec tabulate n f acc =
+    if n < 0 then raise (Invalid_argument "tabulate")
+    else
+      match n with
+      | 0 -> rev acc
+      | _ -> tabulate (n-1) f (f n::acc)
+  let tabulate n f = tabulate n f []
+
+  let assoc_default k kts x =
+    try
+      assoc k kts
+    with Not_found -> x
+
+  let count_line s =
+    let n = ref 0 in
+    String.iter (fun c -> if c = '\n' then incr n) s;
+    !n
+
+  let count_list f xs =
+    fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
+
+  let rec decomp_snoc = function
+    | [] -> failwith "dcomp_snoc"
+    | [x] -> [], x
+    | x::xs ->
+        let xs',y = decomp_snoc xs in
+        x::xs', y
 end
 
 module Array = ExtArray.Array
+
 module Hashtbl = ExtHashtbl.Hashtbl
-module String = ExtString.String
 
+module String = struct
+  include ExtString.String
 
-let table_create n = Hashtbl.create n;;
-let table_find tab x = Hashtbl.find tab x
-let table_add tab a b = Hashtbl.add tab a b
-(***
-  let debug s = (print_string s; print_string "\n"; flush(stdout))
-***)
-let debugging = ref false;;
-let show_time() =
-  if
-    !debugging
-  then
-    print_string (string_of_float (Sys.time()))
-  else
-    ()
-let debug s =
-  if
-    !debugging
-  then
-    (print_string s; flush stdout)
-  else
-    ()
+  let split_nth s n =
+    sub s 0 n, sub s n (length s - n)
 
-
-
-
-
-let rec uniq_aux ?(cmp=compare) acc = function
-    [] -> acc
-  | x1::x2::xs when cmp x1 x2 = 0 -> uniq_aux ~cmp acc (x2::xs)
-  | x::xs -> uniq_aux ~cmp (x::acc) xs
-let uniq ?(cmp=compare) xs = uniq_aux ~cmp [] (List.sort ~cmp xs)
-let uniq_sorted ?(cmp=compare) xs = uniq_aux ~cmp [] xs
+  let rsplit s sep =
+    let subs = nsplit s sep in
+    match subs with
+    | [] -> assert false
+    | [s] -> raise ExtString.Invalid_string
+    | _ ->
+        let subs',s2 = List.decomp_snoc subs in
+        let s1 = List.fold_left (fun s1 s2 -> s1 ^ sep ^ s2) (List.hd subs') (List.tl subs') in
+        s1, s2
+end
 
 
 
@@ -87,39 +98,6 @@ let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
 let set_eq l1 l2 = subset l1 l2 && subset l2 l1
 let union ?(cmp=compare) l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
 
-
-
-let rec tabulate n f acc =
-  if n < 0 then raise (Invalid_argument "tabulate")
-  else
-    match n with
-    | 0 -> List.rev acc
-    | _ -> tabulate (n-1) f (f n::acc)
-let tabulate n f = tabulate n f []
-
-
-let rec fold_left2_neq f acc xs ys =
-  match xs, ys with
-  | x::xs, y::ys -> fold_left2_neq f (f acc x y) xs ys
-  | _ -> acc
-
-
-
-
-
-
-
-
-
-
-let assoc_exn k kts t =
-  try
-    List.assoc k kts
-  with Not_found -> t
-
-
-
-let uniq_flatten_map cmp f xs = uniq ~cmp (List.rev_map_flatten f xs)
 
 
 let is_uppercase c = 'A' <= c && c <= 'Z'
@@ -136,15 +114,6 @@ let print_err s =
   Format.fprintf Format.err_formatter "%s" s
 let print_time () =
   Format.fprintf Format.err_formatter "%f\n" (get_time ())
-
-
-
-let rec decomp_snoc = function
-  | [] -> failwith "dcomp_snoc"
-  | [x] -> [], x
-  | x::xs ->
-      let xs',y = decomp_snoc xs in
-      x::xs', y
 
 
 
@@ -173,66 +142,35 @@ let save_as_dot filename vertices edges =
   Format.fprintf ocf "}@]@?";
   close_out oc
 
-let rec classify eqrel xs =
- match xs with
-   [] -> []
- | x::xs' ->
-     let t, f = List.partition (fun x' -> eqrel x x') xs' in
-     (x::t)::(classify eqrel f)
-
-let rec filterwo p xs =
-  let rec aux xs1 xs2 =
-    match xs2 with
-      [] -> []
-    | x::xs -> if p x (xs1 @ xs) then x::(aux (x::xs1) xs) else aux (x::xs1) xs
-  in aux [] xs
-
-let is_int s = try ignore (int_of_string s); true with Failure "int_of_string" -> false
 
 let rec my_input ic s ofs len acc =
   if len = 0
   then acc
   else
     let r = input ic s ofs len in
-      if r > 0
-      then my_input ic s (ofs+r) (len-r) (acc+r)
-      else acc
+    if r > 0
+    then my_input ic s (ofs+r) (len-r) (acc+r)
+    else acc
 let my_input ic s ofs len = my_input ic s ofs len 0
 
 
 let rec print_list_aux print punc last fm xs =
   match xs with
-      [] -> ()
-    | [x] when last ->
-        Format.fprintf fm "%a" print x;
-        Format.fprintf fm punc
-    | [x] -> print fm x
-    | x::xs ->
-        Format.fprintf fm "%a" print x;
-        Format.fprintf fm punc;
-        Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
+  | [] -> ()
+  | [x] -> print fm x
+  | x::xs ->
+      Format.fprintf fm "%a" print x;
+      Format.fprintf fm punc;
+      Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
+
 let print_list print ?(first=false) ?(last=false) punc fm xs =
   let punc' = format_of_string punc in
-    Format.fprintf fm "@[";
-    if first then Format.fprintf fm punc';
-    Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
-    Format.fprintf fm "@]"
+  Format.fprintf fm "@[";
+  if first then Format.fprintf fm punc';
+  Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
+  if last then Format.fprintf fm punc';
+  Format.fprintf fm "@]"
 
-
-let is_prefix_string pre s =
-  let n = String.length pre in
-    String.length s >= n && String.sub s 0 n = pre
-
-let split_string s n =
-  String.sub s 0 n, String.sub s n (String.length s - n)
-
-let count_line s =
-  let n = ref 0 in
-    String.iter (fun c -> if c = '\n' then incr n) s;
-    !n
-
-let count_list f xs =
-  List.fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
 let make_string_of pp =
   fun x ->
@@ -246,44 +184,8 @@ let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
   Format.printf "%s@?" str2;
   r
 
-let exists_loop tbl =
-  let checked = Hashtbl.create (Hashtbl.length tbl) in
-  let f x xs =
-    if Hashtbl.mem checked x
-    then ()
-    else
-      let rec aux visited y =
-        if List.mem y visited
-        then raise Exit
-        else
-          let visited' = y::visited in
-          let ys = try Hashtbl.find tbl y with Not_found -> [] in
-          if ys = []
-          then visited'
-          else List.flatten @@ List.map (aux visited') ys
-      in
-      let loop_free = aux [] x in
-      List.iter (fun y -> Hashtbl.add checked y ()) loop_free
-  in
-  try
-    Hashtbl.iter f tbl;
-    false
-  with Exit -> true
 
-
-let rec insert compare x xs =
-  match xs with
-  | [] -> [x]
-  | x'::xs' when compare x x' > 0 -> x'::insert compare x xs'
-  | _ -> x::xs
-
-let rec insert_sort compare xs =
-  match xs with
-  | [] -> []
-  | x::xs' -> insert compare x @@ insert_sort compare xs'
-
-
-let rec repeat f n s =
+let rec repeat f n x =
   if n <= 0
-  then s
-  else repeat f (n-1) (f s)
+  then x
+  else repeat f (n-1) (f x)

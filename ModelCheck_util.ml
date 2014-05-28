@@ -135,8 +135,8 @@ let make_bottom {env=env;defs=defs;main=main} =
       x, xs, Const True, [], Const Unit
   in
   let defs' = List.map aux_def defs in
-  let bottom_defs = List.map make (uniq !bottoms) in
-    {env=env; defs=bottom_defs@@@defs'; main=main}
+  let bottom_defs = List.map make (List.unique !bottoms) in
+  {env=env; defs=bottom_defs@@@defs'; main=main}
 
 
 let rec eta_expand_term env = function
@@ -165,13 +165,12 @@ let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_de
 
 
 let trans_ce ce =
-  let take s n = snd (split_string s n) in
   let aux (s,_) =
     match s with
     | "unit" -> []
     | "br" -> []
-    | s when s.[0] = 'l' -> [int_of_string (take s 1)]
-    | s when is_prefix_string "event_" s -> []
+    | s when s.[0] = 'l' -> [int_of_string @@ String.slice ~first:1 s]
+    | s when String.starts_with s "event_" -> []
     | _ -> assert false
   in
   List.flatten_map aux ce

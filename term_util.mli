@@ -196,7 +196,7 @@ val is_value : typed_term -> bool
 val get_top_funs : typed_term -> id list
 val occur : id -> typ -> bool
 val get_vars_pat : typed_pattern -> id list
-val get_fv : ?cmp:(id -> id -> int) -> typed_term -> id list
+val get_fv : ?cmp:(id -> id -> bool) -> typed_term -> id list
 val has_no_effect : typed_term -> bool
 val is_simple_aexp : typed_term -> bool
 val is_simple_bexp : typed_term -> bool

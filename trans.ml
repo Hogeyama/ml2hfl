@@ -912,7 +912,7 @@ let rec eval t =
     | Fun(x, {desc=App(t,ts)}) ->
         let t' = eval t in
         let ts' = List.map eval ts in
-        let ts'',t_last = decomp_snoc ts' in
+        let ts'',t_last = List.decomp_snoc ts' in
         if t_last.desc = Var x && not @@ List.mem x @@ get_fv @@ make_app t' ts'' then
           (eval @@ make_app t' ts'').desc
         else
@@ -2145,8 +2145,8 @@ let rec diff_terms t1 t2 =
   | Fun _, Fun _ -> [t1,t2]
   | App(t11,[t12]), App(t21,[t22]) -> diff_terms t11 t21 @ diff_terms t12 t22
   | App(t1,ts1), App(t2,ts2) ->
-      let ts1',t12 = decomp_snoc ts1 in
-      let ts2',t22 = decomp_snoc ts2 in
+      let ts1',t12 = List.decomp_snoc ts1 in
+      let ts2',t22 = List.decomp_snoc ts2 in
       let t1' = {desc=App(make_app t1 ts1', [t12]); typ=t1.typ} in
       let t2' = {desc=App(make_app t2 ts2', [t22]); typ=t2.typ} in
       diff_terms t1' t2'

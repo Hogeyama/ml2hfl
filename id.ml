@@ -36,12 +36,9 @@ let to_string x =
 
 let from_string s typ =
   try
-    let i = String.rindex s '_' in
-    let s1,s2 = split_string s i in
-    let s21,s22 = split_string s2 1 in
-      assert (s21 = "_");
-      {id=int_of_string s22; name=s1; typ=typ}
-  with Not_found -> {id=0; name=s; typ=typ}
+    let s1,s2 = String.rsplit s "_" in
+    {id=int_of_string s2; name=s1; typ=typ}
+  with _ -> {id=0; name=s; typ=typ}
 
 let compare x y = compare (to_string x) (to_string y)
 let same x y = compare x y = 0

@@ -91,7 +91,7 @@ let classify f t =
   try
     ignore (partition_bindings f t); FSimpleRec
   with
-    Not_recursive -> FNonRec
+  | Not_recursive -> FNonRec
   | Cannot_compose -> FOther
 
 let compose_let_same_arg map fg f t1 g t2 =
