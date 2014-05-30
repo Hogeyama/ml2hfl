@@ -9,7 +9,7 @@ open CEGAR_util
 let debug = false
 
 let hd = function
-    [] -> assert false
+  | [] -> assert false
   | [x] -> x
   | _ -> assert false
 
@@ -27,13 +27,13 @@ let equiv env cond t1 t2 =
 
 let make_conj pbs =
   match pbs with
-      [] -> Const True
-    | (_,b)::pbs -> List.fold_left (fun t (_,b) -> make_and t b) b pbs
+  | [] -> Const True
+  | (_,b)::pbs -> List.fold_left (fun t (_,b) -> make_and t b) b pbs
 
 let make_dnf pbss =
   match pbss with
-      [] -> Const False
-    | pbs::pbss' -> List.fold_left (fun t pbs -> make_or t (make_conj pbs)) (make_conj pbs) pbss'
+  | [] -> Const False
+  | pbs::pbss' -> List.fold_left (fun t pbs -> make_or t (make_conj pbs)) (make_conj pbs) pbss'
 
 
 let weakest_aux env cond ds p =
@@ -50,7 +50,7 @@ let weakest_aux env cond ds p =
   in
   let pbss =
     if !Flag.use_neg_pred
-    then List.mapi (fun i _ -> [i+1]) ds @ List.mapi (fun i _ -> [1-i]) ds
+    then List.mapi (fun i _ -> [i+1]) ds @ List.mapi (fun i _ -> [-i-1]) ds
     else List.mapi (fun i _ -> [i+1]) ds
   in
   let rec loop xs' nxs' ys' pbss =
@@ -255,17 +255,17 @@ let make_arg_let_term t =
     List.fold_right (fun (x,t) t' -> Let(x, t, t')) bind t'
 
 let rec reduce_let env = function
-    Const c -> Const c
+  | Const c -> Const c
   | Var x -> Var x
   | App(t1,t2) -> App(reduce_let env t1, reduce_let env t2)
   | Fun _ -> assert false
   | Let(x,t1,t2) ->
       match t1,get_typ env t1 with
-          Var _, _
-        | Const _, _
-        | _, TFun _ -> reduce_let env (subst x t1 t2)
-        | _, (TBase _ as typ) -> Let(x, reduce_let env t1, reduce_let ((x,typ)::env) t2)
-        | _ -> assert false
+      | Var _, _
+      | Const _, _
+      | _, TFun _ -> reduce_let env (subst x t1 t2)
+      | _, (TBase _ as typ) -> Let(x, reduce_let env t1, reduce_let ((x,typ)::env) t2)
+      | _ -> assert false
 
 let make_arg_let_def env (f,xs,t1,e,t2) =
     f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@@ env) (make_arg_let_term t2)
@@ -277,7 +277,7 @@ let make_arg_let prog =
 
 let rec add_label {env=env;defs=defs;main=main} =
   let merge = function
-      [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, e, t2]
+    | [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, e, t2]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
         [f1,xs1,t11,e1, make_label 1 t12; f2,xs2,t21,e2,make_label 0 t22]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
@@ -287,11 +287,11 @@ let rec add_label {env=env;defs=defs;main=main} =
     | defs -> raise (Fatal ("Not implemented (CEGAR_abst_util.add_label)" ^ string_of_int (List.length defs)))
   in
   let rec aux = function
-      [] -> []
+    | [] -> []
     | (f,xs,t1,e,t2)::defs ->
         let defs1,defs2 = List.partition (fun (g,_,_,_,_) -> f = g) defs in
         let defs' = merge ((f,xs,t1,e,t2)::defs1) in
-          defs' @ aux defs2
+        defs' @ aux defs2
   in
   let defs' = aux defs in
   let labeled = List.unique @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs' in
@@ -301,7 +301,7 @@ let rec add_label {env=env;defs=defs;main=main} =
 
 let rec use_arg x typ t =
   match typ with
-    TBase _ -> t
+  | TBase _ -> t
   | TFun(typ1,typ2) ->
       let u = new_id "u" in
       let t' = make_br (Const Unit) (App(Var x, make_ext_fun typ1)) in
@@ -309,7 +309,7 @@ let rec use_arg x typ t =
   | _ -> assert false
 
 and make_ext_fun = function
-    TBase(TUnit, _) -> Const Unit
+  | TBase(TUnit, _) -> Const Unit
   | TBase(TBool, _) -> make_br (Const True) (Const False)
   | TFun(typ1,typ2) ->
       let x = new_id "x" in

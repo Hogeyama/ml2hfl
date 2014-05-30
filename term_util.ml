@@ -55,13 +55,13 @@ let trans_pat trans p =
     {pat_desc=desc; pat_typ=typ}
 
 let trans_info trans = function
-    InfoInt n -> InfoInt n
+  | InfoInt n -> InfoInt n
   | InfoString s -> InfoString s
   | InfoId x -> InfoId (trans.tr_var x)
   | InfoTerm t -> InfoTerm (trans.tr_term t)
 
 let trans_const trans = function
-    Unit -> Unit
+  | Unit -> Unit
   | True -> True
   | False -> False
   | Int n -> Int n
@@ -74,8 +74,7 @@ let trans_const trans = function
   | CPS_result -> CPS_result
 
 let trans_desc trans = function
-    Const c -> Const c
-  | Unknown -> Unknown
+  | Const c -> Const c
   | RandInt b -> RandInt b
   | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
   | Var y -> Var (trans.tr_var y)
@@ -201,13 +200,13 @@ let trans2_gen_pat tr env p =
     {pat_desc=desc; pat_typ=typ}
 
 let trans2_gen_info tr env = function
-    InfoInt n -> InfoInt n
+  | InfoInt n -> InfoInt n
   | InfoString s -> InfoString s
   | InfoId x -> InfoId (tr.tr2_var env x)
   | InfoTerm t -> InfoTerm (tr.tr2_term env t)
 
 let trans2_gen_const tr env = function
-    Unit -> Unit
+  | Unit -> Unit
   | True -> True
   | False -> False
   | Int n -> Int n
@@ -220,8 +219,7 @@ let trans2_gen_const tr env = function
   | CPS_result -> CPS_result
 
 let trans2_gen_desc tr env = function
-    Const c -> Const c
-  | Unknown -> Unknown
+  | Const c -> Const c
   | RandInt b -> RandInt b
   | RandValue(typ,b) -> RandValue(tr.tr2_typ env typ, b)
   | Var y -> Var (tr.tr2_var env y)
@@ -354,8 +352,7 @@ let col_info col = function
 let col_const col _ = col.col_empty
 
 let col_desc col = function
-    Const c -> col.col_empty
-  | Unknown -> col.col_empty
+  | Const c -> col.col_empty
   | RandInt b -> col.col_empty
   | RandValue(typ,b) -> col.col_typ typ
   | Var y -> col.col_var y
@@ -491,7 +488,7 @@ let col2_pat col env p =
   col.col2_app r1 r2
 
 let col2_info col env = function
-    InfoInt n -> col.col2_empty
+  | InfoInt n -> col.col2_empty
   | InfoString s -> col.col2_empty
   | InfoId x -> col.col2_var env x
   | InfoTerm t -> col.col2_term env t
@@ -499,8 +496,7 @@ let col2_info col env = function
 let col2_const col _ _ = col.col2_empty
 
 let col2_desc col env = function
-    Const c -> col.col2_empty
-  | Unknown -> col.col2_empty
+  | Const c -> col.col2_empty
   | RandInt b -> col.col2_empty
   | RandValue(typ,b) -> col.col2_typ env typ
   | Var y -> col.col2_var env y
@@ -908,7 +904,7 @@ let rec decomp_fun = function
 
 let rec decomp_let t =
   match t.desc with
-    Let(flag, bindings, t2) ->
+  | Let(flag, bindings, t2) ->
       let fbindings,t2' = decomp_let t2 in
       (flag,bindings)::fbindings, t2'
   | _ -> [], t
@@ -916,35 +912,34 @@ let rec decomp_let t =
 
 let rec get_int t =
   match t.desc with
-      Const (Int n) -> [n]
-    | Const _ -> []
-    | Unknown -> []
-    | Var x -> []
-    | App(t, ts) -> get_int t @@@ List.rev_map_flatten get_int ts
-    | If(t1, t2, t3) -> get_int t1 @@@ get_int t2 @@@ get_int t3
-    | Branch(t1, t2) -> get_int t1 @@@ get_int t2
-    | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@@ acc) (get_int t2) bindings
-    | BinOp(Mult, t1, t2) -> [] (* non-linear expressions not supported *)
-    | BinOp(_, t1, t2) -> get_int t1 @@@ get_int t2
-    | Not t -> get_int t
-    | Fun(_,t) -> get_int t
-    | Event _ -> []
-    | Nil -> []
-    | Cons(t1,t2) -> get_int t1 @@@ get_int t2
-    | RandInt _ -> []
-    | Snd _ -> assert false
-    | Fst _ -> assert false
-    | Pair (_, _) -> assert false
-    | TryWith (_, _) -> assert false
-    | Raise _ -> assert false
-    | Match (_, _) -> assert false
-    | Constr (_, _) -> assert false
-    | SetField (_, _, _, _, _, _) -> assert false
-    | Proj (_, _, _, _) -> assert false
-    | Record _ -> assert false
-    | RandValue (_, _) -> assert false
-    | Bottom -> []
-    | Label _ -> assert false
+  | Const (Int n) -> [n]
+  | Const _ -> []
+  | Var x -> []
+  | App(t, ts) -> get_int t @@@ List.rev_map_flatten get_int ts
+  | If(t1, t2, t3) -> get_int t1 @@@ get_int t2 @@@ get_int t3
+  | Branch(t1, t2) -> get_int t1 @@@ get_int t2
+  | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@@ acc) (get_int t2) bindings
+  | BinOp(Mult, t1, t2) -> [] (* non-linear expressions not supported *)
+  | BinOp(_, t1, t2) -> get_int t1 @@@ get_int t2
+  | Not t -> get_int t
+  | Fun(_,t) -> get_int t
+  | Event _ -> []
+  | Nil -> []
+  | Cons(t1,t2) -> get_int t1 @@@ get_int t2
+  | RandInt _ -> []
+  | Snd _ -> assert false
+  | Fst _ -> assert false
+  | Pair (_, _) -> assert false
+  | TryWith (_, _) -> assert false
+  | Raise _ -> assert false
+  | Match (_, _) -> assert false
+  | Constr (_, _) -> assert false
+  | SetField (_, _, _, _, _, _) -> assert false
+  | Proj (_, _, _, _) -> assert false
+  | Record _ -> assert false
+  | RandValue (_, _) -> assert false
+  | Bottom -> []
+  | Label _ -> assert false
 let get_int t = List.unique @@ get_int t
 
 
@@ -973,214 +968,211 @@ let rec subst_var x t y = Id.set_typ y (subst_type x t (Id.typ y))
 
 (* [x |-> t], [t/x] *)
 and subst x t t' =
-    match t'.desc with
-        Const _ -> t'
-      | Unknown -> t'
-      | Bottom -> t'
-      | RandInt _ -> t'
-      | Var y when Id.same x y -> t
-      | Var y -> make_var (subst_var x t y)
-      | Fun(y, t1) when Id.same x y -> t'
-      | Fun(y, t1) ->
-          let t1' = subst x t t1 in
-          let y' = subst_var x t y in
-            make_fun y' t1'
-      | App(t1, ts) ->
-          let t1' = subst x t t1 in
-          let ts' = List.map (subst x t) ts in
-            make_app t1' ts'
-      | If(t1, t2, t3) ->
-          let t1' = subst x t t1 in
-          let t2' = subst x t t2 in
-          let t3' = subst x t t3 in
-            make_if_ t1' t2' t3'
-      | Branch(t1, t2) ->
-          let t1' = subst x t t1 in
-          let t2' = subst x t t2 in
-            make_branch t1' t2'
-      | Let(Nonrecursive, bindings, t2) ->
-          let aux (f,xs,t1) =
-            subst_var x t f,
-            List.map (subst_var x t) xs,
-            if List.exists (Id.same x) xs then t1 else subst x t t1 in
-          let bindings' = List.map aux bindings in
-          let t2' =
-            if List.exists (fun (f,_,_) -> Id.same f x) bindings
-            then t2
-            else subst x t t2
-          in
-            make_let bindings' t2'
-      | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
-      | Let(Recursive, bindings, t2) ->
-          let aux (f,xs,t1) =
-            subst_var x t f,
-            List.map (subst_var x t) xs,
-            if List.exists (Id.same x) xs then t1 else subst x t t1
-          in
-          let bindings' = List.map aux bindings in
-          let t2' = subst x t t2 in
-            make_letrec bindings' t2'
-      | BinOp(op, t1, t2) ->
-          let t1' = subst x t t1 in
-          let t2' = subst x t t2 in
-            {desc=BinOp(op, t1', t2'); typ=t'.typ}
-      | Not t1 ->
-          let t1' = subst x t t1 in
-            make_not t1'
-      | Event(s,_) -> t'
-      | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst x t t1)) fields); typ=t'.typ}
-      | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst x t t1); typ=t'.typ}
-      | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst x t t1,subst x t t2); typ=t'.typ}
-      | Nil -> t'
-      | Cons(t1,t2) -> {desc=Cons(subst x t t1, subst x t t2); typ=t'.typ}
-      | Constr(s,ts) -> {desc=Constr(s, List.map (subst x t) ts); typ=t'.typ}
-      | Match(t1,pats) ->
-          let aux (pat,cond,t1) =
-            let xs = get_vars_pat pat in
-            if List.exists (Id.same x) xs
-            then pat, cond, t1
-            else pat, subst x t cond, subst x t t1
-          in
-            {desc=Match(subst x t t1, List.map aux pats); typ=t'.typ}
-      | Raise t1 -> {desc=Raise(subst x t t1); typ=t'.typ}
-      | TryWith(t1,t2) -> {desc=TryWith(subst x t t1, subst x t t2); typ=t'.typ}
-      | Pair(t1,t2) -> make_pair (subst x t t1) (subst x t t2)
-      | Fst t1 -> make_fst (subst x t t1)
-      | Snd t1 -> make_snd (subst x t t1)
-      | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t'.typ}
-      | Label(info, t1) -> make_label info (subst x t t1)
+  match t'.desc with
+  | Const _ -> t'
+  | Bottom -> t'
+  | RandInt _ -> t'
+  | Var y when Id.same x y -> t
+  | Var y -> make_var (subst_var x t y)
+  | Fun(y, t1) when Id.same x y -> t'
+  | Fun(y, t1) ->
+      let t1' = subst x t t1 in
+      let y' = subst_var x t y in
+      make_fun y' t1'
+  | App(t1, ts) ->
+      let t1' = subst x t t1 in
+      let ts' = List.map (subst x t) ts in
+      make_app t1' ts'
+  | If(t1, t2, t3) ->
+      let t1' = subst x t t1 in
+      let t2' = subst x t t2 in
+      let t3' = subst x t t3 in
+      make_if_ t1' t2' t3'
+  | Branch(t1, t2) ->
+      let t1' = subst x t t1 in
+      let t2' = subst x t t2 in
+      make_branch t1' t2'
+  | Let(Nonrecursive, bindings, t2) ->
+      let aux (f,xs,t1) =
+        subst_var x t f,
+        List.map (subst_var x t) xs,
+        if List.exists (Id.same x) xs then t1 else subst x t t1 in
+      let bindings' = List.map aux bindings in
+      let t2' =
+        if List.exists (fun (f,_,_) -> Id.same f x) bindings
+        then t2
+        else subst x t t2
+      in
+      make_let bindings' t2'
+  | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
+  | Let(Recursive, bindings, t2) ->
+      let aux (f,xs,t1) =
+        subst_var x t f,
+        List.map (subst_var x t) xs,
+        if List.exists (Id.same x) xs then t1 else subst x t t1
+      in
+      let bindings' = List.map aux bindings in
+      let t2' = subst x t t2 in
+      make_letrec bindings' t2'
+  | BinOp(op, t1, t2) ->
+      let t1' = subst x t t1 in
+      let t2' = subst x t t2 in
+      {desc=BinOp(op, t1', t2'); typ=t'.typ}
+  | Not t1 ->
+      let t1' = subst x t t1 in
+      make_not t1'
+  | Event(s,_) -> t'
+  | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst x t t1)) fields); typ=t'.typ}
+  | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst x t t1); typ=t'.typ}
+  | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst x t t1,subst x t t2); typ=t'.typ}
+  | Nil -> t'
+  | Cons(t1,t2) -> {desc=Cons(subst x t t1, subst x t t2); typ=t'.typ}
+  | Constr(s,ts) -> {desc=Constr(s, List.map (subst x t) ts); typ=t'.typ}
+  | Match(t1,pats) ->
+      let aux (pat,cond,t1) =
+        let xs = get_vars_pat pat in
+        if List.exists (Id.same x) xs
+        then pat, cond, t1
+        else pat, subst x t cond, subst x t t1
+      in
+      {desc=Match(subst x t t1, List.map aux pats); typ=t'.typ}
+  | Raise t1 -> {desc=Raise(subst x t t1); typ=t'.typ}
+  | TryWith(t1,t2) -> {desc=TryWith(subst x t t1, subst x t t2); typ=t'.typ}
+  | Pair(t1,t2) -> make_pair (subst x t t1) (subst x t t2)
+  | Fst t1 -> make_fst (subst x t t1)
+  | Snd t1 -> make_snd (subst x t t1)
+  | RandValue(typ,b) -> {desc=RandValue(typ,b); typ=t'.typ}
+  | Label(info, t1) -> make_label info (subst x t t1)
 
 
 and subst_int n t t' =
   let desc =
     match t'.desc with
-        Const (Int m) -> if n = m then t.desc else BinOp(Add, t, {desc=Const(Int(m-n)); typ=TInt})
-      | Const c -> Const c
-      | Unknown -> Unknown
-      | Var y -> Var y
-      | Bottom -> Bottom
-      | Fun(y, t1) -> Fun(y, subst_int n t t1)
-      | App(t1, ts) ->
-          let t1' = subst_int n t t1 in
-          let ts' = List.map (subst_int n t) ts in
-            begin
-              match t1'.desc with
-                  App(t, ts) -> App(t, ts@ts')
-                | _ -> App(t1', ts')
-            end
-      | If(t1, t2, t3) ->
-          let t1' = subst_int n t t1 in
-          let t2' = subst_int n t t2 in
-          let t3' = subst_int n t t3 in
-            If(t1', t2', t3')
-      | Branch(t1, t2) ->
-          let t1' = subst_int n t t1 in
-          let t2' = subst_int n t t2 in
-            Branch(t1', t2')
-              (*
+    | Const (Int m) -> if n = m then t.desc else BinOp(Add, t, {desc=Const(Int(m-n)); typ=TInt})
+    | Const c -> Const c
+    | Var y -> Var y
+    | Bottom -> Bottom
+    | Fun(y, t1) -> Fun(y, subst_int n t t1)
+    | App(t1, ts) ->
+        let t1' = subst_int n t t1 in
+        let ts' = List.map (subst_int n t) ts in
+        begin
+          match t1'.desc with
+          | App(t, ts) -> App(t, ts@ts')
+          | _ -> App(t1', ts')
+        end
+    | If(t1, t2, t3) ->
+        let t1' = subst_int n t t1 in
+        let t2' = subst_int n t t2 in
+        let t3' = subst_int n t t3 in
+        If(t1', t2', t3')
+    | Branch(t1, t2) ->
+        let t1' = subst_int n t t1 in
+        let t2' = subst_int n t t2 in
+        Branch(t1', t2')
+    (*
                 | Let(flag, bindings, t2) ->
                 let bindings' = List.map (fun (f,xs,t1) -> f,xs,subst_int n t t1) bindings in
                 let t2' = subst_int n t t2 in
                 Let(flag, bindings', t2')
-              *)
-      | Let(flag, bindings, t2) ->
-          let bindings' = List.map (fun (f,xs,t1) -> f, xs, subst_int n t t1) bindings in
-          let t2' = subst_int n t t2 in
-            Let(flag, bindings', t2')
-      | BinOp(Mult, t1, t2) -> (* non-linear expressions not supported *)
-          BinOp(Mult, t1, t2)
-      | BinOp(op, t1, t2) ->
-          let t1' = subst_int n t t1 in
-          let t2' = subst_int n t t2 in
-            BinOp(op, t1', t2')
-      | Not t1 ->
-          let t1' = subst_int n t t1 in
-            Not t1'
-      | Event(s,b) -> Event(s,b)
-      | Nil -> Nil
-      | Cons(t1,t2) -> Cons(subst_int n t t1, subst_int n t t2)
-      | Snd _ -> assert false
-      | Fst _ -> assert false
-      | Pair (_, _) -> assert false
-      | TryWith (_, _) -> assert false
-      | Raise _ -> assert false
-      | Match (_, _) -> assert false
-      | Constr (_, _) -> assert false
-      | SetField (_, _, _, _, _, _) -> assert false
-      | Proj (_, _, _, _) -> assert false
-      | Record _ -> assert false
-      | RandInt _ -> assert false
-      | RandValue (_, _) -> assert false
-      | Label _ -> assert false
+     *)
+    | Let(flag, bindings, t2) ->
+        let bindings' = List.map (fun (f,xs,t1) -> f, xs, subst_int n t t1) bindings in
+        let t2' = subst_int n t t2 in
+        Let(flag, bindings', t2')
+    | BinOp(Mult, t1, t2) -> (* non-linear expressions not supported *)
+        BinOp(Mult, t1, t2)
+    | BinOp(op, t1, t2) ->
+        let t1' = subst_int n t t1 in
+        let t2' = subst_int n t t2 in
+        BinOp(op, t1', t2')
+    | Not t1 ->
+        let t1' = subst_int n t t1 in
+        Not t1'
+    | Event(s,b) -> Event(s,b)
+    | Nil -> Nil
+    | Cons(t1,t2) -> Cons(subst_int n t t1, subst_int n t t2)
+    | Snd _ -> assert false
+    | Fst _ -> assert false
+    | Pair (_, _) -> assert false
+    | TryWith (_, _) -> assert false
+    | Raise _ -> assert false
+    | Match (_, _) -> assert false
+    | Constr (_, _) -> assert false
+    | SetField (_, _, _, _, _, _) -> assert false
+    | Proj (_, _, _, _) -> assert false
+    | Record _ -> assert false
+    | RandInt _ -> assert false
+    | RandValue (_, _) -> assert false
+    | Label _ -> assert false
   in
-    {desc=desc; typ=t'.typ}
+  {desc=desc; typ=t'.typ}
 
 and subst_map map t =
   match t.desc with
-      Const c -> t
-    | Unknown -> t
-    | Bottom -> t
-    | RandInt _ -> t
-    | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
-    | Fun(y, t1) ->
-        let map' = List.filter (fun (x,_) -> not (Id.same x y)) map in
-        let t1' = subst_map map' t1 in
-          make_fun y t1'
-    | App(t1, ts) ->
-        let t1' = subst_map map t1 in
-        let ts' = List.map (subst_map map) ts in
-          make_app t1' ts'
-    | If(t1, t2, t3) ->
-        let t1' = subst_map map t1 in
-        let t2' = subst_map map t2 in
-        let t3' = subst_map map t3 in
-          make_if_ t1' t2' t3'
-    | Branch(t1, t2) ->
-        let t1' = subst_map map t1 in
-        let t2' = subst_map map t2 in
-          make_branch t1' t2'
-    | Let(Nonrecursive, bindings, t2) ->
-        let rec aux map acc = function
-            [] -> map, List.rev acc
-          | (f,xs,t1)::bindings ->
-              let map' = List.filter (fun (x,_) -> not (Id.mem x xs)) map in
-                aux map' ((f, xs, subst_map map' t1)::acc) bindings in
-        let map',bindings' = aux map [] bindings in
-        let t2' = subst_map map' t2 in
-          make_let bindings' t2'
-    | Let(Recursive, bindings, t2) ->
-        let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_,_) -> Id.same f x) bindings)) map in
-        let aux (f,xs,t1) =
-          let map'' = List.filter (fun (x,_) -> not (Id.mem x xs)) map' in
-            f, xs, subst_map map'' t1
-        in
-        let bindings' = List.map aux bindings in
-        let t2' = subst_map map' t2 in
-          make_letrec bindings' t2'
-    | BinOp(op, t1, t2) ->
-        let t1' = subst_map map t1 in
-        let t2' = subst_map map t2 in
-          {desc=BinOp(op, t1', t2'); typ=t.typ}
-    | Not t1 ->
-        let t1' = subst_map map t1 in
-          make_not t1'
-    | Event(s,_) -> t
-    | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst_map map t1)) fields); typ=t.typ}
-    | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst_map map t1); typ=t.typ}
-    | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst_map map t1,subst_map map t2); typ=t.typ}
-    | Nil -> t
-    | Cons(t1,t2) -> {desc=Cons(subst_map map t1, subst_map map t2); typ=t.typ}
-    | Constr(s,ts) -> {desc=Constr(s, List.map (subst_map map) ts); typ=t.typ}
-    | Match(t1,pats) ->
-        let aux (pat,cond,t1) = pat, cond, subst_map map t1 in
-          {desc=Match(subst_map map t1, List.map aux pats); typ=t.typ}
-    | Raise t1 -> {desc=Raise(subst_map map t1); typ=t.typ}
-    | TryWith(t1,t2) -> {desc=TryWith(subst_map map t1, subst_map map t2); typ=t.typ}
-    | Pair(t1,t2) -> make_pair (subst_map map t1) (subst_map map t2)
-    | Fst t1 -> make_fst (subst_map map t1)
-    | Snd t1 -> make_snd (subst_map map t1)
-    | RandValue _ -> assert false
-    | Label _ -> assert false
+  | Const c -> t
+  | Bottom -> t
+  | RandInt _ -> t
+  | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
+  | Fun(y, t1) ->
+      let map' = List.filter (fun (x,_) -> not (Id.same x y)) map in
+      let t1' = subst_map map' t1 in
+      make_fun y t1'
+  | App(t1, ts) ->
+      let t1' = subst_map map t1 in
+      let ts' = List.map (subst_map map) ts in
+      make_app t1' ts'
+  | If(t1, t2, t3) ->
+      let t1' = subst_map map t1 in
+      let t2' = subst_map map t2 in
+      let t3' = subst_map map t3 in
+      make_if_ t1' t2' t3'
+  | Branch(t1, t2) ->
+      let t1' = subst_map map t1 in
+      let t2' = subst_map map t2 in
+      make_branch t1' t2'
+  | Let(Nonrecursive, bindings, t2) ->
+      let rec aux map acc = function
+          [] -> map, List.rev acc
+        | (f,xs,t1)::bindings ->
+            let map' = List.filter (fun (x,_) -> not (Id.mem x xs)) map in
+            aux map' ((f, xs, subst_map map' t1)::acc) bindings in
+      let map',bindings' = aux map [] bindings in
+      let t2' = subst_map map' t2 in
+      make_let bindings' t2'
+  | Let(Recursive, bindings, t2) ->
+      let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_,_) -> Id.same f x) bindings)) map in
+      let aux (f,xs,t1) =
+        let map'' = List.filter (fun (x,_) -> not (Id.mem x xs)) map' in
+        f, xs, subst_map map'' t1
+      in
+      let bindings' = List.map aux bindings in
+      let t2' = subst_map map' t2 in
+      make_letrec bindings' t2'
+  | BinOp(op, t1, t2) ->
+      let t1' = subst_map map t1 in
+      let t2' = subst_map map t2 in
+      {desc=BinOp(op, t1', t2'); typ=t.typ}
+  | Not t1 ->
+      let t1' = subst_map map t1 in
+      make_not t1'
+  | Event(s,_) -> t
+  | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst_map map t1)) fields); typ=t.typ}
+  | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst_map map t1); typ=t.typ}
+  | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst_map map t1,subst_map map t2); typ=t.typ}
+  | Nil -> t
+  | Cons(t1,t2) -> {desc=Cons(subst_map map t1, subst_map map t2); typ=t.typ}
+  | Constr(s,ts) -> {desc=Constr(s, List.map (subst_map map) ts); typ=t.typ}
+  | Match(t1,pats) ->
+      let aux (pat,cond,t1) = pat, cond, subst_map map t1 in
+      {desc=Match(subst_map map t1, List.map aux pats); typ=t.typ}
+  | Raise t1 -> {desc=Raise(subst_map map t1); typ=t.typ}
+  | TryWith(t1,t2) -> {desc=TryWith(subst_map map t1, subst_map map t2); typ=t.typ}
+  | Pair(t1,t2) -> make_pair (subst_map map t1) (subst_map map t2)
+  | Fst t1 -> make_fst (subst_map map t1)
+  | Snd t1 -> make_snd (subst_map map t1)
+  | RandValue _ -> assert false
+  | Label _ -> assert false
 
 and subst_type x t = function
     TUnit -> TUnit
@@ -1190,19 +1182,19 @@ and subst_type x t = function
   | TPred(y,ps) ->
       let y' = Id.set_typ y (subst_type x t (Id.typ y)) in
       let ps' = List.map (subst x t) ps in
-        TPred(y', ps')
+      TPred(y', ps')
   | TRInt t' -> TRInt (subst x t t')
   | TVar y -> TVar y
   | TFun(y,typ) ->
       let y' = Id.set_typ y (subst_type x t (Id.typ y)) in
       let typ' = subst_type x t typ in
-        TFun(y', typ')
+      TFun(y', typ')
   | TList typ -> TList (subst_type x t typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPair(y,typ) ->
       let y' = Id.set_typ y (subst_type x t (Id.typ y)) in
       let typ' = subst_type x t typ in
-        TPair(y', typ')
+      TPair(y', typ')
 
 
 
@@ -1217,75 +1209,71 @@ and subst_type x t = function
 
 let rec max_pat_num t =
   match t.desc with
-      Const _ -> 0
-    | Unknown -> 0
-    | Var _ -> 0
-    | Fun(_, t) -> max_pat_num t
-    | App(t, ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) (max_pat_num t) ts
-    | If(t1, t2, t3) -> max (max (max_pat_num t1) (max_pat_num t2)) (max_pat_num t3)
-    | Branch(t1, t2) -> max (max_pat_num t1) (max_pat_num t2)
-    | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
-    | BinOp(_, t1, t2) -> max (max_pat_num t1) (max_pat_num t2)
-    | Not t -> max_pat_num t
-    | Event _ -> 0
-    | Nil -> 0
-    | Cons(t1,t2) -> max (max_pat_num t1) (max_pat_num t2)
-    | Constr(_,ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) 0 ts
-    | Match(t,pats) ->
-        let m = max (List.length pats) (max_pat_num t) in
-        let aux acc = function
-          | (_,cond,t) -> max acc (max (max_pat_num t) (max_pat_num cond))
-        in
-          List.fold_left aux m pats
-    | Snd _ -> assert false
-    | Fst _ -> assert false
-    | Pair (_, _) -> assert false
-    | TryWith (_, _) -> assert false
-    | Raise _ -> assert false
-    | SetField (_, _, _, _, _, _) -> assert false
-    | Proj (_, _, _, _) -> assert false
-    | Record _ -> assert false
-    | RandValue (_, _) -> assert false
-    | RandInt _ -> assert false
-    | Bottom -> assert false
-    | Label _ -> assert false
+  | Const _ -> 0
+  | Var _ -> 0
+  | Fun(_, t) -> max_pat_num t
+  | App(t, ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) (max_pat_num t) ts
+  | If(t1, t2, t3) -> max (max (max_pat_num t1) (max_pat_num t2)) (max_pat_num t3)
+  | Branch(t1, t2) -> max (max_pat_num t1) (max_pat_num t2)
+  | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
+  | BinOp(_, t1, t2) -> max (max_pat_num t1) (max_pat_num t2)
+  | Not t -> max_pat_num t
+  | Event _ -> 0
+  | Nil -> 0
+  | Cons(t1,t2) -> max (max_pat_num t1) (max_pat_num t2)
+  | Constr(_,ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) 0 ts
+  | Match(t,pats) ->
+      let m = max (List.length pats) (max_pat_num t) in
+      let aux acc = function
+        | (_,cond,t) -> max acc (max (max_pat_num t) (max_pat_num cond))
+      in
+      List.fold_left aux m pats
+  | Snd _ -> assert false
+  | Fst _ -> assert false
+  | Pair (_, _) -> assert false
+  | TryWith (_, _) -> assert false
+  | Raise _ -> assert false
+  | SetField (_, _, _, _, _, _) -> assert false
+  | Proj (_, _, _, _) -> assert false
+  | Record _ -> assert false
+  | RandValue (_, _) -> assert false
+  | RandInt _ -> assert false
+  | Bottom -> assert false
+  | Label _ -> assert false
 
 let rec max_label_num t =
   match t.desc with
-      Const _ -> -1
-    | Unknown -> -1
-    | RandInt _ -> -1
-    | Var _ -> -1
-    | Fun(_, t) -> max_label_num t
-    | App(t, ts) ->
-        List.fold_left (fun acc t -> max acc (max_label_num t)) (max_label_num t) ts
-    | If(t1, t2, t3) ->
-        max (max (max_label_num t1) (max_label_num t2)) (max_label_num t3)
-    | Branch(t1, t2) -> max (max_label_num t1) (max_label_num t2)
-    | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
-    | BinOp(_, t1, t2) -> max (max_label_num t1) (max_label_num t2)
-    | Not t -> max_label_num t
-    | Event _ -> -1
-    | Nil -> -1
-    | Cons(t1,t2) -> max (max_label_num t1) (max_label_num t2)
-    | Constr(_,ts) ->
-        List.fold_left (fun acc t -> max acc (max_label_num t)) (-1) ts
-    | Match(t,pats) ->
-        let aux acc = function
-          | (_,cond,t) -> max acc (max (max_label_num t) (max_label_num cond))
-        in
-          List.fold_left aux (-1) pats
-    | Snd _ -> assert false
-    | Fst _ -> assert false
-    | Pair (_, _) -> assert false
-    | TryWith (_, _) -> assert false
-    | Raise _ -> assert false
-    | SetField (_, _, _, _, _, _) -> assert false
-    | Proj (_, _, _, _) -> assert false
-    | Record _ -> assert false
-    | RandValue (_, _) -> assert false
-    | Bottom -> assert false
-    | Label _ -> assert false
+  | Const _ -> -1
+  | RandInt _ -> -1
+  | Var _ -> -1
+  | Fun(_, t) -> max_label_num t
+  | App(t, ts) ->
+      List.fold_left (fun acc t -> max acc (max_label_num t)) (max_label_num t) ts
+  | If(t1, t2, t3) ->
+      max (max (max_label_num t1) (max_label_num t2)) (max_label_num t3)
+  | Branch(t1, t2) -> max (max_label_num t1) (max_label_num t2)
+  | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
+  | BinOp(_, t1, t2) -> max (max_label_num t1) (max_label_num t2)
+  | Not t -> max_label_num t
+  | Event _ -> -1
+  | Nil -> -1
+  | Cons(t1,t2) -> max (max_label_num t1) (max_label_num t2)
+  | Constr(_,ts) ->
+      List.fold_left (fun acc t -> max acc (max_label_num t)) (-1) ts
+  | Match(t,pats) ->
+      let aux acc (_,cond,t) = max acc (max (max_label_num t) (max_label_num cond)) in
+      List.fold_left aux (-1) pats
+  | Snd _ -> assert false
+  | Fst _ -> assert false
+  | Pair (_, _) -> assert false
+  | TryWith (_, _) -> assert false
+  | Raise _ -> assert false
+  | SetField (_, _, _, _, _, _) -> assert false
+  | Proj (_, _, _, _) -> assert false
+  | Record _ -> assert false
+  | RandValue (_, _) -> assert false
+  | Bottom -> assert false
+  | Label _ -> assert false
 
 
 let is_parameter x = Fpat.Util.String.starts_with (Id.name x) Flag.extpar_header
@@ -1368,8 +1356,7 @@ let rec get_typ_default = function
 
 let rec has_no_effect t =
   match t.desc with
-    Const _ -> true
-  | Unknown -> false
+  | Const _ -> true
   | RandInt _ -> true
   | RandValue _ -> true
   | Var _ -> true
@@ -1430,7 +1417,6 @@ and same_term t1 t2 = same_desc t1.desc t2.desc
 and same_desc t1 t2 =
   match t1,t2 with
     Const c1, Const c2 -> same_const c1 c2
-  | Unknown, Unknown -> true
   | RandInt b1, RandInt b2 -> b1 = b2
   | RandValue _, RandValue _ -> unsupported "same_term 1 "
   | Var x, Var y -> Id.same x y

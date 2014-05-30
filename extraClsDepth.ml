@@ -57,7 +57,6 @@ let rec closureDepth varToDepth expr =
 	  (raise Not_found)
       end
     | Const _
-    | Unknown
     | RandInt _
     | RandValue _
     | Var _ -> make_int 0
@@ -82,7 +81,6 @@ let rec transType = function
 let rec insertClsDepth varToDepth expr =
   match expr.desc with
     | Const _
-    | Unknown
     | RandInt _
     | RandValue _ -> expr
     | Var v ->

@@ -169,7 +169,6 @@ and trans_const c typ =
 and trans_term post xs env t =
   match t.S.desc with
   | S.Const c -> [], Const (trans_const c t.S.typ)
-  | S.Unknown -> assert false
   | S.App({S.desc=S.RandInt false}, [{S.desc=S.Const S.Unit}]) ->
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
@@ -249,7 +248,6 @@ and trans_term post xs env t =
 let rec formula_of t =
   match t.S.desc with
   | S.Const c -> Const (trans_const c t.S.typ)
-  | S.Unknown -> assert false
   | S.RandInt false -> raise Not_found
   | S.RandInt true -> assert false
   | S.Var x ->

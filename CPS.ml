@@ -198,7 +198,6 @@ let _TFunCPS(e, typ1, typ2) =
 let rec infer_effect env t =
   match t.desc with
   | Const c -> {t_cps=ConstCPS c; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=new_evar()}
-  | Unknown -> assert false (*{t_cps=UnknownCPS; typ_cps=TBaseCPS t.typ; typ_orig=t.typ}*)
   | Bottom ->
       let e = new_evar () in
       constraints := CGeq(e, ECont) :: !constraints;
@@ -404,7 +403,6 @@ let rec add_preds_cont_aux k t =
   let desc =
     match t.desc with
     | Const c -> Const c
-    | Unknown -> Unknown
     | RandInt b -> RandInt b
     | RandValue(typ,b) -> RandValue(typ,b)
     | Var y -> Var y
@@ -876,41 +874,40 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
 let rec short_circuit_eval t =
   let desc =
     match t.desc with
-        Const _
-      | Unknown
-      | RandInt _
-      | RandValue _
-      | Var _ -> t.desc
-      | Fun(y, t) -> Fun(y, short_circuit_eval t)
-      | App(t1, ts) -> App(short_circuit_eval t1, List.map short_circuit_eval ts)
-      | If(t1, t2, t3) -> If(short_circuit_eval t1, short_circuit_eval t2, short_circuit_eval t3)
-      | Branch(t1, t2) -> Branch(short_circuit_eval t1, short_circuit_eval t2)
-      | Let(flag, bindings, t2) ->
-          let bindings' = List.map (fun (f,xs,t) -> f, xs, short_circuit_eval t) bindings in
-            Let(flag, bindings', short_circuit_eval t2)
-      | BinOp(And, t1, t2) -> If(short_circuit_eval t1, short_circuit_eval t2, false_term)
-      | BinOp(Or, t1, t2) -> If(short_circuit_eval t1, true_term, short_circuit_eval t2)
-      | BinOp(op, t1, t2) -> BinOp(op, short_circuit_eval t1, short_circuit_eval t2)
-      | Not t1 -> Not (short_circuit_eval t1)
-      | Event(s,b) -> Event(s,b)
-      | Record fields -> Record (List.map (fun (f,(s,t1)) -> f,(s,short_circuit_eval t1)) fields)
-      | Proj(i,s,f,t1) -> Proj(i,s,f,short_circuit_eval t1)
-      | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,short_circuit_eval t1,short_circuit_eval t2)
-      | Nil -> Nil
-      | Cons(t1,t2) -> Cons(short_circuit_eval t1,short_circuit_eval t2)
-      | Constr(s,ts) -> Constr(s, List.map short_circuit_eval ts)
-      | Match(t1,pats) ->
-          let aux (pat,cond,t1) = pat, short_circuit_eval cond, short_circuit_eval t1 in
-            Match(short_circuit_eval t1, List.map aux pats)
-      | Raise t -> Raise (short_circuit_eval t)
-      | TryWith(t1,t2) -> TryWith(short_circuit_eval t1, short_circuit_eval t2)
-      | Pair(t1,t2) -> Pair(short_circuit_eval t1, short_circuit_eval t2)
-      | Fst t -> Fst (short_circuit_eval t)
-      | Snd t -> Snd (short_circuit_eval t)
-      | Bottom -> Bottom
-      | Label(info,t) -> Label(info, short_circuit_eval t)
+    | Const _
+    | RandInt _
+    | RandValue _
+    | Var _ -> t.desc
+    | Fun(y, t) -> Fun(y, short_circuit_eval t)
+    | App(t1, ts) -> App(short_circuit_eval t1, List.map short_circuit_eval ts)
+    | If(t1, t2, t3) -> If(short_circuit_eval t1, short_circuit_eval t2, short_circuit_eval t3)
+    | Branch(t1, t2) -> Branch(short_circuit_eval t1, short_circuit_eval t2)
+    | Let(flag, bindings, t2) ->
+        let bindings' = List.map (fun (f,xs,t) -> f, xs, short_circuit_eval t) bindings in
+        Let(flag, bindings', short_circuit_eval t2)
+    | BinOp(And, t1, t2) -> If(short_circuit_eval t1, short_circuit_eval t2, false_term)
+    | BinOp(Or, t1, t2) -> If(short_circuit_eval t1, true_term, short_circuit_eval t2)
+    | BinOp(op, t1, t2) -> BinOp(op, short_circuit_eval t1, short_circuit_eval t2)
+    | Not t1 -> Not (short_circuit_eval t1)
+    | Event(s,b) -> Event(s,b)
+    | Record fields -> Record (List.map (fun (f,(s,t1)) -> f,(s,short_circuit_eval t1)) fields)
+    | Proj(i,s,f,t1) -> Proj(i,s,f,short_circuit_eval t1)
+    | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,short_circuit_eval t1,short_circuit_eval t2)
+    | Nil -> Nil
+    | Cons(t1,t2) -> Cons(short_circuit_eval t1,short_circuit_eval t2)
+    | Constr(s,ts) -> Constr(s, List.map short_circuit_eval ts)
+    | Match(t1,pats) ->
+        let aux (pat,cond,t1) = pat, short_circuit_eval cond, short_circuit_eval t1 in
+        Match(short_circuit_eval t1, List.map aux pats)
+    | Raise t -> Raise (short_circuit_eval t)
+    | TryWith(t1,t2) -> TryWith(short_circuit_eval t1, short_circuit_eval t2)
+    | Pair(t1,t2) -> Pair(short_circuit_eval t1, short_circuit_eval t2)
+    | Fst t -> Fst (short_circuit_eval t)
+    | Snd t -> Snd (short_circuit_eval t)
+    | Bottom -> Bottom
+    | Label(info,t) -> Label(info, short_circuit_eval t)
   in
-    {desc=desc; typ=t.typ}
+  {desc=desc; typ=t.typ}
 
 
 

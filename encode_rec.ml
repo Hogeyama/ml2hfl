@@ -117,77 +117,76 @@ let rec abst_recdata t =
   let typ' = abst_recdata_typ t.typ in
   let desc =
     match t.desc with
-        Const c -> Const c
-      | Unknown -> Unknown
-      | Var x -> Var (abst_recdata_var x)
-      | RandInt b -> RandInt b
-      | RandValue(typ,b) -> RandValue(typ,b)
-      | Fun(x,t) -> Fun(abst_recdata_var x, abst_recdata t)
-      | App(t, ts) -> App(abst_recdata t, List.map abst_recdata ts)
-      | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
-      | Branch(t1, t2) -> Branch(abst_recdata t1, abst_recdata t2)
-      | Let(flag, bindings, t) ->
-          let aux (f,xs,t) = abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t in
-          let bindings' = List.map aux bindings in
-            Let(flag, bindings', abst_recdata t)
-      | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
-      | Not t -> Not (abst_recdata t)
-      | Event(s,b) -> Event(s,b)
-      | Record _ -> assert false
-      | Proj _ -> assert false
-      | SetField _ -> assert false
-      | Nil -> Nil
-      | Cons(t1,t2) -> Cons(abst_recdata t1, abst_recdata t2)
-      | Constr("Abst",[]) -> Constr("Abst",[])
-      | Constr(c,ts) ->
-          let ts' = List.map abst_recdata ts in
-          let typ_name = match t.typ with TConstr(s,true) -> s | _ -> assert false in
-          let ground_types = get_ground_types typ_name in
-          let make_return label typ t =
-            let aux typ' = if typ = typ' then t else get_typ_default (abst_recdata_typ typ') in
-            let head =
-              match label with
-                  None -> make_int 0
-                | Some t -> t
-            in
-              make_tuple (head :: List.map aux ground_types)
+    | Const c -> Const c
+    | Var x -> Var (abst_recdata_var x)
+    | RandInt b -> RandInt b
+    | RandValue(typ,b) -> RandValue(typ,b)
+    | Fun(x,t) -> Fun(abst_recdata_var x, abst_recdata t)
+    | App(t, ts) -> App(abst_recdata t, List.map abst_recdata ts)
+    | If(t1, t2, t3) -> If(abst_recdata t1, abst_recdata t2, abst_recdata t3)
+    | Branch(t1, t2) -> Branch(abst_recdata t1, abst_recdata t2)
+    | Let(flag, bindings, t) ->
+        let aux (f,xs,t) = abst_recdata_var f, List.map abst_recdata_var xs, abst_recdata t in
+        let bindings' = List.map aux bindings in
+        Let(flag, bindings', abst_recdata t)
+    | BinOp(op, t1, t2) -> BinOp(op, abst_recdata t1, abst_recdata t2)
+    | Not t -> Not (abst_recdata t)
+    | Event(s,b) -> Event(s,b)
+    | Record _ -> assert false
+    | Proj _ -> assert false
+    | SetField _ -> assert false
+    | Nil -> Nil
+    | Cons(t1,t2) -> Cons(abst_recdata t1, abst_recdata t2)
+    | Constr("Abst",[]) -> Constr("Abst",[])
+    | Constr(c,ts) ->
+        let ts' = List.map abst_recdata ts in
+        let typ_name = match t.typ with TConstr(s,true) -> s | _ -> assert false in
+        let ground_types = get_ground_types typ_name in
+        let make_return label typ t =
+          let aux typ' = if typ = typ' then t else get_typ_default (abst_recdata_typ typ') in
+          let head =
+            match label with
+              None -> make_int 0
+            | Some t -> t
           in
-          let path = Id.new_var "path" (TList TInt) in
-          let path' = Id.new_var "path'" (TList TInt) in
-          let pat0 = make_pnil TInt, true_term, make_return (Some (abst_label c)) TUnit unit_term in
-          let xtyps = List.map (fun t -> Id.new_var "x" (abst_recdata_typ t.typ), t.typ) ts in
-          let make_pat i (x,typ) =
-            let t =
-              if List.mem typ ground_types
-              then make_return None typ (make_var x)
-              else make_app (make_snd (make_var x)) [make_var path']
-            in
-              make_pcons (make_pconst (make_int i)) (make_pvar path'), true_term, t
+          make_tuple (head :: List.map aux ground_types)
+        in
+        let path = Id.new_var "path" (TList TInt) in
+        let path' = Id.new_var "path'" (TList TInt) in
+        let pat0 = make_pnil TInt, true_term, make_return (Some (abst_label c)) TUnit unit_term in
+        let xtyps = List.map (fun t -> Id.new_var "x" (abst_recdata_typ t.typ), t.typ) ts in
+        let make_pat i (x,typ) =
+          let t =
+            if List.mem typ ground_types
+            then make_return None typ (make_var x)
+            else make_app (make_snd (make_var x)) [make_var path']
           in
-          let pats = List.mapi make_pat xtyps in
-          let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
-            (make_lets defs (make_pair unit_term (make_fun path (make_match (make_var path) (pat0::pats))))).desc
-      | Match(t1,pats) ->
-          let aux (p,c,t) =
-            let p',c',bind = abst_recdata_pat p in
-            let t' = abst_recdata t in
-            let aux (t,p) t' =
-              make_match t [p, true_term, t'; make_pany p.pat_typ, true_term, make_loop t'.typ]
-            in
-              p', make_and c c', List.fold_right aux bind t'
+          make_pcons (make_pconst (make_int i)) (make_pvar path'), true_term, t
+        in
+        let pats = List.mapi make_pat xtyps in
+        let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
+        (make_lets defs (make_pair unit_term (make_fun path (make_match (make_var path) (pat0::pats))))).desc
+    | Match(t1,pats) ->
+        let aux (p,c,t) =
+          let p',c',bind = abst_recdata_pat p in
+          let t' = abst_recdata t in
+          let aux (t,p) t' =
+            make_match t [p, true_term, t'; make_pany p.pat_typ, true_term, make_loop t'.typ]
           in
-          let t1' = abst_recdata t1 in
-          let pats' = List.map aux pats in
-            Match(t1', pats')
-      | Raise t -> Raise (abst_recdata t)
-      | TryWith(t1,t2) -> TryWith(abst_recdata t1, abst_recdata t2)
-      | Bottom -> Bottom
-      | Pair(t1,t2) -> Pair(abst_recdata t1, abst_recdata t2)
-      | Fst t -> Fst (abst_recdata t)
-      | Snd t -> Snd (abst_recdata t)
-      | Label(info,t) -> Label(info, abst_recdata t)
+          p', make_and c c', List.fold_right aux bind t'
+        in
+        let t1' = abst_recdata t1 in
+        let pats' = List.map aux pats in
+        Match(t1', pats')
+    | Raise t -> Raise (abst_recdata t)
+    | TryWith(t1,t2) -> TryWith(abst_recdata t1, abst_recdata t2)
+    | Bottom -> Bottom
+    | Pair(t1,t2) -> Pair(abst_recdata t1, abst_recdata t2)
+    | Fst t -> Fst (abst_recdata t)
+    | Snd t -> Snd (abst_recdata t)
+    | Label(info,t) -> Label(info, abst_recdata t)
   in
-    {desc=desc; typ=typ'}
+  {desc=desc; typ=typ'}
 
 
 

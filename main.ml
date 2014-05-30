@@ -43,7 +43,7 @@ let print_info () =
 	    !Termination_loop.lrf
         end;
       Format.printf "cycles: %d\n" !Flag.cegar_loop;
-      Format.printf "total: %.3f sec\n" (get_time());
+      Format.printf "total: %.3f sec\n" @@ get_time();
       Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
       Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
       Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;

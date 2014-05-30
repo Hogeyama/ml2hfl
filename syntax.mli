@@ -7,7 +7,7 @@ type typ = typed_term Type.t
 and id = typ Id.t
 and typed_term = {desc:term; typ:typ}
 and const = (* only base type constants *)
-    Unit
+  | Unit
   | True
   | False
   | Int of int
@@ -19,8 +19,7 @@ and const = (* only base type constants *)
   | Nativeint of nativeint
   | CPS_result
 and term =
-    Const of const
-  | Unknown
+  | Const of const
   | RandInt of bool (** true denotes CPS-term *)
   | RandValue of typ * bool (** true denotes CPS-term *)
   | Var of id

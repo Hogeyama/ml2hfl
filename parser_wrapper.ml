@@ -94,13 +94,17 @@ let rec from_type_expr tenv typ =
           TList (from_type_expr tenv type_expr)
       | Tconstr(path, _, m) ->
           let b =
-            try match (Env.find_type path tenv).type_kind with
-                Type_abstract -> false
+            try
+              match (Env.find_type path tenv).type_kind with
+              | Type_abstract -> false
               | Type_variant _ -> true
               | Type_record _ -> true
             with Not_found -> false
           in
-            TConstr(Path.name path, b)
+          let s = Path.name path in
+          if List.mem s Type.reserved_constr then
+            unsupported @@ Format.sprintf "Type name \"%s\" is reserved." s;
+          TConstr(s, b)
       | Tobject _ -> unsupported "Tobject"
       | Tfield _ -> unsupported "Tfield"
       | Tnil -> unsupported "Tnil"
@@ -124,9 +128,9 @@ let from_mutable_flag = function
 
 
 let sign_to_letters s =
-  let is_op s = List.mem s.[0] ['!';'$';'%';'&';'*';'+';'-';'.';'/';':';'<';'=';'>';'?';'@';'^';'|';'~'] in
+  let is_op s = String.contains "!$%&*+-./:<=>?@^|~" s.[0] in
   let map = function
-      '!' -> "_bang"
+    | '!' -> "_bang"
     | '$' -> "_dollar"
     | '%' -> "_percent"
     | '&' -> "_ampersand"
@@ -146,14 +150,9 @@ let sign_to_letters s =
     | '~' -> "_tilde"
     | c -> String.make 1 c
   in
-  let rec trans acc s =
-    if String.length s = 0
-    then acc
-    else trans (acc ^ map s.[0]) (String.sub s 1 (String.length s - 1))
-  in
-    if is_op s
-    then trans "op" s
-    else s
+  if is_op s
+  then String.fold_left (fun s c -> s ^ map c) "op" s
+  else s
 
 let from_ident_aux name binding_time typ =
   let name = sign_to_letters name in
@@ -175,20 +174,20 @@ let get_constr_name desc typ env =
   in
   let rec get_type_descr ty tenv =
     match (Ctype.repr ty).Types.desc with
-        Tconstr (path,_,_) -> Env.find_type path tenv
-      | _ -> assert false
+    | Tconstr (path,_,_) -> Env.find_type path tenv
+    | _ -> assert false
   in
   let rec get_constr tag ty tenv =
     match get_type_descr ty tenv with
-        {type_kind=Type_variant constr_list} ->
-          Datarepr.find_constr_by_tag tag constr_list
-      | {type_manifest = Some _} ->
-          get_constr tag (Ctype.expand_head_once tenv (clean_copy ty)) tenv
-      | _ -> assert false
+    | {type_kind=Type_variant constr_list} ->
+        Datarepr.find_constr_by_tag tag constr_list
+    | {type_manifest = Some _} ->
+        get_constr tag (Ctype.expand_head_once tenv @@ clean_copy ty) tenv
+    | _ -> assert false
   in
-    match desc.cstr_tag with
-        Cstr_exception path -> Path.name path
-      | _ -> fst (get_constr desc.cstr_tag typ env)
+  match desc.cstr_tag with
+  | Cstr_exception path -> Path.name path
+  | _ -> fst (get_constr desc.cstr_tag typ env)
 let get_constr_name desc typ env =
   get_constr_name desc typ env
 

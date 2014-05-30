@@ -323,7 +323,6 @@ let insert_extra_param t =
     let desc =
       match t.Syntax.desc with
       | Syntax.Const c -> Syntax.Const c
-      | Syntax.Unknown -> Syntax.Unknown
       | Syntax.RandInt b -> Syntax.RandInt b
       | Syntax.RandValue(typ,b) -> Syntax.RandValue(typ,b)
       | Syntax.Var y -> Syntax.Var (trans_id y)

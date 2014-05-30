@@ -10,7 +10,7 @@ type typ = typed_term Type.t
 and id = typ Id.t
 
 and const = (* only base type constants *)
-    Unit
+  | Unit
   | True
   | False
   | Int of int
@@ -24,8 +24,7 @@ and const = (* only base type constants *)
 
 and typed_term = {desc:term; typ:typ}
 and term =
-    Const of const
-  | Unknown
+  | Const of const
   | RandInt of bool
   | RandValue of typ * bool
   | Var of id
@@ -105,7 +104,6 @@ let rec get_vars_pat pat =
 let rec get_fv vars t =
   match t.desc with
   | Const _ -> []
-  | Unknown -> []
   | RandInt _ -> []
   | Var x -> if Id.mem x vars then [] else [x]
   | App(t, ts) -> get_fv vars t @@@ List.rev_map_flatten (get_fv vars) ts
@@ -259,7 +257,6 @@ and print_term pri typ fm t = print_desc pri typ fm t.desc
 and print_desc pri typ fm desc =
   match desc with
   | Const c -> print_const fm c
-  | Unknown -> fprintf fm "***"
   | RandInt false -> fprintf fm "rand_int"
   | RandInt true -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a] ()" print_typ typ'
@@ -421,160 +418,159 @@ let print_term typ fm = print_term 0 typ fm
 let rec print_term' pri fm t =
   fprintf fm "(";(
     match t.desc with
-        Const c -> print_const fm c
-      | Unknown -> fprintf fm "***"
-      | RandInt false -> fprintf fm "rand_int"
-      | RandInt true -> fprintf fm "rand_int_cps"
-      | RandValue(typ',false) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%srand_val(%a)%s" s1 print_typ typ' s2
-      | RandValue(typ',true) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%srand_val_cps(%a)%s" s1 print_typ typ' s2
-      | Var x -> print_id_typ fm x
-      | Fun(x, t) ->
-          let p = 2 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%sfun %a -> %a%s" s1 print_id x (print_term' p) t s2
-      | App(t, ts) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%s%a%a%s" s1 (print_term' p) t (print_termlist' p) ts s2
-      | If(t1, t2, t3) ->
-          let p = 1 in
-          let s1,s2 = paren pri (p+1) in
-            fprintf fm "%s@[@[if %a@]@ then @[%a@]@ else @[%a@]@]%s"
-              s1 (print_term' p) t1 (print_term' p) t2 (print_term' p) t3 s2
-      | Branch(t1, t2) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%sbr %a %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
-      | Let(flag, bindings, t2) ->
-          let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
-          let p = 10 in
-          let s1,s2 = paren pri (p+1) in
-          let p_ids fm xs =
-            fprintf fm "%a" print_ids_typ xs
-          in
-          let b = ref true in
-          let print_binding fm (f,xs,t1) =
-            let pre = if !b then "let" ^ s_rec else "and" in
-            Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term' p) t1;
-            b := false
-          in
-          let print_bindings bs = print_list print_binding "" bs in
-          begin
-            match t2.desc with
-              Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
-                s1 print_bindings bindings (print_term' p) t2 s2
-            | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
-                s1 print_bindings bindings (print_term' p) t2 s2
-          end
-      | BinOp(op, t1, t2) ->
-          let p = match op with Add|Sub|Mult -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%s%a %a %a%s" s1 (print_term' p) t1 print_binop op (print_term' p) t2 s2
-      | Not t ->
-          let p = 6 in
-          let s1,s2 = paren pri p in
-            fprintf fm "%snot %a%s" s1 (print_term' p) t s2
-      | Event(s,b) -> fprintf fm "{%s}" s
-      | Record fields ->
-          let rec aux fm = function
-              [] -> ()
-            | (s,(f,t))::fields ->
-                if fields=[]
-                then fprintf fm "%s=%a" s (print_term' 0) t
-                else fprintf fm "%s=%a; %a" s (print_term' 0) t aux fields
-          in
-            fprintf fm "{%a}" aux fields
-      | Proj(_,s,_,t) -> fprintf fm "%a.%s" (print_term' 9) t s
-      | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term' 9) t1 s (print_term' 3) t2
-      | Nil -> fprintf fm "[]"
-      | Cons(t1,t2) ->
-          let p = 7 in
-          let s1,s2 = paren pri (p+1) in
-            fprintf fm "%s%a::%a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
-      | Constr(s,ts) ->
-          let p = 8 in
-          let s1,s2 = paren pri p in
-          let aux fm = function
-              [] -> ()
-            | [t] -> fprintf fm "(%a)" (print_term' 1) t
-            | t::ts ->
-                fprintf fm "(%a" (print_term' 1) t;
-                List.iter (fun t -> fprintf fm ",%a" (print_term' 1) t) ts;
-                pp_print_string fm ")"
-          in
-            fprintf fm "%s%s%a%s" s1 s aux ts s2
-      | Match(t,pats) ->
-          let p = 1 in
-          let s1,s2 = paren pri (p+1) in
-          let aux = function
-              (pat,{desc=Const True},t) -> fprintf fm "%a -> %a@ " print_pattern' pat (print_term' p) t
-            | (pat,cond,t) -> fprintf fm "%a when %a -> %a@ "
-                print_pattern' pat (print_term' p) cond (print_term' p) t
-          in
-            fprintf fm "%smatch %a with@ " s1 (print_term' p) t;
-            List.iter aux pats;
-            pp_print_string fm s2
-      | Raise t ->
-          let p = 4 in
-          let s1,s2 = paren pri (p+1) in
-            fprintf fm "%sraise %a%s" s1 (print_term' 1) t s2
-      | TryWith(t1,t2) ->
-          let p = 1 in
-          let s1,s2 = paren pri (p+1) in
-            fprintf fm "%stry %a with@ %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
-      | Pair(t1,t2) ->
-          fprintf fm "(%a,%a)" (print_term' 2) t1 (print_term' 2) t2
-      | Fst t ->
-          let p = 4 in
-          let s1,s2 = paren pri (p+1) in
-            fprintf fm "%sfst %a%s" s1 (print_term' 1) t s2
-      | Snd t ->
-          let p = 4 in
-          let s1,s2 = paren pri (p+1) in
-            fprintf fm "%ssnd %a%s" s1 (print_term' 1) t s2
-      | Bottom -> fprintf fm "_|_"
-      | Label _ -> assert false
+    | Const c -> print_const fm c
+    | RandInt false -> fprintf fm "rand_int"
+    | RandInt true -> fprintf fm "rand_int_cps"
+    | RandValue(typ',false) ->
+        let p = 8 in
+        let s1,s2 = paren pri p in
+        fprintf fm "%srand_val(%a)%s" s1 print_typ typ' s2
+    | RandValue(typ',true) ->
+        let p = 8 in
+        let s1,s2 = paren pri p in
+        fprintf fm "%srand_val_cps(%a)%s" s1 print_typ typ' s2
+    | Var x -> print_id_typ fm x
+    | Fun(x, t) ->
+        let p = 2 in
+        let s1,s2 = paren pri p in
+        fprintf fm "%sfun %a -> %a%s" s1 print_id x (print_term' p) t s2
+    | App(t, ts) ->
+        let p = 8 in
+        let s1,s2 = paren pri p in
+        fprintf fm "%s%a%a%s" s1 (print_term' p) t (print_termlist' p) ts s2
+    | If(t1, t2, t3) ->
+        let p = 1 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%s@[@[if %a@]@ then @[%a@]@ else @[%a@]@]%s"
+                s1 (print_term' p) t1 (print_term' p) t2 (print_term' p) t3 s2
+    | Branch(t1, t2) ->
+        let p = 8 in
+        let s1,s2 = paren pri p in
+        fprintf fm "%sbr %a %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
+    | Let(flag, bindings, t2) ->
+        let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
+        let p = 10 in
+        let s1,s2 = paren pri (p+1) in
+        let p_ids fm xs =
+          fprintf fm "%a" print_ids_typ xs
+        in
+        let b = ref true in
+        let print_binding fm (f,xs,t1) =
+          let pre = if !b then "let" ^ s_rec else "and" in
+          Format.printf "@[<hov 2>%s %a=@ %a@ @]" pre p_ids (f::xs) (print_term' p) t1;
+          b := false
+        in
+        let print_bindings bs = print_list print_binding "" bs in
+        begin
+          match t2.desc with
+          | Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
+                             s1 print_bindings bindings (print_term' p) t2 s2
+          | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
+                         s1 print_bindings bindings (print_term' p) t2 s2
+        end
+    | BinOp(op, t1, t2) ->
+        let p = match op with Add|Sub|Mult -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
+        let s1,s2 = paren pri p in
+        fprintf fm "%s%a %a %a%s" s1 (print_term' p) t1 print_binop op (print_term' p) t2 s2
+    | Not t ->
+        let p = 6 in
+        let s1,s2 = paren pri p in
+        fprintf fm "%snot %a%s" s1 (print_term' p) t s2
+    | Event(s,b) -> fprintf fm "{%s}" s
+    | Record fields ->
+        let rec aux fm = function
+          | [] -> ()
+          | (s,(f,t))::fields ->
+              if fields=[]
+              then fprintf fm "%s=%a" s (print_term' 0) t
+              else fprintf fm "%s=%a; %a" s (print_term' 0) t aux fields
+        in
+        fprintf fm "{%a}" aux fields
+    | Proj(_,s,_,t) -> fprintf fm "%a.%s" (print_term' 9) t s
+    | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term' 9) t1 s (print_term' 3) t2
+    | Nil -> fprintf fm "[]"
+    | Cons(t1,t2) ->
+        let p = 7 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%s%a::%a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
+    | Constr(s,ts) ->
+        let p = 8 in
+        let s1,s2 = paren pri p in
+        let aux fm = function
+            [] -> ()
+          | [t] -> fprintf fm "(%a)" (print_term' 1) t
+          | t::ts ->
+              fprintf fm "(%a" (print_term' 1) t;
+              List.iter (fun t -> fprintf fm ",%a" (print_term' 1) t) ts;
+              pp_print_string fm ")"
+        in
+        fprintf fm "%s%s%a%s" s1 s aux ts s2
+    | Match(t,pats) ->
+        let p = 1 in
+        let s1,s2 = paren pri (p+1) in
+        let aux = function
+            (pat,{desc=Const True},t) -> fprintf fm "%a -> %a@ " print_pattern' pat (print_term' p) t
+          | (pat,cond,t) -> fprintf fm "%a when %a -> %a@ "
+                                    print_pattern' pat (print_term' p) cond (print_term' p) t
+        in
+        fprintf fm "%smatch %a with@ " s1 (print_term' p) t;
+        List.iter aux pats;
+        pp_print_string fm s2
+    | Raise t ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%sraise %a%s" s1 (print_term' 1) t s2
+    | TryWith(t1,t2) ->
+        let p = 1 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%stry %a with@ %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
+    | Pair(t1,t2) ->
+        fprintf fm "(%a,%a)" (print_term' 2) t1 (print_term' 2) t2
+    | Fst t ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%sfst %a%s" s1 (print_term' 1) t s2
+    | Snd t ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%ssnd %a%s" s1 (print_term' 1) t s2
+    | Bottom -> fprintf fm "_|_"
+    | Label _ -> assert false
   );fprintf fm ":%a)" (Color.cyan print_typ) t.typ
 and print_pattern' fm pat =
   let rec aux fm pat =
     match pat.pat_desc with
-        PAny -> pp_print_string fm "_"
-      | PVar x -> print_id_typ fm x
-      | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
-      | PConst c -> print_term' 1 fm c
-      | PConstruct(c,pats) ->
-          let aux' = function
-              [] -> ()
-            | [pat] -> fprintf fm "(%a)" aux pat
-            | pat::pats ->
-                fprintf fm "(%a" aux pat;
-                List.iter (fun pat -> fprintf fm ",%a" aux pat) pats;
-                pp_print_string fm ")"
-          in
-            pp_print_string fm c;
-            aux' pats
-      | PNil -> fprintf fm "[]"
-      | PCons(p1,p2) -> fprintf fm "%a::%a" aux p1 aux p2
-      | PRecord pats ->
-          let aux' = function
-              [] -> ()
-            | [_,(_,_,pat)] -> fprintf fm "(%a)" aux pat
-            | (_,(_,_,pat))::pats ->
-                fprintf fm "(%a" aux pat;
-                List.iter (fun (_,(_,_,pat)) -> fprintf fm ",%a" aux pat) pats;
-                pp_print_string fm ")"
-          in
-            aux' pats
-      | POr(pat1,pat2) -> fprintf fm "(%a | %a)" aux pat1 aux pat2
-      | PPair(pat1,pat2) -> fprintf fm "(%a, %a)" aux pat1 aux pat2
+      PAny -> pp_print_string fm "_"
+    | PVar x -> print_id_typ fm x
+    | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
+    | PConst c -> print_term' 1 fm c
+    | PConstruct(c,pats) ->
+        let aux' = function
+            [] -> ()
+          | [pat] -> fprintf fm "(%a)" aux pat
+          | pat::pats ->
+              fprintf fm "(%a" aux pat;
+              List.iter (fun pat -> fprintf fm ",%a" aux pat) pats;
+              pp_print_string fm ")"
+        in
+        pp_print_string fm c;
+        aux' pats
+    | PNil -> fprintf fm "[]"
+    | PCons(p1,p2) -> fprintf fm "%a::%a" aux p1 aux p2
+    | PRecord pats ->
+        let aux' = function
+            [] -> ()
+          | [_,(_,_,pat)] -> fprintf fm "(%a)" aux pat
+          | (_,(_,_,pat))::pats ->
+              fprintf fm "(%a" aux pat;
+              List.iter (fun (_,(_,_,pat)) -> fprintf fm ",%a" aux pat) pats;
+              pp_print_string fm ")"
+        in
+        aux' pats
+    | POr(pat1,pat2) -> fprintf fm "(%a | %a)" aux pat1 aux pat2
+    | PPair(pat1,pat2) -> fprintf fm "(%a, %a)" aux pat1 aux pat2
   in
-    fprintf fm "| %a" aux pat
+  fprintf fm "| %a" aux pat
 
 and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term' pri) bd)
 let print_term' fm = print_term' 0 fm
@@ -608,7 +604,6 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 let string_of_constr t =
   match t.desc with
   | Const _ -> "Const"
-  | Unknown -> "Unknown"
   | RandInt _ -> "RandInt"
   | RandValue _ -> "RandValue"
   | Var _ -> "Var"

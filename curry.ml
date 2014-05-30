@@ -33,7 +33,7 @@ let rec uncurry_typ rtyp typ =
   | _ -> rtyp
 
 and get_arg_var = function
-    RT.Base(_,x,_) -> x
+  | RT.Base(_,x,_) -> x
   | _ -> Id.new_var "x" typ_unknown
 
 and uncurry_typ_arg rtyps typ =

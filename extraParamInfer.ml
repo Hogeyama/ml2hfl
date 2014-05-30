@@ -55,7 +55,6 @@ let rec makeTemplate = function
 let rec insertExparam scope expr =
   match expr.desc with
     | Const _
-    | Unknown
     | RandInt _
     | RandValue _ -> expr
     | Var v ->

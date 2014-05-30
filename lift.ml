@@ -40,7 +40,6 @@ let rec lift_aux post xs t =
   let defs,desc =
     match t.desc with
     | Const _
-    | Unknown
     | RandInt _
     | RandValue _
     | Var _ -> [], t.desc
@@ -169,7 +168,6 @@ let rec lift_aux' post xs t =
   let defs,desc =
     match t.desc with
     | Const _
-    | Unknown
     | RandInt _
     | RandValue _
     | Var _ -> [], t.desc

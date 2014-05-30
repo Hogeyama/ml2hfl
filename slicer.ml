@@ -16,7 +16,6 @@ let rec trans f i n t =
   | None ->
     match t.desc with
     | Const _
-    | Unknown
     | RandInt _
     | RandValue _
     | Var _

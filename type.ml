@@ -15,6 +15,8 @@ type 'a t =
   | TPred of ('a t Id.t) * 'a list
 (*| TLabel of 'a t Id.t * 'a t*)
 
+let reserved_constr = ["unknown"]
+
 exception CannotUnify
 
 let typ_unknown = TConstr("???", false)
@@ -270,5 +272,5 @@ let rec order typ =
 
 let arg_var typ =
   match typ with
-    TFun(x,_) -> x
-  | _ -> raise (Invalid_argument "arg_var")
+  | TFun(x,_) -> Some x
+  | _ -> None

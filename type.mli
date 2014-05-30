@@ -13,6 +13,8 @@ type 'a t =
 
 exception CannotUnify
 
+val reserved_constr : string list
+
 val print :
   ?occur:('a t Id.t -> 'a t -> bool) ->
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
@@ -39,4 +41,4 @@ val order : 'a t -> int
 
 val fst_typ : 'a t -> 'a t
 val snd_typ : 'a t -> 'a t
-val arg_var : 'a t -> 'a t Id.t
+val arg_var : 'a t -> 'a t Id.t option
