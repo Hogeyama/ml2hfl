@@ -153,7 +153,7 @@ let rec conv_typ ty =
 
 let conv_prog (typs, fdefs, main) =
   { Fpat.Prog.fdefs = Fpat.Util.List.map conv_fdef fdefs;
-    Fpat.Prog.types = Fpat.Util.List.map (fun (x, ty) -> x, conv_typ ty) typs;
+    Fpat.Prog.types = Fpat.Util.List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
     Fpat.Prog.main = main }
 
 let verify fs (*cexs*) prog =
