@@ -135,12 +135,9 @@ let rec trans_typ = function
       let typ1 = trans_typ (Id.typ x) in
       let typ2 = trans_typ typ in
       TFun(typ1, fun _ -> typ2)
-  | Type.TList _ -> assert false
   | Type.TConstr(s, false) -> TBase(TAbst s, nil_pred)
-  | Type.TConstr _ -> assert false
-  | Type.TPair _ -> assert false
   | Type.TPred(x,ps) -> trans_typ (Id.typ x)
-  | Type.TRef _ -> assert false
+  | typ -> Format.printf "trans_typ: %a@." S.print_typ typ; assert false
 
 
 and trans_binop = function
@@ -251,7 +248,7 @@ and trans_term post xs env t =
   | S.Event _ -> assert false
   | S.Bottom -> [], Const Bottom
   | _ ->
-      Format.printf "%a@." S.pp_print_term t;
+      Format.printf "%a@." S.print_term t;
       assert false
 
 let rec formula_of t =
@@ -284,27 +281,7 @@ let rec formula_of t =
   | S.Not t ->
       let t' = formula_of t in
       App(Const Not, t')
-  | S.Fun _ -> assert false
-  | S.Event _ -> assert false
-  | S.RandValue (_, _) -> assert false
-  | S.Branch (_, _) -> assert false
-  | S.Record _ -> assert false
-  | S.Proj (_, _, _, _) -> assert false
-  | S.SetField (_, _, _, _, _, _) -> assert false
-  | S.Nil -> assert false
-  | S.Cons (_, _) -> assert false
-  | S.Constr (_, _) -> assert false
-  | S.Match (_, _) -> assert false
-  | S.Raise _ -> assert false
-  | S.TryWith (_, _) -> assert false
-  | S.Pair (_, _) -> assert false
-  | S.Fst _ -> assert false
-  | S.Snd _ -> assert false
-  | S.Bottom -> assert false
-  | S.Label (_, _) -> assert false
-  | S.Ref _ -> assert false
-  | S.Deref _ -> assert false
-  | S.SetRef _ -> assert false
+  | _ -> Format.printf "formula_of: %a@." S.print_constr t; assert false
 
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in
@@ -502,9 +479,9 @@ let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
   let ext_env = List.map (fun (x,typ) -> trans_var x, trans_typ typ) (Trans.make_ext_env t) in
-  let () = if debug then Format.printf "BEFORE:@.%a@.@.@." S.pp_print_term t in
+  let () = if debug then Format.printf "BEFORE:@.%a@.@.@." S.print_term t in
   let t = Trans.trans_let t in
-  let () = if debug then Format.printf "AFTER:@.%a@.@.@." S.pp_print_term t in
+  let () = if debug then Format.printf "AFTER:@.%a@.@.@." S.print_term t in
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term t_main in

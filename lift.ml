@@ -188,7 +188,7 @@ let rec lift_aux post xs t =
         let defs,t' = lift_aux post xs t in
         defs, Snd t'
     | Bottom -> [], Bottom
-    | _ -> Format.printf "lift: %a@." pp_print_term t; assert false
+    | _ -> Format.printf "lift: %a@." print_term t; assert false
   in
   defs, {desc=desc; typ=t.typ}
 
@@ -321,7 +321,7 @@ let rec lift_aux' post xs t =
         let defs,t' = lift_aux' post xs t in
         defs, Snd t'
     | Bottom -> [], Bottom
-    | _ -> Format.printf "lift: %a@." pp_print_term t; assert false
+    | _ -> Format.printf "lift: %a@." print_term t; assert false
   in
   defs, {desc=desc; typ=t.typ}
 

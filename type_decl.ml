@@ -114,8 +114,7 @@ let get_ground_types s =
             else
               fatal "Not implemented (Type_decl.get_base_types)"
         | TConstr(s,false) -> elim_and_decomp (add typ acc) typs
-        | TPred _ -> assert false
-        | TRef _ -> assert false
+        | _ -> assert false
   in
   let aux = function
     | TKVariant styps -> List.rev_map_flatten snd styps

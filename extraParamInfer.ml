@@ -14,7 +14,7 @@ let to_string_CoeffInfos f =
   let isZero = function
     | {desc=Const (Int n)} -> n = 0
     | {desc=Var v} -> CEGAR_syntax.isEX_COEFFS v.Id.name
-    | t -> (Format.printf "%a@." pp_print_term t;raise (Invalid_argument ""))
+    | t -> (Format.printf "%a@." print_term t;raise (Invalid_argument ""))
   in
   let areAllZero = List.for_all isZero (List.map f !exCoefficients) in
   try

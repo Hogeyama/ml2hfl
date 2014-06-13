@@ -208,14 +208,10 @@ val string_of_binop : binop -> string
 val string_of_typ : typ -> string
 val string_of_node : node -> string
 val print_pattern : Format.formatter -> typed_pattern -> unit
-val pp_print_typ : Format.formatter -> typ -> unit
-(** Same as [print_typ] *)
-
 val print_const : Format.formatter -> const -> unit
 val print_desc : Format.formatter -> term -> unit
-val pp_print_term : Format.formatter -> typed_term -> unit
-val pp_print_term' : Format.formatter -> typed_term -> unit
-(** Same as [print_term'] *)
-val pp_print_term_typ : Format.formatter -> typed_term -> unit
+val print_term : Format.formatter -> typed_term -> unit
+val print_term' : Format.formatter -> typed_term -> unit
+val print_term_typ : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 val print_constr : Format.formatter -> typed_term -> unit

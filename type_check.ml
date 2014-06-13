@@ -12,10 +12,10 @@ let check_var x typ =
   else (Format.printf "check_var: (%a:%a), %a@." Id.print x Syntax.print_typ (Id.typ x) Syntax.print_typ typ; assert false)
 
 let rec check t typ =
-  if false then Format.printf "CHECK: %a, %a@." pp_print_term t Syntax.print_typ typ;
+  if false then Format.printf "CHECK: %a, %a@." print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check:0 %a, %a@."
-                      (Color.red pp_print_term') t
+                      (Color.red print_term') t
                       (Color.yellow Syntax.print_typ) typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
   | {desc=Const Unit; typ=TUnit} -> ()
@@ -141,6 +141,6 @@ let rec check t typ =
   | {desc=TNone; typ=TOption typ} -> ()
   | {desc=TSome t; typ=TOption typ} ->
       check t typ
-  | _ -> Format.printf "check': %a, %a@." pp_print_term' t (Color.yellow Syntax.print_typ) t.typ; assert false
+  | _ -> Format.printf "check': %a, %a@." print_term' t (Color.yellow Syntax.print_typ) t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ

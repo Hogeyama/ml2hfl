@@ -437,16 +437,18 @@ let col_pat col p =
   let r1 = col.col_typ p.pat_typ in
   let r2 =
     match p.pat_desc with
-        PAny -> col.col_empty
-      | PVar x -> col.col_var x
-      | PAlias(p,x) -> col.col_app (col.col_pat p) (col.col_var x)
-      | PConst t -> col.col_term t
-      | PConstruct(s,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_pat p) col.col_empty ps
-      | PNil -> col.col_empty
-      | PCons(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
-      | PPair(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
-      | PRecord pats -> List.fold_left (fun acc (i,(s,f,p)) -> col.col_app acc @@ col.col_pat p) col.col_empty pats
-      | POr(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
+    | PAny -> col.col_empty
+    | PVar x -> col.col_var x
+    | PAlias(p,x) -> col.col_app (col.col_pat p) (col.col_var x)
+    | PConst t -> col.col_term t
+    | PConstruct(s,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_pat p) col.col_empty ps
+    | PNil -> col.col_empty
+    | PCons(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
+    | PPair(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
+    | PRecord pats -> List.fold_left (fun acc (i,(s,f,p)) -> col.col_app acc @@ col.col_pat p) col.col_empty pats
+    | POr(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
+    | PNone -> col.col_empty
+    | PSome p -> col.col_pat p
   in
   col.col_app r1 r2
 
@@ -753,6 +755,9 @@ let tr_col2_typ tc env = function
   | TRef typ ->
       let acc,typ' = tc.tr_col2_typ env typ in
       acc, TRef typ'
+  | TOption typ ->
+      let acc,typ' = tc.tr_col2_typ env typ in
+      acc, TOption typ'
 
 let tr_col2_var tc env x =
   let acc,typ' = tc.tr_col2_typ env (Id.typ x) in
@@ -796,6 +801,10 @@ let tr_col2_pat tc env p =
         let acc1,p1' = tc.tr_col2_pat env p1 in
         let acc2,p2' = tc.tr_col2_pat env p2 in
         tc.tr_col2_app acc1 acc2, POr(p1', p2')
+    | PNone -> tc.tr_col2_empty, PNone
+    | PSome p ->
+        let acc,p' = tc.tr_col2_pat env p in
+        acc, PSome p'
   in
   tc.tr_col2_app acc1 acc2, {pat_desc=desc; pat_typ=typ}
 
@@ -919,6 +928,10 @@ let tr_col2_desc tc env = function
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
       tc.tr_col2_app acc1 acc2, SetRef(t1',t2')
+  | TNone -> tc.tr_col2_empty, TNone
+  | TSome t ->
+      let acc,t' = tc.tr_col2_term env t in
+      acc, TSome t'
 
 let tr_col2_term tc env t =
   let acc1,desc' = tc.tr_col2_desc env t.desc in
@@ -1704,7 +1717,7 @@ let rec print_term' pri fm t =
 and print_pattern' fm pat =
   let rec aux fm pat =
     match pat.pat_desc with
-      PAny -> pp_print_string fm "_"
+    | PAny -> pp_print_string fm "_"
     | PVar x -> print_id_typ fm x
     | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
     | PConst c -> print_term' 1 fm c
@@ -1733,12 +1746,13 @@ and print_pattern' fm pat =
         aux' pats
     | POr(pat1,pat2) -> fprintf fm "(%a | %a)" aux pat1 aux pat2
     | PPair(pat1,pat2) -> fprintf fm "(%a, %a)" aux pat1 aux pat2
+    | PNone -> fprintf fm "None"
+    | PSome p -> fprintf fm "(Some %a)" print_pattern p
   in
   fprintf fm "| %a" aux pat
 
 and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term' pri) bd)
 let print_term' fm = print_term' 0 fm
-let pp_print_term' = print_term'
 
 
 let string_of_const = make_string_of print_const
@@ -1752,14 +1766,13 @@ let string_of_node = function
   | PatNode n -> "br" ^ string_of_int n
   | EventNode s -> s
 
-let pp_print_typ = print_typ
-let pp_print_term = print_term false
+let print_term_typ = print_term true
+let print_term = print_term false
 let print_desc = print_desc 0 false
-let pp_print_term_typ = print_term true
 
 let print_defs fm (defs:(id * (id list * typed_term)) list) =
   let print_fundef (f, (xs, t)) =
-    fprintf fm "%a %a-> %a.\n" print_id f (print_ids false) xs pp_print_term t
+    fprintf fm "%a %a-> %a.\n" print_id f (print_ids false) xs print_term t
   in
     List.iter print_fundef defs
 
@@ -1796,5 +1809,7 @@ let string_of_constr t =
   | Ref _ -> "Ref"
   | Deref _ -> "Deref"
   | SetRef _ -> "SetRef"
+  | TNone -> "TNone"
+  | TSome _ -> "TSome"
 
 let print_constr fm t = pp_print_string fm @@ string_of_constr t

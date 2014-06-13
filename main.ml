@@ -31,7 +31,7 @@ let print_info () =
   else
     begin
       if !Flag.add_closure_exparam && !Flag.result = "terminating" then
-	Format.printf "exparam inserted program:@. %a@." Syntax.pp_print_term !ExtraParamInfer.origWithExparam;
+	Format.printf "exparam inserted program:@. %a@." Syntax.print_term !ExtraParamInfer.origWithExparam;
       if !Flag.termination && !Flag.result = "terminating" then
         begin
           List.iter
@@ -95,7 +95,7 @@ let main in_channel =
   let parsed = Parser_wrapper.from_use_file orig in
   let () =
     if true && !Flag.debug_level > 0
-    then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Syntax.pp_print_term parsed
+    then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Syntax.print_term parsed
   in
   if !Flag.split_assert
   then
@@ -106,13 +106,13 @@ let main in_channel =
     let open BRA_util in
     (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
     let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-    let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.print_term parsed in
     let parsed = BRA_transform.regularization parsed in
-    let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.print_term parsed in
     let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.print_term parsed in
     let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.pp_print_term parsed in
+    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.print_term parsed in
     let holed_list = BRA_transform.to_holed_programs parsed in
     let result =
       try

@@ -5,7 +5,7 @@ let init () =
 
 let id x = x
 
-let trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.pp_print_term_typ) t =
+let trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.print_term_typ) t =
   let r = f t in
   let t' = proj r in
   if !Flag.debug_level > 0 && t <> t' && opt
@@ -148,7 +148,7 @@ let report_safe env rmap get_rtyp orig t0 =
       let t = Term_util.subst_map map t0 in
       Format.printf "Program with Quantifiers Added:@.";
       Flag.web := true;
-      Format.printf "  @[<v>%a@]@.@." Syntax.pp_print_term t;
+      Format.printf "  @[<v>%a@]@.@." Syntax.print_term t;
       Flag.web := false
     end;
   if env' <> [] && not only_result_termination then Format.printf "Refinement Types:@.";
@@ -186,7 +186,7 @@ let rec run orig parsed =
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
       if true && !Flag.debug_level > 0 then
         Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-                      (List.length !FpatInterface.params) Syntax.pp_print_term t Syntax.pp_print_term' t;
+                      (List.length !FpatInterface.params) Syntax.print_term t Syntax.print_term' t;
       t
       else
         set_target

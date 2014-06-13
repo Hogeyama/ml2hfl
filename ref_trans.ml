@@ -125,21 +125,21 @@ let inst_var_fun x tt bb t =
         let tree = make_tree r bb in
         let tree' = Tree.update path (Tree.Leaf(Some (Id.typ y'), [make_var y'])) tree in
         let pr _ (_,ts) =
-          Format.printf "[%a]" (print_list pp_print_term' "; ") ts
+          Format.printf "[%a]" (print_list print_term' "; ") ts
         in
         if debug then Format.printf "TREE: %a@." (Tree.print pr) tree;
         if debug then Format.printf "TREE': %a@." (Tree.print pr) tree';
-        if debug then Format.printf "r': %a:%a@." Id.print r' pp_print_typ (Id.typ r');
+        if debug then Format.printf "r': %a:%a@." Id.print r' print_typ (Id.typ r');
         let trees = make_trees tree' in
         if debug then Format.printf "|trees|': %d@." (List.length trees);
-        if debug then List.iter (Format.printf "  tree: %a@." (Tree.print pp_print_term)) trees;
+        if debug then List.iter (Format.printf "  tree: %a@." (Tree.print print_term)) trees;
         let argss = List.map Tree.flatten trees in
         let args = List.map (fun args -> [make_tuple args]) argss in
         let apps = List.map (make_app (make_var r')) args in
 (*
         Format.printf "TREE(%a --%a-- %a):%d@." Id.print r (print_list Format.pp_print_int "") path Id.print x @@ List.length apps;
-        List.iter (Format.printf "  %a@." pp_print_term) apps;
-        Format.printf "orig: %a@." pp_print_term t;
+        List.iter (Format.printf "  %a@." print_term) apps;
+        Format.printf "orig: %a@." print_term t;
 *)
         let same_arg_apps = (* negligence *)
           let rec aux i ts acc =
@@ -461,23 +461,23 @@ let () = move_proj.tr_term <- move_proj_term
 
 
 let trans t = t
-  |@debug&> Format.printf "INPUT: %a@." pp_print_term
+  |@debug&> Format.printf "INPUT: %a@." print_term
   |> move_proj.tr_term
-  |@debug&> Format.printf "move_proj: %a@." pp_print_term_typ
+  |@debug&> Format.printf "move_proj: %a@." print_term_typ
   |@> Trans.inline_no_effect
-  |@debug&> Format.printf "inline_no_effect: %a@." pp_print_term_typ
+  |@debug&> Format.printf "inline_no_effect: %a@." print_term_typ
   |> Trans.normalize_let
   |> Trans.inline_simple_exp
-  |@debug&> Format.printf "normalize_let: %a@." pp_print_term_typ
+  |@debug&> Format.printf "normalize_let: %a@." print_term_typ
   |> Trans.flatten_let
   |> Trans.inline_var_const
-  |@debug&> Format.printf "flatten_let: %a@." pp_print_term_typ
+  |@debug&> Format.printf "flatten_let: %a@." print_term_typ
   |> sort_let_pair.tr_term
-  |@debug&> Format.printf "sort_let_pair: %a@." pp_print_term_typ
+  |@debug&> Format.printf "sort_let_pair: %a@." print_term_typ
   |@> flip Type_check.check TUnit
   |> trans.tr2_term (assert_false,[])
   |> Trans.inline_no_effect
-  |@debug&> Format.printf "ref_trans: %a@." pp_print_term
+  |@debug&> Format.printf "ref_trans: %a@." print_term
   |@> flip Type_check.check Type.TUnit
 
 
@@ -603,10 +603,10 @@ let replace_head fs fs' t =
   let ts' = aux fs ts in
   let xs = List.map (fun t -> Id.new_var "x" t.typ) ts' in
   let t' = List.fold_right2 subst_rev ts' xs t in
-  if debug then Format.printf "t':@.%a@.@." pp_print_term t';
+  if debug then Format.printf "t':@.%a@.@." print_term t';
   let ts'' = List.map2 (fun t (f,f') -> subst f (make_var f') t) ts' @@ List.combine fs fs' in
   let t'' = List.fold_right2 subst xs ts'' t' in
-  if debug then Format.printf "t'':@.%a@.@." pp_print_term t'';
+  if debug then Format.printf "t'':@.%a@.@." print_term t'';
   t''
 
 
@@ -640,7 +640,7 @@ let add_fun_tuple rel_funs t = add_fun_tuple.tr2_term (rel_funs,[]) t
 
 let make_fun_tuple t =
   let asserts = col_assert t in
-  if debug then List.iter (Format.printf "ASSERT: %a@." Syntax.pp_print_term) asserts;
+  if debug then List.iter (Format.printf "ASSERT: %a@." Syntax.print_term) asserts;
   let rand_funs = col_rand_funs t in
   if debug then List.iter (Format.printf "RAND: %a@." Id.print) rand_funs;
   let aux assrt =
@@ -663,5 +663,5 @@ let make_fun_tuple t =
   in
   let rel_funs = List.flatten_map aux asserts in
   let t' = add_fun_tuple rel_funs t in
-  if debug then Format.printf "@.@.%a@." pp_print_term t';
+  if debug then Format.printf "@.@.%a@." print_term t';
   t'

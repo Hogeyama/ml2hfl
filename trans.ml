@@ -686,7 +686,7 @@ let normalize_binop_exp op t1 t2 =
           match List.exists aux xns1, List.exists aux xns2 with
             true, true ->
             Format.printf "Nonlinear expression not supported: %a@."
-                          pp_print_term {desc=BinOp(op,t1,t2);typ=TInt};
+                          print_term {desc=BinOp(op,t1,t2);typ=TInt};
             assert false
           | false, true ->
               let k = reduce xns1 in
@@ -845,7 +845,7 @@ let rec merge_geq_leq t =
         BinOp(Or, t1', t2')
     | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
     | Not t -> Not (merge_geq_leq t)
-    | _ -> Format.printf "%a@." pp_print_term t; assert false
+    | _ -> Format.printf "%a@." print_term t; assert false
   in
   {desc=desc; typ=t.typ}
 
@@ -1021,10 +1021,7 @@ let rec inlined_f inlined fs t =
           | _ -> Snd t'
         end
     | Bottom -> Bottom
-    | Label _ -> assert false
-    | Ref _ -> assert false
-    | Deref _ -> assert false
-    | SetRef _ -> assert false
+    | _ -> Format.printf "inlined_f: %a@." print_constr t; assert false
   in
   {desc=desc; typ=t.typ}
 
@@ -1391,7 +1388,7 @@ let assoc_typ f t =
   match assoc_typ.col2_term f t with
   | [] -> raise Not_found
   | [typ] -> typ
-  | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f pp_print_term t; assert false
+  | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f print_term t; assert false
 
 
 
@@ -1950,8 +1947,8 @@ let rec beta_reduce t =
     | Fst t1 -> Fst (beta_reduce t1)
     | Snd t1 -> Snd (beta_reduce t1)
     | Bottom -> Bottom
-    | _ -> Format.printf "%a@." pp_print_term t; assert false
+    | _ -> Format.printf "%a@." print_term t; assert false
   in
   let t' = {desc=desc; typ=t.typ} in
-  if false && t<>t' then Format.printf "%a ===> %a@.@." pp_print_term t pp_print_term t';
+  if false && t<>t' then Format.printf "%a ===> %a@.@." print_term t print_term t';
   t'

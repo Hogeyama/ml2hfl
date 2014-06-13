@@ -450,7 +450,7 @@ let rec add_preds_cont_aux k t =
 let add_preds_cont k t =
   let t' = add_preds_cont_aux k t in
   let ks = List.filter (Id.same k) (get_fv t') in
-  Format.printf "APC: %a, %a ===> %a@." Id.print k pp_print_term t pp_print_term t';
+  Format.printf "APC: %a, %a ===> %a@." Id.print k print_term t print_term t';
   if List.length ks = 0
   then (assert (t.desc = Bottom); k, t')
   else (assert (List.length ks = 1); List.hd ks, t')
@@ -867,7 +867,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
   if debug then
     Format.printf "%a@. ===>@. %a@.@."
                   print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e}
-                  pp_print_term r;
+                  print_term r;
   r
 
 
@@ -969,7 +969,7 @@ let infer_effect t =
   if List.length ext_funs <> List.length (List.unique ~cmp:Id.same ext_funs)
   then
     begin
-      List.iter (fun x -> Format.printf "%a: %a@." Id.print x pp_print_typ (Id.typ x)) ext_funs;
+      List.iter (fun x -> Format.printf "%a: %a@." Id.print x print_typ (Id.typ x)) ext_funs;
       unsupported "polymorphic use of external functions";
     end;
   infer_effect env t
@@ -1006,15 +1006,15 @@ let trans t =
     let h = make_fun e (make_app fail_term_cps [unit_term]) in
     make_app_excep typed.effect t k h
   in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "CPS" pp_print_term_typ t;
+  if debug then Format.printf "%a:@.%a@.@." Color.s_red "CPS" print_term_typ t;
   let t = Trans.propagate_typ_arg t in
   let t = Trans.beta_reduce t in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "beta reduce" pp_print_term t;
+  if debug then Format.printf "%a:@.%a@.@." Color.s_red "beta reduce" print_term t;
   let t = Trans.expand_let_val t in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" pp_print_term t;
+  if debug then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" print_term t;
   Type_check.check t typ_result;
   Flag.form := Flag.CPS :: !Flag.form;
   let t = Trans.elim_unused_let ~cbv:false t in
   let t = Trans.elim_unused_branch t in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" pp_print_term t;
+  if debug then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term t;
   t, get_rtyp_of typed

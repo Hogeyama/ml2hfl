@@ -11,8 +11,7 @@ INCLUDES = \
 	-I $(OCAML_SOURCE)/typing \
 	-I $(OCAML_SOURCE)/utils \
 	-I $(OCAML_SOURCE)/otherlibs/unix \
-	-I $(OCAML_SOURCE)/otherlibs/str \
-	-I $(OCAML_SOURCE)/otherlibs/bigarray
+	-I $(OCAML_SOURCE)/otherlibs/str
 
 OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -thread
 OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -thread

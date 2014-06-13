@@ -42,7 +42,7 @@ let rec get_rtyp_list rtyp typ =
   | RT.ExtArg(x,rtyp1,rtyp2), _ ->
       RT.ExtArg(x, rtyp1, get_rtyp_list rtyp2 typ)
   | _ ->
-      Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp pp_print_typ typ;
+      Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp print_typ typ;
       assert false
 
 let get_rtyp_list_of typed f rtyp =
@@ -89,7 +89,6 @@ let rec get_match_bind_cond t p =
       (abst_list.tr2_var "" x, t)::bind, cond
   | PConst {desc=Const Unit} -> [], true_term
   | PConst t' -> [], make_eq t t'
-  | PConstruct _ -> assert false
   | PNil -> [], make_eq (make_fst t) (make_int 0)
   | PCons _ ->
       let rec decomp = function
@@ -108,16 +107,15 @@ let rec get_match_bind_cond t p =
       let len = List.length ps in
       let bind, cond = get_match_bind_cond (make_tl len t) p' in
       aux bind (make_and (make_leq (make_int len) (make_fst t)) cond) 0 ps
-  | PRecord _ -> assert false
-  | POr _ -> assert false
   | PPair(p1,p2) ->
       let bind1,cond1 = get_match_bind_cond (make_fst t) p1 in
       let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
       bind1@@@bind2, make_and cond1 cond2
+  | _ -> Format.printf "get_match_bind_cond: %a@." print_pattern p; assert false
 
 let print_bind fm bind =
   Format.fprintf fm "@[[";
-  List.iter (fun (x,t) -> Format.fprintf fm "%a := %a;@ " Id.print x pp_print_term t) bind;
+  List.iter (fun (x,t) -> Format.fprintf fm "%a := %a;@ " Id.print x print_term t) bind;
   Format.fprintf fm "]@]"
 
 let abst_list_term post t =
@@ -169,7 +167,7 @@ let abst_list_term post t =
       let aux (p,cond,t2) t3 =
         let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
         let bind,cond' = get_match_bind_cond (make_var x) p in
-        if debug then Format.printf "@[bind:%a,@ %a@." print_bind bind pp_print_term cond;
+        if debug then Format.printf "@[bind:%a,@ %a@." print_bind bind print_term cond;
         let t_cond,bind' =
           if cond = true_term
           then cond, bind
@@ -177,7 +175,7 @@ let abst_list_term post t =
             let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
             cond', bind
         in
-        if debug then Format.printf "@[bind':%a,@ %a@." print_bind bind' pp_print_term t_cond;
+        if debug then Format.printf "@[bind':%a,@ %a@." print_bind bind' print_term t_cond;
         let t2' = abst_list.tr2_term post t2 in
         make_if (make_and cond' t_cond) (add_bind bind' t2') t3
       in
@@ -192,10 +190,10 @@ let trans t =
   Type_check.check t Type.TUnit;
   assert (Term_util.is_id_unique t);
   let t' = abst_list.tr2_term "" t in
-  if debug then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t';
+  if debug then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
   assert (Term_util.is_id_unique t');
   let t' = Trans.inline_var_const t' in
-  if debug then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term_typ t';
+  if debug then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
   assert (Term_util.is_id_unique t');
   typ_excep := abst_list.tr2_typ "" !typ_excep;
   Type_check.check t' Type.TUnit;
@@ -284,38 +282,37 @@ let abst_list_opt_typ typ =
 
 let rec get_match_bind_cond t p =
   match p.pat_desc with
-      PAny -> [], true_term
-    | PVar x -> [abst_list_opt.tr_var x, t], true_term
-    | PAlias(p,x) ->
-        let bind,cond = get_match_bind_cond t p in
-        (abst_list_opt.tr_var x, t)::bind, cond
-    | PConst {desc=Const Unit} -> [], true_term
-    | PConst t' -> [], make_eq t t'
-    | PConstruct _ -> assert false
-    | PNil -> [], make_is_none (make_app t [make_int 0])
-    | PCons _ ->
-        let rec decomp = function
-            {pat_desc=PCons(p1,p2)} ->
-              let ps,p = decomp p2 in
-              p1::ps, p
-          | p -> [], p
-        in
-        let ps,p' = decomp p in
-        let rec aux bind cond i = function
-            [] -> bind, cond
-          | p::ps ->
-              let bind',cond' = get_match_bind_cond (make_get_val (make_app t [make_int i])) p in
-              aux (bind'@@@bind) (make_and cond cond') (i+1) ps
-        in
-        let len = List.length ps in
-        let bind, cond = get_match_bind_cond (make_tl_opt len t) p' in
-        aux bind (make_and (make_is_some (make_app t [make_int (len-1)])) cond) 0 ps
-    | PRecord _ -> assert false
-    | POr _ -> assert false
-    | PPair(p1,p2) ->
-        let bind1,cond1 = get_match_bind_cond (make_fst t) p1 in
-        let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
-        bind1@@@bind2, make_and cond1 cond2
+  | PAny -> [], true_term
+  | PVar x -> [abst_list_opt.tr_var x, t], true_term
+  | PAlias(p,x) ->
+      let bind,cond = get_match_bind_cond t p in
+      (abst_list_opt.tr_var x, t)::bind, cond
+  | PConst {desc=Const Unit} -> [], true_term
+  | PConst t' -> [], make_eq t t'
+  | PConstruct _ -> assert false
+  | PNil -> [], make_is_none (make_app t [make_int 0])
+  | PCons _ ->
+      let rec decomp = function
+          {pat_desc=PCons(p1,p2)} ->
+          let ps,p = decomp p2 in
+          p1::ps, p
+        | p -> [], p
+      in
+      let ps,p' = decomp p in
+      let rec aux bind cond i = function
+          [] -> bind, cond
+        | p::ps ->
+            let bind',cond' = get_match_bind_cond (make_get_val (make_app t [make_int i])) p in
+            aux (bind'@@@bind) (make_and cond cond') (i+1) ps
+      in
+      let len = List.length ps in
+      let bind, cond = get_match_bind_cond (make_tl_opt len t) p' in
+      aux bind (make_and (make_is_some (make_app t [make_int (len-1)])) cond) 0 ps
+  | PPair(p1,p2) ->
+      let bind1,cond1 = get_match_bind_cond (make_fst t) p1 in
+      let bind2,cond2 = get_match_bind_cond (make_snd t) p2 in
+      bind1@@@bind2, make_and cond1 cond2
+  | _ -> Format.printf "get_match_bind_cond: %a@." print_pattern p; assert false
 
 let abst_list_opt_term t =
   let typ' = abst_list_opt.tr_typ t.typ in
@@ -324,7 +321,7 @@ let abst_list_opt_term t =
       let el_typ =
         match typ' with
           TFun(_, TPair(_,typ)) -> typ
-        | _ -> Format.printf "ERROR:@.%a@." Syntax.pp_print_typ typ'; assert false
+        | _ -> Format.printf "ERROR:@.%a@." print_typ typ'; assert false
       in
       make_fun (Id.new_var "x" TInt) (make_none el_typ)
   | Cons(t1,t2) ->
@@ -363,7 +360,7 @@ let trans_opt t =
 (*
   let t' = Trans.subst_let_xy t' in
 *)
-  if false then Format.printf "abst_list::@. @[%a@.@." Syntax.pp_print_term t';
+  if false then Format.printf "abst_list::@. @[%a@.@." print_term t';
   typ_excep := abst_list_opt.tr_typ !typ_excep;
   Type_check.check t' Type.TUnit;
   t', get_rtyp_list_of t
@@ -373,7 +370,7 @@ let trans_opt t =
 let trans t =
   t
   |> inst_list_eq
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" pp_print_term
+  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" print_term
   |@> flip Type_check.check TUnit
   |> Trans.remove_top_por
   |@> flip Type_check.check TUnit

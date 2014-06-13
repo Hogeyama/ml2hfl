@@ -160,7 +160,7 @@ let verify fs (*cexs*) prog =
   let prog = prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main in
   let prog = conv_prog prog in
   Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Fpat.Prog.pr prog;
-  assert false(*Verifier.verify fs prog*);
+  let _ = assert false(*Verifier.verify fs prog*) in
   Format.printf "END verification@,@]"
 
 let rec inv_abst_type aty =
@@ -370,7 +370,7 @@ let insert_extra_param t =
               (try
                   let _, xxss, _ = Fpat.Util.List.find (fun (f', _, recursive) -> recursive && Id.same f' f) rfs in
                   (if debug then
-                     Format.printf "rec: %a@." Syntax.pp_print_term t1');
+                     Format.printf "rec: %a@." Syntax.print_term t1');
                   let xxss = Fpat.Util.List.take (Fpat.Util.List.length ts) xxss in
                   true,
                   Fpat.Util.List.map2
@@ -386,10 +386,10 @@ let insert_extra_param t =
                     ts xxss
                 with Not_found ->
                   (*let _ = Fpat.Util.List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
-                  let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
+                  let _ = if debug then Format.printf "nonrec: %a@." Syntax.print_term t1' in
                   false, [])
            | _ ->
-              let _ = if debug then Format.printf "nonrec: %a@." Syntax.pp_print_term t1' in
+              let _ = if debug then Format.printf "nonrec: %a@." Syntax.print_term t1' in
               false, []
          in
          let ts' = Fpat.Util.List.map (aux rfs bvs exs) ts in
@@ -487,6 +487,8 @@ let insert_extra_param t =
       | Syntax.Ref t -> Syntax.Ref(aux rfs bvs exs t)
       | Syntax.Deref t -> Syntax.Deref(aux rfs bvs exs t)
       | Syntax.SetRef(t1,t2) -> Syntax.SetRef(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | Syntax.TNone -> Syntax.TNone
+      | Syntax.TSome t -> Syntax.TSome(aux rfs bvs exs t)
     in
     {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
   in

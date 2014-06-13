@@ -15,7 +15,7 @@ let rec element_num typ =
 
 let rec uncurry_typ rtyp typ =
   if debug then Format.printf "rtyp:%a@.typ:%a@.@."
-                              RT.print rtyp pp_print_typ typ;
+                              RT.print rtyp print_typ typ;
   match rtyp,typ with
   | RT.Inter rtyps, _ ->
       RT.Inter (List.map (fun rtyp -> uncurry_typ rtyp typ) rtyps)
@@ -38,7 +38,7 @@ and get_arg_var = function
 
 and uncurry_typ_arg rtyps typ =
   if debug then
-    Format.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps pp_print_typ typ;
+    Format.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps print_typ typ;
   match rtyps, elim_tpred typ with
   | _, TPair(x,typ) ->
       let rtyps1,rtyps2 = List.split_nth (element_num @@ Id.typ x) rtyps in
@@ -55,7 +55,7 @@ let uncurry_rtyp t f rtyp =
   let typ = Trans.assoc_typ f t in
   let rtyp' = uncurry_typ rtyp typ in
     if debug then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
-      Id.print f RT.print rtyp pp_print_typ typ RT.print rtyp';
+      Id.print f RT.print rtyp print_typ typ RT.print rtyp';
   if !Flag.print_ref_typ
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
@@ -97,7 +97,7 @@ let rec remove_pair_typ = function
         | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
       Leaf (TPred(Id.set_typ x typ', ps'))
-  | TRef _ -> assert false
+  | typ -> Format.printf "remove_pair_typ: %a@." print_typ typ; assert false
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
@@ -153,8 +153,8 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
         match op, elim_tpred t1.typ with
         | (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TConstr(_,false)) -> ()
         | (Eq | Lt | Gt | Leq | Geq), _ ->
-            Format.printf "%a@." pp_print_typ t1.typ;
-            Format.printf "%a@." pp_print_term' t;
+            Format.printf "%a@." print_typ t1.typ;
+            Format.printf "%a@." print_term' t;
             raise (Fatal "Unsupported (polymorphic comparison)")
         | _ -> ()
       end;
@@ -177,7 +177,7 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
   | Fst t ->
       begin
         match remove_pair_aux t None with
-        | Leaf _ -> Format.printf "%a@." pp_print_term t; assert false
+        | Leaf _ -> Format.printf "%a@." print_term t; assert false
         | Node(t',_) -> t'
       end
   | Snd {desc=Var x} when x = abst_var -> Leaf (make_var x) (* for predicates *)
@@ -188,7 +188,7 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
         | Node(_,t') -> t'
       end
   | _ ->
-      Format.printf "%a@." pp_print_term t;
+      Format.printf "%a@." print_term t;
       assert false
 
 and remove_pair t = root (remove_pair_aux t None)

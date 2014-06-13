@@ -68,8 +68,8 @@ let rec make_app t ts =
           Format.printf "make_app:@ %a@ <=/=>@ %a@.%a@.%a@."
                         print_typ (Id.typ x)
                         print_typ t2.typ
-                        pp_print_term t
-                        pp_print_term t2;
+                        print_term t
+                        print_term t2;
           assert false
         end;
       make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
@@ -79,13 +79,13 @@ let rec make_app t ts =
       then (Color.printf Color.Red "make_app:@ %a@ <=/=>@ %a,@.fun: %a@.arg: %a@."
                          print_typ (Id.typ x)
                          print_typ t2.typ
-                         pp_print_term' t
-                         pp_print_term' t2;
+                         print_term' t
+                         print_term' t2;
             assert false);
       make_app {desc=App(t,[t2]); typ=typ} ts
   | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
   | _ ->
-      Format.printf "Untypable(make_app): %a@." pp_print_term' {desc=App(t,ts);typ=typ_unknown};
+      Format.printf "Untypable(make_app): %a@." print_term' {desc=App(t,ts);typ=typ_unknown};
       assert false
 let make_lets bindings t2 =
   List.fold_right
@@ -156,7 +156,7 @@ let make_if_ t1 t2 t3 =
             | false, true -> t3.typ
             | true, true ->
                 if t2.typ <> t3.typ
-                then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." pp_print_typ t2.typ pp_print_typ t3.typ;
+                then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." print_typ t2.typ print_typ t3.typ;
                 t2.typ
         in
           {desc=If(t1, t2, t3); typ=typ}
@@ -251,7 +251,7 @@ let rec make_term typ =
   | TPair(x,typ) -> make_pair (make_term @@ Id.typ x) (make_term typ)
   | TConstr("X", false) -> cps_result
   | TList typ' -> make_nil typ'
-  | _ -> Format.printf "ERROR:@.%a@." Syntax.pp_print_typ typ; assert false
+  | _ -> Format.printf "ERROR:@.%a@." Syntax.print_typ typ; assert false
 
 
 let none_flag = false_term
@@ -330,55 +330,32 @@ let rec decomp_let t =
   | _ -> [], t
 
 
-let rec get_int t =
+let get_int = make_col [] (@@@)
+
+let get_int_term t =
   match t.desc with
   | Const (Int n) -> [n]
-  | Const _ -> []
-  | Var x -> []
-  | App(t, ts) -> get_int t @@@ List.rev_map_flatten get_int ts
-  | If(t1, t2, t3) -> get_int t1 @@@ get_int t2 @@@ get_int t3
-  | Branch(t1, t2) -> get_int t1 @@@ get_int t2
-  | Let(flag, bindings, t2) -> List.fold_left (fun acc (_,_,t) -> get_int t @@@ acc) (get_int t2) bindings
-  | BinOp(Mult, t1, t2) -> [] (* non-linear expressions not supported *)
-  | BinOp(_, t1, t2) -> get_int t1 @@@ get_int t2
-  | Not t -> get_int t
-  | Fun(_,t) -> get_int t
-  | Event _ -> []
-  | Nil -> []
-  | Cons(t1,t2) -> get_int t1 @@@ get_int t2
-  | RandInt _ -> []
-  | Snd _ -> assert false
-  | Fst _ -> assert false
-  | Pair (_, _) -> assert false
-  | TryWith (_, _) -> assert false
-  | Raise _ -> assert false
-  | Match (_, _) -> assert false
-  | Constr (_, _) -> assert false
-  | SetField (_, _, _, _, _, _) -> assert false
-  | Proj (_, _, _, _) -> assert false
-  | Record _ -> assert false
-  | RandValue (_, _) -> assert false
-  | Bottom -> []
-  | Label _ -> assert false
-  | Ref _ -> assert false
-  | Deref _ -> assert false
-  | SetRef _ -> assert false
+  | _ -> get_int.col_term_rec t
 
-let get_int t = List.unique @@ get_int t
+let get_int_typ typ = []
+
+let () = get_int.col_term <- get_int_term
+let () = get_int.col_typ <- get_int_typ
+let get_int t = List.unique @@ get_int.col_term t
 
 
 
 
 let rec get_args = function
-    TFun(x,typ) -> x :: get_args typ
+  | TFun(x,typ) -> x :: get_args typ
   | _ -> []
 
 let rec get_argvars = function
-    TFun(x,typ) -> x :: get_argvars (Id.typ x) @ get_argvars typ
+  | TFun(x,typ) -> x :: get_argvars (Id.typ x) @ get_argvars typ
   | _ -> []
 
 let rec get_argtyps = function
-    TFun(x,typ) -> Id.typ x :: get_argtyps typ
+  | TFun(x,typ) -> Id.typ x :: get_argtyps typ
   | _ -> []
 
 let arg_num typ = List.length (get_args typ)
@@ -496,79 +473,21 @@ let subst_var x y t = subst x (make_var y) t
 
 
 
-let rec max_pat_num t =
-  match t.desc with
-  | Const _ -> 0
-  | Var _ -> 0
-  | Fun(_, t) -> max_pat_num t
-  | App(t, ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) (max_pat_num t) ts
-  | If(t1, t2, t3) -> max (max (max_pat_num t1) (max_pat_num t2)) (max_pat_num t3)
-  | Branch(t1, t2) -> max (max_pat_num t1) (max_pat_num t2)
-  | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
-  | BinOp(_, t1, t2) -> max (max_pat_num t1) (max_pat_num t2)
-  | Not t -> max_pat_num t
-  | Event _ -> 0
-  | Nil -> 0
-  | Cons(t1,t2) -> max (max_pat_num t1) (max_pat_num t2)
-  | Constr(_,ts) -> List.fold_left (fun acc t -> max acc (max_pat_num t)) 0 ts
-  | Match(t,pats) ->
-      let m = max (List.length pats) (max_pat_num t) in
-      let aux acc = function
-        | (_,cond,t) -> max acc (max (max_pat_num t) (max_pat_num cond))
-      in
-      List.fold_left aux m pats
-  | Snd _ -> assert false
-  | Fst _ -> assert false
-  | Pair (_, _) -> assert false
-  | TryWith (_, _) -> assert false
-  | Raise _ -> assert false
-  | SetField (_, _, _, _, _, _) -> assert false
-  | Proj (_, _, _, _) -> assert false
-  | Record _ -> assert false
-  | RandValue (_, _) -> assert false
-  | RandInt _ -> assert false
-  | Bottom -> assert false
-  | Label _ -> assert false
-  | Ref _ -> assert false
-  | Deref _ -> assert false
-  | SetRef _ -> assert false
+let max_pat_num = make_col 0 max
 
-let rec max_label_num t =
+let max_pat_num_term t =
   match t.desc with
-  | Const _ -> -1
-  | RandInt _ -> -1
-  | Var _ -> -1
-  | Fun(_, t) -> max_label_num t
-  | App(t, ts) ->
-      List.fold_left (fun acc t -> max acc (max_label_num t)) (max_label_num t) ts
-  | If(t1, t2, t3) ->
-      max (max (max_label_num t1) (max_label_num t2)) (max_label_num t3)
-  | Branch(t1, t2) -> max (max_label_num t1) (max_label_num t2)
-  | Let(_, bindings, t2) -> List.fold_left (fun m (_,_,t) -> max m (max_pat_num t)) (max_pat_num t2) bindings
-  | BinOp(_, t1, t2) -> max (max_label_num t1) (max_label_num t2)
-  | Not t -> max_label_num t
-  | Event _ -> -1
-  | Nil -> -1
-  | Cons(t1,t2) -> max (max_label_num t1) (max_label_num t2)
-  | Constr(_,ts) ->
-      List.fold_left (fun acc t -> max acc (max_label_num t)) (-1) ts
   | Match(t,pats) ->
-      let aux acc (_,cond,t) = max acc (max (max_label_num t) (max_label_num cond)) in
-      List.fold_left aux (-1) pats
-  | Snd _ -> assert false
-  | Fst _ -> assert false
-  | Pair (_, _) -> assert false
-  | TryWith (_, _) -> assert false
-  | Raise _ -> assert false
-  | SetField (_, _, _, _, _, _) -> assert false
-  | Proj (_, _, _, _) -> assert false
-  | Record _ -> assert false
-  | RandValue (_, _) -> assert false
-  | Bottom -> assert false
-  | Label _ -> assert false
-  | Ref _ -> assert false
-  | Deref _ -> assert false
-  | SetRef _ -> assert false
+      let m = max (List.length pats) (max_pat_num.col_term t) in
+      let aux acc (_,cond,t) = max acc (max (max_pat_num.col_term t) (max_pat_num.col_term cond)) in
+      List.fold_left aux m pats
+  | _ -> max_pat_num.col_term_rec t
+
+let () = max_pat_num.col_term <- max_pat_num_term
+let max_pat_num = max_pat_num.col_term
+
+
+
 
 
 let is_parameter x = Fpat.Util.String.starts_with (Id.name x) Flag.extpar_header
@@ -613,7 +532,7 @@ let rec merge_typ typ1 typ2 =
   | _ when typ2 = typ_unknown -> typ1
   | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
   | TOption typ1, TOption typ2 -> TOption (merge_typ typ1 typ2)
-  | _ -> Format.printf "typ1:%a, typ2:%a@." pp_print_typ typ1 pp_print_typ typ2; assert false
+  | _ -> Format.printf "typ1:%a, typ2:%a@." print_typ typ1 print_typ typ2; assert false
 
 
 let make_if t1 t2 t3 =
@@ -654,41 +573,31 @@ let rec get_typ_default = function
   | TConstr(s,b) -> assert false
   | TPred _ -> assert false
   | TRef _ -> assert false
+  | TOption typ -> {desc=TNone; typ=typ}
 
 
 
-let rec has_no_effect t =
+
+let has_no_effect = make_col true (&&)
+
+let has_no_effect_term t =
   match t.desc with
-  | Const _ -> true
-  | RandInt _ -> true
-  | RandValue _ -> true
-  | Var _ -> true
-  | Fun _ -> true
   | App _ -> false
-  | If(t1, t2, t3) -> has_no_effect t1 && has_no_effect t2 && has_no_effect t3
   | Branch _ -> false
   | Let(_,bindings,t) ->
-      has_no_effect t && List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect t) bindings
-  | BinOp(op, t1, t2) -> has_no_effect t1 && has_no_effect t2
-  | Not t -> has_no_effect t
-  | Event _ -> true
-  | Record _ -> false
+      has_no_effect.col_term t && List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect.col_term t) bindings
   | Proj _ -> false
   | SetField _ -> false
-  | Nil -> true
-  | Cons(t1, t2) -> has_no_effect t1 && has_no_effect t2
-  | Constr(_, ts) -> List.for_all has_no_effect ts
-  | Match _ -> false
   | Raise _ -> false
-  | TryWith _ -> false
-  | Pair(t1, t2) -> has_no_effect t1 && has_no_effect t2
-  | Fst t -> has_no_effect t
-  | Snd t -> has_no_effect t
   | Bottom -> false
-  | Label _ -> false
-  | Ref _ -> assert false
-  | Deref _ -> assert false
-  | SetRef _ -> assert false
+  | Ref _ -> false
+  | Deref _ -> false
+  | SetRef _ -> false
+  | _ -> has_no_effect.col_term_rec t
+
+let () = has_no_effect.col_term <- has_no_effect_term
+let has_no_effect = has_no_effect.col_term
+
 
 
 let rec is_simple_aexp t =

@@ -17,59 +17,15 @@ let rec fun_info args_rev f t =
             make_label (InfoString (Id.name f)) t'
 let fun_info f v = fun_info [] f v
 
-let rec subst_arg x t t' =
+
+let subst_arg = make_trans2 ()
+let subst_arg_term (x,t) t' =
   match t'.desc with
-  | Const c -> t'
-  | Bottom -> t'
-  | RandInt _ -> t'
-  | Var y -> make_var y
-  | Fun(y, t1) when Id.same x y -> t'
-  | Fun(y, t1) ->
-      let t1' = subst_arg x t t1 in
-      make_fun y t1'
-  | App(t1, ts) ->
-      let t1' = subst_arg x t t1 in
-      let ts' = List.map (subst_arg x t) ts in
-      make_app t1' ts'
-  | If(t1, t2, t3) ->
-      let t1' = subst_arg x t t1 in
-      let t2' = subst_arg x t t2 in
-      let t3' = subst_arg x t t3 in
-      make_if t1' t2' t3'
-  | Branch(t1, t2) ->
-      let t1' = subst_arg x t t1 in
-      let t2' = subst_arg x t t2 in
-      make_branch t1' t2'
-  | Let(flag, bindings, t2) ->
-      let aux (f,xs,t1) = f, xs, subst_arg x t t1 in
-      let bindings' = List.map aux bindings in
-      let t2' = subst_arg x t t2 in
-      make_let_f flag bindings' t2'
-  | BinOp(op, t1, t2) ->
-      let t1' = subst_arg x t t1 in
-      let t2' = subst_arg x t t2 in
-      {desc=BinOp(op, t1', t2'); typ=t'.typ}
-  | Not t1 ->
-      let t1' = subst_arg x t t1 in
-      make_not t1'
-  | Event(s,_) -> t'
-  | Record fields -> {desc=Record (List.map (fun (f,(s,t1)) -> f,(s,subst_arg x t t1)) fields); typ=t'.typ}
-  | Proj(i,s,f,t1) -> {desc=Proj(i,s,f,subst_arg x t t1); typ=t'.typ}
-  | SetField(n,i,s,f,t1,t2) -> {desc=SetField(n,i,s,f,subst_arg x t t1,subst_arg x t t2); typ=t'.typ}
-  | Nil -> t'
-  | Cons(t1,t2) -> {desc=Cons(subst_arg x t t1, subst_arg x t t2); typ=t'.typ}
-  | Constr(s,ts) -> {desc=Constr(s, List.map (subst_arg x t) ts); typ=t'.typ}
-  | Match(t1,pats) ->
-      let aux (pat,cond,t1) = pat, subst_arg x t cond, subst_arg x t t1 in
-      {desc=Match(subst_arg x t t1, List.map aux pats); typ=t'.typ}
-  | Raise t1 -> {desc=Raise(subst_arg x t t1); typ=t'.typ}
-  | TryWith(t1,t2) -> {desc=TryWith(subst_arg x t t1, subst_arg x t t2); typ=t'.typ}
-  | Pair(t1,t2) -> make_pair (subst_arg x t t1) (subst_arg x t t2)
-  | Fst t1 -> make_fst (subst_arg x t t1)
-  | Snd t1 -> make_snd (subst_arg x t t1)
-  | RandValue _ -> assert false
   | Label(InfoId y, t1) when Id.same x y -> make_label (InfoTerm t) t1
-  | Label(info, t1) -> make_label info (subst_arg x t t1)
+  | _ -> subst_arg.tr2_term_rec (x,t) t'
+
+let () = subst_arg.tr2_term <- subst_arg_term
+let subst_arg x t t' = subst_arg.tr2_term (x,t) t'
 
 
 let rec take_args = function
@@ -95,11 +51,11 @@ let rec print_value fm t =
       in
       Format.fprintf fm "[%a]" (print_list print_value ";") (aux t)
   | Pair(t_1,t_2) -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
-  | _ -> pp_print_term fm t
+  | _ -> print_term fm t
 
 
 let rec eval_print fm rands t =
-  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." pp_print_term t
+  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." print_term t
                               (print_list Format.pp_print_int ";") rands;
   match t.desc with
   | Const c -> rands, t
@@ -300,10 +256,7 @@ let rec eval_print fm rands t =
       let r = eval_print fm rands t' in
       Format.fprintf fm "@]";
       r
-  | Label _ -> assert false
-  | Ref _ -> assert false
-  | Deref _ -> assert false
-  | SetRef _ -> assert false
+  | _ -> Format.printf "inlined_f: %a@." print_constr t; assert false
 
 let print fm (ce, t) =
   try

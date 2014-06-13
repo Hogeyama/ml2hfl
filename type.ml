@@ -58,6 +58,7 @@ let rec elim_tpred_all = function
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,_) -> elim_tpred_all @@ Id.typ x
   | TRef typ -> TRef (elim_tpred_all typ)
+  | TOption typ -> TOption (elim_tpred_all typ)
 
 let rec decomp_tfun = function
     TFun(x,typ) ->
@@ -144,6 +145,7 @@ let rec occurs r typ =
   | TConstr(s,b) -> false
   | TPred(x,_) -> occurs r (Id.typ x)
   | TRef typ -> occurs r typ
+  | TOption typ -> occurs r typ
 
 
 let rec unify typ1 typ2 =
@@ -255,6 +257,7 @@ let rec has_pred = function
   | TConstr _ -> false
   | TPred(x,ps) -> has_pred (Id.typ x) || ps <> []
   | TRef typ -> has_pred typ
+  | TOption typ -> has_pred typ
 
 let rec to_id_string = function
   | TUnit -> "unit"
@@ -270,6 +273,7 @@ let rec to_id_string = function
   | TConstr(s,_) -> s
   | TPred(x,_) -> to_id_string (Id.typ x)
   | TRef typ -> to_id_string typ ^ "_ref"
+  | TOption typ -> to_id_string typ ^ "_option"
 
 
 (* order of simpl types *)
@@ -283,11 +287,9 @@ let rec order typ =
   | TVar{contents=None} -> assert false
   | TVar{contents=Some typ} -> order typ
   | TFun(x,typ) -> max (order (Id.typ x) + 1) (order typ)
-  | TList typ -> assert false
   | TPair(x,typ) -> max (order (Id.typ x)) (order typ)
-  | TConstr(s,_) -> assert false
   | TPred(x,_) -> order @@ Id.typ x
-  | TRef typ -> assert false
+  | _ -> assert false
 
 let arg_var typ =
   match typ with

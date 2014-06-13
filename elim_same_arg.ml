@@ -131,7 +131,7 @@ let elim_arg_typ args typ =
       let xs,typ' = decomp_tfun typ in
       let xs' = elim_nth args xs in
       List.fold_right (fun x typ -> TFun(x,typ)) xs' typ'
-  | _ -> (if (args<>[]) then (Format.printf "typ:%a@." pp_print_typ typ; assert false)); typ
+  | _ -> (if (args<>[]) then (Format.printf "typ:%a@." print_typ typ; assert false)); typ
 
 
 
@@ -150,7 +150,7 @@ let trans_desc env desc =
           same_args
         else
           let rec aux same_args =
-            let env' = make_env xs same_args @@@ env in
+            let env' = make_env xs same_args @@@ env in (* unused for speed *)
             let same_args' = get_same_args env f t1 same_args in
             if same_args = same_args'
             then same_args

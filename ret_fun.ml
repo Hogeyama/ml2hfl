@@ -221,16 +221,16 @@ let () = trans.tr2_typ <- trans_typ
 let trans t = t
   |> normalize.tr_term
   |> Trans.inline_var_const
-  |*@> Format.printf "AAA:@.%a@.@." pp_print_term
+  |*@> Format.printf "AAA:@.%a@.@." print_term
   |> Trans.flatten_let
-  |*@> Format.printf "BBB:@.%a@.@." pp_print_term
+  |*@> Format.printf "BBB:@.%a@.@." print_term
   |@> flip Type_check.check TUnit
   |> trans.tr2_term []
-  |*@> Format.printf "CCC:@.%a@.@." pp_print_term_typ
+  |*@> Format.printf "CCC:@.%a@.@." print_term_typ
   |> Trans.remove_label
-  |*@> Format.printf "DDD:@.%a@.@." pp_print_term_typ
+  |*@> Format.printf "DDD:@.%a@.@." print_term_typ
   |*> Trans.inline_no_effect
   |> Trans.inline_var_const
-  |*@> Format.printf "EEE:@.%a@.@." pp_print_term_typ
+  |*@> Format.printf "EEE:@.%a@.@." print_term_typ
   |> pair_eta_reduce
   |*@> flip Type_check.check TUnit

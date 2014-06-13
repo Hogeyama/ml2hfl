@@ -52,7 +52,7 @@ let rec print fm = function
   | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
       Format.fprintf fm "{%d}" n
   | Base(base,x,p) ->
-      Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base S.pp_print_term p
+      Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base S.print_term p
   | Fun(x, typ1, typ2) ->
       if occur x typ2
       then Format.fprintf fm "(@[<hov 4>%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2
@@ -75,14 +75,14 @@ let rec print fm = function
       then
         if p_i = U.true_term
         then Format.fprintf fm "[%a]@ %a" Id.print y print typ2
-        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.pp_print_term p_i print typ2
+        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.print_term p_i print typ2
       else
         if p_i = U.true_term
         then Format.fprintf fm "%a" print typ2
-        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.pp_print_term p_i print typ2;
+        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.print_term p_i print typ2;
       Format.fprintf fm " list";
       if p_len <> U.true_term
-      then Format.fprintf fm "|%a:%a|" Id.print x S.pp_print_term p_len
+      then Format.fprintf fm "|%a:%a|" Id.print x S.print_term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;

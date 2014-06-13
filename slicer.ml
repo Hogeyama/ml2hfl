@@ -110,9 +110,7 @@ let rec trans f i n t =
               | S t' -> S (make_let_f flag defs t')
               | N i'' -> N i''
         end
-    | Ref _ -> assert false
-    | Deref _ -> assert false
-    | SetRef _ -> assert false
+    | _ -> assert false
 
 let trans f n t = trans f 0 n t
 
@@ -144,7 +142,7 @@ let compose tr1 tr2 i t =
   | S t' -> tr1 i t'
 
 let repeat_trial check t =
-  Format.printf "%a@." pp_print_term t;
+  Format.printf "%a@." print_term t;
   let rec aux tr i t =
     match tr i t with
     | S t' when not (same_term t t') && check t' -> Format.printf"SLICED %d@." i;aux tr i t'
@@ -154,5 +152,5 @@ let repeat_trial check t =
   assert (check t);
   let t' = List.fold_left (fun t tr -> aux tr 0 t) t trs in
   assert (check t');
-  Format.printf "%a@." pp_print_term t';
+  Format.printf "%a@." print_term t';
  t'
