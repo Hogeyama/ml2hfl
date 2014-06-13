@@ -110,6 +110,9 @@ let rec trans f i n t =
               | S t' -> S (make_let_f flag defs t')
               | N i'' -> N i''
         end
+    | Ref _ -> assert false
+    | Deref _ -> assert false
+    | SetRef _ -> assert false
 
 let trans f n t = trans f 0 n t
 

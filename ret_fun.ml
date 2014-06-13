@@ -220,7 +220,7 @@ let () = trans.tr2_typ <- trans_typ
 
 let trans t = t
   |> normalize.tr_term
-  |> Trans.inline_let_var
+  |> Trans.inline_var_const
   |*@> Format.printf "AAA:@.%a@.@." pp_print_term
   |> Trans.flatten_let
   |*@> Format.printf "BBB:@.%a@.@." pp_print_term
@@ -230,7 +230,7 @@ let trans t = t
   |> Trans.remove_label
   |*@> Format.printf "DDD:@.%a@.@." pp_print_term_typ
   |*> Trans.inline_no_effect
-  |> Trans.inline_let_var
+  |> Trans.inline_var_const
   |*@> Format.printf "EEE:@.%a@.@." pp_print_term_typ
   |> pair_eta_reduce
   |*@> flip Type_check.check TUnit

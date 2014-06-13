@@ -484,6 +484,9 @@ let insert_extra_param t =
       | Syntax.Snd t -> Syntax.Snd(aux rfs bvs exs t)
       | Syntax.Bottom -> Syntax.Bottom
       | Syntax.Label(info,t) -> Syntax.Label(info, aux rfs bvs exs t)
+      | Syntax.Ref t -> Syntax.Ref(aux rfs bvs exs t)
+      | Syntax.Deref t -> Syntax.Deref(aux rfs bvs exs t)
+      | Syntax.SetRef(t1,t2) -> Syntax.SetRef(aux rfs bvs exs t1, aux rfs bvs exs t2)
     in
     {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
   in

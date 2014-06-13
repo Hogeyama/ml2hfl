@@ -115,15 +115,15 @@ let make_label n t = make_app (Const (Label n)) [t]
 
 
 
-
+module SS = Set.Make(String)
 
 let rec get_fv = function
-    Const _ -> []
-  | Var x -> [x]
-  | App(t1, t2) -> get_fv t1 @@@ get_fv t2
-  | Let(x,t1,t2) -> get_fv t1 @@@ diff (get_fv t2) [x]
-  | Fun(x,_,t) -> diff (get_fv t) [x]
-let get_fv t = List.unique @@ get_fv t
+    Const _ -> SS.empty
+  | Var x -> SS.singleton x
+  | App(t1, t2) -> SS.union (get_fv t1) (get_fv t2)
+  | Let(x,t1,t2) -> SS.union (get_fv t1) (SS.remove x (get_fv t2))
+  | Fun(x,_,t) -> SS.remove x (get_fv t)
+let get_fv t = SS.elements @@ get_fv t
 
 
 let rec get_typ_arity = function

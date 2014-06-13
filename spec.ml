@@ -84,23 +84,37 @@ let merge spec1 spec2 =
    inlined_f = spec1.inlined_f @ spec2.inlined_f}
 
 
+let get_def_vars = make_col2 [] (@@@)
+
+let get_def_vars_term vars t =
+  match t.desc with
+  | Let(flag, defs, t2) ->
+      let xs = List.map fst3 defs in
+      let xs' = List.filter (fun x -> not @@ List.exists (fun y -> Id.name x = Id.name y) vars) xs in
+      let vars1 = List.rev_flatten_map (fun (_,ys,t) -> get_def_vars.col2_term (ys@@@vars) t) defs in
+      let vars2 = get_def_vars.col2_term (xs'@@@vars) t2 in
+      xs'@@@vars1@@@vars2
+  | _ -> get_def_vars.col2_term_rec vars t
+
+let () = get_def_vars.col2_term <- get_def_vars_term
+let get_def_vars = get_def_vars.col2_term []
+
+
 exception My_not_found of id
 
 let rename {abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined=inlined; inlined_f=inlined_f} t =
-  try
-    let funs = get_top_funs t in
-    let rename_id f = (* temporal implementation *)
-      List.find_exc (fun f' -> Id.name f = Id.name f') (My_not_found f) funs
-    in
-    let aux1 (f,typ) = [rename_id f, typ] in
-    let aux2 f = [rename_id f] in
-    let aenv' = List.flatten_map aux1 aenv in
-    let cpsenv' = List.flatten_map aux1 cpsenv in
-    let cegarenv' = List.flatten_map aux1 cegarenv in
-    let inlined' = List.flatten_map aux2 inlined in
-    let inlined_f' = List.flatten_map aux2 inlined_f in
-    {abst_env=aenv'; abst_cps_env=cpsenv'; abst_cegar_env=cegarenv'; inlined=inlined'; inlined_f=inlined_f'}
-  with My_not_found f -> fatal (Format.sprintf "Unbound value %s" @@ Id.to_string f)
+  let vars = get_def_vars t in
+  let rename_id f = (* temporal implementation *)
+    List.find (fun f' -> Id.name f = Id.name f') vars
+  in
+  let aux1 (f,typ) = try [rename_id f, typ] with Not_found -> Format.printf "%a@." Id.print f; [] in
+  let aux2 f = try [rename_id f] with Not_found -> [] in
+  let aenv' = List.flatten_map aux1 aenv in
+  let cpsenv' = List.flatten_map aux1 cpsenv in
+  let cegarenv' = List.flatten_map aux1 cegarenv in
+  let inlined' = List.flatten_map aux2 inlined in
+  let inlined_f' = List.flatten_map aux2 inlined_f in
+  {abst_env=aenv'; abst_cps_env=cpsenv'; abst_cegar_env=cegarenv'; inlined=inlined'; inlined_f=inlined_f'}
 
 
 let read parser lexer =

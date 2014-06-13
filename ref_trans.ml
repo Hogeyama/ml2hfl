@@ -470,7 +470,7 @@ let trans t = t
   |> Trans.inline_simple_exp
   |@debug&> Format.printf "normalize_let: %a@." pp_print_term_typ
   |> Trans.flatten_let
-  |> Trans.inline_let_var
+  |> Trans.inline_var_const
   |@debug&> Format.printf "flatten_let: %a@." pp_print_term_typ
   |> sort_let_pair.tr_term
   |@debug&> Format.printf "sort_let_pair: %a@." pp_print_term_typ

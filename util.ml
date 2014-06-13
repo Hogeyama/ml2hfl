@@ -4,6 +4,8 @@ exception Unsupported of string
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
 
+let (-|) f g x = f (g x)
+let (|-) f g x = g (f x)
 let (|>) x f = f x
 let (@@) f x = f x
 let do_and_return f x = f x; x
@@ -22,6 +24,8 @@ let (&>) f x = f x
 let flip f x y = f y x
 let curry f x y = f (x,y)
 let uncurry f (x,y) = f x y
+let fst3 (x,y,z) = x
+let snd3 (x,y,z) = y
 
 let (@@@) = List.rev_append
 
@@ -48,9 +52,9 @@ module List = struct
       | _ -> tabulate (n-1) f (f n::acc)
   let tabulate n f = tabulate n f []
 
-  let assoc_default k kts x =
+  let assoc_default k tbl x =
     try
-      assoc k kts
+      assoc k tbl
     with Not_found -> x
 
   let count_line s =
@@ -62,11 +66,18 @@ module List = struct
     fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
   let rec decomp_snoc = function
-    | [] -> failwith "dcomp_snoc"
+    | [] -> failwith "decomp_snoc"
     | [x] -> [], x
     | x::xs ->
         let xs',y = decomp_snoc xs in
         x::xs', y
+
+  let rec rev_map2 f acc xs ys =
+    match xs,ys with
+    | [],[] -> acc
+    | x::xs',y::ys' -> rev_map2 f (f x y::acc) xs' ys'
+    | _ -> raise (Invalid_argument "List.rev_map2")
+  let rev_map2 f xs ys = rev_map2 f [] xs ys
 end
 
 module Array = ExtArray.Array

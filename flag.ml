@@ -22,7 +22,7 @@ let check_fun_arg_typ = false
 let check_typ = true
 
 (* method option *)
-let wp_max_num = ref 5
+let wp_max_num = ref 3
 let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
@@ -55,6 +55,8 @@ let insert_param_funarg = ref false
 let split_assert = ref false
 let encode_list_opt = ref false
 let tupling = ref false
+let elim_same_arg = ref false
+let base_to_int = ref false
 
 let mode = ref Reachability
 let init_trans = ref true

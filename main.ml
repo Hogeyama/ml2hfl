@@ -177,7 +177,8 @@ let arg_spec =
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
    "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
    "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
-   "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling), "Toggle tupling";
+   "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling; Flag.elim_same_arg := true), "Toggle tupling";
+   "-base-to-int", Arg.Set Flag.base_to_int, "Replace primitive base types with int";
    (* verifier *)
    "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
    "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
@@ -534,7 +535,8 @@ let () =
       | LongInput -> Format.printf "Input is too long@."
       | TimeOut -> Format.printf "Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
-      | Fatal s ->
+(*      | Fatal s ->
           Format.printf "Fatal error: %s@." s
+ *)
       | Util.Unsupported s ->
           Format.printf "Unsupported: %s@." s

@@ -301,6 +301,9 @@ let rec eval_print fm rands t =
       Format.fprintf fm "@]";
       r
   | Label _ -> assert false
+  | Ref _ -> assert false
+  | Deref _ -> assert false
+  | SetRef _ -> assert false
 
 let print fm (ce, t) =
   try

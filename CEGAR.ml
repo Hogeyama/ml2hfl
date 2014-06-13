@@ -25,11 +25,6 @@ let inlined_functions orig_fun_list force {defs=defs;main=main} =
 
 let rec cegar1 prog0 is_cp ces info =
   pre ();
-  let pr =
-    if !Flag.expand_nonrec
-    then CEGAR_util.print_prog_typ' info.orig_fun_list info.inlined
-    else CEGAR_print.prog_typ
-  in
   let prog =
     if !Flag.relative_complete
     then
@@ -37,10 +32,13 @@ let rec cegar1 prog0 is_cp ces info =
       {env=env; defs=defs; main=main}
     else prog0
   in
-  let () =
-    if !Flag.print_progress
-    then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog
+  let pr =
+    if !Flag.expand_nonrec
+    then CEGAR_util.print_prog_typ' info.orig_fun_list info.inlined
+    else CEGAR_print.prog_typ
   in
+  if !Flag.print_progress
+  then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   let result = ModelCheck.check abst prog in
   match result with

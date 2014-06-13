@@ -14,8 +14,8 @@ let check_var x typ =
 let rec check t typ =
   if false then Format.printf "CHECK: %a, %a@." pp_print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
-  then (Format.printf "check: %a, %a@."
-                      (Color.red print_term') t
+  then (Format.printf "check:0 %a, %a@."
+                      (Color.red pp_print_term') t
                       (Color.yellow Syntax.print_typ) typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
   | {desc=Const Unit; typ=TUnit} -> ()
@@ -29,11 +29,12 @@ let rec check t typ =
       assert (rtyp = typ_result);
       check_var x TUnit;
       check_var k (TFun(Id.new_var "" TInt, typ_result))
-  | {desc=RandValue(typ1,false); typ=typ2} -> assert (typ1 = typ2)
-  | {desc=RandValue(typ1,true); typ=TFun({Id.typ=TFun(x,rtyp1)},rtyp2)} ->
+  | {desc=RandValue(typ1,false); typ=TFun({Id.typ=TUnit},typ2)} -> assert (Type.can_unify typ1 typ2)
+  | {desc=RandValue(typ1,true); typ=TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2))} -> ()
+  (*
       assert (rtyp1 = typ_result);
       assert (rtyp2 = typ_result);
-      assert (typ1 = Id.typ x)
+      assert (typ1 = Id.typ x)*)
   | {desc=Var x; typ=typ'} ->
       check_var x typ'
   | {desc=Fun(x,t); typ=TFun(y,typ')} ->
@@ -100,21 +101,11 @@ let rec check t typ =
       check t1 (Id.typ x);
       check t2 typ
   | {desc=Fst t; typ=typ} ->
-      let typ1 =
-        match elim_tpred t.typ with
-          TPair(x,_) -> Id.typ x
-        | _ -> Color.printf Color.Reverse "%a:@ %a@." pp_print_term t pp_print_typ t.typ; assert false
-      in
-      assert (Type.can_unify typ typ1);
+      assert (Type.can_unify typ @@ fst_typ t.typ);
       check t t.typ
-  | {desc=Snd t; typ=typ} ->
-      let typ2 =
-        match elim_tpred t.typ with
-          TPair(_,typ2) -> typ2
-        | _ -> assert false
-      in
-      assert (Type.can_unify typ typ2);
-      check t t.typ
+  | {desc=Snd t1; typ=typ} ->
+      assert (Type.can_unify typ @@ snd_typ t1.typ);
+      check t1 t1.typ
   | {desc=Record _} -> assert false
   | {desc=Proj _} -> assert false
   | {desc=SetField _} -> assert false
@@ -140,6 +131,16 @@ let rec check t typ =
       check t1 typ;
       check t2 (TFun(e,typ))
   | {desc=Bottom} -> ()
-  | _ -> Format.printf "check': %a, %a@." print_term' t (Color.yellow Syntax.print_typ) t.typ; assert false
+  | {desc=Ref t; typ=TRef typ} ->
+      check t typ
+  | {desc=Deref t; typ=typ} ->
+      check t (TRef typ)
+  | {desc=SetRef(t1,t2); typ=TUnit} ->
+      check t1 (TRef t2.typ);
+      check t2 t2.typ
+  | {desc=TNone; typ=TOption typ} -> ()
+  | {desc=TSome t; typ=TOption typ} ->
+      check t typ
+  | _ -> Format.printf "check': %a, %a@." pp_print_term' t (Color.yellow Syntax.print_typ) t.typ; assert false
 
 let check t typ = if Flag.check_typ then check t typ

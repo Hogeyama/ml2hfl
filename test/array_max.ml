@@ -1,4 +1,4 @@
-let make_array n i = assert (0 <= i && i < n); i
+let make_array n i = i
 
 let rec array_max n i a =
   if i >= n

@@ -25,4 +25,4 @@ let main n =
     let n' = id n in
     let r1,r2 = ff 0 n' in
     let r1',r2' = ff n' n' in
-    assert (r1' = r2')
+    assert (r1' <= r2')

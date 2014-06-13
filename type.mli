@@ -9,11 +9,11 @@ type 'a t =
   | TList of 'a t
   | TPair of 'a t Id.t * 'a t
   | TConstr of string * bool
+  | TRef of 'a t
+  | TOption of 'a t
   | TPred of 'a t Id.t * 'a list
 
 exception CannotUnify
-
-val reserved_constr : string list
 
 val print :
   ?occur:('a t Id.t -> 'a t -> bool) ->
@@ -25,7 +25,6 @@ val is_base_typ : 'a t -> bool
 val can_unify : 'a t -> 'a t -> bool
 val occurs : 'a t option ref -> 'a t -> bool
 val same_shape : 'a t -> 'b t -> bool
-val is_poly_typ : 'a t -> bool
 val has_pred : 'a t -> bool
 
 val typ_unknown : 'a t
@@ -41,4 +40,7 @@ val order : 'a t -> int
 
 val fst_typ : 'a t -> 'a t
 val snd_typ : 'a t -> 'a t
+val ref_typ : 'a t -> 'a t
+val list_typ : 'a t -> 'a t
+val option_typ : 'a t -> 'a t
 val arg_var : 'a t -> 'a t Id.t option

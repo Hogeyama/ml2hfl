@@ -6,7 +6,8 @@ val inst_tvar_tunit : typed_term -> typed_term
 val get_tvars : typ -> typ option ref list
 val rename_poly_funs : id -> typed_term -> (id * id) list * typed_term
 val copy_poly_funs : typed_term -> typed_term
-val inst_randvalue : (typ * id) list -> (id * id list * typed_term) list -> typ -> (typ * id) list * (id * id list * typed_term) list * typed_term
+val define_randvalue : (typ * id) list -> (id * id list * typed_term) list -> typ -> (typ * id) list * (id * id list * typed_term) list * typed_term
+val inst_randval : typed_term -> typed_term
 val get_last_definition : id option -> typed_term -> id option
 val replace_main : typed_term -> typed_term -> typed_term
 val set_target : typed_term -> string * int * typed_term
@@ -38,16 +39,20 @@ val make_ext_funs : typed_term -> typed_term
 val assoc_typ : id -> typed_term -> typ
 val let2fun : typed_term -> typed_term
 val fun2let : typed_term -> typed_term
-val inline_no_effect : typed_term -> typed_term
 val beta_no_effect : typed_term -> typed_term
 val diff_terms : typed_term -> typed_term -> (typed_term * typed_term) list
 val subst_let_xy : typed_term -> typed_term
 val flatten_let : typed_term -> typed_term
 val normalize_let : typed_term -> typed_term
-val inline_let_var : typed_term -> typed_term
 val remove_label : typed_term -> typed_term
 val decomp_pair_eq : typed_term -> typed_term
 val elim_unused_let : ?cbv:bool -> typed_term -> typed_term
 val alpha_rename : typed_term -> typed_term
 val elim_unused_branch : typed_term -> typed_term
+val inline_no_effect : typed_term -> typed_term
+val inline_var_const : typed_term -> typed_term
 val inline_simple_exp : typed_term -> typed_term
+val replace_base_with_int : typed_term -> typed_term
+val abst_ref : typed_term -> typed_term
+val remove_top_por : typed_term -> typed_term
+val short_circuit_eval : typed_term -> typed_term

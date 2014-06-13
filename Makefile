@@ -2,7 +2,7 @@ include Makefile.config
 
 .PHONY: main all byte opt clean doc test
 
-PACKAGES = fpat,str,unix,csisat,extlib
+PACKAGES = fpat,str,unix,csisat,extlib,threads,core
 
 INCLUDES = \
 	-I $(OCAML_SOURCE)/bytecomp \
@@ -14,8 +14,8 @@ INCLUDES = \
 	-I $(OCAML_SOURCE)/otherlibs/str \
 	-I $(OCAML_SOURCE)/otherlibs/bigarray
 
-OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
-OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
+OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -thread
+OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -thread
 
 DEPEND += $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
 
@@ -54,7 +54,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli \
 	feasibility.mli refine.mli syntax.mli term_util.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
 	spec_parser.mli trecs_parser.mli BRA_transform.mli \
-	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli type.mli
+	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli type.mli color.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = $(OCAML_CMO) \

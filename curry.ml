@@ -97,6 +97,7 @@ let rec remove_pair_typ = function
         | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
       Leaf (TPred(Id.set_typ x typ', ps'))
+  | TRef _ -> assert false
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in

@@ -30,11 +30,43 @@ let get_rtyp_lift t f rtyp =
   then Format.printf "LIFT: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
-let filter_base = List.filter (fun x -> is_base_typ (Id.typ x))
+module Id' = struct
+  type t = id
 
-let compare_id x y =
-  let aux x = not (is_base_typ (Id.typ x)), Id.to_string x in
-  compare (aux x) (aux y)
+  let compare x y =
+    let aux x = not (is_base_typ (Id.typ x)), Id.to_string x in
+    compare (aux x) (aux y)
+end
+
+module IdSet = Set.Make(Id')
+
+let set_of_list xs = List.fold_left (flip IdSet.add) IdSet.empty xs
+let (@@@) = IdSet.union
+
+let filter_base = IdSet.filter (fun x -> is_base_typ (Id.typ x))
+
+let get_fv' = make_col2 IdSet.empty IdSet.union
+
+let get_fv'_term vars t =
+  match t.desc with
+  | Var x -> if IdSet.mem x vars then IdSet.empty else IdSet.singleton x
+  | Let(flag, bindings, t2) ->
+      let vars_with_fun = List.fold_left (fun vars (f,_,_) -> IdSet.add f vars) vars bindings in
+      let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
+      let aux fv (_,xs,t) = fv @@@ get_fv'.col2_term (set_of_list xs @@@ vars') t in
+      let fv_t2 = get_fv'.col2_term vars_with_fun t2 in
+      List.fold_left aux fv_t2 bindings
+  | Fun(x,t) -> get_fv'.col2_term (IdSet.add x vars) t
+  | Match(t,pats) ->
+      let aux acc (pat,cond,t) =
+        let vars' = vars @@@ set_of_list @@ get_vars_pat pat in
+        get_fv'.col2_term vars' cond @@@ get_fv'.col2_term vars' t @@@ acc
+      in
+      List.fold_left aux (get_fv'.col2_term vars t) pats
+  | _ -> get_fv'.col2_term_rec vars t
+
+let () = get_fv'.col2_term <- get_fv'_term
+let get_fv' t = get_fv'.col2_term IdSet.empty t
 
 let rec lift_aux post xs t =
   let defs,desc =
@@ -46,14 +78,14 @@ let rec lift_aux post xs t =
     | Fun _ ->
         let f = Id.new_var ("f" ^ post) t.typ in
         let aux f ys t1 t2 =
-          let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-          let fv = if !Flag.lift_fv_only then fv else List.unique ~cmp:Id.same (filter_base xs @@@ fv) in
-          let fv = List.sort ~cmp:compare_id fv in
+          let fv = IdSet.inter (get_fv' t1) xs in
+          let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+          let fv = IdSet.elements fv in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-          let defs1,t1' = lift_aux post ys' t1 in
+          let defs1,t1' = lift_aux post (set_of_list ys') t1 in
           let defs2,t2' = lift_aux post xs (subst f f'' t2) in
           defs1 @ [(f',(ys',t1'))] @ defs2, t2'
         in
@@ -75,14 +107,14 @@ let rec lift_aux post xs t =
         defs1 @ defs2, Branch(t1',t2')
     | Let(Nonrecursive,bindings,t2) ->
         let aux (f,ys,t1) =
-          let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-          let fv = if !Flag.lift_fv_only then fv else List.unique ~cmp:Id.same (filter_base xs @@@ fv) in
-          let fv = List.sort ~cmp:compare_id fv in
+          let fv = IdSet.inter (get_fv' t1) xs in
+          let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+          let fv = IdSet.elements fv in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-          let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' t1 in
+          let defs1,t1' = lift_aux ("_" ^ Id.name f) (set_of_list ys') t1 in
           (f',(ys',t1'))::defs1,  f''
         in
         let defss,fs = List.split (List.map aux bindings) in
@@ -90,10 +122,10 @@ let rec lift_aux post xs t =
         let defs2,t2' = lift_aux post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
     | Let(Recursive,bindings,t2) ->
-        let fv = List.rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
-        let fv = inter ~cmp:Id.compare (List.unique ~cmp:Id.same fv) xs in
-        let fv = if !Flag.lift_fv_only then fv else List.unique ~cmp:Id.same (filter_base xs @@@ fv) in
-        let fv = List.sort ~cmp:compare_id fv in
+        let fv = List.fold_left (fun acc (_,_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
+        let fv = IdSet.inter fv xs in
+        let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+        let fv = IdSet.elements fv in
         let aux (f,_,_) =
           let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in
           f, (f', List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv)
@@ -103,7 +135,7 @@ let rec lift_aux post xs t =
         let aux (f,ys,t1) =
           let ys' = fv @ ys in
           let f' = fst (List.assoc f fs) in
-          let defs1,t1' = lift_aux ("_" ^ Id.name f) ys' (subst_f t1) in
+          let defs1,t1' = lift_aux ("_" ^ Id.name f) (set_of_list ys') (subst_f t1) in
           (f',(ys',t1'))::defs1
         in
         let defs = List.flatten_map aux bindings in
@@ -138,7 +170,7 @@ let rec lift_aux post xs t =
     | Match(t,pats) ->
         let defs,t' = lift_aux post xs t in
         let aux (pat,cond,t) (defs,pats) =
-          let xs' = get_vars_pat pat @@@ xs in
+          let xs' = (set_of_list @@ get_vars_pat pat) @@@ xs in
           let defs',cond' = lift_aux post xs' t in
           let defs'',t' = lift_aux post xs' t in
           defs''@defs'@defs, (pat,cond',t')::pats
@@ -161,7 +193,8 @@ let rec lift_aux post xs t =
   defs, {desc=desc; typ=t.typ}
 
 let lift ?(args=[]) t =
-  lift_aux "" args(*(get_fv2 t)*) t, get_rtyp_lift t
+  lift_aux "" (set_of_list args) t,
+  get_rtyp_lift t
 
 (* for preprocess of termination mode *)
 let rec lift_aux' post xs t =
@@ -174,14 +207,14 @@ let rec lift_aux' post xs t =
     | Fun _ ->
         let f = Id.new_var ("f" ^ post) t.typ in
         let aux f ys t1 t2 =
-          let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-          let fv = if !Flag.lift_fv_only then fv else List.unique ~cmp:Id.same (filter_base xs @@@ fv) in
-          let fv = List.sort ~cmp:compare_id fv in
+          let fv = IdSet.inter (get_fv' t1) xs in
+          let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+          let fv = IdSet.elements fv in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-          let defs1,t1' = lift_aux' post ys' t1 in
+          let defs1,t1' = lift_aux' post (set_of_list ys') t1 in
           let defs2,t2' = lift_aux' post xs (subst f f'' t2) in
           defs1 @ [(f',(ys',t1'))] @ defs2, t2'
         in
@@ -203,18 +236,18 @@ let rec lift_aux' post xs t =
         defs1 @ defs2, Branch(t1',t2')
     | Let(Nonrecursive,[x, [], t1],t2) ->
         let defs1, t1' = lift_aux' post xs t1 in
-	let defs2, t2' = lift_aux' post (x::xs) t2 in
+	let defs2, t2' = lift_aux' post (IdSet.add x xs) t2 in
         defs1 @ defs2, Let(Nonrecursive,[x, [], t1'],t2')
     | Let(Nonrecursive,bindings,t2) ->
         let aux (f,ys,t1) =
-          let fv = inter ~cmp:Id.compare (get_fv t1) xs in
-          let fv = if !Flag.lift_fv_only then fv else List.unique ~cmp:Id.same (filter_base xs @@@ fv) in
-          let fv = List.sort ~cmp:compare_id fv in
+          let fv = IdSet.inter (get_fv' t1) xs in
+          let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+          let fv = IdSet.elements fv in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
-          let defs1,t1' = lift_aux' ("_" ^ Id.name f) ys' t1 in
+          let defs1,t1' = lift_aux' ("_" ^ Id.name f) (set_of_list ys') t1 in
           (f',(ys',t1'))::defs1,  f''
         in
         let defss,fs = List.split (List.map aux bindings) in
@@ -222,10 +255,10 @@ let rec lift_aux' post xs t =
         let defs2,t2' = lift_aux' post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
     | Let(Recursive,bindings,t2) ->
-        let fv = List.rev_map_flatten (fun (_,_,t) -> get_fv t) bindings in
-        let fv = inter ~cmp:Id.compare (List.unique ~cmp:Id.same fv) xs in
-        let fv = if !Flag.lift_fv_only then fv else List.unique ~cmp:Id.same (filter_base xs @@@ fv) in
-        let fv = List.sort ~cmp:compare_id fv in
+        let fv = List.fold_left (fun acc (_,_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
+        let fv = IdSet.inter fv xs in
+        let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+        let fv = IdSet.elements fv in
         let aux (f,_,_) =
           let f' = Id.set_typ f @@ List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
           f, (f', List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv)
@@ -235,7 +268,7 @@ let rec lift_aux' post xs t =
         let aux (f,ys,t1) =
           let ys' = fv @ ys in
           let f' = fst (List.assoc f fs) in
-          let defs1,t1' = lift_aux' ("_" ^ Id.name f) ys' (subst_f t1) in
+          let defs1,t1' = lift_aux' ("_" ^ Id.name f) (set_of_list ys') (subst_f t1) in
           (f',(ys',t1'))::defs1
         in
         let defs = List.flatten_map aux bindings in
@@ -270,7 +303,7 @@ let rec lift_aux' post xs t =
     | Match(t,pats) ->
         let defs,t' = lift_aux' post xs t in
         let aux (pat,cond,t) (defs,pats) =
-          let xs' = get_vars_pat pat @@@ xs in
+          let xs' = (set_of_list @@ get_vars_pat pat) @@@ xs in
           let defs',cond' = lift_aux' post xs' t in
           let defs'',t' = lift_aux' post xs' t in
           defs''@defs'@defs, (pat,cond',t')::pats
@@ -292,4 +325,5 @@ let rec lift_aux' post xs t =
   in
   defs, {desc=desc; typ=t.typ}
 
-let lift' ?(args=[]) t = lift_aux' "" args t, get_rtyp_lift t
+let lift' ?(args=[]) t =
+  lift_aux' "" (set_of_list args) t, get_rtyp_lift t

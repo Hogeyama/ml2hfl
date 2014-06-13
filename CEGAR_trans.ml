@@ -48,7 +48,10 @@ let rec merge_typ env typ typ' =
   | TAbs _, _
   | TApp _, _ -> Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ'; assert false
 
-let merge_typ = merge_typ []
+let merge_typ typ1 typ2 =
+  try
+    merge_typ [] typ1 typ2
+  with _ -> (Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false)
 
 
 let nil_pred _ = []
@@ -137,6 +140,7 @@ let rec trans_typ = function
   | Type.TConstr _ -> assert false
   | Type.TPair _ -> assert false
   | Type.TPred(x,ps) -> trans_typ (Id.typ x)
+  | Type.TRef _ -> assert false
 
 
 and trans_binop = function
@@ -173,6 +177,11 @@ and trans_term post xs env t =
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
   | S.App({S.desc=S.RandInt true}, [t1;t2]) ->
+      assert (t1 = U.unit_term);
+      let defs1,t1' = trans_term post xs env t1 in
+      let defs2,t2' = trans_term post xs env t2 in
+      defs1@defs2, App(Const RandInt, t2')
+  | S.App({S.desc=S.RandValue(Type.TInt, true)}, [t1;t2]) ->
       assert (t1 = U.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
@@ -293,6 +302,9 @@ let rec formula_of t =
   | S.Snd _ -> assert false
   | S.Bottom -> assert false
   | S.Label (_, _) -> assert false
+  | S.Ref _ -> assert false
+  | S.Deref _ -> assert false
+  | S.SetRef _ -> assert false
 
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in

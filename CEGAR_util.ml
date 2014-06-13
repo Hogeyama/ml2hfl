@@ -429,40 +429,40 @@ let assoc_fun_def defs f =
   let make_fun xs t =
     let xs' = List.map rename_id xs in
     let map = List.map2 (fun x x' -> x, Var x') xs xs' in
-      List.fold_right (fun x t -> Fun(x,None,t)) xs' (subst_map map t)
+    List.fold_right (fun x t -> Fun(x,None,t)) xs' (subst_map map t)
   in
   let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
-    match defs' with
-        [_,xs,Const True,_,t] -> make_fun xs t
-      | [_] -> raise (Fatal "Not implemented: CEGAR_abst_CPS.assoc_fun_def")
-      | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when make_not t11 = t21 ->
-          assert (xs1 = xs2);
-          make_fun xs1 (make_if t11 t12 t22)
-      | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
-          assert (xs1 = xs2);
-          make_fun xs1 (make_if t21 t22 t12)
-      | _ -> assert false
+  match defs' with
+  | [_,xs,Const True,_,t] -> make_fun xs t
+  | [_] -> raise (Fatal "Not implemented: CEGAR_abst_CPS.assoc_fun_def")
+  | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when make_not t11 = t21 ->
+      assert (xs1 = xs2);
+      make_fun xs1 (make_if t11 t12 t22)
+  | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
+      assert (xs1 = xs2);
+      make_fun xs1 (make_if t21 t22 t12)
+  | _ -> Format.printf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
 
 let get_nonrec defs main orig_fun_list force =
   let check (f,xs,t1,e,t2) =
     let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
     let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@@ get_fv t2)) defs in
-      List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
-        f <> main &&
-        (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
-         (1 >= List.length (List.unique (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
-         2 >= List.length defs')
+    List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
+      f <> main &&
+      (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
+       (1 >= List.length (List.unique (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
+       2 >= List.length defs')
   in
   let defs' = List.filter check defs in
-  let nonrec = List.map (fun (f,xs,_,_,t) -> f, assoc_fun_def defs f) defs' in
-    if !Flag.expand_nonrec_init
-    then nonrec
-    else
-      let orig_fun_list' = diff orig_fun_list force in
-        List.filter (fun (f,_) -> not (List.mem f orig_fun_list')) nonrec
+  let nonrec = List.rev_map (fun (f,xs,_,_,t) -> f, assoc_fun_def defs f) defs' in
+  if !Flag.expand_nonrec_init
+  then nonrec
+  else
+    let orig_fun_list' = diff orig_fun_list force in
+    List.filter (fun (f,_) -> not @@ List.mem f orig_fun_list') nonrec
 
 
 let print_prog_typ' orig_fun_list force fm {env=env;defs=defs;main=main} =
   let nonrec = get_nonrec defs main orig_fun_list force in
-  let env' = List.filter (fun (f,_) -> not (List.mem_assoc f nonrec)) env in
-    CEGAR_print.prog_typ fm {env=env';defs=defs;main=main}
+  let env' = List.filter (fun (f,_) -> not @@ List.mem_assoc f nonrec) env in
+  CEGAR_print.prog_typ fm {env=env';defs=defs;main=main}

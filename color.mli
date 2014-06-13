@@ -1,6 +1,6 @@
 
 type color =
-    Default
+  | Default
   | Bright
   | Dim
   | Underscore
