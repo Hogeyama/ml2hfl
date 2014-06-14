@@ -14,7 +14,7 @@ let check_var x typ =
 let rec check t typ =
   if false then Format.printf "CHECK: %a, %a@." print_term t Syntax.print_typ typ;
   if not (Type.can_unify t.typ typ)
-  then (Format.printf "check:0 %a, %a@."
+  then (Format.printf "check: %a, %a@."
                       (Color.red print_term') t
                       (Color.yellow Syntax.print_typ) typ; assert false);
   match {desc=t.desc; typ=elim_tpred t.typ} with
