@@ -14,10 +14,7 @@ type declaration =
   | Decl_exc of string * typ list
 
 
-(*
-let () = Compile.init_path ()
-*)
-let () = Config.load_path := Flag.ocaml_lib
+let () = Compmisc.init_path false
 let initial_env = Compmisc.initial_env ()
 
 
