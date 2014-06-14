@@ -1,5 +1,4 @@
 
-let ocaml_lib = [Environment.build_dir ^ "/stdlib"]
 let trecs = ref Environment.trecs
 let cvc3 = ref Environment.cvc3
 

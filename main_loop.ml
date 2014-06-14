@@ -23,45 +23,25 @@ let preprocess t spec =
       let t = t |& !Flag.tupling &> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" id in
       let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
-      assert (Term_util.is_id_unique t);
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" id t in
-      assert (Term_util.is_id_unique t);
       let fun_list = Term_util.get_top_funs t in
-      assert (Term_util.is_id_unique t);
       let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
-      assert (Term_util.is_id_unique t);
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~opt:(spec.Spec.abst_env<>[]) t in
-      assert (Term_util.is_id_unique t);
       let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
-      assert (Term_util.is_id_unique t);
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
-      assert (Term_util.is_id_unique t);
       let get_rtyp = get_rtyp_list in
-      assert (Term_util.is_id_unique t);
       let t = t |& !Flag.tupling &> trans_and_print Ret_fun.trans "ret_fun" id in
-      assert (Term_util.is_id_unique t);
       let t = t |& !Flag.tupling &> trans_and_print Ref_trans.trans "ref_trans" id in
-      assert (Term_util.is_id_unique t);
       let t = t |& !Flag.tupling &> trans_and_print Tupling.trans "tupling" id in
-      assert (Term_util.is_id_unique t);
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
-      assert (Term_util.is_id_unique t);
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
-      assert (Term_util.is_id_unique t);
       let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_cps_trans in
-      assert (Term_util.is_id_unique t);
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
-      assert (Term_util.is_id_unique t);
       let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
-      assert (Term_util.is_id_unique t);
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec.Spec.abst_cps_env<>[]) t in
-      assert (Term_util.is_id_unique t);
       let t = t |& !Flag.elim_same_arg &> trans_and_print Elim_same_arg.trans "eliminate same arguments" id in
-      assert (Term_util.is_id_unique t);
       let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_remove_pair in
-      assert (Term_util.is_id_unique t);
       let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
-      assert (Term_util.is_id_unique t);
 
       (* preprocess for termination mode *)
       let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in

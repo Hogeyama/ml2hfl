@@ -2,9 +2,6 @@ AC_INIT(MoCHi,0.1)
 
 AC_PROG_CC
 
-BUILD_DIR=$PWD
-AC_SUBST(BUILD_DIR)
-
 AC_PROG_OCAML
 if test "$OCAMLC" = "no"; then
   AC_MSG_ERROR([OCaml compiler not found])
