@@ -412,10 +412,10 @@ let () = print_option_and_exit := fun () ->
 let string_of_exception = function
     e when FpatInterface.is_fpat_exception e -> FpatInterface.string_of_error e
   | Syntaxerr.Error err -> "Syntaxerr.Error"
-  | Typecore.Error(loc,err) -> "Typecore.Error"
-  | Typemod.Error(loc,err) -> "Typemod.Error"
+  | Typecore.Error(loc,env,err) -> "Typecore.Error"
+  | Typemod.Error(loc,env,err) -> "Typemod.Error"
   | Env.Error e -> "Env.Error"
-  | Typetexp.Error(loc,err) -> "Typetexp.Error"
+  | Typetexp.Error(loc,env,err) -> "Typetexp.Error"
   | Lexer.Error(err, loc) -> "Lexer.Error"
   | LongInput -> "LongInput"
   | TimeOut -> "TimeOut"
@@ -523,13 +523,13 @@ let () =
           Format.printf "FPAT: %a@." FpatInterface.report_error e
       | Syntaxerr.Error err ->
           Format.printf "%a@." Syntaxerr.report_error err
-      | Typecore.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typecore.report_error err
-      | Typemod.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typemod.report_error err
+      | Typecore.Error(loc,env,err) ->
+          Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
+      | Typemod.Error(loc,env,err) ->
+          Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
       | Env.Error e -> Format.printf "%a@." Env.report_error e
-      | Typetexp.Error(loc,err) ->
-          Format.printf "%a%a@." Location.print_error loc Typetexp.report_error err
+      | Typetexp.Error(loc,env,err) ->
+          Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
       | Lexer.Error(err, loc) ->
           Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
       | LongInput -> Format.printf "Input is too long@."

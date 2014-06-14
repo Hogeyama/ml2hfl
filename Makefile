@@ -2,21 +2,12 @@ include Makefile.config
 
 .PHONY: main all byte opt clean doc test
 
-PACKAGES = fpat,str,unix,csisat,extlib,threads,core
+PACKAGES = fpat,str,unix,csisat,extlib
 
-INCLUDES = \
-	-I $(OCAML_SOURCE)/bytecomp \
-	-I $(OCAML_SOURCE)/driver \
-	-I $(OCAML_SOURCE)/parsing \
-	-I $(OCAML_SOURCE)/typing \
-	-I $(OCAML_SOURCE)/utils \
-	-I $(OCAML_SOURCE)/otherlibs/unix \
-	-I $(OCAML_SOURCE)/otherlibs/str
+INCLUDES = -I +compiler-libs
 
-OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -thread
-OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES) -thread
-
-DEPEND += $(OCAML_SOURCE)/utils/config.ml $(OCAML_SOURCE)/parsing/lexer.ml $(OCAML_SOURCE)/parsing/linenum.ml
+OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
+OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
 
 DOC = doc
 
@@ -56,7 +47,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli \
 	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli type.mli color.mli
 CMI = $(MLI:.mli=.cmi)
 
-CMO = $(OCAML_CMO) \
+CMO = \
 	environment.cmo flag.cmo util.cmo color.cmo tree.cmo id.cmo type.cmo \
 	syntax.cmo term_util.cmo spec.cmo spec_parser.cmo spec_lexer.cmo \
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo \
@@ -74,27 +65,10 @@ CMO = $(OCAML_CMO) \
 	extraClsDepth.cmo extraParamInfer.cmo \
 	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo main.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA =
+CMA = ocamlcommon.cma
 CMXA = $(CMA:.cma=.cmxa)
 
 
-OCAML_UTILS_CMO = misc.cmo warnings.cmo config.cmo clflags.cmo tbl.cmo consistbl.cmo ccomp.cmo
-OCAML_PARSING_CMO = linenum.cmo location.cmo longident.cmo printast.cmo \
-	syntaxerr.cmo parser.cmo lexer.cmo parse.cmo
-OCAML_TYPING_CMO = ident.cmo path.cmo primitive.cmo types.cmo btype.cmo subst.cmo predef.cmo \
-	datarepr.cmo env.cmo ctype.cmo oprint.cmo \
-	printtyp.cmo typetexp.cmo typedtree.cmo includecore.cmo stypes.cmo parmatch.cmo typecore.cmo \
-	includeclass.cmo typedecl.cmo typeclass.cmo mtype.cmo includemod.cmo typemod.cmo \
-	unused_var.cmo
-OCAML_BYTECOMP_CMO = lambda.cmo printlambda.cmo typeopt.cmo switch.cmo \
-	matching.cmo translobj.cmo translcore.cmo translclass.cmo translmod.cmo \
-	opcodes.cmo instruct.cmo emitcode.cmo printinstr.cmo bytegen.cmo simplif.cmo
-OCAML_DRIVER_CMO = pparse.cmo compile.cmo
-OCAML_CMO = $(addprefix $(OCAML_SOURCE)/utils/,$(OCAML_UTILS_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/parsing/,$(OCAML_PARSING_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/typing/,$(OCAML_TYPING_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/bytecomp/,$(OCAML_BYTECOMP_CMO)) \
-	$(addprefix $(OCAML_SOURCE)/driver/,$(OCAML_DRIVER_CMO))
 
 
 $(NAME).byte: $(CMO)
@@ -138,29 +112,6 @@ $(addsuffix .cmx,$(DEP_FPAT)): $(FPAT)/fpat.cmi
 
 
 ################################################################################
-# libraries
-
-$(OCAML_SOURCE)/config/Makefile:
-	cd $(OCAML_SOURCE) && ./configure
-	cd $(OCAML_SOURCE) && make coldstart
-	mkdir -p stdlib
-	cp $(OCAML_SOURCE)/stdlib/*.cmi stdlib
-	cd $(OCAML_SOURCE) && make clean
-$(OCAML_SOURCE)/utils/config.ml: $(OCAML_SOURCE)/config/Makefile
-	cd $(OCAML_SOURCE) && make utils/config.ml
-$(OCAML_SOURCE)/parsing/lexer.ml:
-	cd $(OCAML_SOURCE) && $(OCAMLLEX) parsing/lexer.mll
-$(OCAML_SOURCE)/parsing/linenum.ml:
-	cd $(OCAML_SOURCE) && $(OCAMLLEX) parsing/linenum.mll
-$(OCAML_SOURCE)/parsing/parser.mli $(OCAML_SOURCE)/parsing/parser.ml:
-	cd $(OCAML_SOURCE) && $(OCAMLYACC) -v parsing/parser.mly
-$(OCAML_SOURCE)/bytecomp/opcodes.ml:
-	cd $(OCAML_SOURCE) && \
-	sed -n -e '/^enum/p' -e 's/,//g' -e '/^  /p' byterun/instruct.h | \
-	awk -f tools/make-opcodes > bytecomp/opcodes.ml
-
-
-################################################################################
 # distribution
 
 ifdef GIT
@@ -191,11 +142,6 @@ clean:
 clean-test:
 	rm */*.trecs_out */*.hors */*.annot
 
-clean-all: clean
-	cd $(OCAML_SOURCE) && make clean
-	rm -f $(OCAML_SOURCE)/config/Makefile
-	rm -rf stdlib
-
 
 ################################################################################
 # test
@@ -225,10 +171,9 @@ test-error: opt
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-SRC_MOCHI = $(filter-out $(OCAML_SOURCE)%, $(SRC))
 
-depend: $(SRC_MOCHI) $(DEPEND) Makefile
-	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC_MOCHI) > depend
+depend: Makefile
+	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) > depend
 
 -include depend
 -include ocaml.depend

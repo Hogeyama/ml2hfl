@@ -23,7 +23,7 @@ and process_pattern env p =
       Ppat_any -> []
     | Ppat_var s ->
 	(try
-           make p.ppat_loc (List.assoc s env)
+           make p.ppat_loc (List.assoc s.txt env)
 	 with Not_found ->
 	   [])
     | Ppat_alias _ -> []
@@ -44,7 +44,7 @@ and process_expression env e =
   match e.pexp_desc with
       Pexp_ident(x) ->
 	(try
-           make e.pexp_loc (List.assoc (Longident.last x) env)
+            make e.pexp_loc (List.assoc (Longident.last x.txt) env)
 	 with Not_found ->
 	   [])
     | Pexp_constant _ ->
@@ -123,7 +123,7 @@ and process_expression env e =
 	process_expression env e
     | Pexp_pack(_) ->
 	raise (Fpat.Util.NotImplemented "writeAnnot")
-    | Pexp_open(_, e) ->
+    | Pexp_open(_, _, e) ->
 	process_expression env e
 
 let process_top_level_phrase env = function
