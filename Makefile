@@ -2,9 +2,9 @@ include Makefile.config
 
 .PHONY: main all byte opt clean doc test
 
-PACKAGES = fpat,str,unix,csisat,extlib
+PACKAGES = fpat,str,unix,csisat,extlib,compiler-libs
 
-INCLUDES = -I +compiler-libs
+INCLUDES =
 
 OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
 OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
@@ -63,7 +63,7 @@ CMO = \
 	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo \
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo \
 	extraClsDepth.cmo extraParamInfer.cmo \
-	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo main.cmo
+	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo mochi.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA = ocamlcommon.cma
 CMXA = $(CMA:.cma=.cmxa)

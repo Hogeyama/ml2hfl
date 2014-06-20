@@ -37,6 +37,7 @@ and process_pattern env p =
     | Ppat_constraint _ -> []
     | Ppat_type _ -> []
     | Ppat_lazy _ -> []
+    | Ppat_unpack _ -> []
 and process_expopt env = function
     None -> []
   | Some(e) -> process_expression env e
