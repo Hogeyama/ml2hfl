@@ -59,7 +59,7 @@ let weakest_aux env cond ds p =
         (fun pbs ->
          let pbs = f pbs in
          let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs in
-         if inter fvp fvs = [] && inter (List.rev_map_flatten get_fv cond) fvs = [] then
+         if List.inter fvp fvs = [] && List.inter (List.rev_map_flatten get_fv cond) fvs = [] then
            false
          else
            check env cond pbs p)
@@ -70,7 +70,7 @@ let weakest_aux env cond ds p =
         (fun pbs ->
          let pbs' = f pbs in
          let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs' in
-         if inter fvp fvs = [] && inter (List.rev_map_flatten get_fv cond) fvs = [] then
+         if List.inter fvp fvs = [] && List.inter (List.rev_map_flatten get_fv cond) fvs = [] then
            false
          else
            check env cond pbs' (make_not p))
@@ -100,20 +100,20 @@ let weakest_aux env cond ds p =
     in
     let ws =
       if false then
-        diff ws ys
+        List.diff ws ys
       else
-        List.filter (fun w -> not (List.exists (fun x -> diff w x = []) ys)) ws
+        List.filter (fun w -> not (List.exists (fun x -> List.diff w x = []) ys)) ws
     in
     let ws =
       List.filter
-        (fun w -> not (List.exists (fun x -> diff x w = []) xs) &&
-                  not (List.exists (fun x -> diff x w = []) nxs)) ws in
+        (fun w -> not (List.exists (fun x -> List.diff x w = []) xs) &&
+                  not (List.exists (fun x -> List.diff x w = []) nxs)) ws in
     let ws =
       let rec aux xs =
         match xs with
         | [] -> []
         | x::xs' ->
-            if List.exists (fun y -> diff y x = []) xs' then aux xs' else x::(aux xs')
+            if List.exists (fun y -> List.diff y x = []) xs' then aux xs' else x::(aux xs')
       in
       aux ws
     in
@@ -137,7 +137,7 @@ let weakest env cond ds p =
       let rec fixp xs =
         let aux p =
           let fv = get_fv p in
-          if inter fv xs = []
+          if List.inter fv xs = []
           then []
           else fv
         in
@@ -147,7 +147,7 @@ let weakest env cond ds p =
         else fixp xs'
       in
       let fv = fixp fvp in
-      List.filter (fun (p, _) -> subset (get_fv p) fv) ds
+      List.filter (fun (p, _) -> List.subset (get_fv p) fv) ds
     in
     let pbss,npbss = weakest_aux env cond ds p in
     let pbss = List.filter (fun pbs -> not @@ check env cond pbs (Const False)) pbss in

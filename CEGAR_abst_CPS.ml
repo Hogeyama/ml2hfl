@@ -345,7 +345,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   let t2'' = eta_reduce_term t2' in
   if e <> [] && t1 <> Const True then
     let g = rename_id f in
-    let fv = diff (get_fv t2'') (List.map fst env) in
+    let fv = List.diff (get_fv t2'') (List.map fst env) in
     [g, fv, Const True, e, t2'';
      f, xs', Const True, [], assume env' [] pts t1 (make_app (Var g) (List.map (fun x -> Var x) fv))]
   else

@@ -270,9 +270,9 @@ let same_arg_map xs1 xs2 =
   in
   let find x xs = find 0 x xs in
   let make_map xs1 xs2 = List.map (fun x -> find x xs1) xs2 in
-  if subset xs1 xs2 then
+  if List.subset xs1 xs2 then
     Some (`Subset (make_map xs1 xs2))
-  else if subset xs2 xs1 then
+  else if List.subset xs2 xs1 then
     Some (`Supset (make_map xs2 xs1))
   else
     None
@@ -692,11 +692,11 @@ let replace_app_term env t =
             else
               compare i j
           in
-          let must = diff ~cmp apps1 apps2 in
+          let must = List.diff ~cmp apps1 apps2 in
           let apps' = apps1 @@@ apps2 in
           let env' = (f,apps')::env2 in
           let used = List.filter (fun (i,x,_) -> is_used_in (make_option_proj i @@ make_var x) t2) apps' in
-          let must_but_not_used = diff ~cmp must used in
+          let must_but_not_used = List.diff ~cmp must used in
           let t2' = replace_app.tr2_term env' t2 in
           if List.length used < 2 (* negligence *)
           then raise (Invalid_argument "");

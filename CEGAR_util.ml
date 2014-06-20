@@ -449,7 +449,7 @@ let get_nonrec defs main orig_fun_list force =
     let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@@ get_fv t2)) defs in
     List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
       f <> main &&
-      (List.for_all (fun (_,xs,t1,e,t2) -> subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
+      (List.for_all (fun (_,xs,t1,e,t2) -> List.subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
        (1 >= List.length (List.unique (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
        2 >= List.length defs')
   in
@@ -458,7 +458,7 @@ let get_nonrec defs main orig_fun_list force =
   if !Flag.expand_nonrec_init
   then nonrec
   else
-    let orig_fun_list' = diff orig_fun_list force in
+    let orig_fun_list' = List.diff orig_fun_list force in
     List.filter (fun (f,_) -> not @@ List.mem f orig_fun_list') nonrec
 
 

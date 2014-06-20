@@ -51,7 +51,7 @@ let rec lift_term2 xs = function
       defs1@@@defs2, App(t1',t2')
   | Let(f,t1,t2) ->
       let ys,t1' = decomp_fun t1 in
-      let fv = inter xs (diff (get_fv t1) ys) in
+      let fv = List.inter xs (List.diff (get_fv t1) ys) in
       let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
       let ys' = fv' @ ys in
       let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' fv fv' in
@@ -63,7 +63,7 @@ let rec lift_term2 xs = function
   | Fun _ as t ->
       let f = new_id "f" in
       let ys,t1 = decomp_fun t in
-      let fv = inter xs (diff (get_fv t1) ys) in
+      let fv = List.inter xs (List.diff (get_fv t1) ys) in
       let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
       let ys' = fv' @ ys in
       let t1' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1 fv fv' in

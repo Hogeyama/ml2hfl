@@ -58,7 +58,7 @@ let get_diff_args = make_col2 [] (@@@)
 
 let rec get_same_args env f t args =
   let diff_args = get_diff_args.col2_term (env,f) t in
-  let same_args = diff args diff_args in
+  let same_args = List.diff args diff_args in
   if same_args = args
   then args
   else get_same_args env f t same_args

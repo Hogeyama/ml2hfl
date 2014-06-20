@@ -78,6 +78,12 @@ module List = struct
     | x::xs',y::ys' -> rev_map2 f (f x y::acc) xs' ys'
     | _ -> raise (Invalid_argument "List.rev_map2")
   let rev_map2 f xs ys = rev_map2 f [] xs ys
+
+  let diff ?(cmp=compare)  l1 l2 = List.filter (fun x -> List.for_all (fun y -> cmp x y <> 0) l2) l1
+  let inter ?(cmp=compare) l1 l2 = List.filter (fun x -> List.exists (fun y -> cmp x y = 0) l2) l1
+  let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
+  let set_eq l1 l2 = subset l1 l2 && subset l2 l1
+  let union ?(cmp=compare) l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
 end
 
 module Array = ExtArray.Array
@@ -101,13 +107,10 @@ module String = struct
         s1, s2
 end
 
-
-
-let diff ?(cmp=compare)  l1 l2 = List.filter (fun x -> List.for_all (fun y -> cmp x y <> 0) l2) l1
-let inter ?(cmp=compare) l1 l2 = List.filter (fun x -> List.exists (fun y -> cmp x y = 0) l2) l1
-let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
-let set_eq l1 l2 = subset l1 l2 && subset l2 l1
-let union ?(cmp=compare) l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
+module Compare = struct
+  let on ~cmp:compare f =
+    fun x y -> compare (f x) (f y)
+end
 
 
 

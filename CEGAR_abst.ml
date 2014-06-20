@@ -103,7 +103,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   if e <> [] && t1 <> Const True
   then
     let g = new_id "f" in
-    let fv = diff (get_fv t2') (List.map fst env) in
+    let fv = List.diff (get_fv t2') (List.map fst env) in
     let t = assume env' [] pbs t1 (make_app (Var g) (List.map (fun x -> Var x) fv)) in
     [g,fv,Const True,e,t2'; f,xs,Const True,[],t]
   else
