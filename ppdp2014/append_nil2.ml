@@ -1,7 +1,7 @@
-let rec append xs ys =
+let rec append (xs, ys) =
   match xs with
     [] -> ys
-  | x::xs' -> x :: append xs' ys
+  | x::xs' -> x :: append (xs', ys)
 
 let rec make_list n =
   if n < 0
@@ -16,4 +16,4 @@ let rec list_eq xsys =
 
 let main n =
   let xs = make_list n in
-  assert (list_eq (append xs [], xs))
+  assert (list_eq (append(xs, []), xs))

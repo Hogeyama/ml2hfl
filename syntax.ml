@@ -1499,35 +1499,35 @@ and print_desc pri typ fm desc =
   | Raise t ->
       let p = 70 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[raise %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[raise@ %a@]%s" s1 (print_term p typ) t s2
   | TryWith(t1,t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[try %a with@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+      fprintf fm "%s@[try@ %a@ with@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | Pair(t1,t2) ->
       let p = 20 in
       fprintf fm "@[(%a,@ %a)@]" (print_term p typ) t1 (print_term p typ) t2
   | Fst t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[fst %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[fst@ %a@]%s" s1 (print_term p typ) t s2
   | Snd t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[snd %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[snd@ %a@]%s" s1 (print_term p typ) t s2
   | Bottom -> fprintf fm "_|_"
   | Label(InfoId x, t) ->
-      fprintf fm "(@[label %a %a@])" print_id x (print_term 80 typ) t
+      fprintf fm "(@[label@ %a@ %a@])" print_id x (print_term 80 typ) t
   | Label(InfoString s, t) ->
-      fprintf fm "(@[label %s %a@])" s (print_term 80 typ) t
+      fprintf fm "(@[label@ %s@ %a@])" s (print_term 80 typ) t
   | Label(InfoInt n, t) ->
-      fprintf fm "(@[label %d %a@])" n (print_term 80 typ) t
+      fprintf fm "(@[label@ %d@ %a@])" n (print_term 80 typ) t
   | Label(InfoTerm t', t) ->
-      fprintf fm "(@[label %a %a@])" (print_term 80 typ) t' (print_term 80 typ) t
+      fprintf fm "(@[label@ %a@ %a@])" (print_term 80 typ) t' (print_term 80 typ) t
   | Ref t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[ref %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[ref@ %a@]%s" s1 (print_term p typ) t s2
   | Deref t ->
       let p = 90 in
       let s1,s2 = paren pri p in

@@ -170,6 +170,7 @@ let print_pbs fm pbs =
 
 
 let abst env cond pbs p =
+  if debug then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
   if debug then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs CEGAR_print.term p;
   if has_bottom p
   then Const Bottom

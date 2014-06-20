@@ -3,6 +3,7 @@ open Type
 open Syntax
 open Term_util
 
+let debug = false
 
 let normalize = make_trans ()
 
@@ -75,8 +76,8 @@ let () = normalize.tr_term <- normalize_term
 
 
 let get_same_pair env y z =
-  let fsts = List.filter (function (y', Some p, None) -> Id.same y y' | _ -> false) env in
-  let snds = List.filter (function (z', None, Some p) -> Id.same z z' | _ -> false) env in
+  let fsts = List.filter (function (y', Some _, None) -> Id.same y y' | _ -> false) env in
+  let snds = List.filter (function (z', None, Some _) -> Id.same z z' | _ -> false) env in
   try
     let (_, p, _) = List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (Option.get p) (Option.get p')) snds) fsts in
     p
@@ -116,33 +117,33 @@ let pair_eta_reduce = pair_eta_reduce.tr2_term []
 
 let make_deep_pair = make_trans2 ()
 
-let make_deep_pair_typ (rhs1,rhs2) typ =
-  TPair(Id.new_var "x" typ, Id.typ rhs2)
+let make_deep_pair_typ rhs typ =
+  TPair(Id.new_var "x" typ, Id.typ rhs)
 
-let make_deep_pair_term (rhs1,rhs2) t =
+let make_deep_pair_term rhs t =
   match t.desc with
   | If(t1,t2,t3) ->
-      let t2' = make_deep_pair.tr2_term (rhs1,rhs2) t2 in
-      let t3' = make_deep_pair.tr2_term (rhs1,rhs2) t3 in
+      let t2' = make_deep_pair.tr2_term rhs t2 in
+      let t3' = make_deep_pair.tr2_term rhs t3 in
       make_if t1 t2' t3'
   | Let(flag,bindings,t) ->
-      make_let_f flag bindings @@ make_deep_pair.tr2_term (rhs1,rhs2) t
+      make_let_f flag bindings @@ make_deep_pair.tr2_term rhs t
   | Label(InfoTerm{desc=Pair({desc=Var x},{desc=Var y})}, t) ->
-      let rhs2' = if Id.same x rhs1 then y else rhs2 in
-      make_deep_pair.tr2_term (rhs1,rhs2') t
+      let rhs' = if Id.same x rhs then y else rhs in
+      make_deep_pair.tr2_term rhs' t
   | _ ->
-      make_pair t (make_var rhs2)
+      make_pair t (make_var rhs)
 
 let () = make_deep_pair.tr2_term <- make_deep_pair_term
 let () = make_deep_pair.tr2_typ <- make_deep_pair_typ
 
-let make_deep_pair t rhs = make_deep_pair.tr2_term (rhs,rhs) t
+let make_deep_pair t rhs = make_deep_pair.tr2_term rhs t
 
 
 
 
 let subst_all x y t = t
-  |> subst x (make_var y)
+  |> subst_var x y
   |> make_label (InfoTerm (make_pair (make_var x) (make_var y)))
 
 
@@ -221,16 +222,16 @@ let () = trans.tr2_typ <- trans_typ
 let trans t = t
   |> normalize.tr_term
   |> Trans.inline_var_const
-  |*@> Format.printf "AAA:@.%a@.@." print_term
+  |@debug&> Format.printf "AAA:@.%a@.@." print_term
   |> Trans.flatten_let
-  |*@> Format.printf "BBB:@.%a@.@." print_term
+  |@debug&> Format.printf "BBB:@.%a@.@." print_term
   |@> flip Type_check.check TUnit
   |> trans.tr2_term []
-  |*@> Format.printf "CCC:@.%a@.@." print_term_typ
+  |@debug&> Format.printf "CCC:@.%a@.@." print_term_typ
   |> Trans.remove_label
-  |*@> Format.printf "DDD:@.%a@.@." print_term_typ
+  |@debug&> Format.printf "DDD:@.%a@.@." print_term_typ
   |*> Trans.inline_no_effect
   |> Trans.inline_var_const
-  |*@> Format.printf "EEE:@.%a@.@." print_term_typ
+  |@debug&> Format.printf "EEE:@.%a@.@." print_term_typ
   |> pair_eta_reduce
-  |*@> flip Type_check.check TUnit
+  |@> flip Type_check.check TUnit

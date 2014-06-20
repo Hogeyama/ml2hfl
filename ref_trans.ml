@@ -197,28 +197,6 @@ let rec elim_none t =
       | None, Some t -> Some t
       | Some t1, Some t2 -> Some (Tree.Node(t1,t2))
 
-(*
-let trans_typ' (tt,bb) typ =
-  match typ with
-    TPair _ ->
-      let tree = tree_of_typ typ in
-      if Tree.exists (Type.is_fun_typ) tree
-      then
-        let arg = Tree.map (fun _ -> function TFun(x, _) -> Some (Id.typ x) | _ -> None) tree in
-        let arg' = elim_none arg in
-        match arg' with
-          None -> trans.tr2_typ_rec (tt,bb) typ, None
-        | Some arg'' ->
-          let result = Tree.map (fun _ -> function TFun(_, typ) -> opt_typ typ | typ -> typ) tree in
-          let typs = Tree.flatten arg'' in
-          let typ = typ_of_tree result in
-          List.fold_right (fun typ typ' -> TFun(Id.new_var "x" typ, typ')) typs typ, Some typs
-      else trans.tr2_typ_rec (tt,bb) typ, None
-  | _ -> trans.tr2_typ_rec (tt,bb) typ, None
-
-let trans_typ (tt,bb) typ = fst (trans_typ' (tt,bb) typ)
-*)
-
 let decomp_tfun_ttuple typ =
   let typs = decomp_ttuple typ in
   let decomp typ =
@@ -608,6 +586,30 @@ let replace_head fs fs' t =
   let t'' = List.fold_right2 subst xs ts'' t' in
   if debug then Format.printf "t'':@.%a@.@." print_term t'';
   t''
+
+
+(*
+let normalize_tuple_arg = make_trans ()
+
+let normalize_tuple_arg_term t =
+  match t.desc with
+  | Let(Nonrecursive as flag, bindings, t2)
+  | Let(Recursive as flag, ([_] as bindings), t2)->
+      let aux (f,xs,t1) (bindings,t2) =
+        let is_normalized typ =
+          match typ with
+          | TPair(TPair)
+        in
+
+      in
+      let bindings',t2' = List.fold_right aux bindings ([],t2) in
+      make_let_f flag bindings' t2'
+  | _ -> normalize_tuple_arg.tr_term_rec t
+
+let () = normalize_tuple_arg.tr_term <- normalize_tuple_arg_term
+let normalize_tuple_arg = normalize_tuple_arg.tr_term
+ *)
+
 
 
 

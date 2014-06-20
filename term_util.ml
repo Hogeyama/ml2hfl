@@ -146,20 +146,20 @@ let make_if_ t1 t2 t3 =
   assert (not Flag.check_typ || Type.can_unify t1.typ TBool);
   assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
   match t1.desc with
-      Const True -> t2
-    | Const False -> t3
-    | _ ->
-        let typ =
-          match has_pred t2.typ, has_pred t3.typ with
-              false, false -> t2.typ
-            | true, false -> t2.typ
-            | false, true -> t3.typ
-            | true, true ->
-                if t2.typ <> t3.typ
-                then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." print_typ t2.typ print_typ t3.typ;
-                t2.typ
-        in
-          {desc=If(t1, t2, t3); typ=typ}
+  | Const True -> t2
+  | Const False -> t3
+  | _ ->
+      let typ =
+        match has_pred t2.typ, has_pred t3.typ with
+          false, false -> t2.typ
+        | true, false -> t2.typ
+        | false, true -> t3.typ
+        | true, true ->
+            if t2.typ <> t3.typ
+            then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." print_typ t2.typ print_typ t3.typ;
+            t2.typ
+      in
+      {desc=If(t1, t2, t3); typ=typ}
 let make_branch t2 t3 =
   assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
   {desc=Branch(t2, t3); typ=t2.typ}
