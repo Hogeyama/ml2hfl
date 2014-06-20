@@ -44,7 +44,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli \
 	feasibility.mli refine.mli syntax.mli term_util.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
 	spec_parser.mli trecs_parser.mli BRA_transform.mli \
-	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli type.mli color.mli
+	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli type.mli color.mli CEGAR_trans.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = \

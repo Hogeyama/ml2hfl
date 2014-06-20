@@ -412,18 +412,19 @@ let abstract orig_fun_list force prog =
   let labeled,prog = add_label prog in
   prog
   |& !Flag.expand_nonrec &> expand_nonrec orig_fun_list force
+  |> CEGAR_trans.simplify_if
   |@ (debug && !Flag.expand_nonrec) &> Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog
   |> eta_expand
-  |@ debug &> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
+  |@debug&> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
   |> abstract_prog
-  |@ debug &> Format.printf "ABST:@\n%a@." CEGAR_print.prog_typ
+  |@debug&> Format.printf "ABST:@\n%a@." CEGAR_print.prog_typ
   |> Typing.infer
   |> CEGAR_lift.lift2
-  |@ debug &> Format.printf "LIFT:@\n%a@." CEGAR_print.prog
+  |@debug&> Format.printf "LIFT:@\n%a@." CEGAR_print.prog
   |> trans_eager
-  |@ debug &> Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog
+  |@debug&> Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog
   |> put_into_if
   |@> Typing.infer
-  |@ debug &> Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog
+  |@debug&> Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog
   |> CEGAR_lift.lift2
   |> fun prog -> labeled, prog

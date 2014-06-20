@@ -94,20 +94,34 @@ let make_annot_fun x typ t = Fun(x, Some typ, t)
 let make_fun_temp xs t = List.fold_right (fun x t -> Fun(x,None,t)) xs t
 let make_if t1 t2 t3 =
   match t1 with
-      Const True -> t2
-    | Const False -> t3
-    | _ -> make_app (Const If) [t1;t2;t3]
+  | Const True -> t2
+  | Const False -> t3
+  | _ -> make_app (Const If) [t1;t2;t3]
 let make_int n = Const (Int n)
 let make_br t1 t2 = make_if (Const RandBool) t1 t2
-let make_and t1 t2 = make_app (Const And) [t1; t2]
-let make_or t1 t2 = make_app (Const Or) [t1; t2]
+let make_and t1 t2 =
+  match t1,t2 with
+  | Const True, t
+  | t, Const True -> t
+  | _ -> make_app (Const And) [t1; t2]
+let make_or t1 t2 =
+  match t1,t2 with
+  | Const False, t
+  | t, Const False -> t
+  | _ -> make_app (Const Or) [t1; t2]
 let make_not t = App(Const Not, t)
 let make_lt t1 t2 = make_app (Const Lt) [t1; t2]
 let make_gt t1 t2 = make_app (Const Gt) [t1; t2]
 let make_leq t1 t2 = make_app (Const Leq) [t1; t2]
 let make_geq t1 t2 = make_app (Const Geq) [t1; t2]
 let make_eq_int t1 t2 = make_app (Const EqInt) [t1; t2]
-let make_eq_bool t1 t2 = make_app (Const EqBool) [t1; t2]
+let make_eq_bool t1 t2 =
+  match t1,t2 with
+  | Const False, t
+  | t, Const False -> make_not t
+  | Const True, t
+  | t, Const True -> t
+  | _ -> make_app (Const EqBool) [t1; t2]
 let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]

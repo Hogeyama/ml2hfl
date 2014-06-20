@@ -273,7 +273,12 @@ let rec has_bottom = function
 let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
   | Const c -> Const c
   | Var x -> Var x
-  | App(Const Not, App(Const Not, t1)) -> normalize_bool_term ~imply t1
+  | App(Const Not, t1) ->
+      begin
+        match normalize_bool_term ~imply t1 with
+        | App(Const Not, t1') -> t1'
+        | t1' -> App(Const Not, t1')
+      end
   | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
       let op' =
         match op with
@@ -284,7 +289,10 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
         | _ -> assert false
       in
       normalize_bool_term ~imply (App(App(Const op', t1), t2))
-  | App(App(Const EqBool, Const True), t) -> normalize_bool_term ~imply t
+  | App(App(Const EqBool, Const True), t)
+  | App(App(Const EqBool, t), Const True) -> normalize_bool_term ~imply t
+  | App(App(Const EqBool, Const False), t)
+  | App(App(Const EqBool, t), Const False) -> make_not @@ normalize_bool_term ~imply t
   | App(App(Const And, _), _) as t ->
       let rec decomp = function
         | App(App(Const And, t1), t2) -> decomp t1 @@@ decomp t2
@@ -419,7 +427,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
       make_app op' [t1'; t2']
   | App(t1, t2) -> App(normalize_bool_term ~imply t1, normalize_bool_term ~imply t2)
   | Let _ -> assert false
-  | Fun _ -> assert false
+  | Fun(x,typ,t) -> Fun(x, typ, normalize_bool_term ~imply t)
 
 
 
