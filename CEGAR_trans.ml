@@ -655,7 +655,7 @@ let assoc_def labeled defs ce acc t =
 let init_cont _ acc _ = List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
-  if true then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
+  if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
   | Const RandInt -> assert false
   | Const c -> k ce acc (Const c)
