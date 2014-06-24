@@ -156,9 +156,22 @@ let conv_prog (typs, fdefs, main) =
     Fpat.Prog.types = Fpat.Util.List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
     Fpat.Prog.main = main }
 
+let init prog =
+  let prog =
+    conv_prog
+      (prog.CEGAR_syntax.env,
+       prog.CEGAR_syntax.defs,
+       prog.CEGAR_syntax.main)
+  in
+  Fpat.RsCompHCCSSolver.init prog
+
 let verify fs (*cexs*) prog =
-  let prog = prog.CEGAR_syntax.env, prog.CEGAR_syntax.defs, prog.CEGAR_syntax.main in
-  let prog = conv_prog prog in
+  let prog =
+    conv_prog
+      (prog.CEGAR_syntax.env,
+       prog.CEGAR_syntax.defs,
+       prog.CEGAR_syntax.main)
+  in
   Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Fpat.Prog.pr prog;
   let _ = assert false(*Verifier.verify fs prog*) in
   Format.printf "END verification@,@]"

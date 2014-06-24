@@ -173,6 +173,7 @@ let rec run orig parsed =
   in
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in
+  FpatInterface.init prog;
   match !Flag.cegar with
   | Flag.CEGAR_InteractionType ->
       FpatInterface.verify [] prog;

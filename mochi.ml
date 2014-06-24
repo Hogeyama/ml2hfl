@@ -224,6 +224,11 @@ let arg_spec =
    "-enable-cp", Arg.Set Fpat.RefTypInfer.exploit_cut_points, " Exploit cut-points";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* HCCS solver *)
+   "-rscomp",
+     Arg.Unit (fun _ ->
+       Fpat.HCCSSolver.link_solver Fpat.RsCompHCCSSolver.solve),
+     " Use a complete HCCS solver based on relaxed stratification";
+
    "-gi",
      Arg.Unit (fun _ ->
        Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
