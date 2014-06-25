@@ -2,7 +2,7 @@ include Makefile.config
 
 .PHONY: main all byte opt clean doc test
 
-PACKAGES = fpat,str,unix,csisat,extlib,compiler-libs
+PACKAGES = fpat,str,unix,csisat,extlib,compiler-libs.common
 
 INCLUDES =
 
@@ -65,7 +65,7 @@ CMO = \
 	extraClsDepth.cmo extraParamInfer.cmo \
 	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo mochi.cmo
 CMX = $(CMO:.cmo=.cmx)
-CMA = ocamlcommon.cma
+CMA =
 CMXA = $(CMA:.cma=.cmxa)
 
 
