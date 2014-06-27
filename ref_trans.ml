@@ -53,7 +53,11 @@ let rec make_tree x bb =
   match find_fst x bb, find_snd x bb, find_app x bb with
   | Some lhs, Some rhs, _ -> Tree.Node(make_tree lhs bb, make_tree rhs bb)
   | None, None, args ->
-      let typ = Option.map Id.typ @@ arg_var @@ Id.typ x in
+      let typ =
+        try
+          Some (Id.typ @@ arg_var @@ Id.typ x)
+        with Invalid_argument _ -> None
+      in
       Tree.Leaf(typ, args)
   | Some _, None, _ -> raise (Fatal "not implemented: make_tree")
   | None, Some _, _ -> raise (Fatal "not implemented: make_tree")

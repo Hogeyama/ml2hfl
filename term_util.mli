@@ -140,3 +140,4 @@ val var_of_term : typed_term -> id
 val make_term : typ -> typed_term
 val col_same_term : typed_term -> typed_term -> typed_term list
 val col_info_id : typed_term -> id list
+val is_bottom_def : Syntax.rec_flag -> id -> id list -> Syntax.typed_term -> bool

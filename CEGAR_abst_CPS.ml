@@ -418,6 +418,7 @@ let abstract orig_fun_list force prog =
   |@debug&> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
   |> abstract_prog
   |@debug&> Format.printf "ABST:@\n%a@." CEGAR_print.prog_typ
+  |*> eval_step_by_step
   |> Typing.infer
   |> CEGAR_lift.lift2
   |@debug&> Format.printf "LIFT:@\n%a@." CEGAR_print.prog

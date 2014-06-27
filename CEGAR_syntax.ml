@@ -4,6 +4,12 @@ open CEGAR_type
 
 type var = string
 
+module VarSet =
+  Set.Make(
+    struct
+      type t = var
+      let compare = compare
+    end)
 
 type const =
     Temp of string (* for temporary use *)
@@ -129,15 +135,15 @@ let make_label n t = make_app (Const (Label n)) [t]
 
 
 
-module SS = Set.Make(String)
+
 
 let rec get_fv = function
-    Const _ -> SS.empty
-  | Var x -> SS.singleton x
-  | App(t1, t2) -> SS.union (get_fv t1) (get_fv t2)
-  | Let(x,t1,t2) -> SS.union (get_fv t1) (SS.remove x (get_fv t2))
-  | Fun(x,_,t) -> SS.remove x (get_fv t)
-let get_fv t = SS.elements @@ get_fv t
+  | Const _ -> StringSet.empty
+  | Var x -> StringSet.singleton x
+  | App(t1, t2) -> StringSet.union (get_fv t1) (get_fv t2)
+  | Let(x,t1,t2) -> StringSet.union (get_fv t1) (StringSet.remove x (get_fv t2))
+  | Fun(x,_,t) -> StringSet.remove x (get_fv t)
+let get_fv t = StringSet.elements @@ get_fv t
 
 
 let rec get_typ_arity = function

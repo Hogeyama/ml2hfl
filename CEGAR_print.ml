@@ -449,3 +449,47 @@ let prog_typ = print_prog_typ
 
 
 let string_of_const = make_string_of print_const
+
+
+
+
+let rec print_head limit fm t =
+  match t with
+  | Const c -> print_const fm c
+  | Var x -> print_var fm x
+  | App(t1, _) -> Format.fprintf fm "(%a ...)" (print_term' limit) t1
+  | Fun _ -> Format.fprintf fm "(fun ...)"
+  | Let _ -> Format.fprintf fm "(let ...)"
+
+and print_term' limit fm t =
+  match t with
+  | Const c -> print_const fm c
+  | Var x -> print_var fm x
+  | App(App(App(Const If, Const RandBool), Const True), Const False) ->
+      print_const fm RandBool
+  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
+      Format.fprintf fm "(@[%a@ %a@ %a@])" (print_term' limit) t1 print_const op (print_term' limit) t2
+  | App _ as t ->
+      let t,ts = decomp_app t in
+      let rec pr fm = function
+        | [] -> ()
+        | t::ts when size t > limit ->
+            Format.fprintf fm "@ %a%a" (print_head limit) t pr ts
+        | t::ts ->
+            Format.fprintf fm "@ %a%a" (print_term' limit) t pr ts
+      in
+      Format.fprintf fm "(@[<hov 1>%a%a@])" (print_term' limit) t pr ts
+  | Let(x,t1,t2) ->
+      let xs,t1 = decomp_fun t1 in
+      Format.fprintf fm "(@[let %a %a@ =@ %a@ in@ %a@])"
+                     print_var x (print_list print_var " ") xs (print_term' limit) t1 (print_term' limit) t2
+  | Fun _ as t ->
+      let env,t' = decomp_annot_fun t in
+      let pr fm (x,typ) =
+        match typ with
+          Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
+        | _ -> print_var fm x
+      in
+      Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env (print_term' limit) t'
+
+let term' = print_term' 100

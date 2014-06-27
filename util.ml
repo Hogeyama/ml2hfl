@@ -3,11 +3,10 @@ exception Unsupported of string
 
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
+let invalid_argument s = raise (Invalid_argument s)
 
 let (-|) f g x = f (g x)
 let (|-) f g x = g (f x)
-let (|>) x f = f x
-let (@@) f x = f x
 let do_and_return f x = f x; x
 let (|@>) x f = do_and_return f x
 let (|*>) x f = x
@@ -28,6 +27,15 @@ let fst3 (x,y,z) = x
 let snd3 (x,y,z) = y
 
 let (@@@) = List.rev_append
+
+module IntSet =
+  Set.Make(
+    struct
+      type t = int
+      let compare = compare
+    end)
+
+module StringSet = Set.Make(String)
 
 module List = struct
   include ExtList.List
@@ -79,11 +87,13 @@ module List = struct
     | _ -> raise (Invalid_argument "List.rev_map2")
   let rev_map2 f xs ys = rev_map2 f [] xs ys
 
-  let diff ?(cmp=compare)  l1 l2 = List.filter (fun x -> List.for_all (fun y -> cmp x y <> 0) l2) l1
-  let inter ?(cmp=compare) l1 l2 = List.filter (fun x -> List.exists (fun y -> cmp x y = 0) l2) l1
-  let subset l1 l2 = List.for_all (fun x -> List.mem x l2) l1
+  let rec filter_out f xs = filter (not -| f) xs
+
+  let diff ?(cmp=compare)  l1 l2 = filter (fun x -> for_all (fun y -> cmp x y <> 0) l2) l1
+  let inter ?(cmp=compare) l1 l2 = filter (fun x -> exists (fun y -> cmp x y = 0) l2) l1
+  let subset l1 l2 = for_all (fun x -> mem x l2) l1
   let set_eq l1 l2 = subset l1 l2 && subset l2 l1
-  let union ?(cmp=compare) l1 l2 = List.fold_left (fun l x -> if List.exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
+  let union ?(cmp=compare) l1 l2 = fold_left (fun l x -> if exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
 end
 
 module Array = ExtArray.Array

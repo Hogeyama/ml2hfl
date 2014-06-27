@@ -43,4 +43,5 @@ val snd_typ : 'a t -> 'a t
 val ref_typ : 'a t -> 'a t
 val list_typ : 'a t -> 'a t
 val option_typ : 'a t -> 'a t
-val arg_var : 'a t -> 'a t Id.t option
+val arg_var : 'a t -> 'a t Id.t
+val result_typ : 'a t -> 'a t

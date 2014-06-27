@@ -749,3 +749,11 @@ let get_bound_variables = get_bound_variables.col_term
 let is_id_unique t =
   let bv = get_bound_variables t in
   List.length bv = List.length (List.unique ~cmp:Id.same bv)
+
+
+
+let rec is_bottom_def flag f xs t =
+  match flag, xs, t.desc with
+  | Recursive, _::_, App({desc=Var g},ts) ->
+      Id.same f g && List.for_all has_no_effect ts
+  | _ -> false

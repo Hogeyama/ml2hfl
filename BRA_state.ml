@@ -16,6 +16,8 @@ and default_val' =
     | TAbsBool -> raise (Invalid_argument "default_val: not yet implemented syntax(TAbsBool)")
     | TList _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TList)")
     | TPair (_, _) -> raise (Invalid_argument "default_val: not yet implemented syntax(TPair)")
+    | TRef _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TRef)")
+    | TOption _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TOption)")
     | TVar t ->
       begin
 	match !t with

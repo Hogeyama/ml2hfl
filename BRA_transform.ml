@@ -175,6 +175,7 @@ let randomized_application f t =
 	  | _ -> assert false
       in
       aux f (args@[r]) t2
+    | _ -> assert false
   in aux f [] t
 
 let rec find_main_function = function
@@ -461,7 +462,7 @@ let rec separate_to_CNF = function
   | {desc = BinOp (Or, t1, {desc = BinOp (And, t2, t3)})} as t ->
     separate_to_CNF {t with desc = BinOp (Or, t1, t2)}
     @ separate_to_CNF {t with desc = BinOp (Or, t1, t3)}
-  | {desc = BinOp (And, t1, t2)} as t -> [t1; t2]
+  | {desc = BinOp (And, t1, t2)} -> [t1; t2]
   | t -> [t]
 
 (* plug holed program with predicate *)

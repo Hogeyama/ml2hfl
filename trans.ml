@@ -1952,3 +1952,17 @@ let rec beta_reduce t =
   let t' = {desc=desc; typ=t.typ} in
   if false && t<>t' then Format.printf "%a ===> %a@.@." print_term t print_term t';
   t'
+
+
+
+
+let replace_bottom_def = make_trans ()
+
+let replace_bottom_def_term t =
+  match t.desc with
+  | Let(flag, [f,xs,t1], t2) when is_bottom_def flag f xs t1 ->
+      make_let [f,xs,make_bottom t1.typ] @@ replace_bottom_def.tr_term t2
+  | _ -> replace_bottom_def.tr_term_rec t
+
+let () = replace_bottom_def.tr_term <- replace_bottom_def_term
+let replace_bottom_def = replace_bottom_def.tr_term

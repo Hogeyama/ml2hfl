@@ -273,12 +273,6 @@ let rec has_bottom = function
 let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
   | Const c -> Const c
   | Var x -> Var x
-  | App(Const Not, t1) ->
-      begin
-        match normalize_bool_term ~imply t1 with
-        | App(Const Not, t1') -> t1'
-        | t1' -> App(Const Not, t1')
-      end
   | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
       let op' =
         match op with
@@ -289,6 +283,12 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
         | _ -> assert false
       in
       normalize_bool_term ~imply (App(App(Const op', t1), t2))
+  | App(Const Not, t1) ->
+      begin
+        match normalize_bool_term ~imply t1 with
+        | App(Const Not, t1') -> t1'
+        | t1' -> App(Const Not, t1')
+      end
   | App(App(Const EqBool, Const True), t)
   | App(App(Const EqBool, t), Const True) -> normalize_bool_term ~imply t
   | App(App(Const EqBool, Const False), t)
@@ -474,3 +474,69 @@ let print_prog_typ' orig_fun_list force fm {env=env;defs=defs;main=main} =
   let nonrec = get_nonrec defs main orig_fun_list force in
   let env' = List.filter (fun (f,_) -> not @@ List.mem_assoc f nonrec) env in
   CEGAR_print.prog_typ fm {env=env';defs=defs;main=main}
+
+
+
+let eval_step_by_step prog =
+  let assoc_fun_def defs f =
+    let make_fun xs t =
+      let xs' = List.map rename_id xs in
+      let map = List.map2 (fun x x' -> x, Var x') xs xs' in
+      List.fold_right (fun x t -> Fun(x,None,t)) xs' (subst_map map t)
+    in
+    let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
+    match defs' with
+    | [_,xs,Const True,_,t] -> make_fun xs t
+    | [_] -> raise (Fatal "Not implemented: CEGAR_abst_CPS.assoc_fun_def")
+    | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when make_not t11 = t21 ->
+        assert (xs1 = xs2);
+        make_fun xs1 (make_if t11 t12 t22)
+    | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
+        assert (xs1 = xs2);
+        make_fun xs1 (make_if t21 t22 t12)
+    | [_,xs1,Const True,_,t12; _,xs2,Const True,_,t22] -> make_fun xs1 (make_br t22 t12)
+    | _ -> Format.printf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
+  in
+  let counter = ref 0 in
+  let rec get_tf () =
+    Format.printf "[%d] t/f?@?: " !counter;
+    match read_line () with
+    | "t" -> Format.printf "t@."; true
+    | "f" -> Format.printf "f@."; false
+    | _ -> get_tf ()
+  in
+  let rec eval_cond t =
+    match t with
+    | Const True -> true
+    | Const False -> false
+    | Const RandBool -> incr counter; get_tf ()
+    | App(App(App(Const If, t1), t2), t3) ->
+        if eval_cond t1 then eval_cond t2 else eval_cond t3
+    | _ -> assert false
+  in
+  let rec eval t =
+    Color.printf Color.Red "EVAL:@.";
+    Format.printf "%a@." CEGAR_print.term t;
+(*    ignore @@ read_line ();*)
+    match decomp_app t with
+    | Const If, [t1;t2;t3] ->
+        if eval_cond t1
+        then eval t2
+        else eval t3
+    | Const (Label n), [t] ->
+        Color.printf Color.Green "Label %d@." n;
+        eval t
+    | Fun(x,_,t1), t2::ts ->
+            Color.printf Color.Blue "[%s |-> %a]@." x CEGAR_print.term t2;
+        eval @@ make_app (subst x t2 t1) ts
+    | Var f, ts ->
+        let subst' x t1 t2 =
+            Color.printf Color.Blue "[%s |-> %a]@." x CEGAR_print.term t1;
+          subst x t1 t2
+        in
+        let xs,t' = decomp_fun @@ assoc_fun_def prog.defs f in
+        eval @@ List.fold_right2 subst' xs ts t'
+    | _ -> assert false
+  in
+  let t_main = assoc_fun_def prog.defs prog.main in
+  eval t_main
