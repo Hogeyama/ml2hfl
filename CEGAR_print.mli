@@ -7,6 +7,7 @@ val fun_def :
   CEGAR_syntax.var * CEGAR_syntax.var list * CEGAR_syntax.t *
   CEGAR_syntax.event list * CEGAR_syntax.t -> unit
 val term : Format.formatter -> CEGAR_syntax.t -> unit
+val term' : Format.formatter -> CEGAR_syntax.t -> unit
 val var : Format.formatter -> CEGAR_syntax.var -> unit
 val typ : Format.formatter -> CEGAR_syntax.typ -> unit
 val typ_base : Format.formatter -> CEGAR_type.base -> unit

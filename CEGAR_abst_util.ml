@@ -25,15 +25,8 @@ let check env cond pbs p =
 let equiv env cond t1 t2 =
   check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
 
-let make_conj pbs =
-  match pbs with
-  | [] -> Const True
-  | (_,b)::pbs -> List.fold_left (fun t (_,b) -> make_and t b) b pbs
-
-let make_dnf pbss =
-  match pbss with
-  | [] -> Const False
-  | pbs::pbss' -> List.fold_left (fun t pbs -> make_or t (make_conj pbs)) (make_conj pbs) pbss'
+let make_conj pbs = List.fold_left (fun t (_,b) -> make_and t b) (Const True) pbs
+let make_dnf pbss = List.fold_left (fun t pbs -> make_or t @@ make_conj pbs) (Const False) pbss
 
 
 let weakest_aux env cond ds p =
@@ -156,12 +149,6 @@ let weakest env cond ds p =
 
 
 
-let filter env cond pbs must t =
-  let pbss,_ = weakest_aux env cond pbs (Const False) in
-  make_if (make_dnf pbss) (Const Bottom) t
-
-
-
 let print_pb fm (p,b) =
   Format.fprintf fm "%a := %a" CEGAR_print.term b CEGAR_print.term p
 
@@ -169,13 +156,48 @@ let print_pbs fm pbs =
   print_list print_pb ";@\n" fm pbs
 
 
-let abst env cond pbs p =
+let filter env cond pbs must t =
+  let pbs' =
+    pbs
+    |& !Flag.remove_false &> List.filter_out (fun (p,_) -> check_aux env cond p)
+    |> List.filter_out (fun (p,_) -> check_aux env cond @@ make_not p)
+  in
+  if debug then Format.printf "filter@.";
   if debug then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
-  if debug then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs CEGAR_print.term p;
+  let pbss =
+    let rec aux sets (p,b) =
+      let fv = get_fv p in
+      let sets1,sets2 = List.partition (fun set -> List.exists (fun x -> VarSet.mem x set) fv) sets in
+      match sets1 with
+      | [] -> List.fold_right VarSet.add fv VarSet.empty :: sets
+      | _ ->
+          let set1 = List.fold_left VarSet.union VarSet.empty sets1 in
+          List.fold_right VarSet.add fv set1 :: sets
+    in
+    let xss = List.map VarSet.elements @@ List.fold_left aux [] pbs in
+    List.map (fun xs -> List.filter (fun (p,_) -> List.exists (fun y -> List.mem y xs) @@ get_fv p) pbs) xss
+  in
+  let aux pbs =
+    if debug then Format.printf "pbs: @[<hv>%a@.@." print_pbs pbs';
+    make_dnf @@ fst @@ weakest_aux env cond pbs (Const False)
+  in
+  let unsat = List.fold_left make_or (Const False) @@ List.map aux pbss in
+  make_if unsat (Const Bottom) t
+
+
+
+let abst env cond pbs p =
+  let pbs' =
+    pbs
+    |& !Flag.remove_false &> List.filter_out (fun (p,_) -> check_aux env cond p)
+    |> List.filter_out (fun (p,_) -> check_aux env cond @@ make_not p)
+  in
+  if debug then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  if debug then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs' CEGAR_print.term p;
   if has_bottom p
   then Const Bottom
   else
-    let tt, ff = weakest env cond pbs p in
+    let tt, ff = weakest env cond pbs' p in
     if debug then Format.printf "tt:%a@.ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
     if make_not tt = ff || tt = make_not ff
     then tt

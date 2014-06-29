@@ -201,6 +201,8 @@ let arg_spec =
    "-dph", Arg.Set Fpat.PolyConstrSolver.disable_parameter_inference_heuristics,
           " Disable heuristics of instantiation parameter inference";
    (* predicate abstraction *)
+   "-wp-max", Arg.Set_int Flag.wp_max_num, " Maximum number of widths of conjunctions used in predicate abstraction";
+   "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
    "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
    "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),

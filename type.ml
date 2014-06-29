@@ -293,5 +293,10 @@ let rec order typ =
 
 let arg_var typ =
   match typ with
-  | TFun(x,_) -> Some x
-  | _ -> None
+  | TFun(x,_) -> x
+  | _ -> invalid_argument "arg_var"
+
+let result_typ typ =
+  match typ with
+  | TFun(_,typ') -> typ'
+  | _ -> invalid_argument "result_typ"

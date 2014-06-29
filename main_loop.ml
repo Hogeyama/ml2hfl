@@ -37,6 +37,7 @@ let preprocess t spec =
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_cps_trans in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
+      let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" id t in
       let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec.Spec.abst_cps_env<>[]) t in
       let t = t |& !Flag.elim_same_arg &> trans_and_print Elim_same_arg.trans "eliminate same arguments" id in

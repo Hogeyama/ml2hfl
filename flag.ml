@@ -22,6 +22,7 @@ let check_typ = true
 
 (* method option *)
 let wp_max_num = ref 3
+let remove_false = ref false (* remove false from pbs/pts in CEGAR_abst_util *)
 let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
