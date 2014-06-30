@@ -227,9 +227,15 @@ let arg_spec =
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* HCCS solver *)
    "-rscomp",
-     Arg.Unit (fun _ ->
-       Fpat.HCCSSolver.link_solver Fpat.RsCompHCCSSolver.solve),
+     Arg.Int (fun n ->
+       Fpat.HCCSSolver.link_solver
+         (Fpat.RsCompHCCSSolver.solve ~solver_type:n)),
      " Use a complete HCCS solver based on relaxed stratification";
+   "-rscomp-exp",
+     Arg.Int (fun n ->
+       Fpat.HCCSSolver.link_solver
+         (Fpat.RsCompHCCSSolver.solve ~exp_mode:true ~solver_type:n)),
+     " Use a complete HCCS solver based on relaxed stratification (exp. mode)";
 
    "-gi",
      Arg.Unit (fun _ ->
