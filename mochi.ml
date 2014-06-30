@@ -275,6 +275,8 @@ let arg_spec =
 
    "-ieb", Arg.Set Fpat.Global.encode_boolean,
      " Enable integer encoding of booleans";
+   "-tasp", Arg.Set Fpat.EncBoolHCCSSolver.encode_true_as_pos,
+     " Encode true and false respectively as positive and non-positive integers";
    (* interpolating prover *)
    "-csisat",
      Arg.Unit (fun _ ->
