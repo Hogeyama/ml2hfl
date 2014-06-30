@@ -14,7 +14,9 @@ let pre () =
   ()
 
 let post () =
-  incr Flag.cegar_loop
+  incr Flag.cegar_loop;
+  Fpat.Global.cegar_iterations := !Flag.cegar_loop
+
 
 
 
@@ -112,5 +114,9 @@ let cegar prog orig_fun_list =
     let is_cp = FpatInterface.is_cp prog in
     cegar1 prog is_cp [] orig_fun_list
   with e ->
-    if e <> NoProgress then incr Flag.cegar_loop;
+    if e <> NoProgress then
+      begin
+        incr Flag.cegar_loop;
+        Fpat.Global.cegar_iterations := !Flag.cegar_loop
+      end;
     raise e

@@ -231,11 +231,11 @@ let arg_spec =
        Fpat.HCCSSolver.link_solver
          (Fpat.RsCompHCCSSolver.solve ~solver_type:n)),
      " Use a complete HCCS solver based on relaxed stratification";
-   "-rscomp-exp",
-     Arg.Int (fun n ->
-       Fpat.HCCSSolver.link_solver
-         (Fpat.RsCompHCCSSolver.solve ~exp_mode:true ~solver_type:n)),
-     " Use a complete HCCS solver based on relaxed stratification (exp. mode)";
+   "-popl2015exp",
+     Arg.Int (fun threshold ->
+              Fpat.RsCompHCCSSolver.exp_mode := true;
+              Fpat.RsCompHCCSSolver.exp_threshold := threshold),
+     " Perform experiments for POPL 2015 submission";
 
    "-gi",
      Arg.Unit (fun _ ->
