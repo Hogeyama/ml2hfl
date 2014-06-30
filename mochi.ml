@@ -55,20 +55,28 @@ let print_info () =
 let get_commit_hash () =
   try
     let cin = open_in "COMMIT" in
-    let s = input_line cin in
+    let mochi = input_line cin in
+    let fpat =
+      try
+        Some (input_line cin)
+      with End_of_file -> None
+    in
     close_in cin;
-    s
-  with Sys_error _ | End_of_file -> ""
+    mochi, fpat
+  with Sys_error _ | End_of_file -> "", None
 
 
 let print_commit_hash () =
-  Format.printf "%s@." @@ get_commit_hash ()
+  let mochi,fpat = get_commit_hash () in
+  Format.printf "MoCHi: %s@." mochi;
+  Option.iter (Format.printf " compiled with FPAT (%s)@.") fpat
 
 let print_env () =
-  let commit = get_commit_hash () in
+  let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
-  if commit <> "" then Format.printf "  Build: %s@." commit;
+  if mochi <> "" then Format.printf "  Build: %s@." mochi;
+  Option.iter (Format.printf "  FPAT version: %s@.") fpat;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
