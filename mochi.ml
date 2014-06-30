@@ -546,5 +546,5 @@ let () =
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
       | Fatal s ->
           Format.printf "Fatal error: %s@." s
-      | Util.Unsupported s ->
+      | Unsupported s ->
           Format.printf "Unsupported: %s@." s

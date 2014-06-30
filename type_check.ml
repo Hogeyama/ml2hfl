@@ -141,6 +141,11 @@ let rec check t typ =
   | {desc=TNone; typ=TOption typ} -> ()
   | {desc=TSome t; typ=TOption typ} ->
       check t typ
-  | _ -> Format.printf "check': %a, %a@." print_term' t (Color.yellow Syntax.print_typ) t.typ; assert false
+  | _ ->
+      match t.typ with
+        TConstr _ -> assert false
+      | _->
+      Format.printf "check': %a, %a@." print_term' t (Color.yellow Syntax.print_typ) t.typ;
+      assert false
 
 let check t typ = if Flag.check_typ then check t typ
