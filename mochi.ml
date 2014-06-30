@@ -66,12 +66,7 @@ let get_commit_hash () =
   with Sys_error _ | End_of_file -> "", None
 
 
-let print_commit_hash () =
-  let mochi,fpat = get_commit_hash () in
-  Format.printf "MoCHi: %s@." mochi;
-  Option.iter (Format.printf " compiled with FPAT (%s)@.") fpat
-
-let print_env () =
+let print_env cmd =
   let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
@@ -79,8 +74,11 @@ let print_env () =
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
-  Format.printf "@."; ()
+  if cmd then
+    begin
+      Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
+      Format.printf "@."; ()
+    end
 
 
 let main in_channel =
@@ -175,8 +173,8 @@ let arg_spec =
                        Flag.print_progress := false;
                        Flag.exp := true),
      " For experiments";
-   "-v", Arg.Unit (fun () -> print_commit_hash (); exit 0), " Print the version shortly";
-   "-version", Arg.Unit (fun () -> print_env (); exit 0), " Print the version";
+   "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
+   "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
    (* preprocessing *)
@@ -514,7 +512,7 @@ let () =
       let cin = parse_arg () in
       fpat_init2 ();
       Color.init ();
-      if not !Flag.only_result then print_env ();
+      if not !Flag.only_result then print_env true;
       if main cin then decr Flag.cegar_loop;
       Fpat.SMTProver.close ();
       print_info ()
