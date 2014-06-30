@@ -663,8 +663,29 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
           let t'' = subst_var f f' t' in
           make_app_cont t_orig.effect (make_var f) (make_fun f' t'')
         in
-        let t1'' = List.fold_right2 aux bindings bindings' (make_app_cont t1.effect t1' (make_var k)) in
+        let t1'' = List.fold_right2 aux bindings bindings' @@ make_app_cont t1.effect t1' (make_var k) in
         make_fun k @@ make_let_f flag bindings' t1''
+    | LetCPS(flag, bindings, t1), EExcep ->
+        let r = Id.new_var "r" @@ trans_typ typ_orig typ in
+        let k = Id.new_var ("k" ^ k_post) @@ TFun(r,typ_result) in
+        let e = Id.new_var "e" !typ_excep in
+        let h = Id.new_var "h" (TFun(e,typ_result)) in
+        let aux (f,t) =
+          let t' = transform (k_post ^ "_" ^ Id.name f.id_cps) t in
+          Id.set_typ (trans_var f) (t'.typ), [], t'
+        in
+        let bindings' = List.map aux bindings in
+        let t1' = transform k_post t1 in
+        let aux (_,t_orig) (f,_,t) t' =
+          let f' = Id.new_var (Id.name f) (trans_typ t_orig.typ_orig t_orig.typ_cps) in
+          let t'' = subst_var f f' t' in
+          make_app_excep t_orig.effect (make_var f) (make_fun f' t'') (make_var h)
+        in
+        make_fun k @@
+          make_fun h @@
+            make_let_f flag bindings' @@
+              List.fold_right2 aux bindings bindings' @@
+              make_app_excep t1.effect t1' (make_var k) (make_var h)
     | LetCPS(flag, bindings, t1), EExcep ->
         let r = Id.new_var "r" (trans_typ typ_orig typ) in
         let k = Id.new_var ("k" ^ k_post) (TFun(r,typ_result)) in

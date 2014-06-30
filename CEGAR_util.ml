@@ -270,7 +270,8 @@ let rec has_bottom = function
 
 
 
-let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
+let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
+  match t with
   | Const c -> Const c
   | Var x -> Var x
   | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
@@ -374,57 +375,63 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) = function
         List.sort ~cmp:compare (xns1 @@@ (neg xns2))
       in
       let d = List.fold_left (fun d (_,n) -> gcd d (abs n)) 0 xns in
-      let xns' = List.map (fun (x,n) -> assert (n mod d = 0); x, n/d) xns in
-      let xns'' =
-        let rec aux = function
-          | [] -> []
-          | (x,n)::xns ->
-              let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
-              let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
-              (x,n') :: aux xns2
-        in
-        aux xns' in
-      let xns''' = List.filter (fun (_,n) -> n<>0) xns'' in
-      let x,n = List.hd xns''' in
-      let xns = List.rev @@ List.tl xns''' in
-      let op',t1',t2' =
-        let aux = function
-          | None, n -> Const (Int n)
-          | Some x, 1 -> x
-          | Some x, n -> make_mul (make_int n) x
-        in
-        let t1,xns',op' =
-          if n<0
-          then
-            let op' =
-              match op with
-              | Const EqInt -> Const EqInt
-              | Const Lt -> Const Gt
-              | Const Gt -> Const Lt
-              | Const Leq -> Const Geq
-              | Const Geq -> Const Leq
-              | _ -> assert false
+      if d = 0
+      then Const True
+      else
+        let xns' = List.map (fun (x,n) -> assert (n mod d = 0); x, n/d) xns in
+        let xns'' =
+          let rec aux = function
+            | [] -> []
+            | (x,n)::xns ->
+                let xns1,xns2 = List.partition (fun (y,_) -> x=y) xns in
+                let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
+                (x,n') :: aux xns2
+          in
+          aux xns' in
+        let xns''' = List.filter (fun (_,n) -> n<>0) xns'' in
+        if xns''' = []
+        then Const True
+        else
+          let x,n = List.hd xns''' in
+          let xns = List.rev @@ List.tl xns''' in
+          let op',t1',t2' =
+            let aux = function
+              | None, n -> Const (Int n)
+              | Some x, 1 -> x
+              | Some x, n -> make_mul (make_int n) x
             in
-            aux (x,-n), xns, op'
-          else
-            aux (x,n), neg xns, op
-        in
-        let ts = List.map aux xns' in
-        let t2 =
-          match ts with
-          | [] -> Const (Int 0)
-          | t::ts' ->
-              let make_add_sub t1 t2 =
-                match t2 with
-                | Const (Int n) when n < 0 -> make_sub t1 (make_int (-n))
-                | App(App(Const Mul, Const (Int n)), t2') when n < 0 -> make_sub t1 (make_mul (make_int (-n)) t2')
-                | _ -> make_add t1 t2
-              in
-              List.fold_left make_add_sub t ts'
-        in
-        op', t1, t2
-      in
-      make_app op' [t1'; t2']
+            let t1,xns',op' =
+              if n<0
+              then
+                let op' =
+                  match op with
+                  | Const EqInt -> Const EqInt
+                  | Const Lt -> Const Gt
+                  | Const Gt -> Const Lt
+                  | Const Leq -> Const Geq
+                  | Const Geq -> Const Leq
+                  | _ -> assert false
+                in
+                aux (x,-n), xns, op'
+              else
+                aux (x,n), neg xns, op
+            in
+            let ts = List.map aux xns' in
+            let t2 =
+              match ts with
+              | [] -> Const (Int 0)
+              | t::ts' ->
+                  let make_add_sub t1 t2 =
+                    match t2 with
+                    | Const (Int n) when n < 0 -> make_sub t1 (make_int (-n))
+                    | App(App(Const Mul, Const (Int n)), t2') when n < 0 -> make_sub t1 (make_mul (make_int (-n)) t2')
+                    | _ -> make_add t1 t2
+                  in
+                  List.fold_left make_add_sub t ts'
+            in
+            op', t1, t2
+          in
+          make_app op' [t1'; t2']
   | App(t1, t2) -> App(normalize_bool_term ~imply t1, normalize_bool_term ~imply t2)
   | Let _ -> assert false
   | Fun(x,typ,t) -> Fun(x, typ, normalize_bool_term ~imply t)
@@ -477,7 +484,7 @@ let print_prog_typ' orig_fun_list force fm {env=env;defs=defs;main=main} =
 
 
 
-let eval_step_by_step prog =
+let eval_step_by_step  prog =
   let assoc_fun_def defs f =
     let make_fun xs t =
       let xs' = List.map rename_id xs in

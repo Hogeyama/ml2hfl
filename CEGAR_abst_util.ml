@@ -307,7 +307,7 @@ let rec add_label {env=env;defs=defs;main=main} =
         [f1,xs1,t11,e1,make_label 0 t12; f2,xs2,t21,e2,make_label 1 t22]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] ->
         CEGAR_print.prog Format.std_formatter{env=[];defs=[f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22];main=""};assert false
-    | defs -> raise (Fatal ("Not implemented (CEGAR_abst_util.add_label) " ^ string_of_int (List.length defs)))
+    | (f,_,_,_,_)::defs -> fatal @@ Format.sprintf "Not implemented (CEGAR_abst_util.add_label) %s %d" f (1 + List.length defs)
   in
   let rec aux = function
     | [] -> []
