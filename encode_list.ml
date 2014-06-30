@@ -217,7 +217,9 @@ let inst_list_eq_term f t =
       begin
         match t1.typ with
         | TList TInt -> inst_list_eq_flag := true; make_app (make_var f) [t1'; t2']
-        | TList _ -> unsupported "inst_list_eq"
+        | TList _ ->
+            Format.printf "%a@." print_typ t1.typ;
+            unsupported "inst_list_eq"
         | _ -> inst_list_eq.tr2_term_rec f t
       end
   | _ -> inst_list_eq.tr2_term_rec f t

@@ -8,7 +8,7 @@ exception UnknownOutput
 
 type result = Safe of (var * Inter_type.t) list | Unsafe of (string * int) list
 
-module TS = Trecs_syntax
+ module TS = Trecs_syntax
 
 let string_of_parseresult (prerules, tr) =
   (TS.string_of_prerules prerules)^"\n"^(TS.string_of_transitions tr)
@@ -23,16 +23,11 @@ let trans_const = function
 
 let rec trans_id x =
   let map = function
-      '\'' -> "_prime_"
+    | '\'' -> "_prime_"
     | '.' -> "_dot_"
     | c -> String.make 1 c
   in
-  let rec trans acc s =
-    if String.length s = 0
-    then acc
-    else trans (acc ^ map s.[0]) (String.sub s 1 (String.length s - 1))
-  in
-    trans "" x
+  String.fold_left (fun s c -> s ^ map c) "" x
 
 let rec trans_term = function
     Const c -> trans_const c

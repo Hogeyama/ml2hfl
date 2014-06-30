@@ -1810,7 +1810,7 @@ let is_base_typ s = List.mem s base_types
 
 let replace_base_with_int_desc desc =
   match desc with
-  | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
+  | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> (make_int @@ Random.int 1000000).desc
   | RandValue(TConstr(s,_), b) when is_base_typ s -> RandInt b
   | _ -> replace_base_with_int.tr_desc_rec desc
 
@@ -1866,8 +1866,8 @@ let remove_top_por_term t =
           | POr(p1,p2) -> flatten p1 @ flatten p2
           | _ -> [p]
         in
-        let t1' = remove_top_por.tr_term t1 in
-        let t2' = remove_top_por.tr_term t2 in
+        let t1' = alpha_rename @@ remove_top_por.tr_term t1 in
+        let t2' = alpha_rename @@ remove_top_por.tr_term t2 in
         List.map (fun p -> p, t1', t2') @@ flatten p
       in
       let t' = remove_top_por.tr_term t in
