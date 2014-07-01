@@ -5,6 +5,7 @@ include Makefile.config
 PACKAGES = fpat,str,unix,csisat,extlib,compiler-libs.common
 
 INCLUDES =
+FPAT_SRC_DIR = ../fpat
 
 OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
 OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
@@ -26,13 +27,15 @@ opt: $(NAME).opt
 ifdef GIT
 main: COMMIT
 COMMIT: depend .git/index
-	rm -f COMMIT
-	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
-	echo -n `$(GIT) rev-parse --short HEAD` >> COMMIT
-	echo -n ' (' >> COMMIT
-	if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
-	$(GIT) log --date=iso --pretty=format:"%ad" -1 >> COMMIT
-	echo ')' >> COMMIT
+	@echo make COMMIT
+	@rm -f COMMIT
+	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
+	@echo -n `$(GIT) rev-parse --short HEAD` >> COMMIT
+	@echo -n ' (' >> COMMIT
+	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
+	@$(GIT) log --date=iso --pretty=format:"%ad" -1 >> COMMIT
+	@echo ')' >> COMMIT
+	@-(cd $(FPAT_SRC_DIR); echo -n `$(GIT) rev-parse --short HEAD`) >> COMMIT
 endif
 
 

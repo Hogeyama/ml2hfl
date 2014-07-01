@@ -96,7 +96,7 @@ let rec from_type_expr tenv typ =
       TRef (from_type_expr tenv type_expr)
   | Tconstr(path, [type_expr], _) when Path.name path = "option" ->
       TOption (from_type_expr tenv type_expr)
-  | Tconstr(path, _, m) ->
+  | Tconstr(path, typs, m) ->
       let b =
         try
           match (Env.find_type path tenv).type_kind with

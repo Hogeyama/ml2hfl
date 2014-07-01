@@ -55,24 +55,30 @@ let print_info () =
 let get_commit_hash () =
   try
     let cin = open_in "COMMIT" in
-    let s = input_line cin in
+    let mochi = input_line cin in
+    let fpat =
+      try
+        Some (input_line cin)
+      with End_of_file -> None
+    in
     close_in cin;
-    s
-  with Sys_error _ | End_of_file -> ""
+    mochi, fpat
+  with Sys_error _ | End_of_file -> "", None
 
 
-let print_commit_hash () =
-  Format.printf "%s@." @@ get_commit_hash ()
-
-let print_env () =
-  let commit = get_commit_hash () in
+let print_env cmd =
+  let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
-  if commit <> "" then Format.printf "  Build: %s@." commit;
+  if mochi <> "" then Format.printf "  Build: %s@." mochi;
+  Option.iter (Format.printf "  FPAT version: %s@.") fpat;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
-  Format.printf "@."; ()
+  if cmd then
+    begin
+      Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
+      Format.printf "@."; ()
+    end
 
 
 let main in_channel =
@@ -167,8 +173,8 @@ let arg_spec =
                        Flag.print_progress := false;
                        Flag.exp := true),
      " For experiments";
-   "-v", Arg.Unit (fun () -> print_commit_hash (); exit 0), " Print the version shortly";
-   "-version", Arg.Unit (fun () -> print_env (); exit 0), " Print the version";
+   "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
+   "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
    (* preprocessing *)
@@ -519,7 +525,7 @@ let () =
       let cin = parse_arg () in
       fpat_init2 ();
       Color.init ();
-      if not !Flag.only_result then print_env ();
+      if not !Flag.only_result then print_env true;
       if main cin then decr Flag.cegar_loop;
       Fpat.SMTProver.close ();
       print_info ()
@@ -551,8 +557,7 @@ let () =
       | LongInput -> Format.printf "Input is too long@."
       | TimeOut -> Format.printf "Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
-(*      | Fatal s ->
+      | Fatal s ->
           Format.printf "Fatal error: %s@." s
- *)
-      | Util.Unsupported s ->
+      | Unsupported s ->
           Format.printf "Unsupported: %s@." s

@@ -117,11 +117,12 @@ module String = struct
         s1, s2
 end
 
-module Compare = struct
-  let on ~cmp:compare f =
-    fun x y -> compare (f x) (f y)
-end
+module Option = struct
+  include Option
 
+  let iter = may
+  let apply = may
+end
 
 
 let is_uppercase c = 'A' <= c && c <= 'Z'
