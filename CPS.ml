@@ -5,7 +5,7 @@ open Util
 
 module RT = Ref_type
 
-let debug = false
+let debug () = List.mem "CPS" !Flag.debug_module
 
 let counter = ref 0
 let new_evar () = incr counter; !counter
@@ -345,7 +345,7 @@ let rec infer_effect env t =
 exception Loop of effect_var list
 
 let solve_constraints constrs =
-  if debug then
+  if debug() then
     begin
       Format.printf "@.CONSTRAINTS:@.";
       List.iter (Format.printf " %a@." print_econstr) constrs;
@@ -511,7 +511,7 @@ let make_app_excep e t k h =
     | EExcep -> make_app t [k; h]
 
 let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
-  if debug then Format.printf "TRANS: @[%a@.@."
+  if debug() then Format.printf "TRANS: @[%a@.@."
       print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e};
   let r =
     match t, !sol e with
@@ -885,7 +885,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                         (make_var h)))))
     | t, e -> (Format.printf "%a, %a@." print_t_cps t print_effect e; assert false)
   in
-  if debug then
+  if debug() then
     Format.printf "%a@. ===>@. %a@.@."
                   print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e}
                   print_term r;
@@ -945,7 +945,7 @@ let assoc_typ_cps f typed =
 
 
 let rec uncps_ref_type rtyp e etyp =
-  if debug then Format.printf "rtyp:%a@.e:%a@.etyp:%a@.@."
+  if debug() then Format.printf "rtyp:%a@.e:%a@.etyp:%a@.@."
     RT.print rtyp print_effect e print_typ_cps etyp;
   match rtyp, e, etyp with
       RT.Inter rtyps, ENone, _ ->
@@ -997,7 +997,7 @@ let infer_effect t =
 
 let get_rtyp_of typed f rtyp =
   let etyp = assoc_typ_cps f typed in
-  if debug then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
+  if debug() then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
     Id.print f RT.print rtyp print_typ_cps etyp;
   let rtyp' = uncps_ref_type rtyp ENone etyp in
   if Flag.print_ref_typ_debug
@@ -1016,9 +1016,9 @@ let trans t =
   typ_excep := trans_typ !typ_excep (force_cont (infer_effect_typ !typ_excep));
   let t = Trans.short_circuit_eval t in
   let typed = infer_effect t in
-  if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
+  if debug() then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
   sol := solve_constraints !constraints;
-  if debug then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
+  if debug() then Format.printf "CPS_infer_effect:@.%a@." print_typed_term typed;
   let t = transform "" typed in
   let t =
     let x = Id.new_var "x" TUnit in
@@ -1027,15 +1027,15 @@ let trans t =
     let h = make_fun e (make_app fail_term_cps [unit_term]) in
     make_app_excep typed.effect t k h
   in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "CPS" print_term_typ t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "CPS" print_term_typ t;
   let t = Trans.propagate_typ_arg t in
   let t = Trans.beta_reduce t in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "beta reduce" print_term t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "beta reduce" print_term t;
   let t = Trans.expand_let_val t in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" print_term t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" print_term t;
   Type_check.check t typ_result;
   Flag.form := Flag.CPS :: !Flag.form;
   let t = Trans.elim_unused_let ~cbv:false t in
   let t = Trans.elim_unused_branch t in
-  if debug then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term t;
   t, get_rtyp_of typed

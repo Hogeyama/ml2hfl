@@ -127,18 +127,19 @@ let main in_channel =
       let holed_list = BRA_transform.to_holed_programs parsed in
       let result =
         try
-	  List.for_all (fun holed ->
-	                let init_predicate_info =
-	                  { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
-	                  ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
-	                  ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
-	                  ; BRA_types.coefficients = []
-	                  ; BRA_types.errorPaths = []
-	                  ; BRA_types.errorPathsWithExparam = [] } in
-	                let predicate_que = Queue.create () in
-	                let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
-	                Termination_loop.reset_cycle ();
-	                Termination_loop.run predicate_que holed) holed_list
+	  List.for_all
+            (fun holed ->
+	     let init_predicate_info =
+	       { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+	       ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
+	       ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
+	       ; BRA_types.coefficients = []
+	       ; BRA_types.errorPaths = []
+	       ; BRA_types.errorPathsWithExparam = [] } in
+	     let predicate_que = Queue.create () in
+	     let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
+	     Termination_loop.reset_cycle ();
+	     Termination_loop.run predicate_que holed) holed_list
         with
 	| Fpat.PolyConstrSolver.NoSolution
 	| Termination_loop.FailedToFindLLRF -> false
@@ -169,6 +170,7 @@ let arg_spec =
      " Show only result";
    "-verbose", Arg.Set Fpat.Global.verbose, "Verbose mode";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
+   "-debug-module", Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module), "<module>  ";
    "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
    "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
    "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";

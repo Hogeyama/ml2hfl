@@ -5,7 +5,7 @@ open Term_util
 open Type
 
 
-let debug = false
+let debug () = List.mem "Trans" !Flag.debug_module
 
 
 let flatten_tvar = (make_trans ()).tr_term
@@ -132,7 +132,7 @@ let copy_poly_funs_desc desc =
       let t2'' = inst_tvar_tunit t2' in
       let map,t2''' = rename_poly_funs f t2'' in
       let n = List.length map in
-      if debug && n >= 2
+      if debug() && n >= 2
       then
         begin
           Format.printf "COPY: @[";

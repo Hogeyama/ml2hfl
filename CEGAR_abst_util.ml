@@ -6,7 +6,7 @@ open CEGAR_print
 open CEGAR_util
 
 
-let debug = false
+let debug () = List.mem "CEGAR_abst_util" !Flag.debug_module
 
 let hd = function
   | [] -> assert false
@@ -162,8 +162,8 @@ let filter env cond pbs must t =
     |& !Flag.remove_false &> List.filter_out (fun (p,_) -> check_aux env cond p)
     |> List.filter_out (fun (p,_) -> check_aux env cond @@ make_not p)
   in
-  if debug then Format.printf "filter@.";
-  if debug then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  if debug() then Format.printf "filter@.";
+  if debug() then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
   let pbss =
     let rec aux sets (p,b) =
       let fv = get_fv p in
@@ -178,7 +178,7 @@ let filter env cond pbs must t =
     List.map (fun xs -> List.filter (fun (p,_) -> List.exists (fun y -> List.mem y xs) @@ get_fv p) pbs) xss
   in
   let aux pbs =
-    if debug then Format.printf "pbs: @[<hv>%a@.@." print_pbs pbs';
+    if debug() then Format.printf "pbs: @[<hv>%a@.@." print_pbs pbs';
     make_dnf @@ fst @@ weakest_aux env cond pbs (Const False)
   in
   let unsat = List.fold_left make_or (Const False) @@ List.map aux pbss in
@@ -192,13 +192,13 @@ let abst env cond pbs p =
     |& !Flag.remove_false &> List.filter_out (fun (p,_) -> check_aux env cond p)
     |> List.filter_out (fun (p,_) -> check_aux env cond @@ make_not p)
   in
-  if debug then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
-  if debug then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs' CEGAR_print.term p;
+  if debug() then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  if debug() then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs' CEGAR_print.term p;
   if has_bottom p
   then Const Bottom
   else
     let tt, ff = weakest env cond pbs' p in
-    if debug then Format.printf "tt:%a@.ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
+    if debug() then Format.printf "tt:%a@.ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
     if make_not tt = ff || tt = make_not ff
     then tt
     else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))

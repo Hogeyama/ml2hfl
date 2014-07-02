@@ -7,7 +7,7 @@ type kind =
   | TKVariant of (string * typ list) list
   | TKRecord of (string * (mutable_flag * typ)) list
 
-let debug = false
+let debug () = List.mem "Type_decl" !Flag.debug_module
 
 let typ_decls : (string * kind) list ref = ref ["ABST", TKVariant ["Abst", []]]
 
@@ -33,7 +33,7 @@ let add_typ_decl s k =
   if not (in_typ_decls s) && s <> "unit" && s <> "bool" && s <> "list"
   then
     begin
-      if debug then Format.printf "ADD %s = %a@." s print_kind k;
+      if debug() then Format.printf "ADD %s = %a@." s print_kind k;
       typ_decls := (s,k)::!typ_decls
     end
 
@@ -49,7 +49,7 @@ let add_exc_decl s typs =
             then stypss
             else (s,typs)::stypss
           in
-          if debug then Format.printf "add_exc(%d): %a@." (List.length typs) print_kind @@ TKVariant stypss';
+          if debug() then Format.printf "add_exc(%d): %a@." (List.length typs) print_kind @@ TKVariant stypss';
           "exn", TKVariant stypss'
       | _ -> assert false
     in

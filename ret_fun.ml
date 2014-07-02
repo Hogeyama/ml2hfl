@@ -3,7 +3,7 @@ open Type
 open Syntax
 open Term_util
 
-let debug = false
+let debug () = List.mem "Ret_fun" !Flag.debug_module
 
 let normalize = make_trans ()
 
@@ -222,16 +222,16 @@ let () = trans.tr2_typ <- trans_typ
 let trans t = t
   |> normalize.tr_term
   |> Trans.inline_var_const
-  |@debug&> Format.printf "AAA:@.%a@.@." print_term
+  |@debug()&> Format.printf "AAA:@.%a@.@." print_term
   |> Trans.flatten_let
-  |@debug&> Format.printf "BBB:@.%a@.@." print_term
+  |@debug()&> Format.printf "BBB:@.%a@.@." print_term
   |@> flip Type_check.check TUnit
   |> trans.tr2_term []
-  |@debug&> Format.printf "CCC:@.%a@.@." print_term_typ
+  |@debug()&> Format.printf "CCC:@.%a@.@." print_term_typ
   |> Trans.remove_label
-  |@debug&> Format.printf "DDD:@.%a@.@." print_term_typ
+  |@debug()&> Format.printf "DDD:@.%a@.@." print_term_typ
   |*> Trans.inline_no_effect
   |> Trans.inline_var_const
-  |@debug&> Format.printf "EEE:@.%a@.@." print_term_typ
+  |@debug()&> Format.printf "EEE:@.%a@.@." print_term_typ
   |> pair_eta_reduce
   |@> flip Type_check.check TUnit

@@ -6,7 +6,7 @@ open Tree
 
 module RT = Ref_type
 
-let debug = false
+let debug () = List.mem "Curry" !Flag.debug_module
 
 let rec element_num typ =
   match elim_tpred typ with
@@ -14,7 +14,7 @@ let rec element_num typ =
   | _ -> 1
 
 let rec uncurry_typ rtyp typ =
-  if debug then Format.printf "rtyp:%a@.typ:%a@.@."
+  if debug() then Format.printf "rtyp:%a@.typ:%a@.@."
                               RT.print rtyp print_typ typ;
   match rtyp,typ with
   | RT.Inter rtyps, _ ->
@@ -37,8 +37,8 @@ and get_arg_var = function
   | _ -> Id.new_var "x" typ_unknown
 
 and uncurry_typ_arg rtyps typ =
-  if debug then
-    Format.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps print_typ typ;
+  if debug()
+  then Format.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps print_typ typ;
   match rtyps, elim_tpred typ with
   | _, TPair(x,typ) ->
       let rtyps1,rtyps2 = List.split_nth (element_num @@ Id.typ x) rtyps in
@@ -54,8 +54,8 @@ and uncurry_typ_arg rtyps typ =
 let uncurry_rtyp t f rtyp =
   let typ = Trans.assoc_typ f t in
   let rtyp' = uncurry_typ rtyp typ in
-    if debug then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@."
-      Id.print f RT.print rtyp print_typ typ RT.print rtyp';
+  if debug()
+  then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp print_typ typ RT.print rtyp';
   if !Flag.print_ref_typ
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'

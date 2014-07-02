@@ -4,7 +4,7 @@ open Syntax
 open Term_util
 
 
-let debug = false
+let debug () = List.mem "Tupling" !Flag.debug_module
 
 
 type form =
@@ -61,7 +61,7 @@ let rec decomp_let t =
     [Nonrecursive, (r,[],t)], make_var r
 
 let partition_bindings x t =
-  if debug then Format.printf "PB: x:%a@." Id.print x;
+  if debug() then Format.printf "PB: x:%a@." Id.print x;
   let bindings,t' = decomp_let t in
   let check t =
     if List.mem x (get_fv t)
@@ -73,7 +73,7 @@ let partition_bindings x t =
         assert (flag = Nonrecursive);
         before, Some (f,ts), after
     | None, _, _ ->
-        if debug then Format.printf "CHECK: %a@." print_term t;
+        if debug() then Format.printf "CHECK: %a@." print_term t;
         check t;
         before, app_x, (flag,(f,xs,t))::after
     | Some _, _, {desc=App({desc=Var y}, ts)} when Id.same x y ->
@@ -95,7 +95,7 @@ let classify f t =
   | Cannot_compose -> FOther
 
 let compose_let_same_arg map fg f t1 g t2 =
-  if debug then Format.printf "compose_let_same_arg@.";
+  if debug() then Format.printf "compose_let_same_arg@.";
   let before1,(x1,ts1),after1,t1' = partition_bindings f t1 in
   let before2,(x2,ts2),after2,t2' = partition_bindings g t2 in
   let aux ts_small ts_big map =
@@ -149,7 +149,7 @@ let compose_let_diff_arg fg f t1 g t2 =
   make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
 
 let compose_let map f t1 g t2 =
-  if debug then Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f print_term t1 Id.print g print_term t2;
+  if debug() then Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f print_term t1 Id.print g print_term t2;
   match classify f t1, classify g t2, map with
     FNonRec,    _,          _ -> compose_non_recursive true t1 t2
   | _,          FNonRec,    _ -> compose_non_recursive false t1 t2
@@ -202,7 +202,7 @@ let classify f t =
   | Cannot_compose -> FOther
 
 let compose_let_same_arg map fg f t1 g t2 =
-  if debug then Format.printf "compose_let_same_arg@.";
+  if debug() then Format.printf "compose_let_same_arg@.";
   let before1,(x1,ts1),after1,t1' = partition_bindings f t1 in
   let before2,(x2,ts2),after2,t2' = partition_bindings g t2 in
   let aux ts_small ts_big map =
@@ -237,7 +237,7 @@ let compose_non_recursive first t1 t2 =
   make_lets_f (bindings @ [Nonrecursive,(r,[],t)]) t'
 
 let rec compose f t1 g t2 =
-  if debug then Format.printf "compose@.";
+  if debug() then Format.printf "compose@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), _ ->
     make_if t11 (compose f t12 g t2) (compose f t13 g t2)
@@ -246,7 +246,7 @@ let rec compose f t1 g t2 =
   | _ -> raise Cannot_compose
 
 let rec compose_same_arg map fg f t1 g t2 =
-  if debug then Format.printf "compose_same_arg@.";
+  if debug() then Format.printf "compose_same_arg@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), If(t21, t22, t23) when t11 = t21 ->
     let t2' = compose_same_arg map fg f t12 g t22 in
@@ -278,7 +278,7 @@ let same_arg_map xs1 xs2 =
     None
 
 let assoc_env f env =
-  if debug then Color.printf Color.Reverse "%a@." Id.print f;
+  if debug() then Color.printf Color.Reverse "%a@." Id.print f;
   let _,xs,t = Id.assoc f env in
   let ys,t' = decomp_fun t in
   match xs@ys with
@@ -334,7 +334,7 @@ let assoc_env f env =
 
 
 let compose_non_recursive first t1 t2 =
-  if debug then Format.printf "compose_non_recursive@.";
+  if debug() then Format.printf "compose_non_recursive@.";
   let bindings,t = decomp_let (if first then t1 else t2) in
   let r = Id.new_var "r" (if first then t1.typ else t2.typ) in
   let t' =
@@ -369,7 +369,7 @@ let compose_simple_rec fg f t1 g t2 =
   make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
 
 let compose_let fg f t1 g t2 =
-  if debug then Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f print_term t1 Id.print g print_term t2;
+  if debug() then Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f print_term t1 Id.print g print_term t2;
   match classify f t1, classify g t2 with
   | FNonRec,    _          -> compose_non_recursive true t1 t2
   | _,          FNonRec    -> compose_non_recursive false t1 t2
@@ -378,7 +378,7 @@ let compose_let fg f t1 g t2 =
   | FSimpleRec, FSimpleRec -> compose_simple_rec fg f t1 g t2
 
 let rec compose fg f t1 g t2 =
-  if debug then Format.printf "compose@.";
+  if debug() then Format.printf "compose@.";
   match t1.desc, t2.desc with
     If(t11, t12, t13), _ ->
     make_if t11 (compose fg f t12 g t2) (compose fg f t13 g t2)
@@ -394,7 +394,7 @@ let tupling_term env t =
   | Pair(t1, t2) when decomp_some t1 <> None && decomp_some t2 <> None ->
       begin
         try
-          if debug then Format.printf "PAIR: %a, %a@." print_term t1 print_term t2;
+          if debug() then Format.printf "PAIR: %a, %a@." print_term t1 print_term t2;
           begin match (Option.get @@ decomp_some t1).desc, (Option.get @@ decomp_some t2).desc with
                   App({desc = Var f}, [{desc = Snd tx}]),
                   App({desc = Var g}, [{desc = Snd ty}]) ->
@@ -415,7 +415,7 @@ let tupling_term env t =
                   let t_app = make_app (make_var fg) [make_snd @@ tx; make_snd @@ ty] in
                   let t_pair = make_pair (make_some @@ make_fst @@ make_var r) (make_some @@ make_snd @@ make_var r) in
                   new_funs := ([f;g], (fg, [x';y'], t_body)) :: !new_funs;
-                  if debug then Format.printf "ADD: %a@." Id.print fg;
+                  if debug() then Format.printf "ADD: %a@." Id.print fg;
                   make_let [r, [], t_app] t_pair
                   | _ -> tupling.tr2_term_rec env t
           end
@@ -480,7 +480,7 @@ let compose_app_term t =
         | (Nonrecursive,(x,[],{desc=Snd({desc=App({desc=Var f},[{desc=Pair(t11,t12)}])})}))::
             (Nonrecursive,(y,[],{desc=Fst({desc=App({desc=Var g},[{desc=Pair(t21,t22)}])})}))::bindings'
              when Id.same f g && is_none t11 && is_some_term t12 && is_some_term t21 && is_none t22 ->
-            if debug then Format.printf "%a, %a@." Id.print f Id.print g;
+            if debug() then Format.printf "%a, %a@." Id.print f Id.print g;
             let p = Id.new_var "p" (TPair(x, (Id.typ y))) in
             let bindings'' =
               [p, [], make_app (make_var f) [make_pair t12 t21];
@@ -532,8 +532,8 @@ let let_normalize_desc desc =
       then Let(Nonrecursive, [x,[],t1'], t2')
       else
         let t2''' = make_lets bindings2 t2'' in
-        if debug then Color.printf Color.Yellow "NORMALIZE: %a@." Id.print x;
-        if debug then Color.printf Color.Reverse "[%a]@." (print_list Id.print ";") @@ List.map (fun (x,_,_) -> x) bindings;
+        if debug() then Color.printf Color.Yellow "NORMALIZE: %a@." Id.print x;
+        if debug() then Color.printf Color.Reverse "[%a]@." (print_list Id.print ";") @@ List.map (fun (x,_,_) -> x) bindings;
         (make_lets bindings1 @@ make_lets [x,[],t1'] t2''').desc
   | _ -> let_normalize.tr_desc_rec desc
 
@@ -550,7 +550,7 @@ let rec tree_of_pair t =
   | _ -> Tree.Leaf t
 
 let elim_check t1 t2 =
-  if false && debug then Color.printf Color.Yellow "%a, %a@." print_term t1 print_term t2;
+  if false && debug() then Color.printf Color.Yellow "%a, %a@." print_term t1 print_term t2;
   match t1.desc, t2.desc with
     App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
     let check t1 t2 =
@@ -573,7 +573,7 @@ let elim_sub_app_desc env desc =
       let t2' =
         try
           let y,_ = List.find (fun (y,t2) -> not (is_depend t1 y) && elim_check t2 t1) env in
-          if debug then Format.printf "%a |-> %a@." Id.print y Id.print x;
+          if debug() then Format.printf "%a |-> %a@." Id.print y Id.print x;
           make_label (InfoId y) @@ subst y (make_var x) t2
         with Not_found -> t2
       in
@@ -596,7 +596,7 @@ let () = elim_substed_let.tr2_term <- elim_substed_let_term
 let elim_sub_app t =
   let t' = elim_sub_app.tr2_term [] t in
   let xs = col_info_id t' in
-  if debug then Format.printf "%a@." (print_list Id.print "; ") xs;
+  if debug() then Format.printf "%a@." (print_list Id.print "; ") xs;
   let t'' = elim_substed_let.tr2_term xs t' in
   Trans.remove_label t''
 
@@ -643,7 +643,7 @@ let elim_same_app_term env t =
       if check t1 then
         try
           let y,_ = List.find (fun (_,t2) -> same_term t2 t1) env in
-          if debug then Format.printf "%a |-> %a@." Id.print x Id.print y;
+          if debug() then Format.printf "%a |-> %a@." Id.print x Id.print y;
           elim_same_app.tr2_term env @@ subst x (make_var y) t2
         with Not_found ->
           let env' = (x,t1)::env in
@@ -700,7 +700,7 @@ let replace_app_term env t =
           let t2' = replace_app.tr2_term env' t2 in
           if List.length used < 2 (* negligence *)
           then raise (Invalid_argument "");
-          if debug then
+          if debug() then
             begin
               Format.printf "replace[%d]: %a@." (List.length apps1) Id.print x;
               List.iter (fun (i,x,t) -> Format.printf "APPS: %a = %a ...%d... %a ...@." Id.print x Id.print f i print_term t) apps';
@@ -735,23 +735,23 @@ let trans t =
   t
   |> inline_wrapped.tr_term
   |> Trans.flatten_let
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" print_term
   |> let_normalize
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" print_term
   |> elim_sub_app
   |> elim_same_app
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" print_term
   |> Trans.elim_unused_branch
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" print_term
   |> Trans.elim_unused_let
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term
   |> tupling
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" print_term
   |> Trans.normalize_let
   |> Trans.flatten_let
   |> Trans.inline_no_effect
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" print_term
   |> replace_app
   |> elim_same_app
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" print_term
   |@> flip Type_check.check Type.TUnit
