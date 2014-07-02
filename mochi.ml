@@ -170,7 +170,7 @@ let arg_spec =
      " Show only result";
    "-verbose", Arg.Set Fpat.Global.verbose, "Verbose mode";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
-   "-debug-module", Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module), "<module>  ";
+   "-debug-module", Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module), "<modules>  Set debug flag of modules (comma-separated)";
    "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
    "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
    "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
