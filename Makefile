@@ -98,7 +98,7 @@ CEGAR_lexer.ml: CEGAR_lexer.mll
 
 
 # Dependencies
-DEP_FPAT = CEGAR CEGAR_syntax CEGAR_abst_util feasibility main \
+DEP_FPAT = CEGAR CEGAR_syntax CEGAR_abst_util feasibility mochi \
 	main_loop termination_loop refine syntax trans fpatInterface writeAnnot BRA_types
 FPAT_LIB = $(FPAT)/fpat.cmi $(FPAT)/fpat.cma $(FPAT)/fpat.cmxa
 $(addsuffix .cmi,$(DEP_FPAT)): $(FPAT_LIB)

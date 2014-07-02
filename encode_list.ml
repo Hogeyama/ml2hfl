@@ -120,6 +120,12 @@ let print_bind fm bind =
 
 let abst_list_term post t =
   match t.desc with
+  | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
+      let t1' = abst_list.tr2_term post t1 in
+      let t2' = abst_list.tr2_term post t2 in
+      if !Flag.encode_list_opt
+      then make_get_val @@ make_app t1' [t2']
+      else make_app (make_snd t1') [t2']
   | App({desc=Var x}, [t]) when x = length_var -> make_fst (abst_list.tr2_term post t)
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
