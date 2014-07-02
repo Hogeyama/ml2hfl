@@ -3,7 +3,7 @@ open Syntax
 open Type
 
 
-
+let debug () = List.mem "Trans" !Flag.debug_module
 
 
 let occur = Syntax.occur
@@ -748,7 +748,18 @@ let get_bound_variables = get_bound_variables.col_term
 
 let is_id_unique t =
   let bv = get_bound_variables t in
+  let rec check xs =
+    match xs with
+    | [] -> true
+    | x::xs' ->
+        if Id.mem x xs'
+        then (Format.printf "%a" Id.print x; false)
+        else check xs'
+  in
+  check bv
+(*
   List.length bv = List.length (List.unique ~cmp:Id.same bv)
+*)
 
 
 

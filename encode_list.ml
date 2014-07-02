@@ -326,7 +326,9 @@ let abst_list_opt_term t =
   | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
       let t1' = abst_list_opt.tr_term t1 in
       let t2' = abst_list_opt.tr_term t2 in
-      make_get_val @@ make_app t1' [t2']
+      let t = make_app t1' [t2'] in
+      let x = Id.new_var "x" t.typ in
+      make_let [x,[],t] @@ make_assume (make_not @@ make_is_none @@ make_var x) (make_get_val @@ make_var x)
   | Nil ->
       let el_typ =
         match typ' with
