@@ -123,9 +123,7 @@ let abst_list_term post t =
   | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
-      if !Flag.encode_list_opt
-      then make_get_val @@ make_app t1' [t2']
-      else make_app (make_snd t1') [t2']
+      make_app (make_snd t1') [t2']
   | App({desc=Var x}, [t]) when x = length_var -> make_fst (abst_list.tr2_term post t)
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
@@ -325,7 +323,11 @@ let rec get_match_bind_cond t p =
 let abst_list_opt_term t =
   let typ' = abst_list_opt.tr_typ t.typ in
   match t.desc with
-    Nil ->
+  | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
+      let t1' = abst_list_opt.tr_term t1 in
+      let t2' = abst_list_opt.tr_term t2 in
+      make_get_val @@ make_app t1' [t2']
+  | Nil ->
       let el_typ =
         match typ' with
           TFun(_, TPair(_,typ)) -> typ
