@@ -1,14 +1,14 @@
 
 open Util
 open CEGAR_syntax
-module T = CEGAR_type
+open CEGAR_type
 
 
 exception CannotUnify
 exception External
 
 type typ =
-    TUnit
+  | TUnit
   | TResult
   | TBool
   | TInt
@@ -18,7 +18,7 @@ type typ =
   | TTuple of typ list
 
 let rec print_typ fm = function
-    TUnit -> Format.fprintf fm "unit"
+  | TUnit -> Format.fprintf fm "unit"
   | TResult -> Format.fprintf fm "X"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
@@ -31,60 +31,60 @@ let rec print_typ fm = function
 let new_tvar () = TVar (ref None)
 
 let rec from_typ = function
-    T.TBase(T.TUnit, _) -> TUnit
-  | T.TBase(T.TInt, _) -> TInt
-  | T.TBase(T.TBool, _) -> TBool
-  | T.TBase(T.TList, _) -> assert false
-  | T.TBase(T.TTuple _, _) -> assert false
-  | T.TBase(T.TAbst s, _) -> TAbst s
-  | T.TAbs _ -> assert false
-  | T.TApp _ -> assert false
-  | T.TFun(typ1, typ2) -> TFun(from_typ typ1, from_typ (typ2 (Const Unit)))
+  | TBase(TUnit, _) -> TUnit
+  | TBase(TInt, _) -> TInt
+  | TBase(TBool, _) -> TBool
+  | TBase(TList, _) -> assert false
+  | TBase(TTuple _, _) -> assert false
+  | TBase(TAbst s, _) -> TAbst s
+  | TAbs _ -> assert false
+  | TApp _ -> assert false
+  | TFun(typ1, typ2) -> TFun(from_typ typ1, from_typ (typ2 (Const Unit)))
 
 let rec occurs r = function
-    TVar{contents = Some typ} -> occurs r typ
+  | TVar{contents = Some typ} -> occurs r typ
   | TFun(typ1,typ2) -> occurs r typ1 || occurs r typ2
   | TVar({contents = None} as r') -> r == r'
   | _ -> false
 
 let rec unify typ1 typ2 =
   match typ1, typ2 with
-      TVar{contents = Some typ1}, _ -> unify typ1 typ2
-    | _, TVar{contents = Some typ2} -> unify typ1 typ2
-    | TUnit, TUnit -> ()
-    | TBool, TBool -> ()
-    | TInt, TInt -> ()
-    | TResult, TResult -> ()
-    | TAbst typ1, TAbst typ2 when typ1 = typ2 -> ()
-    | TAbst "string", TAbst "Pervasives.format"
-    | TAbst "Pervasives.format", TAbst "string" -> ()
-    | TFun(typ11, typ12), TFun(typ21, typ22) ->
-        unify typ11 typ21;
-        unify typ12 typ22
-    | TTuple [], typ
-    | typ, TTuple [] -> unify TUnit typ
-    | TTuple typs1, TTuple typs2 ->
-        List.iter2 unify typs1 typs2
-    | TVar r1, TVar r2 when r1 == r2 -> ()
-    | TVar({contents = None} as r), typ
-    | typ, TVar({contents = None} as r) ->
-        assert (not (occurs r typ));
-        r := Some typ
-    | _ -> Format.printf "UNIFY: %a, %a@." print_typ typ1 print_typ typ2; assert false
+  | TVar{contents = Some typ1}, _ -> unify typ1 typ2
+  | _, TVar{contents = Some typ2} -> unify typ1 typ2
+  | TUnit, TUnit -> ()
+  | TBool, TBool -> ()
+  | TInt, TInt -> ()
+  | TResult, TResult -> ()
+  | TAbst typ1, TAbst typ2 when typ1 = typ2 -> ()
+  | TAbst "string", TAbst "Pervasives.format"
+  | TAbst "Pervasives.format", TAbst "string" -> ()
+  | TFun(typ11, typ12), TFun(typ21, typ22) ->
+      unify typ11 typ21;
+      unify typ12 typ22
+  | TTuple [], typ
+  | typ, TTuple [] -> unify TUnit typ
+  | TTuple typs1, TTuple typs2 ->
+      List.iter2 unify typs1 typs2
+  | TVar r1, TVar r2 when r1 == r2 -> ()
+  | TVar({contents = None} as r), typ
+  | typ, TVar({contents = None} as r) ->
+      assert (not (occurs r typ));
+      r := Some typ
+  | _ -> Format.printf "UNIFY: %a, %a@." print_typ typ1 print_typ typ2; assert false
 
 
 let nil = fun _ -> []
 
 let rec trans_typ = function
-    TUnit -> T.TBase(T.TUnit,nil)
-  | TBool -> T.TBase(T.TBool,nil)
-  | TInt -> T.TBase(T.TInt,nil)
-  | TVar{contents=None} -> T.TBase(T.TUnit,nil)
+  | TUnit -> TBase(TUnit,nil)
+  | TBool -> TBase(TBool,nil)
+  | TInt -> TBase(TInt,nil)
+  | TVar{contents=None} -> TBase(TUnit,nil)
   | TVar{contents=Some typ} -> trans_typ typ
-  | TFun(typ1,typ2) -> T.TFun(trans_typ typ1, fun _ -> trans_typ typ2)
-  | TTuple typs -> T.make_tapp (T.TBase(T.TTuple (List.length typs),nil)) (List.map trans_typ typs)
-  | TAbst typ -> T.TBase(T.TAbst typ, nil)
-  | TResult -> T.typ_result
+  | TFun(typ1,typ2) -> TFun(trans_typ typ1, fun _ -> trans_typ typ2)
+  | TTuple typs -> make_tapp (TBase(TTuple (List.length typs),nil)) (List.map trans_typ typs)
+  | TAbst typ -> TBase(TAbst typ, nil)
+  | TResult -> typ_result
 
 let get_typ_const = function
   | Unit -> TUnit
@@ -133,33 +133,32 @@ let get_typ_const = function
         TFun(typ,typ)
 
 let rec infer_term env = function
-    Const c -> get_typ_const c
+  | Const c -> get_typ_const c
   | Var x ->
-      let typ =
+      begin
         try
           List.assoc x env
         with
-            Not_found when is_parameter x -> TInt
-          | Not_found -> Format.printf "Not_found VAR: %s@." x; assert false
-      in
-        typ
+          Not_found when is_parameter x -> TInt
+        | Not_found -> Format.printf "Not_found VAR: %s@." x; assert false
+      end
   | App(t1,t2) ->
       let typ1 = infer_term env t1 in
       let typ2 = infer_term env t2 in
       let typ = new_tvar () in
       let typ' = TFun(typ2,typ) in
-        unify typ1 typ';
-        typ
+      unify typ1 typ';
+      typ
   | Let(x,t1,t2) ->
       let typ1 = infer_term env t1 in
       let env' = (x,typ1)::env in
       let typ2 = infer_term env' t2 in
-        typ2
+      typ2
   | Fun(x,_,t) ->
       let typ_x = new_tvar() in
       let env' = (x,typ_x)::env in
       let typ1 = infer_term env' t in
-        TFun(typ_x,typ1)
+      TFun(typ_x,typ1)
 
 let infer_def env (f,xs,t1,_,t2) =
   if false then Format.printf "%a@." CEGAR_print.var f;
@@ -169,8 +168,8 @@ let infer_def env (f,xs,t1,_,t2) =
   let typ2 = infer_term env' t2 in
   let typ = try List.assoc f env with _ -> assert false in
   let typ' = List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs typ2 in
-    unify typ1 TBool;
-    unify typ typ'
+  unify typ1 TBool;
+  unify typ typ'
 
 
 let infer ?(is_cps=false) ({defs;main;env} as prog) =
