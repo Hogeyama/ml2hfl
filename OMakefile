@@ -13,7 +13,7 @@ FILES =	Makefile trans.mli lift.mli CPS.mli curry.mli encode_rec.mli \
 	BRA_transform.ml extraClsDepth.ml eval.ml main_loop.ml termination_loop.ml \
 	mochi.ml term_util.ml term_util.mli encode_list.ml encode_list.mli ret_fun.ml \
 	ref_trans.ml tree.ml tree.mli elim_same_arg.ml color.ml color.mli slicer.ml \
-	ref_trans.mli CEGAR_trans.mli
+	ref_trans.mli CEGAR_trans.mli CEGAR_parser.mly CEGAR_lexer.mll
 
 DONE: $(FILES)
     make

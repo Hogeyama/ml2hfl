@@ -10,7 +10,7 @@ exception EvalSkip
 exception EvalRestart
 exception EvalTerminate
 
-let debug = false
+let debug () = List.mem "CEGAR_trans" !Flag.debug_module
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 
@@ -479,9 +479,9 @@ let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
   let ext_env = List.map (fun (x,typ) -> trans_var x, trans_typ typ) (Trans.make_ext_env t) in
-  let () = if debug then Format.printf "BEFORE:@.%a@.@.@." S.print_term t in
+  let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." S.print_term t in
   let t = Trans.trans_let t in
-  let () = if debug then Format.printf "AFTER:@.%a@.@.@." S.print_term t in
+  let () = if debug() then Format.printf "AFTER:@.%a@.@.@." S.print_term t in
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term t_main in
@@ -501,13 +501,13 @@ let trans_prog ?(spec=[]) t =
     uniq_env (ext_env @@@ List.map aux env)
   in
   let prog = {env=env'; defs=defs''; main=main} in
-  if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
   let prog = event_of_temp prog in
-  if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
   let prog = eta_expand prog in
-  if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
   let prog = pop_main prog in
-  if debug then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
   let prog,map,rmap = id_prog prog in
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
   prog,map,rmap,get_rtyp

@@ -54,7 +54,7 @@ val trans_term :
 
 val trans_prog :
   ?spec:('a Id.t * CEGAR_util.S.typ) list ->
-  CEGAR_util.S.typed_term ->
+  Syntax.typed_term ->
   CEGAR_syntax.prog * (CEGAR_syntax.var * CEGAR_syntax.var) list *
   (CEGAR_syntax.var * 'b Type.t Id.t) list *
   (Syntax.typ Id.t -> CEGAR_ref_type.t -> Ref_type.t)

@@ -8,7 +8,7 @@ open Type_decl
 module RT = Ref_type
 
 
-let debug = false
+let debug () = List.mem "Encode_list" !Flag.debug_module
 
 
 let rec get_rtyp_list rtyp typ =
@@ -167,7 +167,7 @@ let abst_list_term post t =
       let aux (p,cond,t2) t3 =
         let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
         let bind,cond' = get_match_bind_cond (make_var x) p in
-        if debug then Format.printf "@[bind:%a,@ %a@." print_bind bind print_term cond;
+        if debug() then Format.printf "@[bind:%a,@ %a@." print_bind bind print_term cond;
         let t_cond,bind' =
           if cond = true_term
           then cond, bind
@@ -175,7 +175,7 @@ let abst_list_term post t =
             let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
             cond', bind
         in
-        if debug then Format.printf "@[bind':%a,@ %a@." print_bind bind' print_term t_cond;
+        if debug() then Format.printf "@[bind':%a,@ %a@." print_bind bind' print_term t_cond;
         let t2' = abst_list.tr2_term post t2 in
         make_if (make_and cond' t_cond) (add_bind bind' t2') t3
       in
@@ -190,10 +190,10 @@ let trans t =
   Type_check.check t Type.TUnit;
   assert (Term_util.is_id_unique t);
   let t' = abst_list.tr2_term "" t in
-  if debug then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
+  if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
   assert (Term_util.is_id_unique t');
   let t' = Trans.inline_var_const t' in
-  if debug then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
+  if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
   assert (Term_util.is_id_unique t');
   typ_excep := abst_list.tr2_typ "" !typ_excep;
   Type_check.check t' Type.TUnit;
@@ -372,7 +372,7 @@ let trans_opt t =
 let trans t =
   t
   |> inst_list_eq
-  |@debug&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" print_term
   |@> flip Type_check.check TUnit
   |> Trans.remove_top_por
   |@> flip Type_check.check TUnit

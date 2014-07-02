@@ -179,9 +179,9 @@ let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 
 let get_ext_funs {env=env; defs=defs} =
-  env |>
-  List.filter (fun (f,_) -> not (List.exists (fun (g,_,_,_,_) -> f = g) defs)) |>
-  List.map fst
+  env
+  |> List.filter (fun (f,_) -> not (List.exists (fun (g,_,_,_,_) -> f = g) defs))
+  |> List.map fst
 
 let get_ext_fun_env prog =
   let ext_funs = get_ext_funs prog in

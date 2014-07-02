@@ -9,7 +9,7 @@ type node = UnitNode | BrNode | LineNode of int | EventNode of string
 type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
 
-let debug = false
+let debug () = List.mem "ModelCheck_util" !Flag.debug_module
 
 
 let make_line_spec n q =

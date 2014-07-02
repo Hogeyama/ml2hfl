@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug = false
+let debug () = List.mem "Elim_same_arg" !Flag.debug_module
 
 
 let get_args = make_col2 [] List.rev_append
@@ -158,7 +158,7 @@ let trans_desc env desc =
           in
           aux same_args
       in
-      if debug then
+      if debug() then
         begin
           Color.printf Color.Reverse "%a: [" Id.print f;
           List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args';

@@ -14,7 +14,7 @@ let apply_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
 
 
 let rec subst x t = function
-    Const c -> Const c
+  | Const c -> Const c
   | Var y when x = y -> t
   | Var y -> Var y
   | App(t1,t2) -> App(subst x t t1, subst x t t2)

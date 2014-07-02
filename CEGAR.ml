@@ -10,6 +10,8 @@ exception CannotDiscoverPredicate
 type result = Safe of (var * CEGAR_ref_type.t) list | Unsafe of int list
 type info = {orig_fun_list:var list; inlined:var list}
 
+let empty_info = {orig_fun_list=[]; inlined=[]}
+
 let pre () =
   ()
 
@@ -109,10 +111,10 @@ let rec cegar1 prog0 is_cp ces info =
 
 
 
-let cegar prog orig_fun_list =
+let cegar prog info =
   try
     let is_cp = FpatInterface.is_cp prog in
-    cegar1 prog is_cp [] orig_fun_list
+    cegar1 prog is_cp [] info
   with e ->
     if e <> NoProgress then
       begin

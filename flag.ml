@@ -19,8 +19,11 @@ let trecs_param2 = ref 10
 (* debug option *)
 let check_fun_arg_typ = false
 let check_typ = true
+let debug_level = ref 1
+let debug_module : string list ref = ref []
 
 (* method option *)
+let input_cegar = ref false
 let wp_max_num = ref 3
 let remove_false = ref false (* remove false from pbs/pts in CEGAR_abst_util *)
 let assume = ref false (* use strongest post condition in if-term *)
@@ -108,7 +111,6 @@ let max_input_size = 65536
 
 
 (* mode option *)
-let debug_level = ref 1
 let only_result = ref false
 let exp = ref false
 let ignore_conf = ref false
