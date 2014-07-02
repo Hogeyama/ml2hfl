@@ -85,65 +85,70 @@ let main in_channel =
   let input_string =
     let s = String.create Flag.max_input_size in
     let n = my_input in_channel s 0 Flag.max_input_size in
-      if n = Flag.max_input_size then raise LongInput;
-      String.sub s 0 n
+    if n = Flag.max_input_size then raise LongInput;
+    String.sub s 0 n
   in
 
   let lb = Lexing.from_string input_string in
-  let () = lb.Lexing.lex_curr_p <-
+  lb.Lexing.lex_curr_p <-
     {Lexing.pos_fname = Filename.basename !Flag.filename;
      Lexing.pos_lnum = 1;
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
-  in
-  let orig = Parse.use_file lb in
-  Id.set_counter (Ident.current_time () + 1);
-  let parsed = Parser_wrapper.from_use_file orig in
-  let () =
-    if true && !Flag.debug_level > 0
-    then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Syntax.print_term parsed
-  in
-  if !Flag.split_assert
-  then
-    let paths = Trans.search_fail parsed in
-    let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
-    List.for_all (Main_loop.run orig) (List.rev ts);
-  else if !Flag.termination then
-    let open BRA_util in
-    (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
-    let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-    let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.print_term parsed in
-    let parsed = BRA_transform.regularization parsed in
-    let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.print_term parsed in
-    let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.print_term parsed in
-    let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.print_term parsed in
-    let holed_list = BRA_transform.to_holed_programs parsed in
-    let result =
-      try
-	List.for_all (fun holed ->
-	  let init_predicate_info =
-	    { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
-	    ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
-	    ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
-	    ; BRA_types.coefficients = []
-	    ; BRA_types.errorPaths = []
-	    ; BRA_types.errorPathsWithExparam = [] } in
-	  let predicate_que = Queue.create () in
-	  let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
-	  Termination_loop.reset_cycle ();
-	  Termination_loop.run predicate_que holed) holed_list
-      with
+  if !Flag.input_cegar then
+    let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
+    let prog = Typing.infer ~is_cps:true prog in
+    Flag.form := Flag.CPS :: !Flag.form;
+    Main_loop.run_cegar prog
+  else
+    let orig = Parse.use_file lb in
+    Id.set_counter (Ident.current_time () + 1);
+    let parsed = Parser_wrapper.from_use_file orig in
+    let () =
+      if true && !Flag.debug_level > 0
+      then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Syntax.print_term parsed
+    in
+    if !Flag.split_assert
+    then
+      let paths = Trans.search_fail parsed in
+      let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
+      List.for_all (Main_loop.run orig) (List.rev ts);
+    else if !Flag.termination then
+      let open BRA_util in
+      (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
+      let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
+      let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.print_term parsed in
+      let parsed = BRA_transform.regularization parsed in
+      let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.print_term parsed in
+      let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
+      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.print_term parsed in
+      let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
+      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.print_term parsed in
+      let holed_list = BRA_transform.to_holed_programs parsed in
+      let result =
+        try
+	  List.for_all (fun holed ->
+	                let init_predicate_info =
+	                  { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+	                  ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
+	                  ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
+	                  ; BRA_types.coefficients = []
+	                  ; BRA_types.errorPaths = []
+	                  ; BRA_types.errorPathsWithExparam = [] } in
+	                let predicate_que = Queue.create () in
+	                let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
+	                Termination_loop.reset_cycle ();
+	                Termination_loop.run predicate_que holed) holed_list
+        with
 	| Fpat.PolyConstrSolver.NoSolution
 	| Termination_loop.FailedToFindLLRF -> false
-    in
-    if result then
-      (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
+      in
+      if result then
+        (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
+      else
+        (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
     else
-      (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
-  else
-    Main_loop.run orig parsed
+      Main_loop.run orig parsed
 
 
 
@@ -457,6 +462,7 @@ let parse_arg () =
       | Sys_error _
       | End_of_file -> ()
     end;
+  if String.ends_with !Flag.filename ".cegar" then Flag.input_cegar := true;
   match !Flag.filename with
     "" | "-" -> Flag.filename := "stdin"; stdin
   | _ -> open_in !Flag.filename

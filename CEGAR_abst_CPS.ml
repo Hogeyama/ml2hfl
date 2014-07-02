@@ -172,36 +172,36 @@ let rec eta_expand_term_aux env t typ =
 let rec eta_expand_term env t typ =
   if debug then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
-      Const Bottom
-    | Const RandInt
-    | Const CPS_result -> t
-    | (Var _ | Const _ | App _) when is_base_term env t -> t
-    | Var x -> eta_expand_term_aux env t typ
-    | App(App(App(Const If, t1), t2), t3) ->
-        make_if t1 (eta_expand_term env t2 typ) (eta_expand_term env t3 typ)
-    | App(Const (Label n), t) -> make_label n (eta_expand_term env t typ)
-    | App _ ->
-        let rec aux ts typ =
-          match ts,typ with
-              [], _ -> []
-            | t::ts', TFun(typ1,typ2) ->
-                let typ2 = typ2 t in
-                let ts'' = aux ts' typ2 in
-                  eta_expand_term env t typ1 :: ts''
-            | _ -> assert false
-        in
-        let t1,ts = decomp_app t in
-        let t' = make_app t1 (aux ts (get_typ env t1)) in
-          eta_expand_term_aux env t' typ
-    | Const _ -> assert false
-    | Let _ -> assert false
-    | Fun(x,_,t') ->
-        match typ with
-            TFun(typ1,typ2) ->
-              let env' = (x,typ1)::env in
-              let t'' = eta_expand_term env' t' (typ2 (Var x)) in
-                Fun(x, Some typ1, t'')
-          | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
+  | Const Bottom
+  | Const RandInt
+  | Const CPS_result -> t
+  | (Var _ | Const _ | App _) when is_base_term env t -> t
+  | Var x -> eta_expand_term_aux env t typ
+  | App(App(App(Const If, t1), t2), t3) ->
+      make_if t1 (eta_expand_term env t2 typ) (eta_expand_term env t3 typ)
+  | App(Const (Label n), t) -> make_label n (eta_expand_term env t typ)
+  | App _ ->
+      let rec aux ts typ =
+        match ts,typ with
+        | [], _ -> []
+        | t::ts', TFun(typ1,typ2) ->
+            let typ2 = typ2 t in
+            let ts'' = aux ts' typ2 in
+            eta_expand_term env t typ1 :: ts''
+        | _ -> assert false
+      in
+      let t1,ts = decomp_app t in
+      let t' = make_app t1 (aux ts (get_typ env t1)) in
+      eta_expand_term_aux env t' typ
+  | Const _ -> assert false
+  | Let _ -> assert false
+  | Fun(x,_,t') ->
+      match typ with
+      | TFun(typ1,typ2) ->
+          let env' = (x,typ1)::env in
+          let t'' = eta_expand_term env' t' (typ2 (Var x)) in
+          Fun(x, Some typ1, t'')
+      | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
 let eta_expand_def env (f,xs,t1,e,t2) =
   let rec decomp_typ typ xs =
     match xs with

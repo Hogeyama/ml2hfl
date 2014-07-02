@@ -195,4 +195,4 @@ let trans {env=env;defs=defs;main=main} lift_opt =
   let _ = Typing.infer prog in
   let prog = if lift_opt then CEGAR_lift.lift prog else CEGAR_lift.lift2 prog in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog prog in
-    extract_tuple prog
+  extract_tuple prog

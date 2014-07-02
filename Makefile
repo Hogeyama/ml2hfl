@@ -26,7 +26,7 @@ opt: $(NAME).opt
 
 ifdef GIT
 main: COMMIT
-COMMIT: depend .git/index
+COMMIT: depend .git/index $(FPAT_LIB)
 	@echo make COMMIT
 	@rm -f COMMIT
 	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
@@ -46,7 +46,7 @@ endif
 MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli \
 	feasibility.mli refine.mli syntax.mli term_util.mli \
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli \
-	spec_parser.mli trecs_parser.mli BRA_transform.mli \
+	spec_parser.mli trecs_parser.mli CEGAR_parser.mli BRA_transform.mli \
 	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli type.mli color.mli CEGAR_trans.mli
 CMI = $(MLI:.mli=.cmi)
 
@@ -58,7 +58,7 @@ CMO = \
 	slicer.cmo useless_elim.cmo inter_type.cmo type_trans.cmo fpatInterface.cmo \
 	CPS.cmo curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo \
 	encode_list.cmo encode_rec.cmo CEGAR_abst_util.cmo \
-	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo \
+	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo CEGAR_lexer.cmo \
         trecs_parser.cmo trecs_lexer.cmo \
 	trecs_syntax.cmo trecsInterface.cmo \
 	ModelCheck_util.cmo ModelCheck_CPS.cmo ModelCheck.cmo \
@@ -91,13 +91,19 @@ trecs_parser.ml trecs_parser.mli: trecs_parser.mly
 trecs_lexer.ml: trecs_lexer.mll
 	$(OCAMLLEX) $<
 
+CEGAR_parser.ml CEGAR_parser.mli: CEGAR_parser.mly
+	$(OCAMLYACC) -v $<
+CEGAR_lexer.ml: CEGAR_lexer.mll
+	$(OCAMLLEX) $<
+
 
 # Dependencies
 DEP_FPAT = CEGAR CEGAR_syntax CEGAR_abst_util feasibility main \
 	main_loop termination_loop refine syntax trans fpatInterface writeAnnot BRA_types
-$(addsuffix .cmi,$(DEP_FPAT)): $(FPAT)/fpat.cmi
-$(addsuffix .cmo,$(DEP_FPAT)): $(FPAT)/fpat.cmi
-$(addsuffix .cmx,$(DEP_FPAT)): $(FPAT)/fpat.cmi
+FPAT_LIB = $(FPAT)/fpat.cmi $(FPAT)/fpat.cma $(FPAT)/fpat.cmxa
+$(addsuffix .cmi,$(DEP_FPAT)): $(FPAT_LIB)
+$(addsuffix .cmo,$(DEP_FPAT)): $(FPAT_LIB)
+$(addsuffix .cmx,$(DEP_FPAT)): $(FPAT_LIB)
 
 
 # Common rules
@@ -174,7 +180,7 @@ test-error: opt
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-GENERATED = spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
+GENERATED = spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml CEGAR_parser.mli CEGAR_parser.ml CEGAR_lexer.ml
 
 depend: Makefile $(GENERATED)
 	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) > depend

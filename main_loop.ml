@@ -116,7 +116,8 @@ let report_safe env rmap get_rtyp orig t0 =
     |> List.map (fun (id, typ) -> Id.name id, typ)
     |> WriteAnnot.f !Flag.filename orig;
   let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
-  if not only_result_termination then (Color.printf Color.Bright "Safe!"; Format.printf "@.@.");
+  if not only_result_termination
+  then (Color.printf Color.Bright "Safe!"; Format.printf "@.@.");
   if !Flag.relative_complete then
     begin
       let map =
@@ -149,6 +150,41 @@ let report_unsafe main_fun arg_num ce set_target =
   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
 
 
+
+let rec run_cegar prog =
+  init ();
+  match !Flag.cegar with
+  | Flag.CEGAR_InteractionType ->
+      FpatInterface.verify [] prog;
+      assert false;
+  | Flag.CEGAR_DependentType ->
+      try
+        match CEGAR.cegar prog CEGAR.empty_info with
+        | _, CEGAR.Safe env ->
+            Flag.result := "Safe";
+            Color.printf Color.Bright "Safe!@.@.";
+            true
+        | _, CEGAR.Unsafe ce ->
+            Flag.result := "Unsafe";
+            Color.printf Color.Bright "Unsafe!@.@.";
+            false
+      with
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
+          Flag.insert_param_funarg := true;
+          run_cegar prog
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+          if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
+          if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
+          Flag.relative_complete := true;
+          run_cegar prog
+      | Fpat.AbsTypInfer.FailedToRefineTypes ->
+          raise Fpat.AbsTypInfer.FailedToRefineTypes
+      | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
+          FpatInterface.params := [];
+          Fpat.RefTypInfer.prev_sol := [];
+          Fpat.RefTypInfer.prev_constrs := [];
+          incr Fpat.Global.number_of_extra_params;
+          run_cegar prog
 
 let rec run orig parsed =
   init ();
