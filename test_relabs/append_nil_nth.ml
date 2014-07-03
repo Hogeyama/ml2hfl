@@ -8,12 +8,7 @@ let rec make_list n =
   then []
   else Random.int 0 :: make_list (n-1)
 
-let rec list_eq xsys =
-  match xsys with
-    [], [] -> true
-  | x::xs', y::ys' -> x = y && list_eq (xs', ys')
-  | _ -> false
-
-let main n =
+let main i n =
   let xs = make_list n in
-  assert (list_eq (append [] xs, xs))
+  let ys = append [] xs in
+  assert (List.nth ys i = List.nth xs i)
