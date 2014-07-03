@@ -192,13 +192,10 @@ let () = abst_list.tr2_typ <- abst_list_typ
 
 let trans t =
   Type_check.check t Type.TUnit;
-  assert (Term_util.is_id_unique t);
   let t' = abst_list.tr2_term "" t in
   if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
-  assert (Term_util.is_id_unique t');
   let t' = Trans.inline_var_const t' in
   if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
-  assert (Term_util.is_id_unique t');
   typ_excep := abst_list.tr2_typ "" !typ_excep;
   Type_check.check t' Type.TUnit;
   t', get_rtyp_list_of t
