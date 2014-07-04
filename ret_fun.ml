@@ -68,7 +68,7 @@ let normalize_term t =
   | TryWith _
   | Label _
   | Record _
-  | Proj _
+  | Field _
   | SetField _ -> assert false
   | _ -> normalize.tr_term_rec t
 
@@ -212,7 +212,7 @@ Color.printf Color.Yellow "[%a |-> %a]: @[<hov 4>%a@." Id.print x2' Id.print x2'
   | TryWith _
   | Label _
   | Record _
-  | Proj _
+  | Field _
   | SetField _ -> assert false
   | _ -> trans.tr2_term_rec funargs t
 

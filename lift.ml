@@ -156,9 +156,9 @@ let rec lift_aux post xs t =
         in
         let defss,fields' = List.split (List.map aux fields) in
         List.flatten defss, Record fields'
-    | Proj(i,s,f,t) ->
+    | Field(i,s,f,t) ->
         let defs,t' = lift_aux post xs t in
-        defs, Proj(i,s,f,t')
+        defs, Field(i,s,f,t')
     | Nil -> [], Nil
     | Cons(t1,t2) ->
         let defs1,t1' = lift_aux post xs t1 in
@@ -289,9 +289,9 @@ let rec lift_aux' post xs t =
         in
         let defss,fields' = List.split (List.map aux fields) in
         List.flatten defss, Record fields'
-    | Proj(i,s,f,t) ->
+    | Field(i,s,f,t) ->
         let defs,t' = lift_aux' post xs t in
-        defs, Proj(i,s,f,t')
+        defs, Field(i,s,f,t')
     | Nil -> [], Nil
     | Cons(t1,t2) ->
         let defs1,t1' = lift_aux' post xs t1 in

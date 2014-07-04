@@ -473,7 +473,7 @@ let part_eval t =
       | Not t -> Not (aux apply t)
       | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (fun (s,(f,t)) -> s,(f,aux apply t)) fields)
-      | Proj(i,s,f,t) -> Proj(i, s, f, aux apply t)
+      | Field(i,s,f,t) -> Field(i, s, f, aux apply t)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(aux apply t1, aux apply t2)
       | Constr(c,ts) -> Constr(c, List.map (aux apply) ts)
@@ -995,7 +995,7 @@ let rec inlined_f inlined fs t =
     | Not t1 -> Not (inlined_f inlined fs t1)
     | Event(s,b) -> Event(s,b)
     | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,inlined_f inlined fs t1)) fields)
-    | Proj(i,s,f,t1) -> Proj(i,s,f,inlined_f inlined fs t1)
+    | Field(i,s,f,t1) -> Field(i,s,f,inlined_f inlined fs t1)
     | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,inlined_f inlined fs t1,inlined_f inlined fs t2)
     | Nil -> Nil
     | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)
@@ -1212,7 +1212,7 @@ let rec search_fail path t =
   | Event("fail",_) -> [path]
   | Event(s,b) -> []
   | Record fields -> assert false
-  | Proj(i,s,f,t) -> assert false
+  | Field(i,s,f,t) -> assert false
   | SetField(n,i,s,f,t1,t2) -> assert false
   | Nil -> []
   | Cons(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
@@ -1280,7 +1280,7 @@ let rec screen_fail path target t =
         else Bottom
     | Event(s,b) -> t.desc
     | Record fields -> assert false
-    | Proj(i,s,f,t) -> assert false
+    | Field(i,s,f,t) -> assert false
     | SetField(n,i,s,f,t1,t2) -> assert false
     | Nil -> t.desc
     | Cons(t1,t2) ->
@@ -1505,7 +1505,7 @@ let rec diff_terms t1 t2 =
   | Not t1, Not t2 -> diff_terms t1 t2
   | Event(s1,b1), Event(s2,b2) -> if s1 = s2 && b1 = b2 then [] else [t1,t2]
   | Record _, Record _ -> [t1,t2] (* Not implemented *)
-  | Proj _, Proj _ -> [t1,t2] (* Not implemented *)
+  | Field _, Field _ -> [t1,t2] (* Not implemented *)
   | SetField _, SetField _ -> [t1,t2] (* Not implemented *)
   | Nil, Nil -> []
   | Cons(t11,t12), Cons(t21,t22) ->

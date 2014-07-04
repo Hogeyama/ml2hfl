@@ -483,7 +483,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             let _,_,e = List.find (fun (_,lbl',_) -> lbl = lbl') fields in
             name, (flag, from_expression e)
           with Not_found ->
-            name, (flag, {desc=Proj(lbl.lbl_pos, name, flag,
+            name, (flag, {desc=Field(lbl.lbl_pos, name, flag,
                                     {desc=Var r; typ=Id.typ r});
                           typ=from_type_expr env lbl.lbl_arg})
         in
@@ -491,7 +491,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       in
       make_let [r, [], from_expression init] {desc=Record fields';typ=typ'}
   | Texp_field(e,_,label) ->
-      {desc=Proj(label.lbl_pos,
+      {desc=Field(label.lbl_pos,
                  get_label_name label env,
                  from_mutable_flag label.lbl_mut,
                  from_expression e);

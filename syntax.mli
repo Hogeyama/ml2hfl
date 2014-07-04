@@ -32,7 +32,7 @@ and term =
   | Not of typed_term
   | Event of string * bool
   | Record of (string * (mutable_flag * typed_term)) list
-  | Proj of int * string * mutable_flag * typed_term
+  | Field of int * string * mutable_flag * typed_term
   | SetField of int option * int * string * mutable_flag * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
@@ -40,9 +40,8 @@ and term =
   | Match of typed_term * (typed_pattern * typed_term * typed_term) list
   | Raise of typed_term
   | TryWith of typed_term * typed_term
-  | Pair of typed_term * typed_term
-  | Fst of typed_term
-  | Snd of typed_term
+  | Tuple of typed_term list
+  | Proj of int * int * typed_term
   | Bottom
   | Label of info * typed_term
   | Ref of typed_term

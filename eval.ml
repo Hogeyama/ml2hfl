@@ -148,7 +148,7 @@ let rec eval_print fm rands t =
   | Event _ -> assert false
   | Record fields -> raise (Fatal "Not implemented: Eval_Print Fm Record")
   (*        Record (List.map (fun (f,(s,t1)) -> f,(s,id__ t1)) fields)*)
-  | Proj(i,s,f,t1) -> raise (Fatal "Not implemented: Eval_Print Fm Record")
+  | Field(i,s,f,t1) -> raise (Fatal "Not implemented: Eval_Print Fm Record")
   | SetField(n,i,s,f,t1,t2) -> raise (Fatal "Not implemented: Eval_Print Fm Record")
   | Nil -> rands, t
   | Cons(t1,t2) ->

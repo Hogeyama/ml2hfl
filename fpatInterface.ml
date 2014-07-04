@@ -464,7 +464,7 @@ let insert_extra_param t =
       | Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
       | Syntax.Event(s,b) -> Syntax.Event(s,b)
       | Syntax.Record fields -> Syntax.Record (Fpat.Util.List.map (fun (f,(s,t1)) -> f,(s,aux rfs bvs exs t1)) fields)
-      | Syntax.Proj(i,s,f,t1) -> Syntax.Proj(i,s,f,aux rfs bvs exs t1)
+      | Syntax.Field(i,s,f,t1) -> Syntax.Field(i,s,f,aux rfs bvs exs t1)
       | Syntax.SetField(n,i,s,f,t1,t2) -> Syntax.SetField(n,i,s,f,aux rfs bvs exs t1,aux rfs bvs exs t2)
       | Syntax.Nil -> Syntax.Nil
       | Syntax.Cons(t1,t2) -> Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)

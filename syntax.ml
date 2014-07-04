@@ -37,7 +37,7 @@ and term =
   | Not of typed_term
   | Event of string * bool
   | Record of (string * (mutable_flag * typed_term)) list
-  | Proj of int * string * mutable_flag * typed_term
+  | Field of int * string * mutable_flag * typed_term
   | SetField of int option * int * string * mutable_flag * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
@@ -45,9 +45,8 @@ and term =
   | Match of typed_term * (typed_pattern * typed_term * typed_term) list
   | Raise of typed_term
   | TryWith of typed_term * typed_term
-  | Pair of typed_term * typed_term
-  | Fst of typed_term
-  | Snd of typed_term
+  | Tuple of typed_term list
+  | Proj of int * int * typed_term
   | Bottom
   | Label of info * typed_term
   | Ref of typed_term
@@ -118,7 +117,7 @@ let trans_typ trans = function
   | TVar{contents=Some typ} -> trans.tr_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (trans.tr_typ (Id.typ x)), trans.tr_typ typ)
   | TList typ -> TList (trans.tr_typ typ)
-  | TPair(x,typ) -> TPair(trans.tr_var x, trans.tr_typ typ)
+  | TTuple(n,xs,typ) -> TTuple(n,List.map trans.tr_var xs, trans.tr_typ typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(trans.tr_var x, List.map trans.tr_term ps)
   | TRef typ -> TRef (trans.tr_typ typ)
@@ -181,7 +180,7 @@ let trans_desc trans = function
   | Not t1 -> Not (trans.tr_term t1)
   | Event(s,b) -> Event(s,b)
   | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,trans.tr_term t1)) fields)
-  | Proj(i,s,f,t1) -> Proj(i,s,f,trans.tr_term t1)
+  | Field(i,s,f,t1) -> Field(i,s,f,trans.tr_term t1)
   | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans.tr_term t1,trans.tr_term t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(trans.tr_term t1, trans.tr_term t2)
@@ -191,9 +190,8 @@ let trans_desc trans = function
         Match(trans.tr_term t1, List.map aux pats)
   | Raise t -> Raise (trans.tr_term t)
   | TryWith(t1,t2) -> TryWith(trans.tr_term t1, trans.tr_term t2)
-  | Pair(t1,t2) -> Pair(trans.tr_term t1, trans.tr_term t2)
-  | Fst t -> Fst(trans.tr_term t)
-  | Snd t -> Snd(trans.tr_term t)
+  | Tuple ts -> Tuple (List.map trans.tr_term ts)
+  | Proj(i,n,t) -> Proj(i, n, trans.tr_term t)
   | Bottom -> Bottom
   | Label(info, t) -> Label(trans.tr_info info, trans.tr_term t)
   | Ref t -> Ref(trans.tr_term t)
@@ -263,7 +261,7 @@ type 'a trans2 =
    mutable tr2_const_rec: 'a -> const -> const}
 
 let trans2_gen_typ tr env = function
-    TUnit -> TUnit
+  | TUnit -> TUnit
   | TBool -> TBool
   | TAbsBool -> TAbsBool
   | TInt -> TInt
@@ -272,7 +270,7 @@ let trans2_gen_typ tr env = function
   | TVar{contents=Some typ} -> tr.tr2_typ env typ
   | TFun(x,typ) -> TFun(Id.set_typ x (tr.tr2_typ env (Id.typ x)), tr.tr2_typ env typ)
   | TList typ -> TList (tr.tr2_typ env typ)
-  | TPair(x,typ) -> TPair(tr.tr2_var env x, tr.tr2_typ env typ)
+  | TTuple(n,xs,typ) -> TTuple(n, List.map (tr.tr2_var env) xs, tr.tr2_typ env typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
   | TRef typ -> TRef (tr.tr2_typ env typ)
@@ -334,7 +332,7 @@ let trans2_gen_desc tr env = function
   | Not t1 -> Not (tr.tr2_term env t1)
   | Event(s,b) -> Event(s,b)
   | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,tr.tr2_term env t1)) fields)
-  | Proj(i,s,f,t1) -> Proj(i,s,f,tr.tr2_term env t1)
+  | Field(i,s,f,t1) -> Field(i,s,f,tr.tr2_term env t1)
   | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,tr.tr2_term env t1,tr.tr2_term env t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(tr.tr2_term env t1, tr.tr2_term env t2)
@@ -344,9 +342,8 @@ let trans2_gen_desc tr env = function
         Match(tr.tr2_term env t1, List.map aux pats)
   | Raise t -> Raise (tr.tr2_term env t)
   | TryWith(t1,t2) -> TryWith(tr.tr2_term env t1, tr.tr2_term env t2)
-  | Pair(t1,t2) -> Pair(tr.tr2_term env t1, tr.tr2_term env t2)
-  | Fst t -> Fst(tr.tr2_term env t)
-  | Snd t -> Snd(tr.tr2_term env t)
+  | Tuple ts -> Tuple (List.map (tr.tr2_term env) ts)
+  | Proj(i,n,t) -> Proj(i, n, tr.tr2_term env t)
   | Bottom -> Bottom
   | Label(info, t) -> Label(tr.tr2_info env info, tr.tr2_term env t)
   | Ref t -> Ref (tr.tr2_term env t)
@@ -425,7 +422,7 @@ let col_typ col = function
   | TVar{contents=Some typ} -> col.col_typ typ
   | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
   | TList typ -> col.col_typ typ
-  | TPair(x,typ) -> col.col_app (col.col_var x) (col.col_typ typ)
+  | TTuple(n,xs,typ) -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) (col.col_typ typ) xs
   | TConstr(s,b) -> col.col_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_term p) (col.col_var x) ps
   | TRef typ -> col.col_typ typ
@@ -480,7 +477,7 @@ let col_desc col = function
   | Not t1 -> col.col_term t1
   | Event(s,b) -> col.col_empty
   | Record fields -> List.fold_left (fun acc (f,(s,t1)) -> col.col_app acc @@ col.col_term t1) col.col_empty fields
-  | Proj(i,s,f,t1) -> col.col_term t1
+  | Field(i,s,f,t1) -> col.col_term t1
   | SetField(n,i,s,f,t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Nil -> col.col_empty
   | Cons(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
@@ -495,9 +492,8 @@ let col_desc col = function
       List.fold_left aux (col.col_term t1) pats
   | Raise t -> col.col_term t
   | TryWith(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
-  | Pair(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
-  | Fst t -> col.col_term t
-  | Snd t -> col.col_term t
+  | Tuple ts -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) col.col_empty ts
+  | Proj(i,n,t) -> col.col_term t
   | Bottom -> col.col_empty
   | Label(info, t) -> col.col_app (col.col_info info) (col.col_term t)
   | Ref t -> col.col_term t
@@ -578,7 +574,7 @@ let col2_typ col env = function
   | TVar{contents=Some typ} -> col.col2_typ env typ
   | TFun(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
   | TList typ -> col.col2_typ env typ
-  | TPair(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
+  | TTuple(n,xs,typ) -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) (col.col2_typ env typ) xs
   | TConstr(s,b) -> col.col2_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_term env p) (col.col2_var env x) ps
   | TRef typ -> col.col2_typ env typ
@@ -633,7 +629,7 @@ let col2_desc col env = function
   | Not t1 -> col.col2_term env t1
   | Event(s,b) -> col.col2_empty
   | Record fields -> List.fold_left (fun acc (f,(s,t1)) -> col.col2_app acc @@ col.col2_term env t1) col.col2_empty fields
-  | Proj(i,s,f,t1) -> col.col2_term env t1
+  | Field(i,s,f,t1) -> col.col2_term env t1
   | SetField(n,i,s,f,t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Nil -> col.col2_empty
   | Cons(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
@@ -648,9 +644,8 @@ let col2_desc col env = function
       List.fold_left aux (col.col2_term env t1) pats
   | Raise t -> col.col2_term env t
   | TryWith(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
-  | Pair(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
-  | Fst t -> col.col2_term env t
-  | Snd t -> col.col2_term env t
+  | Tuple ts -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) col.col2_empty ts
+  | Proj(i,n,t) -> col.col2_term env t
   | Bottom -> col.col2_empty
   | Label(info, t) -> col.col2_app (col.col2_info env info) (col.col2_term env t)
   | Ref t -> col.col2_term env t
@@ -743,10 +738,10 @@ let tr_col2_typ tc env = function
   | TList typ ->
       let acc,typ' = tc.tr_col2_typ env typ in
       acc, TList typ'
-  | TPair(x,typ) ->
-      let acc1,x' = tc.tr_col2_var env x in
-      let acc2,typ' = tc.tr_col2_typ env typ in
-      tc.tr_col2_app acc1 acc2, TPair(x', typ')
+  | TTuple(n,xs,typ) ->
+      let acc,typ' = tc.tr_col2_typ env typ in
+      let acc',xs' = tr_col2_list tc tc.tr_col2_var ~init:acc env xs in
+      acc', TTuple(n, xs', typ')
   | TConstr(s,b) -> tc.tr_col2_empty, TConstr(s,b)
   | TPred(x,ps) ->
       let acc,x' = tc.tr_col2_var env x in
@@ -871,9 +866,9 @@ let tr_col2_desc tc env = function
       in
       let acc,fields' = tr_col2_list tc aux env fields in
       acc, Record fields'
-  | Proj(i,s,f,t1) ->
+  | Field(i,s,f,t1) ->
       let acc,t1' = tc.tr_col2_term env t1 in
-      acc, Proj(i,s,f,t1')
+      acc, Field(i,s,f,t1')
   | SetField(n,i,s,f,t1,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
@@ -903,16 +898,12 @@ let tr_col2_desc tc env = function
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
       tc.tr_col2_app acc1 acc2, TryWith(t1',t2')
-  | Pair(t1,t2) ->
-      let acc1,t1' = tc.tr_col2_term env t1 in
-      let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, Pair(t1',t2')
-  | Fst t ->
+  | Tuple ts ->
+      let acc,ts' = tr_col2_list tc tc.tr_col2_term env ts in
+      acc, Tuple ts'
+  | Proj(i,n,t) ->
       let acc,t' = tc.tr_col2_term env t in
-      acc, Fst t'
-  | Snd t ->
-      let acc,t' = tc.tr_col2_term env t in
-      acc, Snd t'
+      acc, Proj(i,n,t')
   | Bottom -> tc.tr_col2_empty, Bottom
   | Label(info, t) ->
       let acc1,t' = tc.tr_col2_term env t in
@@ -1021,10 +1012,10 @@ let fold_tr_typ fld env = function
   | TList typ ->
       let env',typ' = fld.fold_tr_typ env typ in
       env', TList typ'
-  | TPair(x,typ) ->
-      let env',x' = fld.fold_tr_var env x in
-      let env'',typ' = fld.fold_tr_typ env' typ in
-      env'', TPair(x', typ')
+  | TTuple(n,xs,typ) ->
+      let env',typ' = fld.fold_tr_typ env typ in
+      let env'',xs' = fold_tr_list fld fld.fold_tr_var env' xs in
+      env'', TTuple(n,xs',typ')
   | TConstr(s,b) -> env, TConstr(s,b)
   | TPred(x,ps) ->
       let env',x' = fld.fold_tr_var env x in
@@ -1149,9 +1140,9 @@ let fold_tr_desc fld env = function
       in
       let env',fields' = fold_tr_list fld aux env fields in
       env', Record fields'
-  | Proj(i,s,f,t1) ->
+  | Field(i,s,f,t1) ->
       let env',t1' = fld.fold_tr_term env t1 in
-      env', Proj(i,s,f,t1')
+      env', Field(i,s,f,t1')
   | SetField(n,i,s,f,t1,t2) ->
       let env',t1' = fld.fold_tr_term env t1 in
       let env'',t2' = fld.fold_tr_term env' t2 in
@@ -1181,16 +1172,12 @@ let fold_tr_desc fld env = function
       let env',t1' = fld.fold_tr_term env t1 in
       let env'',t2' = fld.fold_tr_term env' t2 in
       env'', TryWith(t1',t2')
-  | Pair(t1,t2) ->
-      let env',t1' = fld.fold_tr_term env t1 in
-      let env'',t2' = fld.fold_tr_term env' t2 in
-      env'', Pair(t1',t2')
-  | Fst t ->
+  | Tuple ts ->
+      let env',ts' = fold_tr_list fld fld.fold_tr_term env ts in
+      env', Tuple ts'
+  | Proj(i,n,t) ->
       let env',t' = fld.fold_tr_term env t in
-      env', Fst t'
-  | Snd t ->
-      let env',t' = fld.fold_tr_term env t in
-      env', Snd t'
+      env', Proj(i,n,t')
   | Bottom -> env, Bottom
   | Label(info, t) ->
       let env',t' = fld.fold_tr_term env t in
@@ -1469,7 +1456,7 @@ and print_desc pri typ fm desc =
             else fprintf fm "%s=%a;@ %a" s (print_term 0 typ) t aux fields
       in
       fprintf fm "{%a}" aux fields
-  | Proj(_,s,_,t) -> fprintf fm "%a.%s" (print_term 9 typ) t s
+  | Field(_,s,_,t) -> fprintf fm "%a.%s" (print_term 9 typ) t s
   | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
@@ -1504,17 +1491,13 @@ and print_desc pri typ fm desc =
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
       fprintf fm "%s@[try@ %a@ with@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
-  | Pair(t1,t2) ->
+  | Tuple ts ->
       let p = 20 in
-      fprintf fm "@[(%a,@ %a)@]" (print_term p typ) t1 (print_term p typ) t2
-  | Fst t ->
+      fprintf fm "@[(%a)@]" (print_list (print_term p typ) ",@ ") ts
+  | Proj(i,n,t) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[fst@ %a@]%s" s1 (print_term p typ) t s2
-  | Snd t ->
-      let p = 80 in
-      let s1,s2 = paren pri p in
-      fprintf fm "%s@[snd@ %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[#%d@ %a@]%s" s1 i (print_term p typ) t s2
   | Bottom -> fprintf fm "_|_"
   | Label(InfoId x, t) ->
       fprintf fm "(@[label@ %a@ %a@])" print_id x (print_term 80 typ) t
@@ -1646,7 +1629,7 @@ let rec print_term' pri fm t =
               else fprintf fm "%s=%a; %a" s (print_term' 0) t aux fields
         in
         fprintf fm "{%a}" aux fields
-    | Proj(_,s,_,t) -> fprintf fm "%a.%s" (print_term' 9) t s
+    | Field(_,s,_,t) -> fprintf fm "%a.%s" (print_term' 9) t s
     | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term' 9) t1 s (print_term' 3) t2
     | Nil -> fprintf fm "[]"
     | Cons(t1,t2) ->
@@ -1684,16 +1667,12 @@ let rec print_term' pri fm t =
         let p = 1 in
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%stry %a with@ %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
-    | Pair(t1,t2) ->
-        fprintf fm "(%a,%a)" (print_term' 2) t1 (print_term' 2) t2
-    | Fst t ->
+    | Tuple ts ->
+        fprintf fm "@[(%a)@]" (print_list (print_term' 0) ",@ ") ts
+    | Proj(i,n,t) ->
         let p = 4 in
         let s1,s2 = paren pri (p+1) in
-        fprintf fm "%sfst %a%s" s1 (print_term' 1) t s2
-    | Snd t ->
-        let p = 4 in
-        let s1,s2 = paren pri (p+1) in
-        fprintf fm "%ssnd %a%s" s1 (print_term' 1) t s2
+        fprintf fm "%s#%d %a%s" s1 i (print_term' 1) t s2
     | Bottom -> fprintf fm "_|_"
     | Label _ -> assert false
     | Ref t ->
@@ -1793,7 +1772,7 @@ let string_of_constr t =
   | Not _ -> "Not"
   | Event _ -> "Event"
   | Record _ -> "Record"
-  | Proj _ -> "Proj"
+  | Field _ -> "Field"
   | SetField _ -> "SetField"
   | Nil -> "Nil"
   | Cons _ -> "Cons"
@@ -1801,9 +1780,8 @@ let string_of_constr t =
   | Match _ -> "Match"
   | Raise _ -> "Raise"
   | TryWith _ -> "TryWith"
-  | Pair _ -> "Pair"
-  | Fst _ -> "Fst"
-  | Snd _ -> "Snd"
+  | Tuple _ -> "Tuple"
+  | Proj _ -> "Proj"
   | Bottom -> "Bottom"
   | Label _ -> "Label"
   | Ref _ -> "Ref"

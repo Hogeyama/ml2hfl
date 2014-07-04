@@ -429,7 +429,7 @@ let rec add_preds_cont_aux k t =
     | Not t1 -> Not (add_preds_cont_aux k t1)
     | Event(s,b) -> Event(s,b)
     | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,add_preds_cont_aux k t1)) fields)
-    | Proj(i,s,f,t1) -> Proj(i,s,f,add_preds_cont_aux k t1)
+    | Field(i,s,f,t1) -> Field(i,s,f,add_preds_cont_aux k t1)
     | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,add_preds_cont_aux k t1,add_preds_cont_aux k t2)
     | Nil -> Nil
     | Cons(t1,t2) -> Cons(add_preds_cont_aux k t1, add_preds_cont_aux k t2)

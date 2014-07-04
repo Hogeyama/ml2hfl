@@ -7,7 +7,7 @@ type 'a t =
   | TVar of 'a t option ref
   | TFun of 'a t Id.t * 'a t
   | TList of 'a t
-  | TPair of 'a t Id.t * 'a t
+  | TTuple of int * 'a t Id.t list * 'a t
   | TConstr of string * bool
   | TRef of 'a t
   | TOption of 'a t
@@ -38,8 +38,8 @@ val app_typ : 'a t -> 'b list -> 'a t
 val to_id_string : 'a t -> string
 val order : 'a t -> int
 
-val fst_typ : 'a t -> 'a t
-val snd_typ : 'a t -> 'a t
+val proj_num : 'a t -> int
+val proj_typ : int -> 'a t -> 'a t
 val ref_typ : 'a t -> 'a t
 val list_typ : 'a t -> 'a t
 val option_typ : 'a t -> 'a t

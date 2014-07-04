@@ -21,7 +21,7 @@ let rec trans f i n t =
     | Var _
     | Event _
     | Record _
-    | Proj _
+    | Field _
     | SetField _
     | Nil
     | Cons _

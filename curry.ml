@@ -165,7 +165,7 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
       let t1' = root (remove_pair_aux t1 None) in
       Leaf (make_not t1')
   | Record fields -> assert false
-  | Proj(i,s,f,t1) -> assert false
+  | Field(i,s,f,t1) -> assert false
   | SetField(n,i,s,f,t1,t2) -> assert false
   | Nil -> assert false
   | Cons(t1,t2) -> assert false

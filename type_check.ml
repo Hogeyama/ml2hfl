@@ -107,7 +107,7 @@ let rec check t typ =
       assert (Type.can_unify typ @@ snd_typ t1.typ);
       check t1 t1.typ
   | {desc=Record _} -> assert false
-  | {desc=Proj _} -> assert false
+  | {desc=Field _} -> assert false
   | {desc=SetField _} -> assert false
   | {desc=Nil; typ=TList _} -> ()
   | {desc=Cons(t1,t2); typ=TList typ'} ->

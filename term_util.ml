@@ -184,10 +184,15 @@ let make_geq t1 t2 =
   assert (true || not Flag.check_typ || Type.can_unify t1.typ TInt);
   assert (true || not Flag.check_typ || Type.can_unify t2.typ TInt);
   {desc=BinOp(Geq, t1, t2); typ=TBool}
-let make_fst t = {desc=Fst t; typ=fst_typ t.typ}
-let make_snd t = {desc=Snd t; typ=snd_typ t.typ}
-let make_tpair ?(s="x") typ1 typ2 = TPair(Id.new_var s typ1, typ2)
-let make_pair ?(s="x") t1 t2 = {desc=Pair(t1,t2); typ=make_tpair ~s t1.typ t2.typ}
+let make_proj i t = {desc=Proj(i,proj_num t.typ,t); typ=proj_typ i t.typ}
+let make_ttuple typs =
+  let typs',typ = List.decomp_snoc typs in
+  TTuple(List.length typs, List.map (Id.new_var "x") typs', typ)
+let make_tuple ts = {desc=Tuple ts; typ=make_ttuple @@ List.map (fun t -> t.typ) ts}
+let make_fst t = {desc=Proj(0,2,t); typ=proj_typ 0 t.typ}
+let make_snd t = {desc=Proj(1,2,t); typ=proj_typ 1 t.typ}
+let make_tpair ?(s="x") typ1 typ2 = TTuple(2, [Id.new_var s typ1], typ2)
+let make_pair ?(s="x") t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair ~s t1.typ t2.typ}
 let make_nil typ = {desc=Nil; typ=TList typ}
 let make_nil2 typ = {desc=Nil; typ=typ}
 let make_cons t1 t2 =
@@ -196,7 +201,7 @@ let make_cons t1 t2 =
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
 let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
-let make_ppair p1 p2 = {pat_desc=PPair(p1, p2); pat_typ=TPair(Id.new_var "x" p1.pat_typ, p2.pat_typ)}
+let make_ppair p1 p2 = {pat_desc=PPair(p1, p2); pat_typ=make_tpair p1.pat_typ p2.pat_typ}
 let make_pnil typ = {pat_desc=PNil; pat_typ=TList typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
@@ -234,7 +239,10 @@ let make_eq_dec t1 t2 =
     match t1.typ with
     | TBool
     | TInt -> make_eq t1 t2
-    | TPair _ -> make_and (make (make_fst t1) (make_fst t2)) (make (make_snd t1) (make_snd t2))
+    | TTuple(n,_,_) ->
+        List.fromto 0 n
+        |> List.map (fun i -> make (make_proj i t1) (make_proj i t2))
+        |> List.fold_left make_and true_term
     | _ -> assert false
   in
   let t1',k1 = aux t1 in
@@ -248,7 +256,10 @@ let rec make_term typ =
   | TBool -> true_term
   | TInt -> make_int 0
   | TFun(x,typ) -> make_fun x (make_term typ)
-  | TPair(x,typ) -> make_pair (make_term @@ Id.typ x) (make_term typ)
+  | TTuple(n,xs,typ) ->
+      let typs = List.map Id.typ xs in
+      let ts = List.map (make_term -| Id.typ) xs in
+      make_tuple (ts @ make_term typ)
   | TConstr("X", false) -> cps_result
   | TList typ' -> make_nil typ'
   | _ -> Format.printf "ERROR:@.%a@." Syntax.print_typ typ; assert false
@@ -586,7 +597,7 @@ let has_no_effect_term t =
   | Branch _ -> false
   | Let(_,bindings,t) ->
       has_no_effect.col_term t && List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect.col_term t) bindings
-  | Proj _ -> false
+  | Field _ -> false
   | SetField _ -> false
   | Raise _ -> false
   | Bottom -> false
@@ -646,7 +657,7 @@ and same_desc t1 t2 =
   | Not t1, Not t2 -> same_term t1 t2
   | Event(s1,b1), Event(s2,b2) -> s1 = s2 && b1 = b2
   | Record _, Record _ -> unsupported "same_term 2"
-  | Proj _, Proj _ -> unsupported "same_term 3"
+  | Field _, Field _ -> unsupported "same_term 3"
   | SetField _, SetField _ -> unsupported "same_term 4"
   | Nil, Nil -> true
   | Cons _, Cons _ -> unsupported "same_term 5"

@@ -10,7 +10,7 @@ type 'a t =
   | TVar of 'a t option ref
   | TFun of ('a t Id.t) * 'a t
   | TList of 'a t
-  | TPair of ('a t Id.t) * 'a t
+  | TTuple of int * ('a t Id.t) list * 'a t
   | TConstr of string * bool
   | TRef of 'a t
   | TOption of 'a t
@@ -52,9 +52,9 @@ let rec elim_tpred_all = function
       let x = Id.set_typ x @@ elim_tpred_all @@ Id.typ x in
       TFun(x, elim_tpred_all typ)
   | TList typ -> TList (elim_tpred_all typ)
-  | TPair(x,typ) ->
-      let x = Id.set_typ x @@ elim_tpred_all @@ Id.typ x in
-      TPair(x, elim_tpred_all typ)
+  | TTuple(n,xs,typ) ->
+      let xs' = List.map (Id.map_typ elim_tpred_all) xs in
+      TTuple(n, xs', elim_tpred_all typ)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,_) -> elim_tpred_all @@ Id.typ x
   | TRef typ -> TRef (elim_tpred_all typ)
@@ -80,7 +80,8 @@ let rec can_unify typ1 typ2 =
     | TList typ1, TList typ2 -> can_unify typ1 typ2
     | TRef typ1, TRef typ2 -> can_unify typ1 typ2
     | TOption typ1, TOption typ2 -> can_unify typ1 typ2
-    | TPair(x1,typ1), TPair(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
+    | TTuple(n,xs1,typ1), TTuple(m,xs2,typ2) ->
+        n = m && List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2 && can_unify typ1 typ2
     | TConstr("event",_), TFun _ -> true
     | TFun _, TConstr("event",_) -> true
     | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
@@ -112,10 +113,12 @@ let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
       in
       Format.fprintf fm "(%a)" aux @@ decomp_tfun typ
   | TList typ -> Format.fprintf fm "@[%a list@]" print' typ
-  | TPair(x,typ) when occur x typ ->
-      Format.fprintf fm "(@[<hov 2>%a:%a@ *@ %a@])" Id.print x print' (Id.typ x) print' typ
-  | TPair(x,typ) ->
-      Format.fprintf fm "(@[<hov 2>%a@ *@ %a@])" print' (Id.typ x) print' typ
+  | TTuple(n,xs,typ) ->
+      let pr fm x =
+        if occur x typ then Format.fprintf fm "%a:" Id.print x;
+        Format.fprintf fm "%a@ *@ " print' (Id.typ x)
+      in
+      Format.fprintf fm "(@[<hov 2>%a%a@])" (print_list pr "") xs print' typ
   | TConstr(s,_) -> Format.pp_print_string fm s
   | TRef typ -> Format.fprintf fm "@[%a ref@]" print' typ
   | TPred(x,ps) -> Format.fprintf fm "@[%a[\\%a. %a]@]" print' (Id.typ x) Id.print x print_preds ps
@@ -141,7 +144,7 @@ let rec occurs r typ =
   | TVar{contents=Some typ} -> assert false
   | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
   | TList typ -> occurs r typ
-  | TPair(x,typ) -> occurs r (Id.typ x) || occurs r typ
+  | TTuple(n,xs,typ) -> List.exists (occurs r -| Id.typ) xs || occurs r typ
   | TConstr(s,b) -> false
   | TPred(x,_) -> occurs r (Id.typ x)
   | TRef typ -> occurs r typ
@@ -160,8 +163,9 @@ let rec unify typ1 typ2 =
   | TList typ1, TList typ2 -> unify typ1 typ2
   | TRef typ1, TRef typ2 -> unify typ1 typ2
   | TOption typ1, TOption typ2 -> unify typ1 typ2
-  | TPair(x1, typ1), TPair(x2, typ2) ->
-      unify (Id.typ x1) (Id.typ x2);
+  | TTuple(n, xs1, typ1), TTuple(m, xs2, typ2) ->
+      assert (n = m);
+      List.iter2 (fun x1 x2 -> unify (Id.typ x1) (Id.typ x2)) xs1 xs2;
       unify typ1 typ2
   | TVar r1, TVar r2 when r1 == r2 -> ()
   | TVar({contents = None} as r), typ
@@ -192,7 +196,8 @@ let rec same_shape typ1 typ2 =
   | TVar{contents=Some typ1},TVar{contents=Some typ2} -> same_shape typ1 typ2
   | TFun(x1,typ1),TFun(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
   | TList typ1, TList typ2 -> same_shape typ1 typ2
-  | TPair(x1,typ1),TPair(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
+  | TTuple(n,xs1,typ1),TTuple(m,xs2,typ2) ->
+      n = m && List.for_all2 (fun x1 x2 -> same_shape (Id.typ x1) (Id.typ x2)) xs1 xs2 && same_shape typ1 typ2
   | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
   | _ -> false
 
@@ -213,15 +218,15 @@ let rec app_typ typ typs =
     | _, [] -> typ
     | _ -> assert false
 
-let fst_typ typ =
+let proj_num typ =
   match elim_tpred typ with
-  | TPair(x, _) -> Id.typ x
-  | typ when typ = typ_unknown -> typ_unknown
+  | TTuple(n, _, typ) -> n
   | _ -> assert false
 
-let snd_typ typ =
+let proj_typ i typ =
   match elim_tpred typ with
-  | TPair(_, typ2) -> typ2
+  | TTuple(n, _, typ) when i = n-1 -> typ
+  | TTuple(n, xs, _) -> Id.typ @@ List.nth xs i
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> assert false
 
@@ -253,7 +258,7 @@ let rec has_pred = function
   | TVar{contents=Some typ} -> has_pred typ
   | TFun(x,typ) -> has_pred (Id.typ x) || has_pred typ
   | TList typ -> has_pred typ
-  | TPair(x,typ) -> has_pred (Id.typ x) || has_pred typ
+  | TTuple(n,xs,typ) -> List.exists (has_pred -| Id.typ) xs || has_pred typ
   | TConstr _ -> false
   | TPred(x,ps) -> has_pred (Id.typ x) || ps <> []
   | TRef typ -> has_pred typ
@@ -269,7 +274,9 @@ let rec to_id_string = function
   | TVar{contents=Some typ} -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
   | TList typ -> to_id_string typ ^ "_list"
-  | TPair(x,typ) -> to_id_string (Id.typ x) ^ "_x_" ^ to_id_string typ
+  | TTuple(n,xs,typ) ->
+      let aux x s = to_id_string (Id.typ x) ^ "_x_" ^ s in
+      List.fold_right aux xs @@ to_id_string typ
   | TConstr(s,_) -> s
   | TPred(x,_) -> to_id_string (Id.typ x)
   | TRef typ -> to_id_string typ ^ "_ref"
@@ -287,7 +294,7 @@ let rec order typ =
   | TVar{contents=None} -> assert false
   | TVar{contents=Some typ} -> order typ
   | TFun(x,typ) -> max (order (Id.typ x) + 1) (order typ)
-  | TPair(x,typ) -> max (order (Id.typ x)) (order typ)
+  | TTuple(n,xs,typ) -> List.fold_left (fun m x -> max m (order @@ Id.typ x)) (order typ) xs
   | TPred(x,_) -> order @@ Id.typ x
   | _ -> assert false
 
