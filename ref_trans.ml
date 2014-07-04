@@ -9,9 +9,10 @@ let debug () = List.mem "Ref_trans" !Flag.debug_module
 let trans = make_trans2 ()
 
 let rec root x bb path_rev =
-  let aux = function
-      y, {desc=Fst{desc=Var z}} when Id.same x y -> Some (z,1)
-    | y, {desc=Snd{desc=Var z}} when Id.same x y -> Some (z,2)
+  let aux (y,t) =
+    match t with
+    | {desc=Fst{desc=Var z}} when Id.same x y -> Some (z,1)
+    | {desc=Snd{desc=Var z}} when Id.same x y -> Some (z,2)
     | _ -> None
   in
   try
@@ -26,19 +27,19 @@ let root x bb = root x bb []
 
 let rec find_fst x bb =
   match bb with
-    [] -> None
+  | [] -> None
   | (y,{desc=Fst{desc=Var z}})::bb' when Id.same x z -> Some y
   | _::bb' -> find_fst x bb'
 
 let rec find_snd x bb =
   match bb with
-    [] -> None
+  | [] -> None
   | (y,{desc=Snd{desc=Var z}})::bb' when Id.same x z -> Some y
   | _::bb' -> find_snd x bb'
 
 let rec find_app x bb =
   match bb with
-    [] -> []
+  | [] -> []
   | (_,{desc=App({desc=Var y},[t])})::bb' when Id.same x y ->
       let args = find_app x bb' in
       if List.exists (same_term t) args then
@@ -553,7 +554,6 @@ let col_fun_arg_desc desc =
   | _ -> col_fun_arg.col_desc_rec desc
 
 let () = col_fun_arg.col_desc <- col_fun_arg_desc
-
 let col_fun_arg = col_fun_arg.col_term
 
 
@@ -567,7 +567,6 @@ let col_app_terms_term fs t =
   | _ -> col_app_terms.col2_term_rec fs t
 
 let () = col_app_terms.col2_term <- col_app_terms_term
-
 let col_app_terms = col_app_terms.col2_term
 
 

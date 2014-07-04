@@ -1,4 +1,3 @@
-
 open Util
 open Asttypes
 open Typedtree
@@ -30,37 +29,38 @@ let prim_typs =
 
 let conv_primitive_app t ts typ =
   match t.desc,ts with
-      Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
-    | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
-    | Var {Id.name="Pervasives.<"}, [t1;t2] -> make_lt t1 t2
-    | Var {Id.name="Pervasives.>"}, [t1;t2] -> make_gt t1 t2
-    | Var {Id.name="Pervasives.<="}, [t1;t2] -> make_leq t1 t2
-    | Var {Id.name="Pervasives.>="}, [t1;t2] -> make_geq t1 t2
-    | Var {Id.name="Pervasives.&&"}, [t1;t2] -> make_and t1 t2
-    | Var {Id.name="Pervasives.||"}, [t1;t2] -> make_or t1 t2
-    | Var {Id.name="Pervasives.+"}, [t1;t2] -> make_add t1 t2
-    | Var {Id.name="Pervasives.-"}, [t1;t2] -> make_sub t1 t2
-    | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
-    | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
-    | Var {Id.name="Pervasives.not"}, [t] -> make_not t
-    | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
-    | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
-    | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ}
-    | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
-    | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
-    | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
-    | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
-    | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> make_app randint_term [unit_term]
-    | Var {Id.name="Random.int"}, [t] ->
-        let x = Id.new_var "ni" TInt in
-          make_let [x, [], make_app randint_term [unit_term]]
-            (make_if
-               (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
-               (make_var x)
-               (make_loop TInt))
-    | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_app (make_event "newr") [unit_term]
-    | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
-    | _ -> make_app t ts
+  | Var {Id.name="Pervasives.@@"}, [t1;t2] -> make_app t1 [t2]
+  | Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
+  | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
+  | Var {Id.name="Pervasives.<"}, [t1;t2] -> make_lt t1 t2
+  | Var {Id.name="Pervasives.>"}, [t1;t2] -> make_gt t1 t2
+  | Var {Id.name="Pervasives.<="}, [t1;t2] -> make_leq t1 t2
+  | Var {Id.name="Pervasives.>="}, [t1;t2] -> make_geq t1 t2
+  | Var {Id.name="Pervasives.&&"}, [t1;t2] -> make_and t1 t2
+  | Var {Id.name="Pervasives.||"}, [t1;t2] -> make_or t1 t2
+  | Var {Id.name="Pervasives.+"}, [t1;t2] -> make_add t1 t2
+  | Var {Id.name="Pervasives.-"}, [t1;t2] -> make_sub t1 t2
+  | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
+  | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
+  | Var {Id.name="Pervasives.not"}, [t] -> make_not t
+  | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
+  | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
+  | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ}
+  | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
+  | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
+  | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
+  | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
+  | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> make_app randint_term [unit_term]
+  | Var {Id.name="Random.int"}, [t] ->
+      let x = Id.new_var "ni" TInt in
+        make_let [x, [], make_app randint_term [unit_term]]
+          (make_if
+             (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
+             (make_var x)
+             (make_loop TInt))
+  | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_app (make_event "newr") [unit_term]
+  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
+  | _ -> make_app t ts
 
 let venv = ref []
 
