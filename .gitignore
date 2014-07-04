@@ -24,7 +24,10 @@ option.conf
 *.o
 *.log
 *.trecs_out
+*.hrs
 *.hors
+*.cegar
+*.dot
 *.cmt
 *.cmti
 *parser.automaton

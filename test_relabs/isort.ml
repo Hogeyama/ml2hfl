@@ -3,7 +3,7 @@ let rec insert (x:int) ys =
   | [] -> [x]
   | y::ys' ->
       if x < y then x::ys
-02      else y::(insert x ys')
+      else y::(insert x ys')
 
 let rec insertsort xs =
   match xs with

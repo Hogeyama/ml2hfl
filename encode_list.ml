@@ -120,6 +120,10 @@ let print_bind fm bind =
 
 let abst_list_term post t =
   match t.desc with
+  | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
+      let t1' = abst_list.tr2_term post t1 in
+      let t2' = abst_list.tr2_term post t2 in
+      make_app (make_snd t1') [t2']
   | App({desc=Var x}, [t]) when x = length_var -> make_fst (abst_list.tr2_term post t)
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
@@ -188,13 +192,10 @@ let () = abst_list.tr2_typ <- abst_list_typ
 
 let trans t =
   Type_check.check t Type.TUnit;
-  assert (Term_util.is_id_unique t);
   let t' = abst_list.tr2_term "" t in
   if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
-  assert (Term_util.is_id_unique t');
   let t' = Trans.inline_var_const t' in
   if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
-  assert (Term_util.is_id_unique t');
   typ_excep := abst_list.tr2_typ "" !typ_excep;
   Type_check.check t' Type.TUnit;
   t', get_rtyp_list_of t
@@ -319,7 +320,13 @@ let rec get_match_bind_cond t p =
 let abst_list_opt_term t =
   let typ' = abst_list_opt.tr_typ t.typ in
   match t.desc with
-    Nil ->
+  | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
+      let t1' = abst_list_opt.tr_term t1 in
+      let t2' = abst_list_opt.tr_term t2 in
+      let t = make_app t1' [t2'] in
+      let x = Id.new_var "x" t.typ in
+      make_let [x,[],t] @@ make_assume (make_not @@ make_is_none @@ make_var x) (make_get_val @@ make_var x)
+  | Nil ->
       let el_typ =
         match typ' with
           TFun(_, TPair(_,typ)) -> typ
