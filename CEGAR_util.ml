@@ -128,8 +128,8 @@ let rec make_arg_let t =
     | S.Const c -> S.Const c
     | S.Var x -> S.Var x
     | S.App(t, ts) ->
-        let f = Id.new_var "f__" (t.S.typ) in
-        let xts = List.map (fun t -> Id.new_var "x" (t.S.typ), t) ts in
+        let f = Id.new_var ~name:"f__" (t.S.typ) in
+        let xts = List.map (fun t -> Id.new_var (t.S.typ), t) ts in
         let t' =
           {S.desc=S.App(U.make_var f, List.map (fun (x,_) -> U.make_var x) xts);
            S.typ=Type.typ_unknown}

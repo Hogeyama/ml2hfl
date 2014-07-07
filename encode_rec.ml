@@ -38,9 +38,9 @@ let abst_recdata_typ typ =
   | TConstr(s,true) ->
       let typs = TInt :: Type_decl.get_ground_types s in
       let typs',typ = List.decomp_snoc typs in
-      let r_typ = List.fold_right (fun typ1 typ2 -> TPair(Id.new_var "x" typ1,typ2)) typs' typ in
-      TPair(Id.new_var "u" TUnit, (* extra-param *)
-            TFun(Id.new_var "path" (TList TInt), r_typ))
+      let r_typ = List.fold_right (fun typ1 typ2 -> TTuple[Id.new_var typ1; Id.new_var typ2]) typs' typ in
+      TTuple [Id.new_var TUnit; (* extra-param *)
+              Id.new_var @@ TFun(Id.new_var ~name:"path" (TList TInt), r_typ)]
   | TOption typ -> opt_typ (abst_recdata.tr_typ typ)
   | _ -> abst_recdata.tr_typ_rec typ
 
@@ -57,7 +57,7 @@ let rec abst_recdata_pat p =
         PAlias(p', abst_recdata.tr_var x), cond, bind
     | PConst t -> PConst t, true_term, []
     | PConstruct(c,ps) ->
-        let f = Id.new_var "f" typ in
+        let f = Id.new_var ~name:"f" typ in
         let ppcbs = List.map (fun p -> p, abst_recdata_pat p) ps in
         let typ_name = match p.pat_typ with TConstr(s,true) -> s | _ -> assert false in
         let ground_types = Type_decl.get_ground_types typ_name in
@@ -73,7 +73,7 @@ let rec abst_recdata_pat p =
               let t = make_app (make_snd (make_var f)) [make_cons (make_int i) (make_nil TInt)] in
               make_nth (1 + j) (1 + List.length ground_types) t
             else
-              let path = Id.new_var "path" (TList TInt) in
+              let path = Id.new_var ~name:"path" (TList TInt) in
               make_pair unit_term (* extra-param *)
                         (make_fun path (make_app (make_snd (make_var f)) [make_cons (make_int i) (make_var path)]))
           in
@@ -99,16 +99,19 @@ let rec abst_recdata_pat p =
         PCons(p1',p2'), make_and cond1 cond2, bind1@bind2
     | PRecord _ -> assert false
     | POr(p1,p2) -> assert false
-    | PPair(p1,p2) ->
-        let p1',cond1,bind1 = abst_recdata_pat p1 in
-        let p2',cond2,bind2 = abst_recdata_pat p2 in
-        PPair(p1',p2'), make_and cond1 cond2, bind1@bind2
+    | PTuple ps ->
+        let aux p (ps,cond,bind) =
+          let p',cond',bind' = abst_recdata_pat p in
+          p'::ps, make_and cond' cond, bind' @ bind
+        in
+        let ps',cond,bind = List.fold_right aux ps ([],true_term,[]) in
+        PTuple ps', cond, bind
     | PNone ->
-        let x = Id.new_var "x" typ in
+        let x = Id.new_var typ in
         PVar x, make_is_none (make_var x), []
     | PSome p ->
         let p',cond,bind = abst_recdata_pat p in
-        let x = Id.new_var "x" typ in
+        let x = Id.new_var typ in
         PVar x, make_is_some (make_var x), (make_get_val (make_var x), p')::bind
   in
   {pat_desc=desc; pat_typ=typ}, cond, bind
@@ -130,11 +133,11 @@ let abst_recdata_term t =
         | [t] -> make_pair head t
         | _ -> make_pair head (make_tuple bodies)
       in
-      let path = Id.new_var "path" (TList TInt) in
+      let path = Id.new_var ~name:"path" (TList TInt) in
       let pat0 = make_pnil TInt, true_term, make_return (Some (abst_label c)) TUnit unit_term in
-      let xtyps = List.map (fun t -> Id.new_var "x" (abst_recdata.tr_typ t.typ), t.typ) ts in
+      let xtyps = List.map (fun t -> Id.new_var (abst_recdata.tr_typ t.typ), t.typ) ts in
       let make_pat i (x,typ) =
-        let path' = Id.new_var "path'" (TList TInt) in
+        let path' = Id.new_var ~name:"path'" (TList TInt) in
         let t =
           if List.mem typ ground_types
           then make_return None typ (make_var x)

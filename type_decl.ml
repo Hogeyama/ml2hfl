@@ -107,7 +107,7 @@ let get_ground_types s =
         | TVar _ -> fatal "Unsupported (type 'a t = ..."
         | TFun _ -> elim_and_decomp (add TInt acc) typs
         | TList _ -> fatal "Unsupported (type t = ... t list ...)"
-        | TPair(x,typ) -> elim_and_decomp acc (Id.typ x :: typ :: typs)
+        | TTuple xs -> elim_and_decomp acc (List.map Id.typ xs @ typs)
         | TConstr(s,true) ->
             if List.mem s names then
               elim_and_decomp acc typs

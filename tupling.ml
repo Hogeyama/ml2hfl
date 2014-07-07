@@ -18,12 +18,12 @@ exception Not_recursive
 
 let is_none_term t =
   match t.desc with
-  | Pair(t1,t2) -> t1 = true_term && t2.desc = Const (Int 0)
+  | Tuple [t1;t2] -> t1 = true_term && t2.desc = Const (Int 0)
   | _ -> false
 
 let is_some_term t =
   match t.desc with
-  | Pair(t1,t2) -> t1 = false_term
+  | Tuple [t1;t2] -> t1 = false_term
   | _ -> false
 
 
@@ -31,11 +31,11 @@ let pair_let = make_trans ()
 
 let pair_let_desc desc =
   match desc with
-  | Pair(t1, t2) ->
+  | Tuple[t1; t2] ->
       let t1' = pair_let.tr_term t1 in
       let t2' = pair_let.tr_term t2 in
-      let lhs = Id.new_var "l" t1'.typ in
-      let rhs = Id.new_var "r" t2'.typ in
+      let lhs = Id.new_var ~name:"l" t1'.typ in
+      let rhs = Id.new_var ~name:"r" t2'.typ in
       (make_lets [rhs,[],t2'; lhs,[],t1'] @@ make_pair (make_var lhs) (make_var rhs)).desc
   | _ -> pair_let.tr_desc_rec desc
 
@@ -57,7 +57,7 @@ let rec decomp_let t =
       let bindings,t2' = decomp_let t2 in
       (flag,(f,xs,t1))::bindings, t2'
   | _ ->
-    let r = Id.new_var "r" t.typ in
+    let r = Id.new_var ~name:"r" t.typ in
     [Nonrecursive, (r,[],t)], make_var r
 
 let partition_bindings x t =
@@ -111,7 +111,7 @@ let compose_let_same_arg map fg f t1 g t2 =
   in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
-  let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
+  let p = Id.new_var ~name:"p" @@ TTuple [x1; x2] in
   let pat =
     [p,  [], make_app (make_var fg) ts;
      x1, [], make_fst @@ make_var p;
@@ -121,7 +121,7 @@ let compose_let_same_arg map fg f t1 g t2 =
 
 let compose_non_recursive first t1 t2 =
   let bindings,t = decomp_let (if first then t1 else t2) in
-  let r = Id.new_var "r" (if first then t1.typ else t2.typ) in
+  let r = Id.new_var ~name:"r" (if first then t1.typ else t2.typ) in
   let t' =
     if first
     then make_pair (make_var r) t2
@@ -132,7 +132,7 @@ let compose_non_recursive first t1 t2 =
 let compose_typ typ1 typ2 =
   match typ1, typ2 with
     TFun(x1,typ1'), TFun(x2,typ2') ->
-      TFun(x1, TFun(x2, TPair(Id.new_var "r" typ1', typ2')))
+      TFun(x1, TFun(x2, TTuple [Id.new_var ~name:"r" typ1'; Id.new_var typ2']))
   | _ -> assert false
 
 let compose_let_diff_arg fg f t1 g t2 =
@@ -140,7 +140,7 @@ let compose_let_diff_arg fg f t1 g t2 =
   let before2,(x2,ts2),after2,t2' = partition_bindings g t2 in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
-  let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
+  let p = Id.new_var ~name:"p" @@ TTuple[x1; x2] in
   let pat =
     [p,  [], make_app (make_var fg) (ts1 @ ts2);
      x1, [], make_fst @@ make_var p;
@@ -157,7 +157,7 @@ let compose_let map f t1 g t2 =
   | _,          FOther,     _ -> raise Cannot_compose
   | FSimpleRec, FSimpleRec, Some (map',fg) -> compose_let_same_arg map' fg f t1 g t2
   | FSimpleRec, FSimpleRec, None ->
-      let fg = Id.new_var (Id.name f ^ "_" ^ Id.name g) @@ compose_typ (Id.typ f) (Id.typ g) in
+      let fg = Id.new_var ~name:(Id.name f ^ "_" ^ Id.name g) @@ compose_typ (Id.typ f) (Id.typ g) in
       compose_let_diff_arg fg f t1 g t2
 
 
@@ -170,23 +170,25 @@ let is_wrapped t =
 
 let inline_wrapped = make_trans ()
 
-let inline_wrapped_desc desc =
-  match desc with
-  | Pair(t1,t2) ->
+let inline_wrapped_term t =
+  match t.desc with
+  | Tuple [t1;t2] ->
       let t1' = inline_wrapped.tr_term t1 in
       let t2' = inline_wrapped.tr_term t2 in
-      begin match is_wrapped t1', is_wrapped t2' with
-        Some(t11, t12), Some(t21, t22) ->
-          (make_if (make_is_none t11)
-            (make_pair (make_none @@ get_opt_typ t1'.typ) t2')
-            (make_if (make_is_none t21)
-               (make_pair t12 (make_none @@ get_opt_typ t2'.typ))
-               (make_pair t12 t22))).desc
-      | _ -> inline_wrapped.tr_desc_rec desc
+      begin
+        match is_wrapped t1', is_wrapped t2' with
+        | Some(t11, t12), Some(t21, t22) ->
+            make_if (make_is_none t11)
+                    (make_pair (make_none @@ get_opt_typ t1'.typ) t2')
+                    (make_if (make_is_none t21)
+                             (make_pair t12 (make_none @@ get_opt_typ t2'.typ))
+                             (make_pair t12 t22))
+        | _ -> inline_wrapped.tr_term_rec t
       end
-  | _ -> inline_wrapped.tr_desc_rec desc
+  | _ -> inline_wrapped.tr_term_rec t
 
-let () = inline_wrapped.tr_desc <- inline_wrapped_desc
+let () = inline_wrapped.tr_term <- inline_wrapped_term
+let inline_wrapped = inline_wrapped.tr_term
 
 
 
@@ -218,7 +220,7 @@ let compose_let_same_arg map fg f t1 g t2 =
   in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
-  let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
+  let p = Id.new_var ~name:"p" @@ TTuple [x1; x2] in
   let pat =
     [p,  [], make_app (make_var fg) ts;
      x1, [], make_fst @@ make_var p;
@@ -228,7 +230,7 @@ let compose_let_same_arg map fg f t1 g t2 =
 
 let compose_non_recursive first t1 t2 =
   let bindings,t = decomp_let (if first then t1 else t2) in
-  let r = Id.new_var "r" (if first then t1.typ else t2.typ) in
+  let r = Id.new_var ~name:"r" (if first then t1.typ else t2.typ) in
   let t' =
     if first
     then make_pair (make_var r) t2
@@ -336,7 +338,7 @@ let assoc_env f env =
 let compose_non_recursive first t1 t2 =
   if debug() then Format.printf "compose_non_recursive@.";
   let bindings,t = decomp_let (if first then t1 else t2) in
-  let r = Id.new_var "r" (if first then t1.typ else t2.typ) in
+  let r = Id.new_var ~name:"r" (if first then t1.typ else t2.typ) in
   let t' =
     if first
     then make_pair (make_var r) t2
@@ -360,7 +362,7 @@ let compose_simple_rec fg f t1 g t2 =
    *)
   let before = before1 @ before2 in
   let after = after1 @ after2 in
-  let p = Id.new_var "p" (TPair(x1, Id.typ x2)) in
+  let p = Id.new_var ~name:"p" @@ TTuple [x1; x2] in
   let pat =
     [p,  [], make_app (make_var fg) (ts1 @ ts2);
      x1, [], make_fst @@ make_var p;
@@ -391,27 +393,28 @@ let new_funs = ref ([] : (id list * (id * id list * typed_term)) list)
 
 let tupling_term env t =
   match t.desc with
-  | Pair(t1, t2) when decomp_some t1 <> None && decomp_some t2 <> None ->
+  | Tuple[t1; t2] when decomp_some t1 <> None && decomp_some t2 <> None ->
       begin
         try
           if debug() then Format.printf "PAIR: %a, %a@." print_term t1 print_term t2;
           begin match (Option.get @@ decomp_some t1).desc, (Option.get @@ decomp_some t2).desc with
-                  App({desc = Var f}, [{desc = Snd tx}]),
-                  App({desc = Var g}, [{desc = Snd ty}]) ->
+                  App({desc = Var f}, [{desc = Proj(1, tx)}]),
+                  App({desc = Var g}, [{desc = Proj(1, ty)}]) when tuple_num tx.typ = 2 && tuple_num ty.typ = 2 ->
                   let z1,t1 = assoc_env f env in
                   let z2,t2 = assoc_env g env in
-                  let x' = Id.new_var "x" @@ get_opt_typ @@ tx.typ in
-                  let y' = Id.new_var "y" @@ get_opt_typ @@ ty.typ in
+                  let x' = Id.new_var ~name:"x" @@ get_opt_typ @@ tx.typ in
+                  let y' = Id.new_var ~name:"y" @@ get_opt_typ @@ ty.typ in
                   let t1' = subst z1 (make_var x') @@ pair_let t1 in
                   let t2' = subst z2 (make_var y') @@ pair_let t2 in
                   let typ =
                     match t.typ with
-                      TPair(x,typ2) -> TPair(Id.new_var "x" @@ get_opt_typ @@ Id.typ x, get_opt_typ typ2)
+                    | TTuple xs ->
+                        TTuple (List.map (Id.new_var -| get_opt_typ -| Id.typ) xs)
                     | _ -> assert false
                   in
-                  let fg = Id.new_var (Id.name f ^ "_" ^ Id.name g) @@ TFun(x', TFun(y', typ)) in
+                  let fg = Id.new_var ~name:(Id.name f ^ "_" ^ Id.name g) @@ TFun(x', TFun(y', typ)) in
                   let t_body = (*subst_map [x, make_var x'; y, make_var y'] @@*) compose fg f t1' g t2' in
-                  let r = Id.new_var "r" typ in
+                  let r = Id.new_var ~name:"r" typ in
                   let t_app = make_app (make_var fg) [make_snd @@ tx; make_snd @@ ty] in
                   let t_pair = make_pair (make_some @@ make_fst @@ make_var r) (make_some @@ make_snd @@ make_var r) in
                   new_funs := ([f;g], (fg, [x';y'], t_body)) :: !new_funs;
@@ -477,11 +480,13 @@ let compose_app_term t =
       let bindings,t' = decomp_let t in
       begin
         match bindings with
-        | (Nonrecursive,(x,[],{desc=Snd({desc=App({desc=Var f},[{desc=Pair(t11,t12)}])})}))::
-            (Nonrecursive,(y,[],{desc=Fst({desc=App({desc=Var g},[{desc=Pair(t21,t22)}])})}))::bindings'
-             when Id.same f g && is_none t11 && is_some_term t12 && is_some_term t21 && is_none t22 ->
+        | (Nonrecursive,(x,[],{desc=Proj(1,{desc=App({desc=Var f},[{desc=Tuple[t11;t12]}])})}))::
+            (Nonrecursive,(y,[],{desc=Proj(0,({desc=App({desc=Var g},[{desc=Tuple[t21;t22]}])}))}))::bindings'
+             when
+               tuple_num (Id.typ f) = 2 &&tuple_num (Id.typ g) = 2 &&
+               Id.same f g && is_none t11 && is_some_term t12 && is_some_term t21 && is_none t22 ->
             if debug() then Format.printf "%a, %a@." Id.print f Id.print g;
-            let p = Id.new_var "p" (TPair(x, (Id.typ y))) in
+            let p = Id.new_var ~name:"p" (TTuple[x; y]) in
             let bindings'' =
               [p, [], make_app (make_var f) [make_pair t12 t21];
                x, [], make_snd (make_var p);
@@ -545,8 +550,8 @@ let let_normalize = let_normalize.tr_term
 
 let rec tree_of_pair t =
   match t.desc with
-    Pair({desc=Const n},_) -> Tree.Leaf t
-  | Pair(t1,t2) -> Tree.Node(tree_of_pair t1, tree_of_pair t2)
+  | Tuple[{desc=Const c};_] -> Tree.Leaf t
+  | Tuple[t1;t2] -> Tree.Node(tree_of_pair t1, tree_of_pair t2)
   | _ -> Tree.Leaf t
 
 let elim_check t1 t2 =
@@ -606,7 +611,7 @@ let is_option t = is_none t || decomp_some t <> None
 
 let is_option_type typ =
   match typ with
-  | TPair(x, _) when Id.typ x = none_flag.typ -> true
+  | TTuple[x; _] when Id.typ x = none_flag.typ -> true
   | _ -> false
 
 let rec decomp_option_tuple t =
@@ -733,7 +738,7 @@ let replace_app = replace_app.tr2_term []
 
 let trans t =
   t
-  |> inline_wrapped.tr_term
+  |> inline_wrapped
   |> Trans.flatten_let
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" print_term
   |> let_normalize

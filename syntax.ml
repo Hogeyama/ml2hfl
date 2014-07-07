@@ -46,7 +46,7 @@ and term =
   | Raise of typed_term
   | TryWith of typed_term * typed_term
   | Tuple of typed_term list
-  | Proj of int * int * typed_term
+  | Proj of int * typed_term
   | Bottom
   | Label of info * typed_term
   | Ref of typed_term
@@ -81,7 +81,7 @@ and pattern =
   | PConstruct of string * typed_pattern list
   | PNil
   | PCons of typed_pattern * typed_pattern
-  | PPair of typed_pattern * typed_pattern
+  | PTuple of typed_pattern list
   | PRecord of (int * (string * mutable_flag * typed_pattern)) list
   | PNone
   | PSome of typed_pattern
@@ -117,7 +117,7 @@ let trans_typ trans = function
   | TVar{contents=Some typ} -> trans.tr_typ typ
   | TFun(x,typ) -> TFun(Id.set_typ x (trans.tr_typ (Id.typ x)), trans.tr_typ typ)
   | TList typ -> TList (trans.tr_typ typ)
-  | TTuple(n,xs,typ) -> TTuple(n,List.map trans.tr_var xs, trans.tr_typ typ)
+  | TTuple xs -> TTuple (List.map trans.tr_var xs)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(trans.tr_var x, List.map trans.tr_term ps)
   | TRef typ -> TRef (trans.tr_typ typ)
@@ -136,7 +136,7 @@ let trans_pat trans p =
     | PConstruct(s,ps) -> PConstruct(s, List.map trans.tr_pat ps)
     | PNil -> PNil
     | PCons(p1,p2) -> PCons(trans.tr_pat p1, trans.tr_pat p2)
-    | PPair(p1,p2) -> PPair(trans.tr_pat p1, trans.tr_pat p2)
+    | PTuple ps -> PTuple (List.map trans.tr_pat ps)
     | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,trans.tr_pat p)) pats)
     | POr(p1,p2) -> POr(trans.tr_pat p1, trans.tr_pat p2)
     | PNone -> PNone
@@ -191,7 +191,7 @@ let trans_desc trans = function
   | Raise t -> Raise (trans.tr_term t)
   | TryWith(t1,t2) -> TryWith(trans.tr_term t1, trans.tr_term t2)
   | Tuple ts -> Tuple (List.map trans.tr_term ts)
-  | Proj(i,n,t) -> Proj(i, n, trans.tr_term t)
+  | Proj(i,t) -> Proj(i, trans.tr_term t)
   | Bottom -> Bottom
   | Label(info, t) -> Label(trans.tr_info info, trans.tr_term t)
   | Ref t -> Ref(trans.tr_term t)
@@ -270,7 +270,7 @@ let trans2_gen_typ tr env = function
   | TVar{contents=Some typ} -> tr.tr2_typ env typ
   | TFun(x,typ) -> TFun(Id.set_typ x (tr.tr2_typ env (Id.typ x)), tr.tr2_typ env typ)
   | TList typ -> TList (tr.tr2_typ env typ)
-  | TTuple(n,xs,typ) -> TTuple(n, List.map (tr.tr2_var env) xs, tr.tr2_typ env typ)
+  | TTuple xs -> TTuple (List.map (tr.tr2_var env) xs)
   | TConstr(s,b) -> TConstr(s,b)
   | TPred(x,ps) -> TPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
   | TRef typ -> TRef (tr.tr2_typ env typ)
@@ -289,7 +289,7 @@ let trans2_gen_pat tr env p =
     | PConstruct(s,ps) -> PConstruct(s, List.map (tr.tr2_pat env) ps)
     | PNil -> PNil
     | PCons(p1,p2) -> PCons(tr.tr2_pat env p1, tr.tr2_pat env p2)
-    | PPair(p1,p2) -> PPair(tr.tr2_pat env p1, tr.tr2_pat env p2)
+    | PTuple ps -> PTuple (List.map (tr.tr2_pat env) ps)
     | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,tr.tr2_pat env p)) pats)
     | POr(p1,p2) -> POr(tr.tr2_pat env p1, tr.tr2_pat env p2)
     | PNone -> PNone
@@ -343,7 +343,7 @@ let trans2_gen_desc tr env = function
   | Raise t -> Raise (tr.tr2_term env t)
   | TryWith(t1,t2) -> TryWith(tr.tr2_term env t1, tr.tr2_term env t2)
   | Tuple ts -> Tuple (List.map (tr.tr2_term env) ts)
-  | Proj(i,n,t) -> Proj(i, n, tr.tr2_term env t)
+  | Proj(i,t) -> Proj(i, tr.tr2_term env t)
   | Bottom -> Bottom
   | Label(info, t) -> Label(tr.tr2_info env info, tr.tr2_term env t)
   | Ref t -> Ref (tr.tr2_term env t)
@@ -422,7 +422,7 @@ let col_typ col = function
   | TVar{contents=Some typ} -> col.col_typ typ
   | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
   | TList typ -> col.col_typ typ
-  | TTuple(n,xs,typ) -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) (col.col_typ typ) xs
+  | TTuple xs -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs
   | TConstr(s,b) -> col.col_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_term p) (col.col_var x) ps
   | TRef typ -> col.col_typ typ
@@ -441,7 +441,7 @@ let col_pat col p =
     | PConstruct(s,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_pat p) col.col_empty ps
     | PNil -> col.col_empty
     | PCons(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
-    | PPair(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
+    | PTuple ps -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_pat p) col.col_empty ps
     | PRecord pats -> List.fold_left (fun acc (i,(s,f,p)) -> col.col_app acc @@ col.col_pat p) col.col_empty pats
     | POr(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
     | PNone -> col.col_empty
@@ -493,7 +493,7 @@ let col_desc col = function
   | Raise t -> col.col_term t
   | TryWith(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Tuple ts -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) col.col_empty ts
-  | Proj(i,n,t) -> col.col_term t
+  | Proj(i,t) -> col.col_term t
   | Bottom -> col.col_empty
   | Label(info, t) -> col.col_app (col.col_info info) (col.col_term t)
   | Ref t -> col.col_term t
@@ -574,7 +574,7 @@ let col2_typ col env = function
   | TVar{contents=Some typ} -> col.col2_typ env typ
   | TFun(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
   | TList typ -> col.col2_typ env typ
-  | TTuple(n,xs,typ) -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) (col.col2_typ env typ) xs
+  | TTuple xs -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs
   | TConstr(s,b) -> col.col2_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_term env p) (col.col2_var env x) ps
   | TRef typ -> col.col2_typ env typ
@@ -593,7 +593,7 @@ let col2_pat col env p =
     | PConstruct(s,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
     | PNil -> col.col2_empty
     | PCons(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
-    | PPair(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
+    | PTuple ps -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
     | PRecord pats -> List.fold_left (fun acc (i,(s,f,p)) -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty pats
     | POr(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
     | PNone -> col.col2_empty
@@ -645,7 +645,7 @@ let col2_desc col env = function
   | Raise t -> col.col2_term env t
   | TryWith(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Tuple ts -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) col.col2_empty ts
-  | Proj(i,n,t) -> col.col2_term env t
+  | Proj(i,t) -> col.col2_term env t
   | Bottom -> col.col2_empty
   | Label(info, t) -> col.col2_app (col.col2_info env info) (col.col2_term env t)
   | Ref t -> col.col2_term env t
@@ -738,10 +738,9 @@ let tr_col2_typ tc env = function
   | TList typ ->
       let acc,typ' = tc.tr_col2_typ env typ in
       acc, TList typ'
-  | TTuple(n,xs,typ) ->
-      let acc,typ' = tc.tr_col2_typ env typ in
-      let acc',xs' = tr_col2_list tc tc.tr_col2_var ~init:acc env xs in
-      acc', TTuple(n, xs', typ')
+  | TTuple xs ->
+      let acc,xs' = tr_col2_list tc tc.tr_col2_var ~init:tc.tr_col2_empty env xs in
+      acc, TTuple xs'
   | TConstr(s,b) -> tc.tr_col2_empty, TConstr(s,b)
   | TPred(x,ps) ->
       let acc,x' = tc.tr_col2_var env x in
@@ -781,10 +780,9 @@ let tr_col2_pat tc env p =
         let acc1,p1' = tc.tr_col2_pat env p1 in
         let acc2,p2' = tc.tr_col2_pat env p2 in
         tc.tr_col2_app acc1 acc2, PCons(p1', p2')
-    | PPair(p1,p2) ->
-        let acc1,p1' = tc.tr_col2_pat env p1 in
-        let acc2,p2' = tc.tr_col2_pat env p2 in
-        tc.tr_col2_app acc1 acc2, PPair(p1', p2')
+    | PTuple ps ->
+        let acc,ps' = tr_col2_list tc tc.tr_col2_pat env ps in
+        acc, PTuple ps'
     | PRecord pats ->
         let aux env (i,(s,f,p)) =
           let acc',p' = tc.tr_col2_pat env p in
@@ -901,9 +899,9 @@ let tr_col2_desc tc env = function
   | Tuple ts ->
       let acc,ts' = tr_col2_list tc tc.tr_col2_term env ts in
       acc, Tuple ts'
-  | Proj(i,n,t) ->
+  | Proj(i,t) ->
       let acc,t' = tc.tr_col2_term env t in
-      acc, Proj(i,n,t')
+      acc, Proj(i,t')
   | Bottom -> tc.tr_col2_empty, Bottom
   | Label(info, t) ->
       let acc1,t' = tc.tr_col2_term env t in
@@ -1012,10 +1010,9 @@ let fold_tr_typ fld env = function
   | TList typ ->
       let env',typ' = fld.fold_tr_typ env typ in
       env', TList typ'
-  | TTuple(n,xs,typ) ->
-      let env',typ' = fld.fold_tr_typ env typ in
-      let env'',xs' = fold_tr_list fld fld.fold_tr_var env' xs in
-      env'', TTuple(n,xs',typ')
+  | TTuple xs ->
+      let env',xs' = fold_tr_list fld fld.fold_tr_var env xs in
+      env', TTuple xs'
   | TConstr(s,b) -> env, TConstr(s,b)
   | TPred(x,ps) ->
       let env',x' = fld.fold_tr_var env x in
@@ -1055,10 +1052,9 @@ let fold_tr_pat fld env p =
         let env'',p1' = fld.fold_tr_pat env' p1 in
         let env''',p2' = fld.fold_tr_pat env'' p2 in
         env''', PCons(p1', p2')
-    | PPair(p1,p2) ->
-        let env'',p1' = fld.fold_tr_pat env' p1 in
-        let env''',p2' = fld.fold_tr_pat env'' p2 in
-        env''', PPair(p1', p2')
+    | PTuple ps ->
+        let env'',ps' = fold_tr_list fld fld.fold_tr_pat env' ps in
+        env'', PTuple ps'
     | PRecord pats ->
         let aux env (i,(s,f,p)) =
           let env',p' = fld.fold_tr_pat env p in
@@ -1175,9 +1171,9 @@ let fold_tr_desc fld env = function
   | Tuple ts ->
       let env',ts' = fold_tr_list fld fld.fold_tr_term env ts in
       env', Tuple ts'
-  | Proj(i,n,t) ->
+  | Proj(i,t) ->
       let env',t' = fld.fold_tr_term env t in
-      env', Proj(i,n,t')
+      env', Proj(i,t')
   | Bottom -> env, Bottom
   | Label(info, t) ->
       let env',t' = fld.fold_tr_term env t in
@@ -1253,7 +1249,7 @@ let rec get_vars_pat pat =
   | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@@ acc) [] pats
   | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@@ acc) [] pats
   | POr(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
-  | PPair(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
+  | PTuple ps -> List.fold_left (fun acc p -> get_vars_pat p @@@ acc) [] ps
   | PNil -> []
   | PCons(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
   | PNone -> []
@@ -1494,7 +1490,7 @@ and print_desc pri typ fm desc =
   | Tuple ts ->
       let p = 20 in
       fprintf fm "@[(%a)@]" (print_list (print_term p typ) ",@ ") ts
-  | Proj(i,n,t) ->
+  | Proj(i,t) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[#%d@ %a@]%s" s1 i (print_term p typ) t s2
@@ -1556,7 +1552,7 @@ and print_pattern fm pat =
       in
       aux' pats
   | POr(pat1,pat2) -> fprintf fm "(%a | %a)" print_pattern pat1 print_pattern pat2
-  | PPair(pat1,pat2) -> fprintf fm "(%a, %a)" print_pattern pat1 print_pattern pat2
+  | PTuple pats -> fprintf fm "(%a)" (print_list print_pattern ", ") pats
   | PNone -> fprintf fm "None"
   | PSome p -> fprintf fm "(Some %a)" print_pattern p
 let print_term typ fm = print_term 0 typ fm
@@ -1669,7 +1665,7 @@ let rec print_term' pri fm t =
         fprintf fm "%stry %a with@ %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
     | Tuple ts ->
         fprintf fm "@[(%a)@]" (print_list (print_term' 0) ",@ ") ts
-    | Proj(i,n,t) ->
+    | Proj(i,t) ->
         let p = 4 in
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%s#%d %a%s" s1 i (print_term' 1) t s2
@@ -1698,7 +1694,7 @@ and print_pattern' fm pat =
     match pat.pat_desc with
     | PAny -> pp_print_string fm "_"
     | PVar x -> print_id_typ fm x
-    | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
+    | PAlias(p,x) -> fprintf fm "(%a as %a)" aux p print_id x
     | PConst c -> print_term' 1 fm c
     | PConstruct(c,pats) ->
         let aux' = function
@@ -1724,9 +1720,9 @@ and print_pattern' fm pat =
         in
         aux' pats
     | POr(pat1,pat2) -> fprintf fm "(%a | %a)" aux pat1 aux pat2
-    | PPair(pat1,pat2) -> fprintf fm "(%a, %a)" aux pat1 aux pat2
+    | PTuple pats -> fprintf fm "(%a)" (print_list aux ", ") pats
     | PNone -> fprintf fm "None"
-    | PSome p -> fprintf fm "(Some %a)" print_pattern p
+    | PSome p -> fprintf fm "(Some %a)" aux p
   in
   fprintf fm "| %a" aux pat
 

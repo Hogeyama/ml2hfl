@@ -41,7 +41,7 @@ and term =
   | Raise of typed_term
   | TryWith of typed_term * typed_term
   | Tuple of typed_term list
-  | Proj of int * int * typed_term
+  | Proj of int * typed_term
   | Bottom
   | Label of info * typed_term
   | Ref of typed_term
@@ -74,7 +74,7 @@ and pattern =
   | PConstruct of string * typed_pattern list
   | PNil
   | PCons of typed_pattern * typed_pattern
-  | PPair of typed_pattern * typed_pattern
+  | PTuple of typed_pattern list
   | PRecord of (int * (string * mutable_flag * typed_pattern)) list
   | PNone
   | PSome of typed_pattern

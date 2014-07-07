@@ -34,6 +34,7 @@ let rec trans f i n t =
     | BinOp _
     | Not _
     | Label _ -> N (i+1)
+(*
     | Pair(t1,t2) ->
         begin
           match trans f (i+1) n t1 with
@@ -55,6 +56,7 @@ let rec trans f i n t =
           | S t1' -> S (make_snd t1')
           | N i' -> N i'
         end
+ *)
     | Fun(x,t1) ->
         begin
           match trans f (i+1) n t1 with

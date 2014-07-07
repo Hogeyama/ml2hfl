@@ -81,7 +81,7 @@ let rename_poly_funs_term (f,map) t =
       let (_,map'),t' = rename_poly_funs.fold_tr_term (f,map) t in
       (f,map'), make_fun x t'
   | App({desc=Var x; typ=typ}, ts) when Id.same x f ->
-      let x' = Id.new_var (Id.name x) typ in
+      let x' = Id.new_var ~name:(Id.name x) typ in
       let (_,map'),ts' = rename_poly_funs_list f map ts in
       let check (_,f') = Type.can_unify (Id.typ f') (Id.typ x') in
       if List.exists check map'
@@ -201,41 +201,44 @@ let rec define_randvalue env defs typ =
     | TList (TVar({contents=None} as r)) ->
         r := Some TUnit; define_randvalue env defs typ
     | TList typ' ->
-        let u = Id.new_var "u" TUnit in
-        let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
+        let u = Id.new_var ~name:"u" TUnit in
+        let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
         let env'',defs',t_typ' = define_randvalue env' defs typ' in
         let t_typ =
           make_if randbool_unit_term (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term]))
         in
         env'', (f,[u],t_typ)::defs', make_app (make_var f) [unit_term]
-    | TPair(x,typ) ->
-        let env',defs',t1 = define_randvalue env defs (Id.typ x) in
-        let env'',defs'',t2 = define_randvalue env' defs' typ in
-        env'', defs'', make_pair t1 t2
+    | TTuple xs ->
+        let aux x (env,defs,ts) =
+          let env',defs',t = define_randvalue env defs @@ Id.typ x in
+          env', defs', t::ts
+        in
+        let env', defs', ts = List.fold_right aux xs (env,defs,[]) in
+        env', defs', make_tuple ts
     | TConstr(s,false) -> env, defs, make_randvalue_unit typ
     | TConstr(s,true) ->
-        let u = Id.new_var "u" TUnit in
-        let f = Id.new_var ("make_" ^ to_id_string typ) (TFun(u,typ)) in
+        let u = Id.new_var ~name:"u" TUnit in
+        let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
         let env'',defs',t =
           match Type_decl.assoc_typ s with
-            Type_decl.TKVariant stypss ->
-            let n = List.length stypss in
-            let aux1 (s,typs) (env,defs,itss,i) =
-              let aux2 typ (env,defs,ts) =
-                let env', defs',t = define_randvalue env defs typ in
-                env', defs', t::ts
+          | Type_decl.TKVariant stypss ->
+              let n = List.length stypss in
+              let aux1 (s,typs) (env,defs,itss,i) =
+                let aux2 typ (env,defs,ts) =
+                  let env', defs',t = define_randvalue env defs typ in
+                  env', defs', t::ts
+                in
+                let env',defs',ts' = List.fold_right aux2 typs (env,defs,[]) in
+                env', defs', (i-1,ts')::itss, i-1
               in
-              let env',defs',ts' = List.fold_right aux2 typs (env,defs,[]) in
-              env', defs', (i-1,ts')::itss, i-1
-            in
-            let env'',defs',itss,_ = List.fold_right aux1 stypss (env',defs,[],n) in
-            let aux (s,typs) (i,ts) =
-              let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
-              p, true_term, {desc=Constr(s,ts); typ=typ}
-            in
-            env'', defs', make_match randint_unit_term (List.map2 aux stypss itss)
+              let env'',defs',itss,_ = List.fold_right aux1 stypss (env',defs,[],n) in
+              let aux (s,typs) (i,ts) =
+                let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
+                p, true_term, {desc=Constr(s,ts); typ=typ}
+              in
+              env'', defs', make_match randint_unit_term (List.map2 aux stypss itss)
           | Type_decl.TKRecord sftyps ->
               let aux (env,defs,sfts) (field,(flag,typ)) =
                 let env', defs', t = define_randvalue env defs typ in
@@ -292,7 +295,7 @@ let rec replace_main main t =
 let set_target t =
   match get_last_definition None t with
   | None ->
-      let u = Id.new_var "main" t.typ in
+      let u = Id.new_var ~name:"main" t.typ in
       "", 0, make_let [u, [], t] unit_term
   | Some f ->
       let xs = get_args (Id.typ f) in
@@ -301,14 +304,14 @@ let set_target t =
         then replace_main (make_var f) t
         else
           let aux i x =
-            let x' = Id.new_var ("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
             let t = make_randvalue_unit @@ Id.typ x in
             x', [], t
           in
           let bindings = List.mapi aux xs in
           let main = make_app (make_var f) @@ List.map make_var @@ List.map fst3 bindings in
           let main = make_lets bindings main in
-          let u = Id.new_var "main" main.typ in
+          let u = Id.new_var ~name:"main" main.typ in
           let main = make_let [u, [], main] unit_term in
           replace_main main t
       in
@@ -480,9 +483,8 @@ let part_eval t =
       | Match(t,pats) ->
           let aux' (pat,cond,t) = pat, aux apply cond, aux apply t in
           Match(aux apply t, List.map aux' pats)
-      | Snd _ -> assert false
-      | Fst _ -> assert false
-      | Pair (_, _) -> assert false
+      | Proj _ -> assert false
+      | Tuple _ -> assert false
       | TryWith (_, _) -> assert false
       | Raise _ -> assert false
       | SetField (_, _, _, _, _, _) -> assert false
@@ -863,7 +865,7 @@ let elim_fun = make_trans2 ()
 let elim_fun_term fun_name t =
   match t.desc with
   | Fun(y, t1) ->
-      let f = Id.new_var fun_name t.typ in
+      let f = Id.new_var ~name:fun_name t.typ in
       make_let [f, [y], elim_fun.tr2_term fun_name t1] @@ make_var f
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
@@ -898,7 +900,7 @@ let init_rand_int = make_trans ()
 
 let init_rand_int_term t =
   match t.desc with
-  | App({desc=RandInt false},[{desc=Const Unit}]) -> make_var @@ Id.new_var "_r" TInt
+  | App({desc=RandInt false},[{desc=Const Unit}]) -> make_var @@ Id.new_var ~name:"_r" TInt
   | RandInt _ -> assert false
   | _ -> init_rand_int.tr_term_rec t
 
@@ -940,7 +942,7 @@ let rec inlined_f inlined fs t =
          | Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
              let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
              let ts = List.map (inlined_f inlined fs) ts in
-             let ys = List.map (fun t -> match t.desc with Const (Unit | True | False | Int _) | Var _ -> `L(t) | _ -> `R(Id.new_var "arg" t.typ)) ts in
+             let ys = List.map (fun t -> match t.desc with Const (Unit | True | False | Int _) | Var _ -> `L(t) | _ -> `R(Id.new_var ~name:"arg" t.typ)) ts in
              let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else Fpat.Util.List.split_nth (List.length xs) ys in
              let xs1, xs2 = Fpat.Util.List.split_nth (List.length ys1) xs in
              let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
@@ -975,7 +977,7 @@ let rec inlined_f inlined fs t =
               let xs', t' = lift t' in
               (*let _ = Format.printf "inlined: %a, %a, %a@." print_id f (Fpat.Util.List.pr print_id ",") xs pp_print_term t' in*)
               `R(f, xs @ xs', t')
-            else if xs = [] && (match t.desc with Fst(t) | Snd(t) -> (match t.desc with Var _ -> true | _ -> false) | _ -> false) then
+            else if xs = [] && (match t.desc with Proj(_,{desc=Var _}) -> true | _ -> false) then
               (*let _ = Format.printf "fst/snd: %a@." print_id f in*)
               `R(f, xs, t)
             else
@@ -1005,21 +1007,8 @@ let rec inlined_f inlined fs t =
         Match(inlined_f inlined fs t1, List.map aux pats)
     | Raise t -> Raise (inlined_f inlined fs t)
     | TryWith(t1,t2) -> TryWith(inlined_f inlined fs t1, inlined_f inlined fs t2)
-    | Pair(t1,t2) -> Pair(inlined_f inlined fs t1, inlined_f inlined fs t2)
-    | Fst t ->
-        let t' = inlined_f inlined fs t in
-        begin
-          match t'.desc with
-          | Pair(t1, _) -> t1.desc
-          | _ -> Fst t'
-        end
-    | Snd t ->
-        let t' = inlined_f inlined fs t in
-        begin
-          match t'.desc with
-          | Pair(_, t2) -> t2.desc
-          | _ -> Snd t'
-        end
+    | Tuple ts -> Tuple (List.map (inlined_f inlined fs) ts)
+    | Proj(i,t) -> Proj(i, inlined_f inlined fs t)
     | Bottom -> Bottom
     | _ -> Format.printf "inlined_f: %a@." print_constr t; assert false
   in
@@ -1045,8 +1034,8 @@ let lift_fst_snd_term fs t =
                (Fpat.Util.List.filter_map
                   (fun x ->
                    match x.Id.typ with
-                   | TPair(_, _) ->
-                       Some([Id.new_var x.Id.name (fst_typ x.Id.typ), true, x; Id.new_var x.Id.name (snd_typ x.Id.typ), false, x])
+                   | TTuple [_; _] ->
+                       Some([Id.new_var ~name:x.Id.name (fst_typ x.Id.typ), true, x; Id.new_var ~name:x.Id.name (snd_typ x.Id.typ), false, x])
                    | _ -> None)
                   xs)
            in
@@ -1064,13 +1053,13 @@ let lift_fst_snd_term fs t =
           bindings
       in
       make_let_f flag bindings' @@ lift_fst_snd.tr2_term fs t2
-  | Fst {desc=Var x} ->
+  | Proj(0, {desc=Var x}) when tuple_num (Id.typ x) = 2 ->
       (try
           let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.same x' x) fs in
           make_var x
         with Not_found ->
           make_fst @@ lift_fst_snd.tr2_term fs t)
-  | Snd {desc=Var x} ->
+  | Proj(1, {desc=Var x}) when tuple_num (Id.typ x) = 2 ->
       (try
           let (x, _, _) = List.find (fun (_, bfst, x') -> not bfst && Id.same x' x) fs in
           make_var x
@@ -1130,7 +1119,7 @@ let insert_param_funarg_typ typ =
       let xs' = List.map insert_param_funarg.tr_var xs in
       let xs'' =
         if should_insert (List.map Id.typ xs)
-        then (Id.new_var "u" TUnit) :: xs'
+        then (Id.new_var ~name:"u" TUnit) :: xs'
         else xs'
       in
       List.fold_right (fun x typ -> TFun(x,typ)) xs'' (insert_param_funarg.tr_typ typ')
@@ -1145,7 +1134,7 @@ let insert_param_funarg_term t =
         let xs' = List.map insert_param_funarg.tr_var xs in
         let xs'' =
           if should_insert (List.map Id.typ xs)
-          then (Id.new_var "u" TUnit) :: xs'
+          then (Id.new_var ~name:"u" TUnit) :: xs'
           else xs'
         in
         (List.fold_right make_fun xs'' (insert_param_funarg.tr_term t')).desc
@@ -1162,7 +1151,7 @@ let insert_param_funarg_term t =
           let xs' = List.map insert_param_funarg.tr_var xs in
           let xs'' =
             if should_insert (List.map Id.typ xs)
-            then Id.new_var "u" TUnit :: xs'
+            then Id.new_var ~name:"u" TUnit :: xs'
             else xs'
           in
           insert_param_funarg.tr_var f, xs'', insert_param_funarg.tr_term t
@@ -1234,9 +1223,8 @@ let rec search_fail path t =
   | Raise t -> search_fail path t
   | TryWith(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
   | Bottom -> []
-  | Pair(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
-  | Fst t -> search_fail path t
-  | Snd t -> search_fail path t
+  | Tuple ts -> List.flatten @@ List.mapi (fun i t -> search_fail (i::path) t) ts
+  | Proj(i,t) -> search_fail path t
   | RandValue _ -> []
   | Label(_,t) -> search_fail path t
   | Ref _ -> assert false
@@ -1298,11 +1286,9 @@ let rec screen_fail path target t =
         let aux i t = screen_fail (i::path) target t in
         TryWith(aux 1 t1, aux 2 t2)
     | Bottom -> t.desc
-    | Pair(t1,t2) ->
-        let aux i t = screen_fail (i::path) target t in
-        Pair(aux 1 t1, aux 2 t2)
-    | Fst t -> Fst (screen_fail path target t)
-    | Snd t -> Snd (screen_fail path target t)
+    | Tuple ts ->
+        Tuple (List.mapi (fun i t -> screen_fail (i::path) target t) ts)
+    | Proj(i,t) -> Proj(i, screen_fail path target t)
     | RandValue _ -> t.desc
     | Label(info,t) -> Label(info, screen_fail path target t)
     | Ref _ -> assert false
@@ -1352,8 +1338,8 @@ let make_ext_fun_def f =
     if xs = []
     then env',defs',t
     else
-      let u = Id.new_var "u" TUnit in
-      let x = Id.new_var "x" typ in
+      let u = Id.new_var ~name:"u" TUnit in
+      let x = Id.new_var typ in
       let t' = make_if randbool_unit_term unit_term (make_let [x,[],make_app (make_var f) args] unit_term) in
       env', defs', make_let [u,[],t'] t
   in
@@ -1514,9 +1500,9 @@ let rec diff_terms t1 t2 =
   | Match _, Match _ -> [t1,t2] (* Not implemented *)
   | Raise _, Raise _ -> [t1,t2] (* Not implemented *)
   | TryWith _, TryWith _ -> [t1,t2] (* Not implemented *)
-  | Pair(t11,t12), Pair(t21,t22) -> diff_terms t11 t21 @ diff_terms t12 t22
-  | Fst t1, Fst t2 -> diff_terms t1 t2
-  | Snd t1, Snd t2 -> diff_terms t1 t2
+  | Tuple ts1, Tuple ts2 ->
+      List.flatten @@ List.map2 diff_terms ts1 ts2
+  | Proj(i,t1), Proj(j,t2) when i = j -> diff_terms t1 t2
   | Bottom, Bottom -> []
   | Label _, Label _ -> [t1,t2]
   | _ -> [t1, t2]
@@ -1584,15 +1570,15 @@ let normalize_let = make_trans ()
 let normalize_let_aux t =
   let post t' =
     match t'.desc with
-    | BinOp _ | App _ | Pair _ | Fst _ | Snd _ ->
-        let y = Id.new_var "x" t'.typ in
+    | BinOp _ | App _ | Tuple _ | Proj _ ->
+        let y = Id.new_var t'.typ in
         make_lets [y,[],t'] @@ make_var y
     | _ -> t'
   in
   match t.desc with
   | Var x -> x, post
   | _ ->
-     let x = Id.new_var "x" t.typ in
+     let x = Id.new_var t.typ in
      let t' = normalize_let.tr_term t in
      let post' t'' = make_let [x,[],t'] @@ post t'' in
      x, post'
@@ -1607,16 +1593,12 @@ let normalize_let_term t =
      let ts' = List.map normalize_let.tr_term ts in
      let x,post = normalize_let_aux t in
      post @@ make_app (make_var x) ts'
-  | Pair(t1, t2) ->
-      let x1,post1 = normalize_let_aux t1 in
-      let x2,post2 = normalize_let_aux t2 in
-      post1 @@ post2 @@ make_pair (make_var x1) (make_var x2)
-  | Fst t ->
+  | Tuple ts ->
+      let xs,posts = List.split @@ List.map normalize_let_aux ts in
+      List.fold_right (@@) posts @@ make_tuple @@ List.map make_var xs
+  | Proj(i,t) ->
      let x,post = normalize_let_aux t in
-     post @@ make_fst @@ make_var x
-  | Snd t ->
-     let x,post = normalize_let_aux t in
-     post @@ make_snd @@ make_var x
+     post @@ make_proj i @@ make_var x
   | Let(flag,bindings,t1) ->
       let aux (f,xs,t) = f, xs, normalize_let.tr_term t in
       let bindings' = List.map aux bindings in
@@ -1662,7 +1644,7 @@ let decomp_pair_eq_term t =
   match t.desc with
   | BinOp(Eq, t1, t2) ->
       begin match t1.typ with
-      | TPair(x,typ2) ->
+      | TTuple xs ->
           let aux t =
             match t with
             | {desc=Var y} -> y, Std.identity
@@ -1670,11 +1652,10 @@ let decomp_pair_eq_term t =
                 let y = var_of_term t in
                 y, make_let [y,[],t]
           in
-          let y1,post1 = aux t1 in
-          let y2,post2 = aux t2 in
-          let t1 = make_eq (make_fst @@ make_var y1) (make_fst @@ make_var y2) in
-          let t2 = make_eq (make_snd @@ make_var y1) (make_snd @@ make_var y2) in
-          post2 @@ post1 @@ decomp_pair_eq.tr_term @@ make_and t1 t2
+          let y1,post1 = aux @@ decomp_pair_eq.tr_term t1 in
+          let y2,post2 = aux @@ decomp_pair_eq.tr_term t2 in
+          let ts = List.mapi (fun i _ -> make_eq (make_proj i @@ make_var y1) (make_proj i @@ make_var y2)) xs in
+          post2 @@ post1 @@ List.fold_left make_and true_term ts
       | _ -> decomp_pair_eq.tr_term_rec t
       end
   | _ -> decomp_pair_eq.tr_term_rec t
@@ -1943,9 +1924,8 @@ let rec beta_reduce t =
     | BinOp(op, t1, t2) -> BinOp(op, beta_reduce t1, beta_reduce t2)
     | Not t1 -> Not (beta_reduce t1)
     | Event(s,b) -> Event(s,b)
-    | Pair(t1,t2) -> Pair(beta_reduce t1, beta_reduce t2)
-    | Fst t1 -> Fst (beta_reduce t1)
-    | Snd t1 -> Snd (beta_reduce t1)
+    | Tuple ts -> Tuple (List.map beta_reduce ts)
+    | Proj(i, t1) -> Proj(i, beta_reduce t1)
     | Bottom -> Bottom
     | _ -> Format.printf "%a@." print_term t; assert false
   in

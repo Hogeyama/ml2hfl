@@ -59,7 +59,7 @@ val make_leq : typed_term -> typed_term -> typed_term
 val make_geq : typed_term -> typed_term -> typed_term
 val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
-val make_pair : ?s:string -> typed_term -> typed_term -> typed_term
+val make_pair : typed_term -> typed_term -> typed_term
 val make_tuple : typed_term list -> typed_term
 val make_nil : typ -> typed_term
 val make_nil2 : typ -> typed_term
@@ -105,7 +105,6 @@ val decomp_is_none : typed_term -> typed_term option
 val decomp_get_val : typed_term -> typed_term option
 val decomp_fun : typed_term -> id list * typed_term
 val decomp_let : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
-val decomp_tuple : typed_term -> typed_term list
 val decomp_ttuple : typ -> typ list
 
 (** {6 Misc} *)

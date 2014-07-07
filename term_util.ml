@@ -13,13 +13,13 @@ let get_fv = Syntax.get_fv
 (*** TERM CONSTRUCTORS ***)
 
 let typ_result = TConstr("X", false)
-let typ_event = TFun(Id.new_var "" TUnit, TUnit)
-let typ_event' = TFun(Id.new_var "" TUnit, typ_result)
+let typ_event = TFun(Id.new_var TUnit, TUnit)
+let typ_event' = TFun(Id.new_var TUnit, typ_result)
 let typ_event_cps =
-  let u = Id.new_var "" TUnit in
-  let r = Id.new_var "" TUnit in
-  let k = Id.new_var "" (TFun(r,typ_result)) in
-    TFun(u, TFun(k, typ_result))
+  let u = Id.new_var TUnit in
+  let r = Id.new_var TUnit in
+  let k = Id.new_var @@ TFun(r,typ_result) in
+  TFun(u, TFun(k, typ_result))
 let typ_excep_init = TConstr("exn",true)
 let typ_excep = ref typ_excep_init
 
@@ -29,7 +29,7 @@ let abst_var_int = Id.set_typ abst_var TInt
 let abst_var_bool = Id.set_typ abst_var TBool
 let length_var =
   let x = Id.make (-1) "l" (TList typ_unknown) in
-    Id.make (-1) "length" (TFun(x, TInt))
+  Id.make (-1) "length" (TFun(x, TInt))
 
 let unit_term = {desc=Const Unit; typ=TUnit}
 let true_term = {desc=Const True;typ=TBool}
@@ -37,7 +37,7 @@ let false_term = {desc=Const False;typ=TBool}
 let cps_result = {desc=Const CPS_result; typ=typ_result}
 let fail_term = {desc=Event("fail",false);typ=typ_event}
 let fail_term_cps = {desc=Event("fail",false);typ=typ_event'}
-let randint_term = {desc=RandInt false; typ=TFun(Id.new_var "" TUnit,TInt)}
+let randint_term = {desc=RandInt false; typ=TFun(Id.new_var TUnit,TInt)}
 let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
   {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Const(Int 0);typ=TInt}); typ=TBool}
@@ -46,17 +46,17 @@ let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
 let make_var x = {desc=Var x; typ=Id.typ x}
 let make_int n = {desc=Const(Int n); typ=TInt}
-let make_randvalue typ = {desc=RandValue(typ,false); typ=TFun(Id.new_var "" TUnit,typ)}
+let make_randvalue typ = {desc=RandValue(typ,false); typ=TFun(Id.new_var TUnit,typ)}
 let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ=typ}
 let make_randvalue_cps typ =
-  let u = Id.new_var "" TUnit in
-  let r = Id.new_var "" typ in
-  let k = Id.new_var "" (TFun(r,typ_result)) in
+  let u = Id.new_var TUnit in
+  let r = Id.new_var typ in
+  let k = Id.new_var @@ TFun(r,typ_result) in
   {desc=RandValue(typ,true); typ=TFun(u,TFun(k,typ_result))}
 let make_randint_cps () =
-  let u = Id.new_var "" TUnit in
-  let r = Id.new_var "" TInt in
-  let k = Id.new_var "" (TFun(r,typ_result)) in
+  let u = Id.new_var TUnit in
+  let r = Id.new_var TInt in
+  let k = Id.new_var @@ TFun(r,typ_result) in
   {desc=RandInt true; typ=TFun(u,TFun(k,typ_result))}
 let rec make_app t ts =
   match t,ts with
@@ -112,10 +112,10 @@ let make_seq t1 t2 =
   match t1.desc with
   | Const _
   | Var _ -> t2
-  | _ -> make_let [Id.new_var "u" t1.typ, [], t1] t2
+  | _ -> make_let [Id.new_var ~name:"u" t1.typ, [], t1] t2
 let make_loop typ =
-  let u = Id.new_var "u" TUnit in
-  let f = Id.new_var "loop" (TFun(u,typ)) in
+  let u = Id.new_var ~name:"u" TUnit in
+  let f = Id.new_var ~name:"loop" (TFun(u,typ)) in
   let t = make_app (make_var f) [make_var u] in
   make_letrec [f, [u], t] (make_app (make_var f) [unit_term])
 let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
@@ -184,15 +184,14 @@ let make_geq t1 t2 =
   assert (true || not Flag.check_typ || Type.can_unify t1.typ TInt);
   assert (true || not Flag.check_typ || Type.can_unify t2.typ TInt);
   {desc=BinOp(Geq, t1, t2); typ=TBool}
-let make_proj i t = {desc=Proj(i,proj_num t.typ,t); typ=proj_typ i t.typ}
+let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ}
 let make_ttuple typs =
-  let typs',typ = List.decomp_snoc typs in
-  TTuple(List.length typs, List.map (Id.new_var "x") typs', typ)
+  TTuple (List.map Id.new_var typs)
 let make_tuple ts = {desc=Tuple ts; typ=make_ttuple @@ List.map (fun t -> t.typ) ts}
-let make_fst t = {desc=Proj(0,2,t); typ=proj_typ 0 t.typ}
-let make_snd t = {desc=Proj(1,2,t); typ=proj_typ 1 t.typ}
-let make_tpair ?(s="x") typ1 typ2 = TTuple(2, [Id.new_var s typ1], typ2)
-let make_pair ?(s="x") t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair ~s t1.typ t2.typ}
+let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ}
+let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ}
+let make_tpair typ1 typ2 = TTuple [Id.new_var typ1; Id.new_var typ2]
+let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ}
 let make_nil typ = {desc=Nil; typ=TList typ}
 let make_nil2 typ = {desc=Nil; typ=typ}
 let make_cons t1 t2 =
@@ -201,7 +200,7 @@ let make_cons t1 t2 =
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
 let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
-let make_ppair p1 p2 = {pat_desc=PPair(p1, p2); pat_typ=make_tpair p1.pat_typ p2.pat_typ}
+let make_ppair p1 p2 = {pat_desc=PTuple[p1;p2]; pat_typ=make_tpair p1.pat_typ p2.pat_typ}
 let make_pnil typ = {pat_desc=PNil; pat_typ=TList typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
@@ -232,14 +231,15 @@ let make_eq_dec t1 t2 =
     match t.desc with
     | Var x -> make_var x, Std.identity
     | _ ->
-        let x = Id.new_var "x" t.typ in
+        let x = Id.new_var t.typ in
         make_var x, make_let [x,[],t]
   in
   let rec make t1 t2 =
     match t1.typ with
     | TBool
     | TInt -> make_eq t1 t2
-    | TTuple(n,_,_) ->
+    | TTuple xs ->
+        let n = List.length xs in
         List.fromto 0 n
         |> List.map (fun i -> make (make_proj i t1) (make_proj i t2))
         |> List.fold_left make_and true_term
@@ -256,10 +256,7 @@ let rec make_term typ =
   | TBool -> true_term
   | TInt -> make_int 0
   | TFun(x,typ) -> make_fun x (make_term typ)
-  | TTuple(n,xs,typ) ->
-      let typs = List.map Id.typ xs in
-      let ts = List.map (make_term -| Id.typ) xs in
-      make_tuple (ts @ make_term typ)
+  | TTuple xs -> make_tuple @@ List.map (make_term -| Id.typ) xs
   | TConstr("X", false) -> cps_result
   | TList typ' -> make_nil typ'
   | _ -> Format.printf "ERROR:@.%a@." Syntax.print_typ typ; assert false
@@ -271,11 +268,11 @@ let some_flag = true_term
 let none_flag = make_int 0
 let some_flag = make_int 1
  *)
-let opt_typ typ = TPair(Id.new_var "x" none_flag.typ, typ)
+let opt_typ typ = TTuple [Id.new_var none_flag.typ; Id.new_var typ]
 let get_opt_typ typ = snd_typ typ
 let is_none t =
   match t.desc with
-  | Pair(t1,t2) -> t1 = none_flag
+  | Tuple [t1;t2] -> t1 = none_flag
   | _ -> false
 let make_none typ = make_pair none_flag (make_term typ)
 let make_some t = make_pair some_flag t
@@ -284,15 +281,15 @@ let make_is_some t = make_not (make_is_none t)
 let make_get_val t = make_snd t
 let decomp_is_none t =
   match t.desc with
-  | BinOp(Eq, {desc=Fst t1}, t2) when t2 = none_flag -> Some t1
+  | BinOp(Eq, {desc=Proj(0,t1)}, t2) when t2 = none_flag -> Some t1
   | _ -> None
 let decomp_get_val t =
   match t.desc with
-  | Snd t -> Some t
+  | Proj(1, t) -> Some t
   | _ -> None
 let decomp_some t =
   match t.desc with
-  | Pair(t1,t2) when t1 = some_flag -> Some t2
+  | Tuple [t1;t2] when t1 = some_flag -> Some t2
   | _ -> None
 
 let make_tuple ts =
@@ -300,24 +297,16 @@ let make_tuple ts =
   | []
   | [_] -> raise (Invalid_argument "make_tuple")
   | t::ts' -> List.fold_left (make_pair) t ts'
-let rec decomp_tuple top t =
-  match t.desc with
-  | Pair(t1,t2) -> t1 :: decomp_tuple false t2
-  | _ when top -> raise (Invalid_argument "decomp_tuple")
-  | _ -> [t]
-let decomp_tuple = decomp_tuple true
 
 let make_ttuple typs =
   match typs with
   | []
   | [_] -> raise (Invalid_argument "tuple_typ")
   | typ::typs' -> List.fold_left (make_tpair) typ typs'
-let rec decomp_ttuple top typ =
+let decomp_ttuple typ =
   match typ with
-    TPair(x,typ) -> Id.typ x :: decomp_ttuple false typ
-  | _ when top -> raise (Invalid_argument "make_tuple")
-  | _ -> [typ]
-let decomp_ttuple = decomp_ttuple true
+  | TTuple xs -> List.map Id.typ xs
+  | _ -> invalid_argument "make_tuple"
 
 let make_proj i t =
   let n = List.length @@ decomp_ttuple t.typ in
@@ -530,20 +519,22 @@ let rec merge_typ typ1 typ2 =
   | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
   | TFun(x1,typ1), TFun(x2,typ2) ->
       let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
-      let x = Id.new_var (Id.name x1) x_typ in
+      let x = Id.new_var ~name:(Id.name x1) x_typ in
       let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
       TFun(x, typ)
   | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
-  | TPair(x1,typ1), TPair(x2,typ2) ->
-      let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
-      let x = Id.new_var (Id.name x1) x_typ in
-      let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
-      TPair(x, typ)
+  | TTuple xs1, TTuple xs2 ->
+      let aux x1 x2 xs =
+        let x = Id.set_typ x1 @@ merge_typ (Id.typ x1) (Id.typ x2) in
+        List.map (Id.map_typ (subst_type x2 (make_var x1))) @@ x::xs
+      in
+      TTuple (List.fold_right2 aux xs1 xs2 [])
   | _ when typ1 = typ_unknown -> typ2
   | _ when typ2 = typ_unknown -> typ1
   | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
   | TOption typ1, TOption typ2 -> TOption (merge_typ typ1 typ2)
   | _ -> Format.printf "typ1:%a, typ2:%a@." print_typ typ1 print_typ typ2; assert false
+
 
 
 let make_if t1 t2 t3 =
@@ -580,7 +571,7 @@ let rec get_typ_default = function
   | TVar _ -> assert false
   | TFun(x,typ) -> make_fun x (get_typ_default typ)
   | TList typ -> make_nil typ
-  | TPair(x,typ) -> make_pair ~s:(Id.name x) (get_typ_default (Id.typ x)) (get_typ_default typ)
+  | TTuple xs -> make_tuple @@ List.map (get_typ_default -| Id.typ) xs
   | TConstr(s,b) -> assert false
   | TPred _ -> assert false
   | TRef _ -> assert false
@@ -665,9 +656,8 @@ and same_desc t1 t2 =
   | Match _, Match _ -> unsupported "same_term 7"
   | Raise _, Raise _ -> unsupported "same_term 8"
   | TryWith _, TryWith _ -> unsupported "same_term 9"
-  | Pair(t11,t12), Pair(t21,t22) -> same_term t11 t21 && same_term t12 t22
-  | Fst t1, Fst t2 -> same_term t1 t2
-  | Snd t1, Snd t2 -> same_term t1 t2
+  | Tuple ts1, Tuple ts2 -> List.length ts1 = List.length ts2 && List.for_all2 same_term ts1 ts2
+  | Proj(i,t1), Proj(j,t2) -> i = j && same_term t1 t2
   | Bottom, Bottom -> true
   | Label _, Label _ -> unsupported "same_term 11"
   | _ -> false
@@ -684,18 +674,17 @@ let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 let rec var_name_of_term t =
   match t.desc, elim_tpred t.typ with
   | Var x, _       -> Id.name x
-  | _,     TUnit   -> "u"
-  | _,     TBool   -> "b"
-  | _,     TInt    -> "n"
-  | _,     TFun _  -> "f"
-  | _,     TPair _ -> "p"
-  | App _, _       -> "r"
-  | Fst t, _       -> var_name_of_term t ^ "_l"
-  | Snd _, _       -> var_name_of_term t ^ "_r"
-  | Fun _, _       -> assert false
-  | _,     _       -> "x"
+  | _,         TUnit   -> "u"
+  | _,         TBool   -> "b"
+  | _,         TInt    -> "n"
+  | _,         TFun _  -> "f"
+  | _,         TTuple _ -> "p"
+  | App _,     _       -> "r"
+  | Proj(i,t), _       -> var_name_of_term t ^ "_" ^ string_of_int i
+  | Fun _,     _       -> assert false
+  | _,         _       -> "x"
 
-let var_of_term t = Id.new_var (var_name_of_term t) t.typ
+let var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
 let is_dependend t x = Id.mem x @@ get_fv t
 
@@ -738,7 +727,7 @@ let subst_rev t1 x t2 = subst_rev.tr2_term (t1,x) t2
 
 (* replace t1 with t2 in t3 *)
 let replace_term t1 t2 t3 =
-  let x = Id.new_var "x" t1.typ in
+  let x = Id.new_var t1.typ in
   subst x t2 @@ subst_rev t1 x t3
 
 

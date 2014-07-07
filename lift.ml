@@ -76,7 +76,7 @@ let rec lift_aux post xs t =
     | RandValue _
     | Var _ -> [], t.desc
     | Fun _ ->
-        let f = Id.new_var ("f" ^ post) t.typ in
+        let f = Id.new_var ~name:("f" ^ post) t.typ in
         let aux f ys t1 t2 =
           let fv = IdSet.inter (get_fv' t1) xs in
           let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
@@ -177,16 +177,12 @@ let rec lift_aux post xs t =
         in
         let defs',pats' = List.fold_right aux pats (defs,[]) in
         defs', Match(t',pats')
-    | Pair(t1,t2) ->
-        let defs1,t1' = lift_aux post xs t1 in
-        let defs2,t2' = lift_aux post xs t2 in
-        defs1 @ defs2, Pair(t1',t2')
-    | Fst t ->
+    | Tuple ts ->
+        let defss,ts' = List.split @@ List.map (lift_aux post xs) ts in
+        List.flatten defss, Tuple ts'
+    | Proj(i,t) ->
         let defs,t' = lift_aux post xs t in
-        defs, Fst t'
-    | Snd t ->
-        let defs,t' = lift_aux post xs t in
-        defs, Snd t'
+        defs, Proj(i,t')
     | Bottom -> [], Bottom
     | _ -> Format.printf "lift: %a@." print_term t; assert false
   in
@@ -205,7 +201,7 @@ let rec lift_aux' post xs t =
     | RandValue _
     | Var _ -> [], t.desc
     | Fun _ ->
-        let f = Id.new_var ("f" ^ post) t.typ in
+        let f = Id.new_var ~name:("f" ^ post) t.typ in
         let aux f ys t1 t2 =
           let fv = IdSet.inter (get_fv' t1) xs in
           let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
@@ -310,16 +306,12 @@ let rec lift_aux' post xs t =
         in
         let defs',pats' = List.fold_right aux pats (defs,[]) in
         defs', Match(t',pats')
-    | Pair(t1,t2) ->
-        let defs1,t1' = lift_aux' post xs t1 in
-        let defs2,t2' = lift_aux' post xs t2 in
-        defs1 @ defs2, Pair(t1',t2')
-    | Fst t ->
+    | Tuple ts ->
+        let defss,ts' = List.split @@ List.map (lift_aux' post xs) ts in
+        List.flatten defss, Tuple ts'
+    | Proj(i,t) ->
         let defs,t' = lift_aux' post xs t in
-        defs, Fst t'
-    | Snd t ->
-        let defs,t' = lift_aux' post xs t in
-        defs, Snd t'
+        defs, Proj(i,t')
     | Bottom -> [], Bottom
     | _ -> Format.printf "lift: %a@." print_term t; assert false
   in

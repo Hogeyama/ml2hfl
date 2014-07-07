@@ -28,7 +28,7 @@ let rec check t typ =
   | {desc=RandInt true; typ=TFun(x,TFun(k,rtyp))} ->
       assert (rtyp = typ_result);
       check_var x TUnit;
-      check_var k (TFun(Id.new_var "" TInt, typ_result))
+      check_var k (TFun(Id.new_var TInt, typ_result))
   | {desc=RandValue(typ1,false); typ=TFun({Id.typ=TUnit},typ2)} -> assert (Type.can_unify typ1 typ2)
   | {desc=RandValue(typ1,true); typ=TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2))} -> ()
   (*
@@ -97,15 +97,11 @@ let rec check t typ =
       check t TBool
   | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event || typ' = typ_event')
   | {desc=Event(_,true); typ=typ'} -> assert (typ' = typ_event_cps)
-  | {desc=Pair(t1,t2); typ=TPair(x,typ)} ->
-      check t1 (Id.typ x);
-      check t2 typ
-  | {desc=Fst t; typ=typ} ->
-      assert (Type.can_unify typ @@ fst_typ t.typ);
+  | {desc=Tuple ts; typ=TTuple xs} ->
+      List.iter2 check ts @@ List.map Id.typ xs;
+  | {desc=Proj(i,t); typ=typ} ->
+      assert (Type.can_unify typ @@ proj_typ i t.typ);
       check t t.typ
-  | {desc=Snd t1; typ=typ} ->
-      assert (Type.can_unify typ @@ snd_typ t1.typ);
-      check t1 t1.typ
   | {desc=Record _} -> assert false
   | {desc=Field _} -> assert false
   | {desc=SetField _} -> assert false
@@ -127,7 +123,7 @@ let rec check t typ =
   | {desc=Raise t; typ=_} ->
       check t !typ_excep
   | {desc=TryWith(t1,t2); typ=typ} ->
-      let e = Id.new_var "e" !typ_excep in
+      let e = Id.new_var ~name:"e" !typ_excep in
       check t1 typ;
       check t2 (TFun(e,typ))
   | {desc=Bottom} -> ()

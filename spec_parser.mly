@@ -20,7 +20,7 @@ let parse_error _ = print_error_information ()
 
 let make_tmp_id s = Id.make 0 s typ_unknown
 let make_id_typ s typ = Id.make 0 s typ
-let make_self_id typ = Id.new_var "_" typ
+let make_self_id typ = Id.new_var typ
 let orig_id x = {x with Id.id = 0}
 %}
 
@@ -160,15 +160,15 @@ simple_type_core:
 id_simple_type:
 | simple_type_core { make_self_id $1 }
 | simple_type_core LSQUAR pred_list RSQUAR { make_self_id (TPred(make_self_id $1, $3)) }
-| id COLON simple_type_core { Id.new_var (Id.name $1) $3 }
+| id COLON simple_type_core { Id.new_var ~name:(Id.name $1) $3 }
 | id COLON simple_type_core LSQUAR pred_list RSQUAR
   {
     let x = $1 in
     let typ = $3 in
     let ps = $5 in
-    let x' = Id.new_var (Id.name x) typ in
+    let x' = Id.new_var ~name:(Id.name x) typ in
     let ps' = List.map (subst x (make_var (Id.set_typ x' (elim_tpred typ)))) ps in
-      Id.new_var (Id.name x) (TPred(x', ps'))
+    Id.new_var ~name:(Id.name x) (TPred(x', ps'))
   }
 
 typ:
@@ -182,7 +182,7 @@ typ:
     let typ2 = Id.typ r in
     let typ2' = subst_type (orig_id x) (make_var (Id.set_typ x (elim_tpred typ1))) typ2 in
     let typ2'' = subst_type r (make_var (Id.set_typ abst_var (elim_tpred typ2))) typ2' in
-      make_self_id (TPair(x, typ2''))
+    make_self_id @@ TTuple [x; Id.new_var typ2'']
   }
 | typ ARROW typ
   {
@@ -192,10 +192,10 @@ typ:
     let typ2 = Id.typ r in
     let typ2' = subst_type (orig_id x) (make_var (Id.set_typ x (elim_tpred typ1))) typ2 in
     let typ2'' = subst_type r (make_var (Id.set_typ abst_var (elim_tpred typ2))) typ2' in
-      make_self_id (TFun(x, typ2''))
+    make_self_id @@ TFun(x, typ2'')
   }
 | typ LIST
-  { make_self_id (TList(Id.typ $1)) }
+  { make_self_id @@ TList(Id.typ $1) }
 
 pred_list:
   { [] }

@@ -52,12 +52,12 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
   | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> make_app randint_term [unit_term]
   | Var {Id.name="Random.int"}, [t] ->
-      let x = Id.new_var "ni" TInt in
-        make_let [x, [], make_app randint_term [unit_term]]
-          (make_if
-             (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
-             (make_var x)
-             (make_loop TInt))
+      let x = Id.new_var ~name:"n" TInt in
+      make_let [x, [], make_app randint_term [unit_term]] @@
+        make_if
+          (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
+          (make_var x)
+          (make_loop TInt)
   | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_app (make_event "newr") [unit_term]
   | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
   | _ -> make_app t ts
@@ -79,15 +79,10 @@ let rec from_type_expr tenv typ =
   | Tarrow(_, typ1, typ2, _) ->
       let typ1' = from_type_expr tenv typ1 in
       let typ2' = from_type_expr tenv typ2 in
-      let x = Id.new_var "x" typ1' in
+      let x = Id.new_var typ1' in
       TFun(x, typ2')
-  | Ttuple [] -> assert false
-  | Ttuple (typ::typs) ->
-      let aux typ_pair typ =
-        let typ' = from_type_expr tenv typ in
-        TPair(Id.new_var "x" typ_pair,typ')
-      in
-      List.fold_left aux (from_type_expr tenv typ) typs
+  | Ttuple typs ->
+      TTuple (List.map (Id.new_var -| from_type_expr tenv) typs)
   | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
       List.assoc (Path.name path) prim_typs
   | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
@@ -277,13 +272,8 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     | Tpat_constant(Const_int32 n) -> PConst {desc=Const(Int32 n);typ=typ'}
     | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'}
     | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'}
-    | Tpat_tuple [] -> assert false
-    | Tpat_tuple(p::ps) ->
-        let aux p1 p2 =
-          let p2' = from_pattern p2 in
-          {pat_desc=PPair(p1,p2'); pat_typ=TPair(Id.new_var "x" p1.pat_typ, p2'.pat_typ)}
-        in
-        (List.fold_left aux (from_pattern p) ps).pat_desc
+    | Tpat_tuple ps ->
+        PTuple (List.map from_pattern ps)
     | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "None" -> PNone
     | Tpat_construct(_, cstr_desc, [p], _) when get_constr_name cstr_desc typ env = "Some" -> PSome (from_pattern p)
     | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "()" -> PConst unit_term
@@ -432,7 +422,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       let pats'' =
         match tp with
         | Total -> pats'
-        | Partial -> pats'@[make_pvar (Id.new_var "u" t.typ), true_term, make_fail typ']
+        | Partial -> pats'@[make_pvar (Id.new_var t.typ), true_term, make_fail typ']
       in
       {desc=Match(t, pats''); typ=typ'}
   | Texp_try(e,pats) ->
@@ -441,7 +431,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         | Texp_when(e1,e2) -> from_pattern p, from_expression e1, from_expression e2
         | _ -> from_pattern p, true_term, from_expression e
       in
-      let x = Id.new_var "e" !typ_excep in
+      let x = Id.new_var ~name:"e" !typ_excep in
       let pats' = List.map aux pats in
       let pats'' = pats' @ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'}] in
       {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pats''); typ=typ'}); typ=typ'}
@@ -474,7 +464,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       {desc=Record fields''; typ=typ'}
   | Texp_record(fields, Some init) ->
       let labels = Array.to_list (snd3 @@ List.hd fields).lbl_all in
-      let r = Id.new_var "r" typ' in
+      let r = Id.new_var ~name:"r" typ' in
       let fields' =
         let aux lbl =
           let name = get_label_name lbl env in
@@ -518,8 +508,8 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   | Texp_while(e1,e2) ->
       let t1 = from_expression e1 in
       let t2 = from_expression e2 in
-      let x = Id.new_var "u" TUnit in
-      let f = Id.new_var "while" (TFun(Id.new_var "u" TUnit, t2.typ)) in
+      let x = Id.new_var ~name:"u" TUnit in
+      let f = Id.new_var ~name:"while" (TFun(Id.new_var ~name:"u" TUnit, t2.typ)) in
       let t2' = make_if t1 (make_seq t2 @@ make_app (make_var f) [unit_term]) unit_term in
       make_letrec [f, [x], t2'] @@ make_app (make_var f) [unit_term]
   | Texp_for(x, _, e1, e2, dir, e3) ->
@@ -527,9 +517,9 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       let t2 = from_expression e2 in
       let t3 = from_expression e3 in
       let x' = from_ident x TInt in
-      let f = Id.new_var "for" (TFun(Id.new_var "i" TInt, t3.typ)) in
-      let init = Id.new_var "init" TInt in
-      let last = Id.new_var "last" TInt in
+      let f = Id.new_var ~name:"for" (TFun(Id.new_var ~name:"i" TInt, t3.typ)) in
+      let init = Id.new_var ~name:"init" TInt in
+      let last = Id.new_var ~name:"last" TInt in
       let t31 =
         match dir with
         | Upto -> make_leq (make_var x') (make_var last)
@@ -570,7 +560,7 @@ let from_top_level_phrase (env,defs) = function
         match str_item.str_desc with
         | Tstr_eval e ->
             let t = from_expression e in
-            [Decl_let(Nonrecursive, [Id.new_var "u" t.typ, t])]
+            [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
         | Tstr_value(rec_flag,pats) ->
             let flag = from_rec_flag rec_flag in
             let aux (p,e) =

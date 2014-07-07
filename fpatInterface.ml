@@ -234,7 +234,7 @@ let new_params recursive bvs exs =
          Fpat.Util.List.unfold
            (fun i ->
             if i < (Fpat.Util.List.length bvs' + if !Fpat.Global.enable_coeff_const then 1 else 0) then
-              Some(Id.new_var Flag.extpar_header Type.TInt, i + 1)
+              Some(Id.new_var ~name:Flag.extpar_header Type.TInt, i + 1)
             else
               None)
            0
@@ -299,11 +299,11 @@ let rec trans_type typ =
           let x' = trans_id x in
           (match x'.Id.typ with
            | Type.TFun(_, _)
-           | Type.TPair(_, _)(* ToDo: fix it *) ->
+           | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
                  if i < !Fpat.Global.number_of_extra_params then
-                   Some(Id.new_var "ex" Type.TInt, i + 1)
+                   Some(Id.new_var ~name:"ex" Type.TInt, i + 1)
                  else
                    None)
                 0
@@ -331,11 +331,11 @@ let insert_extra_param t =
          let ys =
            match y'.Id.typ with
            | Type.TFun(_, _)
-           | Type.TPair(_, _)(* ToDo: fix it *) ->
+           | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
                  if i < !Fpat.Global.number_of_extra_params then
-                   Some(Id.new_var ("ex" ^ gen_id ()) Type.TInt, i + 1)
+                   Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                  else
                    None)
                 0
@@ -377,7 +377,7 @@ let insert_extra_param t =
                     (fun t (x, xs) ->
                      match t.Syntax.typ with
                      | Type.TFun(_, _)
-                     | Type.TPair(_, _)(* ToDo: fix it *) ->
+                     | Type.TTuple _(* ToDo: fix it *) ->
                         (match t.Syntax.desc with
                          | Syntax.Var(y) when Id.same x y ->
                             let _ = if debug then Format.printf "arg %a of %a not changed@," Syntax.print_id x Syntax.print_id f in xs
@@ -398,7 +398,7 @@ let insert_extra_param t =
              (fun i t ->
               match t.Syntax.typ with
               | Type.TFun(_, _)
-              | Type.TPair(_, _)(* ToDo: fix it *) ->
+              | Type.TTuple _(* ToDo: fix it *) ->
                  new_params (if recursive then Some(Fpat.Util.List.nth xss i) else None) bvs exs
               | _ -> [])
              ts'
@@ -425,11 +425,11 @@ let insert_extra_param t =
                (fun x ->
                 match x.Id.typ with
                 | Type.TFun(_, _)
-                | Type.TPair(_, _)(* ToDo: fix it *) ->
+                | Type.TTuple _(* ToDo: fix it *) ->
                    Fpat.Util.List.unfold
                      (fun i ->
                       if i < !Fpat.Global.number_of_extra_params then
-                        Some(Id.new_var ("ex" ^ gen_id ()) Type.TInt, i + 1)
+                        Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                       else
                         None)
                      0
@@ -479,9 +479,8 @@ let insert_extra_param t =
          Syntax.Match(aux rfs bvs exs t1, Fpat.Util.List.map aux' pats)
       | Syntax.Raise t -> Syntax.Raise (aux rfs bvs exs t)
       | Syntax.TryWith(t1,t2) -> Syntax.TryWith(aux rfs bvs exs t1, aux rfs bvs exs t2)
-      | Syntax.Pair(t1,t2) -> Syntax.Pair(aux rfs bvs exs t1, aux rfs bvs exs t2)
-      | Syntax.Fst t -> Syntax.Fst(aux rfs bvs exs t)
-      | Syntax.Snd t -> Syntax.Snd(aux rfs bvs exs t)
+      | Syntax.Tuple ts -> Syntax.Tuple (List.map (aux rfs bvs exs) ts)
+      | Syntax.Proj(i,t) -> Syntax.Proj(i, aux rfs bvs exs t)
       | Syntax.Bottom -> Syntax.Bottom
       | Syntax.Label(info,t) -> Syntax.Label(info, aux rfs bvs exs t)
       | Syntax.Ref t -> Syntax.Ref(aux rfs bvs exs t)
@@ -546,8 +545,8 @@ let rec simplify typ =
      Ref_type.Base(base, x, simplify_typed_term p)
   | Ref_type.Fun(x,typ1,typ2) ->
      Ref_type.Fun(x, simplify typ1, simplify typ2)
-  | Ref_type.Pair(x,typ1,typ2) ->
-     Ref_type.Pair(x, simplify typ1, simplify typ2)
+  | Ref_type.Tuple xtyps ->
+     Ref_type.Tuple (List.map (fun (x,typ) -> x, simplify typ) xtyps)
   | Ref_type.Inter typs ->
 	 Ref_type.Inter (Fpat.Util.List.map simplify typs)
   | Ref_type.Union typs ->

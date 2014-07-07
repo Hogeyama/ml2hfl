@@ -121,9 +121,14 @@ module Option = struct
   include Option
 
   let iter = may
-  let apply = may
+  let apply = map
 end
 
+module Pair = struct
+  let map f (x,y) = f x, f y
+  let map_fst f (x,y) = f x, y
+  let map_snd f (x,y) = x, f y
+end
 
 let is_uppercase c = 'A' <= c && c <= 'Z'
 
