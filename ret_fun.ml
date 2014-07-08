@@ -66,6 +66,7 @@ let normalize_term t =
   | _ -> normalize.tr_term_rec t
 
 let () = normalize.tr_term <- normalize_term
+let normalize = normalize.tr_term
 
 
 let get_same_pair env y z =
@@ -213,7 +214,9 @@ let () = trans.tr2_term <- trans_term
 let () = trans.tr2_typ <- trans_typ
 
 let trans t = t
-  |> normalize.tr_term
+  |@debug()&> Format.printf "XXX:@.%a@.@." print_term
+  |> normalize
+  |@debug()&> Format.printf "ZZZ:@.%a@.@." print_term
   |> Trans.inline_var_const
   |@debug()&> Format.printf "AAA:@.%a@.@." print_term
   |> Trans.flatten_let

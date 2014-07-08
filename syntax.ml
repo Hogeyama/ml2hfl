@@ -1,4 +1,3 @@
-
 open Format
 open Util
 open Type
@@ -339,7 +338,7 @@ let trans2_gen_desc tr env = function
   | Constr(s,ts) -> Constr(s, List.map (tr.tr2_term env) ts)
   | Match(t1,pats) ->
       let aux (pat,cond,t1) = tr.tr2_pat env pat, tr.tr2_term env cond, tr.tr2_term env t1 in
-        Match(tr.tr2_term env t1, List.map aux pats)
+      Match(tr.tr2_term env t1, List.map aux pats)
   | Raise t -> Raise (tr.tr2_term env t)
   | TryWith(t1,t2) -> TryWith(tr.tr2_term env t1, tr.tr2_term env t2)
   | Tuple ts -> Tuple (List.map (tr.tr2_term env) ts)
@@ -1490,6 +1489,14 @@ and print_desc pri typ fm desc =
   | Tuple ts ->
       let p = 20 in
       fprintf fm "@[(%a)@]" (print_list (print_term p typ) ",@ ") ts
+  | Proj(0,t) when tuple_num t.typ = 2 ->
+      let p = 80 in
+      let s1,s2 = paren pri p in
+      fprintf fm "%s@[fst@ %a@]%s" s1 (print_term p typ) t s2
+  | Proj(1,t) when tuple_num t.typ = 2 ->
+      let p = 80 in
+      let s1,s2 = paren pri p in
+      fprintf fm "%s@[snd@ %a@]%s" s1 (print_term p typ) t s2
   | Proj(i,t) ->
       let p = 80 in
       let s1,s2 = paren pri p in
@@ -1571,6 +1578,7 @@ let rec print_term' pri fm t =
         let p = 8 in
         let s1,s2 = paren pri p in
         fprintf fm "%srand_val_cps[%a]%s" s1 print_typ typ' s2
+    | Var x when t.typ = Id.typ x -> print_id fm x
     | Var x -> print_id_typ fm x
     | Fun(x, t) ->
         let p = 2 in

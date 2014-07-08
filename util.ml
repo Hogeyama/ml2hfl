@@ -20,6 +20,8 @@ let (&>) f x = f x
 (* usage: x |@flag&> print *)
 (* usage: x |&flag&> trans *)
 
+let (=>) b1 b2 = not b1 || b2
+
 let flip f x y = f y x
 let curry f x y = f (x,y)
 let uncurry f (x,y) = f x y

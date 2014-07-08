@@ -656,6 +656,8 @@ let rec decomp_let_app_option f t =
       let args = List.flatten @@ List.mapi (fun i t -> match t with None -> [] | Some t' -> [i+1, x, t']) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
+  | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [_])} as binding], t2) when Id.same f g ->
+      invalid_argument ""
   | _ -> [], [], t
 
 let replace_app_term env t =

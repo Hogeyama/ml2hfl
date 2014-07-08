@@ -5,7 +5,7 @@ let init () =
 
 let id x = x
 
-let trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.print_term_typ) t =
+let rec trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.print_term_typ) t =
   let r = f t in
   let t' = proj r in
   if !Flag.debug_level > 0 && t <> t' && opt

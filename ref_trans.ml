@@ -618,7 +618,7 @@ let add_fun_tuple_term (funs,env) t =
       let aux t fs =
         let name = List.fold_left (fun s x -> Id.name x ^ "_" ^ s) (Id.name @@ List.hd fs) @@ List.tl fs in
         let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
-        let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj (i+1) (make_var fg)) fs in
+        let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj i (make_var fg)) fs in
         let t' = replace_head fs (List.map (fun (f,_,_) -> f) projs) t in
         let defs = (fg, [], make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'

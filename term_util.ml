@@ -62,7 +62,7 @@ let rec make_app t ts =
   match t,ts with
   | t,[] -> t
   | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-      if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
+      if not (Flag.check_typ => Type.can_unify (Id.typ x) t2.typ)
       then
         begin
           Format.printf "make_app:@ %a@ <=/=>@ %a@.%a@.%a@."
@@ -75,7 +75,7 @@ let rec make_app t ts =
       make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
   | {typ=TFun(x,typ)}, t2::ts
   | {typ=TPred({Id.typ=TFun(x,typ)},_)}, t2::ts ->
-      if not (not Flag.check_typ || Type.can_unify (Id.typ x) t2.typ)
+      if not (Flag.check_typ => Type.can_unify (Id.typ x) t2.typ)
       then (Color.printf Color.Red "make_app:@ %a@ <=/=>@ %a,@.fun: %a@.arg: %a@."
                          print_typ (Id.typ x)
                          print_typ t2.typ
@@ -143,8 +143,8 @@ let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt}
 let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt}
 let make_neg t = make_sub (make_int 0) t
 let make_if_ t1 t2 t3 =
-  assert (not Flag.check_typ || Type.can_unify t1.typ TBool);
-  assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
+  assert (Flag.check_typ => Type.can_unify t1.typ TBool);
+  assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
@@ -161,28 +161,28 @@ let make_if_ t1 t2 t3 =
       in
       {desc=If(t1, t2, t3); typ=typ}
 let make_branch t2 t3 =
-  assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
+  assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
   {desc=Branch(t2, t3); typ=t2.typ}
 let make_eq t1 t2 =
-  assert (not Flag.check_typ || Type.can_unify t1.typ t2.typ);
+  assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
   {desc=BinOp(Eq, t1, t2); typ=TBool}
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
-  assert (true || not Flag.check_typ || Type.can_unify t1.typ TInt);
-  assert (true || not Flag.check_typ || Type.can_unify t2.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Lt, t1, t2); typ=TBool}
 let make_gt t1 t2 =
-  assert (true || not Flag.check_typ || Type.can_unify t1.typ TInt);
-  assert (true || not Flag.check_typ || Type.can_unify t2.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Gt, t1, t2); typ=TBool}
 let make_leq t1 t2 =
-  assert (true || not Flag.check_typ || Type.can_unify t1.typ TInt);
-  assert (true || not Flag.check_typ || Type.can_unify t2.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Leq, t1, t2); typ=TBool}
 let make_geq t1 t2 =
-  assert (true || not Flag.check_typ || Type.can_unify t1.typ TInt);
-  assert (true || not Flag.check_typ || Type.can_unify t2.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Geq, t1, t2); typ=TBool}
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ}
 let make_ttuple typs =
@@ -195,7 +195,7 @@ let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ}
 let make_nil typ = {desc=Nil; typ=TList typ}
 let make_nil2 typ = {desc=Nil; typ=typ}
 let make_cons t1 t2 =
-  assert (not Flag.check_typ || Type.can_unify (TList t1.typ) t2.typ);
+  assert (Flag.check_typ => Type.can_unify (TList t1.typ) t2.typ);
   {desc=Cons(t1,t2); typ=t2.typ}
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
@@ -226,7 +226,7 @@ let and_list ts = match ts with
   | t::ts -> List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TBool}) t ts
 
 let make_eq_dec t1 t2 =
-  assert (not Flag.check_typ || Type.can_unify t1.typ t2.typ);
+  assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
   let aux t =
     match t.desc with
     | Var x -> make_var x, Std.identity
@@ -290,7 +290,8 @@ let decomp_get_val t =
 let decomp_some t =
   match t.desc with
   | Tuple [t1;t2] when t1 = some_flag -> Some t2
-  | _ -> None
+  | Tuple [t1;t2] when t1 = none_flag -> None
+  | _ -> invalid_argument "decomp_some"
 
 let make_tuple ts =
   match ts with
@@ -307,11 +308,6 @@ let decomp_ttuple typ =
   match typ with
   | TTuple xs -> List.map Id.typ xs
   | _ -> invalid_argument "make_tuple"
-
-let make_proj i t =
-  let n = List.length @@ decomp_ttuple t.typ in
-  let t' = repeat make_snd (i-1) t in
-  if i = n then t' else make_fst t'
 
 
 (*** AUXILIARY FUNCTIONS ***)
@@ -538,10 +534,10 @@ let rec merge_typ typ1 typ2 =
 
 
 let make_if t1 t2 t3 =
-  assert (not Flag.check_typ || Type.can_unify t1.typ TBool);
+  assert (Flag.check_typ => Type.can_unify t1.typ TBool);
   if Flag.check_typ && not (Type.can_unify t2.typ t3.typ)
   then Format.printf "%a <=/=> %a@." print_typ t2.typ print_typ t3.typ;
-  assert (not Flag.check_typ || Type.can_unify t2.typ t3.typ);
+  assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
