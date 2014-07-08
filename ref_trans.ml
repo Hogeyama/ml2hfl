@@ -225,7 +225,7 @@ let trans_typ ttbb typ =
 
 
 let trans_typ ttbb typ =
-  trans_typ ttbb typ |@>
+  trans_typ ttbb typ |@debug()&>
   Color.printf Color.Yellow "%a@ ===>@ @[%a@]@.@." print_typ typ print_typ
 
 
