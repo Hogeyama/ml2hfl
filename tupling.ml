@@ -391,6 +391,11 @@ let rec compose fg f t1 g t2 =
 
 let new_funs = ref ([] : (id list * (id * id list * typed_term)) list)
 
+let decomp_some t =
+  match t.desc with
+  | Tuple [t1;t2] when t1 = some_flag -> Some t2
+  | _ -> None
+
 let tupling_term env t =
   match t.desc with
   | Tuple[t1; t2] when decomp_some t1 <> None && decomp_some t2 <> None ->
@@ -653,7 +658,7 @@ let rec decomp_let_app_option f t =
   match t.desc with
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g ->
       let ts' = List.map decomp_some ts in
-      let args = List.flatten @@ List.mapi (fun i t -> match t with None -> [] | Some t' -> [i+1, x, t']) ts' in
+      let args = List.flatten @@ List.mapi (fun i t -> match t with None -> [] | Some t' -> [i, x, t']) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [_])} as binding], t2) when Id.same f g ->

@@ -66,28 +66,28 @@ let rec decomp_tfun = function
 
 let rec can_unify typ1 typ2 =
   match typ1,typ2 with
-      TVar{contents=Some typ1},typ2
-    | typ1,TVar{contents=Some typ2} -> can_unify typ1 typ2
-    | TPred(x,_), typ
-    | typ, TPred(x,_) -> can_unify (Id.typ x) typ
-    | TUnit,TUnit -> true
-    | (TBool|TAbsBool),(TBool|TAbsBool) -> true
-    | TInt,TInt -> true
-    | TRInt _,TRInt _ -> true
-    | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
-    | TList typ1, TList typ2 -> can_unify typ1 typ2
-    | TRef typ1, TRef typ2 -> can_unify typ1 typ2
-    | TOption typ1, TOption typ2 -> can_unify typ1 typ2
-    | TTuple xs1, TTuple xs2 ->
-        List.length xs1 = List.length xs2
-        && List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2
-    | TConstr("event",_), TFun _ -> true
-    | TFun _, TConstr("event",_) -> true
-    | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
-    | TVar{contents=None}, _ -> true
-    | _, TVar{contents=None} -> true
-    | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
-    | _ -> false
+  | TVar{contents=Some typ1},typ2
+  | typ1,TVar{contents=Some typ2} -> can_unify typ1 typ2
+  | TPred(x,_), typ
+  | typ, TPred(x,_) -> can_unify (Id.typ x) typ
+  | TUnit,TUnit -> true
+  | (TBool|TAbsBool),(TBool|TAbsBool) -> true
+  | TInt,TInt -> true
+  | TRInt _,TRInt _ -> true
+  | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
+  | TList typ1, TList typ2 -> can_unify typ1 typ2
+  | TRef typ1, TRef typ2 -> can_unify typ1 typ2
+  | TOption typ1, TOption typ2 -> can_unify typ1 typ2
+  | TTuple xs1, TTuple xs2 ->
+      List.length xs1 = List.length xs2
+      && List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2
+  | TConstr("event",_), TFun _ -> true
+  | TFun _, TConstr("event",_) -> true
+  | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
+  | TVar{contents=None}, _ -> true
+  | _, TVar{contents=None} -> true
+  | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
+  | _ -> false
 
 
 let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
@@ -308,3 +308,8 @@ let result_typ typ =
   match typ with
   | TFun(_,typ') -> typ'
   | _ -> invalid_argument "result_typ"
+
+let decomp_ttuple typ =
+  match typ with
+  | TTuple xs -> List.map Id.typ xs
+  | _ -> invalid_argument "make_tuple"

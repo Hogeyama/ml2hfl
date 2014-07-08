@@ -287,11 +287,6 @@ let decomp_get_val t =
   match t.desc with
   | Proj(1, t) -> Some t
   | _ -> None
-let decomp_some t =
-  match t.desc with
-  | Tuple [t1;t2] when t1 = some_flag -> Some t2
-  | Tuple [t1;t2] when t1 = none_flag -> None
-  | _ -> invalid_argument "decomp_some"
 
 let make_tuple ts =
   match ts with
@@ -299,15 +294,6 @@ let make_tuple ts =
   | [_] -> raise (Invalid_argument "make_tuple")
   | t::ts' -> List.fold_left (make_pair) t ts'
 
-let make_ttuple typs =
-  match typs with
-  | []
-  | [_] -> raise (Invalid_argument "tuple_typ")
-  | typ::typs' -> List.fold_left (make_tpair) typ typs'
-let decomp_ttuple typ =
-  match typ with
-  | TTuple xs -> List.map Id.typ xs
-  | _ -> invalid_argument "make_tuple"
 
 
 (*** AUXILIARY FUNCTIONS ***)

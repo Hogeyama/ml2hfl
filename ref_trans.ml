@@ -27,7 +27,7 @@ let root x bb = root x bb []
 let rec find_proj i x bb =
   match bb with
   | [] -> None
-  | (y,{desc=Proj(i,{desc=Var z})})::bb' when Id.same x z -> Some y
+  | (y,{desc=Proj(j,{desc=Var z})})::bb' when i = j && Id.same x z -> Some y
   | _::bb' -> find_proj i x bb'
 
 let rec find_app x bb =
@@ -127,6 +127,8 @@ let inst_var_fun x tt bb t =
         let pr _ (_,ts) =
           Format.printf "[%a]" (print_list print_term' "; ") ts
         in
+        if debug() then Format.printf "y': %a@." Id.print y';
+        if debug() then Format.printf "path: [%a]@." (print_list Format.pp_print_int ";") path;
         if debug() then Format.printf "TREE: %a@." (Rose_tree.print pr) tree;
         if debug() then Format.printf "TREE': %a@." (Rose_tree.print pr) tree';
         if debug() then Format.printf "r': %a:%a@." Id.print r' print_typ (Id.typ r');
@@ -208,20 +210,24 @@ let decomp_tfun_ttuple typ =
 
 let trans_typ ttbb typ =
   match typ with
-  | TTuple xs ->
-      let xtyps = List.map (fun x -> x, Id.typ x) xs in
-      let xtyps' = List.map (fun (x,typ) -> trans.tr2_var ttbb x, trans.tr2_typ ttbb typ) xtyps in
-      let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
-      let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
-      let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
-      TFun(Id.new_var ~name @@ make_ttuple arg_typs, make_ttuple ret_typs)
+  | TTuple _ ->
+      begin
+        match decomp_tfun_ttuple typ with
+        | None -> trans.tr2_typ_rec ttbb typ
+        | Some xtyps ->
+            let xtyps' = List.map (fun (x,typ) -> trans.tr2_var ttbb x, trans.tr2_typ ttbb typ) xtyps in
+            let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
+            let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
+            let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
+            TFun(Id.new_var ~name @@ make_ttuple arg_typs, make_ttuple ret_typs)
+      end
   | _ -> trans.tr2_typ_rec ttbb typ
 
-(*
+
 let trans_typ ttbb typ =
   trans_typ ttbb typ |@>
   Color.printf Color.Yellow "%a@ ===>@ @[%a@]@.@." print_typ typ print_typ
-*)
+
 
 let trans_desc (tt,bb) desc =
   match desc with
