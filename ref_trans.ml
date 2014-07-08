@@ -11,8 +11,7 @@ let trans = make_trans2 ()
 let rec root x bb path_rev =
   let aux (y,t) =
     match t with
-    | {desc=Fst{desc=Var z}} when Id.same x y -> Some (z,1)
-    | {desc=Snd{desc=Var z}} when Id.same x y -> Some (z,2)
+    | {desc=Proj(i,{desc=Var z})} when Id.same x y -> Some (z,i)
     | _ -> None
   in
   try
@@ -25,17 +24,11 @@ let rec root x bb path_rev =
   with Not_found -> x, List.rev path_rev
 let root x bb = root x bb []
 
-let rec find_fst x bb =
+let rec find_proj i x bb =
   match bb with
   | [] -> None
-  | (y,{desc=Fst{desc=Var z}})::bb' when Id.same x z -> Some y
-  | _::bb' -> find_fst x bb'
-
-let rec find_snd x bb =
-  match bb with
-  | [] -> None
-  | (y,{desc=Snd{desc=Var z}})::bb' when Id.same x z -> Some y
-  | _::bb' -> find_snd x bb'
+  | (y,{desc=Proj(i,{desc=Var z})})::bb' when Id.same x z -> Some y
+  | _::bb' -> find_proj i x bb'
 
 let rec find_app x bb =
   match bb with
@@ -51,42 +44,43 @@ let rec find_app x bb =
 
 let rec make_tree x bb =
   if debug() then Color.printf Color.Red "make_tree: %a@." Id.print x;
-  match find_fst x bb, find_snd x bb, find_app x bb with
-  | Some lhs, Some rhs, _ -> Tree.Node(make_tree lhs bb, make_tree rhs bb)
+  match find_proj 0 x bb, find_proj 1 x bb, find_app x bb with
+  | Some lhs, Some rhs, _ -> Rose_tree.Node[make_tree lhs bb; make_tree rhs bb]
   | None, None, args ->
       let typ =
         try
           Some (Id.typ @@ arg_var @@ Id.typ x)
         with Invalid_argument _ -> None
       in
-      Tree.Leaf(typ, args)
+      Rose_tree.Leaf(typ, args)
   | Some _, None, _ -> raise (Fatal "not implemented: make_tree")
   | None, Some _, _ -> raise (Fatal "not implemented: make_tree")
 
 let rec make_trees tree =
   match tree with
-  | Tree.Leaf(None, []) -> assert false
-  | Tree.Leaf(None, _) -> assert false
-  | Tree.Leaf(Some typ, []) -> [Tree.Leaf (make_none typ)]
-  | Tree.Leaf(Some _, args) -> List.map (fun t -> Tree.Leaf (make_some t)) args
-  | Tree.Node(lhs,rhs) ->
+  | Rose_tree.Leaf(None, []) -> assert false
+  | Rose_tree.Leaf(None, _) -> assert false
+  | Rose_tree.Leaf(Some typ, []) -> [Rose_tree.Leaf (make_none typ)]
+  | Rose_tree.Leaf(Some _, args) -> List.map (fun t -> Rose_tree.Leaf (make_some t)) args
+  | Rose_tree.Node[lhs;rhs] ->
       let trees1 = make_trees lhs in
       let trees2 = make_trees rhs in
-      List.flatten_map (fun t1 -> List.map (fun t2 -> Tree.Node(t1, t2)) trees2) trees1
+      List.flatten_map (fun t1 -> List.map (fun t2 -> Rose_tree.Node[t1; t2]) trees2) trees1
+  | Rose_tree.Node _ -> assert false
 
 let rec term_of_tree tree =
   match tree with
-  | Tree.Leaf t -> t
-  | Tree.Node(t1,t2) -> make_pair (term_of_tree t1) (term_of_tree t2)
+  | Rose_tree.Leaf t -> t
+  | Rose_tree.Node ts -> make_tuple @@ List.map term_of_tree ts
 
 (*
 let rec make_args tree =
   match tree with
-    Tree.Leaf(None, []) -> assert false
-  | Tree.Leaf(None, _) -> assert false
-  | Tree.Leaf(Some typ, []) -> [make_bottom typ]
-  | Tree.Leaf(Some _, args) -> args
-  | Tree.Node(lhs,rhs) ->
+    Rose_tree.Leaf(None, []) -> assert false
+  | Rose_tree.Leaf(None, _) -> assert false
+  | Rose_tree.Leaf(Some typ, []) -> [make_bottom typ]
+  | Rose_tree.Leaf(Some _, args) -> args
+  | Rose_tree.Node(lhs,rhs) ->
       let trees1 = make_args lhs in
       let trees2 = make_args rhs in
       flatten_map (fun t1 -> List.map (fun t2 -> make_pair t1 t2) trees2) trees1
@@ -96,8 +90,8 @@ let rec proj_of_path top path t =
   match path with
     [] when top -> t
   | [] -> make_get_val t
-  | 1::path' -> proj_of_path false path' @@ make_fst t
-  | 2::path' -> proj_of_path false path' @@ make_snd t
+  | 0::path' -> proj_of_path false path' @@ make_fst t
+  | 1::path' -> proj_of_path false path' @@ make_snd t
   | _::path' -> assert false
 let proj_of_path path t = proj_of_path true path t
 
@@ -108,9 +102,10 @@ let make_some' t =
 
 let rec same_arg path_rev t1 t2 =
   match t1,t2 with
-    Tree.Leaf t1', Tree.Leaf t2' when t1' = t2' -> List.rev path_rev
-  | Tree.Leaf t1', Tree.Leaf t2' -> []
-  | Tree.Node(t11,t12), Tree.Node(t21,t22) -> same_arg (1::path_rev) t11 t21 @ same_arg (2::path_rev) t12 t22
+    Rose_tree.Leaf t1', Rose_tree.Leaf t2' when t1' = t2' -> List.rev path_rev
+  | Rose_tree.Leaf t1', Rose_tree.Leaf t2' -> []
+  | Rose_tree.Node ts1, Rose_tree.Node ts2 ->
+      List.rev_flatten @@ List.mapi2 (fun i -> same_arg (i::path_rev)) ts1 ts2
   | _ -> assert false
 let same_arg t1 t2 = same_arg [] t1 t2
 
@@ -128,17 +123,17 @@ let inst_var_fun x tt bb t =
         let () = if debug() then Format.printf "THIS IS NOT ROOT@." in
         let r' = trans.tr2_var (tt,bb) r in
         let tree = make_tree r bb in
-        let tree' = Tree.update path (Tree.Leaf(Some (Id.typ y'), [make_var y'])) tree in
+        let tree' = Rose_tree.update path (Rose_tree.Leaf(Some (Id.typ y'), [make_var y'])) tree in
         let pr _ (_,ts) =
           Format.printf "[%a]" (print_list print_term' "; ") ts
         in
-        if debug() then Format.printf "TREE: %a@." (Tree.print pr) tree;
-        if debug() then Format.printf "TREE': %a@." (Tree.print pr) tree';
+        if debug() then Format.printf "TREE: %a@." (Rose_tree.print pr) tree;
+        if debug() then Format.printf "TREE': %a@." (Rose_tree.print pr) tree';
         if debug() then Format.printf "r': %a:%a@." Id.print r' print_typ (Id.typ r');
         let trees = make_trees tree' in
         if debug() then Format.printf "|trees|': %d@." (List.length trees);
-        if debug() then List.iter (Format.printf "  tree: %a@." (Tree.print print_term)) trees;
-        let argss = List.map Tree.flatten trees in
+        if debug() then List.iter (Format.printf "  tree: %a@." (Rose_tree.print print_term)) trees;
+        let argss = List.map Rose_tree.flatten trees in
         let args = List.map (fun args -> [make_tuple args]) argss in
         let apps = List.map (make_app (make_var r')) args in
 (*
@@ -158,7 +153,7 @@ let inst_var_fun x tt bb t =
           in
           aux 0 trees []
         in
-        let xs = List.map (fun t -> Id.new_var "x" t.typ) apps in
+        let xs = List.map (fun t -> Id.new_var t.typ) apps in
 (*
 Format.printf "root: %a, %a@." Id.print r pp_print_typ (Id.typ r);
 Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.hd xs);
@@ -180,27 +175,24 @@ Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.
 
 let rec tree_of_typ typ =
   match typ with
-    TPair(x,typ') ->
-      let t1 = tree_of_typ @@ Id.typ x in
-      let t2 = tree_of_typ typ' in
-      Tree.Node(t1,t2)
-  | _ -> Tree.Leaf typ
+  | TTuple xs -> Rose_tree.Node (List.map (tree_of_typ -| Id.typ) xs)
+  | _ -> Rose_tree.Leaf typ
 
 let rec typ_of_tree t =
   match t with
-    Tree.Leaf typ -> typ
-  | Tree.Node(t1,t2) -> TPair(Id.new_var "x" (typ_of_tree t1), typ_of_tree t2)
+  | Rose_tree.Leaf typ -> typ
+  | Rose_tree.Node typs -> TTuple (List.map (Id.new_var -| typ_of_tree) typs)
 
 let rec elim_none t =
   match t with
-  | Tree.Leaf None -> None
-  | Tree.Leaf (Some typ) -> Some (Tree.Leaf (opt_typ typ))
-  | Tree.Node(t1,t2) ->
+  | Rose_tree.Leaf None -> None
+  | Rose_tree.Leaf (Some typ) -> Some (Rose_tree.Leaf (opt_typ typ))
+  | Rose_tree.Node[t1;t2] ->
       match elim_none t1, elim_none t2 with
       | None, None -> None
       | Some t, None
       | None, Some t -> Some t
-      | Some t1, Some t2 -> Some (Tree.Node(t1,t2))
+      | Some t1, Some t2 -> Some (Rose_tree.Node[t1;t2])
 
 let decomp_tfun_ttuple typ =
   let typs = decomp_ttuple typ in
@@ -216,16 +208,13 @@ let decomp_tfun_ttuple typ =
 
 let trans_typ ttbb typ =
   match typ with
-  | TPair _ ->
-      begin match decomp_tfun_ttuple typ with
-      | None -> trans.tr2_typ_rec ttbb typ
-      | Some xtyps ->
-          let xtyps' = List.map (fun (x,typ) -> trans.tr2_var ttbb x, trans.tr2_typ ttbb typ) xtyps in
-          let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
-          let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
-          let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
-          TFun(Id.new_var name @@ make_ttuple arg_typs, make_ttuple ret_typs)
-      end
+  | TTuple xs ->
+      let xtyps = List.map (fun x -> x, Id.typ x) xs in
+      let xtyps' = List.map (fun (x,typ) -> trans.tr2_var ttbb x, trans.tr2_typ ttbb typ) xtyps in
+      let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
+      let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
+      let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
+      TFun(Id.new_var ~name @@ make_ttuple arg_typs, make_ttuple ret_typs)
   | _ -> trans.tr2_typ_rec ttbb typ
 
 (*
@@ -257,7 +246,7 @@ Color.printf Color.Green "t11: %a@." pp_print_term t11;
 Color.printf Color.Green "tx: %a@." pp_print_term tx;
 *)
       (make_let [x',[],tx] t').desc
-  | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) when Id.same x1 x2 ->
+  | Let(Nonrecursive, [x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.same x1 x2 ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
@@ -268,14 +257,14 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
             let y' = Id.new_var_id y in
             let ty1 = make_fst (make_var y') in
             let ty2 = make_snd (make_var y') in
-            let y1 = Id.new_var (Id.name y ^ "1") ty1.typ in
-            let y2 = Id.new_var (Id.name y ^ "2") ty2.typ in
+            let y1 = Id.new_var ~name:(Id.name y ^ "1") ty1.typ in
+            let y2 = Id.new_var ~name:(Id.name y ^ "2") ty2.typ in
             let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y1] in
             let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
             let t2 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y2] in
             let t2' = make_if (make_is_none @@ make_var y2) (make_none @@ get_opt_typ t2.typ) t2 in
             let t_neq = make_pair t1' t2' in
-            let z = Id.new_var "r" t1.typ in
+            let z = Id.new_var ~name:"r" t1.typ in
             let t_eq = make_let [z,[],t1] @@ make_pair (make_var z) (make_var z) in
             let cond1 = make_and (make_is_some @@ make_var y1) (make_is_some @@ make_var y2) in
             let cond2 = make_eq (make_get_val @@ make_var y1) (make_get_val @@ make_var y2) in
@@ -283,7 +272,7 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
         | _ -> make_pair (make_var x1') (make_var x1')
       in
       (make_let [x',[],t1'] t').desc
-  | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
+  | Let(Nonrecursive, [x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let x2' = trans.tr2_var (tt,bb) x2 in
@@ -295,8 +284,8 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
             let y' = Id.new_var_id y in
             let ty1 = make_fst (make_var y') in
             let ty2 = make_snd (make_var y') in
-            let y1 = Id.new_var (Id.name y ^ "1") ty1.typ in
-            let y2 = Id.new_var (Id.name y ^ "2") ty2.typ in
+            let y1 = Id.new_var ~name:(Id.name y ^ "1") ty1.typ in
+            let y2 = Id.new_var ~name:(Id.name y ^ "2") ty2.typ in
             let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y1] in
             let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
             let t2 = make_some @@ make_app (make_var x2') [make_get_val @@ make_var y2] in
@@ -328,14 +317,14 @@ Color.printf Color.Yellow "y1:%a, y2:%a@." Id.print y1 Id.print y2;
       in
       (make_let [x',[],t1'] t').desc
 *)
-  | Let(Nonrecursive, [x,[],({desc=Fst{desc=Var x1}} as t1)], t) ->
+  | Let(Nonrecursive, [x,[],({desc=Proj(0,{desc=Var x1})} as t1)], t) ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
       let t' = trans.tr2_term (tt,bb') t in
       let t1' =
         match Id.typ x1' with
-        | TPair _ -> make_fst @@ make_var x1'
+        | TTuple _ -> make_fst @@ make_var x1'
         | TFun(y,typ) ->
             begin match decomp_tfun_ttuple @@ Id.typ x1 with
             | None -> assert false
@@ -347,14 +336,14 @@ Color.printf Color.Yellow "y1:%a, y2:%a@." Id.print y1 Id.print y2;
         | _ -> assert false
       in
       (make_let [x',[],t1'] t').desc
-  | Let(Nonrecursive, [x,[],({desc=Snd{desc=Var x1}} as t1)], t) ->
+  | Let(Nonrecursive, [x,[],({desc=Proj(1,{desc=Var x1})} as t1)], t) ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
       let t' = trans.tr2_term (tt,bb') t in
       let t1' =
         match Id.typ x1' with
-        | TPair _ -> make_snd @@ make_var x1'
+        | TTuple _ -> make_snd @@ make_var x1'
         | TFun(y,typ) ->
             begin match decomp_tfun_ttuple @@ Id.typ x1 with
             | None -> assert false
@@ -387,8 +376,7 @@ let sort_let_pair_aux x t =
   let bindings' = List.map (fun (x,t) -> x, [], sort_let_pair.tr_term t) bindings in
   let is_proj (_,_,t) =
     match t.desc with
-    | Fst {desc=Var y}
-    | Snd {desc=Var y} -> Id.same x y
+    | Proj(_, {desc=Var y}) -> Id.same x y
     | _ -> false
   in
   let bindings1,bindings2 = List.partition is_proj bindings' in
@@ -397,7 +385,7 @@ let sort_let_pair_aux x t =
 
 let sort_let_pair_term t =
   match t.desc with
-  | Let(Nonrecursive,[x,[],({desc=Pair _} as t1)],t2) ->
+  | Let(Nonrecursive,[x,[],({desc=Tuple _} as t1)],t2) ->
       let t2' = sort_let_pair_aux x t2 in
       make_let [x,[],t1] t2'
   | Let(flag,[f,xs,t1],t2) ->
@@ -415,11 +403,11 @@ let move_proj = make_trans ()
 
 let rec move_proj_aux x t =
   match Id.typ x with
-  | TPair _ ->
+  | TTuple _ ->
       let t1 = make_fst @@ make_var x in
       let t2 = make_snd @@ make_var x in
-      let x1 = Id.new_var (Id.name x ^ "1") t1.typ in
-      let x2 = Id.new_var (Id.name x ^ "2") t2.typ in
+      let x1 = Id.new_var ~name:(Id.name x ^ "1") t1.typ in
+      let x2 = Id.new_var ~name:(Id.name x ^ "2") t2.typ in
       let subst_rev' t1 x t2 =
         let ts = col_same_term t1 t2 in
         List.fold_right (fun t1 t2 -> subst_rev t1 x t2) ts t2
@@ -582,7 +570,7 @@ let replace_head fs fs' t =
         List.hd ts1 :: aux fs' (List.tl ts1 @ ts2)
   in
   let ts' = aux fs ts in
-  let xs = List.map (fun t -> Id.new_var "x" t.typ) ts' in
+  let xs = List.map (fun t -> Id.new_var t.typ) ts' in
   let t' = List.fold_right2 subst_rev ts' xs t in
   if debug() then Format.printf "t':@.%a@.@." print_term t';
   let ts'' = List.map2 (fun t (f,f') -> subst f (make_var f') t) ts' @@ List.combine fs fs' in
@@ -629,7 +617,7 @@ let add_fun_tuple_term (funs,env) t =
       let t2' = add_fun_tuple.tr2_term (funs2,env') t2 in
       let aux t fs =
         let name = List.fold_left (fun s x -> Id.name x ^ "_" ^ s) (Id.name @@ List.hd fs) @@ List.tl fs in
-        let fg = Id.new_var name @@ make_ttuple @@ List.map Id.typ fs in
+        let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
         let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj (i+1) (make_var fg)) fs in
         let t' = replace_head fs (List.map (fun (f,_,_) -> f) projs) t in
         let defs = (fg, [], make_tuple @@ List.map make_var fs)::projs in

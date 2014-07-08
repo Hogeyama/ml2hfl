@@ -7,7 +7,7 @@ open BRA_state
 
 (***** Constants *****)
 
-let hole_term = make_var (Id.new_var "__HOLE__" TBool)
+let hole_term = make_var (Id.new_var ~name:"__HOLE__" TBool)
 let stateType = ref []
 
 (***** Functions *****)
@@ -221,7 +221,7 @@ let extract_id = function
 
 let implement_recieving ({program = program; state = state; verified = verified} as holed) =
   let passed = passed_statevars holed in
-  let placeholders f = List.map (fun v -> Id.new_var "x_DO_NOT_CARE" (Id.typ (extract_id v))) (passed f) in (* (expl) placeholders 4 = " _ _ _ _ " *)
+  let placeholders f = List.map (fun v -> Id.new_var ~name:"x_DO_NOT_CARE" (Id.typ (extract_id v))) (passed f) in (* (expl) placeholders 4 = " _ _ _ _ " *)
   let rec set_state f = function
     | [] -> []
     | [arg] -> (List.map extract_id (passed f))@[arg]
@@ -258,7 +258,7 @@ let restore_type state = function
   | {desc = Var v; typ = t} as e ->
     let rec restore_type' acc i = function
       | TFun ({Id.typ = t1}, t2) as t ->
-	let fresh_id = Id.new_var ("d_"^v.Id.name^(string_of_int i)) t1 in
+	let fresh_id = Id.new_var ~name:("d_"^v.Id.name^(string_of_int i)) t1 in
 	{ desc = Fun (fresh_id
 			,(restore_type'
 			    { desc = App (acc, (state.initial_state@[make_var fresh_id]))
@@ -277,7 +277,7 @@ let to_holed_programs (target_program : typed_term) =
   let hole_insert target state typed =
     let sub (id, args, body) =
 
-      let id' = Id.new_var (Id.name id ^ "_without_checking") (Id.typ id) in (** split-callsite **)
+      let id' = Id.new_var ~name:(Id.name id ^ "_without_checking") (Id.typ id) in (** split-callsite **)
 
       let prev_set_flag = get_prev_set_flag state target in
       let set_flag = get_set_flag state target in
@@ -306,7 +306,7 @@ let to_holed_programs (target_program : typed_term) =
                            fail
                in *)
             make_let
-	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 
               (* let update_flag = Random.int 0 = 0 in *)
 	      (make_let
@@ -327,7 +327,7 @@ let to_holed_programs (target_program : typed_term) =
                            fail
                in *)
             make_let
-	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 
 	      (* let set_flag = true in *)
 	      (make_let
@@ -347,7 +347,7 @@ let to_holed_programs (target_program : typed_term) =
 		 body prev_statevars statevars argvars)
 	  in
 
-	  let placeholders () = List.map (fun v -> Id.new_var "x_DO_NOT_CARE" (Id.typ (extract_id v))) (prev_set_flag::prev_statevars) in
+	  let placeholders () = List.map (fun v -> Id.new_var ~name:"x_DO_NOT_CARE" (Id.typ (extract_id v))) (prev_set_flag::prev_statevars) in
 	  let rec set_state = function
 	    | [] -> []
 	    | [arg] -> (extract_id prev_set_flag)::(List.map extract_id prev_statevars)@[arg]
@@ -358,7 +358,7 @@ let to_holed_programs (target_program : typed_term) =
 
 	  let app_assert =
 	    make_let
-	      [Id.new_var "_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 	      {desc = App (make_var id', List.map make_var args'); typ = Id.typ id'}
 	  in
 	  (no_checking_function := Some ({id = id'; args = args} : function_info);

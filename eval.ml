@@ -50,7 +50,7 @@ let rec print_value fm t =
         | _ -> assert false
       in
       Format.fprintf fm "[%a]" (print_list print_value ";") (aux t)
-  | Pair(t_1,t_2) -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
+  | Tuple[t_1;t_2] -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
   | _ -> print_term fm t
 
 
@@ -60,7 +60,7 @@ let rec eval_print fm rands t =
   match t.desc with
   | Const c -> rands, t
   | RandInt false ->
-      let x = Id.new_var "" Type.TUnit in
+      let x = Id.new_var Type.TUnit in
       List.tl rands, make_fun x (make_int (List.hd rands))
   | RandInt true -> assert false
   | RandValue _ -> assert false
@@ -189,7 +189,7 @@ let rec eval_print fm rands t =
               | _, None -> None
               | Some f1, Some f2 -> Some (fun t -> f1 (f2 t))
             end
-        | Pair(v1,v2), PPair(p1,p2) ->
+        | Tuple[v1;v2], PTuple[p1;p2] ->
             begin
               match check v1 p1, check v2 p2 with
               | None, _
@@ -227,22 +227,15 @@ let rec eval_print fm rands t =
           eval_print fm rands t1
         with RaiseExcep(rands',e) -> eval_print fm rands' (make_app t2 [e])
       end
-  | Pair(t1,t2) ->
+  | Tuple[t1;t2] ->
       let rands',v2 = eval_print fm rands t2 in
       let rands'',v1 = eval_print fm rands' t1 in
       rands'', make_pair v1 v2
-  | Fst t ->
+  | Proj(i,t) ->
       let rands',v = eval_print fm rands t in
       begin
         match v.desc with
-          Pair(v1,v2) -> rands', v1
-        | _ -> assert false
-      end
-  | Snd t ->
-      let rands',v = eval_print fm rands t in
-      begin
-        match v.desc with
-          Pair(v1,v2) -> rands', v2
+        | Tuple vs -> rands', List.nth vs i
         | _ -> assert false
       end
   | Bottom -> assert false

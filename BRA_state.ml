@@ -9,13 +9,13 @@ and default_val' =
     | TUnit -> Const Unit
     | TBool -> Const False
     | TInt -> Const (Int 0)
-    | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var "_" t1, default_val t2)
+    | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var ~name:"_" t1, default_val t2)
     | TPred (t, _) -> default_val' (Id.typ t)
     | TConstr (_, _) -> raise (Invalid_argument "default_val: not yet implemented syntax(Tconstr)")
     | TRInt _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TRInt)")
     | TAbsBool -> raise (Invalid_argument "default_val: not yet implemented syntax(TAbsBool)")
     | TList _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TList)")
-    | TPair (_, _) -> raise (Invalid_argument "default_val: not yet implemented syntax(TPair)")
+    | TTuple _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TTuple)")
     | TRef _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TRef)")
     | TOption _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TOption)")
     | TVar t ->
@@ -45,12 +45,12 @@ let filter_non_integer =
   in
   state_transducer (List.filter is_integer) (List.filter is_integer) (List.filter is_integer)
 
-let build_var name typ = Term_util.make_var (Id.new_var name typ)
+let build_var name typ = Term_util.make_var (Id.new_var ~name typ)
 let make_prev_statevar_name function_name baseId = "s_prev_" ^ function_name ^ "_" ^ baseId.Id.name
-let make_prev_statevar_id function_name baseId = Id.new_var (make_prev_statevar_name function_name baseId) baseId.Id.typ
+let make_prev_statevar_id function_name baseId = Id.new_var ~name:(make_prev_statevar_name function_name baseId) baseId.Id.typ
 let make_prev_statevar function_name baseId = build_var (make_prev_statevar_name function_name baseId) baseId.Id.typ
 let make_statevar_name function_name baseId = "s_" ^ function_name ^ "_" ^ baseId.Id.name
-let make_statevar_id function_name baseId = Id.new_var (make_statevar_name function_name baseId) baseId.Id.typ
+let make_statevar_id function_name baseId = Id.new_var ~name:(make_statevar_name function_name baseId) baseId.Id.typ
 let make_statevar function_name baseId = build_var (make_statevar_name function_name baseId) baseId.Id.typ
 
 let build_record {id = {Id.name = f_name}; args = f_args} =

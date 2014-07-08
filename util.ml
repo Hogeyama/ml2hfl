@@ -80,6 +80,13 @@ module List = struct
         let xs',y = decomp_snoc xs in
         x::xs', y
 
+  let rec mapi2 f i xs ys =
+    match xs,ys with
+    | [],[] -> []
+    | x::xs',y::ys' -> f i x y :: mapi2 f (i+1) xs' ys'
+    | _ -> raise (Invalid_argument "List.mapi2")
+  let mapi2 f xs ys = mapi2 f 0 xs ys
+
   let rec rev_map2 f acc xs ys =
     match xs,ys with
     | [],[] -> acc
@@ -125,6 +132,7 @@ module Option = struct
 end
 
 module Pair = struct
+  let make f g x = f x, g x
   let map f (x,y) = f x, f y
   let map_fst f (x,y) = f x, y
   let map_snd f (x,y) = x, f y

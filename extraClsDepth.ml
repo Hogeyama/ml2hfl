@@ -20,7 +20,7 @@ let dynamicGreaterThan a b =
 let rec dynamicMaximum = function
   | [x] -> x
   | x::xs ->
-    let freshVarId = Id.new_var "tmp_DEPTH" TInt in
+    let freshVarId = Id.new_var ~name:"tmp_DEPTH" TInt in
     let freshVar = make_var freshVarId in
     make_let
       [(freshVarId, [], dynamicMaximum xs)]
@@ -74,7 +74,7 @@ let rec closureDepth varToDepth expr =
 let rec transType = function
   | TFun ({Id.name=t1Name; Id.typ=t1} as t1Id, t2) when is_fun_typ t1 ->
     let t1 = transType t1 in
-    TFun (Id.new_var (t1Name^"_DEPTH") TInt, TFun ({t1Id with Id.typ = t1}, transType t2))
+    TFun (Id.new_var ~name:(t1Name^"_DEPTH") TInt, TFun ({t1Id with Id.typ = t1}, transType t2))
   | TFun (t1, t2) -> TFun (t1, transType t2)
   | t -> t
 
@@ -104,7 +104,7 @@ let rec insertClsDepth varToDepth expr =
       let makeBaseEnv varToDepth = function
 	| (x, [], body) when is_base_typ (Id.typ x) -> varToDepth
 	| (x, [], body) when is_fun_typ (Id.typ x) ->
-	  let x_depthId = Id.new_var ((Id.name x) ^ "_DEPTH") TInt in
+	  let x_depthId = Id.new_var ~name:((Id.name x) ^ "_DEPTH") TInt in
 	  let x_depth = make_var x_depthId in
 	  (Id.to_string x, x_depth)::varToDepth
 	| (x, args, body) -> (Id.to_string x, make_int 0)::varToDepth
@@ -118,7 +118,7 @@ let rec insertClsDepth varToDepth expr =
 	      try
 		BRA_transform.extract_id (List.assoc (Id.to_string x) varToDepth)
 	      with Not_found ->
-	        Id.new_var ((Id.name x) ^ "_DEPTH") TInt
+	        Id.new_var ~name:((Id.name x) ^ "_DEPTH") TInt
 	    end
 	  in
 	  let x_depth = make_var x_depthId in
@@ -128,7 +128,7 @@ let rec insertClsDepth varToDepth expr =
 	  let insertToArgs (vtd, ags) = function
 	    | t when is_base_typ (Id.typ t) -> (vtd, ags@[t])
 	    | t when is_fun_typ (Id.typ t) ->
-	      let t_depthId = Id.new_var ((Id.name t) ^ "_DEPTH") TInt in
+	      let t_depthId = Id.new_var ~name:((Id.name t) ^ "_DEPTH") TInt in
 	      ((Id.to_string t, make_var t_depthId)::vtd, ags@[t_depthId; {t with Id.typ = transType t.Id.typ}])
 	    | _ -> assert false
 	  in

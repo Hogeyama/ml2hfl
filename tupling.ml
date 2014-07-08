@@ -614,31 +614,12 @@ let is_option_type typ =
   | TTuple[x; _] when Id.typ x = none_flag.typ -> true
   | _ -> false
 
-let rec decomp_option_tuple t =
-  match t.desc with
-  | _ when is_option t -> [t]
-  | Pair(t1,t2) when is_option t1 -> t1 :: decomp_option_tuple t2
-  | _ -> raise (Invalid_argument "decomp_option_tuple")
-
-let rec decomp_option_ttuple typ =
-  match typ with
-  | _ when is_option_type typ -> [typ]
-  | TPair(x,typ2) when is_option_type @@ Id.typ x -> Id.typ x :: decomp_option_ttuple typ2
-  | _ -> raise (Invalid_argument "decomp_option_tuple")
-
-let make_option_proj i t =
-  let n = List.length @@ decomp_option_ttuple t.typ in
-  let t' = repeat make_snd (i-1) t in
-  if i = n then t' else make_fst t'
-
 let elim_same_app = make_trans2 ()
 
 let check t =
   try
     match t.desc with
-    | App({desc=Var _}, [{desc=Pair _} as t2]) ->
-        ignore (decomp_option_tuple t2);
-        true
+    | App({desc=Var _}, [{desc=Tuple _}]) -> true
     | _ -> false
   with Invalid_argument _ -> false
 
@@ -670,8 +651,7 @@ let is_used_in t1 t2 = col_same_term t1 t2 <> []
 
 let rec decomp_let_app_option f t =
   match t.desc with
-  | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [t])} as binding], t2) when Id.same f g ->
-      let ts = decomp_option_tuple t in
+  | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g ->
       let ts' = List.map decomp_some ts in
       let args = List.flatten @@ List.mapi (fun i t -> match t with None -> [] | Some t' -> [i+1, x, t']) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
@@ -700,7 +680,7 @@ let replace_app_term env t =
           let must = List.diff ~cmp apps1 apps2 in
           let apps' = apps1 @@@ apps2 in
           let env' = (f,apps')::env2 in
-          let used = List.filter (fun (i,x,_) -> is_used_in (make_option_proj i @@ make_var x) t2) apps' in
+          let used = List.filter (fun (i,x,_) -> is_used_in (make_proj i @@ make_var x) t2) apps' in
           let must_but_not_used = List.diff ~cmp must used in
           let t2' = replace_app.tr2_term env' t2 in
           if List.length used < 2 (* negligence *)
@@ -718,7 +698,7 @@ let replace_app_term env t =
             try
               let used' = List.sort used in
               List.iteri (fun i (j,_,_) -> if i+1 <> j then raise (Invalid_argument "")) used';
-              let aux sbst (i,x,_) = fun t -> replace_term (make_option_proj i @@ make_var x) (make_option_proj i @@ make_var y) @@ sbst t in
+              let aux sbst (i,x,_) = fun t -> replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) @@ sbst t in
               let sbst =  List.fold_left aux Std.identity used' in
               sbst, make_tuple @@ List.map (fun (_,_,t) -> make_some t) used'
             with Not_found -> raise (Invalid_argument "")

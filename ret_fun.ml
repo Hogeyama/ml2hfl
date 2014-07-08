@@ -40,20 +40,13 @@ let normalize_term t =
       let t1' = normalize.tr_term t1 in
       let x = var_of_term t in
       make_let [x, [], t1'] @@ make_not (make_var x)
-  | Pair(t1,t2) ->
-      let t1' = normalize.tr_term t1 in
-      let t2' = normalize.tr_term t2 in
-      let x1 = var_of_term t1 in
-      let x2 = var_of_term t2 in
-      make_lets [x2,[],t2'; x1,[],t1'] @@ make_pair (make_var x1) (make_var x2)
-  | Fst t1 ->
+  | Tuple ts ->
+      let xs,ts' = List.split @@ List.map (Pair.make var_of_term normalize.tr_term) ts in
+      make_lets (List.map2 (fun x t -> x,[],t) xs ts') @@ make_tuple (List.map make_var xs)
+  | Proj(i, t1) ->
       let t1' = normalize.tr_term t1 in
       let x = var_of_term t1' in
-      make_let [x, [], t1'] @@ make_fst (make_var x)
-  | Snd t1 ->
-      let t1' = normalize.tr_term t1 in
-      let x = var_of_term t1' in
-      make_let [x, [], t1'] @@ make_snd (make_var x)
+      make_let [x, [], t1'] @@ make_proj i (make_var x)
 (*
   | Let(flag,bindings,t1) ->
       let bindings' = List.map (fun (f,xs,t) -> f, [], List.fold_right make_fun xs t) bindings in
@@ -87,11 +80,11 @@ let pair_eta_reduce = make_trans2 ()
 
 let pair_eta_reduce_term env t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],{desc=Fst {desc=Var y}}], t2) ->
+  | Let(Nonrecursive, [x,[],{desc=Proj(0,{desc=Var y})}], t2) ->
       pair_eta_reduce.tr2_term_rec ((x, Some y, None)::env) t
-  | Let(Nonrecursive, [x,[],{desc=Snd {desc=Var y}}], t2) ->
+  | Let(Nonrecursive, [x,[],{desc=Proj(1,{desc=Var y})}], t2) ->
       pair_eta_reduce.tr2_term_rec ((x, None, Some y)::env) t
-  | Let(Nonrecursive, [x,[],{desc=Pair({desc=Var y}, {desc=Var z})}], t2) ->
+  | Let(Nonrecursive, [x,[],{desc=Tuple[{desc=Var y}; {desc=Var z}]}], t2) ->
 (*
       ignore (get_same_pair env y z);
       if Id.id x = 1504 then
@@ -118,7 +111,7 @@ let pair_eta_reduce = pair_eta_reduce.tr2_term []
 let make_deep_pair = make_trans2 ()
 
 let make_deep_pair_typ rhs typ =
-  TPair(Id.new_var "x" typ, Id.typ rhs)
+  TTuple[Id.new_var typ; rhs]
 
 let make_deep_pair_term rhs t =
   match t.desc with
@@ -128,7 +121,7 @@ let make_deep_pair_term rhs t =
       make_if t1 t2' t3'
   | Let(flag,bindings,t) ->
       make_let_f flag bindings @@ make_deep_pair.tr2_term rhs t
-  | Label(InfoTerm{desc=Pair({desc=Var x},{desc=Var y})}, t) ->
+  | Label(InfoTerm{desc=Tuple[{desc=Var x};{desc=Var y}]}, t) ->
       let rhs' = if Id.same x rhs then y else rhs in
       make_deep_pair.tr2_term rhs' t
   | _ ->
@@ -156,8 +149,8 @@ let trans_typ funargs typ =
   match typ with
   | TFun(x,typ) when is_higher x ->
       let x' = trans.tr2_var funargs x in
-      let r = Id.new_var "r" @@ trans.tr2_typ funargs typ in
-      TFun(x', TPair(r, Id.typ x'))
+      let r = Id.new_var ~name:"r" @@ trans.tr2_typ funargs typ in
+      TFun(x', TTuple[r; x'])
   | _ -> trans.tr2_typ_rec funargs typ
 
 let trans_term funargs t =
