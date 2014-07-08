@@ -272,8 +272,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     | Tpat_constant(Const_int32 n) -> PConst {desc=Const(Int32 n);typ=typ'}
     | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'}
     | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'}
-    | Tpat_tuple ps ->
-        PTuple (List.map from_pattern ps)
+    | Tpat_tuple ps -> PTuple (List.map from_pattern ps)
     | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "None" -> PNone
     | Tpat_construct(_, cstr_desc, [p], _) when get_constr_name cstr_desc typ env = "Some" -> PSome (from_pattern p)
     | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "()" -> PConst unit_term
@@ -435,10 +434,8 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       let pats' = List.map aux pats in
       let pats'' = pats' @ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'}] in
       {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pats''); typ=typ'}); typ=typ'}
-  | Texp_tuple(e::es) ->
-      let t = from_expression e in
-      List.fold_left (fun t e -> make_pair t (from_expression e)) t es
-  | Texp_tuple _ -> assert false
+  | Texp_tuple es ->
+      {desc=Tuple(List.map from_expression es); typ=typ'}
   | Texp_construct(_,desc,es,_) ->
       let desc =
         match get_constr_name desc typ env, es with

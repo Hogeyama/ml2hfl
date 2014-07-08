@@ -59,51 +59,43 @@ let make_randint_cps () =
   let k = Id.new_var @@ TFun(r,typ_result) in
   {desc=RandInt true; typ=TFun(u,TFun(k,typ_result))}
 let rec make_app t ts =
-  match t,ts with
-  | t,[] -> t
-  | {desc=App(t1,ts1);typ=TFun(x,typ)}, t2::ts2 ->
-      if not (Flag.check_typ => Type.can_unify (Id.typ x) t2.typ)
-      then
-        begin
-          Format.printf "make_app:@ %a@ <=/=>@ %a@.%a@.%a@."
-                        print_typ (Id.typ x)
-                        print_typ t2.typ
-                        print_term t
-                        print_term t2;
-          assert false
-        end;
+  let check typ1 typ2 =
+    if not (Flag.check_typ => Type.can_unify typ1 typ2)
+    then
+      begin
+        Format.printf "make_app:@ %a@ <=/=>@ %a@.%a@.%a@."
+                      print_typ typ1
+                      print_typ typ2
+                      print_term t
+                      print_term @@ List.hd ts;
+        assert false
+      end
+  in
+  match t.desc, elim_tpred t.typ, ts with
+  | _, _, [] -> t
+  | App(t1,ts1), TFun(x,typ), t2::ts2 ->
+      check (Id.typ x) t2.typ;
       make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
-  | {typ=TFun(x,typ)}, t2::ts
-  | {typ=TPred({Id.typ=TFun(x,typ)},_)}, t2::ts ->
-      if not (Flag.check_typ => Type.can_unify (Id.typ x) t2.typ)
-      then (Color.printf Color.Red "make_app:@ %a@ <=/=>@ %a,@.fun: %a@.arg: %a@."
-                         print_typ (Id.typ x)
-                         print_typ t2.typ
-                         print_term' t
-                         print_term' t2;
-            assert false);
+  | _, TFun(x,typ), t2::ts ->
+      check (Id.typ x) t2.typ;
       make_app {desc=App(t,[t2]); typ=typ} ts
   | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
   | _ ->
       Format.printf "Untypable(make_app): %a@." print_term' {desc=App(t,ts);typ=typ_unknown};
       assert false
 let make_lets bindings t2 =
-  List.fold_right
-    (fun binding t2 ->
-       {desc=Let(Nonrecursive,[binding],t2); typ=t2.typ})
-    bindings
-    t2
+  List.fold_right (fun binding t2 -> {desc=Let(Nonrecursive,[binding],t2); typ=t2.typ}) bindings t2
 let make_let_f flag bindings t2 =
   if bindings = []
   then t2
   else
     let rec aux (f,xs,t) =
       match t.desc with
-          Fun(x,t') -> aux (f, xs@[x], t')
-        | _ -> f, xs, t
+      | Fun(x,t') -> aux (f, xs@[x], t')
+      | _ -> f, xs, t
     in
     let bindings' = List.map aux bindings in
-      {desc=Let(flag,bindings',t2); typ=t2.typ}
+    {desc=Let(flag,bindings',t2); typ=t2.typ}
 let make_lets_f bindings t2 =
   List.fold_right (fun (flag,binding) -> make_let_f flag [binding]) bindings t2
 let make_let bindings t2 = make_let_f Nonrecursive bindings t2
@@ -287,13 +279,6 @@ let decomp_get_val t =
   match t.desc with
   | Proj(1, t) -> Some t
   | _ -> None
-
-let make_tuple ts =
-  match ts with
-  | []
-  | [_] -> raise (Invalid_argument "make_tuple")
-  | t::ts' -> List.fold_left (make_pair) t ts'
-
 
 
 (*** AUXILIARY FUNCTIONS ***)
