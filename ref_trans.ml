@@ -225,33 +225,20 @@ let trans_typ ttbb typ =
 
 
 let trans_typ ttbb typ =
-  trans_typ ttbb typ |@debug()&>
-  Color.printf Color.Yellow "%a@ ===>@ @[%a@]@.@." print_typ typ print_typ
+  trans_typ ttbb typ
+  |@debug()&> Color.printf Color.Yellow "%a@ ===>@ @[%a@]@.@." print_typ typ print_typ
 
 
-let trans_desc (tt,bb) desc =
-  match desc with
+let trans_term (tt,bb) t =
+  match t.desc with
   | Let(Nonrecursive, [x,[],({desc=App({desc=Var x1},[t11])} as t1)], t) ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let t11' = trans.tr2_term (tt,bb) t11 in
       let bb' = (x,t1)::bb in
-(*
-Format.printf "B: ";
-List.iter (fun (x,t) -> Format.printf "%a = %a; " Id.print x pp_print_term t) bb';
-Format.printf "@.";
-*)
       let t' = trans.tr2_term (tt,bb') t in
-(*
-Color.printf Color.Green "x1: %a:%a@." Id.print x1 print_typ (Id.typ x1);
-Color.printf Color.Green "x1': %a:%a@." Id.print x1' print_typ (Id.typ x1');
-Color.printf Color.Green "t11: %a@." pp_print_term t11;
-*)
       let tx = inst_var_fun x1' tt bb' t11' in
-(*
-Color.printf Color.Green "tx: %a@." pp_print_term tx;
-*)
-      (make_let [x',[],tx] t').desc
+      make_let [x',[],tx] t'
   | Let(Nonrecursive, [x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.same x1 x2 ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
@@ -277,7 +264,7 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
             make_fun y' @@ make_lets [y1,[],ty1; y2,[],ty2] @@ make_if (make_and cond1 cond2) t_eq t_neq
         | _ -> make_pair (make_var x1') (make_var x1')
       in
-      (make_let [x',[],t1'] t').desc
+      make_let [x',[],t1'] t'
   | Let(Nonrecursive, [x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
@@ -299,71 +286,52 @@ Color.printf Color.Green "tx: %a@." pp_print_term tx;
             make_fun y' @@ make_lets [y1,[],ty1; y2,[],ty2] @@ make_pair t1' t2'
         | _ -> make_pair (make_var x1') (make_var x2')
       in
-      (make_let [x',[],t1'] t').desc
-(*
-  | Let(Nonrecursive, [x,[],({desc=Pair({desc=Var x1},{desc=Var x2})} as t1)], t) ->
+      make_let [x',[],t1'] t'
+  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t) ->
+      let xs = List.map (function {desc=Var x} -> x | _ -> assert false) ts in
       let x' =  trans.tr2_var (tt,bb) x in
-      let x1' = trans.tr2_var (tt,bb) x1 in
-      let x2' = trans.tr2_var (tt,bb) x2 in
+      let xs' = List.map (trans.tr2_var (tt,bb)) xs in
       let bb' = (x,t1)::bb in
       let t' = trans.tr2_term (tt,bb') t in
       let t1' =
-        match snd @@ trans_typ' (tt,bb) @@ Id.typ x with
-        | Some [typ1;typ2] ->
-            let y1 = Id.new_var "x" typ1 in
-            let y2 = Id.new_var "x" typ2 in
-Color.printf Color.Yellow "y1:%a, y2:%a@." Id.print y1 Id.print y2;
-            let t1 = make_some @@ make_app (make_var x1') [make_get_val @@ make_var y1] in
-            let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
-            let t2 = make_some @@ make_app (make_var x2') [make_get_val @@ make_var y2] in
-            let t2' = make_if (make_is_none @@ make_var y2) (make_none @@ get_opt_typ t2.typ) t2 in
-            make_fun y1 @@ make_fun y2 @@ make_pair t1' t2'
-        | Some _ -> assert false (* NOT IMPLEMENTED *)
-        | None -> make_pair (make_var x1') (make_var x2')
+        match trans_typ (tt,bb) @@ Id.typ x with
+        | TFun(y, _) ->
+            let y' = Id.new_var_id y in
+            let tys = List.map (fun i -> make_proj i @@ make_var y') @@ List.fromto 0 @@ List.length ts in
+            let ys = List.mapi (fun i t -> Id.new_var ~name:(Id.name y ^ string_of_int (i+1)) t.typ) tys in
+            let aux xi' yi =
+              let ti = make_some @@ make_app (make_var xi') [make_get_val @@ make_var yi] in
+              let ti' = make_if (make_is_none @@ make_var yi) (make_none @@ get_opt_typ ti.typ) ti in
+              ti'
+            in
+            let ts' = List.map2 aux xs' ys in
+            let bindings = List.map2 (fun x t -> x, [], t) ys tys in
+            make_fun y' @@ make_lets bindings @@ make_tuple ts'
+        | _ -> make_tuple @@ List.map make_var xs
       in
-      (make_let [x',[],t1'] t').desc
-*)
-  | Let(Nonrecursive, [x,[],({desc=Proj(0,{desc=Var x1})} as t1)], t) ->
+      make_let [x',[],t1'] t'
+  | Let(Nonrecursive, [x,[],({desc=Proj(i,{desc=Var x1})} as t1)], t) ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
       let t' = trans.tr2_term (tt,bb') t in
       let t1' =
         match Id.typ x1' with
-        | TTuple _ -> make_fst @@ make_var x1'
+        | TTuple _ -> make_proj i @@ make_var x1'
         | TFun(y,typ) ->
             begin match decomp_tfun_ttuple @@ Id.typ x1 with
             | None -> assert false
-            | Some [z1,typ1; z2,typ2] ->
-                let z = Id.new_var_id z1 in
-                make_fun z @@ make_get_val @@ make_fst @@ make_app (make_var x1') [make_pair (make_some @@ make_var z) (make_none @@ Id.typ z2)]
-            | Some xtyps -> assert false (* Not implemented *)
+            | Some xtyps ->
+                let z = Id.new_var_id @@ fst @@ List.nth xtyps i in
+                let arg = make_tuple @@ List.mapi (fun j (z',_) -> if j = i then make_some @@ make_var z else make_none @@ Id.typ z') xtyps in
+                make_fun z @@ make_get_val @@ make_proj i @@ make_app (make_var x1') [arg]
             end
         | _ -> assert false
       in
-      (make_let [x',[],t1'] t').desc
-  | Let(Nonrecursive, [x,[],({desc=Proj(1,{desc=Var x1})} as t1)], t) ->
-      let x' = trans.tr2_var (tt,bb) x in
-      let x1' = trans.tr2_var (tt,bb) x1 in
-      let bb' = (x,t1)::bb in
-      let t' = trans.tr2_term (tt,bb') t in
-      let t1' =
-        match Id.typ x1' with
-        | TTuple _ -> make_snd @@ make_var x1'
-        | TFun(y,typ) ->
-            begin match decomp_tfun_ttuple @@ Id.typ x1 with
-            | None -> assert false
-            | Some [z1,typ1; z2,typ2] ->
-                let z = Id.new_var_id z2 in
-                make_fun z @@ make_get_val @@ make_snd @@ make_app (make_var x1') [make_pair (make_none @@ Id.typ z1) (make_some @@ make_var z)]
-            | Some xtyps -> assert false (* Not implemented *)
-            end
-        | _ -> assert false
-      in
-      (make_let [x',[],t1'] t').desc
-  | _ -> trans.tr2_desc_rec (tt,bb) desc
+      make_let [x',[],t1'] t'
+  | _ -> trans.tr2_term_rec (tt,bb) t
 
-let () = trans.tr2_desc <- trans_desc
+let () = trans.tr2_term <- trans_term
 let () = trans.tr2_typ <- trans_typ
 
 

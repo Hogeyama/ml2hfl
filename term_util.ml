@@ -244,7 +244,7 @@ let make_eq_dec t1 t2 =
 
 let rec make_term typ =
   match elim_tpred typ with
-    TUnit -> unit_term
+  | TUnit -> unit_term
   | TBool -> true_term
   | TInt -> make_int 0
   | TFun(x,typ) -> make_fun x (make_term typ)
