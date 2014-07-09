@@ -41,7 +41,7 @@ let normalize_term t =
       let x = var_of_term t in
       make_let [x, [], t1'] @@ make_not (make_var x)
   | Tuple ts ->
-      let xs,ts' = List.split @@ List.map (Pair.make var_of_term normalize.tr_term) ts in
+      let xs,ts' = List.split_map (Pair.make var_of_term normalize.tr_term) ts in
       make_lets (List.map2 (fun x t -> x,[],t) xs ts') @@ make_tuple (List.map make_var xs)
   | Proj(i, t1) ->
       let t1' = normalize.tr_term t1 in

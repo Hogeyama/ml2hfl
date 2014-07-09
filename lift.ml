@@ -94,7 +94,7 @@ let rec lift_aux post xs t =
         defs, t'.desc
     | App(t, ts) ->
         let defs,t' = lift_aux post xs t in
-        let defss,ts' = List.split (List.map (lift_aux post xs) ts) in
+        let defss,ts' = List.split_map (lift_aux post xs) ts in
         defs @ (List.flatten defss), App(t', ts')
     | If(t1,t2,t3) ->
         let defs1,t1' = lift_aux post xs t1 in
@@ -117,7 +117,7 @@ let rec lift_aux post xs t =
           let defs1,t1' = lift_aux ("_" ^ Id.name f) (set_of_list ys') t1 in
           (f',(ys',t1'))::defs1,  f''
         in
-        let defss,fs = List.split (List.map aux bindings) in
+        let defss,fs = List.split_map aux bindings in
         let subst_f t = List.fold_left2 (fun t f'' (f,_,_) -> subst f f'' t) t fs bindings in
         let defs2,t2' = lift_aux post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
@@ -154,7 +154,7 @@ let rec lift_aux post xs t =
           let defs,t' = lift_aux post xs t in
           defs, (s,(f,t'))
         in
-        let defss,fields' = List.split (List.map aux fields) in
+        let defss,fields' = List.split_map aux fields in
         List.flatten defss, Record fields'
     | Field(i,s,f,t) ->
         let defs,t' = lift_aux post xs t in
@@ -165,7 +165,7 @@ let rec lift_aux post xs t =
         let defs2,t2' = lift_aux post xs t2 in
         defs1 @ defs2, Cons(t1',t2')
     | Constr(c,ts) ->
-        let defss,ts' = List.split (List.map (lift_aux post xs) ts) in
+        let defss,ts' = List.split_map (lift_aux post xs) ts in
         List.flatten defss, Constr(c,ts')
     | Match(t,pats) ->
         let defs,t' = lift_aux post xs t in
@@ -178,7 +178,7 @@ let rec lift_aux post xs t =
         let defs',pats' = List.fold_right aux pats (defs,[]) in
         defs', Match(t',pats')
     | Tuple ts ->
-        let defss,ts' = List.split @@ List.map (lift_aux post xs) ts in
+        let defss,ts' = List.split_map (lift_aux post xs) ts in
         List.flatten defss, Tuple ts'
     | Proj(i,t) ->
         let defs,t' = lift_aux post xs t in
@@ -219,7 +219,7 @@ let rec lift_aux' post xs t =
         defs, t'.desc
     | App(t, ts) ->
         let defs,t' = lift_aux' post xs t in
-        let defss,ts' = List.split (List.map (lift_aux' post xs) ts) in
+        let defss,ts' = List.split_map (lift_aux' post xs) ts in
         defs @ (List.flatten defss), App(t', ts')
     | If(t1,t2,t3) ->
         let defs1,t1' = lift_aux' post xs t1 in
@@ -246,7 +246,7 @@ let rec lift_aux' post xs t =
           let defs1,t1' = lift_aux' ("_" ^ Id.name f) (set_of_list ys') t1 in
           (f',(ys',t1'))::defs1,  f''
         in
-        let defss,fs = List.split (List.map aux bindings) in
+        let defss,fs = List.split_map aux bindings in
         let subst_f t = List.fold_left2 (fun t f'' (f,_,_) -> subst f f'' t) t fs bindings in
         let defs2,t2' = lift_aux' post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
@@ -283,7 +283,7 @@ let rec lift_aux' post xs t =
           let defs,t' = lift_aux' post xs t in
           defs, (s,(f,t'))
         in
-        let defss,fields' = List.split (List.map aux fields) in
+        let defss,fields' = List.split_map aux fields in
         List.flatten defss, Record fields'
     | Field(i,s,f,t) ->
         let defs,t' = lift_aux' post xs t in
@@ -294,7 +294,7 @@ let rec lift_aux' post xs t =
         let defs2,t2' = lift_aux' post xs t2 in
         defs1 @ defs2, Cons(t1',t2')
     | Constr(c,ts) ->
-        let defss,ts' = List.split (List.map (lift_aux' post xs) ts) in
+        let defss,ts' = List.split_map (lift_aux' post xs) ts in
         List.flatten defss, Constr(c,ts')
     | Match(t,pats) ->
         let defs,t' = lift_aux' post xs t in
@@ -307,7 +307,7 @@ let rec lift_aux' post xs t =
         let defs',pats' = List.fold_right aux pats (defs,[]) in
         defs', Match(t',pats')
     | Tuple ts ->
-        let defss,ts' = List.split @@ List.map (lift_aux' post xs) ts in
+        let defss,ts' = List.split_map (lift_aux' post xs) ts in
         List.flatten defss, Tuple ts'
     | Proj(i,t) ->
         let defs,t' = lift_aux' post xs t in

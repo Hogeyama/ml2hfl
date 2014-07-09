@@ -98,6 +98,15 @@ module List = struct
 
   let rec filter_out f xs = filter (not -| f) xs
 
+  let rec rev_split acc1 acc2 xs =
+    match xs with
+    | [] -> acc1, acc2
+    | (x,y)::xs' -> rev_split (x::acc1) (y::acc2) xs'
+  let rev_split xs = rev_split [] [] xs
+  let split_map f = rev_split -| rev_map f
+
+  let replace_nth xs i y = List.mapi (fun j x -> if j = i then y else x) xs
+
   let diff ?(cmp=compare)  l1 l2 = filter (fun x -> for_all (fun y -> cmp x y <> 0) l2) l1
   let inter ?(cmp=compare) l1 l2 = filter (fun x -> exists (fun y -> cmp x y = 0) l2) l1
   let subset l1 l2 = for_all (fun x -> mem x l2) l1

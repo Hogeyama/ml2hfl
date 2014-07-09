@@ -203,7 +203,7 @@ and trans_term post xs env t =
       defs1@defs2, App(Const (Temp s), t2')
   | S.App(t, ts) ->
       let defs,t' = trans_term post xs env t in
-      let defss,ts' = List.split (List.map (trans_term post xs env) ts) in
+      let defss,ts' = List.split_map (trans_term post xs env) ts in
       defs @ (List.flatten defss), make_app t' ts'
   | S.If(t1, t2, t3) ->
       let defs1,t1' = trans_term post xs env t1 in
@@ -368,7 +368,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
            f, xs, t1, [], App(App(Var g, Const True), t2')]
       | _ -> [], [f, xs, t1, [], t2]
     in
-    let envs,defss = List.split (List.map make_event defs) in
+    let envs,defss = List.split_map make_event defs in
     {env=List.flatten envs @@@ env; defs=List.flatten defss; main=main}
   else
     let rec aux = function
@@ -494,7 +494,7 @@ let trans_prog ?(spec=[]) t =
         let typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
         (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
   in
-  let env,defs'' = List.split (List.map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs') in
+  let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
   let env' =
     let spec' = List.map (fun (f,typ) -> trans_var f, trans_typ typ) spec in
     let aux (f,typ) = try f, merge_typ typ @@ (List.assoc f spec') with Not_found -> f,typ in

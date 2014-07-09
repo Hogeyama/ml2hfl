@@ -1594,7 +1594,7 @@ let normalize_let_term t =
      let x,post = normalize_let_aux t in
      post @@ make_app (make_var x) ts'
   | Tuple ts ->
-      let xs,posts = List.split @@ List.map normalize_let_aux ts in
+      let xs,posts = List.split_map normalize_let_aux ts in
       List.fold_right (@@) posts @@ make_tuple @@ List.map make_var xs
   | Proj(i,t) ->
      let x,post = normalize_let_aux t in
