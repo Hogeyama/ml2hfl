@@ -170,14 +170,16 @@ let compose_simple_rec fg f t1 g t2 =
   in
   make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
 
-let compose_let fg f t1 g t2 =
-  if debug() then Format.printf "compose_let@.%a:%a@.@.%a:%a@.@." Id.print f print_term t1 Id.print g print_term t2;
-  match classify f t1, classify g t2 with
+let compose_let fg fts =
+  let forms = List.map (uncurry classify) fts in
+  if debug() then Format.printf "compose_let@.";
+  if debug() then List.iter (fun (f,t) -> Format.printf "%a:%a@.@." Id.print f print_term t) fts;
+  match List.nth forms 0, List.nth forms 1 with
   | FNonRec,    _          -> compose_non_recursive true t1 t2
   | _,          FNonRec    -> compose_non_recursive false t1 t2
   | FOther,     _
   | _,          FOther     -> raise Cannot_compose
-  | FSimpleRec, FSimpleRec -> compose_simple_rec fg f t1 g t2
+  | FSimpleRec, FSimpleRec -> compose_simple_rec fg fts
 
 let rec compose fg fts =
   if debug() then Format.printf "compose@.";
