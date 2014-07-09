@@ -89,7 +89,7 @@ let rec lift_aux post xs t =
           let defs2,t2' = lift_aux post xs (subst f f'' t2) in
           defs1 @ [(f',(ys',t1'))] @ defs2, t2'
         in
-        let xs,t1 = decomp_fun t in
+        let xs,t1 = decomp_funs t in
         let defs,t' = aux f xs t1 (make_var f) in
         defs, t'.desc
     | App(t, ts) ->
@@ -214,7 +214,7 @@ let rec lift_aux' post xs t =
           let defs2,t2' = lift_aux' post xs (subst f f'' t2) in
           defs1 @ [(f',(ys',t1'))] @ defs2, t2'
         in
-        let xs,t1 = decomp_fun t in
+        let xs,t1 = decomp_funs t in
         let defs,t' = aux f xs t1 (make_var f) in
         defs, t'.desc
     | App(t, ts) ->

@@ -102,8 +102,9 @@ val make_setref : typed_term -> typed_term -> typed_term
 val is_none : typed_term -> bool
 val decomp_is_none : typed_term -> typed_term option
 val decomp_get_val : typed_term -> typed_term option
-val decomp_fun : typed_term -> id list * typed_term
-val decomp_let : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
+val decomp_funs : typed_term -> id list * typed_term
+val decomp_lets : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
+val decomp_var : typed_term -> id option
 
 (** {6 Misc} *)
 val subst : id -> typed_term -> typed_term -> typed_term

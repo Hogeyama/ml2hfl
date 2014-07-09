@@ -283,16 +283,21 @@ let decomp_get_val t =
 
 (*** AUXILIARY FUNCTIONS ***)
 
-let rec decomp_fun = function
-    {desc=Fun(x,t)} ->
-      let xs,t' = decomp_fun t in
-        x::xs, t'
+let decomp_var t =
+  match t.desc with
+  | Var x -> Some x
+  | _ -> None
+
+let rec decomp_funs = function
+  | {desc=Fun(x,t)} ->
+      let xs,t' = decomp_funs t in
+      x::xs, t'
   | t -> [], t
 
-let rec decomp_let t =
+let rec decomp_lets t =
   match t.desc with
   | Let(flag, bindings, t2) ->
-      let fbindings,t2' = decomp_let t2 in
+      let fbindings,t2' = decomp_lets t2 in
       (flag,bindings)::fbindings, t2'
   | _ -> [], t
 

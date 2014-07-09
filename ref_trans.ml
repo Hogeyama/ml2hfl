@@ -298,7 +298,7 @@ let trans_term (tt,bb) t =
         | _ -> make_pair (make_var x1') (make_var x2')
       in
       make_let [x',[],t1'] t'
-  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t) ->
+  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t) when List.for_all (Option.is_some -| decomp_var) ts ->
       let xs = List.map (function {desc=Var x} -> x | t -> Format.printf "%a@." print_term t; assert false) ts in
       let x' =  trans.tr2_var (tt,bb) x in
       let xs' = List.map (trans.tr2_var (tt,bb)) xs in

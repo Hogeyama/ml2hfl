@@ -329,7 +329,7 @@ let merge_let_fun_desc desc =
   match desc with
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
-        let ys,t' = decomp_fun t in
+        let ys,t' = decomp_funs t in
         f, xs@ys, merge_let_fun.tr_term t'
       in
       Let(flag, List.map aux bindings, merge_let_fun.tr_term t2)
@@ -1130,7 +1130,7 @@ let insert_param_funarg_term t =
   let desc =
     match t.desc with
     | Fun _ ->
-        let xs,t' = decomp_fun t in
+        let xs,t' = decomp_funs t in
         let xs' = List.map insert_param_funarg.tr_var xs in
         let xs'' =
           if should_insert (List.map Id.typ xs)
@@ -1403,7 +1403,7 @@ let fun2let_desc desc =
   match desc with
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
-        let ys,t' = decomp_fun t in
+        let ys,t' = decomp_funs t in
         fun2let.tr_var f, xs@ys, fun2let.tr_term t'
       in
       let bindings' = List.map aux bindings in
@@ -1553,7 +1553,7 @@ let flatten_let_term t =
       let t2' = flatten_let.tr_term t2 in
       begin match t1'.desc with
       | Let _ ->
-          let fbindings,t12 = decomp_let t1' in
+          let fbindings,t12 = decomp_lets t1' in
           let fbindings' = fbindings@[Nonrecursive,[x,[],t12]] in
           List.fold_right (uncurry make_let_f) fbindings' t2'
       | _ ->

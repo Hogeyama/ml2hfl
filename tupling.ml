@@ -297,9 +297,9 @@ let rec compose f t1 g t2 =
 let assoc_env f env =
   if debug() then Color.printf Color.Reverse "%a@." Id.print f;
   let _,xs,t = Id.assoc f env in
-  let ys,t' = decomp_fun t in
+  let ys,t' = decomp_funs t in
   match xs@ys with
-    x::xs' -> x, List.fold_right make_fun xs' t'
+  | x::xs' -> x, List.fold_right make_fun xs' t'
   | _ -> raise Not_found
 
 let compose_non_recursive first t1 t2 =
