@@ -312,4 +312,4 @@ let result_typ typ =
 let decomp_ttuple typ =
   match typ with
   | TTuple xs -> List.map Id.typ xs
-  | _ -> invalid_argument "make_tuple"
+  | _ -> invalid_argument "decomp_ttuple"

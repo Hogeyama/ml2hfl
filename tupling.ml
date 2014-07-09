@@ -45,12 +45,6 @@ let pair_let = pair_let.tr_term
 
 
 
-let assoc_env f env =
-  let _,xs,t = Id.assoc f env in
-  assert (xs = []);
-  let ys,t' = decomp_fun t in
-  ys, t'
-
 let rec decomp_let t =
   match t.desc with
     Let(flag, [f,xs,t1], t2) ->
@@ -247,37 +241,58 @@ let rec compose f t1 g t2 =
       make_if t21 (compose f t1 g t22) (compose f t1 g t23)
   | _ -> raise Cannot_compose
 
-let rec compose_same_arg map fg f t1 g t2 =
-  if debug() then Format.printf "compose_same_arg@.";
-  match t1.desc, t2.desc with
-    If(t11, t12, t13), If(t21, t22, t23) when t11 = t21 ->
-    let t2' = compose_same_arg map fg f t12 g t22 in
-    let t3' = compose_same_arg map fg f t13 g t23 in
-    make_if t11 t2' t3'
-  | If(t11, t12, t13), _ ->
-      let t2' = compose_same_arg map fg f t12 g t2 in
-      let t3' = compose_same_arg map fg f t13 g t2 in
-      make_if t11 t2' t3'
-  | _, If(t21, t22, t23) ->
-      make_if t21 (compose_same_arg map fg f t1 g t22) (compose_same_arg map fg f t1 g t23)
-  | _ -> compose_let (Some (map, fg)) f t1 g t2
 
 
-let same_arg_map xs1 xs2 =
-  let rec find i x xs =
-    match xs with
-      [] -> None
-    | x'::xs' when Id.same x x' -> Some i
-    | _::xs' -> find (i+1) x xs'
-  in
-  let find x xs = find 0 x xs in
-  let make_map xs1 xs2 = List.map (fun x -> find x xs1) xs2 in
-  if List.subset xs1 xs2 then
-    Some (`Subset (make_map xs1 xs2))
-  else if List.subset xs2 xs1 then
-    Some (`Supset (make_map xs2 xs1))
-  else
-    None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 let assoc_env f env =
   if debug() then Color.printf Color.Reverse "%a@." Id.print f;
@@ -286,54 +301,6 @@ let assoc_env f env =
   match xs@ys with
     x::xs' -> x, List.fold_right make_fun xs' t'
   | _ -> raise Not_found
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 let compose_non_recursive first t1 t2 =
   if debug() then Format.printf "compose_non_recursive@.";

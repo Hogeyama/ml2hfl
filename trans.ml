@@ -1611,6 +1611,19 @@ let normalize_let = normalize_let.tr_term
 
 
 
+let inline_var = make_trans ()
+
+let inline_var_term t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],({desc=Var _} as t1)], t2) ->
+      let t2' = inline_var.tr_term t2 in
+      subst x t1 t2'
+  | _ -> inline_var.tr_term_rec t
+
+let () = inline_var.tr_term <- inline_var_term
+let inline_var = inline_var.tr_term
+
+
 let inline_var_const = make_trans ()
 
 let inline_var_const_term t =

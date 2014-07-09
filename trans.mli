@@ -50,6 +50,7 @@ val elim_unused_let : ?cbv:bool -> typed_term -> typed_term
 val alpha_rename : typed_term -> typed_term
 val elim_unused_branch : typed_term -> typed_term
 val inline_no_effect : typed_term -> typed_term
+val inline_var : typed_term -> typed_term
 val inline_var_const : typed_term -> typed_term
 val inline_simple_exp : typed_term -> typed_term
 val replace_base_with_int : typed_term -> typed_term
