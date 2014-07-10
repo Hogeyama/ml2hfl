@@ -398,15 +398,9 @@ let rec move_proj_aux x t =
       t
       |> Trans.inline_var_const
       |> List.fold_right2 subst_rev' ts xs'
-      |@> Format.printf "MPA: %a@.@." print_term
       |> List.fold_right move_proj_aux xs'
       |> make_lets @@ List.map2 (fun x t -> x,[],t) xs' ts
   | _ -> t
-
-let move_proj_aux x t =
-(match Id.typ x with TTuple _ -> Format.printf "%a@." print_id_typ x| _ -> ()) ;
-move_proj_aux x t
-
 
 let move_proj_term t =
   match t.desc with

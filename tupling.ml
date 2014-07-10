@@ -368,22 +368,23 @@ let let_normalize = let_normalize.tr_term
 
 let rec tree_of_tuple t =
   match t.desc with
+  | Tuple [t1;t2] when t1 = none_flag || t1 = some_flag -> Rose_tree.Leaf t
   | Tuple ts -> Rose_tree.Node (List.map tree_of_tuple ts)
   | _ -> Rose_tree.Leaf t
 
-let elim_check t1 t2 =
-  if false && debug() then Color.printf Color.Yellow "%a, %a@." print_term t1 print_term t2;
+let is_subsumed t1 t2 =
+  if debug() then Color.printf Color.Yellow "is_subsumed: %a, %a; " print_term t1 print_term t2;
   match t1.desc, t2.desc with
-    App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
-    let check t1 t2 =
-      try
-        let tree1 = tree_of_tuple t1 in
-        let tree2 = tree_of_tuple t2 in
-        let tts = Rose_tree.flatten @@ Rose_tree.zip tree1 tree2 in
-        List.for_all (fun (t1, t2) -> same_term t1 t2 || is_none t1) tts
-      with Invalid_argument "Rose_tree.zip" -> false
-    in
-    List.for_all2 check ts1 ts2
+  | App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
+      let check t1 t2 =
+        try
+          let tree1 = tree_of_tuple t1 in
+          let tree2 = tree_of_tuple t2 in
+          let tts = Rose_tree.flatten @@ Rose_tree.zip tree1 tree2 in
+          List.for_all (fun (t1, t2) -> same_term t1 t2 || is_none t1) tts
+        with Invalid_argument "Rose_tree.zip" -> false
+      in
+      List.for_all2 check ts1 ts2
   | _ -> false
 
 let elim_sub_app = make_trans2 ()
@@ -394,7 +395,7 @@ let elim_sub_app_desc env desc =
       let env' = (x,t1)::env in
       let t2' =
         try
-          let y,_ = List.find (fun (y,t2) -> not (is_depend t1 y) && elim_check t2 t1) env in
+          let y,_ = List.find (fun (y,t2) -> not (is_depend t1 y) && is_subsumed t2 t1) env in
           if debug() then Format.printf "%a |-> %a@." Id.print y Id.print x;
           make_label (InfoId y) @@ subst y (make_var x) t2
         with Not_found -> t2
