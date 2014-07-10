@@ -112,7 +112,7 @@ let make_some' t =
 
 let rec same_arg path_rev t1 t2 =
   match t1,t2 with
-    Rose_tree.Leaf t1', Rose_tree.Leaf t2' when t1' = t2' -> List.rev path_rev
+  | Rose_tree.Leaf t1', Rose_tree.Leaf t2' when t1' = t2' -> List.rev path_rev
   | Rose_tree.Leaf t1', Rose_tree.Leaf t2' -> []
   | Rose_tree.Node ts1, Rose_tree.Node ts2 ->
       List.rev_flatten @@ List.mapi2 (fun i -> same_arg @@ i::path_rev) ts1 ts2

@@ -58,3 +58,4 @@ val abst_ref : typed_term -> typed_term
 val remove_top_por : typed_term -> typed_term
 val short_circuit_eval : typed_term -> typed_term
 val replace_bottom_def : typed_term -> typed_term
+val flatten_tuple : typed_term -> typed_term

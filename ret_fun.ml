@@ -42,7 +42,7 @@ let normalize_term t =
       make_let [x, [], t1'] @@ make_not (make_var x)
   | Tuple ts ->
       let xs,ts' = List.split_map (Pair.make var_of_term normalize.tr_term) ts in
-      make_lets (List.map2 (fun x t -> x,[],t) xs ts') @@ make_tuple (List.map make_var xs)
+      make_lets (List.map2 (fun x t -> x,[],t) xs ts') @@ make_tuple @@ List.map make_var xs
   | Proj(i, t1) ->
       let t1' = normalize.tr_term t1 in
       let x = var_of_term t1' in
@@ -86,17 +86,6 @@ let pair_eta_reduce_term env t =
   | Let(Nonrecursive, [x,[],{desc=Proj(1,{desc=Var y})}], t2) ->
       pair_eta_reduce.tr2_term_rec ((x, None, Some y)::env) t
   | Let(Nonrecursive, [x,[],{desc=Tuple[{desc=Var y}; {desc=Var z}]}], t2) ->
-(*
-      ignore (get_same_pair env y z);
-      if Id.id x = 1504 then
-        (Format.printf "ETA: %a = (%a, %a)@." Id.print x Id.print y Id.print z;
-         List.iter (function
-                     | (x,Some y,None) -> Format.printf "%a = fst %a@." Id.print x Id.print y
-                     | (x,None, Some z) -> Format.printf "%a = snd %a@." Id.print x Id.print z
-                     | (x,Some y,Some z) -> Format.printf "%a = (%a, %a)@." Id.print x Id.print y Id.print z
-                     | _ -> assert false
-                   ) env;assert false);
- *)
       begin
         match get_same_pair env y z with
         | None -> pair_eta_reduce.tr2_term_rec env t
@@ -138,7 +127,7 @@ let make_deep_pair t rhs = make_deep_pair.tr2_term rhs t
 
 let subst_all x y t = t
   |> subst_var x y
-  |> make_label (InfoTerm (make_pair (make_var x) (make_var y)))
+  |> make_label @@ InfoTerm (make_pair (make_var x) (make_var y))
 
 
 
@@ -214,20 +203,22 @@ let () = trans.tr2_term <- trans_term
 let () = trans.tr2_typ <- trans_typ
 
 let trans t = t
-  |@debug()&> Format.printf "XXX:@.%a@.@." print_term
+  |@debug()&> Format.printf "INPUT:@.%a@.@." print_term
   |> normalize
-  |@debug()&> Format.printf "ZZZ:@.%a@.@." print_term
+  |@debug()&> Format.printf "normalize:@.%a@.@." print_term
   |> Trans.inline_var_const
-  |@debug()&> Format.printf "AAA:@.%a@.@." print_term
+  |@debug()&> Format.printf "inline_var_const:@.%a@.@." print_term
   |> Trans.flatten_let
-  |@debug()&> Format.printf "BBB:@.%a@.@." print_term
+  |@debug()&> Format.printf "flatten_let:@.%a@.@." print_term
   |@> flip Type_check.check TUnit
   |> trans.tr2_term []
-  |@debug()&> Format.printf "CCC:@.%a@.@." print_term_typ
+  |@debug()&> Format.printf "ret_fun:@.%a@.@." print_term_typ
   |> Trans.remove_label
-  |@debug()&> Format.printf "DDD:@.%a@.@." print_term_typ
+  |@debug()&> Format.printf "remove_label:@.%a@.@." print_term_typ
+  |> Trans.flatten_tuple
+  |@debug()&> Format.printf "flatten_tuple:@.%a@.@." print_term_typ
   |*> Trans.inline_no_effect
   |> Trans.inline_var_const
-  |@debug()&> Format.printf "EEE:@.%a@.@." print_term_typ
+  |@debug()&> Format.printf "inline_var_const:@.%a@.@." print_term_typ
   |> pair_eta_reduce
   |@> flip Type_check.check TUnit

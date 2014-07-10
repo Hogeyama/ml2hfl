@@ -1959,3 +1959,27 @@ let replace_bottom_def_term t =
 
 let () = replace_bottom_def.tr_term <- replace_bottom_def_term
 let replace_bottom_def = replace_bottom_def.tr_term
+
+
+
+let flatten_tuple = make_trans ()
+
+let flatten_tuple_typ typ =
+  match typ with
+  | TTuple xs ->
+      a
+  | _ -> flatten_tuple.tr_typ_rec typ
+
+let flatten_tuple_term t =
+  match t.desc with
+  | Tuple ts ->
+      ts
+      |> List.map flatten_tuple_term ts
+      |> List.flatten_map (function {desc=Tuple ts''} -> ts'' | t -> [t])
+      |> make_tuple
+      |> xx
+  | _ -> flatten_tuple.tr_term_rec t
+
+let () = flatten_tuple.tr_typ <- flatten_tuple_typ
+let () = flatten_tuple.tr_term <- flatten_tuple_term
+let flatten_tuple = flatten_tuple.tr_term
