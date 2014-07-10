@@ -1,0 +1,7 @@
+CamlProgP4Byt(ipascal,lexuniv.cmo syntaxe.cmo valeur.cmo envir.cmo interp.cmo typage.cmo ipascal.cmo,)
+CamlProgP4Bin(ipascal,lexuniv.cmx syntaxe.cmx valeur.cmx envir.cmx interp.cmx typage.cmx ipascal.cmx,)
+CamlProgP4Byt(cpascal,lexuniv.cmo syntaxe.cmo envir.cmo typage.cmo compil.cmo cpascal.cmo,)
+CamlProgP4Bin(cpascal,lexuniv.cmx syntaxe.cmx envir.cmx typage.cmx compil.cmx cpascal.cmx,)
+
+clean::
+	$(RM) *.asm *.o

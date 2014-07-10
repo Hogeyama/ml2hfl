@@ -1,0 +1,11 @@
+[
+
+A.label(u1);
+
+A.label($);
+A.label(:);
+
+sin(A.label(:))
+
+
+]

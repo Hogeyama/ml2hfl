@@ -1,0 +1,16 @@
+(***********************************************************************)
+(*                                                                     *)
+(*                        Caml examples                                *)
+(*                                                                     *)
+(*            Pierre Weis                                              *)
+(*                                                                     *)
+(*                        INRIA Rocquencourt                           *)
+(*                                                                     *)
+(*  Copyright (c) 1994-2011, INRIA                                     *)
+(*  All rights reserved.                                               *)
+(*                                                                     *)
+(*  Distributed under the BSD license.                                 *)
+(*                                                                     *)
+(***********************************************************************)
+open Code;;
+val programme : char Stream.t -> instruction array;;

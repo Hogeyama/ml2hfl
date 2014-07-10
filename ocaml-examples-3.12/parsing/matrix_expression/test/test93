@@ -1,0 +1,7 @@
+// Tests imported from scicoslab tests
+
+[
+
+.switch u1 .case u4, a .case 77, b .otherwise c .end;
+
+]

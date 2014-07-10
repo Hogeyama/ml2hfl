@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# The commands to compile the library.
+#
+# $Id: compile,v 1.1 2007-07-10 22:39:48 weis Exp $
+
+set -x
+
+ocamlc -c base_module.mli
+ocamlc -c base_module.ml
+ocamlc -c path.mli
+ocamlc -c path.ml
+ocamlc -c module_types.mli
+ocamlc -c module_aggregate.mli
+ocamlc -c module_aggregate.ml
+ocamlc -c module_chemical_group.mli
+ocamlc -c module_chemical_group.ml
+ocamlc -c module_backbone_link.mli
+ocamlc -c module_backbone_link.ml
+ocamlc -c module_lib_frames.mli
+ocamlc -c module_lib_frames.ml
+ocamlc -c module_formulae.mli
+ocamlc -c module_formulae.ml
+#ledit -x -h /home/beaujolais/weis/.ocaml-history -c 
+\ocaml base_module.cmo path.cmo \
+ module_aggregate.cmo module_chemical_group.cmo \
+ module_backbone_link.cmo module_lib_frames.cmo \
+ module_formulae.cmo << eof
+
+module Lib_frames = Module_lib_frames.Make (Base_module);;
+open Lib_frames;;
+open Aggregate;;
+let s = free_site [];;
+Info.print Format.std_formatter s.info;;
+
+module Lib_frames_formulae = Module_formulae.Make (Base_module);;
+open Lib_frames_formulae;;
+open Aggregate;;
+let s = free_site [];;
+Info.print Format.std_formatter s.info;;
+
+open Formulae;;
+interp (Bond (Base [0], Base [1])) [1];;
+
+eof

@@ -1,0 +1,18 @@
+#!/bin/sh
+
+. ./clean
+ocamlc -c parsetree.mli
+ocamlyacc -v parser.mly
+ocamlc -c parser.mli
+ocamllex lexer.mll
+ocamlc -c lexer.ml
+ocamlc -c parser.ml
+ocamlc -c scoping.mli
+ocamlc -c scoping.ml
+ocamlc -c transl.ml
+ocamlc -c print_ast.mli
+ocamlc -c print_ast.ml
+ocamlc -c treat_fcn.mli
+ocamlc -c treat_fcn.ml
+ocamlc -c main_fcn.ml
+ocamlc -o fcn lexer.cmo parser.cmo scoping.cmo transl.cmo print_ast.cmo treat_fcn.cmo main_fcn.cmo

@@ -1,0 +1,27 @@
+#!/bin/sh -x
+
+# To be called from the examples/oc or examples/cl directories
+
+HERE=`pwd`
+
+DIRS=". grep asl kb basics calc \
+camltk/images camltk \
+colwheel \
+compress \
+config \
+demonstr docteur doctor \
+hanoi \
+minicaml pascal picomach \
+showsort \
+soli \
+spirals \
+minilogo"
+
+# DIRS = `find . -type d -print | grep -v CVS`
+
+for dir in $DIRS; do
+  echo "(cd $dir; imake -I$HERE/config)";
+  (cd $dir; imake -I$HERE/config);
+done
+
+  

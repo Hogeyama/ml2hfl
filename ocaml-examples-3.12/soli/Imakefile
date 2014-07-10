@@ -1,0 +1,2 @@
+CamlProgByt(soli,soli.cmo,)
+CamlProgBin(soli,soli.cmx,)

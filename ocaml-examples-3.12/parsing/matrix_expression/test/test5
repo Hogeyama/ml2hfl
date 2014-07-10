@@ -1,0 +1,13 @@
+// Testing assignment
+
+[
+
+size(u1(1));
+size(A(1));
+
+size(A(1):=2);
+
+size(u1(1):=2)
+size(u1(1):=a);
+
+]

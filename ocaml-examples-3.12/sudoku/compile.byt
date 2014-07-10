@@ -1,0 +1,30 @@
+#!/bin/sh
+#*********************************************************************#
+#                                                                     #
+#                           Objective Caml                            #
+#                                                                     #
+#                    Pierre Weis, INRIA Rocquencourt                  #
+#                                                                     #
+#  Copyright 2008 Institut National de Recherche en Informatique et   #
+#  en Automatique.  All rights reserved.  This file is distributed    #
+#  only by permission.                                                #
+#                                                                     #
+#*********************************************************************#
+
+# $Id: compile.byt,v 1.3 2008-09-13 11:15:56 weis Exp $
+
+# A simple script to compile the Sudoku game.
+
+# Types.ml is just a link to types.mli
+if ! (test -e types.ml); then
+  ln -s types.mli types.ml;
+fi
+
+ocamlc -c types.mli
+ocamlc -c types.ml
+ocamlc -c utils.ml
+ocamlc -c solve.ml
+ocamlc -c resolve.ml
+ocamlc -c read.ml
+ocamlc -c main.ml
+ocamlc types.cmo utils.cmo solve.cmo resolve.cmo read.cmo main.cmo

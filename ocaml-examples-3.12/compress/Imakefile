@@ -1,0 +1,4 @@
+CamlProgByt(compr,esbit.cmo fileprio.cmo huffman.cmo compr.cmo,)
+CamlProgByt(decompr,esbit.cmo fileprio.cmo huffman.cmo decompr.cmo,)
+CamlProgBin(compr,esbit.cmx fileprio.cmx huffman.cmx compr.cmx,)
+CamlProgBin(decompr,esbit.cmx fileprio.cmx huffman.cmx decompr.cmx,)

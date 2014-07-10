@@ -1,0 +1,233 @@
+#ifdef unix
+#undef unix
+#endif
+
+#ifdef graphics
+#undef graphics
+#endif
+
+#ifdef labltk
+#undef labltk
+#endif
+
+#ifndef TOPDIR
+#define TOPDIR .
+#endif
+
+#ifdef __STDC__
+#define concat(a,b) a##b
+#else
+#define concat(a,b) a/**/b
+#endif
+
+#define ProgByt(name,objs,others)                                          @@\
+name.BYTOBJS=objs                                                          @@\
+name.FILES=$(name.BYTOBJS:.cmo=.ml)                                        @@\
+                                                                           @@\
+byt:: name.byt                                                             @@\
+                                                                           @@\
+depend::                                                                   @@\
+	$(CAMLDEP) $(name.FILES) >> Makefile                               @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) name name.byt                                                @@\
+
+#define ProgBin(name,objs,others)                                          @@\
+name.BINOBJS=objs                                                          @@\
+name.FILES=$(name.BINOBJS:.cmx=.ml)                                        @@\
+                                                                           @@\
+bin:: name.bin                                                             @@\
+                                                                           @@\
+depend::                                                                   @@\
+	$(CAMLDEP) $(name.FILES) >> Makefile                               @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) name.bin                                                     @@\
+
+#define CamlProgByt(name,objs,others)                                      @@\
+        ProgByt(name,objs,others)                                          @@\
+                                                                           @@\
+name.byt: objs                                                             @@\
+	$(CAMLBYT) $(LINKFLAGSBYT) others objs -o name.byt                 @@\
+	$(CP) name.byt name                                                @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) name                                                         @@\
+
+#define CamlProgBin(name,objs,others)                                      @@\
+        ProgBin(name,objs,others)                                          @@\
+                                                                           @@\
+name.bin: objs                                                             @@\
+	$(CAMLBIN) $(LINKFLAGSBIN) others objs -o name.bin                 @@\
+	$(CP) name.bin name                                                @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) name                                                         @@\
+
+#define CamlProgP4Byt(name,objs,others)                                    @@\
+CAMLFLAGSBYT=-w A -warn-error Ae -g -pp camlp4o                            @@\
+                                                                           @@\
+        ProgByt(name,objs,others)                                          @@\
+                                                                           @@\
+name.byt: objs                                                             @@\
+	$(CAMLBYT) $(LINKFLAGSBYT) others objs -o name                     @@\
+
+#define CamlProgP4Bin(name,objs,others)                                    @@\
+CAMLFLAGSBIN=-w A -warn-error Ae -pp camlp4o                               @@\
+                                                                           @@\
+        ProgBin(name,objs,others)                                          @@\
+                                                                           @@\
+name.bin: objs                                                             @@\
+	$(CAMLBIN) $(LINKFLAGSBIN) others objs -o name.bin                 @@\
+	$(CP) name.bin name                                                @@\
+
+#define CamlCustomProgByt(name,objs,others)                                @@\
+        ProgByt(name,objs,others)                                          @@\
+                                                                           @@\
+name.byt: objs                                                             @@\
+	$(CAMLBYT) $(LINKFLAGSBYT) -custom others objs -o name             @@\
+
+#define CamlCustomProgBin(name,objs,others)                                @@\
+        CamlProgBin(name,objs,others)                                      @@\
+
+#define CamlCustomProgP4Byt(name,objs,others)                              @@\
+CAMLFLAGSBYT=-g -w A -warn-error Ae -pp camlp4o                            @@\
+                                                                           @@\
+        ProgByt(name,objs,others)                                          @@\
+                                                                           @@\
+name.byt: objs                                                             @@\
+	$(CAMLBYT) $(LINKFLAGSBYT) -custom others objs -o name             @@\
+
+#define CamlCustomProgP4Bin(name,objs,others)                              @@\
+        CamlProgP4Bin(name,objs,others)
+
+#define CamlGraphProgByt(name,objs,others)                                 @@\
+  CamlCustomProgByt(name,objs,unix.cma graphics.cma others)                @@\
+
+#define CamlGraphProgBin(name,objs,others)                                 @@\
+  CamlCustomProgBin(name,objs,unix.cmxa graphics.cmxa others)              @@\
+
+#define CamlGraphProgP4Byt(name,objs,others)                               @@\
+  CamlCustomProgP4Byt(name,objs,unix.cma graphics.cma others)              @@\
+
+#define CamlGraphProgP4Bin(name,objs,others)                               @@\
+  CamlCustomProgP4Bin(name,objs,unix.cmxa graphics.cmxa others)            @@\
+
+#define CamlTkProgByt(name,objs,others)                                    @@\
+CAMLFLAGSBYT=-warn-error A -I +labltk                                      @@\
+LINKFLAGSBIN=-I +labltk                                                    @@\
+  CamlCustomProgByt(name,objs,labltk.cma others)
+
+#define CamlTkProgBin(name,objs,others)                                    @@\
+CAMLFLAGSBIN=-warn-error A -I +labltk                                      @@\
+LINKFLAGSBIN=-I +labltk                                                    @@\
+  CamlCustomProgBin(name,objs,labltk.cmxa others)
+
+#define CamlLibraryByt(name,ojs,others)                                    @@\
+byt: name.byt                                                              @@\
+                                                                           @@\
+name.byt: objs                                                             @@\
+	$(CAMLLIBRBYT) others objs -o name                                 @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) name.cma                                                     @@\
+                                                                           @@\
+#define CamlLibraryBin(name,ojs,others)                                    @@\
+bin:: name.bin                                                             @@\
+                                                                           @@\
+name.bin: objs                                                             @@\
+	$(CAMLLIBRBIN) others objs -o name                                 @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) name.cmxa                                                    @@\
+                                                                           @@\
+
+#define CamlYaccFile(basename)                                             @@\
+basename.ml basename.mli: basename.mly                                     @@\
+	@$(RM) basename.ml basename.mli                                    @@\
+	$(CAMLYACC) basename.mly                                           @@\
+	@chmod a-w basename.ml basename.mli                                @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) basename.ml basename.mli                                     @@\
+                                                                           @@\
+beforedepend:: basename.ml basename.mli                                    @@\
+                                                                           @@\
+
+#define CamlLexFile(basename)                                              @@\
+basename.ml: basename.mll                                                  @@\
+	@$(RM) basename.ml                                                 @@\
+	$(CAMLLEX) basename.mll                                            @@\
+	@chmod a-w basename.ml                                             @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) basename.ml                                                  @@\
+                                                                           @@\
+beforedepend:: basename.ml                                                 @@\
+                                                                           @@\
+
+#define CamlPreproFile(target)                                             @@\
+target: concat(target,p)                                                   @@\
+	@$(RM) target                                                      @@\
+	@echo '(* GENERATED FILE --- DO NOT EDIT. *)' > target             @@\
+	$(CPP) < concat(target,p) >> target                                @@\
+	@chmod a-w target                                                  @@\
+                                                                           @@\
+clean::                                                                    @@\
+	$(RM) target                                                       @@\
+                                                                           @@\
+beforedepend:: target                                                      @@\
+                                                                           @@\
+
+#define SubDir(dir)                                                        @@\
+byt::                                                                      @@\
+	@-echo "-- Making byt in" dir; cd dir; make byt                    @@\
+                                                                           @@\
+bin::                                                                      @@\
+	@-echo "-- Making bin in" dir; cd dir; make bin                    @@\
+                                                                           @@\
+clean::                                                                    @@\
+	@-echo "-- Making clean in" dir; cd dir; make clean                @@\
+                                                                           @@\
+depend::                                                                   @@\
+	@-echo "-- Making depend in" dir; cd dir; make depend              @@\
+                                                                           @@\
+makefiles::                                                                @@\
+	@-echo "-- Making makefiles in" dir; cd dir; make CONFIGDIR="../config" makefiles @@\
+                                                                           @@\
+
+#define SubGraphDir(dir)                                                   @@\
+byt::                                                                      @@\
+	@-echo "-- Making byt in" dir; echo "(These programs require the libgraph library;"; echo " if you haven't installed it, compilation will fail.)"; cd dir; make byt                    @@\
+                                                                           @@\
+bin::                                                                      @@\
+	@-echo "-- Making bin in" dir; echo "(These programs require the libgraph library compiled to the native code;"; echo " if you haven't installed it, compilation will fail.)"; cd dir; make bin                    @@\
+                                                                           @@\
+clean::                                                                    @@\
+	@-echo "-- Making clean in" dir; cd dir; make clean                @@\
+                                                                           @@\
+depend::                                                                   @@\
+	@-echo "-- Making depend in" dir; cd dir; make depend              @@\
+                                                                           @@\
+makefiles::                                                                @@\
+	@-echo "-- Making makefiles in" dir; cd dir; make CONFIGDIR="../config" makefiles @@\
+                                                                           @@\
+
+#define SubTkDir(dir)                                                      @@\
+byt::                                                                      @@\
+	@-echo "-- Making byt in" dir; echo "(These programs require the CamlTk library;"; echo " if you haven't installed it, compilation will fail.)"; cd dir; make byt                    @@\
+                                                                           @@\
+bin::                                                                      @@\
+	@-echo "-- Making bin in" dir; echo "(These programs require the CamlTk library compiled to native code;"; echo " if you haven't installed it, compilation will fail.)"; cd dir; make bin                    @@\
+                                                                           @@\
+clean::                                                                    @@\
+	@-echo "-- Making clean in" dir; cd dir; make clean                @@\
+                                                                           @@\
+                                                                           @@\
+depend::                                                                   @@\
+	@-echo "-- Making depend in" dir; cd dir; make depend              @@\
+                                                                           @@\
+makefiles::                                                                @@\
+	@-echo "-- Making makefiles in" dir; cd dir; make CONFIGDIR="../config" makefiles @@\
+                                                                           @@\
+

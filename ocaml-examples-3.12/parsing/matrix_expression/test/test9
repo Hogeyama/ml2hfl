@@ -1,0 +1,7 @@
+// Tests imported from scicoslab tests
+
+[
+
+.switch 1 .otherwise 0 .end;
+
+]

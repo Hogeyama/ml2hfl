@@ -1,0 +1,60 @@
+#*********************************************************************#
+#                                                                     #
+#                           Objective Caml                            #
+#                                                                     #
+#                    Pierre Weis, INRIA Rocquencourt                  #
+#                                                                     #
+#  Copyright 2008 Institut National de Recherche en Informatique et   #
+#  en Automatique.  All rights reserved.  This file is distributed    #
+#  only by permission.                                                #
+#                                                                     #
+#*********************************************************************#
+
+# $Id: README,v 1.3 2009-11-15 22:17:26 weis Exp $
+
+What is it ?
+============
+
+This program solves any solvable Sudoku problem. A solvable problem is a
+problem that has a unique solution.
+This version is restricted to the classical 9x9 Sudoku problems.
+
+How to compile ?
+================
+
+To compile:
+- with the byte code compiler, run ./compile_byt
+- with the native code compiler, run ./compile_bin
+
+To clean:
+- run ./clean
+
+How to enter a new Sudoku problem ?
+===================================
+
+To enter a new problem, edit the file main.ml; modify the function read_board
+to add a new clause that relate a new number to the new problem, then modify
+the line
+
+let out_board = read_board 530;;
+
+to replace integer 530 by the number assigned to the new problem.
+
+Recompile and run: you've got the solution of your problem, if any :)
+
+Note: Modifying the sudoku program to let it enter new problems from the
+command line and/or from files is an easy exercise which is left to the reader.
+
+What are the Sudoku rules ?
+===========================
+
+The Sudoku rules are over simple:
+
+  Only two positive rules:
+   (0) Each line and each column should be a complete set of digits.
+   (1) Each 3x3 square should be a complete set of digits.
+
+From those rules, we can derive the two following (negative) rules:
+   (2) No two identical digits can be in any line or column.
+   (3) No two identical digits can be in any 3x3 square.
+

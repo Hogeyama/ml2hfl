@@ -1,0 +1,113 @@
+#######################################################################
+#                                                                     #
+#                        Caml examples                                #
+#                                                                     #
+#            Pierre Weis                                              #
+#                                                                     #
+#                        INRIA Rocquencourt                           #
+#                                                                     #
+#  Copyright (c) 1994-2011, INRIA                                     #
+#  All rights reserved.                                               #
+#                                                                     #
+#  Distributed under the BSD license.                                 #
+#                                                                     #
+#######################################################################
+
+# $Id: Config.mk.in,v 1.1 2011-08-08 19:09:58 weis Exp $
+
+# This Makefile is a generic configuration Makefile for Caml applications.
+# This Makefile is independent of the software to be built and
+# defines basic Unix commands and tools for Caml compilation.
+
+# This Makefile should be included at the beginning of the Makefile that handles
+# a set of Caml files (to build a library or an application).
+# Simply write at the beginning of your Makefile:
+# include path_to_Config.mk/Config.mk
+
+# Where are the source files of the project on the development machine ?
+# This directory is set up using the configure script.
+SRCROOTDIR=$
+
+# Where the project will be installed ?
+# (normally in $(PREFIX)/{bin,lib})
+# This directory is set up using the configure script.
+PREFIXDIR=$
+
+# Basic auxiliary commands
+CPCONFIG=-pRf
+CP=cp $(CPCONFIG)
+CPC=cp
+CVS=cvs
+RM=rm -rf
+MV=mv -f
+TOUCH=touch
+CHMOD=chmod
+CHMOD_R=$(CHMOD) -R ug+w
+SHELL=/bin/sh
+MKDIR=mkdir -p
+RMDIR=rm -rf
+LN=ln -sf
+CHGRP=chgrp -fR
+TARC=tar -cvzf
+
+# The list of Caml source file to compile
+CAML_FILES=
+CAML_GENERATED_FILES=
+
+# The Caml compilers default configurations.
+CAMLC_INCLUDES=
+CAMLC_BYT_INCLUDES=$(CAMLC_INCLUDES)
+CAMLC_BIN_INCLUDES=$(CAMLC_INCLUDES)
+CAMLC_BYT_CONFIG=-annot -w A -warn-error A -g $(CAMLC_BYT_INCLUDES)
+CAMLC_BIN_CONFIG=-w A -warn-error A $(CAMLC_BIN_INCLUDES)\
+ -unsafe -noassert -inline 10000
+CAMLC_BYT_LIBR_CONFIG=$(CAMLC_BYT_INCLUDES) -a
+CAMLC_BIN_LIBR_CONFIG=$(CAMLC_BIN_INCLUDES) -a
+CAMLC_YAC_CONFIG=-v
+CAMLC_LEX_CONFIG=
+
+# The Caml compilers and auxiliaries commands.
+CAMLC_PPG=camlpp
+CAMLC_BYT=ocamlc $(CAMLC_BYT_CONFIG)
+CAMLC_BIN=ocamlopt $(CAMLC_BIN_CONFIG)
+CAMLC_YAC=ocamlyacc $(CAMLC_YAC_CONFIG)
+CAMLC_LEX=ocamllex $(CAMLC_LEX_CONFIG)
+CAMLC_BYT_LIBR=ocamlc $(CAMLC_BYT_LIBR_CONFIG)
+CAMLC_BIN_LIBR=ocamlopt $(CAMLC_BIN_LIBR_CONFIG)
+
+# Tools: dependencies generation.
+CAMLC_DEP=ocamldep -slash $(CAMLC_INCLUDES)
+
+# Tools: the moca program generator
+MOCAC_CONFIG=
+MOCAC=mocac $(MOCAC_CONFIG)
+
+# Tools: defining some macros for linking.
+WITH_BYT_UNIX=unix.cma -cclib -lunix
+WITH_BYT_STR=str.cma -cclib -lstr
+
+WITH_BIN_UNIX=$(WITH_BYT_UNIX:.cma=.cmxa)
+WITH_BIN_STR=$(WITH_BYT_STR:.cma=.cmxa)
+
+# Tools: documentation generation.
+CAMLC_DOC=ocamldoc
+CAMLC_DOC_HTML_FLAGS=-html -d doc -v -colorize-code
+CAMLC_DOC_LATEX_FLAGS=-latex -d doc -v
+
+# Tools: Htmlc file generator.
+# Configuration of Htmlc to generate Web pages:
+# where are include files
+HTMLC_CONF_INCLUDES=-I $(SRCROOTDIR)/Data/Includes
+# where is the configuration file for Htmlc.
+HTMLC_CONF_ENV=-env $(SRCROOTDIR)/Data/config.ml
+
+HTMLC_CONF_CONFIG=-lang en $(HTMLC_CONF_ENV)
+
+# Additional flags to set in Makefiles
+HTMLC_FLAGS=-I Includes
+HTMLC_CONF_FLAGS=
+
+# Basic compilation tools
+HTMLC_CONF=$(HTMLC_CONF_CONFIG) $(HTMLC_CONF_INCLUDES) $(HTMLC_CONF_FLAGS)
+
+HTMLC=htmlc $(HTMLC_CONF) $(HTMLC_FLAGS)
