@@ -149,17 +149,21 @@ let compose_non_recursive first t1 t2 =
 let compose_simple_rec fg f t1 g t2 =
   let before1,(x1,ts1),after1,t1' = partition_bindings f @@ Trans.alpha_rename t1 in
   let before2,(x2,ts2),after2,t2' = partition_bindings g @@ Trans.alpha_rename t2 in
-  (*
-  let x1' = Id.new_var_id x1 in
-  let x2' = Id.new_var_id x2 in
-  let sbst1 = subst x1 @@ make_var x1' in
-  let sbst2 = subst x2 @@ make_var x2' in
-  let aux sbst (flag,(f,xs,t)) = flag, (f, xs, sbst t) in
-  let after1' = List.map (aux sbst1) after1 in
-  let after2' = List.map (aux sbst2) after1 in
-  let t1'' = sbst1 t1' in
-  let t2'' = sbst2 t2' in
-   *)
+  let before = before1 @ before2 in
+  let after = after1 @ after2 in
+  let p = Id.new_var ~name:"p" @@ TTuple [x1; x2] in
+  let pat =
+    [p,  [], make_app (make_var fg) (ts1 @ ts2);
+     x1, [], make_fst @@ make_var p;
+     x2, [], make_snd @@ make_var p]
+  in
+  make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
+
+let compose_simple_rec fg fts =
+  let befors,xtss,afters,ts =
+    List.fold_right (fun (w,x,y,z) -> )
+  let before1,(x1,ts1),after1,t1' = partition_bindings f @@ Trans.alpha_rename t1 in
+  let before2,(x2,ts2),after2,t2' = partition_bindings g @@ Trans.alpha_rename t2 in
   let before = before1 @ before2 in
   let after = after1 @ after2 in
   let p = Id.new_var ~name:"p" @@ TTuple [x1; x2] in
@@ -171,6 +175,9 @@ let compose_simple_rec fg f t1 g t2 =
   make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
 
 let compose_let fg fts =
+  match fts with
+  | [f,t1;g,t2] ->
+begin
   let forms = List.map (uncurry classify) fts in
   if debug() then Format.printf "compose_let@.";
   if debug() then List.iter (fun (f,t) -> Format.printf "%a:%a@.@." Id.print f print_term t) fts;
@@ -179,21 +186,23 @@ let compose_let fg fts =
   | _,          FNonRec    -> compose_non_recursive false t1 t2
   | FOther,     _
   | _,          FOther     -> raise Cannot_compose
-  | FSimpleRec, FSimpleRec -> compose_simple_rec fg fts
+  | FSimpleRec, FSimpleRec -> compose_simple_rec fg f t1 g t2
+end
+  | _ -> raise Cannot_compose
 
 let rec compose fg fts =
   if debug() then Format.printf "compose@.";
-  let decomp_if i t =
+  let decomp_if i (f,t) =
     match t.desc with
-    | If(t1,t2,t3) -> Some (i,t1,t2,t3)
+    | If(t1,t2,t3) -> Some (i,f,t1,t2,t3)
     | _ -> None
   in
-  let ts' = List.mapi (fun i -> decomp_if i -| snd) fts in
+  let ts' = List.mapi decomp_if fts in
   try
-    let i,t1,t2,t3 = Option.get @@ List.find is_some ts' in
-    let fts2 = List.replace_nth fts i t2 in
-    let fts3 = List.replace_nth fts i t3 in
-    make_iff t1 (compose fg fts2) (compose fg fts3)
+    let i,f,t1,t2,t3 = Option.get @@ List.find Option.is_some ts' in
+    let fts2 = List.replace_nth fts i (f,t2) in
+    let fts3 = List.replace_nth fts i (f,t3) in
+    make_if t1 (compose fg fts2) (compose fg fts3)
   with Not_found -> compose_let fg fts
 
 

@@ -42,6 +42,8 @@ module StringSet = Set.Make(String)
 module List = struct
   include ExtList.List
 
+  let singleton x = [x]
+
   (*** returns a list of integers [m;...;n-1] ***)
   let rec fromto m n =
     if m >= n then
