@@ -96,6 +96,7 @@ let main in_channel =
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
   if !Flag.input_cegar then
+    let open CEGAR_syntax in
     let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
     let prog' = Typing.infer ~is_cps:true {prog with env=[]} in
     let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in

@@ -91,7 +91,6 @@ let rec make_trees tree =
             List.rev_map_flatten (fun x -> List.map (List.cons x) yss) xs
       in
       List.map (fun ts -> Rose_tree.Node ts) @@ pick @@ List.map make_trees ts
-  | Rose_tree.Node _ -> assert false
 
 let rec term_of_tree tree =
   match tree with
@@ -195,17 +194,6 @@ let rec typ_of_tree t =
   match t with
   | Rose_tree.Leaf typ -> typ
   | Rose_tree.Node typs -> TTuple (List.map (Id.new_var -| typ_of_tree) typs)
-
-let rec elim_none t =
-  match t with
-  | Rose_tree.Leaf None -> None
-  | Rose_tree.Leaf (Some typ) -> Some (Rose_tree.Leaf (opt_typ typ))
-  | Rose_tree.Node[t1;t2] ->
-      match elim_none t1, elim_none t2 with
-      | None, None -> None
-      | Some t, None
-      | None, Some t -> Some t
-      | Some t1, Some t2 -> Some (Rose_tree.Node[t1;t2])
 
 let trans_typ ttbb typ =
   match typ with

@@ -673,26 +673,6 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
             make_let_f flag bindings' @@
               List.fold_right2 aux bindings bindings' @@
               make_app_excep t1.effect t1' (make_var k) (make_var h)
-    | LetCPS(flag, bindings, t1), EExcep ->
-        let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
-        let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let e = Id.new_var ~name:"e" !typ_excep in
-        let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-        let h' = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-        let xs = List.map (fun (_,t) -> Id.new_var (trans_typ t.typ_orig t.typ_cps)) bindings in
-        let bindings' = List.map2 (fun x (f,_) -> trans_var f, [], make_var x) xs bindings in
-        let aux (f,t) =
-          let f' = trans_var f in
-            t.effect, transform (k_post ^ "_" ^ Id.name f') t
-        in
-        let ets = List.map aux bindings in
-        let t1' = transform k_post t1 in
-        let t0 = make_let_f flag bindings' (make_app_excep t1.effect t1' (make_var k) (make_var h')) in
-        let aux x (e,t) t' = make_app_excep e t (make_fun x t') (make_var h') in
-        make_fun k
-          (make_fun h
-             (make_let [h', [], make_var h] (* to prevent the increase of code size in eta-reduction *)
-                (List.fold_right2 aux xs ets t0)))
     | BinOpCPS(op, t1, t2), ENone ->
         let t1' = transform k_post t1 in
         let t2' = transform k_post t2 in

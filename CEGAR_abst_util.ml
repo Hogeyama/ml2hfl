@@ -297,6 +297,7 @@ let make_arg_let prog =
 
 let rec add_label {env=env;defs=defs;main=main} =
   let merge = function
+    | [] -> assert false
     | [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, e, t2]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
         [f1,xs1,t11,e1, make_label 1 t12; f2,xs2,t21,e2,make_label 0 t22]
