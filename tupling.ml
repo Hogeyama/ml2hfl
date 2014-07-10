@@ -160,19 +160,17 @@ let compose_simple_rec fg f t1 g t2 =
   make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
 
 let compose_simple_rec fg fts =
-  let befors,xtss,afters,ts =
-    List.fold_right (fun (w,x,y,z) -> )
-  let before1,(x1,ts1),after1,t1' = partition_bindings f @@ Trans.alpha_rename t1 in
-  let before2,(x2,ts2),after2,t2' = partition_bindings g @@ Trans.alpha_rename t2 in
-  let before = before1 @ before2 in
-  let after = after1 @ after2 in
-  let p = Id.new_var ~name:"p" @@ TTuple [x1; x2] in
-  let pat =
-    [p,  [], make_app (make_var fg) (ts1 @ ts2);
-     x1, [], make_fst @@ make_var p;
-     x2, [], make_snd @@ make_var p]
+  let aux (f,t) (before_acc, xs, arg_acc, after_acc, ts) =
+    let before,(x,arg),after,t' = partition_bindings f @@ Trans.alpha_rename t in
+    before@before_acc, x::xs, arg@arg_acc, after@after_acc, t'::ts
   in
-  make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_pair t1' t2'
+  let before,xs,arg,after,ts = List.fold_right aux fts ([],[],[],[],[]) in
+  let p = Id.new_var ~name:"p" @@ TTuple xs in
+  let pat =
+    (p,  [], make_app (make_var fg) arg)
+    :: List.mapi (fun i x -> x, [], make_proj i @@ make_var p) xs
+  in
+  make_lets_f before @@ make_lets pat @@ make_lets_f after @@ make_tuple ts
 
 let compose_let fg fts =
   match fts with
@@ -186,7 +184,7 @@ begin
   | _,          FNonRec    -> compose_non_recursive false t1 t2
   | FOther,     _
   | _,          FOther     -> raise Cannot_compose
-  | FSimpleRec, FSimpleRec -> compose_simple_rec fg f t1 g t2
+  | FSimpleRec, FSimpleRec -> compose_simple_rec fg [f, t1; g, t2]
 end
   | _ -> raise Cannot_compose
 
