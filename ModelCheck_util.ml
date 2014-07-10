@@ -56,7 +56,7 @@ let capitalize_var = String.capitalize
 let uncapitalize_var = String.uncapitalize
 
 let capitalize {env=env;defs=defs;main=main} =
-  let env' = List.map (fun (f,typ) -> capitalize_var f, typ) env in
+  let env' = List.map (Pair.map_fst capitalize_var) env in
   let map = List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
   let aux (f,xs,t1,e,t2) = capitalize_var f, xs, subst_map map t1, e, subst_map map t2 in
   let defs' = List.map aux defs in
@@ -281,12 +281,12 @@ let rec beta_reduce prog =
 
 let model_check_aux (prog,spec) =
   let prog = Typing.infer prog in
-  let env = prog.env in
   let prog = if Flag.useless_elim then Useless_elim.elim prog else prog in
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
-    match TrecsInterface.check env (prog,spec) with
-        TrecsInterface.Safe env ->
-          let env' = List.map (fun (x,typ) -> uncapitalize_var x, typ) env in
-            Safe env'
-      | TrecsInterface.Unsafe ce -> Unsafe (trans_ce ce)
+  let env = prog.env in
+  match TrecsInterface.check env (prog,spec) with
+  | TrecsInterface.Safe env ->
+      let env' = List.map (Pair.map_fst uncapitalize_var) env in
+      Safe env'
+  | TrecsInterface.Unsafe ce -> Unsafe (trans_ce ce)

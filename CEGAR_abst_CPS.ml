@@ -297,10 +297,10 @@ let rec abstract_term must env cond pts t typ =
       else [t']
   | Fun _ ->
       let env',t' = decomp_annot_fun t in
-      let env' = List.map (fun (x,typ) -> x, Option.get typ) env' in
-      let pts' = List.flatten_map (fun (x,typ) -> make_pts x typ) env' in
+      let env' = List.map (Pair.map_snd Option.get) env' in
+      let pts' = List.flatten_map (uncurry make_pts) env' in
       let pts'' = pts' @@@ pts in
-      let xs' = List.flatten_map (fun (x,typ) -> abst_arg x typ) env' in
+      let xs' = List.flatten_map (uncurry abst_arg) env' in
       let env'' = env' @@@ env in
       let typ' = CEGAR_type.app typ (List.map (fun (x,_) -> Var x) env') in
       let t'' = hd (abstract_term (Some pts') env'' cond pts'' t' typ') in

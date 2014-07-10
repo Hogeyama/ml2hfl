@@ -385,16 +385,16 @@ let subst_constr x y (typ1,typ2) = subst x y typ1, subst x y typ2
 
 let rec calc_eq constrs =
   let edges = List.rev_flatten_map (function (TVar x, TVar y) -> [x,y] | _ -> []) constrs in
-  let max = List.fold_left (fun acc (x,y) -> max acc (max x y)) 0 edges in
-  let min = List.fold_left (fun acc (x,y) -> min acc (min x y)) max edges in
+  let max = List.fold_left (fun acc (x,y) -> max acc @@ max x y) 0 edges in
+  let min = List.fold_left (fun acc (x,y) -> min acc @@ min x y) max edges in
   let sccs = calc_scc min (max-min+1) edges in
-  List.map (fun scc -> List.hd scc, List.tl scc) sccs
+  List.map (Pair.make List.hd List.tl) sccs
 
 
 let solve_constraints constrs env eqs =
   let hash = Hashtbl.create 0 in
   let rec solve = function
-      TTop -> TTop
+    | TTop -> TTop
     | TBase -> TBase
     | TFun(typ1,typ2) -> TFun(solve typ1, solve typ2)
     | TVar x ->
@@ -402,25 +402,26 @@ let solve_constraints constrs env eqs =
           Hashtbl.find hash x
         with Not_found ->
           try
-            let _,xs = List.find (fun (y,_) -> x = y) eqs in
+            let _,xs = List.find ((=) x -| fst) eqs in
             let constrs' = List.filter (function (TVar y,_) -> List.mem y (x::xs) | _ -> false) constrs in
             let constrs'' = List.filter (function (_,TVar y) -> not (List.mem y (x::xs)) | _ -> true) constrs' in
-            let ub = List.map (fun (_,typ) -> solve typ) constrs'' in
+            let ub = List.map (solve -| snd) constrs'' in
             let typ = if List.mem TBase ub then TBase else TTop in
-              Hashtbl.add hash x typ; typ
+            Hashtbl.add hash x typ;
+            typ
           with Not_found ->
-            let y,_ = List.find (fun (_,xs) -> List.mem x xs) eqs in
-              solve (TVar y)
+            let y,_ = List.find (List.mem x -| snd) eqs in
+            solve @@ TVar y
   in
-    List.map (fun (f,typ) -> f, solve typ) env
+  List.map (Pair.map_snd solve) env
 
 let print_env _ env =
   Format.printf "Environment:@.";
   List.iter (fun (x,typ) -> Format.printf "%s: %a@." x print_typ typ) env;
   Format.printf "@."
 
-let infer {env=env;defs=defs;main=main} =
-  let env' = List.map (fun (f,_) -> (new_env env) f) env in
+let infer {env; defs; main} =
+  let env' = List.map (new_env env -| fst) env in
   let constrs = (List.assoc main env', TBase) :: List.rev_flatten_map (constraints_def env env') defs in
   let eqs = calc_eq constrs in
   solve_constraints constrs env' eqs
@@ -442,39 +443,39 @@ let rec elim_term env = function
       let t1,ts = decomp_app t in
       let ts' =
         match t1 with
-            Const _ -> List.map (elim_term env) ts
-          | Var x ->
-              let n = List.length ts in
-              let use = List.filter (fun i -> i < n) (use_of_typ (List.assoc x env)) in
-              let ts' = List.map (List.nth ts) use in
-                List.map (elim_term env) ts'
-          | _ -> assert false
+        | Const _ -> List.map (elim_term env) ts
+        | Var x ->
+            let n = List.length ts in
+            let use = List.filter (fun i -> i < n) (use_of_typ (List.assoc x env)) in
+            let ts' = List.map (List.nth ts) use in
+            List.map (elim_term env) ts'
+        | _ -> assert false
       in
-        make_app t1 ts'
+      make_app t1 ts'
   | Let _ -> assert false
   | Fun _ -> assert false
 
 let elim_def env (f,xs,t1,es,t2) =
   let f_typ = List.assoc f env in
-    if snd (decomp_tfun f_typ) = TTop
-    then []
-    else
-      let use = use_of_typ f_typ in
-      let xs' = List.map (List.nth xs) use in
-        let rec get_arg_env typ xs =
-          match typ,xs with
-              TFun(typ1,typ2), x::xs -> (x,typ1) :: get_arg_env typ2 xs
-            | TVar _, _ -> assert false
-            | _ -> []
-        in
-        let env' = get_arg_env f_typ xs @@@ env in
-          [f, xs', elim_term env' t1, es, elim_term env' t2]
+  if snd (decomp_tfun f_typ) = TTop
+  then []
+  else
+    let use = use_of_typ f_typ in
+    let xs' = List.map (List.nth xs) use in
+    let rec get_arg_env typ xs =
+      match typ,xs with
+      | TFun(typ1,typ2), x::xs -> (x,typ1) :: get_arg_env typ2 xs
+      | TVar _, _ -> assert false
+      | _ -> []
+    in
+    let env' = get_arg_env f_typ xs @@@ env in
+    [f, xs', elim_term env' t1, es, elim_term env' t2]
 
 (** call-by-name *)
-let elim {env=env;defs=defs;main=main} =
-  let env' = infer {env=env;defs=defs;main=main} in
+let elim {env; defs; main} =
+  let env' = infer {env; defs; main} in
   let defs' = List.flatten_map (elim_def env') defs in
   Format.printf "BEFORE:@.%a@.@.%a@.AFTER:@.%a@."
-                CEGAR_print.prog {env=env;defs=defs;main=main} print_env env'
-                CEGAR_print.prog {env=env;defs=defs';main=main};
-  Typing.infer {env=[];defs=defs';main=main}
+                CEGAR_print.prog {env; defs; main} print_env env'
+                CEGAR_print.prog {env; defs=defs';main};
+  Typing.infer {env=[]; defs=defs'; main}

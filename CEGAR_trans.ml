@@ -61,7 +61,7 @@ let trans_inv_var s = Id.from_string s Type.typ_unknown
 
 let id_prog prog =
   let map = List.rev_map (fun (f,_) -> f, f) prog.env in
-  let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
+  let rmap = List.map (Pair.map_snd trans_inv_var) map in
   prog, map, rmap
 
 (* for predicates *)
@@ -439,14 +439,14 @@ let rename_prog prog =
     if Id.get_counter () > counter then Id.save_counter ();
       def
   in
-  let env = List.map (fun (f,typ) -> rename_var map f, typ) prog.env in
+  let env = List.map (Pair.map_fst @@ rename_var map) prog.env in
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
   let prog = {env=env; defs=defs; main=main} in
   let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
   let is_cps = List.mem Flag.CPS !Flag.form in
   let () = ignore (Typing.infer ~is_cps prog) in
-  let rmap = List.map (fun (f,f') -> f', trans_inv_var f) map in
+  let rmap = List.map (Pair.map_snd trans_inv_var) map in
     prog, map, rmap
 
 let id_prog prog =
@@ -478,7 +478,7 @@ let rec trans_ref_type = function
 let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
-  let ext_env = List.map (fun (x,typ) -> trans_var x, trans_typ typ) (Trans.make_ext_env t) in
+  let ext_env = List.map (Pair.map trans_var trans_typ) (Trans.make_ext_env t) in
   let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." S.print_term t in
   let t = Trans.trans_let t in
   let () = if debug() then Format.printf "AFTER:@.%a@.@.@." S.print_term t in
@@ -496,7 +496,7 @@ let trans_prog ?(spec=[]) t =
   in
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
   let env' =
-    let spec' = List.map (fun (f,typ) -> trans_var f, trans_typ typ) spec in
+    let spec' = List.map (Pair.map trans_var trans_typ) spec in
     let aux (f,typ) = try f, merge_typ typ @@ (List.assoc f spec') with Not_found -> f,typ in
     uniq_env (ext_env @@@ List.map aux env)
   in

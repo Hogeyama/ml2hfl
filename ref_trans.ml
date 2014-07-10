@@ -85,10 +85,10 @@ let rec make_trees tree =
       let rec pick xss =
         match xss with
         | [] -> []
-        | [xs] -> List.map (fun x -> [x]) xs
+        | [xs] -> List.map List.singleton xs
         | xs::xss' ->
             let yss = pick xss' in
-            List.rev_map_flatten (fun x -> List.map (fun ys -> x::ys) yss) xs
+            List.rev_map_flatten (fun x -> List.map (List.cons x) yss) xs
       in
       List.map (fun ts -> Rose_tree.Node ts) @@ pick @@ List.map make_trees ts
   | Rose_tree.Node _ -> assert false
@@ -98,18 +98,6 @@ let rec term_of_tree tree =
   | Rose_tree.Leaf t -> t
   | Rose_tree.Node ts -> make_tuple @@ List.map term_of_tree ts
 
-(*
-let rec make_args tree =
-  match tree with
-    Rose_tree.Leaf(None, []) -> assert false
-  | Rose_tree.Leaf(None, _) -> assert false
-  | Rose_tree.Leaf(Some typ, []) -> [make_bottom typ]
-  | Rose_tree.Leaf(Some _, args) -> args
-  | Rose_tree.Node(lhs,rhs) ->
-      let trees1 = make_args lhs in
-      let trees2 = make_args rhs in
-      flatten_map (fun t1 -> List.map (fun t2 -> make_pair t1 t2) trees2) trees1
-*)
 
 let rec proj_of_path top path t =
   match path with
@@ -128,7 +116,7 @@ let rec same_arg path_rev t1 t2 =
     Rose_tree.Leaf t1', Rose_tree.Leaf t2' when t1' = t2' -> List.rev path_rev
   | Rose_tree.Leaf t1', Rose_tree.Leaf t2' -> []
   | Rose_tree.Node ts1, Rose_tree.Node ts2 ->
-      List.rev_flatten @@ List.mapi2 (fun i -> same_arg (i::path_rev)) ts1 ts2
+      List.rev_flatten @@ List.mapi2 (fun i -> same_arg @@ i::path_rev) ts1 ts2
   | _ -> assert false
 let same_arg t1 t2 = same_arg [] t1 t2
 
@@ -159,8 +147,8 @@ let inst_var_fun x tt bb t =
         if debug() then Format.printf "|trees|': %d@." (List.length trees);
         if debug() then List.iter (Format.printf "  tree: %a@." (Rose_tree.print print_term)) trees;
         let argss = List.map Rose_tree.flatten trees in
-        let args = List.map (fun args -> [make_tuple args]) argss in
-        let apps = List.map (make_app (make_var r')) args in
+        let args = List.map (List.singleton -| make_tuple) argss in
+        let apps = List.map (make_app @@ make_var r') args in
 (*
         Format.printf "TREE(%a --%a-- %a):%d@." Id.print r (print_list Format.pp_print_int "") path Id.print x @@ List.length apps;
         List.iter (Format.printf "  %a@." print_term) apps;
@@ -234,11 +222,11 @@ let trans_typ ttbb typ =
       end
   | _ -> trans.tr2_typ_rec ttbb typ
 
-
+(*
 let trans_typ ttbb typ =
   trans_typ ttbb typ
   |@debug()&> Color.printf Color.Yellow "%a@ ===>@ @[%a@]@.@." print_typ typ print_typ
-
+*)
 
 let trans_term (tt,bb) t =
   match t.desc with
@@ -408,7 +396,7 @@ let move_proj_term t =
       let bindings' = List.map (fun (f,xs,t) -> f, xs, move_proj.tr_term t) bindings in
       let bindings'' = List.map (fun (f,xs,t) -> f, xs, List.fold_right move_proj_aux xs t) bindings' in
       let t2' = move_proj.tr_term t2 in
-      let t2'' = List.fold_right (fun (x,_,_) t -> move_proj_aux x t) bindings t2' in
+      let t2'' = List.fold_right (move_proj_aux -| fst3) bindings t2' in
       make_let_f flag bindings'' t2''
   | Fun(x,t1) -> make_fun x @@ move_proj_aux x t1
   | _ -> move_proj.tr_term_rec t
@@ -553,47 +541,22 @@ let replace_head fs fs' t =
     | [], [] -> []
     | [], _ -> unsupported "replace_head"
     | f::fs', _ ->
-        let ts1,ts2 = List.partition (fun t -> Id.mem f @@ get_fv t) ts in
+        let ts1,ts2 = List.partition (Id.mem f -| get_fv) ts in
         List.hd ts1 :: aux fs' (List.tl ts1 @ ts2)
   in
   let ts' = aux fs ts in
   let xs = List.map (fun t -> Id.new_var t.typ) ts' in
   let t' = List.fold_right2 subst_rev ts' xs t in
   if debug() then Format.printf "t':@.%a@.@." print_term t';
-  let ts'' = List.map2 (fun t (f,f') -> subst f (make_var f') t) ts' @@ List.combine fs fs' in
+  let ts'' = List.map3 subst_var fs fs' ts' in
   let t'' = List.fold_right2 subst xs ts'' t' in
   if debug() then Format.printf "t'':@.%a@.@." print_term t'';
   t''
 
 
-(*
-let normalize_tuple_arg = make_trans ()
-
-let normalize_tuple_arg_term t =
-  match t.desc with
-  | Let(Nonrecursive as flag, bindings, t2)
-  | Let(Recursive as flag, ([_] as bindings), t2)->
-      let aux (f,xs,t1) (bindings,t2) =
-        let is_normalized typ =
-          match typ with
-          | TPair(TPair)
-        in
-
-      in
-      let bindings',t2' = List.fold_right aux bindings ([],t2) in
-      make_let_f flag bindings' t2'
-  | _ -> normalize_tuple_arg.tr_term_rec t
-
-let () = normalize_tuple_arg.tr_term <- normalize_tuple_arg_term
-let normalize_tuple_arg = normalize_tuple_arg.tr_term
- *)
-
-
-
-
 let add_fun_tuple = make_trans2 ()
 
-let defined fs env = List.for_all (fun f -> Id.mem f env) fs
+let defined fs env = List.for_all (flip Id.mem env) fs
 
 let add_fun_tuple_term (funs,env) t =
   match t.desc with
@@ -606,7 +569,7 @@ let add_fun_tuple_term (funs,env) t =
         let name = List.fold_left (fun s x -> Id.name x ^ "_" ^ s) (Id.name @@ List.hd fs) @@ List.tl fs in
         let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
         let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj i (make_var fg)) fs in
-        let t' = replace_head fs (List.map (fun (f,_,_) -> f) projs) t in
+        let t' = replace_head fs (List.map fst3 projs) t in
         let defs = (fg, [], make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'
       in

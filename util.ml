@@ -43,6 +43,7 @@ module List = struct
   include ExtList.List
 
   let singleton x = [x]
+  let cons x xs = x::xs
 
   (*** returns a list of integers [m;...;n-1] ***)
   let rec fromto m n =
@@ -98,6 +99,12 @@ module List = struct
     | _ -> raise (Invalid_argument "List.rev_map2")
   let rev_map2 f xs ys = rev_map2 f [] xs ys
 
+  let rec map3 f xs ys zs =
+    match xs,ys,zs with
+    | [],[],[] -> []
+    | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
+    | _ -> raise (Invalid_argument "List.map3")
+
   let rec filter_out f xs = filter (not -| f) xs
 
   let rec rev_split acc1 acc2 xs =
@@ -145,8 +152,9 @@ module Option = struct
 end
 
 module Pair = struct
+  let swap (x,y) = y, x
   let make f g x = f x, g x
-  let map f (x,y) = f x, f y
+  let map f g (x,y) = f x, g y
   let map_fst f (x,y) = f x, y
   let map_snd f (x,y) = x, f y
 end

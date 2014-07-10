@@ -51,7 +51,7 @@ let weakest_aux env cond ds p =
       List.partition
         (fun pbs ->
          let pbs = f pbs in
-         let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs in
+         let fvs = List.flatten @@ List.map (get_fv -| fst) pbs in
          if List.inter fvp fvs = [] && List.inter (List.rev_map_flatten get_fv cond) fvs = [] then
            false
          else
@@ -62,7 +62,7 @@ let weakest_aux env cond ds p =
       List.partition
         (fun pbs ->
          let pbs' = f pbs in
-         let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs' in
+         let fvs = List.flatten @@ List.map (get_fv -| fst) pbs' in
          if List.inter fvp fvs = [] && List.inter (List.rev_map_flatten get_fv cond) fvs = [] then
            false
          else
@@ -156,13 +156,14 @@ let print_pbs fm pbs =
   print_list print_pb ";@\n" fm pbs
 
 
+let filter_pbs env cond pbs =
+  pbs
+  |& !Flag.remove_false &> List.filter_out (check_aux env cond -| fst)
+  |> List.filter_out (check_aux env cond -| make_not -| fst)
+
 let filter env cond pbs must t =
-  let pbs' =
-    pbs
-    |& !Flag.remove_false &> List.filter_out (fun (p,_) -> check_aux env cond p)
-    |> List.filter_out (fun (p,_) -> check_aux env cond @@ make_not p)
-  in
   if debug() then Format.printf "filter@.";
+  let pbs' = filter_pbs env cond pbs in
   if debug() then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
   let pbss =
     let rec aux sets (p,b) =
@@ -175,7 +176,7 @@ let filter env cond pbs must t =
           List.fold_right VarSet.add fv set1 :: sets
     in
     let xss = List.map VarSet.elements @@ List.fold_left aux [] pbs in
-    List.map (fun xs -> List.filter (fun (p,_) -> List.exists (fun y -> List.mem y xs) @@ get_fv p) pbs) xss
+    List.map (fun xs -> List.filter (List.exists (flip List.mem xs) -| get_fv -| fst) pbs) xss
   in
   let aux pbs =
     if debug() then Format.printf "pbs: @[<hv>%a@.@." print_pbs pbs';
@@ -187,12 +188,8 @@ let filter env cond pbs must t =
 
 
 let abst env cond pbs p =
-  let pbs' =
-    pbs
-    |& !Flag.remove_false &> List.filter_out (fun (p,_) -> check_aux env cond p)
-    |> List.filter_out (fun (p,_) -> check_aux env cond @@ make_not p)
-  in
   if debug() then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  let pbs' = filter_pbs env cond pbs in
   if debug() then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs' CEGAR_print.term p;
   if has_bottom p
   then Const Bottom
@@ -208,33 +205,33 @@ let assume env cond pbs t1 t2 =
   if t1 = Const True
   then t2
   else
-    let ff = snd (weakest env cond pbs t1) in
-      make_if ff (Const Bottom) t2
+    let _,ff = weakest env cond pbs t1 in
+    make_if ff (Const Bottom) t2
 
 
 let rec congruent env cond typ1 typ2 =
   match typ1,typ2 with
-      TBase(b1,ps1), TBase(b2,ps2) when b1=b2 ->
-        let x = new_id "x_abst" in
-        let env' = (x,typ1)::env in
-        let ps1' = ps1 (Var x) in
-        let ps2' = ps2 (Var x) in
-          List.length ps1' = List.length ps2' && List.for_all2 (equiv env' cond) ps1' ps2'
-    | TFun(typ11,typ12), TFun(typ21,typ22) ->
-        let x = new_id "x_abst" in
-        let typ12 = typ12 (Var x) in
-        let typ22 = typ22 (Var x) in
-        let env' = (x,typ11)::env in
-          congruent env cond typ11 typ21 && congruent env' cond typ12 typ22
-    | _ -> Format.printf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
+  | TBase(b1,ps1), TBase(b2,ps2) when b1=b2 ->
+      let x = new_id "x_abst" in
+      let env' = (x,typ1)::env in
+      let ps1' = ps1 (Var x) in
+      let ps2' = ps2 (Var x) in
+      List.length ps1' = List.length ps2' && List.for_all2 (equiv env' cond) ps1' ps2'
+  | TFun(typ11,typ12), TFun(typ21,typ22) ->
+      let x = new_id "x_abst" in
+      let typ12 = typ12 (Var x) in
+      let typ22 = typ22 (Var x) in
+      let env' = (x,typ11)::env in
+      congruent env cond typ11 typ21 && congruent env' cond typ12 typ22
+  | _ -> Format.printf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 
 let decomp_tbase = function
-    TBase(b, ps) -> b, ps
+  | TBase(b, ps) -> b, ps
   | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
 
 let rec is_base_term env = function
-    Const (Unit | True | False | Int _ | RandInt | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _ | RandVal _) -> true
+  | Const (Unit | True | False | Int _ | RandInt | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _ | RandVal _) -> true
   | Const _ -> false
   | Var x ->
       let typ =
@@ -259,23 +256,23 @@ let rec is_base_term env = function
 
 
 let rec make_arg_let_term = function
-    Const c -> [], Const c
+  | Const c -> [], Const c
   | Var x -> [], Var x
   | App _ as t ->
       let t',ts = decomp_app t in
       let aux t (bind,ts) =
         let bind',t' = make_arg_let_term t in
-          bind'@bind, t'::ts
+        bind'@bind, t'::ts
       in
       let bind,ts' = List.fold_right aux ts ([],[]) in
       let xs = List.map (fun _ -> new_id "a") ts in
       let t'' = List.fold_left (fun t x -> App(t, Var x)) t' xs in
-        bind @ List.combine xs ts', t''
+      bind @ List.combine xs ts', t''
   | Let _ -> assert false
   | Fun _ -> assert false
 let make_arg_let_term t =
   let bind,t' = make_arg_let_term t in
-    List.fold_right (fun (x,t) t' -> Let(x, t, t')) bind t'
+  List.fold_right (fun (x,t) t' -> Let(x, t, t')) bind t'
 
 let rec reduce_let env = function
   | Const c -> Const c
