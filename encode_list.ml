@@ -11,6 +11,56 @@ module RT = Ref_type
 let debug () = List.mem "Encode_list" !Flag.debug_module
 
 
+
+let rec is_filled_pattern p =
+  try
+    match p.pat_desc with
+    | PAny -> None
+    | PVar x -> Some (make_var x)
+    | PAlias(p1,x) ->
+        Some (Option.default (make_var x) @@ is_filled_pattern p1)
+    | PConst c -> Some c
+    | PConstruct(c, ps) ->
+        let ts = List.map is_filled_pattern ps in
+        Some (make_construct c @@ List.map Option.get ts)
+    | PNil -> Some (make_nil @@ list_typ p.pat_typ)
+    | PCons(p1,p2) ->
+        let t1 = Option.get @@ is_filled_pattern p1 in
+        let t2 = Option.get @@ is_filled_pattern p2 in
+        Some (make_cons t1 t2)
+    | PTuple ps ->
+        let ts = List.map is_filled_pattern ps in
+        Some (make_tuple @@ List.map Option.get ts)
+    | PRecord _ -> unsupported "not implemented: is_filled_pattern (record)"
+    | PNone -> Some (make_none @@ option_typ p.pat_typ)
+    | PSome p1 -> Some (make_some @@ Option.get @@ is_filled_pattern p1)
+    | POr _ -> None
+  with Option.No_value -> None
+
+
+let subst_matched_var = make_trans ()
+
+let subst_matched_var_desc desc =
+  match desc with
+  | Match({desc=Var x}, pats) ->
+      let aux (p,t1,t2) =
+        let t1' = subst_matched_var.tr_term t1 in
+        let t2' = subst_matched_var.tr_term t2 in
+        let sbst =
+          match is_filled_pattern p with
+          | None -> Std.identity
+          | Some t' -> subst x t'
+        in
+        p, sbst t1', sbst t2'
+      in
+      Match(make_var x, List.map aux pats)
+  | _ -> subst_matched_var.tr_desc_rec desc
+
+let () = subst_matched_var.tr_desc <- subst_matched_var_desc
+let subst_matched_var = subst_matched_var.tr_term
+
+
+
 let rec get_rtyp_list rtyp typ =
   match rtyp, elim_tpred typ with
   | RT.Inter rtyps, _ ->
@@ -374,6 +424,8 @@ let trans t =
   t
   |> inst_list_eq
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" print_term
+  |> subst_matched_var
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "subst_matched_var" print_term
   |@> flip Type_check.check TUnit
   |> Trans.remove_top_por
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "remove_top_por" print_term

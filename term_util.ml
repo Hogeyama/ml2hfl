@@ -210,6 +210,14 @@ let make_label info t = {desc=Label(info,t); typ=t.typ}
 let make_ref t = {desc=Ref t; typ=TRef t.typ}
 let make_deref t = {desc=Deref t; typ=ref_typ t.typ}
 let make_setref r t = {desc=SetRef(r, t); typ=TUnit}
+let make_construct c ts =
+  if Flag.check_typ
+  then
+    begin
+      let typs = Type_decl.constr_arg_typs c in
+      List.iter2 (fun t typ -> assert (Type.can_unify t.typ typ)) ts typs
+    end;
+  {desc=Constr(c,ts); typ=Type_decl.constr_typ c}
 
 let imply t1 t2 = {desc=BinOp(Or, {desc=Not t1;typ=TBool}, t2); typ=TBool}
 let and_list ts = match ts with

@@ -52,9 +52,9 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 CMI = $(MLI:.mli=.cmi)
 
 CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
-	rose_tree.cmo id.cmo type.cmo syntax.cmo term_util.cmo		\
-	spec.cmo spec_parser.cmo spec_lexer.cmo CEGAR_type.cmo		\
-	CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_decl.cmo	\
+	rose_tree.cmo id.cmo type.cmo syntax.cmo type_decl.cmo		\
+	term_util.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
+	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo	\
 	ref_type.cmo type_check.cmo trans.cmo lift.cmo			\
 	CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo slicer.cmo	\
 	useless_elim.cmo inter_type.cmo type_trans.cmo			\
