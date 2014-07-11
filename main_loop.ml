@@ -95,7 +95,7 @@ let report_safe env rmap get_rtyp orig t0 =
       let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
         try
           let f' = List.assoc f rmap in
-          [f', Ref_type.rename (get_rtyp f' rtyp)]
+          [f', Ref_type.rename @@ get_rtyp f' rtyp]
         with
           Not_found -> []
         | _ ->

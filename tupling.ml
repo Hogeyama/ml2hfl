@@ -396,7 +396,7 @@ let rec decomp_let_app_option f t =
 
 let replace_app_term env t =
   match t.desc with
-  | Let(Nonrecursive, [x, [], {desc=App({desc=Var f},[_])}], _) ->
+  | Let(Nonrecursive, [x, [], {desc=App({desc=Var f},[t1])}], _) ->
       begin
         try
           let bindings,apps1,t2 = decomp_let_app_option f t in
@@ -434,9 +434,17 @@ let replace_app_term env t =
             try
               let used' = List.sort used in
               List.iteri (fun i (j,_,_) -> if i+1 <> j then raise (Invalid_argument "")) used';
-              let aux sbst (i,x,_) = fun t -> replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) @@ sbst t in
-              let sbst =  List.fold_left aux Std.identity used' in
-              sbst, make_tuple @@ List.map (fun (_,_,t) -> make_some t) used'
+              let aux sbst (i,x,_) = replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) -| sbst in
+              let sbst = List.fold_left aux Std.identity used' in
+              let aux i typ =
+                Format.printf "#%d %a, %a@."  i print_typ typ print_typ (get_opt_typ typ);
+                try
+                  let i, x, t = List.find ((=) i -| fst3) used' in
+                  make_some t
+                with Not_found -> make_none @@ get_opt_typ typ
+              in
+              let arg = make_tuple @@ List.mapi aux @@ decomp_ttuple t1.typ in
+              sbst, arg
             with Not_found -> raise (Invalid_argument "")
           in
           let t1 = make_app (make_var f) [arg] in

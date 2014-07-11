@@ -217,6 +217,7 @@ let trans t = t
   |@debug()&> Format.printf "remove_label:@.%a@.@." print_term_typ
   |> Trans.flatten_tuple
   |@debug()&> Format.printf "flatten_tuple:@.%a@.@." print_term_typ
+  |@> flip Type_check.check TUnit
   |*> Trans.inline_no_effect
   |> Trans.inline_var_const
   |@debug()&> Format.printf "inline_var_const:@.%a@.@." print_term_typ

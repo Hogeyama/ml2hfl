@@ -27,6 +27,7 @@ let curry f x y = f (x,y)
 let uncurry f (x,y) = f x y
 let fst3 (x,y,z) = x
 let snd3 (x,y,z) = y
+let trd (x,y,z) = z
 
 let (@@@) = List.rev_append
 

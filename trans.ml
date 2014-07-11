@@ -1967,17 +1967,48 @@ let flatten_tuple = make_trans ()
 let flatten_tuple_typ typ =
   match typ with
   | TTuple xs ->
-      a
+      let xs' = List.map flatten_tuple.tr_var xs in
+      let ys = List.flatten_map (fun x -> match Id.typ x with TTuple xs -> xs | _ -> [x]) xs' in
+      TTuple ys
   | _ -> flatten_tuple.tr_typ_rec typ
+
+let make_proj' i t =
+  match t.typ with
+  | TTuple _ -> make_proj i t
+  | _ -> assert (i=0); t
+let make_tuple' ts =
+  match ts with
+  | [] -> assert false
+  | [t] -> t
+  | _ -> make_tuple ts
 
 let flatten_tuple_term t =
   match t.desc with
+  | Match _ -> unsupported "not implemented: flatten_tuple (match)"
+  | Proj(i,t1) ->
+      let t1' = flatten_tuple.tr_term t1 in
+      let x = Id.new_var t1'.typ in
+      let ns = List.map (fun typ -> match flatten_tuple.tr_typ typ with TTuple xs' -> List.length xs' | _ -> 1) @@ decomp_ttuple t1.typ in
+      let rec new_pos i j acc ns =
+        match ns with
+        | [] -> assert false
+        | n::ns' ->
+            if i = j
+            then List.map ((+) acc) @@ List.fromto 0 n
+            else new_pos i (j+1) (n+acc) ns'
+      in
+      make_let [x,[],t1'] @@ make_tuple' @@ List.map (fun i -> make_proj' i @@ make_var x) @@ new_pos i 0 0 ns
   | Tuple ts ->
-      ts
-      |> List.map flatten_tuple_term ts
-      |> List.flatten_map (function {desc=Tuple ts''} -> ts'' | t -> [t])
-      |> make_tuple
-      |> xx
+      let ts' = List.map flatten_tuple.tr_term ts in
+      let xs' = List.map (fun t -> Id.new_var t.typ) ts' in
+      let aux y =
+        let ys = match Id.typ y with TTuple ys -> ys | _ -> [y] in
+        let ys' = List.map Id.new_var_id ys in
+        make_lets @@ List.mapi (fun i y' -> y', [], make_proj' i @@ make_var y)  ys',
+        List.map make_var ys'
+      in
+      let conts,tss = List.split_map aux xs' in
+      make_lets (List.map2 (fun x t -> x,[],t) xs' ts') @@ List.fold_left (|>) (make_tuple' @@ List.flatten tss) conts
   | _ -> flatten_tuple.tr_term_rec t
 
 let () = flatten_tuple.tr_typ <- flatten_tuple_typ
