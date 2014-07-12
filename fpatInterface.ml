@@ -163,7 +163,13 @@ let init prog =
        prog.CEGAR_syntax.defs,
        prog.CEGAR_syntax.main)
   in
-  Fpat.RsCompHCCSSolver.init prog
+  prog |>
+    Fpat.RefTypJudge.mk_temp_env |>
+    Fpat.Util.List.map snd |>
+    Fpat.Util.List.concat_map Fpat.RefType.pvars |>
+    Fpat.Util.List.map (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args) |>
+    Fpat.Util.List.unique |>
+    Fpat.HCCSSolver.init_rsrefine
 
 let verify fs (*cexs*) prog =
   let prog =

@@ -78,9 +78,9 @@ let rec cegar1 prog0 is_cp ces info =
           Flag.use_neg_pred := true;
           post ();
           cegar1 prog is_cp ces info
-      | ce_pre::_ when ce' = ce_pre && !Flag.wp_max_num < 8 ->
-          incr Flag.wp_max_num;
-          if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
+      | ce_pre::_ when ce' = ce_pre && !Fpat.PredAbst.wp_max_num < 8 ->
+          incr Fpat.PredAbst.wp_max_num;
+          if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           post ();
           cegar1 prog is_cp ces info

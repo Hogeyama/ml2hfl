@@ -24,7 +24,6 @@ let debug_module : string list ref = ref []
 
 (* method option *)
 let input_cegar = ref false
-let wp_max_num = ref 3
 let remove_false = ref false (* remove false from pbs/pts in CEGAR_abst_util *)
 let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
