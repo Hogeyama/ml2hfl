@@ -16,7 +16,9 @@ let pre () =
   ()
 
 let post () =
-  incr Flag.cegar_loop
+  incr Flag.cegar_loop;
+  Fpat.Global.cegar_iterations := !Flag.cegar_loop
+
 
 
 
@@ -76,9 +78,9 @@ let rec cegar1 prog0 is_cp ces info =
           Flag.use_neg_pred := true;
           post ();
           cegar1 prog is_cp ces info
-      | ce_pre::_ when ce' = ce_pre && !Flag.wp_max_num < 8 ->
-          incr Flag.wp_max_num;
-          if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Flag.wp_max_num;
+      | ce_pre::_ when ce' = ce_pre && !Fpat.PredAbst.wp_max_num < 8 ->
+          incr Fpat.PredAbst.wp_max_num;
+          if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           post ();
           cegar1 prog is_cp ces info
@@ -114,5 +116,9 @@ let cegar prog info =
     let is_cp = FpatInterface.is_cp prog in
     cegar1 prog is_cp [] info
   with e ->
-    if e <> NoProgress then incr Flag.cegar_loop;
+    if e <> NoProgress then
+      begin
+        incr Flag.cegar_loop;
+        Fpat.Global.cegar_iterations := !Flag.cegar_loop
+      end;
     raise e

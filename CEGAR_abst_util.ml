@@ -79,7 +79,7 @@ let weakest_aux env cond ds p =
     in
     let ws =
       let ok w =
-        if List.length w > !Flag.wp_max_num then
+        if List.length w > !Fpat.PredAbst.wp_max_num then
           false
         else
           let rec ok w =

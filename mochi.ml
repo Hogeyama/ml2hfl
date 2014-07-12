@@ -170,7 +170,7 @@ let arg_spec =
                  Flag.debug_level := 0;
                  Flag.print_progress := false),
      " Show only result";
-   "-verbose", Arg.Set Fpat.Global.verbose, "Verbose mode";
+   "-verbose", Arg.Set Fpat.Global.verbose, " Verbose mode";
    "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
    "-debug-module", Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module), "<modules>  Set debug flag of modules (comma-separated)";
    "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
@@ -216,7 +216,7 @@ let arg_spec =
    "-dph", Arg.Set Fpat.PolyConstrSolver.disable_parameter_inference_heuristics,
           " Disable heuristics of instantiation parameter inference";
    (* predicate abstraction *)
-   "-wp-max", Arg.Set_int Flag.wp_max_num, " Maximum number of widths of conjunctions used in predicate abstraction";
+   "-wp-max", Arg.Set_int Fpat.PredAbst.wp_max_num, " Maximum number of widths of conjunctions used in predicate abstraction";
    "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
    "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
    "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
@@ -241,10 +241,29 @@ let arg_spec =
    "-enable-cp", Arg.Set Fpat.RefTypInfer.exploit_cut_points, " Exploit cut-points";
    "-mp", Arg.Set Fpat.Global.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
    (* HCCS solver *)
+   "-rscomp",
+     Arg.Int
+       (function
+         | 0 ->
+            Fpat.HCCSSolver.link_solver (Fpat.HCCSSolver.solve_rscomp0)
+         | 1 ->
+            Fpat.HCCSSolver.link_solver (Fpat.HCCSSolver.solve_rscomp1)
+         | 2 ->
+            Fpat.HCCSSolver.link_solver (Fpat.HCCSSolver.solve_rscomp2)
+         | 3 ->
+            Fpat.HCCSSolver.link_solver (Fpat.HCCSSolver.solve_rscomp3)),
+     "<solver_type>  Use a complete HCCS solver based on relaxed stratification";
+   "-popl2015exp",
+     Arg.Set Fpat.HCCSSolver.popl2015_exp_mode,
+     "Perform experiments for POPL 2015 submission";
+   "-popl2015exact",
+     Arg.Set Fpat.HCCSSolver.popl2015_exact_mode,
+     "Perform experiments on exact solver for POPL 2015 submission";
+
    "-gi",
      Arg.Unit (fun _ ->
-       Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.CHGenInterpProver.interpolate false),
+       Fpat.HCCSSolver.link_solver
+         (Fpat.GenHCCSSolver.solve (Fpat.CHGenInterpProver.interpolate false))),
      " Generalize constraints of multiple function calls by interpolation";
    "-size",
      Arg.Unit (fun _ ->
@@ -273,18 +292,21 @@ let arg_spec =
      " Use dag HCCS solver based on dag unwinding (with beautiful tree HCCS solver)";
    "-gchi",
      Arg.Unit (fun _ ->
-       Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.CHGenInterpProver.interpolate true),
+       Fpat.HCCSSolver.link_solver
+         (Fpat.GenHCCSSolver.solve (Fpat.CHGenInterpProver.interpolate true))),
      " Generalize constraints of multiple function calls by convex hull and interpolation";
    "-gtcs",
      Arg.Unit (fun _ ->
-       Fpat.HCCSSolver.link_solver Fpat.GenHCCSSolver.solve;
-       Fpat.GenInterpProver.ext_interpolate := Fpat.TemplateBasedGenInterpProver.interpolate),
+       Fpat.HCCSSolver.link_solver
+         (Fpat.GenHCCSSolver.solve
+            Fpat.TemplateBasedGenInterpProver.interpolate)),
      " Generalize constraints of multiple function calls by template-based constraint solving";
 (* add option to disable simplification interp_simplify := false*)
 
-   "-ieb", Arg.Set Fpat.Global.encode_boolean,
+   "-ieb", Arg.Set Fpat.EncBoolHCCSSolver.encode_boolean,
      " Enable integer encoding of booleans";
+   "-tasp", Arg.Set Fpat.EncBoolHCCSSolver.encode_true_as_pos,
+     " Encode true and false respectively as positive and non-positive integers";
    (* interpolating prover *)
    "-csisat",
      Arg.Unit (fun _ ->
@@ -330,7 +352,7 @@ let arg_spec =
      " Use a template based inference based on mixed integer linear programming (norec)";
    "-cqp-template",
      Arg.Int (fun n ->
-       Fpat.Global.cqp_mode := n;
+       Fpat.PolyConstrSolver.cqp_mode := n;
        if n < 2 then begin
          Fpat.Template.ext_generate :=
            Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true;
@@ -507,8 +529,8 @@ let fpat_init1 () =
 let fpat_init2 () =
   let open Fpat in
   Global.target_filename := !Flag.filename;
-  Global.print_log := !Flag.debug_level > 1;
-  Global.cvc3 := !Flag.cvc3;
+  Global.debug := !Flag.debug_level > 1;
+  SMTProver.cvc3 := !Flag.cvc3;
   SMTProver.open_ ()
 
 let () =
