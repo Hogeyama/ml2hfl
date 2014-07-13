@@ -154,6 +154,18 @@ let main in_channel =
 
 
 
+let parse_fpat_arg arg =
+  let open Fpat in
+  let args = Array.of_list @@ "" :: Str.split (Str.regexp "[ \t]+") arg in
+  let usage = "Options for FPAT are:" in
+  Array.iter (Format.printf "ARG: %s@.") args;
+  try
+    Arg.parse_argv ~current:(ref 0) args (Arg.align Config.arg_spec) ignore usage
+  with
+  | Arg.Bad s
+  | Arg.Help s -> Format.printf "%s" s; assert false
+
+
 let print_option_and_exit = ref (fun () -> ())
 
 let usage =
@@ -230,6 +242,7 @@ let arg_spec =
              Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
    "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
    (* predicate discovery *)
+   "-fpat", Arg.String parse_fpat_arg, "<option> Pass <option> to FPAT";
    "-bool-init-empty", Arg.Set Flag.bool_init_empty,
                        " Use an empty set as the initial sets of predicates for booleans";
    "-rs", Arg.Unit (fun _ -> Flag.refine := Flag.RefineRefType(0)),
@@ -482,7 +495,7 @@ let parse_arg () =
         Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) (Arg.align arg_spec) set_file usage;
         Flag.args := !Flag.args @ args
       with
-        Arg.Bad s
+      | Arg.Bad s
       | Arg.Help s -> Format.printf "%s@." s; exit 1
       | Sys_error _
       | End_of_file -> ()
@@ -495,34 +508,7 @@ let parse_arg () =
 
 (* called before parsing options *)
 let fpat_init1 () =
-  let open Fpat in
-
-  (* default interpolating prover *)
-  InterpProver.ext_interpolate := Fpat.InterpProver.interpolate_csisat;
-
-  (* default Horn clause solver *)
-  HCCSSolver.link_solver BwHCCSSolver.solve;
-
-  (* default solver for parameter substitution inference *)
-  Fpat.EHCCSSolver.ext_generate :=
-    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-  Fpat.EHCCSSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3;
-
-  (* default solver for ranking function inference *)
-  Fpat.RankFunInfer.ext_generate :=
-    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false (*~linear:true*);
-  Fpat.RankFunInfer.ext_solve := Fpat.PolyConstrSolver.solve_z3;
-
-  (* default solver for template based inference *)
-  Fpat.Template.ext_generate :=
-    Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false;
-  Fpat.Template.ext_solve := Fpat.PolyConstrSolver.solve_z3;
-
-  (* default polynomial constraint solver *)
-  Fpat.PolyConstrSolver.ext_solve := Fpat.PolyConstrSolver.solve_z3;
-
-  (* default SMT solver *)
-  Fpat.SMTProver.init_z3 ()
+  Fpat.Config.set_default ()
 
 (* called after parsing options *)
 let fpat_init2 () =

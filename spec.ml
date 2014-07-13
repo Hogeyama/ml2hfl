@@ -130,7 +130,7 @@ let read parser lexer =
     parse parser lexer !Flag.spec_file
   in
   let spec2 =
-    if !Flag.comment_spec
+    if !Flag.comment_spec && Sys.file_exists !Flag.filename
     then parse_comment parser lexer !Flag.filename
     else init
   in
