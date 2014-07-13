@@ -57,43 +57,41 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
   try
     if !Flag.print_progress then
       Color.printf
-	Color.Green
-	"(%d-4) Discovering predicates ... @."
-	!Flag.cegar_loop;
-      if Flag.use_prefix_trace then
-	raise (Fatal "Not implemented: Flag.use_prefix_trace");
-      let map =
-        match !Flag.refine with
-        | Flag.RefineRefType(flags) ->
-      	  Format.printf "@[<v>";
-          let ces =
+	    Color.Green
+	    "(%d-4) Discovering predicates ... @."
+	    !Flag.cegar_loop;
+    if Flag.use_prefix_trace then
+	  raise (Fatal "Not implemented: Flag.use_prefix_trace");
+    let map =
+      Format.printf "@[<v>";
+      let ces =
 	    if !Fpat.Global.use_multiple_paths then
 	      ces
 	    else
 	      [FpatInterface.List.hd ces]
 	  in
-      	  let map =
+      let map =
 	    FpatInterface.infer
-	      flags
+	      0
 	      labeled
 	      is_cp
 	      ces
 	      (env, defs, main)
 	  in
-      	  Format.printf "@]";
-          map
-      in
-      let env' =
-	if !Flag.disable_predicate_accumulation then
-	  map
-	else
-	  add_preds_env map env
-      in
-      if !Flag.print_progress then Format.printf "DONE!@.@.";
-      Fpat.SMTProver.close ();
-      Fpat.SMTProver.open_ ();
-      add_time tmp Flag.time_cegar;
-      map, {env=env';defs=defs;main=main}
+      Format.printf "@]";
+      map
+    in
+    let env' =
+	  if !Flag.disable_predicate_accumulation then
+	    map
+	  else
+	    add_preds_env map env
+    in
+    if !Flag.print_progress then Format.printf "DONE!@.@.";
+    Fpat.SMTProver.close ();
+    Fpat.SMTProver.open_ ();
+    add_time tmp Flag.time_cegar;
+    map, {env=env';defs=defs;main=main}
   with e ->
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
