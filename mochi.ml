@@ -155,12 +155,12 @@ let main in_channel =
 
 
 let parse_fpat_arg arg =
-  let args = Array.of_list @@ "" :: Str.split (Str.regexp "[ \t]+") arg in
+  let args = Array.of_list @@ "FPAT" :: Str.split (Str.regexp "[ \t]+") arg in
   let usage = "Options for FPAT are:" in
   try
     Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.Config.arg_spec) ignore usage
   with
-  | Arg.Bad s -> Format.printf "FPAT%s" s; exit 1
+  | Arg.Bad s
   | Arg.Help s -> Format.printf "%s" s; exit 0
 
 
