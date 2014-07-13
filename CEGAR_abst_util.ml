@@ -29,123 +29,19 @@ let make_conj pbs = List.fold_left (fun t (_,b) -> make_and t b) (Const True) pb
 let make_dnf pbss = List.fold_left (fun t pbs -> make_or t @@ make_conj pbs) (Const False) pbss
 
 
-let weakest_aux env cond ds p =
-  let fvp = get_fv p in
-  let nds = List.map (fun (p, b) -> make_not p, make_not b) ds in
-  let f pbs =
-    List.map
-      (fun i ->
-       if i > 0 then
-         List.nth ds (i - 1)
-       else
-         List.nth nds (-i - 1))
-      pbs
-  in
-  let pbss =
-    if !Flag.use_neg_pred
-    then List.mapi (fun i _ -> [i+1]) ds @ List.mapi (fun i _ -> [-i-1]) ds
-    else List.mapi (fun i _ -> [i+1]) ds
-  in
-  let rec loop xs' nxs' ys' pbss =
-    let xs, qs =
-      List.partition
-        (fun pbs ->
-         let pbs = f pbs in
-         let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs in
-         if List.inter fvp fvs = [] && List.inter (List.rev_map_flatten get_fv cond) fvs = [] then
-           false
-         else
-           check env cond pbs p)
-        pbss
-    in
-    let nxs, ys =
-      List.partition
-        (fun pbs ->
-         let pbs' = f pbs in
-         let fvs = List.flatten @@ List.map (fun (p, _) -> get_fv p) pbs' in
-         if List.inter fvp fvs = [] && List.inter (List.rev_map_flatten get_fv cond) fvs = [] then
-           false
-         else
-           check env cond pbs' (make_not p))
-        pbss
-    in
-    let xs = List.unique (xs' @ xs) in
-    let nxs = List.unique (nxs' @ nxs) in
-    let ys = List.unique (ys' @ ys) in
-    let ws =
-      List.unique @@
-        List.flatten @@
-          List.map (fun y1 -> List.map (fun y2 -> List.sort (List.unique (y1 @ y2))) ys) ys
-    in
-    let ws =
-      let ok w =
-        if List.length w > !Fpat.PredAbst.wp_max_num then
-          false
-        else
-          let rec ok w =
-            match w with
-            | [] -> true
-            | a::b -> not (List.mem (-a) b) && ok b
-          in
-          ok w
-      in
-      List.filter ok ws
-    in
-    let ws =
-      if false then
-        List.diff ws ys
-      else
-        List.filter (fun w -> not (List.exists (fun x -> List.diff w x = []) ys)) ws
-    in
-    let ws =
-      List.filter
-        (fun w -> not (List.exists (fun x -> List.diff x w = []) xs) &&
-                  not (List.exists (fun x -> List.diff x w = []) nxs)) ws in
-    let ws =
-      let rec aux xs =
-        match xs with
-        | [] -> []
-        | x::xs' ->
-            if List.exists (fun y -> List.diff y x = []) xs' then aux xs' else x::(aux xs')
-      in
-      aux ws
-    in
-    if ws = [] then xs, nxs else loop xs nxs ys ws
-  in
-  let xs, nxs = loop [] [] [] pbss in
-  let pbss = List.map f xs in
-  let npbss = List.map f nxs in
-  pbss, npbss
+let weakest_aux _ cond ds p =
+  let cond' = List.map FpatInterface.conv_formula cond in
+  let ds' = List.map (Fpat.Pair.lift FpatInterface.conv_formula) ds in
+  let p' = FpatInterface.conv_formula p in
+  Fpat.PredAbst.weakest_aux cond' ds' p' |>
+    Fpat.Pair.lift (List.map (List.map (Fpat.Pair.lift FpatInterface.inv_formula)))
 
-
-let weakest env cond ds p =
-  if check env cond [] p then (*???*)
-    Const True, Const False
-  else if check env cond [] (make_not p) then (*???*)
-    Const False, Const True
-  else
-    let fvp = get_fv p in
-    let ts = cond @@@ List.map fst ds in
-    let ds =
-      let rec fixp xs =
-        let aux p =
-          let fv = get_fv p in
-          if List.inter fv xs = []
-          then []
-          else fv
-        in
-        let xs' = List.unique (xs @ (List.flatten @@ List.map aux ts)) in
-        if List.length xs = List.length xs'
-        then xs
-        else fixp xs'
-      in
-      let fv = fixp fvp in
-      List.filter (fun (p, _) -> List.subset (get_fv p) fv) ds
-    in
-    let pbss,npbss = weakest_aux env cond ds p in
-    let pbss = List.filter (fun pbs -> not @@ check env cond pbs (Const False)) pbss in
-    let npbss = List.filter (fun pbs -> not @@ check env cond pbs (Const False)) npbss in
-    make_dnf pbss, make_dnf npbss
+let weakest _ cond ds p =
+  let cond' = List.map FpatInterface.conv_formula cond in
+  let ds' = List.map (Fpat.Pair.lift FpatInterface.conv_formula) ds in
+  let p' = FpatInterface.conv_formula p in
+  Fpat.PredAbst.weakest cond' ds' p' |>
+    Fpat.Pair.lift FpatInterface.inv_formula
 
 
 

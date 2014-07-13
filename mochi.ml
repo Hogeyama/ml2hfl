@@ -224,8 +224,7 @@ let arg_spec =
    "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
             " Expand non-recursive functions except those in the original program";
    "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
-   "-neg-pred-on", Arg.Set Flag.use_neg_pred, " Use negative predicates for abstraction";
-   "-neg-pred-off", Arg.Unit (fun _ -> Flag.use_neg_pred := false; Flag.never_use_neg_pred := true),
+   "-neg-pred-off", Arg.Unit (fun _ -> Flag.never_use_neg_pred := true),
                     " Never use negative predicates for abstraction";
    (* higher-order model checking *)
    "-trecs", Arg.Set_string Flag.trecs,

@@ -31,7 +31,6 @@ let use_dor = true
 let use_prefix_trace = false
 let use_nint = ref false
 let use_subterm = false
-let use_neg_pred = ref false
 let never_use_neg_pred = ref false
 let use_part_eval = true
 let check_sat = true
