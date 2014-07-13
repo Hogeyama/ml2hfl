@@ -72,7 +72,6 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
 	  in
       let map =
 	    FpatInterface.infer
-	      0
 	      labeled
 	      is_cp
 	      ces
