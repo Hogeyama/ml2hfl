@@ -313,7 +313,7 @@ let arg_spec =
      " Generalize constraints of multiple function calls by template-based constraint solving";
 (* add option to disable simplification interp_simplify := false*)
 
-   "-ieb", Arg.Set Fpat.EncBoolHCCSSolver.encode_boolean,
+   "-ieb", Arg.Set Fpat.BwHCCSSolver.encode_boolean,
      " Enable integer encoding of booleans";
    "-tasp", Arg.Set Fpat.EncBoolHCCSSolver.encode_true_as_pos,
      " Encode true and false respectively as positive and non-positive integers";
