@@ -2014,3 +2014,35 @@ let flatten_tuple_term t =
 let () = flatten_tuple.tr_typ <- flatten_tuple_typ
 let () = flatten_tuple.tr_term <- flatten_tuple_term
 let flatten_tuple = flatten_tuple.tr_term
+
+
+let rec is_in_redex x t =
+  match t.desc with
+  | Var y -> Some (Id.same x y)
+  | Const _ -> Some false
+  | Tuple ts ->
+      let rs = List.map (is_in_redex x) ts in
+      List.fold_right (fun r acc -> match acc with None -> None | Some b -> Option.map ((||) b) r) rs (Some false)
+  | Proj(i,t1) -> is_in_redex x t1
+  | Let(flag, bindings, t1) when List.for_all ((<>) [] -| snd3) bindings ->
+      is_in_redex x t1
+  | _ -> None
+
+let can_inline x t =
+  let n = List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t in
+  n = 1 && Option.default false @@ is_in_redex x t
+
+let inline_next_redex = make_trans ()
+
+let inline_next_redex_term t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],t1], t2) ->
+      let t1' = inline_next_redex.tr_term t1 in
+      let t2' = inline_next_redex.tr_term t2 in
+      if can_inline x t2'
+      then subst x t1' t2'
+      else inline_next_redex.tr_term_rec t
+  | _ -> inline_next_redex.tr_term_rec t
+
+let () = inline_next_redex.tr_term <- inline_next_redex_term
+let inline_next_redex = inline_next_redex.tr_term

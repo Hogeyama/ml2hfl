@@ -330,6 +330,18 @@ let elim_sub_app_desc env desc =
       let t2'' = elim_sub_app.tr2_term env' t2' in
       Let(Nonrecursive, [x,[],t1], t2'')
   | _ -> elim_sub_app.tr2_desc_rec env desc
+let elim_sub_app_desc env desc =
+  match desc with
+  | Let(Nonrecursive, [x,[],t1], t2) ->
+      let env' = (x,t1)::env in
+      let t2' =
+        let ys = List.map fst @@ List.filter (fun (y,t2) -> not (is_depend t1 y) && is_subsumed t2 t1) env in
+        if debug() then List.iter (fun y -> Format.printf "%a |-> %a@." Id.print y Id.print x) ys;
+        List.fold_left (fun t y -> make_label (InfoId y) @@ subst y (make_var x) t) t2 ys
+      in
+      let t2'' = elim_sub_app.tr2_term env' t2' in
+      Let(Nonrecursive, [x,[],t1], t2'')
+  | _ -> elim_sub_app.tr2_desc_rec env desc
 
 let () = elim_sub_app.tr2_desc <- elim_sub_app_desc
 
@@ -400,7 +412,7 @@ let replace_app_term env t =
       begin
         try
           let bindings,apps1,t2 = decomp_let_app_option f t in
-          let env1,env2 = List.partition (fun (g,_) -> Id.same f g) env in
+          let env1,env2 = List.partition (Id.same f -| fst) env in
           let apps2 =
             match env1 with
             | [] -> []
@@ -419,8 +431,6 @@ let replace_app_term env t =
           let used = List.filter (fun (i,x,_) -> is_used_in (make_proj i @@ make_var x) t2) apps' in
           let must_but_not_used = List.diff ~cmp must used in
           let t2' = replace_app.tr2_term env' t2 in
-          if List.length used < 2 (* negligence *)
-          then raise (Invalid_argument "");
           if debug() then
             begin
               Format.printf "replace[%d]: %a@." (List.length apps1) Id.print x;
@@ -431,23 +441,20 @@ let replace_app_term env t =
             end;
           let y = Id.new_var_id x in
           let sbst, arg =
-            try
-              let used' = List.sort used in
-              List.iteri (fun i (j,_,_) -> if i+1 <> j then raise (Invalid_argument "")) used';
-              let aux sbst (i,x,_) = replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) -| sbst in
-              let sbst = List.fold_left aux Std.identity used' in
-              let aux i typ =
-                Format.printf "#%d %a, %a@."  i print_typ typ print_typ (get_opt_typ typ);
-                try
-                  let i, x, t = List.find ((=) i -| fst3) used' in
-                  make_some t
-                with Not_found -> make_none @@ get_opt_typ typ
-              in
-              let arg = make_tuple @@ List.mapi aux @@ decomp_ttuple t1.typ in
-              sbst, arg
-            with Not_found -> raise (Invalid_argument "")
+            let used' = List.sort used in
+              List.iter (fun (i,x,t) -> Format.printf "USED': %a = %a ...%d... %a ...@." Id.print x Id.print f i print_term t) used';
+            List.iteri (fun i (j,_,_) -> if i <> j then raise (Invalid_argument "")) used';
+            let aux sbst (i,x,_) = sbst |- replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) in
+            let sbst = List.fold_left aux Std.identity used' in
+            let aux i typ =
+              try
+                make_some @@ trd @@ List.find ((=) i -| fst3) used'
+              with Not_found -> make_none @@ get_opt_typ typ
+            in
+            sbst, make_tuple @@ List.mapi aux @@ decomp_ttuple t1.typ
           in
           let t1 = make_app (make_var f) [arg] in
+          if debug() then Format.printf "NEW: %a = %a@." Id.print y print_term t1;
           make_lets bindings @@ make_let [y,[],t1] @@ sbst t2'
         with Invalid_argument _ -> replace_app.tr2_term_rec env t
       end
@@ -482,6 +489,10 @@ let trans t =
   |> Trans.inline_no_effect
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" print_term
   |> replace_app
-  |> elim_same_app
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" print_term
+  |> elim_sub_app
+  |> elim_same_app
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unnecessary" print_term
+  |> Trans.inline_next_redex
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
   |@> flip Type_check.check Type.TUnit
