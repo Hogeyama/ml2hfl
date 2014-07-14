@@ -403,7 +403,7 @@ let rec decomp_let_app_option f t =
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [_])}], t2) when Id.same f g ->
-      invalid_argument ""
+      invalid_argument "decomp_let_app_option"
   | _ -> [], [], t
 
 let replace_app_term env t =
@@ -441,14 +441,12 @@ let replace_app_term env t =
             end;
           let y = Id.new_var_id x in
           let sbst, arg =
-            let used' = List.sort used in
-              List.iter (fun (i,x,t) -> Format.printf "USED': %a = %a ...%d... %a ...@." Id.print x Id.print f i print_term t) used';
-            List.iteri (fun i (j,_,_) -> if i <> j then raise (Invalid_argument "")) used';
+            List.iteri (fun i _ -> if 1 < List.length @@ List.filter ((=) i -| fst3) used then raise (Invalid_argument "replace_app")) @@ decomp_ttuple t1.typ;
             let aux sbst (i,x,_) = sbst |- replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) in
-            let sbst = List.fold_left aux Std.identity used' in
+            let sbst = List.fold_left aux Std.identity used in
             let aux i typ =
               try
-                make_some @@ trd @@ List.find ((=) i -| fst3) used'
+                make_some @@ trd @@ List.find ((=) i -| fst3) used
               with Not_found -> make_none @@ get_opt_typ typ
             in
             sbst, make_tuple @@ List.mapi aux @@ decomp_ttuple t1.typ
@@ -456,7 +454,7 @@ let replace_app_term env t =
           let t1 = make_app (make_var f) [arg] in
           if debug() then Format.printf "NEW: %a = %a@." Id.print y print_term t1;
           make_lets bindings @@ make_let [y,[],t1] @@ sbst t2'
-        with Invalid_argument _ -> replace_app.tr2_term_rec env t
+        with Invalid_argument ("decomp_let_app_option"|"replace_app") -> replace_app.tr2_term_rec env t
       end
   | _ -> replace_app.tr2_term_rec env t
 
