@@ -93,6 +93,19 @@ let inline_wrapped_term t =
       if List.for_all Option.is_some tts
       then
         let tts' = List.map Option.get tts in
+        let xs = List.map (fun (t1,t3) -> Id.new_var t3.typ) tts' in
+        let aux x (t1,t3) t_acc =
+          make_if (make_is_none t1) (subst x (make_none @@ get_opt_typ t3.typ) t_acc) (subst x t3 t_acc)
+        in
+        List.fold_right2 aux xs tts' @@ make_tuple @@ List.map make_var xs
+      else
+        inline_wrapped.tr_term_rec t
+  | Tuple ts ->
+      let ts' = List.map inline_wrapped.tr_term ts in
+      let tts = List.map is_wrapped ts' in
+      if List.for_all Option.is_some tts
+      then
+        let tts' = List.map Option.get tts in
         let make i =
           let aux j _ =
             if j < i then
