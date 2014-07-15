@@ -169,7 +169,7 @@ let tupling_term env t =
               | App({desc = Var f}, [{desc = Proj(1, t1)}]) -> f, t1
               | _ -> raise Not_found
             in
-            let ftfs = List.map (Option.map @@ aux -| Option.get -| decomp_some) ts' in
+            let ftfs = List.map (Option.map aux) ts' in
             List.map (Option.map fst) ftfs,
             List.map (Option.map snd) ftfs
           in
@@ -487,17 +487,21 @@ let trans t =
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" print_term
   |> Trans.elim_unused_let
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term
+  |@> flip Type_check.check Type.TUnit
   |> tupling
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" print_term
+  |@> flip Type_check.check Type.TUnit
   |> Trans.normalize_let
   |> Trans.flatten_let
   |> Trans.inline_no_effect
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" print_term
   |> replace_app
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" print_term
+  |@> flip Type_check.check Type.TUnit
   |> elim_sub_app
   |> elim_same_app
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unnecessary" print_term
+  |@> flip Type_check.check Type.TUnit
   |> Trans.inline_next_redex
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
   |@> flip Type_check.check Type.TUnit
