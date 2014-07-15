@@ -274,6 +274,10 @@ let is_none t =
   match t.desc with
   | Tuple [t1;t2] -> t1 = none_flag
   | _ -> false
+let decomp_some t =
+  match t.desc with
+  | Tuple [t1;t2] when t1 = some_flag -> Some t2
+  | _ -> None
 let make_none typ = make_pair none_flag (make_term typ)
 let make_some t = make_pair some_flag t
 let make_is_none t = make_eq (make_fst t) none_flag

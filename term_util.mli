@@ -101,6 +101,7 @@ val make_construct : string -> typed_term list -> typed_term
 
 (** {6 Term destructor} *)
 val is_none : typed_term -> bool
+val decomp_some : typed_term -> typed_term option
 val decomp_is_none : typed_term -> typed_term option
 val decomp_get_val : typed_term -> typed_term option
 val decomp_funs : typed_term -> id list * typed_term
