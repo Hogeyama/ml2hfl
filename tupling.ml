@@ -169,12 +169,13 @@ let tupling_term env t =
               | App({desc = Var f}, [{desc = Proj(1, t1)}]) -> f, t1
               | _ -> raise Not_found
             in
-            let ftfs = List.map (Option.map @@ aux -| Option.get -| decomp_some) ts in
+            let ftfs = List.map (Option.map @@ aux -| Option.get -| decomp_some) ts' in
             List.map (Option.map fst) ftfs,
             List.map (Option.map snd) ftfs
           in
+          let tfs' = List.filter_map Std.identity tfs in
           let xs = List.map (Option.map (fun t -> Id.new_var @@ get_opt_typ t.typ)) tfs in
-          let tfs' = List.filter Option.is_some tfs in
+          let xs' = List.filter_map Std.identity xs in
           let bodies =
             let zts = List.map (Option.map @@ flip assoc_env env) fs in
             let aux zt x =
@@ -187,17 +188,17 @@ let tupling_term env t =
           in
           let typ =
             match t.typ with
-            | TTuple xs -> TTuple (List.map (Id.map_typ get_opt_typ) xs)
+            | TTuple ys -> TTuple (List.map (Id.map_typ get_opt_typ) ys)
             | _ -> assert false
           in
-          let fs' = List.filter Option.is_some fs in
+          let fs' = List.filter_map Std.identity fs in
           let fg =
             let name = List.fold_left (fun s f -> s ^ "_" ^ Id.name f) (Id.name @@ List.hd fs') (List.tl fs') in
-            Id.new_var ~name @@ List.fold_right (fun x typ -> TFun(x,typ)) xs typ
+            Id.new_var ~name @@ List.fold_right (fun x typ -> TFun(x,typ)) xs' typ
           in
           let r = Id.new_var ~name:"r" typ in
           let t_body = compose fg @@ List.combine fs' bodies in
-          new_funs := (fs', (fg, xs, t_body)) :: !new_funs;
+          new_funs := (fs', (fg, xs', t_body)) :: !new_funs;
           if debug() then Format.printf "ADD: %a@." Id.print fg;
           let t_app = make_app (make_var fg) @@ List.map make_get_val tfs' in
           let aux i = function
