@@ -188,7 +188,9 @@ let tupling_term env t =
           in
           let typ =
             match t.typ with
-            | TTuple ys -> TTuple (List.map (Id.map_typ get_opt_typ) ys)
+            | TTuple ys ->
+                let ys' = List.map2 (fun y t -> Option.map (fun _ -> y) t) ys ts' in
+                TTuple (List.filter_map (Option.map @@ Id.map_typ get_opt_typ) ys')
             | _ -> assert false
           in
           let fs' = List.filter_map Std.identity fs in
@@ -199,9 +201,9 @@ let tupling_term env t =
           let r = Id.new_var ~name:"r" typ in
           let t_body = compose fg @@ List.combine fs' bodies in
           new_funs := (fs', (fg, xs', t_body)) :: !new_funs;
-          if debug() then Format.printf "ADD: %a@." Id.print fg;
+          if debug() then Format.printf "ADD: %a@." print_id_typ fg;
           let t_app = make_app (make_var fg) @@ List.map make_get_val tfs' in
-          let aux i = function
+          let aux i = Format.printf "#%d@." i; function
             | None -> make_none (make_proj i @@ make_var r).typ
             | Some _ -> make_some @@ make_proj i @@ make_var r
           in
