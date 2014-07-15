@@ -214,3 +214,44 @@ let rec repeat f n x =
   if n <= 0
   then x
   else repeat f (n-1) (f x)
+
+
+(* TODO: support escaping *)
+let split_spaces s =
+  let spaces = [' '; '\t'] in
+  let quotations = ['"'; '\''] in
+  let rec chop_spaces s =
+    if s <> "" && List.mem s.[0] spaces
+    then chop_spaces @@ String.lchop s
+    else s
+  in
+  let rec take quot acc_rev s =
+    if s = ""
+    then
+      begin
+        if Option.is_some quot then invalid_argument "split_spaces";
+        String.implode @@ List.rev acc_rev, ""
+      end
+    else
+      if quot = None && List.mem s.[0] (spaces@quotations)
+         || Option.is_some quot && s.[0] = Option.get quot
+      then
+        String.implode @@ List.rev acc_rev, String.lchop s
+      else
+        take quot (s.[0]::acc_rev) @@ String.lchop s
+  in
+  let rec aux acc_rev s =
+    if s = ""
+    then List.rev acc_rev
+    else
+      let s' = chop_spaces s in
+      let s'',quot =
+        if List.mem s'.[0] quotations
+        then String.lchop s', Some s'.[0]
+        else s', None
+      in
+      let s''',s_rest = take quot [] s'' in
+      let acc_rev' = if s''' = "" then acc_rev else s'''::acc_rev in
+      aux acc_rev' s_rest
+  in
+  aux [] s

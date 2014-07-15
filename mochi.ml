@@ -30,7 +30,7 @@ let print_info () =
       begin
         let oc =
           open_out_gen [Open_append; Open_creat] 0o666 "mochi_exp.csv"
-        in 
+        in
         let ocf =
           Format.make_formatter
             (output oc)
@@ -178,7 +178,7 @@ let main in_channel =
 
 
 let parse_fpat_arg arg =
-  let args = Array.of_list @@ "FPAT" :: Str.split (Str.regexp "[ \t]+") arg in
+  let args = Array.of_list @@ "FPAT" :: split_spaces arg in
   let usage = "Options for FPAT are:" in
   try
     Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.Config.arg_spec) ignore usage
@@ -193,6 +193,7 @@ let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let arg_spec =
+  Arg.align
   ["-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
          "<dir>  Add <dir> to the list of include directories";
    "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
@@ -314,7 +315,7 @@ let parse_arg () =
     then (Arg.usage arg_spec usage; exit 1);
     Flag.filename := name
   in
-  Arg.parse (Arg.align arg_spec) set_file usage;
+  Arg.parse arg_spec set_file usage;
   Flag.args := Array.to_list Sys.argv;
   if not !Flag.ignore_conf
   then
@@ -323,9 +324,9 @@ let parse_arg () =
         let cin = open_in "option.conf" in
         let s = input_line cin in
         close_in cin;
-        let args = Str.split (Str.regexp "[ \t]+") s in
+        let args = split_spaces s in
         Arg.current := 0;
-        Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) (Arg.align arg_spec) set_file usage;
+        Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) arg_spec set_file usage;
         Flag.args := !Flag.args @ args
       with
       | Arg.Bad s
@@ -377,7 +378,7 @@ let () =
           begin
             let oc =
               open_out_gen [Open_append; Open_creat] 0o666 "mochi_exp.csv"
-            in 
+            in
             let ocf =
               Format.make_formatter
                 (output oc)
