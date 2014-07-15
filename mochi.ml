@@ -26,7 +26,30 @@ let print_info () =
       Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
       Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
       Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
-      Format.printf "}@."
+      Format.printf "}@.";
+      begin
+        let oc =
+          open_out_gen [Open_append; Open_creat] 0o666 "mochi_exp.csv"
+        in 
+        let ocf =
+          Format.make_formatter
+            (output oc)
+            (fun () -> flush oc)
+        in
+        Format.fprintf ocf "@[<v>";
+        Format.fprintf
+          ocf
+          "%s,%s,%d,%f,%f,%f,%f@,"
+          (Filename.chop_extension (Filename.basename !Flag.filename))
+          !Flag.result
+          !Flag.cegar_loop
+          !Flag.time_abstraction
+          !Flag.time_mc
+          !Flag.time_cegar
+          !Flag.time_parameter_inference;
+        Format.fprintf ocf "@]@?";
+        close_out oc
+      end
     end
   else
     begin
@@ -350,7 +373,30 @@ let () =
           Format.printf "\"result\": %S, " @@ string_of_exception e;
           Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
           Format.printf "\"total\": \"(%.3f)\"" (get_time());
-          Format.printf "}@."
+          Format.printf "}@.";
+          begin
+            let oc =
+              open_out_gen [Open_append; Open_creat] 0o666 "mochi_exp.csv"
+            in 
+            let ocf =
+              Format.make_formatter
+                (output oc)
+                (fun () -> flush oc)
+            in
+            Format.fprintf ocf "@[<v>";
+            Format.fprintf
+              ocf
+              "%s,%s,%d,%f,%f,%f,%f@,"
+              (Filename.chop_extension (Filename.basename !Flag.filename))
+              (string_of_exception e)
+              !Flag.cegar_loop
+              !Flag.time_abstraction
+              !Flag.time_mc
+              !Flag.time_cegar
+              !Flag.time_parameter_inference;
+            Format.fprintf ocf "@]@?";
+            close_out oc
+      end
       | Fpat.AbsTypInfer.FailedToRefineTypes ->
           Format.printf "Verification failed:@.";
           Format.printf "  MoCHi could not refute an infeasible error path @.";
