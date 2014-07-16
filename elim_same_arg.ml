@@ -7,6 +7,31 @@ open Type
 let debug () = List.mem "Elim_same_arg" !Flag.debug_module
 
 
+(*let tbl = Hashtbl.create 0
+
+
+
+let update_const = make_col2 (fun _ _ -> ()) ()
+
+let update_constr_term t =
+  match t with
+  | Let(flag, [f,(xs),t1], t2) ->
+      update_constr_term t1;
+      update_constr_term t2;
+
+      List.iter aux bindings;
+      update_constr_term t2
+  | Let _ -> unsupported "update_constr"
+  | _ -> update_constr.tr_term_rec t
+
+  try
+    Hashtbl.find tbl (i, j, Id.to_string f)
+  with
+  | Not_found ->
+*)
+
+
+
 let get_args = make_col2 [] List.rev_append
 
 let get_args_desc (f:id) desc =
@@ -184,4 +209,6 @@ let trans_desc env desc =
 let () = trans.tr2_desc <- trans_desc
 
 (** Assume that the input is in CPS *)
-let trans t = trans.tr2_term [] t
+let trans t =
+  assert (is_id_unique t);
+  trans.tr2_term [] t

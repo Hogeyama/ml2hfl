@@ -195,12 +195,20 @@ let tupling_term env t =
           in
           let fs' = List.filter_map Std.identity fs in
           let fg =
-            let name = List.fold_left (fun s f -> s ^ "_" ^ Id.name f) (Id.name @@ List.hd fs') (List.tl fs') in
-            Id.new_var ~name @@ List.fold_right (fun x typ -> TFun(x,typ)) xs' typ
+            try
+              let _,(fg,_,_) = List.find (fun (gs,_) -> List.length fs' = List.length gs && List.for_all2 Id.same fs' gs) !new_funs in
+              fg
+            with
+            | Not_found ->
+                let fg =
+                  let name = List.fold_left (fun s f -> s ^ "_" ^ Id.name f) (Id.name @@ List.hd fs') (List.tl fs') in
+                  Id.new_var ~name @@ List.fold_right (fun x typ -> TFun(x,typ)) xs' typ
+                in
+                let t_body = compose fg @@ List.combine fs' bodies in
+                new_funs := (fs', (fg, xs', t_body)) :: !new_funs;
+                fg
           in
           let r = Id.new_var ~name:"r" typ in
-          let t_body = compose fg @@ List.combine fs' bodies in
-          new_funs := (fs', (fg, xs', t_body)) :: !new_funs;
           if debug() then Format.printf "ADD: %a@." print_id_typ fg;
           let t_app = make_app (make_var fg) @@ List.map make_get_val tfs' in
           let index =

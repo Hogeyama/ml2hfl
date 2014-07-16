@@ -73,8 +73,7 @@ let get_same_pair env y z =
   let fsts = List.filter (function (y', Some _, None) -> Id.same y y' | _ -> false) env in
   let snds = List.filter (function (z', None, Some _) -> Id.same z z' | _ -> false) env in
   try
-    let (_, p, _) = List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (Option.get p) (Option.get p')) snds) fsts in
-    p
+    snd3 @@ List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (Option.get p) (Option.get p')) snds) fsts
   with Not_found -> None
 
 let pair_eta_reduce = make_trans2 ()
