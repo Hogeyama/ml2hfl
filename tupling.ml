@@ -203,9 +203,20 @@ let tupling_term env t =
           new_funs := (fs', (fg, xs', t_body)) :: !new_funs;
           if debug() then Format.printf "ADD: %a@." print_id_typ fg;
           let t_app = make_app (make_var fg) @@ List.map make_get_val tfs' in
+          let index =
+            let aux (i,j,rev_map) t =
+              match t with
+              | None -> i+1, j, rev_map
+              | Some _ -> i+1, j+1, (i,j)::rev_map
+            in
+            let m,n,map = List.fold_left aux (0,0,[]) ts' in
+            assert (List.length ts = m);
+            assert (List.length tfs' = n);
+            fun i -> List.assoc i map
+          in
           let aux i = Format.printf "#%d@." i; function
-            | None -> make_none (make_proj i @@ make_var r).typ
-            | Some _ -> make_some @@ make_proj i @@ make_var r
+            | None -> make_none @@ get_opt_typ (List.nth ts i).typ
+            | Some _ -> make_some @@ make_proj (index i) @@ make_var r
           in
           make_let [r, [], t_app] @@ make_tuple @@ List.mapi aux ts'
         with Not_found -> tupling.tr2_term_rec env t
