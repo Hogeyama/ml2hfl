@@ -47,12 +47,6 @@ let normalize_term t =
       let t1' = normalize.tr_term t1 in
       let x = var_of_term t1' in
       make_let [x, [], t1'] @@ make_proj i (make_var x)
-(*
-  | Let(flag,bindings,t1) ->
-      let bindings' = List.map (fun (f,xs,t) -> f, [], List.fold_right make_fun xs t) bindings in
-      let t1' = normalize.tr_term t1 in
-      make_let_f flag bindings' t1'
-*)
   | Nil
   | Cons _
   | Constr _
@@ -66,6 +60,25 @@ let normalize_term t =
 
 let () = normalize.tr_term <- normalize_term
 let normalize = normalize.tr_term
+
+
+let add_proj_info = make_trans ()
+
+let add_proj_info_term t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t2) ->
+      begin
+        try
+          let ys = List.mapi (fun i t -> match t.desc with Var x -> i,x | _ -> raise Not_found) ts in
+          let t1' = add_proj_info.tr_term t1 in
+          let t2' = add_proj_info.tr_term t2 in
+          make_let [x,[],t1'] @@ List.fold_right (fun (i,y) t -> make_label (InfoIdTerm(y, make_proj i @@ make_var x)) t) ys t2'
+        with Not_found -> add_proj_info.tr_term_rec t
+      end
+  | _ -> add_proj_info.tr_term_rec t
+
+let () = add_proj_info.tr_term <- add_proj_info_term
+let add_proj_info = add_proj_info.tr_term
 
 
 let get_same_pair env y z =
@@ -126,7 +139,19 @@ let make_deep_pair t rhs = make_deep_pair.tr2_term rhs t
 
 let subst_all x y t = t
   |> subst_var x y
-  |> make_label @@ InfoTerm (make_pair (make_var x) (make_var y))
+  |> make_label @@ InfoIdTerm(x, make_var y)
+
+
+
+let subst_label = make_trans ()
+
+let subst_label_term t =
+  match t.desc with
+  | Label(InfoIdTerm(x,t1), t2) -> subst_label.tr_term @@ subst x t1 t2
+  | _ -> subst_label.tr_term_rec t
+
+let () = subst_label.tr_term <- subst_label_term
+let subst_label = subst_label.tr_term
 
 
 
@@ -209,8 +234,11 @@ let trans t = t
   |> Trans.flatten_let
   |@debug()&> Format.printf "flatten_let:@.%a@.@." print_term
   |@> flip Type_check.check TUnit
+  |> add_proj_info
+  |@debug()&> Format.printf "add_proj_info:@.%a@.@." print_term
   |> trans.tr2_term []
   |@debug()&> Format.printf "ret_fun:@.%a@.@." print_term_typ
+  |> subst_label
   |> Trans.remove_label
   |@debug()&> Format.printf "remove_label:@.%a@.@." print_term_typ
   |> Trans.flatten_tuple
