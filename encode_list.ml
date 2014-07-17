@@ -49,7 +49,12 @@ let subst_matched_var_desc desc =
         let sbst =
           match is_filled_pattern p with
           | None -> Std.identity
-          | Some t' -> subst x t'
+          | Some t' ->
+              fun t0 ->
+                match t0 with
+                | {desc=Const True} -> t0
+                | _ when !Flag.tupling -> make_label (InfoIdTerm(x, t')) t0
+                | _ -> subst x t' t0
         in
         p, sbst t1', sbst t2'
       in

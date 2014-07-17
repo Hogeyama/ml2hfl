@@ -59,6 +59,7 @@ and info =
   | InfoString of string
   | InfoId of id
   | InfoTerm of typed_term
+  | InfoIdTerm of id * typed_term
 
 and rec_flag = Nonrecursive | Recursive
 and mutable_flag = Immutable | Mutable
@@ -148,6 +149,7 @@ let trans_info trans = function
   | InfoString s -> InfoString s
   | InfoId x -> InfoId (trans.tr_var x)
   | InfoTerm t -> InfoTerm (trans.tr_term t)
+  | InfoIdTerm(x, t) ->  InfoIdTerm(trans.tr_var x, trans.tr_term t)
 
 let trans_const trans = function
   | Unit -> Unit
@@ -301,6 +303,7 @@ let trans2_gen_info tr env = function
   | InfoString s -> InfoString s
   | InfoId x -> InfoId (tr.tr2_var env x)
   | InfoTerm t -> InfoTerm (tr.tr2_term env t)
+  | InfoIdTerm(x, t) ->  InfoIdTerm(tr.tr2_var env x, tr.tr2_term env t)
 
 let trans2_gen_const tr env = function
   | Unit -> Unit
@@ -453,6 +456,7 @@ let col_info col = function
   | InfoString s -> col.col_empty
   | InfoId x -> col.col_var x
   | InfoTerm t -> col.col_term t
+  | InfoIdTerm(x, t) -> col.col_app (col.col_var x) (col.col_term t)
 
 let col_const col _ = col.col_empty
 
@@ -605,6 +609,7 @@ let col2_info col env = function
   | InfoString s -> col.col2_empty
   | InfoId x -> col.col2_var env x
   | InfoTerm t -> col.col2_term env t
+  | InfoIdTerm(x, t) -> col.col2_app (col.col2_var env x) (col.col2_term env t)
 
 let col2_const col _ _ = col.col2_empty
 
@@ -809,6 +814,10 @@ let tr_col2_info tc env = function
   | InfoTerm t ->
       let acc,t' = tc.tr_col2_term env t in
       acc, InfoTerm t'
+  | InfoIdTerm(x,t) ->
+      let acc1,x' = tc.tr_col2_var env x in
+      let acc2,t' = tc.tr_col2_term env t in
+      tc.tr_col2_app acc1 acc2, InfoIdTerm(x',t')
 
 let tr_col2_const tc _ x = tc.tr_col2_empty, x
 
@@ -1081,6 +1090,10 @@ let fold_tr_info fld env = function
   | InfoTerm t ->
       let env',t' = fld.fold_tr_term env t in
       env', InfoTerm t'
+  | InfoIdTerm(x,t) ->
+      let env',x' = fld.fold_tr_var env x in
+      let env'',t' = fld.fold_tr_term env' t in
+      env'', InfoIdTerm(x',t')
 
 let fold_tr_const fld env x = env, x
 
@@ -1502,14 +1515,8 @@ and print_desc pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[#%d@ %a@]%s" s1 i (print_term p typ) t s2
   | Bottom -> fprintf fm "_|_"
-  | Label(InfoId x, t) ->
-      fprintf fm "(@[label@ %a@ %a@])" print_id x (print_term 80 typ) t
-  | Label(InfoString s, t) ->
-      fprintf fm "(@[label@ %s@ %a@])" s (print_term 80 typ) t
-  | Label(InfoInt n, t) ->
-      fprintf fm "(@[label@ %d@ %a@])" n (print_term 80 typ) t
-  | Label(InfoTerm t', t) ->
-      fprintf fm "(@[label@ %a@ %a@])" (print_term 80 typ) t' (print_term 80 typ) t
+  | Label(info, t) ->
+      fprintf fm "(@[label[@[%a@]]@ %a@])" print_info info (print_term 80 typ) t
   | Ref t ->
       let p = 80 in
       let s1,s2 = paren pri p in
@@ -1527,6 +1534,20 @@ and print_desc pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[Ref %a@]%s" s1 (print_term p typ) t s2
+
+and print_info fm info =
+  match info with
+  | InfoId x ->
+      fprintf fm "Id %a" print_id x
+  | InfoString s ->
+      fprintf fm "String %s" s
+  | InfoInt n ->
+      fprintf fm "Int %d" n
+  | InfoTerm t ->
+      fprintf fm "Term %a" (print_term 80 false) t
+  | InfoIdTerm(x,t) ->
+      fprintf fm "IdTerm(%a,@ %a)" print_id x (print_term 80 false) t
+
 
 
 and print_pattern fm pat =
@@ -1678,7 +1699,8 @@ let rec print_term' pri fm t =
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%s#%d %a%s" s1 i (print_term' 1) t s2
     | Bottom -> fprintf fm "_|_"
-    | Label _ -> assert false
+    | Label(info, t) ->
+        fprintf fm "(@[label[%a]@ %a@])" print_info info (print_term' 0) t
     | Ref t ->
         let p = 4 in
         let s1,s2 = paren pri (p+1) in

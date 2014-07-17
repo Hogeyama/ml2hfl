@@ -3,8 +3,6 @@ open Util
 let init () =
   Term_util.typ_excep := Type.TConstr("exn",true)
 
-let id x = x
-
 let rec trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.print_term_typ) t =
   let r = f t in
   let t' = proj r in
@@ -15,6 +13,7 @@ let rec trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.print_term_typ) t =
 let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
 
 let preprocess t spec =
+  let id x = x in
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then

@@ -55,6 +55,7 @@ and info =
   | InfoString of string
   | InfoId of id
   | InfoTerm of typed_term
+  | InfoIdTerm of id * typed_term
 
 and rec_flag = Nonrecursive | Recursive
 and mutable_flag = Immutable | Mutable

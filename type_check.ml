@@ -17,30 +17,31 @@ let rec check t typ =
   then (Format.printf "check: %a, %a@."
                       (Color.red print_term') t
                       (Color.yellow Syntax.print_typ) typ; assert false);
-  match {desc=t.desc; typ=elim_tpred t.typ} with
-  | {desc=Const Unit; typ=TUnit} -> ()
-  | {desc=Const CPS_result; typ=typ} when typ = typ_result -> ()
-  | {desc=Const (True|False); typ=TBool} -> ()
-  | {desc=Const (Int _); typ=(TInt | TRInt _)} -> ()
-  | {desc=Const _; typ=TConstr _} -> ()
-  | {desc=RandInt false; typ=TFun(x,TInt)} ->
+  match t.desc, elim_tpred t.typ with
+  | Label(_, t), _ -> check t typ
+  | Const Unit, TUnit -> ()
+  | Const CPS_result, typ when typ = typ_result -> ()
+  | Const (True|False), TBool -> ()
+  | Const (Int _), (TInt | TRInt _) -> ()
+  | Const _, TConstr _ -> ()
+  | RandInt false, TFun(x,TInt) ->
       check_var x TUnit
-  | {desc=RandInt true; typ=TFun(x,TFun(k,rtyp))} ->
+  | RandInt true, TFun(x,TFun(k,rtyp)) ->
       assert (rtyp = typ_result);
       check_var x TUnit;
       check_var k (TFun(Id.new_var TInt, typ_result))
-  | {desc=RandValue(typ1,false); typ=TFun({Id.typ=TUnit},typ2)} -> assert (Type.can_unify typ1 typ2)
-  | {desc=RandValue(typ1,true); typ=TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2))} -> ()
+  | RandValue(typ1,false), TFun({Id.typ=TUnit},typ2) -> assert (Type.can_unify typ1 typ2)
+  | RandValue(typ1,true), TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2)) -> ()
   (*
       assert (rtyp1 = typ_result);
       assert (rtyp2 = typ_result);
       assert (typ1 = Id.typ x)*)
-  | {desc=Var x; typ=typ'} ->
+  | Var x, typ' ->
       check_var x typ'
-  | {desc=Fun(x,t); typ=TFun(y,typ')} ->
+  | Fun(x,t), TFun(y,typ') ->
       check_var x (Id.typ y);
       check t typ'
-  | {desc=App(t,ts); typ=typ'} ->
+  | App(t,ts), typ' ->
       let rec aux = function
           [], _ -> ()
         | t::ts, TFun(x,typ) ->
@@ -52,14 +53,14 @@ let rec check t typ =
       let typ'' = List.fold_right (fun t typ -> TFun(Id.set_typ var t.typ, typ)) ts typ' in
       aux (ts, t.typ);
       check t typ''
-  | {desc=If(t1,t2,t3); typ=typ'} ->
+  | If(t1,t2,t3), typ' ->
       check t1 TBool;
       check t2 typ';
       check t3 typ'
-  | {desc=Branch(t1,t2); typ=typ'} ->
+  | Branch(t1,t2), typ' ->
       check t1 typ';
       check t2 typ'
-  | {desc=Let(flag, bindings, t2); typ=typ'} ->
+  | Let(flag, bindings, t2), typ' ->
       let rec aux t = function
           x::xs,TFun(y,typ) ->
           check_var x (Id.typ y); aux t (xs,typ)
@@ -75,11 +76,11 @@ let rec check t typ =
       in
       List.iter (fun (f,xs,t) -> aux t (xs, Id.typ f)) bindings;
       check t2 typ'
-  | {desc=BinOp(Eq,t1,t2); typ=TBool} ->
+  | BinOp(Eq,t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);
       check t1 t1.typ;
       check t2 t2.typ;
-  | {desc=BinOp((Lt|Gt|Leq|Geq),t1,t2); typ=TBool} ->
+  | BinOp((Lt|Gt|Leq|Geq),t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);
       check t1 t1.typ;
       check t2 t2.typ;
@@ -87,55 +88,55 @@ let rec check t typ =
         check t1 TInt;
         check t2 TInt
    *)
-  | {desc=BinOp((And|Or),t1,t2); typ=TBool} ->
+  | BinOp((And|Or),t1,t2), TBool ->
       check t1 TBool;
       check t2 TBool
-  | {desc=BinOp((Add|Sub|Mult),t1,t2); typ=TInt} ->
+  | BinOp((Add|Sub|Mult),t1,t2), TInt ->
       check t1 TInt;
       check t2 TInt
-  | {desc=Not t; typ=TBool} ->
+  | Not t, TBool ->
       check t TBool
-  | {desc=Event(_,false); typ=typ'} -> assert (typ' = typ_event || typ' = typ_event')
-  | {desc=Event(_,true); typ=typ'} -> assert (typ' = typ_event_cps)
-  | {desc=Tuple ts; typ=TTuple xs} ->
+  | Event(_,false), typ' -> assert (typ' = typ_event || typ' = typ_event')
+  | Event(_,true), typ' -> assert (typ' = typ_event_cps)
+  | Tuple ts, TTuple xs ->
       List.iter2 check ts @@ List.map Id.typ xs;
-  | {desc=Proj(i,t); typ=typ} ->
+  | Proj(i,t), typ ->
       assert (Type.can_unify typ @@ proj_typ i t.typ);
       check t t.typ
-  | {desc=Record _} -> assert false
-  | {desc=Field _} -> assert false
-  | {desc=SetField _} -> assert false
-  | {desc=Nil; typ=TList _} -> ()
-  | {desc=Cons(t1,t2); typ=TList typ'} ->
+  | Record _, typ -> assert false
+  | Field _, typ -> assert false
+  | SetField _, typ -> assert false
+  | Nil, TList _ -> ()
+  | Cons(t1,t2), TList typ' ->
       check t1 typ';
       check t2 typ
-  | {desc=Constr(s,ts)} ->
+  | Constr(s,ts), typ ->
       let typs = Type_decl.constr_arg_typs s in
       assert (List.length typs = List.length ts);
       List.iter2 check ts typs
-  | {desc=Match(t,pats); typ=typ'} ->
+  | Match(t,pats), typ' ->
       let aux (p,cond,t) =
         check cond TBool;
         check t typ'
       in
       check t t.typ;
       List.iter aux pats
-  | {desc=Raise t; typ=_} ->
+  | Raise t, _ ->
       check t !typ_excep
-  | {desc=TryWith(t1,t2); typ=typ} ->
+  | TryWith(t1,t2), typ ->
       let e = Id.new_var ~name:"e" !typ_excep in
       check t1 typ;
       check t2 (TFun(e,typ))
-  | {desc=Bottom} -> ()
-  | {desc=Ref t; typ=TRef typ} ->
+  | Bottom, typ -> ()
+  | Ref t, TRef typ ->
       check t typ
-  | {desc=Deref t; typ=typ} ->
+  | Deref t, typ ->
       check t (TRef typ)
-  | {desc=SetRef(t1,t2); typ=TUnit} ->
+  | SetRef(t1,t2), TUnit ->
       check t1 (TRef t2.typ);
       check t2 t2.typ
-  | {desc=TNone; typ=TOption typ} -> ()
-  | {desc=TSome t; typ=TOption typ} ->
+  | TNone, TOption typ -> ()
+  | TSome t, TOption typ ->
       check t typ
   | _ ->
       match t.typ with

@@ -59,7 +59,6 @@ let normalize_term t =
   | Match _
   | Raise _
   | TryWith _
-  | Label _
   | Record _
   | Field _
   | SetField _ -> assert false
@@ -113,6 +112,7 @@ let make_deep_pair_term rhs t =
   | Label(InfoTerm{desc=Tuple[{desc=Var x};{desc=Var y}]}, t) ->
       let rhs' = if Id.same x rhs then y else rhs in
       make_deep_pair.tr2_term rhs' t
+  | Label(info, t) -> make_label info (make_deep_pair.tr2_term rhs t)
   | _ ->
       make_pair t (make_var rhs)
 
@@ -192,7 +192,6 @@ Color.printf Color.Yellow "[%a |-> %a]: @[<hov 4>%a@." Id.print x2' Id.print x2'
   | Match _
   | Raise _
   | TryWith _
-  | Label _
   | Record _
   | Field _
   | SetField _ -> assert false
