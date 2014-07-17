@@ -109,27 +109,12 @@ let () = pair_eta_reduce.tr2_term <- pair_eta_reduce_term
 let pair_eta_reduce = pair_eta_reduce.tr2_term []
 
 
-let make_deep_pair = make_trans2 ()
-
-let make_deep_pair_typ rhs typ =
-  TTuple[Id.new_var typ; rhs]
-
-let make_deep_pair_term rhs t =
+let rec make_deep_pair t rhs =
   match t.desc with
-  | If(t1,t2,t3) ->
-      let t2' = make_deep_pair.tr2_term rhs t2 in
-      let t3' = make_deep_pair.tr2_term rhs t3 in
-      make_if t1 t2' t3'
-  | Let(flag,bindings,t) ->
-      make_let_f flag bindings @@ make_deep_pair.tr2_term rhs t
-  | Label(info, t) -> make_label info (make_deep_pair.tr2_term rhs t)
-  | _ ->
-      make_pair t (make_var rhs)
-
-let () = make_deep_pair.tr2_term <- make_deep_pair_term
-let () = make_deep_pair.tr2_typ <- make_deep_pair_typ
-
-let make_deep_pair t rhs = make_deep_pair.tr2_term rhs t
+  | If(t1,t2,t3) -> make_if t1 (make_deep_pair t2 rhs) (make_deep_pair t3 rhs)
+  | Let(flag,bindings,t) -> make_let_f flag bindings @@ make_deep_pair t rhs
+  | Label(info, t) -> make_label info (make_deep_pair t rhs)
+  | _ -> make_pair t (make_var rhs)
 
 
 
