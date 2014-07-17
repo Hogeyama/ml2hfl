@@ -122,9 +122,6 @@ let make_deep_pair_term rhs t =
       make_if t1 t2' t3'
   | Let(flag,bindings,t) ->
       make_let_f flag bindings @@ make_deep_pair.tr2_term rhs t
-  | Label(InfoTerm{desc=Tuple[{desc=Var x};{desc=Var y}]}, t) ->
-      let rhs' = if Id.same x rhs then y else rhs in
-      make_deep_pair.tr2_term rhs' t
   | Label(info, t) -> make_label info (make_deep_pair.tr2_term rhs t)
   | _ ->
       make_pair t (make_var rhs)
