@@ -54,9 +54,7 @@ let rec makeTemplate = function
 
 let rec insertExparam scope expr =
   match expr.desc with
-    | Const _
-    | RandInt _
-    | RandValue _ -> expr
+    | Const _ -> expr
     | Var v ->
       let typ = transType v.Id.typ in
       {desc = Var {v with Id.typ = typ}; typ = typ}

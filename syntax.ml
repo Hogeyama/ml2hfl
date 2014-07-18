@@ -20,12 +20,12 @@ and const = (* only base type constants *)
   | Int64 of int64
   | Nativeint of nativeint
   | CPS_result
+  | RandInt of bool
+  | RandValue of typ * bool
 
 and typed_term = {desc:term; typ:typ}
 and term =
   | Const of const
-  | RandInt of bool
-  | RandValue of typ * bool
   | Var of id
   | Fun of id * typed_term
   | App of typed_term * typed_term list
@@ -163,11 +163,10 @@ let trans_const trans = function
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
   | CPS_result -> CPS_result
+  | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
 
 let trans_desc trans = function
   | Const c -> Const c
-  | RandInt b -> RandInt b
-  | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
   | Var y -> Var (trans.tr_var y)
   | Fun(y, t) -> Fun(trans.tr_var y, trans.tr_term t)
   | App(t1, ts) -> App(trans.tr_term t1, List.map trans.tr_term ts)
@@ -317,11 +316,11 @@ let trans2_gen_const tr env = function
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
   | CPS_result -> CPS_result
+  | RandInt b -> RandInt b
+  | RandValue(typ,b) -> RandValue(tr.tr2_typ env typ, b)
 
 let trans2_gen_desc tr env = function
   | Const c -> Const c
-  | RandInt b -> RandInt b
-  | RandValue(typ,b) -> RandValue(tr.tr2_typ env typ, b)
   | Var y -> Var (tr.tr2_var env y)
   | Fun(y, t) -> Fun(tr.tr2_var env y, tr.tr2_term env t)
   | App(t1, ts) -> App(tr.tr2_term env t1, List.map (tr.tr2_term env) ts)
@@ -458,12 +457,13 @@ let col_info col = function
   | InfoTerm t -> col.col_term t
   | InfoIdTerm(x, t) -> col.col_app (col.col_var x) (col.col_term t)
 
-let col_const col _ = col.col_empty
+let col_const col c =
+  match c with
+  | RandValue(typ,b) -> col.col_typ typ
+  | _ -> col.col_empty
 
 let col_desc col = function
   | Const c -> col.col_empty
-  | RandInt b -> col.col_empty
-  | RandValue(typ,b) -> col.col_typ typ
   | Var y -> col.col_var y
   | Fun(y, t) -> col.col_app (col.col_var y) (col.col_term t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) (col.col_term t1) ts
@@ -611,12 +611,13 @@ let col2_info col env = function
   | InfoTerm t -> col.col2_term env t
   | InfoIdTerm(x, t) -> col.col2_app (col.col2_var env x) (col.col2_term env t)
 
-let col2_const col _ _ = col.col2_empty
+let col2_const col env c =
+  match c with
+  | RandValue(typ,b) -> col.col2_typ env typ
+  | _ -> col.col2_empty
 
 let col2_desc col env = function
   | Const c -> col.col2_empty
-  | RandInt b -> col.col2_empty
-  | RandValue(typ,b) -> col.col2_typ env typ
   | Var y -> col.col2_var env y
   | Fun(y, t) -> col.col2_app (col.col2_var env y) (col.col2_term env t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) (col.col2_term env t1) ts
@@ -819,14 +820,15 @@ let tr_col2_info tc env = function
       let acc2,t' = tc.tr_col2_term env t in
       tc.tr_col2_app acc1 acc2, InfoIdTerm(x',t')
 
-let tr_col2_const tc _ x = tc.tr_col2_empty, x
-
-let tr_col2_desc tc env = function
-  | Const c -> tc.tr_col2_empty, Const c
-  | RandInt b -> tc.tr_col2_empty, RandInt b
+let tr_col2_const tc env c =
+  match c with
   | RandValue(typ,b) ->
       let acc,typ' = tc.tr_col2_typ env typ in
       acc, RandValue(typ',b)
+  | _ -> tc.tr_col2_empty, c
+
+let tr_col2_desc tc env = function
+  | Const c -> tc.tr_col2_empty, Const c
   | Var y ->
       let acc,y' = tc.tr_col2_var env y in
       acc, Var y'
@@ -1095,14 +1097,15 @@ let fold_tr_info fld env = function
       let env'',t' = fld.fold_tr_term env' t in
       env'', InfoIdTerm(x',t')
 
-let fold_tr_const fld env x = env, x
-
-let fold_tr_desc fld env = function
-  | Const c -> env, Const c
-  | RandInt b -> env, RandInt b
+let fold_tr_const fld env c =
+  match c with
   | RandValue(typ,b) ->
       let env',typ' = fld.fold_tr_typ env typ in
       env', RandValue(typ',b)
+  | _ -> env, c
+
+let fold_tr_desc fld env = function
+  | Const c -> env, Const c
   | Var y ->
       let env',y' = fld.fold_tr_var env y in
       env', Var y'
@@ -1395,16 +1398,16 @@ and print_const fm = function
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result -> fprintf fm "{end}"
+  | RandInt false -> fprintf fm "rand_int"
+  | RandInt true -> fprintf fm "rand_int_cps"
+  | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
+  | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 
 and print_term pri typ fm t = print_desc pri typ fm t.desc
 
 and print_desc pri typ fm desc =
   match desc with
   | Const c -> print_const fm c
-  | RandInt false -> fprintf fm "rand_int"
-  | RandInt true -> fprintf fm "rand_int_cps"
-  | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
-  | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
   | Var x -> print_id fm x
   | Fun(x, t) ->
       let p = 15 in
@@ -1589,16 +1592,6 @@ let rec print_term' pri fm t =
   fprintf fm "(";(
     match t.desc with
     | Const c -> print_const fm c
-    | RandInt false -> fprintf fm "rand_int"
-    | RandInt true -> fprintf fm "rand_int_cps"
-    | RandValue(typ',false) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-        fprintf fm "%srand_val[%a]%s" s1 print_typ typ' s2
-    | RandValue(typ',true) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-        fprintf fm "%srand_val_cps[%a]%s" s1 print_typ typ' s2
     | Var x when t.typ = Id.typ x -> print_id fm x
     | Var x -> print_id_typ fm x
     | Fun(x, t) ->
@@ -1786,8 +1779,6 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
 let string_of_constr t =
   match t.desc with
   | Const _ -> "Const"
-  | RandInt _ -> "RandInt"
-  | RandValue _ -> "RandValue"
   | Var _ -> "Var"
   | Fun _ -> "Fun"
   | App _ -> "App"

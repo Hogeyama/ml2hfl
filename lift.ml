@@ -72,8 +72,6 @@ let rec lift_aux post xs t =
   let defs,desc =
     match t.desc with
     | Const _
-    | RandInt _
-    | RandValue _
     | Var _ -> [], t.desc
     | Fun _ ->
         let f = Id.new_var ~name:("f" ^ post) t.typ in
@@ -197,8 +195,6 @@ let rec lift_aux' post xs t =
   let defs,desc =
     match t.desc with
     | Const _
-    | RandInt _
-    | RandValue _
     | Var _ -> [], t.desc
     | Fun _ ->
         let f = Id.new_var ~name:("f" ^ post) t.typ in

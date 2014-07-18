@@ -107,7 +107,7 @@ let rec remove_pair_typ = function
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
-  let aux path typ = Id.set_typ (Id.add_name x (to_string path)) typ in
+  let aux path typ = Id.set_typ (Id.add_name_after x (to_string path)) typ in
   map aux (remove_pair_typ (Id.typ x))
 
 and remove_pair_aux t typ_opt =
@@ -115,9 +115,7 @@ and remove_pair_aux t typ_opt =
   let typs = remove_pair_typ typ in
   match t.desc with
   | Const _
-  | RandInt _
-  | Event _
-  | RandValue _ -> Leaf t
+  | Event _ -> Leaf t
   | Bottom -> map (fun _ -> make_bottom) typs
   | Var x -> map (fun _ -> make_var) (remove_pair_var x)
   | Fun(x, t) ->

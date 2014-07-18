@@ -46,7 +46,8 @@ let same x y = compare x y = 0
 let set_name x name = {x with name=name}
 let set_typ x typ = {x with typ=typ}
 
-let add_name x str = set_name x (name x ^ str)
+let add_name_before x str = set_name x (str ^ name x)
+let add_name_after x str = set_name x (name x ^ str)
 
 let rec assoc x = function
     [] -> raise Not_found

@@ -169,22 +169,22 @@ and trans_const c typ =
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
   match t.S.desc with
+  | S.Const(S.RandInt _) -> assert false
   | S.Const c -> [], Const (trans_const c t.S.typ)
-  | S.App({S.desc=S.RandInt false}, [{S.desc=S.Const S.Unit}]) ->
+  | S.App({S.desc=S.Const(S.RandInt false)}, [{S.desc=S.Const S.Unit}]) ->
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
-  | S.App({S.desc=S.RandInt true}, [t1;t2]) ->
+  | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
       assert (t1 = U.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const RandInt, t2')
-  | S.App({S.desc=S.RandValue(Type.TInt, true)}, [t1;t2]) ->
+  | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true))}, [t1;t2]) ->
       assert (t1 = U.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const RandInt, t2')
-  | S.RandInt _ -> assert false
-  | S.App({S.desc=S.RandValue(Type.TConstr(s,false), true)}, [t1]) ->
+  | S.App({S.desc=S.Const(S.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
   | S.Var x ->
@@ -253,9 +253,9 @@ and trans_term post xs env t =
 
 let rec formula_of t =
   match t.S.desc with
+  | S.Const(S.RandInt false) -> raise Not_found
+  | S.Const(S.RandInt true) -> assert false
   | S.Const c -> Const (trans_const c t.S.typ)
-  | S.RandInt false -> raise Not_found
-  | S.RandInt true -> assert false
   | S.Var x ->
       let x' = trans_var x in
       Var x'

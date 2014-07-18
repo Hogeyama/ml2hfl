@@ -21,17 +21,17 @@ let rec check t typ =
   | Label(_, t), _ -> check t typ
   | Const Unit, TUnit -> ()
   | Const CPS_result, typ when typ = typ_result -> ()
-  | Const (True|False), TBool -> ()
-  | Const (Int _), (TInt | TRInt _) -> ()
+  | Const(True|False), TBool -> ()
+  | Const(Int _), (TInt | TRInt _) -> ()
   | Const _, TConstr _ -> ()
-  | RandInt false, TFun(x,TInt) ->
+  | Const(RandInt false), TFun(x,TInt) ->
       check_var x TUnit
-  | RandInt true, TFun(x,TFun(k,rtyp)) ->
+  | Const(RandInt true), TFun(x,TFun(k,rtyp)) ->
       assert (rtyp = typ_result);
       check_var x TUnit;
       check_var k (TFun(Id.new_var TInt, typ_result))
-  | RandValue(typ1,false), TFun({Id.typ=TUnit},typ2) -> assert (Type.can_unify typ1 typ2)
-  | RandValue(typ1,true), TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2)) -> ()
+  | Const(RandValue(typ1,false)), TFun({Id.typ=TUnit},typ2) -> assert (Type.can_unify typ1 typ2)
+  | Const(RandValue(typ1,true)), TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2)) -> ()
   (*
       assert (rtyp1 = typ_result);
       assert (rtyp2 = typ_result);

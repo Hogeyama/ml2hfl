@@ -59,9 +59,9 @@ let rec elim_tpred_all = function
   | TOption typ -> TOption (elim_tpred_all typ)
 
 let rec decomp_tfun = function
-    TFun(x,typ) ->
+  | TFun(x,typ) ->
       let xs,typ = decomp_tfun typ in
-        x :: xs, typ
+      x :: xs, typ
   | typ -> [], typ
 
 let rec can_unify typ1 typ2 =

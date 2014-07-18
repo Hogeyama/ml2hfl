@@ -58,12 +58,12 @@ let rec eval_print fm rands t =
   if false then Format.printf "EVAL:%a@.RANDS:%a@.@." print_term t
                               (print_list Format.pp_print_int ";") rands;
   match t.desc with
-  | Const c -> rands, t
-  | RandInt false ->
+  | Const(RandInt false) ->
       let x = Id.new_var Type.TUnit in
       List.tl rands, make_fun x (make_int (List.hd rands))
-  | RandInt true -> assert false
-  | RandValue _ -> assert false
+  | Const(RandInt true) -> assert false
+  | Const(RandValue _) -> assert false
+  | Const c -> rands, t
   | Var y -> unsupported "error trace with external funcitons"
   | Fun _ -> rands, t
   | App(t1, ts) ->

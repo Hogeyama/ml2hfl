@@ -193,17 +193,23 @@ let _TFunCPS(e, typ1, typ2) =
 
 let rec infer_effect env t =
   match t.desc with
+  | Const(RandInt true) -> assert false
+  | Const(RandInt false) ->
+      let e = new_evar () in
+      let typ = _TFunCPS(e, TBaseCPS TUnit, TBaseCPS TInt) in
+      constraints := CGeq(e, ECont) :: !constraints;
+      {t_cps=RandIntCPS; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
+  | Const(RandValue(typ, true)) -> assert false
+  | Const(RandValue(typ, false)) ->
+      let e = new_evar () in
+      let typ' = _TFunCPS(e, TBaseCPS TUnit, TBaseCPS typ) in
+      constraints := CGeq(e, ECont) :: !constraints;
+      {t_cps=RandValueCPS typ; typ_cps=typ'; typ_orig=t.typ; effect=new_evar()}
   | Const c -> {t_cps=ConstCPS c; typ_cps=TBaseCPS t.typ; typ_orig=t.typ; effect=new_evar()}
   | Bottom ->
       let e = new_evar () in
       constraints := CGeq(e, ECont) :: !constraints;
       {t_cps=BottomCPS; typ_cps=infer_effect_typ t.typ; typ_orig=t.typ; effect=e}
-  | RandInt true -> assert false
-  | RandInt false ->
-      let e = new_evar () in
-      let typ = _TFunCPS(e, TBaseCPS TUnit, TBaseCPS TInt) in
-      constraints := CGeq(e, ECont) :: !constraints;
-      {t_cps=RandIntCPS; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
   | Var x ->
       let typ =
 	try
@@ -321,12 +327,6 @@ let rec infer_effect env t =
       let e = new_evar () in
       constraints := CGeq(e, EExcep) :: !constraints;
       {t_cps=RaiseCPS typed; typ_cps=infer_effect_typ t.typ; typ_orig=t.typ; effect=e}
-  | RandValue(typ, true) -> assert false
-  | RandValue(typ, false) ->
-      let e = new_evar () in
-      let typ' = _TFunCPS(e, TBaseCPS TUnit, TBaseCPS typ) in
-      constraints := CGeq(e, ECont) :: !constraints;
-      {t_cps=RandValueCPS typ; typ_cps=typ'; typ_orig=t.typ; effect=new_evar()}
   | _ -> assert false
 
 
@@ -387,8 +387,6 @@ let rec add_preds_cont_aux k t =
   let desc =
     match t.desc with
     | Const c -> Const c
-    | RandInt b -> RandInt b
-    | RandValue(typ,b) -> RandValue(typ,b)
     | Var y -> Var y
     | Fun(y, t) -> Fun(y, add_preds_cont_aux k t)
     | App(t1, ts) ->

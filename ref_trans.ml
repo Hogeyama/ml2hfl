@@ -439,20 +439,18 @@ let col_assert_desc desc =
   | _ -> col_assert.col_desc_rec desc
 
 let () = col_assert.col_desc <- col_assert_desc
-
 let col_assert = col_assert.col_term
 
 
 let has_rand = make_col false (||)
 
-let has_rand_desc desc =
-  match desc with
+let has_rand_const c =
+  match c with
   | RandInt _ -> true
   | RandValue _ -> true
-  | _ -> has_rand.col_desc_rec desc
+  | _ -> false
 
-let () = has_rand.col_desc <- has_rand_desc
-
+let () = has_rand.col_const <- has_rand_const
 let has_rand = has_rand.col_term
 
 
@@ -468,7 +466,6 @@ let col_rand_funs_desc desc =
   | _ -> col_rand_funs.col_desc_rec desc
 
 let () = col_rand_funs.col_desc <- col_rand_funs_desc
-
 let col_rand_funs = col_rand_funs.col_term
 
 

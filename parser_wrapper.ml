@@ -329,7 +329,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
 
 
 let from_value_kind = function
-    Types.Val_reg -> Format.printf "Val_reg@."; assert false
+  | Types.Val_reg -> Format.printf "Val_reg@."; assert false
   | Types.Val_prim prim_desc -> Id.new_var (prim_desc.Primitive.prim_name)
   | Types.Val_ivar _ -> Format.printf "Val_ivar@."; assert false
   | Types.Val_self _ -> Format.printf "Val_self@."; assert false
@@ -337,7 +337,7 @@ let from_value_kind = function
   | Types.Val_unbound -> Format.printf "Val_unbound@."; assert false
 
 let from_constant = function
-    Const_int n -> Int n
+  | Const_int n -> Int n
   | Const_char c -> Char c
   | Const_string s -> String s
   | Const_float x -> Float x
@@ -387,7 +387,20 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   | Texp_function(_,pats,totality) ->
       let x,typ2 =
         match typ' with
-        | TFun(x,typ2) -> x,typ2
+        | TFun(x,typ2) ->
+            let x' = (* for readable variable names *)
+              match (from_pattern @@ fst @@ List.hd pats).pat_desc with
+              | PTuple ps ->
+                  let xs = List.map (function {pat_desc=PVar x} -> Some x | _ -> None) ps in
+                  if List.for_all Option.is_some xs
+                  then
+                    let xs' = List.map Option.get xs in
+                    let name = List.fold_left (fun s x -> s ^ "_" ^ Id.name x) (Id.name @@ List.hd xs') @@ List.tl xs' in
+                    Id.set_name x name
+                  else x
+              | _ -> x
+            in
+            x', typ2
         | _ -> assert false
       in
       let aux (p,e) =
@@ -400,7 +413,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         | Total -> []
         | Partial -> [make_pvar (Id.new_var_id x), true_term, make_fail typ2]
       in
-      make_fun x {desc=Match({desc=Var x;typ=Id.typ x}, List.map aux pats@tail);typ=typ2}
+      make_fun x {desc=Match(make_var x, List.map aux pats@tail);typ=typ2}
   | Texp_apply(e, es) ->
       let t = from_expression e in
       let aux = function
@@ -563,12 +576,10 @@ let from_top_level_phrase (env,defs) = function
             let aux (p,e) =
               let p' = from_pattern p in
               let e' = from_expression e in
-              match p'.pat_desc with
-                PVar x -> x, e'
-              | _ ->
-                  if flag = Recursive
-                  then raise (Fatal "Only variables are allowed as left-hand side of 'let rec'")
-                  else unsupported "Only variables are allowed as left-hand side of 'let'"
+              match p'.pat_desc, flag with
+              | PVar x, _ -> x, e'
+              | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
+              | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
             in
             [Decl_let(flag, List.map aux pats)]
         | Tstr_primitive _ -> unsupported "external"

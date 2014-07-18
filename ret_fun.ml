@@ -21,8 +21,10 @@ let normalize_term t =
         bindings @ [z, [], t]
       in
       let bindings = List.tl @@ List.fold_left aux [x, [], make_var x] xs in
-      let y,_,_ = List.last bindings in
-      let t = make_lets bindings @@ make_var y in
+      let bindings',(y,_,t) = List.decomp_snoc bindings in
+      let y' = Id.new_var ~name:("r_" ^ Id.name x) t.typ in
+      let bindings'' = bindings' @ [y', [], t] in
+      let t = make_lets bindings'' @@ make_var y' in
       make_lets (List.rev @@ List.map2 (fun x t -> x, [], t) (x::xs) (t1'::ts')) t
   | If(t1,t2,t3) ->
       let x = var_of_term t1 in

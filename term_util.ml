@@ -37,7 +37,7 @@ let false_term = {desc=Const False;typ=TBool}
 let cps_result = {desc=Const CPS_result; typ=typ_result}
 let fail_term = {desc=Event("fail",false);typ=typ_event}
 let fail_term_cps = {desc=Event("fail",false);typ=typ_event'}
-let randint_term = {desc=RandInt false; typ=TFun(Id.new_var TUnit,TInt)}
+let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt)}
 let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
   {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Const(Int 0);typ=TInt}); typ=TBool}
@@ -46,18 +46,18 @@ let make_event s = {desc=Event(s,false);typ=typ_event}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
 let make_var x = {desc=Var x; typ=Id.typ x}
 let make_int n = {desc=Const(Int n); typ=TInt}
-let make_randvalue typ = {desc=RandValue(typ,false); typ=TFun(Id.new_var TUnit,typ)}
+let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ)}
 let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ=typ}
 let make_randvalue_cps typ =
   let u = Id.new_var TUnit in
   let r = Id.new_var typ in
   let k = Id.new_var @@ TFun(r,typ_result) in
-  {desc=RandValue(typ,true); typ=TFun(u,TFun(k,typ_result))}
+  {desc=Const(RandValue(typ,true)); typ=TFun(u,TFun(k,typ_result))}
 let make_randint_cps () =
   let u = Id.new_var TUnit in
   let r = Id.new_var TInt in
   let k = Id.new_var @@ TFun(r,typ_result) in
-  {desc=RandInt true; typ=TFun(u,TFun(k,typ_result))}
+  {desc=Const(RandInt true); typ=TFun(u,TFun(k,typ_result))}
 let rec make_app t ts =
   let check typ1 typ2 =
     if not (Flag.check_typ => Type.can_unify typ1 typ2)
@@ -613,13 +613,14 @@ and is_simple_bexp t =
 
 let same_list same xs ys = List.length xs = List.length ys && List.for_all2 same xs ys
 
-let rec same_const = (=)
+let rec same_const c1 c2 =
+  match c1,c2 with
+  | RandValue _, RandValue _ -> unsupported "same_const"
+  | _ -> c1 = c2
 and same_term t1 t2 = same_desc t1.desc t2.desc
 and same_desc t1 t2 =
   match t1,t2 with
   | Const c1, Const c2 -> same_const c1 c2
-  | RandInt b1, RandInt b2 -> b1 = b2
-  | RandValue _, RandValue _ -> unsupported "same_term 1 "
   | Var x, Var y -> Id.same x y
   | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
   | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
@@ -657,16 +658,17 @@ let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
 let rec var_name_of_term t =
   match t.desc, elim_tpred t.typ with
-  | Var x, _       -> Id.name x
-  | _,         TUnit   -> "u"
-  | _,         TBool   -> "b"
-  | _,         TInt    -> "n"
-  | _,         TFun _  -> "f"
-  | _,         TTuple _ -> "p"
-  | App _,     _       -> "r"
-  | Proj(i,t), _       -> var_name_of_term t ^ "_" ^ string_of_int i
-  | Fun _,     _       -> assert false
-  | _,         _       -> "x"
+  | Var x,      _       -> Id.name x
+  | Let(_,_,t), _       -> var_name_of_term t
+  | _,          TUnit   -> "u"
+  | _,          TBool   -> "b"
+  | _,          TInt    -> "n"
+  | _,          TFun _  -> "f"
+  | _,          TTuple _ -> "p"
+  | App _,      _       -> "r"
+  | Proj(i,t),  _       -> var_name_of_term t ^ "_" ^ string_of_int i
+  | Fun _,      _       -> assert false
+  | _,          _       -> "x"
 
 let var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 

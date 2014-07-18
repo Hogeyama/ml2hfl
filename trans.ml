@@ -257,10 +257,10 @@ let inst_randval = make_fold_tr ()
 
 let inst_randval_term (env,defs) t =
   match t.desc with
-  | App({desc=RandValue(typ,false)}, [t']) when t' = unit_term ->
+  | App({desc=Const(RandValue(typ,false))}, [t']) when t' = unit_term ->
       let env',defs',t'' = define_randvalue env defs typ in
       (env',defs'), t''
-  | RandValue _ -> assert false
+  | Const(RandValue _) -> assert false
   | _ -> inst_randval.fold_tr_term_rec (env,defs) t
 
 let () = inst_randval.fold_tr_term <- inst_randval_term
@@ -413,7 +413,6 @@ let part_eval t =
     let desc =
       match t.desc with
       | Const c -> Const c
-      | RandInt b -> RandInt b
       | Var x ->
           begin
             try
@@ -488,7 +487,6 @@ let part_eval t =
       | TryWith (_, _) -> assert false
       | Raise _ -> assert false
       | SetField (_, _, _, _, _, _) -> assert false
-      | RandValue (_, _) -> assert false
       | Bottom -> assert false
       | Label _ -> assert false
       | Ref _ -> assert false
@@ -900,8 +898,8 @@ let init_rand_int = make_trans ()
 
 let init_rand_int_term t =
   match t.desc with
-  | App({desc=RandInt false},[{desc=Const Unit}]) -> make_var @@ Id.new_var ~name:"_r" TInt
-  | RandInt _ -> assert false
+  | App({desc=Const(RandInt false)},[{desc=Const Unit}]) -> make_var @@ Id.new_var ~name:"_r" TInt
+  | Const(RandInt _) -> assert false
   | _ -> init_rand_int.tr_term_rec t
 
 let () = init_rand_int.tr_term <- init_rand_int_term
@@ -913,8 +911,6 @@ let rec inlined_f inlined fs t =
   let desc =
     match t.desc with
     | Const c -> Const c
-    | RandInt b -> RandInt b
-    | RandValue(typ,b) -> RandValue(typ,b)
     | Var y ->
         if List.exists (fun (x, _, _) -> Id.same x y) fs then
           let (f, xs, t') = try List.find (fun (x, _, _) -> Id.same x y) fs with Not_found -> assert false in
@@ -1176,7 +1172,6 @@ let insert_param_funarg t = t
 let rec search_fail path t =
   match t.desc with
   | Const c -> []
-  | RandInt b -> []
   | Var x -> []
   | Fun(x,t) -> search_fail path t
   | App(t1, ts) ->
@@ -1225,7 +1220,6 @@ let rec search_fail path t =
   | Bottom -> []
   | Tuple ts -> List.flatten @@ List.mapi (fun i t -> search_fail (i::path) t) ts
   | Proj(i,t) -> search_fail path t
-  | RandValue _ -> []
   | Label(_,t) -> search_fail path t
   | Ref _ -> assert false
   | Deref _ -> assert false
@@ -1241,7 +1235,6 @@ let rec screen_fail path target t =
   let desc =
     match t.desc with
     | Const c -> t.desc
-    | RandInt b -> t.desc
     | Var x -> t.desc
     | Fun(x,t) -> t.desc
     | App(t1, ts) ->
@@ -1289,7 +1282,6 @@ let rec screen_fail path target t =
     | Tuple ts ->
         Tuple (List.mapi (fun i t -> screen_fail (i::path) target t) ts)
     | Proj(i,t) -> Proj(i, screen_fail path target t)
-    | RandValue _ -> t.desc
     | Label(info,t) -> Label(info, screen_fail path target t)
     | Ref _ -> assert false
     | Deref _ -> assert false
@@ -1464,12 +1456,11 @@ let beta_no_effect = beta_no_effect.tr_term
 
 let rec diff_terms t1 t2 =
   match t1.desc, t2.desc with
-  | Const c1, Const c2 -> if c1 = c2 then [] else [t1,t2]
-  | RandInt b1, RandInt b2 -> if b1 = b2 then [] else [t1,t2]
-  | RandValue(typ1,b1), RandValue(typ2,b2) ->
+  | Const(RandValue(typ1,b1)), Const(RandValue(typ2,b2)) ->
       if Type.same_shape typ1 typ2 && b1 = b2
       then []
       else [t1,t2]
+  | Const c1, Const c2 -> if c1 = c2 then [] else [t1,t2]
   | Var x1, Var x2 -> if Id.same x1 x2 then [] else [t1,t2]
   | Fun _, Fun _ -> [t1,t2]
   | App(t11,[t12]), App(t21,[t22]) -> diff_terms t11 t21 @ diff_terms t12 t22
@@ -1805,7 +1796,7 @@ let is_base_typ s = List.mem s base_types
 let replace_base_with_int_desc desc =
   match desc with
   | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> (make_int @@ Random.int 1000000).desc
-  | RandValue(TConstr(s,_), b) when is_base_typ s -> RandInt b
+  | Const(RandValue(TConstr(s,_), b)) when is_base_typ s -> Const (RandInt b)
   | _ -> replace_base_with_int.tr_desc_rec desc
 
 let replace_base_with_int_typ typ =
@@ -1916,8 +1907,6 @@ let rec beta_reduce t =
   let desc =
     match t.desc with
     | Const c -> Const c
-    | RandInt b -> RandInt b
-    | RandValue(typ,b) -> RandValue(typ,b)
     | Var x -> Var x
     | Fun(x, t) -> Fun(x, beta_reduce t)
     | App(t, []) -> (beta_reduce t).desc

@@ -18,10 +18,10 @@ and const = (* only base type constants *)
   | Int64 of int64
   | Nativeint of nativeint
   | CPS_result
-and term =
-  | Const of const
   | RandInt of bool (** true denotes CPS-term *)
   | RandValue of typ * bool (** true denotes CPS-term *)
+and term =
+  | Const of const
   | Var of id
   | Fun of id * typed_term
   | App of typed_term * typed_term list

@@ -3,7 +3,7 @@ open Term_util
 open Type
 
 (* h -> h_DEPTH *)
-let makeDepthVar id = make_var (Id.add_name id "_DEPTH")
+let makeDepthVar id = make_var (Id.add_name_after id "_DEPTH")
 
 let maxConstDepth constDepthList =
   { desc = Const (Int (List.fold_left
@@ -57,8 +57,6 @@ let rec closureDepth varToDepth expr =
 	  (raise Not_found)
       end
     | Const _
-    | RandInt _
-    | RandValue _
     | Var _ -> make_int 0
     | Fun (x, e) -> assert false (* ? *)
     | App (f, args) ->
@@ -80,9 +78,7 @@ let rec transType = function
 
 let rec insertClsDepth varToDepth expr =
   match expr.desc with
-    | Const _
-    | RandInt _
-    | RandValue _ -> expr
+    | Const _ -> expr
     | Var v ->
       let typ = transType v.Id.typ in
       {desc = Var {v with Id.typ = typ}; typ = typ}
