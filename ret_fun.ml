@@ -13,18 +13,17 @@ let normalize_term t =
       let t1' = normalize.tr_term t1 in
       let ts' = List.map normalize.tr_term ts in
       let x = var_of_term t1 in
-      let xs = List.map var_of_term ts' in
-      let aux bindings x =
-        let y,_,_ = List.last bindings in
+      let xs = List.map var_of_term ts in
+      let aux (bindings,y) x =
         let t = make_app (make_var y) [make_var x] in
         let z = var_of_term t in
-        bindings @ [z, [], t]
+        bindings @ [z, [], t], z
       in
-      let bindings = List.tl @@ List.fold_left aux [x, [], make_var x] xs in
-      let bindings',(y,_,t) = List.decomp_snoc bindings in
-      let y' = Id.new_var ~name:("r_" ^ Id.name x) t.typ in
-      let bindings'' = bindings' @ [y', [], t] in
-      let t = make_lets bindings'' @@ make_var y' in
+      let bindings,_ = List.fold_left aux ([],x) xs in
+      let bindings',(_,_,t) = List.decomp_snoc bindings in
+      let y = Id.new_var ~name:("r_" ^ Id.name x) t.typ in
+      let bindings'' = bindings' @ [y, [], t] in
+      let t = make_lets bindings'' @@ make_var y in
       make_lets (List.rev @@ List.map2 (fun x t -> x, [], t) (x::xs) (t1'::ts')) t
   | If(t1,t2,t3) ->
       let x = var_of_term t1 in
@@ -163,7 +162,7 @@ Color.printf Color.Yellow "x1: @[<hov 4>%a %a@ %a@." pp_print_typ (Id.typ x1) Co
 Color.printf Color.Yellow "x2: @[<hov 4>%a %a@ %a@." pp_print_typ (Id.typ x2) Color.red "=>" pp_print_typ (Id.typ x2');
 *)
       let t = make_app (make_var x1') [make_var x2'] in
-      let p = var_of_term t in
+      let p = Id.new_var ~name:(Id.name x' ^ "_" ^ Id.name x2') t.typ in
       let x2'' = Id.new_var_id x2' in
 (*
 Color.printf Color.Yellow "[%a |-> %a]: @[<hov 4>%a@." Id.print x2' Id.print x2'' pp_print_term t1';

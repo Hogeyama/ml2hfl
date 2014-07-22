@@ -658,17 +658,25 @@ let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
 let rec var_name_of_term t =
   match t.desc, elim_tpred t.typ with
-  | Var x,      _       -> Id.name x
-  | Let(_,_,t), _       -> var_name_of_term t
-  | _,          TUnit   -> "u"
-  | _,          TBool   -> "b"
-  | _,          TInt    -> "n"
-  | _,          TFun _  -> "f"
-  | _,          TTuple _ -> "p"
-  | App _,      _       -> "r"
-  | Proj(i,t),  _       -> var_name_of_term t ^ "_" ^ string_of_int i
-  | Fun _,      _       -> assert false
-  | _,          _       -> "x"
+  | Bottom, _ -> "bot"
+  | Var x, _ -> Id.name x
+  | Let(_,_,t), _ -> var_name_of_term t
+  | Tuple(ts), _ -> String.join "__" @@ List.map var_name_of_term ts
+  | Proj(i,t), _ ->
+      let n = tuple_num t.typ in
+      let names = String.nsplit (var_name_of_term t) "__" in
+      if n = List.length names
+      then List.nth names i
+      else var_name_of_term t ^ "_" ^ string_of_int i
+  | App({desc=Var f},_), _ -> "r" ^ "_" ^ Id.name f
+  | _, TUnit -> "u"
+  | _, TBool -> "b"
+  | _, TInt -> "n"
+  | _, TFun _ -> "f"
+  | _, TTuple _ -> "p"
+  | _, TList _ -> "xs"
+  | Fun _, _ -> assert false
+  | _, _ -> "x"
 
 let var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 

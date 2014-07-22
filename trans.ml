@@ -1562,14 +1562,14 @@ let normalize_let_aux t =
   let post t' =
     match t'.desc with
     | BinOp _ | App _ | Tuple _ | Proj _ ->
-        let y = Id.new_var t'.typ in
+        let y = var_of_term t' in
         make_lets [y,[],t'] @@ make_var y
     | _ -> t'
   in
   match t.desc with
   | Var x -> x, post
   | _ ->
-     let x = Id.new_var t.typ in
+     let x = var_of_term t in
      let t' = normalize_let.tr_term t in
      let post' t'' = make_let [x,[],t'] @@ post t'' in
      x, post'
@@ -1976,7 +1976,7 @@ let flatten_tuple_term t =
   | Match _ -> unsupported "not implemented: flatten_tuple (match)"
   | Proj(i,t1) ->
       let t1' = flatten_tuple.tr_term t1 in
-      let x = Id.new_var t1'.typ in
+      let x = Id.add_name_after (var_of_term t1') @@ string_of_int i in
       let ns = List.map (fun typ -> match flatten_tuple.tr_typ typ with TTuple xs' -> List.length xs' | _ -> 1) @@ decomp_ttuple t1.typ in
       let rec new_pos i j acc ns =
         match ns with
@@ -1989,14 +1989,18 @@ let flatten_tuple_term t =
       make_let [x,[],t1'] @@ make_tuple' @@ List.map (fun i -> make_proj' i @@ make_var x) @@ new_pos i 0 0 ns
   | Tuple ts ->
       let ts' = List.map flatten_tuple.tr_term ts in
-      let xs' = List.map (fun t -> Id.new_var t.typ) ts' in
-      let aux y =
+      let xs' = List.map var_of_term ts' in
+      let aux y t =
         let ys = match Id.typ y with TTuple ys -> ys | _ -> [y] in
-        let ys' = List.map Id.new_var_id ys in
-        make_lets @@ List.mapi (fun i y' -> y', [], make_proj' i @@ make_var y)  ys',
+        let aux2 i _ =
+          let t = make_proj' i @@ make_var y in
+          let y' = var_of_term t in
+          y', (y', [], t) in
+        let ys',defs = List.split @@ List.mapi aux2 ys in
+        make_lets defs,
         List.map make_var ys'
       in
-      let conts,tss = List.split_map aux xs' in
+      let conts,tss = List.split @@ List.map2 aux xs' ts' in
       make_lets (List.map2 (fun x t -> x,[],t) xs' ts') @@ List.fold_left (|>) (make_tuple' @@ List.flatten tss) conts
   | _ -> flatten_tuple.tr_term_rec t
 

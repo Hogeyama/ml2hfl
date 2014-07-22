@@ -165,7 +165,7 @@ let inst_var_fun x tt bb t =
           in
           aux 0 trees []
         in
-        let xs = List.map (fun t -> Id.new_var t.typ) apps in
+        let xs = List.map var_of_term apps in
 (*
 Format.printf "root: %a, %a@." Id.print r pp_print_typ (Id.typ r);
 Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.hd xs);
@@ -190,11 +190,6 @@ let rec tree_of_typ typ =
   | TTuple xs -> Rose_tree.Node (List.map (tree_of_typ -| Id.typ) xs)
   | _ -> Rose_tree.Leaf typ
 
-let rec typ_of_tree t =
-  match t with
-  | Rose_tree.Leaf typ -> typ
-  | Rose_tree.Node typs -> TTuple (List.map (Id.new_var -| typ_of_tree) typs)
-
 let trans_typ ttbb typ =
   match typ with
   | TTuple _ ->
@@ -205,7 +200,7 @@ let trans_typ ttbb typ =
             let xtyps' = List.map (fun (x,typ) -> trans.tr2_var ttbb x, trans.tr2_typ ttbb typ) xtyps in
             let arg_typs = List.map (fun (x,_) -> opt_typ @@ Id.typ x) xtyps' in
             let ret_typs = List.map (fun (_,typ) -> opt_typ typ) xtyps' in
-            let name = List.fold_right (^) (List.map (fun (x,_) -> Id.name x) xtyps') "" in
+            let name = String.join "" @@ List.map (fun (x,_) -> Id.name x) xtyps' in
             TFun(Id.new_var ~name @@ make_ttuple arg_typs, make_ttuple ret_typs)
       end
   | _ -> trans.tr2_typ_rec ttbb typ
@@ -551,7 +546,7 @@ let add_fun_tuple_term (funs,env) t =
       let t1' = add_fun_tuple.tr2_term (funs2,env') t1 in
       let t2' = add_fun_tuple.tr2_term (funs2,env') t2 in
       let aux t fs =
-        let name = List.fold_left (fun s x -> Id.name x ^ "_" ^ s) (Id.name @@ List.hd fs) @@ List.tl fs in
+        let name = String.join "__" @@ List.rev_map Id.name fs in
         let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
         let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj i (make_var fg)) fs in
         let t' = replace_head fs (List.map fst3 projs) t in

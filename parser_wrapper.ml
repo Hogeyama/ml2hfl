@@ -148,7 +148,7 @@ let sign_to_letters s =
     | c -> String.make 1 c
   in
   if is_op s
-  then String.fold_left (fun s c -> s ^ map c) "op" s
+  then "op" ^ String.join "" @@ List.map map @@ String.explode s
   else s
 
 let from_ident_aux name binding_time typ =
@@ -394,9 +394,10 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                   let xs = List.map (function {pat_desc=PVar x} -> Some x | _ -> None) ps in
                   if List.for_all Option.is_some xs
                   then
-                    let xs' = List.map Option.get xs in
-                    let name = List.fold_left (fun s x -> s ^ "_" ^ Id.name x) (Id.name @@ List.hd xs') @@ List.tl xs' in
-                    Id.set_name x name
+                    xs
+                    |> List.map (Id.name -| Option.get)
+                    |> String.join "__"
+                    |> Id.set_name x
                   else x
               | _ -> x
             in

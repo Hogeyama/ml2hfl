@@ -107,8 +107,8 @@ let inline_wrapped = inline_wrapped.tr_term
 
 
 let rec compose fg fts =
-  if debug() then Format.printf "compose: ";
-  if debug() then List.iter (fun (f,t) -> Format.printf "%a, %a; " Id.print f print_term t) fts;
+  if debug() then Format.printf "compose:@.";
+  if debug() then List.iter (fun (f,t) -> Format.printf "   %a, %a;@." Id.print f print_term t) fts;
   if debug() then Format.printf "@.";
   let decomp_if i (f,t) =
     match t.desc with
@@ -201,7 +201,7 @@ let tupling_term env t =
             with
             | Not_found ->
                 let fg =
-                  let name = List.fold_left (fun s f -> s ^ "_" ^ Id.name f) (Id.name @@ List.hd fs') (List.tl fs') in
+                  let name = String.join "__" @@ List.map Id.name fs' in
                   Id.new_var ~name @@ List.fold_right (fun x typ -> TFun(x,typ)) xs' typ
                 in
                 let t_body = compose fg @@ List.combine fs' bodies in
@@ -209,6 +209,7 @@ let tupling_term env t =
                 fg
           in
           let r = Id.new_var ~name:"r" typ in
+          if debug() then Format.printf "ADD_fs: %a@." (print_list Id.print ", ") fs';
           if debug() then Format.printf "ADD: %a@." print_id_typ fg;
           let t_app = make_app (make_var fg) @@ List.map make_get_val tfs' in
           let index =
@@ -498,6 +499,7 @@ let trans t =
   |> inline_wrapped
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_wrapped" print_term
   |> Trans.flatten_let
+  |> Trans.inline_var
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" print_term
   |> let_normalize
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" print_term
