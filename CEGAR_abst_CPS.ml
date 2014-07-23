@@ -304,7 +304,12 @@ let rec abstract_term must env cond pts t typ =
       let env'' = env' @@@ env in
       let typ' = CEGAR_type.app typ (List.map (fun (x,_) -> Var x) env') in
       let t'' = hd (abstract_term (Some pts') env'' cond pts'' t' typ') in
-      [make_fun_temp xs' t'']
+      let t''' =
+        if !Flag.use_filter
+        then filter env'' cond pts'' must t''
+        else t''
+      in
+      [make_fun_temp xs' t''']
   | Var _ -> assert false
   | Const _ -> assert false
   | Let _ -> assert false
