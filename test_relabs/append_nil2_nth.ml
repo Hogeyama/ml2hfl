@@ -6,7 +6,10 @@ let rec make_list n =
 let rec append (xs, ys) =
   match xs with
     [] -> ys
-  | x::xs' -> x :: append (xs', ys)
+  | x::xs' ->
+      let rs = append (xs', ys) in
+      let rs' = x :: rs in
+      rs'
 
 let main i n =
   let xs = make_list n in

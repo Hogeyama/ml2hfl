@@ -223,7 +223,7 @@ let tupling_term env t =
             assert (List.length tfs' = n);
             fun i -> List.assoc i map
           in
-          let aux i = Format.printf "#%d@." i; function
+          let aux i = function
             | None -> make_none @@ get_opt_typ (List.nth ts i).typ
             | Some _ -> make_some @@ make_proj (index i) @@ make_var r
           in

@@ -60,3 +60,5 @@ val short_circuit_eval : typed_term -> typed_term
 val replace_bottom_def : typed_term -> typed_term
 val flatten_tuple : typed_term -> typed_term
 val inline_next_redex : typed_term -> typed_term
+val beta_var_tuple : typed_term -> typed_term
+val beta_no_effect_tuple : typed_term -> typed_term

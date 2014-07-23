@@ -231,4 +231,10 @@ let trans t = t
   |> Trans.inline_var_const
   |@debug()&> Format.printf "inline_var_const:@.%a@.@." print_term_typ
   |> pair_eta_reduce
+  |> Trans.flatten_let
+  |@debug()&> Format.printf "flatten_let:@.%a@.@." print_term
+  |> Trans.beta_no_effect_tuple
+  |> Trans.inline_var
+  |> Trans.elim_unused_let
+  |@debug()&> Format.printf "beta_var_tuple:@.%a@.@." print_term
   |@> flip Type_check.check TUnit

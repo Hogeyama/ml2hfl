@@ -2039,3 +2039,36 @@ let inline_next_redex_term t =
 
 let () = inline_next_redex.tr_term <- inline_next_redex_term
 let inline_next_redex = inline_next_redex.tr_term
+
+
+let beta_var_tuple = make_trans2 ()
+
+let beta_var_tuple_term env t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t2) ->
+      let xs = List.map (function {desc=Var x} -> Some x | _ -> None) ts in
+      if List.for_all Option.is_some xs
+      then
+        let xs' = List.map Option.get xs in
+        make_let [x,[],t1] @@ beta_var_tuple.tr2_term ((x,xs')::env) t2
+      else beta_var_tuple.tr2_term_rec env t
+  | Proj(i,{desc=Var x}) when Id.mem_assoc x env -> make_var @@ List.nth (Id.assoc x env) i
+  | _ -> beta_var_tuple.tr2_term_rec env t
+
+let () = beta_var_tuple.tr2_term <- beta_var_tuple_term
+let beta_var_tuple = beta_var_tuple.tr2_term []
+
+
+let beta_no_effect_tuple = make_trans2 ()
+
+let beta_no_effect_tuple_term env t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t2) ->
+      if List.for_all has_no_effect ts
+      then make_let [x,[],t1] @@ beta_no_effect_tuple.tr2_term ((x,ts)::env) t2
+      else beta_no_effect_tuple.tr2_term_rec env t
+  | Proj(i,{desc=Var x}) when Id.mem_assoc x env -> List.nth (Id.assoc x env) i
+  | _ -> beta_no_effect_tuple.tr2_term_rec env t
+
+let () = beta_no_effect_tuple.tr2_term <- beta_no_effect_tuple_term
+let beta_no_effect_tuple = beta_no_effect_tuple.tr2_term []
