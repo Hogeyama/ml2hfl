@@ -420,6 +420,7 @@ let () =
       | LongInput -> Format.printf "Input is too long@."
       | TimeOut -> Format.printf "Verification failed (time out)@."
       | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
+      | CEGAR_abst.NotRefined -> Format.printf "Verification failed (new error path not found)@."
       | Fatal s ->
           Format.printf "Fatal error: %s@." s
       | Unsupported s ->

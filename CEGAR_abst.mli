@@ -1,5 +1,7 @@
 (** Predicate abstraction *)
 
+exception NotRefined
+
 (**
 call-by-name に対応させる際，let x = fail; 1 in assert (x = x) が unsafe と判定されるようにしないといけない
 

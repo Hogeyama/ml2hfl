@@ -403,7 +403,7 @@ let rec uniq_env = function
       else (f,typ) :: uniq_env env
 
 
-let rename_prog prog =
+let rename_prog ?(is_cps=List.mem Flag.CPS !Flag.form) prog =
   let () = Id.clear_counter () in
   let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
   let var_names = List.rev_map id_name (List.unique vars) in
@@ -420,7 +420,7 @@ let rename_prog prog =
   in
   let map = List.rev_map make_map_fun prog.env in
   let () =
-    if !Flag.print_progress
+    if debug()
     then
       (List.iter (fun (f,f') -> Format.printf "rename: %s ==> %s@." f f') map;
        Format.printf "@.")
@@ -443,11 +443,10 @@ let rename_prog prog =
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
   let prog = {env=env; defs=defs; main=main} in
-  let () = if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog in
-  let is_cps = List.mem Flag.CPS !Flag.form in
-  let () = ignore (Typing.infer ~is_cps prog) in
+  if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  ignore (Typing.infer ~is_cps prog);
   let rmap = List.map (Pair.map_snd trans_inv_var) map in
-    prog, map, rmap
+  prog, map, rmap
 
 let id_prog prog =
   let map = List.rev_map (fun (f,_) -> f, f) prog.env in

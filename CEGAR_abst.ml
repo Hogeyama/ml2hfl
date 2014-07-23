@@ -7,6 +7,10 @@ open CEGAR_util
 open CEGAR_abst_util
 
 
+exception NotRefined
+
+let prev_abst_defs : fun_def list ref = ref []
+
 
 let abst_arg x typ =
   let ps =
@@ -141,4 +145,7 @@ let abstract orig_fun_list force prog =
   let () = if false then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in
   let () = if !Flag.print_progress then Color.printf Color.Green "DONE!@.@." in
   let () = add_time tmp Flag.time_abstraction in
-  labeled,abst
+  let abst',_,_ = CEGAR_trans.rename_prog ~is_cps:false abst in
+  if !prev_abst_defs = abst'.defs then raise NotRefined;
+  prev_abst_defs := abst'.defs;
+  labeled, abst

@@ -116,7 +116,7 @@ let cegar prog info =
     let is_cp = FpatInterface.is_cp prog in
     cegar1 prog is_cp [] info
   with e ->
-    if e <> NoProgress then
+    if List.mem e [NoProgress; CEGAR_abst.NotRefined] then
       begin
         incr Flag.cegar_loop;
         Fpat.Global.cegar_iterations := !Flag.cegar_loop
