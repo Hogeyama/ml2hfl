@@ -4,21 +4,12 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
+open TrecsInterface
 
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
 type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
-
 let debug () = List.mem "ModelCheck_util" !Flag.debug_module
-
-
-let make_line_spec n q =
-  let rec aux i spec =
-    if i < 0
-    then spec
-    else aux (i-1) ((q, "l" ^ string_of_int i, [q])::spec)
-  in
-    aux n []
 
 let make_file_spec () =
   [0, "unit", [];
@@ -37,17 +28,15 @@ let make_file_spec () =
    4, "unit", [];]
 
 
-let make_base_spec n q = (q, "br", [q;q])::make_line_spec 1 q
+let rec make_funcall_spec = function
+  | [] -> []
+  | f::fs -> (0, Id.to_string f, ATP_State(1, 0)) :: make_funcall_spec fs
 
-let make_spec n =
+let make_spec top_funs =
   let spec =
-    match !Flag.mode with
-        Flag.Reachability -> (0,"unit",[])::(0,"event_fail",[1])::make_base_spec n 0
-      | Flag.FileAccess ->
-          let spec = make_file_spec () in
-          let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
-          let spec' = List.rev_flatten_map (fun i -> make_base_spec n i) @@ List.init (qm+1) Std.identity in
-          spec @@@ spec'
+    (0,"unit", ATP_False)
+    ::(0,"br_forall", ATP_And([ATP_State(1, 0); ATP_State(2, 0)]))
+    ::(0,"br_exists", ATP_Or([ATP_State(1, 0); ATP_State(2, 0)]))::make_funcall_spec top_funs
   in
   List.sort spec
 
@@ -162,7 +151,12 @@ let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
 
 let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
-
+let add_funcall_labels top_funs ({env=env;defs=defs} as prog) = 
+  let top_funs' = List.map Id.to_string top_funs in
+  let add_funcall_labels_term f t = let f' = uncapitalize_var f in if List.mem f' top_funs' then App(Var(f'), t) else t in
+  let defs' = List.map (fun (f, args, t1, e, t2) -> (f, args, t1, e, add_funcall_labels_term f t2)) defs in
+  let env' = List.map (fun v -> (v, make_tfun typ_unit typ_unit)) top_funs' @ env in
+  {prog with env=env'; defs=defs'}
 
 let trans_ce ce =
   let aux (s,_) =
@@ -279,14 +273,19 @@ let rec beta_reduce prog =
 
 
 
-let model_check_aux (prog,spec) =
+let model_check_aux (prog,arity_map,spec) =
   let prog = Typing.infer prog in
   let prog = if Flag.useless_elim then Useless_elim.elim prog else prog in
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
   let env = prog.env in
-  match TrecsInterface.check env (prog,spec) with
+  match TrecsInterface.check env (prog,arity_map,spec) with
   | TrecsInterface.Safe env ->
       let env' = List.map (Pair.map_fst uncapitalize_var) env in
       Safe env'
   | TrecsInterface.Unsafe ce -> Unsafe (trans_ce ce)
+
+let make_arity_map top_funs =
+  let init = [("br_forall", 2); ("br_exists", 2); ("unit", 0)] in
+  let funs_map = List.map (fun id -> (Id.to_string id, 1)) top_funs in
+  init @ funs_map

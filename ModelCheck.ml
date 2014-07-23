@@ -9,7 +9,7 @@ type result = Safe of (var * Inter_type.t) list | Unsafe of int list
 
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
-let check_aux prog n =
+let check_aux prog top_funs =
   Format.printf "WARNING: model checking for non-CPS programs is unmaintained.@.";
   let prog' =
     prog
@@ -21,14 +21,15 @@ let check_aux prog n =
     |> pop_main
     |> capitalize
   in
-  let spec = make_spec n in
+  let spec = make_spec top_funs in
+  let arity_map = make_arity_map top_funs in
   try
-    model_check_aux (prog',spec)
+    model_check_aux (prog',arity_map,spec)
   with
   | Assert_failure(s,_,_) as e when s <> "" -> raise e
   | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
-let check_aux_cps prog n =
+let check_aux_cps prog top_funs =
   let prog' =
     prog
     |> eta_expand
@@ -44,13 +45,13 @@ let check_aux_cps prog n =
     |> capitalize
     |@debug()&> Format.printf "CAPITALIZE:@.%a@." CEGAR_print.prog_typ
   in
-  let spec = make_spec n in
+  let spec = make_spec top_funs in
+  let arity_map = make_arity_map top_funs in
   try
-    model_check_aux (prog',spec)
+    model_check_aux (prog',arity_map,spec)
   with End_of_file -> fatal "TRecS failed"
 
-let check abst prog =
-  let n = List.length prog.defs in
+let check abst prog top_funs =
   let tmp = get_time () in
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
@@ -58,11 +59,9 @@ let check abst prog =
     match !Flag.model_check with
     | Flag.ModelCheckCPS ->
         if not @@ List.mem Flag.CPS !Flag.form then failwith "Program must be in CPS @ ModelCheckCPS";
-        check_aux_cps abst n
-    | Flag.ModelCheck -> check_aux abst n
+        check_aux_cps abst top_funs
+    | Flag.ModelCheck -> check_aux abst top_funs
   in
   add_time tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
-  match result with
-  | ModelCheck_util.Safe env -> Safe env
-  | ModelCheck_util.Unsafe ce -> Unsafe ce
+  assert(false);

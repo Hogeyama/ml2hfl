@@ -157,45 +157,10 @@ let report_unsafe main_fun arg_num ce set_target =
   Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
 
 
-
-let rec run_cegar prog =
-  init ();
-  match !Flag.cegar with
-  | Flag.CEGAR_InteractionType ->
-      FpatInterface.verify [] prog;
-      assert false;
-  | Flag.CEGAR_DependentType ->
-      try
-        match CEGAR.cegar prog CEGAR.empty_info with
-        | _, CEGAR.Safe env ->
-            Flag.result := "Safe";
-            Color.printf Color.Bright "Safe!@.@.";
-            true
-        | _, CEGAR.Unsafe ce ->
-            Flag.result := "Unsafe";
-            Color.printf Color.Bright "Unsafe!@.@.";
-            false
-      with
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam ->
-          Flag.insert_param_funarg := true;
-          run_cegar prog
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
-          if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
-          if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
-          Flag.relative_complete := true;
-          run_cegar prog
-      | Fpat.AbsTypInfer.FailedToRefineTypes ->
-          raise Fpat.AbsTypInfer.FailedToRefineTypes
-      | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
-          FpatInterface.params := [];
-          Fpat.RefTypInfer.prev_sol := [];
-          Fpat.RefTypInfer.prev_constrs := [];
-          incr Flag.number_of_extra_params;
-          run_cegar prog
-
 let rec run orig parsed =
   init ();
   let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print in
+  let top_funs = List.filter_out (fun s -> List.mem (Id.name s) ["main"; "br_exists"; "br_forall"]) (Term_util.get_top_funs parsed) in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType
     then trans_and_print Trans.set_target "set_target" (fun (_,_,t) -> t) parsed
@@ -224,7 +189,7 @@ let rec run orig parsed =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog info with
+        match CEGAR.cegar prog info top_funs with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             if not !Flag.exp

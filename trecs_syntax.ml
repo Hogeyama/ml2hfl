@@ -62,4 +62,4 @@ let rec string_of_transitions_aux trs =
     (string_of_transition tr)^".\n"^(string_of_transitions_aux trs')
 
 let string_of_transitions trs =
-  "%BEGINA\n"^(string_of_transitions_aux trs)^"%ENDA\n"
+  "%BEGINATA\n"^(string_of_transitions_aux trs)^"%ENDATA\n"

@@ -6,13 +6,21 @@ open CEGAR_util
 
 exception UnknownOutput
 
+type atp_transition =
+  | ATP_True | ATP_False
+  | ATP_State of (int (* branch *) * int (* state ID *))
+  | ATP_And of atp_transition list
+  | ATP_Or of atp_transition list
+
 type result = Safe of (var * Inter_type.t) list | Unsafe of (string * int) list
 
  module TS = Trecs_syntax
 
-let string_of_parseresult (prerules, tr) =
-  (TS.string_of_prerules prerules)^"\n"^(TS.string_of_transitions tr)
+let string_of_arity_map arity_map =
+  "%BEGINR\n" ^ String.join "\n" (List.map (fun (f, a) -> f ^ " -> " ^ string_of_int a ^ ".") arity_map) ^ "\n%ENDR\n"
 
+let string_of_parseresult (prerules, arity_map, tr) =
+  (TS.string_of_prerules prerules)^"\n"^string_of_arity_map arity_map ^ (TS.string_of_transitions tr)
 
 let trans_const = function
   | Unit -> TS.PTapp(TS.Name "unit", [])
@@ -56,12 +64,20 @@ let rec trans_fun_def (f,xs,t1,es,t2) =
 
 let trans_spec (q,e,qs) =
   let aux q = "q" ^ string_of_int q in
-    (aux q, e), List.map aux qs
+  let parens s = "(" ^ s ^ ")" in
+  let rec atp_transition_to_string is_top = function
+    | ATP_True -> "true"
+    | ATP_False -> "false"
+    | ATP_State(br, q) -> parens (string_of_int br ^ "," ^ aux q)
+    | ATP_And ts -> let s = String.join "/\\" (List.map (atp_transition_to_string false) ts) in if is_top then s else parens s
+    | ATP_Or ts -> let s = String.join "\\/" (List.map (atp_transition_to_string false) ts) in if is_top then s else parens s
+  in
+    (aux q, e), [atp_transition_to_string true qs]
 
-let trans ({defs=defs},spec) =
+let trans ({defs=defs},arity_map, spec) =
   let defs':TS.prerules = List.map trans_fun_def defs in
   let spec':TS.transitions = List.map trans_spec spec in
-    (defs', spec')
+    (defs', arity_map, spec')
 
 
 

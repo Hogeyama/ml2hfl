@@ -27,7 +27,7 @@ let inlined_functions orig_fun_list force {defs;main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   FpatInterface.List.unique fs
 
-let rec loop prog0 is_cp ces info =
+let rec loop prog0 is_cp ces info top_funs =
   pre ();
   let prog =
     if !Flag.relative_complete
@@ -44,7 +44,7 @@ let rec loop prog0 is_cp ces info =
   if !Flag.print_progress
   then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
-  let result = ModelCheck.check abst prog in
+  let result = ModelCheck.check abst prog top_funs in
   match result with
   | ModelCheck.Safe env ->
       if Flag.print_ref_typ_debug
@@ -70,18 +70,18 @@ let rec loop prog0 is_cp ces info =
           if !Flag.print_progress then Format.printf "Filter option enabled.@.";
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           Flag.use_filter := true;
-          loop prog is_cp ces info
+          loop prog is_cp ces info top_funs
       | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred ->
           if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           Fpat.PredAbst.use_neg_pred := true;
-          loop prog is_cp ces info
+          loop prog is_cp ces info top_funs
       | ce_pre::_ when ce' = ce_pre && !Fpat.PredAbst.wp_max_num < Flag.wp_max_max ->
           incr Fpat.PredAbst.wp_max_num;
           CEGAR_abst.incr_wp_max := true;
           if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-          loop prog is_cp ces info
+          loop prog is_cp ces info top_funs
       | ce_pre::_ when ce' = ce_pre ->
           post ();
           if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
@@ -105,14 +105,14 @@ let rec loop prog0 is_cp ces info =
                 Format.printf "Prefix of spurious counterexample::@.%a@.@."
                               CEGAR_print.ce prefix;
               post ();
-              loop prog' is_cp ces' info
+              loop prog' is_cp ces' info top_funs
 
 
 
-let cegar prog info =
+let cegar prog info top_funs =
   try
     let is_cp = FpatInterface.is_cp prog in
-    loop prog is_cp [] info
+    loop prog is_cp [] info top_funs
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress
@@ -130,7 +130,9 @@ let map3 =
   let n = Var "n_1009" in
   [2, fun x -> [make_or (make_gt x n) (make_leq x (make_sub (make_int 0) n))]]
 
+(*
 let cegar prog info =
   let x = new_id "x" in
   let prog' = {prog with env = add_renv map3 prog.env} in
   cegar prog' info
+*)
