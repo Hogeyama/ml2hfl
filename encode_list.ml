@@ -378,7 +378,7 @@ let abst_list_opt_term t =
       let t2' = abst_list_opt.tr_term t2 in
       let t = make_app t1' [t2'] in
       let x = Id.new_var t.typ in
-      make_let [x,[],t] @@ make_assume (make_not @@ make_is_none @@ make_var x) (make_get_val @@ make_var x)
+      make_let [x,[],t] @@ make_get_val @@ make_var x
   | Nil ->
       let el_typ = snd_typ @@ result_typ typ' in
       make_fun (Id.new_var TInt) (make_none el_typ)
