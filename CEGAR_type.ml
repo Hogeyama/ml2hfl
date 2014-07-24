@@ -26,6 +26,7 @@ let typ_int = TBase(TInt, fun _ -> [])
 let typ_abst s = TBase(TAbst s, fun _ -> [])
 let typ_event = TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit)
 let make_tfun typ1 typ2 = TFun(typ1, fun _ -> typ2)
+let typ_unknown = TBase(TAbst "?", fun _ -> [])
 
 let is_base = function
     TBase _ -> true

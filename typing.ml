@@ -79,7 +79,7 @@ let rec trans_typ = function
   | TUnit -> TBase(TUnit,nil)
   | TBool -> TBase(TBool,nil)
   | TInt -> TBase(TInt,nil)
-  | TVar{contents=None} -> TBase(TUnit,nil)
+  | TVar{contents=None} -> typ_unknown
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> TFun(trans_typ typ1, fun _ -> trans_typ typ2)
   | TTuple typs -> make_tapp (TBase(TTuple (List.length typs),nil)) (List.map trans_typ typs)
@@ -163,10 +163,10 @@ let rec infer_term env = function
 let infer_def env (f,xs,t1,_,t2) =
   if false then Format.printf "%a@." CEGAR_print.var f;
   let typs = List.map (fun _ -> new_tvar()) xs in
-  let env' = List.map2 (fun x typ -> x,typ) xs typs @ env in
+  let env' = List.combine xs typs @ env in
   let typ1 = infer_term env' t1 in
   let typ2 = infer_term env' t2 in
-  let typ = try List.assoc f env with _ -> assert false in
+  let typ = try List.assoc f env with Not_found -> assert false in
   let typ' = List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs typ2 in
   unify typ1 TBool;
   unify typ typ'
@@ -176,8 +176,7 @@ let infer ?(is_cps=false) ({defs;main;env} as prog) =
   if false then Format.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
   let ext_funs = get_ext_funs prog in
   let ext_env = List.map (fun f -> f, from_typ (List.assoc f env)) ext_funs in
-  let env = List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
-  let env = env @ ext_env in
+  let env = ext_env @ List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
   let main_typ = if is_cps then TResult else TUnit in
   unify main_typ (List.assoc main env);
   List.iter (infer_def env) defs;

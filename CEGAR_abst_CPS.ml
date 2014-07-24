@@ -405,7 +405,7 @@ let add_ext_funs_cps prog =
   let env = get_ext_fun_env prog in
   let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun_cps [] (trans_typ typ)) env in
   let defs' = defs @ prog.defs in
-  let _ = Typing.infer {env=[]; defs=defs'; main=prog.main} in
+  ignore (Typing.infer {env=[]; defs=defs'; main=prog.main});
   {prog with defs=defs'}
 
 let abstract_prog prog =
@@ -422,9 +422,9 @@ let abstract orig_fun_list force prog =
   |> eta_expand
   |@debug()&> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
   |> abstract_prog
+  |> Typing.infer -| initilize_env
   |@debug()&> Format.printf "ABST:@\n%a@." CEGAR_print.prog_typ
   |@(!Flag.debug_abst)&> eval_step_by_step
-  |> Typing.infer
   |> CEGAR_lift.lift2
   |@debug()&> Format.printf "LIFT:@\n%a@." CEGAR_print.prog
   |> trans_eager

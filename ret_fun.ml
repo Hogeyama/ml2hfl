@@ -238,3 +238,6 @@ let trans t = t
   |> Trans.elim_unused_let
   |@debug()&> Format.printf "beta_var_tuple:@.%a@.@." print_term
   |@> flip Type_check.check TUnit
+
+let trans t =
+  trans t, fun _ _ -> raise Not_found

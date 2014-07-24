@@ -153,6 +153,7 @@ module Option = struct
 end
 
 module Pair = struct
+  let pair x y = x, y
   let swap (x,y) = y, x
   let make f g x = f x, g x
   let map f g (x,y) = f x, g y

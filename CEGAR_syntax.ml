@@ -95,7 +95,7 @@ let rename_id s =
 let make_app t ts = List.fold_left (fun t1 t2 -> App(t1, t2)) t ts
 let make_fun xs t =
   let f = new_id "f" in
-    [f, xs, Const True, t], f
+  [f, xs, Const True, t], f
 let make_annot_fun x typ t = Fun(x, Some typ, t)
 let make_fun_temp xs t = List.fold_right (fun x t -> Fun(x,None,t)) xs t
 let make_if t1 t2 t3 =

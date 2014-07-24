@@ -11,6 +11,7 @@ let rec trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.print_term_typ) t =
   r
 
 let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
+let (-||) = merge_get_rtyp
 
 let preprocess t spec =
   let id x = x in
@@ -29,18 +30,25 @@ let preprocess t spec =
       let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let get_rtyp = get_rtyp_list in
-      let t = t |& !Flag.tupling &> trans_and_print Ret_fun.trans "ret_fun" id in
-      let t = t |& !Flag.tupling &> trans_and_print Ref_trans.trans "ref_trans" id in
-      let t = t |& !Flag.tupling &> trans_and_print Tupling.trans "tupling" id in
+      let t,get_rtyp =
+        if !Flag.tupling
+        then
+          let t,get_rtyp_ret_fun = trans_and_print Ret_fun.trans "ret_fun" fst t in
+          let t,get_rtyp_ref_trans = trans_and_print Ref_trans.trans "ref_trans" fst t in
+          let t,get_rtyp_tupling = trans_and_print Tupling.trans "tupling" fst t in
+          t, get_rtyp -|| get_rtyp_ret_fun -|| get_rtyp_ref_trans -|| get_rtyp_tupling
+        else
+          t, get_rtyp
+      in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inlined" id t in
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
-      let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_cps_trans in
+      let get_rtyp = get_rtyp -|| get_rtyp_cps_trans in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
       let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" id t in
       let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec.Spec.abst_cps_env<>[]) t in
       let t = t |& !Flag.elim_same_arg &> trans_and_print Elim_same_arg.trans "eliminate same arguments" id in
-      let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_remove_pair in
+      let get_rtyp = get_rtyp -|| get_rtyp_remove_pair in
       let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
 
       (* preprocess for termination mode *)
@@ -59,7 +67,7 @@ let preprocess t spec =
 
   let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:spec'.Spec.abst_cegar_env t in
-  let get_rtyp = merge_get_rtyp get_rtyp get_rtyp_trans in
+  let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
     if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
     if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;

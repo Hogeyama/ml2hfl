@@ -528,3 +528,6 @@ let trans t =
   |> Trans.inline_next_redex
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
   |@> flip Type_check.check Type.TUnit
+
+let trans t =
+  trans t, fun _ _ -> raise Not_found

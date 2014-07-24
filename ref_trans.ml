@@ -409,6 +409,9 @@ let trans t = t
   |@debug()&> Format.printf "ref_trans: %a@." print_term
   |@> flip Type_check.check Type.TUnit
 
+let trans t =
+ trans t, fun _ _ -> raise Not_found
+
 
 
 

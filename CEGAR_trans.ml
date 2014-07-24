@@ -404,7 +404,8 @@ let rec uniq_env = function
 
 
 let rename_prog ?(is_cps=List.mem Flag.CPS !Flag.form) prog =
-  let () = Id.clear_counter () in
+  let counter1 = Id.get_counter () in
+  Id.clear_counter ();
   let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
   let var_names = List.rev_map id_name (List.unique vars) in
   let rename_id' x var_names =
@@ -428,7 +429,7 @@ let rename_prog ?(is_cps=List.mem Flag.CPS !Flag.form) prog =
   let var_names' = List.map snd map in
   let rename_var map x = List.assoc x map in
   let rename_def (f,xs,t1,e,t2) =
-    let counter = Id.get_counter () in
+    let counter2 = Id.get_counter () in
     let () = Id.clear_counter () in
     let var_names'' = List.rev_map id_name xs @@@ var_names' in
     let arg_map = List.map (fun x -> x, rename_id' x var_names'') xs in
@@ -436,8 +437,8 @@ let rename_prog ?(is_cps=List.mem Flag.CPS !Flag.form) prog =
     let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@@ map) in
     let rename_term t = subst_map smap t in
     let def = rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2 in
-    if Id.get_counter () > counter then Id.save_counter ();
-      def
+    Id.set_counter counter2;
+    def
   in
   let env = List.map (Pair.map_fst @@ rename_var map) prog.env in
   let defs = List.map rename_def prog.defs in
@@ -446,6 +447,7 @@ let rename_prog ?(is_cps=List.mem Flag.CPS !Flag.form) prog =
   if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
   ignore (Typing.infer ~is_cps prog);
   let rmap = List.map (Pair.map_snd trans_inv_var) map in
+  Id.set_counter counter1;
   prog, map, rmap
 
 let id_prog prog =

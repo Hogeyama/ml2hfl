@@ -555,3 +555,6 @@ let eval_step_by_step  prog =
   in
   let t_main = assoc_fun_def prog.defs prog.main in
   eval t_main
+
+
+let initilize_env {defs;env;main} = {defs; env=[]; main}
