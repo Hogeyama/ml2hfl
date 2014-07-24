@@ -20,6 +20,7 @@ let check_fun_arg_typ = false
 let check_typ = true
 let debug_level = ref 1
 let debug_module : string list ref = ref []
+let debug_abst = ref false
 
 (* method option *)
 let input_cegar = ref false

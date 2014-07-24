@@ -145,8 +145,8 @@ and print_fun_def fm (f,xs,t1,es,t2) =
   if t1 = Const True
   then
     let ys,t2 = decomp_fun t2 in
-    Format.fprintf fm "@[<hov 4>%a ->%s@ %a.@]" (print_list print_var " ") (f::xs@ys) s print_term t2
-  else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a.@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
+    Format.fprintf fm "@[<hov 4>%a ->%s@ %a;;@]" (print_list print_var " ") (f::xs@ys) s print_term t2
+  else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a;;@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
 
 and print_prog fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@."
@@ -300,7 +300,7 @@ and print_const_ML fm = function
   | Temp _ -> assert false
   | Bottom -> Format.fprintf fm "()"
   | EqUnit -> assert false
-  | Label _ -> assert false
+  | Label n -> Format.fprintf fm "print_int %d;" n
   | CmpPoly _ -> assert false
   | CPS_result -> Format.fprintf fm "end"
 
@@ -326,6 +326,8 @@ and print_prog_ML fm (env,defs,s) =
   Format.fprintf fm "let rec f x = f x@.";
   List.iter (print_fun_def_ML fm) defs;
   if env <> [] then Format.fprintf fm "Types:\n%a@." print_env env
+
+let prog_ML fm {defs;env;main} = print_prog_ML fm (env,defs,main)
 
 
 

@@ -216,5 +216,5 @@ let add_pred = add_pred.tr_term
 let remove_pair t =
   let t' = remove_pair t in
   Type_check.check t' typ_result;
-  let t'' = add_pred t' in
+  let t'' = (*add_pred*) t' in
   t'', uncurry_rtyp t

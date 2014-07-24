@@ -505,45 +505,53 @@ let eval_step_by_step  prog =
     | _ -> Format.printf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
   in
   let counter = ref 0 in
-  let rec get_tf () =
-    Format.printf "[%d] t/f?@?: " !counter;
+  let rec get_tf l_then l_else =
+    Format.printf "[%d] t/f?" !counter;
+    if Option.is_some l_then then Format.printf " (t -> %d?, " @@ Option.get l_then;
+    if Option.is_some l_else then Format.printf "f -> %d?)" @@ Option.get l_else;
+    Format.printf ": @?";
     match read_line () with
     | "t" -> Format.printf "t@."; true
     | "f" -> Format.printf "f@."; false
-    | _ -> get_tf ()
+    | _ -> get_tf l_then l_else
   in
-  let rec eval_cond t =
+  let rec eval_cond t t_then t_else =
     match t with
     | Const True -> true
     | Const False -> false
-    | Const RandBool -> incr counter; get_tf ()
+    | Const RandBool ->
+        let aux = function App(Const (Label n), _) -> Some n | _ -> None in
+        incr counter; get_tf (aux t_then) (aux t_else)
     | App(App(App(Const If, t1), t2), t3) ->
-        if eval_cond t1 then eval_cond t2 else eval_cond t3
+        if eval_cond t1 t_then t_else then eval_cond t2 t_then t_else else eval_cond t3 t_then t_else
     | _ -> assert false
   in
   let rec eval t =
-    Color.printf Color.Red "EVAL:@.";
-    Format.printf "%a@." CEGAR_print.term t;
+    if true then Color.printf Color.Red "EVAL:@.";
+    if true then Format.printf "%a@." CEGAR_print.term t;
 (*    ignore @@ read_line ();*)
     match decomp_app t with
     | Const If, [t1;t2;t3] ->
-        if eval_cond t1
+        if eval_cond t1 t2 t3
         then eval t2
         else eval t3
     | Const (Label n), [t] ->
         Color.printf Color.Green "Label %d@." n;
+        if false then ignore @@ read_line ();
         eval t
     | Fun(x,_,t1), t2::ts ->
-            Color.printf Color.Blue "[%s |-> %a]@." x CEGAR_print.term t2;
+        if true then Color.printf Color.Blue "[%s |-> %a]@." x CEGAR_print.term t2;
         eval @@ make_app (subst x t2 t1) ts
     | Var f, ts ->
         let subst' x t1 t2 =
-            Color.printf Color.Blue "[%s |-> %a]@." x CEGAR_print.term t1;
+          if true then Color.printf Color.Blue "[%s |-> %a]@." x CEGAR_print.term t1;
           subst x t1 t2
         in
         let xs,t' = decomp_fun @@ assoc_fun_def prog.defs f in
         eval @@ List.fold_right2 subst' xs ts t'
-    | _ -> assert false
+    | _ ->
+        Color.printf Color.Blue "%a@." CEGAR_print.term t;
+        assert false
   in
   let t_main = assoc_fun_def prog.defs prog.main in
   eval t_main
