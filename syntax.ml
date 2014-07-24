@@ -1371,9 +1371,10 @@ and print_termlist pri typ fm ts =
   else
     List.iter (fprintf fm "@ %a" (print_term pri typ)) ts
 and print_const fm = function
-    Unit -> fprintf fm "()"
+  | Unit -> fprintf fm "()"
   | True -> fprintf fm "true"
   | False -> fprintf fm "false"
+  | Int n when n<0 -> fprintf fm "(%d)" n
   | Int n -> fprintf fm "%d" n
   | Char c -> fprintf fm "%C" c
   | String s -> fprintf fm "%S" s
