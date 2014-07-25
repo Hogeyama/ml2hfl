@@ -38,19 +38,19 @@ let rec decomp_let t =
       let bindings,t2' = decomp_let t2 in
       (flag,(f,xs,t1))::bindings, t2'
   | _ ->
-    let r = Id.new_var ~name:"r" t.typ in
-    [Nonrecursive, (r,[],t)], make_var r
+      let r = Id.new_var ~name:"r" t.typ in
+      [Nonrecursive, (r,[],t)], make_var r
 
 let partition_bindings x t =
   if debug() then Format.printf "PB: x:%a@." Id.print x;
   let bindings,t' = decomp_let t in
   let check t =
     if List.mem x (get_fv t)
-    then (raise Cannot_compose)
+    then raise Cannot_compose
   in
   let aux (flag,(f,xs,t)) (before,app_x,after) =
     match app_x, xs, t with
-      None, [], {desc=App({desc=Var y}, ts)} when Id.same x y ->
+    | None, [], {desc=App({desc=Var y}, ts)} when Id.same x y ->
         assert (flag = Nonrecursive);
         before, Some (f,ts), after
     | None, _, _ ->
