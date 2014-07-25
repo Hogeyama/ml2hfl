@@ -391,7 +391,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
       | Fun _ -> assert false
       | Let _ -> assert false
     in
-    let defs' = List.map (apply_body_def aux) defs in
+    let defs' = List.map (map_body_def aux) defs in
     {env=evt_env@@@env; defs=evt_defs@@@defs'; main=main}
 
 

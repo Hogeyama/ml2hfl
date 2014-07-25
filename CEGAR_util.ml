@@ -9,7 +9,8 @@ let const_of_bool b = if b then True else False
 
 
 
-let apply_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
+let map_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
+let map_body_prog f prog = {prog with defs = (List.map (map_body_def f) prog.defs)}
 
 
 
@@ -105,8 +106,7 @@ let rec put_into_if_term = function
             make_app t' ts'
   | Fun(x,typ,t) -> Fun(x, typ, put_into_if_term t)
   | Let(x,t1,t2) -> Let(x, put_into_if_term t1, put_into_if_term t2)
-let put_into_if prog =
-  {prog with defs=List.map (apply_body_def put_into_if_term) prog.defs}
+let put_into_if prog = map_body_prog put_into_if_term prog
 
 
 
@@ -214,7 +214,7 @@ let rec get_typ env = function
       get_typ env t
   | App(Const RandInt, t) ->
       let typ2 = match get_typ env t with TFun(_,typ) -> typ (Var "") | _ -> assert false in
-        typ2
+      typ2
   | App(App(App(Const If, _), t1), t2) ->
       begin
         try
@@ -223,11 +223,14 @@ let rec get_typ env = function
       end
   | App(t1,t2) ->
       let typ2 = match get_typ env t1 with TFun(_,typ) -> typ t2 | _ -> assert false in
-        typ2
+      typ2
   | Let(x,t1,t2) ->
       let typ = get_typ env t1 in
       let env' = (x,typ)::env in
-        get_typ env' t2
+      get_typ env' t2
+  | Fun(x,Some typ,t) ->
+      let typ' = get_typ ((x,typ)::env) t in
+      TFun(typ, fun y -> subst_typ x y typ')
   | Fun(x,_,t) -> assert false
 (*
       let typ1 = List.assoc x env in

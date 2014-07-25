@@ -59,10 +59,10 @@ and print_typ_aux var fm = function
             end
         | typ -> print_typ_aux None fm typ
       in
-        aux true fm typ
+      aux true fm typ
   | TApp _ as typ ->
       let typ,typs = decomp_tapp typ in
-        Format.fprintf fm "(%a)" (print_list (print_typ_aux None) " ") (typ::typs)
+      Format.fprintf fm "(%a)" (print_list (print_typ_aux None) " ") (typ::typs)
   | TAbs _ -> assert false
 
 and print_typ fm typ =
@@ -109,8 +109,13 @@ and print_const fm = function
   | Label n -> Format.fprintf fm "l%d" n
   | CPS_result -> Format.fprintf fm "end"
 
+and print_arg_var fm (x,typ) =
+  match typ with
+  | Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
+  | _ -> print_var fm x
+
 and print_term fm = function
-    Const c -> print_const fm c
+  | Const c -> print_const fm c
   | Var x -> print_var fm x
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
@@ -119,22 +124,17 @@ and print_term fm = function
   | App _ as t ->
       let t,ts = decomp_app t in
       let rec pr fm = function
-          [] -> ()
+        | [] -> ()
         | t::ts -> Format.fprintf fm "@ %a%a" print_term t pr ts
       in
-        Format.fprintf fm "(@[<hov 1>%a%a@])" print_term t pr ts
+      Format.fprintf fm "(@[<hov 1>%a%a@])" print_term t pr ts
   | Let(x,t1,t2) ->
-      let xs,t1 = decomp_fun t1 in
-        Format.fprintf fm "(@[let %a %a@ =@ %a@ in@ %a@])"
-          print_var x (print_list print_var " ") xs print_term t1 print_term t2
+      let xs,t1 = decomp_annot_fun t1 in
+      Format.fprintf fm "(@[let %a %a@ =@ %a@ in@ %a@])"
+                     print_var x (print_list print_arg_var " ") xs print_term t1 print_term t2
   | Fun _ as t ->
       let env,t' = decomp_annot_fun t in
-      let pr fm (x,typ) =
-        match typ with
-            Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
-          | _ -> print_var fm x
-      in
-        Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env print_term t'
+      Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list print_arg_var " ") env print_term t'
 
 and print_fun_def fm (f,xs,t1,es,t2) =
   let aux s = function
@@ -150,8 +150,8 @@ and print_fun_def fm (f,xs,t1,es,t2) =
 
 and print_prog fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@."
-    print_var prog.main
-    (print_list print_fun_def "@\n") prog.defs
+                 print_var prog.main
+                 (print_list print_fun_def "@\n") prog.defs
 
 and print_prog_typ fm prog =
   print_prog fm prog;
@@ -164,34 +164,34 @@ and print_prog_typ fm prog =
 
 and linearArithTerm_of_term t =
   match t with
-      App(App(Const Add, t1), t2) ->
-        linearArithTerm_of_term t1 @ linearArithTerm_of_term t2
-    | App(App(Const Sub, t1), t2) ->
-        let neg_terms = List.map (fun (n,x) -> -n,x) in
-          linearArithTerm_of_term t1 @ neg_terms (linearArithTerm_of_term t2)
-    | App(App(Const Mul, Const (Int n)), Var x) -> [n, Some x]
-    | Const (Int n) -> [n, None]
-    | Var x -> [1, Some x]
-    | _ -> raise NonLinear
+    App(App(Const Add, t1), t2) ->
+    linearArithTerm_of_term t1 @ linearArithTerm_of_term t2
+  | App(App(Const Sub, t1), t2) ->
+      let neg_terms = List.map (fun (n,x) -> -n,x) in
+      linearArithTerm_of_term t1 @ neg_terms (linearArithTerm_of_term t2)
+  | App(App(Const Mul, Const (Int n)), Var x) -> [n, Some x]
+  | Const (Int n) -> [n, None]
+  | Var x -> [1, Some x]
+  | _ -> raise NonLinear
 
 
 and linearBoolTerm_of_term t =
   try
     let binop,t1,t2 =
       match t with
-          App(App(Const op, t1), t2) -> op, t1, t2
-        | _ -> raise BBoolTrans
+        App(App(Const op, t1), t2) -> op, t1, t2
+      | _ -> raise BBoolTrans
     in
     let binop' =
       match binop with
-          EqInt -> LinEqInt
-        | Gt -> LinGt
-        | Lt -> LinLt
-        | Geq -> LinGeq
-        | Leq -> LinLeq
-        | _ -> raise BBoolTrans
+        EqInt -> LinEqInt
+      | Gt -> LinGt
+      | Lt -> LinLt
+      | Geq -> LinGeq
+      | Leq -> LinLeq
+      | _ -> raise BBoolTrans
     in
-      BArithTerm (binop', linearArithTerm_of_term t1, linearArithTerm_of_term t2)
+    BArithTerm (binop', linearArithTerm_of_term t1, linearArithTerm_of_term t2)
   with BBoolTrans -> BBoolTerm t
 
 and prop_of_term t =
@@ -201,15 +201,15 @@ and prop_of_term t =
   in
   let rec trans t =
     match t with
-        App(App(Const And, _), _) ->
-          let ts = decomp And t in
-            PropAnd (List.map trans ts)
-      | App(App(Const Or, _), _) ->
-          let ts = decomp Or t in
-            PropOr (List.map trans ts)
-      | _ -> LinearTerm (linearBoolTerm_of_term t)
+      App(App(Const And, _), _) ->
+      let ts = decomp And t in
+      PropAnd (List.map trans ts)
+    | App(App(Const Or, _), _) ->
+        let ts = decomp Or t in
+        PropOr (List.map trans ts)
+    | _ -> LinearTerm (linearBoolTerm_of_term t)
   in
-    trans t
+  trans t
 
 and print_linearArithTerm_list fm ts =
   let sign n = if n < 0 then "-" else "+" in
@@ -225,34 +225,34 @@ and print_linearArithTerm_list fm ts =
     | -1, Some x -> Format.fprintf fm "-%a" print_var x
     | n, Some x -> Format.fprintf fm "%d*%a" n print_var x
   in
-    pr_head fm @@ List.hd ts;
-    print_list pr_tail "" fm @@ List.tl ts
+  pr_head fm @@ List.hd ts;
+  print_list pr_tail "" fm @@ List.tl ts
 
 and print_linearBoolTerm fm = function
     BBoolTerm t -> print_term fm t
   | BArithTerm(op,ts1,ts2) ->
       let s =
         match op with
-            LinEqInt -> "="
-          | LinGt -> ">"
-          | LinLt -> "<"
-          | LinGeq -> ">="
-          | LinLeq -> "<="
+          LinEqInt -> "="
+        | LinGt -> ">"
+        | LinLt -> "<"
+        | LinGeq -> ">="
+        | LinLeq -> "<="
       in
-        Format.fprintf fm "@[@[%a@]@ %s@ @[%a@]@]"
-          print_linearArithTerm_list ts1
-          s
-          print_linearArithTerm_list ts2
+      Format.fprintf fm "@[@[%a@]@ %s@ @[%a@]@]"
+                     print_linearArithTerm_list ts1
+                     s
+                     print_linearArithTerm_list ts2
 
 and print_prop fm = function
     LinearTerm t -> print_linearBoolTerm fm t
   | PropAnd ps ->
       let aux fm p =
         match p with
-            PropOr _ -> Format.fprintf fm "(@[%a@])" print_prop p
-          | _ -> print_prop fm p
+          PropOr _ -> Format.fprintf fm "(@[%a@])" print_prop p
+        | _ -> print_prop fm p
       in
-        print_list aux " && " fm ps
+      print_list aux " && " fm ps
   | PropOr ps ->
       print_list print_prop " || " fm ps
 
@@ -313,7 +313,7 @@ and print_term_ML fm = function
       Format.fprintf fm "(%a %a)" print_term_ML t1 print_term_ML t2
   | Let(x,t1,t2) ->
       let xs,t1 = decomp_fun t1 in
-        Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " ~last:true) xs print_term_ML t1 print_term_ML t2
+      Format.fprintf fm "(let %a %a= %a in %a)" print_var x (print_list print_var " " ~last:true) xs print_term_ML t1 print_term_ML t2
   | Fun(x,_,t) ->
       Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
 

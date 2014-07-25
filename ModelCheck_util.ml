@@ -179,7 +179,7 @@ let trans_ce ce =
 let true_var = "True"
 let false_var = "False"
 let rec church_encode_term = function
-    Const True -> Var true_var
+  | Const True -> Var true_var
   | Const False -> Var false_var
   | Const If -> assert false
   | Const c -> Const c
@@ -187,32 +187,32 @@ let rec church_encode_term = function
   | App(App(App(Const If, Const RandBool), t2), t3) ->
       let t2' = church_encode_term t2 in
       let t3' = church_encode_term t3 in
-        make_app (Const If) [Const RandBool; t2'; t3']
+      make_app (Const If) [Const RandBool; t2'; t3']
   | App(App(App(Const If, Var b), t2), t3) ->
       let t2' = church_encode_term t2 in
       let t3' = church_encode_term t3 in
-        make_app (Var b) [t2'; t3']
+      make_app (Var b) [t2'; t3']
   | App(t1, t2) -> App(church_encode_term t1, church_encode_term t2)
   | Let _ -> assert false
   | Fun _ -> assert false
 let church_encode {env=env;defs=defs;main=main} =
   let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
   let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
-  let defs' = List.map (apply_body_def church_encode_term) defs @ [true_def; false_def] in
+  let defs' = List.map (map_body_def church_encode_term) defs @ [true_def; false_def] in
   let prog = {env=[];defs=defs';main=main} in
-    if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog prog;
-    Typing.infer prog
+  if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog prog;
+  Typing.infer prog
 
 
 let rec full_app f n = function
-    Const _ -> true
+  | Const _ -> true
   | Var x when f = x -> false
   | Var x -> true
   | App _ as t ->
       let t1,ts = decomp_app t in
       let b1 = if t1 = Var f then n = List.length ts else true in
       let b2 = List.for_all (full_app f n) ts in
-        b1 && b2
+      b1 && b2
   | Let _ -> assert false
   | Fun _ -> assert false
 
@@ -224,7 +224,7 @@ let should_reduce (f,xs,t1,es,t2) env defs =
     List.for_all (fun (_,_,_,_,t2) -> full_app f n t2) defs
 
 let rec get_head_count f = function
-    Const _ -> 0
+  | Const _ -> 0
   | Var x -> 0
   | App _ as t ->
       let t1,ts = decomp_app t in
@@ -236,7 +236,7 @@ let rec get_head_count f = function
   | Fun _ -> assert false
 
 let rec beta_reduce_term flag (f,xs,t1,es,t2) = function
-    Const c -> Const c
+  | Const c -> Const c
   | Var x -> Var x
   | App _ as t ->
       let t1,ts = decomp_app t in

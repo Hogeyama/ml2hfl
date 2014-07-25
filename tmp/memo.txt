@@ -1,0 +1,89 @@
+ETA_EXPAND:
+Main: main_1294
+  main_1294 ->
+      (append_1008
+        (fun (b_1669:bool) (k_main_1017_1670:(bool -> int[b_1669] -> X)) ->
+         (if b_1669 (l0 (k_main_1017_1670 false 0)) (l1 (k_main_1017_1670 true 0)))) (
+        fun (main_1645:unit) -> end)).
+  append_1008 xs__ys_1009 k_append_1119 ->
+      (xs__ys_1009 true
+        (fun (xs0_1652:bool) (xs1_1653:int[true]) ->
+         (if xs0_1652
+           (l0
+             (append_1008 (fun (x_1656:bool) (k_append_1657:(bool -> int[x_1656] -> X)) -> (k_append_1657 true 0))
+               (fun (x__1689:unit) -> (k_append_1119 x__1689))))
+           (l1
+             (xs__ys_1009 false
+               (fun (xs0_1666:bool) (xs1_1667:int[false]) ->
+                (if (xs1_1667 = 0) (l0 (k_append_1119 ()))
+                  (l1 (fail_1301 true (fun (x__1688:unit) -> (k_append_1119 x__1688))))))))))).
+  fail_1301 b k -> {fail} => (k ()).
+
+Error trace::
+  main_1294 ... --> 
+  main_1072 ... --> 
+  main_1017_1014 ... --> 
+  append_1008 ... --> 
+  xs_1102 ... --> 
+  f_main_1017_1298 ... --> 
+  mynot_1012 [1/2] ... --> 
+  f_main_1017_1299 ... --> 
+  f_append_1295 [2/2] ... --> 
+  xs_1103 ... --> 
+  f_main_1017_1298 ... --> 
+  mynot_1012 [1/2] ... --> 
+  f_main_1017_1299 ... --> 
+  f_append_1297 [2/2] ... --> 
+  fail_1301 ... --> fail -->
+  ERROR!
+
+
+
+
+
+
+
+let rec append_1008 (xs__ys_1009:(bool -> ((bool * int) -> X) -> X)) (k_append_1119:(unit -> X)) =
+  let xs_1102 (k_append_xs_1126:((bool * int) -> X)) = xs__ys_1009 true k_append_xs_1126 in
+  xs_1102
+    (fun (xs_1187:(bool * int)) ->
+     (if fst xs_1187 then
+        append_1008 (fun (x_1279:bool) -> fun (k_append_1280:((bool * int) -> X)) -> k_append_1280 (true, 0))
+                    k_append_1119
+      else
+        let xs_1103 (k_append_xs_1165:((bool * int) -> X)) = xs__ys_1009 false k_append_xs_1165 in
+        xs_1103
+          (fun (xs_1182:(bool * int)) ->
+           (if snd xs_1182 = 0 then
+              k_append_1119 ()
+            else
+              {|fail|} () k_append_1119))))
+let mynot_1012 (b_1013:bool) (k_mynot_1197:(bool -> X)) = if b_1013 then
+                                                            k_mynot_1197 false
+                                                          else
+                                                            k_mynot_1197 true
+let main_1017_1014 (x_1056:unit) (k_main_1017_1208:(unit -> X)) =
+  append_1008
+    (fun (b_1284:bool) ->
+     fun (k_main_1017_1285:((bool * int) -> X)) ->
+     mynot_1012 b_1284 (fun (x_1292:bool) -> k_main_1017_1285 (x_1292, 0))) k_main_1017_1208
+let main_1072 (k_main_1255:(unit -> X)) = main_1017_1014 () k_main_1255
+let _ = main_1072 (fun (main_1261:unit) -> ())
+
+let main_1072 k = main_1017_1014 () k_main_1255
+let main_1017_1014 x_1056 k =
+  append_1008 (fun b k' -> assume b; k' (false, 0))) (fun b k' -> assume b; k' (false, 0)) k
+let rec append_1008 f1 f2 k =
+  let xs_1102 k' = f1 true k' in
+  xs_1102
+    (fun (b,_) ->
+     assume (not b);
+     let xs_1103 k' = f2 false k' in
+     xs_1103
+       (fun (xs_1182:(bool * int)) ->
+        (if snd xs_1182 = 0 then
+           k ()
+         else
+           {|fail|} () k)))
+let mynot1 b k = assume b; k false
+let mynot2 b k = assume b; k false

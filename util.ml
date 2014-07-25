@@ -45,6 +45,7 @@ module List = struct
 
   let singleton x = [x]
   let cons x xs = x::xs
+  let snoc xs x = xs@[x]
 
   (*** returns a list of integers [m;...;n-1] ***)
   let rec fromto m n =

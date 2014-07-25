@@ -79,6 +79,7 @@ let filter env cond pbs must t =
     make_dnf @@ fst @@ weakest_aux env cond pbs (Const False)
   in
   let unsat = List.fold_left make_or (Const False) @@ List.map aux pbss in
+  if debug() then Format.printf "unsat:%a@.@." CEGAR_print.term unsat;
   make_if unsat (Const Bottom) t
 
 
