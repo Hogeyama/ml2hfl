@@ -1,11 +1,9 @@
-
 open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 open Fpat.Combinator
-open Fpat.ExtFormula
 
 module String = Fpat.Util.String
 module List = Fpat.Util.List
@@ -69,7 +67,7 @@ let rec conv_term t =
   | Fun _ -> assert false
   | Let _ -> assert false
 
-let conv_formula t = t |> conv_term |> Formula.of_term
+let conv_formula t = t |> conv_term |> Fpat.Formula.of_term
 
 let inv_const c =
   match c with
@@ -127,7 +125,7 @@ let rec inv_term t =
   | Fpat.Term.App(t1, t2) -> App(inv_term t1, inv_term t2)
   | Fpat.Term.Binder(_, _, _) -> assert false
 
-let inv_formula t = t |> Formula.term_of |> inv_term
+let inv_formula t = t |> Fpat.Formula.term_of |> inv_term
 
 
 let conv_event e = (***)
@@ -619,7 +617,7 @@ let simplify_term t =
   if false then
   let _, t = CEGAR_trans.trans_term {Syntax.desc = t; Syntax.typ = Type.TBool } in
   let t = conv_formula t in
-  let t = Formula.simplify t in
+  let t = Fpat.FormulaSimplifier.simplify t in
   let t = inv_formula t in
   (CEGAR_trans.trans_inv_term t).Syntax.desc
   else

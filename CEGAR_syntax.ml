@@ -12,7 +12,7 @@ module VarSet =
     end)
 
 type const =
-    Temp of string (* for temporary use *)
+  | Temp of string (* for temporary use *)
   | Unit
   | True
   | False
@@ -50,7 +50,7 @@ type const =
 
 
 and t =
-    Const of const
+  | Const of const
   | Var of var
   | App of t * t
   | Let of var * t * t (*** for temporary use ***)
@@ -71,6 +71,12 @@ and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
 and prog = {env:env; defs:fun_def list; main:var}
+
+
+let _Const c = Const c
+let _Var x = Var x
+let _App t1 t2 = App(t1,t2)
+let _Let x t1 t2 = Let(x,t1,t2)
 
 
 let new_id name = Id.to_string (Id.new_var ~name Type.typ_unknown)

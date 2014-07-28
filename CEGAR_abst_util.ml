@@ -59,27 +59,30 @@ let filter_pbs env cond pbs =
 
 let filter env cond pbs must t =
   if debug() then Format.printf "filter@.";
-  let pbs' = filter_pbs env cond pbs in
+  let pbs' = if !Flag.remove_false then filter_pbs env cond pbs else pbs in
   if debug() then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  if debug() then Format.printf "orig pbs: @[<hv>%a@." print_pbs pbs;
   let pbss =
     let rec aux sets (p,b) =
       let fv = get_fv p in
-      let sets1,sets2 = List.partition (fun set -> List.exists (fun x -> VarSet.mem x set) fv) sets in
+      let sets1,sets2 = List.partition (fun set -> List.exists (flip VarSet.mem set) fv) sets in
       match sets1 with
       | [] -> List.fold_right VarSet.add fv VarSet.empty :: sets
       | _ ->
           let set1 = List.fold_left VarSet.union VarSet.empty sets1 in
           List.fold_right VarSet.add fv set1 :: sets
     in
-    let xss = List.map VarSet.elements @@ List.fold_left aux [] pbs in
-    List.map (fun xs -> List.filter (List.exists (flip List.mem xs) -| get_fv -| fst) pbs) xss
+    let xss = List.map VarSet.elements @@ List.fold_left aux [] pbs' in
+    List.map (fun xs -> List.filter (List.exists (flip List.mem xs) -| get_fv -| fst) pbs') xss
   in
   let aux pbs =
-    if debug() then Format.printf "pbs: @[<hv>%a@.@." print_pbs pbs';
+    if debug() then Format.printf "pbs: @[<hv>%a@.@." print_pbs pbs;
     make_dnf @@ fst @@ weakest_aux env cond pbs (Const False)
   in
-  let unsat = List.fold_left make_or (Const False) @@ List.map aux pbss in
-  make_if unsat (Const Bottom) t
+  let unsat1 = List.fold_left make_or (Const False) @@ List.map snd @@ List.filter (fun pb -> check env cond [pb] @@ Const False) pbs' in
+  let unsat2 = List.fold_left make_or unsat1 @@ List.map aux pbss in
+  if debug() then Format.printf "unsat:%a@.@." CEGAR_print.term unsat2;
+  make_if unsat2 (Const Bottom) t
 
 
 
