@@ -31,6 +31,23 @@ let trd (x,y,z) = z
 
 let (@@@) = List.rev_append
 
+let rec print_list_aux print punc last fm xs =
+  match xs with
+  | [] -> ()
+  | [x] -> print fm x
+  | x::xs ->
+      Format.fprintf fm "%a" print x;
+      Format.fprintf fm punc;
+      Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
+
+let print_list print ?(first=false) ?(last=false) punc fm xs =
+  let punc' = format_of_string punc in
+  Format.fprintf fm "@[";
+  if first then Format.fprintf fm punc';
+  Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
+  if last then Format.fprintf fm punc';
+  Format.fprintf fm "@]"
+
 module IntSet =
   Set.Make(
     struct
@@ -46,6 +63,8 @@ module List = struct
   let singleton x = [x]
   let cons x xs = x::xs
   let snoc xs x = xs@[x]
+
+  let print pr fm xs = Format.printf "[%a]" (print_list pr "; ") xs
 
   (*** returns a list of integers [m;...;n-1] ***)
   let rec fromto m n =
@@ -213,24 +232,6 @@ let rec my_input ic s ofs len acc =
     then my_input ic s (ofs+r) (len-r) (acc+r)
     else acc
 let my_input ic s ofs len = my_input ic s ofs len 0
-
-
-let rec print_list_aux print punc last fm xs =
-  match xs with
-  | [] -> ()
-  | [x] -> print fm x
-  | x::xs ->
-      Format.fprintf fm "%a" print x;
-      Format.fprintf fm punc;
-      Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
-
-let print_list print ?(first=false) ?(last=false) punc fm xs =
-  let punc' = format_of_string punc in
-  Format.fprintf fm "@[";
-  if first then Format.fprintf fm punc';
-  Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
-  if last then Format.fprintf fm punc';
-  Format.fprintf fm "@]"
 
 
 let make_string_of pp =
