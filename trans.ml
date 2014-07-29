@@ -2072,3 +2072,15 @@ let beta_no_effect_tuple_term env t =
 
 let () = beta_no_effect_tuple.tr2_term <- beta_no_effect_tuple_term
 let beta_no_effect_tuple = beta_no_effect_tuple.tr2_term []
+
+
+let reduce_bottom = make_trans ()
+
+let reduce_bottom_term t =
+  let t' = reduce_bottom.tr_term_rec t in
+  match t'.desc with
+  | Let(_, [x,[],{desc=Bottom}], _) -> make_bottom t.typ
+  | _ -> t'
+
+let () = reduce_bottom.tr_term <- reduce_bottom_term
+let reduce_bottom = reduce_bottom.tr_term
