@@ -60,8 +60,8 @@ let filter_pbs env cond pbs =
 let filter env cond pbs must t =
   if debug() then Format.printf "filter@.";
   let pbs' = if !Flag.remove_false then filter_pbs env cond pbs else pbs in
-  if debug() then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
-  if debug() then Format.printf "orig pbs: @[<hv>%a@." print_pbs pbs;
+  if debug() then Format.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  if debug() then Format.printf "  orig pbs: @[<hv>%a@." print_pbs pbs;
   let pbss =
     let rec aux sets (p,b) =
       let fv = get_fv p in
@@ -70,19 +70,20 @@ let filter env cond pbs must t =
       | [] -> List.fold_right VarSet.add fv VarSet.empty :: sets
       | _ ->
           let set1 = List.fold_left VarSet.union VarSet.empty sets1 in
-          List.fold_right VarSet.add fv set1 :: sets
+          List.fold_right VarSet.add fv set1 :: sets2
     in
     let xss = List.map VarSet.elements @@ List.fold_left aux [] pbs' in
     List.map (fun xs -> List.filter (List.exists (flip List.mem xs) -| get_fv -| fst) pbs') xss
   in
   let aux pbs =
-    if debug() then Format.printf "pbs: @[<hv>%a@.@." print_pbs pbs;
+    if debug() then Format.printf "  pbs: @[<hv>%a@." print_pbs pbs;
     make_dnf @@ fst @@ weakest_aux env cond pbs (Const False)
   in
-  let unsat1 = List.fold_left make_or (Const False) @@ List.map snd @@ List.filter (fun pb -> check env cond [pb] @@ Const False) pbs' in
-  let unsat2 = List.fold_left make_or unsat1 @@ List.map aux pbss in
-  if debug() then Format.printf "unsat:%a@.@." CEGAR_print.term unsat2;
-  make_if unsat2 (Const Bottom) t
+  let unsats1 = List.map aux pbss in
+  let unsats2 = List.filter_map (fun (p,b) -> if check env cond [p,b] @@ Const False then Some b else None) pbs' in
+  let unsat = List.fold_left make_or (Const False) (unsats2 @ unsats1) in
+  if debug() then Format.printf "  unsat:%a@.@." CEGAR_print.term unsat;
+  make_if unsat (Const Bottom) t
 
 
 
@@ -101,11 +102,11 @@ let abst env cond pbs p =
 
 
 let assume env cond pbs t1 t2 =
-  if t1 = Const True
-  then t2
-  else
-    let _,ff = weakest env cond pbs t1 in
-    make_if ff (Const Bottom) t2
+  if debug() then Format.printf "ASSUME:@.";
+  if debug() then Format.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  if debug() then Format.printf "  pbs: @[<hv>%a@." print_pbs pbs;
+  if debug() then Format.printf "  t1: @[<hv>%a@." CEGAR_print.term t1;
+  filter env (t1::cond) pbs None t2
 
 
 let rec congruent env cond typ1 typ2 =

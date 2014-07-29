@@ -30,6 +30,7 @@ let parse_error _ = print_error_information ()
 %token ARROW
 %token DARROW
 %token SEMI
+%token SEMISEMI
 %token COLON
 %token INLINE
 %token INLINEF
@@ -86,9 +87,9 @@ defs:
   {$1 :: $2}
 
 def:
-| id id_list ARROW event_list term PERIOD
+| id id_list ARROW event_list term SEMISEMI
   {($1, $2, Const True, $4, $5)}
-| id id_list WHEN term ARROW event_list term PERIOD
+| id id_list WHEN term ARROW event_list term SEMISEMI
   {($1, $2, $4, $6, $7)}
 
 id:
@@ -145,6 +146,7 @@ exp:
   {
     match $2 with
     | Const (Int n) -> make_int (-n)
+    | Var x -> make_mul (make_int (-1)) (Var x)
     | t -> make_sub (make_int 0) t
   }
 | exp EQUAL exp

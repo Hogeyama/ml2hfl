@@ -46,6 +46,7 @@ rule token = parse
 | "->" { ARROW }
 | "=>" { DARROW }
 | ';' { SEMI }
+| ";;" { SEMISEMI }
 | ':' { COLON }
 | "Main:" { MAIN }
 | "Types:" { TYPES }

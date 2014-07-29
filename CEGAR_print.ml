@@ -97,6 +97,7 @@ and print_const fm = function
   | EqInt -> Format.fprintf fm "="
   | EqBool -> Format.fprintf fm "<=>"
   | CmpPoly(typ,s) -> Format.pp_print_string fm s
+  | Int n when (n < 0) -> Format.fprintf fm "(%d)" n
   | Int n -> Format.fprintf fm "%d" n
   | Add -> Format.fprintf fm "+"
   | Sub -> Format.fprintf fm "-"

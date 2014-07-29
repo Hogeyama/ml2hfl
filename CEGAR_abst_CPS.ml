@@ -356,7 +356,7 @@ let abstract_def env (f,xs,t1,e,t2) =
     let g = rename_id f in
     let fv = List.diff (get_fv t2'') (List.map fst env) in
     [g, fv, Const True, e, t2'';
-     f, xs', Const True, [], assume env' [] pts t1 (make_app (Var g) (List.map (fun x -> Var x) fv))]
+     f, xs', Const True, [], assume env' [] pts t1 @@ make_app (Var g) (List.map _Var fv)]
   else
     [f, xs', Const True, e, assume env' [] pts t1 t2'']
 
@@ -373,7 +373,7 @@ type typ_cps = X | TFun1 of typ_cps | TFun2 of typ_cps * typ_cps
 
 let rec trans_typ typ =
   match decomp_tfun typ with
-    [], TBase(TUnit, _) -> X
+  | [], TBase(TUnit, _) -> X
   | [typ1], TBase(TUnit, _) -> TFun1 (trans_typ typ1)
   | [typ1;typ2], TBase(TUnit, _) -> TFun2(trans_typ typ1, trans_typ typ2)
   | typs,typ -> Format.printf "%a@." CEGAR_print.typ typ; assert false
@@ -385,14 +385,14 @@ let rec trans_typ typ =
 *)
 
 let rec make_arg ks = function
-    X -> []
+  | X -> []
   | TFun1 typ -> [make_ext_fun_cps ks typ]
   | TFun2(typ1,typ2) -> [make_ext_fun_cps ks typ1; make_ext_fun_cps ks typ2]
 
 and add_ks k typ ks = if typ = X then k::ks else ks
 
 and make_ext_fun_cps ks = function
-    X -> List.fold_left (fun t x -> make_br' t (Var x)) (Const Unit) ks
+  | X -> List.fold_left (fun t x -> make_br' t (Var x)) (Const Unit) ks
   | TFun1 typ ->
       let k = new_id "k" in
       let ks' = add_ks k typ ks in
