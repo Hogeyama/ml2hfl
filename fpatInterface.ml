@@ -49,7 +49,7 @@ let conv_const c =
   | Int64 n -> Fpat.Const.Int (Int64.to_int n)
   | Nativeint n -> Fpat.Const.Int (Nativeint.to_int n)
   | CPS_result ->
-     Fpat.Const.Unint(Fpat.Type.mk_const (Fpat.TypConst.Ext "X"), "end")
+     Fpat.Const.UFun(Fpat.Type.mk_const (Fpat.TypConst.Ext "X"), "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -103,7 +103,7 @@ let inv_const c =
      Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">="))
   | Fpat.Const.String s -> String s
   | Fpat.Const.Float x -> Float (string_of_float x)
-  | Fpat.Const.Unint(ty, "end")
+  | Fpat.Const.UFun(ty, "end")
        when Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
      CPS_result
   | _ -> Format.printf "%s@." (Fpat.Const.string_of c); assert false
@@ -663,7 +663,7 @@ let report_error ppf = function
      Format.fprintf ppf  "Failure of parameter substitution refinement"
   | Fpat.PolyConstrSolver.Unknown ->
      Format.fprintf ppf "Failure of polynomial constraint solver"
-  | Fpat.Util.NotImplemented msg ->
+  | Fpat.Global.NotImplemented msg ->
      Format.fprintf ppf "Not implemented: %s" msg
   | _ -> raise Not_found
 
@@ -676,7 +676,7 @@ let is_fpat_exception = function
   | Fpat.InterpProver.Unknown
   | Fpat.RefTypInfer.FailedToRefineExtraParameters
   | Fpat.PolyConstrSolver.Unknown
-  | Fpat.Util.NotImplemented _ -> true
+  | Fpat.Global.NotImplemented _ -> true
   | _ -> false
 
 
