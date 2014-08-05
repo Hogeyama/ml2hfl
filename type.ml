@@ -218,8 +218,8 @@ let rec app_typ typ typs =
 
 let tuple_num typ =
   match elim_tpred typ with
-  | TTuple xs -> List.length xs
-  | _ -> assert false
+  | TTuple xs -> Some (List.length xs)
+  | _ -> None
 
 let proj_typ i typ =
   match elim_tpred typ with

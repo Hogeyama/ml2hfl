@@ -1049,13 +1049,13 @@ let lift_fst_snd_term fs t =
           bindings
       in
       make_let_f flag bindings' @@ lift_fst_snd.tr2_term fs t2
-  | Proj(0, {desc=Var x}) when tuple_num (Id.typ x) = 2 ->
+  | Proj(0, {desc=Var x}) when tuple_num (Id.typ x) = Some 2 ->
       (try
           let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.same x' x) fs in
           make_var x
         with Not_found ->
           make_fst @@ lift_fst_snd.tr2_term fs t)
-  | Proj(1, {desc=Var x}) when tuple_num (Id.typ x) = 2 ->
+  | Proj(1, {desc=Var x}) when tuple_num (Id.typ x) = Some 2 ->
       (try
           let (x, _, _) = List.find (fun (_, bfst, x') -> not bfst && Id.same x' x) fs in
           make_var x
@@ -1630,15 +1630,16 @@ let inline_var_const = inline_var_const.tr_term
 
 
 
-let remove_label = make_trans ()
+let remove_label = make_trans2 ()
 
-let remove_label_term t =
-  match t.desc with
-  | Label(_, t) -> remove_label.tr_term t
-  | _ -> remove_label.tr_term_rec t
+let remove_label_term label t =
+  match label, t.desc with
+  | None, Label(_, t) -> remove_label.tr2_term label t
+  | Some l, Label(InfoString l', {desc=Label(_, t)}) when l = l' -> remove_label.tr2_term label t
+  | _ -> remove_label.tr2_term_rec label t
 
-let () = remove_label.tr_term <- remove_label_term
-let remove_label = remove_label.tr_term
+let () = remove_label.tr2_term <- remove_label_term
+let remove_label ?(label=None) t = remove_label.tr2_term label t
 
 
 

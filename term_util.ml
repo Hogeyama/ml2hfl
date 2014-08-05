@@ -206,7 +206,11 @@ let rec make_nth i n t =
   | _ -> make_nth (i-1) (n-1) (make_snd t)
 let make_assert t = make_if_ t unit_term (make_app fail_term [unit_term])
 let make_assume t1 t2 = make_if_ t1 t2 (make_bottom t2.typ)
-let make_label info t = {desc=Label(info,t); typ=t.typ}
+let make_label_aux info t = {desc=Label(info,t); typ=t.typ}
+let make_label ?(label=None) info t =
+  t
+  |> make_label_aux info
+  |& Option.is_some label &> make_label_aux (InfoString (Option.get label))
 let make_ref t = {desc=Ref t; typ=TRef t.typ}
 let make_deref t = {desc=Deref t; typ=ref_typ t.typ}
 let make_setref r t = {desc=SetRef(r, t); typ=TUnit}
@@ -665,7 +669,7 @@ let rec var_name_of_term t =
   | Proj(i,t), _ ->
       let n = tuple_num t.typ in
       let names = String.nsplit (var_name_of_term t) "__" in
-      if n = List.length names
+      if n = Some (List.length names)
       then List.nth names i
       else var_name_of_term t ^ "_" ^ string_of_int i
   | App({desc=Var f},_), _ -> "r" ^ "_" ^ Id.name f

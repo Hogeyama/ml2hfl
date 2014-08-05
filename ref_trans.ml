@@ -389,39 +389,6 @@ let () = move_proj.tr_term <- move_proj_term
 
 
 
-let trans t = t
-  |@debug()&> Format.printf "INPUT: %a@." print_term
-  |> move_proj.tr_term
-  |@debug()&> Format.printf "move_proj: %a@." print_term_typ
-  |@> Trans.inline_no_effect
-  |@debug()&> Format.printf "inline_no_effect: %a@." print_term_typ
-  |> Trans.normalize_let
-  |> Trans.inline_simple_exp
-  |@debug()&> Format.printf "normalize_let: %a@." print_term_typ
-  |> Trans.flatten_let
-  |> Trans.inline_var_const
-  |@debug()&> Format.printf "flatten_let: %a@." print_term_typ
-  |> sort_let_pair.tr_term
-  |@debug()&> Format.printf "sort_let_pair: %a@." print_term_typ
-  |@> flip Type_check.check TUnit
-  |> trans.tr2_term (assert_false,[])
-  |> Trans.inline_no_effect
-  |@debug()&> Format.printf "ref_trans: %a@." print_term
-  |@> flip Type_check.check Type.TUnit
-
-let trans t =
- trans t, fun _ _ -> raise Not_found
-
-
-
-
-
-
-
-
-
-
-
 let col_assert = make_col [] (@@@)
 
 let col_assert_desc desc =
@@ -553,7 +520,7 @@ let add_fun_tuple_term (funs,env) t =
         let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
         let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj i (make_var fg)) fs in
         let t' = replace_head fs (List.map fst3 projs) t in
-        let defs = (fg, [], make_tuple @@ List.map make_var fs)::projs in
+        let defs = (fg, [], make_label (InfoString "add_fun_tuple") @@ make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'
       in
       make_let_f flag [f,xs,t1'] @@ List.fold_left aux t2' funs1
@@ -591,3 +558,28 @@ let make_fun_tuple t =
   let t' = add_fun_tuple rel_funs t in
   if debug() then Format.printf "@.@.%a@." print_term t';
   t'
+
+
+
+let trans t = t
+  |@debug()&> Format.printf "INPUT: %a@." print_term
+  |> move_proj.tr_term
+  |@debug()&> Format.printf "move_proj: %a@." print_term_typ
+  |@> Trans.inline_no_effect
+  |@debug()&> Format.printf "inline_no_effect: %a@." print_term_typ
+  |> Trans.normalize_let
+  |> Trans.inline_simple_exp
+  |@debug()&> Format.printf "normalize_let: %a@." print_term_typ
+  |> Trans.flatten_let
+  |> Trans.inline_var_const
+  |@debug()&> Format.printf "flatten_let: %a@." print_term_typ
+  |> sort_let_pair.tr_term
+  |@debug()&> Format.printf "sort_let_pair: %a@." print_term_typ
+  |@> flip Type_check.check TUnit
+  |> trans.tr2_term (assert_false,[])
+  |> Trans.inline_no_effect
+  |@debug()&> Format.printf "ref_trans: %a@." print_term
+  |@> flip Type_check.check Type.TUnit
+
+let trans t =
+ trans t, fun _ _ -> raise Not_found
