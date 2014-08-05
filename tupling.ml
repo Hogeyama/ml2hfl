@@ -329,7 +329,7 @@ let rec tree_of_tuple t =
   | _ -> Rose_tree.Leaf t
 
 let is_subsumed t1 t2 =
-  if debug() then Color.printf Color.Yellow "is_subsumed: %a, %a; " print_term t1 print_term t2;
+  if debug() then Color.printf Color.Yellow "is_subsumed: %a, %a@." print_term t1 print_term t2;
   match t1.desc, t2.desc with
   | App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
       let check t1 t2 =
@@ -350,23 +350,9 @@ let elim_sub_app_desc env desc =
   | Let(Nonrecursive, [x,[],t1], t2) ->
       let env' = (x,t1)::env in
       let t2' =
-        try
-          let y,_ = List.find (fun (y,t2) -> not (is_depend t1 y) && is_subsumed t2 t1) env in
-          if debug() then Format.printf "%a |-> %a@." Id.print y Id.print x;
-          make_label (InfoId y) @@ subst y (make_var x) t2
-        with Not_found -> t2
-      in
-      let t2'' = elim_sub_app.tr2_term env' t2' in
-      Let(Nonrecursive, [x,[],t1], t2'')
-  | _ -> elim_sub_app.tr2_desc_rec env desc
-let elim_sub_app_desc env desc =
-  match desc with
-  | Let(Nonrecursive, [x,[],t1], t2) ->
-      let env' = (x,t1)::env in
-      let t2' =
         let ys = List.map fst @@ List.filter (fun (y,t2) -> not (is_depend t1 y) && is_subsumed t2 t1) env in
         if debug() then List.iter (fun y -> Format.printf "%a |-> %a@." Id.print y Id.print x) ys;
-        List.fold_left (fun t y -> make_label (InfoId y) @@ subst y (make_var x) t) t2 ys
+        List.fold_left (fun t y -> make_label ~label:"elim_sub" (InfoId y) @@ subst y (make_var x) t) t2 ys
       in
       let t2'' = elim_sub_app.tr2_term env' t2' in
       Let(Nonrecursive, [x,[],t1], t2'')
@@ -389,7 +375,7 @@ let elim_sub_app t =
   let xs = col_info_id t' in
   if debug() then Format.printf "%a@." (print_list Id.print "; ") xs;
   let t'' = elim_substed_let.tr2_term xs t' in
-  Trans.remove_label t''
+  Trans.remove_label ~label:"elim_sub" t''
 
 
 
@@ -428,7 +414,8 @@ let rec decomp_let_app_option f t =
   match t.desc with
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g ->
       let ts' = List.map decomp_some ts in
-      let args = List.mapi (fun i t -> match t with None -> invalid_argument "decomp_let_app_option" | Some t' -> i, x, t') ts' in
+      if not @@ List.for_all2 (fun t t' -> Option.is_some t' || is_none t) ts ts' then invalid_argument "decomp_let_app_option";
+      let args = List.filter_map Std.identity @@ List.mapi (fun i t -> Option.map (fun t' -> i, x, t') t) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [_])}], t2) when Id.same f g ->
@@ -528,7 +515,7 @@ let trans t =
   |> Trans.inline_next_redex
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
   |> Trans.reduce_bottom
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "reduce_bottomh" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "reduce_bottom" print_term
   |@> flip Type_check.check Type.TUnit
 
 let trans t =

@@ -222,6 +222,7 @@ let trans t = t
   |> trans.tr2_term []
   |@debug()&> Format.printf "ret_fun:@.%a@.@." print_term_typ
   |> subst_label
+  |@debug()&> Format.printf "subst_label:@.%a@.@." print_term_typ
   |> Trans.remove_label ~label:"ret_fun"
   |@debug()&> Format.printf "remove_label:@.%a@.@." print_term_typ
   |> Trans.flatten_tuple

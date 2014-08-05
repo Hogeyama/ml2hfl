@@ -1544,7 +1544,7 @@ and print_info fm info =
   | InfoId x ->
       fprintf fm "Id %a" print_id x
   | InfoString s ->
-      fprintf fm "String %s" s
+      fprintf fm "String %S" s
   | InfoInt n ->
       fprintf fm "Int %d" n
   | InfoTerm t ->

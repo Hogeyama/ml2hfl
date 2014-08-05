@@ -1634,13 +1634,14 @@ let remove_label = make_trans2 ()
 
 let remove_label_term label t =
   match label, t.desc with
-  | None, Label(_, t) -> remove_label.tr2_term label t
-  | Some l, Label(InfoString l', {desc=Label(_, t)}) when l = l' -> remove_label.tr2_term label t
+  | None, Label(_, t1) -> remove_label.tr2_term label t1
+  | Some l, Label(InfoString l', {desc=Label(_, t1)}) when l = l' -> remove_label.tr2_term label t1
+  | Some l, Label(InfoString l', t1) when l = l' -> remove_label.tr2_term label t1
   | _ -> remove_label.tr2_term_rec label t
 
 let () = remove_label.tr2_term <- remove_label_term
 let remove_label ?(label="") t =
-  remove_label.tr2_term (if label<>"" then Some label else None) t
+  remove_label.tr2_term (if label="" then None else Some label) t
 
 
 
