@@ -2,21 +2,21 @@
 USED: PEPM2013 as search-e
 *)
 
-type option = None | Some of int
+type my_option = MyNone | MySome of int
 
 let rec exists test f n m =
   if n < m
   then
     if test (f n)
-    then Some n
+    then MySome n
     else exists test f (n+1) m
   else
-    None
+    MyNone
 
 let mult3 n = 3 * n
 
 let main n m =
   let test x = x = m in
     match exists test mult3 0 n with
-        None -> ()
-      | Some x -> assert (0 < x && x < n)
+        MyNone -> ()
+      | MySome x -> assert (0 < x && x < n)
