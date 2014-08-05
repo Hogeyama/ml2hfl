@@ -1639,7 +1639,8 @@ let remove_label_term label t =
   | _ -> remove_label.tr2_term_rec label t
 
 let () = remove_label.tr2_term <- remove_label_term
-let remove_label ?(label=None) t = remove_label.tr2_term label t
+let remove_label ?(label="") t =
+  remove_label.tr2_term (if label<>"" then Some label else None) t
 
 
 

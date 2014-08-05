@@ -520,7 +520,7 @@ let add_fun_tuple_term (funs,env) t =
         let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
         let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj i (make_var fg)) fs in
         let t' = replace_head fs (List.map fst3 projs) t in
-        let defs = (fg, [], make_label (InfoString "add_fun_tuple") @@ make_tuple @@ List.map make_var fs)::projs in
+        let defs = (fg, [], make_label ~label:"add_fun_tuple" (InfoString "") @@ make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'
       in
       make_let_f flag [f,xs,t1'] @@ List.fold_left aux t2' funs1
@@ -563,6 +563,8 @@ let make_fun_tuple t =
 
 let trans t = t
   |@debug()&> Format.printf "INPUT: %a@." print_term
+  |> Trans.remove_label ~label:"add_fun_tuple"
+  |@debug()&> Format.printf "remove_label: %a@." print_term_typ
   |> move_proj.tr_term
   |@debug()&> Format.printf "move_proj: %a@." print_term_typ
   |@> Trans.inline_no_effect

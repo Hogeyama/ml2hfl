@@ -73,7 +73,7 @@ let add_proj_info_term t =
           let ys = List.mapi (fun i t -> match t.desc with Var x -> i,x | _ -> raise Not_found) ts in
           let t1' = add_proj_info.tr_term t1 in
           let t2' = add_proj_info.tr_term t2 in
-          make_let [x,[],t1'] @@ List.fold_right (fun (i,y) t -> make_label (InfoIdTerm(y, make_proj i @@ make_var x)) t) ys t2'
+          make_let [x,[],t1'] @@ List.fold_right (fun (i,y) t -> make_label ~label:"ret_fun" (InfoIdTerm(y, make_proj i @@ make_var x)) t) ys t2'
         with Not_found -> add_proj_info.tr_term_rec t
       end
   | _ -> add_proj_info.tr_term_rec t
@@ -114,7 +114,7 @@ let rec make_deep_pair t rhs =
   match t.desc with
   | If(t1,t2,t3) -> make_if t1 (make_deep_pair t2 rhs) (make_deep_pair t3 rhs)
   | Let(flag,bindings,t) -> make_let_f flag bindings @@ make_deep_pair t rhs
-  | Label(info, t) -> make_label info (make_deep_pair t rhs)
+  | Label(info, t) -> make_label ~label:"ret_fun" info (make_deep_pair t rhs)
   | _ -> make_pair t (make_var rhs)
 
 
@@ -122,7 +122,7 @@ let rec make_deep_pair t rhs =
 
 let subst_all x y t = t
   |> subst_var x y
-  |> make_label @@ InfoIdTerm(x, make_var y)
+  |> make_label ~label:"ret_fun" @@ InfoIdTerm(x, make_var y)
 
 
 
@@ -222,7 +222,7 @@ let trans t = t
   |> trans.tr2_term []
   |@debug()&> Format.printf "ret_fun:@.%a@.@." print_term_typ
   |> subst_label
-  |> Trans.remove_label
+  |> Trans.remove_label ~label:"ret_fun"
   |@debug()&> Format.printf "remove_label:@.%a@.@." print_term_typ
   |> Trans.flatten_tuple
   |@debug()&> Format.printf "flatten_tuple:@.%a@.@." print_term_typ
