@@ -83,25 +83,21 @@ let filter env cond pbs must t =
 
 
 let abst env cond pbs p =
-  if debug() then Format.printf "cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  if debug() then Format.printf "abst@.";
+  if debug() then Format.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
   let pbs' = filter_pbs env cond pbs in
-  if debug() then Format.printf "pbs: @[<hv>%a@]@.p:%a@." print_pbs pbs' CEGAR_print.term p;
+  if debug() then Format.printf "  pbs: @[<hv>%a@]@.  p:%a@." print_pbs pbs' CEGAR_print.term p;
   if has_bottom p
   then Const Bottom
   else
     let tt, ff = weakest env cond pbs' p in
-    if debug() then Format.printf "tt:%a@.ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
+    if debug() then Format.printf "  tt:%a@.  ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
     if make_not tt = ff || tt = make_not ff
     then tt
     else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
-let assume env cond pbs t1 t2 =
-  if debug() then Format.printf "ASSUME:@.";
-  if debug() then Format.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
-  if debug() then Format.printf "  pbs: @[<hv>%a@." print_pbs pbs;
-  if debug() then Format.printf "  t1: @[<hv>%a@." CEGAR_print.term t1;
-  filter env (t1::cond) pbs None t2
+let assume env cond pbs t1 t2 = filter env (t1::cond) pbs None t2
 
 
 let rec congruent env cond typ1 typ2 =
