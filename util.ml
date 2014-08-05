@@ -77,6 +77,7 @@ module List = struct
   let rev_flatten_map = rev_map_flatten
   let flatten_map f xs = rev @@ rev_map_flatten f xs
   let rev_flatten xs = rev_map_flatten Std.identity xs
+  let concat_map = flatten_map
 
   let rec tabulate n f acc =
     if n < 0 then raise (Invalid_argument "tabulate")

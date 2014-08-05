@@ -25,16 +25,17 @@ let check env cond pbs p =
 let equiv env cond t1 t2 =
   check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
 
-let make_conj pbs = List.fold_left (fun t (_,b) -> make_and t b) (Const True) pbs
-let make_dnf pbss = List.fold_left (fun t pbs -> make_or t @@ make_conj pbs) (Const False) pbss
 
+let print_pb fm (p,b) =
+  Format.fprintf fm "%a := %a" CEGAR_print.term b CEGAR_print.term p
 
-let weakest_aux _ cond ds p =
+let print_pbs fm pbs =
+  print_list print_pb ";@\n" fm pbs
+
+let min_unsat_cores _ cond ds =
   let cond' = List.map FpatInterface.conv_formula cond in
   let ds' = List.map (Fpat.Pair.lift FpatInterface.conv_formula) ds in
-  let p' = FpatInterface.conv_formula p in
-  Fpat.PredAbst.weakest_aux cond' ds' p' |>
-    Fpat.Pair.lift (List.map (List.map (Fpat.Pair.lift FpatInterface.inv_formula)))
+  FpatInterface.inv_formula @@ Fpat.PredAbst.min_unsat_cores cond' ds'
 
 let weakest _ cond ds p =
   let cond' = List.map FpatInterface.conv_formula cond in
@@ -43,13 +44,6 @@ let weakest _ cond ds p =
   Fpat.PredAbst.weakest cond' ds' p' |>
     Fpat.Pair.lift FpatInterface.inv_formula
 
-
-
-let print_pb fm (p,b) =
-  Format.fprintf fm "%a := %a" CEGAR_print.term b CEGAR_print.term p
-
-let print_pbs fm pbs =
-  print_list print_pb ";@\n" fm pbs
 
 
 let filter_pbs env cond pbs =
@@ -77,7 +71,7 @@ let filter env cond pbs must t =
   in
   let aux pbs =
     if debug() then Format.printf "  pbs: @[<hv>%a@." print_pbs pbs;
-    make_dnf @@ fst @@ weakest_aux env cond pbs (Const False)
+    min_unsat_cores env cond pbs
   in
   let unsats1 = List.map aux pbss in
   let unsats2 = List.filter_map (fun (p,b) -> if check env cond [p,b] @@ Const False then Some b else None) pbs' in

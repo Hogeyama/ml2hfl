@@ -107,9 +107,9 @@ and process_expression env e =
     | Pexp_setinstvar(_, e) ->
 	process_expression env e
     | Pexp_override(ies) ->
-	Fpat.Util.List.concat_map (fun (_, e) -> process_expression env e) ies
+	Util.List.concat_map (fun (_, e) -> process_expression env e) ies
     | Pexp_letmodule(_, _, e) ->
-        raise (Fpat.Util.NotImplemented "writeAnnot")
+        Util.unsupported "Not implemented: writeAnnot"
     | Pexp_assert(e) ->
 	process_expression env e
     | Pexp_assertfalse ->
@@ -119,11 +119,11 @@ and process_expression env e =
     | Pexp_poly(e, _) ->
 	process_expression env e
     | Pexp_object(_) ->
-	raise (Fpat.Util.NotImplemented "writeAnnot")
+	Util.unsupported "Not implemented: writeAnnot"
     | Pexp_newtype(_, e) ->
 	process_expression env e
     | Pexp_pack(_) ->
-	raise (Fpat.Util.NotImplemented "writeAnnot")
+	Util.unsupported "Not implemented: writeAnnot"
     | Pexp_open(_, _, e) ->
 	process_expression env e
 
