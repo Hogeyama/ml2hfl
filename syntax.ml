@@ -1506,11 +1506,11 @@ and print_desc pri typ fm desc =
   | Tuple ts ->
       let p = 20 in
       fprintf fm "@[(%a)@]" (print_list (print_term p typ) ",@ ") ts
-  | Proj(0,t) when tuple_num t.typ = 2 ->
+  | Proj(0,t) when tuple_num t.typ = Some 2 ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[fst@ %a@]%s" s1 (print_term p typ) t s2
-  | Proj(1,t) when tuple_num t.typ = 2 ->
+  | Proj(1,t) when tuple_num t.typ = Some 2 ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[snd@ %a@]%s" s1 (print_term p typ) t s2

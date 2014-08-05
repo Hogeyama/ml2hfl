@@ -44,7 +44,7 @@ val diff_terms : typed_term -> typed_term -> (typed_term * typed_term) list
 val subst_let_xy : typed_term -> typed_term
 val flatten_let : typed_term -> typed_term
 val normalize_let : typed_term -> typed_term
-val remove_label : typed_term -> typed_term
+val remove_label : ?label:string option -> typed_term -> typed_term
 val decomp_pair_eq : typed_term -> typed_term
 val elim_unused_let : ?cbv:bool -> typed_term -> typed_term
 val alpha_rename : typed_term -> typed_term
