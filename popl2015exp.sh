@@ -1,9 +1,9 @@
 #!/bin/bash
 
 TEST0="max lock harmonic-e map_filter-e"
-TEST1="sum ack hors sum_intro forall_leq zip fact_notpos-e harmonic search-e"
+TEST1="sum ack hors sum_intro forall_leq fact_notpos-e harmonic search-e"
 TEST2="mc91 exc-fact fact_notpos isnil mem a-max fold_left fold_right"
-TEST3="nth0"
+TEST3="nth0 zip"
 TEST4="mult search risers"
 TEST5="nth"
 TEST6=""
