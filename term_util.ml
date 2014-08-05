@@ -206,7 +206,11 @@ let rec make_nth i n t =
   | _ -> make_nth (i-1) (n-1) (make_snd t)
 let make_assert t = make_if_ t unit_term (make_app fail_term [unit_term])
 let make_assume t1 t2 = make_if_ t1 t2 (make_bottom t2.typ)
-let make_label info t = {desc=Label(info,t); typ=t.typ}
+let make_label_aux info t = {desc=Label(info,t); typ=t.typ}
+let make_label ?(label=None) info t =
+  t
+  |> make_label_aux info
+  |& Option.is_some label &> make_label_aux (InfoString (Option.get label))
 let make_ref t = {desc=Ref t; typ=TRef t.typ}
 let make_deref t = {desc=Deref t; typ=ref_typ t.typ}
 let make_setref r t = {desc=SetRef(r, t); typ=TUnit}

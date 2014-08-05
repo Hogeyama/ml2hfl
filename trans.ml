@@ -1632,9 +1632,10 @@ let inline_var_const = inline_var_const.tr_term
 
 let remove_label = make_trans ()
 
-let remove_label_term t =
-  match t.desc with
-  | Label(_, t) -> remove_label.tr_term t
+let remove_label_term label t =
+  match label, t.desc with
+  | None, Label(_, t) -> remove_label.tr_term label t
+  | Some l, Label(InfoString l', {desc=Label(_, t)}) when l = l' -> remove_label.tr_term label t
   | _ -> remove_label.tr_term_rec t
 
 let () = remove_label.tr_term <- remove_label_term

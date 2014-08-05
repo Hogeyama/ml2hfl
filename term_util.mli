@@ -71,7 +71,7 @@ val make_nth : int -> int -> typed_term -> typed_term
 val make_seq : typed_term -> typed_term -> typed_term
 val make_assert : typed_term -> typed_term
 val make_assume : typed_term -> typed_term -> typed_term
-val make_label : info -> typed_term -> typed_term
+val make_label : ?label:string option -> Syntax.info -> Syntax.typed_term -> Syntax.typed_term
 val make_pany : typ -> typed_pattern
 val make_pvar : id -> typed_pattern
 val make_pconst : typed_term -> typed_pattern
