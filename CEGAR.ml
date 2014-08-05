@@ -23,11 +23,11 @@ let post () =
 
 
 
-let inlined_functions orig_fun_list force {defs=defs;main=main} =
+let inlined_functions orig_fun_list force {defs;main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   FpatInterface.List.unique fs
 
-let rec cegar1 prog0 is_cp ces info =
+let rec loop prog0 is_cp ces info =
   pre ();
   let prog =
     if !Flag.relative_complete
@@ -70,17 +70,17 @@ let rec cegar1 prog0 is_cp ces info =
           if !Flag.print_progress then Format.printf "Filter option enabled.@.";
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           Flag.use_filter := true;
-          cegar1 prog is_cp ces info
+          loop prog is_cp ces info
       | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred ->
           if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           Fpat.PredAbst.use_neg_pred := true;
-          cegar1 prog is_cp ces info
+          loop prog is_cp ces info
       | ce_pre::_ when ce' = ce_pre && !Fpat.PredAbst.wp_max_num < 8 ->
           incr Fpat.PredAbst.wp_max_num;
           if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-          cegar1 prog is_cp ces info
+          loop prog is_cp ces info
       | ce_pre::_ when ce' = ce_pre ->
           post ();
           if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
@@ -104,18 +104,14 @@ let rec cegar1 prog0 is_cp ces info =
                 Format.printf "Prefix of spurious counterexample::@.%a@.@."
                               CEGAR_print.ce prefix;
               post ();
-              cegar1 prog' is_cp ces' info
+              loop prog' is_cp ces' info
 
 
 
 let cegar prog info =
   try
     let is_cp = FpatInterface.is_cp prog in
-    cegar1 prog is_cp [] info
-  with e ->
-    if List.mem e [NoProgress; CEGAR_abst.NotRefined] then
-      begin
-        incr Flag.cegar_loop;
-        Fpat.Global.cegar_iterations := !Flag.cegar_loop
-      end;
-    raise e
+    loop prog is_cp [] info
+  with NoProgress | CEGAR_abst.NotRefined ->
+    post ();
+    raise NoProgress
