@@ -428,7 +428,7 @@ let rec decomp_let_app_option f t =
   match t.desc with
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g ->
       let ts' = List.map decomp_some ts in
-      let args = List.flatten @@ List.mapi (fun i t -> match t with None -> [] | Some t' -> [i, x, t']) ts' in
+      let args = List.mapi (fun i t -> match t with None -> invalid_argument "decomp_let_app_option" | Some t' -> i, x, t') ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [_])}], t2) when Id.same f g ->
@@ -527,6 +527,8 @@ let trans t =
   |@> flip Type_check.check Type.TUnit
   |> Trans.inline_next_redex
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
+  |> Trans.reduce_bottom
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "reduce_bottomh" print_term
   |@> flip Type_check.check Type.TUnit
 
 let trans t =

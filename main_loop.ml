@@ -41,7 +41,6 @@ let preprocess t spec =
           t, get_rtyp
       in
       let t = Trans.inlined_f spec'.Spec.inlined_f t in
-      let t = Trans.reduce_bottom t in
       let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
       let get_rtyp = get_rtyp -|| get_rtyp_cps_trans in
       let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
