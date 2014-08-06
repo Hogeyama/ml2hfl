@@ -114,7 +114,7 @@ let rec make_deep_pair t rhs =
   match t.desc with
   | If(t1,t2,t3) -> make_if t1 (make_deep_pair t2 rhs) (make_deep_pair t3 rhs)
   | Let(flag,bindings,t) -> make_let_f flag bindings @@ make_deep_pair t rhs
-  | Label(info, t) -> make_label ~label:"ret_fun" info (make_deep_pair t rhs)
+  | Label(info, t) -> make_label info (make_deep_pair t rhs)
   | _ -> make_pair t (make_var rhs)
 
 
@@ -130,7 +130,7 @@ let subst_label = make_trans ()
 
 let subst_label_term t =
   match t.desc with
-  | Label(InfoIdTerm(x,t1), t2) -> subst_label.tr_term @@ subst x t1 t2
+  | Label(InfoIdTerm(x,t1), t2) -> subst x t1 @@ subst_label.tr_term t2
   | _ -> subst_label.tr_term_rec t
 
 let () = subst_label.tr_term <- subst_label_term
