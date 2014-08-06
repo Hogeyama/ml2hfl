@@ -76,8 +76,9 @@ let rec loop prog0 is_cp ces info =
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           Fpat.PredAbst.use_neg_pred := true;
           loop prog is_cp ces info
-      | ce_pre::_ when ce' = ce_pre && !Fpat.PredAbst.wp_max_num < 8 ->
+      | ce_pre::_ when ce' = ce_pre && !Fpat.PredAbst.wp_max_num < Flag.wp_max_max ->
           incr Fpat.PredAbst.wp_max_num;
+          CEGAR_abst.incr_wp_max := true;
           if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
           if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
           loop prog is_cp ces info

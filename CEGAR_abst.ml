@@ -9,6 +9,8 @@ open CEGAR_abst_util
 
 exception NotRefined
 
+let incr_wp_max = ref false
+
 let prev_abst_defs : fun_def list ref = ref []
 
 
@@ -146,6 +148,8 @@ let abstract orig_fun_list force prog =
   let () = if !Flag.print_progress then Color.printf Color.Green "DONE!@.@." in
   let () = add_time tmp Flag.time_abstraction in
   let abst',_,_ = CEGAR_trans.rename_prog ~is_cps:false abst in
-  if !prev_abst_defs = abst'.defs then raise NotRefined;
+  if !incr_wp_max && !prev_abst_defs = abst'.defs
+  then raise NotRefined;
+  incr_wp_max := false;
   prev_abst_defs := abst'.defs;
   labeled, abst

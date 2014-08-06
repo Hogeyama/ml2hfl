@@ -14,3 +14,5 @@ val abstract : CEGAR_syntax.var list -> CEGAR_syntax.var list -> CEGAR_syntax.pr
 (** [abstract orig_fun_list force t] で [t] の述語抽象を求める．
     入力は、引数を評価しても fail しないものとする
 *)
+
+val incr_wp_max : bool ref
