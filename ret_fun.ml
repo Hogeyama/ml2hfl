@@ -74,6 +74,9 @@ let add_proj_info_term t =
           let t1' = add_proj_info.tr_term t1 in
           let t2' = add_proj_info.tr_term t2 in
           make_let [x,[],t1'] @@ List.fold_right (fun (i,y) t -> make_label ~label:"ret_fun" (InfoIdTerm(y, make_proj i @@ make_var x)) t) ys t2'
+(*
+          make_let [x,[],t1'] @@ List.fold_right (fun (i,y) t -> subst y (make_proj i @@ make_var x) t) ys t2'
+ *)
         with Not_found -> add_proj_info.tr_term_rec t
       end
   | _ -> add_proj_info.tr_term_rec t
@@ -126,15 +129,37 @@ let subst_all x y t = t
 
 
 
-let subst_label = make_trans ()
+let subst_label = make_trans2 ()
 
-let subst_label_term t =
+let subst_label_term (map,env) t =
   match t.desc with
-  | Label(InfoIdTerm(x,t1), t2) -> subst x t1 @@ subst_label.tr_term t2
-  | _ -> subst_label.tr_term_rec t
+  | Var x when Id.mem_assoc x map -> subst_label.tr2_term (map,env) @@ Id.assoc x map
+  | Let(flag, bindings, t2) ->
+      let env' = List.map fst3 bindings @ env in
+      let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
+      let bindings' = List.map (fun (f,xs,t1) -> f, xs, subst_label.tr2_term (map,xs@env'') t1) bindings in
+      make_let_f flag bindings' @@ subst_label.tr2_term (map,env') t2
+  | Label(InfoIdTerm(x,t1), t2) ->
+      let map' =
+        if Id.mem_assoc x map
+        then
+          try
+            let t1' = Id.assoc x map in
+            let envi = List.mapi Pair.pair env in
+            let index t =
+              let y = Option.get @@ decomp_var t in
+              fst @@ List.find (snd |- Id.same y) envi
+            in
+            let t1'' = if index t1 < index t1' then t1 else t1' in
+            (x,t1'') :: List.filter_out (fst |- Id.same x) map
+          with Option.No_value -> (x,t1)::map
+        else (x,t1)::map
+      in
+      subst_label.tr2_term (map',env) t2
+  | _ -> subst_label.tr2_term_rec (map,env) t
 
-let () = subst_label.tr_term <- subst_label_term
-let subst_label = subst_label.tr_term
+let () = subst_label.tr2_term <- subst_label_term
+let subst_label = subst_label.tr2_term ([],[])
 
 
 
@@ -238,6 +263,8 @@ let trans t = t
   |> Trans.inline_var
   |> Trans.elim_unused_let
   |@debug()&> Format.printf "beta_var_tuple:@.%a@.@." print_term
+  |> Trans.reduce_bottom
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "reduce_bottom" print_term
   |@> flip Type_check.check TUnit
 
 let trans t =
