@@ -514,8 +514,6 @@ let trans t =
   |@> flip Type_check.check Type.TUnit
   |> Trans.inline_next_redex
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
-  |> Trans.reduce_bottom
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "reduce_bottom" print_term
   |@> flip Type_check.check Type.TUnit
 
 let trans t =
