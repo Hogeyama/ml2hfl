@@ -74,9 +74,6 @@ let add_proj_info_term t =
           let t1' = add_proj_info.tr_term t1 in
           let t2' = add_proj_info.tr_term t2 in
           make_let [x,[],t1'] @@ List.fold_right (fun (i,y) t -> make_label ~label:"ret_fun" (InfoIdTerm(y, make_proj i @@ make_var x)) t) ys t2'
-(*
-          make_let [x,[],t1'] @@ List.fold_right (fun (i,y) t -> subst y (make_proj i @@ make_var x) t) ys t2'
- *)
         with Not_found -> add_proj_info.tr_term_rec t
       end
   | _ -> add_proj_info.tr_term_rec t
@@ -133,7 +130,11 @@ let subst_label = make_trans2 ()
 
 let subst_label_term (map,env) t =
   match t.desc with
-  | Var x when Id.mem_assoc x map -> subst_label.tr2_term (map,env) @@ Id.assoc x map
+  | Var x when Id.mem_assoc x map ->
+      let t' = Id.assoc x map in
+      if Id.mem x @@ get_fv t'
+      then t'
+      else subst_label.tr2_term (map,env) t'
   | Let(flag, bindings, t2) ->
       let env' = List.map fst3 bindings @ env in
       let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
