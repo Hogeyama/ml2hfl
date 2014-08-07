@@ -644,41 +644,8 @@ let rec simplify typ =
   | Ref_type.List(x,p_len,y,p_i,typ) ->
      Ref_type.List(x, simplify_typed_term p_len, y, simplify_typed_term p_i, typ)
 
-
-
 let compute_strongest_post prog ce =
   Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce
-
-
-let report_error ppf = function
-  | Fpat.AbsTypInfer.FailedToRefineTypes ->
-     Format.fprintf ppf "Failure of abstraction type refinement"
-  | Fpat.SMTProver.Unknown ->
-     Format.fprintf ppf "Failure of SMT prover"
-  | Fpat.InterpProver.Fail ->
-     Format.fprintf ppf "Failure of interpolating prover (integer domain not fully supported)"
-  | Fpat.InterpProver.Unknown ->
-     Format.fprintf ppf "Failure of interpolating prover"
-  | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
-     Format.fprintf ppf  "Failure of parameter substitution refinement"
-  | Fpat.PolyConstrSolver.Unknown ->
-     Format.fprintf ppf "Failure of polynomial constraint solver"
-  | Fpat.Global.NotImplemented msg ->
-     Format.fprintf ppf "Not implemented: %s" msg
-  | _ -> raise Not_found
-
-let string_of_error = make_string_of report_error
-
-let is_fpat_exception = function
-  | Fpat.AbsTypInfer.FailedToRefineTypes
-  | Fpat.SMTProver.Unknown
-  | Fpat.InterpProver.Fail
-  | Fpat.InterpProver.Unknown
-  | Fpat.RefTypInfer.FailedToRefineExtraParameters
-  | Fpat.PolyConstrSolver.Unknown
-  | Fpat.Global.NotImplemented _ -> true
-  | _ -> false
-
 
 let implies = Fpat.SMTProver.implies_dyn
 let is_sat = Fpat.SMTProver.is_sat_dyn

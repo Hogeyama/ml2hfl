@@ -298,7 +298,8 @@ let () = print_option_and_exit := fun () ->
   List.iter (fun (s,_,_) -> Format.printf "%s " s) arg_spec; exit 0
 
 let string_of_exception = function
-    e when FpatInterface.is_fpat_exception e -> FpatInterface.string_of_error e
+  | e when Fpat.Config.is_fpat_exception e ->
+     Fpat.Config.string_of_fpat_exception e
   | Syntaxerr.Error err -> "Syntaxerr.Error"
   | Typecore.Error(loc,env,err) -> "Typecore.Error"
   | Typemod.Error(loc,env,err) -> "Typemod.Error"
@@ -405,8 +406,8 @@ let () =
           Format.printf "Verification failed:@.";
           Format.printf "  MoCHi could not refute an infeasible error path @.";
           Format.printf "  due to the incompleteness of the refinement type system@."
-      | e when FpatInterface.is_fpat_exception e ->
-          Format.printf "FPAT: %a@." FpatInterface.report_error e
+      | e when Fpat.Config.is_fpat_exception e ->
+          Format.printf "FPAT: %a@." Fpat.Config.pr_exception e
       | Syntaxerr.Error err ->
           Format.printf "%a@." Syntaxerr.report_error err
       | Typecore.Error(loc,env,err) ->
