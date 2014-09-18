@@ -49,7 +49,9 @@ let conv_const c =
   | Int64 n -> Fpat.Const.Int (Int64.to_int n)
   | Nativeint n -> Fpat.Const.Int (Nativeint.to_int n)
   | CPS_result ->
-     Fpat.Const.UFun(Fpat.Type.mk_const (Fpat.TypConst.Ext "X"), "end")
+     Fpat.Const.UFun
+       (Fpat.Type.mk_const (Fpat.TypConst.Ext "X"),
+        Fpat.Idnt.make "end")
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let rec conv_term t =
@@ -103,8 +105,9 @@ let inv_const c =
      Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">="))
   | Fpat.Const.String s -> String s
   | Fpat.Const.Float x -> Float (string_of_float x)
-  | Fpat.Const.UFun(ty, "end")
-       when Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
+  | Fpat.Const.UFun(ty, x)
+       when Fpat.Idnt.string_of x = "end"
+            && Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
      CPS_result
   | _ -> Format.printf "%s@." (Fpat.Const.string_of c); assert false
 
@@ -137,7 +140,7 @@ let conv_event e = (***)
 
 let conv_fdef (f, args, guard, events, body) =
   { Fpat.Fdef.name = f;
-    Fpat.Fdef.args = args;
+    Fpat.Fdef.args = List.map (Fpat.Idnt.make >> Fpat.Pattern.mk_var) args;
     Fpat.Fdef.guard = conv_formula guard;
     Fpat.Fdef.body =
       List.fold_right
@@ -184,14 +187,14 @@ let init prog =
        prog.CEGAR_syntax.defs,
        prog.CEGAR_syntax.main)
   in
-  prog |>
-    Fpat.RefTypJudge.mk_temp_env |>
-    List.map snd |>
-    List.concat_map Fpat.RefType.pvars |>
-    List.map
-      (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args) |>
-    List.unique |>
-    Fpat.HCCSSolver.init_rsrefine
+  prog
+  |> Fpat.RefTypJudge.mk_temp_env
+  |> List.map snd
+  |> List.concat_map Fpat.RefType.pvars
+  |> List.map
+       (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args)
+  |> List.unique
+  |> Fpat.HCCSSolver.init_rsrefine
 
 let verify fs (*cexs*) prog =
   let prog =
@@ -200,8 +203,8 @@ let verify fs (*cexs*) prog =
        prog.CEGAR_syntax.defs,
        prog.CEGAR_syntax.main)
   in
-  Format.printf "@[<v>BEGIN verification:@,  @[%a@]@," Fpat.Prog.pr prog;
-  let _ = assert false(*Verifier.verify fs prog*) in
+  Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
+  assert false(*Verifier.verify fs prog*);
   Format.printf "END verification@,@]"
 
 let rec inv_abst_type aty =
