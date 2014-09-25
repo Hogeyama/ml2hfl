@@ -15,12 +15,13 @@ TEST_TOPREDABST="copy_intro enc-zipmap file"
 TEST_TOPREDDISC="map_filter iter forall_eq_pair fold_fun_list"
 TEST="$TEST0 $TEST1 $TEST2 $TEST3 $TEST4 $TEST5 $TEST6 $TEST7 $TEST8 $TEST_NOPROGRESS $TEST_TOHMC $TEST_TOPREDABST $TEST_TOPREDDISC"
 
-LIMIT=100
-OPTION="-rscomp 0 -popl2015exp -popl2015exact -debug 2"
+LIMIT=300
+OPTION="-debug 2"
+FPAT_OPTION="-hccs 9 -mode 1"
 for i in $TEST
 do
 echo $i
-timeout -s 14 $LIMIT ./mochi.opt test/$i.ml $OPTION &> exact_$i.log
+timeout -s 14 $LIMIT ./mochi.opt test/$i.ml $OPTION -fpat "$FPAT_OPTION" &> $i.log
 echo
 done
 
