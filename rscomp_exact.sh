@@ -16,8 +16,8 @@ TEST_TOPREDDISC="map_filter iter forall_eq_pair fold_fun_list"
 TEST="$TEST0 $TEST1 $TEST2 $TEST3 $TEST4 $TEST5 $TEST6 $TEST7 $TEST8 $TEST_NOPROGRESS $TEST_TOHMC $TEST_TOPREDABST $TEST_TOPREDDISC"
 
 LIMIT=100
-OPTION="-debug 2"
-FPAT_OPTION="-hccs 9 -mode 2"
+OPTION=""
+FPAT_OPTION="-hccs 11 -mode 2"
 for i in $TEST
 do
 echo $i
