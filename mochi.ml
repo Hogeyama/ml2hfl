@@ -9,7 +9,7 @@ let print_info () =
     begin
       Format.printf "{";
       Format.printf "\"filename\": %S, " !Flag.filename;
-      Format.printf "\"result\": %S, " (String.replace_chars (function '"' -> "\"\"" | c -> String.of_char c) !Flag.result);
+      Format.printf "\"result\": %S, " !Flag.result;
       Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
       (if !Flag.termination then
 	  begin
@@ -41,7 +41,9 @@ let print_info () =
           ocf
           "%s,\"%s\",%d,%f,%f,%f,%f@,"
           (Filename.chop_extension (Filename.basename !Flag.filename))
-          !Flag.result
+          (String.replace_chars
+             (function '"' -> "\"\"" | c -> String.of_char c)
+             !Flag.result)
           !Flag.cegar_loop
           !Flag.time_abstraction
           !Flag.time_mc
@@ -391,9 +393,11 @@ let () =
             Format.fprintf ocf "@[<v>";
             Format.fprintf
               ocf
-              "%s,%s,%d,%f,%f,%f,%f@,"
+              "%s,\"%s\",%d,%f,%f,%f,%f@,"
               (Filename.chop_extension (Filename.basename !Flag.filename))
-              (string_of_exception e)
+              (String.replace_chars
+                 (function '"' -> "\"\"" | c -> String.of_char c)
+                 (string_of_exception e))
               !Flag.cegar_loop
               !Flag.time_abstraction
               !Flag.time_mc
