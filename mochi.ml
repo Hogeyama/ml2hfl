@@ -223,6 +223,7 @@ let arg_spec =
    "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
    "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
    (* preprocessing *)
+   "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
    "-list-option", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
    "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
    "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
@@ -241,7 +242,6 @@ let arg_spec =
    "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
    (* relatively complete verification *)
    "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
-   "-disable-rc", Arg.Set Flag.disable_relatively_complete_verification, " Disable relatively complete verification";
    "-nex", Arg.Set_int Fpat.Global.number_of_extra_params,
           " Number of inserted extra parameters for each functional argument";
    "-cc", Arg.Set Fpat.Global.enable_coeff_const,

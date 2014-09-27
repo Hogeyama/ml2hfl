@@ -176,10 +176,10 @@ let rec run_cegar prog =
             Color.printf Color.Bright "Unsafe!@.@.";
             false
       with
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam ->
           Flag.insert_param_funarg := true;
           run_cegar prog
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
@@ -236,10 +236,10 @@ let rec run orig parsed =
             then report_unsafe main_fun arg_num ce set_target;
             false
       with
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
           Flag.insert_param_funarg := true;
           run orig parsed
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.disable_relatively_complete_verification ->
+      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
