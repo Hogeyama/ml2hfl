@@ -3,8 +3,8 @@
 TEST="$(ls test/*.ml) $(ls test_cannot_verify/*.ml)"
 
 LIMIT=100
-OPTION="-no-exparam"
-FPAT_OPTION="-hccs 11 -only-result -mode 2"
+OPTION="-no-exparam -exp2"
+FPAT_OPTION="-hccs 11 -mode 2"
 LOG=.rs_vs_ex.log
 for i in $TEST
 do

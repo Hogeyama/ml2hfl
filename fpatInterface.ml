@@ -274,12 +274,12 @@ let params = ref []
 let new_params recursive bvs exs =
   List.unfold
     (fun i ->
-     if i < !Fpat.Global.number_of_extra_params then
+     if i < !Flag.number_of_extra_params then
        let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
        let ps =
          List.unfold
            (fun i ->
-            if i < (List.length bvs' + if !Fpat.Global.enable_coeff_const then 1 else 0) then
+            if i < (List.length bvs' + if !Flag.enable_coeff_const then 1 else 0) then
               Some(Id.new_var ~name:Flag.extpar_header Type.TInt, i + 1)
             else
               None)
@@ -292,11 +292,11 @@ let new_params recursive bvs exs =
          | Some(xs) -> xs
        in
        let ts =
-         (if !Fpat.Global.enable_coeff_const (*&& recursive = None*) then
+         (if !Flag.enable_coeff_const (*&& recursive = None*) then
             Fpat.RefTypInfer.masked_params :=
               Fpat.Idnt.mk_coeff (Id.to_string (List.hd ps)) ::
                 !Fpat.RefTypInfer.masked_params);
-         (if !Fpat.Global.enable_coeff_const then
+         (if !Flag.enable_coeff_const then
             [Term_util.make_var (List.hd ps)]
           else []) @
            (*
@@ -324,7 +324,7 @@ let new_params recursive bvs exs =
               Fpat.RefTypInfer.masked_params := Fpat.Idnt.mk_coeff (Fpat.Idnt.make (Id.to_string p)) :: !Fpat.RefTypInfer.masked_params*)
               in
               Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
-             (if !Fpat.Global.enable_coeff_const then
+             (if !Flag.enable_coeff_const then
                 List.tl ps
               else
                 ps)
@@ -358,7 +358,7 @@ let rec trans_type typ =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Fpat.Global.number_of_extra_params then
+                 if i < !Flag.number_of_extra_params then
                    Some(Id.new_var ~name:"ex" Type.TInt, i + 1)
                  else
                    None)
@@ -388,7 +388,7 @@ let insert_extra_param t =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Fpat.Global.number_of_extra_params then
+                 if i < !Flag.number_of_extra_params then
                    Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                  else
                    None)
@@ -507,7 +507,7 @@ let insert_extra_param t =
                 | Type.TTuple _(* ToDo: fix it *) ->
                    Fpat.Util.List.unfold
                      (fun i ->
-                      if i < !Fpat.Global.number_of_extra_params then
+                      if i < !Flag.number_of_extra_params then
                         Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                       else
                         None)

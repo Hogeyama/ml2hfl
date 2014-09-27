@@ -3,8 +3,8 @@
 TEST="$(ls test/*.ml) $(ls test_cannot_verify/*.ml)"
 
 LIMIT=30
-OPTION="-no-exparam"
-FPAT_OPTION="-hccs 2 -template 1 -only-result"
+OPTION="-no-exparam -exp2"
+FPAT_OPTION="-hccs 2 -template 1"
 LOG=.template_based.log
 for i in $TEST
 do
