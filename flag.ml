@@ -37,6 +37,7 @@ let use_part_eval = true
 let check_sat = true
 let gen_int = true
 let merge_counterexample = ref false
+let use_multiple_paths = ref false
 let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
@@ -47,7 +48,7 @@ let lift_fv_only = ref false
 let use_filter = ref false
 let disable_predicate_accumulation = ref false
 let relative_complete = ref false
-let disable_relatively_complete_verification = ref false
+let no_exparam = ref false
 let expand_nonrec = ref true
 let expand_nonrec_init = ref true
 let cps_simpl = ref false
@@ -112,6 +113,7 @@ let max_input_size = 65536
 (* mode option *)
 let only_result = ref false
 let exp = ref false
+let exp2 = ref false
 let ignore_conf = ref false
 let args = ref [""]
 
@@ -133,3 +135,7 @@ let separate_pred = ref false
 let split_callsite = ref false
 let add_closure_depth = ref false
 let add_closure_exparam = ref false
+
+(* relatively-complete-mode option *)
+let enable_coeff_const = ref false
+let number_of_extra_params = ref 1
