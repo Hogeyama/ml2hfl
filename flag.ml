@@ -68,6 +68,7 @@ let form : form list ref = ref []
 let use_spec = ref false
 let comment_spec = ref true
 let wp_max_max = 8
+let cartesian_abstraction = ref true
 
 
 

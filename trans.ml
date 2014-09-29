@@ -172,7 +172,7 @@ let copy_poly_funs t =
   |@> unify_pattern_var
   |> copy_poly_funs.tr_term
   |> flatten_tvar
-  |@> flip Type_check.check Type.TUnit
+  |@> Fun.flip Type_check.check Type.TUnit
 
 
 
@@ -1010,7 +1010,7 @@ let rec inlined_f inlined fs t =
   in
   {desc=desc; typ=t.typ}
 
-let inlined_f inlined t = inlined_f inlined [] t |@> flip Type_check.check TUnit
+let inlined_f inlined t = inlined_f inlined [] t |@> Fun.flip Type_check.check TUnit
 
 
 
@@ -1161,7 +1161,7 @@ let () = insert_param_funarg.tr_typ <- insert_param_funarg_typ
 let () = insert_param_funarg.tr_term <- insert_param_funarg_term
 let insert_param_funarg t = t
   |> insert_param_funarg.tr_term
-  |@> flip Type_check.check Term_util.typ_result
+  |@> Fun.flip Type_check.check Term_util.typ_result
 
 
 
@@ -1546,7 +1546,7 @@ let flatten_let_term t =
       | Let _ ->
           let fbindings,t12 = decomp_lets t1' in
           let fbindings' = fbindings@[Nonrecursive,[x,[],t12]] in
-          List.fold_right (uncurry make_let_f) fbindings' t2'
+          List.fold_right (Fun.uncurry make_let_f) fbindings' t2'
       | _ ->
           make_let [x,[],t1'] t2'
       end

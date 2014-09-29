@@ -176,7 +176,7 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
   | Constr(s,ts) -> assert false
   | Match(t1,pats) -> assert false
   | TryWith(t1,t2) -> assert false
-  | Tuple ts -> Node (List.map (flip remove_pair_aux None) ts)
+  | Tuple ts -> Node (List.map (Fun.flip remove_pair_aux None) ts)
   | Proj(i, {desc=Var x}) when x = abst_var -> Leaf (make_var x) (* for predicates *)
   | Proj(i,t) ->
       begin

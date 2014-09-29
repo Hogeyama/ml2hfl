@@ -24,6 +24,8 @@ let rec subst x t = function
   | Fun(y,typ,t1) when x = y -> Fun(y, typ, t1)
   | Fun(y,typ,t1) -> Fun(y, typ, subst x t t1)
 
+let subst_var x y t = subst x (Var y) t
+
 let rec subst_map map = function
     Const c -> Const c
   | Var x when List.mem_assoc x map -> List.assoc x map
@@ -560,4 +562,13 @@ let eval_step_by_step  prog =
   eval t_main
 
 
-let initilize_env {defs;env;main} = {defs; env=[]; main}
+let initialize_env {defs;env;main} = {defs; env=[]; main}
+
+
+let rec has_no_effect t =
+  match t with
+  | Const c -> true
+  | Var y -> true
+  | App(t1,t2) -> false
+  | Let(y,t1,t2) -> has_no_effect t1 && has_no_effect t2
+  | Fun(y,typ,t1) -> true

@@ -1310,7 +1310,7 @@ let occur = occur.col2_typ
 
 (*** PRINTING FUNCTIONS ***)
 
-let rec print_typ t = Type.print ~occur (print_term 0 false) t
+let rec print_typ fm t = Type.print ~occur (print_term 0 false) fm t
 and print_ids typ fm xs =
   if !Flag.web then
     let rec aux xs =

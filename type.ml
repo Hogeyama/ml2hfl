@@ -90,8 +90,8 @@ let rec can_unify typ1 typ2 =
   | _ -> false
 
 
-let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
-  let print' = print ~occur print_pred in
+let rec print occur print_pred fm typ =
+  let print' = print occur print_pred in
   let print_preds ps = print_list print_pred "; " ps in
   match typ with
   | TUnit -> Format.fprintf fm "unit"
@@ -123,7 +123,8 @@ let rec print ?(occur=fun _ _ -> false) print_pred fm typ =
   | TPred(x,ps) -> Format.fprintf fm "@[%a[\\%a. %a]@]" print' (Id.typ x) Id.print x print_preds ps
   | TOption typ -> Format.fprintf fm "@[%a option@]" print' typ
 
-
+let print ?(occur=fun _ _ -> false) print_pred fm typ =
+  Format.fprintf fm "@[%a@]" (print occur print_pred) typ
 let print_typ_init typ = print (fun _ -> assert false) typ
 
 

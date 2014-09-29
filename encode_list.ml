@@ -441,10 +441,10 @@ let trans t =
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" print_term
   |> subst_matched_var
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "subst_matched_var" print_term
-  |@> flip Type_check.check TUnit
+  |@> Fun.flip Type_check.check TUnit
   |> Trans.remove_top_por
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "remove_top_por" print_term
-  |@> flip Type_check.check TUnit
+  |@> Fun.flip Type_check.check TUnit
   |> if !Flag.encode_list_opt
      then trans_opt
      else trans

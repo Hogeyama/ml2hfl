@@ -469,7 +469,7 @@ let rec trans_typ typ_orig typ =
       let typ2' = subst_type x_orig (make_var x) (trans_typ typ typ2) in
       TFun(x, typ2')
   | TTuple xs, TTupleCPS typs ->
-      TTuple (List.map2 (fun x typ -> Id.map_typ (flip trans_typ typ) x) xs typs)
+      TTuple (List.map2 (fun x typ -> Id.map_typ (Fun.flip trans_typ typ) x) xs typs)
   | TPred(x,ps), typ -> TPred(Id.set_typ x (trans_typ (Id.typ x) typ), ps)
   | _ ->
       Format.printf "%a,%a@." print_typ typ_orig print_typ_cps typ;

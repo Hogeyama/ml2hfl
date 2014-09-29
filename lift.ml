@@ -40,7 +40,7 @@ end
 
 module IdSet = Set.Make(Id')
 
-let set_of_list xs = List.fold_left (flip IdSet.add) IdSet.empty xs
+let set_of_list xs = List.fold_left (Fun.flip IdSet.add) IdSet.empty xs
 let (@@@) = IdSet.union
 
 let filter_base = IdSet.filter (fun x -> is_base_typ (Id.typ x))

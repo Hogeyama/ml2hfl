@@ -126,22 +126,23 @@ let rec trans_eager_term env c t =
       let f = new_id "f" in
       let t2' = trans_eager_term env id t2 in
       let t3' = trans_eager_term env id t3 in
-      begin
-        match make_if (Var x) t2' t3' with
-          App(Var k, Var y) when x=y ->
-          let t1' = trans_eager_bool k t1 in
-          c (Let(f, Var k, t1'))
-        | t' ->
-            let t1' = trans_eager_bool f t1 in
-            c (Let(f, Fun(x, None, t'), t1'))
-      end
+      let t' = make_if (Var x) t2' t3' in
+      let t1' = trans_eager_bool f t1 in
+      Let(f, Fun(x, None, t'), c t1')
   | App(t1, t2) ->
-      let c' x = App(trans_eager_term env id t1, x) in
-      c (trans_eager_term env c' t2)
-  | Let(f, t1, t2) ->
       let t1' = trans_eager_term env id t1 in
+      let c' x = c (App(t1', x)) in
+      trans_eager_term env c' t2
+  | Let(x, t1, t2) ->
+      let f = new_id "f" in
       let t2' = trans_eager_term env id t2 in
-      c (Let(f, t1', t2'))
+      let test = new_id "test" in
+      let t1' = trans_eager_term env (fun x -> App(Var test, x)) t1 in
+      Format.printf "t1: %a@." CEGAR_print.term t1;
+      Format.printf "t2: %a@." CEGAR_print.term t2;
+      Format.printf "t1': %a@." CEGAR_print.term t1';
+      assert false;
+      c (Let(f, Fun(x, None, t2'), t1'))
 let trans_eager_def env (f,xs,t1,e,t2) =
   let env' = get_arg_env (List.assoc f env) xs @@@ env in
     assert (t1 = Const True);
@@ -181,6 +182,7 @@ let rec eta_expand_term env t typ =
       make_if t1 (eta_expand_term env t2 typ) (eta_expand_term env t3 typ)
   | App(Const (Label n), t) -> make_label n (eta_expand_term env t typ)
   | App _ ->
+      let t1,ts = decomp_app t in
       let rec aux ts typ =
         match ts,typ with
         | [], _ -> []
@@ -188,10 +190,9 @@ let rec eta_expand_term env t typ =
             let typ2 = typ2 t in
             let ts'' = aux ts' typ2 in
             eta_expand_term env t typ1 :: ts''
-        | _ -> assert false
+        | t::_, _ -> Format.printf "ERROR: %a, %a@." CEGAR_print.term t1 CEGAR_print.term t; assert false
       in
-      let t1,ts = decomp_app t in
-      let t' = make_app t1 (aux ts (get_typ env t1)) in
+      let t' = make_app t1 (aux ts @@ get_typ env t1) in
       eta_expand_term_aux env t' typ
   | Const _ -> assert false
   | Let _ -> assert false
@@ -261,7 +262,7 @@ let rec abstract_term must env cond pts t typ =
       [make_if t1' t2' t3']
   | App(Const (Label n), t) -> [make_label n (hd (abstract_term must env cond pts t typ))]
   | App(Const RandInt, t) -> abstract_term must env cond pts t (TFun(typ_int, fun _ -> typ))
-  | App _ when false ->
+  | App _ when not !Flag.cartesian_abstraction ->
       let t1,ts = decomp_app t in
       let rec decomp_typ ts typ =
         match ts,typ with
@@ -272,19 +273,27 @@ let rec abstract_term must env cond pts t typ =
       in
       let typs = decomp_typ ts @@ get_typ env t1 in
       let aux (defs,args,env,pts) t typ =
-        let x = new_id "x" in
+        let x = new_id "xnc" in
         let env',t' = [x,typ],t in
-        let pts' = List.flatten_map (uncurry make_pts) env' @@@ pts in
-        let xs' = List.flatten_map (uncurry abst_arg) env' in
+        let pts' = List.flatten_map (Fun.uncurry make_pts) env' @@@ pts in
+        let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
         let ts' = abstract_term None env cond pts t typ in
-        let bs = List.map (fun _ -> new_id "arg") ts' in
-        defs @ List.combine bs ts',
-        args @ List.map _Var bs,
+        let add_flag =
+          let b =
+            match typ with
+            | TBase _ -> false
+            | _ -> true
+          in
+          List.map (Pair.pair true)
+        in
+        defs @ add_flag @@ List.combine xs' ts',
+        args @ List.map _Var xs',
         env'@@@env,
         pts'
       in
+      let _Let' (b,(x,t)) t' = if b then subst x t t' else Let(x,t,t') in
       let defs,args,_,_ = List.fold_left2 aux ([],[],env,pts) ts typs in
-      [List.fold_right (uncurry _Let) defs @@ make_app t1 args]
+      [List.fold_right _Let' defs @@ make_app t1 args]
   | App _ ->
       let t1,ts = decomp_app t in
       let rec decomp_typ ts typ =
@@ -302,9 +311,9 @@ let rec abstract_term must env cond pts t typ =
   | Fun _ ->
       let env',t' = decomp_annot_fun t in
       let env' = List.map (Pair.map_snd Option.get) env' in
-      let pts' = List.flatten_map (uncurry make_pts) env' in
+      let pts' = List.flatten_map (Fun.uncurry make_pts) env' in
       let pts'' = pts' @@@ pts in
-      let xs' = List.flatten_map (uncurry abst_arg) env' in
+      let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
       let env'' = env' @@@ env in
       let typ' = CEGAR_type.app typ (List.map (_Var -| fst) env') in
       let t'' = hd (abstract_term (Some pts') env'' cond pts'' t' typ') in
@@ -426,8 +435,8 @@ let abstract orig_fun_list force prog =
   |> eta_expand
   |@debug()&> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
   |> abstract_prog
-  |> Typing.infer -| initilize_env
   |@debug()&> Format.printf "ABST:@\n%a@." CEGAR_print.prog
+  |> Typing.infer -| initialize_env
   |@(!Flag.debug_abst)&> eval_step_by_step
   |> CEGAR_lift.lift2
   |@debug()&> Format.printf "LIFT:@\n%a@." CEGAR_print.prog

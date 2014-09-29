@@ -63,10 +63,10 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	CEGAR_abst_util.cmo CEGAR_trans.cmo CEGAR_abst_CPS.cmo		\
 	CEGAR_abst.cmo CEGAR_parser.cmo CEGAR_lexer.cmo			\
 	trecs_parser.cmo trecs_lexer.cmo trecs_syntax.cmo		\
-	trecsInterface.cmo ModelCheck_util.cmo ModelCheck_CPS.cmo	\
-	ModelCheck.cmo feasibility.cmo refine.cmo CEGAR.cmo		\
-	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo		\
-	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo	\
+	trecsInterface.cmo ModelCheck_util.cmo ModelCheck.cmo		\
+	feasibility.cmo refine.cmo CEGAR.cmo writeAnnot.cmo		\
+	tupling.cmo ref_trans.cmo ret_fun.cmo BRA_types.cmo		\
+	BRA_util.cmo BRA_state.cmo BRA_transform.cmo			\
 	extraClsDepth.cmo extraParamInfer.cmo eval.cmo			\
 	elim_same_arg.cmo main_loop.cmo termination_loop.cmo		\
 	mochi.cmo

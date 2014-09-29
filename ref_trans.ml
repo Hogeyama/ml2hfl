@@ -61,7 +61,7 @@ let rec make_tree x bb =
   let children = List.mapi (fun i _ -> find_proj i x bb) @@ Option.get @@ decomp_tfun_ttuple @@ Id.typ x in
   if List.for_all Option.is_some children
   then
-    Rose_tree.Node (List.map (flip make_tree bb) @@ List.map Option.get children)
+    Rose_tree.Node (List.map (Fun.flip make_tree bb) @@ List.map Option.get children)
   else
     if List.for_all Option.is_none children
     then
@@ -506,7 +506,7 @@ let replace_head fs fs' t =
 
 let add_fun_tuple = make_trans2 ()
 
-let defined fs env = List.for_all (flip Id.mem env) fs
+let defined fs env = List.for_all (Fun.flip Id.mem env) fs
 
 let add_fun_tuple_term (funs,env) t =
   match t.desc with
@@ -577,11 +577,11 @@ let trans t = t
   |@debug()&> Format.printf "flatten_let: %a@." print_term_typ
   |> sort_let_pair.tr_term
   |@debug()&> Format.printf "sort_let_pair: %a@." print_term_typ
-  |@> flip Type_check.check TUnit
+  |@> Fun.flip Type_check.check TUnit
   |> trans.tr2_term (assert_false,[])
   |> Trans.inline_no_effect
   |@debug()&> Format.printf "ref_trans: %a@." print_term
-  |@> flip Type_check.check Type.TUnit
+  |@> Fun.flip Type_check.check Type.TUnit
 
 let trans t =
  trans t, fun _ _ -> raise Not_found

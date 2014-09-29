@@ -7,8 +7,7 @@ let invalid_argument s = raise (Invalid_argument s)
 
 let (-|) f g x = f (g x)
 let (|-) f g x = g (f x)
-let do_and_return f x = f x; x
-let (|@>) x f = do_and_return f x
+let (|@>) x f = f x; x
 let (|*>) x f = x
 let (|*@>) x f = x
 let (|@*>) x f = x
@@ -22,9 +21,6 @@ let (&>) f x = f x
 
 let (=>) b1 b2 = not b1 || b2
 
-let flip f x y = f y x
-let curry f x y = f (x,y)
-let uncurry f (x,y) = f x y
 let fst3 (x,y,z) = x
 let snd3 (x,y,z) = y
 let trd (x,y,z) = z
@@ -48,6 +44,13 @@ let print_list print ?(first=false) ?(last=false) punc fm xs =
   if last then Format.fprintf fm punc';
   Format.fprintf fm "@]"
 
+module Fun = struct
+  let flip f x y = f y x
+  let curry f x y = f (x,y)
+  let uncurry f (x,y) = f x y
+  let const x _ = x
+end
+
 module IntSet =
   Set.Make(
     struct
@@ -57,6 +60,29 @@ module IntSet =
 
 module StringSet = Set.Make(String)
 
+module Option = struct
+  include Option
+
+  let iter = may
+  let apply = map
+end
+
+module Pair = struct
+  let pair x y = x, y
+  let swap (x,y) = y, x
+  let make f g x = f x, g x
+  let map f g (x,y) = f x, g y
+  let map_fst f (x,y) = f x, y
+  let map_snd f (x,y) = x, f y
+  let fold f x y = f x y
+  let unfold = make
+  let to_list (x,y) = [x;y]
+  let of_list xs =
+    match xs with
+    | [x;y] -> x,y
+    | _ -> invalid_argument "Pair.of_list"
+end
+
 module List = struct
   include ExtList.List
 
@@ -64,14 +90,29 @@ module List = struct
   let cons x xs = x::xs
   let snoc xs x = xs@[x]
 
-  let print pr fm xs = Format.printf "[%a]" (print_list pr "; ") xs
+  let print pr fm xs = Format.printf "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
+
+  let rec unfold_right f s =
+    match f s with
+    | None -> []
+    | Some(x,s') -> x :: unfold_right f s'
+
+  let rec unfold_left acc f s =
+    match f s with
+    | None -> acc
+    | Some(x,s') -> unfold_left (x::acc) f s'
+  let unfold_left f s = unfold_left [] f s
+
+  let rec init n f i acc_rev =
+    if i >= n
+    then List.rev acc_rev
+    else init n f (i+1) (f i :: acc_rev)
+  let init n f = init n f 0 []
+
+  let make n x = init n (Fun.const x)
 
   (*** returns a list of integers [m;...;n-1] ***)
-  let rec fromto m n =
-    if m >= n then
-      []
-    else
-      m :: fromto (m+1) n
+  let fromto m n = init (n-m) ((+) m)
 
   let rev_map_flatten f xs = fold_left (fun acc x -> f x @@@ acc) [] xs
   let rev_flatten_map = rev_map_flatten
@@ -92,20 +133,13 @@ module List = struct
       assoc k tbl
     with Not_found -> x
 
-  let count_line s =
-    let n = ref 0 in
-    String.iter (fun c -> if c = '\n' then incr n) s;
-    !n
-
-  let count_list f xs =
+  let count f xs =
     fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
   let rec decomp_snoc = function
     | [] -> failwith "decomp_snoc"
     | [x] -> [], x
-    | x::xs ->
-        let xs',y = decomp_snoc xs in
-        x::xs', y
+    | x::xs -> Pair.map_fst (cons x) @@ decomp_snoc xs
 
   let rec mapi2 f i xs ys =
     match xs,ys with
@@ -127,6 +161,8 @@ module List = struct
     | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
     | _ -> raise (Invalid_argument "List.map3")
 
+  let rec filter_map2 f xs ys = filter_map Std.identity @@ List.map2 f xs ys
+
   let rec filter_out f xs = filter (not -| f) xs
 
   let rec rev_split acc1 acc2 xs =
@@ -138,11 +174,18 @@ module List = struct
 
   let replace_nth xs i y = List.mapi (fun j x -> if j = i then y else x) xs
 
+  let same eq xs ys = List.length xs = List.length ys && List.for_all2 eq xs ys
+
   let diff ?(cmp=compare)  l1 l2 = filter (fun x -> for_all (fun y -> cmp x y <> 0) l2) l1
   let inter ?(cmp=compare) l1 l2 = filter (fun x -> exists (fun y -> cmp x y = 0) l2) l1
   let subset l1 l2 = for_all (fun x -> mem x l2) l1
   let set_eq l1 l2 = subset l1 l2 && subset l2 l1
   let union ?(cmp=compare) l1 l2 = fold_left (fun l x -> if exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
+end
+
+module Compare = struct
+  let on ?(cmp=compare) f x y = cmp (f x) (f y)
+  let eq_on ?(eq=(=)) f x y = eq (f x) (f y)
 end
 
 module Array = ExtArray.Array
@@ -156,30 +199,29 @@ module String = struct
     sub s 0 n, sub s n (length s - n)
 
   let rsplit s sep =
-    let subs = nsplit s sep in
-    match subs with
+    match nsplit s sep with
     | [] -> assert false
     | [s] -> raise ExtString.Invalid_string
-    | _ ->
-        let subs',s2 = List.decomp_snoc subs in
-        let s1 = List.fold_left (fun s1 s2 -> s1 ^ sep ^ s2) (List.hd subs') (List.tl subs') in
-        s1, s2
-end
+    | subs -> Pair.map_fst (join sep) @@ List.decomp_snoc subs
 
-module Option = struct
-  include Option
+  let fold_left f s str =
+    let rec aux n i acc =
+      if i >= n
+      then acc
+      else aux n (i+1) (f acc str.[i])
+    in
+    aux (length str) 0 s
 
-  let iter = may
-  let apply = map
-end
+  let fold_right f str s =
+    let rec aux i acc =
+      if i < 0
+      then acc
+      else aux (i-1) (f acc str.[i])
+    in
+    aux (length str - 1) s
 
-module Pair = struct
-  let pair x y = x, y
-  let swap (x,y) = y, x
-  let make f g x = f x, g x
-  let map f g (x,y) = f x, g y
-  let map_fst f (x,y) = f x, y
-  let map_snd f (x,y) = x, f y
+  let count_line s =
+    fold_left (fun n c -> if c = '\n' then n+1 else n) 0 s
 end
 
 let is_uppercase c = 'A' <= c && c <= 'Z'

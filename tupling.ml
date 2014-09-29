@@ -123,7 +123,7 @@ let rec compose fg fts =
     let fts3 = List.replace_nth fts i (f,t3) in
     make_if t1 (compose fg fts2) (compose fg fts3)
   else
-    let forms = List.map (uncurry classify) fts in
+    let forms = List.map (Fun.uncurry classify) fts in
     if debug() then Format.printf "compose_let@.";
     if debug() then List.iter (fun (f,t) -> Format.printf "%a:%a@.@." Id.print f print_term t) fts;
     if List.for_all ((=) FSimpleRec) forms
@@ -177,7 +177,7 @@ let tupling_term env t =
           let xs = List.map (Option.map (fun t -> Id.new_var @@ get_opt_typ t.typ)) tfs in
           let xs' = List.filter_map Std.identity xs in
           let bodies =
-            let zts = List.map (Option.map @@ flip assoc_env env) fs in
+            let zts = List.map (Option.map @@ Fun.flip assoc_env env) fs in
             let aux zt x =
               match zt, x with
               | None, None -> []
@@ -250,11 +250,7 @@ let add_funs_desc desc =
         List.partition aux !new_funs
       in
       let funs1' =
-        let aux (fs,def) =
-          List.filter_out (fun f -> List.exists (Id.same f -| fst3) bindings) fs,
-          def
-        in
-        List.map aux funs1 in
+        List.map (Pair.map_fst @@ List.filter_out (fun f -> List.exists (Id.same f -| fst3) bindings)) funs1 in
       let funs11,funs12 = List.partition ((=) [] -| fst) funs1' in
       new_funs := funs12 @ funs2;
       let t' =
@@ -497,24 +493,24 @@ let trans t =
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" print_term
   |> Trans.elim_unused_let
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term
-  |@> flip Type_check.check Type.TUnit
+  |@> Fun.flip Type_check.check Type.TUnit
   |> tupling
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" print_term
-  |@> flip Type_check.check Type.TUnit
+  |@> Fun.flip Type_check.check Type.TUnit
   |> Trans.normalize_let
   |> Trans.flatten_let
   |> Trans.inline_no_effect
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" print_term
   |> replace_app
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" print_term
-  |@> flip Type_check.check Type.TUnit
+  |@> Fun.flip Type_check.check Type.TUnit
   |> elim_sub_app
   |> elim_same_app
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unnecessary" print_term
-  |@> flip Type_check.check Type.TUnit
+  |@> Fun.flip Type_check.check Type.TUnit
   |> Trans.inline_next_redex
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
-  |@> flip Type_check.check Type.TUnit
+  |@> Fun.flip Type_check.check Type.TUnit
 
 let trans t =
   trans t, fun _ _ -> raise Not_found

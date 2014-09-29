@@ -502,14 +502,15 @@ let trans_prog ?(spec=[]) t =
     uniq_env (ext_env @@@ List.map aux env)
   in
   let prog = {env=env'; defs=defs''; main=main} in
-  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG_A:@.%a@." CEGAR_print.prog_typ prog;
   let prog = event_of_temp prog in
-  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG_B:@.%a@." CEGAR_print.prog_typ prog;
   let prog = eta_expand prog in
-  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG_C:@.%a@." CEGAR_print.prog_typ prog;
   let prog = pop_main prog in
-  if debug() then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  if debug() then Format.printf "@.PROG_D:@.%a@." CEGAR_print.prog_typ prog;
   let prog,map,rmap = id_prog prog in
+  if debug() then Format.printf "@.PROG_E:@.%a@." CEGAR_print.prog_typ prog;
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
   prog,map,rmap,get_rtyp
 

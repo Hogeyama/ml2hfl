@@ -54,7 +54,7 @@ let rec lift_term2 xs = function
       let fv = List.inter xs (List.diff (get_fv t1) ys) in
       let fv' = List.map (fun x -> if List.mem x xs then rename_id x else x) fv in
       let ys' = fv' @ ys in
-      let t1'' = List.fold_left2 (fun t x x' -> subst x (Var x') t) t1' fv fv' in
+      let t1'' = List.fold_left2 (fun t x x' -> subst_var x x' t) t1' fv fv' in
       let f' = rename_id f in
       let f'' = make_app (Var f') (List.map (fun x -> Var x) fv) in
       let defs1,t1''' = lift_term2 ys' t1'' in
@@ -78,7 +78,8 @@ let lift_def2 (f,xs,t1,e,t2) =
   let defs1,t1' = lift_term2 xs t1 in
   let defs2,t2'' = lift_term2 xs t2' in
     (f, xs@ys, t1', e, t2'')::defs1@defs2
-let lift2 {defs=defs; main=main} =
+let lift2 {defs; main} =
   let defs = List.flatten_map lift_def2 defs in
-  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog {env=[];defs=defs;main=main} in
-  Typing.infer {env=[];defs=defs;main=main}
+  let prog =  {env=[]; defs; main} in
+  let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog prog in
+  Typing.infer prog
