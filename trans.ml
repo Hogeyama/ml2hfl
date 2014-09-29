@@ -886,7 +886,9 @@ let make_ext_env = make_col2 [] (@@@)
 
 let make_ext_env_desc funs desc =
   match desc with
-  | Var x -> if Id.mem x funs then [x, Id.typ x] else []
+  | Var x when is_parameter x -> []
+  | Var x when Id.mem x funs -> [x, Id.typ x]
+  | Var x -> []
   | _ -> make_ext_env.col2_desc_rec funs desc
 
 let () = make_ext_env.col2_desc <- make_ext_env_desc
@@ -1340,7 +1342,7 @@ let make_ext_fun_def f =
   f, xs', make_letrec defs' t'
 
 let make_ext_funs t =
-  let funs = get_fv t in
+  let funs = List.filter_out is_parameter @@ get_fv t in
   if List.exists (fun x -> is_poly_typ @@ Id.typ x) funs
   then raise (Fatal "Not implemented: Trans.make_ext_funs funs");
   let map,t' = rename_ext_funs funs t in
