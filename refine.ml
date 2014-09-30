@@ -65,7 +65,7 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
     let map =
       Format.printf "@[<v>";
       let ces =
-	    if !Fpat.Global.use_multiple_paths then
+	    if !Flag.use_multiple_paths then
 	      ces
 	    else
 	      [FpatInterface.List.hd ces]

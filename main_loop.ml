@@ -190,7 +190,7 @@ let rec run_cegar prog =
           FpatInterface.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
-          incr Fpat.Global.number_of_extra_params;
+          incr Flag.number_of_extra_params;
           run_cegar prog
 
 let rec run orig parsed =
@@ -250,5 +250,5 @@ let rec run orig parsed =
           FpatInterface.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
-          incr Fpat.Global.number_of_extra_params;
+          incr Flag.number_of_extra_params;
           run orig parsed
