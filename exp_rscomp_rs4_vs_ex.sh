@@ -2,13 +2,18 @@
 
 TEST="$(ls test/*.ml) $(ls test_fpat/*.ml)"
 
-LIMIT=30
+LIMIT=100
 OPTION="-no-exparam -exp2 -limit $LIMIT"
-FPAT_OPTION="-hccs 0"
-LOG=.ppdp2009.log
+FPAT_OPTION="-hccs 9 -mode 2"
+LOG=.rs4_vs_ex.log
 for i in $TEST
 do
 echo $i
 ./mochi.opt $OPTION -fpat "$FPAT_OPTION" $i &> $i$LOG
 echo
 done
+
+
+
+
+

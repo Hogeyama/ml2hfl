@@ -374,9 +374,9 @@ let () =
   else
     try
       Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
-      ignore (Unix.alarm !Flag.time_limit);
       fpat_init1 ();
       let cin = parse_arg () in
+      ignore (Unix.alarm !Flag.time_limit);
       fpat_init2 ();
       Color.init ();
       if not !Flag.only_result then print_env true;

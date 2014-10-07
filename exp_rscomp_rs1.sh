@@ -4,8 +4,8 @@ TEST="$(ls test/*.ml) $(ls test_fpat/*.ml)"
 
 LIMIT=30
 OPTION="-no-exparam -exp2 -limit $LIMIT"
-FPAT_OPTION="-hccs 0"
-LOG=.ppdp2009.log
+FPAT_OPTION="-hccs 11"
+LOG=.rs1.log
 for i in $TEST
 do
 echo $i
