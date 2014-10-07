@@ -149,8 +149,9 @@ let check env target =
     with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".hors"
   in
   try
+    Format.printf "%s@." (string_of_parseresult target');
     write_log input target';
-    verifyFile input
+    (* verifyFile input *) exit 0
   with Failure("lex error") -> raise UnknownOutput
 
 
