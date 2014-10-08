@@ -28,8 +28,6 @@ let trans_const = function
   | Unit -> TS.PTapp(TS.Name "unit", [])
   | True -> TS.PTapp(TS.FD 0, [])
   | False -> TS.PTapp(TS.FD 1, [])
-  | Br_forall -> TS.PTapp(TS.Name "br_forall", [])
-  | Br_exists -> TS.PTapp(TS.Name "br_exists", [])
   | c -> Format.printf "print_const: %a@." CEGAR_print.term (Const c); assert false
 
 

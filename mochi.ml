@@ -94,11 +94,11 @@ let get_commit_hash () =
 
 let print_env cmd =
   let mochi,fpat = get_commit_hash () in
-  let trecs_version = TrecsInterface.version () in
+  let horsat_version = HorSatInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
-  if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
+  if horsat_version <> "" then Format.printf "  HorSat version: %s@." @@ horsat_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   if cmd then
     begin

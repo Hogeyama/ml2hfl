@@ -4,7 +4,7 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
-open TrecsInterface
+open HorSatInterface
 
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
 type result = Safe of (var * Inter_type.t) list | Unsafe of int list
@@ -30,13 +30,13 @@ let make_file_spec () =
 
 let rec make_funcall_spec = function
   | [] -> []
-  | f::fs -> (0, Id.to_string f, ATP_State(1, 0)) :: make_funcall_spec fs
+  | f::fs -> (0, Id.to_string f, APT_State(1, 0)) :: make_funcall_spec fs
 
 let make_spec top_funs =
   let spec =
-    (0,"unit", ATP_False)
-    ::(0,"br_forall", ATP_And([ATP_State(1, 0); ATP_State(2, 0)]))
-    ::(0,"br_exists", ATP_Or([ATP_State(1, 0); ATP_State(2, 0)]))::make_funcall_spec top_funs
+    (0,"unit", APT_False)
+    ::(0,"br_forall", APT_And([APT_State(1, 0); APT_State(2, 0)]))
+    ::(0,"br_exists", APT_Or([APT_State(1, 0); APT_State(2, 0)]))::make_funcall_spec top_funs
   in
   List.sort spec
 
@@ -279,11 +279,8 @@ let model_check_aux (prog,arity_map,spec) =
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
   let env = prog.env in
-  match TrecsInterface.check env (prog,arity_map,spec) with
-  | TrecsInterface.Safe env ->
-      let env' = List.map (Pair.map_fst uncapitalize_var) env in
-      Safe env'
-  | TrecsInterface.Unsafe ce -> Unsafe (trans_ce ce)
+  ignore (HorSatInterface.check env (prog,arity_map,spec));
+  Unsafe []
 
 let make_arity_map top_funs =
   let init = [("br_forall", 2); ("br_exists", 2); ("unit", 0)] in

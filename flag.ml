@@ -1,4 +1,5 @@
 
+let horsat = ref Environment.horsat
 let trecs = ref Environment.trecs
 let cvc3 = ref Environment.cvc3
 
