@@ -98,8 +98,9 @@ let rec verifyFile filename =
   let () = output_string oc default in
   let () = close_out oc in
   let rest_time = !Flag.time_limit - (int_of_float @@ get_time ()) in
-  let cmd = Format.sprintf "ulimit -t %d && %s -p %d %d %s > %s 2> /dev/null" rest_time !Flag.trecs p1 p2 filename result_file in
-  ignore @@ Sys.command cmd;
+  let cmd = Format.sprintf "%s -p %d %d %s > %s" !Flag.trecs p1 p2 filename result_file in
+  let cmd' = Format.sprintf "ulimit -t %d && %s 2> /dev/null" rest_time cmd in
+  ignore @@ Sys.command cmd';
   let ic = open_in result_file in
   let lb = Lexing.from_channel ic in
   match Trecs_parser.output Trecs_lexer.token lb with
