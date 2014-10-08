@@ -18,10 +18,11 @@ DOC = doc
 NAME = mochi
 
 main: opt
-all: depend byte opt
+all: depend byte opt top
 
 byte: $(NAME).byte
 opt: $(NAME).opt
+top: $(NAME).top
 
 
 ifdef GIT
@@ -82,6 +83,9 @@ $(NAME).byte: $(CMO)
 
 $(NAME).opt: $(CMX)
 	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -linkpkg -o $@ $(CMXA) $(CMX)
+
+$(NAME).top: $(CMO)
+	$(OCAMLFIND) ocamlmktop $(OCAMLCFLAGS) -linkpkg -o $@ $(CMA) $(CMO)
 
 
 spec_parser.ml spec_parser.mli: spec_parser.mly

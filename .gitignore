@@ -12,6 +12,7 @@ autom4te.cache
 option.conf
 *.opt
 *.byte
+*.top
 *lexer.ml
 *parser.ml
 *parser.mli
