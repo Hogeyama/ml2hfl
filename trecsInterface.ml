@@ -89,37 +89,6 @@ let rec parse_trace s =
 let rec verifyFile filename =
   let default = "empty" in
   let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
-  let result_file = "result" in
-  let oc = open_out result_file in
-  let () = output_string oc default in
-  let () = close_out oc in
-  let cmd = Format.sprintf "%s -p %d %d -o %s %s" !Flag.trecs p1 p2 result_file filename in
-  let cmd' = Format.sprintf "%s | grep -q 'Verification failed (time out).'" cmd in
-  let r = Sys.command cmd' in
-    if r = 0
-    then
-      let () = Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1) in
-      let () = Flag.trecs_param1 := 2 * p1 in
-        verifyFile filename
-    else
-      let ic = open_in result_file in
-        match input_line ic with
-            "SATISFIED" ->
-              close_in ic;
-              Safe []
-          | "VIOLATED" ->
-              let s = input_line ic in
-                close_in ic;
-                Unsafe (parse_trace s)
-          | s ->
-              close_in ic;
-              if r <> 0 || s = default
-              then raise (Fatal "TRecS FAILED!")
-              else raise (Fatal ("Unsupported TRecS output: " ^ s))
-
-let rec verifyFile filename =
-  let default = "empty" in
-  let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
   let result_file =
     try
       Filename.chop_extension !Flag.filename ^ ".trecs_out"
@@ -128,23 +97,24 @@ let rec verifyFile filename =
   let oc = open_out result_file in
   let () = output_string oc default in
   let () = close_out oc in
-  let cmd = Format.sprintf "%s -p %d %d %s > %s" !Flag.trecs p1 p2 filename result_file in
-  let cmd' = Format.sprintf "%s | grep -q 'Verification failed (time out).'" cmd in
-  let _ = Sys.command cmd' in
+  let rest_time = !Flag.time_limit - (int_of_float @@ get_time ()) in
+  let cmd = Format.sprintf "ulimit -t %d && %s -p %d %d %s > %s 2> /dev/null" rest_time !Flag.trecs p1 p2 filename result_file in
+  ignore @@ Sys.command cmd;
   let ic = open_in result_file in
   let lb = Lexing.from_channel ic in
-    match Trecs_parser.output Trecs_lexer.token lb with
-        `Safe env ->
-          close_in ic;
-          Safe env
-      | `Unsafe trace ->
-          close_in ic;
-          Unsafe trace
-      | `TimeOut ->
-          if not !Flag.only_result
-          then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
-          Flag.trecs_param1 := 2 * p1;
-          verifyFile filename
+  match Trecs_parser.output Trecs_lexer.token lb with
+  | `Safe env ->
+      close_in ic;
+      Safe env
+  | `Unsafe trace ->
+      close_in ic;
+      Unsafe trace
+  | `TimeOut ->
+      if not !Flag.only_result
+      then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
+      Flag.trecs_param1 := 2 * p1;
+      close_in ic;
+      verifyFile filename
 
 
 let write_log filename target =

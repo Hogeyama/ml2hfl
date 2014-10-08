@@ -385,36 +385,36 @@ let () =
       print_info ()
     with
     | e when !Flag.exp ->
-       Format.printf "{";
-       Format.printf "\"filename\": %S, " !Flag.filename;
-       Format.printf "\"result\": %S, " @@ string_of_exception e;
-       Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
-       Format.printf "\"total\": \"(%.3f)\"" (get_time());
-       Format.printf "}@."
+        Format.printf "{";
+        Format.printf "\"filename\": %S, " !Flag.filename;
+        Format.printf "\"result\": %S, " @@ string_of_exception e;
+        Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
+        Format.printf "\"total\": \"(%.3f)\"" (get_time());
+        Format.printf "}@."
     | e when !Flag.exp2 ->
-       output_csv (string_of_exception e)
+        output_csv (string_of_exception e)
     | Fpat.AbsTypInfer.FailedToRefineTypes ->
-       Format.printf "Verification failed:@.";
-       Format.printf "  MoCHi could not refute an infeasible error path @.";
-       Format.printf "  due to the incompleteness of the refinement type system@."
+        Format.printf "Verification failed:@.";
+        Format.printf "  MoCHi could not refute an infeasible error path @.";
+        Format.printf "  due to the incompleteness of the refinement type system@."
     | e when Fpat.Config.is_fpat_exception e ->
-       Format.printf "FPAT: %a@." Fpat.Config.pr_exception e
+        Format.printf "FPAT: %a@." Fpat.Config.pr_exception e
     | Syntaxerr.Error err ->
-       Format.printf "%a@." Syntaxerr.report_error err
+        Format.printf "%a@." Syntaxerr.report_error err
     | Typecore.Error(loc,env,err) ->
-       Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
+        Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
     | Typemod.Error(loc,env,err) ->
-       Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
+        Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
     | Env.Error e -> Format.printf "%a@." Env.report_error e
     | Typetexp.Error(loc,env,err) ->
-       Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
+        Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
     | Lexer.Error(err, loc) ->
-       Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
+        Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
     | LongInput -> Format.printf "Input is too long@."
     | TimeOut -> Format.printf "Verification failed (time out)@."
     | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
     | CEGAR_abst.NotRefined -> Format.printf "Verification failed (new error path not found)@."
     | Fatal s ->
-       Format.printf "Fatal error: %s@." s
+        Format.printf "Fatal error: %s@." s
     | Unsupported s ->
-       Format.printf "Unsupported: %s@." s
+        Format.printf "Unsupported: %s@." s
