@@ -9,7 +9,7 @@ val define_randvalue : (typ * id) list -> (id * id list * typed_term) list -> ty
 val inst_randval : typed_term -> typed_term
 val get_last_definition : id option -> typed_term -> id option
 val replace_main : typed_term -> typed_term -> typed_term
-val set_target : typed_term -> string * int * typed_term
+val set_target : (id * Ref_type.t) list -> typed_term -> string * int * typed_term
 val merge_let_fun : typed_term -> typed_term
 val canonize : typed_term -> typed_term
 val part_eval : typed_term -> typed_term

@@ -286,13 +286,12 @@ let rec get_last_definition f t =
 let rec replace_main main t =
   match t.desc with
   | Let(flag, bindings, t2) -> make_let_f flag bindings (replace_main main t2)
-  | Fun _ -> assert false
-  | _ -> main
+  | _ ->
+      assert (t = unit_term);
+      main
 
 
-
-
-let set_target t =
+let set_main t =
   match get_last_definition None t with
   | None ->
       let u = Id.new_var ~name:"main" t.typ in
@@ -317,6 +316,36 @@ let set_target t =
       in
       let t'' = inst_randval t' in
       Id.name f, List.length xs, t''
+
+let ref_to_assert ref_env t =
+  let open Ref_type in
+  let rec decomp typ =
+    match typ with
+    | Base(base,x,p) ->
+        [], typ, fun y -> make_assert @@ Term_util.subst x y p
+    | Fun(x,typ1,typ2) ->
+        let x' = Id.new_var @@ to_simple typ1 in
+        let xtyps,typ2',check = decomp @@ subst x (make_var x') typ2 in
+        (x,typ1)::xtyps, typ2', check
+    | Tuple xtyps -> [], typ, fun _ -> assert false
+    | Inter typs -> assert false
+    | Union typs -> assert false
+    | ExtArg(y,typ1,typ2) -> assert false
+    | List(y,p_len,z,p_i,typ) -> assert false
+  in
+  let aux (f, typ) =
+    let xtyps,typ',check = decomp typ in
+    let defs = List.map (fun (x,typ) -> x, [], generate typ) xtyps in
+    let body = make_app (make_var f) @@ List.map (make_var -| fst) xtyps in
+    let x = Id.new_var @@ to_simple typ' in
+    make_lets (defs @ [x,[],body]) (check @@ make_var x)
+  in
+  List.fold_right make_seq (List.map aux ref_env) unit_term
+
+let set_target ref_env t =
+  if ref_env = []
+  then set_main t
+  else "", 0, ref_to_assert ref_env t
 
 
 

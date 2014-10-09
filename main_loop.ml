@@ -196,9 +196,10 @@ let rec run_cegar prog =
 let rec run orig parsed =
   init ();
   let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print in
+  let spec' = Spec.rename spec parsed |@ not !Flag.only_result &> Spec.print in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType
-    then trans_and_print Trans.set_target "set_target" (fun (_,_,t) -> t) parsed
+    then trans_and_print (Trans.set_target spec'.Spec.ref_env) "set_target" trd parsed
     else "",0,parsed
   in
   (** Unno: I temporally placed the following code here
@@ -212,8 +213,8 @@ let rec run orig parsed =
         Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
                       (List.length !FpatInterface.params) Syntax.print_term t Syntax.print_term' t;
       t
-      else
-        set_target
+    else
+      set_target
   in
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in
