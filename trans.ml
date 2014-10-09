@@ -317,12 +317,6 @@ let set_main t =
       let t'' = inst_randval t' in
       Id.name f, List.length xs, t''
 
-let generate' typ =
-  Format.printf "typ: %a@." Ref_type.print typ;
-  let t = Ref_type.generate typ in
-  Format.printf "  ===> %a@." print_term t;
-  t
-
 let ref_to_assert ref_env t =
   let open Ref_type in
   let rec decomp typ =
@@ -341,7 +335,7 @@ let ref_to_assert ref_env t =
   in
   let aux (f, typ) =
     let xtyps,typ',check = decomp typ in
-    let defs = List.map (fun (x,typ) -> x, [], generate' typ) xtyps in
+    let defs = List.map (fun (x,typ) -> x, [], generate typ) xtyps in
     let body = make_app (make_var f) @@ List.map (make_var -| fst) xtyps in
     let x = Id.new_var @@ to_simple typ' in
     make_lets (defs @ [x,[],body]) (check @@ make_var x)
