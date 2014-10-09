@@ -80,7 +80,8 @@ let parse_comment parser lexer filename =
     | Some s when flag -> loop true (str ^ "\n" ^ s)
     | _ -> loop false str
   in
-  parser lexer @@ Lexing.from_string @@ loop false ""
+  let lb = Lexing.from_string @@ loop false "" in
+  parser lexer lb
 
 
 let merge spec1 spec2 =

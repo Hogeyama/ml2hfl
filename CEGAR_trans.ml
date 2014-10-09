@@ -141,7 +141,7 @@ let rec trans_typ = function
 
 
 and trans_binop = function
-    S.Eq -> assert false
+  | S.Eq -> assert false
   | S.Lt -> Const Lt
   | S.Gt -> Const Gt
   | S.Leq -> Const Leq
@@ -154,7 +154,7 @@ and trans_binop = function
 
 and trans_const c typ =
   match c with
-    S.Unit -> Unit
+  | S.Unit -> Unit
   | S.True -> True
   | S.False -> False
   | S.Int n -> Int n
@@ -165,6 +165,8 @@ and trans_const c typ =
   | S.Int64 n -> Int64 n
   | S.Nativeint n -> Nativeint n
   | S.CPS_result -> CPS_result
+  | S.RandInt _ -> assert false
+  | S.RandValue _ -> assert false
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =

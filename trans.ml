@@ -317,6 +317,12 @@ let set_main t =
       let t'' = inst_randval t' in
       Id.name f, List.length xs, t''
 
+let generate' typ =
+  Format.printf "typ: %a@." Ref_type.print typ;
+  let t = Ref_type.generate typ in
+  Format.printf "  ===> %a@." print_term t;
+  t
+
 let ref_to_assert ref_env t =
   let open Ref_type in
   let rec decomp typ =
@@ -326,7 +332,7 @@ let ref_to_assert ref_env t =
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_simple typ1 in
         let xtyps,typ2',check = decomp @@ subst x (make_var x') typ2 in
-        (x,typ1)::xtyps, typ2', check
+        (x',typ1)::xtyps, typ2', check
     | Tuple xtyps -> [], typ, fun _ -> assert false
     | Inter typs -> assert false
     | Union typs -> assert false
@@ -335,12 +341,13 @@ let ref_to_assert ref_env t =
   in
   let aux (f, typ) =
     let xtyps,typ',check = decomp typ in
-    let defs = List.map (fun (x,typ) -> x, [], generate typ) xtyps in
+    let defs = List.map (fun (x,typ) -> x, [], generate' typ) xtyps in
     let body = make_app (make_var f) @@ List.map (make_var -| fst) xtyps in
     let x = Id.new_var @@ to_simple typ' in
     make_lets (defs @ [x,[],body]) (check @@ make_var x)
   in
-  List.fold_right make_seq (List.map aux ref_env) unit_term
+  let main = List.fold_right make_seq (List.map aux ref_env) unit_term in
+  replace_main main t
 
 let set_target ref_env t =
   if ref_env = []

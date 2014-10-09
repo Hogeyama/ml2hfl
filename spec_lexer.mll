@@ -22,6 +22,8 @@ rule token = parse
 | ')' { RPAREN }
 | '[' { LSQUAR }
 | ']' { RSQUAR }
+| '{' { LBRACE }
+| '}' { RBRACE }
 | '=' { EQUAL }
 | '<' { LTHAN }
 | '>' { GTHAN }
@@ -43,6 +45,8 @@ rule token = parse
 | "->" { ARROW }
 | ';' { SEMI }
 | ':' { COLON }
+| '|' { BAR }
+| "type" { TYPE }
 | "val" { VAL }
 | "valcps" { VALCPS }
 | "valcegar" { VALCEGAR }

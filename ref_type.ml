@@ -196,13 +196,13 @@ and generate typ =
   let open Term_util in
   match typ with
   | Base(Int, x, p) ->
-      make_seq (generate_assume x typ) @@ make_var x
+      make_let [x,[],randint_unit_term] @@ make_seq (generate_assume x typ) @@ make_var x
   | Base(Int, x, p) ->
       Format.fprintf Format.str_formatter "Ref_type.generate: %a" print typ;
       unsupported @@ Format.flush_str_formatter ()
   | Fun(x,typ1,typ2) ->
-      let x = Id.new_var @@ to_simple typ1 in
-      make_fun x @@ make_seq (generate_assume x typ1) @@ generate typ2
+      let x' = Id.new_var @@ to_simple typ1 in
+      make_fun x' @@ subst_var x x' @@ make_seq (generate_assume x' typ1) @@ generate typ2
   | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
   | Inter typs -> unsupported "Ref_type.generate: Inter"
   | Union typs -> unsupported "Ref_type.generate: Union"
