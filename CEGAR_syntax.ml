@@ -45,8 +45,8 @@ type const =
   | If (* for abstraction and model-checking *)
   | Bottom
   | Label of int
+  | TreeConstr of int * string
   | CPS_result
-
 
 
 and t =
@@ -84,15 +84,17 @@ let decomp_id s =
   try
     let len = String.length s in
     let i = String.rindex s '_' in
-      String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
+    String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
   with Failure "int_of_string" | Not_found -> s, 0
 let add_name x s =
   let name,n = decomp_id x in
-    name ^ s ^ "_" ^ if n <> 0 then string_of_int n else ""
+  if n <> 0
+  then name ^ s ^ "_" ^ string_of_int n
+  else name ^ s
 let id_name x = fst (decomp_id x)
 let rename_id s =
   let name = id_name s in
-    name ^ "_" ^ string_of_int (Id.new_int ())
+  name ^ "_" ^ string_of_int (Id.new_int ())
 
 
 
@@ -138,6 +140,8 @@ let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
 let make_label n t = make_app (Const (Label n)) [t]
+
+let make_br_exists ts = make_app (Const (TreeConstr(List.length ts, "br_exists"))) ts
 
 
 

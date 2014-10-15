@@ -238,3 +238,57 @@ let add_ext_funs prog =
   let defs' = defs@prog.defs in
   let _ = Typing.infer {env=[]; defs=defs'; main=prog.main} in
   {prog with defs=defs'}
+
+
+let rec theta xps t =
+  match t with
+  | Var x when List.mem_assoc x xps -> List.assoc x xps
+  | Var x -> Var x
+  | Const c -> Const c
+  | App(t1, t2) -> App(theta xps t1, theta xps t2)
+  | Fun _ -> assert false
+  | Let _ -> assert false
+
+let theta pbs t =
+  List.iter (function (_, Var _) -> () | _ -> assert false) pbs;
+  let xps = List.map (function (t, Var x) -> x, t | _ -> assert false) pbs in
+  theta xps t
+
+let check_exist env cond pbs x p =
+  Format.printf "check_exists:@.";
+  if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
+  Format.printf "  p: %a@." CEGAR_print.term p;
+  let rec input () =
+    Format.printf "[t/f]: @?";
+    match read_line () with
+    | "t" -> true
+    | "f" -> false
+    | _ -> input ()
+  in
+  input ()
+
+let abst_rand_int_aux env cond pbs x p =
+  if debug() then Format.printf "abst_rand_int@.";
+  if debug() then Format.printf "  cond: %a@." (print_list CEGAR_print.term "; ") cond;
+  let pbs' = filter_pbs env cond pbs in
+  if debug() then Format.printf "  pbs: @[<hv>%a@]@.  p:%a@." print_pbs pbs' CEGAR_print.term p;
+  if has_bottom p
+  then Const Bottom
+  else
+    let tt, ff = weakest env cond pbs' p in
+    if debug() then Format.printf "  tt:%a@.  ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
+    if make_not tt = ff || tt = make_not ff
+    then tt
+    else
+      let cond' = make_not (theta pbs tt) :: make_not (theta pbs ff) :: cond in
+      let ex_tt = if check_exist env cond' pbs x p then [Const True] else [] in
+      let ex_ff = if check_exist env cond' pbs x (make_not p) then [Const False] else [] in
+      make_if tt (Const True) @@ make_if ff (Const False) @@ make_br_exists (ex_tt @ ex_ff)
+
+let abst_rand_int env cond pbs typ =
+  match typ with
+  | TBase(TInt, ps) ->
+      let x = new_id "r" in
+      let ps' = ps (Var x) in
+      List.map (abst_rand_int_aux env cond pbs x) ps'
+  | _ -> assert false

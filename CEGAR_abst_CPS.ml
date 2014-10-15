@@ -256,12 +256,19 @@ let rec abstract_term must env cond pts t typ =
   | Var x when congruent env cond (List.assoc x env) typ ->
       List.map (fun x -> Var x) (abst_arg x typ)
   | App(App(App(Const If, t1), t2), t3) ->
-      let t1' = hd (abstract_term None env cond pts t1 typ_bool_id) in
-      let t2' = hd (abstract_term must env (t1::cond) pts t2 typ) in
-      let t3' = hd (abstract_term must env (make_not t1::cond) pts t3 typ) in
+      let t1' = hd @@ abstract_term None env cond pts t1 typ_bool_id in
+      let t2' = hd @@ abstract_term must env (t1::cond) pts t2 typ in
+      let t3' = hd @@ abstract_term must env (make_not t1::cond) pts t3 typ in
       [make_if t1' t2' t3']
-  | App(Const (Label n), t) -> [make_label n (hd (abstract_term must env cond pts t typ))]
-  | App(Const RandInt, t) -> abstract_term must env cond pts t (TFun(typ_int, fun _ -> typ))
+  | App(Const (Label n), t) -> [make_label n (hd @@ abstract_term must env cond pts t typ)]
+  | App(Const RandInt, t) ->
+      let typ' =
+        match get_typ env t with
+        | TFun(typ', _) -> typ'
+        | _ -> assert false
+      in
+      let t' = hd @@ abstract_term must env cond pts t (TFun(typ', fun _ -> typ)) in
+      [make_app t' @@ abst_rand_int env cond pts typ']
   | App _ when not !Flag.cartesian_abstraction ->
       let t1,ts = decomp_app t in
       let rec decomp_typ ts typ =

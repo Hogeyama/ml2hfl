@@ -100,7 +100,7 @@ let get_typ_const = function
   | RandBool -> TBool
   | RandInt ->
       let typ = new_tvar () in
-        TFun(TFun(TInt,typ),typ)
+      TFun(TFun(TInt,typ),typ)
   | RandVal s -> TAbst s
   | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
@@ -119,18 +119,18 @@ let get_typ_const = function
   | Int _ -> TInt
   | If ->
       let typ = new_tvar () in
-        TFun(TBool,TFun(typ,TFun(typ,typ)))
+      TFun(TBool,TFun(typ,TFun(typ,typ)))
   | Proj(n,i) ->
       let typs = Array.to_list (Array.init n (fun _ -> new_tvar())) in
-        TFun(TTuple typs, List.nth typs i)
+      TFun(TTuple typs, List.nth typs i)
   | Tuple n ->
       let typs = Array.to_list (Array.init n (fun _ -> new_tvar())) in
-        List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs (TTuple typs)
+      List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs (TTuple typs)
   | Bottom -> new_tvar ()
   | Temp _ -> assert false
   | Label _ ->
       let typ = new_tvar () in
-        TFun(typ,typ)
+      TFun(typ,typ)
 
 let rec infer_term env = function
   | Const c -> get_typ_const c
