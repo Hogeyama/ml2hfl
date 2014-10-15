@@ -99,8 +99,15 @@ let rec verifyFile filename =
   let () = close_out oc in
   let rest_time = !Flag.time_limit - (int_of_float @@ get_time ()) in
   let cmd = Format.sprintf "%s -p %d %d %s > %s" !Flag.trecs p1 p2 filename result_file in
-  let cmd' = Format.sprintf "ulimit -t %d && %s 2> /dev/null" rest_time cmd in
-  ignore @@ Sys.command cmd';
+  let oc = open_out result_file in
+  let out_descr = Unix.descr_of_out_channel oc in
+  let pid = Unix.create_process !Flag.trecs [|Format.sprintf "-p %d %d" p1 p2; filename|] Unix.stdin out_descr Unix.stderr in
+  let _,_st =
+    try
+      Unix.waitpid [Unix.WUNTRACED] pid
+    with e -> Unix.kill pid 14; raise e
+  in
+  close_out oc;
   let ic = open_in result_file in
   let lb = Lexing.from_channel ic in
   match Trecs_parser.output Trecs_lexer.token lb with
