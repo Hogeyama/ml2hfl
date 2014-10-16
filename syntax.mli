@@ -5,7 +5,8 @@ type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
-and typed_term = {desc:term; typ:typ}
+and attr = int option
+and typed_term = {desc:term; typ:typ; attr:attr}
 and const = (* only base type constants *)
   | Unit
   | True
