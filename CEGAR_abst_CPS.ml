@@ -242,7 +242,57 @@ let print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a:%a,@ " CEGAR_print.var f CEGAR_print.typ typ) env;
   Format.fprintf fm "@."
 
-let rec abstract_term must env cond pts t typ =
+let rec propagate_fun_arg_typ typ t =
+  match typ, t with
+  | TFun(typ1, typ2), Fun(x,_,t') -> Fun(x, Some typ1, propagate_fun_arg_typ (typ2 @@ Var x) t')
+  | _ -> t
+
+(*
+let rec abstract_rand_int must env cond pts preds t typ =
+  let typ_arg = TBase(TInt, preds) in
+  let typ' = TFun(typ_arg, fun _ -> typ) in
+  let t' = hd @@ abstract_term must env cond pts (propagate_fun_arg_typ typ' t) typ' in
+  Format.printf "typ_arg: @[%a@." CEGAR_print.typ typ_arg;
+  Format.printf "  t: @[%a@." CEGAR_print.term t;
+  Format.printf "  t': @[%a@." CEGAR_print.term t';
+  let x = new_id "r" in
+  let env' = (x,typ_int)::env in
+  let preds' = preds (Var x) in
+  let pts' = make_pts x typ_arg in
+  let rec aux pts pts_new preds =
+    match pts_new,preds with
+    | [],[] -> make_app t' @@ List.map snd pts'
+    | (t,y)::pts_new', pred::preds' ->
+        let k = new_id "k" in
+        let y' = match y with Var y' -> y' | _ -> assert false in
+        let t1 = aux ((t,y)::pts) pts_new' preds' in
+        let t2 = make_app (Var k) [abst_rand_int env' cond pts x pred] in
+        Let(k, Fun(y', None, t1), t2)
+    | _ -> assert false
+  in
+  aux pts pts' preds'
+*)
+
+let rec abstract_rand_int must env cond pts preds t typ =
+  let t' = hd @@ abstract_term must env cond pts (propagate_fun_arg_typ typ' t) typ' in
+  let x = new_id "r" in
+  let env' = (x,typ_int)::env in
+  let preds' = preds (Var x) in
+  let combs =
+    let rec aux ps =
+      match ps with
+      | [] -> [true_term]
+      | p::ps' ->
+          let combs = aux ps' in
+          List.flatten_map (fun acc -> [make_and p acc; make_and (make_not p) acc]) combs
+    in
+    aux preds'
+  in
+  let combs' = List.filter (check_exist env cond pbs x) combs in
+  List.fold_left make_or false_term combs'
+
+
+and abstract_term must env cond pts t typ =
   if false && debug() then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const CPS_result -> [Const Unit]
@@ -261,37 +311,29 @@ let rec abstract_term must env cond pts t typ =
       let t3' = hd @@ abstract_term must env (make_not t1::cond) pts t3 typ in
       [make_if t1' t2' t3']
   | App(Const (Label n), t) -> [make_label n (hd @@ abstract_term must env cond pts t typ)]
-  | App(Const (RandInt _), t) ->
-      let typ' =
-        match get_typ env t with
-        | TFun(typ', _) -> typ'
-        | _ -> assert false
+  | App(Const (RandInt n), t) ->
+      let preds =
+        try
+          assoc_renv n env
+        with Not_found ->
+             match get_typ env t with
+             | TFun(TBase(TInt, preds), _) -> preds
+             | _ -> assert false
       in
-      let t' = hd @@ abstract_term must env cond pts t (TFun(typ', fun _ -> typ)) in
-      [make_app t' @@ abst_rand_int env cond pts typ']
-  | App(App(Const (TypeAnnot typ''), Const (RandInt _)), t) ->
-      let typ' =
-        match typ'' with
-        | TFun(TFun(typ', _), _) -> typ'
-        | _ -> Format.printf "TypeAnnot: %a@." CEGAR_print.typ typ''; assert false
-      in
-      let t' = hd @@ abstract_term must env cond pts t (TFun(typ', fun _ -> typ)) in
-      [make_app t' @@ abst_rand_int env cond pts typ']
+      [abstract_rand_int must env cond pts preds t typ]
   | App _ when not !Flag.cartesian_abstraction ->
       let t1,ts = decomp_app t in
       let rec decomp_typ ts typ =
         match ts,typ with
         | [], _ when fst (decomp_tbase typ) = typ_result_base -> []
-        | t2::ts', TFun(typ1,typ2) ->
-            typ1 :: decomp_typ ts' (typ2 t2)
+        | t2::ts', TFun(typ1,typ2) -> typ1 :: decomp_typ ts' (typ2 t2)
         | _,typ -> Format.printf "@.%a@.typ:%a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
       in
       let typs = decomp_typ ts @@ get_typ env t1 in
-      let aux (defs,args,env,pts) t typ =
+      let aux env (defs,args,pts) t typ =
         let x = new_id "xnc" in
-        let env',t' = [x,typ],t in
-        let pts' = List.flatten_map (Fun.uncurry make_pts) env' @@@ pts in
-        let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
+        let pts' = make_pts x typ @@@ pts in
+        let xs' = abst_arg x typ in
         let ts' = abstract_term None env cond pts t typ in
         let add_flag =
           let b =
@@ -299,15 +341,14 @@ let rec abstract_term must env cond pts t typ =
             | TBase _ -> false
             | _ -> true
           in
-          List.map (Pair.pair true)
+          List.map (Pair.pair b)
         in
-        defs @ add_flag @@ List.combine xs' ts',
+        defs @ (add_flag @@ List.combine xs' ts'),
         args @ List.map _Var xs',
-        env'@@@env,
         pts'
       in
       let _Let' (b,(x,t)) t' = if b then subst x t t' else Let(x,t,t') in
-      let defs,args,_,_ = List.fold_left2 aux ([],[],env,pts) ts typs in
+      let defs,args,_ = List.fold_left2 (aux env) ([],[],pts) ts typs in
       [List.fold_right _Let' defs @@ make_app t1 args]
   | App _ ->
       let t1,ts = decomp_app t in

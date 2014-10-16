@@ -116,3 +116,13 @@ let cegar prog info =
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress
+
+
+
+let cegar prog info =
+  let x = new_id "x" in
+  let map =
+    [1, fun x -> [make_gt x (make_int 0); make_lt x (make_int 0)]]
+  in
+  let prog' = {prog with env = add_renv map prog.env} in
+  cegar prog' info

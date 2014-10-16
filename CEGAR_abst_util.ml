@@ -256,8 +256,8 @@ let theta pbs t =
 
 let check_exist env cond pbs x p =
   Format.printf "check_exists:@.";
-  if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
-  Format.printf "  p: %a@." CEGAR_print.term p;
+  Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
+  Format.printf "  \exists r. %a ?@." CEGAR_print.term @@ subst x (Var "r") p;
   let rec input () =
     Format.printf "[t/f]: @?";
     match read_line () with
@@ -267,7 +267,8 @@ let check_exist env cond pbs x p =
   in
   input ()
 
-let abst_rand_int_aux env cond pbs x p =
+(*
+let abst_rand_int env cond pbs x p =
   if debug() then Format.printf "abst_rand_int@.";
   if debug() then Format.printf "  cond: %a@." (print_list CEGAR_print.term "; ") cond;
   let pbs' = filter_pbs env cond pbs in
@@ -280,15 +281,15 @@ let abst_rand_int_aux env cond pbs x p =
     if make_not tt = ff || tt = make_not ff
     then tt
     else
-      let cond' = make_not (theta pbs tt) :: make_not (theta pbs ff) :: cond in
-      let ex_tt = if check_exist env cond' pbs x p then [Const True] else [] in
-      let ex_ff = if check_exist env cond' pbs x (make_not p) then [Const False] else [] in
-      make_if tt (Const True) @@ make_if ff (Const False) @@ make_br_exists (ex_tt @ ex_ff)
+      let t_br =
+        if List.exists (fun (p,_) -> List.mem x @@ get_fv p) pbs
+        then
 
-let abst_rand_int env cond pbs typ =
-  match typ with
-  | TBase(TInt, ps) ->
-      let x = new_id "r" in
-      let ps' = ps (Var x) in
-      List.map (abst_rand_int_aux env cond pbs x) ps'
-  | _ -> assert false
+        else
+          let cond' = make_not (theta pbs tt) :: make_not (theta pbs ff) :: cond in
+          let ex_tt = if check_exist env cond' pbs x p then [Const True] else [] in
+          let ex_ff = if check_exist env cond' pbs x (make_not p) then [Const False] else [] in
+          make_br_exists (ex_tt @ ex_ff)
+      in
+      make_if tt (Const True) @@ make_if ff (Const False) t_br
+*)

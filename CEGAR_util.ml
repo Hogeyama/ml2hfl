@@ -589,18 +589,21 @@ let assign_id_to_rand prog =
   in
   map_body_prog aux prog
 
-let rec add_pred_to_rand_term map t =
-  match t with
-  | Const (RandInt n) ->
-      let preds =
-        try
-          List.assoc n map
-        with Not_found -> fun _ -> []
-      in
-      App(Const (TypeAnnot(TFun(TFun(TBase(TInt, preds), fun _ -> typ_result), fun _ -> typ_result))), t)
-  | Const c -> Const c
-  | Var x -> Var x
-  | App(t1,t2) -> App(add_pred_to_rand_term map t1, add_pred_to_rand_term map t2)
-  | Let(x,t1,t2) -> Let(x, add_pred_to_rand_term map t1, add_pred_to_rand_term map t2)
-  | Fun(x,typ,t) -> Fun(x, typ, add_pred_to_rand_term map t)
-let add_pred_to_rand map = map_body_prog (add_pred_to_rand_term map)
+let add_renv map env =
+  let aux env (n, preds) =
+    (Format.sprintf "#randint_%d" n, TBase(TInt, preds)) :: env
+  in
+  List.fold_left aux env map
+
+
+let assoc_renv n env =
+  let check (s,_) =
+    try
+      let s1,s2 = String.split s "_" in
+      let m = int_of_string s2 in
+      s1 = "#randint" && n = m
+    with _ -> false
+  in
+  match List.find check env with
+  | _, TBase(TInt, preds) -> preds
+  | _ -> assert false

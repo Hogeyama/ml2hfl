@@ -47,7 +47,6 @@ type const =
   | Label of int
   | TreeConstr of int * string
   | CPS_result
-  | TypeAnnot of typ
 
 
 and t =
@@ -141,6 +140,8 @@ let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
 let make_label n t = make_app (Const (Label n)) [t]
+let make_let bindings t =
+  List.fold_right (fun (x,t) t' -> Let(x,t,t')) bindings t
 
 let make_br_exists ts = make_app (Const (TreeConstr(List.length ts, "br_exists"))) ts
 
