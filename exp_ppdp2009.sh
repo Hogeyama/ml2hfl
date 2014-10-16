@@ -2,9 +2,9 @@
 
 TEST="$(ls test/*.ml) $(ls test_fpat/*.ml)"
 
-LIMIT=30
+LIMIT=100
 OPTION="-no-exparam -exp2 -limit $LIMIT"
-FPAT_OPTION="-hccs 0"
+FPAT_OPTION="-hccs it"
 LOG=.ppdp2009.log
 for i in $TEST
 do

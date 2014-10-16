@@ -2,9 +2,9 @@
 
 TEST="$(ls test/*.ml) $(ls test_fpat/*.ml)"
 
-LIMIT=30
+LIMIT=100
 OPTION="-no-exparam -exp2 -limit $LIMIT"
-FPAT_OPTION="-hccs 11"
+FPAT_OPTION="-hccs rs1"
 LOG=.rs1.log
 for i in $TEST
 do
