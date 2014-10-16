@@ -23,7 +23,9 @@ and const = (* only base type constants *)
   | RandInt of bool
   | RandValue of typ * bool
 
-and typed_term = {desc:term; typ:typ}
+and attr = int option
+
+and typed_term = {desc:term; typ:typ; attr:attr}
 and term =
   | Const of const
   | Var of id
@@ -201,7 +203,7 @@ let trans_desc trans = function
   | TSome t -> TSome (trans.tr_term t)
 
 let trans_term trans t =
-  {desc = trans.tr_desc t.desc; typ = trans.tr_typ t.typ}
+  {desc = trans.tr_desc t.desc; typ = trans.tr_typ t.typ; attr=t.attr}
 
 
 
@@ -353,7 +355,7 @@ let trans2_gen_desc tr env = function
   | TNone -> TNone
   | TSome t -> TSome (tr.tr2_term env t)
 
-let trans2_gen_term tr env t = {desc = tr.tr2_desc env t.desc; typ = tr.tr2_typ env t.typ}
+let trans2_gen_term tr env t = {desc = tr.tr2_desc env t.desc; typ = tr.tr2_typ env t.typ; attr = t.attr}
 
 
 let make_trans2 () =
@@ -935,7 +937,7 @@ let tr_col2_desc tc env = function
 let tr_col2_term tc env t =
   let acc1,desc' = tc.tr_col2_desc env t.desc in
   let acc2,typ' = tc.tr_col2_typ env t.typ in
-  tc.tr_col2_app acc1 acc2, {desc=desc'; typ=typ'}
+  tc.tr_col2_app acc1 acc2, {desc=desc'; typ=typ'; attr = t.attr}
 
 
 let make_tr_col2 empty app =
@@ -1212,7 +1214,7 @@ let fold_tr_desc fld env = function
 let fold_tr_term fld env t =
   let env',desc' = fld.fold_tr_desc env t.desc in
   let env'',typ' = fld.fold_tr_typ env' t.typ in
-  env'', {desc=desc'; typ=typ'}
+  env'', {desc=desc'; typ=typ'; attr=t.attr}
 
 
 let make_fold_tr () =

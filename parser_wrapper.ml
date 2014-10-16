@@ -45,7 +45,7 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Pervasives.not"}, [t] -> make_not t
   | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
   | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
-  | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ}
+  | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ; attr=None}
   | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
   | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
   | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
@@ -265,13 +265,13 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     | Tpat_any -> PAny
     | Tpat_var(x,_) -> PVar(from_ident x typ')
     | Tpat_alias(p,x,_) -> PAlias(from_pattern p, from_ident x typ')
-    | Tpat_constant(Const_int n) -> PConst {desc=Const(Int n);typ=typ'}
-    | Tpat_constant(Const_char c) -> PConst {desc=Const(Char c);typ=typ'}
-    | Tpat_constant(Const_string s) -> PConst {desc=Const(String s);typ=typ'}
-    | Tpat_constant(Const_float s) -> PConst {desc=Const(Float s);typ=typ'}
-    | Tpat_constant(Const_int32 n) -> PConst {desc=Const(Int32 n);typ=typ'}
-    | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'}
-    | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'}
+    | Tpat_constant(Const_int n) -> PConst {desc=Const(Int n);typ=typ'; attr=None}
+    | Tpat_constant(Const_char c) -> PConst {desc=Const(Char c);typ=typ'; attr=None}
+    | Tpat_constant(Const_string s) -> PConst {desc=Const(String s);typ=typ'; attr=None}
+    | Tpat_constant(Const_float s) -> PConst {desc=Const(Float s);typ=typ'; attr=None}
+    | Tpat_constant(Const_int32 n) -> PConst {desc=Const(Int32 n);typ=typ'; attr=None}
+    | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'; attr=None}
+    | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'; attr=None}
     | Tpat_tuple ps -> PTuple (List.map from_pattern ps)
     | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "None" -> PNone
     | Tpat_construct(_, cstr_desc, [p], _) when get_constr_name cstr_desc typ env = "Some" -> PSome (from_pattern p)
@@ -353,7 +353,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   | Texp_ident(path, _, _) ->
       make_var @@ from_ident_path path typ'
   | Texp_constant c ->
-      {desc = Const (from_constant c); typ = typ'}
+      {desc = Const (from_constant c); typ = typ'; attr=None}
   | Texp_let(rec_flag, [p,e1], e2)
        when (function {pat_desc=PVar _} -> false | _ -> true) (from_pattern p) ->
       let p' = from_pattern p in
@@ -414,7 +414,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         | Total -> []
         | Partial -> [make_pvar (Id.new_var_id x), true_term, make_fail typ2]
       in
-      make_fun x {desc=Match(make_var x, List.map aux pats@tail);typ=typ2}
+      make_fun x {desc=Match(make_var x, List.map aux pats@tail);typ=typ2; attr=None}
   | Texp_apply(e, es) ->
       let t = from_expression e in
       let aux = function
@@ -437,7 +437,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         | Total -> pats'
         | Partial -> pats'@[make_pvar (Id.new_var t.typ), true_term, make_fail typ']
       in
-      {desc=Match(t, pats''); typ=typ'}
+      {desc=Match(t, pats''); typ=typ'; attr=None}
   | Texp_try(e,pats) ->
       let aux (p,e) =
         match e.exp_desc with
@@ -446,10 +446,10 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       in
       let x = Id.new_var ~name:"e" !typ_excep in
       let pats' = List.map aux pats in
-      let pats'' = pats' @ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'}] in
-      {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pats''); typ=typ'}); typ=typ'}
+      let pats'' = pats' @ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=None}] in
+      {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pats''); typ=typ'; attr=None}); typ=typ'; attr=None}
   | Texp_tuple es ->
-      {desc=Tuple(List.map from_expression es); typ=typ'}
+      {desc=Tuple(List.map from_expression es); typ=typ'; attr=None}
   | Texp_construct(_,desc,es,_) ->
       let desc =
         match get_constr_name desc typ env, es with
@@ -464,7 +464,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             add_exc_env desc env;
             Constr(name, List.map from_expression es)
       in
-      {desc=desc; typ=typ'}
+      {desc=desc; typ=typ'; attr=None}
   | Texp_variant _ -> unsupported "expression (variant)"
   | Texp_record(fields,None) ->
       let fields' = List.sort ~cmp:(fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
@@ -472,7 +472,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         get_label_name label env, (from_mutable_flag label.lbl_mut, from_expression e)
       in
       let fields'' = List.map aux fields' in
-      {desc=Record fields''; typ=typ'}
+      {desc=Record fields''; typ=typ'; attr=None}
   | Texp_record(fields, Some init) ->
       let labels = Array.to_list (snd3 @@ List.hd fields).lbl_all in
       let r = Id.new_var ~name:"r" typ' in
@@ -485,18 +485,20 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             name, (flag, from_expression e)
           with Not_found ->
             name, (flag, {desc=Field(lbl.lbl_pos, name, flag,
-                                    {desc=Var r; typ=Id.typ r});
-                          typ=from_type_expr env lbl.lbl_arg})
+                                    {desc=Var r; typ=Id.typ r; attr=None});
+                          typ=from_type_expr env lbl.lbl_arg;
+                          attr=None})
         in
         List.map aux labels
       in
-      make_let [r, [], from_expression init] {desc=Record fields';typ=typ'}
+      make_let [r, [], from_expression init] {desc=Record fields';typ=typ'; attr=None}
   | Texp_field(e,_,label) ->
       {desc=Field(label.lbl_pos,
                  get_label_name label env,
                  from_mutable_flag label.lbl_mut,
                  from_expression e);
-       typ=typ'}
+       typ=typ';
+       attr=None}
   | Texp_setfield(e1,_,label,e2) ->
       {desc=SetField(None,
                      label.lbl_pos,
@@ -504,14 +506,15 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                      from_mutable_flag label.lbl_mut,
                      from_expression e1,
                      from_expression e2);
-       typ=typ'}
+       typ=typ';
+       attr=None}
   | Texp_array _ -> unsupported "expression (array)"
   | Texp_ifthenelse(e1,e2,e3) ->
       let t1 = from_expression e1 in
       let t2 = from_expression e2 in
       let t3 =
         match e3 with
-          None -> {desc=Const Unit; typ=TUnit}
+          None -> {desc=Const Unit; typ=TUnit; attr=None}
         | Some e3 -> from_expression e3
       in
       make_if t1 t2 t3
@@ -607,5 +610,5 @@ let from_use_file ast =
     | Decl_type _ -> t
     | Decl_exc _ -> t
   in
-  let t = List.fold_left aux {desc=Const Unit;typ=TUnit} defs in
+  let t = List.fold_left aux {desc=Const Unit;typ=TUnit; attr=None} defs in
   Trans.merge_let_fun t

@@ -234,7 +234,7 @@ let rec infer_effect env t =
   | App(t1, []) -> assert false
   | App(t1, t2::t3::ts) ->
       let typ = (make_app t1 [t2]).typ in
-      infer_effect env {desc=App({desc=App(t1,[t2]);typ=typ}, t3::ts); typ=t.typ}
+      infer_effect env {desc=App({desc=App(t1,[t2]);typ=typ;attr=None}, t3::ts); typ=t.typ; attr=None}
   | App(t1, [t2]) ->
       let typed1 = infer_effect env t1 in
       let typed2 = infer_effect env t2 in
@@ -430,7 +430,7 @@ let rec add_preds_cont_aux k t =
     | Bottom -> Bottom
     | _ -> assert false
   in
-  {desc=desc; typ=t.typ}
+  {t with desc}
 
 let add_preds_cont k t =
   let t' = add_preds_cont_aux k t in
@@ -505,7 +505,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e};
   begin
     match t, !sol e with
-    | ConstCPS c, ENone -> {desc=Const c; typ=typ_orig}
+    | ConstCPS c, ENone -> {desc=Const c; typ=typ_orig; attr=None}
     | BottomCPS, ECont ->
         let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
@@ -679,7 +679,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
     | BinOpCPS(op, t1, t2), ENone ->
         let t1' = transform k_post t1 in
         let t2' = transform k_post t2 in
-        {desc=BinOp(op, t1', t2'); typ=typ_orig}
+        {desc=BinOp(op, t1', t2'); typ=typ_orig; attr=None}
     | BinOpCPS(op, t1, t2), ECont ->
         let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
@@ -692,7 +692,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                (make_fun x1
                   (make_app_cont t2.effect t2'
                      (make_fun x2
-                        (make_app (make_var k) [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig}])))))
+                        (make_app (make_var k) [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig; attr=None}])))))
     | BinOpCPS(op, t1, t2), EExcep ->
         let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
@@ -711,7 +711,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                         (make_app_excep t2.effect t2'
                            (make_fun x2
                               (make_app (make_var k)
-                                 [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig}]))
+                                 [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig; attr=None}]))
                            (make_var h')))
                      (make_var h'))))
     | NotCPS t1, ENone ->
