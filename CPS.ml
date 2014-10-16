@@ -476,6 +476,11 @@ let rec trans_typ typ_orig typ =
       raise (Fatal "bug? (CPS.trans_typ)")
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
+let trans_var' x typ =
+  let x' = trans_var x in
+  match Id.typ x' with
+  | TFun _ -> x'
+  | _ -> Id.set_typ x' typ
 
 let get_tfun_effect = function
     TFunCPS(e, _, _) -> e
@@ -639,7 +644,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
         let k = Id.new_var ~name:("k" ^ k_post) @@ TFun(r,typ_result) in
         let aux (f,t) =
           let t' = transform (k_post ^ "_" ^ Id.name f.id_cps) t in
-          Id.set_typ (trans_var f) (t'.typ), [], t'
+          trans_var' f t'.typ, [], t'
         in
         let bindings' = List.map aux bindings in
         let t1' = transform k_post t1 in
@@ -657,7 +662,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let aux (f,t) =
           let t' = transform (k_post ^ "_" ^ Id.name f.id_cps) t in
-          Id.set_typ (trans_var f) (t'.typ), [], t'
+          trans_var' f t'.typ, [], t'
         in
         let bindings' = List.map aux bindings in
         let t1' = transform k_post t1 in

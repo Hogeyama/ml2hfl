@@ -149,7 +149,7 @@ doc:
 clean:
 	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~
 	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
-	rm -f $(NAME).byte $(NAME).opt
+	rm -f $(NAME).byte $(NAME).opt $(NAME).top
 
 clean-test:
 	rm */*.trecs_out */*.hors */*.annot

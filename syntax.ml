@@ -1272,6 +1272,15 @@ let rec get_vars_pat pat =
 
 let get_fv = make_col2 [] (@@@)
 
+let get_fv_typ vars typ = []
+(*
+  match typ with
+  | TPred(x, preds) -> List.fold_left (fun acc t -> get_fv.col2_term (x::vars) t @@@ acc) preds
+  | TFun(x, typ) -> ...
+  | TTuple xs -> ...
+  | _ -> get_fv.col2_typ_rec vars typ
+*)
+
 let get_fv_term vars t =
   match t.desc with
   | Var x -> if Id.mem x vars then [] else [x]
@@ -1291,6 +1300,7 @@ let get_fv_term vars t =
   | _ -> get_fv.col2_term_rec vars t
 
 let () = get_fv.col2_term <- get_fv_term
+let () = get_fv.col2_typ <- get_fv_typ
 let get_fv ?(cmp=Id.same) t =
   List.unique ~cmp @@ get_fv.col2_term [] t
 

@@ -429,9 +429,9 @@ let add_ext_funs_cps prog =
   {prog with defs=defs'}
 
 let abstract_prog prog =
-  let env = List.map (fun f -> f, abstract_typ (List.assoc f prog.env)) (get_ext_funs prog) in
+  let env = List.map (fun f -> f, abstract_typ @@ List.assoc f prog.env) (get_ext_funs prog) in
   let defs = List.flatten_map (abstract_def prog.env) prog.defs in
-  {env=env; defs=defs; main=prog.main}
+  {env; defs; main=prog.main}
 
 let abstract orig_fun_list force prog =
   let labeled,prog = add_label prog in
