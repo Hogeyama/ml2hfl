@@ -68,7 +68,7 @@ let rec abstract_term env cond pbs t typ =
         in
           coerce env cond pbs typ' typ src
     | Const c -> coerce env cond pbs (get_const_typ c) typ t
-    | App(Const RandInt, t) -> App(abstract_term env cond pbs t (TFun(typ_int, fun _ -> typ)), Const (Tuple 0))
+    | App(Const (RandInt _), t) -> App(abstract_term env cond pbs t (TFun(typ_int, fun _ -> typ)), Const (Tuple 0))
     | App(t1, t2) ->
         let typ' = get_typ env t1 in
         let typ1,typ2 =

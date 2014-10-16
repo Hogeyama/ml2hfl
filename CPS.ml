@@ -13,7 +13,7 @@ let new_evar () = incr counter; !counter
 type typed_term = {t_cps:t_cps; typ_cps:typ_cps; typ_orig:typ; effect:effect_var}
 and typed_ident = {id_cps:id; id_typ:typ_cps}
 and t_cps =
-    ConstCPS of const
+  | ConstCPS of const
   | UnknownCPS
   | BottomCPS
   | RandIntCPS
@@ -31,7 +31,7 @@ and t_cps =
   | RaiseCPS of typed_term
   | TryWithCPS of typed_term * typed_term
 and typ_cps =
-    TBaseCPS of Syntax.typ
+  | TBaseCPS of Syntax.typ
   | TFunCPS of effect_var * typ_cps * typ_cps
   | TTupleCPS of typ_cps list
 and effect = EUnknown (* for debug *) | ENone | ECont | EExcep
@@ -42,26 +42,26 @@ and effect_constr =
 
 let effect_max x y =
   match x, y with
-      EUnknown, _
-    | _, EUnknown -> assert false
-    | ENone, _ -> y
-    | ECont, EExcep -> EExcep
-    | ECont, _ -> ECont
-    | EExcep, _ -> EExcep
+  | EUnknown, _
+  | _, EUnknown -> assert false
+  | ENone, _ -> y
+  | ECont, EExcep -> EExcep
+  | ECont, _ -> ECont
+  | EExcep, _ -> EExcep
 
 let effect_cont = 0
 let init_sol n = if n = 0 then ECont else EUnknown
 let sol = ref init_sol
 
 let rec print_typ_cps' fm = function
-    TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
+  | TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
   | TFunCPS(e,typ1,typ2) ->
       Format.fprintf fm "(%a -e%d->@ %a)" print_typ_cps' typ1 e print_typ_cps' typ2
   | TTupleCPS typs ->
       Format.fprintf fm "(%a)" (print_list print_typ_cps' " *@ ") typs
 
 let rec print_typ_cps fm = function
-    TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
+  | TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
   | TFunCPS(e,typ1,typ2) when !sol e = EUnknown ->
       Format.fprintf fm "(@[%a -%a->@ %a@])" print_typ_cps typ1 print_evar e print_typ_cps typ2
   | TFunCPS(e,typ1,typ2) when !sol e = ENone ->
@@ -107,20 +107,7 @@ and print_t_cps fm = function
       in
       Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "") bindings print_typed_term t
   | BinOpCPS(op, t1, t2) ->
-      let op =
-        match op with
-        | Eq -> "="
-        | Lt -> "<"
-        | Gt -> ">"
-        | Leq -> "<="
-        | Geq -> ">="
-        | And -> "&&"
-        | Or -> "||"
-        | Add -> "+"
-        | Sub -> "-"
-        | Mult -> "*"
-      in
-      Format.fprintf fm "%a %s %a" print_typed_term t1 op print_typed_term t2
+      Format.fprintf fm "%a %s %a" print_typed_term t1 (string_of_binop op) print_typed_term t2
   | NotCPS t ->
       Format.fprintf fm "not %a" print_typed_term t
   | EventCPS s -> Format.fprintf fm "{%s}" s
@@ -829,43 +816,43 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
 
 let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
   match t with
-      ConstCPS _ -> []
-    | BottomCPS -> []
-    | RandIntCPS -> []
-    | RandValueCPS typ -> []
-    | VarCPS x -> []
-    | FunCPS(x, t1) ->
-        assoc_typ_cps f t1
-    | AppCPS(t1, t2) ->
-        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
-    | IfCPS(t1, t2, t3) ->
-        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2 @@@ assoc_typ_cps f t3
-    | LetCPS(flag, bindings, t1) ->
-        let aux (g,t) =
-          let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
-            typs1 @@@ assoc_typ_cps f t
-        in
-          assoc_typ_cps f t1 @@@ List.rev_flatten_map aux bindings
-    | BinOpCPS(op, t1, t2) ->
-        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
-    | NotCPS t1 ->
-        assoc_typ_cps f t1
-    | UnknownCPS -> []
-    | EventCPS s -> []
-    | ProjCPS(_, t1) ->
-        assoc_typ_cps f t1
-    | TupleCPS ts ->
-        List.rev_flatten @@ List.map (assoc_typ_cps f) ts
-    | RaiseCPS t1 ->
-        assoc_typ_cps f t1
-    | TryWithCPS(t1,t2) ->
-        assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
+  | ConstCPS _ -> []
+  | BottomCPS -> []
+  | RandIntCPS -> []
+  | RandValueCPS typ -> []
+  | VarCPS x -> []
+  | FunCPS(x, t1) ->
+      assoc_typ_cps f t1
+  | AppCPS(t1, t2) ->
+      assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
+  | IfCPS(t1, t2, t3) ->
+      assoc_typ_cps f t1 @@@ assoc_typ_cps f t2 @@@ assoc_typ_cps f t3
+  | LetCPS(flag, bindings, t1) ->
+      let aux (g,t) =
+        let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
+        typs1 @@@ assoc_typ_cps f t
+      in
+      assoc_typ_cps f t1 @@@ List.rev_flatten_map aux bindings
+  | BinOpCPS(op, t1, t2) ->
+      assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
+  | NotCPS t1 ->
+      assoc_typ_cps f t1
+  | UnknownCPS -> []
+  | EventCPS s -> []
+  | ProjCPS(_, t1) ->
+      assoc_typ_cps f t1
+  | TupleCPS ts ->
+      List.rev_flatten @@ List.map (assoc_typ_cps f) ts
+  | RaiseCPS t1 ->
+      assoc_typ_cps f t1
+  | TryWithCPS(t1,t2) ->
+      assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
 
 let assoc_typ_cps f typed =
   match assoc_typ_cps f typed with
-      [] -> raise Not_found
-    | [typ] -> typ
-    | typs -> Format.printf "%a: %d@." Id.print f (List.length typs); assert false
+  | [] -> raise Not_found
+  | [typ] -> typ
+  | typs -> Format.printf "%a: %d@." Id.print f (List.length typs); assert false
 
 
 let rec uncps_ref_type rtyp e etyp =
