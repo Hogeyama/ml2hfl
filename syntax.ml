@@ -23,9 +23,10 @@ and const = (* only base type constants *)
   | RandInt of bool
   | RandValue of typ * bool
 
-and attr = int option
+and attr =
+  | ARand_label of int
 
-and typed_term = {desc:term; typ:typ; attr:attr}
+and typed_term = {desc:term; typ:typ; attr:attr option}
 and term =
   | Const of const
   | Var of id

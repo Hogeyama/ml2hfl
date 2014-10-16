@@ -173,17 +173,17 @@ and trans_term post xs env t =
   | S.Const c -> [], Const (trans_const c t.S.typ)
   | S.App({S.desc=S.Const(S.RandInt false)}, [{S.desc=S.Const S.Unit}]) ->
       let k = new_id ("k" ^ post) in
-      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const RandInt, Var k)
+      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt 0), Var k)
   | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
       assert (t1 = U.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const RandInt, t2')
+      defs1@defs2, App(Const (RandInt 0), t2')
   | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true))}, [t1;t2]) ->
       assert (t1 = U.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const RandInt, t2')
+      defs1@defs2, App(Const (RandInt 0), t2')
   | S.App({S.desc=S.Const(S.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
@@ -509,8 +509,10 @@ let trans_prog ?(spec=[]) t =
   if debug() then Format.printf "@.PROG_C:@.%a@." CEGAR_print.prog_typ prog;
   let prog = pop_main prog in
   if debug() then Format.printf "@.PROG_D:@.%a@." CEGAR_print.prog_typ prog;
-  let prog,map,rmap = id_prog prog in
+  let prog = assign_id_to_rand prog in
   if debug() then Format.printf "@.PROG_E:@.%a@." CEGAR_print.prog_typ prog;
+  let prog,map,rmap = id_prog prog in
+  if debug() then Format.printf "@.PROG_F:@.%a@." CEGAR_print.prog_typ prog;
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
   prog,map,rmap,get_rtyp
 
@@ -659,7 +661,7 @@ let init_cont _ acc _ = List.rev acc
 let rec trans_ce_aux labeled ce acc defs t k =
   if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
-  | Const RandInt -> assert false
+  | Const (RandInt _) -> assert false
   | Const c -> k ce acc (Const c)
   | Var x -> k ce acc (Var x)
   | App(Const Not, t) ->
@@ -669,7 +671,7 @@ let rec trans_ce_aux labeled ce acc defs t k =
       trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
       trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
       k ce acc (make_app (Const op) [t1;t2])))
-  | App(Const RandInt, t) ->
+  | App(Const (RandInt _), t) ->
       let r = new_id "r" in
       trans_ce_aux labeled ce acc defs (App(t,Var r)) k
   | App(t1,t2) ->

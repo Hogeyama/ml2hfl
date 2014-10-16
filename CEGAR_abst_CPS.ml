@@ -46,7 +46,7 @@ let rec beta_reduce_term = function
 let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
-let rec expand_nonrec orig_fun_list force {env=env;defs=defs;main=main} =
+let rec expand_nonrec orig_fun_list force {env;defs;main} =
   let nonrec = get_nonrec defs main orig_fun_list force in
   let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
   let rec loop defs =
@@ -58,7 +58,7 @@ let rec expand_nonrec orig_fun_list force {env=env;defs=defs;main=main} =
   let defs' = List.filter (fun (f,_,_,_,_) -> not (List.mem_assoc f nonrec)) defs in
   let defs'' = loop defs' in
   let defs''' = List.map beta_reduce_def defs'' in
-  {env=env; defs=defs'''; main=main}
+  {env; defs=defs'''; main}
 
 
 
@@ -174,7 +174,7 @@ let rec eta_expand_term env t typ =
   if false && debug() then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
-  | Const RandInt
+  | Const (RandInt _)
   | Const CPS_result -> t
   | (Var _ | Const _ | App _) when is_base_term env t -> t
   | Var x -> eta_expand_term_aux env t typ
@@ -261,11 +261,19 @@ let rec abstract_term must env cond pts t typ =
       let t3' = hd @@ abstract_term must env (make_not t1::cond) pts t3 typ in
       [make_if t1' t2' t3']
   | App(Const (Label n), t) -> [make_label n (hd @@ abstract_term must env cond pts t typ)]
-  | App(Const RandInt, t) ->
+  | App(Const (RandInt _), t) ->
       let typ' =
         match get_typ env t with
         | TFun(typ', _) -> typ'
         | _ -> assert false
+      in
+      let t' = hd @@ abstract_term must env cond pts t (TFun(typ', fun _ -> typ)) in
+      [make_app t' @@ abst_rand_int env cond pts typ']
+  | App(App(Const (TypeAnnot typ''), Const (RandInt _)), t) ->
+      let typ' =
+        match typ'' with
+        | TFun(TFun(typ', _), _) -> typ'
+        | _ -> Format.printf "TypeAnnot: %a@." CEGAR_print.typ typ''; assert false
       in
       let t' = hd @@ abstract_term must env cond pts t (TFun(typ', fun _ -> typ)) in
       [make_app t' @@ abst_rand_int env cond pts typ']

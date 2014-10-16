@@ -38,7 +38,7 @@ let conv_const c =
   | CmpPoly(typ,">=") ->
      Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
   | Int(n) -> Fpat.Const.Int(n)
-  | RandInt -> Fpat.Const.RandInt
+  | RandInt _ -> Fpat.Const.RandInt
   | Add -> Fpat.Const.Add Fpat.Type.mk_int
   | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
@@ -87,7 +87,7 @@ let inv_const c =
   | Fpat.Const.Eq ty when Fpat.Type.is_bool ty -> EqBool
   | Fpat.Const.Eq ty when Fpat.Type.is_int ty -> EqInt
   | Fpat.Const.Int(n) -> Int(n)
-  | Fpat.Const.RandInt -> RandInt
+  | Fpat.Const.RandInt -> RandInt 0
   | Fpat.Const.Add ty when Fpat.Type.is_int ty -> Add
   | Fpat.Const.Sub ty when Fpat.Type.is_int ty -> Sub
   | Fpat.Const.Mul ty when Fpat.Type.is_int ty -> Mul

@@ -84,7 +84,7 @@ and print_const fm = function
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "rand_bool"
-  | RandInt -> Format.fprintf fm "rand_int"
+  | RandInt n -> Format.fprintf fm "rand_int[%d]" n
   | RandVal s -> Format.fprintf fm "rand_%s" s
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"
@@ -277,7 +277,7 @@ and print_const_ML fm = function
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "(Random.bool())"
-  | RandInt -> Format.fprintf fm "rand_int()"
+  | RandInt _ -> Format.fprintf fm "rand_int()"
   | RandVal s -> Format.fprintf fm "rand_%s()" s
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
@@ -363,7 +363,7 @@ and print_const_as_tree fm = function
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "RandBool"
-  | RandInt -> Format.fprintf fm "RandInt"
+  | RandInt _ -> Format.fprintf fm "RandInt"
   | RandVal s -> Format.fprintf fm "Rand_%s" s
   | And -> Format.fprintf fm "And"
   | Or -> Format.fprintf fm "Or"

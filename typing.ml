@@ -98,7 +98,7 @@ let get_typ_const = function
   | Nativeint _ -> TAbst "nativeint"
   | CPS_result -> TResult
   | RandBool -> TBool
-  | RandInt ->
+  | RandInt _ ->
       let typ = new_tvar () in
       TFun(TFun(TInt,typ),typ)
   | RandVal s -> TAbst s

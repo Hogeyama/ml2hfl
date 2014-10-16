@@ -176,7 +176,7 @@ let rec get_const_typ = function
   | Int32 _ -> typ_abst "int32"
   | Int64 _ -> typ_abst "int64"
   | Nativeint _ -> typ_abst "nativeint"
-  | RandInt -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
+  | RandInt _ -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
   | RandBool -> TBase(TBool,nil)
   | RandVal s -> TBase(TAbst s,nil)
   | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
@@ -215,7 +215,7 @@ let rec get_typ env = function
   | Var x -> List.assoc x env
   | App(Const (Label _), t) ->
       get_typ env t
-  | App(Const RandInt, t) ->
+  | App(Const (RandInt _), t) ->
       let typ2 = match get_typ env t with TFun(_,typ) -> typ (Var "") | _ -> assert false in
       typ2
   | App(App(App(Const If, _), t1), t2) ->
@@ -573,3 +573,34 @@ let rec has_no_effect t =
   | App(t1,t2) -> false
   | Let(y,t1,t2) -> has_no_effect t1 && has_no_effect t2
   | Fun(y,typ,t1) -> true
+
+
+
+let assign_id_to_rand prog =
+  let count = ref 0 in
+  let rec aux t =
+    match t with
+    | Const (RandInt _) -> incr count; Const (RandInt !count)
+    | Const c -> Const c
+    | Var x -> Var x
+    | App(t1,t2) -> App(aux t1, aux t2)
+    | Let(x,t1,t2) -> Let(x, aux t1, aux t2)
+    | Fun(x,typ,t) -> Fun(x, typ, aux t)
+  in
+  map_body_prog aux prog
+
+let rec add_pred_to_rand_term map t =
+  match t with
+  | Const (RandInt n) ->
+      let preds =
+        try
+          List.assoc n map
+        with Not_found -> fun _ -> []
+      in
+      App(Const (TypeAnnot(TFun(TFun(TBase(TInt, preds), fun _ -> typ_result), fun _ -> typ_result))), t)
+  | Const c -> Const c
+  | Var x -> Var x
+  | App(t1,t2) -> App(add_pred_to_rand_term map t1, add_pred_to_rand_term map t2)
+  | Let(x,t1,t2) -> Let(x, add_pred_to_rand_term map t1, add_pred_to_rand_term map t2)
+  | Fun(x,typ,t) -> Fun(x, typ, add_pred_to_rand_term map t)
+let add_pred_to_rand map = map_body_prog (add_pred_to_rand_term map)

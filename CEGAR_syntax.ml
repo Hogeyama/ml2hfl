@@ -22,7 +22,7 @@ type const =
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | RandInt
+  | RandInt of int
   | RandBool
   | RandVal of string
   | And
@@ -47,6 +47,7 @@ type const =
   | Label of int
   | TreeConstr of int * string
   | CPS_result
+  | TypeAnnot of typ
 
 
 and t =
