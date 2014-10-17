@@ -63,7 +63,7 @@ let preprocess t spec =
     begin
       let oc = open_out
                  (Filename.chop_extension
-                    !Flag.filename ^ "_preprocessed" ^ ".ml")
+                    !Flag.filename ^ ".pml")
       in
       let ocf =
         Format.make_formatter
