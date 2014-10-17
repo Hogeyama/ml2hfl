@@ -1436,7 +1436,7 @@ and print_desc pri typ fm desc =
       let b = ref true in
       let print_binding fm (f,xs,t1) =
         let pre = if !b then "let" ^ s_rec else "and" in
-        Format.printf "@[<hov 2>%s@ %a%a =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
+        fprintf fm "@[<hov 2>%s@ %a%a =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
         b := false
       in
       let print_bindings bs = print_list print_binding "" bs in
@@ -1619,7 +1619,7 @@ let rec print_term' pri fm t =
         let b = ref true in
         let print_binding fm (f,xs,t1) =
           let pre = if !b then "let" ^ s_rec else "and" in
-          Format.printf "@[<hov 2>%s%a =@ %a@ @]" pre (print_ids true) (f::xs) (print_term' p) t1;
+          fprintf fm "@[<hov 2>%s%a =@ %a@ @]" pre (print_ids true) (f::xs) (print_term' p) t1;
           b := false
         in
         let print_bindings bs = print_list print_binding "" bs in
