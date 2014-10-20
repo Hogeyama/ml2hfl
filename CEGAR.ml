@@ -119,10 +119,18 @@ let cegar prog info =
 
 
 
+let map1 =
+  [1, fun x -> [make_gt x (make_int 0); make_lt x (make_int 0)]]
+
+let map2 =
+  let n = Var "n_1009" in
+  [2, fun x -> [make_eq_int x (make_int 0); make_gt x n]]
+
+let map3 =
+  let n = Var "n_1009" in
+  [2, fun x -> [make_or (make_gt x n) (make_leq x (make_sub (make_int 0) n))]]
+
 let cegar prog info =
   let x = new_id "x" in
-  let map =
-    [1, fun x -> [make_gt x (make_int 0); make_lt x (make_int 0)]]
-  in
-  let prog' = {prog with env = add_renv map prog.env} in
+  let prog' = {prog with env = add_renv map3 prog.env} in
   cegar prog' info

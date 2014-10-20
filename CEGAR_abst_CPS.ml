@@ -180,7 +180,12 @@ let rec eta_expand_term env t typ =
   | Var x -> eta_expand_term_aux env t typ
   | App(App(App(Const If, t1), t2), t3) ->
       make_if t1 (eta_expand_term env t2 typ) (eta_expand_term env t3 typ)
-  | App(Const (Label n), t) -> make_label n (eta_expand_term env t typ)
+  | App(Const (Label n), t) -> make_label n @@ eta_expand_term env t typ
+  | App(Const (RandInt n), t) when try ignore (assoc_renv n env); true with Not_found -> false ->
+      let preds = assoc_renv n env in
+      let typ_arg = TBase(TInt, preds) in
+      let typ = TFun(typ_arg, fun _ -> typ) in
+      make_app (Const (RandInt n)) [eta_expand_term env t typ]
   | App _ ->
       let t1,ts = decomp_app t in
       let rec aux ts typ =
@@ -274,22 +279,41 @@ let rec abstract_rand_int must env cond pts preds t typ =
 *)
 
 let rec abstract_rand_int must env cond pts preds t typ =
-  let t' = hd @@ abstract_term must env cond pts (propagate_fun_arg_typ typ' t) typ' in
+  let typ_arg = TBase(TInt, preds) in
+  let typ' = TFun(typ_arg, fun _ -> typ) in
+  let t' = hd @@ abstract_term must env cond pts t typ' in
   let x = new_id "r" in
   let env' = (x,typ_int)::env in
   let preds' = preds (Var x) in
-  let combs =
-    let rec aux ps =
-      match ps with
-      | [] -> [true_term]
-      | p::ps' ->
-          let combs = aux ps' in
-          List.flatten_map (fun acc -> [make_and p acc; make_and (make_not p) acc]) combs
-    in
-    aux preds'
+  let rec make_combs n =
+    if n <= 0
+    then [[]]
+    else
+      let combs = make_combs (n-1) in
+      List.flatten_map (fun acc -> [true::acc; false::acc]) combs
   in
-  let combs' = List.filter (check_exist env cond pbs x) combs in
-  List.fold_left make_or false_term combs'
+  let f = new_id "f" in
+  let cond_combs = make_combs @@ List.length pts in
+  let pred_combs = make_combs @@ List.length preds' in
+  let cts =
+    let aux cond_comb =
+      let cond' = List.map2 (fun b (p,_) -> if b then p else make_not p) cond_comb pts @ cond in
+      let argss =
+        let aux' pred_comb =
+          let args,ps = List.split @@ List.map2 (fun b p -> if b then Const True, p else Const False, make_not p) pred_comb preds' in
+          if check_exist env cond' x @@ List.fold_right make_and ps (Const True)
+          then Some args
+          else None
+        in
+        List.filter_map aux' pred_combs
+      in
+      let cs = List.map2 (fun b (_,t) -> if b then t else make_not t) cond_comb pts in
+      List.fold_right make_and cs (Const True), make_br_exists @@ List.map (make_app (Var f)) argss
+    in
+    List.map aux cond_combs
+  in
+  Let(f, t', List.fold_right (fun (b,t) t' -> make_if b t t') cts (Const Bottom))
+
 
 
 and abstract_term must env cond pts t typ =

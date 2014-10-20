@@ -153,7 +153,7 @@ let rec get_fv = function
   | Const _ -> StringSet.empty
   | Var x -> StringSet.singleton x
   | App(t1, t2) -> StringSet.union (get_fv t1) (get_fv t2)
-  | Let(x,t1,t2) -> StringSet.union (get_fv t1) (StringSet.remove x (get_fv t2))
+  | Let(x,t1,t2) -> StringSet.union (get_fv t1) (StringSet.remove x @@ get_fv t2)
   | Fun(x,_,t) -> StringSet.remove x (get_fv t)
 let get_fv t = StringSet.elements @@ get_fv t
 

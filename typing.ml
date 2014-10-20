@@ -131,6 +131,10 @@ let get_typ_const = function
   | Label _ ->
       let typ = new_tvar () in
       TFun(typ,typ)
+  | TreeConstr(n,_) ->
+      let typ = new_tvar () in
+      let typs = List.make n typ in
+      List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs typ
 
 let rec infer_term env = function
   | Const c -> get_typ_const c

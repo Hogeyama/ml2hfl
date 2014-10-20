@@ -109,7 +109,7 @@ and print_const fm = function
   | Temp s -> Format.fprintf fm "Temp{%s}" s
   | Label n -> Format.fprintf fm "l%d" n
   | CPS_result -> Format.fprintf fm "end"
-  | TreeConstr(_,s) -> Format.fprintf fm "TC[%s]" s
+  | TreeConstr(_,s) -> Format.fprintf fm "$%s" s
 
 and print_arg_var fm (x,typ) =
   match typ with

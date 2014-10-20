@@ -25,6 +25,9 @@ let check env cond pbs p =
 let equiv env cond t1 t2 =
   check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
 
+let satisfiable env cond t =
+  not @@ check_aux env cond @@ make_not t
+
 
 let print_pb fm (p,b) =
   Format.fprintf fm "%a := %a" CEGAR_print.term b CEGAR_print.term p
@@ -254,18 +257,26 @@ let theta pbs t =
   let xps = List.map (function (t, Var x) -> x, t | _ -> assert false) pbs in
   theta xps t
 
-let check_exist env cond pbs x p =
-  Format.printf "check_exists:@.";
-  Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
-  Format.printf "  \exists r. %a ?@." CEGAR_print.term @@ subst x (Var "r") p;
-  let rec input () =
-    Format.printf "[t/f]: @?";
-    match read_line () with
-    | "t" -> true
-    | "f" -> false
-    | _ -> input ()
-  in
-  input ()
+let check_exist env cond x p =
+  if List.for_all ((=) @@ Const True) cond && satisfiable env cond p
+  then true
+  else
+    if check_aux env cond @@ make_not p
+    then false
+    else
+      begin
+        Format.printf "check_exists:@.";
+        Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
+        Format.printf "  \exists r. %a ?@." CEGAR_print.term @@ subst x (Var "r") p;
+        let rec input () =
+          Format.printf "[t/f]: @?";
+          match read_line () with
+          | "t" -> true
+          | "f" -> false
+          | _ -> input ()
+        in
+        input ()
+      end
 
 (*
 let abst_rand_int env cond pbs x p =
