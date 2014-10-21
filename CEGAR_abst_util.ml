@@ -258,25 +258,13 @@ let theta pbs t =
   theta xps t
 
 let check_exist env cond x p =
-  if List.for_all ((=) @@ Const True) cond && satisfiable env cond p
-  then true
-  else
-    if check_aux env cond @@ make_not p
-    then false
-    else
-      begin
-        Format.printf "check_exists:@.";
-        Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
-        Format.printf "  \exists r. %a ?@." CEGAR_print.term @@ subst x (Var "r") p;
-        let rec input () =
-          Format.printf "[t/f]: @?";
-          match read_line () with
-          | "t" -> true
-          | "f" -> false
-          | _ -> input ()
-        in
-        input ()
-      end
+  if debug() then Format.printf "check_exists:@.";
+  if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
+  if debug() then Format.printf "  \exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
+  let xs = List.filter_out ((=) x) @@ get_fv p in
+  let b = FpatInterface.is_sat_forall_exists xs [x] cond p in
+  if debug() then Format.printf "check_exists: %b@."b;
+  b
 
 (*
 let abst_rand_int env cond pbs x p =

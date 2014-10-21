@@ -652,3 +652,13 @@ let compute_strongest_post prog ce =
 
 let implies = Fpat.SMTProver.implies_dyn
 let is_sat = Fpat.SMTProver.is_sat_dyn
+let is_sat_forall_exists xs ys cond p =
+  let open Fpat in
+  let aux x = Fpat.Idnt.make x, Type.mk_int in
+  let p' =
+    Formula.forall (List.map aux xs) @@
+      Formula.exists (List.map aux ys) @@
+        Formula.imply (Formula.band @@ List.map conv_formula cond) @@
+          conv_formula p
+  in
+  Fpat.SMTProver.is_sat_dyn p'

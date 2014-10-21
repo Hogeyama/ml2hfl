@@ -81,6 +81,8 @@ module Pair = struct
     match xs with
     | [x;y] -> x,y
     | _ -> invalid_argument "Pair.of_list"
+  let add_right f x = x, f x
+  let add_left f x = f x, x
 end
 
 module List = struct
