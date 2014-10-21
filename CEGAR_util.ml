@@ -207,17 +207,22 @@ let rec get_const_typ = function
   | Label _ -> assert false
   | Temp _ -> assert false
   | CPS_result -> typ_result
-  | TreeConstr _ -> assert false
+  | TreeConstr(n,_) ->
+      let typ = typ_unit in
+      let typs = List.make n typ in
+      List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs typ
 
 
 
 let rec get_typ env = function
     Const c -> get_const_typ c
   | Var x -> List.assoc x env
+(*
   | App(Const (TreeConstr(n,_)), t) ->
       let typ = get_typ env t in
       let typs = List.make (n-1) typ in
       List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs typ
+*)
   | App(Const (Label _), t) ->
       get_typ env t
   | App(Const (RandInt _), t) ->

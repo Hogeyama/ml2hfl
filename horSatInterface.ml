@@ -28,7 +28,8 @@ let trans_const = function
   | Unit -> TS.PTapp(TS.Name "unit", [])
   | True -> TS.PTapp(TS.FD 0, [])
   | False -> TS.PTapp(TS.FD 1, [])
-  | c -> Format.printf "print_const: %a@." CEGAR_print.term (Const c); assert false
+  | TreeConstr(_,s) -> TS.PTapp(TS.Name s, [])
+  | c -> Format.printf "trans_const: %a@." CEGAR_print.term (Const c); assert false
 
 
 let rec trans_id x =
@@ -40,7 +41,7 @@ let rec trans_id x =
   String.fold_left (fun s c -> s ^ map c) "" x
 
 let rec trans_term = function
-    Const c -> trans_const c
+  | Const c -> trans_const c
   | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (trans_id x), [])
   | Var x -> TS.PTapp (TS.Name (trans_id x), [])
   | App(Const (Label n), t) -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [trans_term t])
@@ -51,18 +52,18 @@ let rec trans_term = function
   | App(t1,t2) ->
       let TS.PTapp(hd, ts1) = trans_term t1 in
       let t2' = trans_term t2 in
-        TS.PTapp(hd, ts1@[t2'])
+      TS.PTapp(hd, ts1@[t2'])
   | Fun _ -> assert false
   | Let _ -> assert false
 
 let rec trans_fun_def (f,xs,t1,es,t2) =
   let rec add_event e t =
     match e with
-        Event s -> TS.PTapp(TS.Name ("event_" ^ s), [t])
-      | Branch n -> assert false(* TS.PTapp(TS.Name ("l" ^ string_of_int n), [t])*)
+    | Event s -> TS.PTapp(TS.Name ("event_" ^ s), [t])
+    | Branch n -> assert false(* TS.PTapp(TS.Name ("l" ^ string_of_int n), [t])*)
   in
-    assert (t1 = Const True);
-    trans_id f, List.map trans_id xs, List.fold_right add_event es (trans_term t2)
+  assert (t1 = Const True);
+  trans_id f, List.map trans_id xs, List.fold_right add_event es (trans_term t2)
 
 let trans_spec (q,e,qs) =
   let aux q = "q" ^ string_of_int q in
