@@ -46,7 +46,7 @@ let rec trans_term = function
   | Var x -> TS.PTapp (TS.Name (trans_id x), [])
   | App(Const (Label n), t) -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [trans_term t])
   | App(App(App(Const If, Const RandBool), t2), t3) ->
-      TS.PTapp(TS.Name "br", [trans_term t2; trans_term t3])
+      TS.PTapp(TS.Name "br_forall", [trans_term t2; trans_term t3])
   | App(App(App(Const If, t1), t2), t3) ->
       TS.PTapp(TS.CASE 2, [trans_term t1; trans_term t2; trans_term t3])
   | App(t1,t2) ->

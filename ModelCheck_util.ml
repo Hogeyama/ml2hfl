@@ -73,17 +73,17 @@ let elim_non_det ({defs=defs;main=main} as prog) =
 
 let make_bottom {env=env;defs=defs;main=main} =
   let bottoms = ref [] in
+  let make_bottom n =
+    let x = "Bottom" ^ string_of_int n in
+    bottoms := (x,n)::!bottoms;
+    Var x
+  in
   let aux_def (f,xs,t1,e,t2) =
     let f_typ = List.assoc f env in
     let env' = get_arg_env f_typ xs @@@ env in
-    let make_bottom n =
-      let x = "Bottom" ^ string_of_int n in
-        bottoms := (x,n)::!bottoms;
-        Var x
-    in
     let rec aux_term t typ =
       match t,typ with
-        Const Bottom, typ -> make_bottom (get_arg_num typ)
+      | Const Bottom, typ -> make_bottom (get_arg_num typ)
       | Const c, _ -> Const c
       | Var x, _ -> Var x
       | App(App(App(Const If, t1), t2), t3), typ ->
@@ -98,16 +98,16 @@ let make_bottom {env=env;defs=defs;main=main} =
               aux_term t3 typ
             with TypeBottom -> make_bottom 0
           in
-            App(App(App(Const If, t1'), t2'), t3')
+          App(App(App(Const If, t1'), t2'), t3')
       | App(Const (Label n), t), typ -> App(Const (Label n), aux_term t typ)
       | App(t1,t2), _ ->
           let typ = get_typ env' t1 in
           let typ' =
             match typ with
-                TFun(typ,_) -> typ
-              | _ -> assert false
+              TFun(typ,_) -> typ
+            | _ -> assert false
           in
-            App(aux_term t1 typ, aux_term t2 typ')
+          App(aux_term t1 typ, aux_term t2 typ')
       | Let _, _ -> assert false
       | Fun _, _ -> assert false
     in
@@ -117,12 +117,10 @@ let make_bottom {env=env;defs=defs;main=main} =
     in
     let typ = List.fold_right app_typ xs f_typ in
     let t2' = aux_term t2 typ in
-      f, xs, t1, e, t2'
+    f, xs, t1, e, t2'
   in
-  let make (x,n) =
-    let xs = Array.to_list (Array.init n (fun _ -> "x")) in
-      x, xs, Const True, [], Const Unit
-  in
+  let bot0 = make_bottom 0 in
+  let make (x,n) = x, List.init n @@ Fun.const "x", Const True, [], bot0 in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (List.unique !bottoms) in
   {env=env; defs=bottom_defs@@@defs'; main=main}
@@ -151,7 +149,7 @@ let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
 
 let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
-let add_funcall_labels top_funs ({env=env;defs=defs} as prog) = 
+let add_funcall_labels top_funs ({env=env;defs=defs} as prog) =
   let top_funs' = List.map Id.to_string top_funs in
   let add_funcall_labels_term f t = let f' = uncapitalize_var f in if List.mem f' top_funs' then App(Var(f'), t) else t in
   let defs' = List.map (fun (f, args, t1, e, t2) -> (f, args, t1, e, add_funcall_labels_term f t2)) defs in

@@ -26,7 +26,6 @@ let check_aux prog top_funs =
   try
     model_check_aux (prog',arity_map,spec)
   with
-  | Assert_failure(s,_,_) as e when s <> "" -> raise e
   | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
 let check_aux_cps prog top_funs =
