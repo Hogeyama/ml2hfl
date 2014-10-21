@@ -1,12 +1,29 @@
+(*
+USED: PLDI2011 as sum
+USED: PEPM2013 as sum
+*)
+(* {SPEC}
+val sum : (x:int) -> r:int[r >= x]
+{SPEC} *)
+(*
 
-let rec append xs__ys =
-  let b,_ = xs__ys true in
-  if b then
-    append (fun _ -> true, 0)
-  else
-    let _,r2 = xs__ys false in
-    assert (r2 = 0)
+let rec sum n =
+  if n <= 0
+  then 0
+  else n + sum (n-1)
 
-let mynot b = if b then false else true
+let main n =
+  assert (n <= sum n)
+ *)
 
-let main_1017 () = append (fun b -> mynot b, 0)
+
+(*{SPEC}
+val f : (x:int[x > 0]) -> r:int
+{SPEC}*)
+
+let rec f n =
+  let r = Random.int 0 in
+  if n = 0
+  then r
+  else f (n-1)
+let main n = f n
