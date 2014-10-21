@@ -272,75 +272,66 @@ let infer labeled is_cp cexs prog =
 let params = ref []
 (** ToDo: exs may contain extra parameters that are not related to the recursive call *)
 let new_params recursive bvs exs =
-  List.unfold
+  List.gen
+    !Flag.number_of_extra_params
     (fun i ->
-     if i < !Flag.number_of_extra_params then
-       let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
-       let ps =
-         List.unfold
-           (fun i ->
-            if i < (List.length bvs' + if !Flag.enable_coeff_const then 1 else 0) then
-              Some(Id.new_var ~name:Flag.extpar_header Type.TInt, i + 1)
-            else
-              None)
-           0
-       in
-       params := !params @ ps;
-       let xs =
-         match recursive with
-           None -> []
-         | Some(xs) -> xs
-       in
-       let ts =
-         (if !Flag.enable_coeff_const (*&& recursive = None*) then
-            Fpat.RefTypInfer.masked_params :=
-              Fpat.Idnt.mk_coeff (Id.to_string (List.hd ps)) ::
-                !Fpat.RefTypInfer.masked_params);
-         (if !Flag.enable_coeff_const then
-            [Term_util.make_var (List.hd ps)]
-          else []) @
-           (*
-    let b = recursive <> None && xs = [] && Fpat.Util.Set.subset bvs' exs in
-            *)
-           List.map2
-             (fun p x ->
-              let _ =
-                (*if b then
-            ()
-          else*) if recursive <> None then
-                  (if xs = [] then
-                     (if List.mem x exs then
-                        Fpat.RefTypInfer.masked_params :=
-                          Fpat.Idnt.mk_coeff (Id.to_string p) ::
-                            !Fpat.RefTypInfer.masked_params
-                     (*this is necessary for l-length_cps-append.ml*))
-                   else if not (List.mem x xs) then
+     let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
+     let ps =
+       List.gen
+         (List.length bvs' + if !Flag.enable_coeff_const then 1 else 0)
+         (fun i -> Id.new_var ~name:Flag.extpar_header Type.TInt)
+     in
+     params := !params @ ps;
+     let xs =
+       match recursive with
+       | None -> []
+       | Some(xs) -> xs
+     in
+     if !Flag.enable_coeff_const (*&& recursive = None*) then
+       Fpat.RefTypInfer.masked_params :=
+         Fpat.Idnt.mk_coeff (Id.to_string (List.hd ps))
+         :: !Fpat.RefTypInfer.masked_params;
+     (if !Flag.enable_coeff_const then
+        [Term_util.make_var (List.hd ps)]
+      else [])
+     @
+       (*
+         let b = recursive <> None
+                 && xs = []
+                 && Fpat.Util.Set.subset bvs' exs
+         in
+        *)
+       List.map2
+         (fun p x ->
+          begin
+            (* some heuristics *)
+            (*if b then () else*)
+            if recursive <> None then
+              (if xs = [] then
+                 begin
+                   (*this is necessary for l-length_cps-append.ml*)
+                   if List.mem x exs then
                      Fpat.RefTypInfer.masked_params :=
-                       Fpat.Idnt.mk_coeff (Id.to_string p) ::
-                         !Fpat.RefTypInfer.masked_params)
-              (* how to deal with non-recursive function calls here? *)
-              (*else
-            if List.mem x exs then
-              Fpat.RefTypInfer.masked_params := Fpat.Idnt.mk_coeff (Fpat.Idnt.make (Id.to_string p)) :: !Fpat.RefTypInfer.masked_params*)
-              in
-              Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
-             (if !Flag.enable_coeff_const then
-                List.tl ps
-              else
-                ps)
-             bvs'
-       in
-       if ts = [] then
-         Some(Term_util.make_int 0, i + 1)
-       else
-         Some(List.fold_left
-                Term_util.make_add
-                (List.hd ts)
-                (List.tl ts),
-              i + 1)
-     else
-       None)
-    0
+                       Fpat.Idnt.mk_coeff (Id.to_string p)
+                       :: !Fpat.RefTypInfer.masked_params
+                 end
+               else if not (List.mem x xs) then
+                 Fpat.RefTypInfer.masked_params :=
+                   Fpat.Idnt.mk_coeff (Id.to_string p)
+                   :: !Fpat.RefTypInfer.masked_params)
+          (* how to deal with non-recursive function calls here? *)
+          (*
+              else if List.mem x exs then
+                Fpat.RefTypInfer.masked_params :=
+                  Fpat.Idnt.mk_coeff
+                    (Fpat.Idnt.make (Id.to_string p))
+                  :: !Fpat.RefTypInfer.masked_params
+           *)
+          end;
+          Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
+         (if !Flag.enable_coeff_const then List.tl ps else ps)
+         bvs'
+     |> List.fold_left Term_util.make_add (Term_util.make_int 0))
 
 let gen_id =
   let cnt = ref 0 in

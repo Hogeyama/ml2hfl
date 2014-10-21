@@ -4,8 +4,8 @@ TEST="$(ls test/*.ml) $(ls test_fpat/*.ml)"
 
 LIMIT=100
 OPTION="-no-exparam -exp2 -limit $LIMIT"
-FPAT_OPTION="-hccs sb -template 2 -ucore -wp-max 2"
-LOG=.sampling_based.log
+FPAT_OPTION="-hccs sb0 -template 1"
+LOG=.sampling_based_old.log
 for i in $TEST
 do
 echo $i

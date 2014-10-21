@@ -272,8 +272,6 @@ let arg_spec =
      "-fpat", Arg.String parse_fpat_arg, "<option> Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
-     "-eap", Arg.Set Fpat.AbsType.extract_atomic_predicates, " Extract atomic predicates";
-     "-enable-cp", Arg.Set Fpat.RefTypInfer.exploit_cut_points, " Exploit cut-points";
      "-mp", Arg.Set Flag.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      (* termination mode *)
      "-termination-disj",
