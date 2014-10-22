@@ -506,7 +506,7 @@ let abstract_prog prog =
   let defs = List.flatten_map (abstract_def prog.env) prog.defs in
   {env; defs; main=prog.main}
 
-let abstract orig_fun_list force prog =
+let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
   |& !Flag.expand_nonrec &> expand_nonrec orig_fun_list force
@@ -516,6 +516,8 @@ let abstract orig_fun_list force prog =
   |@debug()&> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
   |> abstract_prog
   |@debug()&> Format.printf "ABST:@\n%a@." CEGAR_print.prog
+  |> add_funcall_labels top_funs
+  |@debug()&> Format.printf "ABST WITH FUNCALL LABELS:@\n%a@." CEGAR_print.prog
   |> Typing.infer -| initialize_env
   |@(!Flag.debug_abst)&> eval_step_by_step
   |> CEGAR_lift.lift2

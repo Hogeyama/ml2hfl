@@ -133,7 +133,7 @@ let abstract orig_fun_list prog =
 
 
 
-let abstract orig_fun_list force prog =
+let abstract orig_fun_list force prog ?(top_funs=[]) =
   let tmp = get_time() in
   let () =
     if !Flag.print_progress
@@ -141,8 +141,8 @@ let abstract orig_fun_list force prog =
   in
   let labeled,abst =
     match !Flag.pred_abst with
-    | Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract orig_fun_list force prog
-    | Flag.PredAbst -> abstract orig_fun_list prog
+    | Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
+    | Flag.PredAbst -> assert false (* abstract orig_fun_list prog *)
   in
   let () = if false then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in
   let () = if !Flag.print_progress then Color.printf Color.Green "DONE!@.@." in
