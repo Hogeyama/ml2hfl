@@ -143,8 +143,12 @@ let make_label n t = make_app (Const (Label n)) [t]
 let make_let bindings t =
   List.fold_right (fun (x,t) t' -> Let(x,t,t')) bindings t
 
-let make_br_exists ts = make_app (Const (TreeConstr(List.length ts, "br_exists"))) ts
-
+let make_br_exists = function
+  | [] -> assert false
+  | [t] -> t
+  | t::ts ->
+    let make_br_exists_aux t1 t2 = make_app (Const (TreeConstr(2, "br_exists"))) [t1; t2] in
+    List.fold_left make_br_exists_aux t ts
 
 
 
