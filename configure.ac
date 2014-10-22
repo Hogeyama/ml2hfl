@@ -52,6 +52,12 @@ if test "$TRECS" = "no"; then
 fi
 AC_SUBST(TRECS)
 
+AC_PATH_TOOL(HORSAT, horsat, [no], [$PATH:$PWD])
+if test "$HORSAT" = "no"; then
+  AC_MSG_ERROR([HorSat not found])
+fi
+AC_SUBST(HORSAT)
+
 AC_CHECK_PROG(GIT, git, git)
 AC_SUBST(GIT)
 
