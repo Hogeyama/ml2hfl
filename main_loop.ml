@@ -59,6 +59,21 @@ let preprocess t spec =
       Term_util.get_top_funs t, t, fun _ typ -> typ
   in
 
+  if !Flag.exp2 then
+    begin
+      let oc = open_out
+                 (Filename.chop_extension
+                    !Flag.filename ^ ".pml")
+      in
+      let ocf =
+        Format.make_formatter
+          (output oc)
+          (fun () -> flush oc)
+      in
+      Format.fprintf ocf "%a@." Syntax.print_term_typ t;
+      close_out oc
+    end;
+
   (*
   (* ill-formed program *)
   Refine.progWithExparam := (let p, _, _, _ = CEGAR_trans.trans_prog !ExtraParamInfer.withExparam in p);

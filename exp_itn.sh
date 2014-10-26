@@ -4,8 +4,8 @@ TEST="$(ls test/*.ml) $(ls test_fpat/*.ml)"
 
 LIMIT=100
 OPTION="-no-exparam -exp2 -limit $LIMIT"
-FPAT_OPTION="-hccs it"
-LOG=.ppdp2009.log
+FPAT_OPTION="-hccs it -disable-interp-simp"
+LOG=.itn.log
 for i in $TEST
 do
 echo $i
