@@ -124,8 +124,6 @@ let () = Format.set_margin 120
 let color = ref false
 let color_always = ref false
 
-let extpar_header = "_ep"
-
 let write_annot = ref true
 
 (* termination-mode option *)
@@ -136,7 +134,3 @@ let separate_pred = ref false
 let split_callsite = ref false
 let add_closure_depth = ref false
 let add_closure_exparam = ref false
-
-(* relatively-complete-mode option *)
-let enable_coeff_const = ref false
-let number_of_extra_params = ref 1

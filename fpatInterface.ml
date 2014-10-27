@@ -61,7 +61,7 @@ let rec conv_term t =
   | Const(c) ->
      Fpat.Term.mk_const (conv_const c)
   | Var(x) ->
-     if is_parameter x || isEX_COEFFS x then
+     if Fpat.EHCCSSolver.is_parameter x || isEX_COEFFS x then
        Fpat.Term.mk_var (Fpat.Idnt.mk_coeff x)
      else
        Fpat.Term.mk_var (Fpat.Idnt.make x)
@@ -180,33 +180,6 @@ let conv_prog (typs, fdefs, main) =
       List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
     Fpat.Prog.main = main }
 
-let init prog =
-  let prog =
-    conv_prog
-      (prog.CEGAR_syntax.env,
-       prog.CEGAR_syntax.defs,
-       prog.CEGAR_syntax.main)
-  in
-  prog
-  |> Fpat.RefTypJudge.mk_temp_env
-  |> List.map snd
-  |> List.concat_map Fpat.RefType.pvars
-  |> List.map
-       (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args)
-  |> List.unique
-  |> Fpat.HCCSSolver.init_rsrefine
-
-let verify fs (*cexs*) prog =
-  let prog =
-    conv_prog
-      (prog.CEGAR_syntax.env,
-       prog.CEGAR_syntax.defs,
-       prog.CEGAR_syntax.main)
-  in
-  Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
-  assert false(*Verifier.verify fs prog*);
-  Format.printf "END verification@,@]"
-
 let rec inv_abst_type aty =
   match aty with
   | Fpat.AbsType.Base(Fpat.TypConst.Ext(id), x, ts) ->
@@ -246,6 +219,33 @@ let rec inv_abst_type aty =
      assert false
 
 
+let init prog =
+  let prog =
+    conv_prog
+      (prog.CEGAR_syntax.env,
+       prog.CEGAR_syntax.defs,
+       prog.CEGAR_syntax.main)
+  in
+  prog
+  |> Fpat.RefTypJudge.mk_temp_env
+  |> List.map snd
+  |> List.concat_map Fpat.RefType.pvars
+  |> List.map
+       (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args)
+  |> List.unique
+  |> Fpat.HCCSSolver.init_rsrefine
+
+let verify fs (*cexs*) prog =
+  let prog =
+    conv_prog
+      (prog.CEGAR_syntax.env,
+       prog.CEGAR_syntax.defs,
+       prog.CEGAR_syntax.main)
+  in
+  Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
+  assert false(*Verifier.verify fs prog*);
+  Format.printf "END verification@,@]"
+
 let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in
   Fpat.RefTypInfer.is_cut_point prog
@@ -269,69 +269,8 @@ let infer labeled is_cp cexs prog =
     prog.Fpat.Prog.types
  *)
 
-let params = ref []
-(** ToDo: exs may contain extra parameters that are not related to the recursive call *)
-let new_params recursive bvs exs =
-  List.gen
-    !Flag.number_of_extra_params
-    (fun i ->
-     let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
-     let ps =
-       List.gen
-         (List.length bvs' + if !Flag.enable_coeff_const then 1 else 0)
-         (fun i -> Id.new_var ~name:Flag.extpar_header Type.TInt)
-     in
-     params := !params @ ps;
-     let xs =
-       match recursive with
-       | None -> []
-       | Some(xs) -> xs
-     in
-     if !Flag.enable_coeff_const (*&& recursive = None*) then
-       Fpat.RefTypInfer.masked_params :=
-         Fpat.Idnt.mk_coeff (Id.to_string (List.hd ps))
-         :: !Fpat.RefTypInfer.masked_params;
-     (if !Flag.enable_coeff_const then
-        [Term_util.make_var (List.hd ps)]
-      else [])
-     @
-       (*
-         let b = recursive <> None
-                 && xs = []
-                 && Fpat.Util.Set.subset bvs' exs
-         in
-        *)
-       List.map2
-         (fun p x ->
-          begin
-            (* some heuristics *)
-            (*if b then () else*)
-            if recursive <> None then
-              (if xs = [] then
-                 begin
-                   (*this is necessary for l-length_cps-append.ml*)
-                   if List.mem x exs then
-                     Fpat.RefTypInfer.masked_params :=
-                       Fpat.Idnt.mk_coeff (Id.to_string p)
-                       :: !Fpat.RefTypInfer.masked_params
-                 end
-               else if not (List.mem x xs) then
-                 Fpat.RefTypInfer.masked_params :=
-                   Fpat.Idnt.mk_coeff (Id.to_string p)
-                   :: !Fpat.RefTypInfer.masked_params)
-          (* how to deal with non-recursive function calls here? *)
-          (*
-              else if List.mem x exs then
-                Fpat.RefTypInfer.masked_params :=
-                  Fpat.Idnt.mk_coeff
-                    (Fpat.Idnt.make (Id.to_string p))
-                  :: !Fpat.RefTypInfer.masked_params
-           *)
-          end;
-          Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
-         (if !Flag.enable_coeff_const then List.tl ps else ps)
-         bvs'
-     |> List.fold_left Term_util.make_add (Term_util.make_int 0))
+
+(** move the following codes to another file *)
 
 let gen_id =
   let cnt = ref 0 in
@@ -349,7 +288,7 @@ let rec trans_type typ =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Flag.number_of_extra_params then
+                 if i < !Fpat.EHCCSSolver.number_of_extra_params then
                    Some(Id.new_var ~name:"ex" Type.TInt, i + 1)
                  else
                    None)
@@ -361,11 +300,12 @@ let rec trans_type typ =
   List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
 and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
+let of_term t = assert false (* @todo translate FPAT term to Syntax.typed_term *)
 
 let insert_extra_param t =
   let tmp = get_time() in
   let debug = !Flag.debug_level > 0 in
-  Fpat.RefTypInfer.masked_params := [];
+  Fpat.EHCCSSolver.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
@@ -379,7 +319,7 @@ let insert_extra_param t =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Flag.number_of_extra_params then
+                 if i < !Fpat.EHCCSSolver.number_of_extra_params then
                    Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                  else
                    None)
@@ -464,7 +404,20 @@ let insert_extra_param t =
               match t.Syntax.typ with
               | Type.TFun(_, _)
               | Type.TTuple _(* ToDo: fix it *) ->
-                 new_params (if recursive then Some(Fpat.Util.List.nth xss i) else None) bvs exs
+                 let bvs =
+                   bvs
+                   |> List.filter (fun x -> x.Id.typ = Type.TInt)
+                   |> List.map (Id.to_string >> Fpat.Idnt.make)
+                 in
+                 let exs = List.map (Id.to_string >> Fpat.Idnt.make) exs in
+                 Fpat.EHCCSSolver.new_params
+                   (if recursive then
+                      Some(Fpat.Util.List.nth xss i
+                           |> List.map (Id.to_string >> Fpat.Idnt.make))
+                    else
+                      None)
+                   bvs exs
+                 |> List.map of_term
               | _ -> [])
              ts'
          in
@@ -498,7 +451,7 @@ let insert_extra_param t =
                 | Type.TTuple _(* ToDo: fix it *) ->
                    Fpat.Util.List.unfold
                      (fun i ->
-                      if i < !Flag.number_of_extra_params then
+                      if i < !Fpat.EHCCSSolver.number_of_extra_params then
                         Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                       else
                         None)
@@ -640,6 +593,7 @@ let rec simplify typ =
 
 let compute_strongest_post prog ce =
   Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce
+
 
 let implies = Fpat.SMTProver.implies_dyn
 let is_sat = Fpat.SMTProver.is_sat_dyn

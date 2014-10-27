@@ -143,7 +143,7 @@ let rec infer_term env = function
         try
           List.assoc x env
         with
-          Not_found when is_parameter x -> TInt
+          Not_found when Fpat.EHCCSSolver.is_parameter x -> TInt
         | Not_found -> Format.printf "Not_found VAR: %s@." x; assert false
       end
   | App(t1,t2) ->

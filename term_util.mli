@@ -125,7 +125,6 @@ val arg_num : typ -> int
 val subst_rev : typed_term -> id -> typed_term -> typed_term
 val replace_term : typed_term -> typed_term -> typed_term -> typed_term
 val max_pat_num : typed_term -> int
-val is_parameter : id -> bool
 val is_value : typed_term -> bool
 val is_simple_aexp : typed_term -> bool
 val is_simple_bexp : typed_term -> bool

@@ -190,7 +190,7 @@ let rec run orig parsed =
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
       if true && !Flag.debug_level > 0 then
         Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-                      (List.length !FpatInterface.params) Syntax.print_term t Syntax.print_term' t;
+                      (List.length !Fpat.EHCCSSolver.params) Syntax.print_term t Syntax.print_term' t;
       t
       else
         set_target
@@ -227,8 +227,8 @@ let rec run orig parsed =
       | Fpat.AbsTypInfer.FailedToRefineTypes ->
           raise Fpat.AbsTypInfer.FailedToRefineTypes
       | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
-          FpatInterface.params := [];
+          Fpat.EHCCSSolver.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
-          incr Flag.number_of_extra_params;
+          incr Fpat.EHCCSSolver.number_of_extra_params;
           run orig parsed

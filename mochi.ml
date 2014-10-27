@@ -243,10 +243,6 @@ let arg_spec =
      "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
      (* relatively complete verification *)
      "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
-     "-nex", Arg.Set_int Flag.number_of_extra_params,
-     " Number of inserted extra parameters for each functional argument";
-     "-cc", Arg.Set Flag.enable_coeff_const,
-     " Enable constant terms of extra parameters";
      (* predicate abstraction *)
      "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
      "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";

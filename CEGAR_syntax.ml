@@ -190,7 +190,6 @@ let rec decomp_tfun = function
 
 
 
-let is_parameter x = String.starts_with x Flag.extpar_header
 let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 

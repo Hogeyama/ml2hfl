@@ -478,7 +478,6 @@ let max_pat_num = max_pat_num.col_term
 
 
 
-let is_parameter x = Fpat.Util.String.starts_with (Id.name x) Flag.extpar_header
 
 
 let rec is_value t =
