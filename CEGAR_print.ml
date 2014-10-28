@@ -84,7 +84,8 @@ and print_const fm = function
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
   | RandBool -> Format.fprintf fm "rand_bool"
-  | RandInt n -> Format.fprintf fm "rand_int[%d]" n
+  | RandInt None -> Format.fprintf fm "rand_int"
+  | RandInt (Some n) -> Format.fprintf fm "rand_int[%d]" n
   | RandVal s -> Format.fprintf fm "rand_%s" s
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"

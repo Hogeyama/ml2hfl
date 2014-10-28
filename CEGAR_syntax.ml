@@ -22,7 +22,7 @@ type const =
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | RandInt of int
+  | RandInt of int option
   | RandBool
   | RandVal of string
   | And
@@ -72,6 +72,21 @@ and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
 and prog = {env:env; defs:fun_def list; main:var}
+
+
+let prefix_randint = "#randint"
+let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
+let decomp_randint_name s =
+  try
+    let s1,s2 = String.split s "_" in
+    assert (s1 = prefix_randint);
+    int_of_string s2
+  with _ -> raise (Invalid_argument "decomp_randint_name")
+let is_randint_var s =
+  try
+    ignore @@ decomp_randint_name s;
+    true
+  with _ -> false
 
 
 let _Const c = Const c
@@ -185,9 +200,9 @@ let is_parameter x = String.starts_with x Flag.extpar_header
 let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 
-let get_ext_funs {env=env; defs=defs} =
+let get_ext_funs {env; defs} =
   env
-  |> List.filter (fun (f,_) -> not (List.exists (fun (g,_,_,_,_) -> f = g) defs))
+  |> List.filter_out (fun (f,_) -> List.exists (fun (g,_,_,_,_) -> f = g) defs)
   |> List.map fst
 
 let get_ext_fun_env prog =

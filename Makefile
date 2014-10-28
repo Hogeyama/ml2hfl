@@ -185,7 +185,7 @@ test-error: opt
 SRC = $(CMO:.cmo=.ml)
 GENERATED = spec_parser.ml spec_parser.mli spec_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml CEGAR_parser.mli CEGAR_parser.ml CEGAR_lexer.ml
 
-depend: Makefile $(GENERATED)
+depend: Makefile $(GENERATED) $(MLI) $(SRC)
 	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) > depend
 
 -include depend

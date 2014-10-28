@@ -135,7 +135,7 @@ let rec make_arg_let t =
         let t' =
           {S.desc = S.App(U.make_var f, List.map (fun (x,_) -> U.make_var x) xts);
            S.typ = Type.typ_unknown;
-           S.attr = None}
+           S.attr = ANone}
         in
         (List.fold_left (fun t2 (x,t1) -> U.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
     | S.If(t1, t2, t3) ->
@@ -576,11 +576,36 @@ let rec has_no_effect t =
 
 
 
+let assoc_renv n env =
+  let check (s,_) =
+    try
+      n = decomp_randint_name s
+    with _ -> false
+  in
+  match List.find check env with
+  | _, TBase(TInt, preds) -> preds
+  | _ -> assert false
+
+let mem_assoc_renv n env =
+  try
+    ignore @@ assoc_renv n env;
+    true
+  with Not_found -> false
+
+
+let add_renv map env =
+  let aux env (n, preds) =
+    (make_randint_name n, TBase(TInt, preds)) :: env
+  in
+  List.fold_left aux env map
+
+
 let assign_id_to_rand prog =
   let count = ref 0 in
   let rec aux t =
     match t with
-    | Const (RandInt _) -> incr count; Const (RandInt !count)
+    | Const (RandInt None) -> Const (RandInt None)
+    | Const (RandInt (Some _)) -> incr count; Const (RandInt (Some !count))
     | Const c -> Const c
     | Var x -> Var x
     | App(t1,t2) -> App(aux t1, aux t2)
@@ -588,19 +613,3 @@ let assign_id_to_rand prog =
     | Fun(x,typ,t) -> Fun(x, typ, aux t)
   in
   map_body_prog aux prog
-
-let rec add_pred_to_rand_term map t =
-  match t with
-  | Const (RandInt n) ->
-      let preds =
-        try
-          List.assoc n map
-        with Not_found -> fun _ -> []
-      in
-      App(Const (TypeAnnot(TFun(TFun(TBase(TInt, preds), fun _ -> typ_result), fun _ -> typ_result))), t)
-  | Const c -> Const c
-  | Var x -> Var x
-  | App(t1,t2) -> App(add_pred_to_rand_term map t1, add_pred_to_rand_term map t2)
-  | Let(x,t1,t2) -> Let(x, add_pred_to_rand_term map t1, add_pred_to_rand_term map t2)
-  | Fun(x,typ,t) -> Fun(x, typ, add_pred_to_rand_term map t)
-let add_pred_to_rand map = map_body_prog (add_pred_to_rand_term map)

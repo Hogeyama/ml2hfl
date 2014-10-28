@@ -180,7 +180,7 @@ let rec eta_expand_term env t typ =
   | Var x -> eta_expand_term_aux env t typ
   | App(App(App(Const If, t1), t2), t3) ->
       make_if t1 (eta_expand_term env t2 typ) (eta_expand_term env t3 typ)
-  | App(Const (Label n), t) -> make_label n (eta_expand_term env t typ)
+  | App(Const (Label n), t) -> make_label n @@ eta_expand_term env t typ
   | App _ ->
       let t1,ts = decomp_app t in
       let rec aux ts typ =
@@ -336,10 +336,10 @@ let rec abstract_typ = function
       let typ2 = typ2 (Const Unit) in
       let typs = abstract_typ typ1 in
       let aux typ1 typ2 = TFun(typ1, fun _ -> typ2) in
-        [List.fold_right aux typs (hd (abstract_typ typ2))]
+      [List.fold_right aux typs (hd (abstract_typ typ2))]
   | _ -> assert false
 
-let abstract_typ typ = typ |> abstract_typ |> List.hd
+let abstract_typ typ = hd @@ abstract_typ typ
 
 
 let abstract_def env (f,xs,t1,e,t2) =

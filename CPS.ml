@@ -16,7 +16,7 @@ and t_cps =
   | ConstCPS of const
   | UnknownCPS
   | BottomCPS
-  | RandIntCPS
+  | RandIntCPS of bool
   | RandValueCPS of typ
   | VarCPS of typed_ident
   | FunCPS of typed_ident * typed_term
@@ -87,7 +87,7 @@ and print_t_cps fm = function
   | ConstCPS c -> Format.fprintf fm "%a" Syntax.print_const c
   | UnknownCPS -> Format.fprintf fm "***"
   | BottomCPS -> Format.fprintf fm "_|_"
-  | RandIntCPS -> Format.fprintf fm "rand_int"
+  | RandIntCPS b -> Format.fprintf fm "rand_int(%b)" b
   | RandValueCPS typ -> Format.fprintf fm "rand_value(%a)" Syntax.print_typ typ
   | VarCPS x -> print_id fm x.id_cps
   | FunCPS(x, t) ->
@@ -185,7 +185,7 @@ let rec infer_effect env t =
       let e = new_evar () in
       let typ = _TFunCPS(e, TBaseCPS TUnit, TBaseCPS TInt) in
       constraints := CGeq(e, ECont) :: !constraints;
-      {t_cps=RandIntCPS; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
+      {t_cps=RandIntCPS(t.attr = AAbst_under); typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
   | Const(RandValue(typ, true)) -> assert false
   | Const(RandValue(typ, false)) ->
       let e = new_evar () in
@@ -221,7 +221,7 @@ let rec infer_effect env t =
   | App(t1, []) -> assert false
   | App(t1, t2::t3::ts) ->
       let typ = (make_app t1 [t2]).typ in
-      infer_effect env {desc=App({desc=App(t1,[t2]);typ=typ;attr=None}, t3::ts); typ=t.typ; attr=None}
+      infer_effect env {desc=App({desc=App(t1,[t2]);typ;attr=ANone}, t3::ts); typ=t.typ; attr=ANone}
   | App(t1, [t2]) ->
       let typed1 = infer_effect env t1 in
       let typed2 = infer_effect env t2 in
@@ -487,22 +487,22 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e};
   begin
     match t, !sol e with
-    | ConstCPS c, ENone -> {desc=Const c; typ=typ_orig; attr=None}
+    | ConstCPS c, ENone -> {desc=Const c; typ=typ_orig; attr=ANone}
     | BottomCPS, ECont ->
         let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         make_fun k (make_bottom typ_result)
-    | RandIntCPS, ENone ->
+    | RandIntCPS b, ENone ->
         let e = get_tfun_effect typ in
         begin
           match !sol e with
-          | ECont -> make_randint_cps ()
+          | ECont -> make_randint_cps b
           | EExcep ->
               let e = Id.new_var ~name:"e" !typ_excep in
-              let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-                make_fun h (make_randint_cps ())
+              let h = Id.new_var ~name:"h" @@ TFun(e,typ_result) in
+              make_fun h @@ make_randint_cps b
           | _ -> assert false
-          end
+        end
     | RandValueCPS typ', ENone ->
         let e = get_tfun_effect typ in
         begin
@@ -661,7 +661,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
     | BinOpCPS(op, t1, t2), ENone ->
         let t1' = transform k_post t1 in
         let t2' = transform k_post t2 in
-        {desc=BinOp(op, t1', t2'); typ=typ_orig; attr=None}
+        {desc=BinOp(op, t1', t2'); typ=typ_orig; attr=ANone}
     | BinOpCPS(op, t1, t2), ECont ->
         let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
@@ -674,7 +674,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                (make_fun x1
                   (make_app_cont t2.effect t2'
                      (make_fun x2
-                        (make_app (make_var k) [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig; attr=None}])))))
+                        (make_app (make_var k) [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig; attr=ANone}])))))
     | BinOpCPS(op, t1, t2), EExcep ->
         let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
@@ -693,7 +693,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
                         (make_app_excep t2.effect t2'
                            (make_fun x2
                               (make_app (make_var k)
-                                 [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig; attr=None}]))
+                                 [{desc=BinOp(op, make_var x1, make_var x2); typ=typ_orig; attr=ANone}]))
                            (make_var h')))
                      (make_var h'))))
     | NotCPS t1, ENone ->
@@ -818,7 +818,7 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
   match t with
   | ConstCPS _ -> []
   | BottomCPS -> []
-  | RandIntCPS -> []
+  | RandIntCPS _ -> []
   | RandValueCPS typ -> []
   | VarCPS x -> []
   | FunCPS(x, t1) ->
