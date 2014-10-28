@@ -73,19 +73,26 @@ let rec loop prog0 is_cp info top_funs =
 	    map
           | Feasibility.Infeasible prefix ->
             let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-            let map,_ = Refine.refine inlined_functions is_cp prefix [ce] prog0 in
+            let map, p = Refine.refine inlined_functions is_cp prefix [ce] prog0 in
+	    Format.printf "ENV: %a@." CEGAR_print.env p.env;
             if !Flag.debug_level > 0 then
               Format.printf "Prefix of spurious counterexample::@.%a@.@."
 		CEGAR_print.ce prefix;
 	    map) cexs' ext_cexs
       in
-      let env' = List.fold_left (fun a b -> Refine.add_preds_env b a) prog.env maps in
+      let env' = List.fold_left (fun a b -> Format.printf "MAP: %a@." CEGAR_print.env b; Refine.add_preds_env b a) prog.env maps in
+      Format.printf "%a@." CEGAR_print.env env';
       post ();
       loop {prog with env=env'} is_cp info top_funs
 
 
 
 let cegar prog info top_funs =
+  let add_fail_to_end ds =
+    if !Flag.non_termination then
+      List.map (fun (f, args, cond, e, t) -> if t=Const(CPS_result) then (f, args, cond, [Event "fail"], t) else (f, args, cond, e, t)) ds
+    else ds in
+  let prog = {prog with defs=add_fail_to_end prog.defs} in
   try
     let is_cp = FpatInterface.is_cp prog in
     loop prog is_cp info top_funs

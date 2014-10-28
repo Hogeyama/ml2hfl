@@ -18,6 +18,7 @@ let parse_error _ = print_error_information ()
 %token BR_EXISTS
 %token BR_FORALL
 %token UNIT
+%token FAIL
 %token BOT
 %token SATISFIED
 %token UNSATISFIED
@@ -48,3 +49,5 @@ counterexample:
   { HorSat_syntax.Label($1, $2) }
 | UNIT
   { HorSat_syntax.End }
+| FAIL BOT
+  { HorSat_syntax.Fail }
