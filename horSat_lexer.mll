@@ -26,6 +26,7 @@ and token = parse
 | "br_forall" { BR_FORALL }
 | '_' { BOT }
 | "unit" { UNIT }
+| "event_fail" { FAIL }
 | (lower|upper) (digit|lower|upper)* { IDENT (Lexing.lexeme lexbuf) }
 | digit* { token lexbuf }
 | "Elapsed Time:" { footer lexbuf }

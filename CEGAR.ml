@@ -27,7 +27,7 @@ let inlined_functions orig_fun_list force {defs;main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   FpatInterface.List.unique fs
 
-let rec loop prog0 is_cp ces info top_funs =
+let rec loop prog0 is_cp info top_funs =
   pre ();
   let prog =
     if !Flag.relative_complete
@@ -62,57 +62,40 @@ let rec loop prog0 is_cp ces info top_funs =
       let env' = List.rev_map_flatten aux env in
       post ();
       prog, Safe env'
-  | ModelCheck.Unsafe ce ->
-      if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce;
-      let ce' = CEGAR_trans.trans_ce ce labeled prog in
-      match ces with
-      | ce_pre::_ when ce' = ce_pre && not !Flag.use_filter ->
-          if !Flag.print_progress then Format.printf "Filter option enabled.@.";
-          if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-          Flag.use_filter := true;
-          loop prog is_cp ces info top_funs
-      | ce_pre::_ when ce' = ce_pre && not !Flag.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred ->
-          if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
-          if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-          Fpat.PredAbst.use_neg_pred := true;
-          loop prog is_cp ces info top_funs
-      | ce_pre::_ when ce' = ce_pre && !Fpat.PredAbst.wp_max_num < Flag.wp_max_max ->
-          incr Fpat.PredAbst.wp_max_num;
-          CEGAR_abst.incr_wp_max := true;
-          if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
-          if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-          loop prog is_cp ces info top_funs
-      | ce_pre::_ when ce' = ce_pre ->
-          post ();
-          if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
-          raise NoProgress
-      | _ ->
-          if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
-          match Feasibility.check ce' prog with
+  | ModelCheck.Unsafe (cexs, ext_cexs) ->
+      let cexs' = List.map (fun ce -> CEGAR_trans.trans_ce ce labeled prog) cexs in
+      if !Flag.print_progress then List.iter (fun ce -> Feasibility.print_ce_reduction ce prog) cexs' ;
+      let maps = List.map2 (fun ce ext_ce ->
+	match Feasibility.check ce prog with
           | Feasibility.Feasible (env, sol) ->
-              if !Flag.termination then
-                begin
-                  (* termination analysis *)
-                  Refine.refine_rank_fun ce' prog0;
-                  assert false
-                end else
-                prog, Unsafe sol
+            let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+            let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_ce] prog0 in
+	    map
           | Feasibility.Infeasible prefix ->
-              let ces' = ce'::ces in
-              let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-              let _,prog' = Refine.refine inlined_functions is_cp prefix ces' prog0 in
-              if !Flag.debug_level > 0 then
-                Format.printf "Prefix of spurious counterexample::@.%a@.@."
-                              CEGAR_print.ce prefix;
-              post ();
-              loop prog' is_cp ces' info top_funs
+            let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+            let map, p = Refine.refine inlined_functions is_cp prefix [ce] prog0 in
+	    Format.printf "ENV: %a@." CEGAR_print.env p.env;
+            if !Flag.debug_level > 0 then
+              Format.printf "Prefix of spurious counterexample::@.%a@.@."
+		CEGAR_print.ce prefix;
+	    map) cexs' ext_cexs
+      in
+      let env' = List.fold_left (fun a b -> Format.printf "MAP: %a@." CEGAR_print.env b; Refine.add_preds_env b a) prog.env maps in
+      Format.printf "%a@." CEGAR_print.env env';
+      post ();
+      loop {prog with env=env'} is_cp info top_funs
 
 
 
 let cegar prog info top_funs =
+  let add_fail_to_end ds =
+    if !Flag.non_termination then
+      List.map (fun (f, args, cond, e, t) -> if t=Const(CPS_result) then (f, args, cond, [Event "fail"], t) else (f, args, cond, e, t)) ds
+    else ds in
+  let prog = {prog with defs=add_fail_to_end prog.defs} in
   try
     let is_cp = FpatInterface.is_cp prog in
-    loop prog is_cp [] info top_funs
+    loop prog is_cp info top_funs
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress

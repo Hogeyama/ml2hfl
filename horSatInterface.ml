@@ -12,7 +12,7 @@ type apt_transition =
   | APT_And of apt_transition list
   | APT_Or of apt_transition list
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of (string * int) list
+type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((Fpat.Idnt.t * Fpat.Pred.t list) list) list))
 
  module TS = Trecs_syntax
 
@@ -138,6 +138,15 @@ let rec verifyFile filename =
               else raise (Fatal ("Unsupported TRecS output: " ^ s))
 *)
 
+(* gather error paths *)
+let rec error_trace = function
+    | HS.Forall(_, t) -> error_trace t
+    | HS.Exists(t1, t2) -> error_trace t1 @ error_trace t2
+    | HS.Label("l0", t) -> List.map (fun l -> 0 :: l) @@ error_trace t
+    | HS.Label("l1", t) -> List.map (fun l -> 1 :: l) @@ error_trace t
+    | HS.Label(_, t) -> error_trace t
+    | HS.End | HS.Fail -> [[]]
+
 let rec verifyFile filename =
   let default = "empty" in
   let result_file =
@@ -160,7 +169,9 @@ let rec verifyFile filename =
       | `Unsatisfied ce ->
           close_in ic;
           Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
-          exit 0
+	  let cexs = error_trace ce in
+	  let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in
+          Unsafe (cexs, ext_cexs)
 (*      | `TimeOut ->
           if not !Flag.only_result
           then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
