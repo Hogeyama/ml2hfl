@@ -7,7 +7,7 @@ open CEGAR_util
 open HorSatInterface
 
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
-type result = Safe of (var * Inter_type.t) list | Unsafe of int list
+type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((Fpat.Idnt.t * Fpat.Pred.t list) list) list))
 
 let debug () = List.mem "ModelCheck_util" !Flag.debug_module
 
@@ -151,13 +151,6 @@ let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
 
 let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
-let add_funcall_labels top_funs ({env=env;defs=defs} as prog) =
-  let top_funs' = List.map Id.to_string top_funs in
-  let add_funcall_labels_term f t = let f' = uncapitalize_var f in if List.mem f' top_funs' then App(Var(f'), t) else t in
-  let defs' = List.map (fun (f, args, t1, e, t2) -> (f, args, t1, e, add_funcall_labels_term f t2)) defs in
-  let env' = List.map (fun v -> (v, make_tfun typ_unit typ_unit)) top_funs' @ env in
-  {prog with env=env'; defs=defs'}
-
 let trans_ce ce =
   let aux (s,_) =
     match s with
@@ -279,8 +272,9 @@ let model_check_aux (prog,arity_map,spec) =
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in
   let prog = if Flag.church_encode then church_encode prog else prog in
   let env = prog.env in
-  ignore (HorSatInterface.check env (prog,arity_map,spec));
-  Unsafe []
+  match HorSatInterface.check env (prog,arity_map,spec) with
+    | HorSatInterface.Safe(x) -> Safe(x)
+    | HorSatInterface.Unsafe(x,y) -> Unsafe(x,y)
 
 let make_arity_map top_funs =
   let init = [("br_forall", 2); ("br_exists", 2); ("unit", 0); ("l0", 1); ("l1", 1)] in

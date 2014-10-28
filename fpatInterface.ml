@@ -259,6 +259,25 @@ let infer labeled is_cp cexs prog =
     (fun (f, rty) ->
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
     env
+
+let infer_with_ext
+    (labeled: string list)
+    (is_cp: Fpat.Idnt.t -> bool)
+    (cexs: int list list)
+    (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
+    (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
+    = (assert false: (string * CEGAR_syntax.t CEGAR_type.t) list)
+(*
+  let prog = conv_prog prog in
+  let env = Fpat.AbsTypInfer.refine' prog labeled is_cp cexs ext_cexs in
+  Flag.time_parameter_inference :=
+    !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
+  List.map
+    (fun (f, rty) ->
+     match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
+    env
+*)
+
 (*
   List.map
     (fun (f, _) ->
