@@ -171,19 +171,35 @@ and trans_term post xs env t =
   match t.S.desc with
   | S.Const(S.RandInt _) -> assert false
   | S.Const c -> [], Const (trans_const c t.S.typ)
-  | S.App({S.desc=S.Const(S.RandInt false)}, [{S.desc=S.Const S.Unit}]) ->
+  | S.App({S.desc=S.Const(S.RandInt false); S.attr}, [{S.desc=S.Const S.Unit}]) ->
+      let flag =
+        if attr = S.AAbst_under
+        then Some 0
+        else None
+      in
       let k = new_id ("k" ^ post) in
-      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt 0), Var k)
-  | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
+      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
+  | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) ->
+      assert (t1 = U.unit_term);
+      let flag =
+        if attr = S.AAbst_under
+        then Some 0
+        else None
+      in
+      let k = new_id ("k" ^ post) in
+      let defs1,t1' = trans_term post xs env t1 in
+      let defs2,t2' = trans_term post xs env t2 in
+      defs1@defs2, App(Const (RandInt flag), t2')
+  | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true)); S.attr}, [t1;t2]) ->
+      let flag =
+        if attr = S.AAbst_under
+        then Some 0
+        else None
+      in
       assert (t1 = U.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt 0), t2')
-  | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true))}, [t1;t2]) ->
-      assert (t1 = U.unit_term);
-      let defs1,t1' = trans_term post xs env t1 in
-      let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt 0), t2')
+      defs1@defs2, App(Const (RandInt flag), t2')
   | S.App({S.desc=S.Const(S.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
@@ -283,6 +299,11 @@ let rec formula_of t =
       App(Const Not, t')
   | _ -> Format.printf "formula_of: %a@." S.print_constr t; assert false
 
+let trans_term post xs env t =
+  let defs,t' = trans_term post xs env t in
+  Format.printf "TRANS_TERM: @[%a@ ===>@ %a@." S.print_term t CEGAR_print.term t';
+  defs,t'
+
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in
   let post = "_" ^ Id.name f in
@@ -290,24 +311,24 @@ let trans_def (f,(xs,t)) =
   let path = ref [] in
   let aux x' x =
     let typ = trans_typ (Id.typ x) in
-      path := 1::!path;
-      x', typ
+    path := 1::!path;
+    x', typ
   in
   let env = List.map2 aux xs' xs in
-    try
-      (match t.S.desc with
-	   S.If(t1, t2, t3) ->
-	     let t1' = formula_of t1 in
-	     let defs2,t2' = trans_term post xs' env t2 in
-	     let defs3,t3' = trans_term post xs' env t3 in
-             let typ' = trans_typ (Id.typ f) in
-	       ((f', typ', xs', t1', [], t2')::defs2) @
-		 ((f', typ', xs', make_not t1', [], t3')::defs3)
-	 | _ -> raise Not_found)
-    with Not_found ->
-      let defs,t' = trans_term post xs' env t in
-      let typ' = trans_typ (Id.typ f) in
-	(f', typ', xs', Const True, [], t')::defs
+  try
+    (match t.S.desc with
+     | S.If(t1, t2, t3) ->
+	 let t1' = formula_of t1 in
+	 let defs2,t2' = trans_term post xs' env t2 in
+	 let defs3,t3' = trans_term post xs' env t3 in
+         let typ' = trans_typ (Id.typ f) in
+	 ((f', typ', xs', t1', [], t2')::defs2) @
+         ((f', typ', xs', make_not t1', [], t3')::defs3)
+     | _ -> raise Not_found)
+  with Not_found ->
+    let defs,t' = trans_term post xs' env t in
+    let typ' = trans_typ (Id.typ f) in
+    (f', typ', xs', Const True, [], t')::defs
 
 
 let get_var_arity f env = get_typ_arity (List.assoc f env)

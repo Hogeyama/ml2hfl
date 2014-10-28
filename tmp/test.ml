@@ -22,7 +22,7 @@ val f : (x:int[x > 0]) -> r:int
 {SPEC}*)
 
 let rec f n =
-  let r = Random.int 0 in
+  let r = read_int () in
   if n = 0
   then r
   else f (n-1)

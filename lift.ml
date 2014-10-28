@@ -184,7 +184,7 @@ let rec lift_aux post xs t =
     | Bottom -> [], Bottom
     | _ -> Format.printf "lift: %a@." print_term t; assert false
   in
-  defs, {desc=desc; typ=t.typ; attr=None}
+  defs, {desc; typ=t.typ; attr=t.attr}
 
 let lift ?(args=[]) t =
   lift_aux "" (set_of_list args) t,
