@@ -6,8 +6,9 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 and attr =
-  | ARand_label of int
-and typed_term = {desc:term; typ:typ; attr:attr option}
+  | ANone
+  | AAbst_under
+and typed_term = {desc:term; typ:typ; attr:attr}
 and const = (* only base type constants *)
   | Unit
   | True
@@ -217,3 +218,4 @@ val print_term' : Format.formatter -> typed_term -> unit
 val print_term_typ : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 val print_constr : Format.formatter -> typed_term -> unit
+val print_attr : Format.formatter -> attr -> unit

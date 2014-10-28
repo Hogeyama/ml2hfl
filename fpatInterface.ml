@@ -87,7 +87,7 @@ let inv_const c =
   | Fpat.Const.Eq ty when Fpat.Type.is_bool ty -> EqBool
   | Fpat.Const.Eq ty when Fpat.Type.is_int ty -> EqInt
   | Fpat.Const.Int(n) -> Int(n)
-  | Fpat.Const.RandInt -> RandInt 0
+  | Fpat.Const.RandInt -> RandInt None
   | Fpat.Const.Add ty when Fpat.Type.is_int ty -> Add
   | Fpat.Const.Sub ty when Fpat.Type.is_int ty -> Sub
   | Fpat.Const.Mul ty when Fpat.Type.is_int ty -> Mul
@@ -356,7 +356,7 @@ let insert_extra_param t =
            List.fold_left
              (fun (f, ty) y ->
               (fun t ->
-               f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty; Syntax.attr=None}),
+               f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty; Syntax.attr=ANone}),
               match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
              ((fun t -> t), trans_type t.Syntax.typ)
              ys'
@@ -543,7 +543,7 @@ let insert_extra_param t =
       | Syntax.TNone -> Syntax.TNone
       | Syntax.TSome t -> Syntax.TSome(aux rfs bvs exs t)
     in
-    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ; Syntax.attr=None}
+    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ; Syntax.attr=t.Syntax.attr}
   in
   let res = aux [] [] [] t in
   let _ = add_time tmp Flag.time_parameter_inference in

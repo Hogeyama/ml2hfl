@@ -28,18 +28,20 @@ let make_file_spec () =
    4, "unit", [];]
 
 
-let rec make_funcall_spec = function
+let rec make_label_spec = function
   | [] -> []
-  | f::fs -> (0, Id.to_string f, APT_State(1, 0)) :: make_funcall_spec fs
+  | f::fs -> (0, f, APT_State(1, 0)) :: make_label_spec fs
 
-let make_spec top_funs =
+let make_spec labels =
   let spec =
     (0,"event_fail", APT_False)
     ::(0,"unit", APT_True)
     ::(0, "l0", APT_State(1, 0))
     ::(0, "l1", APT_State(1, 0))
+    ::(0, "true", APT_State(1, 0))
+    ::(0, "false", APT_State(1, 0))
     ::(0,"br_forall", APT_And([APT_State(1, 0); APT_State(2, 0)]))
-    ::(0,"br_exists", APT_Or([APT_State(1, 0); APT_State(2, 0)]))::make_funcall_spec top_funs
+    ::(0,"br_exists", APT_Or([APT_State(1, 0); APT_State(2, 0)]))::make_label_spec labels
   in
   List.sort spec
 
@@ -277,7 +279,11 @@ let model_check_aux (prog,arity_map,spec) =
     | HorSatInterface.Safe(x) -> Safe(x)
     | HorSatInterface.Unsafe(x,y) -> Unsafe(x,y)
 
-let make_arity_map top_funs =
-  let init = [("br_forall", 2); ("br_exists", 2); ("event_fail", 1); ("unit", 0); ("l0", 1); ("l1", 1)] in
-  let funs_map = List.map (fun id -> (Id.to_string id, 1)) top_funs in
+let rec pick_randint_nums = function
+  | [] -> []
+  | (v,_)::es -> (try [decomp_randint_name v] with _ -> []) @ pick_randint_nums es
+
+let make_arity_map labels =
+  let init = [("br_forall", 2); ("br_exists", 2); ("event_fail", 1); ("unit", 0); ("true", 1); ("false", 1); ("l0", 1); ("l1", 1)] in
+  let funs_map = List.map (fun l -> (l, 1)) labels in
   init @ funs_map

@@ -22,7 +22,7 @@ type const =
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | RandInt of int
+  | RandInt of int option
   | RandBool
   | RandVal of string
   | And
@@ -71,6 +71,21 @@ and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
 and prog = {env:env; defs:fun_def list; main:var}
+
+
+let prefix_randint = "#randint"
+let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
+let decomp_randint_name s =
+  try
+    let s1,s2 = String.split s "_" in
+    assert (s1 = prefix_randint);
+    int_of_string s2
+  with _ -> raise (Invalid_argument "decomp_randint_name")
+let is_randint_var s =
+  try
+    ignore @@ decomp_randint_name s;
+    true
+  with _ -> false
 
 
 let _Const c = Const c
@@ -143,13 +158,18 @@ let make_label n t = make_app (Const (Label n)) [t]
 let make_let bindings t =
   List.fold_right (fun (x,t) t' -> Let(x,t,t')) bindings t
 
-let make_br_exists = function
-  | [] -> assert false
-  | [t] -> t
-  | t::ts ->
-    let make_br_exists_aux t1 t2 = make_app (Const (TreeConstr(2, "br_exists"))) [t1; t2] in
-    List.fold_left make_br_exists_aux t ts
+let make_tree label ts = make_app (Const (TreeConstr(List.length ts, label))) ts
 
+let rec add_bool_labels leaf = function
+  | [] -> leaf
+  | b::bs -> make_tree (if b then "true" else "false") [add_bool_labels leaf bs]
+
+let make_br_exists n = function
+  | [] -> assert false
+  | [(bs, t)] -> make_tree ("r"^string_of_int n) [add_bool_labels t bs]
+  | (bs, t)::xs ->
+    let make_br_exists_aux t1 (bs2, t2) = make_tree "br_exists" [t1; (add_bool_labels t2 bs2)] in
+    make_tree ("r"^string_of_int n) [List.fold_left make_br_exists_aux (add_bool_labels t bs) xs]
 
 
 
@@ -193,9 +213,9 @@ let rec decomp_tfun = function
 let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 
-let get_ext_funs {env=env; defs=defs} =
+let get_ext_funs {env; defs} =
   env
-  |> List.filter (fun (f,_) -> not (List.exists (fun (g,_,_,_,_) -> f = g) defs))
+  |> List.filter_out (fun (f,_) -> List.exists (fun (g,_,_,_,_) -> f = g) defs)
   |> List.map fst
 
 let get_ext_fun_env prog =

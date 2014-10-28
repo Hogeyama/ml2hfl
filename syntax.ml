@@ -24,9 +24,10 @@ and const = (* only base type constants *)
   | RandValue of typ * bool
 
 and attr =
-  | ARand_label of int
+  | ANone
+  | AAbst_under
 
-and typed_term = {desc:term; typ:typ; attr:attr option}
+and typed_term = {desc:term; typ:typ; attr:attr}
 and term =
   | Const of const
   | Var of id
@@ -938,7 +939,7 @@ let tr_col2_desc tc env = function
 let tr_col2_term tc env t =
   let acc1,desc' = tc.tr_col2_desc env t.desc in
   let acc2,typ' = tc.tr_col2_typ env t.typ in
-  tc.tr_col2_app acc1 acc2, {desc=desc'; typ=typ'; attr = t.attr}
+  tc.tr_col2_app acc1 acc2, {desc=desc'; typ=typ'; attr=t.attr}
 
 
 let make_tr_col2 empty app =
@@ -1417,7 +1418,14 @@ and print_const fm = function
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 
-and print_term pri typ fm t = print_desc pri typ fm t.desc
+and print_attr fm = function
+  | ANone -> Format.fprintf fm "ANone"
+  | AAbst_under -> Format.fprintf fm "AAbst_under"
+
+and print_term pri typ fm t =
+  if t.attr = ANone
+  then print_desc pri typ fm t.desc
+  else Format.fprintf fm "(@[%a@ #@ %a@])" (print_desc pri typ) t.desc print_attr t.attr
 
 and print_desc pri typ fm desc =
   match desc with
