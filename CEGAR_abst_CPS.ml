@@ -278,7 +278,7 @@ let rec abstract_rand_int must env cond pts preds t typ =
   aux pts pts' preds'
 *)
 
-let rec abstract_rand_int must env cond pts preds t typ =
+let rec abstract_rand_int n must env cond pts preds t typ =
   let typ_arg = TBase(TInt, preds) in
   let typ' = TFun(typ_arg, fun _ -> typ) in
   let t' = hd @@ abstract_term must env cond pts t typ' in
@@ -300,15 +300,15 @@ let rec abstract_rand_int must env cond pts preds t typ =
       let cond' = List.map2 (fun b (p,_) -> if b then p else make_not p) cond_comb pts @ cond in
       let argss =
         let aux' pred_comb =
-          let args,ps = List.split @@ List.map2 (fun b p -> if b then Const True, p else Const False, make_not p) pred_comb preds' in
+          let bs,ps = List.split @@ List.map2 (fun b p -> b, if b then p else make_not p) pred_comb preds' in
           if check_exist env cond' x @@ List.fold_right make_and ps (Const True)
-          then Some args
+          then Some (bs, List.map (fun b -> if b then Const True else Const False) bs)
           else None
         in
         List.filter_map aux' pred_combs
       in
       let cs = List.map2 (fun b (_,t) -> if b then t else make_not t) cond_comb pts in
-      List.fold_right make_and cs (Const True), make_br_exists @@ List.map (make_app (Var f)) argss
+      List.fold_right make_and cs (Const True), make_br_exists n @@ List.map (Pair.map_snd @@ make_app (Var f)) argss
     in
     List.map aux cond_combs
   in
@@ -337,7 +337,7 @@ and abstract_term must env cond pts t typ =
   | App(Const (Label n), t) -> [make_label n (hd @@ abstract_term must env cond pts t typ)]
   | App(Const (RandInt (Some n)), t) ->
       let preds = assoc_renv n env in
-      [abstract_rand_int must env cond pts preds t typ]
+      [abstract_rand_int n must env cond pts preds t typ]
   | App(Const (RandInt _), t) ->
       abstract_term must env cond pts t (TFun(typ_int, fun _ -> typ))
   | App _ when not !Flag.cartesian_abstraction ->
