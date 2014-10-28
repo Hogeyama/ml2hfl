@@ -6,7 +6,7 @@ open CEGAR_print
 open CEGAR_util
 
 type result =
-    Feasible of (string * CEGAR_syntax.typ) list * int list
+  | Feasible of int list
   | Infeasible of CEGAR_syntax.ce
 
 let debug () = List.mem "Feasibility" !Flag.debug_module
@@ -14,8 +14,8 @@ let debug () = List.mem "Feasibility" !Flag.debug_module
 let checksat env t =
   Fpat.SMTProver.is_sat_dyn (FpatInterface.conv_formula t)
 
-let get_solution env t =
-  t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort |> List.map snd
+let solve env t =
+  t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort |> List.map (Pair.map_fst Fpat.Idnt.string_of)
 
 let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env
 
@@ -73,7 +73,7 @@ let rec get_prefix ce n =
   | c::ce' when n = 0 -> []
   | c::ce' -> c::get_prefix ce' (n-1)
 
-let check ce {defs=defs; main=main} =
+let check ce {defs; main} =
   let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
   let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
@@ -85,7 +85,11 @@ let check ce {defs=defs; main=main} =
   let prefix = get_prefix ce (n+1) in
   let result =
     if checksat env' constr
-    then Feasible (env', get_solution env' constr)
+    then
+      let solution = solve env' constr in
+      let env'' = List.sort ~cmp:(Compare.on fst) env' in
+      let rands = List.map (fun (x,_) -> if List.mem_assoc x solution then List.assoc x solution else 0) env'' in
+      Feasible rands
     else Infeasible prefix
   in
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";

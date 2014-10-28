@@ -89,7 +89,7 @@ let rec loop prog0 is_cp ces info =
       | _ ->
           if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
           match Feasibility.check ce' prog with
-          | Feasibility.Feasible (env, sol) ->
+          | Feasibility.Feasible sol ->
               if !Flag.termination then
                 begin
                   (* termination analysis *)

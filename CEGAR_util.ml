@@ -352,7 +352,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
             begin
               match not_const xns1, not_const xns2 with
               | true, true ->
-                  Format.printf "Nonlinear expression not supported: %a@."
+                  Format.eprintf "Nonlinear expression not supported: %a@."
                                 CEGAR_print.term (make_app op [t1;t2]);
                   assert false
               | false, true ->
@@ -364,7 +364,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
               | false, false ->
                   [None, reduce xns1 + reduce xns2]
             end
-        | _ -> assert false
+        | _ -> Format.eprintf "Unsupported: %a @ CEGAR_util.normalize_bool_term" CEGAR_print.term @@ make_app op [t1;t2]; assert false
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in
@@ -461,7 +461,7 @@ let assoc_fun_def defs f =
   | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
       assert (xs1 = xs2);
       make_fun xs1 (make_if t21 t22 t12)
-  | _ -> Format.printf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
+  | _ -> Format.eprintf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
 
 let get_nonrec defs main orig_fun_list force =
   let check (f,xs,t1,e,t2) =
