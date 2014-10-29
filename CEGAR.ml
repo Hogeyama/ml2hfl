@@ -73,7 +73,7 @@ let rec loop prog0 is_cp info top_funs =
 	    map
           | Feasibility.Infeasible prefix ->
             let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-            let map, p = Refine.refine inlined_functions is_cp prefix [ce] prog0 in
+            let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_ce] prog0 in
 	    Format.printf "ENV: %a@." CEGAR_print.env p.env;
             if !Flag.debug_level > 0 then
               Format.printf "Prefix of spurious counterexample::@.%a@.@."

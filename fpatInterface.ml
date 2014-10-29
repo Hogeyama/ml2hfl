@@ -250,9 +250,9 @@ let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in
   Fpat.RefTypInfer.is_cut_point prog
 
-let infer labeled is_cp cexs prog =
+let infer labeled is_cp cexs ext_cexs prog =
   let prog = conv_prog prog in
-  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs in
+  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
   List.map
@@ -266,17 +266,15 @@ let infer_with_ext
     (cexs: int list list)
     (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
     (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
-    = (assert false: (string * CEGAR_syntax.t CEGAR_type.t) list)
-(*
+  =
   let prog = conv_prog prog in
-  let env = Fpat.AbsTypInfer.refine' prog labeled is_cp cexs ext_cexs in
+  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
   List.map
     (fun (f, rty) ->
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
     env
-*)
 
 (*
   List.map

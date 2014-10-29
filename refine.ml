@@ -52,7 +52,7 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
+let refine labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=main} =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
@@ -75,6 +75,7 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
 	      labeled
 	      is_cp
 	      ces
+          ext_ces
 	      (env, defs, main)
 	  in
       Format.printf "@]";
