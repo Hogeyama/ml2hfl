@@ -615,8 +615,8 @@ let rec simplify typ =
   | Ref_type.List(x,p_len,y,p_i,typ) ->
      Ref_type.List(x, simplify_typed_term p_len, y, simplify_typed_term p_i, typ)
 
-let compute_strongest_post prog ce =
-  Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce
+let compute_strongest_post prog ce ext_cex =
+  Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce ext_cex
 
 
 let implies = Fpat.SMTProver.implies_dyn

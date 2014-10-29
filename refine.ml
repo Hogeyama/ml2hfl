@@ -151,7 +151,7 @@ let print_list fm = function
 
 let progWithExparam = ref {env=[]; defs=[]; main="main(DUMMY)"}
 
-let refine_rank_fun ce { env=env; defs=defs; main=main } =
+let refine_rank_fun ce ex_ce { env=env; defs=defs; main=main } =
   let tmp = get_time () in
     try
       (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
@@ -159,7 +159,7 @@ let refine_rank_fun ce { env=env; defs=defs; main=main } =
       if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
       let env, spc =
         Format.printf "@[<v>";
-        let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce in
+        let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce ex_ce in
         Format.printf "@]";
         env, spc
       in
@@ -169,7 +169,7 @@ let refine_rank_fun ce { env=env; defs=defs; main=main } =
         Format.printf "@[<v>";
         let _, spcWithExparam =
           if !Flag.add_closure_exparam then
-            FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce
+            FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce ex_ce
           else
             [], spc (* dummy *)
         in

@@ -66,19 +66,19 @@ let rec loop prog0 is_cp info top_funs =
       let cexs' = List.map (fun ce -> CEGAR_trans.trans_ce ce labeled prog) cexs in
       if !Flag.print_progress then List.iter (fun ce -> Feasibility.print_ce_reduction ce prog) cexs' ;
       let maps = List.map2 (fun ce ext_ce ->
-	match Feasibility.check ce prog with
+          match Feasibility.check ce prog with
           | Feasibility.Feasible (env, sol) ->
             let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
             let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_ce] prog0 in
-	    map
+            map
           | Feasibility.Infeasible prefix ->
             let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
             let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_ce] prog0 in
-	    Format.printf "ENV: %a@." CEGAR_print.env p.env;
+            Format.printf "ENV: %a@." CEGAR_print.env p.env;
             if !Flag.debug_level > 0 then
               Format.printf "Prefix of spurious counterexample::@.%a@.@."
-		CEGAR_print.ce prefix;
-	    map) cexs' ext_cexs
+                            CEGAR_print.ce prefix;
+            map) cexs' ext_cexs
       in
       let env' = List.fold_left (fun a b -> Format.printf "MAP: %a@." CEGAR_print.env b; Refine.add_preds_env b a) prog.env maps in
       Format.printf "%a@." CEGAR_print.env env';

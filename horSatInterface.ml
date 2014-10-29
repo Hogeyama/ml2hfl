@@ -169,8 +169,22 @@ let rec verifyFile filename =
       | `Unsatisfied ce ->
           close_in ic;
           Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
-	  let cexs = error_trace ce in
-	  let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in
+          let cexs = error_trace ce in
+          let ext_cexs =
+            List.map
+              (fun _ -> [Fpat.Idnt.V("#randint_1"), [Fpat.Pred.make [Fpat.Idnt.make "x1", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x2", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x3", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x4", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x5", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x6", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x7", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x8", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x9", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x10", Fpat.Type.mk_int;
+                                                                     Fpat.Idnt.make "x11", Fpat.Type.mk_int]
+                                                                    Fpat.Formula.mk_true]]) cexs (* TODO: Implement *)
+          in
           Unsafe (cexs, ext_cexs)
 (*      | `TimeOut ->
           if not !Flag.only_result
