@@ -264,7 +264,7 @@ let infer_with_ext
     (labeled: string list)
     (is_cp: Fpat.Idnt.t -> bool)
     (cexs: int list list)
-    (ext_cexs: (Idnt.t * Pred.t list) list)
+    (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
     (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
     = (assert false: (string * CEGAR_syntax.t CEGAR_type.t) list)
 (*

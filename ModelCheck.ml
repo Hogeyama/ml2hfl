@@ -5,7 +5,7 @@ open CEGAR_type
 open CEGAR_util
 open ModelCheck_util
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of int list
+type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((Fpat.Idnt.t * Fpat.Pred.t list) list) list))
 
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
@@ -24,7 +24,9 @@ let check_aux prog top_funs =
   let spec = make_spec top_funs in
   let arity_map = make_arity_map top_funs in
   try
-    model_check_aux (prog',arity_map,spec)
+    match model_check_aux (prog',arity_map,spec) with
+      | ModelCheck_util.Safe(x) -> Safe(x)
+      | ModelCheck_util.Unsafe(x,y) -> Unsafe(x,y)
   with
   | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
@@ -47,7 +49,9 @@ let check_aux_cps prog top_funs =
   let spec = make_spec top_funs in
   let arity_map = make_arity_map top_funs in
   try
-    model_check_aux (prog',arity_map,spec)
+    match model_check_aux (prog',arity_map,spec) with
+      | ModelCheck_util.Safe(x) -> Safe(x)
+      | ModelCheck_util.Unsafe(x,y) -> Unsafe(x,y)
   with End_of_file -> fatal "TRecS failed"
 
 let check abst prog top_funs =
@@ -63,4 +67,4 @@ let check abst prog top_funs =
   in
   add_time tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
-  assert(false);
+  result
