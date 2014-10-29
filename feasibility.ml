@@ -61,7 +61,7 @@ let rec check_aux pr ce sat n constr env defs t k =
           assert (List.length xs = List.length ts);
           assert (ts2 = []);
           pr t1' (List.hd ce) num e;
-          if e = [Event "fail"] || e = [Event "terminate"]
+          if e = [Event "fail"]
           then init_cont ce' sat' n' constr' env tf2'
           else (assert (e=[]); check_aux pr ce' sat' n' constr' env defs tf2' k)))
     | Let _ -> assert false
@@ -143,7 +143,7 @@ let rec trans_ce ce ce_br env defs t k =
         let ce' = List.tl ce in
         assert (List.length xs = List.length ts);
         assert (ts2 = []);
-        if e = [Event "fail"] || e = [Event "terminate"]
+        if e = [Event "fail"]
         then init_cont ce' ce_br' env tf2'
         else (assert (e=[]); trans_ce ce' ce_br' env defs tf2' k)))
   | Let _ -> assert false
@@ -171,7 +171,6 @@ let print_ce_reduction ce {defs=defs;main=main} =
   in
     Format.printf "Error trace::@\n  @[";
     pr (Var main) 0 1 e;
-    let defs = List.map (fun (f,a,c,e,t) -> if t=Const(CPS_result) then (f,a,c,[Event "terminate"],t) else (f,a,c,e,t)) defs in
     if e <> [Event "fail"] then
       ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
     Format.printf "ERROR!@.@."

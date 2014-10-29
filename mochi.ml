@@ -294,7 +294,11 @@ let arg_spec =
      "-infer-ranking-exparam",
      Arg.Unit (fun _ ->
                Flag.add_closure_exparam := true),
-     " Infer extra ranking parameters for closures for termination verification"
+     " Infer extra ranking parameters for closures for termination verification";
+     "-non-termination",
+     Arg.Unit (fun _ ->
+               Flag.non_termination := true),
+     " Check non-termination"
     ]
 
 let () = print_option_and_exit :=

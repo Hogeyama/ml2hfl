@@ -145,7 +145,7 @@ let rec error_trace = function
     | HS.Label("l0", t) -> List.map (fun l -> 0 :: l) @@ error_trace t
     | HS.Label("l1", t) -> List.map (fun l -> 1 :: l) @@ error_trace t
     | HS.Label(_, t) -> error_trace t
-    | HS.End -> [[]]
+    | HS.End | HS.Fail -> [[]]
 
 let rec verifyFile filename =
   let default = "empty" in

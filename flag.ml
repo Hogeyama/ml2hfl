@@ -140,3 +140,6 @@ let add_closure_exparam = ref false
 (* relatively-complete-mode option *)
 let enable_coeff_const = ref false
 let number_of_extra_params = ref 1
+
+(* non-termination verification *)
+let non_termination = ref false
