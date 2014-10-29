@@ -21,8 +21,9 @@ let check_aux prog top_funs =
     |> pop_main
     |> capitalize
   in
-  let spec = make_spec top_funs in
-  let arity_map = make_arity_map top_funs in
+  let labels = (List.map Id.to_string top_funs) @ (List.map (fun n -> "r"^string_of_int n) [1;2;3;4]) in
+  let spec = make_spec labels in
+  let arity_map = make_arity_map labels in
   try
     match model_check_aux (prog',arity_map,spec) with
       | ModelCheck_util.Safe(x) -> Safe(x)
@@ -46,8 +47,9 @@ let check_aux_cps prog top_funs =
     |> capitalize
     |@debug()&> Format.printf "CAPITALIZE:@.%a@." CEGAR_print.prog_typ
   in
-  let spec = make_spec top_funs in
-  let arity_map = make_arity_map top_funs in
+  let labels = (List.map Id.to_string top_funs) @ (List.map (fun n -> "r"^string_of_int n) [1;2;3;4]) in (* TODO: count the number of randnum *)
+  let spec = make_spec labels in
+  let arity_map = make_arity_map labels in
   try
     match model_check_aux (prog',arity_map,spec) with
       | ModelCheck_util.Safe(x) -> Safe(x)

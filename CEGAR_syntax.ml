@@ -158,9 +158,25 @@ let make_label n t = make_app (Const (Label n)) [t]
 let make_let bindings t =
   List.fold_right (fun (x,t) t' -> Let(x,t,t')) bindings t
 
-let make_br_exists n (_:(bool list * t) list) : t = assert false
+let make_tree label ts = make_app (Const (TreeConstr(List.length ts, label))) ts
 
+let rec add_bool_labels leaf = function
+  | [] -> leaf
+  | b::bs -> make_tree (if b then "true" else "false") [add_bool_labels leaf bs]
 
+let make_br_exists n = function
+  | [] -> assert false
+  | [(bs, t)] -> make_tree ("r"^string_of_int n) [add_bool_labels t bs]
+  | (bs, t)::xs ->
+    let make_br_exists_aux t1 (bs2, t2) = make_tree "br_exists" [t1; (add_bool_labels t2 bs2)] in
+    make_tree ("r"^string_of_int n) [List.fold_left make_br_exists_aux (add_bool_labels t bs) xs]
+
+let make_br_exists n xs =
+  Format.printf "#rand_int%d:@." n;
+  List.iter (fun (bs,_) ->
+    Format.printf "  %s@." (List.fold_left (fun s b -> if b then "0"^s else "1"^s) "" bs)
+  ) xs;
+  make_br_exists n xs
 
 
 
