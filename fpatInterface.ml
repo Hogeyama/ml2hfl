@@ -79,9 +79,10 @@ let conv_var x =
 let rec conv_term env t =
   match t with
   | Const(RandInt (Some n)) ->
-      let typs = List.map (conv_typ -| snd) env in
+      let env' = List.filter (is_base -| snd) env in
+      let typs = List.map (conv_typ -| snd) env' in
       let r = Fpat.Const.ReadInt (Fpat.Idnt.make @@ make_randint_name n, typs) in
-      Fpat.Term.mk_app (Fpat.Term.mk_const r) @@ List.map (Fpat.Term.mk_var -| conv_var -| fst) env
+      Fpat.Term.mk_app (Fpat.Term.mk_const r) @@ List.map (Fpat.Term.mk_var -| conv_var -| fst) env'
   | Const(RandVal s) ->
      Fpat.Term.mk_var (Fpat.Idnt.make (new_id "r")) (***)
   | Const(c) ->
