@@ -79,8 +79,8 @@ let decomp_randint_name s =
   try
     let s1,s2 = String.split s "_" in
     assert (s1 = prefix_randint);
-    int_of_string s2
-  with _ -> raise (Invalid_argument "decomp_randint_name")
+    Some (int_of_string s2)
+  with _ -> None
 let is_randint_var s =
   try
     ignore @@ decomp_randint_name s;

@@ -587,12 +587,7 @@ let rec has_no_effect t =
 
 
 let assoc_renv n env =
-  let check (s,_) =
-    try
-      n = decomp_randint_name s
-    with _ -> false
-  in
-  match List.find check env with
+  match List.find (fun (s,_) -> Some n = decomp_randint_name s) env with
   | _, TBase(TInt, preds) -> preds
   | _ -> assert false
 
@@ -619,7 +614,7 @@ let assign_id_to_rand prog =
   in
   let prog' = map_body_prog aux prog in
   let map = List.map (fun n -> n, fun _ -> []) @@ List.fromto 1 (!count + 1) in
-  let add_renv_simply map env = 
+  let add_renv_simply map env =
     List.map (fun (n, preds) -> make_randint_name n, TBase(TInt, preds)) map @ env in
   let env = add_renv_simply map prog.env in
   {prog' with env}
@@ -627,8 +622,9 @@ let assign_id_to_rand prog =
 
 let map_randint_to_preds (env:CEGAR_syntax.env) =
   List.filter_map
-    (fun (r, t) ->
-      try Some (decomp_randint_name r, (fun (TBase(TInt, preds)) -> preds) t) with _ -> None)
+    (function
+      | r, TBase(TInt, preds) -> Option.map (fun n -> n, preds) @@ decomp_randint_name r
+      | _ -> None)
     env
 
 let rec merge_ext_preds_sequence = function
@@ -637,3 +633,20 @@ let rec merge_ext_preds_sequence = function
     let (rs, rest) = List.partition (fun (f, _) -> f=r) ext in
     (r,bs::List.map snd rs) :: merge_ext_preds_sequence rest
 
+let rec col_rand_ids t =
+  match t with
+  | Const (RandInt (Some n)) -> [n]
+  | Const c -> []
+  | Var x -> []
+  | App(t1,t2) -> col_rand_ids t1 @ col_rand_ids t2
+  | Let _ -> unsupported "col_rand_ids"
+  | Fun _ -> unsupported "col_rand_ids"
+
+let get_renv prog =
+  let rand_ids = List.filter_map (decomp_randint_name -| fst) prog.env in
+  let get_env i =
+    let f,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
+    let typs,_ = decomp_tfun (List.assoc f prog.env) in
+    List.combine xs @@ List.take (List.length xs) typs
+  in
+  List.map (Pair.add_right get_env) rand_ids

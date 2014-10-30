@@ -64,7 +64,7 @@ let rec loop prog0 is_cp info top_funs =
       prog, Safe env'
   | ModelCheck.Unsafe (cexs, ext_cexs) ->
       let cexs' = List.map (fun ce -> CEGAR_trans.trans_ce ce labeled prog) cexs in
-      let ext_cexs' = List.map (merge_ext_preds_sequence |- List.map (FpatInterface.trans_ext (assert false) (map_randint_to_preds prog0.env))) ext_cexs in
+      let ext_cexs' = List.map (merge_ext_preds_sequence |- List.map (FpatInterface.trans_ext (get_renv prog) (map_randint_to_preds prog0.env))) ext_cexs in
       if !Flag.print_progress then List.iter (fun ce -> Feasibility.print_ce_reduction ce prog) cexs' ;
       let maps =
         List.map2
