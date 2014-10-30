@@ -87,6 +87,20 @@ let is_randint_var s =
     true
   with _ -> false
 
+let prefix_randint_label = "randint"
+let make_randint_label n = Format.sprintf "%s_%d" prefix_randint_label n
+let decomp_randint_label s =
+  try
+    let s1,s2 = String.split s "_" in
+    assert (s1 = prefix_randint_label);
+    int_of_string s2
+  with _ -> raise (Invalid_argument "decomp_randint_label")
+let is_randint_label s =
+  try
+    ignore @@ decomp_randint_label s;
+    true
+  with _ -> false
+
 
 let _Const c = Const c
 let _Var x = Var x
@@ -166,10 +180,10 @@ let rec add_bool_labels leaf = function
 
 let make_br_exists n = function
   | [] -> assert false
-  | [(bs, t)] -> make_tree ("r"^string_of_int n) [add_bool_labels t bs]
+  | [(bs, t)] -> make_tree (make_randint_label n) [add_bool_labels t bs]
   | (bs, t)::xs ->
     let make_br_exists_aux t1 (bs2, t2) = make_tree "br_exists" [t1; (add_bool_labels t2 bs2)] in
-    make_tree ("r"^string_of_int n) [List.fold_left make_br_exists_aux (add_bool_labels t bs) xs]
+    make_tree (make_randint_label n) [List.fold_left make_br_exists_aux (add_bool_labels t bs) xs]
 
 
 
