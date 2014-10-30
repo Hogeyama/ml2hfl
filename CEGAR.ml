@@ -113,9 +113,10 @@ let map3 =
   let n = Var "n_1009" in
   [2, fun x -> [make_or (make_gt x n) (make_leq x (make_sub (make_int 0) n))]]
 
-(*
+let map4 = [1, fun x -> [make_lt x (make_int 1); make_lt x (make_int 2)]]
+
 let cegar prog info top_funs =
   let x = new_id "x" in
-  let prog' = {prog with env = add_renv map3 prog.env} in
+  let prog' = {prog with env = Refine.add_renv map4 prog.env} in
   cegar prog' info top_funs
-*)
+

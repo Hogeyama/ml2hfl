@@ -8,7 +8,6 @@ open CEGAR_trans
 
 exception CannotRefute
 
-
 let add_preds_env map env =
   let aux (f,typ) =
     try
@@ -27,6 +26,10 @@ let add_preds_env map env =
     with Not_found -> f, typ
   in
     List.map aux env
+
+let add_renv map env =
+  let aux (n, preds) = make_randint_name n, TBase(TInt, preds) in
+  add_preds_env (List.map aux map) env
 
 let add_preds map prog =
   {prog with env = add_preds_env map prog.env}
