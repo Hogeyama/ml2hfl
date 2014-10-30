@@ -12,7 +12,7 @@ type apt_transition =
   | APT_And of apt_transition list
   | APT_Or of apt_transition list
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((Fpat.Idnt.t * Fpat.Pred.t list) list) list))
+type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((int * (bool list)) list) list))
 
  module TS = Trecs_syntax
 
@@ -138,14 +138,25 @@ let rec verifyFile filename =
               else raise (Fatal ("Unsupported TRecS output: " ^ s))
 *)
 
+type path = int list (* branch info. *) * bool list (* partially constructed external input info. *) * ((int * (bool list)) list) (* external input info. *)
+let add_next_rand_info r (branch,bs,ext) = (branch, [], (decomp_randint_label r, bs) :: ext)
+let add_tf_info b (branch,bs,ext) = (branch,bs@[b],ext)
+let add_branch_info b (branch,bs,ext) = (b::branch,bs,ext)
+
 (* gather error paths *)
-let rec error_trace = function
-    | HS.Forall(_, t) -> error_trace t
-    | HS.Exists(t1, t2) -> error_trace t1 @ error_trace t2
-    | HS.Label("l0", t) -> List.map (fun l -> 0 :: l) @@ error_trace t
-    | HS.Label("l1", t) -> List.map (fun l -> 1 :: l) @@ error_trace t
-    | HS.Label(_, t) -> error_trace t
-    | HS.End | HS.Fail -> [[]]
+let rec error_trace_aux = function
+    | HS.Forall(_, t) -> error_trace_aux t
+    | HS.Exists(t1, t2) -> error_trace_aux t1 @ error_trace_aux t2
+    | HS.Label("l0", t) -> List.map (add_branch_info 0) @@ error_trace_aux t
+    | HS.Label("l1", t) -> List.map (add_branch_info 1) @@ error_trace_aux t
+    | HS.Label("true", t) -> List.map (add_tf_info true) @@ error_trace_aux t
+    | HS.Label("false", t) -> List.map (add_tf_info false) @@ error_trace_aux t
+    | HS.Label(r, t) when is_randint_label r -> List.map (add_next_rand_info r) @@ error_trace_aux t
+    | HS.Label(_, t) -> error_trace_aux t
+    | HS.End | HS.Fail -> [([],[],[])]
+
+let error_trace tr =
+  List.fold_left (fun (xs,ys) (x,_,y) -> (x::xs, y::ys)) ([],[]) @@ error_trace_aux tr
 
 let rec verifyFile filename =
   let default = "empty" in
@@ -169,14 +180,8 @@ let rec verifyFile filename =
       | `Unsatisfied ce ->
           close_in ic;
           Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
-          let cexs = error_trace ce in
-          let ext_cexs =
-            List.map
-              (fun _ -> [Fpat.Idnt.V("#randint_1"), [Fpat.Pred.make [Fpat.Idnt.make "x1", Fpat.Type.mk_int;
-                                                                     Fpat.Idnt.make "x2", Fpat.Type.mk_int;
-                                                                     Fpat.Idnt.make "x3", Fpat.Type.mk_int]
-                                                                    Fpat.Formula.mk_true]]) cexs (* TODO: Implement *)
-          in
+          let cexs, ext_cexs = error_trace ce in
+          (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
           Unsafe (cexs, ext_cexs)
 (*      | `TimeOut ->
           if not !Flag.only_result

@@ -64,24 +64,27 @@ let rec loop prog0 is_cp info top_funs =
       prog, Safe env'
   | ModelCheck.Unsafe (cexs, ext_cexs) ->
       let cexs' = List.map (fun ce -> CEGAR_trans.trans_ce ce labeled prog) cexs in
+      let ext_cexs' = List.map (merge_ext_preds_sequence |- List.map (FpatInterface.trans_ext (map_randint_to_preds prog0.env))) ext_cexs in
       if !Flag.print_progress then List.iter (fun ce -> Feasibility.print_ce_reduction ce prog) cexs' ;
-      let maps = List.map2 (fun ce ext_ce ->
-          match Feasibility.check ce prog with
-          | Feasibility.Feasible (env, sol) ->
-            let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-            let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_ce] prog0 in
-            map
-          | Feasibility.Infeasible prefix ->
-            let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-            let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_ce] prog0 in
-            Format.printf "ENV: %a@." CEGAR_print.env p.env;
-            if !Flag.debug_level > 0 then
-              Format.printf "Prefix of spurious counterexample::@.%a@.@."
-                            CEGAR_print.ce prefix;
-            map) cexs' ext_cexs
+      let maps =
+        List.map2
+          (fun ce ext_ce ->
+           match Feasibility.check ce prog with
+           | Feasibility.Feasible (env, sol) ->
+              let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+              let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_ce] prog0 in
+              map
+           | Feasibility.Infeasible prefix ->
+              let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+              let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_ce] prog0 in
+              Format.printf "ENV: %a@." CEGAR_print.env p.env;
+              if !Flag.debug_level > 0 then
+                Format.printf "Prefix of spurious counterexample::@.%a@.@."
+                              CEGAR_print.ce prefix;
+              map)
+          cexs' ext_cexs'
       in
-      let env' = List.fold_left (fun a b -> Format.printf "MAP: %a@." CEGAR_print.env b; Refine.add_preds_env b a) prog.env maps in
-      Format.printf "%a@." CEGAR_print.env env';
+      let env' = List.fold_left (fun a b -> Refine.add_preds_env b a) prog.env maps in
       post ();
       loop {prog with env=env'} is_cp info top_funs
 
@@ -111,11 +114,12 @@ let map2 =
 
 let map3 =
   let n = Var "n_1009" in
-  [2, fun x -> [make_or (make_gt x n) (make_leq x (make_sub (make_int 0) n))]]
+  [2, fun x -> [make_and (make_gt x n) (make_leq x (make_sub (make_int 0) n))]]
 
-(*
+let map4 = [1, fun x -> [make_lt x (make_int (-1))]]
+
 let cegar prog info top_funs =
   let x = new_id "x" in
-  let prog' = {prog with env = add_renv map3 prog.env} in
+  let prog' = {prog with env = Refine.add_renv (map3@map4) prog.env} in
   cegar prog' info top_funs
-*)
+

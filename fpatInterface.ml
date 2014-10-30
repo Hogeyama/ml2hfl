@@ -632,3 +632,21 @@ let is_sat_forall_exists xs ys cond p =
           conv_formula p
   in
   Fpat.SMTProver.is_sat_dyn p'
+
+let conv_pred (p: CEGAR_syntax.t) =
+  let env_fv = p |> get_fv |> List.map Fpat.Idnt.make |> Fpat.TypEnv.of_vars in
+  let phi = conv_formula p in
+  ((env_fv, phi) : Fpat.Pred.t)
+
+let trans_ext (map : (int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list) (n, bs) =
+  let r = make_randint_name n in
+  let new_var = Var(r) in
+  let abst_preds = (List.assoc n map) new_var in
+  let rand_var = conv_var r in
+  let ext_abstraction = List.map (List.fold_left2 (fun acc p b -> make_and (if b then p else make_not p) acc) (Const True) abst_preds) bs in 
+  let preds_sequence = List.map conv_pred ext_abstraction in
+  let ret = rand_var, preds_sequence in
+  let print_pred ppf (env, fml) =
+    Format.fprintf ppf "%a |= %a" Fpat.TypEnv.pr_compact env Fpat.Formula.pr fml in
+  (* Format.printf "%s: %a@." r (print_list print_pred " , ") preds_sequence; *)
+  ret

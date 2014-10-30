@@ -25,6 +25,8 @@ val add_preds_env : CEGAR_syntax.env -> CEGAR_syntax.env -> CEGAR_syntax.env
 
 val add_preds : CEGAR_syntax.env -> CEGAR_syntax.prog -> CEGAR_syntax.prog
 
+val add_renv : (int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list -> CEGAR_syntax.env -> CEGAR_syntax.env
+
 (*
 val remove_preds : Syntax.typed_term -> Syntax.typed_term
 (** [remove_preds t] で， [t] 中の述語を削除する *)

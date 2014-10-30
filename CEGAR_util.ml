@@ -603,11 +603,6 @@ let mem_assoc_renv n env =
   with Not_found -> false
 
 
-let add_renv map env =
-  let aux env (n, preds) =
-    (make_randint_name n, TBase(TInt, preds)) :: env
-  in
-  List.fold_left aux env map
 
 
 let assign_id_to_rand prog =
@@ -624,5 +619,21 @@ let assign_id_to_rand prog =
   in
   let prog' = map_body_prog aux prog in
   let map = List.map (fun n -> n, fun _ -> []) @@ List.fromto 1 (!count + 1) in
-  let env = add_renv map prog.env in
+  let add_renv_simply map env = 
+    List.map (fun (n, preds) -> make_randint_name n, TBase(TInt, preds)) map @ env in
+  let env = add_renv_simply map prog.env in
   {prog' with env}
+
+
+let map_randint_to_preds (env:CEGAR_syntax.env) =
+  List.filter_map
+    (fun (r, t) ->
+      try Some (decomp_randint_name r, (fun (TBase(TInt, preds)) -> preds) t) with _ -> None)
+    env
+
+let rec merge_ext_preds_sequence = function
+  | [] -> []
+  | (r,bs)::ext ->
+    let (rs, rest) = List.partition (fun (f, _) -> f=r) ext in
+    (r,bs::List.map snd rs) :: merge_ext_preds_sequence rest
+

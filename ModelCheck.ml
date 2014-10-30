@@ -5,11 +5,11 @@ open CEGAR_type
 open CEGAR_util
 open ModelCheck_util
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((Fpat.Idnt.t * Fpat.Pred.t list) list) list))
+type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((int * (bool list)) list) list))
 
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
-let check_aux prog top_funs =
+let check_aux prog labels =
   Format.printf "WARNING: model checking for non-CPS programs is unmaintained.@.";
   let prog' =
     prog
@@ -21,7 +21,6 @@ let check_aux prog top_funs =
     |> pop_main
     |> capitalize
   in
-  let labels = (List.map Id.to_string top_funs) @ (List.map (fun n -> "r"^string_of_int n) [1;2;3;4]) in
   let spec = make_spec labels in
   let arity_map = make_arity_map labels in
   try
@@ -31,7 +30,7 @@ let check_aux prog top_funs =
   with
   | End_of_file -> (Format.printf "\nTRecS failed@."; assert false)
 
-let check_aux_cps prog top_funs =
+let check_aux_cps prog labels =
   let prog' =
     prog
     |> eta_expand
@@ -47,7 +46,6 @@ let check_aux_cps prog top_funs =
     |> capitalize
     |@debug()&> Format.printf "CAPITALIZE:@.%a@." CEGAR_print.prog_typ
   in
-  let labels = (List.map Id.to_string top_funs) @ (List.map (fun n -> "r"^string_of_int n) [1;2;3;4]) in (* TODO: count the number of randnum *)
   let spec = make_spec labels in
   let arity_map = make_arity_map labels in
   try
@@ -60,12 +58,13 @@ let check abst prog top_funs =
   let tmp = get_time () in
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
+  let labels = (List.map Id.to_string top_funs) @ (List.filter_map (fun (r,_) -> try Some (make_randint_label (decomp_randint_name r)) with _ -> None) prog.env) in
   let result =
     match !Flag.model_check with
     | Flag.ModelCheckCPS ->
         if not @@ List.mem Flag.CPS !Flag.form then failwith "Program must be in CPS @ ModelCheckCPS";
-        check_aux_cps abst top_funs
-    | Flag.ModelCheck -> check_aux abst top_funs
+        check_aux_cps abst labels
+    | Flag.ModelCheck -> check_aux abst labels
   in
   add_time tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
