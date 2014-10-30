@@ -638,8 +638,7 @@ let is_sat_forall_exists xs ys cond p =
 let conv_pred (env: CEGAR_syntax.env) (p: CEGAR_syntax.t) =
   let env = env
   |> List.filter (is_base -| snd)
-  |> List.map (Fpat.Idnt.make -| fst)
-  |> Fpat.TypEnv.of_vars in
+  |> List.map (Fpat.Pair.map Fpat.Idnt.make conv_typ) in
   let phi = conv_formula p in
   ((env, phi) : Fpat.Pred.t)
 
