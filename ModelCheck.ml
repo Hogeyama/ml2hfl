@@ -5,7 +5,7 @@ open CEGAR_type
 open CEGAR_util
 open ModelCheck_util
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((Fpat.Idnt.t * Fpat.Pred.t list) list) list))
+type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((int * (bool list)) list) list))
 
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
