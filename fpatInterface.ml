@@ -278,7 +278,20 @@ let infer_with_ext
     (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
   =
   let prog = conv_prog prog in
+
+  Format.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
+  let old_split_eq = !Fpat.AbsType.split_equalities in
+  let old_eap = !Fpat.AbsType.extract_atomic_predicates in
+  let old_hccs_solver = Fpat.HCCSSolver.get_solver () in
+  Fpat.AbsType.split_equalities := true;
+  Fpat.AbsType.extract_atomic_predicates := true;
+  Fpat.HCCSSolver.link_solver Fpat.BwQEHCCSSolver.solve;
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
+  Fpat.AbsType.split_equalities := old_split_eq;
+  Fpat.AbsType.extract_atomic_predicates := old_eap;
+  Fpat.HCCSSolver.link_solver old_hccs_solver;
+  Format.printf "END refinement@,@]";
+
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
   List.map

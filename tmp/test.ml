@@ -22,8 +22,9 @@ val f : (x:int[x > 0]) -> r:int
 {SPEC}*)
 
 let rec f n =
-  let r = read_int () in
   if n = 0
-  then r
+  then 0
   else f (n-1)
-let main n = f n
+let main n =
+  let r = read_int () in
+  f r

@@ -120,5 +120,5 @@ let map4 = [1, fun x -> [make_lt x (make_int (-1))]]
 
 let cegar prog info top_funs =
   let x = new_id "x" in
-  let prog' = {prog with env = Refine.add_renv (map3@map4) prog.env} in
+  let prog' = {prog with env = Refine.add_renv ([](*map3@map4*)) prog.env} in
   cegar prog' info top_funs
