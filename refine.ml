@@ -61,7 +61,7 @@ let refine labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=main} =
     if !Flag.print_progress then
       Color.printf
 	    Color.Green
-	    "(%d-4) Discovering predicates ... @."
+	    "(%d-4) Discovering predicates (infeasible case) ... @."
 	    !Flag.cegar_loop;
     if Flag.use_prefix_trace then
 	  raise (Fatal "Not implemented: Flag.use_prefix_trace");
@@ -107,7 +107,7 @@ let refine_with_ext labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=mai
     if !Flag.print_progress then
       Color.printf
 	    Color.Green
-	    "(%d-4) Discovering predicates ... @."
+	    "(%d-4) Discovering predicates (feasible case) ... @."
 	    !Flag.cegar_loop;
     if Flag.use_prefix_trace then
 	  raise (Fatal "Not implemented: Flag.use_prefix_trace");

@@ -202,7 +202,7 @@ let rec infer_effect env t =
 	try
 	  List.assoc (Id.to_string x) env
 	with
-	  Not_found when Fpat.EHCCSSolver.is_parameter (Id.name x) -> TBaseCPS(TInt)
+	  Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS(TInt)
 	| Not_found -> Format.printf "%a@." print_id x; assert false
       in
       {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}

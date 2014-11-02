@@ -383,7 +383,7 @@ let () =
         Format.printf "}@."
     | e when !Flag.exp2 ->
         output_csv (string_of_exception e)
-    | Fpat.AbsTypInfer.FailedToRefineTypes ->
+    | Fpat.RefTypInfer.FailedToRefineTypes ->
         Format.printf "Verification failed:@.";
         Format.printf "  MoCHi could not refute an infeasible error path @.";
         Format.printf "  due to the incompleteness of the refinement type system@."

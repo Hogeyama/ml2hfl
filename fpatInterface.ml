@@ -71,7 +71,7 @@ let conv_const c =
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let conv_var x =
-  if Fpat.EHCCSSolver.is_parameter x || isEX_COEFFS x then
+  if Fpat.RefTypInfer.is_parameter x || isEX_COEFFS x then
     Fpat.Idnt.mk_coeff x
   else
     Fpat.Idnt.make x
@@ -264,7 +264,7 @@ let infer labeled is_cp cexs ext_cexs prog =
   let prog = conv_prog prog in
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
   Flag.time_parameter_inference :=
-    !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
+    !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
   List.map
     (fun (f, rty) ->
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
@@ -285,7 +285,9 @@ let infer_with_ext
   let old_hccs_solver = Fpat.HCCSSolver.get_solver () in
   Fpat.AbsType.split_equalities := true;
   Fpat.AbsType.extract_atomic_predicates := true;
-  Fpat.HCCSSolver.link_solver Fpat.BwQEHCCSSolver.solve;
+  Fpat.HCCSSolver.link_solver
+    (Fpat.AEHCCSSolver.solve
+       (Fpat.EAHCCSSolver.solve [] [] [] Fpat.BwQEHCCSSolver.solve));
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
   Fpat.AbsType.split_equalities := old_split_eq;
   Fpat.AbsType.extract_atomic_predicates := old_eap;
@@ -293,7 +295,7 @@ let infer_with_ext
   Format.printf "END refinement@,@]";
 
   Flag.time_parameter_inference :=
-    !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
+    !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
   List.map
     (fun (f, rty) ->
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
@@ -328,7 +330,7 @@ let rec trans_type typ =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Fpat.EHCCSSolver.number_of_extra_params then
+                 if i < !Fpat.RefTypInfer.number_of_extra_params then
                    Some(Id.new_var ~name:"ex" Type.TInt, i + 1)
                  else
                    None)
@@ -345,7 +347,7 @@ let of_term t = assert false (* @todo translate FPAT term to Syntax.typed_term *
 let insert_extra_param t =
   let tmp = get_time() in
   let debug = !Flag.debug_level > 0 in
-  Fpat.EHCCSSolver.masked_params := [];
+  Fpat.RefTypInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
       match t.Syntax.desc with
@@ -359,7 +361,7 @@ let insert_extra_param t =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Fpat.EHCCSSolver.number_of_extra_params then
+                 if i < !Fpat.RefTypInfer.number_of_extra_params then
                    Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                  else
                    None)
@@ -450,7 +452,7 @@ let insert_extra_param t =
                    |> List.map (Id.to_string >> Fpat.Idnt.make)
                  in
                  let exs = List.map (Id.to_string >> Fpat.Idnt.make) exs in
-                 Fpat.EHCCSSolver.new_params
+                 Fpat.RefTypInfer.new_params
                    (if recursive then
                       Some(Fpat.Util.List.nth xss i
                            |> List.map (Id.to_string >> Fpat.Idnt.make))
@@ -491,7 +493,7 @@ let insert_extra_param t =
                 | Type.TTuple _(* ToDo: fix it *) ->
                    Fpat.Util.List.unfold
                      (fun i ->
-                      if i < !Fpat.EHCCSSolver.number_of_extra_params then
+                      if i < !Fpat.RefTypInfer.number_of_extra_params then
                         Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                       else
                         None)

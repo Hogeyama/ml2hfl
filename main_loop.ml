@@ -190,7 +190,7 @@ let rec run orig parsed =
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
       if true && !Flag.debug_level > 0 then
         Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-                      (List.length !Fpat.EHCCSSolver.params) Syntax.print_term t Syntax.print_term' t;
+                      (List.length !Fpat.RefTypInfer.params) Syntax.print_term t Syntax.print_term' t;
       t
       else
         set_target
@@ -216,19 +216,19 @@ let rec run orig parsed =
             then report_unsafe main_fun arg_num ce set_target;
             false
       with
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
+      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
           Flag.insert_param_funarg := true;
           run orig parsed
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
+      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
           run orig parsed
-      | Fpat.AbsTypInfer.FailedToRefineTypes ->
-          raise Fpat.AbsTypInfer.FailedToRefineTypes
-      | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
-          Fpat.EHCCSSolver.params := [];
+      | Fpat.RefTypInfer.FailedToRefineTypes ->
+          raise Fpat.RefTypInfer.FailedToRefineTypes
+      | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
+          Fpat.RefTypInfer.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
-          incr Fpat.EHCCSSolver.number_of_extra_params;
+          incr Fpat.RefTypInfer.number_of_extra_params;
           run orig parsed
