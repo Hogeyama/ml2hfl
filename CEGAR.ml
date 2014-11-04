@@ -64,25 +64,33 @@ let rec loop prog0 is_cp info top_funs =
       prog, Safe env'
   | ModelCheck.Unsafe (cexs, ext_cexs) ->
       let cexs' = List.map (fun ce -> CEGAR_trans.trans_ce ce labeled prog) cexs in
-      let ext_cexs' = List.map (merge_ext_preds_sequence |- List.map (FpatInterface.trans_ext (get_renv prog) (map_randint_to_preds prog0.env))) ext_cexs in
-      if !Flag.print_progress then List.iter (fun ce -> Feasibility.print_ce_reduction ce prog) cexs' ;
+      let map_randint_to_preds = make_map_randint_to_preds prog0.env in
+      Format.printf "ENV: %a@." (print_list Format.pp_print_int ",") (List.map fst map_randint_to_preds);
+      let renv = get_renv prog in
       let maps =
         List.map2
           (fun ce ext_ce ->
-           match Feasibility.check ce prog with
-           | Feasibility.Feasible (env, sol) ->
-              let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-              let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_ce] prog0 in
-              map
-           | Feasibility.Infeasible prefix ->
-              let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-              let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_ce] prog0 in
-              Format.printf "ENV: %a@." CEGAR_print.env p.env;
-              if !Flag.debug_level > 0 then
-                Format.printf "Prefix of spurious counterexample::@.%a@.@."
-                              CEGAR_print.ce prefix;
-              map)
-          cexs' ext_cexs'
+	    if !Flag.print_progress then Feasibility.print_ce_reduction ~map_randint_to_preds:map_randint_to_preds ~ext_ce:ext_ce ce prog;
+	    let ext_preds = ext_ce |> merge_ext_preds_sequence |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
+	    match Feasibility.check ~map_randint_to_preds:map_randint_to_preds ~ext_ce:ext_ce ce prog with
+	      | Feasibility.Feasible (true, env, sol) ->
+		Format.printf "Found useless feasible path@.";
+		[] (* do not use a useless (i.e. already-used-in-CEGAR) error-path *)
+	      | Feasibility.Feasible (false, env, sol) ->
+		Format.printf "Found feasible path@.";
+		let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+		let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_preds] prog0 in
+		map
+	      | Feasibility.Infeasible prefix ->
+		Format.printf "Found infeasible path@.";
+		let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+		let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_preds] prog0 in
+		Format.printf "ENV: %a@." CEGAR_print.env p.env;
+		if !Flag.debug_level > 0 then
+                  Format.printf "Prefix of spurious counterexample::@.%a@.@."
+                    CEGAR_print.ce prefix;
+		map)
+          cexs' ext_cexs
       in
       let env' = List.fold_left (fun a b -> Refine.add_preds_env b a) prog.env maps in
       post ();

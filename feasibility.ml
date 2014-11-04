@@ -6,7 +6,7 @@ open CEGAR_print
 open CEGAR_util
 
 type result =
-    Feasible of (string * CEGAR_syntax.typ) list * int list
+    Feasible of bool * (string * CEGAR_syntax.typ) list * int list
   | Infeasible of CEGAR_syntax.ce
 
 let debug () = List.mem "Feasibility" !Flag.debug_module
@@ -23,6 +23,31 @@ let assoc_def defs n t =
   let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
     List.length defs', List.nth defs' n
 
+let add_randint_precondition map_randint_to_preds ext_ce rand_precond r = function
+  | None -> rand_precond, ext_ce
+  | Some(n) -> 
+    let new_var = Var(r) in
+    let abst_preds = try (List.assoc n map_randint_to_preds) new_var with Not_found -> Format.printf "not found: %d@." n; [] in
+    let rand_var = FpatInterface.conv_var r in
+    match ext_ce with
+      | (m, bs)::ext_ce' when m=n ->
+	let asm_cond = List.fold_left2 (fun acc p b -> make_and (if b then p else make_not p) acc) (Const True) abst_preds bs in
+	make_and rand_precond asm_cond, ext_ce'
+      | _ -> assert false
+
+let map_randint_to_preds_ref = ref []
+let ext_ce_ref = ref []
+let rand_precond_ref = ref (Const True)
+let init_refs mrtp ec = begin
+  map_randint_to_preds_ref := mrtp;
+  ext_ce_ref := ec;
+  rand_precond_ref := Const True;
+end
+let add_randint_precondition r n =
+  let (c, e) = add_randint_precondition !map_randint_to_preds_ref !ext_ce_ref !rand_precond_ref r n in
+  ext_ce_ref := e;
+  rand_precond_ref := c
+
 (* sat=true denotes constr is satisfiable *)
 let rec check_aux pr ce sat n constr env defs t k =
   if debug() then Format.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
@@ -37,8 +62,9 @@ let rec check_aux pr ce sat n constr env defs t k =
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       k ce sat n constr env (make_app (Const op) [t1;t2])))
-  | App(Const (RandInt _), t) ->
+  | App(Const (RandInt randnum), t) ->
       let r = new_id "r" in
+      add_randint_precondition r randnum;
       let env' = (r,typ_int)::env in
     check_aux pr ce sat n constr env' defs (App(t,Var r)) k
   | App(t1,t2) ->
@@ -73,7 +99,7 @@ let rec get_prefix ce n =
   | c::ce' when n = 0 -> []
   | c::ce' -> c::get_prefix ce' (n-1)
 
-let check ce {defs=defs; main=main} =
+let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs=defs; main=main} =
   let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
   let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
@@ -81,13 +107,16 @@ let check ce {defs=defs; main=main} =
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr _ _ _ _ = () in
+  init_refs map_randint_to_preds ext_ce; (* initialize abstraction predicate path of randint *)
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
   let result =
-    if checksat env' constr
-    then Feasible (env', get_solution env' constr)
+    if checksat env' (make_and constr !rand_precond_ref)
+    then Feasible (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', get_solution env' constr)
     else Infeasible prefix
   in
+  if !Flag.print_progress && (match result with | Feasible _ -> true | _ -> false) then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;
+  if !Flag.print_progress && (match result with | Feasible _ -> true | _ -> false) then Color.printf Color.Green "Progress pre-constraint: %a@." CEGAR_print.term !rand_precond_ref;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
   add_time time_tmp Flag.time_cegar;
   result
@@ -161,7 +190,7 @@ let trans_ce ce {defs=defs;main=main} =
 
 
 
-let print_ce_reduction ce {defs=defs;main=main} =
+let print_ce_reduction ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs=defs;main=main} =
   let ce' = List.tl ce in
   let _,_,_,e,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr t br n e =
@@ -169,6 +198,7 @@ let print_ce_reduction ce {defs=defs;main=main} =
     let s2 = match e with [] -> "" | [Event s] -> s ^ " -->" | _ -> assert false in
       Format.printf "%a%s ... --> %s@\n" CEGAR_print.term t s1 s2
   in
+    init_refs map_randint_to_preds ext_ce; (* initialize abstraction predicate path of randint *)
     Format.printf "Error trace::@\n  @[";
     pr (Var main) 0 1 e;
     if e <> [Event "fail"] then

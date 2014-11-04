@@ -620,7 +620,7 @@ let assign_id_to_rand prog =
   {prog' with env}
 
 
-let map_randint_to_preds (env:CEGAR_syntax.env) =
+let make_map_randint_to_preds (env:CEGAR_syntax.env) =
   List.filter_map
     (function
       | r, TBase(TInt, preds) -> Option.map (fun n -> n, preds) @@ decomp_randint_name r
