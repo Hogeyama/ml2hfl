@@ -31,33 +31,33 @@ let length_var =
   let x = Id.make (-1) "l" (TList typ_unknown) in
   Id.make (-1) "length" (TFun(x, TInt))
 
-let unit_term = {desc=Const Unit; typ=TUnit; attr=None}
-let true_term = {desc=Const True;typ=TBool; attr=None}
-let false_term = {desc=Const False;typ=TBool; attr=None}
-let cps_result = {desc=Const CPS_result; typ=typ_result; attr=None}
-let fail_term = {desc=Event("fail",false);typ=typ_event; attr=None}
-let fail_term_cps = {desc=Event("fail",false);typ=typ_event'; attr=None}
-let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=None}
-let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt; attr=None}
+let unit_term = {desc=Const Unit; typ=TUnit}
+let true_term = {desc=Const True;typ=TBool}
+let false_term = {desc=Const False;typ=TBool}
+let cps_result = {desc=Const CPS_result; typ=typ_result}
+let fail_term = {desc=Event("fail",false);typ=typ_event}
+let fail_term_cps = {desc=Event("fail",false);typ=typ_event'}
+let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt)}
+let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt}
 let randbool_unit_term =
-  {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt; attr=None}, {desc=Const(Int 0);typ=TInt; attr=None}); typ=TBool; attr=None}
-let make_bottom typ = {desc=Bottom;typ=typ; attr=None}
-let make_event s = {desc=Event(s,false);typ=typ_event; attr=None}
-let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=None}
-let make_var x = {desc=Var x; typ=Id.typ x; attr=None}
-let make_int n = {desc=Const(Int n); typ=TInt; attr=None}
-let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=None}
-let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ=typ; attr=None}
+  {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt}, {desc=Const(Int 0);typ=TInt}); typ=TBool}
+let make_bottom typ = {desc=Bottom;typ=typ}
+let make_event s = {desc=Event(s,false);typ=typ_event}
+let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps}
+let make_var x = {desc=Var x; typ=Id.typ x}
+let make_int n = {desc=Const(Int n); typ=TInt}
+let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ)}
+let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ=typ}
 let make_randvalue_cps typ =
   let u = Id.new_var TUnit in
   let r = Id.new_var typ in
   let k = Id.new_var @@ TFun(r,typ_result) in
-  {desc=Const(RandValue(typ,true)); typ=TFun(u,TFun(k,typ_result)); attr=None}
+  {desc=Const(RandValue(typ,true)); typ=TFun(u,TFun(k,typ_result))}
 let make_randint_cps () =
   let u = Id.new_var TUnit in
   let r = Id.new_var TInt in
   let k = Id.new_var @@ TFun(r,typ_result) in
-  {desc=Const(RandInt true); typ=TFun(u,TFun(k,typ_result)); attr=None}
+  {desc=Const(RandInt true); typ=TFun(u,TFun(k,typ_result))}
 let rec make_app t ts =
   let check typ1 typ2 =
     if not (Flag.check_typ => Type.can_unify typ1 typ2)
@@ -75,16 +75,16 @@ let rec make_app t ts =
   | _, _, [] -> t
   | App(t1,ts1), TFun(x,typ), t2::ts2 ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t1,ts1@[t2]); typ=typ; attr=None} ts2
+      make_app {desc=App(t1,ts1@[t2]); typ=typ} ts2
   | _, TFun(x,typ), t2::ts ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t,[t2]); typ=typ; attr=None} ts
-  | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=None}
+      make_app {desc=App(t,[t2]); typ=typ} ts
+  | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown}
   | _ ->
-      Format.printf "Untypable(make_app): %a@." print_term' {desc=App(t,ts);typ=typ_unknown; attr=None};
+      Format.printf "Untypable(make_app): %a@." print_term' {desc=App(t,ts);typ=typ_unknown};
       assert false
 let make_lets bindings t2 =
-  List.fold_right (fun binding t2 -> {desc=Let(Nonrecursive,[binding],t2); typ=t2.typ; attr=None}) bindings t2
+  List.fold_right (fun binding t2 -> {desc=Let(Nonrecursive,[binding],t2); typ=t2.typ}) bindings t2
 let make_let_f flag bindings t2 =
   if bindings = []
   then t2
@@ -95,7 +95,7 @@ let make_let_f flag bindings t2 =
       | _ -> f, xs, t
     in
     let bindings' = List.map aux bindings in
-    {desc=Let(flag,bindings',t2); typ=t2.typ; attr=None}
+    {desc=Let(flag,bindings',t2); typ=t2.typ}
 let make_lets_f bindings t2 =
   List.fold_right (fun (flag,binding) -> make_let_f flag [binding]) bindings t2
 let make_let bindings t2 = make_let_f Nonrecursive bindings t2
@@ -111,8 +111,8 @@ let make_loop typ =
   let t = make_app (make_var f) [make_var u] in
   make_letrec [f, [u], t] (make_app (make_var f) [unit_term])
 let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
-let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=None}
-let make_not t = {desc=Not t; typ=TBool; attr=None}
+let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ)}
+let make_not t = {desc=Not t; typ=TBool}
 let make_and t1 t2 =
   if t1 = true_term
   then t2
@@ -122,17 +122,17 @@ let make_and t1 t2 =
     else
       if t2 = true_term
       then t1
-      else {desc=BinOp(And, t1, t2); typ=TBool; attr=None}
+      else {desc=BinOp(And, t1, t2); typ=TBool}
 let make_or t1 t2 =
   if t1 = true_term
   then true_term
   else
     if t1 = false_term
     then t2
-    else {desc=BinOp(Or, t1, t2); typ=TBool; attr=None}
-let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=None}
-let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt; attr=None}
-let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt; attr=None}
+    else {desc=BinOp(Or, t1, t2); typ=TBool}
+let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt}
+let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt}
+let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt}
 let make_neg t = make_sub (make_int 0) t
 let make_if_ t1 t2 t3 =
   assert (Flag.check_typ => Type.can_unify t1.typ TBool);
@@ -151,44 +151,44 @@ let make_if_ t1 t2 t3 =
             then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." print_typ t2.typ print_typ t3.typ;
             t2.typ
       in
-      {desc=If(t1, t2, t3); typ=typ; attr=None}
+      {desc=If(t1, t2, t3); typ=typ}
 let make_branch t2 t3 =
   assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
-  {desc=Branch(t2, t3); typ=t2.typ; attr=None}
+  {desc=Branch(t2, t3); typ=t2.typ}
 let make_eq t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
-  {desc=BinOp(Eq, t1, t2); typ=TBool; attr=None}
+  {desc=BinOp(Eq, t1, t2); typ=TBool}
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Lt, t1, t2); typ=TBool; attr=None}
+  {desc=BinOp(Lt, t1, t2); typ=TBool}
 let make_gt t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Gt, t1, t2); typ=TBool; attr=None}
+  {desc=BinOp(Gt, t1, t2); typ=TBool}
 let make_leq t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Leq, t1, t2); typ=TBool; attr=None}
+  {desc=BinOp(Leq, t1, t2); typ=TBool}
 let make_geq t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Geq, t1, t2); typ=TBool; attr=None}
-let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=None}
+  {desc=BinOp(Geq, t1, t2); typ=TBool}
+let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ}
 let make_ttuple typs =
   TTuple (List.map Id.new_var typs)
-let make_tuple ts = {desc=Tuple ts; typ=make_ttuple @@ List.map (fun t -> t.typ) ts; attr=None}
-let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=None}
-let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=None}
+let make_tuple ts = {desc=Tuple ts; typ=make_ttuple @@ List.map (fun t -> t.typ) ts}
+let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ}
+let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ}
 let make_tpair typ1 typ2 = TTuple [Id.new_var typ1; Id.new_var typ2]
-let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ; attr=None}
-let make_nil typ = {desc=Nil; typ=TList typ; attr=None}
-let make_nil2 typ = {desc=Nil; typ=typ; attr=None}
+let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ}
+let make_nil typ = {desc=Nil; typ=TList typ}
+let make_nil2 typ = {desc=Nil; typ=typ}
 let make_cons t1 t2 =
   assert (Flag.check_typ => Type.can_unify (TList t1.typ) t2.typ);
-  {desc=Cons(t1,t2); typ=t2.typ; attr=None}
+  {desc=Cons(t1,t2); typ=t2.typ}
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
 let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
@@ -196,7 +196,7 @@ let make_ppair p1 p2 = {pat_desc=PTuple[p1;p2]; pat_typ=make_tpair p1.pat_typ p2
 let make_pnil typ = {pat_desc=PNil; pat_typ=TList typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
-let make_match t1 pats = {desc=Match(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats); attr=None}
+let make_match t1 pats = {desc=Match(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats)}
 let make_single_match t1 p t2 =
   make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let rec make_nth i n t =
@@ -206,14 +206,14 @@ let rec make_nth i n t =
   | _ -> make_nth (i-1) (n-1) (make_snd t)
 let make_assert t = make_if_ t unit_term (make_app fail_term [unit_term])
 let make_assume t1 t2 = make_if_ t1 t2 (make_bottom t2.typ)
-let make_label_aux info t = {desc=Label(info,t); typ=t.typ; attr=None}
+let make_label_aux info t = {desc=Label(info,t); typ=t.typ}
 let make_label ?(label="") info t =
   t
   |> make_label_aux info
   |& (label <> "") &> make_label_aux (InfoString label)
-let make_ref t = {desc=Ref t; typ=TRef t.typ; attr=None}
-let make_deref t = {desc=Deref t; typ=ref_typ t.typ; attr=None}
-let make_setref r t = {desc=SetRef(r, t); typ=TUnit; attr=None}
+let make_ref t = {desc=Ref t; typ=TRef t.typ}
+let make_deref t = {desc=Deref t; typ=ref_typ t.typ}
+let make_setref r t = {desc=SetRef(r, t); typ=TUnit}
 let make_construct c ts =
   if Flag.check_typ
   then
@@ -221,13 +221,13 @@ let make_construct c ts =
       let typs = Type_decl.constr_arg_typs c in
       List.iter2 (fun t typ -> assert (Type.can_unify t.typ typ)) ts typs
     end;
-  {desc=Constr(c,ts); typ=Type_decl.constr_typ c; attr=None}
+  {desc=Constr(c,ts); typ=Type_decl.constr_typ c}
 
-let imply t1 t2 = make_or (make_not t1) t2
+let imply t1 t2 = {desc=BinOp(Or, {desc=Not t1;typ=TBool}, t2); typ=TBool}
 let and_list ts = match ts with
-    [] -> {desc=Const True; typ=TBool; attr=None}
+    [] -> {desc=Const True; typ=TBool}
   | [t] -> t
-  | t::ts -> List.fold_left make_and t ts
+  | t::ts -> List.fold_left (fun t1 t2 -> {desc=BinOp(And,t1,t2);typ=TBool}) t ts
 
 let make_eq_dec t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
@@ -444,7 +444,7 @@ let subst_map_term map t =
       make_letrec bindings' t2'
   | Match(t1,pats) -> (* TODO: fix *)
       let aux (pat,cond,t1) = pat, cond, subst_map.tr2_term map t1 in
-      {desc=Match(subst_map.tr2_term map t1, List.map aux pats); typ=t.typ; attr=None}
+      {desc=Match(subst_map.tr2_term map t1, List.map aux pats); typ=t.typ}
   | _ -> subst_map.tr2_term_rec map t
 
 let () = subst_map.tr2_term <- subst_map_term
@@ -533,7 +533,7 @@ let make_if t1 t2 t3 =
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
-  | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=None}
+  | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ}
 
 let rec get_top_funs acc = function
     {desc=Let(flag, defs, t)} ->
@@ -563,7 +563,7 @@ let rec get_typ_default = function
   | TConstr(s,b) -> assert false
   | TPred _ -> assert false
   | TRef _ -> assert false
-  | TOption typ -> {desc=TNone; typ=typ; attr=None}
+  | TOption typ -> {desc=TNone; typ=typ}
 
 
 

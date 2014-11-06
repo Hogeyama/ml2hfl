@@ -30,8 +30,7 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 	| e -> e
     end
   in f { desc = expr
-       ; typ = typ
-       ; attr = None}
+       ; typ = typ }
 
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
@@ -107,9 +106,9 @@ let restore_ids =
   in
   let sub = function
     | {desc = Let (rec_flag, bindings, cont); typ = t} ->
-      {desc = Let (rec_flag, List.map (fun (f, args, body) -> (trans_id f, List.map trans_id args, body)) bindings, cont); typ = t; attr=None}
-    | {desc = Fun (f, body); typ = t} -> {desc = Fun (trans_id f, body); typ = t; attr=None}
-    | {desc = Var v; typ = t} -> {desc = Var (trans_id v); typ = t; attr=None}
+      {desc = Let (rec_flag, List.map (fun (f, args, body) -> (trans_id f, List.map trans_id args, body)) bindings, cont); typ = t}
+    | {desc = Fun (f, body); typ = t} -> {desc = Fun (trans_id f, body); typ = t}
+    | {desc = Var v; typ = t} -> {desc = Var (trans_id v); typ = t}
     | t -> t
   in everywhere_expr sub
 
@@ -166,7 +165,7 @@ let rec transform_main_expr f term =
 *)
 let randomized_application f t =
   let rec aux f args = function
-    | t when is_base_typ t -> {desc = App (f, args); typ = t; attr=None}
+    | t when is_base_typ t -> {desc = App (f, args); typ = t}
     | TFun ({Id.typ = t1}, t2) ->
       let r =
 	match t1 with
@@ -207,7 +206,7 @@ let rec lambda_lift t =
 let rec regularization e =
   match find_main_function e with
     | Some ({Id.name = "main"} as f) ->
-      let main_expr = randomized_application {desc = Var f; typ = Id.typ f; attr=None} (Id.typ f) in
+      let main_expr = randomized_application {desc = Var f; typ = Id.typ f} (Id.typ f) in
       let rec aux = function
 	| {desc = Let (rec_flag, bindings, rest)} as t -> {t with desc = Let (rec_flag, bindings, aux rest)}
 	| {desc = Const Unit} -> main_expr
@@ -263,12 +262,10 @@ let restore_type state = function
 	{ desc = Fun (fresh_id
 			,(restore_type'
 			    { desc = App (acc, (state.initial_state@[make_var fresh_id]))
-			    ; typ = t
-                            ; attr = None}
+			    ; typ = t}
 			    (i+1)
 			    t2))
-	; typ = t
-        ; attr = None}
+	; typ = t}
       | t -> acc
     in restore_type' e 0 t
   | _ -> raise (Invalid_argument "restore_type")
@@ -362,7 +359,7 @@ let to_holed_programs (target_program : typed_term) =
 	  let app_assert =
 	    make_let
 	      [Id.new_var ~name:"_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
-	      {desc = App (make_var id', List.map make_var args'); typ = Id.typ id'; attr=None}
+	      {desc = App (make_var id', List.map make_var args'); typ = Id.typ id'}
 	  in
 	  (no_checking_function := Some ({id = id'; args = args} : function_info);
 	   [(id, args', app_assert); (id', args, body_update)])

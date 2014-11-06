@@ -2,7 +2,7 @@ open Map
 open BRA_types
 open BRA_util
 
-let rec default_val t = {Syntax.desc = default_val' t; Syntax.typ = t; attr=None}
+let rec default_val t = {Syntax.desc = default_val' t; Syntax.typ = t}
 and default_val' =
   let open Syntax in
   let open Type in function

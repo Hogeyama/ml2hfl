@@ -137,7 +137,7 @@ and remove_pair_aux t typ_opt =
   | Branch(t1, t2) ->
       let t1' = root (remove_pair_aux t1 None) in
       let t2' = root (remove_pair_aux t2 None) in
-      Leaf {desc=Branch(t1',t2'); typ=t1'.typ; attr=None}
+      Leaf {desc=Branch(t1',t2'); typ=t1'.typ}
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) =
         let f' = root (remove_pair_var f) in
@@ -164,7 +164,7 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
       end;
       let t1' = root (remove_pair_aux t1 None) in
       let t2' = root (remove_pair_aux t2 None) in
-      Leaf {desc=BinOp(op, t1', t2'); typ=root typs; attr=None}
+      Leaf {desc=BinOp(op, t1', t2'); typ=root typs}
   | Not t1 ->
       let t1' = root (remove_pair_aux t1 None) in
       Leaf (make_not t1')

@@ -10,8 +10,7 @@ let maxConstDepth constDepthList =
 			 (fun m {desc = Const (Int n)} -> if m>n then m else n)
 			 0
 			 constDepthList))
-  ; typ = TInt
-  ; attr = None}
+  ; typ = TInt}
 
 let dynamicGreaterThan a b =
   if a.desc = Const (Int 0) then b
@@ -44,7 +43,7 @@ let maxDepthOf depthList =
     | constDepthList, indefiniteDepthList -> dynamicMaximum ((maxConstDepth constDepthList) :: indefiniteDepthList)
 
 let incrementDepth = function
-  | {desc = Const (Int n)} -> {desc = Const (Int (n+1)); typ = TInt; attr=None}
+  | {desc = Const (Int n)} -> {desc = Const (Int (n+1)); typ = TInt}
   | e -> make_add e (make_int 1)
 
 let rec closureDepth varToDepth expr =
@@ -82,7 +81,7 @@ let rec insertClsDepth varToDepth expr =
     | Const _ -> expr
     | Var v ->
       let typ = transType v.Id.typ in
-      {desc = Var {v with Id.typ = typ}; typ = typ; attr=None}
+      {desc = Var {v with Id.typ = typ}; typ = typ}
     | Fun (x, e) -> assert false (* ? *)
     | App (f, args) ->
       let insertToArgs = function
