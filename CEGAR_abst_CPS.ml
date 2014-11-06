@@ -174,18 +174,13 @@ let rec eta_expand_term env t typ =
   if false && debug() then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
-  | Const (RandInt _)
+  | Const (RandInt None)
   | Const CPS_result -> t
   | (Var _ | Const _ | App _) when is_base_term env t -> t
   | Var x -> eta_expand_term_aux env t typ
   | App(App(App(Const If, t1), t2), t3) ->
       make_if t1 (eta_expand_term env t2 typ) (eta_expand_term env t3 typ)
   | App(Const (Label n), t) -> make_label n @@ eta_expand_term env t typ
-  | App(Const (RandInt (Some n)), t) ->
-      let preds = assoc_renv n env in
-      let typ_arg = TBase(TInt, preds) in
-      let typ = TFun(typ_arg, fun _ -> typ) in
-      make_app (Const (RandInt (Some n))) [eta_expand_term env t typ]
   | App _ ->
       let t1,ts = decomp_app t in
       let rec aux ts typ =
@@ -278,9 +273,9 @@ let rec abstract_rand_int must env cond pts preds t typ =
   aux pts pts' preds'
 *)
 
-let rec abstract_rand_int n must env cond pts preds t typ =
-  let typ_arg = TBase(TInt, preds) in
-  let typ' = TFun(typ_arg, fun _ -> typ) in
+let rec abstract_rand_int n must env cond pts vars t =
+  let _,preds = decomp_rand_typ @@ assoc_renv n env in
+  let typ' = TFun(TBase(TInt, preds), fun _ -> typ_result) in
   let t' = hd @@ abstract_term must env cond pts t typ' in
   let x = new_id "r" in
   let env' = (x,typ_int)::env in
@@ -315,13 +310,13 @@ let rec abstract_rand_int n must env cond pts preds t typ =
   Let(f, t', List.fold_right (fun (b,t) t' -> make_if b t t') cts (Const Bottom))
 
 
-
 and abstract_term must env cond pts t typ =
   if false && debug() then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const CPS_result -> [Const Unit]
   | Const Bottom ->
-      assert (fst (decomp_tbase typ) = typ_result_base); [Const Bottom]
+      assert (is_typ_result typ);
+      [Const Bottom]
   | (Var _ | Const _ | App _) when is_base_term env t ->
       let btyp,ps = decomp_tbase typ in
       if btyp = typ_result_base
@@ -335,16 +330,22 @@ and abstract_term must env cond pts t typ =
       let t3' = hd @@ abstract_term must env (make_not t1::cond) pts t3 typ in
       [make_if t1' t2' t3']
   | App(Const (Label n), t) -> [make_label n (hd @@ abstract_term must env cond pts t typ)]
-  | App(Const (RandInt (Some n)), t) ->
-      let preds = assoc_renv n env in
-      [abstract_rand_int n must env cond pts preds t typ]
-  | App(Const (RandInt _), t) ->
+  | App(Const (RandInt None), t) ->
       abstract_term must env cond pts t (TFun(typ_int, fun _ -> typ))
+  | App _ when is_app_randint t ->
+      let t',ts = decomp_app t in
+      let n =
+        match t' with
+        | Const (RandInt (Some n)) -> n
+        | _ -> assert false
+      in
+      let ts',t'' = List.decomp_snoc ts in
+      [abstract_rand_int n must env cond pts ts' t'']
   | App _ when not !Flag.cartesian_abstraction ->
       let t1,ts = decomp_app t in
       let rec decomp_typ ts typ =
         match ts,typ with
-        | [], _ when fst (decomp_tbase typ) = typ_result_base -> []
+        | [], _ when is_typ_result typ -> []
         | t2::ts', TFun(typ1,typ2) -> typ1 :: decomp_typ ts' (typ2 t2)
         | _,typ -> Format.printf "@.%a@.typ:%a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
       in
@@ -373,7 +374,7 @@ and abstract_term must env cond pts t typ =
       let t1,ts = decomp_app t in
       let rec decomp_typ ts typ =
         match ts,typ with
-        | [], _ when fst (decomp_tbase typ) = typ_result_base -> []
+        | [], _ when is_typ_result typ -> []
         | t2::ts', TFun(typ1,typ2) ->
             typ1 :: decomp_typ ts' (typ2 t2)
         | _,typ -> Format.printf "@.%a@.typ:%a@." CEGAR_print.term t CEGAR_print.typ typ; assert false

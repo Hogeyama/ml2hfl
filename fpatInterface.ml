@@ -76,21 +76,19 @@ let conv_var x =
   else
     Fpat.Idnt.make x
 
-let rec conv_term renv t =
+let rec conv_term env t =
   match t with
   | Const(RandInt (Some n)) ->
-      let env = List.assoc n renv in
-      let env' = List.filter (is_base -| snd) env in
-      let typs = List.map (conv_typ -| snd) env' in
-      let r = Fpat.Const.ReadInt (Fpat.Idnt.make @@ make_randint_name n, typs) in
-      Fpat.Term.mk_app (Fpat.Term.mk_const r) @@ List.map (Fpat.Term.mk_var -| conv_var -| fst) env'
+      let typs,_ = decomp_rand_typ @@ assoc_renv n env in
+      let typs' = List.map conv_typ typs in
+      Fpat.Term.mk_const @@ Fpat.Const.ReadInt (Fpat.Idnt.make @@ make_randint_name n, typs')
   | Const(RandVal s) ->
      Fpat.Term.mk_var (Fpat.Idnt.make (new_id "r")) (***)
   | Const(c) ->
      Fpat.Term.mk_const (conv_const c)
   | Var(x) ->
       Fpat.Term.mk_var @@ conv_var x
-  | App(t1, t2) -> Fpat.Term.mk_app (conv_term renv t1) [conv_term renv t2]
+  | App(t1, t2) -> Fpat.Term.mk_app (conv_term env t1) [conv_term env t2]
   | Fun _ -> assert false
   | Let _ -> assert false
 
@@ -163,7 +161,7 @@ let conv_event e = (***)
      Fpat.Term.mk_const (Fpat.Const.Event(x))
   | Branch(_) -> assert false
 
-let conv_fdef renv (f, args, guard, events, body) =
+let conv_fdef typs (f, args, guard, events, body) =
   { Fpat.Fdef.name = f;
     Fpat.Fdef.args = List.map (Fpat.Idnt.make >> Fpat.Pattern.mk_var) args;
     Fpat.Fdef.guard = conv_formula guard;
@@ -173,7 +171,7 @@ let conv_fdef renv (f, args, guard, events, body) =
          Fpat.Term.mk_app
            (conv_event e)
            [Fpat.Term.mk_const Fpat.Const.Unit])
-        events (conv_term renv body) } (***)
+        events (conv_term typs body) } (***)
 
 let inv_fdef fdef =
   fdef.Fpat.Fdef.name,
@@ -183,9 +181,8 @@ let inv_fdef fdef =
   inv_term fdef.Fpat.Fdef.body
 
 let conv_prog (typs, fdefs, main) =
-  let renv = CEGAR_util.get_renv {env=typs; defs=fdefs; main} in
   { Fpat.Prog.fdefs =
-      List.map (conv_fdef renv) fdefs;
+      List.map (conv_fdef typs) fdefs;
     Fpat.Prog.types =
       List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
     Fpat.Prog.main = main }

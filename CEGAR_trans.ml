@@ -179,17 +179,19 @@ and trans_term post xs env t =
       in
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
-  | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) ->
+  | S.App({S.desc=S.Const(S.RandInt true); S.attr=S.AAbst_under}, [t1;t2]) ->
       assert (t1 = U.unit_term);
-      let flag =
-        if attr = S.AAbst_under
-        then Some 0
-        else None
-      in
       let k = new_id ("k" ^ post) in
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt flag), t2')
+      let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
+      defs1@defs2, make_app (Const (RandInt (Some 0))) (List.map _Var xs' @ [t2'])
+  | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) ->
+      assert (t1 = U.unit_term);
+      let k = new_id ("k" ^ post) in
+      let defs1,t1' = trans_term post xs env t1 in
+      let defs2,t2' = trans_term post xs env t2 in
+      defs1@defs2, App(Const (RandInt None), t2')
   | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true)); S.attr}, [t1;t2]) ->
       let flag =
         if attr = S.AAbst_under
@@ -298,11 +300,6 @@ let rec formula_of t =
       let t' = formula_of t in
       App(Const Not, t')
   | _ -> Format.printf "formula_of: %a@." S.print_constr t; assert false
-
-let trans_term post xs env t =
-  let defs,t' = trans_term post xs env t in
-  Format.printf "TRANS_TERM: @[%a@ ===>@ %a@." S.print_term t CEGAR_print.term t';
-  defs,t'
 
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in
@@ -692,9 +689,11 @@ let rec trans_ce_aux labeled ce acc defs t k =
       trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
       trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
       k ce acc (make_app (Const op) [t1;t2])))
-  | App(Const (RandInt _), t) ->
+  | App _ when is_app_randint t ->
+      let _,ts = decomp_app t in
+      let t' = List.last ts in
       let r = new_id "r" in
-      trans_ce_aux labeled ce acc defs (App(t,Var r)) k
+      trans_ce_aux labeled ce acc defs (App(t', Var r)) k
   | App(t1,t2) ->
       trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
       trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->

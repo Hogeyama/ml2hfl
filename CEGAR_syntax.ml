@@ -82,10 +82,7 @@ let decomp_randint_name s =
     Some (int_of_string s2)
   with _ -> None
 let is_randint_var s =
-  try
-    ignore @@ decomp_randint_name s;
-    true
-  with _ -> false
+  Option.is_some @@ decomp_randint_name s
 
 let prefix_randint_label = "randint"
 let make_randint_label n = Format.sprintf "%s_%d" prefix_randint_label n
@@ -197,30 +194,46 @@ let get_fv t = StringSet.elements @@ get_fv t
 
 
 let rec get_typ_arity = function
-    TFun(typ1,typ2) -> 1 + get_typ_arity (typ2 (Const Unit))
+  | TFun(typ1,typ2) -> 1 + get_typ_arity (typ2 (Const Unit))
   | typ -> 0
 
 
 let rec decomp_app = function
-    App(t1,t2) ->
+  | App(t1,t2) ->
       let t,ts = decomp_app t1 in
-        t, ts@[t2]
+      t, ts@[t2]
   | t -> t, []
 let rec decomp_fun = function
-    Fun(x,_,t) ->
+  | Fun(x,_,t) ->
       let xs,t = decomp_fun t in
-        x::xs, t
+      x::xs, t
   | t -> [], t
 let rec decomp_annot_fun acc = function
-    Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
+  | Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
   | t -> List.rev acc, t
 let decomp_annot_fun t = decomp_annot_fun [] t
 let rec decomp_tfun = function
-    TFun(typ1,typ2) ->
+  | TFun(typ1,typ2) ->
       let typs,typ = decomp_tfun (typ2 (Const Unit)) in
-        typ1::typs, typ
+      typ1::typs, typ
+  | typ -> [], typ
+let rec decomp_tfun_env = function
+  | TFun(typ1,typ2) ->
+      let x = new_id "x" in
+      let typs,typ = decomp_tfun_env (typ2 @@ Var x) in
+      (x,typ1)::typs, typ
   | typ -> [], typ
 
+
+
+let is_app_randint t =
+  match t with
+  | App _ ->
+      let t',ts = decomp_app t in
+      match t' with
+      | Const (RandInt (Some _)) -> true
+      | _ -> false
+  | _ -> false
 
 
 

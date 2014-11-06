@@ -25,7 +25,7 @@ let assoc_def defs n t =
 
 let add_randint_precondition map_randint_to_preds ext_ce rand_precond r = function
   | None -> rand_precond, ext_ce
-  | Some(n) -> 
+  | Some(n) ->
     let new_var = Var(r) in
     let abst_preds = try (List.assoc n map_randint_to_preds) new_var with Not_found -> Format.printf "not found: %d@." n; [] in
     let rand_var = FpatInterface.conv_var r in
@@ -62,11 +62,17 @@ let rec check_aux pr ce sat n constr env defs t k =
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       k ce sat n constr env (make_app (Const op) [t1;t2])))
-  | App(Const (RandInt randnum), t) ->
+  | App _ when is_app_randint t ->
+      let t',randnum =
+        let t_rand,ts = decomp_app t in
+        match t_rand with
+        | Const (RandInt randnum) -> List.last ts, randnum
+        | _ -> assert false
+      in
       let r = new_id "r" in
       add_randint_precondition r randnum;
       let env' = (r,typ_int)::env in
-    check_aux pr ce sat n constr env' defs (App(t,Var r)) k
+      check_aux pr ce sat n constr env' defs (App(t',Var r)) k
   | App(t1,t2) ->
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
@@ -153,7 +159,7 @@ let rec trans_ce ce ce_br env defs t k =
 (*
   | App(Const (Event s), t) -> trans_ce ce constr env defs (App(t,Const Unit)) k
 *)
-  | App(Const (RandInt _), t) ->
+  | App(Const (RandInt None), t) ->
       let r = new_id "r" in
       let env' = (r,typ_int)::env in
       trans_ce ce ce_br env' defs (App(t,Var r)) k

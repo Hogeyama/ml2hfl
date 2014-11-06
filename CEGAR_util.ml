@@ -161,12 +161,64 @@ let rec make_arg_let t =
 
 
 
+let assoc_renv n env =
+  try
+    snd @@ List.find (fun (s,_) -> Some n = decomp_randint_name s) env
+  with Not_found -> assert false
+
+let decomp_rand_typ typ =
+  match decomp_tfun typ with
+  | typs, typ' when is_typ_result typ' ->
+      let typs',typ'' = List.decomp_snoc typs in
+      let preds =
+        match typ'' with
+        | TFun(TBase (TInt, preds), typ''') when is_typ_result @@ typ''' (Const Unit) -> preds
+        | _ -> assert false
+      in
+      typs', preds
+  | _ -> assert false
+
+let mem_assoc_renv n env =
+  try
+    ignore @@ assoc_renv n env;
+    true
+  with Not_found -> false
+
+let rec col_rand_ids t =
+  match t with
+  | Const (RandInt (Some n)) -> [n]
+  | Const c -> []
+  | Var x -> []
+  | App(t1,t2) -> col_rand_ids t1 @ col_rand_ids t2
+  | Let _ -> unsupported "col_rand_ids"
+  | Fun _ -> unsupported "col_rand_ids"
+
+let get_renv_aux prog i =
+  let f,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
+  let typs,_ = decomp_tfun (List.assoc f prog.env) in
+  let env = List.combine xs typs in
+  List.filter (is_base -| snd) env
+
+let get_renv prog =
+  let rand_ids = List.filter_map (decomp_randint_name -| fst) prog.env in
+  List.map (Pair.add_right @@ get_renv_aux prog) rand_ids
+
+let make_renv n prog =
+  let rand_ids = List.init n (fun i -> i+1) in
+  let env = List.map (Pair.add_right @@ get_renv_aux prog) rand_ids in
+  let make xtyps =
+    let typ0 = TFun(TFun(typ_int, fun _ -> typ_result), fun _ -> typ_result) in
+    List.fold_right (fun (x,typ1) typ2 -> TFun(typ1, fun y -> subst_typ x y typ2)) xtyps typ0
+  in
+  List.map (fun (i,xtyps) -> make_randint_name i, make xtyps) env
+
+
 
 exception TypeBottom
 
 let nil = fun _ -> []
 
-let rec get_const_typ = function
+let get_const_typ env = function
   | Unit -> typ_unit
   | True -> typ_bool()
   | False -> typ_bool()
@@ -176,7 +228,8 @@ let rec get_const_typ = function
   | Int32 _ -> typ_abst "int32"
   | Int64 _ -> typ_abst "int64"
   | Nativeint _ -> typ_abst "nativeint"
-  | RandInt _ -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
+  | RandInt None -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
+  | RandInt (Some n) -> assoc_renv n env
   | RandBool -> TBase(TBool,nil)
   | RandVal s -> TBase(TAbst s,nil)
   | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
@@ -215,7 +268,7 @@ let rec get_const_typ = function
 
 
 let rec get_typ env = function
-    Const c -> get_const_typ c
+  | Const c -> get_const_typ env c
   | Var x -> List.assoc x env
 (*
   | App(Const (TreeConstr(n,_)), t) ->
@@ -225,9 +278,6 @@ let rec get_typ env = function
 *)
   | App(Const (Label _), t) ->
       get_typ env t
-  | App(Const (RandInt _), t) ->
-      let typ2 = match get_typ env t with TFun(_,typ) -> typ (Var "") | _ -> assert false in
-      typ2
   | App(App(App(Const If, _), t1), t2) ->
       begin
         try
@@ -586,19 +636,6 @@ let rec has_no_effect t =
 
 
 
-let assoc_renv n env =
-  match List.find (fun (s,_) -> Some n = decomp_randint_name s) env with
-  | _, TBase(TInt, preds) -> preds
-  | _ -> assert false
-
-let mem_assoc_renv n env =
-  try
-    ignore @@ assoc_renv n env;
-    true
-  with Not_found -> false
-
-
-
 
 let assign_id_to_rand prog =
   let count = ref 0 in
@@ -613,40 +650,17 @@ let assign_id_to_rand prog =
     | Fun(x,typ,t) -> Fun(x, typ, aux t)
   in
   let prog' = map_body_prog aux prog in
-  let map = List.map (fun n -> n, fun _ -> []) @@ List.fromto 1 (!count + 1) in
-  let add_renv_simply map env =
-    List.map (fun (n, preds) -> make_randint_name n, TBase(TInt, preds)) map @ env in
-  let env = add_renv_simply map prog.env in
+  let env = make_renv !count prog' @ prog.env in
   {prog' with env}
 
 
 let make_map_randint_to_preds (env:CEGAR_syntax.env) =
-  List.filter_map
-    (function
-      | r, TBase(TInt, preds) -> Option.map (fun n -> n, preds) @@ decomp_randint_name r
-      | _ -> None)
-    env
+  let env' = List.filter (is_randint_var -| fst) env in
+  let aux (r,typ) = Option.get @@ decomp_randint_name r, snd @@ decomp_rand_typ typ in
+  List.map aux env'
 
 let rec merge_ext_preds_sequence = function
   | [] -> []
   | (r,bs)::ext ->
-    let (rs, rest) = List.partition (fun (f, _) -> f=r) ext in
-    (r,bs::List.map snd rs) :: merge_ext_preds_sequence rest
-
-let rec col_rand_ids t =
-  match t with
-  | Const (RandInt (Some n)) -> [n]
-  | Const c -> []
-  | Var x -> []
-  | App(t1,t2) -> col_rand_ids t1 @ col_rand_ids t2
-  | Let _ -> unsupported "col_rand_ids"
-  | Fun _ -> unsupported "col_rand_ids"
-
-let get_renv prog =
-  let rand_ids = List.filter_map (decomp_randint_name -| fst) prog.env in
-  let get_env i =
-    let f,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
-    let typs,_ = decomp_tfun (List.assoc f prog.env) in
-    List.combine xs @@ List.take (List.length xs) typs
-  in
-  List.map (Pair.add_right get_env) rand_ids
+      let (rs, rest) = List.partition (fun (f, _) -> f=r) ext in
+      (r,bs::List.map snd rs) :: merge_ext_preds_sequence rest
