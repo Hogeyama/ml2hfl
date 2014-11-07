@@ -234,7 +234,7 @@ let arg_spec =
      (* preprocessing *)
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
      "-list-option", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
-     "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
+     "-disable-preprocess", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures, CPS transformation, etc.";
      "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
      "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
      "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
