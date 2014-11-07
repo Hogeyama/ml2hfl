@@ -150,6 +150,11 @@ and print_fun_def fm (f,xs,t1,es,t2) =
     Format.fprintf fm "@[<hov 4>%a ->%s@ %a;;@]" (print_list print_var " ") (f::xs@ys) s print_term t2
   else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a;;@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
 
+and print_attr fm = function
+  | ACPS -> Format.fprintf fm "ACPS"
+
+and print_attr_list fm = List.print print_attr fm
+
 and print_prog fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@."
                  print_var prog.main
@@ -448,6 +453,7 @@ let typ = print_typ
 let typ_base = print_typ_base
 let ce = print_ce
 let env = print_env
+let attr = print_attr_list
 let prog = print_prog
 let prog_typ = print_prog_typ
 

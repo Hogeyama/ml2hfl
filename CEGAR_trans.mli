@@ -35,7 +35,6 @@ val event_of_temp : CEGAR_syntax.prog -> CEGAR_syntax.prog
 val uniq_env : ('a * 'b) list -> ('a * 'b) list
 
 val rename_prog :
-  ?is_cps:bool ->
   CEGAR_syntax.prog ->
   CEGAR_syntax.prog * (CEGAR_syntax.var * CEGAR_syntax.var) list *
   (CEGAR_syntax.var * 'a Type.t Id.t) list

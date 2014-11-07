@@ -124,9 +124,8 @@ let main in_channel =
   if !Flag.input_cegar then
     let open CEGAR_syntax in
     let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
-    let prog' = Typing.infer ~is_cps:true {prog with env=[]} in
+    let prog' = Typing.infer {prog with env=[]} in
     let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
-    Flag.form := Flag.CPS :: !Flag.form;
     Main_loop.run_cegar {prog with env}
   else
     let orig = Parse.use_file lb in

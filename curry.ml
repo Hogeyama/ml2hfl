@@ -107,8 +107,8 @@ let rec remove_pair_typ = function
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
-  let aux path typ = Id.set_typ (Id.add_name_after x (to_string path)) typ in
-  map aux (remove_pair_typ (Id.typ x))
+  let aux path typ = Id.set_typ (Id.add_name_after x @@ to_string path) typ in
+  map aux @@ remove_pair_typ (Id.typ x)
 
 and remove_pair_aux t typ_opt =
   let typ = match typ_opt with None -> t.typ | Some typ -> typ in
@@ -116,41 +116,37 @@ and remove_pair_aux t typ_opt =
   match t.desc with
   | Const _
   | Event _ -> Leaf t
-  | Bottom -> map (fun _ -> make_bottom) typs
-  | Var x -> map (fun _ -> make_var) (remove_pair_var x)
+  | Bottom -> map (Fun.const make_bottom) typs
+  | Var x -> map (Fun.const make_var) (remove_pair_var x)
   | Fun(x, t) ->
-      let xs = flatten (remove_pair_var x) in
-      let t' = root (remove_pair_aux t None) in
+      let xs = flatten @@ remove_pair_var x in
+      let t' = root @@ remove_pair_aux t None in
       Leaf (List.fold_right make_fun xs t')
   | App(t1, ts) ->
       let typs = get_argtyps t1.typ in
-      let () = assert (List.length typs >= List.length ts) in
+      assert (List.length typs >= List.length ts);
       let typs' = List.take (List.length ts) typs in
       let t' = root (remove_pair_aux t1 None) in
-      let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t (Some typ))) ts typs') in
+      let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t @@ Some typ)) ts typs') in
       Leaf (make_app t' ts')
   | If(t1, t2, t3) ->
-      let t1' = root (remove_pair_aux t1 None) in
-      let t2' = root (remove_pair_aux t2 None) in
-      let t3' = root (remove_pair_aux t3 None) in
+      let t1' = root @@ remove_pair_aux t1 None in
+      let t2' = root @@ remove_pair_aux t2 None in
+      let t3' = root @@ remove_pair_aux t3 None in
       Leaf (make_if t1' t2' t3')
   | Branch(t1, t2) ->
-      let t1' = root (remove_pair_aux t1 None) in
-      let t2' = root (remove_pair_aux t2 None) in
+      let t1' = root @@ remove_pair_aux t1 None in
+      let t2' = root @@ remove_pair_aux t2 None in
       Leaf {desc=Branch(t1',t2'); typ=t1'.typ; attr=[]}
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) =
-        let f' = root (remove_pair_var f) in
-        let xs' = List.flatten (List.map (fun x -> flatten (remove_pair_var x)) xs) in
-        let t' = root (remove_pair_aux t None) in
+        let f' = root @@ remove_pair_var f in
+        let xs' = List.flatten_map (flatten -| remove_pair_var) xs in
+        let t' = root @@ remove_pair_aux t None in
         f', xs', t'
       in
       let bindings' = List.map aux bindings in
-      (*
-Color.printf Color.Reverse "ROOT: ";
-Color.printf Color.Cyan "%a@.@." pp_print_term' t;
-       *)
-      let t' = root (remove_pair_aux t None) in
+      let t' = root @@ remove_pair_aux t None in
       Leaf (make_let_f flag bindings' t')
   | BinOp(op, t1, t2) ->
       begin
@@ -162,11 +158,11 @@ Color.printf Color.Cyan "%a@.@." pp_print_term' t;
             raise (Fatal "Unsupported (polymorphic comparison)")
         | _ -> ()
       end;
-      let t1' = root (remove_pair_aux t1 None) in
-      let t2' = root (remove_pair_aux t2 None) in
+      let t1' = root @@ remove_pair_aux t1 None in
+      let t2' = root @@ remove_pair_aux t2 None in
       Leaf {desc=BinOp(op, t1', t2'); typ=root typs; attr=[]}
   | Not t1 ->
-      let t1' = root (remove_pair_aux t1 None) in
+      let t1' = root @@ remove_pair_aux t1 None in
       Leaf (make_not t1')
   | Record fields -> assert false
   | Field(i,s,f,t1) -> assert false
@@ -193,6 +189,7 @@ and remove_pair t = root (remove_pair_aux t None)
 
 
 let remove_pair t =
-  let t' = remove_pair t in
+  assert (List.mem ACPS t.attr);
+  let t' = {(remove_pair t) with attr=t.attr} in
   Type_check.check t' typ_result;
   t', uncurry_rtyp t

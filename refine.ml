@@ -52,7 +52,7 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
+let refine labeled is_cp prefix ces {env;defs;main;attr} =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
@@ -90,7 +90,7 @@ let refine labeled is_cp prefix ces {env=env;defs=defs;main=main} =
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
-    map, {env=env';defs=defs;main=main}
+    map, {env=env';defs;main;attr}
   with e ->
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
@@ -108,9 +108,9 @@ let print_list fm = function
     in
     Format.fprintf fm "[%d%s]@." x (iter xs)
 
-let progWithExparam = ref {env=[]; defs=[]; main="main(DUMMY)"}
+let progWithExparam = ref {env=[]; defs=[]; main="main(DUMMY)"; attr=[]}
 
-let refine_rank_fun ce { env=env; defs=defs; main=main } =
+let refine_rank_fun ce { env=env; defs=defs; main=main; attr=attr } =
   let tmp = get_time () in
     try
       (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;

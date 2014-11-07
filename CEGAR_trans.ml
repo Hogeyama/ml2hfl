@@ -194,7 +194,7 @@ and trans_term post xs env t =
   | S.App({S.desc=S.Event(s,false)}, [t]) ->
       let k = new_id "k" in
       assert (t = U.unit_term);
-      let ret_typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
+      let ret_typ = typ_result in
       let defs = [k, TFun(typ_unit, fun _ -> ret_typ), ["u"], Const True, [], Const CPS_result] in
       defs, App(Const (Temp s), Var k)
   | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
@@ -284,11 +284,6 @@ let rec formula_of t =
       App(Const Not, t')
   | _ -> Format.printf "formula_of: %a@." S.print_constr t; assert false
 
-let trans_term post xs env t =
-  let defs,t' = trans_term post xs env t in
-  Format.printf "TRANS_TERM: @[%a@ ===>@ %a@." S.print_term t CEGAR_print.term t';
-  defs,t'
-
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in
   let post = "_" ^ Id.name f in
@@ -358,8 +353,8 @@ let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 
 
 
-let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
-  if List.mem Flag.CPS !Flag.form
+let event_of_temp {env;defs;main;attr} =
+  if List.mem ACPS attr
   then
     let make_event (f,xs,t1,e,t2) =
       assert (e = []);
@@ -375,7 +370,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
       | _ -> [], [f, xs, t1, [], t2]
     in
     let envs,defss = List.split_map make_event defs in
-    {env=List.flatten envs @@@ env; defs=List.flatten defss; main=main}
+    {env=List.flatten envs @@@ env; defs=List.flatten defss; main; attr}
   else
     let rec aux = function
       | Const (Temp e) -> [e]
@@ -398,7 +393,7 @@ let event_of_temp ({env=env;defs=defs;main=main} as _prog) =
       | Let _ -> assert false
     in
     let defs' = List.map (map_body_def aux) defs in
-    {env=evt_env@@@env; defs=evt_defs@@@defs'; main=main}
+    {env=evt_env@@@env; defs=evt_defs@@@defs'; main; attr}
 
 
 let rec uniq_env = function
@@ -409,7 +404,7 @@ let rec uniq_env = function
       else (f,typ) :: uniq_env env
 
 
-let rename_prog ?(is_cps=List.mem Flag.CPS !Flag.form) prog =
+let rename_prog prog =
   let counter1 = Id.get_counter () in
   Id.clear_counter ();
   let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
@@ -449,9 +444,9 @@ let rename_prog ?(is_cps=List.mem Flag.CPS !Flag.form) prog =
   let env = List.map (Pair.map_fst @@ rename_var map) prog.env in
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
-  let prog = {env=env; defs=defs; main=main} in
+  let prog = {env; defs; main; attr=prog.attr} in
   if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
-  ignore (Typing.infer ~is_cps prog);
+  ignore (Typing.infer prog);
   let rmap = List.map (Pair.map_snd trans_inv_var) map in
   Id.set_counter counter1;
   prog, map, rmap
@@ -492,13 +487,14 @@ let trans_prog ?(spec=[]) t =
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term t_main in
+  let is_cps = List.mem S.ACPS t.S.attr in
   let defs' =
     match !Flag.cegar with
     | Flag.CEGAR_InteractionType ->
         let typ = TFun(typ_unit, fun _ -> typ_unit) in
         (main,typ,["u"],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
     | Flag.CEGAR_DependentType ->
-        let typ = if List.mem Flag.CPS !Flag.form then typ_result else typ_unit in
+        let typ = if is_cps then typ_result else typ_unit in
         (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
   in
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
@@ -507,7 +503,7 @@ let trans_prog ?(spec=[]) t =
     let aux (f,typ) = try f, merge_typ typ @@ (List.assoc f spec') with Not_found -> f,typ in
     uniq_env (ext_env @@@ List.map aux env)
   in
-  let prog = {env=env'; defs=defs''; main=main} in
+  let prog = {env=env'; defs=defs''; main; attr=if is_cps then [ACPS] else []} in
   if debug() then Format.printf "@.PROG_A:@.%a@." CEGAR_print.prog_typ prog;
   let prog = event_of_temp prog in
   if debug() then Format.printf "@.PROG_B:@.%a@." CEGAR_print.prog_typ prog;
@@ -725,6 +721,6 @@ let rec simplify_if_term t =
   | Let _ -> assert false
   | Fun(x,typ,t) -> Fun(x, typ, simplify_if_term t)
 
-let simplify_if {env; defs; main} =
+let simplify_if {env; defs; main; attr} =
   let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term t1, e, simplify_if_term t2) defs in
-  {env; defs=defs'; main}
+  {env; defs=defs'; main; attr}

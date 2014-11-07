@@ -1820,3 +1820,4 @@ let string_of_constr t =
   | TSome _ -> "TSome"
 
 let print_constr fm t = pp_print_string fm @@ string_of_constr t
+and print_attr = print_attr_list

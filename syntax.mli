@@ -217,4 +217,4 @@ val print_term' : Format.formatter -> typed_term -> unit
 val print_term_typ : Format.formatter -> typed_term -> unit
 val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
 val print_constr : Format.formatter -> typed_term -> unit
-val print_attr : Format.formatter -> attr -> unit
+val print_attr : Format.formatter -> attr list -> unit

@@ -78,7 +78,7 @@ let parse_error _ = print_error_information ()
 %%
 
 prog:
-  MAIN id defs TYPES env EOF { {main=$2; defs=$3; env=$5} }
+  MAIN id defs TYPES env EOF { {main=$2; defs=$3; env=$5; attr=[]} }
 
 defs:
 | def

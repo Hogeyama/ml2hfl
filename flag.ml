@@ -7,9 +7,6 @@ let spec_file = ref ""
 
 type mode = Reachability | FileAccess
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
-type pred_abst = PredAbst | PredAbstCPS
-type model_check = ModelCheck | ModelCheckCPS
-type form = CPS
 
 (* TRecS option *)
 let trecs_param1 = ref 1000
@@ -63,9 +60,6 @@ let base_to_int = ref false
 let mode = ref Reachability
 let init_trans = ref true
 let cegar = ref CEGAR_DependentType
-let pred_abst = ref PredAbstCPS
-let model_check = ref ModelCheckCPS
-let form : form list ref = ref []
 let use_spec = ref false
 let comment_spec = ref true
 let wp_max_max = 8

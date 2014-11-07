@@ -936,6 +936,7 @@ let trans t =
     let h = make_fun e (make_app fail_term_cps [unit_term]) in
     make_app_excep typed.effect t k h
   in
+  let t = {t with attr = [ACPS]} in
   if debug() then Format.printf "%a:@.%a@.@." Color.s_red "CPS" print_term_typ t;
   let t = Trans.propagate_typ_arg t in
   let t = Trans.beta_reduce t in
@@ -943,7 +944,6 @@ let trans t =
   let t = Trans.expand_let_val t in
   if debug() then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" print_term t;
   Type_check.check t typ_result;
-  Flag.form := Flag.CPS :: !Flag.form;
   let t = Trans.elim_unused_let ~cbv:false t in
   let t = Trans.elim_unused_branch t in
   if debug() then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term t;

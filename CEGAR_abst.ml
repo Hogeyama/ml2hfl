@@ -125,10 +125,9 @@ let abstract orig_fun_list prog =
   let () = if false then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog in
   let _ = Typing.infer prog in
   let defs = List.rev_flatten_map (abstract_def prog.env) prog.defs in
-  let prog = {env=[]; defs=defs; main=prog.main} in
-  let () = if false then Format.printf "ABST:\n%a@." CEGAR_print.prog prog in
-  let prog = Typing.infer prog in
-  labeled, prog
+  let prog = {env=[]; defs; main=prog.main; attr=prog.attr} in
+  if false then Format.printf "ABST:\n%a@." CEGAR_print.prog prog;
+  labeled, Typing.infer prog
 
 
 
@@ -140,14 +139,14 @@ let abstract orig_fun_list force prog =
     then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.cegar_loop
   in
   let labeled,abst =
-    match !Flag.pred_abst with
-    | Flag.PredAbstCPS -> CEGAR_abst_CPS.abstract orig_fun_list force prog
-    | Flag.PredAbst -> abstract orig_fun_list prog
+    if List.mem ACPS prog.attr
+    then CEGAR_abst_CPS.abstract orig_fun_list force prog
+    else abstract orig_fun_list prog
   in
   let () = if false then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in
   let () = if !Flag.print_progress then Color.printf Color.Green "DONE!@.@." in
   let () = add_time tmp Flag.time_abstraction in
-  let abst',_,_ = CEGAR_trans.rename_prog ~is_cps:false abst in
+  let abst',_,_ = CEGAR_trans.rename_prog abst in
   if !incr_wp_max && !prev_abst_defs = abst'.defs
   then raise NotRefined;
   incr_wp_max := false;

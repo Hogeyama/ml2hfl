@@ -71,7 +71,8 @@ and ce = ce_node list
 and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
-and prog = {env:env; defs:fun_def list; main:var}
+and attr = ACPS
+and prog = {env:env; defs:fun_def list; main:var; attr:attr list}
 
 
 let prefix_randint = "#randint"

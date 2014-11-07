@@ -67,13 +67,13 @@ let rec arg_num = function
 
 
 
-let rec pop_main {env=env;defs=defs;main=main} =
+let rec pop_main {env;defs;main;attr} =
   let compare_fun f g = compare (g = main, f) (f = main, g) in
   let compare_def (f,_,_,_,_) (g,_,_,_,_) = compare_fun f g in
   let compare_env (f,_) (g,_) = compare_fun f g in
   let env' = List.sort ~cmp:compare_env env in
   let defs' = List.sort ~cmp:compare_def defs in
-  {env=env'; defs=defs'; main=main}
+  {env=env'; defs=defs'; main; attr}
 
 
 
@@ -483,10 +483,10 @@ let get_nonrec defs main orig_fun_list force =
     List.filter (fun (f,_) -> not @@ List.mem f orig_fun_list') nonrec
 
 
-let print_prog_typ' orig_fun_list force fm {env=env;defs=defs;main=main} =
+let print_prog_typ' orig_fun_list force fm {env;defs;main;attr} =
   let nonrec = get_nonrec defs main orig_fun_list force in
   let env' = List.filter (fun (f,_) -> not @@ List.mem_assoc f nonrec) env in
-  CEGAR_print.prog_typ fm {env=env';defs=defs;main=main}
+  CEGAR_print.prog_typ fm {env=env';defs;main;attr}
 
 
 
@@ -563,7 +563,7 @@ let eval_step_by_step  prog =
   eval t_main
 
 
-let initialize_env {defs;env;main} = {defs; env=[]; main}
+let initialize_env prog = {prog with env=[]}
 
 
 let rec has_no_effect t =

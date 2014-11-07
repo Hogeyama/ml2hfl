@@ -76,6 +76,8 @@ module Pair = struct
   let map_snd f (x,y) = x, f y
   let fold f x y = f x y
   let unfold = make
+  let add_left f x = f x, x
+  let add_right f x = x, f x
   let to_list (x,y) = [x;y]
   let of_list xs =
     match xs with

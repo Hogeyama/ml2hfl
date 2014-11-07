@@ -472,10 +472,10 @@ let elim_def env (f,xs,t1,es,t2) =
     [f, xs', elim_term env' t1, es, elim_term env' t2]
 
 (** call-by-name *)
-let elim {env; defs; main} =
-  let env' = infer {env; defs; main} in
+let elim {env; defs; main; attr} =
+  let env' = infer {env; defs; main; attr} in
   let defs' = List.flatten_map (elim_def env') defs in
   Format.printf "BEFORE:@.%a@.@.%a@.AFTER:@.%a@."
-                CEGAR_print.prog {env; defs; main} print_env env'
-                CEGAR_print.prog {env; defs=defs';main};
-  Typing.infer {env=[]; defs=defs'; main}
+                CEGAR_print.prog {env; defs; main; attr} print_env env'
+                CEGAR_print.prog {env; defs=defs'; main; attr};
+  Typing.infer {env=[]; defs=defs'; main; attr}

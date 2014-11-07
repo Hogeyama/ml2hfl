@@ -55,11 +55,9 @@ let check abst prog =
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
   let result =
-    match !Flag.model_check with
-    | Flag.ModelCheckCPS ->
-        if not @@ List.mem Flag.CPS !Flag.form then failwith "Program must be in CPS @ ModelCheckCPS";
-        check_aux_cps abst n
-    | Flag.ModelCheck -> check_aux abst n
+    if List.mem ACPS prog.attr
+    then check_aux_cps abst n
+    else check_aux abst n
   in
   add_time tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";

@@ -570,7 +570,7 @@ let propagate_typ_arg_term t =
       in
       let bindings' = List.map aux bindings in
       let t2' = propagate_typ_arg.tr_term t2 in
-      make_let_f flag bindings' t2'
+      {(make_let_f flag bindings' t2') with attr=t.attr}
   | _ -> propagate_typ_arg.tr_term_rec t
 
 let () = propagate_typ_arg.tr_term <- propagate_typ_arg_term
@@ -1898,11 +1898,13 @@ let expand_let_val_term t =
       let t2' = expand_let_val.tr_term t2 in
       let bindings1,bindings2 = List.partition (fun (_,xs,_) -> xs = []) bindings' in
       let t2'' = List.fold_left (fun t (f,_,t') -> subst_with_rename f t' t) t2' bindings1 in
-      make_let_f flag bindings2 t2''
+      {(make_let_f flag bindings2 t2'') with attr=t.attr}
   | _ -> expand_let_val.tr_term_rec t
 
 let () = expand_let_val.tr_term <- expand_let_val_term
-let expand_let_val = expand_let_val.tr_term
+let expand_let_val t =
+  assert (List.mem ACPS t.attr);
+  expand_let_val.tr_term t
 
 
 
