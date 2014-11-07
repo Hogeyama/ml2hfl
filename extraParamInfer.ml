@@ -57,7 +57,7 @@ let rec insertExparam scope expr =
     | Const _ -> expr
     | Var v ->
       let typ = transType v.Id.typ in
-      {desc = Var {v with Id.typ = typ}; typ = typ; attr=ANone}
+      {desc = Var {v with Id.typ = typ}; typ = typ; attr=[]}
     | Fun (x, e) -> assert false (* ? *)
     | App (f, args) ->
       let insertToArgs = function

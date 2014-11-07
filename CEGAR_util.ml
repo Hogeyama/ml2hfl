@@ -135,7 +135,7 @@ let rec make_arg_let t =
         let t' =
           {S.desc = S.App(U.make_var f, List.map (fun (x,_) -> U.make_var x) xts);
            S.typ = Type.typ_unknown;
-           S.attr = ANone}
+           S.attr = []}
         in
         (List.fold_left (fun t2 (x,t1) -> U.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
     | S.If(t1, t2, t3) ->

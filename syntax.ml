@@ -24,10 +24,9 @@ and const = (* only base type constants *)
   | RandValue of typ * bool
 
 and attr =
-  | ANone
-  | AAbst_under
+  | ACPS
 
-and typed_term = {desc:term; typ:typ; attr:attr}
+and typed_term = {desc:term; typ:typ; attr:attr list}
 and term =
   | Const of const
   | Var of id
@@ -1409,13 +1408,14 @@ and print_const fm = function
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 
 and print_attr fm = function
-  | ANone -> Format.fprintf fm "ANone"
-  | AAbst_under -> Format.fprintf fm "AAbst_under"
+  | ACPS -> Format.fprintf fm "ACPS"
+
+and print_attr_list fm = List.print print_attr fm
 
 and print_term pri typ fm t =
-  if t.attr = ANone
+  if t.attr = []
   then print_desc pri typ fm t.desc
-  else Format.fprintf fm "(@[%a@ #@ %a@])" (print_desc pri typ) t.desc print_attr t.attr
+  else Format.fprintf fm "(@[%a@ #@ %a@])" (print_desc pri typ) t.desc print_attr_list t.attr
 
 and print_desc pri typ fm desc =
   match desc with

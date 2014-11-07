@@ -5,7 +5,7 @@ open Term_util
 exception RaiseExcep of int list * typed_term
 exception EventFail
 
-let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=ANone}
+let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=[]}
 let rec fun_info args_rev f t =
   match t.desc with
       Fun(x,t1) -> make_fun x (fun_info (x::args_rev) f t1)
@@ -161,7 +161,7 @@ let rec eval_print fm rands t =
         rands', v::vs
       in
       let rands',vs = List.fold_right aux ts (rands,[]) in
-      rands', {desc=Constr(s,vs); typ=t.typ; attr=ANone}
+      rands', {desc=Constr(s,vs); typ=t.typ; attr=[]}
   | Match(t1,pat::pats) ->
       let rec check v p =
         match v.desc, p.pat_desc with

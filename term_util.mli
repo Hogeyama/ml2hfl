@@ -31,7 +31,7 @@ val make_int : int -> typed_term
 val make_randvalue : typ -> typed_term
 val make_randvalue_unit : typ -> typed_term
 val make_randvalue_cps : typ -> typed_term
-val make_randint_cps : bool -> typed_term
+val make_randint_cps : unit -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term

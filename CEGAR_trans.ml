@@ -172,34 +172,19 @@ and trans_term post xs env t =
   | S.Const(S.RandInt _) -> assert false
   | S.Const c -> [], Const (trans_const c t.S.typ)
   | S.App({S.desc=S.Const(S.RandInt false); S.attr}, [{S.desc=S.Const S.Unit}]) ->
-      let flag =
-        if attr = S.AAbst_under
-        then Some 0
-        else None
-      in
       let k = new_id ("k" ^ post) in
-      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
+      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt None), Var k)
   | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) ->
       assert (t1 = U.unit_term);
-      let flag =
-        if attr = S.AAbst_under
-        then Some 0
-        else None
-      in
       let k = new_id ("k" ^ post) in
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt flag), t2')
+      defs1@defs2, App(Const (RandInt None), t2')
   | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true)); S.attr}, [t1;t2]) ->
-      let flag =
-        if attr = S.AAbst_under
-        then Some 0
-        else None
-      in
       assert (t1 = U.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt flag), t2')
+      defs1@defs2, App(Const (RandInt None), t2')
   | S.App({S.desc=S.Const(S.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))

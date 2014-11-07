@@ -267,7 +267,7 @@ let rec define_randvalue env defs typ =
               let env'',defs',itss,_ = List.fold_right aux1 stypss (env',defs,[],n) in
               let aux (s,typs) (i,ts) =
                 let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
-                p, true_term, {desc=Constr(s,ts); typ=typ; attr=ANone}
+                p, true_term, {desc=Constr(s,ts); typ=typ; attr=[]}
               in
               env'', defs', make_match randint_unit_term (List.map2 aux stypss itss)
           | Type_decl.TKRecord sftyps ->
@@ -276,7 +276,7 @@ let rec define_randvalue env defs typ =
                 env', defs', (field, (flag, t))::sfts
               in
               let env'',defs',sfts = List.fold_left aux (env',defs,[]) sftyps in
-              env'', defs', {desc=Record sfts; typ=typ; attr=ANone}
+              env'', defs', {desc=Record sfts; typ=typ; attr=[]}
         in
         env'', (f,[u],t)::defs', make_app (make_var f) [unit_term]
     | _ -> Format.printf "define_randvalue: %a@." print_typ typ; assert false
@@ -386,7 +386,7 @@ let canonize_desc desc =
       let t1' = canonize.tr_term t1 in
       let t2' = canonize.tr_term t2 in
       let t3' = canonize.tr_term t3 in
-      let t12 = {desc=BinOp(bop, t1',t2');typ=TBool; attr=ANone} in
+      let t12 = {desc=BinOp(bop, t1',t2');typ=TBool; attr=[]} in
       let t1 = make_or (make_not t3') t12 in
       let t2 = make_or t3' (make_not t12) in
       BinOp(And, t1, t2)
@@ -394,7 +394,7 @@ let canonize_desc desc =
       let t1' = canonize.tr_term t1 in
       let t2' = canonize.tr_term t2 in
       let t3' = canonize.tr_term t3 in
-      let t12 = {desc=BinOp(bop, t1', t2');typ=TBool; attr=ANone} in
+      let t12 = {desc=BinOp(bop, t1', t2');typ=TBool; attr=[]} in
       let t1 = make_or (make_not t3') t12 in
       let t2 = make_or t3' (make_not t12) in
       BinOp(And, t1, t2)
@@ -478,7 +478,7 @@ let part_eval t =
               | _ ->
                   let t' = aux apply t in
                   let ts' = List.map (aux apply) ts in
-                  App({desc=Fun(x,t');typ=typ'; attr=ANone}, ts')
+                  App({desc=Fun(x,t');typ=typ'; attr=[]}, ts')
             end
       | App(t, ts) -> App(aux apply t, List.map (aux apply) ts)
       | If({desc=Const True}, t2, _) -> (aux apply t2).desc
@@ -526,7 +526,7 @@ let part_eval t =
       | TNone -> assert false
       | TSome _ -> assert false
     in
-    {desc=desc; typ=t.typ; attr=ANone}
+    {desc=desc; typ=t.typ; attr=[]}
   in
   aux [] t
 
@@ -637,7 +637,7 @@ let rec eval t =
     | Const c -> Const c
     | Var x -> Var x
     | App({desc=Fun(x, t)}, t'::ts) ->
-        (eval ({desc=App(subst_map [x, t'] t, ts);typ=t.typ; attr=ANone})).desc
+        (eval ({desc=App(subst_map [x, t'] t, ts);typ=t.typ; attr=[]})).desc
     | App(t, []) -> (eval t).desc
     | App(t, ts) ->
         App(eval t, List.map eval ts)
@@ -691,7 +691,7 @@ let rec eval t =
     | Event(s,b) -> Event(s,b)
     | _ -> assert false
   in
-  {desc=desc; typ=t.typ; attr=ANone}
+  {desc=desc; typ=t.typ; attr=[]}
 
 
 
@@ -703,7 +703,7 @@ let normalize_binop_exp op t1 t2 =
   let rec decomp t =
     match t.desc with
     | Const (Int n) -> [None, n]
-    | Var x -> [Some {desc=Var x;typ=Id.typ x; attr=ANone}, 1]
+    | Var x -> [Some {desc=Var x;typ=Id.typ x; attr=[]}, 1]
     | BinOp(Add, t1, t2) ->
         decomp t1 @@@ decomp t2
     | BinOp(Sub, t1, t2) ->
@@ -717,7 +717,7 @@ let normalize_binop_exp op t1 t2 =
           match List.exists aux xns1, List.exists aux xns2 with
             true, true ->
             Format.printf "Nonlinear expression not supported: %a@."
-                          print_term {desc=BinOp(op,t1,t2);typ=TInt; attr=ANone};
+                          print_term {desc=BinOp(op,t1,t2);typ=TInt; attr=[]};
             assert false
           | false, true ->
               let k = reduce xns1 in
@@ -756,7 +756,7 @@ let normalize_binop_exp op t1 t2 =
   let xns = List.rev @@ List.tl xns'' in
   let op',t1',t2' =
     let aux :typed_term option * int -> typed_term= function
-        None,n -> {desc=Const (Int n); typ=TInt; attr=ANone}
+        None,n -> {desc=Const (Int n); typ=TInt; attr=[]}
       | Some x,n -> if n=1 then x else make_mul (make_int n) x
     in
     let t1,xns',op' =
@@ -797,7 +797,7 @@ let normalize_binop_exp op t1 t2 =
           BinOp(Add, t1', t2)
       | t -> t
     in
-    {desc=desc; typ=t.typ; attr=ANone}
+    {desc=desc; typ=t.typ; attr=[]}
   in
   BinOp(op', t1', simplify t2')
 
@@ -819,7 +819,7 @@ let rec normalize_bool_exp t =
     | Not t -> Not (normalize_bool_exp t)
     | _ -> assert false
   in
-  {desc=desc; typ=t.typ; attr=ANone}
+  {desc=desc; typ=t.typ; attr=[]}
 
 
 
@@ -878,7 +878,7 @@ let rec merge_geq_leq t =
     | Not t -> Not (merge_geq_leq t)
     | _ -> Format.printf "%a@." print_term t; assert false
   in
-  {desc=desc; typ=t.typ; attr=ANone}
+  {desc=desc; typ=t.typ; attr=[]}
 
 
 
@@ -952,7 +952,7 @@ let rec inlined_f inlined fs t =
             List.fold_left
               (fun (f, ty) y ->
                (fun t ->
-                f {desc=Fun(y, t); typ=ty; attr=ANone}),
+                f {desc=Fun(y, t); typ=ty; attr=[]}),
                match ty with
                  Type.TFun(_, ty') -> ty'
                | _ ->
@@ -978,7 +978,7 @@ let rec inlined_f inlined fs t =
              let t' = subst_map map t in
              let f, _ =
                List.fold_left
-                 (fun (f, ty) x -> (fun t -> f {desc=Fun(x, t); typ=ty; attr=ANone}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
+                 (fun (f, ty) x -> (fun t -> f {desc=Fun(x, t); typ=ty; attr=[]}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
                  ((fun t -> t), Type.app_typ t1.typ (List.map (fun t -> t.typ) ts))
                  xs2
              in
@@ -1188,7 +1188,7 @@ let insert_param_funarg_term t =
         Let(flag, List.map aux defs, insert_param_funarg.tr_term t)
     | _ -> insert_param_funarg.tr_desc_rec t.desc
   in
-  {desc=desc; typ=typ; attr=ANone}
+  {desc=desc; typ=typ; attr=[]}
 
 let () = insert_param_funarg.tr_typ <- insert_param_funarg_typ
 let () = insert_param_funarg.tr_term <- insert_param_funarg_term
@@ -1322,7 +1322,7 @@ let rec screen_fail path target t =
     | TNone -> assert false
     | TSome _ -> assert false
   in
-  {desc=desc; typ=t.typ; attr=ANone}
+  {desc=desc; typ=t.typ; attr=[]}
 
 let screen_fail target t = screen_fail [] target t
 
@@ -1500,8 +1500,8 @@ let rec diff_terms t1 t2 =
   | App(t1,ts1), App(t2,ts2) ->
       let ts1',t12 = List.decomp_snoc ts1 in
       let ts2',t22 = List.decomp_snoc ts2 in
-      let t1' = {desc=App(make_app t1 ts1', [t12]); typ=t1.typ; attr=ANone} in
-      let t2' = {desc=App(make_app t2 ts2', [t22]); typ=t2.typ; attr=ANone} in
+      let t1' = {desc=App(make_app t1 ts1', [t12]); typ=t1.typ; attr=[]} in
+      let t2' = {desc=App(make_app t2 ts2', [t22]); typ=t2.typ; attr=[]} in
       diff_terms t1' t2'
   | If(t11,t12,t13), If(t21,t22,t23) ->
       diff_terms t11 t21 @ diff_terms t12 t22 @ diff_terms t13 t23
@@ -1612,7 +1612,7 @@ let normalize_let_term t =
   | BinOp(op,t1,t2) ->
       let x1,post1 = normalize_let_aux t1 in
       let x2,post2 = normalize_let_aux t2 in
-      post1 @@ post2 @@ {desc=BinOp(op, make_var x1, make_var x2); typ=t.typ; attr=ANone}
+      post1 @@ post2 @@ {desc=BinOp(op, make_var x1, make_var x2); typ=t.typ; attr=[]}
   | App(t, ts) ->
      let ts' = List.map normalize_let.tr_term ts in
      let x,post = normalize_let_aux t in
