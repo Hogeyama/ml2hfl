@@ -135,7 +135,7 @@ let rec make_arg_let t =
         let t' =
           {S.desc = S.App(U.make_var f, List.map (fun (x,_) -> U.make_var x) xts);
            S.typ = Type.typ_unknown;
-           S.attr = ANone}
+           S.attr = S.ANone}
         in
         (List.fold_left (fun t2 (x,t1) -> U.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
     | S.If(t1, t2, t3) ->
@@ -157,7 +157,7 @@ let rec make_arg_let t =
     | S.Event _ -> assert false
     | _ -> assert false
   in
-  {t with desc}
+  {t with S.desc}
 
 
 
@@ -166,8 +166,8 @@ let assoc_renv n env =
     snd @@ List.find (fun (s,_) -> Some n = decomp_randint_name s) env
   with Not_found -> assert false
 
-let decomp_rand_typ typ =
-  match decomp_tfun typ with
+let decomp_rand_typ ?(xs=None) typ =
+  match decomp_tfun ~xs typ with
   | typs, typ' when is_typ_result typ' ->
       let typs',typ'' = List.decomp_snoc typs in
       let preds =
@@ -654,9 +654,14 @@ let assign_id_to_rand prog =
   {prog' with env}
 
 
-let make_map_randint_to_preds (env:CEGAR_syntax.env) =
-  let env' = List.filter (is_randint_var -| fst) env in
-  let aux (r,typ) = Option.get @@ decomp_randint_name r, snd @@ decomp_rand_typ typ in
+let make_map_randint_to_preds prog =
+  let env' = List.filter (is_randint_var -| fst) prog.env in
+  let aux (f,typ) =
+    let i = Option.get @@ decomp_randint_name f in
+    let _,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
+    let _,preds = decomp_rand_typ ~xs:(Some (List.map _Var xs)) typ in
+    i, preds
+  in
   List.map aux env'
 
 let rec merge_ext_preds_sequence = function

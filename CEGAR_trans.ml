@@ -141,7 +141,7 @@ let rec trans_typ = function
 
 
 and trans_binop = function
-    S.Eq -> assert false
+  | S.Eq -> assert false
   | S.Lt -> Const Lt
   | S.Gt -> Const Gt
   | S.Leq -> Const Leq
@@ -154,7 +154,7 @@ and trans_binop = function
 
 and trans_const c typ =
   match c with
-    S.Unit -> Unit
+  | S.Unit -> Unit
   | S.True -> True
   | S.False -> False
   | S.Int n -> Int n
@@ -165,6 +165,8 @@ and trans_const c typ =
   | S.Int64 n -> Int64 n
   | S.Nativeint n -> Nativeint n
   | S.CPS_result -> CPS_result
+  | S.RandInt _ -> assert false
+  | S.RandValue _ -> assert false
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
@@ -181,14 +183,12 @@ and trans_term post xs env t =
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
   | S.App({S.desc=S.Const(S.RandInt true); S.attr=S.AAbst_under}, [t1;t2]) ->
       assert (t1 = U.unit_term);
-      let k = new_id ("k" ^ post) in
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
       defs1@defs2, make_app (Const (RandInt (Some 0))) (List.map _Var xs' @ [t2'])
   | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) ->
       assert (t1 = U.unit_term);
-      let k = new_id ("k" ^ post) in
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt None), t2')

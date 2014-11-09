@@ -260,38 +260,11 @@ let theta pbs t =
 let check_exist env cond x p =
   if debug() then Format.printf "check_exists:@.";
   if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
-  if debug() then Format.printf "  \exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
+  if debug() then Format.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
   let xs = List.filter_out ((=) x) @@ get_fv p in
-  let b = FpatInterface.is_sat_forall_exists xs [x] cond p in
+  let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
   if debug() then Format.printf "check_exists: %b@."b;
   b
-
-(*
-let abst_rand_int env cond pbs x p =
-  if debug() then Format.printf "abst_rand_int@.";
-  if debug() then Format.printf "  cond: %a@." (print_list CEGAR_print.term "; ") cond;
-  let pbs' = filter_pbs env cond pbs in
-  if debug() then Format.printf "  pbs: @[<hv>%a@]@.  p:%a@." print_pbs pbs' CEGAR_print.term p;
-  if has_bottom p
-  then Const Bottom
-  else
-    let tt, ff = weakest env cond pbs' p in
-    if debug() then Format.printf "  tt:%a@.  ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
-    if make_not tt = ff || tt = make_not ff
-    then tt
-    else
-      let t_br =
-        if List.exists (fun (p,_) -> List.mem x @@ get_fv p) pbs
-        then
-
-        else
-          let cond' = make_not (theta pbs tt) :: make_not (theta pbs ff) :: cond in
-          let ex_tt = if check_exist env cond' pbs x p then [Const True] else [] in
-          let ex_ff = if check_exist env cond' pbs x (make_not p) then [Const False] else [] in
-          make_br_exists (ex_tt @ ex_ff)
-      in
-      make_if tt (Const True) @@ make_if ff (Const False) t_br
-*)
 
 let add_funcall_labels top_funs ({env=env;defs=defs} as prog) =
   let uncapitalize_var = String.uncapitalize in (* from ModelCheck_util *)

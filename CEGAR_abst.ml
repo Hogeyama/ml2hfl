@@ -133,7 +133,7 @@ let abstract orig_fun_list prog =
 
 
 
-let abstract orig_fun_list force prog ?(top_funs=[]) =
+let abstract orig_fun_list force ?(top_funs=[]) prog =
   let tmp = get_time() in
   let () =
     if !Flag.print_progress

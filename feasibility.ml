@@ -105,7 +105,7 @@ let rec get_prefix ce n =
   | c::ce' when n = 0 -> []
   | c::ce' -> c::get_prefix ce' (n-1)
 
-let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs=defs; main=main} =
+let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
   let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in

@@ -306,6 +306,7 @@ and print_const_ML fm = function
   | Label n -> Format.fprintf fm "print_int %d;" n
   | CmpPoly _ -> assert false
   | CPS_result -> Format.fprintf fm "end"
+  | TreeConstr(_,s) -> Format.fprintf fm "TC_%s" s
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
@@ -389,6 +390,7 @@ and print_const_as_tree fm = function
   | Label _ -> assert false
   | CmpPoly _ -> assert false
   | CPS_result -> Format.fprintf fm "End"
+  | TreeConstr(_,s) -> Format.fprintf fm "TC_%s" s
 
 and print_term_as_tree fm = function
     Const c -> Format.fprintf fm "(Const %a)" print_const_as_tree c

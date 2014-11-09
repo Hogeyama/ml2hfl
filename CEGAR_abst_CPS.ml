@@ -273,13 +273,14 @@ let rec abstract_rand_int must env cond pts preds t typ =
   aux pts pts' preds'
 *)
 
-let rec abstract_rand_int n must env cond pts vars t =
-  let _,preds = decomp_rand_typ @@ assoc_renv n env in
+let rec abstract_rand_int n must env cond pts xs t =
+  let _,preds = decomp_rand_typ ~xs:(Some xs) @@ assoc_renv n env in
   let typ' = TFun(TBase(TInt, preds), fun _ -> typ_result) in
   let t' = hd @@ abstract_term must env cond pts t typ' in
   let x = new_id "r" in
   let env' = (x,typ_int)::env in
   let preds' = preds (Var x) in
+  Format.printf "preds': %a@." (List.print CEGAR_print.term) preds';
   let rec make_combs n =
     if n <= 0
     then [[]]

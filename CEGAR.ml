@@ -64,15 +64,15 @@ let rec loop prog0 is_cp info top_funs =
       prog, Safe env'
   | ModelCheck.Unsafe (cexs, ext_cexs) ->
       let cexs' = List.map (fun ce -> CEGAR_trans.trans_ce ce labeled prog) cexs in
-      let map_randint_to_preds = make_map_randint_to_preds prog0.env in
+      let map_randint_to_preds = make_map_randint_to_preds prog0 in
       Format.printf "ENV: %a@." (print_list Format.pp_print_int ",") (List.map fst map_randint_to_preds);
       let renv = get_renv prog in
       let maps =
         List.map2
           (fun ce ext_ce ->
-	    if !Flag.print_progress then Feasibility.print_ce_reduction ~map_randint_to_preds:map_randint_to_preds ~ext_ce:ext_ce ce prog;
+	    if !Flag.print_progress then Feasibility.print_ce_reduction ~map_randint_to_preds ~ext_ce ce prog;
 	    let ext_preds = ext_ce |> merge_ext_preds_sequence |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
-	    match Feasibility.check ~map_randint_to_preds:map_randint_to_preds ~ext_ce:ext_ce ce prog with
+	    match Feasibility.check ~map_randint_to_preds ~ext_ce ce prog with
 	      | Feasibility.Feasible (true, env, sol) ->
 		Format.printf "Found useless feasible path@.";
 		[] (* do not use a useless (i.e. already-used-in-CEGAR) error-path *)

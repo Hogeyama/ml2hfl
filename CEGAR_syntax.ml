@@ -212,9 +212,15 @@ let rec decomp_annot_fun acc = function
   | Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
   | t -> List.rev acc, t
 let decomp_annot_fun t = decomp_annot_fun [] t
-let rec decomp_tfun = function
+let rec decomp_tfun ?(xs=None) = function
   | TFun(typ1,typ2) ->
-      let typs,typ = decomp_tfun (typ2 (Const Unit)) in
+      let arg,xs' =
+        match xs with
+        | None -> Const Unit, None
+        | Some [] -> assert false
+        | Some (x::xs') -> x, Some xs'
+      in
+      let typs,typ = decomp_tfun (typ2 arg) in
       typ1::typs, typ
   | typ -> [], typ
 let rec decomp_tfun_env = function
@@ -230,9 +236,11 @@ let is_app_randint t =
   match t with
   | App _ ->
       let t',ts = decomp_app t in
-      match t' with
-      | Const (RandInt (Some _)) -> true
-      | _ -> false
+      begin
+        match t' with
+        | Const (RandInt (Some _)) -> true
+        | _ -> false
+      end
   | _ -> false
 
 
