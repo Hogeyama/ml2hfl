@@ -1157,7 +1157,7 @@ let insert_param_funarg_term t =
         Let(flag, List.map aux defs, insert_param_funarg.tr_term t)
     | _ -> insert_param_funarg.tr_desc_rec t.desc
   in
-  {desc=desc; typ=typ; attr=ANone}
+  {desc; typ; attr=t.attr}
 
 let () = insert_param_funarg.tr_typ <- insert_param_funarg_typ
 let () = insert_param_funarg.tr_term <- insert_param_funarg_term

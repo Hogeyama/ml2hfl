@@ -563,7 +563,7 @@ let insert_extra_param t =
       | Syntax.TNone -> Syntax.TNone
       | Syntax.TSome t -> Syntax.TSome(aux rfs bvs exs t)
     in
-    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ; Syntax.attr=Syntax.ANone}
+    {t with Syntax.desc}
   in
   let res = aux [] [] [] t in
   let _ = add_time tmp Flag.time_parameter_inference in
@@ -645,7 +645,6 @@ let is_valid_forall_exists xs ys cond p =
         Formula.imply (Formula.band @@ List.map conv_formula cond) @@
           conv_formula p
   in
-  Format.printf "is_sat_dyn: %a@." Formula.pr p';
   SMTProver.is_valid_dyn p'
 
 let conv_pred (env: CEGAR_syntax.env) (p: CEGAR_syntax.t) =

@@ -238,7 +238,7 @@ let is_app_randint t =
       let t',ts = decomp_app t in
       begin
         match t' with
-        | Const (RandInt (Some _)) -> true
+        | Const (RandInt _) -> true
         | _ -> false
       end
   | _ -> false
