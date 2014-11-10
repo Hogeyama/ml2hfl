@@ -7,8 +7,8 @@ open Util
 
 let is_head_tuple t =
   match decomp_app t with
-      Const (Tuple _), _::_ -> true
-    | _ -> false
+  | Const (Tuple _), _::_ -> true
+  | _ -> false
 
 let and_cps = "and_cps"
 let or_cps = "or_cps"
@@ -18,7 +18,7 @@ let or_def = or_cps, ["x"; "y"; "k"], Const True, [], (make_if (Var "x") (App(Va
 let not_def = not_cps, ["x"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
 
 let rec trans_const = function
-    Const (Int _ | Unit | True | False | RandBool | If | Tuple _ | Bottom as c) -> Const c
+  | Const (Int _ | Unit | True | False | RandBool | If | Tuple _ | Bottom | Label _ as c) -> Const c
   | Const Not -> Var not_cps
   | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.const c; assert false
   | Var x -> Var x
@@ -43,7 +43,7 @@ let rec trans_const = function
   | Fun(x,typ,t) -> Fun(x, typ, trans_const t)
 
 let rec trans_simpl c = function
-    Const x -> c (Const x)
+  | Const x -> c (Const x)
   | Var x -> c (Var x)
   | App(App(App(Const If, t1), t2), t3) ->
       let k = new_id "k" in
@@ -52,64 +52,67 @@ let rec trans_simpl c = function
       let t3' = trans_simpl (fun y -> App(Var k, y)) t3 in
       let c' y =
         match c (Var x) with
-            App(Var k', Var x') when x = x' -> subst k (Var k') (make_if y t2' t3')
-          | tk -> Let(k, Fun(x, None, tk), make_if y t2' t3')
+        | App(Var k', Var x') when x = x' -> subst k (Var k') (make_if y t2' t3')
+        | tk -> Let(k, Fun(x, None, tk), make_if y t2' t3')
       in
-        trans_simpl c' t1
+      trans_simpl c' t1
   | App(App(Const And, t1), t2) ->
       let x = new_id "b" in
       let c1 t1' t2' =
         let k' =
           match c (Var x) with
-              App(Var k', Var x') when x = x' -> Var k'
-            | tk -> Fun(x, None, tk)
+          | App(Var k', Var x') when x = x' -> Var k'
+          | tk -> Fun(x, None, tk)
         in
-          make_app (Var and_cps) [t1';t2';k']
+        make_app (Var and_cps) [t1';t2';k']
       in
       let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
-        trans_simpl c2 t1
+      trans_simpl c2 t1
   | App(App(Const Or, t1), t2) ->
       let x = new_id "b" in
       let c1 t1' t2' =
         let k' =
           match c (Var x) with
-              App(Var k', Var x') when x = x' -> Var k'
-            | tk -> Fun(x, None, tk)
+          | App(Var k', Var x') when x = x' -> Var k'
+          | tk -> Fun(x, None, tk)
         in
-          make_app (Var or_cps) [t1';t2';k']
+        make_app (Var or_cps) [t1';t2';k']
       in
       let c2 y1 = trans_simpl (fun y2 -> c1 y1 y2) t2 in
-        trans_simpl c2 t1
+      trans_simpl c2 t1
   | App _ as t when is_head_tuple t ->
       let t',ts = decomp_app t in
       let n = match t' with Const (Tuple n) -> n | _ -> assert false in
-      let () = assert (List.length ts = n) in
-      let cc = List.fold_right (fun t cc -> fun x -> trans_simpl (fun y -> cc (App(x, y))) t) ts c in
-        trans_simpl cc (Const (Tuple n))
+      assert (List.length ts = n);
+      let c' = List.fold_right (fun t cc -> fun x -> trans_simpl (fun y -> cc (App(x, y))) t) ts c in
+      trans_simpl c' (Const (Tuple n))
+  | App(Const (Label n) as lbl, t) ->
+      App(lbl, trans_simpl c t)
   | App(t1, t2) ->
       let r = new_id "r" in
       let c' y =
         let k' =
           match c (Var r) with
-              App(Var k', Var r') when r = r' -> Var k'
-            | tk -> Fun(r, None, tk)
+            App(Var k', Var r') when r = r' -> Var k'
+          | tk -> Fun(r, None, tk)
         in
-          trans_simpl (fun x -> make_app y [x; k']) t2
+        trans_simpl (fun x -> make_app y [x; k']) t2
       in
-        trans_simpl c' t1
+      trans_simpl c' t1
   | Let(x,t1,t2) ->
       let c' t = subst x t (trans_simpl c t2) in
-        trans_simpl c' t1
+      trans_simpl c' t1
   | Fun(x,_,t) ->
       let k = new_id "k" in
-        c (Fun(x, None, Fun(k, None, trans_simpl (fun x -> App(Var k, x)) t)))
+      c (Fun(x, None, Fun(k, None, trans_simpl (fun x -> App(Var k, x)) t)))
 
 let trans_simpl_def (f,xs,t1,e,t2) =
   assert (xs = []);
   let t2 = trans_simpl (fun x -> x) t2 in
-  if false then Format.printf "TRANS: %a@." CEGAR_print.term t2;
+  if true then Format.printf "TRANS1: %a@." CEGAR_print.term t2;
   let t2 = trans_const t2 in
-    (f, [], t1, e, t2)
+  if true then Format.printf "TRANS2: %a@." CEGAR_print.term t2;
+  (f, [], t1, e, t2)
 
 
 

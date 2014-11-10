@@ -212,10 +212,10 @@ let rec run_cegar prog =
 
 let rec run orig parsed =
   init ();
-  let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print in
+  let spec = Spec.read Spec_parser.spec Spec_lexer.token |@(not !Flag.only_result)&> Spec.print in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType
-    then trans_and_print Trans.set_target "set_target" (fun (_,_,t) -> t) parsed
+    then trans_and_print Trans.set_target "set_target" trd parsed
     else "",0,parsed
   in
   (** Unno: I temporally placed the following code here

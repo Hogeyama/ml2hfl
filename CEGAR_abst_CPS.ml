@@ -4,10 +4,7 @@ open CEGAR_type
 open CEGAR_util
 open CEGAR_abst_util
 
-
-
 let debug () = List.mem "CEGAR_abst_CPS" !Flag.debug_module
-
 
 let abst_arg x typ =
   if debug() then Format.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
@@ -27,7 +24,7 @@ let make_pts x typ =
     | TBase(_,ps) -> ps (Var x)
     | _ -> [Const True]
   in
-  List.filter (fun (p,_) -> p <> Const True) (List.map2 (fun p x -> p, Var x) ps xs)
+  List.filter (fun (p,_) -> p <> Const True) @@ List.map2 (fun p x -> p, Var x) ps xs
 
 
 let rec beta_reduce_term = function

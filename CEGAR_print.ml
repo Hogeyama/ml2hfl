@@ -140,15 +140,16 @@ and print_term fm = function
 
 and print_fun_def fm (f,xs,t1,es,t2) =
   let aux s = function
-      (Event e) -> Format.sprintf " {%s} =>" e ^ s
+    | (Event e) -> Format.sprintf " {%s} =>" e ^ s
     | (Branch n) -> Format.sprintf " l%d =>" n ^ s
   in
   let s = List.fold_left aux "" es in
   if t1 = Const True
   then
     let ys,t2 = decomp_fun t2 in
-    Format.fprintf fm "@[<hov 4>%a ->%s@ %a;;@]" (print_list print_var " ") (f::xs@ys) s print_term t2
-  else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a;;@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
+    Format.fprintf fm "@[<hov 4>%a ->%s@ %a ;;@]" (print_list print_var " ") (f::xs@ys) s print_term t2
+  else
+    Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a ;;@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
 
 and print_attr fm = function
   | ACPS -> Format.fprintf fm "ACPS"

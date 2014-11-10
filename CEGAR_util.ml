@@ -211,13 +211,16 @@ let rec get_const_typ = function
 
 
 let rec get_typ env = function
-    Const c -> get_const_typ c
+  | Const c -> get_const_typ c
   | Var x -> List.assoc x env
   | App(Const (Label _), t) ->
       get_typ env t
   | App(Const (RandInt _), t) ->
-      let typ2 = match get_typ env t with TFun(_,typ) -> typ (Var "") | _ -> assert false in
-      typ2
+      begin
+        match get_typ env t with
+        | TFun(_,typ) -> typ (Var "")
+        | _ -> assert false
+      end
   | App(App(App(Const If, _), t1), t2) ->
       begin
         try
@@ -225,8 +228,11 @@ let rec get_typ env = function
         with TypeBottom -> get_typ env t2
       end
   | App(t1,t2) ->
-      let typ2 = match get_typ env t1 with TFun(_,typ) -> typ t2 | _ -> assert false in
-      typ2
+      begin
+        match get_typ env t1 with
+        | TFun(_,typ) -> typ t2
+        | _ -> assert false
+      end
   | Let(x,t1,t2) ->
       let typ = get_typ env t1 in
       let env' = (x,typ)::env in

@@ -68,6 +68,7 @@ let conv_const c =
      Fpat.Const.UFun
        (Fpat.Type.mk_const (Fpat.TypConst.Ext "X"),
         Fpat.Idnt.make "end")
+  | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let conv_var x =
@@ -128,6 +129,7 @@ let inv_const c =
        when Fpat.Idnt.string_of x = "end"
             && Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
      CPS_result
+  | Fpat.Const.Proj(typs, i) -> Proj(List.length typs, i)
   | _ -> Format.printf "%s@." (Fpat.Const.string_of c); assert false
 
 let rec inv_term t =

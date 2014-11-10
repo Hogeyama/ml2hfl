@@ -36,7 +36,7 @@ let true_term = {desc=Const True;typ=TBool; attr=[]}
 let false_term = {desc=Const False;typ=TBool; attr=[]}
 let cps_result = {desc=Const CPS_result; typ=typ_result; attr=[]}
 let fail_term = {desc=Event("fail",false);typ=typ_event; attr=[]}
-let fail_term_cps = {desc=Event("fail",false);typ=typ_event'; attr=[]}
+let fail_term_cps = {desc=Event("fail",true);typ=typ_event'; attr=[]}
 let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt; attr=[]}
 let randbool_unit_term =

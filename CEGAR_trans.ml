@@ -194,8 +194,7 @@ and trans_term post xs env t =
   | S.App({S.desc=S.Event(s,false)}, [t]) ->
       let k = new_id "k" in
       assert (t = U.unit_term);
-      let ret_typ = typ_result in
-      let defs = [k, TFun(typ_unit, fun _ -> ret_typ), ["u"], Const True, [], Const CPS_result] in
+      let defs = [k, TFun(typ_unit, fun _ -> typ_unit), ["u"], Const True, [], Const Unit] in
       defs, App(Const (Temp s), Var k)
   | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
       assert (t1 = U.unit_term);
@@ -290,7 +289,7 @@ let trans_def (f,(xs,t)) =
   let xs' = List.map trans_var xs in
   let path = ref [] in
   let aux x' x =
-    let typ = trans_typ (Id.typ x) in
+    let typ = trans_typ @@ Id.typ x in
     path := 1::!path;
     x', typ
   in
@@ -307,7 +306,7 @@ let trans_def (f,(xs,t)) =
      | _ -> raise Not_found)
   with Not_found ->
     let defs,t' = trans_term post xs' env t in
-    let typ' = trans_typ (Id.typ f) in
+    let typ' = trans_typ @@ Id.typ f in
     (f', typ', xs', Const True, [], t')::defs
 
 
@@ -359,12 +358,12 @@ let event_of_temp {env;defs;main;attr} =
     let make_event (f,xs,t1,e,t2) =
       assert (e = []);
       match t2 with
-      | App(Const (Temp s), t2') when t1 = Const True ->
+      | App(Const (Temp s), t2') when t1 = Const True || not @@ List.mem ACPS attr ->
           [], [f, xs, t1, [Event s], App(t2', Const Unit)]
       | App(Const (Temp s), t2') ->
           let g = new_id s in
           [g, TFun(typ_bool(),fun _ -> TFun(TFun(typ_unit, fun _ -> typ_result), fun _ -> typ_result))],
-          (* cannot refute if b is eliminated, because k can have no predicates in current impl. *)
+          (* cannot refute if b is eliminated, because k cannot have predicates in current impl. *)
           [g, ["b"; "k"], Const True, [Event s], App(Var "k", Const Unit);
            f, xs, t1, [], App(App(Var g, Const True), t2')]
       | _ -> [], [f, xs, t1, [], t2]
@@ -481,9 +480,9 @@ let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
   let ext_env = List.map (Pair.map trans_var trans_typ) (Trans.make_ext_env t) in
-  let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." S.print_term t in
+  let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." S.print_term' t in
   let t = Trans.trans_let t in
-  let () = if debug() then Format.printf "AFTER:@.%a@.@.@." S.print_term t in
+  let () = if debug() then Format.printf "AFTER:@.%a@.@.@." S.print_term' t in
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term t_main in

@@ -41,7 +41,7 @@ type const =
   | Sub
   | Mul
   | Tuple of int
-  | Proj of int * int (* 0-origin *)
+  | Proj of int * int (* Proj(n,i): 0 <= i < n *)
   | If (* for abstraction and model-checking *)
   | Bottom
   | Label of int
@@ -170,7 +170,7 @@ let get_fv t = StringSet.elements @@ get_fv t
 
 
 let rec get_typ_arity = function
-    TFun(typ1,typ2) -> 1 + get_typ_arity (typ2 (Const Unit))
+  | TFun(typ1,typ2) -> 1 + get_typ_arity (typ2 (Const Unit))
   | typ -> 0
 
 
