@@ -56,7 +56,7 @@ let inferCoeffs argumentVariables linear_templates constraints =
       let ((correspondenceCoeffs, const_part) as ranking_function) =
         Fpat.LinTermIntExp.of_term
           (Fpat.Term.subst
-             (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
+             (List.map (fun (v, t) -> (v, t)) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
@@ -87,7 +87,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
       let correspondenceCoeffs, const_part =
         Fpat.LinTermIntExp.of_term
-          (Fpat.Term.subst (List.map (fun (v, c) -> (v, Fpat.Term.mk_const (Fpat.Const.Int c))) correspondenceVars) linTemp)
+          (Fpat.Term.subst (List.map (fun (v, t) -> (v, t)) correspondenceVars) linTemp)
       in
       (** extract coefficients **)
       let coefficients =
@@ -98,7 +98,9 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       in
       {coeffs = coefficients; constant = Fpat.IntTerm.int_of const_part}
      ) linear_templates,
-     let correspondenceExparams = List.map (fun (v, n) -> (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.TInt, Term_util.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Idnt.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
+     let correspondenceExparams =
+       List.map (fun (v, t) ->
+                 let n = Fpat.IntTerm.int_of t in (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.TInt, Term_util.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Idnt.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
      let substToVar = function
        | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> if CEGAR_syntax.isEX_COEFFS x.Id.name then Term_util.make_int 0 else Term_util.make_var x)
        | t -> t

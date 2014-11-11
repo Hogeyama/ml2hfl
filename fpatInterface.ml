@@ -575,8 +575,8 @@ let instantiate_param (typs, fdefs, main as prog) =
      Fpat.RefTypInfer.init_sol (conv_prog prog));
   let map =
     List.map
-      (fun (x, n) ->
-       Fpat.Idnt.string_of x, inv_term (Fpat.IntTerm.make n))
+      (fun (x, t) ->
+       Fpat.Idnt.string_of x, inv_term t)
       !Fpat.RefTypInfer.prev_sol
   in
   let res =
