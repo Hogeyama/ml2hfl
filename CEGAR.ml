@@ -80,16 +80,17 @@ let rec loop prog0 is_cp info top_funs =
 		Format.printf "Found feasible path@.";
 		let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
 		let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_preds] prog0 in
+		Format.printf "REFINEMENT MAP: %a@." CEGAR_print.env map;
 		map
 	      | Feasibility.Infeasible prefix ->
 		Format.printf "Found infeasible path@.";
 		let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
 		let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_preds] prog0 in
-		Format.printf "ENV: %a@." CEGAR_print.env p.env;
+		Format.printf "REFINEMENT MAP: %a@." CEGAR_print.env p.env;
 		if !Flag.debug_level > 0 then
                   Format.printf "Prefix of spurious counterexample::@.%a@.@."
                     CEGAR_print.ce prefix;
-		map)
+		p.env)
           cexs' ext_cexs
       in
       let env' = List.fold_left (fun a b -> Refine.add_preds_env b a) prog.env maps in
