@@ -1,5 +1,5 @@
 let rec f n =
-  if n>0 then ()
+  if n<0 then ()
   else
     let r = read_int () in
     if r>0 then f (n-1) else f (n+1)

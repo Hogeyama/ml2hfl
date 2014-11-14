@@ -1,5 +1,5 @@
 let rec f m n =
-  if m = n
+  if m <> n
     then f m (n-2)
     else ()
 let main () =
