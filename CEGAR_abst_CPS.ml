@@ -294,19 +294,22 @@ let rec abstract_rand_int n must env cond pts xs t =
   let cts =
     let aux cond_comb =
       let cond' = List.map2 (fun b (p,_) -> if b then p else make_not p) cond_comb pts @ cond in
-      let argss =
-        let aux' pred_comb =
-          let bs,ps = List.split @@ List.map2 (fun b p -> b, if b then p else make_not p) pred_comb preds' in
-          if check_exist env cond' x @@ List.fold_right make_and ps (Const True)
-          then Some (bs, List.map (fun b -> if b then Const True else Const False) bs)
-          else None
+      if check_aux env cond' (Const False)
+      then None
+      else
+        let argss =
+          let aux' pred_comb =
+            let bs,ps = List.split @@ List.map2 (fun b p -> b, if b then p else make_not p) pred_comb preds' in
+            if check_exist env cond' x @@ List.fold_right make_and ps (Const True)
+            then Some (bs, List.map (fun b -> if b then Const True else Const False) bs)
+            else None
+          in
+          List.filter_map aux' pred_combs
         in
-        List.filter_map aux' pred_combs
-      in
-      let cs = List.map2 (fun b (_,t) -> if b then t else make_not t) cond_comb pts in
-      List.fold_right make_and cs (Const True), make_br_exists n @@ List.map (Pair.map_snd @@ make_app (Var f)) argss
+        let cs = List.map2 (fun b (_,t) -> if b then t else make_not t) cond_comb pts in
+        Some (List.fold_right make_and cs (Const True), make_br_exists n @@ List.map (Pair.map_snd @@ make_app (Var f)) argss)
     in
-    List.map aux cond_combs
+    List.filter_map aux cond_combs
   in
   Let(f, t', List.fold_right (fun (b,t) t' -> make_if b t t') cts (Const Bottom))
 

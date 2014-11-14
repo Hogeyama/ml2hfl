@@ -263,7 +263,7 @@ let check_exist env cond x p =
   if debug() then Format.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
   let xs = List.filter_out ((=) x) @@ get_fv p in
   let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
-  if debug() then Format.printf "check_exists: %b@."b;
+  if debug() then Format.printf "check_exists: %b@." b;
   b
 
 let add_funcall_labels top_funs ({env=env;defs=defs} as prog) =
