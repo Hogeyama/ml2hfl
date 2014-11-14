@@ -2,6 +2,8 @@
 val merge_typ :
   CEGAR_syntax.typ -> CEGAR_syntax.typ -> CEGAR_syntax.t CEGAR_type.t
 
+val add_neg_preds_renv : CEGAR_syntax.env -> CEGAR_syntax.env
+
 val trans_var : 'a Id.t -> string
 val trans_inv_var : string -> 'a Type.t Id.t
 val trans_inv_term : CEGAR_syntax.t -> Syntax.typed_term

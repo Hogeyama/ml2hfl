@@ -53,6 +53,22 @@ let merge_typ typ1 typ2 =
     merge_typ [] typ1 typ2
   with _ -> (Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false)
 
+let rec negate_typ = function
+  | TBase(b,ps) ->
+      let x = new_id' "x" in
+      let ps t = List.map (make_not |- subst x t) (ps (Var x)) in
+      TBase(b, ps)
+  | TFun(typ1,typ2) ->
+      let x = new_id' "x" in
+      let typ2 = typ2 (Var x) in
+      let typ1 = negate_typ typ1 in
+      let typ2 = negate_typ typ2 in
+      TFun(typ1, fun t -> subst_typ x t typ2)
+  | (TAbs _ | TApp _) as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
+
+let add_neg_preds_renv env =
+  let aux (f,typ) = if is_randint_var f then (f, merge_typ typ (negate_typ typ)) else (f, typ) in
+  List.map aux env
 
 let nil_pred _ = []
 

@@ -31,6 +31,25 @@ let add_renv map env =
   let aux (n, preds) = make_randint_name n, TBase(TInt, preds) in
   add_preds_env (List.map aux map) env
 
+let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
+
+let rec negate_typ = function
+  | TBase(b,ps) ->
+      let x = new_id' "x" in
+      let ps t = List.map (make_not |- subst x t) (ps (Var x)) in
+      TBase(b, ps)
+  | TFun(typ1,typ2) ->
+      let x = new_id' "x" in
+      let typ2 = typ2 (Var x) in
+      let typ1 = negate_typ typ1 in
+      let typ2 = negate_typ typ2 in
+      TFun(typ1, fun t -> subst_typ x t typ2)
+  | (TAbs _ | TApp _) as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
+
+let add_nag_preds_renv env =
+  let aux (f,typ) = if is_randint_var f then merge_typ typ (negate_typ typ) else typ in
+  List.map aux env
+
 let add_preds map prog =
   {prog with env = add_preds_env map prog.env}
 

@@ -500,3 +500,15 @@ and print_term' limit fm t =
       Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env (print_term' limit) t'
 
 let term' = print_term' 100
+
+let rec has_preds = function
+  | TBase(_, ps) -> (ps (Var "x") <> [])
+  | TApp(t1, t2) -> has_preds t1 || has_preds t2
+  | TFun(t1, t2) -> has_preds t1 || has_preds (t2 (Var "x"))
+  | _ -> assert false
+
+let rec print_env_diff fm env =
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) f print_typ typ in
+  List.iter pr (List.filter (Pair.map_snd has_preds |- snd) env)
+
+let env_diff = print_env_diff
