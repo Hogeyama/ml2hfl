@@ -84,6 +84,7 @@ let rec check_aux pr ce sat n constr env defs t k =
           let num,(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' in
           let ts1,ts2 = List.split_nth (List.length xs) ts in
           let aux = List.fold_right2 subst xs ts1 in
+	  rand_precond_ref := aux !rand_precond_ref;
           let tf1' = aux tf1 in
           let tf2' = make_app (aux tf2) ts2 in
           let constr' = make_and tf1' constr in
@@ -106,6 +107,9 @@ let rec get_prefix ce n =
   | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
+
+  List.iter (fun (n, bs) -> Format.printf "C.E.: %d: %a@." n (print_list Format.pp_print_bool ",") bs) ext_ce;
+
   let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
   let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
@@ -115,14 +119,15 @@ let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   let pr _ _ _ _ = () in
   init_refs map_randint_to_preds ext_ce; (* initialize abstraction predicate path of randint *)
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
+
   let prefix = get_prefix ce (n+1) in
   let result =
     if checksat env' (make_and constr !rand_precond_ref)
     then Feasible (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', get_solution env' constr)
     else Infeasible prefix
   in
-  if !Flag.print_progress && (match result with | Feasible _ -> true | _ -> false) then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;
-  if !Flag.print_progress && (match result with | Feasible _ -> true | _ -> false) then Color.printf Color.Green "Progress pre-constraint: %a@." CEGAR_print.term !rand_precond_ref;
+  if !Flag.print_progress then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;
+  if !Flag.print_progress then Color.printf Color.Green "Randint constraint: %a@." CEGAR_print.term !rand_precond_ref;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
   add_time time_tmp Flag.time_cegar;
   result

@@ -140,7 +140,7 @@ let rec verifyFile filename =
 
 type path = int list (* branch info. *) * bool list (* partially constructed external input info. *) * ((int * (bool list)) list) (* external input info. *)
 let add_next_rand_info r (branch,bs,ext) = (branch, [], (decomp_randint_label r, bs) :: ext)
-let add_tf_info b (branch,bs,ext) = (branch,bs@[b],ext)
+let add_tf_info b (branch,bs,ext) = (branch,b::bs,ext)
 let add_branch_info b (branch,bs,ext) = (b::branch,bs,ext)
 
 (* gather error paths *)
@@ -181,6 +181,8 @@ let rec verifyFile filename =
           close_in ic;
           Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
           let cexs, ext_cexs = error_trace ce in
+	  let ppppp fm (n, l) = Format.fprintf fm "[%d: %a]" n (print_list Format.pp_print_bool ",") l in
+	  List.iter2 (fun c1 c2 -> Format.printf "CORRESPOND?:  %a | %a@." (print_list Format.pp_print_int ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
           (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
           Unsafe (cexs, ext_cexs)
 (*      | `TimeOut ->
