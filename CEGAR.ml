@@ -61,6 +61,7 @@ let rec loop prog0 is_cp info top_funs =
       in
       let env' = List.rev_map_flatten aux env in
       post ();
+      Format.printf "ABSTRACTION TYPE ENV:@.%a@." CEGAR_print.env_diff prog.env;
       prog, Safe env'
   | ModelCheck.Unsafe (cexs, ext_cexs) ->
       let map_randint_to_preds = make_map_randint_to_preds prog0 in
@@ -69,7 +70,7 @@ let rec loop prog0 is_cp info top_funs =
 
       let print_path fm p = Format.fprintf fm "%a" (print_list Format.pp_print_string ",") (List.map (fun n -> if n=0 then "then" else "else") p) in
 
-      Format.printf "@.ABSTRACTION TYPE ENV@.: %a@." CEGAR_print.env_diff prog.env;
+      Format.printf "@.ABSTRACTION TYPE ENV:@.%a@." CEGAR_print.env_diff prog.env;
 
       let maps =
         List.map2

@@ -175,14 +175,13 @@ let rec verifyFile filename =
     match HorSat_parser.output HorSat_lexer.token lb with
         `Satisfied ->
           close_in ic;
-          Format.printf "Non-terminating.@.";
-          exit 0
+          Safe []
       | `Unsatisfied ce ->
           close_in ic;
           Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
           let cexs, ext_cexs = error_trace ce in
 	  let ppppp fm (n, l) = Format.fprintf fm "[%d: %a]" n (print_list Format.pp_print_bool ",") l in
-	  List.iter2 (fun c1 c2 -> Format.printf "CORRESPOND?:  %a | %a@." (print_list Format.pp_print_int ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
+	  List.iter2 (fun c1 c2 -> Format.printf "FOUND:  %a | %a@." (print_list (fun fm n -> Format.fprintf fm (if n=0 then "then" else "else")) ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
           (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
           Unsafe (cexs, ext_cexs)
 (*      | `TimeOut ->
@@ -206,7 +205,7 @@ let check env target =
     with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".hors"
   in
   try
-    Format.printf "%s@." (string_of_parseresult target');
+    if !Flag.debug_level > 1 then Format.printf "%s@." (string_of_parseresult target');
     write_log input target';
     verifyFile input
   with Failure("lex error") -> raise UnknownOutput
