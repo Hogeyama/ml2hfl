@@ -72,35 +72,45 @@ let rec loop prog0 is_cp info top_funs =
 
       Format.printf "@.ABSTRACTION TYPE ENV:@.%a@." CEGAR_print.env_diff prog.env;
 
-      let maps =
-        List.map2
+      let paths =
+        List.filter_map2
           (fun orig_ce ext_ce ->
 	    path_counter := !path_counter + 1;
 	    let ce = CEGAR_trans.trans_ce orig_ce labeled prog in
 	    if !Flag.print_progress then Feasibility.print_ce_reduction ~map_randint_to_preds ~ext_ce ce prog;
 	    let ext_preds = ext_ce |> merge_ext_preds_sequence |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
-	    match Feasibility.check ~map_randint_to_preds ~ext_ce ce prog with
+	    let path = Feasibility.check ~map_randint_to_preds ~ext_ce ce prog in
+	    match path with
 	      | Feasibility.Feasible (true, env, sol) ->
 		Format.printf "[%d: path %d] Found useless feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
-		[] (* do not use a useless (i.e. already-used-in-CEGAR) error-path *)
+		None (* do not use a useless (i.e. already-used-in-CEGAR) error-path *)
 	      | Feasibility.Feasible (false, env, sol) ->
 		Format.printf "[%d: path %d] Found feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
-		let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-		let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_preds] prog0 in
-		let map = CEGAR_trans.add_neg_preds_renv map in
-		Format.printf "REFINEMENT MAP: %a@." CEGAR_print.env_diff map;
-		map
+	        Some (path, orig_ce, ce, ext_preds)
 	      | Feasibility.Infeasible prefix ->
 		Format.printf "[%d: path %d] Found infeasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
-		let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-		let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_preds] prog0 in
-		Format.printf "REFINEMENT MAP: %a@." CEGAR_print.env_diff p.env;
-		if !Flag.debug_level > 0 then
-                  Format.printf "Prefix of spurious counterexample::@.%a@.@."
-                    CEGAR_print.ce prefix;
-		p.env)
+	        Some (path, orig_ce, ce, ext_preds))
           cexs ext_cexs
       in
+      path_counter := 0;
+      let refinement_type_map = function
+	| (Feasibility.Feasible (true, env, sol), _, _, _) ->
+	  [] (* do not use a useless (i.e. already-used-in-CEGAR) error-path *)
+	| (Feasibility.Feasible (false, env, sol), orig_ce, ce, ext_preds) ->
+	  Format.printf "[%d: path %d] Refining by feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
+	  let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+	  let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_preds] prog0 in
+	  let map = CEGAR_trans.add_neg_preds_renv map in
+	  Format.printf "REFINEMENT MAP: %a@." CEGAR_print.env_diff map;
+	  map
+	| (Feasibility.Infeasible prefix, orig_ce, ce, ext_preds) ->
+	  Format.printf "[%d: path %d] Refining by infeasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
+	  let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+	  let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_preds] prog0 in
+	  Format.printf "REFINEMENT MAP: %a@." CEGAR_print.env_diff p.env;
+	  p.env
+      in
+      let maps = List.map (fun path -> path_counter := !path_counter + 1; refinement_type_map path) paths in
       let env' = List.fold_left (fun a b -> Refine.add_preds_env b a) prog.env maps in
       post ();
       loop {prog with env=env'} is_cp info top_funs
