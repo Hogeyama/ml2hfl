@@ -660,10 +660,15 @@ let trans_ext (renv : (int * CEGAR_syntax.env) list) (map : (int * (CEGAR_syntax
   let new_var = Var(r) in
   let abst_preds = (List.assoc n map) new_var in
   let rand_var = conv_var r in
-  let ext_abstraction = List.map (List.fold_left2 (fun acc p b -> make_and (if b then p else make_not p) acc) (Const True) abst_preds) bs in
+  let add_pred acc p = function
+    | Positive -> make_and p acc
+    | Negative -> make_and (make_not p) acc
+    | Do_not_Care -> acc
+  in
+  let ext_abstraction = List.map (List.fold_left2 add_pred (Const True) abst_preds) bs in
   let preds_sequence = List.map (conv_pred env) ext_abstraction in
   let ret = rand_var, preds_sequence in
   let print_pred ppf (env, fml) =
     Format.fprintf ppf "%a |= %a" Fpat.TypEnv.pr_compact env Fpat.Formula.pr fml in
-  (* Format.printf "%s: %a@." r (print_list print_pred " , ") preds_sequence; *)
+  Format.printf "%s: %a@." r (print_list print_pred " , ") preds_sequence;
   ret

@@ -292,7 +292,11 @@ let arg_spec =
      "-non-termination",
      Arg.Unit (fun _ ->
                Flag.non_termination := true),
-     " Check non-termination"
+     " Check non-termination";
+     "-merge-paths",
+     Arg.Unit (fun _ ->
+               Flag.merge_paths_of_same_branch := true),
+     " Merge predicates of paths that have same if-branch information"
     ]
 
 let () = print_option_and_exit :=

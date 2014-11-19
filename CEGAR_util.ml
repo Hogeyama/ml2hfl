@@ -665,8 +665,70 @@ let make_map_randint_to_preds prog =
   in
   List.map aux env'
 
-let rec merge_ext_preds_sequence = function
+type ext_path_part = Positive | Negative | Do_not_Care
+type ext_path = ext_path_part list
+
+let conv_path ext_ce = 
+  let aux = List.map (List.map (fun b -> if b then Positive else Negative)) in
+  List.map (fun (n,bs) -> (n, aux bs)) ext_ce
+
+let rec arrange_ext_preds_sequence = function
   | [] -> []
   | (r,bs)::ext ->
       let (rs, rest) = List.partition (fun (f, _) -> f=r) ext in
-      (r,bs::List.map snd rs) :: merge_ext_preds_sequence rest
+      (r,bs::List.map snd rs) :: arrange_ext_preds_sequence rest
+
+let is_same_branching (_,_,ce1,_) (_,_,ce2,_) = ce1 = ce2
+
+let rec group_by_same_branching = function
+  | [] -> []
+  | x::xs -> let (gr, rest) = List.partition (is_same_branching x) xs in (x :: gr) :: group_by_same_branching rest
+
+(*
+r1: [Positive, Negative, Positive], r2: [Positive, Negative]
+r1: [Positive, Negative, Negative], r2: [Positive, Negative]
+->
+(r1, 0, Positive), (r1, 1, Negative), (r1, 2, Positive), (r2, 0, Positive), (r2, 1, Negative)
+(r1, 0, Positive), (r1, 1, Negative), (r1, 2, Negative), (r2, 0, Positive), (r2, 1, Negative)
+
+*)
+let remove_meaningless_pred path1 path2 =
+  let bs1 = List.concat @@ List.concat_map
+    (fun (n1, bss1) ->
+      List.mapi (fun i bs -> List.mapi (fun j b -> (n1, i, j, b)) bs) bss1) path1 in
+  let bs2 = List.concat @@ List.concat_map
+    (fun (n2, bss2) ->
+      List.mapi (fun i bs -> List.mapi (fun j b -> (n2, i, j, b)) bs) bss2) path2 in
+  let aux acc (n', i', j', b1) (_, _, _, b2) =
+    if b1 <> b2 then
+      let modify = List.map (fun ((n, bss) as seq) ->
+	if n=n' then (n, List.mapi (fun i bs -> if i=i' then List.mapi (fun j b -> if j=j' then Do_not_Care else b) bs else bs) bss)
+	else seq)
+      in match acc with
+	| None -> Some(modify)
+	| Some(modify') -> Some(modify |- modify')
+    else
+      acc
+  in
+  match List.fold_left2 aux None bs1 bs2 with
+    | None -> None
+    | Some(modify) -> Some(modify path1)
+
+let rec found_and_merge_paths (_,_,_,path) = function
+  | [] -> None
+  | ((path',orig_ce,ce,ext_path) as p)::ps -> 
+    match remove_meaningless_pred path ext_path with
+      | None ->
+	begin
+	  match found_and_merge_paths p ps with
+	    | None -> None
+	    | Some(merged_path, rest) -> Some(merged_path, p::rest)
+	end
+      | Some(merged) -> Some((path', orig_ce, ce, merged), ps)
+      
+let rec merge_similar_paths = function
+  | [] -> []
+  | p::ps ->
+    match found_and_merge_paths p ps with
+      | None -> p :: merge_similar_paths ps
+      | Some(merged_path, rest) -> merged_path :: merge_similar_paths rest
