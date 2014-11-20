@@ -167,6 +167,7 @@ let assoc_renv n env =
   with Not_found -> assert false
 
 let decomp_rand_typ ?(xs=None) typ =
+  let xs = Option.map (fun ys -> ys @ [Const Unit]) xs in
   match decomp_tfun ~xs typ with
   | typs, typ' when is_typ_result typ' ->
       let typs',typ'' = List.decomp_snoc typs in

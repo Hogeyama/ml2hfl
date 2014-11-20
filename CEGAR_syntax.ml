@@ -220,7 +220,7 @@ let rec decomp_tfun ?(xs=None) = function
         | Some [] -> assert false
         | Some (x::xs') -> x, Some xs'
       in
-      let typs,typ = decomp_tfun (typ2 arg) in
+      let typs,typ = decomp_tfun ~xs:xs' (typ2 arg) in
       typ1::typs, typ
   | typ -> [], typ
 let rec decomp_tfun_env = function
