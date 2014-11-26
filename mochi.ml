@@ -170,15 +170,17 @@ let main in_channel =
       (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
   else
     let input =
-      let dirname = Filename.dirname !Flag.filename in
-      let basename = Filename.basename !Flag.filename in
-      dirname ^ "/refinement/" ^
-	(try Filename.chop_extension basename ^ ".refinement"
-	 with Invalid_argument "Filename.chop_extension" -> basename ^ ".refinement")
+      if !Flag.randint_refinement_log then 
+	let dirname = Filename.dirname !Flag.filename in
+	let basename = Filename.basename !Flag.filename in
+	dirname ^ "/refinement/" ^
+	  (try Filename.chop_extension basename ^ ".refinement"
+	   with Invalid_argument "Filename.chop_extension" -> basename ^ ".refinement")
+      else ""
     in
-    let cout = open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o666 input in
-    output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
-    close_out cout;
+    let cout = if !Flag.randint_refinement_log then open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o666 input else stdout in
+    if !Flag.randint_refinement_log then output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
+    if !Flag.randint_refinement_log then close_out cout;
     Main_loop.run orig parsed
 
 
@@ -306,7 +308,11 @@ let arg_spec =
      "-merge-paths",
      Arg.Unit (fun _ ->
                Flag.merge_paths_of_same_branch := true),
-     " Merge predicates of paths that have same if-branch information"
+     " Merge predicates of paths that have same if-branch information";
+     "-refinement-log",
+     Arg.Unit (fun _ ->
+               Flag.randint_refinement_log := true),
+     " Write refinement types into log file (./refinement/[input file].refinement)"
     ]
 
 let () = print_option_and_exit :=
