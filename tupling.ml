@@ -54,7 +54,7 @@ let partition_bindings x t =
         assert (flag = Nonrecursive);
         before, Some (f,ts), after
     | None, _, _ ->
-        if debug() then Format.printf "CHECK: %a@." print_term t;
+        if debug() then Format.printf "CHECK: %a@." Print.term t;
         check t;
         before, app_x, (flag,(f,xs,t))::after
     | Some _, _, {desc=App({desc=Var y}, ts)} when Id.same x y ->
@@ -108,7 +108,7 @@ let inline_wrapped = inline_wrapped.tr_term
 
 let rec compose fg fts =
   if debug() then Format.printf "compose:@.";
-  if debug() then List.iter (fun (f,t) -> Format.printf "   %a, %a;@." Id.print f print_term t) fts;
+  if debug() then List.iter (fun (f,t) -> Format.printf "   %a, %a;@." Id.print f Print.term t) fts;
   if debug() then Format.printf "@.";
   let decomp_if i (f,t) =
     match t.desc with
@@ -125,7 +125,7 @@ let rec compose fg fts =
   else
     let forms = List.map (Fun.uncurry classify) fts in
     if debug() then Format.printf "compose_let@.";
-    if debug() then List.iter (fun (f,t) -> Format.printf "%a:%a@.@." Id.print f print_term t) fts;
+    if debug() then List.iter (fun (f,t) -> Format.printf "%a:%a@.@." Id.print f Print.term t) fts;
     if List.for_all ((=) FSimpleRec) forms
     then
       let aux (f,t) (before_acc, xs, arg_acc, after_acc, ts) =
@@ -162,7 +162,7 @@ let tupling_term env t =
       if 2 <= List.length @@ List.filter Option.is_some ts'
       then
         try
-          if debug() then Format.printf "TUPLE: %a@." (print_list print_term ", ") ts;
+          if debug() then Format.printf "TUPLE: %a@." (print_list Print.term ", ") ts;
           let fs,tfs =
             let aux t =
               match t.desc with
@@ -210,7 +210,7 @@ let tupling_term env t =
           in
           let r = Id.new_var ~name:"r" typ in
           if debug() then Format.printf "ADD_fs: %a@." (print_list Id.print ", ") fs';
-          if debug() then Format.printf "ADD: %a@." print_id_typ fg;
+          if debug() then Format.printf "ADD: %a@." Print.id_typ fg;
           let t_app = make_app (make_var fg) @@ List.map make_get_val tfs' in
           let index =
             let aux (i,j,rev_map) t =
@@ -325,7 +325,7 @@ let rec tree_of_tuple t =
   | _ -> Rose_tree.Leaf t
 
 let is_subsumed t1 t2 =
-  if debug() then Color.printf Color.Yellow "is_subsumed: %a, %a@." print_term t1 print_term t2;
+  if debug() then Color.printf Color.Yellow "is_subsumed: %a, %a@." Print.term t1 Print.term t2;
   match t1.desc, t2.desc with
   | App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
       let check t1 t2 =
@@ -446,10 +446,10 @@ let replace_app_term env t =
           if debug() then
             begin
               Format.printf "replace[%d]: %a@." (List.length apps1) Id.print x;
-              List.iter (fun (i,x,t) -> Format.printf "APPS: %a = %a ...%d... %a ...@." Id.print x Id.print f i print_term t) apps';
-              List.iter (fun (i,x,t) -> Format.printf "USED: %a = %a ...%d... %a ...@." Id.print x Id.print f i print_term t) used;
-              List.iter (fun (i,x,t) -> Format.printf "MUST: %a = %a ...%d... %a ...@." Id.print x Id.print f i print_term t) must;
-              List.iter (fun (i,x,t) -> Format.printf "MBNU: %a = %a ...%d... %a ...@." Id.print x Id.print f i print_term t) must_but_not_used
+              List.iter (fun (i,x,t) -> Format.printf "APPS: %a = %a ...%d... %a ...@." Id.print x Id.print f i Print.term t) apps';
+              List.iter (fun (i,x,t) -> Format.printf "USED: %a = %a ...%d... %a ...@." Id.print x Id.print f i Print.term t) used;
+              List.iter (fun (i,x,t) -> Format.printf "MUST: %a = %a ...%d... %a ...@." Id.print x Id.print f i Print.term t) must;
+              List.iter (fun (i,x,t) -> Format.printf "MBNU: %a = %a ...%d... %a ...@." Id.print x Id.print f i Print.term t) must_but_not_used
             end;
           let y = Id.new_var_id x in
           let sbst, arg =
@@ -464,7 +464,7 @@ let replace_app_term env t =
             sbst, make_tuple @@ List.mapi aux @@ decomp_ttuple t1.typ
           in
           let t1 = make_app (make_var f) [arg] in
-          if debug() then Format.printf "NEW: %a = %a@." Id.print y print_term t1;
+          if debug() then Format.printf "NEW: %a = %a@." Id.print y Print.term t1;
           make_lets bindings @@ make_let [y,[],t1] @@ sbst t2'
         with Invalid_argument ("decomp_let_app_option"|"replace_app") -> replace_app.tr2_term_rec env t
       end
@@ -480,36 +480,36 @@ let replace_app = replace_app.tr2_term []
 let trans t =
   t
   |> inline_wrapped
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_wrapped" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_wrapped" Print.term
   |> Trans.flatten_let
   |> Trans.inline_var
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "flatten_let" Print.term
   |> let_normalize
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize let" Print.term
   |> elim_sub_app
   |> elim_same_app
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_same_app" Print.term
   |> Trans.elim_unused_branch
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" Print.term
   |> Trans.elim_unused_let
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" Print.term
   |@> Fun.flip Type_check.check Type.TUnit
   |> tupling
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" Print.term
   |@> Fun.flip Type_check.check Type.TUnit
   |> Trans.normalize_let
   |> Trans.flatten_let
   |> Trans.inline_no_effect
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" Print.term
   |> replace_app
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" Print.term
   |@> Fun.flip Type_check.check Type.TUnit
   |> elim_sub_app
   |> elim_same_app
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unnecessary" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unnecessary" Print.term
   |@> Fun.flip Type_check.check Type.TUnit
   |> Trans.inline_next_redex
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" Print.term
   |@> Fun.flip Type_check.check Type.TUnit
 
 let trans t =

@@ -54,14 +54,14 @@ let init_sol n = if n = 0 then ECont else EUnknown
 let sol = ref init_sol
 
 let rec print_typ_cps' fm = function
-  | TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
+  | TBaseCPS typ -> Format.fprintf fm "%a" Print.typ typ
   | TFunCPS(e,typ1,typ2) ->
       Format.fprintf fm "(%a -e%d->@ %a)" print_typ_cps' typ1 e print_typ_cps' typ2
   | TTupleCPS typs ->
       Format.fprintf fm "(%a)" (print_list print_typ_cps' " *@ ") typs
 
 let rec print_typ_cps fm = function
-  | TBaseCPS typ -> Format.fprintf fm "%a" Syntax.print_typ typ
+  | TBaseCPS typ -> Format.fprintf fm "%a" Print.typ typ
   | TFunCPS(e,typ1,typ2) when !sol e = EUnknown ->
       Format.fprintf fm "(@[%a -%a->@ %a@])" print_typ_cps typ1 print_evar e print_typ_cps typ2
   | TFunCPS(e,typ1,typ2) when !sol e = ENone ->
@@ -84,14 +84,14 @@ and print_typed_term fm {t_cps=t; typ_cps=typ; effect=e} =
   | _ -> Format.fprintf fm "(%a : %a)" print_t_cps t print_typ_cps typ
 
 and print_t_cps fm = function
-  | ConstCPS c -> Format.fprintf fm "%a" Syntax.print_const c
+  | ConstCPS c -> Format.fprintf fm "%a" Print.const c
   | UnknownCPS -> Format.fprintf fm "***"
   | BottomCPS -> Format.fprintf fm "_|_"
   | RandIntCPS -> Format.fprintf fm "rand_int"
-  | RandValueCPS typ -> Format.fprintf fm "rand_value(%a)" Syntax.print_typ typ
-  | VarCPS x -> print_id fm x.id_cps
+  | RandValueCPS typ -> Format.fprintf fm "rand_value(%a)" Print.typ typ
+  | VarCPS x -> Print.id fm x.id_cps
   | FunCPS(x, t) ->
-      Format.fprintf fm "@[<hov 2>fun %a : %a ->@ %a@]" print_id x.id_cps print_typ_cps x.id_typ print_typed_term t
+      Format.fprintf fm "@[<hov 2>fun %a : %a ->@ %a@]" Print.id x.id_cps print_typ_cps x.id_typ print_typed_term t
   | AppCPS(t1, t2) ->
       Format.fprintf fm "%a%a" print_typed_term t1 print_typed_term t2
   | IfCPS(t1, t2, t3) ->
@@ -102,12 +102,12 @@ and print_t_cps fm = function
       let head = ref (if is_rec then "let rec" else "let") in
       let pr fm (f,t) =
         Format.fprintf fm "@[<hov 2>%s %a : %a =@ @[%a@]@]@;"
-                       !head print_id f.id_cps print_typ_cps f.id_typ print_typed_term t;
+                       !head Print.id f.id_cps print_typ_cps f.id_typ print_typed_term t;
         head := "and"
       in
       Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "") bindings print_typed_term t
   | BinOpCPS(op, t1, t2) ->
-      Format.fprintf fm "%a %s %a" print_typed_term t1 (string_of_binop op) print_typed_term t2
+      Format.fprintf fm "%a %s %a" print_typed_term t1 (Print.string_of_binop op) print_typed_term t2
   | NotCPS t ->
       Format.fprintf fm "not %a" print_typed_term t
   | EventCPS s -> Format.fprintf fm "{%s}" s
@@ -170,7 +170,7 @@ let rec infer_effect_typ typ =
       TFunCPS(e, infer_effect_typ typ1, infer_effect_typ typ2)
   | TTuple xs -> TTupleCPS (List.map (infer_effect_typ -| Id.typ) xs)
   | TPred(x,ps) -> infer_effect_typ (Id.typ x)
-  | _ -> Format.printf "%a@." print_typ typ; assert false
+  | _ -> Format.printf "%a@." Print.typ typ; assert false
 
 let new_var x = {id_cps=x; id_typ=infer_effect_typ (Id.typ x)}
 
@@ -203,7 +203,7 @@ let rec infer_effect env t =
 	  List.assoc (Id.to_string x) env
 	with
 	  Not_found when is_parameter x -> TBaseCPS(TInt)
-	| Not_found -> Format.printf "%a@." print_id x; assert false
+	| Not_found -> Format.printf "%a@." Print.id x; assert false
       in
       {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
   | Fun(x, t1) ->
@@ -422,7 +422,7 @@ let rec add_preds_cont_aux k t =
 let add_preds_cont k t =
   let t' = add_preds_cont_aux k t in
   let ks = List.filter (Id.same k) (get_fv t') in
-  Format.printf "APC: %a, %a ===> %a@." Id.print k print_term t print_term t';
+  Format.printf "APC: %a, %a ===> %a@." Id.print k Print.term t Print.term t';
   if List.length ks = 0
   then (assert (t.desc = Bottom); k, t')
   else (assert (List.length ks = 1); List.hd ks, t')
@@ -459,7 +459,7 @@ let rec trans_typ typ_orig typ =
       TTuple (List.map2 (fun x typ -> Id.map_typ (Fun.flip trans_typ typ) x) xs typs)
   | TPred(x,ps), typ -> TPred(Id.set_typ x (trans_typ (Id.typ x) typ), ps)
   | _ ->
-      Format.printf "%a,%a@." print_typ typ_orig print_typ_cps typ;
+      Format.printf "%a,%a@." Print.typ typ_orig print_typ_cps typ;
       raise (Fatal "bug? (CPS.trans_typ)")
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
@@ -801,7 +801,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
   |@debug()&>
     Format.printf "%a@. ===>@. %a@.@."
                   print_typed_term {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e}
-                  print_term
+                  Print.term
 
 
 
@@ -899,7 +899,7 @@ let infer_effect t =
   if List.length ext_funs <> List.length (List.unique ~cmp:Id.same ext_funs)
   then
     begin
-      List.iter (fun x -> Format.printf "%a: %a@." Id.print x print_typ (Id.typ x)) ext_funs;
+      List.iter (fun x -> Format.printf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
       unsupported "polymorphic use of external functions";
     end;
   infer_effect env t
@@ -937,14 +937,14 @@ let trans t =
     make_app_excep typed.effect t k h
   in
   let t = {t with attr = [ACPS]} in
-  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "CPS" print_term_typ t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "CPS" Print.term_typ t;
   let t = Trans.propagate_typ_arg t in
   let t = Trans.beta_reduce t in
-  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "beta reduce" print_term t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "beta reduce" Print.term t;
   let t = Trans.expand_let_val t in
-  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" print_term t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "expand_let_val" Print.term t;
   Type_check.check t typ_result;
   let t = Trans.elim_unused_let ~cbv:false t in
   let t = Trans.elim_unused_branch t in
-  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" print_term t;
+  if debug() then Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" Print.term t;
   t, get_rtyp_of typed

@@ -95,7 +95,7 @@ let rec get_rtyp_list rtyp typ =
   | RT.ExtArg(x,rtyp1,rtyp2), _ ->
       RT.ExtArg(x, rtyp1, get_rtyp_list rtyp2 typ)
   | _ ->
-      Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp print_typ typ;
+      Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp Print.typ typ;
       assert false
 
 let get_rtyp_list_of typed f rtyp =
@@ -164,11 +164,11 @@ let rec get_match_bind_cond t p =
       let binds,conds = List.split @@ List.mapi (fun i p -> get_match_bind_cond (make_proj i t) p) ps in
       List.rev_flatten binds,
       List.fold_left make_and true_term conds
-  | _ -> Format.printf "get_match_bind_cond: %a@." print_pattern p; assert false
+  | _ -> Format.printf "get_match_bind_cond: %a@." Print.pattern p; assert false
 
 let print_bind fm bind =
   Format.fprintf fm "@[[";
-  List.iter (fun (x,t) -> Format.fprintf fm "%a := %a;@ " Id.print x print_term t) bind;
+  List.iter (fun (x,t) -> Format.fprintf fm "%a := %a;@ " Id.print x Print.term t) bind;
   Format.fprintf fm "]@]"
 
 let abst_list_term post t =
@@ -224,7 +224,7 @@ let abst_list_term post t =
       let aux (p,cond,t2) t3 =
         let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
         let bind,cond' = get_match_bind_cond (make_var x) p in
-        if debug() then Format.printf "@[bind:%a,@ %a@." print_bind bind print_term cond;
+        if debug() then Format.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
         let t_cond,bind' =
           if cond = true_term
           then cond, bind
@@ -232,7 +232,7 @@ let abst_list_term post t =
             let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
             cond', bind
         in
-        if debug() then Format.printf "@[bind':%a,@ %a@." print_bind bind' print_term t_cond;
+        if debug() then Format.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
         let t2' = abst_list.tr2_term post t2 in
         make_if (make_and cond' t_cond) (add_bind bind' t2') t3
       in
@@ -246,9 +246,9 @@ let () = abst_list.tr2_typ <- abst_list_typ
 let trans t =
   Type_check.check t Type.TUnit;
   let t' = abst_list.tr2_term "" t in
-  if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
+  if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   let t' = Trans.inline_var_const t' in
-  if debug() then Format.printf "abst_list::@. @[%a@.@." Syntax.print_term_typ t';
+  if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   typ_excep := abst_list.tr2_typ "" !typ_excep;
   Type_check.check t' Type.TUnit;
   t', get_rtyp_list_of t
@@ -272,7 +272,7 @@ let inst_list_eq_term f t =
         match t1.typ with
         | TList TInt -> inst_list_eq_flag := true; make_app (make_var f) [t1'; t2']
         | TList _ ->
-            Format.printf "%a@." print_typ t1.typ;
+            Format.printf "%a@." Print.typ t1.typ;
             unsupported "inst_list_eq"
         | _ -> inst_list_eq.tr2_term_rec f t
       end
@@ -368,7 +368,7 @@ let rec get_match_bind_cond t p =
       let binds,conds = List.split @@ List.mapi (fun i p -> get_match_bind_cond (make_proj i t) p) ps in
       List.rev_flatten binds,
       List.fold_left make_and true_term conds
-  | _ -> Format.printf "get_match_bind_cond: %a@." print_pattern p; assert false
+  | _ -> Format.printf "get_match_bind_cond: %a@." Print.pattern p; assert false
 
 let abst_list_opt_term t =
   let typ' = abst_list_opt.tr_typ t.typ in
@@ -428,7 +428,7 @@ let trans_opt t =
 (*
   let t' = Trans.subst_let_xy t' in
 *)
-  if false then Format.printf "abst_list::@. @[%a@.@." print_term t';
+  if false then Format.printf "abst_list::@. @[%a@.@." Print.term t';
   typ_excep := abst_list_opt.tr_typ !typ_excep;
   Type_check.check t' Type.TUnit;
   t', get_rtyp_list_of t
@@ -438,12 +438,12 @@ let trans_opt t =
 let trans t =
   t
   |> inst_list_eq
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" Print.term
   |> subst_matched_var
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "subst_matched_var" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "subst_matched_var" Print.term
   |@> Fun.flip Type_check.check TUnit
   |> Trans.remove_top_por
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "remove_top_por" print_term
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "remove_top_por" Print.term
   |@> Fun.flip Type_check.check TUnit
   |> if !Flag.encode_list_opt
      then trans_opt

@@ -64,10 +64,10 @@ let rec make_app t ts =
     then
       begin
         Format.printf "make_app:@ %a@ <=/=>@ %a@.%a@.%a@."
-                      print_typ typ1
-                      print_typ typ2
-                      print_term t
-                      print_term @@ List.hd ts;
+                      Print.typ typ1
+                      Print.typ typ2
+                      Print.term t
+                      Print.term @@ List.hd ts;
         assert false
       end
   in
@@ -81,7 +81,7 @@ let rec make_app t ts =
       make_app {desc=App(t,[t2]); typ=typ; attr=[]} ts
   | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
   | _ ->
-      Format.printf "Untypable(make_app): %a@." print_term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
+      Format.printf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
       assert false
 let make_lets bindings t2 =
   List.fold_right (fun binding t2 -> {desc=Let(Nonrecursive,[binding],t2); typ=t2.typ; attr=[]}) bindings t2
@@ -148,7 +148,7 @@ let make_if_ t1 t2 t3 =
         | false, true -> t3.typ
         | true, true ->
             if t2.typ <> t3.typ
-            then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." print_typ t2.typ print_typ t3.typ;
+            then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." Print.typ t2.typ Print.typ t3.typ;
             t2.typ
       in
       {desc=If(t1, t2, t3); typ=typ; attr=[]}
@@ -263,7 +263,7 @@ let rec make_term typ =
   | TTuple xs -> make_tuple @@ List.map (make_term -| Id.typ) xs
   | TConstr("X", false) -> cps_result
   | TList typ' -> make_nil typ'
-  | _ -> Format.printf "ERROR:@.%a@." Syntax.print_typ typ; assert false
+  | _ -> Format.printf "ERROR:@.%a@." Print.typ typ; assert false
 
 
 let none_flag = false_term
@@ -521,14 +521,14 @@ let rec merge_typ typ1 typ2 =
   | _ when typ2 = typ_unknown -> typ1
   | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
   | TOption typ1, TOption typ2 -> TOption (merge_typ typ1 typ2)
-  | _ -> Format.printf "typ1:%a, typ2:%a@." print_typ typ1 print_typ typ2; assert false
+  | _ -> Format.printf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
 
 
 
 let make_if t1 t2 t3 =
   assert (Flag.check_typ => Type.can_unify t1.typ TBool);
   if Flag.check_typ && not (Type.can_unify t2.typ t3.typ)
-  then Format.printf "%a <=/=> %a@." print_typ t2.typ print_typ t3.typ;
+  then Format.printf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
   assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
   match t1.desc with
   | Const True -> t2

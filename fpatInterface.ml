@@ -419,7 +419,7 @@ let insert_extra_param t =
                       rfs
                   in
                   (if debug then
-                     Format.printf "rec: %a@." Syntax.print_term t1');
+                     Format.printf "rec: %a@." Print.term t1');
                   let xxss =
                     List.take (List.length ts) xxss
                   in
@@ -435,7 +435,7 @@ let insert_extra_param t =
                               if debug then
                                 Format.printf
                                   "arg %a of %a not changed@,"
-                                  Syntax.print_id x Syntax.print_id f in xs
+                                  Print.id x Print.id f in xs
                          | _ -> [])
                      | _ -> [])
                     ts xxss
@@ -443,13 +443,13 @@ let insert_extra_param t =
                   (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
                   let _ =
                     if debug then
-                      Format.printf "nonrec: %a@." Syntax.print_term t1'
+                      Format.printf "nonrec: %a@." Print.term t1'
                   in
                   false, [])
            | _ ->
               let _ =
                 if debug then
-                  Format.printf "nonrec: %a@." Syntax.print_term t1'
+                  Format.printf "nonrec: %a@." Print.term t1'
               in
               false, []
          in

@@ -137,7 +137,7 @@ let rec trans_typ = function
       TFun(typ1, fun _ -> typ2)
   | Type.TConstr(s, false) -> TBase(TAbst s, nil_pred)
   | Type.TPred(x,ps) -> trans_typ (Id.typ x)
-  | typ -> Format.printf "trans_typ: %a@." S.print_typ typ; assert false
+  | typ -> Format.printf "trans_typ: %a@." Print.typ typ; assert false
 
 
 and trans_binop = function
@@ -229,7 +229,7 @@ and trans_term post xs env t =
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt
         | Type.TConstr(typ, false) -> CmpPoly(typ, "=")
-        | typ -> Format.printf "trans_term: %a@." S.print_typ typ; assert false
+        | typ -> Format.printf "trans_term: %a@." Print.typ typ; assert false
       in
       defs1@defs2, make_app (Const op) [t1'; t2']
   | S.BinOp(op, t1, t2) ->
@@ -237,7 +237,7 @@ and trans_term post xs env t =
       let defs2,t2' = trans_term post xs env t2 in
       let op' =
         match t1.S.typ with
-          Type.TConstr(typ, false) -> Const (CmpPoly(typ, S.string_of_binop op))
+          Type.TConstr(typ, false) -> Const (CmpPoly(typ, Print.string_of_binop op))
         | _ -> trans_binop op
       in
       defs1@defs2, make_app op' [t1'; t2']
@@ -248,7 +248,7 @@ and trans_term post xs env t =
   | S.Event _ -> assert false
   | S.Bottom -> [], Const Bottom
   | _ ->
-      Format.printf "%a@." S.print_term t;
+      Format.printf "%a@." Print.term t;
       assert false
 
 let rec formula_of t =
@@ -271,7 +271,7 @@ let rec formula_of t =
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt
         | Type.TConstr(typ, false) -> CmpPoly(typ, "=")
-        | _ -> Format.printf "%a@." S.print_typ t1.S.typ; assert false
+        | _ -> Format.printf "%a@." Print.typ t1.S.typ; assert false
       in
       make_app (Const op) [t1'; t2']
   | S.BinOp(op, t1, t2) ->
@@ -281,7 +281,7 @@ let rec formula_of t =
   | S.Not t ->
       let t' = formula_of t in
       App(Const Not, t')
-  | _ -> Format.printf "formula_of: %a@." S.print_constr t; assert false
+  | _ -> Format.printf "formula_of: %a@." Print.constr t; assert false
 
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in
@@ -480,9 +480,9 @@ let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
   let ext_env = List.map (Pair.map trans_var trans_typ) (Trans.make_ext_env t) in
-  let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." S.print_term' t in
+  let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." Print.term' t in
   let t = Trans.trans_let t in
-  let () = if debug() then Format.printf "AFTER:@.%a@.@.@." S.print_term' t in
+  let () = if debug() then Format.printf "AFTER:@.%a@.@.@." Print.term' t in
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term t_main in

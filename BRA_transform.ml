@@ -130,7 +130,7 @@ let retyping t type_of_state  =
   let parsed = restore_ids parsed in
   let _ =
     if true && !Flag.debug_level > 0
-    then Format.printf "transformed::@. @[%a@.@." Syntax.print_term parsed
+    then Format.printf "transformed::@. @[%a@.@." Print.term parsed
   in
   (orig, parsed)
 
@@ -415,7 +415,7 @@ let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver 
 	counter := 0;
 	replace_index := !replace_index + 1;
 	let holed' = {holed with program = everywhere_expr aux_subst_each t} in
-	if debug then Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Syntax.print_term holed'.program;
+	if debug then Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Print.term holed'.program;
 	if debug then Format.printf "is_update: %s@." (string_of_bool !is_update);
 	if debug then Format.printf "counter: %s@." (string_of_int !counter);
 	if debug then Format.printf "replace_index: %s@." (string_of_int !replace_index);

@@ -3,7 +3,7 @@ open Util
 let init () =
   Term_util.typ_excep := Type.TConstr("exn",true)
 
-let rec trans_and_print f desc proj ?(opt=true) ?(pr=Syntax.print_term_typ) t =
+let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
   let r = f t in
   let t' = proj r in
   if !Flag.debug_level > 0 && t <> t' && opt
@@ -70,7 +70,7 @@ let preprocess t spec =
           (output oc)
           (fun () -> flush oc)
       in
-      Format.fprintf ocf "%a@." Syntax.print_term_typ t;
+      Format.fprintf ocf "%a@." Print.term_typ t;
       close_out oc
     end;
 
@@ -152,7 +152,7 @@ let report_safe env rmap get_rtyp orig t0 =
       let t = Term_util.subst_map map t0 in
       Format.printf "Program with Quantifiers Added:@.";
       Flag.web := true;
-      Format.printf "  @[<v>%a@]@.@." Syntax.print_term t;
+      Format.printf "  @[<v>%a@]@.@." Print.term t;
       Flag.web := false
     end;
   if env' <> [] && not only_result_termination then Format.printf "Refinement Types:@.";
@@ -227,7 +227,7 @@ let rec run orig parsed =
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
       if true && !Flag.debug_level > 0 then
         Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-                      (List.length !FpatInterface.params) Syntax.print_term t Syntax.print_term' t;
+                      (List.length !FpatInterface.params) Print.term t Print.term' t;
       t
       else
         set_target

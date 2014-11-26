@@ -167,7 +167,7 @@ let copy_poly_funs_desc desc =
       then
         begin
           Format.printf "COPY: @[";
-          List.iter (fun (_,x) -> Format.printf "%a;@ " print_id_typ x) map;
+          List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map;
           Format.printf "@.";
         end;
       if map = []
@@ -279,7 +279,7 @@ let rec define_randvalue env defs typ =
               env'', defs', {desc=Record sfts; typ=typ; attr=[]}
         in
         env'', (f,[u],t)::defs', make_app (make_var f) [unit_term]
-    | _ -> Format.printf "define_randvalue: %a@." print_typ typ; assert false
+    | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
 
 
 
@@ -593,7 +593,7 @@ let replace_typ_desc env desc =
         then
           begin
             let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
-            Format.printf "Prog: %a@.Spec: %a@." print_id_typ f print_id_typ f'';
+            Format.printf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
             let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
             let msg = msg ^ " (please specify monomorphic types if polymorphic types exist)" in
             raise (Fatal msg)
@@ -717,7 +717,7 @@ let normalize_binop_exp op t1 t2 =
           match List.exists aux xns1, List.exists aux xns2 with
             true, true ->
             Format.printf "Nonlinear expression not supported: %a@."
-                          print_term {desc=BinOp(op,t1,t2);typ=TInt; attr=[]};
+                          Print.term {desc=BinOp(op,t1,t2);typ=TInt; attr=[]};
             assert false
           | false, true ->
               let k = reduce xns1 in
@@ -876,7 +876,7 @@ let rec merge_geq_leq t =
         BinOp(Or, t1', t2')
     | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
     | Not t -> Not (merge_geq_leq t)
-    | _ -> Format.printf "%a@." print_term t; assert false
+    | _ -> Format.printf "%a@." Print.term t; assert false
   in
   {desc=desc; typ=t.typ; attr=[]}
 
@@ -956,7 +956,7 @@ let rec inlined_f inlined fs t =
                match ty with
                  Type.TFun(_, ty') -> ty'
                | _ ->
-                   let _ = Format.printf "%a@." print_typ ty in assert false)
+                   let _ = Format.printf "%a@." Print.typ ty in assert false)
               ((fun t -> t), t.typ)
               xs
           in
@@ -1039,7 +1039,7 @@ let rec inlined_f inlined fs t =
     | Tuple ts -> Tuple (List.map (inlined_f inlined fs) ts)
     | Proj(i,t) -> Proj(i, inlined_f inlined fs t)
     | Bottom -> Bottom
-    | _ -> Format.printf "inlined_f: %a@." print_constr t; assert false
+    | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
   in
   {desc=desc; typ=t.typ; attr=t.attr}
 
@@ -1399,7 +1399,7 @@ let assoc_typ f t =
   match assoc_typ.col2_term f t with
   | [] -> raise Not_found
   | [typ] -> typ
-  | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f print_term t; assert false
+  | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f Print.term t; assert false
 
 
 
@@ -1936,10 +1936,10 @@ let rec beta_reduce t =
     | Tuple ts -> Tuple (List.map beta_reduce ts)
     | Proj(i, t1) -> Proj(i, beta_reduce t1)
     | Bottom -> Bottom
-    | _ -> Format.printf "%a@." print_term t; assert false
+    | _ -> Format.printf "%a@." Print.term t; assert false
   in
   let t' = {desc; typ=t.typ; attr=t.attr} in
-  if false && t<>t' then Format.printf "%a ===> %a@.@." print_term t print_term t';
+  if false && t<>t' then Format.printf "%a ===> %a@.@." Print.term t Print.term t';
   t'
 
 

@@ -51,11 +51,11 @@ let rec print_value fm t =
       in
       Format.fprintf fm "[%a]" (print_list print_value ";") (aux t)
   | Tuple[t_1;t_2] -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
-  | _ -> print_term fm t
+  | _ -> Print.term fm t
 
 
 let rec eval_print fm rands t =
-  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." print_term t
+  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." Print.term t
                               (print_list Format.pp_print_int ";") rands;
   match t.desc with
   | Const(RandInt false) ->
@@ -255,7 +255,7 @@ let rec eval_print fm rands t =
       let r = eval_print fm rands t' in
       Format.fprintf fm "@]";
       r
-  | _ -> Format.printf "inlined_f: %a@." print_constr t; assert false
+  | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
 
 let print fm (ce, t) =
   try
