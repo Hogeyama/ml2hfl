@@ -27,6 +27,17 @@ let inlined_functions orig_fun_list force {defs;main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   FpatInterface.List.unique fs
 
+let print_non_CPS_abst abst result =
+  if !Flag.just_print_non_CPS_abst then
+    let s =
+      match result with
+      | ModelCheck.Safe _ -> "Safe"
+      | ModelCheck.Unsafe _ -> "Unsafe"
+    in
+    Format.printf "ABST:@.%a@." CEGAR_print.prog abst;
+    Format.printf "RESULT: %s@." s;
+    exit 0
+
 let rec loop prog0 is_cp ces info =
   pre ();
   let prog =
@@ -45,6 +56,7 @@ let rec loop prog0 is_cp ces info =
   then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   let result = ModelCheck.check abst prog in
+  print_non_CPS_abst abst result;
   match result with
   | ModelCheck.Safe env ->
       if Flag.print_ref_typ_debug

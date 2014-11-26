@@ -58,7 +58,6 @@ let elim_same_arg = ref false
 let base_to_int = ref false
 
 let mode = ref Reachability
-let init_trans = ref true
 let cegar = ref CEGAR_DependentType
 let use_spec = ref false
 let comment_spec = ref true
@@ -102,6 +101,7 @@ let result = ref ""
 let cegar_loop = ref 0
 let time_limit = ref 0
 let max_input_size = 65536
+let args = ref [""] (* command-line options *)
 
 
 (* mode option *)
@@ -109,7 +109,8 @@ let only_result = ref false
 let exp = ref false
 let exp2 = ref false
 let ignore_conf = ref false
-let args = ref [""]
+let init_trans = ref true
+let just_print_non_CPS_abst = ref true
 
 
 (* pretty printer's option *)
