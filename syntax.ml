@@ -1292,6 +1292,7 @@ let get_fv_term vars t =
       List.fold_left aux (get_fv.col2_term vars t) pats
   | _ -> get_fv.col2_term_rec vars t
 
+let () = get_fv.col2_typ <- Fun.const @@ Fun.const []
 let () = get_fv.col2_term <- get_fv_term
 let get_fv ?(cmp=Id.same) t =
   List.unique ~cmp @@ get_fv.col2_term [] t

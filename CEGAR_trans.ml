@@ -479,7 +479,7 @@ let rec trans_ref_type = function
 let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
-  let ext_env = List.map (Pair.map trans_var trans_typ) (Trans.make_ext_env t) in
+  let ext_env = List.map (Pair.map trans_var trans_typ) @@ Trans.make_ext_env t in
   let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." Print.term' t in
   let t = Trans.trans_let t in
   let () = if debug() then Format.printf "AFTER:@.%a@.@.@." Print.term' t in
@@ -499,7 +499,7 @@ let trans_prog ?(spec=[]) t =
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
   let env' =
     let spec' = List.map (Pair.map trans_var trans_typ) spec in
-    let aux (f,typ) = try f, merge_typ typ @@ (List.assoc f spec') with Not_found -> f,typ in
+    let aux (f,typ) = try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
     uniq_env (ext_env @@@ List.map aux env)
   in
   let prog = {env=env'; defs=defs''; main; attr=if is_cps then [ACPS] else []} in
