@@ -667,8 +667,4 @@ let trans_ext (renv : (int * CEGAR_syntax.env) list) (map : (int * (CEGAR_syntax
   in
   let ext_abstraction = List.map (List.fold_left2 add_pred (Const True) abst_preds) bs in
   let preds_sequence = List.map (conv_pred env) ext_abstraction in
-  let ret = rand_var, preds_sequence in
-  let print_pred ppf (env, fml) =
-    Format.fprintf ppf "%a |= %a" Fpat.TypEnv.pr_compact env Fpat.Formula.pr fml in
-  Format.printf "%s: %a@." r (print_list print_pred " , ") preds_sequence;
-  ret
+  rand_var, preds_sequence

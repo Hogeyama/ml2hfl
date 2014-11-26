@@ -169,6 +169,16 @@ let main in_channel =
     else
       (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
   else
+    let input =
+      let dirname = Filename.dirname !Flag.filename in
+      let basename = Filename.basename !Flag.filename in
+      dirname ^ "/refinement/" ^
+	(try Filename.chop_extension basename ^ ".refinement"
+	 with Invalid_argument "Filename.chop_extension" -> basename ^ ".refinement")
+    in
+    let cout = open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o666 input in
+    output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
+    close_out cout;
     Main_loop.run orig parsed
 
 

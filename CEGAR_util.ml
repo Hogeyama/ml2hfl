@@ -727,9 +727,13 @@ let rec found_and_merge_paths (_,_,_,path) = function
 	end
       | Some(merged) -> Some((path', orig_ce, ce, merged), ps)
       
-let rec merge_similar_paths = function
+let rec merge_similar_paths_aux = function
   | [] -> []
   | p::ps ->
     match found_and_merge_paths p ps with
-      | None -> p :: merge_similar_paths ps
-      | Some(merged_path, rest) -> merged_path :: merge_similar_paths rest
+      | None -> p :: merge_similar_paths_aux ps
+      | Some(merged_path, rest) -> merged_path :: merge_similar_paths_aux rest
+
+let rec merge_similar_paths l =
+  let l' = merge_similar_paths_aux l in
+  if List.length l = List.length l' then l else merge_similar_paths l'

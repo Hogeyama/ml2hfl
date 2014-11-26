@@ -138,3 +138,5 @@ let add_closure_exparam = ref false
 (* non-termination verification *)
 let non_termination = ref false
 let merge_paths_of_same_branch = ref false
+
+let randint_refinement_log = ref true
