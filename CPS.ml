@@ -462,17 +462,7 @@ let rec trans_typ typ_orig typ =
       Format.printf "%a,%a@." Print.typ typ_orig print_typ_cps typ;
       raise (Fatal "bug? (CPS.trans_typ)")
 
-let trans_typ typ_orig typ =
-  let typ' = trans_typ typ_orig typ in
-  Format.printf "@[<hov 4>%a@ (+)@ %a@ ===>@ %a@." Print.typ typ_orig print_typ_cps typ Print.typ typ';
-  typ'
-
 let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
-
-let trans_var x =
-  let x' = trans_var x in
-  Format.printf "@[<hov 4>TRANS_VAR %a: %a@ (+)@ %a@ ===>@ %a@." Id.print x.id_cps Print.typ (Id.typ x.id_cps) print_typ_cps x.id_typ Print.typ (Id.typ x');
-  x'
 
 let get_tfun_effect = function
     TFunCPS(e, _, _) -> e
