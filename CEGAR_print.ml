@@ -136,7 +136,7 @@ and print_term fm = function
         Format.fprintf fm "@[<hov 2>let %a%a@ =@ %a@ in@]" print_var x (print_list print_arg_var ~first:true " ") xs print_term t1
       in
       let bindings,t2 = decomp_let t in
-      Format.fprintf fm "@[<hv 1>(%a%a@]" (print_list pr "@ " ~last:true) bindings print_term t2
+      Format.fprintf fm "@[<hv 1>(%a%a)@]" (print_list pr "@ " ~last:true) bindings print_term t2
   | Fun _ as t ->
       let env,t' = decomp_annot_fun t in
       Format.fprintf fm "@[<hov 1>(fun %a@ ->@ %a)@]" (print_list print_arg_var " ") env print_term t'
