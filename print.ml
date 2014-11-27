@@ -98,14 +98,14 @@ and print_const fm = function
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 
 and print_attr fm = function
-  | ACPS -> Format.fprintf fm "ACPS"
+  | ACPS -> fprintf fm "ACPS"
 
 and print_attr_list fm = List.print print_attr fm
 
 and print_term pri typ fm t =
   if t.attr = []
   then print_desc pri typ fm t.desc
-  else Format.fprintf fm "(@[%a@ #@ %a@])" (print_desc pri typ) t.desc print_attr_list t.attr
+  else fprintf fm "(@[%a@ #@ %a@])" (print_desc pri typ) t.desc print_attr_list t.attr
 
 and print_desc pri typ fm desc =
   match desc with
@@ -452,25 +452,18 @@ and print_pattern' fm pat =
   fprintf fm "| %a" aux pat
 
 and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term' pri) bd)
-let print_term' fm = print_term' 0 fm
+
+
+let print_defs fm (defs:(id * (id list * typed_term)) list) =
+  let print_fundef (f, (xs, t)) =
+    fprintf fm "%a %a-> %a.\n" print_id f (print_ids false) xs (print_term false) t
+  in
+  List.iter print_fundef defs
 
 
 let string_of_const = make_string_of print_const
 let string_of_binop = make_string_of print_binop
 let string_of_typ = make_string_of print_typ
-
-let print_term_typ = print_term true
-let print_term = print_term false
-let print_desc = print_desc 0 false
-
-let print_defs fm (defs:(id * (id list * typed_term)) list) =
-  let print_fundef (f, (xs, t)) =
-    fprintf fm "%a %a-> %a.\n" print_id f (print_ids false) xs print_term t
-  in
-    List.iter print_fundef defs
-
-
-
 let string_of_constr t =
   match t.desc with
   | Const _ -> "Const"
@@ -502,19 +495,16 @@ let string_of_constr t =
   | TNone -> "TNone"
   | TSome _ -> "TSome"
 
-let print_constr fm t = pp_print_string fm @@ string_of_constr t
-and print_attr = print_attr_list
-
 
 let typ = print_typ
 let id = print_id
 let id_typ = print_id_typ
 let pattern = print_pattern
 let const = print_const
-let desc = print_desc
-let term = print_term
-let term' = print_term'
-let term_typ = print_term_typ
+let desc = print_desc 0 false
+let term = print_term false
+let term' = print_term' 0
+let term_typ = print_term true
 let defs = print_defs
-let constr = print_constr
-let attr = print_attr
+let constr fm t = pp_print_string fm @@ string_of_constr t
+let attr = print_attr_list
