@@ -95,7 +95,8 @@ let rec verifyFile filename =
   in
   let oc = open_out result_file in
   let out_descr = Unix.descr_of_out_channel oc in
-  let pid = Unix.create_process !Flag.trecs [|Format.sprintf "-p %d %d" p1 p2; filename|] Unix.stdin out_descr Unix.stderr in
+  let args = String.nsplit (Format.sprintf "%s -p %d %d %s" !Flag.trecs p1 p2 filename) " " in
+  let pid = Unix.create_process (List.hd args) (Array.of_list args) Unix.stdin out_descr Unix.stderr in
   let _,_st =
     try
       Unix.waitpid [Unix.WUNTRACED] pid
