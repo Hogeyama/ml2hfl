@@ -122,21 +122,24 @@ and print_term fm = function
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
   | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
-      Format.fprintf fm "(@[%a@ %a@ %a@])" print_term t1 print_const op print_term t2
+      Format.fprintf fm "@[(%a@ %a@ %a)@]" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
       let rec pr fm = function
         | [] -> ()
         | t::ts -> Format.fprintf fm "@ %a%a" print_term t pr ts
       in
-      Format.fprintf fm "(@[<hov 1>%a%a@])" print_term t pr ts
-  | Let(x,t1,t2) ->
-      let xs,t1 = decomp_annot_fun t1 in
-      Format.fprintf fm "(@[let %a %a@ =@ %a@ in@ %a@])"
-                     print_var x (print_list print_arg_var " ") xs print_term t1 print_term t2
+      Format.fprintf fm "@[<hov 1>(%a%a)@]" print_term t pr ts
+  | Let _ as t ->
+      let pr fm (x,t1) =
+        let xs,t1 = decomp_annot_fun t1 in
+        Format.fprintf fm "@[<hov 2>let %a%a@ =@ %a@ in@]" print_var x (print_list print_arg_var ~first:true " ") xs print_term t1
+      in
+      let bindings,t2 = decomp_let t in
+      Format.fprintf fm "@[<hv 1>(%a%a@]" (print_list pr "@ " ~last:true) bindings print_term t2
   | Fun _ as t ->
       let env,t' = decomp_annot_fun t in
-      Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list print_arg_var " ") env print_term t'
+      Format.fprintf fm "@[<hov 1>(fun %a@ ->@ %a)@]" (print_list print_arg_var " ") env print_term t'
 
 and print_fun_def fm (f,xs,t1,es,t2) =
   let aux s = function
@@ -147,9 +150,9 @@ and print_fun_def fm (f,xs,t1,es,t2) =
   if t1 = Const True
   then
     let ys,t2 = decomp_fun t2 in
-    Format.fprintf fm "@[<hov 4>%a ->%s@ %a ;;@]" (print_list print_var " ") (f::xs@ys) s print_term t2
+    Format.fprintf fm "@[<hov 4>%a ->%s@ @[%a@] ;;@]" (print_list print_var " ") (f::xs@ys) s print_term t2
   else
-    Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a ;;@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
+    Format.fprintf fm "@[<hov 4>%a when %a ->%s@ @[%a@] ;;@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
 
 and print_attr fm = function
   | ACPS -> Format.fprintf fm "ACPS"

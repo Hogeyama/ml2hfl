@@ -125,7 +125,7 @@ let abstract orig_fun_list prog =
   let () = if debug() then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog in
   ignore @@ Typing.infer prog;
   let defs = List.rev_flatten_map (abstract_def prog.env) prog.defs in
-  let prog = {prog with env=[]} in
+  let prog = {prog with env=[]; defs} in
   if debug() then Format.printf "ABST:\n%a@." CEGAR_print.prog prog;
   labeled, Typing.infer prog
 

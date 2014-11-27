@@ -39,9 +39,9 @@ let rec print_list_aux print punc last fm xs =
 let print_list print ?(first=false) ?(last=false) punc fm xs =
   let punc' = format_of_string punc in
   Format.fprintf fm "@[";
-  if first then Format.fprintf fm punc';
+  if first && xs<>[] then Format.fprintf fm punc';
   Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
-  if last then Format.fprintf fm punc';
+  if last && xs<>[] then Format.fprintf fm punc';
   Format.fprintf fm "@]"
 
 module Fun = struct

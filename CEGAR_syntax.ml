@@ -175,24 +175,29 @@ let rec get_typ_arity = function
 
 
 let rec decomp_app = function
-    App(t1,t2) ->
+  | App(t1,t2) ->
       let t,ts = decomp_app t1 in
-        t, ts@[t2]
+      t, ts@[t2]
   | t -> t, []
 let rec decomp_fun = function
-    Fun(x,_,t) ->
+  | Fun(x,_,t) ->
       let xs,t = decomp_fun t in
-        x::xs, t
+      x::xs, t
   | t -> [], t
 let rec decomp_annot_fun acc = function
-    Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
+  | Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
   | t -> List.rev acc, t
 let decomp_annot_fun t = decomp_annot_fun [] t
 let rec decomp_tfun = function
-    TFun(typ1,typ2) ->
+  | TFun(typ1,typ2) ->
       let typs,typ = decomp_tfun (typ2 (Const Unit)) in
-        typ1::typs, typ
+      typ1::typs, typ
   | typ -> [], typ
+let rec decomp_let = function
+  | Let(x,t1,t2) ->
+      let bindings,t2' = decomp_let t2 in
+      (x,t1)::bindings, t2'
+  | t -> [], t
 
 
 
