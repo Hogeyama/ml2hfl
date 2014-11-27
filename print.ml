@@ -8,16 +8,14 @@ and print_ids typ fm xs =
   if !Flag.web then
     let rec aux xs =
       match xs with
-	[] -> ()
+      | [] -> ()
       | [x] ->
 	  fprintf fm "%a" print_id x
       | x1 :: x2 :: xs ->
-	  let _ =
-	    if is_fun_typ (Id.typ x2) then
-	      fprintf fm "$%a$ " print_id x1
-	    else
-	      fprintf fm "%a " print_id x1
-	  in
+	  if is_fun_typ @@ Id.typ x2 then
+	    fprintf fm "$%a$ " print_id x1
+	  else
+	    fprintf fm "%a " print_id x1;
 	  aux (x2 :: xs)
     in
     aux xs
@@ -50,7 +48,7 @@ and print_id_typ fm x = fprintf fm "(%a:%a)" print_id x (Color.cyan print_typ) (
 and paren pri p = if pri < p then "","" else "(",")"
 
 and print_binop fm = function
-    Eq -> fprintf fm "="
+  | Eq -> fprintf fm "="
   | Lt -> fprintf fm "<"
   | Gt -> fprintf fm ">"
   | Leq -> fprintf fm "<="
@@ -68,17 +66,16 @@ and print_termlist pri typ fm ts =
       | [] -> ()
       | [t] -> fprintf fm "@ %a" (print_term pri typ) t
       | t1 :: t2 :: ts' ->
-          let _ =
-            if is_fun_typ t2.typ then
-              fprintf fm "@ $%a$" (print_term pri typ) t1
-            else
-              fprintf fm "@ %a" (print_term pri typ) t1
-          in
+          if is_fun_typ t2.typ then
+            fprintf fm "@ $%a$" (print_term pri typ) t1
+          else
+            fprintf fm "@ %a" (print_term pri typ) t1;
           aux (t2 :: ts')
     in
     aux ts
   else
-    List.iter (fprintf fm "@ %a" (print_term pri typ)) ts
+    print_list (print_term pri typ) "@ " fm ts
+
 and print_const fm = function
   | Unit -> fprintf fm "()"
   | True -> fprintf fm "true"
@@ -119,7 +116,7 @@ and print_desc pri typ fm desc =
   | App(t, ts) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "@[<hov 2>%s%a%a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
+      fprintf fm "@[<hov 2>%s%a@ %a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
   | If(t1, t2, t3) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
@@ -161,14 +158,8 @@ and print_desc pri typ fm desc =
   | Event(s,false) -> fprintf fm "{%s}" s
   | Event(s,true) -> fprintf fm "{|%s|}" s
   | Record fields ->
-      let rec aux fm = function
-        | [] -> ()
-        | (s,(f,t))::fields ->
-            if fields=[]
-            then fprintf fm "%s=%a" s (print_term 0 typ) t
-            else fprintf fm "%s=%a;@ %a" s (print_term 0 typ) t aux fields
-      in
-      fprintf fm "{%a}" aux fields
+      let aux fm (s,(f,t)) = fprintf fm "%s=%a" s (print_term 0 typ) t in
+      fprintf fm "{%a}" (print_list aux ";@ ") fields
   | Field(_,s,_,t) -> fprintf fm "%a.%s" (print_term 9 typ) t s
   | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
@@ -303,7 +294,7 @@ let rec print_term' pri fm t =
     | App(t, ts) ->
         let p = 8 in
         let s1,s2 = paren pri p in
-        fprintf fm "%s%a%a%s" s1 (print_term' p) t (print_termlist' p) ts s2
+        fprintf fm "%s%a@ %a%s" s1 (print_term' p) t (print_termlist' p) ts s2
     | If(t1, t2, t3) ->
         let p = 1 in
         let s1,s2 = paren pri (p+1) in
@@ -341,14 +332,8 @@ let rec print_term' pri fm t =
         fprintf fm "%snot %a%s" s1 (print_term' p) t s2
     | Event(s,b) -> fprintf fm "{%s}" s
     | Record fields ->
-        let rec aux fm = function
-          | [] -> ()
-          | (s,(f,t))::fields ->
-              if fields=[]
-              then fprintf fm "%s=%a" s (print_term' 0) t
-              else fprintf fm "%s=%a; %a" s (print_term' 0) t aux fields
-        in
-        fprintf fm "{%a}" aux fields
+        let aux fm (s,(f,t)) = fprintf fm "%s=%a" s (print_term' 0) t in
+        fprintf fm "{%a}" (print_list aux ";@ ") fields
     | Field(_,s,_,t) -> fprintf fm "%a.%s" (print_term' 9) t s
     | SetField(_,_,s,_,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term' 9) t1 s (print_term' 3) t2
     | Nil -> fprintf fm "[]"
@@ -451,7 +436,7 @@ and print_pattern' fm pat =
   in
   fprintf fm "| %a" aux pat
 
-and print_termlist' pri fm = List.iter (fun bd -> fprintf fm "@ %a" (print_term' pri) bd)
+and print_termlist' pri = print_list (print_term' pri) "@ "
 
 
 let print_defs fm (defs:(id * (id list * typed_term)) list) =
