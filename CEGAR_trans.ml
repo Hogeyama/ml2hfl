@@ -309,14 +309,12 @@ let trans_def (f,(xs,t)) =
 	 let defs2,t2' = trans_term post xs' env t2 in
 	 let defs3,t3' = trans_term post xs' env t3 in
          let typ' = trans_typ @@ Id.typ f in
-    Format.printf "@[f = %a ==> %a@." Print.id_typ f CEGAR_print.typ typ';
 	 ((f', typ', xs', t1', [], t2')::defs2) @
          ((f', typ', xs', make_not t1', [], t3')::defs3)
      | _ -> raise Not_found)
   with Not_found ->
     let defs,t' = trans_term post xs' env t in
     let typ' = trans_typ @@ Id.typ f in
-    Format.printf "@[f = %a ==> %a@." Print.id_typ f CEGAR_print.typ typ';
     (f', typ', xs', Const True, [], t')::defs
 
 
