@@ -55,6 +55,13 @@ let preprocess t spec =
       let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
 
       fun_list, t, get_rtyp
+    else if !Flag.just_print_non_CPS_abst then
+      let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
+(*
+      let t = trans_and_print Trans.propagate_typ_arg "propagate_preds" id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
+*)
+      Term_util.get_top_funs t, t, fun _ typ -> typ
     else
       Term_util.get_top_funs t, t, fun _ typ -> typ
   in

@@ -99,10 +99,7 @@ let rec trans_inv_term = function
 let rec trans_typ = function
   | Type.TUnit -> TBase(TUnit, nil_pred)
   | Type.TBool -> typ_bool ()
-  | Type.TAbsBool -> assert false
   | Type.TInt -> TBase(TInt, nil_pred)
-  | Type.TRInt _  -> assert false
-  | Type.TVar{contents=None} -> assert false
   | Type.TVar{contents=Some typ} -> trans_typ typ
   | Type.TFun({Id.typ=Type.TBool|Type.TPred({Id.typ=Type.TBool},_)} as x,typ) ->
       let x' = trans_var x in
@@ -125,18 +122,29 @@ let rec trans_typ = function
       let ps' =
         match Id.typ x with
         | Type.TPred(y,ps) ->
-            fun z -> List.map (fun p -> subst (trans_var y) z (snd (trans_term "" [] [] p))) ps
+            let y' = trans_var y in
+            let ps' = List.map (snd -| trans_term "" [] []) ps in
+            fun z -> List.map (subst y' z) ps'
         | _ -> fun _ -> []
       in
       let typ1 = TBase(TInt, ps') in
       let typ2 = trans_typ typ in
       TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun(x,typ) ->
-      let typ1 = trans_typ (Id.typ x) in
+      let typ1 = trans_typ @@ Id.typ x in
       let typ2 = trans_typ typ in
       TFun(typ1, fun _ -> typ2)
   | Type.TConstr(s, false) -> TBase(TAbst s, nil_pred)
-  | Type.TPred(x,ps) -> trans_typ (Id.typ x)
+  | Type.TPred(x,ps) ->
+      begin
+        let x' = trans_var x in
+        let ps' = List.map (snd -| trans_term "" [] []) ps in
+        match trans_typ @@ Id.typ x with
+        | TBase(b, preds) ->
+            let preds' y = List.map (subst x' y) ps' @ preds y in
+            TBase(b, preds')
+        | typ -> Format.printf "trans_typ[TPred]: %a@." CEGAR_print.typ typ; assert false
+      end
   | typ -> Format.printf "trans_typ: %a@." Print.typ typ; assert false
 
 
@@ -300,13 +308,15 @@ let trans_def (f,(xs,t)) =
 	 let t1' = formula_of t1 in
 	 let defs2,t2' = trans_term post xs' env t2 in
 	 let defs3,t3' = trans_term post xs' env t3 in
-         let typ' = trans_typ (Id.typ f) in
+         let typ' = trans_typ @@ Id.typ f in
+    Format.printf "@[f = %a ==> %a@." Print.id_typ f CEGAR_print.typ typ';
 	 ((f', typ', xs', t1', [], t2')::defs2) @
          ((f', typ', xs', make_not t1', [], t3')::defs3)
      | _ -> raise Not_found)
   with Not_found ->
     let defs,t' = trans_term post xs' env t in
     let typ' = trans_typ @@ Id.typ f in
+    Format.printf "@[f = %a ==> %a@." Print.id_typ f CEGAR_print.typ typ';
     (f', typ', xs', Const True, [], t')::defs
 
 
@@ -479,10 +489,13 @@ let rec trans_ref_type = function
 let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
+  let pr p s t = if debug () then Format.printf "##[trans_prog] %s:@.%a@.@." s p t in
+  let pr1 = pr Print.term' in
+  let pr2 = pr CEGAR_print.prog_typ in
   let ext_env = List.map (Pair.map trans_var trans_typ) @@ Trans.make_ext_env t in
-  let () = if debug() then Format.printf "BEFORE:@.%a@.@.@." Print.term' t in
+  pr1 "BEFORE" t;
   let t = Trans.trans_let t in
-  let () = if debug() then Format.printf "AFTER:@.%a@.@.@." Print.term' t in
+  pr1 "AFTER" t;
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term t_main in
@@ -503,17 +516,17 @@ let trans_prog ?(spec=[]) t =
     uniq_env (ext_env @@@ List.map aux env)
   in
   let prog = {env=env'; defs=defs''; main; attr=if is_cps then [ACPS] else []} in
-  if debug() then Format.printf "@.PROG_A:@.%a@." CEGAR_print.prog_typ prog;
+  pr2 "PROG_A" prog;
   let prog = event_of_temp prog in
-  if debug() then Format.printf "@.PROG_B:@.%a@." CEGAR_print.prog_typ prog;
+  pr2 "PROG_B" prog;
   let prog = eta_expand prog in
-  if debug() then Format.printf "@.PROG_C:@.%a@." CEGAR_print.prog_typ prog;
+  pr2 "PROG_C" prog;
   let prog = pop_main prog in
-  if debug() then Format.printf "@.PROG_D:@.%a@." CEGAR_print.prog_typ prog;
+  pr2 "PROG_D" prog;
   let prog = assign_id_to_rand prog in
-  if debug() then Format.printf "@.PROG_E:@.%a@." CEGAR_print.prog_typ prog;
+  pr2 "PROG_E" prog;
   let prog,map,rmap = id_prog prog in
-  if debug() then Format.printf "@.PROG_F:@.%a@." CEGAR_print.prog_typ prog;
+  pr2 "PROG_F" prog;
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
   prog,map,rmap,get_rtyp
 
