@@ -25,7 +25,7 @@ let preprocess t spec =
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" id t in
       let fun_list = Term_util.get_top_funs t in
-      let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
+      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print in
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
       let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
@@ -41,27 +41,27 @@ let preprocess t spec =
           t, get_rtyp
       in
       let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inline" id t in
-      let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
-      let get_rtyp = get_rtyp -|| get_rtyp_cps_trans in
-      let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
+      let t,get_rtyp =
+        if !Flag.trans_to_CPS
+        then
+          let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
+          let get_rtyp = get_rtyp -|| get_rtyp_cps_trans in
+          let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
+          let get_rtyp = get_rtyp -|| get_rtyp_remove_pair in
+          t, get_rtyp
+        else
+          t, get_rtyp
+      in
       let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" id t in
-      let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
+      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print in
       let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec.Spec.abst_cps_env<>[]) t in
       let t = t |& !Flag.elim_same_arg &> trans_and_print Elim_same_arg.trans "eliminate same arguments" id in
-      let get_rtyp = get_rtyp -|| get_rtyp_remove_pair in
       let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
 
       (* preprocess for termination mode *)
       let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
 
       fun_list, t, get_rtyp
-    else if !Flag.just_print_non_CPS_abst then
-      let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
-(*
-      let t = trans_and_print Trans.propagate_typ_arg "propagate_preds" id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
-*)
-      Term_util.get_top_funs t, t, fun _ typ -> typ
     else
       Term_util.get_top_funs t, t, fun _ typ -> typ
   in
@@ -87,7 +87,7 @@ let preprocess t spec =
   (**********************)
  *)
 
-  let spec' = Spec.rename spec t |@ not !Flag.only_result &> Spec.print in
+  let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:spec'.Spec.abst_cegar_env t in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*

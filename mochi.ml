@@ -230,7 +230,7 @@ let arg_spec =
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
-     "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.init_trans := false), " Print non-CPS abstracted program (and exit)";
+     "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      (* preprocessing *)
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
      "-list-option", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";

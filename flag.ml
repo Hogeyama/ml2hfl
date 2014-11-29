@@ -111,6 +111,7 @@ let exp2 = ref false
 let ignore_conf = ref false
 let init_trans = ref true
 let just_print_non_CPS_abst = ref false
+let trans_to_CPS = ref true
 
 
 (* pretty printer's option *)
