@@ -97,9 +97,10 @@ let rec trans_inv_term = function
 
 
 let rec trans_typ = function
-  | Type.TUnit -> TBase(TUnit, nil_pred)
+  | Type.TUnit -> typ_unit
   | Type.TBool -> typ_bool ()
-  | Type.TInt -> TBase(TInt, nil_pred)
+  | Type.TInt -> typ_int
+  | Type.TVar{contents=None} -> typ_int
   | Type.TVar{contents=Some typ} -> trans_typ typ
   | Type.TFun({Id.typ=Type.TBool|Type.TPred({Id.typ=Type.TBool},_)} as x,typ) ->
       let x' = trans_var x in
