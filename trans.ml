@@ -1707,18 +1707,18 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 
 let elim_unused_let = make_trans2 ()
 
-let elim_unused_let_term cbv t =
-  match t.desc with
+let elim_unused_let_desc cbv desc =
+  match desc with
   | Let(Nonrecursive, bindings, t) ->
       let fv = get_fv t in
       let check (f,xs,t) = Id.mem f fv || (cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t) in
       let bindings' = List.filter check bindings in
       let bindings'' = List.map (fun (f,xs,t) -> f, xs, elim_unused_let.tr2_term cbv t) bindings' in
       let t' = elim_unused_let.tr2_term cbv t in
-      make_let bindings'' t'
-  | _ -> elim_unused_let.tr2_term_rec cbv t
+      (make_let bindings'' t').desc
+  | _ -> elim_unused_let.tr2_desc_rec cbv desc
 
-let () = elim_unused_let.tr2_term <- elim_unused_let_term
+let () = elim_unused_let.tr2_desc <- elim_unused_let_desc
 let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
 
 
