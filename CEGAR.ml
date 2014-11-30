@@ -36,12 +36,12 @@ let print_non_CPS_abst abst prog =
   if !Flag.just_print_non_CPS_abst then
     let s =
       match result with
-      | None -> ""
+      | None -> "Unknown"
       | Some (ModelCheck.Safe _) -> "Safe"
       | Some (ModelCheck.Unsafe _) -> "Unsafe"
     in
     Format.printf "@.ABST:@.%a@." CEGAR_print.prog abst;
-    if s <> "" then Format.printf "RESULT: %s@." s;
+    Format.printf "RESULT: %s@." s;
     exit 0
 
 let rec loop prog0 is_cp ces info =
