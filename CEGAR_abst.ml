@@ -20,7 +20,7 @@ let abst_arg x typ =
     | _ -> []
   in
   let n = List.length ps in
-  List.mapi (fun i p -> p, App(Const (Proj(n,i)), Var x)) ps
+  List.mapi (fun i p -> p, make_proj n i (Var x)) ps
 
 
 
@@ -35,8 +35,8 @@ let rec coerce env cond pts typ1 typ2 t =
       let ts = List.map (abst env' cond pts') (ps2 (Var x)) in
       begin
         match var with
-        | None -> Let(x, t, make_app (Const (Tuple (List.length ts))) ts)
-        | Some _ -> make_app (Const (Tuple (List.length ts))) ts
+        | None -> Let(x, t, make_tuple ts)
+        | Some _ -> make_tuple ts
       end
   | TFun(typ11,typ12), TFun(typ21,typ22) ->
       let x = new_id "x" in

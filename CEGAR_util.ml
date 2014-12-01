@@ -27,41 +27,43 @@ let rec subst x t = function
 let subst_var x y t = subst x (Var y) t
 
 let rec subst_map map = function
-    Const c -> Const c
+  | Const c -> Const c
   | Var x when List.mem_assoc x map -> List.assoc x map
   | Var x -> Var x
   | App(t1,t2) -> App(subst_map map t1, subst_map map t2)
   | Let(x,t1,t2) ->
       let map' = List.filter (fun (y,_) -> x <> y) map in
-        Let(x, subst_map map' t1, subst_map map' t2)
+      Let(x, subst_map map' t1, subst_map map' t2)
   | Fun(x, typ,t1) ->
       let map' = List.filter (fun (y,_) -> x <> y) map in
-        Fun(x, typ, subst_map map' t1)
+      Fun(x, typ, subst_map map' t1)
 
 let subst_def x t (f,xs,t1,t2) =
   f, xs, subst x t t1, subst x t t2
 
 let rec subst_typ x t = function
-    TBase(b,ps) ->
+  | TBase(b,ps) ->
       (** ASSUME: y does not contain x **)
       let ps' y = List.map (subst x t) (ps y) in
-        TBase(b, ps')
-  | TFun(typ1,typ2) -> TFun(subst_typ x t typ1, fun y -> subst_typ x t (typ2 y))
+      TBase(b, ps')
+  | TFun(typ1,typ2) -> TFun(subst_typ x t typ1, subst_typ x t -| typ2)
+  | TApp(typ1, typ2) -> TApp(subst_typ x t typ1, subst_typ x t typ2)
   | _ -> assert false
 
 let rec subst_typ_map map = function
-    TBase(b,ps) ->
+  | TBase(b,ps) ->
       (** ASSUME: y does not contain x **)
       let ps' y = List.map (subst_map map) (ps y) in
-        TBase(b, ps')
+      TBase(b, ps')
   | TFun(typ1,typ2) -> TFun(subst_typ_map map typ1, fun y -> subst_typ_map map (typ2 y))
   | _ -> assert false
 
 
 
 let rec arg_num = function
-    TBase _ -> 0
+  | TBase _ -> 0
   | TFun(_,typ) -> 1 + arg_num (typ (Const Unit))
+  | TApp _ -> 0
   | _ -> assert false
 
 
@@ -80,32 +82,32 @@ let rec pop_main {env;defs;main;attr} =
 
 let rec get_arg_env typ xs =
   match typ,xs with
-      TFun(typ1,typ2), x::xs ->
-        let typ2 = typ2 (Var x) in
-          (x,typ1) :: get_arg_env typ2 xs
-    | _ -> []
+  | TFun(typ1,typ2), x::xs ->
+      let typ2 = typ2 @@ Var x in
+      (x,typ1) :: get_arg_env typ2 xs
+  | _ -> []
 
 
 
 
 let rec put_into_if_term = function
-    Const c -> Const c
+  | Const c -> Const c
   | Var x -> Var x
   | App _ as t ->
       let t',ts = decomp_app t in
-        if t' = Const If
-        then
-          match ts with
-              t1::t2::t3::ts' ->
-                let t1' = put_into_if_term t1 in
-                let t2' = put_into_if_term t2 in
-                let t3' = put_into_if_term t3 in
-                let ts'' = List.map put_into_if_term ts' in
-                make_if t1' (put_into_if_term (make_app t2' ts'')) (put_into_if_term (make_app t3' ts''))
-            | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
-        else
-          let ts' = List.map put_into_if_term ts in
-            make_app t' ts'
+      if t' = Const If
+      then
+        match ts with
+        | t1::t2::t3::ts' ->
+            let t1' = put_into_if_term t1 in
+            let t2' = put_into_if_term t2 in
+            let t3' = put_into_if_term t3 in
+            let ts'' = List.map put_into_if_term ts' in
+            make_if t1' (put_into_if_term (make_app t2' ts'')) (put_into_if_term (make_app t3' ts''))
+        | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
+      else
+        let ts' = List.map put_into_if_term ts in
+        make_app t' ts'
   | Fun(x,typ,t) -> Fun(x, typ, put_into_if_term t)
   | Let(x,t1,t2) -> Let(x, put_into_if_term t1, put_into_if_term t2)
 let put_into_if prog = map_body_prog put_into_if_term prog
@@ -118,7 +120,7 @@ let eta_expand_def env (f,xs,t1,e,t2) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
   let t2' = List.fold_left (fun t x -> App(t, Var x)) t2 ys in
-    f, xs@ys, t1, e, t2' (* put_into_term t2' *)
+  f, xs@ys, t1, e, t2' (* put_into_term t2' *)
 
 let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
@@ -213,8 +215,7 @@ let rec get_const_typ = function
 let rec get_typ env = function
   | Const c -> get_const_typ c
   | Var x -> List.assoc x env
-  | App(Const (Label _), t) ->
-      get_typ env t
+  | App(Const (Label _), t) -> get_typ env t
   | App(Const (RandInt _), t) ->
       begin
         match get_typ env t with
@@ -244,14 +245,14 @@ let rec get_typ env = function
 (*
       let typ1 = List.assoc x env in
       let typ2 = get_typ env t in
-        TFun(typ1, fun _ -> typ2)
+      TFun(typ1, fun _ -> typ2)
 *)
 
 
 
 
 let rec get_arg_num = function
-    TFun(_,typ) -> 1 + get_arg_num (typ (Const Unit))
+  | TFun(_,typ) -> 1 + get_arg_num (typ (Const Unit))
   | typ -> 0
 
 
@@ -289,7 +290,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
   | App(Const Not, App(App(Const (Lt|Gt|Leq|Geq as op), t1), t2)) ->
       let op' =
         match op with
-          Lt -> Geq
+        | Lt -> Geq
         | Gt -> Leq
         | Leq -> Gt
         | Geq -> Lt
@@ -321,7 +322,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
       let ts' = aux [] (decomp t) in
       begin
         match ts' with
-          [] -> Const True
+        | [] -> Const True
         | t'::ts'' -> List.fold_left make_and t' ts''
       end
   | App(App(Const Or, _), _) as t ->

@@ -6,7 +6,7 @@ let init () =
 let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
   let r = f t in
   let t' = proj r in
-  if !Flag.debug_level > 0 && t <> t' && opt
+  if true || !Flag.debug_level > 0 && t <> t' && opt
   then Format.printf "%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
@@ -241,7 +241,7 @@ let rec run orig parsed =
   in
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in
-  FpatInterface.init prog;
+  if !Flag.trans_to_CPS then FpatInterface.init prog;
   match !Flag.cegar with
   | Flag.CEGAR_InteractionType ->
       FpatInterface.verify [] prog;

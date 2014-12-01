@@ -16,9 +16,8 @@ exception NonLinear
 
 let counter = ref 0
 let new_id x =
-  let x' = x ^ "_" ^ string_of_int !counter in
-    incr counter;
-    x'
+  incr counter;
+  x ^ "_" ^ string_of_int !counter
 
 let rec occur_arg_pred x = function
   | TBase(_,ps) -> List.mem x @@ List.rev_flatten_map get_fv @@ ps (Const Unit)
@@ -34,7 +33,7 @@ and print_typ_base fm = function
   | TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TTuple n -> Format.fprintf fm "tuple"
+  | TTuple -> Format.fprintf fm "tuple"
   | TList -> assert false
   | TAbst s -> Format.pp_print_string fm s
 
@@ -347,7 +346,7 @@ let rec print_base_typ_as_tree fm = function
   | TInt -> Format.fprintf fm "TInt"
   | TBool -> Format.fprintf fm "TBool"
   | TList -> Format.fprintf fm "TList"
-  | TTuple n -> Format.fprintf fm "(TTuple %d)" n
+  | TTuple -> Format.fprintf fm "TTuple"
   | TAbst s -> Format.fprintf fm "%s" s
 
 and print_typ_as_tree fm = function

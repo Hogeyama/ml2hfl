@@ -120,19 +120,14 @@ let trans_simpl_def (f,xs,t1,e,t2) =
 
 let hd x = assert (List.length x = 1); List.hd x
 
-let is_ttuple typ =
-  match decomp_tapp typ with
-      TBase(TTuple _, _), _ -> true
-    | _ -> false
-
 let rec extract_tuple_var env x =
   match List.assoc x env with
-      TBase(TTuple (0|1), _) -> [x]
-    | TApp _ as typ when is_ttuple typ ->
-        let typ,typs = decomp_tapp typ in
-        let n = match typ with TBase(TTuple n, _) -> n | _ -> assert false in
-          Array.to_list (Array.init n (fun i -> x ^ string_of_int i))
-    | _ -> [x]
+  | TBase(TTuple, _) -> [x]
+  | TApp _ as typ when is_ttuple typ ->
+      let typ,typs = decomp_tapp typ in
+      let n = List.length typs in
+      Array.to_list (Array.init n (fun i -> x ^ string_of_int i))
+  | _ -> [x]
 let rec extract_tuple_term env = function
     Const (Tuple 0) -> [Const Unit]
   | Const c -> [Const c]

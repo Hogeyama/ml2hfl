@@ -82,7 +82,7 @@ let rec trans_typ = function
   | TVar{contents=None} -> typ_unknown
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> TFun(trans_typ typ1, fun _ -> trans_typ typ2)
-  | TTuple typs -> make_tapp (TBase(TTuple (List.length typs),nil)) (List.map trans_typ typs)
+  | TTuple typs -> make_tapp (TBase(TTuple,nil)) (List.map trans_typ typs)
   | TAbst typ -> TBase(TAbst typ, nil)
   | TResult -> typ_result
 

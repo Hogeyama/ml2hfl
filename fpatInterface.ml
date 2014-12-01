@@ -21,6 +21,9 @@ let rec conv_typ ty =
   | TFun(ty1,tmp) ->
      let ty2 = tmp (Const True) in
      Fpat.Type.mk_fun [conv_typ ty1; conv_typ ty2]
+  | TApp _ when is_ttuple ty ->
+      let _,tys = decomp_tapp ty in
+      Fpat.Type.mk_tuple @@ List.map conv_typ tys
   | _ ->
      Format.printf "%a@." CEGAR_print.typ ty;
      assert false
@@ -69,6 +72,7 @@ let conv_const c =
        (Fpat.Type.mk_const (Fpat.TypConst.Ext "X"),
         Fpat.Idnt.make "end")
   | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
+  | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let conv_var x =

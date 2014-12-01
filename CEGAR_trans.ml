@@ -146,6 +146,7 @@ let rec trans_typ = function
             TBase(b, preds')
         | typ -> Format.printf "trans_typ[TPred]: %a@." CEGAR_print.typ typ; assert false
       end
+  | Type.TTuple xs -> make_ttuple @@ List.map (trans_typ -| Id.typ) xs
   | typ -> Format.printf "trans_typ: %a@." Print.typ typ; assert false
 
 
@@ -246,7 +247,7 @@ and trans_term post xs env t =
       let defs2,t2' = trans_term post xs env t2 in
       let op' =
         match t1.S.typ with
-          Type.TConstr(typ, false) -> Const (CmpPoly(typ, Print.string_of_binop op))
+        | Type.TConstr(typ, false) -> Const (CmpPoly(typ, Print.string_of_binop op))
         | _ -> trans_binop op
       in
       defs1@defs2, make_app op' [t1'; t2']
@@ -256,6 +257,12 @@ and trans_term post xs env t =
   | S.Fun _ -> assert false
   | S.Event _ -> assert false
   | S.Bottom -> [], Const Bottom
+  | S.Proj(i, t) ->
+      let defs,t' = trans_term post xs env t in
+      defs, make_proj (Option.get @@ Type.tuple_num t.typ) i t'
+  | S.Tuple ts ->
+      let defss,ts' = List.split_map (trans_term post xs env) ts in
+      List.flatten defss, make_tuple ts'
   | _ ->
       Format.printf "%a@." Print.term t;
       assert false
@@ -265,9 +272,7 @@ let rec formula_of t =
   | S.Const(S.RandInt false) -> raise Not_found
   | S.Const(S.RandInt true) -> assert false
   | S.Const c -> Const (trans_const c t.S.typ)
-  | S.Var x ->
-      let x' = trans_var x in
-      Var x'
+  | S.Var x -> Var (trans_var x)
   | S.App(t, ts) -> raise Not_found
   | S.If(t1, t2, t3) -> raise Not_found
   | S.Let _ -> assert false
@@ -290,6 +295,8 @@ let rec formula_of t =
   | S.Not t ->
       let t' = formula_of t in
       App(Const Not, t')
+  | S.Proj _ -> raise Not_found
+  | S.Tuple _ -> raise Not_found
   | _ -> Format.printf "formula_of: %a@." Print.constr t; assert false
 
 let trans_def (f,(xs,t)) =
