@@ -103,7 +103,7 @@ and print_const fm = function
   | Sub -> Format.fprintf fm "-"
   | Mul -> Format.fprintf fm "*"
   | Tuple n -> Format.fprintf fm "(%d)" n
-  | Proj(_,i) -> Format.fprintf fm "#%d" i
+  | Proj(n,i) -> Format.fprintf fm "#(%d/%d)" i n
   | If -> Format.fprintf fm "if"
   | Bottom -> Format.fprintf fm "_|_"
   | Temp s -> Format.fprintf fm "Temp{%s}" s
