@@ -60,6 +60,8 @@ let rec loop prog0 is_cp ces info =
   in
   if !Flag.print_progress
   then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
+  if !Flag.print_abst_typ
+  then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   print_non_CPS_abst abst prog;
   let result = ModelCheck.check abst prog in

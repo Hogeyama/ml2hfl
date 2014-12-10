@@ -87,6 +87,7 @@ let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
 let print_ref_typ = ref false
 let print_ref_typ_debug = false
+let print_abst_typ = ref false
 
 let web = ref false
 
