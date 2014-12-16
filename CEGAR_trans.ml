@@ -66,32 +66,32 @@ let id_prog prog =
 
 (* for predicates *)
 let rec trans_inv_term = function
-    Const True -> U.true_term
-  | Const False -> U.false_term
-  | Const (Int n) -> U.make_int n
-  | Var x -> U.make_var (trans_inv_var x)
+    Const True -> Term_util.true_term
+  | Const False -> Term_util.false_term
+  | Const (Int n) -> Term_util.make_int n
+  | Var x -> Term_util.make_var (trans_inv_var x)
   | App(App(Const And, t1), t2) ->
-      U.make_and (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_and (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Or, t1), t2) ->
-      U.make_or (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_or (trans_inv_term t1) (trans_inv_term t2)
   | App(Const Not, t) ->
-      U.make_not (trans_inv_term t)
+      Term_util.make_not (trans_inv_term t)
   | App(App(Const Lt, t1), t2) ->
-      U.make_lt (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_lt (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Gt, t1), t2) ->
-      U.make_gt (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_gt (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Leq, t1), t2) ->
-      U.make_leq (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_leq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Geq, t1), t2) ->
-      U.make_geq (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_geq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const (EqInt|EqBool), t1), t2) ->
-      U.make_eq (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_eq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Add, t1), t2) ->
-      U.make_add (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_add (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Sub, t1), t2) ->
-      U.make_sub (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_sub (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Mul, t1), t2) ->
-      U.make_mul (trans_inv_term t1) (trans_inv_term t2)
+      Term_util.make_mul (trans_inv_term t1) (trans_inv_term t2)
   | t -> Format.printf "%a@." CEGAR_print.term t; assert false
 
 
@@ -151,77 +151,77 @@ let rec trans_typ = function
 
 
 and trans_binop = function
-    S.Eq -> assert false
-  | S.Lt -> Const Lt
-  | S.Gt -> Const Gt
-  | S.Leq -> Const Leq
-  | S.Geq -> Const Geq
-  | S.And -> Const And
-  | S.Or -> Const Or
-  | S.Add -> Const Add
-  | S.Sub -> Const Sub
-  | S.Mult -> Const Mul
+    Syntax.Eq -> assert false
+  | Syntax.Lt -> Const Lt
+  | Syntax.Gt -> Const Gt
+  | Syntax.Leq -> Const Leq
+  | Syntax.Geq -> Const Geq
+  | Syntax.And -> Const And
+  | Syntax.Or -> Const Or
+  | Syntax.Add -> Const Add
+  | Syntax.Sub -> Const Sub
+  | Syntax.Mult -> Const Mul
 
 and trans_const c typ =
   match c with
-    S.Unit -> Unit
-  | S.True -> True
-  | S.False -> False
-  | S.Int n -> Int n
-  | S.Char c -> Char c
-  | S.String s -> String s
-  | S.Float s -> Float s
-  | S.Int32 n -> Int32 n
-  | S.Int64 n -> Int64 n
-  | S.Nativeint n -> Nativeint n
-  | S.CPS_result -> CPS_result
+    Syntax.Unit -> Unit
+  | Syntax.True -> True
+  | Syntax.False -> False
+  | Syntax.Int n -> Int n
+  | Syntax.Char c -> Char c
+  | Syntax.String s -> String s
+  | Syntax.Float s -> Float s
+  | Syntax.Int32 n -> Int32 n
+  | Syntax.Int64 n -> Int64 n
+  | Syntax.Nativeint n -> Nativeint n
+  | Syntax.CPS_result -> CPS_result
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
-  match t.S.desc with
-  | S.Const(S.RandInt _) -> assert false
-  | S.Const c -> [], Const (trans_const c t.S.typ)
-  | S.App({S.desc=S.Const(S.RandInt false); S.attr}, [{S.desc=S.Const S.Unit}]) ->
+  match t.Syntax.desc with
+  | Syntax.Const(Syntax.RandInt _) -> assert false
+  | Syntax.Const c -> [], Const (trans_const c t.Syntax.typ)
+  | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandInt false); Syntax.attr}, [{Syntax.desc=Syntax.Const Syntax.Unit}]) ->
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt None), Var k)
-  | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) ->
-      assert (t1 = U.unit_term);
+  | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandInt true); Syntax.attr}, [t1;t2]) ->
+      assert (t1 = Term_util.unit_term);
       let k = new_id ("k" ^ post) in
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt None), t2')
-  | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true)); S.attr}, [t1;t2]) ->
-      assert (t1 = U.unit_term);
+  | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandValue(Type.TInt, true)); Syntax.attr}, [t1;t2]) ->
+      assert (t1 = Term_util.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt None), t2')
-  | S.App({S.desc=S.Const(S.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
+  | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
-  | S.Var x ->
+  | Syntax.Var x ->
       let x' = trans_var x in
       [], Var x'
-  | S.App({S.desc=S.Event(s,false)}, [t]) ->
+  | Syntax.App({Syntax.desc=Syntax.Event(s,false)}, [t]) ->
       let k = new_id "k" in
-      assert (t = U.unit_term);
+      assert (t = Term_util.unit_term);
       let defs = [k, TFun(typ_unit, fun _ -> typ_unit), ["u"], Const True, [], Const Unit] in
       defs, App(Const (Temp s), Var k)
-  | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
-      assert (t1 = U.unit_term);
+  | Syntax.App({Syntax.desc=Syntax.Event(s,true)}, [t1;t2]) ->
+      assert (t1 = Term_util.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (Temp s), t2')
-  | S.App(t, ts) ->
+  | Syntax.App(t, ts) ->
       let defs,t' = trans_term post xs env t in
       let defss,ts' = List.split_map (trans_term post xs env) ts in
       defs @ (List.flatten defss), make_app t' ts'
-  | S.If(t1, t2, t3) ->
+  | Syntax.If(t1, t2, t3) ->
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let defs3,t3' = trans_term post xs env t3 in
       let f = new_id ("br" ^ post) in
       let x = new_id "b" in
-      let typ0 = trans_typ t2.S.typ in
+      let typ0 = trans_typ t2.Syntax.typ in
       let aux x typ2 = TFun(List.assoc x env, fun y -> subst_typ x y typ2) in
       let typ = List.fold_right aux xs typ0 in
       let typ' = TFun(typ_bool(), fun _ -> typ) in
@@ -229,12 +229,12 @@ and trans_term post xs env t =
       let def2 = f, typ', x::xs, make_not (Var x), [], t3' in
       let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
       def1::def2::defs1@defs2@defs3, t
-  | S.Let _ -> assert false
-  | S.BinOp(S.Eq, t1, t2) ->
+  | Syntax.Let _ -> assert false
+  | Syntax.BinOp(Syntax.Eq, t1, t2) ->
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let op =
-        match Type.elim_tpred t1.S.typ with
+        match Type.elim_tpred t1.Syntax.typ with
         | Type.TUnit -> EqUnit
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt
@@ -242,25 +242,25 @@ and trans_term post xs env t =
         | typ -> Format.printf "trans_term: %a@." Print.typ typ; assert false
       in
       defs1@defs2, make_app (Const op) [t1'; t2']
-  | S.BinOp(op, t1, t2) ->
+  | Syntax.BinOp(op, t1, t2) ->
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let op' =
-        match t1.S.typ with
+        match t1.Syntax.typ with
         | Type.TConstr(typ, false) -> Const (CmpPoly(typ, Print.string_of_binop op))
         | _ -> trans_binop op
       in
       defs1@defs2, make_app op' [t1'; t2']
-  | S.Not t ->
+  | Syntax.Not t ->
       let defs,t' = trans_term post xs env t in
       defs, App(Const Not, t')
-  | S.Fun _ -> assert false
-  | S.Event _ -> assert false
-  | S.Bottom -> [], Const Bottom
-  | S.Proj(i, t) ->
+  | Syntax.Fun _ -> assert false
+  | Syntax.Event _ -> assert false
+  | Syntax.Bottom -> [], Const Bottom
+  | Syntax.Proj(i, t) ->
       let defs,t' = trans_term post xs env t in
       defs, make_proj (Option.get @@ Type.tuple_num t.typ) i t'
-  | S.Tuple ts ->
+  | Syntax.Tuple ts ->
       let defss,ts' = List.split_map (trans_term post xs env) ts in
       List.flatten defss, make_tuple ts'
   | _ ->
@@ -268,35 +268,35 @@ and trans_term post xs env t =
       assert false
 
 let rec formula_of t =
-  match t.S.desc with
-  | S.Const(S.RandInt false) -> raise Not_found
-  | S.Const(S.RandInt true) -> assert false
-  | S.Const c -> Const (trans_const c t.S.typ)
-  | S.Var x -> Var (trans_var x)
-  | S.App(t, ts) -> raise Not_found
-  | S.If(t1, t2, t3) -> raise Not_found
-  | S.Let _ -> assert false
-  | S.BinOp(S.Eq, t1, t2) ->
+  match t.Syntax.desc with
+  | Syntax.Const(Syntax.RandInt false) -> raise Not_found
+  | Syntax.Const(Syntax.RandInt true) -> assert false
+  | Syntax.Const c -> Const (trans_const c t.Syntax.typ)
+  | Syntax.Var x -> Var (trans_var x)
+  | Syntax.App(t, ts) -> raise Not_found
+  | Syntax.If(t1, t2, t3) -> raise Not_found
+  | Syntax.Let _ -> assert false
+  | Syntax.BinOp(Syntax.Eq, t1, t2) ->
       let t1' = formula_of t1 in
       let t2' = formula_of t2 in
       let op =
-        match Type.elim_tpred t1.S.typ with
+        match Type.elim_tpred t1.Syntax.typ with
         | Type.TUnit -> EqUnit
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt
         | Type.TConstr(typ, false) -> CmpPoly(typ, "=")
-        | _ -> Format.printf "%a@." Print.typ t1.S.typ; assert false
+        | _ -> Format.printf "%a@." Print.typ t1.Syntax.typ; assert false
       in
       make_app (Const op) [t1'; t2']
-  | S.BinOp(op, t1, t2) ->
+  | Syntax.BinOp(op, t1, t2) ->
       let t1' = formula_of t1 in
       let t2' = formula_of t2 in
       App(App(trans_binop op, t1'), t2')
-  | S.Not t ->
+  | Syntax.Not t ->
       let t' = formula_of t in
       App(Const Not, t')
-  | S.Proj _ -> raise Not_found
-  | S.Tuple _ -> raise Not_found
+  | Syntax.Proj _ -> raise Not_found
+  | Syntax.Tuple _ -> raise Not_found
   | _ -> Format.printf "formula_of: %a@." Print.constr t; assert false
 
 let trans_def (f,(xs,t)) =
@@ -311,8 +311,8 @@ let trans_def (f,(xs,t)) =
   in
   let env = List.map2 aux xs' xs in
   try
-    (match t.S.desc with
-     | S.If(t1, t2, t3) ->
+    (match t.Syntax.desc with
+     | Syntax.If(t1, t2, t3) ->
 	 let t1' = formula_of t1 in
 	 let defs2,t2' = trans_term post xs' env t2 in
 	 let defs3,t3' = trans_term post xs' env t3 in
@@ -505,7 +505,7 @@ let trans_prog ?(spec=[]) t =
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   let defs_t,t_main' = trans_term t_main in
-  let is_cps = List.mem S.ACPS t.S.attr in
+  let is_cps = List.mem Syntax.ACPS t.Syntax.attr in
   let defs' =
     match !Flag.cegar with
     | Flag.CEGAR_InteractionType ->

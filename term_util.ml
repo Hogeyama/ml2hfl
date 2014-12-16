@@ -478,6 +478,51 @@ let max_pat_num = max_pat_num.col_term
 
 
 
+let same_list same xs ys = List.length xs = List.length ys && List.for_all2 same xs ys
+
+let rec same_const c1 c2 =
+  match c1,c2 with
+  | RandValue _, RandValue _ -> unsupported "same_const"
+  | _ -> c1 = c2
+and same_term t1 t2 = same_desc t1.desc t2.desc
+and same_desc t1 t2 =
+  match t1,t2 with
+  | Const c1, Const c2 -> same_const c1 c2
+  | Var x, Var y -> Id.same x y
+  | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
+  | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
+  | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
+  | Branch(t11,t12), Branch(t21,t22) -> same_term t11 t21 && same_term t12 t22
+  | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) ->
+     let same_binding (f,xs,t1) (g,ys,t2) = Id.same f g && same_list Id.same xs ys && same_term t1 t2 in
+     flag1 = flag1 && same_list same_binding bindings1 bindings2 && same_term t1 t2
+  | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
+  | Not t1, Not t2 -> same_term t1 t2
+  | Event(s1,b1), Event(s2,b2) -> s1 = s2 && b1 = b2
+  | Record _, Record _ -> unsupported "same_term 2"
+  | Field _, Field _ -> unsupported "same_term 3"
+  | SetField _, SetField _ -> unsupported "same_term 4"
+  | Nil, Nil -> true
+  | Cons _, Cons _ -> unsupported "same_term 5"
+  | Constr _, Constr _ -> unsupported "same_term 6"
+  | Match _, Match _ -> unsupported "same_term 7"
+  | Raise _, Raise _ -> unsupported "same_term 8"
+  | TryWith _, TryWith _ -> unsupported "same_term 9"
+  | Tuple ts1, Tuple ts2 -> List.length ts1 = List.length ts2 && List.for_all2 same_term ts1 ts2
+  | Proj(i,t1), Proj(j,t2) -> i = j && same_term t1 t2
+  | Bottom, Bottom -> true
+  | Label _, Label _ -> unsupported "same_term 11"
+  | _ -> false
+
+and same_info i1 i2 = unsupported "same_term"
+and same_type_kind k1 k2 = unsupported "same_term"
+
+and same_typed_pattern p1 p2 = same_pattern p1.desc p2.desc
+and same_pattern p1 p2 = unsupported "same_term"
+
+let same_term' t1 t2 = try same_term t1 t2 with _ -> false
+
+
 let is_parameter x = Fpat.Util.String.starts_with (Id.name x) Flag.extpar_header
 
 
@@ -487,6 +532,13 @@ let rec is_value t =
   | _ -> false
 
 
+let merge_preds ps1 ps2 =
+  let aux p ps =
+    if List.exists (same_term p) ps
+    then ps
+    else p::ps
+  in
+  List.fold_right aux ps1 ps2
 
 let rec merge_typ typ1 typ2 =
   match typ1,typ2 with
@@ -502,7 +554,7 @@ let rec merge_typ typ1 typ2 =
       let x1' = Id.set_typ x1 typ in
       let x1_no_pred = Id.set_typ x1 (elim_tpred typ) in
       let ps2' = List.map (subst x2 (make_var x1_no_pred)) ps2 in
-      TPred(x1', ps1 @@@ ps2')
+      TPred(x1', merge_preds ps1 ps2')
   | TPred(x, ps), typ
   | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
   | TFun(x1,typ1), TFun(x2,typ2) ->
@@ -536,16 +588,9 @@ let make_if t1 t2 t3 =
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=[]}
 
 let rec get_top_funs acc = function
-    {desc=Let(flag, defs, t)} ->
+  | {desc=Let(flag, defs, t)} ->
       let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
-        get_top_funs acc' t
-  | _ -> acc
-let get_top_funs = get_top_funs []
-
-let rec get_top_funs acc = function
-    {desc=Let(flag, defs, t)} ->
-      let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
-        get_top_funs acc' t
+      get_top_funs acc' t
   | _ -> acc
 let get_top_funs = get_top_funs []
 
@@ -615,49 +660,6 @@ and is_simple_bexp t =
 
 
 
-let same_list same xs ys = List.length xs = List.length ys && List.for_all2 same xs ys
-
-let rec same_const c1 c2 =
-  match c1,c2 with
-  | RandValue _, RandValue _ -> unsupported "same_const"
-  | _ -> c1 = c2
-and same_term t1 t2 = same_desc t1.desc t2.desc
-and same_desc t1 t2 =
-  match t1,t2 with
-  | Const c1, Const c2 -> same_const c1 c2
-  | Var x, Var y -> Id.same x y
-  | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
-  | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
-  | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
-  | Branch(t11,t12), Branch(t21,t22) -> same_term t11 t21 && same_term t12 t22
-  | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) ->
-     let same_binding (f,xs,t1) (g,ys,t2) = Id.same f g && same_list Id.same xs ys && same_term t1 t2 in
-     flag1 = flag1 && same_list same_binding bindings1 bindings2 && same_term t1 t2
-  | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
-  | Not t1, Not t2 -> same_term t1 t2
-  | Event(s1,b1), Event(s2,b2) -> s1 = s2 && b1 = b2
-  | Record _, Record _ -> unsupported "same_term 2"
-  | Field _, Field _ -> unsupported "same_term 3"
-  | SetField _, SetField _ -> unsupported "same_term 4"
-  | Nil, Nil -> true
-  | Cons _, Cons _ -> unsupported "same_term 5"
-  | Constr _, Constr _ -> unsupported "same_term 6"
-  | Match _, Match _ -> unsupported "same_term 7"
-  | Raise _, Raise _ -> unsupported "same_term 8"
-  | TryWith _, TryWith _ -> unsupported "same_term 9"
-  | Tuple ts1, Tuple ts2 -> List.length ts1 = List.length ts2 && List.for_all2 same_term ts1 ts2
-  | Proj(i,t1), Proj(j,t2) -> i = j && same_term t1 t2
-  | Bottom, Bottom -> true
-  | Label _, Label _ -> unsupported "same_term 11"
-  | _ -> false
-
-and same_info i1 i2 = unsupported "same_term"
-and same_type_kind k1 k2 = unsupported "same_term"
-
-and same_typed_pattern p1 p2 = same_pattern p1.desc p2.desc
-and same_pattern p1 p2 = unsupported "same_term"
-
-let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
 
 let rec var_name_of_term t =
@@ -766,3 +768,9 @@ let rec is_bottom_def flag f xs t =
   | Recursive, _::_, App({desc=Var g},ts) ->
       Id.same f g && List.for_all has_no_effect ts
   | _ -> false
+
+let rec decomp_bexp t =
+  match t.desc with
+  | BinOp((And|Or), t1, t2) -> decomp_bexp t1 @ decomp_bexp t2
+  | Not t1 -> decomp_bexp t1
+  | _ -> [t]

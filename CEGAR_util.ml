@@ -126,42 +126,6 @@ let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
-let rec make_arg_let t =
-  let desc =
-    match t.S.desc with
-    | S.Const c -> S.Const c
-    | S.Var x -> S.Var x
-    | S.App(t, ts) ->
-        let f = Id.new_var ~name:"f__" (t.S.typ) in
-        let xts = List.map (fun t -> Id.new_var (t.S.typ), t) ts in
-        let t' =
-          {S.desc = S.App(U.make_var f, List.map (fun (x,_) -> U.make_var x) xts);
-           S.typ = Type.typ_unknown;
-           S.attr = []}
-        in
-        (List.fold_left (fun t2 (x,t1) -> U.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
-    | S.If(t1, t2, t3) ->
-        let t1' = make_arg_let t1 in
-        let t2' = make_arg_let t2 in
-        let t3' = make_arg_let t3 in
-        S.If(t1',t2',t3')
-    | S.Branch(t1, t2) -> assert false
-    | S.Let(flag,bindings,t2) ->
-        let bindings' = List.map (fun (f,xs,t) -> f, xs, make_arg_let t) bindings in
-        let t2' = make_arg_let t2 in
-        S.Let(flag,bindings',t2')
-    | S.BinOp(op, t1, t2) ->
-        let t1' = make_arg_let t1 in
-        let t2' = make_arg_let t2 in
-        S.BinOp(op, t1', t2')
-    | S.Not t -> S.Not (make_arg_let t)
-    | S.Fun(x,t) -> assert false
-    | S.Event _ -> assert false
-    | _ -> assert false
-  in
-  {t with desc}
-
-
 
 
 exception TypeBottom
@@ -254,22 +218,6 @@ let rec get_typ env = function
 let rec get_arg_num = function
   | TFun(_,typ) -> 1 + get_arg_num (typ (Const Unit))
   | typ -> 0
-
-
-let map_defs f defs =
-  let aux (g,xs,t1,t2) =
-    let defs1,t1' = f t1 in
-    let defs2,t2' = f t2 in
-    (g,xs,t1',t2')::defs1@@@defs2
-  in
-  List.rev_map_flatten aux defs
-
-
-
-
-
-
-
 
 
 

@@ -169,3 +169,26 @@ let rename typ =
   let typ' = rename None typ in
   Id.reset_counter ();
   typ'
+
+let to_abst_typ_base b =
+  match b with
+  | Unit -> Type.TUnit
+  | Bool -> Type.TBool
+  | Int -> Type.TInt
+  | Abst _ -> unsupported "to_abst_typ_base"
+
+let rec to_abst_typ typ =
+  match typ with
+  | Base(b, x, t) ->
+      let x' = Id.set_typ x @@ to_abst_typ_base b in
+      Type.TPred(x', Term_util.decomp_bexp t)
+  | Fun(x,typ1,typ2) ->
+      let x' = Id.set_typ x @@ to_abst_typ typ1 in
+      let typ2' = to_abst_typ typ2 in
+      Type.TFun(x', typ2')
+  | Tuple xtyps ->
+      Type.TTuple (List.map (fun (x,typ) -> Id.set_typ x @@ to_abst_typ typ) xtyps)
+  | Inter typs
+  | Union typs -> List.fold_right (Term_util.merge_typ -| to_abst_typ) typs Type.typ_unknown
+  | ExtArg _ -> unsupported "to_abst_typ"
+  | List _ -> unsupported "to_abst_typ"

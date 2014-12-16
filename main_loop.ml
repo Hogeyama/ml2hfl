@@ -166,7 +166,15 @@ let report_safe env rmap get_rtyp orig t0 =
   let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
   let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
   if not only_result_termination then List.iter pr env';
-  if env' <> [] && not only_result_termination then Format.printf "@."
+  if env' <> [] && not only_result_termination then Format.printf "@.";
+
+  if !Flag.print_abst_typ && env' <> [] && not only_result_termination then
+    begin
+      Format.printf "Abstraction Types:@.";
+      let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Print.typ @@ Ref_type.to_abst_typ typ in
+      List.iter pr env';
+      Format.printf "@."
+    end
 
 
 let report_unsafe main_fun arg_num ce set_target =

@@ -11,22 +11,14 @@ exception CannotRefute
 
 let add_preds_env map env =
   let aux (f,typ) =
-    try
-      f, merge_typ typ (List.assoc f map)
-    with Not_found -> f, typ
+    let typ' =
+      try
+        merge_typ typ @@ List.assoc f map
+      with Not_found -> typ
+    in
+    f, typ'
   in
-    List.map aux env
-
-let add_preds_env map env =
-  let aux (f,typ) =
-    try
-      let typ1 = typ in
-      let typ2 = List.assoc f map in
-      let typ' = merge_typ typ1 typ2 in
-        f, typ'
-    with Not_found -> f, typ
-  in
-    List.map aux env
+  List.map aux env
 
 let add_preds map prog =
   {prog with env = add_preds_env map prog.env}
@@ -57,34 +49,34 @@ let refine labeled is_cp prefix ces {env;defs;main;attr} =
   try
     if !Flag.print_progress then
       Color.printf
-	    Color.Green
-	    "(%d-4) Discovering predicates ... @."
-	    !Flag.cegar_loop;
+	Color.Green
+	"(%d-4) Discovering predicates ... @."
+	!Flag.cegar_loop;
     if Flag.use_prefix_trace then
-	  raise (Fatal "Not implemented: Flag.use_prefix_trace");
+      raise (Fatal "Not implemented: Flag.use_prefix_trace");
     let map =
       Format.printf "@[<v>";
       let ces =
-	    if !Flag.use_multiple_paths then
-	      ces
-	    else
-	      [FpatInterface.List.hd ces]
-	  in
+	if !Flag.use_multiple_paths then
+	  ces
+	else
+	  [FpatInterface.List.hd ces]
+      in
       let map =
-	    FpatInterface.infer
-	      labeled
-	      is_cp
-	      ces
-	      (env, defs, main)
-	  in
+	FpatInterface.infer
+	  labeled
+	  is_cp
+	  ces
+	  (env, defs, main)
+      in
       Format.printf "@]";
       map
     in
     let env' =
-	  if !Flag.disable_predicate_accumulation then
-	    map
-	  else
-	    add_preds_env map env
+      if !Flag.disable_predicate_accumulation then
+	map
+      else
+	add_preds_env map env
     in
     if !Flag.print_progress then Format.printf "DONE!@.@.";
     Fpat.SMTProver.close ();
