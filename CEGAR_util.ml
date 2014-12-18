@@ -10,7 +10,8 @@ let const_of_bool b = if b then True else False
 
 
 let map_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
-let map_body_prog f prog = {prog with defs = (List.map (map_body_def f) prog.defs)}
+let map_def_prog f prog = {prog with defs = List.map f prog.defs}
+let map_body_prog f prog = map_def_prog (map_body_def f) prog
 
 
 
