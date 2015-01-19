@@ -352,7 +352,10 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
           aux xns' in
         let xns''' = List.filter (fun (_,n) -> n<>0) xns'' in
         if xns''' = []
-        then Const True
+        then
+          match op with
+          | Const (EqInt | Leq | Geq) -> Const True
+          | Const (Lt | Gt) -> Const False
         else
           let x,n = List.hd xns''' in
           let xns = List.rev @@ List.tl xns''' in
