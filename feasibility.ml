@@ -108,7 +108,7 @@ let rec get_prefix ce n =
 
 let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
 
-  List.iter (fun (n, bs) -> Format.printf "C.E.: %d: %a@." n (print_list Format.pp_print_bool ",") bs) ext_ce;
+  (* List.iter (fun (n, bs) -> Format.printf "C.E.: %d: %a@." n (print_list Format.pp_print_bool ",") bs) ext_ce; *)
 
   let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
   let time_tmp = get_time () in

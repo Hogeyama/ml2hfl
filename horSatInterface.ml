@@ -159,6 +159,7 @@ let error_trace tr =
   List.fold_left (fun (xs,ys) (x,_,y) -> (x::xs, y::ys)) ([],[]) @@ error_trace_aux tr
 
 let rec verifyFile filename =
+  let debug = !Flag.debug_level > 0 in
   let default = "empty" in
   let result_file =
     try
@@ -178,10 +179,10 @@ let rec verifyFile filename =
           Safe []
       | `Unsatisfied ce ->
           close_in ic;
-          Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
+          if debug then Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
           let cexs, ext_cexs = error_trace ce in
 	  let ppppp fm (n, l) = Format.fprintf fm "[%d: %a]" n (print_list Format.pp_print_bool ",") l in
-	  List.iter2 (fun c1 c2 -> Format.printf "FOUND:  %a | %a@." (print_list (fun fm n -> Format.fprintf fm (if n=0 then "then" else "else")) ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
+	  if debug then List.iter2 (fun c1 c2 -> Format.printf "FOUND:  %a | %a@." (print_list (fun fm n -> Format.fprintf fm (if n=0 then "then" else "else")) ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
           (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
           Unsafe (cexs, ext_cexs)
 (*      | `TimeOut ->
