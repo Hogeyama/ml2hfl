@@ -12,4 +12,4 @@ let rec f k j =
 let main () =
   let k = read_int () in
   let j = read_int () in
-  f k j; assert false
+  f k j
