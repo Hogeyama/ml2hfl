@@ -19,7 +19,14 @@ let init =
    inlined = [];
    inlined_f = []}
 
-let print {abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined=inlined; inlined_f=inlined_f} =
+let print {ref_env=renv; abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined=inlined; inlined_f=inlined_f} =
+  if renv <> []
+  then
+    begin
+      Color.printf Color.Red "spec (refinement type assertions):@. @[";
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Ref_type.print) typ) renv;
+      Format.printf "@."
+    end;
   if aenv <> []
   then
     begin

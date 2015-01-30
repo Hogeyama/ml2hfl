@@ -219,7 +219,15 @@ ref_typ:
 | LPAREN ref_typ RPAREN { $2 }
 | LBRACE id COLON ref_base BAR exp RBRACE { RT.Base($4, $2, $6) }
 | id COLON ref_typ ARROW ref_typ { RT.Fun($1, $3, $5) }
-| ref_typ ARROW ref_typ { RT.Fun(Id.new_var (RT.to_simple $1), $1, $3) }
+| ref_typ ARROW ref_typ
+  {
+    let x  =
+      match $1 with
+      | RT.Base(_,y,_) -> y
+      | _ -> Id.new_var @@ RT.to_simple $1
+    in
+    RT.Fun(x, $1, $3)
+  }
 
 
 pred_list:
