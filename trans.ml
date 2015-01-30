@@ -356,8 +356,8 @@ let ref_to_assert ref_env t =
         [], typ, fun y -> make_assert @@ Term_util.subst x y p
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_simple typ1 in
-        let xtyps,typ2',check = decomp @@ subst x (make_var x') typ2 in
-        (x',typ1)::xtyps, typ2', check
+        let xtyps,typ2',check = decomp typ2 in
+        (x',typ1)::xtyps, typ2', (Term_util.subst x (make_var x')) -| check
     | Tuple xtyps -> [], typ, fun _ -> assert false
     | Inter typs -> assert false
     | Union typs -> assert false
@@ -1977,13 +1977,13 @@ let rec beta_reduce t =
 
 let replace_bottom_def = make_trans ()
 
-let replace_bottom_def_term t =
-  match t.desc with
+let replace_bottom_def_desc desc =
+  match desc with
   | Let(flag, [f,xs,t1], t2) when is_bottom_def flag f xs t1 ->
-      make_let [f,xs,make_bottom t1.typ] @@ replace_bottom_def.tr_term t2
-  | _ -> replace_bottom_def.tr_term_rec t
+      Let(flag, [f,xs,make_bottom t1.typ], replace_bottom_def.tr_term t2)
+  | _ -> replace_bottom_def.tr_desc_rec desc
 
-let () = replace_bottom_def.tr_term <- replace_bottom_def_term
+let () = replace_bottom_def.tr_desc <- replace_bottom_def_desc
 let replace_bottom_def = replace_bottom_def.tr_term
 
 
