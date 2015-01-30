@@ -5,7 +5,7 @@ open Term_util
 exception RaiseExcep of int list * typed_term
 exception EventFail
 
-let fix f v = {desc=Label(InfoId f, v); typ = v.typ}
+let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=[]}
 let rec fun_info args_rev f t =
   match t.desc with
       Fun(x,t1) -> make_fun x (fun_info (x::args_rev) f t1)
@@ -51,11 +51,11 @@ let rec print_value fm t =
       in
       Format.fprintf fm "[%a]" (print_list print_value ";") (aux t)
   | Tuple[t_1;t_2] -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
-  | _ -> print_term fm t
+  | _ -> Print.term fm t
 
 
 let rec eval_print fm rands t =
-  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." print_term t
+  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." Print.term t
                               (print_list Format.pp_print_int ";") rands;
   match t.desc with
   | Const(RandInt false) ->
@@ -161,13 +161,19 @@ let rec eval_print fm rands t =
         rands', v::vs
       in
       let rands',vs = List.fold_right aux ts (rands,[]) in
-      rands', {desc=Constr(s,vs); typ=t.typ}
+      rands', {desc=Constr(s,vs); typ=t.typ; attr=[]}
   | Match(t1,pat::pats) ->
       let rec check v p =
         match v.desc, p.pat_desc with
-        | _, PAny -> Some (fun t -> t)
+        | _, PAny -> Some Std.identity
         | _, PVar x -> Some (subst x v)
-        | _, PConst v' -> if v = v' then Some (fun t -> t) else None
+        | _, PConst v' -> if v = v' then Some Std.identity else None
+        | _, PAlias(p,x) ->
+            begin
+              match check v p with
+              | None -> None
+              | Some f -> Some (f -| subst x v)
+            end
         | Constr(s, vs), PConstruct(s', ps) ->
             if s <> s'
             then None
@@ -178,7 +184,7 @@ let rec eval_print fm rands t =
                 | Some f ->
                     match check v p with
                     | None -> None
-                    | Some f' -> Some (fun t -> f (f' t))
+                    | Some f' -> Some (f -| f')
               in
               List.fold_left2 aux (Some Std.identity) vs ps
         | Nil, PNil -> Some (fun t -> t)
@@ -187,14 +193,14 @@ let rec eval_print fm rands t =
               match check v1 p1, check v2 p2 with
               | None, _
               | _, None -> None
-              | Some f1, Some f2 -> Some (fun t -> f1 (f2 t))
+              | Some f1, Some f2 -> Some (f1 -| f2)
             end
         | Tuple[v1;v2], PTuple[p1;p2] ->
             begin
               match check v1 p1, check v2 p2 with
               | None, _
               | _, None -> None
-              | Some f1, Some f2 -> Some (fun t -> f1 (f2 t))
+              | Some f1, Some f2 -> Some (f1 -| f2)
             end
         | Record _, PRecord _ -> assert false
         | _, POr(p1, p2) ->
@@ -249,7 +255,7 @@ let rec eval_print fm rands t =
       let r = eval_print fm rands t' in
       Format.fprintf fm "@]";
       r
-  | _ -> Format.printf "inlined_f: %a@." print_constr t; assert false
+  | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
 
 let print fm (ce, t) =
   try

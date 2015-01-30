@@ -50,7 +50,7 @@ let rec print fm = function
   | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
       Format.fprintf fm "{%d}" n
   | Base(base,x,p) ->
-      Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base S.print_term p
+      Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
   | Fun(x, typ1, typ2) ->
       if occur x typ2
       then Format.fprintf fm "(@[<hov 4>%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2
@@ -76,14 +76,14 @@ let rec print fm = function
       then
         if p_i = U.true_term
         then Format.fprintf fm "[%a]@ %a" Id.print y print typ2
-        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.print_term p_i print typ2
+        else Format.fprintf fm "[%a:%a]@ %a" Id.print y Print.term p_i print typ2
       else
         if p_i = U.true_term
         then Format.fprintf fm "%a" print typ2
-        else Format.fprintf fm "[%a:%a]@ %a" Id.print y S.print_term p_i print typ2;
+        else Format.fprintf fm "[%a:%a]@ %a" Id.print y Print.term p_i print typ2;
       Format.fprintf fm " list";
       if p_len <> U.true_term
-      then Format.fprintf fm "|%a:%a|" Id.print x S.print_term p_len
+      then Format.fprintf fm "|%a:%a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;
@@ -167,6 +167,7 @@ let rename typ =
   Id.reset_counter ();
   typ'
 
+
 let rec to_simple typ =
   match typ with
   | Base(Unit, _, _) -> Type.TUnit
@@ -208,3 +209,26 @@ and generate typ =
   | Union typs -> unsupported "Ref_type.generate: Union"
   | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
   | List(x,p_len,y,p_i,typ) -> unsupported "Ref_type.generate: List"
+
+let to_abst_typ_base b =
+  match b with
+  | Unit -> Type.TUnit
+  | Bool -> Type.TBool
+  | Int -> Type.TInt
+  | Abst _ -> unsupported "to_abst_typ_base"
+
+let rec to_abst_typ typ =
+  match typ with
+  | Base(b, x, t) ->
+      let x' = Id.set_typ x @@ to_abst_typ_base b in
+      Type.TPred(x', Term_util.decomp_bexp t)
+  | Fun(x,typ1,typ2) ->
+      let x' = Id.set_typ x @@ to_abst_typ typ1 in
+      let typ2' = to_abst_typ typ2 in
+      Type.TFun(x', typ2')
+  | Tuple xtyps ->
+      Type.TTuple (List.map (fun (x,typ) -> Id.set_typ x @@ to_abst_typ typ) xtyps)
+  | Inter typs
+  | Union typs -> List.fold_right (Term_util.merge_typ -| to_abst_typ) typs Type.typ_unknown
+  | ExtArg _ -> unsupported "to_abst_typ"
+  | List _ -> unsupported "to_abst_typ"

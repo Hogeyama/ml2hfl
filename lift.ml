@@ -182,9 +182,9 @@ let rec lift_aux post xs t =
         let defs,t' = lift_aux post xs t in
         defs, Proj(i,t')
     | Bottom -> [], Bottom
-    | _ -> Format.printf "lift: %a@." print_term t; assert false
+    | _ -> Format.printf "lift: %a@." Print.term t; assert false
   in
-  defs, {desc=desc; typ=t.typ}
+  defs, {desc; typ=t.typ; attr=t.attr}
 
 let lift ?(args=[]) t =
   lift_aux "" (set_of_list args) t,
@@ -309,9 +309,9 @@ let rec lift_aux' post xs t =
         let defs,t' = lift_aux' post xs t in
         defs, Proj(i,t')
     | Bottom -> [], Bottom
-    | _ -> Format.printf "lift: %a@." print_term t; assert false
+    | _ -> Format.printf "lift: %a@." Print.term t; assert false
   in
-  defs, {desc=desc; typ=t.typ}
+  defs, {t with desc}
 
 let lift' ?(args=[]) t =
   lift_aux' "" (set_of_list args) t, get_rtyp_lift t

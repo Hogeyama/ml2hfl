@@ -78,7 +78,7 @@ let parse_error _ = print_error_information ()
 %%
 
 prog:
-  MAIN id defs TYPES env EOF { {main=$2; defs=$3; env=$5} }
+  MAIN id defs TYPES env EOF { {main=$2; defs=$3; env=$5; attr=[]} }
 
 defs:
 | def
@@ -125,7 +125,7 @@ simple_term:
 | FALSE
   { Const False }
 | RANDINT
-  { Const RandInt }
+  { Const (RandInt None) }
 | END
   { Const CPS_result }
 

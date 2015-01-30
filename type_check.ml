@@ -9,14 +9,14 @@ let var = Id.make (-1) "" (typ_unknown:typ)
 let check_var x typ =
   if Type.can_unify (Id.typ x) typ
   then ()
-  else (Format.printf "check_var: (%a:%a), %a@." Id.print x Syntax.print_typ (Id.typ x) Syntax.print_typ typ; assert false)
+  else (Format.printf "check_var: (%a:%a), %a@." Id.print x Print.typ (Id.typ x) Print.typ typ; assert false)
 
 let rec check t typ =
-  if false then Format.printf "CHECK: %a, %a@." print_term t Syntax.print_typ typ;
+  if false then Format.printf "CHECK: %a, %a@." Print.term t Print.typ typ;
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@."
-                      (Color.red print_term') t
-                      (Color.yellow Syntax.print_typ) typ; assert false);
+                      (Color.red Print.term') t
+                      (Color.yellow Print.typ) typ; assert false);
   match t.desc, elim_tpred t.typ with
   | Label(_, t), _ -> check t typ
   | Const Unit, TUnit -> ()
@@ -67,11 +67,11 @@ let rec check t typ =
         | [],typ -> check t typ
         | x::[],typ ->
             let f,_,_ = List.hd bindings in
-            Format.printf "%a %a@." Id.print f print_typ (Id.typ f);
-            Format.printf "[%a] %a@." Id.print x print_typ typ;
+            Format.printf "%a %a@." Id.print f Print.typ (Id.typ f);
+            Format.printf "[%a] %a@." Id.print x Print.typ typ;
             assert false
         | x::xs,typ ->
-            Format.printf "%a %a@." Id.print x print_typ typ;
+            Format.printf "%a %a@." Id.print x Print.typ typ;
             assert false
       in
       List.iter (fun (f,xs,t) -> aux t (xs, Id.typ f)) bindings;
@@ -142,7 +142,7 @@ let rec check t typ =
       match t.typ with
         TConstr _ -> assert false
       | _->
-      Format.printf "check': %a, %a@." print_term' t (Color.yellow Syntax.print_typ) t.typ;
+      Format.printf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false
 
 let check t typ = if Flag.check_typ then check t typ

@@ -55,21 +55,21 @@ let make_spec n =
 let capitalize_var = String.capitalize
 let uncapitalize_var = String.uncapitalize
 
-let capitalize {env=env;defs=defs;main=main} =
+let capitalize {env;defs;main;attr} =
   let env' = List.map (Pair.map_fst capitalize_var) env in
   let map = List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
   let aux (f,xs,t1,e,t2) = capitalize_var f, xs, subst_map map t1, e, subst_map map t2 in
   let defs' = List.map aux defs in
   let main' = capitalize_var main in
-    {env=env'; defs=defs'; main=main'}
+  {env=env'; defs=defs'; main=main'; attr}
 
 
-let elim_non_det ({defs=defs;main=main} as prog) =
+let elim_non_det ({defs;main;attr} as prog) =
   let env = get_ext_fun_env prog in
   let check f (g,_,_,_,_) = f = g in
   let mem f defs = List.exists (check f) defs in
   let rec elim_non_det_def = function
-      [] -> []
+    | [] -> []
     | (f,xs,t1,e,t2)::defs when mem f defs ->
         let f' = rename_id f in
         let defs1,defs2 = List.partition (check f) defs in
@@ -77,12 +77,12 @@ let elim_non_det ({defs=defs;main=main} as prog) =
         let ts = List.map (fun x -> Var x) xs in
         let aux f = make_app (Var f) ts in
         let t = List.fold_left (fun t (f,_,_,_,_) -> make_br (aux f) t) (aux f') defs1' in
-          (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
+        (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
     | def::defs -> def :: elim_non_det_def defs
   in
-    Typing.infer {env=env; defs=elim_non_det_def defs; main=main}
+  Typing.infer {env; defs=elim_non_det_def defs; main; attr}
 
-let make_bottom {env=env;defs=defs;main=main} =
+let make_bottom {env;defs;main;attr} =
   let bottoms = ref [] in
   let aux_def (f,xs,t1,e,t2) =
     let f_typ = List.assoc f env in
@@ -136,7 +136,7 @@ let make_bottom {env=env;defs=defs;main=main} =
   in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (List.unique !bottoms) in
-  {env=env; defs=bottom_defs@@@defs'; main=main}
+  {env; defs=bottom_defs@@@defs'; main; attr}
 
 
 let rec eta_expand_term env = function
@@ -195,11 +195,11 @@ let rec church_encode_term = function
   | App(t1, t2) -> App(church_encode_term t1, church_encode_term t2)
   | Let _ -> assert false
   | Fun _ -> assert false
-let church_encode {env=env;defs=defs;main=main} =
+let church_encode {env;defs;main;attr} =
   let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
   let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
   let defs' = List.map (map_body_def church_encode_term) defs @ [true_def; false_def] in
-  let prog = {env=[];defs=defs';main=main} in
+  let prog = {env=[];defs=defs';main;attr} in
   if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog prog;
   Typing.infer prog
 
@@ -256,7 +256,7 @@ let beta_reduce_term flag ((f,_,_,_,_) as def) t =
     then beta_reduce_term flag def t
     else (if n >= 2 then flag := true; t)
 
-let beta_reduce_aux {env=env;defs=defs;main=main} =
+let beta_reduce_aux {env;defs;main;attr} =
   let rec aux defs1 = function
       [] -> defs1
     | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@@def::defs2) ->
@@ -269,7 +269,7 @@ let beta_reduce_aux {env=env;defs=defs;main=main} =
           else aux defs1' defs2'
     | def::defs2 -> aux (defs1@[def]) defs2
   in
-    {env=env; defs = aux [] defs; main=main}
+  {env; defs = aux [] defs; main; attr}
 
 let rec beta_reduce prog =
   let prog' = beta_reduce_aux prog in
@@ -279,7 +279,7 @@ let rec beta_reduce prog =
 
 
 
-let model_check_aux (prog,spec) =
+let model_check (prog,spec) =
   let prog = Typing.infer prog in
   let prog = if Flag.useless_elim then Useless_elim.elim prog else prog in
   let prog = if Flag.beta_reduce then beta_reduce prog else prog in

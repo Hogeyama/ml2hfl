@@ -35,9 +35,9 @@ let lift_def (f,xs,t1,e,t2) =
   let defs1,t1' = lift_term xs t1 in
   let defs2,t2'' = lift_term xs' t2' in
     (f, xs', t1', e, t2'')::defs1@defs2
-let lift {defs=defs; main=main} =
+let lift {defs; main; attr} =
   let defs' = List.rev_flatten_map lift_def defs in
-  Typing.infer {env=[];defs=defs';main=main}
+  Typing.infer {env=[]; defs=defs'; main; attr}
 
 
 
@@ -78,8 +78,8 @@ let lift_def2 (f,xs,t1,e,t2) =
   let defs1,t1' = lift_term2 xs t1 in
   let defs2,t2'' = lift_term2 xs t2' in
     (f, xs@ys, t1', e, t2'')::defs1@defs2
-let lift2 {defs; main} =
+let lift2 {defs; main; attr} =
   let defs = List.flatten_map lift_def2 defs in
-  let prog =  {env=[]; defs; main} in
+  let prog =  {env=[]; defs; main; attr} in
   let () = if false then Format.printf "LIFTED:\n%a@." CEGAR_print.prog prog in
   Typing.infer prog

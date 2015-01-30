@@ -15,7 +15,7 @@ val get_prefix: Syntax.node list -> (Syntax.id * ('a * Syntax.typed_term)) list 
 *)
 *)
 type result =
-    Feasible of (string * CEGAR_syntax.typ) list * int list
+  | Feasible of int list
   | Infeasible of CEGAR_syntax.ce
 
 

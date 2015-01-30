@@ -5,14 +5,14 @@ val merge_typ :
 val trans_var : 'a Id.t -> string
 val trans_inv_var : string -> 'a Type.t Id.t
 val trans_inv_term : CEGAR_syntax.t -> Syntax.typed_term
-val trans_typ : CEGAR_util.S.typ -> CEGAR_syntax.t CEGAR_type.t
-val trans_binop : CEGAR_util.S.binop -> CEGAR_syntax.t
+val trans_typ : Syntax.typ -> CEGAR_syntax.t CEGAR_type.t
+val trans_binop : Syntax.binop -> CEGAR_syntax.t
 val trans_const :
-  CEGAR_util.S.const -> CEGAR_util.S.typ -> CEGAR_syntax.const
-val formula_of : CEGAR_util.S.typed_term -> CEGAR_syntax.t
+  Syntax.const -> Syntax.typ -> CEGAR_syntax.const
+val formula_of : Syntax.typed_term -> CEGAR_syntax.t
 val trans_def :
-  CEGAR_util.S.typ Id.t *
-  (CEGAR_util.S.typ Id.t list * CEGAR_util.S.typed_term) ->
+  Syntax.typ Id.t *
+  (Syntax.typ Id.t list * Syntax.typed_term) ->
   (string * CEGAR_syntax.t CEGAR_type.t * CEGAR_syntax.var list *
    CEGAR_syntax.t * 'a list * CEGAR_syntax.t)
   list
@@ -35,7 +35,6 @@ val event_of_temp : CEGAR_syntax.prog -> CEGAR_syntax.prog
 val uniq_env : ('a * 'b) list -> ('a * 'b) list
 
 val rename_prog :
-  ?is_cps:bool ->
   CEGAR_syntax.prog ->
   CEGAR_syntax.prog * (CEGAR_syntax.var * CEGAR_syntax.var) list *
   (CEGAR_syntax.var * 'a Type.t Id.t) list
@@ -48,13 +47,13 @@ val id_prog :
 val trans_ref_type : CEGAR_ref_type.t -> Ref_type.t
 
 val trans_term :
-  CEGAR_util.S.typed_term ->
+  Syntax.typed_term ->
   (string * CEGAR_syntax.t CEGAR_type.t * CEGAR_syntax.var list *
    CEGAR_syntax.t * 'a list * CEGAR_syntax.t)
   list * CEGAR_syntax.t
 
 val trans_prog :
-  ?spec:('a Id.t * CEGAR_util.S.typ) list ->
+  ?spec:('a Id.t * Syntax.typ) list ->
   Syntax.typed_term ->
   CEGAR_syntax.prog * (CEGAR_syntax.var * CEGAR_syntax.var) list *
   (CEGAR_syntax.var * 'b Type.t Id.t) list *

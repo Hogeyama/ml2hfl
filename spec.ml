@@ -24,42 +24,42 @@ let print {ref_env=renv; abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cega
   then
     begin
       Color.printf Color.Red "spec (refinement type assertions):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Ref_type.print) typ) renv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Ref_type.print) typ) renv;
       Format.printf "@."
     end;
   if aenv <> []
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) aenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Print.typ) typ) aenv;
       Format.printf "@."
     end;
   if cpsenv <> []
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment for CPS transformed program):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) cpsenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Print.typ) typ) cpsenv;
       Format.printf "@."
     end;
   if cegarenv <> []
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment for CEGAR-loop):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) cegarenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Print.typ) typ) cegarenv;
       Format.printf "@."
     end;
   if inlined <> []
   then
     begin
       Color.printf Color.Red "spec (inlined functions):@. @[";
-      List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined;
+      List.iter (Format.printf "@[%a@]@\n" Print.id) inlined;
       Format.printf "@."
     end;
   if inlined_f <> []
   then
     begin
       Color.printf Color.Red "spec (force inlined functions):@. @[";
-      List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined_f;
+      List.iter (Format.printf "@[%a@]@\n" Print.id) inlined_f;
       Format.printf "@."
     end
 

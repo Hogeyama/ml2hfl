@@ -57,7 +57,7 @@ let print_info () =
     begin
       if !Flag.exp2 then output_csv !Flag.result;
       if !Flag.add_closure_exparam && !Flag.result = "terminating" then
-        Format.printf "exparam inserted program:@. %a@." Syntax.print_term !ExtraParamInfer.origWithExparam;
+        Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
       if !Flag.termination && !Flag.result = "terminating" then
         begin
           List.iter
@@ -124,9 +124,8 @@ let main in_channel =
   if !Flag.input_cegar then
     let open CEGAR_syntax in
     let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
-    let prog' = Typing.infer ~is_cps:true {prog with env=[]} in
+    let prog' = Typing.infer {prog with env=[]} in
     let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
-    Flag.form := Flag.CPS :: !Flag.form;
     Main_loop.run_cegar {prog with env}
   else
     let orig = Parse.use_file lb in
@@ -134,7 +133,7 @@ let main in_channel =
     let parsed = Parser_wrapper.from_use_file orig in
     let () =
       if true && !Flag.debug_level > 0
-      then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Syntax.print_term parsed
+      then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed
     in
     if !Flag.split_assert
     then
@@ -145,13 +144,13 @@ let main in_channel =
       let open BRA_util in
       (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
       let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-      let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.print_term parsed in
+      let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
       let parsed = BRA_transform.regularization parsed in
-      let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.print_term parsed in
+      let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Print.term parsed in
       let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.print_term parsed in
+      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
       let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.print_term parsed in
+      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
       let holed_list = BRA_transform.to_holed_programs parsed in
       let result =
         try
@@ -231,10 +230,12 @@ let arg_spec =
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
+     "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types for each CEGAR-cycle";
+     "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      (* preprocessing *)
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
      "-list-option", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
-     "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
+     "-disable-preprocess", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures, CPS transformation, etc.";
      "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
      "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
      "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";
@@ -265,16 +266,17 @@ let arg_spec =
      "-neg-pred-off", Arg.Unit (fun _ -> Flag.never_use_neg_pred := true),
      " Never use negative predicates for abstraction";
      (* higher-order model checking *)
-     "-trecs", Arg.Set_string Flag.trecs,
-     Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
+     "-trecs-bin", Arg.Set_string Flag.trecs,
+                   Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      (* predicate discovery *)
-     "-fpat", Arg.String parse_fpat_arg, "<option> Pass <option> to FPAT";
+     "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
-     "-eap", Arg.Set Fpat.AbsType.extract_atomic_predicates, " Extract atomic predicates";
-     "-enable-cp", Arg.Set Fpat.RefTypInfer.exploit_cut_points, " Exploit cut-points";
      "-mp", Arg.Set Flag.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
+     (* SWT solver *)
+     "-cvc3-bin", Arg.Set_string Flag.cvc3,
+                  Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
      (* termination mode *)
      "-termination-disj",
      Arg.Unit (fun _ ->

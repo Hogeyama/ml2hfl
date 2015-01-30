@@ -22,7 +22,7 @@ type const =
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | RandInt
+  | RandInt of int option
   | RandBool
   | RandVal of string
   | And
@@ -41,11 +41,12 @@ type const =
   | Sub
   | Mul
   | Tuple of int
-  | Proj of int * int (* 0-origin *)
+  | Proj of int * int (* Proj(n,i): 0 <= i < n *)
   | If (* for abstraction and model-checking *)
   | Bottom
   | Label of int
   | CPS_result
+  | TypeAnnot of typ
 
 
 
@@ -70,7 +71,23 @@ and ce = ce_node list
 and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
-and prog = {env:env; defs:fun_def list; main:var}
+and attr = ACPS
+and prog = {env:env; defs:fun_def list; main:var; attr:attr list}
+
+
+let prefix_randint = "#randint"
+let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
+let decomp_randint_name s =
+  try
+    let s1,s2 = String.split s "_" in
+    assert (s1 = prefix_randint);
+    int_of_string s2
+  with _ -> raise (Invalid_argument "decomp_randint_name")
+let is_randint_var s =
+  try
+    ignore @@ decomp_randint_name s;
+    true
+  with _ -> false
 
 
 let _Const c = Const c
@@ -138,7 +155,8 @@ let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
 let make_label n t = make_app (Const (Label n)) [t]
-
+let make_proj n i t = make_app (Const (Proj(n,i))) [t]
+let make_tuple ts = make_app (Const (Tuple (List.length ts))) ts
 
 
 
@@ -153,29 +171,34 @@ let get_fv t = StringSet.elements @@ get_fv t
 
 
 let rec get_typ_arity = function
-    TFun(typ1,typ2) -> 1 + get_typ_arity (typ2 (Const Unit))
+  | TFun(typ1,typ2) -> 1 + get_typ_arity (typ2 (Const Unit))
   | typ -> 0
 
 
 let rec decomp_app = function
-    App(t1,t2) ->
+  | App(t1,t2) ->
       let t,ts = decomp_app t1 in
-        t, ts@[t2]
+      t, ts@[t2]
   | t -> t, []
 let rec decomp_fun = function
-    Fun(x,_,t) ->
+  | Fun(x,_,t) ->
       let xs,t = decomp_fun t in
-        x::xs, t
+      x::xs, t
   | t -> [], t
 let rec decomp_annot_fun acc = function
-    Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
+  | Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
   | t -> List.rev acc, t
 let decomp_annot_fun t = decomp_annot_fun [] t
 let rec decomp_tfun = function
-    TFun(typ1,typ2) ->
+  | TFun(typ1,typ2) ->
       let typs,typ = decomp_tfun (typ2 (Const Unit)) in
-        typ1::typs, typ
+      typ1::typs, typ
   | typ -> [], typ
+let rec decomp_let = function
+  | Let(x,t1,t2) ->
+      let bindings,t2' = decomp_let t2 in
+      (x,t1)::bindings, t2'
+  | t -> [], t
 
 
 
@@ -184,9 +207,9 @@ let is_parameter x = String.starts_with x Flag.extpar_header
 let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 
-let get_ext_funs {env=env; defs=defs} =
+let get_ext_funs {env; defs} =
   env
-  |> List.filter (fun (f,_) -> not (List.exists (fun (g,_,_,_,_) -> f = g) defs))
+  |> List.filter_out (fun (f,_) -> List.exists (fun (g,_,_,_,_) -> f = g) defs)
   |> List.map fst
 
 let get_ext_fun_env prog =
