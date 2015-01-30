@@ -28,7 +28,6 @@ and term =
   | Fun of id * typed_term
   | App of typed_term * typed_term list
   | If of typed_term * typed_term * typed_term
-  | Branch of typed_term * typed_term
   | Let of rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term

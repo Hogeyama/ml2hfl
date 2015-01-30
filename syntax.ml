@@ -33,7 +33,6 @@ and term =
   | Fun of id * typed_term
   | App of typed_term * typed_term list
   | If of typed_term * typed_term * typed_term
-  | Branch of typed_term * typed_term
   | Let of rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
@@ -173,7 +172,6 @@ let trans_desc trans = function
   | Fun(y, t) -> Fun(trans.tr_var y, trans.tr_term t)
   | App(t1, ts) -> App(trans.tr_term t1, List.map trans.tr_term ts)
   | If(t1, t2, t3) -> If(trans.tr_term t1, trans.tr_term t2, trans.tr_term t3)
-  | Branch(t1, t2) -> Branch(trans.tr_term t1, trans.tr_term t2)
   | Let(flag, bindings, t2) ->
       let bindings' = List.map (fun (f,xs,t) -> trans.tr_var f, List.map trans.tr_var xs, trans.tr_term t) bindings in
       let t2' = trans.tr_term t2 in
@@ -327,7 +325,6 @@ let trans2_gen_desc tr env = function
   | Fun(y, t) -> Fun(tr.tr2_var env y, tr.tr2_term env t)
   | App(t1, ts) -> App(tr.tr2_term env t1, List.map (tr.tr2_term env) ts)
   | If(t1, t2, t3) -> If(tr.tr2_term env t1, tr.tr2_term env t2, tr.tr2_term env t3)
-  | Branch(t1, t2) -> Branch(tr.tr2_term env t1, tr.tr2_term env t2)
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) = tr.tr2_var env f, List.map (tr.tr2_var env) xs, tr.tr2_term env t in
       Let(flag, List.map aux bindings, tr.tr2_term env t2)
@@ -470,7 +467,6 @@ let col_desc col = function
   | Fun(y, t) -> col.col_app (col.col_var y) (col.col_term t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) (col.col_term t1) ts
   | If(t1, t2, t3) -> col.col_app (col.col_term t1) @@ col.col_app (col.col_term t2) (col.col_term t3)
-  | Branch(t1, t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Let(flag, bindings, t2) ->
       let aux acc (f,xs,t) =
         col.col_app acc @@
@@ -624,7 +620,6 @@ let col2_desc col env = function
   | Fun(y, t) -> col.col2_app (col.col2_var env y) (col.col2_term env t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) (col.col2_term env t1) ts
   | If(t1, t2, t3) -> col.col2_app (col.col2_term env t1) @@ col.col2_app (col.col2_term env t2) (col.col2_term env t3)
-  | Branch(t1, t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Let(flag, bindings, t2) ->
       let aux acc (f,xs,t) =
         col.col2_app acc @@
@@ -847,10 +842,6 @@ let tr_col2_desc tc env = function
       let acc2,t2' = tc.tr_col2_term env t2 in
       let acc3,t3' = tc.tr_col2_term env t3 in
       tc.tr_col2_app acc1 @@ tc.tr_col2_app acc2 acc3, If(t1',t2',t3')
-  | Branch(t1, t2) ->
-      let acc1,t1' = tc.tr_col2_term env t1 in
-      let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, Branch(t1',t2')
   | Let(flag, bindings, t2) ->
       let aux env (f,xs,t) =
         let acc1,f' = tc.tr_col2_var env f in
@@ -1124,10 +1115,6 @@ let fold_tr_desc fld env = function
       let env'',t2' = fld.fold_tr_term env' t2 in
       let env''',t3' = fld.fold_tr_term env'' t3 in
       env''', If(t1',t2',t3')
-  | Branch(t1, t2) ->
-      let env',t1' = fld.fold_tr_term env t1 in
-      let env'',t2' = fld.fold_tr_term env' t2 in
-      env'', Branch(t1',t2')
   | Let(flag, bindings, t2) ->
       let aux env (f,xs,t) =
         let env',f' = fld.fold_tr_var env f in

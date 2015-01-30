@@ -28,7 +28,6 @@ let rec trans f i n t =
     | Raise _
     | TryWith _
     | Bottom
-    | Branch _
     | BinOp _
     | Not _
     | Label _ -> N (i+1)

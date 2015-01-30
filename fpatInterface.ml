@@ -475,8 +475,6 @@ let insert_extra_param t =
          Syntax.App(t1', ts'')
       | Syntax.If(t1, t2, t3) ->
          Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
-      | Syntax.Branch(t1, t2) ->
-         Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Let(flag, bindings, t2) ->
          let bvs' =
            bvs @

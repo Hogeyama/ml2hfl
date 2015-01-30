@@ -134,10 +134,6 @@ and remove_pair_aux t typ_opt =
       let t2' = root @@ remove_pair_aux t2 None in
       let t3' = root @@ remove_pair_aux t3 None in
       Leaf (make_if t1' t2' t3')
-  | Branch(t1, t2) ->
-      let t1' = root @@ remove_pair_aux t1 None in
-      let t2' = root @@ remove_pair_aux t2 None in
-      Leaf {desc=Branch(t1',t2'); typ=t1'.typ; attr=[]}
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) =
         let f' = root @@ remove_pair_var f in

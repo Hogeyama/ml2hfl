@@ -57,9 +57,6 @@ let rec check t typ =
       check t1 TBool;
       check t2 typ';
       check t3 typ'
-  | Branch(t1,t2), typ' ->
-      check t1 typ';
-      check t2 typ'
   | Let(flag, bindings, t2), typ' ->
       let rec aux t = function
           x::xs,TFun(y,typ) ->

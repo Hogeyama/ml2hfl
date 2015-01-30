@@ -518,7 +518,6 @@ let part_eval t =
           if t2 = t3
           then t2.desc
           else If(aux apply t1, aux apply t2, aux apply t3)
-      | Branch(t1, t2) -> Branch(aux apply t1, aux apply t2)
       | Let(flag, [f, xs, t1], t2) ->
           if is_apply xs t1.desc
           then (aux ((f,(xs,t1))::apply) (aux apply t2)).desc
@@ -677,8 +676,6 @@ let rec eval t =
         (eval t3).desc
     | If(t1, t2, t3) ->
         If(eval t1, eval t2, eval t3)
-    | Branch(t1, t2) ->
-        Branch(eval t1, eval t2)
     | Let _ -> assert false
     (*
     | Let(flag, f, xs, t1, t2) -> (*** assume that evaluation of t1 does not fail ***)
@@ -1019,7 +1016,6 @@ let rec inlined_f inlined fs t =
              let ts' = List.map (inlined_f inlined fs) ts in
              App(t1', ts'))
     | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
-    | Branch(t1, t2) -> Branch(inlined_f inlined fs t1, inlined_f inlined fs t2)
     | Let(flag, bindings, t2) ->
         let aux (f,xs,t) =
           (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
@@ -1245,7 +1241,6 @@ let rec search_fail path t =
       in
       aux [] 0 (t1::ts)
   | If(t1, t2, t3) -> search_fail (1::path) t1 @ search_fail (2::path) t2 @ search_fail (3::path) t3
-  | Branch(t1, t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
   | Let(_, defs, t) ->
       let rec aux acc i ts =
         match ts with
@@ -1307,9 +1302,6 @@ let rec screen_fail path target t =
     | If(t1, t2, t3) ->
         let aux i t = screen_fail (i::path) target t in
         If(aux 1 t1, aux 2 t2, aux 3 t3)
-    | Branch(t1, t2) ->
-        let aux i t = screen_fail (i::path) target t in
-        Branch(aux 1 t1, aux 2 t2)
     | Let(flag, defs, t) ->
         let aux i t = screen_fail (i::path) target t in
         let aux_def i (f,xs,t) = f, xs, aux i t in
@@ -1535,8 +1527,6 @@ let rec diff_terms t1 t2 =
       diff_terms t1' t2'
   | If(t11,t12,t13), If(t21,t22,t23) ->
       diff_terms t11 t21 @ diff_terms t12 t22 @ diff_terms t13 t23
-  | Branch(t11,t12), Branch(t21,t22) ->
-      diff_terms t11 t21 @ diff_terms t12 t22
   | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) -> [t1,t2]
   | BinOp(op1,t11,t12), BinOp(op2,t21,t22) ->
       if op1 = op2

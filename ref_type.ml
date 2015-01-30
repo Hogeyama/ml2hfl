@@ -184,24 +184,45 @@ let rec to_simple typ =
   | List _ -> assert false
 
 
-let rec generate_assume x typ =
+let rec generate_check x typ =
   let open Term_util in
   match typ with
   | Base(base, y, p) ->
-      subst_var y x @@ make_assume p unit_term
+      subst_var y x p
   | Fun(y,typ1,typ2) ->
       let t = make_app (make_var x) [subst y (make_var x) @@ generate typ1] in
       make_if randbool_unit_term unit_term t
+
+and generate_simple typ =
+  let open Term_util in
+  match typ with
+  | Base(Int, x, p) ->
+      let x' = Id.new_var Type.TInt in
+      make_let [x',[],randint_unit_term] @@ make_assume (generate_check x' typ) @@ make_var x'
+  | Fun(x,typ1,typ2) ->
+      let x' = Id.new_var @@ to_simple typ1 in
+      let t1 = make_or randbool_unit_term @@ generate_check x' typ1 in
+      let t2 = subst_var x x' @@ generate typ2 in
+      let t3 = generate_simple typ2 in
+      make_fun x' @@ make_if t1 t2 t3
+  | Tuple xtyps -> unsupported "Ref_type.generate_simple: Tuple"
+  | Inter typs -> unsupported "Ref_type.generate_simple: Inter"
+  | Union typs -> unsupported "Ref_type.generate_simple: Union"
+  | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate_simple: ExtArg"
+  | List(x,p_len,y,p_i,typ) -> unsupported "Ref_type.generate_simple: List"
 
 and generate typ =
   let open Term_util in
   match typ with
   | Base(Int, x, p) ->
       let x' = Id.new_var Type.TInt in
-      make_let [x',[],randint_unit_term] @@ make_seq (generate_assume x' typ) @@ make_var x'
+      make_let [x',[],randint_unit_term] @@ make_assume (generate_check x' typ) @@ make_var x'
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var @@ to_simple typ1 in
-      make_fun x' @@ subst_var x x' @@ make_seq (generate_assume x' typ1) @@ generate typ2
+      let t1 = make_or randbool_unit_term @@ generate_check x' typ1 in
+      let t2 = subst_var x x' @@ generate typ2 in
+      let t3 = generate_simple typ2 in
+      make_fun x' @@ make_if t1 t2 t3
   | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
   | Inter typs -> unsupported "Ref_type.generate: Inter"
   | Union typs -> unsupported "Ref_type.generate: Union"

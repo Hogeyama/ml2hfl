@@ -393,7 +393,6 @@ let rec add_preds_cont_aux k t =
         let _,ts' = List.fold_right aux ts (t1.typ,[]) in
         App(add_preds_cont_aux k t1, ts')
     | If(t1, t2, t3) -> If(add_preds_cont_aux k t1, add_preds_cont_aux k t2, add_preds_cont_aux k t3)
-    | Branch(t1, t2) -> Branch(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
     | Let(flag, bindings, t2) ->
         let bindings' = List.map (fun (f,xs,t) -> f, xs, add_preds_cont_aux k t) bindings in
         let t2' = add_preds_cont_aux k t2 in

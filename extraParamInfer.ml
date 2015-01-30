@@ -71,7 +71,6 @@ let rec insertExparam scope expr =
 	desc = If ((insertExparam scope predicate),
 		   (insertExparam scope thenClause),
 		   (insertExparam scope elseClause))}
-    | Branch (_, _) -> assert false (* ? *)
     | Let (flag, bindings, e) ->
       let rec extend sc = function
 	| [] -> sc

@@ -99,10 +99,6 @@ let rec lift_aux post xs t =
         let defs2,t2' = lift_aux post xs t2 in
         let defs3,t3' = lift_aux post xs t3 in
         defs1 @ defs2 @ defs3, If(t1',t2',t3')
-    | Branch(t1,t2) ->
-        let defs1,t1' = lift_aux post xs t1 in
-        let defs2,t2' = lift_aux post xs t2 in
-        defs1 @ defs2, Branch(t1',t2')
     | Let(Nonrecursive,bindings,t2) ->
         let aux (f,ys,t1) =
           let fv = IdSet.inter (get_fv' t1) xs in
@@ -222,10 +218,6 @@ let rec lift_aux' post xs t =
         let defs2,t2' = lift_aux' post xs t2 in
         let defs3,t3' = lift_aux' post xs t3 in
         defs1 @ defs2 @ defs3, If(t1',t2',t3')
-    | Branch(t1,t2) ->
-        let defs1,t1' = lift_aux' post xs t1 in
-        let defs2,t2' = lift_aux' post xs t2 in
-        defs1 @ defs2, Branch(t1',t2')
     | Let(Nonrecursive,[x, [], t1],t2) ->
         let defs1, t1' = lift_aux' post xs t1 in
 	let defs2, t2' = lift_aux' post (IdSet.add x xs) t2 in

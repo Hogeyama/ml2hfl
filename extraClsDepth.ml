@@ -64,7 +64,6 @@ let rec closureDepth varToDepth expr =
       dynamicGreaterThan (closureDepth varToDepth f) (incrementDepth (maxDepthOf (List.map (closureDepth varToDepth) args)))
     | If (predicate, thenClause, elseClause) ->
       make_if predicate (closureDepth varToDepth thenClause) (closureDepth varToDepth elseClause)
-    | Branch (_, _) -> assert false (* ? *)
     | Let (_, _, _) -> assert false (* TODO *)
     | BinOp (_, _, _) -> make_int 0
     | Not _ -> make_int 0
@@ -96,7 +95,6 @@ let rec insertClsDepth varToDepth expr =
 	desc = If ((insertClsDepth varToDepth predicate),
 		   (insertClsDepth varToDepth thenClause),
 		   (insertClsDepth varToDepth elseClause))}
-    | Branch (_, _) -> assert false (* ? *)
     | Let (flag, bindings, e) ->
       let makeBaseEnv varToDepth = function
 	| (x, [], body) when is_base_typ (Id.typ x) -> varToDepth

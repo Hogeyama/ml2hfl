@@ -122,10 +122,6 @@ and print_desc pri typ fm desc =
       let s1,s2 = paren pri (p+1) in
       fprintf fm "%s@[<v>if %a then@   @[%a@]@ else@   @[%a@]@]%s"
               s1 (print_term p typ) t1 (print_term p typ) t2 (print_term p typ) t3 s2
-  | Branch(t1, t2) ->
-      let p = 80 in
-      let s1,s2 = paren pri p in
-      fprintf fm "@[%sbr %a %a%s@]" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | Let(_, [], _) -> assert false
   | Let(flag, bindings, t2) ->
       let p = 10 in
@@ -300,10 +296,6 @@ let rec print_term' pri fm t =
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%s@[@[if %a@]@ then @[%a@]@ else @[%a@]@]%s"
                 s1 (print_term' p) t1 (print_term' p) t2 (print_term' p) t3 s2
-    | Branch(t1, t2) ->
-        let p = 8 in
-        let s1,s2 = paren pri p in
-        fprintf fm "%sbr %a %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
     | Let(flag, bindings, t2) ->
         let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
         let p = 10 in
@@ -456,7 +448,6 @@ let string_of_constr t =
   | Fun _ -> "Fun"
   | App _ -> "App"
   | If _ -> "If"
-  | Branch _ -> "Branch"
   | Let _ -> "Let"
   | BinOp _ -> "BinOp"
   | Not _ -> "Not"

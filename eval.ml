@@ -90,7 +90,6 @@ let rec eval_print fm rands t =
       if b
       then eval_print fm rands' t2
       else eval_print fm rands' t3
-  | Branch(t1, t2) -> assert false
   | Let(flag, bindings, t2) ->
       let aux (rands,vs) (f,xs,t) =
         let rands',v = eval_print fm rands (List.fold_right make_fun xs t) in

@@ -37,10 +37,6 @@ let false_term = {desc=Const False;typ=TBool; attr=[]}
 let cps_result = {desc=Const CPS_result; typ=typ_result; attr=[]}
 let fail_term = {desc=Event("fail",false);typ=typ_event; attr=[]}
 let fail_term_cps = {desc=Event("fail",true);typ=typ_event'; attr=[]}
-let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
-let randint_unit_term = {desc=App(randint_term,[unit_term]); typ=TInt; attr=[]}
-let randbool_unit_term =
-  {desc=BinOp(Eq, {desc=App(randint_term, [unit_term]);typ=TInt; attr=[]}, {desc=Const(Int 0);typ=TInt; attr=[]}); typ=TBool; attr=[]}
 let make_bottom typ = {desc=Bottom;typ=typ; attr=[]}
 let make_event s = {desc=Event(s,false);typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=[]}
@@ -152,9 +148,6 @@ let make_if_ t1 t2 t3 =
             t2.typ
       in
       {desc=If(t1, t2, t3); typ=typ; attr=[]}
-let make_branch t2 t3 =
-  assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
-  {desc=Branch(t2, t3); typ=t2.typ; attr=[]}
 let make_eq t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
   {desc=BinOp(Eq, t1, t2); typ=TBool; attr=[]}
@@ -222,6 +215,11 @@ let make_construct c ts =
       List.iter2 (fun t typ -> assert (Type.can_unify t.typ typ)) ts typs
     end;
   {desc=Constr(c,ts); typ=Type_decl.constr_typ c; attr=[]}
+let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
+let randint_unit_term = make_app randint_term [unit_term]
+let randbool_unit_term = make_eq randint_unit_term (make_int 0)
+let make_branch t2 t3 =
+  make_if_ randbool_unit_term t2 t3
 
 let imply t1 t2 = make_or (make_not t1) t2
 let and_list ts = match ts with
@@ -492,7 +490,6 @@ and same_desc t1 t2 =
   | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
   | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
   | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
-  | Branch(t11,t12), Branch(t21,t22) -> same_term t11 t21 && same_term t12 t22
   | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) ->
      let same_binding (f,xs,t1) (g,ys,t2) = Id.same f g && same_list Id.same xs ys && same_term t1 t2 in
      flag1 = flag1 && same_list same_binding bindings1 bindings2 && same_term t1 t2
@@ -618,7 +615,6 @@ let has_no_effect = make_col true (&&)
 let has_no_effect_term t =
   match t.desc with
   | App _ -> false
-  | Branch _ -> false
   | Let(_,bindings,t) ->
       has_no_effect.col_term t && List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect.col_term t) bindings
   | Field _ -> false
