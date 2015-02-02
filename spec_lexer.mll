@@ -29,6 +29,7 @@ rule token = parse
 | '>' { GTHAN }
 | "<=" { LEQ }
 | ">=" { GEQ }
+| "<>" { NEQ }
 | "||" { OR }
 | "&&" { AND }
 | "not" { NOT }
@@ -50,6 +51,8 @@ rule token = parse
 | "val" { VAL }
 | "valcps" { VALCPS }
 | "valcegar" { VALCEGAR }
+| "true" { TRUE }
+| "false" { FALSE }
 | digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 (*| lower (digit|lower|upper|'_')* *)

@@ -218,7 +218,7 @@ let copy_poly_funs t =
 
 let rec define_randvalue env defs typ =
   if List.mem_assoc typ env
-  then env, defs, make_app (make_var (List.assoc typ env)) [unit_term]
+  then env, defs, make_app (make_var @@ List.assoc typ env) [unit_term]
   else
     match typ with
     | TUnit -> env, defs, unit_term
@@ -236,9 +236,7 @@ let rec define_randvalue env defs typ =
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
         let env'',defs',t_typ' = define_randvalue env' defs typ' in
-        let t_typ =
-          make_if randbool_unit_term (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term]))
-        in
+        let t_typ = make_if randbool_unit_term (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term])) in
         env'', (f,[u],t_typ)::defs', make_app (make_var f) [unit_term]
     | TTuple xs ->
         let aux x (env,defs,ts) =
@@ -356,8 +354,9 @@ let ref_to_assert ref_env t =
         [], typ, fun y -> make_assert @@ Term_util.subst x y p
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_simple typ1 in
-        let xtyps,typ2',check = decomp typ2 in
-        (x',typ1)::xtyps, typ2', (Term_util.subst x (make_var x')) -| check
+        let typ2' = subst x (make_var x') typ2 in
+        let xtyps,typ2'',check = decomp typ2' in
+        (x',typ1)::xtyps, typ2'', check
     | Tuple xtyps -> [], typ, fun _ -> assert false
     | Inter typs -> assert false
     | Union typs -> assert false
@@ -365,6 +364,11 @@ let ref_to_assert ref_env t =
     | List(y,p_len,z,p_i,typ) -> assert false
   in
   let aux (f, typ) =
+    if not @@ Type.same_shape (Id.typ f) (to_simple typ) then
+      begin
+        Format.printf "VAR: %a@.  Prog: %a@.  Spec: %a@." Id.print f Print.typ (Id.typ f) Ref_type.print typ;
+        fatal @@ Format.sprintf "Type of %s in the specification is wrong?" (Id.name f)
+      end;
     let xtyps,typ',check = decomp typ in
     let defs = List.map (fun (x,typ) -> x, [], generate typ) xtyps in
     let body = make_app (make_var f) @@ List.map (make_var -| fst) xtyps in
@@ -624,8 +628,7 @@ let replace_typ_desc env desc =
             let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
             Format.printf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
             let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
-            let msg = msg ^ " (please specify monomorphic types if polymorphic types exist)" in
-            raise (Fatal msg)
+            fatal @@ msg ^ " (please specify monomorphic types if polymorphic types exist)"
           end;
         let xs' =
           let ys = List.take (List.length xs) (get_args (Id.typ f')) in

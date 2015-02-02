@@ -218,8 +218,7 @@ let make_construct c ts =
 let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = make_app randint_term [unit_term]
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
-let make_branch t2 t3 =
-  make_if_ randbool_unit_term t2 t3
+let make_br t2 t3 = make_if_ randbool_unit_term t2 t3
 
 let imply t1 t2 = make_or (make_not t1) t2
 let and_list ts = match ts with

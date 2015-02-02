@@ -49,7 +49,7 @@ val make_sub : typed_term -> typed_term -> typed_term
 val make_mul : typed_term -> typed_term -> typed_term
 val make_neg : typed_term -> typed_term
 val make_if : typed_term -> typed_term -> typed_term -> typed_term
-val make_branch : typed_term -> typed_term -> typed_term
+val make_br : typed_term -> typed_term -> typed_term
 val make_eq : typed_term -> typed_term -> typed_term
 val make_eq_dec : typed_term -> typed_term -> typed_term
 val make_neq : typed_term -> typed_term -> typed_term

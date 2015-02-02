@@ -181,53 +181,84 @@ let rec to_simple typ =
   | Union [] -> assert false
   | Union (typ::_) -> to_simple typ
   | ExtArg _ -> assert false
-  | List _ -> assert false
+  | List(_,_,_,_,typ) -> Type.TList (to_simple typ)
 
 
 let rec generate_check x typ =
-  let open Term_util in
   match typ with
   | Base(base, y, p) ->
-      subst_var y x p
+      U.subst_var y x p
   | Fun(y,typ1,typ2) ->
-      let t = make_app (make_var x) [subst y (make_var x) @@ generate typ1] in
-      make_if randbool_unit_term unit_term t
+      let t_typ1 = generate typ1 in
+      let z = Id.new_var t_typ1.Syntax.typ in
+      let t_typ2 = U.make_app (U.make_var x) [U.make_var z] in
+      let r = Id.new_var ~name:"r" t_typ2.Syntax.typ in
+      let typ2' = subst y (U.make_var z) typ2 in
+      U.make_lets [z,[],t_typ1; r,[],t_typ2] @@ generate_check r typ2'
+  | Tuple [y,typ1;_,typ2] ->
+      let t1 = U.make_fst @@ U.make_var x in
+      let t2 = U.make_snd @@ U.make_var x in
+      let x1 = U.var_of_term t1 in
+      let x2 = U.var_of_term t2 in
+      let typ2' = subst y (U.make_var x1) typ2 in
+      let t = U.make_and (generate_check x1 typ1) (generate_check x2 typ2') in
+      U.make_lets [x1,[],t1; x2,[],t2] t
+  | _ -> assert false
+
+and generate_simple_aux typ =
+  match typ with
+  | Type.TInt -> U.randint_unit_term
+  | Type.TBool -> U.randbool_unit_term
+  | Type.TUnit -> U.unit_term
+  | Type.TFun(x,typ') ->
+      let x' = Id.new_var_id x in
+      U.make_fun x' @@ generate_simple typ'
+  | Type.TTuple xs ->
+      U.make_tuple @@ List.make (List.length xs) @@ generate_simple @@ Id.typ @@ List.hd xs
+  | _ -> unsupported "Ref_type.generate_simple"
 
 and generate_simple typ =
-  let open Term_util in
-  match typ with
-  | Base(Int, x, p) ->
-      let x' = Id.new_var Type.TInt in
-      make_let [x',[],randint_unit_term] @@ make_assume (generate_check x' typ) @@ make_var x'
-  | Fun(x,typ1,typ2) ->
-      let x' = Id.new_var @@ to_simple typ1 in
-      let t1 = make_or randbool_unit_term @@ generate_check x' typ1 in
-      let t2 = subst_var x x' @@ generate typ2 in
-      let t3 = generate_simple typ2 in
-      make_fun x' @@ make_if t1 t2 t3
-  | Tuple xtyps -> unsupported "Ref_type.generate_simple: Tuple"
-  | Inter typs -> unsupported "Ref_type.generate_simple: Inter"
-  | Union typs -> unsupported "Ref_type.generate_simple: Union"
-  | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate_simple: ExtArg"
-  | List(x,p_len,y,p_i,typ) -> unsupported "Ref_type.generate_simple: List"
+  U.make_br (U.make_fail typ) (generate_simple_aux typ)
 
 and generate typ =
-  let open Term_util in
   match typ with
   | Base(Int, x, p) ->
       let x' = Id.new_var Type.TInt in
-      make_let [x',[],randint_unit_term] @@ make_assume (generate_check x' typ) @@ make_var x'
+      U.make_let [x',[],U.randint_unit_term] @@ U.make_assume (generate_check x' typ) @@ U.make_var x'
+  | Base(Bool, x, p) ->
+      let x' = Id.new_var Type.TBool in
+      U.make_let [x',[],U.randbool_unit_term] @@ U.make_assume (generate_check x' typ) @@ U.make_var x'
+  | Base(Unit, x, p) ->
+      U.make_assume (generate_check x typ) @@ U.unit_term
+  | Base(_, _, _) -> unsupported "Ref_type.generate: Base"
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var @@ to_simple typ1 in
-      let t1 = make_or randbool_unit_term @@ generate_check x' typ1 in
-      let t2 = subst_var x x' @@ generate typ2 in
-      let t3 = generate_simple typ2 in
-      make_fun x' @@ make_if t1 t2 t3
+      let typ2' = subst x (U.make_var x') typ2 in
+      let t1 = U.make_or U.randbool_unit_term @@ generate_check x' typ1 in
+      let t2 = generate typ2' in
+      let t3 = generate_simple @@ to_simple typ2' in
+      U.make_fun x' @@ U.make_if t1 t2 t3
+  | Tuple [x,typ1;_,typ2] ->
+      let x' = Id.new_var @@ to_simple typ1 in
+      let typ2' = subst x (U.make_var x') typ2 in
+      let t1 = generate typ1 in
+      let t2 = generate typ2' in
+      U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
   | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
   | Inter typs -> unsupported "Ref_type.generate: Inter"
   | Union typs -> unsupported "Ref_type.generate: Union"
   | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
-  | List(x,p_len,y,p_i,typ) -> unsupported "Ref_type.generate: List"
+  | List(_,_,_,_,typ') ->
+      let open Type in
+      let open Term_util in
+      let styp = to_simple typ in
+      let u = Id.new_var ~name:"u" TUnit in
+      let f = Id.new_var ~name:("make_" ^ to_id_string styp) (TFun(u,styp)) in
+      let t_nil = make_nil2 styp in
+      let t_cons = make_cons (generate typ') @@ make_app (make_var f) [unit_term] in
+      let t_body = make_if randbool_unit_term t_nil t_cons in
+      make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
+
 
 let to_abst_typ_base b =
   match b with

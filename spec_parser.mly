@@ -24,6 +24,7 @@ let make_self_id typ = Id.new_var typ
 let orig_id x = {x with Id.id = 0}
 
 let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
+let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %}
 
 %token <string> IDENT
@@ -49,6 +50,7 @@ let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
 %token GTHAN
 %token LEQ
 %token GEQ
+%token NEQ
 %token OR
 %token AND
 %token NOT
@@ -60,6 +62,8 @@ let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
 %token VAL
 %token VALCPS
 %token VALCEGAR
+%token TRUE
+%token FALSE
 %token EOF
 
 /* priority : low -> high */
@@ -86,6 +90,10 @@ exp:
   { $2 }
 | INT
   { make_int $1 }
+| TRUE
+  { true_term }
+| FALSE
+  { false_term }
 | MINUS exp
   { make_sub (make_int 0) $2 }
 | exp EQUAL exp
@@ -98,6 +106,8 @@ exp:
   { make_leq $1 $3 }
 | exp GEQ exp
   { make_geq $1 $3 }
+| exp NEQ exp
+  { make_neq $1 $3 }
 | exp AND exp
   { make_and $1 $3 }
 | exp OR exp
@@ -214,10 +224,24 @@ ref_base:
 | TBOOL { RT.Bool }
 | TINT { RT.Int }
 
-ref_typ:
+ref_simple:
 | ref_base { ref_base $1 }
-| LPAREN ref_typ RPAREN { $2 }
 | LBRACE id COLON ref_base BAR exp RBRACE { RT.Base($4, $2, $6) }
+| LPAREN ref_typ RPAREN { $2 }
+| ref_simple LIST { ref_list $1 }
+
+ref_typ:
+| ref_simple { $1 }
+| id COLON ref_typ TIMES ref_typ { RT.Tuple[$1, $3; dummy_var, $5] }
+| ref_typ TIMES ref_typ
+  {
+    let x  =
+      match $1 with
+      | RT.Base(_,y,_) -> y
+      | _ -> Id.new_var @@ RT.to_simple $1
+    in
+    RT.Tuple[x, $1; dummy_var, $3]
+  }
 | id COLON ref_typ ARROW ref_typ { RT.Fun($1, $3, $5) }
 | ref_typ ARROW ref_typ
   {
