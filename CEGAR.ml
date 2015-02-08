@@ -126,6 +126,9 @@ let rec loop prog0 is_cp info top_funs =
           cexs ext_cexs
       in
 
+      (* Progress Check: checking whether an obtained counterexample tree has either infeasible paths or open feasible paths *)
+      if paths = [] then raise NoProgress;
+
       if debug then Format.printf "ORIG:@.";
       if debug then List.iter (fun (_, orig_ce, _, ext_path) -> Format.printf "%a: @.  %a@." print_path orig_ce (print_list print_ext_paths ";") ext_path) paths;
 
