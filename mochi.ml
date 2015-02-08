@@ -265,14 +265,19 @@ let arg_spec =
      "-neg-pred-off", Arg.Unit (fun _ -> Flag.never_use_neg_pred := true),
      " Never use negative predicates for abstraction";
      (* higher-order model checking *)
-     "-trecs", Arg.Set_string Flag.trecs,
-     Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
+     "-trecs-bin", Arg.Set_string Flag.trecs,
+                   Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
+     "-horsat-bin", Arg.Set_string Flag.horsat,
+                   Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      (* predicate discovery *)
-     "-fpat", Arg.String parse_fpat_arg, "<option> Pass <option> to FPAT";
+     "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
+     (* SWT solver *)
+     "-cvc3-bin", Arg.Set_string Flag.cvc3,
+                  Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
      (* termination mode *)
      "-termination-disj",
      Arg.Unit (fun _ ->

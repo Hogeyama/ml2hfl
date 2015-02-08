@@ -6,6 +6,7 @@ PACKAGES = fpat,str,unix,csisat,extlib,compiler-libs.common
 
 INCLUDES =
 FPAT_SRC_DIR = ../fpat
+MOCHI_BIN_DIR = mochi_bin
 
 OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
 OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
@@ -138,6 +139,21 @@ dist:
 	$(GIT) archive HEAD -o dist.tar.gz
 endif
 
+bin: $(NAME).opt
+	@echo make $(MOCHI_BIN_DIR)
+	@mkdir -p $(MOCHI_BIN_DIR)/bin
+	@cp $(CVC3) ./horsat $(NAME).opt $(MOCHI_BIN_DIR)/bin
+	@mkdir -p $(MOCHI_BIN_DIR)/lib
+	@ldd $(NAME).opt | while read line; \
+	do \
+	   if [ $$(echo $$line | wc -w) -eq 2 ]; then \
+	     cp $$(echo $$line | cut -d' ' -f1) $(MOCHI_BIN_DIR)/lib ; \
+	   elif [ $$(echo $$line | wc -w) -eq 4 ]; then \
+	     cp $$(echo $$line | cut -d' ' -f3) $(MOCHI_BIN_DIR)/lib ; \
+	   fi; \
+	done
+	@mkdir -p $(MOCHI_BIN_DIR)/stdlib
+	@cp $$($(OCAMLFIND) ocamlc -where)/*.cmi $(MOCHI_BIN_DIR)/stdlib
 
 ################################################################################
 # documents

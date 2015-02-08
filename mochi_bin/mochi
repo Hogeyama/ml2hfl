@@ -1,0 +1,12 @@
+#!/bin/sh
+
+dir=`dirname $0`
+lib=$dir/lib
+bin=$dir/bin
+stdlib=$dir/stdlib
+
+ld="$lib/ld-linux-x86-64.so.2 --library-path $lib"
+horsat=$bin/horsat
+cvc3=$bin/cvc3
+
+$ld $bin/mochi.opt -horsat-bin "$horsat" -cvc3-bin "$cvc3" -I $stdlib $*
