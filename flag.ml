@@ -60,6 +60,7 @@ let encode_list_opt = ref false
 let tupling = ref false
 let elim_same_arg = ref false
 let base_to_int = ref false
+let exists_unknown_false = true
 
 let mode = ref Reachability
 let init_trans = ref true

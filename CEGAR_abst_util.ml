@@ -262,9 +262,15 @@ let check_exist env cond x p =
   if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
   if debug() then Format.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
   let xs = List.filter_out ((=) x) @@ get_fv p in
-  let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
-  if debug() then Format.printf "check_exists: %b@." b;
-  b
+  try
+    let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
+    if debug() then Format.printf "check_exists: %b@." b;
+    b
+  with Fpat.SMTProver.Unknown ->
+    if debug() then Format.printf "check_exists: Unknown@.";
+    if Flag.exists_unknown_false
+    then false
+    else raise Fpat.SMTProver.Unknown
 
 let add_funcall_labels top_funs ({env=env;defs=defs} as prog) =
   let uncapitalize_var = String.uncapitalize in (* from ModelCheck_util *)
