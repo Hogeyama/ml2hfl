@@ -427,7 +427,7 @@ let () =
         Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
     | LongInput -> Format.printf "Input is too long@."
     | TimeOut -> Format.printf "Verification failed (time out)@."
-    | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
+    | CEGAR.NoProgress -> Format.printf "Unknown. (This program may be terminating.)@."
     | CEGAR_abst.NotRefined -> Format.printf "Verification failed (new error path not found)@."
     | Fatal s ->
         Format.printf "Fatal error: %s@." s

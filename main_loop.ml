@@ -139,7 +139,7 @@ let report_safe env rmap get_rtyp orig t0 =
     |> WriteAnnot.f !Flag.filename orig;
   let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
   if not only_result_termination
-  then (Color.printf Color.Bright "Safe!"; Format.printf "@.@.");
+  then (Color.printf Color.Bright "Non-terminating!"; Format.printf "@.@.");
   if !Flag.relative_complete then
     begin
       let map =
@@ -163,7 +163,7 @@ let report_safe env rmap get_rtyp orig t0 =
 
 
 let report_unsafe main_fun arg_num ce set_target =
-  Color.printf Color.Bright "Unsafe!";
+  Color.printf Color.Bright "Unknown.";
   Format.printf "@.@.";
   if main_fun <> "" && arg_num <> 0
   then

@@ -660,7 +660,6 @@ let assign_id_to_rand prog =
 
 let make_map_randint_to_preds prog =
   let env' = List.filter (is_randint_var -| fst) prog.env in
-  Format.printf "RANDINT: @.%a@." CEGAR_print.env env';
   let aux (f,typ) =
     let i = Option.get @@ decomp_randint_name f in
     let _,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
