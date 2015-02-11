@@ -516,8 +516,6 @@ let abstract orig_fun_list force prog top_funs =
   |@debug()&> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
   |> abstract_prog
   |@debug()&> Format.printf "ABST:@\n%a@." CEGAR_print.prog
-  |> add_funcall_labels top_funs
-  |@debug()&> Format.printf "ABST WITH FUNCALL LABELS:@\n%a@." CEGAR_print.prog
   |> Typing.infer -| initialize_env
   |@(!Flag.debug_abst)&> eval_step_by_step
   |> CEGAR_lift.lift2

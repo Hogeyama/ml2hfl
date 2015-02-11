@@ -271,11 +271,3 @@ let check_exist env cond x p =
     if Flag.exists_unknown_false
     then false
     else raise Fpat.SMTProver.Unknown
-
-let add_funcall_labels top_funs ({env=env;defs=defs} as prog) =
-  let uncapitalize_var = String.uncapitalize in (* from ModelCheck_util *)
-  let top_funs' = List.map Id.to_string top_funs in
-  let add_funcall_labels_term f t = let f' = uncapitalize_var f in if List.mem f' top_funs' then App(Const(TreeConstr(1, f')), t) else t in
-  let defs' = List.map (fun (f, args, t1, e, t2) -> (f, args, t1, e, add_funcall_labels_term f t2)) defs in
-  let env' = List.map (fun v -> (v, make_tfun typ_unit typ_unit)) top_funs' @ env in
-  {prog with env=env'; defs=defs'}

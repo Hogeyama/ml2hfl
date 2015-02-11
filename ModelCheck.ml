@@ -58,7 +58,7 @@ let check abst prog top_funs =
   let tmp = get_time () in
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
-  let labels = (List.map Id.to_string top_funs) @ (List.filter_map (fun (r,_) -> Option.map make_randint_label @@ decomp_randint_name r) prog.env) in
+  let labels = (List.filter_map (fun (r,_) -> Option.map make_randint_label @@ decomp_randint_name r) prog.env) in
   let result =
     match !Flag.model_check with
     | Flag.ModelCheckCPS ->

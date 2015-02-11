@@ -30,7 +30,7 @@ let make_file_spec () =
 
 let rec make_label_spec = function
   | [] -> []
-  | f::fs -> (0, f, APT_State(1, 0)) :: make_label_spec fs
+  | r::rs -> (0, r, APT_State(1, 0)) :: make_label_spec rs
 
 let make_spec labels =
   let spec =
