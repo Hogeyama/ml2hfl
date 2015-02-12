@@ -87,7 +87,6 @@ and uncurry_typ_arg rtyps typ =
       let rtyps',xrtyps = List.fold_left aux (rtyps,[]) xs in
       assert (rtyps' = []);
       RT.Tuple xrtyps
-  | [RT.Base _ as rtyp], _ -> uncurry_typ rtyp typ
   | [rtyp], _ -> uncurry_typ rtyp typ
   | _ -> assert false
 
