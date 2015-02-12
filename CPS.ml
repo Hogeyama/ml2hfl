@@ -924,8 +924,7 @@ let initialize () =
 
 
 
-let pr2 s p t =
-  if debug () then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
+let pr2 s p t = if debug () then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
 
 let trans t =

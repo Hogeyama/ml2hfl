@@ -83,6 +83,7 @@ module Pair = struct
     match xs with
     | [x;y] -> x,y
     | _ -> invalid_argument "Pair.of_list"
+  let print f g ppf (x,y) = Format.fprintf ppf "@[(%a,@ %a)@]" f x g y
 end
 
 module List = struct
