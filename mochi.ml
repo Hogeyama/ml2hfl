@@ -313,11 +313,19 @@ let arg_spec =
      "-merge-paths",
      Arg.Unit (fun _ ->
                Flag.merge_paths_of_same_branch := true),
-     " Merge predicates of paths that have same if-branch information";
+     " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
      "-refinement-log",
      Arg.Unit (fun _ ->
                Flag.randint_refinement_log := true),
-     " Write refinement types into log file (./refinement/[input file].refinement)"
+     " (Option for non-termination checking) Write refinement types into log file (./refinement/[input file].refinement)";
+     "-no-use-omega",
+     Arg.Unit (fun _ ->
+               Flag.use_omega := false),
+     " (Option for non-termination checking) Do not use omega solver for under-approximation";
+     "-use-omega-first",
+     Arg.Unit (fun _ ->
+               Flag.use_omega_first := true),
+     " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)"
     ]
 
 let () = print_option_and_exit :=

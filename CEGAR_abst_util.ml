@@ -261,13 +261,52 @@ let check_exist env cond x p =
   if debug() then Format.printf "check_exists:@.";
   if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
   if debug() then Format.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
-  let xs = List.filter_out ((=) x) @@ get_fv p in
-  try
-    let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
-    if debug() then Format.printf "check_exists: %b@." b;
-    b
-  with Fpat.SMTProver.Unknown ->
-    if debug() then Format.printf "check_exists: Unknown@.";
-    if Flag.exists_unknown_false
-    then false
-    else raise Fpat.SMTProver.Unknown
+  let xs = List.filter_out ((=) x) @@ (get_fv_list (p::cond)) in
+  if !Flag.use_omega_first then
+    begin
+    try
+      let b = OmegaInterface.is_valid_forall_exists xs [x] cond p in
+      if debug() then Format.printf "check_exists: %b@." b;
+      b
+    with OmegaInterface.Unknown ->
+      if debug() then Format.printf "check_exists: OmegaInterface.Unknown@.";
+      if debug() then Format.printf "Try checking by z3...@.";
+      try
+        let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
+        if debug() then Format.printf "check_exists: %b@." b;
+        read_line();
+        b
+      with Fpat.SMTProver.Unknown ->
+        if debug() then Format.printf "check_exists: FpatInterface.Unknown@.";
+        if Flag.exists_unknown_false
+        then false
+        else raise Fpat.SMTProver.Unknown
+    end
+  else
+    try
+      let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
+      if debug() then Format.printf "check_exists: %b@." b;
+      b
+    with Fpat.SMTProver.Unknown ->
+      if !Flag.use_omega then
+        begin
+        if debug() then Format.printf "check_exists: Fpat.SMTProver.Unknown@.";
+        if debug() then Format.printf "Try checking by omega...@.";
+        try
+          let b = OmegaInterface.is_valid_forall_exists xs [x] cond p in
+          if debug() then Format.printf "check_exists: %b@." b;
+          if debug() then (let _ = read_line() in ());
+          b
+        with OmegaInterface.Unknown ->
+          if debug() then Format.printf "check_exists: OmegaInterface.Unknown@.";
+          if Flag.exists_unknown_false
+          then false
+          else raise Fpat.SMTProver.Unknown
+        end
+      else
+        begin
+        if debug() then Format.printf "check_exists: Fpat.SMTProver.Unknown@.";
+        if Flag.exists_unknown_false
+        then false
+        else raise Fpat.SMTProver.Unknown
+        end

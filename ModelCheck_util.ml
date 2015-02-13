@@ -279,10 +279,6 @@ let model_check_aux (prog,arity_map,spec) =
     | HorSatInterface.Safe(x) -> Safe(x)
     | HorSatInterface.Unsafe(x,y) -> Unsafe(x,y)
 
-let rec pick_randint_nums = function
-  | [] -> []
-  | (v,_)::es -> (try [decomp_randint_name v] with _ -> []) @ pick_randint_nums es
-
 let make_arity_map labels =
   let init = [("br_forall", 2); ("br_exists", 2); ("event_fail", 1); ("unit", 0); ("true", 1); ("false", 1); ("l0", 1); ("l1", 1)] in
   let funs_map = List.map (fun l -> (l, 1)) labels in

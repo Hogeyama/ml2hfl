@@ -1,3 +1,4 @@
 let trecs = "@TRECS@"
 let horsat = "@HORSAT@"
 let cvc3 = "@CVC3@"
+let omega = ""

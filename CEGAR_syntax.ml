@@ -190,7 +190,10 @@ let rec get_fv = function
   | App(t1, t2) -> StringSet.union (get_fv t1) (get_fv t2)
   | Let(x,t1,t2) -> StringSet.union (get_fv t1) (StringSet.remove x @@ get_fv t2)
   | Fun(x,_,t) -> StringSet.remove x (get_fv t)
+let get_fv_list ts = List.fold_left (fun s t -> StringSet.union s (get_fv t)) StringSet.empty ts
 let get_fv t = StringSet.elements @@ get_fv t
+let get_fv_list ts = StringSet.elements @@ get_fv_list ts
+
 
 
 let rec get_typ_arity = function

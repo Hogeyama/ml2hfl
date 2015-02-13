@@ -62,6 +62,7 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	useless_elim.cmo inter_type.cmo type_trans.cmo			\
 	fpatInterface.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo		\
 	parser_wrapper.cmo encode_list.cmo encode_rec.cmo		\
+	omegaInterface.cmo \
 	CEGAR_abst_util.cmo CEGAR_trans.cmo CEGAR_abst_CPS.cmo		\
 	CEGAR_abst.cmo CEGAR_parser.cmo CEGAR_lexer.cmo			\
 	horSat_syntax.cmo \

@@ -1,5 +1,6 @@
 
 let horsat = ref Environment.horsat
+let omega = ref Environment.omega
 let trecs = ref Environment.trecs
 let cvc3 = ref Environment.cvc3
 
@@ -141,3 +142,5 @@ let non_termination = ref false
 let merge_paths_of_same_branch = ref false
 
 let randint_refinement_log = ref false
+let use_omega = ref true
+let use_omega_first = ref false
