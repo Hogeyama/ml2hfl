@@ -122,16 +122,9 @@ let report_safe env rmap get_rtyp orig t0 =
     then []
     else
       let aux (f,rtyp) : (Syntax.id * Ref_type.t) list =
-        Format.printf "rmap: %a" (List.print @@ Pair.print Format.pp_print_string Print.id) rmap;
         try
           let f' = List.assoc f rmap in
-          Format.printf "f: %s, f': %a@." f Print.id f';
-          Format.printf "orig: %a@." CEGAR_ref_type.print rtyp;
-          let rtyp' = get_rtyp f' rtyp in
-          Format.printf "rtyp': %a@." Ref_type.print rtyp';
-          let rtyp'' = Ref_type.rename rtyp' in
-          Format.printf "renamed: %a@." Ref_type.print rtyp'';
-          [f', rtyp'']
+          [f', Ref_type.rename @@ get_rtyp f' rtyp]
         with
         | Not_found -> []
         | _ ->

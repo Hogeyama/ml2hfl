@@ -31,15 +31,15 @@ let print_base fm = function
   | Abst s -> Format.pp_print_string fm s
 
 let rec occur x = function
-  | Base(_,_,p) -> List.exists (Id.same x) (U.get_fv p)
+  | Base(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
   | Fun(_,typ1,typ2) -> occur x typ1 || occur x typ2
-  | Tuple xtyps -> List.exists (fun (_,typ) -> occur x typ) xtyps
+  | Tuple xtyps -> List.exists (occur x -| snd) xtyps
   | Inter typs
   | Union typs -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | List(_,p_len,_,p_i,typ) ->
-      let aux p =  List.exists (Id.same x) (U.get_fv p) in
-        aux p_len || aux p_i || occur x typ
+      let aux p =  List.exists (Id.same x) @@ U.get_fv p in
+      aux p_len || aux p_i || occur x typ
 
 let rec print fm = function
   | Base(base,x,p) when p = U.true_term ->
@@ -83,14 +83,13 @@ let rec print fm = function
       else
         if p_i = U.true_term
         then Format.fprintf fm "%a" print typ2
-        else Format.fprintf fm "[%a:%a]@ %a" Id.print y Print.term p_i print typ2;
-      Format.fprintf fm " list";
+        else Format.fprintf fm "[%a: %a]@ %a" Id.print y Print.term p_i print typ2;
       if p_len <> U.true_term
-      then Format.fprintf fm "|%a:%a|" Id.print x Print.term p_len
+      then Format.fprintf fm " |%a: %a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
-        then Format.fprintf fm "|%a|" Id.print x;
-      Format.fprintf fm "@])"
+        then Format.fprintf fm " |%a|" Id.print x;
+      Format.fprintf fm "list@])"
 
 let rec decomp_fun n typ =
   match typ with

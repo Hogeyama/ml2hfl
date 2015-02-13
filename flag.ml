@@ -18,6 +18,7 @@ let check_typ = true
 let debug_level = ref 1
 let debug_module : string list ref = ref []
 let debug_abst = ref false
+let print_ref_typ_debug = false
 
 (* method option *)
 let input_cegar = ref false
@@ -85,7 +86,6 @@ let print_refine_log = true
 let print_eval_abst = ref false
 let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
-let print_ref_typ_debug = true
 let print_abst_typ = ref false
 
 let web = ref false

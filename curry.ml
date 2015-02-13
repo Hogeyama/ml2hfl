@@ -57,15 +57,20 @@ let rec uncurry_typ rtyp typ =
   if debug()
   then Format.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
   match rtyp,typ with
-  | RT.Inter rtyps, _ ->
-      RT.Inter (List.map (fun rtyp -> uncurry_typ rtyp typ) rtyps)
+  | RT.Inter rtyps, _ -> RT.Inter (List.map (Fun.flip uncurry_typ typ) rtyps)
+  | RT.Union rtyps, _ -> RT.Union (List.map (Fun.flip uncurry_typ typ) rtyps)
   | _, TFun(x,typ2) ->
       let typ1 = Id.typ x in
       let n = element_num typ1 in
       let exts,xrtyps,rtyp2 = RT.decomp_fun n rtyp in
       let rtyp1' = uncurry_typ_arg (List.map snd xrtyps) typ1 in
       let rtyp2' = uncurry_typ rtyp2 typ2 in
-      let rtyp = RT.Fun(Id.new_var typ_unknown, rtyp1', rtyp2') in
+      let y =
+          match rtyp with
+          | RT.Fun(y, _, _) -> y
+          | _ -> assert false
+      in
+      let rtyp = RT.Fun(y, rtyp1', rtyp2') in
       List.fold_right (Fun.uncurry RT._ExtArg) exts rtyp
   | _ -> rtyp
 
