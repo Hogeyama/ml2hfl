@@ -151,7 +151,7 @@ let rec trans_typ = function
 
 
 and trans_binop = function
-    Syntax.Eq -> assert false
+  | Syntax.Eq -> assert false
   | Syntax.Lt -> Const Lt
   | Syntax.Gt -> Const Gt
   | Syntax.Leq -> Const Leq
@@ -164,7 +164,7 @@ and trans_binop = function
 
 and trans_const c typ =
   match c with
-    Syntax.Unit -> Unit
+  | Syntax.Unit -> Unit
   | Syntax.True -> True
   | Syntax.False -> False
   | Syntax.Int n -> Int n

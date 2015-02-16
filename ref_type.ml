@@ -98,12 +98,11 @@ let rec decomp_fun n typ =
   | Inter _
   | Union _
   | List _ -> assert (n=0); [], [], typ
+  | Fun _ when n <= 0 ->
+      [], [], typ
   | Fun(x,typ1,typ2) ->
-      if n <= 0
-      then [], [], typ
-      else
-        let exts,typs,typ' = decomp_fun (n-1) typ2 in
-        exts, (x,typ1)::typs, typ'
+      let exts,typs,typ' = decomp_fun (n-1) typ2 in
+      exts, (x,typ1)::typs, typ'
   | ExtArg(x,typ1,typ2) ->
       let exts,typs,typ' = decomp_fun n typ2 in
       (x,typ1)::exts, typs, typ'
@@ -171,6 +170,7 @@ let rename typ =
   Id.reset_counter ();
   typ'
 
+
 let to_abst_typ_base b =
   match b with
   | Unit -> Type.TUnit
@@ -207,3 +207,45 @@ let rec copy_fun_arg_to_base = function
   | Union typs -> Union (List.map copy_fun_arg_to_base typs)
   | ExtArg(x,typ1,typ2) -> ExtArg(x, copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, copy_fun_arg_to_base typ)
+
+let rec to_simple typ =
+  match typ with
+  | Base(Unit, _, _) -> Type.TUnit
+  | Base(Bool, _, _) -> Type.TBool
+  | Base(Int, _, _) -> Type.TInt
+  | Base(Unit, _, _) -> assert false
+  | Fun(x,typ1,typ2) -> Type.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
+  | Tuple xtyps -> Type.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
+  | Inter [] -> assert false
+  | Inter (typ::_) -> to_simple typ
+  | Union [] -> assert false
+  | Union (typ::_) -> to_simple typ
+  | ExtArg _ -> assert false
+  | List _ -> assert false
+
+
+let rec generate_assume x typ =
+  let open Term_util in
+  match typ with
+  | Base(base, y, p) ->
+      subst_var y x @@ make_assume p unit_term
+  | Fun(y,typ1,typ2) ->
+      let t = make_app (make_var x) [subst y (make_var x) @@ generate typ1] in
+      make_if randbool_unit_term unit_term t
+
+and generate typ =
+  let open Term_util in
+  match typ with
+  | Base(Int, x, p) ->
+      make_let [x,[],randint_unit_term] @@ make_seq (generate_assume x typ) @@ make_var x
+  | Base(Int, x, p) ->
+      Format.fprintf Format.str_formatter "Ref_type.generate: %a" print typ;
+      unsupported @@ Format.flush_str_formatter ()
+  | Fun(x,typ1,typ2) ->
+      let x' = Id.new_var @@ to_simple typ1 in
+      make_fun x' @@ subst_var x x' @@ make_seq (generate_assume x' typ1) @@ generate typ2
+  | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
+  | Inter typs -> unsupported "Ref_type.generate: Inter"
+  | Union typs -> unsupported "Ref_type.generate: Union"
+  | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
+  | List(x,p_len,y,p_i,typ) -> unsupported "Ref_type.generate: List"
