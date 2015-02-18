@@ -271,3 +271,17 @@ let rec size t =
 
 let prog_size prog =
   List.fold_left (fun sum (f,xs,t1,e,t2) -> sum + List.length xs + size t1 + size t2) 0 prog.defs
+
+let randint_ID_map = ref (fun _ -> "no corresponding identifier")
+let rec is_rand = function
+  | App(t, _) -> is_rand t
+  | Const(RandInt(id)) -> id
+  | _ -> None
+let add_ID_map r = function
+  | Some(n) ->
+    let m = !randint_ID_map in randint_ID_map := fun x -> if x=n then r else m x
+  | None -> ()
+let rec make_ID_map_fd = function
+  | [] -> ()
+  | (r,_,_,_,body)::ds -> add_ID_map r (is_rand body); make_ID_map_fd ds
+let make_ID_map {defs=defs} = make_ID_map_fd defs

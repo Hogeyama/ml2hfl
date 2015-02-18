@@ -189,6 +189,7 @@ let cegar prog info top_funs =
       List.map (fun (f, args, cond, e, t) -> if t=Const(CPS_result) then (f, args, cond, [Event "fail"], t) else (f, args, cond, e, t)) ds
     else ds in
   let prog = {prog with defs=add_fail_to_end prog.defs} in
+  make_ID_map prog;
   try
     let is_cp = FpatInterface.is_cp prog in
     loop prog is_cp info top_funs

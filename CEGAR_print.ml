@@ -70,7 +70,10 @@ and print_typ fm typ =
   print_typ_aux None fm typ
 
 and print_env fm env =
-  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) f print_typ typ in
+  let add_rand_info f = match decomp_randint_name f with
+    | None -> f
+    | Some(n) -> f ^ "[" ^ !randint_ID_map n ^ "]" in
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) (add_rand_info f) print_typ typ in
   List.iter pr env
 
 and print_const fm = function
@@ -508,7 +511,10 @@ let rec has_preds = function
   | _ -> assert false
 
 let rec print_env_diff fm env =
-  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) f print_typ typ in
+  let add_rand_info f = match decomp_randint_name f with
+    | None -> f
+    | Some(n) -> f ^ "[" ^ !randint_ID_map n ^ "]" in
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) (add_rand_info f) print_typ typ in
   List.iter pr (List.filter (Pair.map_snd has_preds |- snd) env)
 
 let env_diff = print_env_diff
