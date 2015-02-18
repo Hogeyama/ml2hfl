@@ -129,22 +129,24 @@ let rec subst x t typ =
   | List(y,p_len,z,p_i,typ) ->
       List(y, U.subst x t p_len, z, U.subst x t p_i, subst x t typ)
 
+let subst_var x y t = subst x (U.make_var y) t
+
 let rec rename var = function
   | Base(base, x, p) ->
       let x' = Option.default (Id.new_var_id x) var in
-      Base(base, x', U.subst x (U.make_var x') p)
+      Base(base, x', U.subst_var x x' p)
   | Fun(x, typ1, (Fun(_, typ, _) as typ2)) when !Flag.web && is_fun_typ typ ->
       let x' = Id.new_var ~name:("@" ^ Id.name x) (Id.typ x) in
-      let typ2' = subst x (U.make_var x') typ2 in
+      let typ2' = subst_var x x' typ2 in
       Fun(x', rename (Some x') typ1, rename None typ2')
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var_id x in
-      let typ2' = subst x (U.make_var x') typ2 in
+      let typ2' = subst_var x x' typ2 in
       Fun(x', rename (Some x') typ1, rename None typ2')
   | Tuple xtyps ->
       let aux (x,typ) xtyps =
         let x' = Id.new_var_id x in
-        let sbst = subst x @@ U.make_var x' in
+        let sbst = subst_var x x' in
         let xtyps' = List.map (Pair.map_snd sbst) xtyps in
         (x', rename (Some x') @@ sbst typ) :: xtyps'
       in
@@ -153,15 +155,15 @@ let rec rename var = function
   | Union typs -> Union (List.map (rename var) typs)
   | ExtArg(x,typ1,typ2) ->
       let x' = Id.new_var_id x in
-      let typ2' = subst x (U.make_var x') typ2 in
+      let typ2' = subst_var x x' typ2 in
       ExtArg(x', rename (Some x') typ1, rename None typ2')
   | List(x,p_len,y,p_i,typ) ->
       let x' = Id.new_var_id x in
       let y' = Id.new_var_id y in
-      let p_len' = U.subst x (U.make_var x') p_len in
-      let p_i' = U.subst y (U.make_var y') p_i in
-      let typ' = subst x (U.make_var x') typ in
-      let typ'' = subst y (U.make_var y') typ' in
+      let p_len' = U.subst_var x x' p_len in
+      let p_i' = U.subst_var y y' p_i in
+      let typ' = subst_var x x' typ in
+      let typ'' = subst_var y y' typ' in
       List(x', p_len', y', p_i', rename None typ'')
 let rename typ =
   Id.save_counter ();
@@ -233,14 +235,14 @@ let rec generate_check x typ =
       let z = Id.new_var t_typ1.Syntax.typ in
       let t_typ2 = U.make_app (U.make_var x) [U.make_var z] in
       let r = Id.new_var ~name:"r" t_typ2.Syntax.typ in
-      let typ2' = subst y (U.make_var z) typ2 in
+      let typ2' = subst_var y z typ2 in
       U.make_lets [z,[],t_typ1; r,[],t_typ2] @@ generate_check r typ2'
   | Tuple [y,typ1;_,typ2] ->
       let t1 = U.make_fst @@ U.make_var x in
       let t2 = U.make_snd @@ U.make_var x in
       let x1 = U.var_of_term t1 in
       let x2 = U.var_of_term t2 in
-      let typ2' = subst y (U.make_var x1) typ2 in
+      let typ2' = subst_var y x1 typ2 in
       let t = U.make_and (generate_check x1 typ1) (generate_check x2 typ2') in
       U.make_lets [x1,[],t1; x2,[],t2] t
   | _ -> assert false
@@ -254,7 +256,7 @@ and generate_simple_aux typ =
       let x' = Id.new_var_id x in
       U.make_fun x' @@ generate_simple typ'
   | Type.TTuple xs ->
-      U.make_tuple @@ List.make (List.length xs) @@ generate_simple @@ Id.typ @@ List.hd xs
+      U.make_tuple @@ List.map (generate_simple -| Id.typ) xs
   | _ -> unsupported "Ref_type.generate_simple"
 
 and generate_simple typ =
@@ -273,14 +275,14 @@ and generate typ =
   | Base(_, _, _) -> unsupported "Ref_type.generate: Base"
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var @@ to_simple typ1 in
-      let typ2' = subst x (U.make_var x') typ2 in
+      let typ2' = subst_var x x' typ2 in
       let t1 = U.make_or U.randbool_unit_term @@ generate_check x' typ1 in
       let t2 = generate typ2' in
       let t3 = generate_simple @@ to_simple typ2' in
       U.make_fun x' @@ U.make_if t1 t2 t3
   | Tuple [x,typ1;_,typ2] ->
       let x' = Id.new_var @@ to_simple typ1 in
-      let typ2' = subst x (U.make_var x') typ2 in
+      let typ2' = subst_var x x' typ2 in
       let t1 = generate typ1 in
       let t2 = generate typ2' in
       U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
