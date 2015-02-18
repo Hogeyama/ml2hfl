@@ -88,7 +88,7 @@ let check ce {defs; main} =
     then
       let solution = solve env' constr in
       let env'' = List.sort ~cmp:(Compare.on fst) env' in
-      let rands = List.map (fun (x,_) -> if List.mem_assoc x solution then List.assoc x solution else 0) env'' in
+      let rands = List.map (fun (x,_) -> List.assoc_default x solution 0) env'' in
       Feasible rands
     else Infeasible prefix
   in
