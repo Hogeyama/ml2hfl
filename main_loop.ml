@@ -126,7 +126,7 @@ let report_safe env rmap get_rtyp orig t0 =
           let f' = List.assoc f rmap in
           [f', Ref_type.rename @@ get_rtyp f' rtyp]
         with
-          Not_found -> []
+        | Not_found -> []
         | _ ->
             if not !Flag.tupling then Format.printf "Some refinement types cannot be shown (unimplemented)@.@.";
             []

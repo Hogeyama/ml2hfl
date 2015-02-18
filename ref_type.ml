@@ -18,6 +18,8 @@ type t =
   | ExtArg of S.id * t * t
   | List of S.id * S.typed_term * S.id * S.typed_term * t
 
+let _ExtArg x typ1 typ2 = ExtArg(x, typ1, typ2)
+
 let is_fun_typ = function
   | Fun(_,_,_) -> true
   | _ -> false
@@ -29,14 +31,14 @@ let print_base fm = function
   | Abst s -> Format.pp_print_string fm s
 
 let rec occur x = function
-  | Base(_,_,p) -> List.exists (Id.same x) (U.get_fv p)
+  | Base(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
   | Fun(_,typ1,typ2) -> occur x typ1 || occur x typ2
-  | Tuple xtyps -> List.exists (fun (_,typ) -> occur x typ) xtyps
+  | Tuple xtyps -> List.exists (occur x -| snd) xtyps
   | Inter typs
   | Union typs -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | List(_,p_len,_,p_i,typ) ->
-      let aux p =  List.exists (Id.same x) (U.get_fv p) in
+      let aux p =  List.exists (Id.same x) @@ U.get_fv p in
       aux p_len || aux p_i || occur x typ
 
 let rec print fm = function
@@ -56,12 +58,13 @@ let rec print fm = function
       then Format.fprintf fm "(@[<hov 4>%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2
       else Format.fprintf fm "(@[<hov 4>%a@ ->@ %a@])" print typ1 print typ2
   | Tuple xtyps ->
-      let pr fm (x,typ) =
-        if occur x @@ Tuple xtyps
+      let n = List.length xtyps in
+      let pr fm (i,(x,typ)) =
+        if i < n-1 && occur x @@ Tuple xtyps
         then Format.fprintf fm "%a:" Id.print x;
         print fm typ
       in
-      Format.fprintf fm "(@[%a@])" (print_list pr "@ *@ ") xtyps
+      Format.fprintf fm "(@[%a@])" (print_list pr " *@ ") @@ List.mapi Pair.pair xtyps
   | Inter [] -> Format.fprintf fm "Top"
   | Inter [typ] -> print fm typ
   | Inter typs -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
@@ -80,14 +83,13 @@ let rec print fm = function
       else
         if p_i = U.true_term
         then Format.fprintf fm "%a" print typ2
-        else Format.fprintf fm "[%a:%a]@ %a" Id.print y Print.term p_i print typ2;
-      Format.fprintf fm " list";
+        else Format.fprintf fm "[%a: %a]@ %a" Id.print y Print.term p_i print typ2;
       if p_len <> U.true_term
-      then Format.fprintf fm "|%a:%a|" Id.print x Print.term p_len
+      then Format.fprintf fm " |%a: %a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
-        then Format.fprintf fm "|%a|" Id.print x;
-      Format.fprintf fm "@])"
+        then Format.fprintf fm " |%a|" Id.print x;
+      Format.fprintf fm "list@])"
 
 let rec decomp_fun n typ =
   match typ with
@@ -140,11 +142,13 @@ let rec rename var = function
       let typ2' = subst x (U.make_var x') typ2 in
       Fun(x', rename (Some x') typ1, rename None typ2')
   | Tuple xtyps ->
-      let aux (x,typ) =
+      let aux (x,typ) xtyps =
         let x' = Id.new_var_id x in
-        x', rename (Some x') @@ subst x (U.make_var x') typ
+        let sbst = subst x @@ U.make_var x' in
+        let xtyps' = List.map (Pair.map_snd sbst) xtyps in
+        (x', rename (Some x') @@ sbst typ) :: xtyps'
       in
-      Tuple (List.map aux xtyps)
+      Tuple (List.fold_right aux xtyps [])
   | Inter typs -> Inter (List.map (rename var) typs)
   | Union typs -> Union (List.map (rename var) typs)
   | ExtArg(x,typ1,typ2) ->
@@ -159,7 +163,6 @@ let rec rename var = function
       let typ' = subst x (U.make_var x') typ in
       let typ'' = subst y (U.make_var y') typ' in
       List(x', p_len', y', p_i', rename None typ'')
-
 let rename typ =
   Id.save_counter ();
   Id.clear_counter ();
@@ -167,6 +170,43 @@ let rename typ =
   Id.reset_counter ();
   typ'
 
+
+let to_abst_typ_base b =
+  match b with
+  | Unit -> Type.TUnit
+  | Bool -> Type.TBool
+  | Int -> Type.TInt
+  | Abst _ -> unsupported "to_abst_typ_base"
+
+let rec to_abst_typ typ =
+  match typ with
+  | Base(b, x, t) ->
+      let x' = Id.set_typ x @@ to_abst_typ_base b in
+      Type.TPred(x', Term_util.decomp_bexp t)
+  | Fun(x,typ1,typ2) ->
+      let x' = Id.set_typ x @@ to_abst_typ typ1 in
+      let typ2' = to_abst_typ typ2 in
+      Type.TFun(x', typ2')
+  | Tuple xtyps ->
+      Type.TTuple (List.map (fun (x,typ) -> Id.set_typ x @@ to_abst_typ typ) xtyps)
+  | Inter typs
+  | Union typs -> List.fold_right (Term_util.merge_typ -| to_abst_typ) typs Type.typ_unknown
+  | ExtArg _ -> unsupported "to_abst_typ"
+  | List _ -> unsupported "to_abst_typ"
+
+let rec set_base_var x = function
+  | Base(base, y, p) -> Base(base, x, U.subst_var y x p)
+  | Inter typs -> Inter (List.map (set_base_var x) typs)
+  | Union typs -> Union (List.map (set_base_var x) typs)
+  | typ -> typ
+let rec copy_fun_arg_to_base = function
+  | Base(base, x, p) -> Base(base, x, p)
+  | Fun(x,typ1,typ2) -> Fun(x, set_base_var x @@ copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd copy_fun_arg_to_base) xtyps)
+  | Inter typs -> Inter (List.map copy_fun_arg_to_base typs)
+  | Union typs -> Union (List.map copy_fun_arg_to_base typs)
+  | ExtArg(x,typ1,typ2) -> ExtArg(x, copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
+  | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, copy_fun_arg_to_base typ)
 
 let rec to_simple typ =
   match typ with
