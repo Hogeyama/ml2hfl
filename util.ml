@@ -166,7 +166,18 @@ module List = struct
     | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
     | _ -> raise (Invalid_argument "List.map3")
 
-  let rec filter_map2 f xs ys = filter_map Std.identity @@ List.map2 f xs ys
+  let rec rev_filter_map acc f xs =
+    match xs with
+    | [] -> []
+    | x::xs' ->
+        let acc' =
+          match f x with
+          | None -> acc
+          | Some r -> r::acc
+        in
+        rev_filter_map acc' f xs'
+  let rev_filter_map f xs = rev_filter_map [] f xs
+  let rec filter_map2 f xs ys = rev_filter_map Std.identity @@ List.rev_map2 f xs ys
 
   let rec filter_out f xs = filter (not -| f) xs
 
