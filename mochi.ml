@@ -57,7 +57,7 @@ let print_info () =
     begin
       if !Flag.exp2 then output_csv !Flag.result;
       if !Flag.add_closure_exparam && !Flag.result = "terminating" then
-        Format.printf "exparam inserted program:@. %a@." Syntax.print_term !ExtraParamInfer.origWithExparam;
+        Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
       if !Flag.termination && !Flag.result = "terminating" then
         begin
           List.iter
@@ -121,46 +121,53 @@ let main in_channel =
      Lexing.pos_lnum = 1;
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
-  let orig = Parse.use_file lb in
-  Id.set_counter (Ident.current_time () + 1);
-  let parsed = Parser_wrapper.from_use_file orig in
-  let () =
-    if true && !Flag.debug_level > 0
-    then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Syntax.print_term parsed
-  in
-  if !Flag.split_assert
-  then
-    let paths = Trans.search_fail parsed in
-    let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
-    List.for_all (Main_loop.run orig) (List.rev ts);
-  else if !Flag.termination then
-    let open BRA_util in
+  if !Flag.input_cegar then
+    let open CEGAR_syntax in
+    let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
+    let prog' = Typing.infer {prog with env=[]} in
+    let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
+    Main_loop.run_cegar {prog with env}
+  else
+    let orig = Parse.use_file lb in
+    Id.set_counter (Ident.current_time () + 1);
+    let parsed = Parser_wrapper.from_use_file orig in
+    let () =
+      if true && !Flag.debug_level > 0
+      then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed
+    in
+    if !Flag.split_assert
+    then
+      let paths = Trans.search_fail parsed in
+      let ts = List.map (Fun.flip Trans.screen_fail parsed) paths in
+      List.for_all (Main_loop.run orig) (List.rev ts);
+    else if !Flag.termination then
+      let open BRA_util in
       (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
-    let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-    let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Syntax.print_term parsed in
-    let parsed = BRA_transform.regularization parsed in
-    let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Syntax.print_term parsed in
-    let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Syntax.print_term parsed in
-    let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-    let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Syntax.print_term parsed in
-    let holed_list = BRA_transform.to_holed_programs parsed in
-    let result =
-      try
-        List.for_all
-          (fun holed ->
-            let init_predicate_info =
-              { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
-              ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
-              ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
-              ; BRA_types.coefficients = []
-              ; BRA_types.errorPaths = []
-              ; BRA_types.errorPathsWithExparam = [] } in
-            let predicate_que = Queue.create () in
-            let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
-            Termination_loop.reset_cycle ();
-            Termination_loop.run predicate_que holed) holed_list
-      with
+      let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
+      let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
+      let parsed = BRA_transform.regularization parsed in
+      let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Print.term parsed in
+      let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
+      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
+      let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
+      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
+      let holed_list = BRA_transform.to_holed_programs parsed in
+      let result =
+        try
+          List.for_all
+            (fun holed ->
+             let init_predicate_info =
+               { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+               ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
+               ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
+               ; BRA_types.coefficients = []
+               ; BRA_types.errorPaths = []
+               ; BRA_types.errorPathsWithExparam = [] } in
+             let predicate_que = Queue.create () in
+             let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
+             Termination_loop.reset_cycle ();
+             Termination_loop.run predicate_que holed) holed_list
+        with
         | Fpat.PolyConstrSolver.NoSolution
         | Termination_loop.FailedToFindLLRF -> false
     in
@@ -170,7 +177,7 @@ let main in_channel =
       (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
   else
     let input =
-      if !Flag.randint_refinement_log then 
+      if !Flag.randint_refinement_log then
 	let dirname = Filename.dirname !Flag.filename in
 	let basename = Filename.basename !Flag.filename in
 	dirname ^ "/refinement/" ^
@@ -235,10 +242,12 @@ let arg_spec =
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
+     "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types for each CEGAR-cycle";
+     "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      (* preprocessing *)
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
      "-list-option", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
-     "-na", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures";
+     "-disable-preprocess", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures, CPS transformation, etc.";
      "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
      "-cps-naive", Arg.Set Flag.cps_simpl, " Use naive CPS transformation";
      "-ins-param-funarg", Arg.Set Flag.insert_param_funarg, " Insert an extra param for functions with function arguments";

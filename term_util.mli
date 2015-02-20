@@ -49,7 +49,7 @@ val make_sub : typed_term -> typed_term -> typed_term
 val make_mul : typed_term -> typed_term -> typed_term
 val make_neg : typed_term -> typed_term
 val make_if : typed_term -> typed_term -> typed_term -> typed_term
-val make_branch : typed_term -> typed_term -> typed_term
+val make_br : typed_term -> typed_term -> typed_term
 val make_eq : typed_term -> typed_term -> typed_term
 val make_eq_dec : typed_term -> typed_term -> typed_term
 val make_neq : typed_term -> typed_term -> typed_term
@@ -80,7 +80,6 @@ val make_pnil : typ -> typed_pattern
 val make_pnil2 : typ -> typed_pattern
 val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 val imply : typed_term -> typed_term -> typed_term
-val and_list : typed_term list -> typed_term
 val get_typ_default : typ -> typed_term
 val none_flag : typed_term
 val some_flag : typed_term
@@ -140,3 +139,5 @@ val make_term : typ -> typed_term
 val col_same_term : typed_term -> typed_term -> typed_term list
 val col_info_id : typed_term -> id list
 val is_bottom_def : Syntax.rec_flag -> id -> id list -> Syntax.typed_term -> bool
+val decomp_bexp : typed_term -> typed_term list
+val merge_typ : typ -> typ -> typ

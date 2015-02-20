@@ -10,22 +10,14 @@ exception CannotRefute
 
 let add_preds_env map env =
   let aux (f,typ) =
-    try
-      f, merge_typ typ (List.assoc f map)
-    with Not_found -> f, typ
+    let typ' =
+      try
+        merge_typ typ @@ List.assoc f map
+      with Not_found -> typ
+    in
+    f, typ'
   in
-    List.map aux env
-
-let add_preds_env map env =
-  let aux (f,typ) =
-    try
-      let typ1 = typ in
-      let typ2 = List.assoc f map in
-      let typ' = merge_typ typ1 typ2 in
-        f, typ'
-    with Not_found -> f, typ
-  in
-    List.map aux env
+  List.map aux env
 
 let add_renv map env =
   let aux (n, preds) = make_randint_name n, TBase(TInt, preds) in
@@ -74,7 +66,7 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=main} =
+let refine labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
@@ -83,15 +75,15 @@ let refine labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=main} =
 	    "(%d-4) Discovering predicates (infeasible case) ... @."
 	    !Flag.cegar_loop;
     if Flag.use_prefix_trace then
-	  raise (Fatal "Not implemented: Flag.use_prefix_trace");
+      raise (Fatal "Not implemented: Flag.use_prefix_trace");
     let map =
       Format.printf "@[<v>";
       let ces =
-	    if !Flag.use_multiple_paths then
-	      ces
-	    else
-	      [FpatInterface.List.hd ces]
-	  in
+	if !Flag.use_multiple_paths then
+	  ces
+	else
+	  [FpatInterface.List.hd ces]
+      in
       let map =
 	    FpatInterface.infer
 	      labeled
@@ -113,14 +105,14 @@ let refine labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=main} =
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
-    map, {env=env';defs=defs;main=main}
+    map, {env=env';defs;main;attr}
   with e ->
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
     raise e
 
-let refine_with_ext labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=main} =
+let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
@@ -144,16 +136,16 @@ let refine_with_ext labeled is_cp prefix ces ext_ces {env=env;defs=defs;main=mai
       map
     in
     let env' =
-	  if !Flag.disable_predicate_accumulation then
-	    map
-	  else
-	    add_preds_env map env
+      if !Flag.disable_predicate_accumulation then
+	map
+      else
+	add_preds_env map env
     in
     if !Flag.print_progress then Format.printf "DONE!@.@.";
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
-    map, {env=env';defs=defs;main=main}
+    map, {env=env';defs;main;attr}
   with e ->
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
@@ -171,9 +163,9 @@ let print_list fm = function
     in
     Format.fprintf fm "[%d%s]@." x (iter xs)
 
-let progWithExparam = ref {env=[]; defs=[]; main="main(DUMMY)"}
+let progWithExparam = ref {env=[]; defs=[]; main="main(DUMMY)"; attr=[]}
 
-let refine_rank_fun ce ex_ce { env=env; defs=defs; main=main } =
+let refine_rank_fun ce ex_ce { env; defs; main; attr } =
   let tmp = get_time () in
     try
       (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;

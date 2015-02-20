@@ -16,9 +16,8 @@ exception NonLinear
 
 let counter = ref 0
 let new_id x =
-  let x' = x ^ "_" ^ string_of_int !counter in
-    incr counter;
-    x'
+  incr counter;
+  x ^ "_" ^ string_of_int !counter
 
 let rec occur_arg_pred x = function
   | TBase(_,ps) -> List.mem x @@ List.rev_flatten_map get_fv @@ ps (Const Unit)
@@ -34,7 +33,7 @@ and print_typ_base fm = function
   | TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TTuple n -> Format.fprintf fm "tuple"
+  | TTuple -> Format.fprintf fm "tuple"
   | TList -> assert false
   | TAbst s -> Format.pp_print_string fm s
 
@@ -107,7 +106,7 @@ and print_const fm = function
   | Sub -> Format.fprintf fm "-"
   | Mul -> Format.fprintf fm "*"
   | Tuple n -> Format.fprintf fm "(%d)" n
-  | Proj(_,i) -> Format.fprintf fm "#%d" i
+  | Proj(n,i) -> Format.fprintf fm "#(%d/%d)" i n
   | If -> Format.fprintf fm "if"
   | Bottom -> Format.fprintf fm "_|_"
   | Temp s -> Format.fprintf fm "Temp{%s}" s
@@ -126,33 +125,42 @@ and print_term fm = function
   | App(App(App(Const If, Const RandBool), Const True), Const False) ->
       print_const fm RandBool
   | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
-      Format.fprintf fm "(@[%a@ %a@ %a@])" print_term t1 print_const op print_term t2
+      Format.fprintf fm "@[(%a@ %a@ %a)@]" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
       let rec pr fm = function
         | [] -> ()
         | t::ts -> Format.fprintf fm "@ %a%a" print_term t pr ts
       in
-      Format.fprintf fm "(@[<hov 1>%a%a@])" print_term t pr ts
-  | Let(x,t1,t2) ->
-      let xs,t1 = decomp_annot_fun t1 in
-      Format.fprintf fm "(@[let %a %a@ =@ %a@ in@ %a@])"
-                     print_var x (print_list print_arg_var " ") xs print_term t1 print_term t2
+      Format.fprintf fm "@[<hov 1>(%a%a)@]" print_term t pr ts
+  | Let _ as t ->
+      let pr fm (x,t1) =
+        let xs,t1 = decomp_annot_fun t1 in
+        Format.fprintf fm "@[<hov 2>let %a%a@ =@ %a@ in@]" print_var x (print_list print_arg_var ~first:true " ") xs print_term t1
+      in
+      let bindings,t2 = decomp_let t in
+      Format.fprintf fm "@[<hv 1>(%a%a)@]" (print_list pr "@ " ~last:true) bindings print_term t2
   | Fun _ as t ->
       let env,t' = decomp_annot_fun t in
-      Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list print_arg_var " ") env print_term t'
+      Format.fprintf fm "@[<hov 1>(fun %a@ ->@ %a)@]" (print_list print_arg_var " ") env print_term t'
 
 and print_fun_def fm (f,xs,t1,es,t2) =
   let aux s = function
-      (Event e) -> Format.sprintf " {%s} =>" e ^ s
+    | (Event e) -> Format.sprintf " {%s} =>" e ^ s
     | (Branch n) -> Format.sprintf " l%d =>" n ^ s
   in
   let s = List.fold_left aux "" es in
   if t1 = Const True
   then
     let ys,t2 = decomp_fun t2 in
-    Format.fprintf fm "@[<hov 4>%a ->%s@ %a;;@]" (print_list print_var " ") (f::xs@ys) s print_term t2
-  else Format.fprintf fm "@[<hov 4>%a when %a ->%s@ %a;;@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
+    Format.fprintf fm "@[<hov 4>%a ->%s@ @[%a@].@]" (print_list print_var " ") (f::xs@ys) s print_term t2
+  else
+    Format.fprintf fm "@[<hov 4>%a when %a ->%s@ @[%a@].@]" (print_list print_var " ") (f::xs) print_term t1 s print_term t2
+
+and print_attr fm = function
+  | ACPS -> Format.fprintf fm "ACPS"
+
+and print_attr_list fm = List.print print_attr fm
 
 and print_prog fm prog =
   Format.fprintf fm "@[Main: %a@\n  @[%a@]@."
@@ -343,7 +351,7 @@ let rec print_base_typ_as_tree fm = function
   | TInt -> Format.fprintf fm "TInt"
   | TBool -> Format.fprintf fm "TBool"
   | TList -> Format.fprintf fm "TList"
-  | TTuple n -> Format.fprintf fm "(TTuple %d)" n
+  | TTuple -> Format.fprintf fm "TTuple"
   | TAbst s -> Format.fprintf fm "%s" s
 
 and print_typ_as_tree fm = function
@@ -454,6 +462,7 @@ let typ = print_typ
 let typ_base = print_typ_base
 let ce = print_ce
 let env = print_env
+let attr = print_attr_list
 let prog = print_prog
 let prog_typ = print_prog_typ
 

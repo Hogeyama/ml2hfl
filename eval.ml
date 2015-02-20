@@ -5,7 +5,7 @@ open Term_util
 exception RaiseExcep of int list * typed_term
 exception EventFail
 
-let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=ANone}
+let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=[]}
 let rec fun_info args_rev f t =
   match t.desc with
       Fun(x,t1) -> make_fun x (fun_info (x::args_rev) f t1)
@@ -51,11 +51,11 @@ let rec print_value fm t =
       in
       Format.fprintf fm "[%a]" (print_list print_value ";") (aux t)
   | Tuple[t_1;t_2] -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
-  | _ -> print_term fm t
+  | _ -> Print.term fm t
 
 
 let rec eval_print fm rands t =
-  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." print_term t
+  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." Print.term t
                               (print_list Format.pp_print_int ";") rands;
   match t.desc with
   | Const(RandInt false) ->
@@ -90,7 +90,6 @@ let rec eval_print fm rands t =
       if b
       then eval_print fm rands' t2
       else eval_print fm rands' t3
-  | Branch(t1, t2) -> assert false
   | Let(flag, bindings, t2) ->
       let aux (rands,vs) (f,xs,t) =
         let rands',v = eval_print fm rands (List.fold_right make_fun xs t) in
@@ -161,7 +160,7 @@ let rec eval_print fm rands t =
         rands', v::vs
       in
       let rands',vs = List.fold_right aux ts (rands,[]) in
-      rands', {desc=Constr(s,vs); typ=t.typ; attr=ANone}
+      rands', {desc=Constr(s,vs); typ=t.typ; attr=[]}
   | Match(t1,pat::pats) ->
       let rec check v p =
         match v.desc, p.pat_desc with
@@ -255,7 +254,7 @@ let rec eval_print fm rands t =
       let r = eval_print fm rands t' in
       Format.fprintf fm "@]";
       r
-  | _ -> Format.printf "inlined_f: %a@." print_constr t; assert false
+  | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
 
 let print fm (ce, t) =
   try

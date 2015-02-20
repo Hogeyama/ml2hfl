@@ -6,7 +6,7 @@ type base =
   | TInt
   | TBool
   | TList
-  | TTuple of int
+  | TTuple
   | TAbst of string
 
 type 'a t =
@@ -15,6 +15,7 @@ type 'a t =
   | TApp of 'a t * 'a t
   | TFun of 'a t * ('a -> 'a t)
 
+let _TApp typ1 typ2 = TApp(typ1, typ2)
 
 let typ_result_base = TAbst "X"
 let typ_result = TBase(typ_result_base, fun _ -> [])
@@ -56,3 +57,11 @@ let rec decomp_tapp = function
       let typ,typs = decomp_tapp typ1 in
       typ, typs@[typ2]
   | typ -> typ, []
+
+let make_ttuple typs =
+  List.fold_left _TApp (TBase(TTuple, fun _ -> [])) typs
+
+let is_ttuple typ =
+  match decomp_tapp typ with
+  | TBase(TTuple _, _), _ -> true
+  | _ -> false

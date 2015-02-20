@@ -17,6 +17,8 @@ type typ =
   | TFun of typ * typ
   | TTuple of typ list
 
+let _TFun typ1 typ2 = TFun(typ1,typ2)
+
 let rec print_typ fm = function
   | TUnit -> Format.fprintf fm "unit"
   | TResult -> Format.fprintf fm "X"
@@ -82,7 +84,7 @@ let rec trans_typ = function
   | TVar{contents=None} -> typ_unknown
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> TFun(trans_typ typ1, fun _ -> trans_typ typ2)
-  | TTuple typs -> make_tapp (TBase(TTuple (List.length typs),nil)) (List.map trans_typ typs)
+  | TTuple typs -> make_tapp (TBase(TTuple,nil)) (List.map trans_typ typs)
   | TAbst typ -> TBase(TAbst typ, nil)
   | TResult -> typ_result
 
@@ -125,7 +127,7 @@ let get_typ_const = function
       TFun(TTuple typs, List.nth typs i)
   | Tuple n ->
       let typs = Array.to_list (Array.init n (fun _ -> new_tvar())) in
-      List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs (TTuple typs)
+      List.fold_right _TFun typs @@ TTuple typs
   | Bottom -> new_tvar ()
   | Temp _ -> assert false
   | Label _ ->
@@ -134,7 +136,7 @@ let get_typ_const = function
   | TreeConstr(n,_) ->
       let typ = new_tvar () in
       let typs = List.make n typ in
-      List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs typ
+      List.fold_right _TFun typs typ
 
 let rec infer_term env = function
   | Const c -> get_typ_const c
@@ -171,18 +173,18 @@ let infer_def env (f,xs,t1,_,t2) =
   let typ1 = infer_term env' t1 in
   let typ2 = infer_term env' t2 in
   let typ = try List.assoc f env with Not_found -> assert false in
-  let typ' = List.fold_right (fun typ1 typ2 -> TFun(typ1,typ2)) typs typ2 in
+  let typ' = List.fold_right _TFun typs typ2 in
   unify typ1 TBool;
   unify typ typ'
 
 
-let infer ?(is_cps=false) ({defs;main;env} as prog) =
+let infer ({defs;main;env;attr} as prog) =
   if false then Format.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
   let ext_funs = get_ext_funs prog in
   let ext_env = List.map (fun f -> f, from_typ (List.assoc f env)) ext_funs in
   let env = ext_env @ List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
-  let main_typ = if is_cps then TResult else TUnit in
+  let main_typ = if List.mem ACPS attr then TResult else TUnit in
   unify main_typ (List.assoc main env);
   List.iter (infer_def env) defs;
-  let env' = List.map (fun (f,_) -> f, trans_typ (List.assoc f env)) env in
-  {env=env'; defs=defs; main=main}
+  let env' = List.map (fun (f,_) -> f, trans_typ @@ List.assoc f env) env in
+  {env=env'; defs; main; attr}

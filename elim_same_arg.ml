@@ -156,7 +156,7 @@ let elim_arg_typ args typ =
       let xs,typ' = decomp_tfun typ in
       let xs' = elim_nth args xs in
       List.fold_right (fun x typ -> TFun(x,typ)) xs' typ'
-  | _ -> (if (args<>[]) then (Format.printf "typ:%a@." print_typ typ; assert false)); typ
+  | _ -> (if (args<>[]) then (Format.printf "typ:%a@." Print.typ typ; assert false)); typ
 
 
 

@@ -21,6 +21,9 @@ let rec conv_typ ty =
   | TFun(ty1,tmp) ->
      let ty2 = tmp (Const True) in
      Fpat.Type.mk_fun [conv_typ ty1; conv_typ ty2]
+  | TApp _ when is_ttuple ty ->
+      let _,tys = decomp_tapp ty in
+      Fpat.Type.mk_tuple @@ List.map conv_typ tys
   | _ ->
      Format.printf "%a@." CEGAR_print.typ ty;
      assert false
@@ -68,6 +71,8 @@ let conv_const c =
      Fpat.Const.UFun
        (Fpat.Type.mk_const (Fpat.TypConst.Ext "X"),
         Fpat.Idnt.make "end")
+  | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
+  | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let conv_var x =
@@ -132,6 +137,7 @@ let inv_const c =
        when Fpat.Idnt.string_of x = "end"
             && Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
      CPS_result
+  | Fpat.Const.Proj(typs, i) -> Proj(List.length typs, i)
   | _ -> Format.printf "%s@." (Fpat.Const.string_of c); assert false
 
 let rec inv_term t =
@@ -299,16 +305,6 @@ let infer_with_ext
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
     env
 
-(*
-  List.map
-    (fun (f, _) ->
-      try
-        f, conv_siz_type (List.assoc (Fpat.Idnt.make f) env)
-      with Not_found ->
-        assert false)
-    prog.Fpat.Prog.types
- *)
-
 
 (** move the following codes to another file *)
 
@@ -377,7 +373,7 @@ let insert_extra_param t =
            List.fold_left
              (fun (f, ty) y ->
               (fun t ->
-               f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty; Syntax.attr=Syntax.ANone}),
+               f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty; Syntax.attr=[]}),
               match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
              ((fun t -> t), trans_type t.Syntax.typ)
              ys'
@@ -403,7 +399,7 @@ let insert_extra_param t =
                       rfs
                   in
                   (if debug then
-                     Format.printf "rec: %a@." Syntax.print_term t1');
+                     Format.printf "rec: %a@." Print.term t1');
                   let xxss =
                     List.take (List.length ts) xxss
                   in
@@ -419,7 +415,7 @@ let insert_extra_param t =
                               if debug then
                                 Format.printf
                                   "arg %a of %a not changed@,"
-                                  Syntax.print_id x Syntax.print_id f in xs
+                                  Print.id x Print.id f in xs
                          | _ -> [])
                      | _ -> [])
                     ts xxss
@@ -427,13 +423,13 @@ let insert_extra_param t =
                   (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
                   let _ =
                     if debug then
-                      Format.printf "nonrec: %a@." Syntax.print_term t1'
+                      Format.printf "nonrec: %a@." Print.term t1'
                   in
                   false, [])
            | _ ->
               let _ =
                 if debug then
-                  Format.printf "nonrec: %a@." Syntax.print_term t1'
+                  Format.printf "nonrec: %a@." Print.term t1'
               in
               false, []
          in
@@ -468,8 +464,6 @@ let insert_extra_param t =
          Syntax.App(t1', ts'')
       | Syntax.If(t1, t2, t3) ->
          Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
-      | Syntax.Branch(t1, t2) ->
-         Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Let(flag, bindings, t2) ->
          let bvs' =
            bvs @

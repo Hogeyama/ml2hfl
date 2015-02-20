@@ -9,9 +9,6 @@ let spec_file = ref ""
 
 type mode = Reachability | FileAccess
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
-type pred_abst = PredAbst | PredAbstCPS
-type model_check = ModelCheck | ModelCheckCPS
-type form = CPS
 
 (* TRecS option *)
 let trecs_param1 = ref 1000
@@ -23,6 +20,7 @@ let check_typ = true
 let debug_level = ref 1
 let debug_module : string list ref = ref []
 let debug_abst = ref false
+let print_ref_typ_debug = false
 
 (* method option *)
 let input_cegar = ref false
@@ -64,11 +62,7 @@ let base_to_int = ref false
 let exists_unknown_false = true
 
 let mode = ref Reachability
-let init_trans = ref true
 let cegar = ref CEGAR_DependentType
-let pred_abst = ref PredAbstCPS
-let model_check = ref ModelCheckCPS
-let form : form list ref = ref []
 let use_spec = ref false
 let comment_spec = ref true
 let wp_max_max = 8
@@ -95,8 +89,7 @@ let print_refine_log = true
 let print_eval_abst = ref false
 let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
-let print_ref_typ = ref false
-let print_ref_typ_debug = false
+let print_abst_typ = ref false
 
 let web = ref false
 
@@ -111,6 +104,7 @@ let result = ref ""
 let cegar_loop = ref 0
 let time_limit = ref 0
 let max_input_size = 65536
+let args = ref [""] (* command-line options *)
 
 
 (* mode option *)
@@ -118,7 +112,9 @@ let only_result = ref false
 let exp = ref false
 let exp2 = ref false
 let ignore_conf = ref false
-let args = ref [""]
+let init_trans = ref true
+let just_print_non_CPS_abst = ref false
+let trans_to_CPS = ref true
 
 
 (* pretty printer's option *)

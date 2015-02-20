@@ -3,18 +3,18 @@ open Type
 open Syntax
 open Term_util
 
+module RT = Ref_type
+
 let print_error_information () =
-
-  let st =  Parsing.symbol_start_pos () in
-(*
-  let en = Parsing.symbol_end_pos () in
-*)
-
-  Format.printf "File \"%s\", line %d, characters %d-:\n"
-    st.Lexing.pos_fname
-    st.Lexing.pos_lnum
-    (st.Lexing.pos_cnum - st.Lexing.pos_bol)
-(*    (en.Lexing.pos_cnum - en.Lexing.pos_bol)*)
+  try
+    let st =  Parsing.symbol_start_pos () in
+    let en = Parsing.symbol_end_pos () in
+    Format.printf "File \"%s\", line %d, characters %d-%d:\n"
+                  st.Lexing.pos_fname
+                  st.Lexing.pos_lnum
+                  (st.Lexing.pos_cnum - st.Lexing.pos_bol)
+                  (en.Lexing.pos_cnum - en.Lexing.pos_bol)
+  with _ -> ()
 
 let parse_error _ = print_error_information ()
 
@@ -22,6 +22,9 @@ let make_tmp_id s = Id.make 0 s typ_unknown
 let make_id_typ s typ = Id.make 0 s typ
 let make_self_id typ = Id.new_var typ
 let orig_id x = {x with Id.id = 0}
+
+let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
+let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %}
 
 %token <string> IDENT
@@ -30,6 +33,8 @@ let orig_id x = {x with Id.id = 0}
 %token RPAREN
 %token LSQUAR
 %token RSQUAR
+%token LBRACE
+%token RBRACE
 %token ARROW
 %token SEMI
 %token COLON
@@ -45,15 +50,20 @@ let orig_id x = {x with Id.id = 0}
 %token GTHAN
 %token LEQ
 %token GEQ
+%token NEQ
 %token OR
 %token AND
 %token NOT
 %token PLUS
 %token MINUS
 %token TIMES
+%token BAR
+%token TYPE
 %token VAL
 %token VALCPS
 %token VALCEGAR
+%token TRUE
+%token FALSE
 %token EOF
 
 /* priority : low -> high */
@@ -80,6 +90,10 @@ exp:
   { $2 }
 | INT
   { make_int $1 }
+| TRUE
+  { true_term }
+| FALSE
+  { false_term }
 | MINUS exp
   { make_sub (make_int 0) $2 }
 | exp EQUAL exp
@@ -92,6 +106,8 @@ exp:
   { make_leq $1 $3 }
 | exp GEQ exp
   { make_geq $1 $3 }
+| exp NEQ exp
+  { make_neq $1 $3 }
 | exp AND exp
   { make_and $1 $3 }
 | exp OR exp
@@ -119,6 +135,8 @@ spec:
 
 spec_list:
   { Spec.init }
+| ref_type spec_list
+  { {$2 with Spec.ref_env = $1::$2.Spec.ref_env} }
 | typedef spec_list
   { {$2 with Spec.abst_env = $1::$2.Spec.abst_env} }
 | typedef_cps spec_list
@@ -129,6 +147,10 @@ spec_list:
   { {$2 with Spec.inlined = $1::$2.Spec.inlined} }
 | inlinef spec_list
   { {$2 with Spec.inlined_f = $1::$2.Spec.inlined_f} }
+
+ref_type:
+| TYPE id COLON ref_typ
+  { $2, $4 }
 
 typedef:
 | VAL id COLON typ
@@ -196,6 +218,41 @@ typ:
   }
 | typ LIST
   { make_self_id @@ TList(Id.typ $1) }
+
+ref_base:
+| TUNIT { RT.Unit }
+| TBOOL { RT.Bool }
+| TINT { RT.Int }
+
+ref_simple:
+| ref_base { ref_base $1 }
+| LBRACE id COLON ref_base BAR exp RBRACE { RT.Base($4, $2, $6) }
+| LPAREN ref_typ RPAREN { $2 }
+| ref_simple LIST { ref_list $1 }
+
+ref_typ:
+| ref_simple { $1 }
+| id COLON ref_typ TIMES ref_typ { RT.Tuple[$1, $3; dummy_var, $5] }
+| ref_typ TIMES ref_typ
+  {
+    let x  =
+      match $1 with
+      | RT.Base(_,y,_) -> y
+      | _ -> Id.new_var @@ RT.to_simple $1
+    in
+    RT.Tuple[x, $1; dummy_var, $3]
+  }
+| id COLON ref_typ ARROW ref_typ { RT.Fun($1, $3, $5) }
+| ref_typ ARROW ref_typ
+  {
+    let x  =
+      match $1 with
+      | RT.Base(_,y,_) -> y
+      | _ -> Id.new_var @@ RT.to_simple $1
+    in
+    RT.Fun(x, $1, $3)
+  }
+
 
 pred_list:
   { [] }

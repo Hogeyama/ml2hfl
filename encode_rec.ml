@@ -119,7 +119,7 @@ let rec abst_recdata_pat p =
 
 let abst_recdata_term t =
   match t.desc with
-  | Constr("Abst",[]) -> {desc=Constr("Abst",[]); typ=abst_recdata.tr_typ t.typ; attr=ANone}
+  | Constr("Abst",[]) -> {desc=Constr("Abst",[]); typ=abst_recdata.tr_typ t.typ; attr=[]}
   | Constr(c,ts) ->
       let ts' = List.map abst_recdata.tr_term ts in
       let typ_name = match t.typ with TConstr(s,true) -> s | _ -> assert false in
@@ -174,7 +174,7 @@ let trans t =
   |@> Fun.flip Type_check.check TUnit
   |> abst_recdata.tr_term
   |@> (fun _ -> typ_excep := abst_recdata.tr_typ !typ_excep)
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "abst_rec" print_term_typ
+  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "abst_rec" Print.term_typ
   |@> Fun.flip Type_check.check TUnit
   |> Trans.simplify_match
   |@> Fun.flip Type_check.check TUnit

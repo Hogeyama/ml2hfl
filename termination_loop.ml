@@ -35,7 +35,7 @@ let verify_with holed pred =
   let debug = !Flag.debug_level > 0 in
   (* combine holed program and predicate *)
   let transformed = pluging holed pred in
-  if debug then Format.printf "[%d]@.%a@." (get_now ()) Syntax.print_term transformed;
+  if debug then Format.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
   let orig, transformed = retyping transformed (BRA_state.type_of_state holed) in
   Main_loop.run orig transformed
 

@@ -11,7 +11,7 @@ let maxConstDepth constDepthList =
 			 0
 			 constDepthList))
   ; typ = TInt
-  ; attr = ANone}
+  ; attr = []}
 
 let dynamicGreaterThan a b =
   if a.desc = Const (Int 0) then b
@@ -44,7 +44,7 @@ let maxDepthOf depthList =
     | constDepthList, indefiniteDepthList -> dynamicMaximum ((maxConstDepth constDepthList) :: indefiniteDepthList)
 
 let incrementDepth = function
-  | {desc = Const (Int n)} -> {desc = Const (Int (n+1)); typ = TInt; attr=ANone}
+  | {desc = Const (Int n)} -> {desc = Const (Int (n+1)); typ = TInt; attr=[]}
   | e -> make_add e (make_int 1)
 
 let rec closureDepth varToDepth expr =
@@ -64,7 +64,6 @@ let rec closureDepth varToDepth expr =
       dynamicGreaterThan (closureDepth varToDepth f) (incrementDepth (maxDepthOf (List.map (closureDepth varToDepth) args)))
     | If (predicate, thenClause, elseClause) ->
       make_if predicate (closureDepth varToDepth thenClause) (closureDepth varToDepth elseClause)
-    | Branch (_, _) -> assert false (* ? *)
     | Let (_, _, _) -> assert false (* TODO *)
     | BinOp (_, _, _) -> make_int 0
     | Not _ -> make_int 0
@@ -82,7 +81,7 @@ let rec insertClsDepth varToDepth expr =
     | Const _ -> expr
     | Var v ->
       let typ = transType v.Id.typ in
-      {desc = Var {v with Id.typ = typ}; typ = typ; attr=ANone}
+      {desc = Var {v with Id.typ = typ}; typ = typ; attr=[]}
     | Fun (x, e) -> assert false (* ? *)
     | App (f, args) ->
       let insertToArgs = function
@@ -96,7 +95,6 @@ let rec insertClsDepth varToDepth expr =
 	desc = If ((insertClsDepth varToDepth predicate),
 		   (insertClsDepth varToDepth thenClause),
 		   (insertClsDepth varToDepth elseClause))}
-    | Branch (_, _) -> assert false (* ? *)
     | Let (flag, bindings, e) ->
       let makeBaseEnv varToDepth = function
 	| (x, [], body) when is_base_typ (Id.typ x) -> varToDepth

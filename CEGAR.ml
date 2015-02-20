@@ -27,13 +27,30 @@ let inlined_functions orig_fun_list force {defs;main} =
   let fs = List.map fst (CEGAR_util.get_nonrec defs main orig_fun_list force) in
   FpatInterface.List.unique fs
 
+let print_non_CPS_abst abst prog =
+  let result =
+    try
+      Some (ModelCheck.check abst prog [])
+    with _ -> None
+  in
+  if !Flag.just_print_non_CPS_abst then
+    let s =
+      match result with
+      | None -> "Unknown"
+      | Some (ModelCheck.Safe _) -> "Safe"
+      | Some (ModelCheck.Unsafe _) -> "Unsafe"
+    in
+    Format.printf "@.ABST:@.%a@." CEGAR_print.prog abst;
+    Format.printf "RESULT: %s@." s;
+    exit 0
+
 let rec loop prog0 is_cp info top_funs =
   pre ();
   let prog =
     if !Flag.relative_complete
     then
       let env,defs,main = FpatInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
-      {env=env; defs=defs; main=main}
+      {env; defs; main; attr=[]}
     else prog0
   in
   let pr =
@@ -43,7 +60,10 @@ let rec loop prog0 is_cp info top_funs =
   in
   if !Flag.print_progress
   then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
-  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog ~top_funs:top_funs in
+  if !Flag.print_abst_typ
+  then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
+  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog ~top_funs in
+  print_non_CPS_abst abst prog;
   let result = ModelCheck.check abst prog top_funs in
   match result with
   | ModelCheck.Safe env ->

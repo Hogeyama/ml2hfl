@@ -39,9 +39,9 @@ let rec print_list_aux print punc last fm xs =
 let print_list print ?(first=false) ?(last=false) punc fm xs =
   let punc' = format_of_string punc in
   Format.fprintf fm "@[";
-  if first then Format.fprintf fm punc';
+  if first && xs<>[] then Format.fprintf fm punc';
   Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
-  if last then Format.fprintf fm punc';
+  if last && xs<>[] then Format.fprintf fm punc';
   Format.fprintf fm "@]"
 
 module Fun = struct
@@ -76,6 +76,8 @@ module Pair = struct
   let map_snd f (x,y) = x, f y
   let fold f x y = f x y
   let unfold = make
+  let add_left f x = f x, x
+  let add_right f x = x, f x
   let to_list (x,y) = [x;y]
   let of_list xs =
     match xs with
@@ -83,6 +85,7 @@ module Pair = struct
     | _ -> invalid_argument "Pair.of_list"
   let add_right f x = x, f x
   let add_left f x = f x, x
+  let print f g ppf (x,y) = Format.fprintf ppf "@[(%a,@ %a)@]" f x g y
 end
 
 module List = struct

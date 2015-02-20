@@ -41,12 +41,13 @@ type const =
   | Sub
   | Mul
   | Tuple of int
-  | Proj of int * int (* 0-origin *)
+  | Proj of int * int (* Proj(n,i): 0 <= i < n *)
   | If (* for abstraction and model-checking *)
   | Bottom
   | Label of int
   | TreeConstr of int * string
   | CPS_result
+  | TypeAnnot of typ
 
 
 and t =
@@ -70,7 +71,23 @@ and ce = ce_node list
 and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
-and prog = {env:env; defs:fun_def list; main:var}
+and attr = ACPS
+and prog = {env:env; defs:fun_def list; main:var; attr:attr list}
+
+
+let prefix_randint = "#randint"
+let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
+let decomp_randint_name s =
+  try
+    let s1,s2 = String.split s "_" in
+    assert (s1 = prefix_randint);
+    int_of_string s2
+  with _ -> raise (Invalid_argument "decomp_randint_name")
+let is_randint_var s =
+  try
+    ignore @@ decomp_randint_name s;
+    true
+  with _ -> false
 
 
 let prefix_randint = "#randint"
@@ -166,14 +183,15 @@ let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
 let make_label n t = make_app (Const (Label n)) [t]
-let make_let bindings t =
-  List.fold_right (fun (x,t) t' -> Let(x,t,t')) bindings t
+let make_proj n i t = make_app (Const (Proj(n,i))) [t]
+let make_tuple ts = make_app (Const (Tuple (List.length ts))) ts
+let make_let bindings t = List.fold_right (Fun.uncurry _Let) bindings t
 
 let make_tree label ts = make_app (Const (TreeConstr(List.length ts, label))) ts
 
 let rec add_bool_labels leaf = function
   | [] -> leaf
-  | b::bs -> make_tree (if b then "true" else "false") [add_bool_labels leaf bs]
+  | b::bs -> make_tree (string_of_bool b) [add_bool_labels leaf bs]
 
 let make_br_exists n = function
   | [] -> assert false
@@ -232,6 +250,11 @@ let rec decomp_tfun_env = function
       let typs,typ = decomp_tfun_env (typ2 @@ Var x) in
       (x,typ1)::typs, typ
   | typ -> [], typ
+let rec decomp_let = function
+  | Let(x,t1,t2) ->
+      let bindings,t2' = decomp_let t2 in
+      (x,t1)::bindings, t2'
+  | t -> [], t
 
 
 
