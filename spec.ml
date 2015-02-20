@@ -4,48 +4,62 @@ open Syntax
 open Term_util
 
 type spec =
-    {abst_env: (id * typ) list;
+    {ref_env: (id * Ref_type.t) list;
+     abst_env: (id * typ) list;
      abst_cps_env: (id * typ) list;
      abst_cegar_env: (id * typ) list;
      inlined: id list;
      inlined_f: id list}
 
-let init = {abst_env=[]; abst_cps_env=[]; abst_cegar_env=[]; inlined=[]; inlined_f=[]}
+let init =
+  {ref_env = [];
+   abst_env = [];
+   abst_cps_env = [];
+   abst_cegar_env = [];
+   inlined = [];
+   inlined_f = []}
 
-let print {abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined=inlined; inlined_f=inlined_f} =
+let print {ref_env=renv; abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined=inlined; inlined_f=inlined_f} =
+  if renv <> []
+  then
+    begin
+      Color.printf Color.Red "spec (refinement type assertions):@. @[";
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Ref_type.print) typ) renv;
+      Format.printf "@."
+    end;
   if aenv <> []
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) aenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Print.typ) typ) aenv;
       Format.printf "@."
     end;
   if cpsenv <> []
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment for CPS transformed program):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) cpsenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Print.typ) typ) cpsenv;
       Format.printf "@."
     end;
   if cegarenv <> []
   then
     begin
       Color.printf Color.Red "spec (abstraction type environment for CEGAR-loop):@. @[";
-      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Syntax.print_id x (Color.blue Syntax.print_typ) typ) cegarenv;
+      List.iter (fun (x,typ) -> Format.printf "@[%a: %a@]@\n" Print.id x (Color.blue Print.typ) typ) cegarenv;
       Format.printf "@."
     end;
   if inlined <> []
   then
     begin
       Color.printf Color.Red "spec (inlined functions):@. @[";
-      List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined;
+      List.iter (Format.printf "@[%a@]@\n" Print.id) inlined;
       Format.printf "@."
     end;
   if inlined_f <> []
   then
     begin
       Color.printf Color.Red "spec (force inlined functions):@. @[";
-      List.iter (Format.printf "@[%a@]@\n" Syntax.print_id) inlined_f;
+      List.iter (Format.printf "@[%a@]@\n" Print.id) inlined_f;
       Format.printf "@."
     end
 
@@ -73,11 +87,13 @@ let parse_comment parser lexer filename =
     | Some s when flag -> loop true (str ^ "\n" ^ s)
     | _ -> loop false str
   in
-  parser lexer @@ Lexing.from_string @@ loop false ""
+  let lb = Lexing.from_string @@ loop false "" in
+  parser lexer lb
 
 
 let merge spec1 spec2 =
-  {abst_env = spec1.abst_env @ spec2.abst_env;
+  {ref_env = spec1.ref_env @ spec2.ref_env;
+   abst_env = spec1.abst_env @ spec2.abst_env;
    abst_cps_env = spec1.abst_cps_env @ spec2.abst_cps_env;
    abst_cegar_env = spec1.abst_cegar_env @ spec2.abst_cegar_env;
    inlined = spec1.inlined @ spec2.inlined;
@@ -102,19 +118,25 @@ let get_def_vars = get_def_vars.col2_term []
 
 exception My_not_found of id
 
-let rename {abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined=inlined; inlined_f=inlined_f} t =
+let rename {ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f} t =
   let vars = get_def_vars t in
   let rename_id f = (* temporal implementation *)
     List.find (fun f' -> Id.name f = Id.name f') vars
   in
   let aux1 (f,typ) = try [rename_id f, typ] with Not_found -> Format.printf "%a@." Id.print f; [] in
   let aux2 f = try [rename_id f] with Not_found -> [] in
-  let aenv' = List.flatten_map aux1 aenv in
-  let cpsenv' = List.flatten_map aux1 cpsenv in
-  let cegarenv' = List.flatten_map aux1 cegarenv in
+  let ref_env' = List.flatten_map aux1 ref_env in
+  let abst_env' = List.flatten_map aux1 abst_env in
+  let abst_cps_env' = List.flatten_map aux1 abst_cps_env in
+  let abst_cegar_env' = List.flatten_map aux1 abst_cegar_env in
   let inlined' = List.flatten_map aux2 inlined in
   let inlined_f' = List.flatten_map aux2 inlined_f in
-  {abst_env=aenv'; abst_cps_env=cpsenv'; abst_cegar_env=cegarenv'; inlined=inlined'; inlined_f=inlined_f'}
+  {ref_env = ref_env';
+   abst_env = abst_env';
+   abst_cps_env = abst_cps_env';
+   abst_cegar_env = abst_cegar_env';
+   inlined = inlined';
+   inlined_f = inlined_f'}
 
 
 let read parser lexer =

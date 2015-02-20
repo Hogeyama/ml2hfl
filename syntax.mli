@@ -5,7 +5,9 @@ type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
-and typed_term = {desc:term; typ:typ}
+and attr =
+  | ACPS
+and typed_term = {desc:term; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | Unit
   | True
@@ -26,7 +28,6 @@ and term =
   | Fun of id * typed_term
   | App of typed_term * typed_term list
   | If of typed_term * typed_term * typed_term
-  | Branch of typed_term * typed_term
   | Let of rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
@@ -80,7 +81,6 @@ and pattern =
   | PNone
   | PSome of typed_pattern
   | POr of typed_pattern * typed_pattern
-type node = BrNode | LabNode of bool | FailNode | EventNode of string | PatNode of int
 
 
 
@@ -197,21 +197,3 @@ val make_fold_tr : unit -> 'a fold_tr
 val occur : id -> typ -> bool
 val get_vars_pat : typed_pattern -> id list
 val get_fv : ?cmp:(id -> id -> bool) -> typed_term -> id list
-
-(** {6 Printing} *)
-
-val print_typ : Format.formatter -> typ -> unit
-val print_id : Format.formatter -> id -> unit
-val print_id_typ : Format.formatter -> id -> unit
-val string_of_const : const -> string
-val string_of_binop : binop -> string
-val string_of_typ : typ -> string
-val string_of_node : node -> string
-val print_pattern : Format.formatter -> typed_pattern -> unit
-val print_const : Format.formatter -> const -> unit
-val print_desc : Format.formatter -> term -> unit
-val print_term : Format.formatter -> typed_term -> unit
-val print_term' : Format.formatter -> typed_term -> unit
-val print_term_typ : Format.formatter -> typed_term -> unit
-val print_defs : Format.formatter -> (id * (id list * typed_term)) list -> unit
-val print_constr : Format.formatter -> typed_term -> unit

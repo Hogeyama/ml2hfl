@@ -9,6 +9,25 @@ module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
 
+let rec conv_typ ty =
+  match ty with
+  | TBase(TUnit, _) -> Fpat.Type.mk_unit
+  | TBase(TInt, _) -> Fpat.Type.mk_int
+  | TBase(TBool, _) -> Fpat.Type.mk_bool
+  | TBase(TAbst "string", _) -> Fpat.Type.mk_string
+  | TBase(TAbst "float", _) -> Fpat.Type.mk_float
+  | TBase(TAbst s, _) ->
+     Fpat.Type.mk_const (Fpat.TypConst.Ext s)
+  | TFun(ty1,tmp) ->
+     let ty2 = tmp (Const True) in
+     Fpat.Type.mk_fun [conv_typ ty1; conv_typ ty2]
+  | TApp _ when is_ttuple ty ->
+      let _,tys = decomp_tapp ty in
+      Fpat.Type.mk_tuple @@ List.map conv_typ tys
+  | _ ->
+     Format.printf "%a@." CEGAR_print.typ ty;
+     assert false
+
 let conv_const c =
   match c with
   | Bottom -> Fpat.Const.Bot
@@ -38,7 +57,7 @@ let conv_const c =
   | CmpPoly(typ,">=") ->
      Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
   | Int(n) -> Fpat.Const.Int(n)
-  | RandInt -> Fpat.Const.RandInt
+  | RandInt _ -> Fpat.Const.RandInt
   | Add -> Fpat.Const.Add Fpat.Type.mk_int
   | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
@@ -52,24 +71,29 @@ let conv_const c =
      Fpat.Const.UFun
        (Fpat.Type.mk_const (Fpat.TypConst.Ext "X"),
         Fpat.Idnt.make "end")
+  | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
+  | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
-let rec conv_term t =
+let conv_var x =
+  if is_parameter x || isEX_COEFFS x then
+    Fpat.Idnt.mk_coeff x
+  else
+    Fpat.Idnt.make x
+
+let rec conv_term env t =
   match t with
   | Const(RandVal s) ->
      Fpat.Term.mk_var (Fpat.Idnt.make (new_id "r")) (***)
   | Const(c) ->
      Fpat.Term.mk_const (conv_const c)
   | Var(x) ->
-     if is_parameter x || isEX_COEFFS x then
-       Fpat.Term.mk_var (Fpat.Idnt.mk_coeff x)
-     else
-       Fpat.Term.mk_var (Fpat.Idnt.make x)
-  | App(t1, t2) -> Fpat.Term.mk_app (conv_term t1) [conv_term t2]
+      Fpat.Term.mk_var @@ conv_var x
+  | App(t1, t2) -> Fpat.Term.mk_app (conv_term env t1) [conv_term env t2]
   | Fun _ -> assert false
   | Let _ -> assert false
 
-let conv_formula t = t |> conv_term |> Fpat.Formula.of_term
+let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
 
 let inv_const c =
   match c with
@@ -87,7 +111,7 @@ let inv_const c =
   | Fpat.Const.Eq ty when Fpat.Type.is_bool ty -> EqBool
   | Fpat.Const.Eq ty when Fpat.Type.is_int ty -> EqInt
   | Fpat.Const.Int(n) -> Int(n)
-  | Fpat.Const.RandInt -> RandInt
+  | Fpat.Const.RandInt -> RandInt None
   | Fpat.Const.Add ty when Fpat.Type.is_int ty -> Add
   | Fpat.Const.Sub ty when Fpat.Type.is_int ty -> Sub
   | Fpat.Const.Mul ty when Fpat.Type.is_int ty -> Mul
@@ -109,6 +133,7 @@ let inv_const c =
        when Fpat.Idnt.string_of x = "end"
             && Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
      CPS_result
+  | Fpat.Const.Proj(typs, i) -> Proj(List.length typs, i)
   | _ -> Format.printf "%s@." (Fpat.Const.string_of c); assert false
 
 let rec inv_term t =
@@ -138,7 +163,7 @@ let conv_event e = (***)
      Fpat.Term.mk_const (Fpat.Const.Event(x))
   | Branch(_) -> assert false
 
-let conv_fdef (f, args, guard, events, body) =
+let conv_fdef env (f, args, guard, events, body) =
   { Fpat.Fdef.name = f;
     Fpat.Fdef.args = List.map (Fpat.Idnt.make >> Fpat.Pattern.mk_var) args;
     Fpat.Fdef.guard = conv_formula guard;
@@ -148,7 +173,7 @@ let conv_fdef (f, args, guard, events, body) =
          Fpat.Term.mk_app
            (conv_event e)
            [Fpat.Term.mk_const Fpat.Const.Unit])
-        events (conv_term body) } (***)
+        events (conv_term env body) } (***)
 
 let inv_fdef fdef =
   fdef.Fpat.Fdef.name,
@@ -157,25 +182,9 @@ let inv_fdef fdef =
   [],
   inv_term fdef.Fpat.Fdef.body
 
-let rec conv_typ ty =
-  match ty with
-  | TBase(TUnit, _) -> Fpat.Type.mk_unit
-  | TBase(TInt, _) -> Fpat.Type.mk_int
-  | TBase(TBool, _) -> Fpat.Type.mk_bool
-  | TBase(TAbst "string", _) -> Fpat.Type.mk_string
-  | TBase(TAbst "float", _) -> Fpat.Type.mk_float
-  | TBase(TAbst s, _) ->
-     Fpat.Type.mk_const (Fpat.TypConst.Ext s)
-  | TFun(ty1,tmp) ->
-     let ty2 = tmp (Const True) in
-     Fpat.Type.mk_fun [conv_typ ty1; conv_typ ty2]
-  | _ ->
-     Format.printf "%a@." CEGAR_print.typ ty;
-     assert false
-
 let conv_prog (typs, fdefs, main) =
   { Fpat.Prog.fdefs =
-      List.map conv_fdef fdefs;
+      List.map (conv_fdef typs) fdefs;
     Fpat.Prog.types =
       List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
     Fpat.Prog.main = main }
@@ -259,15 +268,6 @@ let infer labeled is_cp cexs prog =
     (fun (f, rty) ->
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
     env
-(*
-  List.map
-    (fun (f, _) ->
-      try
-        f, conv_siz_type (List.assoc (Fpat.Idnt.make f) env)
-      with Not_found ->
-        assert false)
-    prog.Fpat.Prog.types
- *)
 
 let params = ref []
 (** ToDo: exs may contain extra parameters that are not related to the recursive call *)
@@ -397,7 +397,7 @@ let insert_extra_param t =
            List.fold_left
              (fun (f, ty) y ->
               (fun t ->
-               f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty}),
+               f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty; Syntax.attr=[]}),
               match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
              ((fun t -> t), trans_type t.Syntax.typ)
              ys'
@@ -423,7 +423,7 @@ let insert_extra_param t =
                       rfs
                   in
                   (if debug then
-                     Format.printf "rec: %a@." Syntax.print_term t1');
+                     Format.printf "rec: %a@." Print.term t1');
                   let xxss =
                     List.take (List.length ts) xxss
                   in
@@ -439,7 +439,7 @@ let insert_extra_param t =
                               if debug then
                                 Format.printf
                                   "arg %a of %a not changed@,"
-                                  Syntax.print_id x Syntax.print_id f in xs
+                                  Print.id x Print.id f in xs
                          | _ -> [])
                      | _ -> [])
                     ts xxss
@@ -447,13 +447,13 @@ let insert_extra_param t =
                   (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
                   let _ =
                     if debug then
-                      Format.printf "nonrec: %a@." Syntax.print_term t1'
+                      Format.printf "nonrec: %a@." Print.term t1'
                   in
                   false, [])
            | _ ->
               let _ =
                 if debug then
-                  Format.printf "nonrec: %a@." Syntax.print_term t1'
+                  Format.printf "nonrec: %a@." Print.term t1'
               in
               false, []
          in
@@ -475,8 +475,6 @@ let insert_extra_param t =
          Syntax.App(t1', ts'')
       | Syntax.If(t1, t2, t3) ->
          Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
-      | Syntax.Branch(t1, t2) ->
-         Syntax.Branch(aux rfs bvs exs t1, aux rfs bvs exs t2)
       | Syntax.Let(flag, bindings, t2) ->
          let bvs' =
            bvs @
@@ -571,7 +569,7 @@ let insert_extra_param t =
       | Syntax.TNone -> Syntax.TNone
       | Syntax.TSome t -> Syntax.TSome(aux rfs bvs exs t)
     in
-    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ}
+    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ; Syntax.attr=[]}
   in
   let res = aux [] [] [] t in
   let _ = add_time tmp Flag.time_parameter_inference in

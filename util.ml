@@ -39,9 +39,9 @@ let rec print_list_aux print punc last fm xs =
 let print_list print ?(first=false) ?(last=false) punc fm xs =
   let punc' = format_of_string punc in
   Format.fprintf fm "@[";
-  if first then Format.fprintf fm punc';
+  if first && xs<>[] then Format.fprintf fm punc';
   Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
-  if last then Format.fprintf fm punc';
+  if last && xs<>[] then Format.fprintf fm punc';
   Format.fprintf fm "@]"
 
 module Fun = struct
@@ -76,11 +76,14 @@ module Pair = struct
   let map_snd f (x,y) = x, f y
   let fold f x y = f x y
   let unfold = make
+  let add_left f x = f x, x
+  let add_right f x = x, f x
   let to_list (x,y) = [x;y]
   let of_list xs =
     match xs with
     | [x;y] -> x,y
     | _ -> invalid_argument "Pair.of_list"
+  let print f g ppf (x,y) = Format.fprintf ppf "@[(%a,@ %a)@]" f x g y
 end
 
 module List = struct
@@ -161,8 +164,18 @@ module List = struct
     | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
     | _ -> raise (Invalid_argument "List.map3")
 
-  let rec filter_map2 f xs ys = filter_map Std.identity @@ List.map2 f xs ys
-
+  let rec rev_filter_map acc f xs =
+    match xs with
+    | [] -> acc
+    | x::xs' ->
+        let acc' =
+          match f x with
+          | None -> acc
+          | Some r -> r::acc
+        in
+        rev_filter_map acc' f xs'
+  let rev_filter_map f xs = rev_filter_map [] f xs
+  let filter_map2 f xs ys = rev_filter_map Std.identity @@ List.rev_map2 f xs ys
   let rec filter_out f xs = filter (not -| f) xs
 
   let rec rev_split acc1 acc2 xs =

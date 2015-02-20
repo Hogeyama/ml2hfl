@@ -22,11 +22,14 @@ rule token = parse
 | ')' { RPAREN }
 | '[' { LSQUAR }
 | ']' { RSQUAR }
+| '{' { LBRACE }
+| '}' { RBRACE }
 | '=' { EQUAL }
 | '<' { LTHAN }
 | '>' { GTHAN }
 | "<=" { LEQ }
 | ">=" { GEQ }
+| "<>" { NEQ }
 | "||" { OR }
 | "&&" { AND }
 | "not" { NOT }
@@ -43,9 +46,13 @@ rule token = parse
 | "->" { ARROW }
 | ';' { SEMI }
 | ':' { COLON }
+| '|' { BAR }
+| "type" { TYPE }
 | "val" { VAL }
 | "valcps" { VALCPS }
 | "valcegar" { VALCEGAR }
+| "true" { TRUE }
+| "false" { FALSE }
 | digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 (*| lower (digit|lower|upper|'_')* *)
