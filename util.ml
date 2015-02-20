@@ -93,7 +93,7 @@ module List = struct
   let cons x xs = x::xs
   let snoc xs x = xs@[x]
 
-  let print pr fm xs = Format.printf "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
+  let print pr fm xs = Format.fprintf fm "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
 
   let rec unfold_right f s =
     match f s with
