@@ -168,7 +168,7 @@ module List = struct
 
   let rec rev_filter_map acc f xs =
     match xs with
-    | [] -> []
+    | [] -> acc
     | x::xs' ->
         let acc' =
           match f x with
@@ -177,7 +177,7 @@ module List = struct
         in
         rev_filter_map acc' f xs'
   let rev_filter_map f xs = rev_filter_map [] f xs
-  let rec filter_map2 f xs ys = rev_filter_map Std.identity @@ List.rev_map2 f xs ys
+  let filter_map2 f xs ys = rev_filter_map Std.identity @@ List.rev_map2 f xs ys
 
   let rec filter_out f xs = filter (not -| f) xs
 
