@@ -169,7 +169,9 @@ let report_unsafe main_fun arg_num ce set_target =
   then
     Format.printf "Input for %s:@.  %a@." main_fun
       (print_list Format.pp_print_int "; ") (List.take arg_num ce);
-  Format.printf "@[<v 2>Error trace:%a@."  Eval.print (ce,set_target)
+  try
+    Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_target)
+  with Unsupported s -> Format.printf "@.Unsupported: %s@.@." s
 
 
 let rec run orig parsed =

@@ -165,9 +165,15 @@ let rec eval_print fm rands t =
   | Match(t1,pat::pats) ->
       let rec check v p =
         match v.desc, p.pat_desc with
-        | _, PAny -> Some (fun t -> t)
+        | _, PAny -> Some Std.identity
         | _, PVar x -> Some (subst x v)
-        | _, PConst v' -> if v = v' then Some (fun t -> t) else None
+        | _, PConst v' -> if v = v' then Some Std.identity else None
+        | _, PAlias(p,x) ->
+            begin
+              match check v p with
+              | None -> None
+              | Some f -> Some (f -| subst x v)
+            end
         | Constr(s, vs), PConstruct(s', ps) ->
             if s <> s'
             then None
@@ -178,7 +184,7 @@ let rec eval_print fm rands t =
                 | Some f ->
                     match check v p with
                     | None -> None
-                    | Some f' -> Some (fun t -> f (f' t))
+                    | Some f' -> Some (f -| f')
               in
               List.fold_left2 aux (Some Std.identity) vs ps
         | Nil, PNil -> Some (fun t -> t)
@@ -187,14 +193,14 @@ let rec eval_print fm rands t =
               match check v1 p1, check v2 p2 with
               | None, _
               | _, None -> None
-              | Some f1, Some f2 -> Some (fun t -> f1 (f2 t))
+              | Some f1, Some f2 -> Some (f1 -| f2)
             end
         | Tuple[v1;v2], PTuple[p1;p2] ->
             begin
               match check v1 p1, check v2 p2 with
               | None, _
               | _, None -> None
-              | Some f1, Some f2 -> Some (fun t -> f1 (f2 t))
+              | Some f1, Some f2 -> Some (f1 -| f2)
             end
         | Record _, PRecord _ -> assert false
         | _, POr(p1, p2) ->

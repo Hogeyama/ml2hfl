@@ -107,9 +107,7 @@ let rec get_prefix ce n =
   | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
-
   (* List.iter (fun (n, bs) -> Format.printf "C.E.: %d: %a@." n (print_list Format.pp_print_bool ",") bs) ext_ce; *)
-
   let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
   let time_tmp = get_time () in
   let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
@@ -123,7 +121,13 @@ let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   let prefix = get_prefix ce (n+1) in
   let result =
     if checksat env' (make_and constr !rand_precond_ref)
-    then Feasible (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', get_solution env' constr)
+    then
+      let solution = get_solution env' constr in
+(* @master branch
+      let env' = List.sort ~cmp:(Compare.on fst) env' in
+      let solution = List.map (fun (x,_) -> List.assoc_default x solution 0) env'' in
+*)
+      Feasible (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', solution)
     else Infeasible prefix
   in
   if !Flag.print_progress then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;

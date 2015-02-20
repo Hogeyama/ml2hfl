@@ -12,6 +12,37 @@ let flatten_tvar = (make_trans ()).tr_term
 
 
 
+let alpha_rename = make_trans ()
+
+let alpha_rename_term t =
+  match t.desc with
+  | Let(flag, bindings, t) ->
+      let bindings' =
+        let aux (f,xs,t) =
+          let f' = Id.new_var_id f in
+          let xs' = List.map Id.new_var_id xs in
+          let t' = alpha_rename.tr_term t in
+          let t'' = subst f (make_var f') t' in
+          let t''' = List.fold_left2 (fun t x x' -> subst_var x x' t) t'' xs xs' in
+          (f', xs', t''')
+        in
+        List.map aux bindings
+      in
+      let sbst t = List.fold_left2 (fun t' (f,_,_) (f',_,_) -> subst_var f f' t') t bindings bindings' in
+      let bindings'' = List.map (fun (f,xs,t) -> f, xs, sbst t) bindings' in
+      let t' = sbst @@ alpha_rename.tr_term t in
+      make_let_f flag bindings'' t'
+  | Fun(x, t) ->
+      let x' = Id.new_var_id x in
+      let t' = alpha_rename.tr_term t in
+      let t'' = subst_var x x' t' in
+      make_fun x' t''
+  | _ -> alpha_rename.tr_term_rec t
+
+let () = alpha_rename.tr_term <- alpha_rename_term
+let alpha_rename = alpha_rename.tr_term
+
+
 let inst_tvar_tunit = make_trans ()
 
 let inst_tvar_tunit_typ typ =
@@ -144,17 +175,17 @@ let copy_poly_funs_desc desc =
       else
         let aux t (_,f') =
           let tvar_map = List.map (fun v -> v, ref None) tvars in
-          let () = Type.unify (rename_tvar.tr2_typ tvar_map @@ Id.typ f) (Id.typ f') in
+          Type.unify (rename_tvar.tr2_typ tvar_map @@ Id.typ f) (Id.typ f');
           let xs = List.map (rename_tvar.tr2_var tvar_map) xs in
           let t1 = rename_tvar.tr2_term tvar_map t1 in
-          let xs' = xs in
           let t1 =
             match flag with
-              Nonrecursive -> t1
+            | Nonrecursive -> t1
             | Recursive -> subst f (make_var f') t1
           in
           let t1 = copy_poly_funs.tr_term t1 in
-          make_let_f flag [f', xs', t1] t
+          let t1 = alpha_rename t1 in
+          make_let_f flag [f', xs, t1] t
         in
         (List.fold_left aux t2''' map).desc
   | Let(flag, defs, t) ->
@@ -163,7 +194,7 @@ let copy_poly_funs_desc desc =
         let defs' = List.map (fun (f,xs,t) -> f, xs, copy_poly_funs.tr_term t) defs in
         Let(flag, defs', copy_poly_funs.tr_term t)
       else
-        raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic type.\nPlease use type annotations.")
+        raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations.")
   | _ -> copy_poly_funs.tr_desc_rec desc
 
 let () = copy_poly_funs.tr_desc <- copy_poly_funs_desc
@@ -1690,37 +1721,6 @@ let elim_unused_let_term cbv t =
 let () = elim_unused_let.tr2_term <- elim_unused_let_term
 let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
 
-
-
-let alpha_rename = make_trans ()
-
-let alpha_rename_term t =
-  match t.desc with
-  | Let(flag, bindings, t) ->
-      let bindings' =
-        let aux (f,xs,t) =
-          let f' = Id.new_var_id f in
-          let xs' = List.map Id.new_var_id xs in
-          let t' = alpha_rename.tr_term t in
-          let t'' = subst f (make_var f') t' in
-          let t''' = List.fold_left2 (fun t x x' -> subst_var x x' t) t'' xs xs' in
-          (f', xs', t''')
-        in
-        List.map aux bindings
-      in
-      let sbst t = List.fold_left2 (fun t' (f,_,_) (f',_,_) -> subst_var f f' t') t bindings bindings' in
-      let bindings'' = List.map (fun (f,xs,t) -> f, xs, sbst t) bindings' in
-      let t' = sbst @@ alpha_rename.tr_term t in
-      make_let_f flag bindings'' t'
-  | Fun(x, t) ->
-      let x' = Id.new_var_id x in
-      let t' = alpha_rename.tr_term t in
-      let t'' = subst_var x x' t' in
-      make_fun x' t''
-  | _ -> alpha_rename.tr_term_rec t
-
-let () = alpha_rename.tr_term <- alpha_rename_term
-let alpha_rename = alpha_rename.tr_term
 
 
 let subst_with_rename = make_trans2 ()

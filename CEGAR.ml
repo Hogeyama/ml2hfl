@@ -62,7 +62,7 @@ let rec loop prog0 is_cp info top_funs =
       let env' = List.rev_map_flatten aux env in
       post ();
       let log_file =
-	if !Flag.randint_refinement_log then 
+	if !Flag.randint_refinement_log then
 	  let dirname = Filename.dirname !Flag.filename in
 	  let basename = Filename.basename !Flag.filename in
 	  dirname ^ "/refinement/" ^
@@ -92,7 +92,7 @@ let rec loop prog0 is_cp info top_funs =
       let print_pred ppf (env, fml) =
 	Format.fprintf ppf "%a |= %a" Fpat.TypEnv.pr_compact env Fpat.Formula.pr fml in
       let log_file =
-	if !Flag.randint_refinement_log then 
+	if !Flag.randint_refinement_log then
 	  let dirname = Filename.dirname !Flag.filename in
 	  let basename = Filename.basename !Flag.filename in
 	  dirname ^ "/refinement/" ^
@@ -139,7 +139,7 @@ let rec loop prog0 is_cp info top_funs =
 	  if debug then Format.printf "MERGED:@.";
 	  if debug then List.iter (fun (_, orig_ce, _, ext_path) -> Format.printf "%a: @.  %a@." print_path orig_ce (print_list print_ext_paths ";") ext_path) paths;
 	end;
-      
+
       path_counter := 0;
       let refinement_type_map = function
 	| (Feasibility.Feasible (true, env, sol), _, _, _) ->
