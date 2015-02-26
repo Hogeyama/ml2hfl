@@ -20,12 +20,14 @@ type result =
   | Infeasible of CEGAR_syntax.ce
 
 
-val check: ?map_randint_to_preds:(int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list -> ?ext_ce:(int * bool list) list -> CEGAR_syntax.ce -> CEGAR_syntax.prog -> result
+val check: CEGAR_syntax.ce -> CEGAR_syntax.prog -> result
 
 (** [check ce defs s] で，反例 [ce] が実際にあり得るパスかどうかをチェックする．
     [defs] は関数定義．
     [s] はプログラムのメイン．
 *)
+
+val check_non_term: ?map_randint_to_preds:(int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list -> ?ext_ce:(int * bool list) list -> CEGAR_syntax.ce -> CEGAR_syntax.prog -> result
 
 val trans_ce: CEGAR_syntax.ce -> CEGAR_syntax.prog -> bool list
 val print_ce_reduction: ?map_randint_to_preds:(int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list -> ?ext_ce:(int * bool list) list -> CEGAR_syntax.ce -> CEGAR_syntax.prog -> unit
