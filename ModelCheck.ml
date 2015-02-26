@@ -63,7 +63,7 @@ let check_aux_cps prog labels =
       | ModelCheck_util.Unsafe(x,y) -> Unsafe(x,y)
   with End_of_file -> fatal "TRecS failed"
 
-let check abst prog top_funs =
+let check abst prog =
   let tmp = get_time () in
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;

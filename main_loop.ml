@@ -197,7 +197,7 @@ let rec run_cegar prog =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog CEGAR.empty_info [] with
+        match CEGAR.cegar prog CEGAR.empty_info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             Color.printf Color.Bright "Safe!@.@.";
@@ -228,7 +228,6 @@ let rec run_cegar prog =
 let rec run orig parsed =
   init ();
   let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print in
-  let top_funs = List.filter_out (fun s -> List.mem (Id.name s) ["main"; "br_exists"; "br_forall"]) (Term_util.get_top_funs parsed) in
   let spec' = Spec.rename spec parsed |@ not !Flag.only_result &> Spec.print in
   let main_fun,arg_num,set_target =
     if !Flag.cegar = Flag.CEGAR_DependentType
@@ -258,7 +257,7 @@ let rec run orig parsed =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog info top_funs with
+        match CEGAR.cegar prog info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             if not !Flag.exp

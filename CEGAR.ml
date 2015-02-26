@@ -30,7 +30,7 @@ let inlined_functions orig_fun_list force {defs;main} =
 let print_non_CPS_abst abst prog =
   let result =
     try
-      Some (ModelCheck.check abst prog [])
+      Some (ModelCheck.check abst prog)
     with _ -> None
   in
   if !Flag.just_print_non_CPS_abst then
@@ -44,7 +44,7 @@ let print_non_CPS_abst abst prog =
     Format.printf "RESULT: %s@." s;
     exit 0
 
-let rec loop prog0 is_cp info top_funs =
+let rec loop prog0 is_cp info =
   pre ();
   let prog =
     if !Flag.relative_complete
@@ -62,9 +62,9 @@ let rec loop prog0 is_cp info top_funs =
   then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
   if !Flag.print_abst_typ
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
-  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog ~top_funs in
+  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   print_non_CPS_abst abst prog;
-  let result = ModelCheck.check abst prog top_funs in
+  let result = ModelCheck.check abst prog in
   match result with
   | ModelCheck.Safe env ->
       if Flag.print_ref_typ_debug
@@ -199,11 +199,11 @@ let rec loop prog0 is_cp info top_funs =
       let maps = List.map (fun path -> path_counter := !path_counter + 1; refinement_type_map path) paths in
       let env' = List.fold_left (fun a b -> Refine.add_preds_env b a) prog.env maps in
       post ();
-      loop {prog with env=env'} is_cp info top_funs
+      loop {prog with env=env'} is_cp info
 
 
 
-let cegar prog info top_funs =
+let cegar prog info =
   let add_fail_to_end ds =
     if !Flag.non_termination then
       List.map (fun (f, args, cond, e, t) -> if t=Const(CPS_result) then (f, args, cond, [Event "fail"], t) else (f, args, cond, e, t)) ds
@@ -212,7 +212,7 @@ let cegar prog info top_funs =
   make_ID_map prog;
   try
     let is_cp = FpatInterface.is_cp prog in
-    loop prog is_cp info top_funs
+    loop prog is_cp info
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress
@@ -232,8 +232,8 @@ let map3 =
 
 let map4 = [1, fun x -> [make_lt x (make_int (-1))]]
 
-let cegar prog info top_funs =
+let cegar prog info =
   let x = new_id "x" in
   let prog' = {prog with env = Refine.add_renv ([](*map3@map4*)) prog.env} in
-  cegar prog' info top_funs
+  cegar prog' info
 *)
