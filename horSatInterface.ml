@@ -2,7 +2,6 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
-open HorSat
 
 exception UnknownOutput
 
@@ -200,7 +199,7 @@ let write_log filename target =
     close_out cout
 
 
-let check env target =
+let check target =
   let target' = trans target in
   let input =
     try

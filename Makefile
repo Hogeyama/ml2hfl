@@ -48,10 +48,10 @@ endif
 MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	feasibility.mli refine.mli syntax.mli print.mli term_util.mli	\
 	CEGAR_print.mli CEGAR_CPS.mli CEGAR_abst.mli spec_parser.mli	\
-	horSat_parser.mli CEGAR_parser.mli BRA_transform.mli	\
-	CEGAR_lift.mli tupling.mli ref_trans.mli trans.mli tree.mli	\
-	rose_tree.mli type.mli color.mli CEGAR_trans.mli		\
-	CEGAR_util.mli
+	horSat_parser.mli trecs_parser.mli CEGAR_parser.mli		\
+	BRA_transform.mli CEGAR_lift.mli tupling.mli ref_trans.mli	\
+	trans.mli tree.mli rose_tree.mli type.mli color.mli		\
+	CEGAR_trans.mli CEGAR_util.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
@@ -66,12 +66,13 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
 	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\
 	CEGAR_lexer.cmo horSat_syntax.cmo horSat_parser.cmo		\
-	horSat_lexer.cmo horSatInterface.cmo ModelCheck.cmo		\
-	feasibility.cmo refine.cmo CEGAR_non_term.cmo CEGAR.cmo		\
-	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo		\
-	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo	\
-	extraClsDepth.cmo extraParamInfer.cmo eval.cmo			\
-	elim_same_arg.cmo main_loop.cmo termination_loop.cmo		\
+	horSat_lexer.cmo horSatInterface.cmo trecs_syntax.cmo		\
+	trecs_parser.cmo trecs_lexer.cmo trecsInterface.cmo		\
+	ModelCheck.cmo feasibility.cmo refine.cmo CEGAR_non_term.cmo	\
+	CEGAR.cmo writeAnnot.cmo tupling.cmo ref_trans.cmo		\
+	ret_fun.cmo BRA_types.cmo BRA_util.cmo BRA_state.cmo		\
+	BRA_transform.cmo extraClsDepth.cmo extraParamInfer.cmo		\
+	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo	\
 	mochi.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
@@ -98,6 +99,11 @@ spec_lexer.ml: spec_lexer.mll
 horSat_parser.ml horSat_parser.mli: horSat_parser.mly
 	$(OCAMLYACC) -v $<
 horSat_lexer.ml: horSat_lexer.mll
+	$(OCAMLLEX) $<
+
+trecs_parser.ml trecs_parser.mli: trecs_parser.mly
+	$(OCAMLYACC) -v $<
+trecs_lexer.ml: trecs_lexer.mll
 	$(OCAMLLEX) $<
 
 CEGAR_parser.ml CEGAR_parser.mli: CEGAR_parser.mly
@@ -168,8 +174,8 @@ doc:
 # clean
 
 clean:
-	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *~
-	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml horSat_parser.ml horSat_parser.mli horSat_lexer.ml
+	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *.output *~
+	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml horSat_parser.ml horSat_parser.mli horSat_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
 	rm -f $(NAME).byte $(NAME).opt
 
 clean-test:
@@ -204,7 +210,10 @@ test-error: opt
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-GENERATED = spec_parser.ml spec_parser.mli spec_lexer.ml horSat_parser.ml horSat_parser.mli horSat_lexer.ml CEGAR_parser.mli CEGAR_parser.ml CEGAR_lexer.ml
+GENERATED = spec_parser.ml spec_parser.mli spec_lexer.ml	\
+	horSat_parser.ml horSat_parser.mli horSat_lexer.ml	\
+	trecs_parser.ml trecs_parser.mli trecs_lexer.ml		\
+	CEGAR_parser.mli CEGAR_parser.ml CEGAR_lexer.ml
 
 depend: Makefile $(GENERATED) $(MLI) $(SRC)
 	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) > depend

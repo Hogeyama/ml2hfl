@@ -6,7 +6,14 @@ open CEGAR_util
 
 exception UnknownOutput
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of (string * int) list
+type counterexample = int list
+
+type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
+
+type state = int
+type input = string
+
+type spec = (state * input * state list) list
 
 module TS = Trecs_syntax
 
@@ -65,6 +72,16 @@ let trans ({defs},spec) =
 
 
 
+let trans_ce ce =
+  let aux (s,_) =
+    match s with
+    | "unit" -> []
+    | "br" -> []
+    | s when s.[0] = 'l' -> [int_of_string @@ String.slice ~first:1 s]
+    | s when String.starts_with s "event_" -> []
+    | _ -> assert false
+  in
+  List.flatten_map aux ce
 
 
 
@@ -110,7 +127,7 @@ let rec verifyFile filename =
       Safe env
   | `Unsafe trace ->
       close_in ic;
-      Unsafe trace
+      Unsafe (trans_ce trace)
   | `TimeOut ->
       if not !Flag.only_result
       then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
@@ -125,7 +142,7 @@ let write_log filename target =
   close_out cout
 
 
-let check env target =
+let check target =
   let target' = trans target in
   let input =
     try
@@ -135,7 +152,9 @@ let check env target =
   try
     write_log input target';
     verifyFile input
-  with Failure("lex error") -> raise UnknownOutput
+  with
+  | Failure("lex error") -> raise UnknownOutput
+  | End_of_file -> fatal "TRecS failed"
 
 
 (* returen "" if the version cannot be obtained *)
@@ -151,3 +170,42 @@ let version () =
   in
   ignore @@ Unix.close_process (cin, cout);
   v
+
+let make_line_spec n q =
+  let rec aux i spec =
+    if i < 0
+    then spec
+    else aux (i-1) ((q, "l" ^ string_of_int i, [q])::spec)
+  in
+    aux n []
+
+let make_file_spec () : spec =
+  [0, "unit", [];
+   0, "event_newr", [1];
+   1, "event_read", [1];
+   1, "event_close", [4];
+   0, "event_neww", [2];
+   2, "event_write", [2];
+   2, "event_close", [4];
+   2, "event_newr", [3];
+   1, "event_neww", [3];
+   3, "unit", [];
+   3, "event_read", [3];
+   3, "event_write", [3];
+   3, "event_close", [3];
+   4, "unit", [];]
+
+
+let make_base_spec n q : spec = (q, "br", [q;q])::make_line_spec 1 q
+
+let make_spec n : spec =
+  let spec =
+    match !Flag.mode with
+    | Flag.Reachability -> (0,"unit",[])::(0,"event_fail",[1])::make_base_spec n 0
+    | Flag.FileAccess ->
+        let spec = make_file_spec () in
+        let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
+        let spec' = List.rev_flatten_map (fun i -> make_base_spec n i) @@ List.init (qm+1) Std.identity in
+        spec @@@ spec'
+  in
+  List.sort spec

@@ -747,7 +747,7 @@ let rec trans_ce_aux labeled ce acc defs t k =
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let trans_ce ce labeled {defs; main} =
+let trans_ce labeled {defs; main} ce =
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let ce' = trans_ce_aux labeled ce [] defs t init_cont in
   assert (not (List.mem main labeled));

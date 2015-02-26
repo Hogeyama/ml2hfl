@@ -80,6 +80,6 @@ val eval_abst_cbn :
   CEGAR_syntax.var list -> CEGAR_syntax.prog -> int list -> unit
 
 val trans_ce :
-  int list -> CEGAR_syntax.var list -> CEGAR_syntax.prog -> int list
+  CEGAR_syntax.var list -> CEGAR_syntax.prog -> int list -> int list
 
 val simplify_if : CEGAR_syntax.prog -> CEGAR_syntax.prog

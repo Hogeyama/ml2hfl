@@ -7,11 +7,11 @@ open ModelCheck_util
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
-type counterexample = CETRecS of unit | CEHorSat of HorSatInterface.counterexample
+type counterexample = CETRecS of TrecsInterface.counterexample | CEHorSat of HorSatInterface.counterexample
 type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
 
 type spec =
-  | SpecTRecS of unit
+  | SpecTRecS of TrecsInterface.spec
   | SpecHorSat of HorSatInterface.spec
 
 let make_file_spec () =
@@ -254,30 +254,6 @@ let rec beta_reduce prog =
     then prog
     else beta_reduce prog'
 
-
-
-let model_check_aux (prog,spec) =
-  let prog = Typing.infer prog in
-  let prog = if Flag.useless_elim then Useless_elim.elim prog else prog in
-  let prog = if Flag.beta_reduce then beta_reduce prog else prog in
-  let prog = if Flag.church_encode then church_encode prog else prog in
-  let env = prog.env in
-  match !Flag.mc, spec with
-  | TRecS, SpecTRecS spec' ->
-      begin
-        try
-          assert false
-        with End_of_file -> fatal "TRecS failed"
-      end
-  | HorSat, SpecHorSat spec' ->
-      begin
-        match HorSatInterface.check env (prog,spec') with
-        | HorSatInterface.Safe env -> Safe env
-        | HorSatInterface.Unsafe ce -> Unsafe (CEHorSat ce)
-      end
-  | _ -> assert false
-
-
 let pr s t =
   if debug ()
   then Format.printf "##[ModelCheck] %s:@.%a@.@." s CEGAR_print.prog_typ t;
@@ -297,6 +273,10 @@ let preprocess prog =
   |> pop_main
   |@> pr "pop_main"
   |> capitalize
+  |> Typing.infer
+  |&Flag.useless_elim&> Useless_elim.elim
+  |&Flag.beta_reduce&> beta_reduce
+  |&Flag.church_encode&> church_encode
 
 let preprocess_cps prog =
   prog
@@ -312,6 +292,10 @@ let preprocess_cps prog =
   |@> pr "POP_MAIN"
   |> capitalize
   |@> pr "CAPITALIZE"
+  |> Typing.infer
+  |&Flag.useless_elim&> Useless_elim.elim
+  |&Flag.beta_reduce&> beta_reduce
+  |&Flag.church_encode&> church_encode
 
 let check abst prog =
   let tmp = get_time () in
@@ -322,14 +306,24 @@ let check abst prog =
     then preprocess_cps abst
     else preprocess abst
   in
-  let spec =
+  let result =
     match !Flag.mc with
-    | TRecS -> assert false
-    | HorSat ->
+    | Flag.TRecS ->
+        let spec = TrecsInterface.make_spec @@ List.length prog.defs in
+        begin
+          match TrecsInterface.check (abst',spec) with
+          | TrecsInterface.Safe env -> Safe env
+          | TrecsInterface.Unsafe ce -> Unsafe (CETRecS ce)
+        end
+    | Flag.HorSat ->
         let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
-        SpecHorSat (HorSatInterface.make_spec labels)
+        let spec = HorSatInterface.make_spec labels in
+        begin
+          match HorSatInterface.check (abst',spec) with
+          | HorSatInterface.Safe env -> Safe env
+          | HorSatInterface.Unsafe ce -> Unsafe (CEHorSat ce)
+        end
   in
-  let result = model_check_aux (abst',spec) in
   add_time tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
   result

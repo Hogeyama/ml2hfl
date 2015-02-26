@@ -92,6 +92,14 @@ module List = struct
   let singleton x = [x]
   let cons x xs = x::xs
   let snoc xs x = xs@[x]
+  let hd_option xs =
+    match xs with
+    | [] -> None
+    | x::_ -> Some x
+  let hd_default xs x =
+    match xs with
+    | [] -> x
+    | y::_ -> y
 
   let print pr fm xs = Format.fprintf fm "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
 

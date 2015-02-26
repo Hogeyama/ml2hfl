@@ -6,7 +6,8 @@ open CEGAR_print
 open CEGAR_util
 
 type result =
-    Feasible of bool * (string * CEGAR_syntax.typ) list * int list
+  | Feasible of int list
+  | FeasibleNonTerm of bool * (string * CEGAR_syntax.typ) list * int list
   | Infeasible of CEGAR_syntax.ce
 
 let debug () = List.mem "Feasibility" !Flag.debug_module
@@ -127,7 +128,7 @@ let check ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
       let env' = List.sort ~cmp:(Compare.on fst) env' in
       let solution = List.map (fun (x,_) -> List.assoc_default x solution 0) env'' in
 *)
-      Feasible (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', solution)
+      FeasibleNonTerm (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', solution)
     else Infeasible prefix
   in
   if !Flag.print_progress then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;

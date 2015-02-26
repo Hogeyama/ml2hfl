@@ -729,3 +729,6 @@ let rec merge_similar_paths_aux = function
 let rec merge_similar_paths l =
   let l' = merge_similar_paths_aux l in
   if List.length l = List.length l' then l else merge_similar_paths l'
+
+let inlined_functions orig_fun_list force {defs;main} =
+  List.unique @@ List.map fst @@ get_nonrec defs main orig_fun_list force
