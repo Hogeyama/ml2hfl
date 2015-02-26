@@ -149,8 +149,18 @@ let report_safe env rmap get_rtyp orig t0 =
     |> List.map (fun (id, typ) -> Id.name id, typ)
     |> WriteAnnot.f !Flag.filename orig;
   let only_result_termination = !Flag.debug_level <= 0 && !Flag.mode = Flag.Termination in
-  if not only_result_termination
-  then (Color.printf Color.Bright "Non-terminating!"; Format.printf "@.@.");
+  begin
+    match !Flag.mode with
+    | Flag.NonTermination ->
+        Color.printf Color.Bright "Non-terminating!";
+        Format.printf "@.@."
+    | Flag.Termination when !Flag.debug_level <= 0 ->
+        Color.printf Color.Bright "Safe!";
+        Format.printf "@.@."
+    | _ ->
+        Color.printf Color.Bright "Safe!";
+        Format.printf "@.@."
+  end;
   if !Flag.relative_complete then
     begin
       let map =
@@ -182,7 +192,9 @@ let report_safe env rmap get_rtyp orig t0 =
 
 
 let report_unsafe main_fun arg_num ce set_target =
-  Color.printf Color.Bright "Unknown.";
+  (match !Flag.mode with
+   | Flag.NonTermination -> Color.printf Color.Bright "Unknown.";
+   | _ -> Color.printf Color.Bright "Unsafe!");
   Format.printf "@.@.";
   if main_fun <> "" && arg_num <> 0
   then
@@ -201,7 +213,7 @@ let rec run_cegar prog =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog CEGAR_syntax.empty_cegar_info with
+        match CEGAR.run prog CEGAR_syntax.empty_cegar_info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             Color.printf Color.Bright "Safe!@.@.";
@@ -261,7 +273,7 @@ let rec run orig parsed =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog info with
+        match CEGAR.run prog info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             if not !Flag.exp

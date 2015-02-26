@@ -123,8 +123,10 @@ let rec loop prog0 is_cp ces info =
               (* termination analysis *)
               Refine.refine_rank_fun ce' [] prog0;
               assert false
-          | Feasibility.Feasible sol, Flag.Termination ->
+          | Feasibility.Feasible sol, _ ->
               prog, Unsafe sol
+          | Feasibility.FeasibleNonTerm _, _ ->
+              assert false
           | Feasibility.Infeasible prefix, _ ->
               let ces' = ce::ces in
               let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
@@ -134,7 +136,8 @@ let rec loop prog0 is_cp ces info =
                 | _ -> assert false
               in
               let ces'' = List.map aux ces' in
-              let _,prog' = Refine.refine inlined_functions is_cp prefix ces'' [] prog0 in
+              let ext_ces = List.make (List.length ces'') [] in
+              let _,prog' = Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0 in
               if !Flag.debug_level > 0 then
                 Format.printf "Prefix of spurious counterexample::@.%a@.@."
                               CEGAR_print.ce prefix;
@@ -144,7 +147,7 @@ let rec loop prog0 is_cp ces info =
 
 
 
-let cegar prog info =
+let run prog info =
   let add_fail_to_end ds =
     match !Flag.mode with
     | Flag.NonTermination ->

@@ -228,12 +228,6 @@ let rec eta_reduce_term = function
       | App(App(App(Const If,_),_),_) -> Fun(x, typ, t')
       | App(t, Var y) when x = y && not (List.mem y (get_fv t)) -> t
       | _ -> Fun(x, typ, t')
-(*
-let eta_reduce_term t =
-  Format.printf "REDUCE: [%a]@." print_term t;
-  eta_reduce_term t
-let eta_reduce_term t = t
-*)
 
 let print_env fm env =
   List.iter (fun (f,typ) -> Format.fprintf fm "%a:%a,@ " CEGAR_print.var f CEGAR_print.typ typ) env;
@@ -243,32 +237,6 @@ let rec propagate_fun_arg_typ typ t =
   match typ, t with
   | TFun(typ1, typ2), Fun(x,_,t') -> Fun(x, Some typ1, propagate_fun_arg_typ (typ2 @@ Var x) t')
   | _ -> t
-
-(*
-let rec abstract_rand_int must env cond pts preds t typ =
-  let typ_arg = TBase(TInt, preds) in
-  let typ' = TFun(typ_arg, fun _ -> typ) in
-  let t' = hd @@ abstract_term must env cond pts (propagate_fun_arg_typ typ' t) typ' in
-  Format.printf "typ_arg: @[%a@." CEGAR_print.typ typ_arg;
-  Format.printf "  t: @[%a@." CEGAR_print.term t;
-  Format.printf "  t': @[%a@." CEGAR_print.term t';
-  let x = new_id "r" in
-  let env' = (x,typ_int)::env in
-  let preds' = preds (Var x) in
-  let pts' = make_pts x typ_arg in
-  let rec aux pts pts_new preds =
-    match pts_new,preds with
-    | [],[] -> make_app t' @@ List.map snd pts'
-    | (t,y)::pts_new', pred::preds' ->
-        let k = new_id "k" in
-        let y' = match y with Var y' -> y' | _ -> assert false in
-        let t1 = aux ((t,y)::pts) pts_new' preds' in
-        let t2 = make_app (Var k) [abst_rand_int env' cond pts x pred] in
-        Let(k, Fun(y', None, t1), t2)
-    | _ -> assert false
-  in
-  aux pts pts' preds'
-*)
 
 let rec abstract_rand_int n must env cond pts xs t =
   let _,preds = decomp_rand_typ ~xs:(Some xs) @@ assoc_renv n env in

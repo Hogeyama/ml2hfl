@@ -78,11 +78,11 @@ let refine labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
       raise (Fatal "Not implemented: Flag.use_prefix_trace");
     let map =
       Format.printf "@[<v>";
-      let ces =
+      let ces,ext_ces =
 	if !Flag.use_multiple_paths then
-	  ces
+	  ces,ext_ces
 	else
-	  [FpatInterface.List.hd ces]
+	  [List.hd ces], [List.hd ext_ces]
       in
       let map =
 	    FpatInterface.infer
