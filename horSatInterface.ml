@@ -1,8 +1,8 @@
-
 open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
+open HorSat
 
 exception UnknownOutput
 
@@ -12,7 +12,11 @@ type apt_transition =
   | APT_And of apt_transition list
   | APT_Or of apt_transition list
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((int * (bool list)) list) list))
+type spec = (string * int) list * (int * string * apt_transition) list
+
+type counterexample = int list list * ((int * bool list) list) list
+
+type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
 
 module HS = HorSat_syntax
 
@@ -75,10 +79,10 @@ let trans_spec (q,e,qs) =
   in
     (aux q, e), [apt_transition_to_string true qs]
 
-let trans ({defs=defs},arity_map, spec) =
+let trans ({defs}, (arity_map, spec)) =
   let defs':HS.prerules = List.map trans_fun_def defs in
   let spec':HS.transitions = List.map trans_spec spec in
-    (defs', arity_map, spec')
+  (defs', arity_map, spec')
 
 
 
@@ -223,3 +227,28 @@ let version () =
   in
   match Unix.close_process (cin, cout) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v
+
+let rec make_label_spec = function
+  | [] -> []
+  | r::rs -> (0, r, APT_State(1, 0)) :: make_label_spec rs
+
+let make_apt_spec labels =
+  let spec =
+    (0,"event_fail", APT_False)
+    ::(0,"unit", APT_True)
+    ::(0, "l0", APT_State(1, 0))
+    ::(0, "l1", APT_State(1, 0))
+    ::(0, "true", APT_State(1, 0))
+    ::(0, "false", APT_State(1, 0))
+    ::(0,"br_forall", APT_And([APT_State(1, 0); APT_State(2, 0)]))
+    ::(0,"br_exists", APT_Or([APT_State(1, 0); APT_State(2, 0)]))::make_label_spec labels
+  in
+  List.sort spec
+
+let make_arity_map labels =
+  let init = [("br_forall", 2); ("br_exists", 2); ("event_fail", 1); ("unit", 0); ("true", 1); ("false", 1); ("l0", 1); ("l1", 1)] in
+  let funs_map = List.map (fun l -> (l, 1)) labels in
+  init @ funs_map
+
+let make_spec labels =
+  make_arity_map labels, make_apt_spec labels

@@ -59,7 +59,11 @@ let preprocess t spec =
       let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
 
       (* preprocess for termination mode *)
-      let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
+      let t =
+        match !Flag.mode with
+        | Flag.Termination -> !BRA_types.preprocessForTerminationVerification t
+        | _ -> t
+      in
 
       fun_list, t, get_rtyp
     else
@@ -96,14 +100,14 @@ let preprocess t spec =
   *)
 
   let info =
-    let fun_list =
+    let orig_fun_list =
       let aux x =
         try [List.assoc (CEGAR_trans.trans_var x) map] with Not_found -> []
       in
       List.rev_flatten_map aux fun_list
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
-    {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
+    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined}
   in
   prog, rmap, get_rtyp, info
 
@@ -144,7 +148,7 @@ let report_safe env rmap get_rtyp orig t0 =
     env'
     |> List.map (fun (id, typ) -> Id.name id, typ)
     |> WriteAnnot.f !Flag.filename orig;
-  let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
+  let only_result_termination = !Flag.debug_level <= 0 && !Flag.mode = Flag.Termination in
   if not only_result_termination
   then (Color.printf Color.Bright "Non-terminating!"; Format.printf "@.@.");
   if !Flag.relative_complete then
@@ -197,7 +201,7 @@ let rec run_cegar prog =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog CEGAR.empty_info with
+        match CEGAR.cegar prog CEGAR_syntax.empty_cegar_info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             Color.printf Color.Bright "Safe!@.@.";

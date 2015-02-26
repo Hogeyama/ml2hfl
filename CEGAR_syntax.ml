@@ -2,6 +2,9 @@
 open Util
 open CEGAR_type
 
+exception NoProgress
+exception CannotDiscoverPredicate
+
 type var = string
 
 module VarSet =
@@ -74,7 +77,9 @@ and env = (var * typ) list
 and attr = ACPS
 and prog = {env:env; defs:fun_def list; main:var; attr:attr list}
 
+type cegar_info = {orig_fun_list:var list; inlined:var list}
 
+let empty_cegar_info = {orig_fun_list=[]; inlined=[]}
 let prefix_randint = "#randint"
 let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
 let decomp_randint_name s =

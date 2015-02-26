@@ -7,8 +7,9 @@ let cvc3 = ref Environment.cvc3
 let filename = ref ""
 let spec_file = ref ""
 
-type mode = Reachability | FileAccess
+type mode = Reachability | FileAccess | Termination | NonTermination
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
+type model_checker = TRecS | HorSat
 
 (* TRecS option *)
 let trecs_param1 = ref 1000
@@ -63,6 +64,7 @@ let exists_unknown_false = true
 
 let mode = ref Reachability
 let cegar = ref CEGAR_DependentType
+let mc = ref TRecS
 let use_spec = ref false
 let comment_spec = ref true
 let wp_max_max = 8
@@ -125,8 +127,6 @@ let color_always = ref false
 let write_annot = ref true
 
 (* termination-mode option *)
-let termination = ref false
-
 let disjunctive = ref false
 let separate_pred = ref false
 let split_callsite = ref false
@@ -134,7 +134,6 @@ let add_closure_depth = ref false
 let add_closure_exparam = ref false
 
 (* non-termination verification *)
-let non_termination = ref false
 let merge_paths_of_same_branch = ref false
 
 let randint_refinement_log = ref false
