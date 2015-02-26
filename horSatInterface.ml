@@ -14,21 +14,19 @@ type apt_transition =
 
 type result = Safe of (var * Inter_type.t) list | Unsafe of (((int list) list) * (((int * (bool list)) list) list))
 
- module TS = Trecs_syntax
-
- module HS = HorSat_syntax
+module HS = HorSat_syntax
 
 let string_of_arity_map arity_map =
   "%BEGINR\n" ^ String.join "\n" (List.map (fun (f, a) -> f ^ " -> " ^ string_of_int a ^ ".") arity_map) ^ "\n%ENDR\n"
 
 let string_of_parseresult (prerules, arity_map, tr) =
-  (TS.string_of_prerules prerules)^"\n"^string_of_arity_map arity_map ^ (TS.string_of_transitions tr)
+  (HS.string_of_prerules prerules)^"\n"^string_of_arity_map arity_map ^ (HS.string_of_transitions tr)
 
 let trans_const = function
-  | Unit -> TS.PTapp(TS.Name "unit", [])
-  | True -> TS.PTapp(TS.FD 0, [])
-  | False -> TS.PTapp(TS.FD 1, [])
-  | TreeConstr(_,s) -> TS.PTapp(TS.Name s, [])
+  | Unit -> HS.PTapp(HS.Name "unit", [])
+  | True -> HS.PTapp(HS.FD 0, [])
+  | False -> HS.PTapp(HS.FD 1, [])
+  | TreeConstr(_,s) -> HS.PTapp(HS.Name s, [])
   | c -> Format.printf "trans_const: %a@." CEGAR_print.term (Const c); assert false
 
 
@@ -42,25 +40,25 @@ let rec trans_id x =
 
 let rec trans_term = function
   | Const c -> trans_const c
-  | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (trans_id x), [])
-  | Var x -> TS.PTapp (TS.Name (trans_id x), [])
-  | App(Const (Label n), t) -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [trans_term t])
+  | Var x when is_uppercase x.[0] -> HS.PTapp(HS.NT (trans_id x), [])
+  | Var x -> HS.PTapp (HS.Name (trans_id x), [])
+  | App(Const (Label n), t) -> HS.PTapp(HS.Name ("l" ^ string_of_int n), [trans_term t])
   | App(App(App(Const If, Const RandBool), t2), t3) ->
-      TS.PTapp(TS.Name "br_forall", [trans_term t2; trans_term t3])
+      HS.PTapp(HS.Name "br_forall", [trans_term t2; trans_term t3])
   | App(App(App(Const If, t1), t2), t3) ->
-      TS.PTapp(TS.CASE 2, [trans_term t1; trans_term t2; trans_term t3])
+      HS.PTapp(HS.CASE 2, [trans_term t1; trans_term t2; trans_term t3])
   | App(t1,t2) ->
-      let TS.PTapp(hd, ts1) = trans_term t1 in
+      let HS.PTapp(hd, ts1) = trans_term t1 in
       let t2' = trans_term t2 in
-      TS.PTapp(hd, ts1@[t2'])
+      HS.PTapp(hd, ts1@[t2'])
   | Fun _ -> assert false
   | Let _ -> assert false
 
 let rec trans_fun_def (f,xs,t1,es,t2) =
   let rec add_event e t =
     match e with
-    | Event s -> TS.PTapp(TS.Name ("event_" ^ s), [t])
-    | Branch n -> assert false(* TS.PTapp(TS.Name ("l" ^ string_of_int n), [t])*)
+    | Event s -> HS.PTapp(HS.Name ("event_" ^ s), [t])
+    | Branch n -> assert false(* HS.PTapp(HS.Name ("l" ^ string_of_int n), [t])*)
   in
   assert (t1 = Const True);
   trans_id f, List.map trans_id xs, List.fold_right add_event es (trans_term t2)
@@ -78,8 +76,8 @@ let trans_spec (q,e,qs) =
     (aux q, e), [apt_transition_to_string true qs]
 
 let trans ({defs=defs},arity_map, spec) =
-  let defs':TS.prerules = List.map trans_fun_def defs in
-  let spec':TS.transitions = List.map trans_spec spec in
+  let defs':HS.prerules = List.map trans_fun_def defs in
+  let spec':HS.transitions = List.map trans_spec spec in
     (defs', arity_map, spec')
 
 
