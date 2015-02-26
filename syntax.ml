@@ -25,6 +25,7 @@ and const = (* only base type constants *)
 
 and attr =
   | ACPS
+  | AAbst_under
 
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and term =
@@ -164,6 +165,7 @@ let trans_const trans = function
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
   | CPS_result -> CPS_result
+  | RandInt _ -> assert false
   | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
 
 let trans_desc trans = function

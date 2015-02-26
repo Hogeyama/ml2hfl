@@ -7,6 +7,7 @@ type typ = typed_term Type.t
 and id = typ Id.t
 and attr =
   | ACPS
+  | AAbst_under
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | Unit
