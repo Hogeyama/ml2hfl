@@ -391,10 +391,8 @@ let abst_list_opt_term t =
       let t11 = make_eq (make_var i) (make_int 0) in
       let t12 = make_some (make_var x) in
       let t13 = make_app (make_var xs) [make_sub (make_var i) (make_int 1)] in
-      make_lets [x,[],t1'; xs,[],t2'] @@ make_fun i (make_if t11 t12 t13)
       if true
       then
-        let t13 = make_app (make_var xs) [make_sub (make_var i) (make_int 1)] in
         make_lets [x,[],t1'; xs,[],t2'] @@ make_fun i (make_if t11 t12 t13)
       else
         let cons = Id.new_var ~name:"cons" (TFun(x,TFun(xs,t2'.typ))) in
