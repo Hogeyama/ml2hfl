@@ -133,10 +133,6 @@ let get_typ_const = function
   | Label _ ->
       let typ = new_tvar () in
       TFun(typ,typ)
-  | TreeConstr(n,_) ->
-      let typ = new_tvar () in
-      let typs = List.make n typ in
-      List.fold_right _TFun typs typ
 
 let rec infer_term env = function
   | Const c -> get_typ_const c
@@ -145,7 +141,7 @@ let rec infer_term env = function
         try
           List.assoc x env
         with
-          Not_found when Fpat.RefTypInfer.is_parameter x -> TInt
+          Not_found when is_parameter x -> TInt
         | Not_found -> Format.printf "Not_found VAR: %s@." x; assert false
       end
   | App(t1,t2) ->
