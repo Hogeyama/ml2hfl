@@ -83,8 +83,6 @@ module Pair = struct
     match xs with
     | [x;y] -> x,y
     | _ -> invalid_argument "Pair.of_list"
-  let add_right f x = x, f x
-  let add_left f x = f x, x
   let print f g ppf (x,y) = Format.fprintf ppf "@[(%a,@ %a)@]" f x g y
 end
 
@@ -95,7 +93,7 @@ module List = struct
   let cons x xs = x::xs
   let snoc xs x = xs@[x]
 
-  let print pr fm xs = Format.printf "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
+  let print pr fm xs = Format.fprintf fm "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
 
   let rec unfold_right f s =
     match f s with
@@ -178,7 +176,6 @@ module List = struct
         rev_filter_map acc' f xs'
   let rev_filter_map f xs = rev_filter_map [] f xs
   let filter_map2 f xs ys = rev_filter_map Std.identity @@ List.rev_map2 f xs ys
-
   let rec filter_out f xs = filter (not -| f) xs
 
   let rec rev_split acc1 acc2 xs =
