@@ -273,6 +273,7 @@ let preprocess prog =
   |> pop_main
   |@> pr "pop_main"
   |> capitalize
+  |@> pr "capitalize"
   |> Typing.infer
   |&Flag.useless_elim&> Useless_elim.elim
   |&Flag.beta_reduce&> beta_reduce
@@ -281,17 +282,17 @@ let preprocess prog =
 let preprocess_cps prog =
   prog
   |> eta_expand
-  |@> pr "ETA_EXPAND"
+  |@> pr "eta_expand"
   |> elim_non_det
-  |@> pr "ELIM_NON_DET"
+  |@> pr "elim_non_det"
   |> put_into_if
-  |@> pr "PUT_INTO_IF"
+  |@> pr "put_into_if"
   |> make_bottom
-  |@> pr "MAKE_BOTTOM"
+  |@> pr "make_bottom"
   |> pop_main
-  |@> pr "POP_MAIN"
+  |@> pr "pop_main"
   |> capitalize
-  |@> pr "CAPITALIZE"
+  |@> pr "capitalize"
   |> Typing.infer
   |&Flag.useless_elim&> Useless_elim.elim
   |&Flag.beta_reduce&> beta_reduce
