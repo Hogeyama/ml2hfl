@@ -14,12 +14,12 @@ let post () =
   Fpat.Global.cegar_iterations := !Flag.cegar_loop
 
 let print_non_CPS_abst abst prog =
-  let result =
-    try
-      Some (ModelCheck.check abst prog)
-    with _ -> None
-  in
   if !Flag.just_print_non_CPS_abst then
+    let result =
+      try
+	Some (ModelCheck.check abst prog)
+      with _ -> None
+    in
     let s =
       match result with
       | None -> "Unknown"
