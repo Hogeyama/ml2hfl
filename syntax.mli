@@ -6,7 +6,6 @@ type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
 type typ = typed_term Type.t
 and id = typ Id.t
 and attr =
-  | AAbst_under
   | ACPS
   | AAbst_under
 and typed_term = {desc:term; typ:typ; attr:attr list}

@@ -24,7 +24,6 @@ and const = (* only base type constants *)
   | RandValue of typ * bool
 
 and attr =
-  | AAbst_under
   | ACPS
   | AAbst_under
 
