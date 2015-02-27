@@ -47,16 +47,14 @@ fi
 AC_SUBST(CVC3)
 
 AC_PATH_TOOL(TRECS, trecs, [no], [$PATH:$PWD])
-if test "$TRECS" = "no"; then
-  AC_MSG_ERROR([TRecS not found])
-fi
 AC_SUBST(TRECS)
 
 AC_PATH_TOOL(HORSAT, horsat, [no], [$PATH:$PWD])
-if test "$HORSAT" = "no"; then
-  AC_MSG_ERROR([HorSat not found])
-fi
 AC_SUBST(HORSAT)
+
+if test "$TRECS" = "no" -a "$HORSAT" = "no"; then
+  AC_MSG_ERROR([TRecS and HorSat not found])
+fi
 
 AC_CHECK_PROG(GIT, git, git)
 AC_SUBST(GIT)

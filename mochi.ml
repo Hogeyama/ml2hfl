@@ -400,6 +400,11 @@ let fpat_init2 () =
   SMTProver.cvc3 := !Flag.cvc3;
   SMTProver.open_ ()
 
+let check_env () =
+  match !Flag.mc with
+  | TRecS -> if not Environment.trecs_available then fatal "TRecS not found, please redo ./configure"
+  | HorSat -> if not Environment.horsat_available then fatal "TRecS not found, please redo ./configure"
+
 let () =
   if !Sys.interactive
   then ()
@@ -412,6 +417,7 @@ let () =
       fpat_init2 ();
       Color.init ();
       if not !Flag.only_result then print_env true;
+      check_env ();
       if main cin then decr Flag.cegar_loop;
       Fpat.SMTProver.close ();
       print_info ()
