@@ -201,7 +201,8 @@ let make_base_spec n q : spec = (q, "br", [q;q])::make_line_spec 1 q
 let make_spec n : spec =
   let spec =
     match !Flag.mode with
-    | Flag.Reachability -> (0,"unit",[])::(0,"event_fail",[1])::make_base_spec n 0
+    | Flag.Reachability
+    | Flag.Termination -> (0,"unit",[])::(0,"event_fail",[1])::make_base_spec n 0
     | Flag.FileAccess ->
         let spec = make_file_spec () in
         let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
