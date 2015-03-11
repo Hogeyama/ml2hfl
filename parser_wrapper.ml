@@ -13,8 +13,10 @@ type declaration =
   | Decl_exc of string * typ list
 
 
-let () = Compmisc.init_path false
-let initial_env = Compmisc.initial_env ()
+let init () =
+  Compmisc.init_path false;
+  Compmisc.initial_env ()
+
 
 
 
@@ -267,6 +269,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     match desc with
     | Tpat_any -> PAny
     | Tpat_var(x,_) -> PVar(from_ident x typ')
+    | Tpat_alias({Typedtree.pat_desc=Tpat_any},x,_) -> PVar (from_ident x typ')
     | Tpat_alias(p,x,_) -> PAlias(from_pattern p, from_ident x typ')
     | Tpat_constant(Const_int n) -> PConst {desc=Const(Int n);typ=typ'; attr=[]}
     | Tpat_constant(Const_char c) -> PConst {desc=Const(Char c);typ=typ'; attr=[]}
@@ -412,12 +415,19 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         | Texp_when(e1,e2) -> from_pattern p, from_expression e1, from_expression e2
         | _ -> from_pattern p, true_term, from_expression e
       in
-      let tail =
+      let pats' = List.map aux pats in
+      let pats'' =
         match totality with
-        | Total -> []
-        | Partial -> [make_pvar (Id.new_var_id x), true_term, make_fail typ2]
+        | Total -> pats'
+        | Partial -> (make_pvar (Id.new_var_id x), true_term, make_fail typ2)::pats'
       in
-      make_fun x {desc=Match(make_var x, List.map aux pats@tail);typ=typ2; attr=[]}
+      begin
+        match pats'' with
+        | [{pat_desc=PAny},{desc=Const True},t'] -> make_fun x t'
+        | [{pat_desc=PVar y},{desc=Const True},t'] -> make_fun x @@ subst_var y x t'
+        | [{pat_desc=PConst{desc=Const Unit}},{desc=Const True},t'] -> make_fun x t'
+        | _ -> make_fun x @@ make_match (make_var x) pats''
+      end
   | Texp_apply(e, es) ->
       let t = from_expression e in
       let aux = function
@@ -605,7 +615,8 @@ let from_top_level_phrase (env,defs) = function
 
 
 let from_use_file ast =
-  let _,defs = List.fold_left from_top_level_phrase (initial_env,[]) ast in
+  let env = init () in
+  let _,defs = List.fold_left from_top_level_phrase (env,[]) ast in
   let aux t = function
     | Decl_let(flag, defs) ->
         let defs' = List.map (fun (f,t1) -> f, [], t1) defs in
