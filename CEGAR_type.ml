@@ -29,6 +29,10 @@ let typ_event = TFun(TFun(typ_unit, fun _ -> typ_unit), fun _ -> typ_unit)
 let make_tfun typ1 typ2 = TFun(typ1, fun _ -> typ2)
 let typ_unknown = TBase(TAbst "?", fun _ -> [])
 
+let is_typ_result = function
+  | TBase(b, _) -> b = typ_result_base
+  | _ -> false
+
 let is_base = function
   | TBase _ -> true
   | _ -> false

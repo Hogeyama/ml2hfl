@@ -96,6 +96,7 @@ and print_const fm = function
 
 and print_attr fm = function
   | ACPS -> fprintf fm "ACPS"
+  | AAbst_under -> fprintf fm "AAbst_under"
 
 and print_attr_list fm = List.print print_attr fm
 

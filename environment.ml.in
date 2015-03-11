@@ -1,2 +1,6 @@
 let trecs = "@TRECS@"
+let horsat = "@HORSAT@"
 let cvc3 = "@CVC3@"
+let omega = ""
+let trecs_available = trecs <> "no"
+let horsat_available = horsat <> "no"

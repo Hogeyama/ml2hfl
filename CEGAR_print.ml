@@ -69,7 +69,10 @@ and print_typ fm typ =
   print_typ_aux None fm typ
 
 and print_env fm env =
-  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) f print_typ typ in
+  let add_rand_info f = match decomp_randint_name f with
+    | None -> f
+    | Some(n) -> f ^ "[" ^ !randint_ID_map n ^ "]" in
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) (add_rand_info f) print_typ typ in
   List.iter pr env
 
 and print_const fm = function
@@ -109,6 +112,7 @@ and print_const fm = function
   | Temp s -> Format.fprintf fm "Temp{%s}" s
   | Label n -> Format.fprintf fm "l%d" n
   | CPS_result -> Format.fprintf fm "end"
+  | TreeConstr(_,s) -> Format.fprintf fm "$%s" s
 
 and print_arg_var fm (x,typ) =
   match typ with
@@ -313,6 +317,7 @@ and print_const_ML fm = function
   | Label n -> Format.fprintf fm "print_int %d;" n
   | CmpPoly _ -> assert false
   | CPS_result -> Format.fprintf fm "end"
+  | TreeConstr(_,s) -> Format.fprintf fm "TC_%s" s
 
 and print_term_ML fm = function
     Const c -> print_const_ML fm c
@@ -396,6 +401,7 @@ and print_const_as_tree fm = function
   | Label _ -> assert false
   | CmpPoly _ -> assert false
   | CPS_result -> Format.fprintf fm "End"
+  | TreeConstr(_,s) -> Format.fprintf fm "TC_%s" s
 
 and print_term_as_tree fm = function
     Const c -> Format.fprintf fm "(Const %a)" print_const_as_tree c
@@ -506,3 +512,18 @@ and print_term' limit fm t =
       Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env (print_term' limit) t'
 
 let term' = print_term' 100
+
+let rec has_preds = function
+  | TBase(_, ps) -> (ps (Var "x") <> [])
+  | TApp(t1, t2) -> has_preds t1 || has_preds t2
+  | TFun(t1, t2) -> has_preds t1 || has_preds (t2 (Var "x"))
+  | _ -> assert false
+
+let rec print_env_diff fm env =
+  let add_rand_info f = match decomp_randint_name f with
+    | None -> f
+    | Some(n) -> f ^ "[" ^ !randint_ID_map n ^ "]" in
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) (add_rand_info f) print_typ typ in
+  List.iter pr (List.filter (Pair.map_snd has_preds |- snd) env)
+
+let env_diff = print_env_diff

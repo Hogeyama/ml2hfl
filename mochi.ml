@@ -36,16 +36,15 @@ let print_info () =
       Format.printf "\"filename\": %S, " !Flag.filename;
       Format.printf "\"result\": %S, " !Flag.result;
       Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
-      (if !Flag.termination then
-         begin
-           Format.printf "\"ranking\": {";
-           List.iter
-             (fun (f_name, (cycles, pred)) ->
-              Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
-             !Termination_loop.lrf;
-           Format.printf " \"_\":{} }, "
-         end
-       else ());
+      if !Flag.mode = Flag.Termination then
+        begin
+          Format.printf "\"ranking\": {";
+          List.iter
+            (fun (f_name, (cycles, pred)) ->
+             Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
+            !Termination_loop.lrf;
+          Format.printf " \"_\":{} }, "
+        end;
       Format.printf "\"total\": \"%.3f\", " (get_time());
       Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
       Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
@@ -58,7 +57,7 @@ let print_info () =
       if !Flag.exp2 then output_csv !Flag.result;
       if !Flag.add_closure_exparam && !Flag.result = "terminating" then
         Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
-      if !Flag.termination && !Flag.result = "terminating" then
+      if !Flag.mode = Flag.Termination && !Flag.result = "terminating" then
         begin
           List.iter
             (fun (f_name, (cycles, pred)) ->
@@ -94,11 +93,11 @@ let get_commit_hash () =
 
 let print_env cmd =
   let mochi,fpat = get_commit_hash () in
-  let trecs_version = TrecsInterface.version () in
+  let horsat_version = HorSatInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
-  if trecs_version <> "" then Format.printf "  TRecS version: %s@." @@ trecs_version;
+  if horsat_version <> "" then Format.printf "  HorSat version: %s@." @@ horsat_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   if cmd then
     begin
@@ -138,9 +137,9 @@ let main in_channel =
     if !Flag.split_assert
     then
       let paths = Trans.search_fail parsed in
-      let ts = List.map (fun path -> Trans.screen_fail path parsed) paths in
+      let ts = List.map (Fun.flip Trans.screen_fail parsed) paths in
       List.for_all (Main_loop.run orig) (List.rev ts);
-    else if !Flag.termination then
+    else if !Flag.mode = Flag.Termination then
       let open BRA_util in
       (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
       let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
@@ -175,8 +174,20 @@ let main in_channel =
         (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
       else
         (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
-    else
-      Main_loop.run orig parsed
+  else
+    let input =
+      if !Flag.randint_refinement_log then
+	let dirname = Filename.dirname !Flag.filename in
+	let basename = Filename.basename !Flag.filename in
+	dirname ^ "/refinement/" ^
+	  (try Filename.chop_extension basename ^ ".refinement"
+	   with Invalid_argument "Filename.chop_extension" -> basename ^ ".refinement")
+      else ""
+    in
+    let cout = if !Flag.randint_refinement_log then open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o666 input else stdout in
+    if !Flag.randint_refinement_log then output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
+    if !Flag.randint_refinement_log then close_out cout;
+    Main_loop.run orig parsed
 
 
 
@@ -252,10 +263,6 @@ let arg_spec =
      "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
      (* relatively complete verification *)
      "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
-     "-nex", Arg.Set_int Flag.number_of_extra_params,
-     " Number of inserted extra parameters for each functional argument";
-     "-cc", Arg.Set Flag.enable_coeff_const,
-     " Enable constant terms of extra parameters";
      (* predicate abstraction *)
      "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
      "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
@@ -268,6 +275,8 @@ let arg_spec =
      (* higher-order model checking *)
      "-trecs-bin", Arg.Set_string Flag.trecs,
                    Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
+     "-horsat-bin", Arg.Set_string Flag.horsat,
+                   Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      (* predicate discovery *)
      "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
@@ -279,32 +288,53 @@ let arg_spec =
                   Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
      (* termination mode *)
      "-termination-disj",
-     Arg.Unit (fun _ ->
-               Flag.termination := true;
-               Flag.disjunctive := true),
-     " Check termination by finding disjunctive well-founded relation";
+       Arg.Unit (fun _ ->
+                 Flag.mode := Flag.Termination;
+                 Flag.disjunctive := true),
+       " Check termination by finding disjunctive well-founded relation";
      "-termination",
-     Arg.Unit (fun _ ->
-               Flag.termination := true),
-     " Check termination";
+       Arg.Unit (fun _ ->
+                 Flag.mode := Flag.Termination),
+       " Check termination";
      "-termination-sep",
-     Arg.Unit (fun _ ->
-               Flag.termination := true;
-               Flag.separate_pred := true),
-     " Check termination with separating {decrease, boundedness} verification";
+       Arg.Unit (fun _ ->
+                 Flag.mode := Flag.Termination;
+                 Flag.separate_pred := true),
+       " Check termination with separating {decrease, boundedness} verification";
      "-termination-split-callsite",
-     Arg.Unit (fun _ ->
-               Flag.termination := true;
-               Flag.split_callsite := true),
-     " Check termination for each callsite of functions";
+       Arg.Unit (fun _ ->
+                 Flag.mode := Flag.Termination;
+                 Flag.split_callsite := true),
+       " Check termination for each callsite of functions";
      "-add-cd",
-     Arg.Unit (fun _ ->
-               Flag.add_closure_depth := true),
-     " Insert extra parameters for representing depth of closures";
+       Arg.Unit (fun _ ->
+                 Flag.add_closure_depth := true),
+       " Insert extra parameters for representing depth of closures";
      "-infer-ranking-exparam",
-     Arg.Unit (fun _ ->
-               Flag.add_closure_exparam := true),
-     " Infer extra ranking parameters for closures for termination verification"
+       Arg.Unit (fun _ ->
+                 Flag.add_closure_exparam := true),
+       " Infer extra ranking parameters for closures for termination verification";
+     "-non-termination",
+       Arg.Unit (fun _ ->
+                 Flag.mode := Flag.NonTermination;
+                 Flag.mc := Flag.HorSat),
+       " Check non-termination";
+     "-merge-paths",
+       Arg.Unit (fun _ ->
+                 Flag.merge_paths_of_same_branch := true),
+       " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
+     "-refinement-log",
+       Arg.Unit (fun _ ->
+                 Flag.randint_refinement_log := true),
+       " (Option for non-termination checking) Write refinement types into log file (./refinement/[input file].refinement)";
+     "-no-use-omega",
+       Arg.Unit (fun _ ->
+                 Flag.use_omega := false),
+       " (Option for non-termination checking) Do not use omega solver for under-approximation";
+     "-use-omega-first",
+       Arg.Unit (fun _ ->
+                 Flag.use_omega_first := true),
+       " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)"
     ]
 
 let () = print_option_and_exit :=
@@ -322,7 +352,7 @@ let string_of_exception = function
   | Lexer.Error(err, loc) -> "Lexer.Error"
   | LongInput -> "LongInput"
   | TimeOut -> "TimeOut"
-  | CEGAR.NoProgress -> "CEGAR.NoProgress"
+  | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
   | Fatal s -> "Fatal"
   | e -> Printexc.to_string e
 
@@ -370,6 +400,11 @@ let fpat_init2 () =
   SMTProver.cvc3 := !Flag.cvc3;
   SMTProver.open_ ()
 
+let check_env () =
+  match !Flag.mc with
+  | TRecS -> if not Environment.trecs_available then fatal "TRecS not found, please redo ./configure"
+  | HorSat -> if not Environment.horsat_available then fatal "HorSat not found, please redo ./configure"
+
 let () =
   if !Sys.interactive
   then ()
@@ -382,6 +417,7 @@ let () =
       fpat_init2 ();
       Color.init ();
       if not !Flag.only_result then print_env true;
+      check_env ();
       if main cin then decr Flag.cegar_loop;
       Fpat.SMTProver.close ();
       print_info ()
@@ -395,7 +431,7 @@ let () =
         Format.printf "}@."
     | e when !Flag.exp2 ->
         output_csv (string_of_exception e)
-    | Fpat.AbsTypInfer.FailedToRefineTypes ->
+    | Fpat.RefTypInfer.FailedToRefineTypes ->
         Format.printf "Verification failed:@.";
         Format.printf "  MoCHi could not refute an infeasible error path @.";
         Format.printf "  due to the incompleteness of the refinement type system@."
@@ -414,7 +450,7 @@ let () =
         Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
     | LongInput -> Format.printf "Input is too long@."
     | TimeOut -> Format.printf "Verification failed (time out)@."
-    | CEGAR.NoProgress -> Format.printf "Verification failed (new error path not found)@."
+    | CEGAR_syntax.NoProgress -> Format.printf "Unknown. (This program may be terminating.)@."
     | CEGAR_abst.NotRefined -> Format.printf "Verification failed (new error path not found)@."
     | Fatal s ->
         Format.printf "Fatal error: %s@." s

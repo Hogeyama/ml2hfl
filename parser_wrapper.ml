@@ -47,7 +47,9 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
   | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ; attr=[]}
   | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
-  | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] -> make_app randint_term [unit_term]
+  | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] ->
+      let attr = if !Flag.mode = Flag.NonTermination then AAbst_under::randint_term.attr else randint_term.attr in
+      make_app {randint_term with attr} [unit_term]
   | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
   | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
   | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)

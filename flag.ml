@@ -1,12 +1,15 @@
 
+let horsat = ref Environment.horsat
+let omega = ref Environment.omega
 let trecs = ref Environment.trecs
 let cvc3 = ref Environment.cvc3
 
 let filename = ref ""
 let spec_file = ref ""
 
-type mode = Reachability | FileAccess
+type mode = Reachability | FileAccess | Termination | NonTermination
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
+type model_checker = TRecS | HorSat
 
 (* TRecS option *)
 let trecs_param1 = ref 1000
@@ -39,7 +42,7 @@ let use_multiple_paths = ref false
 let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
-let church_encode = false
+let church_encode = true
 let beta_reduce = false (* do beta reduction before model checking *)
 let useless_elim = false
 let lift_fv_only = ref false
@@ -57,9 +60,11 @@ let encode_list_opt = ref false
 let tupling = ref false
 let elim_same_arg = ref false
 let base_to_int = ref false
+let exists_unknown_false = true
 
 let mode = ref Reachability
 let cegar = ref CEGAR_DependentType
+let mc = ref TRecS
 let use_spec = ref false
 let comment_spec = ref true
 let wp_max_max = 8
@@ -119,19 +124,18 @@ let () = Format.set_margin 120
 let color = ref false
 let color_always = ref false
 
-let extpar_header = "_ep"
-
 let write_annot = ref true
 
 (* termination-mode option *)
-let termination = ref false
-
 let disjunctive = ref false
 let separate_pred = ref false
 let split_callsite = ref false
 let add_closure_depth = ref false
 let add_closure_exparam = ref false
 
-(* relatively-complete-mode option *)
-let enable_coeff_const = ref false
-let number_of_extra_params = ref 1
+(* non-termination verification *)
+let merge_paths_of_same_branch = ref false
+
+let randint_refinement_log = ref false
+let use_omega = ref true
+let use_omega_first = ref false

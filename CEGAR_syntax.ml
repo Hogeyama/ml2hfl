@@ -2,6 +2,9 @@
 open Util
 open CEGAR_type
 
+exception NoProgress
+exception CannotDiscoverPredicate
+
 type var = string
 
 module VarSet =
@@ -45,9 +48,9 @@ type const =
   | If (* for abstraction and model-checking *)
   | Bottom
   | Label of int
+  | TreeConstr of int * string
   | CPS_result
   | TypeAnnot of typ
-
 
 
 and t =
@@ -74,7 +77,9 @@ and env = (var * typ) list
 and attr = ACPS
 and prog = {env:env; defs:fun_def list; main:var; attr:attr list}
 
+type cegar_info = {orig_fun_list:var list; inlined:var list}
 
+let empty_cegar_info = {orig_fun_list=[]; inlined=[]}
 let prefix_randint = "#randint"
 let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
 let decomp_randint_name s =
@@ -90,6 +95,32 @@ let is_randint_var s =
   with _ -> false
 
 
+let prefix_randint = "#randint"
+let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
+let decomp_randint_name s =
+  try
+    let s1,s2 = String.split s "_" in
+    assert (s1 = prefix_randint);
+    Some (int_of_string s2)
+  with _ -> None
+let is_randint_var s =
+  Option.is_some @@ decomp_randint_name s
+
+let prefix_randint_label = "randint"
+let make_randint_label n = Format.sprintf "%s_%d" prefix_randint_label n
+let decomp_randint_label s =
+  try
+    let s1,s2 = String.split s "_" in
+    assert (s1 = prefix_randint_label);
+    int_of_string s2
+  with _ -> raise (Invalid_argument "decomp_randint_label")
+let is_randint_label s =
+  try
+    ignore @@ decomp_randint_label s;
+    true
+  with _ -> false
+
+
 let _Const c = Const c
 let _Var x = Var x
 let _App t1 t2 = App(t1,t2)
@@ -101,15 +132,17 @@ let decomp_id s =
   try
     let len = String.length s in
     let i = String.rindex s '_' in
-      String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
+    String.sub s 0 i, int_of_string (String.sub s (i+1) (len-i-1))
   with Failure "int_of_string" | Not_found -> s, 0
 let add_name x s =
   let name,n = decomp_id x in
-    name ^ s ^ "_" ^ if n <> 0 then string_of_int n else ""
+  if n <> 0
+  then name ^ s ^ "_" ^ string_of_int n
+  else name ^ s
 let id_name x = fst (decomp_id x)
 let rename_id s =
   let name = id_name s in
-    name ^ "_" ^ string_of_int (Id.new_int ())
+  name ^ "_" ^ string_of_int (Id.new_int ())
 
 
 
@@ -157,7 +190,20 @@ let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
 let make_label n t = make_app (Const (Label n)) [t]
 let make_proj n i t = make_app (Const (Proj(n,i))) [t]
 let make_tuple ts = make_app (Const (Tuple (List.length ts))) ts
+let make_let bindings t = List.fold_right (Fun.uncurry _Let) bindings t
 
+let make_tree label ts = make_app (Const (TreeConstr(List.length ts, label))) ts
+
+let rec add_bool_labels leaf = function
+  | [] -> leaf
+  | b::bs -> make_tree (string_of_bool b) [add_bool_labels leaf bs]
+
+let make_br_exists n = function
+  | [] -> assert false
+  | [(bs, t)] -> make_tree (make_randint_label n) [add_bool_labels t bs]
+  | (bs, t)::xs ->
+    let make_br_exists_aux t1 (bs2, t2) = make_tree "br_exists" [t1; (add_bool_labels t2 bs2)] in
+    make_tree (make_randint_label n) [List.fold_left make_br_exists_aux (add_bool_labels t bs) xs]
 
 
 
@@ -165,9 +211,12 @@ let rec get_fv = function
   | Const _ -> StringSet.empty
   | Var x -> StringSet.singleton x
   | App(t1, t2) -> StringSet.union (get_fv t1) (get_fv t2)
-  | Let(x,t1,t2) -> StringSet.union (get_fv t1) (StringSet.remove x (get_fv t2))
+  | Let(x,t1,t2) -> StringSet.union (get_fv t1) (StringSet.remove x @@ get_fv t2)
   | Fun(x,_,t) -> StringSet.remove x (get_fv t)
+let get_fv_list ts = List.fold_left (fun s t -> StringSet.union s (get_fv t)) StringSet.empty ts
 let get_fv t = StringSet.elements @@ get_fv t
+let get_fv_list ts = StringSet.elements @@ get_fv_list ts
+
 
 
 let rec get_typ_arity = function
@@ -189,10 +238,22 @@ let rec decomp_annot_fun acc = function
   | Fun(x, typ, t) -> decomp_annot_fun ((x,typ)::acc) t
   | t -> List.rev acc, t
 let decomp_annot_fun t = decomp_annot_fun [] t
-let rec decomp_tfun = function
+let rec decomp_tfun ?(xs=None) = function
   | TFun(typ1,typ2) ->
-      let typs,typ = decomp_tfun (typ2 (Const Unit)) in
+      let arg,xs' =
+        match xs with
+        | None -> Const Unit, None
+        | Some [] -> assert false
+        | Some (x::xs') -> x, Some xs'
+      in
+      let typs,typ = decomp_tfun ~xs:xs' (typ2 arg) in
       typ1::typs, typ
+  | typ -> [], typ
+let rec decomp_tfun_env = function
+  | TFun(typ1,typ2) ->
+      let x = new_id "x" in
+      let typs,typ = decomp_tfun_env (typ2 @@ Var x) in
+      (x,typ1)::typs, typ
   | typ -> [], typ
 let rec decomp_let = function
   | Let(x,t1,t2) ->
@@ -202,8 +263,19 @@ let rec decomp_let = function
 
 
 
+let is_app_randint t =
+  match t with
+  | App _ ->
+      let t',ts = decomp_app t in
+      begin
+        match t' with
+        | Const (RandInt _) -> true
+        | _ -> false
+      end
+  | _ -> false
 
-let is_parameter x = String.starts_with x Flag.extpar_header
+
+
 let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 
@@ -227,3 +299,17 @@ let rec size t =
 
 let prog_size prog =
   List.fold_left (fun sum (f,xs,t1,e,t2) -> sum + List.length xs + size t1 + size t2) 0 prog.defs
+
+let randint_ID_map = ref (fun _ -> "no corresponding identifier")
+let rec is_rand = function
+  | App(t, _) -> is_rand t
+  | Const(RandInt(id)) -> id
+  | _ -> None
+let add_ID_map r = function
+  | Some(n) ->
+    let m = !randint_ID_map in randint_ID_map := fun x -> if x=n then r else m x
+  | None -> ()
+let rec make_ID_map_fd = function
+  | [] -> ()
+  | (r,_,_,_,body)::ds -> add_ID_map r (is_rand body); make_ID_map_fd ds
+let make_ID_map {defs=defs} = make_ID_map_fd defs

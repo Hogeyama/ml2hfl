@@ -8,7 +8,6 @@ open CEGAR_trans
 
 exception CannotRefute
 
-
 let add_preds_env map env =
   let aux (f,typ) =
     let typ' =
@@ -18,6 +17,29 @@ let add_preds_env map env =
     in
     f, typ'
   in
+  List.map aux env
+
+let add_renv map env =
+  let aux (n, preds) = make_randint_name n, TBase(TInt, preds) in
+  add_preds_env (List.map aux map) env
+
+let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
+
+let rec negate_typ = function
+  | TBase(b,ps) ->
+      let x = new_id' "x" in
+      let ps t = List.map (make_not |- subst x t) (ps (Var x)) in
+      TBase(b, ps)
+  | TFun(typ1,typ2) ->
+      let x = new_id' "x" in
+      let typ2 = typ2 (Var x) in
+      let typ1 = negate_typ typ1 in
+      let typ2 = negate_typ typ2 in
+      TFun(typ1, fun t -> subst_typ x t typ2)
+  | (TAbs _ | TApp _) as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
+
+let add_nag_preds_renv env =
+  let aux (f,typ) = if is_randint_var f then merge_typ typ (negate_typ typ) else typ in
   List.map aux env
 
 let add_preds map prog =
@@ -44,31 +66,72 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled is_cp prefix ces {env;defs;main;attr} =
+let refine labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
       Color.printf
-	Color.Green
-	"(%d-4) Discovering predicates ... @."
-	!Flag.cegar_loop;
+	    Color.Green
+	    "(%d-4) Discovering predicates (infeasible case) ... @."
+	    !Flag.cegar_loop;
     if Flag.use_prefix_trace then
       raise (Fatal "Not implemented: Flag.use_prefix_trace");
     let map =
       Format.printf "@[<v>";
-      let ces =
+      let ces,ext_ces =
 	if !Flag.use_multiple_paths then
-	  ces
+	  ces,ext_ces
 	else
-	  [FpatInterface.List.hd ces]
+	  [List.hd ces], [List.hd ext_ces]
       in
       let map =
-	FpatInterface.infer
-	  labeled
-	  is_cp
-	  ces
-	  (env, defs, main)
-      in
+	    FpatInterface.infer
+	      labeled
+	      is_cp
+	      ces
+          ext_ces
+	      (env, defs, main)
+	  in
+      Format.printf "@]";
+      map
+    in
+    let env' =
+	  if !Flag.disable_predicate_accumulation then
+	    map
+	  else
+	    add_preds_env map env
+    in
+    if !Flag.print_progress then Format.printf "DONE!@.@.";
+    Fpat.SMTProver.close ();
+    Fpat.SMTProver.open_ ();
+    add_time tmp Flag.time_cegar;
+    map, {env=env';defs;main;attr}
+  with e ->
+    Fpat.SMTProver.close ();
+    Fpat.SMTProver.open_ ();
+    add_time tmp Flag.time_cegar;
+    raise e
+
+let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
+  let tmp = get_time () in
+  try
+    if !Flag.print_progress then
+      Color.printf
+	    Color.Green
+	    "(%d-4) Discovering predicates (feasible case) ... @."
+	    !Flag.cegar_loop;
+    if Flag.use_prefix_trace then
+	  raise (Fatal "Not implemented: Flag.use_prefix_trace");
+    let map =
+      Format.printf "@[<v>";
+      let map =
+	    FpatInterface.infer_with_ext
+	      labeled
+	      is_cp
+	      ces
+	      ext_ces
+	      (env, defs, main)
+	  in
       Format.printf "@]";
       map
     in
@@ -102,7 +165,7 @@ let print_list fm = function
 
 let progWithExparam = ref {env=[]; defs=[]; main="main(DUMMY)"; attr=[]}
 
-let refine_rank_fun ce { env=env; defs=defs; main=main; attr=attr } =
+let refine_rank_fun ce ex_ce { env; defs; main; attr } =
   let tmp = get_time () in
     try
       (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
@@ -110,7 +173,7 @@ let refine_rank_fun ce { env=env; defs=defs; main=main; attr=attr } =
       if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
       let env, spc =
         Format.printf "@[<v>";
-        let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce in
+        let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce ex_ce in
         Format.printf "@]";
         env, spc
       in
@@ -120,7 +183,7 @@ let refine_rank_fun ce { env=env; defs=defs; main=main; attr=attr } =
         Format.printf "@[<v>";
         let _, spcWithExparam =
           if !Flag.add_closure_exparam then
-            FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce
+            FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce ex_ce
           else
             [], spc (* dummy *)
         in

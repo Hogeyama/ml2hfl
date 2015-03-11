@@ -49,11 +49,12 @@ let make_randvalue_cps typ =
   let r = Id.new_var typ in
   let k = Id.new_var @@ TFun(r,typ_result) in
   {desc=Const(RandValue(typ,true)); typ=TFun(u,TFun(k,typ_result)); attr=[]}
-let make_randint_cps () =
+let make_randint_cps b =
   let u = Id.new_var TUnit in
   let r = Id.new_var TInt in
   let k = Id.new_var @@ TFun(r,typ_result) in
-  {desc=Const(RandInt true); typ=TFun(u,TFun(k,typ_result)); attr=[]}
+  let attr = if b then [AAbst_under] else [] in
+  {desc=Const(RandInt true); typ=TFun(u,TFun(k,typ_result)); attr}
 let rec make_app t ts =
   let check typ1 typ2 =
     if not (Flag.check_typ => Type.can_unify typ1 typ2)
@@ -221,10 +222,6 @@ let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 let make_br t2 t3 = make_if_ randbool_unit_term t2 t3
 
 let imply t1 t2 = make_or (make_not t1) t2
-let and_list ts = match ts with
-    [] -> {desc=Const True; typ=TBool; attr=[]}
-  | [t] -> t
-  | t::ts -> List.fold_left make_and t ts
 
 let make_eq_dec t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
@@ -518,8 +515,6 @@ and same_pattern p1 p2 = unsupported "same_term"
 
 let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
-
-let is_parameter x = Fpat.Util.String.starts_with (Id.name x) Flag.extpar_header
 
 
 let rec is_value t =

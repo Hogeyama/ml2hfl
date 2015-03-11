@@ -2,6 +2,11 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
+type ext_path_part = Positive | Negative | Do_not_Care
+type ext_path = ext_path_part list
+
+exception TypeBottom
+
 module S = Syntax
 module U = Term_util
 
@@ -127,13 +132,101 @@ let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
 
+let rec make_arg_let t =
+  let desc =
+    match t.S.desc with
+    | S.Const c -> S.Const c
+    | S.Var x -> S.Var x
+    | S.App(t, ts) ->
+        let f = Id.new_var ~name:"f__" (t.S.typ) in
+        let xts = List.map (fun t -> Id.new_var (t.S.typ), t) ts in
+        let t' =
+          {S.desc = S.App(U.make_var f, List.map (fun (x,_) -> U.make_var x) xts);
+           S.typ = Type.typ_unknown;
+           S.attr = []}
+        in
+        (List.fold_left (fun t2 (x,t1) -> U.make_let [x,[],t1] t2) t' ((f,t)::xts)).S.desc
+    | S.If(t1, t2, t3) ->
+        let t1' = make_arg_let t1 in
+        let t2' = make_arg_let t2 in
+        let t3' = make_arg_let t3 in
+        S.If(t1',t2',t3')
+    | S.Let(flag,bindings,t2) ->
+        let bindings' = List.map (fun (f,xs,t) -> f, xs, make_arg_let t) bindings in
+        let t2' = make_arg_let t2 in
+        S.Let(flag,bindings',t2')
+    | S.BinOp(op, t1, t2) ->
+        let t1' = make_arg_let t1 in
+        let t2' = make_arg_let t2 in
+        S.BinOp(op, t1', t2')
+    | S.Not t -> S.Not (make_arg_let t)
+    | S.Fun(x,t) -> assert false
+    | S.Event _ -> assert false
+    | _ -> assert false
+  in
+  {t with S.desc}
 
 
-exception TypeBottom
+
+let assoc_renv n env =
+  try
+    snd @@ List.find (fun (s,_) -> Some n = decomp_randint_name s) env
+  with Not_found -> assert false
+
+let decomp_rand_typ ?(xs=None) typ =
+  let xs = Option.map (fun ys -> ys @ [Const Unit]) xs in
+  match decomp_tfun ~xs typ with
+  | typs, typ' when is_typ_result typ' ->
+      let typs',typ'' = List.decomp_snoc typs in
+      let preds =
+        match typ'' with
+        | TFun(TBase (TInt, preds), typ''') when is_typ_result @@ typ''' (Const Unit) -> preds
+        | _ -> assert false
+      in
+      typs', preds
+  | _ -> assert false
+
+let mem_assoc_renv n env =
+  try
+    ignore @@ assoc_renv n env;
+    true
+  with Not_found -> false
+
+let rec col_rand_ids t =
+  match t with
+  | Const (RandInt (Some n)) -> [n]
+  | Const c -> []
+  | Var x -> []
+  | App(t1,t2) -> col_rand_ids t1 @ col_rand_ids t2
+  | Let _ -> unsupported "col_rand_ids"
+  | Fun _ -> unsupported "col_rand_ids"
+
+let get_renv_aux prog i =
+  let f,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
+  let typs,_ = decomp_tfun (List.assoc f prog.env) in
+  let env = List.combine xs typs in
+  List.filter (is_base -| snd) env
+
+let get_renv prog =
+  let rand_ids = List.filter_map (decomp_randint_name -| fst) prog.env in
+  List.map (Pair.add_right @@ get_renv_aux prog) rand_ids
+
+let make_renv n prog =
+  let rand_ids = List.init n (fun i -> i+1) in
+  let env = List.map (Pair.add_right @@ get_renv_aux prog) rand_ids in
+  let make xtyps =
+    let typ0 = TFun(TFun(typ_int, fun _ -> typ_result), fun _ -> typ_result) in
+    List.fold_right (fun (x,typ1) typ2 -> TFun(typ1, fun y -> subst_typ x y typ2)) xtyps typ0
+  in
+  List.map (fun (i,xtyps) -> make_randint_name i, make xtyps) env
+
+
+
+
 
 let nil = fun _ -> []
 
-let rec get_const_typ = function
+let get_const_typ env = function
   | Unit -> typ_unit
   | True -> typ_bool()
   | False -> typ_bool()
@@ -143,7 +236,8 @@ let rec get_const_typ = function
   | Int32 _ -> typ_abst "int32"
   | Int64 _ -> typ_abst "int64"
   | Nativeint _ -> typ_abst "nativeint"
-  | RandInt _ -> TFun(TFun(TBase(TInt,nil), fun x -> typ_unit), fun x -> typ_unit)
+  | RandInt None -> TFun(TFun(TBase(TInt,nil), fun _ -> typ_unit), fun _ -> typ_unit)
+  | RandInt (Some n) -> assoc_renv n env
   | RandBool -> TBase(TBool,nil)
   | RandVal s -> TBase(TAbst s,nil)
   | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
@@ -174,11 +268,15 @@ let rec get_const_typ = function
   | Label _ -> assert false
   | Temp _ -> assert false
   | CPS_result -> typ_result
+  | TreeConstr(n,_) ->
+      let typ = typ_unit in
+      let typs = List.make n typ in
+      List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs typ
 
 
 
 let rec get_typ env = function
-  | Const c -> get_const_typ c
+  | Const c -> get_const_typ env c
   | Var x -> List.assoc x env
   | App(Const (Label _), t) -> get_typ env t
   | App(Const (RandInt _), t) ->
@@ -535,29 +633,6 @@ let rec has_no_effect t =
 
 
 
-let assoc_renv n env =
-  let check (s,_) =
-    try
-      n = decomp_randint_name s
-    with _ -> false
-  in
-  match List.find check env with
-  | _, TBase(TInt, preds) -> preds
-  | _ -> assert false
-
-let mem_assoc_renv n env =
-  try
-    ignore @@ assoc_renv n env;
-    true
-  with Not_found -> false
-
-
-let add_renv map env =
-  let aux env (n, preds) =
-    (make_randint_name n, TBase(TInt, preds)) :: env
-  in
-  List.fold_left aux env map
-
 
 let assign_id_to_rand prog =
   let count = ref 0 in
@@ -571,4 +646,89 @@ let assign_id_to_rand prog =
     | Let(x,t1,t2) -> Let(x, aux t1, aux t2)
     | Fun(x,typ,t) -> Fun(x, typ, aux t)
   in
-  map_body_prog aux prog
+  let prog' = map_body_prog aux prog in
+  let env = make_renv !count prog' @ prog.env in
+  {prog' with env}
+
+
+let make_map_randint_to_preds prog =
+  let env' = List.filter (is_randint_var -| fst) prog.env in
+  let aux (f,typ) =
+    let i = Option.get @@ decomp_randint_name f in
+    let _,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
+    let _,preds = decomp_rand_typ ~xs:(Some (List.map _Var xs)) typ in
+    i, preds
+  in
+  List.map aux env'
+
+let conv_path ext_ce =
+  let aux = List.map (List.map (fun b -> if b then Positive else Negative)) in
+  List.map (fun (n,bs) -> (n, aux bs)) ext_ce
+
+let rec arrange_ext_preds_sequence = function
+  | [] -> []
+  | (r,bs)::ext ->
+      let (rs, rest) = List.partition (fun (f, _) -> f=r) ext in
+      (r,bs::List.map snd rs) :: arrange_ext_preds_sequence rest
+
+let is_same_branching (_,_,ce1,_) (_,_,ce2,_) = ce1 = ce2
+
+let rec group_by_same_branching = function
+  | [] -> []
+  | x::xs -> let (gr, rest) = List.partition (is_same_branching x) xs in (x :: gr) :: group_by_same_branching rest
+
+(*
+r1: [Positive, Negative, Positive], r2: [Positive, Negative]
+r1: [Positive, Negative, Negative], r2: [Positive, Negative]
+->
+(r1, 0, Positive), (r1, 1, Negative), (r1, 2, Positive), (r2, 0, Positive), (r2, 1, Negative)
+(r1, 0, Positive), (r1, 1, Negative), (r1, 2, Negative), (r2, 0, Positive), (r2, 1, Negative)
+
+*)
+let remove_meaningless_pred path1 path2 =
+  let bs1 = List.concat @@ List.concat_map
+    (fun (n1, bss1) ->
+      List.mapi (fun i bs -> List.mapi (fun j b -> (n1, i, j, b)) bs) bss1) path1 in
+  let bs2 = List.concat @@ List.concat_map
+    (fun (n2, bss2) ->
+      List.mapi (fun i bs -> List.mapi (fun j b -> (n2, i, j, b)) bs) bss2) path2 in
+  let aux acc (n', i', j', b1) (_, _, _, b2) =
+    if b1 <> b2 then
+      let modify = List.map (fun ((n, bss) as seq) ->
+	if n=n' then (n, List.mapi (fun i bs -> if i=i' then List.mapi (fun j b -> if j=j' then Do_not_Care else b) bs else bs) bss)
+	else seq)
+      in match acc with
+	| None -> Some(modify)
+	| Some(modify') -> Some(modify |- modify')
+    else
+      acc
+  in
+  match List.fold_left2 aux None bs1 bs2 with
+    | None -> None
+    | Some(modify) -> Some(modify path1)
+
+let rec found_and_merge_paths (_,_,_,path) = function
+  | [] -> None
+  | ((path',orig_ce,ce,ext_path) as p)::ps ->
+    match remove_meaningless_pred path ext_path with
+      | None ->
+	begin
+	  match found_and_merge_paths p ps with
+	    | None -> None
+	    | Some(merged_path, rest) -> Some(merged_path, p::rest)
+	end
+      | Some(merged) -> Some((path', orig_ce, ce, merged), ps)
+
+let rec merge_similar_paths_aux = function
+  | [] -> []
+  | p::ps ->
+    match found_and_merge_paths p ps with
+      | None -> p :: merge_similar_paths_aux ps
+      | Some(merged_path, rest) -> merged_path :: merge_similar_paths_aux rest
+
+let rec merge_similar_paths l =
+  let l' = merge_similar_paths_aux l in
+  if List.length l = List.length l' then l else merge_similar_paths l'
+
+let inlined_functions orig_fun_list force {defs;main} =
+  List.unique @@ List.map fst @@ get_nonrec defs main orig_fun_list force

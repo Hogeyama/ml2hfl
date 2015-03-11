@@ -59,7 +59,11 @@ let preprocess t spec =
       let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
 
       (* preprocess for termination mode *)
-      let t = if !Flag.termination then !BRA_types.preprocessForTerminationVerification t else t in
+      let t =
+        match !Flag.mode with
+        | Flag.Termination -> !BRA_types.preprocessForTerminationVerification t
+        | _ -> t
+      in
 
       fun_list, t, get_rtyp
     else
@@ -96,14 +100,14 @@ let preprocess t spec =
   *)
 
   let info =
-    let fun_list =
+    let orig_fun_list =
       let aux x =
         try [List.assoc (CEGAR_trans.trans_var x) map] with Not_found -> []
       in
       List.rev_flatten_map aux fun_list
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
-    {CEGAR.orig_fun_list=fun_list; CEGAR.inlined=inlined}
+    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined}
   in
   prog, rmap, get_rtyp, info
 
@@ -144,16 +148,26 @@ let report_safe env rmap get_rtyp orig t0 =
     env'
     |> List.map (fun (id, typ) -> Id.name id, typ)
     |> WriteAnnot.f !Flag.filename orig;
-  let only_result_termination = !Flag.debug_level <= 0 && !Flag.termination in
-  if not only_result_termination
-  then (Color.printf Color.Bright "Safe!"; Format.printf "@.@.");
+  let only_result_termination = !Flag.debug_level <= 0 && !Flag.mode = Flag.Termination in
+  begin
+    match !Flag.mode with
+    | Flag.NonTermination ->
+        Color.printf Color.Bright "Non-terminating!";
+        Format.printf "@.@."
+    | Flag.Termination when !Flag.debug_level <= 0 ->
+        Color.printf Color.Bright "Safe!";
+        Format.printf "@.@."
+    | _ ->
+        Color.printf Color.Bright "Safe!";
+        Format.printf "@.@."
+  end;
   if !Flag.relative_complete then
     begin
       let map =
         List.map
-          (fun (x, n) ->
+          (fun (x, t) ->
            Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
-           CEGAR_trans.trans_inv_term @@ FpatInterface.inv_term @@ Fpat.IntTerm.make n)
+           CEGAR_trans.trans_inv_term @@ FpatInterface.inv_term @@ t)
           !Fpat.RefTypInfer.prev_sol
       in
       let t = Term_util.subst_map map t0 in
@@ -178,7 +192,9 @@ let report_safe env rmap get_rtyp orig t0 =
 
 
 let report_unsafe main_fun arg_num ce set_target =
-  Color.printf Color.Bright "Unsafe!";
+  (match !Flag.mode with
+   | Flag.NonTermination -> Color.printf Color.Bright "Unknown.";
+   | _ -> Color.printf Color.Bright "Unsafe!");
   Format.printf "@.@.";
   if main_fun <> "" && arg_num <> 0
   then
@@ -189,7 +205,6 @@ let report_unsafe main_fun arg_num ce set_target =
   with Unsupported s -> Format.printf "@.Unsupported: %s@.@." s
 
 
-
 let rec run_cegar prog =
   init ();
   match !Flag.cegar with
@@ -198,7 +213,7 @@ let rec run_cegar prog =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog CEGAR.empty_info with
+        match CEGAR.run prog CEGAR_syntax.empty_cegar_info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             Color.printf Color.Bright "Safe!@.@.";
@@ -208,22 +223,23 @@ let rec run_cegar prog =
             Color.printf Color.Bright "Unsafe!@.@.";
             false
       with
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam ->
+      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam ->
           Flag.insert_param_funarg := true;
           run_cegar prog
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
+      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
           run_cegar prog
-      | Fpat.AbsTypInfer.FailedToRefineTypes ->
-          raise Fpat.AbsTypInfer.FailedToRefineTypes
+      | Fpat.RefTypInfer.FailedToRefineTypes ->
+          raise Fpat.RefTypInfer.FailedToRefineTypes
       | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
-          FpatInterface.params := [];
+          Fpat.RefTypInfer.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
-          incr Flag.number_of_extra_params;
+          incr Fpat.RefTypInfer.number_of_extra_params;
           run_cegar prog
+
 
 let rec run orig parsed =
   init ();
@@ -243,7 +259,7 @@ let rec run orig parsed =
       let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
       if true && !Flag.debug_level > 0 then
         Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-                      (List.length !FpatInterface.params) Print.term t Print.term' t;
+                      (List.length !Fpat.RefTypInfer.params) Print.term t Print.term' t;
       t
     else
       set_target
@@ -257,7 +273,7 @@ let rec run orig parsed =
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.cegar prog info with
+        match CEGAR.run prog info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             if not !Flag.exp
@@ -269,19 +285,19 @@ let rec run orig parsed =
             then report_unsafe main_fun arg_num ce set_target;
             false
       with
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
+      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
           Flag.insert_param_funarg := true;
           run orig parsed
-      | Fpat.AbsTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
+      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
           run orig parsed
-      | Fpat.AbsTypInfer.FailedToRefineTypes ->
-          raise Fpat.AbsTypInfer.FailedToRefineTypes
-      | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
-          FpatInterface.params := [];
+      | Fpat.RefTypInfer.FailedToRefineTypes ->
+          raise Fpat.RefTypInfer.FailedToRefineTypes
+      | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
+          Fpat.RefTypInfer.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
-          incr Flag.number_of_extra_params;
+          incr Fpat.RefTypInfer.number_of_extra_params;
           run orig parsed

@@ -76,13 +76,17 @@ let conv_const c =
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let conv_var x =
-  if is_parameter x || isEX_COEFFS x then
+  if Fpat.RefTypInfer.is_parameter x || isEX_COEFFS x then
     Fpat.Idnt.mk_coeff x
   else
     Fpat.Idnt.make x
 
 let rec conv_term env t =
   match t with
+  | Const(RandInt (Some n)) ->
+      let typs,_ = decomp_rand_typ @@ assoc_renv n env in
+      let typs' = List.map conv_typ typs in
+      Fpat.Term.mk_const @@ Fpat.Const.ReadInt (Fpat.Idnt.make @@ make_randint_name n, typs')
   | Const(RandVal s) ->
      Fpat.Term.mk_var (Fpat.Idnt.make (new_id "r")) (***)
   | Const(c) ->
@@ -163,7 +167,7 @@ let conv_event e = (***)
      Fpat.Term.mk_const (Fpat.Const.Event(x))
   | Branch(_) -> assert false
 
-let conv_fdef env (f, args, guard, events, body) =
+let conv_fdef typs (f, args, guard, events, body) =
   { Fpat.Fdef.name = f;
     Fpat.Fdef.args = List.map (Fpat.Idnt.make >> Fpat.Pattern.mk_var) args;
     Fpat.Fdef.guard = conv_formula guard;
@@ -173,7 +177,7 @@ let conv_fdef env (f, args, guard, events, body) =
          Fpat.Term.mk_app
            (conv_event e)
            [Fpat.Term.mk_const Fpat.Const.Unit])
-        events (conv_term env body) } (***)
+        events (conv_term typs body) } (***)
 
 let inv_fdef fdef =
   fdef.Fpat.Fdef.name,
@@ -188,33 +192,6 @@ let conv_prog (typs, fdefs, main) =
     Fpat.Prog.types =
       List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
     Fpat.Prog.main = main }
-
-let init prog =
-  let prog =
-    conv_prog
-      (prog.CEGAR_syntax.env,
-       prog.CEGAR_syntax.defs,
-       prog.CEGAR_syntax.main)
-  in
-  prog
-  |> Fpat.RefTypJudge.mk_temp_env
-  |> List.map snd
-  |> List.concat_map Fpat.RefType.pvars
-  |> List.map
-       (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args)
-  |> List.unique
-  |> Fpat.HCCSSolver.init_rsrefine
-
-let verify fs (*cexs*) prog =
-  let prog =
-    conv_prog
-      (prog.CEGAR_syntax.env,
-       prog.CEGAR_syntax.defs,
-       prog.CEGAR_syntax.main)
-  in
-  Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
-  assert false(*Verifier.verify fs prog*);
-  Format.printf "END verification@,@]"
 
 let rec inv_abst_type aty =
   match aty with
@@ -255,83 +232,81 @@ let rec inv_abst_type aty =
      assert false
 
 
+let init prog =
+  let prog =
+    conv_prog
+      (prog.CEGAR_syntax.env,
+       prog.CEGAR_syntax.defs,
+       prog.CEGAR_syntax.main)
+  in
+  prog
+  |> Fpat.RefTypJudge.mk_temp_env
+  |> List.map snd
+  |> List.concat_map Fpat.RefType.pvars
+  |> List.map
+       (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args)
+  |> List.unique
+  |> Fpat.HCCSSolver.init_rsrefine
+
+let verify fs (*cexs*) prog =
+  let prog =
+    conv_prog
+      (prog.CEGAR_syntax.env,
+       prog.CEGAR_syntax.defs,
+       prog.CEGAR_syntax.main)
+  in
+  Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
+  assert false(*Verifier.verify fs prog*);
+  Format.printf "END verification@,@]"
+
 let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in
   Fpat.RefTypInfer.is_cut_point prog
 
-let infer labeled is_cp cexs prog =
+let infer labeled is_cp cexs ext_cexs prog =
   let prog = conv_prog prog in
-  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs in
+  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
   Flag.time_parameter_inference :=
-    !Flag.time_parameter_inference +. !Fpat.EHCCSSolver.elapsed_time;
+    !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
   List.map
     (fun (f, rty) ->
      match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
     env
 
-let params = ref []
-(** ToDo: exs may contain extra parameters that are not related to the recursive call *)
-let new_params recursive bvs exs =
-  List.gen
-    !Flag.number_of_extra_params
-    (fun i ->
-     let bvs' = List.filter (fun x -> x.Id.typ = Type.TInt) bvs in
-     let ps =
-       List.gen
-         (List.length bvs' + if !Flag.enable_coeff_const then 1 else 0)
-         (fun i -> Id.new_var ~name:Flag.extpar_header Type.TInt)
-     in
-     params := !params @ ps;
-     let xs =
-       match recursive with
-       | None -> []
-       | Some(xs) -> xs
-     in
-     if !Flag.enable_coeff_const (*&& recursive = None*) then
-       Fpat.RefTypInfer.masked_params :=
-         Fpat.Idnt.mk_coeff (Id.to_string (List.hd ps))
-         :: !Fpat.RefTypInfer.masked_params;
-     (if !Flag.enable_coeff_const then
-        [Term_util.make_var (List.hd ps)]
-      else [])
-     @
-       (*
-         let b = recursive <> None
-                 && xs = []
-                 && Fpat.Util.Set.subset bvs' exs
-         in
-        *)
-       List.map2
-         (fun p x ->
-          begin
-            (* some heuristics *)
-            (*if b then () else*)
-            if recursive <> None then
-              (if xs = [] then
-                 begin
-                   (*this is necessary for l-length_cps-append.ml*)
-                   if List.mem x exs then
-                     Fpat.RefTypInfer.masked_params :=
-                       Fpat.Idnt.mk_coeff (Id.to_string p)
-                       :: !Fpat.RefTypInfer.masked_params
-                 end
-               else if not (List.mem x xs) then
-                 Fpat.RefTypInfer.masked_params :=
-                   Fpat.Idnt.mk_coeff (Id.to_string p)
-                   :: !Fpat.RefTypInfer.masked_params)
-          (* how to deal with non-recursive function calls here? *)
-          (*
-              else if List.mem x exs then
-                Fpat.RefTypInfer.masked_params :=
-                  Fpat.Idnt.mk_coeff
-                    (Fpat.Idnt.make (Id.to_string p))
-                  :: !Fpat.RefTypInfer.masked_params
-           *)
-          end;
-          Term_util.make_mul (Term_util.make_var p) (Term_util.make_var x))
-         (if !Flag.enable_coeff_const then List.tl ps else ps)
-         bvs'
-     |> List.fold_left Term_util.make_add (Term_util.make_int 0))
+let infer_with_ext
+    (labeled: string list)
+    (is_cp: Fpat.Idnt.t -> bool)
+    (cexs: int list list)
+    (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
+    (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
+  =
+  let debug = !Flag.debug_level > 0 in
+  let prog = conv_prog prog in
+
+  if debug then Format.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
+  let old_split_eq = !Fpat.AbsType.split_equalities in
+  let old_eap = !Fpat.AbsType.extract_atomic_predicates in
+  let old_hccs_solver = Fpat.HCCSSolver.get_solver () in
+  Fpat.AbsType.split_equalities := true;
+  Fpat.AbsType.extract_atomic_predicates := true;
+  Fpat.HCCSSolver.link_solver
+    (Fpat.AEHCCSSolver.solve
+       (Fpat.EAHCCSSolver.solve [] [] [] Fpat.BwIPHCCSSolver.solve));
+  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
+  Fpat.AbsType.split_equalities := old_split_eq;
+  Fpat.AbsType.extract_atomic_predicates := old_eap;
+  Fpat.HCCSSolver.link_solver old_hccs_solver;
+  if debug then Format.printf "END refinement@,@]";
+
+  Flag.time_parameter_inference :=
+    !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
+  List.map
+    (fun (f, rty) ->
+     match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
+    env
+
+
+(** move the following codes to another file *)
 
 let gen_id =
   let cnt = ref 0 in
@@ -349,7 +324,7 @@ let rec trans_type typ =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Flag.number_of_extra_params then
+                 if i < !Fpat.RefTypInfer.number_of_extra_params then
                    Some(Id.new_var ~name:"ex" Type.TInt, i + 1)
                  else
                    None)
@@ -361,6 +336,7 @@ let rec trans_type typ =
   List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
 and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
+let of_term t = assert false (* @todo translate FPAT term to Syntax.typed_term *)
 
 let insert_extra_param t =
   let tmp = get_time() in
@@ -379,7 +355,7 @@ let insert_extra_param t =
            | Type.TTuple _(* ToDo: fix it *) ->
               Fpat.Util.List.unfold
                 (fun i ->
-                 if i < !Flag.number_of_extra_params then
+                 if i < !Fpat.RefTypInfer.number_of_extra_params then
                    Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                  else
                    None)
@@ -464,7 +440,20 @@ let insert_extra_param t =
               match t.Syntax.typ with
               | Type.TFun(_, _)
               | Type.TTuple _(* ToDo: fix it *) ->
-                 new_params (if recursive then Some(Fpat.Util.List.nth xss i) else None) bvs exs
+                 let bvs =
+                   bvs
+                   |> List.filter (fun x -> x.Id.typ = Type.TInt)
+                   |> List.map (Id.to_string >> Fpat.Idnt.make)
+                 in
+                 let exs = List.map (Id.to_string >> Fpat.Idnt.make) exs in
+                 Fpat.RefTypInfer.new_params
+                   (if recursive then
+                      Some(Fpat.Util.List.nth xss i
+                           |> List.map (Id.to_string >> Fpat.Idnt.make))
+                    else
+                      None)
+                   bvs exs
+                 |> List.map of_term
               | _ -> [])
              ts'
          in
@@ -496,7 +485,7 @@ let insert_extra_param t =
                 | Type.TTuple _(* ToDo: fix it *) ->
                    Fpat.Util.List.unfold
                      (fun i ->
-                      if i < !Flag.number_of_extra_params then
+                      if i < !Fpat.RefTypInfer.number_of_extra_params then
                         Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
                       else
                         None)
@@ -569,7 +558,7 @@ let insert_extra_param t =
       | Syntax.TNone -> Syntax.TNone
       | Syntax.TSome t -> Syntax.TSome(aux rfs bvs exs t)
     in
-    {Syntax.desc=desc; Syntax.typ=trans_type t.Syntax.typ; Syntax.attr=[]}
+    {t with Syntax.desc}
   in
   let res = aux [] [] [] t in
   let _ = add_time tmp Flag.time_parameter_inference in
@@ -581,8 +570,8 @@ let instantiate_param (typs, fdefs, main as prog) =
      Fpat.RefTypInfer.init_sol (conv_prog prog));
   let map =
     List.map
-      (fun (x, n) ->
-       Fpat.Idnt.string_of x, inv_term (Fpat.IntTerm.make n))
+      (fun (x, t) ->
+       Fpat.Idnt.string_of x, inv_term t)
       !Fpat.RefTypInfer.prev_sol
   in
   let res =
@@ -636,8 +625,41 @@ let rec simplify typ =
   | Ref_type.List(x,p_len,y,p_i,typ) ->
      Ref_type.List(x, simplify_typed_term p_len, y, simplify_typed_term p_i, typ)
 
-let compute_strongest_post prog ce =
-  Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce
+let compute_strongest_post prog ce ext_cex =
+  Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce ext_cex
+
 
 let implies = Fpat.SMTProver.implies_dyn
 let is_sat = Fpat.SMTProver.is_sat_dyn
+let is_valid_forall_exists xs ys cond p =
+  let open Fpat in
+  let aux x = Idnt.make x, Type.mk_int in
+  let p' =
+    Formula.forall (List.map aux xs) @@
+      Formula.exists (List.map aux ys) @@
+        Formula.imply (Formula.band @@ List.map conv_formula cond) @@
+          conv_formula p
+  in
+  SMTProver.is_valid_dyn p'
+
+let conv_pred (env: CEGAR_syntax.env) (p: CEGAR_syntax.t) =
+  let env = env
+  |> List.filter (is_base -| snd)
+  |> List.map (Fpat.Pair.map Fpat.Idnt.make conv_typ) in
+  let phi = conv_formula p in
+  ((env, phi) : Fpat.Pred.t)
+
+let trans_ext (renv : (int * CEGAR_syntax.env) list) (map : (int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list) (n, bs) =
+  let r = make_randint_name n in
+  let env = List.assoc n renv in
+  let new_var = Var(r) in
+  let abst_preds = (List.assoc n map) new_var in
+  let rand_var = conv_var r in
+  let add_pred acc p = function
+    | Positive -> make_and p acc
+    | Negative -> make_and (make_not p) acc
+    | Do_not_Care -> acc
+  in
+  let ext_abstraction = List.map (List.fold_left2 add_pred (Const True) abst_preds) bs in
+  let preds_sequence = List.map (conv_pred env) ext_abstraction in
+  rand_var, preds_sequence

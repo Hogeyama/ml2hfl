@@ -947,7 +947,7 @@ let make_ext_env = make_col2 [] (@@@)
 
 let make_ext_env_desc funs desc =
   match desc with
-  | Var x when is_parameter x -> []
+  | Var x when Fpat.RefTypInfer.is_parameter (Id.name x) -> []
   | Var x when Id.mem x funs -> [x, Id.typ x]
   | Var x -> []
   | _ -> make_ext_env.col2_desc_rec funs desc
@@ -1217,7 +1217,7 @@ let insert_param_funarg_term t =
         Let(flag, List.map aux defs, insert_param_funarg.tr_term t)
     | _ -> insert_param_funarg.tr_desc_rec t.desc
   in
-  {desc=desc; typ=typ; attr=[]}
+  {desc; typ; attr=t.attr}
 
 let () = insert_param_funarg.tr_typ <- insert_param_funarg_typ
 let () = insert_param_funarg.tr_term <- insert_param_funarg_term
@@ -1347,7 +1347,7 @@ let rec screen_fail path target t =
     | TNone -> assert false
     | TSome _ -> assert false
   in
-  {desc=desc; typ=t.typ; attr=[]}
+  {t with desc}
 
 let screen_fail target t = screen_fail [] target t
 
@@ -1398,7 +1398,7 @@ let make_ext_fun_def f =
   f, xs', make_letrec defs' t'
 
 let make_ext_funs t =
-  let funs = List.filter_out is_parameter @@ get_fv t in
+  let funs = List.filter_out (fun x -> x |> Id.name |> Fpat.RefTypInfer.is_parameter) @@ get_fv t in
   if List.exists (fun x -> is_poly_typ @@ Id.typ x) funs
   then raise (Fatal "Not implemented: Trans.make_ext_funs funs");
   let map,t' = rename_ext_funs funs t in

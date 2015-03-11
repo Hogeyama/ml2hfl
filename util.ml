@@ -92,8 +92,16 @@ module List = struct
   let singleton x = [x]
   let cons x xs = x::xs
   let snoc xs x = xs@[x]
+  let hd_option xs =
+    match xs with
+    | [] -> None
+    | x::_ -> Some x
+  let hd_default xs x =
+    match xs with
+    | [] -> x
+    | y::_ -> y
 
-  let print pr fm xs = Format.printf "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
+  let print pr fm xs = Format.fprintf fm "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
 
   let rec unfold_right f s =
     match f s with
@@ -164,8 +172,18 @@ module List = struct
     | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
     | _ -> raise (Invalid_argument "List.map3")
 
-  let rec filter_map2 f xs ys = filter_map Std.identity @@ List.map2 f xs ys
-
+  let rec rev_filter_map acc f xs =
+    match xs with
+    | [] -> acc
+    | x::xs' ->
+        let acc' =
+          match f x with
+          | None -> acc
+          | Some r -> r::acc
+        in
+        rev_filter_map acc' f xs'
+  let rev_filter_map f xs = rev_filter_map [] f xs
+  let filter_map2 f xs ys = rev_filter_map Std.identity @@ List.rev_map2 f xs ys
   let rec filter_out f xs = filter (not -| f) xs
 
   let rec rev_split acc1 acc2 xs =

@@ -53,6 +53,22 @@ let merge_typ typ1 typ2 =
     merge_typ [] typ1 typ2
   with _ -> (Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false)
 
+let rec negate_typ = function
+  | TBase(b,ps) ->
+      let x = new_id' "x" in
+      let ps t = List.map (make_not |- subst x t) (ps (Var x)) in
+      TBase(b, ps)
+  | TFun(typ1,typ2) ->
+      let x = new_id' "x" in
+      let typ2 = typ2 (Var x) in
+      let typ1 = negate_typ typ1 in
+      let typ2 = negate_typ typ2 in
+      TFun(typ1, fun t -> subst_typ x t typ2)
+  | (TAbs _ | TApp _) as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
+
+let add_neg_preds_renv env =
+  let aux (f,typ) = if is_randint_var f then (f, merge_typ typ (negate_typ typ)) else (f, typ) in
+  List.map aux env
 
 let nil_pred _ = []
 
@@ -149,7 +165,6 @@ let rec trans_typ = function
   | Type.TTuple xs -> make_ttuple @@ List.map (trans_typ -| Id.typ) xs
   | typ -> Format.printf "trans_typ: %a@." Print.typ typ; assert false
 
-
 and trans_binop = function
   | Syntax.Eq -> assert false
   | Syntax.Lt -> Const Lt
@@ -184,19 +199,34 @@ and trans_term post xs env t =
   | Syntax.Const(Syntax.RandInt _) -> assert false
   | Syntax.Const c -> [], Const (trans_const c t.Syntax.typ)
   | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandInt false); Syntax.attr}, [{Syntax.desc=Syntax.Const Syntax.Unit}]) ->
+      let flag =
+        if List.mem Syntax.AAbst_under attr
+        then Some 0
+        else None
+      in
       let k = new_id ("k" ^ post) in
-      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt None), Var k)
-  | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandInt true); Syntax.attr}, [t1;t2]) ->
+      [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
+  | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandInt true); Syntax.attr}, [t1;t2]) when List.mem Syntax.AAbst_under attr ->
       assert (t1 = Term_util.unit_term);
-      let k = new_id ("k" ^ post) in
+      let defs1,t1' = trans_term post xs env t1 in
+      let defs2,t2' = trans_term post xs env t2 in
+      let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
+      defs1@defs2, make_app (Const (RandInt (Some 0))) (List.map _Var xs' @ [t2'])
+  | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandInt true)}, [t1;t2]) ->
+      assert (t1 = Term_util.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt None), t2')
   | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandValue(Type.TInt, true)); Syntax.attr}, [t1;t2]) ->
+      let flag =
+        if List.mem Syntax.AAbst_under attr
+        then Some 0
+        else None
+      in
       assert (t1 = Term_util.unit_term);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt None), t2')
+      defs1@defs2, App(Const (RandInt flag), t2')
   | Syntax.App({Syntax.desc=Syntax.Const(Syntax.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
@@ -693,9 +723,11 @@ let rec trans_ce_aux labeled ce acc defs t k =
       trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
       trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
       k ce acc (make_app (Const op) [t1;t2])))
-  | App(Const (RandInt _), t) ->
+  | App _ when is_app_randint t ->
+      let _,ts = decomp_app t in
+      let t' = List.last ts in
       let r = new_id "r" in
-      trans_ce_aux labeled ce acc defs (App(t,Var r)) k
+      trans_ce_aux labeled ce acc defs (App(t', Var r)) k
   | App(t1,t2) ->
       trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
       trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
@@ -715,7 +747,7 @@ let rec trans_ce_aux labeled ce acc defs t k =
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let trans_ce ce labeled {defs; main} =
+let trans_ce labeled {defs; main} ce =
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let ce' = trans_ce_aux labeled ce [] defs t init_cont in
   assert (not (List.mem main labeled));

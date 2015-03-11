@@ -16,7 +16,7 @@ and t_cps =
   | ConstCPS of const
   | UnknownCPS
   | BottomCPS
-  | RandIntCPS
+  | RandIntCPS of bool
   | RandValueCPS of typ
   | VarCPS of typed_ident
   | FunCPS of typed_ident * typed_term
@@ -87,7 +87,7 @@ and print_t_cps fm = function
   | ConstCPS c -> Format.fprintf fm "%a" Print.const c
   | UnknownCPS -> Format.fprintf fm "***"
   | BottomCPS -> Format.fprintf fm "_|_"
-  | RandIntCPS -> Format.fprintf fm "rand_int"
+  | RandIntCPS b -> Format.fprintf fm "rand_int(%b)" b
   | RandValueCPS typ -> Format.fprintf fm "rand_value(%a)" Print.typ typ
   | VarCPS x -> Print.id fm x.id_cps
   | FunCPS(x, t) ->
@@ -185,7 +185,7 @@ let rec infer_effect env t =
       let e = new_evar () in
       let typ = _TFunCPS(e, TBaseCPS TUnit, TBaseCPS TInt) in
       constraints := CGeq(e, ECont) :: !constraints;
-      {t_cps=RandIntCPS; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
+      {t_cps=RandIntCPS(List.mem AAbst_under t.attr); typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
   | Const(RandValue(typ, true)) -> assert false
   | Const(RandValue(typ, false)) ->
       let e = new_evar () in
@@ -202,7 +202,7 @@ let rec infer_effect env t =
 	try
 	  List.assoc (Id.to_string x) env
 	with
-	  Not_found when is_parameter x -> TBaseCPS(TInt)
+	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS(TInt)
 	| Not_found -> Format.printf "%a@." Print.id x; assert false
       in
       {t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; typ_orig=t.typ; effect=new_evar()}
@@ -462,6 +462,11 @@ let rec trans_typ typ_orig typ =
       raise (Fatal "bug? (CPS.trans_typ)")
 
 let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
+let trans_var' x typ = (* for predicates *)
+  let x' = trans_var x in
+  if same_shape typ @@ Id.typ x'
+  then x'
+  else Id.set_typ x' typ
 
 let get_tfun_effect = function
     TFunCPS(e, _, _) -> e
@@ -488,15 +493,15 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
       let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
       make_fun k (make_bottom typ_result)
-  | RandIntCPS, ENone ->
+  | RandIntCPS b, ENone ->
       let e = get_tfun_effect typ in
       begin
         match !sol e with
-        | ECont -> make_randint_cps ()
+        | ECont -> make_randint_cps b
         | EExcep ->
             let e = Id.new_var ~name:"e" !typ_excep in
             let h = Id.new_var ~name:"h" @@ TFun(e,typ_result) in
-            make_fun h @@ make_randint_cps ()
+            make_fun h @@ make_randint_cps b
         | _ -> assert false
       end
   | RandValueCPS typ', ENone ->

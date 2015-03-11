@@ -66,8 +66,7 @@ let rec abstract_term env cond pbs t typ =
         | _ -> assert false
       in
       coerce env cond pbs typ' typ src
-  | Const c -> coerce env cond pbs (get_const_typ c) typ t
-  | App(Const (RandInt _), t) -> App(abstract_term env cond pbs t (TFun(typ_int, fun _ -> typ)), Const (Tuple 0))
+  | Const c -> coerce env cond pbs (get_const_typ env c) typ t
   | App(Const (Label n), t) -> App(Const (Label n), abstract_term env cond pbs t typ)
   | App(t1, t2) ->
       let typ' = get_typ env t1 in
@@ -132,7 +131,7 @@ let abstract orig_fun_list prog =
 
 
 
-let abstract orig_fun_list force prog =
+let abstract orig_fun_list force ?(top_funs=[]) prog =
   let tmp = get_time() in
   let () =
     if !Flag.print_progress
@@ -140,7 +139,7 @@ let abstract orig_fun_list force prog =
   in
   let labeled,abst =
     if List.mem ACPS prog.attr
-    then CEGAR_abst_CPS.abstract orig_fun_list force prog
+    then CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
     else abstract orig_fun_list prog
   in
   let () = if debug() then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in

@@ -31,7 +31,7 @@ val make_int : int -> typed_term
 val make_randvalue : typ -> typed_term
 val make_randvalue_unit : typ -> typed_term
 val make_randvalue_cps : typ -> typed_term
-val make_randint_cps : unit -> typed_term
+val make_randint_cps : bool -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
 val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term
@@ -80,7 +80,6 @@ val make_pnil : typ -> typed_pattern
 val make_pnil2 : typ -> typed_pattern
 val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 val imply : typed_term -> typed_term -> typed_term
-val and_list : typed_term list -> typed_term
 val get_typ_default : typ -> typed_term
 val none_flag : typed_term
 val some_flag : typed_term
@@ -125,7 +124,6 @@ val arg_num : typ -> int
 val subst_rev : typed_term -> id -> typed_term -> typed_term
 val replace_term : typed_term -> typed_term -> typed_term -> typed_term
 val max_pat_num : typed_term -> int
-val is_parameter : id -> bool
 val is_value : typed_term -> bool
 val is_simple_aexp : typed_term -> bool
 val is_simple_bexp : typed_term -> bool

@@ -391,18 +391,12 @@ let abst_list_opt_term t =
       let t11 = make_eq (make_var i) (make_int 0) in
       let t12 = make_some (make_var x) in
       let t13 = make_app (make_var xs) [make_sub (make_var i) (make_int 1)] in
-      make_lets [x,[],t1'; xs,[],t2'] @@ make_fun i (make_if t11 t12 t13)
-  | Cons(t1,t2) ->
-      let t1' = abst_list_opt.tr_term t1 in
-      let t2' = abst_list_opt.tr_term t2 in
-      let i = Id.new_var ~name:"i" TInt in
-      let x = Id.new_var ~name:"x" t1'.typ in
-      let xs = Id.new_var ~name:"xs" t2'.typ in
-      let t11 = make_eq (make_var i) (make_int 0) in
-      let t12 = make_some (make_var x) in
-      let t13 = make_app (make_var xs) [make_sub (make_var i) (make_int 1)] in
-      let cons = Id.new_var ~name:"cons" (TFun(x,TFun(xs,t2'.typ))) in
-      make_let [cons, [x;xs], make_fun i (make_if t11 t12 t13)] (make_app (make_var cons) [t1'; t2'])
+      if true
+      then
+        make_lets [x,[],t1'; xs,[],t2'] @@ make_fun i (make_if t11 t12 t13)
+      else
+        let cons = Id.new_var ~name:"cons" (TFun(x,TFun(xs,t2'.typ))) in
+        make_let [cons, [x;xs], make_fun i (make_if t11 t12 t13)] (make_app (make_var cons) [t1'; t2'])
   | Match(t1,pats) ->
       let x = Id.new_var ~name:"xs" (abst_list_opt.tr_typ t1.typ) in
       let aux (p,cond,t) t' =
