@@ -13,8 +13,10 @@ type declaration =
   | Decl_exc of string * typ list
 
 
-let () = Compmisc.init_path false
-let initial_env = Compmisc.initial_env ()
+let init () =
+  Compmisc.init_path false;
+  Compmisc.initial_env ()
+
 
 
 
@@ -613,7 +615,8 @@ let from_top_level_phrase (env,defs) = function
 
 
 let from_use_file ast =
-  let _,defs = List.fold_left from_top_level_phrase (initial_env,[]) ast in
+  let env = init () in
+  let _,defs = List.fold_left from_top_level_phrase (env,[]) ast in
   let aux t = function
     | Decl_let(flag, defs) ->
         let defs' = List.map (fun (f,t1) -> f, [], t1) defs in
