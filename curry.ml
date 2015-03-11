@@ -13,54 +13,94 @@ let rec element_num typ =
   | TTuple xs -> List.fold_right ((+) -| element_num -| Id.typ) xs 0
   | _ -> 1
 
+let rec get_tuple_name_map rtyp =
+  match rtyp with
+  | RT.Tuple xrtyps ->
+      let ixrtyps = List.mapi Pair.pair xrtyps in
+      let ixs = List.filter_map (function (i,(_,RT.Base(_,x,_))) -> Some(i,x) | _ -> None) ixrtyps in
+      let map = List.rev_flatten_map (fun (i,(_,typ)) -> List.map (Pair.map_snd (List.cons i)) @@ get_tuple_name_map typ) ixrtyps in
+      List.map (fun (i,x) -> x,[i]) ixs @@@ map
+  | RT.Inter rtyps
+  | RT.Union rtyps -> List.rev_flatten_map get_tuple_name_map rtyps
+  | _ -> []
+
+let rec correct_arg_refer rtyp =
+  match rtyp with
+  | RT.Base _ -> rtyp
+  | RT.Fun(x,rtyp1,rtyp2) ->
+      let rtyp1' = correct_arg_refer rtyp1 in
+      let rtyp2' = correct_arg_refer rtyp2 in
+      let map = get_tuple_name_map rtyp1 in
+      let aux (y,path) typ =
+        let t = List.fold_left (Fun.flip make_proj) (make_var x) path in
+        Ref_type.subst y t typ
+      in
+      RT.Fun(x, rtyp1', List.fold_right aux map rtyp2')
+  | RT.Tuple xrtyps ->
+      let aux (x,rtyp) xrtyps =
+        let rtyp' = correct_arg_refer rtyp in
+        let map = get_tuple_name_map rtyp in
+        let aux' (y,path) typ =
+          let t = List.fold_left (Fun.flip make_proj) (make_var x) path in
+          Ref_type.subst y t typ
+        in
+        let xrtyps' = List.map (Pair.map_snd @@ List.fold_right aux' map) xrtyps in
+        (x, rtyp) :: xrtyps'
+      in
+      RT.Tuple (List.fold_right aux xrtyps [])
+  | RT.Inter rtyps -> RT.Inter (List.map correct_arg_refer rtyps)
+  | RT.Union rtyps -> RT.Union (List.map correct_arg_refer rtyps)
+  | RT.ExtArg(x,rtyp1,rtyp2) -> assert false
+  | RT.List _ -> assert false
+
 let rec uncurry_typ rtyp typ =
-  if debug() then Format.printf "rtyp:%a@.typ:%a@.@."
-                              RT.print rtyp Print.typ typ;
+  if debug()
+  then Format.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
   match rtyp,typ with
-  | RT.Inter rtyps, _ ->
-      RT.Inter (List.map (fun rtyp -> uncurry_typ rtyp typ) rtyps)
+  | RT.Inter rtyps, _ -> RT.Inter (List.map (Fun.flip uncurry_typ typ) rtyps)
+  | RT.Union rtyps, _ -> RT.Union (List.map (Fun.flip uncurry_typ typ) rtyps)
   | _, TFun(x,typ2) ->
       let typ1 = Id.typ x in
       let n = element_num typ1 in
       let exts,xrtyps,rtyp2 = RT.decomp_fun n rtyp in
-      let rtyps = List.map snd xrtyps in
-      let map,rtyp1' = uncurry_typ_arg rtyps typ1 in
+      let rtyp1' = uncurry_typ_arg (List.map snd xrtyps) typ1 in
       let rtyp2' = uncurry_typ rtyp2 typ2 in
-      let aux (x,typ1) typ2 = RT.ExtArg(x,typ1,typ2) in
-      let x = Id.new_var typ_unknown in
-      let rtyp2'' = List.fold_left (fun typ (x',f) -> RT.subst x' (f x) typ) rtyp2' map in
-      List.fold_right aux exts (RT.Fun(x, rtyp1', rtyp2''))
+      let y =
+          match rtyp with
+          | RT.Fun(y, _, _) -> y
+          | _ -> assert false
+      in
+      let rtyp = RT.Fun(y, rtyp1', rtyp2') in
+      List.fold_right (Fun.uncurry RT._ExtArg) exts rtyp
   | _ -> rtyp
-
-and get_arg_var = function
-  | RT.Base(_,x,_) -> x
-  | _ -> Id.new_var typ_unknown
 
 and uncurry_typ_arg rtyps typ =
   if debug()
   then Format.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps Print.typ typ;
   match rtyps, elim_tpred typ with
-  | _, TTuple[x; {Id.typ=typ}] ->
-      let rtyps1,rtyps2 = List.split_nth (element_num @@ Id.typ x) rtyps in
-      let map1,rtyp1 = uncurry_typ_arg rtyps1 (Id.typ x) in
-      let map2,rtyp2 = uncurry_typ_arg rtyps2 typ in
-      let map1' = List.map (fun (x,f) -> x, fun x' -> make_fst (f x')) map1 in
-      let map2' = List.map (fun (x,f) -> x, fun x' -> make_snd (f x')) map2 in
-      map1'@@@map2', RT.Tuple [get_arg_var rtyp1, rtyp1; Id.new_var typ, rtyp2]
-  | _, TTuple _ -> unsupported "Not implemented: uncurry_typ_arg"
-(*
-      let map1' = List.map (map_fst @@ fun f x' -> make_fst (f x')) map1 in
-*)
-  | [RT.Base(base,x,p) as rtyp], _ -> [x, fun x' -> make_var x'], uncurry_typ rtyp typ
-  | [rtyp], _ -> [], uncurry_typ rtyp typ
+  | _, TTuple xs ->
+      let aux (rtyps,xrtyps) {Id.typ} =
+        let rtyps1,rtyps2 = List.split_nth (element_num typ) rtyps in
+        let rtyp = uncurry_typ_arg rtyps1 typ in
+        let x =
+          match rtyp with
+          | RT.Base(_,x,_) -> x
+          | _ -> Id.new_var typ_unknown
+        in
+        rtyps2, xrtyps @ [x, rtyp]
+      in
+      let rtyps',xrtyps = List.fold_left aux (rtyps,[]) xs in
+      assert (rtyps' = []);
+      RT.Tuple xrtyps
+  | [rtyp], _ -> uncurry_typ rtyp typ
   | _ -> assert false
 
 let uncurry_rtyp t f rtyp =
   let typ = Trans.assoc_typ f t in
-  let rtyp' = uncurry_typ rtyp typ in
+  let rtyp' = correct_arg_refer @@ uncurry_typ (RT.copy_fun_arg_to_base rtyp) typ in
   if debug()
   then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp Print.typ typ RT.print rtyp';
-  if !Flag.print_ref_typ
+  if Flag.print_ref_typ_debug
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
