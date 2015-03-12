@@ -9,7 +9,7 @@ let ref_base_of_abs_base = function
   | AT.TInt -> RT.Int
   | AT.TBool -> RT.Bool
   | AT.TList -> assert false
-  | AT.TTuple _ -> assert false
+  | AT.TTuple -> assert false
   | AT.TAbst s -> RT.Abst s
 
 

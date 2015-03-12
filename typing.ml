@@ -37,7 +37,7 @@ let rec from_typ = function
   | TBase(TInt, _) -> TInt
   | TBase(TBool, _) -> TBool
   | TBase(TList, _) -> assert false
-  | TBase(TTuple _, _) -> assert false
+  | TBase(TTuple, _) -> assert false
   | TBase(TAbst s, _) -> TAbst s
   | TAbs _ -> assert false
   | TApp _ -> assert false

@@ -45,7 +45,7 @@ let rec correct_arg_refer rtyp =
           Ref_type.subst y t typ
         in
         let xrtyps' = List.map (Pair.map_snd @@ List.fold_right aux' map) xrtyps in
-        (x, rtyp) :: xrtyps'
+        (x, rtyp') :: xrtyps'
       in
       RT.Tuple (List.fold_right aux xrtyps [])
   | RT.Inter rtyps -> RT.Inter (List.map correct_arg_refer rtyps)

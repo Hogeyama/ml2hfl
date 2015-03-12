@@ -50,7 +50,6 @@ type const =
   | Label of int
   | TreeConstr of int * string
   | CPS_result
-  | TypeAnnot of typ
 
 
 and t =

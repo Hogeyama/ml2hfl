@@ -106,6 +106,10 @@ val decomp_get_val : typed_term -> typed_term option
 val decomp_funs : typed_term -> id list * typed_term
 val decomp_lets : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
 val decomp_var : typed_term -> id option
+val var_of_term : typed_term -> id
+val int_of_term : typed_term -> int
+val bool_of_term : typed_term -> bool
+
 
 (** {6 Misc} *)
 val subst : id -> typed_term -> typed_term -> typed_term

@@ -6,12 +6,10 @@ open Type
 let makeDepthVar id = make_var (Id.add_name_after id "_DEPTH")
 
 let maxConstDepth constDepthList =
-  { desc = Const (Int (List.fold_left
-			 (fun m {desc = Const (Int n)} -> if m>n then m else n)
-			 0
-			 constDepthList))
-  ; typ = TInt
-  ; attr = []}
+  make_int (List.fold_left
+	      (fun m n -> if m > int_of_term n then m else int_of_term n)
+	      0
+	      constDepthList)
 
 let dynamicGreaterThan a b =
   if a.desc = Const (Int 0) then b

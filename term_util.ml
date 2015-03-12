@@ -764,3 +764,19 @@ let rec decomp_bexp t =
   | BinOp((And|Or), t1, t2) -> decomp_bexp t1 @ decomp_bexp t2
   | Not t1 -> decomp_bexp t1
   | _ -> [t]
+
+let var_of_term t =
+  match t.desc with
+  | Var x -> x
+  | _ -> invalid_argument "var_of_term"
+
+let int_of_term t =
+  match t.desc with
+  | Const (Int n) -> n
+  | _ -> invalid_argument "int_of_term"
+
+let bool_of_term t =
+  match t.desc with
+  | Const True -> true
+  | Const False -> false
+  | _ -> invalid_argument "bool_of_term"

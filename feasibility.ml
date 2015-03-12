@@ -29,7 +29,7 @@ let add_randint_precondition map_randint_to_preds ext_ce rand_precond r = functi
   | Some(n) ->
     let new_var = Var(r) in
     let abst_preds = try (List.assoc n map_randint_to_preds) new_var with Not_found -> Format.printf "not found: %d@." n; [] in
-    let rand_var = FpatInterface.conv_var r in
+    let _rand_var = FpatInterface.conv_var r in
     match ext_ce with
       | (m, bs)::ext_ce' when m=n ->
 	let asm_cond = List.fold_left2 (fun acc p b -> make_and (if b then p else make_not p) acc) (Const True) abst_preds bs in

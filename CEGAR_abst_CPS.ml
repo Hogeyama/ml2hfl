@@ -135,10 +135,6 @@ let rec trans_eager_term env c t =
       let t2' = trans_eager_term env id t2 in
       let test = new_id "test" in
       let t1' = trans_eager_term env (fun x -> App(Var test, x)) t1 in
-      Format.printf "t1: %a@." CEGAR_print.term t1;
-      Format.printf "t2: %a@." CEGAR_print.term t2;
-      Format.printf "t1': %a@." CEGAR_print.term t1';
-      assert false;
       c (Let(f, Fun(x, None, t2'), t1'))
 let trans_eager_def env (f,xs,t1,e,t2) =
   let env' = get_arg_env (List.assoc f env) xs @@@ env in
@@ -243,15 +239,12 @@ let rec abstract_rand_int n must env cond pts xs t =
   let typ' = TFun(TBase(TInt, preds), fun _ -> typ_result) in
   let t' = hd @@ abstract_term must env cond pts t typ' in
   let x = new_id "r" in
-  let env' = (x,typ_int)::env in
   let preds' = preds (Var x) in
   if !Flag.debug_level > 0 then Format.printf "preds': %a@." (List.print CEGAR_print.term) preds';
   let rec make_combs n =
     if n <= 0
     then [[]]
-    else
-      let combs = make_combs (n-1) in
-      List.flatten_map (fun acc -> [true::acc; false::acc]) combs
+    else List.flatten_map (fun acc -> [true::acc; false::acc]) @@ make_combs (n-1)
   in
   let f = new_id "f" in
   let cond_combs = make_combs @@ List.length pts in

@@ -215,7 +215,7 @@ let rec to_simple typ =
   | Base(Unit, _, _) -> Type.TUnit
   | Base(Bool, _, _) -> Type.TBool
   | Base(Int, _, _) -> Type.TInt
-  | Base(Unit, _, _) -> assert false
+  | Base(Abst _, _, _) -> assert false
   | Fun(x,typ1,typ2) -> Type.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
   | Tuple xtyps -> Type.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
   | Inter [] -> assert false

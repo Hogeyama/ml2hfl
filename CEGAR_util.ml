@@ -454,6 +454,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
           match op with
           | Const (EqInt | Leq | Geq) -> Const True
           | Const (Lt | Gt) -> Const False
+          | _ -> assert false
         else
           let x,n = List.hd xns''' in
           let xns = List.rev @@ List.tl xns''' in

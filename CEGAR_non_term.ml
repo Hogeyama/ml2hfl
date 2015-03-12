@@ -46,6 +46,7 @@ let cegar prog0 labeled info is_cp ce prog =
         (* let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in *)
         let path = Feasibility.check_non_term ~map_randint_to_preds ~ext_ce ce prog in
         match path with
+          | Feasibility.Feasible _ -> assert false
           | Feasibility.FeasibleNonTerm (true, env, sol) ->
             if debug then Format.printf "[%d: path %d] Found useless feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
             None (* do not use a useless (i.e. already-used-in-CEGAR) error-path *)
@@ -74,39 +75,40 @@ let cegar prog0 labeled info is_cp ce prog =
 
   path_counter := 0;
   let refinement_type_map = function
+    | (Feasibility.Feasible _, _, _, _) -> assert false
     | (Feasibility.FeasibleNonTerm (true, env, sol), _, _, _) ->
-      assert false
+        assert false
     | (Feasibility.FeasibleNonTerm (false, env, sol), orig_ce, ce, ext_path) ->
-      let log_cout = if !Flag.randint_refinement_log then open_out_gen [Open_wronly; Open_append; Open_text; Open_creat] 0o666 log_file else stdout in
-      let log_fm = Format.formatter_of_out_channel log_cout in
+        let log_cout = if !Flag.randint_refinement_log then open_out_gen [Open_wronly; Open_append; Open_text; Open_creat] 0o666 log_file else stdout in
+        let log_fm = Format.formatter_of_out_channel log_cout in
 
-      if debug then Format.printf "[%d: path %d] Refining by feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
-      if !Flag.randint_refinement_log then Format.fprintf log_fm "[%d: path %d] Refining by feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
-      let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
-      if debug then List.iter (fun (rand_var, preds_sequence) -> Format.printf "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
-      if !Flag.randint_refinement_log then List.iter (fun (rand_var, preds_sequence) -> Format.fprintf log_fm "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
-      let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-      let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_preds] prog0 in
-      let map = CEGAR_trans.add_neg_preds_renv map in
-      if debug then Format.printf "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
-      if !Flag.randint_refinement_log then Format.fprintf log_fm "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
-      if !Flag.randint_refinement_log then close_out log_cout;
-      map
+        if debug then Format.printf "[%d: path %d] Refining by feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
+        if !Flag.randint_refinement_log then Format.fprintf log_fm "[%d: path %d] Refining by feasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
+        let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
+        if debug then List.iter (fun (rand_var, preds_sequence) -> Format.printf "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
+        if !Flag.randint_refinement_log then List.iter (fun (rand_var, preds_sequence) -> Format.fprintf log_fm "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
+        let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+        let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_preds] prog0 in
+        let map = CEGAR_trans.add_neg_preds_renv map in
+        if debug then Format.printf "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
+        if !Flag.randint_refinement_log then Format.fprintf log_fm "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
+        if !Flag.randint_refinement_log then close_out log_cout;
+        map
     | (Feasibility.Infeasible prefix, orig_ce, ce, ext_path) ->
-      let log_cout = if !Flag.randint_refinement_log then open_out_gen [Open_wronly; Open_append; Open_text; Open_creat] 0o666 log_file else stdout in
-      let log_fm = Format.formatter_of_out_channel log_cout in
+        let log_cout = if !Flag.randint_refinement_log then open_out_gen [Open_wronly; Open_append; Open_text; Open_creat] 0o666 log_file else stdout in
+        let log_fm = Format.formatter_of_out_channel log_cout in
 
-      if debug then Format.printf "[%d: path %d] Refining by infeasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
-      if !Flag.randint_refinement_log then Format.fprintf log_fm "[%d: path %d] Refining by infeasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
-      let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
-      if debug then List.iter (fun (rand_var, preds_sequence) -> Format.printf "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
-      if !Flag.randint_refinement_log then List.iter (fun (rand_var, preds_sequence) -> Format.fprintf log_fm "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
-      let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
-      let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_preds] prog0 in
-      if debug then Format.printf "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
-      if !Flag.randint_refinement_log then Format.fprintf log_fm "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
-      if !Flag.randint_refinement_log then close_out log_cout;
-      map
+        if debug then Format.printf "[%d: path %d] Refining by infeasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
+        if !Flag.randint_refinement_log then Format.fprintf log_fm "[%d: path %d] Refining by infeasible path: [%a]@." !Flag.cegar_loop !path_counter print_path orig_ce;
+        let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
+        if debug then List.iter (fun (rand_var, preds_sequence) -> Format.printf "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
+        if !Flag.randint_refinement_log then List.iter (fun (rand_var, preds_sequence) -> Format.fprintf log_fm "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
+        let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+        let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_preds] prog0 in
+        if debug then Format.printf "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
+        if !Flag.randint_refinement_log then Format.fprintf log_fm "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
+        if !Flag.randint_refinement_log then close_out log_cout;
+        map
   in
   let maps = List.map (fun path -> path_counter := !path_counter + 1; refinement_type_map path) paths in
   let env' = List.fold_left (fun a b -> Refine.add_preds_env b a) prog.env maps in

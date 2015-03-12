@@ -291,7 +291,7 @@ and trans_term post xs env t =
   | Syntax.Bottom -> [], Const Bottom
   | Syntax.Proj(i, t) ->
       let defs,t' = trans_term post xs env t in
-      defs, make_proj (Option.get @@ Type.tuple_num t.typ) i t'
+      defs, make_proj (Option.get @@ Type.tuple_num t.Syntax.typ) i t'
   | Syntax.Tuple ts ->
       let defss,ts' = List.split_map (trans_term post xs env) ts in
       List.flatten defss, make_tuple ts'

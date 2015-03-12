@@ -256,8 +256,8 @@ let verify fs (*cexs*) prog =
        prog.CEGAR_syntax.main)
   in
   Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
-  assert false(*Verifier.verify fs prog*);
-  Format.printf "END verification@,@]"
+  assert false(*Verifier.verify fs prog;
+  Format.printf "END verification@,@]"*)
 
 let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in

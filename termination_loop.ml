@@ -123,7 +123,7 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
                /\ R3(x_prev) > R3(x) /\ R3(x) >= 0]
       ...
   **)
-  let debug = !Flag.debug_level > 0 in
+  let _debug = !Flag.debug_level > 0 in
   let lenSpcSequence = List.length failedSpc in
   let subst_ith i =
     Fpat.Formula.subst
@@ -185,7 +185,7 @@ let rec run predicate_que holed =
 	else
 	  (if debug then Format.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
       with Refine.PostCondition (env, spc, spcWithExparam) ->
-	let unwrap_template (Fpat.Term.App (Fpat.Term.App (_, t), _)) = t in
+	let unwrap_template = function (Fpat.Term.App (Fpat.Term.App (_, t), _)) -> t | _ -> assert false in
 	let unwrap_template t = unwrap_template (Fpat.Formula.term_of t) in
 	let arg_vars =
 	  List.map (fun v -> Fpat.Idnt.make (Id.to_string (extract_id v)))

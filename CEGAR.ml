@@ -6,6 +6,8 @@ open CEGAR_util
 
 type result = Safe of (var * CEGAR_ref_type.t) list | Unsafe of int list
 
+module MC = ModelCheck
+
 let pre () =
   ()
 
@@ -17,14 +19,14 @@ let print_non_CPS_abst abst prog =
   if !Flag.just_print_non_CPS_abst then
     let result =
       try
-	Some (ModelCheck.check abst prog)
+	Some (MC.check abst prog)
       with _ -> None
     in
     let s =
       match result with
       | None -> "Unknown"
-      | Some (ModelCheck.Safe _) -> "Safe"
-      | Some (ModelCheck.Unsafe _) -> "Unsafe"
+      | Some (MC.Safe _) -> "Safe"
+      | Some (MC.Unsafe _) -> "Unsafe"
     in
     Format.printf "@.ABST:@.%a@." CEGAR_print.prog abst;
     Format.printf "RESULT: %s@." s;
@@ -50,9 +52,9 @@ let rec loop prog0 is_cp ces info =
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   print_non_CPS_abst abst prog;
-  let result = ModelCheck.check abst prog in
+  let result = MC.check abst prog in
   match result, !Flag.mode with
-  | ModelCheck.Safe env, _ ->
+  | MC.Safe env, _ ->
       if Flag.print_ref_typ_debug
       then
         begin
@@ -68,14 +70,14 @@ let rec loop prog0 is_cp ces info =
       let env' = List.rev_map_flatten aux env in
       post ();
       prog, Safe env'
-  | ModelCheck.Unsafe ce, Flag.NonTermination ->
+  | MC.Unsafe ce, Flag.NonTermination ->
       let prog' = CEGAR_non_term.cegar prog0 labeled info is_cp ce prog in
       post ();
       loop prog' is_cp (ce::ces) info
-  | ModelCheck.Unsafe ce, _ ->
+  | MC.Unsafe ce, _ ->
       let ce_orig =
         match ce with
-        | ModelCheck.CETRecS ce -> ce
+        | MC.CETRecS ce -> ce
         | _ -> assert false
       in
       if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_orig;
@@ -83,7 +85,7 @@ let rec loop prog0 is_cp ces info =
       let ce_pre =
         match ces with
         | [] -> None
-        | CETRecS ce_pre :: _ -> Some (CEGAR_trans.trans_ce labeled prog ce_pre)
+        | MC.CETRecS ce_pre :: _ -> Some (CEGAR_trans.trans_ce labeled prog ce_pre)
         | _ -> assert false
       in
       if Some ce' = ce_pre then
@@ -132,7 +134,7 @@ let rec loop prog0 is_cp ces info =
               let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
               let aux ce =
                 match ce with
-                | ModelCheck.CETRecS ce' -> CEGAR_trans.trans_ce labeled prog ce'
+                | MC.CETRecS ce' -> CEGAR_trans.trans_ce labeled prog ce'
                 | _ -> assert false
               in
               let ces'' = List.map aux ces' in

@@ -6,7 +6,7 @@ let origWithExparam = ref (make_int 0)
 let exCoefficients = ref []
 
 let to_string_CoeffInfos f =
-  let g {desc = Var v} = Id.name v in
+  let g v = Id.name @@ var_of_term v in
   let h = function
     | {desc = Const (Int n)} -> string_of_int n
     | _ -> raise (Invalid_argument "")

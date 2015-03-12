@@ -274,7 +274,7 @@ let check_exist env cond x p =
       try
         let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
         if debug() then Format.printf "check_exists: %b@." b;
-        read_line();
+        ignore @@ read_line();
         b
       with Fpat.SMTProver.Unknown ->
         if debug() then Format.printf "check_exists: FpatInterface.Unknown@.";

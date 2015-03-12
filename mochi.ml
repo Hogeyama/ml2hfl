@@ -402,8 +402,8 @@ let fpat_init2 () =
 
 let check_env () =
   match !Flag.mc with
-  | TRecS -> if not Environment.trecs_available then fatal "TRecS not found, please redo ./configure"
-  | HorSat -> if not Environment.horsat_available then fatal "HorSat not found, please redo ./configure"
+  | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found, please redo ./configure"
+  | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found, please redo ./configure"
 
 let () =
   if !Sys.interactive
