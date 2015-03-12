@@ -175,7 +175,9 @@ let trans_desc env desc =
           same_args
         else
           let rec aux same_args =
+(*
             let env' = make_env xs same_args @@@ env in (* unused for speed *)
+*)
             let same_args' = get_same_args env f t1 same_args in
             if same_args = same_args'
             then same_args

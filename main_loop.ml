@@ -209,7 +209,9 @@ let rec run_cegar prog =
   init ();
   match !Flag.cegar with
   | Flag.CEGAR_InteractionType ->
+(*
       FpatInterface.verify [] prog;
+*)
       assert false;
   | Flag.CEGAR_DependentType ->
       try
@@ -269,7 +271,9 @@ let rec run orig parsed =
   if !Flag.trans_to_CPS then FpatInterface.init prog;
   match !Flag.cegar with
   | Flag.CEGAR_InteractionType ->
+(*
       FpatInterface.verify [] prog;
+*)
       assert false;
   | Flag.CEGAR_DependentType ->
       try
