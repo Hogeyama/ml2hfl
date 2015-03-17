@@ -299,12 +299,6 @@ let rec my_input ic s ofs len acc =
 let my_input ic s ofs len = my_input ic s ofs len 0
 
 
-let make_string_of pp =
-  fun x ->
-    pp Format.str_formatter x;
-    Format.flush_str_formatter ()
-
-
 let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
   Format.printf "%s@?" str1;
   let r = f () in

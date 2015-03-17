@@ -467,7 +467,7 @@ let prog = print_prog
 let prog_typ = print_prog_typ
 
 
-let string_of_const = make_string_of print_const
+let string_of_const = Format.asprintf "%a" print_const
 
 
 

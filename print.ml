@@ -439,9 +439,9 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
   List.iter print_fundef defs
 
 
-let string_of_const = make_string_of print_const
-let string_of_binop = make_string_of print_binop
-let string_of_typ = make_string_of print_typ
+let string_of_const = Format.asprintf "%a" print_const
+let string_of_binop = Format.asprintf "%a" print_binop
+let string_of_typ = Format.asprintf "%a" print_typ
 let string_of_constr t =
   match t.desc with
   | Const _ -> "Const"
