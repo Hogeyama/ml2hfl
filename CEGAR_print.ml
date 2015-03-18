@@ -451,27 +451,6 @@ let print_node = Format.pp_print_int
 let print_ce = print_list print_node "; "
 
 
-
-
-
-let const = print_const
-let fun_def = print_fun_def
-let term = print_term
-let var = print_var
-let typ = print_typ
-let typ_base = print_typ_base
-let ce = print_ce
-let env = print_env
-let attr = print_attr_list
-let prog = print_prog
-let prog_typ = print_prog_typ
-
-
-let string_of_const = Format.asprintf "%a" print_const
-
-
-
-
 let rec print_head limit fm t =
   match t with
   | Const c -> print_const fm c
@@ -511,8 +490,6 @@ and print_term' limit fm t =
       in
       Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env (print_term' limit) t'
 
-let term' = print_term' 100
-
 let rec has_preds = function
   | TBase(_, ps) -> (ps (Var "x") <> [])
   | TApp(t1, t2) -> has_preds t1 || has_preds t2
@@ -526,4 +503,21 @@ let rec print_env_diff fm env =
   let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) (add_rand_info f) print_typ typ in
   List.iter pr (List.filter (Pair.map_snd has_preds |- snd) env)
 
+
+
+
+let const = print_const
+let fun_def = print_fun_def
+let term = print_term
+let var = print_var
+let typ = print_typ
+let typ_base = print_typ_base
+let ce = print_ce
+let env = print_env
+let attr = print_attr_list
+let prog = print_prog
+let prog_typ = print_prog_typ
+let term' = print_term' 100
 let env_diff = print_env_diff
+
+let string_of_const = Format.asprintf "%a" print_const
