@@ -144,6 +144,11 @@ module List = struct
       assoc k tbl
     with Not_found -> x
 
+  let assoc_option k tbl =
+    try
+      Some (assoc k tbl)
+    with Not_found -> None
+
   let count f xs =
     fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
@@ -271,10 +276,7 @@ let rec gcd m n =
 (* graph *)
 let save_as_dot filename vertices edges =
   let oc = open_out filename in
-  let ocf =
-    Format.make_formatter
-      (output oc)
-      (fun () -> flush oc) in
+  let ocf = Format.formatter_of_out_channel oc in
   Format.fprintf ocf "@[<v>digraph flow {@ ";
   List.iter
     (fun (vertex, attribute) ->

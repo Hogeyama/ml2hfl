@@ -72,15 +72,8 @@ let preprocess t spec =
 
   if !Flag.exp2 then
     begin
-      let oc = open_out
-                 (Filename.chop_extension
-                    !Flag.filename ^ ".pml")
-      in
-      let ocf =
-        Format.make_formatter
-          (output oc)
-          (fun () -> flush oc)
-      in
+      let oc = open_out (Filename.chop_extension !Flag.filename ^ ".pml") in
+      let ocf = Format.formatter_of_out_channel oc in
       Format.fprintf ocf "%a@." Print.term_typ t;
       close_out oc
     end;
@@ -101,10 +94,8 @@ let preprocess t spec =
 
   let info =
     let orig_fun_list =
-      let aux x =
-        try [List.assoc (CEGAR_trans.trans_var x) map] with Not_found -> []
-      in
-      List.rev_flatten_map aux fun_list
+      let aux x = List.assoc_option (CEGAR_trans.trans_var x) map in
+      List.filter_map aux fun_list
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined}

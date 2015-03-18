@@ -7,11 +7,7 @@ let output_csv result =
   let oc =
     open_out_gen [Open_append; Open_creat] 0o666 "mochi_exp.csv"
   in
-  let ocf =
-    Format.make_formatter
-      (output oc)
-      (fun () -> flush oc)
-  in
+  let ocf = Format.formatter_of_out_channel oc in
   Format.fprintf ocf "@[<v>";
   Format.fprintf
     ocf
