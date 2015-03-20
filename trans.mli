@@ -8,8 +8,9 @@ val copy_poly_funs : typed_term -> typed_term
 val define_randvalue : (typ * id) list -> (id * id list * typed_term) list -> typ -> (typ * id) list * (id * id list * typed_term) list * typed_term
 val inst_randval : typed_term -> typed_term
 val get_last_definition : id option -> typed_term -> id option
+val ref_to_assert : Ref_type.env -> typed_term -> typed_term
 val replace_main : typed_term -> typed_term -> typed_term
-val set_target : (id * Ref_type.t) list -> typed_term -> string * int * typed_term
+val set_main : typed_term -> string * int * typed_term
 val merge_let_fun : typed_term -> typed_term
 val canonize : typed_term -> typed_term
 val part_eval : typed_term -> typed_term
@@ -23,7 +24,7 @@ val normalize_bool_exp : typed_term -> typed_term
 val get_and_list : typed_term -> typed_term list
 val merge_geq_leq : typed_term -> typed_term
 val elim_fun : typed_term -> typed_term
-val make_ext_env : typed_term -> (id * typ) list
+val make_ext_env : typed_term -> env
 val init_rand_int : typed_term -> typed_term
 val inlined_f : id list -> typed_term -> typed_term
 val lift_fst_snd : typed_term -> typed_term
@@ -34,7 +35,7 @@ val insert_param_funarg : typed_term -> typed_term
 val search_fail : typed_term -> int list list
 val screen_fail : int list -> typed_term -> typed_term
 val rename_ext_funs : id list -> typed_term -> id list * typed_term
-val make_ext_funs : typed_term -> typed_term
+val make_ext_funs : Ref_type.env -> typed_term -> typed_term
 val assoc_typ : id -> typed_term -> typ
 val let2fun : typed_term -> typed_term
 val fun2let : typed_term -> typed_term

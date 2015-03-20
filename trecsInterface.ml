@@ -105,11 +105,7 @@ let rec parse_trace s =
 
 let rec verifyFile filename =
   let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
-  let result_file =
-    try
-      Filename.chop_extension !Flag.filename ^ ".trecs_out"
-    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".trecs_out"
-  in
+  let result_file = Filename.change_extension !Flag.filename "trecs_out" in
   let oc = open_out result_file in
   let out_descr = Unix.descr_of_out_channel oc in
   let args = String.nsplit (Format.sprintf "%s -p %d %d %s" !Flag.trecs p1 p2 filename) " " in
@@ -144,11 +140,7 @@ let write_log filename target =
 
 let check target =
   let target' = trans target in
-  let input =
-    try
-      Filename.chop_extension !Flag.filename ^ ".hors"
-    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".hors"
-  in
+  let input = Filename.change_extension !Flag.filename "hors" in
   try
     write_log input target';
     verifyFile input

@@ -189,7 +189,7 @@ id_simple_type:
     let typ = $3 in
     let ps = $5 in
     let x' = Id.new_var ~name:(Id.name x) typ in
-    let ps' = List.map (subst x (make_var (Id.set_typ x' (elim_tpred typ)))) ps in
+    let ps' = List.map (subst_var x @@ Id.set_typ x' @@ elim_tpred typ) ps in
     Id.new_var ~name:(Id.name x) (TPred(x', ps'))
   }
 
@@ -202,8 +202,8 @@ typ:
     let r = $3 in
     let typ1 = Id.typ x in
     let typ2 = Id.typ r in
-    let typ2' = subst_type (orig_id x) (make_var (Id.set_typ x (elim_tpred typ1))) typ2 in
-    let typ2'' = subst_type r (make_var (Id.set_typ abst_var (elim_tpred typ2))) typ2' in
+    let typ2' = subst_type_var (orig_id x) (Id.set_typ x (elim_tpred typ1)) typ2 in
+    let typ2'' = subst_type_var r (Id.set_typ abst_var (elim_tpred typ2)) typ2' in
     make_self_id @@ TTuple [x; Id.new_var typ2'']
   }
 | typ ARROW typ
@@ -212,8 +212,8 @@ typ:
     let r = $3 in
     let typ1 = Id.typ x in
     let typ2 = Id.typ r in
-    let typ2' = subst_type (orig_id x) (make_var (Id.set_typ x (elim_tpred typ1))) typ2 in
-    let typ2'' = subst_type r (make_var (Id.set_typ abst_var (elim_tpred typ2))) typ2' in
+    let typ2' = subst_type_var (orig_id x) (Id.set_typ x @@ elim_tpred typ1) typ2 in
+    let typ2'' = subst_type_var r (Id.set_typ abst_var @@ elim_tpred typ2) typ2' in
     make_self_id @@ TFun(x, typ2'')
   }
 | typ LIST

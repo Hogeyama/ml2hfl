@@ -21,10 +21,6 @@ let (&>) f x = f x
 
 let (=>) b1 b2 = not b1 || b2
 
-let fst3 (x,y,z) = x
-let snd3 (x,y,z) = y
-let trd (x,y,z) = z
-
 let (@@@) = List.rev_append
 
 let rec print_list_aux print punc last fm xs =
@@ -44,13 +40,6 @@ let print_list print ?(first=false) ?(last=false) punc fm xs =
   if last && xs<>[] then Format.fprintf fm punc';
   Format.fprintf fm "@]"
 
-module Fun = struct
-  let flip f x y = f y x
-  let curry f x y = f (x,y)
-  let uncurry f (x,y) = f x y
-  let const x _ = x
-end
-
 module IntSet =
   Set.Make(
     struct
@@ -65,16 +54,33 @@ module Option = struct
 
   let iter = may
   let apply = map
+  let to_list x =
+    match x with
+    | None -> []
+    | Some x' -> [x']
+  let of_list xs =
+    match xs with
+    | [] -> None
+    | [x] -> Some x
+    | _ -> invalid_argument "Option.of_list"
+  let print pr fm x =
+    match x with
+    | None -> Format.fprintf fm "None"
+    | Some x' -> Format.fprintf fm "Some %a" pr x'
 end
 
 module Pair = struct
+  let fst = fst
+  let snd = snd
   let pair x y = x, y
   let swap (x,y) = y, x
   let make f g x = f x, g x
   let map f g (x,y) = f x, g y
   let map_fst f (x,y) = f x, y
   let map_snd f (x,y) = x, f y
-  let fold f x y = f x y
+  let curry f x y = f (x,y)
+  let uncurry f (x,y) = f x y
+  let fold = uncurry
   let unfold = make
   let add_left f x = f x, x
   let add_right f x = x, f x
@@ -84,6 +90,56 @@ module Pair = struct
     | [x;y] -> x,y
     | _ -> invalid_argument "Pair.of_list"
   let print f g ppf (x,y) = Format.fprintf ppf "@[(%a,@ %a)@]" f x g y
+end
+
+module Triple = struct
+  let fst (x,y,z) = x
+  let snd (x,y,z) = y
+  let trd (x,y,z) = z
+  let map f g h (x,y,z) = f x, g y, h z
+  let map_fst f (x,y,z) = f x, y, z
+  let map_snd f (x,y,z) = x, f y, z
+  let map_trd f (x,y,z) = x, y, f z
+  let curry f x y z = f (x,y,z)
+  let uncurry f (x,y,z) = f x y z
+  let to_list (x,y,z) = [x;y;z]
+  let of_list xs =
+    match xs with
+    | [x;y;z] -> x,y,z
+    | _ -> invalid_argument "Triple.of_list"
+  let print f g h ppf (x,y,w) = Format.fprintf ppf "@[(%a,@ %a,@ %a)@]" f x g y h w
+end
+
+module Quadruple = struct
+  let fst (x,y,z,w) = x
+  let snd (x,y,z,w) = y
+  let trd (x,y,z,w) = z
+  let fth (x,y,z,w) = w
+  let curry f x y z w = f (x,y,z,w)
+  let uncurry f (x,y,z,w) = f x y z w
+  let to_list (x,y,z,w) = [x;y;z;w]
+  let of_list xs =
+    match xs with
+    | [x;y;z;w] -> x,y,z,w
+    | _ -> invalid_argument "Quadruple.of_list"
+end
+
+module Fun = struct
+  let id x = x
+  let flip f x y = f y x
+  let curry2 = Pair.curry
+  let uncurry2 = Pair.uncurry
+  let curry3 = Triple.curry
+  let uncurry3 = Triple.uncurry
+  let curry4 = Quadruple.curry
+  let uncurry4 = Quadruple.uncurry
+  let curry = curry2
+  let uncurry = uncurry2
+  let rec repeat f n x =
+    if n <= 0
+    then x
+    else repeat f (n-1) (f x)
+  let const x _ = x
 end
 
 module List = struct
@@ -120,7 +176,7 @@ module List = struct
     else init n f (i+1) (f i :: acc_rev)
   let init n f = init n f 0 []
 
-  let make n x = init n (Fun.const x)
+  let make n x = init n (fun _ -> x)
 
   (*** returns a list of integers [m;...;n-1] ***)
   let fromto m n = init (n-m) ((+) m)
@@ -131,12 +187,12 @@ module List = struct
   let rev_flatten xs = rev_map_flatten Std.identity xs
   let concat_map = flatten_map
 
-  let rec tabulate n f acc =
-    if n < 0 then raise (Invalid_argument "tabulate")
+  let rec tabulate n f rev_acc =
+    if n < 0 then invalid_argument "tabulate"
     else
       match n with
-      | 0 -> rev acc
-      | _ -> tabulate (n-1) f (f n::acc)
+      | 0 -> rev rev_acc
+      | _ -> tabulate (n-1) f (f n::rev_acc)
   let tabulate n f = tabulate n f []
 
   let assoc_default k tbl x =
@@ -153,7 +209,7 @@ module List = struct
     fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
   let rec decomp_snoc = function
-    | [] -> failwith "decomp_snoc"
+    | [] -> invalid_argument "decomp_snoc"
     | [x] -> [], x
     | x::xs -> Pair.map_fst (cons x) @@ decomp_snoc xs
 
@@ -161,21 +217,21 @@ module List = struct
     match xs,ys with
     | [],[] -> []
     | x::xs',y::ys' -> f i x y :: mapi2 f (i+1) xs' ys'
-    | _ -> raise (Invalid_argument "List.mapi2")
+    | _ -> invalid_argument "List.mapi2"
   let mapi2 f xs ys = mapi2 f 0 xs ys
 
   let rec rev_map2 f acc xs ys =
     match xs,ys with
     | [],[] -> acc
     | x::xs',y::ys' -> rev_map2 f (f x y::acc) xs' ys'
-    | _ -> raise (Invalid_argument "List.rev_map2")
+    | _ -> invalid_argument "List.rev_map2"
   let rev_map2 f xs ys = rev_map2 f [] xs ys
 
   let rec map3 f xs ys zs =
     match xs,ys,zs with
     | [],[],[] -> []
     | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
-    | _ -> raise (Invalid_argument "List.map3")
+    | _ -> invalid_argument "List.map3"
 
   let rec rev_filter_map acc f xs =
     match xs with
@@ -250,12 +306,29 @@ module String = struct
     fold_left (fun n c -> if c = '\n' then n+1 else n) 0 s
 end
 
+module Math = struct
+  let rec gcd m n =
+    if m < n then gcd n m
+    else if n = 0 then m
+    else gcd n (m mod n)
+end
+
+module Filename = struct
+  include Filename
+  let change_extension filename ext =
+    let ext' = "." ^ ext in
+    try
+      chop_extension filename ^ ext'
+    with Invalid_argument "Filename.chop_extension" -> filename ^ ext'
+end
+
 let is_uppercase c = 'A' <= c && c <= 'Z'
 
 
 let get_time () =
-  let times = Unix.times() in
-  times.Unix.tms_utime +. times.Unix.tms_cutime
+  let open Unix in
+  let tm = times() in
+  tm.tms_utime +. tm.tms_cutime
 
 let add_time tmp t = t := !t +. get_time () -. tmp
 
@@ -264,13 +337,6 @@ let print_err s =
   Format.fprintf Format.err_formatter "%s" s
 let print_time () =
   Format.fprintf Format.err_formatter "%f\n" (get_time ())
-
-
-
-let rec gcd m n =
-  if m < n then gcd n m
-  else if n = 0 then m
-  else gcd n (m mod n)
 
 
 (* graph *)
@@ -308,15 +374,9 @@ let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
   r
 
 
-let rec repeat f n x =
-  if n <= 0
-  then x
-  else repeat f (n-1) (f x)
-
-
 (* TODO: support escaping *)
-let split_spaces s =
-  let spaces = [' '; '\t'] in
+(* TODO: fix for quotations *)
+let split_spaces ?(spaces=[' ';'\t';'\n']) s =
   let quotations = ['"'; '\''] in
   let rec chop_spaces s =
     if s <> "" && List.mem s.[0] spaces

@@ -90,6 +90,8 @@ and pattern =
   | PSome of typed_pattern
   | POr of typed_pattern * typed_pattern
 
+type env = (id * typ) list
+
 
 
 

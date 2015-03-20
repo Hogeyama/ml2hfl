@@ -198,12 +198,12 @@ let trans_desc env desc =
                 |> trans.tr2_term (make_env xs same_args' @ env)
                 |> subst_map @@ List.map (fun (i,j) -> List.nth xs j, make_var @@ List.nth xs i) same_args'
                 |> elim_arg f elim_args
-                |> subst f (make_var f')
+                |> subst_var f f'
       in
       let t2' = t2
                 |> trans.tr2_term env
                 |> elim_arg f elim_args
-                |> subst f (make_var f')
+                |> subst_var f f'
       in
       Let(flag, [f',xs',t1'], t2')
   | _ -> trans.tr2_desc_rec env desc

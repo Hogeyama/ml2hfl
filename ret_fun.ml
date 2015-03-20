@@ -86,7 +86,7 @@ let get_same_pair env y z =
   let fsts = List.filter (function (y', Some _, None) -> Id.same y y' | _ -> false) env in
   let snds = List.filter (function (z', None, Some _) -> Id.same z z' | _ -> false) env in
   try
-    snd3 @@ List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (Option.get p) (Option.get p')) snds) fsts
+    Triple.snd @@ List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (Option.get p) (Option.get p')) snds) fsts
   with Not_found -> None
 
 let pair_eta_reduce = make_trans2 ()
@@ -101,7 +101,7 @@ let pair_eta_reduce_term env t =
       begin
         match get_same_pair env y z with
         | None -> pair_eta_reduce.tr2_term_rec env t
-        | Some p -> subst x (make_var p) @@ pair_eta_reduce.tr2_term env t2
+        | Some p -> subst_var x p @@ pair_eta_reduce.tr2_term env t2
       end
   | _ -> pair_eta_reduce.tr2_term_rec env t
 
@@ -136,7 +136,7 @@ let subst_label_term (map,env) t =
       then t'
       else subst_label.tr2_term (map,env) t'
   | Let(flag, bindings, t2) ->
-      let env' = List.map fst3 bindings @ env in
+      let env' = List.map Triple.fst bindings @ env in
       let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
       let bindings' = List.map (fun (f,xs,t1) -> f, xs, subst_label.tr2_term (map,xs@env'') t1) bindings in
       make_let_f flag bindings' @@ subst_label.tr2_term (map,env') t2

@@ -89,17 +89,77 @@ let get_commit_hash () =
 
 let print_env cmd =
   let mochi,fpat = get_commit_hash () in
+  let trecs_version = TrecsInterface.version () in
   let horsat_version = HorSatInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
-  if horsat_version <> "" then Format.printf "  HorSat version: %s@." @@ horsat_version;
+  if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
+  if horsat_version <> "" then Format.printf "  HorSat version: %s@." horsat_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  if cmd then
-    begin
-      Format.printf "  Command: %a@." (print_list Format.pp_print_string " ") !Flag.args;
-      Format.printf "@."; ()
-    end
+  if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") !Flag.args
+
+
+
+let main_input_cegar lb =
+  let open CEGAR_syntax in
+  let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
+  let prog' = Typing.infer {prog with env=[]} in
+  let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
+  Main_loop.run_cegar {prog with env}
+
+let main_split_assert orig spec parsed =
+  let paths = Trans.search_fail parsed in
+  let ts = List.map (Fun.flip Trans.screen_fail parsed) paths in
+  List.for_all (Main_loop.run orig ~spec) (List.rev ts)
+
+let main_termination orig parsed =
+  let open BRA_util in
+  (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
+  let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
+  let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
+  let parsed = BRA_transform.regularization parsed in
+  let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Print.term parsed in
+  let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
+  let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
+  let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
+  let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
+  let holed_list = BRA_transform.to_holed_programs parsed in
+  let result =
+    try
+      List.for_all
+        (fun holed ->
+         let init_predicate_info =
+           { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
+           ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
+           ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
+           ; BRA_types.coefficients = []
+           ; BRA_types.errorPaths = []
+           ; BRA_types.errorPathsWithExparam = [] } in
+         let predicate_que = Queue.create () in
+         let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
+         Termination_loop.reset_cycle ();
+         Termination_loop.run predicate_que holed) holed_list
+    with
+    | Fpat.PolyConstrSolver.NoSolution
+    | Termination_loop.FailedToFindLLRF -> false
+  in
+  if result then
+    (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
+  else
+    (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
+
+let output_randint_refinement_log input_string =
+  let cout =
+    let input =
+      let dirname = Filename.dirname !Flag.filename in
+      let basename = Filename.basename !Flag.filename in
+      dirname ^ "/refinement/" ^ Filename.change_extension basename "refinement"
+    in
+    open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o666 input
+  in
+  output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
+  close_out cout
 
 
 let main in_channel =
@@ -109,7 +169,6 @@ let main in_channel =
     if n = Flag.max_input_size then raise LongInput;
     String.sub s 0 n
   in
-
   let lb = Lexing.from_string input_string in
   lb.Lexing.lex_curr_p <-
     {Lexing.pos_fname = Filename.basename !Flag.filename;
@@ -117,74 +176,24 @@ let main in_channel =
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
   if !Flag.input_cegar then
-    let open CEGAR_syntax in
-    let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
-    let prog' = Typing.infer {prog with env=[]} in
-    let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
-    Main_loop.run_cegar {prog with env}
+    main_input_cegar lb
   else
     let orig = Parse.use_file lb in
     Id.set_counter (Ident.current_time () + 1);
     let parsed = Parser_wrapper.from_use_file orig in
-    let () =
-      if true && !Flag.debug_level > 0
-      then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed
-    in
-    if !Flag.split_assert
-    then
-      let paths = Trans.search_fail parsed in
-      let ts = List.map (Fun.flip Trans.screen_fail parsed) paths in
-      List.for_all (Main_loop.run orig) (List.rev ts);
+    if !Flag.debug_level > 0
+    then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
+    if !Flag.randint_refinement_log
+    then output_randint_refinement_log input_string;
+    let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print Format.std_formatter in
+    if !Flag.split_assert then
+      main_split_assert orig spec parsed
+    else if !Flag.modular then
+      Modular.main orig spec parsed
     else if !Flag.mode = Flag.Termination then
-      let open BRA_util in
-      (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
-      let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-      let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
-      let parsed = BRA_transform.regularization parsed in
-      let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Print.term parsed in
-      let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
-      let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-      let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
-      let holed_list = BRA_transform.to_holed_programs parsed in
-      let result =
-        try
-          List.for_all
-            (fun holed ->
-             let init_predicate_info =
-               { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
-               ; BRA_types.substToCoeffs = if !Flag.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
-               ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
-               ; BRA_types.coefficients = []
-               ; BRA_types.errorPaths = []
-               ; BRA_types.errorPathsWithExparam = [] } in
-             let predicate_que = Queue.create () in
-             let _ = Queue.add (fun _ -> init_predicate_info) predicate_que in
-             Termination_loop.reset_cycle ();
-             Termination_loop.run predicate_que holed) holed_list
-        with
-        | Fpat.PolyConstrSolver.NoSolution
-        | Termination_loop.FailedToFindLLRF -> false
-      in
-      if result then
-        (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
-      else
-        (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
-  else
-    let input =
-      if !Flag.randint_refinement_log then
-	let dirname = Filename.dirname !Flag.filename in
-	let basename = Filename.basename !Flag.filename in
-	dirname ^ "/refinement/" ^
-	  (try Filename.chop_extension basename ^ ".refinement"
-	   with Invalid_argument "Filename.chop_extension" -> basename ^ ".refinement")
-      else ""
-    in
-    let cout = if !Flag.randint_refinement_log then open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o666 input else stdout in
-    if !Flag.randint_refinement_log then output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
-    if !Flag.randint_refinement_log then close_out cout;
-    Main_loop.run orig parsed
-
+      main_termination orig parsed
+    else
+      Main_loop.run orig ~spec parsed
 
 
 let parse_fpat_arg arg =
@@ -250,6 +259,7 @@ let arg_spec =
      "-elim-same-arg", Arg.Set Flag.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.base_to_int, " Replace primitive base types with int";
      (* verifier *)
+     "-modular", Arg.Set Flag.modular, " Modular verification";
      "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
      "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
@@ -333,9 +343,7 @@ let arg_spec =
        " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)"
     ]
 
-let () = print_option_and_exit :=
-           fun () ->
-           List.iter (fun (s,_,_) -> Format.printf "%s " s) arg_spec; exit 0
+let () = print_option_and_exit := fun () -> print_string @@ String.join " " @@ List.map Triple.fst arg_spec; exit 0
 
 let string_of_exception = function
   | e when Fpat.Config.is_fpat_exception e ->
@@ -352,32 +360,30 @@ let string_of_exception = function
   | Fatal s -> "Fatal"
   | e -> Printexc.to_string e
 
+let set_file name =
+  if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
+  then (Arg.usage arg_spec usage; exit 1);
+  Flag.filename := name
+
+let read_option_conf () =
+  try
+    let cin = open_in "option.conf" in
+    let s = input_line cin in
+    close_in cin;
+    let args = split_spaces s in
+    Arg.current := 0;
+    Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) arg_spec set_file usage;
+    Flag.args := !Flag.args @ args
+  with
+  | Arg.Bad s
+  | Arg.Help s -> Format.printf "%s@." s; exit 1
+  | Sys_error _
+  | End_of_file -> ()
 
 let parse_arg () =
-  let set_file name =
-    if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
-    then (Arg.usage arg_spec usage; exit 1);
-    Flag.filename := name
-  in
   Arg.parse arg_spec set_file usage;
   Flag.args := Array.to_list Sys.argv;
-  if not !Flag.ignore_conf
-  then
-    begin
-      try
-        let cin = open_in "option.conf" in
-        let s = input_line cin in
-        close_in cin;
-        let args = split_spaces s in
-        Arg.current := 0;
-        Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) arg_spec set_file usage;
-        Flag.args := !Flag.args @ args
-      with
-      | Arg.Bad s
-      | Arg.Help s -> Format.printf "%s@." s; exit 1
-      | Sys_error _
-      | End_of_file -> ()
-    end;
+  if not !Flag.ignore_conf then read_option_conf ();
   if String.ends_with !Flag.filename ".cegar" then Flag.input_cegar := true;
   match !Flag.filename with
   | "" | "-" -> Flag.filename := "stdin"; stdin
@@ -398,8 +404,8 @@ let fpat_init2 () =
 
 let check_env () =
   match !Flag.mc with
-  | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found, please redo ./configure"
-  | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found, please redo ./configure"
+  | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found"
+  | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found"
 
 let () =
   if !Sys.interactive

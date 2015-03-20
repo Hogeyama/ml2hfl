@@ -69,6 +69,7 @@ val make_single_match : typed_term -> typed_pattern -> typed_term -> typed_term
 val make_loop : typ -> typed_term
 val make_nth : int -> int -> typed_term -> typed_term
 val make_seq : typed_term -> typed_term -> typed_term
+val make_ignore : typed_term -> typed_term
 val make_assert : typed_term -> typed_term
 val make_assume : typed_term -> typed_term -> typed_term
 val make_label : ?label:string -> Syntax.info -> Syntax.typed_term -> Syntax.typed_term
@@ -116,6 +117,7 @@ val subst : id -> typed_term -> typed_term -> typed_term
 val subst_int : int -> typed_term -> typed_term -> typed_term
 val subst_map : (id * typed_term) list -> typed_term -> typed_term
 val subst_type : id -> typed_term -> typ -> typ
+val subst_type_var : id -> id -> typ -> typ
 val subst_var : id -> id -> typed_term -> typed_term
 val get_int : typed_term -> int list
 val get_args : typ -> id list

@@ -250,7 +250,7 @@ let add_funs_desc desc =
         List.partition aux !new_funs
       in
       let funs1' =
-        List.map (Pair.map_fst @@ List.filter_out (fun f -> List.exists (Id.same f -| fst3) bindings)) funs1 in
+        List.map (Pair.map_fst @@ List.filter_out (fun f -> List.exists (Id.same f -| Triple.fst) bindings)) funs1 in
       let funs11,funs12 = List.partition ((=) [] -| fst) funs1' in
       new_funs := funs12 @ funs2;
       let t' =
@@ -348,7 +348,7 @@ let elim_sub_app_desc env desc =
       let t2' =
         let ys = List.map fst @@ List.filter (fun (y,t2) -> not (is_depend t1 y) && is_subsumed t2 t1) env in
         if debug() then List.iter (fun y -> Format.printf "%a |-> %a@." Id.print y Id.print x) ys;
-        List.fold_left (fun t y -> make_label ~label:"elim_sub" (InfoId y) @@ subst y (make_var x) t) t2 ys
+        List.fold_left (fun t y -> make_label ~label:"elim_sub" (InfoId y) @@ subst_var y x t) t2 ys
       in
       let t2'' = elim_sub_app.tr2_term env' t2' in
       Let(Nonrecursive, [x,[],t1], t2'')
@@ -391,7 +391,7 @@ let elim_same_app_term env t =
         try
           let y,_ = List.find (same_term t1 -| snd) env in
           if debug() then Format.printf "%a |-> %a@." Id.print x Id.print y;
-          elim_same_app.tr2_term env @@ subst x (make_var y) t2
+          elim_same_app.tr2_term env @@ subst_var x y t2
         with Not_found ->
           make_let [x,[],t1] @@ elim_same_app.tr2_term ((x,t1)::env) t2
       end
@@ -453,12 +453,12 @@ let replace_app_term env t =
             end;
           let y = Id.new_var_id x in
           let sbst, arg =
-            List.iteri (fun i _ -> if 1 < List.length @@ List.filter ((=) i -| fst3) used then raise (Invalid_argument "replace_app")) @@ decomp_ttuple t1.typ;
+            List.iteri (fun i _ -> if 1 < List.length @@ List.filter ((=) i -| Triple.fst) used then raise (Invalid_argument "replace_app")) @@ decomp_ttuple t1.typ;
             let aux sbst (i,x,_) = sbst |- replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) in
             let sbst = List.fold_left aux Std.identity used in
             let aux i typ =
               try
-                make_some @@ trd @@ List.find ((=) i -| fst3) used
+                make_some @@ Triple.trd @@ List.find ((=) i -| Triple.fst) used
               with Not_found -> make_none @@ get_opt_typ typ
             in
             sbst, make_tuple @@ List.mapi aux @@ decomp_ttuple t1.typ

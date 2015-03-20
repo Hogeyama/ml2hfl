@@ -4,12 +4,12 @@
 (*
   type: CEGAR_syntax.var list ->
     CEGAR_syntax.var list -> CEGAR_syntax.t list -> CEGAR_syntax.t -> bool
-  
+
   xs: universally quantified variables
   ys: existentially quantified variables
   cond: precondition
   p: formula that will be checked
-  
+
 *)
 
 open Util
@@ -53,18 +53,10 @@ let rec replace_bool_const = function
 let is_valid_forall_exists xs ys cond p =
   let cond = List.map replace_bool_const cond in
   let p = replace_bool_const p in
-  let input_file =
-    try
-      Filename.chop_extension !Flag.filename ^ ".oc"
-    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".oc"
-  in
-  let result_file =
-    try
-      Filename.chop_extension !Flag.filename ^ ".oc_out"
-    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".oc_out"
-  in
+  let input_file = Filename.change_extension !Flag.filename "oc" in
+  let result_file = Filename.change_extension !Flag.filename "oc_out" in
   let vars fm xs = print_list_aux CEGAR_print.var "," false fm xs in
-  
+
   let cout = open_out input_file in
   let input_fm = Format.formatter_of_out_channel cout in
   (if xs = [] then

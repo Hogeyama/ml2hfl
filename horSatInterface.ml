@@ -162,11 +162,7 @@ let error_trace tr =
 let rec verifyFile filename =
   let debug = !Flag.debug_level > 0 in
   let default = "empty" in
-  let result_file =
-    try
-      Filename.chop_extension !Flag.filename ^ ".trecs_out"
-    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".trecs_out"
-  in
+  let result_file = Filename.change_extension !Flag.filename "trecs_out" in
   let oc = open_out result_file in
   let () = output_string oc default in
   let () = close_out oc in
@@ -201,11 +197,7 @@ let write_log filename target =
 
 let check target =
   let target' = trans target in
-  let input =
-    try
-      Filename.chop_extension !Flag.filename ^ ".hors"
-    with Invalid_argument "Filename.chop_extension" -> !Flag.filename ^ ".hors"
-  in
+  let input = Filename.change_extension !Flag.filename "hors" in
   try
     if !Flag.debug_level > 1 then Format.printf "%s@." (string_of_parseresult target');
     write_log input target';

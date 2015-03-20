@@ -438,7 +438,7 @@ let rec trans_typ typ_orig typ =
   | TFun(x_orig,typ), TFunCPS(e,typ1,typ2) when !sol e = EExcep ->
       let typ1' = trans_typ (Id.typ x_orig) typ1 in
       let x = Id.new_var typ1' in
-      let r = Id.new_var ~name:"r" (subst_type x_orig (make_var x) (trans_typ typ typ2)) in
+      let r = Id.new_var ~name:"r" (subst_type_var x_orig x (trans_typ typ typ2)) in
       let k = Id.new_var ~name:"k" (TFun(r,typ_result)) in
       let e = Id.new_var ~name:"e" !typ_excep in
       let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
@@ -446,13 +446,13 @@ let rec trans_typ typ_orig typ =
   | TFun(x_orig,typ), TFunCPS(e,typ1,typ2) when !sol e = ECont ->
       let typ1' = trans_typ (Id.typ x_orig) typ1 in
       let x = Id.new_var typ1' in
-      let r = Id.new_var ~name:"r" (subst_type x_orig (make_var x) (trans_typ typ typ2)) in
+      let r = Id.new_var ~name:"r" (subst_type_var x_orig x (trans_typ typ typ2)) in
       let k = Id.new_var ~name:"k" (TFun(r,typ_result)) in
       TFun(x, TFun(k, typ_result))
   | TFun(x_orig,typ), TFunCPS(_,typ1,typ2) ->
       let typ1' = trans_typ (Id.typ x_orig) typ1 in
       let x = Id.new_var typ1' in
-      let typ2' = subst_type x_orig (make_var x) (trans_typ typ typ2) in
+      let typ2' = subst_type_var x_orig x (trans_typ typ typ2) in
       TFun(x, typ2')
   | TTuple xs, TTupleCPS typs ->
       TTuple (List.map2 (fun x typ -> Id.map_typ (Fun.flip trans_typ typ) x) xs typs)

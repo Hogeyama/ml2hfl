@@ -72,8 +72,8 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	CEGAR.cmo writeAnnot.cmo tupling.cmo ref_trans.cmo		\
 	ret_fun.cmo BRA_types.cmo BRA_util.cmo BRA_state.cmo		\
 	BRA_transform.cmo extraClsDepth.cmo extraParamInfer.cmo		\
-	eval.cmo elim_same_arg.cmo main_loop.cmo termination_loop.cmo	\
-	mochi.cmo
+	eval.cmo elim_same_arg.cmo main_loop.cmo modular.cmo		\
+	termination_loop.cmo mochi.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)
@@ -179,7 +179,7 @@ clean:
 	rm -f $(NAME).byte $(NAME).opt
 
 clean-test:
-	rm */*.trecs_out */*.hors */*.annot
+	rm */*.trecs_out */*.hors */*.annot */*.dot */*.pml
 
 
 ################################################################################

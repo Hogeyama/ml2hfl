@@ -434,7 +434,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
         in
         List.sort ~cmp:compare (xns1 @@@ (neg xns2))
       in
-      let d = List.fold_left (fun d (_,n) -> gcd d (abs n)) 0 xns in
+      let d = List.fold_left (fun d (_,n) -> Math.gcd d (abs n)) 0 xns in
       if d = 0
       then Const True
       else

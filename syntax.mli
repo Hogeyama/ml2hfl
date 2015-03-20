@@ -83,7 +83,7 @@ and pattern =
   | PSome of typed_pattern
   | POr of typed_pattern * typed_pattern
 
-
+type env = (id * typ) list
 
 type trans =
   {mutable tr_term:      typed_term    -> typed_term;

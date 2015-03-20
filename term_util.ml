@@ -102,6 +102,7 @@ let make_seq t1 t2 =
   | Const _
   | Var _ -> t2
   | _ -> make_let [Id.new_var ~name:"u" t1.typ, [], t1] t2
+let make_ignore t = make_seq t unit_term
 let make_loop typ =
   let u = Id.new_var ~name:"u" TUnit in
   let f = Id.new_var ~name:"loop" (TFun(u,typ)) in
@@ -198,8 +199,6 @@ let rec make_nth i n t =
   | 0,1 -> t
   | 0,_ -> make_fst t
   | _ -> make_nth (i-1) (n-1) (make_snd t)
-let make_assert t = make_if_ t unit_term (make_app fail_term [unit_term])
-let make_assume t1 t2 = make_if_ t1 t2 (make_bottom t2.typ)
 let make_label_aux info t = {desc=Label(info,t); typ=t.typ; attr=[]}
 let make_label ?(label="") info t =
   t
@@ -219,7 +218,6 @@ let make_construct c ts =
 let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = make_app randint_term [unit_term]
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
-let make_br t2 t3 = make_if_ randbool_unit_term t2 t3
 
 let imply t1 t2 = make_or (make_not t1) t2
 
@@ -447,6 +445,7 @@ let subst_map = subst_map.tr2_term
 
 let () = subst.tr2_term <- subst_term
 let subst_type x t typ = subst.tr2_typ (x,t) typ
+let subst_type_var x y typ = subst_type x (make_var y) typ
 let subst x t1 t2 = subst.tr2_term (x,t1) t2
 let subst_var x y t = subst x (make_var y) t
 
@@ -544,20 +543,20 @@ let rec merge_typ typ1 typ2 =
       let typ = merge_typ (Id.typ x1) (Id.typ x2) in
       let x1' = Id.set_typ x1 typ in
       let x1_no_pred = Id.set_typ x1 (elim_tpred typ) in
-      let ps2' = List.map (subst x2 (make_var x1_no_pred)) ps2 in
+      let ps2' = List.map (subst_var x2 x1_no_pred) ps2 in
       TPred(x1', merge_preds ps1 ps2')
   | TPred(x, ps), typ
   | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
   | TFun(x1,typ1), TFun(x2,typ2) ->
       let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
       let x = Id.new_var ~name:(Id.name x1) x_typ in
-      let typ = merge_typ (subst_type x1 (make_var x) typ1) (subst_type x2 (make_var x) typ2) in
+      let typ = merge_typ (subst_type_var x1 x typ1) (subst_type_var x2 x typ2) in
       TFun(x, typ)
   | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
   | TTuple xs1, TTuple xs2 ->
       let aux x1 x2 xs =
         let x = Id.set_typ x1 @@ merge_typ (Id.typ x1) (Id.typ x2) in
-        List.map (Id.map_typ (subst_type x2 (make_var x1))) @@ x::xs
+        List.map (Id.map_typ @@ subst_type_var x2 x1) @@ x::xs
       in
       TTuple (List.fold_right2 aux xs1 xs2 [])
   | _ when typ1 = typ_unknown -> typ2
@@ -570,13 +569,16 @@ let rec merge_typ typ1 typ2 =
 
 let make_if t1 t2 t3 =
   assert (Flag.check_typ => Type.can_unify t1.typ TBool);
-  if Flag.check_typ && not (Type.can_unify t2.typ t3.typ)
+  if Flag.check_typ && not @@ Type.can_unify t2.typ t3.typ
   then Format.printf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
   assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=[]}
+let make_assert t = make_if t unit_term (make_app fail_term [unit_term])
+let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
+let make_br t2 t3 = make_if randbool_unit_term t2 t3
 
 let rec get_top_funs acc = function
   | {desc=Let(flag, defs, t)} ->
@@ -599,7 +601,7 @@ let rec get_typ_default = function
   | TConstr(s,b) -> assert false
   | TPred _ -> assert false
   | TRef _ -> assert false
-  | TOption typ -> {desc=TNone; typ=typ; attr=[]}
+  | TOption typ -> {desc=TNone; typ; attr=[]}
 
 
 
@@ -608,9 +610,13 @@ let has_no_effect = make_col true (&&)
 
 let has_no_effect_term t =
   match t.desc with
+  | Const _ -> true
+  | Var _ -> true
+  | Fun _ -> true
   | App _ -> false
   | Let(_,bindings,t) ->
-      has_no_effect.col_term t && List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect.col_term t) bindings
+      has_no_effect.col_term t &&
+      List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect.col_term t) bindings
   | Field _ -> false
   | SetField _ -> false
   | Raise _ -> false
@@ -630,7 +636,7 @@ let rec is_simple_aexp t =
   then false
   else
     match t.desc with
-      Const _ -> true
+    | Const _ -> true
     | Var _ -> true
     | BinOp(_, t1, t2) -> is_simple_aexp t1 && is_simple_aexp t2
     | _ -> false
@@ -640,7 +646,7 @@ and is_simple_bexp t =
   then false
   else
     match t.desc with
-      Const _ -> true
+    | Const _ -> true
     | Var _ -> true
     | BinOp(_, t1, t2) ->
         is_simple_bexp t1 && is_simple_bexp t2 ||
@@ -736,6 +742,7 @@ let get_bound_variables_desc desc =
 let () = get_bound_variables.col_desc <- get_bound_variables_desc
 let get_bound_variables = get_bound_variables.col_term
 
+(* for debug *)
 let is_id_unique t =
   let bv = get_bound_variables t in
   let rec check xs =

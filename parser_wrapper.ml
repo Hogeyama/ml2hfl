@@ -185,7 +185,7 @@ let get_constr_name desc typ env =
   in
   match desc.cstr_tag with
   | Cstr_exception(path,_) -> Path.name path
-  | _ -> Ident.name @@ fst3 (get_constr desc.cstr_tag typ env)
+  | _ -> Ident.name @@ Triple.fst @@ get_constr desc.cstr_tag typ env
 let get_constr_name desc typ env =
   get_constr_name desc typ env
 
@@ -196,7 +196,7 @@ let get_label_name label env =
     | _ -> assert false
   in
   match typ_decl.type_kind with
-  | Type_record(labels, _) -> Ident.name @@ fst3 @@ List.nth labels label.lbl_pos
+  | Type_record(labels, _) -> Ident.name @@ Triple.fst @@ List.nth labels label.lbl_pos
   | Type_variant _
   | Type_abstract -> assert false
 
@@ -483,7 +483,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       let fields'' = List.map aux fields' in
       {desc=Record fields''; typ=typ'; attr=[]}
   | Texp_record(fields, Some init) ->
-      let labels = Array.to_list (snd3 @@ List.hd fields).lbl_all in
+      let labels = Array.to_list (Triple.snd @@ List.hd fields).lbl_all in
       let r = Id.new_var ~name:"r" typ' in
       let fields' =
         let aux lbl =

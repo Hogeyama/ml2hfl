@@ -42,6 +42,7 @@ let from_string s typ =
 
 let compare x y = compare (to_string x) (to_string y)
 let same x y = compare x y = 0
+let eq = same
 
 let set_name x name = {x with name=name}
 let set_typ x typ = {x with typ=typ}
@@ -49,13 +50,13 @@ let set_typ x typ = {x with typ=typ}
 let add_name_before x str = set_name x (str ^ name x)
 let add_name_after x str = set_name x (name x ^ str)
 
-let rec assoc x = function
-    [] -> raise Not_found
-  | (a,b)::l -> if same x a then b else assoc x l
-
 let rec mem x = function
-    [] -> false
+  | [] -> false
   | a::l -> same a x || mem x l
+
+let rec assoc x = function
+  | [] -> raise Not_found
+  | (a,b)::l -> if same x a then b else assoc x l
 
 let rec mem_assoc x = function
   | [] -> false

@@ -1,4 +1,3 @@
-
 open Util
 open Syntax
 open Term_util
@@ -22,8 +21,8 @@ let alpha_rename_term t =
           let f' = Id.new_var_id f in
           let xs' = List.map Id.new_var_id xs in
           let t' = alpha_rename.tr_term t in
-          let t'' = subst f (make_var f') t' in
-          let t''' = List.fold_left2 (fun t x x' -> subst_var x x' t) t'' xs xs' in
+          let t'' = subst_var f f' t' in
+          let t''' = List.fold_right2 subst_var xs xs' t'' in
           (f', xs', t''')
         in
         List.map aux bindings
@@ -34,9 +33,7 @@ let alpha_rename_term t =
       make_let_f flag bindings'' t'
   | Fun(x, t) ->
       let x' = Id.new_var_id x in
-      let t' = alpha_rename.tr_term t in
-      let t'' = subst_var x x' t' in
-      make_fun x' t''
+      make_fun x' @@ subst_var x x' @@ alpha_rename.tr_term t
   | _ -> alpha_rename.tr_term_rec t
 
 let () = alpha_rename.tr_term <- alpha_rename_term
@@ -181,7 +178,7 @@ let copy_poly_funs_desc desc =
           let t1 =
             match flag with
             | Nonrecursive -> t1
-            | Recursive -> subst f (make_var f') t1
+            | Recursive -> subst_var f f' t1
           in
           let t1 = copy_poly_funs.tr_term t1 in
           let t1 = alpha_rename t1 in
@@ -189,9 +186,9 @@ let copy_poly_funs_desc desc =
         in
         (List.fold_left aux t2''' map).desc
   | Let(flag, defs, t) ->
-      if List.for_all (fun (f,_,_) -> not (is_poly_typ (Id.typ f))) defs
+      if List.for_all (not -| is_poly_typ -| Id.typ -| Triple.fst) defs
       then
-        let defs' = List.map (fun (f,xs,t) -> f, xs, copy_poly_funs.tr_term t) defs in
+        let defs' = List.map (Triple.map_trd copy_poly_funs.tr_term) defs in
         Let(flag, defs', copy_poly_funs.tr_term t)
       else
         raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations.")
@@ -236,7 +233,7 @@ let rec define_randvalue env defs typ =
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
         let env'',defs',t_typ' = define_randvalue env' defs typ' in
-        let t_typ = make_if randbool_unit_term (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term])) in
+        let t_typ = make_br (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term])) in
         env'', (f,[u],t_typ)::defs', make_app (make_var f) [unit_term]
     | TTuple xs ->
         let aux x (env,defs,ts) =
@@ -314,7 +311,8 @@ let rec get_last_definition f t =
 
 let rec replace_main main t =
   match t.desc with
-  | Let(flag, bindings, t2) -> make_let_f flag bindings (replace_main main t2)
+  | Let(flag, bindings, t2) ->
+      make_let_f flag bindings @@ replace_main main t2
   | _ ->
       assert (t = unit_term);
       main
@@ -337,7 +335,7 @@ let set_main t =
             x', [], t
           in
           let bindings = List.mapi aux xs in
-          let main = make_app (make_var f) @@ List.map make_var @@ List.map fst3 bindings in
+          let main = make_app (make_var f) @@ List.map make_var @@ List.map Triple.fst bindings in
           let main = make_lets bindings main in
           let u = Id.new_var ~name:"main" main.typ in
           let main = make_let [u, [], main] unit_term in
@@ -347,41 +345,19 @@ let set_main t =
       Id.name f, List.length xs, t''
 
 let ref_to_assert ref_env t =
-  let open Ref_type in
-  let rec decomp typ =
-    match typ with
-    | Base(base,x,p) ->
-        [], typ, fun y -> make_assert @@ Term_util.subst x y p
-    | Fun(x,typ1,typ2) ->
-        let x' = Id.new_var @@ to_simple typ1 in
-        let typ2' = subst x (make_var x') typ2 in
-        let xtyps,typ2'',check = decomp typ2' in
-        (x',typ1)::xtyps, typ2'', check
-    | Tuple xtyps -> [], typ, fun _ -> assert false
-    | Inter typs -> assert false
-    | Union typs -> assert false
-    | ExtArg(y,typ1,typ2) -> assert false
-    | List(y,p_len,z,p_i,typ) -> assert false
-  in
   let aux (f, typ) =
-    if not @@ Type.same_shape (Id.typ f) (to_simple typ) then
+    if not @@ Type.same_shape (Id.typ f) (Ref_type.to_simple typ) then
       begin
-        Format.printf "VAR: %a@.  Prog: %a@.  Spec: %a@." Id.print f Print.typ (Id.typ f) Ref_type.print typ;
-        fatal @@ Format.sprintf "Type of %s in the specification is wrong?" (Id.name f)
+        Format.printf "VAR: %a@." Id.print f;
+        Format.printf "  Prog: %a@." Print.typ @@ Id.typ f;
+        Format.printf "  Spec: %a@." Ref_type.print typ;
+        fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
       end;
-    let xtyps,typ',check = decomp typ in
-    let defs = List.map (fun (x,typ) -> x, [], generate typ) xtyps in
-    let body = make_app (make_var f) @@ List.map (make_var -| fst) xtyps in
-    let x = Id.new_var @@ to_simple typ' in
-    make_lets (defs @ [x,[],body]) (check @@ make_var x)
+    make_assert @@ Ref_type.generate_check f typ
   in
   let main = List.fold_right make_seq (List.map aux ref_env) unit_term in
   replace_main main t
 
-let set_target ref_env t =
-  if ref_env = []
-  then set_main t
-  else "", 0, ref_to_assert ref_env t
 
 
 
@@ -449,7 +425,7 @@ let part_eval t =
     | App(t, ts) ->
         let rec aux xs ts =
           match xs,ts with
-            [], [] -> true
+          | [], [] -> true
           | x::xs', {desc=Var y}::ts' when Id.same x y -> aux xs' ts'
           | _ -> false
         in
@@ -473,7 +449,6 @@ let part_eval t =
         else None
     | _ -> None
   in
-  let () = ignore (is_alias [] (Const True)) in
   let rec aux apply t =
     let desc =
       match t.desc with
@@ -529,9 +504,9 @@ let part_eval t =
             begin
               match flag, is_alias xs t1.desc  with
               | Nonrecursive, None -> Let(flag, [f, xs, aux apply t1], aux apply t2)
-              | Nonrecursive, Some x -> (subst f (make_var x) (aux apply t2)).desc
-              | Recursive, Some x when not (List.mem f (get_fv t1)) ->
-                  (subst f (make_var x) (aux apply t2)).desc
+              | Nonrecursive, Some x -> (subst_var f x @@ aux apply t2).desc
+              | Recursive, Some x when not @@ List.mem f @@ get_fv t1 ->
+                  (subst_var f x @@ aux apply t2).desc
               | Recursive, _ -> Let(flag, [f, xs, aux apply t1], aux apply t2)
             end
       | Let _ -> assert false
@@ -598,7 +573,7 @@ let propagate_typ_arg_term t =
           List.fold_right2 aux xs ys []
         in
         let t' = propagate_typ_arg.tr_term t in
-        let t'' = List.fold_left2 (fun t x x' -> subst x (make_var x') t) t' xs xs' in
+        let t'' = List.fold_right2 subst_var xs xs' t' in
         f, xs', t''
       in
       let bindings' = List.map aux bindings in
@@ -638,14 +613,14 @@ let replace_typ_desc env desc =
         let t'' =
           if flag = Nonrecursive
           then t'
-          else subst f (make_var f') t'
+          else subst_var f f' t'
         in
-        let t''' = List.fold_left2 (fun t x x' -> subst x (make_var x') t) t'' xs xs' in
+        let t''' = List.fold_right2 subst_var xs xs' t'' in
         f', xs', t'''
       in
       let bindings' = List.map aux bindings in
       let t2' = replace_typ.tr2_term env t2 in
-      let t2'' = List.fold_left2 (fun t (f,_,_) (f',_,_) -> subst f (make_var f') t) t2' bindings bindings' in
+      let t2'' = List.fold_left2 (fun t (f,_,_) (f',_,_) -> subst_var f f' t) t2' bindings bindings' in
       Let(flag, bindings', t2'')
   | _ -> replace_typ.tr2_desc_rec env desc
 
@@ -721,7 +696,7 @@ let rec eval t =
     | Event(s,b) -> Event(s,b)
     | _ -> assert false
   in
-  {desc=desc; typ=t.typ; attr=[]}
+  {t with desc}
 
 
 
@@ -785,8 +760,8 @@ let normalize_binop_exp op t1 t2 =
   let x,n = List.hd xns'' in
   let xns = List.rev @@ List.tl xns'' in
   let op',t1',t2' =
-    let aux :typed_term option * int -> typed_term= function
-        None,n -> {desc=Const (Int n); typ=TInt; attr=[]}
+    let aux = function
+      | None,n -> {desc=Const (Int n); typ=TInt; attr=[]}
       | Some x,n -> if n=1 then x else make_mul (make_int n) x
     in
     let t1,xns',op' =
@@ -849,7 +824,7 @@ let rec normalize_bool_exp t =
     | Not t -> Not (normalize_bool_exp t)
     | _ -> assert false
   in
-  {desc=desc; typ=t.typ; attr=[]}
+  {t with desc}
 
 
 
@@ -908,7 +883,7 @@ let rec merge_geq_leq t =
     | Not t -> Not (merge_geq_leq t)
     | _ -> Format.printf "%a@." Print.term t; assert false
   in
-  {desc=desc; typ=t.typ; attr=[]}
+  {t with desc=desc}
 
 
 
@@ -1070,7 +1045,7 @@ let rec inlined_f inlined fs t =
     | Bottom -> Bottom
     | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
   in
-  {desc=desc; typ=t.typ; attr=t.attr}
+  {t with desc}
 
 let inlined_f inlined t = inlined_f inlined [] t |@> Fun.flip Type_check.check TUnit
 
@@ -1089,7 +1064,7 @@ let lift_fst_snd_term fs t =
            f, xs,
            let fs' =
              List.flatten
-               (Fpat.Util.List.filter_map
+               (List.filter_map
                   (fun x ->
                    match x.Id.typ with
                    | TTuple [_; _] ->
@@ -1376,34 +1351,35 @@ let rename_ext_funs funs t =
 
 
 let make_ext_fun_def f =
-  let xs,typ' = decomp_tfun (Id.typ f) in
+  let xs,typ' = decomp_tfun @@ Id.typ f in
   let xs' = List.map Id.new_var_id xs in
   let make_fun_arg_call f (env,defs,t) =
-    let xs,typ = decomp_tfun (Id.typ f) in
+    let xs,typ = decomp_tfun @@ Id.typ f in
     let aux typ (env,defs,args) =
       let env',defs',arg = define_randvalue env defs typ in
       env', defs', arg::args
     in
     let env',defs',args = List.fold_right aux (List.map Id.typ xs) (env,defs,[]) in
-    if xs = []
-    then env',defs',t
-    else
-      let u = Id.new_var ~name:"u" TUnit in
-      let x = Id.new_var typ in
-      let t' = make_if randbool_unit_term unit_term (make_let [x,[],make_app (make_var f) args] unit_term) in
-      env', defs', make_let [u,[],t'] t
+    let t'' =
+      if xs = []
+      then t
+      else make_seq (make_br unit_term (make_ignore @@ make_app (make_var f) args)) t
+    in
+    env', defs', t''
   in
   let env,defs,t = define_randvalue [] [] typ' in
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
   f, xs', make_letrec defs' t'
 
-let make_ext_funs t =
-  let funs = List.filter_out (fun x -> x |> Id.name |> Fpat.RefTypInfer.is_parameter) @@ get_fv t in
-  if List.exists (fun x -> is_poly_typ @@ Id.typ x) funs
-  then raise (Fatal "Not implemented: Trans.make_ext_funs funs");
-  let map,t' = rename_ext_funs funs t in
-  let defs = List.map make_ext_fun_def map in
-  make_let defs t'
+let make_ext_funs env t =
+  let funs = List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name) @@ get_fv t in
+  if List.exists (is_poly_typ -| Id.typ) funs
+  then unsupported "Trans.make_ext_funs funs";
+  let funs' = List.filter_out (Fun.flip Id.mem_assoc env) funs in
+  let map,t' = rename_ext_funs funs' t in
+  let defs1 = List.map make_ext_fun_def map in
+  let defs2 = List.map (fun (f,typ) -> f,[],Ref_type.generate typ) env in
+  make_lets defs2 @@ make_let defs1 t'
 
 
 let assoc_typ = make_col2 [] (@@@)
@@ -1663,8 +1639,7 @@ let inline_var = make_trans ()
 let inline_var_term t =
   match t.desc with
   | Let(Nonrecursive, [x,[],({desc=Var _} as t1)], t2) ->
-      let t2' = inline_var.tr_term t2 in
-      subst x t1 t2'
+      subst x t1 @@ inline_var.tr_term t2
   | _ -> inline_var.tr_term_rec t
 
 let () = inline_var.tr_term <- inline_var_term
@@ -1676,8 +1651,7 @@ let inline_var_const = make_trans ()
 let inline_var_const_term t =
   match t.desc with
   | Let(Nonrecursive, [x,[],({desc=Var _|Const _} as t1)], t2) ->
-      let t2' = inline_var_const.tr_term t2 in
-      subst x t1 t2'
+      subst x t1 @@ inline_var_const.tr_term t2
   | _ -> inline_var_const.tr_term_rec t
 
 let () = inline_var_const.tr_term <- inline_var_const_term
@@ -1733,12 +1707,26 @@ let elim_unused_let = make_trans2 ()
 let elim_unused_let_desc cbv desc =
   match desc with
   | Let(Nonrecursive, bindings, t) ->
-      let fv = get_fv t in
-      let check (f,xs,t) = Id.mem f fv || (cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t) in
-      let bindings' = List.filter check bindings in
-      let bindings'' = List.map (fun (f,xs,t) -> f, xs, elim_unused_let.tr2_term cbv t) bindings' in
       let t' = elim_unused_let.tr2_term cbv t in
+      let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+      let fv = get_fv t' in
+      let used (f,xs,t) =
+        Id.mem f fv ||
+        cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+      in
+      let bindings'' = List.filter used bindings' in
       (make_let bindings'' t').desc
+  | Let(Recursive, bindings, t) ->
+      let t' = elim_unused_let.tr2_term cbv t in
+      let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+      let fv = get_fv t' in
+      let used (f,xs,t) =
+        Id.mem f fv ||
+        cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+      in
+      if List.exists used bindings'
+      then (make_letrec bindings' t').desc
+      else t'.desc
   | _ -> elim_unused_let.tr2_desc_rec cbv desc
 
 let () = elim_unused_let.tr2_desc <- elim_unused_let_desc
@@ -2047,7 +2035,7 @@ let rec is_in_redex x t =
       let rs = List.map (is_in_redex x) ts in
       List.fold_right (fun r acc -> match acc with None -> None | Some b -> Option.map ((||) b) r) rs (Some false)
   | Proj(i,t1) -> is_in_redex x t1
-  | Let(flag, bindings, t1) when List.for_all ((<>) [] -| snd3) bindings ->
+  | Let(flag, bindings, t1) when List.for_all ((<>) [] -| Triple.snd) bindings ->
       is_in_redex x t1
   | _ -> None
 

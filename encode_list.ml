@@ -73,11 +73,11 @@ let rec get_rtyp_list rtyp typ =
   | RT.Union rtyps, _ ->
       RT.Union (List.map (fun rtyp1 -> get_rtyp_list rtyp1 typ) rtyps)
   | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Fun(y, RT.Base(RT.Int, y', p_i), typ2)], TList typ ->
-      let p_len' = subst x' (make_var x) p_len in
-      let p_i' = subst y' (make_var y) p_i in
+      let p_len' = subst_var x' x p_len in
+      let p_i' = subst_var y' y p_i in
       RT.List(x, p_len', y, p_i', get_rtyp_list typ2 typ)
   | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter []], TList typ ->
-      let p_len' = subst x' (make_var x) p_len in
+      let p_len' = subst_var x' x p_len in
       RT.List(x, p_len', Id.new_var typ_unknown, true_term, RT.Inter [])
   | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter typs], TList typ ->
       let typs' = List.map (fun typ -> RT.Tuple [x, RT.Base(RT.Int, x', p_len); Id.new_var typ_unknown, typ]) typs in

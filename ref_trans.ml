@@ -379,7 +379,7 @@ let move_proj_term t =
       let bindings' = List.map (fun (f,xs,t) -> f, xs, move_proj.tr_term t) bindings in
       let bindings'' = List.map (fun (f,xs,t) -> f, xs, List.fold_right move_proj_aux xs t) bindings' in
       let t2' = move_proj.tr_term t2 in
-      let t2'' = List.fold_right (move_proj_aux -| fst3) bindings t2' in
+      let t2'' = List.fold_right (move_proj_aux -| Triple.fst) bindings t2' in
       make_let_f flag bindings'' t2''
   | Fun(x,t1) -> make_fun x @@ move_proj_aux x t1
   | _ -> move_proj.tr_term_rec t
@@ -519,7 +519,7 @@ let add_fun_tuple_term (funs,env) t =
         let name = String.join "__" @@ List.rev_map Id.name fs in
         let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
         let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj i (make_var fg)) fs in
-        let t' = replace_head fs (List.map fst3 projs) t in
+        let t' = replace_head fs (List.map Triple.fst projs) t in
         let defs = (fg, [], make_label ~label:"add_fun_tuple" (InfoString "") @@ make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'
       in

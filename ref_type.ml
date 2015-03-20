@@ -18,6 +18,8 @@ type t =
   | ExtArg of S.id * t * t
   | List of S.id * S.typed_term * S.id * S.typed_term * t
 
+type env = (S.id * t) list
+
 let _ExtArg x typ1 typ2 = ExtArg(x, typ1, typ2)
 
 let is_fun_typ = function
@@ -89,7 +91,7 @@ let rec print fm = function
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm " |%a|" Id.print x;
-      Format.fprintf fm "list@])"
+      Format.fprintf fm " list@])"
 
 let rec decomp_fun n typ =
   match typ with
@@ -232,9 +234,9 @@ let rec generate_check x typ =
       U.subst_var y x p
   | Fun(y,typ1,typ2) ->
       let t_typ1 = generate typ1 in
-      let z = Id.new_var t_typ1.Syntax.typ in
+      let z = Id.new_var t_typ1.S.typ in
       let t_typ2 = U.make_app (U.make_var x) [U.make_var z] in
-      let r = Id.new_var ~name:"r" t_typ2.Syntax.typ in
+      let r = Id.new_var ~name:"r" t_typ2.S.typ in
       let typ2' = subst_var y z typ2 in
       U.make_lets [z,[],t_typ1; r,[],t_typ2] @@ generate_check r typ2'
   | Tuple [y,typ1;_,typ2] ->
@@ -245,7 +247,27 @@ let rec generate_check x typ =
       let typ2' = subst_var y x1 typ2 in
       let t = U.make_and (generate_check x1 typ1) (generate_check x2 typ2') in
       U.make_lets [x1,[],t1; x2,[],t2] t
-  | _ -> assert false
+  | List(x,p_len,y,p_i,typ1) ->
+      if p_len.desc <> Const True || p_i.desc <> Const True || occur x typ1 || occur x typ1
+      then unsupported "Ref_type.generate_check"
+      else
+        let styp1 = to_simple typ1 in
+        let styp = to_simple typ in
+        let xs = Id.new_var ~name:"xs" styp in
+        let f = Id.new_var ~name:"check" (Type.TFun(xs,TBool)) in
+        let pat_nil = U.make_pnil styp, U.true_term, U.true_term in
+        let x = Id.new_var ~name:"x" styp1 in
+        let xs' = Id.new_var ~name:"xs'" styp in
+        let t_b1 = generate_check x typ1 in
+        if t_b1 = U.true_term
+        then
+          U.true_term
+        else
+          let t_b2 = U.make_app (U.make_var f) [U.make_var xs'] in
+          let pat_cons = U.make_pcons (U.make_pvar x) (U.make_pvar xs'), U.true_term, U.make_and t_b1 t_b2 in
+          let t = U.make_match (U.make_var xs) [pat_nil; pat_cons] in
+          U.make_letrec [f,[xs],t] @@ U.make_app (U.make_var f) [U.make_var xs]
+  | _ -> unsupported "Ref_type.generate_check"
 
 and generate_simple_aux typ =
   match typ with
@@ -257,6 +279,15 @@ and generate_simple_aux typ =
       U.make_fun x' @@ generate_simple typ'
   | Type.TTuple xs ->
       U.make_tuple @@ List.map (generate_simple -| Id.typ) xs
+  | Type.TList typ' ->
+      let open Type in
+      let open Term_util in
+      let u = Id.new_var ~name:"u" TUnit in
+      let f = Id.new_var ~name:("make_" ^ to_id_string typ') (TFun(u,typ)) in
+      let t_nil = make_nil typ' in
+      let t_cons = make_cons (generate_simple_aux typ') @@ make_app (make_var f) [unit_term] in
+      let t_body = make_br t_nil t_cons in
+      make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
   | _ -> unsupported "Ref_type.generate_simple"
 
 and generate_simple typ =
@@ -290,16 +321,19 @@ and generate typ =
   | Inter typs -> unsupported "Ref_type.generate: Inter"
   | Union typs -> unsupported "Ref_type.generate: Union"
   | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
-  | List(_,_,_,_,typ') ->
-      let open Type in
-      let open Term_util in
-      let styp = to_simple typ in
-      let u = Id.new_var ~name:"u" TUnit in
-      let f = Id.new_var ~name:("make_" ^ to_id_string styp) (TFun(u,styp)) in
-      let t_nil = make_nil2 styp in
-      let t_cons = make_cons (generate typ') @@ make_app (make_var f) [unit_term] in
-      let t_body = make_if randbool_unit_term t_nil t_cons in
-      make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
+  | List(x,p_len,y,p_i,typ') ->
+      if p_len.desc <> Const True || p_i.desc <> Const True || occur x typ' || occur x typ'
+      then unsupported "Ref_type.generate_check"
+      else
+        let open Type in
+        let open Term_util in
+        let styp = to_simple typ in
+        let u = Id.new_var ~name:"u" TUnit in
+        let f = Id.new_var ~name:("make_" ^ to_id_string styp) (TFun(u,styp)) in
+        let t_nil = make_nil2 styp in
+        let t_cons = make_cons (generate typ') @@ make_app (make_var f) [unit_term] in
+        let t_body = make_br t_nil t_cons in
+        make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
 
 
 let to_abst_typ_base b =

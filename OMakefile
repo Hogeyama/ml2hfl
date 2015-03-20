@@ -21,7 +21,7 @@ FILES = Makefile trans.mli lift.mli CPS.mli curry.mli encode_rec.mli	\
 	CEGAR_trans.mli CEGAR_parser.mly CEGAR_lexer.mll		\
 	extraParamInfer.ml print.ml CEGAR_util.mli CEGAR_non_term.ml	\
 	trecs_syntax.ml trecs_parser.mly trecs_lexer.mll		\
-	trecsInterface.ml
+	trecsInterface.ml modular.ml omegaInterface.ml
 
 DONE: $(FILES)
     make

@@ -27,9 +27,7 @@ let cegar prog0 labeled info is_cp ce prog =
     if !Flag.randint_refinement_log then
       let dirname = Filename.dirname !Flag.filename in
       let basename = Filename.basename !Flag.filename in
-      dirname ^ "/refinement/" ^
-        (try Filename.chop_extension basename ^ ".refinement"
-         with Invalid_argument "Filename.chop_extension" -> basename ^ ".refinement")
+      dirname ^ "/refinement/" ^ Filename.change_extension basename "refinement"
     else ""
   in
 

@@ -27,7 +27,7 @@ let print_ref_typ_debug = false
 let input_cegar = ref false
 let remove_false = ref false (* remove false from pbs/pts in CEGAR_abst_util *)
 let assume = ref false (* use strongest post condition in if-term *)
-let assume_if = ref false (* replace if-term to branch or not, when !assume = true *)
+let assume_if = ref false (* replace if-term to branch or not when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
 let use_dor = true
 let use_prefix_trace = false
@@ -69,6 +69,7 @@ let use_spec = ref false
 let comment_spec = ref true
 let wp_max_max = 8
 let cartesian_abstraction = ref true
+let modular = ref false
 
 
 

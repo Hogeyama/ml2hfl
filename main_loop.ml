@@ -14,20 +14,20 @@ let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
 let (-||) = merge_get_rtyp
 
 let preprocess t spec =
-  let id x = x in
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
-      let t = trans_and_print Trans.abst_ref "abst_ref" id t in
-      let t = t |& !Flag.base_to_int &> trans_and_print Trans.replace_base_with_int "replace_base_with_int" id in
-      let t = t |& !Flag.tupling &> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" id in
-      let t = trans_and_print Trans.make_ext_funs "make_ext_funs" id t in
-      let t = trans_and_print Trans.copy_poly_funs "copy_poly" id t in
-      let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" id t in
+      let t = trans_and_print Trans.abst_ref "abst_ref" Fun.id t in
+      let t = t |& !Flag.base_to_int &> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
+      let t = t |& !Flag.tupling &> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in
+      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
+      let t = trans_and_print (Trans.make_ext_funs spec.Spec.ext_ref_env) "make_ext_funs" Fun.id t in
+      let t = trans_and_print Trans.copy_poly_funs "copy_poly" Fun.id t in
+      let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" Fun.id t in
       let fun_list = Term_util.get_top_funs t in
-      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
-      let t = trans_and_print Encode_rec.trans "abst_recdata" id t in
+      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" Fun.id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
+      let t = trans_and_print Encode_rec.trans "abst_recdata" Fun.id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let get_rtyp = get_rtyp_list in
       let t,get_rtyp =
@@ -40,7 +40,7 @@ let preprocess t spec =
         else
           t, get_rtyp
       in
-      let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inline" id t in
+      let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inline" Fun.id t in
       let t,get_rtyp =
         if !Flag.trans_to_CPS
         then
@@ -52,11 +52,11 @@ let preprocess t spec =
         else
           t, get_rtyp
       in
-      let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" id t in
-      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" id ~opt:(spec.Spec.abst_cps_env<>[]) t in
-      let t = t |& !Flag.elim_same_arg &> trans_and_print Elim_same_arg.trans "eliminate same arguments" id in
-      let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" id in
+      let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" Fun.id t in
+      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
+      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" Fun.id ~opt:(spec.Spec.abst_cps_env<>[]) t in
+      let t = t |& !Flag.elim_same_arg &> trans_and_print Elim_same_arg.trans "eliminate same arguments" Fun.id in
+      let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" Fun.id in
 
       (* preprocess for termination mode *)
       let t =
@@ -72,7 +72,7 @@ let preprocess t spec =
 
   if !Flag.exp2 then
     begin
-      let oc = open_out (Filename.chop_extension !Flag.filename ^ ".pml") in
+      let oc = open_out (Filename.change_extension !Flag.filename "pml") in
       let ocf = Format.formatter_of_out_channel oc in
       Format.fprintf ocf "%a@." Print.term_typ t;
       close_out oc
@@ -84,7 +84,7 @@ let preprocess t spec =
   (**********************)
  *)
 
-  let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print in
+  let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:spec'.Spec.abst_cegar_env t in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
@@ -234,14 +234,17 @@ let rec run_cegar prog =
           run_cegar prog
 
 
-let rec run orig parsed =
+let rec run orig ?(spec=Spec.init) parsed =
   init ();
-  let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print in
-  let spec' = Spec.rename spec parsed |@ not !Flag.only_result &> Spec.print in
   let main_fun,arg_num,set_target =
-    if !Flag.cegar = Flag.CEGAR_DependentType
-    then trans_and_print (Trans.set_target spec'.Spec.ref_env) "set_target" trd parsed
-    else "",0,parsed
+    match !Flag.cegar with
+    | Flag.CEGAR_DependentType ->
+        if spec.Spec.ref_env = []
+        then trans_and_print Trans.set_main "set_main" Triple.trd parsed
+        else
+          let spec' = Spec.rename spec parsed |@ not !Flag.only_result &> Spec.print Format.std_formatter in
+          "", 0, trans_and_print (Trans.ref_to_assert spec'.Spec.ref_env) "ref_to_assert" Fun.id parsed
+    | _ -> "", 0, parsed
   in
   (** Unno: I temporally placed the following code here
             so that we can infer refinement types for a safe program
@@ -282,17 +285,15 @@ let rec run orig parsed =
       with
       | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
           Flag.insert_param_funarg := true;
-          run orig parsed
+          run orig ~spec parsed
       | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
-          run orig parsed
-      | Fpat.RefTypInfer.FailedToRefineTypes ->
-          raise Fpat.RefTypInfer.FailedToRefineTypes
+          run orig ~spec parsed
       | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
           Fpat.RefTypInfer.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
           incr Fpat.RefTypInfer.number_of_extra_params;
-          run orig parsed
+          run orig ~spec parsed

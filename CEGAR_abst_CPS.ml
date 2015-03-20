@@ -1,3 +1,4 @@
+
 open Util
 open CEGAR_syntax
 open CEGAR_type
@@ -52,7 +53,7 @@ let rec expand_nonrec orig_fun_list force {env;defs;main;attr} =
     then defs
     else loop defs'
   in
-  let defs' = List.filter (fun (f,_,_,_,_) -> not (List.mem_assoc f nonrec)) defs in
+  let defs' = List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f nonrec) defs in
   let defs'' = loop defs' in
   let defs''' = List.map beta_reduce_def defs'' in
   {env; defs=defs'''; main; attr}
@@ -94,7 +95,6 @@ let rec trans_eager_bool f = function
       Let(f', Fun(x, None, make_if (Var x) t2' t3'), t1')
   | t -> Format.printf "trans_eager_bool: %a@." CEGAR_print.term t; assert false
 
-let id x = x
 let is_bool env t =
   try
     match get_typ env t with
@@ -117,29 +117,29 @@ let rec trans_eager_term env c t =
   | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | EqUnit | EqInt | EqBool) -> assert false
   | Const _
   | Var _ -> c t
-  | Fun(x,_,t) -> c (Fun(x, None, trans_eager_term env id t))
+  | Fun(x,_,t) -> c (Fun(x, None, trans_eager_term env Fun.id t))
   | App(App(App(Const If, t1), t2), t3) ->
       let x = new_id "b" in
       let f = new_id "f" in
-      let t2' = trans_eager_term env id t2 in
-      let t3' = trans_eager_term env id t3 in
+      let t2' = trans_eager_term env Fun.id t2 in
+      let t3' = trans_eager_term env Fun.id t3 in
       let t' = make_if (Var x) t2' t3' in
       let t1' = trans_eager_bool f t1 in
       Let(f, Fun(x, None, t'), c t1')
   | App(t1, t2) ->
-      let t1' = trans_eager_term env id t1 in
+      let t1' = trans_eager_term env Fun.id t1 in
       let c' x = c (App(t1', x)) in
       trans_eager_term env c' t2
   | Let(x, t1, t2) ->
       let f = new_id "f" in
-      let t2' = trans_eager_term env id t2 in
+      let t2' = trans_eager_term env Fun.id t2 in
       let test = new_id "test" in
       let t1' = trans_eager_term env (fun x -> App(Var test, x)) t1 in
       c (Let(f, Fun(x, None, t2'), t1'))
 let trans_eager_def env (f,xs,t1,e,t2) =
   let env' = get_arg_env (List.assoc f env) xs @@@ env in
     assert (t1 = Const True);
-    f, xs, t1, e, trans_eager_term env' id t2
+    f, xs, t1, e, trans_eager_term env' Fun.id t2
 
 let trans_eager prog =
   let defs = List.map (trans_eager_def prog.env) prog.defs in
