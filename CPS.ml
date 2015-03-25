@@ -455,7 +455,7 @@ let rec trans_typ typ_orig typ =
       let typ2' = subst_type_var x_orig x (trans_typ typ typ2) in
       TFun(x, typ2')
   | TTuple xs, TTupleCPS typs ->
-      TTuple (List.map2 (fun x typ -> Id.map_typ (Fun.flip trans_typ typ) x) xs typs)
+      TTuple (List.map2 (fun x typ -> Id.map_typ (trans_typ -$- typ) x) xs typs)
   | TPred(x,ps), typ -> TPred(Id.set_typ x (trans_typ (Id.typ x) typ), ps)
   | _ ->
       Format.printf "%a,%a@." Print.typ typ_orig print_typ_cps typ;
@@ -488,7 +488,7 @@ let make_app_excep e t k h =
 
 let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
   match t, !sol e with
-  | ConstCPS c, ENone -> {desc=Const c; typ=typ_orig; attr=[]}
+  | ConstCPS c, ENone -> {desc=Const c; typ=typ_orig; attr=const_attr}
   | BottomCPS, ECont ->
       let r = Id.new_var ~name:"r" (trans_typ typ_orig typ) in
       let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in

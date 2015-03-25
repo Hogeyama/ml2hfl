@@ -262,7 +262,7 @@ let pr s t =
 let preprocess prog =
   Format.printf "WARNING: model checking for non-CPS programs is unmaintained.@.";
   prog
-  |> Fun.flip CEGAR_CPS.trans true
+  |> CEGAR_CPS.trans -$- true
   |@> pr "CPS"
   |> eta_expand
   |@> pr "eta_expand"
@@ -277,7 +277,7 @@ let preprocess prog =
   |> Typing.infer
   |&Flag.useless_elim&> Useless_elim.elim
   |&Flag.beta_reduce&> beta_reduce
-  |&Flag.church_encode&> church_encode
+  |& !Flag.church_encode&> church_encode
 
 let preprocess_cps prog =
   prog
@@ -296,7 +296,7 @@ let preprocess_cps prog =
   |> Typing.infer
   |&Flag.useless_elim&> Useless_elim.elim
   |&Flag.beta_reduce&> beta_reduce
-  |&Flag.church_encode&> church_encode
+  |& !Flag.church_encode&> church_encode
 
 let check abst prog =
   let tmp = get_time () in
@@ -313,7 +313,7 @@ let check abst prog =
         let spec = TrecsInterface.make_spec @@ List.length prog.defs in
         begin
           match TrecsInterface.check (abst',spec) with
-          | TrecsInterface.Safe env -> Safe env
+          | TrecsInterface.Safe env -> Safe (List.map (Pair.map_fst uncapitalize_var) env)
           | TrecsInterface.Unsafe ce -> Unsafe (CETRecS ce)
         end
     | Flag.HorSat ->
@@ -321,7 +321,7 @@ let check abst prog =
         let spec = HorSatInterface.make_spec labels in
         begin
           match HorSatInterface.check (abst',spec) with
-          | HorSatInterface.Safe env -> Safe env
+          | HorSatInterface.Safe env -> Safe (List.map (Pair.map_fst uncapitalize_var) env)
           | HorSatInterface.Unsafe ce -> Unsafe (CEHorSat ce)
         end
   in

@@ -110,7 +110,7 @@ let main_input_cegar lb =
 
 let main_split_assert orig spec parsed =
   let paths = Trans.search_fail parsed in
-  let ts = List.map (Fun.flip Trans.screen_fail parsed) paths in
+  let ts = List.map (Trans.screen_fail -$- parsed) paths in
   List.for_all (Main_loop.run orig ~spec) (List.rev ts)
 
 let main_termination orig parsed =
@@ -323,6 +323,7 @@ let arg_spec =
      "-non-termination",
        Arg.Unit (fun _ ->
                  Flag.mode := Flag.NonTermination;
+                 Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
        " Check non-termination";
      "-merge-paths",

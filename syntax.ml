@@ -26,6 +26,9 @@ and const = (* only base type constants *)
 and attr =
   | ACPS
   | AAbst_under
+  | ATerminate
+  | ANotFail
+  | ADeterministic
 
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and term =
@@ -93,6 +96,9 @@ and pattern =
 type env = (id * typ) list
 
 
+let typ t = t.typ
+let desc t = t.desc
+let attr t = t.attr
 
 
 type trans =
@@ -109,7 +115,8 @@ type trans =
    mutable tr_info:      info          -> info;
    mutable tr_info_rec:  info          -> info;
    mutable tr_const:     const         -> const;
-   mutable tr_const_rec: const         -> const}
+   mutable tr_const_rec: const         -> const;
+   mutable tr_attr:      attr list     -> attr list}
 
 let trans_typ trans = function
     TUnit -> TUnit
@@ -177,21 +184,19 @@ let trans_desc trans = function
   | App(t1, ts) -> App(trans.tr_term t1, List.map trans.tr_term ts)
   | If(t1, t2, t3) -> If(trans.tr_term t1, trans.tr_term t2, trans.tr_term t3)
   | Let(flag, bindings, t2) ->
-      let bindings' = List.map (fun (f,xs,t) -> trans.tr_var f, List.map trans.tr_var xs, trans.tr_term t) bindings in
+      let bindings' = List.map (Triple.map trans.tr_var (List.map trans.tr_var) trans.tr_term) bindings in
       let t2' = trans.tr_term t2 in
-        Let(flag, bindings', t2')
+      Let(flag, bindings', t2')
   | BinOp(op, t1, t2) -> BinOp(op, trans.tr_term t1, trans.tr_term t2)
   | Not t1 -> Not (trans.tr_term t1)
   | Event(s,b) -> Event(s,b)
-  | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,trans.tr_term t1)) fields)
+  | Record fields ->  Record (List.map (Pair.map_snd @@ Pair.map_snd trans.tr_term) fields)
   | Field(i,s,f,t1) -> Field(i,s,f,trans.tr_term t1)
   | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans.tr_term t1,trans.tr_term t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(trans.tr_term t1, trans.tr_term t2)
   | Constr(s,ts) -> Constr(s, List.map trans.tr_term ts)
-  | Match(t1,pats) ->
-      let aux (pat,cond,t1) = trans.tr_pat pat, trans.tr_term cond, trans.tr_term t1 in
-        Match(trans.tr_term t1, List.map aux pats)
+  | Match(t1,pats) -> Match(trans.tr_term t1, List.map (Triple.map trans.tr_pat trans.tr_term trans.tr_term) pats)
   | Raise t -> Raise (trans.tr_term t)
   | TryWith(t1,t2) -> TryWith(trans.tr_term t1, trans.tr_term t2)
   | Tuple ts -> Tuple (List.map trans.tr_term ts)
@@ -224,7 +229,8 @@ let make_trans () =
      tr_info = Std.identity;
      tr_info_rec = Std.identity;
      tr_const = Std.identity;
-     tr_const_rec = Std.identity}
+     tr_const_rec = Std.identity;
+     tr_attr = Std.identity}
   in
   trans.tr_term <- trans_term trans;
   trans.tr_term_rec <- trans_term trans;
@@ -262,7 +268,8 @@ type 'a trans2 =
    mutable tr2_info: 'a -> info -> info;
    mutable tr2_info_rec: 'a -> info -> info;
    mutable tr2_const: 'a -> const -> const;
-   mutable tr2_const_rec: 'a -> const -> const}
+   mutable tr2_const_rec: 'a -> const -> const;
+   mutable tr2_attr: 'a -> attr list -> attr list}
 
 let trans2_gen_typ tr env = function
   | TUnit -> TUnit
@@ -375,7 +382,8 @@ let make_trans2 () =
      tr2_info = id';
      tr2_info_rec = id';
      tr2_const = id';
-     tr2_const_rec = id'}
+     tr2_const_rec = id';
+     tr2_attr = id'}
   in
   tr.tr2_term <- trans2_gen_term tr;
   tr.tr2_term_rec <- trans2_gen_term tr;
@@ -413,6 +421,7 @@ type 'a col =
    mutable col_info_rec: info -> 'a;
    mutable col_const: const -> 'a;
    mutable col_const_rec: const -> 'a;
+   mutable col_attr: attr list -> 'a;
    mutable col_app: 'a -> 'a -> 'a;
    mutable col_empty: 'a}
 
@@ -527,6 +536,7 @@ let make_col empty app =
      col_info_rec = f;
      col_const = f;
      col_const_rec = f;
+     col_attr = f;
      col_app = app;
      col_empty = empty}
   in
@@ -566,6 +576,7 @@ type ('a,'b) col2 =
    mutable col2_info_rec: 'b -> info -> 'a;
    mutable col2_const: 'b -> const -> 'a;
    mutable col2_const_rec: 'b -> const -> 'a;
+   mutable col2_attr: 'b -> attr list -> 'a;
    mutable col2_app: 'a -> 'a -> 'a;
    mutable col2_empty: 'a}
 
@@ -680,6 +691,7 @@ let make_col2 empty app =
      col2_info_rec = f;
      col2_const = f;
      col2_const_rec = f;
+     col2_attr = f;
      col2_app = app;
      col2_empty = empty}
   in
@@ -717,6 +729,7 @@ type ('a,'b) tr_col2 =
    mutable tr_col2_info_rec:  'b -> info          -> 'a * info;
    mutable tr_col2_const:     'b -> const         -> 'a * const;
    mutable tr_col2_const_rec: 'b -> const         -> 'a * const;
+   mutable tr_col2_attr:      'b -> attr list     -> 'a * attr list;
    mutable tr_col2_app: 'a -> 'a -> 'a;
    mutable tr_col2_empty: 'a}
 
@@ -952,6 +965,7 @@ let make_tr_col2 empty app =
      tr_col2_info_rec = f;
      tr_col2_const = f;
      tr_col2_const_rec = f;
+     tr_col2_attr = f;
      tr_col2_app = app;
      tr_col2_empty = empty}
   in
@@ -991,7 +1005,8 @@ type 'a fold_tr =
    mutable fold_tr_info:      'a -> info          -> 'a * info;
    mutable fold_tr_info_rec:  'a -> info          -> 'a * info;
    mutable fold_tr_const:     'a -> const         -> 'a * const;
-   mutable fold_tr_const_rec: 'a -> const         -> 'a * const}
+   mutable fold_tr_const_rec: 'a -> const         -> 'a * const;
+   mutable fold_tr_attr:      'a -> attr list     -> 'a * attr list}
 
 let fold_tr_list fld tr_col env xs =
   let aux x (env,xs) =
@@ -1203,9 +1218,9 @@ let fold_tr_desc fld env = function
       env', TSome t'
 
 let fold_tr_term fld env t =
-  let env',desc' = fld.fold_tr_desc env t.desc in
-  let env'',typ' = fld.fold_tr_typ env' t.typ in
-  env'', {desc=desc'; typ=typ'; attr=t.attr}
+  let env',desc = fld.fold_tr_desc env t.desc in
+  let env'',typ = fld.fold_tr_typ env' t.typ in
+  env'', {desc; typ; attr=t.attr}
 
 
 let make_fold_tr () =
@@ -1224,7 +1239,8 @@ let make_fold_tr () =
      fold_tr_info = f;
      fold_tr_info_rec = f;
      fold_tr_const = f;
-     fold_tr_const_rec = f}
+     fold_tr_const_rec = f;
+     fold_tr_attr = f}
   in
   fld.fold_tr_term <- fold_tr_term fld;
   fld.fold_tr_term_rec <- fold_tr_term fld;

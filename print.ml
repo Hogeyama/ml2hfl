@@ -97,11 +97,17 @@ and print_const fm = function
 and print_attr fm = function
   | ACPS -> fprintf fm "ACPS"
   | AAbst_under -> fprintf fm "AAbst_under"
+  | ATerminate -> fprintf fm "ATerminate"
+  | ANotFail -> fprintf fm "ANotFail"
+  | ADeterministic -> fprintf fm "ADeterministic"
 
-and print_attr_list fm = List.print print_attr fm
+and ignore_attr_list = [ATerminate;ANotFail;ADeterministic]
+
+and print_attr_list fm attrs =
+  List.print print_attr fm @@ List.diff attrs ignore_attr_list
 
 and print_term pri typ fm t =
-  if t.attr = []
+  if List.subset t.attr ignore_attr_list
   then print_desc pri typ fm t.desc
   else fprintf fm "(@[%a@ #@ %a@])" (print_desc pri typ) t.desc print_attr_list t.attr
 

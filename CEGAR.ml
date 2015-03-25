@@ -68,6 +68,7 @@ let rec loop prog0 is_cp ces info =
         with Not_found -> []
       in
       let env' = List.rev_map_flatten aux env in
+      assert (env'<>[]);
       post ();
       prog, Safe env'
   | MC.Unsafe ce, Flag.NonTermination ->

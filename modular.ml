@@ -25,8 +25,8 @@ let divide t spec =
   let t_main = replace_ext ext t in
   Format.printf "MAIN: %a@." (List.print Print.id) @@ get_top_funs t_main;
   let make_spec f =
-    let ref_env,ext_ref_env = List.partition (Id.same f -| fst) spec.ref_env in
-    let spec' = {spec with ref_env; ext_ref_env} in
+    let ref_env,ext_ref_env = List.partition (Id.same f -| fst) spec.Spec.ref_env in
+    let spec' = {spec with Spec.ref_env; Spec.ext_ref_env} in
     Format.printf "SUB[%a]: %a@." Print.id f Spec.print spec';
     spec'
   in
@@ -39,6 +39,5 @@ let main orig spec parsed =
   let spec' = Spec.rename spec parsed |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
   let targets = divide parsed spec' in
   let verify (s,spec,t) = s, Main_loop.run orig ~spec t in
-  let results = List.map verify targets in
-  let b = List.for_all snd results in
+  let b = List.for_all (verify |- snd) targets in
   Format.printf "RESULT: %b@." b;b

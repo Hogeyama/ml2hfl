@@ -229,6 +229,35 @@ ref_simple:
 | LBRACE id COLON ref_base BAR exp RBRACE { RT.Base($4, $2, $6) }
 | LPAREN ref_typ RPAREN { $2 }
 | ref_simple LIST { ref_list $1 }
+| index_ref ref_simple length_ref LIST
+  {
+    let y,p_i = $1 in
+    let typ = $2 in
+    let x,p_len = $3 in
+    let typ' = RT.subst_var (orig_id x) x typ in
+    let p_i' = subst_var (orig_id x) x p_i in
+    RT.List(x,p_len,y,p_i',typ')
+  }
+
+index_ref:
+| { dummy_var, true_term }
+| LSQUAR id RSQUAR { Id.new_var ~name:(Id.name $2) TInt, true_term }
+| LSQUAR id COLON exp RSQUAR
+  {
+    let x = $2 in
+    let x' = Id.new_var ~name:(Id.name x) TInt in
+    x', subst_var x x' $4
+  }
+
+length_ref:
+| { dummy_var, true_term }
+| BAR id BAR { Id.new_var ~name:(Id.name $2) TInt, true_term }
+| BAR id COLON exp BAR
+  {
+    let x = $2 in
+    let x' = Id.new_var ~name:(Id.name x) TInt in
+    x', subst_var x x' $4
+  }
 
 ref_typ:
 | ref_simple { $1 }

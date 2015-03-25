@@ -64,7 +64,7 @@ let filter env cond pbs must t =
   let pbss =
     let rec aux sets (p,b) =
       let fv = get_fv p in
-      let sets1,sets2 = List.partition (fun set -> List.exists (Fun.flip VarSet.mem set) fv) sets in
+      let sets1,sets2 = List.partition (fun set -> List.exists (VarSet.mem -$- set) fv) sets in
       match sets1 with
       | [] -> List.fold_right VarSet.add fv VarSet.empty :: sets
       | _ ->
@@ -72,7 +72,7 @@ let filter env cond pbs must t =
           List.fold_right VarSet.add fv set1 :: sets2
     in
     let xss = List.map VarSet.elements @@ List.fold_left aux [] pbs' in
-    List.map (fun xs -> List.filter (List.exists (Fun.flip List.mem xs) -| get_fv -| fst) pbs') xss
+    List.map (fun xs -> List.filter (List.exists (List.mem -$- xs) -| get_fv -| fst) pbs') xss
   in
 *)
   let pbss = [pbs'] in

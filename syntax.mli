@@ -8,6 +8,9 @@ and id = typ Id.t
 and attr =
   | ACPS
   | AAbst_under
+  | ATerminate
+  | ANotFail
+  | ADeterministic
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | Unit
@@ -99,7 +102,8 @@ type trans =
    mutable tr_info:      info          -> info;
    mutable tr_info_rec:  info          -> info;
    mutable tr_const:     const         -> const;
-   mutable tr_const_rec: const         -> const}
+   mutable tr_const_rec: const         -> const;
+   mutable tr_attr:      attr list     -> attr list}
 
 type 'a trans2 =
   {mutable tr2_term:      'a -> typed_term    -> typed_term;
@@ -115,7 +119,8 @@ type 'a trans2 =
    mutable tr2_info:      'a -> info          -> info;
    mutable tr2_info_rec:  'a -> info          -> info;
    mutable tr2_const:     'a -> const         -> const;
-   mutable tr2_const_rec: 'a -> const         -> const}
+   mutable tr2_const_rec: 'a -> const         -> const;
+   mutable tr2_attr:      'a -> attr list     -> attr list}
 
 type 'a col =
   {mutable col_term:      typed_term    -> 'a;
@@ -132,6 +137,7 @@ type 'a col =
    mutable col_info_rec:  info          -> 'a;
    mutable col_const:     const         -> 'a;
    mutable col_const_rec: const         -> 'a;
+   mutable col_attr:      attr list     -> 'a;
    mutable col_app:       'a -> 'a -> 'a;
    mutable col_empty:     'a}
 
@@ -150,6 +156,7 @@ type ('a,'b) col2 =
    mutable col2_info_rec:  'b -> info          -> 'a;
    mutable col2_const:     'b -> const         -> 'a;
    mutable col2_const_rec: 'b -> const         -> 'a;
+   mutable col2_attr:      'b -> attr list     -> 'a;
    mutable col2_app:       'a -> 'a -> 'a;
    mutable col2_empty:     'a}
 
@@ -168,6 +175,7 @@ type ('a,'b) tr_col2 =
    mutable tr_col2_info_rec:  'b -> info          -> 'a * info;
    mutable tr_col2_const:     'b -> const         -> 'a * const;
    mutable tr_col2_const_rec: 'b -> const         -> 'a * const;
+   mutable tr_col2_attr:      'b -> attr list     -> 'a * attr list;
    mutable tr_col2_app:       'a -> 'a -> 'a;
    mutable tr_col2_empty:     'a}
 
@@ -185,8 +193,13 @@ type 'a fold_tr =
    mutable fold_tr_info:      'a -> info          -> 'a * info;
    mutable fold_tr_info_rec:  'a -> info          -> 'a * info;
    mutable fold_tr_const:     'a -> const         -> 'a * const;
-   mutable fold_tr_const_rec: 'a -> const         -> 'a * const}
+   mutable fold_tr_const_rec: 'a -> const         -> 'a * const;
+   mutable fold_tr_attr:      'a -> attr list     -> 'a * attr list}
 
+
+val typ : typed_term -> typ
+val desc : typed_term -> term
+val attr : typed_term -> attr list
 
 val make_trans : unit -> trans
 val make_trans2 : unit -> 'a trans2

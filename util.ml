@@ -18,6 +18,9 @@ let (|&) x b f = if b then f x else x
 let (&>) f x = f x
 (* usage: x |@flag&> print *)
 (* usage: x |&flag&> trans *)
+let (-$-) f x y = f y x
+(* "f -$- x" = "fun y -> f y x" *)
+(* "(-$-) (/) x" = "fun y -> y / x" *)
 
 let (=>) b1 b2 = not b1 || b2
 
@@ -54,19 +57,25 @@ module Option = struct
 
   let iter = may
   let apply = map
+
   let to_list x =
     match x with
     | None -> []
     | Some x' -> [x']
+
   let of_list xs =
     match xs with
     | [] -> None
     | [x] -> Some x
     | _ -> invalid_argument "Option.of_list"
+
   let print pr fm x =
     match x with
     | None -> Format.fprintf fm "None"
     | Some x' -> Format.fprintf fm "Some %a" pr x'
+
+  let try_ f = try Some (f ()) with _ -> None
+  let try_with f e = try Some (f ()) with e' when e=e' -> None
 end
 
 module Pair = struct
@@ -188,11 +197,12 @@ module List = struct
   let concat_map = flatten_map
 
   let rec tabulate n f rev_acc =
-    if n < 0 then invalid_argument "tabulate"
+    if n < 0 then
+      invalid_argument "tabulate"
+    else if n = 0 then
+      rev rev_acc
     else
-      match n with
-      | 0 -> rev rev_acc
-      | _ -> tabulate (n-1) f (f n::rev_acc)
+      tabulate (n-1) f (f n::rev_acc)
   let tabulate n f = tabulate n f []
 
   let assoc_default k tbl x =
@@ -336,7 +346,7 @@ let add_time tmp t = t := !t +. get_time () -. tmp
 let print_err s =
   Format.fprintf Format.err_formatter "%s" s
 let print_time () =
-  Format.fprintf Format.err_formatter "%f\n" (get_time ())
+  Format.fprintf Format.err_formatter "%f\n" @@ get_time ()
 
 
 (* graph *)

@@ -1,35 +1,15 @@
-
 open Util
 open Syntax
 open Term_util
 open Type
 
-
 module RT = Ref_type
-
-
-module PredSet =
-  Set.Make(
-    struct
-      type t = Syntax.typed_term * Syntax.typed_term
-      let compare = compare
-    end)
-module PredSetSet =
-  Set.Make(
-    struct
-      type t = PredSet.t
-      let compare = PredSet.compare
-    end)
-
-
 
 let debug () = List.mem "Encode_rec" !Flag.debug_module
 
 let hd = function
   | [x] -> x
   | _ -> assert false
-
-
 
 let abst_recdata = make_trans ()
 
@@ -161,7 +141,7 @@ let abst_recdata_term t =
       let pats' = List.map aux pats in
       make_match t1' pats'
   | TNone -> make_none @@ abst_recdata.tr_typ @@ option_typ t.typ
-  | TSome t -> make_some (abst_recdata.tr_term t)
+  | TSome t -> make_some @@ abst_recdata.tr_term t
   | _ -> abst_recdata.tr_term_rec t
 
 let () = abst_recdata.tr_term <- abst_recdata_term
@@ -171,10 +151,10 @@ let () = abst_recdata.tr_typ <- abst_recdata_typ
 let trans t =
   t
   |> Trans.remove_top_por
-  |@> Fun.flip Type_check.check TUnit
+  |@> Type_check.check -$- TUnit
   |> abst_recdata.tr_term
   |@> (fun _ -> typ_excep := abst_recdata.tr_typ !typ_excep)
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "abst_rec" Print.term_typ
-  |@> Fun.flip Type_check.check TUnit
+  |@> Type_check.check -$- TUnit
   |> Trans.simplify_match
-  |@> Fun.flip Type_check.check TUnit
+  |@> Type_check.check -$- TUnit

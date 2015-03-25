@@ -620,5 +620,5 @@ let from_use_file ast =
     | Decl_type _ -> t
     | Decl_exc _ -> t
   in
-  let t = List.fold_left aux {desc=Const Unit;typ=TUnit; attr=[]} defs in
+  let t = List.fold_left aux unit_term defs in
   Trans.merge_let_fun t

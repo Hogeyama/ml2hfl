@@ -69,9 +69,9 @@ let subst_matched_var = subst_matched_var.tr_term
 let rec get_rtyp_list rtyp typ =
   match rtyp, elim_tpred typ with
   | RT.Inter rtyps, _ ->
-     RT.Inter (List.map (fun rtyp1 -> get_rtyp_list rtyp1 typ) rtyps)
+     RT.Inter (List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Union rtyps, _ ->
-      RT.Union (List.map (fun rtyp1 -> get_rtyp_list rtyp1 typ) rtyps)
+      RT.Union (List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Fun(y, RT.Base(RT.Int, y', p_i), typ2)], TList typ ->
       let p_len' = subst_var x' x p_len in
       let p_i' = subst_var y' y p_i in
@@ -89,7 +89,12 @@ let rec get_rtyp_list rtyp typ =
   | RT.Fun(x,rtyp1,rtyp2), TFun(y,typ2) ->
       let rtyp1' = get_rtyp_list rtyp1 (Id.typ y) in
       let rtyp2' = get_rtyp_list rtyp2 typ2 in
-      RT.Fun(x, rtyp1', rtyp2')
+      let rtyp2'' =
+        match rtyp1' with
+        | RT.List _ -> RT.replace_term (make_fst @@ make_var x) (make_app (make_var length_var) [make_var x]) rtyp2'
+        | _ -> rtyp2'
+      in
+      RT.Fun(x, rtyp1', rtyp2'')
   | RT.Tuple xrtyps, TTuple ys ->
       RT.Tuple (List.map2 (fun (x,rtyp) y -> x, get_rtyp_list rtyp (Id.typ y)) xrtyps ys)
   | RT.ExtArg(x,rtyp1,rtyp2), _ ->
@@ -435,10 +440,10 @@ let trans t =
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" Print.term
   |> subst_matched_var
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "subst_matched_var" Print.term
-  |@> Fun.flip Type_check.check TUnit
+  |@> Type_check.check -$- TUnit
   |> Trans.remove_top_por
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "remove_top_por" Print.term
-  |@> Fun.flip Type_check.check TUnit
+  |@> Type_check.check -$- TUnit
   |> if !Flag.encode_list_opt
      then trans_opt
      else trans

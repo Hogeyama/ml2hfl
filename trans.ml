@@ -200,7 +200,7 @@ let copy_poly_funs t =
   |@> unify_pattern_var
   |> copy_poly_funs.tr_term
   |> flatten_tvar
-  |@> Fun.flip Type_check.check Type.TUnit
+  |@> Type_check.check -$- Type.TUnit
 
 
 
@@ -902,10 +902,7 @@ let elim_fun_term fun_name t =
       let f = Id.new_var ~name:fun_name t.typ in
       make_let [f, [y], elim_fun.tr2_term fun_name t1] @@ make_var f
   | Let(flag, bindings, t2) ->
-      let aux (f,xs,t) =
-        let fun_name' = "f_" ^ Id.name f in
-        f, xs, elim_fun.tr2_term fun_name' t
-      in
+      let aux (f,xs,t) = f, xs, elim_fun.tr2_term ("f_" ^ Id.name f) t in
       let bindings' = List.map aux bindings in
       let t2' = elim_fun.tr2_term fun_name t2 in
       make_let_f flag bindings' t2'
@@ -984,7 +981,7 @@ let rec inlined_f inlined fs t =
              let f, _ =
                List.fold_left
                  (fun (f, ty) x -> (fun t -> f {desc=Fun(x, t); typ=ty; attr=[]}), match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
-                 ((fun t -> t), Type.app_typ t1.typ (List.map (fun t -> t.typ) ts))
+                 ((fun t -> t), Type.app_typ t1.typ (List.map Syntax.typ ts))
                  xs2
              in
              let bindings = Fpat.Util.List.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, [], t)) ys ts in
@@ -1047,7 +1044,7 @@ let rec inlined_f inlined fs t =
   in
   {t with desc}
 
-let inlined_f inlined t = inlined_f inlined [] t |@> Fun.flip Type_check.check TUnit
+let inlined_f inlined t = inlined_f inlined [] t |@> Type_check.check -$- TUnit
 
 
 
@@ -1166,7 +1163,7 @@ let insert_param_funarg_term t =
         let xs,t' = decomp_funs t in
         let xs' = List.map insert_param_funarg.tr_var xs in
         let xs'' =
-          if should_insert (List.map Id.typ xs)
+          if should_insert @@ List.map Id.typ xs
           then (Id.new_var ~name:"u" TUnit) :: xs'
           else xs'
         in
@@ -1183,7 +1180,7 @@ let insert_param_funarg_term t =
         let aux (f,xs,t) =
           let xs' = List.map insert_param_funarg.tr_var xs in
           let xs'' =
-            if should_insert (List.map Id.typ xs)
+            if should_insert @@ List.map Id.typ xs
             then Id.new_var ~name:"u" TUnit :: xs'
             else xs'
           in
@@ -1198,7 +1195,7 @@ let () = insert_param_funarg.tr_typ <- insert_param_funarg_typ
 let () = insert_param_funarg.tr_term <- insert_param_funarg_term
 let insert_param_funarg t = t
   |> insert_param_funarg.tr_term
-  |@> Fun.flip Type_check.check Term_util.typ_result
+  |@> Type_check.check -$- Term_util.typ_result
 
 
 
@@ -1373,9 +1370,10 @@ let make_ext_fun_def f =
 
 let make_ext_funs env t =
   let funs = List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name) @@ get_fv t in
+  let funs = List.filter (fun x -> Id.id x > 0) funs in
   if List.exists (is_poly_typ -| Id.typ) funs
   then unsupported "Trans.make_ext_funs funs";
-  let funs' = List.filter_out (Fun.flip Id.mem_assoc env) funs in
+  let funs' = List.filter_out (Id.mem_assoc -$- env) funs in
   let map,t' = rename_ext_funs funs' t in
   let defs1 = List.map make_ext_fun_def map in
   let defs2 = List.map (fun (f,typ) -> f,[],Ref_type.generate typ) env in

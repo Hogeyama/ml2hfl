@@ -31,19 +31,25 @@ let length_var =
   let x = Id.make (-1) "l" (TList typ_unknown) in
   Id.make (-1) "length" (TFun(x, TInt))
 
-let unit_term = {desc=Const Unit; typ=TUnit; attr=[]}
-let true_term = {desc=Const True;typ=TBool; attr=[]}
-let false_term = {desc=Const False;typ=TBool; attr=[]}
-let cps_result = {desc=Const CPS_result; typ=typ_result; attr=[]}
+let const_attr = [ANotFail; ATerminate; ADeterministic]
+let make_attr ?(attrs=const_attr) ts =
+  let check a = List.for_all (fun {attr} -> List.mem a attr) ts in
+  let make a = if check a then Some a else None in
+  List.filter_map make attrs
+
+let unit_term = {desc=Const Unit; typ=TUnit; attr=const_attr}
+let true_term = {desc=Const True;typ=TBool; attr=const_attr}
+let false_term = {desc=Const False;typ=TBool; attr=const_attr}
+let cps_result = {desc=Const CPS_result; typ=typ_result; attr=const_attr}
 let fail_term = {desc=Event("fail",false);typ=typ_event; attr=[]}
 let fail_term_cps = {desc=Event("fail",true);typ=typ_event'; attr=[]}
 let make_bottom typ = {desc=Bottom;typ=typ; attr=[]}
 let make_event s = {desc=Event(s,false);typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=[]}
-let make_int n = {desc=Const(Int n); typ=TInt; attr=[]}
+let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
-let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ=typ; attr=[]}
+let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 let make_randvalue_cps typ =
   let u = Id.new_var TUnit in
   let r = Id.new_var typ in
@@ -112,22 +118,24 @@ let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_not t = {desc=Not t; typ=TBool; attr=[]}
 let make_and t1 t2 =
-  if t1 = true_term
-  then t2
+  if t1 = true_term then
+    t2
+  else if t1 = false_term then
+    false_term
+  else if t2 = true_term then
+    t1
   else
-    if t1 = false_term
-    then false_term
-    else
-      if t2 = true_term
-      then t1
-      else {desc=BinOp(And, t1, t2); typ=TBool; attr=[]}
+    {desc=BinOp(And, t1, t2); typ=TBool; attr=[]}
 let make_or t1 t2 =
-  if t1 = true_term
-  then true_term
+  Format.printf "make_or (%a) (%a)@." Print.term t1 Print.term t2;
+  if t1 = true_term then
+    true_term
+  else if t2 = true_term && List.subset [ANotFail;ATerminate] t1.attr then
+    true_term
+  else if t1 = false_term then
+    t2
   else
-    if t1 = false_term
-    then t2
-    else {desc=BinOp(Or, t1, t2); typ=TBool; attr=[]}
+    {desc=BinOp(Or, t1, t2); typ=TBool; attr=[]}
 let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=[]}
 let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt; attr=[]}
 let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt; attr=[]}
@@ -152,7 +160,7 @@ let make_if_ t1 t2 t3 =
       {desc=If(t1, t2, t3); typ=typ; attr=[]}
 let make_eq t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
-  {desc=BinOp(Eq, t1, t2); typ=TBool; attr=[]}
+  {desc=BinOp(Eq, t1, t2); typ=TBool; attr=make_attr [t1;t2]}
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
@@ -216,7 +224,7 @@ let make_construct c ts =
     end;
   {desc=Constr(c,ts); typ=Type_decl.constr_typ c; attr=[]}
 let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
-let randint_unit_term = make_app randint_term [unit_term]
+let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 
 let imply t1 t2 = make_or (make_not t1) t2

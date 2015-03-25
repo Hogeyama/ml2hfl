@@ -57,8 +57,8 @@ let rec uncurry_typ rtyp typ =
   if debug()
   then Format.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
   match rtyp,typ with
-  | RT.Inter rtyps, _ -> RT.Inter (List.map (Fun.flip uncurry_typ typ) rtyps)
-  | RT.Union rtyps, _ -> RT.Union (List.map (Fun.flip uncurry_typ typ) rtyps)
+  | RT.Inter rtyps, _ -> RT.Inter (List.map (uncurry_typ -$- typ) rtyps)
+  | RT.Union rtyps, _ -> RT.Union (List.map (uncurry_typ -$- typ) rtyps)
   | _, TFun(x,typ2) ->
       let typ1 = Id.typ x in
       let n = element_num typ1 in
@@ -208,7 +208,7 @@ and remove_pair_aux t typ_opt =
   | Constr(s,ts) -> assert false
   | Match(t1,pats) -> assert false
   | TryWith(t1,t2) -> assert false
-  | Tuple ts -> Node (List.map (Fun.flip remove_pair_aux None) ts)
+  | Tuple ts -> Node (List.map (remove_pair_aux -$- None) ts)
   | Proj(i, {desc=Var x}) when x = abst_var -> Leaf (make_var x) (* for predicates *)
   | Proj(i,t) ->
       begin

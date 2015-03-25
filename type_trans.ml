@@ -23,6 +23,7 @@ let rec ref_of_inter env cond atyp ityp =
       let ps' = ps (CS.Var x) in
       let ityps,ityp' = IT.decomp_fun (List.length ps') ityp in
       let env' = (x,AT.TBase(b,fun _ -> []))::env in
+      let b' = ref_base_of_abs_base b in
       let aux p ityp =
         match ityp with
         | IT.Base IT.True -> [p]
@@ -30,7 +31,6 @@ let rec ref_of_inter env cond atyp ityp =
         | IT.Inter [] -> []
         | _ -> assert false
       in
-      let b' = ref_base_of_abs_base b in
       let ts = List.rev_flatten @@ List.map2 aux ps' ityps in
       let p = List.fold_left CS.make_and (CS.Const CS.True) ts in
       let cond' = p::cond in

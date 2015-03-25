@@ -177,7 +177,7 @@ let tupling_term env t =
           let xs = List.map (Option.map (fun t -> Id.new_var @@ get_opt_typ t.typ)) tfs in
           let xs' = List.filter_map Std.identity xs in
           let bodies =
-            let zts = List.map (Option.map @@ Fun.flip assoc_env env) fs in
+            let zts = List.map (Option.map @@ assoc_env -$- env) fs in
             let aux zt x =
               match zt, x with
               | None, None -> []
@@ -493,24 +493,24 @@ let trans t =
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" Print.term
   |> Trans.elim_unused_let
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" Print.term
-  |@> Fun.flip Type_check.check Type.TUnit
+  |@> Type_check.check -$- Type.TUnit
   |> tupling
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "tupled" Print.term
-  |@> Fun.flip Type_check.check Type.TUnit
+  |@> Type_check.check -$- Type.TUnit
   |> Trans.normalize_let
   |> Trans.flatten_let
   |> Trans.inline_no_effect
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "normalize" Print.term
   |> replace_app
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "replace_app" Print.term
-  |@> Fun.flip Type_check.check Type.TUnit
+  |@> Type_check.check -$- Type.TUnit
   |> elim_sub_app
   |> elim_same_app
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "elim_unnecessary" Print.term
-  |@> Fun.flip Type_check.check Type.TUnit
+  |@> Type_check.check -$- Type.TUnit
   |> Trans.inline_next_redex
   |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" Print.term
-  |@> Fun.flip Type_check.check Type.TUnit
+  |@> Type_check.check -$- Type.TUnit
 
 let trans t =
   trans t, fun _ _ -> raise Not_found
