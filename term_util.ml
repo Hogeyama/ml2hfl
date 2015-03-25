@@ -253,6 +253,8 @@ let make_eq_dec t1 t2 =
   let t2',k2 = aux t2 in
   k1 @@ k2 @@ make t1' t2'
 
+let make_length t =
+  make_app (make_var length_var) [t]
 
 let rec make_term typ =
   match elim_tpred typ with

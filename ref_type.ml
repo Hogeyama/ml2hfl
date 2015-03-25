@@ -248,26 +248,27 @@ let rec generate_check x typ =
       let typ2' = subst_var y x1 typ2 in
       let t = U.make_and (generate_check x1 typ1) (generate_check x2 typ2') in
       U.make_lets [x1,[],t1; x2,[],t2] t
-  | List(x,p_len,y,p_i,typ1) ->
-      if p_len.S.desc <> S.Const S.True || p_i.S.desc <> S.Const S.True || occur x typ1 || occur x typ1
+  | List(l,p_len,y,p_i,typ1) ->
+      if p_i.S.desc <> S.Const S.True || occur y typ1
       then unsupported "Ref_type.generate_check"
       else
         let styp1 = to_simple typ1 in
         let styp = to_simple typ in
-        let xs = Id.new_var ~name:"xs" styp in
-        let f = Id.new_var ~name:"check" (Type.TFun(xs,Type.TBool)) in
+        let zs = Id.new_var ~name:"xs" styp in
+        let f = Id.new_var ~name:"check" (Type.TFun(zs,Type.TBool)) in
         let pat_nil = U.make_pnil styp, U.true_term, U.true_term in
-        let x = Id.new_var ~name:"x" styp1 in
-        let xs' = Id.new_var ~name:"xs'" styp in
-        let t_b1 = generate_check x typ1 in
+        let z = Id.new_var ~name:"x" styp1 in
+        let zs' = Id.new_var ~name:"xs'" styp in
+        let t_b1 = generate_check z typ1 in
+        let len_def = [l, [], U.make_length @@ U.make_var x] in
         if t_b1 = U.true_term
         then
-          U.true_term
+          U.make_let len_def p_len
         else
-          let t_b2 = U.make_app (U.make_var f) [U.make_var xs'] in
-          let pat_cons = U.make_pcons (U.make_pvar x) (U.make_pvar xs'), U.true_term, U.make_and t_b1 t_b2 in
-          let t = U.make_match (U.make_var xs) [pat_nil; pat_cons] in
-          U.make_letrec [f,[xs],t] @@ U.make_app (U.make_var f) [U.make_var xs]
+          let t_b2 = U.make_app (U.make_var f) [U.make_var zs'] in
+          let pat_cons = U.make_pcons (U.make_pvar z) (U.make_pvar zs'), U.true_term, U.make_and t_b1 t_b2 in
+          let t = U.make_match (U.make_var zs) [pat_nil; pat_cons] in
+          U.make_letrec [f,[zs],t] @@ U.make_let len_def @@ U.make_and p_len @@ U.make_app (U.make_var f) [U.make_var zs]
   | _ -> unsupported "Ref_type.generate_check"
 
 and generate_simple_aux typ =

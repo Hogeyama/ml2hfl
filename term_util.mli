@@ -99,6 +99,7 @@ val make_ref : typed_term -> typed_term
 val make_deref : typed_term -> typed_term
 val make_setref : typed_term -> typed_term -> typed_term
 val make_construct : string -> typed_term list -> typed_term
+val make_length : typed_term -> typed_term
 
 (** {6 Term destructor} *)
 val is_none : typed_term -> bool

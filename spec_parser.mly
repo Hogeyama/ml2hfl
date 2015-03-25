@@ -9,7 +9,7 @@ let print_error_information () =
   try
     let st =  Parsing.symbol_start_pos () in
     let en = Parsing.symbol_end_pos () in
-    Format.printf "File \"%s\", line %d, characters %d-%d:\n"
+    Format.printf "%s, line %d, characters %d-%d\n"
                   st.Lexing.pos_fname
                   st.Lexing.pos_lnum
                   (st.Lexing.pos_cnum - st.Lexing.pos_bol)
@@ -228,19 +228,18 @@ ref_simple:
 | ref_base { ref_base $1 }
 | LBRACE id COLON ref_base BAR exp RBRACE { RT.Base($4, $2, $6) }
 | LPAREN ref_typ RPAREN { $2 }
-| ref_simple LIST { ref_list $1 }
-| index_ref ref_simple length_ref LIST
+//| index_ref ref_simple length_ref LIST
+| ref_simple length_ref LIST
   {
-    let y,p_i = $1 in
-    let typ = $2 in
-    let x,p_len = $3 in
+    let y,p_i = dummy_var,true_term in
+    let typ = $1 in
+    let x,p_len = $2 in
     let typ' = RT.subst_var (orig_id x) x typ in
     let p_i' = subst_var (orig_id x) x p_i in
     RT.List(x,p_len,y,p_i',typ')
   }
 
 index_ref:
-| { dummy_var, true_term }
 | LSQUAR id RSQUAR { Id.new_var ~name:(Id.name $2) TInt, true_term }
 | LSQUAR id COLON exp RSQUAR
   {
@@ -261,7 +260,7 @@ length_ref:
 
 ref_typ:
 | ref_simple { $1 }
-| id COLON ref_typ TIMES ref_typ { RT.Tuple[$1, $3; dummy_var, $5] }
+| id COLON ref_simple TIMES ref_typ { RT.Tuple[$1, $3; dummy_var, $5] }
 | ref_typ TIMES ref_typ
   {
     let x  =
@@ -271,7 +270,7 @@ ref_typ:
     in
     RT.Tuple[x, $1; dummy_var, $3]
   }
-| id COLON ref_typ ARROW ref_typ { RT.Fun($1, $3, $5) }
+| id COLON ref_simple ARROW ref_typ { RT.Fun($1, $3, $5) }
 | ref_typ ARROW ref_typ
   {
     let x  =

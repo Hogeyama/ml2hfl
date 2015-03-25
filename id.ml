@@ -13,7 +13,7 @@ let save_counter () = tmp_counter := !counter
 let reset_counter () = counter := !tmp_counter
 let clear_counter () = counter := init_counter
 
-let make id name typ = {id=id; name=name; typ=typ}
+let make id name typ = {id; name; typ}
 let new_var ?(name="x") typ = make (new_int()) name typ
 let new_var_id x = {x with id=new_int()}
 

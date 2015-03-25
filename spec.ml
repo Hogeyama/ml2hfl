@@ -78,7 +78,7 @@ let parse parser lexer filename =
   else
     let lb = Lexing.from_channel @@ open_in filename in
     lb.Lexing.lex_curr_p <-
-      {Lexing.pos_fname = Filename.basename filename;
+      {Lexing.pos_fname = Format.sprintf "File \"%s\"" @@ Filename.basename filename;
        Lexing.pos_lnum = 1;
        Lexing.pos_cnum = 0;
        Lexing.pos_bol = 0};
@@ -97,6 +97,11 @@ let parse_comment parser lexer filename =
     | _ -> loop false str
   in
   let lb = Lexing.from_string @@ loop false "" in
+    lb.Lexing.lex_curr_p <-
+      {Lexing.pos_fname = Format.sprintf "Spec in file \"%s\"" @@ Filename.basename filename;
+       Lexing.pos_lnum = 0;
+       Lexing.pos_cnum = 0;
+       Lexing.pos_bol = 0};
   parser lexer lb
 
 

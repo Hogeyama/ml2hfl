@@ -63,5 +63,5 @@ let make_ttuple typs =
 
 let is_ttuple typ =
   match decomp_tapp typ with
-  | TBase(TTuple _, _), _ -> true
+  | TBase(TTuple, _), _ -> true
   | _ -> false
