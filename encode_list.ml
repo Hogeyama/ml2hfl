@@ -176,8 +176,16 @@ let print_bind fm bind =
   List.iter (fun (x,t) -> Format.fprintf fm "%a := %a;@ " Id.print x Print.term t) bind;
   Format.fprintf fm "]@]"
 
+let rec make_rand typ =
+  match typ with
+  | TList typ' -> make_pair randint_unit_term @@ make_fun (Id.new_var TInt) @@ make_rand typ'
+  | _ -> make_randvalue_unit typ
+
 let abst_list_term post t =
   match t.desc with
+  | App({desc=Const(RandValue(typ,false))}, t2) ->
+      assert (t2 = [unit_term]);
+      make_rand typ
   | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
@@ -197,7 +205,7 @@ let abst_list_term post t =
       let typ'' = abst_list.tr2_typ post @@ list_typ t.typ in
       let ts = decomp_literal t in
       let ts' = List.map (abst_list.tr2_term post) ts in
-      let xs = List.map var_of_term ts' in
+      let xs = List.map new_var_of_term ts' in
       let bindings = List.rev_map2 (fun x t -> x, [], t) xs ts' in
       let x = Id.new_var ~name:"i" TInt in
       let aux y (i,t) =
@@ -434,15 +442,17 @@ let trans_opt t =
 
 
 
+let pr s t = if debug () then Format.printf "##[encode_list] %s:@.%a@.@." s Print.term t
+
 let trans t =
   t
   |> inst_list_eq
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "inst_list_eq" Print.term
+  |@> pr "inst_list_eq"
   |> subst_matched_var
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "subst_matched_var" Print.term
+  |@> pr "subst_matched_var"
   |@> Type_check.check -$- TUnit
   |> Trans.remove_top_por
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "remove_top_por" Print.term
+  |@> pr "remove_top_por"
   |@> Type_check.check -$- TUnit
   |> if !Flag.encode_list_opt
      then trans_opt

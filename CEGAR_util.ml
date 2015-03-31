@@ -212,13 +212,13 @@ let get_renv prog =
   List.map (Pair.add_right @@ get_renv_aux prog) rand_ids
 
 let make_renv n prog =
-  let rand_ids = List.init n (fun i -> i+1) in
+  let rand_ids = List.init n succ in
   let env = List.map (Pair.add_right @@ get_renv_aux prog) rand_ids in
   let make xtyps =
     let typ0 = TFun(TFun(typ_int, fun _ -> typ_result), fun _ -> typ_result) in
-    List.fold_right (fun (x,typ1) typ2 -> TFun(typ1, fun y -> subst_typ x y typ2)) xtyps typ0
+    List.fold_right (fun (x,typ1) typ2 -> TFun(typ1, subst_typ x -$- typ2)) xtyps typ0
   in
-  List.map (fun (i,xtyps) -> make_randint_name i, make xtyps) env
+  List.map (Pair.map make_randint_name make) env
 
 
 
@@ -528,7 +528,7 @@ let get_nonrec defs main orig_fun_list force =
     let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@@ get_fv t2)) defs in
     List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
       f <> main &&
-      (List.for_all (fun (_,xs,t1,e,t2) -> List.subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
+      (List.for_all (fun (_,xs,t1,e,t2) -> List.Set.subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
        (1 >= List.length (List.unique (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
        2 >= List.length defs')
   in
@@ -537,7 +537,7 @@ let get_nonrec defs main orig_fun_list force =
   if !Flag.expand_nonrec_init
   then nonrec
   else
-    let orig_fun_list' = List.diff orig_fun_list force in
+    let orig_fun_list' = List.Set.diff orig_fun_list force in
     List.filter (fun (f,_) -> not @@ List.mem f orig_fun_list') nonrec
 
 

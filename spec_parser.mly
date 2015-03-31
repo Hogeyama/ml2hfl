@@ -62,6 +62,7 @@ let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %token VAL
 %token VALCPS
 %token VALCEGAR
+%token EXTERNAL
 %token TRUE
 %token FALSE
 %token EOF
@@ -137,6 +138,8 @@ spec_list:
   { Spec.init }
 | ref_type spec_list
   { {$2 with Spec.ref_env = $1::$2.Spec.ref_env} }
+| ext_ref_type spec_list
+  { {$2 with Spec.ext_ref_env = $1::$2.Spec.ext_ref_env} }
 | typedef spec_list
   { {$2 with Spec.abst_env = $1::$2.Spec.abst_env} }
 | typedef_cps spec_list
@@ -150,6 +153,10 @@ spec_list:
 
 ref_type:
 | TYPE id COLON ref_typ
+  { $2, $4 }
+
+ext_ref_type:
+| EXTERNAL id COLON ref_typ
   { $2, $4 }
 
 typedef:
@@ -228,12 +235,12 @@ ref_simple:
 | ref_base { ref_base $1 }
 | LBRACE id COLON ref_base BAR exp RBRACE { RT.Base($4, $2, $6) }
 | LPAREN ref_typ RPAREN { $2 }
-//| index_ref ref_simple length_ref LIST
-| ref_simple length_ref LIST
+| ref_simple LIST { RT.List(dummy_var,true_term,dummy_var,true_term,$1) }
+| index_ref ref_simple length_ref LIST
   {
-    let y,p_i = dummy_var,true_term in
-    let typ = $1 in
-    let x,p_len = $2 in
+    let y,p_i = $1 in
+    let typ = $2 in
+    let x,p_len = $3 in
     let typ' = RT.subst_var (orig_id x) x typ in
     let p_i' = subst_var (orig_id x) x p_i in
     RT.List(x,p_len,y,p_i',typ')
@@ -249,7 +256,6 @@ index_ref:
   }
 
 length_ref:
-| { dummy_var, true_term }
 | BAR id BAR { Id.new_var ~name:(Id.name $2) TInt, true_term }
 | BAR id COLON exp BAR
   {
@@ -271,6 +277,7 @@ ref_typ:
     RT.Tuple[x, $1; dummy_var, $3]
   }
 | id COLON ref_simple ARROW ref_typ { RT.Fun($1, $3, $5) }
+| LPAREN id COLON ref_simple RPAREN ARROW ref_typ { RT.Fun($2, $4, $7) }
 | ref_typ ARROW ref_typ
   {
     let x  =
@@ -280,7 +287,6 @@ ref_typ:
     in
     RT.Fun(x, $1, $3)
   }
-
 
 pred_list:
   { [] }

@@ -28,7 +28,7 @@ let alpha_rename_term t =
         List.map aux bindings
       in
       let sbst t = List.fold_left2 (fun t' (f,_,_) (f',_,_) -> subst_var f f' t') t bindings bindings' in
-      let bindings'' = List.map (fun (f,xs,t) -> f, xs, sbst t) bindings' in
+      let bindings'' = List.map (Triple.map_trd sbst) bindings' in
       let t' = sbst @@ alpha_rename.tr_term t in
       make_let_f flag bindings'' t'
   | Fun(x, t) ->
@@ -93,7 +93,7 @@ let rename_poly_funs_term (f,map) t =
   match t.desc with
   | Var x when Id.same x f ->
       if is_poly_typ t.typ
-      then raise (Fatal "Cannot occur? @ Trans.rename_poly_funs")
+      then fatal "Cannot occur? @ Trans.rename_poly_funs"
       else
         let map',x' =
           try
@@ -322,7 +322,7 @@ let set_main t =
   match get_last_definition None t with
   | None ->
       let u = Id.new_var ~name:"main" t.typ in
-      "", 0, make_let [u, [], t] unit_term
+      None, make_let [u, [], t] unit_term
   | Some f ->
       let xs = get_args (Id.typ f) in
       let t' =
@@ -342,7 +342,7 @@ let set_main t =
           replace_main main t
       in
       let t'' = inst_randval t' in
-      Id.name f, List.length xs, t''
+      Some (Id.name f, List.length xs), t''
 
 let ref_to_assert ref_env t =
   let aux (f, typ) =
@@ -353,7 +353,9 @@ let ref_to_assert ref_env t =
         Format.printf "  Spec: %a@." Ref_type.print typ;
         fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
       end;
-    make_assert @@ Ref_type.generate_check f typ
+    let genv',cenv',t_typ = Ref_type.generate_check [] [] f typ in
+    let defs = List.map snd (genv' @ cenv') in
+    make_letrecs defs @@ make_assert t_typ
   in
   let main = List.fold_right make_seq (List.map aux ref_env) unit_term in
   replace_main main t
@@ -547,7 +549,7 @@ let trans_let = make_trans ()
 let trans_let_term t =
   match t.desc with
   | Let(Nonrecursive, [f, [], t1], t2) ->
-      make_app (make_fun f (trans_let.tr_term t2)) [trans_let.tr_term t1]
+      make_app (make_fun f @@ trans_let.tr_term t2) [trans_let.tr_term t1]
   | Let(Nonrecursive, bindings, t2) when List.exists (fun (_,xs,_) -> xs=[]) bindings -> assert false
   | _ -> trans_let.tr_term_rec t
 
@@ -560,14 +562,14 @@ let trans_let = trans_let.tr_term
 
 let propagate_typ_arg = make_trans ()
 
-let propagate_typ_arg_term t =
-  match t.desc with
+let propagate_typ_arg_desc desc =
+  match desc with
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
         let xs' =
-          let ys = List.take (List.length xs) (get_args (Id.typ f)) in
+          let ys = List.take (List.length xs) (get_args @@ Id.typ f) in
           let aux x y ys =
-            let ys' = List.map (fun z -> Id.set_typ z (subst_type y (make_var x) (Id.typ z))) ys in
+            let ys' = List.map (Id.map_typ @@ subst_type_var y x) ys in
             Id.set_typ x (Id.typ y) :: ys'
           in
           List.fold_right2 aux xs ys []
@@ -578,17 +580,17 @@ let propagate_typ_arg_term t =
       in
       let bindings' = List.map aux bindings in
       let t2' = propagate_typ_arg.tr_term t2 in
-      {(make_let_f flag bindings' t2') with attr=t.attr}
-  | _ -> propagate_typ_arg.tr_term_rec t
+      Let(flag, bindings', t2')
+  | _ -> propagate_typ_arg.tr_desc_rec desc
 
-let () = propagate_typ_arg.tr_term <- propagate_typ_arg_term
+let () = propagate_typ_arg.tr_desc <- propagate_typ_arg_desc
 let propagate_typ_arg = propagate_typ_arg.tr_term
 
 
 
 
 let replace_typ_var env x =
-  Id.set_typ x @@ List.assoc_default x env (Id.typ x)
+  Id.set_typ x @@ List.assoc_default (Id.typ x) x env
 
 let replace_typ = make_trans2 ()
 
@@ -597,7 +599,7 @@ let replace_typ_desc env desc =
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
         let f' = replace_typ_var env f in
-        if not (Type.can_unify (Id.typ f) (Id.typ f'))
+        if not @@ Type.can_unify (Id.typ f) (Id.typ f')
         then
           begin
             let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
@@ -606,8 +608,8 @@ let replace_typ_desc env desc =
             fatal @@ msg ^ " (please specify monomorphic types if polymorphic types exist)"
           end;
         let xs' =
-          let ys = List.take (List.length xs) (get_args (Id.typ f')) in
-          List.map2 (fun x y -> Id.set_typ x (Id.typ y)) xs ys
+          let ys = List.take (List.length xs) (get_args @@ Id.typ f') in
+          List.map2 (fun x y -> Id.set_typ x @@ Id.typ y) xs ys
         in
         let t' = replace_typ.tr2_term env t in
         let t'' =
@@ -720,10 +722,10 @@ let normalize_binop_exp op t1 t2 =
         let aux (x,_) = x <> None in
         begin
           match List.exists aux xns1, List.exists aux xns2 with
-            true, true ->
-            Format.printf "Nonlinear expression not supported: %a@."
-                          Print.term {desc=BinOp(op,t1,t2);typ=TInt; attr=[]};
-            assert false
+          | true, true ->
+              Format.printf "Nonlinear expression not supported: %a@."
+                            Print.term {desc=BinOp(op,t1,t2);typ=TInt; attr=[]};
+              assert false
           | false, true ->
               let k = reduce xns1 in
               List.rev_map (fun (x,n) -> x,n*k) xns2
@@ -1328,8 +1330,8 @@ let screen_fail target t = screen_fail [] target t
 
 let rename_ext_funs = make_fold_tr ()
 
-let rename_ext_funs_term (funs,map) t =
-  match t.desc with
+let rename_ext_funs_desc (funs,map) desc =
+  match desc with
   | Var x when Id.mem x funs ->
       let map',x' =
         try
@@ -1338,10 +1340,10 @@ let rename_ext_funs_term (funs,map) t =
           let x' = Id.new_var_id x in
           x'::map, x'
       in
-      (funs,map'), make_var x'
-  | _ -> rename_ext_funs.fold_tr_term_rec (funs,map) t
+      (funs,map'), Var x'
+  | _ -> rename_ext_funs.fold_tr_desc_rec (funs,map) desc
 
-let () = rename_ext_funs.fold_tr_term <- rename_ext_funs_term
+let () = rename_ext_funs.fold_tr_desc <- rename_ext_funs_desc
 let rename_ext_funs funs t =
   let (_,map),t' = rename_ext_funs.fold_tr_term (funs,[]) t in
   map, t'
@@ -1369,15 +1371,26 @@ let make_ext_fun_def f =
   f, xs', make_letrec defs' t'
 
 let make_ext_funs env t =
-  let funs = List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name) @@ get_fv t in
-  let funs = List.filter (fun x -> Id.id x > 0) funs in
+  let funs =
+    get_fv t
+    |> List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name)
+    |> List.filter (fun x -> Id.id x > 0)
+    |> List.filter_out (Id.mem_assoc -$- env)
+  in
   if List.exists (is_poly_typ -| Id.typ) funs
-  then unsupported "Trans.make_ext_funs funs";
-  let funs' = List.filter_out (Id.mem_assoc -$- env) funs in
-  let map,t' = rename_ext_funs funs' t in
+  then unsupported "Trans.make_ext_funs";
+  let map,t' = rename_ext_funs funs t in
   let defs1 = List.map make_ext_fun_def map in
-  let defs2 = List.map (fun (f,typ) -> f,[],Ref_type.generate typ) env in
-  make_lets defs2 @@ make_let defs1 t'
+  let genv,cenv,defs2 =
+    let aux (genv,cenv,defs) (f,typ) =
+      let genv',cenv',t = Ref_type.generate genv cenv typ in
+      let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
+      genv', cenv', (f',[],t)::defs
+    in
+    List.fold_left aux ([],[],[]) env
+  in
+  let defs = List.map snd (genv @ cenv) in
+  make_letrecs defs @@ make_lets defs2 @@ make_lets defs1 t'
 
 
 let assoc_typ = make_col2 [] (@@@)
@@ -1592,14 +1605,14 @@ let normalize_let_aux t =
   let post t' =
     match t'.desc with
     | BinOp _ | App _ | Tuple _ | Proj _ ->
-        let y = var_of_term t' in
+        let y = new_var_of_term t' in
         make_lets [y,[],t'] @@ make_var y
     | _ -> t'
   in
   match t.desc with
   | Var x -> x, post
   | _ ->
-     let x = var_of_term t in
+     let x = new_var_of_term t in
      let t' = normalize_let.tr_term t in
      let post' t'' = make_let [x,[],t'] @@ post t'' in
      x, post'
@@ -1684,7 +1697,7 @@ let decomp_pair_eq_term t =
             match t with
             | {desc=Var y} -> y, Std.identity
             | _ ->
-                let y = var_of_term t in
+                let y = new_var_of_term t in
                 y, make_let [y,[],t]
           in
           let y1,post1 = aux @@ decomp_pair_eq.tr_term t1 in
@@ -1992,7 +2005,7 @@ let flatten_tuple_term t =
   | Match _ -> unsupported "not implemented: flatten_tuple (match)"
   | Proj(i,t1) ->
       let t1' = flatten_tuple.tr_term t1 in
-      let x = Id.add_name_after (var_of_term t1') @@ string_of_int i in
+      let x = Id.add_name_after (new_var_of_term t1') @@ string_of_int i in
       let ns = List.map (fun typ -> match flatten_tuple.tr_typ typ with TTuple xs' -> List.length xs' | _ -> 1) @@ decomp_ttuple t1.typ in
       let rec new_pos i j acc ns =
         match ns with
@@ -2002,15 +2015,15 @@ let flatten_tuple_term t =
             then List.map ((+) acc) @@ List.fromto 0 n
             else new_pos i (j+1) (n+acc) ns'
       in
-      make_let [x,[],t1'] @@ make_tuple' @@ List.map (fun i -> make_proj' i @@ make_var x) @@ new_pos i 0 0 ns
+      make_let [x,[],t1'] @@ make_tuple' @@ List.map (make_proj' -$- make_var x) @@ new_pos i 0 0 ns
   | Tuple ts ->
       let ts' = List.map flatten_tuple.tr_term ts in
-      let xs' = List.map var_of_term ts' in
+      let xs' = List.map new_var_of_term ts' in
       let aux y t =
         let ys = match Id.typ y with TTuple ys -> ys | _ -> [y] in
         let aux2 i _ =
           let t = make_proj' i @@ make_var y in
-          let y' = var_of_term t in
+          let y' = new_var_of_term t in
           y', (y', [], t) in
         let ys',defs = List.split @@ List.mapi aux2 ys in
         make_lets defs,

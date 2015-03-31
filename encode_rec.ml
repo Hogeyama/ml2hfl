@@ -133,7 +133,7 @@ let abst_recdata_term t =
         let p',c',bind = abst_recdata_pat p in
         let t' = abst_recdata.tr_term t in
         let aux (t,p) t' =
-          make_match t [p, true_term, t'; make_pany p.pat_typ, true_term, make_loop t'.typ]
+          make_match t [p, true_term, t'; make_pany p.pat_typ, true_term, make_bottom t'.typ]
         in
         p', make_and c c', List.fold_right aux bind t'
       in
@@ -148,13 +148,17 @@ let () = abst_recdata.tr_term <- abst_recdata_term
 let () = abst_recdata.tr_typ <- abst_recdata_typ
 
 
+let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term_typ t
+
 let trans t =
   t
+  |@> pr "input"
   |> Trans.remove_top_por
+  |@> pr "remove_top_por"
   |@> Type_check.check -$- TUnit
   |> abst_recdata.tr_term
   |@> (fun _ -> typ_excep := abst_recdata.tr_typ !typ_excep)
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "abst_rec" Print.term_typ
+  |@> pr "abst_rec"
   |@> Type_check.check -$- TUnit
   |> Trans.simplify_match
   |@> Type_check.check -$- TUnit

@@ -30,7 +30,7 @@ and print_ids typ fm xs =
  *)
 and print_id = Id.print
 
-and print_id_typ fm x = fprintf fm "(%a:%a)" print_id x (Color.cyan print_typ) (Id.typ x)
+and print_id_typ fm x = fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
 
 (* priority (low -> high)
    10 : Let, Letrec, If, Match, TryWith
@@ -100,16 +100,29 @@ and print_attr fm = function
   | ATerminate -> fprintf fm "ATerminate"
   | ANotFail -> fprintf fm "ANotFail"
   | ADeterministic -> fprintf fm "ADeterministic"
+  | AComment s -> fprintf fm "AComment %S" s
 
 and ignore_attr_list = [ATerminate;ANotFail;ADeterministic]
 
 and print_attr_list fm attrs =
-  List.print print_attr fm @@ List.diff attrs ignore_attr_list
+  List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
 
 and print_term pri typ fm t =
-  if List.subset t.attr ignore_attr_list
-  then print_desc pri typ fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" (print_desc pri typ) t.desc print_attr_list t.attr
+  let decomp_comment a =
+    match a with
+    | AComment s -> Some s
+    | _ -> None
+  in
+  let pr fm desc =
+    let comments = List.filter_map decomp_comment t.attr in
+    if comments = []
+    then print_desc pri typ fm desc
+    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc pri typ) desc
+  in
+  let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
+  if List.Set.subset attr ignore_attr_list
+  then pr fm t.desc
+  else fprintf fm "(@[%a@ #@ %a@])" pr t.desc print_attr_list t.attr
 
 and print_desc pri typ fm desc =
   match desc with
@@ -137,7 +150,7 @@ and print_desc pri typ fm desc =
       let b = ref true in
       let print_binding fm (f,xs,t1) =
         let pre = if !b then "let" ^ s_rec else "and" in
-        fprintf fm "@[<hov 2>%s@ %a%a =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
+        fprintf fm "@[<hov 2>%s @[%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
         b := false
       in
       let print_bindings bs = print_list print_binding "" bs in
@@ -285,7 +298,7 @@ and print_pattern fm pat =
 let print_term typ fm = print_term 0 typ fm
 
 let rec print_term' pri fm t =
-  fprintf fm "(";(
+  fprintf fm "(@[";(
     match t.desc with
     | Const c -> print_const fm c
     | Var x when t.typ = Id.typ x -> print_id fm x
@@ -397,7 +410,7 @@ let rec print_term' pri fm t =
         let p = 4 in
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%sSome %a%s" s1 (print_term' 1) t s2
-  );fprintf fm ":%a)" (Color.cyan print_typ) t.typ
+  );fprintf fm ":@ @[%a@]@])" (Color.cyan print_typ) t.typ
 and print_pattern' fm pat =
   let rec aux fm pat =
     match pat.pat_desc with

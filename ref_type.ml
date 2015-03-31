@@ -3,6 +3,8 @@ open Util
 module S = Syntax
 module U = Term_util
 
+let debug () = List.mem "Ref_type" !Flag.debug_module
+
 type base =
   | Unit
   | Bool
@@ -22,8 +24,15 @@ type env = (S.id * t) list
 
 let _ExtArg x typ1 typ2 = ExtArg(x, typ1, typ2)
 
+let decomp_base typ =
+  match typ with
+  | Base(base,x,t) -> Some (base, x, t)
+  | _ -> None
+
+let is_base = Option.is_some -| decomp_base
+
 let is_fun_typ = function
-  | Fun(_,_,_) -> true
+  | Fun _ -> true
   | _ -> false
 
 let print_base fm = function
@@ -40,7 +49,7 @@ let rec occur x = function
   | Union typs -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | List(_,p_len,_,p_i,typ) ->
-      let aux p =  List.exists (Id.same x) @@ U.get_fv p in
+      let aux =  List.mem ~cmp:Id.eq x -| U.get_fv in
       aux p_len || aux p_i || occur x typ
 
 let rec print fm = function
@@ -176,43 +185,6 @@ let rename typ =
   typ'
 
 
-let to_abst_typ_base b =
-  match b with
-  | Unit -> Type.TUnit
-  | Bool -> Type.TBool
-  | Int -> Type.TInt
-  | Abst _ -> unsupported "to_abst_typ_base"
-
-let rec to_abst_typ typ =
-  match typ with
-  | Base(b, x, t) ->
-      let x' = Id.set_typ x @@ to_abst_typ_base b in
-      Type.TPred(x', Term_util.decomp_bexp t)
-  | Fun(x,typ1,typ2) ->
-      let x' = Id.set_typ x @@ to_abst_typ typ1 in
-      let typ2' = to_abst_typ typ2 in
-      Type.TFun(x', typ2')
-  | Tuple xtyps ->
-      Type.TTuple (List.map (fun (x,typ) -> Id.set_typ x @@ to_abst_typ typ) xtyps)
-  | Inter typs
-  | Union typs -> List.fold_right (Term_util.merge_typ -| to_abst_typ) typs Type.typ_unknown
-  | ExtArg _ -> unsupported "to_abst_typ"
-  | List _ -> unsupported "to_abst_typ"
-
-let rec set_base_var x = function
-  | Base(base, y, p) -> Base(base, x, U.subst_var y x p)
-  | Inter typs -> Inter (List.map (set_base_var x) typs)
-  | Union typs -> Union (List.map (set_base_var x) typs)
-  | typ -> typ
-let rec copy_fun_arg_to_base = function
-  | Base(base, x, p) -> Base(base, x, p)
-  | Fun(x,typ1,typ2) -> Fun(x, set_base_var x @@ copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
-  | Tuple xtyps -> Tuple (List.map (Pair.map_snd copy_fun_arg_to_base) xtyps)
-  | Inter typs -> Inter (List.map copy_fun_arg_to_base typs)
-  | Union typs -> Union (List.map copy_fun_arg_to_base typs)
-  | ExtArg(x,typ1,typ2) -> ExtArg(x, copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
-  | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, copy_fun_arg_to_base typ)
-
 let rec to_simple typ =
   match typ with
   | Base(Unit, _, _) -> Type.TUnit
@@ -228,116 +200,6 @@ let rec to_simple typ =
   | ExtArg _ -> assert false
   | List(_,_,_,_,typ) -> Type.TList (to_simple typ)
 
-
-let rec generate_check x typ =
-  match typ with
-  | Base(base, y, p) ->
-      U.subst_var y x p
-  | Fun(y,typ1,typ2) ->
-      let t_typ1 = generate typ1 in
-      let z = Id.new_var t_typ1.S.typ in
-      let t_typ2 = U.make_app (U.make_var x) [U.make_var z] in
-      let r = Id.new_var ~name:"r" t_typ2.S.typ in
-      let typ2' = subst_var y z typ2 in
-      U.make_lets [z,[],t_typ1; r,[],t_typ2] @@ generate_check r typ2'
-  | Tuple [y,typ1;_,typ2] ->
-      let t1 = U.make_fst @@ U.make_var x in
-      let t2 = U.make_snd @@ U.make_var x in
-      let x1 = U.var_of_term t1 in
-      let x2 = U.var_of_term t2 in
-      let typ2' = subst_var y x1 typ2 in
-      let t = U.make_and (generate_check x1 typ1) (generate_check x2 typ2') in
-      U.make_lets [x1,[],t1; x2,[],t2] t
-  | List(l,p_len,y,p_i,typ1) ->
-      if p_i.S.desc <> S.Const S.True || occur y typ1
-      then unsupported "Ref_type.generate_check"
-      else
-        let styp1 = to_simple typ1 in
-        let styp = to_simple typ in
-        let zs = Id.new_var ~name:"xs" styp in
-        let f = Id.new_var ~name:"check" (Type.TFun(zs,Type.TBool)) in
-        let pat_nil = U.make_pnil styp, U.true_term, U.true_term in
-        let z = Id.new_var ~name:"x" styp1 in
-        let zs' = Id.new_var ~name:"xs'" styp in
-        let t_b1 = generate_check z typ1 in
-        let len_def = [l, [], U.make_length @@ U.make_var x] in
-        if t_b1 = U.true_term
-        then
-          U.make_let len_def p_len
-        else
-          let t_b2 = U.make_app (U.make_var f) [U.make_var zs'] in
-          let pat_cons = U.make_pcons (U.make_pvar z) (U.make_pvar zs'), U.true_term, U.make_and t_b1 t_b2 in
-          let t = U.make_match (U.make_var zs) [pat_nil; pat_cons] in
-          U.make_letrec [f,[zs],t] @@ U.make_let len_def @@ U.make_and p_len @@ U.make_app (U.make_var f) [U.make_var zs]
-  | _ -> unsupported "Ref_type.generate_check"
-
-and generate_simple_aux typ =
-  match typ with
-  | Type.TInt -> U.randint_unit_term
-  | Type.TBool -> U.randbool_unit_term
-  | Type.TUnit -> U.unit_term
-  | Type.TFun(x,typ') ->
-      let x' = Id.new_var_id x in
-      U.make_fun x' @@ generate_simple typ'
-  | Type.TTuple xs ->
-      U.make_tuple @@ List.map (generate_simple -| Id.typ) xs
-  | Type.TList typ' ->
-      let open Type in
-      let open Term_util in
-      let u = Id.new_var ~name:"u" TUnit in
-      let f = Id.new_var ~name:("make_" ^ to_id_string typ') (TFun(u,typ)) in
-      let t_nil = make_nil typ' in
-      let t_cons = make_cons (generate_simple_aux typ') @@ make_app (make_var f) [unit_term] in
-      let t_body = make_br t_nil t_cons in
-      make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
-  | _ -> unsupported "Ref_type.generate_simple"
-
-and generate_simple typ =
-  U.make_br (U.make_fail typ) (generate_simple_aux typ)
-
-and generate typ =
-  match typ with
-  | Base(Int, x, p) ->
-      let x' = Id.new_var Type.TInt in
-      U.make_let [x',[],U.randint_unit_term] @@ U.make_assume (generate_check x' typ) @@ U.make_var x'
-  | Base(Bool, x, p) ->
-      let x' = Id.new_var Type.TBool in
-      U.make_let [x',[],U.randbool_unit_term] @@ U.make_assume (generate_check x' typ) @@ U.make_var x'
-  | Base(Unit, x, p) ->
-      U.make_assume (generate_check x typ) @@ U.unit_term
-  | Base(_, _, _) -> unsupported "Ref_type.generate: Base"
-  | Fun(x,typ1,typ2) ->
-      let x' = Id.new_var @@ to_simple typ1 in
-      let typ2' = subst_var x x' typ2 in
-      let t1 = U.make_or U.randbool_unit_term @@ generate_check x' typ1 in
-      let t2 = generate typ2' in
-      let t3 = generate_simple @@ to_simple typ2' in
-      U.make_fun x' @@ U.make_if t1 t2 t3
-  | Tuple [x,typ1;_,typ2] ->
-      let x' = Id.new_var @@ to_simple typ1 in
-      let typ2' = subst_var x x' typ2 in
-      let t1 = generate typ1 in
-      let t2 = generate typ2' in
-      U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
-  | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
-  | Inter typs -> unsupported "Ref_type.generate: Inter"
-  | Union typs -> unsupported "Ref_type.generate: Union"
-  | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
-  | List(x,p_len,y,p_i,typ') ->
-      if p_len.S.desc <> S.Const S.True || p_i.S.desc <> S.Const S.True || occur x typ' || occur x typ'
-      then unsupported "Ref_type.generate_check"
-      else
-        let open Type in
-        let open Term_util in
-        let styp = to_simple typ in
-        let u = Id.new_var ~name:"u" TUnit in
-        let f = Id.new_var ~name:("make_" ^ to_id_string styp) (TFun(u,styp)) in
-        let t_nil = make_nil2 styp in
-        let t_cons = make_cons (generate typ') @@ make_app (make_var f) [unit_term] in
-        let t_body = make_br t_nil t_cons in
-        make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
-
-
 let to_abst_typ_base b =
   match b with
   | Unit -> Type.TUnit
@@ -347,25 +209,337 @@ let to_abst_typ_base b =
 
 let rec to_abst_typ typ =
   match typ with
+  | Base(b, x, t) when t = U.true_term ->
+      to_abst_typ_base b
   | Base(b, x, t) ->
-      let x' = Id.set_typ x @@ to_abst_typ_base b in
-      Type.TPred(x', Term_util.decomp_bexp t)
+      let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ_base b in
+      let ps = Term_util.decomp_bexp @@ U.subst_var x x' t in
+      Type.TPred(x', ps)
   | Fun(x,typ1,typ2) ->
-      let x' = Id.set_typ x @@ to_abst_typ typ1 in
-      let typ2' = to_abst_typ typ2 in
+      let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ1 in
+      let typ2' = to_abst_typ @@ subst_var x x' typ2 in
       Type.TFun(x', typ2')
   | Tuple xtyps ->
-      Type.TTuple (List.map (fun (x,typ) -> Id.set_typ x @@ to_abst_typ typ) xtyps)
+      let aux (x,typ) xs =
+        let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ in
+        List.map (Id.map_typ @@ U.subst_type_var x x') (x'::xs)
+      in
+      Type.TTuple (List.fold_right aux xtyps [])
   | Inter typs
   | Union typs -> List.fold_right (Term_util.merge_typ -| to_abst_typ) typs Type.typ_unknown
-  | ExtArg _ -> unsupported "to_abst_typ"
-  | List _ -> unsupported "to_abst_typ"
+  | ExtArg _ -> unsupported "Ref_type.to_abst_typ"
+  | List(x,p_len,y,p_i,typ1) ->
+      if p_i.S.desc <> S.Const S.True || occur y typ1
+      then unsupported "Ref_type.to_abst_typ"
+      else
+        let typ1' = to_abst_typ typ1 in
+        let x' = Id.new_var ~name:"xs" @@ Type.TList typ1' in
+        if p_len = U.true_term
+        then Id.typ x'
+        else Type.TPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])
+
+let rec set_base_var x = function
+  | Base(base, y, p) -> Base(base, x, U.subst_var y x p)
+  | Inter typs -> Inter (List.map (set_base_var x) typs)
+  | Union typs -> Union (List.map (set_base_var x) typs)
+  | typ -> typ
+let rec copy_fun_arg_to_base = function
+  | Base(base, x, p) -> Base(base, x, p)
+  | Fun(x,typ1,typ2) -> Fun(x, set_base_var x @@ copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd copy_fun_arg_to_base) xtyps)
+  | Inter typs -> Inter (List.map copy_fun_arg_to_base typs)
+  | Union typs -> Union (List.map copy_fun_arg_to_base typs)
+  | ExtArg(x,typ1,typ2) -> ExtArg(x, copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
+  | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, copy_fun_arg_to_base typ)
 
 
-let test ()=
-  let x = Id.new_var Type.TInt in
-  let y = Id.new_var Type.TInt in
-  let r = Id.new_var Type.TInt in
-  let aux c z = U.make_geq (U.make_int c) (U.make_var z) in
-  Format.printf "TEST: %a@." print @@ List(x,aux 1 x,y,aux 2 y,Base(Int,r,aux 0 r));
-  exit 0
+let rec same typ1 typ2 =
+  match typ1,typ2 with
+  | Base(base1,x1,p1), Base(base2,x2,p2) -> base1 = base2 && U.same_term p1 @@ U.subst_var x2 x1 p2
+  | Fun(x1,typ11,typ12), Fun(x2,typ21,typ22) -> same typ11 typ21 && same typ12 @@ subst_var x2 x1 typ22
+  | Tuple xtyps1, Tuple xtyps2 ->
+      let typs1 = List.map snd xtyps1 in
+      let typs2 = List.map (fun (_,typ) -> List.fold_left2 (fun typ (x1,_) (x2,_) -> subst_var x2 x1 typ) typ xtyps1 xtyps2) xtyps2 in
+      List.eq ~cmp:same typs1 typs2
+  | Inter typs1, Inter typs2 -> List.eq ~cmp:same typs1 typs2
+  | Union typs1, Union typs2 -> List.eq ~cmp:same typs1 typs2
+  | ExtArg(x1,typ11,typ12), ExtArg(x2,typ21,typ22) -> same typ11 typ21 && same typ12 @@ subst_var x2 x1 typ22
+  | List(x1,p1_len,y1,p1_i,typ1), List(x2,p2_len,y2,p2_i,typ2) ->
+      U.same_term p1_len @@ U.subst_var x2 x1 p2_len &&
+      U.same_term p1_i @@ U.subst_var x2 x1 @@ U.subst_var y2 y1 p2_i &&
+      same typ1 @@ subst_var x2 x1 @@ subst_var y2 y1 typ2
+  | _ -> false
+
+let rec has_no_predicate typ =
+  match typ with
+  | Base(b, x, t) -> t = U.true_term
+  | Fun(x,typ1,typ2) -> has_no_predicate typ1 && has_no_predicate typ2
+  | Tuple xtyps -> List.for_all (has_no_predicate -| snd) xtyps
+  | Inter typs
+  | Union typs -> List.for_all has_no_predicate typs
+  | ExtArg _ -> unsupported "has_no_predicate"
+  | List(x,p_len,y,p_i,typ1) -> p_len = U.true_term && p_i = U.true_term && has_no_predicate typ1
+
+
+let rec make_rand typ =
+  match typ with
+  | Type.TVar {contents=None} -> unsupported "make_randue_base"
+  | Type.TVar {contents=Some typ} -> make_rand typ
+  | Type.TFun(x,typ) -> U.make_fun (Id.new_var_id x) @@ make_rand typ
+  | Type.TTuple xs -> U.make_tuple @@ List.map (make_rand -| Id.typ) xs
+  | Type.TConstr _ -> unsupported "make_rand"
+  | Type.TRef _ -> unsupported "make_rand"
+  | Type.TOption _ -> unsupported "make_rand"
+  | Type.TPred(x,_) -> make_rand @@ Id.typ x
+  | _ -> U.make_randvalue_unit typ
+
+
+let rec generate_check genv cenv x typ =
+  match typ with
+  | Base(base, y, p) ->
+      genv, cenv, U.subst_var y x p
+  | Fun(y,typ1,typ2) ->
+      let genv',cenv',t_typ1 = generate genv cenv typ1 in
+      let z = Id.new_var t_typ1.S.typ in
+      let t_typ2 = U.make_app (U.make_var x) [U.make_var z] in
+      let r = Id.new_var ~name:"r" t_typ2.S.typ in
+      let typ2' = subst_var y z typ2 in
+      let genv'',cenv'',t_typ2' = generate_check genv' cenv' r typ2' in
+      genv'', cenv'', U.make_lets [z,[],t_typ1; r,[],t_typ2] t_typ2'
+  | Tuple [y,typ1;_,typ2] ->
+      let t1 = U.make_fst @@ U.make_var x in
+      let t2 = U.make_snd @@ U.make_var x in
+      let x1 = U.new_var_of_term t1 in
+      let x2 = U.new_var_of_term t2 in
+      let typ2' = subst_var y x1 typ2 in
+      let genv',cenv',t_typ1 = generate genv cenv typ1 in
+      let genv'',cenv'',t_typ2 = generate genv' cenv' typ2' in
+      let t = U.make_and t_typ1 t_typ2 in
+      genv', genv'', U.make_lets [x1,[],t1; x2,[],t2] t
+  | List(l,p_len,y,p_i,typ1) when p_i.S.desc = S.Const S.True && not @@ occur y typ1 ->
+      let styp = to_simple typ in
+      let atyp1 = to_abst_typ typ1 in
+      let atyp = to_abst_typ typ in
+      let l' = Id.new_var ~name:"l" Type.TInt in
+      let add_len t =
+        let t' = U.make_and t @@ U.subst_var l l' p_len in
+        if t' = U.true_term
+        then U.true_term
+        else U.make_let [l',[],U.make_length @@ U.make_var x] t'
+      in
+      let typ1' = subst_var l l' typ1 in
+      let genv',cenv',t =
+        if List.mem_assoc ~cmp:same typ cenv
+        then
+          let f,_,_ = List.assoc ~cmp:same typ cenv in
+          genv, cenv, U.make_app (U.make_var f) [U.make_var x]
+        else
+          let zs = Id.new_var ~name:"xs" atyp in
+          let f = Id.new_var ~name:("check_" ^ Type.to_id_string styp) @@ Type.TFun(zs,Type.TBool) in
+          let z = Id.new_var ~name:"x" atyp1 in
+          let zs' = Id.new_var ~name:"xs'" atyp in
+          let genv',cenv',t_b1 = generate_check genv cenv z typ1' in
+          if t_b1 = U.true_term
+          then
+            genv', cenv', U.true_term
+          else
+            let t_body =
+              let pat_nil = U.make_pnil styp, U.true_term, U.true_term in
+              let pat_cons =
+                let t_b2 = U.make_app (U.make_var f) [U.make_var zs'] in
+                U.make_pcons (U.make_pvar z) (U.make_pvar zs'), U.true_term, U.make_and t_b1 t_b2
+              in
+              U.make_match (U.make_var zs) [pat_nil; pat_cons]
+            in
+            let def = f, [zs], U.add_comment (Format.asprintf "%a" print typ) t_body in
+            if debug() then Format.printf "CHECK: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
+            let t = U.make_app (U.make_var f) [U.make_var x] in
+            if List.Set.supset ~cmp:Id.eq [zs] @@ U.get_fv t_body
+            then genv'@[typ,def], cenv', t
+            else genv', cenv', U.make_letrec [def] t
+      in
+      genv', cenv', add_len t
+  | _ -> Format.printf "%a@." print typ; unsupported "Ref_type.generate_check"
+
+and generate_simple_aux typ =
+  match typ with
+  | Type.TInt -> U.randint_unit_term
+  | Type.TBool -> U.randbool_unit_term
+  | Type.TUnit -> U.unit_term
+  | Type.TFun(x,typ') -> U.make_fun (Id.new_var_id x) @@ generate_simple typ'
+  | Type.TTuple xs -> U.make_tuple @@ List.map (generate_simple -| Id.typ) xs
+  | Type.TList typ' ->
+      let open Type in
+      let open Term_util in
+      let u = Id.new_var ~name:"u" TUnit in
+      let f = Id.new_var ~name:("make_s_" ^ to_id_string typ) (TFun(u,typ)) in
+      let t_body =
+        let t_nil = make_nil typ' in
+        let t_cons = make_cons (generate_simple_aux typ') @@ make_app (make_var f) [unit_term] in
+        make_br t_nil t_cons
+      in
+      make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
+  | _ -> unsupported "Ref_type.generate_simple"
+
+and generate_simple typ = U.make_fail typ
+(*
+  U.make_br (U.make_fail typ) (generate_simple_aux typ)
+ *)
+
+and generate genv cenv typ =
+  if has_no_predicate typ
+  then genv, cenv, make_rand @@ to_simple typ
+  else
+    let genv',cenv',t =
+      match typ with
+      | Base(Int, x, p) ->
+          let x' = Id.new_var Type.TInt in
+          let genv',cenv',t_check = generate_check genv cenv x' typ in
+          genv', cenv', U.make_let [x',[],U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
+      | Base(Bool, x, p) ->
+          let x' = Id.new_var Type.TBool in
+          let genv',cenv',t_check = generate_check genv cenv x' typ in
+          genv', cenv', U.make_let [x',[],U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
+      | Base(Unit, x, p) ->
+          let genv',cenv',t_check = generate_check genv cenv x typ in
+          genv', cenv', U.make_assume t_check U.unit_term
+      | Base(_, _, _) -> unsupported "Ref_type.generate: Base"
+      | Fun(x,typ1,typ2) ->
+          let x' = Id.new_var @@ to_abst_typ typ1 in
+          let typ2' = subst_var x x' typ2 in
+          let genv',cenv',t_typ1 = generate_check genv cenv x' typ1 in
+          let t1 = U.make_or U.randbool_unit_term t_typ1 in
+          let genv'',cenv'',t2 = generate genv' cenv' typ2' in
+          let t3 = generate_simple @@ to_simple typ2' in
+          genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "%a" print typ2) @@ U.make_if t1 t2 t3
+      | Tuple [x,typ1;_,typ2] ->
+          let x' = Id.new_var ~name:(Id.name x) @@ to_simple typ1 in
+          let typ2' = subst_var x x' typ2 in
+          let genv',cenv',t1 = generate genv cenv typ1 in
+          let genv'',cenv'',t2 = generate genv' cenv' typ2' in
+          genv'', cenv'', U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
+      | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
+      | Inter typs -> unsupported "Ref_type.generate: Inter"
+      | Union typs -> unsupported "Ref_type.generate: Union"
+      | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
+      | List(x,p_len,y,p_i,typ') ->
+          if p_i.S.desc <> S.Const S.True || occur y typ'
+          then unsupported "Ref_type.generate"
+          else
+            let styp = to_simple typ in
+            let l = Id.new_var ~name:"l" Type.TInt in
+            let p_len' = U.subst_var x l p_len in
+            let genv',cenv',t =
+              if List.mem_assoc ~cmp:same typ genv
+              then
+                let f,_,_ = List.assoc ~cmp:same typ genv in
+                let t = U.make_app (U.make_var f) [U.make_var l] in
+                genv, cenv, t
+              else
+                let n = Id.new_var ~name:"n" Type.TInt in
+                let f = Id.new_var ~name:("make_r_" ^ Type.to_id_string styp) @@ Type.TFun(n, to_abst_typ typ) in
+                let t_nil = U.make_nil2 styp in
+                let genv',cenv',t_typ' = generate genv cenv typ' in
+                let t_cons = U.make_cons t_typ' @@ U.make_app (U.make_var f) [U.make_sub (U.make_var n) (U.make_int 1)] in
+                let t_b = U.make_leq (U.make_var n) (U.make_int 0) in
+                let def = f, [n], U.add_comment (Format.asprintf "%a" print typ) @@ U.make_if t_b t_nil t_cons in
+                let t = U.make_app (U.make_var f) [U.make_var l] in
+                if debug() then Format.printf "GEN: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
+                if List.Set.supset ~cmp:Id.eq [n] @@ U.get_fv @@ Triple.trd def
+                then genv'@[typ,def], cenv', t
+                else genv', cenv', U.make_letrec [def] t
+            in
+            genv', cenv', U.make_let [l,[],U.randint_unit_term] @@ U.make_assume p_len' t
+    in
+    genv', cenv', {t with S.typ = to_abst_typ typ}
+
+
+let conv = Fpat.Formula.of_term -| FpatInterface.of_typed_term
+let is_sat = FpatInterface.is_sat -| conv
+let is_valid = FpatInterface.is_valid -| conv
+let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
+
+let rec simplify_pred t =
+  if true
+  then
+    try
+      if not @@ is_sat t then
+        U.false_term
+      else if is_valid t then
+        U.true_term
+      else
+        match S.desc t with
+        | S.BinOp(S.And, t1, t2) ->
+            let t1' = simplify_pred t1 in
+            let t2' = simplify_pred t2 in
+            if implies [t1'] t2' then
+              t1'
+            else if implies [t2'] t1' then
+              t2'
+            else
+              U.make_and t1' t2'
+        | S.BinOp(S.Or, t1, t2) ->
+            let t1' = simplify_pred t1 in
+            let t2' = simplify_pred t2 in
+            if implies [t1'] t2' then
+              t2'
+            else if implies [t2'] t1' then
+              t1'
+            else
+              U.make_and t1' t2'
+        | _ -> t
+    with Unsupported _ -> t
+  else
+    FpatInterface.simplify_typed_term t
+
+let rec flatten typ =
+  match typ with
+  | Inter typs ->
+      let typs' = List.map flatten typs in
+      let typs'' = List.flatten_map (function Inter typs -> typs | typ -> [typ]) typs' in
+      Inter typs''
+  | Union typs ->
+      let typs' = List.map flatten typs in
+      let typs'' = List.flatten_map (function Union typs -> typs | typ -> [typ]) typs' in
+      Union typs''
+  | _ -> typ
+
+let rec simplify typ =
+  match flatten typ with
+  | Base(base, x, p) -> Base(base, x, simplify_pred p)
+  | Fun(x,typ1,typ2) ->
+      let typ1' = simplify typ1 in
+      if typ1' = Union []
+      then Inter []
+      else Fun(x, typ1', simplify typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd simplify) xtyps)
+  | Inter [] -> Inter []
+  | Inter typs ->
+      let typs' = List.map simplify typs in
+      if List.for_all is_base typs'
+      then
+        let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
+        let base = List.hd bs in
+        assert (List.for_all ((=) base) bs);
+        let x = List.hd xs in
+        let ts' = List.map2 (U.subst_var -$- x) xs ts in
+        Base(base, x, List.fold_left U.make_and U.true_term ts')
+      else flatten @@ Inter typs'
+  | Union [] -> Union []
+  | Union typs ->
+      let typs' = List.map simplify typs in
+      if List.for_all is_base typs'
+      then
+        let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
+        let base = List.hd bs in
+        assert (List.for_all ((=) base) bs);
+        let x = List.hd xs in
+        let ts' = List.map2 (U.subst_var -$- x) xs ts in
+        Base(base, x, List.fold_left U.make_or U.true_term ts')
+      else flatten @@ Union typs'
+  | ExtArg(x,typ1,typ2) -> ExtArg(x, simplify typ1, simplify typ2)
+  | List(x,p_len,y,p_i,typ) ->
+      let p_len' = simplify_pred p_len in
+      if p_len' = U.false_term
+      then Union []
+      else List(x, p_len', y, simplify_pred p_i, simplify typ)

@@ -18,16 +18,16 @@ let preprocess t spec =
     if !Flag.init_trans
     then
       let t = trans_and_print Trans.abst_ref "abst_ref" Fun.id t in
-      let t = t |& !Flag.base_to_int &> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
-      let t = t |& !Flag.tupling &> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in
-      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
-      let t = trans_and_print (Trans.make_ext_funs spec'.Spec.ext_ref_env) "make_ext_funs" Fun.id t in
+      let t = t |&!Flag.base_to_int&> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
+      let t = t |&!Flag.tupling&> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in
+      let ext_ref_env = Spec.get_ext_ref_env spec t |@not!Flag.only_result&> Spec.print_ext_ref_env Format.std_formatter in
+      let t = trans_and_print (Trans.make_ext_funs ext_ref_env) "make_ext_funs" Fun.id t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" Fun.id t in
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" Fun.id t in
       let fun_list = Term_util.get_top_funs t in
-      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_env) "add_preds" Fun.id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
-      let t = trans_and_print Encode_rec.trans "abst_recdata" Fun.id t in
+      let abst_env = Spec.get_abst_env spec t |@not!Flag.only_result&> Spec.print_abst_env Format.std_formatter in
+      let t = trans_and_print (Trans.replace_typ abst_env) "add_preds" Fun.id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
+      let t = trans_and_print Encode_rec.trans "encode_recdata" Fun.id t in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let get_rtyp = get_rtyp_list in
       let t,get_rtyp =
@@ -40,7 +40,8 @@ let preprocess t spec =
         else
           t, get_rtyp
       in
-      let t = trans_and_print (Trans.inlined_f spec'.Spec.inlined_f) "inline" Fun.id t in
+      let inlined_f = Spec.get_inlined_f spec t in
+      let t = trans_and_print (Trans.inlined_f inlined_f) "inline" Fun.id t in
       let t,get_rtyp =
         if !Flag.trans_to_CPS
         then
@@ -53,10 +54,10 @@ let preprocess t spec =
           t, get_rtyp
       in
       let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" Fun.id t in
-      let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
-      let t = trans_and_print (Trans.replace_typ spec'.Spec.abst_cps_env) "add_preds" Fun.id ~opt:(spec.Spec.abst_cps_env<>[]) t in
-      let t = t |& !Flag.elim_same_arg &> trans_and_print Elim_same_arg.trans "eliminate same arguments" Fun.id in
-      let t = t |& !Flag.insert_param_funarg &> trans_and_print Trans.insert_param_funarg "insert unit param" Fun.id in
+      let abst_cps_env = Spec.get_abst_cps_env spec t |@not!Flag.only_result&> Spec.print_abst_cps_env Format.std_formatter in
+      let t = trans_and_print (Trans.replace_typ abst_cps_env) "add_preds" Fun.id ~opt:(spec.Spec.abst_cps_env<>[]) t in
+      let t = t |&!Flag.elim_same_arg&> trans_and_print Elim_same_arg.trans "eliminate same arguments" Fun.id in
+      let t = t |&!Flag.insert_param_funarg&> trans_and_print Trans.insert_param_funarg "insert unit param" Fun.id in
 
       (* preprocess for termination mode *)
       let t =
@@ -84,8 +85,8 @@ let preprocess t spec =
   (**********************)
  *)
 
-  let spec' = Spec.rename spec t |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
-  let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:spec'.Spec.abst_cegar_env t in
+  let abst_cegar_env = Spec.get_abst_cegar_env spec t |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
+  let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:abst_cegar_env t in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
     if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
@@ -167,30 +168,32 @@ let report_safe env rmap get_rtyp orig t0 =
       Format.printf "  @[<v>%a@]@.@." Print.term t;
       Flag.web := false
     end;
-  if env' <> [] && not only_result_termination then Format.printf "Refinement Types:@.";
-  let env' = List.map (fun (f, typ) -> f, FpatInterface.simplify typ) env' in
-  let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
-  if not only_result_termination then List.iter pr env';
-  if env' <> [] && not only_result_termination then Format.printf "@.";
-
-  if !Flag.print_abst_typ && env' <> [] && not only_result_termination then
+  if env' <> [] && not only_result_termination then
     begin
-      Format.printf "Abstraction Types:@.";
-      let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Print.typ @@ Ref_type.to_abst_typ typ in
+      Format.printf "Refinement Types:@.";
+      let env' = List.map (Pair.map_snd Ref_type.simplify) env' in
+      let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
       List.iter pr env';
-      Format.printf "@."
-    end
+      Format.printf "@.";
+
+      if !Flag.print_abst_typ && env' <> [] && not only_result_termination then
+        begin
+          Format.printf "Abstraction Types:@.";
+          let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Print.typ @@ Ref_type.to_abst_typ typ in
+          List.iter pr env';
+          Format.printf "@."
+        end
+      end
 
 
-let report_unsafe main_fun arg_num ce set_target =
+let report_unsafe main ce set_target =
   (match !Flag.mode with
    | Flag.NonTermination -> Color.printf Color.Bright "Unknown.";
    | _ -> Color.printf Color.Bright "Unsafe!");
   Format.printf "@.@.";
-  if main_fun <> "" && arg_num <> 0
-  then
-    Format.printf "Input for %s:@.  %a@." main_fun
-      (print_list Format.pp_print_int "; ") (List.take arg_num ce);
+  Option.may (fun (main_fun, arg_num) ->
+              Format.printf "Input for %s:@.  %a@." main_fun
+                            (print_list Format.pp_print_int "; ") (List.take arg_num ce)) main;
   try
     Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_target)
   with Unsupported s -> Format.printf "@.Unsupported: %s@.@." s
@@ -224,8 +227,6 @@ let rec run_cegar prog =
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
           run_cegar prog
-      | Fpat.RefTypInfer.FailedToRefineTypes ->
-          raise Fpat.RefTypInfer.FailedToRefineTypes
       | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
           Fpat.RefTypInfer.params := [];
           Fpat.RefTypInfer.prev_sol := [];
@@ -236,15 +237,15 @@ let rec run_cegar prog =
 
 let rec run orig ?(spec=Spec.init) parsed =
   init ();
-  let main_fun,arg_num,set_target =
+  let main,set_target =
     match !Flag.cegar with
     | Flag.CEGAR_DependentType ->
         if spec.Spec.ref_env = []
-        then trans_and_print Trans.set_main "set_main" Triple.trd parsed
+        then trans_and_print Trans.set_main "set_main" snd parsed
         else
-          let spec' = Spec.rename spec parsed |@ not !Flag.only_result &> Spec.print Format.std_formatter in
-          "", 0, trans_and_print (Trans.ref_to_assert spec'.Spec.ref_env) "ref_to_assert" Fun.id parsed
-    | _ -> "", 0, parsed
+          let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
+          None, trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id parsed
+    | _ -> None, parsed
   in
   (** Unno: I temporally placed the following code here
             so that we can infer refinement types for a safe program
@@ -252,7 +253,7 @@ let rec run orig ?(spec=Spec.init) parsed =
   let t0 =
     if !Flag.relative_complete then
       let t = Trans.lift_fst_snd set_target in
-      let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG *)
+      let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG in exception handling *)
       if true && !Flag.debug_level > 0 then
         Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
                       (List.length !Fpat.RefTypInfer.params) Print.term t Print.term' t;
@@ -280,7 +281,7 @@ let rec run orig ?(spec=Spec.init) parsed =
         | _, CEGAR.Unsafe ce ->
             Flag.result := "Unsafe";
             if not !Flag.exp
-            then report_unsafe main_fun arg_num ce set_target;
+            then report_unsafe main ce set_target;
             false
       with
       | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->

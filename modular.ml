@@ -5,28 +5,38 @@ open Type
 
 let debug () = List.mem "Modular" !Flag.debug_module
 
-let replace_ext = make_trans2 ()
+let remove_ext_def = make_trans2 ()
 
-let replace_ext_desc ext desc =
+let remove_ext_def_desc ext desc =
   match desc with
   | Let(flag, bindings, t) ->
       let bindings' = List.filter_out (fun (f,_,_) -> Id.mem f ext) bindings in
-      let t' = replace_ext.tr2_term ext t in
+      let t' = remove_ext_def.tr2_term ext t in
       if bindings' = [] then t'.desc else Let(flag, bindings', t')
-  | _ -> replace_ext.tr2_desc_rec ext desc
+  | _ -> remove_ext_def.tr2_desc_rec ext desc
 
-let () = replace_ext.tr2_desc <- replace_ext_desc
-let replace_ext = replace_ext.tr2_term
+let () = remove_ext_def.tr2_desc <- remove_ext_def_desc
+let remove_ext_def = remove_ext_def.tr2_term
 
-let divide t spec =
+let divide spec t ref_env =
   Format.printf "PROGRAM: %a@." Print.term t;
   Format.printf "ORIG: %a@." (List.print Print.id) @@ get_top_funs t;
-  let ext = List.map fst spec.Spec.ref_env in
-  let t_main = replace_ext ext t in
+  let ext = List.map fst ref_env in
+  let t_main = remove_ext_def ext t in
   Format.printf "MAIN: %a@." (List.print Print.id) @@ get_top_funs t_main;
   let make_spec f =
-    let ref_env,ext_ref_env = List.partition (Id.same f -| fst) spec.Spec.ref_env in
-    let spec' = {spec with Spec.ref_env; Spec.ext_ref_env} in
+    let ref_env,ext_ref_env = List.partition (Id.same f -| fst) ref_env in
+    let aux (_,typ) =
+      if not @@ Type.same_shape (Id.typ f) (Ref_type.to_simple typ) then
+        begin
+          Format.printf "VAR: %a@." Id.print f;
+          Format.printf "  Prog: %a@." Print.typ @@ Id.typ f;
+          Format.printf "  Spec: %a@." Ref_type.print typ;
+          fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
+        end
+    in
+    List.iter aux ref_env;
+    let spec' = {spec with Spec.ref_env; Spec.ext_ref_env = ext_ref_env @ spec.Spec.ext_ref_env} in
     Format.printf "SUB[%a]: %a@." Print.id f Spec.print spec';
     spec'
   in
@@ -36,8 +46,12 @@ let divide t spec =
 
 
 let main orig spec parsed =
-  let spec' = Spec.rename spec parsed |@(not !Flag.only_result)&> Spec.print Format.std_formatter in
-  let targets = divide parsed spec' in
-  let verify (s,spec,t) = s, Main_loop.run orig ~spec t in
-  let b = List.for_all (verify |- snd) targets in
-  Format.printf "RESULT: %b@." b;b
+  let verify (s,spec,t) =
+    Format.printf "Start verification of %s: %a@." s Spec.print spec;
+    s, Main_loop.run orig ~spec t
+  in
+  Spec.get_ref_env spec parsed
+  |@(not !Flag.only_result)&> Spec.print_ref_env Format.std_formatter
+  |> divide spec parsed
+  |> List.for_all (verify |- snd)
+  |@> Format.printf "RESULT: %b@."

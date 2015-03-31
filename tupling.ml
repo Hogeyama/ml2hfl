@@ -431,17 +431,12 @@ let replace_app_term env t =
             | [_,apps2] -> apps2
             | _ -> assert false
           in
-          let cmp (i,_,t1) (j,_,t2) =
-            if i = j then
-              if same_term t1 t2 then 0 else 1
-            else
-              compare i j
-          in
-          let must = List.diff ~cmp apps1 apps2 in
+          let cmp (i,_,t1) (j,_,t2) = i = j && same_term t1 t2 in
+          let must = List.Set.diff ~cmp apps1 apps2 in
           let apps' = apps1 @@@ apps2 in
           let env' = (f,apps')::env2 in
           let used = List.filter (fun (i,x,_) -> is_used_in (make_proj i @@ make_var x) t2) apps' in
-          let must_but_not_used = List.diff ~cmp must used in
+          let must_but_not_used = List.Set.diff ~cmp must used in
           let t2' = replace_app.tr2_term env' t2 in
           if debug() then
             begin

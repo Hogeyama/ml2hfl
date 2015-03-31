@@ -12,11 +12,11 @@ let normalize_term t =
   | App(t1,ts) ->
       let t1' = normalize.tr_term t1 in
       let ts' = List.map normalize.tr_term ts in
-      let x = var_of_term t1 in
-      let xs = List.map var_of_term ts in
+      let x = new_var_of_term t1 in
+      let xs = List.map new_var_of_term ts in
       let aux (bindings,y) x =
         let t = make_app (make_var y) [make_var x] in
-        let z = var_of_term t in
+        let z = new_var_of_term t in
         bindings @ [z, [], t], z
       in
       let bindings,_ = List.fold_left aux ([],x) xs in
@@ -26,7 +26,7 @@ let normalize_term t =
       let t = make_lets bindings'' @@ make_var y in
       make_lets (List.rev @@ List.map2 (fun x t -> x, [], t) (x::xs) (t1'::ts')) t
   | If(t1,t2,t3) ->
-      let x = var_of_term t1 in
+      let x = new_var_of_term t1 in
       let t1' = normalize.tr_term t1 in
       let t2' = normalize.tr_term t2 in
       let t3' = normalize.tr_term t3 in
@@ -34,19 +34,19 @@ let normalize_term t =
   | BinOp(op,t1,t2) ->
       let t1' = normalize.tr_term t1 in
       let t2' = normalize.tr_term t2 in
-      let x1 = var_of_term t1 in
-      let x2 = var_of_term t2 in
+      let x1 = new_var_of_term t1 in
+      let x2 = new_var_of_term t2 in
       make_lets [x1,[],t1'; x2,[],t2'] @@ {desc=BinOp(op,make_var x1,make_var x2); typ=t.typ; attr=[]}
   | Not t1 ->
       let t1' = normalize.tr_term t1 in
-      let x = var_of_term t in
+      let x = new_var_of_term t in
       make_let [x, [], t1'] @@ make_not (make_var x)
   | Tuple ts ->
-      let xs,ts' = List.split_map (Pair.make var_of_term normalize.tr_term) ts in
+      let xs,ts' = List.split_map (Pair.make new_var_of_term normalize.tr_term) ts in
       make_lets (List.map2 (fun x t -> x,[],t) xs ts') @@ make_tuple @@ List.map make_var xs
   | Proj(i, t1) ->
       let t1' = normalize.tr_term t1 in
-      let x = var_of_term t1' in
+      let x = new_var_of_term t1' in
       make_let [x, [], t1'] @@ make_proj i (make_var x)
   | Nil
   | Cons _

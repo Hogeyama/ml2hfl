@@ -108,7 +108,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   if e <> [] && t1 <> Const True
   then
     let g = new_id "f" in
-    let fv = List.diff (get_fv t2') (List.map fst env) in
+    let fv = List.Set.diff (get_fv t2') (List.map fst env) in
     let t = assume env' [] pbs t1 (make_app (Var g) @@ List.map _Var fv) in
     [g,fv,Const True,e,t2'; f,xs,Const True,[],t]
   else
@@ -133,18 +133,16 @@ let abstract orig_fun_list prog =
 
 let abstract orig_fun_list force ?(top_funs=[]) prog =
   let tmp = get_time() in
-  let () =
-    if !Flag.print_progress
-    then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.cegar_loop
-  in
+  if !Flag.print_progress
+  then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.cegar_loop;
   let labeled,abst =
     if List.mem ACPS prog.attr
     then CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
     else abstract orig_fun_list prog
   in
-  let () = if debug() then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst in
-  let () = if !Flag.print_progress then Color.printf Color.Green "DONE!@.@." in
-  let () = add_time tmp Flag.time_abstraction in
+  if debug() then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
+  if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
+  add_time tmp Flag.time_abstraction;
   let abst',_,_ = CEGAR_trans.rename_prog abst in
   if !incr_wp_max && !prev_abst_defs = abst'.defs
   then raise NotRefined;

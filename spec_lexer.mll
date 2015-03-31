@@ -51,6 +51,7 @@ rule token = parse
 | "val" { VAL }
 | "valcps" { VALCPS }
 | "valcegar" { VALCEGAR }
+| "external" { EXTERNAL }
 | "true" { TRUE }
 | "false" { FALSE }
 | digit+

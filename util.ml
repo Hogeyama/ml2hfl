@@ -5,6 +5,7 @@ let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
 let invalid_argument s = raise (Invalid_argument s)
 
+let (!!) f = f ()
 let (-|) f g x = f (g x)
 let (|-) f g x = g (f x)
 let (|@>) x f = f x; x
@@ -14,7 +15,9 @@ let (|@*>) x f = x
 let assert_ f x = assert (f x)
 let assert_false _ = fatal "assert_false"
 let (|@) x b f = if b then f x; x
+let (|@!) x b f = if !b then f x; x
 let (|&) x b f = if b then f x else x
+let (|&!) x b f = if !b then f x else x
 let (&>) f x = f x
 (* usage: x |@flag&> print *)
 (* usage: x |&flag&> trans *)
@@ -98,7 +101,7 @@ module Pair = struct
     match xs with
     | [x;y] -> x,y
     | _ -> invalid_argument "Pair.of_list"
-  let print f g ppf (x,y) = Format.fprintf ppf "@[(%a,@ %a)@]" f x g y
+  let print f g ppf (x,y) = Format.fprintf ppf "@[(@[%a,@ %a@])@]" f x g y
 end
 
 module Triple = struct
@@ -116,7 +119,7 @@ module Triple = struct
     match xs with
     | [x;y;z] -> x,y,z
     | _ -> invalid_argument "Triple.of_list"
-  let print f g h ppf (x,y,w) = Format.fprintf ppf "@[(%a,@ %a,@ %a)@]" f x g y h w
+  let print f g h ppf (x,y,w) = Format.fprintf ppf "@[(@[%a,@ %a,@ %a@])@]" f x g y h w
 end
 
 module Quadruple = struct
@@ -181,7 +184,7 @@ module List = struct
 
   let rec init n f i acc_rev =
     if i >= n
-    then List.rev acc_rev
+    then rev acc_rev
     else init n f (i+1) (f i :: acc_rev)
   let init n f = init n f 0 []
 
@@ -204,16 +207,6 @@ module List = struct
     else
       tabulate (n-1) f (f n::rev_acc)
   let tabulate n f = tabulate n f []
-
-  let assoc_default k tbl x =
-    try
-      assoc k tbl
-    with Not_found -> x
-
-  let assoc_option k tbl =
-    try
-      Some (assoc k tbl)
-    with Not_found -> None
 
   let count f xs =
     fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
@@ -254,25 +247,70 @@ module List = struct
         in
         rev_filter_map acc' f xs'
   let rev_filter_map f xs = rev_filter_map [] f xs
-  let filter_map2 f xs ys = rev_filter_map Std.identity @@ List.rev_map2 f xs ys
+  let filter_map2 f xs ys = rev_filter_map Std.identity @@ rev_map2 f xs ys
   let rec filter_out f xs = filter (not -| f) xs
 
-  let rec rev_split acc1 acc2 xs =
-    match xs with
-    | [] -> acc1, acc2
-    | (x,y)::xs' -> rev_split (x::acc1) (y::acc2) xs'
-  let rev_split xs = rev_split [] [] xs
+  let rev_split xs = fold_left (fun (acc1,acc2) (x,y) -> x::acc1, y::acc2) ([],[]) xs
   let split_map f = rev_split -| rev_map f
 
-  let replace_nth xs i y = List.mapi (fun j x -> if j = i then y else x) xs
+  let split3 xs = fold_right (fun (x,y,z) (acc1,acc2,acc3) -> x::acc1, y::acc2, z::acc3) xs ([],[],[])
 
-  let same eq xs ys = List.length xs = List.length ys && List.for_all2 eq xs ys
+  let replace_nth xs i y = mapi (fun j x -> if j = i then y else x) xs
+  let update = replace_nth
+  let set = replace_nth
 
-  let diff ?(cmp=compare)  l1 l2 = filter (fun x -> for_all (fun y -> cmp x y <> 0) l2) l1
-  let inter ?(cmp=compare) l1 l2 = filter (fun x -> exists (fun y -> cmp x y = 0) l2) l1
-  let subset l1 l2 = for_all (fun x -> mem x l2) l1
-  let set_eq l1 l2 = subset l1 l2 && subset l2 l1
-  let union ?(cmp=compare) l1 l2 = fold_left (fun l x -> if exists (fun y -> cmp x y = 0) l then l else x::l) l2 l1
+  let mem ?(cmp=(=)) x xs = exists (cmp x) xs
+  let mem_on ?(cmp=(=)) f x xs =
+    let x' = f x in
+    exists (cmp x' -| f) xs
+
+  let find_eq_on ?(cmp=(=)) f x xs =
+    let x' = f x in
+    find (cmp x' -| f) xs
+
+  let assoc ?(cmp=(=)) x xs =
+    snd @@ find (cmp x -| fst) xs
+
+  let assoc_on ?(cmp=(=)) f x xs =
+    snd @@ find_eq_on ~cmp fst x xs
+
+  let mem_assoc ?(cmp=(=)) x xs =
+    try
+      ignore @@ assoc ~cmp x xs;
+      true
+    with Not_found -> false
+
+  let mem_assoc_on ?(cmp=(=)) f x xs =
+    try
+      ignore @@ assoc_on ~cmp f x xs;
+      true
+    with Not_found -> false
+
+  let find_default d f xs =
+    try
+      find f xs
+    with Not_found -> d
+
+  let assoc_default ?(cmp=(=)) x k tbl =
+    try
+      assoc ~cmp k tbl
+    with Not_found -> x
+
+  let assoc_option ?(cmp=(=)) k tbl =
+    try
+      Some (assoc ~cmp k tbl)
+    with Not_found -> None
+
+  let eq ?(cmp=(=)) xs ys = length xs = length ys && for_all2 cmp xs ys
+
+  module Set = struct
+    let diff ?(cmp=(=)) l1 l2 = filter_out (mem ~cmp -$- l2) l1
+    let inter ?(cmp=(=)) l1 l2 = filter (mem ~cmp -$- l2) l1
+    let subset ?(cmp=(=)) l1 l2 = for_all (mem ~cmp -$- l2) l1
+    let supset ?(cmp=(=)) l1 l2 = subset ~cmp l2 l1
+    let eq ?(cmp=(=)) l1 l2 = subset ~cmp l1 l2 && supset ~cmp l1 l2
+    let union ?(cmp=(=)) l1 l2 = rev_append l1 @@ diff ~cmp l2 l1
+  end
 end
 
 module Compare = struct

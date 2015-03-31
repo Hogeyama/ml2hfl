@@ -30,7 +30,8 @@ let rec check t typ =
       assert (rtyp = typ_result);
       check_var x TUnit;
       check_var k (TFun(Id.new_var TInt, typ_result))
-  | Const(RandValue(typ1,false)), TFun({Id.typ=TUnit},typ2) -> assert (Type.can_unify typ1 typ2)
+  | Const(RandValue(typ1,false)), TFun({Id.typ=TUnit},typ2) ->
+      assert (Type.can_unify typ1 typ2)
   | Const(RandValue(typ1,true)), TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2)) -> ()
   (*
       assert (rtyp1 = typ_result);
@@ -41,9 +42,9 @@ let rec check t typ =
   | Fun(x,t), TFun(y,typ') ->
       check_var x (Id.typ y);
       check t typ'
-  | App(t,ts), typ' ->
+  | App(t,ts) as t', typ' ->
       let rec aux = function
-          [], _ -> ()
+        | [], _ -> ()
         | t::ts, TFun(x,typ) ->
             check t (Id.typ x);
             aux (ts,typ)
@@ -59,8 +60,9 @@ let rec check t typ =
       check t3 typ'
   | Let(flag, bindings, t2), typ' ->
       let rec aux t = function
-          x::xs,TFun(y,typ) ->
-          check_var x (Id.typ y); aux t (xs,typ)
+        | x::xs,TFun(y,typ) ->
+            check_var x (Id.typ y);
+            aux t (xs,typ)
         | [],typ -> check t typ
         | x::[],typ ->
             let f,_,_ = List.hd bindings in

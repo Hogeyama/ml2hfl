@@ -190,8 +190,9 @@ and remove_pair_aux t typ_opt =
         | (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TConstr(_,false)) -> ()
         | (Eq | Lt | Gt | Leq | Geq), _ ->
             Format.printf "%a@." Print.typ t1.typ;
+            Format.printf "%a@." Print.typ t2.typ;
             Format.printf "%a@." Print.term' t;
-            raise (Fatal "Unsupported (polymorphic comparison)")
+            unsupported "polymorphic comparison"
         | _ -> ()
       end;
       let t1' = root @@ remove_pair_aux t1 None in
@@ -220,12 +221,12 @@ and remove_pair_aux t typ_opt =
       Format.printf "%a@." Print.term t;
       assert false
 
-and remove_pair t = root (remove_pair_aux t None)
+and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
 
 
 
 let remove_pair t =
   assert (List.mem ACPS t.attr);
-  let t' = {(remove_pair t) with attr=t.attr} in
+  let t' = remove_pair t in
   Type_check.check t' typ_result;
   t', uncurry_rtyp t

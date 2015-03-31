@@ -11,6 +11,7 @@ and attr =
   | ATerminate
   | ANotFail
   | ADeterministic
+  | AComment of string
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | Unit

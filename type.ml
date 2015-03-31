@@ -2,7 +2,7 @@
 open Util
 
 type 'a t =
-    TUnit
+  | TUnit
   | TBool
   | TAbsBool
   | TInt
@@ -33,7 +33,7 @@ let rec is_base_typ = function
   | TAbsBool
   | TInt
   | TRInt _ -> true
-  | TPred(x,_) -> is_base_typ (Id.typ x)
+  | TPred(x,_) -> is_base_typ @@ Id.typ x
   | _ -> false
 
 let elim_tpred = function
@@ -48,9 +48,7 @@ let rec elim_tpred_all = function
   | TRInt p -> TRInt p
   | TVar{contents=Some typ} -> elim_tpred_all typ
   | TVar r -> TVar r
-  | TFun(x, typ) ->
-      let x = Id.set_typ x @@ elim_tpred_all @@ Id.typ x in
-      TFun(x, elim_tpred_all typ)
+  | TFun(x, typ) -> TFun(Id.map_typ elim_tpred_all x, elim_tpred_all typ)
   | TList typ -> TList (elim_tpred_all typ)
   | TTuple xs -> TTuple (List.map (Id.map_typ elim_tpred_all) xs)
   | TConstr(s,b) -> TConstr(s,b)
@@ -66,8 +64,8 @@ let rec decomp_tfun = function
 
 let rec can_unify typ1 typ2 =
   match typ1,typ2 with
-  | TVar{contents=Some typ1},typ2
-  | typ1,TVar{contents=Some typ2} -> can_unify typ1 typ2
+  | TVar{contents=Some typ1}, typ2
+  | typ1, TVar{contents=Some typ2} -> can_unify typ1 typ2
   | TPred(x,_), typ
   | typ, TPred(x,_) -> can_unify (Id.typ x) typ
   | TUnit,TUnit -> true
@@ -79,8 +77,8 @@ let rec can_unify typ1 typ2 =
   | TRef typ1, TRef typ2 -> can_unify typ1 typ2
   | TOption typ1, TOption typ2 -> can_unify typ1 typ2
   | TTuple xs1, TTuple xs2 ->
-      List.length xs1 = List.length xs2
-      && List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2
+      List.length xs1 = List.length xs2 &&
+      List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2
   | TConstr("event",_), TFun _ -> true
   | TFun _, TConstr("event",_) -> true
   | TConstr(s1,_),TConstr(s2,_) -> s1 = s2
@@ -120,7 +118,7 @@ let rec print occur print_pred fm typ =
       Format.fprintf fm "(@[<hov 2>%a@])" (print_list pr "@ *@ ") xs
   | TConstr(s,_) -> Format.pp_print_string fm s
   | TRef typ -> Format.fprintf fm "@[%a ref@]" print' typ
-  | TPred(x,ps) -> Format.fprintf fm "@[%a[\\%a. %a]@]" print' (Id.typ x) Id.print x print_preds ps
+  | TPred(x,ps) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (Id.typ x) Id.print x print_preds ps
   | TOption typ -> Format.fprintf fm "@[%a option@]" print' typ
 
 let print ?(occur=fun _ _ -> false) print_pred fm typ =

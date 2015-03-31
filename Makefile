@@ -4,12 +4,11 @@ include Makefile.config
 
 PACKAGES = fpat,str,unix,csisat,extlib,compiler-libs.common
 
-INCLUDES =
 FPAT_SRC_DIR = ../fpat
 MOCHI_BIN_DIR = mochi_bin
 
-OCAMLCFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
-OCAMLOPTFLAGS = -g -annot $(INCLUDES) -package $(PACKAGES)
+OCAMLCFLAGS = -g -annot -package $(PACKAGES)
+OCAMLOPTFLAGS = -g -annot -package $(PACKAGES)
 
 DOC = doc
 
@@ -57,11 +56,11 @@ CMI = $(MLI:.mli=.cmi)
 CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	rose_tree.cmo id.cmo type.cmo syntax.cmo print.cmo		\
 	type_decl.cmo term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo	\
-	CEGAR_print.cmo typing.cmo ref_type.cmo spec.cmo		\
-	spec_parser.cmo spec_lexer.cmo type_check.cmo trans.cmo		\
-	lift.cmo CEGAR_ref_type.cmo CEGAR_util.cmo CEGAR_lift.cmo	\
-	slicer.cmo useless_elim.cmo inter_type.cmo type_trans.cmo	\
-	fpatInterface.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo		\
+	CEGAR_print.cmo typing.cmo type_check.cmo CEGAR_ref_type.cmo	\
+	CEGAR_util.cmo fpatInterface.cmo ref_type.cmo trans.cmo		\
+	lift.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
+	CEGAR_lift.cmo slicer.cmo useless_elim.cmo inter_type.cmo	\
+	type_trans.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo			\
 	parser_wrapper.cmo encode_list.cmo encode_rec.cmo		\
 	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
 	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\

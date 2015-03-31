@@ -34,33 +34,25 @@ let to_string x =
   else
     s
 
-let from_string s typ =
+let from_string name typ =
   try
-    let s1,s2 = String.rsplit s "_" in
+    let s1,s2 = String.rsplit name "_" in
     {id=int_of_string s2; name=s1; typ=typ}
-  with _ -> {id=0; name=s; typ=typ}
+  with _ -> {id=0; name; typ}
 
-let compare x y = compare (to_string x) (to_string y)
-let same x y = compare x y = 0
-let eq = same
+let compare x y = Compare.on to_string x y
+let eq x y = compare x y = 0
+let same = eq
 
-let set_name x name = {x with name=name}
-let set_typ x typ = {x with typ=typ}
+let set_name x name = {x with name}
+let set_typ x typ = {x with typ}
 
 let add_name_before x str = set_name x (str ^ name x)
 let add_name_after x str = set_name x (name x ^ str)
 
-let rec mem x = function
-  | [] -> false
-  | a::l -> same a x || mem x l
-
-let rec assoc x = function
-  | [] -> raise Not_found
-  | (a,b)::l -> if same x a then b else assoc x l
-
-let rec mem_assoc x = function
-  | [] -> false
-  | (a, b) :: l -> same a x || mem_assoc x l
+let mem x xs = List.mem ~cmp:eq x xs
+let assoc x xs = List.assoc ~cmp:eq x xs
+let mem_assoc x xs = List.mem_assoc ~cmp:eq x xs
 
 let print fm x =
   let s =

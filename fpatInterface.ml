@@ -5,6 +5,8 @@ open CEGAR_print
 open CEGAR_util
 open Fpat.Combinator
 
+module S = Syntax
+
 module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
@@ -98,6 +100,37 @@ let rec conv_term env t =
   | Let _ -> assert false
 
 let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
+
+let rec of_typed_term t =
+  match S.desc t with
+  | S.Const S.True -> Fpat.Term.mk_const @@ Fpat.Const.True
+  | S.Const S.False -> Fpat.Term.mk_const @@ Fpat.Const.False
+  | S.Const (S.Int n) -> Fpat.Term.mk_const @@ Fpat.Const.Int n
+  | S.Var x -> Fpat.Term.mk_var @@ Fpat.Idnt.make @@ Id.to_string x
+  | S.Not t1 -> Fpat.Term.mk_app (Fpat.Term.mk_const Fpat.Const.Not) [of_typed_term t1]
+  | S.BinOp(op, t1, t2) ->
+      let op' =
+        match op with
+        | S.Eq ->
+            begin
+              match S.typ t1 with
+              | Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
+              | Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
+              | typ when typ = Type.typ_unknown -> Fpat.Const.Eq Fpat.Type.mk_int
+              | _ -> unsupported "FpatInterface.of_typed_term"
+            end
+        | S.Lt -> Fpat.Const.Lt Fpat.Type.mk_int
+        | S.Gt -> Fpat.Const.Gt Fpat.Type.mk_int
+        | S.Leq -> Fpat.Const.Leq Fpat.Type.mk_int
+        | S.Geq -> Fpat.Const.Geq Fpat.Type.mk_int
+        | S.And -> Fpat.Const.And
+        | S.Or -> Fpat.Const.Or
+        | S.Add -> Fpat.Const.Add Fpat.Type.mk_int
+        | S.Sub -> Fpat.Const.Sub Fpat.Type.mk_int
+        | S.Mult -> Fpat.Const.Mul Fpat.Type.mk_int
+      in
+      Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_typed_term t1; of_typed_term t2]
+  | _ -> unsupported "FpatInterface.of_typed_term"
 
 let inv_const c =
   match c with
@@ -608,29 +641,13 @@ let simplify_term t =
 let simplify_typed_term p =
   { p with Syntax.desc = simplify_term p.Syntax.desc }
 
-let rec simplify typ =
-  match typ with
-  | Ref_type.Base(base, x, p) ->
-     Ref_type.Base(base, x, simplify_typed_term p)
-  | Ref_type.Fun(x,typ1,typ2) ->
-     Ref_type.Fun(x, simplify typ1, simplify typ2)
-  | Ref_type.Tuple xtyps ->
-     Ref_type.Tuple (List.map (fun (x,typ) -> x, simplify typ) xtyps)
-  | Ref_type.Inter typs ->
-     Ref_type.Inter (List.map simplify typs)
-  | Ref_type.Union typs ->
-     Ref_type.Union (List.map simplify typs)
-  | Ref_type.ExtArg(x,typ1,typ2) ->
-     Ref_type.ExtArg(x, simplify typ1, simplify typ2)
-  | Ref_type.List(x,p_len,y,p_i,typ) ->
-     Ref_type.List(x, simplify_typed_term p_len, y, simplify_typed_term p_i, typ)
-
 let compute_strongest_post prog ce ext_cex =
   Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce ext_cex
 
 
 let implies = Fpat.SMTProver.implies_dyn
 let is_sat = Fpat.SMTProver.is_sat_dyn
+let is_valid t = implies [Fpat.Formula.of_term @@ Fpat.Term.mk_const Fpat.Const.True] [t]
 let is_valid_forall_exists xs ys cond p =
   let open Fpat in
   let aux x = Idnt.make x, Type.mk_int in

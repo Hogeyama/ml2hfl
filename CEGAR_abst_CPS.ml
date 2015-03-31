@@ -285,7 +285,7 @@ and abstract_term must env cond pts t typ =
       then [Const Unit]
       else List.map (abst env cond pts) (ps t)
   | Var x when congruent env cond (List.assoc x env) typ ->
-      List.map (fun x -> Var x) (abst_arg x typ)
+      List.map _Var @@ abst_arg x typ
   | App(App(App(Const If, t1), t2), t3) ->
       let t1' = hd @@ abstract_term None env cond pts t1 typ_bool_id in
       let t2' = hd @@ abstract_term must env (t1::cond) pts t2 typ in
@@ -392,8 +392,8 @@ let abstract_def env (f,xs,t1,e,t2) =
   let typ,env' = decomp_typ (try List.assoc f env with Not_found -> assert false) xs in
   if debug() then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@@ env in
-  let pts = List.flatten_map (fun (x,typ) -> make_pts x typ) env' in
-  let xs' = List.flatten_map (fun (x,typ) -> abst_arg x typ) env' in
+  let pts = List.flatten_map (Fun.uncurry make_pts) env' in
+  let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
   if debug() then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
   if debug() then Flag.print_fun_arg_typ := true;
   if debug() then Format.printf "%s:: %a@." f CEGAR_print.term t2;
@@ -401,7 +401,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   let t2'' = eta_reduce_term t2' in
   if e <> [] && t1 <> Const True then
     let g = rename_id f in
-    let fv = List.diff (get_fv t2'') (List.map fst env) in
+    let fv = List.Set.diff (get_fv t2'') (List.map fst env) in
     [g, fv, Const True, e, t2'';
      f, xs', Const True, [], assume env' [] pts t1 @@ make_app (Var g) (List.map _Var fv)]
   else
@@ -468,7 +468,7 @@ let abstract_prog prog =
 let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
-  |& !Flag.expand_nonrec &> expand_nonrec orig_fun_list force
+  |&!Flag.expand_nonrec &> expand_nonrec orig_fun_list force
   |> CEGAR_trans.simplify_if
   |@ (debug() && !Flag.expand_nonrec) &> Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog
   |> eta_expand
@@ -476,7 +476,7 @@ let abstract orig_fun_list force prog top_funs =
   |> abstract_prog
   |@debug()&> Format.printf "ABST:@\n%a@." CEGAR_print.prog
   |> Typing.infer -| initialize_env
-  |@(!Flag.debug_abst)&> eval_step_by_step
+  |@!Flag.debug_abst&> eval_step_by_step
   |> CEGAR_lift.lift2
   |@debug()&> Format.printf "LIFT:@\n%a@." CEGAR_print.prog
   |> trans_eager

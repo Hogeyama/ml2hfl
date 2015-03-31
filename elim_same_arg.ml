@@ -83,7 +83,7 @@ let get_diff_args = make_col2 [] (@@@)
 
 let rec get_same_args env f t args =
   let diff_args = get_diff_args.col2_term (env,f) t in
-  let same_args = List.diff args diff_args in
+  let same_args = List.Set.diff args diff_args in
   if same_args = args
   then args
   else get_same_args env f t same_args
@@ -192,7 +192,7 @@ let trans_desc env desc =
           Color.printf Color.Reverse "]@."
         end;
       let elim_args = List.map snd same_args' in
-      let f' = Id.set_typ f @@ elim_arg_typ elim_args @@ Id.typ f in
+      let f' = Id.map_typ (elim_arg_typ elim_args) f in
       let xs' = elim_nth elim_args xs in
       let t1' = t1
                 |> trans.tr2_term (make_env xs same_args' @ env)

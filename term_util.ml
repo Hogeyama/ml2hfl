@@ -48,6 +48,7 @@ let make_event s = {desc=Event(s,false);typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=[]}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
+let make_string s = {desc=Const(String s); typ=TConstr("string",false); attr=const_attr}
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
 let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 let make_randvalue_cps typ =
@@ -86,8 +87,6 @@ let rec make_app t ts =
   | _ ->
       Format.printf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
       assert false
-let make_lets bindings t2 =
-  List.fold_right (fun binding t2 -> {desc=Let(Nonrecursive,[binding],t2); typ=t2.typ; attr=[]}) bindings t2
 let make_let_f flag bindings t2 =
   if bindings = []
   then t2
@@ -99,41 +98,43 @@ let make_let_f flag bindings t2 =
     in
     let bindings' = List.map aux bindings in
     {desc=Let(flag,bindings',t2); typ=t2.typ; attr=[]}
-let make_lets_f bindings t2 =
-  List.fold_right (fun (flag,binding) -> make_let_f flag [binding]) bindings t2
 let make_let bindings t2 = make_let_f Nonrecursive bindings t2
 let make_letrec bindings t2 = make_let_f Recursive bindings t2
+let make_lets bindings t2 =
+  List.fold_right (make_let -| List.singleton) bindings t2
+let make_letrecs bindings t2 =
+  List.fold_right (make_letrec -| List.singleton) bindings t2
+let make_lets_f bindings t2 =
+  List.fold_right (fun (flag,binding) -> make_let_f flag [binding]) bindings t2
 let make_seq t1 t2 =
   match t1.desc with
   | Const _
   | Var _ -> t2
   | _ -> make_let [Id.new_var ~name:"u" t1.typ, [], t1] t2
 let make_ignore t = make_seq t unit_term
-let make_loop typ =
-  let u = Id.new_var ~name:"u" TUnit in
-  let f = Id.new_var ~name:"loop" (TFun(u,typ)) in
-  let t = make_app (make_var f) [make_var u] in
-  make_letrec [f, [u], t] (make_app (make_var f) [unit_term])
 let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_not t = {desc=Not t; typ=TBool; attr=[]}
 let make_and t1 t2 =
-  if t1 = true_term then
-    t2
-  else if t1 = false_term then
+  if t1 = false_term then
     false_term
+  else if t1 = true_term then
+    t2
   else if t2 = true_term then
     t1
+  else if t2 = false_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
+    false_term
   else
     {desc=BinOp(And, t1, t2); typ=TBool; attr=[]}
 let make_or t1 t2 =
-  Format.printf "make_or (%a) (%a)@." Print.term t1 Print.term t2;
   if t1 = true_term then
-    true_term
-  else if t2 = true_term && List.subset [ANotFail;ATerminate] t1.attr then
     true_term
   else if t1 = false_term then
     t2
+  else if t2 = false_term then
+    t1
+  else if t2 = true_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
+    true_term
   else
     {desc=BinOp(Or, t1, t2); typ=TBool; attr=[]}
 let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=[]}
@@ -182,7 +183,7 @@ let make_geq t1 t2 =
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=[]}
 let make_ttuple typs =
   TTuple (List.map Id.new_var typs)
-let make_tuple ts = {desc=Tuple ts; typ=make_ttuple @@ List.map (fun t -> t.typ) ts; attr=[]}
+let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
 let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=[]}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=[]}
 let make_tpair typ1 typ2 = TTuple [Id.new_var typ1; Id.new_var typ2]
@@ -199,7 +200,7 @@ let make_ppair p1 p2 = {pat_desc=PTuple[p1;p2]; pat_typ=make_tpair p1.pat_typ p2
 let make_pnil typ = {pat_desc=PNil; pat_typ=TList typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
-let make_match t1 pats = {desc=Match(t1,pats); typ=(fun (_,_,t) -> t.typ) (List.hd pats); attr=[]}
+let make_match t1 pats = {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
 let make_single_match t1 p t2 =
   make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let rec make_nth i n t =
@@ -254,7 +255,7 @@ let make_eq_dec t1 t2 =
   k1 @@ k2 @@ make t1' t2'
 
 let make_length t =
-  make_app (make_var length_var) [t]
+  {(make_app (make_var length_var) [t]) with attr=[ANotFail;ATerminate]}
 
 let rec make_term typ =
   match elim_tpred typ with
@@ -690,7 +691,7 @@ let rec var_name_of_term t =
   | Fun _, _ -> assert false
   | _, _ -> "x"
 
-let var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
+let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
 let is_dependend t x = Id.mem x @@ get_fv t
 
@@ -797,3 +798,6 @@ let bool_of_term t =
   | Const True -> true
   | Const False -> false
   | _ -> invalid_argument "bool_of_term"
+
+let add_comment s t =
+  {t with attr = AComment s :: t.attr}

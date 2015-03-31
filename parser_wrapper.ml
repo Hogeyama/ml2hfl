@@ -27,6 +27,7 @@ let prim_typs =
 
 let conv_primitive_app t ts typ =
   match t.desc,ts with
+  | Var {Id.name="List.length"}, [t1] -> make_length t1
   | Var {Id.name="Pervasives.@@"}, [t1;t2] -> make_app t1 [t2]
   | Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
   | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
@@ -51,14 +52,13 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
   | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
   | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
-  | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> make_app randint_term [unit_term]
+  | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
   | Var {Id.name="Random.int"}, [t] ->
       let x = Id.new_var ~name:"n" TInt in
-      make_let [x, [], make_app randint_term [unit_term]] @@
-        make_if
+      make_let [x, [], randint_unit_term] @@
+        make_assume
           (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
           (make_var x)
-          (make_loop TInt)
   | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_app (make_event "newr") [unit_term]
   | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
   | _ -> make_app t ts
@@ -595,7 +595,7 @@ let from_top_level_phrase (env,defs) = function
               | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
             in
             [Decl_let(flag, List.map aux pats)]
-        | Tstr_primitive _ -> unsupported "external"
+        | Tstr_primitive(_,_,_) -> []
         | Tstr_type decls -> []
         | Tstr_exception(x,_,exc_decl) -> []
         | Tstr_exn_rebind _ -> unsupported "exception rebind"

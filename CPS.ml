@@ -293,7 +293,7 @@ let rec infer_effect env t =
   | Proj(i,t1) ->
       let typed = infer_effect env t1 in
       let typ = infer_effect_typ t1.typ in
-      let typ1 = match typ with TTupleCPS typs -> List.nth typs i | _ -> assert false in
+      let typ1 = match typ with TTupleCPS typs -> List.nth typs i | _ -> Format.printf "%a@." Print.term' t1; assert false in
       unify typed.typ_cps typ;
       {t_cps=ProjCPS(i,typed); typ_cps=typ1; typ_orig=t.typ; effect=typed.effect}
   | Tuple ts ->
@@ -385,7 +385,7 @@ let rec add_preds_cont_aux k t =
           in
           let t' =
             if t.desc = Var k
-            then make_var (Id.set_typ k (Id.typ x))
+            then make_var (Id.set_typ k @@ Id.typ x)
             else add_preds_cont_aux k t
           in
           typ', t'::ts
@@ -456,12 +456,12 @@ let rec trans_typ typ_orig typ =
       TFun(x, typ2')
   | TTuple xs, TTupleCPS typs ->
       TTuple (List.map2 (fun x typ -> Id.map_typ (trans_typ -$- typ) x) xs typs)
-  | TPred(x,ps), typ -> TPred(Id.set_typ x (trans_typ (Id.typ x) typ), ps)
+  | TPred(x,ps), typ -> TPred(Id.map_typ (trans_typ -$- typ) x, ps)
   | _ ->
       Format.printf "%a,%a@." Print.typ typ_orig print_typ_cps typ;
       raise (Fatal "bug? (CPS.trans_typ)")
 
-let trans_var x = Id.set_typ x.id_cps (trans_typ (Id.typ x.id_cps) x.id_typ)
+let trans_var x = Id.map_typ (trans_typ -$- x.id_typ) x.id_cps
 let trans_var' x typ = (* for predicates *)
   let x' = trans_var x in
   if same_shape typ @@ Id.typ x'

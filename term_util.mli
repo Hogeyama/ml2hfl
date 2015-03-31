@@ -29,15 +29,16 @@ val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term
+val make_string : string -> typed_term
 val make_randvalue : typ -> typed_term
 val make_randvalue_unit : typ -> typed_term
 val make_randvalue_cps : typ -> typed_term
 val make_randint_cps : bool -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
-val make_loop : typ -> typed_term
 val make_fail : typ -> typed_term
 val make_let : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets : (id * id list * typed_term) list -> typed_term -> typed_term
+val make_letrecs : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_letrec : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_let_f : rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets_f : (rec_flag * (id * id list * typed_term)) list -> typed_term -> typed_term
@@ -67,7 +68,6 @@ val make_nil2 : typ -> typed_term
 val make_cons : typed_term -> typed_term -> typed_term
 val make_match : typed_term -> (typed_pattern * typed_term * typed_term) list -> typed_term
 val make_single_match : typed_term -> typed_pattern -> typed_term -> typed_term
-val make_loop : typ -> typed_term
 val make_nth : int -> int -> typed_term -> typed_term
 val make_seq : typed_term -> typed_term -> typed_term
 val make_ignore : typed_term -> typed_term
@@ -100,6 +100,7 @@ val make_deref : typed_term -> typed_term
 val make_setref : typed_term -> typed_term -> typed_term
 val make_construct : string -> typed_term list -> typed_term
 val make_length : typed_term -> typed_term
+val new_var_of_term : typed_term -> id
 
 (** {6 Term destructor} *)
 val is_none : typed_term -> bool
@@ -149,3 +150,4 @@ val col_info_id : typed_term -> id list
 val is_bottom_def : Syntax.rec_flag -> id -> id list -> Syntax.typed_term -> bool
 val decomp_bexp : typed_term -> typed_term list
 val merge_typ : typ -> typ -> typ
+val add_comment : string -> typed_term -> typed_term

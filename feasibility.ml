@@ -147,7 +147,7 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
       let solution = get_solution env' constr in
 (* @master branch
       let env' = List.sort ~cmp:(Compare.on fst) env' in
-      let solution = List.map (fun (x,_) -> List.assoc_default x solution 0) env'' in
+      let solution = List.map (fun (x,_) -> List.assoc_default 0 x solution) env'' in
 *)
       FeasibleNonTerm (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', solution)
     else Infeasible prefix

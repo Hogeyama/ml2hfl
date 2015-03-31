@@ -29,6 +29,7 @@ and attr =
   | ATerminate
   | ANotFail
   | ADeterministic
+  | AComment of string
 
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and term =
@@ -72,7 +73,7 @@ and mutable_flag = Immutable | Mutable
 
 
 and type_kind =
-    KAbstract
+  | KAbstract
   | KVariant of (string * typ list) list
   | KRecord of (string * (mutable_flag * typ)) list
 
@@ -80,7 +81,7 @@ and pred = term
 
 and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =
-    PAny
+  | PAny
   | PVar of id
   | PAlias of typed_pattern * id
   | PConst of typed_term
@@ -126,7 +127,7 @@ let trans_typ trans = function
   | TRInt p -> TRInt (trans.tr_term p)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> trans.tr_typ typ
-  | TFun(x,typ) -> TFun(Id.set_typ x (trans.tr_typ (Id.typ x)), trans.tr_typ typ)
+  | TFun(x,typ) -> TFun(Id.map_typ trans.tr_typ x, trans.tr_typ typ)
   | TList typ -> TList (trans.tr_typ typ)
   | TTuple xs -> TTuple (List.map trans.tr_var xs)
   | TConstr(s,b) -> TConstr(s,b)
@@ -134,7 +135,7 @@ let trans_typ trans = function
   | TRef typ -> TRef (trans.tr_typ typ)
   | TOption typ -> TOption (trans.tr_typ typ)
 
-let trans_var trans x = Id.set_typ x (trans.tr_typ (Id.typ x))
+let trans_var trans x = Id.map_typ trans.tr_typ x
 
 let trans_pat trans p =
   let typ = trans.tr_typ p.pat_typ in
@@ -279,7 +280,7 @@ let trans2_gen_typ tr env = function
   | TRInt p -> TRInt (tr.tr2_term env p)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> tr.tr2_typ env typ
-  | TFun(x,typ) -> TFun(Id.set_typ x (tr.tr2_typ env (Id.typ x)), tr.tr2_typ env typ)
+  | TFun(x,typ) -> TFun(Id.map_typ (tr.tr2_typ env) x, tr.tr2_typ env typ)
   | TList typ -> TList (tr.tr2_typ env typ)
   | TTuple xs -> TTuple (List.map (tr.tr2_var env) xs)
   | TConstr(s,b) -> TConstr(s,b)
@@ -287,7 +288,7 @@ let trans2_gen_typ tr env = function
   | TRef typ -> TRef (tr.tr2_typ env typ)
   | TOption typ -> TOption (tr.tr2_typ env typ)
 
-let trans2_gen_var tr env x = Id.set_typ x (tr.tr2_typ env (Id.typ x))
+let trans2_gen_var tr env x = Id.map_typ (tr.tr2_typ env) x
 
 let trans2_gen_pat tr env p =
   let typ = tr.tr2_typ env p.pat_typ in
@@ -313,7 +314,7 @@ let trans2_gen_info tr env = function
   | InfoString s -> InfoString s
   | InfoId x -> InfoId (tr.tr2_var env x)
   | InfoTerm t -> InfoTerm (tr.tr2_term env t)
-  | InfoIdTerm(x, t) ->  InfoIdTerm(tr.tr2_var env x, tr.tr2_term env t)
+  | InfoIdTerm(x, t) -> InfoIdTerm(tr.tr2_var env x, tr.tr2_term env t)
 
 let trans2_gen_const tr env = function
   | Unit -> Unit
@@ -1320,7 +1321,7 @@ let occur = make_col2 false (||)
 
 let occur_typ x typ =
   match typ with
-  | TPred(y,ps) -> List.exists (fun p -> List.exists (Id.same x) (get_fv p)) ps || occur.col2_var x y
+  | TPred(y,ps) -> List.exists (List.exists (Id.same x) -| get_fv) ps || occur.col2_var x y
   | _ -> occur.col2_typ_rec x typ
 
 let () = occur.col2_typ <- occur_typ
