@@ -136,7 +136,7 @@ val max_pat_num : typed_term -> int
 val is_value : typed_term -> bool
 val is_simple_aexp : typed_term -> bool
 val is_simple_bexp : typed_term -> bool
-val is_dependend : typed_term -> id -> bool
+val depends : typed_term -> id -> bool
 val is_poly_typ : typ -> bool
 val is_id_unique : typed_term -> bool
 val occur : id -> typ -> bool

@@ -693,7 +693,7 @@ let rec var_name_of_term t =
 
 let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
-let is_dependend t x = Id.mem x @@ get_fv t
+let depends t x = Id.mem x @@ get_fv t
 
 
 

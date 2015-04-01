@@ -105,8 +105,8 @@ let rec print occur print_pred fm typ =
         | [] -> print' fm typ
         | x::xs' ->
             if occur x typ || List.exists (occur x) (List.map Id.typ xs)
-            then Format.fprintf fm "@[<hov 2>%a:%a@ ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
-            else Format.fprintf fm "@[<hov 2>%a@ ->@ %a@]" print' (Id.typ x) aux (xs',typ)
+            then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
+            else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print' (Id.typ x) aux (xs',typ)
       in
       Format.fprintf fm "(%a)" aux @@ decomp_tfun typ
   | TList typ -> Format.fprintf fm "@[%a list@]" print' typ

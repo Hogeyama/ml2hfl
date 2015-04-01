@@ -303,17 +303,21 @@ let rec generate_check genv cenv x typ =
       let z = Id.new_var t_typ1.S.typ in
       let t_typ2 = U.make_app (U.make_var x) [U.make_var z] in
       let r = Id.new_var ~name:"r" t_typ2.S.typ in
-      let typ2' = subst_var y z typ2 in
-      let genv'',cenv'',t_typ2' = generate_check genv' cenv' r typ2' in
+      let genv'',cenv'',t_typ2' =
+        let typ2' = subst_var y z typ2 in
+        generate_check genv' cenv' r typ2'
+      in
       genv'', cenv'', U.make_lets [z,[],t_typ1; r,[],t_typ2] t_typ2'
   | Tuple [y,typ1;_,typ2] ->
       let t1 = U.make_fst @@ U.make_var x in
       let t2 = U.make_snd @@ U.make_var x in
       let x1 = U.new_var_of_term t1 in
       let x2 = U.new_var_of_term t2 in
-      let typ2' = subst_var y x1 typ2 in
       let genv',cenv',t_typ1 = generate genv cenv typ1 in
-      let genv'',cenv'',t_typ2 = generate genv' cenv' typ2' in
+      let genv'',cenv'',t_typ2 =
+        let typ2' = subst_var y x1 typ2 in
+        generate genv' cenv' typ2'
+      in
       let t = U.make_and t_typ1 t_typ2 in
       genv', genv'', U.make_lets [x1,[],t1; x2,[],t2] t
   | List(l,p_len,y,p_i,typ1) when p_i.S.desc = S.Const S.True && not @@ occur y typ1 ->
@@ -351,10 +355,10 @@ let rec generate_check genv cenv x typ =
               in
               U.make_match (U.make_var zs) [pat_nil; pat_cons]
             in
-            let def = f, [zs], U.add_comment (Format.asprintf "%a" print typ) t_body in
+            let def = f, [zs], U.add_comment (Format.asprintf "CHECK: %a" print typ) t_body in
             if debug() then Format.printf "CHECK: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
             let t = U.make_app (U.make_var f) [U.make_var x] in
-            if List.Set.supset ~cmp:Id.eq [zs] @@ U.get_fv t_body
+            if List.Set.supset ~cmp:Id.eq [zs;U.length_var;f] @@ U.get_fv t_body
             then genv'@[typ,def], cenv', t
             else genv', cenv', U.make_letrec [def] t
       in
@@ -399,7 +403,7 @@ and generate genv cenv typ =
       | Base(Bool, x, p) ->
           let x' = Id.new_var Type.TBool in
           let genv',cenv',t_check = generate_check genv cenv x' typ in
-          genv', cenv', U.make_let [x',[],U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
+          genv', cenv', U.make_let [x',[],U.randbool_unit_term] @@ U.make_assume t_check @@ U.make_var x'
       | Base(Unit, x, p) ->
           let genv',cenv',t_check = generate_check genv cenv x typ in
           genv', cenv', U.make_assume t_check U.unit_term
@@ -411,7 +415,7 @@ and generate genv cenv typ =
           let t1 = U.make_or U.randbool_unit_term t_typ1 in
           let genv'',cenv'',t2 = generate genv' cenv' typ2' in
           let t3 = generate_simple @@ to_simple typ2' in
-          genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "%a" print typ2) @@ U.make_if t1 t2 t3
+          genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "GEN FUN: %a" print typ2) @@ U.make_if t1 t2 t3
       | Tuple [x,typ1;_,typ2] ->
           let x' = Id.new_var ~name:(Id.name x) @@ to_simple typ1 in
           let typ2' = subst_var x x' typ2 in
@@ -442,7 +446,7 @@ and generate genv cenv typ =
                 let genv',cenv',t_typ' = generate genv cenv typ' in
                 let t_cons = U.make_cons t_typ' @@ U.make_app (U.make_var f) [U.make_sub (U.make_var n) (U.make_int 1)] in
                 let t_b = U.make_leq (U.make_var n) (U.make_int 0) in
-                let def = f, [n], U.add_comment (Format.asprintf "%a" print typ) @@ U.make_if t_b t_nil t_cons in
+                let def = f, [n], U.add_comment (Format.asprintf "GEN LIST: %a" print typ) @@ U.make_if t_b t_nil t_cons in
                 let t = U.make_app (U.make_var f) [U.make_var l] in
                 if debug() then Format.printf "GEN: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
                 if List.Set.supset ~cmp:Id.eq [n] @@ U.get_fv @@ Triple.trd def

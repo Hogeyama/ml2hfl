@@ -30,7 +30,6 @@ val inlined_f : id list -> typed_term -> typed_term
 val lift_fst_snd : typed_term -> typed_term
 val expand_let_val : typed_term -> typed_term
 val simplify_match : typed_term -> typed_term
-val should_insert : typ list -> bool
 val insert_param_funarg : typed_term -> typed_term
 val search_fail : typed_term -> int list list
 val screen_fail : int list -> typed_term -> typed_term
@@ -63,3 +62,4 @@ val inline_next_redex : typed_term -> typed_term
 val beta_var_tuple : typed_term -> typed_term
 val beta_no_effect_tuple : typed_term -> typed_term
 val reduce_bottom : typed_term -> typed_term
+val merge_bound_var_typ : (id * typ) list -> typed_term -> typed_term

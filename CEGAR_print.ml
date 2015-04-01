@@ -53,8 +53,8 @@ and print_typ_aux var fm = function
             let var' = Some(x, occur_arg_pred x typ2) in
             begin
               match typ2 with
-              | TFun _ -> Format.fprintf fm "%s@[%a@ ->@ %a@]%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
-              | _ -> Format.fprintf fm "%s%a@ ->@ %a%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+              | TFun _ -> Format.fprintf fm "%s@[%a ->@ %a@]%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
+              | _ -> Format.fprintf fm "%s%a ->@ %a%s" s1 (print_typ_aux var') typ1 (aux false) typ2 s2
             end
         | typ -> print_typ_aux None fm typ
       in

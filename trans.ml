@@ -297,7 +297,6 @@ let inst_randval t =
 
 
 
-
 let rec get_last_definition f t =
   match t.desc with
   | Let(_, bindings, t2) ->
@@ -343,23 +342,6 @@ let set_main t =
       in
       let t'' = inst_randval t' in
       Some (Id.name f, List.length xs), t''
-
-let ref_to_assert ref_env t =
-  let aux (f, typ) =
-    if not @@ Type.same_shape (Id.typ f) (Ref_type.to_simple typ) then
-      begin
-        Format.printf "VAR: %a@." Id.print f;
-        Format.printf "  Prog: %a@." Print.typ @@ Id.typ f;
-        Format.printf "  Spec: %a@." Ref_type.print typ;
-        fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
-      end;
-    let genv',cenv',t_typ = Ref_type.generate_check [] [] f typ in
-    let defs = List.map snd (genv' @ cenv') in
-    make_letrecs defs @@ make_assert t_typ
-  in
-  let main = List.fold_right make_seq (List.map aux ref_env) unit_term in
-  replace_main main t
-
 
 
 
@@ -2113,3 +2095,52 @@ let reduce_bottom_term t =
 
 let () = reduce_bottom.tr_term <- reduce_bottom_term
 let reduce_bottom = reduce_bottom.tr_term
+
+
+
+let merge_bound_var_typ = make_trans2 ()
+
+let merge_bound_var_typ_desc map desc =
+  match desc with
+  | Let(flag,bindings,t) ->
+      let aux (f,xs,t) =
+        let f' =
+          try
+            let typ = Id.assoc f map in
+            Id.map_typ (merge_typ typ) f
+          with Not_found -> f
+        in
+        let t' = merge_bound_var_typ.tr2_term map t in
+        f', xs, t'
+      in
+      let bindings' = List.map aux bindings in
+      let t' = merge_bound_var_typ.tr2_term map t in
+      Let(flag, bindings', t')
+  | _ -> merge_bound_var_typ.tr2_desc_rec map desc
+
+let () = merge_bound_var_typ.tr2_desc <- merge_bound_var_typ_desc
+let merge_bound_var_typ map t =
+  t
+  |> merge_bound_var_typ.tr2_term map
+  |> propagate_typ_arg
+
+
+
+let ref_to_assert ref_env t =
+  let main =
+    let aux (f, typ) =
+      if not @@ Type.same_shape (Id.typ f) (Ref_type.to_simple typ) then
+        begin
+          Format.printf "VAR: %a@." Id.print f;
+          Format.printf "  Prog: %a@." Print.typ @@ Id.typ f;
+          Format.printf "  Spec: %a@." Ref_type.print typ;
+          fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
+        end;
+      let genv',cenv',t_typ = Ref_type.generate_check [] [] f typ in
+      let defs = List.map snd (genv' @ cenv') in
+      make_letrecs defs @@ make_assert t_typ
+    in
+    List.fold_right (make_seq -| aux) ref_env unit_term
+  in
+  let map = List.map (Pair.map_snd Ref_type.to_abst_typ) ref_env in
+  merge_bound_var_typ map @@ replace_main main t

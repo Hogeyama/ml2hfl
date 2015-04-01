@@ -19,11 +19,11 @@ let () = remove_ext_def.tr2_desc <- remove_ext_def_desc
 let remove_ext_def = remove_ext_def.tr2_term
 
 let divide spec t ref_env =
-  Format.printf "PROGRAM: %a@." Print.term t;
-  Format.printf "ORIG: %a@." (List.print Print.id) @@ get_top_funs t;
+  if !!debug then Format.printf "PROGRAM: %a@." Print.term t;
+  if !!debug then Format.printf "ORIG: %a@." (List.print Print.id) @@ get_top_funs t;
   let ext = List.map fst ref_env in
   let t_main = remove_ext_def ext t in
-  Format.printf "MAIN: %a@." (List.print Print.id) @@ get_top_funs t_main;
+  if !!debug then Format.printf "MAIN: %a@." (List.print Print.id) @@ get_top_funs t_main;
   let make_spec f =
     let ref_env,ext_ref_env = List.partition (Id.same f -| fst) ref_env in
     let aux (_,typ) =
@@ -37,21 +37,22 @@ let divide spec t ref_env =
     in
     List.iter aux ref_env;
     let spec' = {spec with Spec.ref_env; Spec.ext_ref_env = ext_ref_env @ spec.Spec.ext_ref_env} in
-    Format.printf "SUB[%a]: %a@." Print.id f Spec.print spec';
+    if !!debug then Format.printf "SUB[%a]: %a@." Print.id f Spec.print spec';
     spec'
   in
   let targets = List.map (fun f -> Id.to_string f, make_spec f, t) ext in
-  Format.printf "MAIN: %a@." Print.term t_main;
+  if !!debug then Format.printf "MAIN: %a@." Print.term t_main;
   ("MAIN", make_spec (Id.new_var ~name:"MAIN" TUnit), t_main)::targets
 
 
 let main orig spec parsed =
   let verify (s,spec,t) =
-    Format.printf "Start verification of %s: %a@." s Spec.print spec;
+    if !!debug then Format.printf "Start verification of %s:@.%a@." s Spec.print spec;
     s, Main_loop.run orig ~spec t
   in
   Spec.get_ref_env spec parsed
   |@(not !Flag.only_result)&> Spec.print_ref_env Format.std_formatter
   |> divide spec parsed
-  |> List.for_all (verify |- snd)
-  |@> Format.printf "RESULT: %b@."
+  |> List.map verify
+  |@> Format.printf "RESULT: %a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_bool)
+  |> List.for_all snd

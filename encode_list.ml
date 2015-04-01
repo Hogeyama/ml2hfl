@@ -135,7 +135,9 @@ let abst_list = make_trans2 ()
 let abst_list_typ post typ =
   match typ with
   | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
-  | TList typ -> TTuple[Id.new_var ~name:"l" TInt; Id.new_var @@ TFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
+  | TList typ ->
+      let l = Id.new_var ~name:"l" TInt in
+      TTuple[l; Id.new_var @@ TFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
   | _ -> abst_list.tr2_typ_rec post typ
 
 let rec get_match_bind_cond t p =
@@ -178,7 +180,12 @@ let print_bind fm bind =
 
 let rec make_rand typ =
   match typ with
-  | TList typ' -> make_pair randint_unit_term @@ make_fun (Id.new_var TInt) @@ make_rand typ'
+  | TList typ' ->
+      let l = Id.new_var ~name:"l" TInt in
+      make_let [l, [], randint_unit_term] @@
+        make_assume
+          (make_leq (make_int 0) (make_var l))
+          (make_pair (make_var l) @@ make_fun (Id.new_var TInt) @@ make_rand typ')
   | _ -> make_randvalue_unit typ
 
 let abst_list_term post t =

@@ -17,7 +17,9 @@ let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
+(*
       let t = trans_and_print Trans.abst_ref "abst_ref" Fun.id t in
+ *)
       let t = t |&!Flag.base_to_int&> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
       let t = t |&!Flag.tupling&> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in
       let ext_ref_env = Spec.get_ext_ref_env spec t |@not!Flag.only_result&> Spec.print_ext_ref_env Format.std_formatter in
