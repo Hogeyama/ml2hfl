@@ -149,66 +149,6 @@ let unify_pattern_var = unify_pattern_var.col_term
 
 
 
-let copy_poly_funs = make_trans ()
-
-let copy_poly_funs_desc desc =
-  match desc with
-  | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
-      let tvars = get_tvars (Id.typ f) in
-      assert (tvars <> []);
-      let t2' = copy_poly_funs.tr_term t2 in
-      let t2'' = inst_tvar_tunit t2' in
-      let map,t2''' = rename_poly_funs f t2'' in
-      let n = List.length map in
-      if debug() && n >= 2
-      then
-        begin
-          Format.printf "COPY: @[";
-          List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map;
-          Format.printf "@.";
-        end;
-      if map = []
-      then (inst_tvar_tunit (make_let_f flag [f, xs, copy_poly_funs.tr_term t1] t2')).desc
-      else
-        let aux t (_,f') =
-          let tvar_map = List.map (fun v -> v, ref None) tvars in
-          Type.unify (rename_tvar.tr2_typ tvar_map @@ Id.typ f) (Id.typ f');
-          let xs = List.map (rename_tvar.tr2_var tvar_map) xs in
-          let t1 = rename_tvar.tr2_term tvar_map t1 in
-          let t1 =
-            match flag with
-            | Nonrecursive -> t1
-            | Recursive -> subst_var f f' t1
-          in
-          let t1 = copy_poly_funs.tr_term t1 in
-          let t1 = alpha_rename t1 in
-          make_let_f flag [f', xs, t1] t
-        in
-        (List.fold_left aux t2''' map).desc
-  | Let(flag, defs, t) ->
-      if List.for_all (not -| is_poly_typ -| Id.typ -| Triple.fst) defs
-      then
-        let defs' = List.map (Triple.map_trd copy_poly_funs.tr_term) defs in
-        Let(flag, defs', copy_poly_funs.tr_term t)
-      else
-        raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations.")
-  | _ -> copy_poly_funs.tr_desc_rec desc
-
-let () = copy_poly_funs.tr_desc <- copy_poly_funs_desc
-let copy_poly_funs t =
-  t
-  |@> unify_pattern_var
-  |> copy_poly_funs.tr_term
-  |> flatten_tvar
-  |@> Type_check.check -$- Type.TUnit
-
-
-
-
-
-
-
-
 
 
 
@@ -295,53 +235,6 @@ let inst_randval t =
   make_letrec defs t'
 
 
-
-
-let rec get_last_definition f t =
-  match t.desc with
-  | Let(_, bindings, t2) ->
-      let f,_,_ = List.last bindings in
-      get_last_definition (Some f) t2
-  | Fun _ -> assert false
-  | _ -> f
-
-
-
-
-let rec replace_main main t =
-  match t.desc with
-  | Let(flag, bindings, t2) ->
-      make_let_f flag bindings @@ replace_main main t2
-  | _ ->
-      assert (t = unit_term);
-      main
-
-
-let set_main t =
-  match get_last_definition None t with
-  | None ->
-      let u = Id.new_var ~name:"main" t.typ in
-      None, make_let [u, [], t] unit_term
-  | Some f ->
-      let xs = get_args (Id.typ f) in
-      let t' =
-        if xs = [] && Id.typ f = TUnit
-        then replace_main (make_var f) t
-        else
-          let aux i x =
-            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-            let t = make_randvalue_unit @@ Id.typ x in
-            x', [], t
-          in
-          let bindings = List.mapi aux xs in
-          let main = make_app (make_var f) @@ List.map make_var @@ List.map Triple.fst bindings in
-          let main = make_lets bindings main in
-          let u = Id.new_var ~name:"main" main.typ in
-          let main = make_let [u, [], main] unit_term in
-          replace_main main t
-      in
-      let t'' = inst_randval t' in
-      Some (Id.name f, List.length xs), t''
 
 
 
@@ -2124,6 +2017,111 @@ let merge_bound_var_typ map t =
   |> merge_bound_var_typ.tr2_term map
   |> propagate_typ_arg
 
+
+
+let copy_poly_funs = make_trans ()
+
+let copy_poly_funs_desc desc =
+  match desc with
+  | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
+      let tvars = get_tvars (Id.typ f) in
+      assert (tvars <> []);
+      let t2' = copy_poly_funs.tr_term t2 in
+      let t2'' = inst_tvar_tunit t2' in
+      let map,t2''' = rename_poly_funs f t2'' in
+      let n = List.length map in
+      if debug() && n >= 2
+      then
+        begin
+          Format.printf "COPY: @[";
+          List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map;
+          Format.printf "@.";
+        end;
+      if map = []
+      then (inst_tvar_tunit (make_let_f flag [f, xs, copy_poly_funs.tr_term t1] t2')).desc
+      else
+        let aux t (_,f') =
+          let tvar_map = List.map (fun v -> v, ref None) tvars in
+          Type.unify (rename_tvar.tr2_typ tvar_map @@ Id.typ f) (Id.typ f');
+          let xs = List.map (rename_tvar.tr2_var tvar_map) xs in
+          let t1 = rename_tvar.tr2_term tvar_map t1 in
+          let t1 =
+            match flag with
+            | Nonrecursive -> t1
+            | Recursive -> subst_var f f' t1
+          in
+          let t1 = copy_poly_funs.tr_term t1 in
+          let t1 = alpha_rename t1 in
+          make_let_f flag [f', xs, t1] t
+        in
+        (List.fold_left aux t2''' map).desc
+  | Let(flag, defs, t) ->
+      if List.for_all (not -| is_poly_typ -| Id.typ -| Triple.fst) defs
+      then
+        let defs' = List.map (Triple.map_trd copy_poly_funs.tr_term) defs in
+        Let(flag, defs', copy_poly_funs.tr_term t)
+      else
+        raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations.")
+  | _ -> copy_poly_funs.tr_desc_rec desc
+
+let () = copy_poly_funs.tr_desc <- copy_poly_funs_desc
+let copy_poly_funs t =
+  t
+  |@> unify_pattern_var
+  |> copy_poly_funs.tr_term
+  |> flatten_tvar
+  |> inline_var_const
+  |@> Type_check.check -$- Type.TUnit
+
+
+
+
+let rec get_last_definition f t =
+  match t.desc with
+  | Let(_, bindings, t2) ->
+      let f,_,_ = List.last bindings in
+      get_last_definition (Some f) t2
+  | Fun _ -> assert false
+  | _ -> f
+
+
+
+
+let rec replace_main main t =
+  match t.desc with
+  | Let(flag, bindings, t2) ->
+      make_let_f flag bindings @@ replace_main main t2
+  | _ ->
+      assert (t = unit_term);
+      main
+
+
+let set_main t =
+  match get_last_definition None t with
+  | None ->
+      let u = Id.new_var ~name:"main" t.typ in
+      None, make_let [u, [], t] unit_term
+  | Some f ->
+      let xs = get_args (Id.typ f) in
+      let t' =
+        if xs = [] && Id.typ f = TUnit
+        then replace_main (make_var f) t
+        else
+          let aux i x =
+            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+            let t = make_randvalue_unit @@ Id.typ x in
+            x', [], t
+          in
+          let bindings = List.mapi aux xs in
+          let main = make_app (make_var f) @@ List.map make_var @@ List.map Triple.fst bindings in
+          let main = make_lets bindings main in
+          let u = Id.new_var ~name:"main" main.typ in
+          let main = make_let [u, [], main] unit_term in
+          replace_main main t
+      in
+      let t'' = inst_randval t' in
+      Some (Id.name f, List.length xs), t''
+let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
 let ref_to_assert ref_env t =
