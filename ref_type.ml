@@ -22,18 +22,21 @@ type t =
 
 type env = (S.id * t) list
 
+let _Inter typs = Inter typs
+let _Union typs = Union typs
 let _ExtArg x typ1 typ2 = ExtArg(x, typ1, typ2)
 
 let decomp_base typ =
   match typ with
   | Base(base,x,t) -> Some (base, x, t)
   | _ -> None
+let decomp_fun typ =
+  match typ with
+  | Fun(x,typ1,typ2) -> Some (x, typ1, typ2)
+  | _ -> None
 
 let is_base = Option.is_some -| decomp_base
-
-let is_fun_typ = function
-  | Fun _ -> true
-  | _ -> false
+let is_fun = Option.is_some -| decomp_fun
 
 let print_base fm = function
   | Unit -> Format.pp_print_string fm "unit"
@@ -147,7 +150,7 @@ let rec rename var = function
   | Base(base, x, p) ->
       let x' = Option.default (Id.new_var_id x) var in
       Base(base, x', U.subst_var x x' p)
-  | Fun(x, typ1, (Fun(_, typ, _) as typ2)) when !Flag.web && is_fun_typ typ ->
+  | Fun(x, typ1, (Fun(_, typ, _) as typ2)) when !Flag.web && is_fun typ ->
       let x' = Id.new_var ~name:("@" ^ Id.name x) (Id.typ x) in
       let typ2' = subst_var x x' typ2 in
       Fun(x', rename (Some x') typ1, rename None typ2')
@@ -490,7 +493,7 @@ let rec simplify_pred t =
             else if implies [t2'] t1' then
               t1'
             else
-              U.make_and t1' t2'
+              U.make_or t1' t2'
         | _ -> t
     with Unsupported _ -> t
   else
@@ -508,9 +511,49 @@ let rec flatten typ =
       Union typs''
   | _ -> typ
 
-let rec simplify typ =
+let rec simplify_typs constr and_or typs =
+  let decomp typ =
+    match typ with
+    | Inter typs -> typs
+    | Union typs -> typs
+    | _ -> assert false
+  in
+  let rec aux typs =
+    match typs with
+    | [] -> []
+    | typ::typs' ->
+        if List.exists (same typ) typs' then
+          aux typs'
+        else
+          typ :: aux typs'
+  in
+  let typs' = decomp @@ flatten @@ constr @@ aux @@ List.map simplify typs in
+  if List.for_all is_base typs' then
+    let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
+    let base = List.hd bs in
+    assert (List.for_all ((=) base) bs);
+    let x = List.hd xs in
+    let ts' = List.map2 (U.subst_var -$- x) xs ts in
+    Base(base, x, List.fold_left and_or U.true_term ts')
+(*
+  else if List.for_all is_fun typs' then
+    let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
+    if List.for_all (same @@ List.hd typs1) @@ List.tl typs1 then
+      let x = List.hd xs in
+      let typs2' = List.map2 (subst_var -$- x) xs typs2 in
+    else
+      flatten @@ constr typs'
+*)
+  else
+    flatten @@ constr typs'
+
+and simplify typ =
   match flatten typ with
-  | Base(base, x, p) -> Base(base, x, simplify_pred p)
+  | Base(base, x, p) ->
+      let p' = simplify_pred p in
+      if p' = U.false_term
+      then Union []
+      else Base(base, x, p')
   | Fun(x,typ1,typ2) ->
       let typ1' = simplify typ1 in
       if typ1' = Union []
@@ -518,29 +561,9 @@ let rec simplify typ =
       else Fun(x, typ1', simplify typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd simplify) xtyps)
   | Inter [] -> Inter []
-  | Inter typs ->
-      let typs' = List.map simplify typs in
-      if List.for_all is_base typs'
-      then
-        let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
-        let base = List.hd bs in
-        assert (List.for_all ((=) base) bs);
-        let x = List.hd xs in
-        let ts' = List.map2 (U.subst_var -$- x) xs ts in
-        Base(base, x, List.fold_left U.make_and U.true_term ts')
-      else flatten @@ Inter typs'
+  | Inter typs -> simplify_typs _Inter U.make_and typs
   | Union [] -> Union []
-  | Union typs ->
-      let typs' = List.map simplify typs in
-      if List.for_all is_base typs'
-      then
-        let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
-        let base = List.hd bs in
-        assert (List.for_all ((=) base) bs);
-        let x = List.hd xs in
-        let ts' = List.map2 (U.subst_var -$- x) xs ts in
-        Base(base, x, List.fold_left U.make_or U.true_term ts')
-      else flatten @@ Union typs'
+  | Union typs -> simplify_typs _Union U.make_or typs
   | ExtArg(x,typ1,typ2) -> ExtArg(x, simplify typ1, simplify typ2)
   | List(x,p_len,y,p_i,typ) ->
       let p_len' = simplify_pred p_len in

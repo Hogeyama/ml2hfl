@@ -99,7 +99,7 @@ let rec eval_print fm rands t =
       let subst' (x,v) t =
         match flag with
         | Nonrecursive -> subst x (fun_info x v) t
-        | Recursive -> subst x (fix x (fun_info x v)) t
+        | Recursive -> subst x (fix x @@ fun_info x v) t
       in
       eval_print fm rands' (List.fold_right subst' vs t2)
   | BinOp(And, t1, t2) ->
@@ -164,9 +164,9 @@ let rec eval_print fm rands t =
   | Match(t1,pat::pats) ->
       let rec check v p =
         match v.desc, p.pat_desc with
-        | _, PAny -> Some Std.identity
+        | _, PAny -> Some Fun.id
         | _, PVar x -> Some (subst x v)
-        | _, PConst v' -> if v = v' then Some Std.identity else None
+        | _, PConst v' -> if v = v' then Some Fun.id else None
         | _, PAlias(p,x) ->
             begin
               match check v p with
@@ -185,8 +185,8 @@ let rec eval_print fm rands t =
                     | None -> None
                     | Some f' -> Some (f -| f')
               in
-              List.fold_left2 aux (Some Std.identity) vs ps
-        | Nil, PNil -> Some (fun t -> t)
+              List.fold_left2 aux (Some Fun.id) vs ps
+        | Nil, PNil -> Some Fun.id
         | Cons(v1,v2), PCons(p1,p2) ->
             begin
               match check v1 p1, check v2 p2 with
@@ -208,7 +208,7 @@ let rec eval_print fm rands t =
               | None -> check v p2
               | Some f -> Some f
             end
-        | _ -> None
+        | _ -> assert false
       in
       let rands',v = eval_print fm rands t1 in
       let p,cond,t = pat in
