@@ -40,3 +40,5 @@ wiki/
 .omakedb.lock
 \#*
 *.smt
+*.byt
+*.bin

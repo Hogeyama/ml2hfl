@@ -6,7 +6,7 @@ open CEGAR_util
 let cegar prog0 labeled info is_cp ce prog =
   let (cexs, ext_cexs) =
     match ce with
-    | ModelCheck.CEHorSat(cexs, ext_cexs) -> cexs, ext_cexs
+    | ModelCheck.CENonTerm(cexs, ext_cexs) -> cexs, ext_cexs
     | _ -> assert false
   in
   let map_randint_to_preds = make_map_randint_to_preds prog0 in

@@ -64,5 +64,4 @@ let print fm x =
   assert (s <> "");
   Format.pp_print_string fm s
 
-let map_typ f {id; name; typ} =
-  {id; name; typ=f typ}
+let map_typ f x = {x with typ = f x.typ}

@@ -130,7 +130,7 @@ let trans_typ trans = function
   | TFun(x,typ) -> TFun(Id.map_typ trans.tr_typ x, trans.tr_typ typ)
   | TList typ -> TList (trans.tr_typ typ)
   | TTuple xs -> TTuple (List.map trans.tr_var xs)
-  | TConstr(s,b) -> TConstr(s,b)
+  | TData(s,b) -> TData(s,b)
   | TPred(x,ps) -> TPred(trans.tr_var x, List.map trans.tr_term ps)
   | TRef typ -> TRef (trans.tr_typ typ)
   | TOption typ -> TOption (trans.tr_typ typ)
@@ -283,7 +283,7 @@ let trans2_gen_typ tr env = function
   | TFun(x,typ) -> TFun(Id.map_typ (tr.tr2_typ env) x, tr.tr2_typ env typ)
   | TList typ -> TList (tr.tr2_typ env typ)
   | TTuple xs -> TTuple (List.map (tr.tr2_var env) xs)
-  | TConstr(s,b) -> TConstr(s,b)
+  | TData(s,b) -> TData(s,b)
   | TPred(x,ps) -> TPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
   | TRef typ -> TRef (tr.tr2_typ env typ)
   | TOption typ -> TOption (tr.tr2_typ env typ)
@@ -437,7 +437,7 @@ let col_typ col = function
   | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
   | TList typ -> col.col_typ typ
   | TTuple xs -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs
-  | TConstr(s,b) -> col.col_empty
+  | TData(s,b) -> col.col_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_term p) (col.col_var x) ps
   | TRef typ -> col.col_typ typ
   | TOption typ -> col.col_typ typ
@@ -592,7 +592,7 @@ let col2_typ col env = function
   | TFun(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
   | TList typ -> col.col2_typ env typ
   | TTuple xs -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs
-  | TConstr(s,b) -> col.col2_empty
+  | TData(s,b) -> col.col2_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_term env p) (col.col2_var env x) ps
   | TRef typ -> col.col2_typ env typ
   | TOption typ -> col.col2_typ env typ
@@ -761,7 +761,7 @@ let tr_col2_typ tc env = function
   | TTuple xs ->
       let acc,xs' = tr_col2_list tc tc.tr_col2_var ~init:tc.tr_col2_empty env xs in
       acc, TTuple xs'
-  | TConstr(s,b) -> tc.tr_col2_empty, TConstr(s,b)
+  | TData(s,b) -> tc.tr_col2_empty, TData(s,b)
   | TPred(x,ps) ->
       let acc,x' = tc.tr_col2_var env x in
       let acc',ps' = tr_col2_list tc tc.tr_col2_term ~init:acc env ps in
@@ -1036,7 +1036,7 @@ let fold_tr_typ fld env = function
   | TTuple xs ->
       let env',xs' = fold_tr_list fld fld.fold_tr_var env xs in
       env', TTuple xs'
-  | TConstr(s,b) -> env, TConstr(s,b)
+  | TData(s,b) -> env, TData(s,b)
   | TPred(x,ps) ->
       let env',x' = fld.fold_tr_var env x in
       let env'',ps' = fold_tr_list fld fld.fold_tr_term env' ps in

@@ -7,6 +7,8 @@ type prerules = prerule list
 type transition = (string * string) * string list
 type transitions = transition list
 
+type result = Safe of (string * Inter_type.t) list | Unsafe of (string * int) list | TimeOut
+
 let string_of_head h =
   match h with
     Name(s) -> s

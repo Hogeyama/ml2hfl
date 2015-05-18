@@ -2,9 +2,7 @@ open Util
 open Syntax
 open Type
 
-
 let debug () = List.mem "Trans" !Flag.debug_module
-
 
 let occur = Syntax.occur
 let get_vars_pat = Syntax.get_vars_pat
@@ -12,7 +10,7 @@ let get_fv = Syntax.get_fv
 
 (*** TERM CONSTRUCTORS ***)
 
-let typ_result = TConstr("X", false)
+let typ_result = TData("X", false)
 let typ_event = TFun(Id.new_var TUnit, TUnit)
 let typ_event' = TFun(Id.new_var TUnit, typ_result)
 let typ_event_cps =
@@ -20,7 +18,7 @@ let typ_event_cps =
   let r = Id.new_var TUnit in
   let k = Id.new_var @@ TFun(r,typ_result) in
   TFun(u, TFun(k, typ_result))
-let typ_excep_init = TConstr("exn",true)
+let typ_excep_init = TData("exn",true)
 let typ_excep = ref typ_excep_init
 
 let dummy_var = Id.make (-1) "" TInt
@@ -42,13 +40,13 @@ let true_term = {desc=Const True;typ=TBool; attr=const_attr}
 let false_term = {desc=Const False;typ=TBool; attr=const_attr}
 let cps_result = {desc=Const CPS_result; typ=typ_result; attr=const_attr}
 let fail_term = {desc=Event("fail",false);typ=typ_event; attr=[]}
-let fail_term_cps = {desc=Event("fail",true);typ=typ_event'; attr=[]}
+let fail_term_cps = {desc=Event("fail",true);typ=typ_event_cps; attr=[]}
 let make_bottom typ = {desc=Bottom;typ=typ; attr=[]}
 let make_event s = {desc=Event(s,false);typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=[]}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
-let make_string s = {desc=Const(String s); typ=TConstr("string",false); attr=const_attr}
+let make_string s = {desc=Const(String s); typ=TData("string",false); attr=const_attr}
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
 let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 let make_randvalue_cps typ =
@@ -67,11 +65,21 @@ let rec make_app t ts =
     if not (Flag.check_typ => Type.can_unify typ1 typ2)
     then
       begin
-        Format.printf "make_app:@ %a@ <=/=>@ %a@.%a@.%a@."
+        Format.printf "make_app:@ %a@ <=/=>@ %a@."
                       Print.typ typ1
-                      Print.typ typ2
-                      Print.term t
-                      Print.term @@ List.hd ts;
+                      Print.typ typ2;
+        Format.printf "fun: %a@." Print.term t;
+        Format.printf "arg: %a@." Print.term @@ List.hd ts;
+        (match typ1,typ2 with TList typ1', TList typ2' ->
+                                      Format.printf "make_app' :@ %a@ <=/=>@ %a, %a@."
+                      Print.typ typ1'
+                      Print.typ typ2'
+                      Print.typ typ_unknown;
+assert (typ1' = typ_unknown);
+(match typ1' with TData(s,b) -> Format.printf "typ1': TData(%s,%b)@." s b);
+(match typ2' with TData(s,b) -> Format.printf "typ2': TData(%s,%b)@." s b);
+assert (Type.can_unify typ1' typ2')
+| _ -> assert false);
         assert false
       end
   in
@@ -186,7 +194,7 @@ let make_ttuple typs =
 let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
 let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=[]}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=[]}
-let make_tpair typ1 typ2 = TTuple [Id.new_var typ1; Id.new_var typ2]
+let make_tpair typ1 typ2 = make_ttuple [typ1; typ2]
 let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ; attr=[]}
 let make_nil typ = {desc=Nil; typ=TList typ; attr=[]}
 let make_nil2 typ = {desc=Nil; typ=typ; attr=[]}
@@ -203,11 +211,6 @@ let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
 let make_match t1 pats = {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
 let make_single_match t1 p t2 =
   make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
-let rec make_nth i n t =
-  match i,n with
-  | 0,1 -> t
-  | 0,_ -> make_fst t
-  | _ -> make_nth (i-1) (n-1) (make_snd t)
 let make_label_aux info t = {desc=Label(info,t); typ=t.typ; attr=[]}
 let make_label ?(label="") info t =
   t
@@ -264,9 +267,11 @@ let rec make_term typ =
   | TInt -> make_int 0
   | TFun(x,typ) -> make_fun x (make_term typ)
   | TTuple xs -> make_tuple @@ List.map (make_term -| Id.typ) xs
-  | TConstr("X", false) -> cps_result
+  | TData("X", false) -> cps_result
+  | TData("char", false) -> {desc=Const(Char '\000'); typ; attr=[]}
+  | TData("string", false) -> {desc=Const(String ""); typ; attr=[]}
   | TList typ' -> make_nil typ'
-  | _ -> Format.printf "ERROR:@.%a@." Print.typ typ; assert false
+  | _ -> Format.printf "ERROR: %a@." Print.typ typ; assert false
 
 
 let none_flag = false_term
@@ -547,6 +552,8 @@ let rec merge_typ typ1 typ2 =
   | typ1, TVar{contents=Some typ2} -> merge_typ typ1 typ2
   | TVar({contents=None}), _ -> typ2
   | _, TVar({contents=None}) -> typ1
+  | _ when typ1 = typ_unknown -> typ2
+  | _ when typ2 = typ_unknown -> typ1
   | TUnit, TUnit -> TUnit
   | TBool, TBool -> TBool
   | TInt, TInt -> TInt
@@ -563,16 +570,15 @@ let rec merge_typ typ1 typ2 =
       let x = Id.new_var ~name:(Id.name x1) x_typ in
       let typ = merge_typ (subst_type_var x1 x typ1) (subst_type_var x2 x typ2) in
       TFun(x, typ)
-  | TList typ1, TList typ2 -> TList(merge_typ typ1 typ2)
+  | TList typ1, TList typ2 -> TList (merge_typ typ1 typ2)
   | TTuple xs1, TTuple xs2 ->
       let aux x1 x2 xs =
         let x = Id.set_typ x1 @@ merge_typ (Id.typ x1) (Id.typ x2) in
         List.map (Id.map_typ @@ subst_type_var x2 x1) @@ x::xs
       in
       TTuple (List.fold_right2 aux xs1 xs2 [])
-  | _ when typ1 = typ_unknown -> typ2
-  | _ when typ2 = typ_unknown -> typ1
-  | TConstr _, TConstr _ -> assert (typ1 = typ2); typ1
+  | TRef typ1, TRef typ2 -> TRef (merge_typ typ1 typ2)
+  | TData _, TData _ -> assert (typ1 = typ2); typ1
   | TOption typ1, TOption typ2 -> TOption (merge_typ typ1 typ2)
   | _ -> Format.printf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
 
@@ -597,24 +603,6 @@ let rec get_top_funs acc = function
       get_top_funs acc' t
   | _ -> acc
 let get_top_funs = get_top_funs []
-
-
-let rec get_typ_default = function
-  | TUnit -> unit_term
-  | TBool -> true_term
-  | TAbsBool -> assert false
-  | TInt -> make_int 0
-  | TRInt _ -> assert false
-  | TVar _ -> assert false
-  | TFun(x,typ) -> make_fun x (get_typ_default typ)
-  | TList typ -> make_nil typ
-  | TTuple xs -> make_tuple @@ List.map (get_typ_default -| Id.typ) xs
-  | TConstr(s,b) -> assert false
-  | TPred _ -> assert false
-  | TRef _ -> assert false
-  | TOption typ -> {desc=TNone; typ; attr=[]}
-
-
 
 
 let has_no_effect = make_col true (&&)

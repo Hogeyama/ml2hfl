@@ -16,14 +16,15 @@ let rec check t typ =
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@."
                       (Color.red Print.term') t
-                      (Color.yellow Print.typ) typ; assert false);
+                      (Color.yellow Print.typ) typ;
+        assert false);
   match t.desc, elim_tpred t.typ with
   | Label(_, t), _ -> check t typ
   | Const Unit, TUnit -> ()
   | Const CPS_result, typ when typ = typ_result -> ()
   | Const(True|False), TBool -> ()
   | Const(Int _), (TInt | TRInt _) -> ()
-  | Const _, TConstr _ -> ()
+  | Const _, TData _ -> ()
   | Const(RandInt false), TFun(x,TInt) ->
       check_var x TUnit
   | Const(RandInt true), TFun(x,TFun(k,rtyp)) ->
@@ -95,15 +96,23 @@ let rec check t typ =
       check t2 TInt
   | Not t, TBool ->
       check t TBool
-  | Event(_,false), typ' -> assert (typ' = typ_event || typ' = typ_event')
-  | Event(_,true), typ' -> assert (typ' = typ_event_cps)
+  | Event(_,false), typ' ->
+      assert (Type.can_unify typ' typ_event || Type.can_unify typ' typ_event')
+  | Event(s,true), typ' ->
+      assert (Type.can_unify typ' typ_event_cps)
   | Tuple ts, TTuple xs ->
       List.iter2 check ts @@ List.map Id.typ xs;
   | Proj(i,t), typ ->
       assert (Type.can_unify typ @@ proj_typ i t.typ);
       check t t.typ
-  | Record _, typ -> assert false
-  | Field _, typ -> assert false
+  | Record [], typ -> assert false
+  | Record fields, typ ->
+      let c,kind = kind_of_field @@ fst @@ List.hd fields in
+      assert (Type.can_unify typ @@ TData(c,true));
+      List.iter (fun (s,(_,t)) -> check t @@ field_arg_typ s) fields
+  | Field(i,s,_,t), typ ->
+      assert (Type.can_unify typ @@ field_arg_typ s);
+      check t @@ field_typ s
   | SetField _, typ -> assert false
   | Nil, TList _ -> ()
   | Cons(t1,t2), TList typ' ->
@@ -137,10 +146,8 @@ let rec check t typ =
   | TNone, TOption typ -> ()
   | TSome t, TOption typ ->
       check t typ
+  | _, TData _ -> assert false
   | _ ->
-      match t.typ with
-        TConstr _ -> assert false
-      | _->
       Format.printf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false
 

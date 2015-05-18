@@ -68,7 +68,8 @@ let print_info () =
       Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
       Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
       Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
-      Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
+      if !Flag.relative_complete then
+        Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
       Format.pp_print_flush Format.std_formatter ()
     end
 
@@ -179,7 +180,7 @@ let main in_channel =
     main_input_cegar lb
   else
     let orig = Parse.use_file lb in
-    Id.set_counter (Ident.current_time () + 1);
+    Id.set_counter (Ident.current_time () + 1000);
     let parsed = Parser_wrapper.from_use_file orig in
     if !Flag.debug_level > 0
     then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
@@ -246,7 +247,7 @@ let arg_spec =
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
-     "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types for each CEGAR-cycle";
+     "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      (* preprocessing *)
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
@@ -274,16 +275,19 @@ let arg_spec =
      "-no-enr", Arg.Clear Flag.expand_nonrec, " Do not expand non-recursive functions";
      "-enr", Arg.Set Flag.expand_nonrec, " Expand non-recursive functions";
      "-enr2", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
-     " Expand non-recursive functions except those in the original program";
+      " Expand non-recursive functions except those in the original program";
      "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
      "-neg-pred-off", Arg.Unit (fun _ -> Flag.never_use_neg_pred := true),
      " Never use negative predicates for abstraction";
      (* higher-order model checking *)
+     "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted programa";
+     "-bool-church", Arg.Set Flag.church_encode, " Use church-encoding for model checking";
+     "-trecs", Arg.Unit (fun () -> Flag.mc:=Flag.TRecS), " Use TRecS as the model checker";
+     "-horsat", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat), " Use HorSat as the model checker";
      "-trecs-bin", Arg.Set_string Flag.trecs,
                    Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
      "-horsat-bin", Arg.Set_string Flag.horsat,
                    Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
-     "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      (* predicate discovery *)
      "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,

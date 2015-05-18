@@ -1,4 +1,6 @@
 %{
+open Trecs_syntax
+
 let print_error_information () =
   let st = Parsing.symbol_start_pos () in
   let en = Parsing.symbol_end_pos () in
@@ -33,14 +35,14 @@ let parse_error _ = print_error_information ()
 %left AND
 
 %start output
-%type <[`Safe of (string * Inter_type.t) list | `Unsafe of (string * int) list | `TimeOut]> output
+%type <Trecs_syntax.result> output
 
 %%
 
 output:
-  SAFE env EOF { `Safe $2 }
-| UNSAFE THE_ERROR_TRACE_IS error_trace EOF { `Unsafe $3 }
-| TIMEOUT EOF { `TimeOut }
+  SAFE env EOF { Safe $2 }
+| UNSAFE THE_ERROR_TRACE_IS error_trace EOF { Unsafe $3 }
+| TIMEOUT EOF { TimeOut }
 
 error_trace:
   DOT
@@ -75,10 +77,10 @@ typ:
 | typ AND typ
   {
     match $1,$3 with
-        Inter_type.Inter typs1, Inter_type.Inter typs2 -> Inter_type.Inter (typs1 @ typs2)
-      | Inter_type.Inter typs1, typ2 -> Inter_type.Inter (typs1 @ [typ2])
-      | typ1, Inter_type.Inter typs2 -> Inter_type.Inter (typ1 :: typs2)
-      | typ1, typ2 -> Inter_type.Inter [typ1; typ2]
+    | Inter_type.Inter typs1, Inter_type.Inter typs2 -> Inter_type.Inter (typs1 @ typs2)
+    | Inter_type.Inter typs1, typ2 -> Inter_type.Inter (typs1 @ [typ2])
+    | typ1, Inter_type.Inter typs2 -> Inter_type.Inter (typ1 :: typs2)
+    | typ1, typ2 -> Inter_type.Inter [typ1; typ2]
   }
 | typ ARROW typ
   { Inter_type.Fun($1, $3) }

@@ -124,7 +124,7 @@ let put_into_if prog = map_body_prog put_into_if_term prog
 
 let eta_expand_def env (f,xs,t1,e,t2) =
   let d = arg_num (List.assoc f env) - List.length xs in
-  let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
+  let ys = List.init d (fun _ -> new_id "x") in
   let t2' = List.fold_left (fun t x -> App(t, Var x)) t2 ys in
   f, xs@ys, t1, e, t2' (* put_into_term t2' *)
 
@@ -565,7 +565,7 @@ let eval_step_by_step  prog =
     | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
         assert (xs1 = xs2);
         make_fun xs1 (make_if t21 t22 t12)
-    | [_,xs1,Const True,_,t12; _,xs2,Const True,_,t22] -> make_fun xs1 (make_br t22 t12)
+    | [_,xs1,Const True,_,t12; _,xs2,Const True,_,t22] -> make_fun xs1 @@ make_br t22 t12
     | _ -> Format.printf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
   in
   let counter = ref 0 in

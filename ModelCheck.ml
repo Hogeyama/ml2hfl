@@ -7,7 +7,7 @@ open ModelCheck_util
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
-type counterexample = CETRecS of TrecsInterface.counterexample | CEHorSat of HorSatInterface.counterexample
+type counterexample = CESafety of TrecsInterface.counterexample | CENonTerm of HorSatInterface.counterexample_apt
 type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
 
 type spec =
@@ -35,6 +35,7 @@ let make_file_spec () =
 
 let capitalize_var = String.capitalize
 let uncapitalize_var = String.uncapitalize
+let uncapitalize_env env = List.map (Pair.map_fst uncapitalize_var) env
 
 let capitalize {env;defs;main;attr} =
   let env' = List.map (Pair.map_fst capitalize_var) env in
@@ -308,21 +309,28 @@ let check abst prog =
     else preprocess abst
   in
   let result =
-    match !Flag.mc with
-    | Flag.TRecS ->
+    match !Flag.mc, !Flag.mode with
+    | Flag.TRecS, _ ->
         let spec = TrecsInterface.make_spec @@ List.length prog.defs in
         begin
           match TrecsInterface.check (abst',spec) with
-          | TrecsInterface.Safe env -> Safe (List.map (Pair.map_fst uncapitalize_var) env)
-          | TrecsInterface.Unsafe ce -> Unsafe (CETRecS ce)
+          | TrecsInterface.Safe env -> Safe (uncapitalize_env env)
+          | TrecsInterface.Unsafe ce -> Unsafe (CESafety ce)
         end
-    | Flag.HorSat ->
+    | Flag.HorSat, Flag.NonTermination ->
         let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
-        let spec = HorSatInterface.make_spec labels in
+        let spec = HorSatInterface.make_spec_nonterm labels in
+        begin
+          match HorSatInterface.check_apt (abst',spec) with
+          | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
+          | HorSatInterface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
+        end
+    | Flag.HorSat, _ ->
+        let spec = HorSatInterface.make_spec @@ List.length prog.defs in
         begin
           match HorSatInterface.check (abst',spec) with
-          | HorSatInterface.Safe env -> Safe (List.map (Pair.map_fst uncapitalize_var) env)
-          | HorSatInterface.Unsafe ce -> Unsafe (CEHorSat ce)
+          | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
+          | HorSatInterface.Unsafe ce -> Unsafe (CESafety ce)
         end
   in
   add_time tmp Flag.time_mc;

@@ -13,17 +13,40 @@ type apt_transition =
 
 type spec = (string * int) list * (int * string * apt_transition) list
 
-type counterexample = int list list * ((int * bool list) list) list
+type counterexample_apt = int list list * ((int * bool list) list) list
+type counterexample = int list
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
+type result =
+  | Safe of (var * Inter_type.t) list
+  | UnsafeAPT of counterexample_apt
+  | Unsafe of counterexample
 
 module HS = HorSat_syntax
+
+
+(* returen "" if the version cannot be obtained *)
+let version () =
+  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" !Flag.horsat) in
+  let v =
+    try
+      let s = input_line cin in
+      if Str.string_match (Str.regexp "HorSat \\([.0-9]+\\)") s 0
+      then String.sub s (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1)
+      else ""
+    with Sys_error _ | End_of_file -> ""
+  in
+  match Unix.close_process (cin, cout) with
+    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v
+
 
 let string_of_arity_map arity_map =
   "%BEGINR\n" ^ String.join "\n" (List.map (fun (f, a) -> f ^ " -> " ^ string_of_int a ^ ".") arity_map) ^ "\n%ENDR\n"
 
-let string_of_parseresult (prerules, arity_map, tr) =
-  (HS.string_of_prerules prerules)^"\n"^string_of_arity_map arity_map ^ (HS.string_of_transitions tr)
+let string_of_parseresult_apt (prerules, arity_map, tr) =
+  (HS.string_of_prerules prerules)^"\n"^string_of_arity_map arity_map ^ HS.string_of_transitions_ATA tr
+
+let string_of_parseresult (prerules, tr) =
+  (HS.string_of_prerules prerules)^"\n"^(HS.string_of_transitions tr)
 
 let trans_const = function
   | Unit -> HS.PTapp(HS.Name "unit", [])
@@ -41,32 +64,32 @@ let rec trans_id x =
   in
   String.fold_left (fun s c -> s ^ map c) "" x
 
-let rec trans_term = function
+let rec trans_term br = function
   | Const c -> trans_const c
   | Var x when is_uppercase x.[0] -> HS.PTapp(HS.NT (trans_id x), [])
   | Var x -> HS.PTapp (HS.Name (trans_id x), [])
-  | App(Const (Label n), t) -> HS.PTapp(HS.Name ("l" ^ string_of_int n), [trans_term t])
+  | App(Const (Label n), t) -> HS.PTapp(HS.Name ("l" ^ string_of_int n), [trans_term br t])
   | App(App(App(Const If, Const RandBool), t2), t3) ->
-      HS.PTapp(HS.Name "br_forall", [trans_term t2; trans_term t3])
+      HS.PTapp(HS.Name br, [trans_term br t2; trans_term br t3])
   | App(App(App(Const If, t1), t2), t3) ->
-      HS.PTapp(HS.CASE 2, [trans_term t1; trans_term t2; trans_term t3])
+      HS.PTapp(HS.CASE 2, [trans_term br t1; trans_term br t2; trans_term br t3])
   | App(t1,t2) ->
-      let HS.PTapp(hd, ts1) = trans_term t1 in
-      let t2' = trans_term t2 in
+      let HS.PTapp(hd, ts1) = trans_term br t1 in
+      let t2' = trans_term br t2 in
       HS.PTapp(hd, ts1@[t2'])
   | Fun _ -> assert false
   | Let _ -> assert false
 
-let rec trans_fun_def (f,xs,t1,es,t2) =
+let rec trans_fun_def br (f,xs,t1,es,t2) =
   let rec add_event e t =
     match e with
     | Event s -> HS.PTapp(HS.Name ("event_" ^ s), [t])
     | Branch n -> assert false(* HS.PTapp(HS.Name ("l" ^ string_of_int n), [t])*)
   in
   assert (t1 = Const True);
-  trans_id f, List.map trans_id xs, List.fold_right add_event es (trans_term t2)
+  trans_id f, List.map trans_id xs, List.fold_right add_event es (trans_term br t2)
 
-let trans_spec (q,e,qs) =
+let trans_spec_apt (q,e,qs) =
   let aux q = "q" ^ string_of_int q in
   let parens s = "(" ^ s ^ ")" in
   let rec apt_transition_to_string is_top = function
@@ -78,15 +101,31 @@ let trans_spec (q,e,qs) =
   in
     (aux q, e), [apt_transition_to_string true qs]
 
-let trans ({defs}, (arity_map, spec)) =
-  let defs':HS.prerules = List.map trans_fun_def defs in
-  let spec':HS.transitions = List.map trans_spec spec in
+let trans_apt ({defs}, (arity_map, spec)) =
+  let defs':HS.prerules = List.map (trans_fun_def "br_forall") defs in
+  let spec':HS.transitions = List.map trans_spec_apt spec in
   (defs', arity_map, spec')
 
+let trans_spec (q,e,qs) =
+  let aux q = "q" ^ string_of_int q in
+  (aux q, e), List.map aux qs
+
+let trans ({defs},spec) =
+  let defs':HS.prerules = List.map (trans_fun_def "br") defs in
+  let spec':HS.transitions = List.map trans_spec spec in
+  (defs', spec')
 
 
-
-
+let trans_ce ce =
+  let aux (s,_) =
+    match s with
+    | "unit" -> []
+    | "br" -> []
+    | s when s.[0] = 'l' -> [int_of_string @@ String.slice ~first:1 s]
+    | s when String.starts_with s "event_" -> []
+    | _ -> assert false
+  in
+  List.flatten_map aux ce
 
 
 let get_pair s =
@@ -97,127 +136,102 @@ let get_pair s =
   let s' = String.sub s (n2+1) (String.length s-n2-1) in
     (q, n), s'
 
-let rec parse_trace s =
-  match s.[0] with
-      '.' -> []
-    | ' ' -> parse_trace (String.sub s 1 (String.length s - 1))
-    | '(' ->
-      let node,s' = get_pair s in
-        node :: parse_trace s'
-    | _ -> assert false
 
-(*
-let rec verifyFile filename =
-  let default = "empty" in
-  let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
-  let result_file = "result" in
-  let oc = open_out result_file in
-  let () = output_string oc default in
-  let () = close_out oc in
-  let cmd = Format.sprintf "%s -p %d %d -o %s %s" !Flag.trecs p1 p2 result_file filename in
-  let cmd' = Format.sprintf "%s | grep -q 'Verification failed (time out).'" cmd in
-  let r = Sys.command cmd' in
-    if r = 0
-    then
-      let () = Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1) in
-      let () = Flag.trecs_param1 := 2 * p1 in
-        verifyFile filename
-    else
-      let ic = open_in result_file in
-        match input_line ic with
-            "SATISFIED" ->
-              close_in ic;
-              Safe []
-          | "VIOLATED" ->
-              let s = input_line ic in
-                close_in ic;
-                Unsafe (parse_trace s)
-          | s ->
-              close_in ic;
-              if r <> 0 || s = default
-              then raise (Fatal "TRecS FAILED!")
-              else raise (Fatal ("Unsupported TRecS output: " ^ s))
-*)
-
-type path = int list (* branch info. *) * bool list (* partially constructed external input info. *) * ((int * (bool list)) list) (* external input info. *)
+type path =
+    int list (* branch info. *)
+    * bool list (* partially constructed external input info. *)
+    * ((int * (bool list)) list) (* external input info. *)
 let add_next_rand_info r (branch,bs,ext) = (branch, [], (decomp_randint_label r, bs) :: ext)
 let add_tf_info b (branch,bs,ext) = (branch,b::bs,ext)
 let add_branch_info b (branch,bs,ext) = (b::branch,bs,ext)
 
 (* gather error paths *)
 let rec error_trace_aux = function
-    | HS.Forall(_, t) -> error_trace_aux t
-    | HS.Exists(t1, t2) -> error_trace_aux t1 @ error_trace_aux t2
-    | HS.Label("l0", t) -> List.map (add_branch_info 0) @@ error_trace_aux t
-    | HS.Label("l1", t) -> List.map (add_branch_info 1) @@ error_trace_aux t
-    | HS.Label("true", t) -> List.map (add_tf_info true) @@ error_trace_aux t
-    | HS.Label("false", t) -> List.map (add_tf_info false) @@ error_trace_aux t
-    | HS.Label(r, t) when is_randint_label r -> List.map (add_next_rand_info r) @@ error_trace_aux t
-    | HS.Label(_, t) -> error_trace_aux t
-    | HS.End | HS.Fail -> [([],[],[])]
+  | HS.Forall(_, t) -> error_trace_aux t
+  | HS.Exists(t1, t2) -> error_trace_aux t1 @ error_trace_aux t2
+  | HS.Label("l0", t) -> List.map (add_branch_info 0) @@ error_trace_aux t
+  | HS.Label("l1", t) -> List.map (add_branch_info 1) @@ error_trace_aux t
+  | HS.Label("true", t) -> List.map (add_tf_info true) @@ error_trace_aux t
+  | HS.Label("false", t) -> List.map (add_tf_info false) @@ error_trace_aux t
+  | HS.Label(r, t) when is_randint_label r -> List.map (add_next_rand_info r) @@ error_trace_aux t
+  | HS.Label(_, t) -> error_trace_aux t
+  | HS.End | HS.Fail -> [([],[],[])]
 
 let error_trace tr =
   List.fold_left (fun (xs,ys) (x,_,y) -> (x::xs, y::ys)) ([],[]) @@ error_trace_aux tr
 
-let rec verifyFile filename =
-  let debug = !Flag.debug_level > 0 in
+let rec verifyFile_aux filename =
   let default = "empty" in
-  let result_file = Filename.change_extension !Flag.filename "trecs_out" in
+  let result_file = Filename.change_extension !Flag.filename "horsat_out" in
   let oc = open_out result_file in
-  let () = output_string oc default in
-  let () = close_out oc in
+  output_string oc default;
+  close_out oc;
   let cmd = Format.sprintf "%s %s > %s" !Flag.horsat filename result_file in
-  let _ = Sys.command cmd in
+  ignore @@ Sys.command cmd;
   let ic = open_in result_file in
   let lb = Lexing.from_channel ic in
-    match HorSat_parser.output HorSat_lexer.token lb with
-        `Satisfied ->
-          close_in ic;
-          Safe []
-      | `Unsatisfied ce ->
-          close_in ic;
-          if debug then Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
-          let cexs, ext_cexs = error_trace ce in
-	  let ppppp fm (n, l) = Format.fprintf fm "[%d: %a]" n (print_list Format.pp_print_bool ",") l in
-	  if debug then List.iter2 (fun c1 c2 -> Format.printf "FOUND:  %a | %a@." (print_list (fun fm n -> Format.fprintf fm (if n=0 then "then" else "else")) ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
-          (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
-          Unsafe (cexs, ext_cexs)
-(*      | `TimeOut ->
-          if not !Flag.only_result
-          then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
-          Flag.trecs_param1 := 2 * p1;
-          verifyFile filename *)
+  lb.Lexing.lex_curr_p <-
+    {Lexing.pos_fname = result_file;
+     Lexing.pos_lnum = 1;
+     Lexing.pos_cnum = 0;
+     Lexing.pos_bol = 0};
+  ic, lb
+
+let rec verifyFile parser filename =
+  let ic,lb = verifyFile_aux filename in
+  let r =
+    try
+      parser HorSat_lexer.token lb
+    with Parsing.Parse_error ->
+      let loc = Location.curr lb in
+      let file = loc.loc_start.pos_fname in
+      let line = loc.loc_start.pos_lnum in
+      let startchar = loc.loc_start.pos_cnum - loc.loc_start.pos_bol in
+      let endchar = loc.loc_end.pos_cnum - loc.loc_start.pos_cnum + startchar in
+      Format.printf "File \"%s\", line %d@?" file line;
+      if startchar >= 0 then Format.printf ", characters %d-%d@." startchar endchar;
+      raise Parsing.Parse_error
+  in
+  close_in ic;
+  match r with
+  | HS.Satisfied ->
+      Safe []
+  | HS.UnsatisfiedAPT ce ->
+      let debug = !Flag.debug_level > 0 in
+      if debug then Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
+      let cexs, ext_cexs = error_trace ce in
+      let ppppp fm (n, l) = Format.fprintf fm "[%d: %a]" n (print_list Format.pp_print_bool ",") l in
+      if debug then List.iter2 (fun c1 c2 -> Format.printf "FOUND:  %a | %a@." (print_list (fun fm n -> Format.fprintf fm (if n=0 then "then" else "else")) ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
+      (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
+      UnsafeAPT (cexs, ext_cexs)
+  | HS.Unsatisfied ce ->
+      Unsafe (trans_ce ce)
 
 
-let write_log filename target =
+let write_log string_of filename target =
   let cout = open_out filename in
-    output_string cout (string_of_parseresult target);
-    close_out cout
+  output_string cout @@ string_of target;
+  close_out cout
 
+
+let check_apt target =
+  let target' = trans_apt target in
+  let input = Filename.change_extension !Flag.filename "hors" in
+  try
+    if !Flag.debug_level > 1 then Format.printf "%s@." @@ string_of_parseresult_apt target';
+    write_log string_of_parseresult_apt input target';
+    verifyFile HorSat_parser.output_apt input
+  with Failure("lex error") -> raise UnknownOutput
 
 let check target =
   let target' = trans target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
-    if !Flag.debug_level > 1 then Format.printf "%s@." (string_of_parseresult target');
-    write_log input target';
-    verifyFile input
+    if !Flag.debug_level > 1 then Format.printf "%s@." @@ string_of_parseresult target';
+    write_log string_of_parseresult input target';
+    verifyFile HorSat_parser.output input
   with Failure("lex error") -> raise UnknownOutput
 
-
-(* returen "" if the version cannot be obtained *)
-let version () =
-  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" !Flag.horsat) in
-  let v =
-    try
-      let s = input_line cin in
-      if Str.string_match (Str.regexp "HorSat \\([.0-9]+\\)") s 0
-      then String.sub s (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1)
-      else ""
-    with Sys_error _ | End_of_file -> ""
-  in
-  match Unix.close_process (cin, cout) with
-    Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v
 
 let rec make_label_spec = function
   | [] -> []
@@ -241,5 +255,7 @@ let make_arity_map labels =
   let funs_map = List.map (fun l -> (l, 1)) labels in
   init @ funs_map
 
-let make_spec labels =
+let make_spec_nonterm labels =
   make_arity_map labels, make_apt_spec labels
+
+let make_spec = TrecsInterface.make_spec

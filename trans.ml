@@ -182,13 +182,13 @@ let rec define_randvalue env defs typ =
         in
         let env', defs', ts = List.fold_right aux xs (env,defs,[]) in
         env', defs', make_tuple ts
-    | TConstr(s,false) -> env, defs, make_randvalue_unit typ
-    | TConstr(s,true) ->
+    | TData(s,false) -> env, defs, make_randvalue_unit typ
+    | TData(s,true) ->
         let u = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
         let env'',defs',t =
-          match Type_decl.assoc_typ s with
+          match Type_decl.assoc s with
           | Type_decl.TKVariant stypss ->
               let n = List.length stypss in
               let aux1 (s,typs) (env,defs,itss,i) =
@@ -206,11 +206,11 @@ let rec define_randvalue env defs typ =
               in
               env'', defs', make_match randint_unit_term (List.map2 aux stypss itss)
           | Type_decl.TKRecord sftyps ->
-              let aux (env,defs,sfts) (field,(flag,typ)) =
+              let aux (field,(flag,typ)) (env,defs,sfts) =
                 let env', defs', t = define_randvalue env defs typ in
                 env', defs', (field, (flag, t))::sfts
               in
-              let env'',defs',sfts = List.fold_left aux (env',defs,[]) sftyps in
+              let env'',defs',sfts = List.fold_right aux sftyps (env',defs,[]) in
               env'', defs', {desc=Record sfts; typ=typ; attr=[]}
         in
         env'', (f,[u],t)::defs', make_app (make_var f) [unit_term]
@@ -824,19 +824,18 @@ let rec inlined_f inlined fs t =
     match t.desc with
     | Const c -> Const c
     | Var y ->
-        if List.exists (fun (x, _, _) -> Id.same x y) fs then
-          let (f, xs, t') = try List.find (fun (x, _, _) -> Id.same x y) fs with Not_found -> assert false in
+        if List.exists (fun (x,_,_) -> Id.same x y) fs then
+          let (f, xs, t') = List.find (fun (x,_,_) -> Id.same x y) fs in
           (*let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) [f, t'] in*)
           let f, _ =
             List.fold_left
               (fun (f, ty) y ->
                (fun t ->
                 f {desc=Fun(y, t); typ=ty; attr=[]}),
-               match ty with
-                 Type.TFun(_, ty') -> ty'
-               | _ ->
-                   let _ = Format.printf "%a@." Print.typ ty in assert false)
-              ((fun t -> t), t.typ)
+                match ty with
+                | Type.TFun(_, ty') -> ty'
+                | _ -> Format.printf "%a@." Print.typ ty; assert false)
+              (Fun.id, t.typ)
               xs
           in
           let t' = inlined_f inlined fs t' in
@@ -1249,7 +1248,7 @@ let make_ext_funs env t =
   let funs =
     get_fv t
     |> List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name)
-    |> List.filter (fun x -> Id.id x > 0)
+    |*> List.filter (fun x -> Id.id x > 0)
     |> List.filter_out (Id.mem_assoc -$- env)
   in
   if List.exists (is_poly_typ -| Id.typ) funs
@@ -1697,21 +1696,21 @@ let is_base_typ s = List.mem s base_types
 
 let replace_base_with_int_desc desc =
   match desc with
-  | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> (make_int @@ Random.int 1000000).desc
-  | Const(RandValue(TConstr(s,_), b)) when is_base_typ s -> Const (RandInt b)
+  | Const(Char c) -> Const (Int (int_of_char c))
+  | Const(String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
+  | Const(RandValue(TData(s,_), b)) when is_base_typ s -> Const (RandInt b)
   | _ -> replace_base_with_int.tr_desc_rec desc
 
 let replace_base_with_int_typ typ =
   match typ with
-  | TConstr(s, b) ->
-      if is_base_typ s
-      then TInt
-      else TConstr(s, b)
+  | TData(s, b) when is_base_typ s -> TInt
   | _ -> replace_base_with_int.tr_typ_rec typ
 
 let () = replace_base_with_int.tr_desc <- replace_base_with_int_desc
 let () = replace_base_with_int.tr_typ <- replace_base_with_int_typ
-let replace_base_with_int = replace_base_with_int.tr_term
+let replace_base_with_int t =
+  typ_excep := replace_base_with_int.tr_typ !typ_excep;
+  replace_base_with_int.tr_term t
 
 
 
@@ -1720,15 +1719,15 @@ let abst_ref = make_trans ()
 let abst_ref_term t =
   match t.desc with
   | Ref t1 ->
-      let t1' = abst_ref.tr_term t1 in
-      make_seq t1' unit_term
+      make_ignore @@ abst_ref.tr_term t1
   | Deref t1 ->
       let t1' = abst_ref.tr_term t1 in
-      make_seq t1' @@ make_randvalue_unit t.typ
+      let typ = abst_ref.tr_typ t.typ in
+      make_seq t1' @@ make_randvalue_unit typ
   | SetRef(t1, t2) ->
       let t1' = abst_ref.tr_term t1 in
       let t2' = abst_ref.tr_term t2 in
-      make_seq t2' @@ make_seq t1' unit_term
+      make_ignore @@ make_pair t1' t2'
   | _ -> abst_ref.tr_term_rec t
 
 let abst_ref_typ typ =
@@ -1738,8 +1737,10 @@ let abst_ref_typ typ =
 
 let () = abst_ref.tr_term <- abst_ref_term
 let () = abst_ref.tr_typ <- abst_ref_typ
-let abst_ref t = t |> abst_ref.tr_term |> inst_randval
-
+let abst_ref t =
+  typ_excep := abst_ref.tr_typ !typ_excep;
+  Type_decl.map abst_ref.tr_typ;
+  t |> abst_ref.tr_term |> inst_randval
 
 
 let remove_top_por = make_trans ()

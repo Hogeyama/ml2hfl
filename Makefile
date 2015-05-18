@@ -64,9 +64,9 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	parser_wrapper.cmo encode_list.cmo encode_rec.cmo		\
 	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
 	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\
-	CEGAR_lexer.cmo horSat_syntax.cmo horSat_parser.cmo		\
-	horSat_lexer.cmo horSatInterface.cmo trecs_syntax.cmo		\
-	trecs_parser.cmo trecs_lexer.cmo trecsInterface.cmo		\
+	CEGAR_lexer.cmo trecs_syntax.cmo trecs_parser.cmo		\
+	trecs_lexer.cmo trecsInterface.cmo horSat_syntax.cmo		\
+	horSat_parser.cmo horSat_lexer.cmo horSatInterface.cmo		\
 	ModelCheck.cmo feasibility.cmo refine.cmo CEGAR_non_term.cmo	\
 	CEGAR.cmo writeAnnot.cmo tupling.cmo ref_trans.cmo		\
 	ret_fun.cmo BRA_types.cmo BRA_util.cmo BRA_state.cmo		\
@@ -186,7 +186,7 @@ clean-test:
 
 TEST = sum mult max mc91 ack a-copy-print hors exc-simple exc-fact lock file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e
 LIMIT = 120
-OPTION = -bdag -mip-template -only-result -limit $(LIMIT)
+OPTION = -only-result -horsat -limit $(LIMIT)
 
 test: opt
 	for i in $(TEST); \

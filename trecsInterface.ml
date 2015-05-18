@@ -8,7 +8,9 @@ exception UnknownOutput
 
 type counterexample = int list
 
-type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
+type result =
+  | Safe of (var * Inter_type.t) list
+  | Unsafe of counterexample
 
 type state = int
 type input = string
@@ -94,15 +96,6 @@ let get_pair s =
   let s' = String.sub s (n2+1) (String.length s-n2-1) in
   (q, n), s'
 
-let rec parse_trace s =
-  match s.[0] with
-  | '.' -> []
-  | ' ' -> parse_trace (String.sub s 1 (String.length s - 1))
-  | '(' ->
-      let node,s' = get_pair s in
-      node :: parse_trace s'
-  | _ -> assert false
-
 let rec verifyFile filename =
   let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
   let result_file = Filename.change_extension !Flag.filename "trecs_out" in
@@ -117,18 +110,17 @@ let rec verifyFile filename =
   in
   close_out oc;
   let ic = open_in result_file in
-  match Trecs_parser.output Trecs_lexer.token @@ Lexing.from_channel ic with
-  | `Safe env ->
-      close_in ic;
+  let r = Trecs_parser.output Trecs_lexer.token @@ Lexing.from_channel ic in
+  close_in ic;
+  match r with
+  | Safe env ->
       Safe env
-  | `Unsafe trace ->
-      close_in ic;
+  | Unsafe trace ->
       Unsafe (trans_ce trace)
-  | `TimeOut ->
+  | TimeOut ->
       if not !Flag.only_result
       then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
       Flag.trecs_param1 := 2 * p1;
-      close_in ic;
       verifyFile filename
 
 

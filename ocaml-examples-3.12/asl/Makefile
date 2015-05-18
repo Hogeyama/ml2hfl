@@ -27,7 +27,7 @@ all:: byt bin
 
 # (begin Imakefile)
 
-CAMLFLAGSBYT=-w A -warn-error Ae -g -pp camlp4o
+CAMLFLAGSBYT=-w A -g -pp camlp4o
 
 asl.BYTOBJS=prel.cmo asl.cmo token.cmo parser.cmo semant.cmo typing.cmo main.cmo run.cmo
 asl.FILES=$(asl.BYTOBJS:.cmo=.ml)

@@ -20,7 +20,7 @@ let prim_typs =
   ["unit", TUnit;
    "bool", TBool;
    "int", TInt;
-   "Pervasives.format", TConstr("string", false);
+   "Pervasives.format", TData("string", false);
 (*
    "Pervasives.in_channel", TUnit
 *)]
@@ -66,7 +66,7 @@ let conv_primitive_app t ts typ =
 let venv = ref []
 
 let rec from_type_expr tenv typ =
-  let typ' = Ctype.repr typ in
+  let typ' = Ctype.full_expand tenv @@ Ctype.repr typ in
   match typ'.Types.desc with
   | Tvar _ ->
       begin
@@ -92,6 +92,8 @@ let rec from_type_expr tenv typ =
       TRef (from_type_expr tenv type_expr)
   | Tconstr(path, [type_expr], _) when Path.name path = "option" ->
       TOption (from_type_expr tenv type_expr)
+  | Tconstr(path, [type_expr], _) when Path.name path = "array" ->
+      TRef (make_tpair TInt @@ TFun(Id.new_var TInt, from_type_expr tenv type_expr))
   | Tconstr(path, typs, m) ->
       let b =
         try
@@ -102,7 +104,7 @@ let rec from_type_expr tenv typ =
         with Not_found -> false
       in
       let s = Path.name path in
-      TConstr(s, b)
+      TData(s, b)
   | Tobject _ -> unsupported "Tobject"
   | Tfield _ -> unsupported "Tfield"
   | Tnil -> unsupported "Tnil"
@@ -155,7 +157,7 @@ let sign_to_letters s =
 let from_ident_aux name binding_time typ =
   let name = sign_to_letters name in
   let name = if name.[0] = '_' then "x" ^ name else name in
-    Id.make binding_time name typ
+  Id.make binding_time name typ
 
 let from_ident x typ =
   from_ident_aux (Ident.name x) (Ident.binding_time x) typ
@@ -295,7 +297,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
               _, KVariant stypss -> TVariant stypss
               | _ -> assert false
               in
-              add_type_env (KeyLabelResult name) (TConstr(typ_name,true));
+              add_type_env (KeyLabelResult name) (TData(typ_name,true));
               add_type_env (KeyLabelArg name) typ;
               add_type_env (KeyTypeEntity typ_name) typ;
          *)
@@ -315,7 +317,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
               in
               let name = match (Ctype.repr typ).desc with Tconstr(path,_,_) -> Path.name path in
               let aux2 (s,(_,typ)) =
-              add_type_env (KeyLabelResult s) (TConstr(name,true));
+              add_type_env (KeyLabelResult s) (TData(name,true));
               add_type_env (KeyLabelArg s) typ;
               in
               List.iter aux2 typs;
@@ -369,10 +371,11 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         let e' = from_expression e in
         match p'.pat_desc with
         | PVar x -> x, [], e'
+        | PConst t when t = unit_term -> Id.new_var ~name:"u" TUnit, [], e'
         | _ ->
             if flag = Recursive
-            then raise (Fatal "Only variables are allowed as left-hand side of 'let rec'")
-            else unsupported "Only variables are allowed as left-hand side of 'let ... and ...'"
+            then raise (Fatal "Only variables are supported as left-hand side of 'let rec'")
+            else unsupported "Only variables are supported as left-hand side of 'let ... and ...'"
       in
       let bindings = List.map aux pats in
       let t = from_expression e in
@@ -476,7 +479,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       {desc=desc; typ=typ'; attr=[]}
   | Texp_variant _ -> unsupported "expression (variant)"
   | Texp_record(fields,None) ->
-      let fields' = List.sort ~cmp:(fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
+      let fields' = List.sort ~cmp:(Compare.on (fun (_,lbl,_) -> lbl.lbl_pos)) fields in
       let aux (_,label,e) =
         get_label_name label env, (from_mutable_flag label.lbl_mut, from_expression e)
       in
@@ -493,8 +496,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
             let _,_,e = List.find (fun (_,lbl',_) -> lbl = lbl') fields in
             name, (flag, from_expression e)
           with Not_found ->
-            name, (flag, {desc=Field(lbl.lbl_pos, name, flag,
-                                    {desc=Var r; typ=Id.typ r; attr=[]});
+            name, (flag, {desc=Field(lbl.lbl_pos, name, flag, make_var r);
                           typ=from_type_expr env lbl.lbl_arg;
                           attr=[]})
         in
@@ -517,7 +519,21 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
                      from_expression e2);
        typ=typ';
        attr=[]}
-  | Texp_array _ -> unsupported "expression (array)"
+  | Texp_array es ->
+      let typ'' =
+        match (Ctype.full_expand env @@ Ctype.repr typ).Types.desc with
+        | Tconstr(path, [type_expr], _) when Path.name path = "array" ->
+            from_type_expr env type_expr
+        | _ -> assert false
+      in
+      let ts = List.map from_expression es in
+      let n = List.length ts in
+      let len = make_int n in
+      let i = Id.new_var ~name:"i" TInt in
+      let ti = make_var i in
+      let t = List.fold_right (fun j t -> t) (List.init n Fun.id) (make_bottom typ'') in
+      let t' = make_seq (make_assert @@ make_and (make_leq (make_int 0) ti) (make_lt ti len)) t in
+      make_ref @@ make_pair len @@ make_fun i t'
   | Texp_ifthenelse(e1,e2,e3) ->
       let t1 = from_expression e1 in
       let t2 = from_expression e2 in
@@ -591,8 +607,9 @@ let from_top_level_phrase (env,defs) = function
               let e' = from_expression e in
               match p'.pat_desc, flag with
               | PVar x, _ -> x, e'
-              | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
-              | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
+              | PConst t, _ when t = unit_term -> Id.new_var ~name:"u" TUnit, e'
+              | _, Recursive -> fatal "Only variables are supported as left-hand side of 'let rec'"
+              | _, Nonrecursive -> unsupported "Only variables are supported as left-hand side of 'let'"
             in
             [Decl_let(flag, List.map aux pats)]
         | Tstr_primitive(_,_,_) -> []

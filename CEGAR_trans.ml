@@ -148,7 +148,7 @@ let rec trans_typ = function
       let typ1 = trans_typ @@ Id.typ x in
       let typ2 = trans_typ typ in
       TFun(typ1, fun _ -> typ2)
-  | Type.TConstr(s, false) -> TBase(TAbst s, nil_pred)
+  | Type.TData(s, false) -> TBase(TAbst s, nil_pred)
   | Type.TPred(x,ps) ->
       begin
         let x' = trans_var x in
@@ -224,9 +224,19 @@ and trans_term post xs env t =
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt flag), t2')
-  | S.App({S.desc=S.Const(S.RandValue(Type.TConstr(s,false), true))}, [t1]) ->
+  | S.App({S.desc=S.Const(S.RandValue(Type.TData(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
+  | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
+      assert (t1 = Term_util.unit_term);
+      let defs1,t1' = trans_term post xs env t1 in
+      let defs2,t2' = trans_term post xs env t2 in
+      defs1@defs2, App(Const (RandInt None), t2')
+  | S.App({S.desc=S.Const(S.RandValue(typ,true))}, [t1;t2]) ->
+      assert (t1 = Term_util.unit_term);
+      let defs1,t1' = trans_term post xs env t1 in
+      let defs2,t2' = trans_term post xs env t2 in
+      defs1@defs2, App(t2', Const (RandVal (Format.asprintf "%a" Print.typ typ)))
   | S.Var x ->
       let x' = trans_var x in
       [], Var x'
@@ -267,7 +277,7 @@ and trans_term post xs env t =
         | Type.TUnit -> EqUnit
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt
-        | Type.TConstr(typ, false) -> CmpPoly(typ, "=")
+        | Type.TData(typ, false) -> CmpPoly(typ, "=")
         | typ -> Format.printf "trans_term: %a@." Print.typ typ; assert false
       in
       defs1@defs2, make_app (Const op) [t1'; t2']
@@ -276,7 +286,7 @@ and trans_term post xs env t =
       let defs2,t2' = trans_term post xs env t2 in
       let op' =
         match t1.S.typ with
-        | Type.TConstr(typ, false) -> Const (CmpPoly(typ, Print.string_of_binop op))
+        | Type.TData(typ, false) -> Const (CmpPoly(typ, Print.string_of_binop op))
         | _ -> trans_binop op
       in
       defs1@defs2, make_app op' [t1'; t2']
@@ -313,7 +323,7 @@ let rec formula_of t =
         | Type.TUnit -> EqUnit
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt
-        | Type.TConstr(typ, false) -> CmpPoly(typ, "=")
+        | Type.TData(typ, false) -> CmpPoly(typ, "=")
         | _ -> Format.printf "%a@." Print.typ t1.S.typ; assert false
       in
       make_app (Const op) [t1'; t2']

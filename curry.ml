@@ -117,7 +117,7 @@ let rec remove_pair_typ = function
       Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
   | TTuple xs -> Node (List.map (remove_pair_typ -| Id.typ) xs)
   | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
-  | TConstr(s,b) -> Leaf (TConstr(s,b))
+  | TData(s,b) -> Leaf (TData(s,b))
   | TPred({Id.typ=TTuple[x; {Id.typ=typ}]} as y, ps) ->
       begin
         match typ with (* Function types cannot have predicates *)
@@ -187,7 +187,7 @@ and remove_pair_aux t typ_opt =
   | BinOp(op, t1, t2) ->
       begin
         match op, elim_tpred t1.typ with
-        | (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TConstr(_,false)) -> ()
+        | (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TData(_,false)) -> ()
         | (Eq | Lt | Gt | Leq | Geq), _ ->
             Format.printf "%a@." Print.typ t1.typ;
             Format.printf "%a@." Print.typ t2.typ;

@@ -1,3 +1,4 @@
+
 open Format
 open Util
 open Type
@@ -163,6 +164,10 @@ and print_desc pri typ fm desc =
       let p = 60 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[-%a@]%s" s1 print_id x s2
+  | BinOp(Eq, t1, t2) -> (* for debug *)
+      let p = 50 in
+      let s1,s2 = paren pri p in
+      fprintf fm "%s@[%a@ %a[%a]@ %a@]%s" s1 (print_term p typ) t1 print_binop Eq print_typ t1.typ (print_term p typ) t2 s2
   | BinOp(op, t1, t2) ->
       let p = match op with Add|Sub|Mult -> 60 | And -> 40 | Or -> 30 | _ -> 50 in
       let s1,s2 = paren pri p in

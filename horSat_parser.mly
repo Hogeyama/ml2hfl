@@ -1,20 +1,15 @@
 %{
-let print_error_information () =
-  let st = Parsing.symbol_start_pos () in
-  let en = Parsing.symbol_end_pos () in
-  print_string ("File \"" ^ st.Lexing.pos_fname);
-  Format.printf "\", line %d" st.Lexing.pos_lnum;
-  Format.printf ", characters %d-%d:\n"
-    (st.Lexing.pos_cnum - st.Lexing.pos_bol)
-    (en.Lexing.pos_cnum - en.Lexing.pos_bol)
-
-let parse_error _ = print_error_information ()
+open HorSat_syntax
 %}
 
 %token EOF
+%token <int> INT
+%token <int> STATE
 %token <string> IDENT
 %token LPAREN
 %token RPAREN
+%token COMMA
+%token DOT
 %token BR_EXISTS
 %token BR_FORALL
 %token UNIT
@@ -27,27 +22,44 @@ let parse_error _ = print_error_information ()
 
 /* priority : low -> high */
 
+%start output_apt
+%type <HorSat_syntax.result> output_apt
 %start output
-%type <[`Satisfied | `Unsatisfied of HorSat_syntax.result_tree]> output
+%type <HorSat_syntax.result> output
 
 %%
 
-output:
-  SATISFIED EOF { `Satisfied }
-| UNSATISFIED THE_SIZE_OF_TYPING A_COUNTEREXAMPLE_IS counterexample EOF { `Unsatisfied $4 }
+output_apt:
+  SATISFIED EOF { Satisfied }
+| UNSATISFIED THE_SIZE_OF_TYPING A_COUNTEREXAMPLE_IS counterexample_apt EOF { UnsatisfiedAPT $4 }
 
-counterexample:
-  LPAREN counterexample RPAREN
+counterexample_apt:
+  LPAREN counterexample_apt RPAREN
   { $2 }
-| BR_EXISTS counterexample counterexample
+| BR_EXISTS counterexample_apt counterexample_apt
   { HorSat_syntax.Exists($2, $3) }
-| BR_FORALL counterexample BOT
+| BR_FORALL counterexample_apt BOT
   { HorSat_syntax.Forall(0, $2) }
-| BR_FORALL BOT counterexample
+| BR_FORALL BOT counterexample_apt
   { HorSat_syntax.Forall(1, $3) }
-| IDENT counterexample
+| IDENT counterexample_apt
   { HorSat_syntax.Label($1, $2) }
 | UNIT
   { HorSat_syntax.End }
 | FAIL BOT
   { HorSat_syntax.Fail }
+
+output:
+  SATISFIED EOF { Satisfied }
+| UNSATISFIED THE_SIZE_OF_TYPING INT A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $5 }
+
+id:
+  IDENT
+  { $1 }
+| FAIL
+  { "event_fail" }
+
+counterexample:
+  { [] }
+| LPAREN id COMMA INT RPAREN counterexample
+  { ($2, $4) :: $6 }

@@ -1,7 +1,7 @@
 open Util
 
 let init () =
-  Term_util.typ_excep := Type.TConstr("exn",true)
+  Term_util.typ_excep := Type.TData("exn",true)
 
 let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
   let r = f t in
@@ -17,19 +17,17 @@ let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
-(*
       let t = trans_and_print Trans.abst_ref "abst_ref" Fun.id t in
- *)
-      let t = t |&!Flag.base_to_int&> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
       let t = t |&!Flag.tupling&> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in
       let ext_ref_env = Spec.get_ext_ref_env spec t |@not!Flag.only_result&> Spec.print_ext_ref_env Format.std_formatter in
-      let t = trans_and_print (Trans.make_ext_funs ext_ref_env) "make_ext_funs" Fun.id t in
+      let t = trans_and_print (Trans.make_ext_funs ext_ref_env) "make_ext_funs" Fun.id ~pr:Print.term' t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" Fun.id t in
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" Fun.id t in
       let fun_list = Term_util.get_top_funs t in
       let abst_env = Spec.get_abst_env spec t |@not!Flag.only_result&> Spec.print_abst_env Format.std_formatter in
       let t = trans_and_print (Trans.replace_typ abst_env) "add_preds" Fun.id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
       let t = trans_and_print Encode_rec.trans "encode_recdata" Fun.id t in
+      let t = t |&!Flag.base_to_int&> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
       let get_rtyp = get_rtyp_list in
       let t,get_rtyp =

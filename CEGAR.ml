@@ -68,7 +68,6 @@ let rec loop prog0 is_cp ces info =
         with Not_found -> []
       in
       let env' = List.rev_map_flatten aux env in
-      assert (env'<>[]);
       post ();
       prog, Safe env'
   | MC.Unsafe ce, Flag.NonTermination ->
@@ -78,7 +77,7 @@ let rec loop prog0 is_cp ces info =
   | MC.Unsafe ce, _ ->
       let ce_orig =
         match ce with
-        | MC.CETRecS ce -> ce
+        | MC.CESafety ce -> ce
         | _ -> assert false
       in
       if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_orig;
@@ -86,7 +85,7 @@ let rec loop prog0 is_cp ces info =
       let ce_pre =
         match ces with
         | [] -> None
-        | MC.CETRecS ce_pre :: _ -> Some (CEGAR_trans.trans_ce labeled prog ce_pre)
+        | MC.CESafety ce_pre :: _ -> Some (CEGAR_trans.trans_ce labeled prog ce_pre)
         | _ -> assert false
       in
       if Some ce' = ce_pre then
@@ -135,7 +134,7 @@ let rec loop prog0 is_cp ces info =
               let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
               let aux ce =
                 match ce with
-                | MC.CETRecS ce' -> CEGAR_trans.trans_ce labeled prog ce'
+                | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce'
                 | _ -> assert false
               in
               let ces'' = List.map aux ces' in

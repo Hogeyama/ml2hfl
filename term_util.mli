@@ -61,6 +61,7 @@ val make_leq : typed_term -> typed_term -> typed_term
 val make_geq : typed_term -> typed_term -> typed_term
 val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
+val make_tpair : typ -> typ -> typ
 val make_pair : typed_term -> typed_term -> typed_term
 val make_tuple : typed_term list -> typed_term
 val make_nil : typ -> typed_term
@@ -68,7 +69,6 @@ val make_nil2 : typ -> typed_term
 val make_cons : typed_term -> typed_term -> typed_term
 val make_match : typed_term -> (typed_pattern * typed_term * typed_term) list -> typed_term
 val make_single_match : typed_term -> typed_pattern -> typed_term -> typed_term
-val make_nth : int -> int -> typed_term -> typed_term
 val make_seq : typed_term -> typed_term -> typed_term
 val make_ignore : typed_term -> typed_term
 val make_assert : typed_term -> typed_term
@@ -82,7 +82,6 @@ val make_pnil : typ -> typed_pattern
 val make_pnil2 : typ -> typed_pattern
 val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 val imply : typed_term -> typed_term -> typed_term
-val get_typ_default : typ -> typed_term
 val none_flag : typed_term
 val some_flag : typed_term
 val opt_typ : typ -> typ

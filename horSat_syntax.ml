@@ -6,6 +6,11 @@ type result_tree =
   | Label of string * result_tree
   | End | Fail
 
+type result =
+  | Satisfied
+  | UnsatisfiedAPT of result_tree
+  | Unsatisfied of (string * int) list
+
 let rec string_of_result_tree = function
   | Exists(r1, r2) -> String.join " " ["(br_exists"; (string_of_result_tree r1); (string_of_result_tree r2); ")"]
   | Forall(0, r) -> String.join " " ["(br_forall _"; (string_of_result_tree r); ")"]
@@ -78,5 +83,8 @@ let rec string_of_transitions_aux trs =
   | tr::trs' ->
     (string_of_transition tr)^".\n"^(string_of_transitions_aux trs')
 
-let string_of_transitions trs =
+let string_of_transitions_ATA trs =
   "%BEGINATA\n"^(string_of_transitions_aux trs)^"%ENDATA\n"
+
+let string_of_transitions trs =
+  "%BEGINA\n"^(string_of_transitions_aux trs)^"%ENDA\n"

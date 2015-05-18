@@ -8,7 +8,7 @@ type 'a t =
   | TFun of 'a t Id.t * 'a t
   | TList of 'a t
   | TTuple of 'a t Id.t list
-  | TConstr of string * bool
+  | TData of string * bool
   | TRef of 'a t
   | TOption of 'a t
   | TPred of 'a t Id.t * 'a list

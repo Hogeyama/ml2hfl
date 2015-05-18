@@ -290,7 +290,7 @@ let rec make_rand typ =
   | Type.TVar {contents=Some typ} -> make_rand typ
   | Type.TFun(x,typ) -> U.make_fun (Id.new_var_id x) @@ make_rand typ
   | Type.TTuple xs -> U.make_tuple @@ List.map (make_rand -| Id.typ) xs
-  | Type.TConstr _ -> unsupported "make_rand"
+  | Type.TData _ -> unsupported "make_rand"
   | Type.TRef _ -> unsupported "make_rand"
   | Type.TOption _ -> unsupported "make_rand"
   | Type.TPred(x,_) -> make_rand @@ Id.typ x

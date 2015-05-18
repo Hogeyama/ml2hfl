@@ -370,6 +370,11 @@ module Filename = struct
     with Invalid_argument "Filename.chop_extension" -> filename ^ ext'
 end
 
+module Ref = struct
+  let map f x =
+    x := f !x
+end
+
 let is_uppercase c = 'A' <= c && c <= 'Z'
 
 

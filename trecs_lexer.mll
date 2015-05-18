@@ -36,11 +36,7 @@ and token = parse
 | "/\\" { AND }
 | "->" { ARROW }
 | (lower|upper) (digit|lower|upper)* { IDENT (Lexing.lexeme lexbuf) }
-| "The number of expansions:" { footer lexbuf }
-| "Elapsed Time:" { footer lexbuf }
 | digit+ { INT (int_of_string (Lexing.lexeme lexbuf)) }
+| "The number of expansions:" { EOF }
+| "Elapsed Time:" { EOF }
 | _ { Format.printf "ERROR:%s@." (Lexing.lexeme lexbuf); failwith "lex error" }
-
-and footer = parse
-  eof { EOF }
-| _ { footer lexbuf }

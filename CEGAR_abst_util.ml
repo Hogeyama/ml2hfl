@@ -199,8 +199,9 @@ let rec add_label {env;defs;main;attr} =
         [f1,xs1,t11,e1, make_label 1 t12; f2,xs2,t21,e2,make_label 0 t22]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
         [f1,xs1,t11,e1,make_label 0 t12; f2,xs2,t21,e2,make_label 1 t22]
-    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] ->
-        CEGAR_print.prog Format.std_formatter{env=[];defs=[f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22];main="";attr=[]};assert false
+    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] as defs->
+        Format.printf "%a@." CEGAR_print.prog {env=[]; defs; main=""; attr=[]};
+        assert false
     | (f,_,_,_,_)::defs -> fatal @@ Format.sprintf "Not implemented (CEGAR_abst_util.add_label) %s %d" f (1 + List.length defs)
   in
   let rec aux = function
