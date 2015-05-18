@@ -25,6 +25,7 @@ option.conf
 *.o
 *.log
 *.trecs_out
+*.horsat_out
 *.hrs
 *.hors
 *.cegar
