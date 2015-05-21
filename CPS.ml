@@ -409,9 +409,9 @@ let rec add_preds_cont_aux k t =
     | BinOp(op, t1, t2) -> BinOp(op, add_preds_cont_aux k t1, add_preds_cont_aux k t2)
     | Not t1 -> Not (add_preds_cont_aux k t1)
     | Event(s,b) -> Event(s,b)
-    | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,add_preds_cont_aux k t1)) fields)
-    | Field(i,s,f,t1) -> Field(i,s,f,add_preds_cont_aux k t1)
-    | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,add_preds_cont_aux k t1,add_preds_cont_aux k t2)
+    | Record fields ->  Record (List.map (Pair.map_snd @@ add_preds_cont_aux k) fields)
+    | Field(s,t1) -> Field(s,add_preds_cont_aux k t1)
+    | SetField(s,t1,t2) -> SetField(s,add_preds_cont_aux k t1,add_preds_cont_aux k t2)
     | Nil -> Nil
     | Cons(t1,t2) -> Cons(add_preds_cont_aux k t1, add_preds_cont_aux k t2)
     | Constr(s,ts) -> Constr(s, List.map (add_preds_cont_aux k) ts)
@@ -925,6 +925,55 @@ let initialize () =
   constraints := [CGeq(0, ECont)]
 
 
+let exists_let = make_col false (||)
+
+let exists_let_desc desc =
+  match desc with
+  | Let _ -> true
+  | _ -> exists_let.col_desc_rec desc
+
+let () = exists_let.col_desc <- exists_let_desc
+let exists_let = exists_let.col_term
+
+
+let inline_affine = make_trans2 ()
+
+let inline_affine_term env t =
+  let t' =
+  match t.desc with
+  | App({desc=Var f}, ts) ->
+      begin
+        try
+          let xs,t = Id.assoc f env in
+          let ts' = List.map (inline_affine.tr2_term env) ts in
+          if List.length xs = List.length ts
+          then List.fold_right2 Trans.subst_with_rename xs ts' t
+          else raise Not_found
+        with Not_found -> inline_affine.tr2_term_rec env t
+      end
+  | Let(flag, bindings, t1) ->
+      let linear f xs t =
+        let fv = get_fv ~cmp:(fun _ _ -> false) t in
+        let b=        fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
+        in
+        if  b then Format.printf "AFFINE:  %a@." Id.print f
+                                 ;b
+      in
+      let env' = List.filter_map (fun (f,xs,t) -> if linear f xs t then Some (f,(xs,t)) else None) bindings @ env in
+      let bindings' = List.map (Triple.map_trd @@ inline_affine.tr2_term env') bindings in
+      make_let_f flag bindings' @@ inline_affine.tr2_term env' t1
+  | _ -> inline_affine.tr2_term_rec env t
+  in
+  let attr = if List.mem ACPS t.attr then ACPS::t'.attr else t'.attr in
+  {t' with attr}
+
+let () = inline_affine.tr2_term <- inline_affine_term
+let inline_affine t =
+  t
+  |> inline_affine.tr2_term []
+  |> Trans.elim_unused_let
+  |> Trans.inline_var_const
+
 
 let pr2 s p t = if !!debug then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
@@ -950,10 +999,14 @@ let trans t =
   pr "CPS" t;
   Type_check.check t typ_result;
   let t = Trans.propagate_typ_arg t in
-  pr2 "propagate_typ_arg" Print.term' t;
+  pr2 "propagate_typ_arg" Print.term t;
   Type_check.check t typ_result;
+  save_to_file "propagate_typ_arg" t; (* DEBUG *)
   let t = Trans.beta_reduce t in
   pr "beta reduce" t;
+  Type_check.check t typ_result;
+  let t = inline_affine t in
+  pr "inline affine functions" t;
   Type_check.check t typ_result;
   let t = Trans.expand_let_val t in
   pr "expand_let_val" t;

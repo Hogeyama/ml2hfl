@@ -63,3 +63,8 @@ val beta_var_tuple : typed_term -> typed_term
 val beta_no_effect_tuple : typed_term -> typed_term
 val reduce_bottom : typed_term -> typed_term
 val merge_bound_var_typ : (id * typ) list -> typed_term -> typed_term
+val encode_mutable_record : typed_term -> typed_term
+val beta_reduce_trivial : typed_term -> typed_term
+val recover_const_attr : typed_term -> typed_term
+val recover_const_attr_shallowly : typed_term -> typed_term
+val subst_with_rename : id -> typed_term -> typed_term -> typed_term

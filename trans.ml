@@ -20,10 +20,13 @@ let alpha_rename_term t =
         let aux (f,xs,t) =
           let f' = Id.new_var_id f in
           let xs' = List.map Id.new_var_id xs in
-          let t' = alpha_rename.tr_term t in
-          let t'' = subst_var f f' t' in
-          let t''' = List.fold_right2 subst_var xs xs' t'' in
-          (f', xs', t''')
+          let t' =
+            t
+            |> alpha_rename.tr_term
+            |> subst_var f f'
+            |> List.fold_right2 subst_var xs xs'
+          in
+          (f', xs', t')
         in
         List.map aux bindings
       in
@@ -189,6 +192,8 @@ let rec define_randvalue env defs typ =
         let env' = (typ,f)::env in
         let env'',defs',t =
           match Type_decl.assoc s with
+          | Type_decl.Primitive -> assert false
+          | Type_decl.Abstract -> assert false
           | Type_decl.TKVariant stypss ->
               let n = List.length stypss in
               let aux1 (s,typs) (env,defs,itss,i) =
@@ -208,12 +213,15 @@ let rec define_randvalue env defs typ =
           | Type_decl.TKRecord sftyps ->
               let aux (field,(flag,typ)) (env,defs,sfts) =
                 let env', defs', t = define_randvalue env defs typ in
-                env', defs', (field, (flag, t))::sfts
+                env', defs', (field,t)::sfts
               in
               let env'',defs',sfts = List.fold_right aux sftyps (env',defs,[]) in
               env'', defs', {desc=Record sfts; typ=typ; attr=[]}
         in
         env'', (f,[u],t)::defs', make_app (make_var f) [unit_term]
+    | TRef typ ->
+        let env',defs',t = define_randvalue env defs typ in
+        env', defs', make_ref t
     | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
 
 
@@ -390,8 +398,8 @@ let part_eval t =
       | BinOp(op, t1, t2) -> BinOp(op, aux apply t1, aux apply t2)
       | Not t -> Not (aux apply t)
       | Event(s,b) -> Event(s,b)
-      | Record fields -> Record (List.map (fun (s,(f,t)) -> s,(f,aux apply t)) fields)
-      | Field(i,s,f,t) -> Field(i, s, f, aux apply t)
+      | Record fields -> Record (List.map (Pair.map_snd @@ aux apply) fields)
+      | Field(s,t) -> Field(s, aux apply t)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(aux apply t1, aux apply t2)
       | Constr(c,ts) -> Constr(c, List.map (aux apply) ts)
@@ -402,7 +410,7 @@ let part_eval t =
       | Tuple _ -> assert false
       | TryWith (_, _) -> assert false
       | Raise _ -> assert false
-      | SetField (_, _, _, _, _, _) -> assert false
+      | SetField _ -> assert false
       | Bottom -> assert false
       | Label _ -> assert false
       | Ref _ -> assert false
@@ -902,9 +910,9 @@ let rec inlined_f inlined fs t =
     | BinOp(op, t1, t2) -> BinOp(op, inlined_f inlined fs t1, inlined_f inlined fs t2)
     | Not t1 -> Not (inlined_f inlined fs t1)
     | Event(s,b) -> Event(s,b)
-    | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,inlined_f inlined fs t1)) fields)
-    | Field(i,s,f,t1) -> Field(i,s,f,inlined_f inlined fs t1)
-    | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,inlined_f inlined fs t1,inlined_f inlined fs t2)
+    | Record fields ->  Record (List.map (Pair.map_snd @@ inlined_f inlined fs) fields)
+    | Field(s,t1) -> Field(s,inlined_f inlined fs t1)
+    | SetField(s,t1,t2) -> SetField(s,inlined_f inlined fs t1,inlined_f inlined fs t2)
     | Nil -> Nil
     | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)
     | Constr(s,ts) -> Constr(s, List.map (inlined_f inlined fs) ts)
@@ -983,8 +991,13 @@ let lift_fst_snd t = lift_fst_snd.tr2_term [] t
 let simplify_match = make_trans ()
 
 let simplify_match_term t =
+  let is_var = function {pat_desc=PVar _} -> true | _ -> false in
   match t.desc with
-  | Match(t1,pats) ->
+  | Match(t1, ({pat_desc=PTuple ps}, t2, t3)::pats) when t2 = true_term && List.for_all is_var ps ->
+      let xs = List.map (function {pat_desc=PVar x} -> x | _ -> assert false) ps in
+      let x = new_var_of_term t1 in
+      make_lets ((x,[],t1) :: List.mapi (fun i y -> y, [], make_proj i @@ make_var x) xs) @@ simplify_match.tr_term t3
+  | Match(t1, pats) ->
       let aux (pat,cond,t1) = pat, simplify_match.tr_term cond, simplify_match.tr_term t1 in
       let pats' = List.map aux pats in
       let rec elim_unused = function
@@ -1105,8 +1118,8 @@ let rec search_fail path t =
   | Event("fail",_) -> [path]
   | Event(s,b) -> []
   | Record fields -> assert false
-  | Field(i,s,f,t) -> assert false
-  | SetField(n,i,s,f,t1,t2) -> assert false
+  | Field(s,t) -> assert false
+  | SetField(s,t1,t2) -> assert false
   | Nil -> []
   | Cons(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
   | Constr(_,ts) ->
@@ -1167,8 +1180,8 @@ let rec screen_fail path target t =
         else Bottom
     | Event(s,b) -> t.desc
     | Record fields -> assert false
-    | Field(i,s,f,t) -> assert false
-    | SetField(n,i,s,f,t1,t2) -> assert false
+    | Field(s,t) -> assert false
+    | SetField(s,t1,t2) -> assert false
     | Nil -> t.desc
     | Cons(t1,t2) ->
         let aux i t = screen_fail (i::path) target t in
@@ -1209,7 +1222,7 @@ let rename_ext_funs_desc (funs,map) desc =
   | Var x when Id.mem x funs ->
       let map',x' =
         try
-          map, List.find (fun f' -> Type.can_unify (Id.typ f') (Id.typ x)) map
+          map, List.find (fun f' -> Type.can_unify (Id.typ f') (Id.typ x) && Id.name f' = Id.name x) map
         with Not_found ->
           let x' = Id.new_var_id x in
           x'::map, x'
@@ -1252,7 +1265,7 @@ let make_ext_funs env t =
     |> List.filter_out (Id.mem_assoc -$- env)
   in
   if List.exists (is_poly_typ -| Id.typ) funs
-  then unsupported "Trans.make_ext_funs";
+  then unsupported "Trans.make_ext_funs (polymorphic functions)";
   let map,t' = rename_ext_funs funs t in
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
@@ -1531,11 +1544,18 @@ let () = inline_var.tr_term <- inline_var_term
 let inline_var = inline_var.tr_term
 
 
+let rec is_const t =
+  match t.desc with
+  | Var _ -> true
+  | Const _ -> true
+  | Tuple ts -> List.for_all is_const ts
+  | _ -> false
+
 let inline_var_const = make_trans ()
 
 let inline_var_const_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],({desc=Var _|Const _} as t1)], t2) ->
+  | Let(Nonrecursive, [x,[],t1], t2) when is_const t1 ->
       subst x t1 @@ inline_var_const.tr_term t2
   | _ -> inline_var_const.tr_term_rec t
 
@@ -1590,6 +1610,7 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 let elim_unused_let = make_trans2 ()
 
 let elim_unused_let_desc cbv desc =
+  let has_no_effect t = has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr in
   match desc with
   | Let(Nonrecursive, bindings, t) ->
       let t' = elim_unused_let.tr2_term cbv t in
@@ -1691,7 +1712,7 @@ let inline_simple_exp = inline_simple_exp.tr_term
 
 let replace_base_with_int = make_trans ()
 
-let base_types = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"]
+let base_types = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"]
 let is_base_typ s = List.mem s base_types
 
 let replace_base_with_int_desc desc =
@@ -1805,43 +1826,77 @@ let expand_let_val t =
   expand_let_val.tr_term t
 
 
+let rec eval_aexp t =
+  match t.desc with
+  | Const (Int n) -> n
+  | Var _ -> invalid_argument "eval_aexp"
+  | BinOp(op, t1, t2) ->
+      let f =
+        match op with
+        | Add -> (+)
+        | Sub -> (-)
+        | Mult -> ( * )
+        | _ -> invalid_argument "eval_aexp"
+      in
+      f (eval_aexp t1) (eval_aexp t2)
+  | _ -> invalid_argument "eval_aexp"
 
-(* reduce only terms of the form "(fun x -> t1) t2" *)
-(* t is assumed to be a CBN-program *)
-let rec beta_reduce t =
-  let desc =
-    match t.desc with
-    | Const c -> Const c
-    | Var x -> Var x
-    | Fun(x, t) -> Fun(x, beta_reduce t)
-    | App(t, []) -> (beta_reduce t).desc
-    | App(t1, t2::ts) ->
-        begin
-          match beta_reduce t1 with
-          | {desc=Fun(x,t1')} ->
-              (beta_reduce {desc=App(subst_with_rename x t2 t1', ts); typ=t.typ; attr=t.attr}).desc
-          | t1' ->
-              let ts' = List.map beta_reduce (t2::ts) in
-              (make_app t1' ts').desc
-        end
-    | If(t1, t2, t3) -> If(beta_reduce t1, beta_reduce t2, beta_reduce t3)
-    | Let(flag,bindings,t) ->
-        let bindings' = List.map (fun (f,xs,t) -> f, xs, beta_reduce t) bindings in
-        Let(flag, bindings', beta_reduce t)
-    | BinOp(op, t1, t2) -> BinOp(op, beta_reduce t1, beta_reduce t2)
-    | Not t1 -> Not (beta_reduce t1)
-    | Event(s,b) -> Event(s,b)
-    | Tuple ts -> Tuple (List.map beta_reduce ts)
-    | Proj(i, t1) -> Proj(i, beta_reduce t1)
-    | Bottom -> Bottom
-    | _ -> Format.printf "%a@." Print.term t; assert false
-  in
-  let t' = {desc; typ=t.typ; attr=t.attr} in
-  if false && t<>t' then Format.printf "%a ===> %a@.@." Print.term t Print.term t';
-  t'
+let rec eval_bexp t =
+  match t.desc with
+  | Const True -> true
+  | Const False -> false
+  | Var _ -> invalid_argument "eval_bexp"
+  | BinOp((Eq|Lt|Gt|Leq|Geq) as op, t1, t2) ->
+      let f =
+        match op with
+        | Eq -> (=)
+        | Lt -> (<)
+        | Gt -> (>)
+        | Leq -> (<=)
+        | _ -> invalid_argument "eval_bexp"
+      in
+      f (eval_aexp t1) (eval_aexp t2)
+  | BinOp((And|Or) as op, t1, t2) ->
+      let f =
+        match op with
+        | And -> (&&)
+        | Or -> (||)
+        | _ -> invalid_argument "eval_bexp"
+      in
+      f (eval_bexp t1) (eval_bexp t2)
+  | Not t -> not @@ eval_bexp t
+  | _ -> false
+
+(* input is assumed to be a CBN-program *)
+let beta_reduce = make_trans ()
+
+let beta_reduce_desc desc =
+  match desc with
+  | Let(Nonrecursive, [x,[],{desc=Var y}], t) -> (beta_reduce.tr_term @@ subst_with_rename x (make_var y) t).desc
+  | App(t, []) -> (beta_reduce.tr_term t).desc
+  | App(t1, t2::ts) ->
+      begin
+        match beta_reduce.tr_term t1 with
+        | {desc=Fun(x,t1')} -> beta_reduce.tr_desc @@ App(subst_with_rename x t2 t1', ts)
+        | t1' -> App(t1', List.map beta_reduce.tr_term (t2::ts))
+      end
+  | Proj(i, {desc=Tuple ts}) -> (beta_reduce.tr_term @@ List.nth ts i).desc
+  | If(t1,t2,t3) when is_simple_bexp t1 && get_fv t1 = [] ->
+      (beta_reduce.tr_term @@ if eval_bexp t1 then t2 else t3).desc
+  | _ -> beta_reduce.tr_desc_rec desc
+
+let () = beta_reduce.tr_desc <- beta_reduce_desc
+let beta_reduce = beta_reduce.tr_term
 
 
+let test_term =
+  let x = Id.new_var (TFun(Id.new_var TInt, TInt)) in
+  let y = Id.new_var (TFun(Id.new_var TInt, TInt)) in
+  let k = Id.new_var (TFun(Id.new_var TInt, TInt)) in
+  let h = Id.new_var (TFun(Id.new_var TInt, TInt)) in
+  make_app (make_fun x @@ make_fun y @@ make_var y) [make_var k; make_var h]
 
+let () = if false then (Format.printf "%a@.@.%a@." Print.term test_term Print.term (beta_reduce test_term); assert false)
 
 let replace_bottom_def = make_trans ()
 
@@ -2143,3 +2198,72 @@ let ref_to_assert ref_env t =
   in
   let map = List.map (Pair.map_snd Ref_type.to_abst_typ) ref_env in
   merge_bound_var_typ map @@ replace_main main t
+
+
+
+let encode_mutable_record = make_trans ()
+
+let encode_mutable_record_pat p =
+  match p.pat_desc with
+  | PRecord fields when List.exists (fun (s,_) -> Type_decl.get_mutable_flag s = Mutable) fields ->
+      unsupported "Mutable record (encode_mutable_record_pat)"
+  | _ -> encode_mutable_record.tr_pat_rec p
+
+let () = encode_mutable_record.tr_pat <- encode_mutable_record_pat
+
+let encode_mutable_record t =
+  let map_kind k =
+    let open Type_decl in
+    match k with
+    | Primitive -> Primitive
+    | Abstract -> Abstract
+    | TKVariant stypss -> TKVariant stypss
+    | TKRecord sftyps -> TKRecord (List.map (fun (s,(_,typ)) -> s, (Immutable, typ)) sftyps)
+  in
+  Ref.map (List.map @@ Pair.map Fun.id map_kind) Type_decl.typ_decls;
+  encode_mutable_record.tr_term t
+
+
+let recover_const_attr_shallowly t =
+  let attr =
+    match t.desc with
+    | BinOp(op, t1, t2) -> make_attr [t1; t2]
+    | Not t -> make_attr [t]
+    | If(t1, t2, t3) -> make_attr [t1; t2; t3]
+    | Proj(_, t) -> make_attr [t]
+    | _ -> []
+  in
+  {t with attr = List.unique (attr @ t.attr)}
+
+let recover_const_attr = make_trans ()
+let () = recover_const_attr.tr_term <- recover_const_attr_shallowly -| recover_const_attr.tr_term_rec
+let recover_const_attr = recover_const_attr.tr_term
+
+
+let beta_reduce_trivial = make_trans2 ()
+
+let beta_reduce_trivial_term env t =
+  match t.desc with
+  | App({desc=Var f}, ts) ->
+      begin
+        try
+          let n,t = Id.assoc f env in
+          let check t = has_no_effect t || List.Set.subset [ATerminate;ANotFail] t.attr in
+          let ts' = List.map (beta_reduce_trivial.tr2_term env) ts in
+          if n = List.length ts && List.for_all check ts'
+          then t
+          else raise Not_found
+        with Not_found -> beta_reduce_trivial.tr2_term_rec env t
+      end
+  | Let(flag, bindings, t1) ->
+      let env' = List.filter_map (fun (f,xs,t) -> if get_fv t = [] then Some (f,(List.length xs,t)) else None) bindings @ env in
+      let bindings' = List.map (Triple.map_trd @@ beta_reduce_trivial.tr2_term env') bindings in
+      make_let_f flag bindings' @@ beta_reduce_trivial.tr2_term env' t1
+  | _ -> beta_reduce_trivial.tr2_term_rec env t
+
+let () = beta_reduce_trivial.tr2_term <- fun env t -> recover_const_attr_shallowly @@ beta_reduce_trivial_term env t
+let beta_reduce_trivial t =
+  t
+  |> beta_reduce_trivial.tr2_term []
+  |> elim_unused_let
+  |> inline_var_const

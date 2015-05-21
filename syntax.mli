@@ -37,9 +37,9 @@ and term =
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
   | Event of string * bool
-  | Record of (string * (mutable_flag * typed_term)) list
-  | Field of int * string * mutable_flag * typed_term
-  | SetField of int option * int * string * mutable_flag * typed_term * typed_term
+  | Record of (string * typed_term) list
+  | Field of string * typed_term
+  | SetField of string * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
@@ -82,12 +82,14 @@ and pattern =
   | PNil
   | PCons of typed_pattern * typed_pattern
   | PTuple of typed_pattern list
-  | PRecord of (int * (string * mutable_flag * typed_pattern)) list
+  | PRecord of (string * typed_pattern) list
   | PNone
   | PSome of typed_pattern
   | POr of typed_pattern * typed_pattern
 
 type env = (id * typ) list
+
+val const_attr : attr list
 
 type trans =
   {mutable tr_term:      typed_term    -> typed_term;

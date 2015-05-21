@@ -60,6 +60,7 @@ let rec trans_id x =
   let map = function
     | '\'' -> "_prime_"
     | '.' -> "_dot_"
+    | '&' -> "_et_"
     | c -> String.make 1 c
   in
   String.fold_left (fun s c -> s ^ map c) "" x
@@ -183,14 +184,17 @@ let rec verifyFile parser filename =
     try
       parser HorSat_lexer.token lb
     with Parsing.Parse_error ->
-      let loc = Location.curr lb in
+      let open Lexing in
+      let open Parsing in
+      let open Location in
+      let loc = curr lb in
       let file = loc.loc_start.pos_fname in
       let line = loc.loc_start.pos_lnum in
       let startchar = loc.loc_start.pos_cnum - loc.loc_start.pos_bol in
       let endchar = loc.loc_end.pos_cnum - loc.loc_start.pos_cnum + startchar in
       Format.printf "File \"%s\", line %d@?" file line;
       if startchar >= 0 then Format.printf ", characters %d-%d@." startchar endchar;
-      raise Parsing.Parse_error
+      raise Parse_error
   in
   close_in ic;
   match r with

@@ -525,20 +525,20 @@ let assoc_fun_def defs f =
 let get_nonrec defs main orig_fun_list force =
   let check (f,xs,t1,e,t2) =
     let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
-    let used = List.filter (fun (_,_,t1,_,t2) -> List.mem f (get_fv t1 @@@ get_fv t2)) defs in
-    List.for_all (fun (_,_,_,e,_) -> e = []) defs' &&
-      f <> main &&
-      (List.for_all (fun (_,xs,t1,e,t2) -> List.Set.subset (get_fv t1 @@@ get_fv t2) xs) defs' ||
-       (1 >= List.length (List.unique (List.map (fun (f,_,_,_,_) -> f) used)) || List.mem f force) &&
-       2 >= List.length defs')
+    let used = List.count (fun (_,_,_,_,t2) -> List.mem f @@ get_fv t2) defs in
+    List.for_all (fun (_,_,t1,e,_) -> e = [] && t1 = Const True) defs' &&
+    f <> main &&
+    (List.for_all (fun (_,xs,_,_,t2) -> List.Set.subset (get_fv t2) xs) defs' ||
+     (1 >= used || List.mem f force) &&
+     2 >= List.length defs')
   in
   let defs' = List.filter check defs in
-  let nonrec = List.rev_map (fun (f,xs,_,_,t) -> f, assoc_fun_def defs f) defs' in
+  let nonrec = List.rev_map (fun (f,_,_,_,_) -> f, assoc_fun_def defs f) defs' in
   if !Flag.expand_nonrec_init
   then nonrec
   else
     let orig_fun_list' = List.Set.diff orig_fun_list force in
-    List.filter (fun (f,_) -> not @@ List.mem f orig_fun_list') nonrec
+    List.filter_out (fun (f,_) -> List.mem f orig_fun_list') nonrec
 
 
 let print_prog_typ' orig_fun_list force fm {env;defs;main;attr} =

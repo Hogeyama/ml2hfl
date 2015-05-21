@@ -132,17 +132,21 @@ let abstract orig_fun_list prog =
 
 
 let abstract orig_fun_list force ?(top_funs=[]) prog =
-  let tmp = get_time() in
-  if !Flag.print_progress
-  then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.cegar_loop;
   let labeled,abst =
-    if List.mem ACPS prog.attr
-    then CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
-    else abstract orig_fun_list prog
+    measure_and_add_time
+      Flag.time_abstraction
+      (fun () ->
+         if !Flag.print_progress
+         then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.cegar_loop;
+         let labeled,abst =
+           if List.mem ACPS prog.attr
+           then CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
+           else abstract orig_fun_list prog
+         in
+         if debug() then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
+         if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
+         labeled, abst)
   in
-  if debug() then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
-  if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
-  add_time tmp Flag.time_abstraction;
   let abst',_,_ = CEGAR_trans.rename_prog abst in
   if !incr_wp_max && !prev_abst_defs = abst'.defs
   then raise NotRefined;

@@ -15,6 +15,8 @@ type 'a t =
 
 exception CannotUnify
 
+val _TFun : 'a t Id.t -> 'a t -> 'a t
+
 val print :
   ?occur:('a t Id.t -> 'a t -> bool) ->
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit

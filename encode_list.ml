@@ -31,7 +31,14 @@ let rec is_filled_pattern p =
     | PTuple ps ->
         let ts = List.map is_filled_pattern ps in
         Some (make_tuple @@ List.map Option.get ts)
-    | PRecord _ -> unsupported "not implemented: is_filled_pattern (record)"
+    | PRecord fields ->
+        let sftyps =
+          match Type_decl.kind_of_field (fst @@ List.hd fields) with
+          | _, TKRecord sftyps -> sftyps
+          | _ -> assert false
+        in
+        assert (List.length fields = List.length sftyps);
+        Some (make_record @@ List.map (Pair.map_snd @@ Option.get -| is_filled_pattern) fields)
     | PNone -> Some (make_none @@ option_typ p.pat_typ)
     | PSome p1 -> Some (make_some @@ Option.get @@ is_filled_pattern p1)
     | POr _ -> None
@@ -171,6 +178,7 @@ let rec get_match_bind_cond t p =
       let binds,conds = List.split @@ List.mapi (fun i p -> get_match_bind_cond (make_proj i t) p) ps in
       List.rev_flatten binds,
       List.fold_left make_and true_term conds
+  | PRecord fields -> assert false
   | _ -> Format.printf "get_match_bind_cond: %a@." Print.pattern p; assert false
 
 let print_bind fm bind =

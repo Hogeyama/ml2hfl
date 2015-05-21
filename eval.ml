@@ -145,10 +145,9 @@ let rec eval_print fm rands t =
       rands', v
   | Event("fail",false) -> raise EventFail
   | Event _ -> assert false
-  | Record fields -> raise (Fatal "Not implemented: Eval_Print Fm Record")
-  (*        Record (List.map (fun (f,(s,t1)) -> f,(s,id__ t1)) fields)*)
-  | Field(i,s,f,t1) -> raise (Fatal "Not implemented: Eval_Print Fm Record")
-  | SetField(n,i,s,f,t1,t2) -> raise (Fatal "Not implemented: Eval_Print Fm Record")
+  | Record fields -> raise (Fatal "Not implemented: eval_print Record")
+  | Field(s,t1) -> raise (Fatal "Not implemented: eval_print Record")
+  | SetField(s,t1,t2) -> raise (Fatal "Not implemented: eval_print Record")
   | Nil -> rands, t
   | Cons(t1,t2) ->
       let rands',v2 = eval_print fm rands t2 in

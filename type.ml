@@ -19,13 +19,13 @@ type 'a t =
 
 exception CannotUnify
 
+let _TFun x typ = TFun(x, typ)
+
 let typ_unknown = TData("???", false)
 
 let is_fun_typ = function
-    TFun(_,_) ->
-      true
-  | _ ->
-      false
+  | TFun(_,_) -> true
+  | _ -> false
 
 let rec is_base_typ = function
   | TUnit

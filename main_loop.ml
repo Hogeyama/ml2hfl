@@ -4,10 +4,13 @@ let init () =
   Term_util.typ_excep := Type.TData("exn",true)
 
 let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
+  let b = true in
+  if b then Format.printf "START: %s@." desc;
   let r = f t in
+  if b then Format.printf "END: %s@." desc;
   let t' = proj r in
   if !Flag.debug_level > 0 && t <> t' && opt
-  then Format.printf "%a:@. @[%a@.@." Color.s_red desc pr t';
+  then Format.printf "[#%a]:@. @[%a@.@." Color.s_red desc pr t';
   r
 
 let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
@@ -17,11 +20,14 @@ let preprocess t spec =
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
+      let t = trans_and_print Trans.encode_mutable_record "encode_mutable_record" Fun.id t in
       let t = trans_and_print Trans.abst_ref "abst_ref" Fun.id t in
       let t = t |&!Flag.tupling&> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in
       let ext_ref_env = Spec.get_ext_ref_env spec t |@not!Flag.only_result&> Spec.print_ext_ref_env Format.std_formatter in
-      let t = trans_and_print (Trans.make_ext_funs ext_ref_env) "make_ext_funs" Fun.id ~pr:Print.term' t in
+      let t = trans_and_print (Trans.make_ext_funs ext_ref_env) "make_ext_funs" Fun.id t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" Fun.id t in
+      let t = trans_and_print Trans.beta_reduce_trivial "beta_reduce_trivial" Fun.id t in
+      let t = trans_and_print Trans.recover_const_attr "recover_const_attr" Fun.id t in
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" Fun.id t in
       let fun_list = Term_util.get_top_funs t in
       let abst_env = Spec.get_abst_env spec t |@not!Flag.only_result&> Spec.print_abst_env Format.std_formatter in
@@ -45,15 +51,15 @@ let preprocess t spec =
       let t,get_rtyp =
         if !Flag.trans_to_CPS
         then
-          let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst t in
+          let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst ~pr:Print.term t in
           let get_rtyp = get_rtyp -|| get_rtyp_cps_trans in
-          let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst t in
+          let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst ~pr:Print.term t in
           let get_rtyp = get_rtyp -|| get_rtyp_remove_pair in
           t, get_rtyp
         else
           t, get_rtyp
       in
-      let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" Fun.id t in
+      let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" Fun.id ~pr:Print.term t in
       let abst_cps_env = Spec.get_abst_cps_env spec t |@not!Flag.only_result&> Spec.print_abst_cps_env Format.std_formatter in
       let t = trans_and_print (Trans.replace_typ abst_cps_env) "add_preds" Fun.id ~opt:(spec.Spec.abst_cps_env<>[]) t in
       let t = t |&!Flag.elim_same_arg&> trans_and_print Elim_same_arg.trans "eliminate same arguments" Fun.id in

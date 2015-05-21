@@ -291,6 +291,11 @@ module List = struct
       find f xs
     with Not_found -> d
 
+  let find_option f xs =
+    try
+      Some (find f xs)
+    with Not_found -> None
+
   let assoc_default ?(cmp=(=)) x k tbl =
     try
       assoc ~cmp k tbl
@@ -385,6 +390,16 @@ let get_time () =
 
 let add_time tmp t = t := !t +. get_time () -. tmp
 
+let measure_time f =
+  let tmp = get_time () in
+  let r = f () in
+  get_time () -. tmp, r
+
+let measure_and_add_time t f =
+  let time,r = measure_time f in
+  t := !t +. time;
+  r
+
 
 let print_err s =
   Format.fprintf Format.err_formatter "%s" s
@@ -466,3 +481,18 @@ let split_spaces ?(spaces=[' ';'\t';'\n']) s =
       aux acc_rev' s_rest
   in
   aux [] s
+
+let save_to_file file x =
+  let cout = open_out file in
+  Marshal.to_channel cout x [];
+  close_out cout
+
+let load_from_file file default =
+  if Sys.file_exists file
+  then
+    let cin = open_in file in
+    let x = Marshal.from_channel cin in
+    close_in cin;
+    x
+  else
+    default

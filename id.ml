@@ -62,6 +62,6 @@ let print fm x =
       to_string x
   in
   assert (s <> "");
-  Format.pp_print_string fm s
+  Format.fprintf fm "@[%s@]" s
 
 let map_typ f x = {x with typ = f x.typ}

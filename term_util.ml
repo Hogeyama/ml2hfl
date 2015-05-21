@@ -29,11 +29,20 @@ let length_var =
   let x = Id.make (-1) "l" (TList typ_unknown) in
   Id.make (-1) "length" (TFun(x, TInt))
 
-let const_attr = [ANotFail; ATerminate; ADeterministic]
 let make_attr ?(attrs=const_attr) ts =
   let check a = List.for_all (fun {attr} -> List.mem a attr) ts in
   let make a = if check a then Some a else None in
   List.filter_map make attrs
+
+let rec is_value t =
+  match t.desc with
+  | Const _ -> true
+  | Var _ -> true
+  | Fun _ -> true
+  | Nil -> true
+  | Cons(t1,t2) -> is_value t1 && is_value t2
+  | Tuple ts -> List.for_all is_value ts
+  | _ -> false
 
 let unit_term = {desc=Const Unit; typ=TUnit; attr=const_attr}
 let true_term = {desc=Const True;typ=TBool; attr=const_attr}
@@ -44,7 +53,7 @@ let fail_term_cps = {desc=Event("fail",true);typ=typ_event_cps; attr=[]}
 let make_bottom typ = {desc=Bottom;typ=typ; attr=[]}
 let make_event s = {desc=Event(s,false);typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=[]}
-let make_var x = {desc=Var x; typ=Id.typ x; attr=[]}
+let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
 let make_string s = {desc=Const(String s); typ=TData("string",false); attr=const_attr}
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
@@ -70,16 +79,6 @@ let rec make_app t ts =
                       Print.typ typ2;
         Format.printf "fun: %a@." Print.term t;
         Format.printf "arg: %a@." Print.term @@ List.hd ts;
-        (match typ1,typ2 with TList typ1', TList typ2' ->
-                                      Format.printf "make_app' :@ %a@ <=/=>@ %a, %a@."
-                      Print.typ typ1'
-                      Print.typ typ2'
-                      Print.typ typ_unknown;
-assert (typ1' = typ_unknown);
-(match typ1' with TData(s,b) -> Format.printf "typ1': TData(%s,%b)@." s b);
-(match typ2' with TData(s,b) -> Format.printf "typ2': TData(%s,%b)@." s b);
-assert (Type.can_unify typ1' typ2')
-| _ -> assert false);
         assert false
       end
   in
@@ -119,10 +118,16 @@ let make_seq t1 t2 =
   | Const _
   | Var _ -> t2
   | _ -> make_let [Id.new_var ~name:"u" t1.typ, [], t1] t2
-let make_ignore t = make_seq t unit_term
+let make_ignore t =
+  if is_value t then
+    unit_term
+  else if Type.can_unify t.typ TUnit then
+    t
+  else
+    make_seq t unit_term
 let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
-let make_not t = {desc=Not t; typ=TBool; attr=[]}
+let make_not t = {desc=Not t; typ=TBool; attr=make_attr[t]}
 let make_and t1 t2 =
   if t1 = false_term then
     false_term
@@ -133,7 +138,7 @@ let make_and t1 t2 =
   else if t2 = false_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
     false_term
   else
-    {desc=BinOp(And, t1, t2); typ=TBool; attr=[]}
+    {desc=BinOp(And, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_or t1 t2 =
   if t1 = true_term then
     true_term
@@ -144,10 +149,10 @@ let make_or t1 t2 =
   else if t2 = true_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
     true_term
   else
-    {desc=BinOp(Or, t1, t2); typ=TBool; attr=[]}
-let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=[]}
-let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt; attr=[]}
-let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt; attr=[]}
+    {desc=BinOp(Or, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_neg t = make_sub (make_int 0) t
 let make_if_ t1 t2 t3 =
   assert (Flag.check_typ => Type.can_unify t1.typ TBool);
@@ -158,37 +163,36 @@ let make_if_ t1 t2 t3 =
   | _ ->
       let typ =
         match has_pred t2.typ, has_pred t3.typ with
-          false, false -> t2.typ
-        | true, false -> t2.typ
+        | _, false -> t2.typ
         | false, true -> t3.typ
         | true, true ->
             if t2.typ <> t3.typ
             then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." Print.typ t2.typ Print.typ t3.typ;
             t2.typ
       in
-      {desc=If(t1, t2, t3); typ=typ; attr=[]}
+      {desc=If(t1, t2, t3); typ=typ; attr=make_attr[t1;t2;t3]}
 let make_eq t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
-  {desc=BinOp(Eq, t1, t2); typ=TBool; attr=make_attr [t1;t2]}
+  {desc=BinOp(Eq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Lt, t1, t2); typ=TBool; attr=[]}
+  {desc=BinOp(Lt, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_gt t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Gt, t1, t2); typ=TBool; attr=[]}
+  {desc=BinOp(Gt, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_leq t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Leq, t1, t2); typ=TBool; attr=[]}
+  {desc=BinOp(Leq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_geq t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Geq, t1, t2); typ=TBool; attr=[]}
-let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=[]}
+  {desc=BinOp(Geq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
 let make_ttuple typs =
   TTuple (List.map Id.new_var typs)
 let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
@@ -227,6 +231,9 @@ let make_construct c ts =
       List.iter2 (fun t typ -> assert (Type.can_unify t.typ typ)) ts typs
     end;
   {desc=Constr(c,ts); typ=Type_decl.constr_typ c; attr=[]}
+let make_record fields =
+  let typ = Type_decl.field_typ @@ fst @@ List.hd fields in
+  {desc=Record fields; typ; attr=[]}
 let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
@@ -532,12 +539,6 @@ let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
 
 
-let rec is_value t =
-  match t.desc with
-  | Const _ | Var _ | Nil -> true
-  | _ -> false
-
-
 let merge_preds ps1 ps2 =
   let aux p ps =
     if List.exists (same_term p) ps
@@ -592,7 +593,7 @@ let make_if t1 t2 t3 =
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
-  | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=[]}
+  | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
 let make_assert t = make_if t unit_term (make_app fail_term [unit_term])
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
 let make_br t2 t3 = make_if randbool_unit_term t2 t3
@@ -641,7 +642,7 @@ let rec is_simple_aexp t =
     | _ -> false
 
 and is_simple_bexp t =
-  if t.typ <> TInt
+  if t.typ <> TBool
   then false
   else
     match t.desc with

@@ -42,9 +42,9 @@ and term =
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
   | Event of string * bool
-  | Record of (string * (mutable_flag * typed_term)) list
-  | Field of int * string * mutable_flag * typed_term
-  | SetField of int option * int * string * mutable_flag * typed_term * typed_term
+  | Record of (string * typed_term) list
+  | Field of string * typed_term
+  | SetField of string * typed_term * typed_term
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
@@ -89,7 +89,7 @@ and pattern =
   | PNil
   | PCons of typed_pattern * typed_pattern
   | PTuple of typed_pattern list
-  | PRecord of (int * (string * mutable_flag * typed_pattern)) list
+  | PRecord of (string * typed_pattern) list
   | PNone
   | PSome of typed_pattern
   | POr of typed_pattern * typed_pattern
@@ -100,6 +100,9 @@ type env = (id * typ) list
 let typ t = t.typ
 let desc t = t.desc
 let attr t = t.attr
+
+
+let const_attr = [ANotFail; ATerminate; ADeterministic]
 
 
 type trans =
@@ -149,7 +152,7 @@ let trans_pat trans p =
     | PNil -> PNil
     | PCons(p1,p2) -> PCons(trans.tr_pat p1, trans.tr_pat p2)
     | PTuple ps -> PTuple (List.map trans.tr_pat ps)
-    | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,trans.tr_pat p)) pats)
+    | PRecord pats -> PRecord(List.map (Pair.map_snd trans.tr_pat) pats)
     | POr(p1,p2) -> POr(trans.tr_pat p1, trans.tr_pat p2)
     | PNone -> PNone
     | PSome p -> PSome (trans.tr_pat p)
@@ -191,9 +194,9 @@ let trans_desc trans = function
   | BinOp(op, t1, t2) -> BinOp(op, trans.tr_term t1, trans.tr_term t2)
   | Not t1 -> Not (trans.tr_term t1)
   | Event(s,b) -> Event(s,b)
-  | Record fields ->  Record (List.map (Pair.map_snd @@ Pair.map_snd trans.tr_term) fields)
-  | Field(i,s,f,t1) -> Field(i,s,f,trans.tr_term t1)
-  | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,trans.tr_term t1,trans.tr_term t2)
+  | Record fields ->  Record (List.map (Pair.map_snd trans.tr_term) fields)
+  | Field(s,t1) -> Field(s,trans.tr_term t1)
+  | SetField(s,t1,t2) -> SetField(s,trans.tr_term t1,trans.tr_term t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(trans.tr_term t1, trans.tr_term t2)
   | Constr(s,ts) -> Constr(s, List.map trans.tr_term ts)
@@ -302,7 +305,7 @@ let trans2_gen_pat tr env p =
     | PNil -> PNil
     | PCons(p1,p2) -> PCons(tr.tr2_pat env p1, tr.tr2_pat env p2)
     | PTuple ps -> PTuple (List.map (tr.tr2_pat env) ps)
-    | PRecord pats -> PRecord(List.map (fun (i,(s,f,p)) -> i,(s,f,tr.tr2_pat env p)) pats)
+    | PRecord pats -> PRecord(List.map (Pair.map_snd @@ tr.tr2_pat env) pats)
     | POr(p1,p2) -> POr(tr.tr2_pat env p1, tr.tr2_pat env p2)
     | PNone -> PNone
     | PSome p -> PSome (tr.tr2_pat env p)
@@ -343,9 +346,9 @@ let trans2_gen_desc tr env = function
   | BinOp(op, t1, t2) -> BinOp(op, tr.tr2_term env t1, tr.tr2_term env t2)
   | Not t1 -> Not (tr.tr2_term env t1)
   | Event(s,b) -> Event(s,b)
-  | Record fields ->  Record (List.map (fun (f,(s,t1)) -> f,(s,tr.tr2_term env t1)) fields)
-  | Field(i,s,f,t1) -> Field(i,s,f,tr.tr2_term env t1)
-  | SetField(n,i,s,f,t1,t2) -> SetField(n,i,s,f,tr.tr2_term env t1,tr.tr2_term env t2)
+  | Record fields ->  Record (List.map (Pair.map_snd @@ tr.tr2_term env) fields)
+  | Field(s,t1) -> Field(s,tr.tr2_term env t1)
+  | SetField(s,t1,t2) -> SetField(s,tr.tr2_term env t1,tr.tr2_term env t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(tr.tr2_term env t1, tr.tr2_term env t2)
   | Constr(s,ts) -> Constr(s, List.map (tr.tr2_term env) ts)
@@ -456,7 +459,7 @@ let col_pat col p =
     | PNil -> col.col_empty
     | PCons(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
     | PTuple ps -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_pat p) col.col_empty ps
-    | PRecord pats -> List.fold_left (fun acc (i,(s,f,p)) -> col.col_app acc @@ col.col_pat p) col.col_empty pats
+    | PRecord pats -> List.fold_left (fun acc (s,p) -> col.col_app acc @@ col.col_pat p) col.col_empty pats
     | POr(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
     | PNone -> col.col_empty
     | PSome p -> col.col_pat p
@@ -491,9 +494,9 @@ let col_desc col = function
   | BinOp(op, t1, t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Not t1 -> col.col_term t1
   | Event(s,b) -> col.col_empty
-  | Record fields -> List.fold_left (fun acc (f,(s,t1)) -> col.col_app acc @@ col.col_term t1) col.col_empty fields
-  | Field(i,s,f,t1) -> col.col_term t1
-  | SetField(n,i,s,f,t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
+  | Record fields -> List.fold_left (fun acc (_,t1) -> col.col_app acc @@ col.col_term t1) col.col_empty fields
+  | Field(s,t1) -> col.col_term t1
+  | SetField(s,t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Nil -> col.col_empty
   | Cons(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Constr(s,ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) col.col_empty ts
@@ -611,7 +614,7 @@ let col2_pat col env p =
     | PNil -> col.col2_empty
     | PCons(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
     | PTuple ps -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
-    | PRecord pats -> List.fold_left (fun acc (i,(s,f,p)) -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty pats
+    | PRecord pats -> List.fold_left (fun acc (s,p) -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty pats
     | POr(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
     | PNone -> col.col2_empty
     | PSome p -> col.col2_pat env p
@@ -646,9 +649,9 @@ let col2_desc col env = function
   | BinOp(op, t1, t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Not t1 -> col.col2_term env t1
   | Event(s,b) -> col.col2_empty
-  | Record fields -> List.fold_left (fun acc (f,(s,t1)) -> col.col2_app acc @@ col.col2_term env t1) col.col2_empty fields
-  | Field(i,s,f,t1) -> col.col2_term env t1
-  | SetField(n,i,s,f,t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | Record fields -> List.fold_left (fun acc (_,t1) -> col.col2_app acc @@ col.col2_term env t1) col.col2_empty fields
+  | Field(s,t1) -> col.col2_term env t1
+  | SetField(s,t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Nil -> col.col2_empty
   | Cons(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Constr(s,ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) col.col2_empty ts
@@ -804,9 +807,9 @@ let tr_col2_pat tc env p =
         let acc,ps' = tr_col2_list tc tc.tr_col2_pat env ps in
         acc, PTuple ps'
     | PRecord pats ->
-        let aux env (i,(s,f,p)) =
+        let aux env (s,p) =
           let acc',p' = tc.tr_col2_pat env p in
-          acc', (i,(s,f,p'))
+          acc', (s,p')
         in
         let acc,pats' = tr_col2_list tc aux env pats in
         acc, PRecord pats'
@@ -879,19 +882,19 @@ let tr_col2_desc tc env = function
       acc, Not t1'
   | Event(s,b) -> tc.tr_col2_empty, Event(s,b)
   | Record fields ->
-      let aux env (f,(s,t1)) =
+      let aux env (s,t1) =
         let acc,t1' = tc.tr_col2_term env t1 in
-        acc, (f,(s,t1'))
+        acc, (s,t1')
       in
       let acc,fields' = tr_col2_list tc aux env fields in
       acc, Record fields'
-  | Field(i,s,f,t1) ->
+  | Field(s,t1) ->
       let acc,t1' = tc.tr_col2_term env t1 in
-      acc, Field(i,s,f,t1')
-  | SetField(n,i,s,f,t1,t2) ->
+      acc, Field(s,t1')
+  | SetField(s,t1,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, SetField(n,i,s,f,t1',t2')
+      tc.tr_col2_app acc1 acc2, SetField(s,t1',t2')
   | Nil -> tc.tr_col2_empty, Nil
   | Cons(t1,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
@@ -1079,9 +1082,9 @@ let fold_tr_pat fld env p =
         let env'',ps' = fold_tr_list fld fld.fold_tr_pat env' ps in
         env'', PTuple ps'
     | PRecord pats ->
-        let aux env (i,(s,f,p)) =
+        let aux env (s,p) =
           let env',p' = fld.fold_tr_pat env p in
-          env', (i,(s,f,p'))
+          env', (s,p')
         in
         let env'',pats' = fold_tr_list fld aux env' pats in
         env'', PRecord pats'
@@ -1154,19 +1157,19 @@ let fold_tr_desc fld env = function
       env', Not t1'
   | Event(s,b) -> env, Event(s,b)
   | Record fields ->
-      let aux env (f,(s,t1)) =
+      let aux env (s,t1) =
         let env',t1' = fld.fold_tr_term env t1 in
-        env', (f,(s,t1'))
+        env', (s,t1')
       in
       let env',fields' = fold_tr_list fld aux env fields in
       env', Record fields'
-  | Field(i,s,f,t1) ->
+  | Field(s,t1) ->
       let env',t1' = fld.fold_tr_term env t1 in
-      env', Field(i,s,f,t1')
-  | SetField(n,i,s,f,t1,t2) ->
+      env', Field(s,t1')
+  | SetField(s,t1,t2) ->
       let env',t1' = fld.fold_tr_term env t1 in
       let env'',t2' = fld.fold_tr_term env' t2 in
-      env'', SetField(n,i,s,f,t1',t2')
+      env'', SetField(s,t1',t2')
   | Nil -> env, Nil
   | Cons(t1,t2) ->
       let env',t1' = fld.fold_tr_term env t1 in
@@ -1272,7 +1275,7 @@ let rec get_vars_pat pat =
   | PAlias(p,x) -> x :: get_vars_pat p
   | PConst _ -> []
   | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@@ acc) [] pats
-  | PRecord pats -> List.fold_left (fun acc (_,(_,_,pat)) -> get_vars_pat pat @@@ acc) [] pats
+  | PRecord pats -> List.fold_left (fun acc (_,pat) -> get_vars_pat pat @@@ acc) [] pats
   | POr(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
   | PTuple ps -> List.fold_left (fun acc p -> get_vars_pat p @@@ acc) [] ps
   | PNil -> []

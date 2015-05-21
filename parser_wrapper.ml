@@ -226,17 +226,24 @@ let rec add_type_env env typ =
   | Tconstr(path,typs,_) when Path.name path = "Pervasives.ref" -> List.iter (add_type_env env) typs
   | Tconstr(path,typs,_) when Path.name path = "option" -> List.iter (add_type_env env) typs
   | Tconstr(path,typs,_) ->
+      List.iter (add_type_env env) typs;
       begin
         match (Env.find_type path env).type_kind with
         | Type_abstract -> ()
         | Type_variant stypss ->
             let typ_name = Path.name path in
-            let kind = Type_decl.TKVariant (List.map (fun (s,typs,_) -> Ident.name s, List.map (from_type_expr env) typs) stypss) in
-            Type_decl.add_typ_decl typ_name kind
+            if Type_decl.need_add typ_name
+            then
+              let kind = Type_decl.TKVariant (List.map (fun (s,typs,_) -> Ident.name s, List.map (from_type_expr env) typs) stypss) in
+              Type_decl.add_typ_decl typ_name kind;
+              List.iter (fun (s,typs,_) -> List.iter (add_type_env env) typs) stypss
         | Type_record(fields,_) ->
             let typ_name = Path.name path in
-            let kind = Type_decl.TKRecord(List.map (fun (s,f,typ) -> Ident.name s,(from_mutable_flag f,from_type_expr env typ)) fields) in
-            Type_decl.add_typ_decl typ_name kind
+            if Type_decl.need_add typ_name
+            then
+              let kind = Type_decl.TKRecord (List.map (fun (s,f,typ) -> Ident.name s, (from_mutable_flag f, from_type_expr env typ)) fields) in
+              Type_decl.add_typ_decl typ_name kind;
+              List.iter (add_type_env env -| Triple.trd) fields
       end
   | Tobject _ -> unsupported "Tobject"
   | Tfield _ -> unsupported "Tfield"
@@ -277,6 +284,8 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'; attr=[]}
     | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'; attr=[]}
     | Tpat_tuple ps -> PTuple (List.map from_pattern ps)
+    | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "true" -> PConst true_term
+    | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "false" -> PConst false_term
     | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "None" -> PNone
     | Tpat_construct(_, cstr_desc, [p], _) when get_constr_name cstr_desc typ env = "Some" -> PSome (from_pattern p)
     | Tpat_construct(_, cstr_desc, [], _) when get_constr_name cstr_desc typ env = "()" -> PConst unit_term
@@ -286,43 +295,10 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     | Tpat_construct(_, cstr_desc, ps, _) ->
         let name = get_constr_name cstr_desc typ env in
         add_exc_env cstr_desc env;
-        (*
-              let path = match (Ctype.repr typ).desc with Tconstr(path,_,_) -> path in
-              let typ_name = Path.name path in
-              let typ =
-              if typ_name = "exn"
-              then TVariant[name, List.map (from_type_expr env []) cstr_desc.cstr_args]
-              else
-              match from_type_declaration env (Env.find_type path env) with
-              _, KVariant stypss -> TVariant stypss
-              | _ -> assert false
-              in
-              add_type_env (KeyLabelResult name) (TData(typ_name,true));
-              add_type_env (KeyLabelArg name) typ;
-              add_type_env (KeyTypeEntity typ_name) typ;
-         *)
         PConstruct(name, List.map from_pattern ps)
     | Tpat_variant _ -> unsupported "pattern match (variant)"
     | Tpat_record(pats,_) ->
-        let aux1 (_,lbl,p) = lbl.lbl_pos, (get_label_name lbl env, from_mutable_flag lbl.lbl_mut, from_pattern p) in
-        (*
-              let typs =
-              let labels = Array.to_list (fst (List.hd pats)).lbl_all in
-              let aux lbl =
-              let name = get_label_name lbl env in
-              let flag = from_mutable_flag lbl.lbl_mut in
-              name, (flag, from_type_expr env [] lbl.lbl_arg)
-              in
-              List.map aux labels
-              in
-              let name = match (Ctype.repr typ).desc with Tconstr(path,_,_) -> Path.name path in
-              let aux2 (s,(_,typ)) =
-              add_type_env (KeyLabelResult s) (TData(name,true));
-              add_type_env (KeyLabelArg s) typ;
-              in
-              List.iter aux2 typs;
-              add_type_env (KeyTypeEntity name) (TRecord(false, typs));
-         *)
+        let aux1 (_,lbl,p) = get_label_name lbl env, from_pattern p in
         PRecord (List.map aux1 pats)
     | Tpat_array _ -> unsupported "pattern match (array)"
     | Tpat_or(p1,p2,None) -> POr(from_pattern p1, from_pattern p2)
@@ -357,7 +333,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   | Texp_ident(path, _, _) ->
       make_var @@ from_ident_path path typ'
   | Texp_constant c ->
-      {desc = Const (from_constant c); typ = typ'; attr=[]}
+      {desc = Const (from_constant c); typ = typ'; attr=const_attr}
   | Texp_let(rec_flag, [p,e1], e2)
        when (function {pat_desc=PVar _} -> false | _ -> true) (from_pattern p) ->
       let p' = from_pattern p in
@@ -480,9 +456,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   | Texp_variant _ -> unsupported "expression (variant)"
   | Texp_record(fields,None) ->
       let fields' = List.sort ~cmp:(Compare.on (fun (_,lbl,_) -> lbl.lbl_pos)) fields in
-      let aux (_,label,e) =
-        get_label_name label env, (from_mutable_flag label.lbl_mut, from_expression e)
-      in
+      let aux (_,label,e) = get_label_name label env, from_expression e in
       let fields'' = List.map aux fields' in
       {desc=Record fields''; typ=typ'; attr=[]}
   | Texp_record(fields, Some init) ->
@@ -491,34 +465,20 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       let fields' =
         let aux lbl =
           let name = get_label_name lbl env in
-          let flag = from_mutable_flag lbl.lbl_mut in
           try
             let _,_,e = List.find (fun (_,lbl',_) -> lbl = lbl') fields in
-            name, (flag, from_expression e)
+            name, from_expression e
           with Not_found ->
-            name, (flag, {desc=Field(lbl.lbl_pos, name, flag, make_var r);
-                          typ=from_type_expr env lbl.lbl_arg;
-                          attr=[]})
+            name, {desc=Field(name, make_var r); typ=from_type_expr env lbl.lbl_arg; attr=[]}
         in
         List.map aux labels
       in
       make_let [r, [], from_expression init] {desc=Record fields';typ=typ'; attr=[]}
   | Texp_field(e,_,label) ->
-      {desc=Field(label.lbl_pos,
-                 get_label_name label env,
-                 from_mutable_flag label.lbl_mut,
-                 from_expression e);
-       typ=typ';
-       attr=[]}
+      let t = from_expression e in
+      {desc=Field(get_label_name label env, t); typ=typ'; attr=make_attr[t]}
   | Texp_setfield(e1,_,label,e2) ->
-      {desc=SetField(None,
-                     label.lbl_pos,
-                     get_label_name label env,
-                     from_mutable_flag label.lbl_mut,
-                     from_expression e1,
-                     from_expression e2);
-       typ=typ';
-       attr=[]}
+      {desc=SetField(get_label_name label env, from_expression e1, from_expression e2); typ=typ'; attr=[]}
   | Texp_array es ->
       let typ'' =
         match (Ctype.full_expand env @@ Ctype.repr typ).Types.desc with
@@ -571,7 +531,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       in
       let t32 = make_seq t3 @@ make_app (make_var f) [x''] in
       let t3' = make_if t31 t32 unit_term in
-      make_letrec [f, [x'], t3'] @@ make_lets [init,[],t1; last,[],t2] @@ make_app (make_var f) [make_var init]
+      make_lets [init,[],t1; last,[],t2] @@ make_letrec [f, [x'], t3'] @@ make_app (make_var f) [make_var init]
   | Texp_when _ -> unsupported "expression (when)"
   | Texp_send _
   | Texp_new _ -> unsupported "expression (class)"

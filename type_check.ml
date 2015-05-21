@@ -4,8 +4,6 @@ open Term_util
 open Type
 open Type_decl
 
-let var = Id.make (-1) "" (typ_unknown:typ)
-
 let check_var x typ =
   if Type.can_unify (Id.typ x) typ
   then ()
@@ -43,7 +41,7 @@ let rec check t typ =
   | Fun(x,t), TFun(y,typ') ->
       check_var x (Id.typ y);
       check t typ'
-  | App(t,ts) as t', typ' ->
+  | App(t,ts), typ' ->
       let rec aux = function
         | [], _ -> ()
         | t::ts, TFun(x,typ) ->
@@ -52,7 +50,7 @@ let rec check t typ =
         | [_], typ when typ = typ_event -> ()
         | _ -> assert false
       in
-      let typ'' = List.fold_right (fun t typ -> TFun(Id.set_typ var t.typ, typ)) ts typ' in
+      let typ'' = List.fold_right (fun t typ -> TFun(Id.new_var t.typ, typ)) ts typ' in
       aux (ts, t.typ);
       check t typ''
   | If(t1,t2,t3), typ' ->
@@ -109,11 +107,14 @@ let rec check t typ =
   | Record fields, typ ->
       let c,kind = kind_of_field @@ fst @@ List.hd fields in
       assert (Type.can_unify typ @@ TData(c,true));
-      List.iter (fun (s,(_,t)) -> check t @@ field_arg_typ s) fields
-  | Field(i,s,_,t), typ ->
+      List.iter (fun (s,t) -> check t @@ field_arg_typ s) fields
+  | Field(s,t), typ ->
       assert (Type.can_unify typ @@ field_arg_typ s);
       check t @@ field_typ s
-  | SetField _, typ -> assert false
+  | SetField(s,t1,t2), typ ->
+      assert (Type.can_unify typ TUnit);
+      check t1 @@ field_typ s;
+      check t2 @@ field_arg_typ s
   | Nil, TList _ -> ()
   | Cons(t1,t2), TList typ' ->
       check t1 typ';

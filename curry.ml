@@ -202,8 +202,8 @@ and remove_pair_aux t typ_opt =
       let t1' = root @@ remove_pair_aux t1 None in
       Leaf (make_not t1')
   | Record fields -> assert false
-  | Field(i,s,f,t1) -> assert false
-  | SetField(n,i,s,f,t1,t2) -> assert false
+  | Field(s,t1) -> assert false
+  | SetField(s,t1,t2) -> assert false
   | Nil -> assert false
   | Cons(t1,t2) -> assert false
   | Constr(s,ts) -> assert false

@@ -13,6 +13,8 @@ val typ_event_cps : typ
 val typ_excep_init : typ
 val typ_excep : typ ref
 
+val make_attr : ?attrs:attr list -> typed_term list -> attr list
+
 (** {6 Term constructor} *)
 val unit_term : typed_term
 val true_term : typed_term
@@ -23,7 +25,6 @@ val fail_term_cps : typed_term
 val randint_term : typed_term
 val randbool_unit_term : typed_term
 val randint_unit_term : typed_term
-val const_attr : attr list
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
@@ -98,6 +99,7 @@ val make_ref : typed_term -> typed_term
 val make_deref : typed_term -> typed_term
 val make_setref : typed_term -> typed_term -> typed_term
 val make_construct : string -> typed_term list -> typed_term
+val make_record : (string * typed_term) list -> typed_term
 val make_length : typed_term -> typed_term
 val new_var_of_term : typed_term -> id
 

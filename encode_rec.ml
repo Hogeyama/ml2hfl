@@ -16,7 +16,7 @@ let abst_recdata = make_trans ()
 let abst_recdata_typ typ =
   match typ with
   | TData(s,true) when Type_decl.is_variant s ->
-      let typs = Type_decl.get_ground_types s in
+      let typs = List.map abst_recdata.tr_typ @@ Type_decl.get_ground_types s in
       let r_typ =
         if typs = []
         then TInt
@@ -38,6 +38,7 @@ let abst_recdata_typ typ =
   | TOption typ -> opt_typ (abst_recdata.tr_typ typ)
   | _ -> abst_recdata.tr_typ_rec typ
 
+
 let abst_label c = make_int (1 + Type_decl.constr_pos c)
 
 let rec abst_recdata_pat p =
@@ -53,7 +54,11 @@ let rec abst_recdata_pat p =
     | PConstruct(c,ps) ->
         let f = Id.new_var ~name:"f" typ in
         let ppcbs = List.map (Pair.add_right abst_recdata_pat) ps in
-        let typ_name = match p.pat_typ with TData(s,true) -> s | _ -> assert false in
+        let typ_name =
+          match p.pat_typ with
+          | TData(s,true) -> s
+          | _ -> Format.printf "%a@." Print.typ p.pat_typ; assert false
+        in
         let ground_types = Type_decl.get_ground_types typ_name in
         let make_bind i (p,(p',_,_)) =
           let t =
@@ -65,7 +70,7 @@ let rec abst_recdata_pat p =
               in
               let j = find 0 ground_types in
               let t = make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_nil TInt)] in
-              make_proj (j+1) t
+              make_proj j @@ make_snd t
             else
               let path = Id.new_var ~name:"path" (TList TInt) in
               make_pair unit_term @@ (* extra-param *)
@@ -93,7 +98,13 @@ let rec abst_recdata_pat p =
         let p1',cond1,bind1 = abst_recdata_pat p1 in
         let p2',cond2,bind2 = abst_recdata_pat p2 in
         PCons(p1',p2'), make_and cond1 cond2, bind1@bind2
-    | PRecord _ -> assert false
+    | PRecord fields ->
+        let aux (s,p) (ps, cond, bind) =
+          let p', cond', bind' = abst_recdata_pat p in
+          p'::ps, make_and cond' cond, bind'@bind
+        in
+        let ps,cond,bind = List.fold_right aux fields ([],true_term,[]) in
+        PTuple ps, cond, bind
     | POr(p1,p2) -> assert false
     | PTuple ps ->
         let aux p (ps,cond,bind) =
@@ -126,7 +137,6 @@ let abst_recdata_term t =
         let bodies = List.map aux ground_types in
         match bodies with
         | [] -> head
-        | [t] -> make_pair head t
         | _ -> make_pair head @@ make_tuple bodies
       in
       let path = Id.new_var ~name:"path" @@ TList TInt in
@@ -160,13 +170,13 @@ let abst_recdata_term t =
   | TSome t -> make_some @@ abst_recdata.tr_term t
   | Record [] -> assert false
   | Record fields ->
-      if List.exists (fun (_,(f,_)) -> f = Mutable) fields
+      if List.exists (fun (s,_) -> Type_decl.get_mutable_flag s = Mutable) fields
       then unsupported "Mutable records"
-      else make_tuple @@ List.map (fun (_,(_,t)) -> abst_recdata.tr_term t) fields
-  | Field(i,s,f,t) ->
+      else make_tuple @@ List.map (abst_recdata.tr_term -| snd) fields
+  | Field(s,t) ->
       if Type_decl.is_mutable @@ fst @@ Type_decl.kind_of_field s
       then unsupported "Mutable records"
-      else make_proj i @@ abst_recdata.tr_term t
+      else make_proj (Type_decl.get_pos s) @@ abst_recdata.tr_term t
   | SetField _ -> assert false
   | _ -> abst_recdata.tr_term_rec t
 

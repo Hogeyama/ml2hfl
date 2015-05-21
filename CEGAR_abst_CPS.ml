@@ -46,8 +46,10 @@ let beta_reduce_def (f,xs,t1,e,t2) =
 
 let rec expand_nonrec orig_fun_list force {env;defs;main;attr} =
   let nonrec = get_nonrec defs main orig_fun_list force in
-  let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
+  let cnt = ref 0 in
   let rec loop defs =
+    Format.printf "%d, %d@." (incr cnt; !cnt) @@ List.fold_left (fun acc (_,_,_,_,t) -> acc + size t) 0 defs;
+    let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
     let defs' = List.map aux defs in
     if defs = defs'
     then defs
@@ -465,24 +467,26 @@ let abstract_prog prog =
   let attr = List.remove_all prog.attr ACPS in
   {env; defs; main=prog.main; attr}
 
+let pr s prog = if !!debug then Format.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
+
 let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
-  |&!Flag.expand_nonrec &> expand_nonrec orig_fun_list force
+  |&!Flag.expand_nonrec&> expand_nonrec orig_fun_list force
   |> CEGAR_trans.simplify_if
-  |@ (debug() && !Flag.expand_nonrec) &> Format.printf "EXPAND_NONREC:@\n%a@." CEGAR_print.prog
+  |@!Flag.expand_nonrec&> pr "EXPAND_NONREC"
   |> eta_expand
-  |@debug()&> Format.printf "ETA_EXPAND:@\n%a@." CEGAR_print.prog
+  |@> pr "ETA_EXPAND"
   |> abstract_prog
-  |@debug()&> Format.printf "ABST:@\n%a@." CEGAR_print.prog
+  |@> pr "ABST"
   |> Typing.infer -| initialize_env
   |@!Flag.debug_abst&> eval_step_by_step
   |> CEGAR_lift.lift2
-  |@debug()&> Format.printf "LIFT:@\n%a@." CEGAR_print.prog
+  |@> pr "LIFT"
   |> trans_eager
-  |@debug()&> Format.printf "TRANS_EAGER:@\n%a@." CEGAR_print.prog
+  |@> pr "TRANS_EAGER"
   |> put_into_if
   |@> Typing.infer
-  |@debug()&> Format.printf "PUT_INTO_IF:@\n%a@." CEGAR_print.prog
+  |@> pr "PUT_INTO_IF"
   |> CEGAR_lift.lift2
   |> Pair.add_left @@ Fun.const labeled

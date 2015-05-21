@@ -324,6 +324,7 @@ let check abst prog =
           match HorSatInterface.check_apt (abst',spec) with
           | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
           | HorSatInterface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
+          | HorSatInterface.Unsafe _ -> assert false
         end
     | Flag.HorSat, _ ->
         let spec = HorSatInterface.make_spec @@ List.length prog.defs in
@@ -331,6 +332,7 @@ let check abst prog =
           match HorSatInterface.check (abst',spec) with
           | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
           | HorSatInterface.Unsafe ce -> Unsafe (CESafety ce)
+          | HorSatInterface.UnsafeAPT _ -> assert false
         end
   in
   add_time tmp Flag.time_mc;

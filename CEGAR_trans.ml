@@ -227,11 +227,6 @@ and trans_term post xs env t =
   | S.App({S.desc=S.Const(S.RandValue(Type.TData(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
-  | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
-      assert (t1 = Term_util.unit_term);
-      let defs1,t1' = trans_term post xs env t1 in
-      let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt None), t2')
   | S.App({S.desc=S.Const(S.RandValue(typ,true))}, [t1;t2]) ->
       assert (t1 = Term_util.unit_term);
       let defs1,t1' = trans_term post xs env t1 in

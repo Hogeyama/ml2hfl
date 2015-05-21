@@ -80,7 +80,7 @@ let rec lift_aux post xs t =
           let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
           let fv = IdSet.elements fv in
           let ys' = fv @ ys in
-          let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
+          let typ = List.fold_right _TFun fv (Id.typ f) in
           let f' = Id.set_typ f typ in
           let f'' = List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv in
           let defs1,t1' = lift_aux post (set_of_list ys') t1 in
@@ -121,14 +121,14 @@ let rec lift_aux post xs t =
         let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
         let fv = IdSet.elements fv in
         let aux (f,_,_) =
-          let f' = Id.set_typ f (List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f)) in
+          let f' = Id.set_typ f (List.fold_right _TFun fv (Id.typ f)) in
           f, (f', List.fold_left (fun t x -> make_app t [make_var x]) (make_var f') fv)
         in
         let fs = List.map aux bindings in
         let subst_f t = List.fold_left2 (fun t (_,(_,f'')) (f,_,_) -> subst f f'' t) t fs bindings in
         let aux (f,ys,t1) =
           let ys' = fv @ ys in
-          let f' = fst (List.assoc f fs) in
+          let f',_ = List.assoc f fs in
           let defs1,t1' = lift_aux ("_" ^ Id.name f) (set_of_list ys') (subst_f t1) in
           (f',(ys',t1'))::defs1
         in
@@ -144,15 +144,15 @@ let rec lift_aux post xs t =
         defs, Not t'
     | Event(s,b) -> [], Event(s,b)
     | Record fields ->
-        let aux (s,(f,t)) =
+        let aux (s,t) =
           let defs,t' = lift_aux post xs t in
-          defs, (s,(f,t'))
+          defs, (s,t')
         in
         let defss,fields' = List.split_map aux fields in
         List.flatten defss, Record fields'
-    | Field(i,s,f,t) ->
+    | Field(s,t) ->
         let defs,t' = lift_aux post xs t in
-        defs, Field(i,s,f,t')
+        defs, Field(s,t')
     | Nil -> [], Nil
     | Cons(t1,t2) ->
         let defs1,t1' = lift_aux post xs t1 in
@@ -180,7 +180,7 @@ let rec lift_aux post xs t =
     | Bottom -> [], Bottom
     | _ -> Format.printf "lift: %a@." Print.term t; assert false
   in
-  defs, {desc; typ=t.typ; attr=t.attr}
+  defs, {t with desc}
 
 let lift ?(args=[]) t =
   lift_aux "" (set_of_list args) t,
@@ -267,15 +267,15 @@ let rec lift_aux' post xs t =
         defs, Not t'
     | Event(s,b) -> [], Event(s,b)
     | Record fields ->
-        let aux (s,(f,t)) =
+        let aux (s,t) =
           let defs,t' = lift_aux' post xs t in
-          defs, (s,(f,t'))
+          defs, (s,t')
         in
         let defss,fields' = List.split_map aux fields in
         List.flatten defss, Record fields'
-    | Field(i,s,f,t) ->
+    | Field(s,t) ->
         let defs,t' = lift_aux' post xs t in
-        defs, Field(i,s,f,t')
+        defs, Field(s,t')
     | Nil -> [], Nil
     | Cons(t1,t2) ->
         let defs1,t1' = lift_aux' post xs t1 in

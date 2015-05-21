@@ -10,7 +10,7 @@ type kind =
 
 let debug () = List.mem "Type_decl" !Flag.debug_module
 
-let primitives = ["char";"string";"float";"int32";"int64";"nativeint"]
+let primitives = ["char";"string";"float";"int32";"int64";"nativeint";"format4";"format6"]
 
 let typ_decls = ref (("ABST", Abstract) :: ("exn",TKVariant[]) :: List.map (Pair.pair -$- Primitive) primitives)
 
@@ -32,7 +32,10 @@ let print_kind fm = function
 
 let in_typ_decls s = List.mem_assoc s !typ_decls
 
-let assoc s = List.assoc s !typ_decls
+let assoc s =
+  try
+    List.assoc s !typ_decls
+  with Not_found -> Format.printf "%s@." s; assert false
 
 let is_primitive s = List.mem s primitives
 
@@ -46,8 +49,11 @@ let is_record s =
   | TKRecord _ -> true
   | _ -> false
 
+let need_add s =
+  not (in_typ_decls s) && s <> "unit" && s <> "bool" && s <> "list"
+
 let add_typ_decl s k =
-  if not (in_typ_decls s) && s <> "unit" && s <> "bool" && s <> "list"
+  if need_add s
   then
     begin
       if !!debug then Format.printf "ADD %s = %a@." s print_kind k;
@@ -83,6 +89,8 @@ let map f = Ref.map (List.map (Pair.map Fun.id @@ map_kind f)) typ_decls
 let constr_typ s =
   let rec search = function
     | [] -> Format.printf "Not found: constructor %s@." s; assert false
+    | (_, Primitive)::kinds -> search kinds
+    | (_, Abstract)::kinds -> search kinds
     | (_, TKRecord _)::kinds -> search kinds
     | (c, TKVariant stypss)::kinds ->
         if List.mem_assoc s stypss
@@ -94,6 +102,8 @@ let constr_typ s =
 let constr_arg_typs s =
   let rec search = function
     | [] -> Format.printf "Not found: constructor %s@." s; assert false
+    | (_, Primitive)::kinds -> search kinds
+    | (_, Abstract)::kinds -> search kinds
     | (_, TKRecord _)::kinds -> search kinds
     | (_, TKVariant stypss)::kinds ->
         try
@@ -105,11 +115,13 @@ let constr_arg_typs s =
 let kind_of_field s =
   let rec search = function
     | [] -> Format.printf "Not found: field %s@." s; assert false
+    | (_, Primitive)::kinds -> search kinds
+    | (_, Abstract)::kinds -> search kinds
+    | (_, TKVariant _)::kinds -> search kinds
     | (c, (TKRecord sftyps as kind))::kinds ->
         if List.mem_assoc s sftyps
         then c, kind
         else search kinds
-    | (_, TKVariant _)::kinds -> search kinds
   in
   search !typ_decls
 
@@ -149,6 +161,38 @@ let is_mutable c =
   in
   List.exists (fun (_,(f,_)) -> f = Mutable) sftyps
 
+let get_mutable_flag s =
+  match kind_of_field s with
+  | _, TKRecord sftyps -> fst @@ List.assoc s sftyps
+  | _ -> invalid_argument "get_mutable_flag"
+
+let get_pos s =
+  match kind_of_field s with
+  | _, TKRecord sftyps ->
+      List.assoc s @@ List.mapi (fun i (s,(f,typ)) -> s, i) sftyps
+  | _ -> invalid_argument "get_mutable_flag"
+
+let rec can_reach acc s1 s2 =
+  let aux (b,acc) typ =
+    if b
+    then true, acc
+    else
+      match typ with
+      | TData(s,_) when not @@ List.mem s acc ->
+          can_reach (s::acc) s s2
+      | _ -> false, acc
+  in
+  match assoc s1 with
+  | Primitive -> false, acc
+  | Abstract -> false, acc
+  | TKRecord sftyps when List.exists (function (_,(_,TData(s,_))) -> s = s2 | _ -> false) sftyps -> true, acc
+  | TKRecord sftyps ->
+      List.fold_left (fun bacc (_,(_,typ)) -> aux bacc typ) (false,[]) sftyps
+  | TKVariant stypss ->
+      List.fold_left (fun bacc (s,typs) -> List.fold_left aux bacc typs) (false,[]) stypss
+
+let can_reach s1 s2 = fst @@ can_reach [] s1 s2
+
 (* Not implemented *)
 let get_mutual_decls s =
   !typ_decls
@@ -169,7 +213,7 @@ let get_ground_types s =
         | TVar({contents=None}) -> unsupported "(type 'a t = ...)"
         | TVar _ -> unsupported "(type 'a t = ...)"
         | TFun _ -> elim_and_decomp (add TInt acc) typs
-        | TList (TData _ as typ') -> elim_and_decomp acc (typ'::typs)
+        | TList (TData(s',_) as typ') when can_reach s' s -> elim_and_decomp acc (typ'::typs)
         | TList _ -> elim_and_decomp (add typ acc) typs
         | TTuple xs -> elim_and_decomp acc (List.map Id.typ xs @ typs)
         | TData(s,true) ->

@@ -1,4 +1,3 @@
-
 let horsat = ref Environment.horsat
 let omega = ref Environment.omega
 let trecs = ref Environment.trecs

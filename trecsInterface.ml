@@ -34,6 +34,7 @@ let trans_id x =
   let map = function
     | '\'' -> "_prime_"
     | '.' -> "_dot_"
+    | '&' -> "_et_"
     | c -> String.make 1 c
   in
   String.replace_chars map x
@@ -113,11 +114,11 @@ let rec verifyFile filename =
   let r = Trecs_parser.output Trecs_lexer.token @@ Lexing.from_channel ic in
   close_in ic;
   match r with
-  | Safe env ->
+  | TS.Safe env ->
       Safe env
-  | Unsafe trace ->
+  | TS.Unsafe trace ->
       Unsafe (trans_ce trace)
-  | TimeOut ->
+  | TS.TimeOut ->
       if not !Flag.only_result
       then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
       Flag.trecs_param1 := 2 * p1;
