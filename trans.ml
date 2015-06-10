@@ -2267,3 +2267,38 @@ let beta_reduce_trivial t =
   |> beta_reduce_trivial.tr2_term []
   |> elim_unused_let
   |> inline_var_const
+
+
+let exists_exception = make_col false (||)
+
+let exists_exception_desc desc =
+  match desc with
+  | Event("fail", _) -> true
+  | Raise _ -> true
+  | _ -> exists_exception.col_desc_rec desc
+
+let () = exists_exception.col_desc <- exists_exception_desc
+let exists_exception = exists_exception.col_term
+
+
+let ignore_non_termination = make_trans2 ()
+
+let ignore_non_termination_desc fail_free desc =
+  match desc with
+  | App({desc=Var f}, ts) when Id.mem f fail_free && Type.can_unify TUnit (make_app (make_var f) ts).typ->
+      Const Unit
+  | Let(flag, bindings, t1) ->
+      let bindings' = List.map (Triple.map_trd @@ ignore_non_termination.tr2_term fail_free) bindings in
+      let fv = get_fv t1 in
+      let check f (xs:id list) t =
+        List.for_all (Type.is_base_typ -| Id.typ) xs &&
+        List.Set.subset (get_fv t) (xs @@@ fail_free) &&
+        not @@ exists_exception t
+      in
+      let fail_free' = List.filter_map (fun (f,xs,t) -> if check f xs t then Some f else None) bindings' in
+      let bindings'' = List.filter_out (fun (f,_,_) -> Id.mem f fail_free' && not @@ Id.mem f fv) bindings' in
+      (make_let_f flag bindings'' @@ ignore_non_termination.tr2_term (fail_free'@@@fail_free) t1).desc
+  | _ -> ignore_non_termination.tr2_desc_rec fail_free desc
+
+let () = ignore_non_termination.tr2_desc <- ignore_non_termination_desc
+let ignore_non_termination = ignore_non_termination.tr2_term []

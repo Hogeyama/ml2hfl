@@ -259,6 +259,7 @@ let arg_spec =
      "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling), " Toggle tupling";
      "-elim-same-arg", Arg.Set Flag.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.base_to_int, " Replace primitive base types with int";
+     "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
      (* verifier *)
      "-modular", Arg.Set Flag.modular, " Modular verification";
      "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";

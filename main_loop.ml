@@ -4,7 +4,7 @@ let init () =
   Term_util.typ_excep := Type.TData("exn",true)
 
 let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
-  let b = true in
+  let b = false in
   if b then Format.printf "START: %s@." desc;
   let r = f t in
   if b then Format.printf "END: %s@." desc;
@@ -26,6 +26,7 @@ let preprocess t spec =
       let ext_ref_env = Spec.get_ext_ref_env spec t |@not!Flag.only_result&> Spec.print_ext_ref_env Format.std_formatter in
       let t = trans_and_print (Trans.make_ext_funs ext_ref_env) "make_ext_funs" Fun.id t in
       let t = trans_and_print Trans.copy_poly_funs "copy_poly" Fun.id t in
+      let t = t |&!Flag.ignore_non_termination&> trans_and_print Trans.ignore_non_termination "ignore_non_termination" Fun.id in
       let t = trans_and_print Trans.beta_reduce_trivial "beta_reduce_trivial" Fun.id t in
       let t = trans_and_print Trans.recover_const_attr "recover_const_attr" Fun.id t in
       let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" Fun.id t in
@@ -193,9 +194,11 @@ let report_safe env rmap get_rtyp orig t0 =
 
 
 let report_unsafe main ce set_target =
-  (match !Flag.mode with
-   | Flag.NonTermination -> Color.printf Color.Bright "Unknown.";
-   | _ -> Color.printf Color.Bright "Unsafe!");
+  if !Flag.mode = Flag.NonTermination || !Flag.ignore_non_termination
+  then
+    Color.printf Color.Bright "Unknown."
+  else
+    Color.printf Color.Bright "Unsafe!";
   Format.printf "@.@.";
   Option.may (fun (main_fun, arg_num) ->
               Format.printf "Input for %s:@.  %a@." main_fun

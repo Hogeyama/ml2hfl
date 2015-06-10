@@ -68,3 +68,4 @@ val beta_reduce_trivial : typed_term -> typed_term
 val recover_const_attr : typed_term -> typed_term
 val recover_const_attr_shallowly : typed_term -> typed_term
 val subst_with_rename : id -> typed_term -> typed_term -> typed_term
+val ignore_non_termination : typed_term -> typed_term

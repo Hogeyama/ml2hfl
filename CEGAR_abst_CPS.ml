@@ -48,7 +48,7 @@ let rec expand_nonrec orig_fun_list force {env;defs;main;attr} =
   let nonrec = get_nonrec defs main orig_fun_list force in
   let cnt = ref 0 in
   let rec loop defs =
-    Format.printf "%d, %d@." (incr cnt; !cnt) @@ List.fold_left (fun acc (_,_,_,_,t) -> acc + size t) 0 defs;
+    if false then Format.printf "%d, %d@." (incr cnt; !cnt) @@ List.fold_left (fun acc (_,_,_,_,t) -> acc + size t) 0 defs;
     let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
     let defs' = List.map aux defs in
     if defs = defs'

@@ -954,10 +954,7 @@ let inline_affine_term env t =
   | Let(flag, bindings, t1) ->
       let linear f xs t =
         let fv = get_fv ~cmp:(fun _ _ -> false) t in
-        let b=        fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
-        in
-        if  b then Format.printf "AFFINE:  %a@." Id.print f
-                                 ;b
+        fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
       in
       let env' = List.filter_map (fun (f,xs,t) -> if linear f xs t then Some (f,(xs,t)) else None) bindings @ env in
       let bindings' = List.map (Triple.map_trd @@ inline_affine.tr2_term env') bindings in
