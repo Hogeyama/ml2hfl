@@ -2148,7 +2148,7 @@ let rec replace_main main t =
   | Let(flag, bindings, t2) ->
       make_let_f flag bindings @@ replace_main main t2
   | _ ->
-      assert (t = unit_term);
+      assert (t.desc = Const Unit);
       main
 
 
