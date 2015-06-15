@@ -495,7 +495,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
 
 and from_case {c_lhs;c_guard;c_rhs} =
   from_pattern c_lhs,
-  Option.default true_term (Option.map from_expression c_guard),
+  Option.map_default from_expression true_term c_guard,
   from_expression c_rhs
 
 

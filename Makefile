@@ -111,7 +111,7 @@ CEGAR_lexer.ml: CEGAR_lexer.mll
 	$(OCAMLLEX) $<
 
 parser_wrapper.ml: parser_wrapper_$(OCAML_VER).ml
-	cp $< $@
+	cp -f $< $@
 	chmod -w $@
 
 
