@@ -110,6 +110,10 @@ CEGAR_parser.ml CEGAR_parser.mli: CEGAR_parser.mly
 CEGAR_lexer.ml: CEGAR_lexer.mll
 	$(OCAMLLEX) $<
 
+parser_wrapper.ml: parser_wrapper_$(OCAML_VER).ml
+	cp $< $@
+	chmod -w $@
+
 
 # Dependencies
 DEP_FPAT = CEGAR CEGAR_syntax CEGAR_abst_util feasibility mochi \

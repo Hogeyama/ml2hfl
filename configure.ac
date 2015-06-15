@@ -59,5 +59,8 @@ fi
 AC_CHECK_PROG(GIT, git, git)
 AC_SUBST(GIT)
 
+OCAML_VER=`ocamlc -version`
+AC_SUBST(OCAML_VER)
+
 AC_CONFIG_FILES([Makefile.config environment.ml])
 AC_OUTPUT
