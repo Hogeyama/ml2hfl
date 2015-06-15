@@ -30,6 +30,12 @@ let print_kind fm = function
       in
       Format.fprintf fm "@[{%a}@]" (print_list aux "; ") sftyps
 
+let from_type_kind kind =
+  match kind with
+  | KAbstract -> invalid_argument "Type_decl.from_type_kind"
+  | KVariant decls -> TKVariant decls
+  | KRecord decls -> TKRecord decls
+
 let in_typ_decls s = List.mem_assoc s !typ_decls
 
 let assoc s =
