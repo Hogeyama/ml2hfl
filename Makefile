@@ -112,7 +112,7 @@ CEGAR_lexer.ml: CEGAR_lexer.mll
 
 parser_wrapper.ml: parser_wrapper_$(OCAML_VER).ml
 	cp -f $< $@
-	chmod -w $@
+	@chmod -w $@
 
 
 # Dependencies
