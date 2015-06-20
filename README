@@ -1,7 +1,7 @@
 What do you need?
 =================
 
-- OCaml compiler 4.02.1 or 4.01.0 (http://www.caml.org)
+- OCaml compiler 4.02.1, 4.02.0, or 4.01.0 (http://www.caml.org)
 - ocamlfind/findlib
 - Fpat library
 - CVC3 binary
