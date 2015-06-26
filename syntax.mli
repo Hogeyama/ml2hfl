@@ -36,7 +36,7 @@ and term =
   | Let of rec_flag * (id * id list * typed_term) list * typed_term
   | BinOp of binop * typed_term * typed_term
   | Not of typed_term
-  | Event of string * bool
+  | Event of string * bool (** true denotes CPS-term *)
   | Record of (string * typed_term) list
   | Field of string * typed_term
   | SetField of string * typed_term * typed_term

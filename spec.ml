@@ -10,7 +10,8 @@ type spec =
      abst_cps_env: env;
      abst_cegar_env: env;
      inlined: id list;
-     inlined_f: id list}
+     inlined_f: id list;
+     fairness: Fair_termination_type.fairness}
 
 let init =
   {ref_env = [];
@@ -19,7 +20,8 @@ let init =
    abst_cps_env = [];
    abst_cegar_env = [];
    inlined = [];
-   inlined_f = []}
+   inlined_f = [];
+   fairness = []}
 
 let pr_ref_env ppf (x,typ) = Format.fprintf ppf "%a: %a" Print.id x (Color.blue Ref_type.print) typ
 let pr_env ppf (x,typ) = Format.fprintf ppf "%a: %a" Print.id x (Color.blue Print.typ) typ
@@ -39,6 +41,7 @@ let print_abst_cps_env ppf cpsenv = print_aux ppf "abstraction type environment 
 let print_abst_cegar_env ppf cegarenv = print_aux ppf "abstraction type environment for CEGAR-loop" pr_env cegarenv
 let print_inlined ppf inlined = print_aux ppf "inlined functions" Print.id inlined
 let print_inlined_f ppf inlined_f = print_aux ppf "force inlined functions" Print.id inlined_f
+
 
 let print ppf {ref_env=renv; ext_ref_env=eenv; abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined; inlined_f} =
   print_ref_env ppf renv;
@@ -89,7 +92,8 @@ let merge spec1 spec2 =
    abst_cps_env = spec1.abst_cps_env @ spec2.abst_cps_env;
    abst_cegar_env = spec1.abst_cegar_env @ spec2.abst_cegar_env;
    inlined = spec1.inlined @ spec2.inlined;
-   inlined_f = spec1.inlined_f @ spec2.inlined_f}
+   inlined_f = spec1.inlined_f @ spec2.inlined_f;
+   fairness = spec1.fairness @ spec2.fairness}
 
 
 let get_def_vars = make_col2 [] (@@@)
@@ -119,7 +123,7 @@ type kind =
   | Inlined
   | Inlined_f
 
-let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f} t =
+let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f; fairness} t =
   let vars = get_def_vars t @ get_fv t in
   let rename_id f = (* temporal implementation *)
     List.find_eq_on Id.name f vars
@@ -145,7 +149,8 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
    abst_cps_env = if List.mem Abst_cps_env ks then List.filter_map aux_typ abst_cps_env else abst_cps_env;
    abst_cegar_env = if List.mem Abst_cegar_env ks then List.filter_map aux_typ abst_cegar_env else abst_cegar_env;
    inlined = if List.mem Inlined ks then List.filter_map aux_id inlined else inlined;
-   inlined_f = if List.mem Inlined_f ks then List.filter_map aux_id inlined_f else inlined_f}
+   inlined_f = if List.mem Inlined_f ks then List.filter_map aux_id inlined_f else inlined_f;
+   fairness}
 
 let get_ref_env spec t = (rename [Ref_env] spec t).ref_env
 let get_ext_ref_env spec t = (rename [Ext_ref_env] spec t).ext_ref_env

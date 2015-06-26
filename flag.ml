@@ -6,7 +6,7 @@ let cvc3 = ref Environment.cvc3
 let filename = ref ""
 let spec_file = ref ""
 
-type mode = Reachability | FileAccess | Termination | NonTermination
+type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination
 type cegar = CEGAR_InteractionType | CEGAR_DependentType
 type model_checker = TRecS | HorSat
 
@@ -73,7 +73,6 @@ let ignore_non_termination = ref false
 
 
 
-
 (* print option *)
 let print_source = true
 let print_cps = true
@@ -135,7 +134,9 @@ let add_closure_exparam = ref false
 
 (* non-termination verification *)
 let merge_paths_of_same_branch = ref false
-
 let randint_refinement_log = ref false
 let use_omega = ref true
 let use_omega_first = ref false
+
+(* fair-termination-mode option *)
+let expand_nondet_branch = ref false

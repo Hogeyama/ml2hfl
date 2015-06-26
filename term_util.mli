@@ -25,6 +25,7 @@ val fail_term_cps : typed_term
 val randint_term : typed_term
 val randbool_unit_term : typed_term
 val randint_unit_term : typed_term
+val make_bool : bool -> typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
 val make_event_cps : string -> typed_term
@@ -44,9 +45,12 @@ val make_letrec : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_let_f : rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets_f : (rec_flag * (id * id list * typed_term)) list -> typed_term -> typed_term
 val make_fun : id -> typed_term -> typed_term
+val make_funs : id list -> typed_term -> typed_term
 val make_not : typed_term -> typed_term
 val make_and : typed_term -> typed_term -> typed_term
+val make_ands : typed_term list -> typed_term
 val make_or : typed_term -> typed_term -> typed_term
+val make_ors : typed_term list -> typed_term
 val make_add : typed_term -> typed_term -> typed_term
 val make_sub : typed_term -> typed_term -> typed_term
 val make_mul : typed_term -> typed_term -> typed_term
@@ -82,11 +86,10 @@ val make_ppair : typed_pattern -> typed_pattern -> typed_pattern
 val make_pnil : typ -> typed_pattern
 val make_pnil2 : typ -> typed_pattern
 val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
-val imply : typed_term -> typed_term -> typed_term
+val make_imply : typed_term -> typed_term -> typed_term
 val none_flag : typed_term
 val some_flag : typed_term
 val opt_typ : typ -> typ
-val get_opt_typ : typ -> typ
 val make_none : typ -> typed_term
 val make_some : typed_term -> typed_term
 val make_is_none : typed_term -> typed_term
@@ -114,6 +117,9 @@ val decomp_var : typed_term -> id option
 val var_of_term : typed_term -> id
 val int_of_term : typed_term -> int
 val bool_of_term : typed_term -> bool
+val pair_of_term : typed_term -> typed_term * typed_term
+val tuple_of_term : typed_term -> typed_term list
+val get_opt_typ : typ -> typ
 
 
 (** {6 Misc} *)
@@ -128,6 +134,7 @@ val get_args : typ -> id list
 val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
 val get_top_funs : typed_term -> id list
+val get_top_rec_funs : typed_term -> id list
 val get_vars_pat : typed_pattern -> id list
 val get_fv : ?cmp:(id -> id -> bool) -> typed_term -> id list
 val arg_num : typ -> int
@@ -152,3 +159,5 @@ val is_bottom_def : Syntax.rec_flag -> id -> id list -> Syntax.typed_term -> boo
 val decomp_bexp : typed_term -> typed_term list
 val merge_typ : typ -> typ -> typ
 val add_comment : string -> typed_term -> typed_term
+val get_last_definition : typed_term -> id option
+val get_body : typed_term -> typed_term

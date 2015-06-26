@@ -150,6 +150,13 @@ let main_termination orig parsed =
   else
     (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
 
+let main_fair_termination orig spec parsed =
+  let result = Fair_termination.run spec parsed in
+  if result
+  then Format.printf "Fair terminating!@."
+  else Format.printf "Unknown...@.";
+  result
+
 let output_randint_refinement_log input_string =
   let cout =
     let input =
@@ -168,7 +175,10 @@ let main in_channel =
     let s = String.create Flag.max_input_size in
     let n = my_input in_channel s 0 Flag.max_input_size in
     if n = Flag.max_input_size then raise LongInput;
-    String.sub s 0 n
+    let s' = String.sub s 0 n in
+    if !Flag.mode = Flag.FairTermination
+    then Fair_termination.add_event s'
+    else s'
   in
   let lb = Lexing.from_string input_string in
   lb.Lexing.lex_curr_p <-
@@ -193,6 +203,8 @@ let main in_channel =
       Modular.main orig spec parsed
     else if !Flag.mode = Flag.Termination then
       main_termination orig parsed
+    else if !Flag.mode = Flag.FairTermination then
+      main_fair_termination orig spec parsed
     else
       Main_loop.run orig ~spec parsed
 
@@ -297,6 +309,9 @@ let arg_spec =
      (* SWT solver *)
      "-cvc3-bin", Arg.Set_string Flag.cvc3,
                   Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
+     (* fair termination mode *)
+     "-fair-termination", Arg.Unit (fun _ -> Flag.mode := Flag.FairTermination), " Check fair termination";
+     "-expand-nondet-branch", Arg.Set Flag.expand_nondet_branch, " Expand nondeterministic branch in fair termination mode";
      (* termination mode *)
      "-termination-disj",
        Arg.Unit (fun _ ->
@@ -421,7 +436,7 @@ let () =
       Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
       fpat_init1 ();
       let cin = parse_arg () in
-      ignore (Unix.alarm !Flag.time_limit);
+      ignore @@ Unix.alarm !Flag.time_limit;
       fpat_init2 ();
       Color.init ();
       if not !Flag.only_result then print_env true;

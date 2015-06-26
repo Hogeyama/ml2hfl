@@ -28,6 +28,7 @@ let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %}
 
 %token <string> IDENT
+%token <string> EVENT
 %token <int> INT
 %token LPAREN
 %token RPAREN
@@ -38,6 +39,7 @@ let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %token ARROW
 %token SEMI
 %token COLON
+%token COMMA
 %token INLINE
 %token INLINEF
 %token TUNIT
@@ -63,6 +65,7 @@ let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %token VALCPS
 %token VALCEGAR
 %token EXTERNAL
+%token FAIRNESS
 %token TRUE
 %token FALSE
 %token EOF
@@ -150,6 +153,8 @@ spec_list:
   { {$2 with Spec.inlined = $1::$2.Spec.inlined} }
 | inlinef spec_list
   { {$2 with Spec.inlined_f = $1::$2.Spec.inlined_f} }
+| fairness spec_list
+  { {$2 with Spec.fairness = $1::$2.Spec.fairness} }
 
 ref_type:
 | TYPE id COLON ref_typ
@@ -170,6 +175,10 @@ typedef_cps:
 typedef_cegar:
 | VALCEGAR id COLON typ
   { $2, Id.typ $4 }
+
+fairness:
+| FAIRNESS COLON LPAREN EVENT COMMA EVENT RPAREN
+  { $4, $6 }
 
 inline:
 | INLINE id

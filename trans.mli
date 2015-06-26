@@ -7,9 +7,8 @@ val rename_poly_funs : id -> typed_term -> (id * id) list * typed_term
 val copy_poly_funs : typed_term -> typed_term
 val define_randvalue : (typ * id) list -> (id * id list * typed_term) list -> typ -> (typ * id) list * (id * id list * typed_term) list * typed_term
 val inst_randval : typed_term -> typed_term
-val get_last_definition : id option -> typed_term -> id option
 val ref_to_assert : Ref_type.env -> typed_term -> typed_term
-val replace_main : typed_term -> typed_term -> typed_term
+val replace_main : ?force:bool -> typed_term -> typed_term -> typed_term
 val set_main : typed_term -> (string * int) option * typed_term
 val merge_let_fun : typed_term -> typed_term
 val canonize : typed_term -> typed_term

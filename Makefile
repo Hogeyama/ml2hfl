@@ -50,7 +50,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	horSat_parser.mli trecs_parser.mli CEGAR_parser.mli		\
 	BRA_transform.mli CEGAR_lift.mli tupling.mli ref_trans.mli	\
 	trans.mli tree.mli rose_tree.mli type.mli color.mli		\
-	CEGAR_trans.mli CEGAR_util.mli
+	CEGAR_trans.mli CEGAR_util.mli fair_termination_type.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
@@ -58,9 +58,9 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	type_decl.cmo term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo	\
 	CEGAR_print.cmo typing.cmo type_check.cmo CEGAR_ref_type.cmo	\
 	CEGAR_util.cmo fpatInterface.cmo ref_type.cmo trans.cmo		\
-	lift.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
-	CEGAR_lift.cmo slicer.cmo useless_elim.cmo inter_type.cmo	\
-	type_trans.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo			\
+	lift.cmo fair_termination_util.cmo spec.cmo spec_parser.cmo	\
+	spec_lexer.cmo CEGAR_lift.cmo slicer.cmo useless_elim.cmo	\
+	inter_type.cmo type_trans.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo	\
 	parser_wrapper.cmo encode_list.cmo encode_rec.cmo		\
 	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
 	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\
@@ -72,7 +72,7 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	ret_fun.cmo BRA_types.cmo BRA_util.cmo BRA_state.cmo		\
 	BRA_transform.cmo extraClsDepth.cmo extraParamInfer.cmo		\
 	eval.cmo elim_same_arg.cmo main_loop.cmo modular.cmo		\
-	termination_loop.cmo mochi.cmo
+	termination_loop.cmo fair_termination.cmo mochi.cmo
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)
@@ -179,7 +179,8 @@ doc:
 clean:
 	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *.output *~
 	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml horSat_parser.ml horSat_parser.mli horSat_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
-	rm -f $(NAME).byte $(NAME).opt
+	rm -f $(NAME).byte $(NAME).opt $(NAME).top
+	rm -rf $(MOCHI_BIN_DIR)/bin $(MOCHI_BIN_DIR)/lib $(MOCHI_BIN_DIR)/stdlib
 
 clean-test:
 	rm */*.trecs_out */*.hors */*.annot */*.dot */*.pml

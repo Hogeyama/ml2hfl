@@ -125,6 +125,9 @@ let rec loop prog0 is_cp ces info =
               (* termination analysis *)
               Refine.refine_rank_fun ce' [] prog0;
               assert false
+          | Feasibility.Feasible sol, Flag.FairTermination ->
+              Refine.refine_rank_fun ce' [] prog0;
+              assert false
           | Feasibility.Feasible sol, _ ->
               prog, Unsafe sol
           | Feasibility.FeasibleNonTerm _, _ ->

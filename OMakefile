@@ -23,7 +23,8 @@ FILES = Makefile trans.mli lift.mli CPS.mli curry.mli encode_rec.mli	\
 	extraParamInfer.ml print.ml CEGAR_util.mli CEGAR_non_term.ml	\
 	trecs_syntax.ml trecs_parser.mly trecs_lexer.mll		\
 	trecsInterface.ml modular.ml omegaInterface.ml			\
-	spec_parser.mly spec_lexer.mll
+	spec_parser.mly spec_lexer.mll fair_termination.ml		\
+	fair_termination_type.mli fair_termination_util.ml
 
 DONE: $(FILES)
     make

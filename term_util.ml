@@ -50,6 +50,7 @@ let false_term = {desc=Const False;typ=TBool; attr=const_attr}
 let cps_result = {desc=Const CPS_result; typ=typ_result; attr=const_attr}
 let fail_term = {desc=Event("fail",false);typ=typ_event; attr=[]}
 let fail_term_cps = {desc=Event("fail",true);typ=typ_event_cps; attr=[]}
+let make_bool b = if b then true_term else false_term
 let make_bottom typ = {desc=Bottom;typ=typ; attr=[]}
 let make_event s = {desc=Event(s,false);typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=[]}
@@ -127,6 +128,7 @@ let make_ignore t =
     make_seq t unit_term
 let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
+let make_funs = List.fold_right make_fun
 let make_not t = {desc=Not t; typ=TBool; attr=make_attr[t]}
 let make_and t1 t2 =
   if t1 = false_term then
@@ -139,6 +141,7 @@ let make_and t1 t2 =
     false_term
   else
     {desc=BinOp(And, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+let make_ands ts = List.fold_right make_and ts true_term
 let make_or t1 t2 =
   if t1 = true_term then
     true_term
@@ -150,6 +153,7 @@ let make_or t1 t2 =
     true_term
   else
     {desc=BinOp(Or, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+let make_ors ts = List.fold_right make_or ts false_term
 let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
@@ -238,7 +242,7 @@ let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); 
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 
-let imply t1 t2 = make_or (make_not t1) t2
+let make_imply t1 t2 = make_or (make_not t1) t2
 
 let make_eq_dec t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
@@ -605,6 +609,13 @@ let rec get_top_funs acc = function
   | _ -> acc
 let get_top_funs = get_top_funs []
 
+let rec get_top_rec_funs acc = function
+  | {desc=Let(Recursive, defs, t)} ->
+      let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
+      get_top_rec_funs acc' t
+  | _ -> acc
+let get_top_rec_funs = get_top_rec_funs []
+
 
 let has_no_effect = make_col true (&&)
 
@@ -788,5 +799,29 @@ let bool_of_term t =
   | Const False -> false
   | _ -> invalid_argument "bool_of_term"
 
+let pair_of_term t =
+  match t.desc with
+  | Tuple [t1; t2] -> t1, t2
+  | _ -> invalid_argument "pair_of_term"
+
+let tuple_of_term t =
+  match t.desc with
+  | Tuple ts -> ts
+  | _ -> invalid_argument "pair_of_term"
+
 let add_comment s t =
   {t with attr = AComment s :: t.attr}
+
+let rec get_last_definition f t =
+  match t.desc with
+  | Let(_, bindings, t2) ->
+      let f,_,_ = List.last bindings in
+      get_last_definition (Some f) t2
+  | Fun _ -> assert false
+  | _ -> f
+let get_last_definition t = get_last_definition None t
+
+let rec get_body t =
+  match t.desc with
+  | Let(_, _, t2) -> get_body t
+  | _ -> t

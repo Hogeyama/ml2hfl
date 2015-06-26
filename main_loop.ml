@@ -10,7 +10,7 @@ let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
   if b then Format.printf "END: %s@." desc;
   let t' = proj r in
   if !Flag.debug_level > 0 && t <> t' && opt
-  then Format.printf "[#%a]:@. @[%a@.@." Color.s_red desc pr t';
+  then Format.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
 let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)

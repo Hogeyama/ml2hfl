@@ -47,8 +47,8 @@ let same = eq
 let set_name x name = {x with name}
 let set_typ x typ = {x with typ}
 
-let add_name_before x str = set_name x (str ^ name x)
-let add_name_after x str = set_name x (name x ^ str)
+let add_name_before str x = set_name x (str ^ name x)
+let add_name_after str x = set_name x (name x ^ str)
 
 let mem x xs = List.mem ~cmp:eq x xs
 let assoc x xs = List.assoc ~cmp:eq x xs

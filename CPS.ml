@@ -894,8 +894,7 @@ let rec uncps_ref_type rtyp e etyp =
   | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
       RT.ExtArg(x, rtyp1, uncps_ref_type rtyp2 e etyp)
   | _ ->
-      Format.printf "rtyp:%a@.e:%a@.etyp:%a@."
-                    RT.print rtyp print_effect e print_typ_cps etyp;
+      if !!debug then Format.printf "rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
       assert false
 
 let infer_effect t =
@@ -998,7 +997,6 @@ let trans t =
   let t = Trans.propagate_typ_arg t in
   pr2 "propagate_typ_arg" Print.term t;
   Type_check.check t typ_result;
-  save_to_file "propagate_typ_arg" t; (* DEBUG *)
   let t = Trans.beta_reduce t in
   pr "beta reduce" t;
   Type_check.check t typ_result;

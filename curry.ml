@@ -147,7 +147,7 @@ let rec remove_pair_typ = function
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
-  let aux path typ = Id.set_typ (Id.add_name_after x @@ to_string path) typ in
+  let aux path typ = Id.set_typ (Id.add_name_after (to_string path) x) typ in
   map aux @@ remove_pair_typ (Id.typ x)
 
 and remove_pair_aux t typ_opt =

@@ -58,6 +58,7 @@ module StringSet = Set.Make(String)
 module Option = struct
   include Option
 
+  let some x = Some x
   let iter = may
   let apply = map
 
@@ -79,6 +80,11 @@ module Option = struct
 
   let try_ f = try Some (f ()) with _ -> None
   let try_with f e = try Some (f ()) with e' when e=e' -> None
+
+  let for_all f x =
+    match x with
+    | None -> true
+    | Some y -> f y
 end
 
 module Pair = struct

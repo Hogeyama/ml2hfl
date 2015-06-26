@@ -58,21 +58,22 @@ let rec check t typ =
       check t2 typ';
       check t3 typ'
   | Let(flag, bindings, t2), typ' ->
-      let rec aux t = function
+      let rec aux t xs typ =
+        match xs, typ with
         | x::xs,TFun(y,typ) ->
             check_var x (Id.typ y);
-            aux t (xs,typ)
+            aux t xs typ
         | [],typ -> check t typ
-        | x::[],typ ->
+        | [x],typ ->
             let f,_,_ = List.hd bindings in
-            Format.printf "%a %a@." Id.print f Print.typ (Id.typ f);
-            Format.printf "[%a] %a@." Id.print x Print.typ typ;
+            Format.printf "%a@." Print.id_typ f;
+            Format.printf "[%a]@." Print.id_typ x;
             assert false
         | x::xs,typ ->
             Format.printf "%a %a@." Id.print x Print.typ typ;
             assert false
       in
-      List.iter (fun (f,xs,t) -> aux t (xs, Id.typ f)) bindings;
+      List.iter (fun (f,xs,t) -> aux t xs @@ Id.typ f) bindings;
       check t2 typ'
   | BinOp(Eq,t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);

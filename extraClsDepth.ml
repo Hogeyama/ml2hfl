@@ -3,7 +3,7 @@ open Term_util
 open Type
 
 (* h -> h_DEPTH *)
-let makeDepthVar id = make_var (Id.add_name_after id "_DEPTH")
+let makeDepthVar id = make_var (Id.add_name_after "_DEPTH" id)
 
 let maxConstDepth constDepthList =
   make_int (List.fold_left

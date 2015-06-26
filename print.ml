@@ -172,8 +172,8 @@ and print_desc pri typ fm desc =
         fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
         b := false
       in
-      let print_bindings bs = print_list print_binding "" bs in
-      fprintf fm "%s@[<v>@[<hv>%a@ @]in@ @[<hov>%a@]@]%s" s1 print_bindings bindings (print_term p typ) t2 s2
+      let print_bindings bs = print_list print_binding "@ " ~last:true bs in
+      fprintf fm "%s@[<v>@[<hv>%a@]in@ @[<hov>%a@]@]%s" s1 print_bindings bindings (print_term p typ) t2 s2
   | Not{desc = BinOp(Eq, t1, t2)} ->
       let p = 50 in
       let s1,s2 = paren pri p in

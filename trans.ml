@@ -1264,6 +1264,7 @@ let make_ext_funs env t =
     |*> List.filter (fun x -> Id.id x > 0)
     |> List.filter_out (Id.mem_assoc -$- env)
   in
+  if false then Format.printf "MEF: %a@." (List.print Print.id_typ) funs;
   if List.exists (is_poly_typ -| Id.typ) funs
   then unsupported "Trans.make_ext_funs (polymorphic functions)";
   let map,t' = rename_ext_funs funs t in
@@ -1936,7 +1937,7 @@ let flatten_tuple_term t =
   | Match _ -> unsupported "not implemented: flatten_tuple (match)"
   | Proj(i,t1) ->
       let t1' = flatten_tuple.tr_term t1 in
-      let x = Id.add_name_after (new_var_of_term t1') @@ string_of_int i in
+      let x = Id.add_name_after (string_of_int i) (new_var_of_term t1') in
       let ns = List.map (fun typ -> match flatten_tuple.tr_typ typ with TTuple xs' -> List.length xs' | _ -> 1) @@ decomp_ttuple t1.typ in
       let rec new_pos i j acc ns =
         match ns with
@@ -2132,28 +2133,17 @@ let copy_poly_funs t =
 
 
 
-let rec get_last_definition f t =
-  match t.desc with
-  | Let(_, bindings, t2) ->
-      let f,_,_ = List.last bindings in
-      get_last_definition (Some f) t2
-  | Fun _ -> assert false
-  | _ -> f
-
-
-
-
-let rec replace_main main t =
+let rec replace_main ?(force=true) main t =
   match t.desc with
   | Let(flag, bindings, t2) ->
       make_let_f flag bindings @@ replace_main main t2
   | _ ->
-      assert (t.desc = Const Unit);
+      assert (force || t.desc = Const Unit);
       main
 
 
 let set_main t =
-  match get_last_definition None t with
+  match get_last_definition t with
   | None ->
       let u = Id.new_var ~name:"main" t.typ in
       None, make_let [u, [], t] unit_term
