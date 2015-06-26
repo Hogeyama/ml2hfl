@@ -177,7 +177,7 @@ let main in_channel =
     if n = Flag.max_input_size then raise LongInput;
     let s' = String.sub s 0 n in
     if !Flag.mode = Flag.FairTermination
-    then Fair_termination.add_event s'
+    then Fair_termination_util.add_event s'
     else s'
   in
   let lb = Lexing.from_string input_string in
