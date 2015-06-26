@@ -2292,3 +2292,17 @@ let ignore_non_termination_desc fail_free desc =
 
 let () = ignore_non_termination.tr2_desc <- ignore_non_termination_desc
 let ignore_non_termination = ignore_non_termination.tr2_term []
+
+
+let null_tuple_to_unit = make_trans ()
+let null_tuple_to_unit_desc desc =
+  match desc with
+  | Tuple [] -> Const Unit
+  | _ -> null_tuple_to_unit.tr_desc_rec desc
+let null_tuple_to_unit_typ typ =
+  match typ with
+  | TTuple [] -> TUnit
+  | _ -> null_tuple_to_unit.tr_typ_rec typ
+let () = null_tuple_to_unit.tr_desc <- null_tuple_to_unit_desc
+let () = null_tuple_to_unit.tr_typ <- null_tuple_to_unit_typ
+let null_tuple_to_unit = null_tuple_to_unit.tr_term

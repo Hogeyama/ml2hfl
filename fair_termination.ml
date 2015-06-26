@@ -303,6 +303,7 @@ let run spec t =
       |@> pr @@ Format.asprintf "trans for %a" Print.id f
       |> Trans.flatten_let
       |@> pr "flatten let"
+      |> Trans.null_tuple_to_unit
     in
     let result = main_loop rank_var rank_funs prev_vars arg_vars [] t''' in
     if !!debug then

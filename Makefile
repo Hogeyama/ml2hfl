@@ -163,6 +163,7 @@ bin: $(NAME).opt
 	done
 	@mkdir -p $(MOCHI_BIN_DIR)/stdlib
 	@cp $$($(OCAMLFIND) ocamlc -where)/*.cmi $(MOCHI_BIN_DIR)/stdlib
+	@tar czvf $(MOCHI_BIN_DIR).tar.gz $(MOCHI_BIN_DIR)
 
 ################################################################################
 # documents
