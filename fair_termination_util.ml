@@ -65,7 +65,7 @@ let remove_and_replace_event_desc desc =
   | App({desc = Var f}, ts) when is_event_fun_var f ->
       begin
         match ts with
-        | [{desc = Const (String s)}] -> App(make_event s, [unit_term])
+        | [{desc = Const (String s)}] -> (make_event_unit s).desc
         | _ -> unsupported "the argument of event must be a constant"
       end
   | Let(_, [f, [_], _], t') when is_event_fun_var f -> (remove_and_replace_event.tr_term t').desc
@@ -105,3 +105,23 @@ let normalize_term t =
 
 let () = normalize.tr_term <- normalize_term
 let normalize = normalize.tr_term -| Trans.short_circuit_eval
+
+
+
+(** add event "Call" for the body of every function definition *)
+let add_call = make_trans ()
+
+let add_call_desc desc =
+  match desc with
+  | Let(flag, bindings, t2) ->
+      let aux (f,xs,t) =
+        let t' = add_call.tr_term t in
+        let t'' = if xs = [] then t' else make_seq (make_event_unit "Call") t' in
+        f, xs, t''
+      in
+      let bindings' = List.map aux bindings in
+      Let(flag, bindings', add_call.tr_term t2)
+  | _ -> add_call.tr_desc_rec desc
+
+let () = add_call.tr_desc <- add_call_desc
+let add_call = add_call.tr_term

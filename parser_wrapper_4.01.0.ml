@@ -59,8 +59,8 @@ let conv_primitive_app t ts typ =
         make_assume
           (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
           (make_var x)
-  | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_app (make_event "newr") [unit_term]
-  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
+  | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
+  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_event_unit "close"
   | _ -> make_app t ts
 
 let venv = ref []

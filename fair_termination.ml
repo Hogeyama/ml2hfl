@@ -203,6 +203,7 @@ let pr ?(check_typ=Some TUnit) s t =
 let run spec t =
   let {Spec.fairness} = spec in
   Format.printf "FAIRNESS: %a@.@." print_fairness fairness;
+  let has_call = List.exists (fun (p,q) -> p = "Call" || q = "Call") fairness in
   let t' =
     t
     |> Trans.copy_poly_funs
@@ -211,9 +212,11 @@ let run spec t =
     |@> pr "remove_and_replace_event"
     |> normalize
     |@> pr "normalize"
+    |&has_call&> add_call
+    |@has_call&> pr "add event Call"
   in
   let top_funs = List.rev @@ get_top_rec_funs t' in
-  let aux f =
+  let verify f =
     let rank_funs = [] in
     let vs,t'' = trans f fairness t' in
     let rank_var, prev_vars, arg_vars = Option.get vs in
@@ -232,4 +235,6 @@ let run spec t =
       else Format.printf "%a is possibly non fair terminating.@.@." Id.print f;
     result
   in
-  List.for_all aux top_funs
+  try
+    List.for_all verify top_funs
+  with FailedToFindRF -> false

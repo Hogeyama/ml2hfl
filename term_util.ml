@@ -241,6 +241,7 @@ let make_record fields =
 let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
+let make_event_unit s = make_app (make_event s) [unit_term]
 
 let make_imply t1 t2 = make_or (make_not t1) t2
 

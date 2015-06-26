@@ -28,6 +28,7 @@ val randint_unit_term : typed_term
 val make_bool : bool -> typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term
+val make_event_unit : string -> typed_term
 val make_event_cps : string -> typed_term
 val make_var : id -> typed_term
 val make_int : int -> typed_term

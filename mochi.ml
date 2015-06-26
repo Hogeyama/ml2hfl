@@ -153,8 +153,8 @@ let main_termination orig parsed =
 let main_fair_termination orig spec parsed =
   let result = Fair_termination.run spec parsed in
   if result
-  then Format.printf "Fair terminating!@."
-  else Format.printf "Unknown...@.";
+  then Format.printf "Fair terminating!@.@."
+  else Format.printf "Unknown...@.@.";
   result
 
 let output_randint_refinement_log input_string =
