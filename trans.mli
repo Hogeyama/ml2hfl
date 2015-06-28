@@ -69,3 +69,5 @@ val recover_const_attr_shallowly : typed_term -> typed_term
 val subst_with_rename : id -> typed_term -> typed_term -> typed_term
 val ignore_non_termination : typed_term -> typed_term
 val null_tuple_to_unit : typed_term -> typed_term
+val beta_affine_fun : typed_term -> typed_term
+val beta_size1 : typed_term -> typed_term

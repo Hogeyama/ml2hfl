@@ -2306,3 +2306,59 @@ let null_tuple_to_unit_typ typ =
 let () = null_tuple_to_unit.tr_desc <- null_tuple_to_unit_desc
 let () = null_tuple_to_unit.tr_typ <- null_tuple_to_unit_typ
 let null_tuple_to_unit = null_tuple_to_unit.tr_term
+
+
+let beta_full_app = make_trans2 ()
+let beta_full_app_desc (f,xs,t) desc =
+  match desc with
+  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (subst_map (List.combine xs ts) t).desc
+  | _ -> beta_full_app.tr2_desc_rec (f,xs,t) desc
+let () = beta_full_app.tr2_desc <- beta_full_app_desc
+let beta_full_app = beta_full_app.tr2_term
+
+
+let beta_affine_fun = make_trans ()
+let beta_affine_fun_desc desc =
+  match desc with
+  | Let(Nonrecursive, [f, xs, t1], t2) ->
+      let t1' = beta_affine_fun.tr_term t1 in
+      begin
+        match t1' with
+        | {desc=App(t0,ts)} ->
+            let size_1 t =
+              match t.desc with
+              | Const _
+              | Var _ -> true
+              | _ -> false
+            in
+            let used = List.Set.inter xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
+            if List.for_all size_1 ts && used = List.unique used
+            then
+              let t2' = beta_affine_fun.tr_term t2 in
+              let t2'' = beta_full_app (f, xs, t1') t2' in
+              let t2''' = beta_affine_fun.tr_term t2'' in
+              if Id.mem f @@ get_fv t2'''
+              then Let(Nonrecursive, [f, xs, t1'], t2''')
+              else t2'''.desc
+            else beta_affine_fun.tr_desc_rec desc
+        | _ -> beta_affine_fun.tr_desc_rec desc
+      end
+  | _ -> beta_affine_fun.tr_desc_rec desc
+let () = beta_affine_fun.tr_desc <- beta_affine_fun_desc
+let beta_affine_fun = beta_affine_fun.tr_term -| merge_let_fun
+
+
+let beta_size1 = make_trans ()
+let beta_size1_desc desc =
+  let size_1 t =
+    match t.desc with
+    | Const _
+    | Var _ -> true
+    | _ -> false
+  in
+  match desc with
+  | App(t1, []) -> beta_size1.tr_desc t1.desc
+  | App({desc=Fun(x,t)}, t2::ts) when size_1 t2 -> beta_size1.tr_desc @@ App(subst x t2 t, ts)
+  | _ -> beta_size1.tr_desc_rec desc
+let () = beta_size1.tr_desc <- beta_size1_desc
+let beta_size1 = beta_size1.tr_term

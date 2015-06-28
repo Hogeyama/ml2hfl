@@ -97,7 +97,14 @@ let normalize_term t =
   | App(t1, ts) ->
       let bind, t1' = normalize_aux t1 in
       let binds, ts' = List.split_map normalize_aux ts in
-      make_lets (bind @ List.flatten binds) {t with desc=App(t1', ts')}
+      let aux ctx t = fun t' ->
+        let tf = ctx t in
+        let f = Id.new_var ~name:"f" tf.typ in
+        make_let [f,[],tf] @@ make_app (make_var f) [t']
+      in
+      let ts'',t2 = List.decomp_snoc ts' in
+      let t'' = List.fold_left aux (fun t -> make_app t1' [t]) ts'' t2 in
+      make_lets (bind @ List.flatten binds) t''
   | If(t1, t2, t3) ->
       let bind, t1' = normalize_aux t1 in
       make_let bind {t with desc=If(t1', t2, t3)}

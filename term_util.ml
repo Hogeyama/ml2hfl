@@ -611,8 +611,12 @@ let rec get_top_funs acc = function
 let get_top_funs = get_top_funs []
 
 let rec get_top_rec_funs acc = function
-  | {desc=Let(Recursive, defs, t)} ->
-      let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
+  | {desc=Let(flag, defs, t)} ->
+      let acc' =
+        match flag with
+        | Nonrecursive -> acc
+        | Recursive -> List.fold_left (fun acc (f,_,_) -> f::acc) acc defs
+      in
       get_top_rec_funs acc' t
   | _ -> acc
 let get_top_rec_funs = get_top_rec_funs []

@@ -10,13 +10,11 @@ exception FailedToFindRF
 let debug () = List.mem "Fair_termination" !Flag.debug_module
 
 
-type trans_env = {target:id; target_xs:id list; fairness:fairness; s:id; set_flag:id; ps:id list}
+type trans_env = {target:id; target_xs:id list; target_result_typ:typ; fairness:fairness; s:id; set_flag:id; ps:id list}
 
 let rec subst_state fairness s q b =
   let aux q' i j = if q = q' then make_bool b else make_proj j @@ make_proj i @@ make_var s in
   make_tuple @@ List.mapi (fun i (q1,q2) -> make_pair (aux q1 i 0) (aux q2 i 1)) fairness
-
-let add_state s t = make_pair s t
 
 let make_is_fair s =
   let aux i j = make_proj j @@ make_proj i @@ make_var s in
@@ -49,17 +47,20 @@ let trans_typ env typ =
       let xs,typ1 = decomp_tfun typ in
       let xs' = List.map (Id.map_typ @@ snd -| trans.tr_col2_typ env) xs in
       let _,typ1' = trans.tr_col2_typ env typ1 in
-      let typ1'' = make_tpair (Id.typ env.s) typ1' in
-      None, List.fold_right (fun x typ' -> TFun(env.s, TFun(env.set_flag, List.fold_right _TFun env.ps @@ TFun(x, typ')))) xs' typ1''
+      let aux x typ' =
+        let zs = [env.s; env.set_flag] @ env.ps @ [x] in
+        List.fold_right _TFun zs @@ make_tpair (Id.typ env.s) typ'
+      in
+      None, List.fold_right aux xs' typ1'
   | _ -> trans.tr_col2_typ_rec env typ
 
 (* Assume that input is in normal form *)
 let trans_term env t =
   match t.desc with
-  | _ when is_value t -> None, add_state (make_var env.s) @@ trans_value env t
-  | _ when t.desc = randint_unit_term.desc -> None, add_state (make_var env.s) @@ trans_value env t
+  | _ when is_value t -> None, make_pair (make_var env.s) @@ trans_value env t
+  | _ when t.desc = randint_unit_term.desc -> None, make_pair (make_var env.s) @@ trans_value env t
   | App({desc=Event(q, _)}, [_]) ->
-      None, add_state (subst_state env.fairness env.s q true) unit_term
+      None, make_pair (subst_state env.fairness env.s q true) unit_term
   | App(t1, [_]) when t1.desc = fail_term.desc -> None, make_fail @@ make_tpair (Id.typ env.s) t.typ
   | App(v1, vs) ->
       let v1' = trans_value env v1 in
@@ -90,10 +91,11 @@ let trans_term env t =
             let b = Id.new_var TBool in
             let s'' = Id.new_var_id s' in
             let set_flag'' = Id.new_var_id set_flag' in
+            Format.printf "set_flag': %a@." Id.print set_flag';
+            Format.printf "set_flag'': %a@." Id.print set_flag'';
             let ps'' = List.map Id.new_var_id ps' in
             let xs' = List.filter (is_ground_typ -| Id.typ) xs in
             let rank_var = Id.new_var ~name:"rank" @@ List.fold_right _TFun (ps'@xs') TBool in
-            let t_b = make_or (make_not @@ make_var set_flag') randbool_unit_term in
             let t1'' =
                 let bindings' =
                   (s'', [], make_if (make_var b) (make_s_init env.fairness) (make_var s')) ::
@@ -108,8 +110,8 @@ let trans_term env t =
             in
             let t1''' =
               if !Flag.expand_nondet_branch
-              then make_if t_b (subst b true_term t1'') (subst b false_term t1'')
-              else make_let [b,[],t_b] t1''
+              then make_if randbool_unit_term (subst b true_term t1'') (subst b false_term t1'')
+              else make_let [b,[],randbool_unit_term] t1''
             in
             Some (rank_var, ps', xs'), t1'''
           else
@@ -134,21 +136,22 @@ let trans_term env t =
 let () = trans.tr_col2_typ <- trans_typ
 let () = trans.tr_col2_term <- trans_term
 
-let rec get_top_fun_args f t =
+let rec get_top_fun_typ f t =
   match t.desc with
   | Let(_, bindings, t1) ->
       begin
         try
-          Triple.snd @@ List.find (fun (g,_,_) -> Id.same f g) bindings
-        with Not_found -> get_top_fun_args f t1
+          let _,xs,t = List.find (fun (g,_,_) -> Id.same f g) bindings in
+          xs, t.typ
+        with Not_found -> get_top_fun_typ f t1
       end
-  | _ -> invalid_argument "get_top_fun_args"
+  | _ -> invalid_argument "get_top_fun_typ"
 
 let trans target fairness t =
-  let target_xs = get_top_fun_args target t in
+  let target_xs,target_result_typ = get_top_fun_typ target t in
   let s, set_flag, ps = make_extra_vars fairness target_xs in
   if false then Format.printf "ps: %a@." (List.print Print.id) ps;
-  let vs,t' = trans.tr_col2_term {target; target_xs; fairness; s; set_flag; ps} t in
+  let vs,t' = trans.tr_col2_term {target; target_xs; target_result_typ; fairness; s; set_flag; ps} t in
   let bindings =
     (s, [], make_s_init fairness) ::
     (set_flag, [], false_term) ::

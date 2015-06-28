@@ -227,6 +227,11 @@ and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
 
 let remove_pair t =
   assert (List.mem ACPS t.attr);
-  let t' = remove_pair t in
-  Type_check.check t' typ_result;
+  let t' =
+    t
+    |> remove_pair
+    |@> Type_check.check -$- typ_result
+    |> Trans.beta_affine_fun
+    |> Trans.beta_size1
+  in
   t', uncurry_rtyp t

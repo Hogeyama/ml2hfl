@@ -284,7 +284,7 @@ let rec run orig ?(spec=Spec.init) parsed =
         match CEGAR.run prog info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
-            if not !Flag.exp && !Flag.mode <> Flag.FairTermination
+            if not !Flag.exp && (!Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0))
             then report_safe env rmap get_rtyp orig t0;
             true
         | _, CEGAR.Unsafe ce ->
