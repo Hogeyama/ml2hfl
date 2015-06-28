@@ -8,7 +8,7 @@ FILES = Makefile trans.mli lift.mli CPS.mli curry.mli encode_rec.mli	\
 	type_check.ml trans.ml lift.ml CEGAR_ref_type.ml		\
 	CEGAR_util.ml CEGAR_lift.ml useless_elim.ml inter_type.ml	\
 	type_trans.ml fpatInterface.ml CPS.ml curry.ml CEGAR_CPS.ml	\
-	parser_wrapper_4.01.0.ml parser_wrapper_4.02.1.ml		\
+	parser_wrapper_4.01.0.ml parser_wrapper_4.02.0.ml parser_wrapper_4.02.1.ml		\
 	parser_wrapper.ml encode_rec.ml CEGAR_abst_util.ml		\
 	CEGAR_trans.ml CEGAR_abst_CPS.ml CEGAR_abst.ml			\
 	horSat_parser.mly horSat_lexer.mll horSat_syntax.ml		\
