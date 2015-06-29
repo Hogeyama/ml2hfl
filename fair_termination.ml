@@ -91,11 +91,10 @@ let trans_term env t =
             let b = Id.new_var TBool in
             let s'' = Id.new_var_id s' in
             let set_flag'' = Id.new_var_id set_flag' in
-            Format.printf "set_flag': %a@." Id.print set_flag';
-            Format.printf "set_flag'': %a@." Id.print set_flag'';
             let ps'' = List.map Id.new_var_id ps' in
             let xs' = List.filter (is_ground_typ -| Id.typ) xs in
             let rank_var = Id.new_var ~name:"rank" @@ List.fold_right _TFun (ps'@xs') TBool in
+            let t_b = make_or (make_not @@ make_var set_flag') randbool_unit_term in
             let t1'' =
                 let bindings' =
                   (s'', [], make_if (make_var b) (make_s_init env.fairness) (make_var s')) ::
@@ -110,8 +109,8 @@ let trans_term env t =
             in
             let t1''' =
               if !Flag.expand_nondet_branch
-              then make_if randbool_unit_term (subst b true_term t1'') (subst b false_term t1'')
-              else make_let [b,[],randbool_unit_term] t1''
+              then make_if t_b (subst b true_term t1'') (subst b false_term t1'')
+              else make_let [b,[],t_b] t1''
             in
             Some (rank_var, ps', xs'), t1'''
           else

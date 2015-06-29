@@ -375,13 +375,13 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         | Total -> pats'
         | Partial -> pats'@[make_pvar (Id.new_var t.typ), true_term, make_fail typ']
       in
-      {desc=Match(t, pats''); typ=typ'; attr=[]}
+      make_match t pats''
   | Texp_match(e,pats,_,tp) -> unsupported "Texp_match (exception)"
   | Texp_try(e,pats) ->
       let x = Id.new_var ~name:"e" !typ_excep in
       let pats' = List.map from_case pats in
       let pats'' = pats' @ [make_pany !typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
-      {desc=TryWith(from_expression e, make_fun x {desc=Match(make_var x, pats''); typ=typ'; attr=[]}); typ=typ'; attr=[]}
+      {desc=TryWith(from_expression e, make_fun x (make_match (make_var x) pats'')); typ=typ'; attr=[]}
   | Texp_tuple es ->
       {desc=Tuple(List.map from_expression es); typ=typ'; attr=[]}
   | Texp_construct(_,desc,es) ->

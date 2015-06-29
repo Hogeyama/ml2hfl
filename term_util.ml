@@ -216,9 +216,14 @@ let make_ppair p1 p2 = {pat_desc=PTuple[p1;p2]; pat_typ=make_tpair p1.pat_typ p2
 let make_pnil typ = {pat_desc=PNil; pat_typ=TList typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
-let make_match t1 pats = {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
+let make_match t1 pats =
+  match pats with
+  | [{pat_desc=PAny}, {desc=Const True}, t2] -> make_seq t1 t2
+  | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
 let make_single_match t1 p t2 =
-  make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
+  if p.pat_desc = PAny
+  then make_match t1 [p, true_term, t2]
+  else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let make_label_aux info t = {desc=Label(info,t); typ=t.typ; attr=[]}
 let make_label ?(label="") info t =
   t
