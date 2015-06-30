@@ -75,13 +75,13 @@ let rec arg_num = function
 
 
 
-let rec pop_main {env;defs;main;attr} =
+let rec pop_main {env;defs;main;info} =
   let compare_fun f g = compare (g = main, f) (f = main, g) in
   let compare_def (f,_,_,_,_) (g,_,_,_,_) = compare_fun f g in
   let compare_env (f,_) (g,_) = compare_fun f g in
   let env' = List.sort ~cmp:compare_env env in
   let defs' = List.sort ~cmp:compare_def defs in
-  {env=env'; defs=defs'; main; attr}
+  {env=env'; defs=defs'; main; info}
 
 
 
@@ -541,10 +541,10 @@ let get_nonrec defs main orig_fun_list force =
     List.filter_out (fun (f,_) -> List.mem f orig_fun_list') nonrec
 
 
-let print_prog_typ' orig_fun_list force fm {env;defs;main;attr} =
+let print_prog_typ' orig_fun_list force fm {env;defs;main;info} =
   let nonrec = get_nonrec defs main orig_fun_list force in
   let env' = List.filter (fun (f,_) -> not @@ List.mem_assoc f nonrec) env in
-  CEGAR_print.prog_typ fm {env=env';defs;main;attr}
+  CEGAR_print.prog_typ fm {env=env';defs;main;info}
 
 
 

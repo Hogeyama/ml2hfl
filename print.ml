@@ -42,7 +42,7 @@ and print_id_typ fm x = fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_ty
    50 : Eq, Lt, Gt, Leq, Geq
    60 : Add, Sub
    70 : Cons, Raise
-   80 : App, Ref, SetRef
+   80 : App, Not, Ref, SetRef
    90 : Deref
  *)
 
@@ -187,7 +187,7 @@ and print_desc pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ %a@ %a@]%s" s1 (print_term p typ) t1 print_binop op (print_term p typ) t2 s2
   | Not t ->
-      let p = 60 in
+      let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[not@ %a@]%s" s1 (print_term p typ) t s2
   | Event(s,false) -> fprintf fm "<%s>" s

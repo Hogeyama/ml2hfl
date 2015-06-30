@@ -163,10 +163,10 @@ let extract_tuple_def env (f,xs,t1,e,t2) =
   let t1' = hd (extract_tuple_term env t1) in
   let t2' = hd (extract_tuple_term env' t2) in
     f, xs', t1', e, t2'
-let extract_tuple {env;defs;main;attr} =
+let extract_tuple {env;defs;main;info} =
   let defs = List.map (extract_tuple_def env) defs in
-  let () = if false then Format.printf "EXTRACTED:\n%a@." CEGAR_print.prog {env=[];defs;main;attr} in
-  Typing.infer {env=[];defs;main;attr}
+  let () = if false then Format.printf "EXTRACTED:\n%a@." CEGAR_print.prog {env=[];defs;main;info} in
+  Typing.infer {env=[];defs;main;info}
 
 
 
@@ -183,14 +183,14 @@ let rec reduce = function
   | Let(x,t1,t2) -> reduce (subst x t1 t2)
 let reduce_def (f,xs,t1,e,t2) = f,xs,t1,e,reduce t2
 
-let trans {env;defs;main;attr} lift_opt =
-  let _ = Typing.infer {env;defs;main;attr} in
+let trans {env;defs;main;info} lift_opt =
+  let _ = Typing.infer {env;defs;main;info} in
   let defs = to_funs defs in
-  let _ = Typing.infer {env;defs;main;attr} in
+  let _ = Typing.infer {env;defs;main;info} in
   let defs = List.map trans_simpl_def defs in
   let defs = List.map reduce_def defs in
   let defs = and_def::or_def::not_def::defs in
-  let prog = {env; defs; main; attr} in
+  let prog = {env; defs; main; info} in
   let () = if false then Format.printf "BEFORE LIFT:\n%a@." CEGAR_print.prog prog in
   let _ = Typing.infer prog in
   let prog = if lift_opt then CEGAR_lift.lift prog else CEGAR_lift.lift2 prog in

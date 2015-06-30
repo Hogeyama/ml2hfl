@@ -178,13 +178,13 @@ let infer_def env (f,xs,t1,_,t2) =
   unify typ typ'
 
 
-let infer ({defs;main;env;attr} as prog) =
+let infer ({defs;main;env;info} as prog) =
   if false then Format.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
   let ext_funs = get_ext_funs prog in
   let ext_env = List.map (fun f -> f, from_typ (List.assoc f env)) ext_funs in
   let env = ext_env @ List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
-  let main_typ = if List.mem ACPS attr then TResult else TUnit in
+  let main_typ = if List.mem ACPS info.attr then TResult else TUnit in
   unify main_typ (List.assoc main env);
   List.iter (infer_def env) defs;
   let env' = List.map (fun (f,_) -> f, trans_typ @@ List.assoc f env) env in
-  {env=env'; defs; main; attr}
+  {env=env'; defs; main; info}

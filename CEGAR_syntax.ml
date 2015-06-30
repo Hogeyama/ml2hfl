@@ -74,9 +74,12 @@ and fun_def = var * var list * t * event list * t
 and typ = t CEGAR_type.t
 and env = (var * typ) list
 and attr = ACPS
-and prog = {env:env; defs:fun_def list; main:var; attr:attr list}
+and prog = {env:env; defs:fun_def list; main:var; info:info}
+and info = {attr:attr list; exparam_orig:prog option}
 
 type cegar_info = {orig_fun_list:var list; inlined:var list}
+
+let init_info = {attr=[]; exparam_orig=None}
 
 let empty_cegar_info = {orig_fun_list=[]; inlined=[]}
 let prefix_randint = "#randint"
@@ -273,9 +276,6 @@ let is_app_randint t =
       end
   | _ -> false
 
-
-
-let isEX_COEFFS id = Str.string_match (Str.regexp ".*COEFFICIENT.*") id 0
 
 
 let get_ext_funs {env; defs} =

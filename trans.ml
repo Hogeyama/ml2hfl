@@ -805,6 +805,7 @@ let make_ext_env = make_col2 [] (@@@)
 let make_ext_env_desc funs desc =
   match desc with
   | Var x when Fpat.RefTypInfer.is_parameter (Id.name x) -> []
+  | Var x when is_extra_coeff x -> []
   | Var x when Id.mem x funs -> [x, Id.typ x]
   | Var x -> []
   | _ -> make_ext_env.col2_desc_rec funs desc
@@ -1261,6 +1262,7 @@ let make_ext_funs env t =
   let funs =
     get_fv t
     |> List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name)
+    |> List.filter_out is_extra_coeff
     |*> List.filter (fun x -> Id.id x > 0)
     |> List.filter_out (Id.mem_assoc -$- env)
   in
@@ -2168,6 +2170,7 @@ let set_main t =
       let t'' = inst_randval t' in
       Some (Id.name f, List.length xs), t''
 let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
+
 
 
 let ref_to_assert ref_env t =

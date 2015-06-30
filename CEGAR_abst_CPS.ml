@@ -44,7 +44,7 @@ let rec beta_reduce_term = function
 let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
-let rec expand_nonrec orig_fun_list force {env;defs;main;attr} =
+let rec expand_nonrec orig_fun_list force {env;defs;main;info} =
   let nonrec = get_nonrec defs main orig_fun_list force in
   let cnt = ref 0 in
   let rec loop defs =
@@ -58,7 +58,7 @@ let rec expand_nonrec orig_fun_list force {env;defs;main;attr} =
   let defs' = List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f nonrec) defs in
   let defs'' = loop defs' in
   let defs''' = List.map beta_reduce_def defs'' in
-  {env; defs=defs'''; main; attr}
+  {env; defs=defs'''; main; info}
 
 
 
@@ -458,14 +458,14 @@ let add_ext_funs_cps prog =
   let env = get_ext_fun_env prog in
   let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun_cps [] (trans_typ typ)) env in
   let defs' = defs @ prog.defs in
-  ignore @@ Typing.infer {env=[]; defs=defs'; main=prog.main; attr=[]};
+  ignore @@ Typing.infer {env=[]; defs=defs'; main=prog.main; info=init_info};
   {prog with defs=defs'}
 
 let abstract_prog prog =
   let env = List.map (fun f -> f, abstract_typ @@ List.assoc f prog.env) @@ List.filter_out is_randint_var @@ get_ext_funs prog in
   let defs = List.flatten_map (abstract_def prog.env) prog.defs in
-  let attr = List.remove_all prog.attr ACPS in
-  {env; defs; main=prog.main; attr}
+  let attr = List.remove_all prog.info.attr ACPS in
+  {env; defs; main=prog.main; info={prog.info with attr}}
 
 let pr s prog = if !!debug then Format.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
 

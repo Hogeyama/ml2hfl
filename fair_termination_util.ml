@@ -132,3 +132,46 @@ let add_call_desc desc =
 
 let () = add_call.tr_desc <- add_call_desc
 let add_call = add_call.tr_term
+
+
+
+(** insert extra parameters *)
+let make_extra_param xs =
+  let mk = make_var -| make_extra_coeff in
+  List.fold_left (fun acc x -> make_add acc @@ make_mul !!mk (make_var x)) !!mk xs
+let is_fun_var = is_fun_typ -| Id.typ
+let new_exparam () = Id.new_var ~name:"ex" TInt
+
+let insert_extra_param = make_trans2 ()
+
+let insert_extra_param_desc vars desc =
+  match desc with
+  | Fun(x, t) when is_fun_var x ->
+      let x' = insert_extra_param.tr2_var vars x in
+      Fun(!!new_exparam, make_fun x' @@ insert_extra_param.tr2_term vars t)
+  | Let(flag, bindings, t2) ->
+      let aux (f,xs,t) =
+        let f' = insert_extra_param.tr2_var vars f in
+        let xs' = List.map (insert_extra_param.tr2_var vars) xs in
+        let xs'' = List.flatten_map (fun x -> if is_fun_var x then [!!new_exparam; x] else [x]) xs' in
+        let vars' = List.filter ((=) TInt -| Id.typ) xs @ vars in
+        f', xs'', insert_extra_param.tr2_term vars' t
+      in
+      let bindings' = List.map aux bindings in
+      let vars' = List.filter_map (fun (x,_,_) -> if Id.typ x = TInt then Some x else None) bindings @ vars in
+      Let(flag, bindings', insert_extra_param.tr2_term vars' t2)
+  | App(t1, ts) ->
+      let t1' = insert_extra_param.tr2_term vars t1 in
+      let ts' = List.map (insert_extra_param.tr2_term vars) ts in
+      let ts'' = List.flatten_map (fun t -> if is_fun_typ t.typ then [make_extra_param vars; t] else [t]) ts' in
+      App(t1', ts'')
+  | _ -> insert_extra_param.tr2_desc_rec vars desc
+
+let insert_extra_param_typ vars typ =
+  match typ with
+  | TFun(x, typ2) when is_fun_var x -> TFun(Id.new_var TInt, insert_extra_param.tr2_typ_rec vars typ)
+  | _ -> insert_extra_param.tr2_typ_rec vars typ
+
+let () = insert_extra_param.tr2_desc <- insert_extra_param_desc
+let () = insert_extra_param.tr2_typ <- insert_extra_param_typ
+let insert_extra_param = insert_extra_param.tr2_term []

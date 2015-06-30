@@ -220,8 +220,8 @@ let make_match t1 pats =
   match pats with
   | [{pat_desc=PAny}, {desc=Const True}, t2] -> make_seq t1 t2
   | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
-let make_single_match t1 p t2 =
-  if p.pat_desc = PAny
+let make_single_match ?(total=false) t1 p t2 =
+  if total || p.pat_desc = PAny
   then make_match t1 [p, true_term, t2]
   else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let make_label_aux info t = {desc=Label(info,t); typ=t.typ; attr=[]}

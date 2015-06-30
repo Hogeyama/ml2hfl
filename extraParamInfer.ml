@@ -5,6 +5,8 @@ open Term_util
 let origWithExparam = ref (make_int 0)
 let exCoefficients = ref []
 
+
+
 let to_string_CoeffInfos f =
   let g v = Id.name @@ var_of_term v in
   let h = function
@@ -13,7 +15,7 @@ let to_string_CoeffInfos f =
   in
   let isZero = function
     | {desc=Const (Int n)} -> n = 0
-    | {desc=Var v} -> CEGAR_syntax.isEX_COEFFS v.Id.name
+    | {desc=Var v} -> is_extra_coeff v
     | t -> (Format.printf "%a@." Print.term t;raise (Invalid_argument ""))
   in
   let areAllZero = List.for_all isZero (List.map f !exCoefficients) in
@@ -113,7 +115,7 @@ let rec removeDummySubstitutions = function
 
 let substituteZero e =
   let toZero = function
-    | { desc = Var id } when CEGAR_syntax.isEX_COEFFS (Id.name id) -> make_int 0
+    | { desc = Var id } when is_extra_coeff id -> make_int 0
     | e -> e
   in
   BRA_transform.everywhere_expr toZero e

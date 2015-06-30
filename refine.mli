@@ -34,6 +34,4 @@ val remove_preds : Syntax.typed_term -> Syntax.typed_term
 
 exception PostCondition of (Fpat.Idnt.t * Fpat.Type.t) list * Fpat.Formula.t * Fpat.Formula.t
 
-val progWithExparam : CEGAR_syntax.prog ref
-
 val refine_rank_fun : CEGAR_syntax.ce -> (Fpat.Idnt.t * Fpat.Pred.t list) list -> CEGAR_syntax.prog -> unit

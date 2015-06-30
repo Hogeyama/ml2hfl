@@ -204,13 +204,13 @@ and trans_term post xs env t =
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
   | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) when List.mem S.AAbst_under attr ->
-      assert (t1 = Term_util.unit_term);
+      assert (t1.desc = Const Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
       defs1@defs2, make_app (Const (RandInt (Some 0))) (List.map _Var xs' @ [t2'])
   | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
-      assert (t1 = Term_util.unit_term);
+      assert (t1.desc = Const Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt None), t2')
@@ -220,7 +220,7 @@ and trans_term post xs env t =
         then Some 0
         else None
       in
-      assert (t1 = Term_util.unit_term);
+      assert (t1.desc = Const Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt flag), t2')
@@ -228,7 +228,7 @@ and trans_term post xs env t =
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
   | S.App({S.desc=S.Const(S.RandValue(typ,true))}, [t1;t2]) ->
-      assert (t1 = Term_util.unit_term);
+      assert (t1.desc = Const Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(t2', Const (RandVal (Format.asprintf "%a" Print.typ typ)))
@@ -241,7 +241,7 @@ and trans_term post xs env t =
       let defs = [k, TFun(typ_unit, fun _ -> typ_unit), ["u"], Const True, [], Const Unit] in
       defs, App(Const (Temp s), Var k)
   | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
-      assert (t1 = Term_util.unit_term);
+      assert (t1.desc = Const Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (Temp s), t2')
@@ -402,13 +402,13 @@ let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 
 
 
-let event_of_temp {env;defs;main;attr} =
-  if List.mem ACPS attr
+let event_of_temp {env;defs;main;info} =
+  if List.mem ACPS info.attr
   then
     let make_event (f,xs,t1,e,t2) =
       assert (e = []);
       match t2 with
-      | App(Const (Temp s), t2') when t1 = Const True || not @@ List.mem ACPS attr ->
+      | App(Const (Temp s), t2') when t1 = Const True || not @@ List.mem ACPS info.attr ->
           [], [f, xs, t1, [Event s], App(t2', Const Unit)]
       | App(Const (Temp s), t2') ->
           let g = new_id s in
@@ -419,7 +419,7 @@ let event_of_temp {env;defs;main;attr} =
       | _ -> [], [f, xs, t1, [], t2]
     in
     let envs,defss = List.split_map make_event defs in
-    {env=List.flatten envs @@@ env; defs=List.flatten defss; main; attr}
+    {env=List.flatten envs @@@ env; defs=List.flatten defss; main; info}
   else
     let rec aux = function
       | Const (Temp e) -> [e]
@@ -442,7 +442,7 @@ let event_of_temp {env;defs;main;attr} =
       | Let _ -> assert false
     in
     let defs' = List.map (map_body_def aux) defs in
-    {env=evt_env@@@env; defs=evt_defs@@@defs'; main; attr}
+    {env=evt_env@@@env; defs=evt_defs@@@defs'; main; info}
 
 
 let rec uniq_env = function
@@ -493,7 +493,7 @@ let rename_prog prog =
   let env = List.map (Pair.map_fst @@ rename_var map) prog.env in
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
-  let prog = {env; defs; main; attr=prog.attr} in
+  let prog = {env; defs; main; info=prog.info} in
   if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
   ignore (Typing.infer prog);
   let rmap = List.map (Pair.map_snd trans_inv_var) map in
@@ -555,7 +555,8 @@ let trans_prog ?(spec=[]) t =
     let aux (f,typ) = try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
     uniq_env (ext_env @@@ List.map aux env)
   in
-  let prog = {env=env'; defs=defs''; main; attr=if is_cps then [ACPS] else []} in
+  let attr = if is_cps then [ACPS] else [] in
+  let prog = {env=env'; defs=defs''; main; info={init_info with attr}} in
   pr2 "PROG_A" prog;
   let prog = event_of_temp prog in
   pr2 "PROG_B" prog;
@@ -775,6 +776,6 @@ let rec simplify_if_term t =
   | Let _ -> assert false
   | Fun(x,typ,t) -> Fun(x, typ, simplify_if_term t)
 
-let simplify_if {env; defs; main; attr} =
+let simplify_if {env; defs; main; info} =
   let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term t1, e, simplify_if_term t2) defs in
-  {env; defs=defs'; main; attr}
+  {env; defs=defs'; main; info}

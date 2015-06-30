@@ -37,7 +37,7 @@ let verify_with holed pred =
   let transformed = pluging holed pred in
   if debug then Format.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
   let orig, transformed = retyping transformed (BRA_state.type_of_state holed) in
-  Main_loop.run orig transformed
+  Main_loop.run orig [] transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
   (* reduce to linear constraint solving *)
@@ -100,9 +100,12 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
      ) linear_templates,
      let correspondenceExparams =
        List.map (fun (v, t) ->
-                 let n = Fpat.IntTerm.int_of t in (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.TInt, Term_util.make_int n)) (List.filter (fun (v, _) -> v |> Fpat.Idnt.string_of |> CEGAR_syntax.isEX_COEFFS) correspondenceVars) in
+                 let n = Fpat.IntTerm.int_of t in
+                 (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.TInt, Term_util.make_int n))
+                (List.filter (fun (v, _) -> v |> Fpat.Idnt.string_of |> Syntax.is_extra_coeff_name) correspondenceVars)
+     in
      let substToVar = function
-       | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> if CEGAR_syntax.isEX_COEFFS x.Id.name then Term_util.make_int 0 else Term_util.make_var x)
+       | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> if Syntax.is_extra_coeff x then Term_util.make_int 0 else Term_util.make_var x)
        | t -> t
      in
      let preprocessForExparam e =

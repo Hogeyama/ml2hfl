@@ -86,14 +86,18 @@ let preprocess t spec =
       close_out oc
     end;
 
-  (*
   (* ill-formed program *)
-  Refine.progWithExparam := (let p, _, _, _ = CEGAR_trans.trans_prog !ExtraParamInfer.withExparam in p);
+  let progWithExparam =
+    if !Flag.add_closure_exparam
+    then Some (Quadruple.fst @@ CEGAR_trans.trans_prog !ExtraParamInfer.withExparam)
+    else None
+  in
   (**********************)
- *)
 
   let abst_cegar_env = Spec.get_abst_cegar_env spec t |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:abst_cegar_env t in
+  let info = {prog.info with exparam_orig = progWithExparam} in
+  let prog' = {prog with info} in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
     if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
@@ -108,7 +112,7 @@ let preprocess t spec =
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined}
   in
-  prog, rmap, get_rtyp, info
+  prog', rmap, get_rtyp, info
 
 
 
@@ -244,7 +248,7 @@ let rec run_cegar prog =
           run_cegar prog
 
 
-let rec run orig ?(spec=Spec.init) parsed =
+let rec run orig exparam_sol ?(spec=Spec.init) parsed =
   init ();
   let main,set_target =
     match !Flag.cegar with
@@ -272,16 +276,26 @@ let rec run orig ?(spec=Spec.init) parsed =
   in
   (**)
   let prog, rmap, get_rtyp, info = preprocess t0 spec in
-  if !Flag.trans_to_CPS then FpatInterface.init prog;
+  let prog' =
+    if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
+    then
+      let () = Format.printf "%a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol in
+      let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var (fun n -> CEGAR_syntax.Const (CEGAR_syntax.Int n))) exparam_sol in
+      let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') prog in
+      {prog'' with info={prog.info with exparam_orig=Some prog}}
+    else
+      prog
+  in
+  if !Flag.trans_to_CPS then FpatInterface.init prog';
   match !Flag.cegar with
   | Flag.CEGAR_InteractionType ->
 (*
-      FpatInterface.verify [] prog;
+      FpatInterface.verify [] prog';
 *)
       assert false;
   | Flag.CEGAR_DependentType ->
       try
-        match CEGAR.run prog info with
+        match CEGAR.run prog' info with
         | _, CEGAR.Safe env ->
             Flag.result := "Safe";
             if not !Flag.exp && (!Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0))
@@ -295,15 +309,15 @@ let rec run orig ?(spec=Spec.init) parsed =
       with
       | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
           Flag.insert_param_funarg := true;
-          run orig ~spec parsed
+          run orig exparam_sol ~spec parsed
       | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
           if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
           if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
           Flag.relative_complete := true;
-          run orig ~spec parsed
+          run orig exparam_sol ~spec parsed
       | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
           Fpat.RefTypInfer.params := [];
           Fpat.RefTypInfer.prev_sol := [];
           Fpat.RefTypInfer.prev_constrs := [];
           incr Fpat.RefTypInfer.number_of_extra_params;
-          run orig ~spec parsed
+          run orig exparam_sol ~spec parsed

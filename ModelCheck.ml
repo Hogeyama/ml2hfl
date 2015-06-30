@@ -37,16 +37,16 @@ let capitalize_var = String.capitalize
 let uncapitalize_var = String.uncapitalize
 let uncapitalize_env env = List.map (Pair.map_fst uncapitalize_var) env
 
-let capitalize {env;defs;main;attr} =
+let capitalize {env;defs;main;info} =
   let env' = List.map (Pair.map_fst capitalize_var) env in
   let map = List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
   let aux (f,xs,t1,e,t2) = capitalize_var f, xs, subst_map map t1, e, subst_map map t2 in
   let defs' = List.map aux defs in
   let main' = capitalize_var main in
-  {env=env'; defs=defs'; main=main'; attr}
+  {env=env'; defs=defs'; main=main'; info}
 
 
-let elim_non_det ({defs;main;attr} as prog) =
+let elim_non_det ({defs;main;info} as prog) =
   let env = get_ext_fun_env prog in
   let check f (g,_,_,_,_) = f = g in
   let mem f defs = List.exists (check f) defs in
@@ -62,9 +62,9 @@ let elim_non_det ({defs;main;attr} as prog) =
         (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
     | def::defs -> def :: elim_non_det_def defs
   in
-  Typing.infer {env; defs=elim_non_det_def defs; main; attr}
+  Typing.infer {env; defs=elim_non_det_def defs; main; info}
 
-let make_bottom {env;defs;main;attr} =
+let make_bottom {env;defs;main;info} =
   let bottoms = ref [] in
   let make_bottom n =
     let x = "Bottom" ^ string_of_int n in
@@ -116,7 +116,7 @@ let make_bottom {env;defs;main;attr} =
   let make (x,n) = x, List.init n @@ Fun.const "x", Const True, [], bot0 in
   let defs' = List.map aux_def defs in
   let bottom_defs = List.map make (List.unique !bottoms) in
-  {env; defs=bottom_defs@@@defs'; main; attr}
+  {env; defs=bottom_defs@@@defs'; main; info}
 
 
 let rec eta_expand_term env = function
@@ -173,11 +173,11 @@ let rec church_encode_term = function
   | App(t1, t2) -> App(church_encode_term t1, church_encode_term t2)
   | Let _ -> assert false
   | Fun _ -> assert false
-let church_encode {env;defs;main;attr} =
+let church_encode {env;defs;main;info} =
   let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
   let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
   let defs' = List.map (map_body_def church_encode_term) defs @ [true_def; false_def] in
-  let prog = {env=[];defs=defs';main;attr} in
+  let prog = {env=[];defs=defs';main;info} in
   if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog prog;
   Typing.infer prog
 
@@ -234,7 +234,7 @@ let beta_reduce_term flag ((f,_,_,_,_) as def) t =
     then beta_reduce_term flag def t
     else (if n >= 2 then flag := true; t)
 
-let beta_reduce_aux {env;defs;main;attr} =
+let beta_reduce_aux {env;defs;main;info} =
   let rec aux defs1 = function
       [] -> defs1
     | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@@def::defs2) ->
@@ -247,7 +247,7 @@ let beta_reduce_aux {env;defs;main;attr} =
           else aux defs1' defs2'
     | def::defs2 -> aux (defs1@[def]) defs2
   in
-  {env; defs = aux [] defs; main; attr}
+  {env; defs = aux [] defs; main; info}
 
 let rec beta_reduce prog =
   let prog' = beta_reduce_aux prog in
@@ -304,7 +304,7 @@ let check abst prog =
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
   let abst' =
-    if List.mem ACPS prog.attr
+    if List.mem ACPS prog.info.attr
     then preprocess_cps abst
     else preprocess abst
   in

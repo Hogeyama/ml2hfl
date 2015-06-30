@@ -78,7 +78,7 @@ let conv_const c =
   | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
 
 let conv_var x =
-  if Fpat.RefTypInfer.is_parameter x || isEX_COEFFS x then
+  if Fpat.RefTypInfer.is_parameter x || S.is_extra_coeff_name x then
     Fpat.Idnt.mk_coeff x
   else
     Fpat.Idnt.make x

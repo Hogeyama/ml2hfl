@@ -65,7 +65,7 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
+let refine labeled is_cp prefix ces ext_ces {env;defs;main;info} =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
@@ -104,14 +104,14 @@ let refine labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
-    map, {env=env';defs;main;attr}
+    map, {env=env';defs;main;info}
   with e ->
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
     raise e
 
-let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
+let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;info} =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
@@ -144,7 +144,7 @@ let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;attr} =
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
-    map, {env=env';defs;main;attr}
+    map, {env=env';defs;main;info}
   with e ->
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
@@ -162,45 +162,42 @@ let print_list fm = function
     in
     Format.fprintf fm "[%d%s]@." x (iter xs)
 
-let progWithExparam = ref {env=[]; defs=[]; main="main(DUMMY)"; attr=[]}
-
-let refine_rank_fun ce ex_ce { env; defs; main; attr } =
+let refine_rank_fun ce ex_ce ({ env; defs; main; info }as prog) =
+  if false then Format.printf "%a@." CEGAR_print.prog prog;
   let tmp = get_time () in
-    try
-      (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
+  try
+    (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
       Format.printf "    %a@." (print_prog_typ' [] []) { env=env; defs=defs; main=main };*)
-      if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
-      let env, spc =
-        Format.printf "@[<v>";
-        let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce ex_ce in
-        Format.printf "@]";
-        env, spc
-      in
+    if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
+    let env, spc =
+      Format.printf "@[<v>";
+      let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce ex_ce in
+      Format.printf "@]";
+      env, spc
+    in
 
-      let spcWithExparam =
-        let {env=envWithExparam; defs=defsWithExparam; main=mainWithExparam} = !progWithExparam in
+    let spcWithExparam =
+      if !Flag.add_closure_exparam
+      then
+        let {env=envWithExparam; defs=defsWithExparam; main=mainWithExparam} = Option.get info.exparam_orig in
         Format.printf "@[<v>";
-        let _, spcWithExparam =
-          if !Flag.add_closure_exparam then
-            FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce ex_ce
-          else
-            [], spc (* dummy *)
-        in
+        let _, spcWithExparam = FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce ex_ce in
         Format.printf "@]";
         spcWithExparam
-      in
+      else spc (* dummy *)
+    in
 
-      (* TEMPORARY *)
-      (*Format.printf "[exparam]@.%a@." FpatInterface.Formula.pr spcWithExparam;
+    (* TEMPORARY *)
+    (*Format.printf "[exparam]@.%a@." FpatInterface.Formula.pr spcWithExparam;
       Format.printf "[instantiated]@.%a@." FpatInterface.Formula.pr spc;*)
 
-      if !Flag.print_progress then Format.printf "DONE!@.@.";
-      Fpat.SMTProver.close ();
-      Fpat.SMTProver.open_ ();
-      add_time tmp Flag.time_cegar;
-      raise (PostCondition (env, spc, spcWithExparam))
-    with e ->
-      Fpat.SMTProver.close ();
-      Fpat.SMTProver.open_ ();
-      add_time tmp Flag.time_cegar;
-      raise e
+    if !Flag.print_progress then Format.printf "DONE!@.@.";
+    Fpat.SMTProver.close ();
+    Fpat.SMTProver.open_ ();
+    add_time tmp Flag.time_cegar;
+    raise (PostCondition (env, spc, spcWithExparam))
+  with e ->
+    Fpat.SMTProver.close ();
+    Fpat.SMTProver.open_ ();
+    add_time tmp Flag.time_cegar;
+    raise e

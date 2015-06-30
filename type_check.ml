@@ -61,7 +61,7 @@ let rec check t typ =
       let rec aux t xs typ =
         match xs, typ with
         | x::xs,TFun(y,typ) ->
-            check_var x (Id.typ y);
+            check_var x @@ Id.typ y;
             aux t xs typ
         | [],typ -> check t typ
         | [x],typ ->

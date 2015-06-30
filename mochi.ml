@@ -112,7 +112,7 @@ let main_input_cegar lb =
 let main_split_assert orig spec parsed =
   let paths = Trans.search_fail parsed in
   let ts = List.map (Trans.screen_fail -$- parsed) paths in
-  List.for_all (Main_loop.run orig ~spec) (List.rev ts)
+  List.for_all (Main_loop.run orig [] ~spec) (List.rev ts)
 
 let main_termination orig parsed =
   let open BRA_util in
@@ -206,7 +206,7 @@ let main in_channel =
     else if !Flag.mode = Flag.FairTermination then
       main_fair_termination orig spec parsed
     else
-      Main_loop.run orig ~spec parsed
+      Main_loop.run orig [] ~spec parsed
 
 
 let parse_fpat_arg arg =
@@ -337,8 +337,7 @@ let arg_spec =
                  Flag.add_closure_depth := true),
        " Insert extra parameters for representing depth of closures";
      "-infer-ranking-exparam",
-       Arg.Unit (fun _ ->
-                 Flag.add_closure_exparam := true),
+       Arg.Set Flag.add_closure_exparam,
        " Infer extra ranking parameters for closures for termination verification";
      "-non-termination",
        Arg.Unit (fun _ ->

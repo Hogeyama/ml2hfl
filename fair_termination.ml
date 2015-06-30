@@ -96,16 +96,27 @@ let trans_term env t =
             let rank_var = Id.new_var ~name:"rank" @@ List.fold_right _TFun (ps'@xs') TBool in
             let t_b = make_or (make_not @@ make_var set_flag') randbool_unit_term in
             let t1'' =
-                let bindings' =
+              let bindings' =
+                if false
+                then
+                  let aux = make_tuple -| List.map make_var in
+                  let t_then = make_pair (make_s_init env.fairness) (aux xs') in
+                  let t_else = make_pair (make_var s') (aux ps') in
+                  let sp = Id.new_var ~name:"sp" t_then.typ in
+                  (set_flag'', [], true_term) ::
+                  (sp, [], make_if t_b t_then t_else) ::
+                  (s'', [], make_fst @@ make_var sp) ::
+                  List.mapi (fun i p'' -> p'', [], make_proj i @@ make_snd @@ make_var sp) ps''
+                else
                   (s'', [], make_if (make_var b) (make_s_init env.fairness) (make_var s')) ::
                   (set_flag'', [], true_term) ::
                   List.map3 (fun x p' p'' -> p'', [], make_if (make_var b) (make_var x) (make_var p')) xs' ps' ps''
-                in
-                let t_rank = make_app (make_var rank_var) @@ List.map make_var (ps'@xs') in
-                let t_check = make_if (make_is_fair s') (make_assert @@ make_imply (make_var set_flag') t_rank) unit_term in
-                let vs,t1''' = trans.tr_col2_term {env with s=s''; ps=ps''; set_flag=set_flag''} t1 in
-                assert (vs = None);
-                make_lets bindings' @@ make_seq t_check t1'''
+              in
+              let t_rank = make_app (make_var rank_var) @@ List.map make_var (ps'@xs') in
+              let t_check = make_if (make_is_fair s') (make_assert @@ make_imply (make_var set_flag') t_rank) unit_term in
+              let vs,t1''' = trans.tr_col2_term {env with s=s''; ps=ps''; set_flag=set_flag''} t1 in
+              assert (vs = None);
+              make_lets bindings' @@ make_seq t_check t1'''
             in
             let t1''' =
               if !Flag.expand_nondet_branch
@@ -159,13 +170,13 @@ let trans target fairness t =
   vs,make_lets bindings t'
 
 
-let verify_with rank_var rank_funs prev_vars arg_vars t =
+let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   let ps = List.map Id.new_var_id prev_vars in
   let xs = List.map Id.new_var_id arg_vars in
   let t' = make_let [rank_var, ps@xs, make_check_rank ps xs rank_funs] t in
-  Main_loop.run [] t'
+  Main_loop.run [] exparam_sol t'
 
-let rec main_loop rank_var rank_funs prev_vars arg_vars preds_info(*need?*) t =
+let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*need?*) t =
   try
     let result =
       if !Flag.separate_pred then
@@ -173,23 +184,28 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars preds_info(*need?*) t =
       else if !Flag.split_callsite then
         unsupported "split_callsite"
       else
-        verify_with rank_var rank_funs prev_vars arg_vars t
+        verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t
     in
     result
   with
   | Refine.PostCondition(env, spc, spcWithExparam) ->
-      let rank_funs' =
+      let solution =
+        let all_vars = List.map fst env in
         let aux = Fpat.Idnt.make -| Id.to_string in
         let arg_vars' = List.map aux arg_vars in
         let prev_vars' = List.map aux prev_vars in
         try
-          List.map (fun (coeffs,const) -> {coeffs; const}) @@ Fpat.RankFunInfer.lrf spc arg_vars' prev_vars'
-        with Not_found -> raise FailedToFindRF (* need fix Fpat.RankFunInfer.lrf to raise an appropriate exception *)
+          Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spc spcWithExparam (*all_vars*) arg_vars' prev_vars'
+        with Fpat.RankFunInfer.LRFNotFound -> raise FailedToFindRF
       in
+      let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
+      let exparam_sol' = snd solution in
+      if true then Format.printf "%a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_int) exparam_sol';
+      assert (exparam_sol' = [] || not !Flag.add_closure_exparam);
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in
-      main_loop rank_var rank_funs'' prev_vars arg_vars preds_info' t
+      main_loop rank_var rank_funs'' prev_vars arg_vars exparam_sol(*'*) preds_info' t
 
 
 
@@ -229,8 +245,14 @@ let run spec t =
       |> Trans.flatten_let
       |@> pr "flatten let"
       |> Trans.null_tuple_to_unit
+      |&!Flag.add_closure_exparam&> insert_extra_param
+      |@!Flag.add_closure_exparam&> pr "insert extra parameters"
     in
-    let result = main_loop rank_var rank_funs prev_vars arg_vars [] t''' in
+    let fv = List.remove_all (get_fv t''') rank_var in
+    if false then Format.printf "%a@." (List.print Print.id) fv;
+    assert (List.for_all is_extra_coeff fv);
+    let init_sol = List.map (fun t -> t, 0) fv in
+    let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] t''' in
     if !!debug then
       if result
       then Format.printf "%a is fair terminating.@.@." Id.print f

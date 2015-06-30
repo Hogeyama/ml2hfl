@@ -191,7 +191,7 @@ let make_arg_let prog =
 
 
 
-let rec add_label {env;defs;main;attr} =
+let rec add_label {env;defs;main;info} =
   let merge = function
     | [] -> assert false
     | [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, e, t2]
@@ -200,7 +200,7 @@ let rec add_label {env;defs;main;attr} =
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
         [f1,xs1,t11,e1,make_label 0 t12; f2,xs2,t21,e2,make_label 1 t22]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] as defs->
-        Format.printf "%a@." CEGAR_print.prog {env=[]; defs; main=""; attr=[]};
+        Format.printf "%a@." CEGAR_print.prog {env=[]; defs; main=""; info=init_info};
         assert false
     | (f,_,_,_,_)::defs -> fatal @@ Format.sprintf "Not implemented (CEGAR_abst_util.add_label) %s %d" f (1 + List.length defs)
   in
@@ -213,7 +213,7 @@ let rec add_label {env;defs;main;attr} =
   in
   let defs' = aux defs in
   let labeled = List.unique @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs' in
-  labeled, {env;defs=defs';main;attr}
+  labeled, {env;defs=defs';main;info}
 
 
 
@@ -239,7 +239,7 @@ let add_ext_funs prog =
   let env = get_ext_fun_env prog in
   let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun typ) env in
   let defs' = defs@prog.defs in
-  ignore @@ Typing.infer {env=[]; defs=defs'; main=prog.main; attr=prog.attr};
+  ignore @@ Typing.infer {prog with env=[]; defs=defs'};
   {prog with defs=defs'}
 
 

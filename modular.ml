@@ -48,7 +48,7 @@ let divide spec t ref_env =
 let main orig spec parsed =
   let verify (s,spec,t) =
     if !!debug then Format.printf "Start verification of %s:@.%a@." s Spec.print spec;
-    s, Main_loop.run orig ~spec t
+    s, Main_loop.run orig [] ~spec t
   in
   Spec.get_ref_env spec parsed
   |@(not !Flag.only_result)&> Spec.print_ref_env Format.std_formatter

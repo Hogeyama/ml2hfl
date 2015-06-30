@@ -74,7 +74,7 @@ val make_nil : typ -> typed_term
 val make_nil2 : typ -> typed_term
 val make_cons : typed_term -> typed_term -> typed_term
 val make_match : typed_term -> (typed_pattern * typed_term * typed_term) list -> typed_term
-val make_single_match : typed_term -> typed_pattern -> typed_term -> typed_term
+val make_single_match : ?total:bool -> typed_term -> typed_pattern -> typed_term -> typed_term
 val make_seq : typed_term -> typed_term -> typed_term
 val make_ignore : typed_term -> typed_term
 val make_assert : typed_term -> typed_term

@@ -1329,3 +1329,9 @@ let occur_typ x typ =
 
 let () = occur.col2_typ <- occur_typ
 let occur = occur.col2_typ
+
+
+let coeff_suffix = "_COEF"
+let make_extra_coeff ?(name="c") ?(typ=TInt) () = Id.new_var ~name:(name^coeff_suffix) TInt
+let is_extra_coeff_name s = Str.string_match (Str.regexp @@ Format.sprintf ".*%s.*" coeff_suffix) s 0
+let is_extra_coeff = is_extra_coeff_name -| Id.name

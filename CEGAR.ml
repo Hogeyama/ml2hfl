@@ -38,7 +38,7 @@ let rec loop prog0 is_cp ces info =
     if !Flag.relative_complete
     then
       let env,defs,main = FpatInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
-      {env; defs; main; attr=[]}
+      {env; defs; main; info=init_info}
     else prog0
   in
   let pr =
@@ -126,7 +126,8 @@ let rec loop prog0 is_cp ces info =
               Refine.refine_rank_fun ce' [] prog0;
               assert false
           | Feasibility.Feasible sol, Flag.FairTermination ->
-              Refine.refine_rank_fun ce' [] prog0;
+              let prog = if !Flag.add_closure_exparam then Option.get prog0.info.exparam_orig else prog0 in
+              Refine.refine_rank_fun ce' [] prog;
               assert false
           | Feasibility.Feasible sol, _ ->
               prog, Unsafe sol
