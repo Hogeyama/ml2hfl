@@ -96,8 +96,6 @@ let preprocess t spec =
 
   let abst_cegar_env = Spec.get_abst_cegar_env spec t |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:abst_cegar_env t in
-  let info = {prog.info with exparam_orig = progWithExparam} in
-  let prog' = {prog with info} in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
     if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
@@ -112,7 +110,7 @@ let preprocess t spec =
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined}
   in
-  prog', rmap, get_rtyp, info
+  prog, rmap, get_rtyp, info
 
 
 
@@ -282,6 +280,7 @@ let rec run orig exparam_sol ?(spec=Spec.init) parsed =
       let () = Format.printf "%a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol in
       let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var (fun n -> CEGAR_syntax.Const (CEGAR_syntax.Int n))) exparam_sol in
       let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') prog in
+      if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog prog;
       {prog'' with info={prog.info with exparam_orig=Some prog}}
     else
       prog

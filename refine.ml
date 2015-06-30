@@ -162,8 +162,7 @@ let print_list fm = function
     in
     Format.fprintf fm "[%d%s]@." x (iter xs)
 
-let refine_rank_fun ce ex_ce ({ env; defs; main; info }as prog) =
-  if false then Format.printf "%a@." CEGAR_print.prog prog;
+let refine_rank_fun ce ex_ce { env; defs; main; info } =
   let tmp = get_time () in
   try
     (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
@@ -180,9 +179,11 @@ let refine_rank_fun ce ex_ce ({ env; defs; main; info }as prog) =
       if !Flag.add_closure_exparam
       then
         let {env=envWithExparam; defs=defsWithExparam; main=mainWithExparam} = Option.get info.exparam_orig in
+        if false then Format.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get info.exparam_orig;
         Format.printf "@[<v>";
         let _, spcWithExparam = FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce ex_ce in
         Format.printf "@]";
+        if false then Format.printf "REFINE: %a@." Fpat.Formula.pr spcWithExparam;
         spcWithExparam
       else spc (* dummy *)
     in

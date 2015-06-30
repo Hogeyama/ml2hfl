@@ -194,14 +194,12 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
         let aux = Fpat.Idnt.make -| Id.to_string in
         let arg_vars' = List.map aux arg_vars in
         let prev_vars' = List.map aux prev_vars in
-        try
-          Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spc spcWithExparam (*all_vars*) arg_vars' prev_vars'
-        with Fpat.RankFunInfer.LRFNotFound -> raise FailedToFindRF
+        Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spc spcWithExparam (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
       let exparam_sol' = snd solution in
       if true then Format.printf "%a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_int) exparam_sol';
-      assert (exparam_sol' = [] || not !Flag.add_closure_exparam);
+      assert (exparam_sol' = [] || not !Flag.add_closure_exparam); (* FOR DEBUG: THIS ASSERTION MAY FAIL *)
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in
@@ -261,4 +259,5 @@ let run spec t =
   in
   try
     List.for_all verify top_funs
-  with FailedToFindRF -> false
+  with Fpat.RankFunInfer.LRFNotFound
+     | Fpat.RankFunInfer.LLRFNotFound -> false

@@ -126,8 +126,7 @@ let rec loop prog0 is_cp ces info =
               Refine.refine_rank_fun ce' [] prog0;
               assert false
           | Feasibility.Feasible sol, Flag.FairTermination ->
-              let prog = if !Flag.add_closure_exparam then Option.get prog0.info.exparam_orig else prog0 in
-              Refine.refine_rank_fun ce' [] prog;
+              Refine.refine_rank_fun ce' [] prog0;
               assert false
           | Feasibility.Feasible sol, _ ->
               prog, Unsafe sol
@@ -154,6 +153,7 @@ let rec loop prog0 is_cp ces info =
 
 
 let run prog info =
+  if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
   let add_fail_to_end ds =
     match !Flag.mode with
     | Flag.NonTermination ->
