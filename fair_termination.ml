@@ -10,7 +10,15 @@ exception FailedToFindRF
 let debug () = List.mem "Fair_termination" !Flag.debug_module
 
 
-type trans_env = {target:id; target_xs:id list; target_result_typ:typ; fairness:fairness; s:id; set_flag:id; ps:id list}
+type trans_env =
+    {target: id;
+     target_xs: id list;
+     target_result_typ: typ;
+     states: state list;
+     fairness: fairness;
+     s: id;
+     set_flag: id;
+     ps: id list}
 
 let rec subst_state fairness s q b =
   let aux q' i j = if q = q' then make_bool b else make_proj j @@ make_proj i @@ make_var s in
@@ -161,7 +169,9 @@ let trans target fairness t =
   let target_xs,target_result_typ = get_top_fun_typ target t in
   let s, set_flag, ps = make_extra_vars fairness target_xs in
   if false then Format.printf "ps: %a@." (List.print Print.id) ps;
-  let vs,t' = trans.tr_col2_term {target; target_xs; target_result_typ; fairness; s; set_flag; ps} t in
+  let states = get_states t in
+  let env = {target; target_xs; target_result_typ; states; fairness; s; set_flag; ps} in
+  let vs,t' = trans.tr_col2_term env t in
   let bindings =
     (s, [], make_s_init fairness) ::
     (set_flag, [], false_term) ::
@@ -194,6 +204,8 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
         let aux = Fpat.Idnt.make -| Id.to_string in
         let arg_vars' = List.map aux arg_vars in
         let prev_vars' = List.map aux prev_vars in
+        Format.printf "spc: %a@." Fpat.Formula.pr spc;
+        Format.printf "spcWithExparam: %a@." Fpat.Formula.pr spcWithExparam;
         Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spc spcWithExparam (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
@@ -226,16 +238,26 @@ let run spec t =
     |@> pr "copy poly. funs."
     |> remove_and_replace_event
     |@> pr "remove_and_replace_event"
+    |&!Flag.add_closure_exparam&> insert_extra_param
+    |@!Flag.add_closure_exparam&> pr "insert extra parameters"
     |> normalize
     |@> pr "normalize"
     |&has_call&> add_call
     |@has_call&> pr "add event Call"
+    |> set_main
+    |@> pr "set_main"
   in
-  let top_funs = List.rev @@ get_top_rec_funs t' in
+  let main = Option.get @@ get_last_definition t' in
+  if false then Format.printf "MAIN: %a@." Id.print main;
+  let top_funs = List.filter_out (Id.same main) @@ get_top_funs t' in
+  let top_funs' = List.filter (is_fun_typ -| Id.typ) top_funs in
+  if false then Format.printf "TOP_FUNS: %a@." (List.print Id.print) top_funs';
   let verify f =
     let rank_funs = [] in
     let vs,t'' = trans f fairness t' in
     let rank_var, prev_vars, arg_vars = Option.get vs in
+    if true then Format.printf "prev_vars: %a@." (List.print Print.id) prev_vars;
+    if true then Format.printf "arg_vars: %a@." (List.print Print.id) arg_vars;
     let t''' =
       t''
       |> Trans.replace_main ~force:true unit_term
@@ -243,13 +265,11 @@ let run spec t =
       |> Trans.flatten_let
       |@> pr "flatten let"
       |> Trans.null_tuple_to_unit
-      |&!Flag.add_closure_exparam&> insert_extra_param
-      |@!Flag.add_closure_exparam&> pr "insert extra parameters"
     in
     let fv = List.remove_all (get_fv t''') rank_var in
     if false then Format.printf "%a@." (List.print Print.id) fv;
     assert (List.for_all is_extra_coeff fv);
-    let init_sol = List.map (fun t -> t, 0) fv in
+    let init_sol = List.map (fun x -> x, 0) fv in
     let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] t''' in
     if !!debug then
       if result
@@ -258,6 +278,6 @@ let run spec t =
     result
   in
   try
-    List.for_all verify top_funs
+    List.for_all verify top_funs'
   with Fpat.RankFunInfer.LRFNotFound
      | Fpat.RankFunInfer.LLRFNotFound -> false

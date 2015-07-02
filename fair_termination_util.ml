@@ -175,3 +175,26 @@ let insert_extra_param_typ vars typ =
 let () = insert_extra_param.tr2_desc <- insert_extra_param_desc
 let () = insert_extra_param.tr2_typ <- insert_extra_param_typ
 let insert_extra_param = insert_extra_param.tr2_term []
+
+
+let set_main t =
+  match get_last_definition t with
+  | None -> unsupported "fair_termination: set_main"
+  | Some f ->
+      let xs = get_args (Id.typ f) in
+      List.iter (fun x -> assert (Id.typ x = TInt)) xs;
+      let main = make_app (make_var f) @@ List.map (Fun.const randint_unit_term) xs in
+      let main' = make_let [new_var_of_term main, [], main] unit_term in
+      Trans.replace_main main' t
+
+
+let get_states = make_col [] (@@@)
+let get_states_desc desc =
+  if desc = fail_term.desc then
+    []
+  else
+    match desc with
+    | Event(q, _) -> [q]
+    | _ -> get_states.col_desc_rec desc
+let () = get_states.col_desc <- get_states_desc
+let get_states = get_states.col_term
