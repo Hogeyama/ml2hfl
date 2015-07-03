@@ -23,15 +23,6 @@ type trans_env =
 let make_s_init states =
   make_tuple @@ List.make (List.length states) false_term
 
-(*** OLD ***)
-let rec subst_state fairness s q b =
-  let aux q' i j = if q = q' then make_bool b else make_proj j @@ make_proj i @@ make_var s in
-  make_tuple @@ List.mapi (fun i (q1,q2) -> make_pair (aux q1 i 0) (aux q2 i 1)) fairness
-let make_is_fair s =
-  let aux i j = make_proj j @@ make_proj i @@ make_var s in
-  List.fold_left make_and true_term @@ List.init (Option.get @@ tuple_num @@ Id.typ s) (fun i -> make_imply (aux i 0) (aux i 1))
-(***********)
-
 let rec subst_state states s q b =
   let aux i q' = if q = q' then make_bool b else make_proj i @@ make_var s in
   make_tuple @@ List.mapi aux states
@@ -97,8 +88,8 @@ let trans_term env t =
   | If(v1, t2, t3) ->
       let vs2,t2' = trans.tr_col2_term env t2 in
       let vs3,t3' = trans.tr_col2_term env t3 in
-      Format.printf "t2': %a@." Print.term t2';
-      Format.printf "t3': %a@." Print.term t3';
+      if false then Format.printf "t2': %a@." Print.term t2';
+      if false then Format.printf "t3': %a@." Print.term t3';
       join vs2 vs3, make_if v1 t2' t3'
   | Let(_, [x,[],t1], t2) when not @@ Id.same x env.target ->
       if false then Format.printf "t1: %a@." Print.term t1;
@@ -219,13 +210,13 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
         let aux = Fpat.Idnt.make -| Id.to_string in
         let arg_vars' = List.map aux arg_vars in
         let prev_vars' = List.map aux prev_vars in
-        Format.printf "spc: %a@." Fpat.Formula.pr spc;
-        Format.printf "spcWithExparam: %a@." Fpat.Formula.pr spcWithExparam;
+        if false then Format.printf "spc: %a@." Fpat.Formula.pr spc;
+        if false then Format.printf "spcWithExparam: %a@." Fpat.Formula.pr spcWithExparam;
         Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spc spcWithExparam (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
       let exparam_sol' = snd solution in
-      if true then Format.printf "%a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_int) exparam_sol';
+      if true && !Flag.add_closure_exparam then Format.printf "%a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_int) exparam_sol';
       assert (exparam_sol' = [] || not !Flag.add_closure_exparam); (* FOR DEBUG: THIS ASSERTION MAY FAIL *)
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
@@ -271,14 +262,15 @@ let run spec t =
     let rank_funs = [] in
     let vs,t'' = trans f fairness t' in
     let rank_var, prev_vars, arg_vars = Option.get vs in
-    if true then Format.printf "prev_vars: %a@." (List.print Print.id) prev_vars;
-    if true then Format.printf "arg_vars: %a@." (List.print Print.id) arg_vars;
+    if false then Format.printf "prev_vars: %a@." (List.print Print.id) prev_vars;
+    if false then Format.printf "arg_vars: %a@." (List.print Print.id) arg_vars;
     let t''' =
       t''
       |> Trans.replace_main ~force:true unit_term
       |@> pr @@ Format.asprintf "trans for %a" Print.id f
       |> Trans.flatten_let
-      |@> pr "flatten let"
+      |> Trans.simplify_if_cond
+      |@> pr "simplify"
       |> Trans.null_tuple_to_unit
     in
     let fv = List.remove_all (get_fv t''') rank_var in

@@ -51,13 +51,13 @@ val inline_no_effect : typed_term -> typed_term
 val inline_var : typed_term -> typed_term
 val inline_var_const : typed_term -> typed_term
 val inline_simple_exp : typed_term -> typed_term
+val inline_next_redex : typed_term -> typed_term
 val replace_base_with_int : typed_term -> typed_term
 val abst_ref : typed_term -> typed_term
 val remove_top_por : typed_term -> typed_term
 val short_circuit_eval : typed_term -> typed_term
 val replace_bottom_def : typed_term -> typed_term
 val flatten_tuple : typed_term -> typed_term
-val inline_next_redex : typed_term -> typed_term
 val beta_var_tuple : typed_term -> typed_term
 val beta_no_effect_tuple : typed_term -> typed_term
 val reduce_bottom : typed_term -> typed_term
@@ -71,3 +71,4 @@ val ignore_non_termination : typed_term -> typed_term
 val null_tuple_to_unit : typed_term -> typed_term
 val beta_affine_fun : typed_term -> typed_term
 val beta_size1 : typed_term -> typed_term
+val simplify_if_cond : typed_term -> typed_term

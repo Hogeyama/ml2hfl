@@ -146,6 +146,10 @@ and print_desc pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[<hov 2>%s%a@ %a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
+  | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) ->
+      let p = 80 in
+      let s1,s2 = paren pri p in
+      fprintf fm "@[<hov 2>%sassert %a%s@]" s1 (print_term p typ) t1 s2
   | If(t1, t2, t3) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in

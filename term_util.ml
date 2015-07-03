@@ -129,7 +129,11 @@ let make_ignore t =
 let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_funs = List.fold_right make_fun
-let make_not t = {desc=Not t; typ=TBool; attr=make_attr[t]}
+let make_not t =
+  match t.desc with
+  | Const True -> false_term
+  | Const False -> true_term
+  | _ -> {desc=Not t; typ=TBool; attr=make_attr[t]}
 let make_and t1 t2 =
   if t1 = false_term then
     false_term
@@ -603,6 +607,7 @@ let make_if t1 t2 t3 =
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
+  | _ when List.Set.subset [ANotFail;ATerminate] t2.attr && same_term' t2 t3 -> t2
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
 let make_assert t = make_if t unit_term (make_app fail_term [unit_term])
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)

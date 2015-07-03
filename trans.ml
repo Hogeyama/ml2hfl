@@ -712,7 +712,6 @@ let rec normalize_bool_exp t =
   {t with desc}
 
 
-
 let rec get_and_list t =
   match t.desc with
   | Const True -> [t]
@@ -2365,3 +2364,27 @@ let beta_size1_desc desc =
   | _ -> beta_size1.tr_desc_rec desc
 let () = beta_size1.tr_desc <- beta_size1_desc
 let beta_size1 = beta_size1.tr_term
+
+
+let simplify_bool_exp = make_trans ()
+let simplify_bool_exp_term t =
+  let t' = simplify_bool_exp.tr_term_rec t in
+  match t'.desc with
+  | Not t -> make_not t
+  | BinOp(And, t1, t2) -> make_and t1 t2
+  | BinOp(Or, t1, t2) -> make_or t1 t2
+  | _ -> t'
+let () = simplify_bool_exp.tr_term <- simplify_bool_exp_term
+let simplify_bool_exp = simplify_bool_exp.tr_term
+
+
+
+
+
+let simplify_if_cond = make_trans ()
+let simplify_if_cond_desc desc =
+  match desc with
+  | If(t1,t2,t3) -> (make_if (simplify_bool_exp t1) (simplify_if_cond.tr_term t2) (simplify_if_cond.tr_term t3)).desc
+  | _ -> simplify_if_cond.tr_desc_rec desc
+let () = simplify_if_cond.tr_desc <- simplify_if_cond_desc
+let simplify_if_cond = simplify_if_cond.tr_term
