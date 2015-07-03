@@ -20,11 +20,12 @@ type trans_env =
      set_flag: id;
      ps: id list}
 
-let make_s_init states =
+let make_s_init (states:state list) =
+  if true then Format.printf "LEN: %d@." (List.length states);
   make_tuple @@ List.make (List.length states) false_term
 
 let rec subst_state states s q b =
-  let aux i q' = if q = q' then make_bool b else make_proj i @@ make_var s in
+  let aux i q' =   Format.printf"(%a) %d,%s@." Print.id_typ s i q';if q = q' then make_bool b else make_proj i @@ make_var s in
   make_tuple @@ List.mapi aux states
 
 let index_of states q =
@@ -103,7 +104,7 @@ let trans_term env t =
   | Let(flag, bindings, t2) ->
       let aux (g,xs,t1) =
         if xs = [] then unsupported @@ Format.asprintf "fair termination!? %a" Print.id g;
-        let args = List.map (fun _ -> make_extra_vars env.fairness env.target_xs) xs in
+        let args = List.map (fun _ -> make_extra_vars env.states env.target_xs) xs in
         let s',set_flag',ps' = List.last args in
         let vs, t1' =
           if Id.same g env.target
@@ -117,7 +118,7 @@ let trans_term env t =
             let t_b = make_or (make_not @@ make_var set_flag') randbool_unit_term in
             let t1'' =
               let bindings' =
-                (s'', [], make_if (make_var b) (make_s_init env.fairness) (make_var s')) ::
+                (s'', [], make_if (make_var b) (make_s_init env.states) (make_var s')) ::
                 (set_flag'', [], true_term) ::
                 List.map3 (fun x p' p'' -> p'', [], make_if (make_var b) (make_var x) (make_var p')) xs' ps' ps''
               in
@@ -173,13 +174,14 @@ let rec get_top_fun_typ f t =
 
 let trans target fairness t =
   let states = List.Set.inter (get_states t) @@ List.flatten_map Pair.to_list fairness in
+  if true then Format.printf "STATES: %a@." (List.print Format.pp_print_string) states;
   let target_xs,target_result_typ = get_top_fun_typ target t in
-  let s, set_flag, ps = make_extra_vars fairness target_xs in
+  let s, set_flag, ps = make_extra_vars states target_xs in
   if false then Format.printf "ps: %a@." (List.print Print.id) ps;
   let env = {target; target_xs; target_result_typ; states; fairness; s; set_flag; ps} in
   let vs,t' = trans.tr_col2_term env t in
   let bindings =
-    (s, [], make_s_init fairness) ::
+    (s, [], make_s_init states) ::
     (set_flag, [], false_term) ::
     List.map (fun p -> p, [], make_term @@ Id.typ p) ps
   in

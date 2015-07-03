@@ -98,7 +98,8 @@ let print_env cmd =
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
   if horsat_version <> "" then Format.printf "  HorSat version: %s@." horsat_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") !Flag.args
+  let args = List.map (fun s -> if String.contains s '\'' then Format.sprintf "'%s'" s else s) !Flag.args in
+  if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") args
 
 
 
