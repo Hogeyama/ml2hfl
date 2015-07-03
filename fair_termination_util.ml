@@ -31,9 +31,6 @@ let rec is_value t =
   | BinOp(op, t1, t2) -> is_value t1 && is_value t2
   | _ -> false
 
-let make_s_init fairness =
-  make_tuple @@ List.make (List.length fairness) (make_pair false_term false_term)
-
 (* The current FPAT support only int arguments for rank_fun functions *)
 let is_ground_typ typ =
   match typ with
@@ -182,8 +179,14 @@ let set_main t =
   | None -> unsupported "fair_termination: set_main"
   | Some f ->
       let xs = get_args (Id.typ f) in
-      List.iter (fun x -> assert (Id.typ x = TInt)) xs;
-      let main = make_app (make_var f) @@ List.map (Fun.const randint_unit_term) xs in
+      if true then Format.printf "%a@." Print.id_typ f;
+      let aux x =
+        match Id.typ x with
+        | TInt -> randint_unit_term
+        | TUnit -> unit_term
+        | _ -> unsupported "fair_termination: set_main"
+      in
+      let main = make_app (make_var f) @@ List.map aux xs in
       let main' = make_let [new_var_of_term main, [], main] unit_term in
       Trans.replace_main main' t
 
