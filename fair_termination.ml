@@ -21,11 +21,11 @@ type trans_env =
      ps: id list}
 
 let make_s_init (states:state list) =
-  if true then Format.printf "LEN: %d@." (List.length states);
+  if false then Format.printf "LEN: %d@." (List.length states);
   make_tuple @@ List.make (List.length states) false_term
 
 let rec subst_state states s q b =
-  let aux i q' =   Format.printf"(%a) %d,%s@." Print.id_typ s i q';if q = q' then make_bool b else make_proj i @@ make_var s in
+  let aux i q' = if q = q' then make_bool b else make_proj i @@ make_var s in
   make_tuple @@ List.mapi aux states
 
 let index_of states q =
@@ -156,7 +156,7 @@ let trans_term env t =
       List.fold_left join vs2 vss, make_let_f flag bindings' t2'
   | _ ->
       if !!debug then Format.printf "%a@." Print.term t;
-      unsupported "Fair termination"
+      unsupported @@ Format.asprintf "Fair termination [%a]" Print.constr t
 
 let () = trans.tr_col2_typ <- trans_typ
 let () = trans.tr_col2_term <- trans_term
@@ -174,7 +174,7 @@ let rec get_top_fun_typ f t =
 
 let trans target fairness t =
   let states = List.Set.inter (get_states t) @@ List.flatten_map Pair.to_list fairness in
-  if true then Format.printf "STATES: %a@." (List.print Format.pp_print_string) states;
+  if false then Format.printf "STATES: %a@." (List.print Format.pp_print_string) states;
   let target_xs,target_result_typ = get_top_fun_typ target t in
   let s, set_flag, ps = make_extra_vars states target_xs in
   if false then Format.printf "ps: %a@." (List.print Print.id) ps;
@@ -218,7 +218,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
       let exparam_sol' = snd solution in
-      if true && !Flag.add_closure_exparam then Format.printf "%a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_int) exparam_sol';
+      if false && !Flag.add_closure_exparam then Format.printf "%a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_int) exparam_sol';
       assert (exparam_sol' = [] || not !Flag.add_closure_exparam); (* FOR DEBUG: THIS ASSERTION MAY FAIL *)
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
@@ -248,6 +248,7 @@ let run spec t =
     |@> pr "remove_and_replace_event"
     |&!Flag.add_closure_exparam&> insert_extra_param
     |@!Flag.add_closure_exparam&> pr "insert extra parameters"
+    |> Encode_rec.trans
     |> normalize
     |@> pr "normalize"
     |&has_call&> add_call

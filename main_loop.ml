@@ -277,7 +277,7 @@ let rec run orig exparam_sol ?(spec=Spec.init) parsed =
   let prog' =
     if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
     then
-      let () = Format.printf "%a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol in
+      let () = if false then Format.printf "%a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol in
       let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var (fun n -> CEGAR_syntax.Const (CEGAR_syntax.Int n))) exparam_sol in
       let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') prog in
       if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog prog;

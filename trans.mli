@@ -72,3 +72,4 @@ val null_tuple_to_unit : typed_term -> typed_term
 val beta_affine_fun : typed_term -> typed_term
 val beta_size1 : typed_term -> typed_term
 val simplify_if_cond : typed_term -> typed_term
+val decomp_var_match_tuple : typed_term -> typed_term

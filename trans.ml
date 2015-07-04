@@ -2388,3 +2388,25 @@ let simplify_if_cond_desc desc =
   | _ -> simplify_if_cond.tr_desc_rec desc
 let () = simplify_if_cond.tr_desc <- simplify_if_cond_desc
 let simplify_if_cond = simplify_if_cond.tr_term
+
+
+
+
+let decomp_var_match_tuple = make_trans ()
+let decomp_var_match_tuple_desc desc =
+  match desc with
+  | Match({desc=Var x}, [{pat_desc=PTuple pats}, {desc=Const True}, t]) ->
+      begin
+        try
+          let aux i pat =
+            let y = match pat.pat_desc with PVar y -> y | _ -> raise Not_found in
+            y, [], make_proj i @@ make_var x
+          in
+          (make_lets (List.mapi aux pats) t).desc
+        with Not_found ->
+          decomp_var_match_tuple.tr_desc_rec desc
+      end
+  | _ ->
+      decomp_var_match_tuple.tr_desc_rec desc
+let () = decomp_var_match_tuple.tr_desc <- decomp_var_match_tuple_desc
+let decomp_var_match_tuple = decomp_var_match_tuple.tr_term

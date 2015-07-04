@@ -210,6 +210,18 @@ test-error: opt
 	echo; \
 	done
 
+TEST_FT = benchmark/*.ml
+
+test-ft: opt
+	for i in $(TEST_FT); \
+	do \
+	echo $$i; \
+	(ulimit -t $(LIMIT); ./mochi.opt $$i -only-result -limit $(LIMIT) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	echo; \
+	done
+
+
+
 
 ################################################################################
 # depend

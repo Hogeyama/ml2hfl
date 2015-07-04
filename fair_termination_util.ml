@@ -29,6 +29,9 @@ let rec is_value t =
   | Var _
   | Const _ -> true
   | BinOp(op, t1, t2) -> is_value t1 && is_value t2
+  | Not t -> is_value t
+  | Proj(i, t) -> is_value t
+  | Tuple ts -> List.for_all is_value ts
   | _ -> false
 
 (* The current FPAT support only int arguments for rank_fun functions *)
@@ -90,6 +93,9 @@ let normalize_term t =
       let bind1, t1' = normalize_aux t1 in
       let bind2, t2' = normalize_aux t2 in
       make_lets (bind1 @ bind2) {t with desc=BinOp(op,t1',t2')}
+  | Not t ->
+      let bind, t' = normalize_aux t in
+      make_lets bind {t with desc=Not t'}
   | App({desc=Event(q, _)}, [_]) -> t
   | App(t1, ts) ->
       let bind, t1' = normalize_aux t1 in
@@ -105,6 +111,12 @@ let normalize_term t =
   | If(t1, t2, t3) ->
       let bind, t1' = normalize_aux t1 in
       make_let bind {t with desc=If(t1', t2, t3)}
+  | Tuple ts ->
+      let binds, ts' = List.split_map normalize_aux ts in
+      make_lets (List.flatten binds) {t with desc=Tuple ts'}
+  | Proj(i,t) ->
+      let bind, t' = normalize_aux t in
+      make_lets bind {t with desc=Proj(i,t')}
   | _ -> t'
 
 let () = normalize.tr_term <- normalize_term
@@ -179,7 +191,7 @@ let set_main t =
   | None -> unsupported "fair_termination: set_main"
   | Some f ->
       let xs = get_args (Id.typ f) in
-      if true then Format.printf "%a@." Print.id_typ f;
+      if false then Format.printf "%a@." Print.id_typ f;
       let aux x =
         match Id.typ x with
         | TInt -> randint_unit_term
