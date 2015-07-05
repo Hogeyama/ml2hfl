@@ -33,9 +33,12 @@ let index_of states q =
 
 let make_is_fair states fairness s =
   let aux p =
-    match index_of states p with
-    | None -> false_term
-    | Some i -> make_proj i @@ make_var s
+    if p = "Always"
+    then true_term
+    else
+      match index_of states p with
+      | None -> false_term
+      | Some i -> make_proj i @@ make_var s
   in
   List.fold_left make_and true_term @@ List.map (fun (p,q) -> make_imply (aux p) (aux q)) fairness
 
@@ -242,7 +245,6 @@ let pr ?(check_typ=Some TUnit) s t =
 let run spec t =
   let {Spec.fairness} = spec in
   Format.printf "FAIRNESS: %a@.@." print_fairness fairness;
-  let has_call = List.exists (fun (p,q) -> p = "Call" || q = "Call") fairness in
   let t' =
     t
     |> Trans.copy_poly_funs
@@ -254,10 +256,6 @@ let run spec t =
     |> Encode_rec.trans
     |> normalize
     |@> pr "normalize"
-           (*
-    |&has_call&> add_call
-    |@has_call&> pr "add event Call"
-            *)
     |> set_main
     |@> pr "set_main"
   in

@@ -124,25 +124,6 @@ let normalize = normalize.tr_term -| Trans.short_circuit_eval
 
 
 
-(** add event "Call" for the body of every function definition *)
-let add_call = make_trans ()
-
-let add_call_desc desc =
-  match desc with
-  | Let(flag, bindings, t2) ->
-      let aux (f,xs,t) =
-        let t' = add_call.tr_term t in
-        let t'' = if xs = [] then t' else make_seq (make_event_unit "Call") t' in
-        f, xs, t''
-      in
-      let bindings' = List.map aux bindings in
-      Let(flag, bindings', add_call.tr_term t2)
-  | _ -> add_call.tr_desc_rec desc
-
-let () = add_call.tr_desc <- add_call_desc
-let add_call = add_call.tr_term
-
-
 
 (** insert extra parameters *)
 let make_extra_param xs =

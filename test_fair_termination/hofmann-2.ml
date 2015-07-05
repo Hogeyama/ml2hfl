@@ -1,7 +1,6 @@
 (* Taken from Example 2 of
    Hofmann and Chen, "Buchi Types for Infinite Traces and Liveness", CSL-LICS 2014 *)
 let rec inner_loop i s =
-  event "Call";
   if i<65536 && not(s=0) then
     let s = Random.int(0) in
       inner_loop (i+1) s
@@ -15,5 +14,5 @@ let main () = loop()
   *)
 (*{SPEC}
    fairness: (B, Never)
-   fairness: (Call, C)
+   fairness: (Always, C)
 {SPEC}*)
