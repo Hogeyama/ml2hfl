@@ -1682,7 +1682,10 @@ let subst_with_rename_term (x,t) t' =
 
 let () = subst_with_rename.tr2_term <- subst_with_rename_term
 
-let subst_with_rename x t1 t2 = subst_with_rename.tr2_term (x,t1) t2
+let subst_with_rename ?(check=false) x t1 t2 =
+  if check && count_occurrence x t2 = 1
+  then subst x t1 t2
+  else subst_with_rename.tr2_term (x,t1) t2
 
 
 let elim_unused_branch = make_trans ()
@@ -1874,12 +1877,12 @@ let beta_reduce = make_trans ()
 
 let beta_reduce_desc desc =
   match desc with
-  | Let(Nonrecursive, [x,[],{desc=Var y}], t) -> (beta_reduce.tr_term @@ subst_with_rename x (make_var y) t).desc
+  | Let(Nonrecursive, [x,[],{desc=Var y}], t) -> (beta_reduce.tr_term @@ subst_with_rename ~check:true x (make_var y) t).desc
   | App(t, []) -> (beta_reduce.tr_term t).desc
   | App(t1, t2::ts) ->
       begin
         match beta_reduce.tr_term t1 with
-        | {desc=Fun(x,t1')} -> beta_reduce.tr_desc @@ App(subst_with_rename x t2 t1', ts)
+        | {desc=Fun(x,t1')} -> beta_reduce.tr_desc @@ App(subst_with_rename ~check:true x t2 t1', ts)
         | t1' -> App(t1', List.map beta_reduce.tr_term (t2::ts))
       end
   | Proj(i, {desc=Tuple ts}) -> (beta_reduce.tr_term @@ List.nth ts i).desc
@@ -1984,8 +1987,8 @@ let rec is_in_redex x t =
   | _ -> None
 
 let can_inline x t =
-  let n = List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t in
-  n = 1 && Option.default false @@ is_in_redex x t
+  count_occurrence x t = 1 &&
+  Option.default false @@ is_in_redex x t
 
 let inline_next_redex = make_trans ()
 

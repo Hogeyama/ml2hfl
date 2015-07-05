@@ -840,3 +840,6 @@ let rec get_body t =
   match t.desc with
   | Let(_, _, t2) -> get_body t
   | _ -> t
+
+let count_occurrence x t =
+  List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t

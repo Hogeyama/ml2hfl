@@ -115,30 +115,30 @@ let trans_term env t =
             let ps'' = List.map Id.new_var_id ps' in
             let xs' = List.filter (is_ground_typ -| Id.typ) xs in
             let rank_var = Id.new_var ~name:"rank" @@ List.fold_right _TFun (ps'@xs') TBool in
-            let t_b = make_or (make_not @@ make_var set_flag') randbool_unit_term in
+            let t_rank = make_app (make_var rank_var) @@ List.map make_var (ps'@xs') in
+            let t_check = make_if (make_is_fair env.states env.fairness s') (make_assert t_rank) unit_term in
+            let t_b = make_if (make_var set_flag') (make_seq t_check randbool_unit_term) true_term in
+            let t_sp =
+              let t_s1 = make_s_init env.states in
+              let t_s2 = make_var s' in
+              let t_p1 = make_tuple @@ List.map make_var xs' in
+              let t_p2 = make_tuple @@ List.map make_var ps' in
+              make_if (make_var b) (make_pair t_s1 t_p1) (make_pair t_s2 t_p2)
+            in
+            let sp = Id.new_var ~name:"sp" t_sp.typ in
             let t1'' =
               let bindings' =
-                (s'', [], make_if (make_var b) (make_s_init env.states) (make_var s')) ::
+                (sp, [], t_sp) ::
+                (s'', [], make_fst @@ make_var sp) ::
                 (set_flag'', [], true_term) ::
-                List.map3 (fun x p' p'' -> p'', [], make_if (make_var b) (make_var x) (make_var p')) xs' ps' ps''
+                List.mapi (fun i p'' -> p'', [], make_proj i @@ make_snd @@ make_var sp) ps''
               in
-              let t_rank = make_app (make_var rank_var) @@ List.map make_var (ps'@xs') in
-              let t_check = make_if (make_is_fair env.states env.fairness s') (make_assert @@ make_imply (make_var set_flag') t_rank) unit_term in
               let vs,t1''' = trans.tr_col2_term {env with s=s''; ps=ps''; set_flag=set_flag''} t1 in
               assert (vs = None);
-              make_lets bindings' @@ make_seq t_check t1'''
+              make_lets bindings' t1'''
             in
-            let t1''' =
-              if !Flag.expand_nondet_branch
-              then make_if t_b (subst b true_term t1'') (subst b false_term t1'')
-              else make_let [b,[],t_b] t1''
-            in
-            let t1'''' =
-              if !Flag.expand_setflag
-              then make_if (make_var set_flag') (subst set_flag' true_term t1''') (subst set_flag' false_term t1''')
-              else t1'''
-            in
-            Some (rank_var, ps', xs'), t1''''
+            let t1''' = make_let [b,[],t_b] t1'' in
+            Some (rank_var, ps', xs'), t1'''
           else
             trans.tr_col2_term {env with s=s'; set_flag=set_flag'} t1
         in
@@ -173,7 +173,7 @@ let rec get_top_fun_typ f t =
   | _ -> invalid_argument "get_top_fun_typ"
 
 let trans target fairness t =
-  let states = List.Set.inter (get_states t) @@ List.flatten_map Pair.to_list fairness in
+  let states = List.unique @@ List.Set.inter (get_states t) @@ List.flatten_map Pair.to_list fairness in
   if false then Format.printf "STATES: %a@." (List.print Format.pp_print_string) states;
   let target_xs,target_result_typ = get_top_fun_typ target t in
   let s, set_flag, ps = make_extra_vars states target_xs in
@@ -191,6 +191,9 @@ let trans target fairness t =
 let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   let ps = List.map Id.new_var_id prev_vars in
   let xs = List.map Id.new_var_id arg_vars in
+  (*
+  let rank_funs = if read_int () = 0 then [{coeffs=[-1;1];const=0}] else rank_funs in (* koskinen-2 *)
+   *)
   let t' = make_let [rank_var, ps@xs, make_check_rank ps xs rank_funs] t in
   Main_loop.run [] exparam_sol t'
 
@@ -251,8 +254,10 @@ let run spec t =
     |> Encode_rec.trans
     |> normalize
     |@> pr "normalize"
+           (*
     |&has_call&> add_call
     |@has_call&> pr "add event Call"
+            *)
     |> set_main
     |@> pr "set_main"
   in

@@ -162,3 +162,4 @@ val merge_typ : typ -> typ -> typ
 val add_comment : string -> typed_term -> typed_term
 val get_last_definition : typed_term -> id option
 val get_body : typed_term -> typed_term
+val count_occurrence : id -> typed_term -> int

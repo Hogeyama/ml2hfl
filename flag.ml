@@ -139,5 +139,3 @@ let use_omega = ref true
 let use_omega_first = ref false
 
 (* fair-termination-mode option *)
-let expand_nondet_branch = ref false
-let expand_setflag = ref false

@@ -312,8 +312,6 @@ let arg_spec =
                   Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
      (* fair termination mode *)
      "-fair-termination", Arg.Unit (fun _ -> Flag.mode := Flag.FairTermination), " Check fair termination";
-     "-expand-nondet-branch", Arg.Set Flag.expand_nondet_branch, " Expand nondeterministic branch in fair termination mode";
-     "-expand-setflag", Arg.Set Flag.expand_setflag, " Expand set_flag branch in fair termination mode";
      (* termination mode *)
      "-termination-disj",
        Arg.Unit (fun _ ->
