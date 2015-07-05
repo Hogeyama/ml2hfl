@@ -58,7 +58,7 @@ rule token = parse
 | "false" { FALSE }
 | digit+ { INT(int_of_string (Lexing.lexeme lexbuf)) }
 | lower(digit|lower|upper)* { IDENT(Lexing.lexeme lexbuf) }
-| (lower|upper)* { EVENT(Lexing.lexeme lexbuf) }
+| (lower|upper)(digit|lower|upper)* { EVENT(Lexing.lexeme lexbuf) }
 | eof { EOF }
 | _
     { (*Format.eprintf "unknown token %s near characters %d-%d@."
