@@ -126,6 +126,8 @@ let trans_term env t =
   | Let(flag, bindings, t2) ->
       let aux (g,xs,t1) =
         if xs = [] then unsupported @@ Format.asprintf "fair termination!? %a" Print.id g;
+        let _,g' = trans.tr_col2_var env g in
+        let g_true = Id.new_var_id g' in
         let xss =
           let rec aux typ xs =
             if xs = []
@@ -164,20 +166,24 @@ let trans_term env t =
             let t1'' =
               let bindings' =
                 (sp, [], t_sp) ::
-                (s'', [], make_fst @@ make_var sp) ::
-                (set_flag'', [], true_term) ::
-                List.mapi (fun i p'' -> p'', [], make_proj i @@ make_snd @@ make_var sp) ps''
+                  (s'', [], make_fst @@ make_var sp) ::
+                    (set_flag'', [], true_term) ::
+                      List.mapi (fun i p'' -> p'', [], make_proj i @@ make_snd @@ make_var sp) ps''
               in
               let vs,t1''' = trans.tr_col2_term {env with s=s''; ps=ps''; set_flag=set_flag''} t1 in
               assert (vs = None);
               make_lets bindings' t1'''
             in
             let t1''' = make_let [b,[],t_b] t1'' in
-            Some (rank_var, ps', xs'), t1'''
+            let t1'''' =
+              if !Flag.expand_set_flag
+              then make_if (make_var set_flag') (subst set_flag' true_term t1''') (subst set_flag' false_term t1''')
+              else t1'''
+            in
+            Some (rank_var, ps', xs'), t1''''
           else
             trans.tr_col2_term {env with s=s'; set_flag=set_flag'} t1
         in
-        let _,g' = trans.tr_col2_var env g in
         if false then Format.printf "g'[%d]: %a@." (List.length env.ps) Print.id_typ g';
         let xss' = List.map (List.map @@ snd -| trans.tr_col2_var env) xss in
         let aux (s,set_flag,ps) xs (first,t) =
@@ -185,9 +191,25 @@ let trans_term env t =
           let xs',x = List.decomp_snoc xs in
           false, make_funs (xs'@s::set_flag::ps@[x]) t'
         in
-        vs, (g', [], snd @@ List.fold_right2 aux args xss' (true, t1'))
+        let aux1 (s,set_flag,ps) xs (first,t) =
+          let t' = if first then t else make_pair (make_var s) t in
+          let xs',x = List.decomp_snoc xs in
+          let t'' = subst set_flag true_term @@ subst_var g' g_true t' in
+          false, make_funs (xs'@s::set_flag::ps@[x]) @@ subst_var g' g_true t''
+        in
+        let aux2 (s,set_flag,ps) xs (first,t) =
+          let t' = if first then t else make_pair (make_var s) t in
+          let xs',x = List.decomp_snoc xs in
+          false, make_funs (xs'@s::set_flag::ps@[x]) t'
+        in
+        if false && Id.same g env.target
+        then
+          vs, [g', [], Trans.alpha_rename @@ snd @@ List.fold_right2 aux1 args xss' (true, t1');
+               g_true, [], snd @@ List.fold_right2 aux2 args xss' (true, t1')]
+        else vs, [g', [], snd @@ List.fold_right2 aux args xss' (true, t1')]
       in
-      let vss,bindings' = List.split_map aux bindings in
+      let vss,bindingss = List.split_map aux bindings in
+      let bindings' = List.flatten bindingss in
       let vs2,t2' = trans.tr_col2_term env t2 in
       List.fold_left join vs2 vss, make_let_f flag bindings' t2'
   | _ ->

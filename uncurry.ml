@@ -88,18 +88,30 @@ let rec unify typ1 typ2 =
       []
   | _ -> assert false
 
+let set =ref false
+
 let rec infer (env,counter) t =
+  if true && !set then Format.printf "r_app: %a@." print @@ Hashtbl.find env @@ IVar "r_app_2595";
+        if true && !set then Format.printf "t: %a@." Print.term t;
   match t.desc with
   | Event _
   | Const _ -> unify (get_typ env t) @@ from_type t.typ
-  | Var x -> unify (get_typ env t) @@ get_typ_var env x
+  | Var x ->
+unify (get_typ env t) @@ get_typ_var env x
   | App(t1, ts) ->
       assert (ts <> []);
       let constr = List.flatten_map (infer (env,counter)) (t1::ts) in
-      let typ = List.fold_right (fun t typ -> TFun(get_typ env t, gen counter, typ)) ts @@ get_typ env t in
-      unify (get_typ env t1) typ @ constr
+      let id = ref None in
+      let aux t typ =
+        let id' = gen counter in
+        if !id = None then id := Some id';
+        TFun(get_typ env t, id', typ)
+      in
+      let typ = List.fold_right aux ts @@ get_typ env t in
+      (0, Option.get !id) :: unify (get_typ env t1) typ @ constr
   | Let(_, bindings, t2) ->
       let aux (f,xs,t1) =
+        (if Id.to_string @@ f = "r_app_2595" then set := true);
         List.iter (add_env_var env) (f::xs);
         let id = ref None in
         let aux x typ =
@@ -108,7 +120,11 @@ let rec infer (env,counter) t =
           TFun(get_typ_var env x, id', typ)
         in
         let typ = List.fold_right aux xs @@ get_typ env t1 in
-        (if xs <> [] then [0, Option.get !id] else []) @ unify (get_typ_var env f) typ
+        let r =
+          (if xs <> [] then [0, Option.get !id] else []) @ unify (get_typ_var env f) typ
+        in
+        if true then Format.printf "f: %a : %a@." Id.print f print (get_typ_var env f);
+        r
       in
       List.flatten_map aux bindings;
       List.flatten_map (infer (env,counter) -| Triple.trd) bindings @ infer (env,counter) t2
@@ -126,9 +142,9 @@ let rec infer (env,counter) t =
 
 
 let rec solve sets constr =
-  if false then if constr <> [] then Format.printf "%a@." print_constr @@ List.hd constr;
-  if false then Format.printf "rest: %d@." @@ List.length constr;
-  if false then Format.printf "sets: %a@.@." (List.print @@ List.print Format.pp_print_int) @@ List.map IntSet.elements sets;
+  if true then if constr <> [] then Format.printf "%a@." print_constr @@ List.hd constr;
+  if true then Format.printf "rest: %d@." @@ List.length constr;
+  if true then Format.printf "sets: %a@.@." (List.print @@ List.print Format.pp_print_int) @@ List.map IntSet.elements sets;
   match constr with
   | [] ->
       let set = List.find (IntSet.mem 0) sets in
@@ -170,10 +186,10 @@ let uncurry_term (env,sol) t =
       let aux (f,xs,t1) =
         let rec aux xs typ =
           let typs,typ' = decomp_tfun sol typ in
-          if false then Format.printf "f: %a@." Id.print f;
-          if false then Format.printf "typ: %a@." print typ;
-          if false then Format.printf "|typs|: %d@." @@ List.length typs;
-          if false then Format.printf "|xs|: %d@." @@ List.length xs;
+          if true then Format.printf "f: %a@." Id.print f;
+          if true then Format.printf "typ: %a@." print typ;
+          if true then Format.printf "|typs|: %d@." @@ List.length typs;
+          if true then Format.printf "|xs|: %d@." @@ List.length xs;
           if xs = []
           then []
           else
@@ -205,7 +221,7 @@ let uncurry t =
   let env = Hashtbl.create 0 in
   let t' = init (counter,env) t in
   let constr = infer (env,counter) t' in
-  if false then Format.printf "constr: %a@." (List.print print_constr) constr;
+  if true then Format.printf "constr: %a@." (List.print print_constr) constr;
   let sol = solve constr in
   t'
   |> uncurry (env,sol)
@@ -229,7 +245,7 @@ let to_tfuns = make_trans2 ()
 
 let to_funs_var env sol x =
   let rec decomp typ n =
-    if false then Format.printf "decomp: %a, %d@." Print.typ typ n;
+    if true then Format.printf "decomp: %a, %d@." Print.typ typ n;
     if n = 0
     then [], typ
     else
@@ -240,8 +256,8 @@ let to_funs_var env sol x =
       | _ -> assert false
   in
   let rec aux typ1 typ2 =
-    if false then Format.printf "typ1: %a@." print typ1;
-    if false then Format.printf "typ2: %a@.@." Print.typ typ2;
+    if true then Format.printf "typ1: %a@." print typ1;
+    if true then Format.printf "typ2: %a@.@." Print.typ typ2;
     let typs,typ1' = decomp_tfun sol typ1 in
     if typs = []
     then typ2
@@ -251,13 +267,12 @@ let to_funs_var env sol x =
   in
   Id.set_typ x @@ aux (get_typ_var env x) @@ Id.typ x
 
-let c = ref 0
 
 let to_tfuns_desc (env,sol) desc =
   match desc with
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) (bindings',t') =
-        if false then Format.printf "f: %a@." Id.print f;
+        if true then Format.printf "f: %a@." Id.print f;
         let f' = to_funs_var env sol f in
         let xs' = List.map (to_funs_var env sol) xs in
         let sbst = List.fold_right2 subst_var (f::xs) (f'::xs') in
@@ -274,5 +289,6 @@ let to_tfuns t =
   let env = Hashtbl.create 0 in
   let t' = init (counter,env) t in
   let constr = infer (env,counter) t' in
+  if true then Format.printf "constr: %a@." (List.print print_constr) constr;
   let sol = solve constr in
   Trans.reconstruct @@ to_tfuns.tr2_term (env,sol) t
