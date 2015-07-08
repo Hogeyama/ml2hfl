@@ -91,21 +91,23 @@ let trans_term env t =
       let v1' = trans_value env v1 in
       if false then Format.printf "%a@." Print.term' v1';
       let vs' = List.map (trans_value env) vs in
-      let rec aux typ vs =
+      let rec aux head typ vs =
         if false then Format.printf "v1: %a@." Print.term v1;
         if false then Format.printf "typ: %a@." Print.typ typ;
         if false then Format.printf "vs: %a@.@." (List.print Print.term) vs;
-        if vs = []
-        then []
-        else
-          match typ with
-          | TFuns(xs, typ') ->
-              let vs1,vs2 = List.split_nth (List.length xs) vs in
-              let vs1',v = List.decomp_snoc vs1 in
-              vs1' @ (List.map make_var @@ env.s::env.set_flag::env.ps) @ v :: vs2
-          | _ -> []
+        assert (vs <> []);
+        match typ with
+        | TFuns(xs, typ') ->
+            let vs1,vs2 = List.split_nth (List.length xs) vs in
+            if false then Format.printf "|xs|: %d@." @@(List.length xs);
+            let vs1',v = List.decomp_snoc vs1 in
+            let head' = make_app head (vs1' @ (List.map make_var @@ env.s::env.set_flag::env.ps) @ [v]) in
+            if vs2 = []
+            then head'
+            else aux (make_snd head') typ' vs2
+        | _ -> assert false
       in
-      None, make_app v1' @@ aux v1.typ vs'
+      None, aux v1' v1.typ vs'
   | If(v1, t2, t3) ->
       let vs2,t2' = trans.tr_col2_term env t2 in
       let vs3,t3' = trans.tr_col2_term env t3 in
@@ -139,6 +141,7 @@ let trans_term env t =
                   xs1 :: aux typ' xs2
               | _ -> assert false
           in
+          if false then Format.printf "g[%d]: %a@." (List.length xs) Print.id_typ g;
           aux (Id.typ g) xs
         in
         let args = List.map (fun _ -> make_extra_vars env.states env.target_xs) xss in
@@ -170,6 +173,7 @@ let trans_term env t =
                     (set_flag'', [], true_term) ::
                       List.mapi (fun i p'' -> p'', [], make_proj i @@ make_snd @@ make_var sp) ps''
               in
+              if false then Format.printf "t1: %a@." Print.term t1;
               let vs,t1''' = trans.tr_col2_term {env with s=s''; ps=ps''; set_flag=set_flag''} t1 in
               assert (vs = None);
               make_lets bindings' t1'''
@@ -177,7 +181,9 @@ let trans_term env t =
             let t1''' = make_let [b,[],t_b] t1'' in
             let t1'''' =
               if !Flag.expand_set_flag
-              then make_if (make_var set_flag') (subst set_flag' true_term t1''') (subst set_flag' false_term t1''')
+              then make_if (make_var set_flag')
+                           (subst set_flag' true_term t1''')
+                           (Trans.alpha_rename @@ subst set_flag' false_term t1''')
               else t1'''
             in
             Some (rank_var, ps', xs'), t1''''
@@ -281,7 +287,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
       let exparam_sol' = List.map (Pair.map_fst (Id.from_string -$- TInt)) @@ snd solution in
       let exparam_sol'' = List.map (fun (x,n) -> x, List.assoc_default n x exparam_sol') exparam_sol in
       if false && !Flag.add_closure_exparam
-      then Format.printf "%a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol';
+      then Format.printf "SOLUTION: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol'';
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in

@@ -51,7 +51,7 @@ let rec decomp_tfun sol = function
 
 let add_env env idx = Hashtbl.add env idx @@ TVar (ref None)
 let add_env_term env id = add_env env @@ ITerm id
-let add_env_var env x = add_env env @@ IVar (Id.to_string x)
+let add_env_var env x = if false then Format.printf "ADD: %a@." Id.print x; add_env env @@ IVar (Id.to_string x)
 
 let init = make_trans2 ()
 let init_term (counter,env) t =
@@ -95,7 +95,9 @@ let rec infer (env,counter) t =
   | Event _
   | Const _ -> unify (get_typ env t) @@ from_type t.typ
   | Var x when is_extra_coeff x -> unify (get_typ env t) TBase
-  | Var x -> unify (get_typ env t) @@ get_typ_var env x
+  | Var x ->
+      if false then Format.printf "x: %a@." Print.id x;
+      unify (get_typ env t) @@ get_typ_var env x
   | App(t1, ts) ->
       assert (ts <> []);
       let constr = List.flatten_map (infer (env,counter)) (t1::ts) in
@@ -106,6 +108,7 @@ let rec infer (env,counter) t =
         TFun(get_typ env t, id', typ)
       in
       let typ = List.fold_right aux ts @@ get_typ env t in
+      if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
       (0, Option.get !id) :: unify (get_typ env t1) typ @ constr
   | Let(_, bindings, t2) ->
       let aux (f,xs,t1) =
@@ -117,10 +120,12 @@ let rec infer (env,counter) t =
           TFun(get_typ_var env x, id', typ)
         in
         let typ = List.fold_right aux xs @@ get_typ env t1 in
+        if false then Format.printf "id[%a]: %a@." Id.print f (Option.print Format.pp_print_int) !id;
+        if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
         (if xs <> [] then [0, Option.get !id] else []) @ unify (get_typ_var env f) typ
       in
-      List.flatten_map aux bindings;
-      List.flatten_map (infer (env,counter) -| Triple.trd) bindings @ infer (env,counter) t2
+      List.flatten_map (infer (env,counter) -| Triple.trd) bindings @ infer (env,counter) t2 @
+      List.flatten_map aux bindings
   | BinOp(op, t1, t2) ->
       infer (env,counter) t1 @ infer (env,counter) t2
   | Not t1 ->
@@ -280,6 +285,7 @@ let to_tfuns_desc (env,sol) desc =
 let () = to_tfuns.tr2_desc <- to_tfuns_desc
 
 let to_tfuns t =
+  if false then Format.printf "INPUT; %a@." Print.term t;
   let counter = ref 0 in
   let env = Hashtbl.create 0 in
   let t' = init (counter,env) t in
