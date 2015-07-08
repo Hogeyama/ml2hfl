@@ -2438,6 +2438,18 @@ let () = tfuns_to_tfun.tr_typ <- tfuns_to_tfun_typ
 let tfuns_to_tfun = tfuns_to_tfun.tr_term
 
 
+let tfun_to_tfuns = make_trans ()
+let tfun_to_tfuns_typ typ =
+  match typ with
+  | TFun(x, typ) ->
+      let x' = tfun_to_tfuns.tr_var x in
+      let typ' = tfun_to_tfuns.tr_typ typ in
+      TFuns([x'], typ')
+  | _ -> tfun_to_tfuns.tr_typ_rec typ
+let () = tfun_to_tfuns.tr_typ <- tfun_to_tfuns_typ
+let tfun_to_tfuns = tfun_to_tfuns.tr_term
+
+
 let reconstruct = make_trans ()
 let reconstruct_term t =
   match t.desc with

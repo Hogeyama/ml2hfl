@@ -81,7 +81,7 @@ let trans_typ env typ =
 let trans_term env t =
   match t.desc with
   | _ when is_value t ->
-      if true then Format.printf "VALUE: %a@." Print.term t;
+      if false then Format.printf "VALUE: %a@." Print.term t;
       None, make_pair (make_var env.s) @@ trans_value env t
   | _ when t.desc = randint_unit_term.desc -> None, make_pair (make_var env.s) @@ trans_value env t
   | App({desc=Event(q, _)}, [_]) ->
@@ -92,9 +92,9 @@ let trans_term env t =
       if false then Format.printf "%a@." Print.term' v1';
       let vs' = List.map (trans_value env) vs in
       let rec aux typ vs =
-        if true then Format.printf "v1: %a@." Print.term v1;
-        if true then Format.printf "typ: %a@." Print.typ typ;
-        if true then Format.printf "vs: %a@.@." (List.print Print.term) vs;
+        if false then Format.printf "v1: %a@." Print.term v1;
+        if false then Format.printf "typ: %a@." Print.typ typ;
+        if false then Format.printf "vs: %a@.@." (List.print Print.term) vs;
         if vs = []
         then []
         else
@@ -113,15 +113,15 @@ let trans_term env t =
       if false then Format.printf "t3': %a@." Print.term t3';
       join vs2 vs3, make_if v1 t2' t3'
   | Let(_, [x,[],t1], t2) when not @@ Id.same x env.target ->
-      if true then Format.printf "START@.";
-      if true then Format.printf "t1: %a@." Print.term t1;
+      if false then Format.printf "START@.";
+      if false then Format.printf "t1: %a@." Print.term t1;
       let vs1,t1' = trans.tr_col2_term env t1 in
-      if true then Format.printf "t1': %a@." Print.term t1';
+      if false then Format.printf "t1': %a@." Print.term t1';
       let sx = Id.set_typ (Id.add_name_before "s__" @@ new_var_of_term t1) t1'.typ in
       let s' = Id.new_var_id env.s in
       let vs2,t2' = trans.tr_col2_term {env with s=s'} t2 in
       let _,x' = trans.tr_col2_var env x in
-      if true then Format.printf "sx: %a@." Print.id_typ sx;
+      if false then Format.printf "sx: %a@." Print.id_typ sx;
       join vs1 vs2, make_lets [sx,[],t1'; s',[],make_fst(make_var sx); x',[],make_snd(make_var sx)] t2'
   | Let(flag, bindings, t2) ->
       let aux (g,xs,t1) =
@@ -278,13 +278,14 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
         Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spc spcWithExparam (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
-      let exparam_sol' = snd solution in
-      if false && !Flag.add_closure_exparam then Format.printf "%a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_int) exparam_sol';
-      assert (exparam_sol' = [] || not !Flag.add_closure_exparam); (* FOR DEBUG: THIS ASSERTION MAY FAIL *)
+      let exparam_sol' = List.map (Pair.map_fst (Id.from_string -$- TInt)) @@ snd solution in
+      let exparam_sol'' = List.map (fun (x,n) -> x, List.assoc_default n x exparam_sol') exparam_sol in
+      if false && !Flag.add_closure_exparam
+      then Format.printf "%a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol';
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in
-      main_loop rank_var rank_funs'' prev_vars arg_vars exparam_sol(*'*) preds_info' t
+      main_loop rank_var rank_funs'' prev_vars arg_vars exparam_sol'' preds_info' t
 
 
 
@@ -293,11 +294,11 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
 let pr ?(check_typ=Some TUnit) s t =
   if !!debug then
     begin
-      Format.printf "##[%aFair_termination%t] %a:@.%a@.@." Color.set Color.Yellow Color.reset Color.s_red s Print.term_typ t;
+      Format.printf "##[%aFair_termination%t] %a:@.%a@.@." Color.set Color.Yellow Color.reset Color.s_red s Print.term' t;
       Option.iter (Type_check.check t) check_typ
     end
 
-let run spec t =
+let rec run spec t =
   let {Spec.fairness} = spec in
   Format.printf "FAIRNESS: %a@.@." print_fairness fairness;
   let env = ref [] in
@@ -339,7 +340,7 @@ let run spec t =
       |> Trans.null_tuple_to_unit
     in
     let fv = List.remove_all (get_fv t''') rank_var in
-    if true then Format.printf "%a@." (List.print Print.id) fv;
+    if false then Format.printf "%a@." (List.print Print.id) fv;
     assert (List.for_all is_extra_coeff fv);
     let init_sol = List.map (fun x -> x, 0) fv in
     let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] t''' in
@@ -351,5 +352,6 @@ let run spec t =
   in
   try
     List.for_all verify top_funs'
-  with Fpat.RankFunInfer.LRFNotFound
-     | Fpat.RankFunInfer.LLRFNotFound -> false
+  with Fpat.RankFunInfer.LRFNotFound when !Flag.add_closure_exparam -> false
+     | Fpat.RankFunInfer.LRFNotFound -> Flag.add_closure_exparam := true; run spec t
+     | Fpat.RankFunInfer.LLRFNotFound -> assert false

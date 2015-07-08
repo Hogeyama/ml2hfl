@@ -76,4 +76,5 @@ val decomp_var_match_tuple : typed_term -> typed_term
 val map_attr : (attr list -> attr list) -> typed_term -> typed_term
 val filter_attr : (attr -> bool) -> typed_term -> typed_term
 val tfuns_to_tfun : typed_term -> typed_term
+val tfun_to_tfuns : typed_term -> typed_term
 val reconstruct : typed_term -> typed_term
