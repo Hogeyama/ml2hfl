@@ -32,6 +32,7 @@ let rec is_value t =
   | Not t -> is_value t
   | Proj(i, t) -> is_value t
   | Tuple ts -> List.for_all is_value ts
+  | _ when same_term' t randint_unit_term -> true
   | _ -> false
 
 (* The current FPAT support only int arguments for rank_fun functions *)
@@ -95,28 +96,21 @@ let normalize_term t =
       make_lets (bind1 @ bind2) {t with desc=BinOp(op,t1',t2')}
   | Not t ->
       let bind, t' = normalize_aux t in
-      make_lets bind {t with desc=Not t'}
+      make_lets bind @@ make_not t'
   | App({desc=Event(q, _)}, [_]) -> t
   | App(t1, ts) ->
       let bind, t1' = normalize_aux t1 in
       let binds, ts' = List.split_map normalize_aux ts in
-      let aux ctx t = fun t' ->
-        let tf = ctx t in
-        let f = Id.new_var ~name:"f" tf.typ in
-        make_let [f,[],tf] @@ make_app (make_var f) [t']
-      in
-      let ts'',t2 = List.decomp_snoc ts' in
-      let t'' = List.fold_left aux (fun t -> make_app t1' [t]) ts'' t2 in
-      make_lets (bind @ List.flatten binds) t''
+      make_lets (bind @ List.flatten binds) @@ make_app t1' ts'
   | If(t1, t2, t3) ->
       let bind, t1' = normalize_aux t1 in
-      make_let bind {t with desc=If(t1', t2, t3)}
+      make_let bind @@ make_if t1' t2 t3
   | Tuple ts ->
       let binds, ts' = List.split_map normalize_aux ts in
       make_lets (List.flatten binds) {t with desc=Tuple ts'}
   | Proj(i,t) ->
       let bind, t' = normalize_aux t in
-      make_lets bind {t with desc=Proj(i,t')}
+      make_lets bind @@ make_proj i t'
   | _ -> t'
 
 let () = normalize.tr_term <- normalize_term

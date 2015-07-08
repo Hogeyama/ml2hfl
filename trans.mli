@@ -73,3 +73,7 @@ val beta_affine_fun : typed_term -> typed_term
 val beta_size1 : typed_term -> typed_term
 val simplify_if_cond : typed_term -> typed_term
 val decomp_var_match_tuple : typed_term -> typed_term
+val map_attr : (attr list -> attr list) -> typed_term -> typed_term
+val filter_attr : (attr -> bool) -> typed_term -> typed_term
+val tfuns_to_tfun : typed_term -> typed_term
+val reconstruct : typed_term -> typed_term

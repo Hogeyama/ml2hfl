@@ -97,8 +97,10 @@ val make_is_none : typed_term -> typed_term
 val make_is_some : typed_term -> typed_term
 val make_get_val : typed_term -> typed_term
 val make_tuple : typed_term list -> typed_term
+val make_tuple' : typed_term list -> typed_term
 val make_proj : int -> typed_term -> typed_term
 val make_ttuple : typ list -> typ
+val make_ttuple' : typ list -> typ
 val make_ref : typed_term -> typed_term
 val make_deref : typed_term -> typed_term
 val make_setref : typed_term -> typed_term -> typed_term
@@ -151,6 +153,7 @@ val is_id_unique : typed_term -> bool
 val occur : id -> typ -> bool
 val has_no_effect : typed_term -> bool
 val same_term : typed_term -> typed_term -> bool
+val same_term' : typed_term -> typed_term -> bool
 val var_name_of_term : typed_term -> string
 val var_of_term : typed_term -> id
 val make_term : typ -> typed_term
@@ -163,3 +166,5 @@ val add_comment : string -> typed_term -> typed_term
 val get_last_definition : typed_term -> id option
 val get_body : typed_term -> typed_term
 val count_occurrence : id -> typed_term -> int
+val add_attr : attr -> typed_term -> typed_term
+val get_bound_variables : typed_term -> id list

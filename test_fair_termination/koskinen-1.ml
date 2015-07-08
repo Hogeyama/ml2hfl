@@ -1,4 +1,4 @@
-(* Taken from 
+(* Taken from
    Koskinen and Terauchi, "Local Temporal Reasoning", CSL-LICS 2014, Figure 10 *)
 
 let rec finish ():unit = event "Done";finish()
@@ -11,7 +11,7 @@ let rec explore x r =
     if y<=0 then finish()
     else explore y r
 
-let f x = x-2 
+let f x = x-2
 
 let main() =
   let t = Random.int(0) in

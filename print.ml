@@ -102,6 +102,7 @@ and print_attr fm = function
   | ANotFail -> fprintf fm "ANotFail"
   | ADeterministic -> fprintf fm "ADeterministic"
   | AComment s -> fprintf fm "AComment %S" s
+  | AId n -> fprintf fm "AId %d" n
 
 and ignore_attr_list = if true then const_attr else []
 

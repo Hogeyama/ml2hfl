@@ -8,13 +8,14 @@ type 'a t =
   | TInt
   | TRInt of 'a
   | TVar of 'a t option ref
-  | TFun of ('a t Id.t) * 'a t
+  | TFun of 'a t Id.t * 'a t
+  | TFuns of 'a t Id.t list * 'a t
   | TList of 'a t
-  | TTuple of ('a t Id.t) list
+  | TTuple of 'a t Id.t list
   | TData of string * bool
   | TRef of 'a t
   | TOption of 'a t
-  | TPred of ('a t Id.t) * 'a list
+  | TPred of 'a t Id.t * 'a list
 (*| TLabel of 'a t Id.t * 'a t*)
 
 exception CannotUnify
@@ -25,6 +26,7 @@ let typ_unknown = TData("???", false)
 
 let is_fun_typ = function
   | TFun(_,_) -> true
+  | TFuns(_,_) -> true
   | _ -> false
 
 let rec is_base_typ = function
@@ -38,6 +40,10 @@ let rec is_base_typ = function
 
 let elim_tpred = function
   | TPred(x,_) -> Id.typ x
+  | typ -> typ
+
+let tfuns_to_tfun = function
+  | TFuns(xs,typ) -> List.fold_right _TFun xs typ
   | typ -> typ
 
 let rec elim_tpred_all = function
@@ -62,6 +68,9 @@ let rec decomp_tfun = function
       x :: xs, typ
   | typ -> [], typ
 
+let rec decomp_tfuns = function
+  | TFuns(xs, typ) -> xs, typ
+  | _ -> invalid_argument "decomp_tfuns"
 
 let rec print occur print_pred fm typ =
   let print' = print occur print_pred in
@@ -84,6 +93,16 @@ let rec print occur print_pred fm typ =
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print' (Id.typ x) aux (xs',typ)
       in
       Format.fprintf fm "(%a)" aux @@ decomp_tfun typ
+  | TFuns(xs,typ) ->
+      let rec aux fm (xs, typ) =
+        match xs with
+        | [] -> Format.printf "[%a]" print' typ
+        | x::xs' ->
+            if occur x typ || List.exists (occur x) (List.map Id.typ xs)
+            then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
+            else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print' (Id.typ x) aux (xs',typ)
+      in
+      Format.fprintf fm "(%a)" aux (xs, typ)
   | TList typ -> Format.fprintf fm "@[%a list@]" print' typ
   | TTuple xs ->
       let pr fm x =
@@ -110,6 +129,10 @@ let rec can_unify typ1 typ2 =
   | TUnit,TUnit -> true
   | (TBool|TAbsBool),(TBool|TAbsBool) -> true
   | (TInt|TRInt _),(TInt|TRInt _) -> true
+  | TFuns([], typ1), typ2 -> can_unify typ1 typ2
+  | typ1, TFuns([], typ2) -> can_unify typ1 typ2
+  | TFuns(x::xs, typ1), typ2 -> can_unify (TFun(x, TFuns(xs, typ1))) typ2
+  | typ1, TFuns(x::xs, typ2) -> can_unify typ1 (TFun(x, TFuns(xs, typ2)))
   | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
   | TList typ1, TList typ2 -> can_unify typ1 typ2
   | TRef typ1, TRef typ2 -> can_unify typ1 typ2

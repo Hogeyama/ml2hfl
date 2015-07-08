@@ -6,6 +6,7 @@ type 'a t =
   | TRInt of 'a
   | TVar of 'a t option ref
   | TFun of 'a t Id.t * 'a t
+  | TFuns of 'a t Id.t list * 'a t
   | TList of 'a t
   | TTuple of 'a t Id.t list
   | TData of string * bool
@@ -31,8 +32,10 @@ val has_pred : 'a t -> bool
 
 val typ_unknown : 'a t
 val elim_tpred : 'a t -> 'a t
+val tfuns_to_tfun : 'a t -> 'a t
 val elim_tpred_all : 'a t -> 'a t
 val decomp_tfun : 'a t -> 'a t Id.t list * 'a t
+val decomp_tfuns : 'a t -> 'a t Id.t list * 'a t
 val flatten : 'a t -> 'a t
 val unify : 'a t -> 'a t -> unit
 val copy : 'a t -> 'a t

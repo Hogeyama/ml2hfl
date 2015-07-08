@@ -57,29 +57,32 @@ let join x y =
 
 let trans = make_tr_col2 None join
 
-let trans_value env v =
+let rec trans_value env v =
   let _,typ = trans.tr_col2_typ env v.typ in
   match v.desc with
   | Var x -> make_var @@ Id.set_typ x typ
+  | BinOp(op, v1, v2) -> {v with desc=BinOp(op, trans_value env v1, trans_value env v2); typ}
+  | Not v -> {v with desc=Not (trans_value env v); typ}
+  | Tuple vs -> {v with desc=Tuple(List.map (trans_value env) vs); typ}
+  | Proj(i,v) -> {v with desc=Proj(i, trans_value env v); typ}
   | _ -> {v with typ}
 
 let trans_typ env typ =
   match typ with
-  | TFun _ ->
-      let xs,typ1 = decomp_tfun typ in
+  | TFun(x,typ) -> trans.tr_col2_typ env (TFuns([x],typ))
+  | TFuns(xs,typ1) ->
       let xs' = List.map (Id.map_typ @@ snd -| trans.tr_col2_typ env) xs in
       let _,typ1' = trans.tr_col2_typ env typ1 in
-      let aux x typ' =
-        let zs = [env.s; env.set_flag] @ env.ps @ [x] in
-        List.fold_right _TFun zs @@ make_tpair (Id.typ env.s) typ'
-      in
-      None, List.fold_right aux xs' typ1'
+      let xs'',x = List.decomp_snoc xs' in
+      None, TFuns(xs'' @ [env.s; env.set_flag] @ env.ps @ [x], make_tpair (Id.typ env.s) typ1')
   | _ -> trans.tr_col2_typ_rec env typ
 
 (* Assume that input is in normal form *)
 let trans_term env t =
   match t.desc with
-  | _ when is_value t -> None, make_pair (make_var env.s) @@ trans_value env t
+  | _ when is_value t ->
+      if true then Format.printf "VALUE: %a@." Print.term t;
+      None, make_pair (make_var env.s) @@ trans_value env t
   | _ when t.desc = randint_unit_term.desc -> None, make_pair (make_var env.s) @@ trans_value env t
   | App({desc=Event(q, _)}, [_]) ->
       None, make_pair (subst_state env.states env.s q true) unit_term
@@ -88,7 +91,21 @@ let trans_term env t =
       let v1' = trans_value env v1 in
       if false then Format.printf "%a@." Print.term' v1';
       let vs' = List.map (trans_value env) vs in
-      None, make_app v1' @@ List.flatten_map (List.snoc @@ List.map make_var (env.s::env.set_flag::env.ps)) vs'
+      let rec aux typ vs =
+        if true then Format.printf "v1: %a@." Print.term v1;
+        if true then Format.printf "typ: %a@." Print.typ typ;
+        if true then Format.printf "vs: %a@.@." (List.print Print.term) vs;
+        if vs = []
+        then []
+        else
+          match typ with
+          | TFuns(xs, typ') ->
+              let vs1,vs2 = List.split_nth (List.length xs) vs in
+              let vs1',v = List.decomp_snoc vs1 in
+              vs1' @ (List.map make_var @@ env.s::env.set_flag::env.ps) @ v :: vs2
+          | _ -> []
+      in
+      None, make_app v1' @@ aux v1.typ vs'
   | If(v1, t2, t3) ->
       let vs2,t2' = trans.tr_col2_term env t2 in
       let vs3,t3' = trans.tr_col2_term env t3 in
@@ -96,18 +113,33 @@ let trans_term env t =
       if false then Format.printf "t3': %a@." Print.term t3';
       join vs2 vs3, make_if v1 t2' t3'
   | Let(_, [x,[],t1], t2) when not @@ Id.same x env.target ->
-      if false then Format.printf "t1: %a@." Print.term t1;
+      if true then Format.printf "START@.";
+      if true then Format.printf "t1: %a@." Print.term t1;
       let vs1,t1' = trans.tr_col2_term env t1 in
-      if false then Format.printf "t1': %a@." Print.term t1';
+      if true then Format.printf "t1': %a@." Print.term t1';
       let sx = Id.set_typ (Id.add_name_before "s__" @@ new_var_of_term t1) t1'.typ in
       let s' = Id.new_var_id env.s in
       let vs2,t2' = trans.tr_col2_term {env with s=s'} t2 in
       let _,x' = trans.tr_col2_var env x in
+      if true then Format.printf "sx: %a@." Print.id_typ sx;
       join vs1 vs2, make_lets [sx,[],t1'; s',[],make_fst(make_var sx); x',[],make_snd(make_var sx)] t2'
   | Let(flag, bindings, t2) ->
       let aux (g,xs,t1) =
         if xs = [] then unsupported @@ Format.asprintf "fair termination!? %a" Print.id g;
-        let args = List.map (fun _ -> make_extra_vars env.states env.target_xs) xs in
+        let xss =
+          let rec aux typ xs =
+            if xs = []
+            then []
+            else
+              match typ with
+              | TFuns(ys, typ') ->
+                  let xs1,xs2 = List.split_nth (List.length ys) xs in
+                  xs1 :: aux typ' xs2
+              | _ -> assert false
+          in
+          aux (Id.typ g) xs
+        in
+        let args = List.map (fun _ -> make_extra_vars env.states env.target_xs) xss in
         let s',set_flag',ps' = List.last args in
         let vs, t1' =
           if Id.same g env.target
@@ -147,12 +179,13 @@ let trans_term env t =
         in
         let _,g' = trans.tr_col2_var env g in
         if false then Format.printf "g'[%d]: %a@." (List.length env.ps) Print.id_typ g';
-        let xs'' = List.map (snd -| trans.tr_col2_var env) xs in
-        let aux (s,set_flag,ps) x (first,t) =
+        let xss' = List.map (List.map @@ snd -| trans.tr_col2_var env) xss in
+        let aux (s,set_flag,ps) xs (first,t) =
           let t' = if first then t else make_pair (make_var s) t in
-          false, make_funs (s::set_flag::ps@[x]) t'
+          let xs',x = List.decomp_snoc xs in
+          false, make_funs (xs'@s::set_flag::ps@[x]) t'
         in
-        vs, (g', [], snd @@ List.fold_right2 aux args xs'' (true, t1'))
+        vs, (g', [], snd @@ List.fold_right2 aux args xss' (true, t1'))
       in
       let vss,bindings' = List.split_map aux bindings in
       let vs2,t2' = trans.tr_col2_term env t2 in
@@ -245,19 +278,22 @@ let pr ?(check_typ=Some TUnit) s t =
 let run spec t =
   let {Spec.fairness} = spec in
   Format.printf "FAIRNESS: %a@.@." print_fairness fairness;
+  let env = ref [] in
   let t' =
     t
     |> Trans.copy_poly_funs
     |@> pr "copy poly. funs."
     |> remove_and_replace_event
     |@> pr "remove_and_replace_event"
+    |> Encode_rec.trans
     |&!Flag.add_closure_exparam&> insert_extra_param
     |@!Flag.add_closure_exparam&> pr "insert extra parameters"
-    |> Encode_rec.trans
     |> normalize
     |@> pr "normalize"
     |> set_main
     |@> pr "set_main"
+    |> Uncurry.to_tfuns
+    |@> pr ~check_typ:None "to_tfuns"
   in
   let main = Option.get @@ get_last_definition t' in
   if false then Format.printf "MAIN: %a@." Id.print main;
@@ -273,6 +309,7 @@ let run spec t =
     let t''' =
       t''
       |> Trans.replace_main ~force:true unit_term
+      |> Trans.tfuns_to_tfun
       |@> pr @@ Format.asprintf "trans for %a" Print.id f
       |> Trans.flatten_let
       |> Trans.simplify_if_cond
@@ -280,7 +317,7 @@ let run spec t =
       |> Trans.null_tuple_to_unit
     in
     let fv = List.remove_all (get_fv t''') rank_var in
-    if false then Format.printf "%a@." (List.print Print.id) fv;
+    if true then Format.printf "%a@." (List.print Print.id) fv;
     assert (List.for_all is_extra_coeff fv);
     let init_sol = List.map (fun x -> x, 0) fv in
     let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] t''' in

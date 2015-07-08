@@ -17,15 +17,16 @@ let rec check t typ =
                       (Color.yellow Print.typ) typ;
         assert false);
   match t.desc, elim_tpred t.typ with
+  | _, TFuns _ -> ()
   | Label(_, t), _ -> check t typ
   | Const Unit, TUnit -> ()
   | Const CPS_result, typ when typ = typ_result -> ()
   | Const(True|False), TBool -> ()
   | Const(Int _), (TInt | TRInt _) -> ()
   | Const _, TData _ -> ()
-  | Const(RandInt false), TFun(x,TInt) ->
+  | Const(RandInt false), (TFun(x,TInt) | TFuns([x], TInt))->
       check_var x TUnit
-  | Const(RandInt true), TFun(x,TFun(k,rtyp)) ->
+  | Const(RandInt true), (TFun(x,TFun(k,rtyp)) | TFuns([x],TFuns([k],rtyp))) ->
       assert (rtyp = typ_result);
       check_var x TUnit;
       check_var k (TFun(Id.new_var TInt, typ_result))

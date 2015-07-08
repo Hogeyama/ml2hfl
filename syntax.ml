@@ -30,6 +30,7 @@ and attr =
   | ANotFail
   | ADeterministic
   | AComment of string
+  | AId of int
 
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and term =
@@ -131,6 +132,7 @@ let trans_typ trans = function
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> trans.tr_typ typ
   | TFun(x,typ) -> TFun(Id.map_typ trans.tr_typ x, trans.tr_typ typ)
+  | TFuns(xs,typ) -> TFuns(List.map (Id.map_typ trans.tr_typ) xs, trans.tr_typ typ)
   | TList typ -> TList (trans.tr_typ typ)
   | TTuple xs -> TTuple (List.map trans.tr_var xs)
   | TData(s,b) -> TData(s,b)
@@ -284,6 +286,7 @@ let trans2_gen_typ tr env = function
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> tr.tr2_typ env typ
   | TFun(x,typ) -> TFun(Id.map_typ (tr.tr2_typ env) x, tr.tr2_typ env typ)
+  | TFuns(xs,typ) -> TFuns(List.map (Id.map_typ @@ tr.tr2_typ env) xs, tr.tr2_typ env typ)
   | TList typ -> TList (tr.tr2_typ env typ)
   | TTuple xs -> TTuple (List.map (tr.tr2_var env) xs)
   | TData(s,b) -> TData(s,b)
@@ -438,6 +441,7 @@ let col_typ col = function
   | TVar{contents=None} -> col.col_empty
   | TVar{contents=Some typ} -> col.col_typ typ
   | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
+  | TFuns(xs,typ) -> col.col_app (List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs) (col.col_typ typ)
   | TList typ -> col.col_typ typ
   | TTuple xs -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs
   | TData(s,b) -> col.col_empty
@@ -593,6 +597,7 @@ let col2_typ col env = function
   | TVar{contents=None} -> col.col2_empty
   | TVar{contents=Some typ} -> col.col2_typ env typ
   | TFun(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
+  | TFuns(xs,typ) -> col.col2_app (List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs) (col.col2_typ env typ)
   | TList typ -> col.col2_typ env typ
   | TTuple xs -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs
   | TData(s,b) -> col.col2_empty
@@ -758,6 +763,10 @@ let tr_col2_typ tc env = function
       let acc1,x' = tc.tr_col2_var env x in
       let acc2,typ' = tc.tr_col2_typ env typ in
       tc.tr_col2_app acc1 acc2, TFun(x', typ')
+  | TFuns(xs,typ) ->
+      let acc1,xs' = tr_col2_list tc tc.tr_col2_var ~init:tc.tr_col2_empty env xs in
+      let acc2,typ' = tc.tr_col2_typ env typ in
+      tc.tr_col2_app acc1 acc2, TFuns(xs', typ')
   | TList typ ->
       let acc,typ' = tc.tr_col2_typ env typ in
       acc, TList typ'

@@ -12,6 +12,7 @@ and attr =
   | ANotFail
   | ADeterministic
   | AComment of string
+  | AId of int
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | Unit

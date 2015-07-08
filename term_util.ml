@@ -83,14 +83,14 @@ let rec make_app t ts =
         assert false
       end
   in
-  match t.desc, elim_tpred t.typ, ts with
+  match t.desc, tfuns_to_tfun @@ elim_tpred t.typ, ts with
   | _, _, [] -> t
   | App(t1,ts1), TFun(x,typ), t2::ts2 ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t1,ts1@[t2]); typ=typ; attr=[]} ts2
+      make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
   | _, TFun(x,typ), t2::ts ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t,[t2]); typ=typ; attr=[]} ts
+      make_app {desc=App(t,[t2]); typ; attr=[]} ts
   | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
   | _ ->
       Format.printf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
@@ -203,7 +203,17 @@ let make_geq t1 t2 =
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
 let make_ttuple typs =
   TTuple (List.map Id.new_var typs)
+let make_ttuple' typs =
+  match typs with
+  | [] -> TUnit
+  | [typ] -> typ
+  | _ -> make_ttuple typs
 let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
+let make_tuple' ts =
+  match ts with
+  | [] -> unit_term
+  | [t] -> t
+  | _ -> make_tuple ts
 let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=[]}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=[]}
 let make_tpair typ1 typ2 = make_ttuple [typ1; typ2]
@@ -843,3 +853,5 @@ let rec get_body t =
 
 let count_occurrence x t =
   List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t
+
+let add_attr attr t = {t with attr=attr::t.attr}

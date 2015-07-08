@@ -2413,3 +2413,44 @@ let decomp_var_match_tuple_desc desc =
       decomp_var_match_tuple.tr_desc_rec desc
 let () = decomp_var_match_tuple.tr_desc <- decomp_var_match_tuple_desc
 let decomp_var_match_tuple = decomp_var_match_tuple.tr_term
+
+
+let map_attr = make_trans2 ()
+let map_attr_term f t =
+  let t' = map_attr.tr2_term_rec f t in
+  {t' with attr = f t.attr}
+let () = map_attr.tr2_term <- map_attr_term
+let map_attr = map_attr.tr2_term
+
+
+let filter_attr f t = map_attr (List.filter f) t
+
+
+let tfuns_to_tfun = make_trans ()
+let tfuns_to_tfun_typ typ =
+  match typ with
+  | TFuns(xs, typ) ->
+      let xs' = List.map tfuns_to_tfun.tr_var xs in
+      let typ' = tfuns_to_tfun.tr_typ typ in
+      List.fold_right _TFun xs' typ'
+  | _ -> tfuns_to_tfun.tr_typ_rec typ
+let () = tfuns_to_tfun.tr_typ <- tfuns_to_tfun_typ
+let tfuns_to_tfun = tfuns_to_tfun.tr_term
+
+
+let reconstruct = make_trans ()
+let reconstruct_term t =
+  match t.desc with
+  | Const _ -> {t with attr = const_attr}
+  | Var x -> make_var x
+  | Fun(x, t) -> make_fun x @@ reconstruct.tr_term t
+  | App(t1, ts) -> make_app (reconstruct.tr_term t1) @@ List.map reconstruct.tr_term ts
+  | If(t1, t2, t3) -> make_if (reconstruct.tr_term t1) (reconstruct.tr_term t2) (reconstruct.tr_term t3)
+  | Let(flag, bindings, t) ->
+      make_let_f flag (List.map (Triple.map_trd reconstruct.tr_term) bindings) @@ reconstruct.tr_term t
+  | Not t -> make_not @@ reconstruct.tr_term t
+  | Tuple ts -> make_tuple @@ List.map reconstruct.tr_term ts
+  | Proj(i, t) -> make_proj i @@ reconstruct.tr_term t
+  | _ -> reconstruct.tr_term_rec t
+let () = reconstruct.tr_term <- reconstruct_term
+let reconstruct = reconstruct.tr_term
