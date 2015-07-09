@@ -261,7 +261,7 @@ let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   let t' = make_let [rank_var, ps@xs, make_check_rank ps xs rank_funs] t in
   Main_loop.run [] exparam_sol t'
 
-let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*need?*) t =
+let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWithExparams preds_info(*need?*) t =
   try
     let result =
       if !Flag.separate_pred then
@@ -274,6 +274,8 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
     result
   with
   | Refine.PostCondition(env, spc, spcWithExparam) ->
+      let spcs' = spc::spcs in
+      let spcWithExparams' = spcWithExparam::spcWithExparams in
       let solution =
         let all_vars = List.map fst env in
         let aux = Fpat.Idnt.make -| Id.to_string in
@@ -281,7 +283,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
         let prev_vars' = List.map aux prev_vars in
         if false then Format.printf "spc: %a@." Fpat.Formula.pr spc;
         if false then Format.printf "spcWithExparam: %a@." Fpat.Formula.pr spcWithExparam;
-        Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spc spcWithExparam (*all_vars*) arg_vars' prev_vars'
+        Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spcs' spcWithExparam' (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
       let exparam_sol' = List.map (Pair.map_fst (Id.from_string -$- TInt)) @@ snd solution in
@@ -291,7 +293,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol preds_info(*
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in
-      main_loop rank_var rank_funs'' prev_vars arg_vars exparam_sol'' preds_info' t
+      main_loop rank_var rank_funs'' prev_vars arg_vars exparam_sol'' spcs' spcWithExparams' preds_info' t
 
 
 
@@ -349,7 +351,7 @@ let rec run spec t =
     if false then Format.printf "%a@." (List.print Print.id) fv;
     assert (List.for_all is_extra_coeff fv);
     let init_sol = List.map (fun x -> x, 0) fv in
-    let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] t''' in
+    let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] [] [] t''' in
     if !!debug then
       if result
       then Format.printf "%a is fair terminating.@.@." Id.print f

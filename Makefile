@@ -214,10 +214,10 @@ test-error: opt
 TEST_FT = benchmark/*.ml
 
 test-ft: opt
-	for i in $(TEST_FT); \
+	for i in hofmann-1.ml hofmann-2.ml koskinen-1.ml koskinen-2.ml koskinen-3-1.ml koskinen-3-2.ml koskinen-3-3.ml koskinen-4.ml lester-1.ml; \
 	do \
 	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt $$i -only-result -limit $(LIMIT) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	(ulimit -t $(LIMIT); ./mochi.opt test_fair_termination/$$i -only-result -limit $(LIMIT) 2> /dev/null || echo VERIFICATION FAILED!!!); \
 	echo; \
 	done
 
