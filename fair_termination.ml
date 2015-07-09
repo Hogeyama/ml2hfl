@@ -283,7 +283,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
         let prev_vars' = List.map aux prev_vars in
         if false then Format.printf "spc: %a@." Fpat.Formula.pr spc;
         if false then Format.printf "spcWithExparam: %a@." Fpat.Formula.pr spcWithExparam;
-        Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spcs' spcWithExparam' (*all_vars*) arg_vars' prev_vars'
+        Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spcs' spcWithExparams' (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
       let exparam_sol' = List.map (Pair.map_fst (Id.from_string -$- TInt)) @@ snd solution in
