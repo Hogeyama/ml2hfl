@@ -486,9 +486,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   | Texp_letmodule _ -> unsupported "expression (module)"
   | Texp_assert e ->
       let e' = from_expression e in
-      if e' = false_term
-      then make_seq (make_assert false_term) (make_bottom typ')
-      else make_assert e'
+      make_seq (make_assert false_term) (make_bottom typ')
   | Texp_lazy e -> assert false
   | Texp_object _ -> unsupported "expression (class)"
   | Texp_pack _ -> unsupported "expression (pack)"

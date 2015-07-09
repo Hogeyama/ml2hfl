@@ -93,7 +93,8 @@ let set =ref false
 let rec infer (env,counter) t =
   match t.desc with
   | Event _
-  | Const _ -> unify (get_typ env t) @@ from_type t.typ
+  | Const _
+  | Bottom -> unify (get_typ env t) @@ from_type t.typ
   | Var x when is_extra_coeff x -> unify (get_typ env t) TBase
   | Var x ->
       if false then Format.printf "x: %a@." Print.id x;

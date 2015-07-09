@@ -1158,7 +1158,7 @@ let rec screen_fail path target t =
     match t.desc with
     | Const c -> t.desc
     | Var x -> t.desc
-    | Fun(x,t) -> t.desc
+    | Fun(x,_) -> t.desc
     | App(t1, ts) ->
         let aux i t = screen_fail (i::path) target t in
         let t1ts' = List.mapi aux (t1::ts) in
@@ -2466,3 +2466,27 @@ let reconstruct_term t =
   | _ -> reconstruct.tr_term_rec t
 let () = reconstruct.tr_term <- reconstruct_term
 let reconstruct = reconstruct.tr_term
+
+
+let split_assert = make_trans ()
+let split_assert_term t =
+  match t.desc with
+  | If({desc=BinOp(And,t1,t2)}, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) ->
+      split_assert.tr_term @@ make_seq (make_assert t1) (make_assert t2)
+  | _ -> split_assert.tr_term_rec t
+let () = split_assert.tr_term <- split_assert_term
+let split_assert = split_assert.tr_term
+
+
+let inline_specified = make_trans2 ()
+let inline_specified_term (f,xs,t1) t =
+  match t.desc with
+  | Var g when Id.same f g ->
+      if xs <> [] then invalid_argument "inline_specified?";
+      t1
+  | App({desc=Var g}, ts) when Id.same f g ->
+      if List.length xs <> List.length ts then invalid_argument "inline_specified!";
+      subst_map (List.combine xs ts) t1
+  | _ -> inline_specified.tr2_term_rec (f,xs,t1) t
+let () = inline_specified.tr2_term <- inline_specified_term
+let inline_specified = inline_specified.tr2_term

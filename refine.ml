@@ -193,9 +193,6 @@ let refine_rank_fun ce ex_ce { env; defs; main; info } =
       Format.printf "[instantiated]@.%a@." FpatInterface.Formula.pr spc;*)
 
     if !Flag.print_progress then Format.printf "DONE!@.@.";
-    Fpat.SMTProver.close ();
-    Fpat.SMTProver.open_ ();
-    add_time tmp Flag.time_cegar;
     raise (PostCondition (env, spc, spcWithExparam))
   with e ->
     Fpat.SMTProver.close ();

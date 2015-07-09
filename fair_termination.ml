@@ -253,13 +253,24 @@ let trans target fairness t =
 
 
 let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
+  if true && !Flag.add_closure_exparam
+  then Format.printf "EXPARAM: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol;
   let ps = List.map Id.new_var_id prev_vars in
   let xs = List.map Id.new_var_id arg_vars in
   (*
   let rank_funs = if read_int () = 0 then [{coeffs=[-1;1];const=0}] else rank_funs in (* koskinen-2 *)
    *)
   let t' = make_let [rank_var, ps@xs, make_check_rank ps xs rank_funs] t in
-  Main_loop.run [] exparam_sol t'
+  if false then Format.printf "INPUT: %a@." Print.term t;
+  let t'' = Trans.inline_specified (rank_var, ps@xs, make_check_rank ps xs rank_funs) t in
+  let t''' = Trans.split_assert t'' in
+  let ts =
+    let paths = Trans.search_fail t''' in
+    List.map (Trans.screen_fail -$- t''') paths
+  in
+  if false then Format.printf "BEFORE:@.%a@." Print.term t''';
+  if false then Format.printf "HEAD:@.%a@." Print.term @@ List.hd ts;
+  List.for_all (Main_loop.run [] exparam_sol) ts
 
 let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWithExparams preds_info(*need?*) t =
   try

@@ -78,3 +78,5 @@ val filter_attr : (attr -> bool) -> typed_term -> typed_term
 val tfuns_to_tfun : typed_term -> typed_term
 val tfun_to_tfuns : typed_term -> typed_term
 val reconstruct : typed_term -> typed_term
+val split_assert : typed_term -> typed_term
+val inline_specified : (id * id list * typed_term) -> typed_term -> typed_term

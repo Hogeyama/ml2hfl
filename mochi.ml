@@ -420,7 +420,6 @@ let fpat_init1 () =
 let fpat_init2 () =
   let open Fpat in
   Global.target_filename := !Flag.filename;
-  Global.debug := !Flag.debug_level > 1;
   SMTProver.cvc3 := !Flag.cvc3;
   SMTProver.open_ ()
 
