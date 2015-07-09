@@ -590,6 +590,9 @@ let rec merge_typ typ1 typ2 =
       TPred(x1', merge_preds ps1 ps2')
   | TPred(x, ps), typ
   | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
+  | TFuns(xs1,typ1), TFuns(xs2,typ2) ->
+      let xs = List.map2 (fun x1 x2 -> Id.new_var ~name:(Id.name x1) @@ merge_typ (Id.typ x1) (Id.typ x2)) xs1 xs2 in
+      TFuns(xs, merge_typ typ1 typ2)
   | TFun(x1,typ1), TFun(x2,typ2) ->
       let x_typ = merge_typ (Id.typ x1) (Id.typ x2) in
       let x = Id.new_var ~name:(Id.name x1) x_typ in

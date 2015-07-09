@@ -27,12 +27,10 @@ let main() =
 
 (* The property checked in the original example is "AG (Close1 -> AF Close2)"
    In the program above, we have added a flag that expresses whether
-   Close1 happened, so that 
+   Close1 happened, so that
    once Close1 occurs, it occurs infinitely often
  *)
 (*{SPEC}
-   fairness: (Call, Close1)  (* either Close1 happens only finitely often, or *)
+   fairness: (Always, Close1)  (* either Close1 happens only finitely often, or *)
    fairness: (Close2, Never) (* Close2 happens infinitely often *)
 {SPEC}*)
-
-  
