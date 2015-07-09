@@ -304,6 +304,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
       if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in
+      if !Flag.print_progress then Format.printf "DONE!@.@.";
       main_loop rank_var rank_funs'' prev_vars arg_vars exparam_sol'' spcs' spcWithExparams' preds_info' t
 
 
@@ -313,7 +314,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
 let pr ?(check_typ=Some TUnit) s t =
   if !!debug then
     begin
-      Format.printf "##[%aFair_termination%t] %a:@.%a@.@." Color.set Color.Yellow Color.reset Color.s_red s Print.term' t;
+      Format.printf "##[%aFair_termination%t] %a:@.%a@.@." Color.set Color.Yellow Color.reset Color.s_red s Print.term_typ t;
       Option.iter (Type_check.check t) check_typ
     end
 

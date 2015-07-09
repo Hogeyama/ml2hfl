@@ -132,13 +132,15 @@ let insert_extra_param_desc vars desc =
   match desc with
   | Fun(x, t) when is_fun_var x ->
       let x' = insert_extra_param.tr2_var vars x in
-      Fun(!!new_exparam, make_fun x' @@ insert_extra_param.tr2_term vars t)
+      let ex = !!new_exparam in
+      let vars' = ex :: (if Id.typ x' = TInt then [x'] else []) @ vars in
+      Fun(ex, make_fun x' @@ insert_extra_param.tr2_term vars' t)
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
         let f' = insert_extra_param.tr2_var vars f in
         let xs' = List.map (insert_extra_param.tr2_var vars) xs in
         let xs'' = List.flatten_map (fun x -> if is_fun_var x then [!!new_exparam; x] else [x]) xs' in
-        let vars' = List.filter ((=) TInt -| Id.typ) xs @ vars in
+        let vars' = List.filter ((=) TInt -| Id.typ) xs'' @ vars in
         f', xs'', insert_extra_param.tr2_term vars' t
       in
       let bindings' = List.map aux bindings in
