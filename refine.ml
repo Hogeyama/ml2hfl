@@ -179,11 +179,11 @@ let refine_rank_fun ce ex_ce { env; defs; main; info } =
       if !Flag.add_closure_exparam
       then
         let {env=envWithExparam; defs=defsWithExparam; main=mainWithExparam} = Option.get info.exparam_orig in
-        if false then Format.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get info.exparam_orig;
+        if true then Format.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get info.exparam_orig;
         Format.printf "@[<v>";
         let _, spcWithExparam = FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce ex_ce in
         Format.printf "@]";
-        if false then Format.printf "REFINE: %a@." Fpat.Formula.pr spcWithExparam;
+        if true then Format.printf "REFINE: %a@." Fpat.Formula.pr spcWithExparam;
         spcWithExparam
       else spc (* dummy *)
     in

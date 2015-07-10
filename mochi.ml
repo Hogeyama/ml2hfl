@@ -63,13 +63,15 @@ let print_info () =
                if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
             !Termination_loop.lrf
         end;
-      Format.printf "cycles: %d\n" !Flag.cegar_loop;
-      Format.printf "total: %.3f sec\n" @@ get_time();
-      Format.printf "  abst: %.3f sec\n" !Flag.time_abstraction;
-      Format.printf "  mc: %.3f sec\n" !Flag.time_mc;
-      Format.printf "  refine: %.3f sec\n" !Flag.time_cegar;
+      if !Flag.mode = Flag.FairTermination
+      then Format.printf "cycles (outer): %d@." !Flag.fair_term_loop_count;
+      Format.printf "cycles: %d@." !Flag.cegar_loop;
+      Format.printf "total: %.3f sec@." @@ get_time();
+      Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
+      Format.printf "  mc: %.3f sec@." !Flag.time_mc;
+      Format.printf "  refine: %.3f sec@." !Flag.time_cegar;
       if !Flag.relative_complete then
-        Format.printf "    exparam: %.3f sec\n" !Flag.time_parameter_inference;
+        Format.printf "    exparam: %.3f sec@." !Flag.time_parameter_inference;
       Format.pp_print_flush Format.std_formatter ()
     end
 
