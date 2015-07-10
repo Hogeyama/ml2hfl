@@ -121,8 +121,11 @@ let normalize = normalize.tr_term -| Trans.short_circuit_eval
 
 (** insert extra parameters *)
 let make_extra_param xs =
-  let mk = make_var -| make_extra_coeff in
-  List.fold_left (fun acc x -> make_add acc @@ make_mul !!mk (make_var x)) !!mk xs
+  match xs with
+  | [x] -> make_var x
+  | _ ->
+      let mk = make_var -| make_extra_coeff in
+      List.fold_left (fun acc x -> make_add acc @@ make_mul !!mk (make_var x)) !!mk xs
 let is_fun_var = is_fun_typ -| Id.typ
 let new_exparam () = Id.new_var ~name:"ex" TInt
 
