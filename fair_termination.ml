@@ -180,7 +180,7 @@ let trans_term env t =
             in
             let t1''' = make_let [b,[],t_b] t1'' in
             let t1'''' =
-              if true
+              if !Flag.expand_set_flag
               then make_if (make_var set_flag')
                            (subst set_flag' true_term t1''')
                            (Trans.alpha_rename @@ subst set_flag' false_term t1''')

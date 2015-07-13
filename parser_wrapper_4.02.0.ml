@@ -59,8 +59,8 @@ let conv_primitive_app t ts typ =
         make_assume
           (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
           (make_var x)
-  | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_app (make_event "newr") [unit_term]
-  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_app (make_event "close") [unit_term]
+  | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
+  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_event_unit "close"
   | _ -> make_app t ts
 
 let venv = ref []
@@ -445,7 +445,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
       let t2 = from_expression e2 in
       let t3 =
         match e3 with
-          None -> {desc=Const Unit; typ=TUnit; attr=[]}
+        | None -> unit_term
         | Some e3 -> from_expression e3
       in
       make_if t1 t2 t3
@@ -484,11 +484,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
   | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
   | Texp_override _ -> unsupported "expression (override)"
   | Texp_letmodule _ -> unsupported "expression (module)"
-  | Texp_assert e ->
-      let e' = from_expression e in
-      if e' = false_term
-      then make_seq (make_assert false_term) (make_bottom typ')
-      else make_assert e'
+  | Texp_assert e -> make_seq (make_assert @@ from_expression e) (make_bottom typ')
   | Texp_lazy e -> assert false
   | Texp_object _ -> unsupported "expression (class)"
   | Texp_pack _ -> unsupported "expression (pack)"

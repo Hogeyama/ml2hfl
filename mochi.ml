@@ -64,8 +64,8 @@ let print_info () =
             !Termination_loop.lrf
         end;
       if !Flag.mode = Flag.FairTermination
-      then Format.printf "cycles (outer): %d@." !Flag.fair_term_loop_count;
-      Format.printf "cycles: %d@." !Flag.cegar_loop;
+      then Format.printf "cycles: %d@." !Flag.fair_term_loop_count;
+      Format.printf "CEGAR-cycles: %d@." !Flag.cegar_loop;
       Format.printf "total: %.3f sec@." @@ get_time();
       Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
       Format.printf "  mc: %.3f sec@." !Flag.time_mc;
