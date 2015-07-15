@@ -36,7 +36,6 @@ parser_wrapper.ml
 *parser.automaton
 *parser.conflicts
 *~
-wiki/
 *.omc
 .omakedb
 .omakedb.lock
@@ -44,3 +43,6 @@ wiki/
 *.smt
 *.byt
 *.bin
+wiki/
+mochi_bin/bin/
+mochi_bin/lib/
