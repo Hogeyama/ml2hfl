@@ -224,7 +224,7 @@ let uncurry t =
   let sol = solve constr in
   t'
   |> uncurry (env,sol)
-  |> Trans.filter_attr (function AId _ -> false | _ -> true)
+  |> Trans.remove_id
 
 (*
 let infer t =

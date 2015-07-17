@@ -16,8 +16,10 @@ let assert_ f x = assert (f x)
 let assert_false _ = fatal "assert_false"
 let (|@) x b f = if b then f x; x
 let (|@!) x b f = if !b then f x; x
+let (|@!!) x b f = if !!b then f x; x
 let (|&) x b f = if b then f x else x
 let (|&!) x b f = if !b then f x else x
+let (|&!!) x b f = if !!b then f x else x
 let (&>) f x = f x
 (* usage: x |@flag&> print *)
 (* usage: x |&flag&> trans *)
@@ -160,6 +162,7 @@ module Fun = struct
     then x
     else repeat f (n-1) (f x)
   let const x _ = x
+  let const2 x _ _ = x
 end
 
 module List = struct
@@ -504,3 +507,10 @@ let load_from_file file default =
     x
   else
     default
+
+
+let rec fixed_point ?(eq=(=)) f init =
+  let x = f init in
+  if eq x init
+  then x
+  else fixed_point ~eq f x

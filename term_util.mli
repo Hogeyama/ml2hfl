@@ -168,3 +168,5 @@ val get_body : typed_term -> typed_term
 val count_occurrence : id -> typed_term -> int
 val add_attr : attr -> typed_term -> typed_term
 val get_bound_variables : typed_term -> id list
+val get_id : typed_term -> int
+val get_id_map : typed_term -> (int, typed_term) Hashtbl.t

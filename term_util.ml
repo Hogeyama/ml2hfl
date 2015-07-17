@@ -75,9 +75,7 @@ let rec make_app t ts =
     if not (Flag.check_typ => Type.can_unify typ1 typ2)
     then
       begin
-        Format.printf "make_app:@ %a@ <=/=>@ %a@."
-                      Print.typ typ1
-                      Print.typ typ2;
+        Format.printf "make_app:@ %a@ <=/=>@ %a@." Print.typ typ1 Print.typ typ2;
         Format.printf "fun: %a@." Print.term t;
         Format.printf "arg: %a@." Print.term @@ List.hd ts;
         assert false
@@ -358,14 +356,11 @@ let rec decomp_lets t =
 
 
 let get_int = make_col [] (@@@)
-
 let get_int_term t =
   match t.desc with
   | Const (Int n) -> [n]
   | _ -> get_int.col_term_rec t
-
 let get_int_typ typ = []
-
 let () = get_int.col_term <- get_int_term
 let () = get_int.col_typ <- get_int_typ
 let get_int t = List.unique @@ get_int.col_term t
@@ -858,3 +853,21 @@ let count_occurrence x t =
   List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t
 
 let add_attr attr t = {t with attr=attr::t.attr}
+
+let get_id t =
+  try
+    List.find_map (function AId n -> Some n | _ -> None) t.attr
+  with Not_found -> invalid_argument "get_id"
+
+
+let get_id_map = make_col2 () (Fun.const2 ())
+let get_id_map_term map t =
+  get_id_map.col2_term_rec map t;
+  Hashtbl.add map (get_id t) t
+let get_id_map_typ map typ = ()
+let () = get_id_map.col2_term <- get_id_map_term
+let () = get_id_map.col2_typ <- get_id_map_typ
+let get_id_map t =
+  let map = Hashtbl.create 0 in
+  get_id_map.col2_term map t;
+  map

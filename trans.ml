@@ -2490,3 +2490,18 @@ let inline_specified_term (f,xs,t1) t =
   | _ -> inline_specified.tr2_term_rec (f,xs,t1) t
 let () = inline_specified.tr2_term <- inline_specified_term
 let inline_specified = inline_specified.tr2_term
+
+
+let add_id = make_trans2 ()
+let add_id_term counter t =
+  incr counter;
+  let id = AId !counter in
+  add_attr id @@ add_id.tr2_term_rec counter t
+let () = add_id.tr2_term <- add_id_term
+let add_id t =
+  let counter = ref 0 in
+  let t' = add_id.tr2_term counter t in
+  !counter, t'
+
+
+let remove_id t = filter_attr (function AId _ -> false | _ -> true) t

@@ -17,6 +17,8 @@ let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
 let (-||) = merge_get_rtyp
 
 let preprocess t spec =
+  CFA.cfa t;
+  assert false;
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
