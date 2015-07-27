@@ -17,11 +17,10 @@ let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
 let (-||) = merge_get_rtyp
 
 let preprocess t spec =
-  CFA.cfa t;
-  assert false;
   let fun_list,t,get_rtyp =
     if !Flag.init_trans
     then
+      let t = trans_and_print CFA.replace_const "replace_const" Fun.id t in
       let t = trans_and_print Trans.encode_mutable_record "encode_mutable_record" Fun.id t in
       let t = trans_and_print Trans.abst_ref "abst_ref" Fun.id t in
       let t = t |&!Flag.tupling&> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in

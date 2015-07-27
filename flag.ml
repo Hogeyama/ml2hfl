@@ -60,6 +60,7 @@ let tupling = ref false
 let elim_same_arg = ref false
 let base_to_int = ref false
 let exists_unknown_false = true
+let replace_const = ref false
 
 let mode = ref Reachability
 let cegar = ref CEGAR_DependentType
