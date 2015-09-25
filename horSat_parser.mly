@@ -32,6 +32,7 @@ open HorSat_syntax
 output_apt:
   SATISFIED EOF { Satisfied }
 | UNSATISFIED THE_SIZE_OF_TYPING A_COUNTEREXAMPLE_IS counterexample_apt EOF { UnsatisfiedAPT $4 }
+| UNSATISFIED A_COUNTEREXAMPLE_IS counterexample_apt EOF { UnsatisfiedAPT $3 }
 
 counterexample_apt:
   LPAREN counterexample_apt RPAREN
@@ -52,6 +53,7 @@ counterexample_apt:
 output:
   SATISFIED EOF { Satisfied }
 | UNSATISFIED THE_SIZE_OF_TYPING INT A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $5 }
+| UNSATISFIED A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $3 }
 
 id:
   IDENT

@@ -17,6 +17,7 @@ rule header = parse
 
 and token = parse
 | "HorSat" { header lexbuf }
+| "HorSat2" { header lexbuf }
 | "The size of typing:" { THE_SIZE_OF_TYPING }
 | "A counterexample is:" { A_COUNTEREXAMPLE_IS }
 | space+ { token lexbuf }
